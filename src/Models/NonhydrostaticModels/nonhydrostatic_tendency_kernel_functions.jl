@@ -261,12 +261,17 @@ velocity components, tracer fields, and precalculated diffusivities where applic
                         w = SumOfArrays{3}(velocities.w, background_fields.velocities.w, biogeochemical_velocities.w))
 
     total_velocities = with_advective_forcing(forcing, total_velocities)
-    total_c = SumOfArrays{2}(c, background_fields_c)
+
+    closure_c = if background_fields isa BackgroundFieldsWithClosureFluxes
+        SumOfArrays{2}(c, background_fields_c)
+    else
+        c
+    end
 
     return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
              - div_Uc(i, j, k, grid, advection, velocities, background_fields_c)
-             - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, total_c, clock, model_fields, buoyancy)
-             - immersed_∇_dot_qᶜ(i, j, k, grid, total_c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
+             - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, closure_c, clock, model_fields, buoyancy)
+             - immersed_∇_dot_qᶜ(i, j, k, grid, closure_c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
              + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))
 end

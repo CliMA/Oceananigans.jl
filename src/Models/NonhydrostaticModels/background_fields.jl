@@ -1,9 +1,11 @@
 using Oceananigans.Fields: ZeroField, AbstractField, FunctionField, location
 using Oceananigans.Utils: prettysummary
 
+using Adapt
+
 # TODO: This code belongs in the Models module
 
-function BackgroundVelocityFields(fields, grid, clock)
+function background_velocity_fields(fields, grid, clock)
     u = get(fields, :u, ZeroField())
     v = get(fields, :v, ZeroField())
     w = get(fields, :w, ZeroField())
@@ -15,7 +17,7 @@ function BackgroundVelocityFields(fields, grid, clock)
     return (; u, v, w)
 end
 
-function BackgroundTracerFields(bg, tracer_names, grid, clock)
+function background_tracer_fields(bg, tracer_names, grid, clock)
     tracer_fields =
         Tuple(c ∈ keys(bg) ?
               regularize_background_field(Center, Center, Center, getindex(bg, c), grid, clock) :
@@ -37,6 +39,9 @@ struct BackgroundFields{Q, U, C}
     end
 end
 
+Adapt.adapt_structure(to, bf::BackgroundFields{Q}) where Q =    
+    BackgroundFields{Q}(adapt(to, bf.velocities), adapt(to, bf.tracers))
+
 const BackgroundFieldsWithClosureFluxes = BackgroundFields{true}
 
 function BackgroundFields(; background_closure_fluxes=false, fields...)
@@ -49,14 +54,14 @@ function BackgroundFields(; background_closure_fluxes=false, fields...)
 end
 
 function BackgroundFields(background_fields::BackgroundFields{Q}, tracer_names, grid, clock) where Q
-    velocities = BackgroundVelocityFields(background_fields.velocities, grid, clock)
-    tracers = BackgroundTracerFields(background_fields.tracers, tracer_names, grid, clock)
+    velocities = background_velocity_fields(background_fields.velocities, grid, clock)
+    tracers = background_tracer_fields(background_fields.tracers, tracer_names, grid, clock)
     return BackgroundFields{Q}(velocities, tracers)
 end
 
 function BackgroundFields(background_fields::NamedTuple, tracer_names, grid, clock)
-    velocities = BackgroundVelocityFields(background_fields, grid, clock)
-    tracers = BackgroundTracerFields(background_fields, tracer_names, grid, clock)
+    velocities = background_velocity_fields(background_fields, grid, clock)
+    tracers = background_tracer_fields(background_fields, tracer_names, grid, clock)
     return BackgroundFields{false}(velocities, tracers)
 end
 
