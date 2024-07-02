@@ -32,7 +32,7 @@ Nz = 40
 
 # first try
 
-save_fields_interval = 10day
+save_fields_interval  = 10day
 save_volumes_interval = 100day
 save_tracers_interval = 10day
 stop_time = 1000day
@@ -67,6 +67,7 @@ coriolis = BetaPlane(latitude = -45)
 
 # Diffusivities and closures coefficients
 gm_parameters = (max_C = 20, 
+                 min_C = 0.23,
                  K₀ᴳᴹ =  1e3,
                  β = coriolis.β)
 
@@ -81,13 +82,29 @@ gm_parameters = (max_C = 20,
     Sʸ = ifelse(isnan(Sʸ), zero(grid), Sʸ)
 
     z  = znode(k, grid, Center())
-    C  = min(max(zero(grid), 1 - p.β / Sʸ * z), p.max_C)
+    C  = min(max(p.min_C, 1 - p.β / Sʸ * z), p.max_C)
 
     return p.K₀ᴳᴹ * C
 end
 
 κz = 1e-5
 νz = 1e-5
+
+Cᴰ = 1e-3
+
+@inline ϕ²(i, j, k, grid, ϕ) = @inbounds ϕ[i, j, k]^2
+
+@inline speedᶜᶠᶜ(i, j, k, grid, fields) = @inbounds sqrt(fields.v[i, j, k]^2 + ℑxᶠᵃᵃ(i, j, k, grid, ϕ², fields.u))
+@inline speedᶠᶜᶜ(i, j, k, grid, fields) = @inbounds sqrt(fields.u[i, j, k]^2 + ℑyᵃᶠᵃ(i, j, k, grid, ϕ², fields.v))
+
+@inline u_drag(i, j, grid, clock, fields, p) = @inbounds - p.Cᴰ * fields.u[i, j, 1] * speedᶠᶜᶜ(i, j, k, grid, fields)
+@inline v_drag(i, j, grid, clock, fields, p) = @inbounds - p.Cᴰ * fields.v[i, j, 1] * speedᶜᶠᶜ(i, j, k, grid, fields)
+
+u_drag_bc = FluxBuondaryCondition(u_drag, discrete_form = true, parameters = (; Cᴰ))
+v_drag_bc = FluxBuondaryCondition(v_drag, discrete_form = true, parameters = (; Cᴰ))
+
+u_bcs = FieldBoundaryConditions(bottom = u_drag_bc)
+v_bcs = FieldBoundaryConditions(bottom = v_drag_bc)
 
 vertical_closure = VerticalScalarDiffusivity(ν=νz, κ=κz)
 
@@ -106,6 +123,7 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     coriolis = coriolis,
                                     buoyancy = BuoyancyTracer(),
                                     closure = closures,
+                                    boundary_conditions = (; u = u_bcs, v = v_bcs),
                                     tracers = (:b, :c),
                                     momentum_advection = WENO(),
                                     tracer_advection = WENO())
@@ -131,8 +149,9 @@ M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
 Δy = 500kilometers
 Δz = 100
 
+# Might want to decrease the horizontal gradient!!
 Δc = 2Δy # extend
-Δb = Δy * M² #buoyancy variation with ramp
+Δb = Δy * M² #buoyancy variation with ramp 
 ϵb = 1e-2 * Δb # noise amplitude
 
 bᵢ(x, y, z) = N² * z + Δb * ramp(y, Δy) + ϵb * randn()
