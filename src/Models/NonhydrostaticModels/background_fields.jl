@@ -1,13 +1,18 @@
+using Oceananigans.Fields: ZeroField, AbstractField, FunctionField, location
 using Oceananigans.Utils: prettysummary
 
 # TODO: This code belongs in the Models module
 
-function BackgroundVelocityFields(bg, grid, clock)
-    u = :u ∈ keys(bg) ? regularize_background_field(Face, Center, Center, bg[:u], grid, clock) : ZeroField()
-    v = :v ∈ keys(bg) ? regularize_background_field(Center, Face, Center, bg[:v], grid, clock) : ZeroField()
-    w = :w ∈ keys(bg) ? regularize_background_field(Center, Center, Face, bg[:w], grid, clock) : ZeroField()
+function BackgroundVelocityFields(fields, grid, clock)
+    u = get(fields, :u, ZeroField())
+    v = get(fields, :v, ZeroField())
+    w = get(fields, :w, ZeroField())
 
-    return (u=u, v=v, w=w)
+    u = regularize_background_field(Face, Center, Center, u, grid, clock)
+    v = regularize_background_field(Center, Face, Center, v, grid, clock)
+    w = regularize_background_field(Center, Center, Face, w, grid, clock)
+
+    return (; u, v, w)
 end
 
 function BackgroundTracerFields(bg, tracer_names, grid, clock)
@@ -21,13 +26,38 @@ function BackgroundTracerFields(bg, tracer_names, grid, clock)
 end
 
 #####
-##### Convenience for model constructor
+##### BackgroundFields (with option for including background closure fluxes)
 #####
 
-function BackgroundFields(background_fields, tracer_names, grid, clock)
+struct BackgroundFields{Q, U, C}
+    velocities :: U
+    tracers :: C
+    function BackgroundFields{Q}(velocities::U, tracers::C) where {Q, U, C}
+        return new{Q, U, C}(velocities, tracers)
+    end
+end
+
+const BackgroundFieldsWithClosureFluxes = BackgroundFields{true}
+
+function BackgroundFields(; background_closure_fluxes=false, fields...)
+    u = get(fields, :u, ZeroField())
+    v = get(fields, :v, ZeroField())
+    w = get(fields, :w, ZeroField())
+    velocities = (; u, v, w)
+    tracers = NamedTuple(name => fields[name] for name in keys(fields) if !(name ∈ (:u, :v, :w)))
+    return BackgroundFields{background_closure_fluxes}(velocities, tracers)
+end
+
+function BackgroundFields(background_fields::BackgroundFields{Q}, tracer_names, grid, clock) where Q
+    velocities = BackgroundVelocityFields(background_fields.velocities, grid, clock)
+    tracers = BackgroundTracerFields(background_fields.tracers, tracer_names, grid, clock)
+    return BackgroundFields{Q}(velocities, tracers)
+end
+
+function BackgroundFields(background_fields::NamedTuple, tracer_names, grid, clock)
     velocities = BackgroundVelocityFields(background_fields, grid, clock)
     tracers = BackgroundTracerFields(background_fields, tracer_names, grid, clock)
-    return (velocities=velocities, tracers=tracers)
+    return BackgroundFields{false}(velocities, tracers)
 end
 
 """
@@ -65,6 +95,8 @@ regularize_background_field(LX, LY, LZ, f::BackgroundField{<:Function}, grid, cl
 
 regularize_background_field(LX, LY, LZ, func::Function, grid, clock) =
     FunctionField{LX, LY, LZ}(func, grid; clock=clock)
+
+regularize_background_field(LX, LY, LZ, ::ZeroField, grid, clock) = ZeroField()
 
 function regularize_background_field(LX, LY, LZ, field::AbstractField, grid, clock)
     if location(field) != (LX, LY, LZ)
