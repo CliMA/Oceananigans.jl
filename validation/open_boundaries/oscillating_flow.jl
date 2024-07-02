@@ -1,9 +1,12 @@
 # This validation script shows open boundaries working in a simple case where the
-# flow remains largely unidirectional and so at one end we have no matching scheme
-# but just prescribe the inflow. At the other end we then make no assumptions about
-# the flow and use a very simple open boundary condition to permit information to 
-# exit the domain. If, for example, the flow at the prescribed boundary was reversed
-# then the model would likely fail.
+# oscillates sinusoidally so changes sign across two open boundaries. This is similar
+# to a more realistic case where we know some arbitary external conditions. 
+# This necessitates using a combination allowing information to exit the domain, in 
+# this case by setting the wall normal velocity gradient to zero, as well as forcing
+# to the external value in this example by relaxing to it.
+
+# This case also has a stretched grid to validate the zero wall normal velocity 
+# gradient matching scheme on a stretched grid.
 
 using Oceananigans, Adapt, CairoMakie
 using Oceananigans.BoundaryConditions: FlatExtrapolationOpenBoundaryCondition
@@ -34,16 +37,30 @@ extra_downstream = 0
 cylinder = Cylinder(; D)
 
 x = (-5, 5 + extra_downstream) .* D
-y = (-5, 5) .* D
 
 Ny = Int(10 / resolution)
-Nx = Ny + Int(extra_downstream / resolution)
+
+Nx = Int((10 + extra_downstream) / resolution)
+
+function Δy(j)
+    if Ny/2 - 2/resolution < j < Ny/2 + 2/resolution
+        return resolution
+    elseif j <= Ny/2 - 2/resolution 
+        return resolution * (1 + (Ny/2 - 2/resolution - j) / (Ny/2 - 2/resolution))
+    elseif j >= Ny/2 + 2/resolution
+        return resolution * (1 + (j - Ny/2 - 2/resolution) / (Ny/2 - 2/resolution))
+    else
+        Throw(ArgumentError("$j not in range"))
+    end
+end
+
+y(j) = sum(Δy.([1:j;])) - sum(Δy.([1:Ny;]))/2
 
 ν = U * D / Re
 
 closure = ScalarDiffusivity(;ν, κ = ν)
 
-grid = RectilinearGrid(architecture; topology = (Bounded, Periodic, Flat), size = (Nx, Ny), x, y)
+grid = RectilinearGrid(architecture; topology = (Bounded, Bounded, Flat), size = (Nx, Ny), x = y, y = x)
 
 T = 20 / U
 
@@ -53,10 +70,14 @@ T = 20 / U
 relaxation_timescale = 0.15
 
 u_boundaries = FieldBoundaryConditions(east = FlatExtrapolationOpenBoundaryCondition(u; relaxation_timescale, parameters = (; U, T)),
-                                       west = FlatExtrapolationOpenBoundaryCondition(u; relaxation_timescale, parameters = (; U, T)))
+                                       west = FlatExtrapolationOpenBoundaryCondition(u; relaxation_timescale, parameters = (; U, T)),
+                                       south = GradientBoundaryCondition(0),
+                                       north = GradientBoundaryCondition(0))
 
 v_boundaries = FieldBoundaryConditions(east = GradientBoundaryCondition(0),
-                                       west = GradientBoundaryCondition(0))
+                                       west = GradientBoundaryCondition(0),
+                                       south = FlatExtrapolationOpenBoundaryCondition(0; relaxation_timescale),
+                                       north = FlatExtrapolationOpenBoundaryCondition(0; relaxation_timescale))
 
 Δt = .3 * resolution / U
 
@@ -121,9 +142,9 @@ end
 
 fig = Figure(size = (600, 600))
 
-ax = Axis(fig[1, 1], aspect = DataAspect())
-
 xc, yc, zc = nodes(ζ)
+
+ax = Axis(fig[1, 1], aspect = DataAspect(), limits = (minimum(xc), maximum(xc), minimum(yc), maximum(yc)))
 
 n = Observable(1)
 
