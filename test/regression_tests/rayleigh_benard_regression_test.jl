@@ -1,5 +1,6 @@
 using Oceananigans.Grids: xnode, znode
 using Oceananigans.TimeSteppers: update_state!
+using Oceananigans.DistributedComputations: cpu_architecture, partition_global_array, reconstruct_global_grid
 
 function run_rayleigh_benard_regression_test(arch, grid_type)
 
@@ -71,6 +72,9 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     checkpointer = Checkpointer(model, schedule=IterationInterval(test_steps), prefix=prefix,
                                 dir=joinpath(dirname(@__FILE__), "data"))
 
+    u, v, w = model.velocities
+    b, c = model.tracers
+
     #####
     ##### Initial condition and spinup steps for creating regression test data
     #####
@@ -100,23 +104,39 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
 
     solution₀, Gⁿ₀, G⁻₀ = get_fields_from_checkpoint(initial_filename)
 
-    model.velocities.u.data.parent .= ArrayType(solution₀.u)
-    model.velocities.v.data.parent .= ArrayType(solution₀.v)
-    model.velocities.w.data.parent .= ArrayType(solution₀.w)
-    model.tracers.b.data.parent    .= ArrayType(solution₀.b)
-    model.tracers.c.data.parent    .= ArrayType(solution₀.c)
+    cpu_arch = cpu_architecture(architecture(grid))
 
-    model.timestepper.Gⁿ.u.data.parent .= ArrayType(Gⁿ₀.u)
-    model.timestepper.Gⁿ.v.data.parent .= ArrayType(Gⁿ₀.v)
-    model.timestepper.Gⁿ.w.data.parent .= ArrayType(Gⁿ₀.w)
-    model.timestepper.Gⁿ.b.data.parent .= ArrayType(Gⁿ₀.b)
-    model.timestepper.Gⁿ.c.data.parent .= ArrayType(Gⁿ₀.c)
+    u₀ = partition_global_array(cpu_arch, ArrayType(solution₀.u[2:end-1, 2:end-1, 2:end-1]), size(u))
+    v₀ = partition_global_array(cpu_arch, ArrayType(solution₀.v[2:end-1, 2:end-1, 2:end-1]), size(v))
+    w₀ = partition_global_array(cpu_arch, ArrayType(solution₀.w[2:end-1, 2:end-1, 2:end-1]), size(w))
+    b₀ = partition_global_array(cpu_arch, ArrayType(solution₀.b[2:end-1, 2:end-1, 2:end-1]), size(b))
+    c₀ = partition_global_array(cpu_arch, ArrayType(solution₀.c[2:end-1, 2:end-1, 2:end-1]), size(c))
 
-    model.timestepper.G⁻.u.data.parent .= ArrayType(G⁻₀.u)
-    model.timestepper.G⁻.v.data.parent .= ArrayType(G⁻₀.v)
-    model.timestepper.G⁻.w.data.parent .= ArrayType(G⁻₀.w)
-    model.timestepper.G⁻.b.data.parent .= ArrayType(G⁻₀.b)
-    model.timestepper.G⁻.c.data.parent .= ArrayType(G⁻₀.c)
+    Gⁿu₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.u[2:end-1, 2:end-1, 2:end-1]), size(u))
+    Gⁿv₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.v[2:end-1, 2:end-1, 2:end-1]), size(v))
+    Gⁿw₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.w[2:end-1, 2:end-1, 2:end-1]), size(w))
+    Gⁿb₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.b[2:end-1, 2:end-1, 2:end-1]), size(b))
+    Gⁿc₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.c[2:end-1, 2:end-1, 2:end-1]), size(c))
+
+    G⁻u₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.u[2:end-1, 2:end-1, 2:end-1]), size(u))
+    G⁻v₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.v[2:end-1, 2:end-1, 2:end-1]), size(v))
+    G⁻w₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.w[2:end-1, 2:end-1, 2:end-1]), size(w))
+    G⁻b₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.b[2:end-1, 2:end-1, 2:end-1]), size(b))
+    G⁻c₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.c[2:end-1, 2:end-1, 2:end-1]), size(c))
+
+    set!(model, u = u₀, v = v₀, w = w₀, b = b₀, c = c₀)
+
+    set!(model.timestepper.Gⁿ.u, Gⁿu₀)
+    set!(model.timestepper.Gⁿ.v, Gⁿv₀)
+    set!(model.timestepper.Gⁿ.w, Gⁿw₀)
+    set!(model.timestepper.Gⁿ.b, Gⁿb₀)
+    set!(model.timestepper.Gⁿ.c, Gⁿc₀)
+
+    set!(model.timestepper.G⁻.u, G⁻u₀)
+    set!(model.timestepper.G⁻.v, G⁻v₀)
+    set!(model.timestepper.G⁻.w, G⁻w₀)
+    set!(model.timestepper.G⁻.b, G⁻b₀)
+    set!(model.timestepper.G⁻.c, G⁻c₀)
 
     model.clock.iteration = spinup_steps
     model.clock.time = spinup_steps * Δt
@@ -142,11 +162,19 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
                                       b = Array(interior(model.tracers.b)),
                                       c = Array(interior(model.tracers.c)))
 
-    correct_fields = (u = Array(interior(solution₁.u, model.grid)),
-                      v = Array(interior(solution₁.v, model.grid)),
-                      w = Array(interior(solution₁.w, model.grid)),
-                      b = Array(interior(solution₁.b, model.grid)),
-                      c = Array(interior(solution₁.c, model.grid)))
+    global_grid = reconstruct_global_grid(model.grid)
+
+    u₁ = interior(solution₁.u, global_grid)
+    v₁ = interior(solution₁.v, global_grid)
+    w₁ = interior(solution₁.w, global_grid)
+    b₁ = interior(solution₁.b, global_grid)
+    c₁ = interior(solution₁.c, global_grid)
+
+    correct_fields = (u = partition_global_array(cpu_arch, Array(u₁), size(u)),
+                      v = partition_global_array(cpu_arch, Array(v₁), size(v)),
+                      w = partition_global_array(cpu_arch, Array(w₁), size(test_fields.w)),
+                      b = partition_global_array(cpu_arch, Array(b₁), size(b)),
+                      c = partition_global_array(cpu_arch, Array(c₁), size(c)))
 
     summarize_regression_test(test_fields, correct_fields)
 

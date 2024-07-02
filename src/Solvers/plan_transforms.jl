@@ -145,7 +145,6 @@ function plan_transforms(grid::XYZRegularRG, storage, planner_flag)
     return transforms
 end
 
-
 """ Used by FourierTridiagonalPoissonSolver. """
 function plan_transforms(grid::Union{XYRegularRG, XZRegularRG, YZRegularRG}, storage, planner_flag)
     Nx, Ny, Nz = size(grid)

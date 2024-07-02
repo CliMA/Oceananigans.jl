@@ -262,6 +262,8 @@ const SynchronizedDistributed = Distributed{<:Any, true}
 ##### All the architectures
 #####
 
+ranks(arch::Distributed) = ranks(arch.partition)
+
 child_architecture(arch::Distributed) = arch.child_architecture
 device(arch::Distributed)             = device(child_architecture(arch))
 

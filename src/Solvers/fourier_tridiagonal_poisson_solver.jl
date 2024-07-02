@@ -50,7 +50,6 @@ end
     @inbounds D[i, j, Nz] = -1 / Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
 end
 
-
 stretched_direction(::YZRegularRG) = XDirection()
 stretched_direction(::XZRegularRG) = YDirection()
 stretched_direction(::XYRegularRG) = ZDirection()

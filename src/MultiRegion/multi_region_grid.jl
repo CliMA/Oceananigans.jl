@@ -169,7 +169,7 @@ end
 
 Reconstruct the `mrg` global grid associated with the `MultiRegionGrid` on `architecture(mrg)`.
 """
-function reconstruct_global_grid(mrg)
+function reconstruct_global_grid(mrg::MultiRegionGrid)
     size   = reconstruct_size(mrg, mrg.partition)
     extent = reconstruct_extent(mrg, mrg.partition)
     topo   = topology(mrg)
