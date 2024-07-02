@@ -187,7 +187,10 @@ end
 
 initialize!(st::SpecifiedTimes, model) = st(model)
 
-align_time_step(schedule::SpecifiedTimes, clock, Δt) = min(Δt, next_actuation_time(schedule) - clock.time)
+function schedule_aligned_time_step(schedule::SpecifiedTimes, clock, Δt)
+    δt = next_actuation_time(schedule) - clock.time
+    return min(Δt, δt)
+end
 
 function specified_times_str(st)
     str_elems = ["$(prettytime(t)), " for t in st.times]
@@ -272,8 +275,9 @@ function (as::OrSchedule)(model)
     return any(actuations)
 end
 
-align_time_step(any_or_all_schedule::Union{OrSchedule, AndSchedule}, clock, Δt) =
-    minimum(align_time_step(clock, Δt, schedule) for schedule in any_or_all_schedule.schedules)
+schedule_aligned_time_step(any_or_all_schedule::Union{OrSchedule, AndSchedule}, clock, Δt) =
+    minimum(schedule_aligned_time_step(schedule, clock, Δt)
+            for schedule in any_or_all_schedule.schedules)
 
 #####
 ##### Show methods
