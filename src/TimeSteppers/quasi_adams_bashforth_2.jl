@@ -103,9 +103,10 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     @apply_regionally correct_velocities_and_store_tendencies!(model, Δt)
 
     tick!(model.clock, Δt)
+
     model.clock.last_Δt = Δt
     model.clock.last_stage_Δt = Δt # just one stage
-    update_state!(model, callbacks; compute_tendencies)
+    update_state!(model, Δt, callbacks; compute_tendencies)
     step_lagrangian_particles!(model, Δt)
 
     # Return χ to initial value
