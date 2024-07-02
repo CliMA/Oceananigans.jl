@@ -69,7 +69,7 @@ Adapt.adapt_structure(to, nn :: NN) =
 
 function NNFluxClosure(arch)
     dev = ifelse(arch == GPU(), gpu_device(), cpu_device())
-    nn_path = "./NDE_FC_Qb_15simnew_2layer_64_relu_2Pr_model.jld2"
+    nn_path = "./NDE_FC_Qb_18simnew_2layer_128_relu_2Pr_model.jld2"
 
     ps, sts, scaling_params, wT_model, wS_model = jldopen(nn_path, "r") do file
         ps = file["u"] |> dev |> f64
@@ -158,7 +158,7 @@ end
     i, j, k = @index(Global, NTuple)
     scaling = closure.scaling
     convecting = top_buoyancy_flux(i, j, grid, buoyancy, top_tracer_bcs, clock, tracers) > 0
-    interior_point = k <= grid.Nz - 1 & k >= 2
+    interior_point = k <= grid.Nz - 1 & k >= 3
 
     @inbounds diffusivities.wT[i, j, k] = ifelse(convecting & interior_point, inv(scaling.wT)(diffusivities.wT[i, j, k]) - inv(scaling.wT)(0), 0)
     @inbounds diffusivities.wS[i, j, k] = ifelse(convecting & interior_point, inv(scaling.wS)(diffusivities.wS[i, j, k]) - inv(scaling.wS)(0), 0)
