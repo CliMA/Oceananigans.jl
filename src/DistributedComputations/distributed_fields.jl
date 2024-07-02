@@ -78,3 +78,23 @@ function synchronize_communication!(field)
     
     return nothing
 end
+
+# Fallback
+reconstruct_global_field(field) = field
+
+"""
+    reconstruct_global_field(field)
+
+Reconstructs a global field from a local field by combining the data from all processes.
+"""
+function reconstruct_global_field(field::DistributedField)
+    global_grid = reconstruct_global_grid(field.grid)
+    global_field = Field(location(field), global_grid)
+    arch = architecture(field)
+
+    global_data = construct_global_array(arch, interior(field), size(field))
+
+    set!(global_field, global_data)
+
+    return global_field
+end

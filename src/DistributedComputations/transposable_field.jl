@@ -1,4 +1,4 @@
-using Oceananigans.Grids: architecture
+using Oceananigans.Grids: architecture, deflate_tuple
 using Oceananigans.Architectures: on_architecture
 
 struct TransposableField{FX, FY, FZ, YZ, XY, C, Comms}
@@ -111,7 +111,6 @@ function twin_grid(grid::DistributedGrid; free_dimension = :y)
     y = cpu_face_constructor_y(grid)
     z = cpu_face_constructor_z(grid)
 
-    ## This will not work with 3D parallelizations!!
     xG = R[1] == 1 ? x : assemble_coordinate(x, nx, R[1], ri, rj, rk, arch.communicator)
     yG = R[2] == 1 ? y : assemble_coordinate(y, ny, R[2], rj, ri, rk, arch.communicator)
     zG = R[3] == 1 ? z : assemble_coordinate(z, nz, R[3], rk, ri, rj, arch.communicator)
@@ -143,24 +142,33 @@ function twin_grid(grid::DistributedGrid; free_dimension = :y)
 
     new_arch  = Distributed(child_arch; partition = Partition(ranks...))
     global_sz = global_size(new_arch, (nnx, nny, nnz))
+    global_sz = deflate_tuple(TX, TY, TZ, global_sz)
 
     return construct_grid(grid, new_arch, FT; 
                           size = global_sz, 
-                        extent = (xG, yG, zG),
-                      topology = (TX, TY, TZ))
+                          x = xG, y = yG, z = zG,
+                          topology = (TX, TY, TZ))
 end
 
-construct_grid(::RectilinearGrid, arch, FT; size, extent, topology) = 
-        RectilinearGrid(arch, FT; size, 
-                        x = extent[1],
-                        y = extent[2], 
-                        z = extent[3],
-                        topology)
+function construct_grid(::RectilinearGrid, arch, FT; size, x, y, z, topology) 
+    TX, TY, TZ = topology
+    x = TX == Flat ? nothing : x
+    y = TY == Flat ? nothing : y
+    z = TZ == Flat ? nothing : z
+    
+    return RectilinearGrid(arch, FT; size, 
+                           x, y, z,
+                           topology)
+end
 
-construct_grid(::LatitudeLongitudeGrid, arch, FT; size, extent, topology) = 
-        LatitudeLongitudeGrid(arch, FT; size, 
-                        longitude = extent[1],
-                         latitude = extent[2], 
-                                z = extent[3],
-                                topology)
+function construct_grid(::LatitudeLongitudeGrid, arch, FT; size, x, y, z, topology) 
+    TX, TY, TZ = topology
+    longitude = TX == Flat ? nothing : x
+    latitude  = TY == Flat ? nothing : y
+    z         = TZ == Flat ? nothing : z
+
+    return LatitudeLongitudeGrid(arch, FT; size, 
+                                 longitude, latitude, z,
+                                 topology)
+end
 
