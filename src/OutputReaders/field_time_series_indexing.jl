@@ -83,7 +83,7 @@ function getindex(fts::OnDiskFTS, n::Int)
 
     # Wrap Field
     loc = location(fts)
-    field_data = offset_data(raw_data, fts.grid, loc, fts.indices)
+    @apply_regionally field_data = offset_data(raw_data, fts.grid, loc, fts.indices)
 
     return Field(loc, fts.grid;
                  indices = fts.indices,
@@ -260,8 +260,8 @@ function getindex(fts::InMemoryFTS, n::Int)
     update_field_time_series!(fts, n)
 
     m = memory_index(fts, n)
-    underlying_data = view(parent(fts), :, :, :, m)
-    data = offset_data(underlying_data, fts.grid, location(fts), fts.indices)
+    @apply_regionally underlying_data = view(parent(fts), :, :, :, m)
+    @apply_regionally data = offset_data(underlying_data, fts.grid, location(fts), fts.indices)
 
     return Field(location(fts), fts.grid; data, fts.boundary_conditions, fts.indices)
 end
