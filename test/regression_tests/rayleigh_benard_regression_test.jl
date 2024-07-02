@@ -43,8 +43,8 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
 
     cforcing = Forcing(Fc, discrete_form=true)
 
-    bbcs = FieldBoundaryConditions(top = BoundaryCondition(Value, 0.0),
-                                   bottom = BoundaryCondition(Value, Δb))
+    bbcs = FieldBoundaryConditions(top = BoundaryCondition(Value(), 0.0),
+                                   bottom = BoundaryCondition(Value(), Δb))
 
     model = NonhydrostaticModel(; grid,
                                 closure = ScalarDiffusivity(ν=ν, κ=κ),

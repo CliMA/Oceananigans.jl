@@ -12,6 +12,7 @@ using Oceananigans.BoundaryConditions:
     fill_halo_size,
     fill_halo_offset,
     permute_boundary_conditions,
+    fill_open_boundary_regions!,
     PBCT, DCBCT, DCBC
 
 import Oceananigans.BoundaryConditions:
@@ -97,7 +98,11 @@ function fill_halo_regions!(field::DistributedField, args...; kwargs...)
                               kwargs...)
 end
 
-function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, args...; kwargs...)
+function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, args...; fill_boundary_normal_velocities = true, kwargs...)
+    if fill_boundary_normal_velocities
+        fill_open_boundary_regions!(c, bcs, indices, loc, grid, args...; kwargs...)
+    end
+    
     arch             = architecture(grid)
     fill_halos!, bcs = permute_boundary_conditions(bcs) 
 

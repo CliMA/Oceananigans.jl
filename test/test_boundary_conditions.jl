@@ -235,7 +235,7 @@ end
         @test T_bcs.top.condition.func === simple_bc
         @test T_bcs.bottom.condition.func === simple_bc
 
-        one_bc = BoundaryCondition(Value, 1.0)
+        one_bc = BoundaryCondition(Value(), 1.0)
 
         T_bcs = FieldBoundaryConditions(   east = one_bc,
                                            west = one_bc,

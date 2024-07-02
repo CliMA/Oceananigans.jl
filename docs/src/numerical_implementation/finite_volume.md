@@ -1,4 +1,4 @@
-# Finite volume method on a staggered grid
+# [Finite volume method on a staggered grid](@id finite_volume)
 
 The `Oceananigans.jl` staggered grid is defined by a rectilinear array of cuboids of horizontal dimensions 
 ``\Delta x_{i, j, k}, \Delta y_{i, j, k}`` and vertical dimension 
