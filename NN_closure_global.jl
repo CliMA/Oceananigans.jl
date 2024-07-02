@@ -25,7 +25,6 @@ using Oceananigans: architecture, on_architecture
 using Lux, LuxCUDA
 using JLD2
 using ComponentArrays
-using StaticArrays
 using OffsetArrays
 
 using KernelAbstractions: @index, @kernel, @private
