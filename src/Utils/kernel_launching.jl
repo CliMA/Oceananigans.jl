@@ -158,7 +158,6 @@ If the worksize is 0 after adjusting for active cells, the function returns `not
 - `active_cells_map`: A map indicating the active cells in the grid. If the map is not a nothing, the workspec will be disregarded and 
                      the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
 """
-
 function configured_kernel(arch, grid, workspec, kernel!;
                            include_right_boundaries = false,
                            reduced_dimensions = (),
@@ -308,4 +307,20 @@ function partition(kernel::OffsetKernel, inrange, ingroupsize)
     iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(blocks, KernelOffsets(offsets))
 
     return iterspace, dynamic
+end
+
+using KernelAbstractions: Kernel, backend, mkcontext, workgroupsize, launch_config, workgroupsize
+using CUDA: launch_configuration, registers, @cuda, CUDABackend
+
+function retrieve_kernel(obj::Kernel{CUDABackend}, args...; ndrange=nothing, workgroupsize=nothing)
+    back = backend(obj)
+
+    ndrange, workgroupsize, iterspace, dynamic = launch_config(obj, ndrange, workgroupsize)
+    # this might not be the final context, since we may tune the workgroupsize
+    ctx = mkcontext(obj, ndrange, iterspace)
+    maxthreads = nothing
+
+    kernel = @cuda launch=false always_inline=back.always_inline maxthreads=maxthreads obj.f(ctx, args...)
+
+    return kernel
 end

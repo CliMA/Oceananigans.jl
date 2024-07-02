@@ -13,6 +13,9 @@ using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCAT
 using Oceananigans.ImmersedBoundaries: active_interior_map, ActiveCellsIBG, 
                                        InteriorMap, active_linear_index_to_tuple
 
+using KernelAbstractions: @private, @uniform, @groupsize, @index, @localmem
+
+
 """
     compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 

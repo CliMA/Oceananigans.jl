@@ -26,7 +26,7 @@
 end
 
 @inline function upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
-    
+
     δV_stencil   = scheme.upwinding.δV_stencil
     cross_scheme = scheme.upwinding.cross_scheme
 
