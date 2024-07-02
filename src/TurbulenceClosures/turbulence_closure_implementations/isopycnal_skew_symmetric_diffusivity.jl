@@ -37,15 +37,30 @@ function IsopycnalSkewSymmetricDiffusivity(time_disc::TD = VerticallyImplicitTim
                                            κ_symmetric = 0,
                                            isopycnal_tensor = SmallSlopeIsopycnalTensor(),
                                            slope_limiter = FluxTapering(1e-2),
+                                           skew_discrete_form = false,
+                                           symmetric_discrete_form = false,
+                                           skew_loc = (nothing, nothing, nothing),
+                                           symmetric_loc = (nothing, nothing, nothing),
+                                           parameters = nothing,
                                            required_halo_size = 1) where TD
 
     isopycnal_tensor isa SmallSlopeIsopycnalTensor ||
         error("Only isopycnal_tensor=SmallSlopeIsopycnalTensor() is currently supported.")
 
-    return IsopycnalSkewSymmetricDiffusivity{TD, required_halo_size}(convert_diffusivity(FT, κ_skew),
-                                                 convert_diffusivity(FT, κ_symmetric),
-                                                 isopycnal_tensor,
-                                                 slope_limiter)
+    κ_skew = convert_diffusivity(FT, κ_skew;
+                                 discrete_form = skew_discrete_form, 
+                                 loc = skew_loc, 
+                                 parameters)
+
+    κ_symmetric = convert_diffusivity(FT, κ_symmetric; 
+                                      discrete_form = symmetric_discrete_form, 
+                                      loc = symmetric_loc, 
+                                      parameters)
+
+    return IsopycnalSkewSymmetricDiffusivity{TD, required_halo_size}(κ_skew,
+                                                                     κ_symmetric,
+                                                                     isopycnal_tensor,
+                                                                     slope_limiter)
 end
 
 IsopycnalSkewSymmetricDiffusivity(FT::DataType; kw...) = 
@@ -189,8 +204,8 @@ end
     κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
     κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)
 
-    κ_skewᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, issd_coefficient_loc, κ_skew, clock)
-    κ_symmetricᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock)
+    κ_skewᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, issd_coefficient_loc, κ_skew, clock, fields)
+    κ_symmetricᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock, fields)
 
     ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
 
@@ -219,8 +234,8 @@ end
     κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
     κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)
 
-    κ_skewᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, issd_coefficient_loc, κ_skew, clock)
-    κ_symmetricᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock)
+    κ_skewᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, issd_coefficient_loc, κ_skew, clock, fields)
+    κ_symmetricᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock, fields)
 
     ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
 
@@ -249,8 +264,8 @@ end
     κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
     κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)
 
-    κ_skewᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ_skew, clock)
-    κ_symmetricᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock)
+    κ_skewᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ_skew, clock, fields)
+    κ_symmetricᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock, fields)
 
     # Average... of... the gradient!
     ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
@@ -282,7 +297,7 @@ end
     closure = getclosure(i, j, closure)
     κ_symmetric = get_tracer_κ(closure.κ_symmetric, id)
     ϵ_R₃₃ = @inbounds K.ϵ_R₃₃[i, j, k] # tapered 33 component of rotation tensor
-    return ϵ_R₃₃ * κᶜᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock)
+    return ϵ_R₃₃ * κᶜᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock, fields)
 end
 
 @inline viscous_flux_ux(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(grid)
