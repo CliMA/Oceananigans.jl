@@ -41,14 +41,21 @@ _intrinsic_ reference frames are equivalent. However, for other grids (e.g., for
 @inline extrinsic_vector(i, j, k, grid::AbstractGrid, uᵢ, vᵢ, wᵢ) =
     getvalue(uᵢ, i, j, k, grid), getvalue(vᵢ, i, j, k, grid), getvalue(wᵢ, i, j, k, grid)
 
+# 2D vectors
+@inline intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ) = 
+    getvalue(uₑ, i, j, k, grid), getvalue(vₑ, i, j, k, grid)
 
+@inline entrinsic_vector(i, j, k, grid::AbstractGrid, uᵢ, vᵢ) = 
+    getvalue(uᵢ, i, j, k, grid), getvalue(vᵢ, i, j, k, grid)
 
 # Intrinsic and extrinsic conversion for `OrthogonalSphericalShellGrid`s,
 # i.e. curvilinear grids defined on a sphere which are locally orthogonal.
 # If the coordinates match with the coordinates of a latitude-longitude grid
 # (i.e. globally orthogonal), these functions collapse to 
 # uₑ, vₑ, wₑ = uᵢ, vᵢ, wᵢ
-@inline function intrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uᵢ, vᵢ, wᵢ)
+
+# 2D vectors
+@inline function intrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uₑ, vₑ)
 
     φᶜᶠᵃ₊ = φnode(i, j+1, 1, grid, Center(), Face(), Center())
     φᶜᶠᵃ₋ = φnode(i,   j, 1, grid, Center(), Face(), Center())
@@ -66,7 +73,6 @@ _intrinsic_ reference frames are equivalent. However, for other grids (e.g., for
 
     u  = getvalue(uₑ, i, j, k, grid)
     v  = getvalue(vₑ, i, j, k, grid)
-    wᵢ = getvalue(wₑ, i, j, k, grid)
 
     d₁ = ũ / 𝒰
     d₂ = ṽ / 𝒰
@@ -74,10 +80,20 @@ _intrinsic_ reference frames are equivalent. However, for other grids (e.g., for
     uᵢ = u * d₁ + v * d₂
     vᵢ = u * d₂ - v * d₁
 
+    return uᵢ, vᵢ
+end
+
+# 3D vectors
+@inline function intrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uₑ, vₑ, wₑ)
+
+    uᵢ, vᵢ = intrinsic_vector(i, j, k, grid, uₑ, vₑ)
+    wᵢ = getvalue(wₑ, i, j, k, grid)
+
     return uᵢ, vᵢ, wᵢ
 end
 
-@inline function extrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uᵢ, vᵢ, wᵢ)
+# 2D vectors
+@inline function extrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uᵢ, vᵢ)
 
     φᶜᶠᵃ₊ = φnode(i, j+1, 1, grid, Center(), Face(), Center())
     φᶜᶠᵃ₋ = φnode(i,   j, 1, grid, Center(), Face(), Center())
@@ -95,13 +111,21 @@ end
 
     u  = getvalue(uᵢ, i, j, k, grid)
     v  = getvalue(vᵢ, i, j, k, grid)
-    wₑ = getvalue(wᵢ, i, j, k, grid)
 
     d₁ = ũ / 𝒰
     d₂ = ṽ / 𝒰
 
     uₑ = u * d₁ - v * d₂
     vₑ = u * d₂ + v * d₁
+
+    return uₑ, vₑ, wₑ
+end
+
+# 3D vectors
+@inline function extrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uᵢ, vᵢ, wᵢ)
+
+    uₑ, vₑ = intrinsic_vector(i, j, k, grid, uᵢ, vᵢ)
+    wₑ = getvalue(wᵢ, i, j, k, grid)
 
     return uₑ, vₑ, wₑ
 end
