@@ -40,8 +40,14 @@ function interior_tendency_kernel_parameters(grid, arch)
     Nx, Ny, Nz = size(grid)
 
     # TODO: add a comment explaining what is going on here
-    Sx = Rx == 1 ? Nx : (Tx == RightConnected || Tx == LeftConnected ? Nx - Hx : Nx - 2Hx)
-    Sy = Ry == 1 ? Ny : (Ty == RightConnected || Ty == LeftConnected ? Ny - Hy : Ny - 2Hy)
+    # Kernel parameters to compute the tendencies in all the interior if the direction is local (`R == 1`) and only in 
+    # the part of the domain that does not depend on the halo cells if the direction is partitioned. 
+    local_x = Rx == 1
+    local_y = Ry == 1
+    one_sided_connection_x = Tx == RightConnected || Tx == LeftConnected
+    one_sided_connection_y = Ty == RightConnected || Ty == LeftConnected 
+    Sx = local_x ? Nx : ( one_sided_connection_x ? Nx - Hx : Nx - 2Hx)
+    Sy = local_y ? Ny : ( one_sided_connection_y ? Ny - Hy : Ny - 2Hy)
 
     Ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
     Oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
