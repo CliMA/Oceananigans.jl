@@ -12,7 +12,14 @@ get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 function time_step_catke_equation!(model)
 
     # TODO: properly handle closure tuples
-    closure = model.closure
+    if model.closure isa CATKEVerticalDiffusivity
+        closure = model.closure
+        diffusivity_fields = model.diffusivity_fields
+    else
+        closure_idx = findfirst(clo -> clo isa CATKEVerticalDiffusivity, model.closure)
+        closure = model.closure[closure_idx]
+        diffusivity_fields = model.diffusivity_fields[closure_idx]
+    end
 
     e = model.tracers.e
     arch = model.architecture
@@ -20,7 +27,6 @@ function time_step_catke_equation!(model)
     Gⁿe = model.timestepper.Gⁿ.e
     G⁻e = model.timestepper.G⁻.e
 
-    diffusivity_fields = model.diffusivity_fields
     κe = diffusivity_fields.κe
     Le = diffusivity_fields.Le
     previous_velocities = diffusivity_fields.previous_velocities
@@ -61,8 +67,7 @@ function time_step_catke_equation!(model)
         # previous_iteration = model.clock.iteration - 1
         # current_time = previous_time + m * Δτ
         # previous_clock = (; time=current_time, iteration=previous_iteration)
-
-        implicit_step!(e, implicit_solver, closure,
+        implicit_step!(e, implicit_solver, model.closure,
                        model.diffusivity_fields, Val(tracer_index),
                        model.clock, Δτ)
     end
