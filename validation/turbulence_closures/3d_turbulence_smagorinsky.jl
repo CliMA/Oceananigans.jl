@@ -62,14 +62,14 @@ for (i, closure) in enumerate(closures)
     closure_name = string(nameof(typeof(closure)))
     local filename = "3d_turbulence_" * closure_name
     @info "Plotting from " * filename
-    local S_timeseries = FieldTimeSeries(filename * ".jld2", "S²")
-    local S² = @lift interior(S_timeseries[$n], :, :, 1)
+    local S²_timeseries = FieldTimeSeries(filename * ".jld2", "S²")
+    local S² = @lift interior(S²_timeseries[$n], :, :, 1)
 
     local ax = Axis(fig[2, i]; title = "ΣᵢⱼΣᵢⱼ; $closure_name", axis_kwargs...)
-    local xc, yc, zc = nodes(S_timeseries)
+    local xc, yc, zc = nodes(S²_timeseries)
     heatmap!(ax, xc, yc, S²; colormap = :speed, colorrange = (0, 2))
 
-    times = ω_timeseries.times
+    global times = S²_timeseries.times
     if closure isa ScaleInvariantSmagorinsky
         c²ₛ_timeseries = FieldTimeSeries(filename * ".jld2", "c²ₛ")
         c²ₛ = interior(c²ₛ_timeseries, 1, 1, 1, :)
@@ -84,6 +84,6 @@ title = @lift "t = " * string(round(times[$n], digits=2)) * ", cₛ = " * string
 Label(fig[1, 1:2], title, fontsize=24, tellwidth=false)
 frames = 1:length(times)
 @info "Making a neat animation of vorticity and speed..."
-record(fig, filename * ".mp4", frames, framerate=24) do i
+record(fig, "3d_turbulence_smagorinsky.mp4", frames, framerate=24) do i
     n[] = i
 end
