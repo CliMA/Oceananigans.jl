@@ -66,17 +66,22 @@ for (i, closure) in enumerate(closures)
     local S_timeseries = FieldTimeSeries(filename * ".jld2", "S²")
     local S² = @lift interior(S_timeseries[$n], :, :, 1)
 
-    local ax_1 = Axis(fig[2, i]; title = "ΣᵢⱼΣᵢⱼ; $closure_name", axis_kwargs...)
+    local ax = Axis(fig[2, i]; title = "ΣᵢⱼΣᵢⱼ; $closure_name", axis_kwargs...)
     local xc, yc, zc = nodes(S_timeseries)
-    heatmap!(ax_1, xc, yc, S²; colormap = :speed, colorrange = (0, 2))
+    heatmap!(ax, xc, yc, S²; colormap = :speed, colorrange = (0, 2))
 
-#    c²ₛ_timeseries = FieldTimeSeries(filename * ".jld2", "c²ₛ")
-#    c²ₛ = interior(c²ₛ_timeseries, 1, 1, 1, :)
-#    cₛ = sqrt.(max.(c²ₛ, 0))
+    times = ω_timeseries.times
+    if closure isa ScaleInvariantSmagorinsky
+        c²ₛ_timeseries = FieldTimeSeries(filename * ".jld2", "c²ₛ")
+        c²ₛ = interior(c²ₛ_timeseries, 1, 1, 1, :)
+        global cₛ = sqrt.(max.(c²ₛ, 0))
+        local ax_cₛ = Axis(fig[3, 1:length(closures)]; title = "Smagorinsky coefficient", xlabel = "Time", limits = ((0, nothing), (0, 0.2)))
+        lines!(ax_cₛ, times, cₛ, color=:black, label="Scale Invariant Smagorinsky")
+        hlines!(ax_cₛ, [0.16], linestyle=:dash, color=:blue)
+    end
 end
 
-times = ω_timeseries.times
-title = @lift "t = " * string(round(times[$n], digits=2))# * ", cₛ = " * string(round(cₛ[$n], digits=4)) 
+title = @lift "t = " * string(round(times[$n], digits=2)) * ", cₛ = " * string(round(cₛ[$n], digits=4)) 
 Label(fig[1, 1:2], title, fontsize=24, tellwidth=false)
 frames = 1:length(times)
 @info "Making a neat animation of vorticity and speed..."
