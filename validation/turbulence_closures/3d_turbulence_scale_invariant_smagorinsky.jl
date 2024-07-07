@@ -1,33 +1,47 @@
 using Oceananigans
-using Oceananigans.Operators: volume
 using Statistics
 
-#+++ get model
-grid = RectilinearGrid(size=(32, 32, 32), extent=(2π, 2π, 2π), topology=(Periodic, Periodic, Periodic))
-model = NonhydrostaticModel(; grid, timestepper = :RungeKutta3, advection = UpwindBiasedFifthOrder(),
-                            closure = ScaleInvariantSmagorinsky())
+N = 32
+grid = RectilinearGrid(size=(N, N, N), extent=(2π, 2π, 2π), topology=(Periodic, Periodic, Periodic))
 
-u, v, w = model.velocities
-uᵢ = rand(size(u)...); vᵢ = rand(size(v)...)
-uᵢ .-= mean(uᵢ); vᵢ .-= mean(vᵢ)
-set!(model, u=uᵢ, v=vᵢ)
 
-ω = ∂x(v) - ∂y(u)
-S² = KernelFunctionOperation{Center, Center, Center}(Oceananigans.TurbulenceClosures.ΣᵢⱼΣᵢⱼᶜᶜᶜ, model.grid, u, v, w)
+function run_3d_turbulence(closure; grid = grid)
+    model = NonhydrostaticModel(; grid, timestepper = :RungeKutta3, advection = UpwindBiasedFifthOrder(),
+                                closure = closure)
 
-get_c²ₛ(model) = compute!(Field(model.diffusivity_fields.LM_avg / model.diffusivity_fields.MM_avg))
+    u, v, w = model.velocities
+    uᵢ = rand(size(u)...); vᵢ = rand(size(v)...)
+    uᵢ .-= mean(uᵢ); vᵢ .-= mean(vᵢ)
+    set!(model, u=uᵢ, v=vᵢ)
 
-simulation = Simulation(model, Δt=0.2, stop_time=80)
+    simulation = Simulation(model, Δt=0.2, stop_time=80)
 
-wizard = TimeStepWizard(cfl=0.7, max_change=1.1, max_Δt=0.5)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+    wizard = TimeStepWizard(cfl=0.7, max_change=1.1, max_Δt=0.5)
+    add_callback!(simulation, wizard, IterationInterval(10))
 
-filename = "two_dimensional_turbulence"
-simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u, v, w, ω, S², c²ₛ=get_c²ₛ),
-                                                      schedule = TimeInterval(0.6),
-                                                      filename = filename * ".jld2",
-                                                      overwrite_existing = true)
-run!(simulation)
+    ω = ∂x(v) - ∂y(u)
+    S² = KernelFunctionOperation{Center, Center, Center}(Oceananigans.TurbulenceClosures.ΣᵢⱼΣᵢⱼᶜᶜᶜ, model.grid, u, v, w)
+
+    if closure isa ScaleInvariantSmagorinsky
+        c²ₛ = model.diffusivity_fields.LM_avg / model.diffusivity_fields.MM_avg
+        outputs = (; ω, S², c²ₛ)
+    else
+        outputs = (; ω, S²)
+    end
+
+    filename = "3d_turbulence_" * string(nameof(typeof(closure)))
+    simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
+                                                          schedule = TimeInterval(0.6),
+                                                          filename = filename * ".jld2",
+                                                          overwrite_existing = true)
+    run!(simulation)
+end
+
+closures = [SmagorinskyLilly(), ScaleInvariantSmagorinsky()]
+for closure in closures
+    @info "Running" closure
+    run_3d_turbulence(closure)
+end
 
 
 #+++ Plotting
