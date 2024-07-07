@@ -21,7 +21,6 @@ function run_3d_turbulence(closure; grid = grid, coarse_grid = coarse_grid)
     u .-= mean(u)
     v .-= mean(v)
     w .-= mean(w)
-    @show u
 
     simulation = Simulation(model, Δt=0.2, stop_time=80)
 
@@ -32,9 +31,9 @@ function run_3d_turbulence(closure; grid = grid, coarse_grid = coarse_grid)
 
     if closure isa ScaleInvariantSmagorinsky
         c²ₛ = model.diffusivity_fields.LM_avg / model.diffusivity_fields.MM_avg
-        outputs = (; ω, S², c²ₛ)
+        outputs = (; S², c²ₛ)
     else
-        outputs = (; ω, S²)
+        outputs = (; S²)
     end
 
     filename = "3d_turbulence_" * string(nameof(typeof(closure)))
