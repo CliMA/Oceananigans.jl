@@ -65,7 +65,7 @@ end
     # Strain tensor dot product
     Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, velocities.u, velocities.v, velocities.w)
 
-    cₛ² = max(LM_avg[i, j, k] / MM_avg[i, j, k], 0)
+    cₛ² = @inbounds max(LM_avg[i, j, k] / MM_avg[i, j, k], 0)
     @inbounds νₑ[i, j, k] = cₛ² * (Δᶠ(i, j, k, grid))^2 * sqrt(2Σ²)
 end
 
