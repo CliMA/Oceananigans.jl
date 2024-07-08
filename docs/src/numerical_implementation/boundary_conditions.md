@@ -153,7 +153,7 @@ The restriction arrises as the boundary condition is specifying the wall normal 
 ```math
     \begin{equation}
     \label{eq:pressure_boundary_condition}
-    \Delta t\hat{\boldsymbol{n}}\cdot\boldsymbol{\nabla}p^{n+1}\big |_{\partial\Omega} = \left[\Delta t\hat{\boldsymbol{n}}\cdot\boldsymbol{u}^\star - \hat{\boldsymbol{n}}\cdot\boldsymbol{u}^{n+1}\right],
+    \Delta t \, \hat{\boldsymbol{n}}\cdot\boldsymbol{\nabla}p^{n+1}\big |_{\partial\Omega} = \left[\Delta t \, \hat{\boldsymbol{n}}\cdot\boldsymbol{u}^\star - \hat{\boldsymbol{n}}\cdot\boldsymbol{u}^{n+1}\right],
     \end{equation}
 ```
 implying that there is a pressure gradient across the boundary. Since we solve the pressure poisson 
@@ -212,7 +212,6 @@ point to
 but we then pressure correct the interior so a new ``\mathcal{O}(\Delta t)`` error is introduced as
 ```math
     \begin{equation}
-    \label{eq:zero_wall_normal_velocity_gradient}
     \begin{align}
     u^{n+1}_{1jk} &\approx u^{n+1}_{3jk} + (u^{n+1}_{2jk} - u^{n+1}_{jk4}) / 2 + \mathcal{O}(\Delta x^2),\\
     &= u^\star_{1jk} - \Delta t \left(\boldsymbol{\nabla}p^{n+1}_{3jk} + (\boldsymbol{\nabla}p^{n+1}_{2jk} - \boldsymbol{\nabla}p^{n+1}_{4jk}) / 2\right) + \mathcal{O}(\Delta x^2),\\
@@ -223,3 +222,5 @@ but we then pressure correct the interior so a new ``\mathcal{O}(\Delta t)`` err
 This is prefered to a divergent interior solution as open boundary conditions (except no penetration)
 are typlically already unphysical and only used in an attempt to allow information to enter or exit
 the domain.
+
+Open boundary conditions are represented by the [`Open`](@ref) type.

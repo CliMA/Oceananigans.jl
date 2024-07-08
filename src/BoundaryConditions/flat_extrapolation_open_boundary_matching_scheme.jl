@@ -28,9 +28,9 @@ end
 const FEOBC = BoundaryCondition{<:Open{<:FlatExtrapolation}}
 
 function FlatExtrapolationOpenBoundaryCondition(val = nothing; relaxation_timescale = Inf, kwargs...)
-    classifcation = Open(FlatExtrapolation(relaxation_timescale))
+    classification = Open(FlatExtrapolation(relaxation_timescale))
     
-    return BoundaryCondition(classifcation, val; kwargs...)
+    return BoundaryCondition(classification, val; kwargs...)
 end
 
 @inline relax(l, m, c, bc, grid, clock, model_fields) =
