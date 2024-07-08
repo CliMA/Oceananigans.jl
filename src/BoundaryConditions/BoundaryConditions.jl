@@ -4,7 +4,6 @@ export
     BCType, Flux, Gradient, Value, Open,
     BoundaryCondition, getbc, setbc!,
     PeriodicBoundaryCondition, OpenBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition, 
-    MeanOutflowOpenBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
