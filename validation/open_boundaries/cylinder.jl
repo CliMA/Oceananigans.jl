@@ -5,10 +5,9 @@
 # exit the domain. If, for example, the flow at the prescribed boundary was reversed
 # then the model would likely fail.
 
-using Oceananigans, Adapt, CairoMakie
+using Oceananigans, CairoMakie
 using Oceananigans.BoundaryConditions: FlatExtrapolationOpenBoundaryCondition
 
-import Adapt: adapt_structure
 
 @kwdef struct Cylinder{FT}
     D :: FT = 1.0
@@ -17,8 +16,6 @@ import Adapt: adapt_structure
 end
 
 @inline (cylinder::Cylinder)(x, y) = ifelse((x - cylinder.x₀)^2 + (y - cylinder.y₀)^2 < (cylinder.D/2)^2, 1, 0)
-
-Adapt.adapt_structure(to, cylinder::Cylinder) = cylinder
 
 architecture = GPU()
 
