@@ -67,9 +67,9 @@ const C = Center()
 
     spacing_factor = Δx₁ / (Δx₂ + Δx₃)
 
-    unrelaxed = @inbounds c[3, j, k] - (c[2, j, k] - c[4, j, k]) * spacing_factor
+    gradient_free_c = @inbounds c[3, j, k] - (c[2, j, k] - c[4, j, k]) * spacing_factor
 
-    @inbounds c[1, j, k] = relax(j, k, unrelaxed, bc, grid, clock, model_fields)
+    @inbounds c[1, j, k] = relax(j, k, gradient_free_c, bc, grid, clock, model_fields)
 
     return nothing
 end
@@ -83,9 +83,9 @@ end
 
     spacing_factor = Δx₁ / (Δx₂ + Δx₃)
 
-    unrelaxed = @inbounds c[i - 2, j, k] - (c[i - 1, j, k] - c[i - 3, j, k]) * spacing_factor
+    gradient_free_c = @inbounds c[i - 2, j, k] - (c[i - 1, j, k] - c[i - 3, j, k]) * spacing_factor
 
-    @inbounds c[i, j, k] = relax(j, k, unrelaxed, bc, grid, clock, model_fields)
+    @inbounds c[i, j, k] = relax(j, k, gradient_free_c, bc, grid, clock, model_fields)
 
     return nothing
 end
@@ -97,9 +97,9 @@ end
 
     spacing_factor = Δy₁ / (Δy₂ + Δy₃)
 
-    unrelaxed = c[i, 3, k] - (c[i, 2, k] - c[i, 4, k]) * spacing_factor
+    gradient_free_c = c[i, 3, k] - (c[i, 2, k] - c[i, 4, k]) * spacing_factor
 
-    @inbounds c[i, 1, k] = relax(i, k, unrelaxed, bc, grid, clock, model_fields)
+    @inbounds c[i, 1, k] = relax(i, k, gradient_free_c, bc, grid, clock, model_fields)
     
     return nothing
 end
@@ -113,9 +113,9 @@ end
 
     spacing_factor = Δy₁ / (Δy₂ + Δy₃)
 
-    unrelaxed = @inbounds c[i, j - 2, k] - (c[i, j - 1, k] - c[i, j - 3, k]) * spacing_factor
+    gradient_free_c = @inbounds c[i, j - 2, k] - (c[i, j - 1, k] - c[i, j - 3, k]) * spacing_factor
 
-    @inbounds c[i, j, k] = relax(i, k, unrelaxed, bc, grid, clock, model_fields)
+    @inbounds c[i, j, k] = relax(i, k, gradient_free_c, bc, grid, clock, model_fields)
 
     return nothing
 end
@@ -127,9 +127,9 @@ end
 
     spacing_factor = Δz₁ / (Δz₂ + Δz₃)
 
-    unrelaxed = @inbounds c[i, j, 3] - (c[i, k, 2] - c[i, j, 4]) * spacing_factor
+    gradient_free_c = @inbounds c[i, j, 3] - (c[i, k, 2] - c[i, j, 4]) * spacing_factor
 
-    @inbounds c[i, j, 1] = relax(i, j, unrelaxed, bc, grid, clock, model_fields)
+    @inbounds c[i, j, 1] = relax(i, j, gradient_free_c, bc, grid, clock, model_fields)
 
     return nothing
 end
@@ -143,9 +143,9 @@ end
 
     spacing_factor = Δz₁ / (Δz₂ + Δz₃)
 
-    unrelaxed = @inbounds c[i, j, k - 2] - (c[i, j, k - 1] - c[i, j, k - 3]) * spacing_factor
+    gradient_free_c = @inbounds c[i, j, k - 2] - (c[i, j, k - 1] - c[i, j, k - 3]) * spacing_factor
 
-    @inbounds c[i, j, k] = relax(i, j, unrelaxed, bc, grid, clock, model_fields)
+    @inbounds c[i, j, k] = relax(i, j, gradient_free_c, bc, grid, clock, model_fields)
 
     return nothing
 end
