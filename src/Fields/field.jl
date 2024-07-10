@@ -6,8 +6,9 @@ using Adapt
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 
+import Oceananigans: boundary_conditions
 import Oceananigans.Architectures: on_architecture
-import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc, get_boundary_conditions
+import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc
 import Statistics: norm, mean, mean!
 import Base: ==
 
@@ -780,6 +781,3 @@ function fill_halo_regions!(field::Field, args...; kwargs...)
 
     return nothing
 end
-
-# return a fields boundary conditions
-get_boundary_conditions(field::Field) = field.boundary_conditions

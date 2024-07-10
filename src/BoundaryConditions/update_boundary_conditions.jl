@@ -1,3 +1,5 @@
+using Oceananigans: boundary_conditions
+
 update_boundary_condition!(bc::Union{BoundaryCondition, Nothing}, args...) = nothing
 
 function update_boundary_condition!(bcs::FieldBoundaryConditions, field, model)
@@ -11,6 +13,4 @@ function update_boundary_condition!(bcs::FieldBoundaryConditions, field, model)
 end
 
 update_boundary_condition!(fields::Union{NamedTuple, Tuple}, model) = 
-    Tuple(update_boundary_condition!(get_boundary_conditions(field), field, model) for field in fields)
-
-get_boundary_conditions(field) = nothing
+    Tuple(update_boundary_condition!(boundary_conditions(field), field, model) for field in fields)
