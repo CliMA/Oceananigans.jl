@@ -14,9 +14,9 @@ using Oceananigans.BoundaryConditions: FlatExtrapolationOpenBoundaryCondition
 import Adapt: adapt_structure
 
 @kwdef struct Cylinder{FT}
-    D :: FT = 1.
-   x₀ :: FT = 0.
-   y₀ :: FT = 0.
+    D :: FT = 1.0
+   x₀ :: FT = 0.0
+   y₀ :: FT = 0.0
 end
 
 @inline (cylinder::Cylinder)(x, y) = ifelse((x - cylinder.x₀)^2 + (y - cylinder.y₀)^2 < (cylinder.D/2)^2, 1, 0)
