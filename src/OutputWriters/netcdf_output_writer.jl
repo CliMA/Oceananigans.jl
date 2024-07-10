@@ -358,19 +358,18 @@ Nx, Ny, Nz = 16, 16, 16
 
 grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(1, 2, 3))
 
-model = NonhydrostaticModel(grid=grid)
+model = NonhydrostaticModel(; grid)
 
 simulation = Simulation(model, Δt=1.25, stop_iteration=3)
 
-f(model) = model.clock.time^2; # scalar output
+f(model) = model.clock.time^2 # scalar output
 
-g(model) = model.clock.time .* exp.(znodes(grid, c)) # vector/profile output
+zC = znodes(grid, Center())
+g(model) = model.clock.time .* exp.(zC) # vector/profile output
 
-xC, yF = xnodes(grid, c), ynodes(grid, f)
-
+xC, yF = xnodes(grid, Center()), ynodes(grid, Face())
 XC = [xC[i] for i in 1:Nx, j in 1:Ny]
 YF = [yF[j] for i in 1:Nx, j in 1:Ny]
-
 h(model) = @. model.clock.time * sin(XC) * cos(YF) # xy slice output
 
 outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
