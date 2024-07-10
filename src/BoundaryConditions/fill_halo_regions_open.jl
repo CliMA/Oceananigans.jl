@@ -12,8 +12,10 @@ function fill_open_boundary_regions!(field, boundary_conditions, indices, loc, g
     left_bc = left_velocity_open_boundary_condition(boundary_conditions, loc)
     right_bc = right_velocity_open_boundary_condition(boundary_conditions, loc)
 
-    open_fill, normal_fill = fill_open_halo(loc) 
-    fill_size = fill_halo_size(field, normal_fill, indices, boundary_conditions, loc, grid)
+    # gets `open_fill`, the function which fills open boundaries at `loc`, as well as `regular_fill`
+    # which is the function which fills non-open boundaries at `loc` which informs `fill_halo_size` 
+    open_fill, regular_fill = get_open_halo_filling_functions(loc) 
+    fill_size = fill_halo_size(field, regular_fill, indices, boundary_conditions, loc, grid)
 
     launch!(arch, grid, fill_size, open_fill, field, left_bc, right_bc, loc, grid, args)
 
@@ -43,10 +45,10 @@ fill_open_boundary_regions!(fields::NTuple, boundary_conditions, indices, loc, g
 @inline right_velocity_open_boundary_condition(boundary_conditions::Tuple, loc::Tuple{Center, Face, Center}) = @inbounds boundary_conditions[2]
 @inline right_velocity_open_boundary_condition(boundary_conditions::Tuple, loc::Tuple{Center, Center, Face}) = @inbounds boundary_conditions[2]
 
-@inline fill_open_halo(loc) = _no_fill!, _no_fill!
-@inline fill_open_halo(loc::Tuple{Face, Center, Center}) = _fill_west_and_east_open_halo!, fill_west_and_east_halo!
-@inline fill_open_halo(loc::Tuple{Center, Face, Center}) = _fill_south_and_north_open_halo!, fill_south_and_north_halo!
-@inline fill_open_halo(loc::Tuple{Center, Center, Face}) = _fill_bottom_and_top_open_halo!, fill_bottom_and_top_halo!
+@inline get_open_halo_filling_functions(loc) = _no_fill!, _no_fill!
+@inline get_open_halo_filling_functions(loc::Tuple{Face, Center, Center}) = _fill_west_and_east_open_halo!, fill_west_and_east_halo!
+@inline get_open_halo_filling_functions(loc::Tuple{Center, Face, Center}) = _fill_south_and_north_open_halo!, fill_south_and_north_halo!
+@inline get_open_halo_filling_functions(loc::Tuple{Center, Center, Face}) = _fill_bottom_and_top_open_halo!, fill_bottom_and_top_halo!
 
 @kernel _no_fill!(args...) = nothing
 

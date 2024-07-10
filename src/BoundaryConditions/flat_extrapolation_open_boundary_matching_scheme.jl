@@ -5,21 +5,33 @@ using Oceananigans.Grids: xspacings, yspacings, zspacings
 
 Zero gradient perpendicular velocity boundary condition.
 
-For constant spacing:
+We find the boundary value by Taylor expanding the gradient at the boundary point (`xᵢ`)
+to second order:
 ```math
 f′(xᵢ) ≈ f′(xᵢ₋₁) + f′′(xᵢ₋₁)(xᵢ₋₁ - xᵢ) + O(Δx²) = f′(xᵢ₋₁) + f′′(xᵢ₋₁)Δx + O(Δx²),
-
-f′(xᵢ₋₁) ≈ (f(xᵢ) - f(xᵢ₋₂)) / 2Δx
-
-f′(xᵢ) ≈ (f(xᵢ) - f(xᵢ₋₂)) / 2Δx + O(Δx) = 0 ∴ f(xᵢ) ≈ f(xᵢ₋₂) + O(Δx)
-
-f′′(xᵢ₋₁) ≈ (f′(xᵢ) - f′(xᵢ₋₂)) / 2Δx = - f′(xᵢ₋₂) / 2Δx ≈ - (f(xᵢ₋₁) - f(xᵢ₋₃)) / (2Δx)²
-
-∴ f(xᵢ) ≈ f(xᵢ₋₂) - (f(xᵢ₋₁) - f(xᵢ₋₃))/2 + O(Δx²)
+```
+where ``Δx=xᵢ₋₁ - xᵢ`` (for simplicity, we will also assume the spacing is constant at
+all ``i`` for now).
+We can substitute the gradinet at some point ``j`` (``f′(xⱼ)``) with the central 
+difference approximation:
+```math
+f′(xⱼ) ≈ (f(xⱼ₊₁) - f(xⱼ₋₁)) / 2Δx,
+```
+and the second derivative at some point ``j`` (``f′′(xⱼ)``) can be approximated as:
+```math
+f′′(xⱼ) ≈ (f′(xⱼ₊₁) - f′(xⱼ₋₁)) / 2Δx = ((f(xⱼ₊₂) - f(xⱼ)) - (f(xⱼ) - f(xⱼ₋₂))) / (2Δx)².
+```
+When we then substitute for the boundary adjacent point ``f′′(xᵢ₋₁)`` we know that 
+``f′(xⱼ₊₁)=f′(xᵢ)=0`` so the Taylor expansion becomes:
+```math
+f(xᵢ) ≈ f(xᵢ₋₂) - (f(xᵢ₋₁) - f(xᵢ₋₃))/2 + O(Δx²).
 ```
 
-When the grid spacing is not constant it works out that the factor of 1/2 changes to 
-``Δx₋₁/(Δx₋₂ + Δx₋₃)`` instead.
+When the grid spacing is not constant the above can be repeated resulting in the factor 
+of 1/2 changes to ``Δx₋₁/(Δx₋₂ + Δx₋₃)`` instead, i.e.:
+```math
+f(xᵢ) ≈ f(xᵢ₋₂) - (f(xᵢ₋₁) - f(xᵢ₋₃))Δxᵢ₋₁/(Δxᵢ₋₂ + Δxᵢ₋₃) + O(Δx²)
+```.
 """
 struct FlatExtrapolation{FT}
     relaxation_timescale :: FT
@@ -33,10 +45,18 @@ function FlatExtrapolationOpenBoundaryCondition(val = nothing; relaxation_timesc
     return BoundaryCondition(classification, val; kwargs...)
 end
 
-@inline relax(l, m, c, bc, grid, clock, model_fields) =
-    c + ifelse(isnothing(bc.condition)||!isfinite(clock.last_stage_Δt), 0,
-        (getbc(bc, l, m, grid, clock, model_fields) - c) * min(1, clock.last_stage_Δt / bc.classification.matching_scheme.relaxation_timescale))
+@inline function relax(l, m, c, bc, grid, clock, model_fields)
+    Δt = clock.last_stage_Δt 
+    τ = bc.classification.matching_scheme.relaxation_timescale
 
+    Δt̄ = min(1, Δt / τ)
+    cₑₓₜ = getbc(bc, l, m, grid, clock, model_fields)
+
+    Δc =  ifelse(isnothing(bc.condition)||!isfinite(clock.last_stage_Δt),
+                 0, (cₑₓₜ - c) * Δt̄)
+
+    return c + Δc
+end
 @inline spacing_factor(args...) = 1/2
 @inline spacing_factor(Δ::AbstractArray, ::Val{:right}) = @inbounds Δ[end] / (Δ[end-1] + Δ[end-2])
 @inline spacing_factor(Δ::AbstractArray, ::Val{:left})  = @inbounds Δ[1]   / (Δ[2]     + Δ[3]    )
