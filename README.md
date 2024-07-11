@@ -40,6 +40,16 @@
   </a>
 </p>
 
+<!-- Downloads -->
+<p align="center">
+  <a href="https://juliapkgstats.com/pkg/Oceananigans">
+    <img alt="Downloads per month" src="https://img.shields.io/badge/dynamic/json?url=http%3A%2F%2Fjuliapkgstats.com%2Fapi%2Fv1%2Fmonthly_downloads%2FOceananigans&query=total_requests&suffix=%2Fmonth&label=Downloads&style=flat-square">
+  </a>
+  <a href="https://juliapkgstats.com/pkg/Oceananigans">
+    <img alt="Downloads per month" src="https://img.shields.io/badge/dynamic/json?url=http%3A%2F%2Fjuliapkgstats.com%2Fapi%2Fv1%2Ftotal_downloads%2FOceananigans&query=total_requests&&label=Total%20Downloads&style=flat-square">
+  </a>
+</p>
+
 <!-- CI/CD badges -->
 <p align="center">
   <a href="https://buildkite.com/clima/oceananigans">
