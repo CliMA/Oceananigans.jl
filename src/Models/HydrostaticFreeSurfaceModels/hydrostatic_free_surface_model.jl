@@ -156,7 +156,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)
 
     # Finally, we ensure that closure-specific boundary conditions, such as
-    # those required by TKEBasedVerticalDiffusivity, are enforced:
+    # those required by CATKEVerticalDiffusivity, are enforced:
     boundary_conditions = add_closure_specific_boundary_conditions(closure, boundary_conditions, grid, tracernames(tracers), buoyancy)
 
     # Ensure `closure` describes all tracers

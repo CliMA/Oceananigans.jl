@@ -29,7 +29,7 @@ compute_boundary_tendencies!(model) = nothing
 interior_tendency_kernel_parameters(grid) = :xyz # fallback
 
 interior_tendency_kernel_parameters(grid::DistributedGrid) = 
-            interior_tendency_kernel_parameters(grid, architecture(grid))
+    interior_tendency_kernel_parameters(grid, architecture(grid))
 
 interior_tendency_kernel_parameters(grid, ::SynchronizedDistributed) = :xyz
 

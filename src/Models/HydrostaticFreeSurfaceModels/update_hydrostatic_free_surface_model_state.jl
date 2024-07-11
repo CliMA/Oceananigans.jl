@@ -25,7 +25,7 @@ hydrostatic pressure) to the current model state. If `callbacks` are provided (i
 they are called in the end.
 """
 update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true) =
-         update_state!(model, model.grid, callbacks; compute_tendencies)
+    update_state!(model, model.grid, callbacks; compute_tendencies)
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
     @apply_regionally mask_immersed_model_fields!(model, grid)

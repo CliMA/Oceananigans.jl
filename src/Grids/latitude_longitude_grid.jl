@@ -528,16 +528,6 @@ end
 
 function allocate_metrics(grid::LatitudeLongitudeGrid)
     FT = eltype(grid)
-    
-    # preallocate quantities to ensure correct type and size
-    grid_metrics = (:Δxᶠᶜ,
-                    :Δxᶜᶠ,
-                    :Δxᶠᶠ,
-                    :Δxᶜᶜ,
-                    :Azᶠᶜ,
-                    :Azᶜᶠ,
-                    :Azᶠᶠ,
-                    :Azᶜᶜ)
 
     arch = grid.architecture
     
@@ -546,18 +536,21 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
         metric_size = length(grid.φᵃᶜᵃ)
     else
         offsets     = (grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
-        metric_size = (length(grid.Δλᶜᵃᵃ)   , length(grid.φᵃᶜᵃ))
+        metric_size = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
     end
 
-    for metric in grid_metrics
-        parentM        = Symbol(metric, :_parent)
-        @eval $parentM = zeros($FT, $metric_size...)
-        @eval $metric  = OffsetArray(on_architecture($arch, $parentM), $offsets...)
-    end
+    Δxᶠᶜ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
+    Δxᶜᶠ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
+    Δxᶠᶠ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
+    Δxᶜᶜ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
+    Azᶠᶜ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
+    Azᶜᶠ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
+    Azᶠᶠ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
+    Azᶜᶜ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
 
     if grid isa YRegularLLG
-        Δyᶠᶜ = FT(0.0)
-        Δyᶜᶠ = FT(0.0)
+        Δyᶠᶜ = FT(0)
+        Δyᶜᶠ = FT(0)
     else
         parentC = zeros(FT, length(grid.Δφᵃᶜᵃ))
         parentF = zeros(FT, length(grid.Δφᵃᶜᵃ))
