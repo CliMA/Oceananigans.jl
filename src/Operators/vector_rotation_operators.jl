@@ -119,7 +119,7 @@ end
     uₑ = u * cosθₑ - v * sinθₑ
     vₑ = u * sinθₑ + v * cosθₑ
 
-    return uₑ, vₑ, wₑ
+    return uₑ, vₑ
 end
 
 # 3D vectors
