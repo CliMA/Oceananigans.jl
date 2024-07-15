@@ -61,24 +61,25 @@ _intrinsic_ reference frames are equivalent. However, for other grids (e.g., for
     φᶜᶠᵃ₋ = φnode(i,   j, 1, grid, Center(), Face(), Center())
     Δyᶜᶜᵃ = Δyᶜᶜᶜ(i,   j, 1, grid)
 
-    ũ = deg2rad(φᶜᶠᵃ₊ - φᶜᶠᵃ₋) / Δyᶜᶜᵃ
+    Rcosθᵢ = deg2rad(φᶜᶠᵃ₊ - φᶜᶠᵃ₋) / Δyᶜᶜᵃ
 
     φᶠᶜᵃ₊ = φnode(i+1, j, 1, grid, Face(), Center(), Center())
     φᶠᶜᵃ₋ = φnode(i,   j, 1, grid, Face(), Center(), Center())
     Δxᶜᶜᵃ = Δxᶜᶜᶜ(i,   j, 1, grid)
 
-    ṽ = - deg2rad(φᶠᶜᵃ₊ - φᶠᶜᵃ₋) / Δxᶜᶜᵃ
+    Rsinθᵢ = - deg2rad(φᶠᶜᵃ₊ - φᶠᶜᵃ₋) / Δxᶜᶜᵃ
 
-    𝒰 = sqrt(ũ^2 + ṽ^2)
+    # intrisinc direction vector magnitude
+    Rᵢ = sqrt(Rcosθᵢ^2 + Rsinθᵢ^2)
 
     u  = getvalue(uₑ, i, j, k, grid)
     v  = getvalue(vₑ, i, j, k, grid)
 
-    d₁ = ũ / 𝒰
-    d₂ = ṽ / 𝒰
+    cosθᵢ = Rsinθᵢ / Rᵢ
+    sinθᵢ = Rsinθᵢ / Rᵢ
 
-    uᵢ = u * d₁ + v * d₂
-    vᵢ = u * d₂ - v * d₁
+    uᵢ = u * cosθᵢ + v * sinθᵢ
+    vᵢ = u * sinθᵢ - v * cosθᵢ
 
     return uᵢ, vᵢ
 end
@@ -99,24 +100,24 @@ end
     φᶜᶠᵃ₋ = φnode(i,   j, 1, grid, Center(), Face(), Center())
     Δyᶜᶜᵃ = Δyᶜᶜᶜ(i,   j, 1, grid)
 
-    ũ = deg2rad(φᶜᶠᵃ₊ - φᶜᶠᵃ₋) / Δyᶜᶜᵃ
+    Rcosθₑ = deg2rad(φᶜᶠᵃ₊ - φᶜᶠᵃ₋) / Δyᶜᶜᵃ
 
     φᶠᶜᵃ₊ = φnode(i+1, j, 1, grid, Face(), Center(), Center())
     φᶠᶜᵃ₋ = φnode(i,   j, 1, grid, Face(), Center(), Center())
     Δxᶜᶜᵃ = Δxᶜᶜᶜ(i,   j, 1, grid)
 
-    ṽ = - deg2rad(φᶠᶜᵃ₊ - φᶠᶜᵃ₋) / Δxᶜᶜᵃ
+    Rsinθₑ = - deg2rad(φᶠᶜᵃ₊ - φᶠᶜᵃ₋) / Δxᶜᶜᵃ
 
-    𝒰 = sqrt(ũ^2 + ṽ^2)
+    Rₑ = sqrt(Rcosθₑ^2 + Rsinθₑ^2)
 
     u  = getvalue(uᵢ, i, j, k, grid)
     v  = getvalue(vᵢ, i, j, k, grid)
 
-    d₁ = ũ / 𝒰
-    d₂ = ṽ / 𝒰
+    cosθₑ = Rsinθₑ / Rₑ
+    sinθₑ = Rsinθₑ / Rₑ
 
-    uₑ = u * d₁ - v * d₂
-    vₑ = u * d₂ + v * d₁
+    uₑ = u * cosθₑ - v * sinθₑ
+    vₑ = u * sinθₑ + v * cosθₑ
 
     return uₑ, vₑ, wₑ
 end
