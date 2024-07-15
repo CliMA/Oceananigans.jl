@@ -61,6 +61,7 @@ _intrinsic_ reference frames are equivalent. However, for other grids (e.g., for
     φᶜᶠᵃ₋ = φnode(i,   j, 1, grid, Center(), Face(), Center())
     Δyᶜᶜᵃ = Δyᶜᶜᶜ(i,   j, 1, grid)
 
+    # θᵢ is the rotation angle between intrinsic and extrinsic reference frame
     Rcosθᵢ = deg2rad(φᶜᶠᵃ₊ - φᶜᶠᵃ₋) / Δyᶜᶜᵃ
 
     φᶠᶜᵃ₊ = φnode(i+1, j, 1, grid, Face(), Center(), Center())
@@ -69,7 +70,7 @@ _intrinsic_ reference frames are equivalent. However, for other grids (e.g., for
 
     Rsinθᵢ = - deg2rad(φᶠᶜᵃ₊ - φᶠᶜᵃ₋) / Δxᶜᶜᵃ
 
-    # intrisinc direction vector magnitude
+    # Normalization for the rotation angles
     Rᵢ = sqrt(Rcosθᵢ^2 + Rsinθᵢ^2)
 
     u  = getvalue(uₑ, i, j, k, grid)
@@ -100,6 +101,7 @@ end
     φᶜᶠᵃ₋ = φnode(i,   j, 1, grid, Center(), Face(), Center())
     Δyᶜᶜᵃ = Δyᶜᶜᶜ(i,   j, 1, grid)
 
+    # θₑ is the rotation angle between intrinsic and extrinsic reference frame
     Rcosθₑ = deg2rad(φᶜᶠᵃ₊ - φᶜᶠᵃ₋) / Δyᶜᶜᵃ
 
     φᶠᶜᵃ₊ = φnode(i+1, j, 1, grid, Face(), Center(), Center())
@@ -108,6 +110,7 @@ end
 
     Rsinθₑ = - deg2rad(φᶠᶜᵃ₊ - φᶠᶜᵃ₋) / Δxᶜᶜᵃ
 
+    # Normalization for the rotation angles
     Rₑ = sqrt(Rcosθₑ^2 + Rsinθₑ^2)
 
     u  = getvalue(uᵢ, i, j, k, grid)
