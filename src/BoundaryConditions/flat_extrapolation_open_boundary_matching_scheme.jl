@@ -78,7 +78,7 @@ end
     i = grid.Nx + 1
 
     Δx₁ = xspacing(i-1, j, k, grid, C, C, C)
-    Δx₂ = xspacing(i-3, j, k, grid, C, C, C)
+    Δx₂ = xspacing(i-2, j, k, grid, C, C, C)
     Δx₃ = xspacing(i-3, j, k, grid, C, C, C)
 
     spacing_factor = Δx₁ / (Δx₂ + Δx₃)
@@ -108,7 +108,7 @@ end
     j = grid.Ny + 1
 
     Δy₁ = yspacing(i, j-1, k, grid, C, C, C)
-    Δy₂ = yspacing(i, j-3, k, grid, C, C, C)
+    Δy₂ = yspacing(i, j-2, k, grid, C, C, C)
     Δy₃ = yspacing(i, j-3, k, grid, C, C, C)
 
     spacing_factor = Δy₁ / (Δy₂ + Δy₃)
@@ -138,7 +138,7 @@ end
     k = grid.Nz + 1
 
     Δz₁ = zspacing(i, j, k-1, grid, C, C, C)
-    Δz₂ = zspacing(i, j, k-3, grid, C, C, C)
+    Δz₂ = zspacing(i, j, k-2, grid, C, C, C)
     Δz₃ = zspacing(i, j, k-3, grid, C, C, C)
 
     spacing_factor = Δz₁ / (Δz₂ + Δz₃)
