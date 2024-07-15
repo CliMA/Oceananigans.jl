@@ -89,7 +89,7 @@ ScalarDiffusivity{ExplicitTimeDiscretization}(ν=ν (generic function with 1 met
 ```jldoctest ScalarDiffusivity
 julia> using Oceananigans.Grids: znode
 
-julia> @inline function κ(i, j, k, grid, ℓx, ℓy, ℓz)
+julia> @inline function κ(i, j, k, grid, ℓx, ℓy, ℓz, clock, fields)
            z = znode(i, j, k, grid, ℓx, ℓy, ℓz)
            return 2000 * exp(z / depth_scale)
        end
@@ -100,7 +100,7 @@ ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.Turbulence
 ```
 
 ```jldoctest ScalarDiffusivity
-julia> @inline function another_κ(i, j, k, grid, p)
+julia> @inline function another_κ(i, j, k, grid, clock, fields, p)
            z = znode(i, j, k, grid)
            return 2000 * exp(z / p.depth_scale)
        end
