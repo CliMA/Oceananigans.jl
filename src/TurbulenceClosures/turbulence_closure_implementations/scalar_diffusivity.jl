@@ -53,11 +53,15 @@ value of keyword argument `discrete_form`, the constructor expects:
   a `LatitudeLongitudeGrid`.
 
 * `discrete_form = true`:
-  - with `loc = (nothing, nothing, nothing)` (default):
-    functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy`,
+  - with `loc = (nothing, nothing, nothing)` and `parameters = nothing` (default):
+    functions of `(i, j, k, grid, ℓx, ℓy, ℓz, clock, fields)` with `ℓx`, `ℓy`,
     and `ℓz` either `Face()` or `Center()`.
   - with `loc = (ℓx, ℓy, ℓz)` with `ℓx`, `ℓy`, and `ℓz` either
-    `Face()` or `Center()`: functions of `(i, j, k, grid)`.
+    `Face()` or `Center()` and `parameters = nothing`: functions of `(i, j, k, grid, clock, fields)`.
+  - with `loc = (nothing, nothing, nothing)` and specified `parameters`:
+    functions of `(i, j, k, grid, ℓx, ℓy, ℓz, clock, fields, parameters)`.
+  - with `loc = (ℓx, ℓy, ℓz)` and specified `parameters`:
+    functions of `(i, j, k, grid, clock, fields, parameters)`.
 
 * `parameters`: `NamedTuple` with parameters used by the functions
   that compute viscosity and/or diffusivity; default: `nothing`.
