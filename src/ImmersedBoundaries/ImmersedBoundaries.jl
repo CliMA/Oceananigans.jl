@@ -131,7 +131,7 @@ end
 const IBG = ImmersedBoundaryGrid
 
 @inline Base.getproperty(ibg::IBG, property::Symbol) = get_ibg_property(ibg, Val(property))
-@inline get_ibg_property(ibg::IBG, ::Val{property}) where property = getfield(getfield(ibg, :underlying_grid), property)
+@inline get_ibg_property(ibg::IBG, ::Val{property}) where property = getproperty(getfield(ibg, :underlying_grid), property)
 @inline get_ibg_property(ibg::IBG, ::Val{:immersed_boundary})      = getfield(ibg, :immersed_boundary)
 @inline get_ibg_property(ibg::IBG, ::Val{:underlying_grid})        = getfield(ibg, :underlying_grid)
 @inline get_ibg_property(ibg::IBG, ::Val{:interior_active_cells})  = getfield(ibg, :interior_active_cells)
