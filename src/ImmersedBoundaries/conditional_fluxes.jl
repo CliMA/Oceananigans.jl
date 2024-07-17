@@ -1,4 +1,4 @@
-using Oceananigans.Advection: AbstractAdvectionScheme, advection_buffers
+using Oceananigans.Advection: AbstractAdvectionScheme, advection_buffers, LeftBias, RightBias
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑxᶜᵃᵃ, ℑyᵃᶠᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, ℑzᵃᵃᶜ 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization
 
