@@ -16,35 +16,10 @@ using Oceananigans.Fields: FunctionField
 using Oceananigans: architecture
 using KernelAbstractions
 
+using Oceananigans.TimeSteppers: update_state!
+
 
 EnzymeRules.inactive_type(::Type{<:Oceananigans.Clock}) = true
-
-f(grid) = CenterField(grid)
-
-const maximum_diffusivity = 100
-
-"""
-    set_diffusivity!(model, diffusivity)
-
-Change diffusivity of model to `diffusivity`.
-"""
-function set_diffusivity!(model, diffusivity)
-    closure = VerticalScalarDiffusivity(; κ=diffusivity)
-    names = tuple(:c) # tracernames(model.tracers)
-    closure = with_tracers(names, closure)
-    model.closure = closure
-    return nothing
-end
-
-function set_initial_condition!(model, amplitude)
-    amplitude = Ref(amplitude)
-
-    # This has a "width" of 0.1
-    cᵢ(x, y, z) = amplitude[] * exp(-z^2 / 0.02 - (x^2 + y^2) / 0.05)
-    set!(model, c=cᵢ)
-
-    return nothing
-end
 
 @testset "Enzyme on advection and diffusion WITH flux boundary condition" begin
     Nx = Ny = 64
@@ -60,16 +35,11 @@ end
     grid = RectilinearGrid(size=(Nx, Ny, Nz); x, y, z, topology)
     diffusion = VerticalScalarDiffusivity(κ=0.1)
 
-    @inline function tracer_flux(x, y, t, c, p)
-        c₀ = p.surface_tracer_concentration
-        u★ = p.piston_velocity
-        return - u★ * (c₀ - c)
+    @inline function tracer_flux(x, y, t, c)
+        return c
     end
 
-    parameters = (surface_tracer_concentration = 1,
-                  piston_velocity = 0.1)
-
-    top_c_bc = FluxBoundaryCondition(tracer_flux, field_dependencies=:c; parameters)
+    top_c_bc = FluxBoundaryCondition(tracer_flux, field_dependencies=:c)
     c_bcs = FieldBoundaryConditions(top=top_c_bc)
 
     # TODO:
@@ -88,11 +58,25 @@ end
     amplitude = 1.0
     κ = 1.0
     dmodel = Enzyme.make_zero(model)
-    set_diffusivity!(dmodel, 0)
     
     dc²_dκ = autodiff(Enzyme.Reverse,
-                      set_initial_condition!,
-                      Duplicated(model, dmodel),
-                      Const(amplitude))
+                      update_state!,
+                      Duplicated(model, dmodel))
     
+    #=
+    thing1 = Vector{Tuple{Tuple{BoundaryCondition{C, Nothing} where C<:Oceananigans.BoundaryConditions.AbstractBoundaryConditionClassification, BoundaryCondition{C, Nothing} where C<:Oceananigans.BoundaryConditions.AbstractBoundaryConditionClassification, BoundaryCondition{C, Nothing} where C<:Oceananigans.BoundaryConditions.AbstractBoundaryConditionClassification}, Tuple{BoundaryCondition{C, Nothing} where C<:Oceananigans.BoundaryConditions.AbstractBoundaryConditionClassification, BoundaryCondition{C, Nothing} where C<:Oceananigans.BoundaryConditions.AbstractBoundaryConditionClassification, BoundaryCondition}}}
+    thing2 = Int64
+    thing3 = Vector{Tuple{Tuple{BoundaryCondition{Flux, Nothing}, BoundaryCondition{Flux, Nothing}, BoundaryCondition{Flux, Nothing}}, Tuple{BoundaryCondition{Flux, Nothing}, BoundaryCondition{Flux, Nothing}, BoundaryCondition{Flux, Oceananigans.BoundaryConditions.ContinuousBoundaryFunction{Center, Center, Nothing, Oceananigans.BoundaryConditions.RightBoundary, var"#tracer_flux#23", Nothing, Tuple{Symbol}, Tuple{Int64}, Tuple{typeof(Oceananigans.Operators.identity4)}}}}}}
+    thing4 = Int64
+    thing5 = Int64
+
+    autodiff_thunk(ReverseSplitWithPrimal,
+                Const{typeof(Base._unsafe_copyto!)},
+                Active,
+                Duplicated{thing1},
+                Const{thing2},
+                Duplicated{thing3},
+                Const{thing4},
+                Const{thing5})
+    =#
 end
