@@ -111,34 +111,25 @@ const AUAS = AbstractUpwindBiasedAdvectionScheme
 @inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::AUAS, w, args...) = @inbounds symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme.advecting_velocity_scheme, w, args...)
 
 # uniform upwind biased reconstruction
-for side in (:left, :right)
-    stencil_x = Symbol(:inner_, side, :_biased_interpolate_xᶠᵃᵃ)
-    stencil_y = Symbol(:inner_, side, :_biased_interpolate_yᵃᶠᵃ)
-    stencil_z = Symbol(:inner_, side, :_biased_interpolate_zᵃᵃᶠ)
+for buffer in advection_buffers
+    @eval begin
+        @inline inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, <:Nothing}, ::LeftBias, ψ, idx, loc, args...)           where FT = @inbounds $(calc_reconstruction_stencil(buffer, :left, :x, false))
+        @inline inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, <:Nothing}, ::LeftBias, ψ::Function, idx, loc, args...) where FT = @inbounds $(calc_reconstruction_stencil(buffer, :left, :x,  true))
+    
+        @inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, <:Nothing}, ::LeftBias, ψ, idx, loc, args...)           where {FT, XT} = @inbounds $(calc_reconstruction_stencil(buffer, :left, :y, false))
+        @inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, <:Nothing}, ::LeftBias, ψ::Function, idx, loc, args...) where {FT, XT} = @inbounds $(calc_reconstruction_stencil(buffer, :left, :y,  true))
+    
+        @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, YT, <:Nothing}, ::LeftBias, ψ, idx, loc, args...)           where {FT, XT, YT} = @inbounds $(calc_reconstruction_stencil(buffer, :left, :z, false))
+        @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, YT, <:Nothing}, ::LeftBias, ψ::Function, idx, loc, args...) where {FT, XT, YT} = @inbounds $(calc_reconstruction_stencil(buffer, :left, :z,  true))
 
-    for buffer in advection_buffers
-        @eval begin
-            @inline $stencil_x(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, <:Nothing}, ψ, idx, loc, args...)           where FT = @inbounds $(calc_reconstruction_stencil(buffer, side, :x, false))
-            @inline $stencil_x(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, <:Nothing}, ψ::Function, idx, loc, args...) where FT = @inbounds $(calc_reconstruction_stencil(buffer, side, :x,  true))
-        
-            @inline $stencil_y(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, <:Nothing}, ψ, idx, loc, args...)           where {FT, XT} = @inbounds $(calc_reconstruction_stencil(buffer, side, :y, false))
-            @inline $stencil_y(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, <:Nothing}, ψ::Function, idx, loc, args...) where {FT, XT} = @inbounds $(calc_reconstruction_stencil(buffer, side, :y,  true))
-        
-            @inline $stencil_z(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, YT, <:Nothing}, ψ, idx, loc, args...)           where {FT, XT, YT} = @inbounds $(calc_reconstruction_stencil(buffer, side, :z, false))
-            @inline $stencil_z(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, YT, <:Nothing}, ψ::Function, idx, loc, args...) where {FT, XT, YT} = @inbounds $(calc_reconstruction_stencil(buffer, side, :z,  true))
-        end
-    end
-end
-
-# stretched upwind biased reconstruction
-for (sd, side) in enumerate((:left, :right)), (dir, ξ, val) in zip((:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ), (:x, :y, :z), (1, 2, 3))
-    stencil = Symbol(:inner_, side, :_biased_interpolate_, dir)
-
-    for buffer in advection_buffers
-        @eval begin
-            @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer, FT}, ψ, idx, loc, args...)           where FT = @inbounds sum($(reconstruction_stencil(buffer, side, ξ, false)) .* retrieve_coeff(scheme, Val($sd), Val($val), idx, loc))
-            @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer, FT}, ψ::Function, idx, loc, args...) where FT = @inbounds sum($(reconstruction_stencil(buffer, side, ξ,  true)) .* retrieve_coeff(scheme, Val($sd), Val($val), idx, loc))
-        end
+        @inline inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, <:Nothing}, ::RightBias, ψ, idx, loc, args...)           where FT = @inbounds $(calc_reconstruction_stencil(buffer, :right, :x, false))
+        @inline inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, <:Nothing}, ::RightBias, ψ::Function, idx, loc, args...) where FT = @inbounds $(calc_reconstruction_stencil(buffer, :right, :x,  true))
+    
+        @inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, <:Nothing}, ::RightBias, ψ, idx, loc, args...)           where {FT, XT} = @inbounds $(calc_reconstruction_stencil(buffer, :right, :y, false))
+        @inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, <:Nothing}, ::RightBias, ψ::Function, idx, loc, args...) where {FT, XT} = @inbounds $(calc_reconstruction_stencil(buffer, :right, :y,  true))
+    
+        @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, YT, <:Nothing}, ::RightBias, ψ, idx, loc, args...)           where {FT, XT, YT} = @inbounds $(calc_reconstruction_stencil(buffer, :right, :z, false))
+        @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::UpwindBiased{$buffer, FT, XT, YT, <:Nothing}, ::RightBias, ψ::Function, idx, loc, args...) where {FT, XT, YT} = @inbounds $(calc_reconstruction_stencil(buffer, :right, :z,  true))
     end
 end
 
