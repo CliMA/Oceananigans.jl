@@ -2,9 +2,9 @@ using Oceananigans.Grids: architecture, deflate_tuple
 using Oceananigans.Architectures: on_architecture
 
 struct TransposableField{FX, FY, FZ, YZ, XY, C, Comms}
-    xfield :: FX # X-direction is free
-    yfield :: FY # Y-direction is free
-    zfield :: FZ # Z-direction is free (original field)
+    xfield :: FX # X-direction is free (x-local)
+    yfield :: FY # Y-direction is free (y-local)
+    zfield :: FZ # Z-direction is free (original field, z-local)
     yzbuff :: YZ # if `nothing` slab decomposition with `Ry == 1`
     xybuff :: XY # if `nothing` slab decomposition with `Rx == 1`
     counts :: C
@@ -59,8 +59,11 @@ function TransposableField(field_in, FT = eltype(field_in); with_halos = false)
     yzcomm = MPI.Comm_split(MPI.COMM_WORLD, zarch.local_index[1], zarch.local_index[1])
     xycomm = MPI.Comm_split(MPI.COMM_WORLD, yarch.local_index[3], yarch.local_index[3])
             
-    yzcounts = zeros(Int, zarch.ranks[2] * zarch.ranks[3])
-    xycounts = zeros(Int, yarch.ranks[1] * yarch.ranks[2])
+    zRx, zRy, zRz = ranks(zarch) 
+    yRx, yRy, yRz = ranks(yarch) 
+
+    yzcounts = zeros(Int, zRy * zRz)
+    xycounts = zeros(Int, yRx * yRy)
 
     yzrank = MPI.Comm_rank(yzcomm)
     xyrank = MPI.Comm_rank(xycomm)
