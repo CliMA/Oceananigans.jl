@@ -29,10 +29,10 @@ end
 
     cᵢⱼ = @inbounds c[i, j, k]
 
-    c₊ᴸ =  _biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, advection, c)
-    c₊ᴿ = _biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, advection, c)
-    c₋ᴸ =  _biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, advection, c)
-    c₋ᴿ = _biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, advection, c)
+    c₊ᴸ = _biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, advection, LeftBias(),  c)
+    c₊ᴿ = _biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, advection, RightBias(), c)
+    c₋ᴸ = _biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, advection, LeftBias(),  c)
+    c₋ᴿ = _biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, advection, RightBias(), c)
 
     p̃   = (cᵢⱼ - ω̂₁ * c₋ᴿ - ω̂ₙ * c₊ᴸ) / (1 - 2ω̂₁)
     M   = max(p̃, c₊ᴸ, c₋ᴿ) 
@@ -53,10 +53,10 @@ end
 
     cᵢⱼ = @inbounds c[i, j, k]
 
-    c₊ᴸ =  _biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, advection, c)
-    c₊ᴿ = _biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, advection, c)
-    c₋ᴸ =  _biased_interpolate_yᵃᶠᵃ(i, j,   k, grid, advection, c)
-    c₋ᴿ = _biased_interpolate_yᵃᶠᵃ(i, j,   k, grid, advection, c)
+    c₊ᴸ = _biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, advection, LeftBias(),  c)
+    c₊ᴿ = _biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, advection, RightBias(), c)
+    c₋ᴸ = _biased_interpolate_yᵃᶠᵃ(i, j,   k, grid, advection, LeftBias(),  c)
+    c₋ᴿ = _biased_interpolate_yᵃᶠᵃ(i, j,   k, grid, advection, RightBias(), c)
 
     p̃   =  (cᵢⱼ - ω̂₁ * c₋ᴿ - ω̂ₙ * c₊ᴸ) / (1 - 2ω̂₁)
     M   = max(p̃, c₊ᴸ, c₋ᴿ) 
@@ -77,10 +77,10 @@ end
 
     cᵢⱼ = @inbounds c[i, j, k]
 
-    c₊ᴸ =  _biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, advection, c)
-    c₊ᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, advection, c)
-    c₋ᴸ =  _biased_interpolate_zᵃᵃᶠ(i, j, k,   grid, advection, c)
-    c₋ᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k,   grid, advection, c)
+    c₊ᴸ = _biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, advection, LeftBias(),  c)
+    c₊ᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, advection, RightBias(), c)
+    c₋ᴸ = _biased_interpolate_zᵃᵃᶠ(i, j, k,   grid, advection, LeftBias(),  c)
+    c₋ᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k,   grid, advection, RightBias(), c)
 
     p̃   =  (cᵢⱼ - ω̂₁ * c₋ᴿ - ω̂ₙ * c₊ᴸ) / (1 - 2ω̂₁)
     M   = max(p̃, c₊ᴸ, c₋ᴿ) 
