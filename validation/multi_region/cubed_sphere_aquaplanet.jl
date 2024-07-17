@@ -289,7 +289,7 @@ tracer_advection   = WENO()
 substeps           = 50
 free_surface       = SplitExplicitFreeSurface(grid; substeps, extended_halos = false)
 
-νh = 5e+3
+νh = 5e+2
 κh = 1e+2 
 horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh, κ=κh) # Laplacian viscosity and diffusivity
 
@@ -645,15 +645,6 @@ simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(p
 ##### Build checkpointer and output writer
 #####
 
-pickup_simulation = false
-if pickup_simulation
-    pickup_option = true
-    overwrite_existing_option = false
-else
-    pickup_option = false
-    overwrite_existing_option = true
-end
-
 filename_checkpointer = "cubed_sphere_aquaplanet_checkpointer"
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(checkpointer_interval),
@@ -666,7 +657,7 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs;
                                                       schedule = TimeInterval(save_fields_interval),
                                                       filename = filename_output_writer,
                                                       verbose = false,
-                                                      overwrite_existing = overwrite_existing_option)
+                                                      overwrite_existing = true)
 
 outputs = (u = model.velocities.u, v = model.velocities.v, b = model.tracers.b)
 filename_output_writer = "cubed_sphere_aquaplanet_surface_output"
@@ -675,7 +666,7 @@ simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, outputs;
                                                               filename = filename_output_writer,
                                                               indices = (:, :, grid.Nz),
                                                               verbose = false,
-                                                              overwrite_existing = overwrite_existing_option)
+                                                              overwrite_existing = true)
 
 outputs = (; w = model.velocities.w, η = model.free_surface.η)
 filename_output_writer = "cubed_sphere_aquaplanet_surface_output_w_η"
@@ -684,7 +675,7 @@ simulation.output_writers[:surface_w_η] = JLD2OutputWriter(model, outputs;
                                                            filename = filename_output_writer,
                                                            indices = (:, :, grid.Nz+1),
                                                            verbose = false,
-                                                           overwrite_existing = overwrite_existing_option)
+                                                           overwrite_existing = true)
 
 #####
 ##### Run simulation
@@ -692,7 +683,7 @@ simulation.output_writers[:surface_w_η] = JLD2OutputWriter(model, outputs;
 
 @info "Running the simulation..."
 
-run!(simulation, pickup = pickup_option)
+run!(simulation, pickup = false)
 
 u_timeseries = FieldTimeSeries("cubed_sphere_aquaplanet_output.jld2", "u"; architecture = CPU());
 v_timeseries = FieldTimeSeries("cubed_sphere_aquaplanet_output.jld2", "v"; architecture = CPU());
