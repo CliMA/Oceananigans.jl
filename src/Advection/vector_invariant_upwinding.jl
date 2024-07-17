@@ -16,10 +16,6 @@ struct CrossAndSelfUpwinding{A, D, U, V} <: AbstractUpwindingTreatment
     δv²_stencil        :: V # stencil used for assessing v²-y-difference smoothness
 end
 
-struct VelocityUpwinding{A} <: AbstractUpwindingTreatment     
-    cross_scheme    :: A # advection scheme for cross-reconstructed terms (in both divergence flux and KE gradient)
-end
-
 # `cross_scheme` is used only for `_symmetric_interpolate`s (i.e., only where we do not allow upwinding of the tangetial term)
 # Therefore, for `@show` purposes it is better to convert an upwind scheme to it's centered counterpart
 # when it is passed as `cross_scheme`
@@ -88,25 +84,8 @@ CrossAndSelfUpwinding(; cross_scheme       = CenteredSecondOrder(),
                         δv²_stencil        = FunctionStencil(v_smoothness),
                         ) = CrossAndSelfUpwinding(extract_centered_scheme(cross_scheme), divergence_stencil, δu²_stencil, δv²_stencil)
 
-"""
-    VelocityUpwinding(; cross_scheme = CenteredSecondOrder()) 
-                                
-Upwinding treatment for Divergence fluxes and Kinetic Energy gradient in the Vector Invariant formulation, whereas only 
-the terms corresponding to the transporting velocity are upwinded. (i.e., terms in `u` in the zonal momentum equation and 
-terms in `v` in the meridional momentum equation). Contrarily to `OnlySelfUpwinding`, the reconstruction (and hence the
-upwinding) is done _inside_ the gradient operator, i.e., velocities are reconstructed instead of velocity derivatives.
-
-Keyword arguments
-=================  
-
-- `cross_scheme`: Advection scheme used for cross-reconstructed terms (tangential velocities) 
-                    in the kinetic energy gradient and the divergence flux. Defaults to `CenteredSecondOrder()`.
-"""
-VelocityUpwinding(; cross_scheme = CenteredSecondOrder()) = VelocityUpwinding(extract_centered_scheme(cross_scheme))
-                    
 Base.summary(a::OnlySelfUpwinding)     = "OnlySelfUpwinding"
 Base.summary(a::CrossAndSelfUpwinding) = "CrossAndSelfUpwinding"
-Base.summary(a::VelocityUpwinding)     = "VelocityUpwinding"
 
 Base.show(io::IO, a::OnlySelfUpwinding) =
     print(io, summary(a), " \n",
@@ -139,12 +118,3 @@ Adapt.adapt_structure(to, scheme::CrossAndSelfUpwinding) =
                           Adapt.adapt(to, scheme.divergence_stencil),
                           Adapt.adapt(to, scheme.δu²_stencil),
                           Adapt.adapt(to, scheme.δv²_stencil))
-
-Base.show(io::IO, a::VelocityUpwinding) =
-    print(io, summary(a), " \n",
-            "KE gradient and Divergence flux cross terms reconstruction: ", "\n",
-            "└── $(summary(a.cross_scheme))")
-
-Adapt.adapt_structure(to, scheme::VelocityUpwinding) = 
-    VelocityUpwinding(Adapt.adapt(to, scheme.cross_scheme))
-
