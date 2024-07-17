@@ -1,8 +1,8 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.0"
+julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "8d5da80dd05814164ee23c791edd5549b032a426"
+project_hash = "fdf8c46fb06883283adac16d2d6310d6b1202a6e"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -166,7 +166,7 @@ weakdeps = ["Dates", "LinearAlgebra"]
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
-version = "1.0.5+1"
+version = "1.1.1+0"
 
 [[deps.ConstructionBase]]
 deps = ["LinearAlgebra"]
@@ -258,6 +258,15 @@ version = "1.6.0"
 git-tree-sha1 = "71c79e77221ab3a29918aaf6db4f217b89138608"
 uuid = "b305315f-e792-5b7a-8f41-49f472929428"
 version = "1.0.1"
+
+[[deps.EnzymeCore]]
+git-tree-sha1 = "d445df66dd8761a4c27df950db89c6a3a0629fe7"
+uuid = "f151be2c-9106-41f4-ab19-57ee4f262869"
+version = "0.7.7"
+weakdeps = ["Adapt"]
+
+    [deps.EnzymeCore.extensions]
+    AdaptExt = "Adapt"
 
 [[deps.ExprTools]]
 git-tree-sha1 = "27415f162e6028e81c72b82ef756bf321213b6ec"
@@ -424,12 +433,10 @@ deps = ["Adapt", "Atomix", "InteractiveUtils", "LinearAlgebra", "MacroTools", "P
 git-tree-sha1 = "d0448cebd5919e06ca5edc7a264631790de810ec"
 uuid = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 version = "0.9.22"
+weakdeps = ["EnzymeCore"]
 
     [deps.KernelAbstractions.extensions]
     EnzymeExt = "EnzymeCore"
-
-    [deps.KernelAbstractions.weakdeps]
-    EnzymeCore = "f151be2c-9106-41f4-ab19-57ee4f262869"
 
 [[deps.LLVM]]
 deps = ["CEnum", "LLVMExtra_jll", "Libdl", "Preferences", "Printf", "Requires", "Unicode"]
@@ -650,7 +657,7 @@ weakdeps = ["Adapt"]
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.23+2"
+version = "0.3.23+4"
 
 [[deps.OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
