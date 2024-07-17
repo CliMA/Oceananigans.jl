@@ -222,10 +222,10 @@ end
 
 for buffer in [2, 3, 4, 5, 6]
     @eval begin
-        @inline         beta_sum(scheme::WENO{$buffer}, β₁, β₂)           = @inbounds $(metaprogrammed_beta_sum(buffer))
-        @inline        beta_loop(scheme::WENO{$buffer}, ψ, func)          = @inbounds $(metaprogrammed_beta_loop(buffer))
-        @inline zweno_alpha_loop(scheme::WENO{$buffer}, β, τ, coeff, FT)  = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
-        @inline    js_alpha_loop(scheme::WENO{$buffer}, β, coeff, FT)     = @inbounds $(metaprogrammed_js_alpha_loop(buffer))
+        @inline         beta_sum(scheme::WENO{$buffer}, β₁, β₂)          = @inbounds $(metaprogrammed_beta_sum(buffer))
+        @inline        beta_loop(scheme::WENO{$buffer}, ψ, func)         = @inbounds $(metaprogrammed_beta_loop(buffer))
+        @inline zweno_alpha_loop(scheme::WENO{$buffer}, β, τ, coeff, FT) = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
+        @inline    js_alpha_loop(scheme::WENO{$buffer}, β, coeff, FT)    = @inbounds $(metaprogrammed_js_alpha_loop(buffer))
     end
 end
 
@@ -319,14 +319,14 @@ julia> calc_weno_stencil(2, :right, :x)
         end
         reverse_point = [stencil_point[i] for i in buffer:-1:1]
 
-        if shift == :left
+        if shift == :left || shift == :all
             stencil_full[buffer + 1 - stencil + 1] = :($(stencil_point...), )
         else
             stencil_full[stencil] = :($(reverse_point...), )
         end
     end
 
-    return :($(stencil_full[2:end]...),)
+    return ifelse(shift == :all, :($(stencil_full...),), :($(stencil_full[2:end]...),))
 end
 
 # Stencils for left and right biased reconstruction ((ψ̅ᵢ₋ᵣ₊ⱼ for j in 0:k) for r in 0:k) to calculate v̂ᵣ = ∑ⱼ(cᵣⱼψ̅ᵢ₋ᵣ₊ⱼ) 
@@ -336,13 +336,23 @@ for dir in (:x, :y, :z)
 
     for buffer in [2, 3, 4, 5, 6]
         @eval begin
-            @inline $stencil(i, j, k, ::WENO{$buffer}, ::LeftBias,  ψ, args...)           = @inbounds $(calc_weno_stencil(buffer, :left,  dir, false))
-            @inline $stencil(i, j, k, ::WENO{$buffer}, ::LeftBias,  ψ::Function, args...) = @inbounds $(calc_weno_stencil(buffer, :left,  dir,  true))
-            @inline $stencil(i, j, k, ::WENO{$buffer}, ::RightBias, ψ, args...)           = @inbounds $(calc_weno_stencil(buffer, :right, dir, false))
-            @inline $stencil(i, j, k, ::WENO{$buffer}, ::RightBias, ψ::Function, args...) = @inbounds $(calc_weno_stencil(buffer, :right, dir,  true))
+            @inline function $stencil(i, j, k, ::WENO{$buffer}, bias,  ψ, args...) 
+                ψs = @inbounds $(calc_weno_stencil(buffer, :all,  dir, false))
+                ψs = adjust_stencil(ψs, bias, Val($buffer))
+                return ψs
+            end
+
+            @inline function $stencil(i, j, k, ::WENO{$buffer}, bias,  ψ::Function, args...)
+                ψs = @inbounds $(calc_weno_stencil(buffer, :all,  dir,  true))
+                ψs = adjust_stencil(ψs, bias, Val($buffer))
+                return ψs
+            end
         end
     end
 end
+
+@inline adjust_stencil(ψs, ::LeftBias,  ::Val{N}) where N = @inbounds ψs[2:N+1]
+@inline adjust_stencil(ψs, ::RightBias, ::Val{N}) where N = @inbounds Tuple(reverse(ψs[i]) for i in N:-1:1)
 
 # Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
 # Parallel to the interpolation direction! (same as left/right stencil)
