@@ -144,42 +144,38 @@ julia> calc_inactive_cells(3, :left, :x, :ᶠ)
     return inactive_cells
 end
 
-for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :left, :right)), side in (:ᶜ, :ᶠ)
-    near_x_boundary = Symbol(:near_x_immersed_boundary_, bias, side)
-    near_y_boundary = Symbol(:near_y_immersed_boundary_, bias, side)
-    near_z_boundary = Symbol(:near_z_immersed_boundary_, bias, side)
+for side in (:ᶜ, :ᶠ)
+    near_x_boundary_symm = Symbol(:near_x_immersed_boundary_symmetric, side)
+    near_y_boundary_symm = Symbol(:near_y_immersed_boundary_symmetric, side)
+    near_z_boundary_symm = Symbol(:near_z_immersed_boundary_symmetric, side)
+
+    near_x_boundary_bias = Symbol(:near_x_immersed_boundary_biased, side)
+    near_y_boundary_bias = Symbol(:near_y_immersed_boundary_biased, side)
+    near_z_boundary_bias = Symbol(:near_z_immersed_boundary_biased, side)
 
     @eval begin
-        @inline $near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
-        @inline $near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
-        @inline $near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
+        @inline $near_x_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{0}, args...) = false
+        @inline $near_y_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{0}, args...) = false
+        @inline $near_z_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{0}, args...) = false
+
+        @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{0}, args...) = false
+        @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{0}, args...) = false
+        @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{0}, args...) = false
     end
 
     for buffer in advection_buffers
         @eval begin
-            @inline $near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = @inbounds (|)($(calc_inactive_stencil(buffer, shift, :x, side; xside = side)...))
-            @inline $near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = @inbounds (|)($(calc_inactive_stencil(buffer, shift, :y, side; yside = side)...))
-            @inline $near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = @inbounds (|)($(calc_inactive_stencil(buffer, shift, :z, side; zside = side)...))
-        end
-    end
-end
+            @inline $near_x_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, args...) = @inbounds (|)($(calc_inactive_stencil(buffer, :none, :x, side; xside = side)...))
+            @inline $near_y_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, args...) = @inbounds (|)($(calc_inactive_stencil(buffer, :none, :y, side; yside = side)...))
+            @inline $near_z_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, args...) = @inbounds (|)($(calc_inactive_stencil(buffer, :none, :z, side; zside = side)...))
+        
+            @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, ::LeftBias, args...) = @inbounds (|)($(calc_inactive_stencil(buffer, :left, :x, side; xside = side)...))
+            @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, ::LeftBias, args...) = @inbounds (|)($(calc_inactive_stencil(buffer, :left, :y, side; yside = side)...))
+            @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, ::LeftBias, args...) = @inbounds (|)($(calc_inactive_stencil(buffer, :left, :z, side; zside = side)...))
 
-# Horizontal inactive stencil calculation for vector invariant WENO schemes that use velocity as a smoothness indicator
-for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :left, :right))
-    near_x_horizontal_boundary = Symbol(:near_x_horizontal_boundary_, bias)
-    near_y_horizontal_boundary = Symbol(:near_y_horizontal_boundary_, bias)
-    
-    for buffer in advection_buffers
-        @eval begin
-            @inline $near_x_horizontal_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = 
-                @inbounds (|)($(calc_inactive_stencil(buffer+1, shift, :x, :ᶜ; yside = :ᶜ)...), 
-                              $(calc_inactive_stencil(buffer,   shift, :x, :ᶜ; xside = :ᶜ)...), 
-                              $(calc_inactive_stencil(buffer,   shift, :x, :ᶜ; xside = :ᶜ, yshift = 1)...))
-
-            @inline $near_y_horizontal_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) =
-                @inbounds (|)($(calc_inactive_stencil(buffer+1, shift, :y, :ᶜ; xside = :ᶜ)...),
-                              $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ)...),
-                              $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ, xshift = 1)...))
+            @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, ::RightBias, args...) = @inbounds (|)($(calc_inactive_stencil(buffer, :right, :x, side; xside = side)...))
+            @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, ::RightBias, args...) = @inbounds (|)($(calc_inactive_stencil(buffer, :right, :y, side; yside = side)...))
+            @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, ::RightBias, args...) = @inbounds (|)($(calc_inactive_stencil(buffer, :right, :z, side; zside = side)...))
         end
     end
 end
@@ -187,7 +183,7 @@ end
 using Oceananigans.Advection: LOADV, HOADV, WENO
 using Oceananigans.Advection: AbstractSmoothnessStencil, VelocityStencil, DefaultStencil
 
-for bias in (:symmetric, :left_biased, :right_biased)
+for bias in (:symmetric, :biased)
     for (d, ξ) in enumerate((:x, :y, :z))
 
         code = [:ᵃ, :ᵃ, :ᵃ]
@@ -208,7 +204,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
 
                 # Conditional high-order interpolation in Bounded directions
                 @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, args...) =
-                    ifelse($near_boundary(i, j, k, ibg, scheme),
+                    ifelse($near_boundary(i, j, k, ibg, scheme, args...),
                            $alt_interp(i, j, k, ibg, scheme.buffer_scheme, args...),
                            $interp(i, j, k, ibg, scheme, args...))
             end
