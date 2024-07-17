@@ -308,13 +308,10 @@ julia> calc_weno_stencil(2, :right, :x)
 
 """
 @inline function calc_weno_stencil(buffer, shift, dir, func::Bool = false) 
-    N = buffer * 2
-    if shift != :none
-        N -=1
-    end
+    N = buffer * 2 - 1
     stencil_full = Vector(undef, buffer)
     rng = 1:N
-    if shift == :right
+    if shift == RightBias()
         rng = rng .+ 1
     end
     for stencil in 1:buffer
