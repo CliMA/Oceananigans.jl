@@ -1,3 +1,5 @@
+using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
+
 # WENO reconstruction of order `M` entails reconstructions of order `N`
 # on `N` different stencils, where `N = (M + 1) / 2`.
 #
@@ -106,8 +108,8 @@ for buffer in [2, 3, 4, 5, 6]
             @inline coeff_p(::WENO{$buffer, FT}, ::RightBias, ::Val{$stencil}, ::Type{Nothing}, args...) where FT = @inbounds FT.($(stencil_coefficients(50, stencil, collect(1:100), collect(1:100); order = buffer)))
 
             # stretched coefficients are retrieved from precalculated coefficients
-            @inline coeff_p(scheme::WENO{$buffer}, ::LeftBias,  ::Val{$stencil}, T, dir, i, loc) = @inbounds retrieve_coeff(scheme, $stencil,     dir, i, loc)
-            @inline coeff_p(scheme::WENO{$buffer}, ::RightBias, ::Val{$stencil}, T, dir, i, loc) = @inbounds retrieve_coeff(scheme, $(stencil-1), dir, i, loc)
+            @inline coeff_p(scheme::WENO{$buffer}, ::LeftBias,  ::Val{$stencil}, T, dir, i, loc) = retrieve_coeff(scheme, $stencil, dir, i, loc)
+            @inline coeff_p(scheme::WENO{$buffer}, ::RightBias, ::Val{$stencil}, T, dir, i, loc) = reverse(retrieve_coeff(scheme, $(buffer - 2 - stencil), dir, i, loc))
         end
     
         # left biased and right biased reconstruction value for each stencil
@@ -334,18 +336,16 @@ for dir in (:x, :y, :z)
 
     for buffer in [2, 3, 4, 5, 6]
         @eval begin
-            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::LeftBias,  ψ, args...)           = @inbounds $(calc_weno_stencil(buffer, :left,  dir, false))
-            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::LeftBias,  ψ::Function, args...) = @inbounds $(calc_weno_stencil(buffer, :left,  dir,  true))
-            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::RightBias, ψ, args...)           = @inbounds $(calc_weno_stencil(buffer, :right, dir, false))
-            @inline $stencil(i, j, k, scheme::WENO{$buffer}, ::RightBias, ψ::Function, args...) = @inbounds $(calc_weno_stencil(buffer, :right, dir,  true))
+            @inline $stencil(i, j, k, ::WENO{$buffer}, ::LeftBias,  ψ, args...)           = @inbounds $(calc_weno_stencil(buffer, :left,  dir, false))
+            @inline $stencil(i, j, k, ::WENO{$buffer}, ::LeftBias,  ψ::Function, args...) = @inbounds $(calc_weno_stencil(buffer, :left,  dir,  true))
+            @inline $stencil(i, j, k, ::WENO{$buffer}, ::RightBias, ψ, args...)           = @inbounds $(calc_weno_stencil(buffer, :right, dir, false))
+            @inline $stencil(i, j, k, ::WENO{$buffer}, ::RightBias, ψ::Function, args...) = @inbounds $(calc_weno_stencil(buffer, :right, dir,  true))
         end
     end
 end
 
 # Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
 # Parallel to the interpolation direction! (same as left/right stencil)
-using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
-
 @inline tangential_stencil_u(i, j, k, scheme, bias, ::Val{1}, u) = @inbounds stencil_x(i, j, k, scheme, bias, ℑyᵃᶠᵃ, u)
 @inline tangential_stencil_u(i, j, k, scheme, bias, ::Val{2}, u) = @inbounds stencil_y(i, j, k, scheme, bias, ℑyᵃᶠᵃ, u)
 @inline tangential_stencil_v(i, j, k, scheme, bias, ::Val{1}, v) = @inbounds stencil_x(i, j, k, scheme, bias, ℑxᶠᵃᵃ, v)
