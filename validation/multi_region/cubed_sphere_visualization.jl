@@ -3,12 +3,37 @@ using Printf
 using Oceananigans.MultiRegion: getregion
 using CairoMakie, GeoMakie, Imaginocean
 
-function interpolate_cubed_sphere_field_to_cell_centers(grid, field, location; ssh = false, levels = 1:1,
-                                                        read_parent_field_data = false)
-    if location == "cc" && !read_parent_field_data
-        return field
+function set_parent_field_data(grid, parent_field_data, location; ssh = false, levels = 1:1)
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+
+    if ssh
+        field = Field{Center, Center, Center}(grid, indices = (:, :, Nz+1:Nz+1))
+        levels_parent_field = 1:1
+        levels_field = Nz+1:Nz+1
+    else
+        if location == "cc"
+            field = Field{Center, Center, Center}(grid)
+        elseif location == "fc"
+            field = Field{Face, Center, Center}(grid)
+        elseif location == "cf"
+            field = Field{Center, Face, Center}(grid)
+        end
+        levels_parent_field = levels .+ Hz
+        levels_field = levels
     end
     
+    set!(field, 0)
+
+    for region in 1:number_of_regions(grid), j in 1:Ny, i in 1:Nx
+        field[region][i, j, levels_field] = parent_field_data[region][i+Hx, j+Hy, levels_parent_field]
+    end
+
+    return field
+end
+
+function interpolate_cubed_sphere_field_to_cell_centers(grid, field, location; ssh = false, levels = 1:1,
+                                                        read_parent_field_data = false)
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
 
@@ -20,12 +45,12 @@ function interpolate_cubed_sphere_field_to_cell_centers(grid, field, location; s
         interpolated_field = Field{Center, Center, Center}(grid, indices = (:, :, Nz+1:Nz+1))
         levels_field = read_parent_field_data ? (1:1) : (Nz+1:Nz+1)
         levels_interpolated_field = Nz+1:Nz+1
-
     else
         interpolated_field = Field{Center, Center, Center}(grid)
         levels_field = levels .+ hz
         levels_interpolated_field = levels
     end
+
     set!(interpolated_field, 0)
 
     for region in 1:number_of_regions(grid), j in 1:Ny, i in 1:Nx
@@ -39,7 +64,7 @@ function interpolate_cubed_sphere_field_to_cell_centers(grid, field, location; s
             interpolated_field[region][i, j, levels_interpolated_field] = (
             0.25(field[region][i+hx, j+hy, levels_field] + field[region][i+1+hx, j+hy, levels_field]
                  + field[region][i+1+hx, j+1+hy, levels_field] + field[region][i+hx, j+1+hy, levels_field]))
-        elseif location == "cc" && read_parent_field_data
+        elseif location == "cc"
             interpolated_field[region][i, j, levels_interpolated_field] = field[region][i+hx, j+hy, levels_field]
         end
     end
@@ -623,7 +648,7 @@ function geo_heatlatlon_visualization(grid, field, title; k = 1, use_symmetric_c
     end
     colormap = use_symmetric_colorrange ? :balance : :amp
 
-    ax = GeoAxis(fig[1, 1]; coastlines = true, lonlims = automatic, title = title, axis_kwargs...)
+    ax = GeoAxis(fig[1, 1]; coastlines = false, lonlims = automatic, title = title, axis_kwargs...)
     heatlatlon!(ax, field, k; colorrange, colormap)
 
     Colorbar(fig[1, 2], limits = colorrange, colormap = colormap, label = cbar_label, labelsize = 22.5,
