@@ -104,7 +104,8 @@ for buffer in [2, 3, 4, 5, 6]
         # ENO coefficients for uniform direction (when T<:Nothing) and stretched directions (when T<:Any) 
         @eval begin
             # uniform coefficients are independent on direction and location
-            @inline coeff_p(::WENO{$buffer, FT}, bias,  ::Val{$stencil}, ::Type{Nothing}, args...) where FT = @inbounds FT.($(stencil_coefficients(50, stencil, collect(1:100), collect(1:100); order = buffer)))
+            @inline coeff_p(::WENO{$buffer, FT}, bias,  ::Val{$stencil}, ::Type{Nothing}, args...) where FT = 
+                @inbounds FT.($(stencil_coefficients(50, stencil, collect(1:100), collect(1:100); order = buffer)))
 
             # stretched coefficients are retrieved from precalculated coefficients
             @inline coeff_p(scheme::WENO{$buffer}, bias,  ::Val{$stencil}, T, dir, i, loc) = 
@@ -114,7 +115,8 @@ for buffer in [2, 3, 4, 5, 6]
     
         # left biased and right biased reconstruction value for each stencil
         @eval begin
-            @inline biased_p(scheme::WENO{$buffer}, bias, ::Val{$stencil}, ψ, T, dir, i, loc) = @inbounds sum(coeff_p(scheme, bias, Val($stencil), T, dir, i, loc) .* ψ)
+            @inline biased_p(scheme::WENO{$buffer}, bias, ::Val{$stencil}, ψ, T, dir, i, loc) = 
+                @inbounds sum(coeff_p(scheme, bias, Val($stencil), T, dir, i, loc) .* ψ)
         end
     end
 end

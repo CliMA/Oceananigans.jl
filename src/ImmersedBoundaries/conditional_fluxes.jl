@@ -169,13 +169,18 @@ for side in (:ᶜ, :ᶠ)
             @inline $near_y_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, args...) = @inbounds (|)($(calc_inactive_stencil(buffer, :none, :y, side; yside = side)...))
             @inline $near_z_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, args...) = @inbounds (|)($(calc_inactive_stencil(buffer, :none, :z, side; zside = side)...))
         
-            @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, ::LeftBias, args...) = @inbounds (|)($(calc_inactive_stencil(buffer, :left, :x, side; xside = side)...))
-            @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, ::LeftBias, args...) = @inbounds (|)($(calc_inactive_stencil(buffer, :left, :y, side; yside = side)...))
-            @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, ::LeftBias, args...) = @inbounds (|)($(calc_inactive_stencil(buffer, :left, :z, side; zside = side)...))
+            @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, bias, args...) = 
+                @inbounds ifelse(bias == LeftBias(), (|)($(calc_inactive_stencil(buffer, :left,  :x, side; xside = side)...)),
+                                                     (|)($(calc_inactive_stencil(buffer, :right, :x, side; xside = side)...)))
+                                                     
 
-            @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, ::RightBias, args...) = @inbounds (|)($(calc_inactive_stencil(buffer, :right, :x, side; xside = side)...))
-            @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, ::RightBias, args...) = @inbounds (|)($(calc_inactive_stencil(buffer, :right, :y, side; yside = side)...))
-            @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, ::RightBias, args...) = @inbounds (|)($(calc_inactive_stencil(buffer, :right, :z, side; zside = side)...))
+            @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, bias, args...) = 
+                @inbounds ifelse(bias == LeftBias(), (|)($(calc_inactive_stencil(buffer, :left,  :y, side; xside = side)...)),
+                                                     (|)($(calc_inactive_stencil(buffer, :right, :y, side; xside = side)...)))
+
+            @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, bias, args...) = 
+                @inbounds ifelse(bias == LeftBias(), (|)($(calc_inactive_stencil(buffer, :left,  :z, side; xside = side)...)),
+                                                     (|)($(calc_inactive_stencil(buffer, :right, :z, side; xside = side)...)))
         end
     end
 end
