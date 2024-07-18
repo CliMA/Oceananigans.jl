@@ -29,7 +29,7 @@ update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendenci
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
 
-    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
+    fill_halo_regions!(Tuple(model.tracers), model.clock, Tuple(model.tracers); async = true)
 
     return nothing
 end

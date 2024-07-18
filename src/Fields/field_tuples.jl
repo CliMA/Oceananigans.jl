@@ -13,12 +13,9 @@ Return values of the (possibly nested) `NamedTuple` `a`,
 flattened into a single tuple, with duplicate entries removed.
 """
 @inline function flattened_unique_values(a::Union{NamedTuple, Tuple})
-    tupled = Tuple(tuplify(ai) for ai in a)
-    flattened = flatten_tuple(tupled)
-
-    # Alternative implementation of `unique` for tuples that uses === comparison, rather than ==
+    
     seen = []
-    return Tuple(last(push!(seen, f)) for f in flattened if !any(f === s for s in seen))
+    return Tuple(last(push!(seen, f)) for f in a if !any(f === s for s in seen))
 end
 
 const FullField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple{<:Colon, <:Colon, <:Colon}}
@@ -54,45 +51,53 @@ Fill halo regions for all `fields`. The algorithm:
      are filled simultaneously.
 """
 function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args...; kwargs...)
-    flattened = flattened_unique_values(maybe_nested_tuple)
+    seen      = []
+    flattened = Tuple(last(push!(seen, f)) for f in maybe_nested_tuple if !any(f === s for s in seen))
 
     # Sort fields into ReducedField and Field with non-nothing boundary conditions
-    fields_with_bcs = filter(f -> !isnothing(boundary_conditions(f)), flattened)
-    reduced_fields  = filter(f -> f isa ReducedField, fields_with_bcs)
-    
-    for field in reduced_fields
-        fill_halo_regions!(field, args...; kwargs...)
-    end
+    ordinary_fields = filter(f -> (f isa FullField) && !(f isa ReducedField), flattened)
 
-    # MultiRegion fields are considered windowed_fields (indices isa MultiRegionObject))
-    windowed_fields = filter(f -> !(f isa FullField), fields_with_bcs)
-    ordinary_fields = filter(f -> (f isa FullField) && !(f isa ReducedField), fields_with_bcs)
-
-    # Fill halo regions for reduced and windowed fields
-    for field in windowed_fields
-        fill_halo_regions!(field, args...; kwargs...)
-    end
-
-    # Fill the rest
-    if !isempty(ordinary_fields)
-        grid = first(ordinary_fields).grid
-        tupled_fill_halo_regions!(ordinary_fields, grid, args...; kwargs...)
-    end
+    fill_halo_regions_low!(0, map(boundary_conditions, ordinary_fields), args...; kwargs...)
 
     return nothing
 end
 
-function tupled_fill_halo_regions!(fields, grid, args...; kwargs...)
-
-    # We cannot group windowed fields together, the indices must be (:, :, :)!
-    indices = default_indices(3)        
-
-    return fill_halo_regions!(map(data, fields),
-                              map(boundary_conditions, fields),
-                              indices,
-                              map(instantiated_location, fields),
-                              grid, args...; kwargs...)
+for dir in (:south, :north, :bottom, :top)
+    extract_side_bc = Symbol(:extract_, dir, :_bc)
+    @eval begin
+        @inline $extract_side_bc(bc) = bc.$dir
+        @inline $extract_side_bc(bc::Tuple) = map($extract_side_bc, bc)
+    end
 end
+
+@inline extract_bc(bc, ::Val{:south_and_north}) = (extract_south_bc(bc), extract_north_bc(bc))
+@inline extract_bc(bc, ::Val{:bottom_and_top})  = (extract_bottom_bc(bc), extract_top_bc(bc))
+
+fill_first(bc1, bc2) = true
+
+# Finally, the true fill_halo!
+const MaybeTupledData = Union{OffsetArray, NTuple{<:Any, OffsetArray}}
+
+"Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
+function fill_halo_regions_low!(c, boundary_conditions, args...; kwargs...)
+
+    south_bc = extract_south_bc(boundary_conditions)
+    
+    sides     = [:south_and_north, :bottom_and_top]
+    bcs_array = [south_bc, extract_bottom_bc(boundary_conditions)]
+
+    perm = sortperm(bcs_array, lt=fill_first)
+    sides = sides[perm]
+
+    boundary_conditions = Tuple(extract_bc(boundary_conditions, Val(side)) for side in sides)
+    number_of_tasks     = length(sides)
+
+    return nothing
+end
+
+#
+# END OF BUG REDUCE
+#
 
 #####
 ##### Tracer names
