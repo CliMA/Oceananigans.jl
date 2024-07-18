@@ -9,6 +9,8 @@ Enzyme.API.maxtypeoffset!(2032)
 
 using Oceananigans
 
+using Oceananigans.BoundaryConditions: PeriodicBoundaryCondition, FluxBoundaryCondition
+
 
 EnzymeRules.inactive_type(::Type{<:Oceananigans.Clock}) = true
 
@@ -82,7 +84,17 @@ end
     thing  = tuple(model.tracers[1].boundary_conditions)
     dthing = tuple(dmodel.tracers[1].boundary_conditions)
 
-    @show tuple(c_bcs)
+    new_thing = (south=PeriodicBoundaryCondition(),
+                 north=PeriodicBoundaryCondition(),
+                 bottom=FluxBoundaryCondition(nothing),
+                 top=top_c_bc)'
+
+    dnew_thing = (south=PeriodicBoundaryCondition(),
+                 north=PeriodicBoundaryCondition(),
+                 bottom=FluxBoundaryCondition(nothing),
+                 top=top_c_bc)
+
+    @show new_thing
     @show thing
     @show dthing
     
