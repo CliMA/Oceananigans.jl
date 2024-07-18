@@ -334,7 +334,7 @@ end
 # Stencils for left and right biased reconstruction ((ψ̅ᵢ₋ᵣ₊ⱼ for j in 0:k) for r in 0:k) to calculate v̂ᵣ = ∑ⱼ(cᵣⱼψ̅ᵢ₋ᵣ₊ⱼ) 
 # where `k = N - 1`. Coefficients (cᵣⱼ for j in 0:N) for stencil r are given by `coeff_side_p(scheme, Val(r), ...)`
 for dir in (:x, :y, :z)
-    stencil = Symbol(:stencil_, dir)
+    stencil = Symbol(:weno_stencil_, dir)
 
     for buffer in [2, 3, 4, 5, 6]
         @eval begin
@@ -351,10 +351,10 @@ end
 
 # Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
 # Parallel to the interpolation direction! (same as left/right stencil)
-@inline tangential_stencil_u(i, j, k, scheme, bias, ::Val{1}, u) = @inbounds stencil_x(i, j, k, scheme, bias, ℑyᵃᶠᵃ, u)
-@inline tangential_stencil_u(i, j, k, scheme, bias, ::Val{2}, u) = @inbounds stencil_y(i, j, k, scheme, bias, ℑyᵃᶠᵃ, u)
-@inline tangential_stencil_v(i, j, k, scheme, bias, ::Val{1}, v) = @inbounds stencil_x(i, j, k, scheme, bias, ℑxᶠᵃᵃ, v)
-@inline tangential_stencil_v(i, j, k, scheme, bias, ::Val{2}, v) = @inbounds stencil_y(i, j, k, scheme, bias, ℑxᶠᵃᵃ, v)
+@inline tangential_stencil_u(i, j, k, scheme, bias, ::Val{1}, u) = @inbounds weno_stencil_x(i, j, k, scheme, bias, ℑyᵃᶠᵃ, u)
+@inline tangential_stencil_u(i, j, k, scheme, bias, ::Val{2}, u) = @inbounds weno_stencil_y(i, j, k, scheme, bias, ℑyᵃᶠᵃ, u)
+@inline tangential_stencil_v(i, j, k, scheme, bias, ::Val{1}, v) = @inbounds weno_stencil_x(i, j, k, scheme, bias, ℑxᶠᵃᵃ, v)
+@inline tangential_stencil_v(i, j, k, scheme, bias, ::Val{2}, v) = @inbounds weno_stencil_y(i, j, k, scheme, bias, ℑxᶠᵃᵃ, v)
 
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
 @inline function metaprogrammed_stencil_sum(buffer)
@@ -376,7 +376,7 @@ end
 # Interpolation functions
 for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, :z], [1, 2, 3], [:XT, :YT, :ZT]) 
     interpolate_func = Symbol(:inner_biased_interpolate_, interp)
-    stencil          = Symbol(:stencil_, dir)
+    stencil          = Symbol(:weno_stencil_, dir)
     
     @eval begin
         @inline function $interpolate_func(i, j, k, grid, 
