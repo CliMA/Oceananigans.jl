@@ -296,58 +296,120 @@ julia> calc_weno_stencil(2, :right, :x)
 :(((ψ[i + 0, j, k], ψ[i + 1, j, k]), (ψ[i + -1, j, k], ψ[i + 0, j, k])))
 
 """
-@inline function calc_weno_stencil(buffer, shift, dir, func::Bool = false) 
+@inline function load_weno_stencil(buffer, dir, func::Bool = false) 
     N = buffer * 2 - 1
-    stencil_full = Vector(undef, buffer+1)
-    rng = 1:N+1
-    for stencil in 1:buffer+1
-        stencil_point = Vector(undef, buffer)
-        rngstencil = rng[stencil:stencil+buffer-1]
-        for (idx, n) in enumerate(rngstencil)
-            c = n - buffer - 1
-            if func 
-                stencil_point[idx] =  dir == :x ? 
-                                      :(ψ(i + $c, j, k, args...)) :
-                                      dir == :y ?
-                                      :(ψ(i, j + $c, k, args...)) :
-                                      :(ψ(i, j, k + $c, args...))
-            else    
-                stencil_point[idx] =  dir == :x ? 
-                                      :(ψ[i + $c, j, k]) :
-                                      dir == :y ?
-                                      :(ψ[i, j + $c, k]) :
-                                      :(ψ[i, j, k + $c])
-            end             
-        end
-        reverse_point = [stencil_point[i] for i in buffer:-1:1]
+    stencil = Vector(undef, N+1)
 
-        if shift == :left || shift == :all
-            stencil_full[buffer + 1 - stencil + 1] = :($(stencil_point...), )
-        else
-            stencil_full[stencil] = :($(reverse_point...), )
-        end
+    for (idx, c) in enumerate(-buffer:buffer-1)
+        if func 
+            stencil[idx] =  dir == :x ? 
+                            :(ψ(i + $c, j, k, args...)) :
+                            dir == :y ?
+                            :(ψ(i, j + $c, k, args...)) :
+                            :(ψ(i, j, k + $c, args...))
+        else    
+            stencil[idx] =  dir == :x ? 
+                            :(ψ[i + $c, j, k]) :
+                            dir == :y ?
+                            :(ψ[i, j + $c, k]) :
+                            :(ψ[i, j, k + $c])
+        end             
     end
 
-    return ifelse(shift == :all, :($(stencil_full...),), :($(stencil_full[2:end]...),))
+    return :($(stencil...),)
 end
+
+# @inline function calc_weno_stencil(buffer, shift, dir, func::Bool = false) 
+#     N = buffer * 2 - 1
+#     stencil_full = Vector(undef, buffer+1)
+#     rng = 1:N+1
+#     for stencil in 1:buffer+1
+#         stencil_point = Vector(undef, buffer)
+#         rngstencil = rng[stencil:stencil+buffer-1]
+#         for (idx, n) in enumerate(rngstencil)
+#             c = n - buffer - 1
+#             if func 
+#                 stencil_point[idx] =  dir == :x ? 
+#                                       :(ψ(i + $c, j, k, args...)) :
+#                                       dir == :y ?
+#                                       :(ψ(i, j + $c, k, args...)) :
+#                                       :(ψ(i, j, k + $c, args...))
+#             else    
+#                 stencil_point[idx] =  dir == :x ? 
+#                                       :(ψ[i + $c, j, k]) :
+#                                       dir == :y ?
+#                                       :(ψ[i, j + $c, k]) :
+#                                       :(ψ[i, j, k + $c])
+#             end             
+#         end
+#         reverse_point = [stencil_point[i] for i in buffer:-1:1]
+
+#         if shift == :left || shift == :all
+#             stencil_full[buffer + 1 - stencil + 1] = :($(stencil_point...), )
+#         else
+#             stencil_full[stencil] = :($(reverse_point...), )
+#         end
+#     end
+
+#     return ifelse(shift == :all, :($(stencil_full...),), :($(stencil_full[2:end]...),))
+# end
 
 # Stencils for left and right biased reconstruction ((ψ̅ᵢ₋ᵣ₊ⱼ for j in 0:k) for r in 0:k) to calculate v̂ᵣ = ∑ⱼ(cᵣⱼψ̅ᵢ₋ᵣ₊ⱼ) 
 # where `k = N - 1`. Coefficients (cᵣⱼ for j in 0:N) for stencil r are given by `coeff_side_p(scheme, Val(r), ...)`
-for dir in (:x, :y, :z)
+for dir in (:x, :y, :z), (T, f) in zip((:Any, :Function), (false, true))
     stencil = Symbol(:weno_stencil_, dir)
+    @eval begin
+        @inline function $stencil(i, j, k, ::WENO{2}, bias, ψ::$T, args...) 
+            S = @inbounds $(load_weno_stencil(2, dir, f))
+            return S₀₂(S, bias), S₁₂(S, bias)
+        end
 
-    for buffer in [2, 3, 4, 5, 6]
-        @eval begin
-            @inline $stencil(i, j, k, ::WENO{$buffer}, bias,  ψ, args...) = 
-                @inbounds $(calc_weno_stencil(buffer, :left,  dir, false)) #ifelse(bias == LeftBias(), $(calc_weno_stencil(buffer, :left,  dir, false)),
-                                                     # $(calc_weno_stencil(buffer, :right, dir, false)))
+        @inline function $stencil(i, j, k, ::WENO{3}, bias, ψ::$T, args...) 
+            S = @inbounds $(load_weno_stencil(3, dir, f))
+            return S₀₃(S, bias), S₁₃(S, bias), S₂₃(S, bias)
+        end
 
-            @inline $stencil(i, j, k, ::WENO{$buffer}, bias,  ψ::Function, args...) = 
-                @inbounds $(calc_weno_stencil(buffer, :left,  dir, true))
-                # $(calc_weno_stencil(buffer, :right, dir, true)))
+        @inline function $stencil(i, j, k, ::WENO{4}, bias, ψ::$T, args...) 
+            S = @inbounds $(load_weno_stencil(4, dir, f))
+            return S₀₄(S, bias), S₁₄(S, bias), S₂₄(S, bias), S₃₄(S, bias)
+        end
+
+        @inline function $stencil(i, j, k, ::WENO{5}, bias, ψ::$T, args...) 
+            S = @inbounds $(load_weno_stencil(5, dir, f))
+            return S₀₅(S, bias), S₁₅(S, bias), S₂₅(S, bias), S₃₅(S, bias), S₄₅(S, bias)
+        end
+
+        @inline function $stencil(i, j, k, ::WENO{6}, bias, ψ::$T, args...) 
+            S = @inbounds $(load_weno_stencil(6, dir, f))
+            return S₀₆(S, bias), S₁₆(S, bias), S₂₆(S, bias), S₃₆(S, bias), S₄₆(S, bias), S₅₆(S, bias)
         end
     end
 end
+
+@inline S₀₂(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[2], S[3]), (S[3], S[2]))
+@inline S₁₂(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[1], S[2]), (S[4], S[3]))
+
+@inline S₀₃(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[3], S[4], S[5]), (S[4], S[3], S[2]))
+@inline S₁₃(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[2], S[3], S[4]), (S[5], S[4], S[3]))
+@inline S₂₃(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[1], S[2], S[3]), (S[6], S[5], S[4]))
+
+@inline S₀₄(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[4], S[5], S[6], S[7]), (S[5], S[4], S[3], S[2]))
+@inline S₁₄(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[3], S[4], S[5], S[6]), (S[6], S[5], S[4], S[3]))
+@inline S₂₄(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[2], S[3], S[4], S[5]), (S[7], S[6], S[5], S[4]))
+@inline S₃₄(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[1], S[2], S[3], S[4]), (S[8], S[7], S[6], S[5]))
+
+@inline S₀₅(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[5], S[6], S[7], S[8], S[9]), (S[6],  S[5], S[4], S[3], S[2]))
+@inline S₁₅(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[4], S[5], S[6], S[7], S[8]), (S[7],  S[6], S[5], S[4], S[3]))
+@inline S₂₅(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[3], S[4], S[5], S[6], S[7]), (S[8],  S[7], S[6], S[5], S[4]))
+@inline S₃₅(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[2], S[3], S[4], S[5], S[6]), (S[9],  S[8], S[7], S[6], S[5]))
+@inline S₄₅(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[1], S[2], S[3], S[4], S[5]), (S[10], S[9], S[8], S[7], S[6]))
+
+@inline S₀₆(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[6], S[7], S[8], S[9], S[10], S[11]), (S[7],  S[6],  S[5],  S[4], S[3], S[2]))
+@inline S₁₆(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[5], S[6], S[7], S[8], S[9],  S[10]), (S[8],  S[7],  S[6],  S[5], S[4], S[3]))
+@inline S₂₆(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[4], S[5], S[6], S[7], S[8],  S[9]),  (S[9],  S[8],  S[7],  S[6], S[5], S[4]))
+@inline S₃₆(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[3], S[4], S[5], S[6], S[7],  S[8]),  (S[10], S[9],  S[8],  S[7], S[6], S[5]))
+@inline S₄₆(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[2], S[3], S[4], S[5], S[6],  S[7]),  (S[11], S[10], S[9],  S[8], S[7], S[6]))
+@inline S₅₆(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[1], S[2], S[3], S[4], S[5],  S[6]),  (S[12], S[11], S[10], S[9], S[8], S[7]))
 
 # Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
 # Parallel to the interpolation direction! (same as left/right stencil)
