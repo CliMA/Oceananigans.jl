@@ -173,7 +173,6 @@ end
     return inactive_cell
 end
 
-
 for side in (:ᶜ, :ᶠ)
     near_x_boundary_symm = Symbol(:near_x_immersed_boundary_symmetric, side)
     near_y_boundary_symm = Symbol(:near_y_immersed_boundary_symmetric, side)
@@ -208,7 +207,7 @@ for side in (:ᶜ, :ᶠ)
             end
 
             @inline function $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, bias, args...) 
-                interior_condition = (|)($(calc_inactive_stencil(buffer, :interior, :y, side; xside = side)...))
+                interior_condition = (|)($(calc_inactive_stencil(buffer, :interior, :y, side; yside = side)...))
                 condition = interior_condition | ifelse(bias == LeftBias(), $(edge_condition(buffer, :left,  :y, side; yside = side)), 
                                                                             $(edge_condition(buffer, :right, :y, side; yside = side))) 
                 
@@ -216,7 +215,7 @@ for side in (:ᶜ, :ᶠ)
             end
 
             @inline function $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}, bias, args...) 
-                interior_condition = (|)($(calc_inactive_stencil(buffer, :interior, :z, side; xside = side)...))
+                interior_condition = (|)($(calc_inactive_stencil(buffer, :interior, :z, side; zside = side)...))
                 condition = interior_condition | ifelse(bias == LeftBias(), $(edge_condition(buffer, :left,  :z, side; zside = side)), 
                                                                             $(edge_condition(buffer, :right, :z, side; zside = side))) 
                 
