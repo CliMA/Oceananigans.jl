@@ -253,7 +253,7 @@ for bias in (:symmetric, :biased)
                 @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, args...) =
                     ifelse($near_boundary(i, j, k, ibg, scheme, args...),
                            $alt_interp(i, j, k, ibg, scheme.buffer_scheme, args...),
-                           $interp(i, j, k, ibg, scheme, args...))
+                           $interp(i, j, k, ibg.underlying_grid, scheme, args...))
             end
         end
     end
