@@ -336,33 +336,15 @@ for dir in (:x, :y, :z)
 
     for buffer in [2, 3, 4, 5, 6]
         @eval begin
-            @inline function $stencil(i, j, k, ::WENO{$buffer}, bias,  ψ, args...) 
-                ψs = @inbounds $(calc_weno_stencil(buffer, :all,  dir, false))
-                ψs = adjust_stencil(ψs, bias, Val($buffer))
-                return ψs
-            end
+            @inline $stencil(i, j, k, ::WENO{$buffer}, bias,  ψ, args...) = 
+                @inbounds ifelse(bias == LeftBias(), $(calc_weno_stencil(buffer, :left,  dir, false)),
+                                                     $(calc_weno_stencil(buffer, :right, dir, false)))
 
-            @inline function $stencil(i, j, k, ::WENO{$buffer}, bias,  ψ::Function, args...)
-                ψs = @inbounds $(calc_weno_stencil(buffer, :all,  dir,  true))
-                ψs = adjust_stencil(ψs, bias, Val($buffer))
-                return ψs
-            end
+            @inline $stencil(i, j, k, ::WENO{$buffer}, bias,  ψ::Function, args...) = 
+                @inbounds ifelse(bias == LeftBias(), $(calc_weno_stencil(buffer, :left,  dir, true)),
+                                                     $(calc_weno_stencil(buffer, :right, dir, true)))
         end
     end
-end
-
-@inline function metaprogrammed_reverse_stencil(buffer)
-    elem = Vector(undef, buffer)
-    for stencil = 1:buffer
-        elem[stencil] = :(reverse(ψs[$(buffer - stencil + 1)]))
-    end
-
-    return :($(elem...),)
-end
-
-@inline adjust_stencil(ψs, ::LeftBias,  ::Val{N}) where N = @inbounds ψs[2:N+1]
-for buffer in [2, 3, 4, 5, 6]
-    @eval @inline adjust_stencil(ψs, ::RightBias, ::Val{$buffer}) = @inbounds $(metaprogrammed_reverse_stencil(buffer))
 end
 
 # Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
