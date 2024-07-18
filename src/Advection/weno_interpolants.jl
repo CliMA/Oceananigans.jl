@@ -351,8 +351,19 @@ for dir in (:x, :y, :z)
     end
 end
 
+@inline function metaprogrammed_reverse_stencil(buffer)
+    elem = Vector(undef, buffer)
+    for stencil = 1:buffer
+        elem[stencil] = :(reverse(ψs[$(buffer - stencil + 1)]))
+    end
+
+    return :($(elem...),)
+end
+
 @inline adjust_stencil(ψs, ::LeftBias,  ::Val{N}) where N = @inbounds ψs[2:N+1]
-@inline adjust_stencil(ψs, ::RightBias, ::Val{N}) where N = @inbounds Tuple(reverse(ψs[i]) for i in N:-1:1)
+for buffer in [2, 3, 4, 5, 6]
+    @eval @inline adjust_stencil(ψs, ::RightBias, ::Val{$buffer}) = @inbounds $(metaprogrammed_reverse_stencil(buffer))
+end
 
 # Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
 # Parallel to the interpolation direction! (same as left/right stencil)
