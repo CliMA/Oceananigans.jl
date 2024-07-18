@@ -126,20 +126,20 @@ for buffer in advection_buffers
                                                  $(calc_reconstruction_stencil(buffer, :right, :x, true)))
     
         @inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::UY{$buffer, FT}, bias, ψ, idx, loc, args...) where FT = 
-            @inbounds ifelse(bias == LeftBias(), $(calc_reconstruction_stencil(buffer, :left, :y, false)), 
-                                                 $(calc_reconstruction_stencil(buffer, :left, :y, false)))
+            @inbounds ifelse(bias == LeftBias(), $(calc_reconstruction_stencil(buffer, :left,  :y, false)), 
+                                                 $(calc_reconstruction_stencil(buffer, :right, :y, false)))
                                                  
         @inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::UY{$buffer, FT}, bias, ψ::Function, idx, loc, args...) where FT = 
-            @inbounds ifelse(bias == LeftBias(), $(calc_reconstruction_stencil(buffer, :left, :y, true)), 
-                                                 $(calc_reconstruction_stencil(buffer, :left, :y, true)))
+            @inbounds ifelse(bias == LeftBias(), $(calc_reconstruction_stencil(buffer, :left,  :y, true)), 
+                                                 $(calc_reconstruction_stencil(buffer, :right, :y, true)))
     
         @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::UZ{$buffer, FT}, bias, ψ, idx, loc, args...) where FT = 
-            @inbounds ifelse(bias == LeftBias(), $(calc_reconstruction_stencil(buffer, :left, :z, false)), 
-                                                 $(calc_reconstruction_stencil(buffer, :left, :z, false)))
+            @inbounds ifelse(bias == LeftBias(), $(calc_reconstruction_stencil(buffer, :left,  :z, false)), 
+                                                 $(calc_reconstruction_stencil(buffer, :right, :z, false)))
 
         @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::UZ{$buffer, FT}, bias, ψ::Function, idx, loc, args...) where FT = 
-            @inbounds ifelse(bias == LeftBias(), $(calc_reconstruction_stencil(buffer, :left, :z, true)), 
-                                                 $(calc_reconstruction_stencil(buffer, :left, :z, true)))                                          
+            @inbounds ifelse(bias == LeftBias(), $(calc_reconstruction_stencil(buffer, :left,  :z, true)), 
+                                                 $(calc_reconstruction_stencil(buffer, :right, :z, true)))                                          
     end
 end
 
