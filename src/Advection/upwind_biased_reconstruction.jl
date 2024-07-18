@@ -114,7 +114,7 @@ const UX{N, FT} = UpwindBiased{N, FT, <:Nothing} where {N, FT}
 const UY{N, FT} = UpwindBiased{N, FT, <:Any, <:Nothing} where {N, FT}
 const UZ{N, FT} = UpwindBiased{N, FT, <:Any, <:Any, <:Nothing} where {N, FT}
 
-# uniform upwind biased reconstruction
+# Uniform upwind biased reconstruction
 for buffer in advection_buffers
     @eval begin
         @inline inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::UX{$buffer, FT}, bias, ψ, idx, loc, args...) where FT = 
@@ -140,6 +140,23 @@ for buffer in advection_buffers
         @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::UZ{$buffer, FT}, bias, ψ::Function, idx, loc, args...) where FT = 
             @inbounds ifelse(bias == LeftBias(), $(calc_reconstruction_stencil(buffer, :left, :z, true)), 
                                                  $(calc_reconstruction_stencil(buffer, :left, :z, true)))                                          
+    end
+end
+
+# Stretched upwind reconstruction
+for (dir, ξ, val) in zip((:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ), (:x, :y, :z), (1, 2, 3))
+    stencil = Symbol(:inner_biased_interpolate_, dir)
+
+    for buffer in advection_buffers
+        @eval begin
+            @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer, FT}, bias, ψ, idx, loc, args...) where FT = 
+                @inbounds ifelse(bias == LeftBias(), sum($(reconstruction_stencil(buffer, :left,  ξ, false)) .* retrieve_coeff(scheme, Val(1), Val($val), idx, loc)),
+                                                     sum($(reconstruction_stencil(buffer, :right, ξ, false)) .* retrieve_coeff(scheme, Val(2), Val($val), idx, loc)))
+
+            @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer, FT}, bias, ψ::Function, idx, loc, args...) where FT = 
+                @inbounds ifelse(bias == LeftBias(), sum($(reconstruction_stencil(buffer, :left,  ξ, rue)) .* retrieve_coeff(scheme, Val(1), Val($val), idx, loc)),
+                                                     sum($(reconstruction_stencil(buffer, :right, ξ, rue)) .* retrieve_coeff(scheme, Val(2), Val($val), idx, loc)))
+        end
     end
 end
 
