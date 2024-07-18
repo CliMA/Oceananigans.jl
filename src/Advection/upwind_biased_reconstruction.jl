@@ -154,8 +154,8 @@ for (dir, ξ, val) in zip((:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ), (:x, :y, :z),
                                                      sum($(reconstruction_stencil(buffer, :right, ξ, false)) .* retrieve_coeff(scheme, Val(2), Val($val), idx, loc)))
 
             @inline $stencil(i, j, k, grid, scheme::UpwindBiased{$buffer, FT}, bias, ψ::Function, idx, loc, args...) where FT = 
-                @inbounds ifelse(bias == LeftBias(), sum($(reconstruction_stencil(buffer, :left,  ξ, rue)) .* retrieve_coeff(scheme, Val(1), Val($val), idx, loc)),
-                                                     sum($(reconstruction_stencil(buffer, :right, ξ, rue)) .* retrieve_coeff(scheme, Val(2), Val($val), idx, loc)))
+                @inbounds ifelse(bias == LeftBias(), sum($(reconstruction_stencil(buffer, :left,  ξ, true)) .* retrieve_coeff(scheme, Val(1), Val($val), idx, loc)),
+                                                     sum($(reconstruction_stencil(buffer, :right, ξ, true)) .* retrieve_coeff(scheme, Val(2), Val($val), idx, loc)))
         end
     end
 end
