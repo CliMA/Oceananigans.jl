@@ -339,12 +339,12 @@ for dir in (:x, :y, :z)
     for buffer in [2, 3, 4, 5, 6]
         @eval begin
             @inline $stencil(i, j, k, ::WENO{$buffer}, bias,  ψ, args...) = 
-                @inbounds ifelse(bias == LeftBias(), $(calc_weno_stencil(buffer, :left,  dir, false)),
-                                                     $(calc_weno_stencil(buffer, :right, dir, false)))
+                @inbounds $(calc_weno_stencil(buffer, :left,  dir, false)) #ifelse(bias == LeftBias(), $(calc_weno_stencil(buffer, :left,  dir, false)),
+                                                     # $(calc_weno_stencil(buffer, :right, dir, false)))
 
             @inline $stencil(i, j, k, ::WENO{$buffer}, bias,  ψ::Function, args...) = 
-                @inbounds ifelse(bias == LeftBias(), $(calc_weno_stencil(buffer, :left,  dir, true)),
-                                                     $(calc_weno_stencil(buffer, :right, dir, true)))
+                @inbounds $(calc_weno_stencil(buffer, :left,  dir, true))
+                # $(calc_weno_stencil(buffer, :right, dir, true)))
         end
     end
 end
