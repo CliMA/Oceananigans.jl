@@ -1,6 +1,7 @@
 using Oceananigans.Advection: AbstractAdvectionScheme, advection_buffers, LeftBias, RightBias
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑxᶜᵃᵃ, ℑyᵃᶠᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, ℑzᵃᵃᶜ 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization
+using Oceananigans.Advection: LOADV, HOADV
 
 const ATC = AbstractTurbulenceClosure
 const ATD = AbstractTimeDiscretization
@@ -225,34 +226,31 @@ for side in (:ᶜ, :ᶠ)
     end
 end
 
-using Oceananigans.Advection: LOADV, HOADV, WENO
-using Oceananigans.Advection: AbstractSmoothnessStencil, VelocityStencil, DefaultStencil
+for bias in (:symmetric, :biased)
+    for (d, ξ) in enumerate((:x, :y, :z))
 
-# for bias in (:symmetric, :biased)
-#     for (d, ξ) in enumerate((:x, :y, :z))
+        code = [:ᵃ, :ᵃ, :ᵃ]
 
-#         code = [:ᵃ, :ᵃ, :ᵃ]
+        for loc in (:ᶜ, :ᶠ)
+            code[d] = loc
+            interp = Symbol(bias, :_interpolate_, ξ, code...)
+            alt_interp = Symbol(:_, interp)
 
-#         for loc in (:ᶜ, :ᶠ)
-#             code[d] = loc
-#             interp = Symbol(bias, :_interpolate_, ξ, code...)
-#             alt_interp = Symbol(:_, interp)
+            near_boundary = Symbol(:near_, ξ, :_immersed_boundary_, bias, loc)
 
-#             near_boundary = Symbol(:near_, ξ, :_immersed_boundary_, bias, loc)
+            @eval begin
+                import Oceananigans.Advection: $alt_interp
+                using Oceananigans.Advection: $interp
 
-#             @eval begin
-#                 import Oceananigans.Advection: $alt_interp
-#                 using Oceananigans.Advection: $interp
+                # Fallback for low order interpolation
+                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, args...) = $interp(i, j, k, ibg.underlying_grid, scheme, args...)
 
-#                 # Fallback for low order interpolation
-#                 @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, args...) = $interp(i, j, k, ibg.underlying_grid, scheme, args...)
-
-#                 # Conditional high-order interpolation in Bounded directions
-#                 @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, args...) =
-#                     ifelse($near_boundary(i, j, k, ibg, scheme, args...),
-#                            $alt_interp(i, j, k, ibg, scheme.buffer_scheme, args...),
-#                            $interp(i, j, k, ibg, scheme, args...))
-#             end
-#         end
-#     end
-# end
+                # Conditional high-order interpolation in Bounded directions
+                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, args...) = $alt_interp(i, j, k, ibg.underlying_grid, scheme, args...)
+                    # ifelse($near_boundary(i, j, k, ibg, scheme, args...),
+                    #        $alt_interp(i, j, k, ibg, scheme.buffer_scheme, args...),
+                    #        $interp(i, j, k, ibg, scheme, args...))
+            end
+        end
+    end
+end
