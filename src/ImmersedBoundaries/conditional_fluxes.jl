@@ -116,8 +116,7 @@ julia> calc_inactive_cells(3, :left, :x, :ᶠ)
 ```
 """
 @inline function calc_inactive_stencil(buffer, shift, dir, side;
-                                       xside = :ᶠ, yside = :ᶠ, zside = :ᶠ,
-                                       xshift = 0, yshift = 0, zshift = 0)
+                                       xside = :ᶠ, yside = :ᶠ, zside = :ᶠ)
 
     N = buffer * 2
     if shift != :none
@@ -140,18 +139,17 @@ julia> calc_inactive_cells(3, :left, :x, :ᶠ)
         yflipside = yside == :ᶠ ? :c : :f
         zflipside = zside == :ᶠ ? :c : :f
         inactive_cells[idx] =  dir == :x ? 
-                               :(inactive_node(i + $(c + xshift), j + $yshift, k + $zshift, ibg, $xflipside, $yflipside, $zflipside)) :
+                               :(inactive_node(i + $c, j, k, ibg, $xflipside, $yflipside, $zflipside)) :
                                dir == :y ?
-                               :(inactive_node(i + $xshift, j + $(c + yshift), k + $zshift, ibg, $xflipside, $yflipside, $zflipside)) :
-                               :(inactive_node(i + $xshift, j + $yshift, k + $(c + zshift), ibg, $xflipside, $yflipside, $zflipside))
+                               :(inactive_node(i, j + $c, k, ibg, $xflipside, $yflipside, $zflipside)) :
+                               :(inactive_node(i, j, k + $c, ibg, $xflipside, $yflipside, $zflipside))
     end
 
     return inactive_cells
 end
 
 @inline function edge_condition(buffer, shift, dir, side;
-                                 xside = :ᶠ, yside = :ᶠ, zside = :ᶠ,
-                                 xshift = 0, yshift = 0, zshift = 0)
+                                 xside = :ᶠ, yside = :ᶠ, zside = :ᶠ)
 
     N = buffer * 2
 
@@ -166,10 +164,10 @@ end
     yflipside = yside == :ᶠ ? :c : :f
     zflipside = zside == :ᶠ ? :c : :f
     inactive_cell =  dir == :x ? 
-                        :(inactive_node(i + $(c + xshift), j + $yshift, k + $zshift, ibg, $xflipside, $yflipside, $zflipside)) :
+                        :(inactive_node(i + $c, j, k, ibg, $xflipside, $yflipside, $zflipside)) :
                         dir == :y ?
-                        :(inactive_node(i + $xshift, j + $(c + yshift), k + $zshift, ibg, $xflipside, $yflipside, $zflipside)) :
-                        :(inactive_node(i + $xshift, j + $yshift, k + $(c + zshift), ibg, $xflipside, $yflipside, $zflipside))
+                        :(inactive_node(i, j + $c, k, ibg, $xflipside, $yflipside, $zflipside)) :
+                        :(inactive_node(i, j, k + $c, ibg, $xflipside, $yflipside, $zflipside))
 
     return inactive_cell
 end
