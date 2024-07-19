@@ -212,22 +212,11 @@ end
     return :($(elem...),)
 end
 
-# JSWENO α weights dᵣ / (βᵣ + ε)²
-@inline function metaprogrammed_js_alpha_loop(buffer)
-    elem = Vector(undef, buffer)
-    for stencil = 1:buffer
-        elem[stencil] = :(@inbounds FT(coeff(scheme, Val($(stencil-1)))) / (β[$stencil] + FT(ε))^ƞ)
-    end
-
-    return :($(elem...),)
-end
-
 for buffer in [2, 3, 4, 5, 6]
     @eval begin
         @inline         beta_sum(scheme::WENO{$buffer}, β₁, β₂)          = @inbounds $(metaprogrammed_beta_sum(buffer))
         @inline        beta_loop(scheme::WENO{$buffer}, ψ, func)         = @inbounds $(metaprogrammed_beta_loop(buffer))
         @inline zweno_alpha_loop(scheme::WENO{$buffer}, β, τ, coeff, FT) = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
-        @inline    js_alpha_loop(scheme::WENO{$buffer}, β, coeff, FT)    = @inbounds $(metaprogrammed_js_alpha_loop(buffer))
     end
 end
 
@@ -238,18 +227,14 @@ end
 @inline global_smoothness_indicator(::Val{5}, β) = @inbounds abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
 @inline global_smoothness_indicator(::Val{6}, β) = @inbounds abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
 
-# Calculating Dynamic WENO Weights (wᵣ), either with JS weno, Z weno or VectorInvariant WENO
-
-@inline function biased_weno_weights(ψ, scheme::WENO{N, FT}, bias, args...) where {N, FT}
+# Calculating Dynamic WENO Weights (wᵣ), using the Z-WENO formulation
+@inline function biased_weno_weights(ψ, scheme::WENO{N, FT}, args...) where {N, FT}
     @inbounds begin
         β = beta_loop(scheme, ψ, biased_β)
                 
-        if scheme isa ZWENO
-            τ = global_smoothness_indicator(Val(N), β)
-            α = zweno_alpha_loop(scheme, β, τ, Cl, FT)
-        else
-            α = js_alpha_loop(scheme, β, Cl, FT)
-        end
+        τ = global_smoothness_indicator(Val(N), β)
+        α = zweno_alpha_loop(scheme, β, τ, Cl, FT)
+
         return α ./ sum(α)
     end
 end
@@ -262,21 +247,17 @@ end
         vₛ = tangential_stencil_v(i, j, k, scheme, bias, dir, v)
         βᵤ = beta_loop(scheme, uₛ, biased_β)
         βᵥ = beta_loop(scheme, vₛ, biased_β)
+        β  =  beta_sum(scheme, βᵤ, βᵥ)
 
-        β  = beta_sum(scheme, βᵤ, βᵥ)
-
-        if scheme isa ZWENO
-            τ = global_smoothness_indicator(Val(N), β)
-            α = zweno_alpha_loop(scheme, β, τ, Cl, FT)
-        else
-            α = js_alpha_loop(scheme, β, Cl, FT)
-        end
+        τ = global_smoothness_indicator(Val(N), β)
+        α = zweno_alpha_loop(scheme, β, τ, Cl, FT)
+    
         return α ./ sum(α)
     end
 end
 
 """ 
-    calc_weno_stencil(buffer, shift, dir, func::Bool = false)
+    load_weno_stencil(buffer, shift, dir, func::Bool = false)
 
 Stencils for WENO reconstruction calculations
 
@@ -287,13 +268,13 @@ Examples
 ========
 
 ```jldoctest
-julia> using Oceananigans.Advection: calc_weno_stencil
+julia> using Oceananigans.Advection: load_weno_stencil
 
-julia> calc_weno_stencil(3, :left, :x)
-:(((ψ[i + -1, j, k], ψ[i + 0, j, k], ψ[i + 1, j, k]), (ψ[i + -2, j, k], ψ[i + -1, j, k], ψ[i + 0, j, k]), (ψ[i + -3, j, k], ψ[i + -2, j, k], ψ[i + -1, j, k])))
+julia> load_weno_stencil(3, :x)
+:((ψ[i + -3, j, k], ψ[i + -2, j, k], ψ[i + -1, j, k], ψ[i + 0, j, k], ψ[i + 1, j, k], ψ[i + 2, j, k]))
 
-julia> calc_weno_stencil(2, :right, :x)
-:(((ψ[i + 0, j, k], ψ[i + 1, j, k]), (ψ[i + -1, j, k], ψ[i + 0, j, k])))
+julia> load_weno_stencil(2, :x)
+:((ψ[i + -2, j, k], ψ[i + -1, j, k], ψ[i + 0, j, k], ψ[i + 1, j, k]))
 
 """
 @inline function load_weno_stencil(buffer, dir, func::Bool = false) 
