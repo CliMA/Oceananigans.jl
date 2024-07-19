@@ -386,6 +386,7 @@ for dir in (:x, :y, :z), (T, f) in zip((:Any, :Function), (false, true))
     end
 end
 
+# WENO stencils
 @inline S₀₂(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[2], S[3]), (S[3], S[2]))
 @inline S₁₂(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[1], S[2]), (S[4], S[3]))
 
