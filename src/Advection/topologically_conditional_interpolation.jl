@@ -26,16 +26,13 @@ const AUGXYZ = AUG{<:Any, <:Bounded, <:Bounded, <:Bounded}
 # Left-biased buffers are smaller by one grid point on the right side; vice versa for right-biased buffers
 # Center interpolation stencil look at i + 1 (i.e., require one less point on the left)
 
-@inline outside_symmetric_haloᶠ(i, N, adv, args...) = (i >= required_halo_size(adv) + 1) & (i <= N + 1 - required_halo_size(adv))
-@inline outside_symmetric_haloᶜ(i, N, adv, args...) = (i >= required_halo_size(adv))     & (i <= N + 1 - required_halo_size(adv))
+@inline outside_symmetric_haloᶠ(i, N, adv) = (i >= required_halo_size(adv) + 1) & (i <= N + 1 - required_halo_size(adv))
+@inline outside_symmetric_haloᶜ(i, N, adv) = (i >= required_halo_size(adv))     & (i <= N + 1 - required_halo_size(adv))
 
-@inline outside_biased_haloᶠ(i, N, adv, bias, args...) = ifelse(bias == LeftBias(), 
-                                                               (i >= required_halo_size(adv) + 1) & (i <= N + 1 - (required_halo_size(adv) - 1)),
-                                                               (i >= required_halo_size(adv))     & (i <= N + 1 - required_halo_size(adv)))
-
-@inline outside_biased_haloᶜ(i, N, adv, bias, args...) = ifelse(bias == LeftBias(), 
-                                                               (i >= required_halo_size(adv))     & (i <= N + 1 - (required_halo_size(adv) - 1)),
-                                                               (i >= required_halo_size(adv) - 1) & (i <= N + 1 - required_halo_size(adv)))
+@inline outside_biased_haloᶠ(i, N, adv) = (i >= required_halo_size(adv) + 1) & (i <= N + 1 - (required_halo_size(adv) - 1)) &  # Left bias
+                                          (i >= required_halo_size(adv))     & (i <= N + 1 - required_halo_size(adv))          # Right bias
+@inline outside_biased_haloᶜ(i, N, adv) = (i >= required_halo_size(adv))     & (i <= N + 1 - (required_halo_size(adv) - 1)) &  # Left bias
+                                          (i >= required_halo_size(adv) - 1) & (i <= N + 1 - required_halo_size(adv))          # Right bias
 
 # Separate High order advection from low order advection
 const HOADV = Union{WENO, 
@@ -69,21 +66,21 @@ for bias in (:symmetric, :biased)
             if ξ == :x
                 @eval begin
                     @inline $alt_interp(i, j, k, grid::AUGX, scheme::HOADV, args...) =
-                        ifelse($outside_buffer(i, grid.Nx, scheme, args...),
+                        ifelse($outside_buffer(i, grid.Nx, scheme),
                                $interp(i, j, k, grid, scheme, args...),
                                $alt_interp(i, j, k, grid, scheme.buffer_scheme, args...))
                 end
             elseif ξ == :y
                 @eval begin
                     @inline $alt_interp(i, j, k, grid::AUGY, scheme::HOADV, args...) =
-                        ifelse($outside_buffer(j, grid.Ny, scheme, args...),
+                        ifelse($outside_buffer(j, grid.Ny, scheme),
                                $interp(i, j, k, grid, scheme, args...),
                                $alt_interp(i, j, k, grid, scheme.buffer_scheme, args...))
                 end
             elseif ξ == :z
                 @eval begin
                     @inline $alt_interp(i, j, k, grid::AUGZ, scheme::HOADV, args...) =
-                        ifelse($outside_buffer(k, grid.Nz, scheme, args...),
+                        ifelse($outside_buffer(k, grid.Nz, scheme),
                                $interp(i, j, k, grid, scheme, args...),
                                $alt_interp(i, j, k, grid, scheme.buffer_scheme, args...))
                 end

@@ -319,41 +319,6 @@ julia> calc_weno_stencil(2, :right, :x)
     return :($(stencil...),)
 end
 
-# @inline function calc_weno_stencil(buffer, shift, dir, func::Bool = false) 
-#     N = buffer * 2 - 1
-#     stencil_full = Vector(undef, buffer+1)
-#     rng = 1:N+1
-#     for stencil in 1:buffer+1
-#         stencil_point = Vector(undef, buffer)
-#         rngstencil = rng[stencil:stencil+buffer-1]
-#         for (idx, n) in enumerate(rngstencil)
-#             c = n - buffer - 1
-#             if func 
-#                 stencil_point[idx] =  dir == :x ? 
-#                                       :(ψ(i + $c, j, k, args...)) :
-#                                       dir == :y ?
-#                                       :(ψ(i, j + $c, k, args...)) :
-#                                       :(ψ(i, j, k + $c, args...))
-#             else    
-#                 stencil_point[idx] =  dir == :x ? 
-#                                       :(ψ[i + $c, j, k]) :
-#                                       dir == :y ?
-#                                       :(ψ[i, j + $c, k]) :
-#                                       :(ψ[i, j, k + $c])
-#             end             
-#         end
-#         reverse_point = [stencil_point[i] for i in buffer:-1:1]
-
-#         if shift == :left || shift == :all
-#             stencil_full[buffer + 1 - stencil + 1] = :($(stencil_point...), )
-#         else
-#             stencil_full[stencil] = :($(reverse_point...), )
-#         end
-#     end
-
-#     return ifelse(shift == :all, :($(stencil_full...),), :($(stencil_full[2:end]...),))
-# end
-
 # Stencils for left and right biased reconstruction ((ψ̅ᵢ₋ᵣ₊ⱼ for j in 0:k) for r in 0:k) to calculate v̂ᵣ = ∑ⱼ(cᵣⱼψ̅ᵢ₋ᵣ₊ⱼ) 
 # where `k = N - 1`. Coefficients (cᵣⱼ for j in 0:N) for stencil r are given by `coeff_side_p(scheme, Val(r), ...)`
 for dir in (:x, :y, :z), (T, f) in zip((:Any, :Function), (false, true))
