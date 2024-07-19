@@ -35,10 +35,10 @@ const AUGXYZ = AUG{<:Any, <:Bounded, <:Bounded, <:Bounded}
                                           (i >= required_halo_size(adv) - 1) & (i <= N + 1 - required_halo_size(adv))          # Right bias
 
 # Separate High order advection from low order advection
-const HOADV = Union{WENO, 
+const HOADV = Union{Tuple(WENO{N} for N in advection_buffers[3:end])..., 
                     Tuple(Centered{N} for N in advection_buffers[2:end])...,
                     Tuple(UpwindBiased{N} for N in advection_buffers[2:end])...} 
-const LOADV = Union{UpwindBiased{1}, Centered{1}}
+const LOADV = Union{UpwindBiased{1}, Centered{1}, WENO{2}}
 
 for bias in (:symmetric, :biased)
     for (d, ξ) in enumerate((:x, :y, :z))
