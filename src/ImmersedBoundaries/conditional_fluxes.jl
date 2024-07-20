@@ -276,8 +276,8 @@ for bias in (:symmetric, :left_biased, :right_biased)
                            $alt_interp(i, j, k, ibg, scheme.buffer_scheme, args...),
                            $interp(i, j, k, ibg, scheme, args...))
             end
-            
-            if bias == :biased
+
+            if bias == :left_biased || bias == :right_biased
                 @eval begin 
                     import Oceananigans.Advection: $alt_interp
                     using Oceananigans.Advection: $interp

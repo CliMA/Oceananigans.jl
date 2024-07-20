@@ -101,21 +101,13 @@ for buffer in [2, 3, 4, 5, 6]
 
         # ENO coefficients for uniform direction (when T<:Nothing) and stretched directions (when T<:Any) 
         @eval begin
-            @inline Cr(scheme::WENO{$buffer}, order, ::Val{$stencil}) = @inbounds Cl(scheme, order, Val($(buffer-stencil-1)))
-
-            # uniform coefficients are independent on direction and location
-            @inline  coeff_left_p(scheme::WENO{$buffer, FT}, ::Val{$stencil}, ::Type{Nothing}, args...) where FT = @inbounds FT.($(stencil_coefficients(50, stencil  , collect(1:100), collect(1:100); order = buffer)))
-            @inline coeff_right_p(scheme::WENO{$buffer, FT}, ::Val{$stencil}, ::Type{Nothing}, args...) where FT = @inbounds FT.($(stencil_coefficients(50, stencil-1, collect(1:100), collect(1:100); order = buffer)))
-
-            # stretched coefficients are retrieved from precalculated coefficients
-            @inline  coeff_left_p(scheme::WENO{$buffer}, ::Val{$stencil}, T, dir, i, loc) = @inbounds retrieve_coeff(scheme, $stencil,     dir, i, loc)
-            @inline coeff_right_p(scheme::WENO{$buffer}, ::Val{$stencil}, T, dir, i, loc) = @inbounds retrieve_coeff(scheme, $(stencil-1), dir, i, loc)
+            @inline Cr(::Val{$buffer}, order, ::Val{$stencil}) = @inbounds Cl(Val($buffer), order, Val($(buffer-stencil-1)))
         end
     
         # left biased and right biased reconstruction value for each stencil
         @eval begin
-            @inline  left_biased_p(scheme::WENO{$buffer}, ::Val{$stencil}, ψ, T, dir, i, loc) = @inbounds  sum(coeff_left_p(scheme, Val($stencil), T, dir, i, loc) .* ψ)
-            @inline right_biased_p(scheme::WENO{$buffer}, ::Val{$stencil}, ψ, T, dir, i, loc) = @inbounds sum(coeff_right_p(scheme, Val($stencil), T, dir, i, loc) .* ψ)
+            @inline  left_biased_p(scheme::WENO{$buffer}, order, ::Val{$stencil}, ψ, T, dir, i, loc) = @inbounds  sum(coeff_left_p(scheme, order, Val($stencil), T, dir, i, loc) .* ψ)
+            @inline right_biased_p(scheme::WENO{$buffer}, order, ::Val{$stencil}, ψ, T, dir, i, loc) = @inbounds sum(coeff_right_p(scheme, order, Val($stencil), T, dir, i, loc) .* ψ)
         end
     end
 end
@@ -150,8 +142,8 @@ for buffer in [2, 3, 4, 5, 6]
 
     for stencil in [0, 1, 2, 3, 4, 5]
         @eval begin
-            @inline  left_biased_β(ψ, scheme::WENO{$buffer}, order, ::Val{$stencil}) = @inbounds smoothness_sum(scheme, ψ, β_coefficients(order, scheme, Val($stencil)))
-            @inline right_biased_β(ψ, scheme::WENO{$buffer}, order, ::Val{$stencil}) = @inbounds smoothness_sum(scheme, ψ, β_coefficients(order, scheme, Val($stencil)))
+            @inline  left_biased_β(ψ, scheme::WENO{$buffer}, order, ::Val{$stencil}) = @inbounds smoothness_sum(scheme, ψ, β_coefficients(order, Val($buffer), Val($stencil)))
+            @inline right_biased_β(ψ, scheme::WENO{$buffer}, order, ::Val{$stencil}) = @inbounds smoothness_sum(scheme, ψ, β_coefficients(order, Val($buffer), Val($stencil)))
         end
     end
 end
@@ -180,7 +172,7 @@ end
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(@inbounds FT(coeff(scheme, order, Val($(stencil-1)))) * (1 + (τ / (β[$stencil] + FT(ε)))^ƞ))
+        elem[stencil] = :(@inbounds FT(coeff(Val($buffer), order, Val($(stencil-1)))) * (1 + (τ / (β[$stencil] + FT(ε)))^ƞ))
     end
 
     return :($(elem...),)
@@ -190,7 +182,7 @@ end
 @inline function metaprogrammed_js_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(@inbounds FT(coeff(scheme, order, Val($(stencil-1)))) / (β[$stencil] + FT(ε))^ƞ)
+        elem[stencil] = :(@inbounds FT(coeff(Val($buffer), order, Val($(stencil-1)))) / (β[$stencil] + FT(ε))^ƞ)
     end
 
     return :($(elem...),)
@@ -346,7 +338,7 @@ using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
 @inline function metaprogrammed_stencil_sum(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(@inbounds w[$stencil] * func(scheme, Val($(stencil-1)), order, ψ[$stencil], cT, Val(val), idx, loc))
+        elem[stencil] = :(@inbounds w[$stencil] * func(scheme, order, Val($(stencil-1)), ψ[$stencil], cT, Val(val), idx, loc))
     end
 
     return Expr(:call, :+, elem...)

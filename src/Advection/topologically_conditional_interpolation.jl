@@ -124,8 +124,11 @@ for bias in (:symmetric, :left_biased, :right_biased)
             calculate_order = Symbol(:calculate_order, loc)
 
             # Simple translation for Periodic directions and low-order advection schemes (fallback)
-            @eval @inline $alt_interp(i, j, k, grid::AUG, schemxse::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
-            @eval @inline $alt_interp(i, j, k, grid::AUG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+            @eval @inline $alt_interp(i, j, k, grid::AUG, schemxse::LOADV, ψ, args...) = $interp(i, j, k, grid, scheme, ψ, args...)
+            @eval @inline $alt_interp(i, j, k, grid::AUG, scheme::HOADV,   ψ, args...) = $interp(i, j, k, grid, scheme, ψ, args...)
+            if bias == :left_biased || bias == :right_biased
+                @eval @inline $alt_interp(i, j, k, grid::AUG, scheme::WENO{N}, ψ, args...) where N = $interp(i, j, k, grid, scheme, ψ, N, args...)
+            end
 
             # Disambiguation
             for GridType in [:AUGX, :AUGY, :AUGZ, :AUGXY, :AUGXZ, :AUGYZ, :AUGXYZ]
@@ -143,7 +146,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
                                $alt_interp(i, j, k, grid, scheme.buffer_scheme, args...))
                 end
 
-                if bias == :biased
+                if bias == :left_biased || bias == :right_biased
                     @eval begin 
                         @inline function $alt_interp(i, j, k, grid::AUGX, scheme::WENO{N}, ψ, args...) where N
                             order = $calculate_order(i, grid.Nx, Val(N))
@@ -159,7 +162,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
                                $alt_interp(i, j, k, grid, scheme.buffer_scheme, args...))
                 end
 
-                if bias == :biased
+                if bias == :left_biased || bias == :right_biased
                     @eval begin 
                         @inline function $alt_interp(i, j, k, grid::AUGY, scheme::WENO{N}, ψ, args...) where N
                             order = $calculate_order(j, grid.Ny, Val(N))
@@ -174,7 +177,8 @@ for bias in (:symmetric, :left_biased, :right_biased)
                                $interp(i, j, k, grid, scheme, args...),
                                $alt_interp(i, j, k, grid, scheme.buffer_scheme, args...))
                 end
-                if bias == :biased
+                
+                if bias == :left_biased || bias == :right_biased
                     @eval begin 
                         @inline function $alt_interp(i, j, k, grid::AUGZ, scheme::WENO{N}, ψ, args...) where N
                             order = $calculate_order(k, grid.Nz, Val(N))
