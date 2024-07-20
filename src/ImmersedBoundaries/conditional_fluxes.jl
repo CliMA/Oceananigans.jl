@@ -1,4 +1,4 @@
-using Oceananigans.Advection: AbstractAdvectionScheme, advection_buffers
+using Oceananigans.Advection: AbstractAdvectionScheme, advection_buffers, WENO
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑxᶜᵃᵃ, ℑyᵃᶠᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, ℑzᵃᵃᶜ 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization
 
@@ -164,22 +164,85 @@ for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :lef
     end
 end
 
-# Horizontal inactive stencil calculation for vector invariant WENO schemes that use velocity as a smoothness indicator
-for (bias, shift) in zip((:symmetric, :left_biased, :right_biased), (:none, :left, :right))
-    near_x_horizontal_boundary = Symbol(:near_x_horizontal_boundary_, bias)
-    near_y_horizontal_boundary = Symbol(:near_y_horizontal_boundary_, bias)
+for (bias, shift) in zip((:left_biased, :right_biased), (:left, :right)), side in (:ᶜ, :ᶠ)
+    calculate_immersed_order_x = Symbol(:calculate_immersed_order_x, bias, side)
+    calculate_immersed_order_y = Symbol(:calculate_immersed_order_y, bias, side)
+    calculate_immersed_order_z = Symbol(:calculate_immersed_order_z, bias, side)
     
-    for buffer in advection_buffers
-        @eval begin
-            @inline $near_x_horizontal_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = 
-                @inbounds (|)($(calc_inactive_stencil(buffer+1, shift, :x, :ᶜ; yside = :ᶜ)...), 
-                              $(calc_inactive_stencil(buffer,   shift, :x, :ᶜ; xside = :ᶜ)...), 
-                              $(calc_inactive_stencil(buffer,   shift, :x, :ᶜ; xside = :ᶜ, yshift = 1)...))
+    @eval begin
+        function $calculate_immersed_order_x(i, j, k, ibg, scheme::WENO{2})
+            S = $(calc_inactive_stencil(2, shift, :x, side; xside = side)...)
+            return @inbounds 1 + S[1] * S[3]
+        end
 
-            @inline $near_y_horizontal_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) =
-                @inbounds (|)($(calc_inactive_stencil(buffer+1, shift, :y, :ᶜ; xside = :ᶜ)...),
-                              $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ)...),
-                              $(calc_inactive_stencil(buffer,   shift, :y, :ᶜ; yside = :ᶜ, xshift = 1)...))
+        function $calculate_immersed_order_x(i, j, k, ibg, scheme::WENO{3})
+            S = $(calc_inactive_stencil(3, shift, :x, side; xside = side)...)
+            return @inbounds 1 + S[2] * S[4] * (1 + S[1] * S[5]) 
+        end
+
+        function $calculate_immersed_order_x(i, j, k, ibg, scheme::WENO{4})
+            S = $(calc_inactive_stencil(4, shift, :x, side; xside = side)...)
+            return @inbounds 1 + S[3] * S[5] * (1 + S[2] * S[6] * (1 + S[1] * S[7])) 
+        end
+
+        function $calculate_immersed_order_x(i, j, k, ibg, scheme::WENO{5})
+            S = $(calc_inactive_stencil(5, shift, :x, side; xside = side)...)
+            return @inbounds 1 + S[4] * S[6] * (1 + S[3] * S[7] * (1 + S[2] * S[8] * (1 + S[1] * S[9]))) 
+        end
+
+        function $calculate_immersed_order_x(i, j, k, ibg, scheme::WENO{6})
+            S = $(calc_inactive_stencil(3, shift, :x, side; xside = side)...)
+            return @inbounds 1 + S[5] * S[7] * (1 + S[4] * S[8] * (1 + S[3] * S[9] * (1 + S[2] * S[10] * (1 + S[1] * S[11])))) 
+        end
+
+        function $calculate_immersed_order_y(i, j, k, ibg, scheme::WENO{2})
+            S = $(calc_inactive_stencil(2, shift, :y, side; yside = side)...)
+            return @inbounds 1 + S[1] * S[3]
+        end
+
+        function $calculate_immersed_order_y(i, j, k, ibg, scheme::WENO{3})
+            S = $(calc_inactive_stencil(3, shift, :y, side; yside = side)...)
+            return @inbounds 1 + S[2] * S[4] * (1 + S[1] * S[5]) 
+        end
+
+        function $calculate_immersed_order_y(i, j, k, ibg, scheme::WENO{4})
+            S = $(calc_inactive_stencil(4, shift, :y, side; yside = side)...)
+            return @inbounds 1 + S[3] * S[5] * (1 + S[2] * S[6] * (1 + S[1] * S[7])) 
+        end
+
+        function $calculate_immersed_order_y(i, j, k, ibg, scheme::WENO{5})
+            S = $(calc_inactive_stencil(5, shift, :y, side; yside = side)...)
+            return @inbounds 1 + S[4] * S[6] * (1 + S[3] * S[7] * (1 + S[2] * S[8] * (1 + S[1] * S[9]))) 
+        end
+
+        function $calculate_immersed_order_y(i, j, k, ibg, scheme::WENO{6})
+            S = $(calc_inactive_stencil(3, shift, :y, side; yside = side)...)
+            return @inbounds 1 + S[5] * S[7] * (1 + S[4] * S[8] * (1 + S[3] * S[9] * (1 + S[2] * S[10] * (1 + S[1] * S[11])))) 
+        end
+
+        function $calculate_immersed_order_z(i, j, k, ibg, scheme::WENO{2})
+            S = $(calc_inactive_stencil(2, shift, :z, side; zside = side)...)
+            return @inbounds 1 + S[1] * S[3]
+        end
+
+        function $calculate_immersed_order_z(i, j, k, ibg, scheme::WENO{3})
+            S = $(calc_inactive_stencil(3, shift, :z, side; zside = side)...)
+            return @inbounds 1 + S[2] * S[4] * (1 + S[1] * S[5]) 
+        end
+
+        function $calculate_immersed_order_z(i, j, k, ibg, scheme::WENO{4})
+            S = $(calc_inactive_stencil(4, shift, :z, side; zside = side)...)
+            return @inbounds 1 + S[3] * S[5] * (1 + S[2] * S[6] * (1 + S[1] * S[7])) 
+        end
+
+        function $calculate_immersed_order_z(i, j, k, ibg, scheme::WENO{5})
+            S = $(calc_inactive_stencil(5, shift, :z, side; zside = side)...)
+            return @inbounds 1 + S[4] * S[6] * (1 + S[3] * S[7] * (1 + S[2] * S[8] * (1 + S[1] * S[9]))) 
+        end
+
+        function $calculate_immersed_order_z(i, j, k, ibg, scheme::WENO{6})
+            S = $(calc_inactive_stencil(3, shift, :z, side; zside = side)...)
+            return @inbounds 1 + S[5] * S[7] * (1 + S[4] * S[8] * (1 + S[3] * S[9] * (1 + S[2] * S[10] * (1 + S[1] * S[11])))) 
         end
     end
 end
@@ -198,6 +261,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
             alt_interp = Symbol(:_, interp)
 
             near_boundary = Symbol(:near_, ξ, :_immersed_boundary_, bias, loc)
+            calculate_immersed_order = Symbol(:calculate_immersed_order_, ξ, bias, loc)
 
             @eval begin
                 import Oceananigans.Advection: $alt_interp
@@ -211,6 +275,18 @@ for bias in (:symmetric, :left_biased, :right_biased)
                     ifelse($near_boundary(i, j, k, ibg, scheme),
                            $alt_interp(i, j, k, ibg, scheme.buffer_scheme, args...),
                            $interp(i, j, k, ibg, scheme, args...))
+            end
+            
+            if bias == :biased
+                @eval begin 
+                    import Oceananigans.Advection: $alt_interp
+                    using Oceananigans.Advection: $interp
+    
+                    @inline function $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO{N}, ψ, args...) where N
+                        order = $calculate_immersed_order(i, j, k, ibg, scheme)
+                        return $interp(i, j, k, ibg, scheme, ψ, order, args...)
+                    end
+                end
             end
         end
     end
