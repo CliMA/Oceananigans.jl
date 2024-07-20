@@ -191,7 +191,7 @@ for (bias, shift) in zip((:left_biased, :right_biased), (:left, :right)), side i
         end
 
         function $calculate_immersed_order_x(i, j, k, ibg, scheme::WENO{6})
-            S = $(calc_inactive_stencil(3, shift, :x, side; xside = side)...)
+            S = $(calc_inactive_stencil(6, shift, :x, side; xside = side)...)
             return @inbounds 1 + S[5] * S[7] * (1 + S[4] * S[8] * (1 + S[3] * S[9] * (1 + S[2] * S[10] * (1 + S[1] * S[11])))) 
         end
 
@@ -216,7 +216,7 @@ for (bias, shift) in zip((:left_biased, :right_biased), (:left, :right)), side i
         end
 
         function $calculate_immersed_order_y(i, j, k, ibg, scheme::WENO{6})
-            S = $(calc_inactive_stencil(3, shift, :y, side; yside = side)...)
+            S = $(calc_inactive_stencil(6, shift, :y, side; yside = side)...)
             return @inbounds 1 + S[5] * S[7] * (1 + S[4] * S[8] * (1 + S[3] * S[9] * (1 + S[2] * S[10] * (1 + S[1] * S[11])))) 
         end
 
@@ -241,7 +241,7 @@ for (bias, shift) in zip((:left_biased, :right_biased), (:left, :right)), side i
         end
 
         function $calculate_immersed_order_z(i, j, k, ibg, scheme::WENO{6})
-            S = $(calc_inactive_stencil(3, shift, :z, side; zside = side)...)
+            S = $(calc_inactive_stencil(6, shift, :z, side; zside = side)...)
             return @inbounds 1 + S[5] * S[7] * (1 + S[4] * S[8] * (1 + S[3] * S[9] * (1 + S[2] * S[10] * (1 + S[1] * S[11])))) 
         end
     end
