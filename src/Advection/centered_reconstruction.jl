@@ -95,6 +95,11 @@ const ACAS = AbstractCenteredAdvectionScheme
 @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::ACAS, bias, c, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, c, args...)
 @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::ACAS, bias, c, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, c, args...)
 
+# left and right biased for Centered reconstruction are just symmetric!
+@inline biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::ACAS, bias, c, args...) = symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, c, args...)
+@inline biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::ACAS, bias, c, args...) = symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, c, args...)
+@inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::ACAS, bias, c, args...) = symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, c, args...)
+
 # uniform centered reconstruction
 for buffer in advection_buffers
     @eval begin
