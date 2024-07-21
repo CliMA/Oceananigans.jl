@@ -88,13 +88,6 @@ const ε = 1e-8
 @inline Cl(::Val{5}, order, ::Val{3}) = ifelse(order == 5, 10/63, Cl(Val(4), order, Val(3)))
 @inline Cl(::Val{5}, order, ::Val{4}) = ifelse(order == 5, 1/126, 0.0)
 
-@inline Cl(::Val{6}, order, ::Val{0}) = ifelse(order == 6, 1/77,    Cl(Val(5), order, Val(0)))  
-@inline Cl(::Val{6}, order, ::Val{1}) = ifelse(order == 6, 25/154,  Cl(Val(5), order, Val(1))) 
-@inline Cl(::Val{6}, order, ::Val{2}) = ifelse(order == 6, 100/231, Cl(Val(5), order, Val(2)))  
-@inline Cl(::Val{6}, order, ::Val{3}) = ifelse(order == 6, 25/77,   Cl(Val(5), order, Val(3)))  
-@inline Cl(::Val{6}, order, ::Val{4}) = ifelse(order == 6, 5/77,    Cl(Val(5), order, Val(4))) 
-@inline Cl(::Val{6}, order, ::Val{5}) = ifelse(order == 6, 1/462,   0.0)
-
 # ENO reconstruction procedure per stencil 
 for buffer in [2, 3, 4, 5, 6]
     for stencil in collect(0:1:buffer-1)
@@ -135,15 +128,15 @@ end
 end
 
 # Smoothness indicators for stencil `stencil` for left and right biased reconstruction
-for buffer in [2, 3, 4, 5, 6]
+for buffer in [2, 3, 4, 5]
     @eval begin
         @inline smoothness_sum(scheme::WENO{$buffer}, ψ, C) = @inbounds $(metaprogrammed_smoothness_sum(buffer))
     end
 
-    for stencil in [0, 1, 2, 3, 4, 5]
+    for stencil in [0, 1, 2, 3, 4]
         @eval begin
-            @inline  left_biased_β(ψ, scheme::WENO{$buffer}, order, ::Val{$stencil}) = @inbounds smoothness_sum(scheme, ψ, β_coefficients(order, Val($buffer), Val($stencil)))
-            @inline right_biased_β(ψ, scheme::WENO{$buffer}, order, ::Val{$stencil}) = @inbounds smoothness_sum(scheme, ψ, β_coefficients(order, Val($buffer), Val($stencil)))
+            @inline  left_biased_β(ψ, scheme::WENO{$buffer}, order, ::Val{$stencil}) = @inbounds smoothness_sum(scheme, ψ, β_coefficients(Val($buffer), Val(order), Val($stencil)))
+            @inline right_biased_β(ψ, scheme::WENO{$buffer}, order, ::Val{$stencil}) = @inbounds smoothness_sum(scheme, ψ, β_coefficients(Val($buffer), Val(order), Val($stencil)))
         end
     end
 end
@@ -188,7 +181,7 @@ end
     return :($(elem...),)
 end
 
-for buffer in [2, 3, 4, 5, 6]
+for buffer in [2, 3, 4, 5]
     @eval begin
         @inline         beta_sum(scheme::WENO{$buffer}, β₁, β₂)                 = @inbounds $(metaprogrammed_beta_sum(buffer))
         @inline        beta_loop(scheme::WENO{$buffer}, ψ, order, func)         = @inbounds $(metaprogrammed_beta_loop(buffer))
@@ -199,10 +192,9 @@ end
 
 # Global smoothness indicator τ₂ᵣ₋₁ taken from "Accuracy of the weighted essentially non-oscillatory conservative finite difference schemes", Don & Borges, 2013
 @inline global_smoothness_indicator(::Val{2}, order, β) = @inbounds abs(β[1] - β[2])
-@inline global_smoothness_indicator(::Val{3}, order, β) = @inbounds ifelse(order == 3 ,abs(β[1] - β[3]),                                       global_smoothness_indicator(Val(2), order, β))
-@inline global_smoothness_indicator(::Val{4}, order, β) = @inbounds ifelse(order == 4 ,abs(β[1] +  3β[2] -   3β[3] -    β[4]),                 global_smoothness_indicator(Val(3), order, β))
-@inline global_smoothness_indicator(::Val{5}, order, β) = @inbounds ifelse(order == 5 ,abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5]),          global_smoothness_indicator(Val(4), order, β))
-@inline global_smoothness_indicator(::Val{6}, order, β) = @inbounds ifelse(order == 6 ,abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6]), global_smoothness_indicator(Val(5), order, β))
+@inline global_smoothness_indicator(::Val{3}, order, β) = @inbounds ifelse(order == 3, abs(β[1] - β[3]),                                       global_smoothness_indicator(Val(2), order, β))
+@inline global_smoothness_indicator(::Val{4}, order, β) = @inbounds ifelse(order == 4, abs(β[1] +  3β[2] -   3β[3] -    β[4]),                 global_smoothness_indicator(Val(3), order, β))
+@inline global_smoothness_indicator(::Val{5}, order, β) = @inbounds ifelse(order == 5, abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5]),          global_smoothness_indicator(Val(4), order, β))
 
 # Calculating Dynamic WENO Weights (wᵣ), either with JS weno, Z weno or VectorInvariant WENO
 for (side, coeff) in zip([:left, :right], (:Cl, :Cr))

@@ -34,26 +34,6 @@ const AUGXYZ = AUG{<:Any, <:Bounded, <:Bounded, <:Bounded}
 @inline outside_right_biased_haloᶠ(i, N, adv) = (i >= required_halo_size(adv))     & (i <= N + 1 - required_halo_size(adv))
 @inline outside_right_biased_haloᶜ(i, N, adv) = (i >= required_halo_size(adv) - 1) & (i <= N + 1 - required_halo_size(adv))
 
-@inline function calculate_orderᶠ(i, N, ::Val{6}) 
-    Oᴺ   = (i >= 7) & (i <= N - 5) 
-    Oᴺ⁻¹ = (i >= 6) & (i <= N - 4)
-    Oᴺ⁻² = (i >= 5) & (i <= N - 3)
-    Oᴺ⁻³ = (i >= 4) & (i <= N - 2)
-    Oᴺ⁻⁴ = (i >= 3) & (i <= N - 1)
-    
-    return 1 + Oᴺ + Oᴺ⁻¹ + Oᴺ⁻² + Oᴺ⁻³ + Oᴺ⁻⁴
-end   
-
-@inline function calculate_orderᶜ(i, N, ::Val{6}) 
-    Oᴺ   = (i >= 6) & (i <= N - 5) 
-    Oᴺ⁻¹ = (i >= 5) & (i <= N - 4)
-    Oᴺ⁻² = (i >= 4) & (i <= N - 3)
-    Oᴺ⁻³ = (i >= 3) & (i <= N - 2)
-    Oᴺ⁻⁴ = (i >= 2) & (i <= N - 1)
-    
-    return 1 + Oᴺ + Oᴺ⁻¹ + Oᴺ⁻² + Oᴺ⁻³ + Oᴺ⁻⁴
-end   
-
 @inline function calculate_orderᶠ(i, N, ::Val{5}) 
     Oᴺ   = (i >= 6) & (i <= N - 4) 
     Oᴺ⁻¹ = (i >= 5) & (i <= N - 3)

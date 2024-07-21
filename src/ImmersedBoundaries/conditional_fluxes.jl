@@ -170,79 +170,62 @@ for (bias, shift) in zip((:left_biased, :right_biased), (:left, :right)), side i
     calculate_immersed_order_z = Symbol(:calculate_immersed_order_z, bias, side)
     
     @eval begin
-        function $calculate_immersed_order_x(i, j, k, ibg, scheme::WENO{2})
-            S = $(calc_inactive_stencil(2, shift, :x, side; xside = side)...)
-            return @inbounds 1 + S[1] * S[3]
-        end
+        $calculate_immersed_order_x(i, j, k, ibg, scheme::WENO{2}) = 2
+        $calculate_immersed_order_y(i, j, k, ibg, scheme::WENO{2}) = 2
+        $calculate_immersed_order_z(i, j, k, ibg, scheme::WENO{2}) = 2
 
-        function $calculate_immersed_order_x(i, j, k, ibg, scheme::WENO{3})
+        @inline function $calculate_immersed_order_x(i, j, k, ibg, scheme::WENO{3})
             S = $(calc_inactive_stencil(3, shift, :x, side; xside = side)...)
-            return @inbounds 1 + S[2] * S[4] * (1 + S[1] * S[5]) 
+            N = @inbounds 1 + S[2] * S[4] * (1 + S[1] * S[5]) 
+            return max(N, 2)
         end
 
-        function $calculate_immersed_order_x(i, j, k, ibg, scheme::WENO{4})
+        @inline function $calculate_immersed_order_x(i, j, k, ibg, scheme::WENO{4})
             S = $(calc_inactive_stencil(4, shift, :x, side; xside = side)...)
-            return @inbounds 1 + S[3] * S[5] * (1 + S[2] * S[6] * (1 + S[1] * S[7])) 
+            N = @inbounds 1 + S[3] * S[5] * (1 + S[2] * S[6] * (1 + S[1] * S[7])) 
+            return max(N, 2)
         end
 
-        function $calculate_immersed_order_x(i, j, k, ibg, scheme::WENO{5})
+        @inline function $calculate_immersed_order_x(i, j, k, ibg, scheme::WENO{5})
             S = $(calc_inactive_stencil(5, shift, :x, side; xside = side)...)
-            return @inbounds 1 + S[4] * S[6] * (1 + S[3] * S[7] * (1 + S[2] * S[8] * (1 + S[1] * S[9]))) 
+            N = @inbounds 1 + S[4] * S[6] * (1 + S[3] * S[7] * (1 + S[2] * S[8] * (1 + S[1] * S[9]))) 
+            return max(N, 2)
         end
 
-        function $calculate_immersed_order_x(i, j, k, ibg, scheme::WENO{6})
-            S = $(calc_inactive_stencil(6, shift, :x, side; xside = side)...)
-            return @inbounds 1 + S[5] * S[7] * (1 + S[4] * S[8] * (1 + S[3] * S[9] * (1 + S[2] * S[10] * (1 + S[1] * S[11])))) 
-        end
-
-        function $calculate_immersed_order_y(i, j, k, ibg, scheme::WENO{2})
-            S = $(calc_inactive_stencil(2, shift, :y, side; yside = side)...)
-            return @inbounds 1 + S[1] * S[3]
-        end
-
-        function $calculate_immersed_order_y(i, j, k, ibg, scheme::WENO{3})
+        @inline function $calculate_immersed_order_y(i, j, k, ibg, scheme::WENO{3})
             S = $(calc_inactive_stencil(3, shift, :y, side; yside = side)...)
-            return @inbounds 1 + S[2] * S[4] * (1 + S[1] * S[5]) 
+            N = @inbounds 1 + S[2] * S[4] * (1 + S[1] * S[5]) 
+            return max(N, 2)
         end
 
-        function $calculate_immersed_order_y(i, j, k, ibg, scheme::WENO{4})
+        @inline function $calculate_immersed_order_y(i, j, k, ibg, scheme::WENO{4})
             S = $(calc_inactive_stencil(4, shift, :y, side; yside = side)...)
-            return @inbounds 1 + S[3] * S[5] * (1 + S[2] * S[6] * (1 + S[1] * S[7])) 
+            N = @inbounds 1 + S[3] * S[5] * (1 + S[2] * S[6] * (1 + S[1] * S[7])) 
+            return max(N, 2)
         end
 
-        function $calculate_immersed_order_y(i, j, k, ibg, scheme::WENO{5})
+        @inline function $calculate_immersed_order_y(i, j, k, ibg, scheme::WENO{5})
             S = $(calc_inactive_stencil(5, shift, :y, side; yside = side)...)
-            return @inbounds 1 + S[4] * S[6] * (1 + S[3] * S[7] * (1 + S[2] * S[8] * (1 + S[1] * S[9]))) 
+            N = @inbounds 1 + S[4] * S[6] * (1 + S[3] * S[7] * (1 + S[2] * S[8] * (1 + S[1] * S[9]))) 
+            return max(N, 2)
         end
 
-        function $calculate_immersed_order_y(i, j, k, ibg, scheme::WENO{6})
-            S = $(calc_inactive_stencil(6, shift, :y, side; yside = side)...)
-            return @inbounds 1 + S[5] * S[7] * (1 + S[4] * S[8] * (1 + S[3] * S[9] * (1 + S[2] * S[10] * (1 + S[1] * S[11])))) 
-        end
-
-        function $calculate_immersed_order_z(i, j, k, ibg, scheme::WENO{2})
-            S = $(calc_inactive_stencil(2, shift, :z, side; zside = side)...)
-            return @inbounds 1 + S[1] * S[3]
-        end
-
-        function $calculate_immersed_order_z(i, j, k, ibg, scheme::WENO{3})
+        @inline function $calculate_immersed_order_z(i, j, k, ibg, scheme::WENO{3})
             S = $(calc_inactive_stencil(3, shift, :z, side; zside = side)...)
-            return @inbounds 1 + S[2] * S[4] * (1 + S[1] * S[5]) 
+            N = @inbounds 1 + S[2] * S[4] * (1 + S[1] * S[5]) 
+            return max(N, 2)
         end
 
-        function $calculate_immersed_order_z(i, j, k, ibg, scheme::WENO{4})
+        @inline function $calculate_immersed_order_z(i, j, k, ibg, scheme::WENO{4})
             S = $(calc_inactive_stencil(4, shift, :z, side; zside = side)...)
-            return @inbounds 1 + S[3] * S[5] * (1 + S[2] * S[6] * (1 + S[1] * S[7])) 
+            N = @inbounds 1 + S[3] * S[5] * (1 + S[2] * S[6] * (1 + S[1] * S[7])) 
+            return max(N, 2)
         end
 
-        function $calculate_immersed_order_z(i, j, k, ibg, scheme::WENO{5})
+        @inline function $calculate_immersed_order_z(i, j, k, ibg, scheme::WENO{5})
             S = $(calc_inactive_stencil(5, shift, :z, side; zside = side)...)
-            return @inbounds 1 + S[4] * S[6] * (1 + S[3] * S[7] * (1 + S[2] * S[8] * (1 + S[1] * S[9]))) 
-        end
-
-        function $calculate_immersed_order_z(i, j, k, ibg, scheme::WENO{6})
-            S = $(calc_inactive_stencil(6, shift, :z, side; zside = side)...)
-            return @inbounds 1 + S[5] * S[7] * (1 + S[4] * S[8] * (1 + S[3] * S[9] * (1 + S[2] * S[10] * (1 + S[1] * S[11])))) 
+            N = @inbounds 1 + S[4] * S[6] * (1 + S[3] * S[7] * (1 + S[2] * S[8] * (1 + S[1] * S[9]))) 
+            return max(N, 2)
         end
     end
 end
@@ -265,7 +248,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
 
             @eval begin
                 import Oceananigans.Advection: $alt_interp
-                using Oceananigans.Advection: $interp
+                 using Oceananigans.Advection: $interp
 
                 # Fallback for low order interpolation
                 @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, args...) = $interp(i, j, k, ibg.underlying_grid, scheme, args...)
@@ -280,9 +263,9 @@ for bias in (:symmetric, :left_biased, :right_biased)
             if bias == :left_biased || bias == :right_biased
                 @eval begin 
                     import Oceananigans.Advection: $alt_interp
-                    using Oceananigans.Advection: $interp
+                     using Oceananigans.Advection: $interp
     
-                    @inline function $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO{N}, ψ, args...) where N
+                    @inline function $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::WENO, ψ, args...) 
                         order = $calculate_immersed_order(i, j, k, ibg, scheme)
                         return $interp(i, j, k, ibg, scheme, ψ, order, args...)
                     end
