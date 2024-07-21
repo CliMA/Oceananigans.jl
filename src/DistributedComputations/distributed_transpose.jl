@@ -122,61 +122,65 @@ for (from, to, buff) in zip([:y, :z, :y, :x], [:z, :y, :x, :y], [:yz, :yz, :xy, 
 
     @eval begin
         """
-            function $($transpose_name)(pf::TransposableField)
+            $($transpose_name)(pf::TransposableField)
 
-        transpose the fields in `TransposableField` from a $($from_name)-local configuration (located in `pf.$($from_name)field`) to
-        a $($to_name)-local configuration located in `pf.$($to_name)field`
+        Transpose the fields in `TransposableField` from a $($from_name)-local configuration
+        (located in `pf.$($from_name)field`) to a $($to_name)-local configuration located
+        in `pf.$($to_name)field`.
 
         Transpose Algorithm:
         ====================
-        
-         The transpose algorithm works in the following manner
-        
-         1. We `pack` the three-dimensional data into a one-dimensional buffer to be sent to the other cores
-            We need to synchronize the GPU afterwards before any communication can take place. The packing is
-            done in the `$($pack_buffer_name)` function
-        
-         2. The one-dimensional is communicated to all the cores using an inplace `Alltoallv!` MPI
-            routine. From the MPI.jl documentation ():
-            Every process divides the Buffer into Comm_size(comm) chunks of equal size, 
-            sending the j-th chunk to the process of rank j-1. Every process stores the data received from rank j-1 process 
-            in the j-th chunk of the buffer.
-         
+
+        The transpose algorithm works in the following manner
+
+        1. We `pack` the three-dimensional data into a one-dimensional buffer to be sent to the other cores
+           We need to synchronize the GPU afterwards before any communication can take place. The packing is
+           done in the `$($pack_buffer_name)` function.
+
+        2. The one-dimensional is communicated to all the cores using an inplace `Alltoallv!` MPI
+           routine. From the [MPI.jl documentation]():
+
+           Every process divides the Buffer into `Comm_size(comm)` chunks of equal size,
+           sending the j-th chunk to the process of rank j-1. Every process stores the data received from rank j-1 process
+           in the j-th chunk of the buffer.
+
+           ```
            rank    send buf                             recv buf
            ----    --------                             --------
-            0      a, b, c, d, e, f       Alltoall      a, b, A, B, α, β
-            1      A, B, C, D, E, F  ---------------->  c, d, C, D, γ, ψ
-            2      α, β, γ, ψ, η, ν                     e, f, E, F, η, ν
-         
-           The `Alltoallv` function allows chunks of different sizes to be sent to different cores by passing a `count`, 
+           0      a, b, c, d, e, f       Alltoall      a, b, A, B, α, β
+           1      A, B, C, D, E, F  ---------------->  c, d, C, D, γ, ψ
+           2      α, β, γ, ψ, η, ν                     e, f, E, F, η, ν
+           ```
+
+           The `Alltoallv` function allows chunks of different sizes to be sent to different cores by passing a `count`,
            for the moment, chunks of the same size are passed, requiring that the ranks divide the number of grid
-           cells evenly
-        
-         3. Once the chunks have been communicated, we `unpack` the received one-dimensional buffer into the three-dimensional
-            field making sure the configuration of the data fits the reshaping. The unpacking is
-            done in the `$($unpack_buffer_name)` function
+           cells evenly.
+
+        3. Once the chunks have been communicated, we `unpack` the received one-dimensional buffer into the three-dimensional
+           field making sure the configuration of the data fits the reshaping. The unpacking is
+           done via the `$($unpack_buffer_name)` function.
 
         Limitations:
         ============
 
-         - The tranpose is configured to work only in the following four directions:
+        - The tranpose is configured to work only in the following four directions:
          
-           1. z-local to y-local
-           2. y-local to x-local
-           3. x-local to y-local
-           4. y-local to z-local
-  
-           i.e. there is no direct transpose connecting a x-local to a z-local configuration
-         
-         - Since (at the moment) the Alltoallv allows only chunks of the same size to be communicated, and 
-           x-local and z-local only communicate through the y-local configuration, the limitations are that:
+          1. z-local to y-local
+          2. y-local to x-local
+          3. x-local to y-local
+          4. y-local to z-local
 
-           1. The number of ranks that divide the x-direction should divide evenly the y-direction
-           2. The number of ranks that divide the y-direction should divide evenly the x-direction
+          i.e., there is no direct transpose connecting a x-local to a z-local configuration.
 
-           which implies that
+        - Since (at the moment) the `Alltoallv` allows only chunks of the same size to be communicated, and
+          x-local and z-local only communicate through the y-local configuration, the limitations are that:
 
-           3. For 2D fields in XY (flat z-direction) we can traspose only if the partitioning is in X          
+          * The number of ranks that divide the x-direction should divide evenly the y-direction
+          * The number of ranks that divide the y-direction should divide evenly the x-direction
+
+          which implies that
+
+          * For 2D fields in XY (flat z-direction) we can traspose only if the partitioning is in X
         """
         function $transpose!(pf::TransposableField)
             $pack_buffer!(pf.$buffer, pf.$fromfield) # pack the one-dimensional buffer for Alltoallv! call
