@@ -69,22 +69,6 @@ end
     top_c_bc = FluxBoundaryCondition(tracer_flux, field_dependencies=:c)
     c_bcs = FieldBoundaryConditions(top=top_c_bc)
 
-    # TODO:
-    # 1. Make the velocity fields evolve
-    # 2. Add surface fluxes
-    # 3. Do a problem where we invert for the tracer fluxes (maybe with CATKE)
-
-    model = HydrostaticFreeSurfaceModel(; grid,
-                                        tracers = :c,
-                                        buoyancy = nothing,
-                                        boundary_conditions = (; c=c_bcs),
-                                        closure = diffusion)
-
-    dmodel = Enzyme.make_zero(model)
-
-    thing  = tuple(model.tracers[1].boundary_conditions)
-    dthing = tuple(dmodel.tracers[1].boundary_conditions)
-
     new_thing = FieldBoundaryConditions(grid, (Center, Center, nothing);
                                         west = PeriodicBoundaryCondition(),
                                         east = PeriodicBoundaryCondition(),
@@ -93,22 +77,6 @@ end
                                         bottom = NoFluxBoundaryCondition(),
                                         top = FluxBoundaryCondition(tracer_flux, field_dependencies=:c),
                                         immersed = NoFluxBoundaryCondition())
-
-    #prognostic_field_names = tuple(:c)
-    #default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions() for name in prognostic_field_names))
-    #@show default_boundary_conditions
-
-    #new_thing = merge(default_boundary_conditions, new_thing)
-    #=
-    cbf = ContinuousBoundaryFunction(tracer_flux,
-                                            nothing,
-                                            :c,
-                                            (Nx, Ny, Nz),
-                                            (Center, Center, Nothing))
-
-    @show cbf
-    =#
-    #new_thing = tuple(regularize_field_boundary_conditions(new_thing, grid, :c))
 
     loc = (Center, Center, Nothing)
     top = regularize_boundary_condition(new_thing.top, grid, loc, 3, RightBoundary, tuple(:c))
@@ -123,10 +91,7 @@ end
                                         immersed = NoFluxBoundaryCondition())
 
     dnew_thing = Enzyme.make_zero(new_thing)
-
-    @show tuple(c_bcs)
-    @show thing
-    #@show dthing
+    
     @show new_thing
     #@show dnew_thing
     
