@@ -210,7 +210,7 @@ end
 end
 
 # JS α weights C★ᵣ / (βᵣ + ε))ᵖ
-@inline function metaprogrammed_zweno_alpha_loop(buffer)
+@inline function metaprogrammed_js_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
         elem[stencil] = :(convert(FT, C★(scheme, Val($(stencil-1)))) / (β[$stencil] + FT(ε))^ƞ)
