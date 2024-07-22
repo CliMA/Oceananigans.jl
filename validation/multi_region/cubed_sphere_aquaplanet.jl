@@ -291,7 +291,59 @@ free_surface       = SplitExplicitFreeSurface(grid; substeps, extended_halos = f
 
 νh = 5e+2
 κh = 1e+2 
-horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh, κ=κh) # Laplacian viscosity and diffusivity
+
+import Oceananigans.TurbulenceClosures: AbstractScalarDiffusivity, HorizontalFormulation, DiffusivityFields,
+    compute_diffusivities!, viscosity, diffusivity, diffusive_flux_x, diffusive_flux_y, diffusive_flux_z
+
+struct Smagorinsky{FT} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation, 2}
+    Cₛ :: FT
+end
+
+Smagorinsky(FT::DataType = Float64; C = FT(0.15)) = Smagorinsky(C)
+
+DiffusivityFields(grid, tracer_names, bcs, ::Smagorinsky) = (; νₑ = CenterField(grid))
+
+@inline Dₛ(i, j, k, grid, u, v) = ∂xᶜᶜᶜ(i, j, k, grid, u) - ∂yᶜᶜᶜ(i, j, k, grid, v)
+@inline Dₜ(i, j, k, grid, u, v) = ∂xᶠᶠᶜ(i, j, k, grid, v) + ∂yᶠᶠᶜ(i, j, k, grid, u)
+
+# Filter width squared, expressed as a harmonic mean of x and y spacings
+@inline Δ²ᶜᶜᶜ(i, j, k, grid) =  2 * (1 / (1 / Δx(i, j, k, grid, Center(), Center(), Center())^2
+                                          + 1 / Δy(i, j, k, grid, Center(), Center(), Center())^2))
+
+@kernel function _calculate_smagorinsky_viscosity!(νₑ, grid, closure, velocities)
+    i, j, k = @index(Global, NTuple)
+    u, v, w = velocities
+
+    δ₁ = Dₛ(i, j, k, grid, u, v)
+    δ₂ = ℑxyᶜᶜᵃ(i, j, k, grid, Dₜ, u, v)
+    A  = Δ²ᶜᶜᶜ(i, j, k, grid)
+
+    @inbounds νₑ[i, j, k] = A * closure.Cₛ * sqrt(δ₁^2 + δ₂^2)
+end
+
+function compute_diffusivities!(diffusivity_fields, closure::Smagorinsky, model; parameters)
+    arch = model.architecture
+    grid = model.grid
+    velocities = model.velocities
+
+    @apply_regionally launch!(arch, grid, parameters, _calculate_smagorinsky_viscosity!, diffusivity_fields.νₑ, grid,
+                              closure, velocities)
+
+    return nothing
+end
+
+@inline viscosity(::Smagorinsky, K) = K.νₑ
+
+#####
+##### Abstract Smagorinsky functionality
+#####
+
+@inline diffusive_flux_x(i, j, k, grid, closure::Smagorinsky, diffusivities, ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index = zero(grid)
+@inline diffusive_flux_y(i, j, k, grid, closure::Smagorinsky, diffusivities, ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index = zero(grid)
+@inline diffusive_flux_z(i, j, k, grid, closure::Smagorinsky, diffusivities, ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index = zero(grid)
+
+horizontal_viscosity = Smagorinsky() # Smagorinsky viscosity
+horizontal_diffusivity = HorizontalScalarDiffusivity(κ=κh) # Laplacian diffusivity
 
 νz_surface = 1e-3
 νz_bottom = 1e-4
@@ -329,7 +381,8 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                       tracer_advection,
                                       free_surface,
                                       coriolis,
-                                      closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment),
+                                      closure = (horizontal_viscosity, horizontal_diffusivity, vertical_diffusivity,
+                                                 convective_adjustment),
                                       tracers = :b,
                                       buoyancy = BuoyancyTracer(),
                                       boundary_conditions = (u = u_bcs, v = v_bcs, b = b_bcs))
