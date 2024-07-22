@@ -7,10 +7,27 @@ Enzyme.API.runtimeActivity!(true)
 Enzyme.API.looseTypeAnalysis!(true)
 Enzyme.API.maxtypeoffset!(2032)
 
-using Oceananigans
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions, DefaultBoundaryCondition, PeriodicBoundaryCondition, regularize_field_boundary_conditions, regularize_boundary_condition, RightBoundary
+mutable struct FieldBoundaryConditions{S, N, B, T}
+       south :: S
+       north :: N
+      bottom :: B
+         top :: T
+end
 
-using Oceananigans.Operators: assumed_field_location
+struct ContinuousBoundaryFunction{X, Y, Z, F, P, D, N}
+                          func :: F
+                    parameters :: P
+            field_dependencies :: D
+    field_dependencies_indices :: N
+
+    function ContinuousBoundaryFunction{X, Y, Z}(func::F,
+                                                    parameters::P,
+                                                    field_dependencies::D,
+                                                    field_dependencies_indices::N) where {X, Y, Z, F, P, D, N}
+
+        return new{X, Y, Z, F, P, D, N}(func, parameters, field_dependencies, field_dependencies_indices)
+    end
+end
 
 for dir in (:south, :north, :bottom, :top)
     extract_side_bc = Symbol(:extract_, dir, :_bc)
@@ -37,31 +54,17 @@ function fill_halo_regions_low!(boundary_conditions, args...; kwargs...)
 end
 
 @testset "Enzyme on advection and diffusion WITH flux boundary condition" begin
-    Nx = Ny = 64
-    Nz = 8
-
-    Lx = Ly = L = 2π
-    Lz = 1
-
-    x = y = (-L/2, L/2)
-    z = (-Lz/2, Lz/2)
-    topology = (Periodic, Periodic, Bounded)
-
-    grid = RectilinearGrid(size=(Nx, Ny, Nz); x, y, z, topology)
 
     @inline function tracer_flux(x, y, t, c)
         return c
     end
 
-    top_c_bc = FluxBoundaryCondition(tracer_flux, field_dependencies=:c)
+    regularized_boundary_func = ContinuousBoundaryFunction{Center, Center, nothing}(tracer_flux,
+                                            nothing,
+                                            tuple(:c),
+                                            (1,))
 
-    loc = (Center, Center, nothing)
-    top = regularize_boundary_condition(top_c_bc, grid, loc, 3, RightBoundary, tuple(:c))
-    
-    new_thing = FieldBoundaryConditions(; south = PeriodicBoundaryCondition(),
-                                          north = PeriodicBoundaryCondition(),
-                                          bottom = NoFluxBoundaryCondition(),
-                                          top = top)
+    new_thing = FieldBoundaryConditions((1,), (1,), (2,), tuple(regularized_boundary_func))
 
     dnew_thing = Enzyme.make_zero(new_thing)
     
@@ -70,21 +73,4 @@ end
                       Duplicated(new_thing, dnew_thing),
                       Duplicated((1,2), (0,0)),
                       Duplicated((3,4), (0,0)))
-    
-    #=
-    thing1 = Vector{Tuple{Tuple{BoundaryCondition{C, Nothing} where C<:Oceananigans.BoundaryConditions.AbstractBoundaryConditionClassification, BoundaryCondition{C, Nothing} where C<:Oceananigans.BoundaryConditions.AbstractBoundaryConditionClassification, BoundaryCondition{C, Nothing} where C<:Oceananigans.BoundaryConditions.AbstractBoundaryConditionClassification}, Tuple{BoundaryCondition{C, Nothing} where C<:Oceananigans.BoundaryConditions.AbstractBoundaryConditionClassification, BoundaryCondition{C, Nothing} where C<:Oceananigans.BoundaryConditions.AbstractBoundaryConditionClassification, BoundaryCondition}}}
-    thing2 = Int64
-    thing3 = Vector{Tuple{Tuple{BoundaryCondition{Flux, Nothing}, BoundaryCondition{Flux, Nothing}, BoundaryCondition{Flux, Nothing}}, Tuple{BoundaryCondition{Flux, Nothing}, BoundaryCondition{Flux, Nothing}, BoundaryCondition{Flux, Oceananigans.BoundaryConditions.ContinuousBoundaryFunction{Center, Center, Nothing, Oceananigans.BoundaryConditions.RightBoundary, var"#tracer_flux#23", Nothing, Tuple{Symbol}, Tuple{Int64}, Tuple{typeof(Oceananigans.Operators.identity4)}}}}}}
-    thing4 = Int64
-    thing5 = Int64
-
-    autodiff_thunk(ReverseSplitWithPrimal,
-                Const{typeof(Base._unsafe_copyto!)},
-                Active,
-                Duplicated{thing1},
-                Const{thing2},
-                Duplicated{thing3},
-                Const{thing4},
-                Const{thing5})
-    =#
 end
