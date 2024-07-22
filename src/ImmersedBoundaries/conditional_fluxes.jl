@@ -182,21 +182,27 @@ end
 
 for bias in (:symmetric, :biased)
     for (d, ξ) in enumerate((:x, :y, :z))
-
         code = [:ᵃ, :ᵃ, :ᵃ]
+
+        for loc in (:ᶜ, :ᶠ), alt in (:_, :__, :___, :____, :_____)
+            code[d] = loc
+            interp = Symbol(bias, :_interpolate_, ξ, code...)
+            alt_interp = Symbol(alt, interp)
+            @eval begin
+                import Oceananigans.Advection: $alt_interp
+                using Oceananigans.Advection: $interp
+            end
+        end
 
         for loc in (:ᶜ, :ᶠ), (alt1, alt2) in zip((:_, :__, :___, :____, :_____), (:_____, :_, :__, :___, :____))
             code[d] = loc
             interp = Symbol(bias, :_interpolate_, ξ, code...)
-            alt1_interp = Symbol(:_, interp)
-            alt2_interp = Symbol(:__, interp)
+            alt1_interp = Symbol(alt1, interp)
+            alt2_interp = Symbol(alt2, interp)
 
             near_boundary = Symbol(:near_, ξ, :_immersed_boundary_, bias, loc)
 
             @eval begin
-                import Oceananigans.Advection: $alt1_interp, $alt2_interp
-                using Oceananigans.Advection: $interp
-
                 # Fallback for low order interpolation
                 @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, args...) = $interp(i, j, k, ibg, scheme, args...)
                 
