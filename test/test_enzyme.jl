@@ -7,25 +7,18 @@ Enzyme.API.runtimeActivity!(true)
 Enzyme.API.looseTypeAnalysis!(true)
 Enzyme.API.maxtypeoffset!(2032)
 
-mutable struct FieldBoundaryConditions{S, N, B, T}
+mutable struct OuterStruct{S, N, B, T}
        south :: S
        north :: N
       bottom :: B
          top :: T
 end
 
-struct ContinuousBoundaryFunction{X, Y, Z, F, P, D, N}
-                          func :: F
-                    parameters :: P
-            field_dependencies :: D
-    field_dependencies_indices :: N
+struct InnerStruct{F}
+    func :: F
 
-    function ContinuousBoundaryFunction{X, Y, Z}(func::F,
-                                                    parameters::P,
-                                                    field_dependencies::D,
-                                                    field_dependencies_indices::N) where {X, Y, Z, F, P, D, N}
-
-        return new{X, Y, Z, F, P, D, N}(func, parameters, field_dependencies, field_dependencies_indices)
+    function InnerStruct(func::F) where {F}
+        return new{F}(func)
     end
 end
 
@@ -55,17 +48,13 @@ end
 
 @testset "Enzyme on advection and diffusion WITH flux boundary condition" begin
 
-    @inline function tracer_flux(x, y, t, c)
+    @inline function tracer_flux(c)
         return c
     end
 
-    regularized_boundary_func = ContinuousBoundaryFunction{Center, Center, nothing}(tracer_flux,
-                                            nothing,
-                                            tuple(:c),
-                                            (1,))
+    regularized_boundary_func = InnerStruct(tracer_flux)
 
-    new_thing = FieldBoundaryConditions((1,), (1,), (2,), tuple(regularized_boundary_func))
-
+    new_thing  = OuterStruct((1,), (1,), (2,), tuple(regularized_boundary_func))
     dnew_thing = Enzyme.make_zero(new_thing)
     
     dc²_dκ = autodiff(Enzyme.Reverse,
