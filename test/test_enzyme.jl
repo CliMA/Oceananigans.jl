@@ -8,8 +8,9 @@ Enzyme.API.looseTypeAnalysis!(true)
 Enzyme.API.maxtypeoffset!(2032)
 
 using Oceananigans
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, DefaultBoundaryCondition, PeriodicBoundaryCondition, regularize_field_boundary_conditions, regularize_boundary_condition, RightBoundary
 
-using Oceananigans.BoundaryConditions: PeriodicBoundaryCondition, FluxBoundaryCondition
+using Oceananigans.Operators: assumed_field_location
 
 
 EnzymeRules.inactive_type(::Type{<:Oceananigans.Clock}) = true
@@ -84,26 +85,57 @@ end
     thing  = tuple(model.tracers[1].boundary_conditions)
     dthing = tuple(dmodel.tracers[1].boundary_conditions)
 
-    new_thing = (south=PeriodicBoundaryCondition(),
-                 north=PeriodicBoundaryCondition(),
-                 bottom=FluxBoundaryCondition(nothing),
-                 top=top_c_bc)'
+    new_thing = FieldBoundaryConditions(grid, (Center, Center, nothing);
+                                        west = PeriodicBoundaryCondition(),
+                                        east = PeriodicBoundaryCondition(),
+                                        south = PeriodicBoundaryCondition(),
+                                        north = PeriodicBoundaryCondition(),
+                                        bottom = NoFluxBoundaryCondition(),
+                                        top = FluxBoundaryCondition(tracer_flux, field_dependencies=:c),
+                                        immersed = NoFluxBoundaryCondition())
 
-    dnew_thing = (south=PeriodicBoundaryCondition(),
-                 north=PeriodicBoundaryCondition(),
-                 bottom=FluxBoundaryCondition(nothing),
-                 top=top_c_bc)
+    #prognostic_field_names = tuple(:c)
+    #default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions() for name in prognostic_field_names))
+    #@show default_boundary_conditions
 
-    @show new_thing
+    #new_thing = merge(default_boundary_conditions, new_thing)
+    #=
+    cbf = ContinuousBoundaryFunction(tracer_flux,
+                                            nothing,
+                                            :c,
+                                            (Nx, Ny, Nz),
+                                            (Center, Center, Nothing))
+
+    @show cbf
+    =#
+    #new_thing = tuple(regularize_field_boundary_conditions(new_thing, grid, :c))
+
+    loc = (Center, Center, Nothing)
+    top = regularize_boundary_condition(new_thing.top, grid, loc, 3, RightBoundary, tuple(:c))
+    
+    new_thing = FieldBoundaryConditions(grid, (Center, Center, nothing);
+                                        west = PeriodicBoundaryCondition(),
+                                        east = PeriodicBoundaryCondition(),
+                                        south = PeriodicBoundaryCondition(),
+                                        north = PeriodicBoundaryCondition(),
+                                        bottom = NoFluxBoundaryCondition(),
+                                        top = top,
+                                        immersed = NoFluxBoundaryCondition())
+
+    dnew_thing = Enzyme.make_zero(new_thing)
+
+    @show tuple(c_bcs)
     @show thing
-    @show dthing
+    #@show dthing
+    @show new_thing
+    #@show dnew_thing
     
     dc²_dκ = autodiff(Enzyme.Reverse,
                       fill_halo_regions_low!,
                       Const(0),
-                      Duplicated(thing, dthing),
+                      Duplicated(new_thing, dnew_thing),
                       Duplicated(model.clock, dmodel.clock),
-                      Duplicated(thing, dthing))
+                      Duplicated(new_thing, dnew_thing))
     
     #=
     thing1 = Vector{Tuple{Tuple{BoundaryCondition{C, Nothing} where C<:Oceananigans.BoundaryConditions.AbstractBoundaryConditionClassification, BoundaryCondition{C, Nothing} where C<:Oceananigans.BoundaryConditions.AbstractBoundaryConditionClassification, BoundaryCondition{C, Nothing} where C<:Oceananigans.BoundaryConditions.AbstractBoundaryConditionClassification}, Tuple{BoundaryCondition{C, Nothing} where C<:Oceananigans.BoundaryConditions.AbstractBoundaryConditionClassification, BoundaryCondition{C, Nothing} where C<:Oceananigans.BoundaryConditions.AbstractBoundaryConditionClassification, BoundaryCondition}}}
