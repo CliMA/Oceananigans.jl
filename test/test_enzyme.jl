@@ -12,9 +12,6 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions, DefaultBoundaryC
 
 using Oceananigans.Operators: assumed_field_location
 
-
-EnzymeRules.inactive_type(::Type{<:Oceananigans.Clock}) = true
-
 for dir in (:south, :north, :bottom, :top)
     extract_side_bc = Symbol(:extract_, dir, :_bc)
     @eval begin
@@ -26,20 +23,11 @@ end
 @inline extract_bc(bc, ::Val{:south_and_north}) = (extract_south_bc(bc), extract_north_bc(bc))
 @inline extract_bc(bc, ::Val{:bottom_and_top})  = (extract_bottom_bc(bc), extract_top_bc(bc))
 
-fill_first(bc1, bc2) = true
-
-# Finally, the true fill_halo!
-const MaybeTupledData = Union{OffsetArray, NTuple{<:Any, OffsetArray}}
-
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
-function fill_halo_regions_low!(c, boundary_conditions, args...; kwargs...)
-
-    south_bc = extract_south_bc(boundary_conditions)
+function fill_halo_regions_low!(boundary_conditions, args...; kwargs...)
     
-    sides     = [:south_and_north, :bottom_and_top]
-    bcs_array = [south_bc, extract_bottom_bc(boundary_conditions)]
-
-    perm = sortperm(bcs_array, lt=fill_first)
+    sides = [:south_and_north, :bottom_and_top]
+    perm  = [2,1]
     sides = sides[perm]
 
     boundary_conditions = Tuple(extract_bc(boundary_conditions, Val(side)) for side in sides)
@@ -60,47 +48,28 @@ end
     topology = (Periodic, Periodic, Bounded)
 
     grid = RectilinearGrid(size=(Nx, Ny, Nz); x, y, z, topology)
-    diffusion = VerticalScalarDiffusivity(κ=0.1)
 
     @inline function tracer_flux(x, y, t, c)
         return c
     end
 
     top_c_bc = FluxBoundaryCondition(tracer_flux, field_dependencies=:c)
-    c_bcs = FieldBoundaryConditions(top=top_c_bc)
 
-    new_thing = FieldBoundaryConditions(grid, (Center, Center, nothing);
-                                        west = PeriodicBoundaryCondition(),
-                                        east = PeriodicBoundaryCondition(),
-                                        south = PeriodicBoundaryCondition(),
-                                        north = PeriodicBoundaryCondition(),
-                                        bottom = NoFluxBoundaryCondition(),
-                                        top = FluxBoundaryCondition(tracer_flux, field_dependencies=:c),
-                                        immersed = NoFluxBoundaryCondition())
-
-    loc = (Center, Center, Nothing)
-    top = regularize_boundary_condition(new_thing.top, grid, loc, 3, RightBoundary, tuple(:c))
+    loc = (Center, Center, nothing)
+    top = regularize_boundary_condition(top_c_bc, grid, loc, 3, RightBoundary, tuple(:c))
     
-    new_thing = FieldBoundaryConditions(grid, (Center, Center, nothing);
-                                        west = PeriodicBoundaryCondition(),
-                                        east = PeriodicBoundaryCondition(),
-                                        south = PeriodicBoundaryCondition(),
-                                        north = PeriodicBoundaryCondition(),
-                                        bottom = NoFluxBoundaryCondition(),
-                                        top = top,
-                                        immersed = NoFluxBoundaryCondition())
+    new_thing = FieldBoundaryConditions(; south = PeriodicBoundaryCondition(),
+                                          north = PeriodicBoundaryCondition(),
+                                          bottom = NoFluxBoundaryCondition(),
+                                          top = top)
 
     dnew_thing = Enzyme.make_zero(new_thing)
     
-    @show new_thing
-    #@show dnew_thing
-    
     dc²_dκ = autodiff(Enzyme.Reverse,
                       fill_halo_regions_low!,
-                      Const(0),
                       Duplicated(new_thing, dnew_thing),
-                      Duplicated(model.clock, dmodel.clock),
-                      Duplicated(new_thing, dnew_thing))
+                      Duplicated((1,2), (0,0)),
+                      Duplicated((3,4), (0,0)))
     
     #=
     thing1 = Vector{Tuple{Tuple{BoundaryCondition{C, Nothing} where C<:Oceananigans.BoundaryConditions.AbstractBoundaryConditionClassification, BoundaryCondition{C, Nothing} where C<:Oceananigans.BoundaryConditions.AbstractBoundaryConditionClassification, BoundaryCondition{C, Nothing} where C<:Oceananigans.BoundaryConditions.AbstractBoundaryConditionClassification}, Tuple{BoundaryCondition{C, Nothing} where C<:Oceananigans.BoundaryConditions.AbstractBoundaryConditionClassification, BoundaryCondition{C, Nothing} where C<:Oceananigans.BoundaryConditions.AbstractBoundaryConditionClassification, BoundaryCondition}}}

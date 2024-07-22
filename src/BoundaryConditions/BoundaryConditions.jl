@@ -8,7 +8,9 @@ export
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
     apply_x_bcs!, apply_y_bcs!, apply_z_bcs!,
-    fill_halo_regions!
+    fill_halo_regions!,
+    ContinuousBoundaryFunction, regularize_field_boundary_conditions, regularize_boundary_condition,
+    RightBoundary
 
 using CUDA
 using KernelAbstractions: @index, @kernel
