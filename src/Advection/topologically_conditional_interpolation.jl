@@ -84,6 +84,7 @@ for bias in (:symmetric, :biased)
                         ifelse($outside_buffer(k, grid.Nz, scheme),
                                $interp(i, j, k, grid, scheme, args...),
                                $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
+                end
             end
         end
     end
