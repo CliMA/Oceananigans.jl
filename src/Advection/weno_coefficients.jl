@@ -1,1 +1,0 @@
-# Just change the coefficients and the smoothness
