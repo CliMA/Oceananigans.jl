@@ -50,14 +50,18 @@ for bias in (:symmetric, :biased)
             second_order_interp = Symbol(:ℑ, ξ, code...)
             interp = Symbol(bias, :_interpolate_, ξ, code...)
             alt_interp = Symbol(:_, interp)
+            alt_alt_interp = Symbol(:__, interp)
 
             # Simple translation for Periodic directions and low-order advection schemes (fallback)
             @eval @inline $alt_interp(i, j, k, grid::AUG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
             @eval @inline $alt_interp(i, j, k, grid::AUG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+            @eval @inline $alt_alt_interp(i, j, k, grid::AUG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+            @eval @inline $alt_alt_interp(i, j, k, grid::AUG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
 
             # Disambiguation
             for GridType in [:AUGX, :AUGY, :AUGZ, :AUGXY, :AUGXZ, :AUGYZ, :AUGXYZ]
                 @eval @inline $alt_interp(i, j, k, grid::$GridType, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+                @eval @inline $alt_alt_interp(i, j, k, grid::$GridType, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
             end
 
             outside_buffer = Symbol(:outside_, bias, :_halo, loc)
@@ -65,24 +69,42 @@ for bias in (:symmetric, :biased)
             # Conditional high-order interpolation in Bounded directions
             if ξ == :x
                 @eval begin
-                    @inline $alt_interp(i, j, k, grid::AUGX, scheme::HOADV, args...) =
+                    @inline $alt_alt_interp(i, j, k, grid::AUGX, scheme::HOADV, args...) =
                         ifelse($outside_buffer(i, grid.Nx, scheme),
                                $interp(i, j, k, grid, scheme, args...),
                                $alt_interp(i, j, k, grid, scheme.buffer_scheme, args...))
                 end
+                @eval begin
+                    @inline $alt_interp(i, j, k, grid::AUGX, scheme::HOADV, args...) =
+                        ifelse($outside_buffer(i, grid.Nx, scheme),
+                               $interp(i, j, k, grid, scheme, args...),
+                               $alt_alt_interp(i, j, k, grid, scheme.buffer_scheme, args...))
+                end
             elseif ξ == :y
                 @eval begin
-                    @inline $alt_interp(i, j, k, grid::AUGY, scheme::HOADV, args...) =
+                    @inline $alt_alt_interp(i, j, k, grid::AUGY, scheme::HOADV, args...) =
                         ifelse($outside_buffer(j, grid.Ny, scheme),
                                $interp(i, j, k, grid, scheme, args...),
                                $alt_interp(i, j, k, grid, scheme.buffer_scheme, args...))
                 end
+                @eval begin
+                    @inline $alt_interp(i, j, k, grid::AUGY, scheme::HOADV, args...) =
+                        ifelse($outside_buffer(j, grid.Ny, scheme),
+                               $interp(i, j, k, grid, scheme, args...),
+                               $alt_alt_interp(i, j, k, grid, scheme.buffer_scheme, args...))
+                end
             elseif ξ == :z
+                @eval begin
+                    @inline $alt_alt_interp(i, j, k, grid::AUGZ, scheme::HOADV, args...) =
+                        ifelse($outside_buffer(k, grid.Nz, scheme),
+                               $interp(i, j, k, grid, scheme, args...),
+                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, args...))
+                end
                 @eval begin
                     @inline $alt_interp(i, j, k, grid::AUGZ, scheme::HOADV, args...) =
                         ifelse($outside_buffer(k, grid.Nz, scheme),
                                $interp(i, j, k, grid, scheme, args...),
-                               $alt_interp(i, j, k, grid, scheme.buffer_scheme, args...))
+                               $alt_alt_interp(i, j, k, grid, scheme.buffer_scheme, args...))
                 end
             end
         end

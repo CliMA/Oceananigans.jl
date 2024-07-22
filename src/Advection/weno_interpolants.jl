@@ -369,7 +369,7 @@ end
 @inline function metaprogrammed_stencil_sum(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(@inbounds w[$stencil] * func(scheme, bias, Val($(stencil-1)), ψ[$stencil], cT, Val(val), idx, loc))
+        elem[stencil] = :(@inbounds w[$stencil] * biased_p(scheme, bias, Val($(stencil-1)), ψ[$stencil], cT, Val(val), idx, loc))
     end
 
     return Expr(:call, :+, elem...)
@@ -378,7 +378,7 @@ end
 # Calculation of WENO reconstructed value v⋆ = ∑ᵣ(wᵣv̂ᵣ)
 for buffer in [2, 3, 4, 5, 6]
     @eval begin
-        @inline stencil_sum(scheme::WENO{$buffer}, bias, ψ, w, func, cT, val, idx, loc) = @inbounds $(metaprogrammed_stencil_sum(buffer))
+        @inline stencil_sum(scheme::WENO{$buffer}, bias, ψ, w, cT, val, idx, loc) = @inbounds $(metaprogrammed_stencil_sum(buffer))
     end
 end
 
@@ -394,7 +394,7 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
             @inbounds begin
                 ψₜ = $stencil(i, j, k, scheme, bias, ψ, grid, args...)
                 w = biased_weno_weights(ψₜ, scheme, bias, Val($val), Nothing, args...)
-                return stencil_sum(scheme, bias, ψₜ, w, biased_p, $cT, $val, idx, loc)
+                return stencil_sum(scheme, bias, ψₜ, w, $cT, $val, idx, loc)
             end
         end
 
@@ -405,7 +405,7 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
             @inbounds begin
                 ψₜ = $stencil(i, j, k, scheme, bias, ψ, grid, args...)
                 w = biased_weno_weights(ψₜ, scheme, bias, Val($val), VI, args...)
-                return stencil_sum(scheme, bias, ψₜ, w, biased_p, $cT, $val, idx, loc)
+                return stencil_sum(scheme, bias, ψₜ, w, $cT, $val, idx, loc)
             end
         end
 
@@ -416,7 +416,7 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
             @inbounds begin
                 ψₜ = $stencil(i, j, k, scheme, bias, ψ, grid, u, v, args...)
                 w = biased_weno_weights((i, j, k), scheme, bias, Val($val), VI, u, v)
-                return stencil_sum(scheme, bias, ψₜ, w, biased_p, $cT, $val, idx, loc)
+                return stencil_sum(scheme, bias, ψₜ, w, $cT, $val, idx, loc)
             end
         end
 
@@ -428,7 +428,7 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
                 ψₜ = $stencil(i, j, k, scheme, bias, ψ,       grid, args...)
                 ψₛ = $stencil(i, j, k, scheme, bias, VI.func, grid, args...)
                 w = biased_weno_weights(ψₛ, scheme, bias, Val($val), VI, args...)
-                return stencil_sum(scheme, bias, ψₜ, w, biased_p, $cT, $val, idx, loc)
+                return stencil_sum(scheme, bias, ψₜ, w, $cT, $val, idx, loc)
             end
         end
     end
