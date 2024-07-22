@@ -24,12 +24,12 @@ calculation in the `VectorInvariant` advection formulation.
 
 Smoothness polynomials different from reconstructing polynomials can be specified _only_ for functional reconstructions:
 ```julia
-_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, reconstruced_function::F, smoothness_stencil, args...) where F<:Function
+_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, reconstruced_function::F, bias, smoothness_stencil, args...) where F<:Function
 ```
 
 For scalar reconstructions 
 ```julia
-_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, reconstruced_field::F) where F<:AbstractField
+_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, bias, reconstruced_field::F) where F<:AbstractField
 ```
 the smoothness is _always_ diagnosed from the reconstructing polynomials of `reconstructed_field`
 
@@ -70,32 +70,32 @@ Base.show(io::IO, a::FunctionStencil) =  print(io, "FunctionStencil f = $(a.func
 const ƞ = Int32(2) # WENO exponent
 const ε = 1e-8
 
-# Optimal values taken from
+# Optimal values for finite volume reconstruction of order `WENO{order}` and stencil `Val{stencil}` from
 # Balsara & Shu, "Monotonicity Preserving Weighted Essentially Non-oscillatory Schemes with Inceasingly High Order of Accuracy"
-@inline Cl(::WENO{2}, ::Val{0}) = 2/3
-@inline Cl(::WENO{2}, ::Val{1}) = 1/3
+@inline C★(::WENO{2}, ::Val{0}) = 2/3
+@inline C★(::WENO{2}, ::Val{1}) = 1/3
 
-@inline Cl(::WENO{3}, ::Val{0}) = 3/10
-@inline Cl(::WENO{3}, ::Val{1}) = 3/5
-@inline Cl(::WENO{3}, ::Val{2}) = 1/10
+@inline C★(::WENO{3}, ::Val{0}) = 3/10
+@inline C★(::WENO{3}, ::Val{1}) = 3/5
+@inline C★(::WENO{3}, ::Val{2}) = 1/10
 
-@inline Cl(::WENO{4}, ::Val{0}) = 4/35
-@inline Cl(::WENO{4}, ::Val{1}) = 18/35
-@inline Cl(::WENO{4}, ::Val{2}) = 12/35
-@inline Cl(::WENO{4}, ::Val{3}) = 1/35
+@inline C★(::WENO{4}, ::Val{0}) = 4/35
+@inline C★(::WENO{4}, ::Val{1}) = 18/35
+@inline C★(::WENO{4}, ::Val{2}) = 12/35
+@inline C★(::WENO{4}, ::Val{3}) = 1/35
 
-@inline Cl(::WENO{5}, ::Val{0}) = 5/126
-@inline Cl(::WENO{5}, ::Val{1}) = 20/63
-@inline Cl(::WENO{5}, ::Val{2}) = 10/21
-@inline Cl(::WENO{5}, ::Val{3}) = 10/63
-@inline Cl(::WENO{5}, ::Val{4}) = 1/126
+@inline C★(::WENO{5}, ::Val{0}) = 5/126
+@inline C★(::WENO{5}, ::Val{1}) = 20/63
+@inline C★(::WENO{5}, ::Val{2}) = 10/21
+@inline C★(::WENO{5}, ::Val{3}) = 10/63
+@inline C★(::WENO{5}, ::Val{4}) = 1/126
 
-@inline Cl(::WENO{6}, ::Val{0}) = 1/77
-@inline Cl(::WENO{6}, ::Val{1}) = 25/154
-@inline Cl(::WENO{6}, ::Val{2}) = 100/231
-@inline Cl(::WENO{6}, ::Val{3}) = 25/77
-@inline Cl(::WENO{6}, ::Val{4}) = 5/77
-@inline Cl(::WENO{6}, ::Val{5}) = 1/462
+@inline C★(::WENO{6}, ::Val{0}) = 1/77
+@inline C★(::WENO{6}, ::Val{1}) = 25/154
+@inline C★(::WENO{6}, ::Val{2}) = 100/231
+@inline C★(::WENO{6}, ::Val{3}) = 25/77
+@inline C★(::WENO{6}, ::Val{4}) = 5/77
+@inline C★(::WENO{6}, ::Val{5}) = 1/462
 
 # ENO reconstruction procedure per stencil 
 for buffer in [2, 3, 4, 5, 6]
@@ -189,21 +189,21 @@ end
     return :($(elem...),)
 end
 
-# left and right biased_β calculation for scheme and stencil = 0:buffer - 1
+# biased_β calculation for scheme and stencil = 0:buffer - 1
 @inline function metaprogrammed_beta_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(func(ψ[$stencil], scheme, Val($(stencil-1))))
+        elem[stencil] = :(biased_β(ψ[$stencil], scheme, Val($(stencil-1))))
     end
 
     return :($(elem...),)
 end
 
-# ZWENO α weights dᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ε))ᵖ)
+# ZWENO α weights C★ᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ε))ᵖ)
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(FT(coeff(scheme, Val($(stencil-1)))) * (1 + (τ / (β[$stencil] + FT(ε)))^ƞ))
+        elem[stencil] = :(convert(FT, C★(scheme, Val($(stencil-1)))) * (1 + (τ / (β[$stencil] + FT(ε)))^ƞ))
     end
 
     return :($(elem...),)
@@ -211,13 +211,13 @@ end
 
 for buffer in [2, 3, 4, 5, 6]
     @eval begin
-        @inline         beta_sum(scheme::WENO{$buffer}, β₁, β₂)          = @inbounds $(metaprogrammed_beta_sum(buffer))
-        @inline        beta_loop(scheme::WENO{$buffer}, ψ, func)         = @inbounds $(metaprogrammed_beta_loop(buffer))
-        @inline zweno_alpha_loop(scheme::WENO{$buffer}, β, τ, coeff, FT) = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
+        @inline         beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂) where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
+        @inline        beta_loop(scheme::WENO{$buffer, FT}, ψ)      where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
+        @inline zweno_alpha_loop(scheme::WENO{$buffer, FT}, β, τ)   where FT = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
     end
 end
 
-# Global smoothness indicator τ₂ᵣ₋₁ taken from "Accuracy of the weighted essentially non-oscillatory conservative finite difference schemes", Don & Borges, 2013
+# Global smoothness indicator τ₂ᵣ₋₁ from "Accuracy of the weighted essentially non-oscillatory conservative finite difference schemes", Don & Borges, 2013
 @inline global_smoothness_indicator(::Val{2}, β) = @inbounds abs(β[1] - β[2])
 @inline global_smoothness_indicator(::Val{3}, β) = @inbounds abs(β[1] - β[3])
 @inline global_smoothness_indicator(::Val{4}, β) = @inbounds abs(β[1] +  3β[2] -   3β[3] -    β[4])
@@ -226,10 +226,10 @@ end
 
 # Calculating Dynamic WENO Weights (wᵣ), using the Z-WENO formulation
 @inline function biased_weno_weights(ψ, scheme::WENO{N, FT}, args...) where {N, FT}
-    β = beta_loop(scheme, ψ, biased_β)
+    β = beta_loop(scheme, ψ)
                 
     τ = global_smoothness_indicator(Val(N), β)
-    α = zweno_alpha_loop(scheme, β, τ, Cl, FT)
+    α = zweno_alpha_loop(scheme, β, τ)
 
     return α ./ sum(α)
 end
@@ -239,12 +239,12 @@ end
     
     uₛ = tangential_stencil_u(i, j, k, scheme, bias, dir, u)
     vₛ = tangential_stencil_v(i, j, k, scheme, bias, dir, v)
-    βᵤ = beta_loop(scheme, uₛ, biased_β)
-    βᵥ = beta_loop(scheme, vₛ, biased_β)
+    βᵤ = beta_loop(scheme, uₛ)
+    βᵥ = beta_loop(scheme, vₛ)
     β  =  beta_sum(scheme, βᵤ, βᵥ)
 
     τ = global_smoothness_indicator(Val(N), β)
-    α = zweno_alpha_loop(scheme, β, τ, Cl, FT)
+    α = zweno_alpha_loop(scheme, β, τ)
     
     return α ./ sum(α)
 end
