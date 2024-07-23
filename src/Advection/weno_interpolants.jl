@@ -110,7 +110,7 @@ for buffer in [2, 3, 4, 5, 6]
             # stretched coefficients are retrieved from precalculated coefficients
             @inline coeff_p(scheme::WENO{$buffer}, bias, ::Val{$stencil}, T, dir, i, loc) = 
                 ifelse(bias, retrieve_coeff(scheme, $stencil, dir, i, loc),
-                                   reverse(retrieve_coeff(scheme, $(buffer - 2 - stencil), dir, i, loc)))
+                     reverse(retrieve_coeff(scheme, $(buffer - 2 - stencil), dir, i, loc)))
         end
     
         # left biased and right biased reconstruction value for each stencil
