@@ -14,7 +14,7 @@ reference frame associated with the domain, to the reference frame _intrinsic_ t
 _extrinsic_ reference frames are:
 
 - Cartesian for box domains 
-- Latitude - Longitude for spherical domains
+- Geographic coordinates for AbstractCurvilinearGrid
 
 Therefore, for the [`RectilinearGrid`](@ref) and the [`LatitudeLongitudeGrid`](@ref), the _extrinsic_ and the 
 _intrinsic_ reference frames are equivalent. However, for other grids (e.g., for the
