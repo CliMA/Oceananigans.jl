@@ -53,7 +53,7 @@ function initialize!(schedule::TimeInterval, first_actuation_time::Number)
     return true
 end
 
-initialize!(schedule::TimeInterval, model) = initialize!(schedule, time(model))
+initialize!(schedule::TimeInterval, model) = initialize!(schedule, model.clock.time)
 
 function next_actuation_time(schedule::TimeInterval)
     t₀ = schedule.first_actuation_time
