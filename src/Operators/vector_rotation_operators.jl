@@ -9,15 +9,15 @@
     intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ)
 
 Convert the three-dimensional vector with components `uₑ, vₑ, wₑ` defined in an _extrinsic_ 
-reference frame associated with the domain, to the reference frame _intrinsic_ to the grid. 
+coordinate system associated with the domain, to the coordinate system _intrinsic_ to the grid. 
 
-_extrinsic_ reference frames are:
+_extrinsic_ coordinate systems are:
 
-- Cartesian for box domains 
-- Geographic coordinates for AbstractCurvilinearGrid
+- Cartesian for any grid that discretizes a Cartesian domain (e.g. a `RectilinearGrid`)
+- Geographic coordinates for any grid that discretizes a Spherical domain (e.g. an `AbstractCurvilinearGrid`)
 
 Therefore, for the [`RectilinearGrid`](@ref) and the [`LatitudeLongitudeGrid`](@ref), the _extrinsic_ and the 
-_intrinsic_ reference frames are equivalent. However, for other grids (e.g., for the
+_intrinsic_ coordinate system are equivalent. However, for other grids (e.g., for the
  [`ConformalCubedSphereGrid`](@ref)) that might not be the case.
 """
 @inline intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ) = 
@@ -26,16 +26,16 @@ _intrinsic_ reference frames are equivalent. However, for other grids (e.g., for
 """
     extrinsic_vector(i, j, k, grid::AbstractGrid, uᵢ, vᵢ, wᵢ)
 
-Convert the three-dimensional vector with components `uᵢ, vᵢ, wᵢ ` defined on the _intrinsic_ reference 
-frame of the grid, to the _extrinsic_ reference frame associated with the domain.
+Convert the three-dimensional vector with components `uᵢ, vᵢ, wᵢ ` defined on the _intrinsic_ coordinate
+system of the grid, to the _extrinsic_ coordinate system associated with the domain.
 
 _extrinsic_ reference frames are:
 
-- Cartesian for box domains 
-- Latitude - Longitude for spherical domains
+- Cartesian for any grid that discretizes a Cartesian domain (e.g. a `RectilinearGrid`)
+- Geographic coordinates for any grid that discretizes a Spherical domain (e.g. an `AbstractCurvilinearGrid`)
 
 Therefore, for the [`RectilinearGrid`](@ref) and the [`LatitudeLongitudeGrid`](@ref), the _extrinsic_ and the 
-_intrinsic_ reference frames are equivalent. However, for other grids (e.g., for the
+_intrinsic_ coordinate systems are equivalent. However, for other grids (e.g., for the
  [`ConformalCubedSphereGrid`](@ref)) that might not be the case.
 """
 @inline extrinsic_vector(i, j, k, grid::AbstractGrid, uᵢ, vᵢ, wᵢ) =
