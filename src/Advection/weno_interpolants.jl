@@ -209,22 +209,11 @@ end
     return :($(elem...),)
 end
 
-# JS α weights C★ᵣ / (βᵣ + ε))ᵖ
-@inline function metaprogrammed_js_alpha_loop(buffer)
-    elem = Vector(undef, buffer)
-    for stencil = 1:buffer
-        elem[stencil] = :(convert(FT, C★(scheme, Val($(stencil-1)))) / (β[$stencil] + FT(ε))^ƞ)
-    end
-
-    return :($(elem...),)
-end
-
 for buffer in [2, 3, 4, 5, 6]
     @eval begin
         @inline         beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂) where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
         @inline        beta_loop(scheme::WENO{$buffer, FT}, ψ)      where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
         @inline zweno_alpha_loop(scheme::WENO{$buffer, FT}, β, τ)   where FT = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
-        @inline    js_alpha_loop(scheme::WENO{$buffer, FT}, β)      where FT = @inbounds $(metaprogrammed_js_alpha_loop(buffer))
     end
 end
 
@@ -239,12 +228,8 @@ end
 @inline function biased_weno_weights(ψ, scheme::WENO{N, FT}, args...) where {N, FT}
     β = beta_loop(scheme, ψ)
                 
-    if scheme isa ZWENO
-        τ = global_smoothness_indicator(Val(N), β)
-        α = zweno_alpha_loop(scheme, β, τ)
-    else
-        α = js_alpha_loop(scheme, β)
-    end
+    τ = global_smoothness_indicator(Val(N), β)
+    α = zweno_alpha_loop(scheme, β, τ)
 
     return α ./ sum(α)
 end
@@ -258,12 +243,8 @@ end
     βᵥ = beta_loop(scheme, vₛ)
     β  =  beta_sum(scheme, βᵤ, βᵥ)
 
-    if scheme isa ZWENO
-        τ = global_smoothness_indicator(Val(N), β)
-        α = zweno_alpha_loop(scheme, β, τ)
-    else
-        α = js_alpha_loop(scheme, β)
-    end
+    τ = global_smoothness_indicator(Val(N), β)
+    α = zweno_alpha_loop(scheme, β, τ)
     
     return α ./ sum(α)
 end
