@@ -27,28 +27,28 @@ fill_open_boundary_regions!(fields::NTuple, boundary_conditions, indices, loc, g
 
 # for regular halo fills
 @inline left_velocity_open_boundary_condition(boundary_condition, loc) = nothing
-@inline left_velocity_open_boundary_condition(boundary_conditions, loc::Tuple{Face, Center, Center}) = boundary_conditions.west
-@inline left_velocity_open_boundary_condition(boundary_conditions, loc::Tuple{Center, Face, Center}) = boundary_conditions.south
-@inline left_velocity_open_boundary_condition(boundary_conditions, loc::Tuple{Center, Center, Face}) = boundary_conditions.bottom
+@inline left_velocity_open_boundary_condition(boundary_conditions, ::Tuple{Face, Center, Center}) = boundary_conditions.west
+@inline left_velocity_open_boundary_condition(boundary_conditions, ::Tuple{Center, Face, Center}) = boundary_conditions.south
+@inline left_velocity_open_boundary_condition(boundary_conditions, ::Tuple{Center, Center, Face}) = boundary_conditions.bottom
 
 @inline right_velocity_open_boundary_condition(boundary_conditions, loc) = nothing
-@inline right_velocity_open_boundary_condition(boundary_conditions, loc::Tuple{Face, Center, Center}) = boundary_conditions.east
-@inline right_velocity_open_boundary_condition(boundary_conditions, loc::Tuple{Center, Face, Center}) = boundary_conditions.north
-@inline right_velocity_open_boundary_condition(boundary_conditions, loc::Tuple{Center, Center, Face}) = boundary_conditions.top
+@inline right_velocity_open_boundary_condition(boundary_conditions, ::Tuple{Face, Center, Center}) = boundary_conditions.east
+@inline right_velocity_open_boundary_condition(boundary_conditions, ::Tuple{Center, Face, Center}) = boundary_conditions.north
+@inline right_velocity_open_boundary_condition(boundary_conditions, ::Tuple{Center, Center, Face}) = boundary_conditions.top
 
 # for multi region halo fills
-@inline left_velocity_open_boundary_condition(boundary_conditions::Tuple, loc::Tuple{Face, Center, Center}) = @inbounds boundary_conditions[1]
-@inline left_velocity_open_boundary_condition(boundary_conditions::Tuple, loc::Tuple{Center, Face, Center}) = @inbounds boundary_conditions[1]
-@inline left_velocity_open_boundary_condition(boundary_conditions::Tuple, loc::Tuple{Center, Center, Face}) = @inbounds boundary_conditions[1]
+@inline left_velocity_open_boundary_condition(boundary_conditions::Tuple, ::Tuple{Face, Center, Center}) = @inbounds boundary_conditions[1]
+@inline left_velocity_open_boundary_condition(boundary_conditions::Tuple, ::Tuple{Center, Face, Center}) = @inbounds boundary_conditions[1]
+@inline left_velocity_open_boundary_condition(boundary_conditions::Tuple, ::Tuple{Center, Center, Face}) = @inbounds boundary_conditions[1]
 
-@inline right_velocity_open_boundary_condition(boundary_conditions::Tuple, loc::Tuple{Face, Center, Center}) = @inbounds boundary_conditions[2]
-@inline right_velocity_open_boundary_condition(boundary_conditions::Tuple, loc::Tuple{Center, Face, Center}) = @inbounds boundary_conditions[2]
-@inline right_velocity_open_boundary_condition(boundary_conditions::Tuple, loc::Tuple{Center, Center, Face}) = @inbounds boundary_conditions[2]
+@inline right_velocity_open_boundary_condition(boundary_conditions::Tuple, ::Tuple{Face, Center, Center}) = @inbounds boundary_conditions[2]
+@inline right_velocity_open_boundary_condition(boundary_conditions::Tuple, ::Tuple{Center, Face, Center}) = @inbounds boundary_conditions[2]
+@inline right_velocity_open_boundary_condition(boundary_conditions::Tuple, ::Tuple{Center, Center, Face}) = @inbounds boundary_conditions[2]
 
 @inline get_open_halo_filling_functions(loc) = _no_fill!, _no_fill!
-@inline get_open_halo_filling_functions(loc::Tuple{Face, Center, Center}) = _fill_west_and_east_open_halo!, fill_west_and_east_halo!
-@inline get_open_halo_filling_functions(loc::Tuple{Center, Face, Center}) = _fill_south_and_north_open_halo!, fill_south_and_north_halo!
-@inline get_open_halo_filling_functions(loc::Tuple{Center, Center, Face}) = _fill_bottom_and_top_open_halo!, fill_bottom_and_top_halo!
+@inline get_open_halo_filling_functions(::Tuple{Face, Center, Center}) = _fill_west_and_east_open_halo!, fill_west_and_east_halo!
+@inline get_open_halo_filling_functions(::Tuple{Center, Face, Center}) = _fill_south_and_north_open_halo!, fill_south_and_north_halo!
+@inline get_open_halo_filling_functions(::Tuple{Center, Center, Face}) = _fill_bottom_and_top_open_halo!, fill_bottom_and_top_halo!
 
 @kernel _no_fill!(args...) = nothing
 
@@ -72,7 +72,7 @@ end
        _fill_top_open_halo!(i, j, grid, c, top_bc,    loc, args...)
 end
 
-# fallback for non-open boundary conditions
+# Generic fallback
 
 @inline   _fill_west_open_halo!(j, k, grid, c, bc, loc, args...) = nothing
 @inline   _fill_east_open_halo!(j, k, grid, c, bc, loc, args...) = nothing
@@ -81,16 +81,16 @@ end
 @inline _fill_bottom_open_halo!(i, j, grid, c, bc, loc, args...) = nothing
 @inline    _fill_top_open_halo!(i, j, grid, c, bc, loc, args...) = nothing
 
-# and don't do anything on the non-open boundary fill call
+# Open boundary condition fallback
 
-@inline   _fill_west_halo!(j, k, grid, c, bc, loc, args...) = nothing
-@inline   _fill_east_halo!(j, k, grid, c, bc, loc, args...) = nothing
-@inline  _fill_south_halo!(i, k, grid, c, bc, loc, args...) = nothing
-@inline  _fill_north_halo!(i, k, grid, c, bc, loc, args...) = nothing
-@inline _fill_bottom_halo!(i, j, grid, c, bc, loc, args...) = nothing
-@inline    _fill_top_halo!(i, j, grid, c, bc, loc, args...) = nothing
+@inline   _fill_west_open_halo!(j, k, grid, c, bc::OBC, loc, args...) = @inbounds c[1, j, k]           = getbc(bc, j, k, grid, args...)
+@inline   _fill_east_open_halo!(j, k, grid, c, bc::OBC, loc, args...) = @inbounds c[grid.Nx + 1, j, k] = getbc(bc, j, k, grid, args...)
+@inline  _fill_south_open_halo!(i, k, grid, c, bc::OBC, loc, args...) = @inbounds c[i, 1, k]           = getbc(bc, i, k, grid, args...)
+@inline  _fill_north_open_halo!(i, k, grid, c, bc::OBC, loc, args...) = @inbounds c[i, grid.Ny + 1, k] = getbc(bc, i, k, grid, args...)
+@inline _fill_bottom_open_halo!(i, j, grid, c, bc::OBC, loc, args...) = @inbounds c[i, j, 1]           = getbc(bc, i, j, grid, args...)
+@inline    _fill_top_open_halo!(i, j, grid, c, bc::OBC, loc, args...) = @inbounds c[i, j, grid.Nz + 1] = getbc(bc, i, j, grid, args...)
 
-# except when its a center field (so presumably are tracers)
+# Open boundary condition fallback for `CenterField`
 
 @inline   _fill_west_halo!(j, k, grid, c, bc::OBC, loc::Tuple{Center, Center, Center}, args...) = @inbounds c[1, j, k]           = getbc(bc, j, k, grid, args...)
 @inline   _fill_east_halo!(j, k, grid, c, bc::OBC, loc::Tuple{Center, Center, Center}, args...) = @inbounds c[grid.Nx + 1, j, k] = getbc(bc, j, k, grid, args...)
@@ -99,11 +99,3 @@ end
 @inline _fill_bottom_halo!(i, j, grid, c, bc::OBC, loc::Tuple{Center, Center, Center}, args...) = @inbounds c[i, j, 1]           = getbc(bc, i, j, grid, args...)
 @inline    _fill_top_halo!(i, j, grid, c, bc::OBC, loc::Tuple{Center, Center, Center}, args...) = @inbounds c[i, j, grid.Nz + 1] = getbc(bc, i, j, grid, args...)
 
-# generic for open boundary conditions
-
-@inline   _fill_west_open_halo!(j, k, grid, c, bc::OBC, loc, args...) = @inbounds c[1, j, k]           = getbc(bc, j, k, grid, args...)
-@inline   _fill_east_open_halo!(j, k, grid, c, bc::OBC, loc, args...) = @inbounds c[grid.Nx + 1, j, k] = getbc(bc, j, k, grid, args...)
-@inline  _fill_south_open_halo!(i, k, grid, c, bc::OBC, loc, args...) = @inbounds c[i, 1, k]           = getbc(bc, i, k, grid, args...)
-@inline  _fill_north_open_halo!(i, k, grid, c, bc::OBC, loc, args...) = @inbounds c[i, grid.Ny + 1, k] = getbc(bc, i, k, grid, args...)
-@inline _fill_bottom_open_halo!(i, j, grid, c, bc::OBC, loc, args...) = @inbounds c[i, j, 1]           = getbc(bc, i, j, grid, args...)
-@inline    _fill_top_open_halo!(i, j, grid, c, bc::OBC, loc, args...) = @inbounds c[i, j, grid.Nz + 1] = getbc(bc, i, j, grid, args...)
