@@ -45,7 +45,7 @@ _intrinsic_ reference frames are equivalent. However, for other grids (e.g., for
 @inline intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ) = 
     getvalue(uₑ, i, j, k, grid), getvalue(vₑ, i, j, k, grid)
 
-@inline entrinsic_vector(i, j, k, grid::AbstractGrid, uᵢ, vᵢ) = 
+@inline extrinsic_vector(i, j, k, grid::AbstractGrid, uᵢ, vᵢ) = 
     getvalue(uᵢ, i, j, k, grid), getvalue(vᵢ, i, j, k, grid)
 
 # Intrinsic and extrinsic conversion for `OrthogonalSphericalShellGrid`s,
