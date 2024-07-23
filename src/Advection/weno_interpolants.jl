@@ -212,22 +212,11 @@ end
     return :($(elem...),)
 end
 
-# JSWENO α weights dᵣ / (βᵣ + ε)²
-@inline function metaprogrammed_js_alpha_loop(buffer)
-    elem = Vector(undef, buffer)
-    for stencil = 1:buffer
-        elem[stencil] = :(@inbounds FT(coeff(scheme, Val($(stencil-1)))) / (β[$stencil] + FT(ε))^ƞ)
-    end
-
-    return :($(elem...),)
-end
-
 for buffer in [2, 3, 4, 5, 6]
     @eval begin
         @inline         beta_sum(scheme::WENO{$buffer}, β₁, β₂)           = @inbounds $(metaprogrammed_beta_sum(buffer))
         @inline        beta_loop(scheme::WENO{$buffer}, ψ, func)          = @inbounds $(metaprogrammed_beta_loop(buffer))
         @inline zweno_alpha_loop(scheme::WENO{$buffer}, β, τ, coeff, FT)  = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
-        @inline    js_alpha_loop(scheme::WENO{$buffer}, β, coeff, FT)     = @inbounds $(metaprogrammed_js_alpha_loop(buffer))
     end
 end
 
@@ -253,12 +242,9 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
             @inbounds begin
                 β = beta_loop(scheme, ψ, $biased_β)
                     
-                if scheme isa ZWENO
-                    τ = global_smoothness_indicator(Val(N), β)
-                    α = zweno_alpha_loop(scheme, β, τ, $coeff, FT)
-                else
-                    α = js_alpha_loop(scheme, β, $coeff, FT)
-                end
+                τ = global_smoothness_indicator(Val(N), β)
+                α = zweno_alpha_loop(scheme, β, τ, $coeff, FT)
+
                 return α ./ sum(α)
             end
         end
@@ -274,12 +260,9 @@ for (side, coeff) in zip([:left, :right], (:Cl, :Cr))
 
                 β  = beta_sum(scheme, βᵤ, βᵥ)
 
-                if scheme isa ZWENO
-                    τ = global_smoothness_indicator(Val(N), β)
-                    α = zweno_alpha_loop(scheme, β, τ, $coeff, FT)
-                else
-                    α = js_alpha_loop(scheme, β, $coeff, FT)
-                end
+                τ = global_smoothness_indicator(Val(N), β)
+                α = zweno_alpha_loop(scheme, β, τ, $coeff, FT)
+
                 return α ./ sum(α)
             end
         end
