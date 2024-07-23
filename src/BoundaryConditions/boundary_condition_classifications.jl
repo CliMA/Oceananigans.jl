@@ -67,7 +67,7 @@ Open() = Open(nothing)
 
 (open::Open)() = open
 
-Adapt.adapt_structure(to, bc::Open) = Open(adapt(to, bc.matching_scheme))
+Adapt.adapt_structure(to, open::Open) = Open(adapt(to, open.matching_scheme))
 
 """
     struct MultiRegionCommunication <: AbstractBoundaryConditionClassification

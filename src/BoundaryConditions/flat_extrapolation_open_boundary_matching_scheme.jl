@@ -52,8 +52,9 @@ end
     Δt̄ = min(1, Δt / τ)
     cₑₓₜ = getbc(bc, l, m, grid, clock, model_fields)
 
-    Δc =  ifelse(isnothing(bc.condition)||!isfinite(clock.last_stage_Δt),
-                 0, (cₑₓₜ - c) * Δt̄)
+    Δc = (cₑₓₜ - c) * Δt̄
+    not_relaxing = isnothing(bc.condition) | !isfinite(clock.last_stage_Δt)
+    Δc =  ifelse(not_relaxing, zero(c), Δc)
 
     return c + Δc
 end
