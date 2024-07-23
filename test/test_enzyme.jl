@@ -7,11 +7,9 @@ Enzyme.API.runtimeActivity!(true)
 Enzyme.API.looseTypeAnalysis!(true)
 Enzyme.API.maxtypeoffset!(2032)
 
-mutable struct OuterStruct{S, N, B, T}
-       south :: S
-       north :: N
-      bottom :: B
-         top :: T
+mutable struct OuterStruct{S, T}
+    a:: S
+    b:: T
 end
 
 struct InnerStruct{F}
@@ -22,26 +20,26 @@ struct InnerStruct{F}
     end
 end
 
-for dir in (:south, :north, :bottom, :top)
-    extract_side_bc = Symbol(:extract_, dir, :_bc)
+for dir in (:a, :b)
+    extract_side = Symbol(:extract_, dir)
     @eval begin
-        @inline $extract_side_bc(bc) = bc.$dir
-        @inline $extract_side_bc(bc::Tuple) = map($extract_side_bc, bc)
+        @inline $extract_side(bc) = bc.$dir
+        @inline $extract_side(bc::Tuple) = map($extract_side, bc)
     end
 end
 
-@inline extract_bc(bc, ::Val{:south_and_north}) = (extract_south_bc(bc), extract_north_bc(bc))
-@inline extract_bc(bc, ::Val{:bottom_and_top})  = (extract_bottom_bc(bc), extract_top_bc(bc))
+@inline extract(bc, ::Val{:a_and_a}) = (extract_a(bc), extract_a(bc))
+@inline extract(bc, ::Val{:a_and_b})  = (extract_a(bc), extract_b(bc))
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
-function fill_halo_regions_low!(boundary_conditions, args...; kwargs...)
+function tuple_things!(inner, args...; kwargs...)
     
-    sides = [:south_and_north, :bottom_and_top]
+    sides = [:a_and_a, :a_and_b]
     perm  = [2,1]
     sides = sides[perm]
 
-    boundary_conditions = Tuple(extract_bc(boundary_conditions, Val(side)) for side in sides)
-    number_of_tasks     = length(sides)
+    inner = Tuple(extract(inner, Val(side)) for side in sides)
+    number_of_tasks = length(sides)
 
     return nothing
 end
@@ -54,11 +52,11 @@ end
 
     regularized_boundary_func = InnerStruct(tracer_flux)
 
-    new_thing  = OuterStruct((1,), (1,), (2,), tuple(regularized_boundary_func))
+    new_thing  = OuterStruct((1,), tuple(regularized_boundary_func))
     dnew_thing = Enzyme.make_zero(new_thing)
     
     dc²_dκ = autodiff(Enzyme.Reverse,
-                      fill_halo_regions_low!,
+                      tuple_things!,
                       Duplicated(new_thing, dnew_thing),
                       Duplicated((1,2), (0,0)),
                       Duplicated((3,4), (0,0)))
