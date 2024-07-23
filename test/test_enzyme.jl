@@ -46,18 +46,13 @@ end
 
 @testset "Enzyme on advection and diffusion WITH flux boundary condition" begin
 
-    @inline function tracer_flux(c)
-        return c
-    end
-
-    regularized_boundary_func = InnerStruct(tracer_flux)
-
-    new_thing  = OuterStruct((1,), tuple(regularized_boundary_func))
-    dnew_thing = Enzyme.make_zero(new_thing)
+    b = InnerStruct(1.0)
+    thing  = OuterStruct((1,), tuple(b))
+    dthing = Enzyme.make_zero(thing)
     
     dc²_dκ = autodiff(Enzyme.Reverse,
                       tuple_things!,
-                      Duplicated(new_thing, dnew_thing),
+                      Duplicated(thing, dthing),
                       Duplicated((1,2), (0,0)),
                       Duplicated((3,4), (0,0)))
 end
