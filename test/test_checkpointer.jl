@@ -211,7 +211,7 @@ for arch in archs
 
         # Now try again, but picking up from the previous checkpoint
         N = iteration(simulation)
-        checkpoint = "test_iteration$N.jld2"
+        checkpoint = "initialization_test_iteration$N.jld2"
         simulation = initialization_test_simulation(arch, 8)
         run!(simulation, pickup=checkpoint)
 
