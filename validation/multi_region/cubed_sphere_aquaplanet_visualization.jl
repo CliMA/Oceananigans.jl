@@ -100,20 +100,56 @@ underlying_grid = ConformalCubedSphereGrid(arch;
                                            radius,
                                            partition = CubedSpherePartition(; R = 1))
 
-Δλ = 1
-Δφ = 1
+import Oceananigans: on_architecture
+underlying_grid_cpu = on_architecture(CPU(), underlying_grid)
 
-@inline function double_drake_depth(λ, φ)
-    if ((-40 < φ < 75) & ((-Δλ < λ ≤ 0) | (90 ≤ λ < (90 + Δλ)))) | ((75 < φ < (75 + Δφ)) & (-Δλ < λ ≤ (90 + Δλ)))
-        depth = 0
-    else
-        depth = -Lz
+Nc = Nx
+Nc_mid = isodd(Nc) ? (Nc + 1)÷2 : Nc÷2
+
+φ_min = -34
+filtered_φ_indices = findall(x -> x < φ_min, underlying_grid_cpu[1].φᶜᶜᵃ[Nc_mid, :])
+Nc_min = maximum(filtered_φ_indices)
+
+@inline function double_drake_bottom_depth(region, Lz, Nc, Nc_mid)
+    bottom_depth = -ones(Nc, Nc) * Lz
+    if region == 3
+        bottom_depth[Nc_mid:Nc_mid+1, 1:Nc_mid+1] .= 0
+        bottom_depth[1:Nc_mid+1, Nc_mid:Nc_mid+1] .= 0
     end
-    return depth
+    if isodd(Nc)
+        if region == 1
+            bottom_depth[Nc_mid-1:Nc_mid, Nc_min:Nc] .= 0
+        elseif region == 2
+            bottom_depth[Nc_mid:Nc_mid+1, Nc_min:Nc] .= 0
+        end
+    else
+        if region == 1 || region == 2
+            bottom_depth[Nc_mid:Nc_mid+1, Nc_min:Nc] .= 0
+        end
+    end
+    return bottom_depth
 end
 
+multi_region = MultiRegionObject((1, 2, 3, 4, 5, 6))
+@apply_regionally bottom_depth = double_drake_bottom_depth(multi_region, Lz, Nc, Nc_mid)
+
 double_drake = false
-grid = double_drake ? ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(double_drake_depth)) : underlying_grid;
+grid = double_drake ? ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_depth)) : underlying_grid;
+
+grid_cpu = on_architecture(CPU(), grid)
+
+include("cubed_sphere_visualization.jl")
+
+if double_drake
+    fig = panel_wise_visualization(grid_cpu, grid_cpu.immersed_boundary.bottom_height; k = 1,
+                                   consider_all_levels = false)
+    save("cubed_sphere_aquaplanet_bottom_depth.png", fig)
+
+    title = "Bottom depth"
+    fig = geo_heatlatlon_visualization(grid_cpu, grid_cpu.immersed_boundary.bottom_height, title;
+                                       consider_all_levels = false, cbar_label = "bottom depth (m)")
+    save("cubed_sphere_aquaplanet_bottom_depth_geo_heatlatlon_plot.png", fig)
+end
 
 Hx, Hy, Hz = halo_size(grid)
 
@@ -157,15 +193,12 @@ end
     return stress
 end
 
-import Oceananigans: on_architecture
-cpu_grid = on_architecture(CPU(), grid)  
-
 location = (Face(), Center(), Center())
-@apply_regionally zonal_wind_stress_fc = wind_stress(cpu_grid, location, my_parameters)
+@apply_regionally zonal_wind_stress_fc = wind_stress(grid_cpu, location, my_parameters)
 @apply_regionally zonal_wind_stress_fc = on_architecture(arch, zonal_wind_stress_fc)
 
 location = (Center(), Face(), Center())
-@apply_regionally zonal_wind_stress_cf = wind_stress(cpu_grid, location, my_parameters)
+@apply_regionally zonal_wind_stress_cf = wind_stress(grid_cpu, location, my_parameters)
 @apply_regionally zonal_wind_stress_cf = on_architecture(arch, zonal_wind_stress_cf)
 
 struct WindStressBCX{C} <: Function
@@ -403,7 +436,7 @@ compute_vorticity!(grid, model.velocities.u, model.velocities.v, ζ)
 
 # Compute actual and reconstructed wind stress.
 location = (Center(), Center(), Center())
-@apply_regionally zonal_wind_stress_cc = wind_stress(cpu_grid, location, my_parameters)
+@apply_regionally zonal_wind_stress_cc = wind_stress(grid_cpu, location, my_parameters)
 @apply_regionally zonal_wind_stress_cc = on_architecture(arch, zonal_wind_stress_cc)
 
 struct ReconstructedWindStress{C} <: Function
@@ -451,10 +484,8 @@ vᵢ = on_architecture(CPU(), deepcopy(model.velocities.v))
 ζᵢ = on_architecture(CPU(), deepcopy(ζ))
 bᵢ = on_architecture(CPU(), deepcopy(model.tracers.b))
 
-include("cubed_sphere_visualization.jl")
-
-latitude = extract_latitude(cpu_grid)
-cos_θ, sin_θ = calculate_sines_and_cosines_of_cubed_sphere_grid_angles(cpu_grid, "cc")
+latitude = extract_latitude(grid_cpu)
+cos_θ, sin_θ = calculate_sines_and_cosines_of_cubed_sphere_grid_angles(grid_cpu, "cc")
 
 cos_θ_at_specific_longitude_through_panel_center    = zeros(2*Nx, 4);
 sin_θ_at_specific_longitude_through_panel_center    = zeros(2*Nx, 4);
@@ -462,15 +493,15 @@ latitude_at_specific_longitude_through_panel_center = zeros(2*Nx, 4);
 
 for (index, panel_index) in enumerate([1])
     cos_θ_at_specific_longitude_through_panel_center[:, index] = (
-    extract_scalar_at_specific_longitude_through_panel_center(cpu_grid, cos_θ, panel_index))
+    extract_scalar_at_specific_longitude_through_panel_center(grid_cpu, cos_θ, panel_index))
     sin_θ_at_specific_longitude_through_panel_center[:, index] = (
-    extract_scalar_at_specific_longitude_through_panel_center(cpu_grid, sin_θ, panel_index))
+    extract_scalar_at_specific_longitude_through_panel_center(grid_cpu, sin_θ, panel_index))
     latitude_at_specific_longitude_through_panel_center[:, index] = (
-    extract_scalar_at_specific_longitude_through_panel_center(cpu_grid, latitude, panel_index))
+    extract_scalar_at_specific_longitude_through_panel_center(grid_cpu, latitude, panel_index))
 end
 
-depths = cpu_grid[1].zᵃᵃᶜ[1:Nz]
-depths_f = cpu_grid[1].zᵃᵃᶠ[1:Nz+1]
+depths = grid_cpu[1].zᵃᵃᶜ[1:Nz]
+depths_f = grid_cpu[1].zᵃᵃᶠ[1:Nz+1]
 
 uᵢ_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4);
 vᵢ_at_specific_longitude_through_panel_center = zeros(2*Nx, Nz, 4);
@@ -544,66 +575,66 @@ Ldᵢ_at_specific_longitude_through_panel_center = zeros(2*Nx, 4);
 
 plot_initial_field = true
 if plot_initial_field
-    fig = panel_wise_visualization(cpu_grid, on_architecture(CPU(), τ_x); k = 1, common_kwargs...)
+    fig = panel_wise_visualization(grid_cpu, on_architecture(CPU(), τ_x); k = 1, common_kwargs...)
     save("cubed_sphere_aquaplanet_zonal_wind_stress.png", fig)
 
-    fig = panel_wise_visualization(cpu_grid, on_architecture(CPU(), τ_x_r); k = 1, common_kwargs...)
+    fig = panel_wise_visualization(grid_cpu, on_architecture(CPU(), τ_x_r); k = 1, common_kwargs...)
     save("cubed_sphere_aquaplanet_zonal_wind_stress_reconstructed.png", fig)
 
-    fig = panel_wise_visualization(cpu_grid, on_architecture(CPU(), τ_y_r); k = 1, common_kwargs...)
+    fig = panel_wise_visualization(grid_cpu, on_architecture(CPU(), τ_y_r); k = 1, common_kwargs...)
     save("cubed_sphere_aquaplanet_meridional_wind_stress_reconstructed.png", fig)
 
     title = "Zonal wind stress"
-    fig = geo_heatlatlon_visualization(cpu_grid, on_architecture(CPU(), τ_x), title; common_kwargs_geo_τ...,
+    fig = geo_heatlatlon_visualization(grid_cpu, on_architecture(CPU(), τ_x), title; common_kwargs_geo_τ...,
                                        cbar_label = "zonal wind stress (N m⁻²)")
     save("cubed_sphere_aquaplanet_zonal_wind_stress_geo_heatlatlon_plot.png", fig)
 
     title = "Reconstructed zonal wind stress"
-    fig = geo_heatlatlon_visualization(cpu_grid, on_architecture(CPU(), τ_x_r), title; common_kwargs_geo_τ...,
+    fig = geo_heatlatlon_visualization(grid_cpu, on_architecture(CPU(), τ_x_r), title; common_kwargs_geo_τ...,
                                        cbar_label = "zonal wind stress (N m⁻²)")
     save("cubed_sphere_aquaplanet_zonal_wind_stress_reconstructed_geo_heatlatlon_plot.png", fig)
 
     title = "Reconstructed meridional wind stress"
-    fig = geo_heatlatlon_visualization(cpu_grid, on_architecture(CPU(), τ_y_r), title; common_kwargs_geo_τ...,
+    fig = geo_heatlatlon_visualization(grid_cpu, on_architecture(CPU(), τ_y_r), title; common_kwargs_geo_τ...,
                                        cbar_label = "meridional wind stress (N m⁻²)")
     save("cubed_sphere_aquaplanet_meridional_wind_stress_reconstructed_geo_heatlatlon_plot.png", fig)
 
     if initialize_velocities_based_on_thermal_wind_balance
-        uᵢ, vᵢ = orient_velocities_in_global_direction(cpu_grid, uᵢ, vᵢ, cos_θ, sin_θ; levels = 1:Nz)
+        uᵢ, vᵢ = orient_velocities_in_global_direction(grid_cpu, uᵢ, vᵢ, cos_θ, sin_θ; levels = 1:Nz)
 
-        fig = panel_wise_visualization(cpu_grid, uᵢ; k = Nz, common_kwargs...)
+        fig = panel_wise_visualization(grid_cpu, uᵢ; k = Nz, common_kwargs...)
         save("cubed_sphere_aquaplanet_uᵢ.png", fig)
 
-        fig = panel_wise_visualization(cpu_grid, vᵢ; k = Nz, common_kwargs...)
+        fig = panel_wise_visualization(grid_cpu, vᵢ; k = Nz, common_kwargs...)
         save("cubed_sphere_aquaplanet_vᵢ.png", fig)
 
-        ζᵢ = interpolate_cubed_sphere_field_to_cell_centers(cpu_grid, ζᵢ, "ff"; levels = 1:Nz)
+        ζᵢ = interpolate_cubed_sphere_field_to_cell_centers(grid_cpu, ζᵢ, "ff"; levels = 1:Nz)
 
-        fig = panel_wise_visualization(cpu_grid, ζᵢ; k = Nz, common_kwargs...)
+        fig = panel_wise_visualization(grid_cpu, ζᵢ; k = Nz, common_kwargs...)
         save("cubed_sphere_aquaplanet_ζᵢ.png", fig)
         
         title = "Initial zonal velocity"
-        fig = geo_heatlatlon_visualization(cpu_grid, uᵢ, title; common_kwargs_geo..., cbar_label = "zonal velocity (m s⁻¹)")
-        save("cubed_sphere_aquaplanet_u_0.png", fig)
+        fig = geo_heatlatlon_visualization(grid_cpu, uᵢ, title; common_kwargs_geo..., cbar_label = "zonal velocity (m s⁻¹)")
+        save("cubed_sphere_aquaplanet_uᵢ_geo_heatlatlon_plot.png", fig)
 
         title = "Initial meridional velocity"
-        fig = geo_heatlatlon_visualization(cpu_grid, vᵢ, title; common_kwargs_geo...,
+        fig = geo_heatlatlon_visualization(grid_cpu, vᵢ, title; common_kwargs_geo...,
                                            cbar_label = "meridional velocity (m s⁻¹)")
-        save("cubed_sphere_aquaplanet_v_0.png", fig)
+        save("cubed_sphere_aquaplanet_vᵢ_geo_heatlatlon_plot.png", fig)
 
         title = "Initial relative vorticity"
-        fig = geo_heatlatlon_visualization(cpu_grid, ζᵢ, title; common_kwargs_geo...,
+        fig = geo_heatlatlon_visualization(grid_cpu, ζᵢ, title; common_kwargs_geo...,
                                            cbar_label = "relative vorticity (s⁻¹)")
-        save("cubed_sphere_aquaplanet_ζ_0.png", fig)
+        save("cubed_sphere_aquaplanet_ζᵢ_geo_heatlatlon_plot.png", fig)
 
         index, panel_index = 1, 1
         
         uᵢ_at_specific_longitude_through_panel_center[:, :, index] = (
-        extract_field_at_specific_longitude_through_panel_center(cpu_grid, uᵢ, panel_index; levels = 1:Nz))
+        extract_field_at_specific_longitude_through_panel_center(grid_cpu, uᵢ, panel_index; levels = 1:Nz))
         vᵢ_at_specific_longitude_through_panel_center[:, :, index] = (
-        extract_field_at_specific_longitude_through_panel_center(cpu_grid, vᵢ, panel_index; levels = 1:Nz))
+        extract_field_at_specific_longitude_through_panel_center(grid_cpu, vᵢ, panel_index; levels = 1:Nz))
         ζᵢ_at_specific_longitude_through_panel_center[:, :, index] = (
-        extract_field_at_specific_longitude_through_panel_center(cpu_grid, ζᵢ, panel_index; levels = 1:Nz))
+        extract_field_at_specific_longitude_through_panel_center(grid_cpu, ζᵢ, panel_index; levels = 1:Nz))
 
         title = "Zonal velocity"
         cbar_label = "zonal velocity (m s⁻¹)"
@@ -628,25 +659,25 @@ if plot_initial_field
                                         "cubed_sphere_aquaplanet_ζᵢ_latitude-depth_section_$panel_index")
     end
 
-    fig = panel_wise_visualization(cpu_grid, bᵢ; k = b_index, common_kwargs...)
+    fig = panel_wise_visualization(grid_cpu, bᵢ; k = b_index, common_kwargs...)
     save("cubed_sphere_aquaplanet_bᵢ.png", fig)
     
-    fig = panel_wise_visualization(cpu_grid, on_architecture(CPU(), Ldᵢ); k = 1, common_kwargs_Ld...)
+    fig = panel_wise_visualization(grid_cpu, on_architecture(CPU(), Ldᵢ); k = 1, common_kwargs_Ld...)
     save("cubed_sphere_aquaplanet_Ldᵢ.png", fig)
     
     title = "Initial buoyancy"
-    fig = geo_heatlatlon_visualization(cpu_grid, bᵢ, title; common_kwargs_geo_b..., cbar_label = "buoyancy (m s⁻²)")
-    save("cubed_sphere_aquaplanet_b_0.png", fig)
+    fig = geo_heatlatlon_visualization(grid_cpu, bᵢ, title; common_kwargs_geo_b..., cbar_label = "buoyancy (m s⁻²)")
+    save("cubed_sphere_aquaplanet_bᵢ_geo_heatlatlon_plot.png", fig)
     
     title = "Deformation radius"
-    fig = geo_heatlatlon_visualization(cpu_grid, on_architecture(CPU(), Ldᵢ), title; common_kwargs_geo_Ld...,
+    fig = geo_heatlatlon_visualization(grid_cpu, on_architecture(CPU(), Ldᵢ), title; common_kwargs_geo_Ld...,
                                        cbar_label = "deformation radius (m)")
     save("cubed_sphere_aquaplanet_Ldᵢ_geo_heatlatlon_plot.png", fig)
     
     index, panel_index = 1, 1
     
     bᵢ_at_specific_longitude_through_panel_center[:, :, index] = (
-    extract_field_at_specific_longitude_through_panel_center(cpu_grid, bᵢ, panel_index; levels = 1:Nz))
+    extract_field_at_specific_longitude_through_panel_center(grid_cpu, bᵢ, panel_index; levels = 1:Nz))
     title = "Buoyancy"
     cbar_label = "buoyancy (m s⁻²)"
     create_heat_map_or_contour_plot(resolution, plot_type_2D,
@@ -656,7 +687,7 @@ if plot_initial_field
                                     "cubed_sphere_aquaplanet_bᵢ_latitude-depth_section_$panel_index")
     
     Ldᵢ_at_specific_longitude_through_panel_center[:, index] = (
-    extract_field_at_specific_longitude_through_panel_center(cpu_grid, Ldᵢ, panel_index; levels = 1:1))
+    extract_field_at_specific_longitude_through_panel_center(grid_cpu, Ldᵢ, panel_index; levels = 1:1))
     title = "Deformation radius"
     create_single_line_or_scatter_plot(resolution, plot_type_1D,
                                        latitude_at_specific_longitude_through_panel_center[:, index],
@@ -672,24 +703,24 @@ file_c = jldopen("cubed_sphere_aquaplanet_checkpointer_iteration$(iteration_id).
 u_f = file_c["u/data"]
 v_f = file_c["v/data"]
 
-u_f_r, v_f_r = orient_velocities_in_global_direction(cpu_grid, u_f, v_f, cos_θ, sin_θ; levels = 1:Nz,
+u_f_r, v_f_r = orient_velocities_in_global_direction(grid_cpu, u_f, v_f, cos_θ, sin_θ; levels = 1:Nz,
                                                      read_parent_field_data = true)
 
-u_f = set_parent_field_data(cpu_grid, u_f, "fc"; levels = 1:Nz)
-v_f = set_parent_field_data(cpu_grid, v_f, "cf"; levels = 1:Nz)
+u_f = set_parent_field_data(grid_cpu, u_f, "fc"; levels = 1:Nz)
+v_f = set_parent_field_data(grid_cpu, v_f, "cf"; levels = 1:Nz)
 
-compute_vorticity!(cpu_grid, u_f, v_f, ζ)
+compute_vorticity!(grid_cpu, u_f, v_f, ζ)
 
-ζ_f = interpolate_cubed_sphere_field_to_cell_centers(cpu_grid, ζ, "ff"; levels = 1:Nz)
+ζ_f = interpolate_cubed_sphere_field_to_cell_centers(grid_cpu, ζ, "ff"; levels = 1:Nz)
 
 w_f = file_c["w/data"]
-w_f = set_parent_field_data(cpu_grid, w_f, "cc"; levels = 1:Nz+1)
+w_f = set_parent_field_data(grid_cpu, w_f, "cc"; levels = 1:Nz+1)
 
 η_f = file_c["η/data"]
-η_f = set_parent_field_data(cpu_grid, η_f, "cc"; ssh = true)
+η_f = set_parent_field_data(grid_cpu, η_f, "cc"; ssh = true)
 
 b_f = file_c["b/data"]
-b_f = set_parent_field_data(cpu_grid, b_f, "cc"; levels = 1:Nz)
+b_f = set_parent_field_data(grid_cpu, b_f, "cc"; levels = 1:Nz)
 set!(tracers.b, b_f)
 
 Ld_f = Field((Center, Center, Nothing), grid)
@@ -702,36 +733,36 @@ Ld_f_at_specific_longitude_through_panel_center = zeros(2*Nx, 4);
 simulation_time = iteration_id * Δt
 
 title = "Zonal velocity after $(prettytime(simulation_time))"
-fig = geo_heatlatlon_visualization(cpu_grid, u_f_r, title; common_kwargs_geo..., cbar_label = "zonal velocity (m s⁻¹)")
+fig = geo_heatlatlon_visualization(grid_cpu, u_f_r, title; common_kwargs_geo..., cbar_label = "zonal velocity (m s⁻¹)")
 save("cubed_sphere_aquaplanet_u_f_geo_heatlatlon_plot_$iteration_id.png", fig)
 
 title = "Meridional velocity after $(prettytime(simulation_time))"
-fig = geo_heatlatlon_visualization(cpu_grid, v_f_r, title; common_kwargs_geo...,
+fig = geo_heatlatlon_visualization(grid_cpu, v_f_r, title; common_kwargs_geo...,
                                    cbar_label = "meridional velocity (m s⁻¹)")
 save("cubed_sphere_aquaplanet_v_f_geo_heatlatlon_plot_$iteration_id.png", fig)
 
 title = "Relative vorticity after $(prettytime(simulation_time))"
-fig = geo_heatlatlon_visualization(cpu_grid, ζ_f, title; common_kwargs_geo..., cbar_label = "relative vorticity (s⁻¹)",
+fig = geo_heatlatlon_visualization(grid_cpu, ζ_f, title; common_kwargs_geo..., cbar_label = "relative vorticity (s⁻¹)",
                                    specify_plot_limits = true, plot_limits = (-1.25e-5, 1.25e-5))
 save("cubed_sphere_aquaplanet_ζ_f_geo_heatlatlon_plot_$iteration_id.png", fig)
 
 title = "Vertical velocity after $(prettytime(simulation_time))"
-fig = geo_heatlatlon_visualization(cpu_grid, w_f, title; common_kwargs_geo_w...,
+fig = geo_heatlatlon_visualization(grid_cpu, w_f, title; common_kwargs_geo_w...,
                                    cbar_label = "vertical velocity (m s⁻¹)", specify_plot_limits = true,
                                    plot_limits = (-5e-4, 5e-4))
 save("cubed_sphere_aquaplanet_w_f_geo_heatlatlon_plot_$iteration_id.png", fig)
 
 title = "Surface elevation after $(prettytime(simulation_time))"
-fig = geo_heatlatlon_visualization(cpu_grid, η_f, title; ssh = true, cbar_label = "surface elevation (m)")
+fig = geo_heatlatlon_visualization(grid_cpu, η_f, title; ssh = true, cbar_label = "surface elevation (m)")
 save("cubed_sphere_aquaplanet_η_f_geo_heatlatlon_plot_$iteration_id.png", fig)
 
 title = "Buoyancy after $(prettytime(simulation_time))"
-fig = geo_heatlatlon_visualization(cpu_grid, b_f, title; common_kwargs_geo_b..., cbar_label = "buoyancy (m s⁻²)",
+fig = geo_heatlatlon_visualization(grid_cpu, b_f, title; common_kwargs_geo_b..., cbar_label = "buoyancy (m s⁻²)",
                                    specify_plot_limits = true, plot_limits = (-0.055, 0.055))
 save("cubed_sphere_aquaplanet_b_f_geo_heatlatlon_plot_$iteration_id.png", fig)
 
 title = "Deformation radius after $(prettytime(simulation_time))"
-fig = geo_heatlatlon_visualization(cpu_grid, Ld_f, title; common_kwargs_geo_Ld...,
+fig = geo_heatlatlon_visualization(grid_cpu, Ld_f, title; common_kwargs_geo_Ld...,
                                    cbar_label = "deformation radius (m)")
 save("cubed_sphere_aquaplanet_Ld_f_geo_heatlatlon_plot_$iteration_id.png", fig)
 
@@ -747,25 +778,25 @@ b_f_at_specific_longitude_through_panel_center  = zeros(2*Nx,   Nz, 4);
 index, panel_index = 1, 1
 
 u_f_at_specific_longitude_through_panel_center[:, :, index] = (
-extract_field_at_specific_longitude_through_panel_center(cpu_grid, u_f_r, panel_index; levels = 1:Nz))
+extract_field_at_specific_longitude_through_panel_center(grid_cpu, u_f_r, panel_index; levels = 1:Nz))
 
 v_f_at_specific_longitude_through_panel_center[:, :, index] = (
-extract_field_at_specific_longitude_through_panel_center(cpu_grid, v_f_r, panel_index; levels = 1:Nz))
+extract_field_at_specific_longitude_through_panel_center(grid_cpu, v_f_r, panel_index; levels = 1:Nz))
 
 ζ_f_at_specific_longitude_through_panel_center[:, :, index] = (
-extract_field_at_specific_longitude_through_panel_center(cpu_grid, ζ_f, panel_index; levels = 1:Nz))
+extract_field_at_specific_longitude_through_panel_center(grid_cpu, ζ_f, panel_index; levels = 1:Nz))
 
 w_f_at_specific_longitude_through_panel_center[:, :, index] = (
-extract_field_at_specific_longitude_through_panel_center(cpu_grid, w_f, panel_index; levels = 1:Nz+1))
+extract_field_at_specific_longitude_through_panel_center(grid_cpu, w_f, panel_index; levels = 1:Nz+1))
 
 η_f_at_specific_longitude_through_panel_center[:, :, index] = (
-extract_field_at_specific_longitude_through_panel_center(cpu_grid, η_f, panel_index; levels = Nz+1:Nz+1))
+extract_field_at_specific_longitude_through_panel_center(grid_cpu, η_f, panel_index; levels = Nz+1:Nz+1))
 
 b_f_at_specific_longitude_through_panel_center[:, :, index] = (
-extract_field_at_specific_longitude_through_panel_center(cpu_grid, b_f, panel_index; levels = 1:Nz))
+extract_field_at_specific_longitude_through_panel_center(grid_cpu, b_f, panel_index; levels = 1:Nz))
 
 Ld_f_at_specific_longitude_through_panel_center[:, index] = (
-extract_field_at_specific_longitude_through_panel_center(cpu_grid, Ld_f, panel_index; levels = 1:1))
+extract_field_at_specific_longitude_through_panel_center(grid_cpu, Ld_f, panel_index; levels = 1:1))
 
 title = "Zonal velocity after $(prettytime(simulation_time))"
 cbar_label = "zonal velocity (m s⁻¹)"
@@ -806,6 +837,7 @@ create_single_line_or_scatter_plot(resolution, plot_type_1D,
                                    η_f_at_specific_longitude_through_panel_center[:, 1, index], axis_kwargs_ssh,
                                    title, plot_kwargs, "cubed_sphere_aquaplanet_η_f_latitude_$panel_index";
                                    tight_x_axis = true)
+
 title = "Buoyancy after $(prettytime(simulation_time))"
 cbar_label = "buoyancy (m s⁻²)"
 create_heat_map_or_contour_plot(resolution, plot_type_2D,
