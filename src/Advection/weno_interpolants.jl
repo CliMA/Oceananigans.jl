@@ -122,6 +122,31 @@ for buffer in [2, 3, 4, 5, 6]
 end
 
 # _UNIFORM_ smoothness coefficients (stretched smoothness coefficients are to be fixed!)
+
+"""
+    smoothness_coefficients(::Val{buffer}, ::Val{stencil})
+
+Return the coefficients used to calculate the smoothness indicators for the stencil 
+number `stencil` of a WENO reconstruction of order `buffer * 2 - 1`. The coefficients
+are ordered in such a way to calculate the smoothness in the following fashion:
+
+```julia
+buffer  = 4
+stencil = 0
+
+ψ = # The stencil corresponding to S₀ with buffer 4 (7th order WENO)
+
+C = smoothness_coefficients(Val(buffer), Val(0))
+
+# The smoothness indicator
+S = ψ[1] * (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3] + C[4] * ψ[4]) + 
+    ψ[2] * (C[5]  * ψ[2] + C[6] * ψ[3] + C[7] * ψ[4]) + 
+    ψ[3] * (C[8]  * ψ[3] + C[9] * ψ[4])
+    ψ[4] * (C[10] * ψ[4])
+```
+
+This last operation is metaprogrammed in the function `metaprogrammed_smoothness_sum`
+"""
 @inline smoothness_coefficients(::Val{2}, ::Val{0}) = :((1, -2, 1))
 @inline smoothness_coefficients(::Val{2}, ::Val{1}) = :((1, -2, 1))
 
