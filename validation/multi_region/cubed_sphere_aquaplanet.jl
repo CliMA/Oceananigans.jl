@@ -53,7 +53,7 @@ h_b = 0.25 * Lz
 h_νz_κz = 100
 
 Nx, Ny, Nz = 360, 360, 30
-Nhalo = 4
+Nhalo = 6
 
 ratio = 0.8
 
@@ -317,8 +317,12 @@ b_bcs = FieldBoundaryConditions(top = top_restoring_bc)
 #### Model setup
 ####
 
+#=
 momentum_advection = VectorInvariant()
 tracer_advection   = WENO()
+=#
+momentum_advection = WENOVectorInvariant(vorticity_order=9)
+tracer_advection   = WENO(order=9)
 substeps           = 50
 free_surface       = SplitExplicitFreeSurface(grid; substeps, extended_halos = false)
 
@@ -375,8 +379,10 @@ end
 @inline diffusive_flux_y(i, j, k, grid, closure::Smagorinsky, diffusivities, ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index = zero(grid)
 @inline diffusive_flux_z(i, j, k, grid, closure::Smagorinsky, diffusivities, ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index = zero(grid)
 
+#=
 horizontal_viscosity = Smagorinsky() # Smagorinsky viscosity
 horizontal_diffusivity = HorizontalScalarDiffusivity(κ=κh) # Laplacian diffusivity
+=#
 
 νz_surface = 1e-3
 νz_bottom = 1e-4
@@ -414,8 +420,11 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                       tracer_advection,
                                       free_surface,
                                       coriolis,
+                                      #=
                                       closure = (horizontal_viscosity, horizontal_diffusivity, vertical_diffusivity,
                                                  convective_adjustment),
+                                      =#
+                                      closure = (vertical_diffusivity, convective_adjustment),
                                       tracers = :b,
                                       buoyancy = BuoyancyTracer(),
                                       boundary_conditions = (u = u_bcs, v = v_bcs, b = b_bcs))
