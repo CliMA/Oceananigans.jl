@@ -116,7 +116,7 @@ Write out 3D fields for ``u``, ``v``, ``w``, and a tracer ``c``, along with a ho
 using Oceananigans
 using Oceananigans.Utils: hour, minute
 
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)), tracers=(:c,))
+model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)), tracers=:c)
 simulation = Simulation(model, Δt=12, stop_time=1hour)
 
 function init_save_some_metadata!(file, model)
