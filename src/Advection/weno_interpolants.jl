@@ -112,7 +112,7 @@ for buffer in [2, 3, 4, 5, 6]
             retrieved from the precomputed coefficients via the `retrieve_coeff` function
             """
             @inline coeff_p(::WENO{$buffer, FT}, bias, ::Val{$stencil}, ::Type{Nothing}, args...) where FT = 
-                @inbounds FT.($(stencil_coefficients(50, stencil, collect(1:100), collect(1:100); order = buffer)))
+                @inbounds map(FT, $(stencil_coefficients(50, stencil, collect(1:100), collect(1:100); order = buffer)))
 
             # stretched coefficients are retrieved from precalculated coefficients
             @inline coeff_p(scheme::WENO{$buffer}, bias, ::Val{$stencil}, T, dir, i, loc) = 
@@ -260,7 +260,7 @@ for buffer in [2, 3, 4, 5, 6]
     
     for stencil in 0:buffer-1
         @eval @inline smoothness_indicator(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil}) where FT = 
-                      smoothness_operation(scheme, ψ, FT.($(smoothness_coefficients(Val(buffer), Val(stencil)))))
+                      smoothness_operation(scheme, ψ, map(FT, $(smoothness_coefficients(Val(buffer), Val(stencil)))))
     end
 end
 
