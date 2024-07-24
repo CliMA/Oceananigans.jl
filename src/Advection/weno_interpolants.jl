@@ -490,7 +490,7 @@ The calculation of the reconstruction is metaprogrammed in the `metaprogrammed_w
     ω[4] * biased_p(scheme, bias, Val(3), ψ[4], cT, Val(val), idx, loc))
 ```
 
-Here, [`biased_p`](@ref) is the function that computed the linear reconstruction of the individual stencils.
+Here, [`biased_p`](@ref) is the function that computes the linear reconstruction of the individual stencils.
 """
 @inline weno_reconstruction(scheme, bias, ψ, args...) = zero(ψ[1][1]) # Fallback only for documentation purposes
 
