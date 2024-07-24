@@ -471,7 +471,7 @@ end
 end
 
 """
-weno_reconstruction(scheme::WENO{buffer}, bias, ψ, ω, cT, val, idx, loc)
+    weno_reconstruction(scheme::WENO{buffer}, bias, ψ, ω, cT, val, idx, loc)
 
 `bias`ed reconstruction of stencils `ψ` for a WENO scheme of order `buffer * 2 - 1` weighted by WENO
 weights `ω`. `ψ` is a `Tuple` of `buffer` stencils of size `buffer` and `ω` is a `Tuple` of size `buffer`
