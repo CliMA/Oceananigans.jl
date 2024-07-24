@@ -159,12 +159,12 @@ end
     elem = Vector(undef, buffer)
     c_idx = 1
     for stencil = 1:buffer - 1
-        stencil_sum   = Expr(:call, :+, (:(@inbounds C[$(c_idx + i - stencil)] * ψ[$i]) for i in stencil:buffer)...)
-        elem[stencil] = :(@inbounds ψ[$stencil] * $stencil_sum)
+        stencil_sum   = Expr(:call, :+, (:(C[$(c_idx + i - stencil)] * ψ[$i]) for i in stencil:buffer)...)
+        elem[stencil] = :(ψ[$stencil] * $stencil_sum)
         c_idx += buffer - stencil + 1
     end
 
-    elem[buffer] = :(@inbounds ψ[$buffer] * ψ[$buffer] * C[$c_idx])
+    elem[buffer] = :(ψ[$buffer] * ψ[$buffer] * C[$c_idx])
     
     return Expr(:call, :+, elem...)
 end
@@ -175,11 +175,11 @@ for buffer in [2, 3, 4, 5, 6]
     
     for stencil in 0:buffer-1
         @eval @inline biased_β(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil}) where FT = 
-            smoothness_sum(scheme, ψ, FT.($(smoothness_coefficients(Val(buffer), Val(stencil)))))
+                   smoothness_sum(scheme, ψ, FT.($(smoothness_coefficients(Val(buffer), Val(stencil)))))
     end
 end
 
-# Shenanigans for WENO weights calculation for vector invariant formulation -> [β[i] = 0.5*(βᵤ[i] + βᵥ[i]) for i in 1:buffer]
+# Shenanigans for WENO weights calculation for vector invariant formulation -> [β[i] = 0.5 * (βᵤ[i] + βᵥ[i]) for i in 1:buffer]
 @inline function metaprogrammed_beta_sum(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer

@@ -89,24 +89,22 @@ end
 
 """
     inside_immersed_boundary(buffer, shift, dir, side;
-                             xside = :ᶠ, yside = :ᶠ, zside = :ᶠ,
-                             xshift = 0, yshift = 0, zshift = 0) 
+                             xside = :ᶠ, yside = :ᶠ, zside = :ᶠ) 
 
-Calculate the correct stencil needed for each indiviual reconstruction (i.e., symmetric, left biased and right biased, 
-on `Face`s and on `Center`s)
+Check if the stencil required for reconstruction contains immersed nodes 
 
 Example
 =======
 
 ```
-julia> calc_inactive_cells(2, :none, :z, :ᶜ)
+julia> inside_immersed_boundary(2, :none, :z, :ᶜ)
 4-element Vector{Any}:
  :(inactive_node(i, j, k + -1, ibg, c, c, f))
  :(inactive_node(i, j, k + 0,  ibg, c, c, f))
  :(inactive_node(i, j, k + 1,  ibg, c, c, f))
  :(inactive_node(i, j, k + 2,  ibg, c, c, f))
 
-julia> calc_inactive_cells(3, :left, :x, :ᶠ)
+julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
 5-element Vector{Any}:
  :(inactive_node(i + -3, j, k, ibg, c, c, c))
  :(inactive_node(i + -2, j, k, ibg, c, c, c))
