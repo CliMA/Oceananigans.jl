@@ -485,9 +485,9 @@ The calculation of the reconstruction is metaprogrammed in the `metaprogrammed_w
 
 ```julia
 ψ̂ = ω[1] * biased_p(scheme, bias, Val(0), ψ[1], cT, Val(val), idx, loc) + 
-ω[2] * biased_p(scheme, bias, Val(1), ψ[2], cT, Val(val), idx, loc) + 
-ω[3] * biased_p(scheme, bias, Val(2), ψ[3], cT, Val(val), idx, loc) + 
-ω[4] * biased_p(scheme, bias, Val(3), ψ[4], cT, Val(val), idx, loc))
+    ω[2] * biased_p(scheme, bias, Val(1), ψ[2], cT, Val(val), idx, loc) + 
+    ω[3] * biased_p(scheme, bias, Val(2), ψ[3], cT, Val(val), idx, loc) + 
+    ω[4] * biased_p(scheme, bias, Val(3), ψ[4], cT, Val(val), idx, loc))
 ```
 
 Here, [`biased_p`](@ref) is the function that computed the linear reconstruction of the individual stencils.
