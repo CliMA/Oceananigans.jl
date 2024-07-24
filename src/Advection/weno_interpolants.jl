@@ -213,50 +213,52 @@ This last operation is metaprogrammed in the function `metaprogrammed_smoothness
     return Expr(:call, :+, elem...)
 end
 
+"""
+    smoothness_indicator(ψ, scheme::WENO{buffer, FT}, ::Val{stencil})
+
+Return the smoothness indicator β for the stencil number `stencil` of a WENO reconstruction of order `buffer * 2 - 1`.
+The smoothness indicator (β) is calculated as follows
+
+```julia
+C = smoothness_coefficients(Val(buffer), Val(stencil))
+
+# The smoothness indicator
+β = 0
+c_idx = 1
+for stencil = 1:buffer - 1
+    partial_sum = [C[c_idx + i - stencil)] * ψ[i]) for i in stencil:buffer]
+    β          += ψ[stencil] * partial_sum
+    c_idx += buffer - stencil + 1
+end
+
+β += ψ[buffer] * ψ[buffer] * C[c_idx])
+```
+
+This last operation is metaprogrammed in the function `metaprogrammed_smoothness_operation` (to avoid loops)
+and, for `buffer == 3` unrolls into
+
+```julia
+β = ψ[1] * (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3]) + 
+    ψ[2] * (C[4]  * ψ[2] + C[5] * ψ[3]) + 
+    ψ[3] * (C[6])
+```
+
+while for `buffer == 4` unrolls into
+
+```julia
+β = ψ[1] * (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3] + C[4] * ψ[4]) + 
+    ψ[2] * (C[5]  * ψ[2] + C[6] * ψ[3] + C[7] * ψ[4]) + 
+    ψ[3] * (C[8]  * ψ[3] + C[9] * ψ[4])
+    ψ[4] * (C[10] * ψ[4])
+```
+"""
+@inline smoothness_indicator(ψ, args...) = zero(ψ[1]) # This is a fallback method, here only for documentation purposes
+
 # Smoothness indicators for stencil `stencil` for left and right biased reconstruction
 for buffer in [2, 3, 4, 5, 6]
     @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds $(metaprogrammed_smoothness_operation(buffer))
     
     for stencil in 0:buffer-1
-        """
-            smoothness_indicator(ψ, scheme::WENO{buffer, FT}, ::Val{stencil})
-
-        Return the smoothness indicator β for the stencil number `stencil` of a WENO reconstruction of order `buffer * 2 - 1`.
-        The smoothness indicator (β) is calculated as follows
-        
-        ```julia
-        C = smoothness_coefficients(Val(buffer), Val(stencil))
-        
-        # The smoothness indicator
-        β = 0
-        c_idx = 1
-        for stencil = 1:buffer - 1
-            partial_sum = [C[c_idx + i - stencil)] * ψ[i]) for i in stencil:buffer]
-            β          += ψ[stencil] * partial_sum
-            c_idx += buffer - stencil + 1
-        end
-
-        β += ψ[buffer] * ψ[buffer] * C[c_idx])
-        ```
-        
-        This last operation is metaprogrammed in the function `metaprogrammed_smoothness_operation` (to avoid loops)
-        and, for `buffer == 3` unrolls into
-        
-        ```julia
-        β = ψ[1] * (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3]) + 
-            ψ[2] * (C[4]  * ψ[2] + C[5] * ψ[3]) + 
-            ψ[3] * (C[6])
-        ```
-
-        while for `buffer == 4` unrolls into
-        
-        ```julia
-        β = ψ[1] * (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3] + C[4] * ψ[4]) + 
-            ψ[2] * (C[5]  * ψ[2] + C[6] * ψ[3] + C[7] * ψ[4]) + 
-            ψ[3] * (C[8]  * ψ[3] + C[9] * ψ[4])
-            ψ[4] * (C[10] * ψ[4])
-        ```
-        """
         @eval @inline smoothness_indicator(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil}) where FT = 
                       smoothness_operation(scheme, ψ, FT.($(smoothness_coefficients(Val(buffer), Val(stencil)))))
     end
