@@ -129,7 +129,7 @@ for buffer in [2, 3, 4, 5, 6]
             order `buffer * 2 - 1`. The reconstruction is calculated as
             
             ```math
-            \psi\bigstar = \sum_r c_r ⋅ \psi_r
+            ψ★ = ∑ᵣ cᵣ ⋅ ψᵣ
             ```
 
             where ``cᵣ`` is computed from the function `coeff_p`
@@ -314,16 +314,16 @@ Biased weno weights ω used to weight the WENO reconstruction of the different s
 We use here a Z-WENO formulation where
 
 ```math
-    \alpha = C\bigstar \cdot \left(1 + \left(\frac{\tau}{\beta + \epsilon}\right)^2 \right)
+    α = C★ ⋅ (1 + τ² / (β + ϵ)²) 
 ```
 
 where 
-- ``C\bigstar`` is the optimal weight that leads to an upwind reconstruction of order `N * 2 - 1`,
-- ``\beta`` is the smoothness indicator calculated by the `smoothness_indicator` function
-- ``\tau`` is a global smoothness indicator, function of the ``\beta`` values, calculated by the `global_smoothness_indicator` function
-- ``\epsilon`` is a regularization constant, typically equal to 1e-8
+- ``C★`` is the optimal weight that leads to an upwind reconstruction of order `N * 2 - 1`,
+- ``β`` is the smoothness indicator calculated by the `smoothness_indicator` function
+- ``τ`` is a global smoothness indicator, function of the ``β`` values, calculated by the `global_smoothness_indicator` function
+- ``ϵ`` is a regularization constant, typically equal to 1e-8
 
-The ``\alpha`` values are normalized before returning
+The ``α`` values are normalized before returning
 """
 @inline function biased_weno_weights(ψ, scheme::WENO{N, FT}, args...) where {N, FT}
     β = beta_loop(scheme, ψ)
