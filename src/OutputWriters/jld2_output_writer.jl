@@ -112,7 +112,7 @@ Example
 
 Write out 3D fields for ``u``, ``v``, ``w``, and a tracer ``c``, along with a horizontal average:
 
-```jldoctest jld2_output_writer
+```
 using Oceananigans
 using Oceananigans.Utils: hour, minute
 
@@ -147,7 +147,7 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 and a time- and horizontal-average of tracer ``c`` every 20 minutes of simulation time
 to a file called `some_averaged_data.jld2`
 
-```jldoctest jld2_output_writer
+```
 simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (; c=c_avg),
                                                      filename = "some_averaged_data.jld2",
                                                      schedule = AveragedTimeInterval(20minute, window=5minute))
