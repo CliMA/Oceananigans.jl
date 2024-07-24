@@ -331,13 +331,6 @@ end
 
     i, j, k = @index(Global, NTuple)
 
-    #=
-    ℓx, ℓy, ℓz = to_location
-    ξ = ξnode(i, j, k, to_grid, ℓx, ℓy, ℓz)
-    η = ηnode(i, j, k, to_grid, ℓx, ℓy, ℓz)
-    ζ = ζnode(i, j, k, to_grid, ℓx, ℓy, ℓz)
-    =#
-
     to_node = _node(i, j, k, to_grid, to_location...)
     to_node = flatten_node(to_node...)
 
