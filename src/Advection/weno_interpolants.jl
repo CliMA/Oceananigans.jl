@@ -103,7 +103,14 @@ for buffer in [2, 3, 4, 5, 6]
 
         # ENO coefficients for uniform direction (when T<:Nothing) and stretched directions (when T<:Any) 
         @eval begin
-            # uniform coefficients are independent on direction and location
+            """
+                coeff_p(::WENO{buffer, FT}, bias, ::Val{stencil}, T, args...) 
+
+            Reconstruction coefficients for the stencil number `stencil` of a WENO reconstruction 
+            of order `buffer * 2 - 1`. Uniform coefficients (i.e. when `T == Nothing`) are independent on the
+            `bias` of the reconstruction (either `LeftBias` or `RightBias`), while stretched coeffiecients are
+            retrieved from the precomputed coefficients via the `retrieve_coeff` function
+            """
             @inline coeff_p(::WENO{$buffer, FT}, bias, ::Val{$stencil}, ::Type{Nothing}, args...) where FT = 
                 @inbounds FT.($(stencil_coefficients(50, stencil, collect(1:100), collect(1:100); order = buffer)))
 
@@ -115,6 +122,18 @@ for buffer in [2, 3, 4, 5, 6]
     
         # left biased and right biased reconstruction value for each stencil
         @eval begin
+            """ 
+                biased_p(scheme::WENO{buffer}, bias, ::Val{stencil}, ψ, T, dir, i, loc)
+
+            Biased reconstruction of `ψ` from the stencil `stencil` of a WENO reconstruction of
+            order `buffer * 2 - 1`. The reconstruction is calculated as
+            
+            ```math
+            \psi\bigstar = \sum_r c_r ⋅ \psi_r
+            ```
+
+            where ``cᵣ`` is computed from the function `coeff_p`
+            """
             @inline biased_p(scheme::WENO{$buffer}, bias, ::Val{$stencil}, ψ, T, dir, i, loc) = 
                 @inbounds sum(coeff_p(scheme, bias, Val($stencil), T, dir, i, loc) .* ψ)
         end
@@ -288,7 +307,24 @@ end
 @inline global_smoothness_indicator(::Val{5}, β) = @inbounds abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
 @inline global_smoothness_indicator(::Val{6}, β) = @inbounds abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
 
-# Calculating Dynamic WENO Weights (wᵣ), using the Z-WENO formulation
+"""
+    function biased_weno_weights(ψ, scheme::WENO{N, FT}, args...)
+
+Biased weno weights ω used to weight the WENO reconstruction of the different stencils. 
+We use here a Z-WENO formulation where
+
+```math
+    \alpha = C\bigstar \cdot \left(1 + \left(\frac{\tau}{\beta + \epsilon}\right)^2 \right)
+```
+
+where 
+- ``C\bigstar`` is the optimal weight that leads to an upwind reconstruction of order `N * 2 - 1`,
+- ``\beta`` is the smoothness indicator calculated by the `smoothness_indicator` function
+- ``\tau`` is a global smoothness indicator, function of the ``\beta`` values, calculated by the `global_smoothness_indicator` function
+- ``\epsilon`` is a regularization constant, typically equal to 1e-8
+
+The ``\alpha`` values are normalized before returning
+"""
 @inline function biased_weno_weights(ψ, scheme::WENO{N, FT}, args...) where {N, FT}
     β = beta_loop(scheme, ψ)
                 
