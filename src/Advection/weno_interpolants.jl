@@ -139,13 +139,13 @@ stencil = 0
 C = smoothness_coefficients(Val(buffer), Val(0))
 
 # The smoothness indicator
-S = ψ[1] * (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3] + C[4] * ψ[4]) + 
+β = ψ[1] * (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3] + C[4] * ψ[4]) + 
     ψ[2] * (C[5]  * ψ[2] + C[6] * ψ[3] + C[7] * ψ[4]) + 
     ψ[3] * (C[8]  * ψ[3] + C[9] * ψ[4])
     ψ[4] * (C[10] * ψ[4])
 ```
 
-This last operation is metaprogrammed in the function `metaprogrammed_smoothness_sum`
+This last operation is metaprogrammed in the function `metaprogrammed_smoothness_operation`
 """
 @inline smoothness_coefficients(::Val{2}, ::Val{0}) = :((1, -2, 1))
 @inline smoothness_coefficients(::Val{2}, ::Val{1}) = :((1, -2, 1))
@@ -177,10 +177,10 @@ This last operation is metaprogrammed in the function `metaprogrammed_smoothness
 # ψ[2] (C[5]  * ψ[2] + C[6] * ψ[3] + C[7] * ψ[4]) + 
 # ψ[3] (C[8]  * ψ[3] + C[9] * ψ[4])
 # ψ[4] (C[10] * ψ[4])
-# This expression is the output of metaprogrammed_smoothness_sum(4)
+# This expression is the output of metaprogrammed_smoothness_operation(4)
 
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
-@inline function metaprogrammed_smoothness_sum(buffer)
+@inline function metaprogrammed_smoothness_operation(buffer)
     elem = Vector(undef, buffer)
     c_idx = 1
     for stencil = 1:buffer - 1
@@ -196,11 +196,50 @@ end
 
 # Smoothness indicators for stencil `stencil` for left and right biased reconstruction
 for buffer in [2, 3, 4, 5, 6]
-    @eval @inline smoothness_sum(scheme::WENO{$buffer}, ψ, C) = @inbounds $(metaprogrammed_smoothness_sum(buffer))
+    @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds $(metaprogrammed_smoothness_operation(buffer))
     
     for stencil in 0:buffer-1
-        @eval @inline biased_β(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil}) where FT = 
-                   smoothness_sum(scheme, ψ, FT.($(smoothness_coefficients(Val(buffer), Val(stencil)))))
+        """
+            smoothness_indicator(ψ, scheme::WENO{buffer, FT}, ::Val{stencil})
+
+        Return the smoothness indicator β for the stencil number `stencil` of a WENO reconstruction of order `buffer * 2 - 1`.
+        The smoothness indicator (β) is calculated as follows
+        
+        ```julia
+        C = smoothness_coefficients(Val(buffer), Val(stencil))
+        
+        # The smoothness indicator
+        β = 0
+        c_idx = 1
+        for stencil = 1:buffer - 1
+            partial_sum = [C[c_idx + i - stencil)] * ψ[i]) for i in stencil:buffer]
+            β          += ψ[stencil] * partial_sum
+            c_idx += buffer - stencil + 1
+        end
+
+        β += ψ[buffer] * ψ[buffer] * C[c_idx])
+        ```
+        
+        This last operation is metaprogrammed in the function `metaprogrammed_smoothness_operation` (to avoid loops)
+        and, for `buffer == 3` unrolls into
+        
+        ```julia
+        β = ψ[1] * (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3]) + 
+            ψ[2] * (C[4]  * ψ[2] + C[5] * ψ[3]) + 
+            ψ[3] * (C[6])
+        ```
+
+        while for `buffer == 4` unrolls into
+        
+        ```julia
+        β = ψ[1] * (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3] + C[4] * ψ[4]) + 
+            ψ[2] * (C[5]  * ψ[2] + C[6] * ψ[3] + C[7] * ψ[4]) + 
+            ψ[3] * (C[8]  * ψ[3] + C[9] * ψ[4])
+            ψ[4] * (C[10] * ψ[4])
+        ```
+        """
+        @eval @inline smoothness_indicator(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil}) where FT = 
+                      smoothness_operation(scheme, ψ, FT.($(smoothness_coefficients(Val(buffer), Val(stencil)))))
     end
 end
 
@@ -214,11 +253,11 @@ end
     return :($(elem...),)
 end
 
-# biased_β calculation for scheme and stencil = 0:buffer - 1
+# smoothness_indicator calculation for scheme and stencil = 0:buffer - 1
 @inline function metaprogrammed_beta_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(biased_β(ψ[$stencil], scheme, Val($(stencil-1))))
+        elem[stencil] = :(smoothness_indicator(ψ[$stencil], scheme, Val($(stencil-1))))
     end
 
     return :($(elem...),)
