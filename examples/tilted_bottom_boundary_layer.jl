@@ -52,7 +52,8 @@ z_faces(k) = - Lz * (ζ(k) * Σ(k) - 1)
 grid = RectilinearGrid(topology = (Periodic, Flat, Bounded),
                        size = (Nx, Nz),
                        x = (0, Lx),
-                       z = z_faces)
+                       z = z_faces,
+                       halo = (3, 3))
 
 # Let's make sure the grid spacing is both finer and near-uniform at the bottom,
 
@@ -83,7 +84,7 @@ ĝ = [sind(θ), 0, cosd(θ)]
 buoyancy = Buoyancy(model = BuoyancyTracer(), gravity_unit_vector = -ĝ)
 coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ĝ)
 
-# where above we used a constant Coriolis parameter ``f = 10^{-4} \, \rm{s}^{-1}``.
+# where we have used a constant Coriolis parameter ``$f = 10^{-4} \, \rm{s}^{-1}``.
 # The tilting also affects the kind of density stratified flows we can model.
 # In particular, a constant density stratification in the tilted
 # coordinate system
@@ -114,15 +115,14 @@ b_bcs = FieldBoundaryConditions(bottom = negative_background_diffusive_flux)
 
 # ## Bottom drag
 #
-# We impose bottom drag that follows Monin--Obukhov theory.
+# We impose bottom drag that follows Monin-Obukhov theory.
 # We include the background flow in the drag calculation,
 # which is the only effect the background flow enters the problem,
 
 V∞ = 0.1 # m s⁻¹
 z₀ = 0.1 # m (roughness length)
-κ = 0.4  # von Karman constant
-
-z₁ = first(znodes(grid, Center())) # Closest grid center to the bottom
+κ = 0.4 # von Karman constant
+z₁ = znodes(grid, Center())[1] # Closest grid center to the bottom
 cᴰ = (κ / log(z₁ / z₀))^2 # Drag coefficient
 
 @inline drag_u(x, t, u, v, p) = - p.cᴰ * √(u^2 + (v + p.V∞)^2) * u
@@ -152,7 +152,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
                             boundary_conditions = (u=u_bcs, v=v_bcs, b=b_bcs),
                             background_fields = (; b=B∞_field))
 
-# Let's introduce a bit of random noise at the bottom of the domain to speed up the onset of
+# Let's introduce a bit of random noise in the bottom of the domain to speed up the onset of
 # turbulence:
 
 noise(x, z) = 1e-3 * randn() * exp(-(10z)^2 / grid.Lz^2)
@@ -167,14 +167,16 @@ set!(model, u=noise, w=noise)
 Δt₀ = 0.5 * minimum([minimum_zspacing(grid) / V∞, minimum_zspacing(grid)^2/κ])
 simulation = Simulation(model, Δt = Δt₀, stop_time = 1day)
 
-# We use a `TimeStepWizard` to adapt our time-step,
+using Oceananigans.Units
+
+simulation = Simulation(model, Δt = 0.5 * minimum_zspacing(grid) / V∞, stop_time = 1days)
+
+# We use `TimeStepWizard` to adapt our time-step and print a progress message,
+
+using Printf
 
 wizard = TimeStepWizard(max_change=1.1, cfl=0.7)
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(4))
-
-# and also we add another callback to print a progress message,
-
-using Printf
 
 start_time = time_ns() # so we can print the total elapsed wall time
 
@@ -227,8 +229,8 @@ ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 
 fig = Figure(size = (800, 600))
 
-axis_kwargs = (xlabel = "Across-slope distance (m)",
-               ylabel = "Slope-normal\ndistance (m)",
+axis_kwargs = (xlabel = "Across-slope distance (x)",
+               ylabel = "Slope-normal\ndistance (z)",
                limits = ((0, Lx), (0, Lz)),
                )
 

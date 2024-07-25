@@ -6,8 +6,17 @@ using Oceananigans.Models: total_velocities
 #####
 
 # Functions for bouncing particles off walls to the right and left
-@inline  bounce_left(x, xᴿ, Cʳ) = xᴿ - Cʳ * (x - xᴿ)
-@inline bounce_right(x, xᴸ, Cʳ) = xᴸ + Cʳ * (xᴸ - x)
+@inline function bounce_left(x, xᴸ, xᴿ, Cʳ)
+    xᵢ = xᴿ - Cʳ * (x - xᴿ)
+    # Keep the particle from bouncing so far left it leaves the domain
+    return ifelse(xᵢ < xᴸ, xᴸ, xᵢ)
+end
+
+@inline function bounce_right(x, xᴸ, xᴿ, Cʳ)
+    xᵢ = xᴸ + Cʳ * (xᴸ - x)
+    # Keep the particle from bouncing so far right it leaves the domain
+    return ifelse(xᵢ > xᴿ, xᴿ, xᵢ)
+end
 
 """
     enforce_boundary_conditions(::Bounded, x, xᴸ, xᴿ, Cʳ)
@@ -16,8 +25,8 @@ Return a new particle position if the particle position `x`
 is outside the Bounded interval `(xᴸ, xᴿ)` by bouncing the particle off
 the interval edge with coefficient of restitution `Cʳ).
 """
-@inline enforce_boundary_conditions(::Bounded, x, xᴸ, xᴿ, Cʳ) = ifelse(x > xᴿ, bounce_left(x, xᴿ, Cʳ),
-                                                                ifelse(x < xᴸ, bounce_right(x, xᴸ, Cʳ), x))
+@inline enforce_boundary_conditions(::Bounded, x, xᴸ, xᴿ, Cʳ) = ifelse(x > xᴿ, bounce_left(x, xᴸ, xᴿ, Cʳ),
+                                                                ifelse(x < xᴸ, bounce_right(x, xᴸ, xᴿ, Cʳ), x))
 
 """
     enforce_boundary_conditions(::Periodic, x, xᴸ, xᴿ, Cʳ)
@@ -25,8 +34,8 @@ the interval edge with coefficient of restitution `Cʳ).
 Return a new particle position if the particle position `x`
 is outside the Periodic interval `(xᴸ, xᴿ)`.
 """
-@inline enforce_boundary_conditions(::Periodic, x, xᴸ, xᴿ, Cʳ) = ifelse(x > xᴿ, xᴸ + (x - xᴿ),
-                                                                 ifelse(x < xᴸ, xᴿ - (xᴸ - x), x))
+@inline enforce_boundary_conditions(::Periodic, x, xᴸ, xᴿ, Cʳ) = ifelse(x > xᴿ, xᴸ + mod(x - xᴿ, xᴿ - xᴸ),
+                                                                 ifelse(x < xᴸ, xᴿ - mod(xᴸ - x, xᴿ - xᴸ), x))
 
 """
     enforce_boundary_conditions(::Flat, x, xᴸ, xᴿ, Cʳ)
@@ -72,12 +81,30 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
 end
 
 """
+    particle_u_velocity(u_fluid, particles, p, Δt)
+
+a particle-specific advecting velocity such as 
+- sinking or rising for buoyant particles
+- electromagnetic forces for charged particles
+- swimming for biological particles
+- diffusing velocity for brownian motion
+Inputs are the fluid velocity, particle properties `particles`, and the particle index `p`
+
+Returns the fluid velocity by default (for non-buoyant, non-drifting particles). Has to be extended to obtain the desired effect
+"""
+@inline particle_u_velocity(x, y, z, u_fluid, particles, p, advective_velocity::ParticleVelocities, grid, clock, Δt, model_fields) = advective_velocity.u(x, y, z, u_fluid, particles, p, grid, clock, Δt, model_fields)
+@inline particle_v_velocity(x, y, z, v_fluid, particles, p, advective_velocity::ParticleVelocities, grid, clock, Δt, model_fields) = advective_velocity.v(x, y, z, v_fluid, particles, p, grid, clock, Δt, model_fields)
+@inline particle_w_velocity(x, y, z, w_fluid, particles, p, advective_velocity::ParticleVelocities, grid, clock, Δt, model_fields) = advective_velocity.w(x, y, z, w_fluid, particles, p, grid, clock, Δt, model_fields)
+
+"""
     advect_particle((x, y, z), p, restitution, grid, Δt, velocities)
 
 Return new position `(x⁺, y⁺, z⁺)` for a particle at current position (x, y, z),
 given `velocities`, time-step `Δt, and coefficient of `restitution`.
 """
-@inline function advect_particle((x, y, z), p, restitution, grid, Δt, velocities)
+@inline function advect_particle((x, y, z), particles, p, restitution, advective_velocity::ParticleVelocities, grid, clock, Δt, velocities, tracers, auxiliary_fields)
+    model_fields = merge(velocities, tracers, auxiliary_fields)
+    
     X = flattened_node((x, y, z), grid)
 
     # Obtain current particle indices
@@ -87,10 +114,15 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     current_particle_indices = (i, j, k)
 
     # Interpolate velocity to particle position
-    u = interpolate(X, velocities.u, (f, c, c), grid)
-    v = interpolate(X, velocities.v, (c, f, c), grid)
-    w = interpolate(X, velocities.w, (c, c, f), grid)
+    u_fluid = interpolate(X, velocities.u, (f, c, c), grid) 
+    v_fluid = interpolate(X, velocities.v, (c, f, c), grid) 
+    w_fluid = interpolate(X, velocities.w, (c, c, f), grid)
 
+    # Particle velocity
+    u = particle_u_velocity(x, y, z, u_fluid, particles, p, advective_velocity, grid, clock, Δt, model_fields)
+    v = particle_v_velocity(x, y, z, v_fluid, particles, p, advective_velocity, grid, clock, Δt, model_fields)
+    w = particle_w_velocity(x, y, z, w_fluid, particles, p, advective_velocity, grid, clock, Δt, model_fields)
+    
     # Advect particles, calculating the advection metric for a curvilinear grid.
     # Note that all supported grids use length coordinates in the vertical, so we do not
     # transform the vertical velocity nor invoke the k-index.
@@ -106,9 +138,9 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     Nx, Ny, Nz = size(grid)
 
     # Find index of the "rightmost" cell interface
-    iᴿ = length(f, tx, Nx)
-    jᴿ = length(f, ty, Ny)
-    kᴿ = length(f, tz, Nz)
+    iᴿ = length(f, tx, Nx) + ifelse(tx == Periodic(), 1, 0)
+    jᴿ = length(f, ty, Ny) + ifelse(ty == Periodic(), 1, 0)
+    kᴿ = length(f, tz, Nz) + ifelse(tz == Periodic(), 1, 0)
 
     xᴸ = xnode(1, j, k, grid, f, f, f)
     yᴸ = ynode(i, 1, k, grid, f, f, f)
@@ -120,9 +152,11 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
 
     # Enforce boundary conditions for particles.
     Cʳ = restitution
+
     x⁺ = enforce_boundary_conditions(tx, x⁺, xᴸ, xᴿ, Cʳ)
     y⁺ = enforce_boundary_conditions(ty, y⁺, yᴸ, yᴿ, Cʳ)
     z⁺ = enforce_boundary_conditions(tz, z⁺, zᴸ, zᴿ, Cʳ)
+
     if grid isa ImmersedBoundaryGrid
         previous_particle_indices = current_particle_indices # particle has been advected
         x⁺, y⁺, z⁺ = bounce_immersed_particle((x⁺, y⁺, z⁺), grid, Cʳ, previous_particle_indices)
@@ -140,7 +174,7 @@ end
 @inline y_metric(i, j, grid::RectilinearGrid) = 1
 @inline y_metric(i, j, grid::LatitudeLongitudeGrid{FT}) where FT = 1 / grid.radius * FT(360 / 2π)
 
-@kernel function _advect_particles!(particles, restitution, grid::AbstractUnderlyingGrid, Δt, velocities)
+@kernel function _advect_particles!(particles, advective_velocity, restitution, grid::AbstractUnderlyingGrid, clock, Δt, velocities, tracers, auxiliary_fields)
     p = @index(Global)
 
     @inbounds begin
@@ -149,7 +183,7 @@ end
         z = particles.z[p]
     end
 
-    x⁺, y⁺, z⁺ = advect_particle((x, y, z), p, restitution, grid, Δt, velocities)
+    x⁺, y⁺, z⁺ = advect_particle((x, y, z), particles, p, restitution, advective_velocity, grid, clock, Δt, velocities, tracers, auxiliary_fields)
 
     @inbounds begin
         particles.x[p] = x⁺
@@ -165,7 +199,7 @@ function advect_lagrangian_particles!(particles, model, Δt)
     worksize = length(particles)
 
     advect_particles_kernel! = _advect_particles!(device(arch), workgroup, worksize)
-    advect_particles_kernel!(particles.properties, particles.restitution, model.grid, Δt, total_velocities(model))
-
+    advect_particles_kernel!(particles.properties, particles.advective_velocity, particles.restitution, model.grid, model.clock, Δt, total_velocities(model), model.tracers, model.auxiliary_fields)
+    
     return nothing
 end

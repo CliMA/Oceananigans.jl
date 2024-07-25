@@ -109,8 +109,8 @@ using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInv
 
 using .LagrangianParticleTracking: LagrangianParticles
 
-const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
-                                 NonhydrostaticModel,
+const OceananigansModels = Union{HydrostaticFreeSurfaceModel, 
+                                 NonhydrostaticModel, 
                                  ShallowWaterModel}
 
 """
