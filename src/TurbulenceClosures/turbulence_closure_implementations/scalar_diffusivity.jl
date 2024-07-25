@@ -53,11 +53,15 @@ value of keyword argument `discrete_form`, the constructor expects:
   a `LatitudeLongitudeGrid`.
 
 * `discrete_form = true`:
-  - with `loc = (nothing, nothing, nothing)` (default):
-    functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy`,
+  - with `loc = (nothing, nothing, nothing)` and `parameters = nothing` (default):
+    functions of `(i, j, k, grid, ℓx, ℓy, ℓz, clock, fields)` with `ℓx`, `ℓy`,
     and `ℓz` either `Face()` or `Center()`.
   - with `loc = (ℓx, ℓy, ℓz)` with `ℓx`, `ℓy`, and `ℓz` either
-    `Face()` or `Center()`: functions of `(i, j, k, grid)`.
+    `Face()` or `Center()` and `parameters = nothing`: functions of `(i, j, k, grid, clock, fields)`.
+  - with `loc = (nothing, nothing, nothing)` and specified `parameters`:
+    functions of `(i, j, k, grid, ℓx, ℓy, ℓz, clock, fields, parameters)`.
+  - with `loc = (ℓx, ℓy, ℓz)` and specified `parameters`:
+    functions of `(i, j, k, grid, clock, fields, parameters)`.
 
 * `parameters`: `NamedTuple` with parameters used by the functions
   that compute viscosity and/or diffusivity; default: `nothing`.
@@ -85,7 +89,7 @@ ScalarDiffusivity{ExplicitTimeDiscretization}(ν=ν (generic function with 1 met
 ```jldoctest ScalarDiffusivity
 julia> using Oceananigans.Grids: znode
 
-julia> @inline function κ(i, j, k, grid, ℓx, ℓy, ℓz)
+julia> @inline function κ(i, j, k, grid, ℓx, ℓy, ℓz, clock, fields)
            z = znode(i, j, k, grid, ℓx, ℓy, ℓz)
            return 2000 * exp(z / depth_scale)
        end
@@ -96,8 +100,8 @@ ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.Turbulence
 ```
 
 ```jldoctest ScalarDiffusivity
-julia> @inline function another_κ(i, j, k, grid, p)
-           z = znode(i, j, k, grid)
+julia> @inline function another_κ(i, j, k, grid, clock, fields, p)
+           z = znode(i, j, k, grid, Center(), Center(), Face())
            return 2000 * exp(z / p.depth_scale)
        end
 another_κ (generic function with 1 method)
