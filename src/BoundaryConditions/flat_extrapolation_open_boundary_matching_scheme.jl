@@ -45,37 +45,37 @@ function FlatExtrapolationOpenBoundaryCondition(val = nothing; relaxation_timesc
     return BoundaryCondition(classification, val; kwargs...)
 end
 
-@inline function relax(l, m, a, bc, grid, clock, model_fields)
+@inline function relax(l, m, ϕ, bc, grid, clock, model_fields)
     Δt = clock.last_stage_Δt 
     τ = bc.classification.matching_scheme.relaxation_timescale
 
     Δt̄ = min(1, Δt / τ)
     aₑₓₜ = getbc(bc, l, m, grid, clock, model_fields)
 
-    Δa = (aₑₓₜ - a) * Δt̄
+    Δa = (aₑₓₜ - ϕ) * Δt̄
     not_relaxing = isnothing(bc.condition) | !isfinite(clock.last_stage_Δt)
-    Δa =  ifelse(not_relaxing, zero(a), Δc)
+    Δa =  ifelse(not_relaxing, zero(ϕ), Δc)
 
-    return a + Δa
+    return ϕ + Δa
 end
 
 const c = Center()
 
-@inline function _fill_west_open_halo!(j, k, grid, a, bc::FEOBC, loc, clock, model_fields)
+@inline function _fill_west_open_halo!(j, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
     Δx₁ = xspacing(1, j, k, grid, c, c, c)
     Δx₂ = xspacing(2, j, k, grid, c, c, c)
     Δx₃ = xspacing(3, j, k, grid, c, c, c)
 
     spacing_factor = Δx₁ / (Δx₂ + Δx₃)
 
-    gradient_free_c = @inbounds a[3, j, k] - (a[2, j, k] - a[4, j, k]) * spacing_factor
+    gradient_free_c = @inbounds ϕ[3, j, k] - (ϕ[2, j, k] - ϕ[4, j, k]) * spacing_factor
 
-    @inbounds a[1, j, k] = relax(j, k, gradient_free_c, bc, grid, clock, model_fields)
+    @inbounds ϕ[1, j, k] = relax(j, k, gradient_free_c, bc, grid, clock, model_fields)
 
     return nothing
 end
 
-@inline function _fill_east_open_halo!(j, k, grid, a, bc::FEOBC, loc, clock, model_fields)
+@inline function _fill_east_open_halo!(j, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
     i = grid.Nx + 1
 
     Δx₁ = xspacing(i-1, j, k, grid, c, c, c)
@@ -84,28 +84,28 @@ end
 
     spacing_factor = Δx₁ / (Δx₂ + Δx₃)
 
-    gradient_free_c = @inbounds a[i - 2, j, k] - (a[i - 1, j, k] - a[i - 3, j, k]) * spacing_factor
+    gradient_free_c = @inbounds ϕ[i - 2, j, k] - (ϕ[i - 1, j, k] - ϕ[i - 3, j, k]) * spacing_factor
 
-    @inbounds a[i, j, k] = relax(j, k, gradient_free_c, bc, grid, clock, model_fields)
+    @inbounds ϕ[i, j, k] = relax(j, k, gradient_free_c, bc, grid, clock, model_fields)
 
     return nothing
 end
 
-@inline function _fill_south_open_halo!(i, k, grid, a, bc::FEOBC, loc, clock, model_fields)
+@inline function _fill_south_open_halo!(i, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
     Δy₁ = yspacing(i, 1, k, grid, c, c, c)
     Δy₂ = yspacing(i, 2, k, grid, c, c, c)
     Δy₃ = yspacing(i, 3, k, grid, c, c, c)
 
     spacing_factor = Δy₁ / (Δy₂ + Δy₃)
 
-    gradient_free_c = a[i, 3, k] - (a[i, 2, k] - a[i, 4, k]) * spacing_factor
+    gradient_free_c = ϕ[i, 3, k] - (ϕ[i, 2, k] - ϕ[i, 4, k]) * spacing_factor
 
-    @inbounds a[i, 1, k] = relax(i, k, gradient_free_c, bc, grid, clock, model_fields)
+    @inbounds ϕ[i, 1, k] = relax(i, k, gradient_free_c, bc, grid, clock, model_fields)
     
     return nothing
 end
 
-@inline function _fill_north_open_halo!(i, k, grid, a, bc::FEOBC, loc, clock, model_fields)
+@inline function _fill_north_open_halo!(i, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
     j = grid.Ny + 1
 
     Δy₁ = yspacing(i, j-1, k, grid, c, c, c)
@@ -114,28 +114,28 @@ end
 
     spacing_factor = Δy₁ / (Δy₂ + Δy₃)
 
-    gradient_free_c = @inbounds a[i, j - 2, k] - (a[i, j - 1, k] - a[i, j - 3, k]) * spacing_factor
+    gradient_free_c = @inbounds ϕ[i, j - 2, k] - (ϕ[i, j - 1, k] - ϕ[i, j - 3, k]) * spacing_factor
 
-    @inbounds a[i, j, k] = relax(i, k, gradient_free_c, bc, grid, clock, model_fields)
+    @inbounds ϕ[i, j, k] = relax(i, k, gradient_free_c, bc, grid, clock, model_fields)
 
     return nothing
 end
 
-@inline function _fill_bottom_open_halo!(i, j, grid, a, bc::FEOBC, loc, clock, model_fields)
+@inline function _fill_bottom_open_halo!(i, j, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
     Δz₁ = zspacing(i, j, 1, grid, c, c, c)
     Δz₂ = zspacing(i, j, 2, grid, c, c, c)
     Δz₃ = zspacing(i, j, 3, grid, c, c, c)
 
     spacing_factor = Δz₁ / (Δz₂ + Δz₃)
 
-    gradient_free_c = @inbounds a[i, j, 3] - (a[i, k, 2] - a[i, j, 4]) * spacing_factor
+    gradient_free_c = @inbounds ϕ[i, j, 3] - (ϕ[i, k, 2] - ϕ[i, j, 4]) * spacing_factor
 
-    @inbounds a[i, j, 1] = relax(i, j, gradient_free_c, bc, grid, clock, model_fields)
+    @inbounds ϕ[i, j, 1] = relax(i, j, gradient_free_c, bc, grid, clock, model_fields)
 
     return nothing
 end
 
-@inline function _fill_top_open_halo!(i, j, grid, a, bc::FEOBC, loc, clock, model_fields)
+@inline function _fill_top_open_halo!(i, j, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
     k = grid.Nz + 1
 
     Δz₁ = zspacing(i, j, k-1, grid, c, c, c)
@@ -144,9 +144,9 @@ end
 
     spacing_factor = Δz₁ / (Δz₂ + Δz₃)
 
-    gradient_free_c = @inbounds a[i, j, k - 2] - (a[i, j, k - 1] - a[i, j, k - 3]) * spacing_factor
+    gradient_free_c = @inbounds ϕ[i, j, k - 2] - (ϕ[i, j, k - 1] - ϕ[i, j, k - 3]) * spacing_factor
 
-    @inbounds a[i, j, k] = relax(i, j, gradient_free_c, bc, grid, clock, model_fields)
+    @inbounds ϕ[i, j, k] = relax(i, j, gradient_free_c, bc, grid, clock, model_fields)
 
     return nothing
 end
