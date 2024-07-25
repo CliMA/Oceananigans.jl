@@ -5,7 +5,7 @@ using Oceananigans.TimeSteppers: AbstractTimeStepper, QuasiAdamsBashforth2TimeSt
 using Oceananigans.Models: PrescribedVelocityFields
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using Oceananigans.Advection: AbstractAdvectionScheme
-using Oceananigans.Advection: VelocityUpwinding, OnlySelfUpwinding, CrossAndSelfUpwinding
+using Oceananigans.Advection: OnlySelfUpwinding, CrossAndSelfUpwinding
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
 using Oceananigans.Solvers: PreconditionedConjugateGradientSolver
 
@@ -37,7 +37,6 @@ Types = (:HydrostaticFreeSurfaceModel,
          :PreconditionedConjugateGradientSolver,
          :CrossAndSelfUpwinding,
          :OnlySelfUpwinding,
-         :VelocityUpwinding,
          :GridFittedBoundary,
          :GridFittedBottom,
          :PartialCellBottom)
