@@ -94,7 +94,9 @@ cpu_architecture(::GPU) = CPU()
 
 unified_array(::CPU, a) = a
 unified_array(::GPU, a) = a
-unified_array(::GPU, a::AbstractArray) = cu(a; unified = true)
+
+# cu alters the type of `a`, so we convert it back to the correct type
+unified_array(::GPU, a::AbstractArray) = map(eltype(a), cu(a; unified = true))
 
 ## GPU to GPU copy of contiguous data
 @inline function device_copy_to!(dst::CuArray, src::CuArray; async::Bool = false) 
