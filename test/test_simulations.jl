@@ -52,7 +52,7 @@ function wall_time_step_wizard_tests(arch)
     @test Δt ≈ diff_CFL * Δx^2 / model.closure.ν
 
     grid_stretched = RectilinearGrid(arch, 
-                                    size = (1, 1, 1),
+                                     size = (1, 1, 1),
                                      x = (0, 1),
                                      y = (0, 1),
                                      z = z -> z, 
