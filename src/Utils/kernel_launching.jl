@@ -127,7 +127,6 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
                               active_cells_map,
                               kwargs...)
     
-    
     !isnothing(loop!) && loop!(kernel_args...)
     
     return nothing
