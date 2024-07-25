@@ -94,16 +94,7 @@ cpu_architecture(::GPU) = CPU()
 
 unified_array(::CPU, a) = a
 unified_array(::GPU, a) = a
-
-function unified_array(::GPU, arr::AbstractArray) 
-    buf = Mem.alloc(Mem.Unified, sizeof(arr))
-    vec = unsafe_wrap(CuArray{eltype(arr),length(size(arr))}, convert(CuPtr{eltype(arr)}, buf), size(arr))
-    finalizer(vec) do _
-        Mem.free(buf)
-    end
-    copyto!(vec, arr)
-    return vec
-end
+unified_array(::GPU, a::AbstractArray) = cu(a; unified = true)
 
 ## GPU to GPU copy of contiguous data
 @inline function device_copy_to!(dst::CuArray, src::CuArray; async::Bool = false) 
