@@ -41,6 +41,9 @@
 </p>
 
 <!-- Downloads -->
+<!-- counts downloads from individual IPs excluding bots (eg, CI) -->
+<!-- see https://discourse.julialang.org/t/announcing-package-download-stats/69073 -->
+
 <p align="center">
   <a href="https://juliapkgstats.com/pkg/Oceananigans">
     <img alt="Downloads per month" src="https://img.shields.io/badge/dynamic/json?url=http%3A%2F%2Fjuliapkgstats.com%2Fapi%2Fv1%2Fmonthly_downloads%2FOceananigans&query=total_requests&suffix=%2Fmonth&label=Downloads&style=flat-square">
@@ -69,13 +72,18 @@ Oceananigans.jl is developed by the [Climate Modeling Alliance](https://clima.ca
 
 ## Contents
 
-* [Installation instructions](#installation-instructions)
-* [Running your first model](#running-your-first-model)
-* [The Oceananigans knowledge base](#the-oceananigans-knowledge-base)
-* [Citing](#citing)
-* [Contributing](#contributing)
-* [Movies](#movies)
-* [Performance benchmarks](#performance-benchmarks)
+- [Contents](#contents)
+- [Installation instructions](#installation-instructions)
+- [Running your first model](#running-your-first-model)
+- [The Oceananigans knowledge base](#the-oceananigans-knowledge-base)
+- [Citing](#citing)
+- [Contributing](#contributing)
+- [Movies](#movies)
+  - [Deep convection](#deep-convection)
+  - [Free convection](#free-convection)
+  - [Winds blowing over the ocean](#winds-blowing-over-the-ocean)
+  - [Free convection with wind stress](#free-convection-with-wind-stress)
+- [Performance benchmarks](#performance-benchmarks)
 
 ## Installation instructions
 
