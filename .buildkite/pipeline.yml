@@ -1,8 +1,8 @@
 env:
   JULIA_VERSION: "1.10.2"
   JULIA_MINOR_VERSION: "1.10"
-  SVERDRUP_HOME: "/data5/glwagner/$BUILDKITE_BUILD_NUMBER"
-  TARTARUS_HOME: "/storage5/buildkite-agent/$BUILDKITE_BUILD_NUMBER"
+  SVERDRUP_HOME: "/data5/glwagner/oceananigans-buildkite-$BUILDKITE_BUILD_NUMBER"
+  TARTARUS_HOME: "/storage5/buildkite-agent/oceananigans-$BUILDKITE_BUILD_NUMBER"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
 
 steps:
