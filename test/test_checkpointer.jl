@@ -27,7 +27,7 @@ function initialization_test_simulation(arch, stop_time, Δt=1, δt=2)
     grid = RectilinearGrid(arch, size=(), topology=(Flat, Flat, Flat))
     model = NonhydrostaticModel(; grid)
     simulation = Simulation(model; Δt, stop_time)
-    
+
     progress_message(sim) = @info string("Iter: ", iteration(sim), ", time: ", prettytime(sim))
     simulation.callbacks[:progress] = Callback(progress_message, TimeInterval(δt))
 
@@ -35,7 +35,7 @@ function initialization_test_simulation(arch, stop_time, Δt=1, δt=2)
                                 schedule = TimeInterval(stop_time),
                                 prefix = "initialization_test",
                                 cleanup = false)
-    
+
     simulation.output_writers[:checkpointer] = checkpointer
 
     return simulation
@@ -222,4 +222,3 @@ for arch in archs
         rm("initialization_test_iteration*.jld2", force=true)
     end
 end
-
