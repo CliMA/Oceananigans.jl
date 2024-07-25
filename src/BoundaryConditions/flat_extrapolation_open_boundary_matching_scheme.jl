@@ -50,13 +50,13 @@ end
     τ = bc.classification.matching_scheme.relaxation_timescale
 
     Δt̄ = min(1, Δt / τ)
-    aₑₓₜ = getbc(bc, l, m, grid, clock, model_fields)
+    ϕₑₓₜ = getbc(bc, l, m, grid, clock, model_fields)
 
-    Δa = (aₑₓₜ - ϕ) * Δt̄
+    Δϕ = (ϕₑₓₜ - ϕ) * Δt̄
     not_relaxing = isnothing(bc.condition) | !isfinite(clock.last_stage_Δt)
-    Δa =  ifelse(not_relaxing, zero(ϕ), Δc)
+    Δϕ =  ifelse(not_relaxing, zero(ϕ), Δc)
 
-    return ϕ + Δa
+    return ϕ + Δϕ
 end
 
 const c = Center()
