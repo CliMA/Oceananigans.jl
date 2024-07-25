@@ -1,6 +1,7 @@
 using Oceananigans.Fields: interpolator, _interpolate, fractional_indices
 using Oceananigans.Architectures: architecture
 
+import Oceananigans.BoundaryConditions: getbc
 import Oceananigans.Fields: interpolate
 
 #####
@@ -100,6 +101,7 @@ end
 const XYFTS = FlavorOfFTS{<:Any, <:Any, Nothing, <:Any, <:Any}
 const XZFTS = FlavorOfFTS{<:Any, Nothing, <:Any, <:Any, <:Any}
 const YZFTS = FlavorOfFTS{Nothing, <:Any, <:Any, <:Any, <:Any}
+const ZDFTS = FlavorOfFTS{Nothing, Nothing, Nothing, <:Any, <:Any} # 0D 
 
 @propagate_inbounds getindex(f::XYFTS, i::Int, j::Int, n::Int) = getindex(f.data, i, j, 1, memory_index(f, n))
 @propagate_inbounds getindex(f::XZFTS, i::Int, k::Int, n::Int) = getindex(f.data, i, 1, k, memory_index(f, n))
@@ -280,3 +282,13 @@ function getindex(fts::InMemoryFTS, n::Int)
     return Field(location(fts), fts.grid; data, fts.boundary_conditions, fts.indices)
 end
 
+# FieldTimeSeries boundary conditions
+const ZDFTSBC = BoundaryCondition{<:Any, <:ZDFTS}
+const XYFTSBC = BoundaryCondition{<:Any, <:XYFTS}
+const YZFTSBC = BoundaryCondition{<:Any, <:YZFTS}
+const XZFTSBC = BoundaryCondition{<:Any, <:XZFTS}
+
+@inline getbc(bc::ZDFTSBC, ::Integer, ::Integer, ::AbstractGrid, clock, args...)   = @inbounds bc.condition[1, 1, 1, Time(clock.time)]
+@inline getbc(bc::YZFTSBC, j::Integer, k::Integer, ::AbstractGrid, clock, args...) = @inbounds bc.condition[1, j, k, Time(clock.time)]
+@inline getbc(bc::XZFTSBC, i::Integer, k::Integer, ::AbstractGrid, clock, args...) = @inbounds bc.condition[i, 1, k, Time(clock.time)]
+@inline getbc(bc::XYFTSBC, i::Integer, j::Integer, ::AbstractGrid, clock, args...) = @inbounds bc.condition[i, j, 1, Time(clock.time)]
