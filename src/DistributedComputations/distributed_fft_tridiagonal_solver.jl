@@ -1,3 +1,4 @@
+using CUDA: @allowscalar
 using Oceananigans.Solvers: Δξᶠ, stretched_direction, BatchedTridiagonalSolver, compute_main_diagonal!
 
 struct DistributedFourierTridiagonalPoissonSolver{G, L, P, B, R, S, β} 
@@ -53,7 +54,7 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     plan = plan_distributed_transforms(global_grid, storage, planner_flag)
 
     # Lower and upper diagonals are the same
-    lower_diagonal = CUDA.@allowscalar [ 1 / Δξᶠ(q, grid) for q in 2:size(grid, irreg_dim) ]
+    lower_diagonal = @allowscalar [ 1 / Δξᶠ(q, grid) for q in 2:size(grid, irreg_dim) ]
     lower_diagonal = on_architecture(child_arch, lower_diagonal)
     upper_diagonal = lower_diagonal
 
