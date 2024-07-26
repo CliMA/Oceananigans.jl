@@ -72,12 +72,13 @@ a local number of elements `Nc`, number of ranks `Nr`, rank `r`,
 and `arch`itecture. Since we use a global reduction, only ranks at positions
 1 in the other two directions `r1 == 1` and `r2 == 1` fill the 1D array.
 """
-function assemble_coordinate(c_local::AbstractVector, n, R, r, r1, r2, comm) 
-    nl = concatenate_local_sizes(n, R, r)
+function assemble_coordinate(c_local::AbstractVector, n, arch, idx) 
+    nl = concatenate_local_sizes(n, arch, idx)
+    r2 = [arch.local_index[i] for i in filter(x -> x != idx, (1, 2, 3))]
 
     c_global = zeros(eltype(c_local), sum(nl)+1)
 
-    if r1 == 1 && r2 == 1
+    if all.(r2 .== 1)
         c_global[1 + sum(nl[1:r-1]) : sum(nl[1:r])] .= c_local[1:end-1]
         r == Nr && (c_global[end] = c_local[end])
     end
@@ -88,13 +89,17 @@ function assemble_coordinate(c_local::AbstractVector, n, R, r, r1, r2, comm)
 end
 
 # Simple case, just take the first and the last core
-function assemble_coordinate(c::Tuple, n, R, r, r1, r2, comm) 
+function assemble_coordinate(c_local::Tuple, n, arch, idx) 
     c_global = zeros(Float64, 2)
+    
+    R  = arch.ranks[idx]
+    r  = arch.local_index[idx]
+    r2 = [arch.local_index[i] for i in filter(x -> x != idx, (1, 2, 3))]
 
-    if r == 1 && r1 == 1 && r2 == 1
-        c_global[1] = c[1]
-    elseif r == R && r1 == 1 && r2 == 1
-        c_global[2] = c[2]
+    if all.(arch.ranks .== 1)
+        c_global[1] = c_local[1]
+    elseif r == R && all.(r2 .== 1)
+        c_global[2] = c_local[2]
     end
 
     MPI.Allreduce!(c_global, +, comm)
