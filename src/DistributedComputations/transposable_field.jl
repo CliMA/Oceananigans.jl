@@ -1,10 +1,10 @@
-using Oceananigans.Grids: architecture
+using Oceananigans.Grids: architecture, deflate_tuple
 using Oceananigans.Architectures: on_architecture
 
 struct TransposableField{FX, FY, FZ, YZ, XY, C, Comms}
-    xfield :: FX # X-direction is free
-    yfield :: FY # Y-direction is free
-    zfield :: FZ # Z-direction is free (original field)
+    xfield :: FX # X-direction is free (x-local)
+    yfield :: FY # Y-direction is free (y-local)
+    zfield :: FZ # Z-direction is free (original field, z-local)
     yzbuff :: YZ # if `nothing` slab decomposition with `Ry == 1`
     xybuff :: XY # if `nothing` slab decomposition with `Rx == 1`
     counts :: C
@@ -17,7 +17,7 @@ const SlabXFields = TransposableField{<:Any, <:Any, <:Any, <:Any, <:Nothing} # X
 """
     TransposableField(field_in, FT = eltype(field_in); with_halos = false)
 
-Constructs a TransposableField object that containes the allocated memory and the ruleset required
+Construct a TransposableField object that containes the allocated memory and the ruleset required
 for distributed transpositions.
 
 # Arguments
@@ -26,7 +26,7 @@ for distributed transpositions.
 - `with_halos`: A boolean indicating whether to include halos in the field. Defaults to `false`.
 """
 function TransposableField(field_in, FT = eltype(field_in); with_halos = false)
-    
+
     zgrid = field_in.grid # We support only a 2D partition in X and Y
     ygrid = twin_grid(zgrid; free_dimension = :y)
     xgrid = twin_grid(zgrid; free_dimension = :x)
@@ -55,26 +55,29 @@ function TransposableField(field_in, FT = eltype(field_in); with_halos = false)
                                     recv = on_architecture(zarch, zeros(FT, prod(Nz))))
     xybuffer = Rx == 1 ? nothing : (send = on_architecture(zarch, zeros(FT, prod(Nx))), 
                                     recv = on_architecture(zarch, zeros(FT, prod(Ny))))
-    
+
     yzcomm = MPI.Comm_split(MPI.COMM_WORLD, zarch.local_index[1], zarch.local_index[1])
     xycomm = MPI.Comm_split(MPI.COMM_WORLD, yarch.local_index[3], yarch.local_index[3])
-            
-    yzcounts = zeros(Int, zarch.ranks[2] * zarch.ranks[3])
-    xycounts = zeros(Int, yarch.ranks[1] * yarch.ranks[2])
+
+    zRx, zRy, zRz = ranks(zarch) 
+    yRx, yRy, yRz = ranks(yarch) 
+
+    yzcounts = zeros(Int, zRy * zRz)
+    xycounts = zeros(Int, yRx * yRy)
 
     yzrank = MPI.Comm_rank(yzcomm)
     xyrank = MPI.Comm_rank(xycomm)
 
     yzcounts[yzrank + 1] = Ny[1] * Nz[2] * Ny[3]
     xycounts[xyrank + 1] = Ny[1] * Nx[2] * Nx[3]
-    
+
     MPI.Allreduce!(yzcounts, +, yzcomm)
     MPI.Allreduce!(xycounts, +, xycomm)
 
     return TransposableField(xfield, yfield, zfield, 
-                          yzbuffer, xybuffer,
-                          (; yz = yzcounts, xy = xycounts),
-                          (; yz = yzcomm,   xy = xycomm))
+                             yzbuffer, xybuffer,
+                             (; yz = yzcounts, xy = xycounts),
+                             (; yz = yzcomm,   xy = xycomm))
 end
 
 #####
@@ -84,12 +87,13 @@ end
 """
     twin_grid(grid::DistributedGrid; free_dimension = :y)
 
-Constructs a "twin" grid based on the provided distributed `grid` object.
-The twin grid is a grid that discretizes the same domain of the original grid, just with a different partitioning strategy 
-whereas the "free dimension" (i.e. the  non-partitioned dimension) is specified by the keyword argument `free_dimension`.
-This could be either `:x` or `:y`.
+Construct a "twin" grid based on the provided distributed `grid` object.
+The twin grid is a grid that discretizes the same domain of the original grid, just with a
+different partitioning strategy  whereas the "free dimension" (i.e. the non-partitioned dimension)
+is specified by the keyword argument `free_dimension`. This could be either `:x` or `:y`.
 
-Note that `free_dimension = :z` will return the original grid as we do not allow partitioning in the `z` direction 
+Note that `free_dimension = :z` will return the original grid as we do not allow partitioning in
+the `z` direction.
 """
 function twin_grid(grid::DistributedGrid; free_dimension = :y)
 
@@ -111,7 +115,6 @@ function twin_grid(grid::DistributedGrid; free_dimension = :y)
     y = cpu_face_constructor_y(grid)
     z = cpu_face_constructor_z(grid)
 
-    ## This will not work with 3D parallelizations!!
     xG = R[1] == 1 ? x : assemble_coordinate(x, nx, R[1], ri, rj, rk, arch.communicator)
     yG = R[2] == 1 ? y : assemble_coordinate(y, ny, R[2], rj, ri, rk, arch.communicator)
     zG = R[3] == 1 ? z : assemble_coordinate(z, nz, R[3], rk, ri, rj, arch.communicator)
@@ -143,24 +146,32 @@ function twin_grid(grid::DistributedGrid; free_dimension = :y)
 
     new_arch  = Distributed(child_arch; partition = Partition(ranks...))
     global_sz = global_size(new_arch, (nnx, nny, nnz))
+    global_sz = deflate_tuple(TX, TY, TZ, global_sz)
 
     return construct_grid(grid, new_arch, FT; 
                           size = global_sz, 
-                        extent = (xG, yG, zG),
-                      topology = (TX, TY, TZ))
+                          x = xG, y = yG, z = zG,
+                          topology = (TX, TY, TZ))
 end
 
-construct_grid(::RectilinearGrid, arch, FT; size, extent, topology) = 
-        RectilinearGrid(arch, FT; size, 
-                        x = extent[1],
-                        y = extent[2], 
-                        z = extent[3],
-                        topology)
+function construct_grid(::RectilinearGrid, arch, FT; size, x, y, z, topology) 
+    TX, TY, TZ = topology
+    x = TX == Flat ? nothing : x
+    y = TY == Flat ? nothing : y
+    z = TZ == Flat ? nothing : z
 
-construct_grid(::LatitudeLongitudeGrid, arch, FT; size, extent, topology) = 
-        LatitudeLongitudeGrid(arch, FT; size, 
-                        longitude = extent[1],
-                         latitude = extent[2], 
-                                z = extent[3],
-                                topology)
+    return RectilinearGrid(arch, FT; size, 
+                           x, y, z,
+                           topology)
+end
 
+function construct_grid(::LatitudeLongitudeGrid, arch, FT; size, x, y, z, topology) 
+    TX, TY, TZ = topology
+    longitude = TX == Flat ? nothing : x
+    latitude  = TY == Flat ? nothing : y
+    z         = TZ == Flat ? nothing : z
+
+    return LatitudeLongitudeGrid(arch, FT; size, 
+                                 longitude, latitude, z,
+                                 topology)
+end

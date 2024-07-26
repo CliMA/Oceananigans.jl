@@ -1,7 +1,7 @@
 using MPI
 using OffsetArrays
 using Oceananigans.Utils: getnamewrapper
-using Oceananigans.Grids: topology, size, halo_size, architecture, pop_flat_elements
+using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture, pop_flat_elements
 using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_args, validate_size
 using Oceananigans.Grids: generate_coordinate, with_precomputed_metrics
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
@@ -274,6 +274,10 @@ function with_halo(new_halo, grid::DistributedLatitudeLongitudeGrid)
     new_grid = with_halo(new_halo, reconstruct_global_grid(grid))    
     return scatter_local_grids(architecture(grid), new_grid, size(grid))
 end
+
+# Extending child_architecture for grids
+child_architecture(grid::AbstractGrid) = architecture(grid)
+child_architecture(grid::DistributedGrid) = child_architecture(architecture(grid))
 
 """ 
     scatter_grid_properties(global_grid)

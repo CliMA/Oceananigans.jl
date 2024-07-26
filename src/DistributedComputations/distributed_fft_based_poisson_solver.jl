@@ -150,7 +150,7 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     λ = solver.eigenvalues
     x̂ = b̂ = parent(storage.xfield)
     
-    launch!(arch, storage.xfield.grid, :xyz, _solve_poisson!, x̂, b̂, λ[1], λ[2], λ[3])
+    launch!(arch, storage.xfield.grid, :xyz, _solve_poisson_in_spectral_space!, x̂, b̂, λ[1], λ[2], λ[3])
 
     # Set the zeroth wavenumber and volume mean, which are undetermined
     # in the Poisson equation, to zero.
@@ -172,7 +172,7 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     return x
 end
 
-@kernel function _solve_poisson!(x̂, b̂, λx, λy, λz)
+@kernel function _solve_poisson_in_spectral_space!(x̂, b̂, λx, λy, λz)
     i, j, k = @index(Global, NTuple)
     @inbounds x̂[i, j, k] = - b̂[i, j, k] / (λx[i] + λy[j] + λz[k])
 end
