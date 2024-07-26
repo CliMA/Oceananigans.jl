@@ -78,7 +78,7 @@ Return new position `(x⁺, y⁺, z⁺)` for a particle at current position (x, 
 given `velocities`, time-step `Δt, and coefficient of `restitution`.
 """
 @inline function advect_particle((x, y, z), p, restitution, grid, Δt, velocities)
-    X = @show flattened_node((x, y, z), grid)
+    X = flattened_node((x, y, z), grid)
 
     # Obtain current particle indices
     fi, fj, fk = fractional_indices(X, grid, c, c, c)
