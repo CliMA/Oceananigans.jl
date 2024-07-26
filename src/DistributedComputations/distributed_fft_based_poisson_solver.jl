@@ -67,7 +67,7 @@ Algorithm for one-dimensional decompositions
 ============================================
 
 The one-dimensional decomposition works in the same manner while skipping the transposes that
-are not required. Foe example if the domain is decomposed in ``x``, step 3 in the above algorithm
+are not required. For example if the domain is decomposed in ``x``, step 3 in the above algorithm
 is skipped (and the associated transposition step in the bakward transform)
 
 Restrictions

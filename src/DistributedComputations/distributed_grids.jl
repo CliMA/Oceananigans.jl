@@ -84,7 +84,7 @@ function RectilinearGrid(arch::Distributed,
     xl = Rx == 1 ? x : partition_coordinate(x, nx, arch, 1)
     yl = Ry == 1 ? y : partition_coordinate(y, ny, arch, 2)
     zl = Rz == 1 ? z : partition_coordinate(z, nz, arch, 3)
-
+    
     Lx, xᶠᵃᵃ, xᶜᵃᵃ, Δxᶠᵃᵃ, Δxᶜᵃᵃ = generate_coordinate(FT, topology[1](), nx, Hx, xl, :x, child_architecture(arch))
     Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, topology[2](), ny, Hy, yl, :y, child_architecture(arch))
     Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, topology[3](), nz, Hz, zl, :z, child_architecture(arch))

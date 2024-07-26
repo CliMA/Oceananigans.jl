@@ -1,5 +1,11 @@
 using CUDA: @allowscalar
-using Oceananigans.Solvers: Δξᶠ, stretched_direction, BatchedTridiagonalSolver, compute_main_diagonal!
+using Oceananigans.Solvers: BatchedTridiagonalSolver
+using Oceananigans.Solvers: stretched_dimensions, stretched_direction
+using Oceananigans.Solvers: Δξᶠ, compute_main_diagonal!
+
+using Oceananigans.Grids: XZRegularRG, 
+                          XYRegularRG,
+                          YZRegularRG
 
 struct DistributedFourierTridiagonalPoissonSolver{G, L, P, B, R, S, β} 
                           plan :: P              
@@ -14,8 +20,109 @@ end
 architecture(solver::DistributedFourierTridiagonalPoissonSolver) =
     architecture(solver.global_grid)
 
+
+"""
+    DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
+
+Return an FFT-based solver for the Poisson equation evaluated on a `local_grid`
+with one stretched direction
+
+```math
+∇²φ = b
+```
+
+for `Distributed` architectures.
+
+Supported configurations
+========================
+
+1. Three dimensional configurations with two-dimensional decompositions in ``(x, y)`` 
+where `Ny ≥ Rx` and `Ny % Rx = 0`, and `Nz ≥ Ry` and `Nz % Ry = 0`.
+
+2. Two dimensional configurations decomposed in ``x`` where `Ny ≥ Rx` and `Ny % Rx = 0`
+    
+Other configurations that are decomposed in ``(x, y)``,
+or any configuration decomposed in ``z``, are _not_ supported.
+
+Algorithm for two-dimensional decompositions
+============================================
+
+For two-dimensional decompositions (useful for three-dimensional problems),
+there are two forward transforms, two backward transforms, one tri-diagonal matrix inversion
+and a variable number of transpositions requiring MPI communication, dependent on the 
+strethed direction:
+
+- a stretching in the x-direction requires four transpositions
+- a stretching in the y-direction requires six transpositions
+- a stretching in the z-direction requires eight transpositions
+
+In our implementation we require `Nz ≥ Ry` and `Nx ≥ Ry` with the additional constraint 
+that `Nz % Ry = 0` and `Ny % Rx = 0`.`Rx` is the number of ranks in ``x``, and `Ry` is the number of ranks in ``y``.
+
+X - stretched algorithm
+========================
+
+1. `storage.zfield`, partitioned over ``(x, y)`` is initialized with the `rhs`.
+2. Transform along ``z``.
+3  Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
+4. Transform along ``y``.
+5. Transpose + communicate to `storage.xfield` partitioned into `(Rx, Ry)` processes in ``(y, z)``.
+6. Solve the tri-diagonal linear system in the ``x`` direction.
+
+Steps 5 - 1 are reversed to obtain `storage.zfield` in physical
+space partitioned over ``(x, y)``.
+
+Y - stretched algorithm
+========================
+
+1. `storage.zfield`, partitioned over ``(x, y)`` is initialized with the `rhs`.
+2. Transform along ``z``.
+3  Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
+4. Transpose + communicate to `storage.xfield` partitioned into `(Rx, Ry)` processes in ``(y, z)``.
+5. Transform along ``x``.
+6. Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
+7. Solve the tri-diagonal linear system in the ``y`` direction.
+
+Steps 6 - 1 are reversed to obtain `storage.zfield` in physical
+space partitioned over ``(x, y)``.
+
+Z - stretched algorithm
+========================
+
+1. `storage.zfield`, partitioned over ``(x, y)`` is initialized with the `rhs`.
+2  Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
+3. Transpose + communicate to `storage.xfield` partitioned into `(Rx, Ry)` processes in ``(y, z)``.
+4. Transform along ``x``.
+5. Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
+6. Transform along ``y``.
+7. Transpose + communicate to `storage.zfield` partitioned into `(Rx, Ry)` processes in ``(x, y)``.
+8. Solve the tri-diagonal linear system in the ``z`` direction.
+
+Steps 7 - 1 are reversed to obtain `storage.zfield` in physical
+space partitioned over ``(x, y)``.
+
+Algorithm for one-dimensional decompositions
+============================================
+
+The one-dimensional decomposition works in the same manner while skipping the transposes that
+are not required. For example if the domain is decomposed in ``x``, step 3 in the above algorithm
+is skipped (and the associated transposition step in the bakward transform)
+
+Restrictions
+============
+
+1. Two-dimensional decomopositions:
+    - `Ny ≥ Rx` and `Ny % Rx = 0`
+    - `Nz ≥ Ry` and `Nz % Ry = 0`
+    - If the ``z`` direction is `Periodic`, also the ``y`` and the ``x`` directions must be `Periodic`
+    - If the ``y`` direction is `Periodic`, also the ``x`` direction must be `Periodic`
+
+2. One-dimensional decomposition:
+    - same as for two-dimensional decompositions with `Rx` (or `Ry`) equal to one
+
+"""
 function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT)
-    irreg_dim = stretched_dimensions(grid)[1]
+    irreg_dim = stretched_dimensions(local_grid)[1]
 
     topology(global_grid, irreg_dim) != Bounded && error("`DistributedFourierTridiagonalPoissonSolver` can only be used when the stretched direction's topology is `Bounded`.")
 
@@ -27,6 +134,7 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     Rz = architecture(local_grid).ranks[3]
     Rz == 1 || throw(ArgumentError("Non-singleton ranks in the vertical are not supported by DistributedFFTBasedPoissonSolver."))
 
+    topo = (TX, TY, TZ) = topology(global_grid)
     λx = dropdims(poisson_eigenvalues(global_grid.Nx, global_grid.Lx, 1, TX()), dims=(2, 3))
     λy = dropdims(poisson_eigenvalues(global_grid.Ny, global_grid.Ly, 2, TY()), dims=(1, 3))
     λz = dropdims(poisson_eigenvalues(global_grid.Nz, global_grid.Lz, 3, TZ()), dims=(1, 2))
@@ -48,8 +156,8 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
         λ2 = partition_coordinate(λy, size(grid, 2), arch, 2)
     end
 
-    λ1 = on_architecture(child_arch, λx)
-    λ2 = on_architecture(child_arch, λy)
+    λ1 = on_architecture(child_arch, λ1)
+    λ2 = on_architecture(child_arch, λ2)
 
     plan = plan_distributed_transforms(global_grid, storage, planner_flag)
 
@@ -116,6 +224,7 @@ end
 # is copied in the solver storage
 # See: Models/NonhydrostaticModels/solve_for_pressure.jl
 function solve!(x, solver::DistributedFourierTridiagonalPoissonSolver{<:XYRegularRG})
+    arch    = architecture(solver)
     storage = solver.storage
     buffer  = solver.buffer
 
@@ -148,6 +257,7 @@ function solve!(x, solver::DistributedFourierTridiagonalPoissonSolver{<:XYRegula
 end
 
 function solve!(x, solver::DistributedFourierTridiagonalPoissonSolver{<:XZRegularRG})
+    arch    = architecture(solver)
     storage = solver.storage
     buffer  = solver.buffer
 
@@ -178,9 +288,9 @@ function solve!(x, solver::DistributedFourierTridiagonalPoissonSolver{<:XZRegula
 end
 
 function solve!(x, solver::DistributedFourierTridiagonalPoissonSolver{<:YZRegularRG})
+    arch    = architecture(solver)
     storage = solver.storage
     buffer  = solver.buffer
-
 
     # Apply forward transforms to b = first(solver.storage).
     solver.plan.forward.z!(parent(storage.zfield), buffer.z)

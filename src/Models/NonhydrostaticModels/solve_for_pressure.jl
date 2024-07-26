@@ -66,7 +66,7 @@ function solve_for_pressure!(pressure, solver::DistributedFourierTridiagonalPois
     # Calculate right hand side:
     rhs = solver.storage.zfield
     arch = architecture(solver)
-    grid = solver.local_grid.grid
+    grid = solver.local_grid
 
     launch!(arch, grid, :xyz, calculate_pressure_source_term_fourier_tridiagonal_solver!,
             rhs, grid, Δt, U★, solver.batched_tridiagonal_solver.tridiagonal_direction)
