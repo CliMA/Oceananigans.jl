@@ -30,7 +30,7 @@ include("dependencies_for_poisson_solvers.jl")
 
 # to initialize MPI.
 
-using Oceananigans.DistributedComputations: reconstruct_global_grid, DistributedGrid, Partition
+using Oceananigans.DistributedComputations: reconstruct_global_grid, DistributedGrid, Partition, DistributedFourierTridiagonalPoissonSolver
 using Oceananigans.Models.NonhydrostaticModels: solve_for_pressure!
 
 function random_divergent_source_term(grid::DistributedGrid)
@@ -88,6 +88,28 @@ function divergence_free_poisson_solution(grid_points, ranks, topo, child_arch)
     return Array(interior(∇²ϕ)) ≈ Array(R)
 end
 
+function divergence_free_poisson_tridiagonal_solution(grid_points, ranks, topo, child_arch)
+    arch = Distributed(child_arch, partition=Partition(ranks...))
+    z = range(0, 2π, length = grid_points[3]+1)
+    local_grid = RectilinearGrid(arch; topology=topo, size=grid_points, x=(0, 2π), y = (0, 2π), z)
+
+    # The test will solve for ϕ, then compare R to ∇²ϕ.
+    ϕ   = CenterField(local_grid)
+    ∇²ϕ = CenterField(local_grid)
+    R, U = random_divergent_source_term(local_grid)
+
+    global_grid = reconstruct_global_grid(local_grid)
+    solver = DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
+    
+    # Using Δt = 1.
+    solve_for_pressure!(ϕ, solver, 1, U)
+
+    # "Recompute" ∇²ϕ
+    compute_∇²!(∇²ϕ, ϕ, arch, local_grid)
+
+    return Array(interior(∇²ϕ)) ≈ Array(R)
+end
+
 @testset "Distributed FFT-based Poisson solver" begin
     child_arch = test_child_arch()
     
@@ -109,19 +131,19 @@ end
         @show @test divergence_free_poisson_solution((44, 16, 1), (4, 1, 1), topology, child_arch)
         @show @test divergence_free_poisson_solution((16, 44, 1), (4, 1, 1), topology, child_arch)
     end
-    # for topology in ((Periodic, Periodic, Bounded),
-    #                  (Periodic, Bounded, Bounded),
-    #                  (Bounded, Bounded, Bounded))
-    #     @info "  Testing 3D distributed Fourier Tridiagonal Poisson solver with topology $topology..."
-    #     @test divergence_free_poisson_tridiagonal_solution((44, 11, 8), (1, 4, 1), topology)
-    #     @test divergence_free_poisson_tridiagonal_solution((44,  4, 8), (1, 4, 1), topology)
-    #     @test divergence_free_poisson_tridiagonal_solution((16, 11, 8), (1, 4, 1), topology)
-    #     @test divergence_free_poisson_tridiagonal_solution((22,  8, 8), (2, 2, 1), topology)
-    #     @test divergence_free_poisson_tridiagonal_solution(( 8, 22, 8), (2, 2, 1), topology)
-    #     @test divergence_free_poisson_tridiagonal_solution((44, 11, 8), (1, 4, 1), topology)
-    #     @test divergence_free_poisson_tridiagonal_solution((44,  4, 8), (1, 4, 1), topology)
-    #     @test divergence_free_poisson_tridiagonal_solution((16, 11, 8), (1, 4, 1), topology)
-    #     @test divergence_free_poisson_tridiagonal_solution((22,  8, 8), (2, 2, 1), topology)
-    #     @test divergence_free_poisson_tridiagonal_solution(( 8, 22, 8), (2, 2, 1), topology)
-    # end
+    for topology in ((Periodic, Periodic, Bounded),
+                     (Periodic, Bounded, Bounded),
+                     (Bounded, Bounded, Bounded))
+        @info "  Testing 3D distributed Fourier Tridiagonal Poisson solver with topology $topology..."
+        @test divergence_free_poisson_tridiagonal_solution((44, 44, 8), (1, 4, 1), topology)
+        @test divergence_free_poisson_tridiagonal_solution((44,  4, 8), (1, 4, 1), topology)
+        @test divergence_free_poisson_tridiagonal_solution((16, 44, 8), (1, 4, 1), topology)
+        @test divergence_free_poisson_tridiagonal_solution((22,  8, 8), (2, 2, 1), topology)
+        @test divergence_free_poisson_tridiagonal_solution(( 8, 22, 8), (2, 2, 1), topology)
+        @test divergence_free_poisson_tridiagonal_solution((44, 44, 8), (1, 4, 1), topology)
+        @test divergence_free_poisson_tridiagonal_solution((44,  4, 8), (1, 4, 1), topology)
+        @test divergence_free_poisson_tridiagonal_solution((16, 44, 8), (1, 4, 1), topology)
+        @test divergence_free_poisson_tridiagonal_solution((22,  8, 8), (2, 2, 1), topology)
+        @test divergence_free_poisson_tridiagonal_solution(( 8, 22, 8), (2, 2, 1), topology)
+    end
 end
