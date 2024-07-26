@@ -174,10 +174,7 @@ end
 
 function run_checkpointer_cleanup_tests(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid,
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S)
-                                )
-
+    model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=0.2, stop_iteration=10)
 
     simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(3), cleanup=true)
@@ -218,7 +215,5 @@ for arch in archs
         progress_cb = simulation.callbacks[:progress]
         progress_cb.schedule.first_actuation_time
         @test progress_cb.schedule.first_actuation_time == 4
-
-        rm("initialization_test_iteration*.jld2", force=true)
     end
 end
