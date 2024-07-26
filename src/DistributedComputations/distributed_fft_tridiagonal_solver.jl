@@ -64,12 +64,12 @@ X - stretched algorithm
 
 1. `storage.zfield`, partitioned over ``(x, y)`` is initialized with the `rhs`.
 2. Transform along ``z``.
-3  Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
+3. Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
 4. Transform along ``y``.
 5. Transpose + communicate to `storage.xfield` partitioned into `(Rx, Ry)` processes in ``(y, z)``.
 6. Solve the tri-diagonal linear system in the ``x`` direction.
 
-Steps 5 - 1 are reversed to obtain `storage.zfield` in physical
+Steps 5 -> 1 are reversed to obtain `storage.zfield` in physical
 space partitioned over ``(x, y)``.
 
 Y - stretched algorithm
@@ -77,20 +77,20 @@ Y - stretched algorithm
 
 1. `storage.zfield`, partitioned over ``(x, y)`` is initialized with the `rhs`.
 2. Transform along ``z``.
-3  Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
+3. Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
 4. Transpose + communicate to `storage.xfield` partitioned into `(Rx, Ry)` processes in ``(y, z)``.
 5. Transform along ``x``.
 6. Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
 7. Solve the tri-diagonal linear system in the ``y`` direction.
 
-Steps 6 - 1 are reversed to obtain `storage.zfield` in physical
+Steps 6 -> 1 are reversed to obtain `storage.zfield` in physical
 space partitioned over ``(x, y)``.
 
 Z - stretched algorithm
 ========================
 
 1. `storage.zfield`, partitioned over ``(x, y)`` is initialized with the `rhs`.
-2  Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
+2. Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
 3. Transpose + communicate to `storage.xfield` partitioned into `(Rx, Ry)` processes in ``(y, z)``.
 4. Transform along ``x``.
 5. Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
@@ -98,7 +98,7 @@ Z - stretched algorithm
 7. Transpose + communicate to `storage.zfield` partitioned into `(Rx, Ry)` processes in ``(x, y)``.
 8. Solve the tri-diagonal linear system in the ``z`` direction.
 
-Steps 7 - 1 are reversed to obtain `storage.zfield` in physical
+Steps 7 -> 1 are reversed to obtain `storage.zfield` in physical
 space partitioned over ``(x, y)``.
 
 Algorithm for one-dimensional decompositions
