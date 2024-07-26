@@ -45,7 +45,7 @@ function partition_coordinate(c::AbstractVector, n, arch, idx)
     if r == arch.ranks[idx]
         return c[1 + sum(nl[1:r-1]) : end]
     else
-        return c[1 + sum(nl[1:r-1]) : sum(nl[1:r])]
+        return c[1 + sum(nl[1:r-1]) : 1 + sum(nl[1:r])]
     end
 end
 
