@@ -45,7 +45,7 @@ function FlatExtrapolationOpenBoundaryCondition(val = nothing; relaxation_timesc
     return BoundaryCondition(classification, val; kwargs...)
 end
 
-@inline function relax(l, m, ϕ, bc, grid, clock, model_fields)
+@inline function relax(l, m, grid, ϕ, bc, clock, model_fields)
     Δt = clock.last_stage_Δt 
     τ = bc.classification.matching_scheme.relaxation_timescale
 
@@ -70,7 +70,7 @@ const c = Center()
 
     gradient_free_ϕ = @inbounds ϕ[3, j, k] - (ϕ[2, j, k] - ϕ[4, j, k]) * spacing_factor
 
-    @inbounds ϕ[1, j, k] = relax(j, k, gradient_free_ϕ, bc, grid, clock, model_fields)
+    @inbounds ϕ[1, j, k] = relax(j, k, grid, gradient_free_ϕ, bc, clock, model_fields)
 
     return nothing
 end
@@ -86,7 +86,7 @@ end
 
     gradient_free_ϕ = @inbounds ϕ[i - 2, j, k] - (ϕ[i - 1, j, k] - ϕ[i - 3, j, k]) * spacing_factor
 
-    @inbounds ϕ[i, j, k] = relax(j, k, gradient_free_ϕ, bc, grid, clock, model_fields)
+    @inbounds ϕ[i, j, k] = relax(j, k, grid, gradient_free_ϕ, bc, clock, model_fields)
 
     return nothing
 end
@@ -100,7 +100,7 @@ end
 
     gradient_free_ϕ = ϕ[i, 3, k] - (ϕ[i, 2, k] - ϕ[i, 4, k]) * spacing_factor
 
-    @inbounds ϕ[i, 1, k] = relax(i, k, gradient_free_ϕ, bc, grid, clock, model_fields)
+    @inbounds ϕ[i, 1, k] = relax(i, k, grid, gradient_free_ϕ, bc, clock, model_fields)
     
     return nothing
 end
@@ -116,7 +116,7 @@ end
 
     gradient_free_ϕ = @inbounds ϕ[i, j - 2, k] - (ϕ[i, j - 1, k] - ϕ[i, j - 3, k]) * spacing_factor
 
-    @inbounds ϕ[i, j, k] = relax(i, k, gradient_free_ϕ, bc, grid, clock, model_fields)
+    @inbounds ϕ[i, j, k] = relax(i, k, grid, gradient_free_ϕ, bc, clock, model_fields)
 
     return nothing
 end
@@ -130,7 +130,7 @@ end
 
     gradient_free_ϕ = @inbounds ϕ[i, j, 3] - (ϕ[i, k, 2] - ϕ[i, j, 4]) * spacing_factor
 
-    @inbounds ϕ[i, j, 1] = relax(i, j, gradient_free_ϕ, bc, grid, clock, model_fields)
+    @inbounds ϕ[i, j, 1] = relax(i, j, grid, gradient_free_ϕ, bc, clock, model_fields)
 
     return nothing
 end
@@ -146,7 +146,7 @@ end
 
     gradient_free_ϕ = @inbounds ϕ[i, j, k - 2] - (ϕ[i, j, k - 1] - ϕ[i, j, k - 3]) * spacing_factor
 
-    @inbounds ϕ[i, j, k] = relax(i, j, gradient_free_ϕ, bc, grid, clock, model_fields)
+    @inbounds ϕ[i, j, k] = relax(i, j, grid, gradient_free_ϕ, bc, clock, model_fields)
 
     return nothing
 end
