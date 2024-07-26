@@ -239,7 +239,7 @@ function solve!(x, solver::DistributedFourierTridiagonalPoissonSolver{<:XYRegula
     parent(solver.source_term) .= parent(storage.zfield)
 
     # Perform the implicit vertical solve here on storage.zfield...
-    # Solve tridiagonal system of linear equations at every column.
+    # Solve tridiagonal system of linear equations at every z-column.
     solve!(storage.zfield, solver.batched_tridiagonal_solver, solver.source_term)
 
     transpose_z_to_y!(storage)
@@ -271,7 +271,7 @@ function solve!(x, solver::DistributedFourierTridiagonalPoissonSolver{<:XZRegula
     parent(solver.source_term) .= parent(storage.yfield)
 
     # Perform the implicit vertical solve here on storage.yfield...
-    # Solve tridiagonal system of linear equations at every column.
+    # Solve tridiagonal system of linear equations at every y-column.
     solve!(storage.yfield, solver.batched_tridiagonal_solver, solver.source_term)
 
     transpose_y_to_x!(storage) # copy data from storage.yfield to storage.xfield
@@ -302,7 +302,7 @@ function solve!(x, solver::DistributedFourierTridiagonalPoissonSolver{<:YZRegula
     parent(solver.source_term) .= parent(storage.xfield)
 
     # Perform the implicit vertical solve here on storage.xfield...
-    # Solve tridiagonal system of linear equations at every column.
+    # Solve tridiagonal system of linear equations at every x-column.
     solve!(storage.xfield, solver.batched_tridiagonal_solver, solver.source_term)
 
     transpose_x_to_y!(storage) # copy data from storage.xfield to storage.yfield
