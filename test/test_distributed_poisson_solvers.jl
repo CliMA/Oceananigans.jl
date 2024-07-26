@@ -124,36 +124,36 @@ end
 @testset "Distributed FFT-based Poisson solver" begin
     child_arch = test_child_arch()
     
-    # for topology in ((Periodic, Periodic, Periodic), 
-    #                  (Periodic, Periodic, Bounded),
-    #                  (Periodic, Bounded, Bounded),
-    #                  (Bounded, Bounded, Bounded))
+    for topology in ((Periodic, Periodic, Periodic), 
+                     (Periodic, Periodic, Bounded),
+                     (Periodic, Bounded, Bounded),
+                     (Bounded, Bounded, Bounded))
                     
-    #     @info "  Testing 3D distributed FFT-based Poisson solver with topology $topology..."
-    #     @test divergence_free_poisson_solution((44, 44, 8), (4, 1, 1), topology, child_arch)
-    #     @test divergence_free_poisson_solution((16, 44, 8), (4, 1, 1), topology, child_arch)
-    #     @test divergence_free_poisson_solution((44, 44, 8), (1, 4, 1), topology, child_arch)
-    #     @test divergence_free_poisson_solution((44, 16, 8), (1, 4, 1), topology, child_arch)
-    #     @test divergence_free_poisson_solution((16, 44, 8), (1, 4, 1), topology, child_arch)
-    #     @test divergence_free_poisson_solution((22, 44, 8), (2, 2, 1), topology, child_arch)
-    #     @test divergence_free_poisson_solution((44, 22, 8), (2, 2, 1), topology, child_arch)
+        @info "  Testing 3D distributed FFT-based Poisson solver with topology $topology..."
+        @test divergence_free_poisson_solution((44, 44, 8), (4, 1, 1), topology, child_arch)
+        @test divergence_free_poisson_solution((16, 44, 8), (4, 1, 1), topology, child_arch)
+        @test divergence_free_poisson_solution((44, 44, 8), (1, 4, 1), topology, child_arch)
+        @test divergence_free_poisson_solution((44, 16, 8), (1, 4, 1), topology, child_arch)
+        @test divergence_free_poisson_solution((16, 44, 8), (1, 4, 1), topology, child_arch)
+        @test divergence_free_poisson_solution((22, 44, 8), (2, 2, 1), topology, child_arch)
+        @test divergence_free_poisson_solution((44, 22, 8), (2, 2, 1), topology, child_arch)
 
-    #     @info "  Testing 2D distributed FFT-based Poisson solver with topology $topology..."
-    #     @test divergence_free_poisson_solution((44, 16, 1), (4, 1, 1), topology, child_arch)
-    #     @test divergence_free_poisson_solution((16, 44, 1), (4, 1, 1), topology, child_arch)
-    # end
+        @info "  Testing 2D distributed FFT-based Poisson solver with topology $topology..."
+        @test divergence_free_poisson_solution((44, 16, 1), (4, 1, 1), topology, child_arch)
+        @test divergence_free_poisson_solution((16, 44, 1), (4, 1, 1), topology, child_arch)
+    end
 
     for stretched_direction in (:x, :y, :z)
         @info "  Testing 3D distributed Fourier Tridiagonal Poisson solver stretched in $stretched_direction"
         @test divergence_free_poisson_tridiagonal_solution((44, 44, 8), (1, 4, 1), stretched_direction, child_arch)
         @test divergence_free_poisson_tridiagonal_solution((44,  4, 8), (1, 4, 1), stretched_direction, child_arch)
         @test divergence_free_poisson_tridiagonal_solution((16, 44, 8), (1, 4, 1), stretched_direction, child_arch)
-        # @test divergence_free_poisson_tridiagonal_solution((22,  8, 8), (2, 2, 1), stretched_direction, child_arch)
-        # @test divergence_free_poisson_tridiagonal_solution(( 8, 22, 8), (2, 2, 1), stretched_direction, child_arch)
-        # @test divergence_free_poisson_tridiagonal_solution((44, 44, 8), (1, 4, 1), stretched_direction, child_arch)
-        # @test divergence_free_poisson_tridiagonal_solution((44,  4, 8), (1, 4, 1), stretched_direction, child_arch)
-        # @test divergence_free_poisson_tridiagonal_solution((16, 44, 8), (1, 4, 1), stretched_direction, child_arch)
-        # @test divergence_free_poisson_tridiagonal_solution((22,  8, 8), (2, 2, 1), stretched_direction, child_arch)
-        # @test divergence_free_poisson_tridiagonal_solution(( 8, 22, 8), (2, 2, 1), stretched_direction, child_arch)
+        @test divergence_free_poisson_tridiagonal_solution((22,  8, 8), (2, 2, 1), stretched_direction, child_arch)
+        @test divergence_free_poisson_tridiagonal_solution(( 8, 22, 8), (2, 2, 1), stretched_direction, child_arch)
+        @test divergence_free_poisson_tridiagonal_solution((44, 44, 8), (1, 4, 1), stretched_direction, child_arch)
+        @test divergence_free_poisson_tridiagonal_solution((44,  4, 8), (1, 4, 1), stretched_direction, child_arch)
+        @test divergence_free_poisson_tridiagonal_solution((16, 44, 8), (1, 4, 1), stretched_direction, child_arch)
+        @test divergence_free_poisson_tridiagonal_solution((22,  8, 8), (2, 2, 1), stretched_direction, child_arch)
+        @test divergence_free_poisson_tridiagonal_solution(( 8, 22, 8), (2, 2, 1), stretched_direction, child_arch)
     end
 end

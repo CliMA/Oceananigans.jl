@@ -245,7 +245,7 @@ function solve!(x, solver::DistributedFourierTridiagonalPoissonSolver{<:XYRegula
     transpose_z_to_y!(storage)
     solver.plan.backward.y!(parent(storage.yfield), buffer.y)
     transpose_y_to_x!(storage) # copy data from storage.yfield to storage.xfield
-    solver.plan.backward.y!(parent(storage.xfield), buffer.x)
+    solver.plan.backward.x!(parent(storage.xfield), buffer.x)
     transpose_x_to_y!(storage) # copy data from storage.xfield to storage.yfield
     transpose_y_to_z!(storage) # copy data from storage.yfield to storage.zfield
 
