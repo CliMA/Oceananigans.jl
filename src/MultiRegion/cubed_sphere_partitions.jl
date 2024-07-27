@@ -60,10 +60,10 @@ Base.length(p::CubedSpherePartition) = p.div
     pᵢ = intra_panel_index_x(r, p)
     pⱼ = intra_panel_index_y(r, p)
 
-    bottom_left  = pᵢ == 1    && pⱼ == 1    ? true : false
-    bottom_right = pᵢ == p.Rx && pⱼ == 1    ? true : false
-    top_left     = pᵢ == 1    && pⱼ == p.Ry ? true : false
-    top_right    = pᵢ == p.Rx && pⱼ == p.Ry ? true : false
+    bottom_left  = (pᵢ == 1   ) & (pⱼ == 1   )
+    bottom_right = (pᵢ == p.Rx) & (pⱼ == 1   )
+    top_left     = (pᵢ == 1   ) & (pⱼ == p.Ry)
+    top_right    = (pᵢ == p.Rx) & (pⱼ == p.Ry)
 
     return (; bottom_left, bottom_right, top_left, top_right)
 end
