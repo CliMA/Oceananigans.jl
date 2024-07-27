@@ -732,6 +732,26 @@ Ld_f_at_specific_longitude_through_panel_center = zeros(2*Nx, 4);
 Δt = 5minutes
 simulation_time = iteration_id * Δt
 
+fig = panel_wise_visualization(grid_cpu, u_f_r; k = Nz, common_kwargs...)
+save("cubed_sphere_aquaplanet_u_f_$iteration_id.png", fig)
+
+fig = panel_wise_visualization(grid_cpu, v_f_r; k = Nz, common_kwargs...)
+save("cubed_sphere_aquaplanet_v_f_$iteration_id.png", fig)
+
+fig = panel_wise_visualization(grid_cpu, ζ_f; k = Nz, common_kwargs..., specify_plot_limits = true,
+                               plot_limits = (-1e-5, 1e-5))
+save("cubed_sphere_aquaplanet_ζ_f_$iteration_id.png", fig)
+
+fig = panel_wise_visualization(grid_cpu, w_f; k = Nz, common_kwargs...)
+save("cubed_sphere_aquaplanet_w_f_$iteration_id.png", fig)
+
+fig = panel_wise_visualization(grid_cpu, η_f; ssh = true)
+save("cubed_sphere_aquaplanet_η_f_$iteration_id.png", fig)
+
+fig = panel_wise_visualization(grid_cpu, b_f; k = b_index, common_kwargs..., specify_plot_limits = true,
+                               plot_limits = (-0.055, 0.055))
+save("cubed_sphere_aquaplanet_b_f_$iteration_id.png", fig)
+
 title = "Zonal velocity after $(prettytime(simulation_time))"
 fig = geo_heatlatlon_visualization(grid_cpu, u_f_r, title; common_kwargs_geo..., cbar_label = "zonal velocity (m s⁻¹)")
 save("cubed_sphere_aquaplanet_u_f_geo_heatlatlon_plot_$iteration_id.png", fig)
