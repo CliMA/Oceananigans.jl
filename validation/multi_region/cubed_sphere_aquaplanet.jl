@@ -49,7 +49,7 @@ function geometric_z_faces(p)
 end
 
 Lz = 3000
-h_b = 0.25 * Lz
+h_b = 0.2 * Lz
 h_νz_κz = 100
 
 Nx, Ny, Nz = 360, 360, 30
