@@ -26,6 +26,11 @@ function TracerAdvection(x_advection, y_advection, z_advection)
     return TracerAdvection{H, FT}(x_advection, y_advection, z_advection)
 end
 
+Adapt.adapt_structure(to, scheme::TracerAdvection{N, FT}) where {N, FT} = 
+    TracerAdvection{N, FT}(Adapt.adapt(to, scheme.x),
+                           Adapt.adapt(to, scheme.y),
+                           Adapt.adapt(to, scheme.z))
+
 @inline _advective_tracer_flux_x(args...) = advective_tracer_flux_x(args...)
 @inline _advective_tracer_flux_y(args...) = advective_tracer_flux_y(args...)
 @inline _advective_tracer_flux_z(args...) = advective_tracer_flux_z(args...)
@@ -40,6 +45,15 @@ end
 #####
 ##### Tracer advection operator
 #####
+
+_advective_tracer_flux_x(i, j, k, grid, advection::TracerAdvection, args...) =
+    _advective_tracer_flux_x(i, j, k, grid, advection.x, args...)
+
+_advective_tracer_flux_y(i, j, k, grid, advection::TracerAdvection, args...) =
+    _advective_tracer_flux_y(i, j, k, grid, advection.y, args...)
+
+_advective_tracer_flux_z(i, j, k, grid, advection::TracerAdvection, args...) =
+    _advective_tracer_flux_z(i, j, k, grid, advection.z, args...)
 
 """
     div_uc(i, j, k, grid, advection, U, c)
