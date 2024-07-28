@@ -35,25 +35,23 @@ Adapt.adapt_structure(to, scheme::TracerAdvection{N, FT}) where {N, FT} =
 @inline _advective_tracer_flux_y(args...) = advective_tracer_flux_y(args...)
 @inline _advective_tracer_flux_z(args...) = advective_tracer_flux_z(args...)
 
-@inline div_Uc(i, j, k, grid, advection, ::ZeroU, c) = zero(grid)
-@inline div_Uc(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
+@inline _advective_tracer_flux_x(i, j, k, grid, advection::TracerAdvection, args...) =
+        _advective_tracer_flux_x(i, j, k, grid, advection.x, args...)
 
-@inline div_Uc(i, j, k, grid, ::Nothing, U, c) = zero(grid)
-@inline div_Uc(i, j, k, grid, ::Nothing, ::ZeroU, c) = zero(grid)
-@inline div_Uc(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+@inline _advective_tracer_flux_y(i, j, k, grid, advection::TracerAdvection, args...) =
+        _advective_tracer_flux_y(i, j, k, grid, advection.y, args...)
+
+@inline _advective_tracer_flux_z(i, j, k, grid, advection::TracerAdvection, args...) =
+        _advective_tracer_flux_z(i, j, k, grid, advection.z, args...)
+
+# Fallback for `nothing` advection
+@inline _advective_tracer_flux_x(i, j, k, grid, ::Nothing, args...) = zero(grid)
+@inline _advective_tracer_flux_y(i, j, k, grid, ::Nothing, args...) = zero(grid)
+@inline _advective_tracer_flux_z(i, j, k, grid, ::Nothing, args...) = zero(grid)
 
 #####
 ##### Tracer advection operator
 #####
-
-_advective_tracer_flux_x(i, j, k, grid, advection::TracerAdvection, args...) =
-    _advective_tracer_flux_x(i, j, k, grid, advection.x, args...)
-
-_advective_tracer_flux_y(i, j, k, grid, advection::TracerAdvection, args...) =
-    _advective_tracer_flux_y(i, j, k, grid, advection.y, args...)
-
-_advective_tracer_flux_z(i, j, k, grid, advection::TracerAdvection, args...) =
-    _advective_tracer_flux_z(i, j, k, grid, advection.z, args...)
 
 """
     div_uc(i, j, k, grid, advection, U, c)
@@ -72,8 +70,10 @@ which ends up at the location `ccc`.
                                     δzᵃᵃᶜ(i, j, k, grid, _advective_tracer_flux_z, advection, U.w, c))
 end
 
-@inline function div_Uc(i, j, k, grid, advection::TracerAdvection, U, c)
-    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_tracer_flux_x, advection.x, U.u, c) +
-                                    δyᵃᶜᵃ(i, j, k, grid, _advective_tracer_flux_y, advection.y, U.v, c) +
-                                    δzᵃᵃᶜ(i, j, k, grid, _advective_tracer_flux_z, advection.z, U.w, c))
-end
+# Fallbacks for zero velocities, zero tracer and `nothing` advection
+@inline div_Uc(i, j, k, grid, advection, ::ZeroU, c) = zero(grid)
+@inline div_Uc(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
+
+@inline div_Uc(i, j, k, grid, ::Nothing, U, c) = zero(grid)
+@inline div_Uc(i, j, k, grid, ::Nothing, ::ZeroU, c) = zero(grid)
+@inline div_Uc(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
