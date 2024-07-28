@@ -122,6 +122,8 @@ Restrictions
 
 """
 function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT)
+    
+    validate_global_grid(global_grid) 
     irreg_dim = stretched_dimensions(local_grid)[1]
 
     topology(global_grid, irreg_dim) != Bounded && error("`DistributedFourierTridiagonalPoissonSolver` can only be used when the stretched direction's topology is `Bounded`.")

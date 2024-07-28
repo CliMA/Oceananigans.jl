@@ -198,9 +198,8 @@ function validate_global_grid(global_grid::RectilinearGrid)
     
     # TODO: Allow stretching in z by rotating the underlying data in order to 
     # have just 4 transposes as opposed to 8    
-    if !(global_grid isa YZRegularRG) 
-        throw(ArgumentError("Only stretching on the X direction is supported with distributed grids at the moment. 
-                             Please rotate the domain to have the stretching in X"))
+    if !(global_grid isa YZRegularRG) && !(global_grid isa XYRegularRG) && !(global_grid isa XZRegularRG) 
+        throw(ArgumentError("Only stretching in one direction is supported with distributed grids at the moment."))
     end
 
     return nothing
