@@ -29,7 +29,7 @@ _intrinsic_ coordinate system are equivalent. However, for other grids (e.g., fo
 Convert the three-dimensional vector with components `uᵢ, vᵢ, wᵢ ` defined on the _intrinsic_ coordinate
 system of the grid, to the _extrinsic_ coordinate system associated with the domain.
 
-_extrinsic_ reference frames are:
+_extrinsic_ coordinate systems are:
 
 - Cartesian for any grid that discretizes a Cartesian domain (e.g. a `RectilinearGrid`)
 - Geographic coordinates for any grid that discretizes a Spherical domain (e.g. an `AbstractCurvilinearGrid`)
