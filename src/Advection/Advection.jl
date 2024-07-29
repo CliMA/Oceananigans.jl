@@ -21,6 +21,7 @@ export
     UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder,
     WENO, WENOThirdOrder, WENOFifthOrder,
     VectorInvariant, WENOVectorInvariant,
+    TracerAdvection,
     EnergyConserving,
     EnstrophyConserving
 
