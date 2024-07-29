@@ -48,11 +48,18 @@ function geometric_z_faces(p)
     return z_faces
 end
 
+function custom_z_faces()
+    z_faces = [-3000, -2900, -2800, -2700, -2600, -2500, -2400, -2300, -2200, -2100, -2000, -1900, -1800, -1700, -1600,
+               -1500, -1400, -1300, -1200, -1100, -1002, -904, -809, -717, -629, -547, -472, -404, -345, -294, -252,
+               -217, -189, -167, -149, -134, -122, -100, -90, -80, -70, -60, -50, -40, -30, -10, 0]
+    return z_faces
+end
+
 Lz = 3000
 h_b = 0.2 * Lz
 h_νz_κz = 100
 
-Nx, Ny, Nz = 360, 360, 30
+Nx, Ny, Nz = 540, 540, 46
 Nhalo = 6
 
 ratio = 0.8
@@ -92,7 +99,7 @@ print("The minimum number of grid points in each direction of the cubed sphere p
 arch = GPU()
 underlying_grid = ConformalCubedSphereGrid(arch;
                                            panel_size = (Nx, Ny, Nz),
-                                           z = geometric_z_faces(my_parameters),
+                                           z = custom_z_faces(),
                                            horizontal_direction_halo = Nhalo,
                                            radius,
                                            partition = CubedSpherePartition(; R = 1))
@@ -317,10 +324,6 @@ b_bcs = FieldBoundaryConditions(top = top_restoring_bc)
 #### Model setup
 ####
 
-#=
-momentum_advection = VectorInvariant()
-tracer_advection   = WENO()
-=#
 momentum_advection = WENOVectorInvariant(vorticity_order=9)
 tracer_advection   = WENO(order=9)
 substeps           = 50
@@ -379,11 +382,6 @@ end
 @inline diffusive_flux_y(i, j, k, grid, closure::Smagorinsky, diffusivities, ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index = zero(grid)
 @inline diffusive_flux_z(i, j, k, grid, closure::Smagorinsky, diffusivities, ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index = zero(grid)
 
-#=
-horizontal_viscosity = Smagorinsky() # Smagorinsky viscosity
-horizontal_diffusivity = HorizontalScalarDiffusivity(κ=κh) # Laplacian diffusivity
-=#
-
 νz_surface = 1e-3
 νz_bottom = 1e-4
 
@@ -420,10 +418,6 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                       tracer_advection,
                                       free_surface,
                                       coriolis,
-                                      #=
-                                      closure = (horizontal_viscosity, horizontal_diffusivity, vertical_diffusivity,
-                                                 convective_adjustment),
-                                      =#
                                       closure = (vertical_diffusivity, convective_adjustment),
                                       tracers = :b,
                                       buoyancy = BuoyancyTracer(),
