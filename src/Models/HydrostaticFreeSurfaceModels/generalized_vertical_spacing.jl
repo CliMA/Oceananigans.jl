@@ -156,11 +156,11 @@ update_vertical_spacing!(model, grid, Δt; kwargs...) = nothing
     i, j, k = @index(Global, NTuple)
 
     FT = eltype(χ)
-    one_point_five = convert(FT, 1.5)
-    oh_point_five  = convert(FT, 0.5)
+    C₁ = convert(FT, 1.5) + χ
+    C₂ = convert(FT, 0.5) + χ
 
     @inbounds begin
-        ∂t_∂sθ = (one_point_five + χ) * Gⁿ[i, j, k] - (oh_point_five + χ) * G⁻[i, j, k]
+        ∂t_∂sθ = C₁ * sⁿ[i, j, k] * Gⁿ[i, j, k] - C₂ * s⁻[i, j, k] * G⁻[i, j, k]
         
         # We store temporarily sθ in θ. the unscaled θ will be retrived later on with `unscale_tracers!`
         θ[i, j, k] = sⁿ[i, j, k] * θ[i, j, k] + convert(FT, Δt) * ∂t_∂sθ
