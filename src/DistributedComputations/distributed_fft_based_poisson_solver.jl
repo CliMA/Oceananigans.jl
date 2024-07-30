@@ -1,7 +1,7 @@
 import FFTW 
 
 using CUDA: @allowscalar
-using Oceananigans.Grids: YZRegularRG
+using Oceananigans.Grids: XYZRegularRG
 
 import Oceananigans.Solvers: poisson_eigenvalues, solve!
 import Oceananigans.Architectures: architecture
@@ -196,11 +196,8 @@ function validate_global_grid(global_grid::RectilinearGrid)
                              Please rotate the domain to obtain the required topology"))
     end
     
-    # TODO: Allow stretching in z by rotating the underlying data in order to 
-    # have just 4 transposes as opposed to 8    
-    if !(global_grid isa YZRegularRG) 
-        throw(ArgumentError("Only stretching on the X direction is supported with distributed grids at the moment. 
-                             Please rotate the domain to have the stretching in X"))
+    if !(global_grid isa XYZRegularRG) 
+        throw(ArgumentError("Stretched directions are not supported with distributed grids at the moment."))
     end
 
     return nothing
