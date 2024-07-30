@@ -245,7 +245,7 @@ on_architecture(to, scheme::VectorInvariant{N, FT, M}) where {N, FT, M} =
                                                                     bernoulli_head_V(i, j, k, grid, scheme, U.u, U.v)
 
 # Extend interpolate functions for VectorInvariant to allow MultiDimensional reconstruction
-for bias in (:_left_biased, :_right_biased, :_symmetric)
+for bias in (:_biased, :_symmetric)
     for (dir1, dir2) in zip((:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ), (:y, :y, :x, :x))
         interp_func = Symbol(bias, :_interpolate_, dir1)
         multidim_interp = Symbol(:_multi_dimensional_reconstruction_, dir2)
@@ -339,10 +339,9 @@ end
     Sζ = scheme.vorticity_stencil
 
     @inbounds v̂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
-    ζᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
-    ζᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
+    ζᴿ = _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, bias(v̂), ζ₃ᶠᶠᶜ, Sζ, u, v)
 
-    return - upwind_biased_product(v̂, ζᴸ, ζᴿ)
+    return - v̂ * ζᴿ
 end
 
 @inline function horizontal_advection_V(i, j, k, grid, scheme::VectorInvariantUpwindVorticity, u, v) 
@@ -350,10 +349,9 @@ end
     Sζ = scheme.vorticity_stencil
 
     @inbounds û = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
-    ζᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
-    ζᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, ζ₃ᶠᶠᶜ, Sζ, u, v)
+    ζᴿ = _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, bias(û), ζ₃ᶠᶠᶜ, Sζ, u, v)
 
-    return + upwind_biased_product(û, ζᴸ, ζᴿ)
+    return + û * ζᴿ
 end
 
 #####
@@ -398,10 +396,10 @@ end
 @inline U_dot_∇u(i, j, k, grid::AbstractGrid{FT}, scheme::Nothing, U) where FT = zero(FT)
 @inline U_dot_∇v(i, j, k, grid::AbstractGrid{FT}, scheme::Nothing, U) where FT = zero(FT)
 
-const U{N}  = UpwindBiased{N}
-const UX{N} = UpwindBiased{N, <:Any, <:Nothing} 
-const UY{N} = UpwindBiased{N, <:Any, <:Any, <:Nothing}
-const UZ{N} = UpwindBiased{N, <:Any, <:Any, <:Any, <:Nothing}
+const UB{N}  = UpwindBiased{N}
+const UBX{N} = UpwindBiased{N, <:Any, <:Nothing} 
+const UBY{N} = UpwindBiased{N, <:Any, <:Any, <:Nothing}
+const UBZ{N} = UpwindBiased{N, <:Any, <:Any, <:Any, <:Nothing}
 
 const C{N}  = Centered{N, <:Any}
 const CX{N} = Centered{N, <:Any, <:Nothing}
@@ -410,7 +408,7 @@ const CZ{N} = Centered{N, <:Any, <:Any, <:Any, <:Nothing}
 
 const AS = AbstractSmoothnessStencil
 
-# To adapt passing smoothness stencils to upwind biased schemes and centered schemes (not weno) 
+# To adapt passing smoothness stencils to upwind biased schemes and centered schemes (not WENO) 
 for b in 1:6
     @eval begin
         @inline inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s::C{$b},  f::Function, idx, loc, ::AS, args...) = inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, f, idx, loc, args...)
@@ -420,18 +418,11 @@ for b in 1:6
         @inline inner_symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s::CY{$b}, f::Function, idx, loc, ::AS, args...) = inner_symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, f, idx, loc, args...)
         @inline inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s::CZ{$b}, f::Function, idx, loc, ::AS, args...) = inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, f, idx, loc, args...)
 
-        @inline inner_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s::U{$b},  f::Function, idx, loc, ::AS, args...) = inner_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, f, idx, loc, args...)
-        @inline inner_left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s::U{$b},  f::Function, idx, loc, ::AS, args...) = inner_left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, f, idx, loc, args...)
-        @inline inner_left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s::U{$b},  f::Function, idx, loc, ::AS, args...) = inner_left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, f, idx, loc, args...)
-        @inline inner_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s::UX{$b}, f::Function, idx, loc, ::AS, args...) = inner_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, f, idx, loc, args...)
-        @inline inner_left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s::UY{$b}, f::Function, idx, loc, ::AS, args...) = inner_left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, f, idx, loc, args...)
-        @inline inner_left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s::UZ{$b}, f::Function, idx, loc, ::AS, args...) = inner_left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, f, idx, loc, args...)
-
-        @inline inner_right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s::U{$b},  f::Function, idx, loc, ::AS, args...) = inner_right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, f, idx, loc, args...)
-        @inline inner_right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s::U{$b},  f::Function, idx, loc, ::AS, args...) = inner_right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, f, idx, loc, args...)
-        @inline inner_right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s::U{$b},  f::Function, idx, loc, ::AS, args...) = inner_right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, f, idx, loc, args...)
-        @inline inner_right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s::UX{$b}, f::Function, idx, loc, ::AS, args...) = inner_right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, f, idx, loc, args...)
-        @inline inner_right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s::UY{$b}, f::Function, idx, loc, ::AS, args...) = inner_right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, f, idx, loc, args...)
-        @inline inner_right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s::UZ{$b}, f::Function, idx, loc, ::AS, args...) = inner_right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, f, idx, loc, args...)
+        @inline inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s::UB{$b},  bias, f::Function, idx, loc, ::AS, args...) = inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, bias, f, idx, loc, args...)
+        @inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s::UB{$b},  bias, f::Function, idx, loc, ::AS, args...) = inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, bias, f, idx, loc, args...)
+        @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s::UB{$b},  bias, f::Function, idx, loc, ::AS, args...) = inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, bias, f, idx, loc, args...)
+        @inline inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s::UBX{$b}, bias, f::Function, idx, loc, ::AS, args...) = inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, bias, f, idx, loc, args...)
+        @inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s::UBY{$b}, bias, f::Function, idx, loc, ::AS, args...) = inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, bias, f, idx, loc, args...)
+        @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s::UBZ{$b}, bias, f::Function, idx, loc, ::AS, args...) = inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, bias, f, idx, loc, args...)
     end
 end
