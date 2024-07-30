@@ -4,7 +4,7 @@ using Dates: AbstractTime, now
 
 using Oceananigans.Fields
 
-using Oceananigans.Grids: AbstractCurvilinearGrid, RectilinearGrid, topology, halo_size, parent_index_range
+using Oceananigans.Grids: RectilinearGrid, OrthogonalSphericalShellGrid, topology, halo_size, parent_index_range
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 using Oceananigans.TimeSteppers: float_or_date_time
@@ -57,7 +57,7 @@ native_dimensions_for_netcdf_output(grid, indices, TX, TY, TZ, Hx, Hy, Hz) =
          "zC" => parent(znodes(grid, Center(); with_halos=true))[parent_index_range(indices["zC"][3], Center(), TZ(), Hz)],
          "zF" => parent(znodes(grid, Face();   with_halos=true))[parent_index_range(indices["zF"][3],   Face(), TZ(), Hz)])
 
-native_dimensions_for_netcdf_output(grid::AbstractCurvilinearGrid, indices, TX, TY, TZ, Hx, Hy, Hz) =
+native_dimensions_for_netcdf_output(grid::OrthogonalSphericalShellGrid, indices, TX, TY, TZ, Hx, Hy, Hz) =
     Dict("xC" => parent(λnodes(grid, Center(); with_halos=true))[parent_index_range(indices["xC"][1], Center(), TX(), Hx)],
          "xF" => parent(λnodes(grid, Face();   with_halos=true))[parent_index_range(indices["xF"][1],   Face(), TX(), Hx)],
          "yC" => parent(φnodes(grid, Center(); with_halos=true))[parent_index_range(indices["yC"][2], Center(), TY(), Hy)],
@@ -481,7 +481,7 @@ end
 get_default_dimension_attributes(::RectilinearGrid) =
     default_rectilinear_dimension_attributes
 
-get_default_dimension_attributes(::AbstractCurvilinearGrid) =
+get_default_dimension_attributes(grid::OrthogonalSphericalShellGrid) =
     default_curvilinear_dimension_attributes
 
 get_default_dimension_attributes(grid::ImmersedBoundaryGrid) =

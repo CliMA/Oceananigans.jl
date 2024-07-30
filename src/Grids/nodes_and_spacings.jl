@@ -60,19 +60,15 @@ _node_names(grid, ::Nothing, ::Nothing, ::Nothing) = tuple()
 ##### << Nodes >>
 #####
 
-xnodes(grid, ::Nothing; kwargs...) = 1:1
-ynodes(grid, ::Nothing; kwargs...) = 1:1
-znodes(grid, ::Nothing; kwargs...) = 1:1
-
 """
     xnodes(grid, ℓx, ℓy, ℓz, with_halos=false)
-
+    
 Return the positions over the interior nodes on `grid` in the ``x``-direction for the location `ℓx`,
 `ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
 
 See [`znodes`](@ref) for examples.
 """
-@inline xnodes(grid, ℓx, ℓy, ℓz; kwargs...) = xnodes(grid, ℓx; kwargs...)
+xnodes(grid, ::Nothing; kwargs...) = 1:1
 
 """
     ynodes(grid, ℓx, ℓy, ℓz, with_halos=false)
@@ -82,7 +78,7 @@ Return the positions over the interior nodes on `grid` in the ``y``-direction fo
 
 See [`znodes`](@ref) for examples.
 """
-@inline ynodes(grid, ℓx, ℓy, ℓz; kwargs...) = ynodes(grid, ℓy; kwargs...)
+ynodes(grid, ::Nothing; kwargs...) = 1:1
 
 """
     znodes(grid, ℓx, ℓy, ℓz; with_halos=false)
@@ -101,7 +97,7 @@ julia> zC = znodes(horz_periodic_grid, Center())
  -0.8333333333333334
  -0.5
  -0.16666666666666666
-
+ 
 julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center())
 3-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), 1:3) with eltype Float64:
  -0.8333333333333334
@@ -112,27 +108,7 @@ julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center(), with_halos=
 -1.1666666666666667:0.3333333333333333:0.16666666666666666 with indices 0:4
 ```
 """
-@inline znodes(grid, ℓx, ℓy, ℓz; kwargs...) = znodes(grid, ℓz; kwargs...)
-
-"""
-    λnodes(grid::AbstractCurvilinearGrid, ℓx, ℓy, ℓz, with_halos=false)
-
-Return the positions over the interior nodes on a curvilinear `grid` in the ``λ``-direction
-for the location `ℓλ`, `ℓφ`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-See [`znodes`](@ref) for examples.
-"""
-@inline λnodes(grid::AbstractCurvilinearGrid, ℓλ, ℓφ, ℓz; kwargs...) = λnodes(grid, ℓλ; kwargs...)
-
-"""
-    φnodes(grid::AbstractCurvilinearGrid, ℓx, ℓy, ℓz, with_halos=false)
-
-Return the positions over the interior nodes on a curvilinear `grid` in the ``φ``-direction
-for the location `ℓλ`, `ℓφ`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-See [`znodes`](@ref) for examples.
-"""
-@inline φnodes(grid::AbstractCurvilinearGrid, ℓλ, ℓφ, ℓz; kwargs...) = φnodes(grid, ℓφ; kwargs...)
+znodes(grid, ::Nothing; kwargs...) = 1:1
 
 """
     nodes(grid, (ℓx, ℓy, ℓz); reshape=false, with_halos=false)

@@ -9,7 +9,7 @@ using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture, halo_size
+using Oceananigans.Grids: architecture, halo_size
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, validate_model_halo, NaNChecker, validate_tracer_advection, extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles
@@ -219,9 +219,11 @@ validate_free_surface(::Distributed, free_surface::ExplicitFreeSurface)      = f
 validate_free_surface(arch::Distributed, free_surface) = error("$(typeof(free_surface)) is not supported with $(typeof(arch))")
 validate_free_surface(arch, free_surface) = free_surface
 
-validate_momentum_advection(momentum_advection, ibg::ImmersedBoundaryGrid) = validate_momentum_advection(momentum_advection, ibg.underlying_grid)
-validate_momentum_advection(momentum_advection, grid::RectilinearGrid)                     = momentum_advection
-validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
+validate_momentum_advection(momentum_advection, ibg::ImmersedBoundaryGrid)   = validate_momentum_advection(momentum_advection, ibg.underlying_grid)
+validate_momentum_advection(momentum_advection, grid::RectilinearGrid)       = momentum_advection
+validate_momentum_advection(momentum_advection, grid::LatitudeLongitudeGrid) = momentum_advection
+validate_momentum_advection(momentum_advection::Nothing,         grid::LatitudeLongitudeGrid) = momentum_advection
+validate_momentum_advection(momentum_advection::VectorInvariant, grid::LatitudeLongitudeGrid) = momentum_advection
 validate_momentum_advection(momentum_advection::Nothing,         grid::OrthogonalSphericalShellGrid) = momentum_advection
 validate_momentum_advection(momentum_advection::VectorInvariant, grid::OrthogonalSphericalShellGrid) = momentum_advection
 validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")

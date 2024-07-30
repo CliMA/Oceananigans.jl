@@ -5,7 +5,7 @@ using Oceananigans.Grids: topology, size, halo_size, architecture, pop_flat_elem
 using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_args, validate_size
 using Oceananigans.Grids: generate_coordinate, with_precomputed_metrics
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
-using Oceananigans.Grids: R_Earth, metrics_precomputed
+using Oceananigans.Grids: R_Earth, metrics_precomputed, LatitudeLongitudeMapping
 
 using Oceananigans.Fields
 
@@ -16,8 +16,8 @@ const DistributedGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:Distribut
 const DistributedRectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ} =
     RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, <:Distributed} where {FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ}
 
-const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ} = 
-    LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, <:Distributed} where {FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ}
+const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, FZ, FX, FY} = 
+    LatitudeLongitudeGrid{FT, TX, TY, TZ, FX, FY, FZ, <:Distributed} where {FT, TX, TY, TZ, FX, FX, FZ}
 
 # Local size from global size and architecture
 local_size(arch::Distributed, global_sz) = (local_size(global_sz[1], arch.partition.x, arch.local_index[1]),
@@ -148,14 +148,16 @@ function LatitudeLongitudeGrid(arch::Distributed,
     # the z-area on halo cells. (see: Az =  R^2 * Δλ * (sin(φ[j]) - sin(φ[j-1]))
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, Bounded(), nφ, Hφ + 1, φl, :latitude, arch.child_architecture)
 
-    preliminary_grid = LatitudeLongitudeGrid{TX, TY, TZ}(arch,
-                                                         nλ, nφ, nz,
-                                                         Hλ, Hφ, Hz,
-                                                         Lλ, Lφ, Lz,
-                                                         Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
-                                                         Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
-                                                         Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ,
-                                                         (nothing for i=1:10)..., convert(FT, radius))
+    preliminary_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(arch,
+                                                                LatitudeLongitudeMapping(Δλᶠᵃᵃ, Δφᵃᶠᵃ, Δλᶜᵃᵃ, Δφᵃᶜᵃ),
+                                                                nλ, nφ, nz,
+                                                                Hλ, Hφ, Hz,
+                                                                Lλ, Lφ, Lz,
+                                                                λᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ, λᶠᵃᵃ, 
+                                                                φᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, φᵃᶠᵃ, 
+                                                                zᵃᵃᶜ, zᵃᵃᶠ,
+                                                                Δzᵃᵃᶜ, Δzᵃᵃᶠ,
+                                                                (nothing for i=1:12)..., FT(radius))
 
     return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid)
 end
@@ -247,15 +249,17 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
 
     precompute_metrics = metrics_precomputed(grid)
 
-    preliminary_grid = LatitudeLongitudeGrid{TX, TY, TZ}(child_arch,
-                                                         Nλ, Nφ, Nz,
-                                                         Hλ, Hφ, Hz,
-                                                         Lλ, Lφ, Lz,
-                                                         Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
-                                                         Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
-                                                         Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ,
-                                                         (nothing for i=1:10)..., grid.radius)
-
+    preliminary_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(child_arch,
+                                                                LatitudeLongitudeMapping(Δλᶠᵃᵃ, Δφᵃᶠᵃ, Δλᶜᵃᵃ, Δφᵃᶜᵃ),
+                                                                Nλ, Nφ, Nz,
+                                                                Hλ, Hφ, Hz,
+                                                                Lλ, Lφ, Lz,
+                                                                λᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ, λᶠᵃᵃ, 
+                                                                φᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, φᵃᶠᵃ, 
+                                                                zᵃᵃᶜ, zᵃᵃᶠ,
+                                                                Δzᵃᵃᶜ, Δzᵃᵃᶠ,
+                                                                (nothing for i=1:12)..., FT(radius))
+                                                                
     return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid)
 end
 

@@ -5,12 +5,11 @@ export AbstractTopology, Periodic, Bounded, Flat, FullyConnected, LeftConnected,
 
 export AbstractGrid, AbstractUnderlyingGrid, halo_size, total_size
 export RectilinearGrid
-export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 export XFlatGrid, YFlatGrid, ZFlatGrid
 export XRegularRG, YRegularRG, ZRegularRG, XYRegularRG, XYZRegularRG
 export LatitudeLongitudeGrid, XRegularLLG, YRegularLLG, ZRegularLLG
 export OrthogonalSphericalShellGrid, ConformalCubedSphereGrid, ZRegOrthogonalSphericalShellGrid
-export conformal_cubed_sphere_panel
+export ConformalCubedSpherePanelGrid
 export node, nodes
 export ξnode, ηnode, rnode
 export xnode, ynode, znode, λnode, φnode
@@ -118,20 +117,6 @@ with elements of type `FT` and topology `{TX, TY, TZ}`.
 """
 abstract type AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch} end
 
-"""
-    AbstractCurvilinearGrid{FT, TX, TY, TZ}
-
-Abstract supertype for curvilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
-"""
-abstract type AbstractCurvilinearGrid{FT, TX, TY, TZ, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch} end
-
-"""
-    AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ}
-
-Abstract supertype for horizontally-curvilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
-"""
-abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch} <: AbstractCurvilinearGrid{FT, TX, TY, TZ, Arch} end
-
 #####
 ##### Directions (for tilted domains)
 #####
@@ -169,5 +154,6 @@ include("grid_generation.jl")
 include("rectilinear_grid.jl")
 include("orthogonal_spherical_shell_grid.jl")
 include("latitude_longitude_grid.jl")
+include("conformal_cubed_sphere_panel_grid.jl")
 
 end # module
