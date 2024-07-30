@@ -145,16 +145,16 @@ appendix_pages = [
 pages = [
     "Home" => "index.md",
     "Quick start" => "quick_start.md",
-    "Examples" => example_pages,
+    # "Examples" => example_pages,
     "Grids" => "grids_tutorial.md",
-    "Model setup (legacy)" => model_setup_pages,
-    "Physics" => physics_pages,
-    "Numerical implementation" => numerical_pages,
-    "Simulation tips" => "simulation_tips.md",
-    "Contributor's guide" => "contributing.md",
-    "Gallery" => "gallery.md",
-    "References" => "references.md",
-    "Appendix" => appendix_pages
+    # "Model setup (legacy)" => model_setup_pages,
+    # "Physics" => physics_pages,
+    # "Numerical implementation" => numerical_pages,
+    # "Simulation tips" => "simulation_tips.md",
+    # "Contributor's guide" => "contributing.md",
+    # "Gallery" => "gallery.md",
+    # "References" => "references.md",
+    # "Appendix" => appendix_pages
 ]
 
 #####
