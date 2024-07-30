@@ -865,9 +865,14 @@ end
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 
-function test_netcdf_regular_lat_lon_grid_output(arch)
+function test_netcdf_regular_lat_lon_grid_output(arch; immersed = false)
     Nx = Ny = Nz = 16
     grid = LatitudeLongitudeGrid(arch; size=(Nx, Ny, Nz), longitude=(-180, 180), latitude=(-80, 80), z=(-100, 0))
+    
+    if immersed
+        grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> -50))
+    end
+    
     model = HydrostaticFreeSurfaceModel(momentum_advection = VectorInvariant(), grid=grid)
 
     Δt = 1.25
@@ -929,7 +934,8 @@ for arch in archs
         test_netcdf_spatial_average(arch)
         test_netcdf_time_averaging(arch)
         test_netcdf_vertically_stretched_grid_output(arch)
-        test_netcdf_regular_lat_lon_grid_output(arch)
+        test_netcdf_regular_lat_lon_grid_output(arch; immersed = false)
+        test_netcdf_regular_lat_lon_grid_output(arch; immersed = true)
     end
 end
 
