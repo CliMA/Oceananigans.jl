@@ -61,7 +61,18 @@ reset!(timestepper::QuasiAdamsBashforth2TimeStepper) = nothing
 
 Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method and
 pressure-correction substep. Setting `euler=true` will take a forward Euler time step.
-Setting `compute_tendencies=false` will not calculate new tendencies
+The new tendencies are calculated in the `update_step!` at the end of the `time_step!` function.
+
+The steps of the AB2 algorithm are:
+
+1. If we are in the first time step `(model.clock.iteration == 0)`, then `update_state!` and calculate the tendencies
+2. advance tracers in time and compute predictor velocities (including implicit vertical diffusion)
+3. solve the elliptic equation for pressure (three dimensional for the non-hydrostatic model and two-dimensional for the hydrostatic model)
+4. correct the velocities based on the results of step 3.
+5. Store the old tendencies
+6. update the model state
+7. If `compute_tendencies == true`, compute the tendencies for the next time step. NOTE: if `compute_tendencies == false` the new tendencies will not be calculated! 
+   It is never suggested to set `compute_tendencies == false` except for debugging purposes.
 """
 function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt;
                     callbacks=[], euler=false, compute_tendencies=true)
