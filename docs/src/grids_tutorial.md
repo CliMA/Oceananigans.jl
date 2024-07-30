@@ -37,10 +37,10 @@ julia> grid = RectilinearGrid(size = (16, 8, 4),
                               y = (0, 32),
                               z = (0, 8),
                               topology = (Periodic, Periodic, Bounded))
-32×64×256 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── Periodic x ∈ [0.0, 64.0)  regularly spaced with Δx=4.0
-├── Periodic y ∈ [0.0, 32.0)  regularly spaced with Δy=4.0
-└── Bounded  z ∈ [0.0, 8.0]   regularly spaced with Δz=2.0
+16×8×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── Periodic x ∈ [0.0, 64.0) regularly spaced with Δx=4.0
+├── Periodic y ∈ [0.0, 32.0) regularly spaced with Δy=4.0
+└── Bounded  z ∈ [0.0, 8.0]  regularly spaced with Δz=2.0
 ```
 
 ### Three-dimensional grid with variable spacing in ``z``
@@ -50,16 +50,22 @@ of cell interfaces, we write
 
 ```jldoctest grids
 julia> z_interfaces = [0, 4, 6, 7, 8]
+5-element Vector{Int64}:
+ 0
+ 4
+ 6
+ 7
+ 8
 
 julia> grid = RectilinearGrid(size = (16, 8, 4),
                               x = (0, 64),
                               y = (0, 32),
                               z = z_interfaces,
                               topology = (Periodic, Periodic, Bounded))
-32×64×256 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── Periodic x ∈ [0.0, 64.0)  regularly spaced with Δx=4.0
-├── Periodic y ∈ [0.0, 32.0)  regularly spaced with Δy=4.0
-└── Bounded  z ∈ [0.0, 8.0]   regularly spaced with Δz=2.0
+16×8×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── Periodic x ∈ [0.0, 64.0) regularly spaced with Δx=4.0
+├── Periodic y ∈ [0.0, 32.0) regularly spaced with Δy=4.0
+└── Bounded  z ∈ [0.0, 8.0]  variably spaced with min(Δz)=1.0, max(Δz)=4.0
 ```
 
 Notice that the number of vertical cell interfaces is ``Nz + 1 = 5``, where ``Nz = 4`` is the number
@@ -89,9 +95,9 @@ julia> grid = RectilinearGrid(size = (16, 8),
                               x = (0, 2π),
                               y = (0, π),
                               topology = (Periodic, Periodic, Flat))
-32×64×256 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── Periodic x ∈ [0.0, 64.0)  regularly spaced with Δx=4.0
-├── Periodic y ∈ [0.0, 32.0)  regularly spaced with Δy=4.0
+16×8×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
+├── Periodic x ∈ [0.0, 6.28319)   regularly spaced with Δx=0.392699
+├── Periodic y ∈ [0.0, 3.14159)   regularly spaced with Δy=0.392699
 └── Flat z
 ```
 
