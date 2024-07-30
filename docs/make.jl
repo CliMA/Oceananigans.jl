@@ -146,6 +146,7 @@ pages = [
     "Home" => "index.md",
     "Quick start" => "quick_start.md",
     "Examples" => example_pages,
+    "Grids" => "grids_tutorial.md",
     "Model setup (legacy)" => model_setup_pages,
     "Physics" => physics_pages,
     "Numerical implementation" => numerical_pages,

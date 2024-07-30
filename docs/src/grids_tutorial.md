@@ -1,4 +1,4 @@
-# Grids
+# Grids and architectures
 
 The grids currently supported are:
 - `RectilinearGrid`s with either constant or variable grid spacings and
@@ -6,16 +6,24 @@ The grids currently supported are:
 
 ## `RectilinearGrid`
 
-A `RectilinearGrid` is constructed by specifying the `size` of the grid (a `Tuple` specifying
-the number of grid points in each direction) and either the `extent` (a `Tuple` specifying the
-physical extent of the grid in each direction), or by prescribing `x`, `y`, and `z`. Keyword
-arguments `x`, `y`, and `z` could be either *(i)* 2-`Tuple`s that define the the _end points_ in
-each direction, or *(ii)* arrays or functions of the corresponding indices `i`, `j`, or `k` that
-specify the locations of cell faces in the `x`-, `y`-, or `z`-direction, respectively.
+A `RectilinearGrid` is constructed by specifying
 
-A regular rectilinear grid with ``N_x \times N_y \times N_z = 32 \times 64 \times 256`` grid points
-and an `extent` of ``L_x = 128`` meters, ``L_y = 256`` meters, and ``L_z = 512`` meters is constructed
-by
+1. the `size` of the grid (a `Tuple` specifying the number of grid points in each direction);
+
+2. the `topology` of the grid as a 3-`Tuple` (a tuple of 3 elements) for ``(x, y, z)`` that indicates whether each direction is
+    * `Periodic`, which means that stuff traveling off the left side of the grid enters on the right side,
+    * `Bounded`, which may either be impenetrable or "open"
+    * `Flat`, which means that the grid has 1 or 2 dimensions (3 - number of flat direction).
+
+3. Keyword arguments `x`, `y`, `z` which define the extent and grid spacings in every non-`Flat` direction.
+   These keyword arguments can be either 
+   * A 2-`Tuple` that define the _end points_ of the given direction, or
+   * A vector or function of the direction index that specifies the locations of cell interfaces. 
+
+### Three-dimensional grid with regular spacing in all directions
+
+For example, a regular rectilinear grid with ``N_x \times N_y \times N_z = 16 \times 8 \times 4`` grid points
+in a domain spanning `(0, 0, 0)` to `(64, 32, 8)` is constructed by writing
 
 ```@meta
 DocTestSetup = quote
@@ -23,19 +31,41 @@ DocTestSetup = quote
 end
 ```
 
-```jldoctest
-julia> grid = RectilinearGrid(size = (32, 64, 256), extent = (128, 256, 512))
+```jldoctest grids
+julia> grid = RectilinearGrid(size = (16, 8, 4),
+                              x = (0, 64),
+                              y = (0, 32),
+                              z = (0, 8),
+                              topology = (Periodic, Periodic, Bounded))
 32×64×256 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── Periodic x ∈ [0.0, 128.0)  regularly spaced with Δx=4.0
-├── Periodic y ∈ [0.0, 256.0)  regularly spaced with Δy=4.0
-└── Bounded  z ∈ [-512.0, 0.0] regularly spaced with Δz=2.0
+├── Periodic x ∈ [0.0, 64.0)  regularly spaced with Δx=4.0
+├── Periodic y ∈ [0.0, 32.0)  regularly spaced with Δy=4.0
+└── Bounded  z ∈ [0.0, 8.0]   regularly spaced with Δz=2.0
 ```
 
-!!! info "Default domain"
-    When using the `extent` keyword, e.g., `extent = (Lx, Ly, Lz)`, then the ``x \in [0, L_x]``,
-    ``y \in [0, L_y]``, and ``z \in [-L_z, 0]`` -- a sensible choice for oceanographic applications.
+### Three-dimensional grid with variable spacing in ``z``
 
-### Specifying the grid's architecture
+Alternatively, to specify a stretched grid in the z-direction with a vector
+of cell interfaces, we write
+
+```jldoctest grids
+julia> z_interfaces = [0, 4, 6, 7, 8]
+
+julia> grid = RectilinearGrid(size = (16, 8, 4),
+                              x = (0, 64),
+                              y = (0, 32),
+                              z = z_interfaces,
+                              topology = (Periodic, Periodic, Bounded))
+32×64×256 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── Periodic x ∈ [0.0, 64.0)  regularly spaced with Δx=4.0
+├── Periodic y ∈ [0.0, 32.0)  regularly spaced with Δy=4.0
+└── Bounded  z ∈ [0.0, 8.0]   regularly spaced with Δz=2.0
+```
+
+Notice that the number of vertical cell interfaces is ``Nz + 1 = 5``, where ``Nz = 4`` is the number
+of cells in the vertical.
+
+### Building a grid on the GPU
 
 The first positional argument in either `RectilinearGrid` or `LatitudeLongitudeGrid` is the grid's
 architecture. By default `architecture = CPU()`. By providing `GPU()` as the `architecture` argument
@@ -49,52 +79,26 @@ julia> grid = RectilinearGrid(GPU(), size = (32, 64, 256), extent = (128, 256, 5
 └── Bounded  z ∈ [-512.0, 0.0] regularly spaced with Δz=2.0
 ```
 
-### Specifying the grid's topology
+## Building a two-dimensional grid in ``x, y``
 
-Another crucial keyword is a 3-`Tuple` that specifies the grid's `topology`.
-In each direction the grid may be `Periodic`, `Bounded` or `Flat`.
-By default, both the `RectilinearGrid` and the `RectilinearGrid` constructors 
-assume the grid topology is horizontally-periodic
-and bounded in the vertical, such that `topology = (Periodic, Periodic, Bounded)`.
+To build a two-dimensional, ``16 \times 8`` grid in ``x, y`` on the domain ``(0, 2π) \times (0, π)``,
+we write
 
-A "channel" model that is periodic in the ``x``-direction and wall-bounded
-in the ``y``- and ``z``-dimensions is build with,
-
-```jldoctest
-julia> grid = RectilinearGrid(topology = (Periodic, Bounded, Bounded), size = (64, 64, 32), extent = (1e4, 1e4, 1e3))
-64×64×32 RectilinearGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
-├── Periodic x ∈ [0.0, 10000.0) regularly spaced with Δx=156.25
-├── Bounded  y ∈ [0.0, 10000.0] regularly spaced with Δy=156.25
-└── Bounded  z ∈ [-1000.0, 0.0] regularly spaced with Δz=31.25
-```
-
-The `Flat` topology comes in handy when running problems with fewer than 3 dimensions. As an example,
-to use a two-dimensional horizontal, doubly periodic domain the topology is `(Periodic, Periodic, Flat)`.
-In that case, the `size` and `extent` are 2-tuples, e.g.,
-
-```jldoctest
-julia> grid = RectilinearGrid(topology = (Periodic, Periodic, Flat), size = (32, 32), extent = (10, 20))
-32×32×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
-├── Periodic x ∈ [0.0, 10.0)      regularly spaced with Δx=0.3125
-├── Periodic y ∈ [0.0, 20.0)      regularly spaced with Δy=0.625
+```jldoctest grids
+julia> grid = RectilinearGrid(size = (16, 8),
+                              x = (0, 2π),
+                              y = (0, π),
+                              topology = (Periodic, Periodic, Flat))
+32×64×256 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── Periodic x ∈ [0.0, 64.0)  regularly spaced with Δx=4.0
+├── Periodic y ∈ [0.0, 32.0)  regularly spaced with Δy=4.0
 └── Flat z
 ```
 
-### Specifying domain end points
+Here we have omitted the `z` keyword argument, and `size` is a 2-`Tuple` rather than a
+3-`Tuple` as in the previous examples.
 
-To specify a domain with a different origin than the default, the `x`, `y`, and `z` keyword arguments must be used.
-For example, a grid with ``x \in [-100, 100]`` meters, ``y \in [0, 12.5]`` meters, and ``z \in [-\pi, \pi]`` meters
-is constructed via
-
-```jldoctest
-julia> grid = RectilinearGrid(size = (32, 16, 256), x = (-100, 100), y = (0, 12.5), z = (-π, π))
-32×16×256 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── Periodic x ∈ [-100.0, 100.0)     regularly spaced with Δx=6.25
-├── Periodic y ∈ [0.0, 12.5)         regularly spaced with Δy=0.78125
-└── Bounded  z ∈ [-3.14159, 3.14159] regularly spaced with Δz=0.0245437
-```
-
-### Grids with non-regular spacing in some of the directions
+### Even more complicated example!
 
 For a "channel" model, as the one we constructed above, one would probably like to have finer resolution near
 the channel walls. We construct a grid that has non-regular spacing in the bounded dimensions, here ``y`` and ``z``
@@ -103,7 +107,7 @@ by prescribing functions for `y` and `z` keyword arguments.
 For example, we can use the Chebychev nodes, which are more closely stacked near boundaries, to prescribe the
 ``y``- and ``z``-faces.
 
-```jldoctest
+```jldoctest grids
 julia> Nx, Ny, Nz = 64, 64, 32;
 
 julia> Lx, Ly, Lz = 1e4, 1e4, 1e3;
