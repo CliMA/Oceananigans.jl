@@ -159,7 +159,7 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 ├── file_splitting: NoFileSplitting
-└── file size: 17.3 KiB
+└── file size: 17.8 KiB
 ```
 """
 function JLD2OutputWriter(model, outputs; filename, schedule,
