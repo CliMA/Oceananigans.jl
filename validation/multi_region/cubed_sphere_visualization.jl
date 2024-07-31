@@ -1,5 +1,6 @@
 using LinearAlgebra
 using Printf
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.MultiRegion: getregion
 using CairoMakie, GeoMakie, Imaginocean
 
@@ -262,8 +263,10 @@ end
 
 function create_single_line_or_scatter_plot(resolution, plot_type, x, y, axis_kwargs, title, plot_kwargs, file_name;
                                             specify_x_limits = false, x_limits = [0, 0], specify_y_limits = false,
-                                            y_limits = [0, 0], tight_x_axis = false, tight_y_axis = false,
-                                            format = ".png")
+                                            y_limits = [0, 0], specify_xticks = false, xticks = 1:1:10,
+                                            specify_yticks = false, yticks = 1:1:10, tight_x_axis = false,
+                                            tight_y_axis = false, majorgridvisible = true, minorgridvisible = true,
+                                            minortickvisible = false, format = ".png")
     fig = Figure(resolution = resolution)
     ax = Axis(fig[1,1]; axis_kwargs...)
 
@@ -289,6 +292,21 @@ function create_single_line_or_scatter_plot(resolution, plot_type, x, y, axis_kw
     elseif tight_y_axis
         ylims!(ax, extrema(y)...)
     end
+
+    if specify_xticks
+        ax.xticks = xticks
+    end
+
+    if specify_yticks
+        ax.yticks = yticks
+    end
+
+    ax.xgridvisible = majorgridvisible
+    ax.ygridvisible = majorgridvisible
+    ax.xminorgridvisible = minorgridvisible
+    ax.yminorgridvisible = minorgridvisible
+    ax.xminorticksvisible = minortickvisible
+    ax.yminorticksvisible = minortickvisible
 
     save(file_name * format, fig)
 end
@@ -317,7 +335,8 @@ end
 
 function create_heat_map_or_contour_plot(resolution, plot_type, x, y, φ, axis_kwargs, title, contourlevels, cbar_kwargs,
                                          cbar_label, file_name; use_symmetric_colorrange = true,
-                                         specify_plot_limits = false, plot_limits = [], format = ".png")
+                                         specify_plot_limits = false, plot_limits = [], specify_colormap = false,
+                                         colormap = :balance, format = ".png")
     fig = Figure(resolution = resolution)
 
     ax = Axis(fig[1,1]; axis_kwargs...)
@@ -327,7 +346,9 @@ function create_heat_map_or_contour_plot(resolution, plot_type, x, y, φ, axis_k
     else
         colorrange = specify_colorrange(φ; use_symmetric_colorrange = use_symmetric_colorrange)
     end
-    colormap = use_symmetric_colorrange ? :balance : :amp
+    if !specify_colormap
+        colormap = use_symmetric_colorrange ? :balance : :amp
+    end
 
     if plot_type == "heat_map"
         myplot = heatmap!(ax, x, y, φ; colorrange = colorrange, colormap = colormap)
@@ -478,7 +499,8 @@ function specify_colorrange_timeseries(grid, φ_series; Δ = 1, use_symmetric_co
     return colorrange
 end
 
-function panel_wise_visualization_of_grid_metrics_with_halos(metric; use_symmetric_colorrange = true)
+function panel_wise_visualization_of_grid_metrics_with_halos(metric; use_symmetric_colorrange = true,
+                                                             specify_colormap = false, colormap = :balance)
     fig = Figure(resolution = (2450, 1400))
 
     axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, aspect = 1.0,
@@ -486,7 +508,9 @@ function panel_wise_visualization_of_grid_metrics_with_halos(metric; use_symmetr
                    xlabel = "Local x direction", ylabel = "Local y direction")
 
     colorrange = specify_colorrange(metric; use_symmetric_colorrange = use_symmetric_colorrange)
-    colormap = use_symmetric_colorrange ? :balance : :amp
+    if !specify_colormap
+        colormap = use_symmetric_colorrange ? :balance : :amp
+    end
 
     ax_1 = Axis(fig[3, 1]; title = "Panel 1", axis_kwargs...)
     hm_1 = heatmap!(ax_1, metric[:, :, 1]; colorrange, colormap)
@@ -517,7 +541,8 @@ end
 
 function panel_wise_visualization_with_halos(grid, field; k = 1, use_symmetric_colorrange = true, ssh = false,
                                              consider_all_levels = true, levels = k:k, read_parent_field_data = false,
-                                             specify_plot_limits = false, plot_limits = [])
+                                             specify_plot_limits = false, specify_colormap = false, colormap = :balance,
+                                             plot_limits = [])
     fig = Figure(resolution = (2450, 1400))
 
     axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5, aspect = 1.0, 
@@ -531,7 +556,9 @@ function panel_wise_visualization_with_halos(grid, field; k = 1, use_symmetric_c
                                         consider_all_levels = consider_all_levels, levels = levels,
                                         read_parent_field_data = read_parent_field_data)
     end
-    colormap = use_symmetric_colorrange ? :balance : :amp
+    if !specify_colormap
+        colormap = use_symmetric_colorrange ? :balance : :amp
+    end
     
     hz = read_parent_field_data ? grid.Hz : 0
 
@@ -570,7 +597,8 @@ end
 
 function panel_wise_visualization(grid, field; k = 1, use_symmetric_colorrange = true, ssh = false,
                                   consider_all_levels = true, levels = k:k, read_parent_field_data = false,
-                                  specify_plot_limits = false, plot_limits = [])
+                                  specify_plot_limits = false, plot_limits = [], specify_colormap = false,
+                                  colormap = :balance)
     fig = Figure(resolution = (2450, 1400))
     
     Nx, Ny, Nz = size(grid)
@@ -590,7 +618,9 @@ function panel_wise_visualization(grid, field; k = 1, use_symmetric_colorrange =
         colorrange = specify_colorrange(grid, field; use_symmetric_colorrange = use_symmetric_colorrange, ssh = ssh,
                                         consider_all_levels = consider_all_levels, levels = levels)
     end
-    colormap = use_symmetric_colorrange ? :balance : :amp
+    if !specify_colormap
+        colormap = use_symmetric_colorrange ? :balance : :amp
+    end
     
     if ssh
         k = read_parent_field_data ? 1 : Nz+1
@@ -627,12 +657,13 @@ end
 
 function geo_heatlatlon_visualization(grid, field, title; k = 1, use_symmetric_colorrange = true, ssh = false,
                                       consider_all_levels = true, levels = k:k, cbar_label = "",
-                                      specify_plot_limits = false, plot_limits = [])
+                                      specify_plot_limits = false, plot_limits = [], specify_colormap = false,
+                                      colormap = :balance)
 # Ensure that field is a CubedSphereField interpolated to cell centers.
-    fig = Figure(resolution = (1350, 650))
+    fig = Figure(resolution = (2700, 1300))
 
-    axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5,
-                   xlabelpadding = 10, ylabelpadding = 10, titlesize = 25, titlegap = 15, titlefont = :bold)
+    axis_kwargs = (xlabelsize = 37.5, ylabelsize = 37.5, xticklabelsize = 32.5, yticklabelsize = 32.5,
+                   xlabelpadding = 25, ylabelpadding = 25, titlesize = 45, titlegap = 30, titlefont = :bold)
 
     if ssh
         consider_all_levels = false
@@ -646,14 +677,15 @@ function geo_heatlatlon_visualization(grid, field, title; k = 1, use_symmetric_c
         colorrange = specify_colorrange(grid, field; use_symmetric_colorrange = use_symmetric_colorrange, ssh = ssh,
                                         consider_all_levels = consider_all_levels, levels = levels)
     end
-    colormap = use_symmetric_colorrange ? :balance : :amp
+    if !specify_colormap
+        colormap = use_symmetric_colorrange ? :balance : :amp
+    end
 
     ax = GeoAxis(fig[1, 1]; coastlines = false, lonlims = automatic, title = title, axis_kwargs...)
     heatlatlon!(ax, field, k; colorrange, colormap)
 
-    Colorbar(fig[1, 2], limits = colorrange, colormap = colormap, label = cbar_label, labelsize = 22.5,
-             labelpadding = 10, ticksize = 17.5, width = 25, height = Relative(0.9))
-
+    Colorbar(fig[1, 2], limits = colorrange, colormap = colormap, label = cbar_label, labelsize = 37.5,
+             labelpadding = 25, ticklabelsize = 30, ticksize = 22.5, width = 35, height = Relative(0.9125))
     colsize!(fig.layout, 1, Auto(0.8))
     colgap!(fig.layout, 75)
 
@@ -664,8 +696,11 @@ function create_single_line_or_scatter_plot_animation(resolution, plot_type, x, 
                                                       plot_kwargs, framerate, filename; start_index = 1,
                                                       specify_x_limits = false, x_limits = [0, 0],
                                                       specify_y_limits = false, y_limits = [0, 0],
-                                                      use_symmetric_range = true, use_prettytimes = false,
-                                                      prettytimes = [], tight_x_axis = false, format = ".mp4")
+                                                      specify_xticks = false, xticks = 1:1:10, specify_yticks = false,
+                                                      yticks = 1:1:10, use_symmetric_range = true,
+                                                      use_prettytimes = false, prettytimes = [], tight_x_axis = false,
+                                                      majorgridvisible = true, minorgridvisible = true,
+                                                      minortickvisible = false, format = ".mp4")
     n = Observable(start_index)
     y = @lift y_series[$n, :]
     use_prettytimes ? (prettytime = @lift prettytimes[$n]) : nothing
@@ -695,6 +730,21 @@ function create_single_line_or_scatter_plot_animation(resolution, plot_type, x, 
     end
 
     ylims!(ax, y_limits...)
+
+    if specify_xticks
+        ax.xticks = xticks
+    end
+
+    if specify_yticks
+        ax.yticks = yticks
+    end
+
+    ax.xgridvisible = majorgridvisible
+    ax.ygridvisible = majorgridvisible
+    ax.xminorgridvisible = minorgridvisible
+    ax.yminorgridvisible = minorgridvisible
+    ax.xminorticksvisible = minortickvisible
+    ax.yminorticksvisible = minortickvisible
 
     frames = 1:size(y_series, 1)
     CairoMakie.record(fig, filename * format, frames, framerate = framerate) do i
@@ -736,6 +786,7 @@ function create_heat_map_or_contour_plot_animation(resolution, plot_type, x, y, 
                                                    contourlevels, cbar_kwargs, cbar_label, framerate, filename;
                                                    start_index = 1, use_symmetric_colorrange = true,
                                                    specify_plot_limits = false, plot_limits = [],
+                                                   specify_colormap = false, colormap = :balance,
                                                    use_prettytimes = false, prettytimes = [], format = ".mp4")
     n = Observable(start_index)
     φ = @lift φ_series[$n, :, :]
@@ -750,7 +801,9 @@ function create_heat_map_or_contour_plot_animation(resolution, plot_type, x, y, 
     else
         colorrange = specify_colorrange(φ_series; use_symmetric_colorrange = use_symmetric_colorrange)
     end
-    colormap = use_symmetric_colorrange ? :balance : :amp
+    if !specify_colormap
+        colormap = use_symmetric_colorrange ? :balance : :amp
+    end
 
     if plot_type == "heat_map"
         myplot = heatmap!(ax, x, y, φ; colorrange = colorrange, colormap = colormap)
@@ -816,6 +869,7 @@ function create_panel_wise_visualization_animation_with_halos(grid, φ_series, f
                                                               k = 1, use_symmetric_colorrange = true, ssh = false,
                                                               consider_all_levels = true, levels = k:k,
                                                               specify_plot_limits = false, plot_limits = [],
+                                                              specify_colormap = false, colormap = :balance,
                                                               format = ".mp4")
     n = Observable(start_index) # the current index
     φ = @lift φ_series[$n]
@@ -839,7 +893,9 @@ function create_panel_wise_visualization_animation_with_halos(grid, φ_series, f
                                                    ssh = ssh, consider_all_levels = consider_all_levels,
                                                    levels = levels)
     end
-    colormap = use_symmetric_colorrange ? :balance : :amp
+    if !specify_colormap
+        colormap = use_symmetric_colorrange ? :balance : :amp
+    end
 
     ax_1 = Axis(fig[3, 1]; title = "Panel 1", axis_kwargs...)
     hm_1 = heatmap!(ax_1, parent(φ[][1][:, :, k]); colorrange, colormap)
@@ -896,7 +952,8 @@ function create_panel_wise_visualization_animation(grid, φ_series, framerate, f
                                                    use_symmetric_colorrange = true, ssh = false,
                                                    consider_all_levels = true, levels = k:k,
                                                    read_parent_field_data = false, specify_plot_limits = false,
-                                                   plot_limits = [], format = ".mp4")
+                                                   plot_limits = [], specify_colormap = false,
+                                                   colormap = :balance, format = ".mp4")
     Nx, Ny, Nz = size(grid)
 
     n = Observable(start_index) # the current index
@@ -921,7 +978,9 @@ function create_panel_wise_visualization_animation(grid, φ_series, framerate, f
                                                    ssh = ssh, consider_all_levels = consider_all_levels,
                                                    levels = levels)
     end
-    colormap = use_symmetric_colorrange ? :balance : :amp
+    if !specify_colormap
+        colormap = use_symmetric_colorrange ? :balance : :amp
+    end
 
     ax_1 = Axis(fig[3, 1]; title="Panel 1", axis_kwargs...)
     hm_1 = heatmap!(ax_1, φ[][1][1:Nx, 1:Ny, k]; colorrange, colormap)
@@ -977,17 +1036,17 @@ end
 function geo_heatlatlon_visualization_animation(grid, fields, location, prettytimes, title_prefix, filename;
                                                 start_index = 1, k = 1, use_symmetric_colorrange = true, ssh = false,
                                                 consider_all_levels = true, levels = k:k, cbar_label = "",
-                                                specify_plot_limits = false, plot_limits = [], framerate = 10,
-                                                format = ".mp4")
+                                                specify_plot_limits = false, plot_limits = [], specify_colormap = false,
+                                                colormap = :balance, framerate = 10, format = ".mp4")
     n = Observable(start_index)
     field = @lift fields[$n]
     # Ensure that field is a CubedSphereField interpolated to cell centers.
     prettytime = @lift prettytimes[$n]
 
-    fig = Figure(resolution=(1350, 650))
+    fig = Figure(resolution=(2700, 1300))
 
-    axis_kwargs = (xlabelsize = 22.5, ylabelsize = 22.5, xticklabelsize = 17.5, yticklabelsize = 17.5,
-                   xlabelpadding = 10, ylabelpadding = 10, titlesize = 25, titlegap = 15, titlefont = :bold)
+    axis_kwargs = (xlabelsize = 37.5, ylabelsize = 37.5, xticklabelsize = 32.5, yticklabelsize = 32.5,
+                   xlabelpadding = 25, ylabelpadding = 25, titlesize = 45, titlegap = 30, titlefont = :bold)
 
     if ssh
         consider_all_levels = false
@@ -1002,7 +1061,9 @@ function geo_heatlatlon_visualization_animation(grid, fields, location, prettyti
                                                    ssh = ssh, consider_all_levels = consider_all_levels,
                                                    levels = levels)
     end
-    colormap = use_symmetric_colorrange ? :balance : :amp
+    if !specify_colormap
+        colormap = use_symmetric_colorrange ? :balance : :amp
+    end
 
     ax = GeoAxis(fig[1, 1]; coastlines = true, lonlims = automatic, axis_kwargs...)
     ax.title = title_prefix * " after " * prettytime[]
@@ -1010,8 +1071,8 @@ function geo_heatlatlon_visualization_animation(grid, fields, location, prettyti
     interpolated_field = interpolate_cubed_sphere_field_to_cell_centers(grid, field[], location; levels = k:k)
     heatlatlon!(ax, interpolated_field, k; colorrange, colormap)
 
-    Colorbar(fig[1, 2], limits = colorrange, colormap = colormap, label = cbar_label, labelsize = 22.5,
-             labelpadding = 10, ticksize = 17.5, width = 25, height = Relative(0.9))
+    Colorbar(fig[1, 2], limits = colorrange, colormap = colormap, label = cbar_label, labelsize = 37.5,
+             labelpadding = 25, ticklabelsize = 30, ticksize = 22.5, width = 35, height = Relative(0.9125))
     colsize!(fig.layout, 1, Auto(0.8))
     colgap!(fig.layout, 75)
 
@@ -1030,8 +1091,8 @@ function geo_heatlatlon_visualization_animation(grid, fields, location, prettyti
         interpolated_field = interpolate_cubed_sphere_field_to_cell_centers(grid, field[], location; levels = k:k)
         heatlatlon!(ax, interpolated_field, k; colorrange, colormap)
 
-        Colorbar(fig[1, 2], limits = colorrange, colormap = colormap, label = cbar_label, labelsize = 22.5,
-                 labelpadding = 10, ticksize = 17.5, width = 25, height = Relative(0.9))
+        Colorbar(fig[1, 2], limits = colorrange, colormap = colormap, label = cbar_label, labelsize = 37.5,
+                labelpadding = 25, ticklabelsize = 30, ticksize = 22.5, width = 35, height = Relative(0.9125))
         colsize!(fig.layout, 1, Auto(0.8))
         colgap!(fig.layout, 75)
     end
