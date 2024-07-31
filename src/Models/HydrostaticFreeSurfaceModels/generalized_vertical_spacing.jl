@@ -134,12 +134,6 @@ update_vertical_spacing!(model, grid, Δt; kwargs...) = nothing
 @inline Δzᶠᶠᶠ_reference(i, j, k, grid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δzᶜᶜᶠ_reference)
 @inline Δzᶠᶠᶜ_reference(i, j, k, grid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δzᶜᶜᶜ_reference)
 
-##### 
-##### Vertical velocity of the Δ-surfaces to be included in the continuity equation
-#####
-
-@inline ∂t_∂s_grid(i, j, k, grid) = zero(grid)
-
 #####
 ##### Additional terms to be included in the momentum equations (fallbacks)
 #####
