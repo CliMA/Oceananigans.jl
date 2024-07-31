@@ -6,29 +6,34 @@ DocTestSetup = quote
 end
 ```
 
-A "grid" defines the mesh of finite volumes or "cells" that underpin Oceananigans simulations
-of ocean-flavored fluids.
+Oceananigans simulates the dynamics of ocean-flavored fluids by solving differential equations that conserve momentum, mass, and energy on a mesh of finite volumes or "cells".
+A "grid" encodes fundamental information about this mesh of finite volumes, including the domain geometry, the number of cells, and the machine architecture and number representation that is used to store discrete data on the finite volume mesh.
 
-## Basic information about grids
+More specifically, grids specify 
 
-Grids encode fundamental information about
-
-* Domain geometry, which can be lines (one-dimensional), rectangles (two-dimensional), boxes (three-dimensional), or sectors of thin spherical shells (two- or three-dimensional). Complex domains are additionally represented by using a masking technique to "immerse" an irregular boundary within a larger, regularly-bounded grid. Where supported, dimensions may be indicated as
-    - `Periodic`, which means that the two ends of the dimension coincide, so that information leaving the left side of the domain re-enters on the right
-    - `Bounded`, which means that the boundaries are either impenetrable (solid walls), or "open" representing a specified external state.
+* The domain geometry, which may be a line (one-dimensional), rectangle (two-dimensional), box (three-dimensional), or a sector of a thin spherical shells (two- or three-dimensional). Complex domains --- for example, domains with bathymetry or topography --- are represented by using a masking technique to "immerse" an irregular boundary within an "underlying grid". Where supported, dimensions may be indicated as
+    - [`Periodic`](@ref), which means that the two ends of the dimension coincide, so that information leaving the left side of the domain re-enters on the right
+    - [`Bounded`](@ref), which means that the boundaries are either impenetrable (solid walls), or "open" representing a specified external state.
+    - [`Flat`](@ref), which means that the grid has 1 or 2 dimensions (3 - number of flat direction).
 * The spatial resolution, which determines the distribution of sizes of the finite volume cells that divide the domain.
 * The machine architecture, or whether data is stored on the CPU, GPU, or distributed across multiple devices or nodes.
 * The representation of floating point numbers, which can be single-precision (`Float32`) or double precision (`Float64`).
 
 ## Supported grids
 
-The grids we currently support are:
+The underlying grids we currently support are:
 
-1. `RectilinearGrid`s, which can express lines, rectangles and boxes, and
-2. `LatitudeLongitudeGrid`,
-3. `OrthogonalSphericalShellGrid`.
+1. [`RectilinearGrid`](@ref)s, which supports lines, rectangles and boxes, and
+2. [`LatitudeLongitudeGrid`](@ref), which supports sectors of thin spherical shells whos cells are bounded by lines of constant latitude and longitude, and
+3. [`OrthogonalSphericalShellGrid`](@ref), which supports sectors of thin spherical shells divided into orthogonal but otherwise arbitrary finite volumes.
 
-### An example with `RectilinearGrid`
+Complex domains are represented with [`ImmersedBoundaryGrid`](@ref), which combines one of the above underlying grids with a type of immersed boundary. The immersed boundaries we support currently are
+
+1. [`GridFittedBottom`](@ref), which fits a one- or two-dimensional bottom height to the underlying grid, so the active part of the domain is above the bottom height.
+2. [`PartialCellBottom`](@ref), which is similar to [`GridFittedBottom`](@ref), except that the height of the bottommost cell is changed to conform to bottom height, limited to prevent the bottom cells from becoming too thin.
+3. [`GridFittedBoundary`](@ref), which fits a three-dimensional mask to the grid.
+
+### A first example with `RectilinearGrid`
 
 One of the simplest grids we can create is a box (three-dimensional)
 divided into cells of equal size. For this example we choose a topology that is horizontally-periodic
@@ -57,20 +62,16 @@ Let's walk through each of the arguments to `RectilinearGrid`, some of which are
 
 The first argument, `CPU()`, specifies the "architecture" of the simulation.
 By writing `architecture = GPU()`, any fields constructed on `grid` will store their data on
-an Nvidia `GPU()`, if one is available. By default, the grid will be constructed on
-the `CPU` if this argument is omitted (as we do in the next example).
+an Nvidia [`GPU`](@ref), if one is available. By default, the grid will be constructed on
+the [`CPU`](@ref) if this argument is omitted (as we do in the next example).
+(TODO: also document [`Distributed`](@ref)).
 
 #### The topology
 
 The first keyword argument specifies the `topology` os the grid, which determines if the grid is
 one-, two-, or three-dimensional (the current case), and additionally the nature of each dimension.
 The `topology` of the grid is always a `Tuple` with three elements (a 3-`Tuple`).
-For `RectilinearGrid`, the three elements correspond to ``(x, y, z)`` and indicate whether the respective direction is
-
-* `Periodic`, which means that stuff traveling off the left side of the grid enters on the right side,
-* `Bounded`, which may either be impenetrable or "open",
-* `Flat`, which means that the grid has 1 or 2 dimensions (3 - number of flat direction).
-
+For `RectilinearGrid`, the three elements correspond to ``(x, y, z)`` and indicate whether the respective direction is `Periodic`, `Bounded`, or `Flat`.
 So `topology = (Periodic, Periodic, Bounded)` is periodic in ``x`` and ``y``, and bounded in ``z``.
 
 #### The size
