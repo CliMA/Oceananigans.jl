@@ -350,13 +350,8 @@ Base.view(f::Field, i, j) = view(f, i, j, :)
 
 boundary_conditions(not_field) = nothing
 
-function boundary_conditions(f::Field)
-    if f.indices === default_indices(3) # default boundary conditions
-        return f.boundary_conditions
-    else # filter boundary conditions in windowed directions
-        return FieldBoundaryConditions(f.indices, f.boundary_conditions)
-    end
-end
+@inline boundary_conditions(f::Field) = f.boundary_conditions
+@inline boundary_conditions(w::WindowedField) = FieldBoundaryConditions(w.indices, w.boundary_conditions)
 
 immersed_boundary_condition(f::Field) = f.boundary_conditions.immersed
 data(field::Field) = field.data
