@@ -46,9 +46,10 @@ Distributed.addprocs(2)
         "one_dimensional_diffusion.jl",
         "internal_wave.jl",
     ]
-
-    @info string("Executing the examples using ", Distributed.nprocs(), " processes")
 end
+
+#=
+@info string("Executing the examples using ", Distributed.nprocs(), " processes")
 
 Distributed.pmap(1:length(example_scripts)) do n
     example = example_scripts[n]
@@ -63,6 +64,7 @@ Distributed.pmap(1:length(example_scripts)) do n
 end
 
 Distributed.rmprocs()
+=#
 
 #####
 ##### Organize page hierarchies
@@ -161,9 +163,10 @@ pages = [
 #####
 ##### Build and deploy docs
 #####
+ci_build = get(ENV, "CI", nothing) == "true"
 
 format = Documenter.HTML(collapselevel = 1,
-                         prettyurls = get(ENV, "CI", nothing) == "true",
+                         prettyurls = ci_build,
                          canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
                          mathengine = MathJax3(),
                          size_threshold = 2^20,
@@ -189,22 +192,26 @@ makedocs(sitename = "Oceananigans.jl",
 
 Return list of filepaths within `directory` that contains the `pattern::Regex`.
 """
-recursive_find(directory, pattern) =
-    mapreduce(vcat, walkdir(directory)) do (root, dirs, files)
-        joinpath.(root, filter(contains(pattern), files))
+function recursive_find(directory, pattern)
+    mapreduce(vcat, walkdir(directory)) do (root, dirs, filenames)
+        matched_filenames = filter(contains(pattern), filenames)
+        map(filename -> joinpath(root, filename), matched_filenames)
     end
+end
 
-files = []
 for pattern in [r"\.jld2", r"\.nc"]
-    global files = vcat(files, recursive_find(@__DIR__, pattern))
+    filenames = recursive_find(@__DIR__, pattern)
+
+    for filename in filenames
+        rm(filename)
+    end
 end
 
-for file in files
-    rm(file)
+if ci_build
+    deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
+               versions = ["stable" => "v^", "dev" => "dev", "v#.#.#"],
+               forcepush = true,
+               push_preview = true,
+               devbranch = "main")
 end
 
-deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
-           versions = ["stable" => "v^", "dev" => "dev", "v#.#.#"],
-           forcepush = true,
-           push_preview = true,
-           devbranch = "main")

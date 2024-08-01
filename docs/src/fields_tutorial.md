@@ -4,11 +4,6 @@
 
 ## "Staggered" grids and field locations
 
-```@setup fields
-using Oceananigans
-using CairoMakie
-```
-
 ```jldoctest fields
 using Oceananigans
 using CairoMakie
@@ -22,12 +17,24 @@ c = Field{Center, Center, Center}(grid)
 xu = xnodes(u)
 xc = xnodes(c)
 
-fig = Figure(size=(800, 800))
-ax = Axis(fig[1, 1])
+fig = Figure(size=(400, 120))
+ax = Axis(fig[1, 1], xlabel="x")
 
-scatter!(ax, xc, 0 * xc, color=:blue)
-scatter!(ax, xu, 1 .+ 0 * xu, color=:red)
+# Visualize the domain
+lines!(ax, [0, 3], [0, 0], color=:gray)
 
+scatter!(ax, xc, 0 * xc, marker=:circle, markersize=10, label="Cell centers")
+scatter!(ax, xu, 0 * xu, marker=:vline, markersize=20, label="Cell interfaces")
+
+ylims!(ax, -1, 1)
+xlims!(ax, -0.1, 3.1)
+hideydecorations!(ax)
+hidexdecorations!(ax, ticklabels=false, label=false)
+hidespines!(ax)
+
+Legend(fig[0, 1], ax, nbanks=2, framevisible=false)
+
+display(fig)
 save("plot_staggered_nodes.svg", fig); nothing # hide
 ```
 

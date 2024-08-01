@@ -33,7 +33,7 @@ Complex domains are represented with [`ImmersedBoundaryGrid`](@ref), which combi
 2. [`PartialCellBottom`](@ref), which is similar to [`GridFittedBottom`](@ref), except that the height of the bottommost cell is changed to conform to bottom height, limited to prevent the bottom cells from becoming too thin.
 3. [`GridFittedBoundary`](@ref), which fits a three-dimensional mask to the grid.
 
-### A first example with `RectilinearGrid`
+## A first example with `RectilinearGrid`
 
 One of the simplest grids we can create is a box (three-dimensional)
 divided into cells of equal size. For this example we choose a topology that is horizontally-periodic
@@ -58,7 +58,7 @@ grid = RectilinearGrid(architecture,
 
 Let's walk through each of the arguments to `RectilinearGrid`, some of which are also shared with `LatitudeLongitudeGrid`.
 
-#### The architecture
+### The architecture
 
 The first argument, `CPU()`, specifies the "architecture" of the simulation.
 By writing `architecture = GPU()`, any fields constructed on `grid` will store their data on
@@ -66,7 +66,7 @@ an Nvidia [`GPU`](@ref), if one is available. By default, the grid will be const
 the [`CPU`](@ref) if this argument is omitted (as we do in the next example).
 (TODO: also document [`Distributed`](@ref)).
 
-#### The topology
+### The topology
 
 The first keyword argument specifies the `topology` os the grid, which determines if the grid is
 one-, two-, or three-dimensional (the current case), and additionally the nature of each dimension.
@@ -74,13 +74,13 @@ The `topology` of the grid is always a `Tuple` with three elements (a 3-`Tuple`)
 For `RectilinearGrid`, the three elements correspond to ``(x, y, z)`` and indicate whether the respective direction is `Periodic`, `Bounded`, or `Flat`.
 So `topology = (Periodic, Periodic, Bounded)` is periodic in ``x`` and ``y``, and bounded in ``z``.
 
-#### The size
+### The size
 
 The `size` is a `Tuple` that specifes the number of grid points in each direction.
 The number of tuple elements corresponds to the number of dimensions that are not `Flat`,
 so for the first example `size` has three elements.
 
-#### The dimensions `x`, `y`, and `z`
+### The dimensions `x`, `y`, and `z`
 
 The last three keyword arguments specify the extent and location of the finite volume cells that divide up the
 `x`, `y`, and `z` dimensions.
@@ -93,16 +93,13 @@ The width of each cell is `Δx=4.0`.
 `RectilinearGrid` also supports dimensions that are "stretched", or which are divided into cells of varying width.
 The next example illustrates how to specify cells of varying with using a vector of cell interfaces.
 
-### A single column grid with stretched vertical interfaces
+## A single column grid with stretched vertical interfaces
 
 For our next example, we build a grid representing a "single column" in the z-direction with unevenly spaced cells,
 
 ```jldoctest grids
-z_interfaces = [0, 4, 6, 7, 8]
-
-grid = RectilinearGrid(size = 4,
-                       z = z_interfaces,
-                       topology = (Flat, Flat, Bounded))
+z_faces = [0, 4, 6, 7, 8]
+grid = RectilinearGrid(size=4, z=z_faces, topology=(Flat, Flat, Bounded))
 
 # output
 1×1×4 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
@@ -115,19 +112,19 @@ The `x` and `y` dimensions have been marked as `Flat`, which means that fields d
 directions. This also means that the kwargs which specify the `x` and `y` domains may be omitted, and that
 the `size` is either a number (as in the example above) or a 1-`Tuple`.
 Regarding the stretched cell interfaces specified by `z_interfaces`, notice that the number of
-vertical cell interfaces is ``Nz + 1 = length(z_interfaces) = 5``, where ``Nz = 4`` is the number
+vertical cell interfaces is `Nz + 1 = length(z_interfaces) = 5`, where `Nz = 4` is the number
 of cells in the vertical.
 
-#### A two-dimensional grid in ``x, y``
+## A two-dimensional grid in ``x, y``
 
 To build a two-dimensional, ``16 \times 8`` grid in ``x, y`` on the domain ``(0, 2π) \times (0, π)``,
 we write
 
 ```jldoctest grids
 grid = RectilinearGrid(size = (16, 8),
-                              x = (0, 2π),
-                              y = (0, π),
-                              topology = (Periodic, Periodic, Flat))
+                       x = (0, 2π),
+                       y = (0, π),
+                       topology = (Periodic, Periodic, Flat))
 
 # output
 16×8×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
@@ -139,14 +136,11 @@ grid = RectilinearGrid(size = (16, 8),
 Here we have omitted the `z` keyword argument, and `size` is a 2-`Tuple` rather than a
 3-`Tuple` as in the previous examples.
 
-#### Even more complicated example!
+## Using functions to build coordinates with variable cell spacing
 
-For a "channel" model, as the one we constructed above, one would probably like to have finer resolution near
-the channel walls. We construct a grid that has non-regular spacing in the bounded dimensions, here ``y`` and ``z``
-by prescribing functions for `y` and `z` keyword arguments.
-
-For example, we can use the Chebychev nodes, which are more closely stacked near boundaries, to prescribe the
-``y``- and ``z``-faces.
+Next we build a grid that is both `Bounded` and stretched in both the `y` and `z` directions.
+The purpose of the stretching is to increase grid resolution near the boundaries.
+We'll do this by using functions to specify the keyword arguments `y` and `z`.
 
 ```jldoctest grids
 Nx = Ny = 64
@@ -155,8 +149,11 @@ Nz = 32
 Lx = Ly = 1e4
 Lz = 1e3
 
-chebychev_spaced_y_faces(j) = - Ly/2 * cos(π * (j - 1) / Ny);
-chebychev_spaced_z_faces(k) = - Lz/2 - Lz/2 * cos(π * (k - 1) / Nz);
+# Note that j varies from 1 to Ny
+chebychev_spaced_y_faces(j) = Ly * (1 - cos(π * (j - 1) / Ny)) / 2
+
+# Note that k varies from 1 to Nz
+chebychev_spaced_z_faces(k) = - Lz * (1 + cos(π * (k - 1) / Nz)) / 2
 
 grid = RectilinearGrid(size = (Nx, Ny, Nz),
                        topology = (Periodic, Bounded, Bounded),
@@ -191,24 +188,25 @@ We can easily visualize the spacings of ``y`` and ``z`` directions. We can use, 
 nodes from the grid.
 
 ```@example 1
- yᶜ = ynodes(grid, Center())
-Δyᶜ = yspacings(grid, Center())
+ y = ynodes(grid, Center())
+Δy = yspacings(grid, Center())
 
- zᶜ = znodes(grid, Center())
-Δzᶜ = zspacings(grid, Center())
+ z = znodes(grid, Center())
+Δz = zspacings(grid, Center())
 
 using CairoMakie
 
 fig = Figure(size=(800, 900))
 
-ax1 = Axis(fig[1, 1]; xlabel = "y (m)", ylabel = "y-spacing (m)", limits = (nothing, (0, 250)))
-lines!(ax1, yᶜ, Δyᶜ)
-scatter!(ax1, yᶜ, Δyᶜ)
+axy = Axis(fig[1, 1]; xlabel = "y (m)", ylabel = "y-spacing (m)", limits = (nothing, (0, 250)))
+lines!(axy, y, Δy)
+scatter!(axy, y, Δy)
 
-ax2 = Axis(fig[2, 1]; xlabel = "z-spacing (m)", ylabel = "z (m)", limits = ((0, 50), nothing))
-lines!(ax2, zᶜ, Δzᶜ)
-scatter!(ax2, zᶜ, Δzᶜ)
+axz = Axis(fig[2, 1]; xlabel = "z-spacing (m)", ylabel = "z (m)", limits = ((0, 50), nothing))
+lines!(axz, z, Δz)
+scatter!(axz, z, Δz)
 
+display(fig)
 save("plot_stretched_grid.svg", fig); nothing #hide
 ```
 
