@@ -22,4 +22,6 @@ function update_boundary_condition!(fields::Tuple, model)
         bcs = boundary_conditions(field)
         update_boundary_condition!(bcs, field, model)
     end
+
+    return nothing
 end
