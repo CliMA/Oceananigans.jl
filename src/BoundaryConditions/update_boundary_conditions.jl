@@ -1,6 +1,6 @@
 using Oceananigans: boundary_conditions
 
-update_boundary_condition!(bcs, args...) = nothing
+@inline update_boundary_condition!(bc, args...) = nothing
 
 function update_boundary_condition!(bcs::FieldBoundaryConditions, field, model)
     update_boundary_condition!(bcs.west, Val(:west), field, model)
@@ -10,7 +10,18 @@ function update_boundary_condition!(bcs::FieldBoundaryConditions, field, model)
     update_boundary_condition!(bcs.bottom, Val(:bottom), field, model)
     update_boundary_condition!(bcs.top, Val(:top), field, model)
     update_boundary_condition!(bcs.immersed, Val(:immersed), field, model)
+    return nothing
 end
 
-update_boundary_condition!(fields::Union{NamedTuple, Tuple}, model) = 
-    Tuple(update_boundary_condition!(boundary_conditions(field), field, model) for field in fields)
+update_boundary_condition!(fields::NamedTuple, model) = update_boundary_condition!(values(fields), model)
+
+function update_boundary_condition!(fields::Tuple, model)
+    N = length(fields)
+    ntuple(Val(N)) do n
+        field = fields[n]
+        bcs = boundary_conditions(field)
+        update_boundary_condition!(bcs, field, model)
+    end
+
+    return nothing
+end
