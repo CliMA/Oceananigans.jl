@@ -7,14 +7,14 @@ end
 ```
 
 Oceananigans simulates the dynamics of ocean-flavored fluids by solving differential equations that conserve momentum, mass, and energy on a mesh of finite volumes or "cells".
-A "grid" encodes fundamental information about this mesh of finite volumes, including the domain geometry, the number of cells, and the machine architecture and number representation that is used to store discrete data on the finite volume mesh.
+A "grid" encodes information about this mesh of finite volumes -- including the domain geometry, the number of cells, and the machine architecture and number representation that is used to store discrete data on the finite volume mesh.
 
-More specifically, grids specify 
+Grids specify 
 
-* The domain geometry, which may be a line (one-dimensional), rectangle (two-dimensional), box (three-dimensional), or a sector of a thin spherical shells (two- or three-dimensional). Complex domains --- for example, domains with bathymetry or topography --- are represented by using a masking technique to "immerse" an irregular boundary within an "underlying grid". Where supported, dimensions may be indicated as
-    - [`Periodic`](@ref), which means that the two ends of the dimension coincide, so that information leaving the left side of the domain re-enters on the right
-    - [`Bounded`](@ref), which means that the boundaries are either impenetrable (solid walls), or "open" representing a specified external state.
-    - [`Flat`](@ref), which means that the grid has 1 or 2 dimensions (3 - number of flat direction).
+* The domain geometry, which may be a line (one-dimensional), rectangle (two-dimensional), box (three-dimensional), or a sector of a thin spherical shells (two- or three-dimensional). Complex domains -- for example, domains with bathymetry or topography -- are represented by using a masking technique to "immerse" an irregular boundary within an "underlying grid". Dimensions may be indicated as
+    - [`Periodic`](@ref), which means that the dimension circles back onto itself: information leaving the left side of the domain re-enters on the right.
+    - [`Bounded`](@ref), which means that the two sides of the dimension are either impenetrable (solid walls), or "open", representing a specified external state.
+    - [`Flat`](@ref), which means nothing can vary in that dimension, reducing the overall dimensionality of the grid.
 * The spatial resolution, which determines the distribution of sizes of the finite volume cells that divide the domain.
 * The machine architecture, or whether data is stored on the CPU, GPU, or distributed across multiple devices or nodes.
 * The representation of floating point numbers, which can be single-precision (`Float32`) or double precision (`Float64`).
@@ -23,9 +23,9 @@ More specifically, grids specify
 
 The underlying grids we currently support are:
 
-1. [`RectilinearGrid`](@ref)s, which supports lines, rectangles and boxes, and
-2. [`LatitudeLongitudeGrid`](@ref), which supports sectors of thin spherical shells whos cells are bounded by lines of constant latitude and longitude, and
-3. [`OrthogonalSphericalShellGrid`](@ref), which supports sectors of thin spherical shells divided into orthogonal but otherwise arbitrary finite volumes.
+1. [`RectilinearGrid`](@ref), which supports lines, rectangles and boxes, and
+2. [`LatitudeLongitudeGrid`](@ref), which supports sectors of thin spherical shells whose cells are bounded by lines of constant latitude and longitude, and
+3. [`OrthogonalSphericalShellGrid`](@ref), which supports sectors of thin spherical shells divided into finite volumes whose intersections are orthogonal but otherwise arbitrary.
 
 Complex domains are represented with [`ImmersedBoundaryGrid`](@ref), which combines one of the above underlying grids with a type of immersed boundary. The immersed boundaries we support currently are
 
@@ -93,7 +93,13 @@ The width of each cell is `Δx=4.0`.
 `RectilinearGrid` also supports dimensions that are "stretched", or which are divided into cells of varying width.
 The next example illustrates how to specify cells of varying with using a vector of cell interfaces.
 
-## A single column grid with stretched vertical interfaces
+### The halo size
+
+An additional keyword argument `halo` allows us to set the number of "halo cells" that surround the core "interior" grid.
+In the first example above, we did not provide `halo`, so that it took its default value of `halo = (3, 3, 3)`.
+Note how the output indicates that the grid has a `3×3×3 halo`.
+
+## A single column `RectilinearGrid` with variably-spaced vertical interfaces
 
 For our next example, we build a grid representing a "single column" in the z-direction with unevenly spaced cells,
 
@@ -115,28 +121,30 @@ Regarding the stretched cell interfaces specified by `z_interfaces`, notice that
 vertical cell interfaces is `Nz + 1 = length(z_interfaces) = 5`, where `Nz = 4` is the number
 of cells in the vertical.
 
-## A two-dimensional grid in ``x, y``
+## Two-dimensional `RectilinearGrid` in ``x, y`` with a wide halo region
 
-To build a two-dimensional, ``16 \times 8`` grid in ``x, y`` on the domain ``(0, 2π) \times (0, π)``,
-we write
+Next we build a two-dimensional, ``16 \times 8`` grid in ``x, y`` on the domain ``(0, 2π) \times (0, π)``.
+We additionally endow the grid with 7 halo points in ``x, y`` rather than 3,
 
 ```jldoctest grids
 grid = RectilinearGrid(size = (16, 8),
+                       halo = (7, 7),
                        x = (0, 2π),
                        y = (0, π),
                        topology = (Periodic, Periodic, Flat))
 
 # output
-16×8×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
+16×8×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 7×7×0 halo
 ├── Periodic x ∈ [0.0, 6.28319)   regularly spaced with Δx=0.392699
 ├── Periodic y ∈ [0.0, 3.14159)   regularly spaced with Δy=0.392699
 └── Flat z
 ```
 
-Here we have omitted the `z` keyword argument, and `size` is a 2-`Tuple` rather than a
-3-`Tuple` as in the previous examples.
+Here we have omitted the `z` keyword argument.
+Both `size` and `halo` are 2-`Tuple`s, rather than the 3-`Tuple` required for a three-dimensional grid,
+or the single number that we use for a one-dimensional grid.
 
-## Using functions to build coordinates with variable cell spacing
+## Three-dimensional `RectilinearGrid` that uses functions to specify variable interface spacings
 
 Next we build a grid that is both `Bounded` and stretched in both the `y` and `z` directions.
 The purpose of the stretching is to increase grid resolution near the boundaries.
@@ -412,6 +420,33 @@ display(fig); save("plot_lat_lon_mercator.svg", fig); nothing # hide
 ```
 
 ![](plot_lat_lon_mercator.svg)
+
+## Single-precision `RectilinearGrid`
+
+To build a grid whose fields are represented with single-precision floating point values,
+we specify the `float_type`, in addition to the (optional) `architecture`,
+
+```jldoctest grids
+architecture = CPU()
+float_type = Float32
+
+grid = RectilinearGrid(architecture, float_type,
+                       topology = (Periodic, Periodic, Bounded),
+                       size = (16, 8, 4),
+                       x = (0, 64),
+                       y = (0, 32),
+                       z = (0, 8))
+
+# output
+16×8×4 RectilinearGrid{Float32, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── Periodic x ∈ [0.0, 64.0) regularly spaced with Δx=4.0
+├── Periodic y ∈ [0.0, 32.0) regularly spaced with Δy=4.0
+└── Bounded  z ∈ [0.0, 8.0]  regularly spaced with Δz=2.0
+```
+
+Single precision should be used with care.
+Users interested in performing single-precision simulations should subject their work
+to extensive testing and validation.
 
 For more examples see [`RectilinearGrid`](@ref) and [`LatitudeLongitudeGrid`](@ref).
 

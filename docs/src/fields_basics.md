@@ -1,4 +1,4 @@
-# Fields and operations
+# Fields basics
 
 `Field`s and its relatives are one of Oceananigans core data structures.
 
