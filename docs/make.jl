@@ -185,8 +185,6 @@ makedocs(sitename = "Oceananigans.jl",
          clean = true,
          checkdocs = :exports) # set to :none to speed things up
 
-@info "Clean up temporary .jld2 and .nc output created by doctests or literated examples..."
-
 """
     recursive_find(directory, pattern)
 
@@ -198,6 +196,8 @@ function recursive_find(directory, pattern)
         map(filename -> joinpath(root, filename), matched_filenames)
     end
 end
+
+@info "Cleaning up temporary .jld2 and .nc output created by doctests or literated examples..."
 
 for pattern in [r"\.jld2", r"\.nc"]
     filenames = recursive_find(@__DIR__, pattern)

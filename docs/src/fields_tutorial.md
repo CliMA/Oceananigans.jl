@@ -38,5 +38,5 @@ display(fig)
 save("plot_staggered_nodes.svg", fig); nothing # hide
 ```
 
-![]("plot_staggered_nodes.svg")
+![](plot_staggered_nodes.svg)
 

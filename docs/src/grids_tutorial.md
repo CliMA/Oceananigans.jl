@@ -168,14 +168,18 @@ grid = RectilinearGrid(size = (Nx, Ny, Nz),
 └── Bounded  z ∈ [-1000.0, 0.0]    variably spaced with min(Δz)=2.40764, max(Δz)=49.0086
 ```
 
-```@setup 1
+```@setup plot
 using Oceananigans
 using CairoMakie
-CairoMakie.activate!(type = "svg")
+
+set_theme!(Theme(fontsize=24))
+
 Nx, Ny, Nz = 64, 64, 32
 Lx, Ly, Lz = 1e4, 1e4, 1e3
-chebychev_spaced_y_faces(j) = - Ly/2 * cos(π * (j - 1) / Ny);
-chebychev_spaced_z_faces(k) = - Lz/2 - Lz/2 * cos(π * (k - 1) / Nz);
+
+chebychev_spaced_y_faces(j) = Ly * (1 - cos(π * (j - 1) / Ny)) / 2
+chebychev_spaced_z_faces(k) = - Lz * (1 + cos(π * (k - 1) / Nz)) / 2
+
 grid = RectilinearGrid(size = (Nx, Ny, Nz),
                        topology = (Periodic, Bounded, Bounded),
                        x = (0, Lx),
@@ -187,45 +191,227 @@ We can easily visualize the spacings of ``y`` and ``z`` directions. We can use, 
 [`ynodes`](@ref) and [`yspacings`](@ref) to extract the positions and spacings of the
 nodes from the grid.
 
-```@example 1
- y = ynodes(grid, Center())
-Δy = yspacings(grid, Center())
+```@example plot
+yc = ynodes(grid, Center())
+zc = znodes(grid, Center())
 
- z = znodes(grid, Center())
+yf = ynodes(grid, Face())
+zf = znodes(grid, Face())
+
+Δy = yspacings(grid, Center())
 Δz = zspacings(grid, Center())
 
 using CairoMakie
+CairoMakie.activate!(type = "svg") # hide
 
-fig = Figure(size=(800, 900))
+fig = Figure(size=(1200, 1200))
 
-axy = Axis(fig[1, 1]; xlabel = "y (m)", ylabel = "y-spacing (m)", limits = (nothing, (0, 250)))
-lines!(axy, y, Δy)
-scatter!(axy, y, Δy)
+axy = Axis(fig[1, 1], title="y-grid")
+lines!(axy, [0, Ly], [0, 0], color=:gray)
+scatter!(axy, yf, 0 * yf, marker=:vline, color=:gray, markersize=20)
+scatter!(axy, yc, 0 * yc)
+hidedecorations!(axy)
+hidespines!(axy)
 
-axz = Axis(fig[2, 1]; xlabel = "z-spacing (m)", ylabel = "z (m)", limits = ((0, 50), nothing))
-lines!(axz, z, Δz)
-scatter!(axz, z, Δz)
+axΔy = Axis(fig[2, 1]; xlabel = "y (m)", ylabel = "y-spacing (m)")
+scatter!(axΔy, yc, Δy)
+hidespines!(axΔy, :t, :r) 
 
-display(fig)
-save("plot_stretched_grid.svg", fig); nothing #hide
+axz = Axis(fig[3, 1], title="z-grid")
+lines!(axz, [-Lz, 0], [0, 0], color=:gray)
+scatter!(axz, zf, 0 * zf, marker=:vline, color=:gray, markersize=20)
+scatter!(axz, zc, 0 * zc)
+hidedecorations!(axz)
+hidespines!(axz)
+
+axΔz = Axis(fig[4, 1]; xlabel = "z (m)", ylabel = "z-spacing (m)")
+scatter!(axΔz, zc, Δz)
+hidespines!(axΔz, :t, :r)
+
+rowsize!(fig.layout, 1, Relative(0.1))
+rowsize!(fig.layout, 3, Relative(0.1))
+
+display(fig); save("plot_stretched_grid.svg", fig); nothing # hide
 ```
 
 ![](plot_stretched_grid.svg)
 
-## `LatitudeLongitudeGrid`
+## `LatitudeLongitudeGrid` with constant spacing
 
-A simple latitude-longitude grid with `Float64` type can be constructed by
+To construct a simple latitude-longitude grid whose cells have a fixed width in latitude and longitude, we write
 
-```jldoctest
-julia> grid = LatitudeLongitudeGrid(size = (36, 34, 25),
-                                    longitude = (-180, 180),
-                                    latitude = (-85, 85),
-                                    z = (-1000, 0))
+```jldoctest latlon
+grid = LatitudeLongitudeGrid(size = (180, 10, 5),
+                             longitude = (-180, 180),
+                             latitude = (-60, 60),
+                             z = (-1000, 0))
+
+# output
 36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
 ├── longitude: Periodic λ ∈ [-180.0, 180.0) regularly spaced with Δλ=10.0
 ├── latitude:  Bounded  φ ∈ [-85.0, 85.0]   regularly spaced with Δφ=5.0
 └── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=40.0
 ```
+
+The only difference between `LatitudeLongitudeGrid` and `RectilinearGrid` are the names of the horizontal coordinates:
+`LatitudeLongitudeGrid` has `longitude` and `latitude` where `RectilinearGrid` has `x` and `y`.
+Note that if topology is not provided, then an attempt is made to infer it: if the `longitude` spans 360 degrees,
+the default x-topology is `Periodic`, and `Bounded` if `longitude` spans less than 360 degrees.
+For example,
+
+```jldoctest latlon
+grid = LatitudeLongitudeGrid(size = (60, 10, 5),
+                             longitude = (0, 60),
+                             latitude = (-60, 60),
+                             z = (-1000, 0))
+
+# output
+36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+├── longitude: Periodic λ ∈ [-180.0, 180.0) regularly spaced with Δλ=10.0
+├── latitude:  Bounded  φ ∈ [-85.0, 85.0]   regularly spaced with Δφ=5.0
+└── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=40.0
+```
+
+is `Bounded` by default.
+Moreover, this can be overridden,
+
+```jldoctest latlon
+grid = LatitudeLongitudeGrid(size = (60, 10, 5),
+                             topology = (Periodic, Bounded, Bounded),
+                             longitude = (0, 60),
+                             latitude = (-60, 60),
+                             z = (-1000, 0))
+
+# output
+36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+├── longitude: Periodic λ ∈ [-180.0, 180.0) regularly spaced with Δλ=10.0
+├── latitude:  Bounded  φ ∈ [-85.0, 85.0]   regularly spaced with Δφ=5.0
+└── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=40.0
+```
+
+Note that neither `latitude` nor `z` may be `Periodic` with `LatitudeLongitudeGrid`.
+
+```@setup latlon_nodes
+using Oceananigans
+```
+
+Unlike `RectilinearGrid`, which uses a Cartesian coordinate system,
+the intrinsic coordinate system for `LatitudeLongitudeGrid` are the geographic coordinates
+`(λ, φ, z)`, where `λ` is longitude, `φ` is latitude, and `z` is height.
+
+Note: to type `λ` or `φ` at the REPL, write either `\lambda` (for `λ`) or `\varphi` (for `φ`) and then press `<TAB>`.
+
+```@example latlon_nodes
+grid = LatitudeLongitudeGrid(size = (1, 44),
+                             longitude = (0, 1),   
+                             latitude = (0, 88),
+                             topology = (Bounded, Bounded, Flat))
+
+φ = φnodes(grid, Center())
+Δx = xspacings(grid, Center(), Center())
+
+using CairoMakie
+CairoMakie.activate!(type = "svg") # hide
+
+fig = Figure(size=(600, 400))
+ax = Axis(fig[1, 1], xlabel="Zonal spacing on 2 degree grid (km)", ylabel="Latitude (degrees)")
+scatter!(ax, Δx ./ 1e3, φ)
+
+display(fig); save("plot_lat_lon_spacings.svg", fig); nothing # hide
+```
+
+![](plot_lat_lon_spacings.svg)
+
+## `LatitudeLongitudeGrid` with variable spacing
+
+The syntax for building a grid with variably spaced cells is the same as for `RectilinearGrid`.
+In our next example, we use a function to build a Mercator grid with a spacing of 2 degrees at
+the equator,
+
+```jldoctest latlon_nodes
+# Mercator scale factor
+scale_factor(φ) = 1 / cosd(φ)
+
+# Compute cell interfaces with Mercator spacing
+m = 2 # spacing at the equator in degrees
+function latitude_faces(j)
+    if j == 1 # equator
+        return 0
+    else # crudely estimate the location of the jth face 
+        φ₋ = latitude_faces(j-1)
+        φ′ = φ₋ + m * scale_factor(φ₋) / 2
+        return φ₋ + m * scale_factor(φ′)
+    end
+end    
+
+Lx = 360
+Nx = Int(Lx / m)
+Ny = findfirst(latitude_faces.(1:Nx) .> 90) - 2
+
+grid = LatitudeLongitudeGrid(size = (Nx, Ny),
+                             longitude = (0, Lx),
+                             latitude = latitude_faces,
+                             topology = (Bounded, Bounded, Flat))
+
+# output
+180×28×1 LatitudeLongitudeGrid{Float64, Bounded, Bounded, Flat} on CPU with 3×3×0 halo and with precomputed metrics
+├── longitude: Bounded  λ ∈ [0.0, 360.0]     regularly spaced with Δλ=2.0
+├── latitude:  Bounded  φ ∈ [0.0, 77.2679]   variably spaced with min(Δφ)=2.0003, max(Δφ)=6.95319
+└── z:         Flat z
+```
+
+We've also illustrated the construction of a grid that is `Flat` in the vertical direction.
+Now let's plot the metrics for this grid,
+
+```@setup plot
+# Mercator scale factor
+scale_factor(φ) = 1 / cosd(φ)
+
+# Compute cell interfaces with Mercator spacing
+m = 2 # spacing at the equator in degrees
+function latitude_faces(j)
+    if j == 1 # equator
+        return 0
+    else # crudely estimate the location of the jth face 
+        φ₋ = latitude_faces(j-1)
+        φ′ = φ₋ + m * scale_factor(φ₋) / 2
+        return φ₋ + m * scale_factor(φ′)
+    end
+end    
+
+Lx = 360
+Nx = Int(Lx / m)
+Ny = findfirst(latitude_faces.(1:Nx) .> 90) - 2
+
+grid = LatitudeLongitudeGrid(size = (Nx, Ny),
+                             longitude = (0, Lx),
+                             latitude = latitude_faces,
+                             topology = (Bounded, Bounded, Flat))
+```
+
+```@example plot
+φ = φnodes(grid, Center())
+Δx = xspacings(grid, Center(), Center(), with_halos=true)[1:Ny]
+Δy = yspacings(grid, Center())[1:Ny]
+
+using CairoMakie
+CairoMakie.activate!(type = "svg") # hide
+
+fig = Figure(size=(800, 400))
+axx = Axis(fig[1, 1], xlabel="Zonal spacing (km)", ylabel="Latitude (degrees)")
+scatter!(axx, Δx ./ 1e3, φ)
+
+axy = Axis(fig[1, 2], xlabel="Meridional spacing (km)")
+scatter!(axy, Δy ./ 1e3, φ)
+
+hidespines!(axx, :t, :r)
+hidespines!(axy, :t, :l, :r)
+hideydecorations!(axy, grid=false)
+
+display(fig); save("plot_lat_lon_mercator.svg", fig); nothing # hide
+```
+
+![](plot_lat_lon_mercator.svg)
 
 For more examples see [`RectilinearGrid`](@ref) and [`LatitudeLongitudeGrid`](@ref).
 
