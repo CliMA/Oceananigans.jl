@@ -133,25 +133,3 @@ end
 
     return uₑ, vₑ, wₑ
 end
-
-#####
-##### Component-wise conversion between reference frames
-#####
-
-@inline intrinsic_vector_x_component(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ) = 
-    @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ, wₑ)[1]
-    
-@inline intrinsic_vector_y_component(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ) =
-    @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ, wₑ)[2]
-
-@inline intrinsic_vector_z_component(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ) =
-    @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ, wₑ)[3]
-
-@inline extrinsic_vector_x_component(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ) =
-    @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ, wₑ)[1]
-    
-@inline extrinsic_vector_y_component(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ) =
-    @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ, wₑ)[2]
-
-@inline extrinsic_vector_z_component(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ) =
-    @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ, wₑ)[3]

@@ -7,6 +7,19 @@ using Oceananigans.CubedSpheres
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
 
+# To be used in the test below as `KernelFunctionOperation`s
+@inline intrinsic_vector_x_component(i, j, k, grid, uₑ, vₑ) = 
+    @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ)[1]
+    
+@inline intrinsic_vector_y_component(i, j, k, grid, uₑ, vₑ) =
+    @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ)[2]
+
+@inline extrinsic_vector_x_component(i, j, k, grid, uₑ, vₑ) =
+    @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ)[1]
+    
+@inline extrinsic_vector_y_component(i, j, k, grid, uₑ, vₑ) =
+    @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ)[2]
+
 @testset "Cubed spheres" begin
 
     @testset "Conformal cubed sphere grid" begin
@@ -75,21 +88,21 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
                 fill!(u, 1)
                 
                 # Convert it to an "Instrinsic" reference frame
-                uᵢ = KernelFunctionOperation{Face, Center, Center}(intrinsic_vector_x_component, grid, u, v, nothing)
-                vᵢ = KernelFunctionOperation{Center, Face, Center}(intrinsic_vector_y_component, grid, u, v, nothing)
+                uᵢ = KernelFunctionOperation{Face, Center, Center}(intrinsic_vector_x_component, grid, u, v)
+                vᵢ = KernelFunctionOperation{Center, Face, Center}(intrinsic_vector_y_component, grid, u, v)
                 
                 uᵢ = compute!(Field(uᵢ))
                 vᵢ = compute!(Field(vᵢ))
 
                 # The extrema of u and v, as well as their mean value should
-                # be equivalent on an "Intrinsic" frame
+                # be equivalent on an "intrinsic" frame
                 @test maximum(uᵢ) ≈ maximum(vᵢ)
                 @test minimum(uᵢ) ≈ minimum(vᵢ)
                 @test mean(uᵢ) ≈ mean(vᵢ)
 
                 # Convert it back to a purely zonal velocity (vₑ == 0)
-                uₑ = KernelFunctionOperation{Face, Center, Center}(extrinsic_vector_x_component, grid, uᵢ, vᵢ, nothing)
-                vₑ = KernelFunctionOperation{Center, Face, Center}(extrinsic_vector_y_component, grid, uᵢ, vᵢ, nothing)
+                uₑ = KernelFunctionOperation{Face, Center, Center}(extrinsic_vector_x_component, grid, uᵢ, vᵢ)
+                vₑ = KernelFunctionOperation{Center, Face, Center}(extrinsic_vector_y_component, grid, uᵢ, vᵢ)
                 
                 uₑ = compute!(Field(uₑ))
                 vₑ = compute!(Field(vₑ))
