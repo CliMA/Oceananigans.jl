@@ -311,6 +311,8 @@ struct RankConnectivity{E, W, N, S, SW, SE, NW, NE}
     northeast :: NE
 end
 
+const NoConnectivity = RankConnectivity{Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing}
+
 """
     RankConnectivity(; east, west, north, south, southwest, southeast, northwest, northeast)
 
@@ -370,17 +372,51 @@ end
 ##### Pretty printing
 #####
 
-function Base.show(io::IO, arch::Distributed)
-    c = arch.connectivity
-    print(io, "Distributed architecture (rank $(arch.local_rank)/$(prod(arch.ranks)-1)) [index $(arch.local_index) / $(arch.ranks)]\n",
-              "└── child architecture: $(typeof(child_architecture(arch))) \n",
-              "└── connectivity:",
-              isnothing(c.east) ? "" : " east=$(c.east)",
-              isnothing(c.west) ? "" : " west=$(c.west)",
-              isnothing(c.north) ? "" : " north=$(c.north)",
-              isnothing(c.south) ? "" : " south=$(c.south)",
-              isnothing(c.southwest) ? "" : " southwest=$(c.southwest)",
-              isnothing(c.southeast) ? "" : " southeast=$(c.southeast)",
-              isnothing(c.northwest) ? "" : " northwest=$(c.northwest)",
-              isnothing(c.northeast) ? "" : " northeast=$(c.northeast)")
+function Base.summary(arch::Distributed)
+    child_arch = child_architecture(arch)
+    A = typeof(child_arch)
+    return string("Distributed{$A}")
 end
+
+function Base.show(io::IO, arch::Distributed)
+
+    Rx, Ry, Rz = arch.ranks
+    local_rank = arch.local_rank
+    Nr = prod(arch.ranks)
+    last_rank = Nr - 1
+
+    rank_info = if last_rank == 0
+        "1 rank:"
+    else
+        "$Nr = $Rx×$Ry×$Rz ranks:"
+    end
+
+    print(io, summary(arch), " across ", rank_info, '\n')
+    print(io, "├── local_rank: ", local_rank, " of 0-$last_rank", '\n')
+
+    ix, iy, iz = arch.local_index
+    index_info = string("index [$ix, $iy, $iz]")
+
+    c = arch.connectivity
+    connectivity_info = if c isa NoConnectivity
+        nothing
+    else
+        string("└── connectivity:",
+               isnothing(c.east)      ? "" : " east=$(c.east)",
+               isnothing(c.west)      ? "" : " west=$(c.west)",
+               isnothing(c.north)     ? "" : " north=$(c.north)",
+               isnothing(c.south)     ? "" : " south=$(c.south)",
+               isnothing(c.southwest) ? "" : " southwest=$(c.southwest)",
+               isnothing(c.southeast) ? "" : " southeast=$(c.southeast)",
+               isnothing(c.northwest) ? "" : " northwest=$(c.northwest)",
+               isnothing(c.northeast) ? "" : " northeast=$(c.northeast)")
+    end
+
+    if isnothing(connectivity_info)
+        print(io, "└── local_index: [$ix, $iy, $iz]")
+    else
+        print(io, "├── local_index: [$ix, $iy, $iz]", '\n')
+        print(io, connectivity_info)
+    end
+end
+
