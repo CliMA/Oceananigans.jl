@@ -10,6 +10,13 @@ mask_immersed_field!(field, grid, loc, value) = nothing
 mask_immersed_field!(field::Field, value=zero(eltype(field.grid))) =
     mask_immersed_field!(field, field.grid, location(field), value)
 
+function mask_immersed_field!(sumofarrays::SumOfArrays, value=zero(eltype(sumofarrays.arrays[1])))
+    loc = @inbounds location(sumofarrays.arrays[1])
+    grid = @inbounds sumofarrays.arrays[1].grid
+
+   return mask_immersed_field!(sumofarrays, grid, loc, value)
+end
+
 """
     mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value)
 
@@ -23,7 +30,7 @@ function mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, val
 end
 
 function mask_immersed_field!(sumofarrays::SumOfArrays, grid::ImmersedBoundaryGrid, loc, value; k, mask)
-    arch = architecture(sumofarrays.arrays[1])
+    arch = @inbounds architecture(sumofarrays.arrays[1])
     loc = instantiate.(loc)
 
     for field in sumofarrays.arrays
@@ -62,7 +69,7 @@ end
 end
 
 function mask_immersed_field_xy!(sumofarrays::SumOfArrays, grid::ImmersedBoundaryGrid, loc, value; k, mask)
-    arch = architecture(sumofarrays.arrays[1])
+    arch = @inbounds architecture(sumofarrays.arrays[1])
     loc = instantiate.(loc)
 
     for field in sumofarrays.arrays
