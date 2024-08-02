@@ -22,6 +22,17 @@ function mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, val
     return nothing
 end
 
+function mask_immersed_field!(sumofarrays::SumOfArrays, grid::ImmersedBoundaryGrid, loc, value; k, mask)
+    arch = architecture(sumofarrays.arrays[1])
+    loc = instantiate.(loc)
+
+    for field in sumofarrays.arrays
+        launch!(arch, grid, :xyz,
+                _mask_immersed_field!, field, loc, grid, value, k, mask)
+    end
+
+    return nothing
+end
 
 @kernel function _mask_immersed_field!(field, loc, grid, value)
     i, j, k = @index(Global, NTuple)
