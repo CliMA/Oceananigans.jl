@@ -59,7 +59,7 @@ function progress(sim)
     rank == 0 && @info(string("Iteration: ", iteration(sim), ", time: ", prettytime(sim)))
 
     @info @sprintf("Rank %d: max|ζ|: %.2e, max(e): %.2e",
-                    rank, maximum(abs, ζ), maximum(abs, e))
+                   rank, maximum(abs, ζ), maximum(abs, e))
 
     return nothing
 end
