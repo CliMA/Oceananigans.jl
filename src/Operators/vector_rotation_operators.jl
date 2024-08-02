@@ -76,7 +76,7 @@ _intrinsic_ coordinate systems are equivalent. However, for other grids (e.g., f
     u  = getvalue(uₑ, i, j, k, grid)
     v  = getvalue(vₑ, i, j, k, grid)
 
-    cosθᵢ = Rsinθᵢ / Rᵢ
+    cosθᵢ = Rcosθᵢ / Rᵢ
     sinθᵢ = Rsinθᵢ / Rᵢ
 
     uᵢ = u * cosθᵢ + v * sinθᵢ
@@ -116,7 +116,7 @@ end
     u  = getvalue(uᵢ, i, j, k, grid)
     v  = getvalue(vᵢ, i, j, k, grid)
 
-    cosθₑ = Rsinθₑ / Rₑ
+    cosθₑ = Rcosθₑ / Rₑ
     sinθₑ = Rsinθₑ / Rₑ
 
     uₑ = u * cosθₑ - v * sinθₑ
