@@ -560,7 +560,7 @@ steps:
   - label: "🦉 documentation"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      CUDA_VISIBLE_DEVICES: "-1"
+      CUDA_VISIBLE_DEVICES: "0"
       JULIA_DEBUG: "Documenter"
       TMPDIR: "$TARTARUS_HOME/tmp"
     commands:

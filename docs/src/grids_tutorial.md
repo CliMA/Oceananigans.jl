@@ -9,35 +9,8 @@ end
 Oceananigans simulates the dynamics of ocean-flavored fluids by solving differential equations that conserve momentum, mass, and energy on a mesh of finite volumes or "cells".
 A "grid" encodes information about this mesh of finite volumes -- including the domain geometry, the number of cells, and the machine architecture and number representation that is used to store discrete data on the finite volume mesh.
 
-Grids specify 
-
-* The domain geometry, which may be a line (one-dimensional), rectangle (two-dimensional), box (three-dimensional), or a sector of a thin spherical shells (two- or three-dimensional). Complex domains -- for example, domains with bathymetry or topography -- are represented by using a masking technique to "immerse" an irregular boundary within an "underlying grid". Dimensions may be indicated as
-    - [`Periodic`](@ref), which means that the dimension circles back onto itself: information leaving the left side of the domain re-enters on the right.
-    - [`Bounded`](@ref), which means that the two sides of the dimension are either impenetrable (solid walls), or "open", representing a specified external state.
-    - [`Flat`](@ref), which means nothing can vary in that dimension, reducing the overall dimensionality of the grid.
-* The spatial resolution, which determines the distribution of sizes of the finite volume cells that divide the domain.
-* The machine architecture, or whether data is stored on the CPU, GPU, or distributed across multiple devices or nodes.
-* The representation of floating point numbers, which can be single-precision (`Float32`) or double precision (`Float64`).
-
-## Supported grids
-
-The underlying grids we currently support are:
-
-1. [`RectilinearGrid`](@ref), which supports lines, rectangles and boxes, and
-2. [`LatitudeLongitudeGrid`](@ref), which supports sectors of thin spherical shells whose cells are bounded by lines of constant latitude and longitude, and
-3. [`OrthogonalSphericalShellGrid`](@ref), which supports sectors of thin spherical shells divided into finite volumes whose intersections are orthogonal but otherwise arbitrary.
-
-Complex domains are represented with [`ImmersedBoundaryGrid`](@ref), which combines one of the above underlying grids with a type of immersed boundary. The immersed boundaries we support currently are
-
-1. [`GridFittedBottom`](@ref), which fits a one- or two-dimensional bottom height to the underlying grid, so the active part of the domain is above the bottom height.
-2. [`PartialCellBottom`](@ref), which is similar to [`GridFittedBottom`](@ref), except that the height of the bottommost cell is changed to conform to bottom height, limited to prevent the bottom cells from becoming too thin.
-3. [`GridFittedBoundary`](@ref), which fits a three-dimensional mask to the grid.
-
-## A first example with `RectilinearGrid`
-
-One of the simplest grids we can create is a box (three-dimensional)
-divided into cells of equal size. For this example we choose a topology that is horizontally-periodic
-and vertically-bounded --- a common configuration for ocean simulations.
+One of the simplest grids we can make divides a three-dimensional rectangular domain -- or "a box" --- into evenly-spaced cells.
+To create such a grid on the CPU (the machine that we typically run julia on, basically), we write
 
 ```jldoctest grids
 architecture = CPU()
@@ -55,6 +28,74 @@ grid = RectilinearGrid(architecture,
 ├── Periodic y ∈ [0.0, 32.0) regularly spaced with Δy=4.0
 └── Bounded  z ∈ [0.0, 8.0]  regularly spaced with Δz=2.0
 ```
+
+There's a few notable features of this simple grid:
+
+* We used the CPU. To make a grid on the GPU --- which means that computations on the grid will be conducted using a GPU connected to our CPU, if one is available --- we write `architecture = GPU()`.
+* The domain of the grid is "periodic" in ``x, y``, but bounded in ``z``. More on what that means, exactly, in a bit.
+* The grid has `16` cells in `x`, `8` cells in `y`, and `4` cells in `z`. That means there are ``16 \times 8 \times 4 = 512`` cells in all.
+* The `x` dimension spans from `x=0`, to `x=64`, `y` spans `y=0` to `y=32`, and `z` spans `z=0` to `z=8`.
+* The cells that divide up the ``16 \times 8 \times 4`` box, which are all the same size, have a dimension ``4 \times 4 \times 2``. Note that length units are whatever is used to construct the grid, so it's up to the user to make sure that all inputs use consistent units.
+
+## The basic purpose of the grid
+
+Setting up a grid is the first step towards running a simulation.
+To set up a grid, we have to specify
+
+* The domain geometry. Domains can take a variety of shapes, including
+    - lines (one-dimensional),
+    - rectangles (two-dimensional),
+    - boxes (three-dimensional),
+    - sectors of a thin spherical shells (two- or three-dimensional).
+    Irregular domains -- such as domains that include bathymetry or topography -- are represented by using a masking technique to "immerse" an irregular boundary within an "underlying" regular grid. Part of specifying the shape of the domain also requires specifying the nature of each dimension, which may be
+    - [`Periodic`](@ref), which means that the dimension circles back onto itself: information leaving the left side of the domain re-enters on the right.
+    - [`Bounded`](@ref), which means that the two sides of the dimension are either impenetrable (solid walls), or "open", representing a specified external state.
+    - [`Flat`](@ref), which means nothing can vary in that dimension, reducing the overall dimensionality of the grid.
+* The number of cells that divide each dimension. This determines the spatial resolution, or the sizes of the finite volume cells that divide the domain. The spatial resolution may be constant, as in the simple example above, or it can vary across each dimension.
+* The machine architecture, or whether data is stored on the CPU, GPU, or distributed across multiple devices or nodes.
+* The representation of floating point numbers, which can be single-precision (`Float32`) or double precision (`Float64`).
+
+For example, to set up a two-dimensional rectangular grid --- on the GPU! ---  with cell spacings that vary in the `z`-direction, we write
+
+```@setup grids_gpu
+using Oceananigans
+```
+
+```jldoctest grids_gpu
+architecture = GPU()
+z_faces = [0, 1, 3, 6, 10]
+
+grid = RectilinearGrid(architecture,
+                       topology = (Periodic, Flat, Bounded),
+                       size = (10, 4),
+                       x = (0, 20),
+                       z = z_faces)
+
+# output
+10×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on GPU with 3×0×3 halo
+├── Periodic x ∈ [0.0, 20.0)      regularly spaced with Δx=2.0
+├── Flat y
+└── Bounded  z ∈ [0.0, 10.0]      variably spaced with min(Δz)=1.0, max(Δz)=4.0
+```
+
+## Types of grids
+
+The types of grids that we currently support are:
+
+1. [`RectilinearGrid`](@ref), which supports lines, rectangles and boxes, and
+2. [`LatitudeLongitudeGrid`](@ref), which supports sectors of thin spherical shells whose cells are bounded by lines of constant latitude and longitude, and
+3. [`OrthogonalSphericalShellGrid`](@ref), which supports sectors of thin spherical shells divided into finite volumes whose intersections are orthogonal but otherwise arbitrary.
+
+In general, `OrthogonalSphericalShellGrids` are constructed by a recipe or conformal map.
+For example, a recipe that implements the ["tripolar" grid](https://www.sciencedirect.com/science/article/abs/pii/S0021999196901369)
+is implemented in the package
+[`OrthogonalSphericalShellGrids.jl`](https://github.com/CliMA/OrthogonalSphericalShellGrids.jl)
+
+Complex domains are represented with [`ImmersedBoundaryGrid`](@ref), which combines one of the above underlying grids with a type of immersed boundary. The immersed boundaries we support currently are
+
+1. [`GridFittedBottom`](@ref), which fits a one- or two-dimensional bottom height to the underlying grid, so the active part of the domain is above the bottom height.
+2. [`PartialCellBottom`](@ref), which is similar to [`GridFittedBottom`](@ref), except that the height of the bottommost cell is changed to conform to bottom height, limited to prevent the bottom cells from becoming too thin.
+3. [`GridFittedBoundary`](@ref), which fits a three-dimensional mask to the grid.
 
 Let's walk through each of the arguments to `RectilinearGrid`, some of which are also shared with `LatitudeLongitudeGrid`.
 
@@ -102,6 +143,7 @@ Note how the output indicates that the grid has a `3×3×3 halo`.
 ## A single column `RectilinearGrid` with variably-spaced vertical interfaces
 
 For our next example, we build a grid representing a "single column" in the z-direction with unevenly spaced cells,
+
 
 ```jldoctest grids
 z_faces = [0, 4, 6, 7, 8]
