@@ -11,10 +11,11 @@ mask_immersed_field!(field::Field, value=zero(eltype(field.grid))) =
     mask_immersed_field!(field, field.grid, location(field), value)
 
 function mask_immersed_field!(sumofarrays::SumOfArrays, value=zero(eltype(sumofarrays.arrays[1])))
-    loc = @inbounds location(sumofarrays.arrays[1])
-    grid = @inbounds sumofarrays.arrays[1].grid
-
-   return mask_immersed_field!(sumofarrays, grid, loc, value)
+    for field in sumofarrays.arrays
+        mask_immersed_field!(field, value)
+    end
+    
+    return nothing
 end
 
 """
@@ -24,20 +25,8 @@ masks `field` defined on `grid` with a value `val` at locations where `periphera
 """
 function mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value)
     arch = architecture(field)
-    loc = instantiate.(loc)
+    loc = map(instantiate, loc)
     launch!(arch, grid, :xyz, _mask_immersed_field!, field, loc, grid, value)
-    return nothing
-end
-
-function mask_immersed_field!(sumofarrays::SumOfArrays, grid::ImmersedBoundaryGrid, loc, value; k, mask)
-    arch = @inbounds architecture(sumofarrays.arrays[1])
-    loc = instantiate.(loc)
-
-    for field in sumofarrays.arrays
-        launch!(arch, grid, :xyz,
-                _mask_immersed_field!, field, loc, grid, value, k, mask)
-    end
-
     return nothing
 end
 
@@ -50,6 +39,14 @@ mask_immersed_field_xy!(field,     args...; kw...) = nothing
 mask_immersed_field_xy!(::Nothing, args...; kw...) = nothing
 mask_immersed_field_xy!(field, value=zero(eltype(field.grid)); k, mask = peripheral_node) =
     mask_immersed_field_xy!(field, field.grid, location(field), value; k, mask)
+
+function mask_immersed_field_xy!(sumofarrays::SumOfArrays, value=zero(eltype(sumofarrays.arrays[1])))
+    for field in sumofarrays.arrays
+        mask_immersed_field_xy!(field, value)
+    end
+
+    return nothing
+end
 
 """
     mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, loc, value; k, mask=peripheral_node)
@@ -66,18 +63,6 @@ end
 @kernel function _mask_immersed_field_xy!(field, loc, grid, value, k, mask)
     i, j = @index(Global, NTuple)
     @inbounds field[i, j, k] = scalar_mask(i, j, k, grid, grid.immersed_boundary, loc..., value, field, mask)
-end
-
-function mask_immersed_field_xy!(sumofarrays::SumOfArrays, grid::ImmersedBoundaryGrid, loc, value; k, mask)
-    arch = @inbounds architecture(sumofarrays.arrays[1])
-    loc = instantiate.(loc)
-
-    for field in sumofarrays.arrays
-        launch!(arch, grid, :xy,
-                _mask_immersed_field_xy!, field, loc, grid, value, k, mask)
-    end
-
-    return nothing
 end
 
 #####
