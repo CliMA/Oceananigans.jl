@@ -1,6 +1,7 @@
 using KernelAbstractions: @kernel, @index
 using Statistics
 using Oceananigans.Fields: location, ZReducedField, Field
+using Oceananigans.Utils: SumOfArrays
 
 instantiate(T::Type) = T()
 instantiate(t) = t
@@ -47,6 +48,18 @@ end
 @kernel function _mask_immersed_field_xy!(field, loc, grid, value, k, mask)
     i, j = @index(Global, NTuple)
     @inbounds field[i, j, k] = scalar_mask(i, j, k, grid, grid.immersed_boundary, loc..., value, field, mask)
+end
+
+function mask_immersed_field_xy!(sumofarrays::SumOfArrays, grid::ImmersedBoundaryGrid, loc, value; k, mask)
+    arch = architecture(sumofarrays.arrays[1])
+    loc = instantiate.(loc)
+
+    for field in sumofarrays.arrays
+        launch!(arch, grid, :xy,
+                _mask_immersed_field_xy!, field, loc, grid, value, k, mask)
+    end
+
+    return nothing
 end
 
 #####
