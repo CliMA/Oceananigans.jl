@@ -8,6 +8,7 @@
 #
 # $ export JULIA_NUM_THREADS=1
 #
+# See MPI.jl documentation for more information on how to setup the MPI environment.
 # If you have a local installation of MPI, you can use it by setting
 # 
 # julia> MPIPreferences.use_system_binaries()
@@ -51,15 +52,14 @@ compute!(ζ)
 simulation = Simulation(model, Δt=0.01, stop_iteration=1000)
 
 function progress(sim)
-    comm = sim.model.grid.architecture.communicator
-    rank = MPI.Comm_rank(comm)
+    rank = sim.model.grid.architecture.local_rank
     compute!(ζ)
     compute!(e)
 
     rank == 0 && @info(string("Iteration: ", iteration(sim), ", time: ", prettytime(sim)))
 
     @info @sprintf("Rank %d: max|ζ|: %.2e, max(e): %.2e",
-                   MPI.Comm_rank(comm), maximum(abs, ζ), maximum(abs, e))
+                    rank, maximum(abs, ζ), maximum(abs, e))
 
     return nothing
 end
@@ -67,6 +67,7 @@ end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
 outputs = merge(model.velocities, (; e, ζ))
+
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       schedule = TimeInterval(0.1),
                                                       with_halos = true,
