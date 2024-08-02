@@ -9,7 +9,7 @@
     intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ)
 
 Convert the three-dimensional vector with components `uₑ, vₑ, wₑ` defined in an _extrinsic_ 
-coordinate system associated with the domain, to the coordinate system _intrinsic_ to the grid. 
+coordinate system associated with the domain, to the coordinate system _intrinsic_ to the grid.
 
 _extrinsic_ coordinate systems are:
 
