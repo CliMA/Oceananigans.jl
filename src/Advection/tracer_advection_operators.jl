@@ -49,6 +49,33 @@ Adapt.adapt_structure(to, scheme::TracerAdvection{N, FT}) where {N, FT} =
 @inline _advective_tracer_flux_y(i, j, k, grid, ::Nothing, args...) = zero(grid)
 @inline _advective_tracer_flux_z(i, j, k, grid, ::Nothing, args...) = zero(grid)
 
+# Fallback for `nothing` advection and `ZeroField` tracers and velocities
+@inline _advective_tracer_flux_x(i, j, k, grid, ::Nothing, ::ZeroField, ::ZeroField) = zero(grid)
+@inline _advective_tracer_flux_y(i, j, k, grid, ::Nothing, ::ZeroField, ::ZeroField) = zero(grid)
+@inline _advective_tracer_flux_z(i, j, k, grid, ::Nothing, ::ZeroField, ::ZeroField) = zero(grid)
+
+@inline _advective_tracer_flux_x(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+@inline _advective_tracer_flux_y(i, j, k, grid, ::Nothing, V, ::ZeroField) = zero(grid)
+@inline _advective_tracer_flux_z(i, j, k, grid, ::Nothing, W, ::ZeroField) = zero(grid)
+@inline _advective_tracer_flux_x(i, j, k, grid, ::Nothing, ::ZeroField, c) = zero(grid)
+@inline _advective_tracer_flux_y(i, j, k, grid, ::Nothing, ::ZeroField, c) = zero(grid)
+@inline _advective_tracer_flux_z(i, j, k, grid, ::Nothing, ::ZeroField, c) = zero(grid)
+
+# Fallback for `ZeroField` tracers and velocities
+@inline _advective_tracer_flux_x(i, j, k, grid, scheme, ::ZeroField, ::ZeroField) = zero(grid)
+@inline _advective_tracer_flux_y(i, j, k, grid, scheme, ::ZeroField, ::ZeroField) = zero(grid)
+@inline _advective_tracer_flux_z(i, j, k, grid, scheme, ::ZeroField, ::ZeroField) = zero(grid)
+
+# Fallback for `ZeroField` tracers
+@inline _advective_tracer_flux_x(i, j, k, grid, scheme, U, ::ZeroField) = zero(grid)
+@inline _advective_tracer_flux_y(i, j, k, grid, scheme, V, ::ZeroField) = zero(grid)
+@inline _advective_tracer_flux_z(i, j, k, grid, scheme, W, ::ZeroField) = zero(grid)
+
+# Fallback for `ZeroField` velocities
+@inline _advective_tracer_flux_x(i, j, k, grid, scheme, ::ZeroField, c) = zero(grid)
+@inline _advective_tracer_flux_y(i, j, k, grid, scheme, ::ZeroField, c) = zero(grid)
+@inline _advective_tracer_flux_z(i, j, k, grid, scheme, ::ZeroField, c) = zero(grid)
+
 #####
 ##### Tracer advection operator
 #####
