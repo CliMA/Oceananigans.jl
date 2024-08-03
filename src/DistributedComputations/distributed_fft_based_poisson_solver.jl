@@ -192,7 +192,7 @@ function validate_global_grid(global_grid::RectilinearGrid)
     if (TY == Bounded && TZ == Periodic) || (TX == Bounded && TY == Periodic) || (TX == Bounded && TZ == Periodic)
         throw(ArgumentError("NonhydrostaticModels on Distributed grids do not support topology ($TX, $TY, $TZ) at the moment.
                              TZ Periodic requires also TY and TX to be Periodic,
-                             while TY Periodic requires also TX to be Periodic. 
+                             while TY Periodic requires also TX to be Periodic.
                              Please rotate the domain to obtain the required topology"))
     end
     
