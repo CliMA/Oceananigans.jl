@@ -31,9 +31,9 @@ function TransposableField(field_in, FT = eltype(field_in); with_halos = false)
     ygrid = twin_grid(zgrid; local_direction = :y)
     xgrid = twin_grid(zgrid; local_direction = :x)
 
-    Nx = size(xgrid)
-    Ny = size(ygrid)
-    Nz = size(zgrid)
+    xN = size(xgrid)
+    yN = size(ygrid)
+    zN = size(zgrid)
 
     zarch = architecture(zgrid)
     yarch = architecture(ygrid)
@@ -46,15 +46,15 @@ function TransposableField(field_in, FT = eltype(field_in); with_halos = false)
         yfield = Ry == 1 ? zfield : Field(loc, ygrid, FT)
         xfield = Rx == 1 ? yfield : Field(loc, xgrid, FT)
     else
-        zfield = Field(loc, zgrid, FT; indices = (1:Nz[1], 1:Nz[2], 1:Nz[3]))
-        yfield = Ry == 1 ? zfield : Field(loc, ygrid, FT; indices = (1:Ny[1], 1:Ny[2], 1:Ny[3]))
-        xfield = Rx == 1 ? yfield : Field(loc, xgrid, FT; indices = (1:Nx[1], 1:Nx[2], 1:Nx[3]))
+        zfield = Field(loc, zgrid, FT; indices = (1:zN[1], 1:zN[2], 1:zN[3]))
+        yfield = Ry == 1 ? zfield : Field(loc, ygrid, FT; indices = (1:yN[1], 1:yN[2], 1:yN[3]))
+        xfield = Rx == 1 ? yfield : Field(loc, xgrid, FT; indices = (1:xN[1], 1:xN[2], 1:xN[3]))
     end
 
-    yzbuffer = Ry == 1 ? nothing : (send = on_architecture(zarch, zeros(FT, prod(Ny))), 
-                                    recv = on_architecture(zarch, zeros(FT, prod(Nz))))
-    xybuffer = Rx == 1 ? nothing : (send = on_architecture(zarch, zeros(FT, prod(Nx))), 
-                                    recv = on_architecture(zarch, zeros(FT, prod(Ny))))
+    yzbuffer = Ry == 1 ? nothing : (send = on_architecture(zarch, zeros(FT, prod(yN))), 
+                                    recv = on_architecture(zarch, zeros(FT, prod(zN))))
+    xybuffer = Rx == 1 ? nothing : (send = on_architecture(zarch, zeros(FT, prod(xN))), 
+                                    recv = on_architecture(zarch, zeros(FT, prod(yN))))
 
     yzcomm = MPI.Comm_split(MPI.COMM_WORLD, zarch.local_index[1], zarch.local_index[1])
     xycomm = MPI.Comm_split(MPI.COMM_WORLD, yarch.local_index[3], yarch.local_index[3])
@@ -68,8 +68,8 @@ function TransposableField(field_in, FT = eltype(field_in); with_halos = false)
     yzrank = MPI.Comm_rank(yzcomm)
     xyrank = MPI.Comm_rank(xycomm)
 
-    yzcounts[yzrank + 1] = Ny[1] * Nz[2] * Ny[3]
-    xycounts[xyrank + 1] = Ny[1] * Nx[2] * Nx[3]
+    yzcounts[yzrank + 1] = yN[1] * zN[2] * yN[3]
+    xycounts[xyrank + 1] = yN[1] * xN[2] * xN[3]
 
     MPI.Allreduce!(yzcounts, +, yzcomm)
     MPI.Allreduce!(xycounts, +, xycomm)
