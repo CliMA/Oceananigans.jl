@@ -39,8 +39,8 @@ in the `x`, `y`, and `z` directions, while `Rx`, `Ry`, and `Rz` are the number o
 decomposed in two different directions (i.e.,  with `Rx != 1` and `Ry != 1`), while ``slab`` decomposition 
 refers to a domain decomposed in only one direction, (i.e., with `Rx == 1` or `Ry == 1`).
 
-1. Three dimensional grids with pencil decompositions in ``(x, y)`` 
-where `Ny ≥ Rx` and `Ny % Rx = 0`, and `Nz ≥ Ry` and `Nz % Ry = 0`.
+1. Three dimensional grids with pencil decompositions in ``(x, y)`` such the:
+the `z` direction is local, `Ny ≥ Rx` and `Ny % Rx = 0`, and `Nz ≥ Ry` and `Nz % Ry = 0`.
 
 2. Two dimensional grids decomposed in ``x`` where `Ny ≥ Rx` and `Ny % Rx = 0`
     

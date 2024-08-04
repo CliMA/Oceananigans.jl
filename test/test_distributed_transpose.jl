@@ -4,12 +4,11 @@ MPI.Init()
 
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.DistributedComputations: 
-                TransposableField, 
-                transpose_z_to_y!, 
-                transpose_y_to_z!,
-                transpose_y_to_x!,
-                transpose_x_to_y!
+using Oceananigans.DistributedComputations: TransposableField,                
+                                            transpose_z_to_y!,                
+                                            transpose_y_to_z!,                
+                                            transpose_y_to_x!,                
+                                            transpose_x_to_y!
 
 function test_transpose(grid_points, ranks, topo, child_arch)
     arch = Distributed(child_arch, partition=Partition(ranks...))
