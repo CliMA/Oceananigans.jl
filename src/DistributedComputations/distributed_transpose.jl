@@ -137,7 +137,7 @@ for (from, to, buff) in zip([:y, :z, :y, :x], [:z, :y, :x, :y], [:yz, :yz, :xy, 
            We need to synchronize the GPU afterwards before any communication can take place. The packing is
            done in the `$($pack_buffer_name)` function.
 
-        2. The one-dimensional is communicated to all the cores using an inplace `Alltoallv!` MPI
+        2. The one-dimensional buffer is communicated to all the cores using an in-place `Alltoallv!` MPI
            routine. From the [MPI.jl documentation]():
 
            Every process divides the Buffer into `Comm_size(comm)` chunks of equal size,
