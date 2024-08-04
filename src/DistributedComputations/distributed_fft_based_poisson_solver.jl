@@ -86,12 +86,11 @@ Restrictions
 function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT)
 
     validate_global_grid(global_grid)
+    validate_configuration(global_grid, local_grid)
+
     FT = Complex{eltype(local_grid)}
 
     storage = TransposableField(CenterField(local_grid), FT)
-    # We don't support distributing anything in z.
-    Rz = architecture(local_grid).ranks[3]
-    Rz == 1 || throw(ArgumentError("Non-singleton ranks in the vertical are not supported by DistributedFFTBasedPoissonSolver."))
 
     arch = architecture(storage.xfield.grid)
     child_arch = child_architecture(arch)
@@ -200,6 +199,24 @@ function validate_global_grid(global_grid::RectilinearGrid)
     # have just 4 transposes as opposed to 8    
     if !(global_grid isa YZRegularRG) && !(global_grid isa XYRegularRG) && !(global_grid isa XZRegularRG) 
         throw(ArgumentError("Only stretching in one direction is supported with distributed grids at the moment."))
+    end
+
+    return nothing
+end
+
+function validate_configuration(global_grid, local_grid)
+        
+    # We don't support distributing anything in z.
+    Rz = architecture(local_grid).ranks[3]
+    Rz == 1 || throw(ArgumentError("Non-singleton ranks in the vertical are not supported by DistributedFFTBasedPoissonSolver."))
+    
+    # Limitation of the current implementation (see the docstring)
+    if global_grid.Nz % architecture(local_grid).ranks[2] != 0
+        throw(ArgumentError("The number of ranks in the y direction must divide Nz. See the docstring for more information."))
+    end
+
+    if global_grid.Ny % architecture(local_grid).ranks[1] != 0
+        throw(ArgumentError("The number of ranks in the x direction must divide Ny. See the docstring for more information."))
     end
 
     return nothing
