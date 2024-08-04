@@ -30,6 +30,16 @@ for distributed transpositions. This includes:
 - `counts`: The size of the chunks in the buffers to be sent and received
 - `comms`: The MPI communicators for the yz and xy directions (different from MPI.COMM_WORLD!!!)
 
+A `TransposableField` object is used to perform distributed transpositions between different configurations with the 
+`transpose_z_to_y!`, `transpose_y_to_x!`, `transpose_x_to_y!`, and `transpose_y_to_z!` functions. 
+In particular:
+- `transpose_z_to_y!` copies data from the z-configuration (`zfield`) to the y-configuration (`yfield`)
+- `transpose_y_to_x!` copies data from the y-configuration (`yfield`) to the x-configuration (`xfield`)
+- `transpose_x_to_y!` copies data from the x-configuration (`xfield`) to the y-configuration (`yfield`)
+- `transpose_y_to_z!` copies data from the y-configuration (`yfield`) to the z-configuration (`zfield`)
+
+For more information on the transposition algorithm, see the docstring for the `transpose` functions.
+
 # Arguments
 - `field_in`: The input field. It needs to be in a _z-free_ configuration (i.e. ranks[3] == 1).
 - `FT`: The element type of the field. Defaults to the element type of `field_in`.
