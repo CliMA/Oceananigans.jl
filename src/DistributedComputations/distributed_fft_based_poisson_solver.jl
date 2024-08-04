@@ -33,8 +33,8 @@ for `Distributed` architectures.
 Supported configurations
 ========================
 
-1. Three dimensional configurations with two-dimensional decompositions in ``(x, y)`` 
-where `Ny ≥ Rx` and `Ny % Rx = 0`, and `Nz ≥ Ry` and `Nz % Ry = 0`.
+1. Three dimensional grids with decompositions in `x` and `y` such that
+the `z` direction is continuous, `Ny ≥ Rx` and `Ny % Rx = 0`, and `Nz ≥ Ry` and `Nz % Ry = 0`.
 
 2. Two dimensional configurations decomposed in ``x`` where `Ny ≥ Rx` and `Ny % Rx = 0`
     
