@@ -33,21 +33,26 @@ for `Distributed` architectures.
 Supported configurations
 ========================
 
-1. Three dimensional configurations with two-dimensional decompositions in ``(x, y)`` 
-where `Ny ≥ Rx` and `Ny % Rx = 0`, and `Nz ≥ Ry` and `Nz % Ry = 0`.
+In the following, `Nx`, `Ny`, and `Nz` are the number of grid points of the **global** grid, 
+in the `x`, `y`, and `z` directions, while `Rx`, `Ry`, and `Rz` are the number of ranks in the
+`x`, `y`, and `z` directions, respectively. Furthermore, ``pencil`` decomposition refers to a domain 
+decomposed in two different directions (i.e.,  with `Rx != 1` and `Ry != 1`), while ``slab`` decomposition 
+refers to a domain decomposed in only one direction, (i.e., with `Rx == 1` or `Ry == 1`).
 
-2. Two dimensional configurations decomposed in ``x`` where `Ny ≥ Rx` and `Ny % Rx = 0`
+1. Three dimensional grids with pencil decompositions in ``(x, y)`` such the:
+the `z` direction is local, `Ny ≥ Rx` and `Ny % Rx = 0`, and `Nz ≥ Ry` and `Nz % Ry = 0`.
+
+2. Two dimensional grids decomposed in ``x`` where `Ny ≥ Rx` and `Ny % Rx = 0`
     
 Other configurations that are decomposed in ``(x, y)``,
 or any configuration decomposed in ``z``, are _not_ supported.
 
-Algorithm for two-dimensional decompositions
+Algorithm for pencil decompositions
 ============================================
 
-For two-dimensional decompositions (useful for three-dimensional problems),
-there are three forward transforms, three backward transforms,
-and four transpositions requiring MPI communication. In the schematic below, the first
-dimension is always the local dimension. In our implementation we require
+For pencil decompositions (useful for three-dimensional problems), there are three forward transforms, 
+three backward transforms, and four transpositions requiring MPI communication. 
+In the schematic below, the first dimension is always the local dimension. In our implementation we require
 `Nz ≥ Ry` and `Nx ≥ Ry` with the additional constraint that `Nz % Ry = 0` and `Ny % Rx = 0`.
 `Rx` is the number of ranks in ``x``, and `Ry` is the number of ranks in ``y``.
 
@@ -63,24 +68,24 @@ solve the Poisson equation by updating `storage.xfield`.
 Then the process is reversed to obtain `storage.zfield` in physical
 space partitioned over ``(x, y)``.
 
-Algorithm for one-dimensional decompositions
+Algorithm for stencil decompositions
 ============================================
 
-The one-dimensional decomposition works in the same manner while skipping the transposes that
-are not required. For example if the domain is decomposed in ``x``, step 3 in the above algorithm
-is skipped (and the associated transposition step in the bakward transform)
+The stecil decomposition algorithm works in the same manner as the pencil decompostion described above
+while skipping the transposes that are not required. For example if the domain is decomposed in ``x``, 
+step 3 in the above algorithm is skipped (and the associated transposition step in the bakward transform)
 
 Restrictions
 ============
 
-1. Two-dimensional decomopositions:
+1. Pencil decomopositions:
     - `Ny ≥ Rx` and `Ny % Rx = 0`
     - `Nz ≥ Ry` and `Nz % Ry = 0`
     - If the ``z`` direction is `Periodic`, also the ``y`` and the ``x`` directions must be `Periodic`
     - If the ``y`` direction is `Periodic`, also the ``x`` direction must be `Periodic`
 
-2. One-dimensional decomposition:
-    - same as for two-dimensional decompositions with `Rx` (or `Ry`) equal to one
+2. Stencil decomposition:
+    - same as for pencil decompositions with `Rx` (or `Ry`) equal to one
 
 """
 function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT)
@@ -183,16 +188,16 @@ end
 
 # TODO: bring up to speed the PCG to remove this error
 validate_global_grid(global_grid) = 
-        throw(ArgumentError("Grids other than the RectilinearGrid are not supported in the Distributed NonhydrostaticModels"))
+        throw("Grids other than the RectilinearGrid are not supported in the Distributed NonhydrostaticModels")
 
 function validate_global_grid(global_grid::RectilinearGrid) 
     TX, TY, TZ = topology(global_grid)
 
     if (TY == Bounded && TZ == Periodic) || (TX == Bounded && TY == Periodic) || (TX == Bounded && TZ == Periodic)
-        throw(ArgumentError("NonhydrostaticModels on Distributed grids do not support topology ($TX, $TY, $TZ) at the moment.
-                             TZ Periodic requires also TY and TX to be Periodic,
-                             while TY Periodic requires also TX to be Periodic. 
-                             Please rotate the domain to obtain the required topology"))
+        throw("NonhydrostaticModels on Distributed grids do not support topology ($TX, $TY, $TZ) at the moment.
+               TZ Periodic requires also TY and TX to be Periodic,
+               while TY Periodic requires also TX to be Periodic.
+               Please rotate the domain to obtain the required topology")
     end
     
     # TODO: Allow stretching in z by rotating the underlying data in order to 
@@ -208,17 +213,16 @@ function validate_configuration(global_grid, local_grid)
         
     # We don't support distributing anything in z.
     Rz = architecture(local_grid).ranks[3]
-    Rz == 1 || throw(ArgumentError("Non-singleton ranks in the vertical are not supported by DistributedFFTBasedPoissonSolver."))
+    Rz == 1 || throw("Non-singleton ranks in the vertical are not supported by DistributedFFTBasedPoissonSolver.")
     
     # Limitation of the current implementation (see the docstring)
     if global_grid.Nz % architecture(local_grid).ranks[2] != 0
-        throw(ArgumentError("The number of ranks in the y direction must divide Nz. See the docstring for more information."))
+        throw("The number of ranks in the y direction must divide Nz. See the docstring for more information.")
     end
 
     if global_grid.Ny % architecture(local_grid).ranks[1] != 0
-        throw(ArgumentError("The number of ranks in the x direction must divide Ny. See the docstring for more information."))
+        throw("The number of ranks in the x direction must divide Ny. See the docstring for more information.")
     end
 
     return nothing
 end
-

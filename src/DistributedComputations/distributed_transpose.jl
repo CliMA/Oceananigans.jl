@@ -34,15 +34,15 @@ end
     @inbounds xybuff.send[j + Ny * (k-1 + Nz * (i-1))] = xfield[i, j, k]
 end
 
-# packing a y buffer for communication with a x-local direction
-@kernel function _pack_buffer_yx!(xybuff, yfield, N) # y -> x
+# packing a y buffer for communication with a x-local direction (y -> x communication)
+@kernel function _pack_buffer_yx!(xybuff, yfield, N) 
     i, j, k = @index(Global, NTuple)
     Nx, _, Nz = N
     @inbounds xybuff.send[i + Nx * (k-1 + Nz * (j-1))] = yfield[i, j, k]
 end
 
-# packing a y buffer for communication with a z-local direction
-@kernel function _pack_buffer_yz!(xybuff, yfield, N) # y -> z
+# packing a y buffer for communication with a z-local direction (y -> z communication)
+@kernel function _pack_buffer_yz!(xybuff, yfield, N) 
     i, j, k = @index(Global, NTuple)
     Nx, _, Nz = N
     @inbounds xybuff.send[k + Nz * (i-1 + Nx * (j-1))] = yfield[i, j, k]
@@ -137,7 +137,7 @@ for (from, to, buff) in zip([:y, :z, :y, :x], [:z, :y, :x, :y], [:yz, :yz, :xy, 
            We need to synchronize the GPU afterwards before any communication can take place. The packing is
            done in the `$($pack_buffer_name)` function.
 
-        2. The one-dimensional is communicated to all the cores using an inplace `Alltoallv!` MPI
+        2. The one-dimensional buffer is communicated to all the cores using an in-place `Alltoallv!` MPI
            routine. From the [MPI.jl documentation]():
 
            Every process divides the Buffer into `Comm_size(comm)` chunks of equal size,
