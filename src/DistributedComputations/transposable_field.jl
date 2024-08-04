@@ -91,8 +91,8 @@ function TransposableField(field_in, FT = eltype(field_in); with_halos = false)
     yzrank = MPI.Comm_rank(yzcomm)
     xyrank = MPI.Comm_rank(xycomm)
 
-    yzcounts[yzrank + 1] = Ny[1] * Nz[2] * Ny[3]
-    xycounts[xyrank + 1] = Ny[1] * Nx[2] * Nx[3]
+    yzcounts[yzrank + 1] = yN[1] * zN[2] * yN[3]
+    xycounts[xyrank + 1] = yN[1] * xN[2] * xN[3]
 
     MPI.Allreduce!(yzcounts, +, yzcomm)
     MPI.Allreduce!(xycounts, +, xycomm)
