@@ -188,20 +188,20 @@ end
 
 # TODO: bring up to speed the PCG to remove this error
 validate_global_grid(global_grid) = 
-        throw(ArgumentError("Grids other than the RectilinearGrid are not supported in the Distributed NonhydrostaticModels"))
+        throw("Grids other than the RectilinearGrid are not supported in the Distributed NonhydrostaticModels")
 
 function validate_global_grid(global_grid::RectilinearGrid) 
     TX, TY, TZ = topology(global_grid)
 
     if (TY == Bounded && TZ == Periodic) || (TX == Bounded && TY == Periodic) || (TX == Bounded && TZ == Periodic)
-        throw(ArgumentError("NonhydrostaticModels on Distributed grids do not support topology ($TX, $TY, $TZ) at the moment.
+        throw("NonhydrostaticModels on Distributed grids do not support topology ($TX, $TY, $TZ) at the moment.
                              TZ Periodic requires also TY and TX to be Periodic,
                              while TY Periodic requires also TX to be Periodic.
-                             Please rotate the domain to obtain the required topology"))
+                             Please rotate the domain to obtain the required topology")
     end
     
     if !(global_grid isa XYZRegularRG) 
-        throw(ArgumentError("Stretched directions are not supported with distributed grids at the moment."))
+        throw("Stretched directions are not supported with distributed grids at the moment.")
     end
 
     return nothing
@@ -211,15 +211,15 @@ function validate_configuration(global_grid, local_grid)
         
     # We don't support distributing anything in z.
     Rz = architecture(local_grid).ranks[3]
-    Rz == 1 || throw(ArgumentError("Non-singleton ranks in the vertical are not supported by DistributedFFTBasedPoissonSolver."))
+    Rz == 1 || throw("Non-singleton ranks in the vertical are not supported by DistributedFFTBasedPoissonSolver.")
     
     # Limitation of the current implementation (see the docstring)
     if global_grid.Nz % architecture(local_grid).ranks[2] != 0
-        throw(ArgumentError("The number of ranks in the y direction must divide Nz. See the docstring for more information."))
+        throw("The number of ranks in the y direction must divide Nz. See the docstring for more information.")
     end
 
     if global_grid.Ny % architecture(local_grid).ranks[1] != 0
-        throw(ArgumentError("The number of ranks in the x direction must divide Ny. See the docstring for more information."))
+        throw("The number of ranks in the x direction must divide Ny. See the docstring for more information.")
     end
 
     return nothing
