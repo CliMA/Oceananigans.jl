@@ -34,15 +34,15 @@ end
     @inbounds xybuff.send[j + Ny * (k-1 + Nz * (i-1))] = xfield[i, j, k]
 end
 
-# packing a y buffer for communication with a x-local direction
-@kernel function _pack_buffer_yx!(xybuff, yfield, N) # y -> x
+# packing a y buffer for communication with a x-local direction (y -> x communication)
+@kernel function _pack_buffer_yx!(xybuff, yfield, N) 
     i, j, k = @index(Global, NTuple)
     Nx, _, Nz = N
     @inbounds xybuff.send[i + Nx * (k-1 + Nz * (j-1))] = yfield[i, j, k]
 end
 
-# packing a y buffer for communication with a z-local direction
-@kernel function _pack_buffer_yz!(xybuff, yfield, N) # y -> z
+# packing a y buffer for communication with a z-local direction (y -> z communication)
+@kernel function _pack_buffer_yz!(xybuff, yfield, N) 
     i, j, k = @index(Global, NTuple)
     Nx, _, Nz = N
     @inbounds xybuff.send[k + Nz * (i-1 + Nx * (j-1))] = yfield[i, j, k]

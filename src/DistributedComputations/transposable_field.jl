@@ -28,8 +28,8 @@ for distributed transpositions.
 function TransposableField(field_in, FT = eltype(field_in); with_halos = false)
 
     zgrid = field_in.grid # We support only a 2D partition in X and Y
-    ygrid = twin_grid(zgrid; free_dimension = :y)
-    xgrid = twin_grid(zgrid; free_dimension = :x)
+    ygrid = twin_grid(zgrid; local_direction = :y)
+    xgrid = twin_grid(zgrid; local_direction = :x)
 
     Nx = size(xgrid)
     Ny = size(ygrid)
@@ -85,17 +85,17 @@ end
 #####
 
 """
-    twin_grid(grid::DistributedGrid; free_dimension = :y)
+    twin_grid(grid::DistributedGrid; local_direction = :y)
 
 Construct a "twin" grid based on the provided distributed `grid` object.
 The twin grid is a grid that discretizes the same domain of the original grid, just with a
-different partitioning strategy  whereas the "free dimension" (i.e. the non-partitioned dimension)
-is specified by the keyword argument `free_dimension`. This could be either `:x` or `:y`.
+different partitioning strategy whereas the "local dimension" (i.e. the non-partitioned dimension)
+is specified by the keyword argument `local_direction`. This could be either `:x` or `:y`.
 
-Note that `free_dimension = :z` will return the original grid as we do not allow partitioning in
+Note that `local_direction = :z` will return the original grid as we do not allow partitioning in
 the `z` direction.
 """
-function twin_grid(grid::DistributedGrid; free_dimension = :y)
+function twin_grid(grid::DistributedGrid; local_direction = :y)
 
     arch = grid.architecture
     ri, rj, rk = arch.local_index
@@ -123,7 +123,7 @@ function twin_grid(grid::DistributedGrid; free_dimension = :y)
 
     FT = eltype(grid)
 
-    if free_dimension == :y
+    if local_direction == :y
         ranks = R[1], 1, R[2]
 
         nnx, nny, nnz = nx, Ny, nz ÷ ranks[3]
@@ -131,7 +131,7 @@ function twin_grid(grid::DistributedGrid; free_dimension = :y)
         if (nnz * ranks[3] < Nz) && (rj == ranks[3])
             nnz = Nz - nnz * (ranks[3] - 1)
         end
-    elseif free_dimension == :x
+    elseif local_direction == :x
         ranks = 1, R[1], R[2]
 
         nnx, nny, nnz = Nx, Ny ÷ ranks[2], nz ÷ ranks[3]
@@ -139,7 +139,7 @@ function twin_grid(grid::DistributedGrid; free_dimension = :y)
         if (nny * ranks[2] < Ny) && (ri == ranks[2])
             nny = Ny - nny * (ranks[2] - 1)
         end
-    elseif free_dimension == :z
+    elseif local_direction == :z
         #TODO: a warning here?
         return grid
     end
