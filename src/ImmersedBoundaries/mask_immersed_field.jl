@@ -10,14 +10,6 @@ mask_immersed_field!(field, grid, loc, value) = nothing
 mask_immersed_field!(field::Field, value=zero(eltype(field.grid))) =
     mask_immersed_field!(field, field.grid, location(field), value)
 
-function mask_immersed_field!(sumofarrays::SumOfArrays, value=zero(eltype(sumofarrays.arrays[1])))
-    for field in sumofarrays.arrays
-        mask_immersed_field!(field, value)
-    end
-    
-    return nothing
-end
-
 """
     mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value)
 
@@ -39,14 +31,6 @@ mask_immersed_field_xy!(field,     args...; kw...) = nothing
 mask_immersed_field_xy!(::Nothing, args...; kw...) = nothing
 mask_immersed_field_xy!(field, value=zero(eltype(field.grid)); k, mask = peripheral_node) =
     mask_immersed_field_xy!(field, field.grid, location(field), value; k, mask)
-
-function mask_immersed_field_xy!(sumofarrays::SumOfArrays, value=zero(eltype(sumofarrays.arrays[1])))
-    for field in sumofarrays.arrays
-        mask_immersed_field_xy!(field, value)
-    end
-
-    return nothing
-end
 
 """
     mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, loc, value; k, mask=peripheral_node)

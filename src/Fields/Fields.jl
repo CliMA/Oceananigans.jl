@@ -54,5 +54,6 @@ end
 end
 
 include("set!.jl")
+include("sum_of_fields.jl")
 
 end # module
