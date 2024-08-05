@@ -150,7 +150,8 @@ end
     end
 
     @testset "Setting ShallowWaterModel fields" begin
-    @info "  Testing setting shallow water model fields..."
+        @info "  Testing setting shallow water model fields..."
+
         for arch in archs, FT in float_types
             N = (4,   4)
             L = (2π, 3π)
