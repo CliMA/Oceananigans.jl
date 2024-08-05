@@ -67,7 +67,7 @@ grid = RectilinearGrid(architecture,
 
 For the above grid, the ``y``-dimension is marked `Flat` by specifying `topology = (Periodic, Flat, Bounded)`.
 This means that nothing varies in ``y``; derivatives in ``y`` are 0.
-This also means that the kwarg that specifies the `y`-domains may be omitted, and that
+This also means that the keyword argument (or short, kwarg) that specifies the ``y``-domains may be omitted, and that
 the `size` has only two elements rather than 3 as in the first example.
 Notice that in the stretched cell interfaces specified by `z_interfaces`, the number of
 vertical cell interfaces is `Nz + 1 = length(z_interfaces) = 5`, where `Nz = 4` is the number
