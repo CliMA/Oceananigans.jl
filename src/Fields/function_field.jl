@@ -26,11 +26,6 @@ struct FunctionField{LX, LY, LZ, C, P, F, G, T} <: AbstractField{LX, LY, LZ, G, 
         return new{LX, LY, LZ, C, P, F, G, FT}(func, grid, clock, parameters)
     end
 
-    @doc """
-        FunctionField{LX, LY, LZ}(func::FunctionField, grid; clock) where {LX, LY, LZ}
-
-    Adds `clock` to an existing `FunctionField` and relocates it to `(LX, LY, LZ)` on `grid`.
-    """
     @inline function FunctionField{LX, LY, LZ}(f::FunctionField,
                                                grid::G;
                                                clock::C=nothing) where {LX, LY, LZ, G, C}
@@ -45,12 +40,7 @@ end
 fieldify_function(L, a, grid) = a
 fieldify_function(L, a::Function, grid) = FunctionField(L, a, grid)
 
-"""
-    FunctionField(L::Tuple, func, grid)
-
-Returns a stationary `FunctionField` on `grid` and at location `L = (LX, LY, LZ)`,
-where `func` is callable with signature `func(x, y, z)`.
-"""
+# Convenience form with `L` as positional argument.
 @inline FunctionField(L::Tuple, func, grid) = FunctionField{L[1], L[2], L[3]}(func, grid)
 
 @inline indices(::FunctionField) = (:, :, :)
