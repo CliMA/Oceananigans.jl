@@ -38,9 +38,10 @@ This simple grid
 * Has an `x` dimension that spans from `x=0`, to `x=64`. And `y` spans `y=0` to `y=32`, and `z` spans `z=0` to `z=8`.
 * Has cells that are all the same size, dividing the ``16 \times 8 \times 4`` box into ``4 \times 4 \times 2`` cells. Note that length units are whatever is used to construct the grid, so it's up to the user to make sure that all inputs use consistent units.
 
-For a second example, we illustrate the construction of a grid on the _GPU_ (for this to work, a GPU has
-to be available and `CUDA.jl` must be working --- for more about that, see the `CUDA.jl` documentation).
-This grid is two-dimensional in ``x, z`` (so it's missing the `y`-dimension), and has variably-spaced
+Next we illustrate the construction of a grid on the _GPU_ (for this to work, a GPU has
+to be available and `CUDA.jl` must be working --- for more about that, see the
+[`CUDA.jl` documentation](https://cuda.juliagpu.org/stable/)).
+The grid is two-dimensional in ``x, z`` (it's missing the `y`-dimension), and has variably-spaced
 cell interfaces in the `z`-direction,
 
 ```@setup grids_gpu
@@ -64,20 +65,20 @@ grid = RectilinearGrid(architecture,
 └── Bounded  z ∈ [0.0, 10.0]      variably spaced with min(Δz)=1.0, max(Δz)=4.0
 ```
 
-Using `topology`, the `y`-dimension has been marked `Flat`, which means that fields do not vary in `y`.
+The `y`-dimension is marked `Flat` by writing `topology = (Periodic, Flat, Bounded)`.
+This means that nothing varies in `y`; derivatives in `y` are 0.
 This also means that the kwarg that specifies the `y`-domains may be omitted, and that
-the `size` is either a number (as in the example above) or a 2-`Tuple`.
-Regarding the stretched cell interfaces specified by `z_interfaces`, notice that the number of
+the `size` has only two elements rather than 3 as in the first example.
+Notice that in the stretched cell interfaces specified by `z_interfaces`, the number of
 vertical cell interfaces is `Nz + 1 = length(z_interfaces) = 5`, where `Nz = 4` is the number
 of cells in the vertical.
 
 ## The nuts and bolts of building a grid
 
-Setting up a grid is the first step towards running a simulation.
-To set up a grid, we have to specify
+These examples illustrate how the definition of any grid requires
 
 * The machine architecture, or whether data is stored on the CPU, GPU, or distributed across multiple devices or nodes.
-* The domain geometry. Domains can take a variety of shapes, including
+* Information about the domain geometry. Domains can take a variety of shapes, including
     - lines (one-dimensional),
     - rectangles (two-dimensional),
     - boxes (three-dimensional),
@@ -86,10 +87,10 @@ To set up a grid, we have to specify
     - [`Periodic`](@ref), which means that the dimension circles back onto itself: information leaving the left side of the domain re-enters on the right.
     - [`Bounded`](@ref), which means that the two sides of the dimension are either impenetrable (solid walls), or "open", representing a specified external state.
     - [`Flat`](@ref), which means nothing can vary in that dimension, reducing the overall dimensionality of the grid.
-* The number of cells that divide each dimension. This determines the spatial resolution, or the sizes of the finite volume cells that divide the domain. The spatial resolution may be constant, as in the simple example above, or it can vary across each dimension.
+* Defining the number of cells that divide each dimension. The number of cells, with or without explicit specification of the cell interfaces, determines the spatial resolution of the grid.
 * The representation of floating point numbers, which can be single-precision (`Float32`) or double precision (`Float64`).
 
-Next let's dive into each of these options in more detail.
+Let's dive into each of these options in more detail.
 
 ### Specifying the machine architecture
 
@@ -639,4 +640,7 @@ grid = 16×48×16 RectilinearGrid{Float64, FullyConnected, Periodic, Bounded} on
 
 Now we have three local grids, each with size `(16, 48, 16)`.
 
-### Partitioning a distributed grid
+More topics not yet covered in this tutorial:
+* Specifying an explicit partition for a distributed grid
+* Distributing a grid across GPUs
+
