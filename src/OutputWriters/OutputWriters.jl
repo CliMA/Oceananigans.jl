@@ -21,6 +21,9 @@ using OffsetArrays
 
 import Oceananigans: write_output!, initialize!
 
+const c = Center()
+const f = Face()
+
 Base.open(ow::AbstractOutputWriter) = nothing
 Base.close(ow::AbstractOutputWriter) = nothing
 

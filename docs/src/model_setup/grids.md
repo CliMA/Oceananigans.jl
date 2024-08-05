@@ -75,8 +75,8 @@ In that case, the `size` and `extent` are 2-tuples, e.g.,
 ```jldoctest
 julia> grid = RectilinearGrid(topology = (Periodic, Periodic, Flat), size = (32, 32), extent = (10, 20))
 32×32×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
-├── Periodic x ∈ [0.0, 10.0)      regularly spaced with Δx=0.3125
-├── Periodic y ∈ [0.0, 20.0)      regularly spaced with Δy=0.625
+├── Periodic x ∈ [0.0, 10.0) regularly spaced with Δx=0.3125
+├── Periodic y ∈ [0.0, 20.0) regularly spaced with Δy=0.625
 └── Flat z
 ```
 
