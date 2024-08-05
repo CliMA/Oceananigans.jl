@@ -40,7 +40,7 @@ end
 fieldify_function(L, a, grid) = a
 fieldify_function(L, a::Function, grid) = FunctionField(L, a, grid)
 
-# Convenience form with `L` as positional argument.
+# This is a convenience form with `L` as positional argument.
 @inline FunctionField(L::Tuple, func, grid) = FunctionField{L[1], L[2], L[3]}(func, grid)
 
 @inline indices(::FunctionField) = (:, :, :)
