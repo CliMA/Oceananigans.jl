@@ -7,7 +7,8 @@ end
 ```
 
 Oceananigans simulates the dynamics of ocean-flavored fluids by solving differential equations that conserve momentum, mass, and energy on a mesh of finite volumes or "cells".
-A "grid" encodes information about this mesh of finite volumes -- including the domain geometry, the number of cells, and the machine architecture and number representation that is used to store discrete data on the finite volume mesh.
+The first decision we make when setting up a simulation is: on what _grid_ are we going to run our simulation?
+The "grid" encodes fundamental information: the shape of the domain we're simulating in, the way that domain is divided into a mesh of finite volumes, the machine architecture (CPU, GPU, lots of GPUs), and the precision of the numbers we would like to use to represent ocean-flavored fluid variables (double precision or single precision).
 
 One of the simplest grids we can make divides a three-dimensional rectangular domain -- or "a box" --- into evenly-spaced cells.
 To create such a grid on the CPU (the machine that we typically run julia on, basically), we write
@@ -29,15 +30,15 @@ grid = RectilinearGrid(architecture,
 └── Bounded  z ∈ [0.0, 8.0]  regularly spaced with Δz=2.0
 ```
 
-There's a few notable features of this simple grid:
+This simple grid
 
-* We used the CPU. To make a grid on the GPU --- which means that computations on the grid will be conducted using a GPU connected to our CPU, if one is available --- we write `architecture = GPU()`.
-* The domain of the grid is "periodic" in ``x, y``, but bounded in ``z``. More on what that means, exactly, in a bit.
-* The grid has `16` cells in `x`, `8` cells in `y`, and `4` cells in `z`. That means there are ``16 \times 8 \times 4 = 512`` cells in all.
-* The `x` dimension spans from `x=0`, to `x=64`, `y` spans `y=0` to `y=32`, and `z` spans `z=0` to `z=8`.
-* The cells that divide up the ``16 \times 8 \times 4`` box, which are all the same size, have a dimension ``4 \times 4 \times 2``. Note that length units are whatever is used to construct the grid, so it's up to the user to make sure that all inputs use consistent units.
+* Uses the CPU. To make a grid on the GPU --- which means that computations on the grid will be conducted using a GPU connected to our CPU, if one is available --- we write `architecture = GPU()`.
+* Has a domain that's "periodic" in ``x, y``, but bounded in ``z``. More on what that means, exactly, in a bit.
+* Has `16` cells in `x`, `8` cells in `y`, and `4` cells in `z`. That means there are ``16 \times 8 \times 4 = 512`` cells in all.
+* Has an `x` dimension that spans from `x=0`, to `x=64`. And `y` spans `y=0` to `y=32`, and `z` spans `z=0` to `z=8`.
+* Has cells that are all the same size, dividing the ``16 \times 8 \times 4`` box into ``4 \times 4 \times 2`` cells. Note that length units are whatever is used to construct the grid, so it's up to the user to make sure that all inputs use consistent units.
 
-## The basic purpose of the grid
+## What grids are good for
 
 Setting up a grid is the first step towards running a simulation.
 To set up a grid, we have to specify
@@ -78,42 +79,88 @@ grid = RectilinearGrid(architecture,
 └── Bounded  z ∈ [0.0, 10.0]      variably spaced with min(Δz)=1.0, max(Δz)=4.0
 ```
 
+The `y`-dimension has been marked as `Flat`, which means that fields do not vary in `y`.
+This also means that the kwarg that specifies the `y`-domains may be omitted, and that
+the `size` is either a number (as in the example above) or a 2-`Tuple`.
+Regarding the stretched cell interfaces specified by `z_interfaces`, notice that the number of
+vertical cell interfaces is `Nz + 1 = length(z_interfaces) = 5`, where `Nz = 4` is the number
+of cells in the vertical.
+
 ## Types of grids
 
 The types of grids that we currently support are:
 
-1. [`RectilinearGrid`](@ref), which supports lines, rectangles and boxes, and
-2. [`LatitudeLongitudeGrid`](@ref), which supports sectors of thin spherical shells whose cells are bounded by lines of constant latitude and longitude, and
-3. [`OrthogonalSphericalShellGrid`](@ref), which supports sectors of thin spherical shells divided into finite volumes whose intersections are orthogonal but otherwise arbitrary.
+1. [`RectilinearGrid`](@ref), which can be fashioned into lines, rectangles and boxes,
+2. [`LatitudeLongitudeGrid`](@ref), which are sectors of thin spherical shells, with cells bounded by lines of constant latitude and longitude,
+3. [`OrthogonalSphericalShellGrid`](@ref), which are sectors of thin spherical shells divided with mesh lines that intersect at right angles (thus, orthogonal) but otherwise arbitrary.
 
 In general, `OrthogonalSphericalShellGrids` are constructed by a recipe or conformal map.
 For example, a recipe that implements the ["tripolar" grid](https://www.sciencedirect.com/science/article/abs/pii/S0021999196901369)
 is implemented in the package
-[`OrthogonalSphericalShellGrids.jl`](https://github.com/CliMA/OrthogonalSphericalShellGrids.jl)
+[`OrthogonalSphericalShellGrids.jl`](https://github.com/CliMA/OrthogonalSphericalShellGrids.jl).
 
-Complex domains are represented with [`ImmersedBoundaryGrid`](@ref), which combines one of the above underlying grids with a type of immersed boundary. The immersed boundaries we support currently are
+Irregular or "complex" domains are represented with [`ImmersedBoundaryGrid`](@ref), which combines one of the above underlying grids with a type of immersed boundary. The immersed boundaries we support currently are
 
 1. [`GridFittedBottom`](@ref), which fits a one- or two-dimensional bottom height to the underlying grid, so the active part of the domain is above the bottom height.
 2. [`PartialCellBottom`](@ref), which is similar to [`GridFittedBottom`](@ref), except that the height of the bottommost cell is changed to conform to bottom height, limited to prevent the bottom cells from becoming too thin.
 3. [`GridFittedBoundary`](@ref), which fits a three-dimensional mask to the grid.
 
-Let's walk through each of the arguments to `RectilinearGrid`, some of which are also shared with `LatitudeLongitudeGrid`.
+To build an `ImmersedBoundaryGrid`, we start by building one of the three underlying grids, and then embedding a boundary into that underlying grid.
+We'll start start by walking through each of the arguments to `RectilinearGrid`, some of which are also shared with `LatitudeLongitudeGrid`.
 
-### The architecture
+### The machine architecture
 
 The first argument, `CPU()`, specifies the "architecture" of the simulation.
 By writing `architecture = GPU()`, any fields constructed on `grid` will store their data on
 an Nvidia [`GPU`](@ref), if one is available. By default, the grid will be constructed on
-the [`CPU`](@ref) if this argument is omitted (as we do in the next example).
-(TODO: also document [`Distributed`](@ref)).
+the [`CPU`](@ref) if this argument is omitted.
+So, for example,
+
+```jldoctest grids
+grid     = RectilinearGrid(size=3, z=(0, 1), topology=(Flat, Flat, Bounded))
+cpu_grid = RectilinearGrid(CPU(), size=3, z=(0, 1), topology=(Flat, Flat, Bounded))
+
+grid == cpu_grid
+
+# output
+true
+```
+
+To use more than one CPU, we use the `Distributed` architecture,
+
+```jldoctest grids
+child_architecture = CPU()
+architecture = Distributed(child_architecture)
+
+# output
+[ Info: MPI has not been initialized, so we are calling MPI.Init().
+Distributed{CPU} across 1 rank:
+├── local_rank: 0 of 0-0
+└── local_index: [1, 1, 1]
+```
+
+which allows us to distributed computations across either CPUs or GPUs.
+In this case, we didn't launch `julia` on multiple nodes using [MPI](https://en.wikipedia.org/wiki/Message_Passing_Interface),
+so we're only "distributed" across 1 node.
+For more, see [Distributed grids](@ref).
 
 ### The topology
 
-The first keyword argument specifies the `topology` os the grid, which determines if the grid is
-one-, two-, or three-dimensional (the current case), and additionally the nature of each dimension.
-The `topology` of the grid is always a `Tuple` with three elements (a 3-`Tuple`).
+The keyword argument `topology` determines if the grid is
+one-, two-, or three-dimensional (the current case), and additionally specifies the nature of each dimension.
+`topology` is always a `Tuple` with three elements (a 3-`Tuple`).
 For `RectilinearGrid`, the three elements correspond to ``(x, y, z)`` and indicate whether the respective direction is `Periodic`, `Bounded`, or `Flat`.
-So `topology = (Periodic, Periodic, Bounded)` is periodic in ``x`` and ``y``, and bounded in ``z``.
+A few more examples are,
+
+```julia
+topology = (Periodic, Periodic, Periodic) # triply periodic
+topology = (Periodic, Periodic, Bounded)  # periodic in x, y, bounded in z
+topology = (Periodic, Bounded, Bounded)   # periodic in x, but bounded in y, z (a "channel")
+topology = (Bounded, Bounded, Bounded)    # bounded in x, y, z (a closed box)
+topology = (Periodic, Periodic, Flat)     # two-dimensional, doubly-periodic in x, y (a torus)
+topology = (Periodic, Flat, Flat)         # one-dimensional, periodic in x (a line)
+topology = (Flat, Flat, Bounded)          # one-dimensional and bounded in z (a single column)
+```
 
 ### The size
 
@@ -137,56 +184,27 @@ The next example illustrates how to specify cells of varying with using a vector
 ### The halo size
 
 An additional keyword argument `halo` allows us to set the number of "halo cells" that surround the core "interior" grid.
-In the first example above, we did not provide `halo`, so that it took its default value of `halo = (3, 3, 3)`.
-Note how the output indicates that the grid has a `3×3×3 halo`.
-
-## A single column `RectilinearGrid` with variably-spaced vertical interfaces
-
-For our next example, we build a grid representing a "single column" in the z-direction with unevenly spaced cells,
-
+In the first few examples, we did not provide `halo`, so that it took its default value of `halo = (3, 3, 3)`.
+But we can change the halo size, for example,
 
 ```jldoctest grids
-z_faces = [0, 4, 6, 7, 8]
-grid = RectilinearGrid(size=4, z=z_faces, topology=(Flat, Flat, Bounded))
+big_halo_grid = RectilinearGrid(topology = (Periodic, Periodic, Flat),
+                                size = (32, 16),
+                                halo = (7, 7),
+                                x = (0, 2π),
+                                y = (0, π))
 
 # output
-1×1×4 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
-├── Flat x
-├── Flat y
-└── Bounded  z ∈ [0.0, 8.0] variably spaced with min(Δz)=1.0, max(Δz)=4.0
-```
-
-The `x` and `y` dimensions have been marked as `Flat`, which means that fields do not vary in those
-directions. This also means that the kwargs which specify the `x` and `y` domains may be omitted, and that
-the `size` is either a number (as in the example above) or a 1-`Tuple`.
-Regarding the stretched cell interfaces specified by `z_interfaces`, notice that the number of
-vertical cell interfaces is `Nz + 1 = length(z_interfaces) = 5`, where `Nz = 4` is the number
-of cells in the vertical.
-
-## Two-dimensional `RectilinearGrid` in ``x, y`` with a wide halo region
-
-Next we build a two-dimensional, ``16 \times 8`` grid in ``x, y`` on the domain ``(0, 2π) \times (0, π)``.
-We additionally endow the grid with 7 halo points in ``x, y`` rather than 3,
-
-```jldoctest grids
-grid = RectilinearGrid(size = (16, 8),
-                       halo = (7, 7),
-                       x = (0, 2π),
-                       y = (0, π),
-                       topology = (Periodic, Periodic, Flat))
-
-# output
-16×8×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 7×7×0 halo
-├── Periodic x ∈ [0.0, 6.28319)   regularly spaced with Δx=0.392699
-├── Periodic y ∈ [0.0, 3.14159)   regularly spaced with Δy=0.392699
+32×16×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 7×7×0 halo
+├── Periodic x ∈ [-6.90805e-17, 6.28319) regularly spaced with Δx=0.19635
+├── Periodic y ∈ [-1.07194e-16, 3.14159) regularly spaced with Δy=0.19635
 └── Flat z
 ```
 
-Here we have omitted the `z` keyword argument.
-Both `size` and `halo` are 2-`Tuple`s, rather than the 3-`Tuple` required for a three-dimensional grid,
-or the single number that we use for a one-dimensional grid.
+Note that both `size` and `halo` are 2-`Tuple`s, rather than the 3-`Tuple` that would be required for a three-dimensional grid,
+or the single number that would be used for a one-dimensional grid.
 
-## Three-dimensional `RectilinearGrid` that uses functions to specify variable interface spacings
+## Complicated example: a three-dimensional `RectilinearGrid` that uses functions to specify variable interface spacings
 
 Next we build a grid that is both `Bounded` and stretched in both the `y` and `z` directions.
 The purpose of the stretching is to increase grid resolution near the boundaries.
@@ -492,3 +510,4 @@ to extensive testing and validation.
 
 For more examples see [`RectilinearGrid`](@ref) and [`LatitudeLongitudeGrid`](@ref).
 
+## Distributed grids
