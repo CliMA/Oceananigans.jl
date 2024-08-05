@@ -20,10 +20,10 @@ struct SumOfFields{N, LX, LY, LZ, G, T, F} <: AbstractField{LX, LY, LZ, G, T, 3}
         loc = location(first(fields))
 
         all(f.grid == grid for f in fields) || 
-            throw(ArgumentError("All `fields` must be on the same grid"))
+            throw(ArgumentError("All `fields` in `SumOfFields` must be on the same grid"))
 
         all(location(f) == loc for f in fields) || 
-            throw(ArgumentError("All `fields` must be on the same location"))
+            throw(ArgumentError("All `fields` in `SumOfFields` must be on the same location"))
 
         T = eltype(first(fields).data)
         F = typeof(fields)
