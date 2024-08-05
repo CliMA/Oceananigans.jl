@@ -138,7 +138,7 @@ for (from, to, buff) in zip([:y, :z, :y, :x], [:z, :y, :x, :y], [:yz, :yz, :xy, 
            done in the `$($pack_buffer_name)` function.
 
         2. The one-dimensional buffer is communicated to all the cores using an in-place `Alltoallv!` MPI
-           routine. From the [MPI.jl documentation]():
+           routine. From the [MPI.jl documentation](https://juliaparallel.org/MPI.jl/stable/reference/collective/):
 
            Every process divides the Buffer into `Comm_size(comm)` chunks of equal size,
            sending the j-th chunk to the process of rank j-1. Every process stores the data received from rank j-1 process
