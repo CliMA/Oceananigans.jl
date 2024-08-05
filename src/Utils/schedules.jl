@@ -18,8 +18,8 @@ schedule_aligned_time_step(schedule, clock, Δt) = Δt
 function initialize!(schedule::AbstractSchedule, model)
     schedule(model)
 
-    # `return true` indicates that the schedule
-    # "actuates" at initial call.
+    # the default behavior `return true` dictates that by default,
+    # schedules actuate at the initial call.
     return true
 end
 
@@ -47,17 +47,19 @@ on a `interval` of simulation time, as kept by `model.clock`.
 """
 TimeInterval(interval) = TimeInterval(convert(Float64, interval), 0.0, 0)
 
-function initialize!(schedule::TimeInterval, model)
-    schedule.first_actuation_time = model.clock.time
-    schedule(model)
+function initialize!(schedule::TimeInterval, first_actuation_time::Number)
+    schedule.first_actuation_time = first_actuation_time
+    schedule.actuations = 0
     return true
 end
+
+initialize!(schedule::TimeInterval, model) = initialize!(schedule, model.clock.time)
 
 function next_actuation_time(schedule::TimeInterval)
     t₀ = schedule.first_actuation_time
     N = schedule.actuations
     T = schedule.interval
-    return t₀ + N * T
+    return t₀ + (N + 1) * T
 end
 
 function (schedule::TimeInterval)(model)
@@ -67,9 +69,8 @@ function (schedule::TimeInterval)(model)
     if t >= t★
         if schedule.actuations < typemax(Int)
             schedule.actuations += 1
-        else
-            schedule.first_actuation_time = t★
-            schedule.actuations = 1
+        else # re-initialize the schedule to t★
+            initialize!(schedule, t★)
         end
         return true
     else
