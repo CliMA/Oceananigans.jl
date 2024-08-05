@@ -511,3 +511,11 @@ to extensive testing and validation.
 For more examples see [`RectilinearGrid`](@ref) and [`LatitudeLongitudeGrid`](@ref).
 
 ## Distributed grids
+
+```@setup distributed
+using Oceananigans
+```
+
+
+```julia
+```
