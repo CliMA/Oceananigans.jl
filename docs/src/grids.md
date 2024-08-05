@@ -512,10 +512,122 @@ For more examples see [`RectilinearGrid`](@ref) and [`LatitudeLongitudeGrid`](@r
 
 ## Distributed grids
 
-```@setup distributed
-using Oceananigans
+To run the next examples, we have to launch julia with MPI and things are a bit more involved.
+For best results, create [a new environment](https://pkgdocs.julialang.org/v1/environments/)
+in an empty folder, and then add both `Oceananigans.jl` and `MPI.jl` to the new environment.
+Pasting this snipped into the terminal should do the trick:
+
+```bash
+mkdir DistributedExamples
+cd DistributedExamples
+touch Project.toml
+julia --project -e 'using Pkg; Pkg.add("Oceananigans"); Pkg.add("MPI")'
 ```
 
+Next, copy-paste the following code into a script called `distributed_example.jl`:
 
 ```julia
+using Oceananigans
+using MPI
+MPI.Init()
+
+architecture = Distributed(CPU())
+on_rank_0 = MPI.Comm_rank(MPI.COMM_WORLD) == 0
+
+if on_rank_0
+    @show architecture
+end
 ```
+
+Next, run the script with
+
+```julia
+mpiexec -n 2 julia --project distributed_example.jl
+```
+
+This should produce
+
+```
+$ mpiexec -n 2 julia --project distributed_example.jl
+architecture = Distributed{CPU} across 2 = 2×1×1 ranks:
+├── local_rank: 0 of 0-1
+├── local_index: [1, 1, 1]
+└── connectivity: east=1 west=1
+```
+
+That's what it looks like to build a [`Distributed`](@ref) architecture.
+Notice we chose to display only if we're on rank 0 --- because otherwise, all the ranks print
+to the terminal at once, talking over each other, and things get messy. Also, we used the
+"default communicator" `MPI.COMM_WORLD` to determine whether we were on rank 0. This works
+because `Distributed` uses `communicator = MPI.COMM_WORLD` by default (and this should be
+changed only with great intention). For more about `Distributed`, check out the docstring,
+
+```@docs
+Distributed()
+```
+
+Next, let's try to build a distributed grid. Copy-paste this code into a new file
+called `distributed_grid_example.jl`,
+
+```julia
+using Oceananigans
+using MPI
+MPI.Init()
+
+architecture = Distributed(CPU())
+on_rank_0 = MPI.Comm_rank(MPI.COMM_WORLD) == 0
+
+grid = RectilinearGrid(architecture,
+                       size = (48, 48, 16),
+                       x = (0, 64),
+                       y = (0, 64),
+                       z = (0, 16),
+                       topology = (Periodic, Periodic, Bounded))
+
+if on_rank_0
+    @show grid
+end
+```
+
+and then run
+
+```bash
+mpirun -n 2 julia --project distributed_grid_example.jl
+```
+
+If everything is set up correctly (🤞), then you should see
+
+```
+$ mpiexec -n 2 julia --project distributed_grid_example.jl
+grid = 24×48×16 RectilinearGrid{Float64, FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
+├── FullyConnected x ∈ [0.0, 32.0) regularly spaced with Δx=1.33333
+├── Periodic y ∈ [0.0, 64.0)       regularly spaced with Δy=1.33333
+└── Bounded  z ∈ [0.0, 16.0]       regularly spaced with Δz=1.0
+```
+
+Now we're getting somewhere. Let's note a few things:
+
+* We built the grid with `size = (48, 48, 16)`, but ended up with a `24×48×16` grid. Why's that?
+  Well, `(48, 48, 16)` is the size of the _global_ grid, or in other words, the grid that we would get
+  if we stitched together all the grids from each rank. Here we have two ranks, so the _local_ grid
+  has half of the grid points of the total grid, which is by default partitioned in `x` --- yielding
+  a local size of `(24, 48, 16)`.
+
+* The global grid has topology `(Periodic, Periodic, Bounded)`, but the local grids have the
+  topology `(FullyConnected, Periodic, Bounded)`. That means that each local grid, which represents
+  half of the global grid and is partitioned in `x`, is not `Periodic` in `x`. Instead, the west
+  and east sides of each local grid (left and right in the `x`-direction) are "connected" to another rank.
+
+To drive these points home, let's run the same script, but using 3 processors instead of 2:
+
+```
+$ mpiexec -n 3 julia --project distributed_grid_example.jl
+grid = 16×48×16 RectilinearGrid{Float64, FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
+├── FullyConnected x ∈ [0.0, 21.3333) regularly spaced with Δx=1.33333
+├── Periodic y ∈ [0.0, 64.0)          regularly spaced with Δy=1.33333
+└── Bounded  z ∈ [0.0, 16.0]          regularly spaced with Δz=1.0
+```
+
+Now we have three local grids, each with size `(16, 48, 16)`.
+
+### Partitioning a distributed grid
