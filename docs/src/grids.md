@@ -574,11 +574,7 @@ Notice we chose to display only if we're on rank 0 --- because otherwise, all th
 to the terminal at once, talking over each other, and things get messy. Also, we used the
 "default communicator" `MPI.COMM_WORLD` to determine whether we were on rank 0. This works
 because `Distributed` uses `communicator = MPI.COMM_WORLD` by default (and this should be
-changed only with great intention). For more about `Distributed`, check out the docstring:
-
-```@docs; canonical=false
-Distributed
-```
+changed only with great intention). See the [`Distributed`](@ref) docstring for more information.
 
 Next, let's try to build a distributed grid. Copy-paste this code into a new file
 called `distributed_grid_example.jl`,

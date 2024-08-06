@@ -7,42 +7,121 @@ correspond to the average value of some quantity over some finite-sized volume.
 or expression involving other fields, and may cover only a portion of the total
 `indices` spanned by the grid.
 
-## "Staggered" grids and field locations
+## Staggered grids and field locations
 
-In order to grasp the syntax for constructing and manipulating `Field`s,
-we first have to introduce the concept of "staggered grids".
-As elaborated on extensively in [Grids and architectures](@ref), a grid represents
-a domain that is divided into finite volumes, with data stored on a specified architecture 
-and at a specified floating point precision.
+Oceananigans ocean-flavored fluids simulations rely fundamentally on
+"staggered grid" numerical methods.
 
-We refer to this mesh of finite volumes as the "primary" mesh.
-In addition to the primary grid, we define additional auxiliary meshe s
-whose cells are "staggered", or shifted by half a cell width relative to the primitive mesh.
-In a three-dimensional domain, there are ``2³ = 8`` total meshes -- 1 primary mesh, and 7 auxiliary "staggered" meshes.
-This system of staggered grids is commonly used in fluid dynamics and was [invented specifically for
-simulations of the atmosphere and ocean](https://en.wikipedia.org/wiki/Arakawa_grids).
-
-`Field`s therefore all have a "location", which actually refers to the underlying mesh.
-We refer to `Field`s whos finite volumes coincide with the primary mesh as "centered" or "located at cell centers".
-To build such `Fields`, we write
+[Recall](@ref) that grids represent a physical domain divided into finite volumes.
+For example, let's consider a horizontally-periodic, vertically-bounded grid of cells
+that divide up a ``1 \times 1 \times 1`` cube:
 
 ```jldoctest fields
 using Oceananigans
 
-grid = RectilinearGrid(size = (4, 4, 4),
-                       topology = (Periodic, Periodic, Bounded),
+grid = RectilinearGrid(topology = (Periodic, Periodic, Bounded),
+                       size = (4, 4, 4),
+                       halo = (1, 1, 1),
                        x = (0, 1),
                        y = (0, 1),
-                       z = (0, 1))
+                       z = [0, 0.1, 0.3, 0.6, 1])
 
+# output
+4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── Periodic x ∈ [0.0, 1.0) regularly spaced with Δx=0.25
+├── Periodic y ∈ [0.0, 1.0) regularly spaced with Δy=0.25
+└── Bounded  z ∈ [0.0, 1.0] variably spaced with min(Δz)=0.1, max(Δz)=0.4
+```
+
+The cubic domain is divided into a "primary mesh" of ``4 \times 4 \times 4 \times = 64`` cells,
+which are evenly distributed in ``x, y`` but variably-spaced ``z``.
+Now, in addition to the primary mesh, we also define a set of "staggered" grids whose cells are
+shifted by half a cell width relative to the primary mesh.
+In other words, the staggered grid cells have a "location" in each direction --- either `Center`,
+and therefore co-located with the primary mesh, or `Face` and located over the interfaces of the
+primary mesh.
+For example, the primary or `Center` cell spacings in ``z`` are
+
+```jldoctest fields
+zspacings(grid, Center())
+
+# output
+4-element view(OffsetArray(::Vector{Float64}, -2:7), 1:4) with eltype Float64:
+ 0.1
+ 0.19999999999999998
+ 0.3
+ 0.4
+```
+
+corresponding to cell interfaces located at `z = [0, 0.1, 0.3, 0.6, 1]`.
+But then for the grid which is staggered in `z` relative to the primary mesh,
+
+```jldoctest fields
+zspacings(grid, Face())
+
+# output
+5-element view(OffsetArray(::Vector{Float64}, -3:7), 1:5) with eltype Float64:
+ 0.1
+ 0.15000000000000002
+ 0.24999999999999994
+ 0.3500000000000001
+ 0.3999999999999999
+```
+
+The cells for the vertically staggered grid have different spacings than the primary mesh.
+That's because the _edges_ of the vertically-staggered mesh coincide with the _nodes_ (the cell centers)
+of the primary mesh. The nodes of the primary mesh are
+
+```jldoctest fields
+znodes(grid, Center(), with_halos=true)
+
+# output
+6-element OffsetArray(::Vector{Float64}, 0:5) with eltype Float64 with indices 0:5:
+ -0.05
+  0.05
+  0.2
+  0.44999999999999996
+  0.8
+  1.2
+```
+
+The center of the leftmost "halo cell" is `z = -0.05`, while the center of the first cell from the left is `z = 0.05`.
+This means that the width of the first cell on the vertically-staggered grid is `0.05 + 0.05 = 0.1` --- and so on.
+Finally, note that the nodes of the staggered mesh coincide with the cell interfaces of the primary mesh, so:
+
+
+```jldoctest fields
+znodes(grid, Center())
+
+# output
+5-element view(OffsetArray(::Vector{Float64}, -2:8), 1:5) with eltype Float64:
+ 0.0
+ 0.1
+ 0.3
+ 0.6
+ 1.0
+```
+
+In a three-dimensional domain, there are ``2³ = 8`` meshes -- 1 primary mesh, and 7 meshes that are
+staggered to varying degrees from the primary mesh.
+This system of staggered grids is commonly used in fluid dynamics and was [invented specifically for
+simulations of the atmosphere and ocean](https://en.wikipedia.org/wiki/Arakawa_grids).
+
+### Constructing Fields at specified locations
+
+Every `Field` is associated with either the primary mesh or one of the staggered meshes by
+it's three-dimensional "location".
+To build a fully-centered `Field`, for example, we write
+
+```jldoctest fields
 c = Field{Center, Center, Center}(grid)
 
 # output
 4×4×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 10×10×10 OffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
+└── data: 6×6×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:5, 0:5) with eltype Float64 with indices 0:5×0:5×0:5
     └── max=0.0, min=0.0, mean=0.0
 ```
 
@@ -55,68 +134,58 @@ c == CenterField(grid)
 true
 ```
 
-`CenterField`s are some of the most common `Field`s -- in fluid dynamics simulations, for example, tracer quantities like heat and salt are located at cell centers.
-Another common type of `Field` we encounter are those with finite volumes centered over the `x`-interfaces of the primary grid,
+Many fluid dynamical variables are located at cell centers --- for example, tracers like temperature and salinity.
+Another common type of `Field` we encounter have cells located over the `x`-interfaces of the primary grid,
 
 ```jldoctest fields
 u = Field{Face, Center, Center}(grid)
 
 # output
+4×4×4 Field{Face, Center, Center} on RectilinearGrid on CPU
+├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+└── data: 6×6×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:5, 0:5) with eltype Float64 with indices 0:5×0:5×0:5
+    └── max=0.0, min=0.0, mean=0.0
 ```
 
-which can also be constructed by writing `u = XFaceField(grid)`.
-The name `u` is suggestive, because within the Arakawa type C grid (or, 'C grid' for short) used by Oceananigans,
+which also goes by `u = XFaceField(grid)`.
+The name `u` is suggestive: in the Arakawa type-C grid ('C-grid' for short) used by Oceananigans,
 the `x`-component of the velocity field is stored at `Face, Center, Center`.
 
-Staggering means that the "position" of `CenterField` differs from `XFaceField`.
-For example, the center of the primary cells have `x`-coordinates
-
+The centers of the `u` cells are shifted to the left relative to the `c` cells:
 
 ```jldoctest fields
-xnodes(c)
+@show xnodes(c)
+@show xnodes(u)
+nothing # hide
 
 # output
-4-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, -2:7), 1:4) with eltype Float64:
- 0.125
- 0.375
- 0.625
- 0.875
+xnodes(c) = [0.125, 0.375, 0.625, 0.875]
+xnodes(u) = [0.0, 0.25, 0.5, 0.75]
 ```
 
-whereas the center of the `XFaceField` cells are located at
+Notice that the first `u`-node is at `x=0`, the left end of the grid, but the last `u`-node is at `x=0.75`.
+Because the `x`-direction is `Periodic`, the `XFaceField` `u` has 4 cells in `x` --- the cell just right of `x=0.75`
+is the same as the cell at `x=0`.
 
-```jldoctest fields
-xnodes(u)
-
-# output
-4-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, -2:7), 1:4) with eltype Float64:
- 0.0
- 0.25
- 0.5
- 0.75
-```
-
-Notice that the first node is at `x=0`, the left end of the grid.
-Because the `x`-direction is `Periodic`, however, the last node is `x=0.75` rather than the right end of the domain at `x=1`.
-This reflects the fact that `x=0` and `x=1` are the same location.
-
-In a `Bounded` direction, however, the left and right end points differ and are both included among the nodes.
-For example,
+Because the vertical direction is `Bounded`, however, vertically-staggered fields have more vertical cells
+than `CenterField`s:
 
 ```jldoctest fields
 w = Field{Center, Center, Face}(grid)
 
-znodes(w)
+@show znodes(c)
+@show znodes(w)
+nothing # hide
 
 # output
-5-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, -2:8), 1:5) with eltype Float64:
- 0.0
- 0.25
- 0.5
- 0.75
- 1.0
+znodes(c) = [0.05, 0.2, 0.44999999999999996, 0.8]
+znodes(w) = [0.0, 0.1, 0.3, 0.6, 1.0]
 ```
 
+`Field`s at `Center, Center, Face` are also called `ZFaceField`,
+and the vertical velocity is a `ZFaceField` on the C-grid.
 Let's visualize the situation:
 
 ```
@@ -144,6 +213,7 @@ hidespines!(ax)
 Legend(fig[0, 1], ax, nbanks=2, framevisible=false)
 
 current_figure() # hide
+```
 
 ## Setting `Field`s
 
@@ -323,4 +393,15 @@ u[1:4, 1, 1]
 c[:, 1, 1]
 
 # output
+10-element OffsetArray(::Vector{Float64}, -2:7) with eltype Float64 with indices -2:7:
+ 0.0
+ 0.0
+ 0.0
+ 1.0
+ 3.0
+ 5.0
+ 7.0
+ 0.0
+ 0.0
+ 0.0
 ```
