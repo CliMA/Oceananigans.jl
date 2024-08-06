@@ -406,12 +406,11 @@ display(fig); save("plot_stretched_grid.svg", fig); nothing # hide
 
 ![](plot_stretched_grid.svg)
 
+## Inspecting `LatitudeLongitudeGrid` cell spacings
 
 ```@setup latlon_nodes
 using Oceananigans
 ```
-
-## `LatitudeLongitudeGrid` spacings
 
 ```@example latlon_nodes
 grid = LatitudeLongitudeGrid(size = (1, 44),
