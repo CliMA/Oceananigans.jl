@@ -65,7 +65,7 @@ u = Field{Face, Center, Center}(grid)
 ```
 
 which can also be constructed by writing `u = XFaceField(grid)`.
-The name `u` is suggestive, because within the "C-grid" system used by Oceananigans,
+The name `u` is suggestive, because within the Arakawa type C grid (or, 'C grid' for short) used by Oceananigans,
 the `x`-component of the velocity field is stored at `Face, Center, Center`.
 
 Staggering means that the "position" of `CenterField` differs from `XFaceField`.
