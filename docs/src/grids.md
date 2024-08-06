@@ -95,7 +95,7 @@ Let's dive into each of these options in more detail.
 ### Specifying the machine architecture
 
 The positional argument `CPU()` or `GPU()`, specifies the "architecture" of the simulation.
-By writing `architecture = GPU()`, any fields constructed on `grid` will store their data on
+By using `architecture = GPU()`, any fields constructed on `grid` store their data on
 an Nvidia [`GPU`](@ref), if one is available. By default, the grid will be constructed on
 the [`CPU`](@ref) if this argument is omitted.
 So, for example,
