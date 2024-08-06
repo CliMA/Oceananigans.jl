@@ -143,12 +143,7 @@ hidespines!(ax)
 
 Legend(fig[0, 1], ax, nbanks=2, framevisible=false)
 
-display(fig)
-
-save("plot_staggered_nodes.svg", fig); nothing # hide
-```
-
-![](plot_staggered_nodes.svg)
+current_figure() # hide
 
 ## Setting `Field`s
 
