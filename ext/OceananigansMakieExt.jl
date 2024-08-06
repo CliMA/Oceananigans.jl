@@ -2,6 +2,8 @@ module OceananigansMakieExt
 
 using Oceananigans
 using Oceananigans.Architectures: on_architecture
+
+using MakieCore: AbstractPlot
 import MakieCore: convert_arguments
 
 function drop_singleton_indices(N)
@@ -12,7 +14,7 @@ function drop_singleton_indices(N)
     end
 end
 
-function convert_arguments(P::Type{<:AbstractPlot}, f::Field)
+function convert_arguments(pl::Type{<:AbstractPlot}, f::Field)
 
     # Deduce dimensionality
     Nx, Ny, Nz = size(f)
@@ -35,7 +37,7 @@ function convert_arguments(P::Type{<:AbstractPlot}, f::Field)
 
         ξ1 = fnodes[d1]
         ξ1_cpu = on_architecture(CPU(), ξ1)
-        return convert_arguments(ξ1_cpu, fi_cpu)
+        return convert_arguments(pl, ξ1_cpu, fi_cpu)
 
     elseif D == 2
 
@@ -45,7 +47,7 @@ function convert_arguments(P::Type{<:AbstractPlot}, f::Field)
         ξ1_cpu = on_architecture(CPU(), ξ1)
         ξ2_cpu = on_architecture(CPU(), ξ2)
 
-        return convert_arguments(ξ1_cpu, ξ2_cpu, fi_cpu)
+        return convert_arguments(pl, ξ1_cpu, ξ2_cpu, fi_cpu)
 
     elseif D == 3
         throw(ArgumentError("Cannot convert_arguments for a 3D field!"))
