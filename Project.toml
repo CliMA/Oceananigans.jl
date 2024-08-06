@@ -37,9 +37,11 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 
 [weakdeps]
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
+MakieCore = "20f20a25-4f0e-4fdf-b5d1-57303727442b"
 
 [extensions]
 OceananigansEnzymeExt = "Enzyme"
+OceananigansMakieExt = "MakieCore"
 
 [compat]
 Adapt = "3, 4"
@@ -59,6 +61,7 @@ JLD2 = "0.4"
 KernelAbstractions = "0.9.21"
 LinearAlgebra = "1.9"
 Logging = "1.9"
+MakieCore = "0.8"
 MPI = "0.16, 0.17, 0.18, 0.19, 0.20"
 NCDatasets = "0.12.10, 0.13.1, 0.14"
 OffsetArrays = "1.4"
