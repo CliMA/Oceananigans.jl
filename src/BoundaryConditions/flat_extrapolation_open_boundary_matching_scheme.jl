@@ -12,7 +12,7 @@ f′(xᵢ) ≈ f′(xᵢ₋₁) + f′′(xᵢ₋₁)(xᵢ₋₁ - xᵢ) + O(Δx
 ```
 where ``Δx=xᵢ₋₁ - xᵢ`` (for simplicity, we will also assume the spacing is constant at
 all ``i`` for now).
-We can substitute the gradinet at some point ``j`` (``f′(xⱼ)``) with the central 
+We can substitute the gradient at some point ``j`` (``f′(xⱼ)``) with the central 
 difference approximation:
 ```math
 f′(xⱼ) ≈ (f(xⱼ₊₁) - f(xⱼ₋₁)) / 2Δx,
@@ -54,7 +54,7 @@ end
 
     Δϕ = (ϕₑₓₜ - ϕ) * Δt̄
     not_relaxing = isnothing(bc.condition) | !isfinite(clock.last_stage_Δt)
-    Δϕ =  ifelse(not_relaxing, zero(ϕ), Δc)
+    Δϕ =  ifelse(not_relaxing, zero(ϕ), Δϕ)
 
     return ϕ + Δϕ
 end
