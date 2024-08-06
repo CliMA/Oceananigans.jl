@@ -100,7 +100,7 @@ Notice that the first node is at `x=0`, the left end of the grid.
 Because the `x`-direction is `Periodic`, however, the last node is `x=0.75` rather than the right end of the domain at `x=1`.
 This reflects the fact that `x=0` and `x=1` are the same location.
 
-In a `Bounded` direction, however, the left and right end points differ and are included among the nodes.
+In a `Bounded` direction, however, the left and right end points differ and are both included among the nodes.
 For example,
 
 ```jldoctest fields
