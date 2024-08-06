@@ -38,7 +38,7 @@ in the `x`, `y`, and `z` directions, while `Rx`, `Ry`, and `Rz` are the number o
 `x`, `y`, and `z` directions, respectively. Furthermore, ``pencil`` decomposition refers to a domain 
 decomposed in two different directions (i.e.,  with `Rx != 1` and `Ry != 1`), while ``slab`` decomposition 
 refers to a domain decomposed in only one direction, (i.e., with `Rx == 1` or `Ry == 1`).
-Additionally, `storage` indicates the `TransposableField` used for storing intermediate results. see [TransposableField](@ref).
+Additionally, `storage` indicates the `TransposableField` used for storing intermediate results, see [TransposableField](@ref).
 
 1. Three dimensional grids with pencil decompositions in ``(x, y)`` such the:
 the `z` direction is local, `Ny ≥ Rx` and `Ny % Rx = 0`, and `Nz ≥ Ry` and `Nz % Ry = 0`.
