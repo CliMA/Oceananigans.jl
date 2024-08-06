@@ -573,7 +573,7 @@ because `Distributed` uses `communicator = MPI.COMM_WORLD` by default (and this 
 changed only with great intention). For more about `Distributed`, check out the docstring,
 
 ```@docs
-Distributed()
+Distributed(child_architecture)
 ```
 
 Next, let's try to build a distributed grid. Copy-paste this code into a new file
