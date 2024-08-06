@@ -459,7 +459,10 @@ end
 
 Lx = 360
 Nx = Int(Lx / m)
-Ny = findfirst(latitude_faces.(1:Nx) .> 90) - 2
+
+# Deduce number of cells south of 90ᵒN
+λf = latitude_faces.(1:Nx)
+Ny = findfirst(λf .> 90) - 2
 
 grid = LatitudeLongitudeGrid(size = (Nx, Ny),
                              longitude = (0, Lx),
@@ -494,7 +497,7 @@ display(fig); save("plot_lat_lon_mercator.svg", fig); nothing # hide
 ## Single-precision `RectilinearGrid`
 
 To build a grid whose fields are represented with single-precision floating point values,
-we specify the `float_type`, in addition to the (optional) `architecture`,
+we specify the `float_type` along with the (optional) `architecture`,
 
 ```jldoctest grids
 architecture = CPU()
@@ -515,8 +518,9 @@ grid = RectilinearGrid(architecture, float_type,
 ```
 
 Single precision should be used with care.
-Users interested in performing single-precision simulations should subject their work
-to extensive testing and validation.
+Users interested in performing single-precision simulations should get in touch via
+[Discussions](https://github.com/CliMA/Oceananigans.jl/discussions),
+and should subject their work to extensive testing and validation.
 
 For more examples see [`RectilinearGrid`](@ref) and [`LatitudeLongitudeGrid`](@ref).
 
@@ -528,10 +532,10 @@ in an empty folder, and then add both `Oceananigans.jl` and `MPI.jl` to the new 
 Pasting this snipped into the terminal should do the trick:
 
 ```bash
-mkdir DistributedExamples
-cd DistributedExamples
+mkdir OceananigansDistributedExamples
+cd OceananigansDistributedExamples
 touch Project.toml
-julia --project -e 'using Pkg; Pkg.add("Oceananigans"); Pkg.add("MPI")'
+julia --project -e 'using Pkg; Pkg.add(["Oceananigans", "MPI"])'
 ```
 
 Next, copy-paste the following code into a script called `distributed_example.jl`:
@@ -541,7 +545,7 @@ using Oceananigans
 using MPI
 MPI.Init()
 
-architecture = Distributed(CPU())
+architecture = Distributed()
 on_rank_0 = MPI.Comm_rank(MPI.COMM_WORLD) == 0
 
 if on_rank_0
@@ -570,10 +574,10 @@ Notice we chose to display only if we're on rank 0 --- because otherwise, all th
 to the terminal at once, talking over each other, and things get messy. Also, we used the
 "default communicator" `MPI.COMM_WORLD` to determine whether we were on rank 0. This works
 because `Distributed` uses `communicator = MPI.COMM_WORLD` by default (and this should be
-changed only with great intention). For more about `Distributed`, check out the docstring,
+changed only with great intention). For more about `Distributed`, check out the docstring:
 
-```@docs
-Distributed(child_architecture)
+```@docs; canonical=false
+Distributed
 ```
 
 Next, let's try to build a distributed grid. Copy-paste this code into a new file
@@ -584,7 +588,8 @@ using Oceananigans
 using MPI
 MPI.Init()
 
-architecture = Distributed(CPU())
+child_architecture = CPU()
+architecture = Distributed(child_architecture)
 on_rank_0 = MPI.Comm_rank(MPI.COMM_WORLD) == 0
 
 grid = RectilinearGrid(architecture,
@@ -616,6 +621,9 @@ grid = 24×48×16 RectilinearGrid{Float64, FullyConnected, Periodic, Bounded} on
 ```
 
 Now we're getting somewhere. Let's note a few things:
+
+* For the second example, we explicitly specified `child_architecture = CPU()` to distribute
+  the grid across CPUs. Changing this to `child_architecture = GPU()` distributes the grid across GPUs.
 
 * We built the grid with `size = (48, 48, 16)`, but ended up with a `24×48×16` grid. Why's that?
   Well, `(48, 48, 16)` is the size of the _global_ grid, or in other words, the grid that we would get
