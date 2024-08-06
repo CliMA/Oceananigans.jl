@@ -46,12 +46,12 @@ the `z` direction is local, `Ny ≥ Rx` and `Ny % Rx = 0`, and `Nz ≥ Ry` and `
 
 2. Two dimensional grids decomposed in ``x`` where `Ny ≥ Rx` and `Ny % Rx = 0`.
 
-!!! warning "Unsupported partitions"
-    ``(x, y)`` partitions other than the configurations mentioned above or _any_ configuration decomposed
-in ``z`` direction, are _not_ supported.
+!!! warning "Unsupported decompositions"
+    _Any_ configuration decomposed in ``z`` direction is _not_ supported.
+    Furthermore, any ``(x, y)`` decompositions other than the configurations mentioned above are also _not_ supported.
 
 Algorithm for pencil decompositions
-============================================
+===================================
 
 For pencil decompositions (useful for three-dimensional problems), there are three forward transforms, 
 three backward transforms, and four transpositions that require MPI communication. 
