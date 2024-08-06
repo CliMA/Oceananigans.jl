@@ -217,30 +217,8 @@ current_figure() # hide
 
 ## Setting `Field`s
 
-When `Field`s are created, they are full of 0's.
-For example,
-
-```jldoctest setting
-using Oceananigans
-
-grid = RectilinearGrid(size = (4, 4, 4),
-                       topology = (Periodic, Periodic, Bounded),
-                       x = (0, 4),
-                       y = (0, 4),
-                       z = (0, 4))
-
-c = CenterField(grid)
-
-# output
-4×4×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 10×10×10 OffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
-    └── max=0.0, min=0.0, mean=0.0
-```
-
-Not very exciting. Fortunately we can improve the situation by using [`set!`](@ref) to change the values of a field.
+`Field`s are full of 0's when they are created, which is not very exciting.
+The situation can be improved using [`set!`](@ref) to change the values of a field.
 For example,
 
 ```jldoctest setting
@@ -255,7 +233,8 @@ set!(c, 42)
     └── max=42.0, min=42.0, mean=42.0
 ```
 
-Now `c` is filled with `42`s. We can confirm this by inspecting individual values of `c`,
+Now `c` is filled with `42`s (for this simple case, we could also have used `c .= 42`).
+Let's confirm that:
 
 ```jldoctest setting
 c[1, 1, 1]
@@ -264,7 +243,7 @@ c[1, 1, 1]
 42.0
 ```
 
-or a range of values
+Looks good. And
 
 ```jldoctest setting
 c[1:4, 1:4, 1]
@@ -277,7 +256,7 @@ c[1:4, 1:4, 1]
  42.0  42.0  42.0  42.0
 ```
 
-Note that when we index into a `Field`, we are simpliy indexing into the `Field`'s `data`: 
+Note that indexing into a `Field` is the same as indexing into its `data`:
 
 ```jldoctest setting
 c.data[1:4, 1:4, 1]
@@ -290,7 +269,7 @@ c.data[1:4, 1:4, 1]
  42.0  42.0  42.0  42.0
 ```
 
-We can also use arrays,
+We can also `set!` with arrays,
 
 ```@setup setting
 using Random
@@ -326,7 +305,7 @@ set!(c, fun_stuff)
     └── max=7.0, min=1.0, mean=4.0
 ```
 
-For `Field`s on three-dimensional grids, the functions must have arguments `x, y, z` for `RectilinearGrid`, or `λ, φ, z` for `LatitudeLongitudeGrid` and `OrthogonalSphericalShellGrid`.
+For `Field`s on three-dimensional grids, `set!` functions must have arguments `x, y, z` for `RectilinearGrid`, or `λ, φ, z` for `LatitudeLongitudeGrid` and `OrthogonalSphericalShellGrid`.
 But for `Field`s on one- and two-dimensional grids, only the non-`Flat` directions are included.
 For example
 
