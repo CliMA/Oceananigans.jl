@@ -1,6 +1,6 @@
 # Simulations
 
-`Simulation`s are basically a utility for managing a time-stepping loop, including scheduling important activities such as
+`Simulation`s are basically a utility for managing a time-stepping loop, including scheduling important activities such as:
 
 * Logging the progress of a simulation,
 * Computing and writing diagnostics or other output to disk,
