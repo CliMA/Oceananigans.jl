@@ -12,9 +12,15 @@ mask_immersed_field!(field::Field, value=zero(eltype(field.grid))) =
 
 mask_immersed_field!(::Number, args...) = nothing
 
-function mask_immersed_field!(bop::BinaryOperation, value=zero(eltype(bop)))
-    mask_immersed_field!(bop.a, value)
-    mask_immersed_field!(bop.b, value)
+function mask_immersed_field!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(+)}, value=zero(eltype(bop)))
+    mask_immersed_field!(bop.a, ifelse(bop.b isa Number, -bop.b, value))
+    mask_immersed_field!(bop.b, ifelse(bop.a isa Number, -bop.a, value))
+    return nothing
+end
+
+function mask_immersed_field!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(-)}, value=zero(eltype(bop)))
+    mask_immersed_field!(bop.a, ifelse(bop.b isa Number, bop.b, value))
+    mask_immersed_field!(bop.b, ifelse(bop.a isa Number, bop.a, value))
     return nothing
 end
 
