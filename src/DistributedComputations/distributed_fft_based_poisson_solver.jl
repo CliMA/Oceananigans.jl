@@ -35,28 +35,30 @@ Supported configurations
 
 In the following, `Nx`, `Ny`, and `Nz` are the number of grid points of the **global** grid, 
 in the `x`, `y`, and `z` directions, while `Rx`, `Ry`, and `Rz` are the number of ranks in the
-`x`, `y`, and `z` directions, respectively. Furthermore, ``pencil`` decomposition refers to a domain 
-decomposed in two different directions (i.e.,  with `Rx != 1` and `Ry != 1`), while ``slab`` decomposition 
-refers to a domain decomposed in only one direction, (i.e., with `Rx == 1` or `Ry == 1`).
+`x`, `y`, and `z` directions, respectively. Furthermore, 'pencil' decomposition refers to a domain 
+decomposed in two different directions (i.e., with `Rx != 1` and `Ry != 1`), while 'slab' decomposition 
+refers to a domain decomposed only in one direction, (i.e., with either `Rx == 1` or `Ry == 1`).
+Additionally, `storage` indicates the `TransposableField` used for storing intermediate results;
+see [`TransposableField`](@ref).
 
 1. Three dimensional grids with pencil decompositions in ``(x, y)`` such the:
 the `z` direction is local, `Ny ≥ Rx` and `Ny % Rx = 0`, and `Nz ≥ Ry` and `Nz % Ry = 0`.
 
-2. Two dimensional grids decomposed in ``x`` where `Ny ≥ Rx` and `Ny % Rx = 0`
-    
-Other configurations that are decomposed in ``(x, y)``,
-or any configuration decomposed in ``z``, are _not_ supported.
+2. Two dimensional grids decomposed in ``x`` where `Ny ≥ Rx` and `Ny % Rx = 0`.
+
+!!! warning "Unsupported decompositions"
+    _Any_ configuration decomposed in ``z`` direction is _not_ supported.
+    Furthermore, any ``(x, y)`` decompositions other than the configurations mentioned above are also _not_ supported.
 
 Algorithm for pencil decompositions
-============================================
+===================================
 
 For pencil decompositions (useful for three-dimensional problems), there are three forward transforms, 
-three backward transforms, and four transpositions requiring MPI communication. 
-In the schematic below, the first dimension is always the local dimension. In our implementation we require
+three backward transforms, and four transpositions that require MPI communication. 
+In the algorithm below, the first dimension is always the local dimension. In our implementation we require
 `Nz ≥ Ry` and `Nx ≥ Ry` with the additional constraint that `Nz % Ry = 0` and `Ny % Rx = 0`.
-`Rx` is the number of ranks in ``x``, and `Ry` is the number of ranks in ``y``.
 
-1. `storage.zfield`, partitioned over ``(x, y)`` is initialized with the `rhs`.
+1. `storage.zfield`, partitioned over ``(x, y)`` is initialized with the `rhs` that is ``b``.
 2. Transform along ``z``.
 3  Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
 4. Transform along ``y``.
@@ -69,7 +71,7 @@ Then the process is reversed to obtain `storage.zfield` in physical
 space partitioned over ``(x, y)``.
 
 Algorithm for stencil decompositions
-============================================
+====================================
 
 The stecil decomposition algorithm works in the same manner as the pencil decompostion described above
 while skipping the transposes that are not required. For example if the domain is decomposed in ``x``, 
@@ -86,7 +88,6 @@ Restrictions
 
 2. Stencil decomposition:
     - same as for pencil decompositions with `Rx` (or `Ry`) equal to one
-
 """
 function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT)
 
@@ -195,13 +196,10 @@ function validate_global_grid(global_grid::RectilinearGrid)
 
     if (TY == Bounded && TZ == Periodic) || (TX == Bounded && TY == Periodic) || (TX == Bounded && TZ == Periodic)
         throw("NonhydrostaticModels on Distributed grids do not support topology ($TX, $TY, $TZ) at the moment.
-               TZ Periodic requires also TY and TX to be Periodic,
-               while TY Periodic requires also TX to be Periodic.
+               TZ Periodic requires also TY and TX to be Periodic, while TY Periodic requires also TX to be Periodic.
                Please rotate the domain to obtain the required topology")
     end
     
-    # TODO: Allow stretching in z by rotating the underlying data in order to 
-    # have just 4 transposes as opposed to 8    
     if !(global_grid isa YZRegularRG) && !(global_grid isa XYRegularRG) && !(global_grid isa XZRegularRG) 
         throw(ArgumentError("Only stretching in one direction is supported with distributed grids at the moment."))
     end

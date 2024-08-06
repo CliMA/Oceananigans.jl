@@ -22,33 +22,33 @@ transpose_y_to_x!(::SlabXFields) = nothing
 # On the other hand, for the y-configuration there are two ways to pack a buffer and two ways to unpack it 
 # depending on whether the y-configuration is going (or coming from) a x- or a z-configuration
 
-@kernel function _pack_buffer_z!(yzbuff, zfield, N)
+@kernel function _pack_buffer_z_to_y!(yzbuff, zfield, N)
     i, j, k = @index(Global, NTuple)
     Nx, Ny, _ = N
     @inbounds yzbuff.send[j + Ny * (i-1 + Nx * (k-1))] = zfield[i, j, k]
 end
 
-@kernel function _pack_buffer_x!(xybuff, xfield, N)
+@kernel function _pack_buffer_x_to_y!(xybuff, xfield, N)
     i, j, k = @index(Global, NTuple)
     _, Ny, Nz = N
     @inbounds xybuff.send[j + Ny * (k-1 + Nz * (i-1))] = xfield[i, j, k]
 end
 
 # packing a y buffer for communication with a x-local direction (y -> x communication)
-@kernel function _pack_buffer_yx!(xybuff, yfield, N) 
+@kernel function _pack_buffer_y_to_x!(xybuff, yfield, N) 
     i, j, k = @index(Global, NTuple)
     Nx, _, Nz = N
     @inbounds xybuff.send[i + Nx * (k-1 + Nz * (j-1))] = yfield[i, j, k]
 end
 
 # packing a y buffer for communication with a z-local direction (y -> z communication)
-@kernel function _pack_buffer_yz!(xybuff, yfield, N) 
+@kernel function _pack_buffer_y_to_z!(xybuff, yfield, N) 
     i, j, k = @index(Global, NTuple)
     Nx, _, Nz = N
     @inbounds xybuff.send[k + Nz * (i-1 + Nx * (j-1))] = yfield[i, j, k]
 end
 
-@kernel function _unpack_buffer_x!(xybuff, xfield, N, n)
+@kernel function _unpack_buffer_x_from_y!(xybuff, xfield, N, n)
     i, j, k = @index(Global, NTuple)
     size = n[1], N[2], N[3]
     @inbounds begin
@@ -59,7 +59,7 @@ end
     end
 end
 
-@kernel function _unpack_buffer_z!(yzbuff, zfield, N, n)
+@kernel function _unpack_buffer_z_from_y!(yzbuff, zfield, N, n)
     i, j, k = @index(Global, NTuple)
     size = N[1], N[2], n[3]
     @inbounds begin
@@ -70,8 +70,8 @@ end
     end
 end
 
-# unpacking a y buffer from a communication with z-local direction
-@kernel function _unpack_buffer_yz!(yzbuff, yfield, N, n) # z -> y
+# unpacking a y buffer from a communication with z-local direction (z -> y)
+@kernel function _unpack_buffer_y_from_z!(yzbuff, yfield, N, n) 
     i, j, k = @index(Global, NTuple)
     size = N[1], n[2], N[3]
     @inbounds begin
@@ -82,8 +82,8 @@ end
     end
 end
 
-# unpacking a y buffer from a communication with x-local direction
-@kernel function _unpack_buffer_yx!(yzbuff, yfield, N, n) # x -> y
+# unpacking a y buffer from a communication with x-local direction (x -> y)
+@kernel function _unpack_buffer_y_from_x!(yzbuff, yfield, N, n) 
     i, j, k = @index(Global, NTuple)
     size = N[1], n[2], N[3]
     @inbounds begin
@@ -94,20 +94,20 @@ end
     end
 end
 
-pack_buffer_x!(buff, f)  = launch!(architecture(f), f.grid, :xyz, _pack_buffer_x!,  buff, f, size(f))
-pack_buffer_z!(buff, f)  = launch!(architecture(f), f.grid, :xyz, _pack_buffer_z!,  buff, f, size(f))
-pack_buffer_yx!(buff, f) = launch!(architecture(f), f.grid, :xyz, _pack_buffer_yx!, buff, f, size(f))
-pack_buffer_yz!(buff, f) = launch!(architecture(f), f.grid, :xyz, _pack_buffer_yz!, buff, f, size(f))
+pack_buffer_x_to_y!(buff, f) = launch!(architecture(f), f.grid, :xyz, _pack_buffer_x_to_y!, buff, f, size(f))
+pack_buffer_z_to_y!(buff, f) = launch!(architecture(f), f.grid, :xyz, _pack_buffer_z_to_y!, buff, f, size(f))
+pack_buffer_y_to_x!(buff, f) = launch!(architecture(f), f.grid, :xyz, _pack_buffer_y_to_x!, buff, f, size(f))
+pack_buffer_y_to_z!(buff, f) = launch!(architecture(f), f.grid, :xyz, _pack_buffer_y_to_z!, buff, f, size(f))
 
-unpack_buffer_x!(f, fo, buff)  = launch!(architecture(f), f.grid, :xyz, _unpack_buffer_x!,  buff, f, size(f), size(fo))
-unpack_buffer_z!(f, fo, buff)  = launch!(architecture(f), f.grid, :xyz, _unpack_buffer_z!,  buff, f, size(f), size(fo))
-unpack_buffer_yx!(f, fo, buff) = launch!(architecture(f), f.grid, :xyz, _unpack_buffer_yx!, buff, f, size(f), size(fo))
-unpack_buffer_yz!(f, fo, buff) = launch!(architecture(f), f.grid, :xyz, _unpack_buffer_yz!, buff, f, size(f), size(fo))
+unpack_buffer_x_from_y!(f, fo, buff) = launch!(architecture(f), f.grid, :xyz, _unpack_buffer_x_from_y!, buff, f, size(f), size(fo))
+unpack_buffer_z_from_y!(f, fo, buff) = launch!(architecture(f), f.grid, :xyz, _unpack_buffer_z_from_y!, buff, f, size(f), size(fo))
+unpack_buffer_y_from_x!(f, fo, buff) = launch!(architecture(f), f.grid, :xyz, _unpack_buffer_y_from_x!, buff, f, size(f), size(fo))
+unpack_buffer_y_from_z!(f, fo, buff) = launch!(architecture(f), f.grid, :xyz, _unpack_buffer_y_from_z!, buff, f, size(f), size(fo))
 
 for (from, to, buff) in zip([:y, :z, :y, :x], [:z, :y, :x, :y], [:yz, :yz, :xy, :xy])
     transpose!      = Symbol(:transpose_, from, :_to_, to, :(!))
-    pack_buffer!    = from == :y ? Symbol(:pack_buffer_, from, to, :(!)) : Symbol(:pack_buffer_, from, :(!))
-    unpack_buffer!  = to == :y ? Symbol(:unpack_buffer_, to, from, :(!)) : Symbol(:unpack_buffer_, to, :(!))
+    pack_buffer!    = Symbol(:pack_buffer_, from, :_to_, to, :(!)) 
+    unpack_buffer!  = Symbol(:unpack_buffer_, to, :_from_, from, :(!)) 
     
     buffer = Symbol(buff, :buff)
     fromfield = Symbol(from, :field)
@@ -138,7 +138,7 @@ for (from, to, buff) in zip([:y, :z, :y, :x], [:z, :y, :x, :y], [:yz, :yz, :xy, 
            done in the `$($pack_buffer_name)` function.
 
         2. The one-dimensional buffer is communicated to all the cores using an in-place `Alltoallv!` MPI
-           routine. From the [MPI.jl documentation]():
+           routine. From the [MPI.jl documentation](https://juliaparallel.org/MPI.jl/stable/reference/collective/):
 
            Every process divides the Buffer into `Comm_size(comm)` chunks of equal size,
            sending the j-th chunk to the process of rank j-1. Every process stores the data received from rank j-1 process

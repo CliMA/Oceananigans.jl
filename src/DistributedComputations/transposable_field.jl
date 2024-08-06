@@ -18,7 +18,27 @@ const SlabXFields = TransposableField{<:Any, <:Any, <:Any, <:Any, <:Nothing} # X
     TransposableField(field_in, FT = eltype(field_in); with_halos = false)
 
 Construct a TransposableField object that containes the allocated memory and the ruleset required
-for distributed transpositions.
+for distributed transpositions. This includes:
+- `xfield`: A field with an unpartitioned x-direction (x-local)
+- `yfield`: A field with an unpartitioned y-direction (y-local)
+- `zfield`: A field with an unpartitioned z-direction (z-local)
+- one-dimensional buffers for performing communication between the different configurations, in particular:
+    - `yzbuffer`: A buffer for communication between the z- and y-configurations
+    - `xybuffer`: A buffer for communication between the y- and x-configurations
+  These buffers are "packed" with the three dimensional data and then "unpacked" in the target configuration once
+  received by the target rank.
+- `counts`: The size of the chunks in the buffers to be sent and received
+- `comms`: The MPI communicators for the yz and xy directions (different from MPI.COMM_WORLD!!!)
+
+A `TransposableField` object is used to perform distributed transpositions between different configurations with the 
+`transpose_z_to_y!`, `transpose_y_to_x!`, `transpose_x_to_y!`, and `transpose_y_to_z!` functions. 
+In particular:
+- `transpose_z_to_y!` copies data from the z-configuration (`zfield`) to the y-configuration (`yfield`)
+- `transpose_y_to_x!` copies data from the y-configuration (`yfield`) to the x-configuration (`xfield`)
+- `transpose_x_to_y!` copies data from the x-configuration (`xfield`) to the y-configuration (`yfield`)
+- `transpose_y_to_z!` copies data from the y-configuration (`yfield`) to the z-configuration (`zfield`)
+
+For more information on the transposition algorithm, see the docstring for the `transpose` functions.
 
 # Arguments
 - `field_in`: The input field. It needs to be in a _z-free_ configuration (i.e. ranks[3] == 1).
@@ -51,6 +71,7 @@ function TransposableField(field_in, FT = eltype(field_in); with_halos = false)
         xfield = Rx == 1 ? yfield : Field(loc, xgrid, FT; indices = (1:xN[1], 1:xN[2], 1:xN[3]))
     end
 
+    # One dimensional buffers to "pack" three-dimensional data in for communication 
     yzbuffer = Ry == 1 ? nothing : (send = on_architecture(zarch, zeros(FT, prod(yN))), 
                                     recv = on_architecture(zarch, zeros(FT, prod(zN))))
     xybuffer = Rx == 1 ? nothing : (send = on_architecture(zarch, zeros(FT, prod(xN))), 
@@ -62,6 +83,8 @@ function TransposableField(field_in, FT = eltype(field_in); with_halos = false)
     zRx, zRy, zRz = ranks(zarch) 
     yRx, yRy, yRz = ranks(yarch) 
 
+    # size of the chunks in the buffers to be sent and received
+    # (see the docstring for the `transpose` algorithms)    
     yzcounts = zeros(Int, zRy * zRz)
     xycounts = zeros(Int, yRx * yRy)
 
