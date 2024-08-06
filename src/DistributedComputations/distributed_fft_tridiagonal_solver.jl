@@ -36,28 +36,42 @@ for `Distributed` architectures.
 Supported configurations
 ========================
 
-1. Three dimensional configurations with two-dimensional decompositions in ``(x, y)`` 
+In the following, `Nx`, `Ny`, and `Nz` are the number of grid points of the **global** grid, 
+in the `x`, `y`, and `z` directions, while `Rx`, `Ry`, and `Rz` are the number of ranks in the
+`x`, `y`, and `z` directions, respectively. Furthermore, 'pencil' decomposition refers to a domain 
+decomposed in two different directions (i.e., with `Rx != 1` and `Ry != 1`), while 'slab' decomposition 
+refers to a domain decomposed only in one direction, (i.e., with either `Rx == 1` or `Ry == 1`).
+Additionally, `storage` indicates the `TransposableField` used for storing intermediate results;
+see [`TransposableField`](@ref).
+
+1. Three dimensional configurations with 'pencil' decompositions in ``(x, y)`` 
 where `Ny ≥ Rx` and `Ny % Rx = 0`, and `Nz ≥ Ry` and `Nz % Ry = 0`.
 
 2. Two dimensional configurations decomposed in ``x`` where `Ny ≥ Rx` and `Ny % Rx = 0`
     
-Other configurations that are decomposed in ``(x, y)``,
-or any configuration decomposed in ``z``, are _not_ supported.
-
-Algorithm for two-dimensional decompositions
+!!! warning "Unsupported decompositions"
+    _Any_ configuration decomposed in ``z`` direction is _not_ supported.
+    Furthermore, any ``(x, y)`` decompositions other than the configurations mentioned above are also _not_ supported.
+    
+Algorithm for pencil decompositions
 ============================================
 
-For two-dimensional decompositions (useful for three-dimensional problems),
+For pencil decompositions (useful for three-dimensional problems),
 there are two forward transforms, two backward transforms, one tri-diagonal matrix inversion
-and a variable number of transpositions requiring MPI communication, dependent on the 
+and a variable number of transpositions that require MPI communication, dependent on the 
 strethed direction:
 
 - a stretching in the x-direction requires four transpositions
 - a stretching in the y-direction requires six transpositions
 - a stretching in the z-direction requires eight transpositions
 
+!!! warning "Computational cost"
+    Because of the additional transpositions, a stretching in the x-direction
+    is computationally cheaper than a stretching in the y-direction, and the latter
+    is cheaper than a stretching in the z-direction
+
 In our implementation we require `Nz ≥ Ry` and `Nx ≥ Ry` with the additional constraint 
-that `Nz % Ry = 0` and `Ny % Rx = 0`.`Rx` is the number of ranks in ``x``, and `Ry` is the number of ranks in ``y``.
+that `Nz % Ry = 0` and `Ny % Rx = 0`.
 
 X - stretched algorithm
 ========================
@@ -69,8 +83,8 @@ X - stretched algorithm
 5. Transpose + communicate to `storage.xfield` partitioned into `(Rx, Ry)` processes in ``(y, z)``.
 6. Solve the tri-diagonal linear system in the ``x`` direction.
 
-Steps 5 -> 1 are reversed to obtain `storage.zfield` in physical
-space partitioned over ``(x, y)``.
+Steps 5 -> 1 are reversed to obtain the result in physical space stored in `storage.zfield` 
+partitioned over ``(x, y)``.
 
 Y - stretched algorithm
 ========================
@@ -83,41 +97,41 @@ Y - stretched algorithm
 6. Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
 7. Solve the tri-diagonal linear system in the ``y`` direction.
 
-Steps 6 -> 1 are reversed to obtain `storage.zfield` in physical
-space partitioned over ``(x, y)``.
+Steps 6 -> 1 are reversed to obtain the result in physical space stored in `storage.zfield` 
+partitioned over ``(x, y)``.
 
 Z - stretched algorithm
 ========================
 
 1. `storage.zfield`, partitioned over ``(x, y)`` is initialized with the `rhs`.
 2. Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
-3. Transpose + communicate to `storage.xfield` partitioned into `(Rx, Ry)` processes in ``(y, z)``.
-4. Transform along ``x``.
-5. Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
-6. Transform along ``y``.
+3. Transform along ``y``.
+4. Transpose + communicate to `storage.xfield` partitioned into `(Rx, Ry)` processes in ``(y, z)``.
+5. Transform along ``x``.
+6. Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
 7. Transpose + communicate to `storage.zfield` partitioned into `(Rx, Ry)` processes in ``(x, y)``.
 8. Solve the tri-diagonal linear system in the ``z`` direction.
 
-Steps 7 -> 1 are reversed to obtain `storage.zfield` in physical
-space partitioned over ``(x, y)``.
+Steps 7 -> 1 are reversed to obtain the result in physical space stored in `storage.zfield` 
+partitioned over ``(x, y)``.
 
-Algorithm for one-dimensional decompositions
+Algorithm for slab decompositions
 ============================================
 
-The one-dimensional decomposition works in the same manner while skipping the transposes that
-are not required. For example if the domain is decomposed in ``x``, step 3 in the above algorithm
-is skipped (and the associated transposition step in the bakward transform)
+The 'slab' decomposition works in the same manner while skipping the transposes that
+are not required. For example if the domain is decomposed in ``x``, step 4. and 6. in the above algorithm
+are skipped (and the associated reversed step in the backward transform)
 
 Restrictions
 ============
 
-1. Two-dimensional decomopositions:
+1. Pencil decompositions:
     - `Ny ≥ Rx` and `Ny % Rx = 0`
     - `Nz ≥ Ry` and `Nz % Ry = 0`
     - If the ``z`` direction is `Periodic`, also the ``y`` and the ``x`` directions must be `Periodic`
     - If the ``y`` direction is `Periodic`, also the ``x`` direction must be `Periodic`
 
-2. One-dimensional decomposition:
+2. Slab decomposition:
     - same as for two-dimensional decompositions with `Rx` (or `Ry`) equal to one
 
 """
