@@ -56,7 +56,7 @@ true
 ```
 
 `CenterField`s are some of the most common `Field`s -- in fluid dynamics simulations, for example, tracer quantities like heat and salt are located at cell centers.
-A second common `Field` to encounter has finite volumes centered over the `x`-interfaces of the primary grid,
+Another common `Field` we encounter at those with finite volumes centered over the `x`-interfaces of the primary grid,
 
 ```jldoctest fields
 u = Field{Face, Center, Center}(grid)
