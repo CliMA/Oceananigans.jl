@@ -38,8 +38,8 @@ end
     Hx, Hy, _ = halo_size(grid)
     Tx, Ty, _ = topology(grid)
 
-    ii = ifelse(Tx == Flat, 1:Nx, UnitRange(-Hx, Nx + Hx - 1))
-    jj = ifelse(Ty == Flat, 1:Ny, UnitRange(-Hy, Ny + Hy - 1))
+    ii = ifelse(Tx == Flat, 1:Nx, UnitRange(-Hx + 1, Nx + Hx - 1))
+    jj = ifelse(Ty == Flat, 1:Ny, UnitRange(-Hy + 1, Ny + Hy - 1))
 
     return KernelParameters(ii, jj)
 end
