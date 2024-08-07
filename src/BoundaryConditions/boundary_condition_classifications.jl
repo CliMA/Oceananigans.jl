@@ -59,7 +59,15 @@ For fields located at `Faces`, `Open` also specifies field value _on_ the bounda
 Open boundary conditions are used to specify the component of a velocity field normal to a boundary
 and can also be used to describe nested or linked simulation domains.
 """
-struct Open <: AbstractBoundaryConditionClassification end
+struct Open{MS} <: AbstractBoundaryConditionClassification
+    matching_scheme::MS
+end
+
+Open() = Open(nothing)
+
+(open::Open)() = open
+
+Adapt.adapt_structure(to, open::Open) = Open(adapt(to, open.matching_scheme))
 
 """
     struct MultiRegionCommunication <: AbstractBoundaryConditionClassification
