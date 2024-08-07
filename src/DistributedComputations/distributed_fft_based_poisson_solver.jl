@@ -209,7 +209,7 @@ function validate_poisson_solver_distributed_grid(global_grid::RectilinearGrid)
     return nothing
 end
 
-function validate_possion_solver_configuration(global_grid, local_grid)
+function validate_poisson_solver_configuration(global_grid, local_grid)
         
     # We don't support distributing anything in z.
     Rx, Ry, Rz = architecture(local_grid).ranks
