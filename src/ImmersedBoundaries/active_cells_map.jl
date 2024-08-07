@@ -12,21 +12,25 @@ using Oceananigans.DistributedComputations: DistributedGrid
 
 import Oceananigans.Solvers: solve_batched_tridiagonal_system_kernel!
 
-const DistributedActiveCellsIBG   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid, <:Any, <:NamedTuple} # Cannot be used to dispatch in kernels!!!
+# REMEMBER: since the active map is stripped out of the grid when `Adapt`ing to the GPU, 
+# The following types cannot be used to dispatch in kernels!!!
 
-# An IBG with an active cells map that includes the whole :xyz domain
-const ArrayActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
+# An IBG with a single interior active cells map that includes the whole :xyz domain
+const WholeActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
 
-# An IBG with an active cells map subdivided in 5 different parts.
+# An IBG with an interior active cells map subdivided in 5 different sub-maps.
 # Only used (for the moment) in the case of distributed architectures where the boundary adjacent region 
 # has to be computed separately, these maps hold the active region in the "halo-independent" part of the domain
 # (; halo_independent_cells), and the "halo-dependent" regions in the west, east, north, and south, respectively
-const NamedTupleActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NamedTuple}
+const SplitActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NamedTuple}
+
+# A distributed grid with split interior map
+const DistributedActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid, <:Any, <:NamedTuple} 
 
 """
 A constant representing an immersed boundary grid, where interior active cells are mapped to linear indices in grid.interior_active_cells
 """
-const ActiveCellsIBG = Union{DistributedActiveCellsIBG, ArrayActiveCellsIBG, NamedTupleActiveCellsIBG}
+const ActiveCellsIBG = Union{DistributedActiveCellsIBG, WholeActiveCellsMapIBG, SplitActiveCellsMapIBG}
 
 """
 A constant representing an immersed boundary grid, where active columns in the Z-direction are mapped to linear indices in grid.active_z_columns
@@ -35,13 +39,13 @@ const ActiveZColumnsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any
 
 @inline retrieve_surface_active_cells_map(grid::ActiveZColumnsIBG) = grid.active_z_columns
 
-@inline retrieve_interior_active_cells_map(grid::ArrayActiveCellsMapIBG,      ::Val{:interior}) = grid.interior_active_cells
-@inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells.halo_independent_cells
-@inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:west})     = grid.interior_active_cells.west_halo_dependent_cells
-@inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:east})     = grid.interior_active_cells.east_halo_dependent_cells
-@inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:south})    = grid.interior_active_cells.south_halo_dependent_cells
-@inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:north})    = grid.interior_active_cells.north_halo_dependent_cells
-@inline retrieve_interior_active_cells_map(grid::ActiveZColumnsIBG,           ::Val{:surface})  = grid.active_z_columns
+@inline retrieve_interior_active_cells_map(grid::WholeActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells
+@inline retrieve_interior_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells.halo_independent_cells
+@inline retrieve_interior_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:west})     = grid.interior_active_cells.west_halo_dependent_cells
+@inline retrieve_interior_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:east})     = grid.interior_active_cells.east_halo_dependent_cells
+@inline retrieve_interior_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:south})    = grid.interior_active_cells.south_halo_dependent_cells
+@inline retrieve_interior_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:north})    = grid.interior_active_cells.north_halo_dependent_cells
+@inline retrieve_interior_active_cells_map(grid::ActiveZColumnsIBG,      ::Val{:surface})  = grid.active_z_columns
 
 """
     active_cells_work_layout(group, size, map_type, grid)
