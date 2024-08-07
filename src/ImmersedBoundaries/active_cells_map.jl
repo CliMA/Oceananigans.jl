@@ -45,7 +45,6 @@ Compute the work layout for active cells based on the given map type and grid.
 # Arguments
 - `group`: The previous workgroup.
 - `size`: The previous worksize.
-- `map_type`: The type of map (e.g., `InteriorMap`, `WestMap`, `EastMap`, `SouthMap`, `NorthMap`).
 - `grid`: The grid containing the active cells.
 
 # Returns
