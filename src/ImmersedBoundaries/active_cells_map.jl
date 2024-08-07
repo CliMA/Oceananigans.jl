@@ -148,7 +148,9 @@ function interior_active_indices(ibg; parameters = :xyz)
    
     IndicesType = Tuple{IntType, IntType, IntType}
 
-    # Cannot findall on the entire field because we incur on OOM errors
+    # Cannot findall on the entire field because we could incur on OOM errors
+    # For this reason, we split the computation in vertical levels and `findall` the active indices in 
+    # subsequent xy planes, then stitch them back together
     active_indices = IndicesType[]
     active_indices = findall_active_indices!(active_indices, active_cells_field, ibg, IndicesType)
     active_indices = on_architecture(architecture(ibg), active_indices)
