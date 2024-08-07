@@ -43,6 +43,7 @@ function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_ind
         Base.@_inline_meta
         axes(underlying_data, i+length(ii))
     end
+
     return OffsetArray(underlying_data, ii..., extra_ii...)
 end
 
