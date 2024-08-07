@@ -130,7 +130,8 @@ const MAXUInt32 = 2^32 - 1
 """
     interior_active_indices(ibg; parameters = :xyz)
 
-Compute the indices of the active interior cells in the given immersed boundary grid.
+Compute the indices of the active interior cells in the given immersed boundary grid within the indices
+specified by the `parameters` keyword argument
 
 # Arguments
 - `ibg`: The immersed boundary grid.
