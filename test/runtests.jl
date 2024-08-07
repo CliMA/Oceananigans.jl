@@ -17,6 +17,7 @@ end
 CUDA.allowscalar() do
 
 @testset "Oceananigans" begin
+
     if test_file != :none
         @testset "Single file test" begin
             include(String(test_file))
@@ -152,19 +153,27 @@ CUDA.allowscalar() do
 
     if group == :distributed || group == :all
         MPI.Initialized() || MPI.Init()
+        archs = test_architectures()
         include("test_distributed_models.jl")
     end
 
     if group == :distributed_solvers || group == :all
         MPI.Initialized() || MPI.Init()
+        include("test_distributed_transpose.jl")
         include("test_distributed_poisson_solvers.jl")
     end
 
     if group == :distributed_hydrostatic_model || group == :all
         MPI.Initialized() || MPI.Init()
-        archs = test_architectures() 
+        archs = test_architectures()
         include("test_hydrostatic_regression.jl")
         include("test_distributed_hydrostatic_model.jl")
+    end
+
+    if group == :distributed_nonhydrostatic_regression || group == :all
+        MPI.Initialized() || MPI.Init()
+        archs = nonhydrostatic_regression_test_architectures()
+        include("test_nonhydrostatic_regression.jl")
     end
 
     if group == :nonhydrostatic_regression || group == :all
