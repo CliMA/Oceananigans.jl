@@ -188,7 +188,7 @@ znodes(w) = [0.0, 0.1, 0.3, 0.6, 1.0]
 and the vertical velocity is a `ZFaceField` on the C-grid.
 Let's visualize the situation:
 
-```
+```jldoctest fields
 using CairoMakie
 CairoMakie.activate!(type = "svg") # hide
 
@@ -212,7 +212,7 @@ hidespines!(ax)
 
 Legend(fig[0, 1], ax, nbanks=2, framevisible=false)
 
-current_figure() # hide
+current_figure()
 ```
 
 ## Setting `Field`s
@@ -276,13 +276,7 @@ Random.seed!(123)
 random_stuff = rand(size(c)...)
 set!(c, random_stuff)
 
-# output
-4×4×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 10×10×10 OffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
-    └── max=0.991405, min=0.0303789, mean=0.520014
+heatmap(view(c, :, :, 1))
 ```
 
 and even functions,
@@ -291,13 +285,7 @@ and even functions,
 fun_stuff(x, y, z) = 2x
 set!(c, fun_stuff)
 
-# output
-4×4×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 10×10×10 OffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
-    └── max=7.0, min=1.0, mean=4.0
+heatmap(view(c, :, :, 1))
 ```
 
 For `Field`s on three-dimensional grids, `set!` functions must have arguments `x, y, z` for `RectilinearGrid`, or `λ, φ, z` for `LatitudeLongitudeGrid` and `OrthogonalSphericalShellGrid`.
@@ -310,8 +298,8 @@ one_d_grid = RectilinearGrid(size=7, x=(0, 7), topology=(Periodic, Flat, Flat))
 one_d_c = CenterField(one_d_grid)
 
 # The one-dimensional grid varies only in `x` 
-still_fun(x) = 3x
-set!(one_d_c, still_fun)
+still_pretty_fun(x) = 3x
+set!(one_d_c, still_pretty_fun)
 
 # output
 7×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
@@ -324,7 +312,7 @@ set!(one_d_c, still_fun)
 
 ### A bit more about setting with functions
 
-Let's return to the three-dimensional case to investigate in more detail how `set!` works with functions.
+Let's return to the three-dimensional `fun_stuff` case to investigate in more detail how `set!` works with functions.
 The `xnodes` of `c` -- the coordinates of the center of `c`'s finite volumes -- are:
 
 ```jldoctest fields
@@ -336,10 +324,8 @@ nothing # hide
 xc = [0.125, 0.375, 0.625, 0.875]
 ```
 
-Note that the nodes of `c` are also returned by `xnodes(grid, Center())`.
-To `set!` the values of `c`, we simply evaluate `fun_stuff` at `c`'s nodes, so that
+To `set!` the values of `c` we evaluate `fun_stuff` at `c`'s nodes, producing
 
-we find that
 
 ```jldoctest fields
 c[1:4, 1, 1]
@@ -352,8 +338,11 @@ c[1:4, 1, 1]
  1.75
 ```
 
-This means that with the same function, `set!` can evaluate differently for `Field`s with different locations.
-For example,
+!!! note
+    This function-setting method is a first-order method for computing the finite volume of `c` to `fun_stuff`.
+    Higher-order algorithms could be implemented -- have a crack if you're keen.
+
+As a result `set!` can evaluate differently on `Field`s at different locations:
 
 ```jldoctest fields
 u = XFaceField(grid)
@@ -363,9 +352,9 @@ u[1:4, 1, 1]
 # output
 4-element Vector{Float64}:
  0.0
- 2.0
- 4.0
- 6.0
+ 0.5
+ 1.0
+ 1.5
 ```
 
 ## Halo regions and boundary conditions
@@ -381,9 +370,9 @@ The number of halo cells in each direction are stored in the properties `Hx, Hy,
 (1, 1, 1)
 ```
 
-When `set!` is called, the halo regions are left untouched.
-For example, if we take a look at a two-dimensional slice of `c` showing the interior and the halo
-regions, we find
+`set!` doesn't touch halo cells.
+Check out one of the two-dimensional slices of `c` showing both the interior and the halo
+regions:
 
 
 ```jldoctest fields
@@ -399,8 +388,8 @@ c[:, :, 1]
  0.0  0.0   0.0   0.0   0.0   0.0
 ```
 
-The halo regions are full of zeros.
-To remedy this situation, we need to `fill_halo_regions!`:
+The interior region is populated, but the surrounding halo regions are all 0.
+To remedy this situation we need to `fill_halo_regions!`:
 
 ```jldoctest fields
 using Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -434,8 +423,9 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 └── immersed: FluxBoundaryCondition: Nothing
 ```
 
-Here, `x` and `y` are `Periodic`, while `z` is `Bounded`. The default boundary conditions in `z` are
-"no flux", which is enforced (in part) by filling the halo regions of `c` so that derivatives evaluated
+Specifically for `c`, `x` and `y` are `Periodic` while `z` has been assigned the default "no-flux" boundary conditions for
+a `Field` with `Center` location in a `Bounded` direction.
+For no-flux boundary conditions, the halo regions of `c` are filled so that derivatives evaluated
 on the boundary return 0.
 To view only the interior cells of `c` we use the function `interior`,
 
@@ -453,7 +443,7 @@ interior(c, :, :, 1)
 Note that the indices of `c` (and the indices of `c.data`) are "offset" so that the index `1` corresponds to the first interior cell.
 As a result,
 
-```julia
+```jldoctest fields
 c[1:4, 1:4, 1] == interior(c, :, :, 1)
 
 # output
@@ -462,7 +452,7 @@ true
 
 and more generally
 
-```julia
+```jldoctest fields
 typeof(c.data)
 
 # output
@@ -473,7 +463,7 @@ Thus, for example, the `x`-indices of `c.data` vary from `1-Hx` to `Nx + Hx` -- 
 The underlying array can be accessed with `parent(c)`.
 But the "parent" array does not have offset indices, so
 
-```julia
+```jldoctest fields
 @show parent(c)[1:2, 2, 2]
 @show c.data[1:2, 1, 1]
 nothing # hide
