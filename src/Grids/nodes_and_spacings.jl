@@ -5,6 +5,10 @@
 ##### the first, second, and third coordinates respectively.
 #####
 
+@inline getnode(ξ, i) = @inbounds ξ[i]
+@inline getnode(::Nothing, i) = nothing
+@inline getnode(ξ::Number, i) = ξ
+
 node_names(grid, ℓx, ℓy, ℓz) = _node_names(grid, ℓx, ℓy, ℓz)
 
 node_names(grid::XFlatGrid, ℓx, ℓy, ℓz)   = _node_names(grid, nothing, ℓy, ℓz)
@@ -302,5 +306,4 @@ julia> minimum_zspacing(grid, Center(), Center(), Center())
 """
 minimum_zspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(Val(:z), grid, ℓx, ℓy, ℓz)
 minimum_zspacing(grid) = minimum_spacing(Val(:z), grid, Center(), Center(), Center())
-
 

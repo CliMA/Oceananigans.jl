@@ -1,3 +1,5 @@
+using Oceananigans.DistributedComputations: cpu_architecture, partition_global_array
+
 function run_thermal_bubble_regression_test(arch, grid_type)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100
@@ -75,6 +77,15 @@ function run_thermal_bubble_regression_test(arch, grid_type)
                       w = ds["w"][:, :, :, end],
                       T = ds["T"][:, :, :, end],
                       S = ds["S"][:, :, :, end])
+
+    cpu_arch = cpu_architecture(architecture(grid))
+
+    correct_fields = (u = partition_global_array(cpu_arch, correct_fields.u, size(correct_fields.u)),
+                      v = partition_global_array(cpu_arch, correct_fields.v, size(correct_fields.v)),
+                      w = partition_global_array(cpu_arch, correct_fields.w, size(correct_fields.w)),
+                      T = partition_global_array(cpu_arch, correct_fields.T, size(correct_fields.T)),
+                      S = partition_global_array(cpu_arch, correct_fields.S, size(correct_fields.S))
+                      )
 
     summarize_regression_test(test_fields, correct_fields)
     
