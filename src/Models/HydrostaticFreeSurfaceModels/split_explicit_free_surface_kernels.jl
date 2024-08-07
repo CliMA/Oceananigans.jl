@@ -5,7 +5,7 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.Operators
 using Oceananigans.Architectures: convert_args
 using Oceananigans.ImmersedBoundaries: peripheral_node, immersed_inactive_node, GFBIBG
-using Oceananigans.ImmersedBoundaries: inactive_node, IBG, c, f, ZColumnMap
+using Oceananigans.ImmersedBoundaries: inactive_node, IBG, c, f
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, active_surface_map, active_interior_map
 using Oceananigans.ImmersedBoundaries: active_linear_index_to_tuple, ActiveCellsIBG, ActiveZColumnsIBG
 using Oceananigans.DistributedComputations: child_architecture
@@ -195,7 +195,7 @@ end
 
 # Barotropic Model Kernels
 # u_Δz = u * Δz
-@kernel function _barotropic_mode_kernel!(U, V, grid, u, v)
+@kernel function _barotropic_mode_kernel!(U, V, grid, ::Nothing, u, v)
     i, j  = @index(Global, NTuple)	
     k_top = grid.Nz+1
 
@@ -210,9 +210,9 @@ end
 
 # Barotropic Model Kernels
 # u_Δz = u * Δz
-@kernel function _barotropic_mode_kernel!(U, V, grid::ActiveZColumnsIBG, u, v)
+@kernel function _barotropic_mode_kernel!(U, V, grid, active_cells_map, u, v)
     idx = @index(Global, Linear)
-    i, j = active_linear_index_to_tuple(idx, ZColumnMap(), grid)
+    i, j = active_linear_index_to_tuple(idx, active_cells_map)
     k_top = grid.Nz+1
 
     @inbounds U[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]
@@ -224,9 +224,13 @@ end
     end
 end
 
-compute_barotropic_mode!(U, V, grid, u, v) = 
-    launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, u, v; 
-            active_cells_map = active_surface_map(grid))
+@inline function compute_barotropic_mode!(U, V, grid, u, v) 
+    active_cells_map = active_surface_map(grid)
+
+    launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, active_cells_map, u, v; active_cells_map)
+
+    return nothing
+end
 
 function initialize_free_surface_state!(state, η, timestepper)
 
