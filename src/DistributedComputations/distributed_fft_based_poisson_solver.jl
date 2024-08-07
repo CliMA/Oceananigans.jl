@@ -2,6 +2,7 @@ import FFTW
 
 using CUDA: @allowscalar
 using Oceananigans.Grids: XYZRegularRG
+using Oceananigans.Solvers: stretched_dimensions, stretched_direction
 
 import Oceananigans.Solvers: poisson_eigenvalues, solve!
 import Oceananigans.Architectures: architecture
@@ -196,12 +197,13 @@ function validate_poisson_solver_distributed_grid(global_grid::RectilinearGrid)
 
     if (TY == Bounded && TZ == Periodic) || (TX == Bounded && TY == Periodic) || (TX == Bounded && TZ == Periodic)
         throw("NonhydrostaticModels on Distributed grids do not support topology ($TX, $TY, $TZ) at the moment.
-               TZ Periodic requires also TY and TX to be Periodic, while TY Periodic requires also TX to be Periodic.
-               Please rotate the domain to obtain the required topology")
+               A Periodic z-direction requires also the y- and and x-directions to be Periodic, while a Periodic y-direction requires also 
+               the x-direction to be Periodic.")
     end
     
     if !(global_grid isa YZRegularRG) && !(global_grid isa XYRegularRG) && !(global_grid isa XZRegularRG) 
-        throw(ArgumentError("Only stretching in one direction is supported with distributed grids at the moment."))
+        throw("The provided grid is stretched in directions $(stretched_dimensions(global_grid)). 
+               Distributed architectures support only RectilinearGrid that have variably-spaced cells in at most one direction.")
     end
 
     return nothing

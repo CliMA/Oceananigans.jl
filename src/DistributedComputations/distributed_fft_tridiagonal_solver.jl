@@ -228,7 +228,9 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     plan = (; forward, backward)
 
     # Storage space for right hand side of Poisson equation
-    source_term = on_architecture(arch, zeros(complex(eltype(grid)), size(grid)...))
+    T = complex(eltype(grid))
+    source_term = zeros(T, size(grid)...)
+    source_term = on_architecture(arch, source_term)
 
     return DistributedFourierTridiagonalPoissonSolver(plan, global_grid, local_grid, btsolver, source_term, storage, buffer)
 end
