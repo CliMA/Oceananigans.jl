@@ -65,7 +65,7 @@ Converts a linear index to a tuple of indices based on the given map and grid.
 # Returns
 A tuple of indices corresponding to the linear index.
 """
-@inline active_linear_index_to_tuple(idx, active_cells_map) = Base.map(Int, active_cells_map[idx])
+@inline active_linear_index_to_tuple(idx, active_cells_map) = @inbounds Base.map(Int, active_cells_map[idx])
 
 function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool = true) 
 
