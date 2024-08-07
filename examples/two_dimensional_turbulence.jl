@@ -156,8 +156,8 @@ n = Observable(1)
 
 # Now let's plot the vorticity and speed.
 
-ω = @lift view(ω_timeseries[$n], :, :, 1)
-s = @lift view(s_timeseries[$n], :, :, 1)
+ω = @lift ω_timeseries[$n]
+s = @lift s_timeseries[$n]
 
 heatmap!(ax_ω, ω; colormap = :balance, colorrange = (-2, 2))
 heatmap!(ax_s, s; colormap = :speed, colorrange = (0, 0.2))
