@@ -91,8 +91,8 @@ Restrictions
 """
 function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT)
 
-    validate_global_grid(global_grid)
-    validate_configuration(global_grid, local_grid)
+    validate_poisson_solver_distributed_grid(global_grid)
+    validate_poisson_solver_configuration(global_grid, local_grid)
 
     FT = Complex{eltype(local_grid)}
 
@@ -188,10 +188,10 @@ end
 end
 
 # TODO: bring up to speed the PCG to remove this error
-validate_global_grid(global_grid) = 
+validate_poisson_solver_distributed_grid(global_grid) = 
         throw("Grids other than the RectilinearGrid are not supported in the Distributed NonhydrostaticModels")
 
-function validate_global_grid(global_grid::RectilinearGrid) 
+function validate_poisson_solver_distributed_grid(global_grid::RectilinearGrid) 
     TX, TY, TZ = topology(global_grid)
 
     if (TY == Bounded && TZ == Periodic) || (TX == Bounded && TY == Periodic) || (TX == Bounded && TZ == Periodic)
@@ -207,7 +207,7 @@ function validate_global_grid(global_grid::RectilinearGrid)
     return nothing
 end
 
-function validate_configuration(global_grid, local_grid)
+function validate_possion_solver_configuration(global_grid, local_grid)
         
     # We don't support distributing anything in z.
     Rz = architecture(local_grid).ranks[3]

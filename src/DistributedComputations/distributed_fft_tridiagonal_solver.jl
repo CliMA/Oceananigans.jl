@@ -104,10 +104,10 @@ Z - stretched algorithm
 
 1. `storage.zfield`, partitioned over ``(x, y)`` is initialized with the `rhs`.
 2. Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
-3. Transpose + communicate to `storage.xfield` partitioned into `(Rx, Ry)` processes in ``(y, z)``.
-4. Transform along ``x``.
-5. Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
-6. Transform along ``y``.
+3. Transform along ``y``.
+4. Transpose + communicate to `storage.xfield` partitioned into `(Rx, Ry)` processes in ``(y, z)``.
+5. Transform along ``x``.
+6. Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
 7. Transpose + communicate to `storage.zfield` partitioned into `(Rx, Ry)` processes in ``(x, y)``.
 8. Solve the tri-diagonal linear system in the ``z`` direction.
 
@@ -118,7 +118,7 @@ Algorithm for slab decompositions
 ============================================
 
 The 'slab' decomposition works in the same manner while skipping the transposes that
-are not required. For example if the domain is decomposed in ``x``, step 3. and 5. in the above algorithm
+are not required. For example if the domain is decomposed in ``x``, step 4. and 6. in the above algorithm
 are skipped (and the associated reversed step in the backward transform)
 
 Restrictions
@@ -136,8 +136,8 @@ Restrictions
 """
 function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT)
     
-    validate_global_grid(global_grid)
-    validate_configuration(global_grid, local_grid)
+    validate_poisson_solver_distributed_grid(global_grid)
+    validate_poisson_solver_configuration(global_grid, local_grid)
  
     irreg_dim = stretched_dimensions(local_grid)[1]
 
@@ -242,10 +242,10 @@ function solve!(x, solver::DistributedFourierTridiagonalPoissonSolver{<:XYRegula
     buffer  = solver.buffer
 
     transpose_z_to_y!(storage) # copy data from storage.zfield to storage.yfield
+    solver.plan.forward.y!(parent(storage.yfield), buffer.y) 
     transpose_y_to_x!(storage) # copy data from storage.yfield to storage.xfield
     solver.plan.forward.x!(parent(storage.xfield), buffer.x)
     transpose_x_to_y!(storage) # copy data from storage.xfield to storage.yfield
-    solver.plan.forward.y!(parent(storage.yfield), buffer.y) 
     transpose_y_to_z!(storage) # copy data from storage.yfield to storage.zfield
   
     # copy results in the source term
@@ -256,10 +256,10 @@ function solve!(x, solver::DistributedFourierTridiagonalPoissonSolver{<:XYRegula
     solve!(storage.zfield, solver.batched_tridiagonal_solver, solver.source_term)
 
     transpose_z_to_y!(storage)
-    solver.plan.backward.y!(parent(storage.yfield), buffer.y)
     transpose_y_to_x!(storage) # copy data from storage.yfield to storage.xfield
     solver.plan.backward.x!(parent(storage.xfield), buffer.x)
     transpose_x_to_y!(storage) # copy data from storage.xfield to storage.yfield
+    solver.plan.backward.y!(parent(storage.yfield), buffer.y)
     transpose_y_to_z!(storage) # copy data from storage.yfield to storage.zfield
 
     # Copy the real component of xc to x.
