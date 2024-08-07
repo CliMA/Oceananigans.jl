@@ -11,6 +11,7 @@
 using MPI
 using Oceananigans
 using Oceananigans.DistributedComputations
+using Oceananigans.DistributedComputations: Sizes
 using Oceananigans.Grids: topology, architecture
 using Oceananigans.Units: kilometers, meters
 using Printf
@@ -18,9 +19,9 @@ using JLD2
 
 topo = (Bounded, Periodic, Bounded)
 
-partition = Partition([10, 13, 18, 39])
+partition = Partition(x = Sizes(10, 13, 18, 39))
 
-arch = Distributed(CPU(); topology = topo, partition)
+arch = Distributed(CPU(); partition)
 
 # Distribute problem irregularly
 Nx = 80
@@ -30,7 +31,7 @@ Lh = 100kilometers
 Lz = 400meters
 
 grid = RectilinearGrid(arch,
-                       size = (Nx, 3, 1),
+                       size = (Nx, 3, 2),
                        x = (0, Lh),
                        y = (0, Lh),
                        z = (-Lz, 0),
@@ -39,11 +40,13 @@ grid = RectilinearGrid(arch,
 @show rank, grid
 
 bottom(x, y) = x > 80kilometers && x < 90kilometers ? 100 : -500meters
-grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom), true)
+grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom); active_cells_map = true)
+
+coriolis = FPlane(f=1e-4)
 
 model = HydrostaticFreeSurfaceModel(; grid,
-                                    coriolis = FPlane(f=1e-4),
-                                    free_surface = SplitExplicitFreeSurface(grid; substeps=10))
+                                      coriolis,
+                                      free_surface = SplitExplicitFreeSurface(grid; substeps=10))
 
 gaussian(x, L) = exp(-x^2 / 2L^2)
 
