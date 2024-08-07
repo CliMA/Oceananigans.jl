@@ -125,7 +125,7 @@ function compute_active_z_columns(ibg)
 
     # Check whether the column ``i, j`` is immersed, which would correspond to `active_cells_in_column[i, j, 1] == 0`
     is_immersed_column = KernelFunctionOperation{Center, Center, Nothing}(active_column, ibg, active_cells_in_column)
-    active_columns = Field{Center, Center, Nothing}(ibg, Bool)
+    active_z_columns = Field{Center, Center, Nothing}(ibg, Bool)
     set!(active_z_columns, is_immersed_column)
 
     return active_z_columns
