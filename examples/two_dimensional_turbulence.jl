@@ -135,7 +135,7 @@ nothing #hide
 
 # and animate the vorticity and fluid speed.
 
-using GLMakie #CairoMakie
+using CairoMakie
 set_theme!(Theme(fontsize = 24))
 
 fig = Figure(size = (800, 500))

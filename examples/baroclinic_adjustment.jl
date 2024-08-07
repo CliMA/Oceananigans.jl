@@ -80,7 +80,6 @@ x, y, z = 1e-3 .* nodes(grid, (Center(), Center(), Center()))
 
 b = model.tracers.b
 
-#fig, ax, hm = heatmap(y, z, interior(b)[1, :, :],
 fig, ax, hm = heatmap(view(b, 1, :, :),
                       colormap = :deep,
                       axis = (xlabel = "y [km]",
@@ -332,7 +331,6 @@ B = @lift interior(B_timeseries[$n], 1, :, :)
 
 # and then build our plot:
 
-#hm = heatmap!(axb, xb, yb, b_top, colorrange=(0, Δb), colormap=:thermal)
 hm = heatmap!(axb, xb, yb, b_top, colorrange=(0, Δb), colormap=:thermal)
 Colorbar(fig[1, 1], hm, flipaxis=false, label="Surface b(x, y) (m s⁻²)")
 
