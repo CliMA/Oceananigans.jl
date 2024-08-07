@@ -3,7 +3,6 @@ include("data_dependencies.jl")
 
 using Oceananigans.Grids: φnode, λnode, halo_size
 using Oceananigans.Utils: Iterate, getregion
-using Oceananigans.Fields: replace_horizontal_vector_halos!
 using Oceananigans.MultiRegion: number_of_regions, fill_halo_regions!
 
 function get_range_of_indices(operation, index, Nx, Ny)

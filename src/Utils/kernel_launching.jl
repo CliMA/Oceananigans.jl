@@ -76,6 +76,12 @@ function work_layout(grid, worksize::Tuple; kw...)
     return workgroup, worksize
 end
 
+# Support for 1D kernels launched with integer size
+function work_layout(grid, worksize::Int; kw...)
+    workgroup = 16
+    return workgroup, worksize
+end
+
 """
     work_layout(grid, dims; include_right_boundaries=false, location=nothing)
 
