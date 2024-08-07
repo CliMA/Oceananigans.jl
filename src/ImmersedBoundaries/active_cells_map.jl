@@ -115,14 +115,24 @@ function compute_interior_active_cells(ibg; parameters = :xyz)
 end
 
 function compute_active_z_columns(ibg)
-    one_field = ConditionalOperation{Center, Center, Center}(OneField(Int), identity, ibg, NotImmersed(truefunc), 0)
-    column    = sum(one_field, dims = 3)
-    is_immersed_column = KernelFunctionOperation{Center, Center, Nothing}(active_column, ibg, column)
-    active_cells_field = Field{Center, Center, Nothing}(ibg, Bool)
-    set!(active_cells_field, is_immersed_column)
-    return active_cells_field
+    one_field = OneField(Int)
+    condition = NotImmersed(truefunc)
+    mask = 0
+
+    # Compute all the active cells in a z-column using a ConditionalOperation
+    conditional_active_cells = ConditionalOperation{Center, Center, Center}(one_field, identity, ibg, condition, mask)
+    active_cells_in_column   = sum(conditional_active_cells, dims = 3)
+
+    # Check whether the column ``i, j`` is immersed, which would correspond to `active_cells_in_column[i, j, 1] == 0`
+    is_immersed_column = KernelFunctionOperation{Center, Center, Nothing}(active_column, ibg, active_cells_in_column)
+    active_columns = Field{Center, Center, Nothing}(ibg, Bool)
+    set!(active_z_columns, is_immersed_column)
+
+    return active_z_columns
 end
 
+# Maximum integer represented by the 
+# `UInt8`, `UInt16` and `UInt32` types
 const MAXUInt8  = 2^8  - 1
 const MAXUInt16 = 2^16 - 1
 const MAXUInt32 = 2^32 - 1
