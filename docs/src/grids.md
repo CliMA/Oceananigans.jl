@@ -567,8 +567,7 @@ Pasting this snipped into the terminal should do the trick:
 ```bash
 mkdir OceananigansDistributedExamples
 cd OceananigansDistributedExamples
-touch Project.toml
-julia --project -e 'using Pkg; Pkg.add(["Oceananigans", "MPI"])'
+julia --project -e 'using Pkg; using Pkg; Pkg.activate("."); Pkg.add(["Oceananigans", "MPI"])'
 ```
 
 Next, copy-paste the following code into a script called `distributed_example.jl`:
