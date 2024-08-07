@@ -411,7 +411,7 @@ function iterate_split_explicit!(free_surface, grid, Δτᴮ, weights, ::Val{Nsu
 end
 
 # Calculate RHS for the barotropic time step.
-@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, ::Nothing, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     i, j  = @index(Global, NTuple)
     k_top = grid.Nz + 1
 
@@ -425,9 +425,9 @@ end
 end
 
 # Calculate RHS for the barotropic time step.q
-@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid::ActiveZColumnsIBG, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     idx = @index(Global, Linear)
-    i, j = active_linear_index_to_tuple(idx, ZColumnMap(), grid)
+    i, j = active_linear_index_to_tuple(idx, active_cells_map)
     k_top = grid.Nz+1
 
     @inbounds Gᵁ[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, χ)
@@ -465,9 +465,14 @@ function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
     return nothing
 end
 
-setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ) =
+@inline function setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ) 
+    active_cells_map = active_surface_map(grid)
+
     launch!(architecture(grid), grid, :xy, _compute_integrated_ab2_tendencies!, auxiliary.Gᵁ, auxiliary.Gⱽ, grid, 
-            Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ; active_cells_map = active_surface_map(grid))
+            active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ; active_cells_map)
+
+    return nothing
+end
             
 wait_free_surface_communication!(free_surface, arch) = nothing
 

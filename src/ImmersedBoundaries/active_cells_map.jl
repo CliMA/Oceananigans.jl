@@ -26,23 +26,16 @@ A constant representing an immersed boundary grid, where active columns in the Z
 """
 const ActiveZColumnsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
 
-struct InteriorMap end
-struct ZColumnMap end
+@inline active_surface_map(grid::ActiveZColumnsIBG) = grid.active_z_columns
 
-struct WestMap  end
-struct EastMap  end
-struct SouthMap end
-struct NorthMap end
 
-@inline active_surface_map(::ActiveZColumnsIBG) = ZColumnMap()
-
-@inline active_interior_map(::Val{:west})  = WestMap()
-@inline active_interior_map(::Val{:east})  = EastMap()
-@inline active_interior_map(::Val{:south}) = SouthMap()
-@inline active_interior_map(::Val{:north}) = NorthMap()
-
-@inline active_interior_map(::ActiveCellsIBG)            = InteriorMap()
-@inline active_interior_map(::DistributedActiveCellsIBG) = InteriorMap()
+@inline active_interior_map(grid::ArrayActiveCellsIBG,      ::Val{:interior}) = grid.interior_active_cells
+@inline active_interior_map(grid::NamedTupleActiveCellsIBG, ::Val{:interior}) = grid.interior_active_cells.interior
+@inline active_interior_map(grid::NamedTupleActiveCellsIBG, ::Val{:west})     = grid.interior_active_cells.west
+@inline active_interior_map(grid::NamedTupleActiveCellsIBG, ::Val{:east})     = grid.interior_active_cells.east
+@inline active_interior_map(grid::NamedTupleActiveCellsIBG, ::Val{:south})    = grid.interior_active_cells.south
+@inline active_interior_map(grid::NamedTupleActiveCellsIBG, ::Val{:north})    = grid.interior_active_cells.north
+@inline active_interior_map(grid::ActiveZColumnsIBG,        ::Val{:surface})  = grid.active_z_columns
 
 """
     active_cells_work_layout(group, size, map_type, grid)
@@ -58,13 +51,7 @@ Compute the work layout for active cells based on the given map type and grid.
 # Returns
 - A tuple `(workgroup, worksize)` representing the work layout for active cells.
 """
-@inline active_cells_work_layout(group, size, ::InteriorMap, grid::ArrayActiveCellsIBG)      = min(length(grid.interior_active_cells), 256),          length(grid.interior_active_cells)
-@inline active_cells_work_layout(group, size, ::InteriorMap, grid::NamedTupleActiveCellsIBG) = min(length(grid.interior_active_cells.interior), 256), length(grid.interior_active_cells.interior)
-@inline active_cells_work_layout(group, size, ::WestMap,     grid::NamedTupleActiveCellsIBG) = min(length(grid.interior_active_cells.west),     256), length(grid.interior_active_cells.west)
-@inline active_cells_work_layout(group, size, ::EastMap,     grid::NamedTupleActiveCellsIBG) = min(length(grid.interior_active_cells.east),     256), length(grid.interior_active_cells.east)
-@inline active_cells_work_layout(group, size, ::SouthMap,    grid::NamedTupleActiveCellsIBG) = min(length(grid.interior_active_cells.south),    256), length(grid.interior_active_cells.south)
-@inline active_cells_work_layout(group, size, ::NorthMap,    grid::NamedTupleActiveCellsIBG) = min(length(grid.interior_active_cells.north),    256), length(grid.interior_active_cells.north)
-@inline active_cells_work_layout(group, size, ::ZColumnMap,  grid::ActiveZColumnsIBG)        = min(length(grid.active_z_columns),  256),              length(grid.active_z_columns)
+@inline active_cells_work_layout(group, size, active_cells_map) = min(length(active_cells_map), 256), length(active_cells_map)
 
 """
     active_linear_index_to_tuple(idx, map, grid)
@@ -79,13 +66,7 @@ Converts a linear index to a tuple of indices based on the given map and grid.
 # Returns
 A tuple of indices corresponding to the linear index.
 """
-@inline active_linear_index_to_tuple(idx, ::InteriorMap, grid::ArrayActiveCellsIBG)      = Base.map(Int, grid.interior_active_cells[idx])
-@inline active_linear_index_to_tuple(idx, ::InteriorMap, grid::NamedTupleActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.interior[idx])
-@inline active_linear_index_to_tuple(idx, ::WestMap,     grid::NamedTupleActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.west[idx])
-@inline active_linear_index_to_tuple(idx, ::EastMap,     grid::NamedTupleActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.east[idx])
-@inline active_linear_index_to_tuple(idx, ::SouthMap,    grid::NamedTupleActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.south[idx])
-@inline active_linear_index_to_tuple(idx, ::NorthMap,    grid::NamedTupleActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.north[idx])
-@inline active_linear_index_to_tuple(idx, ::ZColumnMap,  grid::ActiveZColumnsIBG)         = Base.map(Int, grid.active_z_columns[idx])
+@inline active_linear_index_to_tuple(idx, active_cells_map) = Base.map(Int, active_cells_map[idx])
 
 function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool = true) 
 

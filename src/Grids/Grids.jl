@@ -155,8 +155,10 @@ const YZFlatGrid = AbstractGrid{<:Any, <:Any, Flat, Flat}
 const XYZFlatGrid = AbstractGrid{<:Any, Flat, Flat, Flat}
 
 isrectilinear(grid) = false
-@inline active_surface_map(::AbstractGrid) = nothing
-@inline active_interior_map(::AbstractGrid) = nothing
+
+# Fallback
+@inline  active_surface_map(::AbstractGrid, any_map) = nothing
+@inline active_interior_map(::AbstractGrid, any_map) = nothing
 
 include("grid_utils.jl")
 include("nodes_and_spacings.jl")
