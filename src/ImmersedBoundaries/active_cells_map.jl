@@ -36,11 +36,11 @@ const ActiveZColumnsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any
 @inline retrieve_surface_active_cells_map(grid::ActiveZColumnsIBG) = grid.active_z_columns
 
 @inline retrieve_interior_active_cells_map(grid::ArrayActiveCellsMapIBG,      ::Val{:interior}) = grid.interior_active_cells
-@inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells.halo_independent
-@inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:west})     = grid.interior_active_cells.west
-@inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:east})     = grid.interior_active_cells.east
-@inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:south})    = grid.interior_active_cells.south
-@inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:north})    = grid.interior_active_cells.north
+@inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells.halo_independent_cells
+@inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:west})     = grid.interior_active_cells.west_halo_dependent_cells
+@inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:east})     = grid.interior_active_cells.east_halo_dependent_cells
+@inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:south})    = grid.interior_active_cells.south_halo_dependent_cells
+@inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:north})    = grid.interior_active_cells.north_halo_dependent_cells
 @inline retrieve_interior_active_cells_map(grid::ActiveZColumnsIBG,           ::Val{:surface})  = grid.active_z_columns
 
 """
@@ -207,10 +207,10 @@ function map_interior_active_cells(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any
     include_south = !isa(ibg, YFlatGrid) && (Ry != 1) && !(Ty == RightConnected)
     include_north = !isa(ibg, YFlatGrid) && (Ry != 1) && !(Ty == LeftConnected)
 
-    west  = include_west  ? interior_active_indices(ibg; parameters = KernelParameters(x_boundary, left_offsets))    : nothing
-    east  = include_east  ? interior_active_indices(ibg; parameters = KernelParameters(x_boundary, right_x_offsets)) : nothing
-    south = include_south ? interior_active_indices(ibg; parameters = KernelParameters(y_boundary, left_offsets))    : nothing
-    north = include_north ? interior_active_indices(ibg; parameters = KernelParameters(y_boundary, right_y_offsets)) : nothing
+    west_halo_dependent_cells  = include_west  ? interior_active_indices(ibg; parameters = KernelParameters(x_boundary, left_offsets))    : nothing
+    east_halo_dependent_cells  = include_east  ? interior_active_indices(ibg; parameters = KernelParameters(x_boundary, right_x_offsets)) : nothing
+    south_halo_dependent_cells = include_south ? interior_active_indices(ibg; parameters = KernelParameters(y_boundary, left_offsets))    : nothing
+    north_halo_dependent_cells = include_north ? interior_active_indices(ibg; parameters = KernelParameters(y_boundary, right_y_offsets)) : nothing
     
     nx = Rx == 1 ? Nx : (Tx == RightConnected || Tx == LeftConnected ? Nx - Hx : Nx - 2Hx)
     ny = Ry == 1 ? Ny : (Ty == RightConnected || Ty == LeftConnected ? Ny - Hy : Ny - 2Hy)
@@ -218,9 +218,13 @@ function map_interior_active_cells(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any
     ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
     oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
      
-    halo_independent = interior_active_indices(ibg; parameters = KernelParameters((nx, ny, Nz), (ox, oy, 0)))
+    halo_independent_cells = interior_active_indices(ibg; parameters = KernelParameters((nx, ny, Nz), (ox, oy, 0)))
 
-    return (; halo_independent, west, east, south, north)
+    return (; halo_independent_cells, 
+              west_halo_dependent_cells, 
+              east_halo_dependent_cells, 
+              south_halo_dependent_cells, 
+              north_halo_dependent_cells)
 end
 
 # If we eventually want to perform also barotropic step, `w` computation and `p` 
