@@ -24,9 +24,10 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     kernel_parameters = tuple(interior_tendency_kernel_parameters(model.grid))
 
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
-    # interior of the domain
-    compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters;
-                                                             active_cells_map = active_interior_map(model.grid, Val(:interior)))
+    # interior of the domain. The active cells map restricts the computation to the active cells in the
+    # interior if the grid is _immersed_ and the `active_cells_map` kwarg is active
+    active_cells_map = active_interior_map(model.grid, Val(:interior))
+    compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; active_cells_map)
 
     complete_communication_and_compute_boundary!(model, model.grid, model.architecture)
 
