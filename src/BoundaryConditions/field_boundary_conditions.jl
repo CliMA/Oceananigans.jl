@@ -57,7 +57,8 @@ function FieldBoundaryConditions(indices::Tuple, west, east, south, north, botto
 end
 
 FieldBoundaryConditions(indices::Tuple, bcs::FieldBoundaryConditions) =
-    FieldBoundaryConditions(indices, (getproperty(bcs, side) for side in fieldnames(FieldBoundaryConditions))...)
+    FieldBoundaryConditions(indices, (getproperty(bcs, side) for side in propertynames(bcs))...)
+
 
 FieldBoundaryConditions(indices::Tuple, ::Nothing) = nothing
 
