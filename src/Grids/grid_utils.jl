@@ -4,6 +4,34 @@ using Base.Ryu: writeshortest
 using LinearAlgebra: dot, cross
 using OffsetArrays: IdOffsetRange
 
+"""
+    _property(ξ, T, ℓ, N, with_halos=false)
+
+Return the grid property `ξ`, either `with_halos` or without,
+for topology `T`, (instantiated) location `ℓ`, and dimension length `N`.
+"""
+@inline function _property(ξ, ℓ, T, N, with_halos)
+    if with_halos
+        return ξ
+    else
+        i = interior_indices(ℓ, T(), N)
+        return view(ξ, i)
+    end
+end
+
+@inline function _property(ξ, ℓx, ℓy, Tx, Ty, Nx, Ny, with_halos)
+    if with_halos
+        return ξ
+    else
+        i = interior_indices(ℓx, Tx(), Nx)
+        j = interior_indices(ℓy, Ty(), Ny)
+        return view(ξ, i, j)
+    end
+end
+
+@inline _property(ξ::Number, args...) = ξ
+@inline _property(::Nothing, args...) = nothing
+
 # Define default indices in a type-stable way
 @inline default_indices(N::Int) = default_indices(Val(N))
 
@@ -147,7 +175,9 @@ constant grid spacing `Δ`, and interior extent `L`.
 
 # Grid domains
 @inline domain(topo, N, ξ) = CUDA.@allowscalar ξ[1], ξ[N+1]
-@inline domain(::Flat, N, ξ) = CUDA.@allowscalar ξ[1], ξ[1]
+@inline domain(::Flat, N, ξ::AbstractArray) = CUDA.@allowscalar ξ[1], ξ[1]
+@inline domain(::Flat, N, ξ::Number) = ξ
+@inline domain(::Flat, N, ::Nothing) = nothing
 
 @inline x_domain(grid) = domain(topology(grid, 1)(), grid.Nx, grid.xᶠᵃᵃ)
 @inline y_domain(grid) = domain(topology(grid, 2)(), grid.Ny, grid.yᵃᶠᵃ)
@@ -305,9 +335,11 @@ Base.show(io::IO, dir::AbstractDirection) = print(io, summary(dir))
 
 size_summary(sz) = string(sz[1], "×", sz[2], "×", sz[3])
 prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
-dimension_summary(topo::Flat, name, args...) = "Flat $name"
 
-function domain_summary(topo, name, left, right)
+domain_summary(topo::Flat, name, ::Nothing) = "Flat $name"
+domain_summary(topo::Flat, name, coord::Number) = "Flat $name = $coord"
+
+function domain_summary(topo, name, (left, right))
     interval = (topo isa Bounded) ||
                (topo isa LeftConnected) ? "]" : ")"
 
@@ -322,15 +354,16 @@ function domain_summary(topo, name, left, right)
                   prettysummary(right), interval)
 end
 
-function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
-    prefix = domain_summary(topo, name, left, right)
+function dimension_summary(topo, name, dom, spacing, pad_domain=0)
+    prefix = domain_summary(topo, name, dom)
     padding = " "^(pad_domain+1) 
-    return string(prefix, padding, coordinate_summary(spacing, name))
+    return string(prefix, padding, coordinate_summary(topo, spacing, name))
 end
 
-coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, prettysummary(Δ))
+coordinate_summary(::Flat, Δ::Number, name) = ""
+coordinate_summary(topo, Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, prettysummary(Δ))
 
-coordinate_summary(Δ::Union{AbstractVector, AbstractMatrix}, name) =
+coordinate_summary(topo, Δ::Union{AbstractVector, AbstractMatrix}, name) =
     @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
              name, prettysummary(minimum(parent(Δ))),
              name, prettysummary(maximum(parent(Δ))))

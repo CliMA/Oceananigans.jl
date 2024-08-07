@@ -12,7 +12,8 @@ using Oceananigans.BoundaryConditions:
             extract_north_bc, extract_top_bc, extract_bottom_bc,
             fill_halo_event!,
             MCBCT,
-            MCBC
+            MCBC,
+            fill_open_boundary_regions!
 
 import Oceananigans.Fields: tupled_fill_halo_regions!, boundary_conditions, data, fill_send_buffers!
 import Oceananigans.Architectures: on_architecture
@@ -99,7 +100,7 @@ function multi_region_permute_boundary_conditions(bcs)
     return (fill_halos!, boundary_conditions)
 end
 
-function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; kwargs...) 
+function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; fill_boundary_normal_velocities = true, kwargs...) 
     arch = architecture(mrg)
     @apply_regionally fill_halos!, bcs = multi_region_permute_boundary_conditions(bcs)
     
@@ -112,10 +113,17 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
             fill_halo_side! = getindex(fill_halos!, task)
             fill_multiregion_send_buffers!(c, buffers, mrg, bcs_side)
         end
+        
         buff = Reference(buffers.regional_objects)
+ 
+        if fill_boundary_normal_velocities
+            apply_regionally!(fill_open_boundary_regions!, c, bcs_side, indices, loc, mrg, args...) 
+        end
+
         apply_regionally!(fill_halo_event!, c, fill_halo_side!, bcs_side, 
                           indices, loc, arch, mrg, buff, 
                           args...; kwargs...)
+
     end
 
     return nothing

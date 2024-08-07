@@ -2,6 +2,7 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
+using Oceananigans.BoundaryConditions: update_boundary_condition!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.Fields: compute!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
@@ -26,8 +27,12 @@ function update_state!(model::NonhydrostaticModel, Δt=nothing, callbacks=[]; co
     # Update all FieldTimeSeries used in the model
     update_model_field_time_series!(model, model.clock)
 
+    # Update the boundary conditions
+    update_boundary_condition!(fields(model), model)
+
     # Fill halos for velocities and tracers
-    fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model); async = true)
+    fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model); 
+                       fill_boundary_normal_velocities = false, async = true)
 
     # Compute auxiliary fields
     for aux_field in model.auxiliary_fields

@@ -87,8 +87,8 @@ julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(12, 12), extent=(1, 1), topology=(Bounded, Bounded, Flat))
 12×12×1 RectilinearGrid{Float64, Bounded, Bounded, Flat} on CPU with 3×3×0 halo
-├── Bounded  x ∈ [0.0, 1.0]       regularly spaced with Δx=0.0833333
-├── Bounded  y ∈ [0.0, 1.0]       regularly spaced with Δy=0.0833333
+├── Bounded  x ∈ [0.0, 1.0] regularly spaced with Δx=0.0833333
+├── Bounded  y ∈ [0.0, 1.0] regularly spaced with Δy=0.0833333
 └── Flat z
 
 julia> multi_region_grid = MultiRegionGrid(grid, partition = XPartition(4))
@@ -169,7 +169,7 @@ end
 
 Reconstruct the `mrg` global grid associated with the `MultiRegionGrid` on `architecture(mrg)`.
 """
-function reconstruct_global_grid(mrg)
+function reconstruct_global_grid(mrg::MultiRegionGrid)
     size   = reconstruct_size(mrg, mrg.partition)
     extent = reconstruct_extent(mrg, mrg.partition)
     topo   = topology(mrg)

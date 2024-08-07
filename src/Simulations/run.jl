@@ -193,18 +193,26 @@ function initialize!(sim::Simulation)
     # Output and diagnostics initialization
     [add_dependencies!(sim.diagnostics, writer) for writer in values(sim.output_writers)]
 
+    # Initialize schedules
+    scheduled_activities = Iterators.flatten((values(sim.diagnostics),
+                                              values(sim.callbacks),
+                                              values(sim.output_writers)))
+
+    for activity in scheduled_activities
+        initialize!(activity.schedule, sim.model)
+    end
+
     # Reset! the model time-stepper, evaluate all diagnostics, and write all output at first iteration
     if clock.iteration == 0
         reset!(timestepper(sim.model))
 
         # Initialize schedules and run diagnostics, callbacks, and output writers
         for diag in values(sim.diagnostics)
-            diag.schedule(sim.model)
             run_diagnostic!(diag, model)
         end
 
         for callback in values(sim.callbacks) 
-            callback.callsite isa TimeStepCallsite && initialize!(callback, sim)
+            callback.callsite isa TimeStepCallsite && callback(sim)
         end
 
         for writer in values(sim.output_writers)
