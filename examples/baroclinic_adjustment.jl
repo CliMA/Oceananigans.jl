@@ -80,8 +80,8 @@ x, y, z = 1e-3 .* nodes(grid, (Center(), Center(), Center()))
 
 b = model.tracers.b
 
-fig, ax, hm = heatmap(y, z, interior(b)[1, :, :],
-                      colormap=:deep,
+fig, ax, hm = heatmap(view(b, 1, :, :),
+                      colormap = :deep,
                       axis = (xlabel = "y [km]",
                               ylabel = "z [km]",
                               title = "b(x=0, y, z, t=0)",
