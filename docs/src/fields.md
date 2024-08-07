@@ -221,7 +221,7 @@ current_figure() # hide
 The situation can be improved using [`set!`](@ref) to change the values of a field.
 For example,
 
-```jldoctest setting
+```jldoctest fields
 set!(c, 42)
 
 # output
@@ -236,7 +236,7 @@ set!(c, 42)
 Now `c` is filled with `42`s (for this simple case, we could also have used `c .= 42`).
 Let's confirm that:
 
-```jldoctest setting
+```jldoctest fields
 c[1, 1, 1]
 
 # output
@@ -245,7 +245,7 @@ c[1, 1, 1]
 
 Looks good. And
 
-```jldoctest setting
+```jldoctest fields
 c[1:4, 1:4, 1]
 
 # output
@@ -256,27 +256,23 @@ c[1:4, 1:4, 1]
  42.0  42.0  42.0  42.0
 ```
 
-Note that indexing into a `Field` is the same as indexing into its `data`:
+Note that indexing into `c` is the same as indexing into `c.data`.
 
-```jldoctest setting
-c.data[1:4, 1:4, 1]
+```jldoctest fields
+c[:, :, :] == c.data
  
 # output
-4×4 Matrix{Float64}:
- 42.0  42.0  42.0  42.0
- 42.0  42.0  42.0  42.0
- 42.0  42.0  42.0  42.0
- 42.0  42.0  42.0  42.0
+true
 ```
 
 We can also `set!` with arrays,
 
-```@setup setting
+```@setup fields
 using Random
 Random.seed!(123)
 ```
 
-```jldoctest setting
+```jldoctest fields
 random_stuff = rand(size(c)...)
 set!(c, random_stuff)
 
@@ -291,9 +287,8 @@ set!(c, random_stuff)
 
 and even functions,
 
-```jldoctest setting
+```jldoctest fields
 fun_stuff(x, y, z) = 2x
-
 set!(c, fun_stuff)
 
 # output
@@ -307,13 +302,16 @@ set!(c, fun_stuff)
 
 For `Field`s on three-dimensional grids, `set!` functions must have arguments `x, y, z` for `RectilinearGrid`, or `λ, φ, z` for `LatitudeLongitudeGrid` and `OrthogonalSphericalShellGrid`.
 But for `Field`s on one- and two-dimensional grids, only the non-`Flat` directions are included.
-For example
+For example, to `set!` on a one-dimensional grid we write
 
-```jldoctest setting
+```jldoctest fields
+# Make a field on a one-dimensional grid
 one_d_grid = RectilinearGrid(size=7, x=(0, 7), topology=(Periodic, Flat, Flat))
 one_d_c = CenterField(one_d_grid)
-more_fun_stuff(x) = 3x
-set!(one_d_c, more_fun_stuff)
+
+# The one-dimensional grid varies only in `x` 
+still_fun(x) = 3x
+set!(one_d_c, still_fun)
 
 # output
 7×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
@@ -324,36 +322,40 @@ set!(one_d_c, more_fun_stuff)
     └── max=19.5, min=1.5, mean=10.5
 ```
 
-Now, since
+### A bit more about setting with functions
 
-```jldoctest setting
-xnodes(c)
+Let's return to the three-dimensional case to investigate in more detail how `set!` works with functions.
+The `xnodes` of `c` -- the coordinates of the center of `c`'s finite volumes -- are:
+
+```jldoctest fields
+xc = xnodes(c)
+@show xc
+nothing # hide
 
 # output
-4-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, -2:7), 1:4) with eltype Float64:
- 0.5
- 1.5
- 2.5
- 3.5
+xc = [0.125, 0.375, 0.625, 0.875]
 ```
+
+Note that the nodes of `c` are also returned by `xnodes(grid, Center())`.
+To `set!` the values of `c`, we simply evaluate `fun_stuff` at `c`'s nodes, so that
 
 we find that
 
-```jldoctest setting
+```jldoctest fields
 c[1:4, 1, 1]
 
-# ouptut
+# output
 4-element Vector{Float64}:
- 1.0
- 3.0
- 5.0
- 7.0
+ 0.25
+ 0.75
+ 1.25
+ 1.75
 ```
 
-In other words, `fun_stuff` is evaluated using the coordinates at the center of each cell for a given `Field`.
-One consequence is that the result is different for a `Field` located at `x` faces,
+This means that with the same function, `set!` can evaluate differently for `Field`s with different locations.
+For example,
 
-```jldoctest setting
+```jldoctest fields
 u = XFaceField(grid)
 set!(u, fun_stuff)
 u[1:4, 1, 1]
@@ -368,19 +370,116 @@ u[1:4, 1, 1]
 
 ## Halo regions and boundary conditions
 
-```jldoctest setting
-c[:, 1, 1]
+We built `grid` with `halo = (1, 1, 1)`, which means that the "interior" cells of the grid
+are surrounded by a "halo region" of cells that's one cell thick.
+The number of halo cells in each direction are stored in the properties `Hx, Hy, Hz`, so,
+
+```jldoctest fields
+(grid.Hx, grid.Hy, grid.Hz)
 
 # output
-10-element OffsetArray(::Vector{Float64}, -2:7) with eltype Float64 with indices -2:7:
- 0.0
- 0.0
- 0.0
- 1.0
- 3.0
- 5.0
- 7.0
- 0.0
- 0.0
- 0.0
+(1, 1, 1)
 ```
+
+When `set!` is called, the halo regions are left untouched.
+For example, if we take a look at a two-dimensional slice of `c` showing the interior and the halo
+regions, we find
+
+
+```jldoctest fields
+c[:, :, 1]
+
+# output
+6×6 OffsetArray(::Matrix{Float64}, 0:5, 0:5) with eltype Float64 with indices 0:5×0:5:
+ 0.0  0.0   0.0   0.0   0.0   0.0
+ 0.0  0.25  0.25  0.25  0.25  0.0
+ 0.0  0.75  0.75  0.75  0.75  0.0
+ 0.0  1.25  1.25  1.25  1.25  0.0
+ 0.0  1.75  1.75  1.75  1.75  0.0
+ 0.0  0.0   0.0   0.0   0.0   0.0
+```
+
+The halo regions are full of zeros.
+To remedy this situation, we need to `fill_halo_regions!`:
+
+```jldoctest fields
+using Oceananigans.BoundaryConditions: fill_halo_regions!
+fill_halo_regions!(c)
+
+c[:, :, 1]
+
+# output
+6×6 OffsetArray(::Matrix{Float64}, 0:5, 0:5) with eltype Float64 with indices 0:5×0:5:
+ 1.75  1.75  1.75  1.75  1.75  1.75
+ 0.25  0.25  0.25  0.25  0.25  0.25
+ 0.75  0.75  0.75  0.75  0.75  0.75
+ 1.25  1.25  1.25  1.25  1.25  1.25
+ 1.75  1.75  1.75  1.75  1.75  1.75
+ 0.25  0.25  0.25  0.25  0.25  0.25
+```
+
+The way the halo regions are filled depends on `c.boundary_conditions`:
+
+```julia
+c.boundary_conditions
+
+# output
+Oceananigans.FieldBoundaryConditions, with boundary conditions
+├── west: PeriodicBoundaryCondition
+├── east: PeriodicBoundaryCondition
+├── south: PeriodicBoundaryCondition
+├── north: PeriodicBoundaryCondition
+├── bottom: FluxBoundaryCondition: Nothing
+├── top: FluxBoundaryCondition: Nothing
+└── immersed: FluxBoundaryCondition: Nothing
+```
+
+Here, `x` and `y` are `Periodic`, while `z` is `Bounded`. The default boundary conditions in `z` are
+"no flux", which is enforced (in part) by filling the halo regions of `c` so that derivatives evaluated
+on the boundary return 0.
+To view only the interior cells of `c` we use the function `interior`,
+
+```jldoctest fields
+interior(c, :, :, 1)
+
+# output
+4×4 view(::Array{Float64, 3}, 2:5, 2:5, 2) with eltype Float64:
+ 0.25  0.25  0.25  0.25
+ 0.75  0.75  0.75  0.75
+ 1.25  1.25  1.25  1.25
+ 1.75  1.75  1.75  1.75
+```
+
+Note that the indices of `c` (and the indices of `c.data`) are "offset" so that the index `1` corresponds to the first interior cell.
+As a result,
+
+```julia
+c[1:4, 1:4, 1] == interior(c, :, :, 1)
+
+# output
+true
+```
+
+and more generally
+
+```julia
+typeof(c.data)
+
+# output
+OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}
+```
+
+Thus, for example, the `x`-indices of `c.data` vary from `1-Hx` to `Nx + Hx` -- in this case, from `0` to `5`.
+The underlying array can be accessed with `parent(c)`.
+But the "parent" array does not have offset indices, so
+
+```julia
+@show parent(c)[1:2, 2, 2]
+@show c.data[1:2, 1, 1]
+nothing # hide
+
+# output
+(parent(c))[1:2, 2, 2] = [0.0, 0.25]
+c.data[1:2, 1, 1] = [0.25, 0.75]
+```
+
