@@ -36,7 +36,7 @@ const ActiveZColumnsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any
 @inline retrieve_surface_active_cells_map(grid::ActiveZColumnsIBG) = grid.active_z_columns
 
 @inline retrieve_interior_active_cells_map(grid::ArrayActiveCellsMapIBG,      ::Val{:interior}) = grid.interior_active_cells
-@inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells.interior
+@inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells.halo_independent
 @inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:west})     = grid.interior_active_cells.west
 @inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:east})     = grid.interior_active_cells.east
 @inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:south})    = grid.interior_active_cells.south
@@ -51,7 +51,7 @@ Compute the work layout for active cells based on the given map type and grid.
 # Arguments
 - `group`: The previous workgroup.
 - `size`: The previous worksize.
-- `grid`: The grid containing the active cells.
+- `active_cells_map`: The map containing the index of the active cells
 
 # Returns
 - A tuple `(workgroup, worksize)` representing the work layout for active cells.
@@ -65,8 +65,7 @@ Converts a linear index to a tuple of indices based on the given map and grid.
 
 # Arguments
 - `idx`: The linear index to convert.
-- `map`: The map indicating the type of index conversion to perform.
-- `grid`: The grid containing the active cells.
+- `active_cells_map`: The map containing the N-dimensional index of the active cells
 
 # Returns
 A tuple of indices corresponding to the linear index.
@@ -175,10 +174,19 @@ end
 
 @inline add_3rd_index(t::Tuple, k) = (t[1], t[2], k) 
 
+# In case of a serial grid, the interior computations are performed over the whole three-dimensional
+# domain. Therefore, the `interior_active_cells` field contains the indices of all the active cells in 
+# the active domain from 1:Nz, 1:Ny and 1:Nz (i.e.,  we construct the map with parameters :xyz)
 map_interior_active_cells(ibg) = interior_active_indices(ibg; parameters = :xyz)
 
-# In case of a `DistributedGrid` we want to have different maps depending on the 
-# partitioning of the domain
+# In case of a `DistributedGrid` we want to have different maps depending on the partitioning of the domain:
+#
+# If we partition the domain in the x-direction, the we typically want to have the option to split three-dimensional 
+# kernels in a `halo-independent` part that includes Hx+1:Nx-Hx, 1:Ny, 1:Nz and two `halo-dependent` computations: a west
+# one spanning 1:Hx, 1:Ny, 1:Nz and a east one spanning Nx-Hx+1:Nx, 1:Ny, 1:Nz. For this reason we need three different maps,
+# one containing the `halo_independent` part, a `west` map and an `east` map. 
+# For the same reason we need to construct `south` and `north` maps if we partition the domain in the y-direction.
+# Therefore, the `interior_active_cells` in this case is a `NamedTuple` containing 5 elements.
 function map_interior_active_cells(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid})
 
     arch = architecture(ibg)
@@ -210,9 +218,9 @@ function map_interior_active_cells(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any
     ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
     oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
      
-    interior = interior_active_indices(ibg; parameters = KernelParameters((nx, ny, Nz), (ox, oy, 0)))
+    halo_independent = interior_active_indices(ibg; parameters = KernelParameters((nx, ny, Nz), (ox, oy, 0)))
 
-    return (; interior, west, east, south, north)
+    return (; halo_independent, west, east, south, north)
 end
 
 # If we eventually want to perform also barotropic step, `w` computation and `p` 
