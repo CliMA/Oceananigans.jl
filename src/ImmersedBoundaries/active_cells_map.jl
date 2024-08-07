@@ -176,7 +176,7 @@ end
 
 # In case of a serial grid, the interior computations are performed over the whole three-dimensional
 # domain. Therefore, the `interior_active_cells` field contains the indices of all the active cells in 
-# the active domain in the range 1:Nx, 1:Ny and 1:Nz (i.e.,  we construct the map with parameters :xyz)
+# the active domain in the range 1:Nx, 1:Ny and 1:Nz (i.e., we construct the map with parameters :xyz)
 map_interior_active_cells(ibg) = interior_active_indices(ibg; parameters = :xyz)
 
 # In case of a `DistributedGrid` we want to have different maps depending on the partitioning of the domain:
