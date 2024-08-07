@@ -14,7 +14,7 @@ mask_immersed_field!(::Number, args...) = nothing
 
 function mask_immersed_field!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(+)}, value=zero(eltype(bop)))
     a_value = ifelse(bop.b isa Number, -bop.b, value)
-    mask_immersed_field!(bop.a, )
+    mask_immersed_field!(bop.a, a_value)
 
     b_value = ifelse(bop.a isa Number, -bop.a, value)
     mask_immersed_field!(bop.b, b_value)
