@@ -20,7 +20,6 @@ end
 architecture(solver::DistributedFourierTridiagonalPoissonSolver) =
     architecture(solver.global_grid)
 
-
 """
     DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
 
