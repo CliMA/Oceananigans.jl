@@ -11,7 +11,7 @@ using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
 using Oceananigans.ImmersedBoundaries: active_interior_map, ActiveCellsIBG, 
-                                       InteriorMap, active_linear_index_to_tuple
+                                       active_linear_index_to_tuple
 
 """
     compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
