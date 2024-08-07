@@ -38,13 +38,15 @@ function compute_boundary_tendency_contributions!(grid::DistributedActiveCellsIB
     maps = grid.interior_active_cells
     
     for (name, map) in zip(keys(maps), maps)
-        compute_boundary = (name != :interior) && !isnothing(map) 
         
-        # If there exists a boundary map, then we compute the boundary contributions
+        # If there exists a boundary map, then we compute the boundary contributions. If not, the 
+        # boundary contributions have already been calculated. We exclude the interior because it has
+        # already been calculated
+        compute_boundary = (name != :interior) && !isnothing(map) 
+
         if compute_boundary
-            active_boundary_map = active_interior_map(grid, Val(name))
-            compute_hydrostatic_free_surface_tendency_contributions!(model, tuple(:xyz); 
-                                                                     active_cells_map = active_boundary_map)
+            active_cells_map = active_interior_map(grid, Val(name))
+            compute_hydrostatic_free_surface_tendency_contributions!(model, tuple(:xyz); active_cells_map)
         end
     end
 
