@@ -182,11 +182,12 @@ map_interior_active_cells(ibg) = interior_active_indices(ibg; parameters = :xyz)
 # In case of a `DistributedGrid` we want to have different maps depending on the partitioning of the domain:
 #
 # If we partition the domain in the x-direction, we typically want to have the option to split three-dimensional 
-# kernels in a `halo-independent` part that includes Hx+1:Nx-Hx, 1:Ny, 1:Nz and two `halo-dependent` computations: a west
-# one spanning 1:Hx, 1:Ny, 1:Nz and a east one spanning Nx-Hx+1:Nx, 1:Ny, 1:Nz. For this reason we need three different maps,
-# one containing the `halo_independent` part, a `west` map and an `east` map. 
+# kernels in a `halo-independent` part in the range Hx+1:Nx-Hx, 1:Ny, 1:Nz and two `halo-dependent` computations:
+# a west one spanning 1:Hx, 1:Ny, 1:Nz and a east one spanning Nx-Hx+1:Nx, 1:Ny, 1:Nz. 
+# For this reason we need three different maps, one containing the `halo_independent` active region, a `west` map and an `east` map. 
 # For the same reason we need to construct `south` and `north` maps if we partition the domain in the y-direction.
 # Therefore, the `interior_active_cells` in this case is a `NamedTuple` containing 5 elements.
+# Note that boundary-adjacent maps corresponding to non-partitioned directions are set to `nothing`
 function map_interior_active_cells(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid})
 
     arch = architecture(ibg)
