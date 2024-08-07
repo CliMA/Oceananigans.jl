@@ -251,6 +251,9 @@ function offset_windowed_data(data, data_indices, Loc, grid, view_indices)
     return offset_data(windowed_parent, loc, topo, sz, halo, view_indices)
 end
 
+convert_colon_indices(view_indices, field_indices) = view_indices
+convert_colon_indices(::Colon, field_indices) = field_indices
+
 """
     view(f::Field, indices...)
 
@@ -303,7 +306,7 @@ function Base.view(f::Field, i, j, k)
     loc = location(f)
 
     # Validate indices (convert Int to UnitRange, error for invalid indices)
-    view_indices = validate_indices((i, j, k), loc, f.grid)
+    view_indices = i, j, k = validate_indices((i, j, k), loc, f.grid)
 
     if view_indices == f.indices # nothing to "view" here
         return f # we want the whole field after all.
@@ -314,6 +317,8 @@ function Base.view(f::Field, i, j, k)
 
     all(valid_view_indices) ||
         throw(ArgumentError("view indices $((i, j, k)) do not intersect field indices $(f.indices)"))
+
+    view_indices = map(convert_colon_indices, view_indices, f.indices)
 
     # Choice: OffsetArray of view of OffsetArray, or OffsetArray of view?
     #     -> the first retains a reference to the original f.data (an OffsetArray)
