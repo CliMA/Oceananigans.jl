@@ -179,7 +179,7 @@ function convert_interior_indices(interior_indices, k, IndicesType)
     return interior_indices
 end
 
-@inline add_3rd_index(t::Tuple, k) = (t[1], t[2], k) 
+@inline add_3rd_index(ij::Tuple, k) = (ij[1], ij[2], k) 
 
 # In case of a serial grid, the interior computations are performed over the whole three-dimensional
 # domain. Therefore, the `interior_active_cells` field contains the indices of all the active cells in 
