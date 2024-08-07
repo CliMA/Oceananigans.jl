@@ -4,7 +4,7 @@ using Oceananigans
 using Oceananigans.Architectures: on_architecture
 
 using MakieCore: AbstractPlot
-import MakieCore: convert_arguments
+import MakieCore: convert_arguments, _create_plot
 
 function drop_singleton_indices(N)
     if N == 1
@@ -14,7 +14,15 @@ function drop_singleton_indices(N)
     end
 end
 
-function convert_arguments(pl::Type{<:AbstractPlot}, f::Field)
+function _create_plot(F::Function, attributes::Dict, f::Field)
+    converted_args = convert_field_argument(f)
+    return _create_plot(F, attributes, converted_args...)
+end
+
+convert_arguments(pl::Type{<:AbstractPlot}, f::Field) =
+    convert_arguments(pl, convert_field_argument(f)...)
+
+function convert_field_argument(f::Field)
 
     # Deduce dimensionality
     Nx, Ny, Nz = size(f)
@@ -37,7 +45,13 @@ function convert_arguments(pl::Type{<:AbstractPlot}, f::Field)
 
         ξ1 = fnodes[d1]
         ξ1_cpu = on_architecture(CPU(), ξ1)
-        return convert_arguments(pl, ξ1_cpu, fi_cpu)
+
+        # Shenanigans
+        if d1 === 3 # vertical plot...
+            return fi_cpu, ξ1_cpu
+        else
+            return ξ1_cpu, fi_cpu
+        end
 
     elseif D == 2
 
@@ -47,7 +61,7 @@ function convert_arguments(pl::Type{<:AbstractPlot}, f::Field)
         ξ1_cpu = on_architecture(CPU(), ξ1)
         ξ2_cpu = on_architecture(CPU(), ξ2)
 
-        return convert_arguments(pl, ξ1_cpu, ξ2_cpu, fi_cpu)
+        return ξ1_cpu, ξ2_cpu, fi_cpu
 
     elseif D == 3
         throw(ArgumentError("Cannot convert_arguments for a 3D field!"))
