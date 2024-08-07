@@ -3,7 +3,7 @@ using Oceananigans: fields, TendencyCallsite
 using Oceananigans.Utils: work_layout
 using Oceananigans.Models: complete_communication_and_compute_boundary!, interior_tendency_kernel_parameters
 
-using Oceananigans.ImmersedBoundaries: active_interior_map, ActiveCellsIBG, 
+using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, ActiveCellsIBG, 
                                        active_linear_index_to_tuple
 
 import Oceananigans.TimeSteppers: compute_tendencies!
@@ -27,7 +27,7 @@ function compute_tendencies!(model::NonhydrostaticModel, callbacks)
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
     kernel_parameters = tuple(interior_tendency_kernel_parameters(model.grid))
-    active_cells_map  = active_interior_map(model.grid, Val(:interior))
+    active_cells_map  = retrieve_interior_active_cells_map(model.grid, Val(:interior))
     
     compute_interior_tendency_contributions!(model, kernel_parameters; active_cells_map)
     complete_communication_and_compute_boundary!(model, model.grid, model.architecture)

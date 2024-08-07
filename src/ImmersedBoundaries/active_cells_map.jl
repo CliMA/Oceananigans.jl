@@ -4,7 +4,7 @@ using Oceananigans.Grids: AbstractGrid
 
 using KernelAbstractions: @kernel, @index
 
-import Oceananigans.Grids: active_surface_map, active_interior_map
+import Oceananigans.Grids: retrieve_surface_active_cells_map, retrieve_interior_active_cells_map
 import Oceananigans.Utils: active_cells_work_layout
 
 using Oceananigans.Solvers: solve_batched_tridiagonal_system_z!, ZDirection
@@ -12,9 +12,16 @@ using Oceananigans.DistributedComputations: DistributedGrid
 
 import Oceananigans.Solvers: solve_batched_tridiagonal_system_kernel!
 
-const DistributedActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid, <:Any, <:NamedTuple} # Cannot be used to dispatch in kernels!!!
-const ArrayActiveCellsIBG       = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
-const NamedTupleActiveCellsIBG  = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NamedTuple}
+const DistributedActiveCellsIBG   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid, <:Any, <:NamedTuple} # Cannot be used to dispatch in kernels!!!
+
+# An IBG with an active cells map that includes the whole :xyz domain
+const ArrayActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
+
+# An IBG with an active cells map subdivided in (; interior, west, east, north, south)
+# Only used (for the moment) in the case of distributed architectures where the boundary adjacent region 
+# has to be computed separately, these maps hold the active region in the "halo-independent" part of the domain
+# (; interior), and the "halo-dependent" regions in the west, east, north, and south, respectively
+const NamedTupleActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NamedTuple}
 
 """
 A constant representing an immersed boundary grid, where interior active cells are mapped to linear indices in grid.interior_active_cells
@@ -26,16 +33,15 @@ A constant representing an immersed boundary grid, where active columns in the Z
 """
 const ActiveZColumnsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
 
-@inline active_surface_map(grid::ActiveZColumnsIBG) = grid.active_z_columns
+@inline retrieve_surface_active_cells_map(grid::ActiveZColumnsIBG) = grid.active_z_columns
 
-
-@inline active_interior_map(grid::ArrayActiveCellsIBG,      ::Val{:interior}) = grid.interior_active_cells
-@inline active_interior_map(grid::NamedTupleActiveCellsIBG, ::Val{:interior}) = grid.interior_active_cells.interior
-@inline active_interior_map(grid::NamedTupleActiveCellsIBG, ::Val{:west})     = grid.interior_active_cells.west
-@inline active_interior_map(grid::NamedTupleActiveCellsIBG, ::Val{:east})     = grid.interior_active_cells.east
-@inline active_interior_map(grid::NamedTupleActiveCellsIBG, ::Val{:south})    = grid.interior_active_cells.south
-@inline active_interior_map(grid::NamedTupleActiveCellsIBG, ::Val{:north})    = grid.interior_active_cells.north
-@inline active_interior_map(grid::ActiveZColumnsIBG,        ::Val{:surface})  = grid.active_z_columns
+@inline retrieve_interior_active_cells_map(grid::ArrayActiveCellsMapIBG,      ::Val{:interior}) = grid.interior_active_cells
+@inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells.interior
+@inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:west})     = grid.interior_active_cells.west
+@inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:east})     = grid.interior_active_cells.east
+@inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:south})    = grid.interior_active_cells.south
+@inline retrieve_interior_active_cells_map(grid::NamedTupleActiveCellsMapIBG, ::Val{:north})    = grid.interior_active_cells.north
+@inline retrieve_interior_active_cells_map(grid::ActiveZColumnsIBG,           ::Val{:surface})  = grid.active_z_columns
 
 """
     active_cells_work_layout(group, size, map_type, grid)

@@ -2,7 +2,7 @@ import Oceananigans.Models: compute_boundary_tendencies!
 import Oceananigans.Models: compute_boundary_tendencies!
 
 using Oceananigans.Grids: halo_size
-using Oceananigans.ImmersedBoundaries: active_interior_map, DistributedActiveCellsIBG
+using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, DistributedActiveCellsIBG
 using Oceananigans.Models.NonhydrostaticModels: boundary_tendency_kernel_parameters,
                                                 boundary_p_kernel_parameters, 
                                                 boundary_κ_kernel_parameters,
@@ -45,7 +45,7 @@ function compute_boundary_tendency_contributions!(grid::DistributedActiveCellsIB
         compute_boundary = (name != :interior) && !isnothing(map) 
 
         if compute_boundary
-            active_cells_map = active_interior_map(grid, Val(name))
+            active_cells_map = retrieve_interior_active_cells_map(grid, Val(name))
             compute_hydrostatic_free_surface_tendency_contributions!(model, tuple(:xyz); active_cells_map)
         end
     end

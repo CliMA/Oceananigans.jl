@@ -10,7 +10,7 @@ using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
-using Oceananigans.ImmersedBoundaries: active_interior_map, ActiveCellsIBG, 
+using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, ActiveCellsIBG, 
                                        active_linear_index_to_tuple
 
 """
@@ -26,7 +26,7 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain. The active cells map restricts the computation to the active cells in the
     # interior if the grid is _immersed_ and the `active_cells_map` kwarg is active
-    active_cells_map = active_interior_map(model.grid, Val(:interior))
+    active_cells_map = retrieve_interior_active_cells_map(model.grid, Val(:interior))
     compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; active_cells_map)
 
     complete_communication_and_compute_boundary!(model, model.grid, model.architecture)

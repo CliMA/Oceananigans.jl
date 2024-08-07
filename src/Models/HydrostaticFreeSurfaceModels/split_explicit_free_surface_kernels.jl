@@ -6,7 +6,7 @@ using Oceananigans.Operators
 using Oceananigans.Architectures: convert_args
 using Oceananigans.ImmersedBoundaries: peripheral_node, immersed_inactive_node, GFBIBG
 using Oceananigans.ImmersedBoundaries: inactive_node, IBG, c, f
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!, active_surface_map, active_interior_map
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, retrieve_surface_active_cells_map, retrieve_interior_active_cells_map
 using Oceananigans.ImmersedBoundaries: active_linear_index_to_tuple, ActiveCellsIBG, ActiveZColumnsIBG
 using Oceananigans.DistributedComputations: child_architecture
 using Oceananigans.DistributedComputations: Distributed
@@ -225,7 +225,7 @@ end
 end
 
 @inline function compute_barotropic_mode!(U, V, grid, u, v) 
-    active_cells_map = active_surface_map(grid)
+    active_cells_map = retrieve_surface_active_cells_map(grid)
 
     launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, active_cells_map, u, v; active_cells_map)
 
@@ -470,7 +470,7 @@ function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
 end
 
 @inline function setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ) 
-    active_cells_map = active_surface_map(grid)
+    active_cells_map = retrieve_surface_active_cells_map(grid)
 
     launch!(architecture(grid), grid, :xy, _compute_integrated_ab2_tendencies!, auxiliary.Gᵁ, auxiliary.Gⱽ, grid, 
             active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ; active_cells_map)
