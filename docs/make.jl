@@ -87,6 +87,7 @@ example_pages = [
 
 model_setup_pages = [
     "Overview" => "model_setup/overview.md",
+    "Setting initial conditions" => "model_setup/setting_initial_conditions.md"
     "Architecture" => "model_setup/architecture.md",
     "Number type" => "model_setup/number_type.md",
     "Grid" => "model_setup/legacy_grids.md",
@@ -103,7 +104,6 @@ model_setup_pages = [
     "Callbacks" => "model_setup/callbacks.md",
     "Output writers" => "model_setup/output_writers.md",
     "Checkpointing" => "model_setup/checkpointing.md",
-    "Setting initial conditions" => "model_setup/setting_initial_conditions.md"
 ]
 
 physics_pages = [
@@ -147,22 +147,24 @@ appendix_pages = [
 pages = [
     "Home" => "index.md",
     "Quick start" => "quick_start.md",
-    # "Examples" => example_pages,
+    "Examples" => example_pages,
     "Grids" => "grids.md",
     "Fields" => "fields.md",
     "Operations" => "operations.md",
-    # "Averages, integrals, and cumulative integrals" => "operations.md",
-    # "Reductions" => "operations.md",
-    # "Model setup (legacy)" => model_setup_pages,
+    # TODO:
+    #   - Develop the following three tutorials on reductions, simulations, and post-processing
+    #   - Refactor the model setup pages and make them more tutorial-like.
+    # "Averages, integrals, and cumulative integrals" => "reductions_and_accumulations.md",
     # "Simulations" => simulations.md,
     # "FieldTimeSeries and post-processing" => field_time_series.md,
-    # "Physics" => physics_pages,
-    # "Numerical implementation" => numerical_pages,
-    # "Simulation tips" => "simulation_tips.md",
-    # "Contributor's guide" => "contributing.md",
-    # "Gallery" => "gallery.md",
-    # "References" => "references.md",
-    # "Appendix" => appendix_pages
+    "Model setup (legacy)" => model_setup_pages,
+    "Physics" => physics_pages,
+    "Numerical implementation" => numerical_pages,
+    "Simulation tips" => "simulation_tips.md",
+    "Contributor's guide" => "contributing.md",
+    "Gallery" => "gallery.md",
+    "References" => "references.md",
+    "Appendix" => appendix_pages
 ]
 
 #####
