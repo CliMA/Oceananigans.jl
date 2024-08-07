@@ -17,10 +17,10 @@ const DistributedActiveCellsIBG   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:
 # An IBG with an active cells map that includes the whole :xyz domain
 const ArrayActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
 
-# An IBG with an active cells map subdivided in (; interior, west, east, north, south)
+# An IBG with an active cells map subdivided in 5 different parts.
 # Only used (for the moment) in the case of distributed architectures where the boundary adjacent region 
 # has to be computed separately, these maps hold the active region in the "halo-independent" part of the domain
-# (; interior), and the "halo-dependent" regions in the west, east, north, and south, respectively
+# (; halo_independent_cells), and the "halo-dependent" regions in the west, east, north, and south, respectively
 const NamedTupleActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NamedTuple}
 
 """
