@@ -137,7 +137,9 @@ Restrictions
 """
 function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT)
     
-    validate_global_grid(global_grid) 
+    validate_global_grid(global_grid)
+    validate_configuration(global_grid, local_grid)
+ 
     irreg_dim = stretched_dimensions(local_grid)[1]
 
     topology(global_grid, irreg_dim) != Bounded && error("`DistributedFourierTridiagonalPoissonSolver` can only be used when the stretched direction's topology is `Bounded`.")
@@ -145,10 +147,6 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     FT         = Complex{eltype(local_grid)}
     child_arch = child_architecture(local_grid)
     storage    = TransposableField(CenterField(local_grid), FT)
-
-    # We don't support distributing anything in z.
-    Rz = architecture(local_grid).ranks[3]
-    Rz == 1 || throw(ArgumentError("Non-singleton ranks in the vertical are not supported by DistributedFFTBasedPoissonSolver."))
 
     topo = (TX, TY, TZ) = topology(global_grid)
     λx = dropdims(poisson_eigenvalues(global_grid.Nx, global_grid.Lx, 1, TX()), dims=(2, 3))
