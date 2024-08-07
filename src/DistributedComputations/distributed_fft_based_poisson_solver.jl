@@ -196,14 +196,14 @@ function validate_poisson_solver_distributed_grid(global_grid::RectilinearGrid)
     TX, TY, TZ = topology(global_grid)
 
     if (TY == Bounded && TZ == Periodic) || (TX == Bounded && TY == Periodic) || (TX == Bounded && TZ == Periodic)
-        throw("NonhydrostaticModels on Distributed grids do not support topology ($TX, $TY, $TZ) at the moment.
+        throw("A distributed Poisson solver does not support grids with topology ($TX, $TY, $TZ) at the moment.
                A Periodic z-direction requires also the y- and and x-directions to be Periodic, while a Periodic y-direction requires also 
                the x-direction to be Periodic.")
     end
     
     if !(global_grid isa YZRegularRG) && !(global_grid isa XYRegularRG) && !(global_grid isa XZRegularRG) 
         throw("The provided grid is stretched in directions $(stretched_dimensions(global_grid)). 
-               Distributed architectures support only RectilinearGrid that have variably-spaced cells in at most one direction.")
+               A distributed Poisson solver supports only RectilinearGrids that have variably-spaced cells in at most one direction.")
     end
 
     return nothing
@@ -212,16 +212,18 @@ end
 function validate_possion_solver_configuration(global_grid, local_grid)
         
     # We don't support distributing anything in z.
-    Rz = architecture(local_grid).ranks[3]
-    Rz == 1 || throw("Non-singleton ranks in the vertical are not supported by DistributedFFTBasedPoissonSolver.")
+    Rx, Ry, Rz = architecture(local_grid).ranks
+    Rz == 1 || throw("Non-singleton ranks in the vertical are not supported by distributed Poisson solvers.")
     
     # Limitation of the current implementation (see the docstring)
-    if global_grid.Nz % architecture(local_grid).ranks[2] != 0
-        throw("The number of ranks in the y direction must divide Nz. See the docstring for more information.")
+    if global_grid.Nz % Ry != 0
+        throw("The number of ranks in the y-direction are $(Ry) with Nz = $(global_grid.Nz) cells in the z-direction.
+               The distributed Poisson solver requires that the number of ranks in the y-direction divide Nz.")
     end
 
-    if global_grid.Ny % architecture(local_grid).ranks[1] != 0
-        throw("The number of ranks in the x direction must divide Ny. See the docstring for more information.")
+    if global_grid.Ny % Rx != 0
+        throw("The number of ranks in the y-direction are $(Rx) with Ny = $(global_grid.Ny) cells in the y-direction.
+               The distributed Poisson solver requires that the number of ranks in the x-direction divide Ny.")
     end
 
     return nothing
