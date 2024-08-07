@@ -196,7 +196,7 @@ function validate_poisson_solver_distributed_grid(global_grid::RectilinearGrid)
     TX, TY, TZ = topology(global_grid)
 
     if (TY == Bounded && TZ == Periodic) || (TX == Bounded && TY == Periodic) || (TX == Bounded && TZ == Periodic)
-        throw("A distributed Poisson solver does not support grids with topology ($TX, $TY, $TZ) at the moment.
+        throw("Distributed Poisson solvers do not support grids with topology ($TX, $TY, $TZ) at the moment.
                A Periodic z-direction requires also the y- and and x-directions to be Periodic, while a Periodic y-direction requires also 
                the x-direction to be Periodic.")
     end
