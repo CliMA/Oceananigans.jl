@@ -1,5 +1,6 @@
 using CUDA: @allowscalar
-using Oceananigans.Grids: stretched_dimensions, stretched_direction
+using Oceananigans.Grids: tridiagonal_dimensions, stretched_direction
+using Oceananigans.Grids: XDirection, YDirection
 using Oceananigans.Solvers: BatchedTridiagonalSolver, ZTridiagonalSolver, YTridiagonalSolver, XTridiagonalSolver
 using Oceananigans.Solvers: compute_main_diagonal!
 
@@ -140,20 +141,21 @@ Restrictions
     - Same as for two-dimensional decompositions with `Rx` (or `Ry`) equal to one
 
 """
-function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT; stretched_direction = nothing)
+function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT; tridiagonal_direction = nothing)
     
     validate_poisson_solver_distributed_grid(global_grid)
     validate_poisson_solver_configuration(global_grid, local_grid)
  
-    if isnothing(stretched_direction) 
-        stretched_dim = stretched_dimensions(local_grid)[1]
+    if isnothing(tridiagonal_direction) 
+        tridiagonal_dim = tridiagonal_dimensions(local_grid)[1]
+        tridiagonal_direction = stretched_direction(grid)
     else
-        stretched_dim = stretched_direction == :x ? 1 : 
-                        stretched_direction == :y ? 2 : 3
+        tridiagonal_dim = tridiagonal_direction == XDirection() ? 1 : 
+                          tridiagonal_direction == YDirection() ? 2 : 3
     end
 
-    topology(global_grid, stretched_dim) != Bounded &&
-        error("`DistributedFourierTridiagonalPoissonSolver` requires that the stretched direction (dimension $stretched_dim) is `Bounded`.")
+    topology(global_grid, tridiagonal_dim) != Bounded &&
+        error("`DistributedFourierTridiagonalPoissonSolver` requires that the stretched direction (dimension $tridiagonal_dim) is `Bounded`.")
 
     FT         = Complex{eltype(local_grid)}
     child_arch = child_architecture(local_grid)
@@ -164,17 +166,17 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     λy = dropdims(poisson_eigenvalues(global_grid.Ny, global_grid.Ly, 2, TY()), dims=(1, 3))
     λz = dropdims(poisson_eigenvalues(global_grid.Nz, global_grid.Lz, 3, TZ()), dims=(1, 2))
         
-    if stretched_dim == 1
+    if tridiagonal_dim == 1
         arch = architecture(storage.xfield.grid)
         grid = storage.xfield.grid
         λ1 = partition_coordinate(λy, size(grid, 2), arch, 2)
         λ2 = partition_coordinate(λz, size(grid, 3), arch, 3)
-    elseif stretched_dim == 2
+    elseif tridiagonal_dim == 2
         arch = architecture(storage.yfield.grid)
         grid = storage.yfield.grid
         λ1 = partition_coordinate(λx, size(grid, 1), arch, 1)
         λ2 = partition_coordinate(λz, size(grid, 3), arch, 3)
-    elseif stretched_dim == 3
+    elseif tridiagonal_dim == 3
         arch = architecture(storage.zfield.grid)
         grid = storage.zfield.grid
         λ1 = partition_coordinate(λx, size(grid, 1), arch, 1)
@@ -187,21 +189,20 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     plan = plan_distributed_transforms(global_grid, storage, planner_flag)
 
     # Lower and upper diagonals are the same
-    lower_diagonal = @allowscalar [ 1 / Δξᶠ(q, grid, Val(stretched_dim)) for q in 2:size(grid, stretched_dim) ]
+    lower_diagonal = @allowscalar [ 1 / Δξᶠ(q, grid, Val(tridiagonal_dim)) for q in 2:size(grid, tridiagonal_dim) ]
     lower_diagonal = on_architecture(child_arch, lower_diagonal)
     upper_diagonal = lower_diagonal
 
     # Compute diagonal coefficients for each grid point
-    diagonal = on_architecture(arch, zeros(size(grid)...))
-    launch_config = if stretched_dim == 1
+    diagonal = on_architecture(arch, zeros(size(gstretched_directionrid)...))
+    launch_config = if tridiagonal_dim == 1
                         :yz
-                    elseif stretched_dim == 2
+                    elseif tridiagonal_dim == 2
                         :xz
-                    elseif stretched_dim == 3
+                    elseif tridiagonal_dim == 3
                         :xy
                     end
 
-    tridiagonal_direction = stretched_direction(grid)
     launch!(arch, grid, launch_config, compute_main_diagonal!, diagonal, grid, λ1, λ2, tridiagonal_direction)
 
     # Set up batched tridiagonal solver
@@ -218,21 +219,21 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     buffer_y = y_buffer_needed ? on_architecture(child_arch, zeros(FT, size(storage.yfield)...)) : nothing 
     buffer_z = z_buffer_needed ? on_architecture(child_arch, zeros(FT, size(storage.zfield)...)) : nothing
 
-    buffer = if stretched_dim == 1
+    buffer = if tridiagonal_dim == 1
         (; y = buffer_y, z = buffer_z)
-    elseif stretched_dim == 2
+    elseif tridiagonal_dim == 2
         (; x = buffer_x, z = buffer_z)
-    elseif stretched_dim == 3
+    elseif tridiagonal_dim == 3
         (; x = buffer_x, y = buffer_y)
     end
 
-    if stretched_dim == 1
+    if tridiagonal_dim == 1
         forward  = (y! = plan.forward.y!,  z! = plan.forward.z!)
         backward = (y! = plan.backward.y!, z! = plan.backward.z!)
-    elseif stretched_dim == 2
+    elseif tridiagonal_dim == 2
         forward  = (x! = plan.forward.x!,  z! = plan.forward.z!)
         backward = (x! = plan.backward.x!, z! = plan.backward.z!)
-    elseif stretched_dim == 3
+    elseif tridiagonal_dim == 3
         forward  = (x! = plan.forward.x!,  y! = plan.forward.y!)
         backward = (x! = plan.backward.x!, y! = plan.backward.y!)
     end
