@@ -204,3 +204,4 @@ validate_indices(indices, loc, grid::AbstractGrid) =
 
 validate_indices(indices, loc, topo, sz, halo_sz) =
     map(validate_index, indices, map(instantiate, loc), map(instantiate, topo), sz, halo_sz)
+
