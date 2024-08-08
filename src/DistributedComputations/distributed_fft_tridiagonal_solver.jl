@@ -1,5 +1,5 @@
 using CUDA: @allowscalar
-using Oceananigans.Grids: tridiagonal_dimensions, stretched_direction
+using Oceananigans.Grids: stretched_dimensions, stretched_direction
 using Oceananigans.Grids: XDirection, YDirection
 using Oceananigans.Solvers: BatchedTridiagonalSolver, ZTridiagonalSolver, YTridiagonalSolver, XTridiagonalSolver
 using Oceananigans.Solvers: compute_main_diagonal!
@@ -147,7 +147,7 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     validate_poisson_solver_configuration(global_grid, local_grid)
  
     if isnothing(tridiagonal_direction) 
-        tridiagonal_dim = tridiagonal_dimensions(local_grid)[1]
+        tridiagonal_dim = stretched_dimensions(local_grid)[1]
         tridiagonal_direction = stretched_direction(grid)
     else
         tridiagonal_dim = tridiagonal_direction == XDirection() ? 1 : 
