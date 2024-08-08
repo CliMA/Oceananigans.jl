@@ -1,7 +1,7 @@
 using CUDA: @allowscalar
 using Oceananigans.Grids: stretched_dimensions, stretched_direction
 using Oceananigans.Solvers: BatchedTridiagonalSolver, ZTridiagonalSolver, YTridiagonalSolver, XTridiagonalSolver
-using Oceananigans.Solvers: Δξᶠ, compute_main_diagonal!
+using Oceananigans.Solvers: compute_main_diagonal!
 
 using Oceananigans.Grids: XZRegularRG, 
                           XYRegularRG,
@@ -25,6 +25,11 @@ const ZStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<
 architecture(solver::DistributedFourierTridiagonalPoissonSolver) =
     architecture(solver.global_grid)
 
+
+@inline Δξᶠ(i, grid, ::Val{1}) = Δxᶠᵃᵃ(i, 1, 1, grid)
+@inline Δξᶠ(j, grid, ::Val{2}) = Δyᵃᶠᵃ(1, j, 1, grid)
+@inline Δξᶠ(k, grid, ::Val{3}) = Δzᵃᵃᶠ(1, 1, k, grid)
+    
 """
     DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
 
@@ -186,7 +191,7 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     plan = plan_distributed_transforms(global_grid, storage, planner_flag)
 
     # Lower and upper diagonals are the same
-    lower_diagonal = @allowscalar [ 1 / Δξᶠ(q, grid) for q in 2:size(grid, stretched_dim) ]
+    lower_diagonal = @allowscalar [ 1 / Δξᶠ(q, grid, Val(stretched_dim)) for q in 2:size(grid, stretched_dim) ]
     lower_diagonal = on_architecture(child_arch, lower_diagonal)
     upper_diagonal = lower_diagonal
 
