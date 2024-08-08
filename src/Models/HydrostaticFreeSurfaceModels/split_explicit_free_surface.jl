@@ -4,7 +4,7 @@ using Oceananigans.Fields
 using Oceananigans.Grids
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.AbstractOperations: Δz, GridMetricOperation
-
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, c, f
 using Adapt
 using Base
 using KernelAbstractions: @index, @kernel
@@ -204,7 +204,7 @@ large (or `:xy` in case of a serial computation), and start computing from
 
 $(FIELDS)
 """
-Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒦}
+Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒞𝒞, 𝒦}
     "Vertically-integrated slow barotropic forcing function for `U` (`ReducedField` over ``z``)"
     Gᵁ :: ℱ𝒞
     "Vertically-integrated slow barotropic forcing function for `V` (`ReducedField` over ``z``)"
@@ -213,6 +213,8 @@ Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒦}
     Hᶠᶜ :: ℱ𝒞
     "Depth at `(Center, Face)` (`ReducedField` over ``z``)"
     Hᶜᶠ :: 𝒞ℱ
+    "Depth at `(Center, Center)` (`ReducedField` over ``z``)"
+    Hᶜᶜ :: 𝒞𝒞
     "kernel size for barotropic time stepping"
     kernel_parameters :: 𝒦
 end
@@ -224,23 +226,58 @@ Return the `SplitExplicitAuxiliaryFields` for `grid`.
 """
 function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
 
-    Gᵁ = Field((Face,   Center, Nothing), grid)
-    Gⱽ = Field((Center, Face,   Nothing), grid)
+    Gᵁ = Field{Face,   Center, Nothing}(grid)
+    Gⱽ = Field{Center, Face,   Nothing}(grid)
 
-    Hᶠᶜ = Field((Face,   Center, Nothing), grid)
-    Hᶜᶠ = Field((Center, Face,   Nothing), grid)
+    Hᶠᶜ = Field{Face,   Center, Nothing}(grid)
+    Hᶜᶠ = Field{Center, Face,   Nothing}(grid)
+    Hᶜᶜ = Field{Center, Center, Nothing}(grid)
 
-    dz = GridMetricOperation((Face, Center, Center), Δz, grid)
-    sum!(Hᶠᶜ, dz)
-
-    dz = GridMetricOperation((Center, Face, Center), Δz, grid)
-    sum!(Hᶜᶠ, dz)
-
-    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ))
+    calculate_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
 
     kernel_parameters = :xy
 
-    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, kernel_parameters)
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_parameters)
+end
+
+function calculate_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+    Tx, Ty, _ = topology(grid)
+
+    Ax = Tx == Flat ? 0 : 1
+    Ay = Ty == Flat ? 0 : 1
+
+    arch = architecture(grid)
+
+    # We compute the heights over all the
+    # domain including the halo points!
+    # Because of the different locations of the different heights,
+    # to encompass the whole grid, the kernel parameters must be different. 
+    kernel_size   = (Nx+2Hx-2Ax, Ny+2Hy)
+    kernel_offset = (-Hx+Ax, -Hy)
+    paramᶠᶜ = KernelParameters(kernel_size, kernel_offset)
+    launch!(arch, grid, paramᶠᶜ, _compute_column_height!, Hᶠᶜ, grid, f, c, Δzᶠᶜᶜ_reference)
+    
+    kernel_size   = (Nx+2Hx, Ny+2Hy-2Ay)
+    kernel_offset = (-Hx, -Hy+Ay)
+    paramᶜᶠ = KernelParameters(kernel_size, kernel_offset)
+    launch!(arch, grid, paramᶜᶠ, _compute_column_height!, Hᶜᶠ, grid, c, f, Δzᶜᶠᶜ_reference)
+    
+    kernel_size   = (Nx+2Hx, Ny+2Hy)
+    kernel_offset = (-Hx, -Hy)
+    paramᶜᶜ = KernelParameters(kernel_size, kernel_offset)
+    launch!(arch, grid, paramᶜᶜ, _compute_column_height!, Hᶜᶜ, grid, c, c, Δzᶜᶜᶜ_reference)
+
+    return nothing
+end
+
+@kernel function _compute_column_height!(H, grid, LX, LY, Δz)
+    i, j = @index(Global, NTuple)
+    Nz = size(grid, 3)
+    @inbounds for k in 1:Nz
+        H[i, j, 1] += ifelse(immersed_peripheral_node(i, j, k, grid, LX, LY, c), 0, Δz(i, j, k, grid))
+    end
 end
 
 """
@@ -258,7 +295,6 @@ end
 
 struct AdamsBashforth3Scheme end
 struct ForwardBackwardScheme end
-
 
 auxiliary_free_surface_field(grid, ::AdamsBashforth3Scheme) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 auxiliary_free_surface_field(grid, ::ForwardBackwardScheme) = nothing
@@ -373,6 +409,26 @@ function SplitExplicitSettings(grid = nothing;
     return SplitExplicitSettings(substepping, timestepper, settings_kwargs)
 end
 
+#=
+# mass_flux_weights = similar(averaging_weights)
+#
+# M = searchsortedfirst(τᶠ, 1) - 1
+#
+# averaging_weights ./= sum(averaging_weights)
+#
+# for i in substeps:-1:1
+#     mass_flux_weights[i] = 1 / M * sum(averaging_weights[i:substeps]) 
+# end
+#
+# mass_flux_weights ./= sum(mass_flux_weights)
+#
+# return SplitExplicitSettings(substeps,
+#                              averaging_weights,
+#                              mass_flux_weights,
+#                              Δτ,
+#                              timestepper)
+=#
+
 # Convenience Functions for grabbing free surface
 free_surface(free_surface::SplitExplicitFreeSurface) = free_surface.η
 
@@ -405,11 +461,22 @@ end
 
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
-    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η), nothing, nothing,
+    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η), 
+                             nothing, 
+                             Adapt.adapt(to, free_surface.auxiliary),
                              free_surface.gravitational_acceleration, nothing)
 
-for Type in (:SplitExplicitFreeSurface,
-             :SplitExplicitSettings,
+# Adapt
+Adapt.adapt_structure(to, auxiliary::SplitExplicitAuxiliaryFields) =
+    SplitExplicitAuxiliaryFields(Adapt.adapt(to, auxiliary.Gᵁ), 
+                                 Adapt.adapt(to, auxiliary.Gⱽ), 
+                                 Adapt.adapt(to, auxiliary.Hᶠᶜ),
+                                 Adapt.adapt(to, auxiliary.Hᶜᶠ),
+                                 Adapt.adapt(to, auxiliary.Hᶜᶜ),
+                                 nothing)
+
+for Type in (:SplitExplicitFreeSurface, 
+             :SplitExplicitSettings, 
              :SplitExplicitState, 
              :SplitExplicitAuxiliaryFields,
              :FixedTimeStepSize,
