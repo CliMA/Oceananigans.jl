@@ -199,7 +199,8 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     upper_diagonal = lower_diagonal
 
     # Compute diagonal coefficients for each grid point
-    diagonal = on_architecture(arch, zeros(size(gstretched_directionrid)...))
+    diagonal = zeros(eltype(grid), size(grid)...)
+    diagonal = on_architecture(arch, diagonal)
     launch_config = if tridiagonal_dim == 1
                         :yz
                     elseif tridiagonal_dim == 2
