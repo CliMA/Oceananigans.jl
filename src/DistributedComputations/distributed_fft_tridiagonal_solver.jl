@@ -23,8 +23,8 @@ architecture(solver::DistributedFourierTridiagonalPoissonSolver) =
 """
     DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
 
-Return an FFT-based solver for the Poisson equation evaluated on a `local_grid`
-with one stretched direction
+Return an FFT-based solver for the Poisson equation evaluated on a `local_grid` that has a non-uniform
+spacing in exactly one direction (i.e. either in x, y or z)
 
 ```math
 ∇²φ = b
@@ -58,13 +58,13 @@ Algorithm for pencil decompositions
 For pencil decompositions (useful for three-dimensional problems),
 there are two forward transforms, two backward transforms, one tri-diagonal matrix inversion
 and a variable number of transpositions that require MPI communication, dependent on the 
-strethed direction:
+stretched direction:
 
 - a stretching in the x-direction requires four transpositions
 - a stretching in the y-direction requires six transpositions
 - a stretching in the z-direction requires eight transpositions
 
-!!! warning "Computational cost"
+!!! note "Computational cost"
     Because of the additional transpositions, a stretching in the x-direction
     is computationally cheaper than a stretching in the y-direction, and the latter
     is cheaper than a stretching in the z-direction
@@ -131,7 +131,7 @@ Restrictions
     - If the ``y`` direction is `Periodic`, also the ``x`` direction must be `Periodic`
 
 2. Slab decomposition:
-    - same as for two-dimensional decompositions with `Rx` (or `Ry`) equal to one
+    - Same as for two-dimensional decompositions with `Rx` (or `Ry`) equal to one
 
 """
 function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT)
@@ -141,7 +141,8 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
  
     stretched_dim = stretched_dimensions(local_grid)[1]
 
-    topology(global_grid, stretched_dim) != Bounded && error("`DistributedFourierTridiagonalPoissonSolver` can only be used when the stretched direction's topology is `Bounded`.")
+    topology(global_grid, irreg_dim) != Bounded &&
+        error("`DistributedFourierTridiagonalPoissonSolver` requires that the stretched direction (dimension $irreg_dim) is `Bounded`.")
 
     FT         = Complex{eltype(local_grid)}
     child_arch = child_architecture(local_grid)
