@@ -1,6 +1,6 @@
 using CUDA: @allowscalar
+using Oceananigans.Grids: stretched_dimensions, stretched_direction
 using Oceananigans.Solvers: BatchedTridiagonalSolver
-using Oceananigans.Solvers: stretched_dimensions, stretched_direction
 using Oceananigans.Solvers: Δξᶠ, compute_main_diagonal!
 
 using Oceananigans.Grids: XZRegularRG, 
@@ -8,13 +8,13 @@ using Oceananigans.Grids: XZRegularRG,
                           YZRegularRG
 
 struct DistributedFourierTridiagonalPoissonSolver{G, L, P, B, R, S, β} 
-                          plan :: P              
-                   global_grid :: G
-                    local_grid :: L
+    plan :: P              
+    global_grid :: G
+    local_grid :: L
     batched_tridiagonal_solver :: B
-                   source_term :: R
-                       storage :: S
-                        buffer :: β
+    source_term :: R
+    storage :: S
+    buffer :: β 
 end
 
 architecture(solver::DistributedFourierTridiagonalPoissonSolver) =
@@ -72,43 +72,43 @@ strethed direction:
 In our implementation we require `Nz ≥ Ry` and `Nx ≥ Ry` with the additional constraint 
 that `Nz % Ry = 0` and `Ny % Rx = 0`.
 
-X - stretched algorithm
+x - stretched algorithm
 ========================
 
 1. `storage.zfield`, partitioned over ``(x, y)`` is initialized with the `rhs`.
 2. Transform along ``z``.
-3. Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
+3. Transpose `storage.zfield` + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
 4. Transform along ``y``.
-5. Transpose + communicate to `storage.xfield` partitioned into `(Rx, Ry)` processes in ``(y, z)``.
+5. Transpose `storage.yfield` + communicate to `storage.xfield` partitioned into `(Rx, Ry)` processes in ``(y, z)``.
 6. Solve the tri-diagonal linear system in the ``x`` direction.
 
 Steps 5 -> 1 are reversed to obtain the result in physical space stored in `storage.zfield` 
 partitioned over ``(x, y)``.
 
-Y - stretched algorithm
+y - stretched algorithm
 ========================
 
 1. `storage.zfield`, partitioned over ``(x, y)`` is initialized with the `rhs`.
 2. Transform along ``z``.
-3. Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
-4. Transpose + communicate to `storage.xfield` partitioned into `(Rx, Ry)` processes in ``(y, z)``.
+3. Transpose `storage.zfield` + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
+4. Transpose `storage.yfield` + communicate to `storage.xfield` partitioned into `(Rx, Ry)` processes in ``(y, z)``.
 5. Transform along ``x``.
-6. Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
+6. Transpose `storage.xfield` + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
 7. Solve the tri-diagonal linear system in the ``y`` direction.
 
 Steps 6 -> 1 are reversed to obtain the result in physical space stored in `storage.zfield` 
 partitioned over ``(x, y)``.
 
-Z - stretched algorithm
+z - stretched algorithm
 ========================
 
 1. `storage.zfield`, partitioned over ``(x, y)`` is initialized with the `rhs`.
-2. Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
+2. Transpose `storage.zfield` + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
 3. Transform along ``y``.
-4. Transpose + communicate to `storage.xfield` partitioned into `(Rx, Ry)` processes in ``(y, z)``.
+4. Transpose `storage.yfield` + communicate to `storage.xfield` partitioned into `(Rx, Ry)` processes in ``(y, z)``.
 5. Transform along ``x``.
-6. Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
-7. Transpose + communicate to `storage.zfield` partitioned into `(Rx, Ry)` processes in ``(x, y)``.
+6. Transpose `storage.xfield` + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
+7. Transpose `storage.yfield` + communicate to `storage.zfield` partitioned into `(Rx, Ry)` processes in ``(x, y)``.
 8. Solve the tri-diagonal linear system in the ``z`` direction.
 
 Steps 7 -> 1 are reversed to obtain the result in physical space stored in `storage.zfield` 
@@ -139,9 +139,9 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     validate_poisson_solver_distributed_grid(global_grid)
     validate_poisson_solver_configuration(global_grid, local_grid)
  
-    irreg_dim = stretched_dimensions(local_grid)[1]
+    stretched_dim = stretched_dimensions(local_grid)[1]
 
-    topology(global_grid, irreg_dim) != Bounded && error("`DistributedFourierTridiagonalPoissonSolver` can only be used when the stretched direction's topology is `Bounded`.")
+    topology(global_grid, stretched_dim) != Bounded && error("`DistributedFourierTridiagonalPoissonSolver` can only be used when the stretched direction's topology is `Bounded`.")
 
     FT         = Complex{eltype(local_grid)}
     child_arch = child_architecture(local_grid)
@@ -152,17 +152,17 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     λy = dropdims(poisson_eigenvalues(global_grid.Ny, global_grid.Ly, 2, TY()), dims=(1, 3))
     λz = dropdims(poisson_eigenvalues(global_grid.Nz, global_grid.Lz, 3, TZ()), dims=(1, 2))
         
-    if irreg_dim == 1
+    if stretched_dim == 1
         arch = architecture(storage.xfield.grid)
         grid = storage.xfield.grid
         λ1 = partition_coordinate(λy, size(grid, 2), arch, 2)
         λ2 = partition_coordinate(λz, size(grid, 3), arch, 3)
-    elseif irreg_dim == 2
+    elseif stretched_dim == 2
         arch = architecture(storage.yfield.grid)
         grid = storage.yfield.grid
         λ1 = partition_coordinate(λx, size(grid, 1), arch, 1)
         λ2 = partition_coordinate(λz, size(grid, 3), arch, 3)
-    elseif irreg_dim == 3
+    elseif stretched_dim == 3
         arch = architecture(storage.zfield.grid)
         grid = storage.zfield.grid
         λ1 = partition_coordinate(λx, size(grid, 1), arch, 1)
@@ -175,17 +175,17 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     plan = plan_distributed_transforms(global_grid, storage, planner_flag)
 
     # Lower and upper diagonals are the same
-    lower_diagonal = @allowscalar [ 1 / Δξᶠ(q, grid) for q in 2:size(grid, irreg_dim) ]
+    lower_diagonal = @allowscalar [ 1 / Δξᶠ(q, grid) for q in 2:size(grid, stretched_dim) ]
     lower_diagonal = on_architecture(child_arch, lower_diagonal)
     upper_diagonal = lower_diagonal
 
     # Compute diagonal coefficients for each grid point
     diagonal = on_architecture(arch, zeros(size(grid)...))
-    launch_config = if irreg_dim == 1
+    launch_config = if stretched_dim == 1
                         :yz
-                    elseif irreg_dim == 2
+                    elseif stretched_dim == 2
                         :xz
-                    elseif irreg_dim == 3
+                    elseif stretched_dim == 3
                         :xy
                     end
 
@@ -206,21 +206,21 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     buffer_y = y_buffer_needed ? on_architecture(child_arch, zeros(FT, size(storage.yfield)...)) : nothing 
     buffer_z = z_buffer_needed ? on_architecture(child_arch, zeros(FT, size(storage.zfield)...)) : nothing
 
-    buffer = if irreg_dim == 1
+    buffer = if stretched_dim == 1
         (; y = buffer_y, z = buffer_z)
-    elseif irreg_dim == 2
+    elseif stretched_dim == 2
         (; x = buffer_x, z = buffer_z)
-    elseif irreg_dim == 3
+    elseif stretched_dim == 3
         (; x = buffer_x, y = buffer_y)
     end
 
-    if irreg_dim == 1
+    if stretched_dim == 1
         forward  = (y! = plan.forward.y!,  z! = plan.forward.z!)
         backward = (y! = plan.backward.y!, z! = plan.backward.z!)
-    elseif irreg_dim == 2
+    elseif stretched_dim == 2
         forward  = (x! = plan.forward.x!,  z! = plan.forward.z!)
         backward = (x! = plan.backward.x!, z! = plan.backward.z!)
-    elseif irreg_dim == 3
+    elseif stretched_dim == 3
         forward  = (x! = plan.forward.x!,  y! = plan.forward.y!)
         backward = (x! = plan.backward.x!, y! = plan.backward.y!)
     end

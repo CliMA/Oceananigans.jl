@@ -61,9 +61,9 @@ In the algorithm below, the first dimension is always the local dimension. In ou
 
 1. `storage.zfield`, partitioned over ``(x, y)`` is initialized with the `rhs` that is ``b``.
 2. Transform along ``z``.
-3  Transpose + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
+3  Transpose `storage.zfield` + communicate to `storage.yfield` partitioned into `(Rx, Ry)` processes in ``(x, z)``.
 4. Transform along ``y``.
-5. Transpose + communicate to `storage.xfield` partitioned into `(Rx, Ry)` processes in ``(y, z)``.
+5. Transpose `storage.yfield` + communicate to `storage.xfield` partitioned into `(Rx, Ry)` processes in ``(y, z)``.
 6. Transform in ``x``.
 
 At this point the three in-place forward transforms are complete, and we
