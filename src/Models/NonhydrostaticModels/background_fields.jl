@@ -3,8 +3,6 @@ using Oceananigans.Utils: prettysummary
 
 using Adapt
 
-# TODO: This code belongs in the Models module
-
 function background_velocity_fields(fields, grid, clock)
     u = get(fields, :u, ZeroField())
     v = get(fields, :v, ZeroField())
