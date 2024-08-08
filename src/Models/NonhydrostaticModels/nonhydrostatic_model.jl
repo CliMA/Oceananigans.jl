@@ -25,6 +25,10 @@ import Oceananigans.Models: total_velocities, default_nan_checker, timestepper
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 
+# TODO: this concept may be more generally useful,
+# but for now we use it only for hydrostatic pressure anomalies for now.
+struct DefaultHydrostaticPressureAnomaly end
+
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
                                    V, S, K, BG, P, BGC, I, AF} <: AbstractModel{TS}
 
@@ -125,7 +129,7 @@ function NonhydrostaticModel(; grid,
             particles::ParticlesOrNothing = nothing,
     biogeochemistry::AbstractBGCOrNothing = nothing,
                                velocities = nothing,
-             hydrostatic_pressure_anomaly = nothing,
+             hydrostatic_pressure_anomaly = DefaultHydrostaticPressureAnomaly(),
                   nonhydrostatic_pressure = CenterField(grid),
                        diffusivity_fields = nothing,
                           pressure_solver = nothing,
@@ -139,7 +143,25 @@ function NonhydrostaticModel(; grid,
     # Validate pressure fields
     nonhydrostatic_pressure isa Field{Center, Center, Center} ||
         throw(ArgumentError("nonhydrostatic_pressure must be CenterField(grid)."))
-    isnothing(hydrostatic_pressure_anomaly) || hydrostatic_pressure_anomaly isa Field{Center, Center, Center} ||
+
+    if hydrostatic_pressure_anomaly isa DefaultHydrostaticPressureAnomaly
+        # Manage treatment of the hydrostatic pressure anomaly:
+        
+        if grid isa ImmersedBoundaryGrid
+            # Separate the hydrostatic pressure anomaly
+            # from the nonhydrostatic pressure contribution.
+            # See https://github.com/CliMA/Oceananigans.jl/issues/3677.
+            
+            hydrostatic_pressure_anomaly = CenterField(grid)
+        else
+            # Use a single combined pressure, saving memory and computation.
+            
+            hydrostatic_pressure_anomaly = nothing
+        end
+    end
+
+    # Check validity of hydrostatic_pressure_anomaly.
+    isnothing(hydrostatic_pressure_anomaly) || hydrostatic_pressure_anomaly isa CenterField ||
         throw(ArgumentError("hydrostatic_pressure_anomaly must be `nothing` or `CenterField(grid)`."))
 
     # We don't support CAKTE for NonhydrostaticModel yet.
@@ -181,6 +203,9 @@ function NonhydrostaticModel(; grid,
 
     # Ensure `closure` describes all tracers
     closure = with_tracers(tracernames(tracers), closure)
+
+
+             hydrostatic_pressure_anomaly = nothing,
 
     # Either check grid-correctness, or construct tuples of fields
     velocities         = VelocityFields(velocities, grid, boundary_conditions)
