@@ -602,13 +602,6 @@ function interior(fts::FieldTimeSeries)
     return view(parent(fts), i_view..., :)
 end
 
-# FieldTimeSeries boundary conditions
-const CPUFTSBC = BoundaryCondition{<:Any, <:FieldTimeSeries}
-const GPUFTSBC = BoundaryCondition{<:Any, <:GPUAdaptedFieldTimeSeries}
-const FTSBC = Union{CPUFTSBC, GPUFTSBC}
-
-@inline getbc(bc::FTSBC, i::Int, j::Int, grid::AbstractGrid, clock, args...) = bc.condition[i, j, Time(clock.time)]
-
 #####
 ##### Fill halo regions
 #####
