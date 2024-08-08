@@ -46,7 +46,7 @@ for `Distributed` architectures.
 Supported configurations
 ========================
 
-In the following, `Nx`, `Ny`, and `Nz` are the number of grid points of the **global** grid, 
+In the following, `Nx`, `Ny`, and `Nz` are the number of grid points of the **global** grid
 in the `x`, `y`, and `z` directions, while `Rx`, `Ry`, and `Rz` are the number of ranks in the
 `x`, `y`, and `z` directions, respectively. Furthermore, 'pencil' decomposition refers to a domain 
 decomposed in two different directions (i.e., with `Rx != 1` and `Ry != 1`), while 'slab' decomposition 
