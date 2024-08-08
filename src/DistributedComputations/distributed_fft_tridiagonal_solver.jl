@@ -131,7 +131,7 @@ Restrictions
     - If the ``y`` direction is `Periodic`, also the ``x`` direction must be `Periodic`
 
 2. Slab decomposition:
-    - same as for two-dimensional decompositions with `Rx` (or `Ry`) equal to one
+    - Same as for two-dimensional decompositions with `Rx` (or `Ry`) equal to one
 
 """
 function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT)
