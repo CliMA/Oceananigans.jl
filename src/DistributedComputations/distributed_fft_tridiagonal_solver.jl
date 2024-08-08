@@ -58,7 +58,7 @@ Algorithm for pencil decompositions
 For pencil decompositions (useful for three-dimensional problems),
 there are two forward transforms, two backward transforms, one tri-diagonal matrix inversion
 and a variable number of transpositions that require MPI communication, dependent on the 
-strethed direction:
+stretched direction:
 
 - a stretching in the x-direction requires four transpositions
 - a stretching in the y-direction requires six transpositions
