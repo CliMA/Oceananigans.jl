@@ -204,9 +204,6 @@ function NonhydrostaticModel(; grid,
     # Ensure `closure` describes all tracers
     closure = with_tracers(tracernames(tracers), closure)
 
-
-             hydrostatic_pressure_anomaly = nothing,
-
     # Either check grid-correctness, or construct tuples of fields
     velocities         = VelocityFields(velocities, grid, boundary_conditions)
     tracers            = TracerFields(tracers,      grid, boundary_conditions)
