@@ -1,6 +1,7 @@
 using CUDA: @allowscalar
 using Oceananigans.Grids: stretched_dimensions
 using Oceananigans.Grids: XDirection, YDirection
+using Oceananigans.Operators: Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶠ
 
 using Oceananigans.Solvers: BatchedTridiagonalSolver, 
                             stretched_direction, 
