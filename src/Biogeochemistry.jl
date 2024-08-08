@@ -120,7 +120,7 @@ abstract type AbstractContinuousFormBiogeochemistry <: AbstractBiogeochemistry e
     return bgc(val_tracer_name, x, y, z, clock.time, fields_ijk...)
 end
 
-@inline (bgc::AbstractContinuousFormBiogeochemistry)(val_tracer_name, x, y, z, t, fields...) = zero(x)
+@inline (bgc::AbstractContinuousFormBiogeochemistry)(val_tracer_name, x, y, z, t, fields...) = zero(t)
 
 tracernames(tracers) = keys(tracers)
 tracernames(tracers::Tuple) = tracers
