@@ -152,7 +152,7 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
  
     if isnothing(tridiagonal_direction) 
         tridiagonal_dim = stretched_dimensions(local_grid)[1]
-        tridiagonal_direction = stretched_direction(grid)
+        tridiagonal_direction = stretched_direction(local_grid)
     else
         tridiagonal_dim = tridiagonal_direction == XDirection() ? 1 : 
                           tridiagonal_direction == YDirection() ? 2 : 3
