@@ -87,7 +87,7 @@ example_pages = [
 
 model_setup_pages = [
     "Overview" => "model_setup/overview.md",
-    "Setting initial conditions" => "model_setup/setting_initial_conditions.md"
+    "Setting initial conditions" => "model_setup/setting_initial_conditions.md",
     "Architecture" => "model_setup/architecture.md",
     "Number type" => "model_setup/number_type.md",
     "Grid" => "model_setup/legacy_grids.md",
