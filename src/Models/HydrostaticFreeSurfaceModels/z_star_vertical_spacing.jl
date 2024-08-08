@@ -104,6 +104,7 @@ reference_Δzᵃᵃᶜ(grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶜ.Δr
 @inline Δzᶜᶜᶜ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶜ_reference(i, j, k, grid) * grid.Δzᵃᵃᶜ.sⁿ[i, j, 1]
 
 @inline ∂t_∂s_grid(i, j, k, grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶜ.∂t_∂s[i, j, k] 
+@inline V_times_∂t_∂s_grid(i, j, k, grid::ZStarSpacingGrid) = ∂t_∂s_grid(i, j, k, grid) * Vᶜᶜᶜ(i, j, k, grid)
 
 #####
 ##### ZStar-specific vertical spacings update

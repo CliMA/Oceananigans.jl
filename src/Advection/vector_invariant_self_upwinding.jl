@@ -3,8 +3,7 @@
 #####
 
 # Metric term for moving grids
-@inline ∂t_∂s_grid(i, j, k, grid) = zero(grid)
-@inline V_times_∂t_∂s_grid(i, j, k, grid) = ∂t_∂s_grid(i, j, k, grid) * Vᶜᶜᶜ(i, j, k, grid)
+@inline V_times_∂t_∂s_grid(i, j, k, grid) = zero(grid)
 
 @inline δx_U(i, j, k, grid, u, v) = δxᶜᶜᶜ(i, j, k, grid, Ax_qᶠᶜᶜ, u)
 @inline δy_V(i, j, k, grid, u, v) = δyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v)

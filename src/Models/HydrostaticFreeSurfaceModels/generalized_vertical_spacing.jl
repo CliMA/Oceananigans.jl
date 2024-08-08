@@ -10,7 +10,7 @@ using Printf
 
 import Oceananigans.Grids: with_halo, znode
 import Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶠ, Δzᶠᶜᶜ, Δzᶠᶠᶠ, Δzᶠᶠᶜ
-import Oceananigans.Advection: ∂t_∂s_grid
+import Oceananigans.Advection: V_times_∂t_∂s_grid
 import Oceananigans.Architectures: arch_array
 
 """
@@ -168,7 +168,7 @@ ab2_step_tracer_field!(tracer_field, grid::AbstractVerticalSpacingGrid, Δt, χ,
             grid.Δzᵃᵃᶠ.s⁻, 
             Δt, χ, Gⁿ, G⁻)
 
-const EmptyTuples = Union{NamedTuple{(),Tuple{}}, Tuple{}}
+const EmptyTuples = Union{NamedTuple{(), Tuple{}}, Tuple{}}
 
 unscale_tracers!(::EmptyTuples, ::AbstractVerticalSpacingGrid; kwargs...) = nothing
 
