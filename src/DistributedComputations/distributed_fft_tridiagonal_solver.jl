@@ -141,7 +141,8 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
  
     irreg_dim = stretched_dimensions(local_grid)[1]
 
-    topology(global_grid, irreg_dim) != Bounded && error("`DistributedFourierTridiagonalPoissonSolver` can only be used when the stretched direction's topology is `Bounded`.")
+    topology(global_grid, irreg_dim) != Bounded &&
+        error("`DistributedFourierTridiagonalPoissonSolver` requires that the stretched direction (dimension $irreg_dim) is `Bounded`.")
 
     FT         = Complex{eltype(local_grid)}
     child_arch = child_architecture(local_grid)
