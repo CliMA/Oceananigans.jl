@@ -200,7 +200,7 @@ map_interior_active_cells(ibg) = interior_active_indices(ibg; parameters = :xyz)
 #
 # If we partition the domain in the x-direction, we typically want to have the option to split three-dimensional 
 # kernels in a `halo-independent` part in the range Hx+1:Nx-Hx, 1:Ny, 1:Nz and two `halo-dependent` computations:
-# a west one spanning 1:Hx, 1:Ny, 1:Nz and a east one spanning Nx-Hx+1:Nx, 1:Ny, 1:Nz. 
+# a west one spanning 1:Hx, 1:Ny, 1:Nz and an east one spanning Nx-Hx+1:Nx, 1:Ny, 1:Nz. 
 # For this reason we need three different maps, one containing the `halo_independent` active region, a `west` map and an `east` map. 
 # For the same reason we need to construct `south` and `north` maps if we partition the domain in the y-direction.
 # Therefore, the `interior_active_cells` in this case is a `NamedTuple` containing 5 elements.
