@@ -54,7 +54,7 @@ function PrescribedVelocityFields(; u = ZeroField(),
 end
 
 wrap_prescribed_field(X, Y, Z, f::Function, grid; kwargs...) = FunctionField{X, Y, Z}(f, grid; kwargs...)
-wrap_prescribed_field(X, Y, Z, f, grid; kwargs...) = f
+wrap_prescribed_field(X, Y, Z, f, grid; kwargs...) = field((X, Y, Z), f, grid)
 
 function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFields, grid, clock, bcs)
 

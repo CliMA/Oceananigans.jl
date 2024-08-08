@@ -47,6 +47,8 @@ end
 
 @inline field(loc, a::Function, grid) = FunctionField(loc, a, grid)
 @inline field(loc, a::Number, grid) = ConstantField(a)
+@inline field(loc, a::ZeroField, grid) = a
+@inline field(loc, a::ConstantField, grid) = a
 
 @inline function field(loc, f::Field, grid)
     loc === location(f) && grid === f.grid && return f
