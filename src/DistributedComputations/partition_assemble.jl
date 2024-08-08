@@ -43,7 +43,7 @@ function partition_coordinate(c::AbstractVector, n, arch, idx)
     r  = arch.local_index[idx]
 
     start_idx = sum(nl[1:r-1]) + 1 # sum of all previous rank's dimension + 1
-    end_idx   = if r == ranks(arch)[idx] 
+    end_idx   = if r == ranks(arch)[idx]
         length(c)
     else
         sum(nl[1:r]) + 1 
