@@ -1,13 +1,13 @@
 using CUDA: @allowscalar
 using Oceananigans.Grids: stretched_dimensions, stretched_direction
-using Oceananigans.Solvers: BatchedTridiagonalSolver
+using Oceananigans.Solvers: BatchedTridiagonalSolver, ZTridiagonalSolver, YTridiagonalSolver, XTridiagonalSolver
 using Oceananigans.Solvers: Δξᶠ, compute_main_diagonal!
 
 using Oceananigans.Grids: XZRegularRG, 
                           XYRegularRG,
                           YZRegularRG
 
-struct DistributedFourierTridiagonalPoissonSolver{G, L, P, B, R, S, β} 
+struct DistributedFourierTridiagonalPoissonSolver{G, L, B, P, R, S, β} 
     plan :: P              
     global_grid :: G
     local_grid :: L
@@ -16,6 +16,11 @@ struct DistributedFourierTridiagonalPoissonSolver{G, L, P, B, R, S, β}
     storage :: S
     buffer :: β 
 end
+
+# Usefull aliases for dispatch...
+const XStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<:Any, <:Any, <:XTridiagonalSolver}
+const YStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<:Any, <:Any, <:YTridiagonalSolver}
+const ZStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<:Any, <:Any, <:ZTridiagonalSolver}
 
 architecture(solver::DistributedFourierTridiagonalPoissonSolver) =
     architecture(solver.global_grid)
@@ -134,15 +139,20 @@ Restrictions
     - Same as for two-dimensional decompositions with `Rx` (or `Ry`) equal to one
 
 """
-function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT)
+function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT; stretched_direction = nothing)
     
     validate_poisson_solver_distributed_grid(global_grid)
     validate_poisson_solver_configuration(global_grid, local_grid)
  
-    stretched_dim = stretched_dimensions(local_grid)[1]
+    if isnothing(stretched_direction) 
+        stretched_dim = stretched_dimensions(local_grid)[1]
+    else
+        stretched_dim = stretched_direction == :x ? 1 : 
+                        stretched_direction == :y ? 2 : 3
+    end
 
-    topology(global_grid, irreg_dim) != Bounded &&
-        error("`DistributedFourierTridiagonalPoissonSolver` requires that the stretched direction (dimension $irreg_dim) is `Bounded`.")
+    topology(global_grid, stretched_dim) != Bounded &&
+        error("`DistributedFourierTridiagonalPoissonSolver` requires that the stretched direction (dimension $stretched_dim) is `Bounded`.")
 
     FT         = Complex{eltype(local_grid)}
     child_arch = child_architecture(local_grid)
@@ -239,7 +249,7 @@ end
 # solve! requires that `b` in `A x = b` (the right hand side) 
 # is copied in the solver storage
 # See: Models/NonhydrostaticModels/solve_for_pressure.jl
-function solve!(x, solver::DistributedFourierTridiagonalPoissonSolver{<:XYRegularRG})
+function solve!(x, solver::ZStretchedDistributedSolver)
     arch    = architecture(solver)
     storage = solver.storage
     buffer  = solver.buffer
@@ -272,7 +282,7 @@ function solve!(x, solver::DistributedFourierTridiagonalPoissonSolver{<:XYRegula
     return x
 end
 
-function solve!(x, solver::DistributedFourierTridiagonalPoissonSolver{<:XZRegularRG})
+function solve!(x, solver::YStretchedDistributedSolver)
     arch    = architecture(solver)
     storage = solver.storage
     buffer  = solver.buffer
@@ -303,7 +313,7 @@ function solve!(x, solver::DistributedFourierTridiagonalPoissonSolver{<:XZRegula
     return x
 end
 
-function solve!(x, solver::DistributedFourierTridiagonalPoissonSolver{<:YZRegularRG})
+function solve!(x, solver::XStretchedDistributedSolver)
     arch    = architecture(solver)
     storage = solver.storage
     buffer  = solver.buffer
