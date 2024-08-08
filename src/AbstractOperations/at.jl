@@ -90,6 +90,9 @@ _compute_index_intersection(to_idx::Colon, from_idx::Colon, args...) = Colon()
 # Because `from_idx` imposes no restrictions, we just return `to_idx`.
 _compute_index_intersection(to_idx::UnitRange, from_idx::Colon, args...) = to_idx
 
+# for flattened fields
+_compute_index_intersection(::Type{Nothing}, ::Type{Nothing}, args...) = Colon()
+
 # This time we account for the possible range-reducing effect of interpolation on `from_idx`.
 function _compute_index_intersection(to_idx::Colon, from_idx::UnitRange, to_loc, from_loc)
     shifted_idx = restrict_index_for_interpolation(from_idx, from_loc, to_loc)
@@ -127,3 +130,4 @@ restrict_index_for_interpolation(from_idx, ::Type{Face},   ::Type{Face})   = Uni
 restrict_index_for_interpolation(from_idx, ::Type{Center}, ::Type{Center}) = UnitRange(first(from_idx),   last(from_idx))
 restrict_index_for_interpolation(from_idx, ::Type{Face},   ::Type{Center}) = UnitRange(first(from_idx),   last(from_idx)-1)
 restrict_index_for_interpolation(from_idx, ::Type{Center}, ::Type{Face})   = UnitRange(first(from_idx)+1, last(from_idx))
+restrict_index_for_interpolation(from_idx, ::Type{Nothing}, ::Type{Nothing}) = UnitRange(first(from_idx),   last(from_idx))
