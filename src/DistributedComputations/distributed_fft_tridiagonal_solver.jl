@@ -1,8 +1,13 @@
 using CUDA: @allowscalar
-using Oceananigans.Grids: stretched_dimensions, stretched_direction
+using Oceananigans.Grids: stretched_dimensions
 using Oceananigans.Grids: XDirection, YDirection
-using Oceananigans.Solvers: BatchedTridiagonalSolver, ZTridiagonalSolver, YTridiagonalSolver, XTridiagonalSolver
-using Oceananigans.Solvers: compute_main_diagonal!
+
+using Oceananigans.Solvers: BatchedTridiagonalSolver, 
+                            stretched_direction, 
+                            ZTridiagonalSolver, 
+                            YTridiagonalSolver, 
+                            XTridiagonalSolver,
+                            compute_main_diagonal!
 
 struct DistributedFourierTridiagonalPoissonSolver{G, L, B, P, R, S, β} 
     plan :: P              

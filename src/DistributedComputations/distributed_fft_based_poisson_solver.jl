@@ -2,7 +2,6 @@ import FFTW
 
 using CUDA: @allowscalar
 using Oceananigans.Grids: XYZRegularRG
-using Oceananigans.Solvers: stretched_dimensions, stretched_direction
 
 import Oceananigans.Solvers: poisson_eigenvalues, solve!
 import Oceananigans.Architectures: architecture
