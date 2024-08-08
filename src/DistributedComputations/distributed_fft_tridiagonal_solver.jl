@@ -3,10 +3,6 @@ using Oceananigans.Grids: stretched_dimensions, stretched_direction
 using Oceananigans.Solvers: BatchedTridiagonalSolver, ZTridiagonalSolver, YTridiagonalSolver, XTridiagonalSolver
 using Oceananigans.Solvers: compute_main_diagonal!
 
-using Oceananigans.Grids: XZRegularRG, 
-                          XYRegularRG,
-                          YZRegularRG
-
 struct DistributedFourierTridiagonalPoissonSolver{G, L, B, P, R, S, β} 
     plan :: P              
     global_grid :: G
