@@ -37,6 +37,39 @@ See the documentation for [`launch!`](@ref).
 """
 KernelParameters(size, offsets) = KernelParameters{size, offsets}()
 
+"""
+    KernelParameters(range1, [range2, range3])
+
+Return parameters for launching a kernel of up to three dimensions, where the
+indices spanned by the kernel in each dimension are given by (range1, range2, range3).
+
+Example
+=======
+
+```julia
+kp = KernelParameters(1:4, 0:10)
+
+# Launch a kernel with indices that range from i=1:4, j=0:10,
+# where i, j are the first and second index, respectively.
+launch!(arch, grid, kp, kernel!; kernel_args...)
+```
+
+See the documentation for [`launch!`](@ref).
+"""
+KernelParameters(r::UnitRange) = KernelParameters(tuple(length(r)), tuple(first(r) - 1))
+
+function KernelParameters(r1::UnitRange, r2::UnitRange)
+    size = (length(r1), length(r2))
+    offsets = (first(r1) - 1, first(r2) - 1)
+    return KernelParameters(size, offsets)
+end
+
+function KernelParameters(r1::UnitRange, r2::UnitRange, r3::UnitRange)
+    size = (length(r1), length(r2), length(r3))
+    offsets = (first(r1) - 1, first(r2) - 1, first(r3) - 1)
+    return KernelParameters(size, offsets)
+end
+
 offsets(::KernelParameters{S, O}) where {S, O} = O
 offsets(workspec)  = nothing
 
