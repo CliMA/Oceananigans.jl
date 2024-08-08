@@ -27,7 +27,6 @@ const ZStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<
 architecture(solver::DistributedFourierTridiagonalPoissonSolver) =
     architecture(solver.global_grid)
 
-
 @inline Δξᶠ(i, grid, ::Val{1}) = Δxᶠᵃᵃ(i, 1, 1, grid)
 @inline Δξᶠ(j, grid, ::Val{2}) = Δyᵃᶠᵃ(1, j, 1, grid)
 @inline Δξᶠ(k, grid, ::Val{3}) = Δzᵃᵃᶠ(1, 1, k, grid)
