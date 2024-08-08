@@ -1,15 +1,15 @@
 env:
   JULIA_VERSION: "1.10.4"
   JULIA_MINOR_VERSION: "1.10"
-  SVERDRUP_HOME: "/data5/glwagner"
-  TARTARUS_HOME: "/storage5/buildkite-agent"
+  SVERDRUP_HOME: "/data5/glwagner/oceananigans-buildkite-$BUILDKITE_BUILD_NUMBER"
+  TARTARUS_HOME: "/storage5/buildkite-agent/oceananigans-$BUILDKITE_BUILD_NUMBER"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
 
 steps:
   - label: "🎪 initialize gpu environment"
     key: "init_gpu"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia"
       TEST_GROUP: "init"
     commands:
       # Download julia binaries
@@ -34,7 +34,7 @@ steps:
   - label: "🏕️ initialize cpu environment"
     key: "init_cpu"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia"
       TEST_GROUP: "init"
       CUDA_VISIBLE_DEVICES: "-1"
       JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
@@ -62,7 +62,7 @@ steps:
 
   - label: "🐿️ gpu unit tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia"
       TEST_GROUP: "unit"
     commands:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -73,7 +73,7 @@ steps:
 
   - label: "🐇 cpu unit tests"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia"
       TEST_GROUP: "unit"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -89,7 +89,7 @@ steps:
 
   - label: "🦅 gpu poisson solver tests 1"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia"
       TEST_GROUP: "poisson_solvers_1"
     commands:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -100,7 +100,7 @@ steps:
 
   - label: "🕊️ cpu poisson solver tests 1"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia"
       TEST_GROUP: "poisson_solvers_1"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -112,7 +112,7 @@ steps:
 
   - label: "🦖 gpu poisson solver tests 2"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia"
       TEST_GROUP: "poisson_solvers_2"
     commands:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -123,7 +123,7 @@ steps:
 
   - label: "🦕 cpu poisson solver tests 2"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia"
       TEST_GROUP: "poisson_solvers_2"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -135,7 +135,7 @@ steps:
 
   - label: "🌷 gpu matrix poisson solver tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia"
       TEST_GROUP: "matrix_poisson_solvers"
     commands:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -146,7 +146,7 @@ steps:
 
   - label: "🌹 cpu matrix poisson solver tests"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia"
       TEST_GROUP: "matrix_poisson_solvers"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -158,7 +158,7 @@ steps:
 
   - label: "🦤 gpu general solver tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia"
       TEST_GROUP: "general_solvers"
     commands:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -169,7 +169,7 @@ steps:
 
   - label: "🦃 cpu general solver tests"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia"
       TEST_GROUP: "general_solvers"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -185,7 +185,7 @@ steps:
 
   - label: "🦀 gpu time stepping tests 1"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia"
       TEST_GROUP: "time_stepping_1"
     commands:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -196,7 +196,7 @@ steps:
 
   - label: "🦞 cpu time stepping tests 1"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia"
       TEST_GROUP: "time_stepping_1"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -212,7 +212,7 @@ steps:
 
   - label: "🦈 gpu time stepping tests 2"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia"
       TEST_GROUP: "time_stepping_2"
     commands:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -223,7 +223,7 @@ steps:
 
   - label: "🐬 cpu time stepping tests 2"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia"
       TEST_GROUP: "time_stepping_2"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -239,7 +239,7 @@ steps:
 
   - label: "🦟 gpu time stepping tests 3"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia"
       TEST_GROUP: "time_stepping_3"
     commands:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -250,7 +250,7 @@ steps:
 
   - label: "🦗 cpu time stepping tests 3"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia"
       TEST_GROUP: "time_stepping_3"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -266,7 +266,7 @@ steps:
 
   - label: "🎣 gpu turbulence closures"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia"
       TEST_GROUP: "turbulence_closures"
     commands:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -277,7 +277,7 @@ steps:
 
   - label: "🎏 cpu turbulence closures"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia"
       TEST_GROUP: "turbulence_closures"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -293,7 +293,7 @@ steps:
 
   - label: "🐙 gpu hydrostatic free surface model tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia"
       TEST_GROUP: "hydrostatic_free_surface"
     commands:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -304,7 +304,7 @@ steps:
 
   - label: "🦑 cpu hydrostatic free surface model tests"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia"
       TEST_GROUP: "hydrostatic_free_surface"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -320,7 +320,7 @@ steps:
 
   - label: "🦢 gpu shallow water model tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia"
       TEST_GROUP: "shallow_water"
     commands:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -331,7 +331,7 @@ steps:
 
   - label: "🦆 cpu shallow water model tests"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia"
       TEST_GROUP: "shallow_water"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -347,7 +347,7 @@ steps:
 
   - label: "🐳 gpu simulation tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia"
       TEST_GROUP: "simulation"
     commands:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -358,7 +358,7 @@ steps:
 
   - label: "🐋 cpu simulation tests"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia"
       TEST_GROUP: "simulation"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -374,7 +374,7 @@ steps:
 
   - label: "🍂 gpu lagrangian particles tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia"
       TEST_GROUP: "lagrangian"
     commands:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -385,7 +385,7 @@ steps:
 
   - label: "🍃 cpu lagrangian particles tests"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia"
       TEST_GROUP: "lagrangian"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -401,7 +401,7 @@ steps:
 
   - label: "👻 gpu abstract operations tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia"
       TEST_GROUP: "abstract_operations"
     commands:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -412,7 +412,7 @@ steps:
 
   - label: "🤖 cpu abstract operations tests"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia"
       TEST_GROUP: "abstract_operations"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -428,7 +428,7 @@ steps:
 
   - label: "🧅 gpu multi region tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia"
       TEST_GROUP: "multi_region"
     commands:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -439,7 +439,7 @@ steps:
 
   - label: "🧄 cpu multi region tests"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia"
       TEST_GROUP: "multi_region"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -455,7 +455,7 @@ steps:
 
   - label: "🐫 gpu nonhydrostatic regression tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia"
       TEST_GROUP: "nonhydrostatic_regression"
     commands:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -466,7 +466,7 @@ steps:
 
   - label: "🐪 cpu nonhydrostatic regression tests"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia"
       TEST_GROUP: "nonhydrostatic_regression"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -478,7 +478,7 @@ steps:
 
   - label: "🙈 gpu hydrostatic regression tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia"
       TEST_GROUP: "hydrostatic_regression"
     commands:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -489,7 +489,7 @@ steps:
 
   - label: "🙉 cpu hydrostatic regression tests"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia"
       TEST_GROUP: "hydrostatic_regression"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -505,7 +505,7 @@ steps:
 
   - label: "🦧 gpu scripts"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia"
       TEST_GROUP: "scripts"
     commands:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -516,7 +516,7 @@ steps:
 
   - label: "🦍 cpu scripts"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia"
       TEST_GROUP: "scripts"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -532,7 +532,7 @@ steps:
 
   - label: "👺 gpu Enzyme extension tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia"
       TEST_GROUP: "enzyme"
     commands:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -543,7 +543,7 @@ steps:
 
   - label: "👹 cpu Enzyme extension tests"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia"
       TEST_GROUP: "enzyme"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
@@ -559,7 +559,7 @@ steps:
 
   - label: "🦉 documentation"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia"
       CUDA_VISIBLE_DEVICES: "-1"
       JULIA_DEBUG: "Documenter"
       TMPDIR: "$TARTARUS_HOME/tmp"
@@ -579,13 +579,13 @@ steps:
 #####
 
   - label: "🧽 clean up gpu environment"
-    command: "rm -rf $SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+    command: "rm -rf $SVERDRUP_HOME"
     agents:
       queue: Oceananigans
       architecture: GPU
 
   - label: "🧹 clean up cpu environment"
-    command: "rm -rf $TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+    command: "rm -rf $TARTARUS_HOME"
     agents:
       queue: Oceananigans
       architecture: CPU
