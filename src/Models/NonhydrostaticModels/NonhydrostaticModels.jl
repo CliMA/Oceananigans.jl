@@ -33,6 +33,7 @@ function PressureSolver(arch, ibg::ImmersedBoundaryGrid)
     msg = string("The PressureSolver for `NonhydrostaticModel`s on `ImmersedBoundaryGrid`", '\n',
                  "is approximate. In particular, the pressure correction step does not produce a velocity", '\n',
                  "field that both satisfies impenetrability at solid walls and is also divergence-free.", '\n',
+                 "As a result, boundary-adjacent velocity fields may be divergent.", '\n',
                  "Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.".)
     @warn msg
 
