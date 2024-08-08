@@ -161,7 +161,7 @@ function NonhydrostaticModel(; grid,
     end
 
     # Check validity of hydrostatic_pressure_anomaly.
-    isnothing(hydrostatic_pressure_anomaly) || hydrostatic_pressure_anomaly isa CenterField ||
+    isnothing(hydrostatic_pressure_anomaly) || hydrostatic_pressure_anomaly isa Field{Center, Center, Center} ||
         throw(ArgumentError("hydrostatic_pressure_anomaly must be `nothing` or `CenterField(grid)`."))
 
     # We don't support CAKTE for NonhydrostaticModel yet.
