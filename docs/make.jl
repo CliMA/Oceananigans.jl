@@ -48,7 +48,6 @@ Distributed.addprocs(2)
     ]
 end
 
-#=
 @info string("Executing the examples using ", Distributed.nprocs(), " processes")
 
 Distributed.pmap(1:length(example_scripts)) do n
@@ -64,7 +63,6 @@ Distributed.pmap(1:length(example_scripts)) do n
 end
 
 Distributed.rmprocs()
-=#
 
 #####
 ##### Organize page hierarchies
@@ -221,3 +219,4 @@ if ci_build
                push_preview = true,
                devbranch = "main")
 end
+
