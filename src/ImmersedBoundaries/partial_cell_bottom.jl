@@ -95,10 +95,13 @@ Criterion is h ≥ z - ϵ Δz
 
 """
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::PartialCellBottom)
-    # Face node above current cell
-    z = znode(i, j, k+1, underlying_grid, c, c, f)
-    h = @inbounds ib.bottom_height[i, j, 1]
-    return z ≤ h
+    # Face node below current cell
+    z  = znode(i, j, k, underlying_grid, c, c, f)
+    h  = @inbounds ib.bottom_height[i, j, 1]
+    ϵ  = ib.minimum_fractional_cell_height
+    # z + Δz is equal to the face above the current cell
+    Δz = Δzᶜᶜᶜ(i, j, k, ibg.underlying_grid)
+    return z + Δz * ϵ ≤ h 
 end
 
 @inline bottom_cell(i, j, k, ibg::PCBIBG) = !immersed_cell(i, j, k,   ibg.underlying_grid, ibg.immersed_boundary) &
