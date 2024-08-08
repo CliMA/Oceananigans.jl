@@ -64,7 +64,7 @@ strethed direction:
 - a stretching in the y-direction requires six transpositions
 - a stretching in the z-direction requires eight transpositions
 
-!!! warning "Computational cost"
+!!! note "Computational cost"
     Because of the additional transpositions, a stretching in the x-direction
     is computationally cheaper than a stretching in the y-direction, and the latter
     is cheaper than a stretching in the z-direction
