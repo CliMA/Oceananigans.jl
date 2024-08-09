@@ -49,12 +49,12 @@ Examples:
 julia> using Oceananigans; using Oceananigans.DistributedComputations
 
 julia> Partition(1, 4)
-Domain partitioning with (1, 4, 1) ranks
-└── y-partitioning: 4
+Partition across 4 = 1×4×1 ranks:
+└── y: 4
 
 julia> Partition(x = Fractional(1, 2, 3, 4))
-Domain partitioning with (4, 1, 1) ranks
-└── x-partitioning: domain fractions: (0.1, 0.2, 0.3, 0.4)
+Partition across 4 = 4×1×1 ranks:
+└── x: Fractional(0.1, 0.2, 0.3, 0.4)
 
 ```
 """
@@ -135,8 +135,11 @@ Partition(x::Equal, y, z) = Partition(validate_partition(x, y, z)...)
 Partition(x, y::Equal, z) = Partition(validate_partition(x, y, z)...)
 Partition(x, y, z::Equal) = Partition(validate_partition(x, y, z)...)
 
-Base.show(io::IO, s::Sizes)      = print(io, "domain sizes:     $(s.sizes)")
-Base.show(io::IO, s::Fractional) = print(io, "domain fractions: $(s.sizes)")
+Base.summary(s::Sizes)      = string("Sizes", s.sizes)
+Base.summary(f::Fractional) = string("Fractional", f.sizes)
+
+Base.show(io::IO, s::Sizes)      = print(io, summary(s))
+Base.show(io::IO, f::Fractional) = print(io, summary(f))
 
 ranks(p::Partition)  = (ranks(p.x), ranks(p.y), ranks(p.z))
 ranks(::Nothing)     = 1 # a direction not partitioned fits in 1 rank

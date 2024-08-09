@@ -156,7 +156,8 @@ The centers of the `u` cells are shifted to the left relative to the `c` cells:
 
 ```jldoctest fields
 @show xnodes(c)
-@show xnodes(u);
+@show xnodes(u)
+nothing # hide
 
 # output
 xnodes(c) = [0.125, 0.375, 0.625, 0.875]
@@ -174,7 +175,8 @@ than `CenterField`s:
 w = Field{Center, Center, Face}(grid)
 
 @show znodes(c)
-@show znodes(w);
+@show znodes(w)
+nothing # hide
 
 # output
 znodes(c) = [0.05, 0.2, 0.44999999999999996, 0.8]
@@ -246,7 +248,7 @@ set!(c, 42)
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
 └── data: 6×6×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:5, 0:5) with eltype Float64 with indices 0:5×0:5×0:5
     └── max=42.0, min=42.0, mean=42.0
-    ```
+```
 
 Now `c` is filled with `42`s (for this simple case, we could also have used `c .= 42`).
 Let's confirm that:
