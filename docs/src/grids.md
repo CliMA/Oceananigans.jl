@@ -213,8 +213,8 @@ h = mountain_grid.immersed_boundary.bottom_height
 x, y, z = nodes(h)
 
 fig = Figure(size=(600, 600))
-ax = Axis(fig[1, 1], xlabel="x (m)", ylabel="y (m)", aspect=1)
-hm = heatmap!(ax, x, y, interior(h, :, :, 1))
+ax = Axis(fig[1, 1], xlabel="x (km)", ylabel="y (km)", aspect=1)
+hm = heatmap!(ax, x / kilometer, y / kilometer, interior(h, :, :, 1))
 Colorbar(fig[2, 1], hm, vertical=false, label="Bottom height (m)")
 
 current_figure()
