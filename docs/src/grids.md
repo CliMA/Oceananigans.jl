@@ -106,10 +106,10 @@ grid = LatitudeLongitudeGrid(architecture,
                              z = (-1000, 0))
 
 # output
-36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
-├── longitude: Periodic λ ∈ [-180.0, 180.0) regularly spaced with Δλ=10.0
-├── latitude:  Bounded  φ ∈ [-85.0, 85.0]   regularly spaced with Δφ=5.0
-└── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=40.0
+180×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+├── longitude: Periodic λ ∈ [-180.0, 180.0) regularly spaced with Δλ=2.0
+├── latitude:  Bounded  φ ∈ [-60.0, 60.0]   regularly spaced with Δφ=12.0
+└── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=200.0
 ```
 
 The main difference between the syntax for `LatitudeLongitudeGrid` versus that for the `RectilinearGrid` are the names of the horizontal coordinates:
