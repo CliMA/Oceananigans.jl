@@ -9,7 +9,8 @@ using Oceananigans.Advection:
         _biased_interpolate_xᶜᵃᵃ, 
         _biased_interpolate_xᶠᵃᵃ, 
         _biased_interpolate_yᵃᶜᵃ, 
-        _biased_interpolate_yᵃᶠᵃ
+        _biased_interpolate_yᵃᶠᵃ,
+        TracerAdvection
 
 advection_schemes = [Centered, UpwindBiased, WENO]
 
