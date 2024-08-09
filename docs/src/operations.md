@@ -133,8 +133,7 @@ Also like `Field`s, `AbstractOperation`s have a _location_. For example,
 
 ```jldoctest operations
 @show location(c)
-@show location(dx_c)
-nothing # hide
+@show location(dx_c);
 
 # output
 location(c) = (Center, Center, Center)
