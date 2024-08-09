@@ -12,9 +12,9 @@ or expression involving other fields, and may cover only a portion of the total
 Oceananigans ocean-flavored fluids simulations rely fundamentally on
 "staggered grid" numerical methods.
 
-[Recall](@ref) that grids represent a physical domain divided into finite volumes.
+Recall that [grids](@ref Grids) represent a physical domain divided into finite volumes.
 For example, let's consider a horizontally-periodic, vertically-bounded grid of cells
-that divide up a ``1 \times 1 \times 1`` cube:
+that divide up a cube with dimensions ``1 \times 1 \times 1``s:
 
 ```jldoctest fields
 using Oceananigans
@@ -86,7 +86,7 @@ znodes(grid, Center(), with_halos=true)
 ```
 
 The center of the leftmost "halo cell" is `z = -0.05`, while the center of the first cell from the left is `z = 0.05`.
-This means that the width of the first cell on the vertically-staggered grid is `0.05 + 0.05 = 0.1` --- and so on.
+This means that the width of the first cell on the vertically-staggered grid is `0.05 - (-0.05) = 0.1` --- and so on.
 Finally, note that the nodes of the staggered mesh coincide with the cell interfaces of the primary mesh, so:
 
 
@@ -110,7 +110,7 @@ simulations of the atmosphere and ocean](https://en.wikipedia.org/wiki/Arakawa_g
 ### Constructing Fields at specified locations
 
 Every `Field` is associated with either the primary mesh or one of the staggered meshes by
-it's three-dimensional "location".
+a three-dimensional "location" associated with each field.
 To build a fully-centered `Field`, for example, we write
 
 ```jldoctest fields
@@ -187,9 +187,26 @@ znodes(w) = [0.0, 0.1, 0.3, 0.6, 1.0]
 and the vertical velocity is a `ZFaceField` on the C-grid.
 Let's visualize the situation:
 
-```jldoctest fields
+```@setup fields
+using Oceananigans
 using CairoMakie
-CairoMakie.activate!(type = "svg") # hide
+CairoMakie.activate!(type = "svg")
+
+grid = RectilinearGrid(topology = (Periodic, Periodic, Bounded),
+                       size = (4, 4, 4),
+                       halo = (1, 1, 1),
+                       x = (0, 1),
+                       y = (0, 1),
+                       z = [0, 0.1, 0.3, 0.6, 1])
+
+c = CenterField(grid)
+
+u = XFaceField(grid)
+```
+
+
+```@example fields
+using CairoMakie
 
 fig = Figure(size=(400, 120))
 ax = Axis(fig[1, 1], xlabel="x")
@@ -271,7 +288,7 @@ using Random
 Random.seed!(123)
 ```
 
-```jldoctest fields
+```@example fields
 random_stuff = rand(size(c)...)
 set!(c, random_stuff)
 
@@ -280,7 +297,7 @@ heatmap(view(c, :, :, 1))
 
 or even use functions to set,
 
-```jldoctest fields
+```@example fields
 fun_stuff(x, y, z) = 2x
 set!(c, fun_stuff)
 
