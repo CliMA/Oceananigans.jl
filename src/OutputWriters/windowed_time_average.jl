@@ -240,7 +240,7 @@ function advance_time_average!(wta::WindowedTimeAverage, model)
     unscheduled = model.clock.iteration == 0 && outside_window(wta.schedule, model.clock)
 
     if unscheduled
-        # This is an "unscheduled" call to run_diagnostic! -- which occurs when run_diagnostic!
+        # This is an "unscheduled" call to run_diagnostic! --- which occurs when run_diagnostic!
         # is called at the beginning of a run (and schedule.interval != schedule.window).
         # In this case we do nothing.
         

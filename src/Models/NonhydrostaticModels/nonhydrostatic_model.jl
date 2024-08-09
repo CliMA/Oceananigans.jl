@@ -146,7 +146,7 @@ function NonhydrostaticModel(; grid,
     closure = validate_closure(closure)
     first_closure = closure isa Tuple ? first(closure) : closure
     first_closure isa FlavorOfCATKE &&
-        error("CATKEVerticalDiffusivity is not supported for NonhydrostaticModel -- yet!")
+        error("CATKEVerticalDiffusivity is not supported for NonhydrostaticModel --- yet!")
 
     all_auxiliary_fields = merge(auxiliary_fields, biogeochemical_auxiliary_fields(biogeochemistry))
     tracers, auxiliary_fields = validate_biogeochemistry(tracers, all_auxiliary_fields, biogeochemistry, grid, clock)
