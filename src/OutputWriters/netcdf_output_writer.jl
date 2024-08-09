@@ -345,7 +345,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
 └── array type: Array{Float64}
 ├── file_splitting: NoFileSplitting
-└── file size: 17.4 KiB
+└── file size: 17.6 KiB
 ```
 
 `NetCDFOutputWriter` also accepts output functions that write scalars and arrays to disk,
