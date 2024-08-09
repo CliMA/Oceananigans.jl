@@ -438,7 +438,7 @@ current_figure()
 
 ## `LatitudeLongitudeGrid` with variable spacing
 
-The syntax for building a grid with variably spaced cells is the same as for `RectilinearGrid`.
+The syntax for building a grid with variably-spaced cells is the same as for `RectilinearGrid`.
 In our next example, we use a function to build a Mercator grid with a spacing of 2 degrees at
 the equator,
 
@@ -508,7 +508,7 @@ grid = LatitudeLongitudeGrid(size = (Nx, Ny),
 
 ```@example plot
 φ = φnodes(grid, Center())
-Δx = xspacings(grid, Center(), Center(), with_halos=true)[1:Ny]
+Δx = xspacings(grid, Center(), Center(), with_halos=true)[1:Nx]
 Δy = yspacings(grid, Center())[1:Ny]
 
 using CairoMakie
@@ -524,15 +524,13 @@ hidespines!(axx, :t, :r)
 hidespines!(axy, :t, :l, :r)
 hideydecorations!(axy, grid=false)
 
-display(fig); save("plot_lat_lon_mercator.svg", fig); nothing # hide
+current_figure()
 ```
-
-![](plot_lat_lon_mercator.svg)
 
 ## Single-precision `RectilinearGrid`
 
 To build a grid whose fields are represented with single-precision floating point values,
-we specify the `float_type` along with the (optional) `architecture`,
+we specify the `float_type` argument along with the (optional) `architecture` argument,
 
 ```jldoctest grids
 architecture = CPU()
@@ -557,13 +555,14 @@ Users interested in performing single-precision simulations should get in touch 
 [Discussions](https://github.com/CliMA/Oceananigans.jl/discussions),
 and should subject their work to extensive testing and validation.
 
-For more examples see [`RectilinearGrid`](@ref) and [`LatitudeLongitudeGrid`](@ref).
+For more examples see [`RectilinearGrid`](@ref Oceananigans.Grids.RectilinearGrid)
+and [`LatitudeLongitudeGrid`](@ref Oceananigans.Grids.LatitudeLongitudeGrid).
 
 ## Distributed grids
 
-To run the next examples, we have to launch julia with MPI and things are a bit more involved.
-For best results, create [a new environment](https://pkgdocs.julialang.org/v1/environments/)
-in an empty folder, and then add both `Oceananigans.jl` and `MPI.jl` to the new environment.
+To run the next examples, we have to launch julia with MPI and that makes things are a bit more
+involved. For best results, create [a new environment](https://pkgdocs.julialang.org/v1/environments/)
+in an empty directory, and then add both `Oceananigans.jl` and `MPI.jl` to the new environment.
 Pasting this snipped into the terminal should do the trick:
 
 ```bash
