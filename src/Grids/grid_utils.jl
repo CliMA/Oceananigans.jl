@@ -261,6 +261,9 @@ parent_index_range(view_indices::UnitRange, loc, topo, halo) = view_indices .+ i
 # Return the index range of parent arrays that are themselves windowed
 parent_index_range(::Colon, args...) = parent_index_range(args...)
 
+parent_index_range(parent_indices::UnitRange, ::Colon, args...) =
+    parent_index_range(parent_indices, parent_indices, args...)
+
 function parent_index_range(parent_indices::UnitRange, view_indices, args...)
     start = first(view_indices) - first(parent_indices) + 1
     stop = start + length(view_indices) - 1
@@ -269,12 +272,9 @@ end
 
 # intersect_index_range(::Colon, ::Colon) = Colon()
 index_range_contains(range,   subset::UnitRange) = (first(subset) ∈ range) & (last(subset) ∈ range)
-index_range_contains(::Colon, subset::UnitRange) = true
+index_range_contains(::Colon, ::UnitRange)       = true
 index_range_contains(::Colon, ::Colon)           = true
-
-# Note: this choice means subset indices are defined on the whole grid.
-# Thus any UnitRange does not contain `:`.
-index_range_contains(range::UnitRange, subset::Colon) = false 
+index_range_contains(::UnitRange, ::Colon)       = true
 
 # Return the index range of "full" parent arrays that span an entire dimension
 parent_windowed_indices(::Colon, loc, topo, halo)            = Colon()
