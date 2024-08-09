@@ -24,7 +24,7 @@ end
 Return `Partition` representing the division of a domain in
 the `x` (first), `y` (second) and `z` (third) dimension
 
-Keyword arguments: 
+Keyword arguments:
 ==================
 
 - `x`: partitioning of the first dimension 
