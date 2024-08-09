@@ -64,14 +64,10 @@ grid = RectilinearGrid(architecture,
                        z = z_faces)
 
 # output
-ERROR: ArgumentError: Cannot create a GPU grid. No CUDA-enabled GPU was detected!
-Stacktrace:
- [1] RectilinearGrid(architecture::GPU, FT::DataType; size::Tuple{Int64, Int64}, x::Tuple{Int64, Int64}, y::Nothing, z::Vector{Int64}, halo::Nothing, extent::Nothing, topology::Tuple{DataType, DataType, DataType})
-   @ Oceananigans.Grids ~/Projects/Oceananigans.jl/src/Grids/rectilinear_grid.jl:266
- [2] RectilinearGrid
-   @ ~/Projects/Oceananigans.jl/src/Grids/rectilinear_grid.jl:255 [inlined]
- [3] top-level scope
-   @ none:1
+10×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on CPU with 3×0×3 halo
+├── Periodic x ∈ [0.0, 20.0) regularly spaced with Δx=2.0
+├── Flat y
+└── Bounded  z ∈ [0.0, 10.0] variably spaced with min(Δz)=1.0, max(Δz)=4.0
 ```
 
 !!! note "GPU architecture requires a CUDA-enabled device"
