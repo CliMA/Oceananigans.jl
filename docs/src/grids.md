@@ -65,9 +65,9 @@ grid = RectilinearGrid(architecture,
 
 # output
 10×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on GPU with 3×0×3 halo
-├── Periodic x ∈ [0.0, 20.0)      regularly spaced with Δx=2.0
+├── Periodic x ∈ [0.0, 20.0) regularly spaced with Δx=2.0
 ├── Flat y
-└── Bounded  z ∈ [0.0, 10.0]      variably spaced with min(Δz)=1.0, max(Δz)=4.0
+└── Bounded  z ∈ [0.0, 10.0] variably spaced with min(Δz)=1.0, max(Δz)=4.0
 ```
 
 !!! note "GPU architecture requires a CUDA-enabled device"
