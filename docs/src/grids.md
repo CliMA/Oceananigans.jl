@@ -76,7 +76,7 @@ grid = RectilinearGrid(architecture,
 
 The ``y``-dimension is "missing" because it's marked `Flat` in `topology = (Periodic, Flat, Bounded)`.
 So nothing varies in ``y``: `y`-derivatives are 0.
-Also, the keyword argument (for short, "kwarg") that specifies the ``y``-domains may be omitted, and `size` has only two elements rather than 3 as in the first example.
+Also, the keyword argument (or "kwarg" for short) that specifies the ``y``-domains may be omitted,sand `size` has only two elements rather than 3 as in the first example.
 In the stretched cell interfaces specified by `z_interfaces`, the number of
 vertical cell interfaces is `Nz + 1 = length(z_interfaces) = 5`, where `Nz = 4` is the number
 of cells in the vertical.
@@ -94,7 +94,7 @@ The shape of the physical domain determines what grid type should be used:
     for recipes that implement some useful `OrthogonalSphericalShellGrid`, including the
     ["tripolar" grid](https://www.sciencedirect.com/science/article/abs/pii/S0021999196901369).
 
-For example, to make a `LatitudeLongitudeGrid` that wraps around the sphere, has 60 degrees of latitude on either side of the equator, and also 5 vertical levels, we write
+For example, to make a `LatitudeLongitudeGrid` that wraps around the sphere, extends for 60 degrees latitude on either side of the equator, and also has 5 vertical levels down to 1000 meters, we write
 
 ```jldoctest grids
 architecture = CPU()
@@ -163,37 +163,59 @@ using Oceananigans.Units
 
 grid = RectilinearGrid(topology = (Bounded, Bounded, Bounded),
                        size = (100, 100, 50),
-                       x = (0, 10kilometers),
-                       y = (0, 10kilometers),
+                       x = (-5kilometers, 5kilometers),
+                       y = (-5kilometers, 5kilometers),
                        z = (0, 1kilometer))
 
 # Height and width
-H = 100 # m
+H = 100meters
 W = 1kilometer
+
 mountain(x, y) = H * exp(-(x^2 + y^2) / 2W^2)
 mountain_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(mountain))
 
 # output
 100×100×50 ImmersedBoundaryGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo:
-├── immersed_boundary: GridFittedBottom(mean(z)=1.5708, min(z)=1.0087e-41, max(z)=99.7503)
+├── immersed_boundary: GridFittedBottom(mean(z)=6.28318, min(z)=2.28402e-9, max(z)=99.7503)
 ├── underlying_grid: 100×100×50 RectilinearGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo
-├── Bounded  x ∈ [0.0, 10000.0] regularly spaced with Δx=100.0
-├── Bounded  y ∈ [0.0, 10000.0] regularly spaced with Δy=100.0
-└── Bounded  z ∈ [0.0, 1000.0]  regularly spaced with Δz=20.0
+├── Bounded  x ∈ [-5000.0, 5000.0] regularly spaced with Δx=100.0
+├── Bounded  y ∈ [-5000.0, 5000.0] regularly spaced with Δy=100.0
+└── Bounded  z ∈ [0.0, 1000.0]     regularly spaced with Δz=20.0
 ```
 
 Yep, that's a Gaussian mountain:
 
-```jldoctest grids
+```@setup grids
+using Oceananigans
+using Oceananigans.Units
+
+using CairoMakie
+CairoMakie.activate!(type = "svg")
+set_theme!(Theme(fontsize=24))
+
+grid = RectilinearGrid(topology = (Bounded, Bounded, Bounded),
+                       size = (100, 100, 50),
+                       x = (-5kilometers, 5kilometers),
+                       y = (-5kilometers, 5kilometers),
+                       z = (0, 1kilometer))
+
+H = 100meters
+W = 1kilometer
+
+mountain(x, y) = H * exp(-(x^2 + y^2) / 2W^2)
+mountain_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(mountain))
+```
+
+```@example grids
 using CairoMakie
 
-h = grid.immersed_boundary.bottom_height
+h = mountain_grid.immersed_boundary.bottom_height
 x, y, z = nodes(h)
 
 fig = Figure(size=(600, 600))
 ax = Axis(fig[1, 1], xlabel="x (m)", ylabel="y (m)", aspect=1)
 hm = heatmap!(ax, x, y, interior(h, :, :, 1))
-Colorbar(hm, fig[1, 2], vertical=false, title="Bottom height (m)")
+Colorbar(fig[2, 1], hm, vertical=false, label="Bottom height (m)")
 
 current_figure()
 ```
