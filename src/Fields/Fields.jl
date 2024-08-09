@@ -3,7 +3,6 @@ module Fields
 export Face, Center
 export AbstractField, Field, Average, Integral, Reduction, Accumulation, field
 export CenterField, XFaceField, YFaceField, ZFaceField
-export BackgroundField
 export interior, data, xnode, ynode, znode, location
 export set!, compute!, @compute, regrid!
 export VelocityFields, TracerFields, TendencyFields, tracernames
@@ -24,7 +23,6 @@ include("field.jl")
 include("scans.jl")
 include("regridding_fields.jl")
 include("field_tuples.jl")
-include("background_fields.jl")
 include("interpolate.jl")
 include("show_fields.jl")
 include("broadcasting_abstract_fields.jl")
