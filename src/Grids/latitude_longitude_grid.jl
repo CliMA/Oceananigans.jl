@@ -256,8 +256,6 @@ function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitud
 
     if TY() isa Periodic
         throw(ArgumentError("LatitudeLongitudeGrid cannot be Periodic in latitude!"))
-    elseif TZ() isa Periodic
-        throw(ArgumentError("LatitudeLongitudeGrid cannot be Periodic in z!"))
     end
 
     # Validate longitude and latitude
