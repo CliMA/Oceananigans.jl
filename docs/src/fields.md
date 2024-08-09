@@ -156,7 +156,7 @@ The centers of the `u` cells are shifted to the left relative to the `c` cells:
 
 ```jldoctest fields
 @show xnodes(c)
-@show xnodes(u)
+@show xnodes(u);
 
 # output
 xnodes(c) = [0.125, 0.375, 0.625, 0.875]
@@ -241,12 +241,12 @@ set!(c, 42)
 
 # output
 4×4×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 10×10×10 OffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
+└── data: 6×6×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:5, 0:5) with eltype Float64 with indices 0:5×0:5×0:5
     └── max=42.0, min=42.0, mean=42.0
-```
+    ```
 
 Now `c` is filled with `42`s (for this simple case, we could also have used `c .= 42`).
 Let's confirm that:
@@ -351,13 +351,17 @@ c[1:4, 1, 1]
  0.75
  1.25
  1.75
-```
+ ```
 
 !!! note
     This function-setting method is a first-order method for computing the finite volume of `c` to `fun_stuff`.
     Higher-order algorithms could be implemented -- have a crack if you're keen.
 
 As a result `set!` can evaluate differently on `Field`s at different locations:
+
+```@setup fields
+fun_stuff(x, y, z) = 2x
+```
 
 ```jldoctest fields
 u = XFaceField(grid)
@@ -370,7 +374,7 @@ u[1:4, 1, 1]
  0.5
  1.0
  1.5
-```
+ ```
 
 ## Halo regions and boundary conditions
 
