@@ -1,4 +1,4 @@
-# Grids
+# [Grids](@id grids_tutorial)
 
 ```@meta
 DocTestSetup = quote

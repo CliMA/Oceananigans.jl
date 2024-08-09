@@ -12,9 +12,9 @@ or expression involving other fields, and may cover only a portion of the total
 Oceananigans ocean-flavored fluids simulations rely fundamentally on
 "staggered grid" numerical methods.
 
-Recall that [grids](@ref Grids) represent a physical domain divided into finite volumes.
+Recall that [grids](@ref grids_tutorial) represent a physical domain divided into finite volumes.
 For example, let's consider a horizontally-periodic, vertically-bounded grid of cells
-that divide up a cube with dimensions ``1 \times 1 \times 1``s:
+that divide up a cube with dimensions ``1 \times 1 \times 1``:
 
 ```jldoctest fields
 using Oceananigans
@@ -190,7 +190,8 @@ Let's visualize the situation:
 ```@setup fields
 using Oceananigans
 using CairoMakie
-CairoMakie.activate!(type = "svg")
+set_theme!(Theme(fontsize=24))
+CairoMakie.activate!(type="svg")
 
 grid = RectilinearGrid(topology = (Periodic, Periodic, Bounded),
                        size = (4, 4, 4),
@@ -208,7 +209,7 @@ u = XFaceField(grid)
 ```@example fields
 using CairoMakie
 
-fig = Figure(size=(400, 120))
+fig = Figure(size=(600, 180))
 ax = Axis(fig[1, 1], xlabel="x")
 
 # Visualize the domain
@@ -410,6 +411,7 @@ To remedy this situation we need to `fill_halo_regions!`:
 
 ```jldoctest fields
 using Oceananigans.BoundaryConditions: fill_halo_regions!
+
 fill_halo_regions!(c)
 
 c[:, :, 1]
@@ -440,8 +442,9 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 └── immersed: FluxBoundaryCondition: Nothing
 ```
 
-Specifically for `c`, `x` and `y` are `Periodic` while `z` has been assigned the default "no-flux" boundary conditions for
-a `Field` with `Center` location in a `Bounded` direction.
+Specifically for `c` above, `x` and `y` are `Periodic` while `z` has been assigned
+the default "no-flux" boundary conditions for a `Field` with `Center` location in
+a `Bounded` direction.
 For no-flux boundary conditions, the halo regions of `c` are filled so that derivatives evaluated
 on the boundary return 0.
 To view only the interior cells of `c` we use the function `interior`,
@@ -457,7 +460,8 @@ interior(c, :, :, 1)
  1.75  1.75  1.75  1.75
 ```
 
-Note that the indices of `c` (and the indices of `c.data`) are "offset" so that the index `1` corresponds to the first interior cell.
+Note that the indices of `c` (and the indices of `c.data`) are "offset" so that index `1`
+corresponds to the first interior cell.
 As a result,
 
 ```jldoctest fields
@@ -476,9 +480,9 @@ typeof(c.data)
 OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}
 ```
 
-Thus, for example, the `x`-indices of `c.data` vary from `1-Hx` to `Nx + Hx` -- in this case, from `0` to `5`.
+Thus, for example, the `x`-indices of `c.data` vary from `1 - Hx` to `Nx + Hx` -- in this case, from `0` to `5`.
 The underlying array can be accessed with `parent(c)`.
-But the "parent" array does not have offset indices, so
+But note that the "parent" array does not have offset indices, so
 
 ```jldoctest fields
 @show parent(c)[1:2, 2, 2]
