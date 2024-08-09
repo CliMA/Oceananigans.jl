@@ -186,7 +186,8 @@ makedocs(sitename = "Oceananigans.jl",
          plugins = [bib],
          modules = [Oceananigans],
          warnonly = [:cross_references],
-         doctest = false, # set to false to speed things up
+         doctest = true, # set to false to speed things up
+         draft = false,  # set to true to speed things up
          clean = true,
          checkdocs = :exports) # set to :none to speed things up
 
