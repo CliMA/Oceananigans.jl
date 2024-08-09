@@ -510,7 +510,7 @@ grid = LatitudeLongitudeGrid(size = (Nx, Ny),
 
 ```@example plot
 φ = φnodes(grid, Center())
-Δx = xspacings(grid, Center(), Center(), with_halos=true)[1:Nys]
+Δx = xspacings(grid, Center(), Center(), with_halos=true)[1:Ny]
 Δy = yspacings(grid, Center())[1:Ny]
 
 using CairoMakie
