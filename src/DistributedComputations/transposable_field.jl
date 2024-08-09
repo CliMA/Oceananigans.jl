@@ -138,9 +138,9 @@ function twin_grid(grid::DistributedGrid; local_direction = :y)
     y = cpu_face_constructor_y(grid)
     z = cpu_face_constructor_z(grid)
 
-    xG = R[1] == 1 ? x : assemble_coordinate(x, nx, R[1], ri, rj, rk, arch.communicator)
-    yG = R[2] == 1 ? y : assemble_coordinate(y, ny, R[2], rj, ri, rk, arch.communicator)
-    zG = R[3] == 1 ? z : assemble_coordinate(z, nz, R[3], rk, ri, rj, arch.communicator)
+    xG = R[1] == 1 ? x : assemble_coordinate(x, nx, arch, 1)
+    yG = R[2] == 1 ? y : assemble_coordinate(y, ny, arch, 2)
+    zG = R[3] == 1 ? z : assemble_coordinate(z, nz, arch, 3)
 
     child_arch = child_architecture(arch)
 

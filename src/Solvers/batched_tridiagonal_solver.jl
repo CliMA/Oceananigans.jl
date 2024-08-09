@@ -18,8 +18,12 @@ struct BatchedTridiagonalSolver{A, B, C, T, G, P, D}
     tridiagonal_direction :: D
 end
 
-architecture(solver::BatchedTridiagonalSolver) = architecture(solver.grid)
+# Some aliases...
+const XTridiagonalSolver = BatchedTridiagonalSolver{A, B, C, T, G, P, <:XDirection} where {A, B, C, T, G, P}
+const YTridiagonalSolver = BatchedTridiagonalSolver{A, B, C, T, G, P, <:YDirection} where {A, B, C, T, G, P}
+const ZTridiagonalSolver = BatchedTridiagonalSolver{A, B, C, T, G, P, <:ZDirection} where {A, B, C, T, G, P}
 
+architecture(solver::BatchedTridiagonalSolver) = architecture(solver.grid)
 
 """
     BatchedTridiagonalSolver(grid;

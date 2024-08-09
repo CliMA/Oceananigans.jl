@@ -53,11 +53,9 @@ include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
         A = typeof(arch)
 
         for grid_type in [:regular, :vertically_unstretched]
-            if !(arch isa Distributed && grid_type == :vertically_unstretched)
-                @testset "Rayleigh–Bénard tracer [$A, $grid_type grid]]" begin
-                    @info "  Testing Rayleigh–Bénard tracer regression [$A, $grid_type grid]"
-                    run_rayleigh_benard_regression_test(arch, grid_type)
-                end
+            @testset "Rayleigh–Bénard tracer [$A, $grid_type grid]]" begin
+                @info "  Testing Rayleigh–Bénard tracer regression [$A, $grid_type grid]"
+                run_rayleigh_benard_regression_test(arch, grid_type)
             end
 
             if !(arch isa Distributed)

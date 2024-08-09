@@ -84,7 +84,6 @@ function RectilinearGrid(arch::Distributed,
     xl = Rx == 1 ? x : partition_coordinate(x, nx, arch, 1)
     yl = Ry == 1 ? y : partition_coordinate(y, ny, arch, 2)
     zl = Rz == 1 ? z : partition_coordinate(z, nz, arch, 3)
-
     Lx, xᶠᵃᵃ, xᶜᵃᵃ, Δxᶠᵃᵃ, Δxᶜᵃᵃ = generate_coordinate(FT, topology[1](), nx, Hx, xl, :x, child_architecture(arch))
     Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, topology[2](), ny, Hy, yl, :y, child_architecture(arch))
     Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, topology[3](), nz, Hz, zl, :z, child_architecture(arch))
@@ -190,9 +189,9 @@ function reconstruct_global_grid(grid::DistributedRectilinearGrid)
     z = cpu_face_constructor_z(grid)
 
     ## This will not work with 3D parallelizations!!
-    xG = Rx == 1 ? x : assemble_coordinate(x, nx, Rx, ri, rj, rk, arch.communicator)
-    yG = Ry == 1 ? y : assemble_coordinate(y, ny, Ry, rj, ri, rk, arch.communicator)
-    zG = Rz == 1 ? z : assemble_coordinate(z, nz, Rz, rk, ri, rj, arch.communicator)
+    xG = Rx == 1 ? x : assemble_coordinate(x, nx, arch, 1)
+    yG = Ry == 1 ? y : assemble_coordinate(y, ny, arch, 2)
+    zG = Rz == 1 ? z : assemble_coordinate(z, nz, arch, 3)
 
     child_arch = child_architecture(arch)
 
@@ -233,9 +232,9 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
     z = cpu_face_constructor_z(grid)
 
     ## This will not work with 3D parallelizations!!
-    λG = Rx == 1 ? λ : assemble_coordinate(λ, nλ, Rx, ri, rj, rk, arch.communicator)
-    φG = Ry == 1 ? φ : assemble_coordinate(φ, nφ, Ry, rj, ri, rk, arch.communicator)
-    zG = Rz == 1 ? z : assemble_coordinate(z, nz, Rz, rk, ri, rj, arch.communicator)
+    λG = Rx == 1 ? λ : assemble_coordinate(λ, nλ, arch, 1)
+    φG = Ry == 1 ? φ : assemble_coordinate(φ, nφ, arch, 2)
+    zG = Rz == 1 ? z : assemble_coordinate(z, nz, arch, 3)
 
     child_arch = child_architecture(arch)
 

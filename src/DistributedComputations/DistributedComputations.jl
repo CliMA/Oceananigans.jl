@@ -23,5 +23,6 @@ include("transposable_field.jl")
 include("distributed_transpose.jl")
 include("plan_distributed_transforms.jl")
 include("distributed_fft_based_poisson_solver.jl")
+include("distributed_fft_tridiagonal_solver.jl")
 
 end # module

@@ -86,7 +86,7 @@ steps:
       slurm_mem: 120G
       slurm_ntasks: 4
 
-  - label: "🕺 gpu distributed hydrostatic model tests"
+  - label: "🦏 gpu distributed hydrostatic model tests"
     key: "distributed_hydrostatic_model_gpu"
     env:
       TEST_GROUP: "distributed_hydrostatic_model"
@@ -97,7 +97,7 @@ steps:
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
 
-  - label: "🤺 cpu distributed nonhydrostatic regression"
+  - label: "🦍 cpu distributed nonhydrostatic regression"
     key: "distributed_nonhydrostatic_regression_cpu"
     env:
       TEST_GROUP: "distributed_nonhydrostatic_regression"
