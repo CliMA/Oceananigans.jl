@@ -121,22 +121,22 @@ Like `Field`s, `AbstractOperations` are evaluated by indexing,
 
 ```jldoctest operations
 @show c[1, 1, 1]
-@show quadratic[1, 1, 1]
+@show quadratic[1, 1, 1];
 
 # output
 c[1, 1, 1] = 0.02135277459201165
-dx_c[1, 1, 1] = 0.013593598500182732
+quadratic[1, 1, 1] = 1.0431614901668005
 ```
 
 Also like `Field`s, `AbstractOperation`s have a _location_. For example,
 
 ```jldoctest operations
 @show location(c)
-@show location(dx_c)
+@show location(dx_c);
 
 # output
-(Center, Center, Center)
-(Face, Center, Center)
+location(c) = (Center, Center, Center)
+location(dx_c) = (Face, Center, Center)
 ```
 
 Notice that the location of `dx_c` is shifted in `x` relative to `c`.
