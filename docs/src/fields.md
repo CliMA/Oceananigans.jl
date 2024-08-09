@@ -46,7 +46,7 @@ For example, the primary or `Center` cell spacings in ``z`` are
 zspacings(grid, Center())
 
 # output
-4-element view(OffsetArray(::Vector{Float64}, -2:7), 1:4) with eltype Float64:
+4-element view(OffsetArray(::Vector{Float64}, 0:5), 1:4) with eltype Float64:
  0.1
  0.19999999999999998
  0.3
@@ -60,7 +60,7 @@ But then for the grid which is staggered in `z` relative to the primary mesh,
 zspacings(grid, Face())
 
 # output
-5-element view(OffsetArray(::Vector{Float64}, -3:7), 1:5) with eltype Float64:
+5-element view(OffsetArray(::Vector{Float64}, -1:5), 1:5) with eltype Float64:
  0.1
  0.15000000000000002
  0.24999999999999994
@@ -94,12 +94,11 @@ Finally, note that the nodes of the staggered mesh coincide with the cell interf
 znodes(grid, Center())
 
 # output
-5-element view(OffsetArray(::Vector{Float64}, -2:8), 1:5) with eltype Float64:
- 0.0
- 0.1
- 0.3
- 0.6
- 1.0
+4-element view(OffsetArray(::Vector{Float64}, 0:5), 1:4) with eltype Float64:
+ 0.05
+ 0.2
+ 0.44999999999999996
+ 0.8
 ```
 
 In a three-dimensional domain, there are ``2³ = 8`` meshes -- 1 primary mesh, and 7 meshes that are
