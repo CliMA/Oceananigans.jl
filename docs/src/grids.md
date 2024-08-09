@@ -3,6 +3,9 @@
 ```@meta
 DocTestSetup = quote
     using Oceananigans
+    using CairoMakie
+    CairoMakie.activate!(type = "svg")
+    set_theme!(Theme(fontsize=24))
 end
 ```
 
@@ -12,7 +15,7 @@ The "grid" captures the
 
 1. The geometry of the physical domain;
 2. The way that domain is divided into a mesh of finite volumes;
-3. The machine architecture (CPU, GPU, lots of GPUs); and
+3. The machine architecture (CPU, GPU, lots of CPUs or lots of GPUs); and
 4. The precision of floating point numbers (double precision or single precision).
 
 To create a simple grid on the CPU that divides a three-dimensional rectangular domain -- "a box" --- into evenly-spaced cells, we write
@@ -36,13 +39,15 @@ grid = RectilinearGrid(architecture,
 
 This simple grid
 
-* Lives on the CPU. To make a grid on the GPU (if one is available) we write `architecture = GPU()`. And for multiple CPUs or GPUs --- we'll get to that.
+* Lives on the CPU. To make a grid on the GPU (if one is available) we write `architecture = GPU()`.
+  And for multiple CPUs or GPUs --- we'll get to that.
 * Has a domain that's "periodic" in ``x, y``, but bounded in ``z``.
 * Has `16` cells in `x`, `8` cells in `y`, and `4` cells in `z`. That means there are ``16 \times 8 \times 4 = 512`` cells in all.
 * Has an `x` dimension that spans from `x=0`, to `x=64`. And `y` spans `y=0` to `y=32`, and `z` spans `z=0` to `z=8`.
-* Has cells that are all the same size, dividing the ``16 \times 8 \times 4`` box into ``4 \times 4 \times 2`` cells. Note that length units are whatever is used to construct the grid, so it's up to the user to make sure that all inputs use consistent units.
+* Has cells that are all the same size, dividing the box in 512 that each has dimension ``4 \times 4 \times 2``.
+  Note that length units are whatever is used to construct the grid, so it's up to the user to make sure that all inputs use consistent units.
 
-To make a grid on the _GPU_ (to run this, a GPU has to be available and [`CUDA.jl`](https://cuda.juliagpu.org/stable/) must be working) that's two-dimensional in ``x, z`` and has variably-spaced cell interfaces in the `z`-direction, we write:
+To construct a grid on the _GPU_ that's two-dimensional in ``x, z`` and has variably-spaced cell interfaces in the `z`-direction, we write:
 
 ```@setup grids_gpu
 using Oceananigans
@@ -65,7 +70,11 @@ grid = RectilinearGrid(architecture,
 └── Bounded  z ∈ [0.0, 10.0]      variably spaced with min(Δz)=1.0, max(Δz)=4.0
 ```
 
-The ``y``-dimension is "missing" beacause it's marked `Flat` in `topology = (Periodic, Flat, Bounded)`.
+!!! note "GPU architecture requires a CUDA-enabled device"
+    To run the above example and create a grid on the GPU, an Nvidia GPU has to be available
+    and [`CUDA.jl`](https://cuda.juliagpu.org/stable/) must be working).
+
+The ``y``-dimension is "missing" because it's marked `Flat` in `topology = (Periodic, Flat, Bounded)`.
 So nothing varies in ``y``: `y`-derivatives are 0.
 Also, the keyword argument (for short, "kwarg") that specifies the ``y``-domains may be omitted, and `size` has only two elements rather than 3 as in the first example.
 In the stretched cell interfaces specified by `z_interfaces`, the number of
@@ -76,16 +85,16 @@ of cells in the vertical.
 
 The shape of the physical domain determines what grid type should be used:
 
-1. [`RectilinearGrid`](@ref) can be fashioned into lines, rectangles and boxes.
-2. [`LatitudeLongitudeGrid`](@ref) represents sectors of thin spherical shells, with cells bounded by lines of constant latitude and longitude.
-3. [`OrthogonalSphericalShellGrid`](@ref) represents sectors of thin spherical shells divided with mesh lines that intersect at right angles (thus, orthogonal) but are otherwise arbitrary.
+1. [`RectilinearGrid`](@ref Oceananigans.Grids.RectilinearGrid) can be fashioned into lines, rectangles and boxes.
+2. [`LatitudeLongitudeGrid`](@ref Oceananigans.Grids.LatitudeLongitudeGrid) represents sectors of thin spherical shells, with cells bounded by lines of constant latitude and longitude.
+3. [`OrthogonalSphericalShellGrid`](@ref Oceananigans.Grids.OrthogonalSphericalShellGrid) represents sectors of thin spherical shells divided with mesh lines that intersect at right angles (thus, orthogonal) but are otherwise arbitrary.
 
-!!! note "`OrthogonalSphericalShellGrids.jl`"
+!!! note "OrthogonalSphericalShellGrids.jl"
     See the auxiliary package [`OrthogonalSphericalShellGrids.jl`](https://github.com/CliMA/OrthogonalSphericalShellGrids.jl)
     for recipes that implement some useful `OrthogonalSphericalShellGrid`, including the
     ["tripolar" grid](https://www.sciencedirect.com/science/article/abs/pii/S0021999196901369).
 
-For example, to make a `LatitudeLongitudeGrid` that wraps around the sphere, has 60 degrees of latitude on either side of the equator, and has 5 vertical levels, we write
+For example, to make a `LatitudeLongitudeGrid` that wraps around the sphere, has 60 degrees of latitude on either side of the equator, and also 5 vertical levels, we write
 
 ```jldoctest grids
 architecture = CPU()
@@ -103,7 +112,7 @@ grid = LatitudeLongitudeGrid(architecture,
 └── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=40.0
 ```
 
-The main difference between the syntax for `LatitudeLongitudeGrid` versus `RectilinearGrid` are the names of the horizontal coordinates:
+The main difference between the syntax for `LatitudeLongitudeGrid` versus that for the `RectilinearGrid` are the names of the horizontal coordinates:
 `LatitudeLongitudeGrid` has `longitude` and `latitude` where `RectilinearGrid` has `x` and `y`.
 
 !!! note "Extrinsic and intrinsic coordinate systems"
@@ -115,7 +124,7 @@ The main difference between the syntax for `LatitudeLongitudeGrid` versus `Recti
     To type `λ` or `φ` at the REPL, write either `\lambda` (for `λ`) or `\varphi` (for `φ`) and then press `<TAB>`.
 
 If `topology` is not provided for `LatitudeLongitudeGrid`, then we try to infer it: if the `longitude` spans 360 degrees,
-the default x-topology is `Periodic`, and `Bounded` if `longitude` spans less than 360 degrees.
+the default `x`-topology is `Periodic`; if `longitude` spans less than 360 degrees `x`-topology is `Bounded`.
 For example,
 
 ```jldoctest grids
@@ -125,25 +134,27 @@ grid = LatitudeLongitudeGrid(size = (60, 10, 5),
                              z = (-1000, 0))
 
 # output
-36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
-├── longitude: Periodic λ ∈ [-180.0, 180.0) regularly spaced with Δλ=10.0
-├── latitude:  Bounded  φ ∈ [-85.0, 85.0]   regularly spaced with Δφ=5.0
-└── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=40.0
+60×10×5 LatitudeLongitudeGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+├── longitude: Bounded  λ ∈ [0.0, 60.0]    regularly spaced with Δλ=1.0
+├── latitude:  Bounded  φ ∈ [-60.0, 60.0]  regularly spaced with Δφ=12.0
+└── z:         Bounded  z ∈ [-1000.0, 0.0] regularly spaced with Δz=200.0
 ```
 
 is `Bounded` by default, because `longitude = (0, 60)`.
 
-!!! note "`LatitudeLongitudeGrid` topologies"
+!!! note "LatitudeLongitudeGrid topologies"
     It's still possible to use `topology = (Periodic, Bounded, Bounded)` if `longitude` doesn't have 360 degrees.
     But neither `latitude` nor `z` may be `Periodic` with `LatitudeLongitudeGrid`.
 
 ### Bathymetry, topography, and other irregularities
 
-Irregular or "complex" domains are represented with [`ImmersedBoundaryGrid`](@ref), which combines one of the above underlying grids with a type of immersed boundary. The immersed boundaries we support currently are
+Irregular or "complex" domains are represented with [`ImmersedBoundaryGrid`](@ref), which combines one of the
+above underlying grids with a type of immersed boundary. The immersed boundaries we support currently are
 
 1. [`GridFittedBottom`](@ref), which fits a one- or two-dimensional bottom height to the underlying grid, so the active part of the domain is above the bottom height.
-2. [`PartialCellBottom`](@ref), which is similar to [`GridFittedBottom`](@ref), except that the height of the bottommost cell is changed to conform to bottom height, limited to prevent the bottom cells from becoming too thin.
+2. [`PartialCellBottom`](@ref Oceananigans.ImmersedBoundaries.PartialCellBottom), which is similar to [`GridFittedBottom`](@ref), except that the height of the bottommost cell is changed to conform to bottom height, limited to prevent the bottom cells from becoming too thin.
 3. [`GridFittedBoundary`](@ref), which fits a three-dimensional mask to the grid.
+
 
 To build an `ImmersedBoundaryGrid`, we start by building one of the three underlying grids, and then embedding a boundary into that underlying grid.
 
@@ -175,8 +186,6 @@ Yep, that's a Gaussian mountain:
 
 ```jldoctest grids
 using CairoMakie
-CairoMakie.activate!(type = "svg") # hide
-set_theme!(Theme(fontsize=24))
 
 h = grid.immersed_boundary.bottom_height
 x, y, z = nodes(h)
@@ -342,8 +351,6 @@ grid = RectilinearGrid(size = (Nx, Ny, Nz),
 using Oceananigans
 using CairoMakie
 
-set_theme!(Theme(fontsize=24))
-
 Nx, Ny, Nz = 64, 64, 32
 Lx, Ly, Lz = 1e4, 1e4, 1e3
 
@@ -372,7 +379,6 @@ zf = znodes(grid, Face())
 Δz = zspacings(grid, Center())
 
 using CairoMakie
-CairoMakie.activate!(type = "svg") # hide
 
 fig = Figure(size=(1200, 1200))
 
@@ -401,10 +407,8 @@ hidespines!(axΔz, :t, :r)
 rowsize!(fig.layout, 1, Relative(0.1))
 rowsize!(fig.layout, 3, Relative(0.1))
 
-display(fig); save("plot_stretched_grid.svg", fig); nothing # hide
+current_figure()
 ```
-
-![](plot_stretched_grid.svg)
 
 ## Inspecting `LatitudeLongitudeGrid` cell spacings
 
@@ -422,13 +426,12 @@ grid = LatitudeLongitudeGrid(size = (1, 44),
 Δx = xspacings(grid, Center(), Center())
 
 using CairoMakie
-CairoMakie.activate!(type = "svg") # hide
 
 fig = Figure(size=(600, 400))
 ax = Axis(fig[1, 1], xlabel="Zonal spacing on 2 degree grid (km)", ylabel="Latitude (degrees)")
 scatter!(ax, Δx ./ 1e3, φ)
 
-display(fig); save("plot_lat_lon_spacings.svg", fig); nothing # hide
+current_figure()
 ```
 
 ![](plot_lat_lon_spacings.svg)
@@ -509,7 +512,6 @@ grid = LatitudeLongitudeGrid(size = (Nx, Ny),
 Δy = yspacings(grid, Center())[1:Ny]
 
 using CairoMakie
-CairoMakie.activate!(type = "svg") # hide
 
 fig = Figure(size=(800, 400))
 axx = Axis(fig[1, 1], xlabel="Zonal spacing (km)", ylabel="Latitude (degrees)")
