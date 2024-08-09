@@ -175,8 +175,7 @@ than `CenterField`s:
 w = Field{Center, Center, Face}(grid)
 
 @show znodes(c)
-@show znodes(w)
-nothing # hide
+@show znodes(w);
 
 # output
 znodes(c) = [0.05, 0.2, 0.44999999999999996, 0.8]
@@ -335,8 +334,7 @@ The `xnodes` of `c` -- the coordinates of the center of `c`'s finite volumes -- 
 
 ```jldoctest fields
 xc = xnodes(c)
-@show xc
-nothing # hide
+@show xc;
 
 # output
 xc = [0.125, 0.375, 0.625, 0.875]
@@ -486,8 +484,7 @@ But note that the "parent" array does not have offset indices, so
 
 ```jldoctest fields
 @show parent(c)[1:2, 2, 2]
-@show c.data[1:2, 1, 1]
-nothing # hide
+@show c.data[1:2, 1, 1];
 
 # output
 (parent(c))[1:2, 2, 2] = [0.0, 0.25]
