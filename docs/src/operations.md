@@ -121,8 +121,7 @@ Like `Field`s, `AbstractOperations` are evaluated by indexing,
 
 ```jldoctest operations
 @show c[1, 1, 1]
-@show quadratic[1, 1, 1]
-nothing # hide
+@show quadratic[1, 1, 1];
 
 # output
 c[1, 1, 1] = 0.02135277459201165
