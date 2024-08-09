@@ -93,7 +93,7 @@ MultiaryOperation at (Center, Center, Center)
     ├── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
     ├── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
     └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
- ```
+```
 
 `UnaryOperation`, `BinaryOperation` and `MultiaryOperation` all have both an "operator", and between 1 and many.
 Last, and definitely not least, the fourth flavor of `AbstractOperation` represents a derivative,
@@ -110,7 +110,7 @@ Derivative at (Face, Center, Center)
 ```
 
 !!! note
-    The `x`-derivative of `c` is computed by invoking the function `∂xᶠᶜᶜ`,
+    The ``x``-derivative of `c` is computed by invoking the function `∂xᶠᶜᶜ`,
     where the superscript `ᶠᶜᶜ` indicates that the result of this function
     is located at `(Face, Center, Center)`. This convention is used throughout
     `Oceananigans` source code. A third superscripted letter `ᵃ` stands for "any"
@@ -207,5 +207,3 @@ BinaryOperation at (Center, Center, Center)
         │   └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
         └── 2
 ```
-
-
