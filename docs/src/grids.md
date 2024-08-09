@@ -66,7 +66,7 @@ grid = RectilinearGrid(architecture,
 # output
 10×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on GPU with 3×0×3 halo
 ├── Periodic x ∈ [0.0, 20.0) regularly spaced with Δx=2.0
-├── Flat y
+├── Flat y                   
 └── Bounded  z ∈ [0.0, 10.0] variably spaced with min(Δz)=1.0, max(Δz)=4.0
 ```
 
@@ -364,9 +364,9 @@ grid = RectilinearGrid(size = (Nx, Ny, Nz),
 
 # output
 64×64×32 RectilinearGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
-├── Periodic x ∈ [0.0, 10000.0)    regularly spaced with Δx=156.25
-├── Bounded  y ∈ [-5000.0, 5000.0] variably spaced with min(Δy)=6.02272, max(Δy)=245.338
-└── Bounded  z ∈ [-1000.0, 0.0]    variably spaced with min(Δz)=2.40764, max(Δz)=49.0086
+├── Periodic x ∈ [0.0, 10000.0)  regularly spaced with Δx=156.25
+├── Bounded  y ∈ [0.0, 10000.0]  variably spaced with min(Δy)=6.02272, max(Δy)=245.338
+└── Bounded  z ∈ [-1000.0, -0.0] variably spaced with min(Δz)=2.40764, max(Δz)=49.0086
 ```
 
 ```@setup plot
@@ -493,9 +493,9 @@ grid = LatitudeLongitudeGrid(size = (Nx, Ny),
 
 # output
 180×28×1 LatitudeLongitudeGrid{Float64, Bounded, Bounded, Flat} on CPU with 3×3×0 halo and with precomputed metrics
-├── longitude: Bounded  λ ∈ [0.0, 360.0]     regularly spaced with Δλ=2.0
-├── latitude:  Bounded  φ ∈ [0.0, 77.2679]   variably spaced with min(Δφ)=2.0003, max(Δφ)=6.95319
-└── z:         Flat z
+├── longitude: Bounded  λ ∈ [0.0, 360.0]   regularly spaced with Δλ=2.0
+├── latitude:  Bounded  φ ∈ [0.0, 77.2679] variably spaced with min(Δφ)=2.0003, max(Δφ)=6.95319
+└── z:         Flat z                      
 ```
 
 We've also illustrated the construction of a grid that is `Flat` in the vertical direction.
