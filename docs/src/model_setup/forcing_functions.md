@@ -90,8 +90,8 @@ ContinuousForcing{Float64} at (Face, Center, Center)
 ```
 
 In this example, the objects passed to the `parameters` keyword in the construction of
-`u_forcing` and `T_forcing` --- a floating point number for `u_forcing`, and a `NamedTuple`
-of parameters for `T_forcing` --- are passed on to `u_forcing_func` and `T_forcing_func` when
+`u_forcing` and `T_forcing` -- a floating point number for `u_forcing`, and a `NamedTuple`
+of parameters for `T_forcing` -- are passed on to `u_forcing_func` and `T_forcing_func` when
 they are called during time-stepping. The object passed to `parameters` is in principle arbitrary.
 However, if using the GPU, then `typeof(parameters)` may be restricted by the requirements
 of GPU-compiliability.

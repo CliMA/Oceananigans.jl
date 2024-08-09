@@ -3,10 +3,10 @@
 The [`NonhydrostaticModel`](@ref) solves the incompressible Navier-Stokes equations under the
 Boussinesq approximation and an arbitrary number of tracer conservation equations.
 Physics associated with individual terms in the momentum and tracer conservation
-equations --- the background rotation rate of the equation's reference frame,
+equations -- the background rotation rate of the equation's reference frame,
 gravitational effects associated with buoyant tracers under the Boussinesq
 approximation, generalized stresses and tracer fluxes associated with viscous and
-diffusive physics, and arbitrary "forcing functions" --- are determined by the whims of the
+diffusive physics, and arbitrary "forcing functions" -- are determined by the whims of the
 user.
 
 ## The momentum conservation equation

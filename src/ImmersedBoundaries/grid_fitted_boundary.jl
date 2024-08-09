@@ -1,5 +1,11 @@
 using OffsetArrays
 
+"""
+
+   GridFittedBoundary(mask)
+
+Return a immersed boundary with a three-dimensional `mask`.
+"""
 struct GridFittedBoundary{M} <: AbstractGridFittedBoundary
     mask :: M
 end

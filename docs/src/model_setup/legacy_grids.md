@@ -4,7 +4,6 @@ The grids currently supported are:
 - `RectilinearGrid`s with either constant or variable grid spacings and
 - `LatitudeLongitudeGrid` on the sphere.
 
-
 ## `RectilinearGrid`
 
 A `RectilinearGrid` is constructed by specifying the `size` of the grid (a `Tuple` specifying
