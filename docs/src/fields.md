@@ -335,7 +335,8 @@ The `xnodes` of `c` -- the coordinates of the center of `c`'s finite volumes -- 
 
 ```jldoctest fields
 xc = xnodes(c)
-@show xc;
+@show xc
+nothing # hide
 
 # output
 xc = [0.125, 0.375, 0.625, 0.875]
@@ -345,25 +346,23 @@ To `set!` the values of `c` we evaluate `fun_stuff` at `c`'s nodes, producing
 
 
 ```jldoctest fields
+fun_stuff(x, y, z) = 2x
+set!(c, fun_stuff)
 c[1:4, 1, 1]
 
 # output
 4-element Vector{Float64}:
- 0.25
- 0.75
- 1.25
- 1.75
- ```
+ 42.0
+ 42.0
+ 42.0
+ 42.0
+```
 
 !!! note
     This function-setting method is a first-order method for computing the finite volume of `c` to `fun_stuff`.
     Higher-order algorithms could be implemented -- have a crack if you're keen.
 
 As a result `set!` can evaluate differently on `Field`s at different locations:
-
-```@setup fields
-fun_stuff(x, y, z) = 2x
-```
 
 ```jldoctest fields
 u = XFaceField(grid)
@@ -489,7 +488,8 @@ But note that the "parent" array does not have offset indices, so
 
 ```jldoctest fields
 @show parent(c)[1:2, 2, 2]
-@show c.data[1:2, 1, 1];
+@show c.data[1:2, 1, 1]
+nothing # hide
 
 # output
 (parent(c))[1:2, 2, 2] = [0.0, 0.25]
