@@ -33,8 +33,8 @@ grid = RectilinearGrid(topology = (Periodic, Periodic, Bounded),
 └── Bounded  z ∈ [0.0, 1.0] variably spaced with min(Δz)=0.1, max(Δz)=0.4
 ```
 
-The cubic domain is divided into a "primary mesh" of ``4 \times 4 \times 4 \times = 64`` cells,
-which are evenly distributed in ``x, y`` but variably-spaced ``z``.
+The cubic domain is divided into a "primary mesh" of ``4 \times 4 \times 4 = 64`` cells,
+which are evenly distributed in ``x, y`` but variably-spaced in ``z``.
 Now, in addition to the primary mesh, we also define a set of "staggered" grids whose cells are
 shifted by half a cell width relative to the primary mesh.
 In other words, the staggered grid cells have a "location" in each direction --- either `Center`,
@@ -149,16 +149,15 @@ u = Field{Face, Center, Center}(grid)
     └── max=0.0, min=0.0, mean=0.0
 ```
 
-which also goes by `u = XFaceField(grid)`.
+which also goes by the alias `u = XFaceField(grid)`.
 The name `u` is suggestive: in the Arakawa type-C grid ('C-grid' for short) used by Oceananigans,
-the `x`-component of the velocity field is stored at `Face, Center, Center`.
+the `x`-component of the velocity field is stored at `Face, Center, Center` location.
 
 The centers of the `u` cells are shifted to the left relative to the `c` cells:
 
 ```jldoctest fields
 @show xnodes(c)
 @show xnodes(u)
-nothing # hide
 
 # output
 xnodes(c) = [0.125, 0.375, 0.625, 0.875]
@@ -279,7 +278,7 @@ set!(c, random_stuff)
 heatmap(view(c, :, :, 1))
 ```
 
-and even functions,
+or even use functions to set,
 
 ```jldoctest fields
 fun_stuff(x, y, z) = 2x
@@ -288,9 +287,10 @@ set!(c, fun_stuff)
 heatmap(view(c, :, :, 1))
 ```
 
-For `Field`s on three-dimensional grids, `set!` functions must have arguments `x, y, z` for `RectilinearGrid`, or `λ, φ, z` for `LatitudeLongitudeGrid` and `OrthogonalSphericalShellGrid`.
-But for `Field`s on one- and two-dimensional grids, only the non-`Flat` directions are included.
-For example, to `set!` on a one-dimensional grid we write
+For `Field`s on three-dimensional grids, `set!` functions must have arguments `x, y, z` for
+`RectilinearGrid`, or `λ, φ, z` for `LatitudeLongitudeGrid` and `OrthogonalSphericalShellGrid`.
+But for `Field`s on one- and two-dimensional grids, only the arguments that correspond to the
+non-`Flat` directions must be included. For example, to `set!` on a one-dimensional grid we write
 
 ```jldoctest fields
 # Make a field on a one-dimensional grid
@@ -472,4 +472,3 @@ nothing # hide
 (parent(c))[1:2, 2, 2] = [0.0, 0.25]
 c.data[1:2, 1, 1] = [0.25, 0.75]
 ```
-
