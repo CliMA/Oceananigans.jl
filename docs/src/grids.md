@@ -584,42 +584,46 @@ and [`LatitudeLongitudeGrid`](@ref Oceananigans.Grids.LatitudeLongitudeGrid).
 
 ## Distributed grids
 
-To run the next examples, we have to launch julia with MPI and that makes things are a bit more
-involved. For best results, create [a new environment](https://pkgdocs.julialang.org/v1/environments/)
-in an empty directory, and then add both `Oceananigans.jl` and `MPI.jl` to the new environment.
-Pasting this snipped into the terminal should do the trick:
+!!! note
+    For the following examples, make sure to have both
+    `Oceananigans` and `MPI` in your
+    [environment](https://pkgdocs.julialang.org/v1/environments/).
 
-```bash
-mkdir OceananigansDistributedExamples
-cd OceananigansDistributedExamples
-julia --project -e 'using Pkg; using Pkg; Pkg.activate("."); Pkg.add(["Oceananigans", "MPI"])'
-```
+Next we turn to the distribution of grids across disparate nodes.
+This is useful for running simulations that cannot fit on one node.
+It can also be used to speed up a simulation -- provided that the simulation 
+is large enough such that the added cost of communicating information between
+nodes does not exceed the benefit of dividing up the computation among different nodes.
 
-Next, copy-paste the following code into a script called `distributed_example.jl`:
-
-```julia
+```jldoctest grids
+# Make a simple program that can be written to file
+make_distributed_arch = """
+    
 using Oceananigans
 using MPI
 MPI.Init()
-
+    
 architecture = Distributed()
 on_rank_0 = MPI.Comm_rank(MPI.COMM_WORLD) == 0
-
+        
 if on_rank_0
     @show architecture
 end
-```
+"""
 
-Next, run the script with
+write("distributed_arch_example.jl", make_distributed_arch)
 
-```julia
-mpiexec -n 2 julia --project distributed_example.jl
-```
+# Run the program from inside julia.
+# The program can also be run by exiting julia and running
+#
+# $ mpiexec -n 2 julia --project distributed_architecture_example.jl
+#
+# from the terminal.
+using MPI
+mpiexec(cmd -> run(`$cmd -n 2 julia --project distributed_architecture_example.jl`)
+rm("distributed_architecture_example.jl")
 
-This should produce
-
-```
-$ mpiexec -n 2 julia --project distributed_example.jl
+# output
 architecture = Distributed{CPU} across 2 = 2×1×1 ranks:
 ├── local_rank: 0 of 0-1
 ├── local_index: [1, 1, 1]
@@ -636,7 +640,9 @@ changed only with great intention). See the [`Distributed`](@ref) docstring for 
 Next, let's try to build a distributed grid. Copy-paste this code into a new file
 called `distributed_grid_example.jl`,
 
-```julia
+```jldoctest grids
+make_distributed_grid = """
+
 using Oceananigans
 using MPI
 MPI.Init()
@@ -655,18 +661,14 @@ grid = RectilinearGrid(architecture,
 if on_rank_0
     @show grid
 end
-```
+"""
 
-and then run
+write("distributed_grid_example.jl", make_distributed_grid)
 
-```bash
-mpirun -n 2 julia --project distributed_grid_example.jl
-```
+mpiexec(cmd -> run(`$cmd -n 2 julia --project distributed_grid_example.jl`)
+rm("distributed_grid_example.jl")
 
-If everything is set up correctly (🤞), then you should see
-
-```
-$ mpiexec -n 2 julia --project distributed_grid_example.jl
+# output
 grid = 24×48×16 RectilinearGrid{Float64, FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
 ├── FullyConnected x ∈ [0.0, 32.0) regularly spaced with Δx=1.33333
 ├── Periodic y ∈ [0.0, 64.0)       regularly spaced with Δy=1.33333
@@ -691,8 +693,11 @@ Now we're getting somewhere. Let's note a few things:
 
 To drive these points home, let's run the same script, but using 3 processors instead of 2:
 
-```
-$ mpiexec -n 3 julia --project distributed_grid_example.jl
+```jldoctest grids
+mpiexec(cmd -> run(`$cmd -n 3 julia --project distributed_grid_example.jl`)
+rm("distributed_grid_example.jl") # hide
+
+# output
 grid = 16×48×16 RectilinearGrid{Float64, FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
 ├── FullyConnected x ∈ [0.0, 21.3333) regularly spaced with Δx=1.33333
 ├── Periodic y ∈ [0.0, 64.0)          regularly spaced with Δy=1.33333
@@ -709,7 +714,9 @@ we use a custom [`Partition`](@ref).
 The default `Partition` is equally distributed in `x`.
 For example, pasting this code into `partition_example.jl`
 
-```julia
+```jldoctest grids
+make_x_partition = """
+
 using Oceananigans
 using Oceananigans.DistributedComputations: Equal
 using MPI
@@ -720,18 +727,14 @@ partition = Partition(x=Equal())
 if MPI.Comm_rank(MPI.COMM_WORLD) == 0
     @show partition
 end
-```
+"""
 
-and then running it with
+write("partition_example.jl", make_x_partition)
 
-```bash
-mpiexec -n 2 julia --project partition_example.jl
-```
+mpiexec(cmd -> run(`$cmd -n 2 julia --project partition_example.jl`))
+rm("partition_example.jl") # hide
 
-produces
-
-```
-$ mpiexec -n 2 julia --project partition_example.jl
+# output
 partition = Partition across 2 = 2×1×1 ranks:
 └── x: 2
 ```
@@ -751,9 +754,11 @@ mpiexec -n 6 julia --project a_program.jl
 Programatic specification of ranks is often better for applications that need to scale.
 For this the specification `Equal` is useful: if the number of ranks in one dimension is specified,
 and the other is `Equal`, then the `Equal` dimension is allocated
-the remaining workers. For example, pasting the following code into `another_partition_example.jl`
+the remaining workers. For example,
 
-```julia
+```jldoctest grids
+make_xy_partition = """
+
 using Oceananigans
 using Oceananigans.DistributedComputations: Equal
 using MPI
@@ -764,18 +769,14 @@ partition = Partition(x=Equal(), y=2)
 if MPI.Comm_rank(MPI.COMM_WORLD) == 0
     @show partition
 end
-```
+"""
 
-and then running
+write("programmatic_partition_example.jl", make_xy_partition)
 
-```bash
-mpiexec -n 6 julia --project another_partition_example.jl
-```
+mpiexec(cmd -> run(`$cmd -n 2 julia --project programmatic_partition_example.jl`))
+rm("programmatic_partition_example.jl") # hide
 
-produces
-
-```
-mpiexec -n 6 julia --project another_partition_example.jl
+# output
 partition = Partition across 6 = 3×2×1 ranks:
 ├── x: 3
 └── y: 2
@@ -784,7 +785,9 @@ partition = Partition across 6 = 3×2×1 ranks:
 Finally, we can use `Equal` to partition a grid evenly in ``x, y``:
 pasting the following code into `equally_partitioned_grid.jl`
 
-```julia
+```jldoctest grids
+partitioned_grid_example = """
+
 using Oceananigans
 using Oceananigans.DistributedComputations: Equal, barrier!
 using MPI
@@ -819,18 +822,14 @@ for r in 0:Nr-1
 
     barrier!(arch)
 end
-```
+"""
 
-and running
+write("equally_partitioned_grids.jl", partitioned_grid_example)
 
-```bash
-mpiexec -n 4 julia --project equally_partitioned_grid.jl
-```
+mpiexec(cmd -> run(`$cmd -n 2 julia --project equally_partitioned_grids.jl`))
+rm("equally_partitioned_grids") # hide
 
-produces
-
-```
-$ mpiexec -n 4 julia --project equally_partitioned_grid.jl
+# output
 ┌ Info: On Rank 0:
 │
 │ Distributed{CPU} across 4 = 2×2×1 ranks:
