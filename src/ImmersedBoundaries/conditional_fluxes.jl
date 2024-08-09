@@ -2,6 +2,7 @@ using Oceananigans.Advection: AbstractAdvectionScheme, advection_buffers
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑxᶜᵃᵃ, ℑyᵃᶠᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, ℑzᵃᵃᶜ 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization
 using Oceananigans.Advection: LOADV, HOADV, WENO, TracerAdvection
+using Oceananigans.Fields: ZeroField
 
 const ATC = AbstractTurbulenceClosure
 const ATD = AbstractTimeDiscretization
