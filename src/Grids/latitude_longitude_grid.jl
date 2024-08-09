@@ -254,6 +254,10 @@ function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitud
         TZ = Bounded
     end
 
+    if TY() isa Periodic
+        throw(ArgumentError("LatitudeLongitudeGrid cannot be Periodic in latitude!"))
+    end
+
     # Validate longitude and latitude
     λ₁, λ₂ = get_domain_extent(longitude, Nλ)
     λ₂ - λ₁ ≤ 360 || throw(ArgumentError("Longitudinal extent cannot be greater than 360 degrees."))
