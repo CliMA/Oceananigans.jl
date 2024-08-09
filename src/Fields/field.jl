@@ -559,14 +559,14 @@ const XFieldBC = BoundaryCondition{<:Any, XReducedField}
 const YFieldBC = BoundaryCondition{<:Any, YReducedField}
 const ZFieldBC = BoundaryCondition{<:Any, ZReducedField}
 
-# Boundary conditions reduced in one direction --- drop boundary-normal index
+# Boundary conditions reduced in one direction -- drop boundary-normal index
 @inline getbc(bc::XFieldBC, j::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[1, j, k]
 @inline getbc(bc::YFieldBC, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[i, 1, k]
 @inline getbc(bc::ZFieldBC, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds bc.condition[i, j, 1]
 
 # Boundary conditions reduced in two directions are ambiguous, so that's hard...
 
-# 0D boundary conditions --- easy case
+# 0D boundary conditions -- easy case
 const XYZFieldBC = BoundaryCondition{<:Any, XYZReducedField}
 @inline getbc(bc::XYZFieldBC, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds bc.condition[1, 1, 1]
 

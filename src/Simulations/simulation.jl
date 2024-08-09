@@ -6,7 +6,7 @@ import Oceananigans.Models: iteration
 import Oceananigans.Utils: prettytime
 import Oceananigans.TimeSteppers: reset!
 
-# It's not a model --- its a simulation!
+# It's not a model -- its a simulation!
 
 default_progress(simulation) = nothing
 

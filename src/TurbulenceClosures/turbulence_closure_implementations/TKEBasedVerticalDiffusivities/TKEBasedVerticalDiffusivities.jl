@@ -130,7 +130,7 @@ end
 @inline function shear_production(i, j, k, grid, νₑ, uⁿ, u⁺, vⁿ, v⁺)
     # Reconstruct the shear production term in an "approximately conservative" manner
     # (ie respecting the spatial discretization and using a stencil commensurate with the
-    # loss of mean kinetic energy due to shear production --- but _not_ respecting the 
+    # loss of mean kinetic energy due to shear production -- but _not_ respecting the 
     # the temporal discretization. Note that also respecting the temporal discretization, would
     # require storing the velocity field at n and n+1):
 

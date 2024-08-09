@@ -18,7 +18,7 @@ The "grid" captures the
 3. The machine architecture (CPU, GPU, lots of CPUs or lots of GPUs); and
 4. The precision of floating point numbers (double precision or single precision).
 
-To create a simple grid on the CPU that divides a three-dimensional rectangular domain -- "a box" --- into evenly-spaced cells, we write
+To create a simple grid on the CPU that divides a three-dimensional rectangular domain -- "a box" -- into evenly-spaced cells, we write
 
 ```jldoctest grids
 architecture = CPU()
@@ -40,7 +40,7 @@ grid = RectilinearGrid(architecture,
 This simple grid
 
 * Lives on the CPU. To make a grid on the GPU (if one is available) we write `architecture = GPU()`.
-  And for multiple CPUs or GPUs --- we'll get to that.
+  And for multiple CPUs or GPUs -- we'll get to that.
 * Has a domain that's "periodic" in ``x, y``, but bounded in ``z``.
 * Has `16` cells in `x`, `8` cells in `y`, and `4` cells in `z`. That means there are ``16 \times 8 \times 4 = 512`` cells in all.
 * Has an `x` dimension that spans from `x=0`, to `x=64`. And `y` spans `y=0` to `y=32`, and `z` spans `z=0` to `z=8`.
@@ -605,7 +605,7 @@ architecture = Distributed{CPU} across 2 = 2×1×1 ranks:
 ```
 
 That's what it looks like to build a [`Distributed`](@ref) architecture.
-Notice we chose to display only if we're on rank 0 --- because otherwise, all the ranks print
+Notice we chose to display only if we're on rank 0 -- because otherwise, all the ranks print
 to the terminal at once, talking over each other, and things get messy. Also, we used the
 "default communicator" `MPI.COMM_WORLD` to determine whether we were on rank 0. This works
 because `Distributed` uses `communicator = MPI.COMM_WORLD` by default (and this should be
@@ -660,7 +660,7 @@ Now we're getting somewhere. Let's note a few things:
   Well, `(48, 48, 16)` is the size of the _global_ grid, or in other words, the grid that we would get
   if we stitched together all the grids from each rank. Here we have two ranks. By default, the _local_
   grids are distributed equally in `x`, which means that each of the two local grids have half
-  of the grids points of the global grid --- yielding local sizes of `(24, 48, 16)`.
+  of the grids points of the global grid -- yielding local sizes of `(24, 48, 16)`.
 
 * The global grid has topology `(Periodic, Periodic, Bounded)`, but the local grids have the
   topology `(FullyConnected, Periodic, Bounded)`. That means that each local grid, which represents

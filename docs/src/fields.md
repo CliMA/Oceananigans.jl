@@ -37,7 +37,7 @@ The cubic domain is divided into a "primary mesh" of ``4 \times 4 \times 4 = 64`
 which are evenly distributed in ``x, y`` but variably-spaced in ``z``.
 Now, in addition to the primary mesh, we also define a set of "staggered" grids whose cells are
 shifted by half a cell width relative to the primary mesh.
-In other words, the staggered grid cells have a "location" in each direction --- either `Center`,
+In other words, the staggered grid cells have a "location" in each direction -- either `Center`,
 and therefore co-located with the primary mesh, or `Face` and located over the interfaces of the
 primary mesh.
 For example, the primary or `Center` cell spacings in ``z`` are
@@ -86,7 +86,7 @@ znodes(grid, Center(), with_halos=true)
 ```
 
 The center of the leftmost "halo cell" is `z = -0.05`, while the center of the first cell from the left is `z = 0.05`.
-This means that the width of the first cell on the vertically-staggered grid is `0.05 - (-0.05) = 0.1` --- and so on.
+This means that the width of the first cell on the vertically-staggered grid is `0.05 - (-0.05) = 0.1` -- and so on.
 Finally, note that the nodes of the staggered mesh coincide with the cell interfaces of the primary mesh, so:
 
 
@@ -134,7 +134,7 @@ c == CenterField(grid)
 true
 ```
 
-Many fluid dynamical variables are located at cell centers --- for example, tracers like temperature and salinity.
+Many fluid dynamical variables are located at cell centers -- for example, tracers like temperature and salinity.
 Another common type of `Field` we encounter have cells located over the `x`-interfaces of the primary grid,
 
 ```jldoctest fields
@@ -165,7 +165,7 @@ xnodes(u) = [0.0, 0.25, 0.5, 0.75]
 ```
 
 Notice that the first `u`-node is at `x=0`, the left end of the grid, but the last `u`-node is at `x=0.75`.
-Because the `x`-direction is `Periodic`, the `XFaceField` `u` has 4 cells in `x` --- the cell just right of `x=0.75`
+Because the `x`-direction is `Periodic`, the `XFaceField` `u` has 4 cells in `x` -- the cell just right of `x=0.75`
 is the same as the cell at `x=0`.
 
 Because the vertical direction is `Bounded`, however, vertically-staggered fields have more vertical cells
