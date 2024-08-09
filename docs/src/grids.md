@@ -64,10 +64,14 @@ grid = RectilinearGrid(architecture,
                        z = z_faces)
 
 # output
-10×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on GPU with 3×0×3 halo
-├── Periodic x ∈ [0.0, 20.0) regularly spaced with Δx=2.0
-├── Flat y                   
-└── Bounded  z ∈ [0.0, 10.0] variably spaced with min(Δz)=1.0, max(Δz)=4.0
+ERROR: ArgumentError: Cannot create a GPU grid. No CUDA-enabled GPU was detected!
+Stacktrace:
+ [1] RectilinearGrid(architecture::GPU, FT::DataType; size::Tuple{Int64, Int64}, x::Tuple{Int64, Int64}, y::Nothing, z::Vector{Int64}, halo::Nothing, extent::Nothing, topology::Tuple{DataType, DataType, DataType})
+   @ Oceananigans.Grids ~/Projects/Oceananigans.jl/src/Grids/rectilinear_grid.jl:266
+ [2] RectilinearGrid
+   @ ~/Projects/Oceananigans.jl/src/Grids/rectilinear_grid.jl:255 [inlined]
+ [3] top-level scope
+   @ none:1
 ```
 
 !!! note "GPU architecture requires a CUDA-enabled device"
@@ -620,7 +624,7 @@ write("distributed_arch_example.jl", make_distributed_arch)
 #
 # from the terminal.
 using MPI
-mpiexec(cmd -> run(`$cmd -n 2 julia --project distributed_architecture_example.jl`)
+mpiexec(cmd -> run(`$cmd -n 2 julia --project distributed_arch_example.jl`))
 rm("distributed_architecture_example.jl")
 
 # output
@@ -637,8 +641,7 @@ to the terminal at once, talking over each other, and things get messy. Also, we
 because `Distributed` uses `communicator = MPI.COMM_WORLD` by default (and this should be
 changed only with great intention). See the [`Distributed`](@ref) docstring for more information.
 
-Next, let's try to build a distributed grid. Copy-paste this code into a new file
-called `distributed_grid_example.jl`,
+Next, let's try to build a distributed grid:
 
 ```jldoctest grids
 make_distributed_grid = """
@@ -665,8 +668,8 @@ end
 
 write("distributed_grid_example.jl", make_distributed_grid)
 
-mpiexec(cmd -> run(`$cmd -n 2 julia --project distributed_grid_example.jl`)
-rm("distributed_grid_example.jl")
+mpiexec(cmd -> run(`$cmd -n 2 julia --project distributed_grid_example.jl`))
+nothing # hide
 
 # output
 grid = 24×48×16 RectilinearGrid{Float64, FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
@@ -694,7 +697,7 @@ Now we're getting somewhere. Let's note a few things:
 To drive these points home, let's run the same script, but using 3 processors instead of 2:
 
 ```jldoctest grids
-mpiexec(cmd -> run(`$cmd -n 3 julia --project distributed_grid_example.jl`)
+mpiexec(cmd -> run(`$cmd -n 3 julia --project distributed_grid_example.jl`))
 rm("distributed_grid_example.jl") # hide
 
 # output
@@ -711,8 +714,11 @@ Now we have three local grids, each with size `(16, 48, 16)`.
 To distribute a grid in different ways -- for example, in both ``x`` and ``y`` --
 we use a custom [`Partition`](@ref).
 
-The default `Partition` is equally distributed in `x`.
-For example, pasting this code into `partition_example.jl`
+The default `Partition` is equally distributed in `x`,
+
+```@setup grids
+rm("partition_example.jl", force=true)
+```
 
 ```jldoctest grids
 make_x_partition = """
@@ -756,6 +762,10 @@ For this the specification `Equal` is useful: if the number of ranks in one dime
 and the other is `Equal`, then the `Equal` dimension is allocated
 the remaining workers. For example,
 
+```@setup grids
+rm("programmatic_partition_example.jl", force=true)
+```
+
 ```jldoctest grids
 make_xy_partition = """
 
@@ -773,17 +783,20 @@ end
 
 write("programmatic_partition_example.jl", make_xy_partition)
 
-mpiexec(cmd -> run(`$cmd -n 2 julia --project programmatic_partition_example.jl`))
+mpiexec(cmd -> run(`$cmd -n 6 julia --project programmatic_partition_example.jl`))
 rm("programmatic_partition_example.jl") # hide
 
 # output
-partition = Partition across 6 = 3×2×1 ranks:
+partition = Partition across 2 = 3×2×1 ranks:
 ├── x: 3
 └── y: 2
 ```
 
 Finally, we can use `Equal` to partition a grid evenly in ``x, y``:
-pasting the following code into `equally_partitioned_grid.jl`
+
+```@setup grids
+rm("equally_partitioned_grids.jl", force=true)
+```
 
 ```jldoctest grids
 partitioned_grid_example = """
@@ -811,13 +824,10 @@ grid = RectilinearGrid(arch,
 # Let's see all the grids this time.
 for r in 0:Nr-1
     if r == arch.local_rank
-        @info """
-        On Rank $r:
-
-        $arch
-        $grid
-
-        """
+        msg = string("On rank ", r, ":", '\n', '\n',
+                     arch, '\n',
+                     grid)
+        @info msg
     end
 
     barrier!(arch)
@@ -826,11 +836,11 @@ end
 
 write("equally_partitioned_grids.jl", partitioned_grid_example)
 
-mpiexec(cmd -> run(`$cmd -n 2 julia --project equally_partitioned_grids.jl`))
+mpiexec(cmd -> run(`$cmd -n 4 julia --project equally_partitioned_grids.jl`))
 rm("equally_partitioned_grids") # hide
 
 # output
-┌ Info: On Rank 0:
+┌ Info: On rank 0:
 │
 │ Distributed{CPU} across 4 = 2×2×1 ranks:
 │ ├── local_rank: 0 of 0-3
@@ -839,9 +849,8 @@ rm("equally_partitioned_grids") # hide
 │ 24×24×16 RectilinearGrid{Float64, FullyConnected, FullyConnected, Bounded} on Distributed{CPU} with 3×3×3 halo
 │ ├── FullyConnected x ∈ [0.0, 32.0) regularly spaced with Δx=1.33333
 │ ├── FullyConnected y ∈ [0.0, 32.0) regularly spaced with Δy=1.33333
-│ └── Bounded  z ∈ [0.0, 16.0]       regularly spaced with Δz=1.0
-└
-┌ Info: On Rank 1:
+└ └── Bounded  z ∈ [0.0, 16.0]       regularly spaced with Δz=1.0
+┌ Info: On rank 1:
 │
 │ Distributed{CPU} across 4 = 2×2×1 ranks:
 │ ├── local_rank: 1 of 0-3
@@ -850,9 +859,8 @@ rm("equally_partitioned_grids") # hide
 │ 24×24×16 RectilinearGrid{Float64, FullyConnected, FullyConnected, Bounded} on Distributed{CPU} with 3×3×3 halo
 │ ├── FullyConnected x ∈ [0.0, 32.0)  regularly spaced with Δx=1.33333
 │ ├── FullyConnected y ∈ [32.0, 64.0) regularly spaced with Δy=1.33333
-│ └── Bounded  z ∈ [0.0, 16.0]        regularly spaced with Δz=1.0
-└
-┌ Info: On Rank 2:
+└ └── Bounded  z ∈ [0.0, 16.0]        regularly spaced with Δz=1.0
+┌ Info: On rank 2:
 │
 │ Distributed{CPU} across 4 = 2×2×1 ranks:
 │ ├── local_rank: 2 of 0-3
@@ -861,9 +869,8 @@ rm("equally_partitioned_grids") # hide
 │ 24×24×16 RectilinearGrid{Float64, FullyConnected, FullyConnected, Bounded} on Distributed{CPU} with 3×3×3 halo
 │ ├── FullyConnected x ∈ [32.0, 64.0) regularly spaced with Δx=1.33333
 │ ├── FullyConnected y ∈ [0.0, 32.0)  regularly spaced with Δy=1.33333
-│ └── Bounded  z ∈ [0.0, 16.0]        regularly spaced with Δz=1.0
-└
-┌ Info: On Rank 3:
+└ └── Bounded  z ∈ [0.0, 16.0]        regularly spaced with Δz=1.0
+┌ Info: On rank 3:
 │
 │ Distributed{CPU} across 4 = 2×2×1 ranks:
 │ ├── local_rank: 3 of 0-3
@@ -872,7 +879,6 @@ rm("equally_partitioned_grids") # hide
 │ 24×24×16 RectilinearGrid{Float64, FullyConnected, FullyConnected, Bounded} on Distributed{CPU} with 3×3×3 halo
 │ ├── FullyConnected x ∈ [32.0, 64.0) regularly spaced with Δx=1.33333
 │ ├── FullyConnected y ∈ [32.0, 64.0) regularly spaced with Δy=1.33333
-│ └── Bounded  z ∈ [0.0, 16.0]        regularly spaced with Δz=1.0
-└
+└ └── Bounded  z ∈ [0.0, 16.0]        regularly spaced with Δz=1.0
 ```
 
