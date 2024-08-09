@@ -350,6 +350,8 @@ grid = RectilinearGrid(size = (Nx, Ny, Nz),
 ```@setup plot
 using Oceananigans
 using CairoMakie
+CairoMakie.activate!(type = "svg")
+set_theme!(Theme(fontsize=24))
 
 Nx, Ny, Nz = 64, 64, 32
 Lx, Ly, Lz = 1e4, 1e4, 1e3
