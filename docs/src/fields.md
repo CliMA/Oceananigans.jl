@@ -416,7 +416,7 @@ regions:
 c[:, :, 1]
 
 # output
-6×6 OffsetArray(::Matrix{Float64}, 0:5, 0:5) with eltype Float64 with indices 0:5×0:5:
+6×7 OffsetArray(::Matrix{Float64}, 0:5, 0:6) with eltype Float64 with indices 0:5×0:6:
  0.0  0.0   0.0   0.0   0.0   0.0   0.0
  0.0  0.25  0.25  0.25  0.25  0.25  0.0
  0.0  0.75  0.75  0.75  0.75  0.75  0.0
@@ -436,7 +436,7 @@ fill_halo_regions!(c)
 c[:, :, 1]
 
 # output
-6×6 OffsetArray(::Matrix{Float64}, 0:5, 0:5) with eltype Float64 with indices 0:5×0:5:
+6×7 OffsetArray(::Matrix{Float64}, 0:5, 0:6) with eltype Float64 with indices 0:5×0:6:
  1.75  1.75  1.75  1.75  1.75  1.75  1.75
  0.25  0.25  0.25  0.25  0.25  0.25  0.25
  0.75  0.75  0.75  0.75  0.75  0.75  0.75
@@ -472,7 +472,7 @@ To view only the interior cells of `c` we use the function `interior`,
 interior(c, :, :, 1)
 
 # output
-4×4 view(::Array{Float64, 3}, 2:5, 2:5, 2) with eltype Float64:
+4×5 view(::Array{Float64, 3}, 2:5, 2:6, 2) with eltype Float64:
  0.25  0.25  0.25  0.25  0.25
  0.75  0.75  0.75  0.75  0.75
  1.25  1.25  1.25  1.25  1.25
