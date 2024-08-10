@@ -20,16 +20,16 @@ that divide up a cube with dimensions ``1 \times 1 \times 1``:
 using Oceananigans
 
 grid = RectilinearGrid(topology = (Periodic, Periodic, Bounded),
-                       size = (4, 4, 4),
+                       size = (4, 5, 4),
                        halo = (1, 1, 1),
                        x = (0, 1),
                        y = (0, 1),
                        z = [0, 0.1, 0.3, 0.6, 1])
 
 # output
-4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── Periodic x ∈ [0.0, 1.0) regularly spaced with Δx=0.25
-├── Periodic y ∈ [0.0, 1.0) regularly spaced with Δy=0.25
+├── Periodic y ∈ [0.0, 1.0) regularly spaced with Δy=0.2
 └── Bounded  z ∈ [0.0, 1.0] variably spaced with min(Δz)=0.1, max(Δz)=0.4
 ```
 
@@ -116,11 +116,11 @@ To build a fully-centered `Field`, for example, we write
 c = Field{Center, Center, Center}(grid)
 
 # output
-4×4×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+4×5×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 6×6×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:5, 0:5) with eltype Float64 with indices 0:5×0:5×0:5
+└── data: 6×7×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
     └── max=0.0, min=0.0, mean=0.0
 ```
 
@@ -140,11 +140,11 @@ Another common type of `Field` we encounter have cells located over the `x`-inte
 u = Field{Face, Center, Center}(grid)
 
 # output
-4×4×4 Field{Face, Center, Center} on RectilinearGrid on CPU
-├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+4×5×4 Field{Face, Center, Center} on RectilinearGrid on CPU
+├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 6×6×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:5, 0:5) with eltype Float64 with indices 0:5×0:5×0:5
+└── data: 6×7×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
     └── max=0.0, min=0.0, mean=0.0
 ```
 
@@ -157,7 +157,7 @@ The centers of the `u` cells are shifted to the left relative to the `c` cells:
 ```jldoctest fields
 @show xnodes(c)
 @show xnodes(u)
-nothing # hide
+nothing
 
 # output
 xnodes(c) = [0.125, 0.375, 0.625, 0.875]
@@ -176,7 +176,7 @@ w = Field{Center, Center, Face}(grid)
 
 @show znodes(c)
 @show znodes(w)
-nothing # hide
+nothing
 
 # output
 znodes(c) = [0.05, 0.2, 0.44999999999999996, 0.8]
@@ -242,11 +242,11 @@ For example,
 set!(c, 42)
 
 # output
-4×4×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+4×5×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 6×6×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:5, 0:5) with eltype Float64 with indices 0:5×0:5×0:5
+└── data: 6×7×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
     └── max=42.0, min=42.0, mean=42.0
 ```
 
@@ -263,14 +263,14 @@ c[1, 1, 1]
 Looks good. And
 
 ```jldoctest fields
-c[1:4, 1:4, 1]
+c[1:4, 1:5, 1]
 
 # output
-4×4 Matrix{Float64}:
- 42.0  42.0  42.0  42.0
- 42.0  42.0  42.0  42.0
- 42.0  42.0  42.0  42.0
- 42.0  42.0  42.0  42.0
+4×5 Matrix{Float64}:
+ 42.0  42.0  42.0  42.0  42.0
+ 42.0  42.0  42.0  42.0  42.0
+ 42.0  42.0  42.0  42.0  42.0
+ 42.0  42.0  42.0  42.0  42.0
 ```
 
 Note that indexing into `c` is the same as indexing into `c.data`.
@@ -298,10 +298,28 @@ heatmap(view(c, :, :, 1))
 
 or even use functions to set,
 
-```@example fields
+```jldoctest fields
 fun_stuff(x, y, z) = 2x
 set!(c, fun_stuff)
 
+# output
+
+4×5×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+└── data: 6×7×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
+    └── max=1.75, min=0.25, mean=1.0
+```
+
+```@setup fields
+fun_stuff(x, y, z) = 2x
+set!(c, fun_stuff)
+```
+
+and plot it
+
+```@example
 heatmap(view(c, :, :, 1))
 ```
 
@@ -346,8 +364,6 @@ To `set!` the values of `c` we evaluate `fun_stuff` at `c`'s nodes, producing
 
 
 ```jldoctest fields
-fun_stuff(x, y, z) = 2x
-set!(c, fun_stuff)
 c[1:4, 1, 1]
 
 # output
@@ -400,12 +416,12 @@ c[:, :, 1]
 
 # output
 6×6 OffsetArray(::Matrix{Float64}, 0:5, 0:5) with eltype Float64 with indices 0:5×0:5:
- 0.0  0.0   0.0   0.0   0.0   0.0
- 0.0  0.25  0.25  0.25  0.25  0.0
- 0.0  0.75  0.75  0.75  0.75  0.0
- 0.0  1.25  1.25  1.25  1.25  0.0
- 0.0  1.75  1.75  1.75  1.75  0.0
- 0.0  0.0   0.0   0.0   0.0   0.0
+ 0.0  0.0   0.0   0.0   0.0   0.0   0.0
+ 0.0  0.25  0.25  0.25  0.25  0.25  0.0
+ 0.0  0.75  0.75  0.75  0.75  0.75  0.0
+ 0.0  1.25  1.25  1.25  1.25  1.25  0.0
+ 0.0  1.75  1.75  1.75  1.75  1.75  0.0
+ 0.0  0.0   0.0   0.0   0.0   0.0   0.0
 ```
 
 The interior region is populated, but the surrounding halo regions are all 0.
@@ -420,12 +436,12 @@ c[:, :, 1]
 
 # output
 6×6 OffsetArray(::Matrix{Float64}, 0:5, 0:5) with eltype Float64 with indices 0:5×0:5:
- 1.75  1.75  1.75  1.75  1.75  1.75
- 0.25  0.25  0.25  0.25  0.25  0.25
- 0.75  0.75  0.75  0.75  0.75  0.75
- 1.25  1.25  1.25  1.25  1.25  1.25
- 1.75  1.75  1.75  1.75  1.75  1.75
- 0.25  0.25  0.25  0.25  0.25  0.25
+ 1.75  1.75  1.75  1.75  1.75  1.75  1.75
+ 0.25  0.25  0.25  0.25  0.25  0.25  0.25
+ 0.75  0.75  0.75  0.75  0.75  0.75  0.75
+ 1.25  1.25  1.25  1.25  1.25  1.25  1.25
+ 1.75  1.75  1.75  1.75  1.75  1.75  1.75
+ 0.25  0.25  0.25  0.25  0.25  0.25  0.25
 ```
 
 The way the halo regions are filled depends on `c.boundary_conditions`:
@@ -456,10 +472,10 @@ interior(c, :, :, 1)
 
 # output
 4×4 view(::Array{Float64, 3}, 2:5, 2:5, 2) with eltype Float64:
- 0.25  0.25  0.25  0.25
- 0.75  0.75  0.75  0.75
- 1.25  1.25  1.25  1.25
- 1.75  1.75  1.75  1.75
+ 0.25  0.25  0.25  0.25  0.25
+ 0.75  0.75  0.75  0.75  0.75
+ 1.25  1.25  1.25  1.25  1.25
+ 1.75  1.75  1.75  1.75  1.75
 ```
 
 Note that the indices of `c` (and the indices of `c.data`) are "offset" so that index `1`
@@ -467,7 +483,7 @@ corresponds to the first interior cell.
 As a result,
 
 ```jldoctest fields
-c[1:4, 1:4, 1] == interior(c, :, :, 1)
+c[1:4, 1:5, 1] == interior(c, :, :, 1)
 
 # output
 true
@@ -489,9 +505,9 @@ But note that the "parent" array does not have offset indices, so
 ```jldoctest fields
 @show parent(c)[1:2, 2, 2]
 @show c.data[1:2, 1, 1]
-nothing # hide
+nothing
 
 # output
-(parent(c))[1:2, 2, 2] = [0.0, 0.25]
+(parent(c))[1:2, 2, 2] = [1.75, 0.25]
 c.data[1:2, 1, 1] = [0.25, 0.75]
 ```
