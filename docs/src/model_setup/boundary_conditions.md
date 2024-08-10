@@ -454,11 +454,17 @@ julia> velocity_bcs = FieldBoundaryConditions(immersed=ValueBoundaryCondition(0.
 
 julia> model = NonhydrostaticModel(; grid, boundary_conditions=(u=velocity_bcs, v=velocity_bcs, w=velocity_bcs));
 ┌ Warning: `ImmersedBoundaryCondition` is experimental.
-└ @ Oceananigans.ImmersedBoundaries ~/Oceananigans.jl/src/ImmersedBoundaries/immersed_boundary_condition.jl:54
+└ @ Oceananigans.ImmersedBoundaries ~/Projects/Oceananigans.jl/src/ImmersedBoundaries/immersed_boundary_condition.jl:59
 ┌ Warning: `ImmersedBoundaryCondition` is experimental.
-└ @ Oceananigans.ImmersedBoundaries ~/Oceananigans.jl/src/ImmersedBoundaries/immersed_boundary_condition.jl:54
+└ @ Oceananigans.ImmersedBoundaries ~/Projects/Oceananigans.jl/src/ImmersedBoundaries/immersed_boundary_condition.jl:59
 ┌ Warning: `ImmersedBoundaryCondition` is experimental.
-└ @ Oceananigans.ImmersedBoundaries ~/Oceananigans.jl/src/ImmersedBoundaries/immersed_boundary_condition.jl:54
+└ @ Oceananigans.ImmersedBoundaries ~/Projects/Oceananigans.jl/src/ImmersedBoundaries/immersed_boundary_condition.jl:59
+┌ Warning: The PressureSolver for `NonhydrostaticModel`s on `ImmersedBoundaryGrid`
+│ is approximate. In particular, the pressure correction step does not produce a velocity
+│ field that both satisfies impenetrability at solid walls and is also divergence-free.
+│ As a result, boundary-adjacent velocity fields may be divergent.
+│ Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.
+└ @ Oceananigans.Models.NonhydrostaticModels ~/Projects/Oceananigans.jl/src/Models/NonhydrostaticModels/NonhydrostaticModels.jl:55
 
 julia> model.velocities.w.boundary_conditions.immersed
 ImmersedBoundaryCondition:
