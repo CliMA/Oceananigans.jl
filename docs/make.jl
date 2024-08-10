@@ -10,6 +10,8 @@ Distributed.addprocs(2)
     using CairoMakie # to avoid capturing precompilation output by Literate
     CairoMakie.activate!(type = "svg")
 
+    using MPI # for distributed doctests
+
     using Oceananigans
     using Oceananigans.Operators
     using Oceananigans.Diagnostics
