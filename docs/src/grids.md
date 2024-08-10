@@ -301,7 +301,7 @@ The number of tuple elements corresponds to the number of dimensions that are no
 #### The halo size
 
 An additional keyword argument `halo` allows us to set the number of "halo cells" that surround the core "interior" grid.
-The default is `halo = (3, 3, 3)`.
+The default is 3 for each non-flat coordinate.
 But we can change the halo size, for example,
 
 ```jldoctest grids
@@ -480,7 +480,7 @@ function latitude_faces(j)
         φ′ = φ₋ + m * scale_factor(φ₋) / 2
         return φ₋ + m * scale_factor(φ′)
     end
-end    
+end
 
 Lx = 360
 Nx = Int(Lx / m)
@@ -515,7 +515,7 @@ function latitude_faces(j)
         φ′ = φ₋ + m * scale_factor(φ₋) / 2
         return φ₋ + m * scale_factor(φ′)
     end
-end    
+end
 
 Lx = 360
 Nx = Int(Lx / m)
@@ -574,10 +574,11 @@ grid = RectilinearGrid(architecture, float_type,
 └── Bounded  z ∈ [0.0, 8.0]  regularly spaced with Δz=2.0
 ```
 
-Single precision should be used with care.
-Users interested in performing single-precision simulations should get in touch via
-[Discussions](https://github.com/CliMA/Oceananigans.jl/discussions),
-and should subject their work to extensive testing and validation.
+!!! warn "Using single precision"
+    Single precision should be used with care.
+    Users interested in performing single-precision simulations should get in touch via
+    [Discussions](https://github.com/CliMA/Oceananigans.jl/discussions),
+    and should subject their work to extensive testing and validation.
 
 For more examples see [`RectilinearGrid`](@ref Oceananigans.Grids.RectilinearGrid)
 and [`LatitudeLongitudeGrid`](@ref Oceananigans.Grids.LatitudeLongitudeGrid).
@@ -598,7 +599,7 @@ nodes does not exceed the benefit of dividing up the computation among different
 ```jldoctest grids
 # Make a simple program that can be written to file
 make_distributed_arch = """
-    
+
 using Oceananigans
 using MPI
 MPI.Init()
@@ -877,4 +878,3 @@ rm("equally_partitioned_grids") # hide
 │ ├── FullyConnected y ∈ [32.0, 64.0) regularly spaced with Δy=1.33333
 └ └── Bounded  z ∈ [0.0, 16.0]        regularly spaced with Δz=1.0
 ```
-

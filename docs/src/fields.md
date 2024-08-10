@@ -33,9 +33,9 @@ grid = RectilinearGrid(topology = (Periodic, Periodic, Bounded),
 └── Bounded  z ∈ [0.0, 1.0] variably spaced with min(Δz)=0.1, max(Δz)=0.4
 ```
 
-The cubic domain is divided into a "primary mesh" of ``4 \times 4 \times 4 = 64`` cells,
-which are evenly distributed in ``x, y`` but variably-spaced in ``z``.
-Now, in addition to the primary mesh, we also define a set of "staggered" grids whose cells are
+The cubic domain is divided into a "primary mesh" of ``4 \times 5 \times 4 = 80`` cells,
+which are evenly spaced in ``x, y`` but variably spaced in ``z``.
+Now, in addition to the primary mesh, the grid defines also a set of "staggered" grids whose cells are
 shifted by half a cell width relative to the primary mesh.
 In other words, the staggered grid cells have a "location" in each direction -- either `Center`,
 and therefore co-located with the primary mesh, or `Face` and located over the interfaces of the
@@ -168,8 +168,8 @@ Notice that the first `u`-node is at `x=0`, the left end of the grid, but the la
 Because the `x`-direction is `Periodic`, the `XFaceField` `u` has 4 cells in `x` -- the cell just right of `x=0.75`
 is the same as the cell at `x=0`.
 
-Because the vertical direction is `Bounded`, however, vertically-staggered fields have more vertical cells
-than `CenterField`s:
+Because the vertical direction is `Bounded`, however, vertically-staggered fields have more
+vertical cells than `CenterField`s:
 
 ```jldoctest fields
 w = Field{Center, Center, Face}(grid)
@@ -375,7 +375,8 @@ c[1:4, 1, 1]
 ```
 
 !!! note
-    This function-setting method is a first-order method for computing the finite volume of `c` to `fun_stuff`.
+    This function-setting method is a first-order method for computing the finite volume
+    of `c` to `fun_stuff`.
     Higher-order algorithms could be implemented -- have a crack if you're keen.
 
 As a result `set!` can evaluate differently on `Field`s at different locations:
@@ -498,7 +499,8 @@ typeof(c.data)
 OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}
 ```
 
-Thus, for example, the `x`-indices of `c.data` vary from `1 - Hx` to `Nx + Hx` -- in this case, from `0` to `5`.
+Thus, for example, the `x`-indices of `c.data` vary from `1 - Hx` to `Nx + Hx` -- in this
+case, from `0` to `5`.
 The underlying array can be accessed with `parent(c)`.
 But note that the "parent" array does not have offset indices, so
 
