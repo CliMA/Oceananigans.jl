@@ -352,10 +352,10 @@ c[1:4, 1, 1]
 
 # output
 4-element Vector{Float64}:
- 42.0
- 42.0
- 42.0
- 42.0
+ 0.25
+ 0.75
+ 1.25
+ 1.75
 ```
 
 !!! note
@@ -375,7 +375,7 @@ u[1:4, 1, 1]
  0.5
  1.0
  1.5
- ```
+```
 
 ## Halo regions and boundary conditions
 
