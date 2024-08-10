@@ -313,7 +313,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u)
 └── array type: Array{Float64}
 ├── file_splitting: NoFileSplitting
-└── file size: 14.8 KiB
+└── file size: 14.9 KiB
 ```
 
 ```jldoctest netcdf1
@@ -328,7 +328,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u)
 └── array type: Array{Float64}
 ├── file_splitting: NoFileSplitting
-└── file size: 14.8 KiB
+└── file size: 14.9 KiB
 ```
 
 ```jldoctest netcdf1
@@ -428,7 +428,7 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 ├── 1 outputs: u
 └── array type: Array{Float64}
 ├── file_splitting: NoFileSplitting
-└── file size: 14.5 KiB
+└── file size: 14.6 KiB
 ```
 """
 function NetCDFOutputWriter(model, outputs;
