@@ -9,6 +9,7 @@ using Oceananigans.Grids: halo_size
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: time_step_tke_equation!, time_step_tke_dissipation_equations!
 
 using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, ActiveCellsIBG, 
                                        active_linear_index_to_tuple
@@ -67,6 +68,10 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
     grid = model.grid
 
     compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; active_cells_map)
+
+    # Adding a personalized time step for TKE and dissipation
+    time_step_tke_equation!(model, kernel_parameters; active_cells_map)
+    time_step_tke_dissipation_equations!(model, kernel_parameters; active_cells_map)
 
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
 

@@ -9,16 +9,31 @@ using CUDA
 
 get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 
-function time_step_catke_equation!(model)
+function time_step_tke_equation!(model, parameters = tuple(:xyz); active_cells_map = nothing)
 
-    # TODO: properly handle closure tuples
-    closure = model.closure
+    if model.closure isa Tuple
+        catke_closure_idx = findfirst(clo isa CATKEVerticalDiffusivity, model.closure)
+        
+        # If there is no CATKE... do nothing!
+        if isnothing(catke_closure_idx)
+            return nothing
+        end
+        closure = model.closure[catke_closure_idx]
 
-    e = model.tracers.e
+    # If there is no CATKE... do nothing!
+    elseif !(closure isa CATKEVerticalDiffusivity)
+        return nothing
+    
+    else
+        closure = model.closure
+
+    end
+
+    e    = model.tracers.e
     arch = model.architecture
     grid = model.grid
-    Gⁿe = model.timestepper.Gⁿ.e
-    G⁻e = model.timestepper.G⁻.e
+    Gⁿe  = model.timestepper.Gⁿ.e
+    G⁻e  = model.timestepper.G⁻.e
 
     diffusivity_fields = model.diffusivity_fields
     κe = diffusivity_fields.κe
@@ -47,35 +62,52 @@ function time_step_catke_equation!(model)
             χ = model.timestepper.χ
         end
 
-        # Compute the linear implicit component of the RHS (diffusivities, L)
-        # and step forward
-        launch!(arch, grid, :xyz,
-                substep_turbulent_kinetic_energy!,
-                κe, Le, grid, closure,
-                model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
-                model.tracers, model.buoyancy, diffusivity_fields,
-                Δτ, χ, Gⁿe, G⁻e)
-
-        # Good idea?
-        # previous_time = model.clock.time - Δt
-        # previous_iteration = model.clock.iteration - 1
-        # current_time = previous_time + m * Δτ
-        # previous_clock = (; time=current_time, iteration=previous_iteration)
-
-        implicit_step!(e, implicit_solver, closure,
-                       model.diffusivity_fields, Val(tracer_index),
-                       model.clock, Δτ)
+        for params in parameters
+            # Compute the linear implicit component of the RHS (diffusivities, L)
+            # and step forward
+            launch!(arch, grid, params,
+                    _substep_turbulent_kinetic_energy!,
+                    κe, Le, grid, active_cells_map, closure,
+                    model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
+                    model.tracers, model.buoyancy, diffusivity_fields,
+                    Δτ, χ, Gⁿe, G⁻e; active_cells_map)
+        end
     end
 
     return nothing
 end
 
-@kernel function substep_turbulent_kinetic_energy!(κe, Le, grid, closure,
+@kernel function _substep_turbulent_kinetic_energy!(κe, Le, grid, ::Nothing, closure,
+                                                    next_velocities, previous_velocities,
+                                                    tracers, buoyancy, diffusivities,
+                                                    Δτ, χ, slow_Gⁿe, G⁻e)
+
+    i, j, k = @index(Global, NTuple)
+
+    substep_turbulent_kinetic_energy!(i, j, k, grid, κe, Le, closure,
+                                      next_velocities, previous_velocities,
+                                      tracers, buoyancy, diffusivities,
+                                      Δτ, χ, slow_Gⁿe, G⁻e)
+end
+
+@kernel function _substep_turbulent_kinetic_energy!(κe, Le, grid, active_cells_map, closure,
+                                                    next_velocities, previous_velocities,
+                                                    tracers, buoyancy, diffusivities,
+                                                    Δτ, χ, slow_Gⁿe, G⁻e)
+
+    idx = @index(Global, Linear)
+    i, j, k = @inbounds map(Base.Int, active_cells_map[idx])
+
+    substep_turbulent_kinetic_energy!(i, j, k, grid, κe, Le, closure,
+                                      next_velocities, previous_velocities,
+                                      tracers, buoyancy, diffusivities,
+                                      Δτ, χ, slow_Gⁿe, G⁻e)
+end
+
+@inline function substep_turbulent_kinetic_energy!(i, j, k, grid, κe, Le, closure,
                                                    next_velocities, previous_velocities,
                                                    tracers, buoyancy, diffusivities,
                                                    Δτ, χ, slow_Gⁿe, G⁻e)
-
-    i, j, k = @index(Global, NTuple)
 
     Jᵇ = diffusivities.Jᵇ
     e = tracers.e
@@ -87,7 +119,7 @@ end
     @inbounds κe[i, j, k] = κe★
 
     # Compute additional diagonal component of the linear TKE operator
-    wb = explicit_buoyancy_flux(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, diffusivities)
+    wb  = explicit_buoyancy_flux(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, diffusivities)
     wb⁻ = min(zero(grid), wb)
     wb⁺ = max(zero(grid), wb)
 
@@ -170,31 +202,3 @@ end
     L = K._tupled_implicit_linear_coefficients[id]
     return @inbounds L[i, j, k]
 end
-
-#=
-using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
-
-@inline tracer_tendency_kernel_function(model::HFSM, name, c, K)                     = compute_hydrostatic_free_surface_Gc!, c, K
-@inline tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, c::FlavorOfCATKE, K) = compute_hydrostatic_free_surface_Ge!, c, K
-
-function tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, closures::Tuple, diffusivity_fields::Tuple)
-    catke_index = findfirst(c -> c isa FlavorOfCATKE, closures)
-
-    if isnothing(catke_index)
-        return compute_hydrostatic_free_surface_Gc!, closures, diffusivity_fields
-    else
-        catke_closure = closures[catke_index]
-        catke_diffusivity_fields = diffusivity_fields[catke_index]
-        return compute_hydrostatic_free_surface_Ge!, catke_closure, catke_diffusivity_fields 
-    end
-end
-
-@inline function top_tracer_boundary_conditions(grid, tracers)
-    names = propertynames(tracers)
-    values = Tuple(tracers[c].boundary_conditions.top for c in names)
-
-    # Some shenanigans for type stability?
-    return NamedTuple{tuple(names...)}(tuple(values...))
-end
-=#
-

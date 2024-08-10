@@ -20,10 +20,27 @@ end
 
 get_time_step(closure::TKEDissipationVerticalDiffusivity) = closure.tke_dissipation_time_step
 
-function time_step_tke_dissipation_equations!(model)
+function time_step_tke_dissipation_equations!(model, parameters; active_cells_map = nothing)
 
     # TODO: properly handle closure tuples
-    closure = model.closure
+
+    if model.closure isa Tuple
+        tke_closure_idx = findfirst(clo isa TKEDissipationVerticalDiffusivity, model.closure)
+        
+        # If there is no CATKE... do nothing!
+        if isnothing(tke_closure_idx)
+            return nothing
+        end
+        closure = model.closure[tke_closure_idx]
+
+    # If there is no TKEBasedVerticalDiffusivity... do nothing!
+    elseif !(closure isa TKEDissipationVerticalDiffusivity)
+        return nothing
+    
+    else
+        closure = model.closure
+
+    end
 
     e = model.tracers.e
     ϵ = model.tracers.ϵ
@@ -66,31 +83,52 @@ function time_step_tke_dissipation_equations!(model)
 
         # Compute the linear implicit component of the RHS (diffusivities, L)
         # and step forward
-        launch!(arch, grid, :xyz,
+        launch!(arch, grid, parameters,
                 substep_tke_dissipation!,
                 κe, κϵ, Le, Lϵ,
-                grid, closure,
+                grid, active_cells_map, closure,
                 model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
                 model.tracers, model.buoyancy, diffusivity_fields,
-                Δτ, χ, Gⁿe, G⁻e, Gⁿϵ, G⁻ϵ)
-
-        implicit_step!(e, implicit_solver, closure,
-                       model.diffusivity_fields, Val(e_index),
-                       model.clock, Δτ)
-
-        implicit_step!(ϵ, implicit_solver, closure,
-                       model.diffusivity_fields, Val(ϵ_index),
-                       model.clock, Δτ)
+                Δτ, χ, Gⁿe, G⁻e, Gⁿϵ, G⁻ϵ; active_cells_map)
     end
 
     return nothing
 end
 
 @kernel function substep_tke_dissipation!(κe, κϵ, Le, Lϵ,
-                                          grid, closure,
+                                          grid, ::Nothing, closure,
                                           next_velocities, previous_velocities,
                                           tracers, buoyancy, diffusivities,
                                           Δτ, χ, slow_Gⁿe, G⁻e, slow_Gⁿϵ, G⁻ϵ)
+    i, j, k = @index(Global, NTuple)
+    _substep_tke_dissipation!(i, j, k, grid, κe, κϵ, Le, Lϵ,
+                              closure,
+                              next_velocities, previous_velocities,
+                              tracers, buoyancy, diffusivities,
+                              Δτ, χ, slow_Gⁿe, G⁻e, slow_Gⁿϵ, G⁻ϵ) 
+end
+
+@kernel function substep_tke_dissipation!(κe, κϵ, Le, Lϵ,
+                                          grid, active_cells_map, closure,
+                                          next_velocities, previous_velocities,
+                                          tracers, buoyancy, diffusivities,
+                                          Δτ, χ, slow_Gⁿe, G⁻e, slow_Gⁿϵ, G⁻ϵ)
+    
+    idx = @index(Global, Linear)
+    i, j, k = @inbounds map(Base.Int, active_cells_map[idx])
+
+    _substep_tke_dissipation!(i, j, k, grid, κe, κϵ, Le, Lϵ,
+                              closure,
+                              next_velocities, previous_velocities,
+                              tracers, buoyancy, diffusivities,
+                              Δτ, χ, slow_Gⁿe, G⁻e, slow_Gⁿϵ, G⁻ϵ) 
+end
+
+@inline function _substep_tke_dissipation!(i, j, k, grid, κe, κϵ, Le, Lϵ,
+                                           closure,
+                                           next_velocities, previous_velocities,
+                                           tracers, buoyancy, diffusivities,
+                                           Δτ, χ, slow_Gⁿe, G⁻e, slow_Gⁿϵ, G⁻ϵ)
 
     i, j, k = @index(Global, NTuple)
 

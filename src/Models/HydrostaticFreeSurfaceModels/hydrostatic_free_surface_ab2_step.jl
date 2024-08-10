@@ -90,14 +90,15 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
 
             launch!(model.architecture, model.grid, :xyz,
                     ab2_step_field!, tracer_field, Δt, χ, Gⁿ, G⁻)
+        end
 
-            implicit_step!(tracer_field,
-                           model.timestepper.implicit_solver,
-                           closure,
-                           model.diffusivity_fields,
-                           Val(tracer_index),
-                           model.clock,
-                           Δt)
+        implicit_step!(tracer_field,
+                        model.timestepper.implicit_solver,
+                        closure,
+                        model.diffusivity_fields,
+                        Val(tracer_index),
+                        model.clock,
+                        Δt)
         end
     end
 
