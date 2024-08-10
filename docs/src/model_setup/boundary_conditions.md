@@ -436,7 +436,7 @@ top and bottom of both `model.velocities.u` and `model.tracers.c`.
 Immersed boundary conditions are supported experimentally. A no-slip boundary condition is specified
 with
 
-```jldoctest; filter = r".*@ Oceananigans.ImmersedBoundaries.*"
+```jldoctest; filter = r"┌ Warning:[.|\n]*.jl:[0-9]*"
 julia> underlying_grid = RectilinearGrid(size=(32, 32, 16), x=(-3, 3), y=(-3, 3), z=(0, 1), topology=(Periodic, Periodic, Bounded));
 
 julia> hill(x, y) = 0.1 + 0.1 * exp(-x^2 - y^2)
@@ -453,18 +453,6 @@ julia> grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(hill))
 julia> velocity_bcs = FieldBoundaryConditions(immersed=ValueBoundaryCondition(0.0));
 
 julia> model = NonhydrostaticModel(; grid, boundary_conditions=(u=velocity_bcs, v=velocity_bcs, w=velocity_bcs));
-┌ Warning: `ImmersedBoundaryCondition` is experimental.
-└ @ Oceananigans.ImmersedBoundaries ~/Projects/Oceananigans.jl/src/ImmersedBoundaries/immersed_boundary_condition.jl:59
-┌ Warning: `ImmersedBoundaryCondition` is experimental.
-└ @ Oceananigans.ImmersedBoundaries ~/Projects/Oceananigans.jl/src/ImmersedBoundaries/immersed_boundary_condition.jl:59
-┌ Warning: `ImmersedBoundaryCondition` is experimental.
-└ @ Oceananigans.ImmersedBoundaries ~/Projects/Oceananigans.jl/src/ImmersedBoundaries/immersed_boundary_condition.jl:59
-┌ Warning: The PressureSolver for `NonhydrostaticModel`s on `ImmersedBoundaryGrid`
-│ is approximate. In particular, the pressure correction step does not produce a velocity
-│ field that both satisfies impenetrability at solid walls and is also divergence-free.
-│ As a result, boundary-adjacent velocity fields may be divergent.
-│ Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.
-└ @ Oceananigans.Models.NonhydrostaticModels ~/Projects/Oceananigans.jl/src/Models/NonhydrostaticModels/NonhydrostaticModels.jl:55
 
 julia> model.velocities.w.boundary_conditions.immersed
 ImmersedBoundaryCondition:
@@ -476,14 +464,18 @@ ImmersedBoundaryCondition:
 └── top: Nothing
 ```
 
+!!! warning "`NonhydrostaticModel` on `ImmersedBoundaryGrid`"
+    The pressure solver for `NonhydrostaticModel` is approximate, and is unable to produce
+    a velocity field that is simultaneously divergence-free while also satisfying impenetrability
+    on the immersed boundary. As a result, simulated dynamics with `NonhydrostaticModel` can
+    exhibit egregiously unphysical errors and should be interpreted with caution.
+
 An `ImmersedBoundaryCondition` encapsulates boundary conditions on each potential boundary-facet
 of a boundary-adjacent cell. Boundary conditions on specific faces of immersed-boundary-adjacent
 cells may also be specified by manually building an `ImmersedBoundaryCondition`:
 
-```jldoctest; filter = r".*@ Oceananigans.ImmersedBoundaries.*"
+```jldoctest; filter = r"┌ Warning:[.|\n]*.jl:[0-9]*"
 julia> bottom_drag_bc = ImmersedBoundaryCondition(bottom=ValueBoundaryCondition(0.0))
-┌ Warning: `ImmersedBoundaryCondition` is experimental.
-└ @ Oceananigans.ImmersedBoundaries ~/Oceananigans.jl/src/ImmersedBoundaries/immersed_boundary_condition.jl:54
 ImmersedBoundaryCondition:
 ├── west: Nothing
 ├── east: Nothing
@@ -529,7 +521,7 @@ FluxBoundaryCondition: ContinuousBoundaryFunction linear_drag at (Nothing, Nothi
 Next, we create the immersed boundary condition by adding the argument `z` to `linear_drag`
 and imposing drag only on "bottom" facets of cells that neighbor immersed cells:
 
-```jldoctest immersed_bc; filter = r".*@ Oceananigans.ImmersedBoundaries.*"
+```jldoctest; filter = r"┌ Warning:[.|\n]*.jl:[0-9]*"
 julia> @inline immersed_linear_drag(x, y, z, t, u) = - 0.2 * u
 immersed_linear_drag (generic function with 1 method)
 
@@ -537,8 +529,6 @@ julia> immersed_drag_u = FluxBoundaryCondition(immersed_linear_drag, field_depen
 FluxBoundaryCondition: ContinuousBoundaryFunction immersed_linear_drag at (Nothing, Nothing, Nothing)
 
 julia> u_immersed_bc = ImmersedBoundaryCondition(bottom = immersed_drag_u)
-┌ Warning: `ImmersedBoundaryCondition` is experimental.
-└ @ Oceananigans.ImmersedBoundaries ~/Oceananigans.jl/src/ImmersedBoundaries/immersed_boundary_condition.jl:54
 ImmersedBoundaryCondition:
 ├── west: Nothing
 ├── east: Nothing
