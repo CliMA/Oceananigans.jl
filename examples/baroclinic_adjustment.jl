@@ -261,7 +261,7 @@ B = interior(B_timeseries[n], 1, :, :)
 
 clims = 1.1 .* extrema(b_timeserieses.top[n][:])
 
-kwargs = (colorrange=clims, colormap=:deep)
+kwargs = (colorrange=clims, colormap=:deep, shading = NoShading)
 surface!(ax, x_yz_east, y_yz, z_yz;    color = b_slices.east, kwargs...)
 surface!(ax, x_xz, y_xz_north, z_xz;   color = b_slices.north, kwargs...)
 surface!(ax, x_xy, y_xy, z_xy_bottom ; color = b_slices.bottom, kwargs...)
