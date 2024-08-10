@@ -64,7 +64,7 @@ grid = RectilinearGrid(architecture,
                        z = z_faces)
 
 # output
-10×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on CPU with 3×0×3 halo
+10×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on GPU with 3×0×3 halo
 ├── Periodic x ∈ [0.0, 20.0) regularly spaced with Δx=2.0
 ├── Flat y
 └── Bounded  z ∈ [0.0, 10.0] variably spaced with min(Δz)=1.0, max(Δz)=4.0
