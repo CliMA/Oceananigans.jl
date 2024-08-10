@@ -319,7 +319,7 @@ set!(c, fun_stuff)
 
 and plot it
 
-```@example
+```@example fields
 heatmap(view(c, :, :, 1))
 ```
 
