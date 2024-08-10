@@ -273,7 +273,8 @@ Distributed{CPU} across 1 rank:
 which allows us to distributed computations across either CPUs or GPUs.
 In this case, we didn't launch `julia` on multiple nodes using [MPI](https://en.wikipedia.org/wiki/Message_Passing_Interface),
 so we're only "distributed" across 1 node.
-For more, see [Distributed grids](@ref).
+<!-- For more, see [Distributed grids](@ref). -->
+More details on Distributed grids in a separate section.
 
 ### Specifying the topology for each dimension
 
