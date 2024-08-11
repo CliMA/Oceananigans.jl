@@ -596,7 +596,7 @@ It can also be used to speed up a simulation -- provided that the simulation
 is large enough such that the added cost of communicating information between
 nodes does not exceed the benefit of dividing up the computation among different nodes.
 
-```jldoctest grids
+```julia
 # Make a simple program that can be written to file
 make_distributed_arch = """
 
@@ -623,8 +623,11 @@ write("distributed_arch_example.jl", make_distributed_arch)
 using MPI
 mpiexec(cmd -> run(`$cmd -n 2 julia --project distributed_arch_example.jl`))
 rm("distributed_architecture_example.jl")
+```
 
-# output
+gives
+
+```julia
 architecture = Distributed{CPU} across 2 = 2×1×1 ranks:
 ├── local_rank: 0 of 0-1
 ├── local_index: [1, 1, 1]
@@ -640,7 +643,7 @@ changed only with great intention). See the [`Distributed`](@ref) docstring for 
 
 Next, let's try to build a distributed grid:
 
-```jldoctest grids
+```julia
 make_distributed_grid = """
 
 using Oceananigans
@@ -666,9 +669,11 @@ end
 write("distributed_grid_example.jl", make_distributed_grid)
 
 mpiexec(cmd -> run(`$cmd -n 2 julia --project distributed_grid_example.jl`))
-nothing # hide
+```
 
-# output
+gives
+
+```
 grid = 24×48×16 RectilinearGrid{Float64, FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
 ├── FullyConnected x ∈ [0.0, 32.0) regularly spaced with Δx=1.33333
 ├── Periodic y ∈ [0.0, 64.0)       regularly spaced with Δy=1.33333
@@ -693,11 +698,12 @@ Now we're getting somewhere. Let's note a few things:
 
 To drive these points home, let's run the same script, but using 3 processors instead of 2:
 
-```jldoctest grids
+```julia
 mpiexec(cmd -> run(`$cmd -n 3 julia --project distributed_grid_example.jl`))
-rm("distributed_grid_example.jl") # hide
+```
+gives
 
-# output
+```
 grid = 16×48×16 RectilinearGrid{Float64, FullyConnected, Periodic, Bounded} on Distributed{CPU} with 3×3×3 halo
 ├── FullyConnected x ∈ [0.0, 21.3333) regularly spaced with Δx=1.33333
 ├── Periodic y ∈ [0.0, 64.0)          regularly spaced with Δy=1.33333
@@ -717,7 +723,7 @@ The default `Partition` is equally distributed in `x`,
 rm("partition_example.jl", force=true)
 ```
 
-```jldoctest grids
+```julia
 make_x_partition = """
 
 using Oceananigans
@@ -735,9 +741,11 @@ end
 write("partition_example.jl", make_x_partition)
 
 mpiexec(cmd -> run(`$cmd -n 2 julia --project partition_example.jl`))
-rm("partition_example.jl") # hide
+```
 
-# output
+gives
+
+```julia
 partition = Partition across 2 = 2×1×1 ranks:
 └── x: 2
 ```
@@ -763,7 +771,7 @@ the remaining workers. For example,
 rm("programmatic_partition_example.jl", force=true)
 ```
 
-```jldoctest grids
+```julia
 make_xy_partition = """
 
 using Oceananigans
@@ -781,9 +789,11 @@ end
 write("programmatic_partition_example.jl", make_xy_partition)
 
 mpiexec(cmd -> run(`$cmd -n 6 julia --project programmatic_partition_example.jl`))
-rm("programmatic_partition_example.jl") # hide
+```
 
-# output
+gives
+
+```
 partition = Partition across 2 = 3×2×1 ranks:
 ├── x: 3
 └── y: 2
@@ -795,7 +805,7 @@ Finally, we can use `Equal` to partition a grid evenly in ``x, y``:
 rm("equally_partitioned_grids.jl", force=true)
 ```
 
-```jldoctest grids
+```julia
 partitioned_grid_example = """
 
 using Oceananigans
@@ -834,9 +844,11 @@ end
 write("equally_partitioned_grids.jl", partitioned_grid_example)
 
 mpiexec(cmd -> run(`$cmd -n 4 julia --project equally_partitioned_grids.jl`))
-rm("equally_partitioned_grids") # hide
+```
 
-# output
+gives
+
+```
 ┌ Info: On rank 0:
 │
 │ Distributed{CPU} across 4 = 2×2×1 ranks:
@@ -878,4 +890,3 @@ rm("equally_partitioned_grids") # hide
 │ ├── FullyConnected y ∈ [32.0, 64.0) regularly spaced with Δy=1.33333
 └ └── Bounded  z ∈ [0.0, 16.0]        regularly spaced with Δz=1.0
 ```
-
