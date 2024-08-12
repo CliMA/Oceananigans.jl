@@ -112,11 +112,11 @@ for buffer in [2, 3, 4, 5, 6]
             retrieved from the precomputed coefficients via the `retrieve_coeff` function
             """
             @inline coeff_p(::WENO{$buffer, FT}, bias, ::Val{$stencil}, ::Type{Nothing}, args...) where FT = 
-                @inbounds map(FT, $(stencil_coefficients(50, stencil, collect(1:100), collect(1:100); order = buffer)))
+                @inbounds FT.($(stencil_coefficients(50, stencil, collect(1:100), collect(1:100); order = buffer)))
 
             # stretched coefficients are retrieved from precalculated coefficients
             @inline coeff_p(scheme::WENO{$buffer}, bias, ::Val{$stencil}, T, dir, i, loc) = 
-                ifelse(bias isa LeftBias, retrieve_coeff(scheme, $stencil, dir, i, loc),
+                ifelse(bias == LeftBias(), retrieve_coeff(scheme, $stencil, dir, i, loc),
                                   reverse(retrieve_coeff(scheme, $(buffer - 2 - stencil), dir, i, loc)))
         end
     
@@ -260,7 +260,7 @@ for buffer in [2, 3, 4, 5, 6]
     
     for stencil in 0:buffer-1
         @eval @inline smoothness_indicator(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil}) where FT = 
-                      smoothness_operation(scheme, ψ, map(FT, $(smoothness_coefficients(Val(buffer), Val(stencil)))))
+                      smoothness_operation(scheme, ψ, FT.($(smoothness_coefficients(Val(buffer), Val(stencil)))))
     end
 end
 
@@ -428,30 +428,30 @@ for dir in (:x, :y, :z), (T, f) in zip((:Any, :Function), (false, true))
 end
 
 # WENO stencils
-@inline S₀₂(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[2], S[3]), (S[3], S[2]))
-@inline S₁₂(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[1], S[2]), (S[4], S[3]))
+@inline S₀₂(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[2], S[3]), (S[3], S[2]))
+@inline S₁₂(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[1], S[2]), (S[4], S[3]))
 
-@inline S₀₃(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[3], S[4], S[5]), (S[4], S[3], S[2]))
-@inline S₁₃(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[2], S[3], S[4]), (S[5], S[4], S[3]))
-@inline S₂₃(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[1], S[2], S[3]), (S[6], S[5], S[4]))
+@inline S₀₃(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[3], S[4], S[5]), (S[4], S[3], S[2]))
+@inline S₁₃(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[2], S[3], S[4]), (S[5], S[4], S[3]))
+@inline S₂₃(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[1], S[2], S[3]), (S[6], S[5], S[4]))
 
-@inline S₀₄(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[4], S[5], S[6], S[7]), (S[5], S[4], S[3], S[2]))
-@inline S₁₄(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[3], S[4], S[5], S[6]), (S[6], S[5], S[4], S[3]))
-@inline S₂₄(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[2], S[3], S[4], S[5]), (S[7], S[6], S[5], S[4]))
-@inline S₃₄(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[1], S[2], S[3], S[4]), (S[8], S[7], S[6], S[5]))
+@inline S₀₄(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[4], S[5], S[6], S[7]), (S[5], S[4], S[3], S[2]))
+@inline S₁₄(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[3], S[4], S[5], S[6]), (S[6], S[5], S[4], S[3]))
+@inline S₂₄(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[2], S[3], S[4], S[5]), (S[7], S[6], S[5], S[4]))
+@inline S₃₄(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[1], S[2], S[3], S[4]), (S[8], S[7], S[6], S[5]))
 
-@inline S₀₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[5], S[6], S[7], S[8], S[9]), (S[6],  S[5], S[4], S[3], S[2]))
-@inline S₁₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[4], S[5], S[6], S[7], S[8]), (S[7],  S[6], S[5], S[4], S[3]))
-@inline S₂₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[3], S[4], S[5], S[6], S[7]), (S[8],  S[7], S[6], S[5], S[4]))
-@inline S₃₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[2], S[3], S[4], S[5], S[6]), (S[9],  S[8], S[7], S[6], S[5]))
-@inline S₄₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[1], S[2], S[3], S[4], S[5]), (S[10], S[9], S[8], S[7], S[6]))
+@inline S₀₅(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[5], S[6], S[7], S[8], S[9]), (S[6],  S[5], S[4], S[3], S[2]))
+@inline S₁₅(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[4], S[5], S[6], S[7], S[8]), (S[7],  S[6], S[5], S[4], S[3]))
+@inline S₂₅(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[3], S[4], S[5], S[6], S[7]), (S[8],  S[7], S[6], S[5], S[4]))
+@inline S₃₅(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[2], S[3], S[4], S[5], S[6]), (S[9],  S[8], S[7], S[6], S[5]))
+@inline S₄₅(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[1], S[2], S[3], S[4], S[5]), (S[10], S[9], S[8], S[7], S[6]))
 
-@inline S₀₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[6], S[7], S[8], S[9], S[10], S[11]), (S[7],  S[6],  S[5],  S[4], S[3], S[2]))
-@inline S₁₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[5], S[6], S[7], S[8], S[9],  S[10]), (S[8],  S[7],  S[6],  S[5], S[4], S[3]))
-@inline S₂₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[4], S[5], S[6], S[7], S[8],  S[9]),  (S[9],  S[8],  S[7],  S[6], S[5], S[4]))
-@inline S₃₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[3], S[4], S[5], S[6], S[7],  S[8]),  (S[10], S[9],  S[8],  S[7], S[6], S[5]))
-@inline S₄₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[2], S[3], S[4], S[5], S[6],  S[7]),  (S[11], S[10], S[9],  S[8], S[7], S[6]))
-@inline S₅₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[1], S[2], S[3], S[4], S[5],  S[6]),  (S[12], S[11], S[10], S[9], S[8], S[7]))
+@inline S₀₆(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[6], S[7], S[8], S[9], S[10], S[11]), (S[7],  S[6],  S[5],  S[4], S[3], S[2]))
+@inline S₁₆(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[5], S[6], S[7], S[8], S[9],  S[10]), (S[8],  S[7],  S[6],  S[5], S[4], S[3]))
+@inline S₂₆(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[4], S[5], S[6], S[7], S[8],  S[9]),  (S[9],  S[8],  S[7],  S[6], S[5], S[4]))
+@inline S₃₆(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[3], S[4], S[5], S[6], S[7],  S[8]),  (S[10], S[9],  S[8],  S[7], S[6], S[5]))
+@inline S₄₆(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[2], S[3], S[4], S[5], S[6],  S[7]),  (S[11], S[10], S[9],  S[8], S[7], S[6]))
+@inline S₅₆(S, bias) = @inbounds ifelse(bias == LeftBias(), (S[1], S[2], S[3], S[4], S[5],  S[6]),  (S[12], S[11], S[10], S[9], S[8], S[7]))
 
 # Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
 # Parallel to the interpolation direction! (same as left/right stencil)
