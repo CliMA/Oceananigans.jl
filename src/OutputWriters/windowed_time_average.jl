@@ -86,11 +86,12 @@ function AveragedTimeInterval(interval; window=interval, stride=1)
     return AveragedTimeInterval(Float64(interval), Float64(window), stride, 0.0, false)
 end
 
+
 # Schedule actuation
-(sch::AveragedTimeInterval)(model) = sch.collecting || model.clock.time >= sch.previous_interval_stop_time + sch.interval - sch.window
+(sch::AveragedTimeInterval)(model) = sch.collecting || round(model.clock.time,sigdigits=3) >= round(sch.previous_interval_stop_time + sch.interval - sch.window,sigdigits=3)
 initialize_schedule!(sch::AveragedTimeInterval, clock) = sch.previous_interval_stop_time = clock.time - rem(clock.time, sch.interval)
-outside_window(sch::AveragedTimeInterval, clock) = clock.time <  sch.previous_interval_stop_time + sch.interval - sch.window   
-end_of_window(sch::AveragedTimeInterval, clock) = clock.time >= sch.previous_interval_stop_time + sch.interval
+outside_window(sch::AveragedTimeInterval, clock) = round(clock.time,sigdigits=3) <  round(sch.previous_interval_stop_time + sch.interval - sch.window, sigdigits=3)   
+end_of_window(sch::AveragedTimeInterval, clock) = round(clock.time,sigdigits=3) >= round(sch.previous_interval_stop_time + sch.interval,sigdigits=3) 
 
 TimeInterval(schedule::AveragedTimeInterval) = TimeInterval(schedule.interval)
 Base.copy(sch::AveragedTimeInterval) = AveragedTimeInterval(sch.interval, window=sch.window, stride=sch.stride)
