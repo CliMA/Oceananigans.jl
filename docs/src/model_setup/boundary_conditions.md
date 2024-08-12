@@ -436,7 +436,11 @@ top and bottom of both `model.velocities.u` and `model.tracers.c`.
 Immersed boundary conditions are supported experimentally. A no-slip boundary condition is specified
 with
 
-```jldoctest; filter = r"┌ Warning:[.|\n]*\.jl:[0-9]*"
+```@meta
+DocTestFilters = r"┌ Warning:[.|\n]*\.jl:[0-9]*"
+```
+
+```jldoctest immersed_bc
 julia> underlying_grid = RectilinearGrid(size=(32, 32, 16), x=(-3, 3), y=(-3, 3), z=(0, 1), topology=(Periodic, Periodic, Bounded));
 
 julia> hill(x, y) = 0.1 + 0.1 * exp(-x^2 - y^2)
@@ -474,7 +478,7 @@ An `ImmersedBoundaryCondition` encapsulates boundary conditions on each potentia
 of a boundary-adjacent cell. Boundary conditions on specific faces of immersed-boundary-adjacent
 cells may also be specified by manually building an `ImmersedBoundaryCondition`:
 
-```jldoctest; filter = r"┌ Warning:[.|\n]*\.jl:[0-9]*"
+```jldoctest immersed_bc
 julia> bottom_drag_bc = ImmersedBoundaryCondition(bottom=ValueBoundaryCondition(0.0))
 ImmersedBoundaryCondition:
 ├── west: Nothing
@@ -521,7 +525,7 @@ FluxBoundaryCondition: ContinuousBoundaryFunction linear_drag at (Nothing, Nothi
 Next, we create the immersed boundary condition by adding the argument `z` to `linear_drag`
 and imposing drag only on "bottom" facets of cells that neighbor immersed cells:
 
-```jldoctest; filter = r"┌ Warning:[.|\n]*\.jl:[0-9]*"
+```jldoctest immersed_bc
 julia> @inline immersed_linear_drag(x, y, z, t, u) = - 0.2 * u
 immersed_linear_drag (generic function with 1 method)
 
@@ -556,3 +560,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
     Note the difference between the arguments required for the function within the `bottom` boundary
     condition versus the arguments for the function within the `immersed` boundary condition. E.g.,
     `x, y, t` in `linear_drag()` versus `x, y, z, t` in `immersed_linear_drag()`.
+
+```@meta
+DocTestFilters = nothing
+```
