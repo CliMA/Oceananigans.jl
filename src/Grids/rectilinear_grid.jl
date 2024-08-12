@@ -277,7 +277,7 @@ function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
     Lx, xᶠᵃᵃ, xᶜᵃᵃ, Δxᶠᵃᵃ, Δxᶜᵃᵃ = generate_coordinate(FT, TX(), Nx, Hx, x, :x, architecture)
     Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, TY(), Ny, Hy, y, :y, architecture)
     Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, TZ(), Nz, Hz, z, :z, architecture)
- 
+
     return RectilinearGrid{TX, TY, TZ}(architecture,
                                        Nx, Ny, Nz,
                                        Hx, Hy, Hz,

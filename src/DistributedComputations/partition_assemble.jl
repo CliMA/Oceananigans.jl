@@ -43,11 +43,12 @@ function partition_coordinate(c::AbstractVector, n, arch, idx)
     r  = arch.local_index[idx]
 
     start_idx = sum(nl[1:r-1]) + 1 # sum of all previous rank's dimension + 1
-    end_idx   = if r == arch.ranks[idx]
-        length(c) 
+    end_idx   = if r == ranks(arch)[idx]
+        length(c)
     else
         sum(nl[1:r]) + 1 
     end
+
     return c[start_idx : end_idx]
 end
 
@@ -74,32 +75,40 @@ a local number of elements `Nc`, number of ranks `Nr`, rank `r`,
 and `arch`itecture. Since we use a global reduction, only ranks at positions
 1 in the other two directions `r1 == 1` and `r2 == 1` fill the 1D array.
 """
-function assemble_coordinate(c_local::AbstractVector, n, R, r, r1, r2, comm) 
-    nl = concatenate_local_sizes(n, R, r)
+function assemble_coordinate(c_local::AbstractVector, n, arch, idx) 
+    nl = concatenate_local_sizes(n, arch, idx)
+    R  = arch.ranks[idx]
+    r  = arch.local_index[idx]
+    r2 = [arch.local_index[i] for i in filter(x -> x != idx, (1, 2, 3))]
 
     c_global = zeros(eltype(c_local), sum(nl)+1)
 
-    if r1 == 1 && r2 == 1
+    if r2[1] == 1 && r2[2] == 1
         c_global[1 + sum(nl[1:r-1]) : sum(nl[1:r])] .= c_local[1:end-1]
-        r == Nr && (c_global[end] = c_local[end])
+        r == R && (c_global[end] = c_local[end])
     end
 
-    MPI.Allreduce!(c_global, +, comm)
+    MPI.Allreduce!(c_global, +, arch.communicator)
 
     return c_global
 end
 
 # Simple case, just take the first and the last core
-function assemble_coordinate(c::Tuple, n, R, r, r1, r2, comm) 
+function assemble_coordinate(c_local::Tuple, n, arch, idx) 
     c_global = zeros(Float64, 2)
+    
+    rank = arch.local_index
+    R    = arch.ranks[idx]
+    r    = rank[idx]
+    r2   = [rank[i] for i in filter(x -> x != idx, (1, 2, 3))]
 
-    if r == 1 && r1 == 1 && r2 == 1
-        c_global[1] = c[1]
-    elseif r == R && r1 == 1 && r2 == 1
-        c_global[2] = c[2]
+    if rank[1] == 1 && rank[2] == 1 && rank[3] == 1
+        c_global[1] = c_local[1]
+    elseif r == R && r2[1] == 1 && r2[1] == 1
+        c_global[2] = c_local[2]
     end
 
-    MPI.Allreduce!(c_global, +, comm)
+    MPI.Allreduce!(c_global, +, arch.communicator)
 
     return tuple(c_global...)
 end 

@@ -219,7 +219,7 @@ axis_kwargs = (xlabel = L"x / H",
 
 fig = Figure(size = (600, 1100))
 
-ax_s = Axis(fig[2, 1]; title = L"speed, $(u^2+w^2)^{1/2} / (L_x b_*) ^{1/2}", axis_kwargs...)
+ax_s = Axis(fig[2, 1]; title = L"speed, $(u^2+w^2)^{1/2} / (L_x b_*)^{1/2}$", axis_kwargs...)
 ax_b = Axis(fig[3, 1]; title = L"buoyancy, $b / b_*$", axis_kwargs...)
 ax_ζ = Axis(fig[4, 1]; axis_kwargs...,
             title = L"vorticity, $(∂u/∂z - ∂w/∂x) \, (L_x / b_*)^{1/2}$")
