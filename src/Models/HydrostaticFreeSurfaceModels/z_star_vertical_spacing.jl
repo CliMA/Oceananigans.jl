@@ -130,26 +130,6 @@ function update_vertical_spacing!(model, grid::ZStarSpacingGrid, Δt; parameters
     return nothing
 end
 
-@kernel function _update_zstar!(sⁿ, s⁻, η, Hᶜᶜ, grid, ::Val{Nz}) where Nz
-    i, j = @index(Global, NTuple)
-    @inbounds begin
-        bottom = Hᶜᶜ[i, j, 1]
-        h = (bottom + η[i, j, grid.Nz+1]) / bottom
-
-        # update current and previous scaling
-        s⁻[i, j, 1] = sⁿ[i, j, 1]
-        sⁿ[i, j, 1] = h
-    end
-end
-
-update_∂t_∂s!(∂t_∂s, parameters, grid, sⁿ, s⁻, Δt, fs) = 
-    launch!(architecture(grid), grid, parameters, _update_∂t_∂s!, ∂t_∂s, sⁿ, s⁻, Δt)
-
-@kernel function _update_∂t_∂s!(∂t_∂s, sⁿ, s⁻, Δt)
-    i, j = @index(Global, NTuple)
-    ∂t_∂s[i, j, 1] = (sⁿ[i, j, 1] - s⁻[i, j, 1]) /  Δt
-end
-
 #####
 ##### ZStar-specific implementation of the additional terms to be included in the momentum equations
 #####

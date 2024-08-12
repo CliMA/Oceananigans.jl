@@ -82,7 +82,7 @@ The tendency is called ``G_η`` and defined via
 """
 @inline function free_surface_tendency(i, j, grid,
                                        velocities,
-                                       free_surface,
+                                       free_surface::ExplicitFreeSurface,
                                        tracers,
                                        auxiliary_fields,
                                        forcings,

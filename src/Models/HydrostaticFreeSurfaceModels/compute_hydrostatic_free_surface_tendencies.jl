@@ -118,16 +118,19 @@ function compute_free_surface_tendency!(grid, model, kernel_parameters)
 
     arch = architecture(grid)
 
-    args = tuple(model.velocities,
-                 model.free_surface,
-                 model.tracers,
-                 model.auxiliary_fields,
-                 model.forcing,
-                 model.clock)
+    if model.free_surface isa ExplicitFreeSurface 
+        
+        args = tuple(model.velocities,
+                    model.free_surface,
+                    model.tracers,
+                    model.auxiliary_fields,
+                    model.forcing,
+                    model.clock)
 
-    launch!(arch, grid, kernel_parameters,
-            compute_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, 
-            grid, args)
+        launch!(arch, grid, kernel_parameters,
+                compute_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, 
+                grid, args)
+    end
 
     return nothing
 end

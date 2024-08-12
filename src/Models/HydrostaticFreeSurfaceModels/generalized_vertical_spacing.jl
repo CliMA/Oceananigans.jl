@@ -141,6 +141,9 @@ update_vertical_spacing!(model, grid, Δt; kwargs...) = nothing
 @inline grid_slope_contribution_x(i, j, k, grid, args...) = zero(grid)
 @inline grid_slope_contribution_y(i, j, k, grid, args...) = zero(grid)
 
+@inline ∂t_∂s_grid(i, j, k, grid) = zero(grid)
+@inline V_times_∂t_∂s_grid(i, j, k, grid) = zero(grid)
+
 #####
 ##### Tracer update in generalized vertical coordinates 
 ##### We advance sθ but store θ once sⁿ⁺¹ is known
@@ -177,12 +180,14 @@ tracer_scaling_parameters(param::KernelParameters{S, O}, tracers, grid) where {S
 
 function unscale_tracers!(tracers, grid::AbstractVerticalSpacingGrid; parameters = :xy) 
     parameters = tracer_scaling_parameters(parameters, tracers, grid)
-    launch!(architecture(grid), grid, parameters, _scale_tracers, tracers, grid.Δzᵃᵃᶠ.sⁿ, 
+    
+    launch!(architecture(grid), grid, parameters, _unscale_tracers!, tracers, grid.Δzᵃᵃᶠ.sⁿ, 
             Val(grid.Hz), Val(grid.Nz))
+    
     return nothing
 end
     
-@kernel function _scale_tracers(tracers, sⁿ, ::Val{Hz}, ::Val{Nz}) where {Hz, Nz}
+@kernel function _unscale_tracers!(tracers, sⁿ, ::Val{Hz}, ::Val{Nz}) where {Hz, Nz}
     i, j, n = @index(Global, NTuple)
 
     @unroll for k in -Hz+1:Nz+Hz

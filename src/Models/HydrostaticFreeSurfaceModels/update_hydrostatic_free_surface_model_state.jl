@@ -81,7 +81,7 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel, Δt; w_paramet
     for (wpar, ppar, κpar) in zip(w_parameters, p_parameters, κ_parameters)
         # Update the grid
         update_vertical_spacing!(model, grid, Δt; parameters = wpar)
-        scale_tracers!(tracers, grid; parameters = wpar)
+        unscale_tracers!(tracers, grid; parameters = wpar)
         
         # Update the other auxiliary terms
         compute_w_from_continuity!(model; parameters = wpar)
@@ -94,4 +94,4 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel, Δt; w_paramet
     return nothing
 end
 
-scale_tracers!(tracers, grid; kwargs...) = nothing
+unscale_tracers!(tracers, grid; kwargs...) = nothing

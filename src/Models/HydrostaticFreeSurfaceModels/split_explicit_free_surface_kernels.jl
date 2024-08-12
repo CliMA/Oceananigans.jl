@@ -494,11 +494,9 @@ wait_free_surface_communication!(free_surface, arch) = nothing
 
 # Special update ∂t_∂s for SplitExplicitFreeSurface where 
 # ∂(η / H)/∂t = - ∇ ⋅ U̅ / H
-function update_∂t_∂s!(∂t_∂s, parameters, grid, sⁿ, s⁻, Δt, fs::SplitExplicitFreeSurface) 
+update_∂t_∂s!(∂t_∂s, parameters, grid, sⁿ, s⁻, Δt, fs::SplitExplicitFreeSurface) =
     launch!(architecture(grid), grid, parameters, _update_∂t_∂s_split_explicit!, ∂t_∂s, fs.state.U̅, fs.state.V̅, fs.auxiliary.Hᶜᶜ, grid)
-    return nothing
-end
-
+    
 @kernel function _update_∂t_∂s_split_explicit!(∂t_∂s, U̅, V̅, Hᶜᶜ, grid)
     i, j  = @index(Global, NTuple)
     k_top = grid.Nz + 1 

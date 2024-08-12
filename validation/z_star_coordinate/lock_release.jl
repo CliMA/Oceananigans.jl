@@ -12,9 +12,9 @@ grid = RectilinearGrid(size = (10, 10),
                    topology = (Bounded, Flat, Bounded))
 
 model = HydrostaticFreeSurfaceModel(; grid, 
-            generalized_vertical_coordinate = nothing,
-                         momentum_advection = Centered(),
-                           tracer_advection = Centered(),
+            generalized_vertical_coordinate = ZStar(),
+                         momentum_advection = WENO(),
+                           tracer_advection = WENO(),
                                    buoyancy = BuoyancyTracer(),
                                     tracers = :b,
                                free_surface = SplitExplicitFreeSurface(; substeps = 10))
@@ -67,12 +67,13 @@ function progress(sim)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 simulation.callbacks[:wizard]   = Callback(TimeStepWizard(; cfl = 0.2, max_change = 1.1), IterationInterval(10))
 
 run!(simulation)
 
 using Oceananigans.Utils
+using KernelAbstractions: @kernel, @index
 
 @kernel function _compute_field!(tmp, s, b)
   i, j, k = @index(Global, NTuple)
@@ -83,14 +84,16 @@ using Oceananigans.Fields: OneField
 
 # # Check tracer conservation
 b = FieldTimeSeries("zstar_model.jld2", "b")
-# s = FieldTimeSeries("zstar_model.jld2", "sⁿ")
-s = OneField()
+s = FieldTimeSeries("zstar_model.jld2", "sⁿ")
+
+# s = OneField()
 tmpfield = CenterField(grid)
-launch!(CPU(), grid, :xyz, _compute_field!, tmpfield, s, b[1])
-init  = sum(tmpfield) / 10 # sum(s[1])
+launch!(CPU(), grid, :xyz, _compute_field!, tmpfield, s[1], b[1])
+init  = sum(tmpfield) / sum(s[1])
 drift = []
+
 for t in 1:length(b.times)
-  launch!(CPU(), grid, :xyz, _compute_field!, tmpfield, s, b[t])
-  push!(drift, sum(tmpfield) / 10 - init) 
+  launch!(CPU(), grid, :xyz, _compute_field!, tmpfield, s[t], b[t])
+  push!(drift, sum(tmpfield) /  sum(s[t]) - init) 
 end
 
