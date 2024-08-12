@@ -114,6 +114,18 @@ end
 @inline getclosure(i, j, closure::AbstractVector{<:AbstractTurbulenceClosure}) = @inbounds closure[i]
 @inline getclosure(i, j, closure::AbstractTurbulenceClosure) = closure
 
+@inline getclosure(i, j, closure_tuple::Tuple{<:Any}) =
+    getclosure(i, j, closure_tuple[1])
+
+@inline getclosure(i, j, closure_tuple::Tuple{<:Any, <:Any}) =
+    getclosure(i, j, closure_tuple[1]) + 
+    getclosure(i, j, closure_tuple[2])
+
+@inline getclosure(i, j, closure_tuple::Tuple{<:Any, <:Any, <:Any}) =
+    getclosure(i, j, closure_tuple[1]) + 
+    getclosure(i, j, closure_tuple[2]) + 
+    getclosure(i, j, closure_tuple[3])
+
 @inline clip(x) = max(zero(x), x)
 
 const c = Center()
