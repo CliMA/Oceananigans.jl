@@ -20,7 +20,7 @@ end
 
 get_time_step(closure::TKEDissipationVerticalDiffusivity) = closure.tke_dissipation_time_step
 
-function time_step_tke_dissipation_equations!(model)
+function time_step_tke_dissipation_equations!(model, diffusivity_fields)
 
     # TODO: properly handle closure tuples
     closure = model.closure
@@ -34,7 +34,6 @@ function time_step_tke_dissipation_equations!(model)
     Gⁿϵ = model.timestepper.Gⁿ.ϵ
     G⁻ϵ = model.timestepper.G⁻.ϵ
 
-    diffusivity_fields = model.diffusivity_fields
     κe = diffusivity_fields.κe
     κϵ = diffusivity_fields.κϵ
     Le = diffusivity_fields.Le
@@ -297,3 +296,14 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
     return new_boundary_conditions
 end
 
+@inline top_dissipation_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple{<:Any}, buoyancy) =
+    top_dissipation_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy)
+
+@inline top_dissipation_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple{<:Any, <:Any}, buoyancy) =
+    top_dissipation_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) + 
+    top_dissipation_flux(i, j, grid, clock, fields, parameters, closure_tuple[2], buoyancy)
+
+@inline top_dissipation_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple{<:Any, <:Any, <:Any}, buoyancy) =
+    top_dissipation_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) + 
+    top_dissipation_flux(i, j, grid, clock, fields, parameters, closure_tuple[2], buoyancy) + 
+    top_dissipation_flux(i, j, grid, clock, fields, parameters, closure_tuple[3], buoyancy)

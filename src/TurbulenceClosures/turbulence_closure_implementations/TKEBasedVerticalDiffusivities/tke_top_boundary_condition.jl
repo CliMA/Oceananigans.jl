@@ -22,6 +22,9 @@ const TKEBoundaryCondition = BoundaryCondition{<:Flux, <:TKEBoundaryFunction}
 @inline getbc(bc::TKEBoundaryCondition, i::Integer, j::Integer, k::Integer, grid::AbstractGrid, clock, fields, clo, buoyancy) =
     bc.condition.func(i, j, k, grid, clock, fields, bc.condition.parameters, clo, buoyancy)
 
+@inline getbc(bc::TKEBoundaryCondition, i::Integer, j::Integer, grid::AbstractGrid, clock, fields, clo::Tuple, buoyancy) =
+    bc.condition.func(i, j, grid, clock, fields, bc.condition.parameters, clo[1], buoyancy)
+
 """
     top_tke_flux(i, j, grid, clock, fields, parameters, closure, buoyancy)
 
