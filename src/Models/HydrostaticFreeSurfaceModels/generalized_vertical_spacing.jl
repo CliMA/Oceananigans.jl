@@ -142,7 +142,6 @@ update_vertical_spacing!(model, grid, Δt; kwargs...) = nothing
 @inline grid_slope_contribution_y(i, j, k, grid, args...) = zero(grid)
 
 @inline ∂t_∂s_grid(i, j, k, grid) = zero(grid)
-@inline V_times_∂t_∂s_grid(i, j, k, grid) = zero(grid)
 
 #####
 ##### Tracer update in generalized vertical coordinates 
