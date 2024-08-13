@@ -437,7 +437,7 @@ Immersed boundary conditions are supported experimentally. A no-slip boundary co
 with
 
 ```@meta
-DocTestFilters = r"┌ Warning:[^]*\.jl:[0-9]*"
+DocTestFilters = r"┌ Warning:[\s\S]*\.jl:[0-9]*"
 ```
 
 ```jldoctest immersed_bc
