@@ -30,7 +30,7 @@ u, v, w = model.velocities
 ζ = Field(∂x(v) - ∂y(u))
 compute!(ζ)
 
-heatmap(interior(ζ, :, :, 1))
+heatmap(ζ, axis=(; aspect=1))
 ```
 
 A few more time-steps, and it's starting to get a little diffuse!
@@ -40,7 +40,7 @@ simulation.stop_iteration += 400
 run!(simulation)
 
 compute!(ζ)
-heatmap(interior(ζ, :, :, 1))
+heatmap(ζ, axis=(; aspect=1))
 ```
 
 ## They always cheat with too-simple "quick" starts
