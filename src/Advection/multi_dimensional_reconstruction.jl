@@ -99,6 +99,7 @@ function fifth_order_weno_reconstruction(FT, S₀, S₁, S₂)
 
     return q¹ / 6 + 2 * q² / 3 + q³ / 6
 end
+
 @inline function multi_dimensional_reconstruction_x(i, j, k, grid, scheme, _interpolate_y, args...)
 
     FT = eltype(grid)
