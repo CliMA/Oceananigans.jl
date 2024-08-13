@@ -19,11 +19,6 @@ const DistributedRectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ} =
 const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ} = 
     LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, <:Distributed} where {FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ}
 
-
-# Child architecture for grids
-child_architecture(grid::DistributedGrid) = child_architecture(architecture(grid))
-child_architecture(grid::AbstractGrid)    = architecture(grid)
-
 # Local size from global size and architecture
 local_size(arch::Distributed, global_sz) = (local_size(global_sz[1], arch.partition.x, arch.local_index[1]),
                                             local_size(global_sz[2], arch.partition.y, arch.local_index[2]),
@@ -278,10 +273,6 @@ function with_halo(new_halo, grid::DistributedLatitudeLongitudeGrid)
     new_grid = with_halo(new_halo, reconstruct_global_grid(grid))    
     return scatter_local_grids(architecture(grid), new_grid, size(grid))
 end
-
-# Extending child_architecture for grids
-child_architecture(grid::AbstractGrid) = architecture(grid)
-child_architecture(grid::DistributedGrid) = child_architecture(architecture(grid))
 
 """ 
     scatter_grid_properties(global_grid)
