@@ -11,12 +11,14 @@ using Oceananigans.DistributedComputations: Distributed, Partition, child_archit
 
 import Oceananigans.Fields: interior
 
+test_child_arch() = CUDA.has_cuda() ? GPU() : CPU()
+
 function test_architectures() 
-    child_arch =  CUDA.has_cuda() ? GPU() : CPU()
+    child_arch =  test_child_arch()
 
     # If MPI is initialized with MPI.Comm_size > 0, we are running in parallel.
-    # We test 3 different configurations: `Partition(x = 4)`, `Partition(y = 4)` 
-    # and `Partition(x = 4, y = 4)`
+    # We test several different configurations: `Partition(x = 4)`, `Partition(y = 4)`, 
+    # `Partition(x = 2, y = 2)`, and different fractional subdivisions in x, y and xy
     if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
         return (Distributed(child_arch; partition = Partition(4)),
                 Distributed(child_arch; partition = Partition(1, 4)),
@@ -24,6 +26,23 @@ function test_architectures()
                 Distributed(child_arch; partition = Partition(x = Fractional(1, 2, 3, 4))),
                 Distributed(child_arch; partition = Partition(y = Fractional(1, 2, 3, 4))),
                 Distributed(child_arch; partition = Partition(x = Fractional(1, 2), y = Equal()))) 
+    else
+        return tuple(child_arch)
+    end
+end
+
+# For nonhydrostatic simulations we cannot use `Fractional` at the moment (requirements
+# for the tranpose are more stringent than for hydrostatic simulations).
+function nonhydrostatic_regression_test_architectures() 
+    child_arch =  test_child_arch()
+
+    # If MPI is initialized with MPI.Comm_size > 0, we are running in parallel.
+    # We test 3 different configurations: `Partition(x = 4)`, `Partition(y = 4)` 
+    # and `Partition(x = 2, y = 2)`
+    if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
+        return (Distributed(child_arch; partition = Partition(4)),
+                Distributed(child_arch; partition = Partition(1, 4)),
+                Distributed(child_arch; partition = Partition(2, 2)))
     else
         return tuple(child_arch)
     end
@@ -87,8 +106,7 @@ end
 
 function compute_∇²!(∇²ϕ, ϕ, arch, grid)
     fill_halo_regions!(ϕ)
-    child_arch = child_architecture(arch)
-    launch!(child_arch, grid, :xyz, ∇²!, ∇²ϕ, grid, ϕ)
+    launch!(arch, grid, :xyz, ∇²!, ∇²ϕ, grid, ϕ)
     fill_halo_regions!(∇²ϕ)
     return nothing
 end
@@ -167,14 +185,14 @@ field_dependent_fun(ξ, η, t, u, v, w) = - w * sqrt(u^2 + v^2)
 exploding_fun(ξ, η, t, T, S, p) = - p.μ * cosh(S - p.S0) * exp((T - p.T0) / p.λ)
 
 # Many bc. Very many
-                 integer_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C, 1)
-                   float_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C, FT(π))
-              irrational_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C, π)
-                   array_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C, ArrayType(rand(FT, 1, 1)))
-         simple_function_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C, (ξ, η, t) -> exp(ξ) * cos(η) * sin(t))
-  parameterized_function_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C, parameterized_fun, parameters=(μ=0.1, ω=2π))
-field_dependent_function_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C, field_dependent_fun, field_dependencies=(:u, :v, :w))
-       discrete_function_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C, discrete_func, discrete_form=true)
+                 integer_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C(), 1)
+                   float_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C(), FT(π))
+              irrational_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C(), π)
+                   array_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C(), ArrayType(rand(FT, 1, 1)))
+         simple_function_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C(), (ξ, η, t) -> exp(ξ) * cos(η) * sin(t))
+  parameterized_function_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C(), parameterized_fun, parameters=(μ=0.1, ω=2π))
+field_dependent_function_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C(), field_dependent_fun, field_dependencies=(:u, :v, :w))
+       discrete_function_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C(), discrete_func, discrete_form=true)
 
-       parameterized_discrete_function_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C, parameterized_discrete_func, discrete_form=true, parameters=(μ=0.1,))
-parameterized_field_dependent_function_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C, exploding_fun, field_dependencies=(:T, :S), parameters=(S0=35, T0=100, μ=2π, λ=FT(2)))
+       parameterized_discrete_function_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C(), parameterized_discrete_func, discrete_form=true, parameters=(μ=0.1,))
+parameterized_field_dependent_function_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C(), exploding_fun, field_dependencies=(:T, :S), parameters=(S0=35, T0=100, μ=2π, λ=FT(2)))

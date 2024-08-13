@@ -71,7 +71,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u)
 └── array type: Array{Float64}
 ├── file_splitting: NoFileSplitting
-└── file size: 14.8 KiB
+└── file size: 14.9 KiB
 ```
 
 ```jldoctest netcdf1
@@ -86,7 +86,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u)
 └── array type: Array{Float64}
 ├── file_splitting: NoFileSplitting
-└── file size: 14.8 KiB
+└── file size: 14.9 KiB
 ```
 
 ```jldoctest netcdf1
@@ -187,7 +187,7 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 ├── 1 outputs: u
 └── array type: Array{Float64}
 ├── file_splitting: NoFileSplitting
-└── file size: 14.5 KiB
+└── file size: 14.6 KiB
 ```
 
 See [`NetCDFOutputWriter`](@ref) for more information.
@@ -237,7 +237,7 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 ├── file_splitting: NoFileSplitting
-└── file size: 27.2 KiB
+└── file size: 28.0 KiB
 ```
 
 and a time- and horizontal-average of tracer `c` every 20 minutes of simulation time
@@ -255,7 +255,7 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 ├── file_splitting: NoFileSplitting
-└── file size: 17.3 KiB
+└── file size: 17.8 KiB
 ```
 
 
@@ -312,6 +312,5 @@ JLD2OutputWriter scheduled on TimeInterval(4 days):
 ├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 ├── file_splitting: NoFileSplitting
-└── file size: 26.5 KiB
+└── file size: 27.1 KiB
 ```
-
