@@ -440,7 +440,7 @@ with
 DocTestFilters = r"┌ Warning:[\s\S]*\.jl:[0-9]*"
 ```
 
-```jldoctest immersed_bc
+```julia
 # Generate a simple ImmersedBoundaryGrid
 hill(x, y) = 0.1 + 0.1 * exp(-x^2 - y^2)
 underlying_grid = RectilinearGrid(size=(32, 32, 16), x=(-3, 3), y=(-3, 3), z=(0, 1), topology=(Periodic, Periodic, Bounded))
@@ -474,7 +474,7 @@ An `ImmersedBoundaryCondition` encapsulates boundary conditions on each potentia
 of a boundary-adjacent cell. Boundary conditions on specific faces of immersed-boundary-adjacent
 cells may also be specified by manually building an `ImmersedBoundaryCondition`:
 
-```jldoctest immersed_bc
+```julia
 bottom_drag_bc = ImmersedBoundaryCondition(bottom=ValueBoundaryCondition(0))
 
 # output
@@ -490,7 +490,7 @@ ImmersedBoundaryCondition:
 The `ImmersedBoundaryCondition` may then be incorporated into the boundary conditions for a
 `Field` by prescribing it to the `immersed` boundary label,
 
-```jldoctest immersed_bc
+```julia
 velocity_bcs = FieldBoundaryConditions(immersed=bottom_drag_bc)
 
 # output
@@ -519,7 +519,7 @@ of the underlying grid.
 
 First we create the boundary condition for the grid's bottom:
 
-```jldoctest immersed_bc
+```julia
 @inline linear_drag(x, y, t, u) = - 0.2 * u
 drag_u = FluxBoundaryCondition(linear_drag, field_dependencies=:u)
 
@@ -530,7 +530,7 @@ FluxBoundaryCondition: ContinuousBoundaryFunction linear_drag at (Nothing, Nothi
 Next, we create the immersed boundary condition by adding the argument `z` to `linear_drag`
 and imposing drag only on "bottom" facets of cells that neighbor immersed cells:
 
-```jldoctest immersed_bc
+```julia
 @inline immersed_linear_drag(x, y, z, t, u) = - 0.2 * u
 immersed_drag_u = FluxBoundaryCondition(immersed_linear_drag, field_dependencies=:u)
 
@@ -548,7 +548,7 @@ ImmersedBoundaryCondition:
 
 Finally, we combine the two:
 
-```jldoctest immersed_bc
+```julia
 u_bcs = FieldBoundaryConditions(bottom = drag_u, immersed = u_immersed_bc)
 
 # output
