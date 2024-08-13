@@ -99,7 +99,6 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
                         Val(tracer_index),
                         model.clock,
                         Δt)
-        end
     end
 
     return nothing
