@@ -42,8 +42,8 @@ update_hydrostatic_pressure!(::Nothing, arch, ::PCBIBG, args...; kw...) = nothin
     Nx, Ny, _ = size(grid)
     TX, TY, _ = topology(grid)
 
-    ii = ifelse(TX == Flat, 1:Nx, 0:Nx+2)
-    jj = ifelse(TY == Flat, 1:Ny, 0:Ny+2)
+    ii = ifelse(TX == Flat, 1:Nx, 0:Nx+1)
+    jj = ifelse(TY == Flat, 1:Ny, 0:Ny+1)
         
     return KernelParameters(ii, jj)
 end
