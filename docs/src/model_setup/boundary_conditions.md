@@ -437,7 +437,7 @@ Immersed boundary conditions are supported experimentally. A no-slip boundary co
 with
 
 ```@meta
-DocTestFilters = r"┌ Warning:[.|\n]*\.jl:[0-9]*" => ""
+DocTestFilters = r"┌ Warning:[^]*\.jl:[0-9]*"
 ```
 
 ```jldoctest immersed_bc
@@ -456,10 +456,10 @@ model.velocities.w.boundary_conditions.immersed
 
 # output
 ImmersedBoundaryCondition:
-├── west: ValueBoundaryCondition: 0
-├── east: ValueBoundaryCondition: 0
-├── south: ValueBoundaryCondition: 0
-├── north: ValueBoundaryCondition: 0
+├── west: ValueBoundaryCondition: 0.0
+├── east: ValueBoundaryCondition: 0.0
+├── south: ValueBoundaryCondition: 0.0
+├── north: ValueBoundaryCondition: 0.0
 ├── bottom: Nothing
 └── top: Nothing
 ```
@@ -473,10 +473,6 @@ ImmersedBoundaryCondition:
 An `ImmersedBoundaryCondition` encapsulates boundary conditions on each potential boundary-facet
 of a boundary-adjacent cell. Boundary conditions on specific faces of immersed-boundary-adjacent
 cells may also be specified by manually building an `ImmersedBoundaryCondition`:
-
-```@meta
-DocTestFilters = r"┌ Warning:[.|\n]*\.jl:[0-9]*" => ""
-```
 
 ```jldoctest immersed_bc
 bottom_drag_bc = ImmersedBoundaryCondition(bottom=ValueBoundaryCondition(0))
@@ -493,10 +489,6 @@ ImmersedBoundaryCondition:
 
 The `ImmersedBoundaryCondition` may then be incorporated into the boundary conditions for a
 `Field` by prescribing it to the `immersed` boundary label,
-
-```@meta
-DocTestFilters = r"┌ Warning:[.|\n]*\.jl:[0-9]*" => ""
-```
 
 ```jldoctest immersed_bc
 velocity_bcs = FieldBoundaryConditions(immersed=bottom_drag_bc)
@@ -538,10 +530,6 @@ FluxBoundaryCondition: ContinuousBoundaryFunction linear_drag at (Nothing, Nothi
 Next, we create the immersed boundary condition by adding the argument `z` to `linear_drag`
 and imposing drag only on "bottom" facets of cells that neighbor immersed cells:
 
-```@meta
-DocTestFilters = r"┌ Warning:[.|\n]*\.jl:[0-9]*" => ""
-```
-
 ```jldoctest immersed_bc
 @inline immersed_linear_drag(x, y, z, t, u) = - 0.2 * u
 immersed_drag_u = FluxBoundaryCondition(immersed_linear_drag, field_dependencies=:u)
@@ -582,3 +570,4 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ```@meta
 DocTestFilters = nothing
 ```
+
