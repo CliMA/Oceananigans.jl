@@ -21,7 +21,7 @@ function time_step_tke_equation!(model, parameters = tuple(:xyz); active_cells_m
         closure = model.closure[catke_closure_idx]
 
     # If there is no CATKE... do nothing!
-    elseif !(closure isa CATKEVerticalDiffusivity)
+    elseif !(model.closure isa CATKEVerticalDiffusivity)
         return nothing
     
     else
