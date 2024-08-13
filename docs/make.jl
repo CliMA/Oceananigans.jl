@@ -10,6 +10,8 @@ Distributed.addprocs(2)
     using CairoMakie # to avoid capturing precompilation output by Literate
     CairoMakie.activate!(type = "svg")
 
+    using MPI # for distributed doctests
+
     using Oceananigans
     using Oceananigans.Operators
     using Oceananigans.Diagnostics
@@ -46,9 +48,9 @@ Distributed.addprocs(2)
         "one_dimensional_diffusion.jl",
         "internal_wave.jl",
     ]
-
-    @info string("Executing the examples using ", Distributed.nprocs(), " processes")
 end
+
+@info string("Executing the examples using ", Distributed.nprocs(), " processes")
 
 Distributed.pmap(1:length(example_scripts)) do n
     example = example_scripts[n]
@@ -85,9 +87,10 @@ example_pages = [
 
 model_setup_pages = [
     "Overview" => "model_setup/overview.md",
+    "Setting initial conditions" => "model_setup/setting_initial_conditions.md",
     "Architecture" => "model_setup/architecture.md",
     "Number type" => "model_setup/number_type.md",
-    "Grid" => "model_setup/grids.md",
+    "Grid" => "model_setup/legacy_grids.md",
     "Clock" => "model_setup/clock.md",
     "Coriolis (rotation)" => "model_setup/coriolis.md",
     "Tracers" => "model_setup/tracers.md",
@@ -101,7 +104,6 @@ model_setup_pages = [
     "Callbacks" => "model_setup/callbacks.md",
     "Output writers" => "model_setup/output_writers.md",
     "Checkpointing" => "model_setup/checkpointing.md",
-    "Setting initial conditions" => "model_setup/setting_initial_conditions.md"
 ]
 
 physics_pages = [
@@ -146,9 +148,18 @@ pages = [
     "Home" => "index.md",
     "Quick start" => "quick_start.md",
     "Examples" => example_pages,
+    "Grids" => "grids.md",
+    "Fields" => "fields.md",
+    "Operations" => "operations.md",
+    # TODO:
+    #   - Develop the following three tutorials on reductions, simulations, and post-processing
+    #   - Refactor the model setup pages and make them more tutorial-like.
+    # "Averages, integrals, and cumulative integrals" => "reductions_and_accumulations.md",
+    # "Simulations" => simulations.md,
+    # "FieldTimeSeries and post-processing" => field_time_series.md,
+    "Model setup (legacy)" => model_setup_pages,
     "Physics" => physics_pages,
     "Numerical implementation" => numerical_pages,
-    "Model setup" => model_setup_pages,
     "Simulation tips" => "simulation_tips.md",
     "Contributor's guide" => "contributing.md",
     "Gallery" => "gallery.md",
@@ -159,9 +170,10 @@ pages = [
 #####
 ##### Build and deploy docs
 #####
+ci_build = get(ENV, "CI", nothing) == "true"
 
 format = Documenter.HTML(collapselevel = 1,
-                         prettyurls = get(ENV, "CI", nothing) == "true",
+                         prettyurls = ci_build,
                          canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
                          mathengine = MathJax3(),
                          size_threshold = 2^20,
@@ -177,32 +189,37 @@ makedocs(sitename = "Oceananigans.jl",
          modules = [Oceananigans],
          warnonly = [:cross_references],
          doctest = true, # set to false to speed things up
+         draft = false,  # set to true to speed things up
          clean = true,
          checkdocs = :exports) # set to :none to speed things up
-
-@info "Clean up temporary .jld2 and .nc output created by doctests or literated examples..."
 
 """
     recursive_find(directory, pattern)
 
 Return list of filepaths within `directory` that contains the `pattern::Regex`.
 """
-recursive_find(directory, pattern) =
-    mapreduce(vcat, walkdir(directory)) do (root, dirs, files)
-        joinpath.(root, filter(contains(pattern), files))
+function recursive_find(directory, pattern)
+    mapreduce(vcat, walkdir(directory)) do (root, dirs, filenames)
+        matched_filenames = filter(contains(pattern), filenames)
+        map(filename -> joinpath(root, filename), matched_filenames)
     end
+end
 
-files = []
+@info "Cleaning up temporary .jld2 and .nc output created by doctests or literated examples..."
+
 for pattern in [r"\.jld2", r"\.nc"]
-    global files = vcat(files, recursive_find(@__DIR__, pattern))
+    filenames = recursive_find(@__DIR__, pattern)
+
+    for filename in filenames
+        rm(filename)
+    end
 end
 
-for file in files
-    rm(file)
+if ci_build
+    deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
+               versions = ["stable" => "v^", "dev" => "dev", "v#.#.#"],
+               forcepush = true,
+               push_preview = true,
+               devbranch = "main")
 end
 
-deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
-           versions = ["stable" => "v^", "dev" => "dev", "v#.#.#"],
-           forcepush = true,
-           push_preview = false,
-           devbranch = "main")
