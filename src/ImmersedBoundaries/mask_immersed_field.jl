@@ -30,24 +30,6 @@ function mask_immersed_field!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(-
     return nothing
 end
 
-function mask_immersed_field!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(*)}, value=zero(eltype(bop)))
-    mask_immersed_field!(bop.a, value)
-    isa(bop.a, Number) && mask_immersed_field!(bop.b, value)
-    return nothing
-end
-
-function mask_immersed_field!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(/)}, value=zero(eltype(bop)))
-    mask_immersed_field!(bop.a, value)
-    isa(bop.a, Number) && mask_immersed_field!(bop.b, Inf)
-    return nothing
-end
-
-function mask_immersed_field!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(^)}, value=zero(eltype(bop)))
-    mask_immersed_field!(bop.a, value)
-    mask_immersed_field!(bop.b, one(eltype(bop))) # if `a` is a number then the resulting field is not going to be zero
-    return nothing
-end
-
 """
     mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value)
 
@@ -72,27 +54,21 @@ mask_immersed_field_xy!(field, value=zero(eltype(field.grid)); k, mask = periphe
 
 mask_immersed_field_xy!(::Number, args...) = nothing
 
-function mask_immersed_field_xy!(bop::BinaryOperation, value=zero(eltype(bop.b.grid)))
-    mask_immersed_field_xy!(bop.a, value)
-    mask_immersed_field_xy!(bop.b, value)
+function mask_immersed_field_xy!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(+)}, value=zero(eltype(bop)))
+    a_value = ifelse(bop.b isa Number, -bop.b, value)
+    mask_immersed_field_xy!(bop.a, a_value)
+
+    b_value = ifelse(bop.a isa Number, -bop.a, value)
+    mask_immersed_field_xy!(bop.b, b_value)
     return nothing
 end
 
-function mask_immersed_field_xy!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(*)}, value=zero(eltype(bop.b.grid)))
-    mask_immersed_field_xy!(bop.a, value)
-    isa(bop.a, Number) && mask_immersed_field_xy!(bop.b, value)
-    return nothing
-end
+function mask_immersed_field_xy!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(-)}, value=zero(eltype(bop)))
+    a_value = ifelse(bop.b isa Number, bop.b, value)
+    mask_immersed_field_xy!(bop.a, a_value)
 
-function mask_immersed_field_xy!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(/)}, value=zero(eltype(bop.b.grid)))
-    mask_immersed_field_xy!(bop.a, value)
-    isa(bop.a, Number) && mask_immersed_field_xy!(bop.b, Inf)
-    return nothing
-end
-
-function mask_immersed_field_xy!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(^)}, value=zero(eltype(bop.b.grid)))
-    mask_immersed_field_xy!(bop.a, value)
-    mask_immersed_field_xy!(bop.b, one(bop.b.grid)) # if `a` is a number then the resulting field is not going to be zero
+    b_value = ifelse(bop.a isa Number, bop.a, value)
+    mask_immersed_field_xy!(bop.b, b_value)
     return nothing
 end
 
