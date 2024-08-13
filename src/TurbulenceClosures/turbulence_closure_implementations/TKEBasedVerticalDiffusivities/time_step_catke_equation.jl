@@ -12,7 +12,7 @@ get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 function time_step_tke_equation!(model, parameters = tuple(:xyz); active_cells_map = nothing)
 
     if model.closure isa Tuple
-        catke_closure_idx = findfirst(clo isa CATKEVerticalDiffusivity, model.closure)
+        catke_closure_idx = findfirst(clo -> clo isa CATKEVerticalDiffusivity, model.closure)
         
         # If there is no CATKE... do nothing!
         if isnothing(catke_closure_idx)
