@@ -67,7 +67,7 @@ function interior_tendency_kernel_parameters(grid, arch)
     Ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
     Oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
 
-    sizes = (Sx, Sy, Sz)
+    sizes = (Sx, Sy, Nz)
     offsets = (Ox, Oy, 0)
      
     return KernelParameters(sizes, offsets)
