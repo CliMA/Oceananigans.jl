@@ -30,10 +30,11 @@ kp = KernelParameters(size, offsets)
 
 # Launch a kernel with indices that range from i=1:8, j=2:7, k=3:6,
 # where i, j, k are the first, second, and third index, respectively:
+
 launch!(arch, grid, kp, kernel!; kernel_args...)
 ```
 
-See the documentation for [`launch!`](@ref).
+See [`launch!`](@ref).
 """
 KernelParameters(size, offsets) = KernelParameters{size, offsets}()
 
@@ -56,7 +57,11 @@ launch!(arch, grid, kp, kernel!; kernel_args...)
 
 See the documentation for [`launch!`](@ref).
 """
-KernelParameters(r::UnitRange) = KernelParameters(tuple(length(r)), tuple(first(r) - 1))
+function KernelParameters(r::UnitRange)
+    size = length(r)
+    offset = first(r) - 1
+    return KernelParameters(tuple(size), tuple(offset))
+end
 
 function KernelParameters(r1::UnitRange, r2::UnitRange)
     size = (length(r1), length(r2))
