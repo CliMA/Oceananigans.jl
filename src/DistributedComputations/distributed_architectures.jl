@@ -24,7 +24,7 @@ end
 Return `Partition` representing the division of a domain in
 the `x` (first), `y` (second) and `z` (third) dimension
 
-Keyword arguments: 
+Keyword arguments:
 ==================
 
 - `x`: partitioning of the first dimension 
@@ -49,12 +49,12 @@ Examples:
 julia> using Oceananigans; using Oceananigans.DistributedComputations
 
 julia> Partition(1, 4)
-Domain partitioning with (1, 4, 1) ranks
-└── y-partitioning: 4
+Partition across 4 = 1×4×1 ranks:
+└── y: 4
 
 julia> Partition(x = Fractional(1, 2, 3, 4))
-Domain partitioning with (4, 1, 1) ranks
-└── x-partitioning: domain fractions: (0.1, 0.2, 0.3, 0.4)
+Partition across 4 = 4×1×1 ranks:
+└── x: Fractional(0.1, 0.2, 0.3, 0.4)
 
 ```
 """
@@ -63,16 +63,40 @@ Partition(x, y) = Partition(validate_partition(x, y, nothing)...)
 
 Partition(; x = nothing, y = nothing, z = nothing) = Partition(validate_partition(x, y, z)...)
 
-Base.show(io::IO, p::Partition) =
-    print(io, 
-    "Domain partitioning with $(ranks(p)) ranks", "\n",
-    "$(ranks(p.x) > 1 ? spine_x(p) * " x-partitioning: $(p.x)\n" : "")", 
-    "$(ranks(p.y) > 1 ? spine_y(p) * " y-partitioning: $(p.y)\n" : "")", 
-    "$(ranks(p.z) > 1 ? "└── z-partitioning: $(p.z)\n" : "")")
+function Base.show(io::IO, p::Partition)
+    r = Rx, Ry, Rz = ranks(p)
+    Nr = prod(r)
+    last_rank = Nr - 1
 
-spine_x(p) = ifelse(ranks(p.y) > 1 || ranks(p.z) > 1, "├──", "└──")
-spine_y(p) = ifelse(ranks(p.z) > 1, "├──", "└──")
- 
+    rank_info = if Nr == 1
+        "1 rank"
+    else
+        "$Nr = $Rx×$Ry×$Rz ranks:"
+    end
+
+    print(io, "Partition across ", rank_info)
+    
+    if Rx > 1
+        s = spine(Ry, Rz)
+        print(io, '\n')
+        print(io, s, " x: ", p.x)
+    end
+
+    if Ry > 1
+        s = spine(Rz)
+        print(io, '\n')
+        print(io, s, " y: ", p.y)
+    end
+
+    if Rz > 1
+        s = "└── "
+        print(io, '\n')
+        print(io, s, " z: ", p.z)
+    end
+end
+
+spine(ξ, η=1) = ξ > 1 || η > 1 ? "├──" : "└──"
+
 """
     Equal()
 
@@ -111,11 +135,14 @@ Partition(x::Equal, y, z) = Partition(validate_partition(x, y, z)...)
 Partition(x, y::Equal, z) = Partition(validate_partition(x, y, z)...)
 Partition(x, y, z::Equal) = Partition(validate_partition(x, y, z)...)
 
-Base.show(io::IO, s::Sizes)      = print(io, "domain sizes:     $(s.sizes)")
-Base.show(io::IO, s::Fractional) = print(io, "domain fractions: $(s.sizes)")
+Base.summary(s::Sizes)      = string("Sizes", s.sizes)
+Base.summary(f::Fractional) = string("Fractional", f.sizes)
+
+Base.show(io::IO, s::Sizes)      = print(io, summary(s))
+Base.show(io::IO, f::Fractional) = print(io, summary(f))
 
 ranks(p::Partition)  = (ranks(p.x), ranks(p.y), ranks(p.z))
-ranks(r::Nothing)    = 1 # a direction not partitioned fits in 1 rank
+ranks(::Nothing)     = 1 # a direction not partitioned fits in 1 rank
 ranks(r::Int)        = r
 ranks(r::Sizes)      = length(r.sizes)
 ranks(r::Fractional) = length(r.sizes)
@@ -133,7 +160,8 @@ validate_partition(x, y, ::Equal) = x, y, remaining_workers(x, y)
 
 function remaining_workers(r1, r2)
     MPI.Initialized() || MPI.Init()    
-    return MPI.Comm_size(MPI.COMM_WORLD) ÷ (ranks(r1) * ranks(r2))
+    r12 = ranks(r1) * ranks(r2)
+    return MPI.Comm_size(MPI.COMM_WORLD) ÷ r12
 end
 
 struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
@@ -173,10 +201,10 @@ end
 
 """
     Distributed(child_architecture = CPU(); 
-                communicator = MPI.COMM_WORLD,
+                partition = Partition(MPI.Comm_size(communicator)),
                 devices = nothing, 
-                synchronized_communication = false,
-                partition = Partition(MPI.Comm_size(communicator)))
+                communicator = MPI.COMM_WORLD,
+                synchronized_communication = false)
 
 Return a distributed architecture that uses MPI for communications.
 
@@ -189,43 +217,54 @@ Positional arguments
 Keyword arguments
 =================
 
-- `synchronized_communication`: If `true`, always use synchronized communication through ranks.
-                                Default: `false`.
-
 - `partition`: A [`Partition`](@ref) specifying the total processors in the `x`, `y`, and `z` direction.
                Note that support for distributed `z` direction is  limited; we strongly suggest
                using partition with `z = 1` kwarg.
 
 - `devices`: `GPU` device linked to local rank. The GPU will be assigned based on the 
              local node rank as such `devices[node_rank]`. Make sure to run `--ntasks-per-node` <= `--gres=gpu`.
-             If `nothing`, the devices will be assigned automatically based on the available resources
+             If `nothing`, the devices will be assigned automatically based on the available resources.
+             This argument is irrelevant if `child_architecture = CPU()`.
 
-- `communicator`: the MPI communicator, `MPI.COMM_WORLD`. This keyword argument should not be tampered with 
-                  if not for testing or developing. Change at your own risk!
+- `communicator`: the MPI communicator that orchestrates data transfer between nodes.
+                  Default: `MPI.COMM_WORLD`.
+
+- `synchronized_communication`: This keyword argument can be used to control downstream code behavior.
+                                If `true`, then downstream code may use this tag to toggle between an algorithm
+                                that permits communication between nodes "asynchronously" with other computations,
+                                and an alternative serial algorithm in which communication and computation are
+                                "synchronous" (that is, performed one after the other).
+                                Default: `false`, specifying the use of asynchronous algorithms where supported,
+                                which may result in faster time-to-solution.
 """
 function Distributed(child_architecture = CPU(); 
-                     communicator = nothing,
+                     partition = nothing,
                      devices = nothing, 
-                     synchronized_communication = false,
-                     partition = nothing)
+                     communicator = nothing,
+                     synchronized_communication = false)
 
     if !(MPI.Initialized())
         @info "MPI has not been initialized, so we are calling MPI.Init()."
         MPI.Init()
     end
 
-    communicator = isnothing(communicator) ? MPI.COMM_WORLD : communicator
-    partition    = isnothing(partition) ? Partition(MPI.Comm_size(communicator)) : partition
+    if isnothing(communicator) # default communicator
+        communicator = MPI.COMM_WORLD
+    end
 
-    ranks = size(partition)
-    Rx, Ry, Rz = ranks
-    total_ranks = Rx * Ry * Rz
-    mpi_ranks  = MPI.Comm_size(communicator)
+    mpi_ranks = MPI.Comm_size(communicator)
+
+    if isnothing(partition) # default partition
+        partition = Partition(mpi_ranks)
+    end
+
+    ranks = Rx, Ry, Rz = size(partition)
+    partition_ranks = Rx * Ry * Rz
 
     # TODO: make this error refer to `partition` (user input) rather than `ranks`
-    if total_ranks != mpi_ranks
-        throw(ArgumentError("Partition($Rx, $Ry, $Rz) [$total_ranks total ranks] inconsistent " *
-                            "with number of MPI ranks: $mpi_ranks."))
+    if partition_ranks != mpi_ranks
+        throw(ArgumentError("Partition($Rx, $Ry, $Rz) [$partition_ranks ranks] inconsistent " *
+                            "with $mpi_ranks MPI ranks"))
     end
 
     local_rank         = MPI.Comm_rank(communicator)
@@ -313,6 +352,8 @@ struct RankConnectivity{E, W, N, S, SW, SE, NW, NE}
     northeast :: NE
 end
 
+const NoConnectivity = RankConnectivity{Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing}
+
 """
     RankConnectivity(; east, west, north, south, southwest, southeast, northwest, northeast)
 
@@ -372,17 +413,51 @@ end
 ##### Pretty printing
 #####
 
-function Base.show(io::IO, arch::Distributed)
-    c = arch.connectivity
-    print(io, "Distributed architecture (rank $(arch.local_rank)/$(prod(arch.ranks)-1)) [index $(arch.local_index) / $(arch.ranks)]\n",
-              "└── child architecture: $(typeof(child_architecture(arch))) \n",
-              "└── connectivity:",
-              isnothing(c.east) ? "" : " east=$(c.east)",
-              isnothing(c.west) ? "" : " west=$(c.west)",
-              isnothing(c.north) ? "" : " north=$(c.north)",
-              isnothing(c.south) ? "" : " south=$(c.south)",
-              isnothing(c.southwest) ? "" : " southwest=$(c.southwest)",
-              isnothing(c.southeast) ? "" : " southeast=$(c.southeast)",
-              isnothing(c.northwest) ? "" : " northwest=$(c.northwest)",
-              isnothing(c.northeast) ? "" : " northeast=$(c.northeast)")
+function Base.summary(arch::Distributed)
+    child_arch = child_architecture(arch)
+    A = typeof(child_arch)
+    return string("Distributed{$A}")
 end
+
+function Base.show(io::IO, arch::Distributed)
+
+    Rx, Ry, Rz = arch.ranks
+    local_rank = arch.local_rank
+    Nr = prod(arch.ranks)
+    last_rank = Nr - 1
+
+    rank_info = if last_rank == 0
+        "1 rank:"
+    else
+        "$Nr = $Rx×$Ry×$Rz ranks:"
+    end
+
+    print(io, summary(arch), " across ", rank_info, '\n')
+    print(io, "├── local_rank: ", local_rank, " of 0-$last_rank", '\n')
+
+    ix, iy, iz = arch.local_index
+    index_info = string("index [$ix, $iy, $iz]")
+
+    c = arch.connectivity
+    connectivity_info = if c isa NoConnectivity
+        nothing
+    else
+        string("└── connectivity:",
+               isnothing(c.east)      ? "" : " east=$(c.east)",
+               isnothing(c.west)      ? "" : " west=$(c.west)",
+               isnothing(c.north)     ? "" : " north=$(c.north)",
+               isnothing(c.south)     ? "" : " south=$(c.south)",
+               isnothing(c.southwest) ? "" : " southwest=$(c.southwest)",
+               isnothing(c.southeast) ? "" : " southeast=$(c.southeast)",
+               isnothing(c.northwest) ? "" : " northwest=$(c.northwest)",
+               isnothing(c.northeast) ? "" : " northeast=$(c.northeast)")
+    end
+
+    if isnothing(connectivity_info)
+        print(io, "└── local_index: [$ix, $iy, $iz]")
+    else
+        print(io, "├── local_index: [$ix, $iy, $iz]", '\n')
+        print(io, connectivity_info)
+    end
+end
+
