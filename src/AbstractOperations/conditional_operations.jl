@@ -58,11 +58,13 @@ julia> using Oceananigans.Fields: condition_operand
 
 julia> c = CenterField(RectilinearGrid(size=(2, 1, 1), extent=(1, 1, 1)));
 
-julia> f(i, j, k, grid, c) = i < 2; d = condition_operand(cos, c, f, 10)
+julia> add_2(c) = c + 2
+
+julia> f(i, j, k, grid, c) = i < 2; d = condition_operand(add_2, c, f, 10)
 ConditionalOperation at (Center, Center, Center)
 ├── operand: 2×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 2×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×1×1 halo
-├── func: cos (generic function with 39 methods)
+├── func: add_2 (generic function with 1 method)
 ├── condition: f (generic function with 1 method)
 └── mask: 10
 
