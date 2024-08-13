@@ -446,6 +446,24 @@ end
         end
     end
 
+    @testset "Field Setting" begin
+        @info " Testing Partitioning of fields..."
+        for child_arch in archs
+            arch = Distributed(child_arch; partition=Partition(2, 2))
+
+            local_grid  = RectilinearGrid(arch; size = (10, 10, 10), extent = (1, 1, 1))
+            global_grid = reconstruct_global_grid(local_grid)
+
+            local_field  = CenterField(local_grid)
+            global_field = CenterField(global_field)
+
+            set!(global_field, 1)
+            set!(local_field, global_field)
+
+            @test sum(local_field) == 250
+        end
+    end
+
     # Only test on CPU because we do not have a GPU pressure solver yet
     @testset "Time stepping NonhydrostaticModel" begin
         if CPU() ∈ archs 

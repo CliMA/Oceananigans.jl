@@ -1,3 +1,4 @@
+using Oceananigans.Fields: Field
 import Oceananigans.Fields: Field, FieldBoundaryBuffers, location, set!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
@@ -19,6 +20,10 @@ end
 const DistributedField      = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
 const DistributedFieldTuple = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
 
+# Child architecture for Fields
+child_architecture(field::DistributedField) = child_architecture(field.grid)
+child_architecture(field::Field)            = architecture(field)
+
 function set!(u::DistributedField, f::Function)
     arch = architecture(u)
     if child_architecture(arch) isa GPU
@@ -36,7 +41,7 @@ function set!(u::DistributedField, f::Function)
 end
 
 # Automatically partition under the hood if sizes are compatible
-function set!(u::DistributedField, v::Union{Array, CuArray})
+function set!(u::DistributedField, v::AbstractArray)
     gsize = global_size(architecture(u), size(u))
 
     if size(v) == gsize
