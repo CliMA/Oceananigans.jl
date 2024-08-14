@@ -246,7 +246,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
         closure = ScalarDiffusivity()
         @testset "Time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]" begin
             @info "  Testing time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]..."
-            @test gime_step_hydrostatic_model_works(rectilinear_grid, closure=closure)
+            @test time_step_hydrostatic_model_works(rectilinear_grid, closure=closure)
         end
 
         @testset "Time-stepping HydrostaticFreeSurfaceModels with PrescribedVelocityFields [$arch]" begin
