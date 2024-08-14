@@ -70,6 +70,18 @@ end
 regularize_buoyancy(b) = b
 regularize_buoyancy(b::AbstractBuoyancyModel) = Buoyancy(model=b)
 
-Base.summary(buoyancy::Buoyancy) = string(summary(buoyancy.model), " with ĝ = ", summary(buoyancy.gravity_unit_vector))
+Base.summary(buoyancy::Buoyancy) = string(summary(buoyancy.model),
+                                          " with ĝ = ",
+                                          summarize_vector(buoyancy.gravity_unit_vector))
 
-Base.show(io::IO, buoyancy::Buoyancy) = print(io, sprint(show, buoyancy.model), "\nwith `gravity_unit_vector` = ", summary(buoyancy.gravity_unit_vector))
+summarize_vector(n) = string("(", prettysummary(n[1]), ", ",
+                                  prettysummary(n[2]), ", ",
+                                  prettysummary(n[3]), ")")
+                             
+
+
+function Base.show(io::IO, buoyancy::Buoyancy)
+    print(io, "Buoyancy:", '\n',
+              "├── model: ", prettysummary(buoyancy.model), '\n',
+              "└── gravity_unit_vector: ", summarize_vector(buoyancy.gravity_unit_vector))
+end
