@@ -67,7 +67,7 @@ ConditionalOperation at (Center, Center, Center)
 ├── grid: 2×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×1×1 halo
 ├── func: add_2 (generic function with 1 method)
 ├── condition: f (generic function with 1 method)
-└── mask: 10
+└── mask: 10.0
 
 julia> d[1, 1, 1]
 2.0
