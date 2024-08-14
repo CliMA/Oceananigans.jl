@@ -60,6 +60,7 @@ julia> using Oceananigans.Fields: condition_operand
 julia> c = CenterField(RectilinearGrid(size=(2, 1, 1), extent=(1, 1, 1)));
 
 julia> add_2(c) = c + 2
+add_2 (generic function with 1 method)
 
 julia> f(i, j, k, grid, c) = i < 2; d = condition_operand(add_2, c, f, 10.0)
 ConditionalOperation at (Center, Center, Center)
