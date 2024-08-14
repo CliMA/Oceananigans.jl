@@ -79,29 +79,39 @@ cite our work and mention Oceananigans by name.
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
-1. Whitley V. and Wenegrat, J. O. (2024) [Breaking internal waves on sloping topography: connecting parcel displacements to overturn size, interior-boundary exchanges, and mixing](https://doi.org/10.31223/X5PM5Q) _Earth Arxiv_. DOI:[10.31223/X5PM5Q](https://doi.org/10.31223/X5PM5Q)
+1. Chor, T. and Wenegrat, J. (2024). [The turbulent dynamics of anticyclonic submesoscale headland wakes](https://doi.org/ 10.31223/X5570C), _Earth arXiv_, DOI: [ 10.31223/X5570C](https://doi.org/ 10.31223/X5570C)
 
-1. Chen S., Strong-Wright J., and Taylor, J. R. (2024) [Modeling carbon dioxide removal via sinking of particulate organic carbon from macroalgae cultivation](https://doi.org/10.3389/fmars.2024.1359614) _Frontiers in Marine Science_, **11**, 1359614. DOI: [10.3389/fmars.2024.1359614](https://doi.org/10.3389/fmars.2024.1359614)
+1. Wagner, G. L., Hillier, A., Constantinou, N. C., Silvestri, S., Souza, A., Burns, K., Hill, C., Campin, J.-M., Marshall, J., and Ferrari, R. (2024). [Formulation and calibration of CATKE, a one-equation parameterization for microscale ocean mixing](https://doi.org/10.48550/arXiv.2306.13204), _arXiv_, arXiv:2306.13204. DOI: [10.48550/arXiv.2306.13204](https://doi.org/10.48550/arXiv.2306.13204)
 
-1. Gupta, M., Gürcan, E., and Thompson, A. F. (2024). [Eddy-induced dispersion of sea ice floes at the marginal ice zone](https://doi.org/10.1029/2023GL105656) _Geophysical Research Letters_, **51**, e2023GL105656. DOI: [10.1029/2023GL105656](https://doi.org/10.1029/2023GL105656)
+1. Allred, T., Li, X., Wiersdorf, A., Greenman, B., and Gopalakrishnan, G. (2024). [FlowFPX: Nimble tools for debugging floating-point exceptions](https://doi.org/10.48550/arXiv.2403.15632), _arXiv_, arXiv:2403.15632. DOI: [10.48550/arXiv.2403.15632](https://doi.org/10.48550/arXiv.2403.15632)
 
-1. Wagner, G. L., Pizzo, N. E., Lenain, L., and Veron, F. (2023) [Transition to turbulence in wind-drift layers](https://doi.org/10.1017/jfm.2023.920) _Journal of Fluid Mechanics_, **976**, A8. DOI: [10.1017/jfm.2023.920](https://doi.org/10.1017/jfm.2023.920)
+1. Silvestri, S., Wagner, G. L., Constantinou, N. C., Hill, C., Campin, J.-M., Souza, A., Bishnu, S., Churavy, V., Marshall, J., and Ferrari, R. (2024) [A GPU-based ocean dynamical core for routine mesoscale-resolving climate simulations](https://doi.org/10.22541/essoar.171708158.82342448/v1), _ESS Open Archive_. DOI: [10.22541/essoar.171708158.82342448/v1](https://doi.org/10.22541/essoar.171708158.82342448/v1)
 
-1. Jiménez-Urias, M. A. and Haine T. W. N. (2023) [On the non-self-adjoint and multiscale character of passive scalar mixing under laminar advection](https://doi.org/10.1017/jfm.2023.748) _Journal of Fluid Mechanics_, **973**, A44. DOI: [10.1017/jfm.2023.748](https://doi.org/10.1017/jfm.2023.748)
+1. Silvestri, S., Wagner, G. L., Campin, J.-M., Constantinou, N. C., Hill, C., Souza, A., and Ferrari, R. (2024). [A new WENO-based momentum advection scheme for simulations of ocean mesoscale turbulence](https://doi.org/10.22541/essoar.170110657.76489860/v2), _ESS Open Archive_. DOI: [10.22541/essoar.170110657.76489860/v2](https://doi.org/10.22541/essoar.170110657.76489860/v2)
 
-1. Strong-Wright, J, Chen, S., Constantinou, N. C., Silvestri, S., Wagner, G. L., and Taylor, J. R. (2023). [OceanBioME.jl: A flexible environment for modelling the coupled interactions between ocean biogeochemistry and physics](https://doi.org/10.21105/joss.05669) _Journal of Open Source Software_, **90(8)**, 5669. DOI: [10.21105/joss.05669](https://doi.org/10.21105/joss.05669)
+1. Whitley V. and Wenegrat, J. O. (2024) [Breaking internal waves on sloping topography: connecting parcel displacements to overturn size, interior-boundary exchanges, and mixing](https://doi.org/10.31223/X5PM5Q), _Earth Arxiv_. DOI: [10.31223/X5PM5Q](https://doi.org/10.31223/X5PM5Q)
 
-1. Wagner, G. L., Hillier, A., Constantinou, N. C., Silvestri, S., Souza, A., Burns, K., Ramadhan, A., Hill, C., Campin, J.-M., Marshall, J., and Ferrari, R. (2023). [CATKE: a turbulent-kinetic-energy-based parameterization for ocean microturbulence with dynamic convective adjustment](https://doi.org/10.22541/essoar.168748454.49694722/v1) _ESS Open Archive_. DOI: [10.22541/essoar.168748454.49694722/v1](https://doi.org/10.22541/essoar.168748454.49694722/v1)
+1. Chen S., Strong-Wright J., and Taylor, J. R. (2024) [Modeling carbon dioxide removal via sinking of particulate organic carbon from macroalgae cultivation](https://doi.org/10.3389/fmars.2024.1359614), _Frontiers in Marine Science_, **11**, 1359614. DOI: [10.3389/fmars.2024.1359614](https://doi.org/10.3389/fmars.2024.1359614)
 
-1. Ramadhan, A., Marshall, J. C., Souza, A. N., Lee, X. K., Piterbarg, U., Hillier, A., Wagner, G. L., Rackauckas, C., Hill, C., Campin, J.-M., and Ferrari, R. (2022). [Capturing missing physics in climate model parameterizations using neural differential equations](https://doi.org/10.1002/essoar.10512533.1) _ESS Open Archive_. DOI: [10.1002/essoar.10512533.1](https://doi.org/10.1002/essoar.10512533.1)
+1. Gupta, M., Gürcan, E., and Thompson, A. F. (2024). [Eddy-induced dispersion of sea ice floes at the marginal ice zone](https://doi.org/10.1029/2023GL105656), _Geophysical Research Letters_, **51**, e2023GL105656. DOI: [10.1029/2023GL105656](https://doi.org/10.1029/2023GL105656)
 
-1. Gupta, M. and Thompson, A. F. (2022). [Regimes of sea-ice floe melt: Ice-ocean coupling at the submesoscales](https://doi.org/10.1029/2022JC018894) _Journal of Geophysical Research: Oceans_, **127**, e2022JC018894. DOI: [10.1029/2022JC018894](https://doi.org/10.1029/2022JC018894)
+1. Wagner, G. L., Pizzo, N. E., Lenain, L., and Veron, F. (2023) [Transition to turbulence in wind-drift layers](https://doi.org/10.1017/jfm.2023.920), _Journal of Fluid Mechanics_, **976**, A8. DOI: [10.1017/jfm.2023.920](https://doi.org/10.1017/jfm.2023.920)
 
-1. Simoes-Sousa, I. T., Tandon, A., Pereira, F., Lazaneo, C. Z., and Mahadevan, A. (2022). [Mixed layer eddies supply nutrients to enhance the spring phytoplankton bloom](https://doi.org/10.3389/fmars.2022.825027) _Frontiers in Marine Sciences_, **9**, 825027. DOI: [10.3389/fmars.2022.825027](https://doi.org/10.3389/fmars.2022.825027)
+1. Jiménez-Urias, M. A. and Haine T. W. N. (2023) [On the non-self-adjoint and multiscale character of passive scalar mixing under laminar advection](https://doi.org/10.1017/jfm.2023.748), _Journal of Fluid Mechanics_, **973**, A44. DOI: [10.1017/jfm.2023.748](https://doi.org/10.1017/jfm.2023.748)
 
-1. Chor, T., Wenegrat, J. O., and Taylor, J. (2022). [Insights into the mixing efficiency of submesoscale Centrifugal-Symmetric instabilities.](https://doi.org/10.1175/JPO-D-21-0259.1) _Journal of Physical Oceanography_, **52(10)**, 2273-2287. DOI: [10.1175/JPO-D-21-0259.1](https://doi.org/10.1175/JPO-D-21-0259.1)
+1. Strong-Wright, J, Chen, S., Constantinou, N. C., Silvestri, S., Wagner, G. L., and Taylor, J. R. (2023). [OceanBioME.jl: A flexible environment for modelling the coupled interactions between ocean biogeochemistry and physics](https://doi.org/10.21105/joss.05669), _Journal of Open Source Software_, **90(8)**, 5669. DOI: [10.21105/joss.05669](https://doi.org/10.21105/joss.05669)
 
-1. Bire, S., Kang, W., Ramadhan, A., Campin, J.-M., and Marshall, J. (2022). [Exploring ocean circulation on icy moons heated from below.](https://doi.org/10.1029/2021JE007025) _Journal of Geophysical Research: Planets_, **127**, e2021JE007025. DOI: [10.1029/2021JE007025](https://doi.org/10.1029/2021JE007025)
+1. Ramadhan, A., Marshall, J. C., Souza, A. N., Lee, X. K., Piterbarg, U., Hillier, A., Wagner, G. L., Rackauckas, C., Hill, C., Campin, J.-M., and Ferrari, R. (2022). [Capturing missing physics in climate model parameterizations using neural differential equations](https://doi.org/10.1002/essoar.10512533.1), _ESS Open Archive_. DOI: [10.1002/essoar.10512533.1](https://doi.org/10.1002/essoar.10512533.1)
+
+1. Gupta, M. and Thompson, A. F. (2022). [Regimes of sea-ice floe melt: Ice-ocean coupling at the submesoscales](https://doi.org/10.1029/2022JC018894), _Journal of Geophysical Research: Oceans_, **127**, e2022JC018894. DOI: [10.1029/2022JC018894](https://doi.org/10.1029/2022JC018894)
+
+1. Simoes-Sousa, I. T., Tandon, A., Pereira, F., Lazaneo, C. Z., and Mahadevan, A. (2022). [Mixed layer eddies supply nutrients to enhance the spring phytoplankton bloom](https://doi.org/10.3389/fmars.2022.825027), _Frontiers in Marine Sciences_, **9**, 825027. DOI: [10.3389/fmars.2022.825027](https://doi.org/10.3389/fmars.2022.825027)
+
+1. Chor, T., Wenegrat, J. O., and Taylor, J. (2022). [Insights into the mixing efficiency of submesoscale Centrifugal-Symmetric instabilities.](https://doi.org/10.1175/JPO-D-21-0259.1), _Journal of Physical Oceanography_, **52(10)**, 2273-2287. DOI: [10.1175/JPO-D-21-0259.1](https://doi.org/10.1175/JPO-D-21-0259.1)
+
+1. Bire, S., Kang, W., Ramadhan, A., Campin, J.-M., and Marshall, J. (2022). [Exploring ocean circulation on icy moons heated from below.](https://doi.org/10.1029/2021JE007025), _Journal of Geophysical Research: Planets_, **127**, e2021JE007025. DOI: [10.1029/2021JE007025](https://doi.org/10.1029/2021JE007025)
+
+1. Rackauckas, C., Ma, Y., Martensen, J., Warner, C., Zubov, K., Supekar, R., Skinner, D., Ramadhan, A., and Edelman, A. (2021) [Universal differential equations for scientific machine learning](https://doi.org/10.48550/arXiv.2001.04385), _arXiv_, arXiv.2001.04385. DOI: [10.48550/arXiv.2001.04385](https://doi.org/10.48550/arXiv.2001.04385)
 
 1. Coakley, S., Miles, T. N., Glenn, S., and Lim, H. S. (2021). [Observation-Large eddy simulation comparison of ocean mixing under Typhoon Soulik (2018)](https://doi.org/10.23919/OCEANS44145.2021.9705670), _OCEANS 2021: San Diego – Porto, 2021_, pp. 1-7. DOI: [10.23919/OCEANS44145.2021.9705670](https://doi.org/10.23919/OCEANS44145.2021.9705670)
 
@@ -111,6 +121,6 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Buffett, B. A. (2021). [Conditions for turbulent Ekman layers in precessionally driven flow](https://doi.org/10.1093/gji/ggab088), _Geophysical Journal International_, **226(1)**, 56–65. DOI: [10.1093/gji/ggab088](https://doi.org/10.1093/gji/ggab088)
 
-1. Bhamidipati, N., Souza, A.N., and Flierl, G.R. (2020). [Turbulent mixing of a passive scalar in the ocean mixed layer](https://doi.org/10.1016/j.ocemod.2020.101615). _Ocean Modelling_, **149**, 101615. DOI: [10.1016/j.ocemod.2020.101615](https://doi.org/10.1016/j.ocemod.2020.101615)
+1. Bhamidipati, N., Souza, A.N., and Flierl, G.R. (2020). [Turbulent mixing of a passive scalar in the ocean mixed layer](https://doi.org/10.1016/j.ocemod.2020.101615), _Ocean Modelling_, **149**, 101615. DOI: [10.1016/j.ocemod.2020.101615](https://doi.org/10.1016/j.ocemod.2020.101615)
 
-1. Souza, A. N., Wagner, G. L., Ramadhan, A., Allen, B., Churavy, V., Schloss, J., Campin, J. M., Hill, C., Edelman, A., Marshall, J., Flierl, G., and Ferrari, R. (2020). [Uncertainty quantification of ocean parameterizations: Application to the K‐Profile‐Parameterization for penetrative convection](https://doi.org/10.1029/2020MS002108). _Journal of Advances in Modeling Earth Systems_, **12**, e2020MS002108. DOI: [10.1029/2020MS002108](https://doi.org/10.1029/2020MS002108)
+1. Souza, A. N., Wagner, G. L., Ramadhan, A., Allen, B., Churavy, V., Schloss, J., Campin, J. M., Hill, C., Edelman, A., Marshall, J., Flierl, G., and Ferrari, R. (2020). [Uncertainty quantification of ocean parameterizations: Application to the K‐Profile‐Parameterization for penetrative convection](https://doi.org/10.1029/2020MS002108), _Journal of Advances in Modeling Earth Systems_, **12**, e2020MS002108. DOI: [10.1029/2020MS002108](https://doi.org/10.1029/2020MS002108)

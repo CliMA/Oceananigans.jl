@@ -69,8 +69,8 @@ topos_3d = ((Periodic, Periodic, Bounded),
     @testset "$topo_1d model construction" begin
         @info "  Testing $topo_1d model construction..."
         for arch in archs, FT in [Float64] #float_types
-            grid = RectilinearGrid(arch, FT, topology=topo_1d, size=(1), extent=(1))
-            model = HydrostaticFreeSurfaceModel(grid=grid)
+            grid = RectilinearGrid(arch, FT, topology=topo_1d, size=1, extent=1)
+            model = HydrostaticFreeSurfaceModel(; grid)
             @test model isa HydrostaticFreeSurfaceModel
 
             # SingleColumnGrid tests
@@ -85,7 +85,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @info "  Testing $topo model construction..."
             for arch in archs, FT in float_types
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1), extent=(1, 2))
-                model = HydrostaticFreeSurfaceModel(grid=grid)
+                model = HydrostaticFreeSurfaceModel(; grid)
                 @test model isa HydrostaticFreeSurfaceModel
                 @test :η ∈ keys(fields(model)) # contrary to the SingleColumnGrid case
             end
@@ -97,7 +97,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @info "  Testing $topo model construction..."
             for arch in archs, FT in float_types
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
-                model = HydrostaticFreeSurfaceModel(grid=grid)
+                model = HydrostaticFreeSurfaceModel(; grid)
                 @test model isa HydrostaticFreeSurfaceModel
             end
         end
