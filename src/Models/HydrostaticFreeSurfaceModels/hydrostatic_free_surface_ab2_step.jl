@@ -9,12 +9,12 @@ import Oceananigans.TimeSteppers: ab2_step!
 ##### Step everything
 #####
 
-setup_free_surface!(model, free_surface, χ) = nothing
+setup_free_surface!(model, free_surface, Δt, χ) = nothing
 
 function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
 
     χ = model.timestepper.χ
-    setup_free_surface!(model, model.free_surface, χ)
+    setup_free_surface!(model, model.free_surface, Δt, χ)
 
     # Step locally velocity and tracers
     @apply_regionally local_ab2_step!(model, Δt, χ)
@@ -71,6 +71,11 @@ ab2_step_tracers!(::EmptyNamedTuple, model, Δt, χ) = nothing
 function ab2_step_tracers!(tracers, model, Δt, χ)
 
     closure = model.closure
+    last_Δt = model.clock.last_Δt
+    
+    # Variable Adams-Bashforth coefficients
+    Cⁿ = (2 + Δt / last_Δt) / 2 + χ
+    C⁻ = (Δt / last_Δt) / 2 + χ
 
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
@@ -89,7 +94,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
             closure = model.closure
 
             launch!(model.architecture, model.grid, :xyz,
-                    ab2_step_field!, tracer_field, Δt, χ, Gⁿ, G⁻)
+                    ab2_step_field!, tracer_field, Δt, Cⁿ, C⁻, Gⁿ, G⁻)
 
             implicit_step!(tracer_field,
                            model.timestepper.implicit_solver,

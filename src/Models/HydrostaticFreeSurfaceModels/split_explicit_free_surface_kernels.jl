@@ -411,43 +411,43 @@ function iterate_split_explicit!(free_surface, grid, Δτᴮ, weights, ::Val{Nsu
 end
 
 # Calculate RHS for the barotropic time step.
-@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, Cⁿ, C⁻)
     i, j  = @index(Global, NTuple)
     k_top = grid.Nz + 1
 
-    @inbounds Gᵁ[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, χ)
-    @inbounds Gⱽ[i, j, k_top-1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_step_Gv(i, j, 1, grid, Gv⁻, Gvⁿ, χ)
+    @inbounds Gᵁ[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, Cⁿ, C⁻)
+    @inbounds Gⱽ[i, j, k_top-1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_step_Gv(i, j, 1, grid, Gv⁻, Gvⁿ, Cⁿ, C⁻)
 
     for k in 2:grid.Nz	
-        @inbounds Gᵁ[i, j, k_top-1] += Δzᶠᶜᶜ(i, j, k, grid) * ab2_step_Gu(i, j, k, grid, Gu⁻, Guⁿ, χ)
-        @inbounds Gⱽ[i, j, k_top-1] += Δzᶜᶠᶜ(i, j, k, grid) * ab2_step_Gv(i, j, k, grid, Gv⁻, Gvⁿ, χ)
+        @inbounds Gᵁ[i, j, k_top-1] += Δzᶠᶜᶜ(i, j, k, grid) * ab2_step_Gu(i, j, k, grid, Gu⁻, Guⁿ, Cⁿ, C⁻)
+        @inbounds Gⱽ[i, j, k_top-1] += Δzᶜᶠᶜ(i, j, k, grid) * ab2_step_Gv(i, j, k, grid, Gv⁻, Gvⁿ, Cⁿ, C⁻)
     end	
 end
 
 # Calculate RHS for the barotropic time step.q
-@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid::ActiveZColumnsIBG, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid::ActiveZColumnsIBG, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, Cⁿ, C⁻)
     idx = @index(Global, Linear)
     i, j = active_linear_index_to_tuple(idx, ZColumnMap(), grid)
     k_top = grid.Nz+1
 
-    @inbounds Gᵁ[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, χ)
-    @inbounds Gⱽ[i, j, k_top-1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_step_Gv(i, j, 1, grid, Gv⁻, Gvⁿ, χ)
+    @inbounds Gᵁ[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, Cⁿ, C⁻)
+    @inbounds Gⱽ[i, j, k_top-1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_step_Gv(i, j, 1, grid, Gv⁻, Gvⁿ, Cⁿ, C⁻)
 
     for k in 2:grid.Nz	
-        @inbounds Gᵁ[i, j, k_top-1] += Δzᶠᶜᶜ(i, j, k, grid) * ab2_step_Gu(i, j, k, grid, Gu⁻, Guⁿ, χ)
-        @inbounds Gⱽ[i, j, k_top-1] += Δzᶜᶠᶜ(i, j, k, grid) * ab2_step_Gv(i, j, k, grid, Gv⁻, Gvⁿ, χ)
+        @inbounds Gᵁ[i, j, k_top-1] += Δzᶠᶜᶜ(i, j, k, grid) * ab2_step_Gu(i, j, k, grid, Gu⁻, Guⁿ, Cⁿ, C⁻)
+        @inbounds Gⱽ[i, j, k_top-1] += Δzᶜᶠᶜ(i, j, k, grid) * ab2_step_Gv(i, j, k, grid, Gv⁻, Gvⁿ, Cⁿ, C⁻)
     end	
 end
 
-@inline ab2_step_Gu(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT =
-    @inbounds ifelse(peripheral_node(i, j, k, grid, f, c, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
+@inline ab2_step_Gu(i, j, k, grid, G⁻, Gⁿ, Cⁿ, C⁻) =
+    @inbounds ifelse(peripheral_node(i, j, k, grid, f, c, c), zero(grid), Cⁿ * Gⁿ[i, j, k] - C⁻ * G⁻[i, j, k])
 
-@inline ab2_step_Gv(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT =
-    @inbounds ifelse(peripheral_node(i, j, k, grid, c, f, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
+@inline ab2_step_Gv(i, j, k, grid, G⁻, Gⁿ, Cⁿ, C⁻) =
+    @inbounds ifelse(peripheral_node(i, j, k, grid, c, f, c), zero(grid), Cⁿ *  Gⁿ[i, j, k] - C⁻ * G⁻[i, j, k])
 
 # Setting up the RHS for the barotropic step (tendencies of the barotropic velocity components)
 # This function is called after `calculate_tendency` and before `ab2_step_velocities!`
-function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
+function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, Δt, χ)
     
     # we start the time integration of η from the average ηⁿ     
     Gu⁻ = model.timestepper.G⁻.u
@@ -456,8 +456,13 @@ function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
     Gvⁿ = model.timestepper.Gⁿ.v
 
     auxiliary = free_surface.auxiliary
+    last_Δt   = model.clock.last_Δt
+    
+    # Variable Adams-Bashforth coefficients
+    Cⁿ = (2 + Δt / last_Δt) / 2 + χ
+    C⁻ = (Δt / last_Δt) / 2 + χ
 
-    @apply_regionally setup_split_explicit_tendency!(auxiliary, model.grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+    @apply_regionally setup_split_explicit_tendency!(auxiliary, model.grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, Cⁿ, C⁻)
 
     fields_to_fill = (auxiliary.Gᵁ, auxiliary.Gⱽ)
     fill_halo_regions!(fields_to_fill; async = true)
@@ -465,9 +470,9 @@ function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
     return nothing
 end
 
-setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ) =
+setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, Cⁿ, C⁻) =
     launch!(architecture(grid), grid, :xy, _compute_integrated_ab2_tendencies!, auxiliary.Gᵁ, auxiliary.Gⱽ, grid, 
-            Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ; active_cells_map = active_surface_map(grid))
+            Gu⁻, Gv⁻, Guⁿ, Gvⁿ, Cⁿ, C⁻; active_cells_map = active_surface_map(grid))
             
 wait_free_surface_communication!(free_surface, arch) = nothing
 

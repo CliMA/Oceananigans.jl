@@ -115,7 +115,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     # Be paranoid and update state at iteration 0
     model.clock.iteration == 0 && update_state!(model, callbacks)
     
-    ab2_step!(model, Δt) # full step for tracers, fractional step for velocities.
+    ab2_step!(model, Δt, model.clock.last_Δt) # full step for tracers, fractional step for velocities.
     
     tick!(model.clock, Δt)
     model.clock.last_Δt = Δt
@@ -146,15 +146,21 @@ end
 """ Generic implementation. """
 function ab2_step!(model, Δt)
 
-    workgroup, worksize = work_layout(model.grid, :xyz)
     arch = model.architecture
-    step_field_kernel! = ab2_step_field!(device(arch), workgroup, worksize)
+    grid = model.grid
+    step_field_kernel! = configured_kernel(arch, grid, :xyz, ab2_step_field!)
+
     model_fields = prognostic_fields(model)
-    χ = model.timestepper.χ
+    χ       = model.timestepper.χ
+    last_Δt = model.clock.last_Δt
+
+    # Variable Adams-Bashforth coefficients
+    Cⁿ = (2 + Δt / last_Δt) / 2 + χ
+    C⁻ = (Δt / last_Δt) / 2 + χ
 
     for (i, field) in enumerate(model_fields)
 
-        step_field_kernel!(field, Δt, χ,
+        step_field_kernel!(field, Δt, Cⁿ, C⁻,
                            model.timestepper.Gⁿ[i],
                            model.timestepper.G⁻[i])
 
@@ -179,15 +185,13 @@ Time step velocity fields via the 2nd-order quasi Adams-Bashforth method
     `U^{n+1} = U^n + Δt ((3/2 + χ) * G^{n} - (1/2 + χ) G^{n-1})`
 
 """
-@kernel function ab2_step_field!(u, Δt, χ, Gⁿ, G⁻)
+@kernel function ab2_step_field!(u, Δt, Cⁿ, C⁻, Gⁿ, G⁻)
     i, j, k = @index(Global, NTuple)
 
-    FT = eltype(χ)
-    one_point_five = convert(FT, 1.5)
-    oh_point_five  = convert(FT, 0.5)
+    FT = eltype(Gⁿ)
 
-    @inbounds u[i, j, k] += convert(FT, Δt) * ((one_point_five + χ) * Gⁿ[i, j, k] - (oh_point_five + χ) * G⁻[i, j, k])
+    @inbounds u[i, j, k] += convert(FT, Δt) * (Cⁿ * Gⁿ[i, j, k] - C⁻ * G⁻[i, j, k])
 end
 
-@kernel ab2_step_field!(::FunctionField, Δt, χ, Gⁿ, G⁻) = nothing
+@kernel ab2_step_field!(::FunctionField, Δt, Cⁿ, C⁻, Gⁿ, G⁻) = nothing
 
