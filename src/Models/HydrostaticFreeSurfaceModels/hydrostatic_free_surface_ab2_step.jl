@@ -74,7 +74,9 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
 
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
-        
+
+        tracer_field = tracers[tracer_name]
+
         # TODO: do better than this silly criteria, also need to check closure tuples
         if closure isa FlavorOfCATKE && tracer_name == :e
             @debug "Skipping AB2 step for e"
@@ -85,7 +87,6 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
         else
             Gⁿ = model.timestepper.Gⁿ[tracer_name]
             G⁻ = model.timestepper.G⁻[tracer_name]
-            tracer_field = tracers[tracer_name]
             closure = model.closure
 
             launch!(model.architecture, model.grid, :xyz,
