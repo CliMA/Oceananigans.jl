@@ -181,8 +181,8 @@ end
 @inline communication_side(::Val{fill_bottom_halo!}) = :bottom
 @inline communication_side(::Val{fill_top_halo!})    = :top
 
-cooperative_wait(req::MPI.Request)            = @show MPI.Waitall(req)
-cooperative_waitall!(req::Array{MPI.Request}) = @show MPI.Waitall(req)
+cooperative_wait(req::MPI.Request)            = MPI.Waitall(req)
+cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 
 # There are two additional keyword arguments (with respect to serial `fill_halo_event!`s) that take an effect on `DistributedGrids`: 
 # - only_local_halos: if true, only the local halos are filled, i.e. corresponding to non-communicating boundary conditions
