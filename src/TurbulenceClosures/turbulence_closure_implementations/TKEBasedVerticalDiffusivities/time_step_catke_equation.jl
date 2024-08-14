@@ -18,6 +18,7 @@ function time_step_tke_equation!(model, parameters = tuple(:xyz); active_cells_m
         if isnothing(catke_closure_idx)
             return nothing
         end
+        
         closure = model.closure[catke_closure_idx]
 
     # If there is no CATKE... do nothing!

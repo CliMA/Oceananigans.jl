@@ -25,16 +25,17 @@ function time_step_tke_dissipation_equations!(model, parameters; active_cells_ma
     # TODO: properly handle closure tuples
 
     if model.closure isa Tuple
-        tke_closure_idx = findfirst(clo isa TKEDissipationVerticalDiffusivity, model.closure)
+        tke_closure_idx = findfirst(clo -> clo isa TKEDissipationVerticalDiffusivity, model.closure)
         
         # If there is no CATKE... do nothing!
         if isnothing(tke_closure_idx)
             return nothing
         end
+
         closure = model.closure[tke_closure_idx]
 
     # If there is no TKEBasedVerticalDiffusivity... do nothing!
-    elseif !(closure isa TKEDissipationVerticalDiffusivity)
+    elseif !(model.closure isa TKEDissipationVerticalDiffusivity)
         return nothing
     
     else
