@@ -436,13 +436,11 @@ top and bottom of both `model.velocities.u` and `model.tracers.c`.
 Immersed boundary conditions are supported experimentally. A no-slip boundary condition is specified
 with
 
-```@setup immersed_bc
-using Logging
-logger = ConsoleLogger(2000) # ignore warnings
-global_logger(logger)
-```
-
 ```jldoctest immersed_bc
+using Logging # hide
+quiet_logger = ConsoleLogger(2000) # hide
+global_logger(quiet_logger) # hide
+
 # Generate a simple ImmersedBoundaryGrid
 hill(x, y) = 0.1 + 0.1 * exp(-x^2 - y^2)
 underlying_grid = RectilinearGrid(size=(32, 32, 16), x=(-3, 3), y=(-3, 3), z=(0, 1), topology=(Periodic, Periodic, Bounded))
