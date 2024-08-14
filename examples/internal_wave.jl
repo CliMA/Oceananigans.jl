@@ -159,7 +159,6 @@ w_lim = 1e-8
 contourf!(ax, w;
           levels = range(-w_lim, stop=w_lim, length=10),
           colormap = :balance,
-          colorrange = (-w_lim, w_lim),
           extendlow = :auto,
           extendhigh = :auto)
 
