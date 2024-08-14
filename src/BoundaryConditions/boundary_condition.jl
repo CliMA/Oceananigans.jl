@@ -56,8 +56,9 @@ function BoundaryCondition(classification::AbstractBoundaryConditionClassificati
     return BoundaryCondition(classification, condition)
 end
 
-# Convenience constructor
-BoundaryCondition(Classification::DataType, args...; kwargs...) = BoundaryCondition(Classification(), args...; kwargs...)
+# Convenience constructors 
+BoundaryCondition(C::DataType,   args...; kwargs...) = BoundaryCondition(Classification(), args...; kwargs...)
+BoundaryCondition( ::Type{Open}, args...; kwargs...) = BoundaryCondition(Open(nothing),    args...; kwargs...)
 
 # Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
 Adapt.adapt_structure(to, b::BoundaryCondition) =
@@ -85,7 +86,7 @@ const DCBC = BoundaryCondition{<:DistributedCommunication}
 # More readable BC constructors for the public API.
                 PeriodicBoundaryCondition() = BoundaryCondition(Periodic(),                 nothing)
                   NoFluxBoundaryCondition() = BoundaryCondition(Flux(),                     nothing)
-            ImpenetrableBoundaryCondition() = BoundaryCondition(Open(), nothing)
+            ImpenetrableBoundaryCondition() = BoundaryCondition(Open(),                     nothing)
 MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommunication(), nothing)
 DistributedCommunicationBoundaryCondition() = BoundaryCondition(DistributedCommunication(), nothing)
 
