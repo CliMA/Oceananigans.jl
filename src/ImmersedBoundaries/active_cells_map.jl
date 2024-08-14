@@ -8,7 +8,7 @@ import Oceananigans.Grids: retrieve_surface_active_cells_map, retrieve_interior_
 import Oceananigans.Utils: active_cells_work_layout
 
 using Oceananigans.Solvers: solve_batched_tridiagonal_system_z!, ZDirection
-using Oceananigans.DistributedComputations: DistributedGrid
+using Oceananigans.DistributedComputations: DistributedGrid, SynchronizedDistributed
 
 import Oceananigans.Solvers: solve_batched_tridiagonal_system_kernel!
 
@@ -208,6 +208,13 @@ map_interior_active_cells(ibg) = interior_active_indices(ibg; parameters = :xyz)
 function map_interior_active_cells(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid})
 
     arch = architecture(ibg)
+
+    # If we using a synchronized architecture, nothing
+    # changes with serial execution.
+    if arch isa SynchronizedDistributed
+        return interior_active_indices(ibg; parameters = :xyz)
+    end
+
     Rx, Ry, _  = arch.ranks
     Tx, Ty, _  = topology(ibg)
     Nx, Ny, Nz = size(ibg)
