@@ -445,7 +445,8 @@ DocTestSetup = quote
     using Logging
     quiet_logger = ConsoleLogger(2000)
     global_logger(quiet_logger)
-end```
+end
+```
 
 ```jldoctest immersed_bc
 # Generate a simple ImmersedBoundaryGrid
