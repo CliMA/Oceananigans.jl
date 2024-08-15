@@ -15,7 +15,8 @@ simulation = Simulation(model; Δt=0.01, stop_iteration=100)
 run!(simulation)
 ```
 
-runs 100 time steps of a two-dimensional turbulence simulation with `128²` [finite volume](https://en.wikipedia.org/wiki/Finite_volume_method) cells and a fifth-order upwinded [WENO advection scheme](https://en.wikipedia.org/wiki/WENO_methods).
+runs 100 time steps of a two-dimensional turbulence simulation with `128²` [finite volume](https://en.wikipedia.org/wiki/Finite_volume_method) cells
+and a fifth-order upwinded [WENO advection scheme](https://en.wikipedia.org/wiki/WENO_methods).
 It's quite similar to the [two-dimensional turbulence example](https://clima.github.io/OceananigansDocumentation/stable/generated/two_dimensional_turbulence/).
 
 ## Visualization
@@ -29,7 +30,7 @@ u, v, w = model.velocities
 ζ = Field(∂x(v) - ∂y(u))
 compute!(ζ)
 
-heatmap(interior(ζ, :, :, 1))
+heatmap(ζ, axis=(; aspect=1))
 ```
 
 A few more time-steps, and it's starting to get a little diffuse!
@@ -39,7 +40,7 @@ simulation.stop_iteration += 400
 run!(simulation)
 
 compute!(ζ)
-heatmap(interior(ζ, :, :, 1))
+heatmap(ζ, axis=(; aspect=1))
 ```
 
 ## They always cheat with too-simple "quick" starts
@@ -63,4 +64,6 @@ Notice the difference? We passed the positional argument `GPU()` to `Rectilinear
 
 ## Well, that was tantalizing
 
-But you'll need to know a lot more to become a productive, Oceananigans-wielding computational scientist (spherical grids, forcing, boundary conditions, turbulence closures, output writing, actually labeling your axes... 🤯). It'd be best to move on to the [one-dimensional diffusion example](@ref one_dimensional_diffusion_example).
+But you'll need to know a lot more to become a productive, Oceananigans-wielding computational scientist (spherical grids, forcing, boundary conditions,
+turbulence closures, output writing, actually labeling your axes... 🤯).
+It'd be best to move on to the [one-dimensional diffusion example](@ref one_dimensional_diffusion_example).
