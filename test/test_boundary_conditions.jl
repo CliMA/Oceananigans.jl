@@ -21,7 +21,7 @@ end
     @testset "Boundary condition instantiation" begin
         @info "  Testing boundary condition instantiation..."
 
-        for C in (Value, Gradient, Flux)
+        for C in (Value, Gradient, Flux, Value(), Gradient(), Flux())
             @test can_instantiate_boundary_condition(integer_bc, C)
             @test can_instantiate_boundary_condition(irrational_bc, C)
             @test can_instantiate_boundary_condition(simple_function_bc, C)
