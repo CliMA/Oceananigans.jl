@@ -78,7 +78,7 @@ summarize_vector(n) = string("(", prettysummary(n[1]), ", ",
                                   prettysummary(n[2]), ", ",
                                   prettysummary(n[3]), ")")
                              
-
+summarize_vector(::NegativeZDirection) = "NegativeZDirection"
 
 function Base.show(io::IO, buoyancy::Buoyancy)
     print(io, "Buoyancy:", '\n',
