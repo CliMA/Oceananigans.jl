@@ -12,7 +12,6 @@ using KernelAbstractions: @kernel, @index
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
-using Oceananigans.DistributedComputations
 
 using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range
 

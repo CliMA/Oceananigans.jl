@@ -1,8 +1,6 @@
 import Oceananigans.Fields: Field, FieldBoundaryBuffers, location, set!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
-using Oceananigans.OutputReaders: FieldTimeSeries
-
 using CUDA: CuArray
 using Oceananigans.Grids: topology
 using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions, validate_indices, recv_from_buffers!
@@ -20,11 +18,6 @@ end
 
 const DistributedField      = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
 const DistributedFieldTuple = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
-const DistributedFTS        = FieldTimeSeries{LX, LY, LZ, TI, K, I, D, <:DistributedGrid} where {LX, LY, LZ, TI, K, I, D}
-
-child_architecture(field::AbstractField)    = architecture(field)
-child_architecture(field::DistributedField) = child_architecture(architecture(field))
-child_architecture(field::DistributedFTS)   = child_architecture(architecture(field))
 
 function set!(u::DistributedField, f::Function)
     arch = architecture(u)
