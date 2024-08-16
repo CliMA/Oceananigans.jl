@@ -10,7 +10,8 @@ struct DirectionalAveraging{D} <: AbstractAveragingProcedure
     dims :: D
 end
 
-Base.summary(averaging::DirectionalAveraging) = string("Averaging over directions $(averaging.dims)")
+
+Base.summary(averaging::DirectionalAveraging) = string("DirectionalAveraging over directions $(averaging.dims)")
 Base.show(io::IO, averaging::DirectionalAveraging) = print(io, summary(averaging))
 
 struct ScaleInvariantSmagorinsky{TD, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
@@ -30,8 +31,13 @@ end
 """
     ScaleInvariantSmagorinsky([time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64;] averaging=1.0, Pr=1.0)
 """
-ScaleInvariantSmagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64; averaging=DirectionalAveraging(Colon()), Pr=1.0) where TD =
-        ScaleInvariantSmagorinsky{TD, FT}(averaging, Pr)
+function ScaleInvariantSmagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64; averaging=DirectionalAveraging(Colon()), Pr=1.0) where TD
+    if !(averaging isa AbstractAveragingProcedure)
+        averaging = DirectionalAveraging(averaging)
+    end
+    return ScaleInvariantSmagorinsky{TD, FT}(averaging, Pr)
+end
+
 
 ScaleInvariantSmagorinsky(FT::DataType; kwargs...) = ScaleInvariantSmagorinsky(ExplicitTimeDiscretization(), FT; kwargs...)
 
