@@ -2,6 +2,7 @@
 
 ```@meta
 DocTestSetup = quote
+    using Oceananigans
     using CairoMakie
     CairoMakie.activate!(type = "svg")
     set_theme!(Theme(fontsize=24))
@@ -46,10 +47,6 @@ This simple grid
 In building our first grid, we did not specify whether it should be constructed on the [`CPU`](@ref)` or [`GPU`](@ref).
 As a result, the grid was constructed by default on the CPU.
 Next we build a grid on the _GPU_ that's two-dimensional in ``x, z`` and has variably-spaced cell interfaces in the `z`-direction,
-
-```@setup grids_gpu
-using Oceananigans
-```
 
 ```jldoctest grids_gpu
 architecture = GPU()
