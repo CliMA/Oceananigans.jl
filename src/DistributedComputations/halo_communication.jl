@@ -98,25 +98,30 @@ function fill_halo_regions!(field::DistributedField, args...; kwargs...)
                               kwargs...)
 end
 
-function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, args...; fill_boundary_normal_velocities = true, kwargs...)
+function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, args...; only_local_halos = false, fill_boundary_normal_velocities = true, kwargs...)
     if fill_boundary_normal_velocities
         fill_open_boundary_regions!(c, bcs, indices, loc, grid, args...; kwargs...)
     end
     
-    arch             = architecture(grid)
+    arch = architecture(grid)
+    
     fill_halos!, bcs = permute_boundary_conditions(bcs) 
-
-    number_of_tasks = length(fill_halos!)
+    number_of_tasks  = length(fill_halos!)
 
     for task = 1:number_of_tasks
-        fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, buffers, args...; kwargs...)
+        fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
     end
 
-    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; kwargs...)
+    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
     
-    # Switch to the next field to send
-    arch.mpi_tag[] += 1
-
+    # We increment the tag counter only if we have actually initiated the MPI communication.
+    # This is the case only if any of the boundary conditions is a distributed communication 
+    # boundary condition (DCBCT) _and_ the `only_local_halos` keyword argument is false.
+    increment_tag = any(isa.(bcs, DCBCT)) && !only_local_halos
+    if increment_tag 
+        arch.mpi_tag[] += 1
+    end
+    
     return nothing
 end
 
@@ -309,7 +314,8 @@ for side in sides
             send_buffer = $get_side_send_buffer(c, grid, buffers, arch)
             send_tag = $side_send_tag(arch, location)
 
-            @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
+            @show typeof(send_buffer), size(send_buffer), arch.mpi_tag[]
+            @info "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
             
             send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, arch.communicator)
 
@@ -336,7 +342,8 @@ for side in sides
             recv_buffer = $get_side_recv_buffer(c, grid, buffers, arch)
             recv_tag = $side_recv_tag(arch, location)
 
-            @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
+            @show typeof(recv_buffer), size(recv_buffer), arch.mpi_tag[]
+            @info "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
             recv_req = MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, arch.communicator)
 
             return recv_req
