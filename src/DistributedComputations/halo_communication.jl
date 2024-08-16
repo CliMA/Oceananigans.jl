@@ -315,8 +315,7 @@ for side in sides
             send_buffer = $get_side_send_buffer(c, grid, buffers, arch)
             send_tag = $side_send_tag(arch, location)
 
-            @show typeof(send_buffer), size(send_buffer), arch.mpi_tag[]
-            @info "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
+            @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
             
             send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, arch.communicator)
 
@@ -343,8 +342,7 @@ for side in sides
             recv_buffer = $get_side_recv_buffer(c, grid, buffers, arch)
             recv_tag = $side_recv_tag(arch, location)
 
-            @show typeof(recv_buffer), size(recv_buffer), arch.mpi_tag[]
-            @info "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
+            @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
             recv_req = MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, arch.communicator)
 
             return recv_req
