@@ -241,9 +241,6 @@ function cpu_interpolating_time_indices(::GPU, times::AbstractVector, time_index
     return interpolating_time_indices(time_indexing, cpu_times, t)
 end
 
-# For a distributed architecture, we want to use the child architecture
-cpu_interpolating_time_indices(arch::Distributed, args...) = cpu_interpolating_time_indices(child_architecture(arch), args...)
-
 # Fallbacks that do nothing
 update_field_time_series!(fts, time::Time) = nothing
 update_field_time_series!(fts, n::Int) = nothing
@@ -252,7 +249,7 @@ update_field_time_series!(fts, n::Int) = nothing
 # Linear extrapolation, simple version
 function update_field_time_series!(fts::PartlyInMemoryFTS, time_index::Time)
     t = time_index.time
-    ñ, n₁, n₂ = cpu_interpolating_time_indices(architecture(fts), fts.times, fts.time_indexing, t)
+    ñ, n₁, n₂ = cpu_interpolating_time_indices(child_architecture(fts), fts.times, fts.time_indexing, t)
     return update_field_time_series!(fts, n₁, n₂)
 end
 
