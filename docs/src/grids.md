@@ -9,7 +9,7 @@ DocTestSetup = quote
 end
 ```
 
-Oceananigans simulates the dynamics of ocean-flavored fluids by solving differential equations that conserve momentum, mass, and energy on a mesh of finite volumes or "cells".
+Oceananigans simulates the dynamics of ocean-flavored fluids by solving equations that conserve momentum, mass, and energy on a grid of finite volumes or "cells".
 The first decision we make when setting up a simulation is: on what _grid_ are we going to run our simulation?
 The "grid" captures the
 
