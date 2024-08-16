@@ -2,7 +2,6 @@
 
 ```@meta
 DocTestSetup = quote
-    using Oceananigans
     using CairoMakie
     CairoMakie.activate!(type = "svg")
     set_theme!(Theme(fontsize=24))
@@ -18,13 +17,12 @@ The "grid" captures the
 3. The machine architecture (CPU, GPU, lots of CPUs or lots of GPUs); and
 4. The precision of floating point numbers (double precision or single precision).
 
-To create a simple grid on the CPU that divides a three-dimensional rectangular domain -- "a box" -- into evenly-spaced cells, we write
+We start by making a simple grid that divides a three-dimensional rectangular domain -- "a box" -- into evenly-spaced cells,
 
 ```jldoctest grids
-architecture = CPU()
+using Oceananigans
 
-grid = RectilinearGrid(architecture,
-                       topology = (Periodic, Periodic, Bounded),
+grid = RectilinearGrid(topology = (Periodic, Periodic, Bounded),
                        size = (16, 8, 4),
                        x = (0, 64),
                        y = (0, 32),
@@ -39,15 +37,15 @@ grid = RectilinearGrid(architecture,
 
 This simple grid
 
-* Lives on the CPU. To make a grid on the GPU (if one is available) we write `architecture = GPU()`.
-  And for multiple CPUs or GPUs -- we'll get to that.
 * Has a domain that's "periodic" in ``x, y``, but bounded in ``z``.
 * Has `16` cells in `x`, `8` cells in `y`, and `4` cells in `z`. That means there are ``16 \times 8 \times 4 = 512`` cells in all.
 * Has an `x` dimension that spans from `x=0`, to `x=64`. And `y` spans `y=0` to `y=32`, and `z` spans `z=0` to `z=8`.
 * Has cells that are all the same size, dividing the box in 512 that each has dimension ``4 \times 4 \times 2``.
   Note that length units are whatever is used to construct the grid, so it's up to the user to make sure that all inputs use consistent units.
 
-To construct a grid on the _GPU_ that's two-dimensional in ``x, z`` and has variably-spaced cell interfaces in the `z`-direction, we write:
+In building our first grid, we did not specify whether it should be constructed on the [`CPU`](@ref)` or [`GPU`](@ref).
+As a result, the grid was constructed by default on the CPU.
+Next we build a grid on the _GPU_ that's two-dimensional in ``x, z`` and has variably-spaced cell interfaces in the `z`-direction,
 
 ```@setup grids_gpu
 using Oceananigans
@@ -72,14 +70,17 @@ grid = RectilinearGrid(architecture,
 
 !!! note "GPU architecture requires a CUDA-enabled device"
     To run the above example and create a grid on the GPU, an Nvidia GPU has to be available
-    and [`CUDA.jl`](https://cuda.juliagpu.org/stable/) must be working).
+    and [`CUDA.jl`](https://cuda.juliagpu.org/stable/) must be working). For more information
+    see the [`CUDA.jl` documentation](https://cuda.juliagpu.org/stable/).
 
 The ``y``-dimension is "missing" because it's marked `Flat` in `topology = (Periodic, Flat, Bounded)`.
 So nothing varies in ``y``: `y`-derivatives are 0.
-Also, the keyword argument (or "kwarg" for short) that specifies the ``y``-domains may be omitted,sand `size` has only two elements rather than 3 as in the first example.
+Also, the keyword argument (or "kwarg" for short) that specifies the ``y``-domains may be omitted, and `size` has only two elements rather than 3 as in the first example.
 In the stretched cell interfaces specified by `z_interfaces`, the number of
 vertical cell interfaces is `Nz + 1 = length(z_interfaces) = 5`, where `Nz = 4` is the number
 of cells in the vertical.
+
+A bit later in this tutorial, we'll give examples that illustrate how to build a grid thats [`Distributed`](@ref) across _multiple_ CPUs and GPUs.
 
 ## Grid types: squares, shells, and mountains
 
