@@ -538,7 +538,7 @@ grid = LatitudeLongitudeGrid(size = (Nx, Ny),
 
 using CairoMakie
 
-fig = Figure(size=(800, 400))
+fig = Figure(size=(800, 400), title="Spacings on a Mercator grid")
 axx = Axis(fig[1, 1], xlabel="Zonal spacing (km)", ylabel="Latitude (degrees)")
 scatter!(axx, Δx ./ 1e3, φ)
 
