@@ -192,7 +192,7 @@ CairoMakie.activate!(type = "svg")
 set_theme!(Theme(fontsize=24))
 
 grid = RectilinearGrid(topology = (Bounded, Bounded, Bounded),
-                       size = (100, 100, 50),
+                       size = (20, 20, 20),
                        x = (-5kilometers, 5kilometers),
                        y = (-5kilometers, 5kilometers),
                        z = (0, 1kilometer))
