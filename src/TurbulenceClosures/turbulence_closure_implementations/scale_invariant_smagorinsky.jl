@@ -10,18 +10,19 @@ struct DirectionalAveraging{D} <: AbstractAveragingProcedure
     dims :: D
 end
 
-
 Base.summary(averaging::DirectionalAveraging) = string("DirectionalAveraging over directions $(averaging.dims)")
 Base.show(io::IO, averaging::DirectionalAveraging) = print(io, summary(averaging))
+
 
 struct ScaleInvariantSmagorinsky{TD, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
     averaging :: AbstractAveragingProcedure
     Pr :: P
+    update_frequency :: Integer
 
-    function ScaleInvariantSmagorinsky{TD, FT}(averaging, Pr) where {TD, FT}
+    function ScaleInvariantSmagorinsky{TD, FT}(averaging, Pr; update_frequency = 5) where {TD, FT}
         Pr = convert_diffusivity(FT, Pr; discrete_form=false)
         P = typeof(Pr)
-        return new{TD, FT, P}(averaging, Pr)
+        return new{TD, FT, P}(averaging, Pr, update_frequency)
     end
 end
 
@@ -32,9 +33,7 @@ end
     ScaleInvariantSmagorinsky([time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64;] averaging=1.0, Pr=1.0)
 """
 function ScaleInvariantSmagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64; averaging=DirectionalAveraging(Colon()), Pr=1.0) where TD
-    if !(averaging isa AbstractAveragingProcedure)
-        averaging = DirectionalAveraging(averaging)
-    end
+    averaging = (averaging isa AbstractAveragingProcedure) ? averaging : DirectionalAveraging(averaging)
     return ScaleInvariantSmagorinsky{TD, FT}(averaging, Pr)
 end
 
@@ -89,11 +88,13 @@ function compute_diffusivities!(diffusivity_fields, closure::ScaleInvariantSmago
     LM_op = Average(KernelFunctionOperation{Center, Center, Center}(LᵢⱼMᵢⱼ_ccc, grid, model.velocities...))
     MM_op = Average(KernelFunctionOperation{Center, Center, Center}(MᵢⱼMᵢⱼ_ccc, grid, model.velocities...))
 
-    mean!(diffusivity_fields.LM_avg, LM_op.operand)
-    mean!(diffusivity_fields.MM_avg, MM_op.operand)
+    if model.clock.iteration % closure.update_frequency == 0
+        mean!(diffusivity_fields.LM_avg, LM_op.operand)
+        mean!(diffusivity_fields.MM_avg, MM_op.operand)
 
-    launch!(arch, grid, parameters, _compute_scale_invariant_smagorinsky_viscosity!,
-            diffusivity_fields.νₑ, diffusivity_fields.LM_avg, diffusivity_fields.MM_avg, grid, closure, buoyancy, velocities, tracers)
+        launch!(arch, grid, parameters, _compute_scale_invariant_smagorinsky_viscosity!,
+                diffusivity_fields.νₑ, diffusivity_fields.LM_avg, diffusivity_fields.MM_avg, grid, closure, buoyancy, velocities, tracers)
+    end
 
     return nothing
 end
@@ -297,7 +298,7 @@ end
 @inline L₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℱ²ᵟ(i, j, k, grid, u₂u₃ᶜᶜᶜ, u, v, w) - ū₂ū₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
 
 
-Base.summary(closure::ScaleInvariantSmagorinsky) = string("ScaleInvariantSmagorinsky: averaging=$(closure.averaging), Pr=$(closure.Pr)")
+Base.summary(closure::ScaleInvariantSmagorinsky) = string("ScaleInvariantSmagorinsky: averaging=$(closure.averaging), Pr=$(closure.Pr), update_frequency=$(closure.update_frequency)")
 Base.show(io::IO, closure::ScaleInvariantSmagorinsky) = print(io, summary(closure))
 
 #####
