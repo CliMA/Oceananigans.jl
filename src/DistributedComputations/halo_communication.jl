@@ -104,7 +104,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     end
     
     arch = architecture(grid)
-    
+
     fill_halos!, bcs = permute_boundary_conditions(bcs) 
     number_of_tasks  = length(fill_halos!)
 
@@ -118,6 +118,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     # This is the case only if any of the boundary conditions is a distributed communication 
     # boundary condition (DCBCT) _and_ the `only_local_halos` keyword argument is false.
     increment_tag = any(isa.(bcs, DCBCT)) && !only_local_halos
+    
     if increment_tag 
         arch.mpi_tag[] += 1
     end
