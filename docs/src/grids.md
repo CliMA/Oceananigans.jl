@@ -163,7 +163,7 @@ To build an `ImmersedBoundaryGrid`, we start by building one of the three underl
 using Oceananigans.Units
 
 grid = RectilinearGrid(topology = (Bounded, Bounded, Bounded),
-                       size = (100, 100, 50),
+                       size = (20, 20, 20),
                        x = (-5kilometers, 5kilometers),
                        y = (-5kilometers, 5kilometers),
                        z = (0, 1kilometer))
@@ -176,12 +176,12 @@ mountain(x, y) = H * exp(-(x^2 + y^2) / 2W^2)
 mountain_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(mountain))
 
 # output
-100×100×50 ImmersedBoundaryGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo:
-├── immersed_boundary: GridFittedBottom(mean(z)=6.28318, min(z)=2.28402e-9, max(z)=99.7503)
-├── underlying_grid: 100×100×50 RectilinearGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo
-├── Bounded  x ∈ [-5000.0, 5000.0] regularly spaced with Δx=100.0
-├── Bounded  y ∈ [-5000.0, 5000.0] regularly spaced with Δy=100.0
-└── Bounded  z ∈ [0.0, 1000.0]     regularly spaced with Δz=20.0
+20×20×20 ImmersedBoundaryGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo:
+├── immersed_boundary: GridFittedBottom(mean(z)=6.28318, min(z)=1.58939e-8, max(z)=93.9413)
+├── underlying_grid: 20×20×20 RectilinearGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo
+├── Bounded  x ∈ [-5000.0, 5000.0] regularly spaced with Δx=500.0
+├── Bounded  y ∈ [-5000.0, 5000.0] regularly spaced with Δy=500.0
+└── Bounded  z ∈ [0.0, 1000.0]     regularly spaced with Δz=50.0
 ```
 
 Yep, that's a Gaussian mountain:
@@ -211,12 +211,11 @@ mountain_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(mountain))
 using CairoMakie
 
 h = mountain_grid.immersed_boundary.bottom_height
-x, y, z = nodes(h)
 
 fig = Figure(size=(600, 600))
-ax = Axis(fig[1, 1], xlabel="x (km)", ylabel="y (km)", aspect=1)
-hm = heatmap!(ax, x / kilometer, y / kilometer, interior(h, :, :, 1))
-Colorbar(fig[2, 1], hm, vertical=false, label="Bottom height (m)")
+ax = Axis(fig[2, 1], xlabel="x (m)", ylabel="y (m)", aspect=1)
+hm = heatmap!(ax, h)
+Colorbar(fig[1, 1], hm, vertical=false, label="Bottom height (m)")
 
 current_figure()
 ```
