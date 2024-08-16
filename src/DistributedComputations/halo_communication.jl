@@ -115,7 +115,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
     
     # We increment the tag counter only if we have actually initiated the MPI communication.
-    # This is the case only if at lease one of the boundary conditions is a distributed communication 
+    # This is the case only if at least one of the boundary conditions is a distributed communication 
     # boundary condition (DCBCT) _and_ the `only_local_halos` keyword argument is false.
     increment_tag = any(isa.(bcs, DCBCT)) && !only_local_halos
     
