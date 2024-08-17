@@ -14,15 +14,17 @@ Base.summary(averaging::DirectionalAveraging) = string("DirectionalAveraging ove
 Base.show(io::IO, averaging::DirectionalAveraging) = print(io, summary(averaging))
 
 
-struct ScaleInvariantSmagorinsky{AP, TD, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
+struct ScaleInvariantSmagorinsky{TD, AP, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
     averaging :: AP
     Pr :: P
     update_frequency :: Integer
 
-    function ScaleInvariantSmagorinsky{AP, TD, FT}(averaging, Pr; update_frequency = 5) where {AP, TD, FT}
+    function ScaleInvariantSmagorinsky{TD, AP, FT}(averaging, Pr; update_frequency = 5) where {TD, AP, FT}
+        @show Pr
         Pr = convert_diffusivity(FT, Pr; discrete_form=false)
+        @show Pr
         P = typeof(Pr)
-        return new{AP, TD, FT, P}(averaging, Pr, update_frequency)
+        return new{TD, AP, FT, P}(averaging, Pr, update_frequency)
     end
 end
 
@@ -35,15 +37,15 @@ end
 function ScaleInvariantSmagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64; averaging=DirectionalAveraging(Colon()), Pr=1.0, update_frequency=5) where TD
     averaging = (averaging isa AbstractAveragingProcedure) ? averaging : DirectionalAveraging(averaging)
     AP = typeof(averaging)
-    return ScaleInvariantSmagorinsky{AP, TD, FT}(averaging, Pr; update_frequency)
+    return ScaleInvariantSmagorinsky{TD, AP, FT}(averaging, Pr; update_frequency)
 end
 
 
 ScaleInvariantSmagorinsky(FT::DataType; kwargs...) = ScaleInvariantSmagorinsky(ExplicitTimeDiscretization(), FT; kwargs...)
 
-function with_tracers(tracers, closure::ScaleInvariantSmagorinsky{AP, TD, FT}) where {AP, TD, FT}
+function with_tracers(tracers, closure::ScaleInvariantSmagorinsky{TD, AP, FT}) where {TD, AP, FT}
     Pr = tracer_diffusivities(tracers, closure.Pr)
-    return ScaleInvariantSmagorinsky{AP, TD, FT}(closure.averaging, Pr, update_frequency=closure.update_frequency)
+    return ScaleInvariantSmagorinsky{TD, AP, FT}(closure.averaging, Pr, update_frequency=closure.update_frequency)
 end
 
 function LᵢⱼMᵢⱼ_ccc(i, j, k, grid, u, v, w)
