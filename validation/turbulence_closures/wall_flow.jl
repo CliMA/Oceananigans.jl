@@ -76,6 +76,8 @@ function run_wall_flow(closure; grid=grid, H=1, L=2π*H, N=32, u★=1, stop_time
 
 end
 
+run_wall_flow(ScaleInvariantSmagorinsky(averaging=(1,2), Pr=1), stop_time=0.5)
+pause
 
 closures = [SmagorinskyLilly(), ScaleInvariantSmagorinsky(averaging = (1,2))]
 for closure in closures
