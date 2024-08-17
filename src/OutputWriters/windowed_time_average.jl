@@ -120,12 +120,6 @@ end
 #     end
 # end
 
-# function schedule_aligned_time_step(sch::AveragedTimeInterval, clock, Δt)
-#     t★ = next_actuation_time(sch)
-#     t = clock.time
-#     return min(Δt, t★ - t)
-# end
-
 # Schedule actuation
 (sch::AveragedTimeInterval)(model) = sch.collecting || model.clock.time >= next_actuation_time(sch) - sch.window
 # initialize_schedule!(sch::AveragedTimeInterval, clock) = sch.previous_interval_stop_time = next_actuation_time(sch) - sch.interval
@@ -296,7 +290,7 @@ function advance_time_average!(wta::WindowedTimeAverage, model)
     #
     # The "collecting" mode indicates that collecting is occuring; therefore we accumulate the time-average.
     
-    elseif !(wta.schedule.collecting) #&& !(end_of_window(wta.schedule, model.clock))
+    elseif !(wta.schedule.collecting) 
         # run_diagnostic! has been called on schedule but we are not currently collecting data.
         # Initialize data collection:
 
@@ -310,27 +304,33 @@ function advance_time_average!(wta::WindowedTimeAverage, model)
         wta.window_start_time = model.clock.time
         wta.window_start_iteration = model.clock.iteration
         wta.previous_collection_time = model.clock.time
-        # print("elseif end_of_window has been triggered! Setting collecting = false")
 
-    elseif end_of_window(wta.schedule, model.clock)
-        # Output is imminent. Finalize averages and cease data collection.
-        # Note that this may induce data collecting more frequently than proscribed
-        # by `wta.schedule.stride`.
-        accumulate_result!(wta, model)
+
+    # elseif end_of_window(wta.schedule, model.clock)
+    #     # Output is imminent. Finalize averages and cease data collection.
+    #     # Note that this may induce data collecting more frequently than proscribed
+    #     # by `wta.schedule.stride`.
+    #     accumulate_result!(wta, model)
         
-        # Averaging period is complete.
-        wta.schedule.collecting = false
+    #     # Averaging period is complete.
+    #     wta.schedule.collecting = false
+    #     wta.schedule.actuations += 1
 
-        # Reset the "previous" interval time, subtracting a sliver that presents overshoot from accumulating.
-        initialize_schedule!(wta.schedule, model.clock)
-        wta.schedule.actuations += 1
-
-    elseif mod(model.clock.iteration - wta.window_start_iteration, stride(wta)) == 0
-        # Collect data as usual
-        accumulate_result!(wta, model)
-        # wta.window_start_time = model.clock.time - stride(wta) * model.clock.last_Δt
+    # elseif mod(model.clock.iteration - wta.window_start_iteration, stride(wta)) == 0
+    #     # Collect data as usual
+    #     accumulate_result!(wta, model)
     end
-
+    if !unscheduled
+        if wta.schedule.collecting
+            if end_of_window(wta.schedule, model.clock)
+            accumulate_result!(wta, model)
+            wta.schedule.collecting = false
+            wta.schedule.actuations += 1
+            elseif mod(model.clock.iteration - wta.window_start_iteration, stride(wta)) == 0
+            accumulate_result!(wta, model)
+            end
+        end
+    end
     return nothing
 end
 
