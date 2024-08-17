@@ -214,7 +214,7 @@ x, y, z = nodes(h)
 
 fig = Figure(size=(600, 600))
 ax = Axis(fig[1, 1], xlabel="x (km)", ylabel="y (km)", aspect=1)
-hm = heatmap!(ax, x / kilometer, y / kilometer, interior(h, :, :, 1))
+hm = heatmap!(ax, x / kilometer, y / kilometer, h)
 Colorbar(fig[2, 1], hm, vertical=false, label="Bottom height (m)")
 
 current_figure()
