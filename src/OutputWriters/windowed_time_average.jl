@@ -103,10 +103,7 @@ function next_actuation_time(sch::AveragedTimeInterval)
     return t₀ + (N + 1) * T
     # print("first_actuation_time:",t₀)
 end
-function actuations(sch::AveragedTimeInterval)
-    N = sch.actuations
-    return N
-end
+
 # function (sch::AveragedTimeInterval)(model)
 #     t = model.clock.time
 #     t★ = next_actuation_time(sch)
