@@ -1,5 +1,6 @@
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.Grids: znode
 using Printf
 simname = "wall_flow"
 
@@ -39,7 +40,7 @@ function run_wall_flow(closure; grid=grid, H=1, L=2π*H, N=32, u★=1)
     set!(model, u=u₀, v=noise, w=noise)
 
     Δt₀ = 1e-4 * (H / u★) / N
-    simulation = Simulation(model, Δt = Δt₀, stop_time = 20)
+    simulation = Simulation(model, Δt = Δt₀, stop_time = 50)
 
     wizard = TimeStepWizard(max_change=1.1, cfl=0.9)
     simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(2))
@@ -54,66 +55,76 @@ function run_wall_flow(closure; grid=grid, H=1, L=2π*H, N=32, u★=1)
     u, v, w = model.velocities
 
     U = Average(u, dims=(1,2))
-    V = Average(v, dims=(1,2))
-    w² = w*w
-    uw = u*w
-    vw = v*w
-    τ = √(uw^2 + vw^2)
+    z = @show KernelFunctionOperation{Nothing, Nothing, Face}(znode, model.grid, Center(), Center(), Face())
+    ϕ = @show @at (Nothing, Nothing, Center) κ * z / u★ * ∂z(Field(U))
 
-    outputs = (; u, v, w, U, V, w², τ)
+    if closure isa ScaleInvariantSmagorinsky
+        cₛ² = model.diffusivity_fields.LM_avg / model.diffusivity_fields.MM_avg
+    else
+        cₛ² = Field{Nothing, Nothing, Center}(grid)
+        cₛ² .= model.closure.C^2
+    end
+    outputs = (; u, w, U, ϕ, cₛ²)
 
     simulation.output_writers[:fields] = NetCDFOutputWriter(model, outputs;
                                                             filename = joinpath(@__DIR__, simname *"_"* closure_name *".nc"),
                                                             schedule = TimeInterval(1),
+                                                            indices = (:, 1, :),
+                                                            global_attributes = (; u★, z₀, H, L),
                                                             overwrite_existing = true)
     run!(simulation)
 
 end
 
 
-
-
-closures = [SmagorinskyLilly(),]
+closures = [SmagorinskyLilly(), ScaleInvariantSmagorinsky(averaging = (1,2))]
 for closure in closures
     @info "Running" closure
-    run_free_convection(closure)
+    #run_wall_flow(closure)
 end
 
 
 
 @info "Start plotting"
 using CairoMakie
+using NCDatasets
 set_theme!(Theme(fontsize = 18))
-fig = Figure(size = (800, 800))
-axis_kwargs = (xlabel = "x", ylabel = "y", limits = ((0, 2π), (0, 2π)), aspect = AxisAspect(1))
+fig = Figure(size = (800, 500))
+ax1 = Axis(fig[2, 1]; xlabel = "cₛ", ylabel = "z", limits = ((0, 0.3), (0, 0.8)))
+ax2 = Axis(fig[2, 2]; xlabel = "z", ylabel = "U", limits = ((1e-3, 4e-1), (10, 20)), xscale = log10)
+ax3 = Axis(fig[2, 3]; xlabel = "ϕ = κ z ∂z(U) / u★", ylabel = "z", limits = ((0.3, 1.7), (0, 0.8)))
 n = Observable(1)
 
+colors = [:red, :blue]
 for (i, closure) in enumerate(closures)
     closure_name = string(nameof(typeof(closure)))
     local filename = simname * "_" * closure_name
     @info "Plotting from " * filename
-    local w_timeseries = FieldTimeSeries(filename * ".jld2", "w")
-    local w = @lift interior(w_timeseries[$n], :, :, 1)
+    ds = NCDataset(filename * ".nc", "r")
 
-    local ax = Axis(fig[2, i]; title = "ΣᵢⱼΣᵢⱼ; $closure_name", axis_kwargs...)
-    local xc, yc, zc = nodes(w_timeseries)
-    heatmap!(ax, xc, yc, w, colormap = :speed, colorrange = (0, 2))
+    xc, zc = ds["xC"], ds["zC"]
 
-    global times = w_timeseries.times
-    if closure isa ScaleInvariantSmagorinsky
-        c²ₛ_timeseries = FieldTimeSeries(filename * ".jld2", "c²ₛ")
-        c²ₛ = interior(c²ₛ_timeseries, 1, 1, 1, :)
-        global cₛ = sqrt.(max.(c²ₛ, 0))
-        local ax_cₛ = Axis(fig[3, 1:length(closures)]; title = "Smagorinsky coefficient", xlabel = "Time", limits = ((0, nothing), (0, 0.2)))
-        lines!(ax_cₛ, times, cₛ, color=:black, label="Scale Invariant Smagorinsky")
-        hlines!(ax_cₛ, [0.16], linestyle=:dash, color=:blue)
+    cₛ² = @lift sqrt.(max.(ds["cₛ²"], 0))[:, $n]
+    scatterlines!(ax1, cₛ², zc, color=colors[i], markercolor=colors[i], label=closure_name)
+
+    if i == 1
+        û = (ds.attrib["u★"] / κ) * log.(zc / ds.attrib["z₀"])
+        lines!(ax2, zc, û, color=:black)
     end
+    U = @lift ds["U"][:, $n]
+    scatterlines!(ax2, zc, U, color=colors[i], markercolor=colors[i])
+
+    ϕ = @lift ds["ϕ"][:, $n]
+    scatterlines!(ax3, ϕ, zc, color=colors[i], markercolor=colors[i])
+
+    global times = ds["time"]
 end
 
-title = @lift "t = " * string(round(times[$n], digits=2)) * ", cₛ = " * string(round(cₛ[$n], digits=4)) 
+axislegend(ax1, labelsize=10)
+title = @lift "t = " * string(round(times[$n], digits=2))
 Label(fig[1, 1:2], title, fontsize=24, tellwidth=false)
 frames = 1:length(times)
 @info "Making a neat animation of vorticity and speed..."
-record(fig, simname * ".mp4", frames, framerate=24) do i
+record(fig, simname * ".mp4", frames, framerate=8) do i
     n[] = i
 end
