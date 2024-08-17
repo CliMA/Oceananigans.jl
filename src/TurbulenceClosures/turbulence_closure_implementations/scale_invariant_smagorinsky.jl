@@ -14,17 +14,16 @@ Base.summary(averaging::DirectionalAveraging) = string("DirectionalAveraging ove
 Base.show(io::IO, averaging::DirectionalAveraging) = print(io, summary(averaging))
 
 
-struct ScaleInvariantSmagorinsky{TD, AP, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
+struct ScaleInvariantSmagorinsky{TD, AP, FT, P, UF} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
     averaging :: AP
     Pr :: P
-    update_frequency :: Integer
+    update_frequency :: UF
 
     function ScaleInvariantSmagorinsky{TD, AP, FT}(averaging, Pr; update_frequency = 5) where {TD, AP, FT}
-        @show Pr
         Pr = convert_diffusivity(FT, Pr; discrete_form=false)
-        @show Pr
         P = typeof(Pr)
-        return new{TD, AP, FT, P}(averaging, Pr, update_frequency)
+        update_frequency = Integer(update_frequency)
+        return new{TD, AP, FT, P, Integer}(averaging, Pr, update_frequency)
     end
 end
 
