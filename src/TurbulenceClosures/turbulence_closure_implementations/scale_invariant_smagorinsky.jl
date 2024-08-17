@@ -14,15 +14,15 @@ Base.summary(averaging::DirectionalAveraging) = string("DirectionalAveraging ove
 Base.show(io::IO, averaging::DirectionalAveraging) = print(io, summary(averaging))
 
 
-struct ScaleInvariantSmagorinsky{TD, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
-    averaging :: AbstractAveragingProcedure
+struct ScaleInvariantSmagorinsky{AP, TD, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
+    averaging :: AP
     Pr :: P
     update_frequency :: Integer
 
-    function ScaleInvariantSmagorinsky{TD, FT}(averaging, Pr; update_frequency = 5) where {TD, FT}
+    function ScaleInvariantSmagorinsky{AP, TD, FT}(averaging, Pr; update_frequency = 5) where {AP, TD, FT}
         Pr = convert_diffusivity(FT, Pr; discrete_form=false)
         P = typeof(Pr)
-        return new{TD, FT, P}(averaging, Pr, update_frequency)
+        return new{AP, TD, FT, P}(averaging, Pr, update_frequency)
     end
 end
 
@@ -32,17 +32,18 @@ end
 """
     ScaleInvariantSmagorinsky([time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64;] averaging=1.0, Pr=1.0)
 """
-function ScaleInvariantSmagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64; averaging=DirectionalAveraging(Colon()), Pr=1.0) where TD
+function ScaleInvariantSmagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64; averaging=DirectionalAveraging(Colon()), Pr=1.0, update_frequency=5) where TD
     averaging = (averaging isa AbstractAveragingProcedure) ? averaging : DirectionalAveraging(averaging)
-    return ScaleInvariantSmagorinsky{TD, FT}(averaging, Pr)
+    AP = typeof(averaging)
+    return ScaleInvariantSmagorinsky{AP, TD, FT}(averaging, Pr; update_frequency)
 end
 
 
 ScaleInvariantSmagorinsky(FT::DataType; kwargs...) = ScaleInvariantSmagorinsky(ExplicitTimeDiscretization(), FT; kwargs...)
 
-function with_tracers(tracers, closure::ScaleInvariantSmagorinsky{TD, FT}) where {TD, FT}
+function with_tracers(tracers, closure::ScaleInvariantSmagorinsky{AP, TD, FT}) where {AP, TD, FT}
     Pr = tracer_diffusivities(tracers, closure.Pr)
-    return ScaleInvariantSmagorinsky{TD, FT}(closure.averaging, Pr)
+    return ScaleInvariantSmagorinsky{AP, TD, FT}(closure.averaging, Pr, update_frequency=closure.update_frequency)
 end
 
 function LᵢⱼMᵢⱼ_ccc(i, j, k, grid, u, v, w)
