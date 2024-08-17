@@ -15,7 +15,7 @@ grid = RectilinearGrid(CPU(), size=(N, N, N÷2), topology=(Periodic, Periodic, B
                        x=(0, L), y=(0, L), z=(0, H))
 @show grid
 
-function run_wall_flow(closure; grid=grid, H=1, L=2π*H, N=32, u★=1)
+function run_wall_flow(closure; grid=grid, H=1, L=2π*H, N=32, u★=1, stop_time=50)
     z₁ = first(znodes(grid, Center()))
     cᴰ = (κ / log(z₁ / z₀))^2
 
@@ -40,7 +40,7 @@ function run_wall_flow(closure; grid=grid, H=1, L=2π*H, N=32, u★=1)
     set!(model, u=u₀, v=noise, w=noise)
 
     Δt₀ = 1e-4 * (H / u★) / N
-    simulation = Simulation(model, Δt = Δt₀, stop_time = 50)
+    simulation = Simulation(model, Δt = Δt₀, stop_time = stop_time)
 
     wizard = TimeStepWizard(max_change=1.1, cfl=0.9)
     simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(2))
