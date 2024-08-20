@@ -43,12 +43,15 @@ opposite_side = Dict(
 
 ID_DIGITS   = 2
 
+# A Hashing function which returns a unique
+# integer between 0 and 26 for a combination of
+# 3 locations wither Center, Face, or Nothing
 location_counter = 0
 for LX in (:Face, :Center, :Nothing)
     for LY in (:Face, :Center, :Nothing)
         for LZ in (:Face, :Center, :Nothing)
             @eval loc_id(::$LX, ::$LY, ::$LZ) = $location_counter
-            location_counter += 1
+            global location_counter += 1
         end
     end
 end
@@ -322,7 +325,6 @@ for side in sides
             send_tag = $side_send_tag(arch, grid, location)
 
             @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
-            
             send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, arch.communicator)
 
             return send_req
