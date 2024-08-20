@@ -68,7 +68,7 @@ function synchronize_communication!(field)
         cooperative_waitall!(arch.mpi_requests)
 
         # Reset MPI tag
-        arch.mpi_tag[] = 0
+        arch.active_requests[] = 0
 
         # Reset MPI requests
         empty!(arch.mpi_requests)
