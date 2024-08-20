@@ -22,25 +22,35 @@ end
 convert_arguments(pl::Type{<:AbstractPlot}, f::Field) =
     convert_arguments(pl, convert_field_argument(f)...)
 
+function flattened_cpu_interior(f)
+    Nx, Ny, Nz = size(f)
+
+    ii = drop_singleton_indices(Nx)
+    jj = drop_singleton_indices(Ny)
+    kk = drop_singleton_indices(Nz)
+
+    fi = interior(f, ii, jj, kk)
+    fi_cpu = on_architecture(CPU(), fi)
+
+    return fi_cpu
+end
+
 function convert_field_argument(f::Field)
+
+    # Drop singleton dimensions and convert to CPU if necessary
+    fi_cpu = flattened_cpu_interior(f)
+
+    # Indices of the non-zero dimensions
+    d1 = findfirst(n -> n > 1, size(f))
+    d2 =  findlast(n -> n > 1, size(f))
+    
+    # Nodes shenanigans
+    fnodes = nodes(f)
 
     # Deduce dimensionality
     Nx, Ny, Nz = size(f)
     D = (Nx > 1) + (Ny > 1) + (Nz > 1)
 
-    # Indices of the non-zero dimensions
-    d1 = findfirst(n -> n > 1, size(f))
-    d2 =  findlast(n -> n > 1, size(f))
-
-    # Drop singleton dimensions
-    ii = drop_singleton_indices(Nx)
-    jj = drop_singleton_indices(Ny)
-    kk = drop_singleton_indices(Nz)
-    fi = interior(f, ii, jj, kk)
-    fi_cpu = on_architecture(CPU(), fi)
-
-    # Nodes shenanigans
-    fnodes = nodes(f)
     if D == 1
 
         ξ1 = fnodes[d1]
@@ -66,6 +76,20 @@ function convert_field_argument(f::Field)
     elseif D == 3
         throw(ArgumentError("Cannot convert_arguments for a 3D field!"))
     end
+end
+
+#####
+##### When nodes are provided
+#####
+
+function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, f::Field)
+    fi_cpu = flattened_cpu_interior(f)
+    return convert_arguments(pl, ξ1, fi_cpu)
+end
+
+function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, ξ2::AbstractArray, f::Field)
+    fi_cpu = flattened_cpu_interior(f)
+    return convert_arguments(pl, ξ1, ξ2, fi_cpu)
 end
 
 end # module
