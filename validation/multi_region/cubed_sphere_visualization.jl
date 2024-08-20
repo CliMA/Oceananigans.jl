@@ -1,5 +1,6 @@
 using LinearAlgebra
 using Printf
+using Oceananigans.Grids: halo_size
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.MultiRegion: getregion
 using CairoMakie, GeoMakie, Imaginocean
@@ -616,7 +617,8 @@ function panel_wise_visualization(grid, field; k = 1, use_symmetric_colorrange =
         colorrange = plot_limits
     else
         colorrange = specify_colorrange(grid, field; use_symmetric_colorrange = use_symmetric_colorrange, ssh = ssh,
-                                        consider_all_levels = consider_all_levels, levels = levels)
+                                        consider_all_levels = consider_all_levels, levels = levels,
+                                        read_parent_field_data = read_parent_field_data)
     end
     if !specify_colormap
         colormap = use_symmetric_colorrange ? :balance : :amp

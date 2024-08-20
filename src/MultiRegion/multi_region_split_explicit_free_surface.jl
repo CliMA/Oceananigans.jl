@@ -55,7 +55,7 @@ function SplitExplicitAuxiliaryFields(grid::MultiRegionGrids; extended_halos = t
     @apply_regionally calculate_column_height!(Hᶠᶜ, (Face, Center, Center))
     @apply_regionally calculate_column_height!(Hᶜᶠ, (Center, Face, Center))
 
-    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ))
+    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ); signed = false)
 
     if extended_halos
         # In a non-parallel grid we calculate only the interior
