@@ -56,7 +56,7 @@ end
 # Functions that return unique send and recv MPI tags for each side, field location 
 # keeping into account the possibility of asynchronous communication.
 # the MPI tag is an integer with:
-#   digit 1-2: an counter which keeps track of how many communications are live. The counter is stored in `arch.active_requests`
+#   digit 1-2: an counter which keeps track of how many communications are live. The counter is stored in `arch.mpi_tag`
 #   digit 3-4: a unique identifier for the field's location that goes from 0 - 26 (see `loc_id`)
 #   digit 5: the side we send / recieve from
 
@@ -66,14 +66,14 @@ for side in sides
     recv_tag_fn_name = Symbol("$(side)_recv_tag")
     @eval begin
         function $send_tag_fn_name(arch, grid, location)
-            field_id   = string(arch.active_requests[], pad=ID_DIGITS)
+            field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
             loc_digit  = string(loc_id(location...), pad=ID_DIGITS)
             side_digit = string(side_id[Symbol($side_str)])
             return parse(Int, field_id * loc_digit * side_digit)
         end
 
         function $recv_tag_fn_name(arch, grid, location)
-            field_id   = string(arch.active_requests[], pad=ID_DIGITS)
+            field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
             loc_digit  = string(loc_id(location...), pad=ID_DIGITS)
             side_digit = string(side_id[opposite_side[Symbol($side_str)]])
             return parse(Int, field_id * loc_digit * side_digit)
@@ -126,7 +126,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     increment_tag = any(isa.(bcs, DCBCT)) && !only_local_halos
     
     if increment_tag 
-        arch.active_requests[] += 1
+        arch.mpi_tag[] += 1
     end
     
     return nothing
@@ -149,7 +149,7 @@ end
     # Syncronous MPI fill_halo_event!
     cooperative_waitall!(requests)
     # Reset MPI tag
-    arch.active_requests[] -= arch.active_requests[]
+    arch.mpi_tag[] -= arch.mpi_tag[]
 
     recv_from_buffers!(c, buffers, grid, Val(side))    
 

@@ -173,7 +173,7 @@ struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
     connectivity :: C
     communicator :: γ
     mpi_requests :: M
-    active_requests :: T
+    mpi_tag :: T
 
     Distributed{S}(child_architecture :: A,
                    partition :: Δ,
@@ -183,7 +183,7 @@ struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
                    connectivity :: C,
                    communicator :: γ,
                    mpi_requests :: M,
-                   active_requests :: T) where {S, A, Δ, R, ρ, I, C, γ, M, T} = 
+                   mpi_tag :: T) where {S, A, Δ, R, ρ, I, C, γ, M, T} = 
                    new{A, S, Δ, R, ρ, I, C, γ, M, T}(child_architecture,
                                                      partition,
                                                      ranks,
@@ -192,7 +192,7 @@ struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
                                                      connectivity,
                                                      communicator,
                                                      mpi_requests,
-                                                     active_requests)
+                                                     mpi_tag)
 end
 
 #####
@@ -321,7 +321,7 @@ cpu_architecture(arch::Distributed{A, S}) where {A, S} =
                    arch.connectivity,
                    arch.communicator,
                    arch.mpi_requests,
-                   arch.active_requests)
+                   arch.mpi_tag)
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index
