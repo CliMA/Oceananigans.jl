@@ -146,7 +146,14 @@ u, w = model.velocities.u, model.velocities.w
 v = @at (Center, Center, Center) model.velocities.v
 T, S = model.tracers.T, model.tracers.S
 
-outputs = (; u, v, w, T, S)
+ubar = Average(u, dims=1)
+vbar = Average(v, dims=1)
+wbar = Average(w, dims=1)
+Tbar = Average(T, dims=1)
+Sbar = Average(S, dims=1)
+
+# outputs = (; u, v, w, T, S)
+outputs = (; ubar, vbar, wbar, Tbar, Sbar)
 
 #####
 ##### Build checkpointer and output writer
