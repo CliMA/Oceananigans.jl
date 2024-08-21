@@ -48,7 +48,7 @@ const max_temperature_flux = 3e-4
 FILE_DIR = "./LES/NN_3D_channel_sin_cooling_$(max_temperature_flux)_LES_Lx_$(Lx)_Ly_$(Ly)_Lz_$(Lz)_Nx_$(Nx)_Ny_$(Ny)_Nz_$(Nz)"
 mkpath(FILE_DIR)
 
-@inline function temperature_flux(y, t)
+@inline function temperature_flux(x, y, t)
     return max_temperature_flux * sin(π * y / Ly)
 end
 
