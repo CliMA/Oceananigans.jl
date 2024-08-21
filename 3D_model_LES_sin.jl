@@ -21,7 +21,7 @@ Nx = 125
 Ny = 4000
 Nz = 250
 
-const Lx = 250metres
+const Lx = 250meters
 const Ly = 8kilometers
 const Lz = 500meters
 
