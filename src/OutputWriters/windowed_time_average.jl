@@ -122,7 +122,8 @@ end
 
 # Schedule actuation
 (sch::AveragedTimeInterval)(model) = sch.collecting || model.clock.time >= next_actuation_time(sch) - sch.window
-initialize_schedule!(sch::AveragedTimeInterval, clock) = nothing
+# initialize_schedule!(sch::AveragedTimeInterval, clock) = sch.previous_interval_stop_time = next_actuation_time(sch) - sch.interval
+initialize_schedule!(sch::AveragedTimeInterval, clock) = next_actuation_time(sch) - sch.interval
 outside_window(sch::AveragedTimeInterval, clock) = clock.time <  next_actuation_time(sch) - sch.window   
 end_of_window(sch::AveragedTimeInterval, clock) = clock.time >= next_actuation_time(sch) 
 
@@ -263,31 +264,71 @@ end
 
 function advance_time_average!(wta::WindowedTimeAverage, model)
 
-    unscheduled = model.clock.iteration == 0 || outside_window(wta.schedule, model.clock)
-    if !(unscheduled)
-        if !(wta.schedule.collecting)
-            # Zero out result to begin new accumulation window
-            wta.result .= 0
+    if model.clock.iteration == 0 # initialize previous interval stop time
+        initialize_schedule!(wta.schedule, model.clock)
+    end
 
-            # Begin collecting window-averaged increments
-            wta.schedule.collecting = true
-        end
+    # Don't start collecting if we are *only* "initializing" at the beginning
+    # of a Simulation.
+    #
+    # Note: this can be false at the zeroth iteration if interval == window (which
+    # implies we are always collecting)
 
-        if end_of_window(wta.schedule, model.clock)
+    unscheduled = model.clock.iteration == 0 && outside_window(wta.schedule, model.clock)
+    
+
+    if unscheduled
+        # This is an "unscheduled" call to run_diagnostic! --- which occurs when run_diagnostic!
+        # is called at the beginning of a run (and schedule.interval != schedule.window).
+        # In this case we do nothing.
+        
+    # Next, we handle WindowedTimeAverage's two "modes": collecting, and not collecting.    
+    #
+    # The "not collecting" mode indicates that "initialization" is needed before collecting.
+    # eg the result has to be zeroed prior to starting to collect. However, because we accumulate
+    # a time-average with a left Riemann sum, we do not do any calculations during initialization.
+    #
+    # The "collecting" mode indicates that collecting is occuring; therefore we accumulate the time-average.
+    
+    elseif !(wta.schedule.collecting) 
+        # run_diagnostic! has been called on schedule but we are not currently collecting data.
+        # Initialize data collection:
+
+        # Start averaging period
+        wta.schedule.collecting = true
+
+        # Zero out result
+        wta.result .= 0
+
+        # Save averaging start time and the initial data collection time
+        wta.window_start_time = model.clock.time
+        wta.window_start_iteration = model.clock.iteration
+        wta.previous_collection_time = model.clock.time
+
+
+    # elseif end_of_window(wta.schedule, model.clock)
+    #     # Output is imminent. Finalize averages and cease data collection.
+    #     # Note that this may induce data collecting more frequently than proscribed
+    #     # by `wta.schedule.stride`.
+    #     accumulate_result!(wta, model)
+        
+    #     # Averaging period is complete.
+    #     wta.schedule.collecting = false
+    #     wta.schedule.actuations += 1
+
+    # elseif mod(model.clock.iteration - wta.window_start_iteration, stride(wta)) == 0
+    #     # Collect data as usual
+    #     accumulate_result!(wta, model)
+    end
+    if !unscheduled
+        if wta.schedule.collecting
+            if end_of_window(wta.schedule, model.clock)
             accumulate_result!(wta, model)
-
-            # Save averaging start time and the initial data collection time
-            wta.window_start_time = model.clock.time
-            wta.window_start_iteration = model.clock.iteration
-            wta.previous_collection_time = model.clock.time
-
             wta.schedule.collecting = false
             wta.schedule.actuations += 1
-
-        elseif mod(model.clock.iteration - wta.window_start_iteration, stride(wta)) == 0
+            elseif mod(model.clock.iteration - wta.window_start_iteration, stride(wta)) == 0
             accumulate_result!(wta, model)
-        else
-            # Off stride, so do nothing.
+            end
         end
     end
     return nothing
