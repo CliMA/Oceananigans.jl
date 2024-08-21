@@ -67,6 +67,17 @@ coriolis = FPlane(f=f₀)
 T_initial(x, y, z) = dTdz * z + T_surface
 S_initial(x, y, z) = dSdz * z + S_surface
 
+damping_rate = 1/15minute
+
+T_target(x, y, z, t) = T_initial(x, y, z)
+S_target(x, y, z, t) = S_initial(x, y, z)
+
+bottom_mask = GaussianMask{:z}(center=-grid.Lz, width=grid.Lz/10)
+
+uvw_sponge = Relaxation(rate=damping_rate, mask=bottom_mask)
+T_sponge = Relaxation(rate=damping_rate, mask=bottom_mask, target=T_target)
+S_sponge = Relaxation(rate=damping_rate, mask=bottom_mask, target=S_target)
+
 #####
 ##### Model building
 #####
@@ -80,7 +91,8 @@ model = NonhydrostaticModel(; grid = grid,
                               tracers = (:T, :S),
                               timestepper = :RungeKutta3,
                               closure = nothing,
-                              boundary_conditions = (; T=T_bcs))
+                              boundary_conditions = (; T=T_bcs),
+                              forcing = (u=uvw_sponge, v=uvw_sponge, w=uvw_sponge, T=T_sponge, S=S_sponge))
 
 @info "Built $model."
 
@@ -175,7 +187,6 @@ end
 # #####
 #%%
 using CairoMakie
-
 
 u_data = FieldTimeSeries("./NN_2D_channel_sin_cooling_$(max_temperature_flux)_LES.jld2", "u", backend=OnDisk())
 v_data = FieldTimeSeries("./NN_2D_channel_sin_cooling_$(max_temperature_flux)_LES.jld2", "v", backend=OnDisk())
