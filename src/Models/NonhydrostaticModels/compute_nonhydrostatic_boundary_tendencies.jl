@@ -3,6 +3,9 @@ import Oceananigans.Models: compute_boundary_tendencies!
 using Oceananigans.TurbulenceClosures: required_halo_size
 using Oceananigans.Grids: XFlatGrid, YFlatGrid
 
+# TODO: the code in this file is difficult to understand.
+# Rewriting it may be helpful.
+
 # We assume here that top/bottom BC are always synched (no partitioning in z)
 function compute_boundary_tendencies!(model::NonhydrostaticModel, Δt)
     grid = model.grid
