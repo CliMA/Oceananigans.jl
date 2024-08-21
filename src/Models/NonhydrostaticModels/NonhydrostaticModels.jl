@@ -46,8 +46,16 @@ PressureSolver(arch, grid::XYRegularRG)  = FourierTridiagonalPoissonSolver(grid)
 PressureSolver(arch, grid::XZRegularRG)  = FourierTridiagonalPoissonSolver(grid)
 PressureSolver(arch, grid::YZRegularRG)  = FourierTridiagonalPoissonSolver(grid)
 
-# *Evil grin*
-PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.underlying_grid)
+function PressureSolver(arch, ibg::ImmersedBoundaryGrid)
+    msg = string("The PressureSolver for `NonhydrostaticModel`s on `ImmersedBoundaryGrid`", '\n',
+                 "is approximate. In particular, the pressure correction step does not produce a velocity", '\n',
+                 "field that both satisfies impenetrability at solid walls and is also divergence-free.", '\n',
+                 "As a result, boundary-adjacent velocity fields may be divergent.", '\n',
+                 "Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.")
+    @warn msg
+
+    return PressureSolver(arch, ibg.underlying_grid)
+end
 
 # fall back
 PressureSolver(arch, grid) = error("None of the implemented pressure solvers for NonhydrostaticModel \
