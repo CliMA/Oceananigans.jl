@@ -32,8 +32,14 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
     # Update possible FieldTimeSeries used in the model
     @apply_regionally update_model_field_time_series!(model, model.clock)
 
-    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
-    grid isa ConformalCubedSphereGrid ? fill_halo_regions!((model.velocities.u, model.velocities.v)) : nothing
+    if grid isa ConformalCubedSphereGrid
+        prognostic_fields_minus_u_v = (; filter(kv -> kv[1] ∉ (:u, :v), pairs(prognostic_fields(model)))...)
+        fill_halo_regions!(prognostic_fields_minus_u_v, model.clock, fields(model); async = true)
+        fill_halo_regions!((model.velocities.u, model.velocities.v))
+    else
+        fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
+    end
+
     @apply_regionally compute_auxiliaries!(model)
 
     fill_halo_regions!(model.diffusivity_fields; only_local_halos = true)
