@@ -17,7 +17,8 @@ mutable struct AveragedTimeInterval <: AbstractSchedule
     interval :: Float64
     window :: Float64
     stride :: Int
-    previous_interval_stop_time :: Float64
+    first_actuation_time :: Float64
+    actuations :: Int
     collecting :: Bool
 end
 
@@ -29,7 +30,7 @@ The time `window` specifies the extent of the time-average, which
 reoccurs every `interval`.
 
 `output` is computed and accumulated into the average every `stride` iterations
-during the averaging window. For example, `stride=1` computs output every iteration,
+during the averaging window. For example, `stride=1` computes output every iteration,
 whereas `stride=2` computes output every other iteration. Time-averages with
 longer `stride`s are faster to compute, but less accurate.
 
@@ -83,17 +84,52 @@ JLD2OutputWriter scheduled on TimeInterval(4 days):
 """
 function AveragedTimeInterval(interval; window=interval, stride=1)
     window > interval && throw(ArgumentError("Averaging window $window is greater than the output interval $interval."))
-    return AveragedTimeInterval(Float64(interval), Float64(window), stride, 0.0, false)
+    return AveragedTimeInterval(Float64(interval), Float64(window), stride, 0.0, 0, false)
 end
 
-# Schedule actuation
-(sch::AveragedTimeInterval)(model) = sch.collecting || model.clock.time >= sch.previous_interval_stop_time + sch.interval - sch.window
-initialize_schedule!(sch::AveragedTimeInterval, clock) = sch.previous_interval_stop_time = clock.time - rem(clock.time, sch.interval)
-outside_window(sch::AveragedTimeInterval, clock) = clock.time <  sch.previous_interval_stop_time + sch.interval - sch.window   
-end_of_window(sch::AveragedTimeInterval, clock) = clock.time >= sch.previous_interval_stop_time + sch.interval
+# function initialize_schedule!(sch::AveragedTimeInterval, first_actuation_time::Number)
+#     sch.first_actuation_time = first_actuation_time
+#     sch.actuations = 0
+#     return true
+# end
 
-TimeInterval(schedule::AveragedTimeInterval) = TimeInterval(schedule.interval)
+# initialize_schedule!(sch::AveragedTimeInterval, model) = initialize_schedule!(sch, model.clock.time)
+
+
+function next_actuation_time(sch::AveragedTimeInterval)
+    t₀ = sch.first_actuation_time
+    N = sch.actuations
+    T = sch.interval
+    return t₀ + (N + 1) * T
+    # print("first_actuation_time:",t₀)
+end
+
+# function (sch::AveragedTimeInterval)(model)
+#     t = model.clock.time
+#     t★ = next_actuation_time(sch)
+
+#     if t >= t★
+#         if sch.actuations < typemax(Int)
+#             sch.actuations += 1
+#         else # re-initialize the schedule to t★
+#             initialize!(sch, t★)
+#         end
+#         return true
+#     else
+#         return false
+#     end
+# end
+
+# Schedule actuation
+(sch::AveragedTimeInterval)(model) = sch.collecting || model.clock.time >= next_actuation_time(sch) - sch.window
+initialize_schedule!(sch::AveragedTimeInterval, clock) = nothing
+outside_window(sch::AveragedTimeInterval, clock) = clock.time <  next_actuation_time(sch) - sch.window   
+end_of_window(sch::AveragedTimeInterval, clock) = clock.time >= next_actuation_time(sch) 
+
+TimeInterval(sch::AveragedTimeInterval) = TimeInterval(sch.interval)
 Base.copy(sch::AveragedTimeInterval) = AveragedTimeInterval(sch.interval, window=sch.window, stride=sch.stride)
+
+
 
 """
     mutable struct AveragedSpecifiedTimes <: AbstractSchedule
@@ -211,7 +247,7 @@ end
 function accumulate_result!(wta, clock::Clock, integrand=wta.operand)
     # Time increment:
     Δt = clock.time - wta.previous_collection_time
-
+    
     # Time intervals:
     T_current = clock.time - wta.window_start_time
     T_previous = wta.previous_collection_time - wta.window_start_time
@@ -227,63 +263,33 @@ end
 
 function advance_time_average!(wta::WindowedTimeAverage, model)
 
-    if model.clock.iteration == 0 # initialize previous interval stop time
-        initialize_schedule!(wta.schedule, model.clock)
+    unscheduled = model.clock.iteration == 0 || outside_window(wta.schedule, model.clock)
+    if !(unscheduled)
+        if !(wta.schedule.collecting)
+            # Zero out result to begin new accumulation window
+            wta.result .= 0
+
+            # Begin collecting window-averaged increments
+            wta.schedule.collecting = true
+        end
+
+        if end_of_window(wta.schedule, model.clock)
+            accumulate_result!(wta, model)
+
+            # Save averaging start time and the initial data collection time
+            wta.window_start_time = model.clock.time
+            wta.window_start_iteration = model.clock.iteration
+            wta.previous_collection_time = model.clock.time
+
+            wta.schedule.collecting = false
+            wta.schedule.actuations += 1
+
+        elseif mod(model.clock.iteration - wta.window_start_iteration, stride(wta)) == 0
+            accumulate_result!(wta, model)
+        else
+            # Off stride, so do nothing.
+        end
     end
-
-    # Don't start collecting if we are *only* "initializing" at the beginning
-    # of a Simulation.
-    #
-    # Note: this can be false at the zeroth iteration if interval == window (which
-    # implies we are always collecting)
-
-    unscheduled = model.clock.iteration == 0 && outside_window(wta.schedule, model.clock)
-
-    if unscheduled
-        # This is an "unscheduled" call to run_diagnostic! --- which occurs when run_diagnostic!
-        # is called at the beginning of a run (and schedule.interval != schedule.window).
-        # In this case we do nothing.
-        
-    # Next, we handle WindowedTimeAverage's two "modes": collecting, and not collecting.    
-    #
-    # The "not collecting" mode indicates that "initialization" is needed before collecting.
-    # eg the result has to be zeroed prior to starting to collect. However, because we accumulate
-    # a time-average with a left Riemann sum, we do not do any calculations during initialization.
-    #
-    # The "collecting" mode indicates that collecting is occuring; therefore we accumulate the time-average.
-    
-    elseif !(wta.schedule.collecting)
-        # run_diagnostic! has been called on schedule but we are not currently collecting data.
-        # Initialize data collection:
-
-        # Start averaging period
-        wta.schedule.collecting = true
-
-        # Zero out result
-        wta.result .= 0
-
-        # Save averaging start time and the initial data collection time
-        wta.window_start_time = model.clock.time
-        wta.window_start_iteration = model.clock.iteration
-        wta.previous_collection_time = model.clock.time
-
-    elseif end_of_window(wta.schedule, model.clock)
-        # Output is imminent. Finalize averages and cease data collection.
-        # Note that this may induce data collecting more frequently than proscribed
-        # by `wta.schedule.stride`.
-        accumulate_result!(wta, model)
-
-        # Averaging period is complete.
-        wta.schedule.collecting = false
-
-        # Reset the "previous" interval time, subtracting a sliver that presents overshoot from accumulating.
-        initialize_schedule!(wta.schedule, model.clock)
-
-    elseif mod(model.clock.iteration - wta.window_start_iteration, stride(wta)) == 0
-        # Collect data as usual
-        accumulate_result!(wta, model)
-    end
-
     return nothing
 end
 
