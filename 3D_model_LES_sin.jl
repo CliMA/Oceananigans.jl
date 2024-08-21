@@ -18,11 +18,11 @@ model_architecture = GPU()
 
 # number of grid points
 Nx = 125
-Ny = 4000
+Ny = 3000
 Nz = 250
 
 const Lx = 250meters
-const Ly = 8kilometers
+const Ly = 6kilometers
 const Lz = 500meters
 
 grid = RectilinearGrid(model_architecture,
