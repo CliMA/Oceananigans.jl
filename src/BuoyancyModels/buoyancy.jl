@@ -35,7 +35,7 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── advection scheme: Centered reconstruction order 2
 ├── tracers: b
 ├── closure: Nothing
-├── buoyancy: BuoyancyTracer with ĝ = Tuple{Float64, Float64, Float64}
+├── buoyancy: BuoyancyTracer with ĝ = (0.0, -0.707107, -0.707107)
 └── coriolis: Nothing
 ```
 """
@@ -78,7 +78,7 @@ summarize_vector(n) = string("(", prettysummary(n[1]), ", ",
                                   prettysummary(n[2]), ", ",
                                   prettysummary(n[3]), ")")
                              
-summarize_vector(::NegativeZDirection) = "NegativeZDirection"
+summarize_vector(::NegativeZDirection) = "NegativeZDirection()"
 
 function Base.show(io::IO, buoyancy::Buoyancy)
     print(io, "Buoyancy:", '\n',
