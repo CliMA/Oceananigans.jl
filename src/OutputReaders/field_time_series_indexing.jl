@@ -200,9 +200,6 @@ function interpolate!(target_fts::FieldTimeSeries, source_fts::FieldTimeSeries)
     source_location = map(instantiate, location(source_fts))
     target_location = map(instantiate, location(target_fts))
 
-    target_times = map(Time, target_fts.times)
-    target_times = on_architecture(arch, target_times)
-    
     launch!(arch, target_grid, size(target_fts),
             _interpolate_field_time_series!,
             target_fts.data, target_grid, target_location, target_times,
@@ -220,7 +217,7 @@ end
     i, j, k, n = @index(Global, NTuple)
 
     target_node = node(i, j, k, target_grid, target_location...)
-    at_time     = @inbounds target_times[n]
+    at_time     = @inbounds Time(target_times[n])
 
     @inbounds target_fts[i, j, k, n] = interpolate(target_node, at_time,
                                                    source_fts, source_location, source_grid)
