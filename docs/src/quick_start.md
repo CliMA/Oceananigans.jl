@@ -5,7 +5,11 @@ This code:
 ```@example cpu
 using Oceananigans
 
-grid = RectilinearGrid(size=(128, 128), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
+grid = RectilinearGrid(size = (128, 128),
+                       x = (0, 2π),
+                       y = (0, 2π),
+                       topology = (Periodic, Periodic, Flat))
+
 model = NonhydrostaticModel(; grid, advection=WENO())
 
 ϵ(x, y) = 2rand() - 1
@@ -47,20 +51,42 @@ heatmap(ζ, axis=(; aspect=1))
 
 Fine, we'll re-run this code on the GPU then:
 
-```julia
+```@example gpu
 using Oceananigans
+using CairoMakie
 
-grid = RectilinearGrid(GPU(), size=(128, 128), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
-model = NonhydrostaticModel(; grid, advection=WENO())
+grid = RectilinearGrid(GPU(),
+                       size = (1024, 1024),
+                       x = (-π, π),
+                       y = (-π, π),
+                       topology = (Periodic, Periodic, Flat))
 
+model = NonhydrostaticModel(; grid, advection=WENO(), tracers=:c)
+
+δ = 0.2
+cᵢ(x, y) = exp(-(x^2 + y^2) / 2δ^2)
 ϵ(x, y) = 2rand() - 1
-set!(model, u=ϵ, v=ϵ)
+set!(model, u=ϵ, v=ϵ, c=cᵢ)
 
-simulation = Simulation(model; Δt=0.01, stop_iteration=100)
+simulation = Simulation(model; Δt=1e-3, stop_time=100)
+conjure_time_step_wizard!(simulation, cfl=0.2)
 run!(simulation)
+
+u, v, w = model.velocities
+ζ = Field(∂x(v) - ∂y(u))
+compute!(ζ)
+
+fig = Figure(size=(1200, 600))
+axζ = Axis(fig[1, 1], aspect=1)
+axc = Axis(fig[1, 2], aspect=1)
+heatmap!(axζ, ζ)
+heatmap!(axc, model.tracers.c)
+current_figure() # hide
 ```
 
-Notice the difference? We passed the positional argument `GPU()` to `RectilinearGrid`.
+Notice the difference? By passing the positional argument `GPU()` to `RectilinearGrid`,
+we told the simulation run on a GPU (which will only work if a GPU is available).
+We also cranked up the resolution, added a passive tracer, and turned on adaptive time-stepping.
 
 ## Well, that was tantalizing
 
