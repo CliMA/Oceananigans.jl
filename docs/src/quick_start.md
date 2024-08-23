@@ -71,7 +71,7 @@ cᵢ(x, y) = exp(-(x^2 + y^2) / 2δ^2)
 ϵ(x, y) = 2rand() - 1
 set!(model, u=ϵ, v=ϵ, c=cᵢ)
 
-simulation = Simulation(model; Δt=1e-2, stop_time=10)
+simulation = Simulation(model; Δt=1e-3, stop_time=10)
 conjure_time_step_wizard!(simulation, cfl=0.2, IterationInterval(10))
 run!(simulation)
 
