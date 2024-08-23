@@ -49,7 +49,10 @@ heatmap(ζ, axis=(; aspect=1))
 
 ## They always cheat with too-simple "quick" starts
 
-Fine, we'll re-run this code on the GPU then:
+Fine, we'll re-run this code on the GPU. But we're a little greedy, so we'll also
+crank up the resolution, throw in a `TimeStepWizard` to update `simulation.Δt` adaptively,
+and add a passive tracer initially concentrated in the center of the domain
+which will make for an even prettier figure of the final state:
 
 ```@example gpu
 using Oceananigans
@@ -63,13 +66,13 @@ grid = RectilinearGrid(GPU(),
 
 model = NonhydrostaticModel(; grid, advection=WENO(), tracers=:c)
 
-δ = 0.2
+δ = 0.5
 cᵢ(x, y) = exp(-(x^2 + y^2) / 2δ^2)
 ϵ(x, y) = 2rand() - 1
 set!(model, u=ϵ, v=ϵ, c=cᵢ)
 
-simulation = Simulation(model; Δt=1e-3, stop_time=100)
-conjure_time_step_wizard!(simulation, cfl=0.2)
+simulation = Simulation(model; Δt=1e-2, stop_time=10)
+conjure_time_step_wizard!(simulation, cfl=0.2, IterationInterval(10))
 run!(simulation)
 
 u, v, w = model.velocities
@@ -79,14 +82,14 @@ compute!(ζ)
 fig = Figure(size=(1200, 600))
 axζ = Axis(fig[1, 1], aspect=1)
 axc = Axis(fig[1, 2], aspect=1)
-heatmap!(axζ, ζ)
+heatmap!(axζ, ζ, colormap=:balance)
 heatmap!(axc, model.tracers.c)
 current_figure() # hide
 ```
 
-Notice the difference? By passing the positional argument `GPU()` to `RectilinearGrid`,
-we told the simulation run on a GPU (which will only work if a GPU is available).
-We also cranked up the resolution, added a passive tracer, and turned on adaptive time-stepping.
+See how we did that? We passed the positional argument `GPU()` to `RectilinearGrid`.
+(This only works if a GPU is available, of course, and
+[CUDA.jl is configured](https://cuda.juliagpu.org/stable/installation/overview/).)
 
 ## Well, that was tantalizing
 
