@@ -174,7 +174,7 @@ function findall_active_indices!(active_indices, active_cells_field, ibg, Indice
     for k in 1:size(ibg, 3)
         interior_indices = findall(on_architecture(CPU(), interior(active_cells_field, :, :, k:k)))
         interior_indices = convert_interior_indices(interior_indices, k, IndicesType)
-        active_indices = vcat(active_indices, interior_indices)
+        active_indices   = vcat(active_indices, interior_indices)
         GC.gc()
     end
 
@@ -213,11 +213,16 @@ function map_interior_active_cells(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any
     include_south = !isa(ibg, YFlatGrid) && (Ry != 1) && !(Ty == RightConnected)
     include_north = !isa(ibg, YFlatGrid) && (Ry != 1) && !(Ty == LeftConnected)
 
-    west  = include_west  ? interior_active_indices(ibg; parameters = KernelParameters(x_boundary, left_offsets))    : nothing
-    east  = include_east  ? interior_active_indices(ibg; parameters = KernelParameters(x_boundary, right_x_offsets)) : nothing
-    south = include_south ? interior_active_indices(ibg; parameters = KernelParameters(y_boundary, left_offsets))    : nothing
-    north = include_north ? interior_active_indices(ibg; parameters = KernelParameters(y_boundary, right_y_offsets)) : nothing
+    west  = interior_active_indices(ibg; parameters = KernelParameters(x_boundary, left_offsets))    
+    east  = interior_active_indices(ibg; parameters = KernelParameters(x_boundary, right_x_offsets)) 
+    south = interior_active_indices(ibg; parameters = KernelParameters(y_boundary, left_offsets))    
+    north = interior_active_indices(ibg; parameters = KernelParameters(y_boundary, right_y_offsets)) 
     
+    west  = include_west  ? west  : nothing
+    east  = include_east  ? east  : nothing
+    south = include_south ? south : nothing
+    north = include_north ? north : nothing
+
     nx = Rx == 1 ? Nx : (Tx == RightConnected || Tx == LeftConnected ? Nx - Hx : Nx - 2Hx)
     ny = Ry == 1 ? Ny : (Ty == RightConnected || Ty == LeftConnected ? Ny - Hy : Ny - 2Hy)
 
