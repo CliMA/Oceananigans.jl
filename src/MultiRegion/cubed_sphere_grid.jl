@@ -385,16 +385,17 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchit
     return MultiRegionGrid{FT, panel_topology...}(arch, partition, connectivity, region_grids, devices)
 end
 
-function with_halo(new_halo, csg::ConformalCubedSphereGrid)
+function with_halo(new_halo, csg::ConformalCubedSphereGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     region_rotation = []
 
     for region in 1:length(csg.partition)
         push!(region_rotation, csg[region].conformal_mapping.rotation)
     end
 
-    apply_regionally!(with_halo, new_halo, csg; rotation = Iterate(region_rotation))
+    region_grids = csg.region_grids
+    region_grids = construct_regionally(with_halo, new_halo, region_grids; rotation = Iterate(region_rotation))
 
-    return csg
+    return MultiRegionGrid{FT, TX, TY, TZ}(csg.architecture, csg.partition, csg.connectivity, region_grids, csg.devices)
 end
 
 function Base.summary(grid::ConformalCubedSphereGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
