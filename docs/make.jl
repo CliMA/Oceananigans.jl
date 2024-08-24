@@ -8,6 +8,7 @@ Distributed.addprocs(2)
     using Printf
 
     using CairoMakie # to avoid capturing precompilation output by Literate
+    CairoMakie.activate!(type = "svg")
 
     using MPI # for distributed doctests
 

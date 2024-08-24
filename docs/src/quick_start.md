@@ -2,6 +2,11 @@
 
 This code:
 
+```@setup cpu
+using CairoMakie
+CairoMakie.activate!(type = "png")
+```
+
 ```@example cpu
 using Oceananigans
 
@@ -53,6 +58,11 @@ Fine, we'll re-run this code on the GPU. But we're a little greedy, so we'll als
 crank up the resolution, throw in a `TimeStepWizard` to update `simulation.Δt` adaptively,
 and add a passive tracer initially concentrated in the center of the domain
 which will make for an even prettier figure of the final state:
+
+```@setup gpu
+using CairoMakie
+CairoMakie.activate!(type = "png")
+```
 
 ```@example gpu
 using Oceananigans
