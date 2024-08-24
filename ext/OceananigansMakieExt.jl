@@ -86,11 +86,13 @@ end
 #####
 
 function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, f::Field)
+    mask_immersed_field!(f, NaN)
     fi_cpu = flattened_cpu_interior(f)
     return convert_arguments(pl, ξ1, fi_cpu)
 end
 
 function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, ξ2::AbstractArray, f::Field)
+    mask_immersed_field!(f, NaN)
     fi_cpu = flattened_cpu_interior(f)
     return convert_arguments(pl, ξ1, ξ2, fi_cpu)
 end
