@@ -219,6 +219,6 @@ if ci_build
     deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
                versions = ["stable" => "v^", "dev" => "dev", "v#.#.#"],
                forcepush = true,
-               push_preview = false,
+               push_preview = true,
                devbranch = "main")
 end
