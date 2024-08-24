@@ -94,7 +94,7 @@ axζ = Axis(fig[1, 1], aspect=1, title="vorticity")
 axc = Axis(fig[1, 2], aspect=1, title="tracer")
 heatmap!(axζ, ζ, colormap=:balance)
 heatmap!(axc, model.tracers.c)
-current_figure() # hide
+current_figure()
 ```
 
 See how we did that? We passed the positional argument `GPU()` to `RectilinearGrid`.
