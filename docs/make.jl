@@ -8,7 +8,6 @@ Distributed.addprocs(2)
     using Printf
 
     using CairoMakie # to avoid capturing precompilation output by Literate
-    CairoMakie.activate!(type = "svg")
 
     using MPI # for distributed doctests
 
@@ -219,7 +218,6 @@ if ci_build
     deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
                versions = ["stable" => "v^", "dev" => "dev", "v#.#.#"],
                forcepush = true,
-               push_preview = true,
+               push_preview = false,
                devbranch = "main")
 end
-
