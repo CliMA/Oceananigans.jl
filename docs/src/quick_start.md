@@ -80,8 +80,8 @@ u, v, w = model.velocities
 compute!(ζ)
 
 fig = Figure(size=(1200, 600))
-axζ = Axis(fig[1, 1], aspect=1)
-axc = Axis(fig[1, 2], aspect=1)
+axζ = Axis(fig[1, 1], aspect=1, title="vorticity")
+axc = Axis(fig[1, 2], aspect=1, title="tracer")
 heatmap!(axζ, ζ, colormap=:balance)
 heatmap!(axc, model.tracers.c)
 current_figure() # hide
