@@ -2,6 +2,7 @@ module OceananigansMakieExt
 
 using Oceananigans
 using Oceananigans.Architectures: on_architecture
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 using MakieCore: AbstractPlot
 import MakieCore: convert_arguments, _create_plot
@@ -36,6 +37,8 @@ function flattened_cpu_interior(f)
 end
 
 function convert_field_argument(f::Field)
+
+    mask_immersed_field!(f, NaN)
 
     # Drop singleton dimensions and convert to CPU if necessary
     fi_cpu = flattened_cpu_interior(f)
