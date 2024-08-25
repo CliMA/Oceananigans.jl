@@ -33,7 +33,7 @@ grids) with NaNs;
 - dropping singleton dimensions, and
 - transferring data from GPU to CPU if necessary.
 """
-function make_plottable_field(f)
+function make_plottable_array(f)
 
     mask_immersed_field!(f, NaN)
 
@@ -51,7 +51,7 @@ end
 
 function convert_field_argument(f::Field)
 
-    fi_cpu = make_plottable_field(f)
+    fi_cpu = make_plottable_array(f)
 
     # Indices of the non-zero dimensions
     d1 = findfirst(n -> n > 1, size(f))
@@ -96,12 +96,12 @@ end
 #####
 
 function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, f::Field)
-    fi_cpu = make_plottable_field(f)
+    fi_cpu = make_plottable_array(f)
     return convert_arguments(pl, ξ1, fi_cpu)
 end
 
 function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, ξ2::AbstractArray, f::Field)
-    fi_cpu = make_plottable_field(f)
+    fi_cpu = make_plottable_array(f)
     return convert_arguments(pl, ξ1, ξ2, fi_cpu)
 end
 
