@@ -26,8 +26,7 @@ convert_arguments(pl::Type{<:AbstractPlot}, f::Field) =
 """
     make_plottable_field(f)
 
-Convert a field `f` to an array that can be plotted with Makie.
-Specifically:
+Convert a field `f` to an array that can be plotted with Makie by
 
 - masking immersed cells (for fields on immersed boundary
 grids) with NaNs;
