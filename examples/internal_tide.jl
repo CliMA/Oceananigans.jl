@@ -205,19 +205,11 @@ wmax = maximum(abs, w_t[end])
 times = u′_t.times
 nothing #hide
 
-# For visualization purposes, we mask the region below the bathymetry with NaNs.
-
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
-
-for φ_t in (u′_t, w_t, N²_t), n in 1:length(times)
-    mask_immersed_field!(φ_t[n], NaN)
-end
-
 # We retrieve each field's coordinates and convert from meters to kilometers.
 
-xu,  yu,  zu  = nodes(u′_t[1])
-xw,  yw,  zw  = nodes(w_t[1])
-xN², yN², zN² = nodes(N²_t[1])
+xu,  _, zu  = nodes(u′_t[1])
+xw,  _, zw  = nodes(w_t[1])
+xN², _, zN² = nodes(N²_t[1])
 
 xu  = xu  ./ 1e3
 xw  = xw  ./ 1e3
@@ -242,9 +234,9 @@ n = Observable(1)
 title = @lift @sprintf("t = %1.2f days = %1.2f T₂",
                        round(times[$n] / day, digits=2) , round(times[$n] / T₂, digits=2))
 
-u′ₙ = @lift interior(u′_t[$n], :, 1, :)
- wₙ = @lift interior( w_t[$n], :, 1, :)
-N²ₙ = @lift interior(N²_t[$n], :, 1, :)
+u′ₙ = @lift u′_t[$n]
+ wₙ = @lift  w_t[$n]
+N²ₙ = @lift N²_t[$n]
 
 axis_kwargs = (xlabel = "x [km]",
                ylabel = "z [km]",

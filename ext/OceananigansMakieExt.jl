@@ -2,6 +2,7 @@ module OceananigansMakieExt
 
 using Oceananigans
 using Oceananigans.Architectures: on_architecture
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 using MakieCore: AbstractPlot
 import MakieCore: convert_arguments, _create_plot
@@ -22,7 +23,20 @@ end
 convert_arguments(pl::Type{<:AbstractPlot}, f::Field) =
     convert_arguments(pl, convert_field_argument(f)...)
 
-function flattened_cpu_interior(f)
+"""
+    make_plottable_array(f)
+
+Convert a field `f` to an array that can be plotted with Makie by
+
+- masking immersed cells (for fields on immersed boundary
+grids) with NaNs;
+- dropping singleton dimensions, and
+- transferring data from GPU to CPU if necessary.
+"""
+function make_plottable_array(f)
+
+    mask_immersed_field!(f, NaN)
+
     Nx, Ny, Nz = size(f)
 
     ii = drop_singleton_indices(Nx)
@@ -37,8 +51,7 @@ end
 
 function convert_field_argument(f::Field)
 
-    # Drop singleton dimensions and convert to CPU if necessary
-    fi_cpu = flattened_cpu_interior(f)
+    fi_cpu = make_plottable_array(f)
 
     # Indices of the non-zero dimensions
     d1 = findfirst(n -> n > 1, size(f))
@@ -83,12 +96,12 @@ end
 #####
 
 function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, f::Field)
-    fi_cpu = flattened_cpu_interior(f)
+    fi_cpu = make_plottable_array(f)
     return convert_arguments(pl, ξ1, fi_cpu)
 end
 
 function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, ξ2::AbstractArray, f::Field)
-    fi_cpu = flattened_cpu_interior(f)
+    fi_cpu = make_plottable_array(f)
     return convert_arguments(pl, ξ1, ξ2, fi_cpu)
 end
 
