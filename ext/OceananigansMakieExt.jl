@@ -29,10 +29,10 @@ convert_arguments(pl::Type{<:AbstractPlot}, f::Field) =
 Convert a field `f` to an array that can be plotted with Makie.
 Specifically:
 
-- Mask all immersed points (for fields on immersed boundary
-grids) with NaNs.
-- Drop singleton dimensions, and
-- Convert to an array on CPU.
+- masking immersed cells (for fields on immersed boundary
+grids) with NaNs;
+- dropping singleton dimensions, and
+- transferring data from GPU to CPU if necessary.
 """
 function make_plottable_field(f)
 
