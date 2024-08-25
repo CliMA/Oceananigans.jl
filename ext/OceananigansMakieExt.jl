@@ -24,7 +24,7 @@ convert_arguments(pl::Type{<:AbstractPlot}, f::Field) =
     convert_arguments(pl, convert_field_argument(f)...)
 
 """
-    make_plottable_field(f)
+    make_plottable_array(f)
 
 Convert a field `f` to an array that can be plotted with Makie by
 
