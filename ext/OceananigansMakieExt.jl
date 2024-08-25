@@ -23,7 +23,21 @@ end
 convert_arguments(pl::Type{<:AbstractPlot}, f::Field) =
     convert_arguments(pl, convert_field_argument(f)...)
 
-function flattened_cpu_interior(f)
+"""
+    make_plottable_field(f)
+
+Convert a field `f` to an array that can be plotted with Makie.
+Specifically:
+
+- Mask all immersed points (for fields on immersed boundary
+grids) with NaNs.
+- Drop singleton dimensions, and
+- Convert to an array on CPU.
+"""
+function make_plottable_field(f)
+
+    mask_immersed_field!(f, NaN)
+
     Nx, Ny, Nz = size(f)
 
     ii = drop_singleton_indices(Nx)
@@ -38,10 +52,7 @@ end
 
 function convert_field_argument(f::Field)
 
-    mask_immersed_field!(f, NaN)
-
-    # Drop singleton dimensions and convert to CPU if necessary
-    fi_cpu = flattened_cpu_interior(f)
+    fi_cpu = make_plottable_field(f)
 
     # Indices of the non-zero dimensions
     d1 = findfirst(n -> n > 1, size(f))
@@ -86,14 +97,12 @@ end
 #####
 
 function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, f::Field)
-    mask_immersed_field!(f, NaN)
-    fi_cpu = flattened_cpu_interior(f)
+    fi_cpu = make_plottable_field(f)
     return convert_arguments(pl, ξ1, fi_cpu)
 end
 
 function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, ξ2::AbstractArray, f::Field)
-    mask_immersed_field!(f, NaN)
-    fi_cpu = flattened_cpu_interior(f)
+    fi_cpu = make_plottable_field(f)
     return convert_arguments(pl, ξ1, ξ2, fi_cpu)
 end
 
