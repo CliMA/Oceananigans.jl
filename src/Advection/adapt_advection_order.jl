@@ -25,8 +25,14 @@ function adapt_advection_order(advection, grid::AbstractGrid)
     new_advection = FluxFormAdvection(advection_x, advection_y, advection_z)
     changed_advection = any((changed_x, changed_y, changed_z))
 
-    if changed_advection
-        @info "The user-defined advection scheme $(advection) has been reduced to $(new_advection) to comply with grid-size limitations."
+    if changed_x
+        @info "User-defined advection scheme $(summary(advection)) reduced to $(summary(new_advection.x)) in the x-direction to comply with grid-size limitations."
+    end
+    if changed_y
+        @info "User-defined advection scheme $(summary(advection)) reduced to $(summary(new_advection.y)) in the y-direction to comply with grid-size limitations."
+    end
+    if changed_z
+        @info "User-defined advection scheme $(summary(advection)) reduced to $(summary(new_advection.z)) in the z-direction to comply with grid-size limitations."
     end
 
     return ifelse(changed_advection, new_advection, advection)
@@ -45,8 +51,14 @@ function adapt_advection_order(advection::FluxFormAdvection, grid::AbstractGrid)
     new_advection = FluxFormAdvection(advection_x, advection_y, advection_z)
     changed_advection = any((changed_x, changed_y, changed_z))
 
-    if changed_advection
-        @info "User-defined advection scheme $(advection) reduced to $(new_advection) to comply with grid-size limitations."
+    if changed_x
+        @info "User-defined advection scheme $(summary(advection)) reduced to $(summary(new_advection.x)) in the x-direction to comply with grid-size limitations."
+    end
+    if changed_y
+        @info "User-defined advection scheme $(summary(advection)) reduced to $(summary(new_advection.y)) in the y-direction to comply with grid-size limitations."
+    end
+    if changed_z
+        @info "User-defined advection scheme $(summary(advection)) reduced to $(summary(new_advection.z)) in the z-direction to comply with grid-size limitations."
     end
 
     return ifelse(changed_advection, new_advection, advection)
