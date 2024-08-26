@@ -26,6 +26,12 @@ function FluxFormAdvection(x_advection, y_advection, z_advection)
     return FluxFormAdvection{H, FT}(x_advection, y_advection, z_advection)
 end
 
+Base.show(io::IO, scheme::FluxFormAdvection) = 
+    print(io, "FluxFormAdvection with reconstructions: ", " \n",
+          "    ├── x: ", summary(scheme.x), "\n",
+          "    ├── y: ", summary(scheme.y), "\n",
+          "    └── z: ", summary(scheme.z))
+
 @inline required_halo_size_x(scheme::FluxFormAdvection) = required_halo_size_x(scheme.x)
 @inline required_halo_size_y(scheme::FluxFormAdvection) = required_halo_size_y(scheme.y)
 @inline required_halo_size_z(scheme::FluxFormAdvection) = required_halo_size_z(scheme.z)
