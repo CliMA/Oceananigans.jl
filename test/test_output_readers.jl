@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Utils: Time
-using Oceananigans.Fields: indices
+using Oceananigans.Fields: indices, interpolate!
 using Oceananigans.OutputReaders: Cyclical, Clamp
 
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
