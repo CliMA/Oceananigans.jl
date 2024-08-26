@@ -141,7 +141,7 @@ end
 @inline _advective_momentum_flux_Wv(i, j, k, grid, ::Nothing, ::ZeroField, v) = zero(grid)
 @inline _advective_momentum_flux_Ww(i, j, k, grid, ::Nothing, ::ZeroField, w) = zero(grid)
 
-for scheme in (:UpwindBiased, :Centered, :WENO, :FluxFormAdvection)
+for Scheme in (:UpwindBiased, :Centered, :WENO, :FluxFormAdvection)
     @eval begin
         # Fallback for `ZeroField` tracers and velocities
         @inline _advective_momentum_flux_Uu(i, j, k, grid, ::$Scheme, ::ZeroField, ::ZeroField) = zero(grid)

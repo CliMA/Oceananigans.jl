@@ -24,7 +24,7 @@
 @inline _advective_tracer_flux_y(i, j, k, grid, ::Nothing, ::ZeroField, c) = zero(grid)
 @inline _advective_tracer_flux_z(i, j, k, grid, ::Nothing, ::ZeroField, c) = zero(grid)
 
-for scheme in (:UpwindBiased, :Centered, :WENO, :FluxFormAdvection)
+for Scheme in (:UpwindBiased, :Centered, :WENO, :FluxFormAdvection)
     @eval begin
         # Fallback for `ZeroField` tracers and velocities
         @inline _advective_tracer_flux_x(i, j, k, grid, ::$Scheme, ::ZeroField, ::ZeroField) = zero(grid)
