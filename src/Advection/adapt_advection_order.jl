@@ -26,7 +26,7 @@ function adapt_advection_order(advection, grid::AbstractGrid)
     changed_advection = any((changed_x, changed_y, changed_z))
 
     if changed_advection
-        @info "User-defined advection scheme $(advection) reduced to $(new_advection) to comply with grid-size limitations."
+        @info "The user-defined advection scheme $(advection) has been reduced to $(new_advection) to comply with grid-size limitations."
     end
 
     return ifelse(changed_advection, new_advection, advection)
