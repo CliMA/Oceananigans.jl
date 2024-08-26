@@ -94,8 +94,8 @@ end
 ##### Fallback advection fluxes!
 #####
 
-for flux_dir in (:Uu, :Vu, :Wu, :Uv, :Vv, :Wv, :Uw, :Vw, :Ww)
-    advective_momentum_flux = Symbol(:_advective_momentum_flux_, flux_dir)
+for flux_type in (:Uu, :Vu, :Wu, :Uv, :Vv, :Wv, :Uw, :Vw, :Ww)
+    advective_momentum_flux = Symbol(:_advective_momentum_flux_, flux_type)
 
     @eval begin
         @inline $advective_momentum_flux(i, j, k, grid, ::Nothing, args...)                  = zero(grid)
