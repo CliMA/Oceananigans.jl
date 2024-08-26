@@ -103,7 +103,7 @@ we rebuild the advection without passing the grid information, otherwise we use 
 new_weno_scheme(::WENO, grid, order, bounds, ::Type{Nothing}, ::Type{Nothing}, ::Type{Nothing},) = WENO(; order, bounds)
 new_weno_scheme(::WENO, grid, order, bounds, XT, YT, ZT)                                         = WENO(grid; order, bounds)
 
-function adapt_advection_order(advection::WENO, topology, N::Int, grid::AbstractGrid) where {H, FT, XT, YT, ZT}
+function adapt_advection_order(advection::WENO{H, FT, XT, YT, ZT}, topology, N::Int, grid::AbstractGrid) where {H, FT, XT, YT, ZT}
     
     if N == 1
         return nothing
