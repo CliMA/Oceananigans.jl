@@ -6,6 +6,9 @@ using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 using MakieCore: AbstractPlot
 import MakieCore: convert_arguments, _create_plot
+import Makie: args_preferred_axis
+
+args_preferred_axis(::Field) = nothing
 
 function drop_singleton_indices(N)
     if N == 1
