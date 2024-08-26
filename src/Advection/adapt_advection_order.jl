@@ -68,6 +68,8 @@ end
 
 # For the moment, we do not adapt the advection order for the VectorInvariant advection scheme
 adapt_advection_order(advection::VectorInvariant, grid::AbstractGrid) = advection
+adapt_advection_order(advection::Nothing, grid::AbstractGrid) = nothing
+adapt_advection_order(advection::Nothing, N::Int, grid::AbstractGrid) = nothing
 
 #####
 ##### Directional adapt advection order
