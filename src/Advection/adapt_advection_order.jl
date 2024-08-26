@@ -100,8 +100,8 @@ Constructs a new WENO scheme based on the given parameters. `XT`, `YT`, and `ZT`
 x-direction, y-direction and z-direction. A _non-stretched_ WENO scheme has `T` equal to `Nothing` everywhere. In case of a non-stretched WENO scheme, 
 we rebuild the advection without passing the grid information, otherwise we use the grid to account for stretched directions.
 """
-new_weno_scheme(advection::WENO, grid, order, bounds, ::Type{Nothing}, ::Type{Nothing}, ::Type{Nothing},) = WENO(; order, bounds)
-new_weno_scheme(advection::WENO, grid, order, bounds, XT, YT, ZT)                                         = WENO(grid; order, bounds)
+new_weno_scheme(::WENO, grid, order, bounds, ::Type{Nothing}, ::Type{Nothing}, ::Type{Nothing},) = WENO(; order, bounds)
+new_weno_scheme(::WENO, grid, order, bounds, XT, YT, ZT)                                         = WENO(grid; order, bounds)
 
 function adapt_advection_order(advection::WENO, topology, N::Int, grid::AbstractGrid) where {H, FT, XT, YT, ZT}
     
