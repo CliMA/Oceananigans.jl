@@ -8,8 +8,6 @@ using Oceananigans.Models.NonhydrostaticModels: boundary_tendency_kernel_paramet
                                                 boundary_κ_kernel_parameters,
                                                 boundary_parameters
 
-using Oceananigans.TurbulenceClosures: required_halo_size
-
 # We assume here that top/bottom BC are always synchronized (no partitioning in z)
 function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     grid = model.grid

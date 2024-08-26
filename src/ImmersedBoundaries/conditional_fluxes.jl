@@ -1,7 +1,7 @@
 using Oceananigans.Advection: AbstractAdvectionScheme, advection_buffers
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑxᶜᵃᵃ, ℑyᵃᶠᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, ℑzᵃᵃᶜ 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization
-using Oceananigans.Advection: LOADV, HOADV, WENO, TracerAdvection
+using Oceananigans.Advection: LOADV, HOADV, WENO, FluxFormAdvection
 using Oceananigans.Fields: ZeroField
 
 const ATC = AbstractTurbulenceClosure
@@ -83,13 +83,13 @@ end
 @inline _advective_tracer_flux_z(i, j, k, ibg::IBG, args...) = conditional_flux_ccf(i, j, k, ibg, zero(ibg), advective_tracer_flux_z(i, j, k, ibg, args...))
 
 # Disambiguation for tracer fluxes....
-@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, advection::TracerAdvection, args...) =
+@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
         _advective_tracer_flux_x(i, j, k, ibg, advection.x, args...)
 
-@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, advection::TracerAdvection, args...) =
+@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
         _advective_tracer_flux_y(i, j, k, ibg, advection.y, args...)
 
-@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, advection::TracerAdvection, args...) =
+@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
         _advective_tracer_flux_z(i, j, k, ibg, advection.z, args...)
 
 # Fallback for `nothing` advection

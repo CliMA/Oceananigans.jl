@@ -1,6 +1,6 @@
 import Oceananigans.Models: compute_boundary_tendencies!
 
-using Oceananigans.TurbulenceClosures: required_halo_size
+using Oceananigans.TurbulenceClosures: equired_halo_size_x, required_halo_size_y
 using Oceananigans.Grids: XFlatGrid, YFlatGrid
 
 # TODO: the code in this file is difficult to understand.
@@ -64,15 +64,16 @@ end
 function boundary_κ_kernel_parameters(grid, closure, arch)
     Nx, Ny, Nz = size(grid)
 
-    B = required_halo_size(closure)
+    Bx = required_halo_size_x(closure)
+    By = required_halo_size_y(closure)
 
-    Sx  = (B+1, Ny, Nz)
-    Sy  = (Nx, B+1, Nz)
+    Sx  = (Bx+1, Ny, Nz)
+    Sy  = (Nx, By+1, Nz)
 
     Oxᴸ = (-1, 0, 0)
     Oyᴸ = (0, -1, 0)
-    Oxᴿ = (Nx-B,  0, 0)
-    Oyᴿ = (0,  Ny-B, 0)
+    Oxᴿ = (Nx-Bx,  0, 0)
+    Oyᴿ = (0,  Ny-By, 0)
 
     sizes = (Sx,  Sy,  Sx,  Sy)
     offs  = (Oxᴸ, Oyᴸ, Oxᴿ, Oyᴿ)

@@ -1,7 +1,7 @@
 using Oceananigans.Utils: prettysummary
 
 import Adapt
-import Oceananigans.Grids: required_halo_size
+import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 
 struct ScalarDiffusivity{TD, F, V, K, N} <: AbstractScalarDiffusivity{TD, F, N}
     ν :: V
@@ -173,8 +173,18 @@ Shorthand for a `ScalarDiffusivity` with `HorizontalDivergenceFormulation()`. Se
           HorizontalScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivity(ExplicitTimeDiscretization(), HorizontalFormulation(), FT; kwargs...)
 HorizontalDivergenceScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivity(ExplicitTimeDiscretization(), HorizontalDivergenceFormulation(), FT; kwargs...)
 
-required_halo_size(closure::ScalarDiffusivity) = 1 
- 
+required_halo_size_x(::ScalarDiffusivity{<:Any, ThreeDimensionalFormulation, N}) where N = N
+required_halo_size_y(::ScalarDiffusivity{<:Any, ThreeDimensionalFormulation, N}) where N = N
+required_halo_size_z(::ScalarDiffusivity{<:Any, ThreeDimensionalFormulation, N}) where N = N
+
+required_halo_size_x(::ScalarDiffusivity{<:Any, VerticalFormulation, N}) where N = 0 
+required_halo_size_y(::ScalarDiffusivity{<:Any, VerticalFormulation, N}) where N = 0 
+required_halo_size_z(::ScalarDiffusivity{<:Any, VerticalFormulation, N}) where N = N
+
+required_halo_size_x(::ScalarDiffusivity{<:Any, HorizontalFormulation, N}) where N = N 
+required_halo_size_y(::ScalarDiffusivity{<:Any, HorizontalFormulation, N}) where N = N 
+required_halo_size_z(::ScalarDiffusivity{<:Any, HorizontalFormulation, N}) where N = 0
+
 @inline function with_tracers(tracers, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
     κ = tracer_diffusivities(tracers, closure.κ)
     return ScalarDiffusivity{TD, F, N}(closure.ν, κ)

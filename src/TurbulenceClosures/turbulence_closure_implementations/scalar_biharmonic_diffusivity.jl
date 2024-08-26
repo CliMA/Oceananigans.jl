@@ -1,4 +1,4 @@
-import Oceananigans.Grids: required_halo_size
+import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 using Oceananigans.Utils: prettysummary
 
 """
@@ -117,3 +117,19 @@ function on_architecture(to, closure::ScalarBiharmonicDiffusivity{F, <:Any, <:An
     κ = on_architecture(to, closure.κ)
     return ScalarBiharmonicDiffusivity{F, N}(ν, κ)
 end
+
+required_halo_size_x(::ScalarBiharmonicDiffusivity{<:Any, ThreeDimensionalFormulation, N}) where N = N
+required_halo_size_y(::ScalarBiharmonicDiffusivity{<:Any, ThreeDimensionalFormulation, N}) where N = N
+required_halo_size_z(::ScalarBiharmonicDiffusivity{<:Any, ThreeDimensionalFormulation, N}) where N = N
+
+required_halo_size_x(::ScalarBiharmonicDiffusivity{<:Any, VerticalFormulation, N}) where N = 0 
+required_halo_size_y(::ScalarBiharmonicDiffusivity{<:Any, VerticalFormulation, N}) where N = 0 
+required_halo_size_z(::ScalarBiharmonicDiffusivity{<:Any, VerticalFormulation, N}) where N = N
+
+required_halo_size_x(::ScalarBiharmonicDiffusivity{<:Any, HorizontalFormulation, N}) where N = N 
+required_halo_size_y(::ScalarBiharmonicDiffusivity{<:Any, HorizontalFormulation, N}) where N = N 
+required_halo_size_z(::ScalarBiharmonicDiffusivity{<:Any, HorizontalFormulation, N}) where N = 0
+
+required_halo_size_x(::ScalarBiharmonicDiffusivity{<:Any, HorizontalDivergenceFormulation, N}) where N = N 
+required_halo_size_y(::ScalarBiharmonicDiffusivity{<:Any, HorizontalDivergenceFormulation, N}) where N = N 
+required_halo_size_z(::ScalarBiharmonicDiffusivity{<:Any, HorizontalDivergenceFormulation, N}) where N = 0
