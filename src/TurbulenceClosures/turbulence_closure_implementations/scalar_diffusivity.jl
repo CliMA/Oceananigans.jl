@@ -229,3 +229,25 @@ function on_architecture(to, closure::ScalarDiffusivity{TD, F, <:Any, <:Any, N})
     κ = on_architecture(to, closure.κ)
     return ScalarDiffusivity{TD, F, N}(ν, κ)
 end
+
+# We do not have at the moment the ability to distinguish between the halos required in the x, y and z
+# direction for a general closure since the closure could contain any user-defined function
+
+# In the end we probably want something like this:
+#= 
+required_halo_size_x(::ScalarDiffusivity{<:Any, ThreeDimensionalFormulation, N}) where N = N
+required_halo_size_y(::ScalarDiffusivity{<:Any, ThreeDimensionalFormulation, N}) where N = N
+required_halo_size_z(::ScalarDiffusivity{<:Any, ThreeDimensionalFormulation, N}) where N = N
+
+required_halo_size_x(::ScalarDiffusivity{<:Any, VerticalFormulation, N}) where N = 0 
+required_halo_size_y(::ScalarDiffusivity{<:Any, VerticalFormulation, N}) where N = 0 
+required_halo_size_z(::ScalarDiffusivity{<:Any, VerticalFormulation, N}) where N = N
+
+required_halo_size_x(::ScalarDiffusivity{<:Any, HorizontalFormulation, N}) where N = N 
+required_halo_size_y(::ScalarDiffusivity{<:Any, HorizontalFormulation, N}) where N = N 
+required_halo_size_z(::ScalarDiffusivity{<:Any, HorizontalFormulation, N}) where N = 0
+
+required_halo_size_x(::ScalarDiffusivity{<:Any, HorizontalDivergenceFormulation, N}) where N = N 
+required_halo_size_y(::ScalarDiffusivity{<:Any, HorizontalDivergenceFormulation, N}) where N = N 
+required_halo_size_z(::ScalarDiffusivity{<:Any, HorizontalDivergenceFormulation, N}) where N = 0
+=#

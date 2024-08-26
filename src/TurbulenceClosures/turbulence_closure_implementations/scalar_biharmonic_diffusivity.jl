@@ -118,6 +118,11 @@ function on_architecture(to, closure::ScalarBiharmonicDiffusivity{F, <:Any, <:An
     return ScalarBiharmonicDiffusivity{F, N}(ν, κ)
 end
 
+# We do not have at the moment the ability to distinguish between the halos required in the x, y and z
+# direction for a general closure since the closure could contain any user-defined function
+
+# In the end we probably want something like this:
+#= 
 required_halo_size_x(::ScalarBiharmonicDiffusivity{<:Any, ThreeDimensionalFormulation, N}) where N = N
 required_halo_size_y(::ScalarBiharmonicDiffusivity{<:Any, ThreeDimensionalFormulation, N}) where N = N
 required_halo_size_z(::ScalarBiharmonicDiffusivity{<:Any, ThreeDimensionalFormulation, N}) where N = N
@@ -133,3 +138,4 @@ required_halo_size_z(::ScalarBiharmonicDiffusivity{<:Any, HorizontalFormulation,
 required_halo_size_x(::ScalarBiharmonicDiffusivity{<:Any, HorizontalDivergenceFormulation, N}) where N = N 
 required_halo_size_y(::ScalarBiharmonicDiffusivity{<:Any, HorizontalDivergenceFormulation, N}) where N = N 
 required_halo_size_z(::ScalarBiharmonicDiffusivity{<:Any, HorizontalDivergenceFormulation, N}) where N = 0
+=#
