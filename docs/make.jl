@@ -32,8 +32,8 @@ Distributed.addprocs(2)
     const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
     const OUTPUT_DIR   = joinpath(@__DIR__, "src/literated")
 
-    # The examples that take longer to run should be first. This ensures thats
-    # docs built using extra workers is as efficient as possible.
+    # The examples that take longer to run should be first. This ensures that the
+    # docs built which extra workers is as efficient as possible.
     example_scripts = [
         "internal_tide.jl",
         "shallow_water_Bickley_jet.jl",
