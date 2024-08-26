@@ -96,7 +96,8 @@ WENO reconstruction order 7
 function WENO(FT::DataType=Float64; 
               order = 5,
               grid = nothing, 
-              bounds = nothing)
+              bounds = nothing,
+              buffer_scheme = nothing)
     
     if !(grid isa Nothing) 
         FT = eltype(grid)
@@ -111,8 +112,8 @@ function WENO(FT::DataType=Float64;
         N  = Int((order + 1) ÷ 2)
 
         weno_coefficients = compute_reconstruction_coefficients(grid, FT, :WENO; order = N)
-        buffer_scheme     = WENO(FT; grid, order = order - 2, bounds)
         advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
+        buffer_scheme = isnothing(buffer_scheme) ? WENO(FT; grid, order = order - 2, bounds) : buffer_scheme
     end
 
     return WENO{N, FT}(weno_coefficients..., bounds, buffer_scheme, advecting_velocity_scheme)
