@@ -1,6 +1,6 @@
 import Oceananigans.Models: compute_boundary_tendencies!
 
-using Oceananigans.TurbulenceClosures: equired_halo_size_x, required_halo_size_y
+using Oceananigans.TurbulenceClosures: required_halo_size_x, required_halo_size_y
 using Oceananigans.Grids: XFlatGrid, YFlatGrid
 
 # TODO: the code in this file is difficult to understand.

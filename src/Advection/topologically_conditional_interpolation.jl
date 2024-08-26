@@ -26,9 +26,11 @@ const AUGXYZ = AUG{<:Any, <:Bounded, <:Bounded, <:Bounded}
 # Left-biased buffers are smaller by one grid point on the right side; vice versa for right-biased buffers
 # Center interpolation stencil look at i + 1 (i.e., require one less point on the left)
 
-for direction in (:x, :y, :z)
+for dir in (:x, :y, :z)
     outside_symmetric_haloᶠ = Symbol(:outside_symmetric_halo_, dir, :ᶠ)
     outside_symmetric_haloᶜ = Symbol(:outside_symmetric_halo_, dir, :ᶜ)
+    outside_biased_haloᶠ = Symbol(:outside_biased_halo_, dir, :ᶠ)
+    outside_biased_haloᶜ = Symbol(:outside_biased_halo_, dir, :ᶜ)
     required_halo_size = Symbol(:required_halo_size_, dir)
 
     @eval begin
