@@ -15,9 +15,9 @@ If the order of advection is changed in at least one direction, the adapted adve
 by this function is a `FluxFormAdvection`.
 """
 function adapt_advection_order(advection, grid::AbstractGrid)
-    advection_x = adapt_advection_order(advection, topology(grid, 1), size(grid, 1), grid)
-    advection_y = adapt_advection_order(advection, topology(grid, 2), size(grid, 2), grid)
-    advection_z = adapt_advection_order(advection, topology(grid, 3), size(grid, 3), grid)
+    advection_x = adapt_advection_order(advection, size(grid, 1), grid)
+    advection_y = adapt_advection_order(advection, size(grid, 2), grid)
+    advection_z = adapt_advection_order(advection, size(grid, 3), grid)
 
     # Check that we indeed changed the advection operator
     changed_x = advection_x != advection
@@ -41,9 +41,9 @@ function adapt_advection_order(advection, grid::AbstractGrid)
 end
 
 function adapt_advection_order(advection::FluxFormAdvection, grid::AbstractGrid)
-    advection_x = adapt_advection_order(advection.x, topology(grid, 1), size(grid, 1), grid)
-    advection_y = adapt_advection_order(advection.y, topology(grid, 2), size(grid, 2), grid)
-    advection_z = adapt_advection_order(advection.z, topology(grid, 3), size(grid, 3), grid)
+    advection_x = adapt_advection_order(advection.x, size(grid, 1), grid)
+    advection_y = adapt_advection_order(advection.y, size(grid, 2), grid)
+    advection_z = adapt_advection_order(advection.z, size(grid, 3), grid)
 
     # Check that we indeed changed the advection operator
     changed_x = advection_x != advection.x
@@ -73,8 +73,8 @@ adapt_advection_order(advection::VectorInvariant, grid::AbstractGrid) = advectio
 ##### Directional adapt advection order
 #####
 
-function adapt_advection_order(advection::Centered{H}, topology, N::Int, grid::AbstractGrid) where H
-    if N == 1
+function adapt_advection_order(advection::Centered{H}, N::Int, grid::AbstractGrid) where H
+    if N == 1 && H != 1
         return nothing
     elseif N >= H
         return advection
@@ -83,8 +83,8 @@ function adapt_advection_order(advection::Centered{H}, topology, N::Int, grid::A
     end
 end
 
-function adapt_advection_order(advection::UpwindBiased{H}, topology, N::Int, grid::AbstractGrid) where H
-    if N == 1
+function adapt_advection_order(advection::UpwindBiased{H}, N::Int, grid::AbstractGrid) where H
+    if N == 1 && H != 1
         return nothing
     elseif N >= H
         return advection
@@ -103,9 +103,8 @@ we rebuild the advection without passing the grid information, otherwise we use 
 new_weno_scheme(::WENO, grid, order, bounds, ::Type{Nothing}, ::Type{Nothing}, ::Type{Nothing},) = WENO(; order, bounds)
 new_weno_scheme(::WENO, grid, order, bounds, XT, YT, ZT)                                         = WENO(grid; order, bounds)
 
-function adapt_advection_order(advection::WENO{H, FT, XT, YT, ZT}, topology, N::Int, grid::AbstractGrid) where {H, FT, XT, YT, ZT}
-    
-    if N == 1
+function adapt_advection_order(advection::WENO{H, FT, XT, YT, ZT}, N::Int, grid::AbstractGrid) where {H, FT, XT, YT, ZT}
+    if N == 1 && H != 1
         return nothing
     elseif N >= H
         return advection

@@ -94,15 +94,92 @@ end
 ##### Fallback advection fluxes!
 #####
 
-for flux_type in (:Uu, :Vu, :Wu, :Uv, :Vv, :Wv, :Uw, :Vw, :Ww)
-    advective_momentum_flux = Symbol(:_advective_momentum_flux_, flux_type)
+# Fallback for `nothing` advection
+@inline _advective_momentum_flux_Uu(i, j, k, grid, ::Nothing, args...) = zero(grid)
+@inline _advective_momentum_flux_Uv(i, j, k, grid, ::Nothing, args...) = zero(grid)
+@inline _advective_momentum_flux_Uw(i, j, k, grid, ::Nothing, args...) = zero(grid)
 
+@inline _advective_momentum_flux_Vu(i, j, k, grid, ::Nothing, args...) = zero(grid)
+@inline _advective_momentum_flux_Vv(i, j, k, grid, ::Nothing, args...) = zero(grid)
+@inline _advective_momentum_flux_Vw(i, j, k, grid, ::Nothing, args...) = zero(grid)
+
+@inline _advective_momentum_flux_Wu(i, j, k, grid, ::Nothing, args...) = zero(grid)
+@inline _advective_momentum_flux_Wv(i, j, k, grid, ::Nothing, args...) = zero(grid)
+@inline _advective_momentum_flux_Ww(i, j, k, grid, ::Nothing, args...) = zero(grid)
+
+# Fallback for `nothing` advection and `ZeroField` tracers and velocities
+@inline _advective_momentum_flux_Uu(i, j, k, grid, ::Nothing, ::ZeroField, ::ZeroField) = zero(grid)
+@inline _advective_momentum_flux_Uv(i, j, k, grid, ::Nothing, ::ZeroField, ::ZeroField) = zero(grid)
+@inline _advective_momentum_flux_Uw(i, j, k, grid, ::Nothing, ::ZeroField, ::ZeroField) = zero(grid)
+
+@inline _advective_momentum_flux_Vu(i, j, k, grid, ::Nothing, ::ZeroField, ::ZeroField) = zero(grid)
+@inline _advective_momentum_flux_Vv(i, j, k, grid, ::Nothing, ::ZeroField, ::ZeroField) = zero(grid)
+@inline _advective_momentum_flux_Vw(i, j, k, grid, ::Nothing, ::ZeroField, ::ZeroField) = zero(grid)
+
+@inline _advective_momentum_flux_Wu(i, j, k, grid, ::Nothing, ::ZeroField, ::ZeroField) = zero(grid)
+@inline _advective_momentum_flux_Wv(i, j, k, grid, ::Nothing, ::ZeroField, ::ZeroField) = zero(grid)
+@inline _advective_momentum_flux_Ww(i, j, k, grid, ::Nothing, ::ZeroField, ::ZeroField) = zero(grid)
+
+@inline _advective_momentum_flux_Uu(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+@inline _advective_momentum_flux_Uv(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+@inline _advective_momentum_flux_Uw(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+@inline _advective_momentum_flux_Uu(i, j, k, grid, ::Nothing, ::ZeroField, u) = zero(grid)
+@inline _advective_momentum_flux_Uv(i, j, k, grid, ::Nothing, ::ZeroField, v) = zero(grid)
+@inline _advective_momentum_flux_Uw(i, j, k, grid, ::Nothing, ::ZeroField, w) = zero(grid)
+
+@inline _advective_momentum_flux_Vu(i, j, k, grid, ::Nothing, V, ::ZeroField) = zero(grid)
+@inline _advective_momentum_flux_Vv(i, j, k, grid, ::Nothing, V, ::ZeroField) = zero(grid)
+@inline _advective_momentum_flux_Vw(i, j, k, grid, ::Nothing, V, ::ZeroField) = zero(grid)
+@inline _advective_momentum_flux_Vu(i, j, k, grid, ::Nothing, ::ZeroField, u) = zero(grid)
+@inline _advective_momentum_flux_Vv(i, j, k, grid, ::Nothing, ::ZeroField, v) = zero(grid)
+@inline _advective_momentum_flux_Vw(i, j, k, grid, ::Nothing, ::ZeroField, w) = zero(grid)
+
+@inline _advective_momentum_flux_Wu(i, j, k, grid, ::Nothing, W, ::ZeroField) = zero(grid)
+@inline _advective_momentum_flux_Wv(i, j, k, grid, ::Nothing, W, ::ZeroField) = zero(grid)
+@inline _advective_momentum_flux_Ww(i, j, k, grid, ::Nothing, W, ::ZeroField) = zero(grid)
+@inline _advective_momentum_flux_Wu(i, j, k, grid, ::Nothing, ::ZeroField, u) = zero(grid)
+@inline _advective_momentum_flux_Wv(i, j, k, grid, ::Nothing, ::ZeroField, v) = zero(grid)
+@inline _advective_momentum_flux_Ww(i, j, k, grid, ::Nothing, ::ZeroField, w) = zero(grid)
+
+for scheme in (:UpwindBiased, :Centered, :WENO, :FluxFormAdvection)
     @eval begin
-        @inline $advective_momentum_flux(i, j, k, grid, ::Nothing, args...)                  = zero(grid)
-        @inline $advective_momentum_flux(i, j, k, grid, ::Nothing, ::ZeroField, ::ZeroField) = zero(grid)
-        @inline $advective_momentum_flux(i, j, k, grid, ::Nothing, U, ::ZeroField)           = zero(grid)
-        @inline $advective_momentum_flux(i, j, k, grid, scheme, ::ZeroField, ::ZeroField)    = zero(grid)
-        @inline $advective_momentum_flux(i, j, k, grid, scheme, U, ::ZeroField)              = zero(grid)
-        @inline $advective_momentum_flux(i, j, k, grid, scheme, ::ZeroField, u)              = zero(grid)
+        # Fallback for `ZeroField` tracers and velocities
+        @inline _advective_momentum_flux_Uu(i, j, k, grid, ::$Scheme, ::ZeroField, ::ZeroField) = zero(grid)
+        @inline _advective_momentum_flux_Uv(i, j, k, grid, ::$Scheme, ::ZeroField, ::ZeroField) = zero(grid)
+        @inline _advective_momentum_flux_Uw(i, j, k, grid, ::$Scheme, ::ZeroField, ::ZeroField) = zero(grid)
+
+        @inline _advective_momentum_flux_Vu(i, j, k, grid, ::$Scheme, ::ZeroField, ::ZeroField) = zero(grid)
+        @inline _advective_momentum_flux_Vv(i, j, k, grid, ::$Scheme, ::ZeroField, ::ZeroField) = zero(grid)
+        @inline _advective_momentum_flux_Vw(i, j, k, grid, ::$Scheme, ::ZeroField, ::ZeroField) = zero(grid)
+
+        @inline _advective_momentum_flux_Wu(i, j, k, grid, ::$Scheme, ::ZeroField, ::ZeroField) = zero(grid)
+        @inline _advective_momentum_flux_Wv(i, j, k, grid, ::$Scheme, ::ZeroField, ::ZeroField) = zero(grid)
+        @inline _advective_momentum_flux_Ww(i, j, k, grid, ::$Scheme, ::ZeroField, ::ZeroField) = zero(grid)
+
+        # Fallback for `ZeroField` tracers
+        @inline _advective_momentum_flux_Uu(i, j, k, grid, ::$Scheme, U, ::ZeroField) = zero(grid)
+        @inline _advective_momentum_flux_Uv(i, j, k, grid, ::$Scheme, U, ::ZeroField) = zero(grid)
+        @inline _advective_momentum_flux_Uw(i, j, k, grid, ::$Scheme, U, ::ZeroField) = zero(grid)
+
+        @inline _advective_momentum_flux_Vu(i, j, k, grid, ::$Scheme, V, ::ZeroField) = zero(grid)
+        @inline _advective_momentum_flux_Vv(i, j, k, grid, ::$Scheme, V, ::ZeroField) = zero(grid)
+        @inline _advective_momentum_flux_Vw(i, j, k, grid, ::$Scheme, V, ::ZeroField) = zero(grid)
+
+        @inline _advective_momentum_flux_Wu(i, j, k, grid, ::$Scheme, W, ::ZeroField) = zero(grid)
+        @inline _advective_momentum_flux_Wv(i, j, k, grid, ::$Scheme, W, ::ZeroField) = zero(grid)
+        @inline _advective_momentum_flux_Ww(i, j, k, grid, ::$Scheme, W, ::ZeroField) = zero(grid)
+
+        # Fallback for `ZeroField` velocities
+        @inline _advective_momentum_flux_Uu(i, j, k, grid, ::$Scheme, ::ZeroField, u) = zero(grid)
+        @inline _advective_momentum_flux_Uv(i, j, k, grid, ::$Scheme, ::ZeroField, v) = zero(grid)
+        @inline _advective_momentum_flux_Uw(i, j, k, grid, ::$Scheme, ::ZeroField, w) = zero(grid)
+
+        @inline _advective_momentum_flux_Vu(i, j, k, grid, ::$Scheme, ::ZeroField, u) = zero(grid)
+        @inline _advective_momentum_flux_Vv(i, j, k, grid, ::$Scheme, ::ZeroField, v) = zero(grid)
+        @inline _advective_momentum_flux_Vw(i, j, k, grid, ::$Scheme, ::ZeroField, w) = zero(grid)
+
+        @inline _advective_momentum_flux_Wu(i, j, k, grid, ::$Scheme, ::ZeroField, u) = zero(grid)
+        @inline _advective_momentum_flux_Wv(i, j, k, grid, ::$Scheme, ::ZeroField, v) = zero(grid)
+        @inline _advective_momentum_flux_Ww(i, j, k, grid, ::$Scheme, ::ZeroField, w) = zero(grid)
     end
 end
