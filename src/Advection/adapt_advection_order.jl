@@ -9,7 +9,8 @@ A high order advection sheme is reduced to a lower order advection scheme if the
 - `advection`: The original advection scheme.
 - `grid::AbstractGrid`: The grid on which the advection scheme is applied.
 
-The adapted advection scheme with adjusted advection order returned by this function is a `FluxFormAdvection`.
+If the order of advection is changed in at least one direction, the adapted advection scheme with adjusted advection order returned 
+by this function is a `FluxFormAdvection`.
 """
 function adapt_advection_order(advection, grid::AbstractGrid)
     advection_x = adapt_advection_order_x(advection, grid, grid.Nx)
