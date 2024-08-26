@@ -8,6 +8,10 @@ using MakieCore: AbstractPlot
 import MakieCore: convert_arguments, _create_plot
 import Makie: args_preferred_axis
 
+# Extending args_preferred_axis here ensures that Field
+# do not overstate a preference for being plotted in a 3D LScene.
+# Because often we are trying to plot 1D and 2D Field, even though
+# (perhaps incorrectly) all Field are AbstractArray{3}.
 args_preferred_axis(::Field) = nothing
 
 function drop_singleton_indices(N)
