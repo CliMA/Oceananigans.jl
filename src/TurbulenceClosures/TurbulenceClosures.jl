@@ -50,7 +50,7 @@ using Oceananigans.Utils
 
 using Oceananigans.Architectures: AbstractArchitecture, device
 using Oceananigans.Fields: FunctionField
-import Oceananigans.Advection: required_halo_size_x, required_halo_size_y, required_halo_size_z
+import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 import Oceananigans.Architectures: on_architecture
 
 const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
