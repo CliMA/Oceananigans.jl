@@ -115,8 +115,10 @@ function adapt_advection_order_x(advection::WENO{H, FT, XT, YT, ZT}, grid::Abstr
 end
 
 function adapt_advection_order_y(advection::WENO{H, FT, XT, YT, ZT}, grid::AbstractGrid, N::Int) where {H, FT, XT, YT, ZT}
-    
-    if N > H
+        
+    if N == 1
+        return nothing
+    elseif N > H
         return advection
     else
         return new_weno_scheme(grid, N * 2 - 1, advection.bounds, YT)
