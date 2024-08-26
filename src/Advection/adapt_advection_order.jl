@@ -15,9 +15,9 @@ If the order of advection is changed in at least one direction, the adapted adve
 by this function is a `FluxFormAdvection`.
 """
 function adapt_advection_order(advection, grid::AbstractGrid)
-    advection_x = adapt_advection_order_x(advection.x, topology(grid, 1), size(grid, 1), grid)
-    advection_y = adapt_advection_order_y(advection.y, topology(grid, 2), size(grid, 2), grid)
-    advection_z = adapt_advection_order_z(advection.z, topology(grid, 3), size(grid, 3), grid)
+    advection_x = adapt_advection_order(advection, topology(grid, 1), size(grid, 1), grid)
+    advection_y = adapt_advection_order(advection, topology(grid, 2), size(grid, 2), grid)
+    advection_z = adapt_advection_order(advection, topology(grid, 3), size(grid, 3), grid)
 
     # Check that we indeed changed the advection operator
     changed_x = advection_x != advection
@@ -41,9 +41,9 @@ function adapt_advection_order(advection, grid::AbstractGrid)
 end
 
 function adapt_advection_order(advection::FluxFormAdvection, grid::AbstractGrid)
-    advection_x = adapt_advection_order_x(advection.x, topology(grid, 1), size(grid, 1), grid)
-    advection_y = adapt_advection_order_y(advection.y, topology(grid, 2), size(grid, 2), grid)
-    advection_z = adapt_advection_order_z(advection.z, topology(grid, 3), size(grid, 3), grid)
+    advection_x = adapt_advection_order(advection.x, topology(grid, 1), size(grid, 1), grid)
+    advection_y = adapt_advection_order(advection.y, topology(grid, 2), size(grid, 2), grid)
+    advection_z = adapt_advection_order(advection.z, topology(grid, 3), size(grid, 3), grid)
 
     # Check that we indeed changed the advection operator
     changed_x = advection_x != advection.x
@@ -69,16 +69,11 @@ end
 # For the moment, we do not adapt the advection order for the VectorInvariant advection scheme
 adapt_advection_order(advection::VectorInvariant, grid::AbstractGrid) = advection
 
-# We only need one halo in bounded directions!
-adapt_advection_order_x(advection, topo, N, grid) = advection
-adapt_advection_order_y(advection, topo, N, grid) = advection
-adapt_advection_order_z(advection, topo, N, grid) = advection
-
 #####
 ##### Directional adapt advection order
 #####
 
-function adapt_advection_order_x(advection::Centered{H}, topology, N::Int, grid::AbstractGrid) where H
+function adapt_advection_order(advection::Centered{H}, topology, N::Int, grid::AbstractGrid) where H
     if N == 1
         return nothing
     elseif N >= H
@@ -88,7 +83,7 @@ function adapt_advection_order_x(advection::Centered{H}, topology, N::Int, grid:
     end
 end
 
-function adapt_advection_order_x(advection::UpwindBiased{H}, topology, grid::AbstractGrid, N::Int) where H
+function adapt_advection_order(advection::UpwindBiased{H}, topology, N::Int, grid::AbstractGrid) where H
     if N == 1
         return nothing
     elseif N >= H
@@ -98,47 +93,23 @@ function adapt_advection_order_x(advection::UpwindBiased{H}, topology, grid::Abs
     end
 end
 
-adapt_advection_order_y(advection, topology, grid::AbstractGrid, N::Int) = adapt_advection_order_x(advection, topology, grid, N)
-adapt_advection_order_z(advection, topology, grid::AbstractGrid, N::Int) = adapt_advection_order_x(advection, topology, grid, N)
-
 """
-    new_weno_scheme(grid, order, bounds, T)
+    new_weno_scheme(grid, order, bounds, XT, YT, ZT)
 
-Constructs a new WENO scheme based on the given parameters. `T` is the type of the weno coefficients. 
-A _non-stretched_ WENO scheme has `T` equal to `Nothing`. In case of a non-stretched WENO scheme, 
+Constructs a new WENO scheme based on the given parameters. `XT`, `YT`, and `ZT` is the type of the precomputed weno coefficients in the 
+x-direction, y-direction and z-direction. A _non-stretched_ WENO scheme has `T` equal to `Nothing` everywhere. In case of a non-stretched WENO scheme, 
 we rebuild the advection without passing the grid information, otherwise we use the grid to account for stretched directions.
 """
-new_weno_scheme(grid, order, bounds, T) = ifelse(T == Nothing, WENO(; order, bounds), WENO(grid; order, bounds))
+new_weno_scheme(advection::WENO, grid, order, bounds, ::Type{Nothing}, ::Type{Nothing}, ::Type{Nothing},) = WENO(; order, bounds)
+new_weno_scheme(advection::WENO, grid, order, bounds, XT, YT, ZT)                                         = WENO(grid; order, bounds)
 
-function adapt_advection_order_x(advection::WENO{H, FT, XT, YT, ZT}, topology, grid::AbstractGrid, N::Int) where {H, FT, XT, YT, ZT}
+function adapt_advection_order(advection::WENO, topology, N::Int, grid::AbstractGrid) where {H, FT, XT, YT, ZT}
     
     if N == 1
         return nothing
     elseif N >= H
         return advection
     else
-        return new_weno_scheme(grid, N * 2 - 1, advection.bounds, XT)
-    end
-end
-
-function adapt_advection_order_y(advection::WENO{H, FT, XT, YT, ZT}, topology, grid::AbstractGrid, N::Int) where {H, FT, XT, YT, ZT}
-        
-    if N == 1
-        return nothing
-    elseif N > H
-        return advection
-    else
-        return new_weno_scheme(grid, N * 2 - 1, advection.bounds, YT)
-    end
-end
-
-function adapt_advection_order_z(advection::WENO{H, FT, XT, YT, ZT}, topology, grid::AbstractGrid, N::Int) where {H, FT, XT, YT, ZT}
-    
-    if N == 1
-        return nothing
-    elseif N >= H
-        return advection
-    else
-        return new_weno_scheme(grid, N * 2 - 1, advection.bounds, XT)
+        return new_weno_scheme(advection, grid, N * 2 - 1, advection.bounds, XT, YT, ZT)
     end
 end
