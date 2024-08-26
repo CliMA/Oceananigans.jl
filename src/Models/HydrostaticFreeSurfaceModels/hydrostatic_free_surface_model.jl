@@ -3,7 +3,7 @@ using OrderedCollections: OrderedDict
 
 using Oceananigans.DistributedComputations
 using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant
+using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant, adapt_advection_order
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
@@ -129,6 +129,12 @@ function HydrostaticFreeSurfaceModel(; grid,
     @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
+
+      # Adjust advection scheme to be valid on a particular grid size. i.e. if the grid size
+    # is smaller than the advection order, reduce the order of the advection in that particular
+    # direction
+    momentum_advection = adapt_advection_order(momentum_advection, grid)
+    tracer_advection   = adapt_advection_order(tracer_advection, grid)
 
     tracers, auxiliary_fields = validate_biogeochemistry(tracers, merge(auxiliary_fields, biogeochemical_auxiliary_fields(biogeochemistry)), biogeochemistry, grid, clock)
     validate_buoyancy(buoyancy, tracernames(tracers))
