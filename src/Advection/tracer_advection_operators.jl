@@ -20,19 +20,6 @@ for flux_dir in (:x, :y, :z)
     end
 end
 
-for flux_dir in (:Uu, :Vu, :Wu, :Uv, :Vv, :Wv, :Uw, :Vw, :Ww)
-    advective_momentum_flux = Symbol(:_advective_momentum_flux_, flux_dir)
-
-    @eval begin
-        @inline $advective_momentum_flux(i, j, k, grid, ::Nothing, args...)                  = zero(grid)
-        @inline $advective_momentum_flux(i, j, k, grid, ::Nothing, ::ZeroField, ::ZeroField) = zero(grid)
-        @inline $advective_momentum_flux(i, j, k, grid, ::Nothing, U, ::ZeroField)           = zero(grid)
-        @inline $advective_momentum_flux(i, j, k, grid, scheme, ::ZeroField, ::ZeroField)    = zero(grid)
-        @inline $advective_momentum_flux(i, j, k, grid, scheme, U, ::ZeroField)              = zero(grid)
-        @inline $advective_momentum_flux(i, j, k, grid, scheme, ::ZeroField, u)              = zero(grid)
-    end
-end
-
 #####
 ##### Tracer advection operator
 #####
