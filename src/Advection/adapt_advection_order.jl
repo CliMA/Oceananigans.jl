@@ -78,7 +78,7 @@ adapt_advection_order_z(advection, topo, N, grid) = advection
 ##### Directional adapt advection order
 #####
 
-function adapt_advection_order_x(advection::Centered{H}, ::Periodic, N::Int, grid::AbstractGrid) where H
+function adapt_advection_order_x(advection::Centered{H}, topology, N::Int, grid::AbstractGrid) where H
     if N == 1
         return nothing
     elseif N >= H
@@ -88,7 +88,7 @@ function adapt_advection_order_x(advection::Centered{H}, ::Periodic, N::Int, gri
     end
 end
 
-function adapt_advection_order_x(advection::UpwindBiased{H}, ::Periodic, grid::AbstractGrid, N::Int) where H
+function adapt_advection_order_x(advection::UpwindBiased{H}, topology, grid::AbstractGrid, N::Int) where H
     if N == 1
         return nothing
     elseif N >= H
@@ -98,8 +98,8 @@ function adapt_advection_order_x(advection::UpwindBiased{H}, ::Periodic, grid::A
     end
 end
 
-adapt_advection_order_y(advection, topology::Periodic, grid::AbstractGrid, N::Int) = adapt_advection_order_x(advection, topology, grid, N)
-adapt_advection_order_z(advection, topology::Periodic, grid::AbstractGrid, N::Int) = adapt_advection_order_x(advection, topology, grid, N)
+adapt_advection_order_y(advection, topology, grid::AbstractGrid, N::Int) = adapt_advection_order_x(advection, topology, grid, N)
+adapt_advection_order_z(advection, topology, grid::AbstractGrid, N::Int) = adapt_advection_order_x(advection, topology, grid, N)
 
 """
     new_weno_scheme(grid, order, bounds, T)
@@ -110,7 +110,7 @@ we rebuild the advection without passing the grid information, otherwise we use 
 """
 new_weno_scheme(grid, order, bounds, T) = ifelse(T == Nothing, WENO(; order, bounds), WENO(grid; order, bounds))
 
-function adapt_advection_order_x(advection::WENO{H, FT, XT, YT, ZT}, ::Periodic, grid::AbstractGrid, N::Int) where {H, FT, XT, YT, ZT}
+function adapt_advection_order_x(advection::WENO{H, FT, XT, YT, ZT}, topology, grid::AbstractGrid, N::Int) where {H, FT, XT, YT, ZT}
     
     if N == 1
         return nothing
@@ -121,7 +121,7 @@ function adapt_advection_order_x(advection::WENO{H, FT, XT, YT, ZT}, ::Periodic,
     end
 end
 
-function adapt_advection_order_y(advection::WENO{H, FT, XT, YT, ZT}, ::Periodic, grid::AbstractGrid, N::Int) where {H, FT, XT, YT, ZT}
+function adapt_advection_order_y(advection::WENO{H, FT, XT, YT, ZT}, topology, grid::AbstractGrid, N::Int) where {H, FT, XT, YT, ZT}
         
     if N == 1
         return nothing
@@ -132,7 +132,7 @@ function adapt_advection_order_y(advection::WENO{H, FT, XT, YT, ZT}, ::Periodic,
     end
 end
 
-function adapt_advection_order_z(advection::WENO{H, FT, XT, YT, ZT}, ::Periodic, grid::AbstractGrid, N::Int) where {H, FT, XT, YT, ZT}
+function adapt_advection_order_z(advection::WENO{H, FT, XT, YT, ZT}, topology, grid::AbstractGrid, N::Int) where {H, FT, XT, YT, ZT}
     
     if N == 1
         return nothing
