@@ -25,10 +25,10 @@ Update peripheral aspects of the model (auxiliary fields, halo regions, diffusiv
 hydrostatic pressure) to the current model state. If `callbacks` are provided (in an array),
 they are called in the end.
 """
-update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true) =
+update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = false) =
     update_state!(model, model.grid, callbacks; compute_tendencies)
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
+function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = false)
     @apply_regionally mask_immersed_model_fields!(model, grid)
 
     # Update possible FieldTimeSeries used in the model
