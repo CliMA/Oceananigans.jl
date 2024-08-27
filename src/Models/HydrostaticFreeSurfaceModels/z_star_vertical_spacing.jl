@@ -113,20 +113,25 @@ reference_Δzᵃᵃᶜ(grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶜ.Δr
 function update_vertical_spacing!(model, grid::ZStarSpacingGrid; parameters = :xy)
     
     # Scaling 
-    s⁻ = grid.Δzᵃᵃᶠ.s⁻
-    sⁿ = grid.Δzᵃᵃᶠ.sⁿ
+    s⁻    = grid.Δzᵃᵃᶠ.s⁻
+    sⁿ    = grid.Δzᵃᵃᶠ.sⁿ
     ∂t_∂s = grid.Δzᵃᵃᶠ.∂t_∂s
 
-    Hᶜᶜ  = model.free_surface.auxiliary.Hᶜᶜ
-    U̅    = model.free_surface.state.U̅
-    V̅    = model.free_surface.state.V̅
+    # Free surface variables
+    Hᶜᶜ = model.free_surface.auxiliary.Hᶜᶜ
+    U̅   = model.free_surface.state.U̅
+    V̅   = model.free_surface.state.V̅
+    η   = model.free_surface.η
 
     # Update vertical spacing with available parameters 
     # No need to fill the halo as the scaling is updated _IN_ the halos
     launch!(architecture(grid), grid, parameters, _update_zstar!, 
-            sⁿ, s⁻, model.free_surface.η, Hᶜᶜ, grid)
+            sⁿ, s⁻, η, Hᶜᶜ, grid)
     
-    # Update scaling time derivative
+    # Update the time derivative of the grid-scaling. Note that in this case we leverage the
+    # free surface evolution equation, where the time derivative of the free surface is equal
+    # to the divergence of the vertically integrated velocity field, such that
+    # ∂ₜ((H + η) / H) = H⁻¹ ∂ₜη =  - H⁻¹ ∇ ⋅ ∫udz 
     launch!(architecture(grid), grid, parameters, _update_∂t_∂s!, 
             ∂t_∂s, U̅, V̅, Hᶜᶜ, grid)
 
