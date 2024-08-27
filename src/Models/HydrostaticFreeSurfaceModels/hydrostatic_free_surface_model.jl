@@ -137,7 +137,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     end
 
     grid = free_surface isa SplitExplicitFreeSurface ? generalized_spacing_grid(grid, generalized_vertical_coordinate) : grid
-    
+
     arch = architecture(grid)
 
     @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)

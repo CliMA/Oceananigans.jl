@@ -12,7 +12,7 @@ struct ZStar end
 A vertical spacing for the hydrostatic free surface model that follows the free surface.
 The vertical spacing is defined by a reference spacing `Δr` and a scaling `s` that obeys
 ```math
-s = (η + H) / η
+s = (η + H) / H
 ```
 where ``η`` is the free surface height and ``H`` the vertical depth of the water column
 
