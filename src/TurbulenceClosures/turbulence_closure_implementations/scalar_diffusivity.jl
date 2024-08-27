@@ -6,7 +6,7 @@ import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_
 struct ScalarDiffusivity{TD, F, N, V, K} <: AbstractScalarDiffusivity{TD, F, N}
     ν :: V
     κ :: K
-    ScalarDiffusivity{TD, F, N}(ν::V, κ::K) where {TD, F, V, K, N} = new{TD, F, N, V, K}(ν, κ)
+    ScalarDiffusivity{TD, F, N}(ν::V, κ::K) where {TD, F, N, V, K} = new{TD, F, N, V, K}(ν, κ)
 end
 
 """
@@ -173,7 +173,7 @@ Shorthand for a `ScalarDiffusivity` with `HorizontalDivergenceFormulation()`. Se
           HorizontalScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivity(ExplicitTimeDiscretization(), HorizontalFormulation(), FT; kwargs...)
 HorizontalDivergenceScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivity(ExplicitTimeDiscretization(), HorizontalDivergenceFormulation(), FT; kwargs...)
 
-@inline function with_tracers(tracers, closure::ScalarDiffusivity{TD, F, N, V, K}) where {TD, F, N, V, K}
+@inline function with_tracers(tracers, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
     κ = tracer_diffusivities(tracers, closure.κ)
     return ScalarDiffusivity{TD, F, N}(closure.ν, κ)
 end
