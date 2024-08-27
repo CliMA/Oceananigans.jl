@@ -9,11 +9,16 @@ using Oceananigans.Advection: OnlySelfUpwinding, CrossAndSelfUpwinding
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
 using Oceananigans.Solvers: PreconditionedConjugateGradientSolver
 
-import Oceananigans.Advection: WENO, cell_advection_timescale
+import Oceananigans.Advection: WENO, cell_advection_timescale, adapt_advection_order
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: build_implicit_step_solver, validate_tracer_advection
 import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
 
 const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrids}
+
+function adapt_advection_order(advection::MultiRegionObject, grid::MultiRegionGrids) 
+    @apply_regionally new_advection = adapt_advection_order(advection, grid)
+    return new_advection
+end
 
 # Utility to generate the inputs to complex `getregion`s
 function getregionalproperties(T, inner=true)
