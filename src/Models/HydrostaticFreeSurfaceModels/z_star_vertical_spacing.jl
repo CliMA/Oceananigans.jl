@@ -118,7 +118,7 @@ function update_vertical_spacing!(model, grid::ZStarSpacingGrid; parameters = :x
     ∂t_∂s = grid.Δzᵃᵃᶠ.∂t_∂s
 
     Hᶜᶜ  = model.free_surface.auxiliary.Hᶜᶜ
-    U̅    = model.free_surface.state.U̅,
+    U̅    = model.free_surface.state.U̅
     V̅    = model.free_surface.state.V̅
 
     # Update vertical spacing with available parameters 
