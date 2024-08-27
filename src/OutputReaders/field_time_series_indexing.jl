@@ -79,7 +79,7 @@ import Base: getindex
 function getindex(fts::OnDiskFTS, n::Int)
     # Load data
     arch = architecture(fts)
-    file = jldopen(fts.path)
+    file = jldopen(fts.path; fts.backend_kw...)
     iter = keys(file["timeseries/t"])[n]
     raw_data = on_architecture(arch, file["timeseries/$(fts.name)/$iter"])
     close(file)

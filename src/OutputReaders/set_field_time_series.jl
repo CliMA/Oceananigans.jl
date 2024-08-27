@@ -11,7 +11,7 @@ find_time_index(time::Number, file_times)       = findfirst(t -> t ≈ time, fil
 find_time_index(time::AbstractTime, file_times) = findfirst(t -> t == time, file_times)
 
 function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name)
-    file = jldopen(path)
+    file = jldopen(path; fts.backend_kw...)
     file_iterations = iterations_from_file(file)
     file_times = [file["timeseries/t/$i"] for i in file_iterations]
     close(file)
@@ -51,7 +51,7 @@ set!(fts::InMemoryFTS, value, n::Int) = set!(fts[n], value)
 
 function set!(fts::InMemoryFTS, fields_vector::AbstractVector{<:AbstractField})
     raw_data = parent(fts)
-    file = jldopen(path)
+    file = jldopen(path; fts.backend_kw...)
 
     for (n, field) in enumerate(fields_vector)
         nth_raw_data = view(raw_data, :, :, :, n)
