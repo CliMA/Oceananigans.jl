@@ -4,7 +4,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
                                                         SplitExplicitSettings,
                                                         SplitExplicitState,
                                                         FixedSubstepNumber, FixedTimeStepSize,
-                                                        calculate_substeps
+                                                        calculate_substeps,
+                                                        calculate_column_height!
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface, SplitExplicitAuxiliaryFields
 

@@ -14,7 +14,7 @@ function SplitExplicitAuxiliaryFields(grid::DistributedGrid)
     Hᶜᶠ = Field{Center, Face,   Nothing}(grid)
     Hᶜᶜ = Field{Center, Center, Nothing}(grid)
 
-    calculate_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
+    compute_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
 
     # In a non-parallel grid we calculate only the interior
     kernel_size    = augmented_kernel_size(grid)

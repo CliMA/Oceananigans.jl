@@ -233,14 +233,14 @@ function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
     Hᶜᶠ = Field{Center, Face,   Nothing}(grid)
     Hᶜᶜ = Field{Center, Center, Nothing}(grid)
 
-    calculate_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
+    compute_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
 
     kernel_parameters = :xy
 
     return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_parameters)
 end
 
-function calculate_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
+function compute_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
     Tx, Ty, _ = topology(grid)
