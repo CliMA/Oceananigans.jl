@@ -27,7 +27,7 @@ function test_nonhydrostatic_flux_budget(grid, name, side, L)
     FT = eltype(grid)
     flux = FT(π)
     direction = side ∈ (:west, :south, :bottom, :immersed) ? 1 : -1
-    bc_kwarg = Dict(side => BoundaryCondition(Flux, flux * direction))
+    bc_kwarg = Dict(side => BoundaryCondition(Flux(), flux * direction))
     field_bcs = FieldBoundaryConditions(; bc_kwarg...)
     boundary_conditions = (; name => field_bcs)
 
@@ -72,7 +72,7 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     set!(model, b=b₀)
 
     b = model.tracers.b
-    mean_b₀ = mean(interior(b))
+    mean_b₀ = mean(b)
 
     τκ = Lz^2 / κ₀  # Diffusion time-scale
     Δt = 1e-6 * τκ  # Time step much less than diffusion time-scale
@@ -100,7 +100,7 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     # mean(interior(b)) - mean_b₀ = -3.141592656086267e-5
     # (flux * model.clock.time) / Lz = -3.141592653589793e-5
     
-    return isapprox(mean(interior(b)) - mean_b₀, flux * model.clock.time / Lz, atol=1e-6)
+    return isapprox(mean(b) - mean_b₀, flux * model.clock.time / Lz, atol=1e-6)
 end
 
 test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),

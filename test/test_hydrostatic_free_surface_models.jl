@@ -14,16 +14,12 @@ function time_step_hydrostatic_model_works(grid;
                                            closure = nothing,
                                            velocities = nothing)
 
-    tracers = [:T, :S]
+    tracers = [:b]
+    buoyancy = BuoyancyTracer()
     closure isa CATKEVerticalDiffusivity && push!(tracers, :e)
 
-    model = HydrostaticFreeSurfaceModel(grid = grid,
-                                        momentum_advection = momentum_advection,
-                                        free_surface = free_surface,
-                                        coriolis = coriolis,
-                                        tracers = tracers,
-                                        velocities = velocities,
-                                        closure = closure)
+    model = HydrostaticFreeSurfaceModel(; grid, coriolis, tracers, velocities, buoyancy,
+                                        momentum_advection, free_surface, closure)
 
     simulation = Simulation(model, Δt=1.0, stop_iteration=1)
 
@@ -73,8 +69,8 @@ topos_3d = ((Periodic, Periodic, Bounded),
     @testset "$topo_1d model construction" begin
         @info "  Testing $topo_1d model construction..."
         for arch in archs, FT in [Float64] #float_types
-            grid = RectilinearGrid(arch, FT, topology=topo_1d, size=(1), extent=(1))
-            model = HydrostaticFreeSurfaceModel(grid=grid)
+            grid = RectilinearGrid(arch, FT, topology=topo_1d, size=1, extent=1)
+            model = HydrostaticFreeSurfaceModel(; grid)
             @test model isa HydrostaticFreeSurfaceModel
 
             # SingleColumnGrid tests
@@ -89,7 +85,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @info "  Testing $topo model construction..."
             for arch in archs, FT in float_types
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1), extent=(1, 2))
-                model = HydrostaticFreeSurfaceModel(grid=grid)
+                model = HydrostaticFreeSurfaceModel(; grid)
                 @test model isa HydrostaticFreeSurfaceModel
                 @test :η ∈ keys(fields(model)) # contrary to the SingleColumnGrid case
             end
@@ -101,7 +97,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @info "  Testing $topo model construction..."
             for arch in archs, FT in float_types
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
-                model = HydrostaticFreeSurfaceModel(grid=grid)
+                model = HydrostaticFreeSurfaceModel(; grid)
                 @test model isa HydrostaticFreeSurfaceModel
             end
         end
