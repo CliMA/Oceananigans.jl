@@ -5,7 +5,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
                                                         SplitExplicitState,
                                                         FixedSubstepNumber, FixedTimeStepSize,
                                                         calculate_substeps,
-                                                        calculate_column_height!
+                                                        compute_column_height!
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface, SplitExplicitAuxiliaryFields
 
@@ -18,7 +18,7 @@ function SplitExplicitAuxiliaryFields(grid::MultiRegionGrids)
     Hᶜᶠ = Field((Center, Face,   Nothing), grid)
     Hᶜᶠ = Field((Center, Center, Nothing), grid)
 
-    @apply_regionally calculate_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
+    @apply_regionally compute_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
 
     # In a non-parallel grid we calculate only the interior
     @apply_regionally kernel_size    = augmented_kernel_size(grid, grid.partition)
