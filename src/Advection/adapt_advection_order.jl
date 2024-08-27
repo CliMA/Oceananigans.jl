@@ -77,7 +77,7 @@ adapt_advection_order(advection::Nothing, N::Int, grid::AbstractGrid) = nothing
 
 function adapt_advection_order(advection::Centered{H}, N::Int, grid::AbstractGrid) where H
     if N == 1 && H != 1
-        return nothing
+        return Centered(; order = 2)
     elseif N >= H
         return advection
     else
@@ -87,7 +87,7 @@ end
 
 function adapt_advection_order(advection::UpwindBiased{H}, N::Int, grid::AbstractGrid) where H
     if N == 1 && H != 1
-        return nothing
+        return UpwindBiased(; order = 1)
     elseif N >= H
         return advection
     else
@@ -107,7 +107,7 @@ new_weno_scheme(::WENO, grid, order, bounds, XT, YT, ZT)                        
 
 function adapt_advection_order(advection::WENO{H, FT, XT, YT, ZT}, N::Int, grid::AbstractGrid) where {H, FT, XT, YT, ZT}
     if N == 1 && H != 1
-        return nothing
+        return UpwindBiased(; order = 1)
     elseif N >= H
         return advection
     else
