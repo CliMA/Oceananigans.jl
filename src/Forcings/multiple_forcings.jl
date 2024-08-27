@@ -41,18 +41,14 @@ end
                                                                         mf.forcings[3](i, j, k, grid, clock, model_fields) +
                                                                         mf.forcings[4](i, j, k, grid, clock, model_fields)
 
-# The magic (which doesn't seem to work on GPU now)
-@inline function (mf::MultipleForcings{N})(i, j, k, grid, clock, model_fields) where N
-    total_forcing = zero(grid)
-    forcings = mf.forcings
-    ntuple(Val(N)) do n
+@generated function (mf::MultipleForcings{N})(i, j, k, grid, clock, model_fields) where N
+    quote
+        total_forcing = zero(grid)
+        forcings = mf.forcings
         Base.@_inline_meta
-        @inbounds begin
-            nth_forcing = forcings[n]
-            total_forcing += nth_forcing(i, j, k, grid, clock, model_fields)
-        end
+        $([:(@inbounds total_forcing += forcings[$n](i, j, k, grid, clock, model_fields)) for n in 1:N]...)
+        return total_forcing
     end
-    return total_forcing
 end
 
 Base.summary(mf::MultipleForcings) = string("MultipleForcings with ", length(mf.forcings), " forcing",
