@@ -230,7 +230,7 @@ function NonhydrostaticModel(; grid,
                                 pressures, diffusivity_fields, timestepper, pressure_solver, immersed_boundary,
                                 auxiliary_fields)
 
-    update_state!(model, 0)
+    update_state!(model)
     
     return model
 end

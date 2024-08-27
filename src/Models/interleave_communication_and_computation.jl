@@ -6,7 +6,7 @@ using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid
 using Oceananigans.DistributedComputations: synchronize_communication!, SynchronizedDistributed
 
-function complete_communication_and_compute_boundary!(model, ::DistributedGrid, arch, Δt)
+function complete_communication_and_compute_boundary!(model, ::DistributedGrid, arch)
 
     # Iterate over the fields to clear _ALL_ possible architectures
     for field in prognostic_fields(model)
@@ -14,16 +14,16 @@ function complete_communication_and_compute_boundary!(model, ::DistributedGrid, 
     end
 
     # Recompute tendencies near the boundary halos
-    compute_boundary_tendencies!(model, Δt)
+    compute_boundary_tendencies!(model)
 
     return nothing
 end
 
 # Fallback
-complete_communication_and_compute_boundary!(model, ::DistributedGrid, ::SynchronizedDistributed, Δt) = nothing
-complete_communication_and_compute_boundary!(model, grid, arch, Δt) = nothing
+complete_communication_and_compute_boundary!(model, ::DistributedGrid, ::SynchronizedDistributed) = nothing
+complete_communication_and_compute_boundary!(model, grid, arch) = nothing
 
-compute_boundary_tendencies!(model, Δt) = nothing
+compute_boundary_tendencies!(model) = nothing
 
 """ Kernel parameters for computing interior tendencies. """
 interior_tendency_kernel_parameters(grid) = :xyz # fallback

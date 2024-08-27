@@ -17,7 +17,7 @@ Update peripheral aspects of the model (halo regions, diffusivities, hydrostatic
 pressure) to the current model state. If `callbacks` are provided (in an array),
 they are called in the end.
 """
-function update_state!(model::NonhydrostaticModel, Δt=nothing, callbacks=[]; compute_tendencies = true)
+function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendencies = true)
     
     # Mask immersed tracers
     foreach(model.tracers) do tracer
@@ -50,7 +50,7 @@ function update_state!(model::NonhydrostaticModel, Δt=nothing, callbacks=[]; co
     update_biogeochemical_state!(model.biogeochemistry, model)
 
     compute_tendencies && 
-        @apply_regionally compute_tendencies!(model, Δt, callbacks)
+        @apply_regionally compute_tendencies!(model, callbacks)
 
     return nothing
 end

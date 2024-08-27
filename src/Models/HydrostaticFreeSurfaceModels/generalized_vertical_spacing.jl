@@ -97,7 +97,7 @@ end
 #####
 
 generalized_spacing_grid(grid, coord) = grid
-update_vertical_spacing!(model, grid, Δt; kwargs...) = nothing
+update_vertical_spacing!(model, grid; kwargs...) = nothing
 
 ##### 
 ##### Vertical spacings for a generalized vertical coordinate system

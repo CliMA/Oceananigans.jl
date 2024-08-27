@@ -132,7 +132,11 @@ function HydrostaticFreeSurfaceModel(; grid,
     #   throw(ArgumentError("Generalized vertical coordinates are supported only for the vector-invariant form of the momentum equations"))
     # end
 
-    grid = !isnothing(free_surface) ? generalized_spacing_grid(grid, generalized_vertical_coordinate) : grid
+    if !(free_surface isa SplitExplicitFreeSurface) && !isnothing(generalized_vertical_coordinate)
+        @warn "Generalized vertical coordinates are supported only for the SplitExplicitFreeSurface at the moment. Ignoring the generalized_vertical_coordinate argument."
+    end
+
+    grid = free_surface isa SplitExplicitFreeSurface ? generalized_spacing_grid(grid, generalized_vertical_coordinate) : grid
     
     arch = architecture(grid)
 
@@ -211,7 +215,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, tracers,
                                         pressure, diffusivity_fields, timestepper, auxiliary_fields)
 
-    update_state!(model, 1.0)
+    update_state!(model)
 
     return model
 end

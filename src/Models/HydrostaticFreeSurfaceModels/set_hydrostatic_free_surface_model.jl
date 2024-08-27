@@ -61,7 +61,7 @@ model.velocities.u
     end
 
     initialize!(model)
-    update_state!(model, 1.0)
+    update_state!(model)
 
     return nothing
 end

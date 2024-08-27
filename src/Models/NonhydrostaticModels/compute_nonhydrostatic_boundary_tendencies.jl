@@ -7,7 +7,7 @@ using Oceananigans.Grids: XFlatGrid, YFlatGrid
 # Rewriting it may be helpful.
 
 # We assume here that top/bottom BC are always synched (no partitioning in z)
-function compute_boundary_tendencies!(model::NonhydrostaticModel, Δt)
+function compute_boundary_tendencies!(model::NonhydrostaticModel)
     grid = model.grid
     arch = architecture(grid)
 

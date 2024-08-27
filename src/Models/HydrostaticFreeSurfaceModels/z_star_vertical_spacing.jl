@@ -110,7 +110,7 @@ reference_Δzᵃᵃᶜ(grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶜ.Δr
 ##### ZStar-specific vertical spacings update
 #####
 
-function update_vertical_spacing!(model, grid::ZStarSpacingGrid, Δt; parameters = :xy)
+function update_vertical_spacing!(model, grid::ZStarSpacingGrid; parameters = :xy)
     
     # Scaling 
     s⁻ = grid.Δzᵃᵃᶠ.s⁻
@@ -118,19 +118,32 @@ function update_vertical_spacing!(model, grid::ZStarSpacingGrid, Δt; parameters
     ∂t_∂s = grid.Δzᵃᵃᶠ.∂t_∂s
 
     Hᶜᶜ  = model.free_surface.auxiliary.Hᶜᶜ
+    U̅    = model.free_surface.state.U̅,
+    V̅    = model.free_surface.state.V̅
 
     # Update vertical spacing with available parameters 
     # No need to fill the halo as the scaling is updated _IN_ the halos
-    launch!(architecture(grid), grid, parameters, _update_zstar!, sⁿ, s⁻, 
-                         model.free_surface.η, Hᶜᶜ, grid, Val(grid.Nz))
+    launch!(architecture(grid), grid, parameters, _update_zstar!, 
+            sⁿ, s⁻, model.free_surface.η, Hᶜᶜ, grid)
     
     # Update scaling time derivative
-    update_∂t_∂s!(∂t_∂s, parameters, grid, sⁿ, s⁻, Δt, model.free_surface)
+    launch!(architecture(grid), grid, parameters, _update_∂t_∂s!, 
+            ∂t_∂s, U̅, V̅, Hᶜᶜ, grid)
 
     return nothing
 end
 
-@kernel function _update_zstar!(sⁿ, s⁻, η, Hᶜᶜ, grid, ::Val{Nz}) where Nz
+# NOTE: The ZStar vertical spacing works only for a SplitExplicitFreeSurface
+@kernel function _update_∂t_∂s!(∂t_∂s, U̅, V̅, Hᶜᶜ, grid)
+    i, j  = @index(Global, NTuple)
+    k_top = grid.Nz + 1 
+    @inbounds begin
+        # ∂(η / H)/∂t = - ∇ ⋅ ∫udz / H
+        ∂t_∂s[i, j, 1] = - div_xyᶜᶜᶜ(i, j, k_top - 1, grid, U̅, V̅) /  Hᶜᶜ[i, j, 1] 
+    end
+end
+
+@kernel function _update_zstar!(sⁿ, s⁻, η, Hᶜᶜ, grid) 
     i, j = @index(Global, NTuple)
     @inbounds begin
         bottom = Hᶜᶜ[i, j, 1]

@@ -19,16 +19,16 @@ compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxilia
 # single column models.
 
 """
-    update_state!(model::HydrostaticFreeSurfaceModel, Δt, callbacks=[])
+    update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[])
 
 Update peripheral aspects of the model (auxiliary fields, halo regions, diffusivities,
 hydrostatic pressure) to the current model state. If `callbacks` are provided (in an array),
 they are called in the end.
 """
-update_state!(model::HydrostaticFreeSurfaceModel, Δt, callbacks=[]; compute_tendencies = true) =
-         update_state!(model, model.grid, Δt, callbacks; compute_tendencies)
+update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true) =
+         update_state!(model, model.grid, callbacks; compute_tendencies)
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid, Δt, callbacks; compute_tendencies = true)
+function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
 
     @apply_regionally mask_immersed_model_fields!(model, grid)
 
@@ -40,7 +40,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, Δt, callbacks;
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
     @apply_regionally replace_horizontal_vector_halos!(model.velocities, model.grid)
-    @apply_regionally compute_auxiliaries!(model, Δt)
+    @apply_regionally compute_auxiliaries!(model)
 
     fill_halo_regions!(model.diffusivity_fields; only_local_halos = true)
 
@@ -49,7 +49,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, Δt, callbacks;
     update_biogeochemical_state!(model.biogeochemistry, model)
 
     compute_tendencies && 
-        @apply_regionally compute_tendencies!(model, Δt, callbacks)
+        @apply_regionally compute_tendencies!(model, callbacks)
 
     return nothing
 end
@@ -69,9 +69,9 @@ function mask_immersed_model_fields!(model, grid)
     return nothing
 end
 
-function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel, Δt; w_parameters = tuple(w_kernel_parameters(model.grid)),
-                                                                      p_parameters = tuple(p_kernel_parameters(model.grid)),
-                                                                      κ_parameters = tuple(:xyz)) 
+function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters = tuple(w_kernel_parameters(model.grid)),
+                                                                  p_parameters = tuple(p_kernel_parameters(model.grid)),
+                                                                  κ_parameters = tuple(:xyz)) 
     
     grid        = model.grid
     closure     = model.closure
@@ -80,7 +80,7 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel, Δt; w_paramet
 
     for (wpar, ppar, κpar) in zip(w_parameters, p_parameters, κ_parameters)
         # Update the grid
-        update_vertical_spacing!(model, grid, Δt; parameters = wpar)
+        update_vertical_spacing!(model, grid; parameters = wpar)
         unscale_tracers!(tracers, grid; parameters = wpar)
         
         # Update the other auxiliary terms

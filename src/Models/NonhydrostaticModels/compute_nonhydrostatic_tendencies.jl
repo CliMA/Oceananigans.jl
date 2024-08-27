@@ -14,7 +14,7 @@ import Oceananigans.TimeSteppers: compute_tendencies!
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
 """
-function compute_tendencies!(model::NonhydrostaticModel, Δt, callbacks)
+function compute_tendencies!(model::NonhydrostaticModel, callbacks)
 
     # Note:
     #
@@ -29,7 +29,7 @@ function compute_tendencies!(model::NonhydrostaticModel, Δt, callbacks)
     kernel_parameters = tuple(interior_tendency_kernel_parameters(model.grid))
 
     compute_interior_tendency_contributions!(model, kernel_parameters; active_cells_map = active_interior_map(model.grid))
-    complete_communication_and_compute_boundary!(model, model.grid, model.architecture, Δt)
+    complete_communication_and_compute_boundary!(model, model.grid, model.architecture)
 
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
