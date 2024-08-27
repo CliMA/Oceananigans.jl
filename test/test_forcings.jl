@@ -224,7 +224,7 @@ end
 @testset "Forcings" begin
     @info "Testing forcings..."
 
-    for arch in [CPU(), GPU()]
+    for arch in archs
         A = typeof(arch)
         @testset "Forcing function time stepping [$A]" begin
             @info "  Testing forcing function time stepping [$A]..."
