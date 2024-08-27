@@ -178,8 +178,8 @@ function two_forcings(arch)
 
     forcing = (
         u = (forcing1, forcing2),
-        w = (forcing1, forcing2),
-        v = (forcing1, forcing2)
+        v = MultipleForcings(forcing1, forcing2),
+        w = MultipleForcings((forcing1, forcing2)),
     )
 
     model = NonhydrostaticModel(; grid, forcing)
@@ -210,8 +210,8 @@ function seven_forcings(arch)
 
     forcing = (
         u = (forcing1, forcing2, forcing3, forcing4, forcing5, forcing6, forcing7),
-        w = (forcing1, forcing2, forcing3, forcing4, forcing5, forcing6, forcing7),
-        v = (forcing1, forcing2, forcing3, forcing4, forcing5, forcing6, forcing7)
+        v = MultipleForcings(forcing1, forcing2, forcing3, forcing4, forcing5, forcing6, forcing7),
+        w = MultipleForcings((forcing1, forcing2, forcing3, forcing4, forcing5, forcing6, forcing7))
     )
 
     model = NonhydrostaticModel(; grid, forcing)
