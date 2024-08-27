@@ -7,10 +7,12 @@ calculate_pressure_correction!(::HydrostaticFreeSurfaceModel, Δt) = nothing
 #####
 
 const HFSM = HydrostaticFreeSurfaceModel
+const RigidLidHFSM                 = HFSM{<:Any, <:Any, <:Any, <:Nothing}
 const ExplicitFreeSurfaceHFSM      = HFSM{<:Any, <:Any, <:Any, <:ExplicitFreeSurface}
 const ImplicitFreeSurfaceHFSM      = HFSM{<:Any, <:Any, <:Any, <:ImplicitFreeSurface}
 const SplitExplicitFreeSurfaceHFSM = HFSM{<:Any, <:Any, <:Any, <:SplitExplicitFreeSurface}
 
+pressure_correct_velocities!(model::RigidLidHFSM, Δt; kwargs...) = nothing
 pressure_correct_velocities!(model::ExplicitFreeSurfaceHFSM, Δt; kwargs...) = nothing
 
 #####

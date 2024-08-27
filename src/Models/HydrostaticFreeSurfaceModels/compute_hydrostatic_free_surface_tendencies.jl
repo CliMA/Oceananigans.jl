@@ -114,6 +114,8 @@ function apply_flux_bcs!(Gcⁿ, c, arch, args)
     return nothing
 end
 
+compute_free_surface_tendency!(grid, model::RigidLidHFSM, kernel_parameters) = nothing
+
 function compute_free_surface_tendency!(grid, model, kernel_parameters)
 
     arch = architecture(grid)

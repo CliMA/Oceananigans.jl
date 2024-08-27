@@ -56,6 +56,7 @@ compute_w_from_continuity!(::PrescribedVelocityFields, arch, ::SingleColumnGrid;
 compute_free_surface_tendency!(::SingleColumnGrid, args...) = nothing
 
 # Disambiguation
+compute_free_surface_tendency!(::SingleColumnGrid, ::RigidLidHFSM                , args...) = nothing
 compute_free_surface_tendency!(::SingleColumnGrid, ::ImplicitFreeSurfaceHFSM     , args...) = nothing
 compute_free_surface_tendency!(::SingleColumnGrid, ::SplitExplicitFreeSurfaceHFSM, args...) = nothing
 
