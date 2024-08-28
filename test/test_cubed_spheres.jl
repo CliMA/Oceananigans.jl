@@ -15,10 +15,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
     @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ)[2]
 
 @inline extrinsic_vector_x_component(i, j, k, grid, uₑ, vₑ) =
-    @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ)[1]
+    @inbounds extrinsic_vector(i, j, k, grid, uₑ, vₑ)[1]
     
 @inline extrinsic_vector_y_component(i, j, k, grid, uₑ, vₑ) =
-    @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ)[2]
+    @inbounds extrinsic_vector(i, j, k, grid, uₑ, vₑ)[2]
 
 @testset "Cubed spheres" begin
 
@@ -85,12 +85,13 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
 
                 # Set up a zonal u-velocity in 
                 # the "Extrinsic" reference frame
-                fill!(u, 1)
-                
+                fill!(u, 0)
+                fill!(v, 1)
+
                 # Convert it to an "Instrinsic" reference frame
                 uᵢ = KernelFunctionOperation{Face, Center, Center}(intrinsic_vector_x_component, grid, u, v)
                 vᵢ = KernelFunctionOperation{Center, Face, Center}(intrinsic_vector_y_component, grid, u, v)
-                
+
                 uᵢ = compute!(Field(uᵢ))
                 vᵢ = compute!(Field(vᵢ))
 
