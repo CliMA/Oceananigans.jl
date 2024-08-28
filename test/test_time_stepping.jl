@@ -306,6 +306,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             @test model.clock.time == DateTime("2020-01-01T00:00:07.883")
 
             model = NonhydrostaticModel(grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1)),
+                                        timestepper = :QuasiAdamsBashforth2,
                                         clock = Clock(time=TimeDate(2020)))
 
             time_step!(model, 123e-9)  # 123 nanoseconds
