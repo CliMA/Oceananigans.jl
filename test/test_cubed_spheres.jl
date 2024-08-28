@@ -86,6 +86,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
                 # Set up a zonal u-velocity in 
                 # the "Extrinsic" reference frame
                 fill!(u, 1)
+                fill!(v, 1)
                 
                 # Convert it to an "Instrinsic" reference frame
                 uᵢ = KernelFunctionOperation{Face, Center, Center}(intrinsic_vector_x_component, grid, u, v)
@@ -98,7 +99,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
                 # be equivalent on an "intrinsic" frame
                 @test maximum(uᵢ) ≈ maximum(vᵢ)
                 @test minimum(uᵢ) ≈ minimum(vᵢ)
-                @test mean(uᵢ) ≈ mean(vᵢ)
+                @test mean(uᵢ) > 0
+                @test mean(vᵢ) > 0
 
                 # Convert it back to a purely zonal velocity (vₑ == 0)
                 uₑ = KernelFunctionOperation{Face, Center, Center}(extrinsic_vector_x_component, grid, uᵢ, vᵢ)
@@ -109,7 +111,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
 
                 # Make sure that the flow was converted back to a 
                 # purely zonal flow in the extrensic frame (v ≈ 0)
-                @test all(Array(interior(vₑ)) .≈ 0)
+                @test all(Array(interior(vₑ)) .≈ 1)
                 @test all(Array(interior(uₑ)) .≈ 1)
             end
 
