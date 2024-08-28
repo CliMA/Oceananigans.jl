@@ -61,8 +61,8 @@ function test_vector_rotation(grid, T=Float64)
 
     # Make sure that the flow was converted back to a 
     # purely zonal flow in the extrensic frame (v ≈ 0)
-    @test all(Array(interior(vₑ)) .≈ 0)
-    @test all(Array(interior(uₑ)) .≈ 1)
+    @test all(on_architecture(CPU(), interior(vₑ)) .≈ 0)
+    @test all(on_architecture(CPU(), interior(uₑ)) .≈ 1)
 
     # Purely meridional flow.
     set!(u, 0)
@@ -94,8 +94,8 @@ function test_vector_rotation(grid, T=Float64)
 
     # Make sure that the flow was converted back to a 
     # purely zonal flow in the extrensic frame (v ≈ 0)
-    @test all(Array(interior(vₑ)) .≈ 1)
-    @test all(Array(interior(uₑ)) .≈ 0)
+    @test all(on_architecture(CPU(), interior(vₑ)) .≈ 1)
+    @test all(on_architecture(CPU(), interior(uₑ)) .≈ 0)
 
     # Mixed zonal and meridional flow.
     set!(u, 0.5)
@@ -127,8 +127,8 @@ function test_vector_rotation(grid, T=Float64)
 
     # Make sure that the flow was converted back to a 
     # purely zonal flow in the extrensic frame (v ≈ 0)
-    @test all(Array(interior(vₑ)) .≈ 1)
-    @test all(Array(interior(uₑ)) .≈ 0)
+    @test all(on_architecture(CPU(), interior(vₑ)) .≈ 0.5)
+    @test all(on_architecture(CPU(), interior(uₑ)) .≈ 0.5)
 end
     
 
