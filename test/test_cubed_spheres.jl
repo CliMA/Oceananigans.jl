@@ -167,7 +167,8 @@ end
                 @test grid isa ConformalCubedSphereGrid
             end
 
-            @testset "Vector rotation [$(typeof(arch))]" begin
+            @testset "Conversion from Intrinsic to Extrinsic reference frame [$(typeof(arch))]" begin
+                @info "  Testing the conversion of a vector between the Intrinsic and Extrinsic reference frame"
                 trg_grid = TripolarGrid(arch, size = (20, 20, 1), z = (0, 1))
 
                 test_vector_rotation(grid)
@@ -194,44 +195,6 @@ end
                 @test maximum(abs, η) == 0
                 @test minimum(abs, η) == 0
                 @test mean(η) == 0
-            end
-
-            @testset "Conversion from Intrinsic to Extrinsic reference frame [$(typeof(arch))]" begin
-                @info "  Testing the conversion of a vector between the Intrinsic and Extrinsic reference frame"
-
-                u = XFaceField(grid)
-                v = YFaceField(grid)
-
-                # Set up a zonal u-velocity in 
-                # the "Extrinsic" reference frame
-                fill!(u, 1)
-                fill!(v, 1)
-                
-                # Convert it to an "Instrinsic" reference frame
-                uᵢ = KernelFunctionOperation{Face, Center, Center}(intrinsic_vector_x_component, grid, u, v)
-                vᵢ = KernelFunctionOperation{Center, Face, Center}(intrinsic_vector_y_component, grid, u, v)
-                
-                uᵢ = compute!(Field(uᵢ))
-                vᵢ = compute!(Field(vᵢ))
-
-                # The extrema of u and v, as well as their mean value should
-                # be equivalent on an "intrinsic" frame
-                @test maximum(uᵢ) ≈ maximum(vᵢ)
-                @test minimum(uᵢ) ≈ minimum(vᵢ)
-                @test mean(uᵢ) > 0
-                @test mean(vᵢ) > 0
-
-                # Convert it back to a purely zonal velocity (vₑ == 0)
-                uₑ = KernelFunctionOperation{Face, Center, Center}(extrinsic_vector_x_component, grid, uᵢ, vᵢ)
-                vₑ = KernelFunctionOperation{Center, Face, Center}(extrinsic_vector_y_component, grid, uᵢ, vᵢ)
-                
-                uₑ = compute!(Field(uₑ))
-                vₑ = compute!(Field(vₑ))
-
-                # Make sure that the flow was converted back to a 
-                # purely zonal flow in the extrensic frame (v ≈ 0)
-                @test all(Array(interior(vₑ)) .≈ 1)
-                @test all(Array(interior(uₑ)) .≈ 1)
             end
 
             @testset "Constructing a HydrostaticFreeSurfaceModel [$(typeof(arch))]" begin
