@@ -27,7 +27,7 @@ function kinetic_energy(u, v)
     return compute!(ke)
 end
 
-function test_vector_rotation(grid, T=Float64)
+function test_vector_rotation(grid)
     u = XFaceField(grid)
     v = YFaceField(grid)
     
