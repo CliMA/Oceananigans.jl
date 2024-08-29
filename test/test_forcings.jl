@@ -2,6 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 using Oceananigans.Fields: Field
+using Oceananigans.Forcings: MultipleForcings
 
 """ Take one time step with three forcing arrays on u, v, w. """
 function time_step_with_forcing_array(arch)
@@ -170,6 +171,57 @@ function advective_and_multiple_forcing(arch)
     return a_changed & b_changed & c_correct
 end
 
+function two_forcings(arch)
+    grid = RectilinearGrid(arch, size=(4, 5, 6), extent=(1, 1, 1), halo=(4, 4, 4))
+    
+    forcing1 = Relaxation(rate=1)
+    forcing2 = Relaxation(rate=2)
+
+    forcing = (
+        u = (forcing1, forcing2),
+        v = MultipleForcings(forcing1, forcing2),
+        w = MultipleForcings((forcing1, forcing2)),
+    )
+
+    model = NonhydrostaticModel(; grid, forcing)
+
+    time_step!(model, 1, euler=true)
+
+    return true
+end
+
+function seven_forcings(arch)
+    grid = RectilinearGrid(arch, size=(4, 5, 6), extent=(1, 1, 1), halo=(4, 4, 4))
+
+    weird_forcing(x, y, z, t) = x * y + z
+    wonky_forcing(x, y, z, t) = z / (x - y)
+    strange_forcing(x, y, z, t) = z - t
+    bizarre_forcing(x, y, z, t) = y + x
+    peculiar_forcing(x, y, z, t) = 2t / z
+    eccentric_forcing(x, y, z, t) = x + y + z + t
+    unconventional_forcing(x, y, z, t) = 10x * y
+    
+    forcing1 = Forcing(weird_forcing)
+    forcing2 = Forcing(wonky_forcing)
+    forcing3 = Forcing(strange_forcing)
+    forcing4 = Forcing(bizarre_forcing)
+    forcing5 = Forcing(peculiar_forcing)
+    forcing6 = Forcing(eccentric_forcing)
+    forcing7 = Forcing(unconventional_forcing)
+
+    forcing = (
+        u = (forcing1, forcing2, forcing3, forcing4, forcing5, forcing6, forcing7),
+        v = MultipleForcings(forcing1, forcing2, forcing3, forcing4, forcing5, forcing6, forcing7),
+        w = MultipleForcings((forcing1, forcing2, forcing3, forcing4, forcing5, forcing6, forcing7))
+    )
+
+    model = NonhydrostaticModel(; grid, forcing)
+
+    time_step!(model, 1, euler=true)
+
+    return true
+end
+
 @testset "Forcings" begin
     @info "Testing forcings..."
 
@@ -210,6 +262,8 @@ end
             @testset "Advective and multiple forcing [$A]" begin
                 @info "      Testing advective and multiple forcing [$A]..."
                 @test advective_and_multiple_forcing(arch)
+                @test two_forcings(arch)
+                @test seven_forcings(arch)
             end
         end
     end
