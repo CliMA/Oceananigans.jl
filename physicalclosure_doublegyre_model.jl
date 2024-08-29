@@ -38,8 +38,8 @@ closure = (vertical_base_closure, convection_closure)
 # closure = vertical_base_closure
 
 # number of grid points
-const Nx = 96
-const Ny = 96
+const Nx = 100
+const Ny = 100
 const Nz = 200
 
 const Δz = 8meters
@@ -93,10 +93,14 @@ v_drag_bc  = FluxBoundaryCondition(v_drag; field_dependencies=:v)
 u_bcs = FieldBoundaryConditions(   top = surface_u_flux_bc, 
                                 bottom = u_drag_bc,
                                  north = ValueBoundaryCondition(0),
-                                 south = ValueBoundaryCondition(0))
+                                 south = ValueBoundaryCondition(0),
+                                  east = ValueBoundaryCondition(0),
+                                  west = ValueBoundaryCondition(0))
 
 v_bcs = FieldBoundaryConditions(   top = FluxBoundaryCondition(0),
                                 bottom = v_drag_bc,
+                                 north = ValueBoundaryCondition(0),
+                                 south = ValueBoundaryCondition(0),
                                   east = ValueBoundaryCondition(0),
                                   west = ValueBoundaryCondition(0))
 
@@ -121,6 +125,22 @@ coriolis = BetaPlane(rotation_rate=7.292115e-5, latitude=45, radius=6371e3)
 #####
 
 @info "Building a model..."
+
+# This is a weird bug. If a model is not initialized with a closure other than XinKaiVerticalDiffusivity,
+# the code will throw a CUDA: illegal memory access error for models larger than a small size.
+# This is a workaround to initialize the model with a closure other than XinKaiVerticalDiffusivity first,
+# then the code will run without any issues.
+model = HydrostaticFreeSurfaceModel(
+    grid = grid,
+    free_surface = SplitExplicitFreeSurface(grid, cfl=0.75),
+    momentum_advection = WENO(order=5),
+    tracer_advection = WENO(order=5),
+    buoyancy = SeawaterBuoyancy(equation_of_state=TEOS10.TEOS10EquationOfState()),
+    coriolis = coriolis,
+    closure = VerticalScalarDiffusivity(ν=1e-5, κ=1e-5),
+    tracers = (:T, :S),
+    boundary_conditions = (; u = u_bcs, v = v_bcs, T = T_bcs, S = S_bcs),
+)
 
 model = HydrostaticFreeSurfaceModel(
     grid = grid,
