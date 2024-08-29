@@ -1,16 +1,16 @@
 import Oceananigans.Models: compute_boundary_tendencies!
+import Oceananigans.Models: compute_boundary_tendencies!
+
 using Oceananigans.Grids: halo_size
-using Oceananigans.TurbulenceClosures: required_halo_size
+using Oceananigans.ImmersedBoundaries: active_interior_map, DistributedActiveCellsIBG
 using Oceananigans.Models.NonhydrostaticModels: boundary_tendency_kernel_parameters,
                                                 boundary_p_kernel_parameters, 
                                                 boundary_κ_kernel_parameters,
                                                 boundary_parameters
 
-import Oceananigans.Models: compute_boundary_tendencies!
+using Oceananigans.TurbulenceClosures: required_halo_size
 
-using Oceananigans.ImmersedBoundaries: active_interior_map, DistributedActiveCellsIBG
-
-# We assume here that top/bottom BC are always synched (no partitioning in z)
+# We assume here that top/bottom BC are always synchronized (no partitioning in z)
 function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     grid = model.grid
     arch = architecture(grid)
@@ -71,3 +71,4 @@ function boundary_w_kernel_parameters(grid, arch)
         
     return boundary_parameters(sizes, offs, grid, arch)
 end
+

@@ -114,7 +114,7 @@ function metric_function(loc, metric::AbstractGridMetric)
     code = Tuple(interpolation_code(ℓ) for ℓ in loc)
     prefix = metric_function_prefix(metric)
     metric_function_symbol = Symbol(prefix, code...)
-    return eval(metric_function_symbol)
+    return getglobal(@__MODULE__, metric_function_symbol)
 end
 
 struct GridMetricOperation{LX, LY, LZ, G, T, M} <: AbstractOperation{LX, LY, LZ, G, T}

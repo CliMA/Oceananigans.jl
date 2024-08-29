@@ -1,7 +1,7 @@
 agents:
   queue: new-central
   slurm_mem: 8G
-  modules: climacommon/2024_04_30
+  modules: climacommon/2024_05_27
 
 
 env:
@@ -65,6 +65,17 @@ steps:
       slurm_mem: 120G
       slurm_ntasks: 4
 
+  - label: "🛸 gpu distributed solvers tests"
+    key: "distributed_solvers_gpu"
+    env:
+      TEST_GROUP: "distributed_solvers"
+    commands:
+      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      slurm_mem: 120G
+      slurm_ntasks: 4
+      slurm_gpus_per_task: 1
+
   - label: "🤺 cpu distributed hydrostatic model tests"
     key: "distributed_hydrostatic_model_cpu"
     env:
@@ -75,7 +86,7 @@ steps:
       slurm_mem: 120G
       slurm_ntasks: 4
 
-  - label: "🕺 gpu distributed hydrostatic model tests"
+  - label: "🦏 gpu distributed hydrostatic model tests"
     key: "distributed_hydrostatic_model_gpu"
     env:
       TEST_GROUP: "distributed_hydrostatic_model"
@@ -85,7 +96,28 @@ steps:
       slurm_mem: 120G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
-    
+
+  - label: "🦍 cpu distributed nonhydrostatic regression"
+    key: "distributed_nonhydrostatic_regression_cpu"
+    env:
+      TEST_GROUP: "distributed_nonhydrostatic_regression"
+    commands:
+      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      slurm_mem: 120G
+      slurm_ntasks: 4
+
+  - label: "🕺 gpu distributed nonhydrostatic regression"
+    key: "distributed_nonhydrostatic_regression_gpu"
+    env:
+      TEST_GROUP: "distributed_nonhydrostatic_regression"
+    commands:
+      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      slurm_mem: 120G
+      slurm_ntasks: 4
+      slurm_gpus_per_task: 1
+
   - wait
 
   - label: ":chart_with_downwards_trend: build history"

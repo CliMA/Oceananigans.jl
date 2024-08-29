@@ -63,7 +63,7 @@ julia> grid = RectilinearGrid(size=100, z=(-1000, 0), topology=(Flat, Flat, Boun
 1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── Flat x
 ├── Flat y
-└── Bounded  z ∈ [-1000.0, 0.0]   regularly spaced with Δz=10.0
+└── Bounded  z ∈ [-1000.0, 0.0] regularly spaced with Δz=10.0
 
 julia> tracers = (:T, :S)
 (:T, :S)

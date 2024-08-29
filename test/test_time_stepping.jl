@@ -4,7 +4,7 @@ using TimesDates: TimeDate
 using Oceananigans.Grids: topological_tuple_length, total_size
 using Oceananigans.Fields: BackgroundField
 using Oceananigans.TimeSteppers: Clock
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
 function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
@@ -374,9 +374,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             for Closure in Closures
                 @info "  Testing that time stepping works [$(typeof(arch)), $FT, $Closure]..."
                 if Closure === TwoDimensionalLeith
-                    # TwoDimensionalLeith is slow on the CPU and doesn't compile right now on the GPU.
-                    # See: https://github.com/CliMA/Oceananigans.jl/pull/1074
-                    @test_skip time_stepping_works_with_closure(arch, FT, Closure)
+                    @test time_stepping_works_with_closure(arch, FT, Closure)
                 elseif Closure === CATKEVerticalDiffusivity
                     # CATKE isn't supported with NonhydrostaticModel yet
                     @test_skip time_stepping_works_with_closure(arch, FT, Closure)

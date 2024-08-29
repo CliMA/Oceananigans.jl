@@ -5,7 +5,7 @@ using Oceananigans.TimeSteppers: AbstractTimeStepper, QuasiAdamsBashforth2TimeSt
 using Oceananigans.Models: PrescribedVelocityFields
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using Oceananigans.Advection: AbstractAdvectionScheme
-using Oceananigans.Advection: VelocityUpwinding, OnlySelfUpwinding, CrossAndSelfUpwinding
+using Oceananigans.Advection: OnlySelfUpwinding, CrossAndSelfUpwinding
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
 using Oceananigans.Solvers: PreconditionedConjugateGradientSolver
 
@@ -17,7 +17,7 @@ const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArc
 
 # Utility to generate the inputs to complex `getregion`s
 function getregionalproperties(T, inner=true)
-    type = eval(T)
+    type = getglobal(@__MODULE__, T)
     names = fieldnames(type)
     args  = Vector(undef, length(names))
     for (n, name) in enumerate(names)
@@ -37,7 +37,6 @@ Types = (:HydrostaticFreeSurfaceModel,
          :PreconditionedConjugateGradientSolver,
          :CrossAndSelfUpwinding,
          :OnlySelfUpwinding,
-         :VelocityUpwinding,
          :GridFittedBoundary,
          :GridFittedBottom,
          :PartialCellBottom)

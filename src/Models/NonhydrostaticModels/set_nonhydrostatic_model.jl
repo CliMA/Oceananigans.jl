@@ -1,3 +1,4 @@
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.TimeSteppers: update_state!, calculate_pressure_correction!, pressure_correct_velocities!
 
 import Oceananigans.Fields: set!
@@ -39,6 +40,8 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
             throw(ArgumentError("name $fldname not found in model.velocities or model.tracers."))
         end
         set!(ϕ, value)
+
+        fill_halo_regions!(ϕ, model.clock, fields(model))
     end
 
     # Apply a mask
