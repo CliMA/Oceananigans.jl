@@ -101,13 +101,13 @@ v_bcs = FieldBoundaryConditions(   top = FluxBoundaryCondition(0),
                                   west = ValueBoundaryCondition(0))
 
 @inline T_ref(y) = T_mid - ΔT / Ly * y
-@inline surface_T_flux(x, y, t, T) = -μ_T * (T - T_ref(y))
+@inline surface_T_flux(x, y, t, T) = μ_T * Δz * (T - T_ref(y))
 surface_T_flux_bc = FluxBoundaryCondition(surface_T_flux; field_dependencies=:T)
 T_bcs = FieldBoundaryConditions(top = surface_T_flux_bc)
 
 @inline S_ref(y) = (S_north - S_south) / Ly * y + S_mid
 @inline S_initial(x, y, z) = S_ref(y)
-@inline surface_S_flux(x, y, t, S) = -μ_T * (S - S_ref(y))
+@inline surface_S_flux(x, y, t, S) = μ_T * Δz * (S - S_ref(y))
 surface_S_flux_bc = FluxBoundaryCondition(surface_S_flux; field_dependencies=:S)
 S_bcs = FieldBoundaryConditions(top = surface_S_flux_bc)
 
@@ -183,7 +183,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
+simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(100))
 
 #####
 ##### Diagnostics
@@ -204,21 +204,21 @@ outputs = (; u, v, w, T, S)
 #####
 simulation.output_writers[:xy] = JLD2OutputWriter(model, outputs,
                                                     # filename = "NN_closure_2D_channel_NDE_FC_Qb_18simnew_2layer_128_relu_2Pr",
-                                                    filename = "doublegyre_xin_kai_vertical_diffusivity_2Pr_xy",
+                                                    filename = "doublegyre_Ri_based_vertical_diffusivity_2Pr_xy",
                                                     indices = (:, :, Nz),
                                                     schedule = TimeInterval(1day),
                                                     overwrite_existing = true)
 
 simulation.output_writers[:yz] = JLD2OutputWriter(model, outputs,
                                                     # filename = "NN_closure_2D_channel_NDE_FC_Qb_18simnew_2layer_128_relu_2Pr",
-                                                    filename = "doublegyre_xin_kai_vertical_diffusivity_2Pr_yz",
+                                                    filename = "doublegyre_Ri_based_vertical_diffusivity_2Pr_yz",
                                                     indices = (1, :, :),
                                                     schedule = TimeInterval(1day),
                                                     overwrite_existing = true)
                                                     
 simulation.output_writers[:xz] = JLD2OutputWriter(model, outputs,
                                                     # filename = "NN_closure_2D_channel_NDE_FC_Qb_18simnew_2layer_128_relu_2Pr",
-                                                    filename = "doublegyre_xin_kai_vertical_diffusivity_2Pr_xz",
+                                                    filename = "doublegyre_Ri_based_vertical_diffusivity_2Pr_xz",
                                                     indices = (:, 1, :),
                                                     schedule = TimeInterval(1day),
                                                     overwrite_existing = true)
@@ -232,21 +232,21 @@ catch err
     showerror(stdout, err)
 end
 #%%
-T_xy_data = FieldTimeSeries("doublegyre_xin_kai_vertical_diffusivity_2Pr_xy.jld2", "T")
-T_xz_data = FieldTimeSeries("doublegyre_xin_kai_vertical_diffusivity_2Pr_xz.jld2", "T")
-T_yz_data = FieldTimeSeries("doublegyre_xin_kai_vertical_diffusivity_2Pr_yz.jld2", "T")
+T_xy_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_xy.jld2", "T")
+T_xz_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_xz.jld2", "T")
+T_yz_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_yz.jld2", "T")
 
-S_xy_data = FieldTimeSeries("doublegyre_xin_kai_vertical_diffusivity_2Pr_xy.jld2", "S")
-S_xz_data = FieldTimeSeries("doublegyre_xin_kai_vertical_diffusivity_2Pr_xz.jld2", "S")
-S_yz_data = FieldTimeSeries("doublegyre_xin_kai_vertical_diffusivity_2Pr_yz.jld2", "S")
+S_xy_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_xy.jld2", "S")
+S_xz_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_xz.jld2", "S")
+S_yz_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_yz.jld2", "S")
 
-u_xy_data = FieldTimeSeries("doublegyre_xin_kai_vertical_diffusivity_2Pr_xy.jld2", "u")
-u_xz_data = FieldTimeSeries("doublegyre_xin_kai_vertical_diffusivity_2Pr_xz.jld2", "u")
-u_yz_data = FieldTimeSeries("doublegyre_xin_kai_vertical_diffusivity_2Pr_yz.jld2", "u")
+u_xy_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_xy.jld2", "u")
+u_xz_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_xz.jld2", "u")
+u_yz_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_yz.jld2", "u")
 
-v_xy_data = FieldTimeSeries("doublegyre_xin_kai_vertical_diffusivity_2Pr_xy.jld2", "v")
-v_xz_data = FieldTimeSeries("doublegyre_xin_kai_vertical_diffusivity_2Pr_xz.jld2", "v")
-v_yz_data = FieldTimeSeries("doublegyre_xin_kai_vertical_diffusivity_2Pr_yz.jld2", "v")
+v_xy_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_xy.jld2", "v")
+v_xz_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_xz.jld2", "v")
+v_yz_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_yz.jld2", "v")
 
 times = T_xy_data.times ./ 24 ./ 60^2
 Nt = length(times)
@@ -392,7 +392,7 @@ zlims!(axS, (-Lz, 0))
 zlims!(axu, (-Lz, 0))
 zlims!(axv, (-Lz, 0))
 
-CairoMakie.record(fig, "./$(dataname)_test.mp4", 1:Nt, framerate=5, px_per_unit=2) do nn
+CairoMakie.record(fig, "./doublegyre_Ri_based_vertical_diffusivity_2Pr.mp4", 1:Nt, framerate=20, px_per_unit=2) do nn
     @info nn
     n[] = nn
 end
