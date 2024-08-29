@@ -74,7 +74,7 @@ The steps of the Quasi-Adams-Bashforth second-order (AB2) algorithm are:
 7. Compute tendencies for the next time step
 """
 function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt;
-                    callbacks=[], euler=false, compute_tendencies=true)
+                    callbacks=[], euler=false)
 
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
