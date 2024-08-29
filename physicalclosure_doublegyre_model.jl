@@ -64,10 +64,6 @@ const T_south = 30
 const T_mid = (T_north + T_south) / 2
 const ΔT = T_south - T_north
 
-# const dSdz = 0.0021
-const dSdz = 0
-const S_surface = 36.6
-
 const S_north = 34
 const S_south = 37
 const S_mid = (S_north + S_south) / 2
@@ -108,7 +104,7 @@ v_bcs = FieldBoundaryConditions(   top = FluxBoundaryCondition(0),
 surface_T_flux_bc = FluxBoundaryCondition(surface_T_flux; field_dependencies=:T)
 T_bcs = FieldBoundaryConditions(top = surface_T_flux_bc)
 
-@inline S_ref(y) = (S_south - S_north) / Ly * y + S_mid
+@inline S_ref(y) = (S_north - S_south) / Ly * y + S_mid
 @inline S_initial(x, y, z) = S_ref(y)
 @inline surface_S_flux(x, y, t, S) = -μ_T * (S - S_ref(y))
 surface_S_flux_bc = FluxBoundaryCondition(surface_S_flux; field_dependencies=:S)
