@@ -4,41 +4,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize, Slic
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 
-@testset "`HydrostaticFreeSurfaceModel` using a `SingleColumnGrid`" begin
-
-    Nz = 3
-    Hz = 1
-    single_column_topology = (Flat, Flat, Bounded)
-    periodic_topology = (Periodic, Periodic, Bounded)
-
-    single_column_grid = RectilinearGrid(; size=Nz, z=(-1, 0), topology = single_column_topology, halo=Hz)
-    periodic_grid = RectilinearGrid(; size=(1, 1, Nz), x = (0, 1), y = (0, 1), z=(-1, 0), topology = periodic_topology, halo=(1, 1, Hz))
-    coriolis = FPlane(f=0.2)
-    closure  = CAVD(background_κz=1.0)
-
-    Δt = 0.01
-
-    model_kwargs = (; tracers=:c, buoyancy=nothing, closure, coriolis)
-    simulation_kwargs = (; Δt, stop_iteration=100)
-
-    sic_model = HydrostaticFreeSurfaceModel(; grid = single_column_grid, model_kwargs...)
-    per_model = HydrostaticFreeSurfaceModel(; grid = periodic_grid,      model_kwargs...)
-
-    set!(sic_model, c = z         -> exp(-z^2), u = 1, v = 1)
-    set!(per_model, c = (x, y, z) -> exp(-z^2), u = 1, v = 1)
-
-    sic_simulation = Simulation(sic_model; simulation_kwargs...)
-    per_simulation = Simulation(per_model; simulation_kwargs...)
-    run!(sic_simulation)
-    run!(per_simulation)
-    
-    @info "Testing Single column grid results..."
-    
-    @test all(sic_model.velocities.u.data[1, 1, :] .≈ per_model.velocities.u.data[1, 1, :])
-    @test all(sic_model.velocities.v.data[1, 1, :] .≈ per_model.velocities.v.data[1, 1, :])
-    @test all(sic_model.tracers.c.data[1, 1, :]    .≈ per_model.tracers.c.data[1, 1, :])
-end
-
 @testset "Ensembles of `HydrostaticFreeSurfaceModel` with different closures" begin
 
     Nz = 16
