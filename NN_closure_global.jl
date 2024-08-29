@@ -68,6 +68,7 @@ Adapt.adapt_structure(to, nn :: NN) =
 
 function NNFluxClosure(arch)
     dev = ifelse(arch == GPU(), gpu_device(), cpu_device())
+    # nn_path = "./NDE_FC_Qb_absf_24simnew_2layer_128_relu_2Pr_model.jld2"
     nn_path = "./NDE_FC_Qb_18simnew_2layer_128_relu_2Pr_model.jld2"
 
     ps, sts, scaling_params, wT_model, wS_model = jldopen(nn_path, "r") do file
@@ -124,7 +125,7 @@ function compute_diffusivities!(diffusivities, closure::NNFluxClosure, model; pa
     wT.data.parent .= dropdims(closure.wT(input.parent), dims=1)
     wS.data.parent .= dropdims(closure.wS(input.parent), dims=1)
 
-    launch!(arch, grid, kp, _rescale_nn_fluxes!, diffusivities, grid, closure, tracers, buoyancy, top_tracer_bcs, clock)
+    launch!(arch, grid, kp, _rescale_nn_fluxes!, diffusivities, grid, closure, tracers, velocities, buoyancy, top_tracer_bcs, clock)
     launch!(arch, grid, kp, _adjust_nn_bottom_fluxes!, diffusivities, grid, closure)
     return nothing
 end
@@ -149,14 +150,15 @@ end
     @inbounds input[8, i, j, k] = ∂σᵢ   = scaling.∂ρ∂z(-ρ₀ * ∂z_b(i, j, k,   grid, buoyancy, tracers) / g)
     @inbounds input[9, i, j, k] = ∂σᵢ₊₁ = scaling.∂ρ∂z(-ρ₀ * ∂z_b(i, j, k+1, grid, buoyancy, tracers) / g)
 
-    @inbounds input[10, i, j, k] = Jᵇ = scaling.wb(top_buoyancy_flux(i, j, grid, buoyancy, top_tracer_bcs, clock, tracers))
+    @inbounds input[10, i, j, k] = Jᵇ = scaling.wb(top_buoyancy_flux(i, j, grid, buoyancy, top_tracer_bcs, clock, merge(velocities, tracers)))
+    # @inbounds input[11, i, j, k] = fᶜᶜ = scaling.f(abs(fᶜᶜᵃ(i, j, k, grid, coriolis)))
     @inbounds input[11, i, j, k] = fᶜᶜ = scaling.f(fᶜᶜᵃ(i, j, k, grid, coriolis))
 end
 
-@kernel function _rescale_nn_fluxes!(diffusivities, grid, closure::NNFluxClosure, tracers, buoyancy, top_tracer_bcs, clock)
+@kernel function _rescale_nn_fluxes!(diffusivities, grid, closure::NNFluxClosure, tracers, velocities, buoyancy, top_tracer_bcs, clock)
     i, j, k = @index(Global, NTuple)
     scaling = closure.scaling
-    convecting = top_buoyancy_flux(i, j, grid, buoyancy, top_tracer_bcs, clock, tracers) > 0
+    convecting = top_buoyancy_flux(i, j, grid, buoyancy, top_tracer_bcs, clock, merge(velocities, tracers)) > 0
     interior_point = k <= grid.Nz - 1 & k >= 3
 
     @inbounds diffusivities.wT[i, j, k] = ifelse(convecting & interior_point, inv(scaling.wT)(diffusivities.wT[i, j, k]) - inv(scaling.wT)(0), 0)
