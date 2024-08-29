@@ -100,7 +100,7 @@ Criterion is h ≥ z - ϵ Δz
     h  = @inbounds ib.bottom_height[i, j, 1]
     ϵ  = ib.minimum_fractional_cell_height
     # z + Δz is equal to the face above the current cell
-    Δz = Δzᶜᶜᶜ(i, j, k, ibg.underlying_grid)
+    Δz = Δzᶜᶜᶜ(i, j, k, underlying_grid)
     return z + Δz * ϵ ≤ h 
 end
 
