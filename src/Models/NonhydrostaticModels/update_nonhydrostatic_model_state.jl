@@ -17,7 +17,7 @@ Update peripheral aspects of the model (halo regions, diffusivities, hydrostatic
 pressure) to the current model state. If `callbacks` are provided (in an array),
 they are called in the end.
 """
-function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendencies = false)
+function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendencies = true)
     
     # Mask immersed tracers
     foreach(model.tracers) do tracer
