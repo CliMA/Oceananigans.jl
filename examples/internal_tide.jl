@@ -14,6 +14,7 @@
 
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.ImmersedBoundaries: PartialCellBottom
 
 # ## Grid
 
@@ -46,7 +47,7 @@ width = 20kilometers
 hill(x) = h₀ * exp(-x^2 / 2width^2)
 bottom(x) = - H + hill(x)
 
-grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
 
 # Let's see how the domain with the bathymetry is.
 
@@ -54,7 +55,7 @@ x = xnodes(grid, Center())
 bottom_boundary = interior(grid.immersed_boundary.bottom_height, :, 1, 1)
 top_boundary = 0 * x
 
-using CairoMakie
+using GLMakie
 
 fig = Figure(size = (700, 200))
 ax = Axis(fig[1, 1],
@@ -132,7 +133,7 @@ bᵢ(x, z) = Nᵢ² * z
 
 set!(model, u=uᵢ, b=bᵢ)
 
-# Now let's built a `Simulation`.
+# Now let's build a `Simulation`.
 
 Δt = 5minutes
 stop_time = 4days
@@ -234,9 +235,9 @@ n = Observable(1)
 title = @lift @sprintf("t = %1.2f days = %1.2f T₂",
                        round(times[$n] / day, digits=2) , round(times[$n] / T₂, digits=2))
 
-u′ₙ = @lift u′_t[$n]
- wₙ = @lift  w_t[$n]
-N²ₙ = @lift N²_t[$n]
+u′ₙ = @lift interior(u′_t[$n], :, 1, :)
+ wₙ = @lift interior( w_t[$n], :, 1, :)
+N²ₙ = @lift interior(N²_t[$n], :, 1, :)
 
 axis_kwargs = (xlabel = "x [km]",
                ylabel = "z [km]",

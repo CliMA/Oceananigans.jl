@@ -101,7 +101,7 @@ Criterion is h ≥ z - ϵ Δz
     ϵ  = ib.minimum_fractional_cell_height
     # z + Δz is equal to the face above the current cell
     Δz = Δzᶜᶜᶜ(i, j, k, underlying_grid)
-    return z + Δz * ϵ ≤ h 
+    return z + Δz * (1 - ϵ) ≤ h 
 end
 
 @inline bottom_cell(i, j, k, ibg::PCBIBG) = !immersed_cell(i, j, k,   ibg.underlying_grid, ibg.immersed_boundary) &
