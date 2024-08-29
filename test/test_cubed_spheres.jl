@@ -31,7 +31,7 @@ function test_vector_rotation(grid)
     u = XFaceField(grid)
     v = YFaceField(grid)
     
-    # Purely zonal flow.
+    # Purely longitudinal flow in the extrinsic coordinate system
     set!(u, 1)
     set!(v, 0)
 
@@ -50,7 +50,8 @@ function test_vector_rotation(grid)
     @test mean(uᵢ) > 0 # The mean value should be positive
 
     # Kinetic energy should remain the same
-    @test mean(kinetic_energy(uᵢ, vᵢ)) ≈ 0.5
+    KE = kinetic_energy(uᵢ, vᵢ)
+    @test all(on_architecture(CPU(), interior(KE)) .≈ 0.5)
 
     # Convert it back to a purely zonal velocity (vₑ == 0)
     uₑ = KernelFunctionOperation{Face, Center, Center}(extrinsic_vector_x_component, grid, uᵢ, vᵢ)
@@ -64,7 +65,7 @@ function test_vector_rotation(grid)
     @test all(on_architecture(CPU(), interior(vₑ)) .≈ 0)
     @test all(on_architecture(CPU(), interior(uₑ)) .≈ 1)
 
-    # Purely meridional flow.
+    # Purely meridional flow in the extrinsic coordinate system
     set!(u, 0)
     set!(v, 1)
 
@@ -83,7 +84,8 @@ function test_vector_rotation(grid)
     @test mean(vᵢ) > 0 # The mean value should be positive
 
     # Kinetic energy should remain the same
-    @test mean(kinetic_energy(uᵢ, vᵢ)) ≈ 0.5
+    KE = kinetic_energy(uᵢ, vᵢ)
+    @test all(on_architecture(CPU(), interior(KE)) .≈ 0.5)
 
     # Convert it back to a purely zonal velocity (vₑ == 0)
     uₑ = KernelFunctionOperation{Face, Center, Center}(extrinsic_vector_x_component, grid, uᵢ, vᵢ)
@@ -116,7 +118,8 @@ function test_vector_rotation(grid)
     @test mean(vᵢ) > 0 # The mean value should be positive
 
     # Kinetic energy should remain the same
-    @test mean(kinetic_energy(uᵢ, vᵢ)) ≈ 0.25
+    KE = kinetic_energy(uᵢ, vᵢ)
+    @test all(on_architecture(CPU(), interior(KE)) .≈ 0.25)
 
     # Convert it back to a purely zonal velocity (vₑ == 0)
     uₑ = KernelFunctionOperation{Face, Center, Center}(extrinsic_vector_x_component, grid, uᵢ, vᵢ)
