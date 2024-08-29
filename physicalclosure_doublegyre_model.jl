@@ -20,10 +20,14 @@ using Oceananigans.Grids: xnode, ynode, znode
 using SeawaterPolynomials
 using SeawaterPolynomials:TEOS10
 using ColorSchemes
+using Glob
 import SeawaterPolynomials.TEOS10: s, ΔS, Sₐᵤ
 s(Sᴬ::Number) = Sᴬ + ΔS >= 0 ? √((Sᴬ + ΔS) / Sₐᵤ) : NaN
 
 #%%
+FILE_DIR = "./Output/doublegyre_RiBasedVerticalDiffusivity"
+mkpath(FILE_DIR)
+
 # Architecture
 model_architecture = GPU()
 
@@ -78,7 +82,7 @@ const μ_T = 1/8days
 ##### Forcing and initial condition
 #####
 
-@inline T_initial(x, y, z) = T_south
+@inline T_initial(x, y, z) = T_north + ΔT / 2 * (1 + z / Lz)
 
 @inline surface_u_flux(x, y, t) = -τ₀ * cos(2π * y / Ly)
 
@@ -171,7 +175,7 @@ update_state!(model)
 ##### Simulation building
 #####
 Δt₀ = 5minutes
-stop_time = 730days
+stop_time = 3650days
 
 simulation = Simulation(model, Δt = Δt₀, stop_time = stop_time)
 
@@ -220,49 +224,59 @@ outputs = (; u, v, w, T, S)
 #####
 simulation.output_writers[:xy] = JLD2OutputWriter(model, outputs,
                                                     # filename = "NN_closure_2D_channel_NDE_FC_Qb_18simnew_2layer_128_relu_2Pr",
-                                                    filename = "doublegyre_Ri_based_vertical_diffusivity_2Pr_xy",
+                                                    filename = "$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_xy",
                                                     indices = (:, :, Nz),
-                                                    schedule = TimeInterval(1day),
-                                                    overwrite_existing = true)
+                                                    schedule = TimeInterval(5days))
 
 simulation.output_writers[:yz] = JLD2OutputWriter(model, outputs,
                                                     # filename = "NN_closure_2D_channel_NDE_FC_Qb_18simnew_2layer_128_relu_2Pr",
-                                                    filename = "doublegyre_Ri_based_vertical_diffusivity_2Pr_yz",
+                                                    filename = "$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_yz",
                                                     indices = (1, :, :),
-                                                    schedule = TimeInterval(1day),
-                                                    overwrite_existing = true)
+                                                    schedule = TimeInterval(5days))
                                                     
 simulation.output_writers[:xz] = JLD2OutputWriter(model, outputs,
                                                     # filename = "NN_closure_2D_channel_NDE_FC_Qb_18simnew_2layer_128_relu_2Pr",
-                                                    filename = "doublegyre_Ri_based_vertical_diffusivity_2Pr_xz",
+                                                    filename = "$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_xz",
                                                     indices = (:, 1, :),
-                                                    schedule = TimeInterval(1day),
-                                                    overwrite_existing = true)
+                                                    schedule = TimeInterval(5days))
+
+simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                    schedule = TimeInterval(365days),
+                                                    prefix = "$(FILE_DIR)/checkpointer")
 
 @info "Running the simulation..."
 
 try
-    run!(simulation, pickup = false)
+  files = readdir(FILE_DIR)
+  checkpoint_files = files[occursin.("checkpointer_iteration", files)]
+  if !isempty(checkpoint_files)
+      checkpoint_iters = parse.(Int, [filename[findfirst("iteration", filename)[end]+1:findfirst(".jld2", filename)[1]-1] for filename in checkpoint_files])
+      pickup_iter = maximum(checkpoint_iters)
+      run!(simulation, pickup="$(FILE_DIR)/checkpointer_iteration$(pickup_iter).jld2")
+  else
+      run!(simulation)
+  end
 catch err
-    @info "run! threw an error! The error message is"
-    showerror(stdout, err)
+  @info "run! threw an error! The error message is"
+  showerror(stdout, err)
 end
+
 #%%
-T_xy_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_xy.jld2", "T")
-T_xz_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_xz.jld2", "T")
-T_yz_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_yz.jld2", "T")
+T_xy_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_xy.jld2", "T")
+T_xz_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_xz.jld2", "T")
+T_yz_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_yz.jld2", "T")
 
-S_xy_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_xy.jld2", "S")
-S_xz_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_xz.jld2", "S")
-S_yz_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_yz.jld2", "S")
+S_xy_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_xy.jld2", "S")
+S_xz_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_xz.jld2", "S")
+S_yz_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_yz.jld2", "S")
 
-u_xy_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_xy.jld2", "u")
-u_xz_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_xz.jld2", "u")
-u_yz_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_yz.jld2", "u")
+u_xy_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_xy.jld2", "u")
+u_xz_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_xz.jld2", "u")
+u_yz_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_yz.jld2", "u")
 
-v_xy_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_xy.jld2", "v")
-v_xz_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_xz.jld2", "v")
-v_yz_data = FieldTimeSeries("doublegyre_Ri_based_vertical_diffusivity_2Pr_yz.jld2", "v")
+v_xy_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_xy.jld2", "v")
+v_xz_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_xz.jld2", "v")
+v_yz_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_yz.jld2", "v")
 
 times = T_xy_data.times ./ 24 ./ 60^2
 Nt = length(times)
@@ -408,7 +422,7 @@ zlims!(axS, (-Lz, 0))
 zlims!(axu, (-Lz, 0))
 zlims!(axv, (-Lz, 0))
 
-CairoMakie.record(fig, "./doublegyre_Ri_based_vertical_diffusivity_2Pr.mp4", 1:Nt, framerate=20, px_per_unit=2) do nn
+CairoMakie.record(fig, "$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr.mp4", 1:Nt, framerate=20, px_per_unit=2) do nn
     @info nn
     n[] = nn
 end
