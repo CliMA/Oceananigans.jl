@@ -22,9 +22,16 @@ struct ScaleInvariantSmagorinsky{TD, AP, FT, P, UF} <: AbstractScalarDiffusivity
     function ScaleInvariantSmagorinsky{TD, AP, FT}(averaging, Pr; update_frequency = 5) where {TD, AP, FT}
         Pr = convert_diffusivity(FT, Pr; discrete_form=false)
         P = typeof(Pr)
-        update_frequency = Integer(update_frequency)
-        return new{TD, AP, FT, P, Integer}(averaging, Pr, update_frequency)
+        update_frequency = Int(update_frequency)
+        return new{TD, AP, FT, P, Int}(averaging, Pr, update_frequency)
     end
+end
+
+
+function Adapt.adapt_structure(to, closure::ScaleInvariantSmagorinsky{TD, AP, FT, <:Any, <:Any}) where {TD, AP, FT}
+    update_frequency = Adapt.adapt(to, closure.update_frequency)
+    Pr = Adapt.adapt(to, closure.Pr)
+    return ScaleInvariantSmagorinsky{TD, AP, FT}(closure.averaging, Pr; update_frequency)
 end
 
 @inline viscosity(::ScaleInvariantSmagorinsky, K) = K.νₑ

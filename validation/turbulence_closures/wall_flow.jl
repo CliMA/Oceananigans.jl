@@ -8,10 +8,10 @@ const κ = 0.4
 H = 1
 L = 2π*H
 z₀ = 1e-4*H
-N = 32
+N = 128
 u★ = 1
 
-grid = RectilinearGrid(CPU(), size=(N, N, N÷2), topology=(Periodic, Periodic, Bounded),
+grid = RectilinearGrid(GPU(), size=(N, N, N÷2), topology=(Periodic, Periodic, Bounded),
                        x=(0, L), y=(0, L), z=(0, H))
 @show grid
 
@@ -75,9 +75,6 @@ function run_wall_flow(closure; grid=grid, H=1, L=2π*H, N=32, u★=1, stop_time
     run!(simulation)
 
 end
-
-run_wall_flow(ScaleInvariantSmagorinsky(averaging=(1,2), Pr=1), stop_time=0.5)
-pause
 
 closures = [SmagorinskyLilly(), ScaleInvariantSmagorinsky(averaging = (1,2))]
 for closure in closures
