@@ -3,7 +3,7 @@
 using Oceananigans
 # include("NN_closure_global.jl")
 # include("xin_kai_vertical_diffusivity_local.jl")
-include("xin_kai_vertical_diffusivity_2Pr.jl")
+# include("xin_kai_vertical_diffusivity_2Pr.jl")
 
 ENV["GKSwstype"] = "100"
 
@@ -32,7 +32,8 @@ model_architecture = GPU()
 # closure = (nn_closure, base_closure)
 
 vertical_base_closure = VerticalScalarDiffusivity(ν=1e-5, κ=1e-5)
-convection_closure = XinKaiVerticalDiffusivity()
+# convection_closure = XinKaiVerticalDiffusivity()
+convection_closure = RiBasedVerticalDiffusivity()
 closure = (vertical_base_closure, convection_closure)
 # closure = vertical_base_closure
 
@@ -190,8 +191,8 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 
 u, v, w = model.velocities
 T, S = model.tracers.T, model.tracers.S
-ν, κ = model.diffusivity_fields[2].κᵘ, model.diffusivity_fields[2].κᶜ
-Ri = model.diffusivity_fields[2].Ri
+# ν, κ = model.diffusivity_fields[2].κᵘ, model.diffusivity_fields[2].κᶜ
+# Ri = model.diffusivity_fields[2].Ri
 # wT, wS = model.diffusivity_fields[2].wT, model.diffusivity_fields[2].wS
 
 # outputs = (; u, v, w, T, S, ν, κ, Ri, wT, wS)
