@@ -78,7 +78,7 @@ const μ_T = 1/8days
 ##### Forcing and initial condition
 #####
 
-@inline T_initial(x, y, z) = T_north + ΔT / 2 * (1 + z / Lz)
+@inline T_initial(x, y, z) = T_south
 
 @inline surface_u_flux(x, y, t) = -τ₀ * cos(2π * y / Ly)
 
@@ -93,14 +93,10 @@ v_drag_bc  = FluxBoundaryCondition(v_drag; field_dependencies=:v)
 u_bcs = FieldBoundaryConditions(   top = surface_u_flux_bc, 
                                 bottom = u_drag_bc,
                                  north = ValueBoundaryCondition(0),
-                                 south = ValueBoundaryCondition(0),
-                                  east = ValueBoundaryCondition(0),
-                                  west = ValueBoundaryCondition(0))
+                                 south = ValueBoundaryCondition(0))
 
 v_bcs = FieldBoundaryConditions(   top = FluxBoundaryCondition(0),
                                 bottom = v_drag_bc,
-                                 north = ValueBoundaryCondition(0),
-                                 south = ValueBoundaryCondition(0),
                                   east = ValueBoundaryCondition(0),
                                   west = ValueBoundaryCondition(0))
 
