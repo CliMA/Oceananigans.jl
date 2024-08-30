@@ -48,6 +48,7 @@ function FieldDataset(filepath;
 end
 
 Base.getindex(fds::FieldDataset, inds...) = Base.getindex(fds.fields, inds...)
+Base.getindex(fds::FieldDataset, i::Symbol) = Base.getindex(fds, string(i))
 
 Base.show(io::IO, fds::FieldDataset) =
   print(io, "FieldDataset with $(length(fds.fields)) fields and $(length(fds.metadata)) metadata entries.")

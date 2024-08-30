@@ -350,6 +350,7 @@ end
             @test ds isa FieldDataset
             @test length(keys(ds.fields)) == 8
             @test ds["u"] isa FieldTimeSeries
+            @test ds[:u] isa FieldTimeSeries
             @test ds["v"][1] isa Field
             @test ds["T"][2] isa Field
         end
