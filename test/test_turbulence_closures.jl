@@ -212,12 +212,17 @@ end
 
     @testset "Closure instantiation" begin
         @info "  Testing closure instantiation..."
+
+        # This one errors
+        grid = RectilinearGrid(CPU(), size=(2, 2, 2), extent=(1, 2, 3))
+        closure = "not a closure"
+        @test_throws ArgumentError NonhydrostaticModel(; grid, closure)
+
         for closurename in closures
             closure = getproperty(TurbulenceClosures, closurename)()
             @test closure isa TurbulenceClosures.AbstractTurbulenceClosure
 
-            grid = RectilinearGrid(CPU(), size=(2, 2, 2), extent=(1, 2, 3))
-            model = NonhydrostaticModel(grid=grid, closure=closure, tracers=:c)
+            model = NonhydrostaticModel(; grid, closure, tracers=:c)
             c = model.tracers.c
             u = model.velocities.u
             κ = diffusivity(model.closure, model.diffusivity_fields, Val(:c)) 
