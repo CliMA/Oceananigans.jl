@@ -71,6 +71,15 @@ validate_closure(closure) = closure
 closure_summary(closure) = summary(closure)
 with_tracers(tracers, closure::AbstractTurbulenceClosure) = closure
 compute_diffusivities!(K, closure::AbstractTurbulenceClosure, args...; kwargs...) = nothing
+
+function with_tracers(tracers, closure)
+    msg = "We don't know how to modify a closure of type \n"
+    msg *= string(typeof(closure), '\n')
+    msg *= string("to include tracers. The closure must either subtype AbstractTurbulenceClosure ",
+                  "or be an array of something that subtypes AbstractturbulenceClosure.")
+    throw(ArgumentError(msg))
+    return nothing
+end
  
 # The required halo size to calculate diffusivities. Take care that if the diffusivity can
 # be calculated from local information, still `B = 1`, because we need at least one additional
@@ -81,15 +90,6 @@ compute_diffusivities!(K, closure::AbstractTurbulenceClosure, args...; kwargs...
 
 const ClosureKinda = Union{Nothing, AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}}
 add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = bcs
-
-function add_closure_specific_boundary_conditions(closure, bcs, args...)
-    msg = "We don't know how to add boundary conditions for a closure of type \n"
-    msg *= string(typeof(closure), '\n')
-    msg *= string("The closure must either subtype AbstractTurbulenceClosure ",
-                  "or be an array of something that subtypes AbstractturbulenceClosure.")
-    throw(ArgumentError(msg))
-    return nothing
-end
 
 # Interface for KE-based closures
 function shear_production end

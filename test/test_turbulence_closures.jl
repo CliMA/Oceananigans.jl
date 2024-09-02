@@ -217,6 +217,7 @@ end
         grid = RectilinearGrid(CPU(), size=(2, 2, 2), extent=(1, 2, 3))
         closure = "not a closure"
         @test_throws ArgumentError NonhydrostaticModel(; grid, closure)
+        @test_throws ArgumentError HydrostaticFreeSurfaceModel(; grid, closure)
 
         for closurename in closures
             closure = getproperty(TurbulenceClosures, closurename)()
