@@ -325,8 +325,8 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::ScaleInvariantSmago
     bcs = merge(default_eddy_viscosity_bcs, bcs)
     νₑ = CenterField(grid, boundary_conditions=bcs.νₑ)
 
-    LM_avg = Field(Average(KernelFunctionOperation{Center, Center, Center}(LᵢⱼMᵢⱼ_ccc, grid, velocities...)))
-    MM_avg = Field(Average(KernelFunctionOperation{Center, Center, Center}(MᵢⱼMᵢⱼ_ccc, grid, velocities...)))
+    LM_avg = Field(Average(KernelFunctionOperation{Center, Center, Center}(LᵢⱼMᵢⱼ_ccc, grid, velocities...), dims=closure.averaging.dims))
+    MM_avg = Field(Average(KernelFunctionOperation{Center, Center, Center}(MᵢⱼMᵢⱼ_ccc, grid, velocities...), dims=closure.averaging.dims))
 
     return (; νₑ, LM_avg, MM_avg)
 end
