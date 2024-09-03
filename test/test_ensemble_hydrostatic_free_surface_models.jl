@@ -60,6 +60,30 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 
     sic_simulation = Simulation(sic_model; simulation_kwargs...)
     per_simulation = Simulation(per_model; simulation_kwargs...)
+
+    run!(sic_simulation)
+    run!(per_simulation)
+    
+    @info "Testing Single column grid results..."
+    
+    @test all(sic_model.velocities.u.data[1, 1, :] .≈ per_model.velocities.u.data[1, 1, :])
+    @test all(sic_model.velocities.v.data[1, 1, :] .≈ per_model.velocities.v.data[1, 1, :])
+    @test all(sic_model.tracers.c.data[1, 1, :]    .≈ per_model.tracers.c.data[1, 1, :])
+
+
+    @info "Testing a single column grid model on an ImmersedBoundaryGrid..."
+
+    sic_grid = ImmersedBoundaryGrid(sic_model.grid, GridFittedBottom(-0.5))
+    per_grid = ImmersedBoundaryGrid(sic_model.grid, GridFittedBottom(-0.5))
+
+    sic_model = HydrostaticFreeSurfaceModel(; grid = sic_grid, model_kwargs...)
+    per_model = HydrostaticFreeSurfaceModel(; grid = par_grid, model_kwargs...)
+
+    set!(sic_model, c = z         -> exp(-z^2), u = 1, v = 1)
+    set!(per_model, c = (x, y, z) -> exp(-z^2), u = 1, v = 1)
+
+    sic_simulation = Simulation(sic_model; simulation_kwargs...)
+    per_simulation = Simulation(per_model; simulation_kwargs...)
     
     run!(sic_simulation)
     run!(per_simulation)
