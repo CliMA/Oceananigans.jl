@@ -48,37 +48,57 @@ using Oceananigans.Grids: Flat
 @inline δzᵃᵃᶜ(i, j, k, grid::AG{FT, TX, TY, Flat}, f::F, args...) where {FT, TX, TY, F<:Function} = zero(FT)
 @inline δzᵃᵃᶠ(i, j, k, grid::AG{FT, TX, TY, Flat}, f::F, args...) where {FT, TX, TY, F<:Function} = zero(FT)
 
+@inline δxᶠᶜᶜ(i, j, k, grid, c) = δxᶠᵃᵃ(i, j, k, grid, c)
+@inline δxᶠᶜᶠ(i, j, k, grid, c) = δxᶠᵃᵃ(i, j, k, grid, c)
+@inline δyᶜᶠᶜ(i, j, k, grid, c) = δyᵃᶠᵃ(i, j, k, grid, c)
+@inline δyᶜᶠᶠ(i, j, k, grid, c) = δyᵃᶠᵃ(i, j, k, grid, c)
+
+@inline δxᶠᶜᶜ(i, j, k, grid, f::F, args...) where F<:Function = δxᶠᵃᵃ(i, j, k, grid, f, args...)
+@inline δxᶠᶜᶠ(i, j, k, grid, f::F, args...) where F<:Function = δxᶠᵃᵃ(i, j, k, grid, f, args...)
+@inline δyᶜᶠᶜ(i, j, k, grid, f::F, args...) where F<:Function = δyᵃᶠᵃ(i, j, k, grid, f, args...)
+@inline δyᶜᶠᶠ(i, j, k, grid, f::F, args...) where F<:Function = δyᵃᶠᵃ(i, j, k, grid, f, args...)
+
 #####
 ##### Support for aquaplanet simulations on conformal cubed sphere grids
 #####
 
-@inline δxᶠᵃᵃ(i, j, k, grid::OrthogonalSphericalShellGrid, c) =
+@inline δxᶠᶜᶜ(i, j, k, grid::OrthogonalSphericalShellGrid, c) =
     @inbounds ifelse((i == 1) & (j < 1),               c[1, j, k]           - c[j, 1, k],
               ifelse((i == grid.Nx+1) & (j < 1),       c[grid.Nx-j+1, 1, k] - c[grid.Nx, j, k],
               ifelse((i == grid.Nx+1) & (j > grid.Ny), c[j, grid.Ny, k]     - c[grid.Nx, j, k],
               ifelse((i == 1) & (j > grid.Ny),         c[1, j, k]           - c[grid.Nx-j+1, grid.Ny, k],
                                                        c[i, j, k]           - c[i-1, j, k]))))
 
-@inline δyᵃᶠᵃ(i, j, k, grid::OrthogonalSphericalShellGrid, c) =
+@inline δxᶠᶜᶠ(i, j, k, grid::OrthogonalSphericalShellGrid, c) = δxᶠᶜᶜ(i, j, k, grid, c)
+
+@inline δyᶜᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid, c) =
     @inbounds ifelse((i < 1) & (j == 1),               c[i, 1, k]           - c[1, i, k],
               ifelse((i > grid.Nx) & (j == 1),         c[i, 1, k]           - c[grid.Nx, grid.Ny+1-i, k],
               ifelse((i > grid.Nx) & (j == grid.Ny+1), c[grid.Nx, i, k]     - c[i, grid.Ny, k],
               ifelse((i < 1) & (j == grid.Ny+1),       c[1, grid.Ny-i+1, k] - c[i, grid.Ny, k],
                                                        c[i, j, k]           - c[i, j-1, k]))))
 
-@inline δxᶠᵃᵃ(i, j, k, grid::OrthogonalSphericalShellGrid, f::F, args...) where F<:Function =
+@inline δyᶜᶠᶠ(i, j, k, grid::OrthogonalSphericalShellGrid, c) = δyᶜᶠᶜ(i, j, k, grid, c)
+
+@inline δxᶠᶜᶜ(i, j, k, grid::OrthogonalSphericalShellGrid, f::F, args...) where F<:Function =
     @inbounds ifelse((i == 1) & (j < 1),               f(1, j, k, grid, args...)           - f(j, 1, k, grid, args...),
               ifelse((i == grid.Nx+1) & (j < 1),       f(grid.Nx-j+1, 1, k, grid, args...) - f(grid.Nx, j, k, grid, args...),
               ifelse((i == grid.Nx+1) & (j > grid.Ny), f(j, grid.Ny, k, grid, args...)     - f(grid.Nx, j, k, grid, args...),
               ifelse((i == 1) & (j > grid.Ny),         f(1, j, k, grid, args...)           - f(grid.Nx-j+1, grid.Ny, k, grid, args...),
                                                        f(i, j, k, grid, args...)           - f(i-1, j, k, grid, args...)))))
 
-@inline δyᵃᶠᵃ(i, j, k, grid::OrthogonalSphericalShellGrid, f::F, args...) where F<:Function =
+@inline δxᶠᶜᶠ(i, j, k, grid::OrthogonalSphericalShellGrid, f::F, args...) where F<:Function =
+    δxᶠᶜᶜ(i, j, k, grid, f, args...)
+
+@inline δyᶜᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid, f::F, args...) where F<:Function =
     @inbounds ifelse((i < 1) & (j == 1),               f(i, 1, k, grid, args...)           - f(1, i, k, grid, args...),
               ifelse((i > grid.Nx) & (j == 1),         f(i, 1, k, grid, args...)           - f(grid.Nx, grid.Ny+1-i, k, grid, args...),
               ifelse((i > grid.Nx) & (j == grid.Ny+1), f(grid.Nx, i, k, grid, args...)     - f(i, grid.Ny, k, grid, args...),
               ifelse((i < 1) & (j == grid.Ny+1),       f(1, grid.Ny-i+1, k, grid, args...) - f(i, grid.Ny, k, grid, args...),
                                                        f(i, j, k, grid, args...)           - f(i, j-1, k, grid, args...)))))
+    
+@inline δyᶜᶠᶠ(i, j, k, grid::OrthogonalSphericalShellGrid, f::F, args...) where F<:Function =
+    δyᶜᶠᶜ(i, j, k, grid, f, args...)
 
 #####
 ##### 3D differences
