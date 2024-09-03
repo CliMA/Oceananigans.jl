@@ -17,21 +17,21 @@ Base.show(io::IO, averaging::DirectionalAveraging) = print(io, summary(averaging
 struct ScaleInvariantSmagorinsky{TD, AP, FT, P, UF} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
     averaging :: AP
     Pr :: P
-    update_frequency :: UF
+    update_interval :: UF
 
-    function ScaleInvariantSmagorinsky{TD, AP, FT}(averaging, Pr; update_frequency = 5) where {TD, AP, FT}
+    function ScaleInvariantSmagorinsky{TD, AP, FT}(averaging, Pr; update_interval = 5) where {TD, AP, FT}
         Pr = convert_diffusivity(FT, Pr; discrete_form=false)
         P = typeof(Pr)
-        update_frequency = Int(update_frequency)
-        return new{TD, AP, FT, P, Int}(averaging, Pr, update_frequency)
+        update_interval = Int(update_interval)
+        return new{TD, AP, FT, P, Int}(averaging, Pr, update_interval)
     end
 end
 
 
 function Adapt.adapt_structure(to, closure::ScaleInvariantSmagorinsky{TD, AP, FT, <:Any, <:Any}) where {TD, AP, FT}
-    update_frequency = Adapt.adapt(to, closure.update_frequency)
+    update_interval = Adapt.adapt(to, closure.update_interval)
     Pr = Adapt.adapt(to, closure.Pr)
-    return ScaleInvariantSmagorinsky{TD, AP, FT}(closure.averaging, Pr; update_frequency)
+    return ScaleInvariantSmagorinsky{TD, AP, FT}(closure.averaging, Pr; update_interval)
 end
 
 @inline viscosity(::ScaleInvariantSmagorinsky, K) = K.νₑ
@@ -40,10 +40,10 @@ end
 """
     ScaleInvariantSmagorinsky([time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64;] averaging=1.0, Pr=1.0)
 """
-function ScaleInvariantSmagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64; averaging=DirectionalAveraging(Colon()), Pr=1.0, update_frequency=5) where TD
+function ScaleInvariantSmagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64; averaging=DirectionalAveraging(Colon()), Pr=1.0, update_interval=5) where TD
     averaging = (averaging isa AbstractAveragingProcedure) ? averaging : DirectionalAveraging(averaging)
     AP = typeof(averaging)
-    return ScaleInvariantSmagorinsky{TD, AP, FT}(averaging, Pr; update_frequency)
+    return ScaleInvariantSmagorinsky{TD, AP, FT}(averaging, Pr; update_interval)
 end
 
 
@@ -51,7 +51,7 @@ ScaleInvariantSmagorinsky(FT::DataType; kwargs...) = ScaleInvariantSmagorinsky(E
 
 function with_tracers(tracers, closure::ScaleInvariantSmagorinsky{TD, AP, FT}) where {TD, AP, FT}
     Pr = tracer_diffusivities(tracers, closure.Pr)
-    return ScaleInvariantSmagorinsky{TD, AP, FT}(closure.averaging, Pr, update_frequency=closure.update_frequency)
+    return ScaleInvariantSmagorinsky{TD, AP, FT}(closure.averaging, Pr, update_interval=closure.update_interval)
 end
 
 function LᵢⱼMᵢⱼ_ccc(i, j, k, grid, u, v, w)
@@ -301,7 +301,7 @@ end
 @inline L₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℱ²ᵟ(i, j, k, grid, u₂u₃ᶜᶜᶜ, u, v, w) - ū₂ū₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
 
 
-Base.summary(closure::ScaleInvariantSmagorinsky) = string("ScaleInvariantSmagorinsky: averaging=$(closure.averaging), Pr=$(closure.Pr), update_frequency=$(closure.update_frequency)")
+Base.summary(closure::ScaleInvariantSmagorinsky) = string("ScaleInvariantSmagorinsky: averaging=$(closure.averaging), Pr=$(closure.Pr), update_interval=$(closure.update_interval)")
 Base.show(io::IO, closure::ScaleInvariantSmagorinsky) = print(io, summary(closure))
 
 #####
