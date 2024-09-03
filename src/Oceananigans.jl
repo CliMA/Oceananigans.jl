@@ -19,6 +19,7 @@ export
     LatitudeLongitudeGrid,
     OrthogonalSphericalShellGrid,
     xnodes, ynodes, znodes, nodes,
+    λnodes, φnodes,
     xspacings, yspacings, zspacings,
     minimum_xspacing, minimum_yspacing, minimum_zspacing,
 
@@ -33,6 +34,7 @@ export
     UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, 
     WENO, WENOThirdOrder, WENOFifthOrder,
     VectorInvariant, WENOVectorInvariant, EnergyConserving, EnstrophyConserving,
+    TracerAdvection,
 
     # Boundary conditions
     BoundaryCondition,
@@ -189,6 +191,7 @@ function tupleit end
 function fields end
 function prognostic_fields end
 function tracer_tendency_kernel_function end
+function boundary_conditions end
 
 #####
 ##### Include all the submodules
