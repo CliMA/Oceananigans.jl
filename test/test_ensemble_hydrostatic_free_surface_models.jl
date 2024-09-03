@@ -37,6 +37,38 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
     @test all(sic_model.velocities.u.data[1, 1, :] .≈ per_model.velocities.u.data[1, 1, :])
     @test all(sic_model.velocities.v.data[1, 1, :] .≈ per_model.velocities.v.data[1, 1, :])
     @test all(sic_model.tracers.c.data[1, 1, :]    .≈ per_model.tracers.c.data[1, 1, :])
+
+    @info "Testing forcing a single column grid model with a FieldTimeSeries..."
+
+    times = 0:0.02:0.06
+    sic_fts = FieldTimeSeries{Nothing, Nothing, Center}(sic_model.grid, times; time_indexing = Cyclical())
+    per_fts = FieldTimeSeries{Center,  Center,  Center}(per_model.grid, times; time_indexing = Cyclical())
+
+    for t in 1:10
+        set!(sic_fts[t], exp(-(t - 5)^2 / 5^2))
+        set!(per_fts[t], exp(-(t - 5)^2 / 5^2))
+    end
+
+    sic_forcing = Forcing(sic_fts)
+    per_forcing = Forcing(per_fts)
+
+    sic_model = HydrostaticFreeSurfaceModel(; grid = single_column_grid, forcing = (; u = sic_forcing), model_kwargs...)
+    per_model = HydrostaticFreeSurfaceModel(; grid = periodic_grid,      forcing = (; u = per_forcing), model_kwargs...)
+
+    set!(sic_model, c = z         -> exp(-z^2), u = 1, v = 1)
+    set!(per_model, c = (x, y, z) -> exp(-z^2), u = 1, v = 1)
+
+    sic_simulation = Simulation(sic_model; simulation_kwargs...)
+    per_simulation = Simulation(per_model; simulation_kwargs...)
+    
+    run!(sic_simulation)
+    run!(per_simulation)
+    
+    @info "Testing Single column grid results..."
+    
+    @test all(sic_model.velocities.u.data[1, 1, :] .≈ per_model.velocities.u.data[1, 1, :])
+    @test all(sic_model.velocities.v.data[1, 1, :] .≈ per_model.velocities.v.data[1, 1, :])
+    @test all(sic_model.tracers.c.data[1, 1, :]    .≈ per_model.tracers.c.data[1, 1, :])
 end
 
 @testset "Ensembles of `HydrostaticFreeSurfaceModel` with different closures" begin
