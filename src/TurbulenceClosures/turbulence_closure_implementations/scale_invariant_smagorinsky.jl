@@ -94,7 +94,7 @@ function compute_diffusivities!(diffusivity_fields, closure::ScaleInvariantSmago
     velocities = model.velocities
     tracers = model.tracers
 
-    if model.clock.iteration % closure.update_frequency == 0
+    if model.clock.iteration % closure.update_interval == 0
         compute!(diffusivity_fields.LM_avg)
         compute!(diffusivity_fields.MM_avg)
     end
