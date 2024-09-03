@@ -2,6 +2,8 @@ using Test
 using Oceananigans
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize, SliceEnsembleSize
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
+using Oceananigans.OutputReaders: Cyclical
+
 const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 
 @testset "`HydrostaticFreeSurfaceModel` using a `SingleColumnGrid`" begin
