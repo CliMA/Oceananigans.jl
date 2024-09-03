@@ -8,14 +8,12 @@ const κ = 0.4
 H = 1
 L = 2π*H
 z₀ = 1e-4*H
-N = 128
 u★ = 1
 
-grid = RectilinearGrid(GPU(), size=(N, N, N÷2), topology=(Periodic, Periodic, Bounded),
-                       x=(0, L), y=(0, L), z=(0, H))
-@show grid
+function run_wall_flow(closure; H=1, L=2π*H, N=32, u★=1, stop_time=50)
+    grid = RectilinearGrid(CPU(), size=(N, N, N÷2), topology=(Periodic, Periodic, Bounded),
+                           x=(0, L), y=(0, L), z=(0, H))
 
-function run_wall_flow(closure; grid=grid, H=1, L=2π*H, N=32, u★=1, stop_time=50)
     z₁ = first(znodes(grid, Center()))
     cᴰ = (κ / log(z₁ / z₀))^2
 

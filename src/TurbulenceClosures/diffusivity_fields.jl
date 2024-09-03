@@ -13,7 +13,7 @@ end
 DiffusivityFields(::Nothing, grid, tracer_names, bcs, closure; velocities) =
     DiffusivityFields(grid, tracer_names, bcs, closure; velocities)
 
-DiffusivityFields(args...; velocities::Nothing) = DiffusivityFields(args...)
+DiffusivityFields(args...; velocities) = DiffusivityFields(args...)
 
 
 #####
