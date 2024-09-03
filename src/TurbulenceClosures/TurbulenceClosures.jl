@@ -76,7 +76,7 @@ function with_tracers(tracers, closure)
     msg = "We don't know how to modify a closure of type \n"
     msg *= string(typeof(closure), '\n')
     msg *= string("to include tracers. The closure must either subtype AbstractTurbulenceClosure ",
-                  "or be an array of something that subtypes AbstractturbulenceClosure.")
+                  "or be an array of something that subtypes AbstractTurbulenceClosure.")
     throw(ArgumentError(msg))
     return nothing
 end
