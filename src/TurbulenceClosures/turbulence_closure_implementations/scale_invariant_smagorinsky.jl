@@ -94,15 +94,17 @@ function compute_diffusivities!(diffusivity_fields, closure::ScaleInvariantSmago
     velocities = model.velocities
     tracers = model.tracers
 
-    LM_op = Average(KernelFunctionOperation{Center, Center, Center}(LᵢⱼMᵢⱼ_ccc, grid, model.velocities...))
-    MM_op = Average(KernelFunctionOperation{Center, Center, Center}(MᵢⱼMᵢⱼ_ccc, grid, model.velocities...))
+    #LM_op = Average(KernelFunctionOperation{Center, Center, Center}(LᵢⱼMᵢⱼ_ccc, grid, model.velocities...))
+    #MM_op = Average(KernelFunctionOperation{Center, Center, Center}(MᵢⱼMᵢⱼ_ccc, grid, model.velocities...))
 
     if model.clock.iteration % closure.update_frequency == 0
-        mean!(diffusivity_fields.LM_avg, LM_op.operand)
-        mean!(diffusivity_fields.MM_avg, MM_op.operand)
+        #mean!(diffusivity_fields.LM_avg, LM_op.operand)
+        #mean!(diffusivity_fields.MM_avg, MM_op.operand)
 
-        launch!(arch, grid, parameters, _compute_scale_invariant_smagorinsky_viscosity!,
-                diffusivity_fields.νₑ, diffusivity_fields.LM_avg, diffusivity_fields.MM_avg, grid, closure, buoyancy, velocities, tracers)
+        #launch!(arch, grid, parameters, _compute_scale_invariant_smagorinsky_viscosity!,
+        #        diffusivity_fields.νₑ, diffusivity_fields.LM_avg, diffusivity_fields.MM_avg, grid, closure, buoyancy, velocities, tracers)
+        compute!(diffusivity_fields.LM_avg)
+        compute!(diffusivity_fields.MM_avg)
     end
 
     return nothing
@@ -325,14 +327,18 @@ directionally_averaged_field(grid, ::Val{DirectionalAveraging(Colon())})   = Fie
 directionally_averaged_field(grid, ::Any)                                  = Field{Center,  Center,  Center}(grid)
 
 
-function DiffusivityFields(grid, tracer_names, bcs, closure::ScaleInvariantSmagorinsky)
+function DiffusivityFields(grid, tracer_names, bcs, closure::ScaleInvariantSmagorinsky; velocities::NamedTuple)
 
+    @show velocities
     default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))
     bcs = merge(default_eddy_viscosity_bcs, bcs)
     νₑ = CenterField(grid, boundary_conditions=bcs.νₑ)
 
-    LM_avg = directionally_averaged_field(grid, Val(closure.averaging))
-    MM_avg = directionally_averaged_field(grid, Val(closure.averaging))
+    #LM_avg = directionally_averaged_field(grid, Val(closure.averaging))
+    #MM_avg = directionally_averaged_field(grid, Val(closure.averaging))
+
+    LM_avg = Average(KernelFunctionOperation{Center, Center, Center}(LᵢⱼMᵢⱼ_ccc, grid, velocities...))
+    MM_avg = Average(KernelFunctionOperation{Center, Center, Center}(MᵢⱼMᵢⱼ_ccc, grid, velocities...))
 
     return (; νₑ, LM_avg, MM_avg)
 end
