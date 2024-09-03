@@ -5,17 +5,12 @@ using Printf
 simname = "wall_flow"
 
 const κ = 0.4
-H = 1
-L = 2π*H
-z₀ = 1e-4*H
-N = 128
-u★ = 1
 
-grid = RectilinearGrid(GPU(), size=(N, N, N÷2), topology=(Periodic, Periodic, Bounded),
-                       x=(0, L), y=(0, L), z=(0, H))
-@show grid
 
-function run_wall_flow(closure; grid=grid, H=1, L=2π*H, N=32, u★=1, stop_time=50)
+function run_wall_flow(closure; arch=CPU(), H=1, L=2π*H, N=32, u★=1, z₀ = 1e-4*H, stop_time=50)
+    grid = RectilinearGrid(arch, size=(N, N, N÷2), topology=(Periodic, Periodic, Bounded),
+                           x=(0, L), y=(0, L), z=(0, H))
+
     z₁ = first(znodes(grid, Center()))
     cᴰ = (κ / log(z₁ / z₀))^2
 
@@ -76,7 +71,7 @@ function run_wall_flow(closure; grid=grid, H=1, L=2π*H, N=32, u★=1, stop_time
 
 end
 
-closures = [SmagorinskyLilly(), ScaleInvariantSmagorinsky(averaging = (1,2))]
+closures = [SmagorinskyLilly(), ScaleInvariantSmagorinsky(averaging = (1,2), update_interval=5)]
 for closure in closures
     @info "Running" closure
     run_wall_flow(closure)
