@@ -4,8 +4,9 @@ using Oceananigans.Grids: topology
     adapt_advection_order(advection, grid::AbstractGrid)
 
 Adapts the advection operator `advection` based on the grid `grid` by adjusting the order of advection in each direction.
-For example, if the grid has only one point in the x-direction, the advection operator in the x-direction is set to `nothing`.
-A high order advection sheme is reduced to a lower order advection scheme if the grid has fewer points in that direction.
+For example, if the grid has only one point in the x-direction, the advection operator in the x-direction is set to first order
+upwind or 2nd order centered scheme, depending on the original user-specified advection scheme. A high order advection sheme 
+is reduced to a lower order advection scheme if the grid has fewer points in that direction.
 
 # Arguments
 - `advection`: The original advection scheme.
@@ -76,9 +77,7 @@ adapt_advection_order(advection::Nothing, N::Int, grid::AbstractGrid) = nothing
 #####
 
 function adapt_advection_order(advection::Centered{H}, N::Int, grid::AbstractGrid) where H
-    if N == 1 && H != 1
-        return Centered(; order = 2)
-    elseif N >= H
+    if N >= H
         return advection
     else
         return Centered(; order = N * 2)
@@ -86,9 +85,7 @@ function adapt_advection_order(advection::Centered{H}, N::Int, grid::AbstractGri
 end
 
 function adapt_advection_order(advection::UpwindBiased{H}, N::Int, grid::AbstractGrid) where H
-    if N == 1 && H != 1
-        return UpwindBiased(; order = 1)
-    elseif N >= H
+    if N >= H
         return advection
     else
         return UpwindBiased(; order = N * 2 - 1)
@@ -106,9 +103,7 @@ new_weno_scheme(::WENO, grid, order, bounds, ::Type{Nothing}, ::Type{Nothing}, :
 new_weno_scheme(::WENO, grid, order, bounds, XT, YT, ZT)                                         = WENO(grid; order, bounds)
 
 function adapt_advection_order(advection::WENO{H, FT, XT, YT, ZT}, N::Int, grid::AbstractGrid) where {H, FT, XT, YT, ZT}
-    if N == 1 && H != 1
-        return UpwindBiased(; order = 1)
-    elseif N >= H
+    if N >= H
         return advection
     else
         return new_weno_scheme(advection, grid, N * 2 - 1, advection.bounds, XT, YT, ZT)
