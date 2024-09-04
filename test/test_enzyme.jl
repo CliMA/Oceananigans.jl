@@ -249,8 +249,9 @@ end
 
     # Now for real
     amplitude = 1.0
+    diffusivity = 1.0
     κ = ZFaceField(grid)
-    fill!(κ, 1.0)
+    fill!(κ, diffusivity)
 
     dmodel = Enzyme.make_zero(model)
     set_diffusivity!(dmodel, 0)
@@ -259,7 +260,7 @@ end
                       stable_diffusion!,
                       Duplicated(model, dmodel),
                       Const(amplitude),
-                      Active(κ))
+                      Active(diffusivity))
 
     @info """ \n
     Enzyme computed $dc²_dκ
