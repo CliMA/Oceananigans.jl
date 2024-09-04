@@ -29,7 +29,7 @@ Change diffusivity of model to `diffusivity`.
 """
 function set_diffusivity!(model, diffusivity)
     closure = model.closure
-    fill!(closure.κ, diffusivity)
+    fill!(closure.κ.c, diffusivity)
     return nothing
 end
 
