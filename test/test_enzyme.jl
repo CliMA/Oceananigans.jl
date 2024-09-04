@@ -250,8 +250,6 @@ end
     # Now for real
     amplitude = 1.0
     diffusivity = 1.0
-    κ = ZFaceField(grid)
-    fill!(κ, diffusivity)
 
     dmodel = Enzyme.make_zero(model)
     set_diffusivity!(dmodel, 0)
