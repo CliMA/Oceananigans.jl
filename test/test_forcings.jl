@@ -135,13 +135,9 @@ function time_step_with_field_time_series_forcing(arch)
     # Make sure the field time series updates correctly
     u_forcing = FieldTimeSeries{Face, Center, Center, Grid}(grid, 0:1:4; backend = InMemory(2))
 
-    for t in 0:1:3
-        set!(u_forcing[t], (x, y, z) -> sin(π * x) * t)
-    end
-
     model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing,))
-    time_step!(model, 2, euler=true)
-    time_step!(model, 2, euler=true)
+    time_step!(model, 2)
+    time_step!(model, 2)
     
     @test u_forcing.backend.start == 3
 
