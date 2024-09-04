@@ -77,6 +77,20 @@ include("dependencies_for_runtests.jl")
         @test required_halo_size(model.advection.x) == 3
         @test required_halo_size(model.advection.y) == 1
         @test required_halo_size(model.advection.z) == 3
+
+        
+        model = NonhydrostaticModel(grid=small_grid, advection=UpwindBiased(; order = 9))
+        @test model.advection isa FluxFormAdvection
+        @test required_halo_size(model.advection.x) == 4
+        @test required_halo_size(model.advection.y) == 1
+        @test required_halo_size(model.advection.z) == 4
+
+
+        model = NonhydrostaticModel(grid=small_grid, advection=Centered(; order = 11))
+        @test model.advection isa FluxFormAdvection
+        @test required_halo_size(model.advection.x) == 4
+        @test required_halo_size(model.advection.y) == 1
+        @test required_halo_size(model.advection.z) == 4
     end
 
     @testset "Model construction with single tracer and nothing tracer" begin
