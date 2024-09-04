@@ -66,6 +66,17 @@ include("dependencies_for_runtests.jl")
 
         model = NonhydrostaticModel(closure=ScalarBiharmonicDiffusivity(), grid=funny_grid)
         @test model.grid.Hx == 2 && model.grid.Hy == 3 && model.grid.Hz == 4
+
+
+        @info "  Testing adjustment of advection schemes in NonhydrostaticModel constructor..."
+        small_grid = RectilinearGrid(size=(4, 2, 4), extent=(1, 2, 3), halo=(1, 1, 1))
+        
+        # Model ensures that halos are at least of size 1
+        model = NonhydrostaticModel(grid=small_grid, advection=WENO())
+        @test model.advection isa FluxFormAdvection
+        @test required_halo_size(model.advection.x) == 2
+        @test required_halo_size(model.advection.y) == 1
+        @test required_halo_size(model.advection.z) == 2
     end
 
     @testset "Model construction with single tracer and nothing tracer" begin
