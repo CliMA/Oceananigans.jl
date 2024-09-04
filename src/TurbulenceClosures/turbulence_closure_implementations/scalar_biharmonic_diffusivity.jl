@@ -50,7 +50,7 @@ Keyword arguments
 
 * `discrete_form`: `Boolean`; default: `false`.
 
-* `required_halo_size = Val(2)`: `Val(i::Int)` where `i` is the required halo size for the closure.
+* `required_halo_size = 2`: the required halo size for the closure. This value should be an integer.
   change only if using a function for `ν` or `κ` that requires a halo size larger than 1 to compute.
 
 When prescribing the viscosities or diffusivities as functions, depending on the

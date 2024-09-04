@@ -63,9 +63,8 @@ value of keyword argument `discrete_form`, the constructor expects:
   - with `loc = (ℓx, ℓy, ℓz)` and specified `parameters`:
     functions of `(i, j, k, grid, clock, fields, parameters)`.
 
-* `required_halo_size = Val(1)`: `Val(i::Int)` where `i` is the required halo size for the closure.
+* `required_halo_size = Val(1)`: the required halo size for the closure. This value should be an integer.
   change only if using a function for `ν` or `κ` that requires a halo size larger than 1 to compute.
-  The required halo size has to be provided as a `Val` type, e.g., `Val(2)` if the closure requires a halo size of 2.
 
 * `parameters`: `NamedTuple` with parameters used by the functions
   that compute viscosity and/or diffusivity; default: `nothing`.
