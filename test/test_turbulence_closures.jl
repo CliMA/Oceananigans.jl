@@ -1,8 +1,9 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVerticalDiffusivity, DiscreteDiffusionFunction
 
-using Oceananigans.TurbulenceClosures: viscosity_location, diffusivity_location
+using Oceananigans.TurbulenceClosures: viscosity_location, diffusivity_location, 
+                                       required_halo_size_x, required_halo_size_y, required_halo_size_z
 
 using Oceananigans.TurbulenceClosures: diffusive_flux_x, diffusive_flux_y, diffusive_flux_z,
                                        viscous_flux_ux, viscous_flux_uy, viscous_flux_uz,
@@ -248,6 +249,21 @@ end
             @test closure.κ.T == T(κ)
             run_constant_isotropic_diffusivity_fluxdiv_tests(T)
         end
+
+        @info "  Testing ScalarDiffusivity with different halo requirements..."
+        closure = ScalarDiffusivity(ν=0.3)
+        @test required_halo_size_x(closure) == 1
+        @test required_halo_size_y(closure) == 1
+        @test required_halo_size_z(closure) == 1
+
+        @inline ν(i, j, k, grid, ℓx, ℓy, ℓz, clock, fields) = ℑxᶠᵃᵃ(i, j, k, grid, ℑxᶜᵃᵃ, fields.u)
+        closure = ScalarDiffusivity(; ν, discrete_form=true, required_halo_size=2)
+        
+        @test closure.ν isa DiscreteDiffusionFunction
+        @test required_halo_size_x(closure) == 2
+        @test required_halo_size_y(closure) == 2
+        @test required_halo_size_z(closure) == 2
+
     end
 
     @testset "HorizontalScalarDiffusivity" begin

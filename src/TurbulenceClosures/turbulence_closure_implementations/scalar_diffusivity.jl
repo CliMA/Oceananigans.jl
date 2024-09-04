@@ -63,7 +63,7 @@ value of keyword argument `discrete_form`, the constructor expects:
   - with `loc = (ℓx, ℓy, ℓz)` and specified `parameters`:
     functions of `(i, j, k, grid, clock, fields, parameters)`.
 
-* `required_halo_size = Val(1)`: the required halo size for the closure. This value should be an integer.
+* `required_halo_size = 1`: the required halo size for the closure. This value should be an integer.
   change only if using a function for `ν` or `κ` that requires a halo size larger than 1 to compute.
 
 * `parameters`: `NamedTuple` with parameters used by the functions
