@@ -80,13 +80,11 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
         @test required_halo_size_y(model.advection) == 1
         @test required_halo_size_z(model.advection) == 3
 
-        
         model = NonhydrostaticModel(grid=small_grid, advection=UpwindBiased(; order = 9))
         @test model.advection isa FluxFormAdvection
         @test required_halo_size_x(model.advection) == 4
         @test required_halo_size_y(model.advection) == 1
         @test required_halo_size_z(model.advection) == 4
-
 
         model = NonhydrostaticModel(grid=small_grid, advection=Centered(; order = 11))
         @test model.advection isa FluxFormAdvection
