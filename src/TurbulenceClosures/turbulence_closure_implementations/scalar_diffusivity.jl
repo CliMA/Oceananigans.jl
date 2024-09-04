@@ -65,6 +65,7 @@ value of keyword argument `discrete_form`, the constructor expects:
 
 * `required_halo_size = Val(1)`: `Val(i::Int)` where `i` is the required halo size for the closure.
   change only if using a function for `ν` or `κ` that requires a halo size larger than 1 to compute.
+  The required halo size has to be provided as a `Val` type, e.g., `Val(2)` if the closure requires a halo size of 2.
 
 * `parameters`: `NamedTuple` with parameters used by the functions
   that compute viscosity and/or diffusivity; default: `nothing`.
@@ -119,7 +120,7 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
                            discrete_form = false,
                            loc = (nothing, nothing, nothing),
                            parameters = nothing,
-                           required_halo_size::Val{N} = Val(1)) where N
+                           required_halo_size::Int = 1)
 
     if formulation == HorizontalFormulation() && time_discretization == VerticallyImplicitTimeDiscretization()
     throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for \
@@ -129,7 +130,7 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
     κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
     ν = convert_diffusivity(FT, ν; discrete_form, loc, parameters)
 
-    return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), N}(ν, κ)
+    return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), required_halo_size}(ν, κ)
 end
 
 # Explicit default

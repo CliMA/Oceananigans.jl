@@ -78,11 +78,11 @@ function ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation()
                                      discrete_form = false,
                                      loc = (nothing, nothing, nothing),
                                      parameters = nothing,
-                                     required_halo_size::Val{N} = Val(2)) where N
+                                     required_halo_size::Int = 2) 
 
     ν = convert_diffusivity(FT, ν; discrete_form, loc, parameters)
     κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
-    return ScalarBiharmonicDiffusivity{typeof(formulation), N}(ν, κ)
+    return ScalarBiharmonicDiffusivity{typeof(formulation), required_halo_size}(ν, κ)
 end
 
 function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{F, N, V, K}) where {F, N, V, K}
