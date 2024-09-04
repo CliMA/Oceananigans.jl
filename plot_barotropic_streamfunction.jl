@@ -21,7 +21,7 @@ clim = maximum(abs, Ψ_frame)
 N_levels = 16
 levels = range(-clim, stop=clim, length=N_levels)
 fig = Figure(size=(800, 800))
-ax = Axis(fig[1, 1], xlabel="x (km)", ylabel="y (km)", title="Ri-based Vertical Diffusivity, Yearly-Averaged Barotropic streamfunction Ψ, Year $(times[timeframe])")
+ax = Axis(fig[1, 1], xlabel="x (m)", ylabel="y (m)", title="Ri-based Vertical Diffusivity, Yearly-Averaged Barotropic streamfunction Ψ, Year $(times[timeframe])")
 cf = contourf!(ax, xF, yC, Ψ_frame, levels=levels, colormap=Reverse(:RdBu_11))
 Colorbar(fig[1, 2], cf, label="Ψ (Sv)")
 tightlimits!(ax)
