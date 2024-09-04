@@ -50,6 +50,9 @@ Keyword arguments
 
 * `discrete_form`: `Boolean`; default: `false`.
 
+* `required_halo_size = Val(2)`: `Val(i::Int)` where `i` is the required halo size for the closure.
+  change only if using a function for `ν` or `κ` that requires a halo size larger than 1 to compute.
+
 When prescribing the viscosities or diffusivities as functions, depending on the
 value of keyword argument `discrete_form`, the constructor expects:
 
@@ -75,11 +78,11 @@ function ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation()
                                      discrete_form = false,
                                      loc = (nothing, nothing, nothing),
                                      parameters = nothing,
-                                     required_halo_size = 2)
+                                     required_halo_size::Val{N} = Val(2)) where N
 
     ν = convert_diffusivity(FT, ν; discrete_form, loc, parameters)
     κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
-    return ScalarBiharmonicDiffusivity{typeof(formulation), required_halo_size}(ν, κ)
+    return ScalarBiharmonicDiffusivity{typeof(formulation), N}(ν, κ)
 end
 
 function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{F, N, V, K}) where {F, N, V, K}
