@@ -139,7 +139,7 @@ function time_step_with_field_time_series_forcing(arch)
     time_step!(model, 2)
     time_step!(model, 2)
     
-    @test u_forcing.backend.start == 3
+    @test u_forcing.backend.start == 4
 
     return true
 end
