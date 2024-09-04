@@ -122,7 +122,7 @@ function time_step_with_field_time_series_forcing(arch)
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     
-    u_forcing = FieldTimeSeries{Face, Center, Center, Grid}(grid, 0:1:3)
+    u_forcing = FieldTimeSeries{Face, Center, Center}(grid, 0:1:3)
 
     for t in 0:1:3
         set!(u_forcing[t], (x, y, z) -> sin(π * x) * t)
@@ -133,7 +133,7 @@ function time_step_with_field_time_series_forcing(arch)
 
 
     # Make sure the field time series updates correctly
-    u_forcing = FieldTimeSeries{Face, Center, Center, Grid}(grid, 0:1:4; backend = InMemory(2))
+    u_forcing = FieldTimeSeries{Face, Center, Center}(grid, 0:1:4; backend = InMemory(2))
 
     model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing,))
     time_step!(model, 2)
