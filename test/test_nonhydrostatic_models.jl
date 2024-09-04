@@ -74,9 +74,9 @@ include("dependencies_for_runtests.jl")
         # Model ensures that halos are at least of size 1
         model = NonhydrostaticModel(grid=small_grid, advection=WENO())
         @test model.advection isa FluxFormAdvection
-        @test required_halo_size(model.advection.x) == 2
+        @test required_halo_size(model.advection.x) == 3
         @test required_halo_size(model.advection.y) == 1
-        @test required_halo_size(model.advection.z) == 2
+        @test required_halo_size(model.advection.z) == 3
     end
 
     @testset "Model construction with single tracer and nothing tracer" begin
