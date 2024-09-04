@@ -36,7 +36,7 @@ function Base.show(io::IO, b::SeawaterBuoyancy{FT}) where FT
         print(io, "├── constant_salinity: ", b.constant_salinity, "\n")
     end
         
-    print(io, "└── equation of state: ", summary(b.equation_of_state))
+    print(io, "└── equation_of_state: ", summary(b.equation_of_state))
 end
 
 """
@@ -80,7 +80,7 @@ julia> using Oceananigans
 julia> buoyancy = SeawaterBuoyancy(equation_of_state=teos10)
 SeawaterBuoyancy{Float64}:
 ├── gravitational_acceleration: 9.80665
-└── equation of state: BoussinesqEquationOfState{Float64}
+└── equation_of_state: BoussinesqEquationOfState{Float64}
 ```
 
 Buoyancy that depends only on salinity with temperature held at 20 degrees Celsius
@@ -90,7 +90,7 @@ julia> salinity_dependent_buoyancy = SeawaterBuoyancy(equation_of_state=teos10, 
 SeawaterBuoyancy{Float64}:
 ├── gravitational_acceleration: 9.80665
 ├── constant_temperature: 20
-└── equation of state: BoussinesqEquationOfState{Float64}
+└── equation_of_state: BoussinesqEquationOfState{Float64}
 ```
 
 Buoyancy that depends only on temperature with salinity held at 35 psu
@@ -100,7 +100,7 @@ julia> temperature_dependent_buoyancy = SeawaterBuoyancy(equation_of_state=teos1
 SeawaterBuoyancy{Float64}:
 ├── gravitational_acceleration: 9.80665
 ├── constant_salinity: 35
-└── equation of state: BoussinesqEquationOfState{Float64}
+└── equation_of_state: BoussinesqEquationOfState{Float64}
 ```
 """
 function SeawaterBuoyancy(FT = Float64;

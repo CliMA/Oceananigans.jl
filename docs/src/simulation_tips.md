@@ -1,4 +1,4 @@
-# Simulation tips
+# [Simulation tips](@id simulation_tips)
 
 Oceananigans attempts to optimize computations as much as possible "behind the scenes".
 Yet Oceananigans' flexibility places some responsibility on users to ensure high performance simulations,
@@ -174,7 +174,7 @@ compute!(ε)
 ### Try to decrease the memory-use of your runs
 
 GPU runs are sometimes memory-limited. A state-of-the-art Tesla V100 GPU has 32GB of
-memory --- enough memory for simulations with about 100 million points, or grids a bit smaller
+memory -- enough memory for simulations with about 100 million points, or grids a bit smaller
 than 512 × 512 × 512. (The maximum grid size depends on some user-specified factors,
 like the number of passive tracers or computed diagnostics.)
 For large simulations on the GPU, careful management of memory allocation may be required:
@@ -275,7 +275,7 @@ Here `CUDA.jl` throws an error because scalar `getindex` is not `allowed`. There
 overcome this limitation and allow scalar indexing (more about that 
 in the [CUDA.jl documentation](https://cuda.juliagpu.org/stable/usage/workflow/#UsageWorkflowScalar)), but this option
 can be very slow on GPUs, so it is advised to only use this last method when using the REPL or 
-prototyping --- never in production-ready scripts.
+prototyping -- never in production-ready scripts.
 
 You might also need to keep these differences in mind when using arrays
 to define initial conditions, boundary conditions or

@@ -23,7 +23,7 @@ function x_derivative(a)
     dx_a = ∂x(a)
 
     arch = architecture(a)
-    one_two_three = arch_array(arch, [1, 2, 3])
+    one_two_three = on_architecture(arch, [1, 2, 3])
 
     for k in 1:3
         interior(a)[:, 1, k] .= one_two_three
@@ -38,7 +38,7 @@ function y_derivative(a)
     dy_a = ∂y(a)
 
     arch = architecture(a)
-    one_three_five = arch_array(arch, [1, 3, 5])
+    one_three_five = on_architecture(arch, [1, 3, 5])
 
     for k in 1:3
         interior(a)[1, :, k] .= one_three_five
@@ -53,7 +53,7 @@ function z_derivative(a)
     dz_a = ∂z(a)
 
     arch = architecture(a)
-    one_four_seven = arch_array(arch, [1, 4, 7])
+    one_four_seven = on_architecture(arch, [1, 4, 7])
 
     for k in 1:3
         interior(a)[1, k, :] .= one_four_seven
@@ -69,7 +69,7 @@ function x_derivative_cell(arch)
     a = Field{Center, Center, Center}(grid)
     dx_a = ∂x(a)
 
-    one_four_four = arch_array(arch, [1, 4, 4])
+    one_four_four = on_architecture(arch, [1, 4, 4])
 
     for k in 1:3
         interior(a)[:, 1, k] .= one_four_four 
@@ -133,6 +133,10 @@ for arch in archs
             @test 1 * ZeroField() == ZeroField()
             @test ZeroField() / 1 == ZeroField()
             @test 1 / ZeroField() == ConstantField(Inf)
+
+            @test ZeroField() + ZeroField() == ZeroField()
+            @test ZeroField() - ZeroField() == ZeroField()
+            @test ZeroField() * ZeroField() == ZeroField()
 
             @test compute!(Field(ConstantField(1) + u)) == compute!(Field(1 + u))
             @test compute!(Field(ConstantField(1) - u)) == compute!(Field(1 - u))

@@ -49,10 +49,9 @@ function geostrophic_adjustment_test(free_surface, grid; regions = 1)
     gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
     Δt = 2 * model.grid.Δxᶜᵃᵃ / gravity_wave_speed
 
-    for _ in 1:10
-        time_step!(model, Δt)
-    end
-
+    simulation = Simulation(model; Δt, stop_iteration = 10)
+    run!(simulation)
+    
     return η
 end
 

@@ -25,6 +25,9 @@ end
 
 regularize_forcing(::Nothing, field::AbstractField, field_name, model_field_names) = zeroforcing
 
+# TODO: some checking that `array` is validly-sized could be done here
+regularize_forcing(array::AbstractArray, field::AbstractField, field_name, model_field_names) = Forcing(array)
+
 """
     model_forcing(model_fields; forcings...)
 

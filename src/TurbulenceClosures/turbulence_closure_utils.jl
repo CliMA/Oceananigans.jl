@@ -2,10 +2,10 @@ using Oceananigans.Operators
 
 const PossibleDiffusivity = Union{Number, Function, DiscreteDiffusionFunction, AbstractArray}
 
-tracer_diffusivities(tracers, κ::PossibleDiffusivity) = with_tracers(tracers, NamedTuple(), (tracers, init) -> κ)
-tracer_diffusivities(tracers, ::Nothing) = nothing
+@inline tracer_diffusivities(tracers, κ::PossibleDiffusivity) = with_tracers(tracers, NamedTuple(), (tracers, init) -> κ)
+@inline tracer_diffusivities(tracers, ::Nothing) = nothing
 
-function tracer_diffusivities(tracers, κ::NamedTuple)
+@inline function tracer_diffusivities(tracers, κ::NamedTuple)
 
     all(name ∈ propertynames(κ) for name in tracers) ||
         throw(ArgumentError("Tracer diffusivities or diffusivity parameters must either be a constants
@@ -14,14 +14,23 @@ function tracer_diffusivities(tracers, κ::NamedTuple)
     return κ
 end
 
-convert_diffusivity(FT, κ::Number; kw...) = convert(FT, κ)
+@inline convert_diffusivity(FT, κ::Number; kw...) = convert(FT, κ)
 
-function convert_diffusivity(FT, κ; discrete_form=false, loc=(nothing, nothing, nothing), parameters=nothing)
+@inline function convert_diffusivity(FT, κ; discrete_form=false, loc=(nothing, nothing, nothing), parameters=nothing)
     discrete_form && return DiscreteDiffusionFunction(κ; loc, parameters)
     return κ
 end
     
-function convert_diffusivity(FT, κ::NamedTuple; discrete_form=false, loc=(nothing, nothing, nothing), parameters=nothing)
+@inline function convert_diffusivity(FT, κ::NamedTuple; discrete_form=false, loc=(nothing, nothing, nothing), parameters=nothing)
     κ_names = propertynames(κ)
-    return NamedTuple{κ_names}(Tuple(convert_diffusivity(FT, κi; discrete_form, loc, parameters) for κi in κ))
+    Nnames = length(κ_names)
+
+    κ_values = ntuple(Val(Nnames)) do n
+        Base.@_inline_meta
+        κi = κ[n]
+        convert_diffusivity(FT, κi; discrete_form, loc, parameters)
+    end
+
+    return NamedTuple{κ_names}(κ_values)
 end
+

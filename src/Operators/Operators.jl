@@ -63,6 +63,9 @@ export ℑxyzᶜᶜᶠ, ℑxyzᶜᶠᶜ, ℑxyzᶠᶜᶜ, ℑxyzᶜᶠᶠ, ℑxy
 export δxᶠᵃᵃ_c, δyᵃᶠᵃ_c, δxᶜᵃᵃ_U, δyᵃᶜᵃ_V, ∂xᶠᶜᶠ_η
 export ∂xᶠᶜᶠ_c, ∂yᶜᶠᶠ_c
 
+# Reference frame conversion
+export intrinsic_vector, extrinsic_vector
+
 using Oceananigans.Grids
 
 import Oceananigans.Grids: xspacing, yspacing, zspacing
@@ -72,10 +75,6 @@ import Oceananigans.Grids: xspacing, yspacing, zspacing
 #####
 
 const AG   = AbstractGrid
-const ARG  = AbstractRectilinearGrid
-const RCG  = RectilinearGrid
-const ACG  = AbstractCurvilinearGrid
-const AHCG = AbstractHorizontallyCurvilinearGrid
 
 const Δx = xspacing
 const Δy = yspacing
@@ -93,5 +92,7 @@ include("divergence_operators.jl")
 include("topology_aware_operators.jl")
 include("vorticity_operators.jl")
 include("laplacian_operators.jl")
+
+include("vector_rotation_operators.jl")
 
 end # module
