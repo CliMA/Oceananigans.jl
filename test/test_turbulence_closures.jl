@@ -256,6 +256,11 @@ end
         @test required_halo_size_y(closure) == 1
         @test required_halo_size_z(closure) == 1
 
+        closure = ScalarBiharmonicDiffusivity(ν=0.3)
+        @test required_halo_size_x(closure) == 2
+        @test required_halo_size_y(closure) == 2
+        @test required_halo_size_z(closure) == 2
+
         @inline ν(i, j, k, grid, ℓx, ℓy, ℓz, clock, fields) = ℑxᶠᵃᵃ(i, j, k, grid, ℑxᶜᵃᵃ, fields.u)
         closure = ScalarDiffusivity(; ν, discrete_form=true, required_halo_size=2)
         
