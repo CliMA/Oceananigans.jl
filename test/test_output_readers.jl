@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Utils: Time
-using Oceananigans.Fields: indices
+using Oceananigans.Fields: indices, interpolate!
 using Oceananigans.OutputReaders: Cyclical, Clamp
 
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
@@ -123,6 +123,11 @@ end
                 @test u3[1] isa Field
                 @test v3[2] isa Field
             end
+
+            # Tests that we can interpolate
+            u3i = FieldTimeSeries{Face, Center, Center}(u3.grid, u3.times)
+            interpolate!(u3i, u3)
+            @test all(interior(u3i) .≈ interior(u3))
 
             ## 2D sliced Fields
 
