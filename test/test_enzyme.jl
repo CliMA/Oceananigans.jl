@@ -28,10 +28,8 @@ const maximum_diffusivity = 100
 Change diffusivity of model to `diffusivity`.
 """
 function set_diffusivity!(model, diffusivity)
-    closure = VerticalScalarDiffusivity(; κ=diffusivity)
-    names = tuple(:c) # tracernames(model.tracers)
-    closure = with_tracers(names, closure)
-    model.closure = closure
+    closure = model.closure
+    fill!(closure.κ, diffusivity)
     return nothing
 end
 
@@ -202,7 +200,10 @@ end
     topology = (Periodic, Periodic, Bounded)
 
     grid = RectilinearGrid(size=(Nx, Ny, Nz); x, y, z, topology)
-    diffusion = VerticalScalarDiffusivity(κ=0.1)
+    κ = ZFaceField(grid)
+    fill!(κ, 0.1)
+
+    diffusion = VerticalScalarDiffusivity(; κ)
 
     u = XFaceField(grid)
     v = YFaceField(grid)
@@ -248,7 +249,9 @@ end
 
     # Now for real
     amplitude = 1.0
-    κ = 1.0
+    κ = ZFaceField(grid)
+    fill!(κ, 1.0)
+
     dmodel = Enzyme.make_zero(model)
     set_diffusivity!(dmodel, 0)
 
