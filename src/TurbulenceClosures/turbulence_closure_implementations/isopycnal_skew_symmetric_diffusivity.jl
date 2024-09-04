@@ -37,12 +37,12 @@ function IsopycnalSkewSymmetricDiffusivity(time_disc::TD = VerticallyImplicitTim
                                            κ_symmetric = 0,
                                            isopycnal_tensor = SmallSlopeIsopycnalTensor(),
                                            slope_limiter = FluxTapering(1e-2),
-                                           required_halo_size::Val{N} = Val(1)) where {TD, N}
+                                           required_halo_size::Int = 1) where {TD, N}
 
     isopycnal_tensor isa SmallSlopeIsopycnalTensor ||
         error("Only isopycnal_tensor=SmallSlopeIsopycnalTensor() is currently supported.")
 
-    return IsopycnalSkewSymmetricDiffusivity{TD, N}(convert_diffusivity(FT, κ_skew),
+    return IsopycnalSkewSymmetricDiffusivity{TD, required_halo_size}(convert_diffusivity(FT, κ_skew),
                                                     convert_diffusivity(FT, κ_symmetric),
                                                     isopycnal_tensor,
                                                     slope_limiter)
