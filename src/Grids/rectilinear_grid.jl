@@ -66,7 +66,6 @@ stretched_dimensions(::YZRegularRG) = tuple(1)
 stretched_dimensions(::XZRegularRG) = tuple(2)
 stretched_dimensions(::XYRegularRG) = tuple(3)
 
-
 """
     RectilinearGrid([architecture = CPU(), FT = Float64];
                     size,
@@ -324,6 +323,9 @@ function Base.show(io::IO, grid::RectilinearGrid, withsummary=true)
     Ωx = domain(TX(), grid.Nx, grid.xᶠᵃᵃ)
     Ωy = domain(TY(), grid.Ny, grid.yᵃᶠᵃ)
     Ωz = domain(TZ(), grid.Nz, grid.zᵃᵃᶠ)
+
+    @show grid.xᶠᵃᵃ
+    @show Ωx
 
     x_summary = domain_summary(TX(), "x", Ωx)
     y_summary = domain_summary(TY(), "y", Ωy)
