@@ -54,14 +54,20 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
     # Determine whether particle was _previously_ in a non-immersed cell
     i⁻, j⁻, k⁻ = previous_particle_indices
 
-    # Left-right bounds of the previous, non-immersed cell
-    xᴿ, yᴿ, zᴿ = node(i⁻ + 1, j⁻ + 1, k⁻ + 1, ibg, f, f, f)
-    xᴸ, yᴸ, zᴸ = node(i⁻,     j⁻,     k⁻,     ibg, f, f, f)
+    # Left bounds of the previous cell
+    xᴿ = xnode(i⁻ + 1, j, k, ibg, f, f, f)
+    yᴿ = ynode(i, j⁻ + 1, k, ibg, f, f, f)
+    zᴿ = znode(i, j, k⁻ + 1, ibg, f, f, f)
+
+    # Right bounds of the previous cell
+    xᴸ = xnode(i⁻, j,  k,  ibg, f, f, f)
+    yᴸ = ynode(i,  j⁻, k,  ibg, f, f, f)
+    zᴸ = znode(i,  j,  k⁻, ibg, f, f, f)
 
     Cʳ = restitution
-    xb⁺ = enforce_boundary_conditions(Bounded(), x, xᴸ, xᴿ, Cʳ)
-    yb⁺ = enforce_boundary_conditions(Bounded(), y, yᴸ, yᴿ, Cʳ)
-    zb⁺ = enforce_boundary_conditions(Bounded(), z, zᴸ, zᴿ, Cʳ)
+    xb⁺ = enforce_boundary_conditions(topology(ibg)[1] == Flat ? Flat() : Bounded(), x, xᴸ, xᴿ, Cʳ)
+    yb⁺ = enforce_boundary_conditions(topology(ibg)[2] == Flat ? Flat() : Bounded(), y, yᴸ, yᴿ, Cʳ)
+    zb⁺ = enforce_boundary_conditions(topology(ibg)[3] == Flat ? Flat() : Bounded(), z, zᴸ, zᴿ, Cʳ)
 
     immersed = immersed_cell(i, j, k, ibg)
     x⁺ = ifelse(immersed, xb⁺, x)
