@@ -120,7 +120,7 @@ simulation = Simulation(model; Δt=0.01, stop_time=4)
 run!(simulation)
 ```
 
-But there's more: changing `CPU()` to `GPU()` makes this code on a CUDA-enabled Nvidia GPU.
+But there's more: changing `CPU()` to `GPU()` makes this code run on a CUDA-enabled Nvidia GPU.
 
 Dive into [the documentation](https://clima.github.io/OceananigansDocumentation/stable/) for more code examples and tutorials.
 Below, you'll find movies from GPU simulations along with CPU and GPU [performance benchmarks](https://github.com/clima/Oceananigans.jl#performance-benchmarks).
