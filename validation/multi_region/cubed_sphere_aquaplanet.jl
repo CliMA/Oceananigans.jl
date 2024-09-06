@@ -48,10 +48,39 @@ function geometric_z_faces(p)
     return z_faces
 end
 
+function hyperbolic_tangential_z_faces(Lz)
+    Δz_tolerance = 1e-2
+    N = 20
+    b = (atanh(1 - Δz_tolerance) - atanh(-1 + Δz_tolerance))/(N-1)
+    k₀ = 1 - atanh(-1 + Δz_tolerance)/b
+    a = 45
+    c = a + 10
+    Δz = zeros(N)
+    for k in 1:N
+        Δz[k] = a * tanh(b*(k - k₀)) + c
+    end
+    Nz₁ = 10
+    Nz₂ = N
+    Nz₃ = trunc(Int, (Lz - sum(Δz) - 100) ÷ 100)
+    Nz = Nz₁ + Nz₂ + Nz₃
+    z_faces = zeros(Nz+1)
+    for k in 1:Nz₁+1
+        z_faces[k] = 10(k - 1)
+    end
+    for k in Nz₁+2:Nz₁+Nz₂+1
+        z_faces[k] = z_faces[k-1] + Δz[k-Nz₁-1]
+    end
+    for k in Nz₁+Nz₂+2:Nz+1
+        z_faces[k] = z_faces[k-1] + 100
+    end
+    z_faces = reverse(-z_faces)
+    return z_faces
+end
+
 function custom_z_faces()
     z_faces = [-3000, -2900, -2800, -2700, -2600, -2500, -2400, -2300, -2200, -2100, -2000, -1900, -1800, -1700, -1600,
                -1500, -1400, -1300, -1200, -1100, -1002, -904, -809, -717, -629, -547, -472, -404, -345, -294, -252,
-               -217, -189, -167, -149, -134, -122, -100, -90, -80, -70, -60, -50, -40, -30, -10, 0]
+               -217, -189, -167, -149, -134, -122, -110, -100, -90, -80, -70, -60, -50, -40, -30, -20, -10, 0]
     return z_faces
 end
 
@@ -59,7 +88,7 @@ Lz = 3000
 h_b = 0.2 * Lz
 h_νz_κz = 100
 
-Nx, Ny, Nz = 540, 540, 46
+Nx, Ny, Nz = 360, 360, 48
 Nhalo = 6
 
 ratio = 0.8
@@ -99,7 +128,7 @@ print("The minimum number of grid points in each direction of the cubed sphere p
 arch = GPU()
 underlying_grid = ConformalCubedSphereGrid(arch;
                                            panel_size = (Nx, Ny, Nz),
-                                           z = custom_z_faces(),
+                                           z = hyperbolic_tangential_z_faces(Lz),
                                            horizontal_direction_halo = Nhalo,
                                            radius,
                                            partition = CubedSpherePartition(; R = 1))
@@ -327,7 +356,7 @@ b_bcs = FieldBoundaryConditions(top = top_restoring_bc)
 momentum_advection = VectorInvariant()
 tracer_advection   = WENO(order=9)
 substeps           = 50
-free_surface       = SplitExplicitFreeSurface(grid; substeps, extended_halos = false)
+free_surface       = SplitExplicitFreeSurface(grid; substeps, extended_halos = true)
 
 # Filter width squared, expressed as a harmonic mean of x and y spacings
 @inline Δ²ᶜᶜᶜ(i, j, k, grid, lx, ly, lz) =  2 * (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2

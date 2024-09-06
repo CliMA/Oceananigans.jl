@@ -56,7 +56,7 @@ Lz = 3000
 h_b = 0.2 * Lz
 h_νz_κz = 100
 
-Nx, Ny, Nz = 540, 540, 46
+Nx, Ny, Nz = 360, 360, 48
 Nhalo = 6
 
 ratio = 0.8
@@ -526,7 +526,7 @@ common_kwargs = (; consider_all_levels = false)
 common_kwargs_positive_scalar = (; consider_all_levels = false, use_symmetric_colorrange = false)
 Ld_max = 100e3
 
-use_grey_colormap = true
+use_grey_colormap = false
 if use_grey_colormap
     common_kwargs = merge(common_kwargs, (specify_colormap = true, colormap = :greys))
     common_kwargs_positive_scalar = merge(common_kwargs_positive_scalar, (specify_colormap = true, colormap = :greys))
