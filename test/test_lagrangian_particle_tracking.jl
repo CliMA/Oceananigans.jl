@@ -276,8 +276,8 @@ lagrangian_particle_test_grid_expanded(arch, ::Flat, z) =
 
 function lagrangian_particle_test_immersed_grid(arch, y_topo, z)
     underlying_grid = lagrangian_particle_test_grid_expanded(arch, y_topo, z)
-    z_immersed_boundary(x, z) = ifelse(z < -1, 1, ifelse(z > 1, +1, 0))
-    z_immersed_boundary(x, y, z) = z_immersed_boundary(x, z) = ifelse(z < -1, 1, ifelse(z > 1, +1, 0))
+    z_immersed_boundary(x, z) = ifelse(z < -1, true, ifelse(z > 1, true, false))
+    z_immersed_boundary(x, y, z) = z_immersed_boundary(x, z)
     GFB = GridFittedBoundary(z_immersed_boundary)
     return ImmersedBoundaryGrid(underlying_grid, GFB)
 end
