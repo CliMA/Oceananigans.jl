@@ -25,9 +25,9 @@ function fetch_output(lagrangian_particles::LagrangianParticles, model)
     return NamedTuple{names}([getproperty(particle_properties, name) for name in names])
 end
 
-convert_output(output, writer) = output
+convert_output(output, writer, bit_rounder) = output
 
-function convert_output(output::AbstractArray, writer)
+function convert_output(output::AbstractArray, writer, bit_rounder)
     if architecture(output) isa GPU
         output_array = writer.array_type(undef, size(output)...)
         copyto!(output_array, output)
@@ -35,12 +35,18 @@ function convert_output(output::AbstractArray, writer)
         output_array = convert(writer.array_type, output)
     end
 
+    # always happens on the CPU
+    round_data!(output_array, bit_rounder)
+
     return output_array
 end
 
+# Fallback for a `Nothing` bit_rounder (no rounding)
+round_data!(output_array, bit_rounder) = nothing
+
 # Need to broadcast manually because of https://github.com/JuliaLang/julia/issues/30836
 convert_output(outputs::NamedTuple, writer) =
-    NamedTuple(name => convert_output(outputs[name], writer) for name in keys(outputs))
+    NamedTuple(name => convert_output(outputs[name], writer, writer.bit_rounder[name]) for name in keys(outputs))
 
 function fetch_and_convert_output(output, model, writer)
     fetched = fetch_output(output, model)
