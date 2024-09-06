@@ -48,27 +48,26 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
     X = flattened_node((x, y, z), ibg)
 
     # Determine current particle cell
-    fi, fj, fk = fractional_indices(X, ibg.underlying_grid, (c, c, c))
+    fi, fj, fk = fractional_indices(X, ibg.underlying_grid, c, c, c)
     i, j, k = truncate_fractional_indices(fi, fj, fk)
 
     if immersed_cell(i, j, k, ibg)
         # Determine whether particle was _previously_ in a non-immersed cell
         i⁻, j⁻, k⁻ = previous_particle_indices
 
-        if !immersed_cell(i⁻, j⁻, k⁻, ibg)
-            # Left-right bounds of the previous, non-immersed cell
-            xᴿ, yᴿ, zᴿ = node(i⁻+1, j⁻+1, k⁻+1, ibg, f, f, f)
-            xᴸ, yᴸ, zᴸ = node(i⁻,   j⁻,   k⁻,   ibg, f, f, f)
+        # Left-right bounds of the previous, non-immersed cell
+        xᴿ, yᴿ, zᴿ = node(i⁻ + 1, j⁻ + 1, k⁻ + 1, ibg, f, f, f)
+        xᴸ, yᴸ, zᴸ = node(i⁻,     j⁻,     k⁻,     ibg, f, f, f)
 
-            Cʳ = restitution
-            x⁺ = enforce_boundary_conditions(Bounded(), x, xᴸ, xᴿ, Cʳ)
-            y⁺ = enforce_boundary_conditions(Bounded(), y, yᴸ, yᴿ, Cʳ)
-            z⁺ = enforce_boundary_conditions(Bounded(), z, zᴸ, zᴿ, Cʳ)
-
-        end
+        Cʳ = restitution
+        x⁺ = enforce_boundary_conditions(Bounded(), x, xᴸ, xᴿ, Cʳ)
+        y⁺ = enforce_boundary_conditions(Bounded(), y, yᴸ, yᴿ, Cʳ)
+        z⁺ = enforce_boundary_conditions(Bounded(), z, zᴸ, zᴿ, Cʳ)
+    else
+        x⁺, y⁺, z⁺ = x, y, z
     end
 
-    return x⁺, y⁺, z⁺
+    return (x⁺, y⁺, z⁺)
 end
 
 """
@@ -134,7 +133,7 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     z⁺ = enforce_boundary_conditions(tz, z⁺, zᴸ, zᴿ, Cʳ)
     if grid isa ImmersedBoundaryGrid
         previous_particle_indices = current_particle_indices # particle has been advected
-        x⁺, y⁺, z⁺ = bounce_immersed_particle((x⁺, y⁺, z⁺), grid, Cʳ, previous_particle_indices)
+        (x⁺, y⁺, z⁺) = bounce_immersed_particle((x⁺, y⁺, z⁺), grid, Cʳ, previous_particle_indices)
     end
 
     return (x⁺, y⁺, z⁺)
@@ -145,11 +144,13 @@ end
 #     * Sphere metric for `LatitudeLongitudeGrid` and geographic coordinates
 @inline x_metric(i, j, grid::RectilinearGrid) = 1
 @inline x_metric(i, j, grid::LatitudeLongitudeGrid{FT}) where FT = @inbounds 1 / (grid.radius * hack_cosd(grid.φᵃᶜᵃ[j])) * FT(360 / 2π)
+@inline x_metric(i, j, grid::ImmersedBoundaryGrid) = x_metric(i, j, grid.underlying_grid)
 
 @inline y_metric(i, j, grid::RectilinearGrid) = 1
 @inline y_metric(i, j, grid::LatitudeLongitudeGrid{FT}) where FT = 1 / grid.radius * FT(360 / 2π)
+@inline y_metric(i, j, grid::ImmersedBoundaryGrid) = y_metric(i, j, grid.underlying_grid)
 
-@kernel function _advect_particles!(particles, restitution, grid::AbstractUnderlyingGrid, Δt, velocities)
+@kernel function _advect_particles!(particles, restitution, grid::AbstractGrid, Δt, velocities)
     p = @index(Global)
 
     @inbounds begin
