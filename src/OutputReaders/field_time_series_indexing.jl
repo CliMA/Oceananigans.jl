@@ -1,3 +1,4 @@
+using Oceananigans.Grids: _node
 using Oceananigans.Fields: interpolator, _interpolate, fractional_indices, flatten_node
 using Oceananigans.Architectures: architecture
 
