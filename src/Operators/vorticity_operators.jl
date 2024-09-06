@@ -8,19 +8,6 @@ The vertical vorticity associated with horizontal velocities ``u`` and ``v``.
 """
 @inline ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) = Γᶠᶠᶜ(i, j, k, grid, u, v) / Azᶠᶠᶜ(i, j, k, grid)
 
-@inline function ζ₃ᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid{FT}, u, v) where FT
-    s₁ = convert(FT, 4/3)
-    s₂ = convert(FT, 1)
-    scaling = ifelse(on_corner(i, j, grid), s₁, s₂)
-    return scaling * Γᶠᶠᶜ(i, j, k, grid, u, v) / Azᶠᶠᶜ(i, j, k, grid)
-end
-
-# Corner
-@inline on_corner(i, j, grid) = on_south_west_corner(i, j, grid) |
-                                on_south_east_corner(i, j, grid) |
-                                on_north_west_corner(i, j, grid) |
-                                on_north_east_corner(i, j, grid)
-
 # South-west, south-east, north-west, north-east corners
 @inline on_south_west_corner(i, j, grid) = (i == 1) & (j == 1)
 @inline on_south_east_corner(i, j, grid) = (i == grid.Nx+1) & (j == 1)
