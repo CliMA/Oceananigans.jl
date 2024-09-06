@@ -51,21 +51,22 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
     fi, fj, fk = fractional_indices(X, ibg.underlying_grid, c, c, c)
     i, j, k = truncate_fractional_indices(fi, fj, fk)
 
-    if immersed_cell(i, j, k, ibg)
-        # Determine whether particle was _previously_ in a non-immersed cell
-        i⁻, j⁻, k⁻ = previous_particle_indices
+    # Determine whether particle was _previously_ in a non-immersed cell
+    i⁻, j⁻, k⁻ = previous_particle_indices
 
-        # Left-right bounds of the previous, non-immersed cell
-        xᴿ, yᴿ, zᴿ = node(i⁻ + 1, j⁻ + 1, k⁻ + 1, ibg, f, f, f)
-        xᴸ, yᴸ, zᴸ = node(i⁻,     j⁻,     k⁻,     ibg, f, f, f)
+    # Left-right bounds of the previous, non-immersed cell
+    xᴿ, yᴿ, zᴿ = node(i⁻ + 1, j⁻ + 1, k⁻ + 1, ibg, f, f, f)
+    xᴸ, yᴸ, zᴸ = node(i⁻,     j⁻,     k⁻,     ibg, f, f, f)
 
-        Cʳ = restitution
-        x⁺ = enforce_boundary_conditions(Bounded(), x, xᴸ, xᴿ, Cʳ)
-        y⁺ = enforce_boundary_conditions(Bounded(), y, yᴸ, yᴿ, Cʳ)
-        z⁺ = enforce_boundary_conditions(Bounded(), z, zᴸ, zᴿ, Cʳ)
-    else
-        x⁺, y⁺, z⁺ = x, y, z
-    end
+    Cʳ = restitution
+    xb⁺ = enforce_boundary_conditions(Bounded(), x, xᴸ, xᴿ, Cʳ)
+    yb⁺ = enforce_boundary_conditions(Bounded(), y, yᴸ, yᴿ, Cʳ)
+    zb⁺ = enforce_boundary_conditions(Bounded(), z, zᴸ, zᴿ, Cʳ)
+
+    immersed = immersed_cell(i, j, k, ibg)
+    x⁺ = ifelse(immersed, xb⁺, x)
+    y⁺ = ifelse(immersed, yb⁺, y)
+    z⁺ = ifelse(immersed, zb⁺, z)
 
     return (x⁺, y⁺, z⁺)
 end
