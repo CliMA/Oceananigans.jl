@@ -269,6 +269,19 @@ lagrangian_particle_test_grid(arch, ::Periodic, z) =
 lagrangian_particle_test_grid(arch, ::Flat, z) =
     RectilinearGrid(arch; topology=(Periodic, Flat, Bounded), size=(5, 5), x=(-1, 1), z)
 
+lagrangian_particle_test_grid_expanded(arch, ::Periodic, z) =
+    RectilinearGrid(arch; topology=(Periodic, Periodic, Bounded), size=(10, 5, 5), x=(-2, 2), y=(-1, 1), z)
+lagrangian_particle_test_grid_expanded(arch, ::Flat, z) =
+    RectilinearGrid(arch; topology=(Periodic, Flat, Bounded), size=(10, 5), x=(-2, 2), z)
+
+function lagrangian_particle_test_immersed_grid(arch, y_topo, z)
+    underlying_grid = lagrangian_particle_test_grid_expanded(arch, y_topo, z)
+    x_immersed_boundary(x, z) = ifelse(x < -1, 1, ifelse(x > 1, +1, 0))
+    x_immersed_boundary(x, y, z) = x_immersed_boundary(x, z)
+    GFB = GridFittedBoundary(x_immersed_boundary)
+    return ImmersedBoundaryGrid(underlying_grid, GFB)
+end
+
 @testset "Lagrangian particle tracking" begin
     timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     y_topologies = (Periodic(), Flat())
@@ -277,6 +290,10 @@ lagrangian_particle_test_grid(arch, ::Flat, z) =
     for arch in archs, timestepper in timesteppers, y_topo in y_topologies, (z_grid_type, z) in pairs(vertical_grids)
         @info "  Testing Lagrangian particle tracking [$(typeof(arch)), $timestepper] with y $(typeof(y_topo)) on vertically $z_grid_type grid ..."
         grid = lagrangian_particle_test_grid(arch, y_topo, z)
+        run_simple_particle_tracking_tests(grid, timestepper)
+
+        @info "  Testing Lagrangian particle tracking [$(typeof(arch)), $timestepper] with y $(typeof(y_topo)) on vertically $z_grid_type immersed grid ..."
+        grid = lagrangian_particle_test_immersed_grid(arch, y_topo, z)
         run_simple_particle_tracking_tests(grid, timestepper)
     end
 end
