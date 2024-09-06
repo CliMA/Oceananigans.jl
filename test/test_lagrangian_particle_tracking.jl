@@ -270,15 +270,15 @@ lagrangian_particle_test_grid(arch, ::Flat, z) =
     RectilinearGrid(arch; topology=(Periodic, Flat, Bounded), size=(5, 5), x=(-1, 1), z)
 
 lagrangian_particle_test_grid_expanded(arch, ::Periodic, z) =
-    RectilinearGrid(arch; topology=(Periodic, Periodic, Bounded), size=(10, 5, 5), x=(-2, 2), y=(-1, 1), z)
+    RectilinearGrid(arch; topology=(Periodic, Periodic, Bounded), size=(5, 5, 5), x=(-1, 1), y=(-1, 1), z = 2 .*z)
 lagrangian_particle_test_grid_expanded(arch, ::Flat, z) =
-    RectilinearGrid(arch; topology=(Periodic, Flat, Bounded), size=(10, 5), x=(-2, 2), z)
+    RectilinearGrid(arch; topology=(Periodic, Flat, Bounded), size=(5, 5), x=(-1, 1), z = 2 .*z)
 
 function lagrangian_particle_test_immersed_grid(arch, y_topo, z)
     underlying_grid = lagrangian_particle_test_grid_expanded(arch, y_topo, z)
-    x_immersed_boundary(x, z) = ifelse(x < -1, 1, ifelse(x > 1, +1, 0))
-    x_immersed_boundary(x, y, z) = x_immersed_boundary(x, z)
-    GFB = GridFittedBoundary(x_immersed_boundary)
+    z_immersed_boundary(x, z) = ifelse(z < -1, 1, ifelse(z > 1, +1, 0))
+    z_immersed_boundary(x, y, z) = z_immersed_boundary(x, z) = ifelse(z < -1, 1, ifelse(z > 1, +1, 0))
+    GFB = GridFittedBoundary(z_immersed_boundary)
     return ImmersedBoundaryGrid(underlying_grid, GFB)
 end
 
