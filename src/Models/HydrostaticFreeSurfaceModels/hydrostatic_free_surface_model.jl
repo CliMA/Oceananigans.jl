@@ -130,9 +130,7 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
-      # Adjust advection scheme to be valid on a particular grid size. i.e. if the grid size
-    # is smaller than the advection order, reduce the order of the advection in that particular
-    # direction
+    # Reduce the advection order in directions that do not have enough grid points
     momentum_advection = adapt_advection_order(momentum_advection, grid)
     tracer_advection   = adapt_advection_order(tracer_advection, grid)
 
