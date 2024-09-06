@@ -12,37 +12,6 @@
 @inline _advective_tracer_flux_y(i, j, k, grid, ::Nothing, args...) = zero(grid)
 @inline _advective_tracer_flux_z(i, j, k, grid, ::Nothing, args...) = zero(grid)
 
-# Fallback for `nothing` advection and `ZeroField` tracers and velocities
-@inline _advective_tracer_flux_x(i, j, k, grid, ::Nothing, ::ZeroField, ::ZeroField) = zero(grid)
-@inline _advective_tracer_flux_y(i, j, k, grid, ::Nothing, ::ZeroField, ::ZeroField) = zero(grid)
-@inline _advective_tracer_flux_z(i, j, k, grid, ::Nothing, ::ZeroField, ::ZeroField) = zero(grid)
-
-@inline _advective_tracer_flux_x(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
-@inline _advective_tracer_flux_y(i, j, k, grid, ::Nothing, V, ::ZeroField) = zero(grid)
-@inline _advective_tracer_flux_z(i, j, k, grid, ::Nothing, W, ::ZeroField) = zero(grid)
-@inline _advective_tracer_flux_x(i, j, k, grid, ::Nothing, ::ZeroField, c) = zero(grid)
-@inline _advective_tracer_flux_y(i, j, k, grid, ::Nothing, ::ZeroField, c) = zero(grid)
-@inline _advective_tracer_flux_z(i, j, k, grid, ::Nothing, ::ZeroField, c) = zero(grid)
-
-for Scheme in (:UpwindBiased, :Centered, :WENO, :FluxFormAdvection)
-    @eval begin
-        # Fallback for `ZeroField` tracers and velocities
-        @inline _advective_tracer_flux_x(i, j, k, grid, ::$Scheme, ::ZeroField, ::ZeroField) = zero(grid)
-        @inline _advective_tracer_flux_y(i, j, k, grid, ::$Scheme, ::ZeroField, ::ZeroField) = zero(grid)
-        @inline _advective_tracer_flux_z(i, j, k, grid, ::$Scheme, ::ZeroField, ::ZeroField) = zero(grid)
-
-        # Fallback for `ZeroField` tracers
-        @inline _advective_tracer_flux_x(i, j, k, grid, ::$Scheme, U, ::ZeroField) = zero(grid)
-        @inline _advective_tracer_flux_y(i, j, k, grid, ::$Scheme, V, ::ZeroField) = zero(grid)
-        @inline _advective_tracer_flux_z(i, j, k, grid, ::$Scheme, W, ::ZeroField) = zero(grid)
-
-        # Fallback for `ZeroField` velocities
-        @inline _advective_tracer_flux_x(i, j, k, grid, ::$Scheme, ::ZeroField, c) = zero(grid)
-        @inline _advective_tracer_flux_y(i, j, k, grid, ::$Scheme, ::ZeroField, c) = zero(grid)
-        @inline _advective_tracer_flux_z(i, j, k, grid, ::$Scheme, ::ZeroField, c) = zero(grid)
-    end
-end
-
 #####
 ##### Tracer advection operator
 #####
@@ -67,7 +36,9 @@ end
 # Fallbacks for zero velocities, zero tracer and `nothing` advection
 @inline div_Uc(i, j, k, grid, advection, ::ZeroU, c) = zero(grid)
 @inline div_Uc(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
+@inline div_Uc(i, j, k, grid, advection, ::ZeroU, ::ZeroField) = zero(grid)
 
 @inline div_Uc(i, j, k, grid, ::Nothing, U, c) = zero(grid)
 @inline div_Uc(i, j, k, grid, ::Nothing, ::ZeroU, c) = zero(grid)
 @inline div_Uc(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+@inline div_Uc(i, j, k, grid, ::Nothing, ::ZeroU, ::ZeroField) = zero(grid)

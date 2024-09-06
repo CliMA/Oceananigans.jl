@@ -124,31 +124,27 @@ end
 
 # Fallback for `nothing` Advection
 
-for flux_dir in (:x, :y, :z)
-    advective_tracer_flux = Symbol(:_advective_tracer_flux_, flux_dir)
+# dx(uu), dy(vu), dz(wu)
+# ccc,    ffc,    fcf
+@inline _advective_momentum_flux_Uu(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
+@inline _advective_momentum_flux_Vu(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
+@inline _advective_momentum_flux_Wu(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
 
-    @eval begin
-        @inline $advective_tracer_flux(i, j, k, ibg::IBG, ::Nothing, args...)                  = zero(ibg)
-        @inline $advective_tracer_flux(i, j, k, ibg::IBG, ::Nothing, ::ZeroField, ::ZeroField) = zero(ibg)
-        @inline $advective_tracer_flux(i, j, k, ibg::IBG, ::Nothing, U, ::ZeroField)           = zero(ibg)
-        @inline $advective_tracer_flux(i, j, k, ibg::IBG, scheme, ::ZeroField, ::ZeroField)    = zero(ibg)
-        @inline $advective_tracer_flux(i, j, k, ibg::IBG, scheme, U, ::ZeroField)              = zero(ibg)
-        @inline $advective_tracer_flux(i, j, k, ibg::IBG, scheme, ::ZeroField, c)              = zero(ibg)
-    end
-end
+# dx(uv), dy(vv), dz(wv)
+# ffc,    ccc,    cff
+@inline _advective_momentum_flux_Uv(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
+@inline _advective_momentum_flux_Vv(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
+@inline _advective_momentum_flux_Wv(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
 
-for flux_dir in (:Uu, :Vu, :Wu, :Uv, :Vv, :Wv, :Uw, :Vw, :Ww)
-    advective_momentum_flux = Symbol(:_advective_momentum_flux_, flux_dir)
+# dx(uw), dy(vw), dz(ww)
+# fcf,    cff,    ccc
+@inline _advective_momentum_flux_Uw(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
+@inline _advective_momentum_flux_Vw(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
+@inline _advective_momentum_flux_Ww(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
 
-    @eval begin
-        @inline $advective_momentum_flux(i, j, k, ibg::IBG, ::Nothing, args...)                  = zero(ibg)
-        @inline $advective_momentum_flux(i, j, k, ibg::IBG, ::Nothing, ::ZeroField, ::ZeroField) = zero(ibg)
-        @inline $advective_momentum_flux(i, j, k, ibg::IBG, ::Nothing, U, ::ZeroField)           = zero(ibg)
-        @inline $advective_momentum_flux(i, j, k, ibg::IBG, scheme, ::ZeroField, ::ZeroField)    = zero(ibg)
-        @inline $advective_momentum_flux(i, j, k, ibg::IBG, scheme, U, ::ZeroField)              = zero(ibg)
-        @inline $advective_momentum_flux(i, j, k, ibg::IBG, scheme, ::ZeroField, u)              = zero(ibg)
-    end
-end
+@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
+@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
+@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
 
 #####
 ##### "Boundary-aware" reconstruct
