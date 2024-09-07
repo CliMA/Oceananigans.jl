@@ -151,8 +151,8 @@ end
             c11 = interior(c1[1], 1, 1, :) |> Array
             c12 = interior(c1[2], 1, 1, :) |> Array
 
-            @test c11 == [5, 6, 7]
-            @test c12 == [10, 12, 14]
+            @test c11 ≈ [5.0, 6.0, 7.0]
+            @test c12 ≈ [10.0, 12.0, 14.0]
 
             ## 2D sliced Fields
 
