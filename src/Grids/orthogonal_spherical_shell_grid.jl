@@ -1084,7 +1084,7 @@ end
 @inline z_domain(grid::OrthogonalSphericalShellGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TZ, grid.Nz, grid.zᵃᵃᶠ)
 @inline cpu_face_constructor_z(grid::ZRegOrthogonalSphericalShellGrid) = z_domain(grid)
 
-function with_halo(new_halo, old_grid::OrthogonalSphericalShellGrid; rotation=nothing)
+function with_halo(new_halo, old_grid::OrthogonalSphericalShellGrid; arch=architecture(old_grid), rotation=nothing)
 
     size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid)
@@ -1094,7 +1094,7 @@ function with_halo(new_halo, old_grid::OrthogonalSphericalShellGrid; rotation=no
 
     z = cpu_face_constructor_z(old_grid)
 
-    new_grid = conformal_cubed_sphere_panel(architecture(old_grid), eltype(old_grid);
+    new_grid = conformal_cubed_sphere_panel(arch, eltype(old_grid);
                                             size, z, ξ, η,
                                             topology = topo,
                                             radius = old_grid.radius,

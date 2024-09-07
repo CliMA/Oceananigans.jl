@@ -402,12 +402,16 @@ function with_halo(new_halo, csg::ConformalCubedSphereGrid{FT, TX, TY, TZ}) wher
     end
 
     region_grids = csg.region_grids
-    region_grids = construct_regionally(with_halo, new_halo, region_grids; rotation = Iterate(region_rotation))
+    region_grids = construct_regionally(with_halo, new_halo, region_grids;
+                                        arch = CPU(), rotation = Iterate(region_rotation))
 
-    devices = validate_devices(partition, CPU(), nothing)
-    devices = assign_devices(partition, devices)
+    devices = Tuple(CPU() for _ in 1:length(partition))
 
-    grid = MultiRegionGrid{FT, TX, TY, TZ}(CPU(), partition, connectivity, region_grids, devices)
+    grid = MultiRegionGrid{FT, TX, TY, TZ}(CPU(),
+                                           partition,
+                                           connectivity,
+                                           region_grids,
+                                           devices)
 
     fill_halo_regions!(grid)
 
