@@ -721,9 +721,9 @@ uuid = "6c6a2e73-6563-6170-7368-637461726353"
 version = "1.2.1"
 
 [[deps.SeawaterPolynomials]]
-git-tree-sha1 = "6d85acd6de472f8e6da81c61c7c5b6280a55e0bc"
+git-tree-sha1 = "78f965a2f0cd5250a20c9aba9979346dd2b35734"
 uuid = "d496a93d-167e-4197-9f49-d3af4ff8fe40"
-version = "0.3.4"
+version = "0.3.5"
 
 [[deps.SentinelArrays]]
 deps = ["Dates", "Random"]
