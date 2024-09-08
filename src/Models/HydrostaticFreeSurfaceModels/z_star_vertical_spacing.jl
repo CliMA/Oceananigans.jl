@@ -22,11 +22,13 @@ where ``η`` is the free surface height and ``H`` the vertical depth of the wate
 - `s⁻`:scaling of the vertical coordinate at time step `n - 1`
 - `∂t_∂s`: Time derivative of `s`
 """
-struct ZStarSpacing{R, S} <: AbstractVerticalSpacing{R}
-    Δr :: R
-    sⁿ :: S
-    s⁻ :: S
- ∂t_∂s :: S
+struct ZStarSpacing{R, SCC, SFC, SCF} <: AbstractVerticalSpacing{R}
+    Δr   :: R
+    sᶜᶜⁿ :: SCC
+    sᶠᶜⁿ :: SFC
+    sᶜᶠⁿ :: SCF
+    sᶜᶜ⁻ :: SCC
+ ∂t_∂s   :: SCC
 end
 
 Adapt.adapt_structure(to, coord::ZStarSpacing) = 
@@ -66,16 +68,18 @@ end
 # - the derivative in time of the spacing
 function generalized_spacing_grid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, ::ZStar) where {FT, TX, TY, TZ}
     
-    s⁻    = Field{Center, Center, Nothing}(grid)
-    sⁿ    = Field{Center, Center, Nothing}(grid)
+    sᶜᶜ⁻  = Field{Center, Center, Nothing}(grid)
+    sᶜᶜⁿ  = Field{Center, Center, Nothing}(grid)
+    sᶠᶜⁿ  = Field{Face,   Center, Nothing}(grid)
+    sᶜᶠⁿ  = Field{Center, Face,   Nothing}(grid)
     ∂t_∂s = Field{Center, Center, Nothing}(grid)
     
     # Initial "at-rest" conditions
     fill!(s⁻, 1)
     fill!(sⁿ, 1)
 
-    Δzᵃᵃᶠ = ZStarSpacing(grid.Δzᵃᵃᶠ, s⁻, sⁿ, ∂t_∂s)
-    Δzᵃᵃᶜ = ZStarSpacing(grid.Δzᵃᵃᶜ, s⁻, sⁿ, ∂t_∂s)
+    Δzᵃᵃᶠ = ZStarSpacing(grid.Δzᵃᵃᶠ, sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶜᶜ⁻, ∂t_∂s)
+    Δzᵃᵃᶜ = ZStarSpacing(grid.Δzᵃᵃᶜ, sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶜᶜ⁻, ∂t_∂s)
 
     args = []
     for prop in propertynames(grid)
@@ -100,8 +104,14 @@ end
 reference_Δzᵃᵃᶠ(grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶠ.Δr
 reference_Δzᵃᵃᶜ(grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶜ.Δr
 
-@inline Δzᶜᶜᶠ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶠ_reference(i, j, k, grid) * grid.Δzᵃᵃᶠ.sⁿ[i, j, 1]
-@inline Δzᶜᶜᶜ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶜ_reference(i, j, k, grid) * grid.Δzᵃᵃᶜ.sⁿ[i, j, 1]
+@inline Δzᶜᶜᶠ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶠ_reference(i, j, k, grid) * grid.Δzᵃᵃᶠ.sᶜᶜⁿ[i, j, 1]
+@inline Δzᶜᶜᶜ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶜ_reference(i, j, k, grid) * grid.Δzᵃᵃᶜ.sᶜᶜⁿ[i, j, 1]
+
+@inline Δzᶠᶜᶠ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶠ_reference(i, j, k, grid) * grid.Δzᵃᵃᶠ.sᶠᶜⁿ[i, j, 1]
+@inline Δzᶠᶜᶜ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶜ_reference(i, j, k, grid) * grid.Δzᵃᵃᶜ.sᶠᶜⁿ[i, j, 1]
+
+@inline Δzᶜᶠᶠ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶠ_reference(i, j, k, grid) * grid.Δzᵃᵃᶠ.sᶜᶠⁿ[i, j, 1]
+@inline Δzᶜᶠᶜ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶜ_reference(i, j, k, grid) * grid.Δzᵃᵃᶜ.sᶜᶠⁿ[i, j, 1]
 
 @inline ∂t_∂s_grid(i, j, k, grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶜ.∂t_∂s[i, j, k] 
 @inline V_times_∂t_∂s_grid(i, j, k, grid::ZStarSpacingGrid) = ∂t_∂s_grid(i, j, k, grid) * Vᶜᶜᶜ(i, j, k, grid)
@@ -113,12 +123,16 @@ reference_Δzᵃᵃᶜ(grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶜ.Δr
 function update_vertical_spacing!(model, grid::ZStarSpacingGrid; parameters = :xy)
     
     # Scaling 
-    s⁻    = grid.Δzᵃᵃᶠ.s⁻
-    sⁿ    = grid.Δzᵃᵃᶠ.sⁿ
+    sᶜᶜ⁻  = grid.Δzᵃᵃᶠ.sᶜᶜ⁻
+    sᶜᶜⁿ  = grid.Δzᵃᵃᶠ.sᶜᶜⁿ
+    sᶠᶜⁿ  = grid.Δzᵃᵃᶠ.sᶠᶜⁿ
+    sᶜᶠⁿ  = grid.Δzᵃᵃᶠ.sᶜᶠⁿ
     ∂t_∂s = grid.Δzᵃᵃᶠ.∂t_∂s
 
     # Free surface variables
     Hᶜᶜ = model.free_surface.auxiliary.Hᶜᶜ
+    Hᶠᶜ = model.free_surface.auxiliary.Hᶠᶜ
+    Hᶜᶠ = model.free_surface.auxiliary.Hᶜᶠ
     U̅   = model.free_surface.state.U̅
     V̅   = model.free_surface.state.V̅
     η   = model.free_surface.η
@@ -126,7 +140,7 @@ function update_vertical_spacing!(model, grid::ZStarSpacingGrid; parameters = :x
     # Update vertical spacing with available parameters 
     # No need to fill the halo as the scaling is updated _IN_ the halos
     launch!(architecture(grid), grid, parameters, _update_zstar!, 
-            sⁿ, s⁻, η, Hᶜᶜ, grid)
+            sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶜᶜ⁻, η, Hᶜᶜ, Hᶠᶜ, Hᶜᶠ, grid)
     
     # Update the time derivative of the grid-scaling. Note that in this case we leverage the
     # free surface evolution equation, where the time derivative of the free surface is equal
@@ -148,15 +162,20 @@ end
     end
 end
 
-@kernel function _update_zstar!(sⁿ, s⁻, η, Hᶜᶜ, grid) 
+@kernel function _update_zstar!(sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶜᶜ⁻, η, Hᶜᶜ, Hᶠᶜ, Hᶜᶠ, grid)
     i, j = @index(Global, NTuple)
+    k_top = grid.Nz+1
     @inbounds begin
-        bottom = Hᶜᶜ[i, j, 1]
-        h = (bottom + η[i, j, grid.Nz+1]) / bottom
+        hᶜᶜ = (Hᶜᶜ[i, j, 1] + η[i, j, k_top]) / Hᶜᶜ[i, j, 1]
+        hᶠᶜ = (Hᶠᶜ[i, j, 1] + ℑxᶠᵃᵃ(i, j, k_top, grid, η)) / Hᶠᶜ[i, j, 1]
+        hᶜᶠ = (Hᶜᶠ[i, j, 1] + ℑyᵃᶠᵃ(i, j, k_top, grid, η)) / Hᶜᶠ[i, j, 1]
 
+        sᶜᶜ⁻[i, j, 1] = sᶜᶜⁿ[i, j, 1]
+        
         # update current and previous scaling
-        s⁻[i, j, 1] = sⁿ[i, j, 1]
-        sⁿ[i, j, 1] = h
+        sᶜᶜⁿ[i, j, 1] = hᶜᶜ
+        sᶠᶜⁿ[i, j, 1] = hᶠᶜ
+        sᶜᶠⁿ[i, j, 1] = hᶜᶠ
     end
 end
 

@@ -115,7 +115,7 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
     end_tracer_kernel_args   = (buoyancy, biogeochemistry, background_fields, velocities,
                                 tracers, auxiliary_fields, diffusivities)
 
-    for tracer_index in 1:length(tracers)
+    for tracer_index in eachindex(tracers)
         @inbounds c_tendency = tendencies[tracer_index + 3]
         @inbounds forcing = forcings[tracer_index + 3]
         @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed
