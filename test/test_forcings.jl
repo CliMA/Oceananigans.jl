@@ -189,7 +189,8 @@ function two_forcings(arch)
         w = MultipleForcings((forcing1, forcing2)),
     )
 
-    model = NonhydrostaticModel(; grid, forcing)
+    model = NonhydrostaticModel(; grid, forcing,
+                                timestepper=:QuasiAdamsBashforth2)
 
     time_step!(model, 1, euler=true)
 
@@ -221,7 +222,8 @@ function seven_forcings(arch)
         w = MultipleForcings((forcing1, forcing2, forcing3, forcing4, forcing5, forcing6, forcing7))
     )
 
-    model = NonhydrostaticModel(; grid, forcing)
+    model = NonhydrostaticModel(; grid, forcing,
+                                timestepper=:QuasiAdamsBashforth2)
 
     time_step!(model, 1, euler=true)
 
