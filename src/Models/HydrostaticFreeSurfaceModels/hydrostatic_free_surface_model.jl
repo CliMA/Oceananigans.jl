@@ -134,9 +134,9 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     if !(free_surface isa SplitExplicitFreeSurface) && !isnothing(generalized_vertical_coordinate)
         @warn "Generalized vertical coordinates are supported only for the SplitExplicitFreeSurface at the moment. Ignoring the generalized_vertical_coordinate argument."
+    else
+        grid = generalized_spacing_grid(grid, generalized_vertical_coordinate)
     end
-
-    grid = free_surface isa SplitExplicitFreeSurface ? generalized_spacing_grid(grid, generalized_vertical_coordinate) : grid
 
     arch = architecture(grid)
 

@@ -13,11 +13,11 @@ grid = RectilinearGrid(size = (128, 20),
 
 model = HydrostaticFreeSurfaceModel(; grid, 
             generalized_vertical_coordinate = ZStar(),
-                         momentum_advection = WENO(),
+                         momentum_advection = WENOVectorInvariant(),
                            tracer_advection = WENO(),
                                    buoyancy = BuoyancyTracer(),
                                     tracers = :b,
-                               free_surface = SplitExplicitFreeSurface(; substeps = 120))
+                               free_surface = SplitExplicitFreeSurface(; substeps = 100))
 
 g = model.free_surface.gravitational_acceleration
 
@@ -34,7 +34,7 @@ set!(model, b = bᵢ)
 simulation = Simulation(model; Δt, stop_iteration = 100000, stop_time = 17hours) 
 
 field_outputs = if model.grid isa ZStarSpacingGrid
-  merge(model.velocities, model.tracers, (; sⁿ = model.grid.Δzᵃᵃᶠ.sⁿ))
+  merge(model.velocities, model.tracers, (; sⁿ = model.grid.Δzᵃᵃᶠ.sᶜᶜⁿ))
 else
   merge(model.velocities, model.tracers)
 end
@@ -54,7 +54,7 @@ function progress(sim)
     msg2 = @sprintf("extrema u: %.2e %.2e ", maximum(u), minimum(u))
     msg3 = @sprintf("extrema b: %.2e %.2e ", maximum(b), minimum(b))
     if sim.model.grid isa ZStarSpacingGrid
-      Δz = sim.model.grid.Δzᵃᵃᶠ.sⁿ
+      Δz = sim.model.grid.Δzᵃᵃᶠ.sᶜᶜⁿ
       msg4 = @sprintf("extrema Δz: %.2e %.2e ", maximum(Δz), minimum(Δz))
       @info msg0 * msg1 * msg2 * msg3 * msg4
     else
