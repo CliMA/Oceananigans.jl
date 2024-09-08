@@ -166,8 +166,8 @@ end
 ab2_step_tracer_field!(tracer_field, grid::AbstractVerticalSpacingGrid, Δt, χ, Gⁿ, G⁻) =
     launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_generalized_spacing!, 
             tracer_field, 
-            grid.Δzᵃᵃᶠ.sⁿ, 
-            grid.Δzᵃᵃᶠ.s⁻, 
+            vertical_scaling(grid), 
+            previous_vertical_scaling(grid), 
             Δt, χ, Gⁿ, G⁻)
 
 const EmptyTuples = Union{NamedTuple{(), Tuple{}}, Tuple{}}
@@ -180,7 +180,7 @@ tracer_scaling_parameters(param::KernelParameters{S, O}, tracers, grid) where {S
 function unscale_tracers!(tracers, grid::AbstractVerticalSpacingGrid; parameters = :xy) 
     parameters = tracer_scaling_parameters(parameters, tracers, grid)
     
-    launch!(architecture(grid), grid, parameters, _unscale_tracers!, tracers, grid.Δzᵃᵃᶠ.sⁿ, 
+    launch!(architecture(grid), grid, parameters, _unscale_tracers!, tracers, vertical_scaling(grid), 
             Val(grid.Hz), Val(grid.Nz))
     
     return nothing

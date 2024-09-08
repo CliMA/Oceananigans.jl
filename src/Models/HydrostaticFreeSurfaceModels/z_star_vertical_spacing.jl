@@ -75,8 +75,10 @@ function generalized_spacing_grid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, 
     ∂t_∂s = Field{Center, Center, Nothing}(grid)
     
     # Initial "at-rest" conditions
-    fill!(s⁻, 1)
-    fill!(sⁿ, 1)
+    fill!(sᶜᶜ⁻, 1)
+    fill!(sᶜᶜⁿ, 1)
+    fill!(sᶠᶜⁿ, 1)
+    fill!(sᶜᶠⁿ, 1)
 
     Δzᵃᵃᶠ = ZStarSpacing(grid.Δzᵃᵃᶠ, sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶜᶜ⁻, ∂t_∂s)
     Δzᵃᵃᶜ = ZStarSpacing(grid.Δzᵃᵃᶜ, sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶜᶜ⁻, ∂t_∂s)
@@ -100,6 +102,9 @@ end
 #####
 ##### ZStar-specific vertical spacing functions
 #####
+
+@inline vertical_scaling(grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶠ.sᶜᶜⁿ
+@inline previous_vertical_scaling(grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶠ.sᶜᶜ⁻
 
 reference_Δzᵃᵃᶠ(grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶠ.Δr
 reference_Δzᵃᵃᶜ(grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶜ.Δr
