@@ -38,6 +38,8 @@ Do nothing on Flat dimensions.
 const f = Face()
 const c = Center()
 
+immersed_boundary_topology(grid_topology) = ifelse(grid_topology == Flat, Flat(), Bounded())
+
 """
     bounce_immersed_particle((x, y, z), grid, restitution, previous_particle_indices)
 
@@ -65,9 +67,10 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
     zᴸ = znode(i,  j,  k⁻, ibg, f, f, f)
 
     Cʳ = restitution
-    xb⁺ = enforce_boundary_conditions(topology(ibg)[1] == Flat ? Flat() : Bounded(), x, xᴸ, xᴿ, Cʳ)
-    yb⁺ = enforce_boundary_conditions(topology(ibg)[2] == Flat ? Flat() : Bounded(), y, yᴸ, yᴿ, Cʳ)
-    zb⁺ = enforce_boundary_conditions(topology(ibg)[3] == Flat ? Flat() : Bounded(), z, zᴸ, zᴿ, Cʳ)
+    tx, ty, tz = map(immersed_boundary_topology, topology(ibg))
+    xb⁺ = enforce_boundary_conditions(tx, x, xᴸ, xᴿ, Cʳ)
+    yb⁺ = enforce_boundary_conditions(ty, y, yᴸ, yᴿ, Cʳ)
+    zb⁺ = enforce_boundary_conditions(tz, z, zᴸ, zᴿ, Cʳ)
 
     immersed = immersed_cell(i, j, k, ibg)
     x⁺ = ifelse(immersed, xb⁺, x)
