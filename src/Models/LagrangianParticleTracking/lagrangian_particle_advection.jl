@@ -38,6 +38,11 @@ Do nothing on Flat dimensions.
 const f = Face()
 const c = Center()
 
+"""
+    immersed_boundary_topology(grid_topology)
+
+Unless `Flat`, immersed boundaries are treated as `Bounded` regardless of underlying grid topology.
+"""
 immersed_boundary_topology(grid_topology) = ifelse(grid_topology == Flat, Flat(), Bounded())
 
 """
