@@ -183,7 +183,6 @@ end
 @inline function _fractional_indices((x, y), grid, ℓx, ℓy, ::Nothing)
     ii = fractional_x_index(x, (ℓx, ℓy, nothing), grid)
     jj = fractional_y_index(y, (ℓx, ℓy, nothing), grid)
-
     return (ii, jj, nothing)
 end
 
@@ -324,7 +323,7 @@ end
 @inline flatten_node(x, ::Nothing) = flatten_node(x)
 
 @inline flatten_node(x) = tuple(x)
-@inline flatten_node(::Nothing) = tuple(x)
+@inline flatten_node(::Nothing) = tuple()
 
 @kernel function _interpolate!(to_field, to_grid, to_location,
                                from_field, from_grid, from_location)
