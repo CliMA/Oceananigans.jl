@@ -292,8 +292,10 @@ end
         grid = lagrangian_particle_test_grid(arch, y_topo, z)
         run_simple_particle_tracking_tests(grid, timestepper)
 
-        @info "  Testing Lagrangian particle tracking [$(typeof(arch)), $timestepper] with y $(typeof(y_topo)) on vertically $z_grid_type immersed grid ..."
-        grid = lagrangian_particle_test_immersed_grid(arch, y_topo, z)
-        run_simple_particle_tracking_tests(grid, timestepper)
+        if z isa NTuple{2} # Test immersed regular grids
+            @info "  Testing Lagrangian particle tracking [$(typeof(arch)), $timestepper] with y $(typeof(y_topo)) on vertically $z_grid_type immersed grid ..."
+            grid = lagrangian_particle_test_immersed_grid(arch, y_topo, z)
+            run_simple_particle_tracking_tests(grid, timestepper)
+        end
     end
 end
