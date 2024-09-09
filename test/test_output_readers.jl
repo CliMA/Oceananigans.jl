@@ -349,10 +349,25 @@ end
 
             @test ds isa FieldDataset
             @test length(keys(ds.fields)) == 8
-            @test ds["u"] isa FieldTimeSeries
-            @test ds[:u] isa FieldTimeSeries
-            @test ds["v"][1] isa Field
-            @test ds["T"][2] isa Field
+
+            for var_str in ("u", "v", "w", "T", "S", "b", "ζ", "ke")
+                @test ds[var_str] isa FieldTimeSeries
+                @test ds[var_str][1] isa Field
+            end
+            
+            for var_sym in (:u, :v, :w, :T, :S, :b, :ζ, :ke)
+                @test ds[var_sym] isa FieldTimeSeries
+                @test ds[var_sym][2] isa Field
+            end
+
+            @test ds.u isa FieldTimeSeries
+            @test ds.v isa FieldTimeSeries
+            @test ds.w isa FieldTimeSeries
+            @test ds.T isa FieldTimeSeries
+            @test ds.S isa FieldTimeSeries
+            @test ds.b isa FieldTimeSeries
+            @test ds.ζ isa FieldTimeSeries
+            @test ds.ke isa FieldTimeSeries
         end
     end
 
