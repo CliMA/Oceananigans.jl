@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Utils: Time
-using Oceananigans.Fields: indices
+using Oceananigans.Fields: indices, interpolate!
 using Oceananigans.OutputReaders: Cyclical, Clamp
 
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
@@ -36,16 +36,20 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
 
     fields_to_output = merge(model.velocities, model.tracers, computed_fields)
 
+    filepath3d = "test_3d_output_with_halos.jld2"
+    filepath2d = "test_2d_output_with_halos.jld2"
+    filepath1d = "test_1d_output_with_halos.jld2"
+
     simulation.output_writers[:jld2_3d_with_halos] =
         JLD2OutputWriter(model, fields_to_output,
-                         filename = "test_3d_output_with_halos.jld2",
+                         filename = filepath3d,
                          with_halos = true,
                          schedule = TimeInterval(30seconds),
                          overwrite_existing = true)
 
     simulation.output_writers[:jld2_2d_with_halos] =
         JLD2OutputWriter(model, fields_to_output,
-                         filename = "test_2d_output_with_halos.jld2",
+                         filename = filepath2d,
                          indices = (:, :, grid.Nz),
                          with_halos = true,
                          schedule = TimeInterval(30seconds),
@@ -55,33 +59,28 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
 
     simulation.output_writers[:jld2_1d_with_halos] =
         JLD2OutputWriter(model, profiles,
-                         filename = "test_1d_output_with_halos.jld2",
+                         filename = filepath1d,
                          with_halos = true,
                          schedule = TimeInterval(30seconds),
                          overwrite_existing = true)
 
     run!(simulation)
 
-    return nothing
+    return filepath1d, filepath2d, filepath3d
 end
 
 @testset "OutputReaders" begin
     @info "Testing output readers..."
 
-    Nx, Ny, Nz = 16, 10, 5
-    generate_some_interesting_simulation_data(Nx, Ny, Nz)
     Nt = 5
-
-    filepath3d = "test_3d_output_with_halos.jld2"
-    filepath2d = "test_2d_output_with_halos.jld2"
-    filepath1d = "test_1d_output_with_halos.jld2"
+    Nx, Ny, Nz = 16, 10, 5
+    filepath1d, filepath2d, filepath3d = generate_some_interesting_simulation_data(Nx, Ny, Nz)
 
     for arch in archs
         @testset "FieldTimeSeries{InMemory} [$(typeof(arch))]" begin
             @info "  Testing FieldTimeSeries{InMemory} [$(typeof(arch))]..."
 
-            ## 3D Fields
-
+            # 3D Fields
             u3 = FieldTimeSeries(filepath3d, "u", architecture=arch)
             v3 = FieldTimeSeries(filepath3d, "v", architecture=arch)
             w3 = FieldTimeSeries(filepath3d, "w", architecture=arch)
@@ -115,6 +114,7 @@ end
             ArrayType = array_type(arch)
             for fts in (u3, v3, w3, T3, b3, ζ3)
                 @test parent(fts) isa ArrayType
+                @test (fts.times isa StepRangeLen) | (fts.times isa ArrayType)
             end
 
             if arch isa CPU
@@ -122,6 +122,37 @@ end
                 @test u3[1] isa Field
                 @test v3[2] isa Field
             end
+
+            # Tests that we can interpolate
+            u3i = FieldTimeSeries{Face, Center, Center}(u3.grid, u3.times)
+            interpolate!(u3i, u3)
+            @test all(interior(u3i) .≈ interior(u3))
+
+            # Interpolation to a _located_ single column grid
+            grid3 = RectilinearGrid(arch, size=(3, 3, 3), x=(0.5, 3.5), y=(0.5, 3.5), z=(0.5, 3.5),
+                                    topology = (Periodic, Periodic, Bounded))
+
+            grid1 = RectilinearGrid(arch, size=3, x=1.3, y=2.7, z=(0.5, 3.5),
+                                    topology=(Flat, Flat, Bounded))
+
+            times = [1, 2]
+            c3 = FieldTimeSeries{Center, Center, Center}(grid3, times)
+            c1 = FieldTimeSeries{Center, Center, Center}(grid1, times)
+
+            for n in 1:length(times)
+                tn = times[n]
+                c₀(x, y, z) = (x + y + z) * tn
+                set!(c3[n], c₀)
+            end
+
+            interpolate!(c1, c3)
+
+            # Convert to CPU for testing
+            c11 = interior(c1[1], 1, 1, :) |> Array
+            c12 = interior(c1[2], 1, 1, :) |> Array
+
+            @test c11 ≈ [5.0, 6.0, 7.0]
+            @test c12 ≈ [10.0, 12.0, 14.0]
 
             ## 2D sliced Fields
 
