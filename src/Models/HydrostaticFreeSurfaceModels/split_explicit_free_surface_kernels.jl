@@ -337,7 +337,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
         # Solve for the free surface at tⁿ⁺¹
         iterate_split_explicit!(free_surface, free_surface_grid, Δτᴮ, weights, Val(Nsubsteps))
         
-        update_state!(free_surface.state, free_surface.η, settings.timestepper)
+        update_free_surface_state!(free_surface.state, free_surface.η, settings.timestepper)
     end
 
     fields_to_fill = (free_surface.state.U̅, free_surface.state.V̅)
@@ -352,9 +352,9 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     return nothing
 end
 
-@inline update_state!(state, η, timestepper) = set!(state.η, state.η̅)
+@inline update_update_free_surface_state!(state, η, timestepper) = set!(state.η, state.η̅)
 
-@inline function update_averages!(state, ::DissipativeForwardBackwardScheme) 
+@inline function update_free_surface_state!(state, ::DissipativeForwardBackwardScheme) 
     set!(state.U̅, state.U)
     set!(state.V̅, state.V)
     set!(state.η̅, state.η)
