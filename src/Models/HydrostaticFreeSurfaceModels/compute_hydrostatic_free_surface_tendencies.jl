@@ -8,7 +8,7 @@ using Oceananigans.Utils: work_layout, KernelParameters
 using Oceananigans.Grids: halo_size
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
 using Oceananigans.ImmersedBoundaries: active_interior_map, ActiveCellsIBG, 
                                        InteriorMap, active_linear_index_to_tuple
