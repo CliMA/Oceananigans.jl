@@ -58,3 +58,15 @@ function Base.getproperty(fds::FieldDataset, name::Symbol)
     end
 end
 
+function Base.show(io::IO, fds::FieldDataset)
+    s = "FieldDataset with $(length(fds.fields)) fields and $(length(fds.metadata)) metadata entries:\n"
+
+    n_fields = length(fds.fields)
+
+    for (i, (name, fts)) in enumerate(pairs(fds.fields))
+        prefix = i == n_fields ? "└── " : "├── "
+        s *= prefix * "$name: " * summary(fts) * '\n'
+    end
+
+    return print(io, s)
+end
