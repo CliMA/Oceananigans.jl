@@ -204,7 +204,7 @@ large (or `:xy` in case of a serial computation), and start computing from
 
 $(FIELDS)
 """
-Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒞𝒞, 𝒦}
+Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒞𝒞, ℱℱ, 𝒦}
     "Vertically-integrated slow barotropic forcing function for `U` (`ReducedField` over ``z``)"
     Gᵁ :: ℱ𝒞
     "Vertically-integrated slow barotropic forcing function for `V` (`ReducedField` over ``z``)"
@@ -215,6 +215,8 @@ Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒞𝒞, 𝒦
     Hᶜᶠ :: 𝒞ℱ
     "Depth at `(Center, Center)` (`ReducedField` over ``z``)"
     Hᶜᶜ :: 𝒞𝒞
+    "kernel size for barotropic time stepping"
+    Hᶠᶠ :: ℱℱ
     "kernel size for barotropic time stepping"
     kernel_parameters :: 𝒦
 end
@@ -232,15 +234,16 @@ function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
     Hᶠᶜ = Field{Face,   Center, Nothing}(grid)
     Hᶜᶠ = Field{Center, Face,   Nothing}(grid)
     Hᶜᶜ = Field{Center, Center, Nothing}(grid)
+    Hᶠᶠ = Field{Face,   Face,   Nothing}(grid)
 
-    compute_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
+    compute_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, Hᶠᶠ, grid)
 
     kernel_parameters = :xy
 
-    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_parameters)
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, Hᶠᶠ, kernel_parameters)
 end
 
-function compute_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
+function compute_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, Hᶠᶠ, grid)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
     Tx, Ty, _ = topology(grid)
@@ -268,7 +271,8 @@ function compute_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
     kernel_offset = (-Hx, -Hy)
     paramᶜᶜ = KernelParameters(kernel_size, kernel_offset)
     launch!(arch, grid, paramᶜᶜ, _compute_column_height!, Hᶜᶜ, grid, c, c, Δzᶜᶜᶜ_reference)
-
+    launch!(arch, grid, paramᶜᶜ, _compute_column_height!, Hᶠᶠ, grid, c, c, Δzᶠᶠᶜ_reference)
+ 
     return nothing
 end
 
@@ -473,6 +477,7 @@ Adapt.adapt_structure(to, auxiliary::SplitExplicitAuxiliaryFields) =
                                  Adapt.adapt(to, auxiliary.Hᶠᶜ),
                                  Adapt.adapt(to, auxiliary.Hᶜᶠ),
                                  Adapt.adapt(to, auxiliary.Hᶜᶜ),
+                                 Adapt.adapt(to, auxiliary.Hᶠᶠ),
                                  nothing)
 
 for Type in (:SplitExplicitFreeSurface, 

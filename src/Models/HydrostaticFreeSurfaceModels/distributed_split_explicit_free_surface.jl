@@ -13,8 +13,9 @@ function SplitExplicitAuxiliaryFields(grid::DistributedGrid)
     Hᶠᶜ = Field{Face,   Center, Nothing}(grid)
     Hᶜᶠ = Field{Center, Face,   Nothing}(grid)
     Hᶜᶜ = Field{Center, Center, Nothing}(grid)
+    Hᶠᶠ = Field{Face,   Face,   Nothing}(grid)
 
-    compute_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
+    compute_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, Hᶠᶠ, grid)
 
     # In a non-parallel grid we calculate only the interior
     kernel_size    = augmented_kernel_size(grid)
@@ -22,7 +23,7 @@ function SplitExplicitAuxiliaryFields(grid::DistributedGrid)
 
     kernel_parameters = KernelParameters(kernel_size, kernel_offsets)
     
-    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, kernel_parameters)
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, Hᶠᶠ, kernel_parameters)
 end
 
 """Integrate z at locations `location` and set! `height`` with the result"""

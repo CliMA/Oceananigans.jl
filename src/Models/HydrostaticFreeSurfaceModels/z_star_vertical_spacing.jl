@@ -22,11 +22,12 @@ where ``η`` is the free surface height and ``H`` the vertical depth of the wate
 - `s⁻`:scaling of the vertical coordinate at time step `n - 1`
 - `∂t_∂s`: Time derivative of `s`
 """
-struct ZStarSpacing{R, SCC, SFC, SCF} <: AbstractVerticalSpacing{R}
+struct ZStarSpacing{R, SCC, SFC, SCF, SFF} <: AbstractVerticalSpacing{R}
     Δr   :: R
     sᶜᶜⁿ :: SCC
     sᶠᶜⁿ :: SFC
     sᶜᶠⁿ :: SCF
+    sᶠᶠⁿ :: SFF
     sᶜᶜ⁻ :: SCC
  ∂t_∂s   :: SCC
 end
@@ -72,6 +73,7 @@ function generalized_spacing_grid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, 
     sᶜᶜⁿ  = Field{Center, Center, Nothing}(grid)
     sᶠᶜⁿ  = Field{Face,   Center, Nothing}(grid)
     sᶜᶠⁿ  = Field{Center, Face,   Nothing}(grid)
+    sᶠᶠⁿ  = Field{Face,   Face,   Nothing}(grid)
     ∂t_∂s = Field{Center, Center, Nothing}(grid)
     
     # Initial "at-rest" conditions
@@ -79,9 +81,10 @@ function generalized_spacing_grid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, 
     fill!(sᶜᶜⁿ, 1)
     fill!(sᶠᶜⁿ, 1)
     fill!(sᶜᶠⁿ, 1)
+    fill!(sᶠᶠⁿ, 1)
 
-    Δzᵃᵃᶠ = ZStarSpacing(grid.Δzᵃᵃᶠ, sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶜᶜ⁻, ∂t_∂s)
-    Δzᵃᵃᶜ = ZStarSpacing(grid.Δzᵃᵃᶜ, sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶜᶜ⁻, ∂t_∂s)
+    Δzᵃᵃᶠ = ZStarSpacing(grid.Δzᵃᵃᶠ, sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶠᶠⁿ, sᶜᶜ⁻, ∂t_∂s)
+    Δzᵃᵃᶜ = ZStarSpacing(grid.Δzᵃᵃᶜ, sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶠᶠⁿ, sᶜᶜ⁻, ∂t_∂s)
 
     args = []
     for prop in propertynames(grid)
@@ -118,6 +121,9 @@ reference_Δzᵃᵃᶜ(grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶜ.Δr
 @inline Δzᶜᶠᶠ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶠ_reference(i, j, k, grid) * grid.Δzᵃᵃᶠ.sᶜᶠⁿ[i, j, 1]
 @inline Δzᶜᶠᶜ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶜ_reference(i, j, k, grid) * grid.Δzᵃᵃᶜ.sᶜᶠⁿ[i, j, 1]
 
+@inline Δzᶠᶠᶠ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶠ_reference(i, j, k, grid) * grid.Δzᵃᵃᶠ.sᶠᶠⁿ[i, j, 1]
+@inline Δzᶠᶠᶜ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶜ_reference(i, j, k, grid) * grid.Δzᵃᵃᶜ.sᶠᶠⁿ[i, j, 1]
+
 @inline ∂t_∂s_grid(i, j, k, grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶜ.∂t_∂s[i, j, k] 
 @inline V_times_∂t_∂s_grid(i, j, k, grid::ZStarSpacingGrid) = ∂t_∂s_grid(i, j, k, grid) * Vᶜᶜᶜ(i, j, k, grid)
 
@@ -132,12 +138,14 @@ function update_vertical_spacing!(model, grid::ZStarSpacingGrid; parameters = :x
     sᶜᶜⁿ  = grid.Δzᵃᵃᶠ.sᶜᶜⁿ
     sᶠᶜⁿ  = grid.Δzᵃᵃᶠ.sᶠᶜⁿ
     sᶜᶠⁿ  = grid.Δzᵃᵃᶠ.sᶜᶠⁿ
+    sᶠᶠⁿ  = grid.Δzᵃᵃᶠ.sᶠᶠⁿ
     ∂t_∂s = grid.Δzᵃᵃᶠ.∂t_∂s
 
     # Free surface variables
     Hᶜᶜ = model.free_surface.auxiliary.Hᶜᶜ
     Hᶠᶜ = model.free_surface.auxiliary.Hᶠᶜ
     Hᶜᶠ = model.free_surface.auxiliary.Hᶜᶠ
+    Hᶠᶠ = model.free_surface.auxiliary.Hᶠᶠ
     U̅   = model.free_surface.state.U̅
     V̅   = model.free_surface.state.V̅
     η   = model.free_surface.η
@@ -145,7 +153,7 @@ function update_vertical_spacing!(model, grid::ZStarSpacingGrid; parameters = :x
     # Update vertical spacing with available parameters 
     # No need to fill the halo as the scaling is updated _IN_ the halos
     launch!(architecture(grid), grid, parameters, _update_zstar!, 
-            sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶜᶜ⁻, η, Hᶜᶜ, Hᶠᶜ, Hᶜᶠ, grid)
+            sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶠᶠⁿ, sᶜᶜ⁻, η, Hᶜᶜ, Hᶠᶜ, Hᶜᶠ, Hᶠᶠ, grid)
     
     # Update the time derivative of the grid-scaling. Note that in this case we leverage the
     # free surface evolution equation, where the time derivative of the free surface is equal
@@ -167,13 +175,14 @@ end
     end
 end
 
-@kernel function _update_zstar!(sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶜᶜ⁻, η, Hᶜᶜ, Hᶠᶜ, Hᶜᶠ, grid)
+@kernel function _update_zstar!(sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶠᶠⁿ, sᶜᶜ⁻, η, Hᶜᶜ, Hᶠᶜ, Hᶜᶠ, Hᶠᶠ, grid)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
     @inbounds begin
         hᶜᶜ = (Hᶜᶜ[i, j, 1] + η[i, j, k_top]) / Hᶜᶜ[i, j, 1]
-        hᶠᶜ = (Hᶠᶜ[i, j, 1] + ℑxᶠᵃᵃ(i, j, k_top, grid, η)) / Hᶠᶜ[i, j, 1]
-        hᶜᶠ = (Hᶜᶠ[i, j, 1] + ℑyᵃᶠᵃ(i, j, k_top, grid, η)) / Hᶜᶠ[i, j, 1]
+        hᶠᶜ = (Hᶠᶜ[i, j, 1] +  ℑxᶠᵃᵃ(i, j, k_top, grid, η)) / Hᶠᶜ[i, j, 1]
+        hᶜᶠ = (Hᶜᶠ[i, j, 1] +  ℑyᵃᶠᵃ(i, j, k_top, grid, η)) / Hᶜᶠ[i, j, 1]
+        hᶠᶠ = (Hᶠᶠ[i, j, 1] + ℑxyᶠᶠᵃ(i, j, k_top, grid, η)) / Hᶠᶠ[i, j, 1]
 
         sᶜᶜ⁻[i, j, 1] = sᶜᶜⁿ[i, j, 1]
         
@@ -181,6 +190,7 @@ end
         sᶜᶜⁿ[i, j, 1] = hᶜᶜ
         sᶠᶜⁿ[i, j, 1] = hᶠᶜ
         sᶜᶠⁿ[i, j, 1] = hᶜᶠ
+        sᶠᶠⁿ[i, j, 1] = hᶠᶠ
     end
 end
 

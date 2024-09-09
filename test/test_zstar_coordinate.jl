@@ -5,14 +5,20 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStar
 function test_zstar_coordinate(model, Ni, Δt)
     
     ∫bᵢ = Field(Integral(model.tracers.b))
+    ∫cᵢ = Field(Integral(model.tracers.c))
     w   = model.velocities.w
     Nz  = model.grid.Nz
 
+    # Testing that at each timestep
+    # (1) tracers are conserved down to machine precision
+    # (2) vertical velocities are zero at the top surface
     for _ in 1:Ni
         time_step!(model, Δt)
         ∫b = Field(Integral(model.tracers.b))
+        ∫c = Field(Integral(model.tracers.c))
 
-        @test ∫b[1, 1, 1] ≈ ∫bᵢ[1, 1, 1]
+        @test interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
+        @test interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)
         @test maximum(interior(w, :, :, Nz+1)) < eps(eltype(w))
     end
 
@@ -38,7 +44,6 @@ end
         grids = [llg, rtg, llgv, rtgv, illg, irtg, illgv, irtgv]
 
         for grid in grids
-
             free_surface = SplitExplicitFreeSurface(grid; cfl = 0.75)
             model = HydrostaticFreeSurfaceModel(; grid, 
                                                   free_surface, 
