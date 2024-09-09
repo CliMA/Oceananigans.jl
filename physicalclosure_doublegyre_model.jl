@@ -1,6 +1,8 @@
 #using Pkg
 # pkg"add Oceananigans CairoMakie"
 using Oceananigans
+using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
+using Oceananigans.BuoyancyModels: ∂z_b
 # include("NN_closure_global.jl")
 # include("xin_kai_vertical_diffusivity_local.jl")
 # include("xin_kai_vertical_diffusivity_2Pr.jl")
@@ -25,7 +27,8 @@ import SeawaterPolynomials.TEOS10: s, ΔS, Sₐᵤ
 s(Sᴬ::Number) = Sᴬ + ΔS >= 0 ? √((Sᴬ + ΔS) / Sₐᵤ) : NaN
 
 #%%
-FILE_DIR = "./Output/doublegyre_RiBasedVerticalDiffusivity"
+filename = "doublegyre_CATKEVerticalDiffusivity_streamfunction"
+FILE_DIR = "./Output/$(filename)"
 mkpath(FILE_DIR)
 
 # Architecture
@@ -37,7 +40,7 @@ model_architecture = GPU()
 
 vertical_base_closure = VerticalScalarDiffusivity(ν=1e-5, κ=1e-5)
 # convection_closure = XinKaiVerticalDiffusivity()
-convection_closure = RiBasedVerticalDiffusivity()
+convection_closure = CATKEVerticalDiffusivity()
 closure = (vertical_base_closure, convection_closure)
 # closure = vertical_base_closure
 
@@ -149,9 +152,7 @@ model = HydrostaticFreeSurfaceModel(
     tracer_advection = WENO(order=5),
     buoyancy = SeawaterBuoyancy(equation_of_state=TEOS10.TEOS10EquationOfState()),
     coriolis = coriolis,
-    # closure = (nn_closure, base_closure),
     closure = closure,
-    # closure = RiBasedVerticalDiffusivity(),
     tracers = (:T, :S),
     boundary_conditions = (; u = u_bcs, v = v_bcs, T = T_bcs, S = S_bcs),
 )
@@ -175,7 +176,7 @@ update_state!(model)
 ##### Simulation building
 #####
 Δt₀ = 5minutes
-stop_time = 3650days
+stop_time = 10950days
 
 simulation = Simulation(model, Δt = Δt₀, stop_time = stop_time)
 
@@ -211,37 +212,52 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 
 u, v, w = model.velocities
 T, S = model.tracers.T, model.tracers.S
-# ν, κ = model.diffusivity_fields[2].κᵘ, model.diffusivity_fields[2].κᶜ
-# Ri = model.diffusivity_fields[2].Ri
-# wT, wS = model.diffusivity_fields[2].wT, model.diffusivity_fields[2].wS
+U_bt = Field(Integral(u, dims=3))
+Ψ = Field(CumulativeIntegral(-U_bt, dims=2))
 
-# outputs = (; u, v, w, T, S, ν, κ, Ri, wT, wS)
-# outputs = (; u, v, w, T, S, ν, κ, Ri)
-outputs = (; u, v, w, T, S)
+@inline function get_N²(i, j, k, grid, b, C)
+  return ∂z_b(i, j, k, grid, b, C)
+end
+
+N²_op = KernelFunctionOperation{Center, Center, Face}(get_N², model.grid, model.buoyancy.model, model.tracers)
+N² = Field(N²_op)
+
+outputs = (; u, v, w, T, S, N²)
 
 #####
 ##### Build checkpointer and output writer
 #####
 simulation.output_writers[:xy] = JLD2OutputWriter(model, outputs,
-                                                    # filename = "NN_closure_2D_channel_NDE_FC_Qb_18simnew_2layer_128_relu_2Pr",
-                                                    filename = "$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_xy",
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xy",
                                                     indices = (:, :, Nz),
-                                                    schedule = TimeInterval(5days))
+                                                    schedule = TimeInterval(10days))
 
 simulation.output_writers[:yz] = JLD2OutputWriter(model, outputs,
-                                                    # filename = "NN_closure_2D_channel_NDE_FC_Qb_18simnew_2layer_128_relu_2Pr",
-                                                    filename = "$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_yz",
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_yz",
                                                     indices = (1, :, :),
-                                                    schedule = TimeInterval(5days))
+                                                    schedule = TimeInterval(10days))
                                                     
 simulation.output_writers[:xz] = JLD2OutputWriter(model, outputs,
-                                                    # filename = "NN_closure_2D_channel_NDE_FC_Qb_18simnew_2layer_128_relu_2Pr",
-                                                    filename = "$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_xz",
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz",
                                                     indices = (:, 1, :),
-                                                    schedule = TimeInterval(5days))
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:xz_south] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_south",
+                                                    indices = (:, 25, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:xz_north] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_north",
+                                                    indices = (:, 75, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:streamfunction] = JLD2OutputWriter(model, (; Ψ=Ψ,),
+                                                    filename = "$(FILE_DIR)/averaged_fields_streamfunction",
+                                                    schedule = AveragedTimeInterval(1825days, window=1825days))
 
 simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                    schedule = TimeInterval(365days),
+                                                    schedule = TimeInterval(730days),
                                                     prefix = "$(FILE_DIR)/checkpointer")
 
 @info "Running the simulation..."
@@ -262,21 +278,21 @@ catch err
 end
 
 #%%
-T_xy_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_xy.jld2", "T")
-T_xz_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_xz.jld2", "T")
-T_yz_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_yz.jld2", "T")
+T_xy_data = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xy.jld2", "T")
+T_xz_data = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz.jld2", "T")
+T_yz_data = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz.jld2", "T")
 
-S_xy_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_xy.jld2", "S")
-S_xz_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_xz.jld2", "S")
-S_yz_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_yz.jld2", "S")
+S_xy_data = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xy.jld2", "S")
+S_xz_data = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz.jld2", "S")
+S_yz_data = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz.jld2", "S")
 
-u_xy_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_xy.jld2", "u")
-u_xz_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_xz.jld2", "u")
-u_yz_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_yz.jld2", "u")
+u_xy_data = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xy.jld2", "u")
+u_xz_data = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz.jld2", "u")
+u_yz_data = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz.jld2", "u")
 
-v_xy_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_xy.jld2", "v")
-v_xz_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_xz.jld2", "v")
-v_yz_data = FieldTimeSeries("$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr_yz.jld2", "v")
+v_xy_data = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xy.jld2", "v")
+v_xz_data = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz.jld2", "v")
+v_yz_data = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz.jld2", "v")
 
 times = T_xy_data.times ./ 24 ./ 60^2
 Nt = length(times)
@@ -422,142 +438,83 @@ zlims!(axS, (-Lz, 0))
 zlims!(axu, (-Lz, 0))
 zlims!(axv, (-Lz, 0))
 
-CairoMakie.record(fig, "$(FILE_DIR)/doublegyre_Ri_based_vertical_diffusivity_2Pr.mp4", 1:Nt, framerate=20, px_per_unit=2) do nn
-    @info nn
+@info "Recording 3D fields"
+CairoMakie.record(fig, "$(FILE_DIR)/$(filename)_3D_instantaneous_fields.mp4", 1:Nt, framerate=20, px_per_unit=2) do nn
     n[] = nn
 end
 
-# display(fig)
+@info "Done!"
 #%%
+Ψ_data = FieldTimeSeries("$(FILE_DIR)/averaged_fields_streamfunction.jld2", "Ψ")
 
-# # #####
-# # ##### Visualization
-# # #####
-# using CairoMakie
+xF = Ψ_data.grid.xᶠᵃᵃ[1:Ψ_data.grid.Nx+1]
+yC = Ψ_data.grid.yᵃᶜᵃ[1:Ψ_data.grid.Ny]
 
-# dataname = "NN_closure_doublegyre_NDE_FC_Qb_absf_24simnew_2layer_128_relu_2Pr"
-# DATA_DIR = "./$(dataname).jld2"
+Nt = length(Ψ_data)
+times = Ψ_data.times / 24 / 60^2 / 365
+#%%
+timeframe = Nt
+Ψ_frame = interior(Ψ_data[timeframe], :, :, 1) ./ 1e6
+clim = maximum(abs, Ψ_frame) + 1e-13
+N_levels = 16
+levels = range(-clim, stop=clim, length=N_levels)
+fig = Figure(size=(800, 800))
+ax = Axis(fig[1, 1], xlabel="x (m)", ylabel="y (m)", title="CATKE Vertical Diffusivity, Yearly-Averaged Barotropic streamfunction Ψ, Year $(times[timeframe])")
+cf = contourf!(ax, xF, yC, Ψ_frame, levels=levels, colormap=Reverse(:RdBu_11))
+Colorbar(fig[1, 2], cf, label="Ψ (Sv)")
+tightlimits!(ax)
+save("$(FILE_DIR)/barotropic_streamfunction_$(timeframe).png", fig, px_per_unit=4)
+display(fig)
+#%%
+function find_min(a...)
+  return minimum(minimum.([a...]))
+end
 
-# u_data = FieldTimeSeries("$(DATA_DIR)", "u")
-# v_data = FieldTimeSeries("$(DATA_DIR)", "v")
-# T_data = FieldTimeSeries("$(DATA_DIR)", "T")
-# S_data = FieldTimeSeries("$(DATA_DIR)", "S")
-# # ν_data = FieldTimeSeries("$(DATA_DIR)", "ν")
-# # κ_data = FieldTimeSeries("$(DATA_DIR)", "κ")
-# # Ri_data = FieldTimeSeries("$(DATA_DIR)", "Ri")
-# # wT_data = FieldTimeSeries("$(DATA_DIR)", "wT")
-# # wS_data = FieldTimeSeries("$(DATA_DIR)", "wS")
+function find_max(a...)
+  return maximum(maximum.([a...]))
+end
 
-# yC = ynodes(T_data.grid, Center())
-# yF = ynodes(T_data.grid, Face())
+N²_xz_north_data = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_north.jld2", "N²")
+N²_xz_south_data = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_south.jld2", "N²")
 
-# zC = znodes(T_data.grid, Center())
-# zF = znodes(T_data.grid, Face())
+xC = N²_xz_north_data.grid.xᶜᵃᵃ[1:N²_xz_north_data.grid.Nx]
+zf = N²_xz_north_data.grid.zᵃᵃᶠ[1:N²_xz_north_data.grid.Nz+1]
 
-# Nt = length(T_data.times)
-# #%%
-# fig = Figure(size = (1500, 900))
-# axu = CairoMakie.Axis(fig[1, 1], xlabel = "y (m)", ylabel = "z (m)", title = "u (m/s)")
-# axv = CairoMakie.Axis(fig[1, 3], xlabel = "y (m)", ylabel = "z (m)", title = "v (m/s)")
-# axT = CairoMakie.Axis(fig[2, 1], xlabel = "y (m)", ylabel = "z (m)", title = "Temperature (°C)")
-# axS = CairoMakie.Axis(fig[2, 3], xlabel = "y (m)", ylabel = "z (m)", title = "Salinity (psu)")
-# n = Observable(1)
+yloc_north = N²_xz_north_data.grid.yᵃᶠᵃ[N²_xz_north_data.indices[2][1]]
+yloc_south = N²_xz_south_data.grid.yᵃᶠᵃ[N²_xz_south_data.indices[2][1]]
 
-# uₙ = @lift interior(u_data[$n], 45, :, :)
-# vₙ = @lift interior(v_data[$n], 45, :, :)
-# Tₙ = @lift interior(T_data[$n], 45, :, :)
-# Sₙ = @lift interior(S_data[$n], 45, :, :)
+Nt = length(N²_xz_north_data)
+times = N²_xz_north_data.times / 24 / 60^2 / 365
+timeframes = 1:Nt
 
-# ulim = @lift (-maximum([maximum(abs, $uₙ), 1e-16]), maximum([maximum(abs, $uₙ),  1e-16]))
-# vlim = @lift (-maximum([maximum(abs, $vₙ), 1e-16]), maximum([maximum(abs, $vₙ), 1e-16]))
-# Tlim = (minimum(interior(T_data[1])), maximum(interior(T_data[1])))
-# Slim = (minimum(interior(S_data[1])), maximum(interior(S_data[1])))
+N²_lim = (find_min(interior(N²_xz_north_data, :, 1, :, timeframes), interior(N²_xz_south_data, :, 1, :, timeframes)) - 1e-13, 
+          find_max(interior(N²_xz_north_data, :, 1, :, timeframes), interior(N²_xz_south_data, :, 1, :, timeframes)) + 1e-13)
+#%%
+fig = Figure(size=(800, 800))
+ax_north = Axis(fig[1, 1], xlabel="x (m)", ylabel="z (m)", title="Buoyancy Frequency N² at y = $(round(yloc_south / 1e3)) km")
+ax_south = Axis(fig[2, 1], xlabel="x (m)", ylabel="z (m)", title="Buoyancy Frequency N² at y = $(round(yloc_north / 1e3)) km")
 
-# title_str = @lift "Time: $(round(T_data.times[$n] / 86400, digits=2)) days"
-# Label(fig[0, :], title_str, tellwidth = false)
+n = Observable(2)
 
-# hu = heatmap!(axu, yC, zC, uₙ, colormap=:RdBu_9, colorrange=ulim)
-# hv = heatmap!(axv, yF, zC, vₙ, colormap=:RdBu_9, colorrange=vlim)
-# hT = heatmap!(axT, yC, zC, Tₙ, colorrange=Tlim)
-# hS = heatmap!(axS, yC, zC, Sₙ, colorrange=Slim)
+N²_north = @lift interior(N²_xz_north_data[$n], :, 1, :)
+N²_south = @lift interior(N²_xz_south_data[$n], :, 1, :)
 
-# Colorbar(fig[1, 2], hu, label = "u (m/s)")
-# Colorbar(fig[1, 4], hv, label = "v (m/s)")
-# Colorbar(fig[2, 2], hT, label = "T (°C)")
-# Colorbar(fig[2, 4], hS, label = "S (psu)")
+colorscheme = colorschemes[:jet]
 
-# CairoMakie.record(fig, "./$(dataname)_test.mp4", 1:Nt, framerate=10) do nn
-#     n[] = nn
-# end
+N²_north_surface = heatmap!(ax_north, xC, zf, N²_north, colormap=colorscheme, colorrange=N²_lim)
+N²_south_surface = heatmap!(ax_south, xC, zf, N²_south, colormap=colorscheme, colorrange=N²_lim)
 
-# display(fig)
-# #%%
-# fig = Figure(size = (1920, 1080))
-# axu = CairoMakie.Axis(fig[1, 1], xlabel = "y (m)", ylabel = "z (m)", title = "u")
-# axv = CairoMakie.Axis(fig[1, 3], xlabel = "y (m)", ylabel = "z (m)", title = "v")
-# axT = CairoMakie.Axis(fig[2, 1], xlabel = "y (m)", ylabel = "z (m)", title = "Temperature")
-# axS = CairoMakie.Axis(fig[2, 3], xlabel = "y (m)", ylabel = "z (m)", title = "Salinity")
-# axν = CairoMakie.Axis(fig[1, 5], xlabel = "y (m)", ylabel = "z (m)", title = "Viscosity (log10 scale)")
-# axκ = CairoMakie.Axis(fig[2, 5], xlabel = "y (m)", ylabel = "z (m)", title = "Diffusivity (log10 scale)")
-# axRi = CairoMakie.Axis(fig[3, 5], xlabel = "y (m)", ylabel = "z (m)", title = "Richardson number")
-# axwT = CairoMakie.Axis(fig[3, 1], xlabel = "y (m)", ylabel = "z (m)", title = "wT(NN)")
-# axwS = CairoMakie.Axis(fig[3, 3], xlabel = "y (m)", ylabel = "z (m)", title = "wS(NN)")
+Colorbar(fig[1:2, 2], N²_north_surface, label="N² (s⁻²)")
 
-# n = Observable(1)
+title_str = @lift "Time = $(round(times[$n], digits=2)) days"
+Label(fig[0, :], text=title_str, tellwidth=false, font=:bold)
 
-# uₙ = @lift interior(u_data[$n], 1, :, :)
-# vₙ = @lift interior(v_data[$n], 1, :, :)
-# Tₙ = @lift interior(T_data[$n], 1, :, :)
-# Sₙ = @lift interior(S_data[$n], 1, :, :)
-# νₙ = @lift log10.(interior(ν_data[$n], 1, :, :))
-# κₙ = @lift log10.(interior(κ_data[$n], 1, :, :))
-# Riₙ = @lift clamp.(interior(Ri_data[$n], 1, :, :), -20, 20)
-# wTₙ = @lift interior(wT_data[$n], 1, :, :)
-# wSₙ = @lift interior(wS_data[$n], 1, :, :)
+trim!(fig.layout)
 
-# ulim = @lift (-maximum([maximum(abs, $uₙ), 1e-7]), maximum([maximum(abs, $uₙ), 1e-7]))
-# vlim = @lift (-maximum([maximum(abs, $vₙ), 1e-7]), maximum([maximum(abs, $vₙ), 1e-7]))
-# Tlim = (minimum(interior(T_data[1])), maximum(interior(T_data[1])))
-# Slim = (minimum(interior(S_data[1])), maximum(interior(S_data[1])))
-# νlim = (-6, 2)
-# κlim = (-6, 2)
-# wTlim = @lift (-maximum([maximum(abs, $wTₙ), 1e-7]), maximum([maximum(abs, $wTₙ), 1e-7]))
-# wSlim = @lift (-maximum([maximum(abs, $wSₙ), 1e-7]), maximum([maximum(abs, $wSₙ), 1e-7]))
+@info "Recording buoyancy frequency xz slice"
+CairoMakie.record(fig, "$(FILE_DIR)/$(filename)_buoyancy_frequency_xz_slice.mp4", 1:Nt, framerate=20, px_per_unit=2) do nn
+  n[] = nn
+end
 
-# title_str = @lift "Time: $(round(T_data.times[$n] / 86400, digits=2)) days"
-# Label(fig[0, :], title_str, tellwidth = false)
-
-# hu = heatmap!(axu, yC, zC, uₙ, colormap=:RdBu_9, colorrange=ulim)
-# hv = heatmap!(axv, yF, zC, vₙ, colormap=:RdBu_9, colorrange=vlim)
-# hT = heatmap!(axT, yC, zC, Tₙ, colorrange=Tlim)
-# hS = heatmap!(axS, yC, zC, Sₙ, colorrange=Slim)
-# hν = heatmap!(axν, yC, zC, νₙ, colorrange=νlim)
-# hκ = heatmap!(axκ, yC, zC, κₙ, colorrange=κlim)
-# hRi = heatmap!(axRi, yC, zF, Riₙ, colormap=:RdBu_9, colorrange=(-20, 20))
-# hwT = heatmap!(axwT, yC, zF, wTₙ, colormap=:RdBu_9, colorrange=wTlim)
-# hwS = heatmap!(axwS, yC, zF, wSₙ, colormap=:RdBu_9, colorrange=wSlim)
-
-# cbu = Colorbar(fig[1, 2], hu, label = "(m/s)")
-# cbv = Colorbar(fig[1, 4], hv, label = "(m/s)")
-# cbT = Colorbar(fig[2, 2], hT, label = "(°C)")
-# cbS = Colorbar(fig[2, 4], hS, label = "(psu)")
-# cbν = Colorbar(fig[1, 6], hν, label = "(m²/s)")
-# cbκ = Colorbar(fig[2, 6], hκ, label = "(m²/s)")
-# cbRi = Colorbar(fig[3, 6], hRi)
-# cbwT = Colorbar(fig[3, 2], hwT, label = "(m/s °C)")
-# cbwS = Colorbar(fig[3, 4], hwS, label = "(m/s psu)")
-
-# tight_ticklabel_spacing!(cbu)
-# tight_ticklabel_spacing!(cbv)
-# tight_ticklabel_spacing!(cbT)
-# tight_ticklabel_spacing!(cbS)
-# tight_ticklabel_spacing!(cbν)
-# tight_ticklabel_spacing!(cbκ)
-# tight_ticklabel_spacing!(cbRi)
-# tight_ticklabel_spacing!(cbwT)
-# tight_ticklabel_spacing!(cbwS)
-
-# CairoMakie.record(fig, "./$(dataname)_2D_sin_cooling_heating_23days_fluxes.mp4", 1:Nt, framerate=30) do nn
-#     n[] = nn
-# end
-# #%%
+@info "Done!"
+#%%
