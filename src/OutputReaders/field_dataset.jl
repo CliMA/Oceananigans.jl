@@ -1,5 +1,5 @@
 struct FieldDataset{F, M, P}
-    fields :: F
+      fields :: F
     metadata :: M
     filepath :: P
 end
@@ -51,7 +51,7 @@ Base.getindex(fds::FieldDataset, inds...) = Base.getindex(fds.fields, inds...)
 Base.getindex(fds::FieldDataset, i::Symbol) = Base.getindex(fds, string(i))
 
 function Base.getproperty(fds::FieldDataset, name::Symbol)
-    if name in propertynames(ds)
+    if name in propertynames(fds)
         return getfield(fds, name)
     else
         return getindex(fds, name)
