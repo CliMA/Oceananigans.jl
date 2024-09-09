@@ -259,13 +259,18 @@ end
 struct AdamsBashforth3Scheme end
 struct ForwardBackwardScheme end
 
+struct DissipativeForwardBackwardScheme{FT}
+    θ :: FT
+end
 
-auxiliary_free_surface_field(grid, ::AdamsBashforth3Scheme) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+DissipativeForwardBackwardScheme(; dissipation_parameter = 0.14) = DissipativeForwardBackwardScheme(dissipation_parameter)
+
+auxiliary_free_surface_field(grid, timestepper) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+auxiliary_barotropic_U_field(grid, timestepper) = XFaceField(grid, indices = (:, :, size(grid, 3)))
+auxiliary_barotropic_V_field(grid, timestepper) = YFaceField(grid, indices = (:, :, size(grid, 3)))
+
 auxiliary_free_surface_field(grid, ::ForwardBackwardScheme) = nothing
-
-auxiliary_barotropic_U_field(grid, ::AdamsBashforth3Scheme) = XFaceField(grid, indices = (:, :, size(grid, 3)))
 auxiliary_barotropic_U_field(grid, ::ForwardBackwardScheme) = nothing
-auxiliary_barotropic_V_field(grid, ::AdamsBashforth3Scheme) = YFaceField(grid, indices = (:, :, size(grid, 3)))
 auxiliary_barotropic_V_field(grid, ::ForwardBackwardScheme) = nothing
 
 # (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002 
@@ -331,7 +336,7 @@ function SplitExplicitSettings(grid = nothing;
                                cfl = nothing,
                                fixed_Δt = nothing,
                                averaging_kernel = averaging_shape_function,
-                               timestepper = ForwardBackwardScheme())
+                               timestepper = DissipativeForwardBackwardScheme())
 
     settings_kwargs = (; gravitational_acceleration,
                          substeps,

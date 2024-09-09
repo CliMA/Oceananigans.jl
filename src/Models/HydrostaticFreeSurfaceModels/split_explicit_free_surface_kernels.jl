@@ -119,7 +119,17 @@ end
 @inline U★(i, j, k, grid, ::ForwardBackwardScheme, U, args...) = @inbounds U[i, j, k]
 @inline η★(i, j, k, grid, ::ForwardBackwardScheme, η, args...) = @inbounds η[i, j, k]
 
+# Forward Backward Step
+@inline U★(i, j, k, grid, t::DissipativeForwardBackwardScheme, U,  Uᵐ⁻¹, args...) = @inbounds (1 + t.θ) * U[i, j, k] - t.θ * Uᵐ⁻¹[i, j, k]
+@inline η★(i, j, k, grid, t::DissipativeForwardBackwardScheme, η, args...) = @inbounds η[i, j, k]
+
 @inline advance_previous_velocity!(i, j, k, ::ForwardBackwardScheme, U, Uᵐ⁻¹, Uᵐ⁻²) = nothing
+
+@inline function advance_previous_velocity!(i, j, k, ::DissipativeForwardBackwardScheme, U, Uᵐ⁻¹, Uᵐ⁻²)  
+    @inbounds Uᵐ⁻¹[i, j, k] = U[i, j, k]
+
+    return nothing
+end
 
 @inline function advance_previous_velocity!(i, j, k, ::AdamsBashforth3Scheme, U, Uᵐ⁻¹, Uᵐ⁻²)
     @inbounds Uᵐ⁻²[i, j, k] = Uᵐ⁻¹[i, j, k]
@@ -129,6 +139,7 @@ end
 end
 
 @inline advance_previous_free_surface!(i, j, k, ::ForwardBackwardScheme, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) = nothing
+@inline advance_previous_free_surface!(i, j, k, ::DissipativeForwardBackwardScheme, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) = nothing
 
 @inline function advance_previous_free_surface!(i, j, k, ::AdamsBashforth3Scheme, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)
     @inbounds ηᵐ⁻²[i, j, k] = ηᵐ⁻¹[i, j, k]
@@ -187,11 +198,14 @@ end
         V[i, j, k_top-1] +=  Δτ * (- g * Hᶜᶠ[i, j, 1] * ∂yᶜᶠᶠ_η(i, j, k_top, grid, TY, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gⱽ[i, j, k_top-1])
                           
         # time-averaging
-        η̅[i, j, k_top]   += averaging_weight * η[i, j, k_top]
-        U̅[i, j, k_top-1] += averaging_weight * U[i, j, k_top-1]
-        V̅[i, j, k_top-1] += averaging_weight * V[i, j, k_top-1]
+        time_average!(η̅, i, j, k_top,   timestepper, averaging_weight, η)
+        time_average!(U̅, i, j, k_top-1, timestepper, averaging_weight, U)
+        time_average!(V̅, i, j, k_top-1, timestepper, averaging_weight, V)
     end
 end
+
+@inline time_average!(A̅, i, j, k, timestepper, averaging_weight, A) = @inbounds A̅[i, j, k] += averaging_weight * A[i, j, k]
+@inline time_average!(A̅, i, j, k, ::DissipativeForwardBackwardScheme, averaging_weight, A) = nothing
 
 # Barotropic Model Kernels
 # u_Δz = u * Δz
@@ -323,8 +337,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
         # Solve for the free surface at tⁿ⁺¹
         iterate_split_explicit!(free_surface, free_surface_grid, Δτᴮ, weights, Val(Nsubsteps))
         
-        # Reset eta for the next timestep
-        set!(free_surface.η, free_surface.state.η̅)
+        update_state!(free_surface.state, free_surface.η, settings.timestepper)
     end
 
     fields_to_fill = (free_surface.state.U̅, free_surface.state.V̅)
@@ -335,6 +348,16 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
         mask_immersed_field!(model.velocities.u)
         mask_immersed_field!(model.velocities.v)
     end
+
+    return nothing
+end
+
+@inline update_state!(state, η, timestepper) = set!(state.η, state.η̅)
+
+@inline function update_averages!(state, ::DissipativeForwardBackwardScheme) 
+    set!(state.U̅, state.U)
+    set!(state.V̅, state.V)
+    set!(state.η̅, state.η)
 
     return nothing
 end

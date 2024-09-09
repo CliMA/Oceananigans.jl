@@ -109,23 +109,11 @@ end
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: averaging_shape_function,
                                                         ForwardBackwardScheme,
-                                                        AdamsBashforth3Scheme
+                                                        AdamsBashforth3Scheme,
+                                                        DissipativeForwardBackwardScheme
 
 # @inline new_function(t) = averaging_shape_function(t; r = 0.15766, p = 2, q = 2)
 @inline new_function(t) =  t ≥ 1/2 && t ≤ 3/2 ? 1.0 : 0.0
-
-topology_types = [(Bounded, Periodic, Bounded), (Periodic, Periodic, Bounded)]
-topology_types = [topology_types[2]]
-
-archs = [Oceananigans.CPU()] #, Oceananigans.GPU()]
-archs = [archs[1]]
-
-simulations = [geostrophic_adjustment_simulation(free_surface, topology_type, multi_region, arch = arch) 
-              for (free_surface, multi_region) in zip(free_surfaces, (true, false, false)), 
-              topology_type in topology_types, 
-              arch in archs]
-
-data = [run_and_analyze(sim) for sim in simulations]
 
 using GLMakie
 using JLD2
@@ -140,16 +128,32 @@ grid = RectilinearGrid(arch,
         x = (0, Lh), y = (0, Lh), z = (-Lz, 0),
         topology = topology)
 
-explicit_free_surface = ExplicitFreeSurface()
-fft_based_free_surface = ImplicitFreeSurface(solver_method = :FastFourierTransform)
-pcg_free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient)
-matrix_free_surface = ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver)
-splitexplicit_free_surface = SplitExplicitFreeSurface(grid,
-                                                      substeps = 10, 
-                                                      averaging_kernel = averaging_shape_function,
-                                                      timestepper = AdamsBashforth3Scheme())
+free_surface1 = SplitExplicitFreeSurface(grid,
+                                         substeps = 20, 
+                                         timestepper = AdamsBashforth3Scheme())
 
-free_surfaces = [splitexplicit_free_surface, matrix_free_surface, explicit_free_surface]
+free_surface2 = SplitExplicitFreeSurface(grid,
+                                         substeps = 20,
+                                         timestepper = ForwardBackwardScheme())
+
+free_surface3 = SplitExplicitFreeSurface(grid,
+                                         substeps = 10, 
+                                         timestepper = DissipativeForwardBackwardScheme())
+
+free_surfaces = [free_surface1, free_surface2, free_surface3]
+
+topology_types = [(Bounded, Periodic, Bounded), (Periodic, Periodic, Bounded)]
+topology_types = [topology_types[2]]
+
+archs = [Oceananigans.CPU()] #, Oceananigans.GPU()]
+archs = [archs[1]]
+
+simulations = [geostrophic_adjustment_simulation(free_surface, topology_type, false, arch = arch) 
+              for free_surface in free_surfaces, 
+              topology_type in topology_types, 
+              arch in archs]
+
+data = [run_and_analyze(sim) for sim in simulations]
 
 x  = grid.xᶜᵃᵃ[1:grid.Nx]
 xf = grid.xᶠᵃᵃ[1:grid.Nx+1]
