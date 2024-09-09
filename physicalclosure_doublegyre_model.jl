@@ -141,7 +141,7 @@ model = HydrostaticFreeSurfaceModel(
     buoyancy = SeawaterBuoyancy(equation_of_state=TEOS10.TEOS10EquationOfState()),
     coriolis = coriolis,
     closure = VerticalScalarDiffusivity(ν=1e-5, κ=1e-5),
-    tracers = (:T, :S),
+    tracers = (:T, :S, :e),
     boundary_conditions = (; u = u_bcs, v = v_bcs, T = T_bcs, S = S_bcs),
 )
 
@@ -153,7 +153,7 @@ model = HydrostaticFreeSurfaceModel(
     buoyancy = SeawaterBuoyancy(equation_of_state=TEOS10.TEOS10EquationOfState()),
     coriolis = coriolis,
     closure = closure,
-    tracers = (:T, :S),
+    tracers = (:T, :S, :e),
     boundary_conditions = (; u = u_bcs, v = v_bcs, T = T_bcs, S = S_bcs),
 )
 
