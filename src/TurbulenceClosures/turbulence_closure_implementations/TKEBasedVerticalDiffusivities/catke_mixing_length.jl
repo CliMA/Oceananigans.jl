@@ -16,7 +16,7 @@ Base.@kwdef struct CATKEMixingLength{FT}
     Cˢ   :: FT = 1.131  # Surface distance coefficient for shear length scale
     Cᵇ   :: FT = Inf    # Bottom distance coefficient for shear length scale
     Cˢᵖ  :: FT = 0.505  # Sheared convective plume coefficient
-    CRiᵟ :: FT = 0.102  # Stability function width 
+    CRiᵟ :: FT = 1.02   # Stability function width 
     CRi⁰ :: FT = 0.254  # Stability function lower Ri
     Cʰⁱu :: FT = 0.242  # Shear mixing length coefficient for momentum at high Ri
     Cˡᵒu :: FT = 0.361  # Shear mixing length coefficient for momentum at low Ri
