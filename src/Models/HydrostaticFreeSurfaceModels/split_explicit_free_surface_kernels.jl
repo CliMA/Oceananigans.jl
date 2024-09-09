@@ -205,6 +205,8 @@ end
 end
 
 @inline time_average!(A̅, i, j, k, timestepper, averaging_weight, A) = @inbounds A̅[i, j, k] += averaging_weight * A[i, j, k]
+
+# For a dissipative forward-backward scheme, we use the pointwise state, averages are not taken
 @inline time_average!(A̅, i, j, k, ::DissipativeForwardBackwardScheme, averaging_weight, A) = nothing
 
 # Barotropic Model Kernels
@@ -352,12 +354,14 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     return nothing
 end
 
-@inline update_update_free_surface_state!(state, η, timestepper) = set!(state.η, state.η̅)
+# For a forward-backward scheme, the free surface state is updated with the current average state
+@inline update_update_free_surface_state!(state, η, timestepper) = set!(η, state.η̅)
 
-@inline function update_free_surface_state!(state, ::DissipativeForwardBackwardScheme) 
+# For a dissipative forward-backward scheme, we use the pointwise state, averages are not taken
+@inline function update_free_surface_state!(state, η, ::DissipativeForwardBackwardScheme) 
     set!(state.U̅, state.U)
     set!(state.V̅, state.V)
-    set!(state.η̅, state.η)
+    set!(state.η̅, η)
 
     return nothing
 end
