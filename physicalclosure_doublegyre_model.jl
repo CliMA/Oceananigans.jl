@@ -34,14 +34,10 @@ mkpath(FILE_DIR)
 # Architecture
 model_architecture = GPU()
 
-# nn_closure = NNFluxClosure(model_architecture)
-# base_closure = XinKaiLocalVerticalDiffusivity()
-# closure = (nn_closure, base_closure)
-
-vertical_base_closure = VerticalScalarDiffusivity(ν=1e-5, κ=1e-5)
+# vertical_base_closure = VerticalScalarDiffusivity(ν=1e-5, κ=1e-5)
 # convection_closure = XinKaiVerticalDiffusivity()
 convection_closure = CATKEVerticalDiffusivity()
-closure = (vertical_base_closure, convection_closure)
+closure = convection_closure
 # closure = vertical_base_closure
 
 # number of grid points
