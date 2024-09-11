@@ -86,3 +86,76 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds data[i, j, k] = operand[i, j, k]
 end
+
+# struct FusedComputedFields{G, I}
+#     fields :: Vector{ComputedField}
+#     grid :: G
+#     indices :: I
+
+#     function FusedComputedFields(fields::Vector{ComputedField})
+#         grid = first(fields).grid
+#         indices = first(fields).indices
+#         arch = architecture(first(fields))
+#         sz = size(first(fields))
+
+#         for field in fields
+#             if !(field isa FullField) || (field isa ReducedField)
+#                 throw(ArgumentError("All fields in FusedComputedFields must be FullField!"))
+#             end
+#             if field.grid !== grid
+#                 throw(ArgumentError("All fields in FusedComputedFields must have the same grid!"))
+#             end
+#             if field.indices != indices
+#                 throw(ArgumentError("All fields in FusedComputedFields must have the same indices!"))
+#             end
+#             if architecture(field) !== arch
+#                 throw(ArgumentError("All fields in FusedComputedFields must have the same architecture!"))
+#             end
+#             if size(field) != sz
+#                 throw(ArgumentError("All fields in FusedComputedFields must have the same size!"))
+#             end
+#         end
+
+#         new(fields, grid, indices)
+#     end
+# end
+
+function compute!(comps::Tuple{Vararg{ComputedField}}, time=nothing)
+    grid = first(comps).grid
+    indices = first(comps).indices
+    arch = architecture(first(comps))
+    sz = size(first(comps))
+
+    # ordinary_field_ids = []
+
+    for (i, comp) in enumerate(comps)
+        comp.grid !== grid || throw(ArgumentError("All fields to compute must have the same grid!"))
+        comp.indices != indices || throw(ArgumentError("All fields to compute must have the same indices!"))
+        architecture(comp) !== arch || throw(ArgumentError("All fields to compute must have the same architecture!"))
+        size(comp) != sz || throw(ArgumentError("All fields to compute must have the same size!"))
+        (comp isa FullField) && !(comp isa ReducedField) || throw(ArgumentError("All fields to compute must be FullField!"))
+    end
+
+    for comp in comps
+        compute_at!(comp.operand, time)
+    end
+
+    datas = Tuple(comp.data for comp in comps)
+    operands = Tuple(comp.operand for comp in comps)
+
+    @apply_regionally launch!(arch, grid, sz, _fused_compute!, datas, operands, indices)
+
+    tupled_fill_halo_regions!(comps, grid)
+end
+
+@kernel function _fused_compute!(datas, operands, index_ranges)
+    i, j, k = @index(Global, NTuple)
+
+    for (data, operand) in zip(datas, operands)
+        i′ = offset_compute_index(index_ranges[1], i)
+        j′ = offset_compute_index(index_ranges[2], j)
+        k′ = offset_compute_index(index_ranges[3], k)
+
+        @inbounds data[i′, j′, k′] = operand[i′, j′, k′]
+    end
+end
