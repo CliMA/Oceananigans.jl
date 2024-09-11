@@ -304,15 +304,15 @@ end
 """
 Explicitly step forward η in substeps.
 """
-ab2_step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt, χ) =
-    split_explicit_free_surface_step!(free_surface, model, Δt, χ)
+step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt) =
+    split_explicit_free_surface_step!(free_surface, model, Δt)
 
 function initialize_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocities)
     @apply_regionally compute_barotropic_mode!(sefs.state.U̅, sefs.state.V̅, grid, velocities.u, velocities.v)
     fill_halo_regions!((sefs.state.U̅, sefs.state.V̅, sefs.η))
 end
 
-function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ)
+function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt)
 
     # Note: free_surface.η.grid != model.grid for DistributedSplitExplicitFreeSurface
     # since halo_size(free_surface.η.grid) != halo_size(model.grid)
@@ -326,11 +326,11 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     Nsubsteps = calculate_substeps(settings.substepping, Δt)
     
     # barotropic time step as fraction of baroclinic step and averaging weights
-    fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) 
+    fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps, settings.timestepper) 
     Nsubsteps = length(weights)
 
     # barotropic time step in seconds
-    Δτᴮ = fractional_Δt * Δt  
+    Δτᴮ = fractional_Δt * Δt
     
     # reset free surface averages
     @apply_regionally begin 
@@ -355,7 +355,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 end
 
 # For a forward-backward scheme, the free surface state is updated with the current average state
-@inline update_update_free_surface_state!(state, η, timestepper) = set!(η, state.η̅)
+@inline update_free_surface_state!(state, η, timestepper) = set!(η, state.η̅)
 
 # For a dissipative forward-backward scheme, we use the pointwise state, averages are not taken
 @inline function update_free_surface_state!(state, η, ::DissipativeForwardBackwardScheme) 
@@ -377,9 +377,9 @@ const MINIMUM_SUBSTEPS = 5
 @inline calculate_substeps(substepping::FNS, Δt=nothing) = length(substepping.averaging_weights)
 @inline calculate_substeps(substepping::FTS, Δt) = max(MINIMUM_SUBSTEPS, ceil(Int, 2 * Δt / substepping.Δt_barotropic))
 
-@inline calculate_adaptive_settings(substepping::FNS, substeps) = substepping.fractional_step_size, substepping.averaging_weights
-@inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic),
-                                                                                        substeps, substepping.averaging_kernel)
+@inline calculate_adaptive_settings(substepping::FNS, substeps, timestepper) = substepping.fractional_step_size, substepping.averaging_weights
+@inline calculate_adaptive_settings(substepping::FTS, substeps, timestepper) = weights_from_substeps(eltype(substepping.Δt_barotropic),
+                                                                                                     substeps, substepping.averaging_kernel, timestepper)
 
 const FixedSubstepsSetting{N} = SplitExplicitSettings{<:FixedSubstepNumber{<:Any, <:NTuple{N, <:Any}}} where N
 const FixedSubstepsSplitExplicit{F} = SplitExplicitFreeSurface{<:Any, <:Any, <:Any, <:Any, <:FixedSubstepsSetting{N}} where N
@@ -438,7 +438,7 @@ function iterate_split_explicit!(free_surface, grid, Δτᴮ, weights, ::Val{Nsu
 end
 
 # Calculate RHS for the barotropic time step.
-@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+@kernel function _ab2_compute_integrated_tendencies!(Gᵁ, Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     i, j  = @index(Global, NTuple)
     k_top = grid.Nz + 1
 
@@ -452,7 +452,7 @@ end
 end
 
 # Calculate RHS for the barotropic time step.q
-@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid::ActiveZColumnsIBG, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+@kernel function _ab2_compute_integrated_tendencies!(Gᵁ, Gⱽ, grid::ActiveZColumnsIBG, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     idx = @index(Global, Linear)
     i, j = active_linear_index_to_tuple(idx, ZColumnMap(), grid)
     k_top = grid.Nz+1
@@ -472,9 +472,44 @@ end
 @inline ab2_step_Gv(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT =
     @inbounds ifelse(peripheral_node(i, j, k, grid, c, f, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
 
+# Calculate RHS for the barotropic time step.q
+@kernel function _rk3_compute_integrated_tendencies!(Gᵁ, Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, γⁿ, ζⁿ)
+    i, j = @index(Global, NTuple)
+    k_top = grid.Nz+1
+
+    @inbounds Gᵁ[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * rk3_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, γⁿ, ζⁿ)
+    @inbounds Gⱽ[i, j, k_top-1] = Δzᶜᶠᶜ(i, j, 1, grid) * rk3_step_Gv(i, j, 1, grid, Gv⁻, Gvⁿ, γⁿ, ζⁿ)
+
+    for k in 2:grid.Nz	
+        @inbounds Gᵁ[i, j, k_top-1] += Δzᶠᶜᶜ(i, j, k, grid) * rk3_step_Gu(i, j, k, grid, Gu⁻, Guⁿ, γⁿ, ζⁿ)
+        @inbounds Gⱽ[i, j, k_top-1] += Δzᶜᶠᶜ(i, j, k, grid) * rk3_step_Gv(i, j, k, grid, Gv⁻, Gvⁿ, γⁿ, ζⁿ)
+    end	
+end
+
+# Calculate RHS for the barotropic time step.q
+@kernel function _rk3_compute_integrated_tendencies!(Gᵁ, Gⱽ, grid::ActiveZColumnsIBG, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, γⁿ, ζⁿ)
+    idx = @index(Global, Linear)
+    i, j = active_linear_index_to_tuple(idx, ZColumnMap(), grid)
+    k_top = grid.Nz+1
+
+    @inbounds Gᵁ[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * rk3_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, γⁿ, ζⁿ)
+    @inbounds Gⱽ[i, j, k_top-1] = Δzᶜᶠᶜ(i, j, 1, grid) * rk3_step_Gv(i, j, 1, grid, Gv⁻, Gvⁿ, γⁿ, ζⁿ)
+
+    for k in 2:grid.Nz	
+        @inbounds Gᵁ[i, j, k_top-1] += Δzᶠᶜᶜ(i, j, k, grid) * rk3_step_Gu(i, j, k, grid, Gu⁻, Guⁿ, γⁿ, ζⁿ)
+        @inbounds Gⱽ[i, j, k_top-1] += Δzᶜᶠᶜ(i, j, k, grid) * rk3_step_Gv(i, j, k, grid, Gv⁻, Gvⁿ, γⁿ, ζⁿ)
+    end	
+end
+
+@inline rk3_step_Gu(i, j, k, grid, G⁻, Gⁿ, γⁿ, ζⁿ) =
+    @inbounds ifelse(peripheral_node(i, j, k, grid, f, c, c), zero(grid), γⁿ *  Gⁿ[i, j, k] + ζⁿ * G⁻[i, j, k])
+
+@inline rk3_step_Gv(i, j, k, grid, G⁻, Gⁿ, γⁿ, ζⁿ) =
+    @inbounds ifelse(peripheral_node(i, j, k, grid, c, f, c), zero(grid), γⁿ *  Gⁿ[i, j, k] + ζⁿ * G⁻[i, j, k])
+
 # Setting up the RHS for the barotropic step (tendencies of the barotropic velocity components)
 # This function is called after `calculate_tendency` and before `ab2_step_velocities!`
-function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
+function ab2_setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
     
     # we start the time integration of η from the average ηⁿ     
     Gu⁻ = model.timestepper.G⁻.u
@@ -492,9 +527,33 @@ function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
     return nothing
 end
 
-setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ) =
-    launch!(architecture(grid), grid, :xy, _compute_integrated_ab2_tendencies!, auxiliary.Gᵁ, auxiliary.Gⱽ, grid, 
+ab2_setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ) =
+    launch!(architecture(grid), grid, :xy, _ab2_compute_integrated_tendencies!, auxiliary.Gᵁ, auxiliary.Gⱽ, grid, 
             Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ; active_cells_map = active_surface_map(grid))
+
+# Setting up the RHS for the barotropic step (tendencies of the barotropic velocity components)
+# This function is called after `calculate_tendency` and before `ab2_step_velocities!`
+function rk3_setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, γⁿ, ζⁿ)
+    
+    # we start the time integration of η from the average ηⁿ     
+    Gu⁻ = model.timestepper.G⁻.u
+    Gv⁻ = model.timestepper.G⁻.v
+    Guⁿ = model.timestepper.Gⁿ.u
+    Gvⁿ = model.timestepper.Gⁿ.v
+
+    auxiliary = free_surface.auxiliary
+
+    @apply_regionally rk3_setup_split_explicit_tendency!(auxiliary, model.grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, γⁿ, ζⁿ)
+
+    fields_to_fill = (auxiliary.Gᵁ, auxiliary.Gⱽ)
+    fill_halo_regions!(fields_to_fill; async = true)
+
+    return nothing
+end
+
+rk3_setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, γⁿ, ζⁿ) =
+    launch!(architecture(grid), grid, :xy, _rk3_compute_integrated_tendencies!, auxiliary.Gᵁ, auxiliary.Gⱽ, grid, 
+            Gu⁻, Gv⁻, Guⁿ, Gvⁿ,  γⁿ, ζⁿ; active_cells_map = active_surface_map(grid))
             
 wait_free_surface_communication!(free_surface, arch) = nothing
 

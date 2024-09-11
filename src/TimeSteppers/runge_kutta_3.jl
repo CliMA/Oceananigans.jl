@@ -102,7 +102,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # First stage
     #
 
-    rk3_substep!(model, Δt, γ¹, nothing)
+    rk3_substep!(model, Δt, γ¹, zero(γ¹))
 
     tick!(model.clock, first_stage_Δt; stage=true)
     model.clock.last_stage_Δt = first_stage_Δt

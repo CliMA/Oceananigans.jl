@@ -315,7 +315,7 @@ function FixedTimeStepSize(grid;
     return FixedTimeStepSize(Δt_barotropic, averaging_kernel)
 end
 
-@inline function weights_from_substeps(FT, substeps, averaging_kernel)
+@inline function weights_from_substeps(FT, substeps, averaging_kernel, timestepper)
 
     τᶠ = range(FT(0), FT(2), length = substeps+1)
     Δτ = τᶠ[2] - τᶠ[1]
@@ -329,6 +329,9 @@ end
 
     return Δτ, tuple(averaging_weights...)
 end
+
+@inline weights_from_substeps(FT, substeps, averaging_kernel, ::DissipativeForwardBackwardScheme) = 
+    convert(FT, 1 / substeps), tuple(zeros(FT, substeps)...)
 
 function SplitExplicitSettings(grid = nothing;
                                gravitational_acceleration = g_Earth,
@@ -372,7 +375,7 @@ function SplitExplicitSettings(grid = nothing;
         end
     end
 
-    fractional_step_size, averaging_weights = weights_from_substeps(FT, substeps, averaging_kernel)
+    fractional_step_size, averaging_weights = weights_from_substeps(FT, substeps, averaging_kernel, timestepper)
     substepping = FixedSubstepNumber(fractional_step_size, averaging_weights)
 
     return SplitExplicitSettings(substepping, timestepper, settings_kwargs)

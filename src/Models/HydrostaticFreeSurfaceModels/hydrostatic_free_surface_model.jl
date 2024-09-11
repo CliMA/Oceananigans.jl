@@ -110,7 +110,8 @@ function HydrostaticFreeSurfaceModel(; grid,
                                           coriolis = nothing,
                                       free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
                                            tracers = nothing,
-                                      forcing::NamedTuple = NamedTuple(),
+                               forcing::NamedTuple = NamedTuple(),
+                                       timestepper = :QuasiAdamsBashforth2,
                                            closure = nothing,
                    boundary_conditions::NamedTuple = NamedTuple(),
                      particles::ParticlesOrNothing = nothing,
@@ -178,7 +179,7 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     # Instantiate timestepper if not already instantiated
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
-    timestepper = TimeStepper(:QuasiAdamsBashforth2, grid, tracernames(tracers);
+    timestepper = TimeStepper(timestepper, grid, tracernames(tracers);
                               implicit_solver = implicit_solver,
                               Gⁿ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, grid, tracernames(tracers)),
                               G⁻ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, grid, tracernames(tracers)))
