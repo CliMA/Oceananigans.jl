@@ -17,6 +17,7 @@ using Oceananigans.Units: kilometers, meters
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: DissipativeForwardBackwardScheme, ForwardBackwardScheme
 using Printf
 using JLD2
+using GLMakie
 
 topo = (Bounded, Periodic, Bounded)
 
@@ -48,7 +49,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                       timestepper = :RungeKutta3,
                                       free_surface = SplitExplicitFreeSurface(grid; 
                                                                               substeps=30,
-                                                                              timestepper = DissipativeForwardBackwardScheme()))
+                                                                              timestepper = ForwardBackwardScheme()))
 
 gaussian(x, L) = exp(-x^2 / 2L^2)
 
@@ -92,4 +93,15 @@ simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(1
 
 run!(simulation)
 
-using GLMakie
+iter = Observable(1)    
+ηi = @lift(interior(ηt[$iter], :, 1, 1))
+
+fig = Figure()
+ax = Axis(fig[1, 1])
+
+lines!(ax, ηi, color = :blue)
+
+GLMakie.record(fig, "test.mp4", 1:length(ηt), framerate = 10) do i
+    @info "frame $i"
+    iter[] = i
+end

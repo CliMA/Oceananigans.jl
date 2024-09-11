@@ -7,8 +7,10 @@ function rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζⁿ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
     substep_field_kernel! = rk3_substep_field!(device(architecture(model)), workgroup, worksize)
-    model_fields = prognostic_fields(model)
+    u, v, w = model.velocities
 
+    model_fields = merge((; u, v), model.tracers)
+    
     for (i, field) in enumerate(model_fields)
         substep_field_kernel!(field, Δt, γⁿ, ζⁿ,
                               model.timestepper.Gⁿ[i],
@@ -28,7 +30,6 @@ function rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζⁿ)
 
     # blocking step for implicit free surface, non blocking for explicit
     step_free_surface!(model.free_surface, model, stage_Δt(Δt, γⁿ, ζⁿ))
-
 
     return nothing
 end

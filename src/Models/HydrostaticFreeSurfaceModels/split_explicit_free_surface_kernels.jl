@@ -477,12 +477,12 @@ end
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
-    @inbounds Gᵁ[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * rk3_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, γⁿ, ζⁿ)
-    @inbounds Gⱽ[i, j, k_top-1] = Δzᶜᶠᶜ(i, j, 1, grid) * rk3_step_Gv(i, j, 1, grid, Gv⁻, Gvⁿ, γⁿ, ζⁿ)
+    @inbounds Gᵁ[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * rk3_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, γⁿ, ζⁿ) / (γⁿ + ζⁿ)
+    @inbounds Gⱽ[i, j, k_top-1] = Δzᶜᶠᶜ(i, j, 1, grid) * rk3_step_Gv(i, j, 1, grid, Gv⁻, Gvⁿ, γⁿ, ζⁿ) / (γⁿ + ζⁿ)
 
     for k in 2:grid.Nz	
-        @inbounds Gᵁ[i, j, k_top-1] += Δzᶠᶜᶜ(i, j, k, grid) * rk3_step_Gu(i, j, k, grid, Gu⁻, Guⁿ, γⁿ, ζⁿ)
-        @inbounds Gⱽ[i, j, k_top-1] += Δzᶜᶠᶜ(i, j, k, grid) * rk3_step_Gv(i, j, k, grid, Gv⁻, Gvⁿ, γⁿ, ζⁿ)
+        @inbounds Gᵁ[i, j, k_top-1] += Δzᶠᶜᶜ(i, j, k, grid) * rk3_step_Gu(i, j, k, grid, Gu⁻, Guⁿ, γⁿ, ζⁿ) / (γⁿ + ζⁿ)
+        @inbounds Gⱽ[i, j, k_top-1] += Δzᶜᶠᶜ(i, j, k, grid) * rk3_step_Gv(i, j, k, grid, Gv⁻, Gvⁿ, γⁿ, ζⁿ) / (γⁿ + ζⁿ)
     end	
 end
 
@@ -492,12 +492,12 @@ end
     i, j = active_linear_index_to_tuple(idx, ZColumnMap(), grid)
     k_top = grid.Nz+1
 
-    @inbounds Gᵁ[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * rk3_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, γⁿ, ζⁿ)
-    @inbounds Gⱽ[i, j, k_top-1] = Δzᶜᶠᶜ(i, j, 1, grid) * rk3_step_Gv(i, j, 1, grid, Gv⁻, Gvⁿ, γⁿ, ζⁿ)
+    @inbounds Gᵁ[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * rk3_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, γⁿ, ζⁿ) / (γⁿ + ζⁿ)
+    @inbounds Gⱽ[i, j, k_top-1] = Δzᶜᶠᶜ(i, j, 1, grid) * rk3_step_Gv(i, j, 1, grid, Gv⁻, Gvⁿ, γⁿ, ζⁿ) / (γⁿ + ζⁿ)
 
     for k in 2:grid.Nz	
-        @inbounds Gᵁ[i, j, k_top-1] += Δzᶠᶜᶜ(i, j, k, grid) * rk3_step_Gu(i, j, k, grid, Gu⁻, Guⁿ, γⁿ, ζⁿ)
-        @inbounds Gⱽ[i, j, k_top-1] += Δzᶜᶠᶜ(i, j, k, grid) * rk3_step_Gv(i, j, k, grid, Gv⁻, Gvⁿ, γⁿ, ζⁿ)
+        @inbounds Gᵁ[i, j, k_top-1] += Δzᶠᶜᶜ(i, j, k, grid) * rk3_step_Gu(i, j, k, grid, Gu⁻, Guⁿ, γⁿ, ζⁿ) / (γⁿ + ζⁿ)
+        @inbounds Gⱽ[i, j, k_top-1] += Δzᶜᶠᶜ(i, j, k, grid) * rk3_step_Gv(i, j, k, grid, Gv⁻, Gvⁿ, γⁿ, ζⁿ) / (γⁿ + ζⁿ)
     end	
 end
 
