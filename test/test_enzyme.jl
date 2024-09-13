@@ -259,6 +259,7 @@ end
                       Active(κ))
 
     @info """ \n
+    Advection-diffusion:
     Enzyme computed $dc²_dκ
     Finite differences computed $dc²_dκ_fd
     """
@@ -339,6 +340,7 @@ end
                       Active(κ))
 
     @info """ \n
+    Advection-diffusion with flux BC:
     Enzyme computed $dc²_dκ
     Finite differences computed $dc²_dκ_fd
     """
