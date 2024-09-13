@@ -153,15 +153,12 @@ nothing #hide
 n = Observable(1)
 
 w_timeseries = FieldTimeSeries(filename, "w")
-x, y, z = nodes(w_timeseries)
-
-w = @lift interior(w_timeseries[$n], :, 1, :)
+w = @lift w_timeseries[$n]
 w_lim = 1e-8
 
-contourf!(ax, x, z, w;
+contourf!(ax, w;
           levels = range(-w_lim, stop=w_lim, length=10),
           colormap = :balance,
-          colorrange = (-w_lim, w_lim),
           extendlow = :auto,
           extendhigh = :auto)
 

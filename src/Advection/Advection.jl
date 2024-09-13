@@ -21,6 +21,7 @@ export
     UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder,
     WENO, WENOThirdOrder, WENOFifthOrder,
     VectorInvariant, WENOVectorInvariant,
+    TracerAdvection,
     EnergyConserving,
     EnstrophyConserving
 
@@ -69,9 +70,8 @@ include("stretched_weno_smoothness.jl")
 include("multi_dimensional_reconstruction.jl")
 include("vector_invariant_upwinding.jl")
 include("vector_invariant_advection.jl")
-include("vector_invariant_cross_upwinding.jl")
 include("vector_invariant_self_upwinding.jl")
-include("vector_invariant_velocity_upwinding.jl")
+include("vector_invariant_cross_upwinding.jl")
 
 include("flat_advective_fluxes.jl")
 include("topologically_conditional_interpolation.jl")
