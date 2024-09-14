@@ -311,7 +311,7 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
     end
     
     solver.iterative_solver(solver.state_vars, solver.matrix, b,
-                            itermax = solver.maximum_iterations,
+                            itmax = solver.maximum_iterations,
                             atol = zero(eltype(b)),
                             rtol = solver.tolerance,
                             ldiv = true,
