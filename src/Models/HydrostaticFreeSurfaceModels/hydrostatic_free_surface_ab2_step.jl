@@ -9,7 +9,7 @@ import Oceananigans.TimeSteppers: ab2_step!
 ##### Step everything
 #####
 
-setup_free_surface!(model, free_surface, χ) = nothing
+ab2_setup_free_surface!(model, free_surface, χ) = nothing
 
 function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
 
