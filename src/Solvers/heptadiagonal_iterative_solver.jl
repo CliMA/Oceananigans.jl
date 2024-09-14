@@ -109,7 +109,7 @@ function HeptadiagonalIterativeSolver(coeffs;
     reduced_matrix = arch_sparse_matrix(arch, speye(eltype(grid), 2))
     preconditioner = build_preconditioner(Val(preconditioner_method), reduced_matrix, settings)
 
-    state_vars = CgSolver(problem_size, problem_size, typeof(template))
+    state_vars = CgSolver(M, M, typeof(template))
 
     return HeptadiagonalIterativeSolver(grid,
                                         problem_size,
