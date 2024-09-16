@@ -175,7 +175,7 @@ constant grid spacing `Δ`, and interior extent `L`.
 
 # Grid domains
 @inline domain(topo, N, ξ) = CUDA.@allowscalar ξ[1], ξ[N+1]
-@inline domain(::Flat, N, ξ::AbstractArray) = CUDA.@allowscalar ξ[1], ξ[1]
+@inline domain(::Flat, N, ξ::AbstractArray) = ξ[1]
 @inline domain(::Flat, N, ξ::Number) = ξ
 @inline domain(::Flat, N, ::Nothing) = nothing
 
@@ -347,7 +347,8 @@ function domain_summary(topo, name, (left, right))
                   topo isa Bounded ? "Bounded  " :
                   topo isa FullyConnected ? "FullyConnected " :
                   topo isa LeftConnected ? "LeftConnected  " :
-                  "RightConnected "
+                  topo isa RightConnected ? "RightConnected  " :
+                  error("Unexpected topology $topo together with the domain end points ($left, $right)")
 
     return string(topo_string, name, " ∈ [",
                   prettysummary(left), ", ",

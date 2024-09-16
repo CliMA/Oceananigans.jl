@@ -290,3 +290,4 @@ Base.summary(schedule::SpecifiedTimes) = string("SpecifiedTimes(", specified_tim
 Base.summary(schedule::ConsecutiveIterations) = string("ConsecutiveIterations(",
                                                        summary(schedule.parent), ", ",
                                                        schedule.consecutive_iterations, ")")
+
