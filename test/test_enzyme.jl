@@ -216,18 +216,6 @@ end
     fill_halo_regions!(u)
     fill_halo_regions!(v)
 
-    @inline function tracer_flux(x, y, t, c, p)
-        c₀ = p.surface_tracer_concentration
-        u★ = p.piston_velocity
-        return - u★ * (c₀ - c)
-    end
-
-    parameters = (surface_tracer_concentration = 1,
-                  piston_velocity = 0.1)
-
-    top_c_bc = FluxBoundaryCondition(tracer_flux, field_dependencies=:c; parameters)
-    c_bcs = FieldBoundaryConditions(top=top_c_bc)
-
     # TODO:
     # 1. Make the velocity fields evolve
     # 2. Add surface fluxes
@@ -296,16 +284,16 @@ end
     fill_halo_regions!(u)
     fill_halo_regions!(v)
 
-    @inline function tracer_flux(x, y, t, c, p)
+    @inline function tracer_flux(i, j, grid, clock, model_fields, p)
         c₀ = p.surface_tracer_concentration
         u★ = p.piston_velocity
-        return - u★ * (c₀ - c)
+        return - u★ * (c₀ - model_fields.c[i,j,end])
     end
 
     parameters = (surface_tracer_concentration = 1,
                   piston_velocity = 0.1)
 
-    top_c_bc = FluxBoundaryCondition(tracer_flux, field_dependencies=:c; parameters)
+    top_c_bc = FluxBoundaryCondition(tracer_flux; discrete_form=true, parameters=parameters)
     c_bcs = FieldBoundaryConditions(top=top_c_bc)
 
     # TODO:
