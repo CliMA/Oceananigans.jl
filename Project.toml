@@ -1,7 +1,7 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 authors = ["Climate Modeling Alliance and contributors"]
-version = "0.91.8"
+version = "0.91.13"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -35,17 +35,18 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 
 [weakdeps]
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 MakieCore = "20f20a25-4f0e-4fdf-b5d1-57303727442b"
 
 [extensions]
 OceananigansEnzymeExt = "Enzyme"
-OceananigansMakieExt = "MakieCore"
+OceananigansMakieExt = ["MakieCore", "Makie"]
 
 [compat]
 Adapt = "3, 4"
 CUDA = "4.1.1, 5"
 Crayons = "4"
-CubedSphere = "0.1, 0.2"
+CubedSphere = "0.2, 0.3"
 Dates = "1.9"
 Distances = "0.10"
 DocStringExtensions = "0.8, 0.9"
@@ -59,8 +60,9 @@ JLD2 = "0.4"
 KernelAbstractions = "0.9.21"
 LinearAlgebra = "1.9"
 Logging = "1.9"
-MakieCore = "0.7, 0.8"
 MPI = "0.16, 0.17, 0.18, 0.19, 0.20"
+Makie = "0.21"
+MakieCore = "0.7, 0.8"
 NCDatasets = "0.12.10, 0.13.1, 0.14"
 OffsetArrays = "1.4"
 OrderedCollections = "1.1"
@@ -68,7 +70,7 @@ Pkg = "1.9"
 Printf = "1.9"
 Random = "1.9"
 Rotations = "1.0"
-SeawaterPolynomials = "0.3.4"
+SeawaterPolynomials = "0.3.5"
 SparseArrays = "1.9"
 Statistics = "1.9"
 StructArrays = "0.4, 0.5, 0.6"
@@ -82,6 +84,7 @@ DataDeps = "124859b0-ceae-595e-8997-d05f6a7a8dfe"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 MPIPreferences = "3da0fdf6-3ccc-4f1b-acd9-58baa6c99267"
+OrthogonalSphericalShellGrids = "c2be9673-fb75-4747-82dc-aa2bb9f4aed0"
 OpenMPI_jll = "fe0851c0-eecd-5654-98d4-656369965a5c"
 SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
@@ -89,4 +92,4 @@ TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 TimesDates = "bdfc003b-8df8-5c39-adcd-3a9087f5df4a"
 
 [targets]
-test = ["BenchmarkTools", "Coverage", "CUDA_Runtime_jll", "DataDeps", "Enzyme", "InteractiveUtils", "MPIPreferences", "OpenMPI_jll", "Test", "TimerOutputs", "TimesDates", "SafeTestsets"]
+test = ["BenchmarkTools", "Coverage", "CUDA_Runtime_jll", "DataDeps", "Enzyme", "InteractiveUtils", "MPIPreferences", "OrthogonalSphericalShellGrids", "OpenMPI_jll", "SafeTestsets", "Test", "TimerOutputs", "TimesDates"]

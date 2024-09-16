@@ -99,11 +99,12 @@ function run_first_AB2_time_step_tests(arch, FT)
                                 buoyancy = SeawaterBuoyancy(),
                                 tracers = (:T, :S))
 
-    # Test that GT = 1 after model construction (note: this computes tendencies)
+    # Test that GT = 0 after model construction
+    # (note: model construction does not computes tendencies)
     @test all(interior(model.timestepper.Gⁿ.u) .≈ 0)
     @test all(interior(model.timestepper.Gⁿ.v) .≈ 0)
     @test all(interior(model.timestepper.Gⁿ.w) .≈ 0)
-    @test all(interior(model.timestepper.Gⁿ.T) .≈ 1)
+    @test all(interior(model.timestepper.Gⁿ.T) .≈ 0)
     @test all(interior(model.timestepper.Gⁿ.S) .≈ 0)
 
     # Test that T = 1 after 1 time step and that AB2 actually reduced to forward Euler.
