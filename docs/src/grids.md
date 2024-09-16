@@ -257,8 +257,8 @@ true
 To use more than one CPU, we use the `Distributed` architecture,
 
 ```jldoctest grids
-child_architecture = CPU()
-architecture = Distributed(child_architecture)
+device_architecture = CPU()
+architecture = Distributed(device_architecture)
 
 # output
 [ Info: MPI has not been initialized, so we are calling MPI.Init().

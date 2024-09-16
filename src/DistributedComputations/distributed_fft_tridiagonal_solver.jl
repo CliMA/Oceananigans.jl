@@ -163,7 +163,7 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
         error("`DistributedFourierTridiagonalPoissonSolver` requires that the stretched direction (dimension $tridiagonal_dim) is `Bounded`.")
 
     FT         = Complex{eltype(local_grid)}
-    child_arch = child_architecture(local_grid)
+    child_arch = device_architecture(local_grid)
     storage    = TransposableField(CenterField(local_grid), FT)
 
     topo = (TX, TY, TZ) = topology(global_grid)

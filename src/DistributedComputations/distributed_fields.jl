@@ -28,19 +28,19 @@ const DistributedField      = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGri
 const DistributedFieldTuple = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
 const DistributedFTS        = FieldTimeSeries{LX, LY, LZ, TI, K, I, D, <:DistributedGrid} where {LX, LY, LZ, TI, K, I, D}
 
-child_architecture(field::AbstractField)    = architecture(field)
-child_architecture(field::DistributedField) = child_architecture(architecture(field))
-child_architecture(field::DistributedFTS)   = child_architecture(architecture(field))
+device_architecture(field::AbstractField)    = architecture(field)
+device_architecture(field::DistributedField) = device_architecture(architecture(field))
+device_architecture(field::DistributedFTS)   = device_architecture(architecture(field))
 
 function set!(u::DistributedField, f::Function)
     arch = architecture(u)
-    if child_architecture(arch) isa GPU
+    if device_architecture(arch) isa GPU
         cpu_grid = on_architecture(cpu_architecture(arch), u.grid)
         u_cpu = Field(location(u), cpu_grid, eltype(u); indices = indices(u))
         f_field = field(location(u), f, cpu_grid)
         set!(u_cpu, f_field)
         set!(u, u_cpu)
-    elseif child_architecture(arch) isa CPU
+    elseif device_architecture(arch) isa CPU
         f_field = field(location(u), f, u.grid)
         set!(u, f_field)
     end

@@ -8,7 +8,7 @@ using Oceananigans.ImmersedBoundaries: peripheral_node, immersed_inactive_node, 
 using Oceananigans.ImmersedBoundaries: inactive_node, IBG, c, f, ZColumnMap
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, active_surface_map, active_interior_map
 using Oceananigans.ImmersedBoundaries: active_linear_index_to_tuple, ActiveCellsIBG, ActiveZColumnsIBG
-using Oceananigans.DistributedComputations: child_architecture
+using Oceananigans.DistributedComputations: device_architecture
 using Oceananigans.DistributedComputations: Distributed
 
 using Printf

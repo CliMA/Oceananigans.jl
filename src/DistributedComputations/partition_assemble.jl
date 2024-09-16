@@ -148,7 +148,7 @@ function partition_global_array(arch::Distributed, c_global::AbstractArray, n)
                             1 + sum(ny[1:rj-1]) : sum(ny[1:rj]), 
                             1:nz]
     end
-    return on_architecture(child_architecture(arch), c_local)
+    return on_architecture(device_architecture(arch), c_local)
 end
 
 """
@@ -191,5 +191,5 @@ function construct_global_array(arch::Distributed, c_local::AbstractArray, n)
         MPI.Allreduce!(c_global, +, arch.communicator)
     end
 
-    return on_architecture(child_architecture(arch), c_global)
+    return on_architecture(device_architecture(arch), c_global)
 end

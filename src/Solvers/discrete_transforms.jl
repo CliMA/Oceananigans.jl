@@ -1,4 +1,4 @@
-import Oceananigans.Architectures: architecture, child_architecture
+import Oceananigans.Architectures: architecture, device_architecture
 
 abstract type AbstractTransformDirection end
 
@@ -17,7 +17,7 @@ struct DiscreteTransform{P, D, G, Δ, Ω, N, T, Σ}
 end
 
 # Includes support for distributed architectures
-architecture(transform::DiscreteTransform) = child_architecture(architecture(transform.grid))
+architecture(transform::DiscreteTransform) = device_architecture(architecture(transform.grid))
 
 #####
 ##### Normalization factors
@@ -81,7 +81,7 @@ end
 NoTransform() = DiscreteTransform([nothing for _ in fieldnames(DiscreteTransform)]...)
 
 function DiscreteTransform(plan, direction, grid, dims)
-    arch = child_architecture(grid) # In case we are doing it on a DistributedGrid
+    arch = device_architecture(grid) # In case we are doing it on a DistributedGrid
 
     isnothing(plan) && return NoTransform()
 

@@ -221,7 +221,7 @@ for side in [:southwest, :southeast, :northwest, :northeast]
         $fill_corner_halo!(c, corner, indices, loc, arch, grid, buffers, ::Nothing, args...; kwargs...) = nothing
 
         function $fill_corner_halo!(c, corner, indices, loc, arch, grid, buffers, sd, args...; kwargs...) 
-            child_arch = child_architecture(arch)
+            child_arch = device_architecture(arch)
             local_rank = arch.local_rank
 
             recv_req = $recv_and_fill_side_halo!(c, grid, arch, loc, local_rank, corner, buffers)
@@ -282,7 +282,7 @@ for side in [:west, :east, :south, :north]
 
             sync_device!(arch)
 
-            child_arch = child_architecture(arch)
+            child_arch = device_architecture(arch)
             local_rank = bc_side.condition.from
 
             recv_req = $recv_and_fill_side_halo!(c, grid, arch, loc, local_rank, bc_side.condition.to, buffers)

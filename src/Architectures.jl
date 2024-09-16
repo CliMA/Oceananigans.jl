@@ -54,12 +54,12 @@ architecture(a::SubArray) = architecture(parent(a))
 architecture(a::OffsetArray) = architecture(parent(a))
 
 """
-    child_architecture(arch)
+    device_architecture(arch)
 
 Return `arch`itecture of child processes.
 On single-process, non-distributed systems, return `arch`.
 """
-child_architecture(arch) = arch
+device_architecture(arch) = arch
 
 array_type(::CPU) = Array
 array_type(::GPU) = CuArray

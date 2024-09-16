@@ -99,7 +99,7 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid, planner_flag=
     storage = TransposableField(CenterField(local_grid), FT)
 
     arch = architecture(storage.xfield.grid)
-    child_arch = child_architecture(arch)
+    child_arch = device_architecture(arch)
 
     # Build _global_ eigenvalues
     topo = (TX, TY, TZ) = topology(global_grid)
