@@ -115,7 +115,7 @@ for arch in archs
         @info "Running immersed tracer conservation tests..."
 
         grid = RectilinearGrid(arch, size=(10, 8, 1), extent=(10, 8, 1), halo = (6, 6, 6), topology=(Bounded, Periodic, Bounded))
-        ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 2)); active_cells_map = true)
+        ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 2)))
     
         for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
             scheme = adv(order = advective_order(buffer, adv))
