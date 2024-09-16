@@ -226,7 +226,8 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
 
             rectilinear_grid(topology) = RectilinearGrid(arch; topology, z=(0, Lz), grid_kw...)
             immersed_rectilinear_grid(topology) = ImmersedBoundaryGrid(RectilinearGrid(arch; topology, z=(-Lz, Lz), grid_kw...), ib)
-            grids_to_test(topo) = [rectilinear_grid(topo), immersed_rectilinear_grid(topo)]
+            immersed_active_rectilinear_grid(topology) = ImmersedBoundaryGrid(RectilinearGrid(arch; topology, z=(-Lz, Lz), grid_kw...), ib; active_cells_map = true)
+            grids_to_test(topo) = [rectilinear_grid(topo), immersed_rectilinear_grid(topo), immersed_active_rectilinear_grid(topo)]
 
             for grid in grids_to_test((Periodic, Bounded, Bounded))
                 for name in (:u, :c)
