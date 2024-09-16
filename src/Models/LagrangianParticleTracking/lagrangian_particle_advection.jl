@@ -62,14 +62,14 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
     i⁻, j⁻, k⁻ = previous_particle_indices
 
     # Left bounds of the previous cell
-    xᴿ = xnode(i⁻ + 1, j, k, ibg, f, f, f)
-    yᴿ = ynode(i, j⁻ + 1, k, ibg, f, f, f)
-    zᴿ = znode(i, j, k⁻ + 1, ibg, f, f, f)
+    xᴿ = xnode(i⁻ + 1, j⁻ + 1, k⁻ + 1, ibg, f, f, f)
+    yᴿ = ynode(i⁻ + 1, j⁻ + 1, k⁻ + 1, ibg, f, f, f)
+    zᴿ = znode(i⁻ + 1, j⁻ + 1, k⁻ + 1, ibg, f, f, f)
 
     # Right bounds of the previous cell
-    xᴸ = xnode(i⁻, j,  k,  ibg, f, f, f)
-    yᴸ = ynode(i,  j⁻, k,  ibg, f, f, f)
-    zᴸ = znode(i,  j,  k⁻, ibg, f, f, f)
+    xᴸ = xnode(i⁻, j⁻, k⁻, ibg, f, f, f)
+    yᴸ = ynode(i⁻, j⁻, k⁻, ibg, f, f, f)
+    zᴸ = znode(i⁻, j⁻, k⁻, ibg, f, f, f)
 
     Cʳ = restitution
     tx, ty, tz = map(immersed_boundary_topology, topology(ibg))
