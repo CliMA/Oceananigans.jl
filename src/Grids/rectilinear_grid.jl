@@ -66,7 +66,6 @@ stretched_dimensions(::YZRegularRG) = tuple(1)
 stretched_dimensions(::XZRegularRG) = tuple(2)
 stretched_dimensions(::XYRegularRG) = tuple(3)
 
-
 """
     RectilinearGrid([architecture = CPU(), FT = Float64];
                     size,
