@@ -48,7 +48,7 @@ for LX in (:Face, :Center, :Nothing)
     for LY in (:Face, :Center, :Nothing)
         for LZ in (:Face, :Center, :Nothing)
             @eval loc_id(::$LX, ::$LY, ::$LZ) = $location_counter
-            location_counter += 1
+            global location_counter += 1
         end
     end
 end
