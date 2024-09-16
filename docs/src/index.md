@@ -79,7 +79,7 @@ cite our work and mention Oceananigans by name.
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
-1. Chor, T. and Wenegrat, J. (2024). [The turbulent dynamics of anticyclonic submesoscale headland wakes](https://doi.org/ 10.31223/X5570C), _Earth arXiv_, DOI: [ 10.31223/X5570C](https://doi.org/ 10.31223/X5570C)
+1. Chor, T. and Wenegrat, J. (2024). [The turbulent dynamics of anticyclonic submesoscale headland wakes](https://doi.org/10.31223/X5570C), _Earth arXiv_, DOI: [10.31223/X5570C](https://doi.org/10.31223/X5570C)
 
 1. Wagner, G. L., Hillier, A., Constantinou, N. C., Silvestri, S., Souza, A., Burns, K., Hill, C., Campin, J.-M., Marshall, J., and Ferrari, R. (2024). [Formulation and calibration of CATKE, a one-equation parameterization for microscale ocean mixing](https://doi.org/10.48550/arXiv.2306.13204), _arXiv_, arXiv:2306.13204. DOI: [10.48550/arXiv.2306.13204](https://doi.org/10.48550/arXiv.2306.13204)
 
