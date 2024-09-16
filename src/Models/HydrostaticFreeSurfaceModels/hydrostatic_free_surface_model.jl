@@ -106,10 +106,10 @@ function HydrostaticFreeSurfaceModel(; grid,
                                              clock = Clock{eltype(grid)}(time = 0),
                                 momentum_advection = CenteredSecondOrder(),
                                   tracer_advection = CenteredSecondOrder(),
-                                          buoyancy = SeawaterBuoyancy(eltype(grid)),
+                                          buoyancy = nothing,
                                           coriolis = nothing,
                                       free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
-                                           tracers = (:T, :S),
+                                           tracers = nothing,
                                       forcing::NamedTuple = NamedTuple(),
                                            closure = nothing,
                    boundary_conditions::NamedTuple = NamedTuple(),
@@ -201,7 +201,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, tracers,
                                         pressure, diffusivity_fields, timestepper, auxiliary_fields)
 
-    update_state!(model)
+    update_state!(model; compute_tendencies = false)
 
     return model
 end
