@@ -50,7 +50,7 @@ example_scripts = [
 ]
 
 if rank == 0
-    @info string("Executing the examples using ", Distributed.nprocs(), " processes")
+    @info string("Executing the examples using ", workers, " processes")
 end
 
 for n in eachindex(example_scripts)
