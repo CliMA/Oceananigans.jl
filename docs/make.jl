@@ -2,6 +2,7 @@ using MPI
 MPI.Init()
 
 rank = MPI.Comm_rank(MPI.COMM_WORLD)
+workers = MPI.Comm_size(MPI.COMM_WORLD)
 
 using Documenter
 using DocumenterCitations
@@ -53,7 +54,8 @@ if rank == 0
 end
 
 for n in eachindex(example_scripts)
-    if mod(rank + 1, n) == 0
+    n_rank = floor(Int, (n - 1) / workers) 
+    if rank == n_rank
         example = example_scripts[n]
         example_filepath = joinpath(EXAMPLES_DIR, example)
         withenv("JULIA_DEBUG" => "Literate") do
