@@ -127,7 +127,7 @@ steps:
     env:
       JULIA_DEBUG: "Documenter"
     commands:
-      - "srun julia --color=yes --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'"
+      - "srun julia --color=yes --project=docs/ docs/mpi_instantiate.jl"
       - "srun julia --color=yes --project=docs/ docs/make.jl"
     agents:
       slurm_mem: 120G
