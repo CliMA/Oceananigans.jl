@@ -128,7 +128,7 @@ steps:
       JULIA_DEBUG: "Documenter"
     commands:
       - "srun julia --color=yes --project=docs/ docs/mpi_instantiate.jl"
-      - "srun julia --color=yes --project=docs/ docs/make.jl"
+      - "srun julia -t auto --color=yes --project=docs/ docs/make.jl"
     agents:
       slurm_mem: 120G
       slurm_ntasks: 4
