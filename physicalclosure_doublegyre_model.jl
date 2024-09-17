@@ -2,6 +2,8 @@
 # pkg"add Oceananigans CairoMakie"
 using Oceananigans
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity, CATKEMixingLength, CATKEEquation
+
 using Oceananigans.BuoyancyModels: ∂z_b
 # include("NN_closure_global.jl")
 # include("xin_kai_vertical_diffusivity_local.jl")
@@ -36,7 +38,12 @@ model_architecture = GPU()
 
 # vertical_base_closure = VerticalScalarDiffusivity(ν=1e-5, κ=1e-5)
 # convection_closure = XinKaiVerticalDiffusivity()
-convection_closure = CATKEVerticalDiffusivity()
+function CATKE_ocean_closure()
+  mixing_length = CATKEMixingLength(Cᵇ=0.01)
+  turbulent_kinetic_energy_equation = CATKEEquation(Cᵂϵ=1.0)
+  return CATKEVerticalDiffusivity(; mixing_length, turbulent_kinetic_energy_equation)
+end
+convection_closure = CATKE_ocean_closure()
 closure = convection_closure
 # closure = vertical_base_closure
 
