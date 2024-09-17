@@ -76,9 +76,9 @@ A tuple of indices corresponding to the linear index.
 """
 @inline active_linear_index_to_tuple(idx, active_cells_map) = @inbounds Base.map(Int, active_cells_map[idx])
 
-function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool = true, kwargs...) 
+function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool = true) 
 
-    ibg = ImmersedBoundaryGrid(grid, ib; kwargs...)
+    ibg = ImmersedBoundaryGrid(grid, ib)
     TX, TY, TZ = topology(ibg)
     
     # Create the cells map on the CPU, then switch it to the GPU
