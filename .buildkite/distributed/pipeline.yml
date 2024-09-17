@@ -118,6 +118,25 @@ steps:
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
 
+#####
+##### Documentation
+#####
+
+  - label: "🦉 documentation"
+    key: "docs_test_and_build"
+    env:
+      JULIA_DEBUG: "Documenter"
+    commands:
+      - "srun julia --color=yes --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'"
+      - "srun julia --color=yes --project=docs/ docs/make.jl"
+    agents:
+      slurm_mem: 120G
+      slurm_ntasks: 1
+      slurm_gpus_per_task: 1
+      
+  - wait: ~
+    continue_on_failure: true
+
   - wait
 
   - label: ":chart_with_downwards_trend: build history"
