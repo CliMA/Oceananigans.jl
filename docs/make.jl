@@ -248,5 +248,5 @@ if rank == 0
 
 end # if rank == 0
 
-MPI.barrier(MPI.COMM_WORLD)
+MPI.Barrier(MPI.COMM_WORLD)
 MPI.Finalize()
