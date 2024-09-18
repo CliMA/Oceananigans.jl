@@ -112,7 +112,7 @@ function run_simple_particle_tracking_tests(grid, timestepper=:QuasiAdamsBashfor
     particles = StructArray{TestParticle}((xs, ys, zs, us, vs, ws, ss))
 
     u, v, w = velocities = VelocityFields(grid)
-    speed = Field(√(u * u + v * v + w * w))
+    speed = Field(√(u^2 + v^2 + w^2))
     tracked_fields = merge(velocities, (; s=speed))
 
     # applying v component of advection with background field to ensure it is included
