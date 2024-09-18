@@ -123,8 +123,9 @@ end
 generate_coordinate(FT, ::Flat, N, H, c::Number, coordinate_name, arch) =
     FT(1), range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1)
 
-generate_coordinate(FT, ::Flat, N, H, c::Tuple{Number, Number}, coordinate_name, arch) =
-    FT(1), c, c, FT(1), FT(1)
+# What's the use case for this?
+# generate_coordinate(FT, ::Flat, N, H, c::Tuple{Number, Number}, coordinate_name, arch) =
+#     FT(1), c, c, FT(1), FT(1)
 
 generate_coordinate(FT, ::Flat, N, H, ::Nothing, coordinate_name, arch) =
     FT(1), nothing, nothing, FT(1), FT(1)
