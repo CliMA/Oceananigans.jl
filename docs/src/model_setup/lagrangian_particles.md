@@ -108,15 +108,15 @@ Particle properties can be written to disk using JLD2 or NetCDF.
 
 When writing to JLD2 you can pass `model.particles` as part of the named tuple of outputs.
 
-```julia
-JLD2OutputWriter(model, (particles=model.particles,), prefix="particles", schedule=TimeInterval(15))
+```jldoctest particles
+JLD2OutputWriter(model, (particles=model.particles,), filename="particles", schedule=TimeInterval(15))
 ```
 
 When writing to NetCDF you should write particles to a separate file as the NetCDF dimensions differ for
 particle trajectories. You can just pass `model.particles` straight to `NetCDFOutputWriter`:
 
-```julia
-NetCDFOutputWriter(model, model.particles, filepath="particles.nc", schedule=TimeInterval(15))
+```jldoctest particles
+NetCDFOutputWriter(model, model.particles, filename="particles.nc", schedule=TimeInterval(15))
 ```
 
 !!! warn "Outputting custom particle properties to NetCDF"
