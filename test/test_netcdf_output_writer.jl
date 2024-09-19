@@ -780,7 +780,7 @@ end
 
 function test_netcdf_output_alignment(arch)
     grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid,
+    model = NonhydrostaticModel(; grid, timestepper=:QuasiAdamsBashforth2,
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=0.2, stop_time=40)
 
@@ -816,7 +816,7 @@ function test_netcdf_vertically_stretched_grid_output(arch)
     zF = [k^2 for k in 0:Nz]
     grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), x=(0, 1), y=(-π, π), z=zF)
 
-    model = NonhydrostaticModel(grid=grid,
+    model = NonhydrostaticModel(; grid,
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Δt = 1.25
