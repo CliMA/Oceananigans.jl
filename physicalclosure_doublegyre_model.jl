@@ -29,7 +29,7 @@ import SeawaterPolynomials.TEOS10: s, ΔS, Sₐᵤ
 s(Sᴬ::Number) = Sᴬ + ΔS >= 0 ? √((Sᴬ + ΔS) / Sₐᵤ) : NaN
 
 #%%
-filename = "doublegyre_CATKEVerticalDiffusivity_streamfunction"
+filename = "doublegyre_CATKEVerticalDiffusivity"
 FILE_DIR = "./Output/$(filename)"
 mkpath(FILE_DIR)
 
@@ -225,7 +225,25 @@ end
 N²_op = KernelFunctionOperation{Center, Center, Face}(get_N², model.grid, model.buoyancy.model, model.tracers)
 N² = Field(N²_op)
 
-outputs = (; u, v, w, T, S, N²)
+@inline function get_density(i, j, k, grid, b, C)
+  T, S = Oceananigans.BuoyancyModels.get_temperature_and_salinity(b, C)
+  @inbounds ρ = TEOS10.ρ(T[i, j, k], S[i, j, k], 0, b.model.equation_of_state)
+  return ρ
+end
+
+ρ_op = KernelFunctionOperation{Center, Center, Center}(get_density, model.grid, model.buoyancy, model.tracers)
+ρ = Field(ρ_op)
+compute!(ρ)
+
+ρᶠ = @at (Center, Center, Face) ρ
+∂ρ∂z = ∂z(ρ)
+∂²ρ∂z² = ∂z(∂ρ∂z)
+
+κc = model.diffusivity_fields.κc
+wT = κc * ∂z(T)
+wS = κc * ∂z(S)
+
+outputs = (; u, v, w, T, S, ρ, ρᶠ, ∂ρ∂z, ∂²ρ∂z², N², wT, wS)
 
 #####
 ##### Build checkpointer and output writer
