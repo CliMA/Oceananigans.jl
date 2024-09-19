@@ -5,7 +5,6 @@ using Statistics
 using LinearAlgebra
 using Logging
 using Enzyme
-using KernelAbstractions
 using SparseArrays
 using JLD2
 using FFTW
