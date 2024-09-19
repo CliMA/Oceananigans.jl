@@ -38,17 +38,23 @@ using Oceananigans.Logger
 using Oceananigans.Units
 using Oceananigans.Utils
 using Oceananigans.MultiRegion
-using Oceananigans.Architectures: device, array_type # to resolve conflict with CUDA.device
-using Oceananigans.Architectures: on_architecture
 
 using Oceananigans: Clock
+using Oceananigans.Architectures: device, array_type # to resolve conflict with CUDA.device
+using Oceananigans.Architectures: on_architecture
+using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
+using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.BuoyancyModels: BuoyancyField
+using Oceananigans.Fields: ZeroField, ConstantField, compute_at!, indices
+using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, conditional_length
+
 using Dates: DateTime, Nanosecond
-using Statistics: mean
+using Statistics: mean, mean!, norm
 using LinearAlgebra: norm
 using NCDatasets: Dataset
 using KernelAbstractions: @kernel, @index
 
-import Oceananigans.Fields: interior
 import Oceananigans.Utils: launch!, datatuple
 
 Logging.global_logger(OceananigansLogger())
@@ -70,3 +76,4 @@ include("utils_for_runtests.jl")
 
 float_types = (Float32, Float64)
 archs = test_architectures()
+

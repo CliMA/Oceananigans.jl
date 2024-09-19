@@ -24,6 +24,15 @@ CUDA.allowscalar() do
         end
     end
 
+    # Initialization steps
+    if group == :init || group == :all
+        Pkg.instantiate(; verbose=true)
+        Pkg.precompile()
+        Pkg.status()
+        MPI.install_mpiexecjl()
+        CUDA.precompile_runtime()
+    end
+
     # Core Oceananigans
     if group == :unit || group == :all
         @testset "Unit tests" begin
