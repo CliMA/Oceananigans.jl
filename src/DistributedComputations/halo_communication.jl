@@ -114,8 +114,9 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     end
     
     arch = architecture(grid)
-
     fill_halos!, bcs = permute_boundary_conditions(bcs) 
+    number_of_tasks  = length(fill_halos!)
+    outstanding_requests = length(arch.mpi_requests)
 
     for task = 1:number_of_tasks
         fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
@@ -126,9 +127,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     # We increment the request counter only if we have actually initiated the MPI communication.
     # This is the case only if at least one of the boundary conditions is a distributed communication 
     # boundary condition (DCBCT) _and_ the `only_local_halos` keyword argument is false.
-    increment_tag = any(isa.(bcs, DCBCT)) && !only_local_halos
-    
-    if increment_tag 
+    if arch.mpi_requests > outstanding_requests
         arch.mpi_tag[] += 1
     end
     
