@@ -1,20 +1,9 @@
 include("dependencies_for_runtests.jl")
 
-using Enzyme
 # Required presently
 Enzyme.API.runtimeActivity!(true)
 Enzyme.API.looseTypeAnalysis!(true)
 Enzyme.API.maxtypeoffset!(2032)
-
-using Oceananigans
-using Oceananigans.TurbulenceClosures: with_tracers
-using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Fields: ConstantField
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: tracernames
-using Oceananigans.Fields: FunctionField
-using Oceananigans: architecture
-using KernelAbstractions
-
 
 EnzymeRules.inactive_type(::Type{<:Oceananigans.Clock}) = true
 
