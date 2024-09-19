@@ -1,3 +1,5 @@
+using Pkg
+
 include("dependencies_for_runtests.jl")
 
 group     = get(ENV, "TEST_GROUP", :all) |> Symbol
