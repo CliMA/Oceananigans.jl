@@ -127,7 +127,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     # We increment the request counter only if we have actually initiated the MPI communication.
     # This is the case only if at least one of the boundary conditions is a distributed communication 
     # boundary condition (DCBCT) _and_ the `only_local_halos` keyword argument is false.
-    if arch.mpi_requests > outstanding_requests
+    if length(arch.mpi_requests) > outstanding_requests
         arch.mpi_tag[] += 1
     end
     
