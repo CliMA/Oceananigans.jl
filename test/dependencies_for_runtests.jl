@@ -1,3 +1,4 @@
+
 using Test
 using Printf
 using Random
@@ -77,7 +78,15 @@ closures = (
     :ConvectiveAdjustmentVerticalDiffusivity,
 )
 
-include("utils_for_runtests.jl")
+if !(@isdefined already_included)
+    already_included = Ref(false)
+    macro include_once(expr)
+        return !(already_included[]) ? :($(esc(expr))) : :(nothing)
+    end
+end
+
+@include_once include("utils_for_runtests.jl")
+already_included[] = true
 
 float_types = (Float32, Float64)
 archs = test_architectures()

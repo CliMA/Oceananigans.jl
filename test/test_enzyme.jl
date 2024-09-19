@@ -7,8 +7,10 @@ Enzyme.API.maxtypeoffset!(2032)
 
 EnzymeRules.inactive_type(::Type{<:Oceananigans.Clock}) = true
 
-f(grid) = CenterField(grid)
+# OceananigansLogger doesn't work here -- not sure why
+Logging.global_logger(TestLogger())
 
+f(grid) = CenterField(grid)
 const maximum_diffusivity = 100
 
 """
@@ -92,9 +94,8 @@ end
 function set_initial_condition_via_launch!(model_tracer, amplitude)
     # Set initial condition
     amplitude = Ref(amplitude)
-
-    # This has a "width" of 0.1
     cᵢ(x, y, z) = amplitude[]
+
     temp = Base.broadcasted(Base.identity, FunctionField((Center, Center, Center), cᵢ, model_tracer.grid))
 
     temp = convert(Base.Broadcast.Broadcasted{Nothing}, temp)
@@ -103,16 +104,6 @@ function set_initial_condition_via_launch!(model_tracer, amplitude)
 
     param = Oceananigans.Utils.KernelParameters(size(model_tracer), map(Oceananigans.Fields.offset_index, model_tracer.indices))
     Oceananigans.Utils.launch!(arch, grid, param, Oceananigans.Fields._broadcast_kernel!, model_tracer, temp)
-
-    return nothing
-end
-
-function set_initial_condition!(model, amplitude)
-    amplitude = Ref(amplitude)
-
-    # This has a "width" of 0.1
-    cᵢ(x, y, z) = amplitude[] * exp(-z^2 / 0.02 - (x^2 + y^2) / 0.05)
-    set!(model, c=cᵢ)
 
     return nothing
 end
@@ -132,8 +123,6 @@ end
 
     amplitude = 1.0
     amplitude = Ref(amplitude)
-
-    # This has a "width" of 0.1
     cᵢ(x, y, z) = amplitude[]
     temp = Base.broadcasted(Base.identity, FunctionField((Center, Center, Center), cᵢ, model_tracer.grid))
 
@@ -142,10 +131,11 @@ end
     arch = architecture(model_tracer)
 
     if arch == CPU()
-        param = Oceananigans.Utils.KernelParameters(size(model_tracer), map(Oceananigans.Fields.offset_index, model_tracer.indices))
+        param = Oceananigans.Utils.KernelParameters(size(model_tracer),
+                                                    map(Oceananigans.Fields.offset_index, model_tracer.indices))
         dmodel_tracer = Enzyme.make_zero(model_tracer)
 
-    # Test the individual kernel launch
+        # Test the individual kernel launch
         autodiff(Enzyme.Reverse,
                  Oceananigans.Utils.launch!,
                  Const(arch),
@@ -216,7 +206,6 @@ end
     model = HydrostaticFreeSurfaceModel(; grid,
                                         tracer_advection = WENO(),
                                         tracers = :c,
-                                        buoyancy = nothing,
                                         velocities = PrescribedVelocityFields(; u, v),
                                         closure = diffusion)
 
@@ -247,3 +236,4 @@ end
     rel_error = abs(dc²_dκ[1][3] - dc²_dκ_fd) / abs(dc²_dκ_fd)
     @test rel_error < tol
 end
+
