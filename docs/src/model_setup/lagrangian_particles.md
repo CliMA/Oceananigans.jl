@@ -108,6 +108,10 @@ Particle properties can be written to disk using JLD2 or NetCDF.
 
 When writing to JLD2 you can pass `model.particles` as part of the named tuple of outputs.
 
+```@meta
+DocTestFilters = r"└── file size: [0-9]*.[0-9]* KiB"
+```
+
 ```jldoctest particles
 JLD2OutputWriter(model, (particles=model.particles,), filename="particles", schedule=TimeInterval(15))
 
@@ -140,3 +144,7 @@ NetCDFOutputWriter scheduled on TimeInterval(15 seconds):
 !!! warn "Outputting custom particle properties to NetCDF"
     NetCDF does not support arbitrary data types. If you need to write custom particle properties to disk
     that are not supported by NetCDF then you should use JLD2 (which should support almost any Julia data type).
+
+```@meta
+DocTestFilters = nothing
+```
