@@ -32,7 +32,6 @@ SeawaterPolynomials = "d496a93d-167e-4197-9f49-d3af4ff8fe40"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
-TestEnv = "1e6cf692-eddd-4d53-88a5-2d735e33781b"
 
 [weakdeps]
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
