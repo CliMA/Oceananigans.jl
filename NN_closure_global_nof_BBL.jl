@@ -176,17 +176,23 @@ end
     i, j = @index(Global, NTuple)
     find_field_max!(i, j, ∂ρ²∂z², grid, h)
 
-    @inbounds h[i, j, 1] = ifelse(h[i, j, 1] < 6, ifelse(h[i, j, 1] == 1, grid.Nz+1, 4), h[i, j, 1] - 2)
+    @inbounds h[i, j, 1] = ifelse(h[i, j, 1] < 7, ifelse(h[i, j, 1] == 2, grid.Nz+1, 4), h[i, j, 1] - 3)
 end
 
 @kernel function _adjust_nn_fluxes!(diffusivities, grid, closure::NNFluxClosure, tracers, velocities, buoyancy, top_tracer_bcs, clock)
     i, j, k = @index(Global, NTuple)
     scaling = closure.scaling
-    convecting = top_buoyancy_flux(i, j, grid, buoyancy, top_tracer_bcs, clock, merge(velocities, tracers)) > 0
-    @inbounds above_base_boundary_layer = k > diffusivities.BBL_index[i, j, 1] & k <= grid.Nz - 1
+    @inbounds BBL_index = diffusivities.BBL_index[i, j, 1]
 
-    @inbounds diffusivities.wT[i, j, k] = ifelse(convecting & above_base_boundary_layer, scaling.wT.σ * diffusivities.wT[i, j, k], 0)
-    @inbounds diffusivities.wS[i, j, k] = ifelse(convecting & above_base_boundary_layer, scaling.wS.σ * diffusivities.wS[i, j, k], 0)
+    convecting = top_buoyancy_flux(i, j, grid, buoyancy, top_tracer_bcs, clock, merge(velocities, tracers)) > 0
+    above_base_boundary_layer = k > BBL_index
+    below_top = k <= grid.Nz - 1
+    above_bottom = k >= 3
+
+    NN_active = convecting & above_base_boundary_layer & below_top & above_bottom
+
+    @inbounds diffusivities.wT[i, j, k] = ifelse(NN_active, scaling.wT.σ * diffusivities.wT[i, j, k], 0)
+    @inbounds diffusivities.wS[i, j, k] = ifelse(NN_active, scaling.wS.σ * diffusivities.wS[i, j, k], 0)
 end
 
 # Write here your constructor
