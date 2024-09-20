@@ -3,7 +3,6 @@ agents:
   slurm_mem: 8G
   modules: climacommon/2024_05_27
 
-
 env:
   JULIA_LOAD_PATH: "${JULIA_LOAD_PATH}:${BUILDKITE_BUILD_CHECKOUT_PATH}/.buildkite/distributed"
   OPENBLAS_NUM_THREADS: 1
@@ -54,6 +53,11 @@ steps:
       slurm_mem: 120G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
+
 
   - label: "🦾 cpu distributed solvers tests"
     key: "distributed_solvers_cpu"
@@ -75,6 +79,10 @@ steps:
       slurm_mem: 120G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
   - label: "🤺 cpu distributed hydrostatic model tests"
     key: "distributed_hydrostatic_model_cpu"
@@ -96,6 +104,10 @@ steps:
       slurm_mem: 120G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
   - label: "🦍 cpu distributed nonhydrostatic regression"
     key: "distributed_nonhydrostatic_regression_cpu"
@@ -117,6 +129,10 @@ steps:
       slurm_mem: 120G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
   - wait
 
@@ -125,3 +141,4 @@ steps:
       - "build_history staging"
     artifact_paths:
       - "build_history.html"
+
