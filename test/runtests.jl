@@ -29,10 +29,18 @@ CUDA.allowscalar() do
     # Initialization steps
     if group == :init || group == :all
         Pkg.instantiate(; verbose=true)
-        Pkg.precompile()
+        Pkg.precompile(; strict=true)
         Pkg.status()
-        MPI.install_mpiexecjl()
-        CUDA.precompile_runtime()
+
+        try
+            MPI.install_mpiexecjl()
+            MPI.versioninfo()
+        catch; end
+
+        try
+            CUDA.precompile_runtime()
+            CUDA.versioninfo()
+        catch; end
     end
 
     # Core Oceananigans
