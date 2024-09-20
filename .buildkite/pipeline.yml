@@ -52,6 +52,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🐇 cpu unit tests"
@@ -64,6 +68,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -79,6 +87,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🕊️ cpu poisson solver tests 1"
@@ -91,6 +103,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
   - label: "🦖 gpu poisson solver tests 2"
@@ -102,6 +118,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🦕 cpu poisson solver tests 2"
@@ -114,6 +134,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
   - label: "🌷 gpu matrix poisson solver tests"
@@ -125,6 +149,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🌹 cpu matrix poisson solver tests"
@@ -137,6 +165,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
   - label: "🦤 gpu general solver tests"
@@ -148,6 +180,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🦃 cpu general solver tests"
@@ -160,6 +196,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -175,6 +215,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🦞 cpu time stepping tests 1"
@@ -187,6 +231,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -202,6 +250,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🐬 cpu time stepping tests 2"
@@ -214,6 +266,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -229,6 +285,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🦗 cpu time stepping tests 3"
@@ -241,6 +301,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -256,6 +320,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🎏 cpu turbulence closures"
@@ -268,6 +336,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -283,6 +355,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🦑 cpu hydrostatic free surface model tests"
@@ -295,6 +371,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -310,6 +390,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🦆 cpu shallow water model tests"
@@ -322,6 +406,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -337,6 +425,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🐋 cpu simulation tests"
@@ -349,6 +441,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -364,6 +460,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🍃 cpu lagrangian particles tests"
@@ -376,6 +476,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -391,6 +495,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🤖 cpu abstract operations tests"
@@ -403,6 +511,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -418,6 +530,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🧄 cpu multi region tests"
@@ -430,6 +546,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -445,6 +565,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🐪 cpu nonhydrostatic regression tests"
@@ -457,6 +581,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
   - label: "🙈 gpu hydrostatic regression tests"
@@ -468,6 +596,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🙉 cpu hydrostatic regression tests"
@@ -480,6 +612,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -495,6 +631,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🦍 cpu scripts"
@@ -507,6 +647,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -522,6 +666,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "👹 cpu Enzyme extension tests"
@@ -534,6 +682,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
