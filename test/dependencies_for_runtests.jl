@@ -1,4 +1,4 @@
-
+using Oceananigans
 using Test
 using Printf
 using Random
@@ -14,10 +14,15 @@ using SeawaterPolynomials
 using CUDA
 using MPI
 
+using Dates: DateTime, Nanosecond
+using Statistics: mean, mean!, norm
+using LinearAlgebra: norm
+using NCDatasets: Dataset
+using KernelAbstractions: @kernel, @index
+
 MPI.versioninfo()
 MPI.Initialized() || MPI.Init()
 
-using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Operators
@@ -55,14 +60,7 @@ using Oceananigans.Solvers: constructors, unpack_constructors
 using Oceananigans.TurbulenceClosures: with_tracers
 using Oceananigans.MultiRegion: reconstruct_global_grid, reconstruct_global_field, getnamewrapper
 
-using Dates: DateTime, Nanosecond
-using Statistics: mean, mean!, norm
-using LinearAlgebra: norm
-using NCDatasets: Dataset
-using KernelAbstractions: @kernel, @index
-
 import Oceananigans.Utils: launch!, datatuple
-
 Logging.global_logger(OceananigansLogger())
 
 #####
