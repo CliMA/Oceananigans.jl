@@ -1,25 +1,16 @@
 include("dependencies_for_runtests.jl")
 
-using Enzyme
 # Required presently
 Enzyme.API.runtimeActivity!(true)
 Enzyme.API.looseTypeAnalysis!(true)
 Enzyme.API.maxtypeoffset!(2032)
 
-using Oceananigans
-using Oceananigans.TurbulenceClosures: with_tracers
-using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Fields: ConstantField
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: tracernames
-using Oceananigans.Fields: FunctionField
-using Oceananigans: architecture
-using KernelAbstractions
-
-
 EnzymeRules.inactive_type(::Type{<:Oceananigans.Clock}) = true
 
-f(grid) = CenterField(grid)
+# OceananigansLogger doesn't work here -- not sure why
+Logging.global_logger(TestLogger())
 
+f(grid) = CenterField(grid)
 const maximum_diffusivity = 100
 
 """
@@ -80,19 +71,16 @@ function stable_diffusion!(model, amplitude, diffusivity)
 end
 
 @testset "Enzyme Unit Tests" begin
-    arch=CPU()
-    FT=Float64
+    arch = CPU()
+    FT = Float64
 
     N = 100
     topo = (Periodic, Flat, Flat)
     grid = RectilinearGrid(arch, FT, topology=topo, size=N, halo=2, x=(-1, 1), y=(-1, 1), z=(-1, 1))
     fwd, rev = Enzyme.autodiff_thunk(ReverseSplitWithPrimal, Const{typeof(f)}, Duplicated, typeof(Const(grid)))
+    tape, primal, shadowp = fwd(Const(f), Const(grid))
 
-    tape, primal, shadowp = fwd(Const(f), Const(grid) )
-
-    @show tape
-    @show primal
-    @show shadowp
+    @show tape primal shadowp
 
     shadow = if shadowp isa Base.RefValue
         shadowp[]
@@ -106,9 +94,8 @@ end
 function set_initial_condition_via_launch!(model_tracer, amplitude)
     # Set initial condition
     amplitude = Ref(amplitude)
-
-    # This has a "width" of 0.1
     cᵢ(x, y, z) = amplitude[]
+
     temp = Base.broadcasted(Base.identity, FunctionField((Center, Center, Center), cᵢ, model_tracer.grid))
 
     temp = convert(Base.Broadcast.Broadcasted{Nothing}, temp)
@@ -117,16 +104,6 @@ function set_initial_condition_via_launch!(model_tracer, amplitude)
 
     param = Oceananigans.Utils.KernelParameters(size(model_tracer), map(Oceananigans.Fields.offset_index, model_tracer.indices))
     Oceananigans.Utils.launch!(arch, grid, param, Oceananigans.Fields._broadcast_kernel!, model_tracer, temp)
-
-    return nothing
-end
-
-function set_initial_condition!(model, amplitude)
-    amplitude = Ref(amplitude)
-
-    # This has a "width" of 0.1
-    cᵢ(x, y, z) = amplitude[] * exp(-z^2 / 0.02 - (x^2 + y^2) / 0.05)
-    set!(model, c=cᵢ)
 
     return nothing
 end
@@ -141,17 +118,11 @@ end
     topology = (Periodic, Periodic, Bounded)
 
     grid = RectilinearGrid(size=(Nx, Ny, Nz); x, y, z, topology)
-
-    model = HydrostaticFreeSurfaceModel(; grid,
-                                        tracers = :c,
-                                       buoyancy = nothing)
-
+    model = HydrostaticFreeSurfaceModel(; grid, tracers=:c)
     model_tracer = model.tracers.c
 
     amplitude = 1.0
     amplitude = Ref(amplitude)
-
-    # This has a "width" of 0.1
     cᵢ(x, y, z) = amplitude[]
     temp = Base.broadcasted(Base.identity, FunctionField((Center, Center, Center), cᵢ, model_tracer.grid))
 
@@ -160,33 +131,32 @@ end
     arch = architecture(model_tracer)
 
     if arch == CPU()
-
-        param = Oceananigans.Utils.KernelParameters(size(model_tracer), map(Oceananigans.Fields.offset_index, model_tracer.indices))
-
+        param = Oceananigans.Utils.KernelParameters(size(model_tracer),
+                                                    map(Oceananigans.Fields.offset_index, model_tracer.indices))
         dmodel_tracer = Enzyme.make_zero(model_tracer)
 
-    # Test the individual kernel launch
+        # Test the individual kernel launch
         autodiff(Enzyme.Reverse,
-                    Oceananigans.Utils.launch!,
-                    Const(arch),
-                    Const(grid),
-                    Const(param),
-                    Const(Oceananigans.Fields._broadcast_kernel!),
-                    Duplicated(model_tracer, dmodel_tracer),
-                    Const(temp))
+                 Oceananigans.Utils.launch!,
+                 Const(arch),
+                 Const(grid),
+                 Const(param),
+                 Const(Oceananigans.Fields._broadcast_kernel!),
+                 Duplicated(model_tracer, dmodel_tracer),
+                 Const(temp))
 
         # Test out differentiation of the broadcast infrastructure
         autodiff(Enzyme.Reverse,
-                    set_initial_condition_via_launch!,
-                    Duplicated(model_tracer, dmodel_tracer),
-                    Active(1.0))
+                 set_initial_condition_via_launch!,
+                 Duplicated(model_tracer, dmodel_tracer),
+                 Active(1.0))
 
         # Test differentiation of the high-level set interface
         dmodel = Enzyme.make_zero(model)
         autodiff(Enzyme.Reverse,
-                    set_initial_condition!,
-                    Duplicated(model, dmodel),
-                    Active(1.0))
+                 set_initial_condition!,
+                 Duplicated(model, dmodel),
+                 Active(1.0))
     end
 end
 
@@ -236,7 +206,6 @@ end
     model = HydrostaticFreeSurfaceModel(; grid,
                                         tracer_advection = WENO(),
                                         tracers = :c,
-                                        buoyancy = nothing,
                                         velocities = PrescribedVelocityFields(; u, v),
                                         closure = diffusion)
 
@@ -259,11 +228,12 @@ end
                       Active(κ))
 
     @info """ \n
-    Enzyme computed $dc²_dκ
-    Finite differences computed $dc²_dκ_fd
+        Enzyme computed $dc²_dκ
+        Finite differences computed $dc²_dκ_fd
     """
 
     tol = 0.01
     rel_error = abs(dc²_dκ[1][3] - dc²_dκ_fd) / abs(dc²_dκ_fd)
-    @test  rel_error < tol
+    @test rel_error < tol
 end
+
