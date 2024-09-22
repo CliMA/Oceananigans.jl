@@ -135,7 +135,7 @@ end
         dmodel_tracer = Enzyme.make_zero(model_tracer)
 
         # Test the individual kernel launch
-        autodiff(Enzyme.Reverse,
+        autodiff(Enzyme.set_runtime_activity(Enzyme.Reverse),
                  Oceananigans.Utils.launch!,
                  Const(arch),
                  Const(grid),
@@ -145,14 +145,14 @@ end
                  Const(temp))
 
         # Test out differentiation of the broadcast infrastructure
-        autodiff(Enzyme.Reverse,
+        autodiff(Enzyme.set_runtime_activity(Enzyme.Reverse),
                  set_initial_condition_via_launch!,
                  Duplicated(model_tracer, dmodel_tracer),
                  Active(1.0))
 
         # Test differentiation of the high-level set interface
         dmodel = Enzyme.make_zero(model)
-        autodiff(Enzyme.Reverse,
+        autodiff(Enzyme.set_runtime_activity(Enzyme.Reverse),
                  set_initial_condition!,
                  Duplicated(model, dmodel),
                  Active(1.0))
@@ -220,7 +220,7 @@ end
     dmodel = Enzyme.make_zero(model)
     set_diffusivity!(dmodel, 0)
 
-    dc²_dκ = autodiff(Enzyme.Reverse,
+    dc²_dκ = autodiff(Enzyme.set_runtime_activity(Enzyme.Reverse)
                       stable_diffusion!,
                       Duplicated(model, dmodel),
                       Const(amplitude),
