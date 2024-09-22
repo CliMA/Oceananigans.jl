@@ -220,7 +220,7 @@ end
     dmodel = Enzyme.make_zero(model)
     set_diffusivity!(dmodel, 0)
 
-    dc²_dκ = autodiff(Enzyme.set_runtime_activity(Enzyme.Reverse)
+    dc²_dκ = autodiff(Enzyme.set_runtime_activity(Enzyme.Reverse),
                       stable_diffusion!,
                       Duplicated(model, dmodel),
                       Const(amplitude),
