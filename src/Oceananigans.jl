@@ -145,7 +145,6 @@ import Base:
     iterate, similar, show,
     getindex, lastindex, setindex!,
     push!
-
     
 #####
 ##### Abstract types
