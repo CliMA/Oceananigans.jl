@@ -171,5 +171,6 @@ include("grid_generation.jl")
 include("rectilinear_grid.jl")
 include("orthogonal_spherical_shell_grid.jl")
 include("latitude_longitude_grid.jl")
+include("rotated_latitude_longitude.jl")
 
 end # module
