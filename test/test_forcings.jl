@@ -124,8 +124,8 @@ function time_step_with_field_time_series_forcing(arch)
     
     u_forcing = FieldTimeSeries{Face, Center, Center}(grid, 0:1:3)
 
-    for t in 0:1:3
-        set!(u_forcing[t], (x, y, z) -> sin(π * x) * t)
+    for (t, time) in enumerate(u_forcing.times)
+        set!(u_forcing[t], (x, y, z) -> sin(π * x) * time)
     end
 
     model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing,))
