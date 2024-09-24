@@ -200,24 +200,19 @@ function seven_forcings(arch)
     eccentric_forcing(x, y, z, t) = x + y + z + t
     unconventional_forcing(x, y, z, t) = 10x * y
     
-    forcing1 = Forcing(weird_forcing)
-    forcing2 = Forcing(wonky_forcing)
-    forcing3 = Forcing(strange_forcing)
-    forcing4 = Forcing(bizarre_forcing)
-    forcing5 = Forcing(peculiar_forcing)
-    forcing6 = Forcing(eccentric_forcing)
-    forcing7 = Forcing(unconventional_forcing)
+    F1 = Forcing(weird_F)
+    F2 = Forcing(wonky_F)
+    F3 = Forcing(strange_F)
+    F4 = Forcing(bizarre_F)
+    F5 = Forcing(peculiar_F)
+    F6 = Forcing(eccentric_F)
+    F7 = Forcing(unconventional_F)
 
-    forcing = (
-        u = (forcing1, forcing2, forcing3, forcing4, forcing5, forcing6, forcing7),
-        v = MultipleForcings(forcing1, forcing2, forcing3, forcing4, forcing5, forcing6, forcing7),
-        w = MultipleForcings((forcing1, forcing2, forcing3, forcing4, forcing5, forcing6, forcing7))
-    )
+    Ft = (F1, F2, F3, F4, F5, F6, F7)
+    forcing = (u=Ft, v=MultipleForcings(FT...), w=MultipleForcings(Ft))
+    model = NonhydrostaticModel(; grid, forcing)
 
-    model = NonhydrostaticModel(; grid, forcing,
-                                timestepper=:QuasiAdamsBashforth2)
-
-    time_step!(model, 1, euler=true)
+    time_step!(model, 1)
 
     return true
 end
