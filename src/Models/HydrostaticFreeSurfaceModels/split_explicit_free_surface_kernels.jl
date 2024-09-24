@@ -5,8 +5,8 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.Operators
 using Oceananigans.Architectures: convert_args
 using Oceananigans.ImmersedBoundaries: peripheral_node, immersed_inactive_node, GFBIBG
-using Oceananigans.ImmersedBoundaries: inactive_node, IBG, c, f, ZColumnMap
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!, active_surface_map, active_interior_map
+using Oceananigans.ImmersedBoundaries: inactive_node, IBG, c, f
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, retrieve_surface_active_cells_map, retrieve_interior_active_cells_map
 using Oceananigans.ImmersedBoundaries: active_linear_index_to_tuple, ActiveCellsIBG, ActiveZColumnsIBG
 using Oceananigans.DistributedComputations: child_architecture
 using Oceananigans.DistributedComputations: Distributed
@@ -208,7 +208,7 @@ end
 # For Zstar vertical spacing the vertical integral includes the dynamic height
 # Remember, the vertical coordinate has not yet been updated! 
 # For this reason the integration has to be performed manually
-@kernel function _barotropic_mode_kernel!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, η̅)
+@kernel function _barotropic_mode_kernel!(U, V, grid, ::Nothing, u, v, Hᶠᶜ, Hᶜᶠ, η̅)
     i, j  = @index(Global, NTuple)	
     k_top = grid.Nz + 1
 
@@ -222,10 +222,10 @@ end
     end
 end
 
-@kernel function _barotropic_mode_kernel!(U, V, grid::ActiveZColumnsIBG, u, v, Hᶠᶜ, Hᶜᶠ, η̅)
+@kernel function _barotropic_mode_kernel!(U, V, grid, active_cells_map, u, v, Hᶠᶜ, Hᶜᶠ, η̅)
     idx = @index(Global, Linear)
-    i, j = active_linear_index_to_tuple(idx, ZColumnMap(), grid)
-    k_top = grid.Nz + 1
+    i, j = active_linear_index_to_tuple(idx, active_cells_map)
+    k_top = grid.Nz+1
 
     # hand unroll first loop
     @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δzᶠᶜᶜ_reference(i, j, 1, grid) 
@@ -237,9 +237,13 @@ end
     end
 end
 
-compute_barotropic_mode!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, η̅) = 
-    launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, η̅; 
-            active_cells_map = active_surface_map(grid))
+@inline function compute_barotropic_mode!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, η̅) 
+    active_cells_map = retrieve_surface_active_cells_map(grid)
+    
+    launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, active_cells_map, u, v, Hᶠᶜ, Hᶜᶠ, η̅; active_cells_map)
+
+    return nothing
+end
 
 @kernel function _barotropic_split_explicit_corrector!(u, v, grid, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, η̅)
     i, j, k = @index(Global, NTuple)
@@ -430,7 +434,7 @@ function iterate_split_explicit!(free_surface, grid, Δτᴮ, weights, ::Val{Nsu
 end
 
 # Calculate RHS for the barotropic time step.
-@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, ::Nothing, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     i, j  = @index(Global, NTuple)
     k_top = grid.Nz + 1
 
@@ -444,9 +448,9 @@ end
 end
 
 # Calculate RHS for the barotropic time step.q
-@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid::ActiveZColumnsIBG, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     idx = @index(Global, Linear)
-    i, j = active_linear_index_to_tuple(idx, ZColumnMap(), grid)
+    i, j = active_linear_index_to_tuple(idx, active_cells_map)
     k_top = grid.Nz+1
 
     @inbounds Gᵁ[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, χ)
@@ -486,8 +490,13 @@ function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
     return nothing
 end
 
-setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ) =
+@inline function setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ) 
+    active_cells_map = retrieve_surface_active_cells_map(grid)
+
     launch!(architecture(grid), grid, :xy, _compute_integrated_ab2_tendencies!, auxiliary.Gᵁ, auxiliary.Gⱽ, grid, 
-            Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ; active_cells_map = active_surface_map(grid))
+            active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ; active_cells_map)
+
+    return nothing
+end
             
 wait_free_surface_communication!(free_surface, arch) = nothing
