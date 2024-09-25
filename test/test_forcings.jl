@@ -209,7 +209,7 @@ function seven_forcings(arch)
     F7 = Forcing(unconventional_forcing)
 
     Ft = (F1, F2, F3, F4, F5, F6, F7)
-    forcing = (u=Ft, v=MultipleForcings(FT...), w=MultipleForcings(Ft))
+    forcing = (u=Ft, v=MultipleForcings(Ft...), w=MultipleForcings(Ft))
     model = NonhydrostaticModel(; grid, forcing)
 
     time_step!(model, 1)
