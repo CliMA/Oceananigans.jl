@@ -87,7 +87,7 @@ Computes `ib.bottom_height` and wraps it in a Field.
 function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set!(bottom_field, ib.bottom_height)
-    launch!(architecture(grid), grid, :xy, clamp_bottom_height!, bottom_field, grid)
+    @apply_regionally clamp_bottom_height!(bottom_field, grid)
     fill_halo_regions!(bottom_field)
     new_ib = GridFittedBottom(bottom_field, ib.immersed_condition)
     TX, TY, TZ = topology(grid)

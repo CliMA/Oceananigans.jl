@@ -53,6 +53,11 @@ const AGFB = AbstractGridFittedBoundary
     @inline immersed_cell(i, j, k, grid::AbstractGrid{<:Any, Flat, Flat, Flat},   ib::AGFB) = _immersed_cell(1, 1, 1, grid, ib)
 end
 
+function clamp_bottom_height!(bottom_field, grid)
+    launch!(architecture(grid), grid, :xy, clamp_bottom_height!, bottom_field, grid)
+    return nothing
+end
+
 const c = Center()
 const f = Face()
 
