@@ -10,7 +10,7 @@ using Printf
 
 import Oceananigans.Grids: with_halo, znode
 import Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶠ, Δzᶠᶜᶜ, Δzᶠᶠᶠ, Δzᶠᶠᶜ
-import Oceananigans.Advection: V_times_∂t_∂s_grid
+import Oceananigans.Advection: V_times_∂t_s_grid
 import Oceananigans.Architectures: arch_array
 
 """
@@ -18,7 +18,7 @@ import Oceananigans.Architectures: arch_array
 
 spacings for a generalized vertical coordinate system. The reference (non-moving) spacings are stored in `Δr`. 
 `Δ` contains the spacings associated with the moving coordinate system.
-`s⁻`, `sⁿ` and `∂t_∂s` fields are the vertical derivative of the vertical coordinate (∂Δ/∂Δr)
+`s⁻`, `sⁿ` and `∂t_s` fields are the vertical derivative of the vertical coordinate (∂Δ/∂Δr)
 at timestep `n-1` and `n` and it's time derivative.
 `denomination` contains the "type" of generalized vertical coordinate (the only one implemented is `ZStar`)
 """
@@ -147,7 +147,7 @@ update_vertical_spacing!(model, grid; kwargs...) = nothing
 @inline grid_slope_contribution_x(i, j, k, grid, args...) = zero(grid)
 @inline grid_slope_contribution_y(i, j, k, grid, args...) = zero(grid)
 
-@inline ∂t_∂s_grid(i, j, k, grid) = zero(grid)
+@inline ∂t_s_grid(i, j, k, grid) = zero(grid)
 
 #####
 ##### Tracer update in generalized vertical coordinates 
@@ -165,10 +165,10 @@ update_vertical_spacing!(model, grid; kwargs...) = nothing
     s⁻ = previous_vertical_scaling(i, j, k, grid, f, f, f)
 
     @inbounds begin
-        ∂t_∂sθ = C₁ * sⁿ * Gⁿ[i, j, k] - C₂ * s⁻ * G⁻[i, j, k]
+        ∂t_sθ = C₁ * sⁿ * Gⁿ[i, j, k] - C₂ * s⁻ * G⁻[i, j, k]
         
         # We store temporarily sθ in θ. the unscaled θ will be retrived later on with `unscale_tracers!`
-        θ[i, j, k] = sⁿ * θ[i, j, k] + convert(FT, Δt) * ∂t_∂sθ
+        θ[i, j, k] = sⁿ * θ[i, j, k] + convert(FT, Δt) * ∂t_sθ
     end
 end
 

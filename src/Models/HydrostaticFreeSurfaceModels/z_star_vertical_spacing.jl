@@ -23,7 +23,7 @@ where ``η`` is the free surface height and ``H`` the vertical depth of the wate
 - `sᶜᶠⁿ`: scaling of the vertical coordinate at time step `n` at `(Center, Face,   Any)` location
 - `sᶠᶠⁿ`: scaling of the vertical coordinate at time step `n` at `(Face,   Face,   Any)` location
 - `s⁻`: scaling of the vertical coordinate at time step `n - 1` at `(Center, Center, Any)` location
-- `∂t_∂s`: Time derivative of `s`
+- `∂t_s`: Time derivative of `s`
 """
 struct ZStarSpacing{R, SCC, SFC, SCF, SFF} <: AbstractVerticalSpacing{R}
       Δr :: R
@@ -34,7 +34,7 @@ struct ZStarSpacing{R, SCC, SFC, SCF, SFF} <: AbstractVerticalSpacing{R}
     sᶜᶜ⁻ :: SCC
     sᶠᶜ⁻ :: SFC
     sᶜᶠ⁻ :: SCF
-   ∂t_∂s :: SCC
+   ∂t_s :: SCC
 end
 
 Adapt.adapt_structure(to, coord::ZStarSpacing) = 
@@ -46,13 +46,13 @@ Adapt.adapt_structure(to, coord::ZStarSpacing) =
                          Adapt.adapt(to, coord.sᶜᶜ⁻),
                          Adapt.adapt(to, coord.sᶠᶜ⁻),
                          Adapt.adapt(to, coord.sᶜᶠ⁻),
-                         Adapt.adapt(to, coord.∂t_∂s))
+                         Adapt.adapt(to, coord.∂t_s))
 
 on_architecture(arch, coord::ZStarSpacing) = 
             ZStarSpacing(on_architecture(arch, coord.Δr), 
                          on_architecture(arch, coord.s⁻),
                          on_architecture(arch, coord.sⁿ),
-                         on_architecture(arch, coord.∂t_∂s))
+                         on_architecture(arch, coord.∂t_s))
 
 Grids.coordinate_summary(Δ::ZStarSpacing, name) = 
     @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(Δ.Δr))
@@ -86,7 +86,7 @@ function generalized_spacing_grid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, 
     sᶜᶠ⁻  = Field{Center, Face,   Nothing}(grid)
     sᶜᶠⁿ  = Field{Center, Face,   Nothing}(grid)
     sᶠᶠⁿ  = Field{Face,   Face,   Nothing}(grid)
-    ∂t_∂s = Field{Center, Center, Nothing}(grid)
+    ∂t_s = Field{Center, Center, Nothing}(grid)
     
     # Initial "at-rest" conditions
     fill!(sᶜᶜ⁻, 1)
@@ -97,8 +97,8 @@ function generalized_spacing_grid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, 
     fill!(sᶜᶠ⁻, 1)
     fill!(sᶠᶠⁿ, 1)
 
-    Δzᵃᵃᶠ = ZStarSpacing(grid.Δzᵃᵃᶠ, sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶠᶠⁿ, sᶜᶜ⁻, sᶠᶜ⁻, sᶜᶠ⁻, ∂t_∂s)
-    Δzᵃᵃᶜ = ZStarSpacing(grid.Δzᵃᵃᶜ, sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶠᶠⁿ, sᶜᶜ⁻, sᶠᶜ⁻, sᶜᶠ⁻, ∂t_∂s)
+    Δzᵃᵃᶠ = ZStarSpacing(grid.Δzᵃᵃᶠ, sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶠᶠⁿ, sᶜᶜ⁻, sᶠᶜ⁻, sᶜᶠ⁻, ∂t_s)
+    Δzᵃᵃᶜ = ZStarSpacing(grid.Δzᵃᵃᶜ, sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶠᶠⁿ, sᶜᶜ⁻, sᶠᶜ⁻, sᶜᶠ⁻, ∂t_s)
 
     args = []
     for prop in propertynames(grid)
@@ -131,11 +131,8 @@ end
 reference_zspacings(grid::ZStarSpacingGrid, ::Face)   = grid.Δzᵃᵃᶠ.Δr
 reference_zspacings(grid::ZStarSpacingGrid, ::Center) = grid.Δzᵃᵃᶜ.Δr
 
-@inline ∂t_∂s_grid(i, j, k, grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶜ.∂t_∂s[i, j, 1] 
-@inline V_times_∂t_∂s_grid(i, j, k, grid::ZStarSpacingGrid) = ∂t_∂s_grid(i, j, k, grid) * Vᶜᶜᶜ(i, j, k, grid)
-
-@inline rnode(i, j, k, grid, ℓx, ℓy, ::Face)   = getnode(grid.zᵃᵃᶠ, k)
-@inline rnode(i, j, k, grid, ℓx, ℓy, ::Center) = getnode(grid.zᵃᵃᶜ, k)
+@inline ∂t_s_grid(i, j, k, grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶜ.∂t_s[i, j, 1] 
+@inline V_times_∂t_s_grid(i, j, k, grid::ZStarSpacingGrid) = ∂t_s_grid(i, j, k, grid) * Vᶜᶜᶜ(i, j, k, grid)
 
 #####
 ##### ZStar-specific vertical spacings update
@@ -151,7 +148,7 @@ function update_vertical_spacing!(model, grid::ZStarSpacingGrid; parameters = :x
     sᶜᶠ⁻  = grid.Δzᵃᵃᶠ.sᶜᶠ⁻
     sᶜᶠⁿ  = grid.Δzᵃᵃᶠ.sᶜᶠⁿ
     sᶠᶠⁿ  = grid.Δzᵃᵃᶠ.sᶠᶠⁿ
-    ∂t_∂s = grid.Δzᵃᵃᶠ.∂t_∂s
+    ∂t_s = grid.Δzᵃᵃᶠ.∂t_s
 
     # Free surface variables
     Hᶜᶜ = model.free_surface.auxiliary.Hᶜᶜ
@@ -162,30 +159,28 @@ function update_vertical_spacing!(model, grid::ZStarSpacingGrid; parameters = :x
     V̅   = model.free_surface.state.V̅ 
     η   = model.free_surface.η
 
-    # Update the time derivative of the grid-scaling. Note that in this case we leverage the
-    # free surface evolution equation, where the time derivative of the free surface is equal
-    # to the divergence of the vertically integrated velocity field, such that
-    # ∂ₜ((H + η) / H) = H⁻¹ ∂ₜη =  - H⁻¹ ∇ ⋅ ∫udz 
-    launch!(architecture(grid), grid, parameters, _update_∂t_∂s!, 
-            ∂t_∂s, U̅, V̅, Hᶜᶜ, grid)
-
     # Update vertical spacing with available parameters 
     # No need to fill the halo as the scaling is updated _IN_ the halos
     launch!(architecture(grid), grid, parameters, _update_zstar!, 
             sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶠᶠⁿ, sᶜᶜ⁻, sᶠᶜ⁻, sᶜᶠ⁻, η, Hᶜᶜ, Hᶠᶜ, Hᶜᶠ, Hᶠᶠ, grid)
-    
+
+    # Update the time derivative of the grid-scaling. Note that in this case we leverage the
+    # free surface evolution equation, where the time derivative of the free surface is equal
+    # to the divergence of the vertically integrated velocity field, such that
+    # ∂ₜ((H + η) / H) = H⁻¹ ∂ₜη =  - H⁻¹ ∇ ⋅ ∫udz 
+    launch!(architecture(grid), grid, parameters, _update_∂t_s!, 
+            ∂t_s, U̅, V̅, Hᶜᶜ, grid)
+
     return nothing
 end
 
-@inline ℑ(i, j, k, grid, U) = @inbounds U[i, j, k]
-
 # NOTE: The ZStar vertical spacing works only for a SplitExplicitFreeSurface
-@kernel function _update_∂t_∂s!(∂t_∂s, U̅, V̅, Hᶜᶜ, grid)
+@kernel function _update_∂t_s!(∂t_s, U̅, V̅, Hᶜᶜ, grid)
     i, j  = @index(Global, NTuple)
     k_top = grid.Nz + 1 
     @inbounds begin
         # ∂(η / H)/∂t = - ∇ ⋅ ∫udz / H
-        ∂t_∂s[i, j, 1] = -  1 / Azᶜᶜᶠ(i, j, k_top-1, grid) * (δxᶜᵃᵃ(i, j, k_top-1, grid, Δy_qᶠᶜᶠ, U̅) +
+        ∂t_s[i, j, 1] = -  1 / Azᶜᶜᶠ(i, j, k_top-1, grid) * (δxᶜᵃᵃ(i, j, k_top-1, grid, Δy_qᶠᶜᶠ, U̅) +
                                                               δyᵃᶜᵃ(i, j, k_top-1, grid, Δx_qᶜᶠᶠ, V̅)) / Hᶜᶜ[i, j, 1]
     end
 end

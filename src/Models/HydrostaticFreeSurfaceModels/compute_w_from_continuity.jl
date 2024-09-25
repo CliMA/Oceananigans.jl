@@ -36,7 +36,7 @@ end
     for k in 2:grid.Nz+1
         @inbounds U.w[i, j, k] = U.w[i, j, k-1] - 
                                 ( scaled_velocity_divergenceᶜᶜᶜ(i, j, k-1, grid, U.u, U.v) +
-                                 Δrᶜᶜᶜ(i, j, k-1, grid) *  ∂t_∂s_grid(i, j, k-1, grid) )
+                                 Δrᶜᶜᶜ(i, j, k-1, grid) *  ∂t_s_grid(i, j, k-1, grid) )
     end
 end
 
