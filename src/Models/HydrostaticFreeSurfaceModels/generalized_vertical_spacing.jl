@@ -138,6 +138,18 @@ update_vertical_spacing!(model, grid; kwargs...) = nothing
 @inline Δrᶠᶠᶠ(i, j, k, grid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δrᶜᶜᶠ)
 @inline Δrᶠᶠᶜ(i, j, k, grid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δrᶜᶜᶜ)
 
+@inline rnode(i, j, k, grid, ℓx, ℓy, ℓz) = znode(i, j, k, grid, ℓx, ℓy, ℓz) 
+
+@inline Δzᶜᶜᶠ(i, j, k, grid::AbstractVerticalSpacingGrid) = @inbounds Δrᶜᶜᶠ(i, j, k, grid) * vertical_scaling(i, j, k, grid, c, c, f)
+@inline Δzᶜᶜᶜ(i, j, k, grid::AbstractVerticalSpacingGrid) = @inbounds Δrᶜᶜᶜ(i, j, k, grid) * vertical_scaling(i, j, k, grid, c, c, c)
+@inline Δzᶠᶜᶠ(i, j, k, grid::AbstractVerticalSpacingGrid) = @inbounds Δrᶠᶜᶠ(i, j, k, grid) * vertical_scaling(i, j, k, grid, f, c, f)
+@inline Δzᶠᶜᶜ(i, j, k, grid::AbstractVerticalSpacingGrid) = @inbounds Δrᶠᶜᶜ(i, j, k, grid) * vertical_scaling(i, j, k, grid, f, c, c)
+@inline Δzᶜᶠᶠ(i, j, k, grid::AbstractVerticalSpacingGrid) = @inbounds Δrᶜᶠᶠ(i, j, k, grid) * vertical_scaling(i, j, k, grid, c, f, f)
+@inline Δzᶜᶠᶜ(i, j, k, grid::AbstractVerticalSpacingGrid) = @inbounds Δrᶜᶠᶜ(i, j, k, grid) * vertical_scaling(i, j, k, grid, f, c, c)
+@inline Δzᶠᶠᶠ(i, j, k, grid::AbstractVerticalSpacingGrid) = @inbounds Δrᶠᶠᶠ(i, j, k, grid) * vertical_scaling(i, j, k, grid, f, f, f)
+@inline Δzᶠᶠᶜ(i, j, k, grid::AbstractVerticalSpacingGrid) = @inbounds Δrᶠᶠᶜ(i, j, k, grid) * vertical_scaling(i, j, k, grid, f, f, c)
+
+
 #####
 ##### Additional terms to be included in the momentum equations (fallbacks)
 #####
@@ -152,26 +164,28 @@ update_vertical_spacing!(model, grid; kwargs...) = nothing
 ##### We advance sθ but store θ once sⁿ⁺¹ is known
 #####
 
-@kernel function _ab2_step_tracer_generalized_spacing!(θ, sⁿ, s⁻, Δt, χ, Gⁿ, G⁻)
+@kernel function _ab2_step_tracer_generalized_spacing!(θ, grid, Δt, χ, Gⁿ, G⁻)
     i, j, k = @index(Global, NTuple)
 
     FT = eltype(χ)
     C₁ = convert(FT, 1.5) + χ
     C₂ = convert(FT, 0.5) + χ
 
+    sⁿ = vertical_scaling(i, j, k, grid, c, c, c)
+    s⁻ = previous_vertical_scaling(i, j, k, grid, f, f, f)
+
     @inbounds begin
-        ∂t_∂sθ = C₁ * sⁿ[i, j, k] * Gⁿ[i, j, k] - C₂ * s⁻[i, j, k] * G⁻[i, j, k]
+        ∂t_∂sθ = C₁ * sⁿ * Gⁿ[i, j, k] - C₂ * s⁻ * G⁻[i, j, k]
         
         # We store temporarily sθ in θ. the unscaled θ will be retrived later on with `unscale_tracers!`
-        θ[i, j, k] = sⁿ[i, j, k] * θ[i, j, k] + convert(FT, Δt) * ∂t_∂sθ
+        θ[i, j, k] = sⁿ * θ[i, j, k] + convert(FT, Δt) * ∂t_∂sθ
     end
 end
 
 ab2_step_tracer_field!(tracer_field, grid::AbstractVerticalSpacingGrid, Δt, χ, Gⁿ, G⁻) =
     launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_generalized_spacing!, 
             tracer_field, 
-            vertical_scaling(grid), 
-            previous_vertical_scaling(grid), 
+            grid, 
             Δt, χ, Gⁿ, G⁻)
 
 const EmptyTuples = Union{NamedTuple{(), Tuple{}}, Tuple{}}
@@ -184,16 +198,16 @@ tracer_scaling_parameters(param::KernelParameters{S, O}, tracers, grid) where {S
 function unscale_tracers!(tracers, grid::AbstractVerticalSpacingGrid; parameters = :xy) 
     parameters = tracer_scaling_parameters(parameters, tracers, grid)
     
-    launch!(architecture(grid), grid, parameters, _unscale_tracers!, tracers, vertical_scaling(grid), 
+    launch!(architecture(grid), grid, parameters, _unscale_tracers!, tracers, grid, 
             Val(grid.Hz), Val(grid.Nz))
     
     return nothing
 end
     
-@kernel function _unscale_tracers!(tracers, sⁿ, ::Val{Hz}, ::Val{Nz}) where {Hz, Nz}
+@kernel function _unscale_tracers!(tracers, grid, ::Val{Hz}, ::Val{Nz}) where {Hz, Nz}
     i, j, n = @index(Global, NTuple)
 
     @unroll for k in -Hz+1:Nz+Hz
-        tracers[n][i, j, k] /= sⁿ[i, j, k]
+        tracers[n][i, j, k] /= vertical_scaling(i, j, k, grid, c, c, c)
     end
 end
