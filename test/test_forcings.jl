@@ -114,6 +114,33 @@ function time_step_with_parameterized_field_dependent_forcing(arch)
     return true
 end
 
+""" Take one time step with a FieldTimeSeries forcing function. """
+function time_step_with_field_time_series_forcing(arch)
+
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    
+    u_forcing = FieldTimeSeries{Face, Center, Center}(grid, 0:1:3)
+
+    for (t, time) in enumerate(u_forcing.times)
+        set!(u_forcing[t], (x, y, z) -> sin(π * x) * time)
+    end
+
+    model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing,))
+    time_step!(model, 1, euler=true)
+
+
+    # Make sure the field time series updates correctly
+    u_forcing = FieldTimeSeries{Face, Center, Center}(grid, 0:1:4; backend = InMemory(2))
+
+    model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing,))
+    time_step!(model, 2)
+    time_step!(model, 2)
+    
+    @test u_forcing.backend.start == 4
+
+    return true
+end
+
 function relaxed_time_stepping(arch)
     x_relax = Relaxation(rate = 1/60,   mask = GaussianMask{:x}(center=0.5, width=0.1), 
                                       target = LinearTarget{:x}(intercept=π, gradient=ℯ))
@@ -259,6 +286,11 @@ end
                 @test advective_and_multiple_forcing(arch)
                 @test two_forcings(arch)
                 @test seven_forcings(arch)
+            end
+
+            @testset "FieldTimeSeries forcing on [$A]" begin
+                @info "      Testing FieldTimeSeries forcing [$A]..."
+                @test time_step_with_field_time_series_forcing(arch)
             end
         end
     end
