@@ -49,7 +49,7 @@ end
                                                   free_surface, 
                                                   tracers = (:b, :c), 
                                                   bouyancy = BuoyancTracer(),
-                                                  generalized_vertical_coordinate = ZStar())
+                                                  vertical_coordinate = ZStar())
 
             bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01 
 

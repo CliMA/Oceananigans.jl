@@ -120,7 +120,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                 velocities = nothing,
                                   pressure = nothing,
                         diffusivity_fields = nothing,
-           generalized_vertical_coordinate = nothing,
+           vertical_coordinate = nothing,
                           auxiliary_fields = NamedTuple()
     )
 
@@ -128,14 +128,14 @@ function HydrostaticFreeSurfaceModel(; grid,
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
     # Introduce z-star coordinates if needed (only is free_surface is not a nothing)
-    # if !isnothing(generalized_vertical_coordinate) && !(momentum_advection isa VectorInvariant) && isnothing(velocities)
+    # if !isnothing(vertical_coordinate) && !(momentum_advection isa VectorInvariant) && isnothing(velocities)
     #   throw(ArgumentError("Generalized vertical coordinates are supported only for the vector-invariant form of the momentum equations"))
     # end
 
-    if !(free_surface isa SplitExplicitFreeSurface) && !isnothing(generalized_vertical_coordinate)
-        @warn "Generalized vertical coordinates are supported only for the SplitExplicitFreeSurface at the moment. Ignoring the generalized_vertical_coordinate argument."
+    if !(free_surface isa SplitExplicitFreeSurface) && !isnothing(vertical_coordinate)
+        @warn "Generalized vertical coordinates are supported only for the SplitExplicitFreeSurface at the moment. Ignoring the vertical_coordinate argument."
     else
-        grid = generalized_spacing_grid(grid, generalized_vertical_coordinate)
+        grid = generalized_spacing_grid(grid, vertical_coordinate)
     end
 
     arch = architecture(grid)

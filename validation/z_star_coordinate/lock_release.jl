@@ -14,7 +14,7 @@ grid = RectilinearGrid(size = (128, 20),
 # grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> x < 32kilometers ? -10 : -20))
 
 model = HydrostaticFreeSurfaceModel(; grid, 
-            generalized_vertical_coordinate = ZStar(),
+            vertical_coordinate = ZStar(),
                          momentum_advection = WENO(; order = 5),
                            tracer_advection = WENO(; order = 5),
                                    buoyancy = BuoyancyTracer(),
