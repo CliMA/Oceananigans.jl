@@ -22,8 +22,9 @@ function fill_open_boundary_regions!(field, boundary_conditions, indices, loc, g
     return nothing
 end
 
-fill_open_boundary_regions!(fields::NTuple, boundary_conditions, indices, loc, grid, args...; kwargs...) =
-    [fill_open_boundary_regions!(field, boundary_conditions[n], indices, loc[n], grid, args...; kwargs...) for (n, field) in enumerate(fields)]
+
+fill_open_boundary_regions!(fields::NTuple, boundary_conditions, indices, loc, grid, args...; kwargs...) = 
+    ntuple(n->fill_open_boundary_regions!(fields[n], boundary_conditions[n], indices, loc[n], grid, args...; kwargs...), Val(length(fields)))
 
 # for regular halo fills
 @inline left_velocity_open_boundary_condition(boundary_condition, loc) = nothing
