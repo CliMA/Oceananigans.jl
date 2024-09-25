@@ -48,16 +48,6 @@ using Oceananigans.Grids: Flat
 @inline δzᵃᵃᶜ(i, j, k, grid::AG{FT, TX, TY, Flat}, f::F, args...) where {FT, TX, TY, F<:Function} = zero(FT)
 @inline δzᵃᵃᶠ(i, j, k, grid::AG{FT, TX, TY, Flat}, f::F, args...) where {FT, TX, TY, F<:Function} = zero(FT)
 
-@inline δxᶠᶜᶜ(i, j, k, grid, c) = δxᶠᵃᵃ(i, j, k, grid, c)
-@inline δxᶠᶜᶠ(i, j, k, grid, c) = δxᶠᵃᵃ(i, j, k, grid, c)
-@inline δyᶜᶠᶜ(i, j, k, grid, c) = δyᵃᶠᵃ(i, j, k, grid, c)
-@inline δyᶜᶠᶠ(i, j, k, grid, c) = δyᵃᶠᵃ(i, j, k, grid, c)
-
-@inline δxᶠᶜᶜ(i, j, k, grid, f::F, args...) where F<:Function = δxᶠᵃᵃ(i, j, k, grid, f, args...)
-@inline δxᶠᶜᶠ(i, j, k, grid, f::F, args...) where F<:Function = δxᶠᵃᵃ(i, j, k, grid, f, args...)
-@inline δyᶜᶠᶜ(i, j, k, grid, f::F, args...) where F<:Function = δyᵃᶠᵃ(i, j, k, grid, f, args...)
-@inline δyᶜᶠᶠ(i, j, k, grid, f::F, args...) where F<:Function = δyᵃᶠᵃ(i, j, k, grid, f, args...)
-
 #####
 ##### Support for aquaplanet simulations on conformal cubed sphere grids
 #####
