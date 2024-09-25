@@ -87,10 +87,22 @@ Computes `ib.bottom_height` and wraps it in a Field.
 function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set!(bottom_field, ib.bottom_height)
+    launch!(architecture(grid), grid, :xy, clip_bottom_height!, ib.bottom_height, grid)
     fill_halo_regions!(bottom_field)
     new_ib = GridFittedBottom(bottom_field, ib.immersed_condition)
     TX, TY, TZ = topology(grid)
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, new_ib)
+end
+
+const c = Center()
+const f = Face()
+
+@kernel function clip_bottom_height!(z, grid)
+    i, j, k, = @index(Global, NTuple)
+    Nz = size(grid, 3)
+    z_min = znode(i, j, 1,    grid, c, c, f)
+    z_max = znode(i, j, Nz+1, grid, c, c, f)
+    @inbounds z[i, j, 1] = clamp(z[i, j, 1], z_min, z_max)
 end
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:InterfaceImmersedCondition})
