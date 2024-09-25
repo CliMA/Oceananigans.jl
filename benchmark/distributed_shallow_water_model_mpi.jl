@@ -6,7 +6,7 @@ using JLD2
 using BenchmarkTools
 
 using Oceananigans
-using Oceananigans.Distributed
+using Oceananigans.DistributedComputations
 using Benchmarks
 
 Logging.global_logger(OceananigansLogger())
@@ -30,7 +30,7 @@ Ry = parse(Int, ARGS[4])
 @info "Setting up distributed shallow water model with N=($Nx, $Ny) grid points and ranks=($Rx, $Ry) on rank $local_rank..."
 
 topo = (Periodic, Periodic, Flat)
-arch = DistributedArch(CPU(), topology=topo, ranks=(Rx, Ry, 1), communicator=MPI.COMM_WORLD)
+arch = Distributed(CPU(), topology=topo, ranks=(Rx, Ry, 1), communicator=MPI.COMM_WORLD)
 distributed_grid = RectilinearGrid(arch, topology=topo, size=(Nx, Ny), extent=(1, 1))
 model = ShallowWaterModel(grid=distributed_grid, gravitational_acceleration=1.0)
 set!(model, h=1)

@@ -1,6 +1,9 @@
 include("dependencies_for_runtests.jl")
 
 using TimesDates: TimeDate
+
+using Oceananigans.Models: erroring_NaNChecker!
+
 using Oceananigans.Simulations:
     stop_iteration_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
     TimeStepWizard, new_time_step, reset!
@@ -48,9 +51,8 @@ function wall_time_step_wizard_tests(arch)
     Δt = new_time_step(Δt, wizard, model)
     @test Δt ≈ diff_CFL * Δx^2 / model.closure.ν
 
-
     grid_stretched = RectilinearGrid(arch, 
-                                    size = (1, 1, 1),
+                                     size = (1, 1, 1),
                                      x = (0, 1),
                                      y = (0, 1),
                                      z = z -> z, 
@@ -161,8 +163,8 @@ function run_simulation_date_tests(arch, start_time, stop_time, Δt)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
 
     clock = Clock(time=start_time)
-    model = NonhydrostaticModel(grid=grid, clock=clock)
-    simulation = Simulation(model, Δt=Δt, stop_time=stop_time)
+    model = NonhydrostaticModel(; grid, clock)
+    simulation = Simulation(model; Δt, stop_time)
 
     @test model.clock.time == start_time
     @test simulation.stop_time == stop_time
@@ -203,6 +205,19 @@ end
     for arch in archs
         @info "Testing simulations [$(typeof(arch))]..."
         run_basic_simulation_tests(arch)
+
+        # Test initialization for simulations started with iteration ≠ 0
+        grid = RectilinearGrid(arch, size=(), topology=(Flat, Flat, Flat))
+        model = NonhydrostaticModel(; grid)
+        simulation = Simulation(model; Δt=1, stop_time=6)
+        
+        progress_message(sim) = @info string("Iter: ", iteration(sim), ", time: ", prettytime(sim))
+        progress_cb = Callback(progress_message, TimeInterval(2))
+        simulation.callbacks[:progress] = progress_cb
+
+        model.clock.iteration = 1 # we want to start here for some reason
+        run!(simulation)
+        @test progress_cb.schedule.actuations == 3
 
         @testset "NaN Checker [$(typeof(arch))]" begin
             @info "  Testing NaN Checker [$(typeof(arch))]..."

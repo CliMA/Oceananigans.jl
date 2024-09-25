@@ -6,7 +6,7 @@ using Statistics
 using Oceananigans
 using Oceananigans.Grids
 using Oceananigans.Advection
-using Oceananigans.Advection: boundary_buffer, VelocityStencil
+using Oceananigans.Advection: required_halo_size, VelocityStencil
 using Oceananigans.Models.ShallowWaterModels: VectorInvariantFormulation, ConservativeFormulation, shallow_water_velocities
 using Oceananigans.Fields: interior
 

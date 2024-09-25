@@ -1,5 +1,7 @@
 using Oceananigans.Utils: prettysummary
 
+import Oceananigans.BoundaryConditions: fill_halo_regions!
+
 struct ZeroField{T, N} <: AbstractField{Nothing, Nothing, Nothing, Nothing, T, N} end
 struct OneField{T, N} <: AbstractField{Nothing, Nothing, Nothing, Nothing, T, N} end
 
@@ -20,3 +22,7 @@ ConstantField(constant) = ConstantField{3}(constant)
 @inline Base.getindex(f::ConstantField, ind...) = f.constant
 
 const CF = Union{ConstantField, ZeroField, OneField}
+
+fill_halo_regions!(::ZeroField, args...; kw...) = nothing
+fill_halo_regions!(::ConstantField, args...; kw...) = nothing
+

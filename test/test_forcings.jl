@@ -2,6 +2,25 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 using Oceananigans.Fields: Field
+using Oceananigans.Forcings: MultipleForcings
+
+""" Take one time step with three forcing arrays on u, v, w. """
+function time_step_with_forcing_array(arch)
+    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+
+    Fu = XFaceField(grid)
+    Fv = YFaceField(grid)
+    Fw = ZFaceField(grid)
+
+    set!(Fu, (x, y, z) -> 1)
+    set!(Fv, (x, y, z) -> 1)
+    set!(Fw, (x, y, z) -> 1)
+
+    model = NonhydrostaticModel(; grid, forcing=(u=Fu, v=Fv, w=Fw))
+    time_step!(model, 1, euler=true)
+
+    return true
+end
 
 """ Take one time step with three forcing functions on u, v, w. """
 function time_step_with_forcing_functions(arch)
@@ -116,22 +135,92 @@ function relaxed_time_stepping(arch)
 end
 
 function advective_and_multiple_forcing(arch)
-    grid = RectilinearGrid(arch, size=(2, 2, 3), extent=(1, 1, 1), halo=(4, 4, 4))
+    grid = RectilinearGrid(arch, size=(4, 5, 6), extent=(1, 1, 1), halo=(4, 4, 4))
 
-    constant_slip = AdvectiveForcing(UpwindBiasedFifthOrder(), w=1)
-
+    constant_slip = AdvectiveForcing(w=1)
+    zero_slip = AdvectiveForcing(w=0)
     no_penetration = ImpenetrableBoundaryCondition()
     slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face), top=no_penetration, bottom=no_penetration)
     slip_velocity = ZFaceField(grid, boundary_conditions=slip_bcs)
-    velocity_field_slip = AdvectiveForcing(CenteredSecondOrder(), w=slip_velocity)
-    simple_forcing(x, y, z, t) = 1
+    set!(slip_velocity, 1)
+    velocity_field_slip = AdvectiveForcing(w=slip_velocity)
+    zero_forcing(x, y, z, t) = 0
+    one_forcing(x, y, z, t) = 1
 
-    model = NonhydrostaticModel(; grid, tracers=(:a, :b), forcing=(a=constant_slip, b=(simple_forcing, velocity_field_slip)))
+    model = NonhydrostaticModel(; grid,
+                                tracers = (:a, :b, :c),
+                                forcing = (a = constant_slip,
+                                           b = (zero_forcing, velocity_field_slip),
+                                           c = (one_forcing, zero_slip)))
+
+    a₀ = rand(size(grid)...)
+    b₀ = rand(size(grid)...)
+    set!(model, a=a₀, b=b₀, c=0)
+
+    # Time-step without an error?
+    time_step!(model, 1, euler=true)
+
+    a₁ = Array(interior(model.tracers.a))
+    b₁ = Array(interior(model.tracers.b))
+    c₁ = Array(interior(model.tracers.c))
+
+    a_changed = a₁ ≠ a₀
+    b_changed = b₁ ≠ b₀
+    c_correct = all(c₁ .== model.clock.time)
+
+    return a_changed & b_changed & c_correct
+end
+
+function two_forcings(arch)
+    grid = RectilinearGrid(arch, size=(4, 5, 6), extent=(1, 1, 1), halo=(4, 4, 4))
+    
+    forcing1 = Relaxation(rate=1)
+    forcing2 = Relaxation(rate=2)
+
+    forcing = (
+        u = (forcing1, forcing2),
+        v = MultipleForcings(forcing1, forcing2),
+        w = MultipleForcings((forcing1, forcing2)),
+    )
+
+    model = NonhydrostaticModel(; grid, forcing)
+
     time_step!(model, 1, euler=true)
 
     return true
 end
 
+function seven_forcings(arch)
+    grid = RectilinearGrid(arch, size=(4, 5, 6), extent=(1, 1, 1), halo=(4, 4, 4))
+
+    weird_forcing(x, y, z, t) = x * y + z
+    wonky_forcing(x, y, z, t) = z / (x - y)
+    strange_forcing(x, y, z, t) = z - t
+    bizarre_forcing(x, y, z, t) = y + x
+    peculiar_forcing(x, y, z, t) = 2t / z
+    eccentric_forcing(x, y, z, t) = x + y + z + t
+    unconventional_forcing(x, y, z, t) = 10x * y
+    
+    forcing1 = Forcing(weird_forcing)
+    forcing2 = Forcing(wonky_forcing)
+    forcing3 = Forcing(strange_forcing)
+    forcing4 = Forcing(bizarre_forcing)
+    forcing5 = Forcing(peculiar_forcing)
+    forcing6 = Forcing(eccentric_forcing)
+    forcing7 = Forcing(unconventional_forcing)
+
+    forcing = (
+        u = (forcing1, forcing2, forcing3, forcing4, forcing5, forcing6, forcing7),
+        v = MultipleForcings(forcing1, forcing2, forcing3, forcing4, forcing5, forcing6, forcing7),
+        w = MultipleForcings((forcing1, forcing2, forcing3, forcing4, forcing5, forcing6, forcing7))
+    )
+
+    model = NonhydrostaticModel(; grid, forcing)
+
+    time_step!(model, 1, euler=true)
+
+    return true
+end
 
 @testset "Forcings" begin
     @info "Testing forcings..."
@@ -144,6 +233,7 @@ end
             @testset "Non-parameterized forcing functions [$A]" begin
                 @info "      Testing non-parameterized forcing functions [$A]..."
                 @test time_step_with_forcing_functions(arch)
+                @test time_step_with_forcing_array(arch)
                 @test time_step_with_discrete_forcing(arch)
             end
 
@@ -172,6 +262,8 @@ end
             @testset "Advective and multiple forcing [$A]" begin
                 @info "      Testing advective and multiple forcing [$A]..."
                 @test advective_and_multiple_forcing(arch)
+                @test two_forcings(arch)
+                @test seven_forcings(arch)
             end
         end
     end

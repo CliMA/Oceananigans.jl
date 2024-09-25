@@ -43,6 +43,7 @@ julia> model = NonhydrostaticModel(; grid, boundary_conditions=(u=no_slip_field_
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── advection scheme: Centered reconstruction order 2
 ├── tracers: ()
 ├── closure: Nothing
 ├── buoyancy: Nothing
@@ -91,8 +92,8 @@ julia> model.velocities.v.boundary_conditions
 Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── west: PeriodicBoundaryCondition
 ├── east: PeriodicBoundaryCondition
-├── south: OpenBoundaryCondition: Nothing
-├── north: OpenBoundaryCondition: Nothing
+├── south: OpenBoundaryCondition{Nothing}: Nothing
+├── north: OpenBoundaryCondition{Nothing}: Nothing
 ├── bottom: ValueBoundaryCondition: 0.0
 ├── top: FluxBoundaryCondition: Nothing
 └── immersed: FluxBoundaryCondition: Nothing
@@ -306,7 +307,7 @@ using the `discrete_form`. For example:
 
 ```jldoctest
 @inline filtered_drag(i, j, grid, clock, model_fields) =
-   @inbounds - 0.05 * (model_fields.u[i-1, j, 1] + 2 * model_fields.u[i, j, 1] + model_fields.u[i-1, j, 1])
+    @inbounds - 0.05 * (model_fields.u[i-1, j, 1] + 2 * model_fields.u[i, j, 1] + model_fields.u[i-1, j, 1])
 
 u_bottom_bc = FluxBoundaryCondition(filtered_drag, discrete_form=true)
 
@@ -330,7 +331,7 @@ FluxBoundaryCondition: DiscreteBoundaryFunction with filtered_drag
 ### 8. Discrete-form boundary condition with parameters
 
 ```jldoctest
-julia> Cd = 0.2;  # drag coefficient
+julia> Cd = 0.2; # drag coefficient
 
 julia> @inline linear_drag(i, j, grid, clock, model_fields, Cd) = @inbounds - Cd * model_fields.u[i, j, 1];
 
@@ -404,6 +405,7 @@ julia> model = NonhydrostaticModel(grid=grid, boundary_conditions=(u=u_bcs, c=c_
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── advection scheme: Centered reconstruction order 2
 ├── tracers: c
 ├── closure: Nothing
 ├── buoyancy: Nothing
@@ -434,31 +436,25 @@ top and bottom of both `model.velocities.u` and `model.tracers.c`.
 Immersed boundary conditions are supported experimentally. A no-slip boundary condition is specified
 with
 
-```jldoctest; filter = r".*@ Oceananigans.ImmersedBoundaries.*"
-julia> underlying_grid = RectilinearGrid(size=(32, 32, 16), x=(-3, 3), y=(-3, 3), z=(0, 1), topology=(Periodic, Periodic, Bounded));
+```@meta
+DocTestFilters = r"┌ Warning:[\s\S]*\.jl:[0-9]*"
+```
 
-julia> hill(x, y) = 0.1 + 0.1 * exp(-x^2 - y^2)
-hill (generic function with 1 method)
+```julia
+# Generate a simple ImmersedBoundaryGrid
+hill(x, y) = 0.1 + 0.1 * exp(-x^2 - y^2)
+underlying_grid = RectilinearGrid(size=(32, 32, 16), x=(-3, 3), y=(-3, 3), z=(0, 1), topology=(Periodic, Periodic, Bounded))
+grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(hill))
 
-julia> grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(hill))
-32×32×16 ImmersedBoundaryGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo:
-├── immersed_boundary: GridFittedBottom(min(h)=1.00e-01, max(h)=1.98e-01)
-├── underlying_grid: 32×32×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── Periodic x ∈ [-3.0, 3.0) regularly spaced with Δx=0.1875
-├── Periodic y ∈ [-3.0, 3.0) regularly spaced with Δy=0.1875
-└── Bounded  z ∈ [0.0, 1.0]  regularly spaced with Δz=0.0625
+# Create a no-slip boundary condition for velocity fields.
+# Note that the no-slip boundary condition is _only_ applied on immersed boundaries.
+velocity_bcs = FieldBoundaryConditions(immersed=ValueBoundaryCondition(0))
+model = NonhydrostaticModel(; grid, boundary_conditions=(u=velocity_bcs, v=velocity_bcs, w=velocity_bcs))
 
-julia> velocity_bcs = FieldBoundaryConditions(immersed=ValueBoundaryCondition(0.0));
+# Insepct the boundary condition on the vertical velocity:
+model.velocities.w.boundary_conditions.immersed
 
-julia> model = NonhydrostaticModel(; grid, boundary_conditions=(u=velocity_bcs, v=velocity_bcs, w=velocity_bcs));
-┌ Warning: `ImmersedBoundaryCondition` is experimental.
-└ @ Oceananigans.ImmersedBoundaries ~/repos/Oceananigans.jl3/src/ImmersedBoundaries/immersed_boundary_condition.jl:54
-┌ Warning: `ImmersedBoundaryCondition` is experimental.
-└ @ Oceananigans.ImmersedBoundaries ~/repos/Oceananigans.jl3/src/ImmersedBoundaries/immersed_boundary_condition.jl:54
-┌ Warning: `ImmersedBoundaryCondition` is experimental.
-└ @ Oceananigans.ImmersedBoundaries ~/repos/Oceananigans.jl3/src/ImmersedBoundaries/immersed_boundary_condition.jl:54
-
-julia> model.velocities.w.boundary_conditions.immersed
+# output
 ImmersedBoundaryCondition:
 ├── west: ValueBoundaryCondition: 0.0
 ├── east: ValueBoundaryCondition: 0.0
@@ -468,23 +464,36 @@ ImmersedBoundaryCondition:
 └── top: Nothing
 ```
 
+!!! warning "`NonhydrostaticModel` on `ImmersedBoundaryGrid`"
+    The pressure solver for `NonhydrostaticModel` is approximate, and is unable to produce
+    a velocity field that is simultaneously divergence-free while also satisfying impenetrability
+    on the immersed boundary. As a result, simulated dynamics with `NonhydrostaticModel` can
+    exhibit egregiously unphysical errors and should be interpreted with caution.
+
 An `ImmersedBoundaryCondition` encapsulates boundary conditions on each potential boundary-facet
 of a boundary-adjacent cell. Boundary conditions on specific faces of immersed-boundary-adjacent
 cells may also be specified by manually building an `ImmersedBoundaryCondition`:
 
-```jldoctest; filter = r".*@ Oceananigans.ImmersedBoundaries.*"
-julia> bottom_drag_bc = ImmersedBoundaryCondition(bottom=ValueBoundaryCondition(0.0))
-┌ Warning: `ImmersedBoundaryCondition` is experimental.
-└ @ Oceananigans.ImmersedBoundaries ~/repos/Oceananigans.jl3/src/ImmersedBoundaries/immersed_boundary_condition.jl:54
+```julia
+bottom_drag_bc = ImmersedBoundaryCondition(bottom=ValueBoundaryCondition(0))
+
+# output
 ImmersedBoundaryCondition:
 ├── west: Nothing
 ├── east: Nothing
 ├── south: Nothing
 ├── north: Nothing
-├── bottom: ValueBoundaryCondition: 0.0
+├── bottom: ValueBoundaryCondition: 0
 └── top: Nothing
+```
 
-julia> velocity_bcs = FieldBoundaryConditions(immersed=bottom_drag_bc)
+The `ImmersedBoundaryCondition` may then be incorporated into the boundary conditions for a
+`Field` by prescribing it to the `immersed` boundary label,
+
+```julia
+velocity_bcs = FieldBoundaryConditions(immersed=bottom_drag_bc)
+
+# output
 Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── west: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
 ├── east: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
@@ -510,27 +519,24 @@ of the underlying grid.
 
 First we create the boundary condition for the grid's bottom:
 
-```jldoctest immersed_bc
-julia> @inline linear_drag(x, y, t, u) = - 0.2 * u
-linear_drag (generic function with 1 method)
+```julia
+@inline linear_drag(x, y, t, u) = - 0.2 * u
+drag_u = FluxBoundaryCondition(linear_drag, field_dependencies=:u)
 
-julia> drag_u = FluxBoundaryCondition(linear_drag, field_dependencies=:u)
+# output
 FluxBoundaryCondition: ContinuousBoundaryFunction linear_drag at (Nothing, Nothing, Nothing)
 ```
 
 Next, we create the immersed boundary condition by adding the argument `z` to `linear_drag`
 and imposing drag only on "bottom" facets of cells that neighbor immersed cells:
 
-```jldoctest immersed_bc; filter = r".*@ Oceananigans.ImmersedBoundaries.*"
-julia> @inline immersed_linear_drag(x, y, z, t, u) = - 0.2 * u
-immersed_linear_drag (generic function with 1 method)
+```julia
+@inline immersed_linear_drag(x, y, z, t, u) = - 0.2 * u
+immersed_drag_u = FluxBoundaryCondition(immersed_linear_drag, field_dependencies=:u)
 
-julia> immersed_drag_u = FluxBoundaryCondition(immersed_linear_drag, field_dependencies=:u)
-FluxBoundaryCondition: ContinuousBoundaryFunction immersed_linear_drag at (Nothing, Nothing, Nothing)
+u_immersed_bc = ImmersedBoundaryCondition(bottom = immersed_drag_u)
 
-julia> u_immersed_bc = ImmersedBoundaryCondition(bottom = immersed_drag_u)
-┌ Warning: `ImmersedBoundaryCondition` is experimental.
-└ @ Oceananigans.ImmersedBoundaries ~/repos/Oceananigans.jl3/src/ImmersedBoundaries/immersed_boundary_condition.jl:54
+# output
 ImmersedBoundaryCondition:
 ├── west: Nothing
 ├── east: Nothing
@@ -542,8 +548,10 @@ ImmersedBoundaryCondition:
 
 Finally, we combine the two:
 
-```jldoctest immersed_bc
-julia> u_bcs = FieldBoundaryConditions(bottom = drag_u, immersed = u_immersed_bc)
+```julia
+u_bcs = FieldBoundaryConditions(bottom = drag_u, immersed = u_immersed_bc)
+
+# output
 Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── west: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
 ├── east: DefaultBoundaryCondition (FluxBoundaryCondition: Nothing)
@@ -558,3 +566,8 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
     Note the difference between the arguments required for the function within the `bottom` boundary
     condition versus the arguments for the function within the `immersed` boundary condition. E.g.,
     `x, y, t` in `linear_drag()` versus `x, y, z, t` in `immersed_linear_drag()`.
+
+```@meta
+DocTestFilters = nothing
+```
+

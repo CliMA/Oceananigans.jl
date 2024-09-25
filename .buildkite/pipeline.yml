@@ -1,9 +1,11 @@
 env:
-  JULIA_VERSION: "1.9.2"
-  JULIA_MINOR_VERSION: "1.9"
+  JULIA_VERSION: "1.10.5"
+  JULIA_MINOR_VERSION: "1.10"
   SVERDRUP_HOME: "/data5/glwagner"
   TARTARUS_HOME: "/storage5/buildkite-agent"
-  GKSwstype: "100" # See: https://github.com/jheinen/GR.jl/issues/278
+  JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
+  JULIA_NUM_PRECOMPILE_TASKS: 8
+  JULIA_NUM_THREADS: 8
 
 steps:
   - label: "🎪 initialize gpu environment"
@@ -15,17 +17,6 @@ steps:
       # Download julia binaries
       - "wget -N -P $SVERDRUP_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz"
       - "tar xf $SVERDRUP_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $SVERDRUP_HOME"
-
-      # Instantiate and precompile
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.build()'"
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.precompile()'"
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.status()'"
-
-      # Force the initialization of the CUDA runtime as it is lazily loaded by default
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using CUDA; try CUDA.versioninfo(); catch; end'"
-
-      # Download artifacts by running an empty testgroup and thereby executing /test/runtests.jl
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
@@ -36,22 +27,14 @@ steps:
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "init"
-      CUDA_VISIBLE_DEVICES: "-1"
+      CUDA_VISIBLE_DEVICES: "0"
       JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
       TMPDIR: "$TARTARUS_HOME/tmp"
     commands:
       # Download julia binaries
       - "wget -N -P $TARTARUS_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz"
       - "tar xf $TARTARUS_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $TARTARUS_HOME"
-
-      # Instantiate, precompile, and download artifacts by running an empty testgroup and thereby executing /test/runtests.jl
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.precompile()'"
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.status()'"
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-
-      # Set up the mpiexecjl command
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using MPI; MPI.install_mpiexecjl()'"
     agents:
       queue: Oceananigans
       architecture: CPU
@@ -69,6 +52,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🐇 cpu unit tests"
@@ -81,6 +68,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -96,6 +87,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🕊️ cpu poisson solver tests 1"
@@ -108,6 +103,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
   - label: "🦖 gpu poisson solver tests 2"
@@ -119,6 +118,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🦕 cpu poisson solver tests 2"
@@ -131,6 +134,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
   - label: "🌷 gpu matrix poisson solver tests"
@@ -142,6 +149,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🌹 cpu matrix poisson solver tests"
@@ -154,6 +165,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
   - label: "🦤 gpu general solver tests"
@@ -165,6 +180,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🦃 cpu general solver tests"
@@ -177,6 +196,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -192,6 +215,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🦞 cpu time stepping tests 1"
@@ -204,6 +231,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -219,6 +250,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🐬 cpu time stepping tests 2"
@@ -231,6 +266,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -246,6 +285,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🦗 cpu time stepping tests 3"
@@ -258,6 +301,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -273,6 +320,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🎏 cpu turbulence closures"
@@ -285,6 +336,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -300,6 +355,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🦑 cpu hydrostatic free surface model tests"
@@ -312,6 +371,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -327,6 +390,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🦆 cpu shallow water model tests"
@@ -339,6 +406,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -354,6 +425,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🐋 cpu simulation tests"
@@ -366,6 +441,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -381,6 +460,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🍃 cpu lagrangian particles tests"
@@ -393,6 +476,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -408,6 +495,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🤖 cpu abstract operations tests"
@@ -420,33 +511,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
-    depends_on: "init_cpu"
-
-#####
-##### Cubed sphere
-#####
-
-  - label: "🐡 gpu cubed sphere tests"
-    env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "cubed_sphere"
-    commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      queue: Oceananigans
-      architecture: GPU
-    depends_on: "init_gpu"
-
-  - label: "🦔 cpu cubed sphere tests"
-    env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "cubed_sphere"
-      CUDA_VISIBLE_DEVICES: "-1"
-    commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      queue: Oceananigans
-      architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -462,6 +530,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🧄 cpu multi region tests"
@@ -474,54 +546,11 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
-
-#####
-##### Distributed/MPI
-#####
-
-  - label: "🐉 cpu distributed unit tests"
-    env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "distributed"
-      CUDA_VISIBLE_DEVICES: "-1"
-      PATH: "$PATH:$TARTARUS_HOME/julia-$JULIA_VERSION/bin" # Need julia binary in $PATH for mpiexecjl to work.
-      JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
-    commands:
-      - "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER/bin/mpiexecjl -np 4 $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      queue: Oceananigans
-      architecture: CPU
-    depends_on: "init_cpu"
-
-  - label: "🦾 cpu distributed solvers tests"
-    env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "distributed_solvers"
-      CUDA_VISIBLE_DEVICES: "-1"
-      PATH: "$PATH:$TARTARUS_HOME/julia-$JULIA_VERSION/bin" # Need julia binary in $PATH for mpiexecjl to work.
-      JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
-    commands:
-      - "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER/bin/mpiexecjl -np 4 $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      queue: Oceananigans
-      architecture: CPU
-    depends_on: "init_cpu"
-
-  # We get a SegFault. We probably need more devices to run this test
-  # - label: "🐲 gpu distributed unit tests"
-  # env:
-  #   JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-  #   TEST_GROUP: "distributed"
-  #   CUDA_VISIBLE_DEVICES: "0"
-  #   PATH: "$PATH:$SVERDRUP_HOME/julia-$JULIA_VERSION/bin" # Need julia binary in $PATH for mpiexecjl to work.
-  #   JULIA_BINDIR: "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin"
-  # commands:
-  #   - "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER/bin/mpiexecjl -np 4 $SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-  # agents:
-  #   queue: Oceananigans
-  #   architecture: GPU
-  # depends_on: "init_gpu"
 
 #####
 ##### Regression
@@ -536,6 +565,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🐪 cpu nonhydrostatic regression tests"
@@ -548,6 +581,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
   - label: "🙈 gpu hydrostatic regression tests"
@@ -559,6 +596,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🙉 cpu hydrostatic regression tests"
@@ -571,6 +612,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -586,6 +631,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_gpu"
 
   - label: "🦍 cpu scripts"
@@ -598,6 +647,45 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
+    depends_on: "init_cpu"
+
+#####
+##### Enzyme extension tests
+#####
+
+  - label: "👺 gpu Enzyme extension tests"
+    env:
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "enzyme"
+    commands:
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
+    depends_on: "init_gpu"
+
+  - label: "👹 cpu Enzyme extension tests"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "enzyme"
+      CUDA_VISIBLE_DEVICES: "-1"
+    commands:
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
     depends_on: "init_cpu"
 
 #####
@@ -607,10 +695,11 @@ steps:
   - label: "🦉 documentation"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      CUDA_VISIBLE_DEVICES: "-1"
+      CUDA_VISIBLE_DEVICES: "0"
       JULIA_DEBUG: "Documenter"
       TMPDIR: "$TARTARUS_HOME/tmp"
     commands:
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'"
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ docs/make.jl"
     agents:
       queue: Oceananigans

@@ -120,13 +120,13 @@ abstract type AbstractContinuousFormBiogeochemistry <: AbstractBiogeochemistry e
     return bgc(val_tracer_name, x, y, z, clock.time, fields_ijk...)
 end
 
-@inline (bgc::AbstractContinuousFormBiogeochemistry)(val_tracer_name, x, y, z, t, fields...) = zero(x)
+@inline (bgc::AbstractContinuousFormBiogeochemistry)(val_tracer_name, x, y, z, t, fields...) = zero(t)
 
 tracernames(tracers) = keys(tracers)
 tracernames(tracers::Tuple) = tracers
 
 add_biogeochemical_tracer(tracers::Tuple, name, grid) = tuple(tracers..., name)
-add_biogeochemical_tracer(tracers::NamedTuple, name, grid) = merge(tracers, NamedTuple(name => CenterField(grid)))
+add_biogeochemical_tracer(tracers::NamedTuple, name, grid) = merge(tracers, (; name => CenterField(grid)))
 
 @inline function has_biogeochemical_tracers(fields, required_fields, grid)
     user_specified_tracers = [name in tracernames(fields) for name in required_fields]

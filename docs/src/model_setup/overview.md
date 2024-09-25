@@ -7,8 +7,8 @@ Each structure covered in this section can be constructed and passed to the mode
 For examples of model construction, see the examples. The validation experiments provide more 
 advanced examples.
 
-For reference, here are all the option or keyword arguments that can be passed to the models
-currently implemented in Oceananigans.jl. See the different sections on the sidebar for more 
+For reference, here are all the option or keyword arguments that can be passed to the
+currently implemented models. See the different sections on the sidebar for more 
 details and examples for each keyword argument.
 
 ### `NonhydrostaticModel`

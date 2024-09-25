@@ -4,7 +4,12 @@ using Oceananigans.BoundaryConditions: DefaultBoundaryCondition
 using Oceananigans.TurbulenceClosures: AbstractScalarDiffusivity, h_diffusivity, z_diffusivity
 using Oceananigans.Operators: index_left, index_right, Δx, Δy, Δz, div
 
-import Oceananigans.BoundaryConditions: regularize_immersed_boundary_condition, bc_str
+import Oceananigans.BoundaryConditions: regularize_immersed_boundary_condition, bc_str, update_boundary_condition!
+
+import Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ,
+                                        immersed_∂ⱼ_τ₂ⱼ,
+                                        immersed_∂ⱼ_τ₃ⱼ,
+                                        immersed_∇_dot_qᶜ
 
 struct ImmersedBoundaryCondition{W, E, S, N, B, T}
     west :: W                  
@@ -40,9 +45,9 @@ Base.show(io::IO, ibc::IBC) =
 """
     ImmersedBoundaryCondition(; interfaces...)
 
-Return an ImmersedBoundaryCondition with conditions on individual
-cell `interfaces ∈ (west, east, south, north, bottom, top)`
-between the fluid and immersed boundary.
+Return an `ImmersedBoundaryCondition` with conditions on individual cell
+`interfaces ∈ (west, east, south, north, bottom, top)` between the fluid
+and the immersed boundary.
 """
 function ImmersedBoundaryCondition(; west = nothing,
                                      east = nothing,
@@ -267,6 +272,9 @@ Adapt.adapt_structure(to, bc::ImmersedBoundaryCondition) = ImmersedBoundaryCondi
                                                                                      Adapt.adapt(to, bc.north),
                                                                                      Adapt.adapt(to, bc.bottom),
                                                                                      Adapt.adapt(to, bc.top))
+
+update_boundary_condition!(bc::ImmersedBoundaryCondition, args...) = nothing
+
 #####
 ##### Alternative implementation for immersed flux divergence
 #####
