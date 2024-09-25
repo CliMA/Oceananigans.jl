@@ -157,12 +157,19 @@ end
     return nothing
 end
 
+# Linear free surface implementation
 @inline dynamic_column_heightᶠᶜ(i, j, k, grid, H, η) = @inbounds H[i, j, 1]
 @inline dynamic_column_heightᶜᶠ(i, j, k, grid, H, η) = @inbounds H[i, j, 1]
+
+@inline grid_scaling_factorᶠᶜ(i, j, k, grid, H, η) = one(grid)
+@inline grid_scaling_factorᶜᶠ(i, j, k, grid, H, η) = one(grid)
 
 # Non-linear free surface implementation
 @inline dynamic_column_heightᶠᶜ(i, j, k, grid::ZStarSpacingGrid, H, η) = @inbounds H[i, j, 1] + ℑxᶠᵃᵃ(i, j, k, grid, η)
 @inline dynamic_column_heightᶜᶠ(i, j, k, grid::ZStarSpacingGrid, H, η) = @inbounds H[i, j, 1] + ℑyᵃᶠᵃ(i, j, k, grid, η)
+
+@inline grid_scaling_factorᶠᶜ(i, j, k, grid::ZStarSpacingGrid, H, η) = @inbounds dynamic_column_heightᶠᶜ(i, j, k, grid, H, η) / H[i, j, 1]
+@inline grid_scaling_factorᶜᶠ(i, j, k, grid::ZStarSpacingGrid, H, η) = @inbounds dynamic_column_heightᶜᶠ(i, j, k, grid, H, η) / H[i, j, 1]
 
 @kernel function _split_explicit_barotropic_velocity!(averaging_weight, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
                                                       U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,
@@ -212,13 +219,16 @@ end
     i, j  = @index(Global, NTuple)	
     k_top = grid.Nz + 1
 
+    sᶠᶜ = grid_scaling_factorᶠᶜ(i, j, k_top, grid, Hᶠᶜ, η̅) 
+    sᶜᶠ = grid_scaling_factorᶜᶠ(i, j, k_top, grid, Hᶜᶠ, η̅) 
+
     # hand unroll first loop
-    @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δrᶠᶜᶜ(i, j, 1, grid)
-    @inbounds V[i, j, k_top-1] = v[i, j, 1] * Δrᶜᶠᶜ(i, j, 1, grid)
+    @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δrᶠᶜᶜ(i, j, 1, grid) * sᶠᶜ
+    @inbounds V[i, j, k_top-1] = v[i, j, 1] * Δrᶜᶠᶜ(i, j, 1, grid) * sᶜᶠ
 
     @unroll for k in 2:grid.Nz
-        @inbounds U[i, j, k_top-1] += u[i, j, k] * Δrᶠᶜᶜ(i, j, k, grid)
-        @inbounds V[i, j, k_top-1] += v[i, j, k] * Δrᶜᶠᶜ(i, j, k, grid)
+        @inbounds U[i, j, k_top-1] += u[i, j, k] * Δrᶠᶜᶜ(i, j, k, grid) * sᶠᶜ
+        @inbounds V[i, j, k_top-1] += v[i, j, k] * Δrᶜᶠᶜ(i, j, k, grid) * sᶜᶠ
     end
 end
 
@@ -227,13 +237,16 @@ end
     i, j = active_linear_index_to_tuple(idx, active_cells_map)
     k_top = grid.Nz+1
 
+    sᶠᶜ = grid_scaling_factorᶠᶜ(i, j, k_top, grid, Hᶠᶜ, η̅) 
+    sᶜᶠ = grid_scaling_factorᶜᶠ(i, j, k_top, grid, Hᶜᶠ, η̅) 
+
     # hand unroll first loop
-    @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δrᶠᶜᶜ(i, j, 1, grid) 
-    @inbounds V[i, j, k_top-1] = v[i, j, 1] * Δrᶜᶠᶜ(i, j, 1, grid) 
+    @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δrᶠᶜᶜ(i, j, 1, grid) * sᶠᶜ
+    @inbounds V[i, j, k_top-1] = v[i, j, 1] * Δrᶜᶠᶜ(i, j, 1, grid) * sᶜᶠ
 
     @unroll for k in 2:grid.Nz
-        @inbounds U[i, j, k_top-1] += u[i, j, k] * Δrᶠᶜᶜ(i, j, k, grid) 
-        @inbounds V[i, j, k_top-1] += v[i, j, k] * Δrᶜᶠᶜ(i, j, k, grid) 
+        @inbounds U[i, j, k_top-1] += u[i, j, k] * Δrᶠᶜᶜ(i, j, k, grid) * sᶠᶜ
+        @inbounds V[i, j, k_top-1] += v[i, j, k] * Δrᶜᶠᶜ(i, j, k, grid) * sᶜᶠ
     end
 end
 
@@ -250,8 +263,8 @@ end
     k_top   = grid.Nz + 1
     
     @inbounds begin
-        u[i, j, k] = u[i, j, k] + (U̅[i, j, k_top-1] - U[i, j, k_top-1]) / Hᶠᶜ[i, j, 1]
-        v[i, j, k] = v[i, j, k] + (V̅[i, j, k_top-1] - V[i, j, k_top-1]) / Hᶜᶠ[i, j, 1]
+        u[i, j, k] = u[i, j, k] + (U̅[i, j, k_top-1] - U[i, j, k_top-1]) / dynamic_column_heightᶠᶜ(i, j, k_top, grid, Hᶠᶜ, η̅)
+        v[i, j, k] = v[i, j, k] + (V̅[i, j, k_top-1] - V[i, j, k_top-1]) / dynamic_column_heightᶜᶠ(i, j, k_top, grid, Hᶜᶠ, η̅)
     end
 end
 
