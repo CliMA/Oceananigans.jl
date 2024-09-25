@@ -86,7 +86,7 @@ function generalized_spacing_grid(grid::AbstractUnderlyingGrid{FT, TX, TY, TZ}, 
     sᶜᶠ⁻  = Field{Center, Face,   Nothing}(grid)
     sᶜᶠⁿ  = Field{Center, Face,   Nothing}(grid)
     sᶠᶠⁿ  = Field{Face,   Face,   Nothing}(grid)
-    ∂t_s = Field{Center, Center, Nothing}(grid)
+    ∂t_s  = Field{Center, Center, Nothing}(grid)
     
     # Initial "at-rest" conditions
     fill!(sᶜᶜ⁻, 1)
@@ -122,11 +122,11 @@ end
 
 @inline vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Center, ::Center, ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶜᶜⁿ[i, j, 1]
 @inline vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Face,   ::Center, ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶠᶜⁿ[i, j, 1]
-@inline vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Center, ::Face, ℓz)   = @inbounds grid.Δzᵃᵃᶠ.sᶜᶠⁿ[i, j, 1]
+@inline vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Center, ::Face,   ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶜᶠⁿ[i, j, 1]
 
 @inline previous_vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Center, ::Center, ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶜᶜ⁻[i, j, 1]
 @inline previous_vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Face,   ::Center, ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶠᶜ⁻[i, j, 1]
-@inline previous_vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Center, ::Face, ℓz)   = @inbounds grid.Δzᵃᵃᶠ.sᶜᶠ⁻[i, j, 1]
+@inline previous_vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Center, ::Face,   ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶜᶠ⁻[i, j, 1]
 
 reference_zspacings(grid::ZStarSpacingGrid, ::Face)   = grid.Δzᵃᵃᶠ.Δr
 reference_zspacings(grid::ZStarSpacingGrid, ::Center) = grid.Δzᵃᵃᶜ.Δr
@@ -148,7 +148,7 @@ function update_vertical_spacing!(model, grid::ZStarSpacingGrid; parameters = :x
     sᶜᶠ⁻  = grid.Δzᵃᵃᶠ.sᶜᶠ⁻
     sᶜᶠⁿ  = grid.Δzᵃᵃᶠ.sᶜᶠⁿ
     sᶠᶠⁿ  = grid.Δzᵃᵃᶠ.sᶠᶠⁿ
-    ∂t_s = grid.Δzᵃᵃᶠ.∂t_s
+    ∂t_s  = grid.Δzᵃᵃᶠ.∂t_s
 
     # Free surface variables
     Hᶜᶜ = model.free_surface.auxiliary.Hᶜᶜ
@@ -181,7 +181,7 @@ end
     @inbounds begin
         # ∂(η / H)/∂t = - ∇ ⋅ ∫udz / H
         ∂t_s[i, j, 1] = -  1 / Azᶜᶜᶠ(i, j, k_top-1, grid) * (δxᶜᵃᵃ(i, j, k_top-1, grid, Δy_qᶠᶜᶠ, U̅) +
-                                                              δyᵃᶜᵃ(i, j, k_top-1, grid, Δx_qᶜᶠᶠ, V̅)) / Hᶜᶜ[i, j, 1]
+                                                             δyᵃᶜᵃ(i, j, k_top-1, grid, Δx_qᶜᶠᶠ, V̅)) / Hᶜᶜ[i, j, 1]
     end
 end
 

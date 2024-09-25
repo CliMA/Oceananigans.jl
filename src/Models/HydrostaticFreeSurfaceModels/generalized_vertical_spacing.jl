@@ -18,7 +18,7 @@ import Oceananigans.Architectures: arch_array
 
 spacings for a generalized vertical coordinate system. The reference (non-moving) spacings are stored in `Δr`. 
 `Δ` contains the spacings associated with the moving coordinate system.
-`s⁻`, `sⁿ` and `∂t_s` fields are the vertical derivative of the vertical coordinate (∂Δ/∂Δr)
+`s⁻`, `sⁿ` and `∂t_s` fields are the vertical derivative of the vertical coordinate (∂Δr/∂Δz)
 at timestep `n-1` and `n` and it's time derivative.
 `denomination` contains the "type" of generalized vertical coordinate (the only one implemented is `ZStar`)
 """
@@ -162,7 +162,7 @@ update_vertical_spacing!(model, grid; kwargs...) = nothing
     C₂ = convert(FT, 0.5) + χ
 
     sⁿ = vertical_scaling(i, j, k, grid, c, c, c)
-    s⁻ = previous_vertical_scaling(i, j, k, grid, f, f, f)
+    s⁻ = previous_vertical_scaling(i, j, k, grid, c, c, c)
 
     @inbounds begin
         ∂t_sθ = C₁ * sⁿ * Gⁿ[i, j, k] - C₂ * s⁻ * G⁻[i, j, k]
