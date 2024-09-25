@@ -1,20 +1,17 @@
-import Oceananigans.TimeSteppers: compute_tendencies!
 import Oceananigans: tracer_tendency_kernel_function
-
-using Oceananigans.Utils: work_layout, KernelParameters
-using Oceananigans.Fields: immersed_boundary_condition
-using Oceananigans.Grids: halo_size
-using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCallsite
-using Oceananigans.Biogeochemistry: update_tendencies!
-
 import Oceananigans.TimeSteppers: compute_tendencies!
-import Oceananigans: tracer_tendency_kernel_function
-
 import Oceananigans.Models: complete_communication_and_compute_boundary!
 import Oceananigans.Models: interior_tendency_kernel_parameters
 
-using Oceananigans.ImmersedBoundaries: active_interior_map, ActiveCellsIBG, 
-                                       InteriorMap, active_linear_index_to_tuple
+using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCallsite
+using Oceananigans.Utils: work_layout, KernelParameters
+using Oceananigans.Grids: halo_size
+using Oceananigans.Fields: immersed_boundary_condition
+using Oceananigans.Biogeochemistry: update_tendencies!
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
+
+using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, ActiveCellsIBG, 
+                                       active_linear_index_to_tuple
 
 """
     compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
@@ -27,9 +24,10 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     kernel_parameters = tuple(interior_tendency_kernel_parameters(model.grid))
 
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
-    # interior of the domain
-    compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters;
-                                                             active_cells_map = active_interior_map(model.grid))
+    # interior of the domain. The active cells map restricts the computation to the active cells in the
+    # interior if the grid is _immersed_ and the `active_cells_map` kwarg is active
+    active_cells_map = retrieve_interior_active_cells_map(model.grid, Val(:interior))
+    compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; active_cells_map)
 
     complete_communication_and_compute_boundary!(model, model.grid, model.architecture)
 
@@ -54,23 +52,6 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     return nothing
 end
 
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
-
-@inline tracer_tendency_kernel_function(model::HFSM, name, c, K)                     = compute_hydrostatic_free_surface_Gc!, c, K
-@inline tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, c::FlavorOfCATKE, K) = compute_hydrostatic_free_surface_Ge!, c, K
-
-function tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, closures::Tuple, diffusivity_fields::Tuple)
-    catke_index = findfirst(c -> c isa FlavorOfCATKE, closures)
-
-    if isnothing(catke_index)
-        return compute_hydrostatic_free_surface_Gc!, closures, diffusivity_fields
-    else
-        catke_closure = closures[catke_index]
-        catke_diffusivity_fields = diffusivity_fields[catke_index]
-        return compute_hydrostatic_free_surface_Ge!, catke_closure, catke_diffusivity_fields 
-    end
-end
-
 @inline function top_tracer_boundary_conditions(grid, tracers)
     names = propertynames(tracers)
     values = Tuple(tracers[c].boundary_conditions.top for c in names)
@@ -87,38 +68,31 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
 
     compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; active_cells_map)
 
-    top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
-
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
+
         @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
         @inbounds c_advection   = model.advection[tracer_name]
         @inbounds c_forcing     = model.forcing[tracer_name]
         @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
 
-        tendency_kernel!, closure, diffusivity = tracer_tendency_kernel_function(model,
-                                                                                 Val(tracer_name),
-                                                                                 model.closure,
-                                                                                 model.diffusivity_fields)
-
         args = tuple(Val(tracer_index),
                      Val(tracer_name),
                      c_advection,
-                     closure,
+                     model.closure,
                      c_immersed_bc,
                      model.buoyancy,
                      model.biogeochemistry,
                      model.velocities,
                      model.free_surface,
                      model.tracers,
-                     top_tracer_bcs,
-                     diffusivity,
+                     model.diffusivity_fields,
                      model.auxiliary_fields,
                      c_forcing,
                      model.clock)
 
         for parameters in kernel_parameters
             launch!(arch, grid, parameters,
-                    tendency_kernel!,
+                    compute_hydrostatic_free_surface_Gc!,
                     c_tendency,
                     grid,
                     active_cells_map,
@@ -228,26 +202,26 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, map, args)
+@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, ::Nothing, args)
     i, j, k = @index(Global, NTuple)
     @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
 end
 
-@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid::ActiveCellsIBG, map, args)
+@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, active_cells_map, args)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, map, grid)
+    i, j, k = active_linear_index_to_tuple(idx, active_cells_map)
     @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, map, args)
+@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, ::Nothing, args)
     i, j, k = @index(Global, NTuple)
     @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
 end
 
-@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid::ActiveCellsIBG, map, args)
+@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, active_cells_map, args)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, map, grid)
+    i, j, k = active_linear_index_to_tuple(idx, active_cells_map)
     @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
 end
 
@@ -256,27 +230,15 @@ end
 #####
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-@kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid, map, args)
+@kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid, ::Nothing, args)
     i, j, k = @index(Global, NTuple)
     @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
 end
 
-@kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid::ActiveCellsIBG, map, args)
+@kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid, active_cells_map, args)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, map, grid)
+    i, j, k = active_linear_index_to_tuple(idx, active_cells_map)
     @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
-end
-
-""" Calculate the right-hand-side of the subgrid scale energy equation. """
-@kernel function compute_hydrostatic_free_surface_Ge!(Ge, grid, map, args)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Ge[i, j, k] = hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, args...)
-end
-
-@kernel function compute_hydrostatic_free_surface_Ge!(Ge, grid::ActiveCellsIBG, map, args)
-    idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, map, grid)
-    @inbounds Ge[i, j, k] = hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, args...)
 end
 
 #####

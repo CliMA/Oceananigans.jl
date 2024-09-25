@@ -1,3 +1,6 @@
+using Printf
+using Oceananigans.Architectures: cpu_architecture
+
 #####
 ##### set!
 #####
@@ -13,17 +16,27 @@ function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name)
     file_times = [file["timeseries/t/$i"] for i in file_iterations]
     close(file)
 
+    arch = architecture(fts)
+
     # TODO: a potential optimization here might be to load
     # all of the data into a single array, and then transfer that
     # to parent(fts).
     for n in time_indices(fts)
         t = fts.times[n]
         file_index = find_time_index(t, file_times)
+
+        if isnothing(file_index)
+            msg = string("Error setting ", summary(fts), '\n')
+            msg *= @sprintf("Can't find data for time %.1e and time index %d\n", t, n)
+            msg *= @sprintf("for field %s at path %s", path, name)
+            error(msg)
+        end
+
         file_iter = file_iterations[file_index]
         
         # Note: use the CPU for this step
         field_n = Field(location(fts), path, name, file_iter,
-                        architecture = CPU(),
+                        architecture = cpu_architecture(arch),
                         indices = fts.indices,
                         boundary_conditions = fts.boundary_conditions)
 

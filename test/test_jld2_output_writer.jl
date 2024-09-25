@@ -98,7 +98,7 @@ function test_jld2_time_file_splitting(arch)
     end
     ow = JLD2OutputWriter(model, (; u=model.velocities.u);
                           dir = ".",
-                          filename = "test.jld2",
+                          filename = "test",
                           schedule = IterationInterval(1),
                           init = fake_bc_init,
                           including = [:grid],
@@ -175,8 +175,10 @@ function test_jld2_time_averaging_of_horizontal_averages(model)
 
     FT = eltype(model.grid)
 
-    @test wu == zero(FT) 
-    @test wT == zero(FT) 
+    # Note: w is not identically 0 because T = 4 introduces a buoyancy term that is
+    # subsequently cancelled by a large scale pressure field.
+    @test abs(wu) < eps(FT)
+    @test abs(wT) < eps(FT)
     @test uv == FT(2)
 
     return nothing
@@ -212,7 +214,7 @@ for arch in archs
         simulation.output_writers[:velocities] = JLD2OutputWriter(model, vanilla_outputs,
                                                                   schedule = IterationInterval(1),
                                                                   dir = ".",
-                                                                  filename = "vanilla_jld2_test.jld2",
+                                                                  filename = "vanilla_jld2_test",
                                                                   indices = (:, :, :),
                                                                   with_halos = false,
                                                                   overwrite_existing = true)
@@ -222,7 +224,7 @@ for arch in archs
                                                               indices = (1:2, 1:4, :),
                                                               with_halos = false,
                                                               dir = ".",
-                                                              filename = "sliced_jld2_test.jld2",
+                                                              filename = "sliced_jld2_test",
                                                               overwrite_existing = true)
 
         func_outputs = (u = model -> u, v = model -> v, w = model -> w)
@@ -232,7 +234,7 @@ for arch in archs
                                                                     indices = (1:2, 1:4, :),
                                                                     with_halos = false,
                                                                     dir = ".",
-                                                                    filename = "sliced_funcs_jld2_test.jld2",
+                                                                    filename = "sliced_funcs_jld2_test",
                                                                     overwrite_existing = true)
 
 
@@ -241,7 +243,7 @@ for arch in archs
                                                                           indices = (1:2, 1:4, :),
                                                                           with_halos = false,
                                                                           dir = ".",
-                                                                          filename = "sliced_func_fields_jld2_test.jld2",
+                                                                          filename = "sliced_func_fields_jld2_test",
                                                                           overwrite_existing = true)
 
 

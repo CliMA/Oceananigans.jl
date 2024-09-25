@@ -156,6 +156,10 @@ const XYZFlatGrid = AbstractGrid{<:Any, Flat, Flat, Flat}
 
 isrectilinear(grid) = false
 
+# Fallback
+@inline  retrieve_surface_active_cells_map(::AbstractGrid) = nothing
+@inline retrieve_interior_active_cells_map(::AbstractGrid, any_map_type) = nothing
+
 include("grid_utils.jl")
 include("nodes_and_spacings.jl")
 include("zeros_and_ones.jl")

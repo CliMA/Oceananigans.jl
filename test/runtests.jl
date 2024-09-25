@@ -1,3 +1,5 @@
+using Pkg
+
 include("dependencies_for_runtests.jl")
 
 group     = get(ENV, "TEST_GROUP", :all) |> Symbol
@@ -17,10 +19,27 @@ end
 CUDA.allowscalar() do
 
 @testset "Oceananigans" begin
+
     if test_file != :none
         @testset "Single file test" begin
             include(String(test_file))
         end
+    end
+
+    # Initialization steps
+    if group == :init || group == :all
+        Pkg.instantiate(; verbose=true)
+        Pkg.precompile(; strict=true)
+        Pkg.status()
+
+        try
+            MPI.versioninfo()
+        catch; end
+
+        try
+            CUDA.precompile_runtime()
+            CUDA.versioninfo()
+        catch; end
     end
 
     # Core Oceananigans
@@ -31,7 +50,7 @@ CUDA.allowscalar() do
             include("test_boundary_conditions.jl")
             include("test_field.jl")
             include("test_regrid.jl")
-            include("test_field_reductions.jl")
+            include("test_field_scans.jl")
             include("test_halo_regions.jl")
             include("test_coriolis.jl")
             include("test_buoyancy.jl")
@@ -152,19 +171,27 @@ CUDA.allowscalar() do
 
     if group == :distributed || group == :all
         MPI.Initialized() || MPI.Init()
+        archs = test_architectures()
         include("test_distributed_models.jl")
     end
 
     if group == :distributed_solvers || group == :all
         MPI.Initialized() || MPI.Init()
+        include("test_distributed_transpose.jl")
         include("test_distributed_poisson_solvers.jl")
     end
 
     if group == :distributed_hydrostatic_model || group == :all
         MPI.Initialized() || MPI.Init()
-        archs = test_architectures() 
+        archs = test_architectures()
         include("test_hydrostatic_regression.jl")
         include("test_distributed_hydrostatic_model.jl")
+    end
+
+    if group == :distributed_nonhydrostatic_regression || group == :all
+        MPI.Initialized() || MPI.Init()
+        archs = nonhydrostatic_regression_test_architectures()
+        include("test_nonhydrostatic_regression.jl")
     end
 
     if group == :nonhydrostatic_regression || group == :all

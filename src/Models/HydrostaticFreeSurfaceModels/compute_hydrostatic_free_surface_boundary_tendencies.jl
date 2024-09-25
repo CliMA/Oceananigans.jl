@@ -1,16 +1,16 @@
 import Oceananigans.Models: compute_boundary_tendencies!
+import Oceananigans.Models: compute_boundary_tendencies!
+
 using Oceananigans.Grids: halo_size
-using Oceananigans.TurbulenceClosures: required_halo_size
+using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, DistributedActiveCellsIBG
 using Oceananigans.Models.NonhydrostaticModels: boundary_tendency_kernel_parameters,
                                                 boundary_p_kernel_parameters, 
                                                 boundary_κ_kernel_parameters,
                                                 boundary_parameters
 
-import Oceananigans.Models: compute_boundary_tendencies!
+using Oceananigans.TurbulenceClosures: required_halo_size
 
-using Oceananigans.ImmersedBoundaries: active_interior_map, DistributedActiveCellsIBG
-
-# We assume here that top/bottom BC are always synched (no partitioning in z)
+# We assume here that top/bottom BC are always synchronized (no partitioning in z)
 function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     grid = model.grid
     arch = architecture(grid)
@@ -38,13 +38,15 @@ function compute_boundary_tendency_contributions!(grid::DistributedActiveCellsIB
     maps = grid.interior_active_cells
     
     for (name, map) in zip(keys(maps), maps)
-        compute_boundary = (name != :interior) && !isnothing(map) 
         
-        # If there exists a boundary map, then we compute the boundary contributions
+        # If there exists a boundary map, then we compute the boundary contributions. If not, the 
+        # boundary contributions have already been calculated. We exclude the interior because it has
+        # already been calculated
+        compute_boundary = (name != :interior) && !isnothing(map) 
+
         if compute_boundary
-            active_boundary_map = active_interior_map(Val(name))
-            compute_hydrostatic_free_surface_tendency_contributions!(model, tuple(:xyz); 
-                                                                     active_cells_map = active_boundary_map)
+            active_cells_map = retrieve_interior_active_cells_map(grid, Val(name))
+            compute_hydrostatic_free_surface_tendency_contributions!(model, tuple(:xyz); active_cells_map)
         end
     end
 
@@ -71,3 +73,4 @@ function boundary_w_kernel_parameters(grid, arch)
         
     return boundary_parameters(sizes, offs, grid, arch)
 end
+

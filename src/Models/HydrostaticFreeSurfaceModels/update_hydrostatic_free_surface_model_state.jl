@@ -3,6 +3,7 @@ using Oceananigans.BoundaryConditions
 
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
+using Oceananigans.BoundaryConditions: update_boundary_condition!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
 using Oceananigans.Models: update_model_field_time_series!
@@ -18,20 +19,24 @@ compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxilia
 # single column models.
 
 """
-    update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[])
+    update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true)
 
 Update peripheral aspects of the model (auxiliary fields, halo regions, diffusivities,
 hydrostatic pressure) to the current model state. If `callbacks` are provided (in an array),
-they are called in the end.
+they are called in the end. Finally, the tendencies for the new time-step are computed if 
+`compute_tendencies = true`.
 """
 update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true) =
-         update_state!(model, model.grid, callbacks; compute_tendencies)
+    update_state!(model, model.grid, callbacks; compute_tendencies)
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
     @apply_regionally mask_immersed_model_fields!(model, grid)
 
     # Update possible FieldTimeSeries used in the model
     @apply_regionally update_model_field_time_series!(model, model.clock)
+
+    # Update the boundary conditions
+    @apply_regionally update_boundary_condition!(fields(model), model)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
     @apply_regionally replace_horizontal_vector_halos!(model.velocities, model.grid)

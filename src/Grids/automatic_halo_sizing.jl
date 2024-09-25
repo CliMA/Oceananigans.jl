@@ -19,6 +19,7 @@ required_halo_size(CenteredFourthOrder())
 function required_halo_size end
 
 required_halo_size(tendency_term) = 1
+required_halo_size(::Nothing) = 0
 
 inflate_halo_size_one_dimension(req_H, old_H, _, grid)            = max(req_H, old_H)
 inflate_halo_size_one_dimension(req_H, old_H, ::Type{Flat}, grid) = 0

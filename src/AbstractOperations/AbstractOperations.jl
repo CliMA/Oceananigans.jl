@@ -2,7 +2,7 @@ module AbstractOperations
 
 export ∂x, ∂y, ∂z, @at, @unary, @binary, @multiary
 export Δx, Δy, Δz, Ax, Ay, Az, volume
-export Average, Integral, KernelFunctionOperation
+export Average, Integral, CumulativeIntegral, KernelFunctionOperation
 export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation, ConditionalOperation
 
 using Base: @propagate_inbounds

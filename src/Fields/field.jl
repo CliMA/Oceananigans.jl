@@ -1,10 +1,12 @@
 using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
+using Oceananigans.Grids: index_range_contains
 
 using Adapt
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 
+import Oceananigans: boundary_conditions
 import Oceananigans.Architectures: on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc
 import Statistics: norm, mean, mean!
@@ -230,28 +232,28 @@ function Base.similar(f::Field, grid=f.grid)
 end
 
 """
-    offset_windowed_data(data, loc, grid, indices)
+    offset_windowed_data(data, data_indices, loc, grid, view_indices)
 
-Return an `OffsetArray` of a `view` of `parent(data)` with `indices`.
+Return an `OffsetArray` of `parent(data)`.
+
+If `indices` is not (:, :, :), a `view` of `parent(data)` with `indices`.
 
 If `indices === (:, :, :)`, return an `OffsetArray` of `parent(data)`.
 """
-function offset_windowed_data(data, Loc, grid, indices)
+function offset_windowed_data(data, data_indices, Loc, grid, view_indices)
     halo = halo_size(grid)
     topo = map(instantiate, topology(grid))
     loc = map(instantiate, Loc)
 
-    if indices isa typeof(default_indices(3))
-        windowed_parent = parent(data)
-    else
-        parent_indices = map(parent_index_range, indices, loc, topo, halo)
-        windowed_parent = view(parent(data), parent_indices...)
-    end
+    parent_indices = map(parent_index_range, data_indices, view_indices, loc, topo, halo)
+    windowed_parent = view(parent(data), parent_indices...)
 
     sz = size(grid)
-
-    return offset_data(windowed_parent, loc, topo, sz, halo, indices)
+    return offset_data(windowed_parent, loc, topo, sz, halo, view_indices)
 end
+
+convert_colon_indices(view_indices, field_indices) = view_indices
+convert_colon_indices(::Colon, field_indices) = field_indices
 
 """
     view(f::Field, indices...)
@@ -305,17 +307,29 @@ function Base.view(f::Field, i, j, k)
     loc = location(f)
 
     # Validate indices (convert Int to UnitRange, error for invalid indices)
-    window_indices = validate_indices((i, j, k), loc, f.grid)
-    
+    view_indices = i, j, k = validate_indices((i, j, k), loc, f.grid)
+
+    if view_indices == f.indices # nothing to "view" here
+        return f # we want the whole field after all.
+    end
+
+    # Check that the indices actually work here
+    valid_view_indices = map(index_range_contains, f.indices, view_indices)
+
+    all(valid_view_indices) ||
+        throw(ArgumentError("view indices $((i, j, k)) do not intersect field indices $(f.indices)"))
+
+    view_indices = map(convert_colon_indices, view_indices, f.indices)
+
     # Choice: OffsetArray of view of OffsetArray, or OffsetArray of view?
     #     -> the first retains a reference to the original f.data (an OffsetArray)
     #     -> the second loses it, so we'd have to "re-offset" the underlying data to access.
     #     -> we choose the second here, opting to "reduce indirection" at the cost of "index recomputation".
     #
     # OffsetArray around a view of parent with appropriate indices:
-    windowed_data = offset_windowed_data(f.data, loc, grid, window_indices)  
+    windowed_data = offset_windowed_data(f.data, f.indices, loc, grid, view_indices)
 
-    boundary_conditions = FieldBoundaryConditions(window_indices, f.boundary_conditions)
+    boundary_conditions = FieldBoundaryConditions(view_indices, f.boundary_conditions)
 
     # "Sliced" Fields created here share data with their parent.
     # Therefore we set status=nothing so we don't conflate computation
@@ -326,7 +340,7 @@ function Base.view(f::Field, i, j, k)
                  grid,
                  windowed_data,
                  boundary_conditions,
-                 window_indices,
+                 view_indices,
                  f.operand,
                  status)
 end
@@ -341,13 +355,8 @@ Base.view(f::Field, i, j) = view(f, i, j, :)
 
 boundary_conditions(not_field) = nothing
 
-function boundary_conditions(f::Field)
-    if f.indices === default_indices(3) # default boundary conditions
-        return f.boundary_conditions
-    else # filter boundary conditions in windowed directions
-        return FieldBoundaryConditions(f.indices, f.boundary_conditions)
-    end
-end
+@inline boundary_conditions(f::Field) = f.boundary_conditions
+@inline boundary_conditions(w::WindowedField) = FieldBoundaryConditions(w.indices, w.boundary_conditions)
 
 immersed_boundary_condition(f::Field) = f.boundary_conditions.immersed
 data(field::Field) = field.data
@@ -389,12 +398,18 @@ interior(f::Field, I...) = view(interior(f), I...)
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 
-function Base.axes(f::Field)
-    if f.indices === (:, : ,:)
-        return Base.OneTo.(size(f))
-    else
-        return Tuple(f.indices[i] isa Colon ? Base.OneTo(size(f, i)) : f.indices[i] for i = 1:3)
-    end
+@inline axis(::Colon, N) = Base.OneTo(N)
+@inline axis(index::UnitRange, N) = index
+
+@inline function Base.axes(f::Field)
+    Nx, Ny, Nz = size(f)
+    ix, iy, iz = f.indices
+
+    ax = axis(ix, Nx)
+    ay = axis(iy, Ny)
+    az = axis(iz, Nz)
+
+    return (ax, ay, az)
 end
 
 @propagate_inbounds Base.getindex(f::Field, inds...) = getindex(f.data, inds...)
@@ -619,8 +634,6 @@ function reduced_location(loc; dims)
     end
 end
 
-reduced_indices(indices; dims) = Tuple(i ∈ dims ? Colon() : indices[i] for i in 1:3)
-
 function reduced_dimension(loc)
     dims = ()
     for i in 1:3
@@ -768,4 +781,3 @@ function fill_halo_regions!(field::Field, args...; kwargs...)
 
     return nothing
 end
-

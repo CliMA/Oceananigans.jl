@@ -71,7 +71,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u)
 └── array type: Array{Float64}
 ├── file_splitting: NoFileSplitting
-└── file size: 14.8 KiB
+└── file size: 14.9 KiB
 ```
 
 ```jldoctest netcdf1
@@ -86,7 +86,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u)
 └── array type: Array{Float64}
 ├── file_splitting: NoFileSplitting
-└── file size: 14.8 KiB
+└── file size: 14.9 KiB
 ```
 
 ```jldoctest netcdf1
@@ -122,7 +122,7 @@ simulation = Simulation(model, Δt=1.25, stop_iteration=3)
 
 f(model) = model.clock.time^2; # scalar output
 
-g(model) = model.clock.time .* exp.(znodes(Center, grid)) # single-column profile output (vector)
+g(model) = model.clock.time .* exp.(znodes(grid, Center())) # single-column profile output (vector)
 
 xC, yF = xnodes(grid, Center()), ynodes(grid, Face())
 
@@ -156,6 +156,38 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 └── array type: Array{Float64}
 ├── file_splitting: NoFileSplitting
 └── file size: 17.8 KiB
+```
+
+`NetCDFOutputWriter` can also be configured for `outputs` that are interpolated or regridded
+to a different grid than `model.grid`. To use this functionality, include the keyword argument
+`grid = output_grid`.
+
+```jldoctest
+using Oceananigans
+using Oceananigans.Fields: interpolate!
+
+grid = RectilinearGrid(size=(1, 1, 8), extent=(1, 1, 1));
+model = NonhydrostaticModel(; grid)
+
+coarse_grid = RectilinearGrid(size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
+coarse_u = Field{Face, Center, Center}(coarse_grid)
+
+interpolate_u(model) = interpolate!(coarse_u, model.velocities.u)
+outputs = (; u = interpolate_u)
+
+output_writer = NetCDFOutputWriter(model, outputs;
+                                   grid = coarse_grid,
+                                   filename = "coarse_u.nc",
+                                   schedule = IterationInterval(1))
+
+# output
+NetCDFOutputWriter scheduled on IterationInterval(1):
+├── filepath: ./coarse_u.nc
+├── dimensions: zC(4), zF(5), xC(1), yF(1), xF(1), yC(1), time(0)
+├── 1 outputs: u
+└── array type: Array{Float64}
+├── file_splitting: NoFileSplitting
+└── file size: 14.6 KiB
 ```
 
 See [`NetCDFOutputWriter`](@ref) for more information.
@@ -205,7 +237,7 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 ├── file_splitting: NoFileSplitting
-└── file size: 27.2 KiB
+└── file size: 28.5 KiB
 ```
 
 and a time- and horizontal-average of tracer `c` every 20 minutes of simulation time
@@ -223,7 +255,7 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 ├── file_splitting: NoFileSplitting
-└── file size: 17.3 KiB
+└── file size: 18.3 KiB
 ```
 
 
@@ -280,5 +312,5 @@ JLD2OutputWriter scheduled on TimeInterval(4 days):
 ├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 ├── file_splitting: NoFileSplitting
-└── file size: 26.5 KiB
+└── file size: 27.6 KiB
 ```
