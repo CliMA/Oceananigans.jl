@@ -54,14 +54,14 @@ const AGFB = AbstractGridFittedBoundary
 end
 
 function clamp_bottom_height!(bottom_field, grid)
-    launch!(architecture(grid), grid, :xy, clamp_bottom_height!, bottom_field, grid)
+    launch!(architecture(grid), grid, :xy, _clamp_bottom_height!, bottom_field, grid)
     return nothing
 end
 
 const c = Center()
 const f = Face()
 
-@kernel function clamp_bottom_height!(z, grid)
+@kernel function _clamp_bottom_height!(z, grid)
     i, j = @index(Global, NTuple)
     Nz = size(grid, 3)
     zmin = znode(i, j, 1,    grid, c, c, f)
