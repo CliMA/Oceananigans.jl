@@ -55,7 +55,7 @@ x = xnodes(grid, Center())
 bottom_boundary = interior(grid.immersed_boundary.bottom_height, :, 1, 1)
 top_boundary = 0 * x
 
-using GLMakie
+using CairoMakie
 
 fig = Figure(size = (700, 200))
 ax = Axis(fig[1, 1],
