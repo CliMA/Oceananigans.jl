@@ -46,6 +46,7 @@ PressureSolver(arch, grid::XYRegularRG)  = FourierTridiagonalPoissonSolver(grid)
 PressureSolver(arch, grid::XZRegularRG)  = FourierTridiagonalPoissonSolver(grid)
 PressureSolver(arch, grid::YZRegularRG)  = FourierTridiagonalPoissonSolver(grid)
 
+#=
 function PressureSolver(arch, ibg::ImmersedBoundaryGrid)
     msg = string("The PressureSolver for `NonhydrostaticModel`s on `ImmersedBoundaryGrid`", '\n',
                  "is approximate. In particular, the pressure correction step does not produce a velocity", '\n',
@@ -56,6 +57,7 @@ function PressureSolver(arch, ibg::ImmersedBoundaryGrid)
 
     return PressureSolver(arch, ibg.underlying_grid)
 end
+=#
 
 # fall back
 PressureSolver(arch, grid) = error("None of the implemented pressure solvers for NonhydrostaticModel \

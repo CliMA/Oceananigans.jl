@@ -35,23 +35,37 @@ function precondition!(p, solver::FFTBasedPoissonSolver, rhs, args...)
             fft_preconditioner_right_hand_side!,
             solver.storage, rhs)
 
-    return solve!(p, solver, solver.storage)
+    p = solve!(p, solver, solver.storage)
+    
+    #=
+    # Rescale the 0th eigenvalue of p
+    Lx = grid.Lx
+    Ly = grid.Ly
+    Lz = grid.Lz
+    m₀⁻¹ = - Lx*Ly + Ly*Lz + Lz*Lx
+    R = mean(parent(rhs))
+    parent(p) .+= m₀⁻¹ * R
+    mask_immersed_field!(p, zero(grid))
+    =#
+
+    return p
 end
 
-function ImmersedPoissonSolver(grid;
-                               preconditioner = nothing,
-                               reltol = eps(eltype(grid)),
+function ImmersedPoissonSolver(ibg::ImmersedBoundaryGrid;
+                               preconditioner = :FFT,
+                               reltol = sqrt(eps(grid)),
                                abstol = 0,
                                kw...)
 
-    if preconditioner == "FFT"
+    if preconditioner == :FFT
         arch = architecture(grid)
-        preconditioner = PressureSolver(arch, grid)
+        preconditioner = PressureSolver(arch, ibg.underlying_grid)
     end
 
     rhs = CenterField(grid)
-
-    pcg_solver = PreconditionedConjugateGradientSolver(compute_laplacian!; reltol, abstol,
+    pcg_solver = PreconditionedConjugateGradientSolver(compute_laplacian!;
+                                                       reltol,
+                                                       abstol,
                                                        preconditioner,
                                                        template_field = rhs,
                                                        kw...)
@@ -59,26 +73,25 @@ function ImmersedPoissonSolver(grid;
     return ImmersedPoissonSolver(rhs, grid, pcg_solver)
 end
 
-@kernel function calculate_pressure_source_term!(rhs, grid, Δt, U★)
-    i, j, k = @index(Global, NTuple)
-    @inbounds rhs[i, j, k] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
-end
+PressureSolver(arch, ibg::ImmersedBoundaryGrid) = ImmersedPoissonSolver(ibg)
 
-@inline laplacianᶜᶜᶜ(i, j, k, grid, ϕ) = ∇²ᶜᶜᶜ(i, j, k, grid, ϕ)
+@kernel function calculate_pressure_source_term!(rhs, ibg, Δt, U★)
+    i, j, k = @index(Global, NTuple)
+    δ = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w)
+    not_immersed = !immersed_cell(i, j, k, grid)
+    @inbounds rhs[i, j, k] = δ / Δt * not_immersed
+end
 
 @kernel function laplacian!(∇²ϕ, grid, ϕ)
     i, j, k = @index(Global, NTuple)
-    @inbounds ∇²ϕ[i, j, k] = laplacianᶜᶜᶜ(i, j, k, grid, ϕ)
+    @inbounds ∇²ϕ[i, j, k] = ∇²ᶜᶜᶜ(i, j, k, grid, ϕ)
 end
 
 function compute_laplacian!(∇²ϕ, ϕ)
     grid = ϕ.grid
     arch = architecture(grid)
-
     fill_halo_regions!(ϕ)
-
     launch!(arch, grid, :xyz, laplacian!, ∇²ϕ, grid, ϕ)
-
     return nothing
 end
 
@@ -88,19 +101,21 @@ function solve_for_pressure!(pressure, solver::ImmersedPoissonSolver, Δt, U★)
     Δt <= min_Δt && return pressure
 
     rhs = solver.rhs
-    grid = solver.grid
+    ibg = solver.grid
     arch = architecture(grid)
+    underlying_grid = ibg.underlying_grid
 
-    if grid isa ImmersedBoundaryGrid
-        underlying_grid = grid.underlying_grid
-    else
-        underlying_grid = grid
-    end
+    # if grid isa ImmersedBoundaryGrid
+    #     underlying_grid = grid.underlying_grid
+    # else
+    #     underlying_grid = grid
+    # end
 
-    launch!(arch, grid, :xyz, calculate_pressure_source_term!,
+    launch!(arch, underlying_grid, :xyz,
+            calculate_pressure_source_term!,
             rhs, underlying_grid, Δt, U★)
 
-    mask_immersed_field!(rhs, zero(grid))
+    # mask_immersed_field!(rhs, zero(grid))
 
     # Solve pressure Pressure equation for pressure, given rhs
     # @info "Δt before pressure solve: $(Δt)"
@@ -109,15 +124,19 @@ function solve_for_pressure!(pressure, solver::ImmersedPoissonSolver, Δt, U★)
     return pressure
 end
 
-struct DiagonallyDominantThreeDimensionalPreconditioner end
+#####
+##### The "DiagonallyDominantPreconditioner" used by MITgcm
+#####
 
-@inline function precondition!(P_r, ::DiagonallyDominantThreeDimensionalPreconditioner, r, args...)
+struct DiagonallyDominantPreconditioner end
+
+@inline function precondition!(P_r, ::DiagonallyDominantPreconditioner, r, args...)
     grid = r.grid
     arch = architecture(P_r)
 
     fill_halo_regions!(r)
 
-    launch!(arch, grid, :xyz, _DiagonallyDominantThreeDimensional_precondition!,
+    launch!(arch, grid, :xyz, _diagonally_dominant_precondition!!,
             P_r, grid, r)
 
     return P_r
@@ -146,7 +165,7 @@ end
                                                     2 * Az⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j, k-1, grid)) * r[i, j, k-1] -
                                                     2 * Az⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j, k+1, grid)) * r[i, j, k+1])
 
-@kernel function _DiagonallyDominantThreeDimensional_precondition!(P_r, grid, r)
+@kernel function _diagonally_dominant_precondition!!(P_r, grid, r)
     i, j, k = @index(Global, NTuple)
     @inbounds P_r[i, j, k] = heuristic_inverse_times_residuals(i, j, k, r, grid)
 end
