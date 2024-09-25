@@ -5,6 +5,7 @@ using Oceananigans.Grids: inactive_cell
 using Oceananigans.Operators: divᶜᶜᶜ, ∇²ᶜᶜᶜ 
 using Oceananigans.Utils: launch!, prettysummary
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, immersed_cell
+using Statistics: mean
 
 using KernelAbstractions: @kernel, @index
 
@@ -47,17 +48,6 @@ function precondition!(p, solver::FFTBasedPoissonSolver, rhs, args...)
 
     p = solve!(p, solver, solver.storage)
     
-    #=
-    # Rescale the 0th eigenvalue of p
-    Lx = grid.Lx
-    Ly = grid.Ly
-    Lz = grid.Lz
-    m₀⁻¹ = - Lx*Ly + Ly*Lz + Lz*Lx
-    R = mean(parent(rhs))
-    parent(p) .+= m₀⁻¹ * R
-    mask_immersed_field!(p, zero(grid))
-    =#
-
     return p
 end
 
@@ -110,17 +100,8 @@ function solve_for_pressure!(pressure, solver::ImmersedPoissonSolver, Δt, U★)
     arch = architecture(ibg)
     underlying_grid = ibg.underlying_grid
 
-    # if grid isa ImmersedBoundaryGrid
-    #     underlying_grid = grid.underlying_grid
-    # else
-    #     underlying_grid = grid
-    # end
-
     launch!(arch, underlying_grid, :xyz,
-            calculate_pressure_source_term!,
-            rhs, underlying_grid, Δt, U★)
-
-    # mask_immersed_field!(rhs, zero(grid))
+            calculate_pressure_source_term!, rhs, underlying_grid, Δt, U★)
 
     # Solve pressure Pressure equation for pressure, given rhs
     # @info "Δt before pressure solve: $(Δt)"
@@ -134,33 +115,32 @@ end
 #####
 
 struct DiagonallyDominantPreconditioner end
+Base.summary(::DiagonallyDominantPreconditioner) = "DiagonallyDominantPreconditioner"
 
 @inline function precondition!(P_r, ::DiagonallyDominantPreconditioner, r, args...)
     grid = r.grid
     arch = architecture(P_r)
-
     fill_halo_regions!(r)
-
-    launch!(arch, grid, :xyz, _diagonally_dominant_precondition!!,
-            P_r, grid, r)
-
+    launch!(arch, grid, :xyz, _diagonally_dominant_precondition!, P_r, grid, r)
     return P_r
 end
 
 # Kernels that calculate coefficients for the preconditioner
-@inline Ax⁻(i, j, k, grid) = Axᶠᶜᶜ(i, j, k, grid) / Δxᶠᶜᶜ(i, j, k, grid) / Vᶜᶜᶜ(i, j, k, grid)
-@inline Ay⁻(i, j, k, grid) = Ayᶜᶠᶜ(i, j, k, grid) / Δyᶜᶠᶜ(i, j, k, grid) / Vᶜᶜᶜ(i, j, k, grid)
-@inline Az⁻(i, j, k, grid) = Azᶜᶜᶠ(i, j, k, grid) / Δzᶜᶜᶠ(i, j, k, grid) / Vᶜᶜᶜ(i, j, k, grid)
+@inline Ax⁻(i, j, k, grid) = Axᶠᶜᶜ(i,   j, k, grid) / Δxᶠᶜᶜ(i,   j, k, grid) / Vᶜᶜᶜ(i, j, k, grid)
 @inline Ax⁺(i, j, k, grid) = Axᶠᶜᶜ(i+1, j, k, grid) / Δxᶠᶜᶜ(i+1, j, k, grid) / Vᶜᶜᶜ(i, j, k, grid)
+
+@inline Ay⁻(i, j, k, grid) = Ayᶜᶠᶜ(i, j,   k, grid) / Δyᶜᶠᶜ(i, j,   k, grid) / Vᶜᶜᶜ(i, j, k, grid)
 @inline Ay⁺(i, j, k, grid) = Ayᶜᶠᶜ(i, j+1, k, grid) / Δyᶜᶠᶜ(i, j+1, k, grid) / Vᶜᶜᶜ(i, j, k, grid)
+
+@inline Az⁻(i, j, k, grid) = Azᶜᶜᶠ(i, j, k,   grid) / Δzᶜᶜᶠ(i, j, k,   grid) / Vᶜᶜᶜ(i, j, k, grid)
 @inline Az⁺(i, j, k, grid) = Azᶜᶜᶠ(i, j, k+1, grid) / Δzᶜᶜᶠ(i, j, k+1, grid) / Vᶜᶜᶜ(i, j, k, grid)
 
-@inline Ac(i, j, k, grid) = - (Ax⁻(i, j, k, grid) +
-                               Ax⁺(i, j, k, grid) +
-                               Ay⁻(i, j, k, grid) +
-                               Ay⁺(i, j, k, grid) +
-                               Az⁻(i, j, k, grid) +
-                               Az⁺(i, j, k, grid))
+@inline Ac(i, j, k, grid) = - Ax⁻(i, j, k, grid) -
+                              Ax⁺(i, j, k, grid) -
+                              Ay⁻(i, j, k, grid) -
+                              Ay⁺(i, j, k, grid) -
+                              Az⁻(i, j, k, grid) -
+                              Az⁺(i, j, k, grid)
 
 @inline heuristic_residual(i, j, k, grid, r) =
     @inbounds 1 / Ac(i, j, k, grid) * (r[i, j, k] - 2 * Ax⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i-1, j, k, grid)) * r[i-1, j, k] -
@@ -170,7 +150,7 @@ end
                                                     2 * Az⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j, k-1, grid)) * r[i, j, k-1] -
                                                     2 * Az⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j, k+1, grid)) * r[i, j, k+1])
 
-@kernel function _diagonally_dominant_precondition!!(P_r, grid, r)
+@kernel function _diagonally_dominant_precondition!(P_r, grid, r)
     i, j, k = @index(Global, NTuple)
     @inbounds P_r[i, j, k] = heuristic_residual(i, j, k, grid, r)
 end
