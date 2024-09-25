@@ -18,8 +18,11 @@ where ``η`` is the free surface height and ``H`` the vertical depth of the wate
 
 # Fields
 - `Δr`: reference vertical spacing with `η = 0`
-- `sⁿ`: scaling of the vertical coordinate at time step `n`
-- `s⁻`:scaling of the vertical coordinate at time step `n - 1`
+- `sᶜᶜⁿ`: scaling of the vertical coordinate at time step `n` at `(Center, Center, Any)` location
+- `sᶠᶜⁿ`: scaling of the vertical coordinate at time step `n` at `(Face,   Center, Any)` location
+- `sᶜᶠⁿ`: scaling of the vertical coordinate at time step `n` at `(Center, Face,   Any)` location
+- `sᶠᶠⁿ`: scaling of the vertical coordinate at time step `n` at `(Face,   Face,   Any)` location
+- `s⁻`: scaling of the vertical coordinate at time step `n - 1` at `(Center, Center, Any)` location
 - `∂t_∂s`: Time derivative of `s`
 """
 struct ZStarSpacing{R, SCC, SFC, SCF, SFF} <: AbstractVerticalSpacing{R}
@@ -34,8 +37,11 @@ end
 
 Adapt.adapt_structure(to, coord::ZStarSpacing) = 
             ZStarSpacing(Adapt.adapt(to, coord.Δr),
-                         Adapt.adapt(to, coord.s⁻),
-                         Adapt.adapt(to, coord.sⁿ),
+                         Adapt.adapt(to, coord.sᶜᶜⁿ),
+                         Adapt.adapt(to, coord.sᶠᶜⁿ),
+                         Adapt.adapt(to, coord.sᶜᶠⁿ),
+                         Adapt.adapt(to, coord.sᶠᶠⁿ),
+                         Adapt.adapt(to, coord.sᶜᶜ⁻),
                          Adapt.adapt(to, coord.∂t_∂s))
 
 on_architecture(arch, coord::ZStarSpacing) = 
@@ -109,20 +115,20 @@ end
 @inline vertical_scaling(grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶠ.sᶜᶜⁿ
 @inline previous_vertical_scaling(grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶠ.sᶜᶜ⁻
 
-reference_Δzᵃᵃᶠ(grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶠ.Δr
-reference_Δzᵃᵃᶜ(grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶜ.Δr
+reference_zspacings(grid::ZStarSpacingGrid, ::Face)   = grid.Δzᵃᵃᶠ.Δr
+reference_zspacings(grid::ZStarSpacingGrid, ::Center) = grid.Δzᵃᵃᶜ.Δr
 
-@inline Δzᶜᶜᶠ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶠ_reference(i, j, k, grid) * grid.Δzᵃᵃᶠ.sᶜᶜⁿ[i, j, 1]
-@inline Δzᶜᶜᶜ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶜ_reference(i, j, k, grid) * grid.Δzᵃᵃᶜ.sᶜᶜⁿ[i, j, 1]
+@inline Δzᶜᶜᶠ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δrᶜᶜᶠ(i, j, k, grid) * grid.Δzᵃᵃᶠ.sᶜᶜⁿ[i, j, 1]
+@inline Δzᶜᶜᶜ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δrᶜᶜᶜ(i, j, k, grid) * grid.Δzᵃᵃᶜ.sᶜᶜⁿ[i, j, 1]
 
-@inline Δzᶠᶜᶠ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶠ_reference(i, j, k, grid) * grid.Δzᵃᵃᶠ.sᶠᶜⁿ[i, j, 1]
-@inline Δzᶠᶜᶜ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶜ_reference(i, j, k, grid) * grid.Δzᵃᵃᶜ.sᶠᶜⁿ[i, j, 1]
+@inline Δzᶠᶜᶠ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δrᶜᶜᶠ(i, j, k, grid) * grid.Δzᵃᵃᶠ.sᶠᶜⁿ[i, j, 1]
+@inline Δzᶠᶜᶜ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δrᶜᶜᶜ(i, j, k, grid) * grid.Δzᵃᵃᶜ.sᶠᶜⁿ[i, j, 1]
 
-@inline Δzᶜᶠᶠ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶠ_reference(i, j, k, grid) * grid.Δzᵃᵃᶠ.sᶜᶠⁿ[i, j, 1]
-@inline Δzᶜᶠᶜ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶜ_reference(i, j, k, grid) * grid.Δzᵃᵃᶜ.sᶜᶠⁿ[i, j, 1]
+@inline Δzᶜᶠᶠ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δrᶜᶜᶠ(i, j, k, grid) * grid.Δzᵃᵃᶠ.sᶜᶠⁿ[i, j, 1]
+@inline Δzᶜᶠᶜ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δrᶜᶜᶜ(i, j, k, grid) * grid.Δzᵃᵃᶜ.sᶜᶠⁿ[i, j, 1]
 
-@inline Δzᶠᶠᶠ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶠ_reference(i, j, k, grid) * grid.Δzᵃᵃᶠ.sᶠᶠⁿ[i, j, 1]
-@inline Δzᶠᶠᶜ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δzᶜᶜᶜ_reference(i, j, k, grid) * grid.Δzᵃᵃᶜ.sᶠᶠⁿ[i, j, 1]
+@inline Δzᶠᶠᶠ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δrᶜᶜᶠ(i, j, k, grid) * grid.Δzᵃᵃᶠ.sᶠᶠⁿ[i, j, 1]
+@inline Δzᶠᶠᶜ(i, j, k, grid::ZStarSpacingGrid) = @inbounds Δrᶜᶜᶜ(i, j, k, grid) * grid.Δzᵃᵃᶜ.sᶠᶠⁿ[i, j, 1]
 
 @inline ∂t_∂s_grid(i, j, k, grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶜ.∂t_∂s[i, j, k] 
 @inline V_times_∂t_∂s_grid(i, j, k, grid::ZStarSpacingGrid) = ∂t_∂s_grid(i, j, k, grid) * Vᶜᶜᶜ(i, j, k, grid)

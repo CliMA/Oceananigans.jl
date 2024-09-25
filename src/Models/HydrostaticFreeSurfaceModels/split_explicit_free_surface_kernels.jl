@@ -213,12 +213,12 @@ end
     k_top = grid.Nz + 1
 
     # hand unroll first loop
-    @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δzᶠᶜᶜ_reference(i, j, 1, grid)
-    @inbounds V[i, j, k_top-1] = v[i, j, 1] * Δzᶜᶠᶜ_reference(i, j, 1, grid)
+    @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δrᶠᶜᶜ(i, j, 1, grid)
+    @inbounds V[i, j, k_top-1] = v[i, j, 1] * Δrᶜᶠᶜ(i, j, 1, grid)
 
     @unroll for k in 2:grid.Nz
-        @inbounds U[i, j, k_top-1] += u[i, j, k] * Δzᶠᶜᶜ_reference(i, j, k, grid)
-        @inbounds V[i, j, k_top-1] += v[i, j, k] * Δzᶜᶠᶜ_reference(i, j, k, grid)
+        @inbounds U[i, j, k_top-1] += u[i, j, k] * Δrᶠᶜᶜ(i, j, k, grid)
+        @inbounds V[i, j, k_top-1] += v[i, j, k] * Δrᶜᶠᶜ(i, j, k, grid)
     end
 end
 
@@ -228,12 +228,12 @@ end
     k_top = grid.Nz+1
 
     # hand unroll first loop
-    @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δzᶠᶜᶜ_reference(i, j, 1, grid) 
-    @inbounds V[i, j, k_top-1] = v[i, j, 1] * Δzᶜᶠᶜ_reference(i, j, 1, grid) 
+    @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δrᶠᶜᶜ(i, j, 1, grid) 
+    @inbounds V[i, j, k_top-1] = v[i, j, 1] * Δrᶜᶠᶜ(i, j, 1, grid) 
 
     @unroll for k in 2:grid.Nz
-        @inbounds U[i, j, k_top-1] += u[i, j, k] * Δzᶠᶜᶜ_reference(i, j, k, grid) 
-        @inbounds V[i, j, k_top-1] += v[i, j, k] * Δzᶜᶠᶜ_reference(i, j, k, grid) 
+        @inbounds U[i, j, k_top-1] += u[i, j, k] * Δrᶠᶜᶜ(i, j, k, grid) 
+        @inbounds V[i, j, k_top-1] += v[i, j, k] * Δrᶜᶠᶜ(i, j, k, grid) 
     end
 end
 

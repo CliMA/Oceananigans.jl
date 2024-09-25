@@ -10,7 +10,7 @@ using Oceananigans.Models.NonhydrostaticModels: boundary_tendency_kernel_paramet
 
 using Oceananigans.TurbulenceClosures: required_halo_size
 
-using Oceananigans.ImmersedBoundaries: active_interior_map, DistributedActiveCellsIBG
+using Oceananigans.ImmersedBoundaries: DistributedActiveCellsIBG
 
 # We assume here that top/bottom BC are always synched (no partitioning in z)
 function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)

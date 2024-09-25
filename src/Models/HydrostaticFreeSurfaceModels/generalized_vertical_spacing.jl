@@ -44,13 +44,13 @@ function retrieve_static_grid(grid::AbstractVerticalSpacingImmersedGrid)
     return ImmersedBoundaryGrid(underlying_grid, grid.immersed_boundary; active_cells_map)
 end
 
-reference_Δzᵃᵃᶠ(grid) = grid.Δzᵃᵃᶠ
-reference_Δzᵃᵃᶜ(grid) = grid.Δzᵃᵃᶜ
+reference_zspacings(grid, ::Face)   = grid.Δzᵃᵃᶠ
+reference_zspacings(grid, ::Center) = grid.Δzᵃᵃᶜ
 
 function retrieve_static_grid(grid::AbstractVerticalSpacingUnderlyingGrid) 
 
-    Δzᵃᵃᶠ = reference_Δzᵃᵃᶠ(grid)
-    Δzᵃᵃᶜ = reference_Δzᵃᵃᶜ(grid)
+    Δzᵃᵃᶠ = reference_zspacings(grid, Face())
+    Δzᵃᵃᶜ = reference_zspacings(grid, Center())
 
     TX, TY, TZ = topology(grid)
 
@@ -116,23 +116,27 @@ update_vertical_spacing!(model, grid; kwargs...) = nothing
 @inline Δzᶠᶠᶠ(i, j, k, grid::AbstractVerticalSpacingGrid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δzᶜᶜᶠ)
 @inline Δzᶠᶠᶜ(i, j, k, grid::AbstractVerticalSpacingGrid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δzᶜᶜᶜ)
 
-@inline Δz_reference(i, j, k, Δz::Number) = Δz
-@inline Δz_reference(i, j, k, Δz::AbstractVector) = @inbounds Δz[k]
+#####
+##### Reference (local) vertical spacings in `r-coordinates`
+#####
 
-@inline Δz_reference(i, j, k, Δz::AbstractVerticalSpacing{<:Number}) = Δz.Δr
-@inline Δz_reference(i, j, k, Δz::AbstractVerticalSpacing) = @inbounds Δz.Δr[k]
+@inline Δr(i, j, k, Δz::Number) = Δz
+@inline Δr(i, j, k, Δz::AbstractVector) = @inbounds Δz[k]
 
-@inline Δzᶜᶜᶠ_reference(i, j, k, grid) = Δz_reference(i, j, k, grid.Δzᵃᵃᶠ)
-@inline Δzᶜᶜᶜ_reference(i, j, k, grid) = Δz_reference(i, j, k, grid.Δzᵃᵃᶜ)
+@inline Δr(i, j, k, Δz::AbstractVerticalSpacing{<:Number}) = Δz.Δr
+@inline Δr(i, j, k, Δz::AbstractVerticalSpacing) = @inbounds Δz.Δr[k]
 
-@inline Δzᶜᶠᶠ_reference(i, j, k, grid) = ℑyᵃᶠᵃ(i, j, k, grid, Δzᶜᶜᶠ_reference)
-@inline Δzᶜᶠᶜ_reference(i, j, k, grid) = ℑyᵃᶠᵃ(i, j, k, grid, Δzᶜᶜᶜ_reference)
+@inline Δrᶜᶜᶠ(i, j, k, grid) = Δr(i, j, k, grid.Δzᵃᵃᶠ)
+@inline Δrᶜᶜᶜ(i, j, k, grid) = Δr(i, j, k, grid.Δzᵃᵃᶜ)
 
-@inline Δzᶠᶜᶠ_reference(i, j, k, grid) = ℑxᶠᵃᵃ(i, j, k, grid, Δzᶜᶜᶠ_reference)
-@inline Δzᶠᶜᶜ_reference(i, j, k, grid) = ℑxᶠᵃᵃ(i, j, k, grid, Δzᶜᶜᶜ_reference)
+@inline Δrᶜᶠᶠ(i, j, k, grid) = ℑyᵃᶠᵃ(i, j, k, grid, Δrᶜᶜᶠ)
+@inline Δrᶜᶠᶜ(i, j, k, grid) = ℑyᵃᶠᵃ(i, j, k, grid, Δrᶜᶜᶜ)
 
-@inline Δzᶠᶠᶠ_reference(i, j, k, grid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δzᶜᶜᶠ_reference)
-@inline Δzᶠᶠᶜ_reference(i, j, k, grid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δzᶜᶜᶜ_reference)
+@inline Δrᶠᶜᶠ(i, j, k, grid) = ℑxᶠᵃᵃ(i, j, k, grid, Δrᶜᶜᶠ)
+@inline Δrᶠᶜᶜ(i, j, k, grid) = ℑxᶠᵃᵃ(i, j, k, grid, Δrᶜᶜᶜ)
+
+@inline Δrᶠᶠᶠ(i, j, k, grid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δrᶜᶜᶠ)
+@inline Δrᶠᶠᶜ(i, j, k, grid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δrᶜᶜᶜ)
 
 #####
 ##### Additional terms to be included in the momentum equations (fallbacks)

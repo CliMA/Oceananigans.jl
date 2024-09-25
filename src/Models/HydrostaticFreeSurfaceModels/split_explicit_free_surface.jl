@@ -260,18 +260,18 @@ function compute_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, Hᶠᶠ, grid)
     kernel_size   = (Nx+2Hx-2Ax, Ny+2Hy)
     kernel_offset = (-Hx+Ax, -Hy)
     paramᶠᶜ = KernelParameters(kernel_size, kernel_offset)
-    launch!(arch, grid, paramᶠᶜ, _compute_column_height!, Hᶠᶜ, grid, f, c, Δzᶠᶜᶜ_reference)
+    launch!(arch, grid, paramᶠᶜ, _compute_column_height!, Hᶠᶜ, grid, f, c, Δrᶠᶜᶜ)
     
     kernel_size   = (Nx+2Hx, Ny+2Hy-2Ay)
     kernel_offset = (-Hx, -Hy+Ay)
     paramᶜᶠ = KernelParameters(kernel_size, kernel_offset)
-    launch!(arch, grid, paramᶜᶠ, _compute_column_height!, Hᶜᶠ, grid, c, f, Δzᶜᶠᶜ_reference)
+    launch!(arch, grid, paramᶜᶠ, _compute_column_height!, Hᶜᶠ, grid, c, f, Δrᶜᶠᶜ)
     
     kernel_size   = (Nx+2Hx, Ny+2Hy)
     kernel_offset = (-Hx, -Hy)
     paramᶜᶜ = KernelParameters(kernel_size, kernel_offset)
-    launch!(arch, grid, paramᶜᶜ, _compute_column_height!, Hᶜᶜ, grid, c, c, Δzᶜᶜᶜ_reference)
-    launch!(arch, grid, paramᶜᶜ, _compute_column_height!, Hᶠᶠ, grid, c, c, Δzᶠᶠᶜ_reference)
+    launch!(arch, grid, paramᶜᶜ, _compute_column_height!, Hᶜᶜ, grid, c, c, Δrᶜᶜᶜ)
+    launch!(arch, grid, paramᶜᶜ, _compute_column_height!, Hᶠᶠ, grid, c, c, Δrᶠᶠᶜ)
  
     return nothing
 end
