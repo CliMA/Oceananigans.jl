@@ -51,6 +51,7 @@ using Oceananigans.Utils
 using Oceananigans.Architectures: AbstractArchitecture, device
 using Oceananigans.Fields: FunctionField
 import Oceananigans.Advection: required_halo_size
+import Oceananigans.Architectures: on_architecture
 
 const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
@@ -171,7 +172,7 @@ include("turbulence_closure_implementations/smagorinsky_lilly.jl")
 include("turbulence_closure_implementations/anisotropic_minimum_dissipation.jl")
 
 include("turbulence_closure_implementations/convective_adjustment_vertical_diffusivity.jl")
-include("turbulence_closure_implementations/CATKEVerticalDiffusivities/CATKEVerticalDiffusivities.jl")
+include("turbulence_closure_implementations/TKEBasedVerticalDiffusivities/TKEBasedVerticalDiffusivities.jl")
 include("turbulence_closure_implementations/ri_based_vertical_diffusivity.jl")
 
 # Special non-abstracted diffusivities:
@@ -179,7 +180,7 @@ include("turbulence_closure_implementations/ri_based_vertical_diffusivity.jl")
 include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity.jl")
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 
-using .CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
+using .TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity, TKEDissipationVerticalDiffusivity
 
 # Miscellaneous utilities
 include("diffusivity_fields.jl")

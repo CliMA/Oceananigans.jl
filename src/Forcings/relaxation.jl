@@ -124,10 +124,10 @@ Callable object that returns a Gaussian masking function centered on
 exp(-(D - center)^2 / (2 * width^2))
 ```
 
-Examples
-========
+Example
+=======
 
-* Create a Gaussian mask centered on `z=0` with width `1` meter.
+Create a Gaussian mask centered on `z=0` with width `1` meter.
 
 ```julia
 julia> mask = GaussianMask{:z}(center=0, width=1)
@@ -168,15 +168,15 @@ with `intercept` and `gradient`, and varying along direction `D`, i.e.,
 intercept + D * gradient
 ```
 
-Examples
-========
+Example
+=======
 
-* Create a linear target function varying in `z`, equal to `0` at
-  `z=0` and with gradient 10⁻⁶:
+Create a linear target function varying in `z`, equal to `0` at
+`z=0` and with gradient 10⁻⁶:
 
-  ```julia
-  julia> target = LinearTarget{:z}(intercept=0, gradient=1e-6)
-  ```
+```julia
+julia> target = LinearTarget{:z}(intercept=0, gradient=1e-6)
+```
 """
 struct LinearTarget{D, T}
     intercept :: T

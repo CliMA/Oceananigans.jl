@@ -4,7 +4,6 @@ The grids currently supported are:
 - `RectilinearGrid`s with either constant or variable grid spacings and
 - `LatitudeLongitudeGrid` on the sphere.
 
-
 ## `RectilinearGrid`
 
 A `RectilinearGrid` is constructed by specifying the `size` of the grid (a `Tuple` specifying
@@ -76,8 +75,8 @@ In that case, the `size` and `extent` are 2-tuples, e.g.,
 ```jldoctest
 julia> grid = RectilinearGrid(topology = (Periodic, Periodic, Flat), size = (32, 32), extent = (10, 20))
 32×32×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
-├── Periodic x ∈ [0.0, 10.0)      regularly spaced with Δx=0.3125
-├── Periodic y ∈ [0.0, 20.0)      regularly spaced with Δy=0.625
+├── Periodic x ∈ [0.0, 10.0) regularly spaced with Δx=0.3125
+├── Periodic y ∈ [0.0, 20.0) regularly spaced with Δy=0.625
 └── Flat z
 ```
 
@@ -139,20 +138,28 @@ grid = RectilinearGrid(size = (Nx, Ny, Nz),
                               z = chebychev_spaced_z_faces)
 ```
 
-We can easily visualize the spacing of ``y`` and ``z`` directions.
+We can easily visualize the spacings of ``y`` and ``z`` directions. We can use, e.g.,
+[`ynodes`](@ref) and [`yspacings`](@ref) to extract the positions and spacings of the
+nodes from the grid.
 
 ```@example 1
+ yᶜ = ynodes(grid, Center())
+Δyᶜ = yspacings(grid, Center())
+
+ zᶜ = znodes(grid, Center())
+Δzᶜ = zspacings(grid, Center())
+
 using CairoMakie
 
-fig = Figure(resolution=(800, 900))
+fig = Figure(size=(800, 900))
 
 ax1 = Axis(fig[1, 1]; xlabel = "y (m)", ylabel = "y-spacing (m)", limits = (nothing, (0, 250)))
-lines!(ax1, grid.yᵃᶜᵃ[1:Ny], grid.Δyᵃᶜᵃ[1:Ny])
-scatter!(ax1, grid.yᵃᶜᵃ[1:Ny], grid.Δyᵃᶜᵃ[1:Ny])
+lines!(ax1, yᶜ, Δyᶜ)
+scatter!(ax1, yᶜ, Δyᶜ)
 
 ax2 = Axis(fig[2, 1]; xlabel = "z-spacing (m)", ylabel = "z (m)", limits = ((0, 50), nothing))
-lines!(ax2, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
-scatter!(ax2, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
+lines!(ax2, zᶜ, Δzᶜ)
+scatter!(ax2, zᶜ, Δzᶜ)
 
 save("plot_stretched_grid.svg", fig); nothing #hide
 ```

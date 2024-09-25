@@ -4,6 +4,7 @@
 *.jl.mem
 *.mem
 deps/deps.jl
+/Manifest.toml
 
 # Swap files.
 *.swp
@@ -12,7 +13,8 @@ deps/deps.jl
 # Documenter.jl and MkDocs
 docs/build
 docs/site
-docs/src/generated
+docs/src/literated
+docs/Manifest.toml
 
 # Model output
 *.dat

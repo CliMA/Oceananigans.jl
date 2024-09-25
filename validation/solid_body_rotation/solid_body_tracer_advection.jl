@@ -27,7 +27,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     PrescribedVelocityFields
 
 using Oceananigans.Utils: prettytime, hours
-using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInterval
 
 using JLD2
 using Printf
@@ -163,7 +162,7 @@ function visualize_solid_body_tracer_advection(filepath)
     y = @. sind(λ_azimuthal) * sind(ϕ_azimuthal)
     z = @. cosd(ϕ_azimuthal)
 
-    fig = Figure(resolution = (1080, 1080))
+    fig = Figure(size=(1080, 1080))
 
     titles = ["c", "d", "e"]
 

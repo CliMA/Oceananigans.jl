@@ -26,19 +26,19 @@ end
 """
     HydrostaticSphericalCoriolis([FT=Float64;]
                                  rotation_rate = Ω_Earth,
-                                 scheme = EnergyConserving())
+                                 scheme = ActiveCellEnstrophyConserving())
 
 Return a parameter object for Coriolis forces on a sphere rotating at `rotation_rate`.
-By default, `rotation_rate` is assumed to be Earth's.
 
 Keyword arguments
 =================
 
-- `scheme`: Either `EnergyConserving()` (default), `EnstrophyConserving()`, or `ActiveCellEnstrophyConserving()`.
+- `rotation_rate`: Sphere's rotation rate; default: [`Ω_Earth`](@ref).
+- `scheme`: Either `EnergyConserving()`, `EnstrophyConserving()`, or `ActiveCellEnstrophyConserving()` (default).
 """
 function HydrostaticSphericalCoriolis(FT::DataType=Float64;
                                       rotation_rate = Ω_Earth,
-                                      scheme :: S = EnergyConserving(FT)) where S
+                                      scheme :: S = ActiveCellEnstrophyConserving()) where S
 
     return HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
 end
@@ -68,24 +68,24 @@ const CoriolisActiveCellEnstrophyConserving = HydrostaticSphericalCoriolis{<:Act
 @inline not_peripheral_node(args...) = !peripheral_node(args...)
 
 @inline function mask_inactive_points_ℑxyᶠᶜᵃ(i, j, k, grid, f::Function, args...) 
-    neighboring_active_nodes = @inbounds ℑxyᶠᶜᵃ(i, j, k, grid, not_peripheral_node, Center(), Face(), Center())
+    neighboring_active_nodes = ℑxyᶠᶜᵃ(i, j, k, grid, not_peripheral_node, Center(), Face(), Center())
     return ifelse(neighboring_active_nodes == 0, zero(grid),
-           @inbounds ℑxyᶠᶜᵃ(i, j, k, grid, f, args...) / neighboring_active_nodes)
+                  ℑxyᶠᶜᵃ(i, j, k, grid, f, args...) / neighboring_active_nodes)
 end
 
 @inline function mask_inactive_points_ℑxyᶜᶠᵃ(i, j, k, grid, f::Function, args...) 
     neighboring_active_nodes = @inbounds ℑxyᶜᶠᵃ(i, j, k, grid, not_peripheral_node, Face(), Center(), Center())
     return ifelse(neighboring_active_nodes == 0, zero(grid),
-           @inbounds ℑxyᶜᶠᵃ(i, j, k, grid, f, args...) / neighboring_active_nodes)
+                  ℑxyᶜᶠᵃ(i, j, k, grid, f, args...) / neighboring_active_nodes)
 end
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::CoriolisActiveCellEnstrophyConserving, U) =
     @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) *
-                    mask_inactive_points_ℑxyᶠᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)
+                mask_inactive_points_ℑxyᶠᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)
 
 @inline y_f_cross_U(i, j, k, grid, coriolis::CoriolisActiveCellEnstrophyConserving, U) =
     @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) *
-                    mask_inactive_points_ℑxyᶜᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, U[1]) / Δyᶜᶠᶜ(i, j, k, grid)
+                mask_inactive_points_ℑxyᶜᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, U[1]) / Δyᶜᶠᶜ(i, j, k, grid)
 
 #####
 ##### Enstrophy-conserving scheme
@@ -94,10 +94,12 @@ end
 const CoriolisEnstrophyConserving = HydrostaticSphericalCoriolis{<:EnstrophyConserving}
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::CoriolisEnstrophyConserving, U) =
-    @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)
+    @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) *
+                ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)
 
 @inline y_f_cross_U(i, j, k, grid, coriolis::CoriolisEnstrophyConserving, U) =
-    @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, U[1]) / Δyᶜᶠᶜ(i, j, k, grid)
+    @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) *
+                ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, U[1]) / Δyᶜᶠᶜ(i, j, k, grid)
 
 #####
 ##### Energy-conserving scheme
@@ -128,4 +130,3 @@ function Base.show(io::IO, hydrostatic_spherical_coriolis::HydrostaticSphericalC
                  "├─ rotation rate: ", rotation_rate_str, '\n',
                  "└─ scheme: ", summary(coriolis_scheme))
 end
-

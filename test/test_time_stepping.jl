@@ -4,7 +4,7 @@ using TimesDates: TimeDate
 using Oceananigans.Grids: topological_tuple_length, total_size
 using Oceananigans.Fields: BackgroundField
 using Oceananigans.TimeSteppers: Clock
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
 function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
@@ -43,7 +43,7 @@ function time_stepping_works_with_closure(arch, FT, Closure; buoyancy=Buoyancy(m
     Closure === CATKEVerticalDiffusivity && push!(tracers, :e)
 
     # Use halos of size 3 to be conservative
-    grid = RectilinearGrid(arch, FT; size=(1, 1, 1), halo=(3, 3, 3), extent=(1, 2, 3))
+    grid = RectilinearGrid(arch, FT; size=(3, 3, 3), halo=(3, 3, 3), extent=(1, 2, 3))
     closure = Closure(FT)
     model = NonhydrostaticModel(; grid, closure, tracers, buoyancy)
     time_step!(model, 1, euler=true)
@@ -53,7 +53,7 @@ end
 
 function time_stepping_works_with_advection_scheme(arch, advection_scheme)
     # Use halo=(3, 3, 3) to accomodate WENO-5 advection scheme
-    grid = RectilinearGrid(arch, size=(1, 1, 1), halo=(3, 3, 3), extent=(1, 2, 3))
+    grid = RectilinearGrid(arch, size=(3, 3, 3), halo=(3, 3, 3), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid=grid, advection=advection_scheme)
     time_step!(model, 1, euler=true)
     return true  # Test that no errors/crashes happen when time stepping.
@@ -61,7 +61,7 @@ end
 
 function time_stepping_works_with_stokes_drift(arch, stokes_drift)
     # Use halo=(3, 3, 3) to accomodate WENO-5 advection scheme
-    grid = RectilinearGrid(arch, size=(1, 1, 1), halo=(3, 3, 3), extent=(1, 2, 3))
+    grid = RectilinearGrid(arch, size=(3, 3, 3), halo=(3, 3, 3), extent=(1, 2, 3))
     model = NonhydrostaticModel(; grid, stokes_drift, advection=nothing)
     time_step!(model, 1, euler=true)
     return true  # Test that no errors/crashes happen when time stepping.
@@ -87,27 +87,33 @@ function time_stepping_works_with_nonlinear_eos(arch, FT, EOS)
     return true  # Test that no errors/crashes happen when time stepping.
 end
 
+@inline add_ones(args...) = 1
+
 function run_first_AB2_time_step_tests(arch, FT)
-    add_ones(args...) = 1.0
 
     # Weird grid size to catch https://github.com/CliMA/Oceananigans.jl/issues/780
     grid = RectilinearGrid(arch, FT, size=(13, 17, 19), extent=(1, 2, 3))
 
-    model = NonhydrostaticModel(grid=grid, forcing=(T=add_ones,),
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
-    time_step!(model, 1, euler=true)
+    model = NonhydrostaticModel(; grid,
+                                forcing = (; T=add_ones),
+                                buoyancy = SeawaterBuoyancy(),
+                                tracers = (:T, :S))
 
-    # Test that GT = 1, T = 1 after 1 time step and that AB2 actually reduced to forward Euler.
+    # Test that GT = 0 after model construction
+    # (note: model construction does not computes tendencies)
     @test all(interior(model.timestepper.Gⁿ.u) .≈ 0)
     @test all(interior(model.timestepper.Gⁿ.v) .≈ 0)
     @test all(interior(model.timestepper.Gⁿ.w) .≈ 0)
-    @test all(interior(model.timestepper.Gⁿ.T) .≈ 1.0)
+    @test all(interior(model.timestepper.Gⁿ.T) .≈ 0)
     @test all(interior(model.timestepper.Gⁿ.S) .≈ 0)
 
+    # Test that T = 1 after 1 time step and that AB2 actually reduced to forward Euler.
+    Δt = 1
+    time_step!(model, Δt, euler=true)
     @test all(interior(model.velocities.u) .≈ 0)
     @test all(interior(model.velocities.v) .≈ 0)
     @test all(interior(model.velocities.w) .≈ 0)
-    @test all(interior(model.tracers.T)    .≈ 1.0)
+    @test all(interior(model.tracers.T)    .≈ 1)
     @test all(interior(model.tracers.S)    .≈ 0)
 
     return nothing
@@ -369,9 +375,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             for Closure in Closures
                 @info "  Testing that time stepping works [$(typeof(arch)), $FT, $Closure]..."
                 if Closure === TwoDimensionalLeith
-                    # TwoDimensionalLeith is slow on the CPU and doesn't compile right now on the GPU.
-                    # See: https://github.com/CliMA/Oceananigans.jl/pull/1074
-                    @test_skip time_stepping_works_with_closure(arch, FT, Closure)
+                    @test time_stepping_works_with_closure(arch, FT, Closure)
                 elseif Closure === CATKEVerticalDiffusivity
                     # CATKE isn't supported with NonhydrostaticModel yet
                     @test_skip time_stepping_works_with_closure(arch, FT, Closure)

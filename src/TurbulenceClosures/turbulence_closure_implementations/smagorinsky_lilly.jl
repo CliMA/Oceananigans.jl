@@ -23,7 +23,8 @@ end
     SmagorinskyLilly([time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64;] C=0.16, Cb=1.0, Pr=1.0)
 
 Return a `SmagorinskyLilly` type associated with the turbulence closure proposed by
-Lilly (1962) and Smagorinsky (1958, 1963), which has an eddy viscosity of the form
+[Lilly62](@citet), [Smagorinsky1958](@citet), [Smagorinsky1963](@citet), and [Lilly66](@citet),
+which has an eddy viscosity of the form
 
 ```
 νₑ = (C * Δᶠ)² * √(2Σ²) * √(1 - Cb * N² / Σ²)
@@ -36,8 +37,8 @@ and an eddy diffusivity of the form
 ```
 
 where `Δᶠ` is the filter width, `Σ² = ΣᵢⱼΣᵢⱼ` is the double dot product of
-the strain tensor `Σᵢⱼ`, `Pr` is the turbulent Prandtl number, and `N²` is
-the total buoyancy gradient, and `Cb` is a constant the multiplies the Richardson
+the strain tensor `Σᵢⱼ`, `Pr` is the turbulent Prandtl number, `N²` is the
+total buoyancy gradient, and `Cb` is a constant the multiplies the Richardson
 number modification to the eddy viscosity.
 
 Arguments
@@ -70,10 +71,10 @@ Smagorinsky, J. "On the numerical integration of the primitive equations of moti
 Lilly, D. K. "On the numerical simulation of buoyant convection." Tellus (1962)
 
 Smagorinsky, J. "General circulation experiments with the primitive equations: I.
-    The basic experiment." Monthly weather review (1963)
+    The basic experiment." Monthly Weather Review (1963)
 
 Lilly, D. K. "The representation of small-scale turbulence in numerical simulation experiments." 
-    NCAR Manuscript No. 281, 0, 1966.
+    NCAR Manuscript No. 281, 0, (1966)
 """
 function SmagorinskyLilly(time_discretization = ExplicitTimeDiscretization(), FT=Float64; C=0.16, Cb=1.0, Pr=1.0)
     C = C isa Number ? convert(FT, C) : C

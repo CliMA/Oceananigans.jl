@@ -1,7 +1,7 @@
 struct FieldDataset{F, M, P}
-    fields :: F
-  metadata :: M
-  filepath :: P
+      fields :: F
+    metadata :: M
+    filepath :: P
 end
 
 """
@@ -48,6 +48,25 @@ function FieldDataset(filepath;
 end
 
 Base.getindex(fds::FieldDataset, inds...) = Base.getindex(fds.fields, inds...)
+Base.getindex(fds::FieldDataset, i::Symbol) = Base.getindex(fds, string(i))
 
-Base.show(io::IO, fds::FieldDataset) =
-  print(io, "FieldDataset with $(length(fds.fields)) fields and $(length(fds.metadata)) metadata entries.")
+function Base.getproperty(fds::FieldDataset, name::Symbol)
+    if name in propertynames(fds)
+        return getfield(fds, name)
+    else
+        return getindex(fds, name)
+    end
+end
+
+function Base.show(io::IO, fds::FieldDataset)
+    s = "FieldDataset with $(length(fds.fields)) fields and $(length(fds.metadata)) metadata entries:\n"
+
+    n_fields = length(fds.fields)
+
+    for (i, (name, fts)) in enumerate(pairs(fds.fields))
+        prefix = i == n_fields ? "└── " : "├── "
+        s *= prefix * "$name: " * summary(fts) * '\n'
+    end
+
+    return print(io, s)
+end
