@@ -158,15 +158,10 @@ function update_vertical_spacing!(model, grid::ZStarSpacingGrid; parameters = :x
     Hᶠᶜ = model.free_surface.auxiliary.Hᶠᶜ
     Hᶜᶠ = model.free_surface.auxiliary.Hᶜᶠ
     Hᶠᶠ = model.free_surface.auxiliary.Hᶠᶠ
-    U̅   = model.free_surface.state.U̅ # Ũ
-    V̅   = model.free_surface.state.V̅ # Ṽ
+    U̅   = model.free_surface.state.U̅ 
+    V̅   = model.free_surface.state.V̅ 
     η   = model.free_surface.η
 
-    # Update vertical spacing with available parameters 
-    # No need to fill the halo as the scaling is updated _IN_ the halos
-    launch!(architecture(grid), grid, parameters, _update_zstar!, 
-            sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶠᶠⁿ, sᶜᶜ⁻, sᶠᶜ⁻, sᶜᶠ⁻, η, Hᶜᶜ, Hᶠᶜ, Hᶜᶠ, Hᶠᶠ, grid)
-    
     # Update the time derivative of the grid-scaling. Note that in this case we leverage the
     # free surface evolution equation, where the time derivative of the free surface is equal
     # to the divergence of the vertically integrated velocity field, such that
@@ -174,8 +169,15 @@ function update_vertical_spacing!(model, grid::ZStarSpacingGrid; parameters = :x
     launch!(architecture(grid), grid, parameters, _update_∂t_∂s!, 
             ∂t_∂s, U̅, V̅, Hᶜᶜ, grid)
 
+    # Update vertical spacing with available parameters 
+    # No need to fill the halo as the scaling is updated _IN_ the halos
+    launch!(architecture(grid), grid, parameters, _update_zstar!, 
+            sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶠᶠⁿ, sᶜᶜ⁻, sᶠᶜ⁻, sᶜᶠ⁻, η, Hᶜᶜ, Hᶠᶜ, Hᶜᶠ, Hᶠᶠ, grid)
+    
     return nothing
 end
+
+@inline ℑ(i, j, k, grid, U) = @inbounds U[i, j, k]
 
 # NOTE: The ZStar vertical spacing works only for a SplitExplicitFreeSurface
 @kernel function _update_∂t_∂s!(∂t_∂s, U̅, V̅, Hᶜᶜ, grid)
@@ -183,7 +185,8 @@ end
     k_top = grid.Nz + 1 
     @inbounds begin
         # ∂(η / H)/∂t = - ∇ ⋅ ∫udz / H
-        ∂t_∂s[i, j, 1] = - div_xyᶜᶜᶜ(i, j, k_top - 1, grid, U̅, V̅) /  Hᶜᶜ[i, j, 1] 
+        ∂t_∂s[i, j, 1] = -  1 / Azᶜᶜᶠ(i, j, k_top-1, grid) * (δxᶜᵃᵃ(i, j, k_top-1, grid, Δy_qᶠᶜᶠ, U̅) +
+                                                              δyᵃᶜᵃ(i, j, k_top-1, grid, Δx_qᶜᶠᶠ, V̅)) / Hᶜᶜ[i, j, 1]
     end
 end
 

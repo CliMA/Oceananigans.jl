@@ -34,7 +34,7 @@ set!(model, b = bᵢ)
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_iteration = 100000, stop_time = 17hours) 
+simulation = Simulation(model; Δt, stop_iteration = 10000, stop_time = 17hours) 
 
 field_outputs = if model.grid isa ZStarSpacingGrid
   merge(model.velocities, model.tracers, (; sⁿ = model.grid.Δzᵃᵃᶠ.sᶜᶜⁿ))

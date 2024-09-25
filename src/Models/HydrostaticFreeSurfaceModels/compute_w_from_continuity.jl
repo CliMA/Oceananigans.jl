@@ -19,8 +19,8 @@ compute_w_from_continuity!(velocities, arch, grid; parameters = w_kernel_paramet
     launch!(arch, grid, parameters, _compute_w_from_continuity!, velocities, grid)
 
 
-@inline Ax_uᶠᶜᶜ⁻(i, j, k, grid, u) = @inbounds vertical_scaling(i, j, k, grid, f, c, c) * Δrᶠᶜᶜ(i, j, k, grid) * Δyᶠᶜᶜ(i, j, k, grid) * u[i, j, k]
-@inline Ay_vᶜᶠᶜ⁻(i, j, k, grid, v) = @inbounds vertical_scaling(i, j, k, grid, c, f, c) * Δrᶜᶠᶜ(i, j, k, grid) * Δxᶜᶠᶜ(i, j, k, grid) * v[i, j, k]
+@inline Ax_uᶠᶜᶜ⁻(i, j, k, grid, u) = @inbounds previous_vertical_scaling(i, j, k, grid, f, c, c) * Δrᶠᶜᶜ(i, j, k, grid) * Δyᶠᶜᶜ(i, j, k, grid) * u[i, j, k]
+@inline Ay_vᶜᶠᶜ⁻(i, j, k, grid, v) = @inbounds previous_vertical_scaling(i, j, k, grid, c, f, c) * Δrᶜᶠᶜ(i, j, k, grid) * Δxᶜᶠᶜ(i, j, k, grid) * v[i, j, k]
 
 @inline function scaled_velocity_divergenceᶜᶜᶜ(i, j, k, grid, u, v)
     δU = δxᶜᶜᶜ(i, j, k, grid, Ax_uᶠᶜᶜ⁻, u)
