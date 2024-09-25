@@ -11,7 +11,7 @@ grid = RectilinearGrid(size = (128, 20),
                        halo = (6, 6),
                    topology = (Bounded, Flat, Bounded))
 
-# grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> x < 32kilometers ? -10 : -20))
+grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> x < 32kilometers ? -10 : -20))
 
 model = HydrostaticFreeSurfaceModel(; grid, 
             vertical_coordinate = ZStar(),
@@ -20,7 +20,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                    buoyancy = BuoyancyTracer(),
                                     closure = nothing, 
                                     tracers = :b,
-                               free_surface = SplitExplicitFreeSurface(; substeps = 120))
+                               free_surface = SplitExplicitFreeSurface(; substeps = 10))
 
 g = model.free_surface.gravitational_acceleration
 
