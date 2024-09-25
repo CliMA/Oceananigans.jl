@@ -200,13 +200,13 @@ function seven_forcings(arch)
     eccentric_forcing(x, y, z, t) = x + y + z + t
     unconventional_forcing(x, y, z, t) = 10x * y
     
-    F1 = Forcing(weird_F)
-    F2 = Forcing(wonky_F)
-    F3 = Forcing(strange_F)
-    F4 = Forcing(bizarre_F)
-    F5 = Forcing(peculiar_F)
-    F6 = Forcing(eccentric_F)
-    F7 = Forcing(unconventional_F)
+    F1 = Forcing(weird_forcing)
+    F2 = Forcing(wonky_forcing)
+    F3 = Forcing(strange_forcing)
+    F4 = Forcing(bizarre_forcing)
+    F5 = Forcing(peculiar_forcing)
+    F6 = Forcing(eccentric_forcing)
+    F7 = Forcing(unconventional_forcing)
 
     Ft = (F1, F2, F3, F4, F5, F6, F7)
     forcing = (u=Ft, v=MultipleForcings(FT...), w=MultipleForcings(Ft))
