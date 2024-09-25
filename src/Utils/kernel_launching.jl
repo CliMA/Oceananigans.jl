@@ -211,7 +211,7 @@ function configured_kernel(arch, grid, workspec, kernel!;
     offset = offsets(workspec)
 
     if !isnothing(active_cells_map) 
-        workgroup, worksize = active_cells_work_layout(workgroup, worksize, active_cells_map, grid) 
+        workgroup, worksize = active_cells_work_layout(workgroup, worksize, active_cells_map) 
         offset = nothing
 
         # A non active domain! 

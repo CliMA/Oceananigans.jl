@@ -1,11 +1,5 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
-using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
-using Oceananigans.Fields: compute_at!
-using Oceananigans.BuoyancyModels: BuoyancyField
-
 function compute_derivative(model, ∂)
     T, S = model.tracers
     parent(S) .= π
@@ -340,8 +334,9 @@ for arch in archs
         underlying_grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1), topology=(Periodic, Periodic, Bounded))
         bottom(x, y) = -2 # below the grid!
         immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+        immersed_active_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
-        for grid in (underlying_grid, immersed_grid)
+        for grid in (underlying_grid, immersed_grid, immersed_active_grid)
             G = typeof(grid).name.wrapper
             model = NonhydrostaticModel(; grid, buoyancy, tracers = (:T, :S))
 
