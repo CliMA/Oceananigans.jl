@@ -120,17 +120,9 @@ end
 ##### ZStar-specific vertical spacing functions
 #####
 
-@inline vertical_scaling(i, j, k, grid, ℓx, ℓy, ℓz) = one(grid)
-@inline vertical_scaling(i, j, k, grid, ℓx, ℓy, ℓz) = one(grid)
-@inline vertical_scaling(i, j, k, grid, ℓx, ℓy, ℓz) = one(grid)
-
 @inline vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Center, ::Center, ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶜᶜⁿ[i, j, 1]
 @inline vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Face,   ::Center, ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶠᶜⁿ[i, j, 1]
 @inline vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Center, ::Face, ℓz)   = @inbounds grid.Δzᵃᵃᶠ.sᶜᶠⁿ[i, j, 1]
-
-@inline previous_vertical_scaling(i, j, k, grid, ℓx, ℓy, ℓz) = one(grid)
-@inline previous_vertical_scaling(i, j, k, grid, ℓx, ℓy, ℓz) = one(grid)
-@inline previous_vertical_scaling(i, j, k, grid, ℓx, ℓy, ℓz) = one(grid)
 
 @inline previous_vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Center, ::Center, ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶜᶜ⁻[i, j, 1]
 @inline previous_vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Face,   ::Center, ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶠᶜ⁻[i, j, 1]

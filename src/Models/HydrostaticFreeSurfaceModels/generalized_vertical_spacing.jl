@@ -99,23 +99,6 @@ end
 generalized_spacing_grid(grid, coord) = grid
 update_vertical_spacing!(model, grid; kwargs...) = nothing
 
-##### 
-##### Vertical spacings for a generalized vertical coordinate system
-#####
-
-# Very bad for GPU performance!!! (z-values are not coalesced in memory for z-derivatives anymore)
-# TODO: make z-direction local in memory by not using Fields
-# TODO: make it work with partial cells 
-
-@inline Δzᶜᶠᶠ(i, j, k, grid::AbstractVerticalSpacingGrid) = ℑyᵃᶠᵃ(i, j, k, grid, Δzᶜᶜᶠ)
-@inline Δzᶜᶠᶜ(i, j, k, grid::AbstractVerticalSpacingGrid) = ℑyᵃᶠᵃ(i, j, k, grid, Δzᶜᶜᶜ)
-
-@inline Δzᶠᶜᶠ(i, j, k, grid::AbstractVerticalSpacingGrid) = ℑxᶠᵃᵃ(i, j, k, grid, Δzᶜᶜᶠ)
-@inline Δzᶠᶜᶜ(i, j, k, grid::AbstractVerticalSpacingGrid) = ℑxᶠᵃᵃ(i, j, k, grid, Δzᶜᶜᶜ)
-
-@inline Δzᶠᶠᶠ(i, j, k, grid::AbstractVerticalSpacingGrid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δzᶜᶜᶠ)
-@inline Δzᶠᶠᶜ(i, j, k, grid::AbstractVerticalSpacingGrid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δzᶜᶜᶜ)
-
 #####
 ##### Reference (local) vertical spacings in `r-coordinates`
 #####
@@ -140,6 +123,14 @@ update_vertical_spacing!(model, grid; kwargs...) = nothing
 
 @inline rnode(i, j, k, grid, ℓx, ℓy, ℓz) = znode(i, j, k, grid, ℓx, ℓy, ℓz) 
 
+##### 
+##### Vertical spacings for a generalized vertical coordinate system
+#####
+
+# Fallbacks
+@inline previous_vertical_scaling(i, j, k, grid, ℓx, ℓy, ℓz) = one(grid)
+@inline vertical_scaling(i, j, k, grid, ℓx, ℓy, ℓz) = one(grid)
+
 @inline Δzᶜᶜᶠ(i, j, k, grid::AbstractVerticalSpacingGrid) = @inbounds Δrᶜᶜᶠ(i, j, k, grid) * vertical_scaling(i, j, k, grid, c, c, f)
 @inline Δzᶜᶜᶜ(i, j, k, grid::AbstractVerticalSpacingGrid) = @inbounds Δrᶜᶜᶜ(i, j, k, grid) * vertical_scaling(i, j, k, grid, c, c, c)
 @inline Δzᶠᶜᶠ(i, j, k, grid::AbstractVerticalSpacingGrid) = @inbounds Δrᶠᶜᶠ(i, j, k, grid) * vertical_scaling(i, j, k, grid, f, c, f)
@@ -148,7 +139,6 @@ update_vertical_spacing!(model, grid; kwargs...) = nothing
 @inline Δzᶜᶠᶜ(i, j, k, grid::AbstractVerticalSpacingGrid) = @inbounds Δrᶜᶠᶜ(i, j, k, grid) * vertical_scaling(i, j, k, grid, f, c, c)
 @inline Δzᶠᶠᶠ(i, j, k, grid::AbstractVerticalSpacingGrid) = @inbounds Δrᶠᶠᶠ(i, j, k, grid) * vertical_scaling(i, j, k, grid, f, f, f)
 @inline Δzᶠᶠᶜ(i, j, k, grid::AbstractVerticalSpacingGrid) = @inbounds Δrᶠᶠᶜ(i, j, k, grid) * vertical_scaling(i, j, k, grid, f, f, c)
-
 
 #####
 ##### Additional terms to be included in the momentum equations (fallbacks)

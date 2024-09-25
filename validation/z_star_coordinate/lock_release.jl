@@ -5,7 +5,7 @@ using Oceananigans.Advection: WENOVectorInvariant
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStar, ZStarSpacingGrid, Δrᶜᶜᶜ
 using Printf
 
-grid = RectilinearGrid(size = (10, 20), 
+grid = RectilinearGrid(size = (128, 20), 
                           x = (0, 64kilometers), 
                           z = (-20, 0), 
                        halo = (6, 6),
