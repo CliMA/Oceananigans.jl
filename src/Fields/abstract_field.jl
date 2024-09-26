@@ -58,6 +58,20 @@ Base.size(f::AbstractField) = size(f.grid, location(f))
 Base.length(f::AbstractField) = prod(size(f))
 Base.parent(f::AbstractField) = f
 
+@inline axis(::Colon, N) = Base.OneTo(N)
+@inline axis(index::UnitRange, N) = index
+
+@inline function Base.axes(f::AbstractField)
+    Nx, Ny, Nz = size(f)
+    ix, iy, iz = indices(f)
+
+    ax = axis(ix, Nx)
+    ay = axis(iy, Ny)
+    az = axis(iz, Nz)
+
+    return (ax, ay, az)
+end
+
 """
     total_size(field::AbstractField)
 
@@ -91,4 +105,23 @@ for f in (:+, :-)
     @eval Base.$f(ϕ::AbstractArray, ψ::AbstractField) = $f(ϕ, interior(ψ))
     @eval Base.$f(ϕ::AbstractField, ψ::AbstractArray) = $f(interior(ϕ), ψ)
 end
+
+const XReducedAF = AbstractField{Nothing}
+const YReducedAF = AbstractField{<:Any, Nothing}
+const ZReducedAF = AbstractField{<:Any, <:Any, Nothing}
+
+const YZReducedAF = AbstractField{<:Any, Nothing, Nothing}
+const XZReducedAF = AbstractField{Nothing, <:Any, Nothing}
+const XYReducedAF = AbstractField{Nothing, Nothing, <:Any}
+
+const XYZReducedAF = AbstractField{Nothing, Nothing, Nothing}
+
+reduced_dimensions(field::AbstractField) = ()
+reduced_dimensions(field::XReducedAF)    = tuple(1)
+reduced_dimensions(field::YReducedAF)    = tuple(2)
+reduced_dimensions(field::ZReducedAF)    = tuple(3)
+reduced_dimensions(field::YZReducedAF)   = (2, 3)
+reduced_dimensions(field::XZReducedAF)   = (1, 3)
+reduced_dimensions(field::XYReducedAF)   = (1, 2)
+reduced_dimensions(field::XYZReducedAF)  = (1, 2, 3)
 

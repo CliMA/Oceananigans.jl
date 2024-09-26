@@ -398,20 +398,6 @@ interior(f::Field, I...) = view(interior(f), I...)
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 
-@inline axis(::Colon, N) = Base.OneTo(N)
-@inline axis(index::UnitRange, N) = index
-
-@inline function Base.axes(f::Field)
-    Nx, Ny, Nz = size(f)
-    ix, iy, iz = f.indices
-
-    ax = axis(ix, Nx)
-    ay = axis(iy, Ny)
-    az = axis(iz, Nz)
-
-    return (ax, ay, az)
-end
-
 @propagate_inbounds Base.getindex(f::Field, inds...) = getindex(f.data, inds...)
 @propagate_inbounds Base.getindex(f::Field, i::Int)  = parent(f)[i]
 @propagate_inbounds Base.setindex!(f::Field, val, i, j, k) = setindex!(f.data, val, i, j, k)
@@ -527,15 +513,6 @@ const ReducedField = Union{XReducedField,
                            XYReducedField,
                            XYZReducedField}
 
-reduced_dimensions(field::Field)   = ()
-reduced_dimensions(field::XReducedField)   = tuple(1)
-reduced_dimensions(field::YReducedField)   = tuple(2)
-reduced_dimensions(field::ZReducedField)   = tuple(3)
-reduced_dimensions(field::YZReducedField)  = (2, 3)
-reduced_dimensions(field::XZReducedField)  = (1, 3)
-reduced_dimensions(field::XYReducedField)  = (1, 2)
-reduced_dimensions(field::XYZReducedField) = (1, 2, 3)
-
 @propagate_inbounds Base.getindex(r::XReducedField, i, j, k) = getindex(r.data, 1, j, k)
 @propagate_inbounds Base.getindex(r::YReducedField, i, j, k) = getindex(r.data, i, 1, k)
 @propagate_inbounds Base.getindex(r::ZReducedField, i, j, k) = getindex(r.data, i, j, 1)
@@ -644,9 +621,11 @@ end
 
 get_neutral_mask(::Union{AllReduction, AnyReduction})  = true
 get_neutral_mask(::Union{SumReduction, MeanReduction}) = 0
+get_neutral_mask(::ProdReduction)    = 1
+
+# TODO make this Float32 friendly
 get_neutral_mask(::MinimumReduction) = +Inf
 get_neutral_mask(::MaximumReduction) = -Inf
-get_neutral_mask(::ProdReduction)    = 1
 
 """
     condition_operand(f::Function, op::AbstractField, condition, mask)
@@ -707,7 +686,6 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                    dims = :)
 
             conditioned_c = condition_operand(f, c, condition, mask)
-
             T = filltype(Base.$(reduction!), c)
             loc = reduced_location(location(c); dims)
             r = Field(loc, c.grid, T; indices=indices(c))
@@ -782,3 +760,4 @@ function fill_halo_regions!(field::Field, args...; kwargs...)
 
     return nothing
 end
+

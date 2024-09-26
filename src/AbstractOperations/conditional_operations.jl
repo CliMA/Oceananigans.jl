@@ -110,23 +110,24 @@ const NoFuncCO = ConditionalOperation{<:Any, <:Any, <:Any, Nothing}
 const NoConditionCO = ConditionalOperation{<:Any, <:Any, <:Any, <:Any, Nothing}
 const NoFuncNoConditionCO = ConditionalOperation{<:Any, <:Any, <:Any, Nothing, Nothing}
 
-@inline function Base.getindex(co::NoConditionCO, i, j, k)
+using Base: @propagate_inbounds
+@propagate_inbounds function Base.getindex(co::NoConditionCO, i, j, k)
     value = getindex(co.operand, i, j, k)
     return co.func(value)
 end
 
-@inline Base.getindex(co::NoFuncNoConditionCO, i, j, k) = getindex(co.operand, i, j, k)
+@propagate_inbounds Base.getindex(co::NoFuncNoConditionCO, i, j, k) = getindex(co.operand, i, j, k)
 
-@inline function Base.getindex(co::NoFuncCO, i, j, k)
+@propagate_inbounds function Base.getindex(co::NoFuncCO, i, j, k)
     conditioned = evaluate_condition(co.condition, i, j, k, co.grid, co)
     value = getindex(co.operand, i, j, k)
     return ifelse(conditioned, value, co.mask)
 end
 
 # Conditions: general, nothing, array
-@inline evaluate_condition(condition, i, j, k, grid, args...)                = condition(i, j, k, grid, args...)
-@inline evaluate_condition(::Nothing, i, j, k, grid, args...)                = true
-@inline evaluate_condition(condition::AbstractArray, i, j, k, grid, args...) = @inbounds condition[i, j, k]
+@inline evaluate_condition(condition, i, j, k, grid, args...) = condition(i, j, k, grid, args...)
+@inline evaluate_condition(::Nothing, i, j, k, grid, args...) = true
+@propagate_inbounds evaluate_condition(condition::AbstractArray, i, j, k, grid, args...) = condition[i, j, k]
 
 @inline condition_operand(func, op, condition, mask) = ConditionalOperation(op; func, condition, mask)
 
@@ -172,11 +173,10 @@ compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
 indices(c::ConditionalOperation) = indices(c.operand)
 
 Base.show(io::IO, operation::ConditionalOperation) =
-    print(io,
-          "ConditionalOperation at $(location(operation))", "\n",
-          "├── operand: ", summary(operation.operand), "\n",
-          "├── grid: ", summary(operation.grid), "\n",
-          "├── func: ", summary(operation.func), "\n",
-          "├── condition: ", summary(operation.condition), "\n",
-          "└── mask: ", operation.mask)
+    print(io, "ConditionalOperation at $(location(operation))", '\n',
+              "├── operand: ", summary(operation.operand), '\n',
+              "├── grid: ", summary(operation.grid), '\n',
+              "├── func: ", summary(operation.func), '\n',
+              "├── condition: ", summary(operation.condition), '\n',
+              "└── mask: ", operation.mask)
 
