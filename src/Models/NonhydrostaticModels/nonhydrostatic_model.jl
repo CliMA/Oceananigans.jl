@@ -150,7 +150,8 @@ function NonhydrostaticModel(; grid,
         if !isnothing(buoyancy)
             # Separate the hydrostatic pressure anomaly
             # from the nonhydrostatic pressure contribution.
-            # See https://github.com/CliMA/Oceananigans.jl/issues/3677.
+            # See https://github.com/CliMA/Oceananigans.jl/issues/3677
+            # and https://github.com/CliMA/Oceananigans.jl/issues/3795.
 
             hydrostatic_pressure_anomaly = CenterField(grid)
         else
