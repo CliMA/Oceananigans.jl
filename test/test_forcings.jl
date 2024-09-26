@@ -125,14 +125,13 @@ function time_step_with_field_time_series_forcing(arch)
         set!(u_forcing[t], (x, y, z) -> sin(π * x) * time)
     end
 
-    model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing,))
-    time_step!(model, 1, euler=true)
-
+    model = NonhydrostaticModel(; grid, forcing=(; u=u_forcing))
+    time_step!(model, 1)
 
     # Make sure the field time series updates correctly
     u_forcing = FieldTimeSeries{Face, Center, Center}(grid, 0:1:4; backend = InMemory(2))
 
-    model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing,))
+    model = NonhydrostaticModel(; grid, forcing=(; u=u_forcing))
     time_step!(model, 2)
     time_step!(model, 2)
     
@@ -202,16 +201,12 @@ function two_forcings(arch)
     forcing1 = Relaxation(rate=1)
     forcing2 = Relaxation(rate=2)
 
-    forcing = (
-        u = (forcing1, forcing2),
-        v = MultipleForcings(forcing1, forcing2),
-        w = MultipleForcings((forcing1, forcing2)),
-    )
+    forcing = (u = (forcing1, forcing2),
+               v = MultipleForcings(forcing1, forcing2),
+               w = MultipleForcings((forcing1, forcing2)))
 
-    model = NonhydrostaticModel(; grid, forcing,
-                                timestepper=:QuasiAdamsBashforth2)
-
-    time_step!(model, 1, euler=true)
+    model = NonhydrostaticModel(; grid, forcing)
+    time_step!(model, 1)
 
     return true
 end
