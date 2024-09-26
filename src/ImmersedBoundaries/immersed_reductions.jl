@@ -31,7 +31,7 @@ function ConditionalOperation(operand::IF;
     return ConditionalOperation{LX, LY, LZ}(operand, func, operand.grid, immersed_condition, mask)
 end
 
-@inline conditional_length(c::IF)       = conditional_length(condition_operand(c, nothing, 0))
+@inline conditional_length(c::IF) = conditional_length(condition_operand(c, nothing, 0))
 @inline conditional_length(c::IF, dims) = conditional_length(condition_operand(c, nothing, 0), dims)
 
 @inline function evaluate_condition(::NotImmersed{Nothing}, i, j, k,

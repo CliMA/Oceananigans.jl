@@ -683,7 +683,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
             return Base.$(reduction!)(identity,
                                       interior(r),
-                                      a.operand; #condition_operand(f, a, condition, mask);
+                                      condition_operand(f, a, condition, mask);
                                       kwargs...)
         end
 

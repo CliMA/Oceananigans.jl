@@ -149,7 +149,7 @@ end
     return ConditionalOperation{LX, LY, LZ}(one_field, nothing, c.grid, c.condition, mask)
 end
 
-@inline conditional_length(c::ConditionalOperation)       = sum(conditional_one(c, 0))
+@inline conditional_length(c::ConditionalOperation) = sum(conditional_one(c, 0))
 @inline conditional_length(c::ConditionalOperation, dims) = sum(conditional_one(c, 0); dims = dims)
 
 Adapt.adapt_structure(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ} =
