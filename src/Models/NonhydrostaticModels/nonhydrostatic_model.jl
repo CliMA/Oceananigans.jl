@@ -71,7 +71,7 @@ end
     biogeochemistry::AbstractBGCOrNothing = nothing,
                                velocities = nothing,
                   nonhydrostatic_pressure = CenterField(grid),
-             hydrostatic_pressure_anomaly = CenterField(grid),
+             hydrostatic_pressure_anomaly = DefaultHydrostaticPressureAnomaly(),
                        diffusivity_fields = nothing,
                           pressure_solver = nothing,
                         immersed_boundary = nothing,
