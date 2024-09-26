@@ -49,11 +49,10 @@ nonhydrostatic_pressure_solver(arch, grid::YZRegularRG)  = FourierTridiagonalPoi
 const GridWithFFT = Union{XYZRegularRG, XYRegularRG, XZRegularRG, YZRegularRG}
 
 function nonhydrostatic_pressure_solver(arch, ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:GridWithFFT})
-    msg = """ 
-          The FFT-based nonhydrostatic_pressure_solver for `NonhydrostaticModel`s
-          on `ImmersedBoundaryGrid` is approximate and may result in divergent
-          velocity fields. An experimental but improved pressure_solver is available
-          which may be used by writing
+    msg = """The FFT-based pressure_solver for `NonhydrostaticModel`s on `ImmersedBoundaryGrid`
+          is approximate and will probably produce velocity fields that are divergent
+          adjacent to the immersed boundary. An experimental but improved pressure_solver
+          is available which may be used by writing
 
               using Oceananigans.Models.NonhydrostaticModels: ConjugateGradientPoissonSolver
               pressure_solver = ConjugateGradientPoissonSolver(grid)
@@ -116,7 +115,7 @@ include("solve_for_pressure.jl")
 include("update_hydrostatic_pressure.jl")
 include("update_nonhydrostatic_model_state.jl")
 include("pressure_correction.jl")
-include("immersed_poisson_solver.jl")
+include("conjugate_gradient_poisson_solver.jl")
 include("nonhydrostatic_tendency_kernel_functions.jl")
 include("compute_nonhydrostatic_tendencies.jl")
 include("compute_nonhydrostatic_boundary_tendencies.jl")
