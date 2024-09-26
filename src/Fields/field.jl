@@ -674,12 +674,12 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
     @eval begin
         
         # In-place
-        @inline function Base.$(reduction!)(f::Function,
-                                            r::ReducedAbstractField,
-                                            a::AbstractField;
-                                            condition = nothing,
-                                            mask = get_neutral_mask(Base.$(reduction!)),
-                                            kwargs...)
+        function Base.$(reduction!)(f::Function,
+                                    r::ReducedAbstractField,
+                                    a::AbstractField;
+                                    condition = nothing,
+                                    mask = get_neutral_mask(Base.$(reduction!)),
+                                    kwargs...)
 
             return Base.$(reduction!)(identity,
                                       interior(r),
@@ -687,11 +687,11 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                       kwargs...)
         end
 
-        @inline function Base.$(reduction!)(r::ReducedAbstractField,
-                                            a::AbstractField;
-                                            condition = nothing,
-                                            mask = get_neutral_mask(Base.$(reduction!)),
-                                            kwargs...)
+        function Base.$(reduction!)(r::ReducedAbstractField,
+                                    a::AbstractField;
+                                    condition = nothing,
+                                    mask = get_neutral_mask(Base.$(reduction!)),
+                                    kwargs...)
 
             return Base.$(reduction!)(identity,
                                       interior(r),
@@ -700,11 +700,11 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
         end
 
         # Allocating
-        @inline function Base.$(reduction)(f::Function,
-                                           c::AbstractField;
-                                           condition = nothing,
-                                           mask = get_neutral_mask(Base.$(reduction!)),
-                                           dims = :)
+        function Base.$(reduction)(f::Function,
+                                   c::AbstractField;
+                                   condition = nothing,
+                                   mask = get_neutral_mask(Base.$(reduction!)),
+                                   dims = :)
 
             conditioned_c = condition_operand(f, c, condition, mask)
 
@@ -712,8 +712,6 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             loc = reduced_location(location(c); dims)
             r = Field(loc, c.grid, T; indices=indices(c))
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
-        
-            @show interior(r) conditioned_c
             Base.$(reduction!)(identity, r, conditioned_c, init=false)
 
             if dims isa Colon
@@ -723,7 +721,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             end
         end
 
-        @inline Base.$(reduction)(c::AbstractField; kwargs...) = Base.$(reduction)(identity, c; kwargs...)
+        Base.$(reduction)(c::AbstractField; kwargs...) = Base.$(reduction)(identity, c; kwargs...)
     end
 end
 
