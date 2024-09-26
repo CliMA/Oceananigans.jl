@@ -146,7 +146,18 @@ function NonhydrostaticModel(; grid,
 
     if hydrostatic_pressure_anomaly isa DefaultHydrostaticPressureAnomaly
         # Manage treatment of the hydrostatic pressure anomaly:
-        hydrostatic_pressure_anomaly = CenterField(grid)
+
+        if !isnothing(buoyancy)
+            # Separate the hydrostatic pressure anomaly
+            # from the nonhydrostatic pressure contribution.
+            # See https://github.com/CliMA/Oceananigans.jl/issues/3677.
+
+            hydrostatic_pressure_anomaly = CenterField(grid)
+        else
+            # Use a single combined pressure, saving memory and computation.
+
+            hydrostatic_pressure_anomaly = nothing
+        end
     end
 
     # Check validity of hydrostatic_pressure_anomaly.
