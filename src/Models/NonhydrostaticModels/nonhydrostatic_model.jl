@@ -7,7 +7,7 @@ using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, CenterField
+using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, CenterField
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
@@ -24,6 +24,7 @@ import Oceananigans.Models: total_velocities, default_nan_checker, timestepper
 
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
+const BFOrNamedTuple = Union{BackgroundFields, NamedTuple}
 
 # TODO: this concept may be more generally useful,
 # but for now we use it only for hydrostatic pressure anomalies for now.
@@ -125,7 +126,7 @@ function NonhydrostaticModel(; grid,
           boundary_conditions::NamedTuple = NamedTuple(),
                                   tracers = (),
                               timestepper = :QuasiAdamsBashforth2,
-            background_fields::NamedTuple = NamedTuple(),
+        background_fields::BFOrNamedTuple = NamedTuple(),
             particles::ParticlesOrNothing = nothing,
     biogeochemistry::AbstractBGCOrNothing = nothing,
                                velocities = nothing,
