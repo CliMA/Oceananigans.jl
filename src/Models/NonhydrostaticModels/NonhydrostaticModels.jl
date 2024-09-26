@@ -46,22 +46,29 @@ nonhydrostatic_pressure_solver(arch, grid::XYRegularRG)  = FourierTridiagonalPoi
 nonhydrostatic_pressure_solver(arch, grid::XZRegularRG)  = FourierTridiagonalPoissonSolver(grid)
 nonhydrostatic_pressure_solver(arch, grid::YZRegularRG)  = FourierTridiagonalPoissonSolver(grid)
 
-#=
-function nonhydrostatic_pressure_solver(arch, ibg::ImmersedBoundaryGrid)
-    msg = string("The nonhydrostatic_pressure_solver for `NonhydrostaticModel`s on `ImmersedBoundaryGrid`", '\n',
-                 "is approximate. In particular, the pressure correction step does not produce a velocity", '\n',
-                 "field that both satisfies impenetrability at solid walls and is also divergence-free.", '\n',
-                 "As a result, boundary-adjacent velocity fields may be divergent.", '\n',
-                 "Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.")
+const GridWithFFT = Union{XYZRegularRG, XYRegularRG, XZRegularRG, YZRegularRG}
+
+function nonhydrostatic_pressure_solver(arch, ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:GridWithFFT})
+    msg = """ 
+          The FFT-based nonhydrostatic_pressure_solver for `NonhydrostaticModel`s
+          on `ImmersedBoundaryGrid` is approximate and may result in divergent
+          velocity fields. An experimental but improved pressure_solver is available
+          which may be used by writing
+
+              using Oceananigans.Models.NonhydrostaticModels: ConjugateGradientPoissonSolver
+              pressure_solver = ConjugateGradientPoissonSolver(grid)
+
+          Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.
+          """
     @warn msg
 
     return nonhydrostatic_pressure_solver(arch, ibg.underlying_grid)
 end
-=#
 
-# fall back
-nonhydrostatic_pressure_solver(arch, grid) = error("None of the implemented pressure solvers for NonhydrostaticModel \
-                                    currently support more than one stretched direction.")
+# fallback
+nonhydrostatic_pressure_solver(arch, grid) =
+    error("None of the implemented pressure solvers for NonhydrostaticModel \
+          are supported on $(summary(grid)).")
 
 nonhydrostatic_pressure_solver(grid) = nonhydrostatic_pressure_solver(architecture(grid), grid)
 

@@ -4,77 +4,36 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Grids: inactive_cell
 using Oceananigans.Operators: divᶜᶜᶜ, ∇²ᶜᶜᶜ 
 using Oceananigans.Utils: launch!, prettysummary
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!, immersed_cell
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Statistics: mean
 
 using KernelAbstractions: @kernel, @index
 
 import Oceananigans.Solvers: precondition!
+import ..Models: iteration
 
-struct ImmersedPoissonSolver{G, R, S}
+struct ConjugateGradientPoissonSolver{G, R, S}
     grid :: G
-    rhs :: R
-    pcg_solver :: S
+    right_hand_side :: R
+    conjugate_gradient_solver :: S
 end
 
-Base.summary(ips::ImmersedPoissonSolver) = summary("ImmersedPoissonSolver on ", summary(ips.grid.underlying_grid))
+iteration(cgps::ConjugateGradientPoissonSolver) = cgps.conjugate_gradient_solver.iteration
 
-function Base.show(io::IO, ips::ImmersedPoissonSolver)
+Base.summary(ips::ConjugateGradientPoissonSolver) =
+    summary("ConjugateGradientPoissonSolver on ", summary(ips.grid))
+
+function Base.show(io::IO, ips::ConjugateGradientPoissonSolver)
     A = architecture(ips.grid)
-    print(io, "ImmersedPoissonSolver:", '\n',
+    print(io, "ConjugateGradientPoissonSolver:", '\n',
               "├── grid: ", summary(ips.grid), '\n',
               "│   └── immersed_boundary: ", prettysummary(ips.grid.immersed_boundary), '\n',
-              "└── pcg_solver: ", summary(ips.pcg_solver), '\n',
-              "    ├── maxiter: ", prettysummary(ips.pcg_solver.maxiter), '\n',
-              "    ├── reltol: ", prettysummary(ips.pcg_solver.reltol), '\n',
-              "    ├── abstol: ", prettysummary(ips.pcg_solver.abstol), '\n',
-              "    ├── preconditioner: ", prettysummary(ips.pcg_solver.preconditioner), '\n',
-              "    └── iteration: ", prettysummary(ips.pcg_solver.iteration))
-end
-
-@kernel function fft_preconditioner_right_hand_side!(preconditioner_rhs, rhs)
-    i, j, k = @index(Global, NTuple)
-    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k]
-end
-
-# FFTBasedPoissonPreconditioner
-function precondition!(p, solver::FFTBasedPoissonSolver, rhs, args...)
-    grid = solver.grid
-    arch = architecture(grid)
-
-    launch!(arch, grid, :xyz,
-            fft_preconditioner_right_hand_side!,
-            solver.storage, rhs)
-
-    p = solve!(p, solver, solver.storage)
-    
-    return p
-end
-
-function ImmersedPoissonSolver(ibg::ImmersedBoundaryGrid;
-                               preconditioner = nonhydrostatic_pressure_solver(ibg.underlying_grid),
-                               reltol = sqrt(eps(ibg)),
-                               abstol = 0,
-                               kw...)
-
-    rhs = CenterField(ibg)
-    pcg_solver = PreconditionedConjugateGradientSolver(compute_laplacian!;
-                                                       reltol,
-                                                       abstol,
-                                                       preconditioner,
-                                                       template_field = rhs,
-                                                       kw...)
-
-    return ImmersedPoissonSolver(ibg, rhs, pcg_solver)
-end
-
-nonhydrostatic_pressure_solver(arch, ibg::ImmersedBoundaryGrid) = ImmersedPoissonSolver(ibg)
-
-@kernel function calculate_pressure_source_term!(rhs, grid, Δt, U★)
-    i, j, k = @index(Global, NTuple)
-    δ = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w)
-    not_immersed = !immersed_cell(i, j, k, grid)
-    @inbounds rhs[i, j, k] = δ / Δt * not_immersed
+              "└── conjugate_gradient_solver: ", summary(ips.conjugate_gradient_solver), '\n',
+              "    ├── maxiter: ", prettysummary(ips.conjugate_gradient_solver.maxiter), '\n',
+              "    ├── reltol: ", prettysummary(ips.conjugate_gradient_solver.reltol), '\n',
+              "    ├── abstol: ", prettysummary(ips.conjugate_gradient_solver.abstol), '\n',
+              "    ├── preconditioner: ", prettysummary(ips.conjugate_gradient_solver.preconditioner), '\n',
+              "    └── iteration: ", prettysummary(ips.conjugate_gradient_solver.iteration))
 end
 
 @kernel function laplacian!(∇²ϕ, grid, ϕ)
@@ -90,24 +49,76 @@ function compute_laplacian!(∇²ϕ, ϕ)
     return nothing
 end
 
-function solve_for_pressure!(pressure, solver::ImmersedPoissonSolver, Δt, U★)
-    # TODO: Is this the right criteria?
-    min_Δt = eps(typeof(Δt))
-    Δt <= min_Δt && return pressure
+function ConjugateGradientPoissonSolver(grid;
+                                        preconditioner = nothing,
+                                        reltol = sqrt(eps(grid)),
+                                        abstol = 0,
+                                        kw...)
 
-    rhs = solver.rhs
-    ibg = solver.grid
-    arch = architecture(ibg)
-    underlying_grid = ibg.underlying_grid
+    if isnothing(preconditioner) # make a useful default
+        if grid isa ImmersedBoundaryGrid && grid.underlying_grid isa GridWithFFT
+            if grid.underlying_grid isa XYZRegularRG
+                preconditioner = FFTBasedPoissonSolver(grid.underlying_grid)
+            else # it's stretched in one direction
+                preconditioner = FourierTridiagonalPoissonSolver(grid.underlying_grid)
+            end
+        else
+            preconditioner = DiagonallyDominantPreconditioner()
+        end
+    end
 
-    launch!(arch, underlying_grid, :xyz,
-            calculate_pressure_source_term!, rhs, underlying_grid, Δt, U★)
+    rhs = CenterField(grid)
+
+    conjugate_gradient_solver =
+        PreconditionedConjugateGradientSolver(compute_laplacian!;
+                                              reltol,
+                                              abstol,
+                                              preconditioner,
+                                              template_field = rhs,
+                                              kw...)
+
+    return ConjugateGradientPoissonSolver(grid, rhs, conjugate_gradient_solver)
+end
+
+@kernel function compute_source_term!(rhs, grid, Δt, U★)
+    i, j, k = @index(Global, NTuple)
+    δ = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w)
+    inactive = !inactive_cell(i, j, k, grid)
+    @inbounds rhs[i, j, k] = δ / Δt * inactive
+end
+
+function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, Δt, U★)
+    # We may want a criteria like this:
+    # min_Δt = eps(typeof(Δt))
+    # Δt <= min_Δt && return pressure
+
+    rhs = solver.right_hand_side
+    grid = solver.grid
+    arch = architecture(grid)
+    launch!(arch, grid, :xyz, compute_source_term!, rhs, grid, Δt, U★)
 
     # Solve pressure Pressure equation for pressure, given rhs
     # @info "Δt before pressure solve: $(Δt)"
-    solve!(pressure, solver.pcg_solver, rhs)
+    solve!(pressure, solver.conjugate_gradient_solver, rhs)
 
     return pressure
+end
+
+#####
+##### A preconditioner based on the FFT solver
+#####
+
+@kernel function fft_preconditioner_right_hand_side!(preconditioner_rhs, rhs)
+    i, j, k = @index(Global, NTuple)
+    @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k]
+end
+
+function precondition!(p, solver::FFTBasedPoissonSolver, rhs, args...)
+    grid = solver.grid
+    arch = architecture(grid)
+    launch!(arch, grid, :xyz, fft_preconditioner_right_hand_side!, solver.storage, rhs)
+    p = solve!(p, solver, solver.storage)
+    return p
 end
 
 #####
@@ -117,12 +128,12 @@ end
 struct DiagonallyDominantPreconditioner end
 Base.summary(::DiagonallyDominantPreconditioner) = "DiagonallyDominantPreconditioner"
 
-@inline function precondition!(P_r, ::DiagonallyDominantPreconditioner, r, args...)
+@inline function precondition!(p, ::DiagonallyDominantPreconditioner, r, args...)
     grid = r.grid
-    arch = architecture(P_r)
+    arch = architecture(p)
     fill_halo_regions!(r)
-    launch!(arch, grid, :xyz, _diagonally_dominant_precondition!, P_r, grid, r)
-    return P_r
+    launch!(arch, grid, :xyz, _diagonally_dominant_precondition!, p, grid, r)
+    return p
 end
 
 # Kernels that calculate coefficients for the preconditioner
@@ -150,7 +161,7 @@ end
                                                     2 * Az⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j, k-1, grid)) * r[i, j, k-1] -
                                                     2 * Az⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j, k+1, grid)) * r[i, j, k+1])
 
-@kernel function _diagonally_dominant_precondition!(P_r, grid, r)
+@kernel function _diagonally_dominant_precondition!(p, grid, r)
     i, j, k = @index(Global, NTuple)
-    @inbounds P_r[i, j, k] = heuristic_residual(i, j, k, grid, r)
+    @inbounds p[i, j, k] = heuristic_residual(i, j, k, grid, r)
 end
