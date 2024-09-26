@@ -4,8 +4,6 @@ include("dependencies_for_runtests.jl")
 Enzyme.API.looseTypeAnalysis!(true)
 Enzyme.API.maxtypeoffset!(2032)
 
-EnzymeRules.inactive_type(::Type{<:Oceananigans.Clock}) = true
-
 # OceananigansLogger doesn't work here -- not sure why
 Logging.global_logger(TestLogger())
 
