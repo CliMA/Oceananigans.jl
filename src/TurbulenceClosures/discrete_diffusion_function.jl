@@ -101,3 +101,7 @@ end
 Adapt.adapt_structure(to, dd::DiscreteDiffusionFunction{LX, LY, LZ}) where {LX, LY, LZ} =
     DiscreteDiffusionFunction{LX, LY, LZ}(Adapt.adapt(to, dd.func),
                                           Adapt.adapt(to, dd.parameters))
+
+on_architecture(to, dd::DiscreteDiffusionFunction{LX, LY, LZ}) where {LX, LY, LZ} =
+    DiscreteDiffusionFunction{LX, LY, LZ}(on_architecture(to, dd.func),
+                                          on_architecture(to, dd.parameters))

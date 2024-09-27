@@ -12,9 +12,8 @@ using FFTW
 using CUDA
 using SparseArrays
 using KernelAbstractions
-using KernelAbstractions.Extras.LoopInfo: @unroll
 
-using Oceananigans.Architectures: device, CPU, GPU, array_type, arch_array
+using Oceananigans.Architectures: device, CPU, GPU, array_type, on_architecture
 using Oceananigans.Utils
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions

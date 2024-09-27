@@ -80,7 +80,7 @@ julia> c, d, e = Tuple(CenterField(RectilinearGrid(size=(1, 1, 1), extent=(1, 1,
 
 julia> harmonic_plus(c, d, e) # before magic @multiary transformation
 BinaryOperation at (Center, Center, Center)
-├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 └── tree:
     * at (Center, Center, Center)
     ├── 0.3333333333333333
@@ -103,7 +103,7 @@ Set{Any} with 3 elements:
 
 julia> harmonic_plus(c, d, e)
 MultiaryOperation at (Center, Center, Center)
-├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 └── tree:
     harmonic_plus at (Center, Center, Center)
     ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
@@ -151,3 +151,9 @@ Adapt.adapt_structure(to, multiary::MultiaryOperation{LX, LY, LZ}) where {LX, LY
                                   Adapt.adapt(to, multiary.▶),
                                   Adapt.adapt(to, multiary.grid))
 
+on_architecture(to, multiary::MultiaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
+    MultiaryOperation{LX, LY, LZ}(on_architecture(to, multiary.op),
+                                  on_architecture(to, multiary.args),
+                                  on_architecture(to, multiary.▶),
+                                  on_architecture(to, multiary.grid))
+                                  

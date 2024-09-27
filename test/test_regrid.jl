@@ -4,7 +4,7 @@ using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
 
 @testset "Field regridding" begin
     @info "  Testing field regridding..."
-    
+
     L = 1.1
     ℓ = 0.5
 
@@ -12,7 +12,7 @@ using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
     fine_stretched_ξ       = [0, ℓ, L]
     very_fine_stretched_ξ  = [0, 0.2, 0.6, L]
     super_fine_stretched_ξ = [0, 0.1, 0.3, 0.65, L]
-    
+
     topologies_1d = (x = (Bounded, Flat, Flat),
                      y = (Flat, Bounded, Flat),
                      z = (Flat, Flat, Bounded))
@@ -87,7 +87,7 @@ using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
                 CUDA.@allowscalar begin
                     @test interior(fine_1d_regular_c)[1] ≈ ℓ/(L/2) * c₁ + (1 - ℓ/(L/2)) * c₂
                     @test interior(fine_1d_regular_c)[2] ≈ c₂
-                end            
+                end
 
                 # Fine-graining
                 regrid!(very_fine_1d_stretched_c, fine_1d_stretched_c)
@@ -121,7 +121,7 @@ using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
                 # This test does not work, because we can only regrid in one direction.
                 # To make this work, we have to transfer the reduced data to a "reduced" grid
                 # (ie with one grid point in each reduced direction).
-                
+
                 # Fine-graining from reduction
                 ind1 = dim == :x ? (1, :, :) : dim == :y ? (:, 1, :) : (:, :, 1)
                 ind2 = dim == :x ? (2, :, :) : dim == :y ? (:, 2, :) : (:, :, 2)
@@ -129,7 +129,7 @@ using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
 
                 Base.dotview(fine_stretched_c, ind1...) .= c₁
                 Base.dotview(fine_stretched_c, ind2...) .= c₂
-                
+
                 fine_stretched_c_mean_xy = Field(Reduction(mean!, fine_stretched_c; dims))
                 compute!(fine_stretched_c_mean_xy)
 

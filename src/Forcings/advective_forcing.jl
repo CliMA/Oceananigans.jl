@@ -69,6 +69,10 @@ end
 Adapt.adapt_structure(to, af::AdvectiveForcing) =
     AdvectiveForcing(adapt(to, af.u), adapt(to, af.v), adapt(to, af.w))
 
+on_architecture(to, af::AdvectiveForcing) =
+    AdvectiveForcing(on_architecture(to, af.u), on_architecture(to, af.v), on_architecture(to, af.w))
+
+
 # fallback
 @inline with_advective_forcing(forcing, total_velocities) = total_velocities
 

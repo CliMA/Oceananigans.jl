@@ -2,6 +2,8 @@ using Oceananigans.Utils: work_layout
 using Oceananigans.Architectures: device
 using Oceananigans.TimeSteppers: store_tracer_tendency!
 
+using KernelAbstractions.Extras.LoopInfo: @unroll
+
 import Oceananigans.TimeSteppers: store_tendencies!
 
 """ Store source terms for `uh`, `vh`, and `h`. """
