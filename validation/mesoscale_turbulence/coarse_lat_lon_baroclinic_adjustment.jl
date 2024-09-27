@@ -132,7 +132,7 @@ run!(simulation)
 ##### Visualize
 #####
 
-fig = Figure(resolution = (1400, 700))
+fig = Figure(size=(1400, 700))
 
 filepath = filename * "_fields.jld2"
 

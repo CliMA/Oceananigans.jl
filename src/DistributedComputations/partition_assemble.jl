@@ -1,4 +1,4 @@
-using Oceananigans.Architectures: arch_array
+import Oceananigans.Architectures: on_architecture
 
 all_reduce(op, val, arch::Distributed) = 
     MPI.Allreduce(val, op, arch.communicator)
@@ -37,14 +37,22 @@ end
 
 # Partitioning (localization of global objects) and assembly (global assembly of local objects)
 # Used for grid constructors (cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z)
-# which means that we need to repeat the value at the right boundary
-function partition(c::AbstractVector, n, arch, idx)
+# We need to repeat the value at the right boundary
+function partition_coordinate(c::AbstractVector, n, arch, idx)
     nl = concatenate_local_sizes(n, arch, idx)
     r  = arch.local_index[idx]
-    return c[1 + sum(nl[1:r-1]) : sum(nl[1:r])]
+
+    start_idx = sum(nl[1:r-1]) + 1 # sum of all previous rank's dimension + 1
+    end_idx   = if r == ranks(arch)[idx]
+        length(c)
+    else
+        sum(nl[1:r]) + 1 
+    end
+
+    return c[start_idx : end_idx]
 end
 
-function partition(c::Tuple, n, arch, idx)
+function partition_coordinate(c::Tuple, n, arch, idx)
     nl = concatenate_local_sizes(n, arch, idx)
     N  = sum(nl)
     R  = arch.ranks[idx]
@@ -60,39 +68,47 @@ function partition(c::Tuple, n, arch, idx)
 end
 
 """
-    assemble(c::AbstractVector, n, R, r, r1, r2, comm) 
+    assemble_coordinate(c::AbstractVector, n, R, r, r1, r2, comm) 
 
 Builds a linear global coordinate vector given a local coordinate vector `c_local`
 a local number of elements `Nc`, number of ranks `Nr`, rank `r`,
 and `arch`itecture. Since we use a global reduction, only ranks at positions
 1 in the other two directions `r1 == 1` and `r2 == 1` fill the 1D array.
 """
-function assemble(c_local::AbstractVector, n, R, r, r1, r2, comm) 
-    nl = concatenate_local_sizes(n, R, r)
+function assemble_coordinate(c_local::AbstractVector, n, arch, idx) 
+    nl = concatenate_local_sizes(n, arch, idx)
+    R  = arch.ranks[idx]
+    r  = arch.local_index[idx]
+    r2 = [arch.local_index[i] for i in filter(x -> x != idx, (1, 2, 3))]
 
     c_global = zeros(eltype(c_local), sum(nl)+1)
 
-    if r1 == 1 && r2 == 1
+    if r2[1] == 1 && r2[2] == 1
         c_global[1 + sum(nl[1:r-1]) : sum(nl[1:r])] .= c_local[1:end-1]
-        r == Nr && (c_global[end] = c_local[end])
+        r == R && (c_global[end] = c_local[end])
     end
 
-    MPI.Allreduce!(c_global, +, comm)
+    MPI.Allreduce!(c_global, +, arch.communicator)
 
     return c_global
 end
 
 # Simple case, just take the first and the last core
-function assemble(c::Tuple, n, R, r, r1, r2, comm) 
+function assemble_coordinate(c_local::Tuple, n, arch, idx) 
     c_global = zeros(Float64, 2)
+    
+    rank = arch.local_index
+    R    = arch.ranks[idx]
+    r    = rank[idx]
+    r2   = [rank[i] for i in filter(x -> x != idx, (1, 2, 3))]
 
-    if r == 1 && r1 == 1 && r2 == 1
-        c_global[1] = c[1]
-    elseif r == R && r1 == 1 && r2 == 1
-        c_global[2] = c[2]
+    if rank[1] == 1 && rank[2] == 1 && rank[3] == 1
+        c_global[1] = c_local[1]
+    elseif r == R && r2[1] == 1 && r2[1] == 1
+        c_global[2] = c_local[2]
     end
 
-    MPI.Allreduce!(c_global, +, comm)
+    MPI.Allreduce!(c_global, +, arch.communicator)
 
     return tuple(c_global...)
 end 
@@ -111,7 +127,7 @@ partition_global_array(arch, c_global::Function, n)      = c_global
 
 # Here we assume that we cannot partition in z (we should remove support for that)
 function partition_global_array(arch::Distributed, c_global::AbstractArray, n) 
-    c_global = arch_array(CPU(), c_global)
+    c_global = on_architecture(CPU(), c_global)
 
     ri, rj, rk = arch.local_index
 
@@ -132,7 +148,7 @@ function partition_global_array(arch::Distributed, c_global::AbstractArray, n)
                             1 + sum(ny[1:rj-1]) : sum(ny[1:rj]), 
                             1:nz]
     end
-    return arch_array(child_architecture(arch), c_local)
+    return on_architecture(child_architecture(arch), c_local)
 end
 
 """
@@ -146,7 +162,7 @@ construct_global_array(arch, c_local::Function, N)      = c_local
 
 # TODO: This does not work for 3D parallelizations!!!
 function construct_global_array(arch::Distributed, c_local::AbstractArray, n) 
-    c_local = arch_array(CPU(), c_local)
+    c_local = on_architecture(CPU(), c_local)
 
     ri, rj, rk = arch.local_index
 
@@ -175,5 +191,5 @@ function construct_global_array(arch::Distributed, c_local::AbstractArray, n)
         MPI.Allreduce!(c_global, +, arch.communicator)
     end
 
-    return arch_array(child_architecture(arch), c_global)
+    return on_architecture(child_architecture(arch), c_global)
 end

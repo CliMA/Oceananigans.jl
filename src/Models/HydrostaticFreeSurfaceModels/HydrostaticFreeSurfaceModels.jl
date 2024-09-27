@@ -17,6 +17,7 @@ using DocStringExtensions
 import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
+import Oceananigans.Architectures: on_architecture
 
 abstract type AbstractFreeSurface{E, G} end
 
@@ -27,8 +28,8 @@ fill_horizontal_velocity_halos!(args...) = nothing
 ##### HydrostaticFreeSurfaceModel definition
 #####
 
-FreeSurfaceDisplacementField(velocities, free_surface, grid) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
-FreeSurfaceDisplacementField(velocities, ::Nothing, grid) = nothing
+free_surface_displacement_field(velocities, free_surface, grid) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 
 include("compute_w_from_continuity.jl")
 include("rigid_lid.jl")

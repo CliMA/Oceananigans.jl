@@ -51,7 +51,7 @@ if local_rank == 0
     plot_title = @lift @sprintf("Oceananigans.jl + MPI: 2D turbulence t = %.2f", ds[1]["time"][$frame])
     ζ = [@lift ds[r]["ζ"][:, :, 1, $frame] for r in 1:Nranks]
     
-    fig = Figure(resolution=(1600, 1200))
+    fig = Figure(size=(1600, 1200))
     
     for rx in 1:ranks[1], ry in 1:ranks[2]
         ax = fig[rx, ry] = Axis(fig)

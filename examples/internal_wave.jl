@@ -138,7 +138,7 @@ run!(simulation)
 using CairoMakie
 set_theme!(Theme(fontsize = 24))
 
-fig = Figure(resolution = (600, 600))
+fig = Figure(size = (600, 600))
 
 ax = Axis(fig[2, 1]; xlabel = "x", ylabel = "z",
           limits = ((-π, π), (-π, π)), aspect = AxisAspect(1))
@@ -153,15 +153,12 @@ nothing #hide
 n = Observable(1)
 
 w_timeseries = FieldTimeSeries(filename, "w")
-x, y, z = nodes(w_timeseries)
-
-w = @lift interior(w_timeseries[$n], :, 1, :)
+w = @lift w_timeseries[$n]
 w_lim = 1e-8
 
-contourf!(ax, x, z, w;
+contourf!(ax, w;
           levels = range(-w_lim, stop=w_lim, length=10),
           colormap = :balance,
-          colorrange = (-w_lim, w_lim),
           extendlow = :auto,
           extendhigh = :auto)
 

@@ -126,7 +126,7 @@ for ψ in (b_ts, e_ts, u_ts, v_ts, w_ts, κ_ts) #, N_ts)
     ψp[ψp .== 0] .= NaN
 end
 
-fig = Figure(resolution=(1600, 800))
+fig = Figure(size=(1600, 800))
 
 ax_uyz = Axis(fig[1, 1], title="u(y, z) - <u(y, z)>")
 #ax_vyz = Axis(fig[1, 2], title="v(y, z)")

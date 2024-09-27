@@ -48,7 +48,7 @@ function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitati
     compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
 
     arch = architecture(grid)
-    right_hand_side = arch_array(arch, zeros(grid.Nx * grid.Ny)) # linearized RHS for matrix operations
+    right_hand_side = on_architecture(arch, zeros(grid.Nx * grid.Ny)) # linearized RHS for matrix operations
     
     storage = deepcopy(right_hand_side)
     
@@ -75,7 +75,7 @@ function solve!(η, implicit_free_surface_solver::MatrixImplicitFreeSurfaceSolve
     storage = implicit_free_surface_solver.storage
     
     solve!(storage, solver, rhs, Δt)
-        
+
     set!(η, reshape(storage, solver.problem_size...))
 
     return nothing
@@ -92,7 +92,7 @@ function compute_implicit_free_surface_right_hand_side!(rhs,
     launch!(arch, grid, :xy,
             implicit_linearized_free_surface_right_hand_side!,
             rhs, grid, g, Δt, ∫ᶻQ, η)
-    
+
     return nothing
 end
 
@@ -112,11 +112,11 @@ function compute_matrix_coefficients(vertically_integrated_areas, grid, gravitat
 
     Nx, Ny = grid.Nx, grid.Ny
 
-    C     = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
-    diag  = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
-    Ax    = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
-    Ay    = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
-    Az    = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
+    C     = on_architecture(arch, zeros(eltype(grid), Nx, Ny, 1))
+    diag  = on_architecture(arch, zeros(eltype(grid), Nx, Ny, 1))
+    Ax    = on_architecture(arch, zeros(eltype(grid), Nx, Ny, 1))
+    Ay    = on_architecture(arch, zeros(eltype(grid), Nx, Ny, 1))
+    Az    = on_architecture(arch, zeros(eltype(grid), Nx, Ny, 1))
 
     ∫Ax = vertically_integrated_areas.xᶠᶜᶜ
     ∫Ay = vertically_integrated_areas.yᶜᶠᶜ
@@ -130,8 +130,8 @@ end
 @kernel function _compute_coefficients!(diag, Ax, Ay, ∫Ax, ∫Ay, grid, g)
     i, j = @index(Global, NTuple)
     @inbounds begin
-        Ay[i, j, 1]    = ∫Ay[i, j, 1] / Δyᶜᶠᶠ(i, j, grid.Nz+1, grid)  
-        Ax[i, j, 1]    = ∫Ax[i, j, 1] / Δxᶠᶜᶠ(i, j, grid.Nz+1, grid)  
-        diag[i, j, 1]  = - Azᶜᶜᶠ(i, j, grid.Nz+1, grid) / g
+          Ay[i, j, 1] = ∫Ay[i, j, 1] / Δyᶜᶠᶠ(i, j, grid.Nz+1, grid)  
+          Ax[i, j, 1] = ∫Ax[i, j, 1] / Δxᶠᶜᶠ(i, j, grid.Nz+1, grid)  
+        diag[i, j, 1] = - Azᶜᶜᶠ(i, j, grid.Nz+1, grid) / g
     end
 end

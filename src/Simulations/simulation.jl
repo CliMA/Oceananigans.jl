@@ -6,8 +6,6 @@ import Oceananigans.Models: iteration
 import Oceananigans.Utils: prettytime
 import Oceananigans.TimeSteppers: reset!
 
-# It's not a model --- its a simulation!
-
 default_progress(simulation) = nothing
 
 mutable struct Simulation{ML, DT, ST, DI, OW, CB}
@@ -161,7 +159,8 @@ run_wall_time(sim::Simulation) = prettytime(sim.run_wall_time)
 Reset `sim`ulation, `model.clock`, and `model.timestepper` to their initial state.
 """
 function reset!(sim::Simulation)
-    sim.model.clock.time = 0.0
+    sim.model.clock.time = 0
+    sim.model.clock.last_Δt = Inf
     sim.model.clock.iteration = 0
     sim.model.clock.stage = 1
     sim.stop_iteration = Inf

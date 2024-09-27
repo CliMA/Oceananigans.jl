@@ -5,8 +5,15 @@ using Base: identity
 
 const BroadcastedIdentity = Broadcasted{<:Any, <:Any, typeof(identity), <:Any}
 
-@inline broadcasted_to_abstract_operation(loc, grid, bc::BroadcastedIdentity) =
-    interpolate_operation(loc, Tuple(broadcasted_to_abstract_operation(loc, grid, a) for a in bc.args)...)
+@inline function broadcasted_to_abstract_operation(loc, grid, bc::BroadcastedIdentity)
+    Nargs = length(bc.args)
+
+    bc′ = ntuple(Val(Nargs)) do n
+        broadcasted_to_abstract_operation(loc, grid, bc.args[n])
+    end
+
+    return interpolate_operation(loc, bc′...)
+end
 
 @inline broadcasted_to_abstract_operation(loc, grid, op::AbstractOperation) = at(loc, op)
 

@@ -21,6 +21,13 @@ const IF = AbstractField{<:Any, <:Any, <:Any, <:ImmersedBoundaryGrid}
 @inline condition_operand(func::Function,         op::IF, ::Nothing, mask) = ConditionalOperation(op; func, condition=NotImmersed(truefunc), mask)
 @inline condition_operand(func::typeof(identity), op::IF, ::Nothing, mask) = ConditionalOperation(op; func, condition=NotImmersed(truefunc), mask)
 
+@inline function condition_operand(func::Function, op::IF, cond::AbstractArray, mask)
+    arch = architecture(op.grid)
+    arch_condition = on_architecture(arch, cond)
+    ni_condition = NotImmersed(arch_condition)
+    return ConditionalOperation(op; func, condition=ni_condition, mask)
+end
+
 @inline conditional_length(c::IF)       = conditional_length(condition_operand(identity, c, nothing, 0))
 @inline conditional_length(c::IF, dims) = conditional_length(condition_operand(identity, c, nothing, 0), dims)
 
