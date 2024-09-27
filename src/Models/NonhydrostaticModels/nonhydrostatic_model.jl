@@ -15,7 +15,7 @@ using Oceananigans.Models: AbstractModel, NaNChecker, extract_boundary_condition
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
 
@@ -24,6 +24,10 @@ import Oceananigans.Models: total_velocities, default_nan_checker, timestepper
 
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
+
+# TODO: this concept may be more generally useful,
+# but for now we use it only for hydrostatic pressure anomalies for now.
+struct DefaultHydrostaticPressureAnomaly end
 
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
                                    V, S, K, BG, P, BGC, I, AF} <: AbstractModel{TS}
@@ -125,7 +129,7 @@ function NonhydrostaticModel(; grid,
             particles::ParticlesOrNothing = nothing,
     biogeochemistry::AbstractBGCOrNothing = nothing,
                                velocities = nothing,
-             hydrostatic_pressure_anomaly = nothing,
+             hydrostatic_pressure_anomaly = DefaultHydrostaticPressureAnomaly(),
                   nonhydrostatic_pressure = CenterField(grid),
                        diffusivity_fields = nothing,
                           pressure_solver = nothing,
@@ -139,6 +143,24 @@ function NonhydrostaticModel(; grid,
     # Validate pressure fields
     nonhydrostatic_pressure isa Field{Center, Center, Center} ||
         throw(ArgumentError("nonhydrostatic_pressure must be CenterField(grid)."))
+
+    if hydrostatic_pressure_anomaly isa DefaultHydrostaticPressureAnomaly
+        # Manage treatment of the hydrostatic pressure anomaly:
+        
+        if grid isa ImmersedBoundaryGrid
+            # Separate the hydrostatic pressure anomaly
+            # from the nonhydrostatic pressure contribution.
+            # See https://github.com/CliMA/Oceananigans.jl/issues/3677.
+            
+            hydrostatic_pressure_anomaly = CenterField(grid)
+        else
+            # Use a single combined pressure, saving memory and computation.
+            
+            hydrostatic_pressure_anomaly = nothing
+        end
+    end
+
+    # Check validity of hydrostatic_pressure_anomaly.
     isnothing(hydrostatic_pressure_anomaly) || hydrostatic_pressure_anomaly isa Field{Center, Center, Center} ||
         throw(ArgumentError("hydrostatic_pressure_anomaly must be `nothing` or `CenterField(grid)`."))
 
@@ -208,8 +230,8 @@ function NonhydrostaticModel(; grid,
                                 pressures, diffusivity_fields, timestepper, pressure_solver, immersed_boundary,
                                 auxiliary_fields)
 
-    update_state!(model)
-
+    update_state!(model; compute_tendencies = false)
+    
     return model
 end
 

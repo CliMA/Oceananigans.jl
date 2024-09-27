@@ -1,28 +1,69 @@
 # Generic reconstruction methods valid for all reconstruction schemes
 # Unroll the functions to pass the coordinates in case of a stretched grid
+"""
+    @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, args...)
+
+high order centered reconstruction of variable ψ in the x-direction. ψ can be a `Function`
+with signature `ψ(i, j, k, grid, args...)` or an `AbstractArray`
+"""
 @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, i, Face, args...)
+
+"""
+    @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, args...)
+
+high order centered reconstruction of variable ψ in the y-direction. ψ can be a `Function`
+with signature `ψ(i, j, k, grid, args...)` or an `AbstractArray`
+"""
 @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, j, Face, args...)
+
+"""
+    @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, args...)
+
+high order centered reconstruction of variable ψ in the z-direction. ψ can be a `Function`
+with signature `ψ(i, j, k, grid, args...)` or an `AbstractArray`
+"""
 @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, k, Face, args...)
 
+""" same as [`symmetric_interpolate_xᶠᵃᵃ`](@ref) but on `Center`s instead of `Face`s """
 @inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, ψ, i, Center, args...)
+""" same as [`symmetric_interpolate_yᵃᶠᵃ`](@ref) but on `Center`s instead of `Face`s """
 @inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, ψ, j, Center, args...)
+""" same as [`symmetric_interpolate_zᵃᵃᶠ`](@ref) but on `Center`s instead of `Face`s """
 @inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, ψ, k, Center, args...)
 
-@inline left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, args...)  = inner_left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, i, Face, args...)
-@inline left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, args...)  = inner_left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, j, Face, args...)
-@inline left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, args...)  = inner_left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, k, Face, args...)
+"""
+    @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias, ψ, args...)
 
-@inline right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, args...) = inner_right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, i, Face, args...)
-@inline right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, args...) = inner_right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, j, Face, args...)
-@inline right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, args...) = inner_right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, k, Face, args...)
+high order biased reconstruction of variable ψ in the x-direction. ψ can be a `Function`
+with signature `ψ(i, j, k, grid, args...)` or an `AbstractArray`. The `bias` argument is
+either `LeftBias` for a left biased reconstruction, or `RightBias` for a right biased reconstruction
+"""
+@inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias, ψ, args...)  = inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias, ψ, i, Face, args...)
 
-@inline left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ψ, args...)  = inner_left_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, ψ, i, Center, args...)
-@inline left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ψ, args...)  = inner_left_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, ψ, j, Center, args...)
-@inline left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ψ, args...)  = inner_left_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, ψ, k, Center, args...)
+"""
+    @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias, ψ, args...)
 
-@inline right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ψ, args...) = inner_right_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, ψ, i, Center, args...)
-@inline right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ψ, args...) = inner_right_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, ψ, j, Center, args...)
-@inline right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ψ, args...) = inner_right_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, ψ, k, Center, args...)
+high order biased reconstruction of variable ψ in the y-direction. ψ can be a `Function`
+with signature `ψ(i, j, k, grid, args...)` or an `AbstractArray`. The `bias` argument is
+either `LeftBias` for a left biased reconstruction, or `RightBias` for a right biased reconstruction
+"""
+@inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias, ψ, args...)  = inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias, ψ, j, Face, args...)
+
+"""
+    @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, bias, ψ, args...)
+
+high order biased reconstruction of variable ψ in the z-direction. ψ can be a `Function`
+with signature `ψ(i, j, k, grid, args...)` or an `AbstractArray`. The `bias` argument is
+either `LeftBias` for a left biased reconstruction, or `RightBias` for a right biased reconstruction
+"""
+@inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, bias, ψ, args...)  = inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, bias, ψ, k, Face, args...)
+
+""" same as [`biased_interpolate_xᶠᵃᵃ`](@ref) but on `Center`s instead of `Face`s """
+@inline biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, bias, ψ, args...)  = inner_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, bias, ψ, i, Center, args...)
+""" same as [`biased_interpolate_yᵃᶠᵃ`](@ref) but on `Center`s instead of `Face`s """
+@inline biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, bias, ψ, args...)  = inner_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, bias, ψ, j, Center, args...)
+""" same as [`biased_interpolate_zᵃᵃᶠ`](@ref) but on `Center`s instead of `Face`s """
+@inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, bias, ψ, args...)  = inner_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, bias, ψ, k, Center, args...)
 
 struct FirstDerivative end
 struct SecondDerivative end
@@ -209,40 +250,43 @@ end
 @inline function compute_reconstruction_coefficients(grid, FT, scheme; order)
 
     method = scheme == :Centered ? 1 : scheme == :Upwind ? 2 : 3
-
-    rect_metrics = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
-
+    
     if grid isa Nothing
-        for metric in rect_metrics
-            @eval $(Symbol(:coeff_ , metric)) = nothing
-            @eval $(Symbol(:smooth_, metric)) = nothing
-        end
+        coeff_xᶠᵃᵃ = nothing
+        coeff_xᶜᵃᵃ = nothing
+        coeff_yᵃᶠᵃ = nothing
+        coeff_yᵃᶜᵃ = nothing
+        coeff_zᵃᵃᶠ = nothing
+        coeff_zᵃᵃᶜ = nothing
     else
-        metrics = coordinates(grid)
-        dirsize = (:Nx, :Nx, :Ny, :Ny, :Nz, :Nz)
-
         arch       = architecture(grid)
         Hx, Hy, Hz = halo_size(grid)
         new_grid   = with_halo((Hx+1, Hy+1, Hz+1), grid)
-
-        for (dir, metric, rect_metric) in zip(dirsize, metrics, rect_metrics)
-            @eval $(Symbol(:coeff_ , rect_metric)) = calc_reconstruction_coefficients($FT, $new_grid.$metric, $arch, $new_grid.$dir, Val($method); order = $order)
-        end
+        metrics    = coordinates(grid)
+    
+        coeff_xᶠᵃᵃ = reconstruction_coefficients(FT, getproperty(new_grid, metrics[1]), arch, new_grid.Nx, Val(method); order)
+        coeff_xᶜᵃᵃ = reconstruction_coefficients(FT, getproperty(new_grid, metrics[2]), arch, new_grid.Nx, Val(method); order)
+        coeff_yᵃᶠᵃ = reconstruction_coefficients(FT, getproperty(new_grid, metrics[3]), arch, new_grid.Ny, Val(method); order)
+        coeff_yᵃᶜᵃ = reconstruction_coefficients(FT, getproperty(new_grid, metrics[4]), arch, new_grid.Ny, Val(method); order)
+        coeff_zᵃᵃᶠ = reconstruction_coefficients(FT, getproperty(new_grid, metrics[5]), arch, new_grid.Nz, Val(method); order)
+        coeff_zᵃᵃᶜ = reconstruction_coefficients(FT, getproperty(new_grid, metrics[6]), arch, new_grid.Nz, Val(method); order)
     end
 
     return (coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ)
 end
 
-# Fallback for uniform directions
+# Fallbacks for uniform or Flat directions
 for val in [1, 2, 3]
     @eval begin
-        @inline calc_reconstruction_coefficients(FT, coord::OffsetArray{<:Any, <:Any, <:AbstractRange}, arch, N, ::Val{$val}; order) = nothing
-        @inline calc_reconstruction_coefficients(FT, coord::AbstractRange, arch, N, ::Val{$val}; order)                              = nothing
+        @inline reconstruction_coefficients(FT, coord::OffsetArray{<:Any, <:Any, <:AbstractRange}, arch, N, ::Val{$val}; order) = nothing
+        @inline reconstruction_coefficients(FT, coord::AbstractRange, arch, N, ::Val{$val}; order)                              = nothing
+        @inline reconstruction_coefficients(FT, coord::Nothing, arch, N, ::Val{$val}; order)                                    = nothing
+        @inline reconstruction_coefficients(FT, coord::Number, arch, N, ::Val{$val}; order)                                     = nothing
     end
 end
 
 # Stretched reconstruction coefficients for `Centered` schemes
-@inline function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{1}; order) 
+@inline function reconstruction_coefficients(FT, coord, arch, N, ::Val{1}; order) 
     cpu_coord = on_architecture(CPU(), coord)
     r = ((order + 1) ÷ 2) - 1
     s = create_reconstruction_coefficients(FT, r, cpu_coord, arch, N; order)
@@ -250,7 +294,7 @@ end
 end
 
 # Stretched reconstruction coefficients for `UpwindBiased` schemes
-@inline function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{2}; order) 
+@inline function reconstruction_coefficients(FT, coord, arch, N, ::Val{2}; order) 
     cpu_coord = on_architecture(CPU(), coord)
     rleft  = ((order + 1) ÷ 2) - 2
     rright = ((order + 1) ÷ 2) - 1
@@ -262,8 +306,7 @@ end
 end
 
 # Stretched reconstruction coefficients for `WENO` schemes
-@inline function calc_reconstruction_coefficients(FT, coord, arch, N, ::Val{3}; order) 
-
+@inline function reconstruction_coefficients(FT, coord, arch, N, ::Val{3}; order) 
     cpu_coord = on_architecture(CPU(), coord)
     s = []
     for r in -1:order-1

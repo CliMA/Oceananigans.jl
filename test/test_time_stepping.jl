@@ -4,7 +4,7 @@ using TimesDates: TimeDate
 using Oceananigans.Grids: topological_tuple_length, total_size
 using Oceananigans.Fields: BackgroundField
 using Oceananigans.TimeSteppers: Clock
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
 function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
@@ -99,11 +99,12 @@ function run_first_AB2_time_step_tests(arch, FT)
                                 buoyancy = SeawaterBuoyancy(),
                                 tracers = (:T, :S))
 
-    # Test that GT = 1 after model construction (note: this computes tendencies)
+    # Test that GT = 0 after model construction
+    # (note: model construction does not computes tendencies)
     @test all(interior(model.timestepper.Gⁿ.u) .≈ 0)
     @test all(interior(model.timestepper.Gⁿ.v) .≈ 0)
     @test all(interior(model.timestepper.Gⁿ.w) .≈ 0)
-    @test all(interior(model.timestepper.Gⁿ.T) .≈ 1)
+    @test all(interior(model.timestepper.Gⁿ.T) .≈ 0)
     @test all(interior(model.timestepper.Gⁿ.S) .≈ 0)
 
     # Test that T = 1 after 1 time step and that AB2 actually reduced to forward Euler.
@@ -374,9 +375,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             for Closure in Closures
                 @info "  Testing that time stepping works [$(typeof(arch)), $FT, $Closure]..."
                 if Closure === TwoDimensionalLeith
-                    # TwoDimensionalLeith is slow on the CPU and doesn't compile right now on the GPU.
-                    # See: https://github.com/CliMA/Oceananigans.jl/pull/1074
-                    @test_skip time_stepping_works_with_closure(arch, FT, Closure)
+                    @test time_stepping_works_with_closure(arch, FT, Closure)
                 elseif Closure === CATKEVerticalDiffusivity
                     # CATKE isn't supported with NonhydrostaticModel yet
                     @test_skip time_stepping_works_with_closure(arch, FT, Closure)
