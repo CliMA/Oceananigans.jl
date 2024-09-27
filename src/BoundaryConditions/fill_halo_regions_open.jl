@@ -14,10 +14,10 @@ function fill_open_boundary_regions!(field, boundary_conditions, indices, loc, g
 
     # gets `open_fill`, the function which fills open boundaries at `loc`, as well as `regular_fill`
     # which is the function which fills non-open boundaries at `loc` which informs `fill_halo_size` 
-    open_fill, regular_fill = get_open_halo_filling_functions(loc) 
-    fill_size = fill_halo_size(field, regular_fill, indices, boundary_conditions, loc, grid)
+    fill_function, regular_fill_function = get_open_halo_filling_functions(loc) 
+    fill_size = fill_halo_size(field, regular_fill_function, indices, boundary_conditions, loc, grid)
 
-    fill_open_halo_event!(open_fill, field, left_bc, right_bc, fill_size, loc, arch, grid, args) 
+    fill_open_halo_event!(fill_function, field, left_bc, right_bc, fill_size, loc, arch, grid, args) 
 
     return nothing
 end
@@ -27,9 +27,18 @@ end
 
 @inline fill_open_halo_event!(::Nothing, field, left_bc, right_bc, fill_size, loc, arch, grid, args) = nothing
 
-@inline fill_open_boundary_regions!(fields::NTuple{N}, boundary_conditions, indices, loc, grid, args...; kwargs...) where N =
-    ntuple(n->fill_open_boundary_regions!(fields[n], boundary_conditions[n], indices, loc[n], grid, args...; kwargs...), 
-           Val(N))
+@inline function fill_open_boundary_regions!(fields::NTuple{N}, boundary_conditions, indices, loc, grid, args...; kwargs...) where N
+    ntuple(Val(N)) do n
+        fill_open_boundary_regions!(fields[n], 
+                                    boundary_conditions[n], 
+                                    indices, 
+                                    loc[n], 
+                                    grid, 
+                                    args...; kwargs...)
+    end
+
+    return nothing
+end
 
 # for regular halo fills
 @inline left_velocity_open_boundary_condition(boundary_condition, loc) = nothing
