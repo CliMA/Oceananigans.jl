@@ -103,35 +103,6 @@ Grid topology for dimensions that are connected to other models or domains only 
 """
 struct RightConnected <: AbstractTopology end
 
-"""
-    AbstractGrid{FT, TX, TY, TZ}
-
-Abstract supertype for grids with elements of type `FT` and topology `{TX, TY, TZ}`.
-"""
-abstract type AbstractGrid{FT, TX, TY, TZ, Arch} end
-
-"""
-    AbstractUnderlyingGrid{FT, TX, TY, TZ}
-
-Abstract supertype for "primary" grids (as opposed to grids with immersed boundaries)
-with elements of type `FT` and topology `{TX, TY, TZ}`.
-"""
-abstract type AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch} end
-
-"""
-    AbstractCurvilinearGrid{FT, TX, TY, TZ}
-
-Abstract supertype for curvilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
-"""
-abstract type AbstractCurvilinearGrid{FT, TX, TY, TZ, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch} end
-
-"""
-    AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ}
-
-Abstract supertype for horizontally-curvilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
-"""
-abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch} <: AbstractCurvilinearGrid{FT, TX, TY, TZ, Arch} end
-
 #####
 ##### Directions (for tilted domains)
 #####
@@ -144,22 +115,7 @@ struct ZDirection <: AbstractDirection end
 
 struct NegativeZDirection <: AbstractDirection end
 
-const XFlatGrid = AbstractGrid{<:Any, Flat}
-const YFlatGrid = AbstractGrid{<:Any, <:Any, Flat}
-const ZFlatGrid = AbstractGrid{<:Any, <:Any, <:Any, Flat}
-
-const XYFlatGrid = AbstractGrid{<:Any, Flat, Flat}
-const XZFlatGrid = AbstractGrid{<:Any, Flat, <:Any, Flat}
-const YZFlatGrid = AbstractGrid{<:Any, <:Any, Flat, Flat}
-
-const XYZFlatGrid = AbstractGrid{<:Any, Flat, Flat, Flat}
-
-isrectilinear(grid) = false
-
-# Fallback
-@inline  retrieve_surface_active_cells_map(::AbstractGrid) = nothing
-@inline retrieve_interior_active_cells_map(::AbstractGrid, any_map_type) = nothing
-
+include("abstract_grid.jl")
 include("grid_utils.jl")
 include("nodes_and_spacings.jl")
 include("zeros_and_ones.jl")
