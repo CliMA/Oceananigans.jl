@@ -5,6 +5,10 @@ using Test
 if isfile("single_decay_windowed_time_average_test.nc")
     rm("single_decay_windowed_time_average_test.nc")
 end
+run(`sh -c "rm test_iteration*.jld2"`)
+
+
+function test_simulation(stop_time, Δt, window_nΔt, interval_nΔt, stride, overwrite)
 
     arch = CPU()
     topo = (Periodic, Periodic, Periodic)
@@ -26,9 +30,7 @@ end
                                 forcing = (c1=c1_forcing, c2=c2_forcing))
 
     set!(model, c1=1, c2=1)
-
-    Δt = .01 #1/64 # Nice floating-point number
-    simulation = Simulation(model, Δt=Δt, stop_time=150Δt)
+    simulation = Simulation(model, Δt=Δt, stop_time=stop_time)
 
     ∫c1_dxdy = Field(Average(model.tracers.c1, dims=(1, 2)))
     ∫c2_dxdy = Field(Average(model.tracers.c2, dims=(1, 2)))
@@ -37,11 +39,9 @@ end
     nc_dimensions = Dict("c1" => ("zC",), "c2" => ("zC",))
 
     single_time_average_nc_filepath = "single_decay_windowed_time_average_test.nc"
-    window_nΔt = 12
+    
     window = window_nΔt*Δt
-    interval_nΔt = 15
     interval = interval_nΔt*Δt
-    stride = 1
 
     single_nc_output = Dict("c1" => ∫c1_dxdy)
     single_nc_dimension = Dict("c1" => ("zC",))
@@ -53,14 +53,34 @@ end
                            filename = single_time_average_nc_filepath,
                            schedule = AveragedTimeInterval(interval, window = window, stride = stride),
                            dimensions = single_nc_dimension,
-                           overwrite_existing = true)
+                           overwrite_existing = overwrite)
     checkpointer = Checkpointer(model,
                                 schedule = TimeInterval(stop_time),
                                 prefix = "test",
                                 cleanup = true)
 
     simulation.output_writers[:checkpointer] = checkpointer
+
+
+    return simulation
+
+end
+    
+    Δt = .01 #1/64 # Nice floating-point number
+    T1 = 100Δt      # first simulation stop time (s)
+    T2 = 2T1    # second simulation stop time (s)
+    window_nΔt = 10
+    interval_nΔt = 10
+    stride = 1
+    # Run a simulation that saves data to a checkpoint
+    simulation = test_simulation(T1, Δt, window_nΔt, interval_nΔt, stride, true)
     run!(simulation)
+
+    # Now try again, but picking up from the previous checkpoint
+    N = iteration(simulation)
+    checkpoint = "test_iteration$N.jld2"
+    simulation = test_simulation(T2, Δt, window_nΔt, interval_nΔt, stride, false)
+    run!(simulation, pickup=checkpoint)
 
     ##### For each λ, horizontal average should evaluate to
     #####
@@ -69,7 +89,25 @@ end
     #####
     ##### which we can compute analytically.
 
-    # ds = NCDataset(horizontal_average_nc_filepath)
+    arch = CPU()
+    topo = (Periodic, Periodic, Periodic)
+    domain = (x=(0, 1), y=(0, 1), z=(0, 1))
+    grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4); domain...)
+
+    λ1(x, y, z) = x + (1 - y)^2 + tanh(z)
+    λ2(x, y, z) = x + (1 - y)^2 + tanh(4z)
+
+    Fc1(x, y, z, t, c1) = - λ1(x, y, z) * c1
+    Fc2(x, y, z, t, c2) = - λ2(x, y, z) * c2
+    
+    c1_forcing = Forcing(Fc1, field_dependencies=:c1)
+    c2_forcing = Forcing(Fc2, field_dependencies=:c2)
+
+    model = NonhydrostaticModel(; grid,
+                                timestepper = :RungeKutta3,
+                                tracers = (:c1, :c2),
+                                forcing = (c1=c1_forcing, c2=c2_forcing))
+
 
     Nx, Ny, Nz = size(grid)
     xs, ys, zs = nodes(model.tracers.c1)
@@ -87,7 +125,7 @@ end
     ##### Test strided windowed time average against analytic solution
     ##### for *single* NetCDF output
     #####
-    
+    single_time_average_nc_filepath = "single_decay_windowed_time_average_test.nc"
     single_ds = NCDataset(single_time_average_nc_filepath)
 
     attribute_names = ("schedule", "interval", "output time interval",
@@ -98,8 +136,8 @@ end
         @test haskey(single_ds.attrib, name) && !isnothing(single_ds.attrib[name])
     end
 
-    window_size = Int(window/Δt)
-
+    window_size = window_nΔt
+    window = window_size*Δt
     @info "    Testing time-averaging of a single NetCDF output [$(typeof(arch))]..."
 
     for (n, t) in enumerate(single_ds["time"][2:end])
@@ -143,12 +181,12 @@ end
     # plot!(time[1:end],c̄1_timeaverage[3,:], color=:black, linestyle=:dot, label="3-analytic (window≠interval)")
     # plot!(time[1:end],c̄1_timeaverage[4,:], color=:black, linestyle=:dot, label="4-analytic (window≠interval)")
     
-    tt = 0:window:150Δt
+    tt = 0:window:T2
     for i in 1:length(tt)
     plot!([tt[i], tt[i]],[0,1],color=:black,label="")
     end
     title!(pl, string("Δt=",Δt,", average window=",window_nΔt,"Δt")) # Add the title to the plot
-    ylims!(pl,(0.4,1))
-    xlims!(pl,(0,1))
+    # ylims!(pl,(0.4,1))
+    # xlims!(pl,(0,1))
     display(pl)
 close(single_ds)
