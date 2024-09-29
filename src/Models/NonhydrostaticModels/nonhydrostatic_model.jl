@@ -69,8 +69,8 @@ end
             particles::ParticlesOrNothing = nothing,
     biogeochemistry::AbstractBGCOrNothing = nothing,
                                velocities = nothing,
-             hydrostatic_pressure_anomaly = nothing,
                   nonhydrostatic_pressure = CenterField(grid),
+             hydrostatic_pressure_anomaly = DefaultHydrostaticPressureAnomaly(),
                        diffusivity_fields = nothing,
                           pressure_solver = nothing,
                          auxiliary_fields = NamedTuple())
@@ -102,10 +102,10 @@ Keyword arguments
   - `velocities`: The model velocities. Default: `nothing`.
   - `nonhydrostatic_pressure`: The nonhydrostatic pressure field. Default: `CenterField(grid)`.
   - `hydrostatic_pressure_anomaly`: An optional field that stores the part of the nonhydrostatic pressure
-                                    in hydrostatic balance with the buoyancy field. If `nothing` (default), the anomaly
-                                    is not computed. If `CenterField(grid)`, the anomaly is precomputed by
+                                    in hydrostatic balance with the buoyancy field. If `CenterField(grid)` (default), the anomaly is precomputed by
                                     vertically integrating the buoyancy field. In this case, the `nonhydrostatic_pressure` represents
-                                    only the part of pressure that deviates from the hydrostatic anomaly.
+                                    only the part of pressure that deviates from the hydrostatic anomaly. If `nothing`, the anomaly
+                                    is not computed. 
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
@@ -142,16 +142,17 @@ function NonhydrostaticModel(; grid,
 
     if hydrostatic_pressure_anomaly isa DefaultHydrostaticPressureAnomaly
         # Manage treatment of the hydrostatic pressure anomaly:
-        
-        if grid isa ImmersedBoundaryGrid
+
+        if !isnothing(buoyancy)
             # Separate the hydrostatic pressure anomaly
             # from the nonhydrostatic pressure contribution.
-            # See https://github.com/CliMA/Oceananigans.jl/issues/3677.
-            
+            # See https://github.com/CliMA/Oceananigans.jl/issues/3677
+            # and https://github.com/CliMA/Oceananigans.jl/issues/3795.
+
             hydrostatic_pressure_anomaly = CenterField(grid)
         else
             # Use a single combined pressure, saving memory and computation.
-            
+
             hydrostatic_pressure_anomaly = nothing
         end
     end
