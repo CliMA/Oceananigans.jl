@@ -7,25 +7,27 @@ using LinearAlgebra
 import Oceananigans.Architectures: architecture
 
 mutable struct PreconditionedConjugateGradientSolver{A, G, L, T, F, M, P} 
-               architecture :: A
-                       grid :: G
-          linear_operation! :: L
-                     reltol :: T
-                     abstol :: T
-                    maxiter :: Int
-                  iteration :: Int
-                       ρⁱ⁻¹ :: T
+    architecture :: A
+    grid :: G
+    linear_operation! :: L
+    reltol :: T
+    abstol :: T
+    maxiter :: Int
+    iteration :: Int
+    ρⁱ⁻¹ :: T
     linear_operator_product :: F
-           search_direction :: F
-                   residual :: F
-             preconditioner :: M
-     preconditioner_product :: P
+    search_direction :: F
+    residual :: F
+    preconditioner :: M
+    preconditioner_product :: P
 end
 
 architecture(solver::PreconditionedConjugateGradientSolver) = solver.architecture
 
 initialize_precondition_product(preconditioner, template_field) = similar(template_field)
 initialize_precondition_product(::Nothing, template_field) = nothing
+
+Base.summary(::PreconditionedConjugateGradientSolver) = "PreconditionedConjugateGradientSolver"
 
 # "Nothing" preconditioner
 @inline precondition!(z, ::Nothing, r, args...) = r
