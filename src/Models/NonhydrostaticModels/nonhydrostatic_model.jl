@@ -64,7 +64,7 @@ end
                                   closure = nothing,
           boundary_conditions::NamedTuple = NamedTuple(),
                                   tracers = (),
-                              timestepper = :QuasiAdamsBashforth2,
+                              timestepper = :RungeKutta3,
             background_fields::NamedTuple = NamedTuple(),
             particles::ParticlesOrNothing = nothing,
     biogeochemistry::AbstractBGCOrNothing = nothing,
@@ -95,7 +95,7 @@ Keyword arguments
   - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
                preallocated `CenterField`s.
   - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
-                   `:RungeKutta3`.
+                   `:RungeKutta3` (default).
   - `background_fields`: `NamedTuple` with background fields (e.g., background flow). Default: `nothing`.
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
   - `biogeochemistry`: Biogeochemical model for `tracers`.
@@ -121,7 +121,7 @@ function NonhydrostaticModel(; grid,
                              closure = nothing,
                              boundary_conditions::NamedTuple = NamedTuple(),
                              tracers = (),
-                             timestepper = :QuasiAdamsBashforth2,
+                             timestepper = :RungeKutta3,
                              background_fields::NamedTuple = NamedTuple(),
                              particles::ParticlesOrNothing = nothing,
                              biogeochemistry::AbstractBGCOrNothing = nothing,
