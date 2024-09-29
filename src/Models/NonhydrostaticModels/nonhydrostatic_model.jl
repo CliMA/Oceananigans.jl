@@ -30,7 +30,7 @@ const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 struct DefaultHydrostaticPressureAnomaly end
 
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
-                                   V, S, K, BG, P, BGC, I, AF} <: AbstractModel{TS}
+                                   V, S, K, BG, P, BGC, AF} <: AbstractModel{TS}
 
          architecture :: A        # Computer `Architecture` on which `Model` is run
                  grid :: G        # Grid of physical points on which `Model` is solved
@@ -50,7 +50,6 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
    diffusivity_fields :: K        # Container for turbulent diffusivities
           timestepper :: TS       # Object containing timestepper fields and parameters
       pressure_solver :: S        # Pressure/Poisson solver
-    immersed_boundary :: I        # Models the physics of immersed boundaries within the grid
      auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
 end
 
@@ -74,7 +73,6 @@ end
              hydrostatic_pressure_anomaly = DefaultHydrostaticPressureAnomaly(),
                        diffusivity_fields = nothing,
                           pressure_solver = nothing,
-                        immersed_boundary = nothing,
                          auxiliary_fields = NamedTuple())
 
 Construct a model for a non-hydrostatic, incompressible fluid on `grid`, using the Boussinesq
@@ -111,7 +109,6 @@ Keyword arguments
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
-  - `immersed_boundary`: The immersed boundary. Default: `nothing`.
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`         
 """
 function NonhydrostaticModel(; grid,
@@ -133,7 +130,6 @@ function NonhydrostaticModel(; grid,
                              nonhydrostatic_pressure = CenterField(grid),
                              diffusivity_fields = nothing,
                              pressure_solver = nothing,
-                             immersed_boundary = nothing,
                              auxiliary_fields = NamedTuple())
 
     arch = architecture(grid)
@@ -228,8 +224,7 @@ function NonhydrostaticModel(; grid,
 
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                 forcing, closure, background_fields, particles, biogeochemistry, velocities, tracers,
-                                pressures, diffusivity_fields, timestepper, pressure_solver, immersed_boundary,
-                                auxiliary_fields)
+                                pressures, diffusivity_fields, timestepper, pressure_solver, auxiliary_fields)
 
     update_state!(model; compute_tendencies = false)
     
