@@ -58,6 +58,20 @@ Base.size(f::AbstractField) = size(f.grid, location(f))
 Base.length(f::AbstractField) = prod(size(f))
 Base.parent(f::AbstractField) = f
 
+@inline axis(::Colon, N) = Base.OneTo(N)
+@inline axis(index::UnitRange, N) = index
+
+@inline function Base.axes(f::AbstractField)
+    Nx, Ny, Nz = size(f)
+    ix, iy, iz = indices(f)
+
+    ax = axis(ix, Nx)
+    ay = axis(iy, Ny)
+    az = axis(iz, Nz)
+
+    return (ax, ay, az)
+end
+
 """
     total_size(field::AbstractField)
 
