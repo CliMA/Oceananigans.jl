@@ -13,7 +13,7 @@ function fill_open_boundary_regions!(field, boundary_conditions, indices, loc, g
     right_bc = right_velocity_open_boundary_condition(boundary_conditions, loc)
 
     # gets `fill_function`, the function which fills open boundaries at `loc` and informs `fill_size` 
-    fill_function, fill_size = get_open_halo_filling(field, regular_fill_function, indices, boundary_conditions, loc, grid)
+    fill_function, fill_size = get_open_halo_filling(field, indices, boundary_conditions, loc, grid)
 
     fill_open_halo_event!(fill_function, field, left_bc, right_bc, fill_size, loc, arch, grid, args) 
 
@@ -61,13 +61,13 @@ end
 # no open fills
 @inline get_open_halo_filling(args...) = nothing, nothing
 
-@inline get_open_halo_filling(field, regular_fill_function, indices, boundary_conditions, ::Tuple{Face, Center, Center}, grid) = 
+@inline get_open_halo_filling(field, indices, boundary_conditions, ::Tuple{Face, Center, Center}, grid) = 
     _fill_west_and_east_open_halo!, fill_halo_size(field, fill_west_and_east_halo!, indices, boundary_conditions, loc, grid)
 
-@inline get_open_halo_filling(field, regular_fill_function, indices, boundary_conditions, ::Tuple{Center, Face, Center}, loc) = 
+@inline get_open_halo_filling(field, indices, boundary_conditions, ::Tuple{Center, Face, Center}, loc) = 
     _fill_south_and_north_open_halo!, fill_halo_size(field, fill_south_and_north_halo!, indices, boundary_conditions, loc, grid)
 
-@inline get_open_halo_filling(field, regular_fill_function, indices, boundary_conditions, ::Tuple{Center, Center, Face}, loc) = 
+@inline get_open_halo_filling(field, indices, boundary_conditions, ::Tuple{Center, Center, Face}, loc) = 
     _fill_bottom_and_top_open_halo!, fill_halo_size(field, fill_bottom_and_top_halo!, indices, boundary_conditions, loc, grid)
 
 @kernel function _fill_west_and_east_open_halo!(c, west_bc, east_bc, loc, grid, args) 
