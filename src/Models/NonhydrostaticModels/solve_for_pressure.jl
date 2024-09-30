@@ -1,7 +1,9 @@
 using Oceananigans.Operators
-using Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver, solve!
 using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver
 using Oceananigans.Grids: XDirection, YDirection, ZDirection
+using Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+using Oceananigans.Solvers: solve!
 
 #####
 ##### Calculate the right-hand-side of the non-hydrostatic pressure Poisson equation.
@@ -79,5 +81,13 @@ function solve_for_pressure!(pressure, solver, Δt, U★)
     compute_source_term!(pressure, solver, Δt, U★)
     solve!(pressure, solver)
     return pressure
+end
+
+function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, Δt, U★)
+    rhs = solver.right_hand_side
+    grid = solver.grid
+    arch = architecture(grid)
+    launch!(arch, grid, :xyz, _compute_source_term!, rhs, grid, Δt, U★)
+    return solve!(pressure, solver.conjugate_gradient_solver, rhs)
 end
 

@@ -1,5 +1,7 @@
 using Oceananigans.Architectures: device, architecture
-using Oceananigans.Solvers: ConjugateGradientSolver, FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver, solve!
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+using Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver
+using Oceananigans.Solvers: fft_poisson_solver, solve!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Grids: inactive_cell
 using Oceananigans.Operators: divᶜᶜᶜ, ∇²ᶜᶜᶜ 
@@ -58,7 +60,7 @@ function ConjugateGradientPoissonSolver(grid;
                                         kw...)
 
     if preconditioner isa DefaultPreconditioner # try to make a useful default
-        if grid isa ImmersedBoundaryGrid && grid.underlying_grid isa GridWithFFT
+        if grid isa ImmersedBoundaryGrid && grid.underlying_grid isa GridWithFFTSolver
             if grid.underlying_grid isa XYZRegularRG
                 preconditioner = FFTBasedPoissonSolver(grid.underlying_grid)
             else # it's stretched in one direction
@@ -80,14 +82,6 @@ function ConjugateGradientPoissonSolver(grid;
                                               kw...)
 
     return ConjugateGradientPoissonSolver(grid, rhs, conjugate_gradient_solver)
-end
-
-function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, Δt, U★)
-    rhs = solver.right_hand_side
-    grid = solver.grid
-    arch = architecture(grid)
-    launch!(arch, grid, :xyz, _compute_source_term!, rhs, grid, Δt, U★)
-    return solve!(pressure, solver.conjugate_gradient_solver, rhs)
 end
 
 #####
