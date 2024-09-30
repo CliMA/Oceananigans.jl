@@ -21,6 +21,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
   - label: "🏕️ initialize cpu environment"
     key: "init_cpu"
@@ -38,6 +42,10 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
 #####
 ##### Unit tests

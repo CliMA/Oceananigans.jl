@@ -14,7 +14,8 @@ using Oceananigans: Clock
 function test_DateTime_netcdf_output(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=DateTime(2021, 1, 1))
-    model = NonhydrostaticModel(; grid, clock, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = NonhydrostaticModel(; grid, clock, timestepper=:QuasiAdamsBashforth2, 
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Δt = 5days + 3hours + 44.123seconds
     simulation = Simulation(model; Δt, stop_time=DateTime(2021, 2, 1))
@@ -132,7 +133,8 @@ end
 function test_TimeDate_netcdf_output(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=TimeDate(2021, 1, 1))
-    model = NonhydrostaticModel(; grid, clock, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = NonhydrostaticModel(; grid, clock, timestepper=:QuasiAdamsBashforth2,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Δt = 5days + 3hours + 44.123seconds
     simulation = Simulation(model, Δt=Δt, stop_time=TimeDate(2021, 2, 1))
@@ -435,7 +437,8 @@ function test_netcdf_function_output(arch)
     iters = 3
 
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(L, 2L, 3L))
-    model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = NonhydrostaticModel(; grid, timestepper=:QuasiAdamsBashforth2,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
     grid = model.grid
@@ -777,7 +780,7 @@ end
 
 function test_netcdf_output_alignment(arch)
     grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid,
+    model = NonhydrostaticModel(; grid, timestepper=:QuasiAdamsBashforth2,
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=0.2, stop_time=40)
 
@@ -813,7 +816,7 @@ function test_netcdf_vertically_stretched_grid_output(arch)
     zF = [k^2 for k in 0:Nz]
     grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), x=(0, 1), y=(-π, π), z=zF)
 
-    model = NonhydrostaticModel(grid=grid,
+    model = NonhydrostaticModel(; grid,
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Δt = 1.25

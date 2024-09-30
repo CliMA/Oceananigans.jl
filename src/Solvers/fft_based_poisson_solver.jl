@@ -21,14 +21,16 @@ function transform_list_str(transform_list)
     return list
 end
 
+Base.summary(solver::FFTBasedPoissonSolver) = "FFTBasedPoissonSolver"
+
 Base.show(io::IO, solver::FFTBasedPoissonSolver) =
-print(io, "FFTBasedPoissonSolver on ", string(typeof(architecture(solver))), ": \n",
-          "├── grid: $(summary(solver.grid))\n",
-          "├── storage: $(typeof(solver.storage))\n",
-          "├── buffer: $(typeof(solver.buffer))\n",
-          "└── transforms:\n",
-          "    ├── forward: ", transform_list_str(solver.transforms.forward), "\n",
-          "    └── backward: ", transform_list_str(solver.transforms.backward))
+    print(io, "FFTBasedPoissonSolver on ", string(typeof(architecture(solver))), ": \n",
+              "├── grid: $(summary(solver.grid))\n",
+              "├── storage: $(typeof(solver.storage))\n",
+              "├── buffer: $(typeof(solver.buffer))\n",
+              "└── transforms:\n",
+              "    ├── forward: ", transform_list_str(solver.transforms.forward), "\n",
+              "    └── backward: ", transform_list_str(solver.transforms.backward))
 
 """
     FFTBasedPoissonSolver(grid, planner_flag=FFTW.PATIENT)

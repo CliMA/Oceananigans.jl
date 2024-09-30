@@ -13,6 +13,9 @@ isdefined(Base, :get_extension) ? (import Enzyme) : (import ..Enzyme)
 using Enzyme: EnzymeCore
 using Enzyme.EnzymeCore: Active, Const, Duplicated
 
+EnzymeCore.EnzymeRules.inactive_noinl(::typeof(Base.:(==)), ::Oceananigans.AbstractGrid, ::Oceananigans.AbstractGrid) = nothing
+EnzymeCore.EnzymeRules.inactive_noinl(::typeof(Oceananigans.AbstractOperations.validate_grid), x...) = nothing
+EnzymeCore.EnzymeRules.inactive_noinl(::typeof(Oceananigans.AbstractOperations.metric_function), x...) = nothing
 EnzymeCore.EnzymeRules.inactive_noinl(::typeof(Oceananigans.Utils.flatten_reduced_dimensions), x...) = nothing
 EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.Grids.total_size), x...) = nothing
 EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.BoundaryConditions.parent_size_and_offset), x...) = nothing

@@ -33,7 +33,6 @@ CUDA.allowscalar() do
         Pkg.status()
 
         try
-            MPI.install_mpiexecjl()
             MPI.versioninfo()
         catch; end
 

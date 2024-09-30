@@ -54,15 +54,15 @@ Keyword Arguments
 GridFittedBottom(bottom_height) = GridFittedBottom(bottom_height, CenterImmersedCondition())
 
 function Base.summary(ib::GridFittedBottom)
-    hmax  = maximum(ib.bottom_height)
-    hmin  = minimum(ib.bottom_height)
-    hmean = mean(ib.bottom_height)
+    zmax  = maximum(ib.bottom_height)
+    zmin  = minimum(ib.bottom_height)
+    zmean = mean(ib.bottom_height)
 
     summary1 = "GridFittedBottom("
 
-    summary2 = string("mean(z)=", prettysummary(hmean),
-                      ", min(z)=", prettysummary(hmin),
-                      ", max(z)=", prettysummary(hmax))
+    summary2 = string("mean(z)=", prettysummary(zmean),
+                      ", min(z)=", prettysummary(zmin),
+                      ", max(z)=", prettysummary(zmax))
 
     summary3 = ")"
 
@@ -87,6 +87,7 @@ Computes `ib.bottom_height` and wraps it in a Field.
 function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set!(bottom_field, ib.bottom_height)
+    @apply_regionally clamp_bottom_height!(bottom_field, grid)
     fill_halo_regions!(bottom_field)
     new_ib = GridFittedBottom(bottom_field, ib.immersed_condition)
     TX, TY, TZ = topology(grid)

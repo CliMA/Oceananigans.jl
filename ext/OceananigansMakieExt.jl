@@ -77,10 +77,10 @@ function convert_field_argument(f::Field)
         ξ1_cpu = on_architecture(CPU(), ξ1)
 
         # Shenanigans
-        if d1 === 3 # vertical plot...
-            return fi_cpu, ξ1_cpu
-        else
+        if d1 === 1 # horizontal plot, in x
             return ξ1_cpu, fi_cpu
+        else # vertical plot instead
+            return fi_cpu, ξ1_cpu
         end
 
     elseif D == 2
