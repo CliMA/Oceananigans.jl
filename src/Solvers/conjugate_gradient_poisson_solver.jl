@@ -1,18 +1,9 @@
-using Oceananigans.Architectures: device, architecture
-using Oceananigans.Solvers: ConjugateGradientPoissonSolver
-using Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver
-using Oceananigans.Solvers: fft_poisson_solver, solve!
-using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Grids: inactive_cell
 using Oceananigans.Operators: divᶜᶜᶜ, ∇²ᶜᶜᶜ 
-using Oceananigans.Utils: launch!, prettysummary
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Statistics: mean
 
 using KernelAbstractions: @kernel, @index
 
-import Oceananigans.Architecture: architecture
-import Oceananigans.Solvers: precondition!
+import Oceananigans.Architectures: architecture
 
 struct ConjugateGradientPoissonSolver{G, R, S}
     grid :: G
