@@ -23,6 +23,7 @@ mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P}
 end
 
 architecture(solver::ConjugateGradientSolver) = solver.architecture
+iteration(cgs::ConjugateGradientSolver) = cgs.iteration
 
 initialize_precondition_product(preconditioner, template_field) = similar(template_field)
 initialize_precondition_product(::Nothing, template_field) = nothing
@@ -36,7 +37,7 @@ Base.summary(::ConjugateGradientSolver) = "ConjugateGradientSolver"
     ConjugateGradientSolver(linear_operation;
                                           template_field,
                                           maxiter = size(template_field.grid),
-                                          reltol = sqrt(eps(eltype(template_field.grid))),
+                                          reltol = sqrt(eps(template_field.grid)),
                                           abstol = 0,
                                           preconditioner = nothing)
 
