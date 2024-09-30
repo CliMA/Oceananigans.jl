@@ -92,7 +92,7 @@ elements (typically the same type as `solver.storage`).
     Equation ``(∇² + m) ϕ = b`` is sometimes referred to as the "screened Poisson" equation
     when ``m < 0``, or the Helmholtz equation when ``m > 0``.
 """
-function solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
+function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
     arch = architecture(solver)
     topo = TX, TY, TZ = topology(solver.grid)
     Nx, Ny, Nz = size(solver.grid)
@@ -131,3 +131,4 @@ end
 
     @inbounds ϕ[i′, j′, k′] = real(ϕc[i, j, k])
 end
+

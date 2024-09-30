@@ -80,45 +80,70 @@ function ConjugateGradientPoissonSolver(grid;
     return ConjugateGradientPoissonSolver(grid, rhs, conjugate_gradient_solver)
 end
 
-@kernel function compute_source_term!(rhs, grid, Δt, U★)
-    i, j, k = @index(Global, NTuple)
-    δ = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w)
-    inactive = !inactive_cell(i, j, k, grid)
-    @inbounds rhs[i, j, k] = δ / Δt * inactive
-end
-
 function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, Δt, U★)
-    # We may want a criteria like this:
-    # min_Δt = eps(typeof(Δt))
-    # Δt <= min_Δt && return pressure
-
     rhs = solver.right_hand_side
     grid = solver.grid
     arch = architecture(grid)
-    launch!(arch, grid, :xyz, compute_source_term!, rhs, grid, Δt, U★)
-
-    # Solve pressure Pressure equation for pressure, given rhs
-    # @info "Δt before pressure solve: $(Δt)"
-    solve!(pressure, solver.conjugate_gradient_solver, rhs)
-
-    return pressure
+    launch!(arch, grid, :xyz, _compute_source_term!, rhs, grid, Δt, U★)
+    return solve!(pressure, solver.conjugate_gradient_solver, rhs)
 end
 
 #####
 ##### A preconditioner based on the FFT solver
 #####
 
-@kernel function fft_preconditioner_right_hand_side!(preconditioner_rhs, rhs)
+@kernel function fft_preconditioner_rhs!(preconditioner_rhs, rhs)
     i, j, k = @index(Global, NTuple)
     @inbounds preconditioner_rhs[i, j, k] = rhs[i, j, k]
 end
 
-function precondition!(p, solver::FFTBasedPoissonSolver, rhs, args...)
+@kernel function fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::XDirection, grid, rhs)
+    i, j, k = @index(Global, NTuple)
+    @inbounds preconditioner_rhs[i, j, k] = Δxᶜᶜᶜ(i, j, k, grid) * rhs[i, j, k]
+end
+
+@kernel function fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::YDirection, grid, rhs)
+    i, j, k = @index(Global, NTuple)
+    @inbounds preconditioner_rhs[i, j, k] = Δyᶜᶜᶜ(i, j, k, grid) * rhs[i, j, k]
+end
+
+@kernel function fourier_tridiagonal_preconditioner_rhs!(preconditioner_rhs, ::ZDirection, grid, rhs)
+    i, j, k = @index(Global, NTuple)
+    @inbounds preconditioner_rhs[i, j, k] = Δzᶜᶜᶜ(i, j, k, grid) * rhs[i, j, k]
+end
+
+function compute_preconditioner_rhs!(solver::FFTBasedPoissonSolver, rhs)
     grid = solver.grid
     arch = architecture(grid)
-    launch!(arch, grid, :xyz, fft_preconditioner_right_hand_side!, solver.storage, rhs)
-    p = solve!(p, solver, solver.storage)
+    launch!(arch, grid, :xyz, fft_preconditioner_rhs!, solver.storage, rhs)
+    return nothing
+end
+
+function compute_preconditioner_rhs!(solver::FourierTridiagonalPoissonSolver, rhs)
+    grid = solver.grid
+    arch = architecture(grid)
+    tridiagonal_dir = solver.batched_tridiagonal_solver.tridiagonal_direction
+    launch!(arch, grid, :xyz, fourier_tridiagonal_preconditioner_rhs!,
+            solver.storage, tridiagonal_dir, rhs)
+    return nothing
+end
+
+function precondition!(p, solver, rhs, args...)
+    compute_preconditioner_rhs!(solver, rhs)
+    p = solve!(p, solver)
+
+    P = mean(p)
+    grid = solver.grid
+    arch = architecture(grid)
+    launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, P)
+
     return p
+end
+
+@kernel function subtract_and_mask!(a, grid, b)
+    i, j, k = @index(Global, NTuple)
+    active = !inactive_cell(i, j, k, grid)
+    a[i, j, k] = (a[i, j, k] - b) * active
 end
 
 #####
@@ -133,6 +158,12 @@ Base.summary(::DiagonallyDominantPreconditioner) = "DiagonallyDominantPreconditi
     arch = architecture(p)
     fill_halo_regions!(r)
     launch!(arch, grid, :xyz, _diagonally_dominant_precondition!, p, grid, r)
+
+    P = mean(p)
+    grid = solver.grid
+    arch = architecture(grid)
+    launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, P)
+
     return p
 end
 
