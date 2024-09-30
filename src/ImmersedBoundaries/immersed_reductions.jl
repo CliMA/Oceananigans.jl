@@ -29,9 +29,6 @@ function ConditionalOperation(operand::IF;
     immersed_condition = NotImmersed(condition)
     LX, LY, LZ = location(operand)
     grid = operand.grid
-    # if operand isa Field
-    #     operand = interior(operand)
-    # end
     return ConditionalOperation{LX, LY, LZ}(operand, func, grid, immersed_condition, mask)
 end
 
@@ -44,7 +41,8 @@ end
                                     co::ConditionalOperation) #, args...)
 
     ℓx, ℓy, ℓz = map(instantiate, location(co))
-    return peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
+    immersed = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz) | inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
+    return !immersed
 end 
 
 @inline function evaluate_condition(ni::NotImmersed,
@@ -53,7 +51,7 @@ end
                                     co::ConditionalOperation, args...)
 
     ℓx, ℓy, ℓz = map(instantiate, location(co))
-    immersed = peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
+    immersed = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz) | inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
     return !immersed & evaluate_condition(ni.condition, i, j, k, grid, co, args...)
 end 
 
