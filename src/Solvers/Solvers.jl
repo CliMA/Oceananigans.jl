@@ -33,13 +33,13 @@ reshaped_size(N, dim) = dim == 1 ? (N, 1, 1) :
                         dim == 3 ? (1, 1, N) : nothing
 
 include("batched_tridiagonal_solver.jl")
+include("conjugate_gradient_solver.jl")
 include("poisson_eigenvalues.jl")
 include("index_permutations.jl")
 include("discrete_transforms.jl")
 include("plan_transforms.jl")
 include("fft_based_poisson_solver.jl")
 include("fourier_tridiagonal_poisson_solver.jl")
-include("preconditioned_conjugate_gradient_solver.jl")
 include("sparse_approximate_inverse.jl")
 include("matrix_solver_utils.jl")
 include("sparse_preconditioners.jl")
