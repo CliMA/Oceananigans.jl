@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: device, architecture
-using Oceananigans.Solvers: PreconditionedConjugateGradientSolver, FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver, solve!
+using Oceananigans.Solvers: ConjugateGradientSolver, FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver, solve!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Grids: inactive_cell
 using Oceananigans.Operators: divᶜᶜᶜ, ∇²ᶜᶜᶜ 
@@ -72,7 +72,7 @@ function ConjugateGradientPoissonSolver(grid;
     rhs = CenterField(grid)
 
     conjugate_gradient_solver =
-        PreconditionedConjugateGradientSolver(compute_laplacian!;
+        ConjugateGradientSolver(compute_laplacian!;
                                               reltol,
                                               abstol,
                                               preconditioner,

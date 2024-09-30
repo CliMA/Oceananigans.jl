@@ -4,7 +4,7 @@ export
     BatchedTridiagonalSolver, solve!,
     FFTBasedPoissonSolver,
     FourierTridiagonalPoissonSolver,
-    PreconditionedConjugateGradientSolver,
+    ConjugateGradientSolver,
     HeptadiagonalIterativeSolver
 
 using Statistics
