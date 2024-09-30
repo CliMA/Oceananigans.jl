@@ -49,13 +49,15 @@ function compute_laplacian!(∇²ϕ, ϕ)
     return nothing
 end
 
+struct DefaultPreconditioner end
+
 function ConjugateGradientPoissonSolver(grid;
-                                        preconditioner = nothing,
+                                        preconditioner = DefaultPreconditioner(),
                                         reltol = sqrt(eps(grid)),
                                         abstol = 0,
                                         kw...)
 
-    if isnothing(preconditioner) # make a useful default
+    if preconditioner isa DefaultPreconditioner # try to make a useful default
         if grid isa ImmersedBoundaryGrid && grid.underlying_grid isa GridWithFFT
             if grid.underlying_grid isa XYZRegularRG
                 preconditioner = FFTBasedPoissonSolver(grid.underlying_grid)
@@ -128,14 +130,16 @@ function compute_preconditioner_rhs!(solver::FourierTridiagonalPoissonSolver, rh
     return nothing
 end
 
-function precondition!(p, solver, rhs, args...)
-    compute_preconditioner_rhs!(solver, rhs)
-    p = solve!(p, solver)
+const FFTBasedPreconditioner = Union{FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver}
 
-    P = mean(p)
-    grid = solver.grid
+function precondition!(p, preconditioner::FFTBasedPreconditioner, r, args...)
+    compute_preconditioner_rhs!(preconditioner, r)
+    p = solve!(p, preconditioner)
+
+    mean_p = mean(p)
+    grid = p.grid
     arch = architecture(grid)
-    launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, P)
+    launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, mean_p)
 
     return p
 end
@@ -147,7 +151,7 @@ end
 end
 
 #####
-##### The "DiagonallyDominantPreconditioner" used by MITgcm
+##### The "DiagonallyDominantPreconditioner" (Marshall et al 1997)
 #####
 
 struct DiagonallyDominantPreconditioner end
@@ -159,10 +163,8 @@ Base.summary(::DiagonallyDominantPreconditioner) = "DiagonallyDominantPreconditi
     fill_halo_regions!(r)
     launch!(arch, grid, :xyz, _diagonally_dominant_precondition!, p, grid, r)
 
-    P = mean(p)
-    grid = solver.grid
-    arch = architecture(grid)
-    launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, P)
+    mean_p = mean(p)
+    launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, mean_p)
 
     return p
 end
@@ -170,20 +172,15 @@ end
 # Kernels that calculate coefficients for the preconditioner
 @inline Ax⁻(i, j, k, grid) = Axᶠᶜᶜ(i,   j, k, grid) / Δxᶠᶜᶜ(i,   j, k, grid) / Vᶜᶜᶜ(i, j, k, grid)
 @inline Ax⁺(i, j, k, grid) = Axᶠᶜᶜ(i+1, j, k, grid) / Δxᶠᶜᶜ(i+1, j, k, grid) / Vᶜᶜᶜ(i, j, k, grid)
-
 @inline Ay⁻(i, j, k, grid) = Ayᶜᶠᶜ(i, j,   k, grid) / Δyᶜᶠᶜ(i, j,   k, grid) / Vᶜᶜᶜ(i, j, k, grid)
 @inline Ay⁺(i, j, k, grid) = Ayᶜᶠᶜ(i, j+1, k, grid) / Δyᶜᶠᶜ(i, j+1, k, grid) / Vᶜᶜᶜ(i, j, k, grid)
-
 @inline Az⁻(i, j, k, grid) = Azᶜᶜᶠ(i, j, k,   grid) / Δzᶜᶜᶠ(i, j, k,   grid) / Vᶜᶜᶜ(i, j, k, grid)
 @inline Az⁺(i, j, k, grid) = Azᶜᶜᶠ(i, j, k+1, grid) / Δzᶜᶜᶠ(i, j, k+1, grid) / Vᶜᶜᶜ(i, j, k, grid)
 
-@inline Ac(i, j, k, grid) = - Ax⁻(i, j, k, grid) -
-                              Ax⁺(i, j, k, grid) -
-                              Ay⁻(i, j, k, grid) -
-                              Ay⁺(i, j, k, grid) -
-                              Az⁻(i, j, k, grid) -
-                              Az⁺(i, j, k, grid)
-
+@inline Ac(i, j, k, grid) = - Ax⁻(i, j, k, grid) - Ax⁺(i, j, k, grid) -
+                              Ay⁻(i, j, k, grid) - Ay⁺(i, j, k, grid) -
+                              Az⁻(i, j, k, grid) - Az⁺(i, j, k, grid)
+                              
 @inline heuristic_residual(i, j, k, grid, r) =
     @inbounds 1 / Ac(i, j, k, grid) * (r[i, j, k] - 2 * Ax⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i-1, j, k, grid)) * r[i-1, j, k] -
                                                     2 * Ax⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i+1, j, k, grid)) * r[i+1, j, k] -
@@ -194,5 +191,7 @@ end
 
 @kernel function _diagonally_dominant_precondition!(p, grid, r)
     i, j, k = @index(Global, NTuple)
-    @inbounds p[i, j, k] = heuristic_residual(i, j, k, grid, r)
+    active = !inactive_cell(i, j, k, grid)
+    @inbounds p[i, j, k] = heuristic_residual(i, j, k, grid, r) * active
 end
+
