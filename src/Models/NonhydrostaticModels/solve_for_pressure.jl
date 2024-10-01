@@ -49,9 +49,8 @@ function compute_source_term!(pressure, solver::DistributedFourierTridiagonalPoi
     rhs = solver.storage.zfield
     arch = architecture(solver)
     grid = solver.local_grid
-    tridiagonal_dir = solver.batched_tridiagonal_solver.tridiagonal_direction
-    launch!(arch, grid, :xyz, _fourier_tridiagonal_source_term!,
-            rhs, tridiagonal_dir, grid, Δt, Ũ)
+    tdir = solver.batched_tridiagonal_solver.tridiagonal_direction
+    launch!(arch, grid, :xyz, _fourier_tridiagonal_source_term!, rhs, tdir, grid, Δt, Ũ)
     return nothing
 end
 
@@ -59,9 +58,8 @@ function compute_source_term!(pressure, solver::FourierTridiagonalPoissonSolver,
     rhs = solver.source_term
     arch = architecture(solver)
     grid = solver.grid
-    tridiagonal_dir = solver.batched_tridiagonal_solver.tridiagonal_direction
-    launch!(arch, grid, :xyz, _fourier_tridiagonal_source_term!,
-            rhs, grid, Δt, Ũ, tridiagonal_dir)
+    tdir = solver.batched_tridiagonal_solver.tridiagonal_direction
+    launch!(arch, grid, :xyz, _fourier_tridiagonal_source_term!, rhs, tdir, grid, Δt, Ũ)
     return nothing
 end
 
