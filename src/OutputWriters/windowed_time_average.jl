@@ -1,3 +1,4 @@
+
 using Oceananigans.Diagnostics: AbstractDiagnostic
 using Oceananigans.OutputWriters: fetch_output
 using Oceananigans.Models: AbstractModel
@@ -99,7 +100,7 @@ end
 function next_actuation_time(sch::AveragedTimeInterval)
     t₀ = sch.first_actuation_time
     N = sch.actuations
-    T = sch.interval
+    T = sch.window
     return t₀ + (N + 1) * T
     # print("first_actuation_time:",t₀)
 end
