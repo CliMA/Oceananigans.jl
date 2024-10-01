@@ -15,6 +15,7 @@ using Oceananigans.DistributedComputations: reconstruct_global_grid, Distributed
 using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver, DistributedFourierTridiagonalPoissonSolver
 using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver 
 using Oceananigans.Utils: SumOfArrays
 
 import Oceananigans: fields, prognostic_fields
@@ -26,35 +27,24 @@ function nonhydrostatic_pressure_solver(::Distributed, local_grid::XYZRegularRG)
     return DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 end
 
-function nonhydrostatic_pressure_solver(::Distributed, local_grid::XYRegularRG)
-    global_grid = reconstruct_global_grid(local_grid)
-    return DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
-end
-
-function nonhydrostatic_pressure_solver(::Distributed, local_grid::YZRegularRG)
-    global_grid = reconstruct_global_grid(local_grid)
-    return DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
-end
-
-function nonhydrostatic_pressure_solver(::Distributed, local_grid::XZRegularRG)
+function nonhydrostatic_pressure_solver(::Distributed, local_grid::GridWithFourierTridiagonalSolver)
     global_grid = reconstruct_global_grid(local_grid)
     return DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
 end
 
 nonhydrostatic_pressure_solver(arch, grid::XYZRegularRG) = FFTBasedPoissonSolver(grid)
-nonhydrostatic_pressure_solver(arch, grid::XYRegularRG)  = FourierTridiagonalPoissonSolver(grid)
-nonhydrostatic_pressure_solver(arch, grid::XZRegularRG)  = FourierTridiagonalPoissonSolver(grid)
-nonhydrostatic_pressure_solver(arch, grid::YZRegularRG)  = FourierTridiagonalPoissonSolver(grid)
+nonhydrostatic_pressure_solver(arch, grid::GridWithFourierTridiagonalSolver) =
+    FourierTridiagonalPoissonSolver(grid)
 
-const GridWithFFT = Union{XYZRegularRG, XYRegularRG, XZRegularRG, YZRegularRG}
+const IBGWithFFTSolver = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:GridWithFFTSolver}
 
-function nonhydrostatic_pressure_solver(arch, ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:GridWithFFT})
-    msg = """The FFT-based pressure_solver for `NonhydrostaticModel`s on `ImmersedBoundaryGrid`
+function nonhydrostatic_pressure_solver(arch, ibg::IBGWithFFTSolver)
+    msg = """The FFT-based pressure_solver for NonhydrostaticModels on ImmersedBoundaryGrid
           is approximate and will probably produce velocity fields that are divergent
           adjacent to the immersed boundary. An experimental but improved pressure_solver
           is available which may be used by writing
 
-              using Oceananigans.Models.NonhydrostaticModels: ConjugateGradientPoissonSolver
+              using Oceananigans.Solvers: ConjugateGradientPoissonSolver
               pressure_solver = ConjugateGradientPoissonSolver(grid)
 
           Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.
@@ -115,9 +105,9 @@ include("solve_for_pressure.jl")
 include("update_hydrostatic_pressure.jl")
 include("update_nonhydrostatic_model_state.jl")
 include("pressure_correction.jl")
-include("conjugate_gradient_poisson_solver.jl")
 include("nonhydrostatic_tendency_kernel_functions.jl")
 include("compute_nonhydrostatic_tendencies.jl")
 include("compute_nonhydrostatic_boundary_tendencies.jl")
 
 end # module
+
