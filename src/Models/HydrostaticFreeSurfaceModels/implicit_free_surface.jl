@@ -54,7 +54,7 @@ where
 𝐮_⋆ = 𝐮^n + \\int_{t_n}^{t_{n+1}} 𝐆ᵤ \\, 𝖽t .
 ```
 
-This equation can be solved, in general, using the [`PreconditionedConjugateGradientSolver`](@ref) but 
+This equation can be solved, in general, using the [`ConjugateGradientSolver`](@ref) but 
 other solvers can be invoked in special cases.
 
 If ``H`` is constant, we divide through out to obtain
@@ -69,7 +69,7 @@ surface can be obtained using the [`FFTBasedPoissonSolver`](@ref).
 `solver_method` can be either of:
 * `:FastFourierTransform` for [`FFTBasedPoissonSolver`](@ref)
 * `:HeptadiagonalIterativeSolver`  for [`HeptadiagonalIterativeSolver`](@ref)
-* `:PreconditionedConjugateGradient` for [`PreconditionedConjugateGradientSolver`](@ref)
+* `:PreconditionedConjugateGradient` for [`ConjugateGradientSolver`](@ref)
 
 By default, if the grid has regular spacing in the horizontal directions then the `:FastFourierTransform` is chosen,
 otherwise the `:HeptadiagonalIterativeSolver`.
