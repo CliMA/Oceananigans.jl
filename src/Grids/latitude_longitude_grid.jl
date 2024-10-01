@@ -327,47 +327,51 @@ end
 @inline cpu_face_constructor_y(grid::YRegularLLG) = y_domain(grid)
 @inline cpu_face_constructor_z(grid::ZRegularLLG) = z_domain(grid)
 
-function with_halo(new_halo, old_grid::LatitudeLongitudeGrid)
+function constructor_arguments(grid::LatitudeLongitudeGrid)
+    arch = architecture(grid)
+    FT = eltype(grid)
+    args = Dict(:architecture => arch, :number_type => eltype(grid))
 
-    size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
-    topo = topology(old_grid)
+    # Kwargs
+    topo = topology(grid)
+    size = (grid.Nx, grid.Ny, grid.Nz)
+    halo = (grid.Hx, grid.Hy, grid.Hz)
+    size = pop_flat_elements(size, topo)
+    halo = pop_flat_elements(halo, topo)
 
-    x = cpu_face_constructor_x(old_grid)
-    y = cpu_face_constructor_y(old_grid)
-    z = cpu_face_constructor_z(old_grid)
+    kwargs = Dict(:size => size,
+                  :halo => halo,
+                  :x => cpu_face_constructor_x(grid),
+                  :y => cpu_face_constructor_y(grid),
+                  :z => cpu_face_constructor_z(grid),
+                  :topology => topo,
+                  :radius => grid.radius,
+                  :precompute_metrics => metrics_precomputed(grid))
 
-    # Remove elements of size and new_halo in Flat directions as expected by grid
-    # constructor
-    size     = pop_flat_elements(size, topo)
-    new_halo = pop_flat_elements(new_halo, topo)
-
-    new_grid = LatitudeLongitudeGrid(architecture(old_grid), eltype(old_grid);
-                                     size = size, halo = new_halo,
-                                     longitude = x, latitude = y, z = z, topology = topo,
-                                     precompute_metrics = metrics_precomputed(old_grid),
-                                     radius = old_grid.radius)
-
-    return new_grid
+    return args, kwargs
 end
 
-function on_architecture(new_arch::AbstractSerialArchitecture, old_grid::LatitudeLongitudeGrid)
-    old_properties = (old_grid.Δλᶠᵃᵃ, old_grid.Δλᶜᵃᵃ, old_grid.λᶠᵃᵃ,  old_grid.λᶜᵃᵃ,
-                      old_grid.Δφᵃᶠᵃ, old_grid.Δφᵃᶜᵃ, old_grid.φᵃᶠᵃ,  old_grid.φᵃᶜᵃ,
-                      old_grid.Δzᵃᵃᶠ, old_grid.Δzᵃᵃᶜ, old_grid.zᵃᵃᶠ,  old_grid.zᵃᵃᶜ,
-                      old_grid.Δxᶠᶜᵃ, old_grid.Δxᶜᶠᵃ, old_grid.Δxᶠᶠᵃ, old_grid.Δxᶜᶜᵃ,
-                      old_grid.Δyᶠᶜᵃ, old_grid.Δyᶜᶠᵃ,
-                      old_grid.Azᶠᶜᵃ, old_grid.Azᶜᶠᵃ, old_grid.Azᶠᶠᵃ, old_grid.Azᶜᶜᵃ)
+function Base.similar(grid::LatitudeLongitudeGrid)
+    args, kwargs = constructor_arguments(grid)
+    return LatitudeLongitudeGrid(values(args)...; kwargs...)
+end
 
-    new_properties = Tuple(on_architecture(new_arch, p) for p in old_properties)
+function with_number_type(FT, old_grid::RectilinearGrid)
+    args, kwargs = constructor_arguments(old_grid)
+    args[:number_type] = FT
+    return LatitudeLongitudeGrid(values(args)...; kwargs...)
+end
 
-    TX, TY, TZ = topology(old_grid)
+function with_halo(new_halo, old_grid::LatitudeLongitudeGrid)
+    args, kwargs = constructor_arguments(old_grid)
+    kwargs[:halo] = new_halo
+    return LatitudeLongitudeGrid(values(args)...; kwargs...)
+end
 
-    return LatitudeLongitudeGrid{TX, TY, TZ}(new_arch,
-                                             old_grid.Nx, old_grid.Ny, old_grid.Nz,
-                                             old_grid.Hx, old_grid.Hy, old_grid.Hz,
-                                             old_grid.Lx, old_grid.Ly, old_grid.Lz,
-                                             new_properties...,
-                                             old_grid.radius)
+function on_architecture(arch::AbstractSerialArchitecture, old_grid::RectilinearGrid)
+    args, kwargs = constructor_arguments(old_grid)
+    args[:architecture] = arch
+    return LatitudeLongitudeGrid(values(args)...; kwargs...)
 end
 
 function Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid)
