@@ -418,6 +418,7 @@ Return a `new_grid` that's identical to `grid` but with `halo`.
 """
 function with_halo(halo, grid::RectilinearGrid)
     args, kwargs = constructor_arguments(grid)
+    halo = pop_flat_elements(halo, topology(grid))
     kwargs[:halo] = halo
     arch = args[:architecture]
     FT = args[:number_type]

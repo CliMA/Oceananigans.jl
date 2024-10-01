@@ -364,9 +364,10 @@ function with_number_type(FT, grid::LatitudeLongitudeGrid)
     return LatitudeLongitudeGrid(arch, FT; kwargs...)
 end
 
-function with_halo(new_halo, grid::LatitudeLongitudeGrid)
+function with_halo(halo, grid::LatitudeLongitudeGrid)
     args, kwargs = constructor_arguments(grid)
-    kwargs[:halo] = new_halo
+    halo = pop_flat_elements(halo, topology(grid))
+    kwargs[:halo] = halo
     arch = args[:architecture]
     FT = args[:number_type]
     return LatitudeLongitudeGrid(arch, FT; kwargs...)
