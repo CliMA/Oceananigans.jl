@@ -353,25 +353,33 @@ end
 
 function Base.similar(grid::LatitudeLongitudeGrid)
     args, kwargs = constructor_arguments(grid)
-    return LatitudeLongitudeGrid(values(args)...; kwargs...)
+    arch = args[:architecture]
+    FT = args[:number_type]
+    return LatitudeLongitudeGrid(arch, FT; kwargs...)
 end
 
 function with_number_type(FT, old_grid::LatitudeLongitudeGrid)
     args, kwargs = constructor_arguments(old_grid)
-    args[:number_type] = FT
-    return LatitudeLongitudeGrid(values(args)...; kwargs...)
+    arch = args[:architecture]
+    return LatitudeLongitudeGrid(arch, FT; kwargs...)
 end
 
 function with_halo(new_halo, old_grid::LatitudeLongitudeGrid)
     args, kwargs = constructor_arguments(old_grid)
     kwargs[:halo] = new_halo
-    return LatitudeLongitudeGrid(values(args)...; kwargs...)
+    arch = args[:architecture]
+    FT = args[:number_type]
+    return LatitudeLongitudeGrid(arch, FT; kwargs...)
 end
 
 function on_architecture(arch::AbstractSerialArchitecture, old_grid::LatitudeLongitudeGrid)
+    if arch == architecture(grid)
+        return grid
+    end
+
     args, kwargs = constructor_arguments(old_grid)
-    args[:architecture] = arch
-    return LatitudeLongitudeGrid(values(args)...; kwargs...)
+    FT = args[:number_type]
+    return LatitudeLongitudeGrid(arch, FT; kwargs...)
 end
 
 function Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid)

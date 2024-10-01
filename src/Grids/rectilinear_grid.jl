@@ -395,7 +395,9 @@ end
 
 function Base.similar(grid::RectilinearGrid)
     args, kwargs = constructor_arguments(grid)
-    return RectilinearGrid(values(args)...; kwargs...)
+    arch = args[:architecture]
+    FT = args[:number_type]
+    return RectilinearGrid(arch, FT; kwargs...)
 end
 
 """
@@ -405,8 +407,8 @@ Return a `new_grid` that's identical to `grid` but with `number_type`.
 """
 function with_number_type(FT, grid::RectilinearGrid)
     args, kwargs = constructor_arguments(grid)
-    args[:number_type] = FT
-    return RectilinearGrid(values(args)...; kwargs...)
+    arch = args[:architecture]
+    return RectilinearGrid(arch, FT; kwargs...)
 end
 
 """
@@ -417,7 +419,9 @@ Return a `new_grid` that's identical to `grid` but with `halo`.
 function with_halo(halo, grid::RectilinearGrid)
     args, kwargs = constructor_arguments(grid)
     kwargs[:halo] = halo
-    return RectilinearGrid(values(args)...; kwargs...)
+    arch = args[:architecture]
+    FT = args[:number_type]
+    return RectilinearGrid(arch, FT; kwargs...)
 end
 
 """
@@ -426,9 +430,13 @@ end
 Return a `new_grid` that's identical to `grid` but on `architecture`.
 """
 function on_architecture(arch::AbstractSerialArchitecture, grid::RectilinearGrid)
+    if arch == architecture(grid)
+        return grid
+    end
+
     args, kwargs = constructor_arguments(grid)
-    args[:architecture] = arch
-    return RectilinearGrid(values(args)...; kwargs...)
+    FT = args[:number_type]
+    return RectilinearGrid(arch, FT; kwargs...)
 end
 
 coordinates(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
