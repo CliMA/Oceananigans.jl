@@ -61,13 +61,13 @@ end
 # no open fills
 @inline get_open_halo_filling(args...) = nothing, nothing
 
-@inline get_open_halo_filling(field, indices, boundary_conditions, ::Tuple{Face, Center, Center}, grid) = 
+@inline get_open_halo_filling(field, indices, boundary_conditions, loc::Tuple{Face, Center, Center}, grid) = 
     _fill_west_and_east_open_halo!, fill_halo_size(field, fill_west_and_east_halo!, indices, boundary_conditions, loc, grid)
 
-@inline get_open_halo_filling(field, indices, boundary_conditions, ::Tuple{Center, Face, Center}, loc) = 
+@inline get_open_halo_filling(field, indices, boundary_conditions, loc::Tuple{Center, Face, Center}, grid) = 
     _fill_south_and_north_open_halo!, fill_halo_size(field, fill_south_and_north_halo!, indices, boundary_conditions, loc, grid)
 
-@inline get_open_halo_filling(field, indices, boundary_conditions, ::Tuple{Center, Center, Face}, loc) = 
+@inline get_open_halo_filling(field, indices, boundary_conditions, loc::Tuple{Center, Center, Face}, grid) = 
     _fill_bottom_and_top_open_halo!, fill_halo_size(field, fill_bottom_and_top_halo!, indices, boundary_conditions, loc, grid)
 
 @kernel function _fill_west_and_east_open_halo!(c, west_bc, east_bc, loc, grid, args) 
