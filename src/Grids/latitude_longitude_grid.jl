@@ -356,7 +356,7 @@ function Base.similar(grid::LatitudeLongitudeGrid)
     return LatitudeLongitudeGrid(values(args)...; kwargs...)
 end
 
-function with_number_type(FT, old_grid::RectilinearGrid)
+function with_number_type(FT, old_grid::LatitudeLongitudeGrid)
     args, kwargs = constructor_arguments(old_grid)
     args[:number_type] = FT
     return LatitudeLongitudeGrid(values(args)...; kwargs...)
@@ -368,7 +368,7 @@ function with_halo(new_halo, old_grid::LatitudeLongitudeGrid)
     return LatitudeLongitudeGrid(values(args)...; kwargs...)
 end
 
-function on_architecture(arch::AbstractSerialArchitecture, old_grid::RectilinearGrid)
+function on_architecture(arch::AbstractSerialArchitecture, old_grid::LatitudeLongitudeGrid)
     args, kwargs = constructor_arguments(old_grid)
     args[:architecture] = arch
     return LatitudeLongitudeGrid(values(args)...; kwargs...)
