@@ -28,7 +28,7 @@ julia> grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1));
 julia> model = NonhydrostaticModel(; grid, buoyancy=nothing)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered reconstruction order 2
 ├── tracers: ()
 ├── closure: Nothing
@@ -43,7 +43,7 @@ The option `buoyancy = nothing` is the default for [`NonhydrostaticModel`](@ref)
 julia> model = NonhydrostaticModel(; grid)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered reconstruction order 2
 ├── tracers: ()
 ├── closure: Nothing
@@ -51,12 +51,10 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 └── coriolis: Nothing
 ```
 
-To create a `HydrostaticFreeSurfaceModel` without a buoyancy term we explicitly
-specify `buoyancy = nothing`. The default tracers `T` and `S` for `HydrostaticFreeSurfaceModel`
-may be eliminated when `buoyancy = nothing` by specifying `tracers = ()`:
+The same is true for `HydrostaticFreeSurfaceModel`,
 
 ```jldoctest buoyancy
-julia> model = HydrostaticFreeSurfaceModel(; grid, buoyancy=nothing, tracers=())
+julia> model = HydrostaticFreeSurfaceModel(; grid)
 HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: QuasiAdamsBashforth2TimeStepper
@@ -79,7 +77,7 @@ a buoyancy tracer by including `:b` in `tracers` and specifying  `buoyancy = Buo
 julia> model = NonhydrostaticModel(; grid, buoyancy=BuoyancyTracer(), tracers=:b)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered reconstruction order 2
 ├── tracers: b
 ├── closure: Nothing
@@ -99,7 +97,7 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── buoyancy: BuoyancyTracer with ĝ = NegativeZDirection()
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
-├── advection scheme: 
+├── advection scheme:
 │   ├── momentum: Centered reconstruction order 2
 │   └── b: Centered reconstruction order 2
 └── coriolis: Nothing
@@ -120,15 +118,15 @@ S.I. units ``\text{m}\,\text{s}^{-2}``) and requires to add `:T` and `:S` as tra
 julia> model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered reconstruction order 2
 ├── tracers: (T, S)
 ├── closure: Nothing
 ├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with ĝ = NegativeZDirection()
 └── coriolis: Nothing
 ```
-With `HydrostaticFreeSurfaceModel`, these are the default choices for `buoyancy` and `tracers` so,
-either including them or not we get:
+
+and the same is true for `HydrostaticFreeSurfaceModel`,
 
 ```jldoctest buoyancy
 julia> model = HydrostaticFreeSurfaceModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
@@ -140,26 +138,7 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with ĝ = NegativeZDirection()
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
-├── advection scheme: 
-│   ├── momentum: Centered reconstruction order 2
-│   ├── T: Centered reconstruction order 2
-│   └── S: Centered reconstruction order 2
-└── coriolis: Nothing
-```
-
-is identical to the default,
-
-```jldoctest buoyancy
-julia> model = HydrostaticFreeSurfaceModel(; grid)
-HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
-├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
-├── tracers: (T, S)
-├── closure: Nothing
-├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with ĝ = NegativeZDirection()
-├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
-│   └── solver: FFTImplicitFreeSurfaceSolver
-├── advection scheme: 
+├── advection scheme:
 │   ├── momentum: Centered reconstruction order 2
 │   ├── T: Centered reconstruction order 2
 │   └── S: Centered reconstruction order 2
@@ -178,7 +157,7 @@ SeawaterBuoyancy{Float64}:
 julia> model = NonhydrostaticModel(; grid, buoyancy, tracers=(:T, :S))
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered reconstruction order 2
 ├── tracers: (T, S)
 ├── closure: Nothing
@@ -245,19 +224,25 @@ we wrap the buoyancy model in
 `Buoyancy()` function call, which takes the keyword arguments `model` and `gravity_unit_vector`,
 
 ```jldoctest buoyancy
+julia> grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1));
+
 julia> θ = 45; # degrees
 
 julia> g̃ = (0, sind(θ), cosd(θ));
 
-julia> model = NonhydrostaticModel(; grid,
-                                   buoyancy=Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=g̃), 
-                                   tracers=:b)
+julia> buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=g̃)
+Buoyancy:
+├── model: BuoyancyTracer
+└── gravity_unit_vector: (0.0, 0.707107, 0.707107)
+
+julia> model = NonhydrostaticModel(; grid, buoyancy, tracers=:b)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered reconstruction order 2
 ├── tracers: b
 ├── closure: Nothing
-├── buoyancy: BuoyancyTracer with ĝ = Tuple{Float64, Float64, Float64}
+├── buoyancy: BuoyancyTracer with ĝ = (0.0, 0.707107, 0.707107)
 └── coriolis: Nothing
 ```
+

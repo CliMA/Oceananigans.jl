@@ -39,6 +39,7 @@ Base.IndexStyle(::AbstractField) = IndexCartesian()
 @inline location(a, i) = location(a)[i]
 @inline location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX, LY, LZ) # note no instantiation
 @inline instantiated_location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX(), LY(), LZ())
+Base.eltype(::AbstractField{<:Any, <:Any, <:Any, <:Any, T}) where T = T
 
 "Returns the architecture of on which `f` is defined."
 architecture(f::AbstractField) = architecture(f.grid)
@@ -56,6 +57,39 @@ of `f` along `x, y, z`.
 Base.size(f::AbstractField) = size(f.grid, location(f))
 Base.length(f::AbstractField) = prod(size(f))
 Base.parent(f::AbstractField) = f
+
+const Abstract3DField = AbstractField{<:Any, <:Any, <:Any, <:Any, <:Any, 3}
+const Abstract4DField = AbstractField{<:Any, <:Any, <:Any, <:Any, <:Any, 4}
+
+# TODO: to omit boundaries on Face fields, we have to return 2:N
+# when topo=Bounded, and loc=Face
+@inline axis(::Colon, N) = Base.OneTo(N)
+@inline axis(index::UnitRange, N) = index
+
+@inline function Base.axes(f::Abstract3DField)
+    Nx, Ny, Nz = size(f)
+    ix, iy, iz = indices(f)
+
+    ax = axis(ix, Nx)
+    ay = axis(iy, Ny)
+    az = axis(iz, Nz)
+
+    return (ax, ay, az)
+end
+
+@inline function Base.axes(f::Abstract4DField)
+    Nx, Ny, Nz, Nt = size(f)
+    ix, iy, iz = indices(f)
+
+    ax = axis(ix, Nx)
+    ay = axis(iy, Ny)
+    az = axis(iz, Nz)
+    at = Base.OneTo(Nt)
+
+    return (ax, ay, az, at)
+end
+
+
 
 """
     total_size(field::AbstractField)

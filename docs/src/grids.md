@@ -9,7 +9,7 @@ DocTestSetup = quote
 end
 ```
 
-Oceananigans simulates the dynamics of ocean-flavored fluids by solving differential equations that conserve momentum, mass, and energy on a mesh of finite volumes or "cells".
+Oceananigans simulates the dynamics of ocean-flavored fluids by solving equations that conserve momentum, mass, and energy on a grid of finite volumes or "cells".
 The first decision we make when setting up a simulation is: on what _grid_ are we going to run our simulation?
 The "grid" captures the
 
@@ -18,13 +18,12 @@ The "grid" captures the
 3. The machine architecture (CPU, GPU, lots of CPUs or lots of GPUs); and
 4. The precision of floating point numbers (double precision or single precision).
 
-To create a simple grid on the CPU that divides a three-dimensional rectangular domain -- "a box" -- into evenly-spaced cells, we write
+We start by making a simple grid that divides a three-dimensional rectangular domain -- "a box" -- into evenly-spaced cells,
 
 ```jldoctest grids
-architecture = CPU()
+using Oceananigans
 
-grid = RectilinearGrid(architecture,
-                       topology = (Periodic, Periodic, Bounded),
+grid = RectilinearGrid(topology = (Periodic, Periodic, Bounded),
                        size = (16, 8, 4),
                        x = (0, 64),
                        y = (0, 32),
@@ -39,19 +38,15 @@ grid = RectilinearGrid(architecture,
 
 This simple grid
 
-* Lives on the CPU. To make a grid on the GPU (if one is available) we write `architecture = GPU()`.
-  And for multiple CPUs or GPUs -- we'll get to that.
 * Has a domain that's "periodic" in ``x, y``, but bounded in ``z``.
 * Has `16` cells in `x`, `8` cells in `y`, and `4` cells in `z`. That means there are ``16 \times 8 \times 4 = 512`` cells in all.
 * Has an `x` dimension that spans from `x=0`, to `x=64`. And `y` spans `y=0` to `y=32`, and `z` spans `z=0` to `z=8`.
 * Has cells that are all the same size, dividing the box in 512 that each has dimension ``4 \times 4 \times 2``.
   Note that length units are whatever is used to construct the grid, so it's up to the user to make sure that all inputs use consistent units.
 
-To construct a grid on the _GPU_ that's two-dimensional in ``x, z`` and has variably-spaced cell interfaces in the `z`-direction, we write:
-
-```@setup grids_gpu
-using Oceananigans
-```
+In building our first grid, we did not specify whether it should be constructed on the [`CPU`](@ref)` or [`GPU`](@ref).
+As a result, the grid was constructed by default on the CPU.
+Next we build a grid on the _GPU_ that's two-dimensional in ``x, z`` and has variably-spaced cell interfaces in the `z`-direction,
 
 ```jldoctest grids_gpu
 architecture = GPU()
@@ -72,14 +67,17 @@ grid = RectilinearGrid(architecture,
 
 !!! note "GPU architecture requires a CUDA-enabled device"
     To run the above example and create a grid on the GPU, an Nvidia GPU has to be available
-    and [`CUDA.jl`](https://cuda.juliagpu.org/stable/) must be working).
+    and [`CUDA.jl`](https://cuda.juliagpu.org/stable/) must be working). For more information
+    see the [`CUDA.jl` documentation](https://cuda.juliagpu.org/stable/).
 
 The ``y``-dimension is "missing" because it's marked `Flat` in `topology = (Periodic, Flat, Bounded)`.
 So nothing varies in ``y``: `y`-derivatives are 0.
-Also, the keyword argument (or "kwarg" for short) that specifies the ``y``-domains may be omitted,sand `size` has only two elements rather than 3 as in the first example.
+Also, the keyword argument (or "kwarg" for short) that specifies the ``y``-domains may be omitted, and `size` has only two elements rather than 3 as in the first example.
 In the stretched cell interfaces specified by `z_interfaces`, the number of
 vertical cell interfaces is `Nz + 1 = length(z_interfaces) = 5`, where `Nz = 4` is the number
 of cells in the vertical.
+
+A bit later in this tutorial, we'll give examples that illustrate how to build a grid thats [`Distributed`](@ref) across _multiple_ CPUs and GPUs.
 
 ## Grid types: squares, shells, and mountains
 
@@ -162,7 +160,7 @@ To build an `ImmersedBoundaryGrid`, we start by building one of the three underl
 using Oceananigans.Units
 
 grid = RectilinearGrid(topology = (Bounded, Bounded, Bounded),
-                       size = (100, 100, 50),
+                       size = (20, 20, 20),
                        x = (-5kilometers, 5kilometers),
                        y = (-5kilometers, 5kilometers),
                        z = (0, 1kilometer))
@@ -175,12 +173,12 @@ mountain(x, y) = H * exp(-(x^2 + y^2) / 2W^2)
 mountain_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(mountain))
 
 # output
-100×100×50 ImmersedBoundaryGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo:
-├── immersed_boundary: GridFittedBottom(mean(z)=6.28318, min(z)=2.28402e-9, max(z)=99.7503)
-├── underlying_grid: 100×100×50 RectilinearGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo
-├── Bounded  x ∈ [-5000.0, 5000.0] regularly spaced with Δx=100.0
-├── Bounded  y ∈ [-5000.0, 5000.0] regularly spaced with Δy=100.0
-└── Bounded  z ∈ [0.0, 1000.0]     regularly spaced with Δz=20.0
+20×20×20 ImmersedBoundaryGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo:
+├── immersed_boundary: GridFittedBottom(mean(z)=6.28318, min(z)=1.58939e-8, max(z)=93.9413)
+├── underlying_grid: 20×20×20 RectilinearGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo
+├── Bounded  x ∈ [-5000.0, 5000.0] regularly spaced with Δx=500.0
+├── Bounded  y ∈ [-5000.0, 5000.0] regularly spaced with Δy=500.0
+└── Bounded  z ∈ [0.0, 1000.0]     regularly spaced with Δz=50.0
 ```
 
 Yep, that's a Gaussian mountain:
@@ -194,7 +192,7 @@ CairoMakie.activate!(type = "svg")
 set_theme!(Theme(fontsize=24))
 
 grid = RectilinearGrid(topology = (Bounded, Bounded, Bounded),
-                       size = (100, 100, 50),
+                       size = (20, 20, 20),
                        x = (-5kilometers, 5kilometers),
                        y = (-5kilometers, 5kilometers),
                        z = (0, 1kilometer))
@@ -210,12 +208,11 @@ mountain_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(mountain))
 using CairoMakie
 
 h = mountain_grid.immersed_boundary.bottom_height
-x, y, z = nodes(h)
 
 fig = Figure(size=(600, 600))
-ax = Axis(fig[1, 1], xlabel="x (km)", ylabel="y (km)", aspect=1)
-hm = heatmap!(ax, x / kilometer, y / kilometer, interior(h, :, :, 1))
-Colorbar(fig[2, 1], hm, vertical=false, label="Bottom height (m)")
+ax = Axis(fig[2, 1], xlabel="x (m)", ylabel="y (m)", aspect=1)
+hm = heatmap!(ax, h)
+Colorbar(fig[1, 1], hm, vertical=false, label="Bottom height (m)")
 
 current_figure()
 ```
@@ -537,7 +534,7 @@ grid = LatitudeLongitudeGrid(size = (Nx, Ny),
 
 using CairoMakie
 
-fig = Figure(size=(800, 400))
+fig = Figure(size=(800, 400), title="Spacings on a Mercator grid")
 axx = Axis(fig[1, 1], xlabel="Zonal spacing (km)", ylabel="Latitude (degrees)")
 scatter!(axx, Δx ./ 1e3, φ)
 

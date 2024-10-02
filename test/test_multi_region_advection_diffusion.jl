@@ -1,11 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.MultiRegion
-using Oceananigans.MultiRegion: reconstruct_global_field
-using Oceananigans.Operators: hack_cosd
-
 Gaussian(x, y, L) = exp(-(x^2 + y^2) / 2L^2)
-
 prescribed_velocities() = PrescribedVelocityFields(u=(λ, ϕ, z, t = 0) -> 0.1 * hack_cosd(ϕ))
 
 function Δ_min(grid)
