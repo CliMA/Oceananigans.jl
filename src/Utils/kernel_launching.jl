@@ -220,7 +220,7 @@ function configured_kernel(arch, grid, workspec, kernel!;
         end
     end
 
-    # We can only launch offset kernels with Static sizes!!!!
+    # We can only launch offset kernels with Static sizes!
     loop! = isnothing(offset) ? kernel!(Architectures.device(arch), workgroup, worksize) : 
                                 kernel!(Architectures.device(arch), StaticSize(workgroup), OffsetStaticSize(contiguousrange(worksize, offset))) 
 

@@ -1,4 +1,4 @@
-import Oceananigans.Models: compute_boundary_tendencies!
+import Oceananigans.Models: compute_buffer_tendencies!
 
 using Oceananigans.TurbulenceClosures: required_halo_size
 using Oceananigans.Grids: XFlatGrid, YFlatGrid
@@ -7,25 +7,25 @@ using Oceananigans.Grids: XFlatGrid, YFlatGrid
 # Rewriting it may be helpful.
 
 # We assume here that top/bottom BC are always synched (no partitioning in z)
-function compute_boundary_tendencies!(model::NonhydrostaticModel)
+function compute_buffer_tendencies!(model::NonhydrostaticModel)
     grid = model.grid
     arch = architecture(grid)
 
-    p_parameters = boundary_p_kernel_parameters(grid, arch)
-    κ_parameters = boundary_κ_kernel_parameters(grid, model.closure, arch)
+    p_parameters = buffer_p_kernel_parameters(grid, arch)
+    κ_parameters = buffer_κ_kernel_parameters(grid, model.closure, arch)
 
     # We need new values for `p` and `κ`
     compute_auxiliaries!(model; p_parameters, κ_parameters)
 
     # parameters for communicating North / South / East / West side
-    kernel_parameters = boundary_tendency_kernel_parameters(grid, arch)
+    kernel_parameters = buffer_tendency_kernel_parameters(grid, arch)
     compute_interior_tendency_contributions!(model, kernel_parameters)
 
     return nothing
 end
 
 # tendencies need computing in the range 1 : H and N - H + 1 : N 
-function boundary_tendency_kernel_parameters(grid, arch)
+function buffer_tendency_kernel_parameters(grid, arch)
     Nx, Ny, Nz = size(grid)
     Hx, Hy, _  = halo_size(grid)
     
@@ -39,11 +39,11 @@ function boundary_tendency_kernel_parameters(grid, arch)
     sizes = (Sx, Sy, Sx,  Sy)
     offs  = (Oᴸ, Oᴸ, Oxᴿ, Oyᴿ)
 
-    return boundary_parameters(sizes, offs, grid, arch)
+    return buffer_parameters(sizes, offs, grid, arch)
 end
 
 # p needs computing in the range  0 : 0 and N + 1 : N + 1
-function boundary_p_kernel_parameters(grid, arch)
+function buffer_p_kernel_parameters(grid, arch)
     Nx, Ny, _ = size(grid)
 
     Sx  = (1, Ny)
@@ -57,11 +57,11 @@ function boundary_p_kernel_parameters(grid, arch)
     sizes = (Sx,  Sy,  Sx,  Sy)
     offs  = (Oxᴸ, Oyᴸ, Oxᴿ, Oyᴿ)
 
-    return boundary_parameters(sizes, offs, grid, arch)
+    return buffer_parameters(sizes, offs, grid, arch)
 end
 
 # diffusivities need recomputing in the range 0 : B and N - B + 1 : N + 1
-function boundary_κ_kernel_parameters(grid, closure, arch)
+function buffer_κ_kernel_parameters(grid, closure, arch)
     Nx, Ny, Nz = size(grid)
 
     B = required_halo_size(closure)
@@ -77,11 +77,11 @@ function boundary_κ_kernel_parameters(grid, closure, arch)
     sizes = (Sx,  Sy,  Sx,  Sy)
     offs  = (Oxᴸ, Oyᴸ, Oxᴿ, Oyᴿ)
 
-    return boundary_parameters(sizes, offs, grid, arch)
+    return buffer_parameters(sizes, offs, grid, arch)
 end
 
 # Recompute only on communicating sides 
-function boundary_parameters(S, O, grid, arch) 
+function buffer_parameters(S, O, grid, arch) 
     Rx, Ry, _ = arch.ranks
     Tx, Ty, _ = topology(grid)
 
