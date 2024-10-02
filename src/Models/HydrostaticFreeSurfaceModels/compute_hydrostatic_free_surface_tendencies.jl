@@ -1,6 +1,6 @@
 import Oceananigans: tracer_tendency_kernel_function
 import Oceananigans.TimeSteppers: compute_tendencies!
-import Oceananigans.Models: complete_communication_and_compute_boundary!
+import Oceananigans.Models: complete_communication_and_compute_buffer!
 import Oceananigans.Models: interior_tendency_kernel_parameters
 
 using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCallsite
@@ -29,7 +29,7 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     active_cells_map = retrieve_interior_active_cells_map(model.grid, Val(:interior))
     compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; active_cells_map)
 
-    complete_communication_and_compute_boundary!(model, model.grid, model.architecture)
+    complete_communication_and_compute_buffer!(model, model.grid, model.architecture)
 
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
