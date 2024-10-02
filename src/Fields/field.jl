@@ -9,7 +9,7 @@ using Base: @propagate_inbounds
 import Oceananigans: boundary_conditions
 import Oceananigans.Architectures: on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc
-import Statistics: norm, mean, mean!
+import Statistics: mean, mean!
 import Base: ==
 
 #####
@@ -226,6 +226,8 @@ ZFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center,
 #####
 ##### Field utils
 #####
+
+Base.copyto!(a::Field, b::Field) = copyto!(parent(a), parent(b))
 
 # Canonical `similar` for Field (doesn't transfer boundary conditions)
 function Base.similar(f::Field, grid=f.grid)
@@ -751,23 +753,6 @@ end
 
 Statistics.mean!(r::ReducedAbstractField, a::AbstractArray; kwargs...) =
     Statistics.mean!(identity, r, a; kwargs...)
-
-# TODO: support dims? test
-function Statistics.norm(a::AbstractField; condition = nothing)
-    conditional_a = condition_operand(a, condition, 0)
-    result = zeros(a.grid, 1)
-    Base.mapreducedim!(x -> x * x, +, result, conditional_a)
-    return CUDA.@allowscalar sqrt(first(result))
-end
-
-# TODO: needs test
-function Statistics.dot(a::Field, b::Field)
-    conditional_a = condition_operand(a, condition, 0)
-    conditional_b = condition_operand(b, condition, 0)
-    result = zeros(a.grid, 1)
-    Base.mapreducedim!((x, y) -> x * y, +, result, conditional_a, conditional_b)
-    return CUDA.@allowscalar first(result)
-end
 
 function Base.isapprox(a::AbstractField, b::AbstractField; kw...)
     conditional_a = condition_operand(a, nothing, one(eltype(a)))
