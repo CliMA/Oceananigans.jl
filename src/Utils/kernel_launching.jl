@@ -75,9 +75,6 @@ function KernelParameters(r1::UnitRange, r2::UnitRange, r3::UnitRange)
     return KernelParameters(size, offsets)
 end
 
-offsets(::KernelParameters{S, O}) where {S, O} = O
-offsets(workspec)  = nothing
-
 contiguousrange(range::NTuple{N, Int}, offset::NTuple{N, Int}) where N = Tuple(1+o:r+o for (r, o) in zip(range, offset))
 
 flatten_reduced_dimensions(worksize, dims) = Tuple(i ∈ dims ? 1 : worksize[i] for i = 1:3)
@@ -106,16 +103,13 @@ function heuristic_workgroup(Wx, Wy, Wz=nothing, Wt=nothing)
     return workgroup
 end
 
-work_layout(grid, ::KernelParameters{worksize}; kw...) where worksize =
-    work_layout(grid, worksize; kw...)
-
-function work_layout(grid, worksize::Tuple; kw...)
+function work_layout(grid, worksize::Tuple, active_cells_map; kw...)
     workgroup = heuristic_workgroup(worksize...)
     return workgroup, worksize
 end
 
 """
-    work_layout(grid, dims; include_right_boundaries=false, location=nothing)
+    work_layout(grid, dims, active_cells_map; include_right_boundaries=false, location=nothing)
 
 Returns the `workgroup` and `worksize` for launching a kernel over `dims`
 on `grid`. The `workgroup` is a tuple specifying the threads per block in each
@@ -127,23 +121,25 @@ to be specified.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
-function work_layout(grid, workdims::Symbol; include_right_boundaries=false, location=nothing, reduced_dimensions=())
+function work_layout(grid, workdims::Symbol, active_cells_map; exclude_periphery=false, location=nothing, reduced_dimensions=())
 
-    Nx′, Ny′, Nz′ = include_right_boundaries ? size(location, grid) : size(grid)
-    Nx′, Ny′, Nz′ = flatten_reduced_dimensions((Nx′, Ny′, Nz′), reduced_dimensions)
+    if exclude_periphery
+        isnothing(location) && throw(ArgumentError("location must be provided to exclude_periphery in kernel launch!"))
+        
+    else
 
-    workgroup = heuristic_workgroup(Nx′, Ny′, Nz′)
-
-    # Drop omitted dimemsions
-    worksize = workdims == :xyz ? (Nx′, Ny′, Nz′) :
-               workdims == :xy  ? (Nx′, Ny′) :
-               workdims == :xz  ? (Nx′, Nz′) :
-               workdims == :yz  ? (Ny′, Nz′) : throw(ArgumentError("Unsupported launch configuration: $workdims"))
+        Nx′, Ny′, Nz′ = flatten_reduced_dimensions((Nx′, Ny′, Nz′), reduced_dimensions)
+        workgroup = heuristic_workgroup(Nx′, Ny′, Nz′)
+    
+        # Drop omitted dimemsions
+        worksize = workdims == :xyz ? (Nx′, Ny′, Nz′) :
+                   workdims == :xy  ? (Nx′, Ny′) :
+                   workdims == :xz  ? (Nx′, Nz′) :
+                   workdims == :yz  ? (Ny′, Nz′) : throw(ArgumentError("Unsupported launch configuration: $workdims"))
+    end
 
     return workgroup, worksize
 end
-
-@inline active_cells_work_layout(workgroup, worksize, active_cells_map, grid) = workgroup, worksize
 
 """
     launch!(arch, grid, layout, kernel!, args...; kwargs...)
@@ -152,14 +148,14 @@ Launches `kernel!`, with arguments `args` and keyword arguments `kwargs`,
 over the `dims` of `grid` on the architecture `arch`. kernels run on the default stream
 """
 function launch!(arch, grid, workspec, kernel!, kernel_args...;
-                 include_right_boundaries = false,
+                 exclude_periphery = false,
                  reduced_dimensions = (),
                  location = nothing,
                  active_cells_map = nothing,
                  kwargs...)
 
     loop! = configured_kernel(arch, grid, workspec, kernel!;
-                              include_right_boundaries,
+                              exclude_periphery,
                               reduced_dimensions,
                               location,
                               active_cells_map,
@@ -170,6 +166,14 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
     return nothing
 end
 
+function work_layout(grid, ::KernelParameters{sz, offsets}, ::Nothing; kw...) where {sz, offsets}
+    worksize, workgroup = work_layout(grid, sz; kw...)
+    static_workgroup = StaticSize(workgroup)
+    offset_worksize = OffsetStaticSize(contiguousrange(worksize, offset))
+    return static_workgroup, offset_worksize
+end
+
+work_layout(grid, ::KernelParameters{sz}, map; kw...) where sz = work_layout(grid, sz; kw...)
 
 """
     configured_kernel(arch, grid, workspec, kernel!; include_right_boundaries=false, reduced_dimensions=(), location=nothing, active_cells_map=nothing, kwargs...)
@@ -195,36 +199,25 @@ If the worksize is 0 after adjusting for active cells, the function returns `not
 - `active_cells_map`: A map indicating the active cells in the grid. If the map is not a nothing, the workspec will be disregarded and 
                      the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
 """
-
 function configured_kernel(arch, grid, workspec, kernel!;
-                           include_right_boundaries = false,
+                           exclude_periphery = false,
                            reduced_dimensions = (),
                            location = nothing,
                            active_cells_map = nothing,
                            kwargs...)
 
-    workgroup, worksize = work_layout(grid, workspec;
-                                      include_right_boundaries,
+    workgroup, worksize = work_layout(grid, workspec, active_cells_map;
+                                      exclude_periphery,
                                       reduced_dimensions,
                                       location)
 
-    offset = offsets(workspec)
-
-    if !isnothing(active_cells_map) 
-        workgroup, worksize = active_cells_work_layout(workgroup, worksize, active_cells_map) 
-        offset = nothing
-
-        # A non active domain! 
-        if worksize == 0
-            return nothing
-        end
+    # A kernel of no size
+    if worksize == 0
+        return nothing
     end
 
-    # We can only launch offset kernels with Static sizes!
-    loop! = isnothing(offset) ? kernel!(Architectures.device(arch), workgroup, worksize) : 
-                                kernel!(Architectures.device(arch), StaticSize(workgroup), OffsetStaticSize(contiguousrange(worksize, offset))) 
-
-    return loop!
+    dev = Architectures.device(arch)
+    return kernel!(dev, workgroup, worksize)!
 end
         
 # When dims::Val
@@ -346,3 +339,4 @@ function partition(kernel::OffsetKernel, inrange, ingroupsize)
 
     return iterspace, dynamic
 end
+
