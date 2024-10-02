@@ -106,7 +106,7 @@ B∞_field = BackgroundField(constant_stratification, parameters=(; ĝ, N² = N
 # This shows that to impose a no-flux boundary condition on the total buoyancy field ``B``, we must apply a boundary condition to the perturbation buoyancy ``b``,
 # ```math
 # ∂_z b = - N^{2} \cos{\theta}.
-#```
+# ```
 
 ∂z_b_bottom = - N² * cosd(θ)
 negative_background_diffusive_flux = GradientBoundaryCondition(∂z_b_bottom)
