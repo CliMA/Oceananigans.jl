@@ -208,10 +208,14 @@ Kernels run on the default stream.
                       the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
 """
 function launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;
-                 exclude_periphery = true,
+                 exclude_periphery = false,
                  reduced_dimensions = (),
-                 location = Oceananigans.Grids.location(first_kernel_arg),
+                 location = nothing,
                  active_cells_map = nothing)
+
+    if exclude_periphery # give this a go
+        location = Oceananigans.Grids.location(first_kernel_arg)
+    end
 
     workgroup, worksize = work_layout(grid, workspec;
                                       active_cells_map,
