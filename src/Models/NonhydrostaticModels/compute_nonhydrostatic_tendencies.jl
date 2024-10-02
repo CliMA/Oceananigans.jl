@@ -101,17 +101,18 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
                           w_immersed_bc, end_momentum_kernel_args...,
                           forcings, hydrostatic_pressure, clock)
 
+    exclude_periphery = true
     launch!(arch, grid, kernel_parameters, compute_Gu!, 
             tendencies.u, grid, active_cells_map, u_kernel_args;
-            active_cells_map)
+            active_cells_map, exclude_periphery)
 
     launch!(arch, grid, kernel_parameters, compute_Gv!, 
             tendencies.v, grid, active_cells_map, v_kernel_args;
-            active_cells_map)
+            active_cells_map, exclude_periphery)
 
     launch!(arch, grid, kernel_parameters, compute_Gw!, 
             tendencies.w, grid, active_cells_map, w_kernel_args;
-            active_cells_map)
+            active_cells_map, exclude_periphery)
 
     start_tracer_kernel_args = (advection, closure)
     end_tracer_kernel_args   = (buoyancy, biogeochemistry, background_fields, velocities,
@@ -207,3 +208,4 @@ function compute_boundary_tendency_contributions!(Gⁿ, arch, velocities, tracer
 
     return nothing
 end
+
