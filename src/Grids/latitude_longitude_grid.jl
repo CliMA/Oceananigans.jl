@@ -223,7 +223,7 @@ LatitudeLongitudeGrid(FT::DataType; kwargs...) = LatitudeLongitudeGrid(CPU(), FT
 
 """ Return a reproduction of `grid` with precomputed metric terms. """
 function with_precomputed_metrics(grid)
-    Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, _Δyᶠᶜᵃ, _Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ = allocate_metrics(grid)
+    Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ = allocate_metrics(grid)
 
     # Compute Δx's and areas
     arch = grid.architecture
@@ -232,13 +232,10 @@ function with_precomputed_metrics(grid)
     loop! = compute_Δx_Az!(dev, workgroup, worksize)
     loop!(grid, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ)
 
-    # Compute Δy's
-    if grid isa YRegularLLG # y is regular, no computation needed
-        Δyᶜᶠᵃ = _Δyᶜᶠᵃ(1, 1, 1, grid)
-        Δyᶠᶜᵃ = _Δyᶠᶜᵃ(1, 1, 1, grid)
-    else
+    # Compute Δy's if needed
+    if !(grid isa YRegularLLG)
         loop! = compute_Δy!(dev, 16, length(grid.Δφᵃᶜᵃ) - 1)
-        loop!(grid, _Δyᶠᶜᵃ, _Δyᶜᶠᵃ)
+        loop!(grid, Δyᶠᶜᵃ, Δyᶜᶠᵃ)
     end
 
     Nλ, Nφ, Nz = size(grid)
@@ -556,8 +553,8 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     Azᶜᶜ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
 
     if grid isa YRegularLLG
-        Δyᶠᶜ = FT(0)
-        Δyᶜᶠ = FT(0)
+        Δyᶠᶜ = Δyᶠᶜᵃ(1, 1, 1, grid)
+        Δyᶜᶠ = Δyᶜᶠᵃ(1, 1, 1, grid)
     else
         parentC = zeros(FT, length(grid.Δφᵃᶜᵃ))
         parentF = zeros(FT, length(grid.Δφᵃᶜᵃ))
