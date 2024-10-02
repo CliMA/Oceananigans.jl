@@ -112,11 +112,9 @@ B∞_field = BackgroundField(constant_stratification, parameters=(; ĝ, N² = N
 negative_background_diffusive_flux = GradientBoundaryCondition(∂z_b_bottom)
 b_bcs = FieldBoundaryConditions(bottom = negative_background_diffusive_flux)
 
-# ## Bottom drag
+# ## Bottom drag and along-slope interior velicity
 #
-# We impose bottom drag that follows Monin--Obukhov theory.
-# We include the background flow in the drag calculation,
-# which is the only effect the background flow enters the problem,
+# We impose bottom drag that follows Monin--Obukhov theory:
 
 V∞ = 0.1 # m s⁻¹
 z₀ = 0.1 # m (roughness length)
@@ -134,6 +132,14 @@ drag_bc_v = FluxBoundaryCondition(drag_v, field_dependencies=(:u, :v), parameter
 u_bcs = FieldBoundaryConditions(bottom = drag_bc_u)
 v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 
+# Note that, similar to the buoyancy boundary conditions, we had to
+# include the background flow in the drag calculation.
+#
+# Let us also create `BackgroundField` for the along-slope interior velocity:
+
+@inline constant_velocity(x, z, t, p) = p.V∞
+V∞_field = BackgroundField(constant_velocity, parameters=(; V∞))
+
 # ## Create the `NonhydrostaticModel`
 #
 # We are now ready to create the model. We create a `NonhydrostaticModel` with an
@@ -150,7 +156,7 @@ model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
                             advection = UpwindBiasedFifthOrder(),
                             tracers = :b,
                             boundary_conditions = (u=u_bcs, v=v_bcs, b=b_bcs),
-                            background_fields = (; b=B∞_field))
+                            background_fields = (; b=B∞_field, v=V∞_field))
 
 # Let's introduce a bit of random noise at the bottom of the domain to speed up the onset of
 # turbulence:
