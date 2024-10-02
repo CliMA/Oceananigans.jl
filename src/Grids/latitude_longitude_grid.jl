@@ -230,7 +230,7 @@ function with_precomputed_metrics(grid)
     dev = Architectures.device(arch)
     workgroup, worksize  = metric_workgroup(grid), metric_worksize(grid)
     loop! = compute_Δx_Az!(dev, workgroup, worksize)
-    loop!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ)
+    loop!(grid, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ)
 
     # Compute Δy's
     if grid isa YRegularLLG # y is regular, no computation needed
