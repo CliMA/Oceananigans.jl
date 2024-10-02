@@ -212,6 +212,7 @@ end
     _fill_bottom_halo!(i, j, grid, c, bottom_bc, loc, args...)
        _fill_top_halo!(i, j, grid, c, top_bc,    loc, args...)
 end
+
 #####
 ##### Single-sided fill_halo! kernels
 #####

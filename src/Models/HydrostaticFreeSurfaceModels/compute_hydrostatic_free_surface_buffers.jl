@@ -1,5 +1,4 @@
 import Oceananigans.Models: compute_buffer_tendencies!
-import Oceananigans.Models: compute_buffer_tendencies!
 
 using Oceananigans.Grids: halo_size
 using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, DistributedActiveCellsIBG

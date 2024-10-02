@@ -76,8 +76,7 @@ function KernelParameters(r1::UnitRange, r2::UnitRange, r3::UnitRange)
 end
 
 contiguousrange(range::NTuple{N, Int}, offset::NTuple{N, Int}) where N = Tuple(1+o:r+o for (r, o) in zip(range, offset))
-
-flatten_reduced_dimensions(worksize, dims) = Tuple(i ∈ dims ? 1 : worksize[i] for i = 1:3)
+flatten_reduced_dimensions(worksize, dims) = Tuple(d ∈ dims ? 1 : worksize[d] for d = 1:3)
 
 # This supports 2D, 3D and 4D work sizes (but the 3rd and 4th dimension are discarded)
 function heuristic_workgroup(Wx, Wy, Wz=nothing, Wt=nothing)
@@ -133,6 +132,7 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 function work_layout(grid, workdims::Symbol; exclude_periphery, location, reduced_dimensions, kw...)
 
     valdims = Val(workdims)
+    Nx, Ny, Nz = size(grid)
 
     if exclude_periphery # we will need to offset
         isnothing(location) && throw(ArgumentError("location must be provided to exclude_periphery in kernel launch!"))
@@ -140,7 +140,6 @@ function work_layout(grid, workdims::Symbol; exclude_periphery, location, reduce
         # just an example for :xyz
         ℓx, ℓy, ℓz = map(instantiate, location)
         tx, ty, tz = map(instantiate, topology(grid))
-        Nx, Ny, Nz = size(grid)
 
         # Offsets
         ox = periphery_offset(ℓx, tx, Nx)
@@ -156,8 +155,7 @@ function work_layout(grid, workdims::Symbol; exclude_periphery, location, reduce
         offsets = drop_omitted_dims(valdims, (ox, oy, oz))
         worksize = OffsetStaticSize(contiguousrange(worksize, offsets))
     else
-        sz = size(location, grid)
-        Wx, Wy, Wz = flatten_reduced_dimensions(sz, reduced_dimensions) # this seems to be for halo filling
+        Wx, Wy, Wz = flatten_reduced_dimensions((Nx, Ny, Nz), reduced_dimensions) # this seems to be for halo filling
         workgroup = heuristic_workgroup(Wx, Wy, Wz)
         worksize = drop_omitted_dims(valdims, (Wx, Wy, Wz))
     end
