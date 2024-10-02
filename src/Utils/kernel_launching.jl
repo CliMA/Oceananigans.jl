@@ -108,8 +108,17 @@ function work_layout(grid, worksize::Tuple; kw...)
     return workgroup, worksize
 end
 
+periphery_offset(loc, topo, N) = 1
+periphery_offset(::Face, ::Bounded, N) = 2
+
+drop_omitted_dims(::Val{:xyz}, xyz) = xyz
+drop_omitted_dims(::Val{:xy}, (x, y, z)) = (x, y)
+drop_omitted_dims(::Val{:xz}, (x, y, z)) = (x, z)
+drop_omitted_dims(::Val{:yz}, (x, y, z)) = (y, z)
+drop_omitted_dims(workdims, xyz) = throw(ArgumentError("Unsupported launch configuration: $workdims"))
+    
 """
-    work_layout(grid, dims; include_right_boundaries=false, location=nothing)
+    work_layout(grid, dims; exclude_periphery, location, reduced_dimensions, kw...)
 
 Returns the `workgroup` and `worksize` for launching a kernel over `dims`
 on `grid`. The `workgroup` is a tuple specifying the threads per block in each
@@ -121,21 +130,36 @@ to be specified.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
-function work_layout(grid, workdims::Symbol; exclude_periphery=false, location=nothing, reduced_dimensions=(), kw...)
+function work_layout(grid, workdims::Symbol; exclude_periphery, location, reduced_dimensions, kw...)
 
-    if exclude_periphery
+    valdims = Val(workdims)
+
+    if exclude_periphery # we will need to offset
         isnothing(location) && throw(ArgumentError("location must be provided to exclude_periphery in kernel launch!"))
-        
-    else
 
-        Nx′, Ny′, Nz′ = flatten_reduced_dimensions((Nx′, Ny′, Nz′), reduced_dimensions)
-        workgroup = heuristic_workgroup(Nx′, Ny′, Nz′)
-    
-        # Drop omitted dimemsions
-        worksize = workdims == :xyz ? (Nx′, Ny′, Nz′) :
-                   workdims == :xy  ? (Nx′, Ny′) :
-                   workdims == :xz  ? (Nx′, Nz′) :
-                   workdims == :yz  ? (Ny′, Nz′) : throw(ArgumentError("Unsupported launch configuration: $workdims"))
+        # just an example for :xyz
+        ℓx, ℓy, ℓz = map(instantiate, location)
+        tx, ty, tz = map(instantiate, topology(grid))
+        Nx, Ny, Nz = size(grid)
+
+        # Offsets
+        ox = periphery_offset(ℓx, tx, Nx)
+        oy = periphery_offset(ℓy, ty, Ny)
+        oz = periphery_offset(ℓz, tz, Nz)
+
+        # Worksize
+        Wx, Wy, Wz = (Nx-ox, Ny-oy, Nz-oz)
+        workgroup = StaticSize(heuristic_workgroup(Wx, Wy, Wz))
+
+        # Adapt to workdims
+        worksize = drop_omitted_dims(valdims, (Wx, Wy, Wz))
+        offsets = drop_omitted_dims(valdims, (ox, oy, oz))
+        worksize = OffsetStaticSize(contiguousrange(worksize, offsets))
+    else
+        sz = size(location, grid)
+        Wx, Wy, Wz = flatten_reduced_dimensions(sz, reduced_dimensions) # this seems to be for halo filling
+        workgroup = heuristic_workgroup(Wx, Wy, Wz)
+        worksize = drop_omitted_dims(valdims, (Wx, Wy, Wz))
     end
 
     return workgroup, worksize
@@ -147,7 +171,7 @@ function work_layout(grid, ::KernelParameters{sz, offsets}; active_cells_map=not
     if isnothing(active_cells_map)
 
         static_workgroup = StaticSize(workgroup)
-        offset_worksize = OffsetStaticSize(contiguousrange(worksize, offset))
+        offset_worksize = OffsetStaticSize(contiguousrange(worksize, offsets))
         return static_workgroup, offset_worksize
 
     else # offsetting is handled by the active_cells_map.
@@ -157,7 +181,7 @@ end
 
 """
     launch!(arch, grid, workspec, kernel!, kernel_args...;
-            exclude_periphery = false,
+            exclude_periphery = true,
             reduced_dimensions = (),
             location = nothing,
             active_cells_map = nothing)
@@ -182,13 +206,11 @@ Kernels run on the default stream.
 - `location`: The location of the kernel execution, needed for `include_right_boundaries`. Default is `nothing`.
 - `active_cells_map`: A map indicating the active cells in the grid. If the map is not a nothing, the workspec will be disregarded and 
                       the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
-
-
 """
-function launch!(arch, grid, workspec, kernel!, kernel_args...;
-                 exclude_periphery = false,
+function launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;
+                 exclude_periphery = true,
                  reduced_dimensions = (),
-                 location = nothing,
+                 location = Oceananigans.Grids.location(first_kernel_arg),
                  active_cells_map = nothing)
 
     workgroup, worksize = work_layout(grid, workspec;
@@ -204,7 +226,7 @@ function launch!(arch, grid, workspec, kernel!, kernel_args...;
 
     dev = Architectures.device(arch)
     loop! = kernel!(dev, workgroup, worksize)
-    loop!(kernel_args...)
+    loop!(first_kernel_arg, other_kernel_args...)
     
     return nothing
 end
