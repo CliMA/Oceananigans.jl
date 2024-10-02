@@ -210,7 +210,11 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                                          Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ,
                                                          (nothing for i=1:10)..., FT(radius))
 
-    return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid)
+    if !precompute_metrics
+        return preliminary_grid
+    else
+        return with_precomputed_metrics(preliminary_grid)
+    end
 end
 
 # architecture = CPU() default, assuming that a DataType positional arg
@@ -219,11 +223,23 @@ LatitudeLongitudeGrid(FT::DataType; kwargs...) = LatitudeLongitudeGrid(CPU(), FT
 
 """ Return a reproduction of `grid` with precomputed metric terms. """
 function with_precomputed_metrics(grid)
-    Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ = allocate_metrics(grid)
+    Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, _Δyᶠᶜᵃ, _Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ = allocate_metrics(grid)
 
-    precompute_curvilinear_metrics!(grid, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ)
+    # Compute Δx's and areas
+    arch = grid.architecture
+    dev = Architectures.device(arch)
+    workgroup, worksize  = metric_workgroup(grid), metric_worksize(grid)
+    loop! = compute_Δx_Az!(dev, workgroup, worksize)
+    loop!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ)
 
-    Δyᶠᶜᵃ, Δyᶜᶠᵃ = precompute_Δy_metrics(grid, Δyᶠᶜᵃ, Δyᶜᶠᵃ)
+    # Compute Δy's
+    if grid isa YRegularLLG # y is regular, no computation needed
+        Δyᶜᶠᵃ = _Δyᶜᶠᵃ(1, 1, 1, grid)
+        Δyᶠᶜᵃ = _Δyᶠᶜᵃ(1, 1, 1, grid)
+    else
+        loop! = compute_Δy!(dev, 16, length(grid.Δφᵃᶜᵃ) - 1)
+        loop!(grid, _Δyᶠᶜᵃ, _Δyᶜᶠᵃ)
+    end
 
     Nλ, Nφ, Nz = size(grid)
     Hλ, Hφ, Hz = halo_size(grid)
@@ -341,8 +357,8 @@ function constructor_arguments(grid::LatitudeLongitudeGrid)
 
     kwargs = Dict(:size => size,
                   :halo => halo,
-                  :x => cpu_face_constructor_x(grid),
-                  :y => cpu_face_constructor_y(grid),
+                  :longitude => cpu_face_constructor_x(grid),
+                  :latitude => cpu_face_constructor_y(grid),
                   :z => cpu_face_constructor_z(grid),
                   :topology => topo,
                   :radius => grid.radius,
@@ -460,19 +476,7 @@ end
 @inline metric_worksize(grid::XRegularLLG)  = length(grid.φᵃᶠᵃ) - 2 
 @inline metric_workgroup(grid::XRegularLLG) = 16
 
-function precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ)
-    
-    arch = grid.architecture
-
-    workgroup, worksize  = metric_workgroup(grid), metric_worksize(grid)
-    curvilinear_metrics! = precompute_metrics_kernel!(Architectures.device(arch), workgroup, worksize)
-
-    curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ)
-
-    return nothing
-end
-
-@kernel function precompute_metrics_kernel!(grid::LatitudeLongitudeGrid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ)
+@kernel function compute_Δx_Az!(grid::LatitudeLongitudeGrid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     i, j = @index(Global, NTuple)
 
     # Manually offset x- and y-index
@@ -491,7 +495,7 @@ end
     end
 end
 
-@kernel function precompute_metrics_kernel!(grid::XRegularLLG, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ)
+@kernel function compute_Δx_Az!(grid::XRegularLLG, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     j = @index(Global, Linear)
 
     # Manually offset y-index
@@ -513,21 +517,7 @@ end
 ##### Kernels that precompute the y-metric
 #####
 
-function precompute_Δy_metrics(grid::LatitudeLongitudeGrid, Δyᶠᶜ, Δyᶜᶠ)
-    arch = grid.architecture
-    precompute_Δy! = precompute_Δy_kernel!(Architectures.device(arch), 16, length(grid.Δφᵃᶜᵃ) - 1)
-    precompute_Δy!(grid, Δyᶠᶜ, Δyᶜᶠ)
-    
-    return Δyᶠᶜ, Δyᶜᶠ
-end
-
-function  precompute_Δy_metrics(grid::YRegularLLG, Δyᶠᶜ, Δyᶜᶠ)
-    Δyᶜᶠ =  Δyᶜᶠᵃ(1, 1, 1, grid)
-    Δyᶠᶜ =  Δyᶠᶜᵃ(1, 1, 1, grid)
-    return Δyᶠᶜ, Δyᶜᶠ
-end
-
-@kernel function precompute_Δy_kernel!(grid, Δyᶠᶜ, Δyᶜᶠ)
+@kernel function compute_Δy!(grid, Δyᶠᶜ, Δyᶜᶠ)
     j = @index(Global, Linear)
 
     # Manually offset y-index
