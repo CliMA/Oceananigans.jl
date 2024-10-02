@@ -55,17 +55,16 @@ end
 
 initialize!(schedule::TimeInterval, model) = initialize!(schedule, model.clock.time)
 
-function next_actuation_time(schedule::TimeInterval)
+function next_actuation_time(schedule::TimeInterval, t::Float64)
     t₀ = schedule.first_actuation_time
-    N = schedule.actuations
     T = schedule.interval
+    N = schedule.actuations
     return t₀ + (N + 1) * T
 end
 
 function (schedule::TimeInterval)(model)
     t = model.clock.time
-    t★ = next_actuation_time(schedule)
-
+    t★ = next_actuation_time(schedule, t)
     if t >= t★
         if schedule.actuations < typemax(Int)
             schedule.actuations += 1
