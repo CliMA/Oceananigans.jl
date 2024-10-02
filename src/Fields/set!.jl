@@ -6,18 +6,9 @@ using Oceananigans.Grids: on_architecture, node_names
 using Oceananigans.Architectures: device, GPU, CPU
 using Oceananigans.Utils: work_layout
 
-function set!(Φ::NamedTuple; kwargs...)
-    for (fldname, value) in kwargs
-        ϕ = getproperty(Φ, fldname)
-        set!(ϕ, value)
-    end
-    return nothing
-end
-
-function set!(u::Field, v)
-    u .= v # fallback
-    return u
-end
+#####
+##### Utilities
+#####
 
 function tuple_string(tup::Tuple)
     str = prod(string(t, ", ") for t in tup)
@@ -26,8 +17,33 @@ end
 
 tuple_string(tup::Tuple{}) = ""
 
-function set!(u::Field, f::Function)
+#####
+##### set!
+#####
 
+function set!(Φ::NamedTuple; kwargs...)
+    for (fldname, value) in kwargs
+        ϕ = getproperty(Φ, fldname)
+        set!(ϕ, value)
+    end
+    return nothing
+end
+
+# This interface helps us do things like set distributed fields
+set!(u::Field, f::Function) = set_to_function!(u, f)
+set!(u::Field, a::Union{Array, CuArray, OffsetArray}) = set_to_array!(u, a)
+set!(u::Field, v::Field) = set_to_field!(u, v)
+
+function set!(u::Field, v)
+    u .= v # fallback
+    return u
+end
+
+#####
+##### Setting to specific things
+#####
+
+function set_to_function!(u, f)
     # Determine cpu_grid and cpu_u
     if architecture(u) isa GPU
         cpu_grid = on_architecture(CPU(), u.grid)
@@ -40,7 +56,7 @@ function set!(u::Field, f::Function)
     # Form a FunctionField from `f`
     f_field = field(location(u), f, cpu_grid)
 
-    # Try to set the FuncitonField to cpu_u
+    # Try to set the FunctionField to cpu_u
     try
         set!(cpu_u, f_field)
     catch err
@@ -69,7 +85,7 @@ function set!(u::Field, f::Function)
     return u
 end
 
-function set!(u::Field, f::Union{Array, CuArray, OffsetArray})
+function set_to_array!(u, f)
     f = on_architecture(architecture(u), f)
 
     try
@@ -91,7 +107,7 @@ function set!(u::Field, f::Union{Array, CuArray, OffsetArray})
     return u
 end
 
-function set!(u::Field, v::Field)
+function set_to_field!(u, v)
     # We implement some niceities in here that attempt to copy halo data,
     # and revert to copying just interior points if that fails.
     
