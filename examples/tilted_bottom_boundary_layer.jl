@@ -112,7 +112,7 @@ B∞_field = BackgroundField(constant_stratification, parameters=(; ĝ, N² = N
 negative_background_diffusive_flux = GradientBoundaryCondition(∂z_b_bottom)
 b_bcs = FieldBoundaryConditions(bottom = negative_background_diffusive_flux)
 
-# ## Bottom drag and along-slope interior velicity
+# ## Bottom drag and along-slope interior velocity
 #
 # We impose bottom drag that follows Monin--Obukhov theory:
 
