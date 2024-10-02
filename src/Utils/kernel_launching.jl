@@ -97,19 +97,19 @@ function heuristic_workgroup(Wx, Wy, Wz=nothing, Wt=nothing)
                     # Two-dimensional x-z slice models:
                     (min(256, Wx), 1) :
 
-                    # Three-dimensional (and four-dimensional) models
+                    # Three-dimensional models
                     (16, 16)
 
     return workgroup
 end
 
-function work_layout(grid, worksize::Tuple, active_cells_map; kw...)
+function work_layout(grid, worksize::Tuple; kw...)
     workgroup = heuristic_workgroup(worksize...)
     return workgroup, worksize
 end
 
 """
-    work_layout(grid, dims, active_cells_map; include_right_boundaries=false, location=nothing)
+    work_layout(grid, dims; include_right_boundaries=false, location=nothing)
 
 Returns the `workgroup` and `worksize` for launching a kernel over `dims`
 on `grid`. The `workgroup` is a tuple specifying the threads per block in each
@@ -121,7 +121,7 @@ to be specified.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
-function work_layout(grid, workdims::Symbol, active_cells_map; exclude_periphery=false, location=nothing, reduced_dimensions=())
+function work_layout(grid, workdims::Symbol; exclude_periphery=false, location=nothing, reduced_dimensions=(), kw...)
 
     if exclude_periphery
         isnothing(location) && throw(ArgumentError("location must be provided to exclude_periphery in kernel launch!"))
@@ -141,46 +141,30 @@ function work_layout(grid, workdims::Symbol, active_cells_map; exclude_periphery
     return workgroup, worksize
 end
 
-"""
-    launch!(arch, grid, layout, kernel!, args...; kwargs...)
-
-Launches `kernel!`, with arguments `args` and keyword arguments `kwargs`,
-over the `dims` of `grid` on the architecture `arch`. kernels run on the default stream
-"""
-function launch!(arch, grid, workspec, kernel!, kernel_args...;
-                 exclude_periphery = false,
-                 reduced_dimensions = (),
-                 location = nothing,
-                 active_cells_map = nothing,
-                 kwargs...)
-
-    loop! = configured_kernel(arch, grid, workspec, kernel!;
-                              exclude_periphery,
-                              reduced_dimensions,
-                              location,
-                              active_cells_map,
-                              kwargs...)
-    
-    !isnothing(loop!) && loop!(kernel_args...)
-    
-    return nothing
-end
-
-function work_layout(grid, ::KernelParameters{sz, offsets}, ::Nothing; kw...) where {sz, offsets}
+function work_layout(grid, ::KernelParameters{sz, offsets}; active_cells_map=nothing, kw...) where {sz, offsets}
     worksize, workgroup = work_layout(grid, sz; kw...)
-    static_workgroup = StaticSize(workgroup)
-    offset_worksize = OffsetStaticSize(contiguousrange(worksize, offset))
-    return static_workgroup, offset_worksize
+
+    if isnothing(active_cells_map)
+
+        static_workgroup = StaticSize(workgroup)
+        offset_worksize = OffsetStaticSize(contiguousrange(worksize, offset))
+        return static_workgroup, offset_worksize
+
+    else # offsetting is handled by the active_cells_map.
+        return workgroup, worksize
+    end
 end
 
-work_layout(grid, ::KernelParameters{sz}, map; kw...) where sz = work_layout(grid, sz; kw...)
-
 """
-    configured_kernel(arch, grid, workspec, kernel!; include_right_boundaries=false, reduced_dimensions=(), location=nothing, active_cells_map=nothing, kwargs...)
+    launch!(arch, grid, workspec, kernel!, kernel_args...;
+            exclude_periphery = false,
+            reduced_dimensions = (),
+            location = nothing,
+            active_cells_map = nothing)
 
-Configures a kernel with the specified architecture, grid, workspec, and kernel function.
-If `active_cells_map` is provided, the work distribution is adjusted to include only the active cells.
-If the worksize is 0 after adjusting for active cells, the function returns `nothing`.
+Launches `kernel!` with arguments `kernel_args`
+over the `dims` of `grid` on the architecture `arch`.
+Kernels run on the default stream.
 
 # Arguments
 ============
@@ -197,32 +181,37 @@ If the worksize is 0 after adjusting for active cells, the function returns `not
 - `reduced_dimensions`: A tuple specifying the dimensions to be reduced in the work distribution. Default is an empty tuple.
 - `location`: The location of the kernel execution, needed for `include_right_boundaries`. Default is `nothing`.
 - `active_cells_map`: A map indicating the active cells in the grid. If the map is not a nothing, the workspec will be disregarded and 
-                     the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
-"""
-function configured_kernel(arch, grid, workspec, kernel!;
-                           exclude_periphery = false,
-                           reduced_dimensions = (),
-                           location = nothing,
-                           active_cells_map = nothing,
-                           kwargs...)
+                      the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
 
-    workgroup, worksize = work_layout(grid, workspec, active_cells_map;
+
+"""
+function launch!(arch, grid, workspec, kernel!, kernel_args...;
+                 exclude_periphery = false,
+                 reduced_dimensions = (),
+                 location = nothing,
+                 active_cells_map = nothing)
+
+    workgroup, worksize = work_layout(grid, workspec;
+                                      active_cells_map,
                                       exclude_periphery,
                                       reduced_dimensions,
                                       location)
 
-    # A kernel of no size
+    # Don't launch kernels with no size
     if worksize == 0
         return nothing
     end
 
     dev = Architectures.device(arch)
-    return kernel!(dev, workgroup, worksize)!
+    loop! = kernel!(dev, workgroup, worksize)
+    loop!(kernel_args...)
+    
+    return nothing
 end
         
 # When dims::Val
-@inline launch!(arch, grid, ::Val{workspec}, args...; kwargs...) where workspec =
-    launch!(arch, grid, workspec, args...; kwargs...)
+@inline launch!(arch, grid, ::Val{workspec}, args...; kw...) where workspec =
+    launch!(arch, grid, workspec, args...; kw...)
 
 #####
 ##### Extension to KA for offset indices: to remove when implemented in KA
