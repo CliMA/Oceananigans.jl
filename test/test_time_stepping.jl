@@ -213,15 +213,18 @@ function time_stepping_with_background_fields(arch)
     background_S_func(x, y, z, t, α) = α * y
     background_S = BackgroundField(background_S_func, parameters=1.2)
 
+    background_R = BackgroundField(1)
+
     background_fields = (u = background_u,
                          v = background_v,
                          w = background_w,
                          T = background_T,
-                         S = background_S)
+                         S = background_S,
+                         R = background_R)
 
     model = NonhydrostaticModel(; grid, background_fields,
                                 buoyancy = SeawaterBuoyancy(),
-                                tracers=(:T, :S))
+                                tracers=(:T, :S, :R))
 
     time_step!(model, 1)
 
@@ -229,7 +232,8 @@ function time_stepping_with_background_fields(arch)
            location(model.background_fields.velocities.v) === (Center, Face, Center) &&
            location(model.background_fields.velocities.w) === (Center, Center, Face) &&
            location(model.background_fields.tracers.T) === (Center, Center, Center) &&
-           location(model.background_fields.tracers.S) === (Center, Center, Center)
+           location(model.background_fields.tracers.S) === (Center, Center, Center) &&
+           location(model.background_fields.tracers.R) === (Center, Center, Center)
 end
 
 Planes = (FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane)
