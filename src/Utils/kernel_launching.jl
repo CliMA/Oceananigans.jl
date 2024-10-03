@@ -172,13 +172,13 @@ function work_layout(grid, ::KernelParameters{sz, offsets}; kw...) where {sz, of
 end
 
 """
-    configure(arch, grid, workspec, kernel!;
-              exclude_periphery = false,
-              reduced_dimensions = (),
-              location = nothing,
-              active_cells_map = nothing,
-              only_local_halos = false,
-              async = false)
+    configure_kernel(arch, grid, workspec, kernel!;
+                     exclude_periphery = false,
+                     reduced_dimensions = (),
+                     location = nothing,
+                     active_cells_map = nothing,
+                     only_local_halos = false,
+                     async = false)
 
 Configure `kernel!` to launch over the `dims` of `grid` on
 the architecture `arch`.
@@ -200,14 +200,14 @@ the architecture `arch`.
 - `active_cells_map`: A map indicating the active cells in the grid. If the map is not a nothing, the workspec will be disregarded and 
                       the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
 """
-function configure(arch, grid, workspec, kernel!;
-                   exclude_periphery = false,
-                   reduced_dimensions = (),
-                   location = nothing,
-                   active_cells_map = nothing,
-                   # TODO: these two kwargs do nothing:
-                   only_local_halos = false,
-                   async = false)
+function configure_kernel(arch, grid, workspec, kernel!;
+                          exclude_periphery = false,
+                          reduced_dimensions = (),
+                          location = nothing,
+                          active_cells_map = nothing,
+                          # TODO: these two kwargs do nothing:
+                          only_local_halos = false,
+                          async = false)
 
     if !isnothing(active_cells_map) # everything else is irrelevant
         workgroup = min(length(active_cells_map), 256)
@@ -231,7 +231,7 @@ Launches `kernel!` with arguments `kernel_args`
 over the `dims` of `grid` on the architecture `arch`.
 Kernels run on the default stream.
 
-See [configure](@ref) for more information and also a list of the
+See [configure_kernel](@ref) for more information and also a list of the
 keyword arguments `kw`.
 """
 function launch!(arch, grid, workspec,
@@ -244,7 +244,7 @@ function launch!(arch, grid, workspec,
         location = Oceananigans.Grids.location(first_kernel_arg)
     end
 
-    loop!, worksize = configure(arch, grid, workspec, kernel!;
+    loop!, worksize = configure_kernel(arch, grid, workspec, kernel!;
                                 location,
                                 exclude_periphery,
                                 kwargs...)
