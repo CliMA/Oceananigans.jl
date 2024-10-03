@@ -32,7 +32,7 @@ kp = KernelParameters(size, offsets)
 # Launch a kernel with indices that range from i=1:8, j=2:7, k=3:6,
 # where i, j, k are the first, second, and third index, respectively:
 
-launch!(arch, grid, kp, kernel!; kernel_args...)
+launch!(arch, grid, kp, kernel!, kernel_args...)
 ```
 
 See [`launch!`](@ref).
@@ -53,7 +53,7 @@ kp = KernelParameters(1:4, 0:10)
 
 # Launch a kernel with indices that range from i=1:4, j=0:10,
 # where i, j are the first and second index, respectively.
-launch!(arch, grid, kp, kernel!; kernel_args...)
+launch!(arch, grid, kp, kernel!, kernel_args...)
 ```
 
 See the documentation for [`launch!`](@ref).
@@ -172,17 +172,16 @@ function work_layout(grid, ::KernelParameters{sz, offsets}; kw...) where {sz, of
 end
 
 """
-    launch!(arch, grid, workspec, kernel!, kernel_args...;
-            exclude_periphery = true,
-            reduced_dimensions = (),
-            location = nothing,
-            active_cells_map = nothing,
-            only_local_halos = false,
-            async = false)
+    configure(arch, grid, workspec, kernel!;
+              exclude_periphery = true,
+              reduced_dimensions = (),
+              location = nothing,
+              active_cells_map = nothing,
+              only_local_halos = false,
+              async = false)
 
-Launches `kernel!` with arguments `kernel_args`
-over the `dims` of `grid` on the architecture `arch`.
-Kernels run on the default stream.
+Configure `kernel!` to launch over the `dims` of `grid` on
+the architecture `arch`.
 
 # Arguments
 ============
@@ -201,41 +200,63 @@ Kernels run on the default stream.
 - `active_cells_map`: A map indicating the active cells in the grid. If the map is not a nothing, the workspec will be disregarded and 
                       the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
 """
-function launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;
-                 exclude_periphery = false,
-                 reduced_dimensions = (),
-                 location = nothing,
-                 active_cells_map = nothing,
-                 # TODO: these two kwargs do nothing:
-                 only_local_halos = false,
-                 async = false)
+function configure(arch, grid, workspec, kernel!;
+                   exclude_periphery = false,
+                   reduced_dimensions = (),
+                   location = nothing,
+                   active_cells_map = nothing,
+                   # TODO: these two kwargs do nothing:
+                   only_local_halos = false,
+                   async = false)
 
     if !isnothing(active_cells_map) # everything else is irrelevant
         workgroup = min(length(active_cells_map), 256)
         worksize = length(active_cells_map)
     else
-        if exclude_periphery # give this a go
-            location = Oceananigans.Grids.location(first_kernel_arg)
-        end
-
         workgroup, worksize = work_layout(grid, workspec;
                                           exclude_periphery,
                                           reduced_dimensions,
                                           location)
     end
 
-    # Don't launch kernels with no size
-    if worksize == 0
-        return nothing
+    dev = Architectures.device(arch)
+    loop = kernel!(dev, workgroup, worksize)
+    return loop, worksize
+end
+
+"""
+    launch!(arch, grid, workspec, kernel!, kernel_args...; kw...)
+
+Launches `kernel!` with arguments `kernel_args`
+over the `dims` of `grid` on the architecture `arch`.
+Kernels run on the default stream.
+
+See [configure](@ref) for more information and also a list of the
+keyword arguments `kw`.
+"""
+function launch!(arch, grid, workspec,
+                 kernel!, first_kernel_arg, other_kernel_args...;
+                 location = nothing,
+                 exclude_periphery = false,
+                 kwargs...)
+
+    if exclude_periphery && isnothing(location) # give this a go
+        location = Oceananigans.Grids.location(first_kernel_arg)
     end
 
-    dev = Architectures.device(arch)
-    loop! = kernel!(dev, workgroup, worksize)
-    loop!(first_kernel_arg, other_kernel_args...)
-    
+    loop!, worksize = configure(arch, grid, workspec, kernel!;
+                                location,
+                                exclude_periphery,
+                                kwargs...)
+
+    # Don't launch kernels with no size
+    if worksize != 0
+        loop!(first_kernel_arg, other_kernel_args...)
+    end
+
     return nothing
 end
-        
+
 # When dims::Val
 @inline launch!(arch, grid, ::Val{workspec}, args...; kw...) where workspec =
     launch!(arch, grid, workspec, args...; kw...)
