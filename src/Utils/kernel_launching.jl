@@ -164,10 +164,9 @@ function work_layout(grid, workdims::Symbol; exclude_periphery, location, reduce
 end
 
 function work_layout(grid, ::KernelParameters{sz, offsets}; active_cells_map=nothing, kw...) where {sz, offsets}
-    worksize, workgroup = work_layout(grid, sz; kw...)
+    workgroup, worksize = work_layout(grid, sz; kw...)
 
     if isnothing(active_cells_map)
-
         static_workgroup = StaticSize(workgroup)
         offset_worksize = OffsetStaticSize(contiguousrange(worksize, offsets))
         return static_workgroup, offset_worksize
