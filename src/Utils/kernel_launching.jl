@@ -5,9 +5,9 @@
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Grids: AbstractGrid
+using Base: @pure
 
 import Oceananigans
-import Base: @pure
 import KernelAbstractions: get, expand
 
 struct KernelParameters{S, O} end
