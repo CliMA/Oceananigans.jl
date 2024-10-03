@@ -3,11 +3,12 @@
 #####
 
 using Oceananigans.Architectures
-using Oceananigans.Utils
 using Oceananigans.Grids
-
 using Oceananigans.Grids: AbstractGrid
-import Base
+
+import Oceananigans
+import Base: @pure
+import KernelAbstractions: get, expand
 
 struct KernelParameters{S, O} end
 
@@ -182,6 +183,7 @@ end
             reduced_dimensions = (),
             location = nothing,
             active_cells_map = nothing,
+            only_local_halos = false,
             async = false)
 
 Launches `kernel!` with arguments `kernel_args`
@@ -210,7 +212,9 @@ function launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_a
                  reduced_dimensions = (),
                  location = nothing,
                  active_cells_map = nothing,
-                 async = false) # what is this supposed to do
+                 # TODO: these two kwargs do nothing:
+                 only_local_halos = false,
+                 async = false)
 
     if exclude_periphery # give this a go
         location = Oceananigans.Grids.location(first_kernel_arg)
@@ -257,9 +261,6 @@ using KernelAbstractions: Kernel
 using KernelAbstractions.NDIteration: _Size, StaticSize
 using KernelAbstractions.NDIteration: NDRange
 
-import Base
-import Base: @pure
-import KernelAbstractions: get, expand
 
 struct OffsetStaticSize{S} <: _Size
     function OffsetStaticSize{S}() where S
