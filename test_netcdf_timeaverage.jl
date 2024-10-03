@@ -1,3 +1,4 @@
+using Revise
 using Oceananigans
 using Plots
 using NCDatasets
@@ -49,7 +50,7 @@ function test_simulation(stop_time, Δt, window_nΔt, interval_nΔt, stride, ove
     simulation.output_writers[:single_output_time_average] =
         NetCDFOutputWriter(model, single_nc_output,
                            array_type = Array{Float64},
-                           verbose = true,
+                           verbose = false,
                            filename = single_time_average_nc_filepath,
                            schedule = AveragedTimeInterval(interval, window = window, stride = stride),
                            dimensions = single_nc_dimension,
@@ -62,15 +63,41 @@ function test_simulation(stop_time, Δt, window_nΔt, interval_nΔt, stride, ove
     simulation.output_writers[:checkpointer] = checkpointer
 
 
+    function progress_message(sim) 
+        wta = sim.output_writers[:single_output_time_average].outputs["c1"]
+        wd = wta.window_start_time
+        ws = wta.window_start_iteration
+        pc = wta.previous_collection_time
+        fo = wta.fetch_operand
+        res = sum(wta.result)
+        mct = model.clock.time
+        interval = wta.schedule.interval
+        window = wta.schedule.window
+        cll = wta.schedule.collecting
+        nat = next_actuation_time(wta.schedule)
+        fat = wta.schedule.first_actuation_time
+        actuation =  wta.schedule.actuations
+        @info string("Iter: ", iteration(sim), ", time: ", prettytime(sim), ", model clock time:", mct, ", collecting: ", cll, ", u-avg: ", res, ", window_start_time: ", wd, ", window_start_iteration: ", ws, ", previous_collection_time:", pc, ", fetch_operand: ", fo, ", next_actuation_time: ", nat, ", first_actuation_time: ", fat, ", actuation: ", actuation, ", interval:", interval, ", window:", window)
+    end
+        simulation.callbacks[:progress] = Callback(progress_message, TimeInterval(window))
+
+
     return simulation
 
 end
     
-    Δt = .01 #1/64 # Nice floating-point number
-    T1 = 100Δt      # first simulation stop time (s)
-    T2 = 2T1    # second simulation stop time (s)
-    window_nΔt = 10
-    interval_nΔt = 10
+
+function next_actuation_time(sch::AveragedTimeInterval)
+    t₀ = sch.first_actuation_time
+    N = sch.actuations
+    T = sch.window
+    return t₀ + (N + 1) * T
+end
+    Δt = 0.01 #1/64 # Nice floating-point number
+    T1 = 6Δt      # first simulation stop time (s)
+    T2 = 2T1      # second simulation stop time (s)
+    window_nΔt = 2
+    interval_nΔt = 2
     stride = 1
     # Run a simulation that saves data to a checkpoint
     simulation = test_simulation(T1, Δt, window_nΔt, interval_nΔt, stride, true)
@@ -183,10 +210,10 @@ end
     
     tt = 0:window:T2
     for i in 1:length(tt)
-    plot!([tt[i], tt[i]],[0,1],color=:black,label="")
+    plot!([tt[i], tt[i]],[0,1],color=:grey,label="")
     end
-    title!(pl, string("Δt=",Δt,", average window=",window_nΔt,"Δt")) # Add the title to the plot
-    # ylims!(pl,(0.4,1))
-    # xlims!(pl,(0,1))
+    title!(pl, string("Δt=",Δt,", average window=",window_nΔt,"Δt", ", interval=",interval_nΔt,"Δt")) # Add the title to the plot
+    ylims!(pl,(minimum(c̄1_timeaverage[4,:]),maximum(c̄1_timeaverage[4,:])))
+    xlims!(pl,(0,T2))
+    close(single_ds)
     display(pl)
-close(single_ds)
