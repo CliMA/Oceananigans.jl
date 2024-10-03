@@ -3,7 +3,7 @@ using KernelAbstractions: @kernel, @index
 using Adapt: adapt_structure
 
 using Oceananigans.Grids: on_architecture, node_names
-using Oceananigans.Architectures: device, GPU, CPU
+using Oceananigans.Architectures: child_architecture, device, GPU, CPU
 using Oceananigans.Utils: work_layout
 
 #####
@@ -44,11 +44,14 @@ end
 #####
 
 function set_to_function!(u, f)
+    # Supports serial and distributed
+    arch = child_architecture(u)
+
     # Determine cpu_grid and cpu_u
-    if child_architecture(u) isa GPU
+    if arch isa GPU
         cpu_grid = on_architecture(CPU(), u.grid)
         cpu_u = Field(location(u), cpu_grid; indices = indices(u))
-    elseif child_architecture(u) isa CPU
+    elseif arch isa CPU
         cpu_grid = u.grid
         cpu_u = u
     end
