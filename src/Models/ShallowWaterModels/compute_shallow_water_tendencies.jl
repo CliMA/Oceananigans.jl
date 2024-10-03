@@ -74,10 +74,10 @@ function compute_interior_tendency_contributions!(tendencies,
                                                   clock,
                                                   formulation)
 
-    compute_Guh_kernel! = configure(arch, grid, :xyz, compute_Guh!; exclude_periphery=true)
-    compute_Gvh_kernel! = configure(arch, grid, :xyz, compute_Gvh!; exclude_periphery=true)
-    compute_Gh_kernel!  = configure(arch, grid, :xyz,  compute_Gh!)
-    compute_Gc_kernel!  = configure(arch, grid, :xyz,  compute_Gc!)
+    compute_Guh_kernel!, _ = configure(arch, grid, :xyz, compute_Guh!; exclude_periphery=true)
+    compute_Gvh_kernel!, _ = configure(arch, grid, :xyz, compute_Gvh!; exclude_periphery=true)
+    compute_Gh_kernel!, _  = configure(arch, grid, :xyz,  compute_Gh!)
+    compute_Gc_kernel!, _  = configure(arch, grid, :xyz,  compute_Gc!)
 
     args_vel = (grid, gravitational_acceleration, advection.momentum, velocities, coriolis, closure, 
                       bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
