@@ -181,7 +181,8 @@ end
             exclude_periphery = true,
             reduced_dimensions = (),
             location = nothing,
-            active_cells_map = nothing)
+            active_cells_map = nothing,
+            async = false)
 
 Launches `kernel!` with arguments `kernel_args`
 over the `dims` of `grid` on the architecture `arch`.
@@ -208,7 +209,8 @@ function launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_a
                  exclude_periphery = false,
                  reduced_dimensions = (),
                  location = nothing,
-                 active_cells_map = nothing)
+                 active_cells_map = nothing,
+                 async = false) # what is this supposed to do
 
     if exclude_periphery # give this a go
         location = Oceananigans.Grids.location(first_kernel_arg)
