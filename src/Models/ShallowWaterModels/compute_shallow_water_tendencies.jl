@@ -1,6 +1,6 @@
 import Oceananigans.TimeSteppers: compute_tendencies!
 
-using Oceananigans.Utils: work_layout
+using Oceananigans.Utils: configure
 using Oceananigans: fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 using KernelAbstractions: @index, @kernel
 
@@ -74,12 +74,10 @@ function compute_interior_tendency_contributions!(tendencies,
                                                   clock,
                                                   formulation)
 
-    workgroup, worksize = work_layout(grid, :xyz)
-
-    compute_Guh_kernel! = compute_Guh!(device(arch), workgroup, worksize)
-    compute_Gvh_kernel! = compute_Gvh!(device(arch), workgroup, worksize)
-    compute_Gh_kernel!  =  compute_Gh!(device(arch), workgroup, worksize)
-    compute_Gc_kernel!  =  compute_Gc!(device(arch), workgroup, worksize)
+    compute_Guh_kernel! = configure(arch, grid, :xyz, compute_Guh!; exclude_periphery=true)
+    compute_Gvh_kernel! = configure(arch, grid, :xyz, compute_Gvh!; exclude_periphery=true)
+    compute_Gh_kernel!  = configure(arch, grid, :xyz,  compute_Gh!)
+    compute_Gc_kernel!  = configure(arch, grid, :xyz,  compute_Gc!)
 
     args_vel = (grid, gravitational_acceleration, advection.momentum, velocities, coriolis, closure, 
                       bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
