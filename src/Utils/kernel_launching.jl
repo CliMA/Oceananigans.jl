@@ -173,7 +173,7 @@ end
 
 """
     configure(arch, grid, workspec, kernel!;
-              exclude_periphery = true,
+              exclude_periphery = false,
               reduced_dimensions = (),
               location = nothing,
               active_cells_map = nothing,
