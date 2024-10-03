@@ -164,17 +164,11 @@ function work_layout(grid, workdims::Symbol; exclude_periphery, location, reduce
     return workgroup, worksize
 end
 
-function work_layout(grid, ::KernelParameters{sz, offsets}; active_cells_map=nothing, kw...) where {sz, offsets}
+function work_layout(grid, ::KernelParameters{sz, offsets}; kw...) where {sz, offsets}
     workgroup, worksize = work_layout(grid, sz; kw...)
-
-    if isnothing(active_cells_map)
-        static_workgroup = StaticSize(workgroup)
-        offset_worksize = OffsetStaticSize(contiguousrange(worksize, offsets))
-        return static_workgroup, offset_worksize
-
-    else # offsetting is handled by the active_cells_map.
-        return workgroup, worksize
-    end
+    static_workgroup = StaticSize(workgroup)
+    offset_worksize = OffsetStaticSize(contiguousrange(worksize, offsets))
+    return static_workgroup, offset_worksize
 end
 
 """
@@ -216,15 +210,19 @@ function launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_a
                  only_local_halos = false,
                  async = false)
 
-    if exclude_periphery # give this a go
-        location = Oceananigans.Grids.location(first_kernel_arg)
-    end
+    if !isnothing(active_cells_map) # everything else is irrelevant
+        workgroup = min(length(active_cells_map), 256)
+        worksize = length(active_cells_map)
+    else
+        if exclude_periphery # give this a go
+            location = Oceananigans.Grids.location(first_kernel_arg)
+        end
 
-    workgroup, worksize = work_layout(grid, workspec;
-                                      active_cells_map,
-                                      exclude_periphery,
-                                      reduced_dimensions,
-                                      location)
+        workgroup, worksize = work_layout(grid, workspec;
+                                          exclude_periphery,
+                                          reduced_dimensions,
+                                          location)
+    end
 
     # Don't launch kernels with no size
     if worksize == 0
