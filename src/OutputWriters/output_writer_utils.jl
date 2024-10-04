@@ -1,15 +1,56 @@
 using StructArrays: StructArray, replace_storage
 using Oceananigans.Grids: on_architecture, architecture
 using Oceananigans.DistributedComputations
-using Oceananigans.DistributedComputations: DistributedGrid
+using Oceananigans.DistributedComputations: DistributedGrid, Partition
 using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instantiated_location
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
 using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticles
+using Oceananigans.Utils: AbstractSchedule
 
 #####
 ##### Output writer utilities
 #####
+
+struct NoFileSplitting end
+(::NoFileSplitting)(model) = false
+Base.summary(::NoFileSplitting) = "NoFileSplitting" 
+Base.show(io::IO, nfs::NoFileSplitting) = print(io, summary(nfs))
+initialize!(::NoFileSplitting, model) = nothing
+
+mutable struct FileSizeLimit <: AbstractSchedule
+    size_limit :: Float64
+    path :: String
+end
+
+"""
+    FileSizeLimit(size_limit [, path=""])
+
+Return a schedule that actuates when the file at `path` exceeds
+the `size_limit`.
+
+The `path` is automatically added and updated when `FileSizeLimit` is
+used with an output writer, and should not be provided manually.
+"""
+FileSizeLimit(size_limit) = FileSizeLimit(size_limit, "")
+(fsl::FileSizeLimit)(model) = filesize(fsl.path) ≥ fsl.size_limit
+
+function Base.summary(fsl::FileSizeLimit)
+    current_size_str = pretty_filesize(filesize(fsl.path))
+    size_limit_str = pretty_filesize(fsl.size_limit)
+    return string("FileSizeLimit(size_limit=", size_limit_str,
+                              ", path=", fsl.path, " (", current_size_str, ")")
+end
+
+Base.show(io::IO, fsl::FileSizeLimit) = print(io, summary(fsl))
+
+# Update schedule based on user input
+update_file_splitting_schedule!(schedule, filepath) = nothing
+
+function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath) 
+    schedule.path = filepath
+    return nothing
+end 
 
 """
     ext(ow)
@@ -44,8 +85,7 @@ saveproperty!(file, address, grid::AbstractGrid)      = _saveproperty!(file, add
 
 function saveproperty!(file, address, grid::DistributedGrid) 
     arch = architecture(grid)
-    cpu_arch = Distributed(CPU(); topology = topology(grid),
-                                      ranks = arch.ranks)
+    cpu_arch = Distributed(CPU(); partition = Partition(arch.ranks...))
     _saveproperty!(file, address, on_architecture(cpu_arch, grid))
 end
 
@@ -86,8 +126,7 @@ serializeproperty!(file, address, grid::AbstractGrid) = file[address] = on_archi
 
 function serializeproperty!(file, address, grid::DistributedGrid) 
     arch = architecture(grid)
-    cpu_arch = Distributed(CPU(); topology = topology(grid),
-                                      ranks = arch.ranks)
+    cpu_arch = Distributed(CPU(); partition = arch.partition)
     file[address] = on_architecture(cpu_arch, grid)
 end
 
@@ -121,7 +160,6 @@ end
 function serializeproperty!(file, address, ts::QuasiAdamsBashforth2TimeStepper)
     serializeproperty!(file, address * "/Gⁿ", ts.Gⁿ)
     serializeproperty!(file, address * "/G⁻", ts.G⁻)
-    serializeproperty!(file, address * "/previous_Δt", ts.previous_Δt)
     return nothing
 end
 
@@ -177,7 +215,9 @@ show_array_type(a::Type{Array{T}}) where T = "Array{$T}"
 If `filename` ends in `ext`, return `filename`. Otherwise return `filename * ext`.
 """
 function auto_extension(filename, ext) 
-    Next = length(ext)
-    filename[end-Next+1:end] == ext || (filename *= ext)
-    return filename
+    if endswith(filename, ext)
+        return filename
+    else
+        return filename * ext
+    end
 end

@@ -1,18 +1,16 @@
 # Utilities to generate a grid with the following inputs
-
-@inline adapt_if_vector(to, var) = var
-@inline adapt_if_vector(to, var::AbstractArray) = Adapt.adapt(to, var)
-
 get_domain_extent(::Nothing, N)             = (1, 1)
 get_domain_extent(coord, N)                 = (coord[1], coord[2])
 get_domain_extent(coord::Function, N)       = (coord(1), coord(N+1))
 get_domain_extent(coord::AbstractVector, N) = CUDA.@allowscalar (coord[1], coord[N+1])
+get_domain_extent(coord::Number, N)         = (coord, coord)
 
-get_coord_face(coord::Nothing, i) = 1
-get_coord_face(coord::Function, i) = coord(i)
-get_coord_face(coord::AbstractVector, i) = CUDA.@allowscalar coord[i]
+get_face_node(coord::Nothing, i) = 1
+get_face_node(coord::Function, i) = coord(i)
+get_face_node(coord::AbstractVector, i) = CUDA.@allowscalar coord[i]
 
 const AT = AbstractTopology
+
 lower_exterior_Δcoordᶠ(::AT,              Fi, Hcoord) = [Fi[end - Hcoord + i] - Fi[end - Hcoord + i - 1] for i = 1:Hcoord]
 lower_exterior_Δcoordᶠ(::BoundedTopology, Fi, Hcoord) = [Fi[2]  - Fi[1] for _ = 1:Hcoord]
 
@@ -25,28 +23,39 @@ upper_interior_F(::BoundedTopology, coord) = coord
 total_interior_length(::AT, N)              = N
 total_interior_length(::BoundedTopology, N) = N + 1
 
+bad_coordinate_message(ξ::Function, name) = "The values of $name(index) must increase as the index increases!"
+bad_coordinate_message(ξ::AbstractArray, name) = "The elements of $name must be increasing!"
+
 # generate a variably-spaced coordinate passing the explicit coord faces as vector or function
-function generate_coordinate(FT, topo::AT, N, H, coord, arch)
+function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name, arch)
 
     # Ensure correct type for F and derived quantities
-    interiorF = zeros(FT, N+1)
+    interior_face_nodes = zeros(FT, N+1)
 
-    for i = 1:N+1
-        interiorF[i] = get_coord_face(coord, i)
+    # Use the user-supplied "generator" to build the interior nodes
+    for idx = 1:N+1
+        interior_face_nodes[idx] = get_face_node(node_generator, idx)
     end
 
-    L = interiorF[N+1] - interiorF[1]
+    # Check that the interior nodes are increasing
+    if !issorted(interior_face_nodes)
+        msg = bad_coordinate_message(node_generator, coordinate_name)
+        throw(ArgumentError(msg))
+    end
 
-    # Build halo regions
-    Δᶠ₋ = lower_exterior_Δcoordᶠ(topo, interiorF, H)
-    Δᶠ₊ = reverse(upper_exterior_Δcoordᶠ(topo, interiorF, H))
+    # Get domain extent
+    L = interior_face_nodes[N+1] - interior_face_nodes[1]
 
-    c¹, cᴺ⁺¹ = interiorF[1], interiorF[N+1]
+    # Build halo regions: spacings first
+    Δᶠ₋ = lower_exterior_Δcoordᶠ(topo, interior_face_nodes, H)
+    Δᶠ₊ = reverse(upper_exterior_Δcoordᶠ(topo, interior_face_nodes, H))
+
+    c¹, cᴺ⁺¹ = interior_face_nodes[1], interior_face_nodes[N+1]
 
     F₋ =         [c¹   - sum(Δᶠ₋[i:H]) for i = 1:H]  # locations of faces in lower halo
     F₊ = reverse([cᴺ⁺¹ + sum(Δᶠ₊[i:H]) for i = 1:H]) # locations of faces in top halo
 
-    F = vcat(F₋, interiorF, F₊)
+    F = vcat(F₋, interior_face_nodes, F₊)
 
     # Build cell centers, cell center spacings, and cell interface spacings
     TC = total_length(Center(), topo, N, H)
@@ -64,25 +73,28 @@ function generate_coordinate(FT, topo::AT, N, H, coord, arch)
         Δᶠ[i] = Δᶠ[i-1]
     end
 
-    Δᶜ = OffsetArray(arch_array(arch, Δᶜ), -H)
-    Δᶠ = OffsetArray(arch_array(arch, Δᶠ), -H-1)
+    Δᶜ = OffsetArray(on_architecture(arch, Δᶜ), -H)
+    Δᶠ = OffsetArray(on_architecture(arch, Δᶠ), -H-1)
 
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)
 
     # Convert to appropriate array type for arch
-    F = OffsetArray(arch_array(arch, F.parent), F.offsets...)
-    C = OffsetArray(arch_array(arch, C.parent), C.offsets...)
+    F = OffsetArray(on_architecture(arch, F.parent), F.offsets...)
+    C = OffsetArray(on_architecture(arch, C.parent), C.offsets...)
 
     return L, F, C, Δᶠ, Δᶜ
 end
 
-# generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points
-function generate_coordinate(FT, topo::AT, N, H, coord::Tuple{<:Number, <:Number}, arch)
+# Generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points
+function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, <:Number}, coordinate_name, arch)
 
-    @assert length(coord) == 2
+    if node_interval[2] < node_interval[1]
+        msg = "$coordinate_name must be an increasing interval!"
+        throw(ArgumentError(msg))
+    end
 
-    c₁, c₂ = @. BigFloat(coord)
+    c₁, c₂ = @. BigFloat(node_interval)
     @assert c₁ < c₂
     L = c₂ - c₁
 
@@ -108,5 +120,13 @@ function generate_coordinate(FT, topo::AT, N, H, coord::Tuple{<:Number, <:Number
 end
 
 # Flat domains
-generate_coordinate(FT, ::Flat, N, H, coord::Tuple{<:Number, <:Number}, arch) =
-    FT(1), range(1, 1, length=N), range(1, 1, length=N), FT(1), FT(1)
+generate_coordinate(FT, ::Flat, N, H, c::Number, coordinate_name, arch) =
+    FT(1), range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1)
+
+# What's the use case for this?
+# generate_coordinate(FT, ::Flat, N, H, c::Tuple{Number, Number}, coordinate_name, arch) =
+#     FT(1), c, c, FT(1), FT(1)
+
+generate_coordinate(FT, ::Flat, N, H, ::Nothing, coordinate_name, arch) =
+    FT(1), nothing, nothing, FT(1), FT(1)
+

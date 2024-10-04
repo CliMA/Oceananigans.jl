@@ -60,7 +60,7 @@ end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
-fig = Figure(resolution=(1600, 600))
+fig = Figure(size=(1600, 600))
 ax_ξ = Axis(fig[1, 1])
 ax_w = Axis(fig[1, 2])
 ax_s = Axis(fig[1, 3])
@@ -118,7 +118,7 @@ st = FieldTimeSeries(filepath, "sediment")
 wt = FieldTimeSeries(filepath, "w")
 Nt = length(wt.times)
 
-fig = Figure(resolution=(1600, 600))
+fig = Figure(size=(1600, 600))
 ax_ξ = Axis(fig[1, 1], xlabel="x (m)", ylabel="z (m)", title="Vorticity", aspect=2)
 ax_w = Axis(fig[1, 2], xlabel="x (m)", ylabel="z (m)", title="Vertical velocity", aspect=2)
 ax_s = Axis(fig[1, 3], xlabel="x (m)", ylabel="z (m)", title="Sediment concentration", aspect=2)

@@ -59,13 +59,13 @@ partition_global_array(a::Field, p::EqualXPartition, args...) = partition_global
 
 function partition_global_array(a::AbstractArray, ::EqualXPartition, local_size, region, arch)
     idxs = default_indices(length(size(a)))
-    return arch_array(arch, a[local_size[1]*(region-1)+1:local_size[1]*region, idxs[2:end]...])
+    return on_architecture(arch, a[local_size[1]*(region-1)+1:local_size[1]*region, idxs[2:end]...])
 end
 
 function partition_global_array(a::OffsetArray, ::EqualXPartition, local_size, region, arch) 
     idxs    = default_indices(length(size(a)))
     offsets = (a.offsets[1], Tuple(0 for i in 1:length(idxs)-1)...)
-    return arch_array(arch, OffsetArray(a[local_size[1]*(region-1)+1+offsets[1]:local_size[1]*region-offsets[1], idxs[2:end]...], offsets...))
+    return on_architecture(arch, OffsetArray(a[local_size[1]*(region-1)+1+offsets[1]:local_size[1]*region-offsets[1], idxs[2:end]...], offsets...))
 end
 
 #####
@@ -114,10 +114,10 @@ function reconstruct_global_array(ma::ArrayMRO{T, N}, p::EqualXPartition, arch) 
     for r = 1:length(p)
         init = Int(n * (r - 1) + 1)
         fin  = Int(n * r)
-        arr_out[init:fin, idxs[2:end]...] .= arch_array(CPU(), ma[r])[1:fin-init+1, idxs[2:end]...]
+        arr_out[init:fin, idxs[2:end]...] .= on_architecture(CPU(), ma[r])[1:fin-init+1, idxs[2:end]...]
     end
 
-    return arch_array(arch, arr_out)
+    return on_architecture(arch, arr_out)
 end
 
 function compact_data!(global_field, global_grid, data::MultiRegionObject, p::EqualXPartition)

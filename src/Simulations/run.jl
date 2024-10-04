@@ -7,7 +7,7 @@ using Oceananigans: AbstractModel, run_diagnostic!, write_output!
 import Oceananigans: initialize!
 import Oceananigans.OutputWriters: checkpoint_path, set!
 import Oceananigans.TimeSteppers: time_step!
-import Oceananigans.Utils: aligned_time_step
+import Oceananigans.Utils: schedule_aligned_time_step
 
 # Simulations are for running
 
@@ -21,12 +21,12 @@ function collect_scheduled_activities(sim)
     return tuple(writers..., callbacks...)
 end
 
-function schedule_aligned_Δt(sim, aligned_Δt)
+function schedule_aligned_time_step(sim, aligned_Δt)
     clock = sim.model.clock
     activities = collect_scheduled_activities(sim)
 
     for activity in activities
-        aligned_Δt = aligned_time_step(activity.schedule, clock, aligned_Δt)
+        aligned_Δt = schedule_aligned_time_step(activity.schedule, clock, aligned_Δt)
     end
 
     return aligned_Δt
@@ -44,7 +44,7 @@ function aligned_time_step(sim::Simulation, Δt)
     aligned_Δt = Δt
 
     # Align time step with output writing and callback execution
-    aligned_Δt = schedule_aligned_Δt(sim, aligned_Δt)
+    aligned_Δt = schedule_aligned_time_step(sim, aligned_Δt)
     
     # Align time step with simulation stop time
     aligned_Δt = min(aligned_Δt, unit_time(sim.stop_time - clock.time))
@@ -106,7 +106,7 @@ const ModelCallsite = Union{TendencyCallsite, UpdateStateCallsite}
 function time_step!(sim::Simulation)
 
     start_time_step = time_ns()
-    model_callbacks = Tuple(cb for cb in values(sim.callbacks) if cb isa ModelCallsite)
+    model_callbacks = Tuple(cb for cb in values(sim.callbacks) if cb.callsite isa ModelCallsite)
 
     if !(sim.initialized) # execute initialization step
         initialize!(sim)
@@ -121,7 +121,7 @@ function time_step!(sim::Simulation)
             Δt = aligned_time_step(sim, sim.Δt)
             time_step!(sim.model, Δt, callbacks=model_callbacks)
 
-            if sim.verbose 
+            if sim.verbose
                 elapsed_initial_step_time = prettytime(1e-9 * (time_ns() - start_time))
                 @info "    ... initial time step complete ($elapsed_initial_step_time)."
             end
@@ -193,18 +193,26 @@ function initialize!(sim::Simulation)
     # Output and diagnostics initialization
     [add_dependencies!(sim.diagnostics, writer) for writer in values(sim.output_writers)]
 
+    # Initialize schedules
+    scheduled_activities = Iterators.flatten((values(sim.diagnostics),
+                                              values(sim.callbacks),
+                                              values(sim.output_writers)))
+
+    for activity in scheduled_activities
+        initialize!(activity.schedule, sim.model)
+    end
+
     # Reset! the model time-stepper, evaluate all diagnostics, and write all output at first iteration
     if clock.iteration == 0
         reset!(timestepper(sim.model))
 
         # Initialize schedules and run diagnostics, callbacks, and output writers
         for diag in values(sim.diagnostics)
-            diag.schedule(sim.model)
             run_diagnostic!(diag, model)
         end
 
         for callback in values(sim.callbacks) 
-            callback.callsite isa TimeStepCallsite && initialize!(callback, sim)
+            callback.callsite isa TimeStepCallsite && callback(sim)
         end
 
         for writer in values(sim.output_writers)
@@ -222,4 +230,3 @@ function initialize!(sim::Simulation)
 
     return nothing
 end
-

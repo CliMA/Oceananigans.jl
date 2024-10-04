@@ -4,8 +4,11 @@ using Oceananigans.Fields: validate_field_tuple_grid
 ##### Forms for NonhydrostaticModel constructor
 #####
 
-DiffusivityFields(diffusivities::NamedTuple, grid, tracer_names, bcs, closure) =
-    validate_field_tuple_grid("diffusivities", diffusivities, grid)
+function DiffusivityFields(diffusivity_fields::NamedTuple, grid, tracer_names, bcs, closure)
+    validate_field_tuple_grid("diffusivity_fields", diffusivity_fields, grid)
+    
+    return diffusivity_fields
+end
 
 DiffusivityFields(::Nothing, grid, tracer_names, bcs, closure) =
     DiffusivityFields(grid, tracer_names, bcs, closure)

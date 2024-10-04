@@ -60,3 +60,7 @@ Base.show(io::IO, forcing::DiscreteForcing{P}) where P =
 Adapt.adapt_structure(to, forcing::DiscreteForcing) =
     DiscreteForcing(Adapt.adapt(to, forcing.func),
                     Adapt.adapt(to, forcing.parameters))
+
+on_architecture(to, forcing::DiscreteForcing) =
+    DiscreteForcing(on_architecture(to, forcing.func),
+                    on_architecture(to, forcing.parameters))

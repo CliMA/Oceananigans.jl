@@ -19,6 +19,7 @@ export
     LatitudeLongitudeGrid,
     OrthogonalSphericalShellGrid,
     xnodes, ynodes, znodes, nodes,
+    λnodes, φnodes,
     xspacings, yspacings, zspacings,
     minimum_xspacing, minimum_yspacing, minimum_zspacing,
 
@@ -32,7 +33,8 @@ export
     Centered, CenteredSecondOrder, CenteredFourthOrder, 
     UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, 
     WENO, WENOThirdOrder, WENOFifthOrder,
-    VectorInvariant, EnergyConservingScheme, EnstrophyConservingScheme,
+    VectorInvariant, WENOVectorInvariant, EnergyConserving, EnstrophyConserving,
+    TracerAdvection,
 
     # Boundary conditions
     BoundaryCondition,
@@ -41,7 +43,7 @@ export
 
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
-    Average, Integral, Reduction, BackgroundField,
+    Average, Integral, CumulativeIntegral, Reduction, Accumulation, BackgroundField,
     interior, set!, compute!, regrid!, location,
 
     # Forcing functions
@@ -56,7 +58,7 @@ export
     BuoyancyField,
 
     # Surface wave Stokes drift via Craik-Leibovich equations
-    UniformStokesDrift,
+    UniformStokesDrift, StokesDrift,
 
     # Turbulence closures
     VerticalScalarDiffusivity,
@@ -90,10 +92,10 @@ export
     PrescribedVelocityFields,
 
     # Time stepping
-    Clock, TimeStepWizard, time_step!,
+    Clock, TimeStepWizard, conjure_time_step_wizard!, time_step!,
 
     # Simulations
-    Simulation, run!, Callback, iteration, stopwatch,
+    Simulation, run!, Callback, add_callback!, iteration, stopwatch,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
     TimeStepCallsite, TendencyCallsite, UpdateStateCallsite,
 
@@ -103,7 +105,7 @@ export
     # Output writers
     NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
     TimeInterval, IterationInterval, AveragedTimeInterval, SpecifiedTimes,
-    AndSchedule, OrSchedule,
+    FileSizeLimit, AndSchedule, OrSchedule, written_names,
 
     # Output readers
     FieldTimeSeries, FieldDataset, InMemory, OnDisk,
@@ -142,7 +144,6 @@ import Base:
     iterate, similar, show,
     getindex, lastindex, setindex!,
     push!
-
     
 #####
 ##### Abstract types
@@ -188,6 +189,7 @@ function tupleit end
 function fields end
 function prognostic_fields end
 function tracer_tendency_kernel_function end
+function boundary_conditions end
 
 #####
 ##### Include all the submodules
@@ -203,8 +205,10 @@ include("Operators/Operators.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
+include("TimeSteppers/TimeSteppers.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
+include("OutputReaders/OutputReaders.jl")
 include("DistributedComputations/DistributedComputations.jl")
 
 # TODO: move here
@@ -215,7 +219,7 @@ include("DistributedComputations/DistributedComputations.jl")
 # Physics, time-stepping, and models
 include("Coriolis/Coriolis.jl")
 include("BuoyancyModels/BuoyancyModels.jl")
-include("StokesDrift.jl")
+include("StokesDrifts.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Forcings/Forcings.jl")
 include("Biogeochemistry.jl")
@@ -224,13 +228,11 @@ include("Biogeochemistry.jl")
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
 # include("DistributedComputations/DistributedComputations.jl")
 
-include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")
 
 # Output and Physics, time-stepping, and models
 include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")
-include("OutputReaders/OutputReaders.jl")
 include("Simulations/Simulations.jl")
 
 # Abstractions for distributed and multi-region models
@@ -249,9 +251,10 @@ using .BoundaryConditions
 using .Fields
 using .Coriolis
 using .BuoyancyModels
-using .StokesDrift
+using .StokesDrifts
 using .TurbulenceClosures
 using .Solvers
+using .OutputReaders
 using .Forcings
 using .ImmersedBoundaries
 using .DistributedComputations
@@ -259,7 +262,6 @@ using .Models
 using .TimeSteppers
 using .Diagnostics
 using .OutputWriters
-using .OutputReaders
 using .Simulations
 using .AbstractOperations
 using .MultiRegion

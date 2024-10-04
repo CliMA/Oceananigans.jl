@@ -1,6 +1,5 @@
 using Oceananigans.Utils: prettysummary
 using Oceananigans.Fields: fill_halo_regions!
-using Oceananigans.Architectures: arch_array
 using Printf
 
 #####
@@ -12,18 +11,18 @@ struct PartialCellBottom{H, E} <: AbstractGridFittedBottom{H}
     minimum_fractional_cell_height :: E
 end
 
-const PCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PartialCellBottom}
+const PCBIBG{FT, TX, TY, TZ} = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:Any, <:PartialCellBottom} where {FT, TX, TY, TZ}
 
 function Base.summary(ib::PartialCellBottom)
-    hmax = maximum(parent(ib.bottom_height))
-    hmin = minimum(parent(ib.bottom_height))
-    hmean = mean(parent(ib.bottom_height))
+    zmax = maximum(parent(ib.bottom_height))
+    zmin = minimum(parent(ib.bottom_height))
+    zmean = mean(parent(ib.bottom_height))
 
     summary1 = "PartialCellBottom("
 
-    summary2 = string("mean(z)=", prettysummary(hmean),
-                      ", min(z)=", prettysummary(hmin),
-                      ", max(z)=", prettysummary(hmax),
+    summary2 = string("mean(zb)=", prettysummary(zmean),
+                      ", min(zb)=", prettysummary(zmin),
+                      ", max(zb)=", prettysummary(zmax),
                       ", ϵ=", prettysummary(ib.minimum_fractional_cell_height))
 
     summary3 = ")"
@@ -64,6 +63,7 @@ end
 function ImmersedBoundaryGrid(grid, ib::PartialCellBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set!(bottom_field, ib.bottom_height)
+    @apply_regionally clamp_bottom_height!(bottom_field, grid)
     fill_halo_regions!(bottom_field)
     new_ib = PartialCellBottom(bottom_field, ib.minimum_fractional_cell_height)
     TX, TY, TZ = topology(grid)
@@ -78,35 +78,56 @@ function on_architecture(arch, ib::PartialCellBottom{<:Field})
     return PartialCellBottom(new_bottom_height, ib.minimum_fractional_cell_height)
 end
 
-Adapt.adapt_structure(to, ib::PartialCellBottom) = PartialCellBottom(adapt(to, ib.bottom_height.data),
+Adapt.adapt_structure(to, ib::PartialCellBottom) = PartialCellBottom(adapt(to, ib.bottom_height),
                                                                      ib.minimum_fractional_cell_height)     
 
-"""
+on_architecture(to, ib::PartialCellBottom) = PartialCellBottom(on_architecture(to, ib.bottom_height),
+                                                               on_architecture(to, ib.minimum_fractional_cell_height))     
 
-        --x--
-          ∘   k+1
-    k+1 --x--    ↑      <- node z
-          ∘   k  | Δz
-      k --x--    ↓
+"""
+    immersed     underlying
+
+      --x--        --x--
+            
+            
+        ∘   ↑        ∘   k+1
+            |
+            |               
+  k+1 --x-- |  k+1 --x--    ↑      <- node z
+        ∘   ↓               |
+   zb ⋅⋅x⋅⋅                 |
+                            |
+                     ∘   k  | Δz
+                            |
+                            |
+                 k --x--    ↓
       
-Criterion is h >= z - ϵ Δz
+Criterion is zb ≥ z - ϵ Δz
 
 """
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::PartialCellBottom)
-    # Face node above current cell
-    z = znode(i, j, k+1, underlying_grid, c, c, f)
-    h = @inbounds ib.bottom_height[i, j, 1]
-    return z <= h
+    # Face node below current cell
+    z  = znode(i, j, k, underlying_grid, c, c, f)
+    zb = @inbounds ib.bottom_height[i, j, 1]
+    ϵ  = ib.minimum_fractional_cell_height
+    # z + Δz is equal to the face above the current cell
+    Δz = Δzᶜᶜᶜ(i, j, k, underlying_grid)
+    return (z + Δz * (1 - ϵ)) ≤ zb
 end
 
-@inline bottom_cell(i, j, k, ibg::PCBIBG) = !immersed_cell(i, j, k,   ibg.underlying_grid, ibg.immersed_boundary) &
-                                             immersed_cell(i, j, k-1, ibg.underlying_grid, ibg.immersed_boundary)
+@inline function bottom_cell(i, j, k, ibg::PCBIBG)
+    grid = ibg.underlying_grid
+    ib = ibg.immersed_boundary
+    # This one's not immersed, but the next one down is
+    return !immersed_cell(i, j, k, grid, ib) & immersed_cell(i, j, k-1, grid, ib)
+end
 
 @inline function Δzᶜᶜᶜ(i, j, k, ibg::PCBIBG)
     underlying_grid = ibg.underlying_grid
     ib = ibg.immersed_boundary
+
     # Get node at face above and defining nodes on c,c,f
-    x, y, z = node(i, j, k+1, underlying_grid, c, c, f)
+    z = znode(i, j, k+1, underlying_grid, c, c, f)
 
     # Get bottom height and fractional Δz parameter
     h = @inbounds ib.bottom_height[i, j, 1]
@@ -142,4 +163,18 @@ end
 @inline Δzᶜᶠᶠ(i, j, k, ibg::PCBIBG) = min(Δzᶜᶜᶠ(i, j-1, k, ibg), Δzᶜᶜᶠ(i, j, k, ibg))      
 @inline Δzᶠᶠᶠ(i, j, k, ibg::PCBIBG) = min(Δzᶠᶜᶠ(i, j-1, k, ibg), Δzᶠᶜᶠ(i, j, k, ibg))
 
+# Make sure Δz works for horizontally-Flat topologies.
+# (There's no point in using z-Flat with PartialCellBottom).
+XFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:Any, <:PartialCellBottom}
+YFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:PartialCellBottom}
+
+@inline Δzᶠᶜᶜ(i, j, k, ibg::XFlatPCBIBG) = Δzᶜᶜᶜ(i, j, k, ibg)
+@inline Δzᶠᶜᶠ(i, j, k, ibg::XFlatPCBIBG) = Δzᶜᶜᶠ(i, j, k, ibg)
+@inline Δzᶜᶠᶜ(i, j, k, ibg::YFlatPCBIBG) = Δzᶜᶜᶜ(i, j, k, ibg)
+
+@inline Δzᶜᶠᶠ(i, j, k, ibg::YFlatPCBIBG) = Δzᶜᶜᶠ(i, j, k, ibg)
+@inline Δzᶠᶠᶜ(i, j, k, ibg::XFlatPCBIBG) = Δzᶜᶠᶜ(i, j, k, ibg)
+@inline Δzᶠᶠᶜ(i, j, k, ibg::YFlatPCBIBG) = Δzᶠᶜᶜ(i, j, k, ibg)
+
 @inline z_bottom(i, j, ibg::PCBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
+

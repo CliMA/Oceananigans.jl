@@ -104,7 +104,17 @@ function time_step_with_variable_isotropic_diffusivity(arch)
 
     model = NonhydrostaticModel(; grid, closure)
 
-    time_step!(model, 1, euler=true)
+    time_step!(model, 1)
+    return true
+end
+
+function time_step_with_field_isotropic_diffusivity(arch)
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3))
+    ν = CenterField(grid)
+    κ = CenterField(grid)
+    closure = ScalarDiffusivity(; ν, κ)
+    model = NonhydrostaticModel(; grid, closure)
+    time_step!(model, 1)
     return true
 end
 
@@ -116,7 +126,7 @@ function time_step_with_variable_anisotropic_diffusivity(arch)
                                        κ = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t))
     for clo in (clov, cloh)
         model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)), closure=clo)
-        time_step!(model, 1, euler=true)
+        time_step!(model, 1)
     end
 
     return true
@@ -129,9 +139,11 @@ function time_step_with_variable_discrete_diffusivity(arch)
     closure_ν = ScalarDiffusivity(ν = νd, discrete_form=true, loc = (Face, Center, Center))
     closure_κ = ScalarDiffusivity(κ = κd, discrete_form=true, loc = (Center, Face, Center))
 
-    model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)), tracers = (:T, :S), closure=(closure_ν, closure_κ))
+    model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)),
+                                tracers = (:T, :S),
+                                closure = (closure_ν, closure_κ))
 
-    time_step!(model, 1, euler=true)
+    time_step!(model, 1)
     return true
 end
 
@@ -139,14 +151,14 @@ function time_step_with_tupled_closure(FT, arch)
     closure_tuple = (AnisotropicMinimumDissipation(FT), ScalarDiffusivity(FT))
 
     model = NonhydrostaticModel(closure=closure_tuple,
-                                grid=RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, 2, 3)))
+                                grid=RectilinearGrid(arch, FT, size=(2, 2, 2), extent=(1, 2, 3)))
 
-    time_step!(model, 1, euler=true)
+    time_step!(model, 1)
     return true
 end
 
 function run_time_step_with_catke_tests(arch, closure)
-    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3))
+    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
     buoyancy = BuoyancyTracer()
 
     # These shouldn't work (need :e in tracers)
@@ -174,7 +186,7 @@ function run_time_step_with_catke_tests(arch, closure)
 end
 
 function compute_closure_specific_diffusive_cfl(closure)
-    grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 2, 3))
+    grid = RectilinearGrid(CPU(), size=(2, 2, 2), extent=(1, 2, 3))
 
     model = NonhydrostaticModel(; grid, closure, buoyancy=BuoyancyTracer(), tracers=:b)
     dcfl = DiffusiveCFL(0.1)
@@ -202,7 +214,7 @@ end
             closure = getproperty(TurbulenceClosures, closurename)()
             @test closure isa TurbulenceClosures.AbstractTurbulenceClosure
 
-            grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 2, 3))
+            grid = RectilinearGrid(CPU(), size=(2, 2, 2), extent=(1, 2, 3))
             model = NonhydrostaticModel(grid=grid, closure=closure, tracers=:c)
             c = model.tracers.c
             u = model.velocities.u
@@ -249,6 +261,7 @@ end
         @info "  Testing time-stepping with presribed variable diffusivities..."
         for arch in archs
             @test time_step_with_variable_isotropic_diffusivity(arch)
+            @test time_step_with_field_isotropic_diffusivity(arch)
             @test time_step_with_variable_anisotropic_diffusivity(arch)
             @test time_step_with_variable_discrete_diffusivity(arch)
         end

@@ -17,7 +17,7 @@ struct FFTImplicitFreeSurfaceSolver{S, G3, G2, R}
 end
 
 validate_fft_implicit_solver_grid(grid) = 
-    grid isa RegRectilinearGrid || grid isa HRegRectilinearGrid ||
+    grid isa XYZRegularRG || grid isa XYRegularRG ||
         throw(ArgumentError("FFTImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))
 
 validate_fft_implicit_solver_grid(ibg::ImmersedBoundaryGrid) =
@@ -113,4 +113,3 @@ end
     δ_Q = flux_div_xyᶜᶜᶠ(i, j, k_top, grid, ∫ᶻQ.u, ∫ᶻQ.v)
     @inbounds rhs[i, j, 1] = (δ_Q - Az * η[i, j, k_top] / Δt) / (g * Lz * Δt * Az)
 end
-

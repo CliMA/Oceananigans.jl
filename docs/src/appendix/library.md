@@ -181,7 +181,7 @@ Private = false
 ## Stokes drift
 
 ```@autodocs
-Modules = [Oceananigans.StokesDrift]
+Modules = [Oceananigans.StokesDrifts]
 Private = false
 ```
 

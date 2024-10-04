@@ -27,9 +27,9 @@ function Base.summary(field::Field)
     return string(prefix, suffix)
 end
 
-data_summary(field) = string("max=", prettysummary(maximum(field)), ", ",
-                             "min=", prettysummary(minimum(field)), ", ",
-                             "mean=", prettysummary(mean(field)))
+data_summary(data) = string("max=", prettysummary(maximum(data)), ", ",
+                            "min=", prettysummary(minimum(data)), ", ",
+                            "mean=", prettysummary(mean(data)))
 
 indices_summary(field) = replace(string(field.indices), "Colon()"=> ":")
 

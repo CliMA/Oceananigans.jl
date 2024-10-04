@@ -12,7 +12,7 @@ import Base: minimum, maximum, extrema
 import Oceananigans: location, instantiated_location
 import Oceananigans.Architectures: architecture
 import Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices
-import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes, xnode, ynode, znode
+import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes, node, xnode, ynode, znode
 import Oceananigans.Utils: datatuple
 
 const ArchOrNothing = Union{AbstractArchitecture, Nothing}
@@ -39,6 +39,7 @@ Base.IndexStyle(::AbstractField) = IndexCartesian()
 @inline location(a, i) = location(a)[i]
 @inline location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX, LY, LZ) # note no instantiation
 @inline instantiated_location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX(), LY(), LZ())
+Base.eltype(::AbstractField{<:Any, <:Any, <:Any, <:Any, T}) where T = T
 
 "Returns the architecture of on which `f` is defined."
 architecture(f::AbstractField) = architecture(f.grid)
@@ -57,6 +58,39 @@ Base.size(f::AbstractField) = size(f.grid, location(f))
 Base.length(f::AbstractField) = prod(size(f))
 Base.parent(f::AbstractField) = f
 
+const Abstract3DField = AbstractField{<:Any, <:Any, <:Any, <:Any, <:Any, 3}
+const Abstract4DField = AbstractField{<:Any, <:Any, <:Any, <:Any, <:Any, 4}
+
+# TODO: to omit boundaries on Face fields, we have to return 2:N
+# when topo=Bounded, and loc=Face
+@inline axis(::Colon, N) = Base.OneTo(N)
+@inline axis(index::UnitRange, N) = index
+
+@inline function Base.axes(f::Abstract3DField)
+    Nx, Ny, Nz = size(f)
+    ix, iy, iz = indices(f)
+
+    ax = axis(ix, Nx)
+    ay = axis(iy, Ny)
+    az = axis(iz, Nz)
+
+    return (ax, ay, az)
+end
+
+@inline function Base.axes(f::Abstract4DField)
+    Nx, Ny, Nz, Nt = size(f)
+    ix, iy, iz = indices(f)
+
+    ax = axis(ix, Nx)
+    ay = axis(iy, Ny)
+    az = axis(iz, Nz)
+    at = Base.OneTo(Nt)
+
+    return (ax, ay, az, at)
+end
+
+
+
 """
     total_size(field::AbstractField)
 
@@ -71,6 +105,7 @@ interior(f::AbstractField) = f
 ##### Coordinates of fields
 #####
 
+@propagate_inbounds node(i, j, k, ψ::AbstractField) = node(i, j, k, ψ.grid, instantiated_location(ψ)...)
 @propagate_inbounds xnode(i, j, k, ψ::AbstractField) = xnode(i, j, k, ψ.grid, instantiated_location(ψ)...)
 @propagate_inbounds ynode(i, j, k, ψ::AbstractField) = ynode(i, j, k, ψ.grid, instantiated_location(ψ)...)
 @propagate_inbounds znode(i, j, k, ψ::AbstractField) = znode(i, j, k, ψ.grid, instantiated_location(ψ)...)

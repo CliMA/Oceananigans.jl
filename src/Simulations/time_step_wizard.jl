@@ -35,7 +35,7 @@ for advective and diffusive Courant-Friedrichs-Lewy (CFL) numbers (`cfl` and `di
 subject to the limits
 
 ```julia
-max(min_Δt, min_change * previous_Δt) ≤ new_Δt ≤ min(max_Δt, max_change * previous_Δt)
+max(min_Δt, min_change * last_Δt) ≤ new_Δt ≤ min(max_Δt, max_change * last_Δt)
 ```
 
 where `new_Δt` is the new time step calculated by the `TimeStepWizard`.
@@ -108,11 +108,23 @@ function new_time_step(old_Δt, wizard, model)
     new_Δt = min(wizard.max_change * old_Δt, new_Δt)
     new_Δt = max(wizard.min_change * old_Δt, new_Δt)
     new_Δt = clamp(new_Δt, wizard.min_Δt, wizard.max_Δt)
-    new_Δt = all_reduce(new_Δt, architecture(model.grid); op = min)
+    new_Δt = all_reduce(min, new_Δt, architecture(model.grid))
 
     return new_Δt
 end
 
 (wizard::TimeStepWizard)(simulation) =
     simulation.Δt = new_time_step(simulation.Δt, wizard, simulation.model)
+
+"""
+    conjure_time_step_wizard!(simulation, schedule=IterationInterval(5), wizard_kw...)
+
+Add a `TimeStepWizard` built with `wizard_kw` as a `Callback` to `simulation`,
+called on `schedule` which is `IterationInterval(5)` by default.
+"""
+function conjure_time_step_wizard!(simulation, schedule=IterationInterval(10); wizard_kw...)
+    wizard = TimeStepWizard(; wizard_kw...)
+    simulation.callbacks[:time_step_wizard] = Callback(wizard, schedule)
+    return nothing
+end
 
