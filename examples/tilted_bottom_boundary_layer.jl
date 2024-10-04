@@ -137,7 +137,7 @@ v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 #
 # Let us also create `BackgroundField` for the along-slope interior velocity:
 
-V∞_field = BackgroundField(ConstantField(V∞))
+V∞_field = BackgroundField(V∞)
 
 # ## Create the `NonhydrostaticModel`
 #
