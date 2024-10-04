@@ -248,8 +248,8 @@ end
     ν_nonlocal = ifelse(entraining,  Cᵉⁿ * νᶜⁿ * 0.5 * (tanh((x - Q₀) / δQ) + 1), 0)
 
     # Update by averaging in time
-    @inbounds diffusivities.κᵘ[i, j, k] = ifelse(k <= 1 || k >= grid.Nz+1, 0, ν_local + ν_nonlocal)
-    @inbounds diffusivities.κᶜ[i, j, k] = ifelse(k <= 1 || k >= grid.Nz+1, 0, (ν_local + ν_nonlocal) / Prₜ)
+    @inbounds diffusivities.κᵘ[i, j, k] = ifelse((k <= 1) | (k >= grid.Nz+1), 0, ν_local + ν_nonlocal)
+    @inbounds diffusivities.κᶜ[i, j, k] = ifelse((k <= 1) | (k >= grid.Nz+1), 0, (ν_local + ν_nonlocal) / Prₜ)
 
     return nothing
 end
