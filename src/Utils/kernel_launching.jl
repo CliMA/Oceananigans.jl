@@ -109,7 +109,7 @@ function work_layout(grid, worksize::Tuple; kw...)
 end
 
 periphery_offset(loc, topo, N) = 0
-periphery_offset(::Face, ::Bounded, N) = 1
+periphery_offset(::Face, ::Bounded, N) = ifelse(N > 1, 1, 0)
 
 drop_omitted_dims(::Val{:xyz}, xyz) = xyz
 drop_omitted_dims(::Val{:xy}, (x, y, z)) = (x, y)
