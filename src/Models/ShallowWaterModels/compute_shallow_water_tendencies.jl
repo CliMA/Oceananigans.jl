@@ -83,7 +83,7 @@ function compute_interior_tendency_contributions!(tendencies,
 
     Guh, Gvh, Gh = tendencies[1:3]
     launch!(arch, grid, :xyz, compute_Guh!, Guh, transport_args...; exclude_periphery=true)
-    launch!(arch, grid, :xyz, compute_Gvh!; Gvh, transport_args...; exclude_periphery=true)
+    launch!(arch, grid, :xyz, compute_Gvh!, Gvh, transport_args...; exclude_periphery=true)
     launch!(arch, grid, :xyz,  compute_Gh!, Gh, h_args...)
 
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
