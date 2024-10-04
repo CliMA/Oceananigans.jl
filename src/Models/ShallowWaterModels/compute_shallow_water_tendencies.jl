@@ -74,19 +74,15 @@ function compute_interior_tendency_contributions!(tendencies,
                                                   clock,
                                                   formulation)
 
-
     transport_args = (grid, gravitational_acceleration, advection.momentum, velocities, coriolis, closure, 
                       bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
 
     h_args = (grid, gravitational_acceleration, advection.mass, coriolis, closure, 
               solution, tracers, diffusivities, forcings, clock, formulation)
 
-    Guh = tendencies.uh
-    Gvh = tendencies.vh
-    Gh = tendencies.h
-    launch!(arch, grid, :xyz, compute_Guh!, Guh, transport_args...; exclude_periphery=true)
-    launch!(arch, grid, :xyz, compute_Gvh!, Gvh, transport_args...; exclude_periphery=true)
-    launch!(arch, grid, :xyz,  compute_Gh!, Gh, h_args...)
+    launch!(arch, grid, :xyz, compute_Guh!, tendencies[1], transport_args...; exclude_periphery=true)
+    launch!(arch, grid, :xyz, compute_Gvh!, tendencies[2], transport_args...; exclude_periphery=true)
+    launch!(arch, grid, :xyz,  compute_Gh!, tendencies[3], h_args...)
 
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         @inbounds Gc = tendencies[tracer_index+3]
