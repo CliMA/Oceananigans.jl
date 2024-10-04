@@ -483,19 +483,8 @@ function NetCDFOutputWriter(model, outputs;
     # Ensure we can add any kind of metadata to the global attributes later by converting to Dict{Any, Any}.
     global_attributes = Dict{Any, Any}(global_attributes)
 
-    dataset, outputs, schedule = initialize_nc_file!(filepath,
-                                                     outputs,
-                                                     schedule,
-                                                     array_type,
-                                                     indices,
-                                                     with_halos,
-                                                     global_attributes,
-                                                     output_attributes,
-                                                     dimensions,
-                                                     overwrite_existing,
-                                                     deflatelevel,
-                                                     grid,
-                                                     model)
+    # Create empty temporal dataset in the first call.
+    dataset = Dataset(Base.Filesystem.tempname(),"c")
 
     return NetCDFOutputWriter(grid,
                               filepath,
@@ -596,31 +585,37 @@ end
 Write output to netcdf file `output_writer.filepath` at specified intervals. Increments the `time` dimension
 every time an output is written to the file.
 """
-function write_output!(ow::NetCDFOutputWriter, model)
+function write_output!(writer::NetCDFOutputWriter, model)
+    
+    # Create new file if file is not found.
+    if !isfile(writer.filepath)
+        writer.dataset, writer.outputs, writer.schedule = initialize_nc_file!(writer, model)
+    end
+
     # Start a new file if the file_splitting(model) is true
-    ow.file_splitting(model) && start_next_file(model, ow)
-    update_file_splitting_schedule!(ow.file_splitting, ow.filepath)
+    writer.file_splitting(model) && start_next_file!(model, writer)
+    update_file_splitting_schedule!(writer.file_splitting, writer.filepath)
 
-    ow.dataset = open(ow)
+    writer.dataset = open(writer)
 
-    ds, verbose, filepath = ow.dataset, ow.verbose, ow.filepath
+    ds, verbose, filepath = writer.dataset, writer.verbose, writer.filepath
 
     time_index = length(ds["time"]) + 1
     ds["time"][time_index] = float_or_date_time(model.clock.time)
 
     if verbose
         @info "Writing to NetCDF: $filepath..."
-        @info "Computing NetCDF outputs for time index $(time_index): $(keys(ow.outputs))..."
+        @info "Computing NetCDF outputs for time index $(time_index): $(keys(writer.outputs))..."
 
         # Time and file size before computing any outputs.
         t0, sz0 = time_ns(), filesize(filepath)
     end
 
-    for (name, output) in ow.outputs
+    for (name, output) in writer.outputs
         # Time before computing this output.
         verbose && (t0′ = time_ns())
 
-        save_output!(ds, output, model, ow, time_index, name)
+        save_output!(ds, output, model, writer, time_index, name)
 
         if verbose
             # Time after computing this output.
@@ -639,7 +634,7 @@ function write_output!(ow::NetCDFOutputWriter, model)
     end
 
     sync(ds)
-    close(ow)
+    close(writer)
 
     return nothing
 end
@@ -700,7 +695,7 @@ default_dimensions(outputs::Dict{String,<:LagrangianParticles}, grid, indices, w
 ##### File splitting
 #####
 
-function start_next_file(model, ow::NetCDFOutputWriter)
+function start_next_file!(model, ow::NetCDFOutputWriter)
     verbose = ow.verbose
 
     verbose && @info begin
@@ -724,6 +719,21 @@ function start_next_file(model, ow::NetCDFOutputWriter)
     
     return nothing
 end
+
+initialize_nc_file!(writer::NetCDFOutputWriter, model) = 
+                        initialize_nc_file!(writer.filepath,
+                                            writer.outputs,
+                                            writer.schedule,
+                                            writer.array_type,
+                                            writer.indices,
+                                            writer.with_halos,
+                                            writer.global_attributes,
+                                            writer.output_attributes,
+                                            writer.dimensions,
+                                            writer.overwrite_existing,
+                                            writer.deflatelevel,
+                                            writer.grid,
+                                            model)
 
 function initialize_nc_file!(filepath,
                              outputs,

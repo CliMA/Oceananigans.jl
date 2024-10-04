@@ -6,7 +6,7 @@ export run!
 export Callback, add_callback!
 export iteration
 export stopwatch
-export JLD2_output!
+export output!
 
 using Oceananigans.Models
 using Oceananigans.Diagnostics

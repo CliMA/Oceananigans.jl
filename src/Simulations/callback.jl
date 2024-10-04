@@ -75,12 +75,12 @@ struct GenericCallbackName end
 unique_name(::GenericCallbackName, existing) = unique_name(:callback, existing)
 
 """
-    add_callback!(simulation, callback::Callback; name = GenericName(), callback_kw...)
+    add_callback!(simulation, callback::Callback; name = GenericCallbackName(), callback_kw...)
 
-    add_callback!(simulation, func, schedule=IterationInterval(1); name = GenericName(), callback_kw...)
+    add_callback!(simulation, func, schedule=IterationInterval(1); name = GenericCallbackName(), callback_kw...)
 
 Add `Callback(func, schedule)` to `simulation.callbacks` under `name`. The default
-`GenericName()` generates a name of the form `:callbackN`, where `N`
+`GenericCallbackName()` generates a name of the form `:callbackN`, where `N`
 is big enough for the name to be unique.
 
 If `name::Symbol` is supplied, it may be modified if `simulation.callbacks[name]`
@@ -97,7 +97,7 @@ function add_callback!(simulation, callback::Callback; name = GenericCallbackNam
 end
 
 function add_callback!(simulation, func, schedule = IterationInterval(1);
-                       name = GenericName(), callback_kw...)
+                       name = GenericCallbackName(), callback_kw...)
 
     callback = Callback(func, schedule; callback_kw...)
     return add_callback!(simulation, callback; name)

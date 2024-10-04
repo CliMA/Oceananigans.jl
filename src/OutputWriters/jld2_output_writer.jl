@@ -188,8 +188,6 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
     # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
     schedule, outputs = time_average_outputs(schedule, outputs, model)
 
-    initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
-
     return JLD2OutputWriter(filepath, outputs, schedule, array_type, init,
                             including, part, file_splitting, overwrite_existing, verbose, jld2_kw)
 end
@@ -254,6 +252,10 @@ function write_output!(writer::JLD2OutputWriter, model)
 
     verbose = writer.verbose
     current_iteration = model.clock.iteration
+
+    if !isfile(writer.filepath)
+        initialize_jld2_file!(writer, model)
+    end
 
     # Some logic to handle writing to existing files
     if iteration_exists(writer.filepath, current_iteration)

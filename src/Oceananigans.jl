@@ -103,6 +103,7 @@ export
     StateChecker, CFL, AdvectiveCFL, DiffusiveCFL,
 
     # Output writers
+    output!,
     NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
     TimeInterval, IterationInterval, AveragedTimeInterval, SpecifiedTimes,
     FileSizeLimit, AndSchedule, OrSchedule, written_names,
