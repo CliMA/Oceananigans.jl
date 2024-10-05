@@ -17,10 +17,10 @@ using OrthogonalSphericalShellGrids
     @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ)[2]
 
 @inline extrinsic_vector_x_component(i, j, k, grid, uₑ, vₑ) =
-    @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ)[1]
+    @inbounds extrinsic_vector(i, j, k, grid, uₑ, vₑ)[1]
     
 @inline extrinsic_vector_y_component(i, j, k, grid, uₑ, vₑ) =
-    @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ)[2]
+    @inbounds extrinsic_vector(i, j, k, grid, uₑ, vₑ)[2]
 
 function kinetic_energy(u, v)
     ke = Field(0.5 * (u * u + v * v))
