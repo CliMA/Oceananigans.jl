@@ -103,11 +103,6 @@ function heuristic_workgroup(Wx, Wy, Wz=nothing, Wt=nothing)
     return workgroup
 end
 
-function work_layout(grid, worksize::Tuple, reduced_dimensions)
-    workgroup = heuristic_workgroup(worksize...)
-    return workgroup, worksize
-end
-
 periphery_offset(loc, topo, N) = 0
 periphery_offset(::Face, ::Bounded, N) = ifelse(N > 1, 1, 0)
 
@@ -180,10 +175,16 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
     return workgroup, worksize
 end
 
-function work_layout(grid, ::KernelParameters{sz, offsets}, reduced_dimensions) where {sz, offsets}
-    workgroup, worksize = work_layout(grid, sz, reduced_dimensions)
+function work_layout(grid, worksize::Tuple, reduced_dimensions)
+    workgroup = heuristic_workgroup(worksize...)
+    return workgroup, worksize
+end
+
+function work_layout(grid, ::KernelParameters{worksize, offsets}, reduced_dimensions) where {worksize, offsets}
+    workgroup = heuristic_workgroup(worksize...)
     static_workgroup = StaticSize(workgroup)
-    offset_worksize = OffsetStaticSize(contiguousrange(worksize, offsets))
+    range = contiguousrange(worksize, offsets)
+    offset_worksize = OffsetStaticSize(range)
     return static_workgroup, offset_worksize
 end
 
