@@ -204,10 +204,7 @@ the architecture `arch`.
                                   exclude_periphery = false,
                                   reduced_dimensions = (),
                                   location = nothing,
-                                  active_cells_map = nothing,
-                                  # TODO: these two kwargs do nothing:
-                                  only_local_halos = false,
-                                  async = false)
+                                  active_cells_map = nothing)
 
     if !isnothing(active_cells_map) # everything else is irrelevant
         workgroup = min(length(active_cells_map), 256)
@@ -236,19 +233,21 @@ keyword arguments `kw`.
 """
 @inline function launch!(arch, grid, workspec,
                          kernel!, first_kernel_arg, other_kernel_args...;
-                         location = nothing,
                          exclude_periphery = false,
-                         kwargs...)
+                         reduced_dimensions = (),
+                         active_cells_map = nothing,
+                         # TODO: these two kwargs do nothing:
+                         only_local_halos = false,
+                         async = false)
 
-    if exclude_periphery && isnothing(location) # give this a go
-        location = Oceananigans.Grids.location(first_kernel_arg)
-    end
+    location = Oceananigans.Grids.location(first_kernel_arg)
 
     loop!, worksize = configure_kernel(arch, grid, workspec, kernel!;
                                        location,
                                        exclude_periphery,
-                                       kwargs...)
-
+                                       reduced_dimensions,
+                                       active_cells_map)
+                                       
     # Don't launch kernels with no size
     if worksize != 0
         loop!(first_kernel_arg, other_kernel_args...)
