@@ -2,7 +2,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: topology, validate_tupled_argument
 using CUDA: ndevices, device!
 
-import Oceananigans.Architectures: device, cpu_architecture, on_architecture, array_type, child_architecture, convert_args
+import Oceananigans.Architectures: device, cpu_architecture, on_architecture, array_type, device_architecture, convert_args
 import Oceananigans.Grids: zeros
 import Oceananigans.Utils: sync_device!, tupleit
 
@@ -165,7 +165,7 @@ function remaining_workers(r1, r2)
 end
 
 struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
-    child_architecture :: A
+    device_architecture :: A
     partition :: Δ
     ranks :: R
     local_rank :: ρ
@@ -175,7 +175,7 @@ struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
     mpi_requests :: M
     mpi_tag :: T
 
-    Distributed{S}(child_architecture :: A,
+    Distributed{S}(device_architecture :: A,
                    partition :: Δ,
                    ranks :: R,
                    local_rank :: ρ,
@@ -184,7 +184,7 @@ struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
                    communicator :: γ,
                    mpi_requests :: M,
                    mpi_tag :: T) where {S, A, Δ, R, ρ, I, C, γ, M, T} = 
-                   new{A, S, Δ, R, ρ, I, C, γ, M, T}(child_architecture,
+                   new{A, S, Δ, R, ρ, I, C, γ, M, T}(device_architecture,
                                                      partition,
                                                      ranks,
                                                      local_rank,
@@ -200,7 +200,7 @@ end
 #####
 
 """
-    Distributed(child_architecture = CPU(); 
+    Distributed(device_architecture = CPU(); 
                 partition = Partition(MPI.Comm_size(communicator)),
                 devices = nothing, 
                 communicator = MPI.COMM_WORLD,
@@ -211,7 +211,7 @@ Return a distributed architecture that uses MPI for communications.
 Positional arguments
 ====================
 
-- `child_architecture`: Specifies whether the computation is performed on CPUs or GPUs. 
+- `device_architecture`: Specifies whether the computation is performed on CPUs or GPUs. 
                         Default: `CPU()`.
 
 Keyword arguments
@@ -224,7 +224,7 @@ Keyword arguments
 - `devices`: `GPU` device linked to local rank. The GPU will be assigned based on the 
              local node rank as such `devices[node_rank]`. Make sure to run `--ntasks-per-node` <= `--gres=gpu`.
              If `nothing`, the devices will be assigned automatically based on the available resources.
-             This argument is irrelevant if `child_architecture = CPU()`.
+             This argument is irrelevant if `device_architecture = CPU()`.
 
 - `communicator`: the MPI communicator that orchestrates data transfer between nodes.
                   Default: `MPI.COMM_WORLD`.
@@ -237,7 +237,7 @@ Keyword arguments
                                 Default: `false`, specifying the use of asynchronous algorithms where supported,
                                 which may result in faster time-to-solution.
 """
-function Distributed(child_architecture = CPU(); 
+function Distributed(device_architecture = CPU(); 
                      partition = nothing,
                      devices = nothing, 
                      communicator = nothing,
@@ -273,7 +273,7 @@ function Distributed(child_architecture = CPU();
     local_connectivity = RankConnectivity(local_index, ranks) 
 
     # Assign CUDA device if on GPUs
-    if child_architecture isa GPU
+    if device_architecture isa GPU
         local_comm = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_rank)
         node_rank  = MPI.Comm_rank(local_comm)
         isnothing(devices) ? device!(node_rank % ndevices()) : device!(devices[node_rank+1]) 
@@ -281,7 +281,7 @@ function Distributed(child_architecture = CPU();
 
     mpi_requests = MPI.Request[]
 
-    return Distributed{synchronized_communication}(child_architecture,
+    return Distributed{synchronized_communication}(device_architecture,
                                                    partition,
                                                    ranks,
                                                    local_rank,
@@ -303,13 +303,13 @@ const SynchronizedDistributed = Distributed{<:Any, true}
 
 ranks(arch::Distributed) = ranks(arch.partition)
 
-child_architecture(arch::Distributed) = arch.child_architecture
-device(arch::Distributed)             = device(child_architecture(arch))
+device_architecture(arch::Distributed) = arch.device_architecture
+device(arch::Distributed)             = device(device_architecture(arch))
 
-zeros(FT, arch::Distributed, N...)    = zeros(FT, child_architecture(arch), N...)
-array_type(arch::Distributed)         = array_type(child_architecture(arch))
-sync_device!(arch::Distributed)       = sync_device!(arch.child_architecture)
-convert_args(arch::Distributed, arg)  = convert_args(child_architecture(arch), arg)
+zeros(FT, arch::Distributed, N...)    = zeros(FT, device_architecture(arch), N...)
+array_type(arch::Distributed)         = array_type(device_architecture(arch))
+sync_device!(arch::Distributed)       = sync_device!(arch.device_architecture)
+convert_args(arch::Distributed, arg)  = convert_args(device_architecture(arch), arg)
 
 cpu_architecture(arch::DistributedCPU) = arch
 cpu_architecture(arch::Distributed{A, S}) where {A, S} = 
@@ -414,7 +414,7 @@ end
 #####
 
 function Base.summary(arch::Distributed)
-    child_arch = child_architecture(arch)
+    child_arch = device_architecture(arch)
     A = typeof(child_arch)
     return string("Distributed{$A}")
 end

@@ -84,9 +84,9 @@ function RectilinearGrid(arch::Distributed,
     xl = Rx == 1 ? x : partition_coordinate(x, nx, arch, 1)
     yl = Ry == 1 ? y : partition_coordinate(y, ny, arch, 2)
     zl = Rz == 1 ? z : partition_coordinate(z, nz, arch, 3)
-    Lx, xᶠᵃᵃ, xᶜᵃᵃ, Δxᶠᵃᵃ, Δxᶜᵃᵃ = generate_coordinate(FT, topology[1](), nx, Hx, xl, :x, child_architecture(arch))
-    Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, topology[2](), ny, Hy, yl, :y, child_architecture(arch))
-    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, topology[3](), nz, Hz, zl, :z, child_architecture(arch))
+    Lx, xᶠᵃᵃ, xᶜᵃᵃ, Δxᶠᵃᵃ, Δxᶜᵃᵃ = generate_coordinate(FT, topology[1](), nx, Hx, xl, :x, device_architecture(arch))
+    Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, topology[2](), ny, Hy, yl, :y, device_architecture(arch))
+    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, topology[3](), nz, Hz, zl, :z, device_architecture(arch))
 
     return RectilinearGrid{TX, TY, TZ}(arch,
                                        nx, ny, nz,
@@ -134,8 +134,8 @@ function LatitudeLongitudeGrid(arch::Distributed,
     # Calculate all direction (which might be stretched)
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
     # it is stretched if being passed is a function or vector (as for the VerticallyStretchedRectilinearGrid)
-    Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, TX(), nλ, Hλ, λl, :longitude, arch.child_architecture)
-    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, TZ(), nz, Hz, zl, :z,         arch.child_architecture)
+    Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, TX(), nλ, Hλ, λl, :longitude, arch.device_architecture)
+    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, TZ(), nz, Hz, zl, :z,         arch.device_architecture)
 
     # The Latitudinal direction is _special_:
     # precompute_metrics assumes that `length(φᵃᶠᵃ) = length(φᵃᶜᵃ) + 1`, which is always the case in a 
@@ -145,7 +145,7 @@ function LatitudeLongitudeGrid(arch::Distributed,
     # we disregard the topology when constructing the metrics and add a halo point! 
     # Furthermore, the `LatitudeLongitudeGrid` requires an extra halo on it's latitudinal coordinate to allow calculating
     # the z-area on halo cells. (see: Az =  R^2 * Δλ * (sin(φ[j]) - sin(φ[j-1]))
-    Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, Bounded(), nφ, Hφ + 1, φl, :latitude, arch.child_architecture)
+    Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, Bounded(), nφ, Hφ + 1, φl, :latitude, arch.device_architecture)
 
     preliminary_grid = LatitudeLongitudeGrid{TX, TY, TZ}(arch,
                                                          nλ, nφ, nz,
@@ -165,7 +165,7 @@ reconstruct_global_grid(grid::AbstractGrid) = grid
 """
     reconstruct_global_grid(grid::DistributedGrid)
 
-Return the global grid on `child_architecture(grid)`
+Return the global grid on `device_architecture(grid)`
 """
 function reconstruct_global_grid(grid::DistributedRectilinearGrid)
 
@@ -193,7 +193,7 @@ function reconstruct_global_grid(grid::DistributedRectilinearGrid)
     yG = Ry == 1 ? y : assemble_coordinate(y, ny, arch, 2)
     zG = Rz == 1 ? z : assemble_coordinate(z, nz, arch, 3)
 
-    child_arch = child_architecture(arch)
+    child_arch = device_architecture(arch)
 
     FT = eltype(grid)
 
@@ -236,7 +236,7 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
     φG = Ry == 1 ? φ : assemble_coordinate(φ, nφ, arch, 2)
     zG = Rz == 1 ? z : assemble_coordinate(z, nz, arch, 3)
 
-    child_arch = child_architecture(arch)
+    child_arch = device_architecture(arch)
 
     FT = eltype(grid)
 
@@ -274,9 +274,9 @@ function with_halo(new_halo, grid::DistributedLatitudeLongitudeGrid)
     return scatter_local_grids(architecture(grid), new_grid, size(grid))
 end
 
-# Extending child_architecture for grids
-child_architecture(grid::AbstractGrid) = architecture(grid)
-child_architecture(grid::DistributedGrid) = child_architecture(architecture(grid))
+# Extending device_architecture for grids
+device_architecture(grid::AbstractGrid) = architecture(grid)
+device_architecture(grid::DistributedGrid) = device_architecture(architecture(grid))
 
 """ 
     scatter_grid_properties(global_grid)

@@ -7,7 +7,7 @@ using Oceananigans.Grids: topology, node, _node,
                           ZRegOrthogonalSphericalShellGrid,
                           RectilinearGrid, LatitudeLongitudeGrid
 
-using Oceananigans.Architectures: child_architecture
+using Oceananigans.Architectures: device_architecture
 
 # GPU-compatile middle point calculation
 @inline middle_point(l, h) = Base.unsafe_trunc(Int, (l + h) / 2)
@@ -350,8 +350,8 @@ function interpolate!(to_field::Field, from_field::AbstractField)
 
     # In case architectures are `Distributed` we
     # verify that the fields are on the same child architecture
-    to_arch   = child_architecture(to_arch)
-    from_arch = child_architecture(from_arch)
+    to_arch   = device_architecture(to_arch)
+    from_arch = device_architecture(from_arch)
 
     if !isnothing(from_arch) && to_arch != from_arch
         msg = "Cannot interpolate! because from_field is on $from_arch while to_field is on $to_arch."

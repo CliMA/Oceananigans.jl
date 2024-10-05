@@ -1,5 +1,5 @@
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
-using Oceananigans.DistributedComputations: Distributed, Partition, child_architecture, Fractional, Equal
+using Oceananigans.DistributedComputations: Distributed, Partition, device_architecture, Fractional, Equal
 
 import Oceananigans.Fields: interior
 

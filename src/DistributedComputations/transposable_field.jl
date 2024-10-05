@@ -142,7 +142,7 @@ function twin_grid(grid::DistributedGrid; local_direction = :y)
     yG = R[2] == 1 ? y : assemble_coordinate(y, ny, arch, 2)
     zG = R[3] == 1 ? z : assemble_coordinate(z, nz, arch, 3)
 
-    child_arch = child_architecture(arch)
+    child_arch = device_architecture(arch)
 
     FT = eltype(grid)
 
