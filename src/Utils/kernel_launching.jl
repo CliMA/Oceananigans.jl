@@ -103,7 +103,7 @@ function heuristic_workgroup(Wx, Wy, Wz=nothing, Wt=nothing)
     return workgroup
 end
 
-function work_layout(grid, worksize::Tuple; kw...)
+function work_layout(grid, worksize::Tuple, reduced_dimensions)
     workgroup = heuristic_workgroup(worksize...)
     return workgroup, worksize
 end
@@ -118,7 +118,48 @@ drop_omitted_dims(::Val{:yz}, (x, y, z)) = (y, z)
 drop_omitted_dims(workdims, xyz) = throw(ArgumentError("Unsupported launch configuration: $workdims"))
     
 """
-    work_layout(grid, dims; exclude_periphery, location, reduced_dimensions, kw...)
+    interior_work_layout(grid, dims, location)
+
+Returns the `workgroup` and `worksize` for launching a kernel over `dims`
+on `grid` that excludes peripheral nodes.
+The `workgroup` is a tuple specifying the threads per block in each
+dimension. The `worksize` specifies the range of the loop in each dimension.
+
+Specifying `include_right_boundaries=true` will ensure the work layout includes the
+right face end points along bounded dimensions. This requires the field `location`
+to be specified.
+
+For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
+"""
+@inline function interior_work_layout(grid, workdims::Symbol, location)
+    valdims = Val(workdims)
+    Nx, Ny, Nz = size(grid)
+
+    # just an example for :xyz
+    ℓx, ℓy, ℓz = map(instantiate, location)
+    tx, ty, tz = map(instantiate, topology(grid))
+
+    # Offsets
+    ox = periphery_offset(ℓx, tx, Nx)
+    oy = periphery_offset(ℓy, ty, Ny)
+    oz = periphery_offset(ℓz, tz, Nz)
+
+    # Worksize
+    Wx, Wy, Wz = (Nx-ox, Ny-oy, Nz-oz)
+    workgroup = heuristic_workgroup(Wx, Wy, Wz)
+    workgroup = StaticSize(workgroup)
+
+    # Adapt to workdims
+    worksize = drop_omitted_dims(valdims, (Wx, Wy, Wz))
+    offsets = drop_omitted_dims(valdims, (ox, oy, oz))
+    range = contiguousrange(worksize, offsets)
+    worksize = OffsetStaticSize(range)
+
+    return workgroup, worksize
+end
+
+"""
+    work_layout(grid, dims, location)
 
 Returns the `workgroup` and `worksize` for launching a kernel over `dims`
 on `grid`. The `workgroup` is a tuple specifying the threads per block in each
@@ -130,42 +171,17 @@ to be specified.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
-function work_layout(grid, workdims::Symbol; exclude_periphery, location, reduced_dimensions, kw...)
-
+@inline function work_layout(grid, workdims::Symbol, reduced_dimensions)
     valdims = Val(workdims)
     Nx, Ny, Nz = size(grid)
-
-    if exclude_periphery # we will need to offset
-        isnothing(location) && throw(ArgumentError("location must be provided to exclude_periphery in kernel launch!"))
-
-        # just an example for :xyz
-        ℓx, ℓy, ℓz = map(instantiate, location)
-        tx, ty, tz = map(instantiate, topology(grid))
-
-        # Offsets
-        ox = periphery_offset(ℓx, tx, Nx)
-        oy = periphery_offset(ℓy, ty, Ny)
-        oz = periphery_offset(ℓz, tz, Nz)
-
-        # Worksize
-        Wx, Wy, Wz = (Nx-ox, Ny-oy, Nz-oz)
-        workgroup = StaticSize(heuristic_workgroup(Wx, Wy, Wz))
-
-        # Adapt to workdims
-        worksize = drop_omitted_dims(valdims, (Wx, Wy, Wz))
-        offsets = drop_omitted_dims(valdims, (ox, oy, oz))
-        worksize = OffsetStaticSize(contiguousrange(worksize, offsets))
-    else
-        Wx, Wy, Wz = flatten_reduced_dimensions((Nx, Ny, Nz), reduced_dimensions) # this seems to be for halo filling
-        workgroup = heuristic_workgroup(Wx, Wy, Wz)
-        worksize = drop_omitted_dims(valdims, (Wx, Wy, Wz))
-    end
-
+    Wx, Wy, Wz = flatten_reduced_dimensions((Nx, Ny, Nz), reduced_dimensions) # this seems to be for halo filling
+    workgroup = heuristic_workgroup(Wx, Wy, Wz)
+    worksize = drop_omitted_dims(valdims, (Wx, Wy, Wz))
     return workgroup, worksize
 end
 
-function work_layout(grid, ::KernelParameters{sz, offsets}; kw...) where {sz, offsets}
-    workgroup, worksize = work_layout(grid, sz; kw...)
+function work_layout(grid, ::KernelParameters{sz, offsets}, reduced_dimensions) where {sz, offsets}
+    workgroup, worksize = work_layout(grid, sz, reduced_dimensions)
     static_workgroup = StaticSize(workgroup)
     offset_worksize = OffsetStaticSize(contiguousrange(worksize, offsets))
     return static_workgroup, offset_worksize
@@ -209,11 +225,10 @@ the architecture `arch`.
     if !isnothing(active_cells_map) # everything else is irrelevant
         workgroup = min(length(active_cells_map), 256)
         worksize = length(active_cells_map)
+    elseif exclude_periphery
+        workgroup, worksize = interior_work_layout(grid, workspec, location)
     else
-        workgroup, worksize = work_layout(grid, workspec;
-                                          exclude_periphery,
-                                          reduced_dimensions,
-                                          location)
+        workgroup, worksize = work_layout(grid, workspec, reduced_dimensions)
     end
 
     dev = Architectures.device(arch)
@@ -278,7 +293,6 @@ end
 using KernelAbstractions: Kernel
 using KernelAbstractions.NDIteration: _Size, StaticSize
 using KernelAbstractions.NDIteration: NDRange
-
 
 struct OffsetStaticSize{S} <: _Size
     function OffsetStaticSize{S}() where S
