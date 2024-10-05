@@ -1,6 +1,7 @@
 module OceananigansMakieExt
 
 using Oceananigans
+using Oceananigans.Grids: OrthogonalSphericalShellGrid
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
@@ -122,6 +123,11 @@ function convert_field_argument(f::Field)
         throw(ArgumentError("Cannot convert_arguments for a 3D field!"))
     end
 end
+
+# For Fields on OrthogonalSphericalShellGrid, just return the interior without coordinates
+# TODO: support plotting in geographic coordinates using mesh
+const OSSGField = Field{<:Any, <:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid}
+convert_field_argument(f::OSSGField) = return make_plottable_array(f)
 
 #####
 ##### When nodes are provided
