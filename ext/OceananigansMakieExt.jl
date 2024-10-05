@@ -126,6 +126,8 @@ end
 
 # For Fields on OrthogonalSphericalShellGrid, just return the interior without coordinates
 # TODO: support plotting in geographic coordinates using mesh
+# See for example
+# https://github.com/navidcy/Imaginocean.jl/blob/f5cc5f27dd2e99e0af490e8dca5a53daf6837ead/src/Imaginocean.jl#L259
 const OSSGField = Field{<:Any, <:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid}
 convert_field_argument(f::OSSGField) = return make_plottable_array(f)
 
