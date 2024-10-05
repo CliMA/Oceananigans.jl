@@ -200,14 +200,14 @@ the architecture `arch`.
 - `active_cells_map`: A map indicating the active cells in the grid. If the map is not a nothing, the workspec will be disregarded and 
                       the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
 """
-function configure_kernel(arch, grid, workspec, kernel!;
-                          exclude_periphery = false,
-                          reduced_dimensions = (),
-                          location = nothing,
-                          active_cells_map = nothing,
-                          # TODO: these two kwargs do nothing:
-                          only_local_halos = false,
-                          async = false)
+@inline function configure_kernel(arch, grid, workspec, kernel!;
+                                  exclude_periphery = false,
+                                  reduced_dimensions = (),
+                                  location = nothing,
+                                  active_cells_map = nothing,
+                                  # TODO: these two kwargs do nothing:
+                                  only_local_halos = false,
+                                  async = false)
 
     if !isnothing(active_cells_map) # everything else is irrelevant
         workgroup = min(length(active_cells_map), 256)
@@ -234,20 +234,20 @@ Kernels run on the default stream.
 See [configure_kernel](@ref) for more information and also a list of the
 keyword arguments `kw`.
 """
-function launch!(arch, grid, workspec,
-                 kernel!, first_kernel_arg, other_kernel_args...;
-                 location = nothing,
-                 exclude_periphery = false,
-                 kwargs...)
+@inline function launch!(arch, grid, workspec,
+                         kernel!, first_kernel_arg, other_kernel_args...;
+                         location = nothing,
+                         exclude_periphery = false,
+                         kwargs...)
 
     if exclude_periphery && isnothing(location) # give this a go
         location = Oceananigans.Grids.location(first_kernel_arg)
     end
 
     loop!, worksize = configure_kernel(arch, grid, workspec, kernel!;
-                                location,
-                                exclude_periphery,
-                                kwargs...)
+                                       location,
+                                       exclude_periphery,
+                                       kwargs...)
 
     # Don't launch kernels with no size
     if worksize != 0
