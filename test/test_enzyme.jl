@@ -270,8 +270,6 @@ end
 @testset "Enzyme Momentum Equation" begin
     f(grid) = CenterField(grid)
 
-    const maximum_diffusivity = 100
-
     Nx = Ny = 32
     Nz = 4
 
