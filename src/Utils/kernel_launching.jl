@@ -121,7 +121,8 @@ drop_omitted_dims(workdims, xyz) = throw(ArgumentError("Unsupported launch confi
     interior_work_layout(grid, dims, location)
 
 Returns the `workgroup` and `worksize` for launching a kernel over `dims`
-on `grid`. The `workgroup` is a tuple specifying the threads per block in each
+on `grid` that excludes peripheral nodes.
+The `workgroup` is a tuple specifying the threads per block in each
 dimension. The `worksize` specifies the range of the loop in each dimension.
 
 Specifying `include_right_boundaries=true` will ensure the work layout includes the
@@ -180,7 +181,7 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 end
 
 function work_layout(grid, ::KernelParameters{sz, offsets}, reduced_dimensions) where {sz, offsets}
-    workgroup, worksize = work_layout(grid, sz; kw...)
+    workgroup, worksize = work_layout(grid, sz, reduced_dimensions)
     static_workgroup = StaticSize(workgroup)
     offset_worksize = OffsetStaticSize(contiguousrange(worksize, offsets))
     return static_workgroup, offset_worksize
