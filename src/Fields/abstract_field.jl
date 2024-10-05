@@ -10,7 +10,7 @@ using Oceananigans.Grids: interior_indices, interior_parent_indices
 
 import Base: minimum, maximum, extrema
 import Oceananigans: location, instantiated_location
-import Oceananigans.Architectures: architecture
+import Oceananigans.Architectures: architecture, child_architecture
 import Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices
 import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes, node, xnode, ynode, znode
 import Oceananigans.Utils: datatuple
@@ -43,6 +43,7 @@ Base.eltype(::AbstractField{<:Any, <:Any, <:Any, <:Any, T}) where T = T
 
 "Returns the architecture of on which `f` is defined."
 architecture(f::AbstractField) = architecture(f.grid)
+child_architecture(f::AbstractField) = child_architecture(architecture(f))
 
 "Returns the topology of a fields' `grid`."
 @inline topology(f::AbstractField, args...) = topology(f.grid, args...)
