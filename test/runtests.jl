@@ -1,3 +1,5 @@
+using Pkg
+
 include("dependencies_for_runtests.jl")
 
 group     = get(ENV, "TEST_GROUP", :all) |> Symbol
@@ -22,6 +24,22 @@ CUDA.allowscalar() do
         @testset "Single file test" begin
             include(String(test_file))
         end
+    end
+
+    # Initialization steps
+    if group == :init || group == :all
+        Pkg.instantiate(; verbose=true)
+        Pkg.precompile(; strict=true)
+        Pkg.status()
+
+        try
+            MPI.versioninfo()
+        catch; end
+
+        try
+            CUDA.precompile_runtime()
+            CUDA.versioninfo()
+        catch; end
     end
 
     # Core Oceananigans
