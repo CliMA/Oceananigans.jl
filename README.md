@@ -40,6 +40,19 @@
   </a>
 </p>
 
+<!-- Downloads -->
+<!-- counts downloads from individual IPs excluding bots (eg, CI) -->
+<!-- see https://discourse.julialang.org/t/announcing-package-download-stats/69073 -->
+
+<p align="center">
+  <a href="https://juliapkgstats.com/pkg/Oceananigans">
+    <img alt="Downloads per month" src="https://img.shields.io/badge/dynamic/json?url=http%3A%2F%2Fjuliapkgstats.com%2Fapi%2Fv1%2Fmonthly_downloads%2FOceananigans&query=total_requests&suffix=%2Fmonth&label=Downloads&style=flat-square">
+  </a>
+  <a href="https://juliapkgstats.com/pkg/Oceananigans">
+    <img alt="Downloads per month" src="https://img.shields.io/badge/dynamic/json?url=http%3A%2F%2Fjuliapkgstats.com%2Fapi%2Fv1%2Ftotal_downloads%2FOceananigans&query=total_requests&&label=Total%20Downloads&style=flat-square">
+  </a>
+</p>
+
 <!-- CI/CD badges -->
 <p align="center">
   <a href="https://buildkite.com/clima/oceananigans">
@@ -59,13 +72,18 @@ Oceananigans.jl is developed by the [Climate Modeling Alliance](https://clima.ca
 
 ## Contents
 
-* [Installation instructions](#installation-instructions)
-* [Running your first model](#running-your-first-model)
-* [The Oceananigans knowledge base](#the-oceananigans-knowledge-base)
-* [Citing](#citing)
-* [Contributing](#contributing)
-* [Movies](#movies)
-* [Performance benchmarks](#performance-benchmarks)
+- [Contents](#contents)
+- [Installation instructions](#installation-instructions)
+- [Running your first model](#running-your-first-model)
+- [The Oceananigans knowledge base](#the-oceananigans-knowledge-base)
+- [Citing](#citing)
+- [Contributing](#contributing)
+- [Movies](#movies)
+  - [Deep convection](#deep-convection)
+  - [Free convection](#free-convection)
+  - [Winds blowing over the ocean](#winds-blowing-over-the-ocean)
+  - [Free convection with wind stress](#free-convection-with-wind-stress)
+- [Performance benchmarks](#performance-benchmarks)
 
 ## Installation instructions
 
@@ -102,7 +120,7 @@ simulation = Simulation(model; Δt=0.01, stop_time=4)
 run!(simulation)
 ```
 
-But there's more: changing `CPU()` to `GPU()` makes this code on a CUDA-enabled Nvidia GPU.
+But there's more: changing `CPU()` to `GPU()` makes this code run on a CUDA-enabled Nvidia GPU.
 
 Dive into [the documentation](https://clima.github.io/OceananigansDocumentation/stable/) for more code examples and tutorials.
 Below, you'll find movies from GPU simulations along with CPU and GPU [performance benchmarks](https://github.com/clima/Oceananigans.jl#performance-benchmarks).

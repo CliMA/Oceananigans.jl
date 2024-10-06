@@ -6,7 +6,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceMo
 using Oceananigans.TurbulenceClosures: HorizontalScalarDiffusivity
 
 using Oceananigans.DistributedComputations: Distributed, DistributedGrid, DistributedComputations, all_reduce
-using Oceananigans.DistributedComputations: reconstruct_global_topology, partition_global_array, cpu_architecture
+using Oceananigans.DistributedComputations: reconstruct_global_topology, partition, cpu_architecture
 
 using JLD2
 
@@ -121,10 +121,10 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
         # Data was saved with 2 halos per direction (see issue #3260)
         H = 2
         truth_fields = (
-            u = partition_global_array(cpu_arch, file["timeseries/u/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], size(u)),
-            v = partition_global_array(cpu_arch, file["timeseries/v/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], size(v)),
-            w = partition_global_array(cpu_arch, file["timeseries/w/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], size(w)),
-            η = partition_global_array(cpu_arch, file["timeseries/η/$stop_iteration"][H+1:end-H, H+1:end-H, :], size(η))
+            u = partition(file["timeseries/u/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], cpu_arch, size(u)),
+            v = partition(file["timeseries/v/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], cpu_arch, size(v)),
+            w = partition(file["timeseries/w/$stop_iteration"][H+1:end-H, H+1:end-H, H+1:end-H], cpu_arch, size(w)),
+            η = partition(file["timeseries/η/$stop_iteration"][H+1:end-H, H+1:end-H, :], cpu_arch, size(η))
         )
 
         close(file)

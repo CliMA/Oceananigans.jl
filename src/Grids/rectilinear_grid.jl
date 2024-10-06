@@ -66,7 +66,6 @@ stretched_dimensions(::YZRegularRG) = tuple(1)
 stretched_dimensions(::XZRegularRG) = tuple(2)
 stretched_dimensions(::XYRegularRG) = tuple(3)
 
-
 """
     RectilinearGrid([architecture = CPU(), FT = Float64];
                     size,
@@ -200,7 +199,7 @@ julia> grid = RectilinearGrid(size=256, z=(-128, 0), topology=(Flat, Flat, Bound
 1×1×256 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── Flat x
 ├── Flat y
-└── Bounded  z ∈ [-128.0, 0.0]    regularly spaced with Δz=0.5
+└── Bounded  z ∈ [-128.0, 0.0] regularly spaced with Δz=0.5
 ```
 
 * A horizontally-periodic regular grid with cell interfaces stretched hyperbolically near the top:
@@ -275,11 +274,11 @@ function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
     Lx, xᶠᵃᵃ, xᶜᵃᵃ, Δxᶠᵃᵃ, Δxᶜᵃᵃ = generate_coordinate(FT, TX(), Nx, Hx, x, :x, architecture)
     Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, TY(), Ny, Hy, y, :y, architecture)
     Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, TZ(), Nz, Hz, z, :z, architecture)
- 
+
     return RectilinearGrid{TX, TY, TZ}(architecture,
                                        Nx, Ny, Nz,
                                        Hx, Hy, Hz,
-                                       FT(Lx), FT(Ly), FT(Lz),
+                                       Lx, Ly, Lz,
                                        Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
                                        Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
                                        Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
@@ -321,19 +320,19 @@ end
 function Base.show(io::IO, grid::RectilinearGrid, withsummary=true)
     TX, TY, TZ = topology(grid)
 
-    x₁, x₂ = domain(TX(), grid.Nx, grid.xᶠᵃᵃ)
-    y₁, y₂ = domain(TY(), grid.Ny, grid.yᵃᶠᵃ)
-    z₁, z₂ = domain(TZ(), grid.Nz, grid.zᵃᵃᶠ)
+    Ωx = domain(TX(), grid.Nx, grid.xᶠᵃᵃ)
+    Ωy = domain(TY(), grid.Ny, grid.yᵃᶠᵃ)
+    Ωz = domain(TZ(), grid.Nz, grid.zᵃᵃᶠ)
 
-    x_summary = domain_summary(TX(), "x", x₁, x₂)
-    y_summary = domain_summary(TY(), "y", y₁, y₂)
-    z_summary = domain_summary(TZ(), "z", z₁, z₂)
+    x_summary = domain_summary(TX(), "x", Ωx)
+    y_summary = domain_summary(TY(), "y", Ωy)
+    z_summary = domain_summary(TZ(), "z", Ωz)
 
     longest = max(length(x_summary), length(y_summary), length(z_summary))
 
-    x_summary = dimension_summary(TX(), "x", x₁, x₂, grid.Δxᶜᵃᵃ, longest - length(x_summary))
-    y_summary = dimension_summary(TY(), "y", y₁, y₂, grid.Δyᵃᶜᵃ, longest - length(y_summary))
-    z_summary = dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
+    x_summary = dimension_summary(TX(), "x", Ωx, grid.Δxᶜᵃᵃ, longest - length(x_summary))
+    y_summary = dimension_summary(TY(), "y", Ωy, grid.Δyᵃᶜᵃ, longest - length(y_summary))
+    z_summary = dimension_summary(TZ(), "z", Ωz, grid.Δzᵃᵃᶜ, longest - length(z_summary))
 
     if withsummary
         print(io, summary(grid), "\n")
@@ -372,42 +371,73 @@ cpu_face_constructor_x(grid::XRegularRG) = x_domain(grid)
 cpu_face_constructor_y(grid::YRegularRG) = y_domain(grid)
 cpu_face_constructor_z(grid::ZRegularRG) = z_domain(grid)
 
-function with_halo(new_halo, old_grid::RectilinearGrid)
+function constructor_arguments(grid::RectilinearGrid)
+    arch = architecture(grid)
+    FT = eltype(grid)
+    args = Dict(:architecture => arch, :number_type => eltype(grid))
 
-    size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
-    topo = topology(old_grid)
+    # Kwargs
+    topo = topology(grid)
+    size = (grid.Nx, grid.Ny, grid.Nz)
+    halo = (grid.Hx, grid.Hy, grid.Hz)
+    size = pop_flat_elements(size, topo)
+    halo = pop_flat_elements(halo, topo)
 
-    x = cpu_face_constructor_x(old_grid)
-    y = cpu_face_constructor_y(old_grid)
-    z = cpu_face_constructor_z(old_grid)
+    kwargs = Dict(:size => size,
+                  :halo => halo,
+                  :x => cpu_face_constructor_x(grid),
+                  :y => cpu_face_constructor_y(grid),
+                  :z => cpu_face_constructor_z(grid),
+                  :topology => topo) 
 
-    # Remove elements of size and new_halo in Flat directions as expected by grid
-    # constructor
-    size     = pop_flat_elements(size, topo)
-    new_halo = pop_flat_elements(new_halo, topo)
-
-    new_grid = RectilinearGrid(architecture(old_grid), eltype(old_grid);
-                               size, x, y, z,
-                               topology = topo,
-                               halo = new_halo)
-
-    return new_grid
+    return args, kwargs
 end
 
-function on_architecture(new_arch::AbstractSerialArchitecture, old_grid::RectilinearGrid)
-    old_properties = (old_grid.Δxᶠᵃᵃ, old_grid.Δxᶜᵃᵃ, old_grid.xᶠᵃᵃ, old_grid.xᶜᵃᵃ,
-                      old_grid.Δyᵃᶠᵃ, old_grid.Δyᵃᶜᵃ, old_grid.yᵃᶠᵃ, old_grid.yᵃᶜᵃ,
-                      old_grid.Δzᵃᵃᶠ, old_grid.Δzᵃᵃᶜ, old_grid.zᵃᵃᶠ, old_grid.zᵃᵃᶜ)
+function Base.similar(grid::RectilinearGrid)
+    args, kwargs = constructor_arguments(grid)
+    arch = args[:architecture]
+    FT = args[:number_type]
+    return RectilinearGrid(arch, FT; kwargs...)
+end
 
-    new_properties = Tuple(on_architecture(new_arch, p) for p in old_properties)
+"""
+    with_number_type(number_type, grid)
 
-    TX, TY, TZ = topology(old_grid)
+Return a `new_grid` that's identical to `grid` but with `number_type`.
+"""
+function with_number_type(FT, grid::RectilinearGrid)
+    args, kwargs = constructor_arguments(grid)
+    arch = args[:architecture]
+    return RectilinearGrid(arch, FT; kwargs...)
+end
 
-    return RectilinearGrid{TX, TY, TZ}(new_arch,
-                                       old_grid.Nx, old_grid.Ny, old_grid.Nz,
-                                       old_grid.Hx, old_grid.Hy, old_grid.Hz,
-                                       old_grid.Lx, old_grid.Ly, old_grid.Lz,
-                                       new_properties...)
+"""
+    with_halo(halo, grid)
+
+Return a `new_grid` that's identical to `grid` but with `halo`.
+"""
+function with_halo(halo, grid::RectilinearGrid)
+    args, kwargs = constructor_arguments(grid)
+    halo = pop_flat_elements(halo, topology(grid))
+    kwargs[:halo] = halo
+    arch = args[:architecture]
+    FT = args[:number_type]
+    return RectilinearGrid(arch, FT; kwargs...)
+end
+
+"""
+    on_architecture(architecture, grid)
+
+Return a `new_grid` that's identical to `grid` but on `architecture`.
+"""
+function on_architecture(arch::AbstractSerialArchitecture, grid::RectilinearGrid)
+    if arch == architecture(grid)
+        return grid
+    end
+
+    args, kwargs = constructor_arguments(grid)
+    FT = args[:number_type]
+    return RectilinearGrid(arch, FT; kwargs...)
 end
 
 coordinates(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
@@ -420,12 +450,12 @@ coordinates(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃ�
 ηname(::RG) = :y
 rname(::RG) = :z
 
-@inline xnode(i, grid::RG, ::Center) = @inbounds grid.xᶜᵃᵃ[i]
-@inline xnode(i, grid::RG, ::Face)   = @inbounds grid.xᶠᵃᵃ[i]
-@inline ynode(j, grid::RG, ::Center) = @inbounds grid.yᵃᶜᵃ[j]
-@inline ynode(j, grid::RG, ::Face)   = @inbounds grid.yᵃᶠᵃ[j]
-@inline znode(k, grid::RG, ::Center) = @inbounds grid.zᵃᵃᶜ[k]
-@inline znode(k, grid::RG, ::Face)   = @inbounds grid.zᵃᵃᶠ[k]
+@inline xnode(i, grid::RG, ::Center) = getnode(grid.xᶜᵃᵃ, i)
+@inline xnode(i, grid::RG, ::Face)   = getnode(grid.xᶠᵃᵃ, i)
+@inline ynode(j, grid::RG, ::Center) = getnode(grid.yᵃᶜᵃ, j)
+@inline ynode(j, grid::RG, ::Face)   = getnode(grid.yᵃᶠᵃ, j)
+@inline znode(k, grid::RG, ::Center) = getnode(grid.zᵃᵃᶜ, k)
+@inline znode(k, grid::RG, ::Face)   = getnode(grid.zᵃᵃᶠ, k)
 
 @inline ξnode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = xnode(i, grid, ℓx)
 @inline ηnode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = ynode(j, grid, ℓy)
@@ -442,10 +472,23 @@ function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halo
     z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
 
     if reshape
-        N = (length(x), length(y), length(z))
-        x = Base.reshape(x, N[1], 1, 1)
-        y = Base.reshape(y, 1, N[2], 1)
-        z = Base.reshape(z, 1, 1, N[3])
+        # Here we have to deal with the fact that Flat directions may have
+        # `nothing` nodes.
+        #
+        # A better solution (and more consistent with the rest of the API?)
+        # might be to omit the `nothing` nodes in the `reshape`. In other words,
+        # if `TX === Flat`, then we should return `(x, z)`. This is for future
+        # consideration...
+        # 
+        # See also `nodes` for `LatitudeLongitudeGrid`.
+
+        Nx = isnothing(x) ? 1 : length(x)
+        Ny = isnothing(y) ? 1 : length(y)
+        Nz = isnothing(z) ? 1 : length(z)
+
+        x = isnothing(x) ? zeros(1, 1, 1) : Base.reshape(x, Nx, 1, 1)
+        y = isnothing(y) ? zeros(1, 1, 1) : Base.reshape(y, 1, Ny, 1)
+        z = isnothing(z) ? zeros(1, 1, 1) : Base.reshape(z, 1, 1, Nz)
     end
 
     return (x, y, z)
@@ -454,14 +497,12 @@ end
 const F = Face
 const C = Center
 
-@inline xnodes(grid::RG, ℓx::F; with_halos=false) = with_halos ? grid.xᶠᵃᵃ : view(grid.xᶠᵃᵃ, interior_indices(ℓx, topology(grid, 1)(), size(grid, 1)))
-@inline xnodes(grid::RG, ℓx::C; with_halos=false) = with_halos ? grid.xᶜᵃᵃ : view(grid.xᶜᵃᵃ, interior_indices(ℓx, topology(grid, 1)(), size(grid, 1)))
-
-@inline ynodes(grid::RG, ℓy::F; with_halos=false) = with_halos ? grid.yᵃᶠᵃ : view(grid.yᵃᶠᵃ, interior_indices(ℓy, topology(grid, 2)(), size(grid, 2)))
-@inline ynodes(grid::RG, ℓy::C; with_halos=false) = with_halos ? grid.yᵃᶜᵃ : view(grid.yᵃᶜᵃ, interior_indices(ℓy, topology(grid, 2)(), size(grid, 2)))
-
-@inline znodes(grid::RG, ℓz::F; with_halos=false) = with_halos ? grid.zᵃᵃᶠ : view(grid.zᵃᵃᶠ, interior_indices(ℓz, topology(grid, 3)(), size(grid, 3)))
-@inline znodes(grid::RG, ℓz::C; with_halos=false) = with_halos ? grid.zᵃᵃᶜ : view(grid.zᵃᵃᶜ, interior_indices(ℓz, topology(grid, 3)(), size(grid, 3)))
+@inline xnodes(grid::RG, ℓx::F; with_halos=false) = _property(grid.xᶠᵃᵃ, ℓx, topology(grid, 1), size(grid, 1), with_halos)
+@inline xnodes(grid::RG, ℓx::C; with_halos=false) = _property(grid.xᶜᵃᵃ, ℓx, topology(grid, 1), size(grid, 1), with_halos)
+@inline ynodes(grid::RG, ℓy::F; with_halos=false) = _property(grid.yᵃᶠᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
+@inline ynodes(grid::RG, ℓy::C; with_halos=false) = _property(grid.yᵃᶜᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
+@inline znodes(grid::RG, ℓz::F; with_halos=false) = _property(grid.zᵃᵃᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline znodes(grid::RG, ℓz::C; with_halos=false) = _property(grid.zᵃᵃᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
 
 # convenience
 @inline xnodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx; with_halos)
@@ -472,23 +513,16 @@ const C = Center
 ##### Grid spacings
 #####
 
-@inline xspacings(grid::RG,         ℓx::C; with_halos=false) = with_halos ? grid.Δxᶜᵃᵃ : view(grid.Δxᶜᵃᵃ, interior_indices(ℓx, topology(grid, 1)(), size(grid, 1)))
-@inline xspacings(grid::XRegularRG, ℓx::C; with_halos=false) = grid.Δxᶜᵃᵃ
-@inline xspacings(grid::RG,         ℓx::F; with_halos=false) = with_halos ? grid.Δxᶠᵃᵃ : view(grid.Δxᶠᵃᵃ, interior_indices(ℓx, topology(grid, 1)(), size(grid, 1)))
-@inline xspacings(grid::XRegularRG, ℓx::F; with_halos=false) = grid.Δxᶠᵃᵃ
-
-@inline yspacings(grid::RG,         ℓy::C; with_halos=false) = with_halos ? grid.Δyᵃᶜᵃ : view(grid.Δyᵃᶜᵃ, interior_indices(ℓy, topology(grid, 2)(), size(grid, 2)))
-@inline yspacings(grid::YRegularRG, ℓy::C; with_halos=false) = grid.Δyᵃᶜᵃ
-@inline yspacings(grid::RG,         ℓy::F; with_halos=false) = with_halos ? grid.Δyᵃᶠᵃ : view(grid.Δyᵃᶠᵃ, interior_indices(ℓy, topology(grid, 2)(), size(grid, 2)))
-@inline yspacings(grid::YRegularRG, ℓy::F; with_halos=false) = grid.Δyᵃᶠᵃ
-
-@inline zspacings(grid::RG,         ℓz::C; with_halos=false) = with_halos ? grid.Δzᵃᵃᶜ : view(grid.Δzᵃᵃᶜ, interior_indices(ℓz, topology(grid, 3)(), size(grid, 3)))
-@inline zspacings(grid::ZRegularRG, ℓz::C; with_halos=false) = grid.Δzᵃᵃᶜ
-@inline zspacings(grid::RG,         ℓz::F; with_halos=false) = with_halos ? grid.Δzᵃᵃᶠ : view(grid.Δzᵃᵃᶠ, interior_indices(ℓz, topology(grid, 3)(), size(grid, 3)))
-@inline zspacings(grid::ZRegularRG, ℓz::F; with_halos=false) = grid.Δzᵃᵃᶠ
+@inline xspacings(grid::RG, ℓx::C; with_halos=false) = _property(grid.Δxᶜᵃᵃ, ℓx, topology(grid, 1), size(grid, 1), with_halos)
+@inline xspacings(grid::RG, ℓx::F; with_halos=false) = _property(grid.Δxᶠᵃᵃ, ℓx, topology(grid, 1), size(grid, 1), with_halos)
+@inline yspacings(grid::RG, ℓy::C; with_halos=false) = _property(grid.Δyᵃᶜᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
+@inline yspacings(grid::RG, ℓy::F; with_halos=false) = _property(grid.Δyᵃᶠᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
+@inline zspacings(grid::RG, ℓz::C; with_halos=false) = _property(grid.Δzᵃᵃᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline zspacings(grid::RG, ℓz::F; with_halos=false) = _property(grid.Δzᵃᵃᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
 
 @inline xspacings(grid::RG, ℓx, ℓy, ℓz; kwargs...) = xspacings(grid, ℓx; kwargs...)
 @inline yspacings(grid::RG, ℓx, ℓy, ℓz; kwargs...) = yspacings(grid, ℓy; kwargs...)
 @inline zspacings(grid::RG, ℓx, ℓy, ℓz; kwargs...) = zspacings(grid, ℓz; kwargs...)
 
 @inline isrectilinear(::RG) = true
+

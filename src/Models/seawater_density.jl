@@ -63,7 +63,7 @@ julia> grid = RectilinearGrid(size=100, z=(-1000, 0), topology=(Flat, Flat, Boun
 1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── Flat x
 ├── Flat y
-└── Bounded  z ∈ [-1000.0, 0.0]   regularly spaced with Δz=10.0
+└── Bounded  z ∈ [-1000.0, 0.0] regularly spaced with Δz=10.0
 
 julia> tracers = (:T, :S)
 (:T, :S)
@@ -81,7 +81,7 @@ SeawaterBuoyancy{Float64}:
 julia> model = NonhydrostaticModel(; grid, buoyancy, tracers)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered reconstruction order 2
 ├── tracers: (T, S)
 ├── closure: Nothing
@@ -93,7 +93,7 @@ julia> set!(model, S = 34.7, T = 0.5)
 julia> density_operation = seawater_density(model)
 KernelFunctionOperation at (Center, Center, Center)
 ├── grid: 1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
-├── kernel_function: ρ (generic function with 2 methods)
+├── kernel_function: ρ (generic function with 3 methods)
 └── arguments: ("BoussinesqEquationOfState{Float64}", "1×1×100 Field{Center, Center, Center} on RectilinearGrid on CPU", "1×1×100 Field{Center, Center, Center} on RectilinearGrid on CPU", "KernelFunctionOperation at (Center, Center, Center)")
 
 julia> density_field = Field(density_operation)
@@ -114,7 +114,7 @@ julia> compute!(density_field)
 ├── operand: KernelFunctionOperation at (Center, Center, Center)
 ├── status: time=0.0
 └── data: 1×1×106 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:103) with eltype Float64 with indices 1:1×1:1×-2:103
-    └── max=1027.81, min=1027.71, mean=1027.76
+    └── max=1032.38, min=1027.73, mean=1030.06
 ```
 
 Values for `temperature`, `salinity` and `geopotential_height` can be passed to

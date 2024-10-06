@@ -1,7 +1,7 @@
 using Oceananigans: fields
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Fields: immersed_boundary_condition
-using Oceananigans.Grids: active_interior_map
+using Oceananigans.Grids: retrieve_interior_active_cells_map
 using Oceananigans.BoundaryConditions: apply_x_bcs!, apply_y_bcs!, apply_z_bcs!
 using Oceananigans.TimeSteppers: store_field_tendencies!, ab2_step_field!, implicit_step!
 using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
@@ -12,7 +12,13 @@ get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 function time_step_catke_equation!(model)
 
     # TODO: properly handle closure tuples
-    closure = model.closure
+    if model.closure isa Tuple
+        closure = first(model.closure)
+        diffusivity_fields = first(model.diffusivity_fields)
+    else
+        closure = model.closure
+        diffusivity_fields = model.diffusivity_fields
+    end
 
     e = model.tracers.e
     arch = model.architecture
@@ -20,7 +26,6 @@ function time_step_catke_equation!(model)
     Gⁿe = model.timestepper.Gⁿ.e
     G⁻e = model.timestepper.G⁻.e
 
-    diffusivity_fields = model.diffusivity_fields
     κe = diffusivity_fields.κe
     Le = diffusivity_fields.Le
     previous_velocities = diffusivity_fields.previous_velocities
@@ -63,7 +68,7 @@ function time_step_catke_equation!(model)
         # previous_clock = (; time=current_time, iteration=previous_iteration)
 
         implicit_step!(e, implicit_solver, closure,
-                       model.diffusivity_fields, Val(tracer_index),
+                       diffusivity_fields, Val(tracer_index),
                        model.clock, Δτ)
     end
 
@@ -112,7 +117,7 @@ end
     # Then the contribution of Jᵉ to the implicit flux is
     #
     #       Lᵂ = - Cᵂϵ * √e / Δz.
-    #
+    
     on_bottom = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k-1, grid)
     Δz = Δzᶜᶜᶜ(i, j, k, grid)
     Cᵂϵ = closure_ij.turbulent_kinetic_energy_equation.Cᵂϵ
