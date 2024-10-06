@@ -215,7 +215,8 @@ u, v, w = model.velocities
 T, S = model.tracers.T, model.tracers.S
 U_bt = Field(Integral(u, dims=3));
 Ψ = Field(CumulativeIntegral(-U_bt, dims=2));
-BBL_index = model.diffusivity_fields[2].BBL_index
+first_index = model.diffusivity_fields[2].first_index
+last_index = model.diffusivity_fields[2].last_index
 wT_NN = model.diffusivity_fields[2].wT
 wS_NN = model.diffusivity_fields[2].wS
 
@@ -238,6 +239,13 @@ end
 
 ρ_op = KernelFunctionOperation{Center, Center, Center}(get_density, model.grid, model.buoyancy, model.tracers)
 ρ = Field(ρ_op)
+
+@inline function get_top_buoyancy_flux(i, j, k, grid, buoyancy, T_bc, S_bc, velocities, tracers, clock)
+  return top_buoyancy_flux(i, j, grid, buoyancy, (; T=T_bc, S=S_bc), clock, merge(velocities, tracers))
+end
+
+Qb = KernelFunctionOperation{Center, Center, Nothing}(get_top_buoyancy_flux, model.grid, model.buoyancy, T.boundary_conditions.top, S.boundary_conditions.top, model.velocities, model.tracers, model.clock)
+Qb = Field(Qb)
 
 outputs = (; u, v, w, T, S, ρ, N², wT_NN, wS_NN, wT_base, wS_base)
 
@@ -314,8 +322,8 @@ simulation.output_writers[:xz_north] = JLD2OutputWriter(model, outputs,
                                                     indices = (:, 75, :),
                                                     schedule = TimeInterval(10days))
 
-simulation.output_writers[:BBL] = JLD2OutputWriter(model, (; BBL_index=BBL_index,),
-                                                    filename = "$(FILE_DIR)/instantaneous_fields_BBL_index",
+simulation.output_writers[:BBL] = JLD2OutputWriter(model, (; first_index, last_index, Qb),
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_NN_active_diagnostics",
                                                     indices = (:, :, :),
                                                     schedule = TimeInterval(10days))
 
