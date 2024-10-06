@@ -25,11 +25,10 @@ using SeawaterPolynomials
 using SeawaterPolynomials:TEOS10
 using ColorSchemes
 using Glob
-import SeawaterPolynomials.TEOS10: s, ΔS, Sₐᵤ
-s(Sᴬ::Number) = Sᴬ + ΔS >= 0 ? √((Sᴬ + ΔS) / Sₐᵤ) : NaN
+
 
 #%%
-filename = "doublegyre_CATKEVerticalDiffusivity"
+filename = "doublegyre_relaxation_30days_CATKEVerticalDiffusivity"
 FILE_DIR = "./Output/$(filename)"
 mkpath(FILE_DIR)
 
@@ -82,7 +81,7 @@ const S_mid = (S_north + S_south) / 2
 const τ₀ = 1e-4
 
 const μ_drag = 1/30days
-const μ_T = 1/8days
+const μ_T = 1/30days
 
 #####
 ##### Forcing and initial condition
@@ -212,7 +211,6 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 #####
 ##### Diagnostics
 #####
-
 u, v, w = model.velocities
 T, S = model.tracers.T, model.tracers.S
 U_bt = Field(Integral(u, dims=3))
@@ -261,6 +259,51 @@ simulation.output_writers[:yz] = JLD2OutputWriter(model, outputs,
 simulation.output_writers[:xz] = JLD2OutputWriter(model, outputs,
                                                     filename = "$(FILE_DIR)/instantaneous_fields_xz",
                                                     indices = (:, 1, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:yz_10] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_yz_10",
+                                                    indices = (10, :, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:yz_20] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_yz_20",
+                                                    indices = (20, :, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:yz_30] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_yz_30",
+                                                    indices = (30, :, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:yz_40] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_yz_40",
+                                                    indices = (40, :, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:yz_50] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_yz_50",
+                                                    indices = (50, :, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:yz_60] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_yz_60",
+                                                    indices = (60, :, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:yz_70] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_yz_70",
+                                                    indices = (70, :, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:yz_80] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_yz_80",
+                                                    indices = (80, :, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:yz_90] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_yz_90",
+                                                    indices = (90, :, :),
                                                     schedule = TimeInterval(10days))
 
 simulation.output_writers[:xz_south] = JLD2OutputWriter(model, outputs,

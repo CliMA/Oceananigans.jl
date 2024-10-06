@@ -9,8 +9,7 @@ using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Grids: xnode, ynode, znode
 using SeawaterPolynomials
 using SeawaterPolynomials:TEOS10
-import SeawaterPolynomials.TEOS10: s, ΔS, Sₐᵤ
-s(Sᴬ::Number) = Sᴬ + ΔS >= 0 ? √((Sᴬ + ΔS) / Sₐᵤ) : NaN
+
 using Glob
 
 # Architecture
@@ -18,11 +17,11 @@ model_architecture = GPU()
 
 # number of grid points
 Nx = 125
-Ny = 3000
+Ny = 1000
 Nz = 250
 
 const Lx = 250meters
-const Ly = 6kilometers
+const Ly = 2kilometers
 const Lz = 500meters
 
 grid = RectilinearGrid(model_architecture,

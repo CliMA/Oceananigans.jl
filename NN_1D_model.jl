@@ -18,15 +18,13 @@ using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Grids: xnode, ynode, znode
 using SeawaterPolynomials
 using SeawaterPolynomials:TEOS10
-import SeawaterPolynomials.TEOS10: s, ΔS, Sₐᵤ
-s(Sᴬ::Number) = Sᴬ + ΔS >= 0 ? √((Sᴬ + ΔS) / Sₐᵤ) : NaN
+
 
 # Architecture
 model_architecture = CPU()
 
 # number of grid points
 Nz = 64
-
 const Lz = 512
 
 grid = RectilinearGrid(model_architecture,
@@ -46,13 +44,14 @@ const dSdz = 0.0021
 const T_surface = 20.0
 const S_surface = 36.6
 
-T_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(1e-4), bottom=GradientBoundaryCondition(dTdz))
+T_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(3e-4))
+u_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(2e-4))
 
 #####
 ##### Coriolis
 #####
 
-const f₀ = 8e-5
+const f₀ = 1e-4
 const β = 1e-11
 # coriolis = BetaPlane(f₀=f₀, β = β)
 coriolis = FPlane(f=f₀)
@@ -82,7 +81,8 @@ model = HydrostaticFreeSurfaceModel(
     closure = (nn_closure, base_closure),
     # closure = base_closure,
     tracers = (:T, :S),
-    boundary_conditions = (; T = T_bcs),
+    # boundary_conditions = (; T = T_bcs),
+    boundary_conditions = (; T = T_bcs, u = u_bcs),
 )
 
 @info "Built $model."
@@ -139,10 +139,12 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 u, v, w = model.velocities
 T, S = model.tracers.T, model.tracers.S
 
+ubar = Field(Average(u, dims = (1,2)))
+vbar = Field(Average(v, dims = (1,2)))
 Tbar = Field(Average(T, dims = (1,2)))
 Sbar = Field(Average(S, dims = (1,2)))
 
-averaged_outputs = (; Tbar, Sbar)
+averaged_outputs = (; ubar, vbar, Tbar, Sbar)
 
 #####
 ##### Build checkpointer and output writer
@@ -164,9 +166,11 @@ end
 # #####
 # ##### Visualization
 # #####
-
+#%%
 using CairoMakie
 
+ubar_data = FieldTimeSeries("./NN_1D_channel_averages.jld2", "ubar")
+vbar_data = FieldTimeSeries("./NN_1D_channel_averages.jld2", "vbar")
 Tbar_data = FieldTimeSeries("./NN_1D_channel_averages.jld2", "Tbar")
 Sbar_data = FieldTimeSeries("./NN_1D_channel_averages.jld2", "Sbar")
 
@@ -174,27 +178,42 @@ zC = znodes(Tbar_data.grid, Center())
 zF = znodes(Tbar_data.grid, Face())
 
 Nt = length(Tbar_data.times)
-#%%
-fig = Figure(size = (900, 600))
-axT = CairoMakie.Axis(fig[1, 1], xlabel = "T (°C)", ylabel = "z (m)")
-axS = CairoMakie.Axis(fig[1, 2], xlabel = "S (g kg⁻¹)", ylabel = "z (m)")
-n = Observable(Nt)
 
+fig = Figure(size = (1800, 600))
+axu = CairoMakie.Axis(fig[1, 1], xlabel = "u (m s⁻¹)", ylabel = "z (m)")
+axv = CairoMakie.Axis(fig[1, 2], xlabel = "v (m s⁻¹)", ylabel = "z (m)")
+axT = CairoMakie.Axis(fig[1, 3], xlabel = "T (°C)", ylabel = "z (m)")
+axS = CairoMakie.Axis(fig[1, 4], xlabel = "S (g kg⁻¹)", ylabel = "z (m)")
+# slider = Slider(fig[2, :], range=1:Nt)
+n = Observable(1)
+
+ubarₙ = @lift interior(ubar_data[$n], 1, 1, :)
+vbarₙ = @lift interior(vbar_data[$n], 1, 1, :)
 Tbarₙ = @lift interior(Tbar_data[$n], 1, 1, :)
 Sbarₙ = @lift interior(Sbar_data[$n], 1, 1, :)
 
+ulim = (minimum(ubar_data), maximum(ubar_data))
+vlim = (minimum(vbar_data), maximum(vbar_data))
+Tlim = (minimum(Tbar_data), maximum(Tbar_data))
+Slim = (minimum(Sbar_data), maximum(Sbar_data))
+
 title_str = @lift "Time: $(round(Tbar_data.times[$n] / 86400, digits=3)) days"
 
+lines!(axu, ubarₙ, zC)
+lines!(axv, vbarₙ, zC)
 lines!(axT, Tbarₙ, zC)
 lines!(axS, Sbarₙ, zC)
 
+xlims!(axu, ulim)
+xlims!(axv, vlim)
+xlims!(axT, Tlim)
+xlims!(axS, Slim)
+
 Label(fig[0, :], title_str, tellwidth = false)
 
-# CairoMakie.record(fig, "./NN_1D_fields.mp4", 1:Nt, framerate=10) do nn
-#     n[] = nn
-#     xlims!(axT, nothing, nothing)
-#     xlims!(axS, nothing, nothing)
-# end
+CairoMakie.record(fig, "./NN_1D_fields.mp4", 1:Nt, framerate=60) do nn
+    n[] = nn
+end
 
-display(fig)
+# display(fig)
 #%%

@@ -9,8 +9,7 @@ using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Grids: xnode, ynode, znode
 using SeawaterPolynomials
 using SeawaterPolynomials:TEOS10
-import SeawaterPolynomials.TEOS10: s, ΔS, Sₐᵤ
-s(Sᴬ::Number) = Sᴬ + ΔS >= 0 ? √((Sᴬ + ΔS) / Sₐᵤ) : NaN
+
 using Glob
 
 # Architecture
@@ -40,7 +39,7 @@ const dSdz = 0.0021
 
 const T_surface = 20.0
 const S_surface = 36.6
-const max_temperature_flux = 3e-4
+const max_temperature_flux = 2e-4
 
 FILE_DIR = "./LES/NN_2D_channel_sin_cooling_$(max_temperature_flux)_LES"
 mkpath(FILE_DIR)
