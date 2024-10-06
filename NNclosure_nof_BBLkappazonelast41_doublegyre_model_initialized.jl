@@ -161,8 +161,8 @@ model = HydrostaticFreeSurfaceModel(
 # S_initial_noisy(x, y, z) = S_initial(x, y, z) + 1e-6 * noise(z)
 
 # set!(model, T=T_initial_noisy, S=S_initial_noisy)
-# DATA_DIR = "./Output/doublegyre_30Cwarmflush_relaxation_8days_baseclosure_trainFC24new_scalingtrain54new_2Pr_2step"
-DATA_DIR = "./Output/doublegyre_30Cwarmflush_relaxation_30days_baseclosure_trainFC24new_scalingtrain54new_2Pr_2step"
+DATA_DIR = "./Output/doublegyre_30Cwarmflush_relaxation_8days_baseclosure_trainFC24new_scalingtrain54new_2Pr_2step"
+# DATA_DIR = "./Output/doublegyre_30Cwarmflush_relaxation_30days_baseclosure_trainFC24new_scalingtrain54new_2Pr_2step"
 
 u_data = FieldTimeSeries("$(DATA_DIR)/instantaneous_fields.jld2", "u", backend=OnDisk())
 v_data = FieldTimeSeries("$(DATA_DIR)/instantaneous_fields.jld2", "v", backend=OnDisk())
