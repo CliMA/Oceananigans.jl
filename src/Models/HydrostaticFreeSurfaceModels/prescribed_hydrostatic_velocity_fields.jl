@@ -54,7 +54,7 @@ function PrescribedVelocityFields(; u = ZeroField(),
 end
 
 wrap_prescribed_field(X, Y, Z, f::Function, grid; kwargs...) = FunctionField{X, Y, Z}(f, grid; kwargs...)
-wrap_prescribed_field(X, Y, Z, f, grid; kwargs...) = f
+wrap_prescribed_field(X, Y, Z, f, grid; kwargs...) = field((X, Y, Z), f, grid)
 
 function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFields, grid, clock, bcs)
 
@@ -121,8 +121,8 @@ const OnlyParticleTrackingModel = HydrostaticFreeSurfaceModel{TS, E, A, S, G, T,
                  {TS, E, A, S, G, T, V, B, R, F, P<:AbstractLagrangianParticles, U<:PrescribedVelocityFields, C<:NamedTuple{(), Tuple{}}}
 
 function time_step!(model::OnlyParticleTrackingModel, Δt; callbacks = [], kwargs...)
-    model.timestepper.previous_Δt = Δt
     tick!(model.clock, Δt)
+    model.clock.last_Δt = Δt
     step_lagrangian_particles!(model, Δt)
     update_state!(model, callbacks)
 end

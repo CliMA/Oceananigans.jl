@@ -160,7 +160,6 @@ end
 function serializeproperty!(file, address, ts::QuasiAdamsBashforth2TimeStepper)
     serializeproperty!(file, address * "/Gⁿ", ts.Gⁿ)
     serializeproperty!(file, address * "/G⁻", ts.G⁻)
-    serializeproperty!(file, address * "/previous_Δt", ts.previous_Δt)
     return nothing
 end
 
@@ -216,7 +215,9 @@ show_array_type(a::Type{Array{T}}) where T = "Array{$T}"
 If `filename` ends in `ext`, return `filename`. Otherwise return `filename * ext`.
 """
 function auto_extension(filename, ext) 
-    Next = length(ext)
-    filename[end-Next+1:end] == ext || (filename *= ext)
-    return filename
+    if endswith(filename, ext)
+        return filename
+    else
+        return filename * ext
+    end
 end

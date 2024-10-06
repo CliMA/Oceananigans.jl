@@ -4,6 +4,34 @@ using Base.Ryu: writeshortest
 using LinearAlgebra: dot, cross
 using OffsetArrays: IdOffsetRange
 
+"""
+    _property(ξ, T, ℓ, N, with_halos=false)
+
+Return the grid property `ξ`, either `with_halos` or without,
+for topology `T`, (instantiated) location `ℓ`, and dimension length `N`.
+"""
+@inline function _property(ξ, ℓ, T, N, with_halos)
+    if with_halos
+        return ξ
+    else
+        i = interior_indices(ℓ, T(), N)
+        return view(ξ, i)
+    end
+end
+
+@inline function _property(ξ, ℓx, ℓy, Tx, Ty, Nx, Ny, with_halos)
+    if with_halos
+        return ξ
+    else
+        i = interior_indices(ℓx, Tx(), Nx)
+        j = interior_indices(ℓy, Ty(), Ny)
+        return view(ξ, i, j)
+    end
+end
+
+@inline _property(ξ::Number, args...) = ξ
+@inline _property(::Nothing, args...) = nothing
+
 # Define default indices in a type-stable way
 @inline default_indices(N::Int) = default_indices(Val(N))
 
@@ -15,42 +43,6 @@ using OffsetArrays: IdOffsetRange
 end
 
 const BoundedTopology = Union{Bounded, LeftConnected}
-
-"""
-    topology(grid)
-
-Return a tuple with the topology of the `grid` for each dimension.
-"""
-@inline topology(::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = (TX, TY, TZ)
-
-"""
-    topology(grid, dim)
-
-Return the topology of the `grid` for the `dim`-th dimension.
-"""
-@inline topology(grid, dim) = topology(grid)[dim]
-
-"""
-    architecture(grid::AbstractGrid)
-
-Return the architecture (CPU or GPU) that the `grid` lives on.
-"""
-@inline architecture(grid::AbstractGrid) = grid.architecture
-
-Base.eltype(::AbstractGrid{FT}) where FT = FT
-
-function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
-    #check if grids are of the same type
-    !isa(grid2, typeof(grid1).name.wrapper) && return false
-
-    topology(grid1) !== topology(grid2) && return false
-
-    x1, y1, z1 = nodes(grid1, (Face(), Face(), Face()))
-    x2, y2, z2 = nodes(grid2, (Face(), Face(), Face()))
-
-    CUDA.@allowscalar return x1 == x2 && y1 == y2 && z1 == z2
-end
-
 const AT = AbstractTopology
 
 Base.length(::Face,    ::BoundedTopology, N) = N + 1
@@ -64,40 +56,6 @@ Base.length(::Center,  ::Flat,            N) = N
 # "Indices-aware" length
 Base.length(loc, topo::AT, N, ::Colon) = length(loc, topo, N)
 Base.length(loc, topo::AT, N, ind::UnitRange) = min(length(loc, topo, N), length(ind))
-
-"""
-    size(grid)
-
-Return a 3-tuple of the number of "center" cells on a grid in (x, y, z).
-Center cells have the location (Center, Center, Center).
-"""
-@inline Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
-
-"""
-    halo_size(grid)
-
-Return a 3-tuple with the number of halo cells on either side of the
-domain in (x, y, z).
-"""
-halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
-halo_size(grid, d) = halo_size(grid)[d]
-
-@inline Base.size(grid::AbstractGrid, d::Int) = size(grid)[d]
-
-@inline Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc)))) =
-    size(loc, topology(grid), size(grid), indices)
-
-@inline function Base.size(loc, topo, sz, indices=default_indices(Val(length(loc))))
-    D = length(loc)
-
-    # (it's type stable?)
-    return ntuple(Val(D)) do d
-        Base.@_inline_meta
-        length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d])
-    end
-end
-
-Base.size(grid::AbstractGrid, loc::Tuple, d::Int) = size(grid, loc)[d]
 
 """
     total_length(loc, topo, N, H=0, ind=Colon())
@@ -118,6 +76,21 @@ total_length(::Center,  ::Flat,            N, H=0) = N
 # "Indices-aware" total length
 total_length(loc, topo, N, H, ::Colon) = total_length(loc, topo, N, H)
 total_length(loc, topo, N, H, ind::UnitRange) = min(total_length(loc, topo, N, H), length(ind))
+
+@inline Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc)))) =
+    size(loc, topology(grid), size(grid), indices)
+
+@inline function Base.size(loc, topo, sz, indices=default_indices(Val(length(loc))))
+    D = length(loc)
+
+    # (it's type stable?)
+    return ntuple(Val(D)) do d
+        Base.@_inline_meta
+        length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d])
+    end
+end
+
+Base.size(grid::AbstractGrid, loc::Tuple, d::Int) = size(grid, loc)[d]
 
 total_size(a) = size(a) # fallback
 
@@ -147,7 +120,9 @@ constant grid spacing `Δ`, and interior extent `L`.
 
 # Grid domains
 @inline domain(topo, N, ξ) = CUDA.@allowscalar ξ[1], ξ[N+1]
-@inline domain(::Flat, N, ξ) = CUDA.@allowscalar ξ[1], ξ[1]
+@inline domain(::Flat, N, ξ::AbstractArray) = ξ[1]
+@inline domain(::Flat, N, ξ::Number) = ξ
+@inline domain(::Flat, N, ::Nothing) = nothing
 
 @inline x_domain(grid) = domain(topology(grid, 1)(), grid.Nx, grid.xᶠᵃᵃ)
 @inline y_domain(grid) = domain(topology(grid, 2)(), grid.Ny, grid.yᵃᶠᵃ)
@@ -231,6 +206,9 @@ parent_index_range(view_indices::UnitRange, loc, topo, halo) = view_indices .+ i
 # Return the index range of parent arrays that are themselves windowed
 parent_index_range(::Colon, args...) = parent_index_range(args...)
 
+parent_index_range(parent_indices::UnitRange, ::Colon, args...) =
+    parent_index_range(parent_indices, parent_indices, args...)
+
 function parent_index_range(parent_indices::UnitRange, view_indices, args...)
     start = first(view_indices) - first(parent_indices) + 1
     stop = start + length(view_indices) - 1
@@ -239,12 +217,9 @@ end
 
 # intersect_index_range(::Colon, ::Colon) = Colon()
 index_range_contains(range,   subset::UnitRange) = (first(subset) ∈ range) & (last(subset) ∈ range)
-index_range_contains(::Colon, subset::UnitRange) = true
+index_range_contains(::Colon, ::UnitRange)       = true
 index_range_contains(::Colon, ::Colon)           = true
-
-# Note: this choice means subset indices are defined on the whole grid.
-# Thus any UnitRange does not contain `:`.
-index_range_contains(range::UnitRange, subset::Colon) = false 
+index_range_contains(::UnitRange, ::Colon)       = true
 
 # Return the index range of "full" parent arrays that span an entire dimension
 parent_windowed_indices(::Colon, loc, topo, halo)            = Colon()
@@ -305,9 +280,11 @@ Base.show(io::IO, dir::AbstractDirection) = print(io, summary(dir))
 
 size_summary(sz) = string(sz[1], "×", sz[2], "×", sz[3])
 prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
-dimension_summary(topo::Flat, name, args...) = "Flat $name"
 
-function domain_summary(topo, name, left, right)
+domain_summary(topo::Flat, name, ::Nothing) = "Flat $name"
+domain_summary(topo::Flat, name, coord::Number) = "Flat $name = $coord"
+
+function domain_summary(topo, name, (left, right))
     interval = (topo isa Bounded) ||
                (topo isa LeftConnected) ? "]" : ")"
 
@@ -315,22 +292,24 @@ function domain_summary(topo, name, left, right)
                   topo isa Bounded ? "Bounded  " :
                   topo isa FullyConnected ? "FullyConnected " :
                   topo isa LeftConnected ? "LeftConnected  " :
-                  "RightConnected "
+                  topo isa RightConnected ? "RightConnected  " :
+                  error("Unexpected topology $topo together with the domain end points ($left, $right)")
 
     return string(topo_string, name, " ∈ [",
                   prettysummary(left), ", ",
                   prettysummary(right), interval)
 end
 
-function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
-    prefix = domain_summary(topo, name, left, right)
+function dimension_summary(topo, name, dom, spacing, pad_domain=0)
+    prefix = domain_summary(topo, name, dom)
     padding = " "^(pad_domain+1) 
-    return string(prefix, padding, coordinate_summary(spacing, name))
+    return string(prefix, padding, coordinate_summary(topo, spacing, name))
 end
 
-coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, prettysummary(Δ))
+coordinate_summary(::Flat, Δ::Number, name) = ""
+coordinate_summary(topo, Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, prettysummary(Δ))
 
-coordinate_summary(Δ::Union{AbstractVector, AbstractMatrix}, name) =
+coordinate_summary(topo, Δ::Union{AbstractVector, AbstractMatrix}, name) =
     @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
              name, prettysummary(minimum(parent(Δ))),
              name, prettysummary(maximum(parent(Δ))))
@@ -515,6 +494,4 @@ function add_halos(data::AbstractArray{FT, 2} where FT, loc, topo, sz, halo_sz; 
     Nx, Ny = size(data)
     return add_halos(reshape(data, (Nx, Ny, 1)), loc, topo, sz, halo_sz; warnings)
 end
-
-grid_name(grid::AbstractGrid) = typeof(grid).name.wrapper
 

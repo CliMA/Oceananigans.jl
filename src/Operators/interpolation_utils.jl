@@ -62,9 +62,9 @@ function interpolation_operator(from, to)
         global identity_counter += 1
         identity = identify_an_identity(identity_counter)
 
-        return @eval $identity
+        return getglobal(@__MODULE__, identity)
     else
-        return eval(Symbol(:ℑ, ℑxsym(x), ℑysym(y), ℑzsym(z), x, y, z))
+        return getglobal(@__MODULE__, Symbol(:ℑ, ℑxsym(x), ℑysym(y), ℑzsym(z), x, y, z))
     end
 end
 
@@ -77,7 +77,7 @@ operator for fields that have no intrinsic location, like numbers or functions.
 function interpolation_operator(::Nothing, to)
     global identity_counter += 1
     identity = identify_an_identity(identity_counter)
-    return @eval $identity
+    return getglobal(@__MODULE__, identity)
 end
 
 assumed_field_location(name) = name === :u  ? (Face, Center, Center) :
@@ -118,11 +118,11 @@ for LX in (:Center, :Face), LY in (:Center, :Face), LZ in (:Center, :Face)
         to   = (eval(IX), eval(IY), eval(IZ))
         interp_func = Symbol(interpolation_operator(from, to))
         @eval begin
-            ℑxyz(i, j, k, grid, from::F, to::T, c) where {F<:Tuple{<:$LX, <:$LY, <:$LZ}, T<:Tuple{<:$IX, <:$IY, <:$IZ}} = 
-                $interp_func(i, j, k, grid, c)
+            @inline ℑxyz(i, j, k, grid, from::F, to::T, c) where {F<:Tuple{<:$LX, <:$LY, <:$LZ}, T<:Tuple{<:$IX, <:$IY, <:$IZ}} = 
+                         $interp_func(i, j, k, grid, c)
          
-            ℑxyz(i, j, k, grid, from::F, to::T, f, args...) where {F<:Tuple{<:$LX, <:$LY, <:$LZ}, T<:Tuple{<:$IX, <:$IY, <:$IZ}} = 
-                $interp_func(i, j, k, grid, f, args...)
+            @inline ℑxyz(i, j, k, grid, from::F, to::T, f, args...) where {F<:Tuple{<:$LX, <:$LY, <:$LZ}, T<:Tuple{<:$IX, <:$IY, <:$IZ}} = 
+                         $interp_func(i, j, k, grid, f, args...)
         end
     end
 end

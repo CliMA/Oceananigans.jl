@@ -88,7 +88,7 @@ end
 function test_immersed_diffusion(Nz, z, time_discretization)
     closure         = ScalarDiffusivity(time_discretization, κ = 1)
     underlying_grid = RectilinearGrid(size=Nz, z=z, topology=(Flat, Flat, Bounded))
-    grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(() -> 0))
+    grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(() -> 0); active_cells_map = true)
 
     Δz_min = minimum(underlying_grid.Δzᵃᵃᶜ)
     model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
@@ -131,7 +131,7 @@ function test_3D_immersed_diffusion(Nz, z, time_discretization)
                   b b b b b b b b b]
 
     underlying_grid = RectilinearGrid(size=(9, 9, Nz), x=(0, 1), y=(0, 1), z=z, topology=(Periodic, Periodic, Bounded))
-    grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
+    grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry); active_cells_map = true)
     
     Δz_min = minimum(grid.underlying_grid.Δzᵃᵃᶜ)
     model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())

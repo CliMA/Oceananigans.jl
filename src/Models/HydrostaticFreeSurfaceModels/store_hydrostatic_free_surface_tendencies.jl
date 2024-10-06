@@ -4,7 +4,7 @@ using Oceananigans.TimeSteppers: store_field_tendencies!
 
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids: AbstractGrid
-using Oceananigans.ImmersedBoundaries: active_interior_map
+using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map
 
 using Oceananigans.Utils: launch!
 
@@ -36,6 +36,10 @@ function store_tendencies!(model::HydrostaticFreeSurfaceModel)
     for field_name in three_dimensional_prognostic_field_names
 
         if closure isa FlavorOfCATKE && field_name == :e
+            @debug "Skipping store tendencies for e"
+        elseif closure isa FlavorOfTD && field_name == :ϵ
+            @debug "Skipping store tendencies for ϵ"
+        elseif closure isa FlavorOfTD && field_name == :e
             @debug "Skipping store tendencies for e"
         else
             launch!(model.architecture, model.grid, :xyz,

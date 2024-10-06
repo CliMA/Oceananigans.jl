@@ -231,6 +231,7 @@ function set!(model, filepath::AbstractString)
         # Update model clock
         model.clock.iteration = checkpointed_clock.iteration
         model.clock.time = checkpointed_clock.time
+        model.clock.last_Δt = checkpointed_clock.last_Δt
     end
 
     return nothing
@@ -265,8 +266,6 @@ end
 set_time_stepper!(timestepper::RungeKutta3TimeStepper, arch, file, model_fields) =
     set_time_stepper_tendencies!(timestepper, arch, file, model_fields)
 
-function set_time_stepper!(timestepper::QuasiAdamsBashforth2TimeStepper, arch, file, model_fields)
+set_time_stepper!(timestepper::QuasiAdamsBashforth2TimeStepper, arch, file, model_fields) =
     set_time_stepper_tendencies!(timestepper, arch, file, model_fields)
-    timestepper.previous_Δt = file["timestepper/previous_Δt"]
-    return nothing
-end
+

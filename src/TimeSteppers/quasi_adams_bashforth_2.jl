@@ -3,7 +3,6 @@ using Oceananigans.Utils: @apply_regionally, apply_regionally!
 
 mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
                   χ :: FT
-        previous_Δt :: FT
                  Gⁿ :: GT
                  G⁻ :: GT
     implicit_solver :: IT
@@ -48,32 +47,39 @@ function QuasiAdamsBashforth2TimeStepper(grid, tracers,
     GT = typeof(Gⁿ)
     χ  = convert(FT, χ)
 
-    return QuasiAdamsBashforth2TimeStepper{FT, GT, IT}(χ, Inf, Gⁿ, G⁻, implicit_solver)
+    return QuasiAdamsBashforth2TimeStepper{FT, GT, IT}(χ, Gⁿ, G⁻, implicit_solver)
 end
 
-function reset!(timestepper::QuasiAdamsBashforth2TimeStepper)
-    timestepper.previous_Δt = Inf
-    return nothing
-end
+reset!(timestepper::QuasiAdamsBashforth2TimeStepper) = nothing
 
 #####
 ##### Time steppping
 #####
 
 """
-    time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false, compute_tendencies=true)
+    time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false)
 
 Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method and
 pressure-correction substep. Setting `euler=true` will take a forward Euler time step.
-Setting `compute_tendencies=false` will not calculate new tendencies
+The tendencies are calculated by the `update_step!` at the end of the `time_step!` function.
+
+The steps of the Quasi-Adams-Bashforth second-order (AB2) algorithm are:
+
+1. If this the first time step (`model.clock.iteration == 0`), then call `update_state!` and calculate the tendencies.
+2. Advance tracers in time and compute predictor velocities (including implicit vertical diffusion).
+3. Solve the elliptic equation for pressure (three dimensional for the non-hydrostatic model, two-dimensional for the hydrostatic model).
+4. Correct the velocities based on the results of step 3.
+5. Store the old tendencies.
+6. Update the model state.
+7. Compute tendencies for the next time step
 """
 function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt;
-                    callbacks=[], euler=false, compute_tendencies=true)
+                    callbacks=[], euler=false)
+
+    Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Be paranoid and update state at iteration 0
     model.clock.iteration == 0 && update_state!(model, callbacks)
-
-    Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     ab2_timestepper = model.timestepper
 
@@ -83,16 +89,15 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     #     need to take an euler step. Note that model.clock.last_Δt is
     #     initialized as Inf
     #   * The user has passed euler=true to time_step!
-    χ₀ = ab2_timestepper.χ
-    euler = euler || (Δt != ab2_timestepper.previous_Δt)
+    euler = euler || (Δt != model.clock.last_Δt)
     
     # If euler, then set χ = -0.5
     minus_point_five = convert(eltype(model.grid), -0.5)
     χ = ifelse(euler, minus_point_five, ab2_timestepper.χ)
 
     # Set time-stepper χ (this is used in ab2_step!, but may also be used elsewhere)
+    χ₀ = ab2_timestepper.χ # Save initial value
     ab2_timestepper.χ = χ
-    ab2_timestepper.previous_Δt = Δt
 
     # Ensure zeroing out all previous tendency fields to avoid errors in
     # case G⁻ includes NaNs. See https://github.com/CliMA/Oceananigans.jl/issues/2259
@@ -103,14 +108,19 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
         end
     end
 
-    model.clock.iteration == 0 && update_state!(model, callbacks)
-
+    # Be paranoid and update state at iteration 0
+    model.clock.iteration == 0 && update_state!(model, callbacks; compute_tendencies=true)
+    
     ab2_step!(model, Δt) # full step for tracers, fractional step for velocities.
+    
+    tick!(model.clock, Δt)
+    model.clock.last_Δt = Δt
+    model.clock.last_stage_Δt = Δt # just one stage
+    
     calculate_pressure_correction!(model, Δt)
     @apply_regionally correct_velocities_and_store_tendencies!(model, Δt)
 
-    tick!(model.clock, Δt)
-    update_state!(model, callbacks; compute_tendencies)
+    update_state!(model, callbacks; compute_tendencies=true)
     step_lagrangian_particles!(model, Δt)
 
     # Return χ to initial value
@@ -176,3 +186,4 @@ Time step velocity fields via the 2nd-order quasi Adams-Bashforth method
 end
 
 @kernel ab2_step_field!(::FunctionField, Δt, χ, Gⁿ, G⁻) = nothing
+

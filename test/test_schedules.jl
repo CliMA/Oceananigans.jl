@@ -1,6 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes
+using Oceananigans.Utils: schedule_aligned_time_step
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans: initialize!
 
@@ -21,7 +22,7 @@ using Oceananigans: initialize!
     ti = TimeInterval(2)
     initialize!(ti, fake_model_at_iter_0)
 
-    @test ti.actuations == 1
+    @test ti.actuations == 0
     @test ti.interval == 2.0
     @test ti(fake_model_at_time_2)
     @test !(ti(fake_model_at_time_3))
@@ -74,4 +75,9 @@ using Oceananigans: initialize!
     # Specified times includes iteration 0
     st = SpecifiedTimes(0, 2, 4)
     @test initialize!(st, fake_model_at_iter_0)
+
+    fake_clock = (; time=2.1) 
+    st = SpecifiedTimes(2.5)
+    @test 0.4 ≈ schedule_aligned_time_step(st, fake_clock, Inf)
 end
+

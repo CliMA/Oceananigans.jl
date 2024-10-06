@@ -49,32 +49,70 @@ zdim(::Nothing) = tuple()
 netcdf_spatial_dimensions(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
     tuple(xdim(instantiate(LX))..., ydim(instantiate(LY))..., zdim(instantiate(LZ))...)
 
-native_dimensions_for_netcdf_output(grid, indices, TX, TY, TZ, Hx, Hy, Hz) =
-    Dict("xC" => parent(xnodes(grid, Center(); with_halos=true))[parent_index_range(indices["xC"][1], Center(), TX(), Hx)],
-         "xF" => parent(xnodes(grid, Face();   with_halos=true))[parent_index_range(indices["xF"][1],   Face(), TX(), Hx)],
-         "yC" => parent(ynodes(grid, Center(); with_halos=true))[parent_index_range(indices["yC"][2], Center(), TY(), Hy)],
-         "yF" => parent(ynodes(grid, Face();   with_halos=true))[parent_index_range(indices["yF"][2],   Face(), TY(), Hy)],
-         "zC" => parent(znodes(grid, Center(); with_halos=true))[parent_index_range(indices["zC"][3], Center(), TZ(), Hz)],
-         "zF" => parent(znodes(grid, Face();   with_halos=true))[parent_index_range(indices["zF"][3],   Face(), TZ(), Hz)])
+function native_dimensions_for_netcdf_output(grid, indices, TX, TY, TZ, Hx, Hy, Hz)
+    with_halos = true
 
-native_dimensions_for_netcdf_output(grid::AbstractCurvilinearGrid, indices, TX, TY, TZ, Hx, Hy, Hz) =
-    Dict("xC" => parent(λnodes(grid, Center(); with_halos=true))[parent_index_range(indices["xC"][1], Center(), TX(), Hx)],
-         "xF" => parent(λnodes(grid, Face();   with_halos=true))[parent_index_range(indices["xF"][1],   Face(), TX(), Hx)],
-         "yC" => parent(φnodes(grid, Center(); with_halos=true))[parent_index_range(indices["yC"][2], Center(), TY(), Hy)],
-         "yF" => parent(φnodes(grid, Face();   with_halos=true))[parent_index_range(indices["yF"][2],   Face(), TY(), Hy)],
-         "zC" => parent(znodes(grid, Center(); with_halos=true))[parent_index_range(indices["zC"][3], Center(), TZ(), Hz)],
-         "zF" => parent(znodes(grid, Face();   with_halos=true))[parent_index_range(indices["zF"][3],   Face(), TZ(), Hz)])
+    xC = xnodes(grid, c; with_halos)
+    xF = xnodes(grid, f; with_halos)
+    yC = ynodes(grid, c; with_halos)
+    yF = ynodes(grid, f; with_halos)
+    zC = znodes(grid, c; with_halos)
+    zF = znodes(grid, f; with_halos)
+
+    xC = isnothing(xC) ? [0.0] : parent(xC)  
+    xF = isnothing(xF) ? [0.0] : parent(xF) 
+    yC = isnothing(yC) ? [0.0] : parent(yC) 
+    yF = isnothing(yF) ? [0.0] : parent(yF) 
+    zC = isnothing(zC) ? [0.0] : parent(zC) 
+    zF = isnothing(zF) ? [0.0] : parent(zF) 
+
+    dims = Dict("xC" => xC[parent_index_range(indices["xC"][1], c, TX(), Hx)],
+                "xF" => xF[parent_index_range(indices["xF"][1], f, TX(), Hx)],
+                "yC" => yC[parent_index_range(indices["yC"][2], c, TY(), Hy)],
+                "yF" => yF[parent_index_range(indices["yF"][2], f, TY(), Hy)],
+                "zC" => zC[parent_index_range(indices["zC"][3], c, TZ(), Hz)],
+                "zF" => zF[parent_index_range(indices["zF"][3], f, TZ(), Hz)])
+
+    return dims
+end
+
+function native_dimensions_for_netcdf_output(grid::AbstractCurvilinearGrid, indices, TX, TY, TZ, Hx, Hy, Hz)
+    with_halos = true
+
+    xC = λnodes(grid, c; with_halos)
+    xF = λnodes(grid, f; with_halos)
+    yC = φnodes(grid, c; with_halos)
+    yF = φnodes(grid, f; with_halos)
+    zC = znodes(grid, c; with_halos)
+    zF = znodes(grid, f; with_halos)
+
+    xC = isnothing(xC) ? [0.0] : parent(xC)  
+    xF = isnothing(xF) ? [0.0] : parent(xF) 
+    yC = isnothing(yC) ? [0.0] : parent(yC) 
+    yF = isnothing(yF) ? [0.0] : parent(yF) 
+    zC = isnothing(zC) ? [0.0] : parent(zC) 
+    zF = isnothing(zF) ? [0.0] : parent(zF) 
+
+    dims = Dict("xC" => xC[parent_index_range(indices["xC"][1], c, TX(), Hx)],
+                "xF" => xF[parent_index_range(indices["xF"][1], f, TX(), Hx)],
+                "yC" => yC[parent_index_range(indices["yC"][2], c, TY(), Hy)],
+                "yF" => yF[parent_index_range(indices["yF"][2], f, TY(), Hy)],
+                "zC" => zC[parent_index_range(indices["zC"][3], c, TZ(), Hz)],
+                "zF" => zF[parent_index_range(indices["zF"][3], f, TZ(), Hz)])
+
+    return dims
+end
 
 function default_dimensions(output, grid, indices, with_halos)
     Hx, Hy, Hz = halo_size(grid)
     TX, TY, TZ = topo = topology(grid)
 
-    locs = Dict("xC" => (Center(), Center(), Center()),
-                "xF" => (Face(),   Center(), Center()),
-                "yC" => (Center(), Center(), Center()),
-                "yF" => (Center(), Face(),   Center()),
-                "zC" => (Center(), Center(), Center()),
-                "zF" => (Center(), Center(), Face()  ))
+    locs = Dict("xC" => (c, c, c),
+                "xF" => (f, c, c),
+                "yC" => (c, c, c),
+                "yF" => (c, f, c),
+                "zC" => (c, c, c),
+                "zF" => (c, c, f))
 
     topo = map(instantiate, topology(grid))
 
@@ -275,7 +313,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u)
 └── array type: Array{Float64}
 ├── file_splitting: NoFileSplitting
-└── file size: 14.8 KiB
+└── file size: 14.9 KiB
 ```
 
 ```jldoctest netcdf1
@@ -290,7 +328,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u)
 └── array type: Array{Float64}
 ├── file_splitting: NoFileSplitting
-└── file size: 14.8 KiB
+└── file size: 14.9 KiB
 ```
 
 ```jldoctest netcdf1
@@ -320,19 +358,18 @@ Nx, Ny, Nz = 16, 16, 16
 
 grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(1, 2, 3))
 
-model = NonhydrostaticModel(grid=grid)
+model = NonhydrostaticModel(; grid)
 
 simulation = Simulation(model, Δt=1.25, stop_iteration=3)
 
-f(model) = model.clock.time^2; # scalar output
+f(model) = model.clock.time^2 # scalar output
 
-g(model) = model.clock.time .* exp.(znodes(grid, Center())) # vector/profile output
+zC = znodes(grid, Center())
+g(model) = model.clock.time .* exp.(zC) # vector/profile output
 
 xC, yF = xnodes(grid, Center()), ynodes(grid, Face())
-
 XC = [xC[i] for i in 1:Nx, j in 1:Ny]
 YF = [yF[j] for i in 1:Nx, j in 1:Ny]
-
 h(model) = @. model.clock.time * sin(XC) * cos(YF) # xy slice output
 
 outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
@@ -391,7 +428,7 @@ NetCDFOutputWriter scheduled on IterationInterval(1):
 ├── 1 outputs: u
 └── array type: Array{Float64}
 ├── file_splitting: NoFileSplitting
-└── file size: 14.5 KiB
+└── file size: 14.6 KiB
 ```
 """
 function NetCDFOutputWriter(model, outputs;
