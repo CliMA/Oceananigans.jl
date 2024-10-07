@@ -49,9 +49,14 @@ Adapt.adapt_structure(to, coord::ZStarSpacing) =
                          Adapt.adapt(to, coord.∂t_s))
 
 on_architecture(arch, coord::ZStarSpacing) = 
-            ZStarSpacing(on_architecture(arch, coord.Δr), 
-                         on_architecture(arch, coord.s⁻),
-                         on_architecture(arch, coord.sⁿ),
+            ZStarSpacing(on_architecture(arch, coord.Δr),
+                         on_architecture(arch, coord.sᶜᶜⁿ),
+                         on_architecture(arch, coord.sᶠᶜⁿ),
+                         on_architecture(arch, coord.sᶜᶠⁿ),
+                         on_architecture(arch, coord.sᶠᶠⁿ),
+                         on_architecture(arch, coord.sᶜᶜ⁻),
+                         on_architecture(arch, coord.sᶠᶜ⁻),
+                         on_architecture(arch, coord.sᶜᶠ⁻),
                          on_architecture(arch, coord.∂t_s))
 
 Grids.coordinate_summary(Δ::ZStarSpacing, name) = 
@@ -131,7 +136,7 @@ end
 reference_zspacings(grid::ZStarSpacingGrid, ::Face)   = grid.Δzᵃᵃᶠ.Δr
 reference_zspacings(grid::ZStarSpacingGrid, ::Center) = grid.Δzᵃᵃᶜ.Δr
 
-@inline ∂t_s_grid(i, j, k, grid::ZStarSpacingGrid) = grid.Δzᵃᵃᶜ.∂t_s[i, j, 1] 
+@inline ∂t_s_grid(i, j, k, grid::ZStarSpacingGrid) = @inbounds grid.Δzᵃᵃᶜ.∂t_s[i, j, 1] 
 @inline V_times_∂t_s_grid(i, j, k, grid::ZStarSpacingGrid) = ∂t_s_grid(i, j, k, grid) * Vᶜᶜᶜ(i, j, k, grid)
 
 #####
