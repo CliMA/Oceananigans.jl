@@ -125,6 +125,9 @@ end
 ##### ZStar-specific vertical spacing functions
 #####
 
+reference_zspacings(grid::ZStarSpacingGrid, ::Face)   = grid.Δzᵃᵃᶠ.Δr
+reference_zspacings(grid::ZStarSpacingGrid, ::Center) = grid.Δzᵃᵃᶜ.Δr
+
 @inline vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Center, ::Center, ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶜᶜⁿ[i, j, 1]
 @inline vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Face,   ::Center, ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶠᶜⁿ[i, j, 1]
 @inline vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Center, ::Face,   ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶜᶠⁿ[i, j, 1]
@@ -134,8 +137,9 @@ end
 @inline previous_vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Face,   ::Center, ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶠᶜ⁻[i, j, 1]
 @inline previous_vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Center, ::Face,   ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶜᶠ⁻[i, j, 1]
 
-reference_zspacings(grid::ZStarSpacingGrid, ::Face)   = grid.Δzᵃᵃᶠ.Δr
-reference_zspacings(grid::ZStarSpacingGrid, ::Center) = grid.Δzᵃᵃᶜ.Δr
+@inline previous_vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Center, ::Center, ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶜᶜ⁻[i, j, 1]
+@inline previous_vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Face,   ::Center, ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶠᶜ⁻[i, j, 1]
+@inline previous_vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Center, ::Face,   ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶜᶠ⁻[i, j, 1]
 
 @inline ∂t_s_grid(i, j, k, grid::ZStarSpacingGrid) = @inbounds grid.Δzᵃᵃᶜ.∂t_s[i, j, 1] 
 @inline V_times_∂t_s_grid(i, j, k, grid::ZStarSpacingGrid) = ∂t_s_grid(i, j, k, grid) * Vᶜᶜᶜ(i, j, k, grid)
@@ -147,14 +151,14 @@ reference_zspacings(grid::ZStarSpacingGrid, ::Center) = grid.Δzᵃᵃᶜ.Δr
 function update_vertical_spacing!(model, grid::ZStarSpacingGrid; parameters = :xy)
     
     # Scaling 
-    sᶜᶜ⁻  = grid.Δzᵃᵃᶠ.sᶜᶜ⁻
-    sᶜᶜⁿ  = grid.Δzᵃᵃᶠ.sᶜᶜⁿ
-    sᶠᶜ⁻  = grid.Δzᵃᵃᶠ.sᶠᶜ⁻
-    sᶠᶜⁿ  = grid.Δzᵃᵃᶠ.sᶠᶜⁿ
-    sᶜᶠ⁻  = grid.Δzᵃᵃᶠ.sᶜᶠ⁻
-    sᶜᶠⁿ  = grid.Δzᵃᵃᶠ.sᶜᶠⁿ
-    sᶠᶠⁿ  = grid.Δzᵃᵃᶠ.sᶠᶠⁿ
-    ∂t_s  = grid.Δzᵃᵃᶠ.∂t_s
+    sᶜᶜ⁻ = grid.Δzᵃᵃᶠ.sᶜᶜ⁻
+    sᶜᶜⁿ = grid.Δzᵃᵃᶠ.sᶜᶜⁿ
+    sᶠᶜ⁻ = grid.Δzᵃᵃᶠ.sᶠᶜ⁻
+    sᶠᶜⁿ = grid.Δzᵃᵃᶠ.sᶠᶜⁿ
+    sᶜᶠ⁻ = grid.Δzᵃᵃᶠ.sᶜᶠ⁻
+    sᶜᶠⁿ = grid.Δzᵃᵃᶠ.sᶜᶠⁿ
+    sᶠᶠⁿ = grid.Δzᵃᵃᶠ.sᶠᶠⁿ
+    ∂t_s = grid.Δzᵃᵃᶠ.∂t_s
 
     # Free surface variables
     Hᶜᶜ = model.free_surface.auxiliary.Hᶜᶜ
@@ -186,8 +190,8 @@ end
     k_top = grid.Nz + 1 
     @inbounds begin
         # ∂(η / H)/∂t = - ∇ ⋅ ∫udz / H
-        ∂t_s[i, j, 1] = -  1 / Azᶜᶜᶠ(i, j, k_top-1, grid) * (δxᶜᵃᵃ(i, j, k_top-1, grid, Δy_qᶠᶜᶠ, U̅) +
-                                                             δyᵃᶜᵃ(i, j, k_top-1, grid, Δx_qᶜᶠᶠ, V̅)) / Hᶜᶜ[i, j, 1]
+        ∂t_s[i, j, 1] = - 1 / Azᶜᶜᶠ(i, j, k_top-1, grid) * (δxᶜᵃᵃ(i, j, k_top-1, grid, Δy_qᶠᶜᶠ, U̅) +
+                                                            δyᵃᶜᵃ(i, j, k_top-1, grid, Δx_qᶜᶠᶠ, V̅)) / Hᶜᶜ[i, j, 1]
     end
 end
 

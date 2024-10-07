@@ -162,10 +162,8 @@ end
 @inline dynamic_column_heightᶜᶠ(i, j, k, grid, H, η) = @inbounds H[i, j, 1]
 
 # Non-linear free surface implementation
-# At the moment the dynamic height is frozen in time so it is in practice a linear equation in the substepping
-# TODO: Implement the full non-linear free surface model by having the dynamic height evolve in time during substepping
-@inline dynamic_column_heightᶠᶜ(i, j, k, grid::ZStarSpacingGrid, H, η) = @inbounds H[i, j, 1] * vertical_scaling(i, j, k, grid, f, c, c)
-@inline dynamic_column_heightᶜᶠ(i, j, k, grid::ZStarSpacingGrid, H, η) = @inbounds H[i, j, 1] * vertical_scaling(i, j, k, grid, c, f, c)
+@inline dynamic_column_heightᶠᶜ(i, j, k, grid::ZStarSpacingGrid, H, η) = @inbounds H[i, j, 1] + ℑxᶠᵃᵃ(i, j, k, grid, η)
+@inline dynamic_column_heightᶜᶠ(i, j, k, grid::ZStarSpacingGrid, H, η) = @inbounds H[i, j, 1] + ℑyᵃᶠᵃ(i, j, k, grid, η)
 
 @kernel function _split_explicit_barotropic_velocity!(averaging_weight, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
                                                       U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,
@@ -211,39 +209,45 @@ end
 # For Zstar vertical spacing the vertical integral includes the dynamic height
 # Remember, the vertical coordinate has not yet been updated! 
 # For this reason the integration has to be performed manually
-@kernel function _barotropic_mode_kernel!(U, V, grid, ::Nothing, u, v)
+@kernel function _barotropic_mode_kernel!(U, V, grid, ::Nothing, u, v, Hᶠᶜ, Hᶜᶠ, η̅)
     i, j  = @index(Global, NTuple)	
     k_top = grid.Nz + 1
 
+    sᶠᶜ = @inbounds dynamic_column_heightᶠᶜ(i, j, k_top, grid, Hᶠᶜ, η̅) / Hᶠᶜ[i, j, 1]
+    sᶜᶠ = @inbounds dynamic_column_heightᶜᶠ(i, j, k_top, grid, Hᶜᶠ, η̅) / Hᶜᶠ[i, j, 1]
+    
     # hand unroll first loop
-    @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δzᶠᶜᶜ(i, j, 1, grid) 
-    @inbounds V[i, j, k_top-1] = v[i, j, 1] * Δzᶜᶠᶜ(i, j, 1, grid) 
+    @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δrᶠᶜᶜ(i, j, 1, grid) * sᶠᶜ
+    @inbounds V[i, j, k_top-1] = v[i, j, 1] * Δrᶜᶠᶜ(i, j, 1, grid) * sᶜᶠ
 
     @unroll for k in 2:grid.Nz
-        @inbounds U[i, j, k_top-1] += u[i, j, k] * Δzᶠᶜᶜ(i, j, k, grid) 
-        @inbounds V[i, j, k_top-1] += v[i, j, k] * Δzᶜᶠᶜ(i, j, k, grid) 
+        @inbounds U[i, j, k_top-1] += u[i, j, k] * Δrᶠᶜᶜ(i, j, k, grid) * sᶠᶜ
+        @inbounds V[i, j, k_top-1] += v[i, j, k] * Δrᶜᶠᶜ(i, j, k, grid) * sᶜᶠ
     end
 end
 
-@kernel function _barotropic_mode_kernel!(U, V, grid, active_cells_map, u, v)
+@kernel function _barotropic_mode_kernel!(U, V, grid, active_cells_map, u, v, Hᶠᶜ, Hᶜᶠ, η̅)
     idx = @index(Global, Linear)
     i, j = active_linear_index_to_tuple(idx, active_cells_map)
     k_top = grid.Nz+1
 
+    sᶠᶜ = @inbounds dynamic_column_heightᶠᶜ(i, j, k_top, grid, Hᶠᶜ, η̅) / Hᶠᶜ[i, j, 1]
+    sᶜᶠ = @inbounds dynamic_column_heightᶜᶠ(i, j, k_top, grid, Hᶜᶠ, η̅) / Hᶜᶠ[i, j, 1]
+    
     # hand unroll first loop
-    @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δzᶠᶜᶜ(i, j, 1, grid) 
-    @inbounds V[i, j, k_top-1] = v[i, j, 1] * Δzᶜᶠᶜ(i, j, 1, grid) 
+    @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δrᶠᶜᶜ(i, j, 1, grid) * sᶠᶜ
+    @inbounds V[i, j, k_top-1] = v[i, j, 1] * Δrᶜᶠᶜ(i, j, 1, grid) * sᶜᶠ
 
     @unroll for k in 2:grid.Nz
-        @inbounds U[i, j, k_top-1] += u[i, j, k] * Δzᶠᶜᶜ(i, j, k, grid)
-        @inbounds V[i, j, k_top-1] += v[i, j, k] * Δzᶜᶠᶜ(i, j, k, grid)
+        @inbounds U[i, j, k_top-1] += u[i, j, k] * Δrᶠᶜᶜ(i, j, k, grid) * sᶠᶜ
+        @inbounds V[i, j, k_top-1] += v[i, j, k] * Δrᶜᶠᶜ(i, j, k, grid) * sᶜᶠ
     end
 end
 
 @inline function compute_barotropic_mode!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, η̅) 
     active_cells_map = retrieve_surface_active_cells_map(grid)
     
-    launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, active_cells_map, u, v; active_cells_map)
+    launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, active_cells_map, u, v, Hᶠᶜ, Hᶜᶠ, η̅; active_cells_map)
 
     return nothing
 end
