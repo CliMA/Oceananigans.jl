@@ -2,16 +2,17 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Utils: prettytime
 using Oceananigans.Advection: WENOVectorInvariant
+using Oceananigans.AbstractOperations: GridMetricOperation  
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStar, ZStarSpacingGrid, Δrᶜᶜᶜ
 using Printf
 
-grid = RectilinearGrid(size = (128, 20), 
+grid = RectilinearGrid(size = (10, 20), 
                           x = (0, 64kilometers), 
                           z = (-20, 0), 
                        halo = (6, 6),
                    topology = (Bounded, Flat, Bounded))
 
-# grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> x < 32kilometers ? -10 : -20))
+grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> x < 32kilometers ? -10 : -20))
 
 model = HydrostaticFreeSurfaceModel(; grid, 
             vertical_coordinate = ZStar(),
@@ -34,13 +35,11 @@ set!(model, b = bᵢ)
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_iteration = 10000, stop_time = 17hours) 
+simulation = Simulation(model; Δt, stop_iteration = 100, stop_time = 17hours) 
 
-field_outputs = if model.grid isa ZStarSpacingGrid
-  merge(model.velocities, model.tracers, (; sⁿ = model.grid.Δzᵃᵃᶠ.sᶜᶜⁿ))
-else
-  merge(model.velocities, model.tracers)
-end
+Δz = GridMetricOperation((Center, Center, Center), Oceananigans.AbstractOperations.Δz, model.grid)
+
+field_outputs = merge(model.velocities, model.tracers, (; Δz))
 
 simulation.output_writers[:other_variables] = JLD2OutputWriter(model, field_outputs, 
                                                                overwrite_existing = true,
@@ -53,16 +52,11 @@ function progress(sim)
     b  = sim.model.tracers.b
     
     msg0 = @sprintf("Time: %s iteration %d ", prettytime(sim.model.clock.time), sim.model.clock.iteration)
-    msg1 = @sprintf("extrema w: %.2e %.2e ", maximum(w), minimum(w))
-    msg2 = @sprintf("extrema u: %.2e %.2e ", maximum(u), minimum(u))
-    msg3 = @sprintf("extrema b: %.2e %.2e ", maximum(b), minimum(b))
-    if sim.model.grid isa ZStarSpacingGrid
-      Δz = sim.model.grid.Δzᵃᵃᶠ.sᶜᶜⁿ
-      msg4 = @sprintf("extrema Δz: %.2e %.2e ", maximum(Δz), minimum(Δz))
-      @info msg0 * msg1 * msg2 * msg3 * msg4
-    else
-      @info msg0 * msg1 * msg2 * msg3
-    end
+    msg1 = @sprintf("extrema w: %.2e %.2e ",  maximum(w),  minimum(w))
+    msg2 = @sprintf("extrema u: %.2e %.2e ",  maximum(u),  minimum(u))
+    msg3 = @sprintf("extrema b: %.2e %.2e ",  maximum(b),  minimum(b))
+    msg4 = @sprintf("extrema Δz: %.2e %.2e ", maximum(Δz), minimum(Δz))
+    @info msg0 * msg1 * msg2 * msg3 * msg4
 
     return nothing
 end
@@ -82,17 +76,16 @@ end
 using Oceananigans.Fields: OneField
 
 # # Check tracer conservation
-b = FieldTimeSeries("zstar_model.jld2", "b")
-s = FieldTimeSeries("zstar_model.jld2", "sⁿ")
+b  = FieldTimeSeries("zstar_model.jld2", "b")
+Δz = FieldTimeSeries("zstar_model.jld2", "Δz")
 
-# s = OneField()
 tmpfield = CenterField(grid)
-launch!(CPU(), grid, :xyz, _compute_field!, tmpfield, s[1], b[1])
-init  = sum(tmpfield) / sum(s[1])
+launch!(CPU(), grid, :xyz, _compute_field!, tmpfield, Δz[1], b[1])
+init  = sum(tmpfield) / sum(Δz[1])
 drift = []
 
 for t in 1:length(b.times)
-  launch!(CPU(), grid, :xyz, _compute_field!, tmpfield, s[t], b[t])
-  push!(drift, sum(tmpfield) /  sum(s[t]) - init) 
+  launch!(CPU(), grid, :xyz, _compute_field!, tmpfield, Δz[t], b[t])
+  push!(drift, sum(tmpfield) /  sum(Δz[t]) - init) 
 end
 

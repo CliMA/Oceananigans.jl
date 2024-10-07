@@ -3,6 +3,7 @@ using Oceananigans.Architectures
 using Oceananigans.Fields
 using Oceananigans.Grids
 using Oceananigans.Grids: AbstractGrid
+using Oceananigans.BoundaryConditions: default_prognostic_bc
 using Oceananigans.AbstractOperations: Δz, GridMetricOperation
 using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, c, f
 using Adapt
@@ -251,35 +252,15 @@ function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
 end
 
 function compute_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, Hᶠᶠ, grid)
-    Nx, Ny, _ = size(grid)
-    Hx, Hy, _ = halo_size(grid)
-    Tx, Ty, _ = topology(grid)
-
-    Ax = Tx == Flat ? 0 : 1
-    Ay = Ty == Flat ? 0 : 1
 
     arch = architecture(grid)
-
-    # We compute the heights over all the
-    # domain including the halo points!
-    # Because of the different locations of the different heights,
-    # to encompass the whole grid, the kernel parameters must be different. 
-    kernel_size   = (Nx+2Hx-2Ax, Ny+2Hy)
-    kernel_offset = (-Hx+Ax, -Hy)
-    paramᶠᶜ = KernelParameters(kernel_size, kernel_offset)
-    launch!(arch, grid, paramᶠᶜ, _compute_column_height!, Hᶠᶜ, grid, f, c, Δrᶠᶜᶜ)
-    
-    kernel_size   = (Nx+2Hx, Ny+2Hy-2Ay)
-    kernel_offset = (-Hx, -Hy+Ay)
-    paramᶜᶠ = KernelParameters(kernel_size, kernel_offset)
-    launch!(arch, grid, paramᶜᶠ, _compute_column_height!, Hᶜᶠ, grid, c, f, Δrᶜᶠᶜ)
-    
-    kernel_size   = (Nx+2Hx, Ny+2Hy)
-    kernel_offset = (-Hx, -Hy)
-    paramᶜᶜ = KernelParameters(kernel_size, kernel_offset)
-    launch!(arch, grid, paramᶜᶜ, _compute_column_height!, Hᶜᶜ, grid, c, c, Δrᶜᶜᶜ)
-    launch!(arch, grid, paramᶜᶜ, _compute_column_height!, Hᶠᶠ, grid, c, c, Δrᶠᶠᶜ)
+    launch!(arch, grid, :xy, _compute_column_height!, Hᶠᶜ, grid, f, c, Δrᶠᶜᶜ; include_right_boundaries = true, location = (Face, Center,   Nothing))
+    launch!(arch, grid, :xy, _compute_column_height!, Hᶜᶠ, grid, c, f, Δrᶜᶠᶜ; include_right_boundaries = true, location = (Center, Face,   Nothing))
+    launch!(arch, grid, :xy, _compute_column_height!, Hᶜᶜ, grid, c, c, Δrᶜᶜᶜ; include_right_boundaries = true, location = (Center, Center, Nothing))
+    launch!(arch, grid, :xy, _compute_column_height!, Hᶠᶠ, grid, f, f, Δrᶠᶠᶜ; include_right_boundaries = true, location = (Face, Face,     Nothing))
  
+    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, Hᶠᶠ))
+
     return nothing
 end
 

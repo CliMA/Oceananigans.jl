@@ -23,9 +23,10 @@ compute_w_from_continuity!(velocities, arch, grid; parameters = w_kernel_paramet
 
     @inbounds U.w[i, j, 1] = 0
     for k in 2:grid.Nz+1
-        @inbounds U.w[i, j, k] = U.w[i, j, k-1] - 
-                                (flux_div_xyᶜᶜᶜ(i, j, k, grid, u, v) / Azᶜᶜᶜ(i, j, k, grid) +
-                                 Δrᶜᶜᶜ(i, j, k-1, grid) * ∂t_s_grid(i, j, k-1, grid) )
+        δ_Uh = flux_div_xyᶜᶜᶜ(i, j, k-1, grid, U.u, U.v) / Azᶜᶜᶜ(i, j, k-1, grid) 
+        ∂t_s = Δrᶜᶜᶜ(i, j, k-1, grid) * ∂t_s_grid(i, j, k-1, grid)
+
+        @inbounds U.w[i, j, k] = U.w[i, j, k-1] - ∂t_s - δ_Uh
     end
 end
 

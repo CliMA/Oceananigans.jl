@@ -59,7 +59,7 @@ on_architecture(arch, coord::ZStarSpacing) =
                          on_architecture(arch, coord.sᶜᶠ⁻),
                          on_architecture(arch, coord.∂t_s))
 
-Grids.coordinate_summary(Δ::ZStarSpacing, name) = 
+Grids.coordinate_summary(::Bounded, Δ::ZStarSpacing, name) = 
     @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(Δ.Δr))
 
 const ZStarSpacingRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ZStarSpacing}
@@ -137,10 +137,6 @@ reference_zspacings(grid::ZStarSpacingGrid, ::Center) = grid.Δzᵃᵃᶜ.Δr
 @inline previous_vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Face,   ::Center, ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶠᶜ⁻[i, j, 1]
 @inline previous_vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Center, ::Face,   ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶜᶠ⁻[i, j, 1]
 
-@inline previous_vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Center, ::Center, ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶜᶜ⁻[i, j, 1]
-@inline previous_vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Face,   ::Center, ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶠᶜ⁻[i, j, 1]
-@inline previous_vertical_scaling(i, j, k, grid::ZStarSpacingGrid, ::Center, ::Face,   ℓz) = @inbounds grid.Δzᵃᵃᶠ.sᶜᶠ⁻[i, j, 1]
-
 @inline ∂t_s_grid(i, j, k, grid::ZStarSpacingGrid) = @inbounds grid.Δzᵃᵃᶜ.∂t_s[i, j, 1] 
 @inline V_times_∂t_s_grid(i, j, k, grid::ZStarSpacingGrid) = ∂t_s_grid(i, j, k, grid) * Vᶜᶜᶜ(i, j, k, grid)
 
@@ -184,7 +180,8 @@ function update_vertical_spacing!(model, grid::ZStarSpacingGrid; parameters = :x
     return nothing
 end
 
-# NOTE: The ZStar vertical spacing works only for a SplitExplicitFreeSurface
+# NOTE: The ZStar vertical spacing only supports a SplitExplicitFreeSurface
+# TODO: extend to support other free surface solvers
 @kernel function _update_∂t_s!(∂t_s, U̅, V̅, Hᶜᶜ, grid)
     i, j  = @index(Global, NTuple)
     k_top = grid.Nz + 1 
@@ -220,16 +217,16 @@ end
 ##### ZStar-specific implementation of the additional terms to be included in the momentum equations
 #####
 
-@inline η_surfaceᶜᶜᶜ(i, j, k, grid, η, Hᶜᶜ) = @inbounds η[i, j, grid.Nz+1] * (1 + znode(i, j, k, grid, Center(), Center(), Center()) / Hᶜᶜ[i, j, 1])
+@inline z_minus_rᶜᶜᶜ(i, j, k, grid, η, Hᶜᶜ) = @inbounds η[i, j, grid.Nz+1] * (1 + znode(i, j, k, grid, Center(), Center(), Center()) / Hᶜᶜ[i, j, 1])
 
-@inline slope_xᶠᶜᶜ(i, j, k, grid, free_surface) = @inbounds ∂xᶠᶜᶜ(i, j, k, grid, η_surfaceᶜᶜᶜ, free_surface.η, free_surface.auxiliary.Hᶜᶜ)
-@inline slope_yᶜᶠᶜ(i, j, k, grid, free_surface) = @inbounds ∂yᶜᶠᶜ(i, j, k, grid, η_surfaceᶜᶜᶜ, free_surface.η, free_surface.auxiliary.Hᶜᶜ)
+@inline ∂x_z(i, j, k, grid, free_surface) = @inbounds ∂xᶠᶜᶜ(i, j, k, grid, z_minus_rᶜᶜᶜ, free_surface.η, free_surface.auxiliary.Hᶜᶜ)
+@inline ∂y_z(i, j, k, grid, free_surface) = @inbounds ∂yᶜᶠᶜ(i, j, k, grid, z_minus_rᶜᶜᶜ, free_surface.η, free_surface.auxiliary.Hᶜᶜ)
 
 @inline grid_slope_contribution_x(i, j, k, grid::ZStarSpacingGrid, free_surface, ::Nothing, model_fields) = zero(grid)
 @inline grid_slope_contribution_y(i, j, k, grid::ZStarSpacingGrid, free_surface, ::Nothing, model_fields) = zero(grid)
 
 @inline grid_slope_contribution_x(i, j, k, grid::ZStarSpacingGrid, free_surface, buoyancy, model_fields) = 
-    ℑxᶠᵃᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, model_fields) * slope_xᶠᶜᶜ(i, j, k, grid, free_surface)
+    ℑxᶠᵃᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, model_fields) * ∂x_z(i, j, k, grid, free_surface)
 
 @inline grid_slope_contribution_y(i, j, k, grid::ZStarSpacingGrid, free_surface, buoyancy, model_fields) = 
-    ℑyᵃᶠᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, model_fields) * slope_yᶜᶠᶜ(i, j, k, grid, free_surface)
+    ℑyᵃᶠᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, model_fields) * ∂y_z(i, j, k, grid, free_surface)

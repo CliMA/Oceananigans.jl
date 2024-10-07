@@ -134,7 +134,7 @@ update_vertical_spacing!(model, grid; kwargs...) = nothing
 @inline Δzᶠᶜᶠ(i, j, k, grid::AbstractVerticalSpacingGrid) = @inbounds Δrᶠᶜᶠ(i, j, k, grid) * vertical_scaling(i, j, k, grid, f, c, f)
 @inline Δzᶠᶜᶜ(i, j, k, grid::AbstractVerticalSpacingGrid) = @inbounds Δrᶠᶜᶜ(i, j, k, grid) * vertical_scaling(i, j, k, grid, f, c, c)
 @inline Δzᶜᶠᶠ(i, j, k, grid::AbstractVerticalSpacingGrid) = @inbounds Δrᶜᶠᶠ(i, j, k, grid) * vertical_scaling(i, j, k, grid, c, f, f)
-@inline Δzᶜᶠᶜ(i, j, k, grid::AbstractVerticalSpacingGrid) = @inbounds Δrᶜᶠᶜ(i, j, k, grid) * vertical_scaling(i, j, k, grid, f, c, c)
+@inline Δzᶜᶠᶜ(i, j, k, grid::AbstractVerticalSpacingGrid) = @inbounds Δrᶜᶠᶜ(i, j, k, grid) * vertical_scaling(i, j, k, grid, c, f, c)
 @inline Δzᶠᶠᶠ(i, j, k, grid::AbstractVerticalSpacingGrid) = @inbounds Δrᶠᶠᶠ(i, j, k, grid) * vertical_scaling(i, j, k, grid, f, f, f)
 @inline Δzᶠᶠᶜ(i, j, k, grid::AbstractVerticalSpacingGrid) = @inbounds Δrᶠᶠᶜ(i, j, k, grid) * vertical_scaling(i, j, k, grid, f, f, c)
 
