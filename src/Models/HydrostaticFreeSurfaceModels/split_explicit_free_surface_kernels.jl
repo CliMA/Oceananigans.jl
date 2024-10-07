@@ -209,12 +209,12 @@ end
 # For Zstar vertical spacing the vertical integral includes the dynamic height
 # Remember, the vertical coordinate has not yet been updated! 
 # For this reason the integration has to be performed manually
-@kernel function _barotropic_mode_kernel!(U, V, grid, ::Nothing, u, v, Hᶠᶜ, Hᶜᶠ, η̅)
+@kernel function _barotropic_mode_kernel!(U, V, grid, ::Nothing, u, v, Hᶠᶜ, Hᶜᶠ, η)
     i, j  = @index(Global, NTuple)	
     k_top = grid.Nz + 1
 
-    sᶠᶜ = @inbounds dynamic_column_heightᶠᶜ(i, j, k_top, grid, Hᶠᶜ, η̅) / Hᶠᶜ[i, j, 1]
-    sᶜᶠ = @inbounds dynamic_column_heightᶜᶠ(i, j, k_top, grid, Hᶜᶠ, η̅) / Hᶜᶠ[i, j, 1]
+    sᶠᶜ = @inbounds dynamic_column_heightᶠᶜ(i, j, k_top, grid, Hᶠᶜ, η) / Hᶠᶜ[i, j, 1]
+    sᶜᶠ = @inbounds dynamic_column_heightᶜᶠ(i, j, k_top, grid, Hᶜᶠ, η) / Hᶜᶠ[i, j, 1]
     
     # hand unroll first loop
     @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δrᶠᶜᶜ(i, j, 1, grid) * sᶠᶜ
@@ -226,13 +226,13 @@ end
     end
 end
 
-@kernel function _barotropic_mode_kernel!(U, V, grid, active_cells_map, u, v, Hᶠᶜ, Hᶜᶠ, η̅)
+@kernel function _barotropic_mode_kernel!(U, V, grid, active_cells_map, u, v, Hᶠᶜ, Hᶜᶠ, η)
     idx = @index(Global, Linear)
     i, j = active_linear_index_to_tuple(idx, active_cells_map)
     k_top = grid.Nz+1
 
-    sᶠᶜ = @inbounds dynamic_column_heightᶠᶜ(i, j, k_top, grid, Hᶠᶜ, η̅) / Hᶠᶜ[i, j, 1]
-    sᶜᶠ = @inbounds dynamic_column_heightᶜᶠ(i, j, k_top, grid, Hᶜᶠ, η̅) / Hᶜᶠ[i, j, 1]
+    sᶠᶜ = @inbounds dynamic_column_heightᶠᶜ(i, j, k_top, grid, Hᶠᶜ, η) / Hᶠᶜ[i, j, 1]
+    sᶜᶠ = @inbounds dynamic_column_heightᶜᶠ(i, j, k_top, grid, Hᶜᶠ, η) / Hᶜᶠ[i, j, 1]
     
     # hand unroll first loop
     @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δrᶠᶜᶜ(i, j, 1, grid) * sᶠᶜ
@@ -244,10 +244,10 @@ end
     end
 end
 
-@inline function compute_barotropic_mode!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, η̅) 
+@inline function compute_barotropic_mode!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, η) 
     active_cells_map = retrieve_surface_active_cells_map(grid)
     
-    launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, active_cells_map, u, v, Hᶠᶜ, Hᶜᶠ, η̅; active_cells_map)
+    launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, active_cells_map, u, v, Hᶠᶜ, Hᶜᶠ, η; active_cells_map)
 
     return nothing
 end
@@ -360,7 +360,11 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
         set!(free_surface.η, free_surface.state.η̅)
     end
 
-    fields_to_fill = (free_surface.state.U̅, free_surface.state.V̅, free_surface.η)
+    # This is needed for the barotropic mode calculations, so it cannot be done asynchronously
+    fill_halo_region!(free_surface.η) 
+
+    # Velocities can be passed asynchronously
+    fields_to_fill = (free_surface.state.U̅, free_surface.state.V̅)
     fill_halo_regions!(fields_to_fill; async = true)
 
     # Preparing velocities for the barotropic correction
