@@ -129,7 +129,7 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
 function work_layout(grid, workdims::Symbol; include_right_boundaries=false, location=nothing, reduced_dimensions=())
 
-    Nx′, Ny′, Nz′ = include_right_boundaries ? size(location, grid) : size(grid)
+    Nx′, Ny′, Nz′ = include_right_boundaries ? size(grid, location) : size(grid)
     Nx′, Ny′, Nz′ = flatten_reduced_dimensions((Nx′, Ny′, Nz′), reduced_dimensions)
 
     workgroup = heuristic_workgroup(Nx′, Ny′, Nz′)
