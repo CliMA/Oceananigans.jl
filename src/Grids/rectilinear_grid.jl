@@ -373,42 +373,73 @@ cpu_face_constructor_x(grid::XRegularRG) = x_domain(grid)
 cpu_face_constructor_y(grid::YRegularRG) = y_domain(grid)
 cpu_face_constructor_z(grid::ZRegularRG) = z_domain(grid)
 
-function with_halo(new_halo, old_grid::RectilinearGrid)
+function constructor_arguments(grid::RectilinearGrid)
+    arch = architecture(grid)
+    FT = eltype(grid)
+    args = Dict(:architecture => arch, :number_type => eltype(grid))
 
-    size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
-    topo = topology(old_grid)
+    # Kwargs
+    topo = topology(grid)
+    size = (grid.Nx, grid.Ny, grid.Nz)
+    halo = (grid.Hx, grid.Hy, grid.Hz)
+    size = pop_flat_elements(size, topo)
+    halo = pop_flat_elements(halo, topo)
 
-    x = cpu_face_constructor_x(old_grid)
-    y = cpu_face_constructor_y(old_grid)
-    z = cpu_face_constructor_z(old_grid)
+    kwargs = Dict(:size => size,
+                  :halo => halo,
+                  :x => cpu_face_constructor_x(grid),
+                  :y => cpu_face_constructor_y(grid),
+                  :z => cpu_face_constructor_z(grid),
+                  :topology => topo) 
 
-    # Remove elements of size and new_halo in Flat directions as expected by grid
-    # constructor
-    size     = pop_flat_elements(size, topo)
-    new_halo = pop_flat_elements(new_halo, topo)
-
-    new_grid = RectilinearGrid(architecture(old_grid), eltype(old_grid);
-                               size, x, y, z,
-                               topology = topo,
-                               halo = new_halo)
-
-    return new_grid
+    return args, kwargs
 end
 
-function on_architecture(new_arch::AbstractSerialArchitecture, old_grid::RectilinearGrid)
-    old_properties = (old_grid.Δxᶠᵃᵃ, old_grid.Δxᶜᵃᵃ, old_grid.xᶠᵃᵃ, old_grid.xᶜᵃᵃ,
-                      old_grid.Δyᵃᶠᵃ, old_grid.Δyᵃᶜᵃ, old_grid.yᵃᶠᵃ, old_grid.yᵃᶜᵃ,
-                      old_grid.Δzᵃᵃᶠ, old_grid.Δzᵃᵃᶜ, old_grid.zᵃᵃᶠ, old_grid.zᵃᵃᶜ)
+function Base.similar(grid::RectilinearGrid)
+    args, kwargs = constructor_arguments(grid)
+    arch = args[:architecture]
+    FT = args[:number_type]
+    return RectilinearGrid(arch, FT; kwargs...)
+end
 
-    new_properties = Tuple(on_architecture(new_arch, p) for p in old_properties)
+"""
+    with_number_type(number_type, grid)
 
-    TX, TY, TZ = topology(old_grid)
+Return a `new_grid` that's identical to `grid` but with `number_type`.
+"""
+function with_number_type(FT, grid::RectilinearGrid)
+    args, kwargs = constructor_arguments(grid)
+    arch = args[:architecture]
+    return RectilinearGrid(arch, FT; kwargs...)
+end
 
-    return RectilinearGrid{TX, TY, TZ}(new_arch,
-                                       old_grid.Nx, old_grid.Ny, old_grid.Nz,
-                                       old_grid.Hx, old_grid.Hy, old_grid.Hz,
-                                       old_grid.Lx, old_grid.Ly, old_grid.Lz,
-                                       new_properties...)
+"""
+    with_halo(halo, grid)
+
+Return a `new_grid` that's identical to `grid` but with `halo`.
+"""
+function with_halo(halo, grid::RectilinearGrid)
+    args, kwargs = constructor_arguments(grid)
+    halo = pop_flat_elements(halo, topology(grid))
+    kwargs[:halo] = halo
+    arch = args[:architecture]
+    FT = args[:number_type]
+    return RectilinearGrid(arch, FT; kwargs...)
+end
+
+"""
+    on_architecture(architecture, grid)
+
+Return a `new_grid` that's identical to `grid` but on `architecture`.
+"""
+function on_architecture(arch::AbstractSerialArchitecture, grid::RectilinearGrid)
+    if arch == architecture(grid)
+        return grid
+    end
+
+    args, kwargs = constructor_arguments(grid)
+    FT = args[:number_type]
+    return RectilinearGrid(arch, FT; kwargs...)
 end
 
 coordinates(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)

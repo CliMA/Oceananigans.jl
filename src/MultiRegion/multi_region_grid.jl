@@ -203,8 +203,8 @@ Adapt an array `a` to be compatible with a `MultiRegionGrid`.
 function multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
     local_size = construct_regionally(size, mrg)
     arch = architecture(mrg)
-    a    = on_architecture(CPU(), a)
-    ma   = construct_regionally(partition_global_array, a, mrg.partition, local_size, Iterate(1:length(mrg)), arch)
+    a  = on_architecture(CPU(), a)
+    ma = construct_regionally(partition, a, mrg.partition, local_size, Iterate(1:length(mrg)), arch)
     return ma
 end
 
