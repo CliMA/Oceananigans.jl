@@ -6,16 +6,16 @@ module Oceananigans
 
 export
     # Architectures
-    CPU, GPU, 
+    CPU, GPU,
 
     # Logging
     OceananigansLogger,
 
     # Grids
     Center, Face,
-    Periodic, Bounded, Flat, 
+    Periodic, Bounded, Flat,
     FullyConnected, LeftConnected, RightConnected,
-    RectilinearGrid, 
+    RectilinearGrid,
     LatitudeLongitudeGrid,
     OrthogonalSphericalShellGrid,
     xnodes, ynodes, znodes, nodes,
@@ -30,8 +30,8 @@ export
     Distributed, Partition,
 
     # Advection schemes
-    Centered, CenteredSecondOrder, CenteredFourthOrder, 
-    UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, 
+    Centered, CenteredSecondOrder, CenteredFourthOrder,
+    UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder,
     WENO, WENOThirdOrder, WENOFifthOrder,
     VectorInvariant, WENOVectorInvariant, EnergyConserving, EnstrophyConserving,
     TracerAdvection,
@@ -88,7 +88,7 @@ export
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    HydrostaticSphericalCoriolis, 
+    HydrostaticSphericalCoriolis,
     PrescribedVelocityFields,
 
     # Time stepping
@@ -123,7 +123,7 @@ export
 
     # Units
     Time
-    
+
 using Printf
 using Logging
 using Statistics
@@ -144,7 +144,7 @@ import Base:
     iterate, similar, show,
     getindex, lastindex, setindex!,
     push!
-    
+
 #####
 ##### Abstract types
 #####
@@ -207,6 +207,7 @@ include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Advection/Advection.jl")
+include("ImmersedBoundaries/ImmersedBoundaries.jl")
 include("Solvers/Solvers.jl")
 include("OutputReaders/OutputReaders.jl")
 include("DistributedComputations/DistributedComputations.jl")
@@ -224,7 +225,7 @@ include("Forcings/Forcings.jl")
 include("Biogeochemistry.jl")
 
 # TODO: move above
-include("ImmersedBoundaries/ImmersedBoundaries.jl")
+# include("ImmersedBoundaries/ImmersedBoundaries.jl")
 include("Models/Models.jl")
 
 # Output and Physics, time-stepping, and models
