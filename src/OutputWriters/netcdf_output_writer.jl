@@ -4,7 +4,7 @@ using Dates: AbstractTime, now
 
 using Oceananigans.Fields
 
-using Oceananigans.Grids: AbstractCurvilinearGrid, RectilinearGrid, topology, halo_size, parent_index_range
+using Oceananigans.Grids: AbstractCurvilinearGrid, RectilinearGrid, topology, halo_size, parent_index_range, ξnodes, ηnodes, rnodes
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 using Oceananigans.TimeSteppers: float_or_date_time
@@ -52,46 +52,19 @@ netcdf_spatial_dimensions(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
 function native_dimensions_for_netcdf_output(grid, indices, TX, TY, TZ, Hx, Hy, Hz)
     with_halos = true
 
-    xC = xnodes(grid, c; with_halos)
-    xF = xnodes(grid, f; with_halos)
-    yC = ynodes(grid, c; with_halos)
-    yF = ynodes(grid, f; with_halos)
-    zC = znodes(grid, c; with_halos)
-    zF = znodes(grid, f; with_halos)
+    xC = ξnodes(grid, c; with_halos)
+    xF = ξnodes(grid, f; with_halos)
+    yC = ηnodes(grid, c; with_halos)
+    yF = ηnodes(grid, f; with_halos)
+    zC = rnodes(grid, c; with_halos)
+    zF = rnodes(grid, f; with_halos)
 
-    xC = isnothing(xC) ? [0.0] : parent(xC)  
-    xF = isnothing(xF) ? [0.0] : parent(xF) 
-    yC = isnothing(yC) ? [0.0] : parent(yC) 
-    yF = isnothing(yF) ? [0.0] : parent(yF) 
-    zC = isnothing(zC) ? [0.0] : parent(zC) 
-    zF = isnothing(zF) ? [0.0] : parent(zF) 
-
-    dims = Dict("xC" => xC[parent_index_range(indices["xC"][1], c, TX(), Hx)],
-                "xF" => xF[parent_index_range(indices["xF"][1], f, TX(), Hx)],
-                "yC" => yC[parent_index_range(indices["yC"][2], c, TY(), Hy)],
-                "yF" => yF[parent_index_range(indices["yF"][2], f, TY(), Hy)],
-                "zC" => zC[parent_index_range(indices["zC"][3], c, TZ(), Hz)],
-                "zF" => zF[parent_index_range(indices["zF"][3], f, TZ(), Hz)])
-
-    return dims
-end
-
-function native_dimensions_for_netcdf_output(grid::AbstractCurvilinearGrid, indices, TX, TY, TZ, Hx, Hy, Hz)
-    with_halos = true
-
-    xC = λnodes(grid, c; with_halos)
-    xF = λnodes(grid, f; with_halos)
-    yC = φnodes(grid, c; with_halos)
-    yF = φnodes(grid, f; with_halos)
-    zC = znodes(grid, c; with_halos)
-    zF = znodes(grid, f; with_halos)
-
-    xC = isnothing(xC) ? [0.0] : parent(xC)  
-    xF = isnothing(xF) ? [0.0] : parent(xF) 
-    yC = isnothing(yC) ? [0.0] : parent(yC) 
-    yF = isnothing(yF) ? [0.0] : parent(yF) 
-    zC = isnothing(zC) ? [0.0] : parent(zC) 
-    zF = isnothing(zF) ? [0.0] : parent(zF) 
+    xC = isnothing(xC) ? [0.0] : parent(xC)
+    xF = isnothing(xF) ? [0.0] : parent(xF)
+    yC = isnothing(yC) ? [0.0] : parent(yC)
+    yF = isnothing(yF) ? [0.0] : parent(yF)
+    zC = isnothing(zC) ? [0.0] : parent(zC)
+    zF = isnothing(zF) ? [0.0] : parent(zF)
 
     dims = Dict("xC" => xC[parent_index_range(indices["xC"][1], c, TX(), Hx)],
                 "xF" => xF[parent_index_range(indices["xF"][1], f, TX(), Hx)],
@@ -269,7 +242,7 @@ Keyword arguments
 
 - `file_splitting`: Schedule for splitting the output file. The new files will be suffixed with
           `_part1`, `_part2`, etc. For example `file_splitting = FileSizeLimit(sz)` will
-          split the output file when its size exceeds `sz`. Another example is 
+          split the output file when its size exceeds `sz`. Another example is
           `file_splitting = TimeInterval(30days)`, which will split files every 30 days of
           simulation time. The default incurs no splitting (`NoFileSplitting()`).
 
@@ -721,7 +694,7 @@ function start_next_file(model, ow::NetCDFOutputWriter)
     verbose && @info "Now writing to: $(ow.filepath)"
 
     initialize_nc_file!(ow, model)
-    
+
     return nothing
 end
 
@@ -785,7 +758,7 @@ function initialize_nc_file!(filepath,
 
         for (name, output) in outputs
             attributes = try output_attributes[name]; catch; Dict(); end
-            materialized = materialize_output(output, model) 
+            materialized = materialize_output(output, model)
             define_output_variable!(dataset,
                                     materialized,
                                     name,
