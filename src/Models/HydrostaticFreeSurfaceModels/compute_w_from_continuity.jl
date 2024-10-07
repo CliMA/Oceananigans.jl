@@ -28,7 +28,7 @@ compute_w_from_continuity!(velocities, arch, grid; parameters = w_kernel_paramet
         ∂t_s = Δrᶜᶜᶜ(i, j, k-1, grid) * ∂t_s_grid(i, j, k-1, grid)
 
         immersed = immersed_cell(i, j, k-1, grid)
-        Δw       = ifelse(immersed, 0, δ_Uh + ∂t_s)
+        Δw       = δ_Uh + ifelse(immersed, 0, ∂t_s) # We do not account for grid changes in immersed cells
 
         @inbounds U.w[i, j, k] = U.w[i, j, k-1] - Δw
     end
@@ -45,8 +45,8 @@ end
     Hx, Hy, _ = halo_size(grid)
     Tx, Ty, _ = topology(grid)
 
-    ii = ifelse(Tx == Flat, 1:Nx, -Hx+2:Nx+Hx-1)
-    jj = ifelse(Ty == Flat, 1:Ny, -Hy+2:Ny+Hy-1)
+    ii = ifelse(Tx == Flat, 1:Nx, -Hx+1:Nx+Hx)
+    jj = ifelse(Ty == Flat, 1:Ny, -Hy+1:Ny+Hy)
 
     return KernelParameters(ii, jj)
 end

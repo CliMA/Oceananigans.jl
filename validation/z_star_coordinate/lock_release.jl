@@ -6,11 +6,11 @@ using Oceananigans.AbstractOperations: GridMetricOperation
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStar, ZStarSpacingGrid, Δrᶜᶜᶜ
 using Printf
 
-grid = RectilinearGrid(size = (10, 20), 
+grid = RectilinearGrid(size = (20, 20), 
                           x = (0, 64kilometers), 
                           z = (-20, 0), 
                        halo = (6, 6),
-                   topology = (Bounded, Flat, Bounded))
+                   topology = (Periodic, Flat, Bounded))
 
 grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> x < 32kilometers ? -10 : -20))
 
@@ -31,7 +31,7 @@ bᵢ(x, z) = x < 32kilometers ? 0.06 : 0.01
 
 set!(model, b = bᵢ)
 
-Δt = 1
+Δt = 10
 
 @info "the time step is $Δt"
 

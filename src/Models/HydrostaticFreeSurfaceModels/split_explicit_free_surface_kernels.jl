@@ -252,12 +252,12 @@ end
     return nothing
 end
 
-@kernel function _barotropic_split_explicit_corrector!(u, v, grid, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, η̅)
+@kernel function _barotropic_split_explicit_corrector!(u, v, grid, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, η)
     i, j, k = @index(Global, NTuple)
     k_top   = grid.Nz + 1
 
-    hᶠᶜ = dynamic_column_heightᶠᶜ(i, j, k_top, grid, Hᶠᶜ, η̅) 
-    hᶜᶠ = dynamic_column_heightᶜᶠ(i, j, k_top, grid, Hᶜᶠ, η̅) 
+    hᶠᶜ = dynamic_column_heightᶠᶜ(i, j, k_top, grid, Hᶠᶜ, η) 
+    hᶜᶠ = dynamic_column_heightᶜᶠ(i, j, k_top, grid, Hᶜᶠ, η) 
     
     @inbounds begin
         u[i, j, k] = u[i, j, k] + (U̅[i, j, k_top-1] - U[i, j, k_top-1]) / hᶠᶜ 
@@ -267,17 +267,17 @@ end
 
 function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     sefs       = free_surface.state
-    U, V, U̅, V̅ = sefs.U, sefs.V, sefs.U̅, sefs.V̅ #, sefs.Ũ, sefs.Ṽ
+    U, V, U̅, V̅ = sefs.U, sefs.V, sefs.U̅, sefs.V̅ 
     Hᶠᶜ, Hᶜᶠ   = free_surface.auxiliary.Hᶠᶜ, free_surface.auxiliary.Hᶜᶠ
     arch       = architecture(grid)
 
     # take out "bad" barotropic mode, 
     # !!!! reusing U and V for this storage since last timestep doesn't matter
-    compute_barotropic_mode!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, sefs.η̅)
+    compute_barotropic_mode!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, free_surface.η)
     # add in "good" barotropic mode
 
     launch!(arch, grid, :xyz, _barotropic_split_explicit_corrector!,
-            u, v, grid, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, sefs.η̅)
+            u, v, grid, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, free_surface.η)
 
     return nothing
 end
@@ -360,7 +360,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
         set!(free_surface.η, free_surface.state.η̅)
     end
 
-    fields_to_fill = (free_surface.state.U̅, free_surface.state.V̅)
+    fields_to_fill = (free_surface.state.U̅, free_surface.state.V̅, free_surface.η)
     fill_halo_regions!(fields_to_fill; async = true)
 
     # Preparing velocities for the barotropic correction
@@ -386,9 +386,6 @@ const MINIMUM_SUBSTEPS = 5
 @inline calculate_adaptive_settings(substepping::FNS, substeps) = substepping.fractional_step_size, substepping.averaging_weights
 @inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic),
                                                                                         substeps, substepping.averaging_kernel)
-
-const FixedSubstepsSetting{N} = SplitExplicitSettings{<:FixedSubstepNumber{<:Any, <:NTuple{N, <:Any}}} where N
-const FixedSubstepsSplitExplicit{F} = SplitExplicitFreeSurface{<:Any, <:Any, <:Any, <:Any, <:FixedSubstepsSetting{N}} where N
 
 function iterate_split_explicit!(free_surface, grid, Δτᴮ, weights, ::Val{Nsubsteps}) where Nsubsteps
     arch = architecture(grid)
@@ -472,36 +469,29 @@ end
     end	
 end
 
-@inline function ab2_step_Gu(i, j, k, grid::ZStarSpacingGrid, G⁻, Gⁿ, χ::FT) where FT
+@inline function ab2_step_Gu(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT
     C¹ = convert(FT, 3/2) + χ
     C² = convert(FT, 1/2) + χ
 
-    Fⁿ = @inbounds C¹ * Gⁿ[i, j, k] * grid.Δzᵃᵃᶠ.sᶠᶜⁿ[i, j, 1]
-    F⁻ = @inbounds C² * G⁻[i, j, k] * grid.Δzᵃᵃᶠ.sᶠᶜ⁻[i, j, 1]
+    Fⁿ = @inbounds C¹ * Gⁿ[i, j, k] * vertical_scaling(i, j, k, grid, Face(), Center(), Center())
+    F⁻ = @inbounds C² * G⁻[i, j, k] * previous_vertical_scaling(i, j, k, grid, Face(), Center(), Center())
 
     Gi = Fⁿ - F⁻
 
     return ifelse(peripheral_node(i, j, k, grid, f, c, c), zero(grid), Gi)
 end
 
-@inline function ab2_step_Gv(i, j, k, grid::ZStarSpacingGrid, G⁻, Gⁿ, χ::FT) where FT 
+@inline function ab2_step_Gv(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT 
     C¹ = convert(FT, 3/2) + χ
     C² = convert(FT, 1/2) + χ
 
-    Fⁿ = @inbounds C¹ * Gⁿ[i, j, k] * grid.Δzᵃᵃᶠ.sᶜᶠⁿ[i, j, 1]
-    F⁻ = @inbounds C² * G⁻[i, j, k] * grid.Δzᵃᵃᶠ.sᶜᶠ⁻[i, j, 1]
+    Fⁿ = @inbounds C¹ * Gⁿ[i, j, k] * vertical_scaling(i, j, k, grid, Center(), Face(), Center())
+    F⁻ = @inbounds C² * G⁻[i, j, k] * previous_vertical_scaling(i, j, k, grid, Center(), Face(), Center())
 
     Gi = Fⁿ - F⁻
 
     return ifelse(peripheral_node(i, j, k, grid, f, c, c), zero(grid), Gi)
 end
-
-# Setting up the RHS for the barotropic step (tendencies of the barotropic velocity components)
-@inline ab2_step_Gu(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT =
-    @inbounds ifelse(peripheral_node(i, j, k, grid, f, c, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
-
-@inline ab2_step_Gv(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT =
-    @inbounds ifelse(peripheral_node(i, j, k, grid, c, f, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
 
 # Setting up the RHS for the barotropic step (tendencies of the barotropic velocity components)
 # This function is called after `calculate_tendency` and before `ab2_step_velocities!`

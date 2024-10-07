@@ -185,10 +185,12 @@ end
 @kernel function _update_∂t_s!(∂t_s, U̅, V̅, Hᶜᶜ, grid)
     i, j  = @index(Global, NTuple)
     k_top = grid.Nz + 1 
+    TX, TY, _ = topology(grid)
+
     @inbounds begin
         # ∂(η / H)/∂t = - ∇ ⋅ ∫udz / H
-        ∂t_s[i, j, 1] = - 1 / Azᶜᶜᶠ(i, j, k_top-1, grid) * (δxᶜᵃᵃ(i, j, k_top-1, grid, Δy_qᶠᶜᶠ, U̅) +
-                                                            δyᵃᶜᵃ(i, j, k_top-1, grid, Δx_qᶜᶠᶠ, V̅)) / Hᶜᶜ[i, j, 1]
+        ∂t_s[i, j, 1] = - 1 / Azᶜᶜᶠ(i, j, k_top-1, grid) * (δxᶜᶜᶠ(i, j, k_top-1, grid, Δy_qᶠᶜᶠ, U̅) +
+                                                            δyᶜᶜᶠ(i, j, k_top-1, grid, Δx_qᶜᶠᶠ, V̅)) / Hᶜᶜ[i, j, 1]
     end
 end
 
