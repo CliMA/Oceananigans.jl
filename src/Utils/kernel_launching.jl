@@ -180,8 +180,8 @@ function work_layout(grid, worksize::Tuple, reduced_dimensions)
     return workgroup, worksize
 end
 
-function work_layout(grid, ::KernelParameters{worksize, offsets}, reduced_dimensions) where {worksize, offsets}
-    workgroup = heuristic_workgroup(worksize...)
+function work_layout(grid, ::KernelParameters{spec, offsets}, reduced_dimensions) where {spec, offsets}
+    workgroup, worksize = work_layout(grid, spec, reduced_dimensions)
     static_workgroup = StaticSize(workgroup)
     range = contiguousrange(worksize, offsets)
     offset_worksize = OffsetStaticSize(range)
