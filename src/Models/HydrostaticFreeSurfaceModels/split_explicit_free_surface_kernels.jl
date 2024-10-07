@@ -361,7 +361,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     end
 
     # This is needed for the barotropic mode calculations, so it cannot be done asynchronously
-    fill_halo_region!(free_surface.η) 
+    fill_halo_regions!(free_surface.η) 
 
     # Velocities can be passed asynchronously
     fields_to_fill = (free_surface.state.U̅, free_surface.state.V̅)
