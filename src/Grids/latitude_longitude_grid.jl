@@ -182,7 +182,7 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                precompute_metrics = true,
                                halo = nothing)
 
-    if architecture == GPU() && !has_cuda() 
+    if architecture == GPU() && !has_cuda()
         throw(ArgumentError("Cannot create a GPU grid. No CUDA-enabled GPU was detected!"))
     end
 
@@ -193,7 +193,7 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
     Hλ, Hφ, Hz = halo
 
     # Calculate all direction (which might be stretched)
-    # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
+    # A direction is regular if the domain passed is a Tuple{<:Real, <:Real},
     # it is stretched if being passed is a function or vector (as for the VerticallyStretchedRectilinearGrid)
     TX, TY, TZ = topology
 
@@ -281,7 +281,7 @@ function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitud
     φ₂ <= 90  || throw(ArgumentError("The northern latitude cannot be less than -90 degrees."))
     φ₁ <= φ₂  || throw(ArgumentError("Latitudes must increase south to north."))
 
-    if TX == Flat || TY == Flat 
+    if TX == Flat || TY == Flat
         precompute_metrics = false
     end
 
@@ -313,7 +313,7 @@ function Base.show(io::IO, grid::LatitudeLongitudeGrid, withsummary=true)
     Ωφ = domain(TY(), size(grid, 2), grid.φᵃᶠᵃ)
     Ωz = domain(TZ(), size(grid, 3), grid.zᵃᵃᶠ)
 
-    x_summary = domain_summary(TX(), "λ", Ωλ) 
+    x_summary = domain_summary(TX(), "λ", Ωλ)
     y_summary = domain_summary(TY(), "φ", Ωφ)
     z_summary = domain_summary(TZ(), "z", Ωz)
 
@@ -457,20 +457,20 @@ end
 @inline Azᶜᶜᵃ(i, j, k, grid::XRegularLLG) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
 
 #####
-##### Utilities to precompute metrics 
+##### Utilities to precompute metrics
 #####
 
-@inline metrics_precomputed(::LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, Nothing}) = false 
+@inline metrics_precomputed(::LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, Nothing}) = false
 @inline metrics_precomputed(::LatitudeLongitudeGrid) = true
 
 #####
 ##### Kernels that precompute the z- and x-metric
 #####
 
-@inline metric_worksize(grid::LatitudeLongitudeGrid)  = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶠᵃ) - 2) 
-@inline metric_workgroup(grid::LatitudeLongitudeGrid) = (16, 16) 
+@inline metric_worksize(grid::LatitudeLongitudeGrid)  = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶠᵃ) - 2)
+@inline metric_workgroup(grid::LatitudeLongitudeGrid) = (16, 16)
 
-@inline metric_worksize(grid::XRegularLLG)  = length(grid.φᵃᶠᵃ) - 2 
+@inline metric_worksize(grid::XRegularLLG)  = length(grid.φᵃᶠᵃ) - 2
 @inline metric_workgroup(grid::XRegularLLG) = 16
 
 @kernel function compute_Δx_Az!(grid::LatitudeLongitudeGrid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ)
@@ -534,7 +534,7 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     FT = eltype(grid)
 
     arch = grid.architecture
-    
+
     if grid isa XRegularLLG
         offsets     = grid.φᵃᶜᵃ.offsets[1]
         metric_size = length(grid.φᵃᶜᵃ)
@@ -561,7 +561,7 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
         Δyᶠᶜ    = OffsetArray(on_architecture(arch, parentC), grid.Δφᵃᶜᵃ.offsets[1])
         Δyᶜᶠ    = OffsetArray(on_architecture(arch, parentF), grid.Δφᵃᶜᵃ.offsets[1])
     end
-    
+
     return Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ
 end
 
@@ -616,7 +616,7 @@ function nodes(grid::LLG, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
         # consideration...
         #
         # See also `nodes` for `RectilinearGrid`.
-        
+
         Nλ = isnothing(λ) ? 1 : length(λ)
         Nφ = isnothing(φ) ? 1 : length(φ)
         Nz = isnothing(z) ? 1 : length(z)
@@ -655,6 +655,15 @@ end
 @inline xnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx, ℓy; with_halos)
 @inline ynodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓy; with_halos)
 
+# Generalized coordinates
+@inline ξnodes(grid::LLG, ℓx; kwargs...) = λnodes(grid, ℓx; kwargs...)
+@inline ηnodes(grid::LLG, ℓy; kwargs...) = φnodes(grid, ℓy; kwargs...)
+@inline rnodes(grid::LLG, ℓz; kwargs...) = znodes(grid, ℓz; kwargs...)
+
+@inline ξnodes(grid::LLG, ℓx, ℓy, ℓz; kwargs...) = λnodes(grid, ℓx; kwargs...)
+@inline ηnodes(grid::LLG, ℓx, ℓy, ℓz; kwargs...) = φnodes(grid, ℓy; kwargs...)
+@inline rnodes(grid::LLG, ℓx, ℓy, ℓz; kwargs...) = znodes(grid, ℓz; kwargs...)
+
 #####
 ##### Grid spacings in x, y, z (in meters)
 #####
@@ -670,11 +679,11 @@ end
 @inline xspacings(grid::LLG, ℓx::F, ℓy::C; with_halos=false) = _property(grid.Δxᶠᶜᵃ, ℓx, ℓy,
                                                                          topology(grid, 1), topology(grid, 2),
                                                                          size(grid, 1), size(grid, 2), with_halos)
- 
+
 @inline xspacings(grid::LLG, ℓx::F, ℓy::F; with_halos=false) = _property(grid.Δxᶠᶠᵃ, ℓx, ℓy,
                                                                          topology(grid, 1), topology(grid, 2),
                                                                          size(grid, 1), size(grid, 2), with_halos)
- 
+
 @inline xspacings(grid::HRegularLLG, ℓx::C, ℓy::C; with_halos=false) = _property(grid.Δxᶜᶜᵃ, ℓy, topology(grid, 2),
                                                                                  size(grid, 2), with_halos)
 
@@ -737,4 +746,3 @@ end
 
 @inline λspacing(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = λspacing(i, grid, ℓx)
 @inline φspacing(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = φspacing(j, grid, ℓy)
-
