@@ -62,10 +62,7 @@ export ℑxyzᶜᶜᶠ, ℑxyzᶜᶠᶜ, ℑxyzᶠᶜᶜ, ℑxyzᶜᶠᶠ, ℑxy
 
 # Topology-aware operators
 export δxTᶠᵃᵃ, δyTᵃᶠᵃ, δxTᶜᵃᵃ, δyTᵃᶜᵃ
-export ∂xTᶠᶜᶠ,∂yTᶜᶠᶠ
-
-export δxᶠᵃᵃ_c, δyᵃᶠᵃ_c, δxᶜᵃᵃ_U, δyᵃᶜᵃ_V, ∂xᶠᶜᶠ_η
-export ∂xᶠᶜᶠ_c, ∂yᶜᶠᶠ_c
+export ∂xTᶠᶜᶠ, ∂yTᶜᶠᶠ
 
 # Reference frame conversion
 export intrinsic_vector, extrinsic_vector
