@@ -239,25 +239,27 @@ function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
     Gᵁ = Field{Face,   Center, Nothing}(grid)
     Gⱽ = Field{Center, Face,   Nothing}(grid)
 
+    Hᶜᶜ = Field{Center, Center, Nothing}(grid)
     Hᶠᶜ = Field{Face,   Center, Nothing}(grid)
     Hᶜᶠ = Field{Center, Face,   Nothing}(grid)
-    Hᶜᶜ = Field{Center, Center, Nothing}(grid)
     Hᶠᶠ = Field{Face,   Face,   Nothing}(grid)
 
-    compute_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, Hᶠᶠ, grid)
+    compute_column_height!(Hᶜᶜ, Hᶠᶜ, Hᶜᶠ, Hᶠᶠ, grid)
 
     kernel_parameters = :xy
 
     return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, Hᶠᶠ, kernel_parameters)
 end
 
-function compute_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, Hᶠᶠ, grid)
+function compute_column_height!(Hᶜᶜ, Hᶠᶜ, Hᶜᶠ, Hᶠᶠ, grid)
 
     arch = architecture(grid)
-    launch!(arch, grid, :xy, _compute_column_height!, Hᶠᶜ, grid, f, c, Δrᶠᶜᶜ; include_right_boundaries = true, location = (Face, Center,   Nothing))
-    launch!(arch, grid, :xy, _compute_column_height!, Hᶜᶠ, grid, c, f, Δrᶜᶠᶜ; include_right_boundaries = true, location = (Center, Face,   Nothing))
-    launch!(arch, grid, :xy, _compute_column_height!, Hᶜᶜ, grid, c, c, Δrᶜᶜᶜ; include_right_boundaries = true, location = (Center, Center, Nothing))
-    launch!(arch, grid, :xy, _compute_column_height!, Hᶠᶠ, grid, f, f, Δrᶠᶠᶜ; include_right_boundaries = true, location = (Face, Face,     Nothing))
+    include_right_boundaries = true
+
+    launch!(arch, grid, :xy, _compute_column_height!, Hᶜᶜ, grid, c, c, Δrᶜᶜᶜ; include_right_boundaries, location = (Center, Center, Nothing))
+    launch!(arch, grid, :xy, _compute_column_height!, Hᶠᶜ, grid, f, c, Δrᶠᶜᶜ; include_right_boundaries, location = (Face, Center,   Nothing))
+    launch!(arch, grid, :xy, _compute_column_height!, Hᶜᶠ, grid, c, f, Δrᶜᶠᶜ; include_right_boundaries, location = (Center, Face,   Nothing))
+    launch!(arch, grid, :xy, _compute_column_height!, Hᶠᶠ, grid, f, f, Δrᶠᶠᶜ; include_right_boundaries, location = (Face, Face,     Nothing))
  
     fill_halo_regions!((Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, Hᶠᶠ))
 

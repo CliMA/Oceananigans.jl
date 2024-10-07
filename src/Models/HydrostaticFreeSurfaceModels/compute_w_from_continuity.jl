@@ -2,6 +2,7 @@ using Oceananigans.Architectures: device
 using Oceananigans.Grids: halo_size, topology
 using Oceananigans.Grids: XFlatGrid, YFlatGrid
 using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, div_xyᶜᶜᶜ, Δzᶜᶜᶜ
+using Oceananigans.ImmersedBoundaries: immersed_cell
 
 """
     compute_w_from_continuity!(model)
@@ -25,8 +26,9 @@ compute_w_from_continuity!(velocities, arch, grid; parameters = w_kernel_paramet
     for k in 2:grid.Nz+1
         δ_Uh = flux_div_xyᶜᶜᶜ(i, j, k-1, grid, U.u, U.v) / Azᶜᶜᶜ(i, j, k-1, grid) 
         ∂t_s = Δrᶜᶜᶜ(i, j, k-1, grid) * ∂t_s_grid(i, j, k-1, grid)
+        immersed = immersed_cell(i, j, k-1, grid)
 
-        @inbounds U.w[i, j, k] = U.w[i, j, k-1] - ∂t_s - δ_Uh
+        @inbounds U.w[i, j, k] = U.w[i, j, k-1] - ifelse(immersed, 0, ∂t_s + δ_Uh)
     end
 end
 

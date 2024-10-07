@@ -35,7 +35,7 @@ set!(model, b = bᵢ)
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_iteration = 100, stop_time = 17hours) 
+simulation = Simulation(model; Δt, stop_iteration = 10000, stop_time = 17hours) 
 
 Δz = GridMetricOperation((Center, Center, Center), Oceananigans.AbstractOperations.Δz, model.grid)
 
