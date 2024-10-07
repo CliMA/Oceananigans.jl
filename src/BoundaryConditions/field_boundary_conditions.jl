@@ -156,11 +156,12 @@ end
 # Friendly warning?
 function regularize_immersed_boundary_condition(ibc, grid, loc, field_name, args...)
     if !(ibc isa DefaultBoundaryCondition)
-        msg = """
-              $field_name was assigned an immersed $ibc, but this is not supported on
-              $(summary(grid))
+        msg = """$field_name was assigned an immersed boundary condition
+              $ibc ,
+              but this is not supported on
+              $(summary(grid)) .
               The immersed boundary condition on $field_name will have no effect.
-          """
+              """
 
         @warn msg
     end
