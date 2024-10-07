@@ -121,8 +121,6 @@ update_vertical_spacing!(model, grid; kwargs...) = nothing
 @inline Δrᶠᶠᶠ(i, j, k, grid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δrᶜᶜᶠ)
 @inline Δrᶠᶠᶜ(i, j, k, grid) = ℑxyᶠᶠᵃ(i, j, k, grid, Δrᶜᶜᶜ)
 
-@inline rnode(i, j, k, grid, ℓx, ℓy, ℓz) = znode(i, j, k, grid, ℓx, ℓy, ℓz) 
-
 ##### 
 ##### Vertical spacings for a generalized vertical coordinate system
 #####
