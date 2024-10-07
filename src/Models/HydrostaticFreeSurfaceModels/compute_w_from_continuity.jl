@@ -26,9 +26,11 @@ compute_w_from_continuity!(velocities, arch, grid; parameters = w_kernel_paramet
     for k in 2:grid.Nz+1
         δ_Uh = flux_div_xyᶜᶜᶜ(i, j, k-1, grid, U.u, U.v) / Azᶜᶜᶜ(i, j, k-1, grid) 
         ∂t_s = Δrᶜᶜᶜ(i, j, k-1, grid) * ∂t_s_grid(i, j, k-1, grid)
-        immersed = immersed_cell(i, j, k-1, grid)
 
-        @inbounds U.w[i, j, k] = U.w[i, j, k-1] - ifelse(immersed, 0, ∂t_s + δ_Uh)
+        immersed = immersed_cell(i, j, k-1, grid)
+        Δw       = ifelse(immersed, 0, δ_Uh + ∂t_s)
+
+        @inbounds U.w[i, j, k] = U.w[i, j, k-1] - Δw
     end
 end
 
