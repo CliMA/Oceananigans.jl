@@ -21,6 +21,7 @@ using Oceananigans.Utils: Time
 import Oceananigans: initialize!
 import Oceananigans.Architectures: architecture
 import Oceananigans.TimeSteppers: reset!
+import Oceananigans.Solvers: iteration
 
 # A prototype interface for AbstractModel.
 #

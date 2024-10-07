@@ -144,7 +144,6 @@ import Base:
     iterate, similar, show,
     getindex, lastindex, setindex!,
     push!
-
     
 #####
 ##### Abstract types
@@ -214,7 +213,6 @@ include("DistributedComputations/DistributedComputations.jl")
 
 # TODO: move here
 #include("ImmersedBoundaries/ImmersedBoundaries.jl")
-#include("Distributed/Distributed.jl")
 #include("MultiRegion/MultiRegion.jl")
 
 # Physics, time-stepping, and models
@@ -227,8 +225,6 @@ include("Biogeochemistry.jl")
 
 # TODO: move above
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
-# include("DistributedComputations/DistributedComputations.jl")
-
 include("Models/Models.jl")
 
 # Output and Physics, time-stepping, and models

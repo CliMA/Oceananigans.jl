@@ -14,14 +14,15 @@ using Oceananigans: Clock
 function test_DateTime_netcdf_output(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=DateTime(2021, 1, 1))
-    model = NonhydrostaticModel(; grid, clock, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = NonhydrostaticModel(; grid, clock, timestepper=:QuasiAdamsBashforth2,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Δt = 5days + 3hours + 44.123seconds
     simulation = Simulation(model; Δt, stop_time=DateTime(2021, 2, 1))
 
     filepath = "test_DateTime.nc"
     isfile(filepath) && rm(filepath)
-    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model); 
+    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model);
                                                          filename = filepath,
                                                          schedule = IterationInterval(1))
 
@@ -132,14 +133,15 @@ end
 function test_TimeDate_netcdf_output(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=TimeDate(2021, 1, 1))
-    model = NonhydrostaticModel(; grid, clock, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = NonhydrostaticModel(; grid, clock, timestepper=:QuasiAdamsBashforth2,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Δt = 5days + 3hours + 44.123seconds
     simulation = Simulation(model, Δt=Δt, stop_time=TimeDate(2021, 2, 1))
 
     filepath = "test_TimeDate.nc"
     isfile(filepath) && rm(filepath)
-    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model); 
+    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model);
                                                          filename = filepath,
                                                          schedule = IterationInterval(1))
 
@@ -352,7 +354,7 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
     view(model.tracers.T, i1:i2, j1:j2, k1:k2) .+= 0.01
 
     nc_filepath = "test_dump_with_halos_$(typeof(arch)).nc"
-    
+
     nc_writer = NetCDFOutputWriter(model, merge(model.velocities, model.tracers),
                                    filename = nc_filepath,
                                    schedule = IterationInterval(10),
@@ -435,7 +437,8 @@ function test_netcdf_function_output(arch)
     iters = 3
 
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(L, 2L, 3L))
-    model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = NonhydrostaticModel(; grid, timestepper=:QuasiAdamsBashforth2,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
     grid = model.grid
@@ -597,9 +600,9 @@ function test_netcdf_spatial_average(arch)
 
     model = NonhydrostaticModel(grid = grid,
                                 timestepper = :RungeKutta3,
-                                tracers = (:c,), 
-                                coriolis = nothing, 
-                                buoyancy = nothing, 
+                                tracers = (:c,),
+                                coriolis = nothing,
+                                buoyancy = nothing,
                                 closure = nothing)
     set!(model, c=1)
 
@@ -643,7 +646,7 @@ function test_netcdf_time_averaging(arch)
 
     Fc1(x, y, z, t, c1) = - λ1(x, y, z) * c1
     Fc2(x, y, z, t, c2) = - λ2(x, y, z) * c2
-    
+
     c1_forcing = Forcing(Fc1, field_dependencies=:c1)
     c2_forcing = Forcing(Fc2, field_dependencies=:c2)
 
@@ -659,7 +662,7 @@ function test_netcdf_time_averaging(arch)
 
     ∫c1_dxdy = Field(Average(model.tracers.c1, dims=(1, 2)))
     ∫c2_dxdy = Field(Average(model.tracers.c2, dims=(1, 2)))
-        
+
     nc_outputs = Dict("c1" => ∫c1_dxdy, "c2" => ∫c2_dxdy)
     nc_dimensions = Dict("c1" => ("zC",), "c2" => ("zC",))
 
@@ -731,7 +734,7 @@ function test_netcdf_time_averaging(arch)
     ##### Test strided windowed time average against analytic solution
     ##### for *single* NetCDF output
     #####
-    
+
     single_ds = NCDataset(single_time_average_nc_filepath)
 
     attribute_names = ("schedule", "interval", "output time interval",
@@ -777,7 +780,7 @@ end
 
 function test_netcdf_output_alignment(arch)
     grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid,
+    model = NonhydrostaticModel(; grid, timestepper=:QuasiAdamsBashforth2,
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=0.2, stop_time=40)
 
@@ -813,7 +816,7 @@ function test_netcdf_vertically_stretched_grid_output(arch)
     zF = [k^2 for k in 0:Nz]
     grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), x=(0, 1), y=(-π, π), z=zF)
 
-    model = NonhydrostaticModel(grid=grid,
+    model = NonhydrostaticModel(; grid,
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Δt = 1.25
@@ -865,9 +868,14 @@ end
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 
-function test_netcdf_regular_lat_lon_grid_output(arch)
+function test_netcdf_regular_lat_lon_grid_output(arch; immersed = false)
     Nx = Ny = Nz = 16
     grid = LatitudeLongitudeGrid(arch; size=(Nx, Ny, Nz), longitude=(-180, 180), latitude=(-80, 80), z=(-100, 0))
+
+    if immersed
+        grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> -50))
+    end
+
     model = HydrostaticFreeSurfaceModel(momentum_advection = VectorInvariant(), grid=grid)
 
     Δt = 1.25
@@ -929,7 +937,7 @@ for arch in archs
         test_netcdf_spatial_average(arch)
         test_netcdf_time_averaging(arch)
         test_netcdf_vertically_stretched_grid_output(arch)
-        test_netcdf_regular_lat_lon_grid_output(arch)
+        test_netcdf_regular_lat_lon_grid_output(arch; immersed = false)
+        test_netcdf_regular_lat_lon_grid_output(arch; immersed = true)
     end
 end
-

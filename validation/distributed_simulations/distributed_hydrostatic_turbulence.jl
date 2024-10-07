@@ -7,7 +7,6 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.DistributedComputations    
 using Random
 using JLD2
-using Oceananigans.ImmersedBoundaries: ActiveCellsIBG, active_interior_map
 
 # Run with 
 #
