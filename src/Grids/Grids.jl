@@ -4,13 +4,15 @@ export Center, Face
 export AbstractTopology, Periodic, Bounded, Flat, FullyConnected, LeftConnected, RightConnected, topology
 
 export AbstractGrid, AbstractUnderlyingGrid, halo_size, total_size
-export AbstractRectilinearGrid, RectilinearGrid
+export RectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 export XFlatGrid, YFlatGrid, ZFlatGrid
-export XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilinearGrid, HRegRectilinearGrid, RegRectilinearGrid
-export LatitudeLongitudeGrid, XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
+export XRegularRG, YRegularRG, ZRegularRG, XYRegularRG, XYZRegularRG
+export LatitudeLongitudeGrid, XRegularLLG, YRegularLLG, ZRegularLLG
 export OrthogonalSphericalShellGrid, ConformalCubedSphereGrid, ZRegOrthogonalSphericalShellGrid
+export conformal_cubed_sphere_panel
 export node, nodes
+export ξnode, ηnode, rnode
 export xnode, ynode, znode, λnode, φnode
 export xnodes, ynodes, znodes, λnodes, φnodes
 export spacings
@@ -28,7 +30,7 @@ using Oceananigans
 using Oceananigans.Architectures
 
 import Base: size, length, eltype, show, -
-import Oceananigans.Architectures: architecture
+import Oceananigans.Architectures: architecture, on_architecture
 
 # Physical constants for constructors.
 const R_Earth = 6371.0e3    # [m] Mean radius of the Earth https://en.wikipedia.org/wiki/Earth
@@ -101,42 +103,6 @@ Grid topology for dimensions that are connected to other models or domains only 
 """
 struct RightConnected <: AbstractTopology end
 
-"""
-    AbstractGrid{FT, TX, TY, TZ}
-
-Abstract supertype for grids with elements of type `FT` and topology `{TX, TY, TZ}`.
-"""
-abstract type AbstractGrid{FT, TX, TY, TZ, Arch} end
-
-"""
-    AbstractUnderlyingGrid{FT, TX, TY, TZ}
-
-Abstract supertype for "primary" grids (as opposed to grids with immersed boundaries)
-with elements of type `FT` and topology `{TX, TY, TZ}`.
-"""
-abstract type AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch} end
-
-"""
-    AbstractRectilinearGrid{FT, TX, TY, TZ}
-
-Abstract supertype for rectilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
-"""
-abstract type AbstractRectilinearGrid{FT, TX, TY, TZ, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch} end
-
-"""
-    AbstractCurvilinearGrid{FT, TX, TY, TZ}
-
-Abstract supertype for curvilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
-"""
-abstract type AbstractCurvilinearGrid{FT, TX, TY, TZ, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch} end
-
-"""
-    AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ}
-
-Abstract supertype for horizontally-curvilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
-"""
-abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch} <: AbstractCurvilinearGrid{FT, TX, TY, TZ, Arch} end
-
 #####
 ##### Directions (for tilted domains)
 #####
@@ -144,20 +110,14 @@ abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch} <: Abstr
 abstract type AbstractDirection end
 
 struct XDirection <: AbstractDirection end
-
 struct YDirection <: AbstractDirection end
-
 struct ZDirection <: AbstractDirection end
 
 struct NegativeZDirection <: AbstractDirection end
 
-const XFlatGrid = AbstractGrid{<:Any, Flat}
-const YFlatGrid = AbstractGrid{<:Any, <:Any, Flat}
-const ZFlatGrid = AbstractGrid{<:Any, <:Any, <:Any, Flat}
-
-isrectilinear(grid) = false
-
+include("abstract_grid.jl")
 include("grid_utils.jl")
+include("nodes_and_spacings.jl")
 include("zeros_and_ones.jl")
 include("new_data.jl")
 include("inactive_node.jl")

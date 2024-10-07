@@ -2,11 +2,11 @@ using Oceananigans.BuoyancyModels
 using Oceananigans.Coriolis
 using Oceananigans.Operators
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
-using Oceananigans.StokesDrift
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
 using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_drift_velocity
 using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
-using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v, boundary_buffer
+using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
+using Oceananigans.Forcings: with_advective_forcing
 using Oceananigans.TurbulenceClosures: shear_production, buoyancy_flux, dissipation
 using Oceananigans.Utils: SumOfArrays
 using KernelAbstractions: @private
@@ -114,7 +114,6 @@ where `c = C[tracer_index]`.
                                                           velocities,
                                                           free_surface,
                                                           tracers,
-                                                          top_tracer_bcs,
                                                           diffusivities,
                                                           auxiliary_fields,
                                                           forcing,
@@ -128,6 +127,8 @@ where `c = C[tracer_index]`.
     total_velocities = (u = SumOfArrays{2}(velocities.u, biogeochemical_velocities.u),
                         v = SumOfArrays{2}(velocities.v, biogeochemical_velocities.v),
                         w = SumOfArrays{2}(velocities.w, biogeochemical_velocities.w))
+
+    total_velocities = with_advective_forcing(forcing, total_velocities)
 
     return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
@@ -160,31 +161,3 @@ The tendency is called ``G_η`` and defined via
                        + forcings.η(i, j, k_top, grid, clock, model_fields))
 end
 
-@inline function hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid,
-                                                               val_tracer_index::Val{tracer_index},
-                                                               val_tracer_name,
-                                                               advection,
-                                                               closure,
-                                                               e_immersed_bc,
-                                                               buoyancy,
-                                                               biogeochemistry,
-                                                               velocities,
-                                                               free_surface,
-                                                               tracers,
-                                                               top_tracer_bcs,
-                                                               diffusivities,
-                                                               auxiliary_fields,
-                                                               forcing,
-                                                               clock) where tracer_index
-
-    @inbounds e = tracers[tracer_index]
-    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
-
-    return ( - div_Uc(i, j, k, grid, advection, velocities, e)
-             - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, e, clock, model_fields, buoyancy)
-             - immersed_∇_dot_qᶜ(i, j, k, grid, e, e_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
-             + shear_production(i, j, k, grid, closure, velocities, diffusivities)
-             + buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
-             - dissipation(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
-             + forcing(i, j, k, grid, clock, model_fields))
-end

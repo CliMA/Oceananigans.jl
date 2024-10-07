@@ -2,7 +2,7 @@ using CUDA
 using Oceananigans.Solvers: solve!, set_source_term!
 using Oceananigans.Solvers: poisson_eigenvalues
 using Oceananigans.Models.NonhydrostaticModels: solve_for_pressure!
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: _compute_w_from_continuity!
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_w_from_continuity!
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
 function poisson_solver_instantiates(grid, planner_flag)
@@ -17,15 +17,15 @@ function random_divergent_source_term(grid)
     v_bcs = regularize_field_boundary_conditions(default_bcs, grid, :v)
     w_bcs = regularize_field_boundary_conditions(default_bcs, grid, :w)
 
-    Ru = CenterField(grid, boundary_conditions=u_bcs)
-    Rv = CenterField(grid, boundary_conditions=v_bcs)
-    Rw = CenterField(grid, boundary_conditions=w_bcs)
+    Ru, Rv, Rw = VelocityFields(grid, (; u = u_bcs, v = v_bcs, w = w_bcs))
+
     U = (u=Ru, v=Rv, w=Rw)
 
     Nx, Ny, Nz = size(grid)
-    set!(Ru, rand(Nx, Ny, Nz))
-    set!(Rv, rand(Nx, Ny, Nz))
-    set!(Rw, rand(Nx, Ny, Nz))
+
+    set!(Ru, rand(size(Ru)...))
+    set!(Rv, rand(size(Rv)...))
+    set!(Rw, rand(size(Rw)...))
 
     fill_halo_regions!(Ru)
     fill_halo_regions!(Rv)
@@ -46,24 +46,23 @@ function random_divergence_free_source_term(grid)
     w_bcs = regularize_field_boundary_conditions(default_bcs, grid, :w)
 
     # Random right hand side
-    Ru = CenterField(grid, boundary_conditions=u_bcs)
-    Rv = CenterField(grid, boundary_conditions=v_bcs)
-    Rw = CenterField(grid, boundary_conditions=w_bcs)
+    Ru, Rv, Rw = VelocityFields(grid, (; u = u_bcs, v = v_bcs, w = w_bcs))
+
     U = (u=Ru, v=Rv, w=Rw)
 
     Nx, Ny, Nz = size(grid)
-    set!(Ru, rand(Nx, Ny, Nz))
-    set!(Rv, rand(Nx, Ny, Nz))
-    set!(Rw, zeros(Nx, Ny, Nz))
 
+    set!(Ru, rand(size(Ru)...))
+    set!(Rv, rand(size(Rv)...))
+    set!(Rw, rand(size(Rw)...))
+
+    fill_halo_regions!(Ru)
+    fill_halo_regions!(Rv)
+    
     arch = architecture(grid)
-    fill_halo_regions!(Ru, nothing, nothing)
-    fill_halo_regions!(Rv, nothing, nothing)
-    fill_halo_regions!(Rw, nothing, nothing)
 
-    launch!(arch, grid, :xy, _compute_w_from_continuity!, U, grid)
-
-    fill_halo_regions!(Rw, nothing, nothing)
+    compute_w_from_continuity!(U, arch, grid)
+    fill_halo_regions!(Rw)
 
     # Compute the right hand side R = ∇⋅U
     ArrayType = array_type(arch)

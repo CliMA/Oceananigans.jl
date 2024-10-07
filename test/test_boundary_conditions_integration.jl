@@ -13,7 +13,7 @@ function test_boundary_condition(arch, FT, topo, side, field_name, boundary_cond
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     success = try
-        time_step!(model, 1e-16, euler=true)
+        time_step!(model, 1e-16)
         true
     catch err
         @warn "test_boundary_condition errored with " * sprint(showerror, err)
@@ -27,7 +27,7 @@ function test_nonhydrostatic_flux_budget(grid, name, side, L)
     FT = eltype(grid)
     flux = FT(π)
     direction = side ∈ (:west, :south, :bottom, :immersed) ? 1 : -1
-    bc_kwarg = Dict(side => BoundaryCondition(Flux, flux * direction))
+    bc_kwarg = Dict(side => BoundaryCondition(Flux(), flux * direction))
     field_bcs = FieldBoundaryConditions(; bc_kwarg...)
     boundary_conditions = (; name => field_bcs)
 
@@ -61,16 +61,18 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     κₑ_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), bottom=ValueBoundaryCondition(κ₀))
     model_bcs = (b=buoyancy_bcs, κₑ=(b=κₑ_bcs,))
 
-    model = NonhydrostaticModel(
-        grid=grid, tracers=:b, buoyancy=BuoyancyTracer(),
-        closure=AnisotropicMinimumDissipation(), boundary_conditions=model_bcs
-    )
+    model = NonhydrostaticModel(; grid,
+                                timestepper = :QuasiAdamsBashforth2,
+                                tracers = :b,
+                                buoyancy = BuoyancyTracer(),
+                                closure = AnisotropicMinimumDissipation(),
+                                boundary_conditions = model_bcs)
 
     b₀(x, y, z) = z * bz
     set!(model, b=b₀)
 
     b = model.tracers.b
-    mean_b₀ = mean(interior(b))
+    mean_b₀ = mean(b)
 
     τκ = Lz^2 / κ₀  # Diffusion time-scale
     Δt = 1e-6 * τκ  # Time step much less than diffusion time-scale
@@ -98,7 +100,7 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     # mean(interior(b)) - mean_b₀ = -3.141592656086267e-5
     # (flux * model.clock.time) / Lz = -3.141592653589793e-5
     
-    return isapprox(mean(interior(b)) - mean_b₀, flux * model.clock.time / Lz, atol=1e-6)
+    return isapprox(mean(b) - mean_b₀, flux * model.clock.time / Lz, atol=1e-6)
 end
 
 test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
@@ -222,11 +224,12 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
 
             bottom(x, y) = 0
             ib = GridFittedBottom(bottom)
-            grid_kw = (size = (1, 1, 2), x = (0, Lx), y = (0, Ly))
+            grid_kw = (size = (2, 2, 2), x = (0, Lx), y = (0, Ly))
 
             rectilinear_grid(topology) = RectilinearGrid(arch; topology, z=(0, Lz), grid_kw...)
             immersed_rectilinear_grid(topology) = ImmersedBoundaryGrid(RectilinearGrid(arch; topology, z=(-Lz, Lz), grid_kw...), ib)
-            grids_to_test(topo) = [rectilinear_grid(topo), immersed_rectilinear_grid(topo)]
+            immersed_active_rectilinear_grid(topology) = ImmersedBoundaryGrid(RectilinearGrid(arch; topology, z=(-Lz, Lz), grid_kw...), ib; active_cells_map = true)
+            grids_to_test(topo) = [rectilinear_grid(topo), immersed_rectilinear_grid(topo), immersed_active_rectilinear_grid(topo)]
 
             for grid in grids_to_test((Periodic, Bounded, Bounded))
                 for name in (:u, :c)

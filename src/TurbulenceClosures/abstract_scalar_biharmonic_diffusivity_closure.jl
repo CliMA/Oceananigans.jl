@@ -5,7 +5,7 @@ using Oceananigans.Grids: peripheral_node
 
 Abstract type for closures with scalar biharmonic diffusivities.
 """
-abstract type AbstractScalarBiharmonicDiffusivity{F} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization} end
+abstract type AbstractScalarBiharmonicDiffusivity{F, N} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization, N} end
 
 @inline formulation(::AbstractScalarBiharmonicDiffusivity{F}) where {F} = F()
 

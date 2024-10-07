@@ -30,14 +30,14 @@ using Printf
 
 # ### The grid
 
-H = 1.0          # vertical domain extent
+H = 1            # vertical domain extent
 Lx = 2H          # horizontal domain extent
 Nx, Nz = 128, 64 # horizontal, vertical resolution
 
 grid = RectilinearGrid(size = (Nx, Nz),
-                          x = (-Lx/2, Lx/2),
-                          z = (-H, 0),
-                   topology = (Bounded, Flat, Bounded))
+                       x = (-Lx/2, Lx/2),
+                       z = (-H, 0),
+                       topology = (Bounded, Flat, Bounded))
 
 # ### Boundary conditions
 #
@@ -48,9 +48,8 @@ grid = RectilinearGrid(size = (Nx, Nz),
 # while zero-flux boundary conditions are imposed on all other boundaries. We use free-slip 
 # boundary conditions on ``u`` and ``w`` everywhere.
 
-b★ = 1.0
-
-@inline bˢ(x, y, t, p) = - p.b★ * cos(2π * x / p.Lx)
+b★ = 1  
+@inline bˢ(x, t, p) = - p.b★ * cos(2π * x / p.Lx)
 
 b_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(bˢ, parameters=(; b★, Lx)))
 
@@ -77,12 +76,12 @@ b_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(bˢ, parameters=(; 
 # We use isotropic viscosity and diffusivities, `ν` and `κ` whose values are obtain from the
 # prescribed ``Ra`` and ``Pr`` numbers. Here, we use ``Pr = 1`` and ``Ra = 10^8``:
 
-Pr = 1.0    # Prandtl number
+Pr = 1      # Prandtl number
 Ra = 1e8    # Rayleigh number
 
 ν = sqrt(Pr * b★ * Lx^3 / Ra)  # Laplacian viscosity
 κ = ν * Pr                     # Laplacian diffusivity
-nothing # hide
+nothing #hide
 
 # ## Model instantiation
 #
@@ -107,18 +106,15 @@ simulation = Simulation(model, Δt=1e-2, stop_time=40.0)
 # ### The `TimeStepWizard`
 #
 # The `TimeStepWizard` manages the time-step adaptively, keeping the Courant-Freidrichs-Lewy 
-# (CFL) number close to `0.75` while ensuring the time-step does not increase beyond the 
-# maximum allowable value for numerical stability.
+# (CFL) number close to `0.7`.
 
-wizard = TimeStepWizard(cfl=0.75, max_change=1.2, max_Δt=1e-1)
-
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(50))
+conjure_time_step_wizard!(simulation, IterationInterval(50), cfl=0.7, max_Δt=1e-1)
 
 # ### A progress messenger
 #
 # We write a function that prints out a helpful progress message while the simulation runs.
 
-progress(sim) = @printf("i: % 6d, sim time: % 1.3f, wall time: % 10s, Δt: % 1.4f, advective CFL: %.2e, diffusive CFL: %.2e\n",
+progress(sim) = @printf("Iter: % 6d, sim time: % 1.3f, wall time: % 10s, Δt: % 1.4f, advective CFL: %.2e, diffusive CFL: %.2e\n",
                         iteration(sim), time(sim), prettytime(sim.run_wall_time),
                         sim.Δt, AdvectiveCFL(sim.Δt)(sim.model), DiffusiveCFL(sim.Δt)(sim.model))
 
@@ -138,7 +134,7 @@ s = @at (Center, Center, Center) sqrt(u^2 + w^2)
 
 ## y-component of vorticity
 ζ = ∂z(u) - ∂x(w)
-nothing # hide
+nothing #hide
 
 # We create a `JLD2OutputWriter` that saves the speed, and the vorticity. Because we want
 # to post-process buoyancy and compute the buoyancy variance dissipation (which is proportional
@@ -155,7 +151,7 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, (; s, b, ζ),
                                                       filename = saved_output_filename,
                                                       with_halos = true,
                                                       overwrite_existing = true)
-nothing # hide
+nothing #hide
 
 # Ready to press the big red button:
 
@@ -187,13 +183,13 @@ times = b_timeseries.times
 ## Coordinate arrays
 xc, yc, zc = nodes(b_timeseries[1])
 xζ, yζ, zζ = nodes(ζ_timeseries[1])
-nothing # hide
+nothing #hide
 
 χ_timeseries = deepcopy(b_timeseries)
 
-for i in 1:length(times)
-  bᵢ = b_timeseries[i]
-  χ_timeseries[i] .= @at (Center, Center, Center) κ * (∂x(bᵢ)^2 + ∂z(bᵢ)^2)
+for n in 1:length(times)
+    bn = b_timeseries[n]
+    χ_timeseries[n] .= @at (Center, Center, Center) κ * (∂x(bn)^2 + ∂z(bn)^2)
 end
 
 
@@ -205,10 +201,10 @@ n = Observable(1)
 
 title = @lift @sprintf("t=%1.2f", times[$n])
 
-sₙ = @lift interior(s_timeseries[$n], :, 1, :)
-ζₙ = @lift interior(ζ_timeseries[$n], :, 1, :)
-bₙ = @lift interior(b_timeseries[$n], :, 1, :)
-χₙ = @lift interior(χ_timeseries[$n], :, 1, :)
+sn = @lift s_timeseries[$n]
+ζn = @lift ζ_timeseries[$n]
+bn = @lift b_timeseries[$n]
+χn = @lift χ_timeseries[$n]
 
 slim = 0.6
 blim = 0.6
@@ -221,40 +217,28 @@ axis_kwargs = (xlabel = L"x / H",
                aspect = Lx / H,
                titlesize = 20)
 
-fig = Figure(resolution = (600, 1100))
+fig = Figure(size = (600, 1100))
 
-ax_s = Axis(fig[2, 1];
-            title = L"speed, $(u^2+w^2)^{1/2} / (L_x b_*) ^{1/2}", axis_kwargs...)
+ax_s = Axis(fig[2, 1]; title = L"speed, $(u^2+w^2)^{1/2} / (L_x b_*)^{1/2}$", axis_kwargs...)
+ax_b = Axis(fig[3, 1]; title = L"buoyancy, $b / b_*$", axis_kwargs...)
+ax_ζ = Axis(fig[4, 1]; axis_kwargs...,
+            title = L"vorticity, $(∂u/∂z - ∂w/∂x) \, (L_x / b_*)^{1/2}$")
 
-ax_b = Axis(fig[3, 1];
-            title = L"buoyancy, $b / b_*$", axis_kwargs...)
-
-ax_ζ = Axis(fig[4, 1];
-            title = L"vorticity, $(∂u/∂z - ∂w/∂x) \, (L_x / b_*)^{1/2}$", axis_kwargs...)
-
-ax_χ = Axis(fig[5, 1];
-            title = L"buoyancy dissipation, $κ |\mathbf{\nabla}b|^2 \, (L_x / {b_*}^5)^{1/2}$", axis_kwargs...)
+ax_χ = Axis(fig[5, 1]; axis_kwargs...,
+            title = L"buoyancy dissipation, $κ |\mathbf{\nabla}b|^2 \, (L_x / {b_*}^5)^{1/2}$")
 
 fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 
-hm_s = heatmap!(ax_s, xc, zc, sₙ;
-                colorrange = (0, slim),
-                colormap = :speed)
+hm_s = heatmap!(ax_s, sn; colorrange=(0, slim), colormap=:speed)
 Colorbar(fig[2, 2], hm_s)
 
-hm_b = heatmap!(ax_b, xc, zc, bₙ;
-                colorrange = (-blim, blim),
-                colormap = :thermal)
+hm_b = heatmap!(ax_b, bn; colorrange=(-blim, blim), colormap=:thermal)
 Colorbar(fig[3, 2], hm_b)
 
-hm_ζ = heatmap!(ax_ζ, xζ, zζ, ζₙ;
-                colorrange = (-ζlim, ζlim),
-                colormap = :balance)
+hm_ζ = heatmap!(ax_ζ, ζn; colorrange=(-ζlim, ζlim), colormap=:balance)
 Colorbar(fig[4, 2], hm_ζ)
 
-hm_χ = heatmap!(ax_χ, xc, zc, χₙ;
-                colorrange = (0, χlim),
-                colormap = :dense)
+hm_χ = heatmap!(ax_χ, χn; colorrange=(0, χlim), colormap=:dense)
 Colorbar(fig[5, 2], hm_χ)
 
 # And, finally, we record a movie.
@@ -297,8 +281,12 @@ nothing #hide
 # ```math
 # b_{\rm diff}(x, z) = b_s(x) \frac{\cosh \left [2 \pi (H + z) / L_x \right ]}{\cosh(2 \pi H / L_x)} \, ,
 # ```
-# where $b_s(x)$ is the surface boundary condition. The diffusive solution implies 
-# ``\langle \chi_{\rm diff} \rangle = \kappa b_*^2 \pi \tanh(2 \pi Η /Lx) / (L_x H)``.
+#
+# where ``b_s(x)`` is the surface boundary condition. The diffusive solution implies
+#
+# ```math
+# \langle \chi_{\rm diff} \rangle = \frac{\kappa b_*^2 \pi}{L_x H} \tanh(2 \pi Η / L_x) .
+# ```
 #
 # We use the loaded `FieldTimeSeries` to compute the Nusselt number from buoyancy and the volume
 # average kinetic energy of the fluid.
@@ -307,7 +295,7 @@ nothing #hide
 # scalar):
 
 χ_diff = κ * b★^2 * π * tanh(2π * H / Lx) / (Lx * H)
-nothing # hide
+nothing #hide
 
 # We recover the time from the saved `FieldTimeSeries` and construct two empty arrays to store
 # the volume-averaged kinetic energy and the instantaneous Nusselt number,
@@ -315,23 +303,23 @@ nothing # hide
 t = b_timeseries.times
 
 kinetic_energy, Nu = zeros(length(t)), zeros(length(t))
-nothing # hide
+nothing #hide
 
 # Now we can loop over the fields in the `FieldTimeSeries`, compute kinetic energy and ``Nu``,
 # and plot. We make use of `Integral` to compute the volume integral of fields over our domain.
 
-for i = 1:length(t)
-    ke = Field(Integral(1/2 * s_timeseries[i]^2 / (Lx * H)))
+for n = 1:length(t)
+    ke = Field(Integral(1/2 * s_timeseries[n]^2 / (Lx * H)))
     compute!(ke)
-    kinetic_energy[i] = ke[1, 1, 1]
+    kinetic_energy[n] = ke[1, 1, 1]
     
-    χ = Field(Integral(χ_timeseries[i] / (Lx * H)))
+    χ = Field(Integral(χ_timeseries[n] / (Lx * H)))
     compute!(χ)
 
-    Nu[i] = χ[1, 1, 1] / χ_diff
+    Nu[n] = χ[1, 1, 1] / χ_diff
 end
 
-fig = Figure(resolution = (850, 450))
+fig = Figure(size = (850, 450))
  
 ax_KE = Axis(fig[1, 1], xlabel = L"t \, (b_* / L_x)^{1/2}", ylabel = L"KE $ / (L_x b_*)$")
 lines!(ax_KE, t, kinetic_energy; linewidth = 3)
@@ -339,5 +327,6 @@ lines!(ax_KE, t, kinetic_energy; linewidth = 3)
 ax_Nu = Axis(fig[2, 1], xlabel = L"t \, (b_* / L_x)^{1/2}", ylabel = L"Nu")
 lines!(ax_Nu, t, Nu; linewidth = 3)
 
-current_figure() # hide
+current_figure() #hide
 fig
+

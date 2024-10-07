@@ -1,17 +1,17 @@
 using Oceananigans.Grids: Center, Face
 
-const RG   = RectilinearGrid
-const RGX  = XRegRectilinearGrid
-const RGY  = YRegRectilinearGrid
-const RGZ  = ZRegRectilinearGrid
+const RG  = RectilinearGrid
+const RGX = XRegularRG
+const RGY = YRegularRG
+const RGZ = ZRegularRG
 
 const OSSG  = OrthogonalSphericalShellGrid
 const OSSGZ = ZRegOrthogonalSphericalShellGrid
 
 const LLG  = LatitudeLongitudeGrid
-const LLGX = XRegLatLonGrid
-const LLGY = YRegLatLonGrid
-const LLGZ = ZRegLatLonGrid
+const LLGX = XRegularLLG
+const LLGY = YRegularLLG
+const LLGZ = ZRegularLLG
 
 # On the fly calculations of metrics
 const LLGF  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing}
@@ -53,10 +53,10 @@ The operators in this file fall into three categories:
 #####
 #####
 
-@inline Δxᶠᵃᵃ(i, j, k, grid) =  nothing
-@inline Δxᶜᵃᵃ(i, j, k, grid) =  nothing
-@inline Δyᵃᶠᵃ(i, j, k, grid) =  nothing
-@inline Δyᵃᶜᵃ(i, j, k, grid) =  nothing
+@inline Δxᶠᵃᵃ(i, j, k, grid) = nothing
+@inline Δxᶜᵃᵃ(i, j, k, grid) = nothing
+@inline Δyᵃᶠᵃ(i, j, k, grid) = nothing
+@inline Δyᵃᶜᵃ(i, j, k, grid) = nothing
 
 const ZRG = Union{LLGZ, RGZ}
 
@@ -271,3 +271,4 @@ for LX in (:Center, :Face)
         end
     end
 end
+

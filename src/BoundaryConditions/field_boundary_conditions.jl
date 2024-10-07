@@ -57,7 +57,10 @@ function FieldBoundaryConditions(indices::Tuple, west, east, south, north, botto
 end
 
 FieldBoundaryConditions(indices::Tuple, bcs::FieldBoundaryConditions) =
-    FieldBoundaryConditions(indices, (getproperty(bcs, side) for side in fieldnames(FieldBoundaryConditions))...)
+    FieldBoundaryConditions(indices, (getproperty(bcs, side) for side in propertynames(bcs))...)
+
+
+FieldBoundaryConditions(indices::Tuple, ::Nothing) = nothing
 
 window_boundary_conditions(::Colon,     left, right) = left, right
 window_boundary_conditions(::UnitRange, left, right) = nothing, nothing
@@ -95,7 +98,7 @@ FieldBoundaryConditions(default_bounded_bc::BoundaryCondition = NoFluxBoundaryCo
                         north = DefaultBoundaryCondition(default_bounded_bc),
                         bottom = DefaultBoundaryCondition(default_bounded_bc),
                         top = DefaultBoundaryCondition(default_bounded_bc),
-                        immersed = DefaultBoundaryCondition(default_bounded_bc)) = 
+                        immersed = DefaultBoundaryCondition(default_bounded_bc)) =
     FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 
 """
@@ -132,15 +135,17 @@ and the topology in the boundary-normal direction is used:
 - `nothing` for `Bounded` directions and `Face`-located fields
 - `nothing` for `Flat` directions and/or `Nothing`-located fields
 """
-FieldBoundaryConditions(grid, location, indices=(:, :, :);
-                        west     = default_auxiliary_bc(topology(grid, 1)(), location[1]()),
-                        east     = default_auxiliary_bc(topology(grid, 1)(), location[1]()),
-                        south    = default_auxiliary_bc(topology(grid, 2)(), location[2]()),
-                        north    = default_auxiliary_bc(topology(grid, 2)(), location[2]()),
-                        bottom   = default_auxiliary_bc(topology(grid, 3)(), location[3]()),
-                        top      = default_auxiliary_bc(topology(grid, 3)(), location[3]()),
-                        immersed = NoFluxBoundaryCondition()) =
-    FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
+function FieldBoundaryConditions(grid::AbstractGrid, location, indices=(:, :, :);
+                                 west     = default_auxiliary_bc(topology(grid, 1)(), location[1]()),
+                                 east     = default_auxiliary_bc(topology(grid, 1)(), location[1]()),
+                                 south    = default_auxiliary_bc(topology(grid, 2)(), location[2]()),
+                                 north    = default_auxiliary_bc(topology(grid, 2)(), location[2]()),
+                                 bottom   = default_auxiliary_bc(topology(grid, 3)(), location[3]()),
+                                 top      = default_auxiliary_bc(topology(grid, 3)(), location[3]()),
+                                 immersed = NoFluxBoundaryCondition())
+
+    return FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
+end
 
 #####
 ##### Boundary condition "regularization"
@@ -151,11 +156,12 @@ FieldBoundaryConditions(grid, location, indices=(:, :, :);
 # Friendly warning?
 function regularize_immersed_boundary_condition(ibc, grid, loc, field_name, args...)
     if !(ibc isa DefaultBoundaryCondition)
-        msg = """
-              $field_name was assigned an immersed $ibc, but this is not supported on
-              $(summary(grid))
+        msg = """$field_name was assigned an immersed boundary condition
+              $ibc ,
+              but this is not supported on
+              $(summary(grid)) .
               The immersed boundary condition on $field_name will have no effect.
-          """
+              """
 
         @warn msg
     end

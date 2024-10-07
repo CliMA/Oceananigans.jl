@@ -188,7 +188,7 @@ end
 
 using CairoMakie
 
-fig = Figure(resolution = (1400, 700))
+fig = Figure(size=(1400, 700))
 ax_b = fig[1:5, 1] = LScene(fig)
 ax_c = fig[1:5, 2] = LScene(fig)
 

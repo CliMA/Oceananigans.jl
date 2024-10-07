@@ -14,7 +14,9 @@ end
 
 ```jldoctest
 julia> clock = Clock(time=0.0)
-Clock{Float64}: time = 0 seconds, iteration = 0, stage = 1
+Clock{Float64, Float64}(time=0 seconds, iteration=0, last_Δt=Inf days)
+├── stage: 1
+└── last_stage_Δt: Inf days
 ```
 
 but can be modified to start the model clock at some other time.
@@ -22,7 +24,9 @@ For example, passing
 
 ```jldoctest
 julia> clock = Clock(time=3600.0)
-Clock{Float64}: time = 1 hour, iteration = 0, stage = 1
+Clock{Float64, Float64}(time=1 hour, iteration=0, last_Δt=Inf days)
+├── stage: 1
+└── last_stage_Δt: Inf days
 ```
 
 to the constructor for `NonhydrostaticModel` causes the simulation
@@ -37,7 +41,9 @@ for example, pass
 julia> using TimesDates
 
 julia> clock = Clock(time=TimeDate(2020))
-Clock{TimesDates.TimeDate}: time = 2020-01-01T00:00:00, iteration = 0, stage = 1
+Clock{TimesDates.TimeDate, Float64}(time=2020-01-01T00:00:00, iteration=0, last_Δt=Inf days)
+├── stage: 1
+└── last_stage_Δt: Inf days
 ```
 
 to `NonhydrostaticModel`. `TimesDates.TimeDate` supports nanosecond resolution and is thus recommended
