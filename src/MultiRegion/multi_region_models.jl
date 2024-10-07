@@ -7,7 +7,7 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using Oceananigans.Advection: AbstractAdvectionScheme
 using Oceananigans.Advection: OnlySelfUpwinding, CrossAndSelfUpwinding
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
-using Oceananigans.Solvers: PreconditionedConjugateGradientSolver
+using Oceananigans.Solvers: ConjugateGradientSolver
 
 import Oceananigans.Advection: WENO, cell_advection_timescale, adapt_advection_order
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: build_implicit_step_solver, validate_tracer_advection
@@ -39,7 +39,7 @@ Types = (:HydrostaticFreeSurfaceModel,
          :SplitExplicitState,
          :SplitExplicitFreeSurface,
          :PrescribedVelocityFields,
-         :PreconditionedConjugateGradientSolver,
+         :ConjugateGradientSolver,
          :CrossAndSelfUpwinding,
          :OnlySelfUpwinding,
          :GridFittedBoundary,

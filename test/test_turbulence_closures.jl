@@ -105,21 +105,17 @@ function time_step_with_variable_isotropic_diffusivity(arch)
 
     model = NonhydrostaticModel(; grid, closure)
 
-    time_step!(model, 1, euler=true)
+    time_step!(model, 1)
     return true
 end
 
 function time_step_with_field_isotropic_diffusivity(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3))
-
     ν = CenterField(grid)
     κ = CenterField(grid)
-
     closure = ScalarDiffusivity(; ν, κ)
-
     model = NonhydrostaticModel(; grid, closure)
-
-    time_step!(model, 1, euler=true)
+    time_step!(model, 1)
     return true
 end
 
@@ -131,7 +127,7 @@ function time_step_with_variable_anisotropic_diffusivity(arch)
                                        κ = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t))
     for clo in (clov, cloh)
         model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)), closure=clo)
-        time_step!(model, 1, euler=true)
+        time_step!(model, 1)
     end
 
     return true
@@ -144,9 +140,11 @@ function time_step_with_variable_discrete_diffusivity(arch)
     closure_ν = ScalarDiffusivity(ν = νd, discrete_form=true, loc = (Face, Center, Center))
     closure_κ = ScalarDiffusivity(κ = κd, discrete_form=true, loc = (Center, Face, Center))
 
-    model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)), tracers = (:T, :S), closure=(closure_ν, closure_κ))
+    model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)),
+                                tracers = (:T, :S),
+                                closure = (closure_ν, closure_κ))
 
-    time_step!(model, 1, euler=true)
+    time_step!(model, 1)
     return true
 end
 
@@ -156,7 +154,7 @@ function time_step_with_tupled_closure(FT, arch)
     model = NonhydrostaticModel(closure=closure_tuple,
                                 grid=RectilinearGrid(arch, FT, size=(2, 2, 2), extent=(1, 2, 3)))
 
-    time_step!(model, 1, euler=true)
+    time_step!(model, 1)
     return true
 end
 
@@ -299,20 +297,20 @@ end
 
             @info "    Testing time-stepping CATKE in a 2-tuple with HorizontalScalarDiffusivity..."
             closure = (CATKEVerticalDiffusivity(), HorizontalScalarDiffusivity())
-            #model = run_time_step_with_catke_tests(arch, closure)
-            @test_skip first(model.closure) === closure[1]
+            model = run_time_step_with_catke_tests(arch, closure)
+            @test first(model.closure) === closure[1]
 
             # Test that closure tuples with CATKE are correctly reordered
             @info "    Testing time-stepping CATKE in a 2-tuple with HorizontalScalarDiffusivity..."
             closure = (HorizontalScalarDiffusivity(), CATKEVerticalDiffusivity())
-            #model = run_time_step_with_catke_tests(arch, closure)
-            @test_skip first(model.closure) === closure[2]
+            model = run_time_step_with_catke_tests(arch, closure)
+            @test first(model.closure) === closure[2]
 
             # These are slow to compile...
             @info "    Testing time-stepping CATKE in a 3-tuple..."
             closure = (HorizontalScalarDiffusivity(), CATKEVerticalDiffusivity(), VerticalScalarDiffusivity())
-            #model = run_time_step_with_catke_tests(arch, closure)
-            @test_skip first(model.closure) === closure[2]
+            model = run_time_step_with_catke_tests(arch, closure)
+            @test first(model.closure) === closure[2]
         end
     end
 
