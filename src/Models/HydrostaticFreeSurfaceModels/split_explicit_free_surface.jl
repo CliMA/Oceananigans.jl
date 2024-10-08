@@ -254,14 +254,11 @@ end
 function compute_column_height!(Hᶜᶜ, Hᶠᶜ, Hᶜᶠ, Hᶠᶠ, grid)
 
     arch = architecture(grid)
-    include_right_boundaries = true
 
-    launch!(arch, grid, :xy, _compute_column_height!, Hᶜᶜ, grid, c, c, Δrᶜᶜᶜ; include_right_boundaries, location = (Center, Center, Nothing))
-    launch!(arch, grid, :xy, _compute_column_height!, Hᶠᶜ, grid, f, c, Δrᶠᶜᶜ; include_right_boundaries, location = (Face, Center,   Nothing))
-    launch!(arch, grid, :xy, _compute_column_height!, Hᶜᶠ, grid, c, f, Δrᶜᶠᶜ; include_right_boundaries, location = (Center, Face,   Nothing))
-    launch!(arch, grid, :xy, _compute_column_height!, Hᶠᶠ, grid, f, f, Δrᶠᶠᶜ; include_right_boundaries, location = (Face, Face,     Nothing))
- 
-    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, Hᶠᶠ))
+    launch!(arch, grid, KernelParameters(Hᶜᶜ), _compute_column_height!, Hᶜᶜ, grid, c, c, Δrᶜᶜᶜ)
+    launch!(arch, grid, KernelParameters(Hᶠᶜ), _compute_column_height!, Hᶠᶜ, grid, f, c, Δrᶠᶜᶜ)
+    launch!(arch, grid, KernelParameters(Hᶜᶠ), _compute_column_height!, Hᶜᶠ, grid, c, f, Δrᶜᶠᶜ)
+    launch!(arch, grid, KernelParameters(Hᶠᶠ), _compute_column_height!, Hᶠᶠ, grid, f, f, Δrᶠᶠᶜ)
 
     return nothing
 end

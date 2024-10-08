@@ -2,6 +2,7 @@
 ##### Utilities for launching kernels
 #####
 
+using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Utils
 using Oceananigans.Grids
@@ -73,6 +74,16 @@ function KernelParameters(r1::UnitRange, r2::UnitRange, r3::UnitRange)
     size = (length(r1), length(r2), length(r3))
     offsets = (first(r1) - 1, first(r2) - 1, first(r3) - 1)
     return KernelParameters(size, offsets)
+end
+
+function KernelParameters(f::Oceananigans.Fields.Field)
+    size = Base.size(f.data)
+    offsets = f.data.offsets
+
+    rdims = Oceananigans.Fields.reduced_dimensions(f)
+    dims  = filter(n -> !(n ∈ rdims), [1, 2, 3])
+
+    return KernelParameters(size[dims], offsets[dims])
 end
 
 offsets(::KernelParameters{S, O}) where {S, O} = O

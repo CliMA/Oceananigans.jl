@@ -7,10 +7,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStar, ZStarSpacingGrid,
 using Printf
 
 grid = RectilinearGrid(size = (20, 20), 
-                          x = (0, 64kilometers), 
+                          y = (0, 64kilometers), 
                           z = (-20, 0), 
                        halo = (6, 6),
-                   topology = (Periodic, Flat, Bounded))
+                   topology = (Flat, Periodic, Bounded))
 
 grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> x < 32kilometers ? -10 : -20))
 
