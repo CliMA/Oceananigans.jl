@@ -120,7 +120,6 @@ simulation = Simulation(model; Δt, stop_time = 2000days)
 ##### Output
 #####
 
-
 Δzᶜᶜ = GridMetricOperation((Center, Center, Center), Oceananigans.AbstractOperations.Δz, model.grid)
 Δzᶠᶜ = GridMetricOperation((Face,   Center, Center), Oceananigans.AbstractOperations.Δz, model.grid)
 Δzᶜᶠ = GridMetricOperation((Center, Face,   Center), Oceananigans.AbstractOperations.Δz, model.grid)
@@ -145,7 +144,7 @@ function progress(sim)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 simulation.output_writers[:snapshots] = JLD2OutputWriter(model, field_outputs, 
                                                          overwrite_existing = true,
