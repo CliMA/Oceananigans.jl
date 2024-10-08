@@ -10,7 +10,7 @@ pushfirst!(LOAD_PATH, @__DIR__)
 
 using Printf
 using Statistics
-# using CairoMakie
+using CairoMakie
 
 using Oceananigans
 using Oceananigans.Units
