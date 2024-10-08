@@ -70,7 +70,6 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
 
     # Calculate diffusivities
     compute_diffusivities!(model.diffusivity_fields, model.closure, model)
-
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
 
     for callback in callbacks

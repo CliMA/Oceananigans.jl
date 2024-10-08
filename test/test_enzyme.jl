@@ -236,13 +236,13 @@ end
 end
 =#
 
+bᵢ(z) = 1e-5 * z
+
 function buoyancy_variance!(model, e_min, Δt=10.0)
     new_closure = CATKEVerticalDiffusivity(minimum_tke=e_min)
     model.closure = new_closure
     model.clock.time = 0
     model.clock.iteration = 0
-
-    bᵢ(z) = 1e-5 * z
     set!(model, b=bᵢ)
 
     for n = 1:10
