@@ -18,7 +18,7 @@
 
  The vertical circulation associated with horizontal velocities ``u`` and ``v``.
  """
-@inline function Γᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid, u, v)
+@inline function Γᶠᶠᶜ(i, j, k, grid::OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ConformalMapping, <:Any}, u, v)
     # South-west corner
     if i == 1 && j == 1
         return Δy_qᶜᶠᶜ(i, j, k, grid, v) - Δx_qᶠᶜᶜ(i, j, k, grid, u) + Δx_qᶠᶜᶜ(i, j-1, k, grid, u)
