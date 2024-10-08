@@ -9,7 +9,7 @@ using Adapt: adapt_structure
 using Oceananigans
 using Oceananigans.Grids: prettysummary, coordinate_summary, BoundedTopology, length
 
-struct ConformalCubedSphereMapping{FT, Rotation}
+struct CubedSphereConformalMapping{FT, Rotation}
     ξ :: Tuple{FT, FT}
     η :: Tuple{FT, FT}
     rotation :: Rotation
@@ -76,7 +76,7 @@ end
 const OSSG = OrthogonalSphericalShellGrid
 const ZRegOSSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
 const ZRegOrthogonalSphericalShellGrid = ZRegOSSG
-const ConformalCubedSpherePanel = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereMapping}
+const ConformalCubedSpherePanel = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:CubedSphereConformalMapping}
 
 # convenience constructor for OSSG without any conformal_mapping properties
 OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
@@ -610,7 +610,7 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
                      Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                      Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
 
-    conformal_mapping = ConformalCubedSphereMapping(ξ, η, rotation)
+    conformal_mapping = CubedSphereConformalMapping(ξ, η, rotation)
 
     grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(CPU(), Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
                                                     coordinate_arrays...,
@@ -884,7 +884,7 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
     φᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology[1:2], N[1:2], H[1:2])
 
     ξ, η = (-1, 1), (-1, 1)
-    conformal_mapping = ConformalCubedSphereMapping(ξ, η, rotation)
+    conformal_mapping = CubedSphereConformalMapping(ξ, η, rotation)
 
     return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
                                                      λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
