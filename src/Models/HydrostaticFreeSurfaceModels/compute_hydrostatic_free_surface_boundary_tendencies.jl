@@ -58,10 +58,10 @@ function boundary_w_kernel_parameters(grid, arch)
 
     # Offsets in tangential direction are == -1 to
     # cover the required corners
-    param_west  = (-Hx+1:0,      0:Ny+1)
-    param_east  = (Nx+1:Nx+Hx-1, 0:Ny+1)
-    param_south = (0:Nx+1,       -Hy+1:0)
-    param_north = (0:Nx+1,       Ny+1:Ny+Hy-1)
+    param_west  = (-Hx+2:1,    0:Ny+1)
+    param_east  = (Nx:Nx+Hx-1, 0:Ny+1)
+    param_south = (0:Nx+1,     -Hy+2:1)
+    param_north = (0:Nx+1,     Ny:Ny+Hy-1)
 
     params = (param_west, param_east, param_south, param_north)
 
