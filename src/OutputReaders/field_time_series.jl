@@ -587,8 +587,6 @@ Base.length(fts::FlavorOfFTS)     = length(fts.times)
 Base.lastindex(fts::FlavorOfFTS)  = length(fts.times)
 Base.firstindex(fts::FlavorOfFTS) = 1
 
-Base.length(fts::PartlyInMemoryFTS) = length(fts.backend)
-
 function interior(fts::FieldTimeSeries)
     loc = map(instantiate, location(fts))
     topo = map(instantiate, topology(fts.grid))
