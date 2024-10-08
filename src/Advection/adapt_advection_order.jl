@@ -29,13 +29,13 @@ function adapt_advection_order(advection, grid::AbstractGrid)
     changed_advection = any((changed_x, changed_y, changed_z))
 
     if changed_x
-        @info "User-defined advection scheme $(summary(advection)) reduced to $(summary(new_advection.x)) in the x-direction to comply with grid-size limitations."
+        @info "Using the advection scheme $(summary(new_advection.x)) in the x-direction because size(grid, 1) = $(size(grid, 1))"
     end
     if changed_y
-        @info "User-defined advection scheme $(summary(advection)) reduced to $(summary(new_advection.y)) in the y-direction to comply with grid-size limitations."
+        @info "Using the advection scheme $(summary(new_advection.y)) in the y-direction because size(grid, 2) = $(size(grid, 2))"
     end
     if changed_z
-        @info "User-defined advection scheme $(summary(advection)) reduced to $(summary(new_advection.z)) in the z-direction to comply with grid-size limitations."
+        @info "Using the advection scheme $(summary(new_advection.z)) in the x-direction because size(grid, 3) = $(size(grid, 3))"
     end
 
     return ifelse(changed_advection, new_advection, advection)
@@ -55,13 +55,13 @@ function adapt_advection_order(advection::FluxFormAdvection, grid::AbstractGrid)
     changed_advection = any((changed_x, changed_y, changed_z))
 
     if changed_x
-        @info "User-defined advection scheme $(summary(advection)) reduced to $(summary(new_advection.x)) in the x-direction to comply with grid-size limitations."
+        @info "Using the advection scheme $(summary(new_advection.x)) in the x-direction because size(grid, 1) = $(size(grid, 1))"
     end
     if changed_y
-        @info "User-defined advection scheme $(summary(advection)) reduced to $(summary(new_advection.y)) in the y-direction to comply with grid-size limitations."
+        @info "Using the advection scheme $(summary(new_advection.y)) in the y-direction because size(grid, 2) = $(size(grid, 2))"
     end
     if changed_z
-        @info "User-defined advection scheme $(summary(advection)) reduced to $(summary(new_advection.z)) in the z-direction to comply with grid-size limitations."
+        @info "Using the advection scheme $(summary(new_advection.z)) in the x-direction because size(grid, 3) = $(size(grid, 3))"
     end
 
     return ifelse(changed_advection, new_advection, advection)
