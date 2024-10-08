@@ -82,6 +82,6 @@ function boundary_parameters(parameters, grid, arch)
 
     include_side = (include_west, include_east, include_south, include_north)
 
-    return Tuple(KernelParameters(parameters[i]) for i in findall(include_side))
+    return Tuple(KernelParameters(parameters[i]...) for i in findall(include_side))
 end
 
