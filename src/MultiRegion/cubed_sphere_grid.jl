@@ -10,6 +10,7 @@ using CubedSphere
 using Distances
 
 import Oceananigans.Grids: grid_name
+import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 const ConformalCubedSphereGrid{FT, TX, TY, TZ} = MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}
 
@@ -187,7 +188,6 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                   radius = R_Earth,
                                   partition = CubedSpherePartition(; R = 1),
                                   devices = nothing)
-
     Nx, Ny, _ = panel_size
     region_topology = (horizontal_topology, horizontal_topology, z_topology)
     region_halo = (horizontal_direction_halo, horizontal_direction_halo, z_halo)
@@ -241,6 +241,28 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                                    region_grids,
                                                    devices)
 
+    fill_halo_regions!(grid)
+
+    # now convert to user-prescribed architecture
+    region_grids = grid.region_grids
+    @apply_regionally new_region_grids = on_architecture(arch, region_grids)
+
+    new_devices = arch == CPU() ? Tuple(CPU() for _ in 1:length(partition)) : Tuple(CUDA.device() for _ in 1:length(partition))
+
+    new_region_grids = MultiRegionObject(new_region_grids.regional_objects, new_devices)
+
+    new_grid = MultiRegionGrid{FT, region_topology...}(arch,
+                                                       partition,
+                                                       connectivity,
+                                                       new_region_grids,
+                                                       new_devices)
+
+    return new_grid
+end
+
+function fill_halo_regions!(grid::ConformalCubedSphereGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+    Nx, Ny, Nz = size(grid)
+
     λᶜᶜᵃ  = Field((Center, Center, Nothing), grid)
     φᶜᶜᵃ  = Field((Center, Center, Nothing), grid)
     Azᶜᶜᵃ = Field((Center, Center, Nothing), grid)
@@ -255,7 +277,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             getregion(field, region).data .= getproperty(getregion(grid, region), name)
         end
 
-        if horizontal_topology == FullyConnected
+        if TX == FullyConnected
             fill_halo_regions!(field)
         end
 
@@ -292,7 +314,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
             getregion(field₂, region).data .= getproperty(getregion(grid, region), name₂)
         end
 
-        if horizontal_topology == FullyConnected
+        if TX == FullyConnected
             fill_halo_regions!(field₁, field₂; signed = false)
         end
 
@@ -332,22 +354,6 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
     ## End code specific to one-region-per panel partitions
     #######################################################
-
-    # now convert to user-prescribed architecture
-    region_grids = grid.region_grids
-    @apply_regionally new_region_grids = on_architecture(arch, region_grids)
-
-    new_devices = arch == CPU() ? Tuple(CPU() for _ in 1:length(partition)) : Tuple(CUDA.device() for _ in 1:length(partition))
-
-    new_region_grids = MultiRegionObject(new_region_grids.regional_objects, new_devices)
-
-    new_grid = MultiRegionGrid{FT, region_topology...}(arch,
-                                                       partition,
-                                                       connectivity,
-                                                       new_region_grids,
-                                                       new_devices)
-
-    return new_grid
 end
 
 """
@@ -391,16 +397,45 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchit
     return MultiRegionGrid{FT, panel_topology...}(arch, partition, connectivity, region_grids, devices)
 end
 
-function with_halo(new_halo, csg::ConformalCubedSphereGrid)
-    region_rotation = []
+function with_halo(new_halo, csg::ConformalCubedSphereGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+    arch = csg.architecture
+    partition = csg.partition
+    connectivity = csg.connectivity
 
-    for region in 1:length(csg.partition)
+    region_rotation = []
+    for region in 1:length(partition)
         push!(region_rotation, csg[region].conformal_mapping.rotation)
     end
 
-    apply_regionally!(with_halo, new_halo, csg; rotation = Iterate(region_rotation))
+    region_grids = csg.region_grids
+    region_grids = construct_regionally(with_halo, new_halo, region_grids;
+                                        arch = CPU(), rotation = Iterate(region_rotation))
 
-    return csg
+    devices = Tuple(CPU() for _ in 1:length(partition))
+
+    grid = MultiRegionGrid{FT, TX, TY, TZ}(CPU(),
+                                           partition,
+                                           connectivity,
+                                           region_grids,
+                                           devices)
+
+    fill_halo_regions!(grid)
+
+    # Now convert to user-prescribed architecture
+    region_grids = grid.region_grids
+    @apply_regionally new_region_grids = on_architecture(arch, region_grids)
+
+    new_devices = arch == CPU() ? Tuple(CPU() for _ in 1:length(partition)) : Tuple(CUDA.device() for _ in 1:length(partition))
+
+    new_region_grids = MultiRegionObject(new_region_grids.regional_objects, new_devices)
+
+    new_grid = MultiRegionGrid{FT, TX, TY, TZ}(arch,
+                                               partition,
+                                               connectivity,
+                                               new_region_grids,
+                                               new_devices)
+
+    return new_grid
 end
 
 function Base.summary(grid::ConformalCubedSphereGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}

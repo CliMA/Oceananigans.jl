@@ -199,7 +199,6 @@ Set data in `model.velocities`, `model.tracers`, `model.timestepper.Gⁿ`, and
 `model.timestepper.G⁻` to checkpointed data stored at `filepath`.
 """
 function set!(model, filepath::AbstractString)
-
     jldopen(filepath, "r") do file
 
         # Validate the grid
@@ -212,14 +211,16 @@ function set!(model, filepath::AbstractString)
         for name in propertynames(model_fields)
             if string(name) ∈ keys(file) # Test if variable exist in checkpoint.
                 model_field = model_fields[name]
-                parent_data = file["$name/data"] #  Allow different halo size by loading only the interior
-                copyto!(model_field.data.parent, parent_data)
+                parent_data = on_architecture(model.architecture, file["$name/data"])
+                for region in 1:6
+                    CUDA.@allowscalar copyto!(model_field.data[region], parent_data[region])
+                end
             else
                 @warn "Field $name does not exist in checkpoint and could not be restored."
             end
         end
 
-        set_time_stepper!(model.timestepper, file, model_fields)
+        set_time_stepper!(model.timestepper, model.architecture, file, model_fields)
 
         if !isnothing(model.particles)
             copyto!(model.particles.properties, file["particles"])
@@ -236,20 +237,24 @@ function set!(model, filepath::AbstractString)
     return nothing
 end
 
-function set_time_stepper_tendencies!(timestepper, file, model_fields)
+function set_time_stepper_tendencies!(timestepper, arch, file, model_fields)
     for name in propertynames(model_fields)
         if string(name) ∈ keys(file["timestepper/Gⁿ"]) # Test if variable tendencies exist in checkpoint
             # Tendency "n"
-            parent_data = file["timestepper/Gⁿ/$name/data"]
+            parent_data = on_architecture(arch, file["timestepper/Gⁿ/$name/data"])
 
             tendencyⁿ_field = timestepper.Gⁿ[name]
-            copyto!(tendencyⁿ_field.data.parent, parent_data)
+            for region in 1:6
+                CUDA.@allowscalar copyto!(tendencyⁿ_field.data[region], parent_data[region])
+            end
 
             # Tendency "n-1"
-            parent_data = file["timestepper/G⁻/$name/data"]
+            parent_data = on_architecture(arch, file["timestepper/G⁻/$name/data"])
 
             tendency⁻_field = timestepper.G⁻[name]
-            copyto!(tendency⁻_field.data.parent, parent_data)
+            for region in 1:6
+                CUDA.@allowscalar copyto!(tendency⁻_field.data[region], parent_data[region])
+            end
         else
             @warn "Tendencies for $name do not exist in checkpoint and could not be restored."
         end
@@ -258,9 +263,9 @@ function set_time_stepper_tendencies!(timestepper, file, model_fields)
     return nothing
 end
 
-set_time_stepper!(timestepper::RungeKutta3TimeStepper, file, model_fields) =
-    set_time_stepper_tendencies!(timestepper, file, model_fields)
+set_time_stepper!(timestepper::RungeKutta3TimeStepper, arch, file, model_fields) =
+    set_time_stepper_tendencies!(timestepper, arch, file, model_fields)
 
-set_time_stepper!(timestepper::QuasiAdamsBashforth2TimeStepper, file, model_fields) =
-    set_time_stepper_tendencies!(timestepper, file, model_fields)
+set_time_stepper!(timestepper::QuasiAdamsBashforth2TimeStepper, arch, file, model_fields) =
+    set_time_stepper_tendencies!(timestepper, arch, file, model_fields)
 

@@ -53,6 +53,9 @@ const μ = 1 - δ - γ - ϵ
 @inline δxᶜᵃᵃ_U(i, j, k, grid, ::Type{Periodic}, U★::Function, args...) = ifelse(i == grid.Nx, U★(1, j, k, grid, args...) - U★(grid.Nx, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, U★, args...))
 @inline δyᵃᶜᵃ_V(i, j, k, grid, ::Type{Periodic}, V★::Function, args...) = ifelse(j == grid.Ny, V★(i, 1, k, grid, args...) - V★(i, grid.Ny, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, V★, args...))
 
+@inline δxᶠᵃᵃ_η(i, j, k, grid, ::Type{FullyConnected}, η★::Function, args...) = δxᶠᶜᶠ(i, j, k, grid, η★, args...)
+@inline δyᵃᶠᵃ_η(i, j, k, grid, ::Type{FullyConnected}, η★::Function, args...) = δyᶜᶠᶠ(i, j, k, grid, η★, args...)
+
 # Enforce NoFlux conditions for `η★`
 
 @inline δxᶠᵃᵃ_η(i, j, k, grid, ::Type{Bounded},        η★::Function, args...) = ifelse(i == 1, zero(grid), δxᶠᵃᵃ(i, j, k, grid, η★, args...))
@@ -183,8 +186,8 @@ end
         advance_previous_velocity!(i, j, k_top-1, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²)
 
         # ∂τ(U) = - ∇η + G
-        U[i, j, k_top-1] +=  Δτ * (- g * Hᶠᶜ[i, j, 1] * ∂xᶠᶜᶠ_η(i, j, k_top, grid, TX, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gᵁ[i, j, k_top-1])
-        V[i, j, k_top-1] +=  Δτ * (- g * Hᶜᶠ[i, j, 1] * ∂yᶜᶠᶠ_η(i, j, k_top, grid, TY, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gⱽ[i, j, k_top-1])
+        U[i, j, k_top-1] += Δτ * (- g * Hᶠᶜ[i, j, 1] * ∂xᶠᶜᶠ_η(i, j, k_top, grid, TX, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gᵁ[i, j, k_top-1])
+        V[i, j, k_top-1] += Δτ * (- g * Hᶜᶠ[i, j, 1] * ∂yᶜᶠᶠ_η(i, j, k_top, grid, TY, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gⱽ[i, j, k_top-1])
                           
         # time-averaging
         η̅[i, j, k_top]   += averaging_weight * η[i, j, k_top]
@@ -297,7 +300,8 @@ ab2_step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt, χ) =
 
 function initialize_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocities)
     @apply_regionally compute_barotropic_mode!(sefs.state.U̅, sefs.state.V̅, grid, velocities.u, velocities.v)
-    fill_halo_regions!((sefs.state.U̅, sefs.state.V̅, sefs.η))
+    fill_halo_regions!((sefs.state.U̅, sefs.state.V̅))
+    fill_halo_regions!(sefs.η)
 end
 
 function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ)
@@ -321,16 +325,14 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     Δτᴮ = fractional_Δt * Δt  
     
     # reset free surface averages
-    @apply_regionally begin 
-        initialize_free_surface_state!(free_surface.state, free_surface.η, settings.timestepper)
+    @apply_regionally initialize_free_surface_state!(free_surface.state, free_surface.η, settings.timestepper)
         
-        # Solve for the free surface at tⁿ⁺¹
-        iterate_split_explicit!(free_surface, free_surface_grid, Δτᴮ, weights, Val(Nsubsteps))
+    # Solve for the free surface at tⁿ⁺¹
+    iterate_split_explicit!(free_surface, free_surface_grid, Δτᴮ, weights, Val(Nsubsteps))
         
-        # Reset eta for the next timestep
-        set!(free_surface.η, free_surface.state.η̅)
-    end
-
+    # Reset eta for the next timestep
+    set!(free_surface.η, free_surface.state.η̅)
+    
     fields_to_fill = (free_surface.state.U̅, free_surface.state.V̅)
     fill_halo_regions!(fields_to_fill; async = true)
 
