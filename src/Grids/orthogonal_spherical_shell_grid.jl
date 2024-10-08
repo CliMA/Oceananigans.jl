@@ -9,7 +9,7 @@ using Adapt: adapt_structure
 using Oceananigans
 using Oceananigans.Grids: prettysummary, coordinate_summary, BoundedTopology, length
 
-struct ConformalMapping{FT, Rotation}
+struct ConformalCubedSphereMapping{FT, Rotation}
     ξ :: Tuple{FT, FT}
     η :: Tuple{FT, FT}
     rotation :: Rotation
@@ -609,7 +609,7 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
                      Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                      Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
 
-    conformal_mapping = ConformalMapping(ξ, η, rotation)
+    conformal_mapping = ConformalCubedSphereMapping(ξ, η, rotation)
 
     grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(CPU(), Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
                                                     coordinate_arrays...,
@@ -882,7 +882,7 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
     φᶠᶜᵃ = offset_data(zeros(FT, architecture, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology[1:2], N[1:2], H[1:2])
     φᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology[1:2], N[1:2], H[1:2])
 
-    conformal_mapping = ConformalMapping(ξ, η, rotation)
+    conformal_mapping = ConformalCubedSphereMapping(ξ, η, rotation)
 
     return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
                                                      λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
