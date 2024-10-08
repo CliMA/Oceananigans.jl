@@ -76,16 +76,16 @@ adapt_advection_order(advection::Nothing, N::Int, grid::AbstractGrid) = nothing
 ##### Directional adapt advection order
 #####
 
-function adapt_advection_order(advection::Centered{H}, N::Int, grid::AbstractGrid) where H
-    if N >= H
+function adapt_advection_order(advection::Centered{B}, N::Int, grid::AbstractGrid) where B
+    if N >= B
         return advection
     else
         return Centered(; order = N * 2)
     end
 end
 
-function adapt_advection_order(advection::UpwindBiased{H}, N::Int, grid::AbstractGrid) where H
-    if N >= H
+function adapt_advection_order(advection::UpwindBiased{B}, N::Int, grid::AbstractGrid) where B
+    if N >= B
         return advection
     else
         return UpwindBiased(; order = N * 2 - 1)
@@ -102,8 +102,8 @@ we rebuild the advection without passing the grid information, otherwise we use 
 new_weno_scheme(::WENO, grid, order, bounds, ::Type{Nothing}, ::Type{Nothing}, ::Type{Nothing},) = WENO(; order, bounds)
 new_weno_scheme(::WENO, grid, order, bounds, XT, YT, ZT)                                         = WENO(grid; order, bounds)
 
-function adapt_advection_order(advection::WENO{H, FT, XT, YT, ZT}, N::Int, grid::AbstractGrid) where {H, FT, XT, YT, ZT}
-    if N >= H
+function adapt_advection_order(advection::WENO{B, FT, XT, YT, ZT}, N::Int, grid::AbstractGrid) where {B, FT, XT, YT, ZT}
+    if N >= B
         return advection
     else
         return new_weno_scheme(advection, grid, N * 2 - 1, advection.bounds, XT, YT, ZT)
