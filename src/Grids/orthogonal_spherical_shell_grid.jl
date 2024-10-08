@@ -76,6 +76,7 @@ end
 const OSSG = OrthogonalSphericalShellGrid
 const ZRegOSSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
 const ZRegOrthogonalSphericalShellGrid = ZRegOSSG
+const ConformalCubedSpherePanel = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereMapping}
 
 # convenience constructor for OSSG without any conformal_mapping properties
 OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
