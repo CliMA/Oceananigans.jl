@@ -1,13 +1,8 @@
 #using Pkg
 # pkg"add Oceananigans CairoMakie"
 using Oceananigans
-using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
-using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity, CATKEMixingLength, CATKEEquation
-
-using Oceananigans.BuoyancyModels: ∂z_b
-# include("NN_closure_global.jl")
-# include("xin_kai_vertical_diffusivity_local.jl")
-# include("xin_kai_vertical_diffusivity_2Pr.jl")
+include("NN_closure_global_nof_BBLkappazonelast41.jl")
+include("xin_kai_vertical_diffusivity_local_2step.jl")
 
 ENV["GKSwstype"] = "100"
 
@@ -24,27 +19,20 @@ using Oceananigans.Grids: xnode, ynode, znode
 using SeawaterPolynomials
 using SeawaterPolynomials:TEOS10
 using ColorSchemes
-using Glob
 
 
 #%%
-filename = "doublegyre_relaxation_30Cwarmflush_8days_CATKEVerticalDiffusivity"
+filename = "doublegyre_relaxation_30Cwarmflush_8days_NN_closure_NDE_Qb_dt20min_nof_BBLkappazonelast41_wTwS_64simnew_2layer_128_relu_123seed_1.0e-5lr_localbaseclosure_2Pr_6simstableRi_temp"
 FILE_DIR = "./Output/$(filename)"
 mkpath(FILE_DIR)
 
 # Architecture
 model_architecture = GPU()
 
-# vertical_base_closure = VerticalScalarDiffusivity(ν=1e-5, κ=1e-5)
-# convection_closure = XinKaiVerticalDiffusivity()
-function CATKE_ocean_closure()
-  mixing_length = CATKEMixingLength(Cᵇ=0.01)
-  turbulent_kinetic_energy_equation = CATKEEquation(Cᵂϵ=1.0)
-  return CATKEVerticalDiffusivity(; mixing_length, turbulent_kinetic_energy_equation)
-end
-convection_closure = CATKE_ocean_closure()
-closure = convection_closure
-# closure = vertical_base_closure
+nn_closure = NNFluxClosure(model_architecture)
+base_closure = XinKaiLocalVerticalDiffusivity()
+vertical_scalar_closure = VerticalScalarDiffusivity(ν=1e-5, κ=1e-5)
+closure = (base_closure, nn_closure, vertical_scalar_closure)
 
 # number of grid points
 const Nx = 100
@@ -86,7 +74,6 @@ const μ_T = 1/8days
 #####
 ##### Forcing and initial condition
 #####
-# @inline T_initial(x, y, z) = T_north + ΔT / 2 * (1 + z / Lz)
 @inline T_initial(x, y, z) = 30 + 20 * (1 + z / Lz)
 
 @inline surface_u_flux(x, y, t) = -τ₀ * cos(2π * y / Ly)
@@ -143,7 +130,7 @@ model = HydrostaticFreeSurfaceModel(
     buoyancy = SeawaterBuoyancy(equation_of_state=TEOS10.TEOS10EquationOfState()),
     coriolis = coriolis,
     closure = VerticalScalarDiffusivity(ν=1e-5, κ=1e-5),
-    tracers = (:T, :S, :e),
+    tracers = (:T, :S),
     boundary_conditions = (; u = u_bcs, v = v_bcs, T = T_bcs, S = S_bcs),
 )
 
@@ -155,7 +142,7 @@ model = HydrostaticFreeSurfaceModel(
     buoyancy = SeawaterBuoyancy(equation_of_state=TEOS10.TEOS10EquationOfState()),
     coriolis = coriolis,
     closure = closure,
-    tracers = (:T, :S, :e),
+    tracers = (:T, :S),
     boundary_conditions = (; u = u_bcs, v = v_bcs, T = T_bcs, S = S_bcs),
 )
 
@@ -213,8 +200,16 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 #####
 u, v, w = model.velocities
 T, S = model.tracers.T, model.tracers.S
-U_bt = Field(Integral(u, dims=3))
-Ψ = Field(CumulativeIntegral(-U_bt, dims=2))
+U_bt = Field(Integral(u, dims=3));
+Ψ = Field(CumulativeIntegral(-U_bt, dims=2));
+first_index = model.diffusivity_fields[2].first_index
+last_index = model.diffusivity_fields[2].last_index
+wT_NN = model.diffusivity_fields[2].wT
+wS_NN = model.diffusivity_fields[2].wS
+
+κ = model.diffusivity_fields[1].κᶜ
+wT_base = κ * ∂z(T)
+wS_base = κ * ∂z(S)
 
 @inline function get_N²(i, j, k, grid, b, C)
   return ∂z_b(i, j, k, grid, b, C)
@@ -231,17 +226,15 @@ end
 
 ρ_op = KernelFunctionOperation{Center, Center, Center}(get_density, model.grid, model.buoyancy, model.tracers)
 ρ = Field(ρ_op)
-compute!(ρ)
 
-ρᶠ = @at (Center, Center, Face) ρ
-∂ρ∂z = ∂z(ρ)
-∂²ρ∂z² = ∂z(∂ρ∂z)
+@inline function get_top_buoyancy_flux(i, j, k, grid, buoyancy, T_bc, S_bc, velocities, tracers, clock)
+  return top_buoyancy_flux(i, j, grid, buoyancy, (; T=T_bc, S=S_bc), clock, merge(velocities, tracers))
+end
 
-κc = model.diffusivity_fields.κc
-wT = κc * ∂z(T)
-wS = κc * ∂z(S)
+Qb = KernelFunctionOperation{Center, Center, Nothing}(get_top_buoyancy_flux, model.grid, model.buoyancy, T.boundary_conditions.top, S.boundary_conditions.top, model.velocities, model.tracers, model.clock)
+Qb = Field(Qb)
 
-outputs = (; u, v, w, T, S, ρ, ρᶠ, ∂ρ∂z, ∂²ρ∂z², N², wT, wS)
+outputs = (; u, v, w, T, S, ρ, N², wT_NN, wS_NN, wT_base, wS_base)
 
 #####
 ##### Build checkpointer and output writer
@@ -260,7 +253,7 @@ simulation.output_writers[:xz] = JLD2OutputWriter(model, outputs,
                                                     filename = "$(FILE_DIR)/instantaneous_fields_xz",
                                                     indices = (:, 1, :),
                                                     schedule = TimeInterval(10days))
-
+                                                    
 simulation.output_writers[:yz_10] = JLD2OutputWriter(model, outputs,
                                                     filename = "$(FILE_DIR)/instantaneous_fields_yz_10",
                                                     indices = (10, :, :),
@@ -314,6 +307,11 @@ simulation.output_writers[:xz_south] = JLD2OutputWriter(model, outputs,
 simulation.output_writers[:xz_north] = JLD2OutputWriter(model, outputs,
                                                     filename = "$(FILE_DIR)/instantaneous_fields_xz_north",
                                                     indices = (:, 75, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:BBL] = JLD2OutputWriter(model, (; first_index, last_index, Qb),
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_NN_active_diagnostics",
+                                                    indices = (:, :, :),
                                                     schedule = TimeInterval(10days))
 
 simulation.output_writers[:streamfunction] = JLD2OutputWriter(model, (; Ψ=Ψ,),
@@ -439,10 +437,10 @@ v_color_range = vlim
 #%%
 plot_aspect = (2, 3, 0.5)
 fig = Figure(size=(1500, 700))
-axT = Axis3(fig[1, 1], title="Temperature (°C)", xlabel="x (m)", ylabel="y (m)", zlabel="z (m)", viewmode=:fitzoom, aspect=plot_aspect)
-axS = Axis3(fig[1, 3], title="Salinity (g kg⁻¹)", xlabel="x (m)", ylabel="y (m)", zlabel="z (m)", viewmode=:fitzoom, aspect=plot_aspect)
-axu = Axis3(fig[2, 1], title="u (m/s)", xlabel="x (m)", ylabel="y (m)", zlabel="z (m)", viewmode=:fitzoom, aspect=plot_aspect)
-axv = Axis3(fig[2, 3], title="v (m/s)", xlabel="x (m)", ylabel="y (m)", zlabel="z (m)", viewmode=:fitzoom, aspect=plot_aspect)
+axT = CairoMakie.Axis3(fig[1, 1], title="Temperature (°C)", xlabel="x (m)", ylabel="y (m)", zlabel="z (m)", viewmode=:fitzoom, aspect=plot_aspect)
+axS = CairoMakie.Axis3(fig[1, 3], title="Salinity (g kg⁻¹)", xlabel="x (m)", ylabel="y (m)", zlabel="z (m)", viewmode=:fitzoom, aspect=plot_aspect)
+axu = CairoMakie.Axis3(fig[2, 1], title="u (m/s)", xlabel="x (m)", ylabel="y (m)", zlabel="z (m)", viewmode=:fitzoom, aspect=plot_aspect)
+axv = CairoMakie.Axis3(fig[2, 3], title="v (m/s)", xlabel="x (m)", ylabel="y (m)", zlabel="z (m)", viewmode=:fitzoom, aspect=plot_aspect)
 
 n = Observable(1)
 
@@ -503,32 +501,33 @@ zlims!(axu, (-Lz, 0))
 zlims!(axv, (-Lz, 0))
 
 @info "Recording 3D fields"
-CairoMakie.record(fig, "$(FILE_DIR)/$(filename)_3D_instantaneous_fields.mp4", 1:Nt, framerate=20, px_per_unit=2) do nn
+CairoMakie.record(fig, "$(FILE_DIR)/$(filename)_3D_instantaneous_fields.mp4", 1:Nt, framerate=15, px_per_unit=2) do nn
+    @info "Recording frame $nn"
     n[] = nn
 end
 
 @info "Done!"
 #%%
-Ψ_data = FieldTimeSeries("$(FILE_DIR)/averaged_fields_streamfunction.jld2", "Ψ")
+# Ψ_data = FieldTimeSeries("$(FILE_DIR)/averaged_fields_streamfunction.jld2", "Ψ")
 
-xF = Ψ_data.grid.xᶠᵃᵃ[1:Ψ_data.grid.Nx+1]
-yC = Ψ_data.grid.yᵃᶜᵃ[1:Ψ_data.grid.Ny]
+# xF = Ψ_data.grid.xᶠᵃᵃ[1:Ψ_data.grid.Nx+1]
+# yC = Ψ_data.grid.yᵃᶜᵃ[1:Ψ_data.grid.Ny]
 
-Nt = length(Ψ_data)
-times = Ψ_data.times / 24 / 60^2 / 365
-#%%
-timeframe = Nt
-Ψ_frame = interior(Ψ_data[timeframe], :, :, 1) ./ 1e6
-clim = maximum(abs, Ψ_frame) + 1e-13
-N_levels = 16
-levels = range(-clim, stop=clim, length=N_levels)
-fig = Figure(size=(800, 800))
-ax = Axis(fig[1, 1], xlabel="x (m)", ylabel="y (m)", title="CATKE Vertical Diffusivity, Yearly-Averaged Barotropic streamfunction Ψ, Year $(times[timeframe])")
-cf = contourf!(ax, xF, yC, Ψ_frame, levels=levels, colormap=Reverse(:RdBu_11))
-Colorbar(fig[1, 2], cf, label="Ψ (Sv)")
-tightlimits!(ax)
-save("$(FILE_DIR)/barotropic_streamfunction_$(timeframe).png", fig, px_per_unit=4)
-display(fig)
+# Nt = length(Ψ_data)
+# times = Ψ_data.times / 24 / 60^2 / 365
+# #%%
+# timeframe = Nt
+# Ψ_frame = interior(Ψ_data[timeframe], :, :, 1) ./ 1e6
+# clim = maximum(abs, Ψ_frame) + 1e-13
+# N_levels = 16
+# levels = range(-clim, stop=clim, length=N_levels)
+# fig = Figure(size=(800, 800))
+# ax = CairoMakie.Axis(fig[1, 1], xlabel="x (m)", ylabel="y (m)", title="CATKE Vertical Diffusivity, Yearly-Averaged Barotropic streamfunction Ψ, Year $(times[timeframe])")
+# cf = contourf!(ax, xF, yC, Ψ_frame, levels=levels, colormap=Reverse(:RdBu_11))
+# Colorbar(fig[1, 2], cf, label="Ψ (Sv)")
+# tightlimits!(ax)
+# save("$(FILE_DIR)/barotropic_streamfunction_$(timeframe).png", fig, px_per_unit=4)
+# display(fig)
 #%%
 function find_min(a...)
   return minimum(minimum.([a...]))
@@ -555,8 +554,8 @@ N²_lim = (find_min(interior(N²_xz_north_data, :, 1, :, timeframes), interior(N
           find_max(interior(N²_xz_north_data, :, 1, :, timeframes), interior(N²_xz_south_data, :, 1, :, timeframes)) + 1e-13)
 #%%
 fig = Figure(size=(800, 800))
-ax_north = Axis(fig[1, 1], xlabel="x (m)", ylabel="z (m)", title="Buoyancy Frequency N² at y = $(round(yloc_south / 1e3)) km")
-ax_south = Axis(fig[2, 1], xlabel="x (m)", ylabel="z (m)", title="Buoyancy Frequency N² at y = $(round(yloc_north / 1e3)) km")
+ax_north = CairoMakie.Axis(fig[1, 1], xlabel="x (m)", ylabel="z (m)", title="Buoyancy Frequency N² at y = $(round(yloc_south / 1e3)) km")
+ax_south = CairoMakie.Axis(fig[2, 1], xlabel="x (m)", ylabel="z (m)", title="Buoyancy Frequency N² at y = $(round(yloc_north / 1e3)) km")
 
 n = Observable(2)
 
@@ -570,13 +569,13 @@ N²_south_surface = heatmap!(ax_south, xC, zf, N²_south, colormap=colorscheme, 
 
 Colorbar(fig[1:2, 2], N²_north_surface, label="N² (s⁻²)")
 
-title_str = @lift "Time = $(round(times[$n], digits=2)) days"
+title_str = @lift "Time = $(round(times[$n], digits=2)) years"
 Label(fig[0, :], text=title_str, tellwidth=false, font=:bold)
 
 trim!(fig.layout)
 
 @info "Recording buoyancy frequency xz slice"
-CairoMakie.record(fig, "$(FILE_DIR)/$(filename)_buoyancy_frequency_xz_slice.mp4", 1:Nt, framerate=20, px_per_unit=2) do nn
+CairoMakie.record(fig, "$(FILE_DIR)/$(filename)_buoyancy_frequency_xz_slice.mp4", 1:Nt, framerate=15, px_per_unit=2) do nn
   n[] = nn
 end
 
