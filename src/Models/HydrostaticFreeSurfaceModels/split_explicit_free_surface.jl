@@ -190,15 +190,15 @@ function SplitExplicitState(grid::AbstractGrid, timestepper)
     U = Field(𝒰.u, indices = (:, :, Nz))
     V = Field(𝒰.v, indices = (:, :, Nz))
 
-    Uᵐ⁻¹ = auxiliary_barotropic_velocity_field(𝒰.u, timestepper)
-    Vᵐ⁻¹ = auxiliary_barotropic_velocity_field(𝒰.v, timestepper)
-    Uᵐ⁻² = auxiliary_barotropic_velocity_field(𝒰.u, timestepper)
-    Vᵐ⁻² = auxiliary_barotropic_velocity_field(𝒰.v, timestepper)
+    Uᵐ⁻¹ = auxiliary_barotropic_velocity_field(U, timestepper)
+    Vᵐ⁻¹ = auxiliary_barotropic_velocity_field(V, timestepper)
+    Uᵐ⁻² = auxiliary_barotropic_velocity_field(U, timestepper)
+    Vᵐ⁻² = auxiliary_barotropic_velocity_field(V, timestepper)
     
-    U̅ = Field(𝒰.u, indices = (:, :, Nz))
-    V̅ = Field(𝒰.v, indices = (:, :, Nz))
-    Ũ = Field(𝒰.u, indices = (:, :, Nz))
-    Ṽ = Field(𝒰.v, indices = (:, :, Nz))
+    U̅ = deepcopy(U)
+    V̅ = deepcopy(V)
+    Ũ = deepcopy(U)
+    Ṽ = deepcopy(V)
 
     return SplitExplicitState(; ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, Uᵐ⁻¹, Uᵐ⁻², V, Vᵐ⁻¹, Vᵐ⁻², η̅, U̅, V̅, Ũ, Ṽ)
 end
@@ -296,8 +296,8 @@ struct ForwardBackwardScheme end
 auxiliary_free_surface_field(grid, ::AdamsBashforth3Scheme) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 auxiliary_free_surface_field(grid, ::ForwardBackwardScheme) = nothing
 
-auxiliary_barotropic_velocity_field(u, ::AdamsBashforth3Scheme) = Field(u)
-auxiliary_barotropic_velocity_field(u, ::ForwardBackwardScheme) = nothing
+auxiliary_barotropic_velocity_field(U, ::AdamsBashforth3Scheme) = deecopy(u)
+auxiliary_barotropic_velocity_field(U, ::ForwardBackwardScheme) = nothing
 
 # (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002 
 @inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT
