@@ -28,8 +28,9 @@ using Glob
 
 
 #%%
-filename = "doublegyre_relaxation_30Cwarmflush_8days_CATKEVerticalDiffusivity"
+filename = "doublegyre_30Cwarmflushbottom10_relaxation_8days_CATKEVerticalDiffusivity"
 FILE_DIR = "./Output/$(filename)"
+# FILE_DIR = "/storage6/xinkai/NN_Oceananigans/$(filename)"
 mkpath(FILE_DIR)
 
 # Architecture
@@ -87,7 +88,7 @@ const μ_T = 1/8days
 ##### Forcing and initial condition
 #####
 # @inline T_initial(x, y, z) = T_north + ΔT / 2 * (1 + z / Lz)
-@inline T_initial(x, y, z) = 30 + 20 * (1 + z / Lz)
+@inline T_initial(x, y, z) = 10 + 20 * (1 + z / Lz)
 
 @inline surface_u_flux(x, y, t) = -τ₀ * cos(2π * y / Ly)
 

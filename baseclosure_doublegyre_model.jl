@@ -74,7 +74,7 @@ const μ_T = 1/8days
 #####
 # @inline T_initial(x, y, z) = T_north + ΔT / 2 * (1 + z / Lz)
 # @inline T_initial(x, y, z) = (T_north + T_south / 2) + 5 * (1 + z / Lz)
-@inline T_initial(x, y, z) = 30 + 20 * (1 + z / Lz)
+@inline T_initial(x, y, z) = 10 + 20 * (1 + z / Lz)
 
 @inline surface_u_flux(x, y, t) = -τ₀ * cos(2π * y / Ly)
 
