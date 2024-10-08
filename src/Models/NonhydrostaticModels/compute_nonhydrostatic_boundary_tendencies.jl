@@ -31,10 +31,10 @@ function boundary_tendency_kernel_parameters(grid, arch)
 
     param_west  = (1:Hx,       1:Ny,       1:Nz)
     param_east  = (Nx-Hx+1:Nx, 1:Ny,       1:Nz)
-    param_north = (1:Nx,       1:Hy,       1:Nz)
-    param_south = (1:Nx,       Ny-Hy+1:Ny, 1:Nz)
+    param_south = (1:Nx,       1:Hy,       1:Nz)
+    param_north = (1:Nx,       Ny-Hy+1:Ny, 1:Nz)
 
-    params = (param_west, param_east, param_north, param_south)
+    params = (param_west, param_east, param_south, param_north)
 
     return boundary_parameters(params, grid, arch)
 end
@@ -43,12 +43,12 @@ end
 function boundary_p_kernel_parameters(grid, arch)
     Nx, Ny, _ = size(grid)
 
-    param_west  = (0:0,       1:Ny,      1:Nz)
-    param_east  = (Nx+1:Nx+1, 1:Ny,      1:Nz)
-    param_north = (1:Nx,      0:0,       1:Nz)
-    param_south = (1:Nx,      Ny+1:Ny+1, 1:Nz)
+    param_west  = (0:0,       1:Ny)
+    param_east  = (Nx+1:Nx+1, 1:Ny)
+    param_south = (1:Nx,      0:0)
+    param_north = (1:Nx,      Ny+1:Ny+1)
 
-    params = (param_west, param_east, param_north, param_south)
+    params = (param_west, param_east, param_south, param_north)
 
     return boundary_parameters(params, grid, arch)
 end
@@ -62,10 +62,10 @@ function boundary_κ_kernel_parameters(grid, closure, arch)
 
     param_west  = (0:Bx,         1:Ny,         1:Nz)
     param_east  = (Nx-Bx+1:Nx+1, 1:Ny,         1:Nz)
-    param_north = (1:Nx,         0:By,         1:Nz)
-    param_south = (1:Nx,         Ny-By+1:Ny+1, 1:Nz)
+    param_south = (1:Nx,         0:By,         1:Nz)
+    param_north = (1:Nx,         Ny-By+1:Ny+1, 1:Nz)
 
-    params = (param_west, param_east, param_north, param_south)
+    params = (param_west, param_east, param_south, param_north)
 
     return boundary_parameters(params, grid, arch)
 end
