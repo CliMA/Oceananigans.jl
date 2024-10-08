@@ -248,14 +248,14 @@ Kernels run on the default stream.
 See [configure_kernel](@ref) for more information and also a list of the
 keyword arguments `kw`.
 """
-@inline launch!(args..., kwargs...) = _launch!(args...; kwargs...)
+@inline launch!(args...; kwargs...) = _launch!(args...; kwargs...)
 
 @inline launch!(arch, grid, workspec::NTuple{N, Int}, args...; kwargs...) where N =
-    _launch!(arch, grid, workspec, args..., kwargs...) where N =
+    _launch!(arch, grid, workspec, args...; kwargs...) where N =
  
 @inline function launch!(arch, grid, workspec_tuple::Tuple, args...; kwargs...)
     for workspec in workspec_tuple
-        _launch!(arch, grid, workspec, args..., kwargs...) where N =
+        _launch!(arch, grid, workspec, args...; kwargs...) where N =
     end
     return nothing
 end
