@@ -56,19 +56,15 @@ function boundary_w_kernel_parameters(grid, arch)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
-    Sx  = (Hx, Ny+2) 
-    Sy  = (Nx+2, Hy)
-             
     # Offsets in tangential direction are == -1 to
     # cover the required corners
-    Oxᴸ = (-Hx+1, -1)
-    Oyᴸ = (-1, -Hy+1)
-    Oxᴿ = (Nx-1, -1)
-    Oyᴿ = (-1, Ny-1)
+    param_west  = (-Hx+1:0,      0:Ny+1,       1:Nz)
+    param_east  = (Nx+1:Nx+Hx-1, 0:Ny+1,       1:Nz)
+    param_north = (0:Nx+1,       -Hy+1:0,      1:Nz)
+    param_south = (0:Nx+1,       Ny+1:Ny+Hy-1, 1:Nz)
 
-    sizes = (Sx,  Sy,  Sx,  Sy)
-    offs  = (Oxᴸ, Oyᴸ, Oxᴿ, Oyᴿ)
-        
-    return boundary_parameters(sizes, offs, grid, arch)
+    params = (param_west, param_east, param_north, param_south)
+
+    return boundary_parameters(params, grid, arch)
 end
 
