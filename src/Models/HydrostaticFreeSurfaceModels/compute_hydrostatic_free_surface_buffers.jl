@@ -45,7 +45,7 @@ function compute_buffer_tendency_contributions!(grid::DistributedActiveCellsIBG,
 
         if compute_buffer
             active_cells_map = retrieve_interior_active_cells_map(grid, Val(name))
-            compute_hydrostatic_free_surface_tendency_contributions!(model, tuple(:xyz); active_cells_map)
+            compute_hydrostatic_free_surface_tendency_contributions!(model, :xyz; active_cells_map)
         end
     end
 
