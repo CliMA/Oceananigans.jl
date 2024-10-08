@@ -34,7 +34,7 @@ const μ = 1 - δ - γ - ϵ
 
 # Special ``partial'' divergence for free surface evolution
 @inline div_Txᶜᶜᶠ(i, j, k, grid, U★::Function, args...) =  1 / Azᶜᶜᶠ(i, j, k, grid) * δxTᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶠ, U★, args...)
-@inline div_Tyᶜᶜᶠ(i, j, k, grid, V★::Function, args...) =  1 / Azᶜᶜᶠ(i, j, k, grid) * δyTᵃᶜᵃ(i, j, k, grid, δx_qᶜᶠᶠ, V★, args...)
+@inline div_Tyᶜᶜᶠ(i, j, k, grid, V★::Function, args...) =  1 / Azᶜᶜᶠ(i, j, k, grid) * δyTᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶠ, V★, args...)
 
 # The functions `η★` `U★` and `V★` represent the value of free surface, barotropic zonal and meridional velocity at time step m+1/2
 
@@ -87,8 +87,8 @@ end
     @inbounds begin
         advance_previous_free_surface!(i, j, k_top, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)
 
-        η[i, j, k_top] -= Δτ * (div_Txᶜᶜᶠ(i, j, k_top-1, grid, TX, U★, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²) +
-                                div_Tyᶜᶜᶠ(i, j, k_top-1, grid, TY, U★, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²))
+        η[i, j, k_top] -= Δτ * (div_Txᶜᶜᶠ(i, j, k_top-1, grid, U★, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²) +
+                                div_Tyᶜᶜᶠ(i, j, k_top-1, grid, U★, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²))
     end
 
     return nothing
