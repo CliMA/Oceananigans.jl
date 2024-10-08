@@ -76,16 +76,6 @@ function KernelParameters(r1::UnitRange, r2::UnitRange, r3::UnitRange)
     return KernelParameters(size, offsets)
 end
 
-function KernelParameters(f::Oceananigans.Fields.Field)
-    size = Base.size(f.data)
-    offsets = f.data.offsets
-
-    rdims = Oceananigans.Fields.reduced_dimensions(f)
-    dims  = filter(n -> !(n ∈ rdims), [1, 2, 3])
-
-    return KernelParameters(size[dims], offsets[dims])
-end
-
 offsets(::KernelParameters{S, O}) where {S, O} = O
 offsets(workspec)  = nothing
 

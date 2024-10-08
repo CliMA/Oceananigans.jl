@@ -254,11 +254,15 @@ end
 function compute_column_height!(Hᶜᶜ, Hᶠᶜ, Hᶜᶠ, Hᶠᶠ, grid)
 
     arch = architecture(grid)
+    Hx, Hy, _ = halo_size(grid)
+    Nx, Ny, _ = size(grid)
 
-    launch!(arch, grid, KernelParameters(Hᶜᶜ), _compute_column_height!, Hᶜᶜ, grid, c, c, Δrᶜᶜᶜ)
-    launch!(arch, grid, KernelParameters(Hᶠᶜ), _compute_column_height!, Hᶠᶜ, grid, f, c, Δrᶠᶜᶜ)
-    launch!(arch, grid, KernelParameters(Hᶜᶠ), _compute_column_height!, Hᶜᶠ, grid, c, f, Δrᶜᶠᶜ)
-    launch!(arch, grid, KernelParameters(Hᶠᶠ), _compute_column_height!, Hᶠᶠ, grid, f, f, Δrᶠᶠᶜ)
+    params = KernelParameters(-Hx+1:Nx+Hx, -Hy+1:Ny+Hy)
+
+    launch!(arch, grid, params, _compute_column_height!, Hᶜᶜ, grid, c, c, Δrᶜᶜᶜ)
+    launch!(arch, grid, params, _compute_column_height!, Hᶠᶜ, grid, f, c, Δrᶠᶜᶜ)
+    launch!(arch, grid, params, _compute_column_height!, Hᶜᶠ, grid, c, f, Δrᶜᶠᶜ)
+    launch!(arch, grid, params, _compute_column_height!, Hᶠᶠ, grid, f, f, Δrᶠᶠᶜ)
 
     return nothing
 end
