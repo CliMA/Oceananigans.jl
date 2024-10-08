@@ -1,4 +1,3 @@
-
 struct CATKEVerticalDiffusivity{TD, CL, FT, DT, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
     mixing_length :: CL
     turbulent_kinetic_energy_equation :: TKE
@@ -145,6 +144,37 @@ catke_first(catke1::FlavorOfCATKE, catke2::FlavorOfCATKE) = error("Can't have tw
 ##### Diffusivities and diffusivity fields utilities
 #####
 
+struct CATKEDiffusivityFields{K, L, J, T, U, KC, LC}
+    κu :: K
+    κc :: K
+    κe :: K
+    Le :: L
+    Jᵇ :: J
+    previous_compute_time :: T
+    previous_velocities :: U
+    _tupled_tracer_diffusivities :: KC
+    _tupled_implicit_linear_coefficients :: LC
+end
+
+Adapt.adapt_structure(to, catke_diffusivity_fields::CATKEDiffusivityFields) =
+    CATKEDiffusivityFields(adapt(to, catke_diffusivity_fields.κu),
+                           adapt(to, catke_diffusivity_fields.κc),
+                           adapt(to, catke_diffusivity_fields.κe),
+                           adapt(to, catke_diffusivity_fields.Le),
+                           adapt(to, catke_diffusivity_fields.Jᵇ),
+                           previous_compute_time[],
+                           adapt(to, previous_velocities),
+                           adapt(to, _tupled_tracer_diffusivities),
+                           adapt(to, _tupled_implicit_linear_coefficients))
+
+function fill_halo_regions!(catke_diffusivity_fields::CATKEDiffusivityFields, args...; kw...)
+    fields_with_halos_to_fill = (catke_diffusivity_fields.κu,
+                                 catke_diffusivity_fields.κc,
+                                 catke_diffusivity_fields.κe)
+
+    return fill_halo_regions!(fields_with_halos_to_fill, args...; kw...)
+end
+
 function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
 
     default_diffusivity_bcs = (κu = FieldBoundaryConditions(grid, (Center, Center, Face)),
@@ -170,16 +200,15 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
     _tupled_tracer_diffusivities         = NamedTuple(name => name === :e ? κe : κc          for name in tracer_names)
     _tupled_implicit_linear_coefficients = NamedTuple(name => name === :e ? Le : ZeroField() for name in tracer_names)
 
-    return (; κu, κc, κe, Le, Jᵇ,
-            previous_compute_time, previous_velocities,
-            _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
+    return CATKEDiffusivityFields(κu, κc, κe, Le, Jᵇ,
+                                  previous_compute_time, previous_velocities,
+                                  _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
 end        
 
 @inline viscosity_location(::FlavorOfCATKE) = (c, c, f)
 @inline diffusivity_location(::FlavorOfCATKE) = (c, c, f)
 
 function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; parameters = :xyz)
-
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
