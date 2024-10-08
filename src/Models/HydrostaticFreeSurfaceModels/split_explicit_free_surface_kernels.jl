@@ -42,6 +42,7 @@ const μ = 1 - δ - γ - ϵ
 #   `δyᵃᶜᵃ_V` : Hardcodes NoPenetration or Periodic boundary conditions for the meridional barotropic velocity V in y direction
 #
 # The functions `η★` `U★` and `V★` represent the value of free surface, barotropic zonal and meridional velocity at time step m+1/2
+
 @inline δxᶠᵃᵃ_η(i, j, k, grid, T, η★::Function, args...) = δxᶠᵃᵃ(i, j, k, grid, η★, args...)
 @inline δyᵃᶠᵃ_η(i, j, k, grid, T, η★::Function, args...) = δyᵃᶠᵃ(i, j, k, grid, η★, args...)
 @inline δxᶜᵃᵃ_U(i, j, k, grid, T, U★::Function, args...) = δxᶜᵃᵃ(i, j, k, grid, U★, args...)
@@ -101,6 +102,25 @@ for Topo in [:Periodic, :Bounded, :RightConnected, :LeftConnected]
         @inline δyᵃᶜᵃ_V(i, j, k, ibg::IBG, T::Type{$Topo}, V★::Function, args...) = δyᵃᶜᵃ_V(i, j, k, ibg.underlying_grid, T, conditional_V_cfc, ibg, V★, args...)
     end
 end
+
+# Interpolation
+
+const PGX = AbstractGrid{<:Any, <:Periodic}
+const BGX = AbstractGrid{<:Any, <:Bounded}
+const RGX = AbstractGrid{<:Any, <:RightConnected}
+
+const PGY = AbstractGrid{<:Any, <:Periodic}
+const BGY = AbstractGrid{<:Any, <:Bounded}
+const RGY = AbstractGrid{<:Any, <:RightConnected}
+
+@inline ℑxᶠᵃᵃ_η(i, j, k, grid,      η) = ℑxᶠᵃᵃ(i, j, k, grid, η)
+@inline ℑyᵃᶠᵃ_η(i, j, k, grid,      η) = ℑyᵃᶠᵃ(i, j, k, grid, η)
+@inline ℑxᶠᵃᵃ_η(i, j, k, grid::PGX, η) = ifelse(i == 1, (η[1, j, k] + η[grid.Nx, j, k]) / 2, ℑxᶠᵃᵃ(i, j, k, grid, η))
+@inline ℑyᵃᶠᵃ_η(i, j, k, grid::PGY, η) = ifelse(j == 1, (η[i, 1, k] + η[i, grid.Ny, k]) / 2, ℑyᵃᶠᵃ(i, j, k, grid, η))
+@inline ℑxᶠᵃᵃ_η(i, j, k, grid::BGX, η) = ifelse(i == 1, η[1, j, k], ℑxᶠᵃᵃ(i, j, k, grid, η))
+@inline ℑyᵃᶠᵃ_η(i, j, k, grid::BGY, η) = ifelse(j == 1, η[i, 1, k], ℑyᵃᶠᵃ(i, j, k, grid, η))
+@inline ℑxᶠᵃᵃ_η(i, j, k, grid::RGX, η) = ifelse(i == 1, η[1, j, k], ℑxᶠᵃᵃ(i, j, k, grid, η))
+@inline ℑyᵃᶠᵃ_η(i, j, k, grid::RGY, η) = ifelse(j == 1, η[i, 1, k], ℑyᵃᶠᵃ(i, j, k, grid, η))
 
 # Time stepping extrapolation U★, and η★
 
@@ -162,8 +182,8 @@ end
 @inline dynamic_column_heightᶜᶠ(i, j, k, grid, H, η) = @inbounds H[i, j, 1]
 
 # Non-linear free surface implementation
-@inline dynamic_column_heightᶠᶜ(i, j, k, grid::ZStarSpacingGrid, H, η) = @inbounds H[i, j, 1] + ℑxᶠᵃᵃ(i, j, k, grid, η)
-@inline dynamic_column_heightᶜᶠ(i, j, k, grid::ZStarSpacingGrid, H, η) = @inbounds H[i, j, 1] + ℑyᵃᶠᵃ(i, j, k, grid, η)
+@inline dynamic_column_heightᶠᶜ(i, j, k, grid::ZStarSpacingGrid, H, η) = @inbounds H[i, j, 1] + ℑxᶠᵃᵃ_η(i, j, k, grid, η)
+@inline dynamic_column_heightᶜᶠ(i, j, k, grid::ZStarSpacingGrid, H, η) = @inbounds H[i, j, 1] + ℑyᵃᶠᵃ_η(i, j, k, grid, η)
 
 @kernel function _split_explicit_barotropic_velocity!(averaging_weight, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
                                                       U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,

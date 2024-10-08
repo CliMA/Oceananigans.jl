@@ -184,19 +184,21 @@ function SplitExplicitState(grid::AbstractGrid, timestepper)
     ηᵐ⁻¹ = auxiliary_free_surface_field(grid, timestepper)
     ηᵐ⁻² = auxiliary_free_surface_field(grid, timestepper)
 
-    U    = XFaceField(grid, indices = (:, :, Nz))
-    V    = YFaceField(grid, indices = (:, :, Nz))
+    𝒰 = VelocityFields(grid)
+    u_bcs = 𝒰.u.boundary_conditions
+    
+    U = Field(𝒰.u, indices = (:, :, Nz))
+    V = Field(𝒰.v, indices = (:, :, Nz))
 
-    Uᵐ⁻¹ = auxiliary_barotropic_U_field(grid, timestepper)
-    Vᵐ⁻¹ = auxiliary_barotropic_V_field(grid, timestepper)
-    Uᵐ⁻² = auxiliary_barotropic_U_field(grid, timestepper)
-    Vᵐ⁻² = auxiliary_barotropic_V_field(grid, timestepper)
-
-    U̅ = XFaceField(grid, indices = (:, :, Nz))
-    V̅ = YFaceField(grid, indices = (:, :, Nz))
-
-    Ũ = XFaceField(grid, indices = (:, :, Nz))
-    Ṽ = YFaceField(grid, indices = (:, :, Nz))
+    Uᵐ⁻¹ = auxiliary_barotropic_velocity_field(𝒰.u, timestepper)
+    Vᵐ⁻¹ = auxiliary_barotropic_velocity_field(𝒰.v, timestepper)
+    Uᵐ⁻² = auxiliary_barotropic_velocity_field(𝒰.u, timestepper)
+    Vᵐ⁻² = auxiliary_barotropic_velocity_field(𝒰.v, timestepper)
+    
+    U̅ = Field(𝒰.u, indices = (:, :, Nz))
+    V̅ = Field(𝒰.v, indices = (:, :, Nz))
+    Ũ = Field(𝒰.u, indices = (:, :, Nz))
+    Ṽ = Field(𝒰.v, indices = (:, :, Nz))
 
     return SplitExplicitState(; ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, Uᵐ⁻¹, Uᵐ⁻², V, Vᵐ⁻¹, Vᵐ⁻², η̅, U̅, V̅, Ũ, Ṽ)
 end
@@ -294,10 +296,8 @@ struct ForwardBackwardScheme end
 auxiliary_free_surface_field(grid, ::AdamsBashforth3Scheme) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 auxiliary_free_surface_field(grid, ::ForwardBackwardScheme) = nothing
 
-auxiliary_barotropic_U_field(grid, ::AdamsBashforth3Scheme) = XFaceField(grid, indices = (:, :, size(grid, 3)))
-auxiliary_barotropic_U_field(grid, ::ForwardBackwardScheme) = nothing
-auxiliary_barotropic_V_field(grid, ::AdamsBashforth3Scheme) = YFaceField(grid, indices = (:, :, size(grid, 3)))
-auxiliary_barotropic_V_field(grid, ::ForwardBackwardScheme) = nothing
+auxiliary_barotropic_velocity_field(u, ::AdamsBashforth3Scheme) = Field(u)
+auxiliary_barotropic_velocity_field(u, ::ForwardBackwardScheme) = nothing
 
 # (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002 
 @inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT
