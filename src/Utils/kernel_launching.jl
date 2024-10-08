@@ -175,7 +175,7 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
     return workgroup, worksize
 end
 
-function work_layout(grid, worksize::Tuple, reduced_dimensions)
+function work_layout(grid, worksize::NTuple{N, Int}, reduced_dimensions) where N
     workgroup = heuristic_workgroup(worksize...)
     return workgroup, worksize
 end
@@ -237,6 +237,7 @@ the architecture `arch`.
     return loop, worksize
 end
 
+       
 """
     launch!(arch, grid, workspec, kernel!, kernel_args...; kw...)
 
@@ -247,7 +248,24 @@ Kernels run on the default stream.
 See [configure_kernel](@ref) for more information and also a list of the
 keyword arguments `kw`.
 """
-@inline function launch!(arch, grid, workspec,
+@inline launch!(args..., kwargs...) = _launch!(args...; kwargs...)
+
+@inline launch!(arch, grid, workspec::NTuple{N, Int}, args...; kwargs...) where N =
+    _launch!(arch, grid, workspec, args..., kwargs...) where N =
+ 
+@inline function launch!(arch, grid, workspec_tuple::Tuple, args...; kwargs...)
+    for workspec in workspec_tuple
+        _launch!(arch, grid, workspec, args..., kwargs...) where N =
+    end
+    return nothing
+end
+ 
+# When dims::Val
+@inline launch!(arch, grid, ::Val{workspec}, args...; kw...) where workspec =
+    _launch!(arch, grid, workspec, args...; kw...)
+
+# Inner interface
+@inline function _launch!(arch, grid, workspec,
                          kernel!, first_kernel_arg, other_kernel_args...;
                          exclude_periphery = false,
                          reduced_dimensions = (),
@@ -271,10 +289,6 @@ keyword arguments `kw`.
 
     return nothing
 end
-
-# When dims::Val
-@inline launch!(arch, grid, ::Val{workspec}, args...; kw...) where workspec =
-    launch!(arch, grid, workspec, args...; kw...)
 
 #####
 ##### Extension to KA for offset indices: to remove when implemented in KA
