@@ -112,7 +112,7 @@ end
 ##### Bottom height
 #####
 
-@inline column_heightᶜᶜᵃ(i, j, k, ibg::AbstractGridFittedBottom) = znode(i, j, grid.Nz, c, c, f) - ibg.immersed_boundary.z_bottom[i, j, 1] 
+@inline column_heightᶜᶜᵃ(i, j, k, ibg::AbstractGridFittedBottom) = znode(i, j, grid.Nz, ibg, c, c, f) - ibg.immersed_boundary.z_bottom[i, j, 1] 
 @inline column_heightᶜᶠᵃ(i, j, k, ibg::AbstractGridFittedBottom) = min(column_heightᶜᶜᵃ(i, j-1, k, ibg), column_heightᶜᶜᵃ(i, j, k, ibg))
 @inline column_heightᶠᶜᵃ(i, j, k, ibg::AbstractGridFittedBottom) = min(column_heightᶜᶜᵃ(i-1, j, k, ibg), column_heightᶜᶜᵃ(i, j, k, ibg))
 @inline column_heightᶠᶠᵃ(i, j, k, ibg::AbstractGridFittedBottom) = min(column_heightᶠᶜᵃ(i, j-1, k, ibg), column_heightᶠᶜᵃ(i, j, k, ibg))
