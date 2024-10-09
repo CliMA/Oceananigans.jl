@@ -188,7 +188,7 @@ function reconstruct_global_grid(mrg::ImmersedMultiRegionGrid)
     return ImmersedBoundaryGrid(global_grid, global_boundary)
 end
 
-reconstruct_global_boundary(g::GridFittedBottom{<:Field})   =   GridFittedBottom(reconstruct_global_field(g.z_bottom), g.immersed_condition)
+reconstruct_global_boundary(g::GridFittedBottom{<:Field})   =   GridFittedBottom(reconstruct_global_field(g.z_bottom))
 reconstruct_global_boundary(g::PartialCellBottom{<:Field})  =  PartialCellBottom(reconstruct_global_field(g.z_bottom), g.minimum_fractional_cell_height)
 reconstruct_global_boundary(g::GridFittedBoundary{<:Field}) = GridFittedBoundary(reconstruct_global_field(g.mask))
 

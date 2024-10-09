@@ -114,7 +114,7 @@ end
 
 const AGFBIB = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
 
-@inline column_heightᶜᶜᵃ(i, j, k, ibg::AGFBIB) = @inbounds znode(i, j, grid.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.z_bottom[i, j, 1] 
+@inline column_heightᶜᶜᵃ(i, j, k, ibg::AGFBIB) = @inbounds znode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.z_bottom[i, j, 1] 
 @inline column_heightᶜᶠᵃ(i, j, k, ibg::AGFBIB) = min(column_heightᶜᶜᵃ(i, j-1, k, ibg), column_heightᶜᶜᵃ(i, j, k, ibg))
 @inline column_heightᶠᶜᵃ(i, j, k, ibg::AGFBIB) = min(column_heightᶜᶜᵃ(i-1, j, k, ibg), column_heightᶜᶜᵃ(i, j, k, ibg))
 @inline column_heightᶠᶠᵃ(i, j, k, ibg::AGFBIB) = min(column_heightᶠᶜᵃ(i, j-1, k, ibg), column_heightᶠᶜᵃ(i, j, k, ibg))
