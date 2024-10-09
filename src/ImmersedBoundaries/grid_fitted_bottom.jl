@@ -120,3 +120,12 @@ const AGFBIB = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Abstrac
 @inline column_heightᶠᶜᵃ(i, j, k, ibg::AGFBIB) = min(column_heightᶜᶜᵃ(i-1, j, k, ibg), column_heightᶜᶜᵃ(i, j, k, ibg))
 @inline column_heightᶠᶠᵃ(i, j, k, ibg::AGFBIB) = min(column_heightᶠᶜᵃ(i, j-1, k, ibg), column_heightᶠᶜᵃ(i, j, k, ibg))
 
+# Make sure Δz works for horizontally-Flat topologies.
+# (There's no point in using z-Flat with PartialCellBottom).
+XFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
+YFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:AbstractGridFittedBottom}
+
+@inline column_heightᶠᶜᵃ(i, j, k, ibg::XFlatAGFIBG) = column_heightᶜᶜᵃ(i, j, k, ibg)
+@inline column_heightᶜᶠᵃ(i, j, k, ibg::YFlatAGFIBG) = column_heightᶜᶜᵃ(i, j, k, ibg)
+@inline column_heightᶠᶠᵃ(i, j, k, ibg::XFlatAGFIBG) = column_heightᶜᶠᵃ(i, j, k, ibg)
+@inline column_heightᶠᶠᵃ(i, j, k, ibg::YFlatAGFIBG) = column_heightᶠᶜᵃ(i, j, k, ibg)
