@@ -9,6 +9,25 @@ using Oceananigans.Utils
 
 using Oceananigans.Advection: cell_advection_timescale
 
+using Oceananigans.TurbulenceClosures: LagrangianDynamicSmagorinsky
+using Oceananigans.TurbulenceClosures: 
+                𝒥ᴸᴹ_forcing_function, 
+                𝒥ᴹᴹ_forcing_function, 
+                𝒥ᴿᴺ_forcing_function, 
+                𝒥ᴺᴺ_forcing_function
+
+
+Nxy=64
+Nz=32
+arch=CPU()
+h=1
+U_wall=1
+Re=4250
+Pr=0.7
+Ri = 0.5
+Ni=10
+end_time=1000
+
 """ Friction velocity. See equation (16) of Vreugdenhil & Taylor (2018). """
 function uτ(model, Uavg, U_wall, n)
     Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δzᵃᵃᶜ
@@ -95,17 +114,20 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     ##### Computed parameters
     #####
 
-         ν = U_wall * h / Re    # From Re = U_wall h / ν
-    Θ_wall = Ri * U_wall^2 / h  # From Ri = L Θ_wall / U_wall²
-         κ = ν / Pr             # From Pr = ν / κ
+    α = 2e-4
+    g = 9.80655
+
+         ν = U_wall * h / Re           # From Re = U_wall h / ν
+    Θ_wall = Ri * U_wall^2 / h * α * g # From Ri = L Θ_wall / U_wall²
+         κ = ν / Pr                    # From Pr = ν / κ
 
     #####
     ##### Impose boundary conditions
     #####
 
-    grid = RectilinearGrid(arch, size = (Nxy, Nxy, Nz), extent = (4π*h, 2π*h, 2h))
+    grid = RectilinearGrid(arch, size = (Nxy, Nxy, Nz), extent = (4π*h, 2π*h, 2h), halo = (6, 6, 6))
 
-    Tbcs = FieldBoundaryConditions(top = ValueBoundaryCondition(Θ_wall),
+    bbcs = FieldBoundaryConditions(top = ValueBoundaryCondition(Θ_wall),
                                    bottom = ValueBoundaryCondition(-Θ_wall))
 
     ubcs = FieldBoundaryConditions(top = ValueBoundaryCondition(U_wall),
@@ -117,13 +139,25 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     #####
     ##### Non-dimensional model setup
     #####
+
+    tracers = (:b, :𝒥ᴸᴹ, :𝒥ᴹᴹ, :𝒥ᴿᴺ, :𝒥ᴺᴺ)
     
-    equation_of_state = LinearEquationOfState(thermal_expansion=1.0, haline_contraction=0.0)
-    buoyancy = SeawaterBuoyancy(; equation_of_state)
+    𝒥ᴸᴹ_forcing = Forcing(𝒥ᴸᴹ_forcing_function, discrete_form=true)
+    𝒥ᴹᴹ_forcing = Forcing(𝒥ᴹᴹ_forcing_function, discrete_form=true)
+    𝒥ᴿᴺ_forcing = Forcing(𝒥ᴿᴺ_forcing_function, discrete_form=true)
+    𝒥ᴺᴺ_forcing = Forcing(𝒥ᴺᴺ_forcing_function, discrete_form=true)
+
+    forcing = (; 𝒥ᴸᴹ = 𝒥ᴸᴹ_forcing,
+                 𝒥ᴹᴹ = 𝒥ᴹᴹ_forcing,
+                 𝒥ᴿᴺ = 𝒥ᴿᴺ_forcing,
+                 𝒥ᴺᴺ = 𝒥ᴺᴺ_forcing)
+
+    buoyancy = BuoyancyTracer()
     model = NonhydrostaticModel(; grid, buoyancy,
-                                tracers = (:T, :S),
-                                closure = (AnisotropicMinimumDissipation(), ScalarDiffusivity(ν=ν, κ=κ)),
-                                boundary_conditions = (u=ubcs, v=vbcs, T=Tbcs))
+                                tracers,
+                                forcing,
+                                closure = LagrangianDynamicSmagorinsky(),
+                                boundary_conditions = (u=ubcs, v=vbcs, b=bbcs))
 
     #####
     ##### Set initial conditions
@@ -133,12 +167,12 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     ε(σ, z) = σ * randn() * z/model.grid.Lz * (1 + z/model.grid.Lz)
 
     # We add a sinusoidal initial condition to u to encourage instability.
-    T₀(x, y, z) = 2Θ_wall * (1/2 + z/model.grid.Lz) * (1 + ε(5e-1, z))
+    b₀(x, y, z) = 2Θ_wall * (1/2 + z/model.grid.Lz) * (1 + ε(5e-1, z)) * α * g
     u₀(x, y, z) = 2U_wall * (1/2 + z/model.grid.Lz) * (1 + ε(5e-1, z)) * (1 + 0.5*sin(4π/model.grid.Lx * x))
     v₀(x, y, z) = ε(5e-1, z)
     w₀(x, y, z) = ε(5e-1, z)
 
-    set!(model, u=u₀, v=v₀, w=w₀, T=T₀)
+    set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 
     #####
     ##### Print simulation banner
@@ -179,14 +213,14 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
         file["parameters/wall_temperature"] = Θ_wall
     end
 
-    n_amd = findfirst(c -> c isa AnisotropicMinimumDissipation, model.closure)
+    n_amd = findfirst(c -> c isa LagrangianDynamicSmagorinsky, model.closure)
 
     fields = Dict(
         :u => model -> Array(model.velocities.u.data.parent),
         :v => model -> Array(model.velocities.v.data.parent),
         :w => model -> Array(model.velocities.w.data.parent),
-        :T => model -> Array(model.tracers.T.data.parent),
-   :kappaT => model -> Array(model.diffusivity_fields[n_amd].κₑ.T.data.parent),
+        :b => model -> Array(model.tracers.b.data.parent),
+   :kappaT => model -> Array(model.diffusivity_fields[n_amd].κₑ.b.data.parent),
        :nu => model -> Array(model.diffusivity_fields[n_amd].νₑ.data.parent))
 
     field_writer =
@@ -201,15 +235,15 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     Uavg = Field(Average(model.velocities.u,               dims=(1, 2)))
     Vavg = Field(Average(model.velocities.v,               dims=(1, 2)))
     Wavg = Field(Average(model.velocities.w,               dims=(1, 2)))
-    Tavg = Field(Average(model.tracers.T,                  dims=(1, 2)))
+    bavg = Field(Average(model.tracers.b,                  dims=(1, 2)))
     νavg = Field(Average(model.diffusivity_fields[n_amd].νₑ,   dims=(1, 2)))
-    κavg = Field(Average(model.diffusivity_fields[n_amd].κₑ.T, dims=(1, 2)))
+    κavg = Field(Average(model.diffusivity_fields[n_amd].κₑ.b, dims=(1, 2)))
 
     profiles = Dict(
          :u => Uavg,
          :v => Vavg,
          :w => Wavg,
-         :T => Tavg,
+         :b => bavg,
         :nu => νavg,
     :kappaT => κavg)
 
@@ -242,7 +276,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
     simulation = Simulation(model, Δt=0.0001, stop_time=end_time)
 
-    wizard = TimeStepWizard(cfl=0.02, max_change=1.1, max_Δt=0.02)
+    wizard = TimeStepWizard(cfl=0.2, max_change=1.1, max_Δt=0.02)
     simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(Ni))
 
     # We will ramp up the CFL used by the adaptive time step wizard during spin up.
@@ -263,7 +297,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
         Δ = min(model.grid.Δxᶜᵃᵃ, model.grid.Δyᵃᶜᵃ, model.grid.Δzᵃᵃᶜ)
         νmax = maximum(model.diffusivity_fields[n_amd].νₑ.data.parent)
-        κmax = maximum(model.diffusivity_fields[n_amd].κₑ.T.data.parent)
+        κmax = maximum(model.diffusivity_fields[n_amd].κₑ.b.data.parent)
         νCFL = simulation.Δt / (Δ^2 / νmax)
         κCFL = simulation.Δt / (Δ^2 / κmax)
 
