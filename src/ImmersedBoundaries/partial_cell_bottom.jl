@@ -117,15 +117,6 @@ on_architecture(to, ib::PartialCellBottom) = PartialCellBottom(on_architecture(t
 Criterion is zb ≥ z - ϵ Δz
 
 """
-@inline function _immersed_cell(i, j, k, underlying_grid, ib::PartialCellBottom)
-    # Face node below current cell
-    z  = znode(i, j, k, underlying_grid, c, c, f)
-    zb = @inbounds ib.z_bottom[i, j, 1]
-    ϵ  = ib.minimum_fractional_cell_height
-    # z + Δz is equal to the face above the current cell
-    Δz = Δzᶜᶜᶜ(i, j, k, underlying_grid)
-    return (z + Δz * (1 - ϵ)) ≤ zb
-end
 
 @inline function bottom_cell(i, j, k, ibg::PCBIBG)
     grid = ibg.underlying_grid

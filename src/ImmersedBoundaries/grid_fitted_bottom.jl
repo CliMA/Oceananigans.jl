@@ -100,19 +100,20 @@ correct_z_bottom!(bottom_field, grid, ib) =
     end
 end
 
-@inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom)
-    z = znode(i, j, k, underlying_grid, c, c, c)
-    h = @inbounds ib.z_bottom[i, j, 1]
-    return z ≤ h
-end
 
 @inline z_bottom(i, j, ibg::GFBIBG) = @inbounds ibg.immersed_boundary.z_bottom[i, j, 1]
 
 #####
-##### Bottom height
+##### _immersed_cell and column height 
 #####
 
 const AGFBIB = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
+
+@inline function _immersed_cell(i, j, k, underlying_grid, ib::AGFBIB)
+    z = znode(i, j, k, underlying_grid, c, c, c)
+    h = @inbounds ib.z_bottom[i, j, 1]
+    return z ≤ h
+end
 
 @inline column_heightᶜᶜᵃ(i, j, k, ibg::AGFBIB) = @inbounds znode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.z_bottom[i, j, 1] 
 @inline column_heightᶜᶠᵃ(i, j, k, ibg::AGFBIB) = min(column_heightᶜᶜᵃ(i, j-1, k, ibg), column_heightᶜᶜᵃ(i, j, k, ibg))
