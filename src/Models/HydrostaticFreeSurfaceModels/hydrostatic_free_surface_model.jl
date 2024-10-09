@@ -53,24 +53,28 @@ default_free_surface(grid::XYRegularRG; gravitational_acceleration=g_Earth) =
 default_free_surface(grid; gravitational_acceleration=g_Earth) =
     SplitExplicitFreeSurface(grid; cfl = 0.7, gravitational_acceleration)
 
+default_momentum_advection(grid) = CenteredSecondOrder()
+
+default_momentum_advection(::OrthogonalSphericalShellGrid) = VectorInvariant()
+
 """
     HydrostaticFreeSurfaceModel(; grid,
-                                             clock = Clock{eltype(grid)}(time = 0),
-                                momentum_advection = CenteredSecondOrder(),
-                                  tracer_advection = CenteredSecondOrder(),
-                                          buoyancy = SeawaterBuoyancy(eltype(grid)),
-                                          coriolis = nothing,
-                                      free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
-                               forcing::NamedTuple = NamedTuple(),
-                                           closure = nothing,
-                   boundary_conditions::NamedTuple = NamedTuple(),
-                                           tracers = (:T, :S),
-                     particles::ParticlesOrNothing = nothing,
-             biogeochemistry::AbstractBGCOrNothing = nothing,
-                                        velocities = nothing,
-                                          pressure = nothing,
-                                diffusivity_fields = nothing,
-                                  auxiliary_fields = NamedTuple(),
+                                clock = Clock{eltype(grid)}(time = 0),
+                   momentum_advection = default_momentum_advection(grid),
+                     tracer_advection = CenteredSecondOrder(),
+                             buoyancy = SeawaterBuoyancy(eltype(grid)),
+                             coriolis = nothing,
+                         free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
+                  forcing::NamedTuple = NamedTuple(),
+                              closure = nothing,
+      boundary_conditions::NamedTuple = NamedTuple(),
+                              tracers = (:T, :S),
+        particles::ParticlesOrNothing = nothing,
+biogeochemistry::AbstractBGCOrNothing = nothing,
+                           velocities = nothing,
+                             pressure = nothing,
+                   diffusivity_fields = nothing,
+                     auxiliary_fields = NamedTuple(),
     )
 
 Construct a hydrostatic model with a free surface on `grid`.
@@ -104,7 +108,7 @@ Keyword arguments
 """
 function HydrostaticFreeSurfaceModel(; grid,
                                              clock = Clock{eltype(grid)}(time = 0),
-                                momentum_advection = CenteredSecondOrder(),
+                                momentum_advection = default_momentum_advection(grid),
                                   tracer_advection = CenteredSecondOrder(),
                                           buoyancy = nothing,
                                           coriolis = nothing,
