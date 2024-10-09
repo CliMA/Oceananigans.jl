@@ -80,7 +80,7 @@ function adapt_advection_order(advection::Centered{B}, N::Int, grid::AbstractGri
     if N >= B
         return advection
     else
-        return Centered(; order = N * 2)
+        return Centered(; order = 2N)
     end
 end
 
