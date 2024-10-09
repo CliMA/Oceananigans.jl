@@ -107,22 +107,22 @@ Keyword arguments
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
 """
 function HydrostaticFreeSurfaceModel(; grid,
-                                             clock = Clock{eltype(grid)}(time = 0),
-                                momentum_advection = default_momentum_advection(grid),
-                                  tracer_advection = CenteredSecondOrder(),
-                                          buoyancy = nothing,
-                                          coriolis = nothing,
-                                      free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
-                                           tracers = nothing,
-                                      forcing::NamedTuple = NamedTuple(),
-                                           closure = nothing,
-                   boundary_conditions::NamedTuple = NamedTuple(),
-                     particles::ParticlesOrNothing = nothing,
-             biogeochemistry::AbstractBGCOrNothing = nothing,
-                                        velocities = nothing,
-                                          pressure = nothing,
-                                diffusivity_fields = nothing,
-                                  auxiliary_fields = NamedTuple()
+                                          clock = Clock{eltype(grid)}(time = 0),
+                             momentum_advection = default_momentum_advection(grid),
+                               tracer_advection = CenteredSecondOrder(),
+                                       buoyancy = nothing,
+                                       coriolis = nothing,
+                                   free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
+                                        tracers = nothing,
+                            forcing::NamedTuple = NamedTuple(),
+                                        closure = nothing,
+                boundary_conditions::NamedTuple = NamedTuple(),
+                  particles::ParticlesOrNothing = nothing,
+          biogeochemistry::AbstractBGCOrNothing = nothing,
+                                     velocities = nothing,
+                                       pressure = nothing,
+                             diffusivity_fields = nothing,
+                               auxiliary_fields = NamedTuple()
     )
 
     # Check halos and throw an error if the grid's halo is too small
