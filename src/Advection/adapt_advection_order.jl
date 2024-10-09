@@ -16,35 +16,9 @@ If the order of advection is changed in at least one direction, the adapted adve
 by this function is a `FluxFormAdvection`.
 """
 function adapt_advection_order(advection, grid::AbstractGrid)
-    advection_x = adapt_advection_order(advection, size(grid, 1), grid)
-    advection_y = adapt_advection_order(advection, size(grid, 2), grid)
-    advection_z = adapt_advection_order(advection, size(grid, 3), grid)
-
-    # Check that we indeed changed the advection operator
-    changed_x = advection_x != advection
-    changed_y = advection_y != advection
-    changed_z = advection_z != advection
-
-    new_advection = FluxFormAdvection(advection_x, advection_y, advection_z)
-    changed_advection = any((changed_x, changed_y, changed_z))
-
-    if changed_x
-        @info "Using the advection scheme $(summary(new_advection.x)) in the x-direction because size(grid, 1) = $(size(grid, 1))"
-    end
-    if changed_y
-        @info "Using the advection scheme $(summary(new_advection.y)) in the y-direction because size(grid, 2) = $(size(grid, 2))"
-    end
-    if changed_z
-        @info "Using the advection scheme $(summary(new_advection.z)) in the x-direction because size(grid, 3) = $(size(grid, 3))"
-    end
-
-    return ifelse(changed_advection, new_advection, advection)
-end
-
-function adapt_advection_order(advection::FluxFormAdvection, grid::AbstractGrid)
-    advection_x = adapt_advection_order(advection.x, size(grid, 1), grid)
-    advection_y = adapt_advection_order(advection.y, size(grid, 2), grid)
-    advection_z = adapt_advection_order(advection.z, size(grid, 3), grid)
+    advection_x = adapt_advection_order(x_advection(advection), size(grid, 1), grid)
+    advection_y = adapt_advection_order(y_advection(advection), size(grid, 2), grid)
+    advection_z = adapt_advection_order(z_advection(advection), size(grid, 3), grid)
 
     # Check that we indeed changed the advection operator
     changed_x = advection_x != advection.x
@@ -66,6 +40,15 @@ function adapt_advection_order(advection::FluxFormAdvection, grid::AbstractGrid)
 
     return ifelse(changed_advection, new_advection, advection)
 end
+
+
+x_advection(flux_form::FluxFormAdvection) = flux_form.x
+y_advection(flux_form::FluxFormAdvection) = flux_form.y
+z_advection(flux_form::FluxFormAdvection) = flux_form.z
+
+x_advection(advection) = advection
+y_advection(advection) = advection
+z_advection(advection) = advection
 
 # For the moment, we do not adapt the advection order for the VectorInvariant advection scheme
 adapt_advection_order(advection::VectorInvariant, grid::AbstractGrid) = advection
