@@ -137,9 +137,9 @@ end
     # Get node at face above and defining nodes on c,c,f
     z = znode(i, j, k+1, underlying_grid, c, c, f)
 
-    # Get bottom height and fractional Δz parameter
-    h = @inbounds ib.z_bottom[i, j, 1]
-    ϵ = ibg.immersed_boundary.minimum_fractional_cell_height
+    # Get bottom z-coordinate and fractional Δz parameter
+    zb = @inbounds ib.z_bottom[i, j, 1]
+    ϵ  = ibg.immersed_boundary.minimum_fractional_cell_height
 
     # Are we in a bottom cell?
     at_the_bottom = bottom_cell(i, j, k, ibg)

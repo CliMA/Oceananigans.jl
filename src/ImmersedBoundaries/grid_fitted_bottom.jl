@@ -102,9 +102,9 @@ correct_z_bottom!(bottom_field, grid, ib) =
 end
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom)
-    z = znode(i, j, k, underlying_grid, c, c, c)
-    h = @inbounds ib.z_bottom[i, j, 1]
-    return z ≤ h
+    z  = znode(i, j, k, underlying_grid, c, c, c)
+    zb = @inbounds ib.z_bottom[i, j, 1]
+    return z ≤ zb
 end
 
 @inline z_bottom(i, j, ibg::GFBIBG) = @inbounds ibg.immersed_boundary.z_bottom[i, j, 1]
