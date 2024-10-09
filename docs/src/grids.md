@@ -207,11 +207,11 @@ mountain_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(mountain))
 ```@example grids
 using CairoMakie
 
-h = mountain_grid.immersed_boundary.bottom_height
+h = mountain_grid.immersed_boundary.z_bottom
 
 fig = Figure(size=(600, 600))
 ax = Axis(fig[2, 1], xlabel="x (m)", ylabel="y (m)", aspect=1)
-hm = heatmap!(ax, h)
+hm = heatmap!(ax, - h)
 Colorbar(fig[1, 1], hm, vertical=false, label="Bottom height (m)")
 
 current_figure()

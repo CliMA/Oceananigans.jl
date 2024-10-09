@@ -52,7 +52,7 @@ grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
 # Let's see how the domain with the bathymetry is.
 
 x = xnodes(grid, Center())
-bottom_boundary = interior(grid.immersed_boundary.bottom_height, :, 1, 1)
+bottom_boundary = interior(grid.immersed_boundary.z_bottom, :, 1, 1)
 top_boundary = 0 * x
 
 using CairoMakie
