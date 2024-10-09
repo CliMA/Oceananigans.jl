@@ -139,13 +139,12 @@ end
 
     # Get bottom z-coordinate and fractional Δz parameter
     zb = @inbounds ib.z_bottom[i, j, 1]
-    ϵ  = ibg.immersed_boundary.minimum_fractional_cell_height
 
     # Are we in a bottom cell?
     at_the_bottom = bottom_cell(i, j, k, ibg)
 
-    full_Δz = Δzᶜᶜᶜ(i, j, k, ibg.underlying_grid)
-    partial_Δz = max(ϵ * full_Δz, z - h)
+    full_Δz    = Δzᶜᶜᶜ(i, j, k, ibg.underlying_grid)
+    partial_Δz = z - zb
 
     return ifelse(at_the_bottom, partial_Δz, full_Δz)
 end
