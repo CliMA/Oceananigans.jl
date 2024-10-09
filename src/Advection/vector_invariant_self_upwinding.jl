@@ -1,22 +1,21 @@
+using Oceananigans.Grids: V_times_∂t_grid
+
 ##### 
 ##### Self Upwinding of Divergence Flux, the best option!
 #####
 
-# Metric term for moving grids
-@inline V_times_∂t_s_grid(i, j, k, grid) = zero(grid)
-
 @inline δx_U(i, j, k, grid, u, v) = δxᶜᶜᶜ(i, j, k, grid, Ax_qᶠᶜᶜ, u)
 @inline δy_V(i, j, k, grid, u, v) = δyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v)
 
-@inline δx_U_plus_metric(i, j, k, grid, u, v) = δxᶜᶜᶜ(i, j, k, grid, Ax_qᶠᶜᶜ, u) + V_times_∂t_s_grid(i, j, k, grid) 
-@inline δy_V_plus_metric(i, j, k, grid, u, v) = δyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v) + V_times_∂t_s_grid(i, j, k, grid) 
+@inline δx_U_plus_metric(i, j, k, grid, u, v) = δxᶜᶜᶜ(i, j, k, grid, Ax_qᶠᶜᶜ, u) + V_times_∂t_grid(i, j, k, grid) 
+@inline δy_V_plus_metric(i, j, k, grid, u, v) = δyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v) + V_times_∂t_grid(i, j, k, grid) 
 
 # Velocity smoothness for divergence upwinding
 @inline U_smoothness(i, j, k, grid, u, v) = ℑxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, u)
 @inline V_smoothness(i, j, k, grid, u, v) = ℑyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, v)
 
 # Divergence smoothness for divergence upwinding
-@inline divergence_smoothness(i, j, k, grid, u, v) = δx_U(i, j, k, grid, u, v) + δy_V(i, j, k, grid, u, v) + V_times_∂t_s_grid(i, j, k, grid) 
+@inline divergence_smoothness(i, j, k, grid, u, v) = δx_U(i, j, k, grid, u, v) + δy_V(i, j, k, grid, u, v) + V_times_∂t_grid(i, j, k, grid) 
 
 @inline function upwinded_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
 

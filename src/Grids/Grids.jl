@@ -18,6 +18,7 @@ export xnodes, ynodes, znodes, λnodes, φnodes
 export spacings
 export xspacings, yspacings, zspacings, xspacing, yspacing, zspacing
 export minimum_xspacing, minimum_yspacing, minimum_zspacing
+export ZStarVerticalCoordinate, vertical_scaling, previous_vertical_scaling, reference_zspacings
 export offset_data, new_data
 export on_architecture
 
@@ -127,5 +128,6 @@ include("grid_generation.jl")
 include("rectilinear_grid.jl")
 include("orthogonal_spherical_shell_grid.jl")
 include("latitude_longitude_grid.jl")
+include("z_star_vertical_coordinate.jl")
 
 end # module
