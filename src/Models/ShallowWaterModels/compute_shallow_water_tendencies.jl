@@ -1,6 +1,6 @@
 import Oceananigans.TimeSteppers: compute_tendencies!
 
-using Oceananigans.Utils: work_layout
+using Oceananigans.Utils: launch!
 using Oceananigans: fields, TimeStepCallsite, TendencyCallsite, UpdateStateCallsite
 using KernelAbstractions: @index, @kernel
 
@@ -74,30 +74,23 @@ function compute_interior_tendency_contributions!(tendencies,
                                                   clock,
                                                   formulation)
 
-    workgroup, worksize = work_layout(grid, :xyz)
-
-    compute_Guh_kernel! = compute_Guh!(device(arch), workgroup, worksize)
-    compute_Gvh_kernel! = compute_Gvh!(device(arch), workgroup, worksize)
-    compute_Gh_kernel!  =  compute_Gh!(device(arch), workgroup, worksize)
-    compute_Gc_kernel!  =  compute_Gc!(device(arch), workgroup, worksize)
-
-    args_vel = (grid, gravitational_acceleration, advection.momentum, velocities, coriolis, closure, 
+    transport_args = (grid, gravitational_acceleration, advection.momentum, velocities, coriolis, closure, 
                       bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
-    args_h   = (grid, gravitational_acceleration, advection.mass, coriolis, closure, 
-                      solution, tracers, diffusivities, forcings, clock, formulation)
 
-    compute_Guh_kernel!(tendencies[1], args_vel...)
-    compute_Gvh_kernel!(tendencies[2], args_vel...)
-     compute_Gh_kernel!(tendencies[3], args_h...)
+    h_args = (grid, gravitational_acceleration, advection.mass, coriolis, closure, 
+              solution, tracers, diffusivities, forcings, clock, formulation)
+
+    launch!(arch, grid, :xyz, compute_Guh!, tendencies[1], transport_args...; exclude_periphery=true)
+    launch!(arch, grid, :xyz, compute_Gvh!, tendencies[2], transport_args...; exclude_periphery=true)
+    launch!(arch, grid, :xyz,  compute_Gh!, tendencies[3], h_args...)
 
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
-        @inbounds c_tendency = tendencies[tracer_index+3]
+        @inbounds Gc = tendencies[tracer_index+3]
         @inbounds forcing = forcings[tracer_index+3]
         @inbounds c_advection = advection[tracer_name]
 
-        compute_Gc_kernel!(c_tendency, grid, Val(tracer_index), c_advection, closure, solution,
-                           tracers, diffusivities, forcing, clock, formulation)
-
+        launch!(arch, grid, :xyz, compute_Gc!, Gc, grid, Val(tracer_index),
+                c_advection, closure, solution, tracers, diffusivities, forcing, clock, formulation)
     end
 
     return nothing

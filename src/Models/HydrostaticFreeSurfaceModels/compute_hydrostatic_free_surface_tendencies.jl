@@ -1,6 +1,6 @@
 import Oceananigans: tracer_tendency_kernel_function
 import Oceananigans.TimeSteppers: compute_tendencies!
-import Oceananigans.Models: complete_communication_and_compute_boundary!
+import Oceananigans.Models: complete_communication_and_compute_buffer!
 import Oceananigans.Models: interior_tendency_kernel_parameters
 
 using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCallsite
@@ -21,15 +21,17 @@ contribution from non-hydrostatic pressure.
 """
 function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 
-    kernel_parameters = tuple(interior_tendency_kernel_parameters(model.grid))
+    grid = model.grid
+    arch = architecture(grid)
 
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain. The active cells map restricts the computation to the active cells in the
     # interior if the grid is _immersed_ and the `active_cells_map` kwarg is active
     active_cells_map = retrieve_interior_active_cells_map(model.grid, Val(:interior))
-    compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; active_cells_map)
+    kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
 
-    complete_communication_and_compute_boundary!(model, model.grid, model.architecture)
+    compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; active_cells_map)
+    complete_communication_and_compute_buffer!(model, grid, arch)
 
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
@@ -90,15 +92,13 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
                      c_forcing,
                      model.clock)
 
-        for parameters in kernel_parameters
-            launch!(arch, grid, parameters,
-                    compute_hydrostatic_free_surface_Gc!,
-                    c_tendency,
-                    grid,
-                    active_cells_map,
-                    args;
-                    active_cells_map)
-        end
+        launch!(arch, grid, kernel_parameters,
+                compute_hydrostatic_free_surface_Gc!,
+                c_tendency,
+                grid,
+                active_cells_map,
+                args;
+                active_cells_map)
     end
 
     return nothing
@@ -159,17 +159,15 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args...)
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args...)
 
-    for parameters in kernel_parameters
-        launch!(arch, grid, parameters,
-                compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, 
-                active_cells_map, u_kernel_args;
-                active_cells_map)
+    launch!(arch, grid, kernel_parameters,
+            compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, 
+            active_cells_map, u_kernel_args;
+            active_cells_map)
 
-        launch!(arch, grid, parameters,
-                compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid, 
-                active_cells_map, v_kernel_args;
-                active_cells_map)
-    end
+    launch!(arch, grid, kernel_parameters,
+            compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid, 
+            active_cells_map, v_kernel_args;
+            active_cells_map)
 
     compute_free_surface_tendency!(grid, model, :xy)
 

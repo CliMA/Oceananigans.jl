@@ -142,17 +142,14 @@ end
 """ Generic implementation. """
 function ab2_step!(model, Δt)
 
-    workgroup, worksize = work_layout(model.grid, :xyz)
-    arch = model.architecture
-    step_field_kernel! = ab2_step_field!(device(arch), workgroup, worksize)
+    grid = model.grid
+    arch = architecture(grid)
     model_fields = prognostic_fields(model)
     χ = model.timestepper.χ
 
     for (i, field) in enumerate(model_fields)
-
-        step_field_kernel!(field, Δt, χ,
-                           model.timestepper.Gⁿ[i],
-                           model.timestepper.G⁻[i])
+        kernel_args = (field, Δt, χ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
+        launch!(arch, grid, :xyz, ab2_step_field!, kernel_args...; exclude_periphery=true)
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
         tracer_index = Val(i - 3) # assumption
