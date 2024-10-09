@@ -34,15 +34,6 @@ abstract type AbstractOperation{LX, LY, LZ, G, T} <: AbstractField{LX, LY, LZ, G
 
 const AF = AbstractField # used in unary_operations.jl, binary_operations.jl, etc
 
-function Base.axes(f::AbstractOperation)
-    idx = indices(f)
-    if idx === (:, : ,:)
-        return Base.OneTo.(size(f))
-    else
-        return Tuple(idx[i] isa Colon ? Base.OneTo(size(f, i)) : idx[i] for i = 1:3)
-    end
-end
-
 # We have no halos to fill
 @inline fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
 
