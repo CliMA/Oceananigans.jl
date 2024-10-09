@@ -106,6 +106,6 @@ function adapt_advection_order(advection::WENO{B, FT, XT, YT, ZT}, N::Int, grid:
     if N >= B
         return advection
     else
-        return new_weno_scheme(advection, grid, N * 2 - 1, advection.bounds, XT, YT, ZT)
+        return new_weno_scheme(advection, grid, 2N - 1, advection.bounds, XT, YT, ZT)
     end
 end
