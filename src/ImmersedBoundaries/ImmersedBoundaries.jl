@@ -47,15 +47,18 @@ import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.Grids:  cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
                             x_domain, y_domain, z_domain
 
-import Oceananigans.Grids: architecture, on_architecture, with_halo, inflate_halo_size_one_dimension,
+import Oceananigans.Grids: architecture, with_halo, inflate_halo_size_one_dimension,
                            xnode, ynode, znode, λnode, φnode, node,
                            ξnode, ηnode, rnode,
                            ξname, ηname, rname, node_names,
                            xnodes, ynodes, znodes, λnodes, φnodes, nodes,
                            ξnodes, ηnodes, rnodes,
+                           bottom_heightᶜᶜᵃ, bottom_heightᶠᶜᵃ, bottom_heightᶜᶠᵃ, bottom_heightᶠᶠᵃ,
                            inactive_cell
 
 import Oceananigans.Coriolis: φᶠᶠᵃ
+
+import Oceananigans.Architectures: on_architecture
 
 import Oceananigans.Advection:
     _advective_momentum_flux_Uu,

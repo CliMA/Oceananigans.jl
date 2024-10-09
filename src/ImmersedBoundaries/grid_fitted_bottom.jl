@@ -91,7 +91,7 @@ correct_z_bottom!(bottom_field, grid, ib) =
     launch!(architecture(grid), grid, :xy, _correct_z_bottom!, bottom_field, grid, ib)
 
 @kernel function _correct_z_bottom!(bottom_field, grid, ::GridFittedBottom)
-    i, j = @index(grid)
+    i, j = @index(Global, NTuple)
     zb = @inbounds bottom_field[i, j, 1]
     for k in 1:grid.Nz
         z⁺ = znode(i, j, k+1, grid, c, c, f)
@@ -112,7 +112,7 @@ end
 ##### Bottom height
 #####
 
-@inline bottom_heightᶜᶜᵃ(i, j, k, ibg::GFBIBG) = ibg.immersed_boundary.bottom_height[i, j, 1]
-@inline bottom_heightᶜᶠᵃ(i, j, k, ibg::GFBIBG) = min(bottom_heightᶜᶜᵃ(i, j-1, k, ibg), bottom_heightᶜᶜᵃ(i, j, k, ibg))
-@inline bottom_heightᶠᶜᵃ(i, j, k, ibg::GFBIBG) = min(bottom_heightᶜᶜᵃ(i-1, j, k, ibg), bottom_heightᶜᶜᵃ(i, j, k, ibg))
-@inline bottom_heightᶠᶠᵃ(i, j, k, ibg::GFBIBG) = min(bottom_heightᶠᶜᵃ(i, j-1, k, ibg), bottom_heightᶠᶜᵃ(i, j, k, ibg))
+@inline bottom_heightᶜᶜᵃ(i, j, k, ibg::AbstractGridFittedBottom) = ibg.immersed_boundary.bottom_height[i, j, 1]
+@inline bottom_heightᶜᶠᵃ(i, j, k, ibg::AbstractGridFittedBottom) = min(bottom_heightᶜᶜᵃ(i, j-1, k, ibg), bottom_heightᶜᶜᵃ(i, j, k, ibg))
+@inline bottom_heightᶠᶜᵃ(i, j, k, ibg::AbstractGridFittedBottom) = min(bottom_heightᶜᶜᵃ(i-1, j, k, ibg), bottom_heightᶜᶜᵃ(i, j, k, ibg))
+@inline bottom_heightᶠᶠᵃ(i, j, k, ibg::AbstractGridFittedBottom) = min(bottom_heightᶠᶜᵃ(i, j-1, k, ibg), bottom_heightᶠᶜᵃ(i, j, k, ibg))

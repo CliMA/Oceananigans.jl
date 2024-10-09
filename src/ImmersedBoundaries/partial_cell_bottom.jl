@@ -71,7 +71,7 @@ function ImmersedBoundaryGrid(grid, ib::PartialCellBottom)
 end
 
 @kernel function _correct_z_bottom!(bottom_field, grid, ib::PartialCellBottom)
-    i, j = @index(grid)
+    i, j = @index(Global, NTuple)
     zb = @inbounds bottom_field[i, j, 1]
     ϵ  = ib.minimum_fractional_cell_height
     for k in 1:grid.Nz
