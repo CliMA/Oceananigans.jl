@@ -55,7 +55,7 @@ fill_open_boundary_regions!(fields::NTuple, boundary_conditions, indices, loc, g
 @kernel _no_fill!(args...) = nothing
 
 @inline fill_halo_size(field, ::typeof(_no_fill!), args...)    = (0, 0)
-@inline fill_halo_offsets(field, ::typeof(_no_fill!), args...) = (0, 0)
+@inline fill_halo_offset(field, ::typeof(_no_fill!), args...) = (0, 0)
 
 @kernel function _fill_west_and_east_open_halo!(c, west_bc, east_bc, loc, grid, args) 
     j, k = @index(Global, NTuple)
