@@ -74,7 +74,8 @@ Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.
 
 Return a grid with `GridFittedBottom` immersed boundary (`ib`).
 
-Computes `ib.z_bottom` and wraps it in a Field.
+Computes `ib.z_bottom` and wraps it in a Field. `ib.z_bottom` is the z-coordinate of top-most interface
+of the last ``immersed`` cell in the column.
 """
 function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
