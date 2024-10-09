@@ -18,7 +18,7 @@ export xnodes, ynodes, znodes, λnodes, φnodes
 export spacings
 export xspacings, yspacings, zspacings, xspacing, yspacing, zspacing
 export minimum_xspacing, minimum_yspacing, minimum_zspacing
-export bottom_heightᶜᶜᵃ, bottom_heightᶠᶜᵃ, bottom_heightᶜᶠᵃ, bottom_heightᶠᶠᵃ
+export column_heightᶜᶜᵃ, column_heightᶠᶜᵃ, column_heightᶜᶠᵃ, column_heightᶠᶠᵃ
 export offset_data, new_data
 export on_architecture
 

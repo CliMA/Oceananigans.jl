@@ -318,10 +318,10 @@ coordinate_summary(topo, Δ::Union{AbstractVector, AbstractMatrix}, name) =
 ##### Bottom height
 #####
 
-@inline bottom_heightᶜᶜᵃ(i, j, k, grid) = grid.Lz
-@inline bottom_heightᶜᶠᵃ(i, j, k, grid) = grid.Lz
-@inline bottom_heightᶠᶜᵃ(i, j, k, grid) = grid.Lz
-@inline bottom_heightᶠᶠᵃ(i, j, k, grid) = grid.Lz
+@inline column_heightᶜᶜᵃ(i, j, k, grid) = grid.Lz
+@inline column_heightᶜᶠᵃ(i, j, k, grid) = grid.Lz
+@inline column_heightᶠᶜᵃ(i, j, k, grid) = grid.Lz
+@inline column_heightᶠᶠᵃ(i, j, k, grid) = grid.Lz
 
 #####
 ##### Spherical geometry

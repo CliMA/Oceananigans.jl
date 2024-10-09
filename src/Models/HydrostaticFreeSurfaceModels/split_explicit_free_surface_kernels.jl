@@ -183,8 +183,8 @@ end
         advance_previous_velocity!(i, j, k_top-1, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²)
         advance_previous_velocity!(i, j, k_top-1, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²)
 
-        Hᶠᶜ = bottom_heightᶠᶜᵃ(i, j, k_top-1, grid)
-        Hᶜᶠ = bottom_heightᶜᶠᵃ(i, j, k_top-1, grid)
+        Hᶠᶜ = column_heightᶠᶜᵃ(i, j, k_top-1, grid)
+        Hᶜᶠ = column_heightᶜᶠᵃ(i, j, k_top-1, grid)
         
         # ∂τ(U) = - ∇η + G
         U[i, j, k_top-1] +=  Δτ * (- g * Hᶠᶜ * ∂xᶠᶜᶠ_η(i, j, k_top, grid, TX, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gᵁ[i, j, k_top-1])
@@ -271,8 +271,8 @@ end
     k_top = grid.Nz+1
 
     @inbounds begin
-        Hᶠᶜ = bottom_heightᶠᶜᵃ(i, j, k_top-1, grid)
-        Hᶜᶠ = bottom_heightᶜᶠᵃ(i, j, k_top-1, grid)
+        Hᶠᶜ = column_heightᶠᶜᵃ(i, j, k_top-1, grid)
+        Hᶜᶠ = column_heightᶜᶠᵃ(i, j, k_top-1, grid)
         
         u[i, j, k] = u[i, j, k] + (U̅[i, j, k_top-1] - U[i, j, k_top-1]) / Hᶠᶜ
         v[i, j, k] = v[i, j, k] + (V̅[i, j, k_top-1] - V[i, j, k_top-1]) / Hᶜᶠ

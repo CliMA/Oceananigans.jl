@@ -56,15 +56,15 @@ function Base.show(io::IO, ib::GridFittedBottom)
     print(io, "├── z_bottom: ", prettysummary(ib.z_bottom), '\n')
 end
 
-on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(on_architecture(ib.bottom_height))
+on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(on_architecture(ib.z_bottom))
 
 function on_architecture(arch, ib::GridFittedBottom{<:Field})
-    architecture(ib.bottom_height) == arch && return ib
-    arch_grid = on_architecture(arch, ib.bottom_height.grid)
-    new_bottom_height = Field{Center, Center, Nothing}(arch_grid)
-    set!(new_bottom_height, ib.bottom_height)
-    fill_halo_regions!(new_bottom_height)
-    return GridFittedBottom(new_bottom_height, ib.immersed_condition)
+    architecture(ib.z_bottom) == arch && return ib
+    arch_grid = on_architecture(arch, ib.z_bottom.grid)
+    new_z_bottom = Field{Center, Center, Nothing}(arch_grid)
+    set!(new_z_bottom, ib.z_bottom)
+    fill_halo_regions!(new_z_bottom)
+    return GridFittedBottom(new_z_bottom)
 end
 
 Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.z_bottom))
@@ -112,7 +112,7 @@ end
 ##### Bottom height
 #####
 
-@inline bottom_heightᶜᶜᵃ(i, j, k, ibg::AbstractGridFittedBottom) = ibg.immersed_boundary.bottom_height[i, j, 1]
-@inline bottom_heightᶜᶠᵃ(i, j, k, ibg::AbstractGridFittedBottom) = min(bottom_heightᶜᶜᵃ(i, j-1, k, ibg), bottom_heightᶜᶜᵃ(i, j, k, ibg))
-@inline bottom_heightᶠᶜᵃ(i, j, k, ibg::AbstractGridFittedBottom) = min(bottom_heightᶜᶜᵃ(i-1, j, k, ibg), bottom_heightᶜᶜᵃ(i, j, k, ibg))
-@inline bottom_heightᶠᶠᵃ(i, j, k, ibg::AbstractGridFittedBottom) = min(bottom_heightᶠᶜᵃ(i, j-1, k, ibg), bottom_heightᶠᶜᵃ(i, j, k, ibg))
+@inline column_heightᶜᶜᵃ(i, j, k, ibg::AbstractGridFittedBottom) = ibg.immersed_boundary.column_height[i, j, 1]
+@inline column_heightᶜᶠᵃ(i, j, k, ibg::AbstractGridFittedBottom) = min(column_heightᶜᶜᵃ(i, j-1, k, ibg), column_heightᶜᶜᵃ(i, j, k, ibg))
+@inline column_heightᶠᶜᵃ(i, j, k, ibg::AbstractGridFittedBottom) = min(column_heightᶜᶜᵃ(i-1, j, k, ibg), column_heightᶜᶜᵃ(i, j, k, ibg))
+@inline column_heightᶠᶠᵃ(i, j, k, ibg::AbstractGridFittedBottom) = min(column_heightᶠᶜᵃ(i, j-1, k, ibg), column_heightᶠᶜᵃ(i, j, k, ibg))
