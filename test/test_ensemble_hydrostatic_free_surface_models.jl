@@ -9,12 +9,12 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 @testset "`HydrostaticFreeSurfaceModel` using a `SingleColumnGrid`" begin
 
     Nz = 3
-    Hz = 1
+    Hz = 2
     single_column_topology = (Flat, Flat, Bounded)
     periodic_topology = (Periodic, Periodic, Bounded)
 
     single_column_grid = RectilinearGrid(; size=Nz, z=(-1, 0), topology = single_column_topology, halo=Hz)
-    periodic_grid = RectilinearGrid(; size=(1, 1, Nz), x = (0, 1), y = (0, 1), z=(-1, 0), topology = periodic_topology, halo=(1, 1, Hz))
+    periodic_grid = RectilinearGrid(; size=(1, 1, Nz), x = (0, 1), y = (0, 1), z=(-1, 0), topology = periodic_topology, halo=(2, 2, Hz))
     coriolis = FPlane(f=0.2)
     closure  = CAVD(background_κz=1.0)
 
@@ -76,7 +76,7 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
     @info "Testing a single column grid model on an ImmersedBoundaryGrid..."
 
     sic_grid = ImmersedBoundaryGrid(sic_model.grid, GridFittedBottom(-0.5))
-    per_grid = ImmersedBoundaryGrid(sic_model.grid, GridFittedBottom(-0.5))
+    per_grid = ImmersedBoundaryGrid(per_model.grid, GridFittedBottom(-0.5))
 
     sic_model = HydrostaticFreeSurfaceModel(; grid = sic_grid, model_kwargs...)
     per_model = HydrostaticFreeSurfaceModel(; grid = par_grid, model_kwargs...)
