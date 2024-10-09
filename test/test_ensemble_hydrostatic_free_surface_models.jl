@@ -92,9 +92,9 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
     
     @info "Testing Single column grid results..."
     
-    @test all(sic_model.velocities.u.data[1, 1, :] .≈ per_model.velocities.u.data[1, 1, :])
-    @test all(sic_model.velocities.v.data[1, 1, :] .≈ per_model.velocities.v.data[1, 1, :])
-    @test all(sic_model.tracers.c.data[1, 1, :]    .≈ per_model.tracers.c.data[1, 1, :])
+    @test all(sic_model.velocities.u[1, 1, :] .≈ per_model.velocities.u[1, 1, :])
+    @test all(sic_model.velocities.v[1, 1, :] .≈ per_model.velocities.v[1, 1, :])
+    @test all(sic_model.tracers.c[1, 1, :]    .≈ per_model.tracers.c[1, 1, :])
 end
 
 @testset "Ensembles of `HydrostaticFreeSurfaceModel` with different closures" begin
