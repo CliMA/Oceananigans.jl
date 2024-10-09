@@ -30,8 +30,7 @@ Keyword Arguments
 =================
 
 * `z_bottom`: an array or function that gives the height of the
-              bottom in absolute ``z`` coordinates. This is the height of
-              the bottom interface of the last ``fluid`` cell.
+              bottom in absolute ``z`` coordinates.
 """
 
 function Base.summary(ib::GridFittedBottom)
