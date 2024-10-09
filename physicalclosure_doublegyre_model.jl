@@ -242,7 +242,15 @@ compute!(ρ)
 wT = κc * ∂z(T)
 wS = κc * ∂z(S)
 
+ubar_zonal = Average(u, dims=1)
+vbar_zonal = Average(v, dims=1)
+wbar_zonal = Average(w, dims=1)
+Tbar_zonal = Average(T, dims=1)
+Sbar_zonal = Average(S, dims=1)
+ρbar_zonal = Average(ρ, dims=1)
+
 outputs = (; u, v, w, T, S, ρ, ρᶠ, ∂ρ∂z, ∂²ρ∂z², N², wT, wS)
+zonal_outputs = (; ubar_zonal, vbar_zonal, wbar_zonal, Tbar_zonal, Sbar_zonal, ρbar_zonal)
 
 #####
 ##### Build checkpointer and output writer
@@ -307,15 +315,9 @@ simulation.output_writers[:yz_90] = JLD2OutputWriter(model, outputs,
                                                     indices = (90, :, :),
                                                     schedule = TimeInterval(10days))
 
-simulation.output_writers[:xz_south] = JLD2OutputWriter(model, outputs,
-                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_south",
-                                                    indices = (:, 25, :),
-                                                    schedule = TimeInterval(10days))
-
-simulation.output_writers[:xz_north] = JLD2OutputWriter(model, outputs,
-                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_north",
-                                                    indices = (:, 75, :),
-                                                    schedule = TimeInterval(10days))
+simulation.output_writers[:zonal_average] = JLD2OutputWriter(model, zonal_outputs,
+                                                             filename = "$(FILE_DIR)/averaged_fields_zonal",
+                                                             schedule = TimeInterval(10days))
 
 simulation.output_writers[:streamfunction] = JLD2OutputWriter(model, (; Ψ=Ψ,),
                                                     filename = "$(FILE_DIR)/averaged_fields_streamfunction",
@@ -510,76 +512,24 @@ end
 
 @info "Done!"
 #%%
-Ψ_data = FieldTimeSeries("$(FILE_DIR)/averaged_fields_streamfunction.jld2", "Ψ")
+# Ψ_data = FieldTimeSeries("$(FILE_DIR)/averaged_fields_streamfunction.jld2", "Ψ")
 
-xF = Ψ_data.grid.xᶠᵃᵃ[1:Ψ_data.grid.Nx+1]
-yC = Ψ_data.grid.yᵃᶜᵃ[1:Ψ_data.grid.Ny]
+# xF = Ψ_data.grid.xᶠᵃᵃ[1:Ψ_data.grid.Nx+1]
+# yC = Ψ_data.grid.yᵃᶜᵃ[1:Ψ_data.grid.Ny]
 
-Nt = length(Ψ_data)
-times = Ψ_data.times / 24 / 60^2 / 365
-#%%
-timeframe = Nt
-Ψ_frame = interior(Ψ_data[timeframe], :, :, 1) ./ 1e6
-clim = maximum(abs, Ψ_frame) + 1e-13
-N_levels = 16
-levels = range(-clim, stop=clim, length=N_levels)
-fig = Figure(size=(800, 800))
-ax = Axis(fig[1, 1], xlabel="x (m)", ylabel="y (m)", title="CATKE Vertical Diffusivity, Yearly-Averaged Barotropic streamfunction Ψ, Year $(times[timeframe])")
-cf = contourf!(ax, xF, yC, Ψ_frame, levels=levels, colormap=Reverse(:RdBu_11))
-Colorbar(fig[1, 2], cf, label="Ψ (Sv)")
-tightlimits!(ax)
-save("$(FILE_DIR)/barotropic_streamfunction_$(timeframe).png", fig, px_per_unit=4)
-display(fig)
-#%%
-function find_min(a...)
-  return minimum(minimum.([a...]))
-end
-
-function find_max(a...)
-  return maximum(maximum.([a...]))
-end
-
-N²_xz_north_data = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_north.jld2", "N²")
-N²_xz_south_data = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_south.jld2", "N²")
-
-xC = N²_xz_north_data.grid.xᶜᵃᵃ[1:N²_xz_north_data.grid.Nx]
-zf = N²_xz_north_data.grid.zᵃᵃᶠ[1:N²_xz_north_data.grid.Nz+1]
-
-yloc_north = N²_xz_north_data.grid.yᵃᶠᵃ[N²_xz_north_data.indices[2][1]]
-yloc_south = N²_xz_south_data.grid.yᵃᶠᵃ[N²_xz_south_data.indices[2][1]]
-
-Nt = length(N²_xz_north_data)
-times = N²_xz_north_data.times / 24 / 60^2 / 365
-timeframes = 1:Nt
-
-N²_lim = (find_min(interior(N²_xz_north_data, :, 1, :, timeframes), interior(N²_xz_south_data, :, 1, :, timeframes)) - 1e-13, 
-          find_max(interior(N²_xz_north_data, :, 1, :, timeframes), interior(N²_xz_south_data, :, 1, :, timeframes)) + 1e-13)
-#%%
-fig = Figure(size=(800, 800))
-ax_north = Axis(fig[1, 1], xlabel="x (m)", ylabel="z (m)", title="Buoyancy Frequency N² at y = $(round(yloc_south / 1e3)) km")
-ax_south = Axis(fig[2, 1], xlabel="x (m)", ylabel="z (m)", title="Buoyancy Frequency N² at y = $(round(yloc_north / 1e3)) km")
-
-n = Observable(2)
-
-N²_north = @lift interior(N²_xz_north_data[$n], :, 1, :)
-N²_south = @lift interior(N²_xz_south_data[$n], :, 1, :)
-
-colorscheme = colorschemes[:jet]
-
-N²_north_surface = heatmap!(ax_north, xC, zf, N²_north, colormap=colorscheme, colorrange=N²_lim)
-N²_south_surface = heatmap!(ax_south, xC, zf, N²_south, colormap=colorscheme, colorrange=N²_lim)
-
-Colorbar(fig[1:2, 2], N²_north_surface, label="N² (s⁻²)")
-
-title_str = @lift "Time = $(round(times[$n], digits=2)) days"
-Label(fig[0, :], text=title_str, tellwidth=false, font=:bold)
-
-trim!(fig.layout)
-
-@info "Recording buoyancy frequency xz slice"
-CairoMakie.record(fig, "$(FILE_DIR)/$(filename)_buoyancy_frequency_xz_slice.mp4", 1:Nt, framerate=20, px_per_unit=2) do nn
-  n[] = nn
-end
-
-@info "Done!"
+# Nt = length(Ψ_data)
+# times = Ψ_data.times / 24 / 60^2 / 365
+# #%%
+# timeframe = Nt
+# Ψ_frame = interior(Ψ_data[timeframe], :, :, 1) ./ 1e6
+# clim = maximum(abs, Ψ_frame) + 1e-13
+# N_levels = 16
+# levels = range(-clim, stop=clim, length=N_levels)
+# fig = Figure(size=(800, 800))
+# ax = Axis(fig[1, 1], xlabel="x (m)", ylabel="y (m)", title="CATKE Vertical Diffusivity, Yearly-Averaged Barotropic streamfunction Ψ, Year $(times[timeframe])")
+# cf = contourf!(ax, xF, yC, Ψ_frame, levels=levels, colormap=Reverse(:RdBu_11))
+# Colorbar(fig[1, 2], cf, label="Ψ (Sv)")
+# tightlimits!(ax)
+# save("$(FILE_DIR)/barotropic_streamfunction_$(timeframe).png", fig, px_per_unit=4)
+# display(fig)
 #%%

@@ -22,9 +22,9 @@ using ColorSchemes
 
 
 #%%
-filename = "doublegyre_30Cwarmflushbottom10_relaxation_8days_NN_closure_NDE_Qb_dt20min_nof_BBLkappazonelast41_wTwS_64simnew_2layer_128_relu_123seed_1.0e-5lr_localbaseclosure_2Pr_6simstableRi_temp"
-# FILE_DIR = "./Output/$(filename)"
-FILE_DIR = "~/storage6/NN_Oceananigans/$(filename)"
+filename = "doublegyre_30Cwarmflushbottom10_relaxation_8days_NN_closure_NDE_BBLkappazonelast41_temp"
+FILE_DIR = "./Output/$(filename)"
+# FILE_DIR = "/storage6/xinkai/NN_Oceananigans/$(filename)"
 mkpath(FILE_DIR)
 
 # Architecture
@@ -235,7 +235,15 @@ end
 Qb = KernelFunctionOperation{Center, Center, Nothing}(get_top_buoyancy_flux, model.grid, model.buoyancy, T.boundary_conditions.top, S.boundary_conditions.top, model.velocities, model.tracers, model.clock)
 Qb = Field(Qb)
 
+ubar_zonal = Average(u, dims=1)
+vbar_zonal = Average(v, dims=1)
+wbar_zonal = Average(w, dims=1)
+Tbar_zonal = Average(T, dims=1)
+Sbar_zonal = Average(S, dims=1)
+ρbar_zonal = Average(ρ, dims=1)
+
 outputs = (; u, v, w, T, S, ρ, N², wT_NN, wS_NN, wT_base, wS_base)
+zonal_outputs = (; ubar_zonal, vbar_zonal, wbar_zonal, Tbar_zonal, Sbar_zonal, ρbar_zonal)
 
 #####
 ##### Build checkpointer and output writer
@@ -300,15 +308,9 @@ simulation.output_writers[:yz_90] = JLD2OutputWriter(model, outputs,
                                                     indices = (90, :, :),
                                                     schedule = TimeInterval(10days))
 
-simulation.output_writers[:xz_south] = JLD2OutputWriter(model, outputs,
-                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_south",
-                                                    indices = (:, 25, :),
-                                                    schedule = TimeInterval(10days))
-
-simulation.output_writers[:xz_north] = JLD2OutputWriter(model, outputs,
-                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_north",
-                                                    indices = (:, 75, :),
-                                                    schedule = TimeInterval(10days))
+simulation.output_writers[:zonal_average] = JLD2OutputWriter(model, zonal_outputs,
+                                                             filename = "$(FILE_DIR)/averaged_fields_zonal",
+                                                             schedule = TimeInterval(10days))
 
 simulation.output_writers[:BBL] = JLD2OutputWriter(model, (; first_index, last_index, Qb),
                                                     filename = "$(FILE_DIR)/instantaneous_fields_NN_active_diagnostics",
@@ -529,56 +531,4 @@ end
 # tightlimits!(ax)
 # save("$(FILE_DIR)/barotropic_streamfunction_$(timeframe).png", fig, px_per_unit=4)
 # display(fig)
-#%%
-function find_min(a...)
-  return minimum(minimum.([a...]))
-end
-
-function find_max(a...)
-  return maximum(maximum.([a...]))
-end
-
-N²_xz_north_data = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_north.jld2", "N²")
-N²_xz_south_data = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_south.jld2", "N²")
-
-xC = N²_xz_north_data.grid.xᶜᵃᵃ[1:N²_xz_north_data.grid.Nx]
-zf = N²_xz_north_data.grid.zᵃᵃᶠ[1:N²_xz_north_data.grid.Nz+1]
-
-yloc_north = N²_xz_north_data.grid.yᵃᶠᵃ[N²_xz_north_data.indices[2][1]]
-yloc_south = N²_xz_south_data.grid.yᵃᶠᵃ[N²_xz_south_data.indices[2][1]]
-
-Nt = length(N²_xz_north_data)
-times = N²_xz_north_data.times / 24 / 60^2 / 365
-timeframes = 1:Nt
-
-N²_lim = (find_min(interior(N²_xz_north_data, :, 1, :, timeframes), interior(N²_xz_south_data, :, 1, :, timeframes)) - 1e-13, 
-          find_max(interior(N²_xz_north_data, :, 1, :, timeframes), interior(N²_xz_south_data, :, 1, :, timeframes)) + 1e-13)
-#%%
-fig = Figure(size=(800, 800))
-ax_north = CairoMakie.Axis(fig[1, 1], xlabel="x (m)", ylabel="z (m)", title="Buoyancy Frequency N² at y = $(round(yloc_south / 1e3)) km")
-ax_south = CairoMakie.Axis(fig[2, 1], xlabel="x (m)", ylabel="z (m)", title="Buoyancy Frequency N² at y = $(round(yloc_north / 1e3)) km")
-
-n = Observable(2)
-
-N²_north = @lift interior(N²_xz_north_data[$n], :, 1, :)
-N²_south = @lift interior(N²_xz_south_data[$n], :, 1, :)
-
-colorscheme = colorschemes[:jet]
-
-N²_north_surface = heatmap!(ax_north, xC, zf, N²_north, colormap=colorscheme, colorrange=N²_lim)
-N²_south_surface = heatmap!(ax_south, xC, zf, N²_south, colormap=colorscheme, colorrange=N²_lim)
-
-Colorbar(fig[1:2, 2], N²_north_surface, label="N² (s⁻²)")
-
-title_str = @lift "Time = $(round(times[$n], digits=2)) years"
-Label(fig[0, :], text=title_str, tellwidth=false, font=:bold)
-
-trim!(fig.layout)
-
-@info "Recording buoyancy frequency xz slice"
-CairoMakie.record(fig, "$(FILE_DIR)/$(filename)_buoyancy_frequency_xz_slice.mp4", 1:Nt, framerate=15, px_per_unit=2) do nn
-  n[] = nn
-end
-
-@info "Done!"
 #%%

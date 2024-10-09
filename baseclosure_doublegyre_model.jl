@@ -23,6 +23,7 @@ using ColorSchemes
 #%%
 filename = "doublegyre_30Cwarmflushbottom10_relaxation_8days_baseclosure_trainFC24new_scalingtrain54new_2Pr_2step"
 FILE_DIR = "./Output/$(filename)"
+# FILE_DIR = "/storage6/xinkai/NN_Oceananigans/$(filename)"
 mkpath(FILE_DIR)
 
 # Architecture
@@ -223,7 +224,15 @@ end
 ρ_op = KernelFunctionOperation{Center, Center, Center}(get_density, model.grid, model.buoyancy, model.tracers)
 ρ = Field(ρ_op)
 
+ubar_zonal = Average(u, dims=1)
+vbar_zonal = Average(v, dims=1)
+wbar_zonal = Average(w, dims=1)
+Tbar_zonal = Average(T, dims=1)
+Sbar_zonal = Average(S, dims=1)
+ρbar_zonal = Average(ρ, dims=1)
+
 outputs = (; u, v, w, T, S, ρ, N², wT_base, wS_base)
+zonal_outputs = (; ubar_zonal, vbar_zonal, wbar_zonal, Tbar_zonal, Sbar_zonal, ρbar_zonal)
 
 #####
 ##### Build checkpointer and output writer
@@ -288,15 +297,9 @@ simulation.output_writers[:yz_90] = JLD2OutputWriter(model, outputs,
                                                     indices = (90, :, :),
                                                     schedule = TimeInterval(10days))
 
-simulation.output_writers[:xz_south] = JLD2OutputWriter(model, outputs,
-                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_south",
-                                                    indices = (:, 25, :),
-                                                    schedule = TimeInterval(10days))
-
-simulation.output_writers[:xz_north] = JLD2OutputWriter(model, outputs,
-                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_north",
-                                                    indices = (:, 75, :),
-                                                    schedule = TimeInterval(10days))
+simulation.output_writers[:zonal_average] = JLD2OutputWriter(model, zonal_outputs,
+                                                             filename = "$(FILE_DIR)/averaged_fields_zonal",
+                                                             schedule = TimeInterval(10days))
 
 simulation.output_writers[:streamfunction] = JLD2OutputWriter(model, (; Ψ=Ψ,),
                                                     filename = "$(FILE_DIR)/averaged_fields_streamfunction",
