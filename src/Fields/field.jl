@@ -513,15 +513,6 @@ const ReducedField = Union{XReducedField,
                            XYReducedField,
                            XYZReducedField}
 
-reduced_dimensions(field::Field)   = ()
-reduced_dimensions(field::XReducedField)   = tuple(1)
-reduced_dimensions(field::YReducedField)   = tuple(2)
-reduced_dimensions(field::ZReducedField)   = tuple(3)
-reduced_dimensions(field::YZReducedField)  = (2, 3)
-reduced_dimensions(field::XZReducedField)  = (1, 3)
-reduced_dimensions(field::XYReducedField)  = (1, 2)
-reduced_dimensions(field::XYZReducedField) = (1, 2, 3)
-
 @propagate_inbounds Base.getindex(r::XReducedField, i, j, k) = getindex(r.data, 1, j, k)
 @propagate_inbounds Base.getindex(r::YReducedField, i, j, k) = getindex(r.data, i, 1, k)
 @propagate_inbounds Base.getindex(r::ZReducedField, i, j, k) = getindex(r.data, i, j, 1)
@@ -628,15 +619,14 @@ function reduced_dimension(loc)
     return dims
 end
 
-## Allow support for ConditionalOperation
-
 get_neutral_mask(::Union{AllReduction, AnyReduction})  = true
-get_neutral_mask(::Union{SumReduction, MeanReduction}) =   0
-get_neutral_mask(::MinimumReduction) =   Inf
-get_neutral_mask(::MaximumReduction) = - Inf
-get_neutral_mask(::ProdReduction)    =   1
+get_neutral_mask(::Union{SumReduction, MeanReduction}) = 0
+get_neutral_mask(::ProdReduction)    = 1
 
-# If func = identity and condition = nothing, nothing happens
+# TODO make this Float32 friendly
+get_neutral_mask(::MinimumReduction) = +Inf
+get_neutral_mask(::MaximumReduction) = -Inf
+
 """
     condition_operand(f::Function, op::AbstractField, condition, mask)
 
@@ -646,8 +636,11 @@ If `f isa identity` and `isnothing(condition)` then `op` is returned without wra
 
 Otherwise return `ConditionedOperand`, even when `isnothing(condition)` but `!(f isa identity)`.
 """
-@inline condition_operand(op::AbstractField, condition, mask) = condition_operand(identity, op, condition, mask)
-@inline condition_operand(::typeof(identity), operand::AbstractField, ::Nothing, mask) = operand
+@inline condition_operand(op::AbstractField, condition, mask) = condition_operand(nothing, op, condition, mask)
+
+# Do NOT condition if condition=nothing.
+# All non-trivial conditioning is found in AbstractOperations/conditional_operations.jl
+@inline condition_operand(::Nothing, operand, ::Nothing, mask) = operand
 
 @inline conditional_length(c::AbstractField)        = length(c)
 @inline conditional_length(c::AbstractField, dims)  = mapreduce(i -> size(c, i), *, unique(dims); init=1)
@@ -692,10 +685,10 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                    mask = get_neutral_mask(Base.$(reduction!)),
                                    dims = :)
 
+            conditioned_c = condition_operand(f, c, condition, mask)
             T = filltype(Base.$(reduction!), c)
             loc = reduced_location(location(c); dims)
             r = Field(loc, c.grid, T; indices=indices(c))
-            conditioned_c = condition_operand(f, c, condition, mask)
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
             Base.$(reduction!)(identity, r, conditioned_c, init=false)
 
@@ -767,3 +760,4 @@ function fill_halo_regions!(field::Field, args...; kwargs...)
 
     return nothing
 end
+
