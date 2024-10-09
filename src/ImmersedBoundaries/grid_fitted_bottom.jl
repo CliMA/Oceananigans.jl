@@ -80,7 +80,7 @@ of the last ``immersed`` cell in the column.
 function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set!(bottom_field, ib.z_bottom)
-    @apply_regionally correct_z_bottom!(bottom_field, grid)
+    @apply_regionally correct_z_bottom!(bottom_field, grid, ib)
     fill_halo_regions!(bottom_field)
     new_ib = GridFittedBottom(bottom_field)
     TX, TY, TZ = topology(grid)

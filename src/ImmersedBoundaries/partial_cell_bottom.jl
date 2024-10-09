@@ -63,7 +63,7 @@ end
 function ImmersedBoundaryGrid(grid, ib::PartialCellBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set!(bottom_field, ib.z_bottom)
-    @apply_regionally correct_z_bottom!(bottom_field, grid, ib.minimum_fractional_cell_height)
+    @apply_regionally correct_z_bottom!(bottom_field, grid, ib)
     fill_halo_regions!(bottom_field)
     new_ib = PartialCellBottom(bottom_field, ib.minimum_fractional_cell_height)
     TX, TY, TZ = topology(grid)
