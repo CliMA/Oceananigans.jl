@@ -88,7 +88,7 @@ function adapt_advection_order(advection::UpwindBiased{B}, N::Int, grid::Abstrac
     if N >= B
         return advection
     else
-        return UpwindBiased(; order = N * 2 - 1)
+        return UpwindBiased(; order = 2N - 1)
     end
 end
 
