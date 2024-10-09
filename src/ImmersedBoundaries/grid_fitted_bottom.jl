@@ -95,7 +95,8 @@ correct_z_bottom!(bottom_field, grid, ib) =
     zb = @inbounds bottom_field[i, j, 1]
     for k in 1:grid.Nz
         z⁺ = znode(i, j, k+1, grid, c, c, f)
-        bottom_cell = z⁺ ≤ zb  
+        z  = znode(i, j, k+1, grid, c, c, c)
+        bottom_cell = z ≤ zb  
         @inbounds bottom_field[i, j, 1] = ifelse(bottom_cell, z⁺, zb)
     end
 end
