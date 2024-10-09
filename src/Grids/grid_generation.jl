@@ -1,3 +1,4 @@
+
 # Utilities to generate a grid with the following inputs
 get_domain_extent(::Nothing, N)             = (1, 1)
 get_domain_extent(coord, N)                 = (coord[1], coord[2])
@@ -83,7 +84,7 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
     F = OffsetArray(on_architecture(arch, F.parent), F.offsets...)
     C = OffsetArray(on_architecture(arch, C.parent), C.offsets...)
 
-    return L, F, C, Δᶠ, Δᶜ
+    return L, Static1DCoordinate(F, C, Δᶠ, Δᶜ)
 end
 
 # Generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points
@@ -116,17 +117,13 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)
 
-    return FT(L), F, C, FT(Δᶠ), FT(Δᶜ)
+    return FT(L), Static1DCoordinate(F, C, Δᶠ, Δᶜ)
 end
 
 # Flat domains
 generate_coordinate(FT, ::Flat, N, H, c::Number, coordinate_name, arch) =
-    FT(1), range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1)
-
-# What's the use case for this?
-# generate_coordinate(FT, ::Flat, N, H, c::Tuple{Number, Number}, coordinate_name, arch) =
-#     FT(1), c, c, FT(1), FT(1)
+    FT(1), FlatCoordinate(c)
 
 generate_coordinate(FT, ::Flat, N, H, ::Nothing, coordinate_name, arch) =
-    FT(1), nothing, nothing, FT(1), FT(1)
+    FT(1), FlatCoordinate(nothing)
 

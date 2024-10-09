@@ -1,4 +1,4 @@
-struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch}
+struct RectilinearGrid{Arch, TX, TY, TZ, X, Y, Z, FT} <: AbstractUnderlyingGrid{Arch, TX, TY, TZ, FT}
     architecture :: Arch
     Nx :: Int
     Ny :: Int
@@ -11,37 +11,21 @@ struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: Abstract
     Lz :: FT
     # All directions can be either regular (FX, FY, FZ) <: Number
     # or stretched (FX, FY, FZ) <: AbstractVector
-    Δxᶠᵃᵃ :: FX
-    Δxᶜᵃᵃ :: FX
-    xᶠᵃᵃ  :: VX
-    xᶜᵃᵃ  :: VX
-    Δyᵃᶠᵃ :: FY
-    Δyᵃᶜᵃ :: FY
-    yᵃᶠᵃ  :: VY
-    yᵃᶜᵃ  :: VY
-    Δzᵃᵃᶠ :: FZ
-    Δzᵃᵃᶜ :: FZ
-    zᵃᵃᶠ  :: VZ
-    zᵃᵃᶜ  :: VZ
+    x :: X
+    x :: X
+    y :: Y
+    y :: Y
+    z :: Z
+    z :: Z
 
     RectilinearGrid{TX, TY, TZ}(arch::Arch,
                                 Nx, Ny, Nz,
                                 Hx, Hy, Hz,
                                 Lx :: FT, Ly :: FT, Lz :: FT,
-                                Δxᶠᵃᵃ :: FX, Δxᶜᵃᵃ :: FX,
-                                 xᶠᵃᵃ :: VX,  xᶜᵃᵃ :: VX,
-                                Δyᵃᶠᵃ :: FY, Δyᵃᶜᵃ :: FY,
-                                 yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
-                                Δzᵃᵃᶠ :: FZ, Δzᵃᵃᶜ :: FZ,
-                                 zᵃᵃᶠ :: VZ,  zᵃᵃᶜ :: VZ) where {Arch, FT,
+                                 x :: FX,  y :: FY,  z :: FZ) where {Arch, FT,
                                                                  TX, TY, TZ,
-                                                                 FX, VX, FY,
-                                                                 VY, FZ, VZ} =
-        new{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch}(arch, Nx, Ny, Nz,
-                                                          Hx, Hy, Hz, Lx, Ly, Lz,
-                                                          Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
-                                                          Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
-                                                          Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
+                                                                 FX, FY, FZ} =
+        new{FT, TX, TY, TZ, FX, FY, FZ, Arch}(arch, Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, x, y, z)
 end
 
 const RG = RectilinearGrid
@@ -271,17 +255,15 @@ function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
     Nx, Ny, Nz = size
     Hx, Hy, Hz = halo
 
-    Lx, xᶠᵃᵃ, xᶜᵃᵃ, Δxᶠᵃᵃ, Δxᶜᵃᵃ = generate_coordinate(FT, TX(), Nx, Hx, x, :x, architecture)
-    Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, TY(), Ny, Hy, y, :y, architecture)
-    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, TZ(), Nz, Hz, z, :z, architecture)
+    Lx, x = generate_coordinate(FT, TX(), Nx, Hx, x, :x, architecture)
+    Ly, y = generate_coordinate(FT, TY(), Ny, Hy, y, :y, architecture)
+    Lz, z = generate_coordinate(FT, TZ(), Nz, Hz, z, :z, architecture)
 
     return RectilinearGrid{TX, TY, TZ}(architecture,
                                        Nx, Ny, Nz,
                                        Hx, Hy, Hz,
                                        Lx, Ly, Lz,
-                                       Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
-                                       Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
-                                       Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
+                                        x,  y,  z)
 end
 
 """ Validate user input arguments to the `RectilinearGrid` constructor. """
