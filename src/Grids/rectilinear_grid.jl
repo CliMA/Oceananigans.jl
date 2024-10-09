@@ -38,7 +38,7 @@ struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: Abstract
                                                                  FX, VX, FY,
                                                                  VY, FZ, VZ} =
         new{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch}(arch, Nx, Ny, Nz,
-                                                          Hx, Hy, Hz, Lx, Ly, Lz, 
+                                                          Hx, Hy, Hz, Lx, Ly, Lz,
                                                           Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
                                                           Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
                                                           Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
@@ -261,7 +261,7 @@ function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
                          extent = nothing,
                          topology = (Periodic, Periodic, Bounded))
 
-    if architecture == GPU() && !has_cuda() 
+    if architecture == GPU() && !has_cuda()
         throw(ArgumentError("Cannot create a GPU grid. No CUDA-enabled GPU was detected!"))
     end
 
@@ -388,7 +388,7 @@ function constructor_arguments(grid::RectilinearGrid)
                   :x => cpu_face_constructor_x(grid),
                   :y => cpu_face_constructor_y(grid),
                   :z => cpu_face_constructor_z(grid),
-                  :topology => topo) 
+                  :topology => topo)
 
     return args, kwargs
 end
@@ -479,7 +479,7 @@ function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halo
         # might be to omit the `nothing` nodes in the `reshape`. In other words,
         # if `TX === Flat`, then we should return `(x, z)`. This is for future
         # consideration...
-        # 
+        #
         # See also `nodes` for `LatitudeLongitudeGrid`.
 
         Nx = isnothing(x) ? 1 : length(x)
@@ -509,6 +509,15 @@ const C = Center
 @inline ynodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓy; with_halos)
 @inline znodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false) = znodes(grid, ℓz; with_halos)
 
+# Generalized coordinates
+@inline ξnodes(grid::RG, ℓx; kwargs...) = xnodes(grid, ℓx; kwargs...)
+@inline ηnodes(grid::RG, ℓy; kwargs...) = ynodes(grid, ℓy; kwargs...)
+@inline rnodes(grid::RG, ℓz; kwargs...) = znodes(grid, ℓz; kwargs...)
+
+@inline ξnodes(grid::RG, ℓx, ℓy, ℓz; kwargs...) = xnodes(grid, ℓx; kwargs...)
+@inline ηnodes(grid::RG, ℓx, ℓy, ℓz; kwargs...) = ynodes(grid, ℓy; kwargs...)
+@inline rnodes(grid::RG, ℓx, ℓy, ℓz; kwargs...) = znodes(grid, ℓz; kwargs...)
+
 #####
 ##### Grid spacings
 #####
@@ -525,4 +534,3 @@ const C = Center
 @inline zspacings(grid::RG, ℓx, ℓy, ℓz; kwargs...) = zspacings(grid, ℓz; kwargs...)
 
 @inline isrectilinear(::RG) = true
-
