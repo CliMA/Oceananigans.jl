@@ -95,7 +95,7 @@ correct_z_bottom!(bottom_field, grid, ib) =
     zb = @inbounds bottom_field[i, j, 1]
     for k in 1:grid.Nz
         z⁺ = znode(i, j, k+1, grid, c, c, f)
-        bottom_cell = zb < z⁺
+        bottom_cell = zb ≤ z⁺
         @inbounds bottom_field[i, j, 1] = ifelse(bottom_cell, z⁺, zb)
     end
 end
@@ -112,8 +112,10 @@ end
 ##### Bottom height
 #####
 
-@inline column_heightᶜᶜᵃ(i, j, k, ibg::AbstractGridFittedBottom) = znode(i, j, grid.Nz, ibg, c, c, f) - ibg.immersed_boundary.z_bottom[i, j, 1] 
-@inline column_heightᶜᶠᵃ(i, j, k, ibg::AbstractGridFittedBottom) = min(column_heightᶜᶜᵃ(i, j-1, k, ibg), column_heightᶜᶜᵃ(i, j, k, ibg))
-@inline column_heightᶠᶜᵃ(i, j, k, ibg::AbstractGridFittedBottom) = min(column_heightᶜᶜᵃ(i-1, j, k, ibg), column_heightᶜᶜᵃ(i, j, k, ibg))
-@inline column_heightᶠᶠᵃ(i, j, k, ibg::AbstractGridFittedBottom) = min(column_heightᶠᶜᵃ(i, j-1, k, ibg), column_heightᶠᶜᵃ(i, j, k, ibg))
+const AGFBIB = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
+
+@inline column_heightᶜᶜᵃ(i, j, k, ibg::AGFBIB) = @inbounds znode(i, j, grid.Nz, ibg, c, c, f) - ibg.immersed_boundary.z_bottom[i, j, 1] 
+@inline column_heightᶜᶠᵃ(i, j, k, ibg::AGFBIB) = min(column_heightᶜᶜᵃ(i, j-1, k, ibg), column_heightᶜᶜᵃ(i, j, k, ibg))
+@inline column_heightᶠᶜᵃ(i, j, k, ibg::AGFBIB) = min(column_heightᶜᶜᵃ(i-1, j, k, ibg), column_heightᶜᶜᵃ(i, j, k, ibg))
+@inline column_heightᶠᶠᵃ(i, j, k, ibg::AGFBIB) = min(column_heightᶠᶜᵃ(i, j-1, k, ibg), column_heightᶠᶜᵃ(i, j, k, ibg))
 
