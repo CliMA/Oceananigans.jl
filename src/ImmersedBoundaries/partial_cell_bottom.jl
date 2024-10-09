@@ -77,7 +77,7 @@ end
     for k in 1:grid.Nz
         z⁻ = znode(i, j, k, grid, c, c, f)
         Δz = Δzᶜᶜᶜ(i, j, k, underlying_grid)
-        bottom_cell = zb ≤ z⁻ + Δz * (1 - ϵ)
+        bottom_cell =  z⁻ + Δz * (1 - ϵ) ≤ zb
         @inbounds bottom_field[i, j, 1] = ifelse(bottom_cell, z⁻ + Δz * (1 - ϵ), zb)
     end
 end
