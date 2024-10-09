@@ -1,5 +1,7 @@
-using Oceananigans.Operators: divᶜᶜᶜ, ∇²ᶜᶜᶜ 
+using Oceananigans.Operators: divᶜᶜᶜ, ∇²ᶜᶜᶜ
 using Statistics: mean
+
+using Oceananigans.ImmersedBoundaries
 
 using KernelAbstractions: @kernel, @index
 
@@ -66,7 +68,7 @@ function ConjugateGradientPoissonSolver(grid;
                                                         preconditioner,
                                                         template_field = rhs,
                                                         kw...)
-        
+
     return ConjugateGradientPoissonSolver(grid, rhs, conjugate_gradient_solver)
 end
 
@@ -160,7 +162,7 @@ end
 @inline Ac(i, j, k, grid) = - Ax⁻(i, j, k, grid) - Ax⁺(i, j, k, grid) -
                               Ay⁻(i, j, k, grid) - Ay⁺(i, j, k, grid) -
                               Az⁻(i, j, k, grid) - Az⁺(i, j, k, grid)
-                              
+
 @inline heuristic_residual(i, j, k, grid, r) =
     @inbounds 1 / Ac(i, j, k, grid) * (r[i, j, k] - 2 * Ax⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i-1, j, k, grid)) * r[i-1, j, k] -
                                                     2 * Ax⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i+1, j, k, grid)) * r[i+1, j, k] -
@@ -174,4 +176,3 @@ end
     active = !inactive_cell(i, j, k, grid)
     @inbounds p[i, j, k] = heuristic_residual(i, j, k, grid, r) * active
 end
-

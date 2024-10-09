@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Solvers: solve!
+using Oceananigans.Solvers: solve!, ConjugateGradientPoissonSolver
 using Statistics
 
 function identity_operator!(b, x)
@@ -61,11 +61,17 @@ function run_poisson_equation_test(grid)
     return nothing
 end
 
+function construct_conjugate_gradient_poisson_solver_with_default_preconditioner(grid)
+    solver = ConjugateGradientPoissonSolver(grid)
+    return true
+end
+
 @testset "ConjugateGradientSolver" begin
     for arch in archs
         @info "Testing ConjugateGradientSolver [$(typeof(arch))]..."
         grid = RectilinearGrid(arch, size=(4, 8, 4), extent=(1, 3, 1))
         run_identity_operator_test(grid)
         run_poisson_equation_test(grid)
+        construct_conjugate_gradient_poisson_solver_with_default_preconditioner(grid)
     end
 end
