@@ -71,27 +71,8 @@ Callback(wta::WindowedTimeAverage, schedule; kw...) =
     throw(ArgumentError("Schedule must be inferred from WindowedTimeAverage. 
                         Use Callback(windowed_time_average)"))
 
-struct GenericName end
-
-function unique_callback_name(name, existing_names)
-    if name ∈ existing_names
-        return Symbol(:another_, name)
-    else
-        return name
-    end
-end
-
-function unique_callback_name(::GenericName, existing_names)
-    prefix = :callback # yeah, that's generic
-
-    # Find a unique one
-    n = 1
-    while Symbol(prefix, n) ∈ existing_names
-        n += 1
-    end
-
-    return Symbol(prefix, n)
-end
+struct GenericCallbackName end
+unique_name(::GenericCallbackName, existing) = unique_name(:callback, existing)
 
 """
     add_callback!(simulation, callback::Callback; name = GenericName(), callback_kw...)
@@ -109,8 +90,8 @@ already exists.
 
 The `callback` (which contains a schedule) can also be supplied directly.
 """
-function add_callback!(simulation, callback::Callback; name = GenericName())
-    name = unique_callback_name(name, keys(simulation.callbacks))
+function add_callback!(simulation, callback::Callback; name = GenericCallbackName())
+    name = unique_name(GenericCallbackName(), keys(simulation.callbacks))
     simulation.callbacks[name] = callback
     return nothing
 end

@@ -28,17 +28,17 @@ ext(::Type{JLD2OutputWriter}) = ".jld2"
 
 """
     JLD2OutputWriter(model, outputs; filename, schedule,
-                              dir = ".",
-                          indices = (:, :, :),
-                       with_halos = false,
-                       array_type = Array{Float64},
-                   file_splitting = NoFileSplitting(),
-               overwrite_existing = false,
-                             init = noinit,
-                        including = [:grid, :coriolis, :buoyancy, :closure],
-                          verbose = false,
-                             part = 1,
-                          jld2_kw = Dict{Symbol, Any}())
+                     dir = ".",
+                     indices = (:, :, :),
+                     with_halos = false,
+                     array_type = Array{Float64},
+                     file_splitting = NoFileSplitting(),
+                     overwrite_existing = false,
+                     init = noinit,
+                     including = [:grid, :coriolis, :buoyancy, :closure],
+                     verbose = false,
+                     part = 1,
+                     jld2_kw = Dict{Symbol, Any}())
 
 Construct a `JLD2OutputWriter` for an Oceananigans `model` that writes `label, output` pairs
 in `outputs` to a JLD2 file.
@@ -163,17 +163,17 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ```
 """
 function JLD2OutputWriter(model, outputs; filename, schedule,
-                                   dir = ".",
-                               indices = (:, :, :),
-                            with_halos = false,
-                            array_type = Array{Float64},
-                        file_splitting = NoFileSplitting(),
-                    overwrite_existing = false,
-                                  init = noinit,
-                             including = default_included_properties(model),
-                               verbose = false,
-                                  part = 1,
-                               jld2_kw = Dict{Symbol, Any}())
+                          dir = ".",
+                          indices = (:, :, :),
+                          with_halos = true,
+                          array_type = Array{Float64},
+                          file_splitting = NoFileSplitting(),
+                          overwrite_existing = true,
+                          init = noinit,
+                          including = default_included_properties(model),
+                          verbose = false,
+                          part = 1,
+                          jld2_kw = Dict{Symbol, Any}())
 
     mkpath(dir)
     filename = auto_extension(filename, ".jld2")
@@ -283,7 +283,7 @@ function write_output!(writer::JLD2OutputWriter, model)
         verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $path..."
 
         start_time, old_filesize = time_ns(), filesize(writer.filepath)
-        jld2output!(writer.filepath, model.clock.iteration, model.clock.time, data, writer.jld2_kw)
+        write_jld2_output!(writer.filepath, model.clock.iteration, model.clock.time, data, writer.jld2_kw)
         end_time, new_filesize = time_ns(), filesize(writer.filepath)
 
         verbose && @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
@@ -296,14 +296,14 @@ function write_output!(writer::JLD2OutputWriter, model)
 end
 
 """
-    jld2output!(path, iter, time, data, kwargs)
+    write_jld2_output!(path, iter, time, data, kwargs)
 
 Write the (name, value) pairs in `data`, including the simulation
 `time`, to the JLD2 file at `path` in the `timeseries` group,
 stamping them with `iter` and using `kwargs` when opening
 the JLD2 file.
 """
-function jld2output!(path, iter, time, data, kwargs)
+function write_jld2_output!(path, iter, time, data, kwargs)
     jldopen(path, "r+"; kwargs...) do file
         file["timeseries/t/$iter"] = time
         for name in keys(data)
