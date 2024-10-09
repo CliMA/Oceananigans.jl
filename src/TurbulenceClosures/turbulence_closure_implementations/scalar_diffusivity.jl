@@ -114,12 +114,13 @@ ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.Turbulence
 ```
 """
 function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
-                           formulation=ThreeDimensionalFormulation(), FT=Float64;
+                           formulation=ThreeDimensionalFormulation(), 
+                           FT=Float64,
+                           required_halo_size::Int = 1;
                            ν=0, κ=0,
                            discrete_form = false,
                            loc = (nothing, nothing, nothing),
-                           parameters = nothing,
-                           required_halo_size::Int = 1)
+                           parameters = nothing) 
 
     if formulation == HorizontalFormulation() && time_discretization == VerticallyImplicitTimeDiscretization()
     throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for \
@@ -128,6 +129,11 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
 
     κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
     ν = convert_diffusivity(FT, ν; discrete_form, loc, parameters)
+
+    # Force a type-stable constructor if ν and κ are numbers
+    if ν isa Number && κ isa Number
+      return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), 1}(ν, κ)
+    end
 
     return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), required_halo_size}(ν, κ)
 end

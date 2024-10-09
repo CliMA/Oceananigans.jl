@@ -82,6 +82,11 @@ function ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation()
 
     ν = convert_diffusivity(FT, ν; discrete_form, loc, parameters)
     κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
+    
+    if ν isa Number && κ isa Number
+        return ScalarBiharmonicDiffusivity{typeof(formulation), 2}(ν, κ)
+    end
+
     return ScalarBiharmonicDiffusivity{typeof(formulation), required_halo_size}(ν, κ)
 end
 
