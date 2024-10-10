@@ -2,16 +2,16 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Operators
 using Oceananigans.Grids: φnode
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStar
 using Oceananigans.AbstractOperations: GridMetricOperation
 using Printf
 
-arch = CPU()
-grid = LatitudeLongitudeGrid(arch; size = (60, 60, 18), 
-                               latitude = (15, 75), 
-                              longitude = (0, 60),
-                                   halo = (5, 5, 5), 
-                                      z = (-1800, 0))
+arch    = CPU()
+z_faces = ZStarVerticalCoordinate((-1800, 0))
+grid    = LatitudeLongitudeGrid(arch; size = (60, 60, 18), 
+                                  latitude = (15, 75), 
+                                 longitude = (0, 60),
+                                      halo = (5, 5, 5), 
+                                         z = z_faces)
 
 #####
 ##### Parameters
@@ -43,7 +43,6 @@ substeps = ceil(Int, 3 * Δt / Δτ)
 coriolis            = HydrostaticSphericalCoriolis()
 momentum_advection  = WENOVectorInvariant(vorticity_order = 5)
 tracer_advection    = WENO(order = 5)
-vertical_coordinate = ZStar()
 free_surface        = SplitExplicitFreeSurface(grid; substeps)
 
 numerics = (; coriolis, free_surface, momentum_advection, tracer_advection, vertical_coordinate)

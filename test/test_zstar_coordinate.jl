@@ -28,12 +28,15 @@ end
 
 @testset "Testing z-star coordinates" begin
 
-    for arch in archs
-        llg = LatitudeLongitudeGrid(arch; size = (10, 10, 10), latitude = (-10, 10), longitude = (-10, 10), z = (-10, 0))
-        rtg = RectilinearGrid(arch; size = (10, 10, 10), x = (-10, 10), y = (-10, 10), z = (-10, 0))
+    z_uniform   = ZStarVerticalCoordinate((-10, 0))
+    z_stretched = ZStarVerticalCoordinate(collect(-10:0))
 
-        llgv = LatitudeLongitudeGrid(arch; size = (10, 10, 10), latitude = (-10, 10), longitude = (-10, 10), z = collect(-10:0))
-        rtgv = RectilinearGrid(arch; size = (10, 10, 10), x = (-10, 10), y = (-10, 10), z = collect(-10:0))
+    for arch in archs
+        llg = LatitudeLongitudeGrid(arch; size = (10, 10, 10), latitude = (-10, 10), longitude = (-10, 10), z = z_uniform)
+        rtg = RectilinearGrid(arch; size = (10, 10, 10), x = (-10, 10), y = (-10, 10), z = z_uniform)
+
+        llgv = LatitudeLongitudeGrid(arch; size = (10, 10, 10), latitude = (-10, 10), longitude = (-10, 10), z = z_stretched)
+        rtgv = RectilinearGrid(arch; size = (10, 10, 10), x = (-10, 10), y = (-10, 10), z = z_stretched)
 
         illg = ImmersedBoundaryGrid(llg, GridFittedBottom((x, y) -> - rand() - 5))
         irtg = ImmersedBoundaryGrid(rtg, GridFittedBottom((x, y) -> - rand() - 5))
@@ -48,8 +51,7 @@ end
             model = HydrostaticFreeSurfaceModel(; grid, 
                                                   free_surface, 
                                                   tracers = (:b, :c), 
-                                                  bouyancy = BuoyancTracer(),
-                                                  vertical_coordinate = ZStar())
+                                                  bouyancy = BuoyancTracer())
 
             bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01 
 
