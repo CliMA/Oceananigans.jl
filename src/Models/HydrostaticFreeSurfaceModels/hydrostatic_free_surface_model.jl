@@ -53,10 +53,6 @@ default_free_surface(grid::XYRegularRG; gravitational_acceleration=g_Earth) =
 default_free_surface(grid; gravitational_acceleration=g_Earth) =
     SplitExplicitFreeSurface(grid; cfl = 0.7, gravitational_acceleration)
 
-default_momentum_advection(grid) = CenteredSecondOrder()
-
-default_momentum_advection(::OrthogonalSphericalShellGrid) = VectorInvariant()
-
 """
     HydrostaticFreeSurfaceModel(; grid,
                                 clock = Clock{eltype(grid)}(time = 0),
@@ -108,7 +104,7 @@ Keyword arguments
 """
 function HydrostaticFreeSurfaceModel(; grid,
                                           clock = Clock{eltype(grid)}(time = 0),
-                             momentum_advection = default_momentum_advection(grid),
+                             momentum_advection = VectorInvariant(),
                                tracer_advection = CenteredSecondOrder(),
                                        buoyancy = nothing,
                                        coriolis = nothing,
