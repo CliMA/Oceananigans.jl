@@ -8,7 +8,6 @@ using Oceananigans.BoundaryConditions: FBC
 using Printf
 
 import Oceananigans.TurbulenceClosures: z_bottom
-import Oceananigans.Architectures: on_architecture
 
 #####
 ##### GridFittedBottom (2.5D immersed boundary with modified bottom height)

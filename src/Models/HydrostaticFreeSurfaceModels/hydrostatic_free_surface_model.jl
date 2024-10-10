@@ -58,13 +58,13 @@ default_free_surface(grid; gravitational_acceleration=g_Earth) =
                                              clock = Clock{eltype(grid)}(time = 0),
                                 momentum_advection = CenteredSecondOrder(),
                                   tracer_advection = CenteredSecondOrder(),
-                                          buoyancy = SeawaterBuoyancy(eltype(grid)),
+                                          buoyancy = nothing,
                                           coriolis = nothing,
                                       free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
                                forcing::NamedTuple = NamedTuple(),
                                            closure = nothing,
                    boundary_conditions::NamedTuple = NamedTuple(),
-                                           tracers = (:T, :S),
+                                           tracers = nothing, 
                      particles::ParticlesOrNothing = nothing,
              biogeochemistry::AbstractBGCOrNothing = nothing,
                                         velocities = nothing,
@@ -108,10 +108,10 @@ function HydrostaticFreeSurfaceModel(; grid,
                                      clock = Clock{eltype(grid)}(time = 0),
                         momentum_advection = CenteredSecondOrder(),
                           tracer_advection = CenteredSecondOrder(),
-                                  buoyancy = SeawaterBuoyancy(eltype(grid)),
+                                  buoyancy = nothing,
                                   coriolis = nothing,
                               free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
-                                   tracers = (:T, :S),
+                                   tracers = nothing,
                        forcing::NamedTuple = NamedTuple(),
                                    closure = nothing,
            boundary_conditions::NamedTuple = NamedTuple(),
@@ -125,11 +125,6 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
-
-    # Introduce z-star coordinates if needed (only is free_surface is not a nothing)
-    # if !isnothing(vertical_coordinate) && !(momentum_advection isa VectorInvariant) && isnothing(velocities)
-    #   throw(ArgumentError("Generalized vertical coordinates are supported only for the vector-invariant form of the momentum equations"))
-    # end
 
     arch = architecture(grid)
 

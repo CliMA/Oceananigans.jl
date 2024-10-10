@@ -86,10 +86,6 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Hydros
 @inline prognostic_fields(model::HydrostaticFreeSurfaceModel) =
     hydrostatic_prognostic_fields(model.velocities, model.free_surface, model.tracers)
 
-@inline prognostic_fields(model::HydrostaticFreeSurfaceModel{<:Any, <:Any, <:Any, <:Any, ZStarSpacingGrid}) =
-    merge(hydrostatic_prognostic_fields(model.velocities, model.free_surface, model.tracers), 
-          (; ∂t_s = grid.Δzᵃᵃᶠ.∂t_s))
-
 @inline hydrostatic_prognostic_fields(velocities, free_surface, tracers) = merge((u = velocities.u,
                                                                                   v = velocities.v,
                                                                                   η = free_surface.η),

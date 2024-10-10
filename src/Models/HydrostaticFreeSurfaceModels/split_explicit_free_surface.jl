@@ -259,7 +259,7 @@ function compute_column_height!(Hᶜᶜ, Hᶠᶜ, Hᶜᶠ, Hᶠᶠ, grid)
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
-    params = KernelParameters(-Hx+1:Nx+Hx, -Hy+1:Ny+Hy)
+    params = KernelParameters(-Hx+2:Nx+Hx-1, -Hy+2:Ny+Hy-1)
 
     launch!(arch, grid, params, _compute_column_height!, Hᶜᶜ, grid, c, c, Δrᶜᶜᶜ)
     launch!(arch, grid, params, _compute_column_height!, Hᶠᶜ, grid, f, c, Δrᶠᶜᶜ)

@@ -14,7 +14,7 @@ using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, Activ
                                        active_linear_index_to_tuple
 
 """
-    compute_tendencies!(model::HydrostaticFreeSurfaceModel, Δt, callbacks)
+    compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
