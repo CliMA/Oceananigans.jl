@@ -47,15 +47,18 @@ import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.Grids:  cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
                             x_domain, y_domain, z_domain
 
-import Oceananigans.Grids: architecture, on_architecture, with_halo, inflate_halo_size_one_dimension,
+import Oceananigans.Grids: architecture, with_halo, inflate_halo_size_one_dimension,
                            xnode, ynode, znode, λnode, φnode, node,
                            ξnode, ηnode, rnode,
                            ξname, ηname, rname, node_names,
                            xnodes, ynodes, znodes, λnodes, φnodes, nodes,
                            ξnodes, ηnodes, rnodes,
+                           column_heightᶜᶜᵃ, column_heightᶠᶜᵃ, column_heightᶜᶠᵃ, column_heightᶠᶠᵃ,
                            inactive_cell
 
 import Oceananigans.Coriolis: φᶠᶠᵃ
+
+import Oceananigans.Architectures: on_architecture
 
 import Oceananigans.Advection:
     _advective_momentum_flux_Uu,
@@ -91,7 +94,7 @@ import Oceananigans.TurbulenceClosures:
     νᶠᶠᶜ,
     νᶜᶠᶠ,
     νᶠᶜᶠ,
-    z_bottom
+    bottom_height
 
 import Oceananigans.Fields: fractional_x_index, fractional_y_index, fractional_z_index
 
@@ -159,7 +162,7 @@ with_halo(halo, ibg::ImmersedBoundaryGrid) =
 inflate_halo_size_one_dimension(req_H, old_H, _, ::IBG)            = max(req_H + 1, old_H)
 inflate_halo_size_one_dimension(req_H, old_H, ::Type{Flat}, ::IBG) = 0
 
-@inline z_bottom(i, j, ibg::IBG) = error("The function `bottom` has not been defined for $(summary(ibg))!")
+@inline bottom_height(i, j, ibg::IBG) = error("The function `bottom` has not been defined for $(summary(ibg))!")
 
 function Base.summary(grid::ImmersedBoundaryGrid)
     FT = eltype(grid)
