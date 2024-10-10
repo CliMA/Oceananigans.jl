@@ -1,3 +1,5 @@
+using Oceananigans.Utils: getnamewrapper
+
 #####
 ##### ZStar coordinate and associated types
 #####
@@ -102,7 +104,7 @@ Grids.coordinate_summary(::Bounded, Δ::ZStarVerticalCoordinate, name) =
 generate_coordinate(FT, ::Periodic, N, H, ::ZStarVerticalCoordinate, coordinate_name, arch, args...) = 
     throw(ArgumentError("Periodic domains are not supported for ZStarVerticalCoordinate"))
 
-# Generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points
+# Generate a moving coordinate with evolving scaling (`s`) for spacings and znodes
 function generate_coordinate(FT, topo, size, halo, coordinate::ZStarVerticalCoordinate, coordinate_name, dim::Int, arch)
 
     Nx, Ny, Nz = size
@@ -142,7 +144,7 @@ function generate_coordinate(FT, topo, size, halo, coordinate::ZStarVerticalCoor
         fill!(s, 1)
     end
 
-    # The scaling is the same for everyone (H + \eta) / H, the vertical coordinate requires 
+    # The scaling is the same for everyone, the vertical coordinate requires 
     # to add the free surface to retrieve the znode.
     zᵃᵃᶠ = ZStarVerticalCoordinate(rᵃᵃᶠ, sᶜᶜᵃ, sᶠᶜᵃ, sᶜᶠᵃ, sᶠᶠᵃ, sᶜᶜᵃ₋, sᶠᶜᵃ₋, sᶜᶠᵃ₋, η)
     zᵃᵃᶜ = ZStarVerticalCoordinate(rᵃᵃᶜ, sᶜᶜᵃ, sᶠᶜᵃ, sᶜᶠᵃ, sᶠᶠᵃ, sᶜᶜᵃ₋, sᶠᶜᵃ₋, sᶜᶠᵃ₋, η)
