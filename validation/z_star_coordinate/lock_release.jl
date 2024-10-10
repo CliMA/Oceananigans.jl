@@ -37,7 +37,7 @@ set!(model, b = bᵢ)
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_iteration = 10000, stop_time = 17hours) 
+simulation = Simulation(model; Δt, stop_iteration = 10000000, stop_time = 17hours) 
 
 Δz = GridMetricOperation((Center, Center, Center), Oceananigans.AbstractOperations.Δz, model.grid)
 
@@ -63,7 +63,7 @@ function progress(sim)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 run!(simulation)
 

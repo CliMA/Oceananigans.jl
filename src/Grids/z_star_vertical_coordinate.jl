@@ -199,7 +199,6 @@ reference_zspacings(grid, ::F) = grid.Δzᵃᵃᶠ
 @inline previous_vertical_scaling(i, j, k, grid, ℓx, ℓy, ℓz) = one(grid)
 
 @inline ∂t_grid(i, j, k, grid) = zero(grid)
-@inline V_times_∂t_grid(i, j, k, grid) = zero(grid)
 
 reference_zspacings(grid::ZSG, ::C) = grid.Δzᵃᵃᶜ.reference
 reference_zspacings(grid::ZSG, ::F) = grid.Δzᵃᵃᶠ.reference
@@ -226,7 +225,6 @@ reference_znodes(grid::ZSG, ::F) = grid.zᵃᵃᶠ.reference
 @inline previous_vertical_scaling(i, j, k, grid::ZSG, ::C, ::F, ::F) = @inbounds grid.Δzᵃᵃᶠ.sᶜᶠ⁻[i, j]
 
 @inline ∂t_grid(i, j, k, grid::ZSG) = @inbounds grid.Δzᵃᵃᶜ.∂t_s[i, j] 
-@inline V_times_∂t_grid(i, j, k, grid::ZSG) = ∂t_grid(i, j, k, grid) * Vᶜᶜᶜ(i, j, k, grid)
 
 #####
 ##### znode
