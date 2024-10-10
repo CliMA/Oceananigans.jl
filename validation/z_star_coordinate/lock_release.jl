@@ -13,9 +13,9 @@ grid = RectilinearGrid(size = (20, 20),
                           x = (0, 64kilometers), 
                           z = z_faces, 
                        halo = (6, 6),
-                   topology = (Bounded, Flat, Bounded))
+                   topology = (Periodic, Flat, Bounded))
 
-# grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> x < 32kilometers ? -10 : -20))
+grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> x < 32kilometers ? -10 : -20))
 
 model = HydrostaticFreeSurfaceModel(; grid, 
                          momentum_advection = WENO(; order = 5),

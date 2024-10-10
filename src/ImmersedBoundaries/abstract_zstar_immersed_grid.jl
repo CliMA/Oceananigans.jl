@@ -1,12 +1,12 @@
 using Oceananigans.Grids: AbstractVerticalCoordinateUnderlyingGrid, ZStarUnderlyingGrid
 
 import Oceananigans.Grids: retrieve_static_grid
-import Oceananigans.Grids: reference_zspacings, vertical_scaling, previous_vertical_scaling
+import Oceananigans.Grids: reference_zspacings, reference_znodes, vertical_scaling, previous_vertical_scaling
 
 const ImmersedAbstractVerticalCoordinateGrid = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractVerticalCoordinateUnderlyingGrid}
 const ImmersedZStarGrid = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ZStarUnderlyingGrid}
 
-
+reference_znodes(grid::ImmersedBoundaryGrid, ℓz) = reference_znodes(grid.underlying_grid)
 reference_zspacings(grid::ImmersedBoundaryGrid, ℓz) = reference_zspacings(grid.underlying_grid)
 
 @inline vertical_scaling(i, j, k, grid::ImmersedBoundaryGrid, ℓx, ℓy, ℓz) = vertical_scaling(i, j, k, grid.underlying_grid, ℓx, ℓy, ℓz)

@@ -1,5 +1,3 @@
-using Oceananigans.Utils: getnamewrapper
-
 #####
 ##### ZStar coordinate and associated types
 #####
@@ -22,6 +20,9 @@ const AbstractVerticalCoordinateUnderlyingGrid = Union{AVLLG, AVOSSG, AVRG}
 
 function retrieve_static_grid(grid::AbstractVerticalCoordinateUnderlyingGrid) 
 
+    zᵃᵃᶠ = reference_znodes(grid, Face())
+    zᵃᵃᶜ = reference_znodes(grid, Center())
+
     Δzᵃᵃᶠ = reference_zspacings(grid, Face())
     Δzᵃᵃᶜ = reference_zspacings(grid, Center())
 
@@ -29,7 +30,11 @@ function retrieve_static_grid(grid::AbstractVerticalCoordinateUnderlyingGrid)
 
     args = []
     for prop in propertynames(grid)
-        if prop == :Δzᵃᵃᶠ
+        if prop == :zᵃᵃᶠ
+            push!(args, zᵃᵃᶠ)
+        elseif prop == :zᵃᵃᶜ
+            push!(args, zᵃᵃᶜ)
+        elseif prop == :Δzᵃᵃᶠ
             push!(args, Δzᵃᵃᶠ)
         elseif prop == :Δzᵃᵃᶜ
             push!(args, Δzᵃᵃᶜ)
@@ -38,10 +43,12 @@ function retrieve_static_grid(grid::AbstractVerticalCoordinateUnderlyingGrid)
         end
     end
 
-    GridType = getnamewrapper(grid)
-
-    return GridType{TX, TY, TZ}(args...)
+    return construct_grid(grid, TX, TY, TZ, args...)
 end
+
+construct_grid(::RectilinearGrid, TX, TY, TZ, args...) = RectilinearGrid{TX, TY, TZ}(args...)    
+construct_grid(::LatitudeLongitudeGrid, TX, TY, TZ, args...) = LatitudeLongitudeGrid{TX, TY, TZ}(args...)    
+construct_grid(::OrthogonalSphericalShellGrid, TX, TY, TZ, args...) = OrthogonalSphericalShellGrid{TX, TY, TZ}(args...)    
 
 """
     struct ZStarVerticalCoordinate{R, S} <: AbstractVerticalSpacing{R}
@@ -136,7 +143,8 @@ function generate_coordinate(FT, topo, size, halo, coordinate::ZStarVerticalCoor
     sᶠᶜᵃ₋ = new_data(FT, arch, (Face,   Center, Nothing), args...)
 
     ∂t_s = new_data(FT, arch, (Center, Center, Nothing), args...)
-    # Storage place for the free surface height? Probably find a better way to call this
+    # Storage place for the free surface height? 
+    # TODO: Probably find a better way to call this or to store this
     η    = new_data(FT, arch, (Center, Center, Nothing), args...)
 
     # fill all the scalings with 1
@@ -162,6 +170,9 @@ function validate_dimension_specification(T, ξ::ZStarVerticalCoordinate, dir, N
     return ZStarVerticalCoordinate(reference, args[2:end]...)
 end
 
+# TODO: is this the correct definition?
+@inline domain(topo, N, ξ::ZStarVerticalCoordinate) = domain(topo, N, ξ.reference)
+
 const ZStarLLG  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ZStarVerticalCoordinate}
 const ZStarOSSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ZStarVerticalCoordinate}
 const ZStarRG   = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ZStarVerticalCoordinate}
@@ -178,6 +189,9 @@ const F = Face
 const ZSG = ZStarUnderlyingGrid
 
 # Fallbacks
+reference_znodes(grid, ::C) = grid.zᵃᵃᶜ 
+reference_znodes(grid, ::F) = grid.zᵃᵃᶠ 
+
 reference_zspacings(grid, ::C) = grid.Δzᵃᵃᶜ
 reference_zspacings(grid, ::F) = grid.Δzᵃᵃᶠ
 
@@ -189,6 +203,9 @@ reference_zspacings(grid, ::F) = grid.Δzᵃᵃᶠ
 
 reference_zspacings(grid::ZSG, ::C) = grid.Δzᵃᵃᶜ.reference
 reference_zspacings(grid::ZSG, ::F) = grid.Δzᵃᵃᶠ.reference
+
+reference_znodes(grid::ZSG, ::C) = grid.zᵃᵃᶜ.reference
+reference_znodes(grid::ZSG, ::F) = grid.zᵃᵃᶠ.reference
 
 @inline vertical_scaling(i, j, k, grid::ZSG, ::C, ::C, ::C) = @inbounds grid.Δzᵃᵃᶜ.sᶜᶜⁿ[i, j]
 @inline vertical_scaling(i, j, k, grid::ZSG, ::F, ::C, ::C) = @inbounds grid.Δzᵃᵃᶜ.sᶠᶜⁿ[i, j]
