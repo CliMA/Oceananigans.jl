@@ -45,7 +45,7 @@ momentum_advection  = WENOVectorInvariant(vorticity_order = 5)
 tracer_advection    = WENO(order = 5)
 free_surface        = SplitExplicitFreeSurface(grid; substeps)
 
-numerics = (; coriolis, free_surface, momentum_advection, tracer_advection, vertical_coordinate)
+numerics = (; coriolis, free_surface, momentum_advection, tracer_advection)
 
 #####
 ##### Closure

@@ -14,10 +14,6 @@ const AVRG   = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Abstr
 
 const AbstractVerticalCoordinateUnderlyingGrid = Union{AVLLG, AVOSSG, AVRG}
 
-# rnode for an AbstractVerticalCoordinate grid is the reference node
-@inline rnode(i, j, k, grid::AbstractVerticalCoordinateUnderlyingGrid, ℓx, ℓy, ::Center) = @inbounds grid.zᵃᵃᶜ.reference[k] 
-@inline rnode(i, j, k, grid::AbstractVerticalCoordinateUnderlyingGrid, ℓx, ℓy, ::Face)   = @inbounds grid.zᵃᵃᶠ.reference[k] 
-
 function retrieve_static_grid(grid::AbstractVerticalCoordinateUnderlyingGrid) 
 
     zᵃᵃᶠ = reference_znodes(grid, Face())
@@ -233,7 +229,12 @@ reference_znodes(grid::ZSG, ::F) = grid.zᵃᵃᶠ.reference
 const c = Center()
 const f = Face()
 
-# rnode for an AbstractVerticalCoordinate grid is the reference node
+# rnode for an ZStarUnderlyingGrid is the reference node
+@inline rnode(i, j, k, grid::ZSG, ℓx, ℓy, ::Center) = @inbounds grid.zᵃᵃᶜ.reference[k] 
+@inline rnode(i, j, k, grid::ZSG, ℓx, ℓy, ::Face)   = @inbounds grid.zᵃᵃᶠ.reference[k] 
+
+# rnode for an ZStarUnderlyingGrid grid is scaled 
+# TODO: fix this when bottom height is implemented
 @inline znode(i, j, k, grid::ZSG, ::C, ::C, ::C) = @inbounds grid.zᵃᵃᶜ.reference[k] * vertical_scaling(i, j, k, grid, c, c, c) + grid.zᵃᵃᶜ.∂t_s[i, j] 
 @inline znode(i, j, k, grid::ZSG, ::C, ::F, ::C) = @inbounds grid.zᵃᵃᶜ.reference[k] * vertical_scaling(i, j, k, grid, c, f, c) + grid.zᵃᵃᶜ.∂t_s[i, j] 
 @inline znode(i, j, k, grid::ZSG, ::F, ::C, ::C) = @inbounds grid.zᵃᵃᶜ.reference[k] * vertical_scaling(i, j, k, grid, f, c, c) + grid.zᵃᵃᶜ.∂t_s[i, j] 
