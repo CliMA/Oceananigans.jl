@@ -207,7 +207,7 @@ mountain_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(mountain))
 ```@example grids
 using CairoMakie
 
-h = mountain_grid.immersed_boundary.z_bottom
+h = mountain_grid.immersed_boundary.bottom_height
 
 fig = Figure(size=(600, 600))
 ax = Axis(fig[2, 1], xlabel="x (m)", ylabel="y (m)", aspect=1)

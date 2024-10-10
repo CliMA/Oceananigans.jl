@@ -78,7 +78,7 @@ Apply a top and/or bottom boundary condition to variable `c`.
 """
 @kernel function _apply_z_bcs!(Gc, loc, grid, bottom_bc, top_bc, args) 
     i, j = @index(Global, NTuple)
-    apply_z_bottom_bc!(Gc, loc, bottom_bc, i, j, grid, args...)
+    apply_bottom_height_bc!(Gc, loc, bottom_bc, i, j, grid, args...)
        apply_z_top_bc!(Gc, loc, top_bc,    i, j, grid, args...)
 end
 
@@ -88,7 +88,7 @@ end
 @inline  apply_y_north_bc!(Gc, loc, ::NotFluxBC, args...) = nothing
 @inline  apply_y_south_bc!(Gc, loc, ::NotFluxBC, args...) = nothing
 @inline    apply_z_top_bc!(Gc, loc, ::NotFluxBC, args...) = nothing
-@inline apply_z_bottom_bc!(Gc, loc, ::NotFluxBC, args...) = nothing
+@inline apply_bottom_height_bc!(Gc, loc, ::NotFluxBC, args...) = nothing
 
 @inline flip(::Center) = Face()
 @inline flip(::Face) = Center()
@@ -120,7 +120,7 @@ end
     return nothing
 end
 
-@inline function apply_z_bottom_bc!(Gc, loc, bottom_flux::BC{<:Flux}, i, j, grid, args...)
+@inline function apply_bottom_height_bc!(Gc, loc, bottom_flux::BC{<:Flux}, i, j, grid, args...)
     LX, LY, LZ = loc
     @inbounds Gc[i, j, 1] += getbc(bottom_flux, i, j, grid, args...) * Az(i, j, 1, grid, LX, LY, flip(LZ)) / volume(i, j, 1, grid, LX, LY, LZ)
     return nothing

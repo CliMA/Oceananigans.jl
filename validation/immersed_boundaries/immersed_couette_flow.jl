@@ -10,8 +10,8 @@ Lz = 1
 
 underlying_grid = RectilinearGrid(size=Nz, z=(0, Lz), topology = (Flat, Flat, Bounded))
 
-@inline z_bottom(x, y) = 0.1
-grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(z_bottom))
+@inline bottom_height(x, y) = 0.1
+grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
 
 c_immersed_bc = ValueBoundaryCondition(1)
 c_top_bc = ValueBoundaryCondition(-1)
