@@ -84,7 +84,7 @@ function ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation()
     κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
     
     # Force a type-stable constructor if ν and κ are numbers
-    # This particular short-circuiting of the constructor is necessary to perform parameter
+    # This particular short-circuiting of the required_halo_size kwargs is necessary to perform parameter
     # estimation of the diffusivity coefficients using autodiff.
     if ν isa Number && κ isa Number
         return ScalarBiharmonicDiffusivity{typeof(formulation), 2}(ν, κ)

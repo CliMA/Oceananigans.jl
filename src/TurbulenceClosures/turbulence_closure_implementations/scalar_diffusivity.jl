@@ -131,7 +131,7 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
     ν = convert_diffusivity(FT, ν; discrete_form, loc, parameters)
 
     # Force a type-stable constructor if ν and κ are numbers
-    # This particular short-circuiting of the constructor is necessary to perform parameter
+    # This particular short-circuiting of the required_halo_size kwargs is necessary to perform parameter
     # estimation of the diffusivity coefficients using autodiff.
     if ν isa Number && κ isa Number
       return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), 1}(ν, κ)
