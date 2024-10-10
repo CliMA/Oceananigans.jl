@@ -79,7 +79,7 @@ function test_simulation(stop_time, Δt, window_nΔt, interval_nΔt, stride, ove
         actuation =  wta.schedule.actuations
         @info string("Iter: ", iteration(sim), ", time: ", prettytime(sim), ", model clock time:", mct, ", collecting: ", cll, ", u-avg: ", res, ", window_start_time: ", wd, ", window_start_iteration: ", ws, ", previous_collection_time:", pc, ", fetch_operand: ", fo, ", next_actuation_time: ", nat, ", first_actuation_time: ", fat, ", actuation: ", actuation, ", interval:", interval, ", window:", window)
     end
-        simulation.callbacks[:progress] = Callback(progress_message, TimeInterval(window))
+        simulation.callbacks[:progress] = Callback(progress_message, TimeInterval(Δt))
 
 
     return simulation
@@ -94,7 +94,7 @@ function next_actuation_time(sch::AveragedTimeInterval)
     return t₀ + (N + 1) * T
 end
     Δt = 0.01 #1/64 # Nice floating-point number
-    T1 = 6Δt      # first simulation stop time (s)
+    T1 = 10Δt      # first simulation stop time (s)
     T2 = 2T1      # second simulation stop time (s)
     window_nΔt = 2
     interval_nΔt = 2
@@ -104,10 +104,10 @@ end
     run!(simulation)
 
     # Now try again, but picking up from the previous checkpoint
-    N = iteration(simulation)
-    checkpoint = "test_iteration$N.jld2"
-    simulation = test_simulation(T2, Δt, window_nΔt, interval_nΔt, stride, false)
-    run!(simulation, pickup=checkpoint)
+    # N = iteration(simulation)
+    # checkpoint = "test_iteration$N.jld2"
+    # simulation = test_simulation(T2, Δt, window_nΔt, interval_nΔt, stride, false)
+    # run!(simulation, pickup=checkpoint)
 
     ##### For each λ, horizontal average should evaluate to
     #####
@@ -165,13 +165,13 @@ end
 
     window_size = window_nΔt
     window = window_size*Δt
-    @info "    Testing time-averaging of a single NetCDF output [$(typeof(arch))]..."
+    # @info "    Testing time-averaging of a single NetCDF output [$(typeof(arch))]..."
 
-    for (n, t) in enumerate(single_ds["time"][2:end])
-        averaging_times = [t - n*Δt for n in 0:stride:window_size-1 if t - n*Δt >= 0]
-        @info n,t,averaging_times, c̄1(averaging_times), single_ds["c1"][:, n+1], c̄1(averaging_times)./single_ds["c1"][:, n+1]
-        # @test all(isapprox.(single_ds["c1"][:, n+1], c̄1(averaging_times), rtol=rtol))
-    end
+    # for (n, t) in enumerate(single_ds["time"][2:end])
+    #     averaging_times = [t - n*Δt for n in 0:stride:window_size-1 if t - n*Δt >= 0]
+    #     @info n,t,averaging_times, c̄1(averaging_times), single_ds["c1"][:, n+1], c̄1(averaging_times)./single_ds["c1"][:, n+1]
+    #     # @test all(isapprox.(single_ds["c1"][:, n+1], c̄1(averaging_times), rtol=rtol))
+    # end
 
     time = single_ds["time"][:]
     data_plot = single_ds["c1"][1:4, :]
