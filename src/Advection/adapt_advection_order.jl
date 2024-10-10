@@ -16,16 +16,20 @@ If the order of advection is changed in at least one direction, the adapted adve
 by this function is a `FluxFormAdvection`.
 """
 function adapt_advection_order(advection, grid::AbstractGrid)
-    advection_x = adapt_advection_order(x_advection(advection), size(grid, 1), grid)
-    advection_y = adapt_advection_order(y_advection(advection), size(grid, 2), grid)
-    advection_z = adapt_advection_order(z_advection(advection), size(grid, 3), grid)
+    advection_x = x_advection(advection)
+    advection_y = y_advection(advection)
+    advection_z = z_advection(advection)
+
+    new_advection_x = adapt_advection_order(advection_x, size(grid, 1), grid)
+    new_advection_y = adapt_advection_order(advection_y, size(grid, 2), grid)
+    new_advection_z = adapt_advection_order(advection_z, size(grid, 3), grid)
 
     # Check that we indeed changed the advection operator
-    changed_x = advection_x != advection.x
-    changed_y = advection_y != advection.y
-    changed_z = advection_z != advection.z
+    changed_x = new_advection_x != advection_x
+    changed_y = new_advection_y != advection_y
+    changed_z = new_advection_z != advection_z
 
-    new_advection = FluxFormAdvection(advection_x, advection_y, advection_z)
+    new_advection = FluxFormAdvection(new_advection_x, new_advection_y, new_advection_z)
     changed_advection = any((changed_x, changed_y, changed_z))
 
     if changed_x
