@@ -28,17 +28,9 @@ const ZeroU = NamedTuple{(:u, :v, :w), Tuple{ZeroField, ZeroField, ZeroField}}
 @inline div_𝐯v(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
 @inline div_𝐯w(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
 
-@inline div_𝐯u(i, j, k, grid, ::Nothing, U, u) = zero(grid)
-@inline div_𝐯v(i, j, k, grid, ::Nothing, U, v) = zero(grid)
-@inline div_𝐯w(i, j, k, grid, ::Nothing, U, w) = zero(grid)
-
-@inline div_𝐯u(i, j, k, grid, ::Nothing, ::ZeroU, u) = zero(grid)
-@inline div_𝐯v(i, j, k, grid, ::Nothing, ::ZeroU, v) = zero(grid)
-@inline div_𝐯w(i, j, k, grid, ::Nothing, ::ZeroU, w) = zero(grid)
-
-@inline div_𝐯u(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
-@inline div_𝐯v(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
-@inline div_𝐯w(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+@inline div_𝐯u(i, j, k, grid, advection, ::ZeroU, ::ZeroField) = zero(grid)
+@inline div_𝐯v(i, j, k, grid, advection, ::ZeroU, ::ZeroField) = zero(grid)
+@inline div_𝐯w(i, j, k, grid, advection, ::ZeroU, ::ZeroField) = zero(grid)
 
 """
     div_𝐯u(i, j, k, grid, advection, U, u)
@@ -89,3 +81,20 @@ which ends up at the location `ccf`.
                                     δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vw, advection, U[2], w) +
                                     δzᵃᵃᶠ(i, j, k, grid, _advective_momentum_flux_Ww, advection, U[3], w))
 end
+
+#####
+##### Fallback advection fluxes!
+#####
+
+# Fallback for `nothing` advection
+@inline _advective_momentum_flux_Uu(i, j, k, grid, ::Nothing, args...) = zero(grid)
+@inline _advective_momentum_flux_Uv(i, j, k, grid, ::Nothing, args...) = zero(grid)
+@inline _advective_momentum_flux_Uw(i, j, k, grid, ::Nothing, args...) = zero(grid)
+
+@inline _advective_momentum_flux_Vu(i, j, k, grid, ::Nothing, args...) = zero(grid)
+@inline _advective_momentum_flux_Vv(i, j, k, grid, ::Nothing, args...) = zero(grid)
+@inline _advective_momentum_flux_Vw(i, j, k, grid, ::Nothing, args...) = zero(grid)
+
+@inline _advective_momentum_flux_Wu(i, j, k, grid, ::Nothing, args...) = zero(grid)
+@inline _advective_momentum_flux_Wv(i, j, k, grid, ::Nothing, args...) = zero(grid)
+@inline _advective_momentum_flux_Ww(i, j, k, grid, ::Nothing, args...) = zero(grid)

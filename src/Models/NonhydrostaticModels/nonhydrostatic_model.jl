@@ -3,7 +3,7 @@ using OrderedCollections: OrderedDict
 
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.DistributedComputations: Distributed
-using Oceananigans.Advection: CenteredSecondOrder
+using Oceananigans.Advection: CenteredSecondOrder, adapt_advection_order
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
@@ -171,6 +171,11 @@ function NonhydrostaticModel(; grid,
     tracers, auxiliary_fields = validate_biogeochemistry(tracers, all_auxiliary_fields, biogeochemistry, grid, clock)
     validate_buoyancy(buoyancy, tracernames(tracers))
     buoyancy = regularize_buoyancy(buoyancy)
+
+    # Adjust advection scheme to be valid on a particular grid size. i.e. if the grid size
+    # is smaller than the advection order, reduce the order of the advection in that particular
+    # direction
+    advection = adapt_advection_order(advection, grid)
 
     # Adjust halos when the advection scheme or turbulence closure requires it.
     # Note that halos are isotropic by default; however we respect user-input here

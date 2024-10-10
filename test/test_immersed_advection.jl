@@ -10,7 +10,7 @@ using Oceananigans.Advection:
         _biased_interpolate_xᶠᵃᵃ, 
         _biased_interpolate_yᵃᶜᵃ, 
         _biased_interpolate_yᵃᶠᵃ,
-        TracerAdvection
+        FluxFormAdvection
 
 advection_schemes = [Centered, UpwindBiased, WENO]
 
@@ -128,7 +128,7 @@ for arch in archs
 
         for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
             directional_scheme = adv(order = advective_order(buffer, adv))
-            scheme = TracerAdvection(directional_scheme, directional_scheme, directional_scheme)
+            scheme = FluxFormAdvection(directional_scheme, directional_scheme, directional_scheme)
             for g in [grid, ibg]
                 @info "  Testing immersed tracer conservation [$(typeof(arch)), $(summary(scheme)), $(typeof(g).name.wrapper)]"
                 run_tracer_conservation_test(g, scheme)
