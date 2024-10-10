@@ -62,7 +62,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!
             set!(u, set_u_check)
             exact_U = similar(U)
             set!(exact_U, set_U_check)
-            compute_barotropic_mode!(U, V, grid, u, v)
+            Hᶠᶜ = auxiliary.Hᶠᶜ
+            Hᶜᶠ = auxiliary.Hᶜᶠ
+            compute_barotropic_mode!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, η̅)
             tolerance = 1e-3
             @test all((Array(interior(U) .- interior(exact_U))) .< tolerance)
 
@@ -71,7 +73,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!
             set!(v, set_v_check)
             exact_V = similar(V)
             set!(exact_V, set_V_check)
-            compute_barotropic_mode!(U, V, grid, u, v)
+            compute_barotropic_mode!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, η̅)
             @test all((Array(interior(V) .- interior(exact_V))) .< tolerance)
         end
 
@@ -81,12 +83,12 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!
 
             u .= 0.0
             U .= 1.0
-            compute_barotropic_mode!(U, V, grid, u, v)
+            compute_barotropic_mode!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, η̅)
             @test all(Array(U.data.parent) .== 0.0)
 
             u .= 1.0
             U .= 1.0
-            compute_barotropic_mode!(U, V, grid, u, v)
+            compute_barotropic_mode!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, η̅)
             @test all(Array(interior(U)) .≈ Lz)
 
             set_u_check(x, y, z) = sin(x)
@@ -94,7 +96,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!
             set!(u, set_u_check)
             exact_U = similar(U)
             set!(exact_U, set_U_check)
-            compute_barotropic_mode!(U, V, grid, u, v)
+            compute_barotropic_mode!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, η̅)
             @test all(Array(interior(U)) .≈ Array(interior(exact_U)))
 
             set_v_check(x, y, z) = sin(x) * z * cos(y)
@@ -102,7 +104,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!
             set!(v, set_v_check)
             exact_V = similar(V)
             set!(exact_V, set_V_check)
-            compute_barotropic_mode!(U, V, grid, u, v)
+            compute_barotropic_mode!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, η̅)
             @test all(Array(interior(V)) .≈ Array(interior(exact_V)))
         end
 

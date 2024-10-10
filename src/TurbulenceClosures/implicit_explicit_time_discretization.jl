@@ -1,5 +1,7 @@
 using Oceananigans.Grids: AbstractGrid
 
+import Oceananigans.Architectures: on_architecture
+
 abstract type AbstractTimeDiscretization end
 
 """

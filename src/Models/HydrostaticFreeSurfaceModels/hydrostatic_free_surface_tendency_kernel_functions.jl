@@ -47,6 +47,7 @@ implicitly during time-stepping.
              - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
+             - grid_slope_contribution_x(i, j, k, grid, free_surface, buoyancy, model_fields)
              - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, diffusivities, clock, model_fields)
              + forcings.u(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
@@ -82,10 +83,11 @@ implicitly during time-stepping.
     
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
-    return ( - U_dot_∇v(i, j, k, grid, advection, velocities)
+    return ( - U_dot_∇v(i, j, k, grid, advection, velocities) 
              - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂yᶜᶠᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
+             - grid_slope_contribution_y(i, j, k, grid, free_surface, buoyancy, model_fields)
              - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, diffusivities, clock, model_fields)
              + forcings.v(i, j, k, grid, clock, model_fields))
@@ -136,28 +138,3 @@ where `c = C[tracer_index]`.
              + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))
 end
-
-"""
-Return the tendency for an explicit free surface at horizontal grid point `i, j`.
-
-The tendency is called ``G_η`` and defined via
-
-```
-∂_t η = G_η
-```
-"""
-@inline function free_surface_tendency(i, j, grid,
-                                       velocities,
-                                       free_surface,
-                                       tracers,
-                                       auxiliary_fields,
-                                       forcings,
-                                       clock)
-
-    k_top = grid.Nz + 1
-    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
-
-    return @inbounds (   velocities.w[i, j, k_top]
-                       + forcings.η(i, j, k_top, grid, clock, model_fields))
-end
-

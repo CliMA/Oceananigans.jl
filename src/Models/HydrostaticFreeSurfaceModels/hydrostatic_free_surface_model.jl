@@ -58,18 +58,19 @@ default_free_surface(grid; gravitational_acceleration=g_Earth) =
                                              clock = Clock{eltype(grid)}(time = 0),
                                 momentum_advection = CenteredSecondOrder(),
                                   tracer_advection = CenteredSecondOrder(),
-                                          buoyancy = SeawaterBuoyancy(eltype(grid)),
+                                          buoyancy = nothing,
                                           coriolis = nothing,
                                       free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
                                forcing::NamedTuple = NamedTuple(),
                                            closure = nothing,
                    boundary_conditions::NamedTuple = NamedTuple(),
-                                           tracers = (:T, :S),
+                                           tracers = nothing, 
                      particles::ParticlesOrNothing = nothing,
              biogeochemistry::AbstractBGCOrNothing = nothing,
                                         velocities = nothing,
                                           pressure = nothing,
                                 diffusivity_fields = nothing,
+                               vertical_coordinate = Z(),
                                   auxiliary_fields = NamedTuple(),
     )
 
@@ -100,25 +101,26 @@ Keyword arguments
   - `velocities`: The model velocities. Default: `nothing`.
   - `pressure`: Hydrostatic pressure field. Default: `nothing`.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
+  - `vertical_coordinate`: choice between the default `ZCoordinate` and the free-surface following `ZStarSpacing`
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
 """
 function HydrostaticFreeSurfaceModel(; grid,
-                                             clock = Clock{eltype(grid)}(time = 0),
-                                momentum_advection = CenteredSecondOrder(),
-                                  tracer_advection = CenteredSecondOrder(),
-                                          buoyancy = nothing,
-                                          coriolis = nothing,
-                                      free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
-                                           tracers = nothing,
-                                      forcing::NamedTuple = NamedTuple(),
-                                           closure = nothing,
-                   boundary_conditions::NamedTuple = NamedTuple(),
-                     particles::ParticlesOrNothing = nothing,
-             biogeochemistry::AbstractBGCOrNothing = nothing,
-                                        velocities = nothing,
-                                          pressure = nothing,
-                                diffusivity_fields = nothing,
-                                  auxiliary_fields = NamedTuple()
+                                     clock = Clock{eltype(grid)}(time = 0),
+                        momentum_advection = CenteredSecondOrder(),
+                          tracer_advection = CenteredSecondOrder(),
+                                  buoyancy = nothing,
+                                  coriolis = nothing,
+                              free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
+                                   tracers = nothing,
+                       forcing::NamedTuple = NamedTuple(),
+                                   closure = nothing,
+           boundary_conditions::NamedTuple = NamedTuple(),
+             particles::ParticlesOrNothing = nothing,
+     biogeochemistry::AbstractBGCOrNothing = nothing,
+                                velocities = nothing,
+                                  pressure = nothing,
+                        diffusivity_fields = nothing,
+                          auxiliary_fields = NamedTuple()
     )
 
     # Check halos and throw an error if the grid's halo is too small

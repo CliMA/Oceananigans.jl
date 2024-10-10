@@ -22,7 +22,7 @@ contribution from non-hydrostatic pressure.
 function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 
     kernel_parameters = tuple(interior_tendency_kernel_parameters(model.grid))
-
+    
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain. The active cells map restricts the computation to the active cells in the
     # interior if the grid is _immersed_ and the `active_cells_map` kwarg is active
@@ -119,16 +119,19 @@ function compute_free_surface_tendency!(grid, model, kernel_parameters)
 
     arch = architecture(grid)
 
-    args = tuple(model.velocities,
-                 model.free_surface,
-                 model.tracers,
-                 model.auxiliary_fields,
-                 model.forcing,
-                 model.clock)
+    if model.free_surface isa ExplicitFreeSurface 
+        
+        args = tuple(model.velocities,
+                    model.free_surface,
+                    model.tracers,
+                    model.auxiliary_fields,
+                    model.forcing,
+                    model.clock)
 
-    launch!(arch, grid, kernel_parameters,
-            compute_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, 
-            grid, args)
+        launch!(arch, grid, kernel_parameters,
+                compute_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, 
+                grid, args)
+    end
 
     return nothing
 end

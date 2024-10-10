@@ -165,7 +165,7 @@ Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT} =
 ##### Convenience for WENO Vector Invariant
 #####
 
-nothing_to_default(user_value; default) = isnothing(user_value) ? default : user_value
+nothing_to_default(user_value; default = nothing) = isnothing(user_value) ? default : user_value
 
 """
     WENOVectorInvariant(; upwinding = nothing,

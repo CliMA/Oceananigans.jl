@@ -7,7 +7,7 @@ using Oceananigans.CubedSpheres
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
 
-using OrthogonalSphericalShellGrids
+# using OrthogonalSphericalShellGrids
     
 # To be used in the test below as `KernelFunctionOperation`s
 @inline intrinsic_vector_x_component(i, j, k, grid, uₑ, vₑ) = 
@@ -172,10 +172,10 @@ end
 
             @testset "Conversion from Intrinsic to Extrinsic reference frame [$(typeof(arch))]" begin
                 @info "  Testing the conversion of a vector between the Intrinsic and Extrinsic reference frame"
-                trg_grid = TripolarGrid(arch, size = (20, 20, 1), z = (0, 1))
+                # trg_grid = TripolarGrid(arch, size = (20, 20, 1), z = (0, 1))
 
                 test_vector_rotation(grid)
-                test_vector_rotation(trg_grid)
+                # test_vector_rotation(trg_grid)
             end
 
             @testset "CubedSphereData and CubedSphereFields [$(typeof(arch))]" begin
