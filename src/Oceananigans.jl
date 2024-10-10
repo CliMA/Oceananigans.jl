@@ -17,6 +17,7 @@ export
     FullyConnected, LeftConnected, RightConnected,
     RectilinearGrid, 
     LatitudeLongitudeGrid,
+    ZStarVerticalCoordinate,
     OrthogonalSphericalShellGrid,
     xnodes, ynodes, znodes, nodes,
     λnodes, φnodes,

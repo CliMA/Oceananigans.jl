@@ -337,5 +337,8 @@ include("immersed_reductions.jl")
 # Extension to distributed Immersed boundaries
 include("distributed_immersed_boundaries.jl")
 
+# Extension to Immersed boundaries with turbulence closures
+include("abstract_zstar_immersed_grid.jl")
+
 end # module
 

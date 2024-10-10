@@ -2,14 +2,17 @@ using Oceananigans
 using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceananigans.BuoyancyModels: buoyancy_perturbationᶜᶜᶜ
-using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, halo_size
+using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, halo_size, AbstractVerticalCoordinateUnderlyingGrid
 using Oceananigans.ImmersedBoundaries
+using Oceananigans.ImmersedBoundaries: ImmersedAbstractVerticalCoordinateGrid
 using Oceananigans.Utils: getnamewrapper
+using Oceananigans.Grids: with_halo, znode, ∂t_grid, vertical_scaling, previous_vertical_scaling
 using Adapt 
 using Printf
 
-import Oceananigans.Grids: with_halo, znode, ∂t_grid, vertical_scaling, previous_vertical_scaling
 import Oceananigans.Architectures: arch_array
+
+const AbstractVerticalCoordinateGrid = Union{AbstractVerticalCoordinateUnderlyingGrid, ImmersedAbstractVerticalCoordinateGrid}
 
 #####
 ##### General implementation
@@ -47,7 +50,7 @@ update_grid!(model, grid; kwargs...) = nothing
     end
 end
 
-ab2_step_tracer_field!(tracer_field, grid::AbstractVerticalSpacingGrid, Δt, χ, Gⁿ, G⁻) =
+ab2_step_tracer_field!(tracer_field, grid::AbstractVerticalCoordinateGrid, Δt, χ, Gⁿ, G⁻) =
     launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_generalized_spacing!, 
             tracer_field, 
             grid, 
@@ -55,12 +58,14 @@ ab2_step_tracer_field!(tracer_field, grid::AbstractVerticalSpacingGrid, Δt, χ,
 
 const EmptyTuples = Union{NamedTuple{(), Tuple{}}, Tuple{}}
 
-unscale_tracers!(::EmptyTuples, ::AbstractVerticalSpacingGrid; kwargs...) = nothing
+# Fallbacks
+unscale_tracers!(tracers, grid; kwargs...) = nothing
+unscale_tracers!(::EmptyTuples, ::AbstractVerticalCoordinateGrid; kwargs...) = nothing
 
 tracer_scaling_parameters(param::Symbol, tracers, grid) = KernelParameters((size(grid, 1), size(grid, 2), length(tracers)), (0, 0, 0))
 tracer_scaling_parameters(param::KernelParameters{S, O}, tracers, grid) where {S, O} = KernelParameters((S..., length(tracers)), (O..., 0))
 
-function unscale_tracers!(tracers, grid::AbstractVerticalSpacingGrid; parameters = :xy) 
+function unscale_tracers!(tracers, grid::AbstractVerticalCoordinateGrid; parameters = :xy) 
     parameters = tracer_scaling_parameters(parameters, tracers, grid)
     
     launch!(architecture(grid), grid, parameters, _unscale_tracers!, tracers, grid, 

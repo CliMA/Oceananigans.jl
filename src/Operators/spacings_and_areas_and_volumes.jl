@@ -1,5 +1,5 @@
 using Oceananigans.Grids: Center, Face
-using Oceananigans.Grids: AbstractVerticalCoordinateGrid
+using Oceananigans.Grids: AbstractVerticalCoordinateUnderlyingGrid, ZStarUnderlyingGrid
 
 const RG  = RectilinearGrid
 const RGX = XRegularRG
@@ -13,6 +13,8 @@ const LLG  = LatitudeLongitudeGrid
 const LLGX = XRegularLLG
 const LLGY = YRegularLLG
 const LLGZ = ZRegularLLG
+
+const ZSG = ZStarUnderlyingGrid
 
 # On the fly calculations of metrics
 const LLGF  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing}
@@ -74,8 +76,8 @@ const ZRG = Union{LLGZ, RGZ, OSSGZ}
 @inline getspacing(k, Δz::AbstractVector) = @inbounds Δz[k]
 @inline getspacing(k, Δz::Number)         = @inbounds Δz
 
-@inline Δrᵃᵃᶜ(i, j, k, grid::ZRG) = getspacing(k, grid.Δzᵃᵃᶜ.reference)
-@inline Δrᵃᵃᶠ(i, j, k, grid::ZRG) = getspacing(k, grid.Δzᵃᵃᶠ.reference)
+@inline Δrᵃᵃᶜ(i, j, k, grid::ZSG) = getspacing(k, grid.Δzᵃᵃᶜ.reference)
+@inline Δrᵃᵃᶠ(i, j, k, grid::ZSG) = getspacing(k, grid.Δzᵃᵃᶠ.reference)
 
 # Convenience Functions for all grids
 for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
@@ -114,7 +116,7 @@ end
 ##### 3D spacings for AbstractVerticalCoordinate grids
 #####
 
-const AVCG = AbstractVerticalCoordinateGrid
+const AVCG = AbstractVerticalCoordinateUnderlyingGrid
 const c = Center()
 const f = Face()
 

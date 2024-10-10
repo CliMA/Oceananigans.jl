@@ -12,11 +12,34 @@ const AVLLG  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <
 const AVOSSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractVerticalCoordinate}
 const AVRG   = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractVerticalCoordinate}
 
-const AbstractVerticalCoordinateGrid = Union{AVLLG, AVOSSG, AVRG}
+const AbstractVerticalCoordinateUnderlyingGrid = Union{AVLLG, AVOSSG, AVRG}
 
 # rnode for an AbstractVerticalCoordinate grid is the reference node
-@inline rnode(i, j, k, grid::AbstractVerticalCoordinateGrid, ℓx, ℓy, ::Center) = @inbounds grid.zᵃᵃᶜ[k] 
-@inline rnode(i, j, k, grid::AbstractVerticalCoordinateGrid, ℓx, ℓy, ::Face)   = @inbounds grid.zᵃᵃᶠ[k] 
+@inline rnode(i, j, k, grid::AbstractVerticalCoordinateUnderlyingGrid, ℓx, ℓy, ::Center) = @inbounds grid.zᵃᵃᶜ.reference[k] 
+@inline rnode(i, j, k, grid::AbstractVerticalCoordinateUnderlyingGrid, ℓx, ℓy, ::Face)   = @inbounds grid.zᵃᵃᶠ.reference[k] 
+
+function retrieve_static_grid(grid::AbstractVerticalCoordinateUnderlyingGrid) 
+
+    Δzᵃᵃᶠ = reference_zspacings(grid, Face())
+    Δzᵃᵃᶜ = reference_zspacings(grid, Center())
+
+    TX, TY, TZ = topology(grid)
+
+    args = []
+    for prop in propertynames(grid)
+        if prop == :Δzᵃᵃᶠ
+            push!(args, Δzᵃᵃᶠ)
+        elseif prop == :Δzᵃᵃᶜ
+            push!(args, Δzᵃᵃᶜ)
+        else
+            push!(args, getproperty(grid, prop))
+        end
+    end
+
+    GridType = getnamewrapper(grid)
+
+    return GridType{TX, TY, TZ}(args...)
+end
 
 """
     struct ZStarVerticalCoordinate{R, S} <: AbstractVerticalSpacing{R}
@@ -80,7 +103,15 @@ generate_coordinate(FT, ::Periodic, N, H, ::ZStarVerticalCoordinate, coordinate_
     throw(ArgumentError("Periodic domains are not supported for ZStarVerticalCoordinate"))
 
 # Generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points
-function generate_coordinate(FT, topo::Bounded, Nz, Hz, coordinate::ZStarVerticalCoordinate, coordinate_name, arch, Nx, Ny, Hx, Hy)
+function generate_coordinate(FT, topo, size, halo, coordinate::ZStarVerticalCoordinate, coordinate_name, dim::Int, arch)
+
+    Nx, Ny, Nz = size
+    Hx, Hy, Hz = halo
+
+    if dim != 3 
+        msg = "ZStarVerticalCoordinate is supported only in the third dimension (z)"
+        throw(ArgumentError(msg))
+    end
 
     if coordinate_name != :z
         msg = "Only z-coordinate is supported for ZStarVerticalCoordinate"
@@ -93,26 +124,40 @@ function generate_coordinate(FT, topo::Bounded, Nz, Hz, coordinate::ZStarVertica
 
     args = (topo, (Nx, Ny, Nz), (Hx, Hy, Hz))
 
-    sΔzᶜᶜᵃ = new_data(FT, arch, (Center, Center, Nothing), args...)
-    sΔzᶜᶠᵃ = new_data(FT, arch, (Center, Face,   Nothing), args...)
-    sΔzᶠᶜᵃ = new_data(FT, arch, (Face,   Center, Nothing), args...)
-    sΔzᶠᶠᵃ = new_data(FT, arch, (Face,   Face,   Nothing), args...)  
+    sᶜᶜᵃ = new_data(FT, arch, (Center, Center, Nothing), args...)
+    sᶜᶠᵃ = new_data(FT, arch, (Center, Face,   Nothing), args...)
+    sᶠᶜᵃ = new_data(FT, arch, (Face,   Center, Nothing), args...)
+    sᶠᶠᵃ = new_data(FT, arch, (Face,   Face,   Nothing), args...)  
 
-    sΔzᶜᶜᵃ₋ = new_data(FT, arch, (Center, Center, Nothing), args...)
-    sΔzᶜᶠᵃ₋ = new_data(FT, arch, (Center, Face,   Nothing), args...)
-    sΔzᶠᶜᵃ₋ = new_data(FT, arch, (Face,   Center, Nothing), args...)
+    sᶜᶜᵃ₋ = new_data(FT, arch, (Center, Center, Nothing), args...)
+    sᶜᶠᵃ₋ = new_data(FT, arch, (Center, Face,   Nothing), args...)
+    sᶠᶜᵃ₋ = new_data(FT, arch, (Face,   Center, Nothing), args...)
 
     ∂t_s = new_data(FT, arch, (Center, Center, Nothing), args...)
-    η    = new_data(FT, arch, (Center, Center, Nothing), args...) # Storage place for the free surface height
+    # Storage place for the free surface height? Probably find a better way to call this
+    η    = new_data(FT, arch, (Center, Center, Nothing), args...)
 
-    # The scaling is the same for everyone (H + \eta) / H
-    zᵃᵃᶠ = ZStarVerticalCoordinate(rᵃᵃᶠ, sΔzᶜᶜᵃ, sΔzᶠᶜᵃ, sΔzᶜᶠᵃ, sΔzᶠᶠᵃ, sΔzᶜᶜᵃ₋, sΔzᶠᶜᵃ₋, sΔzᶜᶠᵃ₋, η)
-    zᵃᵃᶜ = ZStarVerticalCoordinate(rᵃᵃᶜ, sΔzᶜᶜᵃ, sΔzᶠᶜᵃ, sΔzᶜᶠᵃ, sΔzᶠᶠᵃ, sΔzᶜᶜᵃ₋, sΔzᶠᶜᵃ₋, sΔzᶜᶠᵃ₋, η)
+    # fill all the scalings with 1
+    for s in (sᶜᶜᵃ, sᶜᶠᵃ, sᶠᶜᵃ, sᶠᶠᵃ, sᶜᶜᵃ₋, sᶜᶠᵃ₋, sᶠᶜᵃ₋)
+        fill!(s, 1)
+    end
 
-    Δzᵃᵃᶠ = ZStarVerticalCoordinate(Δrᵃᵃᶠ, sΔzᶜᶜᵃ, sΔzᶠᶜᵃ, sΔzᶜᶠᵃ, sΔzᶠᶠᵃ, sΔzᶜᶜᵃ₋, sΔzᶠᶜᵃ₋, sΔzᶜᶠᵃ₋, ∂t_s)
-    Δzᵃᵃᶜ = ZStarVerticalCoordinate(Δrᵃᵃᶜ, sΔzᶜᶜᵃ, sΔzᶠᶜᵃ, sΔzᶜᶠᵃ, sΔzᶠᶠᵃ, sΔzᶜᶜᵃ₋, sΔzᶠᶜᵃ₋, sΔzᶜᶠᵃ₋, ∂t_s)
+    # The scaling is the same for everyone (H + \eta) / H, the vertical coordinate requires 
+    # to add the free surface to retrieve the znode.
+    zᵃᵃᶠ = ZStarVerticalCoordinate(rᵃᵃᶠ, sᶜᶜᵃ, sᶠᶜᵃ, sᶜᶠᵃ, sᶠᶠᵃ, sᶜᶜᵃ₋, sᶠᶜᵃ₋, sᶜᶠᵃ₋, η)
+    zᵃᵃᶜ = ZStarVerticalCoordinate(rᵃᵃᶜ, sᶜᶜᵃ, sᶠᶜᵃ, sᶜᶠᵃ, sᶠᶠᵃ, sᶜᶜᵃ₋, sᶠᶜᵃ₋, sᶜᶠᵃ₋, η)
+
+    Δzᵃᵃᶠ = ZStarVerticalCoordinate(Δrᵃᵃᶠ, sᶜᶜᵃ, sᶠᶜᵃ, sᶜᶠᵃ, sᶠᶠᵃ, sᶜᶜᵃ₋, sᶠᶜᵃ₋, sᶜᶠᵃ₋, ∂t_s)
+    Δzᵃᵃᶜ = ZStarVerticalCoordinate(Δrᵃᵃᶜ, sᶜᶜᵃ, sᶠᶜᵃ, sᶜᶠᵃ, sᶠᶠᵃ, sᶜᶜᵃ₋, sᶠᶜᵃ₋, sᶜᶠᵃ₋, ∂t_s)
 
     return Lr, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ
+end
+
+function validate_dimension_specification(T, ξ::ZStarVerticalCoordinate, dir, N, FT)
+    reference = validate_dimension_specification(T, ξ.reference, dir, N, FT)
+    args      = Tuple(getproperty(ξ, prop) for prop in propertynames(ξ))
+
+    return ZStarVerticalCoordinate(reference, args[2:end]...)
 end
 
 const ZStarLLG  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ZStarVerticalCoordinate}
@@ -140,8 +185,8 @@ reference_zspacings(grid, ::F) = grid.Δzᵃᵃᶠ
 @inline ∂t_grid(i, j, k, grid) = zero(grid)
 @inline V_times_∂t_grid(i, j, k, grid) = zero(grid)
 
-reference_zspacings(grid::ZSG, ::C) = grid.Δzᵃᵃᶜ.Δr
-reference_zspacings(grid::ZSG, ::F) = grid.Δzᵃᵃᶠ.Δr
+reference_zspacings(grid::ZSG, ::C) = grid.Δzᵃᵃᶜ.reference
+reference_zspacings(grid::ZSG, ::F) = grid.Δzᵃᵃᶠ.reference
 
 @inline vertical_scaling(i, j, k, grid::ZSG, ::C, ::C, ::C) = @inbounds grid.Δzᵃᵃᶜ.sᶜᶜⁿ[i, j]
 @inline vertical_scaling(i, j, k, grid::ZSG, ::F, ::C, ::C) = @inbounds grid.Δzᵃᵃᶜ.sᶠᶜⁿ[i, j]
@@ -180,26 +225,3 @@ const f = Face()
 @inline znode(i, j, k, grid::ZSG, ::C, ::F, ::F) = @inbounds grid.zᵃᵃᶠ.reference[k] * vertical_scaling(i, j, k, grid, c, f, c) + grid.zᵃᵃᶠ.∂t_s[i, j] 
 @inline znode(i, j, k, grid::ZSG, ::F, ::C, ::F) = @inbounds grid.zᵃᵃᶠ.reference[k] * vertical_scaling(i, j, k, grid, f, c, c) + grid.zᵃᵃᶠ.∂t_s[i, j] 
 @inline znode(i, j, k, grid::ZSG, ::F, ::F, ::F) = @inbounds grid.zᵃᵃᶠ.reference[k] * vertical_scaling(i, j, k, grid, f, f, c) + grid.zᵃᵃᶠ.∂t_s[i, j] 
-
-function retrieve_static_grid(grid::ZStarUnderlyingGrid) 
-
-    Δzᵃᵃᶠ = reference_zspacings(grid, Face())
-    Δzᵃᵃᶜ = reference_zspacings(grid, Center())
-
-    TX, TY, TZ = topology(grid)
-
-    args = []
-    for prop in propertynames(grid)
-        if prop == :Δzᵃᵃᶠ
-            push!(args, Δzᵃᵃᶠ)
-        elseif prop == :Δzᵃᵃᶜ
-            push!(args, Δzᵃᵃᶜ)
-        else
-            push!(args, getproperty(grid, prop))
-        end
-    end
-
-    GridType = getnamewrapper(grid)
-
-    return GridType{TX, TY, TZ}(args...)
-end

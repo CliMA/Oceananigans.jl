@@ -1,12 +1,13 @@
 using Oceananigans.Grids: ZStarUnderlyingGrid, rnode
+using Oceananigans.ImmersedBoundaries: ImmersedZStarGrid
 
-ZStarSpacingGrid = ZStarUnderlyingGrid
+const ZStarSpacingGrid = Union{ZStarUnderlyingGrid, ImmersedZStarGrid}
 
 #####
 ##### ZStar-specific vertical spacings update
 #####
 
-function update_grid!(model, grid::ZStarUnderlyingGrid; parameters = :xy)
+function update_grid!(model, grid::ZStarSpacingGrid; parameters = :xy)
     
     # Scaling (just update once, they are the same for all the metrics)
     sᶜᶜ⁻   = grid.Δzᵃᵃᶠ.sᶜᶜ⁻
@@ -90,11 +91,11 @@ end
 @inline ∂x_z(i, j, k, grid, free_surface) = @inbounds ∂xᶠᶜᶜ(i, j, k, grid, z_minus_rᶜᶜᶜ, free_surface.η, free_surface.auxiliary.Hᶜᶜ)
 @inline ∂y_z(i, j, k, grid, free_surface) = @inbounds ∂yᶜᶠᶜ(i, j, k, grid, z_minus_rᶜᶜᶜ, free_surface.η, free_surface.auxiliary.Hᶜᶜ)
 
-@inline grid_slope_contribution_x(i, j, k, grid::ZStarUnderlyingGrid, free_surface, ::Nothing, model_fields) = zero(grid)
-@inline grid_slope_contribution_y(i, j, k, grid::ZStarUnderlyingGrid, free_surface, ::Nothing, model_fields) = zero(grid)
+@inline grid_slope_contribution_x(i, j, k, grid::ZStarSpacingGrid, free_surface, ::Nothing, model_fields) = zero(grid)
+@inline grid_slope_contribution_y(i, j, k, grid::ZStarSpacingGrid, free_surface, ::Nothing, model_fields) = zero(grid)
 
-@inline grid_slope_contribution_x(i, j, k, grid::ZStarUnderlyingGrid, free_surface, buoyancy, model_fields) = 
+@inline grid_slope_contribution_x(i, j, k, grid::ZStarSpacingGrid, free_surface, buoyancy, model_fields) = 
     ℑxᶠᵃᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, model_fields) * ∂x_z(i, j, k, grid, free_surface)
 
-@inline grid_slope_contribution_y(i, j, k, grid::ZStarUnderlyingGrid, free_surface, buoyancy, model_fields) = 
+@inline grid_slope_contribution_y(i, j, k, grid::ZStarSpacingGrid, free_surface, buoyancy, model_fields) = 
     ℑyᵃᶠᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, model_fields) * ∂y_z(i, j, k, grid, free_surface)

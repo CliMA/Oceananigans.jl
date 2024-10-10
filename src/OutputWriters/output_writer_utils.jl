@@ -1,12 +1,13 @@
+using Oceananigans.DistributedComputations
 using StructArrays: StructArray, replace_storage
 using Oceananigans.Grids: on_architecture, architecture
-using Oceananigans.DistributedComputations
+using Oceananigans.Grids: retrieve_static_grid
 using Oceananigans.DistributedComputations: DistributedGrid, Partition
 using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instantiated_location
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractVerticalCoordinateGrid
 using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticles
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractVerticalSpacingGrid, retrieve_static_grid
 using Oceananigans.Utils: AbstractSchedule
 
 #####
@@ -90,7 +91,7 @@ function saveproperty!(file, address, grid::DistributedGrid)
     _saveproperty!(file, address, on_architecture(cpu_arch, grid))
 end
 
-function saveproperty!(file, address, grid::AbstractVerticalSpacingGrid) 
+function saveproperty!(file, address, grid::AbstractVerticalCoordinateGrid) 
     static_grid = retrieve_static_grid(grid)
     saveproperty!(file, address, static_grid)
 end
@@ -136,7 +137,7 @@ function serializeproperty!(file, address, grid::DistributedGrid)
     file[address] = on_architecture(cpu_arch, grid)
 end
 
-function serializeproperty!(file, address, grid::AbstractVerticalSpacingGrid) 
+function serializeproperty!(file, address, grid::AbstractVerticalCoordinateGrid) 
     static_grid = retrieve_static_grid(grid)
     serializeproperty!(file, address, static_grid)
 end

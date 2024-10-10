@@ -3,19 +3,21 @@ using Oceananigans.Units
 using Oceananigans.Utils: prettytime
 using Oceananigans.Advection: WENOVectorInvariant
 using Oceananigans.AbstractOperations: GridMetricOperation  
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStar, ZStarSpacingGrid, Δrᶜᶜᶜ
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStarSpacingGrid
 using Printf
 
-grid = RectilinearGrid(size = (20, 20), 
-                          y = (0, 64kilometers), 
-                          z = (-20, 0), 
-                       halo = (6, 6),
-                   topology = (Flat, Periodic, Bounded))
+r_faces = (-20, 0)
+z_faces = ZStarVerticalCoordinate(r_faces)
 
-grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> x < 32kilometers ? -10 : -20))
+grid = RectilinearGrid(size = (20, 20), 
+                          x = (0, 64kilometers), 
+                          z = z_faces, 
+                       halo = (6, 6),
+                   topology = (Bounded, Flat, Bounded))
+
+# grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> x < 32kilometers ? -10 : -20))
 
 model = HydrostaticFreeSurfaceModel(; grid, 
-            vertical_coordinate = ZStar(),
                          momentum_advection = WENO(; order = 5),
                            tracer_advection = WENO(; order = 5),
                                    buoyancy = BuoyancyTracer(),
@@ -61,17 +63,9 @@ function progress(sim)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 
 run!(simulation)
-
-using Oceananigans.Utils
-using KernelAbstractions: @kernel, @index
-
-@kernel function _compute_field!(tmp, s, b)
-  i, j, k = @index(Global, NTuple)
-  @inbounds tmp[i, j, k] = s[i, j, k] * b[i, j, k]
-end
 
 using Oceananigans.Fields: OneField
 
@@ -79,13 +73,10 @@ using Oceananigans.Fields: OneField
 b  = FieldTimeSeries("zstar_model.jld2", "b")
 Δz = FieldTimeSeries("zstar_model.jld2", "Δz")
 
-tmpfield = CenterField(grid)
-launch!(CPU(), grid, :xyz, _compute_field!, tmpfield, Δz[1], b[1])
-init  = sum(tmpfield) / sum(Δz[1])
+init  = sum(Δz[1] * b[1]) / sum(Δz[1])
 drift = []
 
 for t in 1:length(b.times)
-  launch!(CPU(), grid, :xyz, _compute_field!, tmpfield, Δz[t], b[t])
-  push!(drift, sum(tmpfield) /  sum(Δz[t]) - init) 
+  push!(drift, sum(Δz[t] * b[t]) /  sum(Δz[t]) - init) 
 end
 
