@@ -25,7 +25,6 @@ struct GridFittedBottom{H, I} <: AbstractGridFittedBottom{H}
     immersed_condition :: I
 end
 
-
 GridFittedBottom(bottom_height) = GridFittedBottom(bottom_height, CenterImmersedCondition())
 
 Base.summary(::CenterImmersedCondition) = "CenterImmersedCondition"
@@ -73,7 +72,7 @@ function Base.show(io::IO, ib::GridFittedBottom)
     print(io, "├── bottom_height: ", prettysummary(ib.bottom_height), '\n')
 end
 
-on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(on_architecture(ib.bottom_height), ib.immersed_condition)
+on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(on_architecture(arch, ib.bottom_height), ib.immersed_condition)
 
 function on_architecture(arch, ib::GridFittedBottom{<:Field})
     architecture(ib.bottom_height) == arch && return ib
@@ -84,7 +83,7 @@ function on_architecture(arch, ib::GridFittedBottom{<:Field})
     return GridFittedBottom(new_bottom_height, ib.immersed_condition)
 end
 
-Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height), ib.immersed_condition)
+Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height), adapt(to, ib.immersed_condition))
 
 """
     ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
