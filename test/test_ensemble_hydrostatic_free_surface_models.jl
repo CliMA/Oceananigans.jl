@@ -79,7 +79,7 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
     per_grid = ImmersedBoundaryGrid(per_model.grid, GridFittedBottom(-0.5))
 
     sic_model = HydrostaticFreeSurfaceModel(; grid = sic_grid, model_kwargs...)
-    per_model = HydrostaticFreeSurfaceModel(; grid = par_grid, model_kwargs...)
+    per_model = HydrostaticFreeSurfaceModel(; grid = per_grid, model_kwargs...)
 
     set!(sic_model, c = z         -> exp(-z^2), u = 1, v = 1)
     set!(per_model, c = (x, y, z) -> exp(-z^2), u = 1, v = 1)
