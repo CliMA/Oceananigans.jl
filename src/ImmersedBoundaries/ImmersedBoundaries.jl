@@ -53,7 +53,7 @@ import Oceananigans.Grids: architecture, with_halo, inflate_halo_size_one_dimens
                            ξname, ηname, rname, node_names,
                            xnodes, ynodes, znodes, λnodes, φnodes, nodes,
                            ξnodes, ηnodes, rnodes,
-                           column_heightᶜᶜᵃ, column_heightᶠᶜᵃ, column_heightᶜᶠᵃ, column_heightᶠᶠᵃ,
+                           domain_depthᶜᶜᵃ, domain_depthᶠᶜᵃ, domain_depthᶜᶠᵃ, domain_depthᶠᶠᵃ,
                            inactive_cell
 
 import Oceananigans.Coriolis: φᶠᶠᵃ

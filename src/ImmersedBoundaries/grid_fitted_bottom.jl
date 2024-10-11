@@ -124,7 +124,7 @@ end
     return z ≤ zb
 end
 
-@inline bottom_height(i, j, ibg::GFBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
+@inline z_bottom(i, j, ibg::GFBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
 
 #####
 ##### Bottom height
@@ -132,16 +132,16 @@ end
 
 const AGFBIB = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
 
-@inline column_heightᶜᶜᵃ(i, j, k, ibg::AGFBIB) = @inbounds znode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.bottom_height[i, j, 1] 
-@inline column_heightᶜᶠᵃ(i, j, k, ibg::AGFBIB) = min(column_heightᶜᶜᵃ(i, j-1, k, ibg), column_heightᶜᶜᵃ(i, j, k, ibg))
-@inline column_heightᶠᶜᵃ(i, j, k, ibg::AGFBIB) = min(column_heightᶜᶜᵃ(i-1, j, k, ibg), column_heightᶜᶜᵃ(i, j, k, ibg))
-@inline column_heightᶠᶠᵃ(i, j, k, ibg::AGFBIB) = min(column_heightᶠᶜᵃ(i, j-1, k, ibg), column_heightᶠᶜᵃ(i, j, k, ibg))
+@inline domain_depthᶜᶜᵃ(i, j, ibg::AGFBIB) = @inbounds znode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.bottom_height[i, j, 1] 
+@inline domain_depthᶜᶠᵃ(i, j, ibg::AGFBIB) = min(domain_depthᶜᶜᵃ(i, j-1, ibg), domain_depthᶜᶜᵃ(i, j, ibg))
+@inline domain_depthᶠᶜᵃ(i, j, ibg::AGFBIB) = min(domain_depthᶜᶜᵃ(i-1, j, ibg), domain_depthᶜᶜᵃ(i, j, ibg))
+@inline domain_depthᶠᶠᵃ(i, j, ibg::AGFBIB) = min(domain_depthᶠᶜᵃ(i, j-1, ibg), domain_depthᶠᶜᵃ(i, j, ibg))
 
 # Make sure column_height works for horizontally-Flat topologies.
 XFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
 YFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:AbstractGridFittedBottom}
 
-@inline column_heightᶠᶜᵃ(i, j, k, ibg::XFlatAGFIBG) = column_heightᶜᶜᵃ(i, j, k, ibg)
-@inline column_heightᶜᶠᵃ(i, j, k, ibg::YFlatAGFIBG) = column_heightᶜᶜᵃ(i, j, k, ibg)
-@inline column_heightᶠᶠᵃ(i, j, k, ibg::XFlatAGFIBG) = column_heightᶜᶠᵃ(i, j, k, ibg)
-@inline column_heightᶠᶠᵃ(i, j, k, ibg::YFlatAGFIBG) = column_heightᶠᶜᵃ(i, j, k, ibg)
+@inline domain_depthᶠᶜᵃ(i, j, k, ibg::XFlatAGFIBG) = domain_depthᶜᶜᵃ(i, j, ibg)
+@inline domain_depthᶜᶠᵃ(i, j, k, ibg::YFlatAGFIBG) = domain_depthᶜᶜᵃ(i, j, ibg)
+@inline domain_depthᶠᶠᵃ(i, j, k, ibg::XFlatAGFIBG) = domain_depthᶜᶠᵃ(i, j, ibg)
+@inline domain_depthᶠᶠᵃ(i, j, k, ibg::YFlatAGFIBG) = domain_depthᶠᶜᵃ(i, j, ibg)
