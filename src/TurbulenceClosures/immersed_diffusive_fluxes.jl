@@ -205,6 +205,11 @@ end
     return div(i, j, k, ibg, loc, qᵂ, qᴱ, qˢ, qᴺ, qᴮ, qᵀ)
 end
 
+# Fallbacks
+@inline immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, args...) = zero(grid)
+@inline immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, args...) = zero(grid)
+@inline immersed_∂ⱼ_τ₃ⱼ(i, j, k, grid, args...) = zero(grid)
+@inline immersed_∇_dot_qᶜ(i, j, k, grid, args...) = zero(grid)
 
 @inline immersed_∂ⱼ_τ₁ⱼ(i, j, k, ibg::GFIBG, U, u_bc::IBC, closure, K, clock, fields) =
     immersed_flux_divergence(i, j, k, ibg, u_bc, (f, c, c), U.u, closure, K, nothing, clock, fields)
