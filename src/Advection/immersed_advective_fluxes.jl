@@ -63,33 +63,6 @@ end
 @inline _advective_tracer_flux_y(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
 @inline _advective_tracer_flux_z(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
 
-# Fallback for `nothing` advection and `ZeroField` tracers and velocities
-@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, ::Nothing, ::ZeroField, ::ZeroField) = zero(ibg)
-@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, ::Nothing, ::ZeroField, ::ZeroField) = zero(ibg)
-@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, ::Nothing, ::ZeroField, ::ZeroField) = zero(ibg)
-
-@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, ::Nothing, U, ::ZeroField) = zero(ibg)
-@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, ::Nothing, V, ::ZeroField) = zero(ibg)
-@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, ::Nothing, W, ::ZeroField) = zero(ibg)
-@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, ::Nothing, ::ZeroField, c) = zero(ibg)
-@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, ::Nothing, ::ZeroField, c) = zero(ibg)
-@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, ::Nothing, ::ZeroField, c) = zero(ibg)
-
-# Fallback for `ZeroField` tracers and velocities
-@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, scheme, ::ZeroField, ::ZeroField) = zero(ibg)
-@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, scheme, ::ZeroField, ::ZeroField) = zero(ibg)
-@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, scheme, ::ZeroField, ::ZeroField) = zero(ibg)
-
-# Fallback for `ZeroField` tracers
-@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, scheme, U, ::ZeroField) = zero(ibg)
-@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, scheme, V, ::ZeroField) = zero(ibg)
-@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, scheme, W, ::ZeroField) = zero(ibg)
-
-# Fallback for `ZeroField` velocities
-@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, scheme, ::ZeroField, c) = zero(ibg)
-@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, scheme, ::ZeroField, c) = zero(ibg)
-@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, scheme, ::ZeroField, c) = zero(ibg)
-
 #####
 ##### "Boundary-aware" reconstruct
 #####
