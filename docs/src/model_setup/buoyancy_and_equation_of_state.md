@@ -64,7 +64,7 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
 ├── advection scheme: 
-│   └── momentum: Vector Invariant, Dimension-by-dimension reconstruction
+│   └── momentum: Centered reconstruction order 2
 └── coriolis: Nothing
 ```
 
@@ -98,7 +98,7 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
 ├── advection scheme:
-│   ├── momentum: Vector Invariant, Dimension-by-dimension reconstruction
+│   ├── momentum: Centered reconstruction order 2
 │   └── b: Centered reconstruction order 2
 └── coriolis: Nothing
 ```
@@ -139,7 +139,7 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
 ├── advection scheme:
-│   ├── momentum: Vector Invariant, Dimension-by-dimension reconstruction
+│   ├── momentum: Centered reconstruction order 2
 │   ├── T: Centered reconstruction order 2
 │   └── S: Centered reconstruction order 2
 └── coriolis: Nothing
