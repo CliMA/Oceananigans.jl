@@ -1,11 +1,3 @@
-using Test
-using Statistics
-using CUDA
-using Printf
-using MPI
-using KernelAbstractions: @kernel, @index
-
-using Oceananigans
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
 using Oceananigans.DistributedComputations: Distributed, Partition, child_architecture, Fractional, Equal
 

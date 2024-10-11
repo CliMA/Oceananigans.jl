@@ -1,11 +1,5 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
-using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
-using Oceananigans.Fields: compute_at!
-using Oceananigans.BuoyancyModels: BuoyancyField
-
 function compute_derivative(model, ∂)
     T, S = model.tracers
     parent(S) .= π
