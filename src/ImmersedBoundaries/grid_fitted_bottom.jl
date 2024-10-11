@@ -33,7 +33,7 @@ Base.summary(::InterfaceImmersedCondition) = "InterfaceImmersedCondition"
 const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBottom}
 
 """
-    GridFittedBottom(bottom_height)
+    GridFittedBottom(bottom_height, [immersed_condition=CenterImmersedCondition()])
 
 Return a bottom immersed boundary.
 
