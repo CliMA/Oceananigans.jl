@@ -1,6 +1,6 @@
 import Oceananigans.Models: compute_boundary_tendencies!
 
-using Oceananigans.TurbulenceClosures: required_halo_size
+using Oceananigans.TurbulenceClosures: required_halo_size_x, required_halo_size_y
 using Oceananigans.Grids: XFlatGrid, YFlatGrid
 
 # TODO: the code in this file is difficult to understand.
@@ -28,70 +28,60 @@ end
 function boundary_tendency_kernel_parameters(grid, arch)
     Nx, Ny, Nz = size(grid)
     Hx, Hy, _  = halo_size(grid)
-    
-    Sx  = (Hx, Ny, Nz)
-    Sy  = (Nx, Hy, Nz)
 
-    Oᴸ  = (0,  0,  0)
-    Oxᴿ = (Nx-Hx, 0,     0)
-    Oyᴿ = (0,     Ny-Hy, 0)
+    param_west  = (1:Hx,       1:Ny,       1:Nz)
+    param_east  = (Nx-Hx+1:Nx, 1:Ny,       1:Nz)
+    param_south = (1:Nx,       1:Hy,       1:Nz)
+    param_north = (1:Nx,       Ny-Hy+1:Ny, 1:Nz)
 
-    sizes = (Sx, Sy, Sx,  Sy)
-    offs  = (Oᴸ, Oᴸ, Oxᴿ, Oyᴿ)
+    params = (param_west, param_east, param_south, param_north)
 
-    return boundary_parameters(sizes, offs, grid, arch)
+    return boundary_parameters(params, grid, arch)
 end
 
 # p needs computing in the range  0 : 0 and N + 1 : N + 1
 function boundary_p_kernel_parameters(grid, arch)
     Nx, Ny, _ = size(grid)
 
-    Sx  = (1, Ny)
-    Sy  = (Nx, 1)
+    param_west  = (0:0,       1:Ny)
+    param_east  = (Nx+1:Nx+1, 1:Ny)
+    param_south = (1:Nx,      0:0)
+    param_north = (1:Nx,      Ny+1:Ny+1)
 
-    Oxᴸ = (-1, 0)
-    Oyᴸ = (0, -1)
-    Oxᴿ = (Nx, 0)
-    Oyᴿ = (0, Ny)
+    params = (param_west, param_east, param_south, param_north)
 
-    sizes = (Sx,  Sy,  Sx,  Sy)
-    offs  = (Oxᴸ, Oyᴸ, Oxᴿ, Oyᴿ)
-
-    return boundary_parameters(sizes, offs, grid, arch)
+    return boundary_parameters(params, grid, arch)
 end
 
 # diffusivities need recomputing in the range 0 : B and N - B + 1 : N + 1
 function boundary_κ_kernel_parameters(grid, closure, arch)
     Nx, Ny, Nz = size(grid)
 
-    B = required_halo_size(closure)
+    Bx = required_halo_size_x(closure)
+    By = required_halo_size_y(closure)
 
-    Sx  = (B+1, Ny, Nz)
-    Sy  = (Nx, B+1, Nz)
+    param_west  = (0:Bx,         1:Ny,         1:Nz)
+    param_east  = (Nx-Bx+1:Nx+1, 1:Ny,         1:Nz)
+    param_south = (1:Nx,         0:By,         1:Nz)
+    param_north = (1:Nx,         Ny-By+1:Ny+1, 1:Nz)
 
-    Oxᴸ = (-1, 0, 0)
-    Oyᴸ = (0, -1, 0)
-    Oxᴿ = (Nx-B,  0, 0)
-    Oyᴿ = (0,  Ny-B, 0)
+    params = (param_west, param_east, param_south, param_north)
 
-    sizes = (Sx,  Sy,  Sx,  Sy)
-    offs  = (Oxᴸ, Oyᴸ, Oxᴿ, Oyᴿ)
-
-    return boundary_parameters(sizes, offs, grid, arch)
+    return boundary_parameters(params, grid, arch)
 end
 
 # Recompute only on communicating sides 
-function boundary_parameters(S, O, grid, arch) 
+function boundary_parameters(parameters, grid, arch) 
     Rx, Ry, _ = arch.ranks
     Tx, Ty, _ = topology(grid)
 
-    include_xᴸ = !isa(grid, XFlatGrid) && (Rx != 1) && !(Tx == RightConnected)
-    include_yᴸ = !isa(grid, YFlatGrid) && (Ry != 1) && !(Ty == RightConnected)
-    include_xᴿ = !isa(grid, XFlatGrid) && (Rx != 1) && !(Tx == LeftConnected)
-    include_yᴿ = !isa(grid, YFlatGrid) && (Ry != 1) && !(Ty == LeftConnected)
+    include_west  = !isa(grid, XFlatGrid) && (Rx != 1) && !(Tx == RightConnected)
+    include_east  = !isa(grid, XFlatGrid) && (Rx != 1) && !(Tx == LeftConnected)
+    include_south = !isa(grid, YFlatGrid) && (Ry != 1) && !(Ty == RightConnected)
+    include_north = !isa(grid, YFlatGrid) && (Ry != 1) && !(Ty == LeftConnected)
 
-    include_side = (include_xᴸ, include_yᴸ, include_xᴿ, include_yᴿ)
+    include_side = (include_west, include_east, include_south, include_north)
 
-    return Tuple(KernelParameters(S[i], O[i]) for i in findall(include_side))
+    return Tuple(KernelParameters(parameters[i]...) for i in findall(include_side))
 end
 
