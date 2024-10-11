@@ -95,8 +95,11 @@ end
 
 # Metric and index gymnastics for the 6 facets of the cube
 
-flip(::Type{Face}) = Center
-flip(::Type{Center}) = Face
+@inline flip(::Type{Face}) = Center
+@inline flip(::Type{Center}) = Face
+
+@inline flip(::Face) = Center()
+@inline flip(::Center) = Face()
 
 @inline function _west_ib_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
     Δ = Δx(index_left(i, LX), j, k, ibg, LX, LY, LZ)
