@@ -75,6 +75,7 @@ include("vector_invariant_cross_upwinding.jl")
 
 include("flat_advective_fluxes.jl")
 include("topologically_conditional_interpolation.jl")
+include("immersed_advective_fluxes.jl")
 include("momentum_advection_operators.jl")
 include("tracer_advection_operators.jl")
 include("positivity_preserving_tracer_advection_operators.jl")

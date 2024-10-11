@@ -152,6 +152,7 @@ include("abstract_scalar_diffusivity_closure.jl")
 include("abstract_scalar_biharmonic_diffusivity_closure.jl")
 include("closure_tuples.jl")
 include("isopycnal_rotation_tensor_components.jl")
+include("immersed_diffusive_fluxes.jl")
 
 # Implicit closure terms (diffusion + linear terms)
 include("vertically_implicit_diffusion_solver.jl")

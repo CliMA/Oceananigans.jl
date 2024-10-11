@@ -206,13 +206,13 @@ include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
 include("TimeSteppers/TimeSteppers.jl")
+include("ImmersedBoundaries/ImmersedBoundaries.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
 include("OutputReaders/OutputReaders.jl")
 include("DistributedComputations/DistributedComputations.jl")
 
 # TODO: move here
-#include("ImmersedBoundaries/ImmersedBoundaries.jl")
 #include("MultiRegion/MultiRegion.jl")
 
 # Physics, time-stepping, and models

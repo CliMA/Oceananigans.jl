@@ -1,8 +1,8 @@
 import Oceananigans.Models: compute_boundary_tendencies!
-import Oceananigans.Models: compute_boundary_tendencies!
 
 using Oceananigans.Grids: halo_size
-using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, DistributedActiveCellsIBG
+using Oceananigans.DistributedComputations: DistributedActiveCellsIBG
+using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map
 using Oceananigans.Models.NonhydrostaticModels: boundary_tendency_kernel_parameters,
                                                 boundary_p_kernel_parameters, 
                                                 boundary_κ_kernel_parameters,
