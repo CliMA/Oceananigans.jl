@@ -1,5 +1,6 @@
-using Oceananigans.BoundaryConditions: Flux, Value, Gradient, flip, BoundaryCondition, ContinuousBoundaryFunction
+using Oceananigans.BoundaryConditions: Flux, Value, Gradient, BoundaryCondition, ContinuousBoundaryFunction
 using Oceananigans.BoundaryConditions: getbc, regularize_boundary_condition, LeftBoundary, RightBoundary
+using Oceananigans.BoundaryConditions: FBC, ZFBC
 using Oceananigans.BoundaryConditions: DefaultBoundaryCondition
 using Oceananigans.Operators: index_left, index_right, Δx, Δy, Δz, div
 
@@ -12,6 +13,7 @@ using Oceananigans.Advection: conditional_flux_ccc,
                               conditional_flux_ccf
 
 using Oceananigans.ImmersedBoundaries
+using Oceananigans.ImmersedBoundaries: GFIBG, IBC
 
 const IBG = ImmersedBoundaryGrid
 
@@ -92,6 +94,9 @@ end
 end
 
 # Metric and index gymnastics for the 6 facets of the cube
+
+flip(::Type{Face}) = Center
+flip(::Type{Center}) = Face
 
 @inline function _west_ib_flux(i, j, k, ibg, bc::VBCorGBC, (LX, LY, LZ), c, closure::ASD, K, id, clock, fields)
     Δ = Δx(index_left(i, LX), j, k, ibg, LX, LY, LZ)

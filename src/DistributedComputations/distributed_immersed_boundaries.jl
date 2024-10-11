@@ -4,8 +4,9 @@ using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom,
                                        GridFittedBottom, 
                                        GridFittedBoundary, 
                                        compute_mask,
-                                       map_interior_active_cells,
                                        interior_active_indices
+
+import Oceananigans.ImmersedBoundaries: map_interior_active_cells
 
 # For the moment we extend distributed in the `ImmersedBoundaryGrids` module.
 # When we fix the immersed boundary module to remove all the `TurbulenceClosure` stuff

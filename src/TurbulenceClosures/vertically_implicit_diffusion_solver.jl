@@ -1,5 +1,4 @@
 using Oceananigans.Operators: Δz
-using Oceananigans.AbstractOperations: flip
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, ImmersedBoundaryGrid
 using Oceananigans.Grids: ZDirection
@@ -116,6 +115,25 @@ end
 ##### (because of tridiagonal convention where lower_diagonal on row k is found at k-1)
 ##### Same goes for the face solver, where we check at centers k in both Upper and lower diagonal
 #####
+
+#####
+##### Diffusivities (for VerticallyImplicit)
+##### (the diffusivities on the immersed boundaries are kept)
+#####
+
+for (locate_coeff, loc) in ((:κᶠᶜᶜ, (f, c, c)),
+                            (:κᶜᶠᶜ, (c, f, c)),
+                            (:κᶜᶜᶠ, (c, c, f)),
+                            (:νᶜᶜᶜ, (c, c, c)),
+                            (:νᶠᶠᶜ, (f, f, c)),
+                            (:νᶠᶜᶠ, (f, c, f)),
+                            (:νᶜᶠᶠ, (c, f, f)))
+
+    @eval begin
+        @inline $locate_coeff(i, j, k, ibg::IBG{FT}, coeff) where FT =
+            ifelse(inactive_node(i, j, k, ibg, loc...), $locate_coeff(i, j, k, ibg.underlying_grid, coeff), zero(FT))
+    end
+end
 
 @inline immersed_ivd_peripheral_node(i, j, k, ibg, ℓx, ℓy, ::Center) = immersed_peripheral_node(i, j, k+1, ibg, ℓx, ℓy, Face())
 @inline immersed_ivd_peripheral_node(i, j, k, ibg, ℓx, ℓy, ::Face)   = immersed_peripheral_node(i, j, k,   ibg, ℓx, ℓy, Center())

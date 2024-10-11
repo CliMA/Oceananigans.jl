@@ -224,7 +224,6 @@ include("Forcings/Forcings.jl")
 include("Biogeochemistry.jl")
 
 # TODO: move above
-include("ImmersedBoundaries/ImmersedBoundaries.jl")
 include("Models/Models.jl")
 
 # Output and Physics, time-stepping, and models

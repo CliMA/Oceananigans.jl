@@ -44,6 +44,16 @@ Adapt.adapt_structure(to, scheme::TracerAdvection{N, FT}) where {N, FT} =
 @inline _advective_tracer_flux_z(i, j, k, grid, advection::TracerAdvection, args...) =
         _advective_tracer_flux_z(i, j, k, grid, advection.z, args...)
 
+# Disambiguation for tracer fluxes....
+@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, advection::TracerAdvection, args...) =
+        _advective_tracer_flux_x(i, j, k, ibg, advection.x, args...)
+
+@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, advection::TracerAdvection, args...) =
+        _advective_tracer_flux_y(i, j, k, ibg, advection.y, args...)
+
+@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, advection::TracerAdvection, args...) =
+        _advective_tracer_flux_z(i, j, k, ibg, advection.z, args...)
+
 # Fallback for `nothing` advection
 @inline _advective_tracer_flux_x(i, j, k, grid, ::Nothing, args...) = zero(grid)
 @inline _advective_tracer_flux_y(i, j, k, grid, ::Nothing, args...) = zero(grid)

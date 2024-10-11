@@ -55,16 +55,6 @@ end
 @inline _advective_tracer_flux_y(i, j, k, ibg::IBG, args...) = conditional_flux_cfc(i, j, k, ibg, zero(ibg), advective_tracer_flux_y(i, j, k, ibg, args...))
 @inline _advective_tracer_flux_z(i, j, k, ibg::IBG, args...) = conditional_flux_ccf(i, j, k, ibg, zero(ibg), advective_tracer_flux_z(i, j, k, ibg, args...))
 
-# Disambiguation for tracer fluxes....
-@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, advection::TracerAdvection, args...) =
-        _advective_tracer_flux_x(i, j, k, ibg, advection.x, args...)
-
-@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, advection::TracerAdvection, args...) =
-        _advective_tracer_flux_y(i, j, k, ibg, advection.y, args...)
-
-@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, advection::TracerAdvection, args...) =
-        _advective_tracer_flux_z(i, j, k, ibg, advection.z, args...)
-
 # Fallback for `nothing` advection
 @inline _advective_tracer_flux_x(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
 @inline _advective_tracer_flux_y(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)

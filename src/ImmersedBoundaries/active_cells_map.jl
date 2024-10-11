@@ -7,11 +7,6 @@ using KernelAbstractions: @kernel, @index
 import Oceananigans.Grids: retrieve_surface_active_cells_map, retrieve_interior_active_cells_map
 import Oceananigans.Utils: active_cells_work_layout
 
-using Oceananigans.Solvers: solve_batched_tridiagonal_system_z!, ZDirection
-using Oceananigans.DistributedComputations: DistributedGrid, SynchronizedDistributed
-
-import Oceananigans.Solvers: solve_batched_tridiagonal_system_kernel!
-
 # REMEMBER: since the active map is stripped out of the grid when `Adapt`ing to the GPU, 
 # The following types cannot be used to dispatch in kernels!!!
 
