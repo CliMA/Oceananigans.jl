@@ -1,5 +1,13 @@
-using Oceananigans.BoundaryConditions: BoundaryCondition, DefaultBoundaryCondition, VBC, GBC, FBC, Flux, LeftBoundary, RightBoundary
-import Oceananigans.BoundaryConditions: regularize_immersed_boundary_condition, bc_str, update_boundary_condition!
+using Oceananigans.BoundaryConditions: BoundaryCondition, 
+                                       DefaultBoundaryCondition, 
+                                       LeftBoundary, 
+                                       RightBoundary,
+                                       regularize_boundary_condition,
+                                       VBC, GBC, FBC, Flux
+
+import Oceananigans.BoundaryConditions: regularize_immersed_boundary_condition,     
+                                        bc_str, 
+                                        update_boundary_condition!
 
 struct ImmersedBoundaryCondition{W, E, S, N, B, T}
     west :: W                  
