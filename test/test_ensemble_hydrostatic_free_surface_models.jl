@@ -14,7 +14,7 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
     periodic_topology = (Periodic, Periodic, Bounded)
 
     single_column_grid = RectilinearGrid(; size=Nz, z=(-1, 0), topology = single_column_topology, halo=Hz)
-    periodic_grid = RectilinearGrid(; size=(1, 1, Nz), x = (0, 1), y = (0, 1), z=(-1, 0), topology = periodic_topology, halo=(2, 2, Hz))
+    periodic_grid = RectilinearGrid(; size=(1, 1, Nz), x = (0, 1), y = (0, 1), z=(-1, 0), topology = periodic_topology, halo=(1, 1, Hz))
     coriolis = FPlane(f=0.2)
     closure  = CAVD(background_κz=1.0)
 
