@@ -120,7 +120,7 @@ end
     return nothing
 end
 
-@inline function apply_bottom_height_bc!(Gc, loc, bottom_flux::BC{<:Flux}, i, j, grid, args...)
+@inline function apply_z_bottom_bc!(Gc, loc, bottom_flux::BC{<:Flux}, i, j, grid, args...)
     LX, LY, LZ = loc
     @inbounds Gc[i, j, 1] += getbc(bottom_flux, i, j, grid, args...) * Az(i, j, 1, grid, LX, LY, flip(LZ)) / volume(i, j, 1, grid, LX, LY, LZ)
     return nothing
