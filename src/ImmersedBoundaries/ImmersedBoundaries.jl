@@ -94,7 +94,7 @@ import Oceananigans.TurbulenceClosures:
     νᶠᶠᶜ,
     νᶜᶠᶠ,
     νᶠᶜᶠ,
-    bottom_height
+    z_bottom
 
 import Oceananigans.Fields: fractional_x_index, fractional_y_index, fractional_z_index
 
@@ -162,7 +162,7 @@ with_halo(halo, ibg::ImmersedBoundaryGrid) =
 inflate_halo_size_one_dimension(req_H, old_H, _, ::IBG)            = max(req_H + 1, old_H)
 inflate_halo_size_one_dimension(req_H, old_H, ::Type{Flat}, ::IBG) = 0
 
-@inline bottom_height(i, j, ibg::IBG) = error("The function `bottom` has not been defined for $(summary(ibg))!")
+@inline z_bottom(i, j, ibg::IBG) = error("The function `bottom` has not been defined for $(summary(ibg))!")
 
 function Base.summary(grid::ImmersedBoundaryGrid)
     FT = eltype(grid)
