@@ -6,6 +6,8 @@ using Oceananigans.Models: complete_communication_and_compute_boundary!, interio
 using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, ActiveCellsIBG, 
                                        active_linear_index_to_tuple
 
+using Oceananigans.TimeSteppers: compute_bgc_with_physics, timestepper_tendencies
+
 import Oceananigans.TimeSteppers: compute_tendencies!
 
 """
@@ -34,7 +36,7 @@ function compute_tendencies!(model::NonhydrostaticModel, callbacks)
 
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
-    compute_boundary_tendency_contributions!(model.timestepper.Gⁿ,
+    compute_boundary_tendency_contributions!(timestepper_tendencies(model.timestepper),
                                              model.architecture,
                                              model.velocities,
                                              model.tracers,
@@ -53,7 +55,7 @@ end
 """ Store previous value of the source term and compute current source term. """
 function compute_interior_tendency_contributions!(model, kernel_parameters; active_cells_map = nothing)
 
-    tendencies           = model.timestepper.Gⁿ
+    tendencies           = timestepper_tendencies(model.timestepper)
     arch                 = model.architecture
     grid                 = model.grid
     advection            = model.advection
@@ -126,7 +128,8 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
                      start_tracer_kernel_args..., 
                      c_immersed_bc,
                      end_tracer_kernel_args...,
-                     forcing, clock)
+                     forcing, clock,
+                     Val(compute_bgc_with_physics(model.timestepper)))
 
         for parameters in kernel_parameters
             launch!(arch, grid, parameters, compute_Gc!, 

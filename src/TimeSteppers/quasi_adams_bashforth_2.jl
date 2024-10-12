@@ -73,15 +73,14 @@ The steps of the Quasi-Adams-Bashforth second-order (AB2) algorithm are:
 6. Update the model state.
 7. Compute tendencies for the next time step
 """
-function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt;
-                    callbacks=[], euler=false)
+time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; callbacks=[], euler=false) = 
+    time_step!(model.timestepper, model, Δt; callbacks, euler)
 
+function time_step!(ab2_timestepper::QuasiAdamsBashforth2TimeStepper, model, Δt; callbacks=[], euler=false)
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Be paranoid and update state at iteration 0
     model.clock.iteration == 0 && update_state!(model, callbacks)
-
-    ab2_timestepper = model.timestepper
 
     # Change the default χ if necessary, which occurs if:
     #   * We detect that the time-step size has changed.
@@ -151,8 +150,8 @@ function ab2_step!(model, Δt)
     for (i, field) in enumerate(model_fields)
 
         step_field_kernel!(field, Δt, χ,
-                           model.timestepper.Gⁿ[i],
-                           model.timestepper.G⁻[i])
+                           timestepper_tendencies(timestepper)[i],
+                           timestepper_previous_tendencies(timestepper)[i])
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
         tracer_index = Val(i - 3) # assumption

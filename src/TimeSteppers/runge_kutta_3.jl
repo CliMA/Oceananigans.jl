@@ -1,4 +1,6 @@
 using Oceananigans.Architectures: architecture
+using Oceananigans: compute_biogeochemical_tendencies!
+
 using Oceananigans: fields
 
 """
@@ -78,23 +80,29 @@ The 3rd-order Runge-Kutta method takes three intermediate substep stages to
 achieve a single timestep. A pressure correction step is applied at each intermediate
 stage.
 """
-function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbacks=[])
+time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbacks=[]) =
+    time_step!(model.timestepper, model, Δt; callbacks)
+
+function time_step!(timestepper, model, Δt; callbacks=[])
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Be paranoid and update state at iteration 0, in case run! is not used:
     model.clock.iteration == 0 && update_state!(model, callbacks; compute_tendencies = true)
 
-    γ¹ = model.timestepper.γ¹
-    γ² = model.timestepper.γ²
-    γ³ = model.timestepper.γ³
+    γ¹ = timestepper.γ¹
+    γ² = timestepper.γ²
+    γ³ = timestepper.γ³
 
-    ζ² = model.timestepper.ζ²
-    ζ³ = model.timestepper.ζ³
+    ζ² = timestepper.ζ²
+    ζ³ = timestepper.ζ³
 
     first_stage_Δt  = γ¹ * Δt
     second_stage_Δt = (γ² + ζ²) * Δt
     third_stage_Δt  = (γ³ + ζ³) * Δt
 
+    Gⁿ = timestepper_tendencies(timestepper)
+    G⁻ = timestepper_previous_tendencies(timestepper)
+    
     # Compute the next time step a priori to reduce floating point error accumulation
     tⁿ⁺¹ = next_time(model.clock, Δt)
 
@@ -102,7 +110,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # First stage
     #
 
-    rk3_substep!(model, Δt, γ¹, nothing)
+    rk3_substep!(model, Δt, γ¹, nothing, Gⁿ, G⁻, timestepper.implicit_solver)
 
     tick!(model.clock, first_stage_Δt; stage=true)
     model.clock.last_stage_Δt = first_stage_Δt
@@ -118,7 +126,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # Second stage
     #
 
-    rk3_substep!(model, Δt, γ², ζ²)
+    rk3_substep!(model, Δt, γ², ζ², Gⁿ, G⁻, timestepper.implicit_solver)
 
     tick!(model.clock, second_stage_Δt; stage=true)
     model.clock.last_stage_Δt = second_stage_Δt
@@ -134,7 +142,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # Third stage
     #
     
-    rk3_substep!(model, Δt, γ³, ζ³)
+    rk3_substep!(model, Δt, γ³, ζ³, Gⁿ, G⁻, timestepper.implicit_solver)
 
     # This adjustment of the final time-step reduces the accumulation of
     # round-off error when Δt is added to model.clock.time. Note that we still use 
@@ -154,6 +162,74 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     return nothing
 end
 
+
+function time_step_biogeochemistry!(timestepper, model, Δt)
+    Δt == 0 && @warn "Δt == 0 may cause model blowup!"
+
+    # Be paranoid and update state at iteration 0, in case run! is not used:
+    model.clock.iteration == 0 && compute_biogeochemical_tendencies!(model, timestepper_tendencies(timestepper))
+
+    γ¹ = timestepper.γ¹
+    γ² = timestepper.γ²
+    γ³ = timestepper.γ³
+
+    ζ² = timestepper.ζ²
+    ζ³ = timestepper.ζ³
+
+    Gⁿ = timestepper_tendencies(timestepper)
+    G⁻ = timestepper_previous_tendencies(timestepper)
+
+    first_stage_Δt  = γ¹ * Δt
+    second_stage_Δt = (γ² + ζ²) * Δt
+    third_stage_Δt  = (γ³ + ζ³) * Δt
+
+    # Compute the next time step a priori to reduce floating point error accumulation
+    tⁿ⁺¹ = next_time(model.clock, Δt)
+
+    #
+    # First stage
+    #
+
+    rk3_substep!(model, Δt, γ¹, nothing, Gⁿ, G⁻, nothing)
+
+    tick!(model.clock, first_stage_Δt; stage=true)
+    model.clock.last_stage_Δt = first_stage_Δt
+
+    store_biogeochemical_tendencies!(model)
+    compute_biogeochemical_tendencies!(model, timestepper_tendencies(timestepper))
+
+    #
+    # Second stage
+    #
+
+    rk3_substep!(model, Δt, γ², ζ², Gⁿ, G⁻, nothing)
+
+    tick!(model.clock, second_stage_Δt; stage=true)
+    model.clock.last_stage_Δt = second_stage_Δt
+
+    store_biogeochemical_tendencies!(model)
+    compute_biogeochemical_tendencies!(model, timestepper_tendencies(timestepper))
+
+    #
+    # Third stage
+    #
+    
+    rk3_substep!(model, Δt, γ³, ζ³, Gⁿ, G⁻, nothing)
+
+    # This adjustment of the final time-step reduces the accumulation of
+    # round-off error when Δt is added to model.clock.time. Note that we still use 
+    # third_stage_Δt for the substep, pressure correction, and Lagrangian particles step.
+    corrected_third_stage_Δt = tⁿ⁺¹ - model.clock.time
+
+    tick!(model.clock, third_stage_Δt)
+    model.clock.last_stage_Δt = corrected_third_stage_Δt
+    model.clock.last_Δt = Δt
+
+    compute_biogeochemical_tendencies!(model, timestepper_tendencies(timestepper))
+
+    return nothing
+end
+
 #####
 ##### Time stepping in each substep
 #####
@@ -161,22 +237,20 @@ end
 stage_Δt(Δt, γⁿ, ζⁿ) = Δt * (γⁿ + ζⁿ)
 stage_Δt(Δt, γⁿ, ::Nothing) = Δt * γⁿ
 
-function rk3_substep!(model, Δt, γⁿ, ζⁿ)
+function rk3_substep!(model, Δt, γⁿ, ζⁿ, Gⁿ, G⁻, implicit_solver)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
     substep_field_kernel! = rk3_substep_field!(device(architecture(model)), workgroup, worksize)
     model_fields = prognostic_fields(model)
 
     for (i, field) in enumerate(model_fields)
-        substep_field_kernel!(field, Δt, γⁿ, ζⁿ,
-                              model.timestepper.Gⁿ[i],
-                              model.timestepper.G⁻[i])
+        substep_field_kernel!(field, Δt, γⁿ, ζⁿ, Gⁿ[i], G⁻[i])
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
         tracer_index = Val(i - 3) # assumption
 
         implicit_step!(field,
-                       model.timestepper.implicit_solver,
+                       implicit_solver,
                        model.closure,
                        model.diffusivity_fields,
                        tracer_index,

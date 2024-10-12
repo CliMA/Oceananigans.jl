@@ -10,6 +10,8 @@ using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
+using Oceananigans.TimeSteppers: compute_bgc_with_physics
+
 using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, ActiveCellsIBG, 
                                        active_linear_index_to_tuple
 
@@ -88,7 +90,8 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
                      model.diffusivity_fields,
                      model.auxiliary_fields,
                      c_forcing,
-                     model.clock)
+                     model.clock,
+                     Val(compute_bgc_with_physics(model.timestepper)))
 
         for parameters in kernel_parameters
             launch!(arch, grid, parameters,

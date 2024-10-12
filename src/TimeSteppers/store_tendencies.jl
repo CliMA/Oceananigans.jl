@@ -14,8 +14,20 @@ function store_tendencies!(model)
 
     for field_name in keys(model_fields)
         launch!(model.architecture, model.grid, :xyz, store_field_tendencies!,
-                model.timestepper.G⁻[field_name],
-                model.timestepper.Gⁿ[field_name])
+                timestepper_previous_tendencies(model.timestepper)[field_name],
+                timestepper_tendencies(model.timestepper)[field_name])
+    end
+
+    return nothing
+end
+
+function store_biogeochemical_tendencies!(model::AbstractModel{<:StrangeSplittingTimeStepper})
+    model_fields = prognostic_fields(model)
+
+    for field_name in keys(model_fields)
+        launch!(model.architecture, model.grid, :xyz, store_field_tendencies!,
+                model.timestepper.biogeochemistry.G⁻[field_name],
+                model.timestepper.biogeochemistry.Gⁿ[field_name])
     end
 
     return nothing

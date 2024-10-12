@@ -55,9 +55,13 @@ step_lagrangian_particles!(model, Δt) = nothing
 reset!(timestepper) = nothing
 implicit_step!(field, ::Nothing, args...; kwargs...) = nothing
 
+compute_bgc_with_physics(timestepper) = true
+timestepper_tendencies(timestepper) = timestepper.Gⁿ
+timestepper_previous_tendencies(timestepper) = timestepper.G⁻
+
 include("clock.jl")
-include("store_tendencies.jl")
 include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")
-
+include("strange_splitting.jl")
+include("store_tendencies.jl")
 end # module

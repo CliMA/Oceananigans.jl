@@ -6,6 +6,8 @@ using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid
 using Oceananigans.DistributedComputations: synchronize_communication!, SynchronizedDistributed
 
+import Oceananigans: interior_tendency_kernel_parameters
+
 function complete_communication_and_compute_boundary!(model, ::DistributedGrid, arch)
 
     # Iterate over the fields to clear _ALL_ possible architectures

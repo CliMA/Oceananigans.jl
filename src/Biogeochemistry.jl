@@ -59,10 +59,12 @@ is a subtype of `AbstractBioeochemistry`:
 abstract type AbstractBiogeochemistry end
 
 # Returns the forcing for discrete form models
-@inline biogeochemical_transition(i, j, k, grid, bgc, val_tracer_name, clock, fields) =
+@inline biogeochemical_transition(i, j, k, grid, bgc, val_tracer_name, clock, fields, val_compute_bgc) =
     bgc(i, j, k, grid, val_tracer_name, clock, fields)
 
-@inline biogeochemical_transition(i, j, k, grid, ::Nothing, val_tracer_name, clock, fields) = zero(grid)
+@inline biogeochemical_transition(i, j, k, grid, ::Nothing, val_tracer_name, clock, fields, val_compute_bgc) = zero(grid)
+
+@inline biogeochemical_transition(i, j, k, grid, bgc, val_tracer_name, clock, fields, ::Val{false}) = zero(grid)
 
 # Required for when a model is defined but not for all tracers
 @inline (bgc::AbstractBiogeochemistry)(i, j, k, grid, val_tracer_name, clock, fields) = zero(grid)
@@ -106,7 +108,7 @@ abstract type AbstractContinuousFormBiogeochemistry <: AbstractBiogeochemistry e
 
 """Return the biogeochemical forcing for `val_tracer_name` for continuous form when model is called."""
 @inline function biogeochemical_transition(i, j, k, grid, bgc::AbstractContinuousFormBiogeochemistry,
-                                           val_tracer_name, clock, fields)
+                                           val_tracer_name, clock, fields, val_compute_bgc)
 
     names_to_extract = tuple(required_biogeochemical_tracers(bgc)...,
                              required_biogeochemical_auxiliary_fields(bgc)...)
@@ -119,6 +121,8 @@ abstract type AbstractContinuousFormBiogeochemistry <: AbstractBiogeochemistry e
 
     return bgc(val_tracer_name, x, y, z, clock.time, fields_ijk...)
 end
+
+@inline biogeochemical_transition(i, j, k, grid, bgc::AbstractContinuousFormBiogeochemistry, val_tracer_name, clock, fields, ::Val{false}) = zero(grid)
 
 @inline (bgc::AbstractContinuousFormBiogeochemistry)(val_tracer_name, x, y, z, t, fields...) = zero(t)
 
@@ -170,5 +174,71 @@ end
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 required_biogeochemical_tracers(::AbstractBGCOrNothing) = ()
 required_biogeochemical_auxiliary_fields(::AbstractBGCOrNothing) = ()
+
+#####
+##### BGC only stepping
+#####
+
+using Oceananigans: interior_tendency_kernel_parameters
+using Oceananigans.Utils: launch!
+
+using KernelAbstractions: @kernel, @index
+
+import Oceananigans: compute_biogeochemical_tendencies!
+
+function compute_biogeochemical_tendencies!(model, tendencies; active_cells_map = nothing)
+
+    arch                 = model.architecture
+    grid                 = model.grid
+    biogeochemistry      = model.biogeochemistry
+    velocities           = model.velocities
+    tracers              = model.tracers
+    auxiliary_fields     = model.auxiliary_fields
+    clock                = model.clock
+
+    kernel_parameters = tuple(interior_tendency_kernel_parameters(grid))
+
+    tracer_kernel_args   = (biogeochemistry, velocities, tracers, auxiliary_fields)
+
+    for tracer_index in 1:length(tracers)
+        @inbounds c_tendency = tendencies[tracer_index + 3]
+        @inbounds tracer_name = keys(tracers)[tracer_index]
+
+        args = tuple(Val(tracer_name), tracer_kernel_args..., clock)
+
+        for parameters in kernel_parameters
+            launch!(arch, grid, parameters, compute_bgc_G!, 
+                    c_tendency, grid, active_cells_map, args;
+                    active_cells_map)
+        end
+    end
+
+    return nothing
+end
+
+""" Calculate the right-hand-side of the tracer advection-diffusion equation. """
+@kernel function compute_bgc_G!(Gc, grid, ::Nothing, args)
+    i, j, k = @index(Global, NTuple)
+    @inbounds Gc[i, j, k] = biogeochemical_tendency(i, j, k, grid, args...)
+end
+
+@kernel function compute_bgc_G!(Gc, grid, interior_map, args) 
+    idx = @index(Global, Linear)
+    i, j, k = active_linear_index_to_tuple(idx, interior_map)
+    @inbounds Gc[i, j, k] = biogeochemical_tendency(i, j, k, grid, args...)
+end
+
+@inline function biogeochemical_tendency(i, j, k, grid,
+                                         val_tracer_name,
+                                         biogeochemistry,
+                                         velocities,
+                                         tracers,
+                                         auxiliary_fields,
+                                         clock)
+
+    model_fields = merge(velocities, tracers, auxiliary_fields)
+
+    return biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields, Val(true))
+end
 
 end # module

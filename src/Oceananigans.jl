@@ -190,6 +190,8 @@ function fields end
 function prognostic_fields end
 function tracer_tendency_kernel_function end
 function boundary_conditions end
+function compute_biogeochemical_tendencies! end
+function interior_tendency_kernel_parameters end
 
 #####
 ##### Include all the submodules

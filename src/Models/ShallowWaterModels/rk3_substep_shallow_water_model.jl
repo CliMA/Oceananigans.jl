@@ -14,14 +14,14 @@ function rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ)
 
     substep_solution_kernel!(model.solution,
                              Δt, γⁿ, ζⁿ,
-                             model.timestepper.Gⁿ,
-                             model.timestepper.G⁻)
+                             timestepper_tendencies(timestepper),
+                             timestepper_previous_tendencies(timestepper))
 
 
     for i in 1:length(model.tracers)
         @inbounds c = model.tracers[i]
-        @inbounds Gcⁿ = model.timestepper.Gⁿ[i+3]
-        @inbounds Gc⁻ = model.timestepper.G⁻[i+3]
+        @inbounds Gcⁿ = timestepper_tendencies(timestepper)[i+3]
+        @inbounds Gc⁻ = timestepper_previous_tendencies(timestepper)[i+3]
 
         substep_tracer_kernel!(c, Δt, γⁿ, ζⁿ, Gcⁿ, Gc⁻)
     end
