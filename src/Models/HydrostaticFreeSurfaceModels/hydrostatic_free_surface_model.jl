@@ -56,7 +56,7 @@ default_free_surface(grid; gravitational_acceleration=g_Earth) =
 """
     HydrostaticFreeSurfaceModel(; grid,
                                 clock = Clock{eltype(grid)}(time = 0),
-                   momentum_advection = default_momentum_advection(grid),
+                   momentum_advection = VectorInvariant(),
                      tracer_advection = CenteredSecondOrder(),
                              buoyancy = SeawaterBuoyancy(eltype(grid)),
                              coriolis = nothing,
