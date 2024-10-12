@@ -7,8 +7,6 @@ using Oceananigans.Models.NonhydrostaticModels: buffer_tendency_kernel_parameter
                                                 buffer_κ_kernel_parameters,
                                                 buffer_parameters
 
-using Oceananigans.TurbulenceClosures: required_halo_size
-
 # We assume here that top/bottom BC are always synchronized (no partitioning in z)
 function compute_buffer_tendencies!(model::HydrostaticFreeSurfaceModel)
     grid = model.grid
