@@ -51,7 +51,7 @@ using Oceananigans.Utils
 
 using Oceananigans.Architectures: AbstractArchitecture, device
 using Oceananigans.Fields: FunctionField
-import Oceananigans.Advection: required_halo_size
+import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 import Oceananigans.Architectures: on_architecture
 
 const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
@@ -78,7 +78,9 @@ compute_diffusivities!(K, closure::AbstractTurbulenceClosure, args...; kwargs...
 # point at each side to calculate viscous fluxes at the edge of the domain. 
 # If diffusivity itself requires one halo to be computed (e.g. κ = ℑxᶠᵃᵃ(i, j, k, grid, ℑxᶜᵃᵃ, T),
 # or `AnisotropicMinimumDissipation` and `SmagorinskyLilly`) then B = 2
-@inline required_halo_size(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B 
+@inline required_halo_size_x(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B 
+@inline required_halo_size_y(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B 
+@inline required_halo_size_z(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B 
 
 const ClosureKinda = Union{Nothing, AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}}
 add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = bcs
