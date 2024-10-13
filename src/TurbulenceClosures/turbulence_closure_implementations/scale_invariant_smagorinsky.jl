@@ -138,10 +138,10 @@ AG = AbstractGrid
 
 # Off-diagonal
 @inline ∂x_v̄(i, j, k, grid, v) = ∂xᶠᶠᶜ(i, j, k, grid, ℱ²ᵟ, v)
-@inline ∂x_w̄(i, j, k, grid, w) = ∂xᶠᶜᶜ(i, j, k, grid, ℱ²ᵟ, w)
+@inline ∂x_w̄(i, j, k, grid, w) = ∂xᶠᶜᶠ(i, j, k, grid, ℱ²ᵟ, w)
 
 @inline ∂y_ū(i, j, k, grid, u) = ∂yᶠᶠᶜ(i, j, k, grid, ℱ²ᵟ, u)
-@inline ∂y_w̄(i, j, k, grid, w) = ∂yᶜᶠᶜ(i, j, k, grid, ℱ²ᵟ, w)
+@inline ∂y_w̄(i, j, k, grid, w) = ∂yᶜᶠᶠ(i, j, k, grid, ℱ²ᵟ, w)
 
 @inline ∂z_ū(i, j, k, grid, u) = ∂zᶠᶜᶠ(i, j, k, grid, ℱ²ᵟ, u)
 @inline ∂z_v̄(i, j, k, grid, v) = ∂zᶜᶠᶠ(i, j, k, grid, ℱ²ᵟ, v)
@@ -242,13 +242,13 @@ end
 @inline SS₁₃ᶠᶜᶠ(i, j, k, grid, u, v, w) = √(ΣᵢⱼΣᵢⱼᶠᶜᶠ(i, j, k, grid, u, v, w)) * Σ₁₃(i, j, k, grid, u, v, w) # fcf
 @inline SS₂₃ᶜᶠᶠ(i, j, k, grid, u, v, w) = √(ΣᵢⱼΣᵢⱼᶜᶠᶠ(i, j, k, grid, u, v, w)) * Σ₂₃(i, j, k, grid, u, v, w) # cff
 
-@inline var"⟨|S|S₁₁⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₁₁ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
-@inline var"⟨|S|S₂₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₂₂ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
-@inline var"⟨|S|S₃₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₃₃ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
+@inline var"⟨SS₁₁⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₁₁ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
+@inline var"⟨SS₂₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₂₂ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
+@inline var"⟨SS₃₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₃₃ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
 
-@inline var"⟨|S|S₁₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) = ℑxyᶜᶜᵃ(i, j, k, grid, ℱ²ᵟ, SS₁₂ᶠᶠᶜ, u, v, w)
-@inline var"⟨|S|S₁₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) = ℑxzᶜᵃᶜ(i, j, k, grid, ℱ²ᵟ, SS₁₃ᶠᶜᶠ, u, v, w)
-@inline var"⟨|S|S₂₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) = ℑyzᵃᶜᶜ(i, j, k, grid, ℱ²ᵟ, SS₂₃ᶜᶠᶠ, u, v, w)
+@inline var"⟨SS₁₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) = ℑxyᶜᶜᵃ(i, j, k, grid, ℱ²ᵟ, SS₁₂ᶠᶠᶜ, u, v, w)
+@inline var"⟨SS₁₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) = ℑxzᶜᵃᶜ(i, j, k, grid, ℱ²ᵟ, SS₁₃ᶠᶜᶠ, u, v, w)
+@inline var"⟨SS₂₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) = ℑyzᵃᶜᶜ(i, j, k, grid, ℱ²ᵟ, SS₂₃ᶜᶠᶠ, u, v, w)
 
 @inline S̄S̄₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = S̄ᶜᶜᶜ * Σ̄₁₁(i, j, k, grid, u, v, w) # ccc
 @inline S̄S̄₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = S̄ᶜᶜᶜ * Σ̄₂₂(i, j, k, grid, u, v, w) # ccc
@@ -264,13 +264,13 @@ end
 
 
 @inline Δᶠ(i, j, k, grid) = ∛volume(i, j, k, grid, Center(), Center(), Center())
-@inline M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Sᶜᶜᶜ, S̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨|S|S₁₁⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) - α^2*β * S̄S̄₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ))
-@inline M₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Sᶜᶜᶜ, S̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨|S|S₂₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) - α^2*β * S̄S̄₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ))
-@inline M₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Sᶜᶜᶜ, S̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨|S|S₃₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) - α^2*β * S̄S̄₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ))
+@inline M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Sᶜᶜᶜ, S̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₁₁⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) - α^2*β * S̄S̄₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ))
+@inline M₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Sᶜᶜᶜ, S̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₂₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) - α^2*β * S̄S̄₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ))
+@inline M₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Sᶜᶜᶜ, S̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₃₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) - α^2*β * S̄S̄₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ))
 
-@inline M₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨|S|S₁₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) - α^2*β * S̄S̄₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w))
-@inline M₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨|S|S₁₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) - α^2*β * S̄S̄₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w))
-@inline M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨|S|S₂₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) - α^2*β * S̄S̄₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w))
+@inline M₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₁₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) - α^2*β * S̄S̄₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w))
+@inline M₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₁₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) - α^2*β * S̄S̄₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w))
+@inline M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₂₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) - α^2*β * S̄S̄₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w))
 
 
 
@@ -307,17 +307,6 @@ Base.show(io::IO, closure::ScaleInvariantSmagorinsky) = print(io, summary(closur
 #####
 ##### For closures that only require an eddy viscosity νₑ field.
 #####
-
-directionally_averaged_field(grid, ::Val{DirectionalAveraging(1)})         = Field{Nothing, Center,  Center }(grid)
-directionally_averaged_field(grid, ::Val{DirectionalAveraging(2)})         = Field{Center,  Nothing, Center }(grid)
-directionally_averaged_field(grid, ::Val{DirectionalAveraging(3)})         = Field{Center,  Center,  Nothing}(grid)
-directionally_averaged_field(grid, ::Val{DirectionalAveraging((1, 2))})    = Field{Nothing, Nothing, Center }(grid)
-directionally_averaged_field(grid, ::Val{DirectionalAveraging((1, 3))})    = Field{Nothing, Center,  Nothing}(grid)
-directionally_averaged_field(grid, ::Val{DirectionalAveraging((2, 3))})    = Field{Center,  Nothing, Nothing}(grid)
-directionally_averaged_field(grid, ::Val{DirectionalAveraging((1, 2, 3))}) = Field{Nothing, Nothing, Nothing}(grid)
-directionally_averaged_field(grid, ::Val{DirectionalAveraging(Colon())})   = Field{Nothing, Nothing, Nothing}(grid)
-directionally_averaged_field(grid, ::Any)                                  = Field{Center,  Center,  Center}(grid)
-
 
 function DiffusivityFields(grid, tracer_names, bcs, closure::ScaleInvariantSmagorinsky; velocities::NamedTuple)
 
