@@ -28,7 +28,7 @@ julia> grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1));
 julia> model = NonhydrostaticModel(; grid, buoyancy=nothing)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered reconstruction order 2
 ├── tracers: ()
 ├── closure: Nothing
@@ -43,7 +43,7 @@ The option `buoyancy = nothing` is the default for [`NonhydrostaticModel`](@ref)
 julia> model = NonhydrostaticModel(; grid)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered reconstruction order 2
 ├── tracers: ()
 ├── closure: Nothing
@@ -64,7 +64,7 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
 ├── advection scheme: 
-│   └── momentum: Centered reconstruction order 2
+│   └── momentum: Vector Invariant, Dimension-by-dimension reconstruction
 └── coriolis: Nothing
 ```
 
@@ -77,7 +77,7 @@ a buoyancy tracer by including `:b` in `tracers` and specifying  `buoyancy = Buo
 julia> model = NonhydrostaticModel(; grid, buoyancy=BuoyancyTracer(), tracers=:b)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered reconstruction order 2
 ├── tracers: b
 ├── closure: Nothing
@@ -98,7 +98,7 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
 ├── advection scheme:
-│   ├── momentum: Centered reconstruction order 2
+│   ├── momentum: Vector Invariant, Dimension-by-dimension reconstruction
 │   └── b: Centered reconstruction order 2
 └── coriolis: Nothing
 ```
@@ -118,7 +118,7 @@ S.I. units ``\text{m}\,\text{s}^{-2}``) and requires to add `:T` and `:S` as tra
 julia> model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered reconstruction order 2
 ├── tracers: (T, S)
 ├── closure: Nothing
@@ -139,7 +139,7 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
 ├── advection scheme:
-│   ├── momentum: Centered reconstruction order 2
+│   ├── momentum: Vector Invariant, Dimension-by-dimension reconstruction
 │   ├── T: Centered reconstruction order 2
 │   └── S: Centered reconstruction order 2
 └── coriolis: Nothing
@@ -157,7 +157,7 @@ SeawaterBuoyancy{Float64}:
 julia> model = NonhydrostaticModel(; grid, buoyancy, tracers=(:T, :S))
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered reconstruction order 2
 ├── tracers: (T, S)
 ├── closure: Nothing
@@ -238,7 +238,7 @@ Buoyancy:
 julia> model = NonhydrostaticModel(; grid, buoyancy, tracers=:b)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── timestepper: RungeKutta3TimeStepper
 ├── advection scheme: Centered reconstruction order 2
 ├── tracers: b
 ├── closure: Nothing

@@ -2,13 +2,11 @@ import Oceananigans.Models: compute_boundary_tendencies!
 import Oceananigans.Models: compute_boundary_tendencies!
 
 using Oceananigans.Grids: halo_size
-using Oceananigans.ImmersedBoundaries: active_interior_map, DistributedActiveCellsIBG
+using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, DistributedActiveCellsIBG
 using Oceananigans.Models.NonhydrostaticModels: boundary_tendency_kernel_parameters,
                                                 boundary_p_kernel_parameters, 
                                                 boundary_κ_kernel_parameters,
                                                 boundary_parameters
-
-using Oceananigans.TurbulenceClosures: required_halo_size
 
 # We assume here that top/bottom BC are always synchronized (no partitioning in z)
 function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
@@ -19,7 +17,7 @@ function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     p_parameters = boundary_p_kernel_parameters(grid, arch)
     κ_parameters = boundary_κ_kernel_parameters(grid, model.closure, arch)
 
-    # We need new values for `w`, `p` and `κ`
+    # Compute new values for `w`, `p` and `κ` on the perifery
     compute_auxiliaries!(model; w_parameters, p_parameters, κ_parameters)
 
     # parameters for communicating North / South / East / West side
@@ -38,13 +36,15 @@ function compute_boundary_tendency_contributions!(grid::DistributedActiveCellsIB
     maps = grid.interior_active_cells
     
     for (name, map) in zip(keys(maps), maps)
-        compute_boundary = (name != :interior) && !isnothing(map) 
         
-        # If there exists a boundary map, then we compute the boundary contributions
+        # If there exists a boundary map, then we compute the boundary contributions. If not, the 
+        # boundary contributions have already been calculated. We exclude the interior because it has
+        # already been calculated
+        compute_boundary = (name != :interior) && !isnothing(map) 
+
         if compute_boundary
-            active_boundary_map = active_interior_map(Val(name))
-            compute_hydrostatic_free_surface_tendency_contributions!(model, tuple(:xyz); 
-                                                                     active_cells_map = active_boundary_map)
+            active_cells_map = retrieve_interior_active_cells_map(grid, Val(name))
+            compute_hydrostatic_free_surface_tendency_contributions!(model, tuple(:xyz); active_cells_map)
         end
     end
 
@@ -56,19 +56,15 @@ function boundary_w_kernel_parameters(grid, arch)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
-    Sx  = (Hx, Ny+2) 
-    Sy  = (Nx+2, Hy)
-             
     # Offsets in tangential direction are == -1 to
     # cover the required corners
-    Oxᴸ = (-Hx+1, -1)
-    Oyᴸ = (-1, -Hy+1)
-    Oxᴿ = (Nx-1, -1)
-    Oyᴿ = (-1, Ny-1)
+    param_west  = (-Hx+2:1,    0:Ny+1)
+    param_east  = (Nx:Nx+Hx-1, 0:Ny+1)
+    param_south = (0:Nx+1,     -Hy+2:1)
+    param_north = (0:Nx+1,     Ny:Ny+Hy-1)
 
-    sizes = (Sx,  Sy,  Sx,  Sy)
-    offs  = (Oxᴸ, Oyᴸ, Oxᴿ, Oyᴿ)
-        
-    return boundary_parameters(sizes, offs, grid, arch)
+    params = (param_west, param_east, param_south, param_north)
+
+    return boundary_parameters(params, grid, arch)
 end
 
