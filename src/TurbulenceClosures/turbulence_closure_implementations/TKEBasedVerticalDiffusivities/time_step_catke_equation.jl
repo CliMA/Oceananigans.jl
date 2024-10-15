@@ -12,7 +12,13 @@ get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 function time_step_catke_equation!(model)
 
     # TODO: properly handle closure tuples
-    closure = model.closure
+    if model.closure isa Tuple
+        closure = first(model.closure)
+        diffusivity_fields = first(model.diffusivity_fields)
+    else
+        closure = model.closure
+        diffusivity_fields = model.diffusivity_fields
+    end
 
     e = model.tracers.e
     arch = model.architecture
@@ -20,7 +26,6 @@ function time_step_catke_equation!(model)
     Gⁿe = model.timestepper.Gⁿ.e
     G⁻e = model.timestepper.G⁻.e
 
-    diffusivity_fields = model.diffusivity_fields
     κe = diffusivity_fields.κe
     Le = diffusivity_fields.Le
     previous_velocities = diffusivity_fields.previous_velocities
@@ -63,7 +68,7 @@ function time_step_catke_equation!(model)
         # previous_clock = (; time=current_time, iteration=previous_iteration)
 
         implicit_step!(e, implicit_solver, closure,
-                       model.diffusivity_fields, Val(tracer_index),
+                       diffusivity_fields, Val(tracer_index),
                        model.clock, Δτ)
     end
 
@@ -112,7 +117,7 @@ end
     # Then the contribution of Jᵉ to the implicit flux is
     #
     #       Lᵂ = - Cᵂϵ * √e / Δz.
-    #
+    
     on_bottom = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k-1, grid)
     Δz = Δzᶜᶜᶜ(i, j, k, grid)
     Cᵂϵ = closure_ij.turbulent_kinetic_energy_equation.Cᵂϵ

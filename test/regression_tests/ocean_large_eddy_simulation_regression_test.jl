@@ -1,6 +1,6 @@
 using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation
 using Oceananigans.TimeSteppers: update_state!
-using Oceananigans.DistributedComputations: cpu_architecture, partition_global_array
+using Oceananigans.DistributedComputations: cpu_architecture, partition
 
 function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)
     name = "ocean_large_eddy_simulation_" * string(typeof(first(closure)).name.wrapper)
@@ -85,23 +85,23 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
 
     cpu_arch = cpu_architecture(architecture(grid))
 
-    u₀ = partition_global_array(cpu_arch, ArrayType(solution₀.u[2:end-1, 2:end-1, 2:end-1]), size(u))
-    v₀ = partition_global_array(cpu_arch, ArrayType(solution₀.v[2:end-1, 2:end-1, 2:end-1]), size(v))
-    w₀ = partition_global_array(cpu_arch, ArrayType(solution₀.w[2:end-1, 2:end-1, 2:end-1]), size(w))
-    T₀ = partition_global_array(cpu_arch, ArrayType(solution₀.T[2:end-1, 2:end-1, 2:end-1]), size(T))
-    S₀ = partition_global_array(cpu_arch, ArrayType(solution₀.S[2:end-1, 2:end-1, 2:end-1]), size(S))
+    u₀ = partition(ArrayType(solution₀.u[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(u))
+    v₀ = partition(ArrayType(solution₀.v[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(v))
+    w₀ = partition(ArrayType(solution₀.w[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(w))
+    T₀ = partition(ArrayType(solution₀.T[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(T))
+    S₀ = partition(ArrayType(solution₀.S[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(S))
 
-    Gⁿu₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.u)[2:end-1, 2:end-1, 2:end-1], size(u))
-    Gⁿv₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.v)[2:end-1, 2:end-1, 2:end-1], size(v))
-    Gⁿw₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.w)[2:end-1, 2:end-1, 2:end-1], size(w))
-    GⁿT₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.T)[2:end-1, 2:end-1, 2:end-1], size(T))
-    GⁿS₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.S)[2:end-1, 2:end-1, 2:end-1], size(S))
+    Gⁿu₀ = partition(ArrayType(Gⁿ₀.u)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(u))
+    Gⁿv₀ = partition(ArrayType(Gⁿ₀.v)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(v))
+    Gⁿw₀ = partition(ArrayType(Gⁿ₀.w)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(w))
+    GⁿT₀ = partition(ArrayType(Gⁿ₀.T)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(T))
+    GⁿS₀ = partition(ArrayType(Gⁿ₀.S)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(S))
 
-    G⁻u₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.u)[2:end-1, 2:end-1, 2:end-1], size(u))
-    G⁻v₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.v)[2:end-1, 2:end-1, 2:end-1], size(v))
-    G⁻w₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.w)[2:end-1, 2:end-1, 2:end-1], size(w))
-    G⁻T₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.T)[2:end-1, 2:end-1, 2:end-1], size(T))
-    G⁻S₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.S)[2:end-1, 2:end-1, 2:end-1], size(S))
+    G⁻u₀ = partition(ArrayType(G⁻₀.u)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(u))
+    G⁻v₀ = partition(ArrayType(G⁻₀.v)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(v))
+    G⁻w₀ = partition(ArrayType(G⁻₀.w)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(w))
+    G⁻T₀ = partition(ArrayType(G⁻₀.T)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(T))
+    G⁻S₀ = partition(ArrayType(G⁻₀.S)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(S))
 
     interior(model.velocities.u) .= u₀
     interior(model.velocities.v) .= v₀
@@ -142,11 +142,11 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
                                      T = Array(interior(model.tracers.T)),
                                      S = Array(interior(model.tracers.S)))
 
-    u₁ = partition_global_array(cpu_arch, Array(solution₁.u)[2:end-1, 2:end-1, 2:end-1], size(u))
-    v₁ = partition_global_array(cpu_arch, Array(solution₁.v)[2:end-1, 2:end-1, 2:end-1], size(v))
-    w₁ = partition_global_array(cpu_arch, Array(solution₁.w)[2:end-1, 2:end-1, 2:end-2], size(test_fields.w))
-    T₁ = partition_global_array(cpu_arch, Array(solution₁.T)[2:end-1, 2:end-1, 2:end-1], size(T))
-    S₁ = partition_global_array(cpu_arch, Array(solution₁.S)[2:end-1, 2:end-1, 2:end-1], size(S))
+    u₁ = partition(Array(solution₁.u)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(u))
+    v₁ = partition(Array(solution₁.v)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(v))
+    w₁ = partition(Array(solution₁.w)[2:end-1, 2:end-1, 2:end-2], cpu_arch, size(test_fields.w))
+    T₁ = partition(Array(solution₁.T)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(T))
+    S₁ = partition(Array(solution₁.S)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(S))
 
     @show size(test_fields.w), size(w₁)
 

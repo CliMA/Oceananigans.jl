@@ -6,7 +6,7 @@ using LinearAlgebra
 
 import Oceananigans.Architectures: architecture
 
-mutable struct PreconditionedConjugateGradientSolver{A, G, L, T, F, M, P} 
+mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P} 
     architecture :: A
     grid :: G
     linear_operation! :: L
@@ -22,25 +22,26 @@ mutable struct PreconditionedConjugateGradientSolver{A, G, L, T, F, M, P}
     preconditioner_product :: P
 end
 
-architecture(solver::PreconditionedConjugateGradientSolver) = solver.architecture
+architecture(solver::ConjugateGradientSolver) = solver.architecture
+iteration(cgs::ConjugateGradientSolver) = cgs.iteration
 
 initialize_precondition_product(preconditioner, template_field) = similar(template_field)
 initialize_precondition_product(::Nothing, template_field) = nothing
 
-Base.summary(::PreconditionedConjugateGradientSolver) = "PreconditionedConjugateGradientSolver"
+Base.summary(::ConjugateGradientSolver) = "ConjugateGradientSolver"
 
 # "Nothing" preconditioner
 @inline precondition!(z, ::Nothing, r, args...) = r
 
 """
-    PreconditionedConjugateGradientSolver(linear_operation;
+    ConjugateGradientSolver(linear_operation;
                                           template_field,
                                           maxiter = size(template_field.grid),
-                                          reltol = sqrt(eps(eltype(template_field.grid))),
+                                          reltol = sqrt(eps(template_field.grid)),
                                           abstol = 0,
                                           preconditioner = nothing)
 
-Returns a `PreconditionedConjugateGradientSolver` that solves the linear equation
+Returns a `ConjugateGradientSolver` that solves the linear equation
 ``A x = b`` using a iterative conjugate gradient method with optional preconditioning.
 
 The solver is used by calling
@@ -72,7 +73,7 @@ Arguments
 
 See [`solve!`](@ref) for more information about the preconditioned conjugate-gradient algorithm.
 """
-function PreconditionedConjugateGradientSolver(linear_operation;
+function ConjugateGradientSolver(linear_operation;
                                                template_field::AbstractField,
                                                maxiter = prod(size(template_field)),
                                                reltol = sqrt(eps(eltype(template_field.grid))),
@@ -92,7 +93,7 @@ function PreconditionedConjugateGradientSolver(linear_operation;
 
     FT = eltype(grid)
 
-    return PreconditionedConjugateGradientSolver(arch,
+    return ConjugateGradientSolver(arch,
                                                  grid,
                                                  linear_operation,
                                                  FT(reltol),
@@ -108,7 +109,7 @@ function PreconditionedConjugateGradientSolver(linear_operation;
 end
 
 """
-    solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
+    solve!(x, solver::ConjugateGradientSolver, b, args...)
 
 Solve `A * x = b` using an iterative conjugate-gradient method, where `A * x` is
 determined by `solver.linear_operation`
@@ -156,7 +157,7 @@ Loop:
      ρⁱ⁻¹ = ρ
 ```
 """
-function solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
+function solve!(x, solver::ConjugateGradientSolver, b, args...)
 
     # Initialize
     solver.iteration = 0
@@ -169,8 +170,8 @@ function solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
     residual_norm = norm(solver.residual)
     tolerance = max(solver.reltol * residual_norm, solver.abstol)
 
-    @debug "PreconditionedConjugateGradientSolver, |b|: $(norm(b))"
-    @debug "PreconditionedConjugateGradientSolver, |A * x|: $(norm(q))"
+    @debug "ConjugateGradientSolver, |b|: $(norm(b))"
+    @debug "ConjugateGradientSolver, |A * x|: $(norm(q))"
 
     while iterating(solver, tolerance)
         iterate!(x, solver, b, args...)
@@ -184,7 +185,7 @@ function iterate!(x, solver, b, args...)
     p = solver.search_direction
     q = solver.linear_operator_product
 
-    @debug "PreconditionedConjugateGradientSolver $(solver.iteration), |r|: $(norm(r))"
+    @debug "ConjugateGradientSolver $(solver.iteration), |r|: $(norm(r))"
 
     # Preconditioned:   z = P * r
     # Unpreconditioned: z = r
@@ -192,15 +193,15 @@ function iterate!(x, solver, b, args...)
 
     ρ = dot(z, r)
 
-    @debug "PreconditionedConjugateGradientSolver $(solver.iteration), ρ: $ρ"
-    @debug "PreconditionedConjugateGradientSolver $(solver.iteration), |z|: $(norm(z))"
+    @debug "ConjugateGradientSolver $(solver.iteration), ρ: $ρ"
+    @debug "ConjugateGradientSolver $(solver.iteration), |z|: $(norm(z))"
 
     @apply_regionally perform_iteration!(q, p, ρ, z, solver, args...)
 
     α = ρ / dot(p, q)
 
-    @debug "PreconditionedConjugateGradientSolver $(solver.iteration), |q|: $(norm(q))"
-    @debug "PreconditionedConjugateGradientSolver $(solver.iteration), α: $α"
+    @debug "ConjugateGradientSolver $(solver.iteration), |q|: $(norm(q))"
+    @debug "ConjugateGradientSolver $(solver.iteration), α: $α"
         
     @apply_regionally update_solution_and_residuals!(x, r, q, p, α)
 
@@ -230,7 +231,7 @@ function perform_iteration!(q, p, ρ, z, solver, args...)
         β = ρ / solver.ρⁱ⁻¹
         pp .= zp .+ β .* pp
 
-        @debug "PreconditionedConjugateGradientSolver $(solver.iteration), β: $β"
+        @debug "ConjugateGradientSolver $(solver.iteration), β: $β"
     end
 
     # q = A * p
@@ -258,8 +259,8 @@ function iterating(solver, tolerance)
     return true
 end
 
-function Base.show(io::IO, solver::PreconditionedConjugateGradientSolver)
-    print(io, "PreconditionedConjugateGradientSolver on ", summary(solver.architecture), "\n",
+function Base.show(io::IO, solver::ConjugateGradientSolver)
+    print(io, "ConjugateGradientSolver on ", summary(solver.architecture), "\n",
               "├── template_field: ", summary(solver.residual), "\n",
               "├── grid: ", summary(solver.grid), "\n",
               "├── linear_operation!: ", prettysummary(solver.linear_operation!), "\n",

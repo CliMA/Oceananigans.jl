@@ -116,7 +116,14 @@ function VectorInvariant(; vorticity_scheme = EnstrophyConserving(),
                            upwinding  = OnlySelfUpwinding(; cross_scheme = divergence_scheme),
                            multi_dimensional_stencil = false)
 
-    N = required_halo_size(vorticity_scheme)
+    N = max(required_halo_size_x(vorticity_scheme),
+            required_halo_size_y(vorticity_scheme),
+            required_halo_size_x(divergence_scheme),
+            required_halo_size_y(divergence_scheme),
+            required_halo_size_x(kinetic_energy_gradient_scheme),
+            required_halo_size_y(kinetic_energy_gradient_scheme),
+            required_halo_size_z(vertical_scheme))
+
     FT = eltype(vorticity_scheme)
 
     return VectorInvariant{N, FT, multi_dimensional_stencil}(vorticity_scheme,
@@ -216,11 +223,20 @@ function WENOVectorInvariant(FT::DataType = Float64;
                                                              upwinding)
 end
 
-
 # Since vorticity itself requires one halo, if we use an upwinding scheme (N > 1) we require one additional
 # halo for vector invariant advection
-required_halo_size(scheme::VectorInvariant{N}) where N = N == 1 ? N : N + 1
+@inline function required_halo_size_x(scheme::VectorInvariant) 
+    Hx₁ = required_halo_size_x(scheme.vorticity_scheme)
+    Hx₂ = required_halo_size_x(scheme.divergence_scheme)
+    Hx₃ = required_halo_size_x(scheme.kinetic_energy_gradient_scheme)
 
+    Hx = max(Hx₁, Hx₂, Hx₃)
+    return Hx == 1 ? Hx : Hx + 1 
+end
+
+@inline required_halo_size_y(scheme::VectorInvariant) = required_halo_size_x(scheme) 
+@inline required_halo_size_z(scheme::VectorInvariant) = required_halo_size_z(scheme.vertical_scheme)  
+    
 Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, M}) where {N, FT, M} =
     VectorInvariant{N, FT, M}(Adapt.adapt(to, scheme.vorticity_scheme),
                               Adapt.adapt(to, scheme.vorticity_stencil),

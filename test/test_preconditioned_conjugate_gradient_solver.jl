@@ -10,7 +10,7 @@ end
 
 function run_identity_operator_test(grid)
     b = CenterField(grid)
-    solver = PreconditionedConjugateGradientSolver(identity_operator!, template_field = b, reltol=0, abstol=10*sqrt(eps(eltype(grid))))
+    solver = ConjugateGradientSolver(identity_operator!, template_field = b, reltol=0, abstol=10*sqrt(eps(eltype(grid))))
     initial_guess = solution = similar(b)
     set!(initial_guess, (x, y, z) -> rand())
 
@@ -33,7 +33,7 @@ function run_poisson_equation_test(grid)
     ∇²ϕ = r = CenterField(grid)
     compute_∇²!(∇²ϕ, ϕ_truth, arch, grid)
 
-    solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=ϕ_truth, reltol=eps(eltype(grid)), maxiter=Int(1e10))
+    solver = ConjugateGradientSolver(compute_∇²!, template_field=ϕ_truth, reltol=eps(eltype(grid)), maxiter=Int(1e10))
 
     # Solve Poisson equation
     ϕ_solution = CenterField(grid)
@@ -61,9 +61,9 @@ function run_poisson_equation_test(grid)
     return nothing
 end
 
-@testset "PreconditionedConjugateGradientSolver" begin
+@testset "ConjugateGradientSolver" begin
     for arch in archs
-        @info "Testing PreconditionedConjugateGradientSolver [$(typeof(arch))]..."
+        @info "Testing ConjugateGradientSolver [$(typeof(arch))]..."
         grid = RectilinearGrid(arch, size=(4, 8, 4), extent=(1, 3, 1))
         run_identity_operator_test(grid)
         run_poisson_equation_test(grid)

@@ -1,6 +1,7 @@
 module OceananigansMakieExt
 
 using Oceananigans
+using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
@@ -27,8 +28,32 @@ function _create_plot(F::Function, attributes::Dict, f::Field)
     return _create_plot(F, attributes, converted_args...)
 end
 
+function _create_plot(F::Function, attributes::Dict, op::AbstractOperation)
+    f = Field(op)
+    compute!(f)
+    return _create_plot(F::Function, attributes::Dict, f)
+end
+
 convert_arguments(pl::Type{<:AbstractPlot}, f::Field) =
     convert_arguments(pl, convert_field_argument(f)...)
+
+function convert_arguments(pl::Type{<:AbstractPlot}, fop::AbstractOperation)
+    f = Field(op)
+    compute!(f)
+    return convert_arguments(pl, f)
+end
+
+function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, op::AbstractOperation)
+    f = Field(op)
+    compute!(f)
+    return convert_arguments(pl, ξ1, f)
+end
+
+function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, ξ2::AbstractArray, op::AbstractOperation)
+    f = Field(op)
+    compute!(f)
+    return convert_arguments(pl, ξ1, ξ2, f)
+end
 
 """
     make_plottable_array(f)
@@ -41,7 +66,7 @@ grids) with NaNs;
 - transferring data from GPU to CPU if necessary.
 """
 function make_plottable_array(f)
-
+    compute!(f)
     mask_immersed_field!(f, NaN)
 
     Nx, Ny, Nz = size(f)

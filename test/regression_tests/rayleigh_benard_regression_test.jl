@@ -1,6 +1,6 @@
 using Oceananigans.Grids: xnode, znode
 using Oceananigans.TimeSteppers: update_state!
-using Oceananigans.DistributedComputations: cpu_architecture, partition_global_array, reconstruct_global_grid
+using Oceananigans.DistributedComputations: cpu_architecture, partition, reconstruct_global_grid
 
 function run_rayleigh_benard_regression_test(arch, grid_type)
 
@@ -107,23 +107,23 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
 
     cpu_arch = cpu_architecture(architecture(grid))
 
-    u₀ = partition_global_array(cpu_arch, ArrayType(solution₀.u[2:end-1, 2:end-1, 2:end-1]), size(u))
-    v₀ = partition_global_array(cpu_arch, ArrayType(solution₀.v[2:end-1, 2:end-1, 2:end-1]), size(v))
-    w₀ = partition_global_array(cpu_arch, ArrayType(solution₀.w[2:end-1, 2:end-1, 2:end-1]), size(w))
-    b₀ = partition_global_array(cpu_arch, ArrayType(solution₀.b[2:end-1, 2:end-1, 2:end-1]), size(b))
-    c₀ = partition_global_array(cpu_arch, ArrayType(solution₀.c[2:end-1, 2:end-1, 2:end-1]), size(c))
+    u₀ = partition(ArrayType(solution₀.u[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(u))
+    v₀ = partition(ArrayType(solution₀.v[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(v))
+    w₀ = partition(ArrayType(solution₀.w[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(w))
+    b₀ = partition(ArrayType(solution₀.b[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(b))
+    c₀ = partition(ArrayType(solution₀.c[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(c))
 
-    Gⁿu₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.u[2:end-1, 2:end-1, 2:end-1]), size(u))
-    Gⁿv₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.v[2:end-1, 2:end-1, 2:end-1]), size(v))
-    Gⁿw₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.w[2:end-1, 2:end-1, 2:end-1]), size(w))
-    Gⁿb₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.b[2:end-1, 2:end-1, 2:end-1]), size(b))
-    Gⁿc₀ = partition_global_array(cpu_arch, ArrayType(Gⁿ₀.c[2:end-1, 2:end-1, 2:end-1]), size(c))
+    Gⁿu₀ = partition(ArrayType(Gⁿ₀.u[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(u))
+    Gⁿv₀ = partition(ArrayType(Gⁿ₀.v[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(v))
+    Gⁿw₀ = partition(ArrayType(Gⁿ₀.w[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(w))
+    Gⁿb₀ = partition(ArrayType(Gⁿ₀.b[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(b))
+    Gⁿc₀ = partition(ArrayType(Gⁿ₀.c[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(c))
 
-    G⁻u₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.u[2:end-1, 2:end-1, 2:end-1]), size(u))
-    G⁻v₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.v[2:end-1, 2:end-1, 2:end-1]), size(v))
-    G⁻w₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.w[2:end-1, 2:end-1, 2:end-1]), size(w))
-    G⁻b₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.b[2:end-1, 2:end-1, 2:end-1]), size(b))
-    G⁻c₀ = partition_global_array(cpu_arch, ArrayType(G⁻₀.c[2:end-1, 2:end-1, 2:end-1]), size(c))
+    G⁻u₀ = partition(ArrayType(G⁻₀.u[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(u))
+    G⁻v₀ = partition(ArrayType(G⁻₀.v[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(v))
+    G⁻w₀ = partition(ArrayType(G⁻₀.w[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(w))
+    G⁻b₀ = partition(ArrayType(G⁻₀.b[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(b))
+    G⁻c₀ = partition(ArrayType(G⁻₀.c[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(c))
 
     set!(model, u = u₀, v = v₀, w = w₀, b = b₀, c = c₀)
 
@@ -171,20 +171,20 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     b₁ = interior(solution₁.b, global_grid)
     c₁ = interior(solution₁.c, global_grid)
 
-    correct_fields = (u = partition_global_array(cpu_arch, Array(u₁), size(u)),
-                      v = partition_global_array(cpu_arch, Array(v₁), size(v)),
-                      w = partition_global_array(cpu_arch, Array(w₁), size(test_fields.w)),
-                      b = partition_global_array(cpu_arch, Array(b₁), size(b)),
-                      c = partition_global_array(cpu_arch, Array(c₁), size(c)))
+    reference_fields = (u = partition(Array(u₁), cpu_arch, size(u)),
+                        v = partition(Array(v₁), cpu_arch, size(v)),
+                        w = partition(Array(w₁), cpu_arch, size(test_fields.w)),
+                        b = partition(Array(b₁), cpu_arch, size(b)),
+                        c = partition(Array(c₁), cpu_arch, size(c)))
 
-    summarize_regression_test(test_fields, correct_fields)
+    summarize_regression_test(test_fields, reference_fields)
 
     CUDA.allowscalar(true)
-    @test all(test_fields.u .≈ correct_fields.u)
-    @test all(test_fields.v .≈ correct_fields.v)
-    @test all(test_fields.w .≈ correct_fields.w)
-    @test all(test_fields.b .≈ correct_fields.b)
-    @test all(test_fields.c .≈ correct_fields.c)
+    @test all(test_fields.u .≈ reference_fields.u)
+    @test all(test_fields.v .≈ reference_fields.v)
+    @test all(test_fields.w .≈ reference_fields.w)
+    @test all(test_fields.b .≈ reference_fields.b)
+    @test all(test_fields.c .≈ reference_fields.c)
     CUDA.allowscalar(false)
 
     return nothing

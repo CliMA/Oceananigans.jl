@@ -1,16 +1,20 @@
+using CUDA: CuArray
+using OffsetArrays: OffsetArray
+using Oceananigans.Grids: topology
+using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions
+using Oceananigans.Fields: validate_indices, recv_from_buffers!, set_to_array!, set_to_field!
+
 import Oceananigans.Fields: Field, FieldBoundaryBuffers, location, set!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
-using CUDA: CuArray
-using Oceananigans.Grids: topology
-using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions, validate_indices, recv_from_buffers!
-
 function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, indices::Tuple, op, status)
-    arch = architecture(grid)
     indices = validate_indices(indices, (LX, LY, LZ), grid)
     validate_field_data((LX, LY, LZ), data, grid, indices)
     validate_boundary_conditions((LX, LY, LZ), grid, old_bcs)
-    new_bcs = inject_halo_communication_boundary_conditions(old_bcs, arch.local_rank, arch.connectivity, topology(grid))
+
+    arch = architecture(grid)
+    rank = arch.local_rank
+    new_bcs = inject_halo_communication_boundary_conditions(old_bcs, rank, arch.connectivity, topology(grid))
     buffers = FieldBoundaryBuffers(grid, data, new_bcs)
 
     return Field{LX, LY, LZ}(grid, data, new_bcs, indices, op, status, buffers)
@@ -19,41 +23,35 @@ end
 const DistributedField      = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
 const DistributedFieldTuple = NamedTuple{S, <:NTuple{N, DistributedField}} where {S, N}
 
-function set!(u::DistributedField, f::Function)
-    arch = architecture(u)
-    if child_architecture(arch) isa GPU
-        cpu_grid = on_architecture(cpu_architecture(arch), u.grid)
-        u_cpu = Field(location(u), cpu_grid, eltype(u); indices = indices(u))
-        f_field = field(location(u), f, cpu_grid)
-        set!(u_cpu, f_field)
-        set!(u, u_cpu)
-    elseif child_architecture(arch) isa CPU
-        f_field = field(location(u), f, u.grid)
-        set!(u, f_field)
-    end
-
-    return u
-end
+global_size(f::DistributedField) = global_size(architecture(f), size(f))
 
 # Automatically partition under the hood if sizes are compatible
-function set!(u::DistributedField, v::Union{Array, CuArray})
-    gsize = global_size(architecture(u), size(u))
+function set!(u::DistributedField, V::Union{Array, CuArray, OffsetArray})
+    NV = size(V)
+    Nu = global_size(u)
 
-    if size(v) == gsize
-        f = partition_global_array(architecture(u), v, size(u))
-        u .= f
-        return u
+    # Suppress singleton indices
+    NV′ = filter(n -> n > 1, NV)
+    Nu′ = filter(n -> n > 1, Nu)
+
+    if NV′ == Nu′
+        v = partition(V, u)
     else
-        try
-            f = on_architecture(architecture(u), v)
-            u .= f
-            return u
+        v = V
+    end
 
-        catch
-            throw(ArgumentError("ERROR: DimensionMismatch: array could not be set to match destination field"))
-        end
+    return set_to_array!(u, v)
+end
+
+function set!(u::DistributedField, V::Field)
+    if size(V) == global_size(u)
+        v = partition(V, u)
+        return set_to_array!(u, v)
+    else
+        return set_to_field!(u, V)
     end
 end
+
 
 """
     synchronize_communication!(field)

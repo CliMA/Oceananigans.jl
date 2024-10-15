@@ -176,7 +176,7 @@ function reconstruct_global_grid(grid::DistributedRectilinearGrid)
 
     nx, ny, nz = n = size(grid)
     Hx, Hy, Hz = H = halo_size(grid)
-    Nx, Ny, Nz = map(sum, concatenate_local_sizes(n, arch))
+    Nx, Ny, Nz = global_size(arch, n)
 
     TX, TY, TZ = topology(grid)
 
@@ -219,7 +219,7 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
 
     nλ, nφ, nz = n = size(grid)
     Hλ, Hφ, Hz = H = halo_size(grid)
-    Nλ, Nφ, Nz = map(sum, concatenate_local_sizes(n, arch))
+    Nλ, Nφ, Nz = global_size(arch, n)
 
     TX, TY, TZ = topology(grid)
 
@@ -266,12 +266,12 @@ end
 # take precedence on `DistributedGrid` 
 function with_halo(new_halo, grid::DistributedRectilinearGrid) 
     new_grid = with_halo(new_halo, reconstruct_global_grid(grid))    
-    return scatter_local_grids(architecture(grid), new_grid, size(grid))
+    return scatter_local_grids(new_grid, architecture(grid), size(grid))
 end
 
 function with_halo(new_halo, grid::DistributedLatitudeLongitudeGrid) 
     new_grid = with_halo(new_halo, reconstruct_global_grid(grid))    
-    return scatter_local_grids(architecture(grid), new_grid, size(grid))
+    return scatter_local_grids(new_grid, architecture(grid), size(grid))
 end
 
 # Extending child_architecture for grids
@@ -295,13 +295,13 @@ function scatter_grid_properties(global_grid)
     return x, y, z, topo, halo
 end
 
-function scatter_local_grids(arch::Distributed, global_grid::RectilinearGrid, local_size)
+function scatter_local_grids(global_grid::RectilinearGrid, arch::Distributed, local_size)
     x, y, z, topo, halo = scatter_grid_properties(global_grid)
     global_sz = global_size(arch, local_size)
     return RectilinearGrid(arch, eltype(global_grid); size=global_sz, x=x, y=y, z=z, halo=halo, topology=topo)
 end
 
-function scatter_local_grids(arch::Distributed, global_grid::LatitudeLongitudeGrid, local_size)
+function scatter_local_grids(global_grid::LatitudeLongitudeGrid, arch::Distributed, local_size)
     x, y, z, topo, halo = scatter_grid_properties(global_grid)
     global_sz = global_size(arch, local_size)
     return LatitudeLongitudeGrid(arch, eltype(global_grid); size=global_sz, longitude=x, 

@@ -119,13 +119,17 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     ϕ = solver.storage
 
     # Apply forward transforms in order
-    [transform!(solver.source_term, solver.buffer) for transform! in solver.transforms.forward]
+    for transform! in solver.transforms.forward
+        transform!(solver.source_term, solver.buffer)
+    end
 
     # Solve tridiagonal system of linear equations at every column.
     solve!(ϕ, solver.batched_tridiagonal_solver, solver.source_term)
 
     # Apply backward transforms in order
-    [transform!(ϕ, solver.buffer) for transform! in solver.transforms.backward]
+    for transform! in solver.transforms.backward
+        transform!(ϕ, solver.buffer)
+    end
 
     # Set the volume mean of the solution to be zero.
     # Solutions to Poisson's equation are only unique up to a constant (the global mean
@@ -148,9 +152,7 @@ function set_source_term!(solver::FourierTridiagonalPoissonSolver, source_term)
     grid = solver.grid
     arch = architecture(solver)
     solver.source_term .= source_term
-
     launch!(arch, grid, :xyz, multiply_by_stretched_spacing!, solver.source_term, grid)
-
     return nothing
 end
 
@@ -169,3 +171,4 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds a[i, j, k] *= Δzᵃᵃᶜ(i, j, k, grid)
 end
+

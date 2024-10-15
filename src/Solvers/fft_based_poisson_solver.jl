@@ -92,7 +92,7 @@ elements (typically the same type as `solver.storage`).
     Equation ``(∇² + m) ϕ = b`` is sometimes referred to as the "screened Poisson" equation
     when ``m < 0``, or the Helmholtz equation when ``m > 0``.
 """
-function solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
+function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
     arch = architecture(solver)
     topo = TX, TY, TZ = topology(solver.grid)
     Nx, Ny, Nz = size(solver.grid)
@@ -102,7 +102,9 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
     ϕc = solver.storage
 
     # Transform b *in-place* to eigenfunction space
-    [transform!(b, solver.buffer) for transform! in solver.transforms.forward]
+    for transform! in solver.transforms.forward
+        transform!(b, solver.buffer)
+    end
 
     # Solve the discrete screened Poisson equation (∇² + m) ϕ = b.
     @. ϕc = - b / (λx + λy + λz - m)
@@ -113,7 +115,9 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
     m === 0 && CUDA.@allowscalar ϕc[1, 1, 1] = 0
 
     # Apply backward transforms in order
-    [transform!(ϕc, solver.buffer) for transform! in solver.transforms.backward]
+    for transform! in solver.transforms.backward
+        transform!(ϕc, solver.buffer)
+    end
 
     launch!(arch, solver.grid, :xyz, copy_real_component!, ϕ, ϕc, indices(ϕ))
     
@@ -131,3 +135,4 @@ end
 
     @inbounds ϕ[i′, j′, k′] = real(ϕc[i, j, k])
 end
+
