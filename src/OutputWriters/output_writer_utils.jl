@@ -53,17 +53,18 @@ function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath)
 end 
 
 # Update schedule based on user input
-is_output_splitted!(schedule, filepath) = nothing
+find_existing_splitted_output!(schedule, filepath) = nothing
 
-function is_output_splitted!(schedule::TimeInterval, filepath, overwrite_existing) 
+function find_existing_splitted_output!(schedule::TimeInterval, filepath, overwrite_existing) 
     folder = dirname(filepath)
-    filename = first(split(basename(filepath),"."))*"_part"
-    existing_files = filter(startswith(filename), readdir(folder))
-    if existing_files |> length > 0 && !overwrite_existing
+    filename = first(split(basename(filepath),".")) * "_part"
+    filelist = filter(startswith(filename), readdir(folder))
+    existing_files = length(filelist) > 0
+    if existing_files && !overwrite_existing
         @warn "Split files found, Mode will be set to append to existing file:"*
-              joinpath(folder, last(existing_files))
-        schedule.actuations = length(existing_files) - 1
-        return Int(length(existing_files)), joinpath(folder, last(existing_files))
+              joinpath(folder, last(filelist))
+        schedule.actuations = length(filelist) - 1
+        return Int(length(filelist)), joinpath(folder, last(filelist))
     end
     return 1, filepath
 end 

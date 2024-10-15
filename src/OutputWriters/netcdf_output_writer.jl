@@ -444,6 +444,7 @@ function NetCDFOutputWriter(model, outputs;
                             dimensions = Dict(),
                             overwrite_existing = nothing,
                             deflatelevel = 0,
+                            part = nothing, 
                             file_splitting = NoFileSplitting(),
                             verbose = false)
     mkpath(dir)
@@ -452,7 +453,7 @@ function NetCDFOutputWriter(model, outputs;
     initialize!(file_splitting, model)
     update_file_splitting_schedule!(file_splitting, filepath)
 
-    part, filepath = is_output_splitted!(file_splitting, filepath, overwrite_existing)
+    part, filepath = find_existing_splitted_output!(file_splitting, filepath, overwrite_existing)
 
     if isnothing(overwrite_existing)
         if isfile(filepath)
