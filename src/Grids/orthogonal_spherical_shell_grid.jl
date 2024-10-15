@@ -167,7 +167,9 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
                                       η = (-1, 1),
                                       radius = R_Earth,
                                       halo = (1, 1, 1),
-                                      rotation = nothing)
+                                      rotation = nothing,
+                                      non_uniform_conformal_mapping = false,
+                                      spacing_type = "geometric")
 
     if architecture == GPU() && !has_cuda() 
         throw(ArgumentError("Cannot create a GPU grid. No CUDA-enabled GPU was detected!"))
@@ -189,10 +191,16 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
                               topology = ξη_grid_topology,
                               x=ξ, y=η, z, halo)
 
-    ξᶠᵃᵃ = xnodes(ξη_grid, Face())
-    ξᶜᵃᵃ = xnodes(ξη_grid, Center())
-    ηᵃᶠᵃ = ynodes(ξη_grid, Face())
-    ηᵃᶜᵃ = ynodes(ξη_grid, Center())
+    if non_uniform_conformal_mapping
+        ξᶠᵃᵃ, ηᵃᶠᵃ, xᶠᶠᵃ, yᶠᶠᵃ, z = optimized_non_uniform_conformal_cubed_sphere_coordinates(Nξ+1, Nη+1, spacing_type)
+        ξᶜᵃᵃ = [0.5 * (ξᶠᵃᵃ[i] + ξᶠᵃᵃ[i+1]) for i in 1:Nξ]
+        ηᵃᶜᵃ = [0.5 * (ηᵃᶠᵃ[j] + ηᵃᶠᵃ[j+1]) for j in 1:Nη]
+    else
+        ξᶠᵃᵃ = xnodes(ξη_grid, Face())
+        ξᶜᵃᵃ = xnodes(ξη_grid, Center())
+        ηᵃᶠᵃ = ynodes(ξη_grid, Face())
+        ηᵃᶜᵃ = ynodes(ξη_grid, Center())
+    end
 
     ## The vertical coordinates and metrics can come out of the regular rectilinear grid!
      zᵃᵃᶠ = ξη_grid.zᵃᵃᶠ

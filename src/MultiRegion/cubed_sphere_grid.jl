@@ -23,6 +23,8 @@ const ConformalCubedSphereGrid{FT, TX, TY, TZ} = MultiRegionGrid{FT, TX, TY, TZ,
                              horizontal_topology = FullyConnected,
                              z_topology = Bounded,
                              radius = R_Earth,
+                             non_uniform_conformal_mapping = false,
+                             spacing_type = "geometric",
                              partition = CubedSpherePartition(; R = 1),
                              devices = nothing)
 
@@ -186,6 +188,8 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                   horizontal_topology = FullyConnected,
                                   z_topology = Bounded,
                                   radius = R_Earth,
+                                  non_uniform_conformal_mapping = false,
+                                  spacing_type = "geometric",
                                   partition = CubedSpherePartition(; R = 1),
                                   devices = nothing)
     Nx, Ny, _ = panel_size
@@ -233,7 +237,9 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                         radius,
                                         ξ = region_ξ,
                                         η = region_η,
-                                        rotation = region_rotation)
+                                        rotation = region_rotation,
+                                        non_uniform_conformal_mapping = non_uniform_conformal_mapping,
+                                        spacing_type = spacing_type)
 
     grid = MultiRegionGrid{FT, region_topology...}(CPU(),
                                                    partition,
