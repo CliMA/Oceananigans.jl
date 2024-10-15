@@ -226,7 +226,7 @@ the architecture `arch`.
     if !isnothing(active_cells_map) # everything else is irrelevant
         workgroup = min(length(active_cells_map), 256)
         worksize = length(active_cells_map)
-    elseif exclude_periphery && !(workspace isa KernelParameters) # TODO: support KernelParameters
+    elseif exclude_periphery && !(workspec isa KernelParameters) # TODO: support KernelParameters
         workgroup, worksize = interior_work_layout(grid, workspec, location)
     else
         workgroup, worksize = work_layout(grid, workspec, reduced_dimensions)
