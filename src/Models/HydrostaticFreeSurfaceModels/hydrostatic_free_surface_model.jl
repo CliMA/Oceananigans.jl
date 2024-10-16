@@ -3,7 +3,7 @@ using OrderedCollections: OrderedDict
 
 using Oceananigans.DistributedComputations
 using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant
+using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant, adapt_advection_order
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
@@ -55,6 +55,7 @@ default_free_surface(grid; gravitational_acceleration=g_Earth) =
 
 """
     HydrostaticFreeSurfaceModel(; grid,
+<<<<<<< HEAD
                                              clock = Clock{eltype(grid)}(time = 0),
                                 momentum_advection = CenteredSecondOrder(),
                                   tracer_advection = CenteredSecondOrder(),
@@ -72,6 +73,24 @@ default_free_surface(grid; gravitational_acceleration=g_Earth) =
                                 diffusivity_fields = nothing,
                                vertical_coordinate = Z(),
                                   auxiliary_fields = NamedTuple(),
+=======
+                                clock = Clock{eltype(grid)}(time = 0),
+                   momentum_advection = VectorInvariant(),
+                     tracer_advection = CenteredSecondOrder(),
+                             buoyancy = SeawaterBuoyancy(eltype(grid)),
+                             coriolis = nothing,
+                         free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
+                  forcing::NamedTuple = NamedTuple(),
+                              closure = nothing,
+      boundary_conditions::NamedTuple = NamedTuple(),
+                              tracers = (:T, :S),
+        particles::ParticlesOrNothing = nothing,
+biogeochemistry::AbstractBGCOrNothing = nothing,
+                           velocities = nothing,
+                             pressure = nothing,
+                   diffusivity_fields = nothing,
+                     auxiliary_fields = NamedTuple(),
+>>>>>>> origin/main
     )
 
 Construct a hydrostatic model with a free surface on `grid`.
@@ -105,22 +124,22 @@ Keyword arguments
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
 """
 function HydrostaticFreeSurfaceModel(; grid,
-                                     clock = Clock{eltype(grid)}(time = 0),
-                        momentum_advection = CenteredSecondOrder(),
-                          tracer_advection = CenteredSecondOrder(),
-                                  buoyancy = nothing,
-                                  coriolis = nothing,
-                              free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
-                                   tracers = nothing,
-                       forcing::NamedTuple = NamedTuple(),
-                                   closure = nothing,
-           boundary_conditions::NamedTuple = NamedTuple(),
-             particles::ParticlesOrNothing = nothing,
-     biogeochemistry::AbstractBGCOrNothing = nothing,
-                                velocities = nothing,
-                                  pressure = nothing,
-                        diffusivity_fields = nothing,
-                          auxiliary_fields = NamedTuple()
+                                          clock = Clock{eltype(grid)}(time = 0),
+                             momentum_advection = VectorInvariant(),
+                               tracer_advection = CenteredSecondOrder(),
+                                       buoyancy = nothing,
+                                       coriolis = nothing,
+                                   free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
+                                        tracers = nothing,
+                            forcing::NamedTuple = NamedTuple(),
+                                        closure = nothing,
+                boundary_conditions::NamedTuple = NamedTuple(),
+                  particles::ParticlesOrNothing = nothing,
+          biogeochemistry::AbstractBGCOrNothing = nothing,
+                                     velocities = nothing,
+                                       pressure = nothing,
+                             diffusivity_fields = nothing,
+                               auxiliary_fields = NamedTuple()
     )
 
     # Check halos and throw an error if the grid's halo is too small
@@ -131,6 +150,10 @@ function HydrostaticFreeSurfaceModel(; grid,
     @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
+
+    # Reduce the advection order in directions that do not have enough grid points
+    momentum_advection = adapt_advection_order(momentum_advection, grid)
+    tracer_advection   = adapt_advection_order(tracer_advection, grid)
 
     tracers, auxiliary_fields = validate_biogeochemistry(tracers, merge(auxiliary_fields, biogeochemical_auxiliary_fields(biogeochemistry)), biogeochemistry, grid, clock)
     validate_buoyancy(buoyancy, tracernames(tracers))

@@ -8,11 +8,7 @@ using Oceananigans.Models.NonhydrostaticModels: boundary_tendency_kernel_paramet
                                                 boundary_κ_kernel_parameters,
                                                 boundary_parameters
 
-using Oceananigans.TurbulenceClosures: required_halo_size
-
-using Oceananigans.ImmersedBoundaries: DistributedActiveCellsIBG
-
-# We assume here that top/bottom BC are always synched (no partitioning in z)
+# We assume here that top/bottom BC are always synchronized (no partitioning in z)
 function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     grid = model.grid
     arch = architecture(grid)
@@ -21,7 +17,7 @@ function compute_boundary_tendencies!(model::HydrostaticFreeSurfaceModel)
     p_parameters = boundary_p_kernel_parameters(grid, arch)
     κ_parameters = boundary_κ_kernel_parameters(grid, model.closure, arch)
 
-    # We need new values for `w`, `p` and `κ`    
+    # Compute new values for `w`, `p` and `κ` on the perifery
     compute_auxiliaries!(model; w_parameters, p_parameters, κ_parameters)
 
     # parameters for communicating North / South / East / West side
@@ -60,19 +56,15 @@ function boundary_w_kernel_parameters(grid, arch)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
-    Sx  = (Hx, Ny+2) 
-    Sy  = (Nx+2, Hy)
-             
     # Offsets in tangential direction are == -1 to
     # cover the required corners
-    Oxᴸ = (-Hx+1, -1)
-    Oyᴸ = (-1, -Hy+1)
-    Oxᴿ = (Nx-1, -1)
-    Oyᴿ = (-1, Ny-1)
+    param_west  = (-Hx+2:1,    0:Ny+1)
+    param_east  = (Nx:Nx+Hx-1, 0:Ny+1)
+    param_south = (0:Nx+1,     -Hy+2:1)
+    param_north = (0:Nx+1,     Ny:Ny+Hy-1)
 
-    sizes = (Sx,  Sy,  Sx,  Sy)
-    offs  = (Oxᴸ, Oyᴸ, Oxᴿ, Oyᴿ)
-        
-    return boundary_parameters(sizes, offs, grid, arch)
+    params = (param_west, param_east, param_south, param_north)
+
+    return boundary_parameters(params, grid, arch)
 end
 

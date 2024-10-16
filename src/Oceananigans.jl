@@ -35,7 +35,7 @@ export
     UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, 
     WENO, WENOThirdOrder, WENOFifthOrder,
     VectorInvariant, WENOVectorInvariant, EnergyConserving, EnstrophyConserving,
-    TracerAdvection,
+    FluxFormAdvection,
 
     # Boundary conditions
     BoundaryCondition,
