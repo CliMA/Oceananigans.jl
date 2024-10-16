@@ -114,7 +114,7 @@ correct_bottom_height!(bottom_field, grid, ib) =
         z⁺ = rnode(i, j, k+1, grid, c, c, f)
         z  = rnode(i, j, k,   grid, c, c, c)
         bottom_cell = ifelse(condition isa CenterImmersedCondition, z ≤ zb, z⁺ ≤ zb)
-        @inbounds bottom_field[i, j, 1] = ifelse(bottom_cell, z⁺, zb)
+        @inbounds bottom_field[i, j, 1] = ifelse(bottom_cell, z⁺, bottom_field[i, j, 1])
     end
 end
 

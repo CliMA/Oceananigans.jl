@@ -83,7 +83,7 @@ end
         # For the same reason, here we use `Δrᶜᶜᶜ` instead of `Δzᶜᶜᶜ`
         Δz = Δrᶜᶜᶜ(i, j, k, grid)
         bottom_cell =  z⁻ + Δz * (1 - ϵ) ≤ zb
-        @inbounds bottom_field[i, j, 1] = ifelse(bottom_cell, z⁻ + Δz * (1 - ϵ), zb)
+        @inbounds bottom_field[i, j, 1] = ifelse(bottom_cell, z⁻ + Δz * (1 - ϵ), bottom_field[i, j, 1])
     end
 end
 
