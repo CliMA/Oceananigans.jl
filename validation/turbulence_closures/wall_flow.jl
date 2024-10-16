@@ -6,8 +6,7 @@ simname = "wall_flow"
 
 const κ = 0.4
 
-
-function run_wall_flow(closure; arch=CPU(), H=1, L=2π*H, N=32, u★=1, z₀ = 1e-4*H, stop_time=50)
+function run_wall_flow(closure; arch=CPU(), H=1, L=2π*H, N=32, u★=1, z₀ = 1e-4*H, stop_time=30)
     grid = RectilinearGrid(arch, size=(N, N, N÷2), topology=(Periodic, Periodic, Bounded),
                            x=(0, L), y=(0, L), z=(0, H))
 
@@ -24,13 +23,13 @@ function run_wall_flow(closure; arch=CPU(), H=1, L=2π*H, N=32, u★=1, z₀ = 1
     u_forcing = Forcing(x_pressure_gradient, parameters=(; u★, H))
 
     model = NonhydrostaticModel(; grid, timestepper = :RungeKutta3,
-                                advection = CenteredFourthOrder(),
+                                advection = UpwindBiasedFifthOrder(),
                                 boundary_conditions = (; u=u_bcs, v=v_bcs),
                                 forcing = (; u = u_forcing),
                                 closure = closure)
     @show model
 
-    noise(x, y, z) = 1e0 * u★ * randn()
+    noise(x, y, z) = u★ * randn() * exp(-(z/0.1)^2)
     u₀(x, y, z) = (u★/κ) * log(z/z₀)
     set!(model, u=u₀, v=noise, w=noise)
 
@@ -41,7 +40,7 @@ function run_wall_flow(closure; arch=CPU(), H=1, L=2π*H, N=32, u★=1, z₀ = 1
     simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(2))
 
     start_time = time_ns() # so we can print the total elapsed wall time
-    progress_message(sim) = @printf("Iteration: %04d,  time: %s,  Δt: %s,  max|u|: %.1e m/s,  wall time: %s\n",
+    progress_message(sim) = @printf("Iteration: %04d,  time: %s,  Δt: %s,  max|u|: %.2e m/s,  wall time: %s\n",
                                     iteration(sim), prettytime(time(sim)), prettytime(sim.Δt), maximum(abs, sim.model.velocities.u), prettytime((time_ns() - start_time) * 1e-9))
     add_callback!(simulation, Callback(progress_message, IterationInterval(100)))
 
@@ -74,7 +73,7 @@ end
 closures = [SmagorinskyLilly(), ScaleInvariantSmagorinsky(averaging = (1,2), update_interval=5)]
 for closure in closures
     @info "Running" closure
-    run_wall_flow(closure)
+    run_wall_flow(closure, N=32)
 end
 
 
@@ -86,7 +85,7 @@ set_theme!(Theme(fontsize = 18))
 fig = Figure(size = (800, 500))
 ax1 = Axis(fig[2, 1]; xlabel = "cₛ", ylabel = "z", limits = ((0, 0.3), (0, 0.8)))
 ax2 = Axis(fig[2, 2]; xlabel = "z", ylabel = "U", limits = ((1e-3, 4e-1), (10, 20)), xscale = log10)
-ax3 = Axis(fig[2, 3]; xlabel = "ϕ = κ z ∂z(U) / u★", ylabel = "z", limits = ((0.3, 1.7), (0, 0.8)))
+ax3 = Axis(fig[2, 3]; xlabel = "ϕ = κ z ∂z(U) / u★", ylabel = "z", limits = ((0.0, 2.0), (0, 0.8)))
 n = Observable(1)
 
 colors = [:red, :blue]
