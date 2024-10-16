@@ -73,6 +73,7 @@ end
 @kernel function _correct_bottom_height!(bottom_field, grid, ib::PartialCellBottom)
     i, j = @index(Global, NTuple)
     zb = @inbounds bottom_field[i, j, 1]
+    @inbounds bottom_field[i, j, 1] = znode(i, j, 1, grid, c, c, f)
     ϵ  = ib.minimum_fractional_cell_height
     for k in 1:grid.Nz
         z⁻ = znode(i, j, k, grid, c, c, f)
