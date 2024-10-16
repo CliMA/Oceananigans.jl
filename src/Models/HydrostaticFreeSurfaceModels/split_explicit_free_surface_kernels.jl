@@ -104,6 +104,25 @@ for Topo in [:Periodic, :Bounded, :RightConnected, :LeftConnected]
     end
 end
 
+# Interpolation 
+# TODO: Figure out a nice way to do this.
+const PGX = AbstractGrid{<:Any, <:Periodic}
+const BGX = AbstractGrid{<:Any, <:Bounded}
+const RGX = AbstractGrid{<:Any, <:RightConnected}
+
+const PGY = AbstractGrid{<:Any, <:Periodic}
+const BGY = AbstractGrid{<:Any, <:Bounded}
+const RGY = AbstractGrid{<:Any, <:RightConnected}
+
+@inline ℑxᶠᵃᵃ_η(i, j, k, grid,      η) = ℑxᶠᵃᵃ(i, j, k, grid, η)
+@inline ℑyᵃᶠᵃ_η(i, j, k, grid,      η) = ℑyᵃᶠᵃ(i, j, k, grid, η)
+@inline ℑxᶠᵃᵃ_η(i, j, k, grid::PGX, η) = ifelse(i == 1, (η[1, j, k] + η[grid.Nx, j, k]) / 2, ℑxᶠᵃᵃ(i, j, k, grid, η))
+@inline ℑyᵃᶠᵃ_η(i, j, k, grid::PGY, η) = ifelse(j == 1, (η[i, 1, k] + η[i, grid.Ny, k]) / 2, ℑyᵃᶠᵃ(i, j, k, grid, η))
+@inline ℑxᶠᵃᵃ_η(i, j, k, grid::BGX, η) = ifelse(i == 1, η[1, j, k], ℑxᶠᵃᵃ(i, j, k, grid, η))
+@inline ℑyᵃᶠᵃ_η(i, j, k, grid::BGY, η) = ifelse(j == 1, η[i, 1, k], ℑyᵃᶠᵃ(i, j, k, grid, η))
+@inline ℑxᶠᵃᵃ_η(i, j, k, grid::RGX, η) = ifelse(i == 1, η[1, j, k], ℑxᶠᵃᵃ(i, j, k, grid, η))
+@inline ℑyᵃᶠᵃ_η(i, j, k, grid::RGY, η) = ifelse(j == 1, η[i, 1, k], ℑyᵃᶠᵃ(i, j, k, grid, η))
+
 # Time stepping extrapolation U★, and η★
 
 # AB3 step
@@ -164,8 +183,8 @@ end
 @inline dynamic_domain_depthᶜᶠᵃ(i, j, k, grid, η) = domain_depthᶜᶠᵃ(i, j, grid)
 
 # Non-linear free surface implementation
-@inline dynamic_domain_depthᶠᶜᵃ(i, j, k, grid::ZStarSpacingGrid, η) = domain_depthᶠᶜᵃ(i, j, grid) + ℑxᶠᵃᵃ(i, j, k, grid, η)
-@inline dynamic_domain_depthᶜᶠᵃ(i, j, k, grid::ZStarSpacingGrid, η) = domain_depthᶜᶠᵃ(i, j, grid) + ℑyᵃᶠᵃ(i, j, k, grid, η)
+@inline dynamic_domain_depthᶠᶜᵃ(i, j, k, grid::ZStarSpacingGrid, η) = domain_depthᶠᶜᵃ(i, j, grid) + ℑxᶠᵃᵃ_η(i, j, k, grid, η)
+@inline dynamic_domain_depthᶜᶠᵃ(i, j, k, grid::ZStarSpacingGrid, η) = domain_depthᶜᶠᵃ(i, j, grid) + ℑyᵃᶠᵃ_η(i, j, k, grid, η)
 
 @kernel function _split_explicit_barotropic_velocity!(averaging_weight, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
                                                       U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,
