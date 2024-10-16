@@ -16,11 +16,11 @@ const AbstractVerticalCoordinateUnderlyingGrid = Union{AVLLG, AVOSSG, AVRG}
 
 function retrieve_static_grid(grid::AbstractVerticalCoordinateUnderlyingGrid) 
 
-    zᵃᵃᶠ = reference_znodes(grid, Face())
-    zᵃᵃᶜ = reference_znodes(grid, Center())
+    zᵃᵃᶠ = rnodes(grid, Face(); with_halos = true)
+    zᵃᵃᶜ = rnodes(grid, Center(); with_halos = true)
 
-    Δzᵃᵃᶠ = reference_zspacings(grid, Face())
-    Δzᵃᵃᶜ = reference_zspacings(grid, Center())
+    Δzᵃᵃᶠ = rspacings(grid, Face(); with_halos = true)
+    Δzᵃᵃᶜ = rspacings(grid, Center(); with_halos = true)
 
     TX, TY, TZ = topology(grid)
 

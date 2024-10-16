@@ -55,25 +55,6 @@ default_free_surface(grid; gravitational_acceleration=g_Earth) =
 
 """
     HydrostaticFreeSurfaceModel(; grid,
-<<<<<<< HEAD
-                                             clock = Clock{eltype(grid)}(time = 0),
-                                momentum_advection = CenteredSecondOrder(),
-                                  tracer_advection = CenteredSecondOrder(),
-                                          buoyancy = nothing,
-                                          coriolis = nothing,
-                                      free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
-                               forcing::NamedTuple = NamedTuple(),
-                                           closure = nothing,
-                   boundary_conditions::NamedTuple = NamedTuple(),
-                                           tracers = nothing, 
-                     particles::ParticlesOrNothing = nothing,
-             biogeochemistry::AbstractBGCOrNothing = nothing,
-                                        velocities = nothing,
-                                          pressure = nothing,
-                                diffusivity_fields = nothing,
-                               vertical_coordinate = Z(),
-                                  auxiliary_fields = NamedTuple(),
-=======
                                 clock = Clock{eltype(grid)}(time = 0),
                    momentum_advection = VectorInvariant(),
                      tracer_advection = CenteredSecondOrder(),
@@ -90,7 +71,6 @@ biogeochemistry::AbstractBGCOrNothing = nothing,
                              pressure = nothing,
                    diffusivity_fields = nothing,
                      auxiliary_fields = NamedTuple(),
->>>>>>> origin/main
     )
 
 Construct a hydrostatic model with a free surface on `grid`.

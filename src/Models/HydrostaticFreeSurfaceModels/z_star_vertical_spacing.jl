@@ -57,7 +57,7 @@ end
     δh_U = (δx_U + δy_V) / Azᶜᶜᶠ(i, j, k_top-1, grid)
     H    = domain_depthᶜᶜᵃ(i, j, grid)
 
-    @inbounds  ∂t_s[i, j] = - δh_U / H
+    @inbounds ∂t_s[i, j] = ifelse(H == 0, zero(grid), - δh_U / H)
 end
 
 @kernel function _update_zstar!(sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶠᶠⁿ, sᶜᶜ⁻, sᶠᶜ⁻, sᶜᶠ⁻, η_grid, η, grid)
@@ -70,10 +70,10 @@ end
     hᶠᶠ = domain_depthᶠᶠᵃ(i, j, grid)
 
     @inbounds begin
-        sᶜᶜ = (hᶜᶜ +               η[i, j, k_top]) / hᶜᶜ
-        sᶠᶜ = (hᶠᶜ +  ℑxᶠᵃᵃ(i, j, k_top, grid, η)) / hᶠᶜ
-        sᶜᶠ = (hᶜᶠ +  ℑyᵃᶠᵃ(i, j, k_top, grid, η)) / hᶜᶠ
-        sᶠᶠ = (hᶠᶠ + ℑxyᶠᶠᵃ(i, j, k_top, grid, η)) / hᶠᶠ
+        sᶜᶜ = ifelse(hᶜᶜ == 0, one(grid), (hᶜᶜ +               η[i, j, k_top]) / hᶜᶜ)
+        sᶠᶜ = ifelse(hᶠᶜ == 0, one(grid), (hᶠᶜ +  ℑxᶠᵃᵃ(i, j, k_top, grid, η)) / hᶠᶜ)
+        sᶜᶠ = ifelse(hᶜᶠ == 0, one(grid), (hᶜᶠ +  ℑyᵃᶠᵃ(i, j, k_top, grid, η)) / hᶜᶠ)
+        sᶠᶠ = ifelse(hᶠᶠ == 0, one(grid), (hᶠᶠ + ℑxyᶠᶠᵃ(i, j, k_top, grid, η)) / hᶠᶠ)
 
         # Update previous scaling
         sᶜᶜ⁻[i, j] = sᶜᶜⁿ[i, j]
