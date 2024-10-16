@@ -169,7 +169,7 @@ update_state!(model)
 ##### Simulation building
 #####
 Δt₀ = 5minutes
-stop_time = 10800days
+stop_time = 36000days
 
 simulation = Simulation(model, Δt = Δt₀, stop_time = stop_time)
 
