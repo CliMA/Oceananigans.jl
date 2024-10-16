@@ -7,6 +7,16 @@
 ##### Fallback tracer fluxes!
 #####
 
+# Disambiguation for tracer fluxes....
+@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
+        _advective_tracer_flux_x(i, j, k, ibg, advection.x, args...)
+
+@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
+        _advective_tracer_flux_y(i, j, k, ibg, advection.y, args...)
+
+@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
+        _advective_tracer_flux_z(i, j, k, ibg, advection.z, args...)
+
 # Fallback for `nothing` advection
 @inline _advective_tracer_flux_x(i, j, k, grid, ::Nothing, args...) = zero(grid)
 @inline _advective_tracer_flux_y(i, j, k, grid, ::Nothing, args...) = zero(grid)

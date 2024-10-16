@@ -7,8 +7,6 @@ using Oceananigans.Fields: fill_halo_regions!
 using Oceananigans.BoundaryConditions: FBC
 using Printf
 
-import Oceananigans.TurbulenceClosures: z_bottom
-
 #####
 ##### GridFittedBottom (2.5D immersed boundary with modified bottom height)
 #####
@@ -77,6 +75,8 @@ function Base.show(io::IO, ib::GridFittedBottom)
     print(io, "└── immersed_condition: ", summary(ib.immersed_condition))
 end
 
+@inline z_bottom(i, j, ibg::GFBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
+
 """
     ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
 
@@ -105,8 +105,6 @@ end
     h = @inbounds ib.bottom_height[i, j, 1]
     return z ≤ h
 end
-
-@inline z_bottom(i, j, ibg::GFBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
 
 on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(ib.bottom_height, ib.immersed_condition)
 

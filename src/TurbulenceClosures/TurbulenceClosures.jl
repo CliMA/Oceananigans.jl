@@ -50,6 +50,8 @@ using Oceananigans.Utils
 
 using Oceananigans.Architectures: AbstractArchitecture, device
 using Oceananigans.Fields: FunctionField
+using Oceananigans.ImmersedBoundaries: z_bottom
+
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 import Oceananigans.Architectures: on_architecture
 
@@ -121,8 +123,7 @@ end
 const c = Center()
 const f = Face()
 
-@inline z_top(i, j, grid)    = znode(i, j, grid.Nz+1, grid, c, c, f)
-@inline z_bottom(i, j, grid) = znode(i, j, 1,         grid, c, c, f)
+@inline z_top(i, j, grid) = znode(i, j, grid.Nz+1, grid, c, c, f)
 
 @inline depthᶜᶜᶠ(i, j, k, grid)    = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, f))
 @inline depthᶜᶜᶜ(i, j, k, grid)    = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, c))
@@ -154,6 +155,7 @@ include("abstract_scalar_diffusivity_closure.jl")
 include("abstract_scalar_biharmonic_diffusivity_closure.jl")
 include("closure_tuples.jl")
 include("isopycnal_rotation_tensor_components.jl")
+include("immersed_diffusive_fluxes.jl")
 
 # Implicit closure terms (diffusion + linear terms)
 include("vertically_implicit_diffusion_solver.jl")

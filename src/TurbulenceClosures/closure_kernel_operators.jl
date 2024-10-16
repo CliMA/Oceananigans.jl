@@ -46,12 +46,3 @@ end
                                     δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, _diffusive_flux_y, disc, closure, diffusivities, tracer_index, args...) +
                                     δzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶜᶠ, _diffusive_flux_z, disc, closure, diffusivities, tracer_index, args...))
 end
-
-#####
-##### Immersed flux divergences
-#####
-
-@inline immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, args...)   = zero(grid)
-@inline immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, args...)   = zero(grid)
-@inline immersed_∂ⱼ_τ₃ⱼ(i, j, k, grid, args...)   = zero(grid)
-@inline immersed_∇_dot_qᶜ(i, j, k, grid, args...) = zero(grid)
