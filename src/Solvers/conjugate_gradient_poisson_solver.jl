@@ -1,4 +1,4 @@
-using Oceananigans.Operators: divᶜᶜᶜ, ∇²ᶜᶜᶜ 
+using Oceananigans.Operators
 using Statistics: mean
 
 using KernelAbstractions: @kernel, @index
@@ -66,13 +66,14 @@ function ConjugateGradientPoissonSolver(grid;
         if grid isa ImmersedBoundaryGrid && grid.underlying_grid isa GridWithFFTSolver
             preconditioner = fft_poisson_solver(grid.underlying_grid)
         else
-            preconditioner = DiagonallyDominantPreconditioner()
+            preconditioner = NearDiagonalPoissonPreconditioner()
         end
     end
 
     rhs = CenterField(grid)
-
     operator = RegularizedLaplacian(regularization)
+    preconditioner = RegularizedPreconditioner(preconditioner, rhs, regularization)
+
     conjugate_gradient_solver = ConjugateGradientSolver(operator;
                                                         reltol,
                                                         abstol,
@@ -123,16 +124,34 @@ function compute_preconditioner_rhs!(solver::FourierTridiagonalPoissonSolver, rh
     return nothing
 end
 
-const FFTBasedPreconditioner = Union{FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver}
+struct RegularizedPreconditioner{P, R, D}
+    preconditioner :: P
+    rhs :: R
+    regularization :: D
+end
 
-function precondition!(p, preconditioner::FFTBasedPreconditioner, r, args...)
-    compute_preconditioner_rhs!(preconditioner, r)
-    p = solve!(p, preconditioner)
+const SolverWithFFT = Union{FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver}
+const FFTBasedPreconditioner = RegularizedPreconditioner{<:SolverWithFFT}
 
+function precondition!(p, regularized::FFTBasedPreconditioner, r, args...)
+    solver = regularized.preconditioner
+    compute_preconditioner_rhs!(solver, r)
+    p = solve!(p, solver)
+
+    δ = regularized.regularization
+    rhs = regularized.rhs
     mean_p = mean(p)
+
+    if !isnothing(δ)
+        mean_rhs = mean(rhs)
+        Δp = mean_p - mean_rhs / δ
+    else
+        Δp = mean_p
+    end
+
     grid = p.grid
     arch = architecture(grid)
-    launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, mean_p)
+    launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, Δp)
 
     return p
 end
@@ -140,24 +159,37 @@ end
 @kernel function subtract_and_mask!(a, grid, b)
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
-    a[i, j, k] = (a[i, j, k] - b) * active
+    @inbounds a[i, j, k] = (a[i, j, k] - b) * active
 end
 
 #####
-##### The "DiagonallyDominantPreconditioner" (Marshall et al 1997)
+##### The "NearDiagonalPoissonPreconditioner" (Marshall et al 1997)
 #####
 
-struct DiagonallyDominantPreconditioner end
-Base.summary(::DiagonallyDominantPreconditioner) = "DiagonallyDominantPreconditioner"
+struct NearDiagonalPoissonPreconditioner end
+const RegularizedNDPP = RegularizedPreconditioner{<:NearDiagonalPoissonPreconditioner}
+Base.summary(::NearDiagonalPoissonPreconditioner) = "NearDiagonalPoissonPreconditioner"
 
-@inline function precondition!(p, ::DiagonallyDominantPreconditioner, r, args...)
+@inline function precondition!(p, preconditioner::RegularizedNDPP, r, args...)
     grid = r.grid
     arch = architecture(p)
     fill_halo_regions!(r)
     launch!(arch, grid, :xyz, _diagonally_dominant_precondition!, p, grid, r)
 
+    δ = preconditioner.regularization
+    rhs = preconditioner.rhs
     mean_p = mean(p)
-    launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, mean_p)
+
+    if !isnothing(δ)
+        mean_rhs = mean(rhs)
+        Δp = mean_p - mean_rhs / δ
+    else
+        Δp = mean_p
+    end
+
+    grid = p.grid
+    arch = architecture(grid)
+    launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, Δp)
 
     return p
 end
