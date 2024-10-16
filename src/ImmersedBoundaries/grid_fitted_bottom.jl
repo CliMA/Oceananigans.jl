@@ -7,7 +7,7 @@ using Oceananigans.Fields: fill_halo_regions!
 using Oceananigans.BoundaryConditions: FBC
 using Printf
 
-import Oceananigans.TurbulenceClosures: bottom_height
+import Oceananigans.TurbulenceClosures: z_bottom
 
 #####
 ##### GridFittedBottom (2.5D immersed boundary with modified bottom height)

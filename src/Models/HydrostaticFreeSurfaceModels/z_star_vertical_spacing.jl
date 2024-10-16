@@ -1,3 +1,4 @@
+using Oceananigans.Grids
 using Oceananigans.Grids: ZStarUnderlyingGrid, rnode
 using Oceananigans.ImmersedBoundaries: ImmersedZStarGrid
 
@@ -42,7 +43,7 @@ end
 
 # NOTE: The ZStar vertical spacing only supports a SplitExplicitFreeSurface
 # TODO: extend to support other free surface solvers
-@kernel function _update_∂t_s!(∂t_s, U̅, V̅, Hᶜᶜ, grid)
+@kernel function _update_∂t_s!(∂t_s, U̅, V̅, grid)
     i, j  = @index(Global, NTuple)
     k_top = grid.Nz + 1 
     Hᶜᶜ = domain_depthᶜᶜᵃ(i, j, grid)
@@ -51,22 +52,23 @@ end
         # ∂(η / H)/∂t = - ∇ ⋅ ∫udz / H
         ∂t_s[i, j, 1] = - 1 / Azᶜᶜᶠ(i, j, k_top-1, grid) * (δxᶜᶜᶠ(i, j, k_top-1, grid, Δy_qᶠᶜᶠ, U̅) +
                                                             δyᶜᶜᶠ(i, j, k_top-1, grid, Δx_qᶜᶠᶠ, V̅)) / Hᶜᶜ
+    end
 end
 
 @kernel function _update_zstar!(sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶠᶠⁿ, sᶜᶜ⁻, sᶠᶜ⁻, sᶜᶠ⁻, η_grid, η, grid)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
-    Hᶜᶜ = domain_depthᶜᶜᵃ(i, j, grid)
-    Hᶠᶜ = domain_depthᶠᶜᵃ(i, j, grid)
-    Hᶜᶠ = domain_depthᶜᶠᵃ(i, j, grid)
-    Hᶠᶠ = domain_depthᶠᶠᵃ(i, j, grid)
+    hᶜᶜ = domain_depthᶜᶜᵃ(i, j, grid)
+    hᶠᶜ = domain_depthᶠᶜᵃ(i, j, grid)
+    hᶜᶠ = domain_depthᶜᶠᵃ(i, j, grid)
+    hᶠᶠ = domain_depthᶠᶠᵃ(i, j, grid)
 
     @inbounds begin
-        hᶜᶜ = (Hᶜᶜ + η[i, j, k_top]) / Hᶜᶜ
-        hᶠᶜ = (Hᶠᶜ +  ℑxᶠᵃᵃ(i, j, k_top, grid, η)) / Hᶠᶜ
-        hᶜᶠ = (Hᶜᶠ +  ℑyᵃᶠᵃ(i, j, k_top, grid, η)) / Hᶜᶠ
-        hᶠᶠ = (Hᶠᶠ + ℑxyᶠᶠᵃ(i, j, k_top, grid, η)) / Hᶠᶠ
+        Hᶜᶜ = (hᶜᶜ + η[i, j, k_top]) / hᶜᶜ
+        Hᶠᶜ = (hᶠᶜ +  ℑxᶠᵃᵃ(i, j, k_top, grid, η)) / hᶠᶜ
+        Hᶜᶠ = (hᶜᶠ +  ℑyᵃᶠᵃ(i, j, k_top, grid, η)) / hᶜᶠ
+        Hᶠᶠ = (hᶠᶠ + ℑxyᶠᶠᵃ(i, j, k_top, grid, η)) / hᶠᶠ
 
         sᶜᶜ⁻[i, j] = sᶜᶜⁿ[i, j]
         sᶠᶜ⁻[i, j] = sᶠᶜⁿ[i, j]

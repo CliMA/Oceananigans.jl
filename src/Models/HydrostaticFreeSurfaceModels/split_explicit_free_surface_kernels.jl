@@ -105,7 +105,6 @@ for Topo in [:Periodic, :Bounded, :RightConnected, :LeftConnected]
 end
 
 # Interpolation
-
 const PGX = AbstractGrid{<:Any, <:Periodic}
 const BGX = AbstractGrid{<:Any, <:Bounded}
 const RGX = AbstractGrid{<:Any, <:RightConnected}
@@ -234,11 +233,8 @@ end
     i, j  = @index(Global, NTuple)	
     k_top = grid.Nz + 1
 
-    Hᶠᶜ = domain_depthᶠᶜᵃ(i, j, grid)
-    Hᶜᶠ = domain_depthᶜᶠᵃ(i, j, grid)
-
-    sᶠᶜ = @inbounds (η[i, j, k_top] + Hᶠᶜ) / Hᶠᶜ
-    sᶜᶠ = @inbounds (η[i, j, k_top] + Hᶜᶠ) / Hᶜᶠ
+    sᶠᶜ = dynamic_domain_depthᶜᶠᵃ(i, j, k_top, grid, η) / domain_depthᶠᶜᵃ(i, j, grid)
+    sᶜᶠ = dynamic_domain_depthᶜᶠᵃ(i, j, k_top, grid, η) / domain_depthᶜᶠᵃ(i, j, grid)
     
     # hand unroll first loop
     @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δrᶠᶜᶜ(i, j, 1, grid) * sᶠᶜ
@@ -255,11 +251,8 @@ end
     i, j = active_linear_index_to_tuple(idx, active_cells_map)
     k_top = grid.Nz+1
 
-    Hᶠᶜ = domain_depthᶠᶜᵃ(i, j, grid)
-    Hᶜᶠ = domain_depthᶜᶠᵃ(i, j, grid)
-
-    sᶠᶜ = @inbounds (η[i, j, k_top] + Hᶠᶜ) / Hᶠᶜ
-    sᶜᶠ = @inbounds (η[i, j, k_top] + Hᶜᶠ) / Hᶜᶠ
+    sᶠᶜ = dynamic_domain_depthᶜᶠᵃ(i, j, k_top, grid, η) / domain_depthᶠᶜᵃ(i, j, grid)
+    sᶜᶠ = dynamic_domain_depthᶜᶠᵃ(i, j, k_top, grid, η) / domain_depthᶜᶠᵃ(i, j, grid)
     
     # hand unroll first loop
     @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δrᶠᶜᶜ(i, j, 1, grid) * sᶠᶜ
@@ -289,7 +282,7 @@ end
     @inbounds begin
         u[i, j, k] = u[i, j, k] + (U̅[i, j, k_top-1] - U[i, j, k_top-1]) / Hᶠᶜ 
         v[i, j, k] = v[i, j, k] + (V̅[i, j, k_top-1] - V[i, j, k_top-1]) / Hᶜᶠ 
-    enH
+    end
 end
 
 function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
