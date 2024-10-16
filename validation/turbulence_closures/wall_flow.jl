@@ -63,7 +63,6 @@ function run_wall_flow(closure; arch=CPU(), H=1, L=2π*H, N=32, u★=1, z₀ = 1
     simulation.output_writers[:fields] = NetCDFOutputWriter(model, outputs;
                                                             filename = joinpath(@__DIR__, simname *"_"* closure_name *".nc"),
                                                             schedule = TimeInterval(1),
-                                                            indices = (:, 1, :),
                                                             global_attributes = (; u★, z₀, H, L),
                                                             overwrite_existing = true)
     run!(simulation)
@@ -81,34 +80,44 @@ end
 @info "Start plotting"
 using CairoMakie
 using NCDatasets
+using Statistics: mean
 set_theme!(Theme(fontsize = 18))
 fig = Figure(size = (800, 500))
 ax1 = Axis(fig[2, 1]; xlabel = "cₛ", ylabel = "z", limits = ((0, 0.3), (0, 0.8)))
 ax2 = Axis(fig[2, 2]; xlabel = "z", ylabel = "U", limits = ((1e-3, 4e-1), (10, 20)), xscale = log10)
-ax3 = Axis(fig[2, 3]; xlabel = "ϕ = κ z ∂z(U) / u★", ylabel = "z", limits = ((0.0, 2.0), (0, 0.8)))
+ax3 = Axis(fig[2:3, 3]; xlabel = "ϕ = κ z ∂z(U) / u★", ylabel = "z", limits = ((0.0, 2.0), (0, 0.8)))
+ax4 = Axis(fig[3, 1]; xlabel = "x (SmagLilly)", ylabel = "y")
+ax5 = Axis(fig[3, 2]; xlabel = "x (ScaleInv)", ylabel = "y")
 n = Observable(1)
 
 colors = [:red, :blue]
+Δt = 10
 for (i, closure) in enumerate(closures)
     closure_name = string(nameof(typeof(closure)))
     local filename = simname * "_" * closure_name
     @info "Plotting from " * filename
     ds = NCDataset(filename * ".nc", "r")
 
-    xc, zc = ds["xC"], ds["zC"]
+    xc, yc, zc = ds["xC"], ds["yC"], ds["zC"]
 
-    cₛ² = @lift sqrt.(max.(ds["cₛ²"], 0))[:, $n]
+    #cₛ² = @lift sqrt.(max.(ds["cₛ²"], 0))[:, $n]
+    cₛ² = mean(sqrt.(max.(ds["cₛ²"], 0))[:, end-Δt:end], dims=2)[:, 1]
     scatterlines!(ax1, cₛ², zc, color=colors[i], markercolor=colors[i], label=closure_name)
 
     if i == 1
         û = (ds.attrib["u★"] / κ) * log.(zc / ds.attrib["z₀"])
         lines!(ax2, zc, û, color=:black)
     end
-    U = @lift ds["U"][:, $n]
+    #U = @lift ds["U"][:, $n]
+    U = mean(ds["U"][:, end-Δt:end], dims=2)[:, 1]
     scatterlines!(ax2, zc, U, color=colors[i], markercolor=colors[i])
 
-    ϕ = @lift ds["ϕ"][:, $n]
+    #ϕ = @lift ds["ϕ"][:, $n]
+    ϕ = mean(ds["ϕ"][:, end-Δt:end], dims=2)[:, 1]
     scatterlines!(ax3, ϕ, zc, color=colors[i], markercolor=colors[i])
+
+    u = @lift ds["u"][:, :, 4, $n]
+    heatmap!(fig[3, i], xc, yc, u,)
 
     global times = ds["time"]
 end
