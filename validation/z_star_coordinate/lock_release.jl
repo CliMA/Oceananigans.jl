@@ -15,7 +15,7 @@ grid = RectilinearGrid(size = (20, 20),
                        halo = (6, 6),
                    topology = (Bounded, Flat, Bounded))
 
-# grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> x < 32kilometers ? -10 : -20))
+grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> x < 32kilometers ? -10 : -20))
 
 model = HydrostaticFreeSurfaceModel(; grid, 
                          momentum_advection = FluxFormAdvection(WENO(; order = 5), nothing, WENO(; order = 5)),
@@ -37,7 +37,7 @@ set!(model, b = bᵢ)
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_iteration = 1, stop_time = 17hours) 
+simulation = Simulation(model; Δt, stop_iteration = 10000, stop_time = 17hours) 
 
 Δz = GridMetricOperation((Center, Center, Center), Oceananigans.AbstractOperations.Δz, model.grid)
 
@@ -63,7 +63,7 @@ function progress(sim)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 run!(simulation)
 
