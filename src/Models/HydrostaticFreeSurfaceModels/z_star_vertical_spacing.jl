@@ -51,13 +51,11 @@ end
     k_top = grid.Nz + 1 
 
     # ∂(η / H)/∂t = - ∇ ⋅ ∫udz / H
-    δx_U = ∂xᶠᶜᶜ(i, j, k_top-1, grid, U̅)
-    δy_V = ∂yᶜᶠᶜ(i, j, k_top-1, grid, V̅)
+    δx_U = ∂xᶠᶜᶜ(i, j, k_top-1, grid, Δy_qᶠᶜᶠ, U̅)
+    δy_V = ∂yᶜᶠᶜ(i, j, k_top-1, grid, Δx_qᶜᶠᶠ, V̅)
 
     δ_U̅h = (δx_U + δy_V) / Azᶜᶜᶠ(i, j, k_top-1, grid)
     H    = domain_depthᶜᶜᵃ(i, j, grid)
-
-    @show  δ_U̅h, H
 
     @inbounds  ∂t_s[i, j] = - δ_U̅h / H
 end
