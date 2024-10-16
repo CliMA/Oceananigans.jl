@@ -21,9 +21,9 @@ function update_grid!(model, grid::ZStarSpacingGrid; parameters = :xy)
     ∂t_s   = grid.Δzᵃᵃᶠ.∂t_s
     η_grid = grid.zᵃᵃᶠ.∂t_s
 
-    # Free surface variables 
-    # At the moment only SplitExplicitFreeSurface is supported,
-    # but this can be extended to other free surface solvers by calculating
+    # Free surface variables:
+    # TODO: At the moment only SplitExplicitFreeSurface is supported,
+    # but zstar can be extended to other free surface solvers by calculating
     # the barotropic velocity in this step
     U̅   = model.free_surface.state.U̅ 
     V̅   = model.free_surface.state.V̅ 
@@ -49,12 +49,15 @@ end
 @kernel function _update_∂t_s!(∂t_s, U̅, V̅, grid)
     i, j  = @index(Global, NTuple)
     k_top = grid.Nz + 1 
+
     # ∂(η / H)/∂t = - ∇ ⋅ ∫udz / H
     δx_U = ∂xᶠᶜᶜ(i, j, k_top-1, grid, U̅)
     δy_V = ∂yᶜᶠᶜ(i, j, k_top-1, grid, V̅)
 
     δ_U̅h = (δx_U + δy_V) / Azᶜᶜᶠ(i, j, k_top-1, grid)
     H    = domain_depthᶜᶜᵃ(i, j, grid)
+
+    @show  δ_U̅h, H
 
     @inbounds  ∂t_s[i, j] = - δ_U̅h / H
 end

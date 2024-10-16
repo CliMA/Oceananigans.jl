@@ -185,7 +185,6 @@ function SplitExplicitState(grid::AbstractGrid, timestepper)
     ηᵐ⁻² = auxiliary_free_surface_field(grid, timestepper)
 
     𝒰 = VelocityFields(grid)
-    u_bcs = 𝒰.u.boundary_conditions
     
     U = Field(𝒰.u, indices = (:, :, Nz))
     V = Field(𝒰.v, indices = (:, :, Nz))
