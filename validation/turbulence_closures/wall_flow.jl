@@ -72,7 +72,7 @@ end
 closures = [SmagorinskyLilly(), ScaleInvariantSmagorinsky(averaging = (1,2), update_interval=5)]
 for closure in closures
     @info "Running" closure
-    run_wall_flow(closure, N=32)
+    run_wall_flow(closure, N=32, stop_time=60)
 end
 
 
