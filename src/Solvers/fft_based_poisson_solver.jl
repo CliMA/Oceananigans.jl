@@ -79,7 +79,7 @@ end
 Solve the "generalized" Poisson equation,
 
 ```math
-(∇² + m) ϕ = b,
+(∇² + m) ϕ + μ ϕ̄ = b,
 ```
 
 where ``m`` is a number, using a eigenfunction expansion of the discrete Poisson operator
@@ -92,7 +92,7 @@ elements (typically the same type as `solver.storage`).
     Equation ``(∇² + m) ϕ = b`` is sometimes referred to as the "screened Poisson" equation
     when ``m < 0``, or the Helmholtz equation when ``m > 0``.
 """
-function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
+function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0, μ=0)
     arch = architecture(solver)
     topo = TX, TY, TZ = topology(solver.grid)
     Nx, Ny, Nz = size(solver.grid)
@@ -112,7 +112,13 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
     # If m === 0, the "zeroth mode" at `i, j, k = 1, 1, 1` is undetermined;
     # we set this to zero by default. Another slant on this "problem" is that
     # λx[1, 1, 1] + λy[1, 1, 1] + λz[1, 1, 1] = 0, which yields ϕ[1, 1, 1] = Inf or NaN.
-    m === 0 && CUDA.@allowscalar ϕc[1, 1, 1] = 0
+    if m === 0
+        if μ === 0
+            CUDA.@allowscalar ϕc[1, 1, 1] = 0
+        else
+            CUDA.@allowscalar ϕc[1, 1, 1] = - b[1, 1, 1] / μ
+        end
+    end
 
     # Apply backward transforms in order
     for transform! in solver.transforms.backward
