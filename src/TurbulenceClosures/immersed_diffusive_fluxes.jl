@@ -4,6 +4,8 @@ using Oceananigans.BoundaryConditions: FBC, ZFBC
 using Oceananigans.BoundaryConditions: DefaultBoundaryCondition
 using Oceananigans.Operators: index_left, index_right, Δx, Δy, Δz, div
 
+using Oceananigans.Advection: conditional_flux
+
 using Oceananigans.Advection: conditional_flux_ccc,
                               conditional_flux_ffc,
                               conditional_flux_fcf,
