@@ -212,7 +212,13 @@ function WENOVectorInvariant(FT::DataType = Float64;
     upwinding = nothing_to_default(upwinding; default = default_upwinding)
 
     schemes = (vorticity_scheme, vertical_scheme, kinetic_energy_gradient_scheme, divergence_scheme)
-    N = maximum(required_halo_size(s) for s in schemes)
+    
+    NX = maximum(required_halo_size_x(s) for s in schemes)
+    NY = maximum(required_halo_size_y(s) for s in schemes)
+    NZ = maximum(required_halo_size_z(s) for s in schemes)
+
+    N = max(NX, NY, NZ)
+    
     FT = eltype(vorticity_scheme) # assumption
 
     return VectorInvariant{N, FT, multi_dimensional_stencil}(vorticity_scheme,

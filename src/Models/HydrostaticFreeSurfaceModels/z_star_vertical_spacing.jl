@@ -46,12 +46,13 @@ end
 @kernel function _update_∂t_s!(∂t_s, U̅, V̅, grid)
     i, j  = @index(Global, NTuple)
     k_top = grid.Nz + 1 
-    Hᶜᶜ = domain_depthᶜᶜᵃ(i, j, grid)
 
     @inbounds begin
         # ∂(η / H)/∂t = - ∇ ⋅ ∫udz / H
-        ∂t_s[i, j, 1] = - 1 / Azᶜᶜᶠ(i, j, k_top-1, grid) * (δxᶜᶜᶠ(i, j, k_top-1, grid, Δy_qᶠᶜᶠ, U̅) +
-                                                            δyᶜᶜᶠ(i, j, k_top-1, grid, Δx_qᶜᶠᶠ, V̅)) / Hᶜᶜ
+        δ_U̅h = (δxᶜᶜᶠ(i, j, k_top-1, grid, Δy_qᶠᶜᶠ, U̅) +
+                δyᶜᶜᶠ(i, j, k_top-1, grid, Δx_qᶜᶠᶠ, V̅)) / Azᶜᶜᶠ(i, j, k_top-1, grid)
+
+        ∂t_s[i, j, 1] = - δ_U̅h / domain_depthᶜᶜᵃ(i, j, grid)
     end
 end
 
@@ -75,10 +76,10 @@ end
         sᶜᶠ⁻[i, j] = sᶜᶠⁿ[i, j]
         
         # update current and previous scaling
-        sᶜᶜⁿ[i, j] = hᶜᶜ
-        sᶠᶜⁿ[i, j] = hᶠᶜ
-        sᶜᶠⁿ[i, j] = hᶜᶠ
-        sᶠᶠⁿ[i, j] = hᶠᶠ
+        sᶜᶜⁿ[i, j] = Hᶜᶜ
+        sᶠᶜⁿ[i, j] = Hᶠᶜ
+        sᶜᶠⁿ[i, j] = Hᶜᶠ
+        sᶠᶠⁿ[i, j] = Hᶠᶠ
 
         # Update η in the grid
         η_grid[i, j] = η[i, j, k_top]
