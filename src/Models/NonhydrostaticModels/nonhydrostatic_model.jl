@@ -15,7 +15,7 @@ using Oceananigans.Models: AbstractModel, NaNChecker, extract_boundary_condition
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
 
@@ -25,8 +25,12 @@ import Oceananigans.Models: total_velocities, default_nan_checker, timestepper
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 
+# TODO: this concept may be more generally useful,
+# but for now we use it only for hydrostatic pressure anomalies for now.
+struct DefaultHydrostaticPressureAnomaly end
+
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
-                                   V, S, K, BG, P, BGC, I, AF} <: AbstractModel{TS}
+                                   V, S, K, BG, P, BGC, AF} <: AbstractModel{TS}
 
          architecture :: A        # Computer `Architecture` on which `Model` is run
                  grid :: G        # Grid of physical points on which `Model` is solved
@@ -46,7 +50,6 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
    diffusivity_fields :: K        # Container for turbulent diffusivities
           timestepper :: TS       # Object containing timestepper fields and parameters
       pressure_solver :: S        # Pressure/Poisson solver
-    immersed_boundary :: I        # Models the physics of immersed boundaries within the grid
      auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
 end
 
@@ -61,16 +64,15 @@ end
                                   closure = nothing,
           boundary_conditions::NamedTuple = NamedTuple(),
                                   tracers = (),
-                              timestepper = :QuasiAdamsBashforth2,
+                              timestepper = :RungeKutta3,
             background_fields::NamedTuple = NamedTuple(),
             particles::ParticlesOrNothing = nothing,
     biogeochemistry::AbstractBGCOrNothing = nothing,
                                velocities = nothing,
                   nonhydrostatic_pressure = CenterField(grid),
-             hydrostatic_pressure_anomaly = nothing,
+             hydrostatic_pressure_anomaly = DefaultHydrostaticPressureAnomaly(),
                        diffusivity_fields = nothing,
                           pressure_solver = nothing,
-                        immersed_boundary = nothing,
                          auxiliary_fields = NamedTuple())
 
 Construct a model for a non-hydrostatic, incompressible fluid on `grid`, using the Boussinesq
@@ -93,44 +95,42 @@ Keyword arguments
   - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
                preallocated `CenterField`s.
   - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
-                   `:RungeKutta3`.
+                   `:RungeKutta3` (default).
   - `background_fields`: `NamedTuple` with background fields (e.g., background flow). Default: `nothing`.
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
   - `biogeochemistry`: Biogeochemical model for `tracers`.
   - `velocities`: The model velocities. Default: `nothing`.
   - `nonhydrostatic_pressure`: The nonhydrostatic pressure field. Default: `CenterField(grid)`.
   - `hydrostatic_pressure_anomaly`: An optional field that stores the part of the nonhydrostatic pressure
-                                    in hydrostatic balance with the buoyancy field. If `nothing` (default), the anomaly
-                                    is not computed. If `CenterField(grid)`, the anomaly is precomputed by
+                                    in hydrostatic balance with the buoyancy field. If `CenterField(grid)` (default), the anomaly is precomputed by
                                     vertically integrating the buoyancy field. In this case, the `nonhydrostatic_pressure` represents
-                                    only the part of pressure that deviates from the hydrostatic anomaly.
+                                    only the part of pressure that deviates from the hydrostatic anomaly. If `nothing`, the anomaly
+                                    is not computed. 
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
-  - `immersed_boundary`: The immersed boundary. Default: `nothing`.
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`         
 """
 function NonhydrostaticModel(; grid,
-                                    clock = Clock{eltype(grid)}(time = 0),
-                                advection = CenteredSecondOrder(),
-                                 buoyancy = nothing,
-                                 coriolis = nothing,
+                             clock = Clock{eltype(grid)}(time = 0),
+                             advection = CenteredSecondOrder(),
+                             buoyancy = nothing,
+                             coriolis = nothing,
                              stokes_drift = nothing,
-                      forcing::NamedTuple = NamedTuple(),
-                                  closure = nothing,
-          boundary_conditions::NamedTuple = NamedTuple(),
-                                  tracers = (),
-                              timestepper = :QuasiAdamsBashforth2,
-            background_fields::NamedTuple = NamedTuple(),
-            particles::ParticlesOrNothing = nothing,
-    biogeochemistry::AbstractBGCOrNothing = nothing,
-                               velocities = nothing,
-             hydrostatic_pressure_anomaly = nothing,
-                  nonhydrostatic_pressure = CenterField(grid),
-                       diffusivity_fields = nothing,
-                          pressure_solver = nothing,
-                        immersed_boundary = nothing,
-                         auxiliary_fields = NamedTuple())
+                             forcing::NamedTuple = NamedTuple(),
+                             closure = nothing,
+                             boundary_conditions::NamedTuple = NamedTuple(),
+                             tracers = (),
+                             timestepper = :RungeKutta3,
+                             background_fields::NamedTuple = NamedTuple(),
+                             particles::ParticlesOrNothing = nothing,
+                             biogeochemistry::AbstractBGCOrNothing = nothing,
+                             velocities = nothing,
+                             hydrostatic_pressure_anomaly = DefaultHydrostaticPressureAnomaly(),
+                             nonhydrostatic_pressure = CenterField(grid),
+                             diffusivity_fields = nothing,
+                             pressure_solver = nothing,
+                             auxiliary_fields = NamedTuple())
 
     arch = architecture(grid)
 
@@ -139,6 +139,25 @@ function NonhydrostaticModel(; grid,
     # Validate pressure fields
     nonhydrostatic_pressure isa Field{Center, Center, Center} ||
         throw(ArgumentError("nonhydrostatic_pressure must be CenterField(grid)."))
+
+    if hydrostatic_pressure_anomaly isa DefaultHydrostaticPressureAnomaly
+        # Manage treatment of the hydrostatic pressure anomaly:
+
+        if !isnothing(buoyancy)
+            # Separate the hydrostatic pressure anomaly
+            # from the nonhydrostatic pressure contribution.
+            # See https://github.com/CliMA/Oceananigans.jl/issues/3677
+            # and https://github.com/CliMA/Oceananigans.jl/issues/3795.
+
+            hydrostatic_pressure_anomaly = CenterField(grid)
+        else
+            # Use a single combined pressure, saving memory and computation.
+
+            hydrostatic_pressure_anomaly = nothing
+        end
+    end
+
+    # Check validity of hydrostatic_pressure_anomaly.
     isnothing(hydrostatic_pressure_anomaly) || hydrostatic_pressure_anomaly isa Field{Center, Center, Center} ||
         throw(ArgumentError("hydrostatic_pressure_anomaly must be `nothing` or `CenterField(grid)`."))
 
@@ -189,7 +208,7 @@ function NonhydrostaticModel(; grid,
     diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
 
     if isnothing(pressure_solver)
-        pressure_solver = PressureSolver(arch, grid)
+        pressure_solver = nonhydrostatic_pressure_solver(grid)
     end
 
     # Materialize background fields
@@ -205,11 +224,10 @@ function NonhydrostaticModel(; grid,
 
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                 forcing, closure, background_fields, particles, biogeochemistry, velocities, tracers,
-                                pressures, diffusivity_fields, timestepper, pressure_solver, immersed_boundary,
-                                auxiliary_fields)
+                                pressures, diffusivity_fields, timestepper, pressure_solver, auxiliary_fields)
 
-    update_state!(model)
-
+    update_state!(model; compute_tendencies = false)
+    
     return model
 end
 

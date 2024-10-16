@@ -21,7 +21,7 @@ mutable struct HeptadiagonalIterativeSolver{G, R, L, D, M, P, PM, PS, I, ST, T, 
            iterative_solver :: I
                  state_vars :: ST
                   tolerance :: T
-                previous_Δt :: F
+                    last_Δt :: F
          maximum_iterations :: Int
                     verbose :: Bool
 end
@@ -70,7 +70,7 @@ The matrix constructors are calculated based on the pentadiagonal coeffients pas
 to `matrix_from_coefficients` function.
 
 To allow for variable time step, the diagonal term `- Az / (g * Δt²)` is only added later on
-and it is updated only when the previous time step changes (`previous_Δt != Δt`).
+and it is updated only when the previous time step changes (`last_Δt != Δt`).
 
 Preconditioning is done through the various methods implemented in `Solvers/sparse_preconditioners.jl`.
     
@@ -296,7 +296,7 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
     arch = architecture(solver.matrix)
     
     # update matrix and preconditioner if time step changes
-    if Δt != solver.previous_Δt
+    if Δt != solver.last_Δt
         constructors = deepcopy(solver.matrix_constructors)
         M = prod(solver.problem_size)
         update_diag!(constructors, arch, M, M, solver.diagonal, Δt, 0)
@@ -308,7 +308,7 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
                                                          solver.matrix,
                                                          solver.preconditioner_settings)
 
-        solver.previous_Δt = Δt
+        solver.last_Δt = Δt
     end
     
     solver.iterative_solver(x, solver.matrix, b, 

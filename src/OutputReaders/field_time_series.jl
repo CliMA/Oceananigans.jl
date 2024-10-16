@@ -4,6 +4,7 @@ using OffsetArrays
 using Statistics
 using JLD2
 using Adapt
+using CUDA: @allowscalar
 
 using Dates: AbstractTime
 using KernelAbstractions: @kernel, @index
@@ -251,8 +252,8 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N} <: A
         end
         
         if time_indexing isa Cyclical{Nothing} # we have to infer the period
-            Δt = times[end] - times[end-1]
-            period = times[end] - times[1] + Δt
+            Δt = @allowscalar times[end] - times[end-1]
+            period = @allowscalar times[end] - times[1] + Δt
             time_indexing = Cyclical(period)
         end
 
@@ -268,15 +269,15 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N} <: A
 end
 
 on_architecture(to, fts::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} = 
-    FieldTimeSeries{LX, LY, LZ}(on_architecture(to, data),
-                                on_architecture(to, grid),
-                                on_architecture(to, backend),
-                                on_architecture(to, bcs),
-                                on_architecture(to, indices), 
-                                on_architecture(to, times),
-                                on_architecture(to, path),
-                                on_architecture(to, name),
-                                on_architecture(to, time_indexing))
+    FieldTimeSeries{LX, LY, LZ}(on_architecture(to, fts.data),
+                                on_architecture(to, fts.grid),
+                                on_architecture(to, fts.backend),
+                                on_architecture(to, fts.bcs),
+                                on_architecture(to, fts.indices), 
+                                on_architecture(to, fts.times),
+                                on_architecture(to, fts.path),
+                                on_architecture(to, fts.name),
+                                on_architecture(to, fts.time_indexing))
 
 #####
 ##### Minimal implementation of FieldTimeSeries for use in GPU kernels
@@ -284,7 +285,7 @@ on_architecture(to, fts::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} =
 ##### Supports reduced locations + time-interpolation / extrapolation
 #####
 
-struct GPUAdaptedFieldTimeSeries{LX, LY, LZ, TI, K, ET, D, χ} <: AbstractArray{ET, 4}
+struct GPUAdaptedFieldTimeSeries{LX, LY, LZ, TI, K, ET, D, χ} <: AbstractField{LX, LY, LZ, Nothing, ET, 4}
              data :: D
             times :: χ
           backend :: K

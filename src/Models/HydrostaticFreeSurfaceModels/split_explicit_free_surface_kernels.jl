@@ -5,8 +5,8 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.Operators
 using Oceananigans.Architectures: convert_args
 using Oceananigans.ImmersedBoundaries: peripheral_node, immersed_inactive_node, GFBIBG
-using Oceananigans.ImmersedBoundaries: inactive_node, IBG, c, f, ZColumnMap
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!, active_surface_map, active_interior_map
+using Oceananigans.ImmersedBoundaries: inactive_node, IBG, c, f
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, retrieve_surface_active_cells_map, retrieve_interior_active_cells_map
 using Oceananigans.ImmersedBoundaries: active_linear_index_to_tuple, ActiveCellsIBG, ActiveZColumnsIBG
 using Oceananigans.DistributedComputations: child_architecture
 using Oceananigans.DistributedComputations: Distributed
@@ -42,23 +42,26 @@ const μ = 1 - δ - γ - ϵ
 #   `δyᵃᶜᵃ_V` : Hardcodes NoPenetration or Periodic boundary conditions for the meridional barotropic velocity V in y direction
 #
 # The functions `η★` `U★` and `V★` represent the value of free surface, barotropic zonal and meridional velocity at time step m+1/2
-@inline δxᶠᵃᵃ_η(i, j, k, grid, T, η★::Function, args...) = δxᶠᶜᶠ(i, j, k, grid, η★, args...)
-@inline δyᵃᶠᵃ_η(i, j, k, grid, T, η★::Function, args...) = δyᶜᶠᶠ(i, j, k, grid, η★, args...)
+@inline δxᶠᵃᵃ_η(i, j, k, grid, T, η★::Function, args...) = δxᶠᵃᵃ(i, j, k, grid, η★, args...)
+@inline δyᵃᶠᵃ_η(i, j, k, grid, T, η★::Function, args...) = δyᵃᶠᵃ(i, j, k, grid, η★, args...)
 @inline δxᶜᵃᵃ_U(i, j, k, grid, T, U★::Function, args...) = δxᶜᵃᵃ(i, j, k, grid, U★, args...)
 @inline δyᵃᶜᵃ_V(i, j, k, grid, T, V★::Function, args...) = δyᵃᶜᵃ(i, j, k, grid, V★, args...)
 
-@inline δxᶠᵃᵃ_η(i, j, k, grid, ::Type{Periodic}, η★::Function, args...) = ifelse(i == 1, η★(1, j, k, grid, args...) - η★(grid.Nx, j, k, grid, args...), δxᶠᶜᶠ(i, j, k, grid, η★, args...))
-@inline δyᵃᶠᵃ_η(i, j, k, grid, ::Type{Periodic}, η★::Function, args...) = ifelse(j == 1, η★(i, 1, k, grid, args...) - η★(i, grid.Ny, k, grid, args...), δyᶜᶠᶠ(i, j, k, grid, η★, args...))
+@inline δxᶠᵃᵃ_η(i, j, k, grid, ::Type{Periodic}, η★::Function, args...) = ifelse(i == 1, η★(1, j, k, grid, args...) - η★(grid.Nx, j, k, grid, args...), δxᶠᵃᵃ(i, j, k, grid, η★, args...))
+@inline δyᵃᶠᵃ_η(i, j, k, grid, ::Type{Periodic}, η★::Function, args...) = ifelse(j == 1, η★(i, 1, k, grid, args...) - η★(i, grid.Ny, k, grid, args...), δyᵃᶠᵃ(i, j, k, grid, η★, args...))
 
 @inline δxᶜᵃᵃ_U(i, j, k, grid, ::Type{Periodic}, U★::Function, args...) = ifelse(i == grid.Nx, U★(1, j, k, grid, args...) - U★(grid.Nx, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, U★, args...))
 @inline δyᵃᶜᵃ_V(i, j, k, grid, ::Type{Periodic}, V★::Function, args...) = ifelse(j == grid.Ny, V★(i, 1, k, grid, args...) - V★(i, grid.Ny, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, V★, args...))
 
+@inline δxᶠᵃᵃ_η(i, j, k, grid, ::Type{FullyConnected}, η★::Function, args...) = δxᶠᶜᶠ(i, j, k, grid, η★, args...)
+@inline δyᵃᶠᵃ_η(i, j, k, grid, ::Type{FullyConnected}, η★::Function, args...) = δyᶜᶠᶠ(i, j, k, grid, η★, args...)
+
 # Enforce NoFlux conditions for `η★`
 
-@inline δxᶠᵃᵃ_η(i, j, k, grid, ::Type{Bounded},        η★::Function, args...) = ifelse(i == 1, zero(grid), δxᶠᶜᶠ(i, j, k, grid, η★, args...))
-@inline δyᵃᶠᵃ_η(i, j, k, grid, ::Type{Bounded},        η★::Function, args...) = ifelse(j == 1, zero(grid), δyᶜᶠᶠ(i, j, k, grid, η★, args...))
-@inline δxᶠᵃᵃ_η(i, j, k, grid, ::Type{RightConnected}, η★::Function, args...) = ifelse(i == 1, zero(grid), δxᶠᶜᶠ(i, j, k, grid, η★, args...))
-@inline δyᵃᶠᵃ_η(i, j, k, grid, ::Type{RightConnected}, η★::Function, args...) = ifelse(j == 1, zero(grid), δyᶜᶠᶠ(i, j, k, grid, η★, args...))
+@inline δxᶠᵃᵃ_η(i, j, k, grid, ::Type{Bounded},        η★::Function, args...) = ifelse(i == 1, zero(grid), δxᶠᵃᵃ(i, j, k, grid, η★, args...))
+@inline δyᵃᶠᵃ_η(i, j, k, grid, ::Type{Bounded},        η★::Function, args...) = ifelse(j == 1, zero(grid), δyᵃᶠᵃ(i, j, k, grid, η★, args...))
+@inline δxᶠᵃᵃ_η(i, j, k, grid, ::Type{RightConnected}, η★::Function, args...) = ifelse(i == 1, zero(grid), δxᶠᵃᵃ(i, j, k, grid, η★, args...))
+@inline δyᵃᶠᵃ_η(i, j, k, grid, ::Type{RightConnected}, η★::Function, args...) = ifelse(j == 1, zero(grid), δyᵃᶠᵃ(i, j, k, grid, η★, args...))
 
 # Enforce Impenetrability conditions for `U★` and `V★`
 
@@ -195,7 +198,7 @@ end
 
 # Barotropic Model Kernels
 # u_Δz = u * Δz
-@kernel function _barotropic_mode_kernel!(U, V, grid, u, v)
+@kernel function _barotropic_mode_kernel!(U, V, grid, ::Nothing, u, v)
     i, j  = @index(Global, NTuple)	
     k_top = grid.Nz+1
 
@@ -210,9 +213,9 @@ end
 
 # Barotropic Model Kernels
 # u_Δz = u * Δz
-@kernel function _barotropic_mode_kernel!(U, V, grid::ActiveZColumnsIBG, u, v)
+@kernel function _barotropic_mode_kernel!(U, V, grid, active_cells_map, u, v)
     idx = @index(Global, Linear)
-    i, j = active_linear_index_to_tuple(idx, ZColumnMap(), grid)
+    i, j = active_linear_index_to_tuple(idx, active_cells_map)
     k_top = grid.Nz+1
 
     @inbounds U[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]
@@ -224,9 +227,13 @@ end
     end
 end
 
-compute_barotropic_mode!(U, V, grid, u, v) = 
-    launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, u, v; 
-            active_cells_map = active_surface_map(grid))
+@inline function compute_barotropic_mode!(U, V, grid, u, v) 
+    active_cells_map = retrieve_surface_active_cells_map(grid)
+
+    launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, active_cells_map, u, v; active_cells_map)
+
+    return nothing
+end
 
 function initialize_free_surface_state!(state, η, timestepper)
 
@@ -410,7 +417,7 @@ function iterate_split_explicit!(free_surface, grid, Δτᴮ, weights, ::Val{Nsu
 end
 
 # Calculate RHS for the barotropic time step.
-@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, ::Nothing, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     i, j  = @index(Global, NTuple)
     k_top = grid.Nz + 1
 
@@ -424,9 +431,9 @@ end
 end
 
 # Calculate RHS for the barotropic time step.q
-@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid::ActiveZColumnsIBG, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     idx = @index(Global, Linear)
-    i, j = active_linear_index_to_tuple(idx, ZColumnMap(), grid)
+    i, j = active_linear_index_to_tuple(idx, active_cells_map)
     k_top = grid.Nz+1
 
     @inbounds Gᵁ[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, χ)
@@ -464,9 +471,14 @@ function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
     return nothing
 end
 
-setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ) =
+@inline function setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ) 
+    active_cells_map = retrieve_surface_active_cells_map(grid)
+
     launch!(architecture(grid), grid, :xy, _compute_integrated_ab2_tendencies!, auxiliary.Gᵁ, auxiliary.Gⱽ, grid, 
-            Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ; active_cells_map = active_surface_map(grid))
+            active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ; active_cells_map)
+
+    return nothing
+end
             
 wait_free_surface_communication!(free_surface, arch) = nothing
 

@@ -4,7 +4,6 @@ using JLD2
 using KernelAbstractions: @kernel, @index
 using KernelAbstractions.Extras.LoopInfo: @unroll
 using Oceananigans
-using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Coriolis: fᶠᶠᵃ
 using Oceananigans.Grids: node, λnode, φnode, halo_size, total_size
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
@@ -52,6 +51,42 @@ function geometric_z_faces(p)
     return z_faces
 end
 
+function hyperbolic_tangential_z_faces(Lz)
+    Δz_tolerance = 1e-2
+    N = 20
+    b = (atanh(1 - Δz_tolerance) - atanh(-1 + Δz_tolerance))/(N-1)
+    k₀ = 1 - atanh(-1 + Δz_tolerance)/b
+    a = 45
+    c = a + 10
+    Δz = zeros(N)
+    for k in 1:N
+        Δz[k] = a * tanh(b*(k - k₀)) + c
+    end
+    Nz₁ = 10
+    Nz₂ = N
+    Nz₃ = trunc(Int, (Lz - sum(Δz) - 100) ÷ 100)
+    Nz = Nz₁ + Nz₂ + Nz₃
+    z_faces = zeros(Nz+1)
+    for k in 1:Nz₁+1
+        z_faces[k] = 10(k - 1)
+    end
+    for k in Nz₁+2:Nz₁+Nz₂+1
+        z_faces[k] = z_faces[k-1] + Δz[k-Nz₁-1]
+    end
+    for k in Nz₁+Nz₂+2:Nz+1
+        z_faces[k] = z_faces[k-1] + 100
+    end
+    z_faces = reverse(-z_faces)
+    return z_faces
+end
+
+function custom_z_faces()
+    z_faces = [-3000, -2900, -2800, -2700, -2600, -2500, -2400, -2300, -2200, -2100, -2000, -1900, -1800, -1700, -1600,
+               -1500, -1400, -1300, -1200, -1100, -1002, -904, -809, -717, -629, -547, -472, -404, -345, -294, -252,
+               -217, -189, -167, -149, -134, -122, -110, -100, -90, -80, -70, -60, -50, -40, -30, -20, -10, 0]
+    return z_faces
+end
+
 Lz = 3000
 h_b = 0.2 * Lz
 h_νz_κz = 100
@@ -85,18 +120,18 @@ my_parameters = (Lz          = Lz,
 
 radius = 6371e3
 f₀ = 1e-4
-Ld = (2/f₀ * sqrt(my_parameters.h_b * my_parameters.Δ/(1 - exp(-my_parameters.Lz/my_parameters.h_b)))
-      * (1 - exp(-my_parameters.Lz/(2my_parameters.h_b))))
+L_d = (2/f₀ * sqrt(my_parameters.h_b * my_parameters.Δ/(1 - exp(-my_parameters.Lz/my_parameters.h_b)))
+       * (1 - exp(-my_parameters.Lz/(2my_parameters.h_b))))
 print(
-"For an initial buoyancy profile decaying exponentially with depth, the Rossby radius of deformation is $Ld m.\n")
-Nx_min = ceil(Int, 2π * radius/(4Ld))
+"For an initial buoyancy profile decaying exponentially with depth, the Rossby radius of deformation is $L_d m.\n")
+Nx_min = ceil(Int, 2π * radius/(4L_d))
 print("The minimum number of grid points in each direction of the cubed sphere panels required to resolve this " *
       "Rossby radius of deformation is $(Nx_min).\n")
 
 arch = CPU()
 underlying_grid = ConformalCubedSphereGrid(arch;
                                            panel_size = (Nx, Ny, Nz),
-                                           z = geometric_z_faces(my_parameters),
+                                           z = hyperbolic_tangential_z_faces(Lz),
                                            horizontal_direction_halo = Nhalo,
                                            radius,
                                            partition = CubedSpherePartition(; R = 1))
@@ -288,130 +323,53 @@ import Oceananigans.Utils: getregion, _getregion
     return p.𝓋 * (b - B)
 end
 
-####
-#### Boundary conditions
-####
-
-@inline ϕ²(i, j, k, grid, ϕ) = @inbounds ϕ[i, j, k]^2
-
-@inline speedᶠᶜᶜ(i, j, k, grid, u, v) = @inbounds sqrt(u[i, j, k]^2 + ℑxyᶠᶜᵃ(i, j, k, grid, ϕ², v))
-@inline speedᶜᶠᶜ(i, j, k, grid, u, v) = @inbounds sqrt(ℑxyᶜᶠᵃ(i, j, k, grid, ϕ², u) + v[i, j, k]^2)
-
-@inline u_drag(i, j, grid, clock, fields, p) = (
-@inbounds - p.Cᴰ * speedᶠᶜᶜ(i, j, 1, grid, fields.u, fields.v) * fields.u[i, j, 1])
-@inline v_drag(i, j, grid, clock, fields, p) = (
-@inbounds - p.Cᴰ * speedᶜᶠᶜ(i, j, 1, grid, fields.u, fields.v) * fields.v[i, j, 1])
-
-u_bot_bc = FluxBoundaryCondition(u_drag, discrete_form = true, parameters = (; Cᴰ = my_parameters.Cᴰ))
-v_bot_bc = FluxBoundaryCondition(v_drag, discrete_form = true, parameters = (; Cᴰ = my_parameters.Cᴰ))
-top_stress_x = FluxBoundaryCondition(u_stress; discrete_form = true)
-top_stress_y = FluxBoundaryCondition(v_stress; discrete_form = true)
-
-u_bcs = FieldBoundaryConditions(bottom = u_bot_bc, top = top_stress_x)
-v_bcs = FieldBoundaryConditions(bottom = v_bot_bc, top = top_stress_y)
+extended_halos = true
+coriolis = HydrostaticSphericalCoriolis()
 
 my_buoyancy_parameters = (; Δ = my_parameters.Δ, h = my_parameters.h_b, Lz = my_parameters.Lz,
                             φ_max_b_lin = my_parameters.φ_max_b_lin, φ_max_b_par = my_parameters.φ_max_b_par,
                             φ_max_b_cos = my_parameters.φ_max_b_cos, 𝓋 = my_parameters.𝓋)
-top_restoring_bc = FluxBoundaryCondition(buoyancy_restoring; field_dependencies = :b,
-                                         parameters = my_buoyancy_parameters)
-b_bcs = FieldBoundaryConditions(top = top_restoring_bc)
-
-####
-#### Model setup
-####
-
-momentum_advection = VectorInvariant()
-tracer_advection   = WENO()
-substeps           = 50
-free_surface       = SplitExplicitFreeSurface(grid; substeps, extended_halos = false)
-
-νh = 5e+3
-κh = 1e+2 
-horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh, κ=κh) # Laplacian viscosity and diffusivity
-
-νz_surface = 1e-3
-νz_bottom = 1e-4
-
-struct MyVerticalViscosity{FT} <: Function
-    Lz  :: FT
-    h   :: FT
-    νzs :: FT
-    νzb :: FT
-end
-
-using Adapt
-
-Adapt.adapt_structure(to, ν::MyVerticalViscosity) = MyVerticalViscosity(Adapt.adapt(to, ν.Lz),  Adapt.adapt(to, ν.h),
-                                                                        Adapt.adapt(to, ν.νzs), Adapt.adapt(to, ν.νzb))
-
-@inline (ν::MyVerticalViscosity)(x, y, z, t) = ν.νzb + (ν.νzs - ν.νzb) * exponential_profile_in_z(z, ν.Lz, ν.h)
-
-νz = MyVerticalViscosity(float(Lz), float(h_νz_κz), νz_surface, νz_bottom)
-
-κz_surface = 2e-4
-κz_bottom = 2e-5
-
-κz = MyVerticalViscosity(float(Lz), float(h_νz_κz), κz_surface, κz_bottom)
-
-vertical_diffusivity  = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν = νz, κ = κz)
-
-convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(VerticallyImplicitTimeDiscretization(),
-                                                                convective_κz = 1.0)
-
-coriolis = HydrostaticSphericalCoriolis()
-
-model = HydrostaticFreeSurfaceModel(; grid,
-                                      momentum_advection,
-                                      tracer_advection,
-                                      free_surface,
-                                      coriolis,
-                                      closure = (horizontal_diffusivity, vertical_diffusivity, convective_adjustment),
-                                      tracers = :b,
-                                      buoyancy = BuoyancyTracer(),
-                                      boundary_conditions = (u = u_bcs, v = v_bcs, b = b_bcs))
-
-#####
-##### Model initialization
-#####
-
 @inline initial_buoyancy(λ, φ, z) = (my_buoyancy_parameters.Δ * cosine_profile_in_y(φ, my_buoyancy_parameters)
                                      * exponential_profile_in_z(z, my_parameters.Lz, my_parameters.h_b))
 # Specify the initial buoyancy profile to match the buoyancy restoring profile.
-set!(model, b = initial_buoyancy) 
+bᵢ = CenterField(grid)
+set!(bᵢ, initial_buoyancy)
+
+uᵢ = XFaceField(grid)
+vᵢ = YFaceField(grid)
 
 initialize_velocities_based_on_thermal_wind_balance = false
 # If the above flag is set to true, meaning the velocities are initialized using thermal wind balance, set
 # φ_max_b_cos within the range [70, 80], and specify the latitudinal variation in buoyancy as
 # p.Δ * double_cosine_profile_in_y(φ, p) in both the initial buoyancy and the surface buoyancy restoring profiles.
 if initialize_velocities_based_on_thermal_wind_balance
-    fill_halo_regions!(model.tracers.b)
+    fill_halo_regions!(bᵢ)
 
-    Ω = model.coriolis.rotation_rate
+    Ω = coriolis.rotation_rate
     radius = grid.radius
 
     for region in 1:number_of_regions(grid), k in 1:Nz, j in 1:Ny, i in 1:Nx
-        numerator = model.tracers.b[region][i, j, k] - model.tracers.b[region][i, j-1, k]
+        numerator = bᵢ[region][i, j, k] - bᵢ[region][i, j-1, k]
         denominator = -2Ω * sind(grid[region].φᶠᶜᵃ[i, j]) * grid[region].Δyᶠᶜᵃ[i, j]
         if k == 1
             Δz_below = grid[region].zᵃᵃᶜ[k] - grid[region].zᵃᵃᶠ[k]
             u_below = 0 # no slip boundary condition
         else
             Δz_below = grid[region].Δzᵃᵃᶠ[k]
-            u_below = model.velocities.u[region][i, j, k-1]
+            u_below = uᵢ[region][i, j, k-1]
         end
-        model.velocities.u[region][i, j, k] = u_below + numerator/denominator * Δz_below
-        numerator = model.tracers.b[region][i, j, k] - model.tracers.b[region][i-1, j, k]
+        uᵢ[region][i, j, k] = u_below + numerator/denominator * Δz_below
+        numerator = bᵢ[region][i, j, k] - bᵢ[region][i-1, j, k]
         denominator = 2Ω * sind(grid[region].φᶜᶠᵃ[i, j]) * grid[region].Δxᶜᶠᵃ[i, j]
         if k == 1
             v_below = 0 # no slip boundary condition
         else
-            v_below = model.velocities.v[region][i, j, k-1]
+            v_below = vᵢ[region][i, j, k-1]
         end
-        model.velocities.v[region][i, j, k] = v_below + numerator/denominator * Δz_below
+        vᵢ[region][i, j, k] = v_below + numerator/denominator * Δz_below
     end
 
-    fill_halo_regions!((model.velocities.u, model.velocities.v))
+    fill_halo_regions!((uᵢ, vᵢ))
 end
 
 # Compute the initial vorticity.
@@ -433,7 +391,7 @@ function compute_vorticity!(grid, u, v, ζ)
     end
 end
 
-compute_vorticity!(grid, model.velocities.u, model.velocities.v, ζ)
+compute_vorticity!(grid, uᵢ, vᵢ, ζ)
 
 # Compute actual and reconstructed wind stress.
 location = (Center(), Center(), Center())
@@ -480,10 +438,7 @@ end
 @apply_regionally launch!(arch, grid, (Nx, Ny), _reconstruct_wind_stress!, grid, zonal_wind_stress_cc, τ_x, τ_x_r, τ_y_r)
 
 # Plot wind stress and initial fields.
-uᵢ = on_architecture(CPU(), deepcopy(model.velocities.u))
-vᵢ = on_architecture(CPU(), deepcopy(model.velocities.v))
 ζᵢ = on_architecture(CPU(), deepcopy(ζ))
-bᵢ = on_architecture(CPU(), deepcopy(model.tracers.b))
 
 latitude = extract_latitude(grid_cpu)
 cos_θ, sin_θ = calculate_sines_and_cosines_of_cubed_sphere_grid_angles(grid_cpu, "cc")
@@ -536,18 +491,21 @@ else
 end
 common_kwargs_η = common_kwargs_vertical_section
 
-@inline _deformation_radius(i, j, k, grid, C, buoyancy, coriolis) = sqrt(max(0, ∂z_b(i, j, k, grid, buoyancy, C))) / π /
-                                                                         abs(ℑxyᶜᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis))
+import Oceananigans.BuoyancyModels: ∂z_b
+@inline ∂z_b(i, j, k, grid, buoyancy) = ∂zᶜᶜᶠ(i, j, k, grid, buoyancy)
+
+@inline _deformation_radius(i, j, k, grid, buoyancy, coriolis) = (
+sqrt(max(0, ∂z_b(i, j, k, grid, buoyancy))) / π / abs(ℑxyᶜᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis)))
 
 φ_max_b = 75
 
-@kernel function _calculate_deformation_radius!(Ld, grid, tracers, buoyancy, coriolis)
+@kernel function _calculate_deformation_radius!(Ld, grid, buoyancy, coriolis)
     i, j = @index(Global, NTuple)
 
     @inbounds begin
         Ld[i, j, 1] = 0
         @unroll for k in 1:grid.Nz
-            Ld[i, j, 1] += Δzᶜᶜᶠ(i, j, k, grid) * _deformation_radius(i, j, k, grid, tracers, buoyancy, coriolis)
+            Ld[i, j, 1] += Δzᶜᶜᶠ(i, j, k, grid) * _deformation_radius(i, j, k, grid, buoyancy, coriolis)
         end
     end
 
@@ -567,17 +525,15 @@ end
 end
 
 Ldᵢ = Field((Center, Center, Nothing), grid)
-buoyancy = model.buoyancy
-tracers = model.tracers
-set!(tracers.b, bᵢ)
-coriolis = model.coriolis
 
-@apply_regionally launch!(arch, grid, :xy, _calculate_deformation_radius!, Ldᵢ, grid, tracers, buoyancy, coriolis)
+@apply_regionally launch!(arch, grid, :xy, _calculate_deformation_radius!, Ldᵢ, grid, bᵢ, coriolis)
 Ldᵢ_minimum = minimum(Ldᵢ)
 @apply_regionally launch!(arch, grid, :xy, _truncate_deformation_radius!, Ldᵢ, grid, Ldᵢ_minimum)
 Ldᵢ_at_specific_longitude_through_panel_center = zeros(2*Nx, 4);
 
-plot_initial_field = true
+plot_initial_field = false
+make_geo_heatlatlon_plots = true
+
 if plot_initial_field
     fig = panel_wise_visualization(grid_cpu, on_architecture(CPU(), τ_x); k = 1, common_kwargs...)
     save("cubed_sphere_aquaplanet_zonal_wind_stress.png", fig)
@@ -588,20 +544,22 @@ if plot_initial_field
     fig = panel_wise_visualization(grid_cpu, on_architecture(CPU(), τ_y_r); k = 1, common_kwargs...)
     save("cubed_sphere_aquaplanet_meridional_wind_stress_reconstructed.png", fig)
 
-    title = "Zonal wind stress"
-    fig = geo_heatlatlon_visualization(grid_cpu, on_architecture(CPU(), τ_x), title; levels = 1:1, common_kwargs...,
-                                       cbar_label = "zonal wind stress (N m⁻²)")
-    save("cubed_sphere_aquaplanet_zonal_wind_stress_geo_heatlatlon_plot.png", fig)
+    if make_geo_heatlatlon_plots
+        title = "Zonal wind stress"
+        fig = geo_heatlatlon_visualization(grid_cpu, on_architecture(CPU(), τ_x), title; levels = 1:1, common_kwargs...,
+                                           cbar_label = "zonal wind stress (N m⁻²)")
+        save("cubed_sphere_aquaplanet_zonal_wind_stress_geo_heatlatlon_plot.png", fig)
 
-    title = "Reconstructed zonal wind stress"
-    fig = geo_heatlatlon_visualization(grid_cpu, on_architecture(CPU(), τ_x_r), title; levels = 1:1, common_kwargs...,
-                                       cbar_label = "zonal wind stress (N m⁻²)")
-    save("cubed_sphere_aquaplanet_zonal_wind_stress_reconstructed_geo_heatlatlon_plot.png", fig)
+        title = "Reconstructed zonal wind stress"
+        fig = geo_heatlatlon_visualization(grid_cpu, on_architecture(CPU(), τ_x_r), title; levels = 1:1,
+                                           common_kwargs..., cbar_label = "zonal wind stress (N m⁻²)")
+        save("cubed_sphere_aquaplanet_zonal_wind_stress_reconstructed_geo_heatlatlon_plot.png", fig)
 
-    title = "Reconstructed meridional wind stress"
-    fig = geo_heatlatlon_visualization(grid_cpu, on_architecture(CPU(), τ_y_r), title; levels = 1:1, common_kwargs...,
-                                       cbar_label = "meridional wind stress (N m⁻²)")
-    save("cubed_sphere_aquaplanet_meridional_wind_stress_reconstructed_geo_heatlatlon_plot.png", fig)
+        title = "Reconstructed meridional wind stress"
+        fig = geo_heatlatlon_visualization(grid_cpu, on_architecture(CPU(), τ_y_r), title; levels = 1:1,
+                                           common_kwargs..., cbar_label = "meridional wind stress (N m⁻²)")
+        save("cubed_sphere_aquaplanet_meridional_wind_stress_reconstructed_geo_heatlatlon_plot.png", fig)
+    end
 
     if initialize_velocities_based_on_thermal_wind_balance
         uᵢ, vᵢ = orient_velocities_in_global_direction(grid_cpu, uᵢ, vᵢ, cos_θ, sin_θ; levels = 1:Nz)
@@ -616,21 +574,22 @@ if plot_initial_field
 
         fig = panel_wise_visualization(grid_cpu, ζᵢ; k = Nz, common_kwargs...)
         save("cubed_sphere_aquaplanet_ζᵢ.png", fig)
-        
-        title = "Initial zonal velocity"
-        fig = geo_heatlatlon_visualization(grid_cpu, uᵢ, title; k = Nz, common_kwargs...,
-                                           cbar_label = "zonal velocity (m s⁻¹)")
-        save("cubed_sphere_aquaplanet_uᵢ_geo_heatlatlon_plot.png", fig)
+        if make_geo_heatlatlon_plots
+            title = "Initial zonal velocity"
+            fig = geo_heatlatlon_visualization(grid_cpu, uᵢ, title; k = Nz, common_kwargs...,
+                                               cbar_label = "zonal velocity (m s⁻¹)")
+            save("cubed_sphere_aquaplanet_uᵢ_geo_heatlatlon_plot.png", fig)
 
-        title = "Initial meridional velocity"
-        fig = geo_heatlatlon_visualization(grid_cpu, vᵢ, title; k = Nz, common_kwargs...,
-                                           cbar_label = "meridional velocity (m s⁻¹)")
-        save("cubed_sphere_aquaplanet_vᵢ_geo_heatlatlon_plot.png", fig)
+            title = "Initial meridional velocity"
+            fig = geo_heatlatlon_visualization(grid_cpu, vᵢ, title; k = Nz, common_kwargs...,
+                                               cbar_label = "meridional velocity (m s⁻¹)")
+            save("cubed_sphere_aquaplanet_vᵢ_geo_heatlatlon_plot.png", fig)
 
-        title = "Initial relative vorticity"
-        fig = geo_heatlatlon_visualization(grid_cpu, ζᵢ, title; k = Nz, common_kwargs...,
-                                           cbar_label = "relative vorticity (s⁻¹)")
-        save("cubed_sphere_aquaplanet_ζᵢ_geo_heatlatlon_plot.png", fig)
+            title = "Initial relative vorticity"
+            fig = geo_heatlatlon_visualization(grid_cpu, ζᵢ, title; k = Nz, common_kwargs...,
+                                               cbar_label = "relative vorticity (s⁻¹)")
+            save("cubed_sphere_aquaplanet_ζᵢ_geo_heatlatlon_plot.png", fig)
+        end
 
         index, panel_index = 1, 1
         
@@ -673,16 +632,18 @@ if plot_initial_field
     fig = panel_wise_visualization(grid_cpu, on_architecture(CPU(), Ldᵢ); k = 1, common_kwargs_positive_scalar...)
     save("cubed_sphere_aquaplanet_Ldᵢ.png", fig)
     
-    title = "Initial buoyancy"
-    fig = geo_heatlatlon_visualization(grid_cpu, bᵢ, title; k = b_index, common_kwargs...,
-                                       cbar_label = "buoyancy (m s⁻²)")
-    save("cubed_sphere_aquaplanet_bᵢ_geo_heatlatlon_plot.png", fig)
-    
-    title = "Deformation radius"
-    fig = geo_heatlatlon_visualization(grid_cpu, on_architecture(CPU(), Ldᵢ), title; levels = 1:1,
-                                       common_kwargs_positive_scalar..., cbar_label = "deformation radius (m)")
-    save("cubed_sphere_aquaplanet_Ldᵢ_geo_heatlatlon_plot.png", fig)
-    
+    if make_geo_heatlatlon_plots
+        title = "Initial buoyancy"
+        fig = geo_heatlatlon_visualization(grid_cpu, bᵢ, title; k = b_index, common_kwargs...,
+                                           cbar_label = "buoyancy (m s⁻²)")
+        save("cubed_sphere_aquaplanet_bᵢ_geo_heatlatlon_plot.png", fig)
+
+        title = "Deformation radius"
+        fig = geo_heatlatlon_visualization(grid_cpu, on_architecture(CPU(), Ldᵢ), title; levels = 1:1,
+                                           common_kwargs_positive_scalar..., cbar_label = "deformation radius (m)")
+        save("cubed_sphere_aquaplanet_Ldᵢ_geo_heatlatlon_plot.png", fig)
+    end
+
     index, panel_index = 1, 1
     
     bᵢ_at_specific_longitude_through_panel_center[:, :, index] = (
@@ -726,85 +687,107 @@ compute_vorticity!(grid_cpu, u_f, v_f, ζ)
 w_f = file_c["w/data"]
 w_f = set_parent_field_data(grid_cpu, w_f, "cc"; levels = 1:Nz+1)
 
-η_f = file_c["η/data"]
-η_f = set_parent_field_data(grid_cpu, η_f, "cc"; ssh = true)
+if extended_halos
+    η_f_extended_halos = file_c["η/data"]
+    Hc = grid.Hx
+    Hc_extended = (size(η_f_extended_halos[1], 1) - Nc) ÷ 2
+    η_f = Field((Center, Center, Center), grid; indices = (:, :, Nz+1:Nz+1))
+    for region in 1:6, j in 1:Nc+2Hc, i in 1:Nc+2Hc
+        η_f[region][i, j, Nz+1] = η_f_extended_halos[region][i+Hc_extended, j+Hc_extended, 1]
+    end
+else
+    η_f = file_c["η/data"]
+    η_f = set_parent_field_data(grid_cpu, η_f, "cc"; ssh = true)
+end
 
 b_f = file_c["b/data"]
 b_f = set_parent_field_data(grid_cpu, b_f, "cc"; levels = 1:Nz)
-set!(tracers.b, b_f)
 
 Ld_f = Field((Center, Center, Nothing), grid)
-@apply_regionally launch!(arch, grid, :xy, _calculate_deformation_radius!, Ld_f, grid, tracers, buoyancy, coriolis)
+@apply_regionally launch!(arch, grid, :xy, _calculate_deformation_radius!, Ld_f, grid, b_f, coriolis)
 Ld_f_minimum = minimum(Ld_f)
 @apply_regionally launch!(arch, grid, :xy, _truncate_deformation_radius!, Ld_f, grid, Ld_f_minimum)
 Ld_f_at_specific_longitude_through_panel_center = zeros(2*Nx, 4);
 
 Δt = 5minutes
 simulation_time = iteration_id * Δt
+specify_plot_limits = true
+specify_η_limits = false
+specify_b_limits = false
 
-fig = panel_wise_visualization(grid_cpu, u_f_r; k = Nz, common_kwargs..., specify_plot_limits = true,
-                               plot_limits = (-3.5, 3.5))
+u_limits = (-0.75, 0.75)
+v_limits = (-0.25, 0.25)
+ζ_limits = (-5e-6, 5e-6)
+w_limits = (-5e-5, 5e-5)
+η_limits = (-10, 10)
+b_limits = (-0.0325, 0.0325)
+
+fig = panel_wise_visualization(grid_cpu, u_f_r; k = Nz, common_kwargs..., specify_plot_limits = specify_plot_limits,
+                               plot_limits = u_limits)
 save("cubed_sphere_aquaplanet_u_f_$iteration_id.png", fig)
 
-fig = panel_wise_visualization(grid_cpu, v_f_r; k = Nz, common_kwargs..., specify_plot_limits = true,
-                               plot_limits = (-2.25, 2.25))
+fig = panel_wise_visualization(grid_cpu, v_f_r; k = Nz, common_kwargs..., specify_plot_limits = specify_plot_limits,
+                               plot_limits = v_limits)
 save("cubed_sphere_aquaplanet_v_f_$iteration_id.png", fig)
 
-fig = panel_wise_visualization(grid_cpu, ζ_f; k = Nz, common_kwargs..., specify_plot_limits = true,
-                               plot_limits = (-1.25e-5, 1.25e-5))
+fig = panel_wise_visualization(grid_cpu, ζ_f; k = Nz, common_kwargs..., specify_plot_limits = specify_plot_limits,
+                               plot_limits = ζ_limits)
 save("cubed_sphere_aquaplanet_ζ_f_$iteration_id.png", fig)
 
-fig = panel_wise_visualization(grid_cpu, w_f; k = w_index, common_kwargs..., specify_plot_limits = true,
-                               plot_limits = (-2e-4, 2e-4))
+fig = panel_wise_visualization(grid_cpu, w_f; k = w_index, common_kwargs..., specify_plot_limits = specify_plot_limits,
+                               plot_limits = w_limits)
 save("cubed_sphere_aquaplanet_w_f_$iteration_id.png", fig)
 
-fig = panel_wise_visualization(grid_cpu, η_f; ssh = true, common_kwargs_η..., specify_plot_limits = true,
-                               plot_limits = (-15, 15))
+fig = panel_wise_visualization(grid_cpu, η_f; ssh = true, common_kwargs_η..., specify_plot_limits = specify_η_limits,
+                               plot_limits = η_limits)
 save("cubed_sphere_aquaplanet_η_f_$iteration_id.png", fig)
 
-fig = panel_wise_visualization(grid_cpu, b_f; k = b_index, common_kwargs..., specify_plot_limits = true,
-                               plot_limits = (-0.055, 0.055))
+fig = panel_wise_visualization(grid_cpu, b_f; k = b_index, common_kwargs..., specify_plot_limits = specify_b_limits,
+                               plot_limits = b_limits)
 save("cubed_sphere_aquaplanet_b_f_$iteration_id.png", fig)
 
-title = "Zonal velocity after $(prettytime(simulation_time))"
-fig = geo_heatlatlon_visualization(grid_cpu, u_f_r, title; k = Nz, common_kwargs...,
-                                   cbar_label = "zonal velocity (m s⁻¹)",
-                                   specify_plot_limits = true, plot_limits = (-3.5, 3.5))
-save("cubed_sphere_aquaplanet_u_f_geo_heatlatlon_plot_$iteration_id.png", fig)
+if make_geo_heatlatlon_plots
+    title = "Zonal velocity after $(prettytime(simulation_time))"
+    fig = geo_heatlatlon_visualization(grid_cpu, u_f_r, title; k = Nz, common_kwargs...,
+                                       cbar_label = "zonal velocity (m s⁻¹)", specify_plot_limits = specify_plot_limits,
+                                       plot_limits = u_limits)
+    save("cubed_sphere_aquaplanet_u_f_geo_heatlatlon_plot_$iteration_id.png", fig)
 
-title = "Meridional velocity after $(prettytime(simulation_time))"
-fig = geo_heatlatlon_visualization(grid_cpu, v_f_r, title; k = Nz, common_kwargs...,
-                                   cbar_label = "meridional velocity (m s⁻¹)", specify_plot_limits = true,
-                                   plot_limits = (-2.25, 2.25))
-save("cubed_sphere_aquaplanet_v_f_geo_heatlatlon_plot_$iteration_id.png", fig)
+    title = "Meridional velocity after $(prettytime(simulation_time))"
+    fig = geo_heatlatlon_visualization(grid_cpu, v_f_r, title; k = Nz, common_kwargs...,
+                                       cbar_label = "meridional velocity (m s⁻¹)",
+                                       specify_plot_limits = specify_plot_limits, plot_limits = v_limits)
+    save("cubed_sphere_aquaplanet_v_f_geo_heatlatlon_plot_$iteration_id.png", fig)
 
-title = "Relative vorticity after $(prettytime(simulation_time))"
-fig = geo_heatlatlon_visualization(grid_cpu, ζ_f, title; k = Nz, common_kwargs...,
-                                   cbar_label = "relative vorticity (s⁻¹)", specify_plot_limits = true,
-                                   plot_limits = (-1.25e-5, 1.25e-5))
-save("cubed_sphere_aquaplanet_ζ_f_geo_heatlatlon_plot_$iteration_id.png", fig)
+    title = "Relative vorticity after $(prettytime(simulation_time))"
+    fig = geo_heatlatlon_visualization(grid_cpu, ζ_f, title; k = Nz, common_kwargs...,
+                                       cbar_label = "relative vorticity (s⁻¹)",
+                                       specify_plot_limits = specify_plot_limits, plot_limits = ζ_limits)
+    save("cubed_sphere_aquaplanet_ζ_f_geo_heatlatlon_plot_$iteration_id.png", fig)
 
-title = "Vertical velocity after $(prettytime(simulation_time))"
-fig = geo_heatlatlon_visualization(grid_cpu, w_f, title; k = w_index, common_kwargs...,
-                                   cbar_label = "vertical velocity (m s⁻¹)", specify_plot_limits = true,
-                                   plot_limits = (-2e-4, 2e-4))
-save("cubed_sphere_aquaplanet_w_f_geo_heatlatlon_plot_$iteration_id.png", fig)
+    title = "Vertical velocity after $(prettytime(simulation_time))"
+    fig = geo_heatlatlon_visualization(grid_cpu, w_f, title; k = w_index, common_kwargs...,
+                                       cbar_label = "vertical velocity (m s⁻¹)",
+                                       specify_plot_limits = specify_plot_limits, plot_limits = w_limits)
+    save("cubed_sphere_aquaplanet_w_f_geo_heatlatlon_plot_$iteration_id.png", fig)
 
-title = "Surface elevation after $(prettytime(simulation_time))"
-fig = geo_heatlatlon_visualization(grid_cpu, η_f, title; ssh = true, common_kwargs_η...,
-                                   cbar_label = "surface elevation (m)", specify_plot_limits = true,
-                                   plot_limits = (-15, 15))
-save("cubed_sphere_aquaplanet_η_f_geo_heatlatlon_plot_$iteration_id.png", fig)
+    title = "Surface elevation after $(prettytime(simulation_time))"
+    fig = geo_heatlatlon_visualization(grid_cpu, η_f, title; ssh = true, common_kwargs_η...,
+                                       cbar_label = "surface elevation (m)", specify_plot_limits = specify_η_limits,
+                                       plot_limits = η_limits)
+    save("cubed_sphere_aquaplanet_η_f_geo_heatlatlon_plot_$iteration_id.png", fig)
 
-title = "Buoyancy after $(prettytime(simulation_time))"
-fig = geo_heatlatlon_visualization(grid_cpu, b_f, title; k = b_index, common_kwargs..., cbar_label = "buoyancy (m s⁻²)",
-                                   specify_plot_limits = true, plot_limits = (-0.055, 0.055))
-save("cubed_sphere_aquaplanet_b_f_geo_heatlatlon_plot_$iteration_id.png", fig)
+    title = "Buoyancy after $(prettytime(simulation_time))"
+    fig = geo_heatlatlon_visualization(grid_cpu, b_f, title; k = b_index, common_kwargs...,
+                                       cbar_label = "buoyancy (m s⁻²)", specify_plot_limits = specify_b_limits,
+                                       plot_limits = b_limits)
+    save("cubed_sphere_aquaplanet_b_f_geo_heatlatlon_plot_$iteration_id.png", fig)
 
-title = "Deformation radius after $(prettytime(simulation_time))"
-fig = geo_heatlatlon_visualization(grid_cpu, Ld_f, title; levels = 1:1, common_kwargs_positive_scalar...,
-                                   cbar_label = "deformation radius (m)")
-save("cubed_sphere_aquaplanet_Ld_f_geo_heatlatlon_plot_$iteration_id.png", fig)
+    title = "Deformation radius after $(prettytime(simulation_time))"
+    fig = geo_heatlatlon_visualization(grid_cpu, Ld_f, title; levels = 1:1, common_kwargs_positive_scalar...,
+                                       cbar_label = "deformation radius (m)")
+    save("cubed_sphere_aquaplanet_Ld_f_geo_heatlatlon_plot_$iteration_id.png", fig)
+end
 
 close(file_c)
 
@@ -840,43 +823,35 @@ extract_field_at_specific_longitude_through_panel_center(grid_cpu, Ld_f, panel_i
 
 title = "Zonal velocity after $(prettytime(simulation_time))"
 cbar_label = "zonal velocity (m s⁻¹)"
-create_heat_map_or_contour_plot(resolution, plot_type_2D,
-                                latitude_at_specific_longitude_through_panel_center[:, index],
+create_heat_map_or_contour_plot(resolution, plot_type_2D, latitude_at_specific_longitude_through_panel_center[:, index],
                                 depths/1000, u_f_at_specific_longitude_through_panel_center[:, :, index],
                                 axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
                                 "cubed_sphere_aquaplanet_u_f_latitude-depth_section_$(panel_index)_$(iteration_id)";
-                                specify_plot_limits = true, plot_limits = (-3.5, 3.5),
-                                common_kwargs_vertical_section...)
+                                specify_plot_limits = false, plot_limits = u_limits, common_kwargs_vertical_section...)
 
 title = "Meridional velocity after $(prettytime(simulation_time))"
 cbar_label = "meridional velocity (m s⁻¹)"
-create_heat_map_or_contour_plot(resolution, plot_type_2D,
-                                latitude_at_specific_longitude_through_panel_center[:, index],
+create_heat_map_or_contour_plot(resolution, plot_type_2D, latitude_at_specific_longitude_through_panel_center[:, index],
                                 depths/1000, v_f_at_specific_longitude_through_panel_center[:, :, index],
                                 axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
                                 "cubed_sphere_aquaplanet_v_f_latitude-depth_section_$(panel_index)_$(iteration_id)";
-                                specify_plot_limits = true, plot_limits = (-2.25, 2.25),
-                                common_kwargs_vertical_section...)
+                                specify_plot_limits = false, plot_limits = v_limits, common_kwargs_vertical_section...)
 
 title = "Relative vorticity after $(prettytime(simulation_time))"
 cbar_label = "relative vorticity (s⁻¹)"
-create_heat_map_or_contour_plot(resolution, plot_type_2D,
-                                latitude_at_specific_longitude_through_panel_center[:, index],
+create_heat_map_or_contour_plot(resolution, plot_type_2D, latitude_at_specific_longitude_through_panel_center[:, index],
                                 depths/1000, ζ_f_at_specific_longitude_through_panel_center[:, :, index],
                                 axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
                                 "cubed_sphere_aquaplanet_ζ_f_latitude-depth_section_$(panel_index)_$(iteration_id)";
-                                specify_plot_limits = true, plot_limits = (-1.25e-5, 1.25e-5),
-                                common_kwargs_vertical_section...)
+                                specify_plot_limits = false, plot_limits = ζ_limits, common_kwargs_vertical_section...)
 
 title = "Vertical velocity after $(prettytime(simulation_time))"
 cbar_label = "vertical velocity (s⁻¹)"
-create_heat_map_or_contour_plot(resolution, plot_type_2D,
-                                latitude_at_specific_longitude_through_panel_center[:, index],
+create_heat_map_or_contour_plot(resolution, plot_type_2D, latitude_at_specific_longitude_through_panel_center[:, index],
                                 depths_f[2:Nz+1]/1000, w_f_at_specific_longitude_through_panel_center[:, 2:Nz+1, index],
                                 axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
                                 "cubed_sphere_aquaplanet_w_f_latitude-depth_section_$(panel_index)_$(iteration_id)";
-                                specify_plot_limits = true, plot_limits = (-2e-4, 2e-4),
-                                common_kwargs_vertical_section...)
+                                specify_plot_limits = false, plot_limits = w_limits, common_kwargs_vertical_section...)
 
 title = "Surface elevation after $(prettytime(simulation_time))"
 create_single_line_or_scatter_plot(resolution, plot_type_1D,
@@ -884,7 +859,7 @@ create_single_line_or_scatter_plot(resolution, plot_type_1D,
                                    η_f_at_specific_longitude_through_panel_center[:, 1, index], axis_kwargs_η,
                                    title, plot_kwargs,
                                    "cubed_sphere_aquaplanet_η_f_latitude_$(panel_index)_$(iteration_id)";
-                                   tight_x_axis = true, specify_y_limits = true, y_limits = [-15, 15])
+                                   tight_x_axis = true, specify_y_limits = false, y_limits = η_limits)
 
 title = "Buoyancy after $(prettytime(simulation_time))"
 cbar_label = "buoyancy (m s⁻²)"
@@ -893,8 +868,7 @@ create_heat_map_or_contour_plot(resolution, plot_type_2D,
                                 depths/1000, b_f_at_specific_longitude_through_panel_center[:, :, index],
                                 axis_kwargs, title, contourlevels, cbar_kwargs, cbar_label,
                                 "cubed_sphere_aquaplanet_b_f_latitude-depth_section_$(panel_index)_$(iteration_id)";
-                                specify_plot_limits = true, plot_limits = (-0.055, 0.055),
-                                common_kwargs_vertical_section...)
+                                specify_plot_limits = false, plot_limits = b_limits, common_kwargs_vertical_section...)
 
 title = "Deformation radius after $(prettytime(simulation_time))"
 create_single_line_or_scatter_plot(resolution, plot_type_1D,
@@ -903,3 +877,18 @@ create_single_line_or_scatter_plot(resolution, plot_type_1D,
                                    title, plot_kwargs,
                                    "cubed_sphere_aquaplanet_Ld_f_latitude_$(panel_index)_$(iteration_id)";
                                    tight_x_axis = true)
+
+if !isdir("cubed_sphere_aquaplanet_checkpointer_iteration$(iteration_id)")
+    mkdir("cubed_sphere_aquaplanet_checkpointer_iteration$(iteration_id)")
+end
+
+# List all files with the .png extension
+png_files = filter(x -> endswith(x, ".png"), readdir())
+
+# Move each .png file to the "temp" directory
+for file in png_files
+    mv(file, joinpath("cubed_sphere_aquaplanet_checkpointer_iteration$(iteration_id)", file); force=true)
+end
+
+file = "cubed_sphere_aquaplanet_checkpointer_iteration$(iteration_id).jld2"
+mv(file, joinpath("cubed_sphere_aquaplanet_checkpointer_iteration$(iteration_id)", file); force=true)
