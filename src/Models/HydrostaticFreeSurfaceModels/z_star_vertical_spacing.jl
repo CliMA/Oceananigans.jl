@@ -54,10 +54,10 @@ end
     δx_U = δxᶜᶜᶠ(i, j, k_top-1, grid, Δy_qᶠᶜᶠ, U̅)
     δy_V = δyᶜᶜᶠ(i, j, k_top-1, grid, Δx_qᶜᶠᶠ, V̅)
 
-    δ_U̅h = (δx_U + δy_V) / Azᶜᶜᶠ(i, j, k_top-1, grid)
+    δh_U = (δx_U + δy_V) / Azᶜᶜᶠ(i, j, k_top-1, grid)
     H    = domain_depthᶜᶜᵃ(i, j, grid)
 
-    @inbounds  ∂t_s[i, j] = - δ_U̅h / H
+    @inbounds  ∂t_s[i, j] = - δh_U / H
 end
 
 @kernel function _update_zstar!(sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶠᶠⁿ, sᶜᶜ⁻, sᶠᶜ⁻, sᶜᶠ⁻, η_grid, η, grid)

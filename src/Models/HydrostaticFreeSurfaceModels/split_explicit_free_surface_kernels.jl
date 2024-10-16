@@ -233,9 +233,9 @@ end
     i, j  = @index(Global, NTuple)	
     k_top = grid.Nz + 1
 
-    sᶠᶜ = dynamic_domain_depthᶜᶠᵃ(i, j, k_top, grid, η) / domain_depthᶠᶜᵃ(i, j, grid)
+    sᶠᶜ = dynamic_domain_depthᶠᶜᵃ(i, j, k_top, grid, η) / domain_depthᶠᶜᵃ(i, j, grid)
     sᶜᶠ = dynamic_domain_depthᶜᶠᵃ(i, j, k_top, grid, η) / domain_depthᶜᶠᵃ(i, j, grid)
-    
+
     # hand unroll first loop
     @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δrᶠᶜᶜ(i, j, 1, grid) * sᶠᶜ
     @inbounds V[i, j, k_top-1] = v[i, j, 1] * Δrᶜᶠᶜ(i, j, 1, grid) * sᶜᶠ
@@ -255,7 +255,7 @@ end
 
     Hᶠᶜ = dynamic_domain_depthᶠᶜᵃ(i, j, k_top, grid, η) 
     Hᶜᶠ = dynamic_domain_depthᶜᶠᵃ(i, j, k_top, grid, η) 
-    
+
     @inbounds begin
         u[i, j, k] = u[i, j, k] + (U̅[i, j, k_top-1] - U[i, j, k_top-1]) / Hᶠᶜ 
         v[i, j, k] = v[i, j, k] + (V̅[i, j, k_top-1] - V[i, j, k_top-1]) / Hᶜᶠ 
