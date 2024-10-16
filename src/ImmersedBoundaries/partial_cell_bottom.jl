@@ -76,6 +76,7 @@ end
     i, j = @index(Global, NTuple)
     zb = @inbounds bottom_field[i, j, 1]
     ϵ  = ib.minimum_fractional_cell_height
+    @inbounds bottom_field[i, j, 1] = rnode(i, j, 1, grid, c, c, f)
     for k in 1:grid.Nz
         # We use `rnode` for the `immersed_cell` because we do not want to have
         # wetting or drying that could happen for a moving grid if we use znode
@@ -140,7 +141,7 @@ end
     ib = ibg.immersed_boundary
 
     # Get node at face above and defining nodes on c,c,f
-    z = znode(i, j, k+1, underlying_grid, c, c, f)
+    z = rnode(i, j, k+1, underlying_grid, c, c, f)
 
     # Get bottom z-coordinate and fractional Δz parameter
     zb = @inbounds ib.bottom_height[i, j, 1]
@@ -156,8 +157,8 @@ end
 
 @inline function Δrᶜᶜᶠ(i, j, k, ibg::PCBIBG)
     just_above_bottom = bottom_cell(i, j, k-1, ibg)
-    zc = znode(i, j, k, ibg.underlying_grid, c, c, c)
-    zf = znode(i, j, k, ibg.underlying_grid, c, c, f)
+    zc = rnode(i, j, k, ibg.underlying_grid, c, c, c)
+    zf = rnode(i, j, k, ibg.underlying_grid, c, c, f)
 
     full_Δz = Δrᶜᶜᶠ(i, j, k, ibg.underlying_grid)
     partial_Δz = zc - zf + Δrᶜᶜᶜ(i, j, k-1, ibg) / 2

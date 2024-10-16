@@ -1,7 +1,7 @@
 using Oceananigans.Grids: AbstractVerticalCoordinateUnderlyingGrid, ZStarUnderlyingGrid
 
 import Oceananigans.Grids: retrieve_static_grid
-import Oceananigans.Grids: reference_zspacings, reference_znodes, vertical_scaling, previous_vertical_scaling, ∂t_grid
+import Oceananigans.Grids: vertical_scaling, previous_vertical_scaling, ∂t_grid
 
 const ImmersedAbstractVerticalCoordinateGrid = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractVerticalCoordinateUnderlyingGrid}
 const ImmersedZStarGrid = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ZStarUnderlyingGrid}

@@ -8,11 +8,11 @@ using Printf
 
 z_faces = ZStarVerticalCoordinate(-20, 0)
 
-grid = RectilinearGrid(size = (20, 20), 
+grid = RectilinearGrid(size = (128, 20), 
                           x = (0, 64kilometers), 
                           z = z_faces, 
                        halo = (6, 6),
-                   topology = (Bounded, Flat, Bounded))
+                   topology = (Periodic, Flat, Bounded))
 
 grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> - (64kilometers - x) / 64kilometers * 20))
 
@@ -36,9 +36,10 @@ set!(model, b = bᵢ)
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_iteration = 1, stop_time = 17hours) 
+simulation = Simulation(model; Δt, stop_iteration = 10000, stop_time = 17hours) 
 
 Δz = GridMetricOperation((Center, Center, Center), Oceananigans.AbstractOperations.Δz, model.grid)
+∫b_init = sum(model.tracers.b * Δz) / sum(Δz)
 
 field_outputs = merge(model.velocities, model.tracers, (; Δz))
 
@@ -50,19 +51,19 @@ simulation.output_writers[:other_variables] = JLD2OutputWriter(model, field_outp
 function progress(sim)
     w  = interior(sim.model.velocities.w, :, :, sim.model.grid.Nz+1)
     u  = sim.model.velocities.u
-    b  = sim.model.tracers.b
-    
+    ∫b = sum(model.tracers.b * Δz) / sum(Δz)
+
     msg0 = @sprintf("Time: %s iteration %d ", prettytime(sim.model.clock.time), sim.model.clock.iteration)
     msg1 = @sprintf("extrema w: %.2e %.2e ",  maximum(w),  minimum(w))
     msg2 = @sprintf("extrema u: %.2e %.2e ",  maximum(u),  minimum(u))
-    msg3 = @sprintf("extrema b: %.2e %.2e ",  maximum(b),  minimum(b))
+    msg3 = @sprintf("drift b: %6.3e ", ∫b - ∫b_init)
     msg4 = @sprintf("extrema Δz: %.2e %.2e ", maximum(Δz), minimum(Δz))
     @info msg0 * msg1 * msg2 * msg3 * msg4
 
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 run!(simulation)
 

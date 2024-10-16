@@ -109,6 +109,7 @@ correct_bottom_height!(bottom_field, grid, ib) =
 @kernel function _correct_bottom_height!(bottom_field, grid, ib::GridFittedBottom)
     i, j = @index(Global, NTuple)
     zb = @inbounds bottom_field[i, j, 1]
+    @inbounds bottom_field[i, j, 1] = rnode(i, j, 1, grid, c, c, f)
     condition = ib.immersed_condition
     for k in 1:grid.Nz
         z⁺ = rnode(i, j, k+1, grid, c, c, f)
