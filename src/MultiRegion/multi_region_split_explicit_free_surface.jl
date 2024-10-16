@@ -14,20 +14,13 @@ function SplitExplicitAuxiliaryFields(grid::MultiRegionGrids)
     Gᵁ = Field((Face,   Center, Nothing), grid)
     Gⱽ = Field((Center, Face,   Nothing), grid)
 
-    Hᶠᶜ = Field((Face,   Center, Nothing), grid)
-    Hᶜᶠ = Field((Center, Face,   Nothing), grid)
-    Hᶜᶜ = Field((Center, Center, Nothing), grid)
-    Hᶠᶠ = Field((Center, Center, Nothing), grid)
-
-    @apply_regionally compute_column_height!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, Hᶠᶠ, grid)
-
     # In a non-parallel grid we calculate only the interior
     @apply_regionally kernel_size    = augmented_kernel_size(grid, grid.partition)
     @apply_regionally kernel_offsets = augmented_kernel_offsets(grid, grid.partition)
 
     @apply_regionally kernel_parameters = KernelParameters(kernel_size, kernel_offsets)
 
-    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, Hᶠᶠ, kernel_parameters)
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, kernel_parameters)
 end
 
 @inline augmented_kernel_size(grid, ::XPartition)           = (size(grid, 1) + 2halo_size(grid)[1]-2, size(grid, 2))

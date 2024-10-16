@@ -184,6 +184,7 @@ end
 function reconstruct_global_grid(mrg::ImmersedMultiRegionGrid) 
     global_grid     = reconstruct_global_grid(mrg.underlying_grid)
     global_boundary = reconstruct_global_boundary(mrg.immersed_boundary)
+    global_boundary = on_architecture(architecture(mrg), global_boundary)
 
     return ImmersedBoundaryGrid(global_grid, global_boundary)
 end

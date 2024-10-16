@@ -58,7 +58,7 @@ end
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
     ℓᴰ = max(ℓ★, ℓʰ)
 
-    H = total_depthᶜᶜᵃ(i, j, grid)
+    H = domain_depthᶜᶜᵃ(i, j, grid)
     return min(H, ℓᴰ)
 end
 

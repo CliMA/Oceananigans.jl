@@ -121,12 +121,11 @@ end
 const c = Center()
 const f = Face()
 
-@inline z_top(i, j, grid)    = znode(i, j, grid.Nz+1, grid, c, c, f)
-@inline z_bottom(i, j, grid) = znode(i, j, 1,         grid, c, c, f)
+@inline z_top(i, j, grid) = znode(i, j, grid.Nz+1, grid, c, c, f)
+@inline z_bottom(i, j, grid) = znode(i, j, 1, grid, c, c, f)
 
-@inline depthᶜᶜᶠ(i, j, k, grid)    = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, f))
-@inline depthᶜᶜᶜ(i, j, k, grid)    = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, c))
-@inline total_depthᶜᶜᵃ(i, j, grid) = clip(z_top(i, j, grid) - z_bottom(i, j, grid))
+@inline depthᶜᶜᶠ(i, j, k, grid) = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, f))
+@inline depthᶜᶜᶜ(i, j, k, grid) = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, c))
 
 @inline function height_above_bottomᶜᶜᶠ(i, j, k, grid)
     h = znode(i, j, k, grid, c, c, f) - z_bottom(i, j, grid)

@@ -219,14 +219,6 @@ Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒞𝒞, ℱ�
     Gᵁ :: ℱ𝒞
     "Vertically-integrated slow barotropic forcing function for `V` (`ReducedField` over ``z``)"
     Gⱽ :: 𝒞ℱ
-    "Depth at `(Face, Center)` (`ReducedField` over ``z``)"
-    Hᶠᶜ :: ℱ𝒞
-    "Depth at `(Center, Face)` (`ReducedField` over ``z``)"
-    Hᶜᶠ :: 𝒞ℱ
-    "Depth at `(Center, Center)` (`ReducedField` over ``z``)"
-    Hᶜᶜ :: 𝒞𝒞
-    "kernel size for barotropic time stepping"
-    Hᶠᶠ :: ℱℱ
     "kernel size for barotropic time stepping"
     kernel_parameters :: 𝒦
 end
@@ -241,40 +233,9 @@ function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
     Gᵁ = Field{Face,   Center, Nothing}(grid)
     Gⱽ = Field{Center, Face,   Nothing}(grid)
 
-    Hᶜᶜ = Field{Center, Center, Nothing}(grid)
-    Hᶠᶜ = Field{Face,   Center, Nothing}(grid)
-    Hᶜᶠ = Field{Center, Face,   Nothing}(grid)
-    Hᶠᶠ = Field{Face,   Face,   Nothing}(grid)
-
-    compute_column_height!(Hᶜᶜ, Hᶠᶜ, Hᶜᶠ, Hᶠᶠ, grid)
-
     kernel_parameters = :xy
 
-    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, Hᶠᶠ, kernel_parameters)
-end
-
-function compute_column_height!(Hᶜᶜ, Hᶠᶜ, Hᶜᶠ, Hᶠᶠ, grid)
-
-    arch = architecture(grid)
-    Hx, Hy, _ = halo_size(grid)
-    Nx, Ny, _ = size(grid)
-
-    params = KernelParameters(-Hx+2:Nx+Hx-1, -Hy+2:Ny+Hy-1)
-
-    launch!(arch, grid, params, _compute_column_height!, Hᶜᶜ, grid, c, c, Δrᶜᶜᶜ)
-    launch!(arch, grid, params, _compute_column_height!, Hᶠᶜ, grid, f, c, Δrᶠᶜᶜ)
-    launch!(arch, grid, params, _compute_column_height!, Hᶜᶠ, grid, c, f, Δrᶜᶠᶜ)
-    launch!(arch, grid, params, _compute_column_height!, Hᶠᶠ, grid, f, f, Δrᶠᶠᶜ)
-
-    return nothing
-end
-
-@kernel function _compute_column_height!(H, grid, LX, LY, Δz)
-    i, j = @index(Global, NTuple)
-    Nz = size(grid, 3)
-    @inbounds for k in 1:Nz
-        H[i, j, 1] += ifelse(immersed_peripheral_node(i, j, k, grid, LX, LY, c), 0, Δz(i, j, k, grid))
-    end
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, kernel_parameters)
 end
 
 """

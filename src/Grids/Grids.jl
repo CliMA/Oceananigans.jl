@@ -19,6 +19,7 @@ export spacings
 export xspacings, yspacings, zspacings, xspacing, yspacing, zspacing
 export minimum_xspacing, minimum_yspacing, minimum_zspacing
 export ZStarVerticalCoordinate, vertical_scaling, previous_vertical_scaling, reference_zspacings
+export domain_depthᶜᶜᵃ, domain_depthᶠᶜᵃ, domain_depthᶜᶠᵃ, domain_depthᶠᶠᵃ
 export offset_data, new_data
 export on_architecture
 
