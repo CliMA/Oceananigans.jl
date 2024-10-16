@@ -9,6 +9,7 @@ const κ = 0.4
 function run_wall_flow(closure; arch=CPU(), H=1, L=2π*H, N=32, u★=1, z₀ = 1e-4*H, stop_time=30)
     grid = RectilinearGrid(arch, size=(N, N, N÷2), topology=(Periodic, Periodic, Bounded),
                            x=(0, L), y=(0, L), z=(0, H))
+    @show grid
 
     z₁ = first(znodes(grid, Center()))
     cᴰ = (κ / log(z₁ / z₀))^2
@@ -23,7 +24,7 @@ function run_wall_flow(closure; arch=CPU(), H=1, L=2π*H, N=32, u★=1, z₀ = 1
     u_forcing = Forcing(x_pressure_gradient, parameters=(; u★, H))
 
     model = NonhydrostaticModel(; grid, timestepper = :RungeKutta3,
-                                advection = UpwindBiasedFifthOrder(),
+                                advection = WENO(grid, order=5),
                                 boundary_conditions = (; u=u_bcs, v=v_bcs),
                                 forcing = (; u = u_forcing),
                                 closure = closure)
@@ -72,7 +73,7 @@ end
 closures = [SmagorinskyLilly(), ScaleInvariantSmagorinsky(averaging = (1,2), update_interval=5)]
 for closure in closures
     @info "Running" closure
-    run_wall_flow(closure, N=32, stop_time=60)
+    run_wall_flow(closure, N=64, stop_time=60, arch=GPU())
 end
 
 
@@ -84,7 +85,7 @@ using Statistics: mean
 set_theme!(Theme(fontsize = 18))
 fig = Figure(size = (800, 500))
 ax1 = Axis(fig[2, 1]; xlabel = "cₛ", ylabel = "z", limits = ((0, 0.3), (0, 0.8)))
-ax2 = Axis(fig[2, 2]; xlabel = "z", ylabel = "U", limits = ((1e-3, 4e-1), (10, 20)), xscale = log10)
+ax2 = Axis(fig[2, 2]; xlabel = "z", ylabel = "U", limits = ((1e-3, 1), (10, 30)), xscale = log10)
 ax3 = Axis(fig[2:3, 3]; xlabel = "ϕ = κ z ∂z(U) / u★", ylabel = "z", limits = ((0.0, 2.0), (0, 0.8)))
 ax4 = Axis(fig[3, 1]; xlabel = "x (SmagLilly)", ylabel = "y")
 ax5 = Axis(fig[3, 2]; xlabel = "x (ScaleInv)", ylabel = "y")
@@ -104,10 +105,6 @@ for (i, closure) in enumerate(closures)
     cₛ² = mean(sqrt.(max.(ds["cₛ²"], 0))[:, end-Δt:end], dims=2)[:, 1]
     scatterlines!(ax1, cₛ², zc, color=colors[i], markercolor=colors[i], label=closure_name)
 
-    if i == 1
-        û = (ds.attrib["u★"] / κ) * log.(zc / ds.attrib["z₀"])
-        lines!(ax2, zc, û, color=:black)
-    end
     #U = @lift ds["U"][:, $n]
     U = mean(ds["U"][:, end-Δt:end], dims=2)[:, 1]
     scatterlines!(ax2, zc, U, color=colors[i], markercolor=colors[i])
@@ -115,6 +112,12 @@ for (i, closure) in enumerate(closures)
     #ϕ = @lift ds["ϕ"][:, $n]
     ϕ = mean(ds["ϕ"][:, end-Δt:end], dims=2)[:, 1]
     scatterlines!(ax3, ϕ, zc, color=colors[i], markercolor=colors[i])
+
+    if i == 1
+        û = (ds.attrib["u★"] / κ) * log.(zc / ds.attrib["z₀"])
+        lines!(ax2, zc, û, color=:black)
+        lines!(ax3, ones(length(zc)), zc, color=:black, linestyle=:dash)
+    end
 
     u = @lift ds["u"][:, :, 4, $n]
     heatmap!(fig[3, i], xc, yc, u,)
@@ -126,7 +129,6 @@ axislegend(ax1, labelsize=10)
 title = @lift "t = " * string(round(times[$n], digits=2))
 Label(fig[1, 1:2], title, fontsize=24, tellwidth=false)
 frames = 1:length(times)
-@info "Making a neat animation of vorticity and speed..."
 record(fig, simname * ".mp4", frames, framerate=8) do i
     n[] = i
 end
