@@ -141,7 +141,7 @@ const AGFBIB = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Abstrac
 XFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
 YFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:AbstractGridFittedBottom}
 
-@inline domain_depthᶠᶜᵃ(i, j, k, ibg::XFlatAGFIBG) = domain_depthᶜᶜᵃ(i, j, ibg)
-@inline domain_depthᶜᶠᵃ(i, j, k, ibg::YFlatAGFIBG) = domain_depthᶜᶜᵃ(i, j, ibg)
-@inline domain_depthᶠᶠᵃ(i, j, k, ibg::XFlatAGFIBG) = domain_depthᶜᶠᵃ(i, j, ibg)
-@inline domain_depthᶠᶠᵃ(i, j, k, ibg::YFlatAGFIBG) = domain_depthᶠᶜᵃ(i, j, ibg)
+@inline domain_depthᶠᶜᵃ(i, j, ibg::XFlatAGFIBG) = domain_depthᶜᶜᵃ(i, j, ibg)
+@inline domain_depthᶜᶠᵃ(i, j, ibg::YFlatAGFIBG) = domain_depthᶜᶜᵃ(i, j, ibg)
+@inline domain_depthᶠᶠᵃ(i, j, ibg::XFlatAGFIBG) = domain_depthᶜᶠᵃ(i, j, ibg)
+@inline domain_depthᶠᶠᵃ(i, j, ibg::YFlatAGFIBG) = domain_depthᶠᶜᵃ(i, j, ibg)
