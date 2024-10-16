@@ -111,8 +111,8 @@ correct_bottom_height!(bottom_field, grid, ib) =
     zb = @inbounds bottom_field[i, j, 1]
     condition = ib.immersed_condition
     for k in 1:grid.Nz
-        z⁺ = znode(i, j, k+1, grid, c, c, f)
-        z  = znode(i, j, k,   grid, c, c, c)
+        z⁺ = rnode(i, j, k+1, grid, c, c, f)
+        z  = rnode(i, j, k,   grid, c, c, c)
         bottom_cell = ifelse(condition isa CenterImmersedCondition, z ≤ zb, z⁺ ≤ zb)
         @inbounds bottom_field[i, j, 1] = ifelse(bottom_cell, z⁺, zb)
     end
