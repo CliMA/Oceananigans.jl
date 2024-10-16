@@ -115,7 +115,7 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0, μ=0)
     if m === μ === 0
         CUDA.@allowscalar ϕc[1, 1, 1] = 0
     elseif μ > 0
-        CUDA.@allowscalar ϕc[1, 1, 1] = - b[1, 1, 1] / (m + μ)
+        CUDA.@allowscalar ϕc[1, 1, 1] = - b[1, 1, 1] / (μ - m)
     end
 
     # Apply backward transforms in order
