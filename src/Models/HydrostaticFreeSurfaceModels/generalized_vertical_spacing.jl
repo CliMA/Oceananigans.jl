@@ -39,8 +39,8 @@ update_grid!(model, grid; kwargs...) = nothing
     C₁ = convert(FT, 1.5) + χ
     C₂ = convert(FT, 0.5) + χ
 
-    sⁿ = vertical_scaling(i, j, k, grid, c, c, c)
-    s⁻ = previous_vertical_scaling(i, j, k, grid, c, c, c)
+    sⁿ = vertical_scaling(i, j, k, grid, Center(), Center(), Center())
+    s⁻ = previous_vertical_scaling(i, j, k, grid, Center(), Center(), Center())
 
     @inbounds begin
         ∂t_sθ = C₁ * sⁿ * Gⁿ[i, j, k] - C₂ * s⁻ * G⁻[i, j, k]
@@ -78,6 +78,6 @@ end
     i, j, n = @index(Global, NTuple)
 
     @unroll for k in -Hz+1:Nz+Hz
-        tracers[n][i, j, k] /= vertical_scaling(i, j, k, grid, c, c, c)
+        tracers[n][i, j, k] /= vertical_scaling(i, j, k, grid, Center(), Center(), Center())
     end
 end

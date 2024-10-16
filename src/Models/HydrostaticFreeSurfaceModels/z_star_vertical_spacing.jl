@@ -70,20 +70,21 @@ end
     hᶠᶠ = domain_depthᶠᶠᵃ(i, j, grid)
 
     @inbounds begin
-        Hᶜᶜ = (hᶜᶜ +               η[i, j, k_top]) / hᶜᶜ
-        Hᶠᶜ = (hᶠᶜ +  ℑxᶠᵃᵃ(i, j, k_top, grid, η)) / hᶠᶜ
-        Hᶜᶠ = (hᶜᶠ +  ℑyᵃᶠᵃ(i, j, k_top, grid, η)) / hᶜᶠ
-        Hᶠᶠ = (hᶠᶠ + ℑxyᶠᶠᵃ(i, j, k_top, grid, η)) / hᶠᶠ
+        sᶜᶜ = (hᶜᶜ +               η[i, j, k_top]) / hᶜᶜ
+        sᶠᶜ = (hᶠᶜ +  ℑxᶠᵃᵃ(i, j, k_top, grid, η)) / hᶠᶜ
+        sᶜᶠ = (hᶜᶠ +  ℑyᵃᶠᵃ(i, j, k_top, grid, η)) / hᶜᶠ
+        sᶠᶠ = (hᶠᶠ + ℑxyᶠᶠᵃ(i, j, k_top, grid, η)) / hᶠᶠ
 
+        # Update previous scaling
         sᶜᶜ⁻[i, j] = sᶜᶜⁿ[i, j]
         sᶠᶜ⁻[i, j] = sᶠᶜⁿ[i, j]
         sᶜᶠ⁻[i, j] = sᶜᶠⁿ[i, j]
         
-        # update current and previous scaling
-        sᶜᶜⁿ[i, j] = Hᶜᶜ
-        sᶠᶜⁿ[i, j] = Hᶠᶜ
-        sᶜᶠⁿ[i, j] = Hᶜᶠ
-        sᶠᶠⁿ[i, j] = Hᶠᶠ
+        # update current scaling
+        sᶜᶜⁿ[i, j] = sᶜᶜ
+        sᶠᶜⁿ[i, j] = sᶠᶜ
+        sᶜᶠⁿ[i, j] = sᶜᶠ
+        sᶠᶠⁿ[i, j] = sᶠᶠ
 
         # Update η in the grid
         η_grid[i, j] = η[i, j, k_top]
