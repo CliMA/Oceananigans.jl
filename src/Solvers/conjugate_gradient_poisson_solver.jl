@@ -34,17 +34,29 @@ end
     @inbounds ∇²ϕ[i, j, k] = ∇²ᶜᶜᶜ(i, j, k, grid, ϕ)
 end
 
-function compute_laplacian!(∇²ϕ, ϕ)
+struct RegularizedLaplacian{D}
+    δ :: D
+end
+
+function (L::RegularizedLaplacian)(Lϕ, ϕ)
     grid = ϕ.grid
     arch = architecture(grid)
     fill_halo_regions!(ϕ)
-    launch!(arch, grid, :xyz, laplacian!, ∇²ϕ, grid, ϕ)
+    launch!(arch, grid, :xyz, laplacian!, Lϕ, grid, ϕ)
+
+    if !isnothing(L.δ)
+        # Add regularization
+        ϕ̄ = mean(ϕ)
+        parent(Lϕ) .+= L.δ * ϕ̄
+    end
+
     return nothing
 end
 
 struct DefaultPreconditioner end
 
 function ConjugateGradientPoissonSolver(grid;
+                                        regularization = nothing,
                                         preconditioner = DefaultPreconditioner(),
                                         reltol = sqrt(eps(grid)),
                                         abstol = sqrt(eps(grid)),
@@ -60,7 +72,8 @@ function ConjugateGradientPoissonSolver(grid;
 
     rhs = CenterField(grid)
 
-    conjugate_gradient_solver = ConjugateGradientSolver(compute_laplacian!;
+    operator = RegularizedLaplacian(regularization)
+    conjugate_gradient_solver = ConjugateGradientSolver(operator;
                                                         reltol,
                                                         abstol,
                                                         preconditioner,
