@@ -21,7 +21,10 @@ function update_grid!(model, grid::ZStarSpacingGrid; parameters = :xy)
     ∂t_s   = grid.Δzᵃᵃᶠ.∂t_s
     η_grid = grid.zᵃᵃᶠ.∂t_s
 
-    # Free surface variables
+    # Free surface variables 
+    # At the moment only SplitExplicitFreeSurface is supported,
+    # but this can be extended to other free surface solvers by calculating
+    # the barotropic velocity in this step
     U̅   = model.free_surface.state.U̅ 
     V̅   = model.free_surface.state.V̅ 
     η   = model.free_surface.η
@@ -46,14 +49,14 @@ end
 @kernel function _update_∂t_s!(∂t_s, U̅, V̅, grid)
     i, j  = @index(Global, NTuple)
     k_top = grid.Nz + 1 
+    # ∂(η / H)/∂t = - ∇ ⋅ ∫udz / H
+    δx_U = ∂xᶠᶜᶜ(i, j, k_top-1, grid, U̅)
+    δy_V = ∂yᶜᶠᶜ(i, j, k_top-1, grid, V̅)
 
-    @inbounds begin
-        # ∂(η / H)/∂t = - ∇ ⋅ ∫udz / H
-        δ_U̅h = (δxᶜᶜᶠ(i, j, k_top-1, grid, Δy_qᶠᶜᶠ, U̅) +
-                δyᶜᶜᶠ(i, j, k_top-1, grid, Δx_qᶜᶠᶠ, V̅)) / Azᶜᶜᶠ(i, j, k_top-1, grid)
+    δ_U̅h = (δx_U + δy_V) / Azᶜᶜᶠ(i, j, k_top-1, grid)
+    H    = domain_depthᶜᶜᵃ(i, j, grid)
 
-        ∂t_s[i, j, 1] = - δ_U̅h / domain_depthᶜᶜᵃ(i, j, grid)
-    end
+    @inbounds  ∂t_s[i, j] = - δ_U̅h / H
 end
 
 @kernel function _update_zstar!(sᶜᶜⁿ, sᶠᶜⁿ, sᶜᶠⁿ, sᶠᶠⁿ, sᶜᶜ⁻, sᶠᶜ⁻, sᶜᶠ⁻, η_grid, η, grid)
@@ -66,7 +69,7 @@ end
     hᶠᶠ = domain_depthᶠᶠᵃ(i, j, grid)
 
     @inbounds begin
-        Hᶜᶜ = (hᶜᶜ + η[i, j, k_top]) / hᶜᶜ
+        Hᶜᶜ = (hᶜᶜ +               η[i, j, k_top]) / hᶜᶜ
         Hᶠᶜ = (hᶠᶜ +  ℑxᶠᵃᵃ(i, j, k_top, grid, η)) / hᶠᶜ
         Hᶜᶠ = (hᶜᶠ +  ℑyᵃᶠᵃ(i, j, k_top, grid, η)) / hᶜᶠ
         Hᶠᶠ = (hᶠᶠ + ℑxyᶠᶠᵃ(i, j, k_top, grid, η)) / hᶠᶠ

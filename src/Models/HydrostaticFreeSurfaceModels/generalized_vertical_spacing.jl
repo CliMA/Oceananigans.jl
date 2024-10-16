@@ -6,7 +6,7 @@ using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, halo_size, Abstr
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.ImmersedBoundaries: ImmersedAbstractVerticalCoordinateGrid
 using Oceananigans.Utils: getnamewrapper
-using Oceananigans.Grids: with_halo, znode, ∂t_grid, vertical_scaling, previous_vertical_scaling
+using Oceananigans.Grids: with_halo, ∂t_grid, vertical_scaling, previous_vertical_scaling
 using Adapt 
 using Printf
 

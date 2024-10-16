@@ -159,10 +159,10 @@ Base.@kwdef struct SplitExplicitState{CC, ACC, FC, AFC, CF, ACF}
     U̅    :: FC
     "The time-filtered barotropic meridional velocity. (`ReducedField` over ``z``)"
     V̅    :: CF
-    "The time-filtered barotropic zonal velocity. (`ReducedField` over ``z``)"
-    Ũ    :: FC
-    "The time-filtered barotropic meridional velocity. (`ReducedField` over ``z``)"
-    Ṽ    :: CF
+    # "The time-filtered barotropic zonal velocity. (`ReducedField` over ``z``)"
+    # Ũ    :: FC
+    # "The time-filtered barotropic meridional velocity. (`ReducedField` over ``z``)"
+    # Ṽ    :: CF
 end
 
 """
@@ -197,10 +197,8 @@ function SplitExplicitState(grid::AbstractGrid, timestepper)
     
     U̅ = deepcopy(U)
     V̅ = deepcopy(V)
-    Ũ = deepcopy(U)
-    Ṽ = deepcopy(V)
 
-    return SplitExplicitState(; ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, Uᵐ⁻¹, Uᵐ⁻², V, Vᵐ⁻¹, Vᵐ⁻², η̅, U̅, V̅, Ũ, Ṽ)
+    return SplitExplicitState(; ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, Uᵐ⁻¹, Uᵐ⁻², V, Vᵐ⁻¹, Vᵐ⁻², η̅, U̅, V̅) 
 end
 
 """
@@ -282,7 +280,6 @@ a fixed number of substeps with time step size of `fractional_step_size * Δt_ba
 struct FixedSubstepNumber{B, F}
     fractional_step_size :: B
     averaging_weights    :: F
-    mass_flux_weights    :: F
 end
 
 function FixedTimeStepSize(grid;
@@ -314,18 +311,8 @@ end
 
     averaging_weights = averaging_weights[1:idx]
     averaging_weights ./= sum(averaging_weights)
-
-    mass_flux_weights = similar(averaging_weights)
-    
-    averaging_weights ./= sum(averaging_weights)
-    
-    for i in substeps:-1:1
-        mass_flux_weights[i] = sum(averaging_weights[i:substeps]) 
-    end
-    
-    mass_flux_weights ./= sum(mass_flux_weights)
-    
-    return Δτ, tuple(averaging_weights...), tuple(mass_flux_weights...)
+       
+    return Δτ, tuple(averaging_weights...)
 end
 
 function SplitExplicitSettings(grid = nothing;
@@ -370,8 +357,8 @@ function SplitExplicitSettings(grid = nothing;
         end
     end
 
-    fractional_step_size, averaging_weights, mass_flux_weights = weights_from_substeps(FT, substeps, averaging_kernel)
-    substepping = FixedSubstepNumber(fractional_step_size, averaging_weights, mass_flux_weights)
+    fractional_step_size, averaging_weights = weights_from_substeps(FT, substeps, averaging_kernel)
+    substepping = FixedSubstepNumber(fractional_step_size, averaging_weights)
 
     return SplitExplicitSettings(substepping, timestepper, settings_kwargs)
 end

@@ -229,7 +229,7 @@ end
 # For Zstar vertical spacing the vertical integral includes the dynamic height
 # Remember, the vertical coordinate has not yet been updated! 
 # For this reason the integration has to be performed manually
-@kernel function _barotropic_mode_kernel!(U, V, grid, ::Nothing, u, v, η)
+@kernel function _barotropic_mode_kernel!(U, V, grid, u, v, η)
     i, j  = @index(Global, NTuple)	
     k_top = grid.Nz + 1
 
@@ -246,31 +246,8 @@ end
     end
 end
 
-@kernel function _barotropic_mode_kernel!(U, V, grid, active_cells_map, u, v, η)
-    idx = @index(Global, Linear)
-    i, j = active_linear_index_to_tuple(idx, active_cells_map)
-    k_top = grid.Nz+1
-
-    sᶠᶜ = dynamic_domain_depthᶜᶠᵃ(i, j, k_top, grid, η) / domain_depthᶠᶜᵃ(i, j, grid)
-    sᶜᶠ = dynamic_domain_depthᶜᶠᵃ(i, j, k_top, grid, η) / domain_depthᶜᶠᵃ(i, j, grid)
-    
-    # hand unroll first loop
-    @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δrᶠᶜᶜ(i, j, 1, grid) * sᶠᶜ
-    @inbounds V[i, j, k_top-1] = v[i, j, 1] * Δrᶜᶠᶜ(i, j, 1, grid) * sᶜᶠ
-
-    @unroll for k in 2:grid.Nz
-        @inbounds U[i, j, k_top-1] += u[i, j, k] * Δrᶠᶜᶜ(i, j, k, grid) * sᶠᶜ
-        @inbounds V[i, j, k_top-1] += v[i, j, k] * Δrᶜᶠᶜ(i, j, k, grid) * sᶜᶠ
-    end
-end
-
-@inline function compute_barotropic_mode!(U, V, grid, u, v, η) 
-    active_cells_map = retrieve_surface_active_cells_map(grid)
-    
-    launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, active_cells_map, u, v, η; active_cells_map)
-
-    return nothing
-end
+@inline compute_barotropic_mode!(U, V, grid, u, v, η) =
+    launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, u, v, η)
 
 @kernel function _barotropic_split_explicit_corrector!(u, v, grid, U̅, V̅, U, V, η)
     i, j, k = @index(Global, NTuple)

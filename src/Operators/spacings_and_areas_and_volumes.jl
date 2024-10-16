@@ -296,6 +296,11 @@ for LX in (:Center, :Face)
                     @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
                 end
             end
+
+            metric_function = Symbol(:Δr, location_code(LXe, LYe, LZe))
+            @eval begin
+                @inline Δr(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric_function(i, j, k, grid)
+            end
         end
     end
 end

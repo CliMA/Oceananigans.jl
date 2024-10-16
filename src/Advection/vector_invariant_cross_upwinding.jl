@@ -17,6 +17,8 @@
 ##### Cross and Self Upwinding of the Divergence flux
 #####
 
+@inline V_times_∂t_grid(i, j, k, grid) = Vᶜᶜᶜ(i, j, k, grid) * ∂t_grid(i, j, k, grid)
+
 @inline function upwinded_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariantCrossVerticalUpwinding, u, v)
     @inbounds û = u[i, j, k]
     δ_stencil = scheme.upwinding.divergence_stencil
@@ -33,7 +35,6 @@ end
 
     δᴿ  =    _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, bias(v̂), flux_div_xyᶜᶜᶜ, δ_stencil, u, v) 
     ∂ts = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, cross_scheme, V_times_∂t_grid)
-
 
     return v̂ * (δᴿ + ∂ts)
 end

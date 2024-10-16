@@ -2,7 +2,7 @@ using Adapt
 using CUDA: CuArray
 using OffsetArrays: OffsetArray
 using Oceananigans.Utils: getnamewrapper
-using Oceananigans.Grids: total_size
+using Oceananigans.Grids: total_size, rnode
 using Oceananigans.Fields: fill_halo_regions!
 using Oceananigans.BoundaryConditions: FBC
 using Printf
@@ -132,7 +132,7 @@ end
 
 const AGFBIB = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
 
-@inline domain_depthᶜᶜᵃ(i, j, ibg::AGFBIB) = @inbounds znode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.bottom_height[i, j, 1] 
+@inline domain_depthᶜᶜᵃ(i, j, ibg::AGFBIB) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.bottom_height[i, j, 1] 
 @inline domain_depthᶜᶠᵃ(i, j, ibg::AGFBIB) = min(domain_depthᶜᶜᵃ(i, j-1, ibg), domain_depthᶜᶜᵃ(i, j, ibg))
 @inline domain_depthᶠᶜᵃ(i, j, ibg::AGFBIB) = min(domain_depthᶜᶜᵃ(i-1, j, ibg), domain_depthᶜᶜᵃ(i, j, ibg))
 @inline domain_depthᶠᶠᵃ(i, j, ibg::AGFBIB) = min(domain_depthᶠᶜᵃ(i, j-1, ibg), domain_depthᶠᶜᵃ(i, j, ibg))
