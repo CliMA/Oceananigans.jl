@@ -77,7 +77,8 @@ struct ZStarVerticalCoordinate{R, SCC, SFC, SCF, SFF} <: AbstractVerticalCoordin
         ∂t_s  :: SCC
 end
 
-ZStarVerticalCoordinate(r_faces) = ZStarVerticalCoordinate(r_faces, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing)
+ZStarVerticalCoordinate(r_faces::Union{Tuple, AbstractVector}) = ZStarVerticalCoordinate(r_faces, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing)
+ZStarVerticalCoordinate(r⁻::Number, r⁺::Number) = ZStarVerticalCoordinate((r⁻, r⁺), nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing)
 
 Adapt.adapt_structure(to, coord::ZStarVerticalCoordinate) = 
             ZStarSpacing(Adapt.adapt(to, coord.reference),
@@ -185,22 +186,16 @@ const F = Face
 const ZSG = ZStarUnderlyingGrid
 
 # Fallbacks
-reference_znodes(grid, ::C) = grid.zᵃᵃᶜ 
-reference_znodes(grid, ::F) = grid.zᵃᵃᶠ 
-
-reference_zspacings(grid, ::C) = grid.Δzᵃᵃᶜ
-reference_zspacings(grid, ::F) = grid.Δzᵃᵃᶠ
-
 @inline vertical_scaling(i, j, k, grid, ℓx, ℓy, ℓz) = one(grid)
 @inline previous_vertical_scaling(i, j, k, grid, ℓx, ℓy, ℓz) = one(grid)
 
 @inline ∂t_grid(i, j, k, grid) = zero(grid)
 
-reference_zspacings(grid::ZSG, ::C) = grid.Δzᵃᵃᶜ.reference
-reference_zspacings(grid::ZSG, ::F) = grid.Δzᵃᵃᶠ.reference
+@inline rnodes(grid::ZSG, ℓz::C; with_halos=false) = _property(grid.zᵃᵃᶜ.reference, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline rnodes(grid::ZSG, ℓz::F; with_halos=false) = _property(grid.zᵃᵃᶠ.reference, ℓz, topology(grid, 3), size(grid, 3), with_halos)
 
-reference_znodes(grid::ZSG, ::C) = grid.zᵃᵃᶜ.reference
-reference_znodes(grid::ZSG, ::F) = grid.zᵃᵃᶠ.reference
+@inline rspacings(grid::ZSG, ℓz::C; with_halos=false) = _property(grid.Δzᵃᵃᶜ.reference, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline rspacings(grid::ZSG, ℓz::F; with_halos=false) = _property(grid.Δzᵃᵃᶠ.reference, ℓz, topology(grid, 3), size(grid, 3), with_halos)
 
 @inline vertical_scaling(i, j, k, grid::ZSG, ::C, ::C, ::C) = @inbounds grid.Δzᵃᵃᶜ.sᶜᶜⁿ[i, j]
 @inline vertical_scaling(i, j, k, grid::ZSG, ::F, ::C, ::C) = @inbounds grid.Δzᵃᵃᶜ.sᶠᶜⁿ[i, j]

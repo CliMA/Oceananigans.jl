@@ -6,9 +6,6 @@ import Oceananigans.Grids: reference_zspacings, reference_znodes, vertical_scali
 const ImmersedAbstractVerticalCoordinateGrid = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractVerticalCoordinateUnderlyingGrid}
 const ImmersedZStarGrid = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ZStarUnderlyingGrid}
 
-reference_znodes(grid::ImmersedBoundaryGrid, ℓz) = reference_znodes(grid.underlying_grid, ℓz)
-reference_zspacings(grid::ImmersedBoundaryGrid, ℓz) = reference_zspacings(grid.underlying_grid, ℓz)
-
 @inline vertical_scaling(i, j, k, grid::ImmersedBoundaryGrid, ℓx, ℓy, ℓz) = vertical_scaling(i, j, k, grid.underlying_grid, ℓx, ℓy, ℓz)
 @inline previous_vertical_scaling(i, j, k, grid::ImmersedBoundaryGrid, ℓx, ℓy, ℓz) = previous_vertical_scaling(i, j, k, grid.underlying_grid, ℓx, ℓy, ℓz)
 @inline ∂t_grid(i, j, k, grid::ImmersedBoundaryGrid) = ∂t_grid(i, j, k, grid.underlying_grid)

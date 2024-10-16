@@ -604,7 +604,10 @@ rname(::LLG) = :z
 function nodes(grid::LLG, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
     λ = λnodes(grid, ℓx, ℓy, ℓz; with_halos)
     φ = φnodes(grid, ℓx, ℓy, ℓz; with_halos)
-    z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
+    # We use rnodes here. This is intentional. znodes return the actual zcoordinate 
+    # which might be moving in case of a ZStarVerticalCoordinate. rnodes return the
+    # reference zcoordinate which is constant.
+    z = rnodes(grid, ℓx, ℓy, ℓz; with_halos)
 
     if reshape
         # Here we have to deal with the fact that Flat directions may have
@@ -647,6 +650,8 @@ end
 
 @inline znodes(grid::LLG, ℓz::F; with_halos=false) = _property(grid.zᵃᵃᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
 @inline znodes(grid::LLG, ℓz::C; with_halos=false) = _property(grid.zᵃᵃᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline rnodes(grid::LLG, ℓz::F; with_halos=false) = _property(grid.zᵃᵃᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline rnodes(grid::LLG, ℓz::C; with_halos=false) = _property(grid.zᵃᵃᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
 
 # Convenience
 @inline λnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = λnodes(grid, ℓx; with_halos)
@@ -662,7 +667,7 @@ end
 
 @inline ξnodes(grid::LLG, ℓx, ℓy, ℓz; kwargs...) = λnodes(grid, ℓx; kwargs...)
 @inline ηnodes(grid::LLG, ℓx, ℓy, ℓz; kwargs...) = φnodes(grid, ℓy; kwargs...)
-@inline rnodes(grid::LLG, ℓx, ℓy, ℓz; kwargs...) = znodes(grid, ℓz; kwargs...)
+@inline rnodes(grid::LLG, ℓx, ℓy, ℓz; kwargs...) = rnodes(grid, ℓz; kwargs...)
 
 #####
 ##### Grid spacings in x, y, z (in meters)
@@ -710,6 +715,7 @@ end
 @inline xspacings(grid::LLG, ℓx, ℓy, ℓz; kwargs...) = xspacings(grid, ℓx, ℓy; kwargs...)
 @inline yspacings(grid::LLG, ℓx, ℓy, ℓz; kwargs...) = yspacings(grid, ℓx, ℓy; kwargs...)
 @inline zspacings(grid::LLG, ℓx, ℓy, ℓz; kwargs...) = zspacings(grid, ℓz; kwargs...)
+@inline rspacings(grid::LLG, ℓx, ℓy, ℓz; kwargs...) = rspacings(grid, ℓz; kwargs...)
 
 #####
 ##### Grid spacings in λ, φ (in degrees)
@@ -730,6 +736,8 @@ end
 @inline φspacings(grid::LLG, ℓy::F; with_halos=false) = _property(grid.Δφᵃᶠᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
 @inline zspacings(grid::LLG, ℓz::C; with_halos=false) = _property(grid.Δzᵃᵃᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
 @inline zspacings(grid::LLG, ℓz::F; with_halos=false) = _property(grid.Δzᵃᵃᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline rspacings(grid::LLG, ℓz::C; with_halos=false) = _property(grid.Δzᵃᵃᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline rspacings(grid::LLG, ℓz::F; with_halos=false) = _property(grid.Δzᵃᵃᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
 
 @inline λspacings(grid::LLG, ℓx, ℓy, ℓz; kwargs...) = λspacings(grid, ℓx; kwargs...)
 @inline φspacings(grid::LLG, ℓx, ℓy, ℓz; kwargs...) = φspacings(grid, ℓy; kwargs...)

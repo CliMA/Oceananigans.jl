@@ -6,8 +6,7 @@ using Oceananigans.AbstractOperations: GridMetricOperation
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStarSpacingGrid
 using Printf
 
-r_faces = (-20, 0)
-z_faces = ZStarVerticalCoordinate(r_faces)
+z_faces = ZStarVerticalCoordinate(-20, 0)
 
 grid = RectilinearGrid(size = (20, 20), 
                           x = (0, 64kilometers), 

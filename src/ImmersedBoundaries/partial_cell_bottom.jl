@@ -79,7 +79,7 @@ end
     for k in 1:grid.Nz
         # We use `rnode` for the `immersed_cell` because we do not want to have
         # wetting or drying that could happen for a moving grid if we use znode
-        z⁻ = rnode(i, j, k, underlying_grid, c, c, c)
+        z⁻ = rnode(i, j, k, grid, c, c, c)
         # For the same reason, here we use `Δrᶜᶜᶜ` instead of `Δzᶜᶜᶜ`
         Δz = Δrᶜᶜᶜ(i, j, k, grid)
         bottom_cell =  z⁻ + Δz * (1 - ϵ) ≤ zb
@@ -123,7 +123,7 @@ Criterion is zb ≥ z - ϵ Δz
 
 """
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::PartialCellBottom)
-    z  = znode(i, j, k+1, underlying_grid, c, c, f)
+    z  = rnode(i, j, k+1, underlying_grid, c, c, f)
     zb = @inbounds ib.bottom_height[i, j, 1]
     return z ≤ zb
 end

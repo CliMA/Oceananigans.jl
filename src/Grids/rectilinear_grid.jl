@@ -469,7 +469,10 @@ rname(::RG) = :z
 function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
     x = xnodes(grid, ℓx, ℓy, ℓz; with_halos)
     y = ynodes(grid, ℓx, ℓy, ℓz; with_halos)
-    z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
+    # We use rnodes here. This is intentional. znodes return the actual zcoordinate 
+    # which might be moving in case of a ZStarVerticalCoordinate. rnodes return the
+    # reference zcoordinate which is constant.
+    z = rnodes(grid, ℓx, ℓy, ℓz; with_halos) 
 
     if reshape
         # Here we have to deal with the fact that Flat directions may have
@@ -503,6 +506,8 @@ const C = Center
 @inline ynodes(grid::RG, ℓy::C; with_halos=false) = _property(grid.yᵃᶜᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
 @inline znodes(grid::RG, ℓz::F; with_halos=false) = _property(grid.zᵃᵃᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
 @inline znodes(grid::RG, ℓz::C; with_halos=false) = _property(grid.zᵃᵃᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline rnodes(grid::RG, ℓz::F; with_halos=false) = _property(grid.zᵃᵃᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline rnodes(grid::RG, ℓz::C; with_halos=false) = _property(grid.zᵃᵃᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
 
 # convenience
 @inline xnodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx; with_halos)
@@ -516,7 +521,7 @@ const C = Center
 
 @inline ξnodes(grid::RG, ℓx, ℓy, ℓz; kwargs...) = xnodes(grid, ℓx; kwargs...)
 @inline ηnodes(grid::RG, ℓx, ℓy, ℓz; kwargs...) = ynodes(grid, ℓy; kwargs...)
-@inline rnodes(grid::RG, ℓx, ℓy, ℓz; kwargs...) = znodes(grid, ℓz; kwargs...)
+@inline rnodes(grid::RG, ℓx, ℓy, ℓz; kwargs...) = rnodes(grid, ℓz; kwargs...)
 
 #####
 ##### Grid spacings
@@ -528,9 +533,12 @@ const C = Center
 @inline yspacings(grid::RG, ℓy::F; with_halos=false) = _property(grid.Δyᵃᶠᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
 @inline zspacings(grid::RG, ℓz::C; with_halos=false) = _property(grid.Δzᵃᵃᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
 @inline zspacings(grid::RG, ℓz::F; with_halos=false) = _property(grid.Δzᵃᵃᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline rspacings(grid::RG, ℓz::C; with_halos=false) = _property(grid.Δzᵃᵃᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline rspacings(grid::RG, ℓz::F; with_halos=false) = _property(grid.Δzᵃᵃᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
 
 @inline xspacings(grid::RG, ℓx, ℓy, ℓz; kwargs...) = xspacings(grid, ℓx; kwargs...)
 @inline yspacings(grid::RG, ℓx, ℓy, ℓz; kwargs...) = yspacings(grid, ℓy; kwargs...)
 @inline zspacings(grid::RG, ℓx, ℓy, ℓz; kwargs...) = zspacings(grid, ℓz; kwargs...)
+@inline rspacings(grid::RG, ℓx, ℓy, ℓz; kwargs...) = zspacings(grid, ℓz; kwargs...)
 
 @inline isrectilinear(::RG) = true
