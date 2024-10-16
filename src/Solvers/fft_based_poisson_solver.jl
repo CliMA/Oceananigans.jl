@@ -112,12 +112,10 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0, μ=0)
     # If m === 0, the "zeroth mode" at `i, j, k = 1, 1, 1` is undetermined;
     # we set this to zero by default. Another slant on this "problem" is that
     # λx[1, 1, 1] + λy[1, 1, 1] + λz[1, 1, 1] = 0, which yields ϕ[1, 1, 1] = Inf or NaN.
-    if m === 0
-        if μ === 0
-            CUDA.@allowscalar ϕc[1, 1, 1] = 0
-        else
-            CUDA.@allowscalar ϕc[1, 1, 1] = - b[1, 1, 1] / μ
-        end
+    if m === μ === 0
+        CUDA.@allowscalar ϕc[1, 1, 1] = 0
+    elseif μ > 0
+        CUDA.@allowscalar ϕc[1, 1, 1] = - b[1, 1, 1] / (m + μ)
     end
 
     # Apply backward transforms in order
