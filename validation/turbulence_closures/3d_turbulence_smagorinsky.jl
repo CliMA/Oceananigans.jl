@@ -77,9 +77,11 @@ for (i, closure) in enumerate(closures)
         c²ₛ_timeseries = FieldTimeSeries(filename * ".jld2", "c²ₛ")
         c²ₛ = interior(c²ₛ_timeseries, 1, 1, 1, :)
         global cₛ = sqrt.(max.(c²ₛ, 0))
-        local ax_cₛ = Axis(fig[3, 1:length(closures)]; title = "Smagorinsky coefficient", xlabel = "Time", limits = ((0, nothing), (0, 0.2)))
+        local ax_cₛ = Axis(fig[3, 1:length(closures)]; title = "Smagorinsky coefficient", xlabel = "Time", limits = ((0, nothing), (0, 0.25)))
         lines!(ax_cₛ, times, cₛ, color=:black, label="Scale Invariant Smagorinsky")
         hlines!(ax_cₛ, [0.16], linestyle=:dash, color=:blue)
+        timesₙ = @lift times[$n]
+        vlines!(ax_cₛ, timesₙ, linestyle=:dash, color=:black)
     end
 end
 
