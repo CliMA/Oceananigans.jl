@@ -106,11 +106,7 @@ s = sqrt(u^2 + v^2)
 
 # We pass these operations to an output writer below to calculate and output them during the simulation.
 filename = "two_dimensional_turbulence"
-
-simulation.output_writers[:fields] = JLD2OutputWriter(model, (; ω, s),
-                                                      schedule = TimeInterval(0.6),
-                                                      filename = filename * ".jld2",
-                                                      overwrite_existing = true)
+output!(simulation, (; ω, s); schedule=TimeInterval(0.6), filename)
 
 # ## Running the simulation
 #
