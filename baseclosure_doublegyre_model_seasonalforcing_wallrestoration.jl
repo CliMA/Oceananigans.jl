@@ -43,7 +43,7 @@ const Lx = 4000kilometers
 const Ly = 6000kilometers
 const Lz = Nz * Δz
 
-const Δy = Ly / Ny
+const δy = Ly / Ny
 
 grid = RectilinearGrid(model_architecture, Float64,
                        topology = (Bounded, Bounded, Bounded),
@@ -107,7 +107,7 @@ v_bcs = FieldBoundaryConditions(   top = FluxBoundaryCondition(0),
 surface_T_flux_bc = FluxBoundaryCondition(surface_T_flux; field_dependencies=:T)
 
 @inline T_north_ref(z) = 10 * (1 + z / Lz)
-@inline north_T_flux(x, z, t, T) = μ_T * Δy * (T - T_north_ref(z))
+@inline north_T_flux(x, z, t, T) = μ_T * δy * (T - T_north_ref(z))
 north_T_flux_bc = FluxBoundaryCondition(north_T_flux; field_dependencies=:T)
 
 T_bcs = FieldBoundaryConditions(top = surface_T_flux_bc, north = north_T_flux_bc)
