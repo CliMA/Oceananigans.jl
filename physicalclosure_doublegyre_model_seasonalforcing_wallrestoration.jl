@@ -28,7 +28,7 @@ using Glob
 
 
 #%%
-filename = "doublegyre_seasonalforcing_30C-20C_relaxation_8days_CATKEVerticalDiffusivity"
+filename = "doublegyre_seasonalforcing_30C-20C_relaxation_wallrestoration_8days_CATKEVerticalDiffusivity"
 FILE_DIR = "./Output/$(filename)"
 # FILE_DIR = "/storage6/xinkai/NN_Oceananigans/$(filename)"
 mkpath(FILE_DIR)

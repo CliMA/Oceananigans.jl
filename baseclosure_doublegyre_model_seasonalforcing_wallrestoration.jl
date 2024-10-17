@@ -21,7 +21,7 @@ using SeawaterPolynomials:TEOS10
 using ColorSchemes
 
 #%%
-filename = "doublegyre_seasonalforcing_30C-20C_relaxation_8days_baseclosure_test"
+filename = "doublegyre_seasonalforcing_30C-20C_relaxation_wallrestoration_8days_baseclosure_test"
 FILE_DIR = "./Output/$(filename)"
 # FILE_DIR = "/storage6/xinkai/NN_Oceananigans/$(filename)"
 mkpath(FILE_DIR)
