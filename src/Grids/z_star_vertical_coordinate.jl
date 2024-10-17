@@ -77,6 +77,7 @@ struct ZStarVerticalCoordinate{R, SCC, SFC, SCF, SFF} <: AbstractVerticalCoordin
         ∂t_s  :: SCC
 end
 
+# Convenience constructors
 ZStarVerticalCoordinate(r_faces::Union{Tuple, AbstractVector}) = ZStarVerticalCoordinate(r_faces, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing)
 ZStarVerticalCoordinate(r⁻::Number, r⁺::Number) = ZStarVerticalCoordinate((r⁻, r⁺), nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing)
 
