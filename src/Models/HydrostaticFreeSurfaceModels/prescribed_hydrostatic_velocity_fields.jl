@@ -130,5 +130,5 @@ function time_step!(model::OnlyParticleTrackingModel, Δt; callbacks = [], kwarg
     update_state!(model, callbacks)
 end
 
-update_state!(model::OnlyParticleTrackingModel, callbacks) =
+update_state!(model::OnlyParticleTrackingModel, callbacks) = 
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]

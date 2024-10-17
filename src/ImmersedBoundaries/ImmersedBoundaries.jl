@@ -11,7 +11,7 @@ using Oceananigans.Utils
 using Oceananigans.Architectures
 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, time_discretization
-using Oceananigans.Grids: size_summary, inactive_node, peripheral_node, AbstractGrid
+using Oceananigans.Grids: size_summary, inactive_node, peripheral_node, AbstractGrid, AbstractUnderlyingGrid
 
 using Oceananigans.TurbulenceClosures:
     viscous_flux_ux,
@@ -47,15 +47,18 @@ import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.Grids:  cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
                             x_domain, y_domain, z_domain
 
-import Oceananigans.Grids: architecture, on_architecture, with_halo, inflate_halo_size_one_dimension,
+import Oceananigans.Grids: architecture, with_halo, inflate_halo_size_one_dimension,
                            xnode, ynode, znode, λnode, φnode, node,
                            ξnode, ηnode, rnode,
                            ξname, ηname, rname, node_names,
                            xnodes, ynodes, znodes, λnodes, φnodes, nodes,
                            ξnodes, ηnodes, rnodes,
+                           domain_depthᶜᶜᵃ, domain_depthᶠᶜᵃ, domain_depthᶜᶠᵃ, domain_depthᶠᶠᵃ,
                            inactive_cell
 
 import Oceananigans.Coriolis: φᶠᶠᵃ
+
+import Oceananigans.Architectures: on_architecture
 
 import Oceananigans.Advection:
     _advective_momentum_flux_Uu,
@@ -151,8 +154,11 @@ Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
                                      nothing,
                                      nothing)
 
-with_halo(halo, ibg::ImmersedBoundaryGrid) =
-    ImmersedBoundaryGrid(with_halo(halo, ibg.underlying_grid), ibg.immersed_boundary)
+function with_halo(halo, ibg::ImmersedBoundaryGrid)
+    new_grid = with_halo(halo, ibg.underlying_grid)
+    active_cells_map = !isnothing(ibg.interior_active_cells)
+    return ImmersedBoundaryGrid(new_grid, ibg.immersed_boundary; active_cells_map)
+end
 
 # ImmersedBoundaryGrids require an extra halo point to check the "inactivity" of a `Face` node at N + H
 # (which requires checking `Center` nodes at N + H and N + H + 1)
@@ -238,6 +244,10 @@ As well as
 
 @inline immersed_inactive_node(i, j, k, ibg::IBG, LX, LY, LZ) =  inactive_node(i, j, k, ibg, LX, LY, LZ) &
                                                                 !inactive_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
+
+# Underlying grids are never immersed!                                                                
+@inline immersed_peripheral_node(i, j, k, grid::AbstractUnderlyingGrid, LX, LY, LZ) = false
+@inline   immersed_inactive_node(i, j, k, grid::AbstractUnderlyingGrid, LX, LY, LZ) = false
 
 #####
 ##### Utilities
@@ -341,5 +351,8 @@ include("immersed_reductions.jl")
 
 # Extension to distributed Immersed boundaries
 include("distributed_immersed_boundaries.jl")
+
+# Extension to Immersed boundaries with turbulence closures
+include("abstract_zstar_immersed_grid.jl")
 
 end # module
