@@ -63,8 +63,8 @@ function ConjugateGradientPoissonSolver(grid;
                                         kw...)
 
     if preconditioner isa DefaultPreconditioner # try to make a useful default
-        if grid isa ImmersedBoundaryGrid && grid.underlying_grid isa GridWithFFTSolver
-            preconditioner = fft_poisson_solver(grid.underlying_grid)
+        if has_fft_poisson_solver(grid)
+            preconditioner = fft_poisson_solver(grid)
         else
             preconditioner = NearDiagonalPoissonPreconditioner()
         end

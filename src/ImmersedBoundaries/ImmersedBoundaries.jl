@@ -304,6 +304,12 @@ end
 
 isrectilinear(ibg::IBG) = isrectilinear(ibg.underlying_grid)
 
+# TODO: eliminate when ImmersedBoundaries precedes Solvers
+# This is messy because IBG does _not_ have a Poisson solver, only the underlying grid does
+import Oceananigans.Solvers: has_fft_poisson_solver, fft_poisson_solver
+has_fft_poisson_solver(ibg::IBG) = has_fft_poisson_solver(ibg.underlying_grid)
+fft_poisson_solver(ibg::IBG) = fft_poisson_solver(ibg.underlying_grid)
+
 @inline fractional_x_index(x, locs, grid::ImmersedBoundaryGrid) = fractional_x_index(x, locs, grid.underlying_grid)
 @inline fractional_y_index(x, locs, grid::ImmersedBoundaryGrid) = fractional_y_index(x, locs, grid.underlying_grid)
 @inline fractional_z_index(x, locs, grid::ImmersedBoundaryGrid) = fractional_z_index(x, locs, grid.underlying_grid)
