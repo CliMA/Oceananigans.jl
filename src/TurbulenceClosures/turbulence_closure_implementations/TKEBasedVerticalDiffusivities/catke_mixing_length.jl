@@ -5,7 +5,7 @@ using ..TurbulenceClosures:
     height_above_bottomᶜᶜᶠ,
     depthᶜᶜᶜ,
     height_above_bottomᶜᶜᶜ,
-    total_depthᶜᶜᵃ
+    domain_depthᶜᶜᵃ
 
 """
     struct CATKEMixingLength{FT}
@@ -232,7 +232,7 @@ end
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
     ℓu = max(ℓ★, ℓʰ)
 
-    H = total_depthᶜᶜᵃ(i, j, grid)
+    H = domain_depthᶜᶜᵃ(i, j, grid)
     return min(H, ℓu)
 end
 
@@ -252,7 +252,7 @@ end
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
     ℓc = max(ℓ★, ℓʰ)
 
-    H = total_depthᶜᶜᵃ(i, j, grid)
+    H = domain_depthᶜᶜᵃ(i, j, grid)
     return min(H, ℓc)
 end
 
@@ -272,7 +272,7 @@ end
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
     ℓe = max(ℓ★, ℓʰ)
 
-    H = total_depthᶜᶜᵃ(i, j, grid)
+    H = domain_depthᶜᶜᵃ(i, j, grid)
     return min(H, ℓe)
 end
 

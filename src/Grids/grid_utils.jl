@@ -315,6 +315,15 @@ coordinate_summary(topo, Δ::Union{AbstractVector, AbstractMatrix}, name) =
              name, prettysummary(maximum(parent(Δ))))
 
 #####
+##### Bottom height
+#####
+
+@inline domain_depthᶜᶜᵃ(i, j, grid) = grid.Lz
+@inline domain_depthᶜᶠᵃ(i, j, grid) = grid.Lz
+@inline domain_depthᶠᶜᵃ(i, j, grid) = grid.Lz
+@inline domain_depthᶠᶠᵃ(i, j, grid) = grid.Lz
+
+#####
 ##### Spherical geometry
 #####
 
