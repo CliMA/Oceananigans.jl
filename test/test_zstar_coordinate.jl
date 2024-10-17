@@ -15,15 +15,25 @@ function test_zstar_coordinate(model, Ni, Δt)
     # (2) vertical velocities are zero at the top surface
     for _ in 1:Ni
         time_step!(model, Δt)
-        ∫b = Field(Integral(model.tracers.b))
-        ∫c = Field(Integral(model.tracers.c))
-
-        @test interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
-        @test interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)
-        @test maximum(interior(w, :, :, Nz+1)) < eps(eltype(w))
     end
 
+    ∫b = Field(Integral(model.tracers.b))
+    ∫c = Field(Integral(model.tracers.c))
+
+    @test interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
+    @test interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)
+    @test maximum(interior(w, :, :, Nz+1)) < eps(eltype(w))
+
     return nothing
+end
+
+function info_message(grid)
+    msg1 = "Testing z-star coordinates on $(architecture(grid)) on a "
+    msg2 = string(getnamewrapper(grid))
+    msg3 = grid.Δzᵃᵃᶠ.reference isa Number ? " with uniform spacing" : " with stretched spacing"
+    msg4 = grid isa ImmersedBoundaryGrid ? " and $(string(getnamewrapper(grid.immersed_boundary))) immersed boundary" : ""
+
+    return msg1 * msg2 * msg3 * msg4
 end
 
 @testset "ZStar coordinate testset" begin
@@ -62,7 +72,7 @@ end
             end
 
             for grid in grids
-                @info "  Testing z-star coordinates on $(summary(grid))..."
+                @info info_message(grid)
 
                 free_surface = SplitExplicitFreeSurface(grid; cfl = 0.75)
                 model = HydrostaticFreeSurfaceModel(; grid, 
