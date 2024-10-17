@@ -1,6 +1,7 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStar
+using Random
+using Oceananigans.ImmersedBoundaries: PartialCellBottom
 
 function test_zstar_coordinate(model, Ni, Δt)
     
@@ -25,39 +26,56 @@ function test_zstar_coordinate(model, Ni, Δt)
     return nothing
 end
 
+@testset "ZStar coordinate testset" begin
 
-@testset "Testing z-star coordinates" begin
-
-    z_uniform   = ZStarVerticalCoordinate((-10, 0))
+    z_uniform   = ZStarVerticalCoordinate(-10, 0)
     z_stretched = ZStarVerticalCoordinate(collect(-10:0))
+    topologies  = ((Periodic, Periodic, Bounded), 
+                   (Periodic, Bounded, Bounded),
+                   (Bounded, Periodic, Bounded),
+                   (Bounded, Bounded, Bounded)) 
 
     for arch in archs
-        llg = LatitudeLongitudeGrid(arch; size = (10, 10, 10), latitude = (-10, 10), longitude = (-10, 10), z = z_uniform)
-        rtg = RectilinearGrid(arch; size = (10, 10, 10), x = (-10, 10), y = (-10, 10), z = z_uniform)
+        for topology in topologies
+            Random.seed!(1234)
 
-        llgv = LatitudeLongitudeGrid(arch; size = (10, 10, 10), latitude = (-10, 10), longitude = (-10, 10), z = z_stretched)
-        rtgv = RectilinearGrid(arch; size = (10, 10, 10), x = (-10, 10), y = (-10, 10), z = z_stretched)
+            rtg  = RectilinearGrid(arch; size = (10, 10, 10), x = (-10, 10), y = (-10, 10), topology, z = z_uniform)
+            rtgv = RectilinearGrid(arch; size = (10, 10, 10), x = (-10, 10), y = (-10, 10), topology, z = z_stretched)
+            
+            irtg  = ImmersedBoundaryGrid(rtg,  GridFittedBottom((x, y) -> - rand() - 5))
+            irtgv = ImmersedBoundaryGrid(rtgv, GridFittedBottom((x, y) -> - rand() - 5))
+            prtg  = ImmersedBoundaryGrid(rtg, PartialCellBottom((x, y) -> - rand() - 5))
+            prtgv = ImmersedBoundaryGrid(rtgv, PartialCellBottom((x, y) -> - rand() - 5))
 
-        illg = ImmersedBoundaryGrid(llg, GridFittedBottom((x, y) -> - rand() - 5))
-        irtg = ImmersedBoundaryGrid(rtg, GridFittedBottom((x, y) -> - rand() - 5))
+            if topology[2] == Bounded
+                llg  = LatitudeLongitudeGrid(arch; size = (10, 10, 10), latitude = (-10, 10), longitude = (-180, 180), topology, z = z_uniform)
+                llgv = LatitudeLongitudeGrid(arch; size = (10, 10, 10), latitude = (-10, 10), longitude = (-180, 180), topology, z = z_stretched)
 
-        illgv = ImmersedBoundaryGrid(llgv, GridFittedBottom((x, y) -> - rand() - 5))
-        irtgv = ImmersedBoundaryGrid(rtgv, GridFittedBottom((x, y) -> - rand() - 5))
+                illg  = ImmersedBoundaryGrid(llg,  GridFittedBottom((x, y) -> - rand() - 5))
+                illgv = ImmersedBoundaryGrid(llgv, GridFittedBottom((x, y) -> - rand() - 5))
+                pllg  = ImmersedBoundaryGrid(llg,  PartialCellBottom((x, y) -> - rand() - 5))
+                pllgv = ImmersedBoundaryGrid(llgv, PartialCellBottom((x, y) -> - rand() - 5))
 
-        grids = [llg, rtg, llgv, rtgv, illg, irtg, illgv, irtgv]
+                grids = [llg, rtg, llgv, rtgv, illg, irtg, illgv, irtgv, pllg, prtg, pllgv, prtgv]
+            else
+                grids = [rtg, rtgv, irtg, irtgv, prtg, prtgv]
+            end
 
-        for grid in grids
-            free_surface = SplitExplicitFreeSurface(grid; cfl = 0.75)
-            model = HydrostaticFreeSurfaceModel(; grid, 
-                                                  free_surface, 
-                                                  tracers = (:b, :c), 
-                                                  bouyancy = BuoyancTracer())
+            for grid in grids
+                @info "  Testing z-star coordinates on $(summary(grid))..."
 
-            bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01 
+                free_surface = SplitExplicitFreeSurface(grid; cfl = 0.75)
+                model = HydrostaticFreeSurfaceModel(; grid, 
+                                                      free_surface, 
+                                                      tracers = (:b, :c), 
+                                                      buoyancy = BuoyancyTracer())
 
-            set!(model, c = (x, y, z) -> rand(), b = bᵢ)
+                bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01 
 
-            test_zstar_coordinate(model, 100, 10)
+                set!(model, c = (x, y, z) -> rand(), b = bᵢ)
+
+                test_zstar_coordinate(model, 100, 10)
+            end
         end
     end
 end

@@ -54,17 +54,13 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!
 
         @testset "Inexact integration" begin
             # Test 2: Check that vertical integrals work on the CPU(). The following should be "inexact"
-            Δz = zeros(Nz)
-            Δz .= grid.Δzᵃᵃᶠ
 
             set_u_check(x, y, z) = cos((π / 2) * z / Lz)
             set_U_check(x, y, z) = (sin(0) - (-2 * Lz / (π)))
             set!(u, set_u_check)
             exact_U = similar(U)
             set!(exact_U, set_U_check)
-            Hᶠᶜ = auxiliary.Hᶠᶜ
-            Hᶜᶠ = auxiliary.Hᶜᶠ
-            compute_barotropic_mode!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, η̅)
+            compute_barotropic_mode!(U, V, grid, u, v, η̅)
             tolerance = 1e-3
             @test all((Array(interior(U) .- interior(exact_U))) .< tolerance)
 
@@ -73,22 +69,20 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!
             set!(v, set_v_check)
             exact_V = similar(V)
             set!(exact_V, set_V_check)
-            compute_barotropic_mode!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, η̅)
+            compute_barotropic_mode!(U, V, grid, u, v, η̅)
             @test all((Array(interior(V) .- interior(exact_V))) .< tolerance)
         end
 
         @testset "Vertical Integral " begin
-            Δz = zeros(Nz)
-            Δz .= grid.Δzᵃᵃᶜ
 
             u .= 0.0
             U .= 1.0
-            compute_barotropic_mode!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, η̅)
+            compute_barotropic_mode!(U, V, grid, u, v, η̅)
             @test all(Array(U.data.parent) .== 0.0)
 
             u .= 1.0
             U .= 1.0
-            compute_barotropic_mode!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, η̅)
+            compute_barotropic_mode!(U, V, grid, u, v, η̅)
             @test all(Array(interior(U)) .≈ Lz)
 
             set_u_check(x, y, z) = sin(x)
@@ -96,7 +90,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!
             set!(u, set_u_check)
             exact_U = similar(U)
             set!(exact_U, set_U_check)
-            compute_barotropic_mode!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, η̅)
+            compute_barotropic_mode!(U, V, grid, u, v, η̅)
             @test all(Array(interior(U)) .≈ Array(interior(exact_U)))
 
             set_v_check(x, y, z) = sin(x) * z * cos(y)
@@ -104,7 +98,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!
             set!(v, set_v_check)
             exact_V = similar(V)
             set!(exact_V, set_V_check)
-            compute_barotropic_mode!(U, V, grid, u, v, Hᶠᶜ, Hᶜᶠ, η̅)
+            compute_barotropic_mode!(U, V, grid, u, v, η̅)
             @test all(Array(interior(V)) .≈ Array(interior(exact_V)))
         end
 
@@ -143,9 +137,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!
             set!(v, set_v)
             set!(V̅, set_V̅)
             set!(v_corrected, set_v_corrected)
-
-            Δz = zeros(Nz)
-            Δz .= grid.Δzᵃᵃᶜ
 
             barotropic_split_explicit_corrector!(u, v, sefs, grid)
             @test all(Array((interior(u) .- interior(u_corrected))) .< 1e-14)
