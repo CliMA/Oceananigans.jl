@@ -3,11 +3,20 @@ using Oceananigans.DistributedComputations: DistributedGrid, DistributedField
 using Oceananigans.DistributedComputations: SynchronizedDistributed, synchronize_communication!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitFreeSurface
 
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: FreeSurface, SplitExplicitAuxiliaryFields
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface, SplitExplicitAuxiliaryFields
 
 function SplitExplicitAuxiliaryFields(grid::DistributedGrid)
     
-    Nz = size(grid, 3)
+    Gᵁ = Field((Face,   Center, Nothing), grid)
+    Gⱽ = Field((Center, Face,   Nothing), grid)
+    
+    Hᶠᶜ = Field((Face,   Center, Nothing), grid)
+    Hᶜᶠ = Field((Center, Face,   Nothing), grid)
+
+    calculate_column_height!(Hᶠᶜ, (Face, Center, Center))
+    calculate_column_height!(Hᶜᶠ, (Center, Face, Center))
+
+    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ))
 
     Gᵁ = XFaceField(grid, indices = (:, :, Nz))
     Gⱽ = YFaceField(grid, indices = (:, :, Nz))
@@ -18,7 +27,13 @@ function SplitExplicitAuxiliaryFields(grid::DistributedGrid)
 
     kernel_parameters = KernelParameters(kernel_size, kernel_offsets)
     
-    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, kernel_parameters)
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, kernel_parameters)
+end
+
+"""Integrate z at locations `location` and set! `height`` with the result"""
+@inline function calculate_column_height!(height, location)
+    dz = GridMetricOperation(location, Δz, height.grid)
+    return sum!(height, dz)
 end
 
 @inline function augmented_kernel_size(grid::DistributedGrid)
@@ -47,21 +62,23 @@ end
     return (Ax, Ay)
 end
 
-function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid::DistributedGrid)
+# Internal function for HydrostaticFreeSurfaceModel
+function materialize_free_surface(free_surface::SplitExplicitFreeSurface, velocities, grid::DistributedGrid)
 
         settings  = free_surface.settings 
 
         old_halos  = halo_size(grid)
         Nsubsteps  = length(settings.substepping.averaging_weights)
 
-        new_halos = distributed_split_explicit_halos(old_halos, Nsubsteps+1, grid)         
-        new_grid  = with_halo(new_halos, grid)
+        extended_halos = distributed_split_explicit_halos(old_halos, Nsubsteps+1, grid)         
+        extended_grid  = with_halo(extended_halos, grid)
 
-        η = ZFaceField(new_grid, indices = (:, :, size(new_grid, 3)+1))
+        Nze = size(extended_grid, 3)
+        η = ZFaceField(extended_grid, indices = (:, :, Nze+1))
 
         return SplitExplicitFreeSurface(η,
-                                        SplitExplicitState(new_grid, settings.timestepper),
-                                        SplitExplicitAuxiliaryFields(new_grid),
+                                        SplitExplicitState(extended_grid, settings.timestepper),
+                                        SplitExplicitAuxiliaryFields(extended_grid),
                                         free_surface.gravitational_acceleration,
                                         free_surface.settings)
 end
@@ -70,8 +87,8 @@ end
 
     Rx, Ry, _ = architecture(grid).ranks
 
-    Ax = Rx == 1 ? old_halos[1] : step_halo
-    Ay = Ry == 1 ? old_halos[2] : step_halo
+    Ax = Rx == 1 ? old_halos[1] : max(step_halo, old_halos[1])
+    Ay = Ry == 1 ? old_halos[2] : max(step_halo, old_halos[2])
 
     return (Ax, Ay, old_halos[3])
 end

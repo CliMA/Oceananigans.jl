@@ -1,8 +1,9 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVerticalDiffusivity, DiscreteDiffusionFunction
 
-using Oceananigans.TurbulenceClosures: viscosity_location, diffusivity_location
+using Oceananigans.TurbulenceClosures: viscosity_location, diffusivity_location, 
+                                       required_halo_size_x, required_halo_size_y, required_halo_size_z
 
 using Oceananigans.TurbulenceClosures: diffusive_flux_x, diffusive_flux_y, diffusive_flux_z,
                                        viscous_flux_ux, viscous_flux_uy, viscous_flux_uz,
@@ -104,21 +105,17 @@ function time_step_with_variable_isotropic_diffusivity(arch)
 
     model = NonhydrostaticModel(; grid, closure)
 
-    time_step!(model, 1, euler=true)
+    time_step!(model, 1)
     return true
 end
 
 function time_step_with_field_isotropic_diffusivity(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3))
-
     ν = CenterField(grid)
     κ = CenterField(grid)
-
     closure = ScalarDiffusivity(; ν, κ)
-
     model = NonhydrostaticModel(; grid, closure)
-
-    time_step!(model, 1, euler=true)
+    time_step!(model, 1)
     return true
 end
 
@@ -130,7 +127,7 @@ function time_step_with_variable_anisotropic_diffusivity(arch)
                                        κ = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t))
     for clo in (clov, cloh)
         model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)), closure=clo)
-        time_step!(model, 1, euler=true)
+        time_step!(model, 1)
     end
 
     return true
@@ -143,9 +140,11 @@ function time_step_with_variable_discrete_diffusivity(arch)
     closure_ν = ScalarDiffusivity(ν = νd, discrete_form=true, loc = (Face, Center, Center))
     closure_κ = ScalarDiffusivity(κ = κd, discrete_form=true, loc = (Center, Face, Center))
 
-    model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)), tracers = (:T, :S), closure=(closure_ν, closure_κ))
+    model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)),
+                                tracers = (:T, :S),
+                                closure = (closure_ν, closure_κ))
 
-    time_step!(model, 1, euler=true)
+    time_step!(model, 1)
     return true
 end
 
@@ -153,14 +152,14 @@ function time_step_with_tupled_closure(FT, arch)
     closure_tuple = (AnisotropicMinimumDissipation(FT), ScalarDiffusivity(FT))
 
     model = NonhydrostaticModel(closure=closure_tuple,
-                                grid=RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, 2, 3)))
+                                grid=RectilinearGrid(arch, FT, size=(2, 2, 2), extent=(1, 2, 3)))
 
-    time_step!(model, 1, euler=true)
+    time_step!(model, 1)
     return true
 end
 
 function run_time_step_with_catke_tests(arch, closure)
-    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3))
+    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
     buoyancy = BuoyancyTracer()
 
     # These shouldn't work (need :e in tracers)
@@ -188,7 +187,7 @@ function run_time_step_with_catke_tests(arch, closure)
 end
 
 function compute_closure_specific_diffusive_cfl(closure)
-    grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 2, 3))
+    grid = RectilinearGrid(CPU(), size=(2, 2, 2), extent=(1, 2, 3))
 
     model = NonhydrostaticModel(; grid, closure, buoyancy=BuoyancyTracer(), tracers=:b)
     dcfl = DiffusiveCFL(0.1)
@@ -216,7 +215,7 @@ end
             closure = getproperty(TurbulenceClosures, closurename)()
             @test closure isa TurbulenceClosures.AbstractTurbulenceClosure
 
-            grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 2, 3))
+            grid = RectilinearGrid(CPU(), size=(2, 2, 2), extent=(1, 2, 3))
             model = NonhydrostaticModel(grid=grid, closure=closure, tracers=:c)
             c = model.tracers.c
             u = model.velocities.u
@@ -248,6 +247,26 @@ end
             @test closure.κ.T == T(κ)
             run_constant_isotropic_diffusivity_fluxdiv_tests(T)
         end
+
+        @info "  Testing ScalarDiffusivity with different halo requirements..."
+        closure = ScalarDiffusivity(ν=0.3)
+        @test required_halo_size_x(closure) == 1
+        @test required_halo_size_y(closure) == 1
+        @test required_halo_size_z(closure) == 1
+
+        closure = ScalarBiharmonicDiffusivity(ν=0.3)
+        @test required_halo_size_x(closure) == 2
+        @test required_halo_size_y(closure) == 2
+        @test required_halo_size_z(closure) == 2
+
+        @inline ν(i, j, k, grid, ℓx, ℓy, ℓz, clock, fields) = ℑxᶠᵃᵃ(i, j, k, grid, ℑxᶜᵃᵃ, fields.u)
+        closure = ScalarDiffusivity(; ν, discrete_form=true, required_halo_size=2)
+        
+        @test closure.ν isa DiscreteDiffusionFunction
+        @test required_halo_size_x(closure) == 2
+        @test required_halo_size_y(closure) == 2
+        @test required_halo_size_z(closure) == 2
+
     end
 
     @testset "HorizontalScalarDiffusivity" begin

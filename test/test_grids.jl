@@ -295,17 +295,17 @@ function test_flat_size_regular_rectilinear_grid(FT)
 
     @test flat_size_regular_rectilinear_grid(FT, topology=(Flat, Flat, Flat), size=(), extent=()) === (1, 1, 1)
 
-    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(1, 1), extent=(1, 1), halo=nothing) === (0, 3, 3)
-    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Bounded),  size=(1, 1), extent=(1, 1), halo=nothing) === (3, 0, 3)
-    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Bounded, Flat),  size=(1, 1), extent=(1, 1), halo=nothing) === (3, 3, 0)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(3, 3), extent=(1, 1), halo=nothing) === (0, 3, 3)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Bounded),  size=(3, 3), extent=(1, 1), halo=nothing) === (3, 0, 3)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Bounded, Flat),  size=(3, 3), extent=(1, 1), halo=nothing) === (3, 3, 0)
 
-    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(1, 1), extent=(1, 1), halo=(2, 3)) === (0, 2, 3)
-    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Bounded),  size=(1, 1), extent=(1, 1), halo=(2, 3)) === (2, 0, 3)
-    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Bounded, Flat),  size=(1, 1), extent=(1, 1), halo=(2, 3)) === (2, 3, 0)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(3, 3), extent=(1, 1), halo=(2, 3)) === (0, 2, 3)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Bounded),  size=(3, 3), extent=(1, 1), halo=(2, 3)) === (2, 0, 3)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Bounded, Flat),  size=(3, 3), extent=(1, 1), halo=(2, 3)) === (2, 3, 0)
 
-    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Flat), size=1, extent=1, halo=2) === (2, 0, 0)
-    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Flat), size=1, extent=1, halo=2) === (0, 2, 0)
-    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Flat, Bounded),  size=1, extent=1, halo=2) === (0, 0, 2)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Flat), size=2, extent=1, halo=2) === (2, 0, 0)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Flat), size=2, extent=1, halo=2) === (0, 2, 0)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Flat, Bounded),  size=2, extent=1, halo=2) === (0, 0, 2)
 
     @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Flat, Flat), size=(), extent=(), halo=()) === (0, 0, 0)
 
@@ -917,6 +917,48 @@ end
         end
 
         @test grid isa LatitudeLongitudeGrid
+    end
+
+    @testset "Single column grids" begin
+        @info "  Testing single column grid construction..."
+
+        for arch in archs
+            for FT in float_types
+                ccc = (Center(), Center(), Center())
+                grid = RectilinearGrid(arch, FT, size=4, z=(-1, 0), topology=(Flat, Flat, Bounded))
+                x = xnodes(grid, ccc...)
+                y = ynodes(grid, ccc...)
+                @test isnothing(x)
+                @test isnothing(y)
+
+                x₀ = 1
+                y₀ = π
+                grid = RectilinearGrid(arch, FT, size=4, x=x₀, y=y₀, z=(-1, 0), topology=(Flat, Flat, Bounded))
+                x = xnodes(grid, ccc...)
+                y = ynodes(grid, ccc...)
+                @test x[1] isa FT
+                @test y[1] isa FT
+                @test x[1] == x₀
+                @test y[1] == convert(FT, y₀)
+
+                grid = LatitudeLongitudeGrid(arch, FT, size=4, z=(-1, 0), topology=(Flat, Flat, Bounded))
+                λ = λnodes(grid, ccc...)
+                φ = φnodes(grid, ccc...)
+                @test isnothing(λ)
+                @test isnothing(φ)
+
+                λ₀ = 45
+                φ₀ = 10.1
+                grid = LatitudeLongitudeGrid(arch, FT, size=4, latitude=φ₀, longitude=λ₀, z=(-1, 0),
+                                             topology=(Flat, Flat, Bounded))
+                λ = λnodes(grid, ccc...)
+                φ = φnodes(grid, ccc...)
+                @test λ[1] isa FT
+                @test φ[1] isa FT
+                @test λ[1] == λ₀
+                @test φ[1] == convert(FT, φ₀)
+            end
+        end
     end
     
     @testset "Conformal cubed sphere face grid" begin

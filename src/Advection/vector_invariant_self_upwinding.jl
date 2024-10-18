@@ -18,11 +18,10 @@
     cross_scheme = scheme.upwinding.cross_scheme
 
     @inbounds û = u[i, j, k]
-    δvˢ =    _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, cross_scheme, δy_V, u, v) 
-    δuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δx_U, δU_stencil, u, v) 
-    δuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δx_U, δU_stencil, u, v) 
+    δvˢ = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, cross_scheme, δy_V, u, v) 
+    δuᴿ =    _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, bias(û), δx_U, δU_stencil, u, v) 
 
-    return upwind_biased_product(û, δuᴸ, δuᴿ) + û * δvˢ
+    return û * (δvˢ + δuᴿ)
 end
 
 @inline function upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
@@ -31,11 +30,10 @@ end
     cross_scheme = scheme.upwinding.cross_scheme
 
     @inbounds v̂ = v[i, j, k]
-    δuˢ =    _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, cross_scheme, δx_U, u, v)
-    δvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δy_V, δV_stencil, u, v) 
-    δvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, δy_V, δV_stencil, u, v) 
+    δuˢ = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, cross_scheme, δx_U, u, v)
+    δvᴿ =    _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, bias(v̂), δy_V, δV_stencil, u, v) 
 
-    return upwind_biased_product(v̂, δvᴸ, δvᴿ) + v̂ * δuˢ
+    return v̂ * (δuˢ + δvᴿ)
 end
 
 #####
@@ -60,14 +58,10 @@ end
     δu²_stencil  = scheme.upwinding.δu²_stencil    
     cross_scheme = scheme.upwinding.cross_scheme
 
-    δKvˢ =    _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, cross_scheme, δx_v², u, v)
-    δKuᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, δx_u², δu²_stencil, u, v)
-    δKuᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, δx_u², δu²_stencil, u, v)
+    δKvˢ = _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, cross_scheme, δx_v², u, v)
+    δKuᴿ =    _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, bias(û), δx_u², δu²_stencil, u, v)
     
-    ∂Kᴸ = (δKuᴸ + δKvˢ) / Δxᶠᶜᶜ(i, j, k, grid)
-    ∂Kᴿ = (δKuᴿ + δKvˢ) / Δxᶠᶜᶜ(i, j, k, grid)
-
-    return ifelse(û > 0, ∂Kᴸ, ∂Kᴿ)
+    return (δKuᴿ + δKvˢ) / Δxᶠᶜᶜ(i, j, k, grid)
 end
 
 @inline function bernoulli_head_V(i, j, k, grid, scheme::VectorInvariantKineticEnergyUpwinding, u, v)
@@ -77,12 +71,8 @@ end
     δv²_stencil  = scheme.upwinding.δv²_stencil    
     cross_scheme = scheme.upwinding.cross_scheme
 
-    δKuˢ =    _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, cross_scheme, δy_u², u, v)
-    δKvᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, δy_v², δv²_stencil, u, v) 
-    δKvᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, δy_v², δv²_stencil, u, v) 
+    δKuˢ = _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, cross_scheme, δy_u², u, v)
+    δKvᴿ =    _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, bias(v̂), δy_v², δv²_stencil, u, v) 
     
-    ∂Kᴸ = (δKvᴸ + δKuˢ) / Δyᶜᶠᶜ(i, j, k, grid) 
-    ∂Kᴿ = (δKvᴿ + δKuˢ) / Δyᶜᶠᶜ(i, j, k, grid)
-
-    return ifelse(v̂ > 0, ∂Kᴸ, ∂Kᴿ)
+    return (δKvᴿ + δKuˢ) / Δyᶜᶠᶜ(i, j, k, grid)
 end

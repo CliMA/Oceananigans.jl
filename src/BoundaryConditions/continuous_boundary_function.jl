@@ -88,7 +88,7 @@ function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoun
                                                                              boundary_func.field_dependencies,
                                                                              indices, interps)
 
-    return BoundaryCondition(C, regularized_boundary_func)
+    return BoundaryCondition(bc.classification, regularized_boundary_func)
 end
 
 @inline domain_boundary_indices(::LeftBoundary, N) = 1, 1
@@ -217,3 +217,10 @@ Adapt.adapt_structure(to, bf::ContinuousBoundaryFunction{LX, LY, LZ, S}) where {
                                               nothing,
                                               Adapt.adapt(to, bf.field_dependencies_indices),
                                               Adapt.adapt(to, bf.field_dependencies_interp))
+
+on_architecture(to, bf::ContinuousBoundaryFunction{LX, LY, LZ, S}) where {LX, LY, LZ, S} =
+    ContinuousBoundaryFunction{LX, LY, LZ, S}(on_architecture(to, bf.func),
+                                              on_architecture(to, bf.parameters),
+                                              on_architecture(to, bf.field_dependencies),
+                                              on_architecture(to, bf.field_dependencies_indices),
+                                              on_architecture(to, bf.field_dependencies_interp))

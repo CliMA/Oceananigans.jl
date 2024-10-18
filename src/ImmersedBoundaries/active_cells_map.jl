@@ -4,60 +4,47 @@ using Oceananigans.Grids: AbstractGrid
 
 using KernelAbstractions: @kernel, @index
 
-import Oceananigans.Utils: active_cells_work_layout
+import Oceananigans.Grids: retrieve_surface_active_cells_map, retrieve_interior_active_cells_map
 
 using Oceananigans.Solvers: solve_batched_tridiagonal_system_z!, ZDirection
-using Oceananigans.DistributedComputations: DistributedGrid
+using Oceananigans.DistributedComputations: DistributedGrid, SynchronizedDistributed
 
 import Oceananigans.Solvers: solve_batched_tridiagonal_system_kernel!
 
-const ActiveSurfaceIBG          = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
-const DistributedActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid, <:Any, <:NamedTuple} # Cannot be used to dispatch in kernels!!!
-const ArrayActiveCellsIBG       = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
-const NamedTupleActiveCellsIBG  = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NamedTuple}
-const ActiveCellsIBG            = Union{DistributedActiveCellsIBG, ArrayActiveCellsIBG, NamedTupleActiveCellsIBG}
+# REMEMBER: since the active map is stripped out of the grid when `Adapt`ing to the GPU, 
+# The following types cannot be used to dispatch in kernels!!!
 
-struct InteriorMap end
-struct SurfaceMap end
+# An IBG with a single interior active cells map that includes the whole :xyz domain
+const WholeActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
 
-struct WestMap  end
-struct EastMap  end
-struct SouthMap end
-struct NorthMap end
+# An IBG with an interior active cells map subdivided in 5 different sub-maps.
+# Only used (for the moment) in the case of distributed architectures where the boundary adjacent region 
+# has to be computed separately, these maps hold the active region in the "halo-independent" part of the domain
+# (; halo_independent_cells), and the "halo-dependent" regions in the west, east, north, and south, respectively
+const SplitActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NamedTuple}
 
-active_map(::Val{:west})  = WestMap()
-active_map(::Val{:east})  = EastMap()
-active_map(::Val{:south}) = SouthMap()
-active_map(::Val{:north}) = NorthMap()
-
-@inline use_only_active_surface_cells(::AbstractGrid)               = nothing
-@inline use_only_active_surface_cells(::ActiveSurfaceIBG)           = SurfaceMap()
-
-@inline use_only_active_interior_cells(::AbstractGrid)              = nothing
-@inline use_only_active_interior_cells(::ActiveCellsIBG)            = InteriorMap()
-@inline use_only_active_interior_cells(::DistributedActiveCellsIBG) = InteriorMap()
+# A distributed grid with split interior map
+const DistributedActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid, <:Any, <:NamedTuple} 
 
 """
-    active_cells_work_layout(group, size, map_type, grid)
-
-Compute the work layout for active cells based on the given map type and grid.
-
-# Arguments
-- `group`: The previous workgroup.
-- `size`: The previous worksize.
-- `map_type`: The type of map (e.g., `InteriorMap`, `WestMap`, `EastMap`, `SouthMap`, `NorthMap`).
-- `grid`: The grid containing the active cells.
-
-# Returns
-- A tuple `(workgroup, worksize)` representing the work layout for active cells.
+A constant representing an immersed boundary grid, where interior active cells are mapped to linear indices in grid.interior_active_cells
 """
-@inline active_cells_work_layout(group, size, ::InteriorMap, grid::ArrayActiveCellsIBG)      = min(length(grid.interior_active_cells), 256),          length(grid.interior_active_cells)
-@inline active_cells_work_layout(group, size, ::InteriorMap, grid::NamedTupleActiveCellsIBG) = min(length(grid.interior_active_cells.interior), 256), length(grid.interior_active_cells.interior)
-@inline active_cells_work_layout(group, size, ::WestMap,     grid::NamedTupleActiveCellsIBG) = min(length(grid.interior_active_cells.west),     256), length(grid.interior_active_cells.west)
-@inline active_cells_work_layout(group, size, ::EastMap,     grid::NamedTupleActiveCellsIBG) = min(length(grid.interior_active_cells.east),     256), length(grid.interior_active_cells.east)
-@inline active_cells_work_layout(group, size, ::SouthMap,    grid::NamedTupleActiveCellsIBG) = min(length(grid.interior_active_cells.south),    256), length(grid.interior_active_cells.south)
-@inline active_cells_work_layout(group, size, ::NorthMap,    grid::NamedTupleActiveCellsIBG) = min(length(grid.interior_active_cells.north),    256), length(grid.interior_active_cells.north)
-@inline active_cells_work_layout(group, size, ::SurfaceMap,  grid::ActiveSurfaceIBG)         = min(length(grid.surface_active_cells),  256),          length(grid.surface_active_cells)
+const ActiveCellsIBG = Union{DistributedActiveCellsIBG, WholeActiveCellsMapIBG, SplitActiveCellsMapIBG}
+
+"""
+A constant representing an immersed boundary grid, where active columns in the Z-direction are mapped to linear indices in grid.active_z_columns
+"""
+const ActiveZColumnsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
+
+@inline retrieve_surface_active_cells_map(grid::ActiveZColumnsIBG) = grid.active_z_columns
+
+@inline retrieve_interior_active_cells_map(grid::WholeActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells
+@inline retrieve_interior_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells.halo_independent_cells
+@inline retrieve_interior_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:west})     = grid.interior_active_cells.west_halo_dependent_cells
+@inline retrieve_interior_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:east})     = grid.interior_active_cells.east_halo_dependent_cells
+@inline retrieve_interior_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:south})    = grid.interior_active_cells.south_halo_dependent_cells
+@inline retrieve_interior_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:north})    = grid.interior_active_cells.north_halo_dependent_cells
+@inline retrieve_interior_active_cells_map(grid::ActiveZColumnsIBG,      ::Val{:surface})  = grid.active_z_columns
 
 """
     active_linear_index_to_tuple(idx, map, grid)
@@ -66,19 +53,12 @@ Converts a linear index to a tuple of indices based on the given map and grid.
 
 # Arguments
 - `idx`: The linear index to convert.
-- `map`: The map indicating the type of index conversion to perform.
-- `grid`: The grid containing the active cells.
+- `active_cells_map`: The map containing the N-dimensional index of the active cells
 
 # Returns
 A tuple of indices corresponding to the linear index.
 """
-@inline active_linear_index_to_tuple(idx, ::InteriorMap, grid::ArrayActiveCellsIBG)      = Base.map(Int, grid.interior_active_cells[idx])
-@inline active_linear_index_to_tuple(idx, ::InteriorMap, grid::NamedTupleActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.interior[idx])
-@inline active_linear_index_to_tuple(idx, ::WestMap,     grid::NamedTupleActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.west[idx])
-@inline active_linear_index_to_tuple(idx, ::EastMap,     grid::NamedTupleActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.east[idx])
-@inline active_linear_index_to_tuple(idx, ::SouthMap,    grid::NamedTupleActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.south[idx])
-@inline active_linear_index_to_tuple(idx, ::NorthMap,    grid::NamedTupleActiveCellsIBG) = Base.map(Int, grid.interior_active_cells.north[idx])
-@inline active_linear_index_to_tuple(idx, ::SurfaceMap,  grid::ActiveSurfaceIBG)         = Base.map(Int, grid.surface_active_cells[idx])
+@inline active_linear_index_to_tuple(idx, active_cells_map) = @inbounds Base.map(Int, active_cells_map[idx])
 
 function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool = true) 
 
@@ -88,16 +68,16 @@ function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool = true)
     # Create the cells map on the CPU, then switch it to the GPU
     if active_cells_map 
         interior_map = map_interior_active_cells(ibg)
-        surface_map  = map_surface_active_cells(ibg)
+        column_map   = map_active_z_columns(ibg)
     else
         interior_map = nothing
-        surface_map  = nothing
+        column_map  = nothing
     end
 
     return ImmersedBoundaryGrid{TX, TY, TZ}(ibg.underlying_grid, 
                                             ibg.immersed_boundary, 
                                             interior_map,
-                                            surface_map)
+                                            column_map)
 end
 
 with_halo(halo, ibg::ActiveCellsIBG) =
@@ -118,23 +98,34 @@ function compute_interior_active_cells(ibg; parameters = :xyz)
     return active_cells_field
 end
 
-function compute_surface_active_cells(ibg)
-    one_field = ConditionalOperation{Center, Center, Center}(OneField(Int), identity, ibg, NotImmersed(truefunc), 0)
-    column    = sum(one_field, dims = 3)
-    is_immersed_column = KernelFunctionOperation{Center, Center, Nothing}(active_column, ibg, column)
-    active_cells_field = Field{Center, Center, Nothing}(ibg, Bool)
-    set!(active_cells_field, is_immersed_column)
-    return active_cells_field
+function compute_active_z_columns(ibg)
+    one_field = OneField(Int)
+    condition = NotImmersed(truefunc)
+    mask = 0
+
+    # Compute all the active cells in a z-column using a ConditionalOperation
+    conditional_active_cells = ConditionalOperation{Center, Center, Center}(one_field, identity, ibg, condition, mask)
+    active_cells_in_column   = sum(conditional_active_cells, dims = 3)
+
+    # Check whether the column ``i, j`` is immersed, which would correspond to `active_cells_in_column[i, j, 1] == 0`
+    is_immersed_column = KernelFunctionOperation{Center, Center, Nothing}(active_column, ibg, active_cells_in_column)
+    active_z_columns = Field{Center, Center, Nothing}(ibg, Bool)
+    set!(active_z_columns, is_immersed_column)
+
+    return active_z_columns
 end
 
+# Maximum integer represented by the 
+# `UInt8`, `UInt16` and `UInt32` types
 const MAXUInt8  = 2^8  - 1
 const MAXUInt16 = 2^16 - 1
 const MAXUInt32 = 2^32 - 1
 
 """
-    active_interior_indices(ibg; parameters = :xyz)
+    interior_active_indices(ibg; parameters = :xyz)
 
-Compute the indices of the active interior cells in the given immersed boundary grid.
+Compute the indices of the active interior cells in the given immersed boundary grid within the indices
+specified by the `parameters` keyword argument
 
 # Arguments
 - `ibg`: The immersed boundary grid.
@@ -143,7 +134,7 @@ Compute the indices of the active interior cells in the given immersed boundary 
 # Returns
 An array of tuples representing the indices of the active interior cells.
 """
-function active_interior_indices(ibg; parameters = :xyz)
+function interior_active_indices(ibg; parameters = :xyz)
     active_cells_field = compute_interior_active_cells(ibg; parameters)
     
     N = maximum(size(ibg))
@@ -151,10 +142,12 @@ function active_interior_indices(ibg; parameters = :xyz)
    
     IndicesType = Tuple{IntType, IntType, IntType}
 
-    # Cannot findall on the entire field because we incur on OOM errors
+    # Cannot findall on the entire field because we could incur on OOM errors
+    # For this reason, we split the computation in vertical levels and `findall` the active indices in 
+    # subsequent xy planes, then stitch them back together
     active_indices = IndicesType[]
     active_indices = findall_active_indices!(active_indices, active_cells_field, ibg, IndicesType)
-    active_indices = arch_array(architecture(ibg), active_indices)
+    active_indices = on_architecture(architecture(ibg), active_indices)
 
     return active_indices
 end
@@ -165,7 +158,7 @@ end
 function findall_active_indices!(active_indices, active_cells_field, ibg, IndicesType)
     
     for k in 1:size(ibg, 3)
-        interior_indices = findall(arch_array(CPU(), interior(active_cells_field, :, :, k:k)))
+        interior_indices = findall(on_architecture(CPU(), interior(active_cells_field, :, :, k:k)))
         interior_indices = convert_interior_indices(interior_indices, k, IndicesType)
         active_indices = vcat(active_indices, interior_indices)
         GC.gc()
@@ -180,7 +173,68 @@ function convert_interior_indices(interior_indices, k, IndicesType)
     return interior_indices
 end
 
-@inline add_3rd_index(t::Tuple, k) = (t[1], t[2], k) 
+@inline add_3rd_index(ij::Tuple, k) = (ij[1], ij[2], k) 
+
+# In case of a serial grid, the interior computations are performed over the whole three-dimensional
+# domain. Therefore, the `interior_active_cells` field contains the indices of all the active cells in 
+# the range 1:Nx, 1:Ny and 1:Nz (i.e., we construct the map with parameters :xyz)
+map_interior_active_cells(ibg) = interior_active_indices(ibg; parameters = :xyz)
+
+# In case of a `DistributedGrid` we want to have different maps depending on the partitioning of the domain:
+#
+# If we partition the domain in the x-direction, we typically want to have the option to split three-dimensional 
+# kernels in a `halo-independent` part in the range Hx+1:Nx-Hx, 1:Ny, 1:Nz and two `halo-dependent` computations:
+# a west one spanning 1:Hx, 1:Ny, 1:Nz and an east one spanning Nx-Hx+1:Nx, 1:Ny, 1:Nz. 
+# For this reason we need three different maps, one containing the `halo_independent` active region, a `west` map and an `east` map. 
+# For the same reason we need to construct `south` and `north` maps if we partition the domain in the y-direction.
+# Therefore, the `interior_active_cells` in this case is a `NamedTuple` containing 5 elements.
+# Note that boundary-adjacent maps corresponding to non-partitioned directions are set to `nothing`
+function map_interior_active_cells(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid})
+
+    arch = architecture(ibg)
+
+    # If we using a synchronized architecture, nothing
+    # changes with serial execution.
+    if arch isa SynchronizedDistributed
+        return interior_active_indices(ibg; parameters = :xyz)
+    end
+
+    Rx, Ry, _  = arch.ranks
+    Tx, Ty, _  = topology(ibg)
+    Nx, Ny, Nz = size(ibg)
+    Hx, Hy, _  = halo_size(ibg)
+    
+    x_boundary = (Hx, Ny, Nz)
+    y_boundary = (Nx, Hy, Nz)
+         
+    left_offsets    = (0,  0,  0)
+    right_x_offsets = (Nx-Hx, 0,     0)
+    right_y_offsets = (0,     Ny-Hy, 0)
+
+    include_west  = !isa(ibg, XFlatGrid) && (Rx != 1) && !(Tx == RightConnected)
+    include_east  = !isa(ibg, XFlatGrid) && (Rx != 1) && !(Tx == LeftConnected)
+    include_south = !isa(ibg, YFlatGrid) && (Ry != 1) && !(Ty == RightConnected)
+    include_north = !isa(ibg, YFlatGrid) && (Ry != 1) && !(Ty == LeftConnected)
+
+    west_halo_dependent_cells  = include_west  ? interior_active_indices(ibg; parameters = KernelParameters(x_boundary, left_offsets))    : nothing
+    east_halo_dependent_cells  = include_east  ? interior_active_indices(ibg; parameters = KernelParameters(x_boundary, right_x_offsets)) : nothing
+    south_halo_dependent_cells = include_south ? interior_active_indices(ibg; parameters = KernelParameters(y_boundary, left_offsets))    : nothing
+    north_halo_dependent_cells = include_north ? interior_active_indices(ibg; parameters = KernelParameters(y_boundary, right_y_offsets)) : nothing
+    
+    nx = Rx == 1 ? Nx : (Tx == RightConnected || Tx == LeftConnected ? Nx - Hx : Nx - 2Hx)
+    ny = Ry == 1 ? Ny : (Ty == RightConnected || Ty == LeftConnected ? Ny - Hy : Ny - 2Hy)
+
+    ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
+    oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
+     
+    halo_independent_cells = interior_active_indices(ibg; parameters = KernelParameters((nx, ny, Nz), (ox, oy, 0)))
+
+    return (; halo_independent_cells, 
+              west_halo_dependent_cells, 
+              east_halo_dependent_cells, 
+              south_halo_dependent_cells, 
+              north_halo_dependent_cells)
+end
 
 map_interior_active_cells(ibg) = active_interior_indices(ibg; parameters = :xyz)
 
@@ -224,9 +278,9 @@ end
 
 # If we eventually want to perform also barotropic step, `w` computation and `p` 
 # computation only on active `columns`
-function map_surface_active_cells(ibg)
-    active_cells_field = compute_surface_active_cells(ibg)
-    interior_cells     = arch_array(CPU(), interior(active_cells_field, :, :, 1))
+function map_active_z_columns(ibg)
+    active_cells_field = compute_active_z_columns(ibg)
+    interior_cells     = on_architecture(CPU(), interior(active_cells_field, :, :, 1))
   
     full_indices = findall(interior_cells)
 
@@ -235,7 +289,7 @@ function map_surface_active_cells(ibg)
     N = max(Nx, Ny)
     IntType = N > MAXUInt8 ? (N > MAXUInt16 ? (N > MAXUInt32 ? UInt64 : UInt32) : UInt16) : UInt8
     surface_map = getproperty.(full_indices, Ref(:I)) .|> Tuple{IntType, IntType}
-    surface_map = arch_array(architecture(ibg), surface_map)
+    surface_map = on_architecture(architecture(ibg), surface_map)
 
     return surface_map
 end

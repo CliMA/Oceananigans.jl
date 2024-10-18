@@ -3,11 +3,12 @@
 #####
 
 using Oceananigans.Architectures
-using Oceananigans.Utils
 using Oceananigans.Grids
-
 using Oceananigans.Grids: AbstractGrid
-import Base
+using Base: @pure
+
+import Oceananigans
+import KernelAbstractions: get, expand
 
 struct KernelParameters{S, O} end
 
@@ -30,21 +31,56 @@ kp = KernelParameters(size, offsets)
 
 # Launch a kernel with indices that range from i=1:8, j=2:7, k=3:6,
 # where i, j, k are the first, second, and third index, respectively:
-launch!(arch, grid, kp, kernel!; kernel_args...)
+
+launch!(arch, grid, kp, kernel!, kernel_args...)
+```
+
+See [`launch!`](@ref).
+"""
+KernelParameters(size, offsets) = KernelParameters{size, offsets}()
+
+"""
+    KernelParameters(range1, [range2, range3])
+
+Return parameters for launching a kernel of up to three dimensions, where the
+indices spanned by the kernel in each dimension are given by (range1, range2, range3).
+
+Example
+=======
+
+```julia
+kp = KernelParameters(1:4, 0:10)
+
+# Launch a kernel with indices that range from i=1:4, j=0:10,
+# where i, j are the first and second index, respectively.
+launch!(arch, grid, kp, kernel!, kernel_args...)
 ```
 
 See the documentation for [`launch!`](@ref).
 """
-KernelParameters(size, offsets) = KernelParameters{size, offsets}()
+function KernelParameters(r::UnitRange)
+    size = length(r)
+    offset = first(r) - 1
+    return KernelParameters(tuple(size), tuple(offset))
+end
 
-offsets(::KernelParameters{S, O}) where {S, O} = O
-offsets(workspec)  = nothing
+function KernelParameters(r1::UnitRange, r2::UnitRange)
+    size = (length(r1), length(r2))
+    offsets = (first(r1) - 1, first(r2) - 1)
+    return KernelParameters(size, offsets)
+end
+
+function KernelParameters(r1::UnitRange, r2::UnitRange, r3::UnitRange)
+    size = (length(r1), length(r2), length(r3))
+    offsets = (first(r1) - 1, first(r2) - 1, first(r3) - 1)
+    return KernelParameters(size, offsets)
+end
 
 contiguousrange(range::NTuple{N, Int}, offset::NTuple{N, Int}) where N = Tuple(1+o:r+o for (r, o) in zip(range, offset))
+flatten_reduced_dimensions(worksize, dims) = Tuple(d ∈ dims ? 1 : worksize[d] for d = 1:3)
 
-flatten_reduced_dimensions(worksize, dims) = Tuple(i ∈ dims ? 1 : worksize[i] for i = 1:3)
-
-function heuristic_workgroup(Wx, Wy, Wz=nothing)
+# This supports 2D, 3D and 4D work sizes (but the 3rd and 4th dimension are discarded)
+function heuristic_workgroup(Wx, Wy, Wz=nothing, Wt=nothing)
 
     workgroup = Wx == 1 && Wy == 1 ?
 
@@ -67,16 +103,58 @@ function heuristic_workgroup(Wx, Wy, Wz=nothing)
     return workgroup
 end
 
-work_layout(grid, ::KernelParameters{worksize}; kw...) where worksize =
-    work_layout(grid, worksize; kw...)
+periphery_offset(loc, topo, N) = 0
+periphery_offset(::Face, ::Bounded, N) = ifelse(N > 1, 1, 0)
 
-function work_layout(grid, worksize::Tuple; kw...)
-    workgroup = heuristic_workgroup(worksize...)
+drop_omitted_dims(::Val{:xyz}, xyz) = xyz
+drop_omitted_dims(::Val{:xy}, (x, y, z)) = (x, y)
+drop_omitted_dims(::Val{:xz}, (x, y, z)) = (x, z)
+drop_omitted_dims(::Val{:yz}, (x, y, z)) = (y, z)
+drop_omitted_dims(workdims, xyz) = throw(ArgumentError("Unsupported launch configuration: $workdims"))
+    
+"""
+    interior_work_layout(grid, dims, location)
+
+Returns the `workgroup` and `worksize` for launching a kernel over `dims`
+on `grid` that excludes peripheral nodes.
+The `workgroup` is a tuple specifying the threads per block in each
+dimension. The `worksize` specifies the range of the loop in each dimension.
+
+Specifying `include_right_boundaries=true` will ensure the work layout includes the
+right face end points along bounded dimensions. This requires the field `location`
+to be specified.
+
+For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
+"""
+@inline function interior_work_layout(grid, workdims::Symbol, location)
+    valdims = Val(workdims)
+    Nx, Ny, Nz = size(grid)
+
+    # just an example for :xyz
+    ℓx, ℓy, ℓz = map(instantiate, location)
+    tx, ty, tz = map(instantiate, topology(grid))
+
+    # Offsets
+    ox = periphery_offset(ℓx, tx, Nx)
+    oy = periphery_offset(ℓy, ty, Ny)
+    oz = periphery_offset(ℓz, tz, Nz)
+
+    # Worksize
+    Wx, Wy, Wz = (Nx-ox, Ny-oy, Nz-oz)
+    workgroup = heuristic_workgroup(Wx, Wy, Wz)
+    workgroup = StaticSize(workgroup)
+
+    # Adapt to workdims
+    worksize = drop_omitted_dims(valdims, (Wx, Wy, Wz))
+    offsets = drop_omitted_dims(valdims, (ox, oy, oz))
+    range = contiguousrange(worksize, offsets)
+    worksize = OffsetStaticSize(range)
+
     return workgroup, worksize
 end
 
 """
-    work_layout(grid, dims; include_right_boundaries=false, location=nothing)
+    work_layout(grid, dims, location)
 
 Returns the `workgroup` and `worksize` for launching a kernel over `dims`
 on `grid`. The `workgroup` is a tuple specifying the threads per block in each
@@ -88,85 +166,128 @@ to be specified.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
-function work_layout(grid, workdims::Symbol; include_right_boundaries=false, location=nothing, reduced_dimensions=())
-
-    Nx′, Ny′, Nz′ = include_right_boundaries ? size(location, grid) : size(grid)
-    Nx′, Ny′, Nz′ = flatten_reduced_dimensions((Nx′, Ny′, Nz′), reduced_dimensions)
-
-    workgroup = heuristic_workgroup(Nx′, Ny′, Nz′)
-
-    # Drop omitted dimemsions
-    worksize = workdims == :xyz ? (Nx′, Ny′, Nz′) :
-               workdims == :xy  ? (Nx′, Ny′) :
-               workdims == :xz  ? (Nx′, Nz′) :
-               workdims == :yz  ? (Ny′, Nz′) : throw(ArgumentError("Unsupported launch configuration: $workdims"))
-
+@inline function work_layout(grid, workdims::Symbol, reduced_dimensions)
+    valdims = Val(workdims)
+    Nx, Ny, Nz = size(grid)
+    Wx, Wy, Wz = flatten_reduced_dimensions((Nx, Ny, Nz), reduced_dimensions) # this seems to be for halo filling
+    workgroup = heuristic_workgroup(Wx, Wy, Wz)
+    worksize = drop_omitted_dims(valdims, (Wx, Wy, Wz))
     return workgroup, worksize
 end
 
-@inline active_cells_work_layout(workgroup, worksize, only_active_cells, grid) = workgroup, worksize
-
-"""
-    launch!(arch, grid, layout, kernel!, args...; kwargs...)
-
-Launches `kernel!`, with arguments `args` and keyword arguments `kwargs`,
-over the `dims` of `grid` on the architecture `arch`. kernels run on the default stream
-"""
-function launch!(arch, grid, workspec, kernel!, kernel_args...;
-                 include_right_boundaries = false,
-                 reduced_dimensions = (),
-                 location = nothing,
-                 only_active_cells = nothing,
-                 kwargs...)
-
-
-    loop! = configured_kernel(arch, grid, workspec, kernel!;
-                              include_right_boundaries,
-                              reduced_dimensions,
-                              location,
-                              only_active_cells,
-                              kwargs...)
-    
-    
-    !isnothing(loop!) && loop!(kernel_args...)
-    
-    return nothing
+function work_layout(grid, worksize::NTuple{N, Int}, reduced_dimensions) where N
+    workgroup = heuristic_workgroup(worksize...)
+    return workgroup, worksize
 end
 
-function configured_kernel(arch, grid, workspec, kernel!;
-                           include_right_boundaries = false,
-                           reduced_dimensions = (),
-                           location = nothing,
-                           only_active_cells = nothing,
-                           kwargs...)
+function work_layout(grid, ::KernelParameters{spec, offsets}, reduced_dimensions) where {spec, offsets}
+    workgroup, worksize = work_layout(grid, spec, reduced_dimensions)
+    static_workgroup = StaticSize(workgroup)
+    range = contiguousrange(worksize, offsets)
+    offset_worksize = OffsetStaticSize(range)
+    return static_workgroup, offset_worksize
+end
 
-    workgroup, worksize = work_layout(grid, workspec;
-                                    include_right_boundaries,
-                                    reduced_dimensions,
-                                    location)
+"""
+    configure_kernel(arch, grid, workspec, kernel!;
+                     exclude_periphery = false,
+                     reduced_dimensions = (),
+                     location = nothing,
+                     active_cells_map = nothing,
+                     only_local_halos = false,
+                     async = false)
 
-    offset = offsets(workspec)
+Configure `kernel!` to launch over the `dims` of `grid` on
+the architecture `arch`.
 
-    if !isnothing(only_active_cells) 
-        workgroup, worksize = active_cells_work_layout(workgroup, worksize, only_active_cells, grid) 
-        offset = nothing
+# Arguments
+============
 
-        # A non active domain! 
-        if worksize == 0
-            return nothing
-        end
+- `arch`: The architecture on which the kernel will be launched.
+- `grid`: The grid on which the kernel will be executed.
+- `workspec`: The workspec that defines the work distribution.
+- `kernel!`: The kernel function to be executed.
+
+# Keyword Arguments
+====================
+
+- `include_right_boundaries`: A boolean indicating whether to include right boundaries `(N + 1)`. Default is `false`.
+- `reduced_dimensions`: A tuple specifying the dimensions to be reduced in the work distribution. Default is an empty tuple.
+- `location`: The location of the kernel execution, needed for `include_right_boundaries`. Default is `nothing`.
+- `active_cells_map`: A map indicating the active cells in the grid. If the map is not a nothing, the workspec will be disregarded and 
+                      the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
+"""
+@inline function configure_kernel(arch, grid, workspec, kernel!;
+                                  exclude_periphery = false,
+                                  reduced_dimensions = (),
+                                  location = nothing,
+                                  active_cells_map = nothing)
+
+    if !isnothing(active_cells_map) # everything else is irrelevant
+        workgroup = min(length(active_cells_map), 256)
+        worksize = length(active_cells_map)
+    elseif exclude_periphery && !(workspec isa KernelParameters) # TODO: support KernelParameters
+        workgroup, worksize = interior_work_layout(grid, workspec, location)
+    else
+        workgroup, worksize = work_layout(grid, workspec, reduced_dimensions)
     end
 
-    # We can only launch offset kernels with Static sizes!!!!
-    loop! = isnothing(offset) ? kernel!(Architectures.device(arch), workgroup, worksize) : 
-                                kernel!(Architectures.device(arch), StaticSize(workgroup), OffsetStaticSize(contiguousrange(worksize, offset))) 
-
-    return loop!
+    dev = Architectures.device(arch)
+    loop = kernel!(dev, workgroup, worksize)
+    return loop, worksize
 end
-        
+
+       
+"""
+    launch!(arch, grid, workspec, kernel!, kernel_args...; kw...)
+
+Launches `kernel!` with arguments `kernel_args`
+over the `dims` of `grid` on the architecture `arch`.
+Kernels run on the default stream.
+
+See [configure_kernel](@ref) for more information and also a list of the
+keyword arguments `kw`.
+"""
+@inline launch!(args...; kwargs...) = _launch!(args...; kwargs...)
+
+@inline launch!(arch, grid, workspec::NTuple{N, Int}, args...; kwargs...) where N =
+    _launch!(arch, grid, workspec, args...; kwargs...)
+ 
+@inline function launch!(arch, grid, workspec_tuple::Tuple, args...; kwargs...)
+    for workspec in workspec_tuple
+        _launch!(arch, grid, workspec, args...; kwargs...)
+    end
+    return nothing
+end
+ 
 # When dims::Val
-@inline launch!(arch, grid, ::Val{workspec}, args...; kwargs...) where workspec =
-    launch!(arch, grid, workspec, args...; kwargs...)
+@inline launch!(arch, grid, ::Val{workspec}, args...; kw...) where workspec =
+    _launch!(arch, grid, workspec, args...; kw...)
+
+# Inner interface
+@inline function _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;
+                          exclude_periphery = false,
+                          reduced_dimensions = (),
+                          active_cells_map = nothing,
+                          # TODO: these two kwargs do nothing:
+                          only_local_halos = false,
+                          async = false)
+
+    location = Oceananigans.Grids.location(first_kernel_arg)
+
+    loop!, worksize = configure_kernel(arch, grid, workspec, kernel!;
+                                       location,
+                                       exclude_periphery,
+                                       reduced_dimensions,
+                                       active_cells_map)
+                                       
+    # Don't launch kernels with no size
+    if worksize != 0
+        loop!(first_kernel_arg, other_kernel_args...)
+    end
+
+    return nothing
+end
 
 #####
 ##### Extension to KA for offset indices: to remove when implemented in KA
@@ -192,10 +313,6 @@ struct OffsetStaticSize{S} <: _Size
         new{S::Tuple{Vararg}}()
     end
 end
-
-import Base
-import Base: @pure
-import KernelAbstractions: get, expand
 
 @pure OffsetStaticSize(s::Tuple{Vararg{Int}}) = OffsetStaticSize{s}() 
 @pure OffsetStaticSize(s::Int...) = OffsetStaticSize{s}() 
@@ -228,14 +345,16 @@ Base.getindex(o::KernelOffsets, args...) = getindex(o.offsets, args...)
 const OffsetNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:KernelOffsets} where N
 
 # NDRange has been modified to have offsets in place of workitems: Remember, dynamic offset kernels are not possible with this extension!!
+# TODO: maybe don't do this
 @inline function expand(ndrange::OffsetNDRange{N}, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where {N}
     nI = ntuple(Val(N)) do I
         Base.@_inline_meta
-        stride = size(workitems(ndrange), I)
+        offsets = workitems(ndrange)
+        stride = size(offsets, I)
         gidx = groupidx.I[I]
-        (gidx-1)*stride + idx.I[I] + ndrange.workitems[I]
+        (gidx - 1) * stride + idx.I[I] + ndrange.workitems[I]
     end
-    CartesianIndex(nI)
+    return CartesianIndex(nI)
 end
 
 using KernelAbstractions.NDIteration
@@ -243,9 +362,10 @@ using KernelAbstractions: ndrange, workgroupsize
 import KernelAbstractions: partition
 
 using KernelAbstractions: CompilerMetadata
-import KernelAbstractions: __ndrange
+import KernelAbstractions: __ndrange, __groupsize
 
 @inline __ndrange(::CompilerMetadata{NDRange}) where {NDRange<:OffsetStaticSize}  = CartesianIndices(get(NDRange))
+@inline __groupsize(cm::CompilerMetadata{NDRange}) where {NDRange<:OffsetStaticSize} = size(__ndrange(cm))
 
 # Kernel{<:Any, <:StaticSize, <:StaticSize} and Kernel{<:Any, <:StaticSize, <:OffsetStaticSize} are the only kernels used by Oceananigans
 const OffsetKernel = Kernel{<:Any, <:StaticSize, <:OffsetStaticSize}
@@ -259,6 +379,7 @@ function partition(kernel::OffsetKernel, inrange, ingroupsize)
     if inrange !== nothing && inrange != get(static_ndrange)
         error("Static NDRange ($static_ndrange) and launch NDRange ($inrange) differ")
     end
+
     range, offsets = getrange(static_ndrange)
 
     if static_workgroupsize <: StaticSize

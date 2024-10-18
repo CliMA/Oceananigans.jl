@@ -1,4 +1,4 @@
-import Oceananigans.Grids: required_halo_size
+import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 using Oceananigans.Utils: prettysummary
 
 """
@@ -6,11 +6,10 @@ using Oceananigans.Utils: prettysummary
 
 Holds viscosity and diffusivities for models with prescribed isotropic diffusivities.
 """
-struct ScalarBiharmonicDiffusivity{F, V, K, N} <: AbstractScalarBiharmonicDiffusivity{F, N}
+struct ScalarBiharmonicDiffusivity{F, N, V, K} <: AbstractScalarBiharmonicDiffusivity{F, N}
     ν :: V
     κ :: K
-    ScalarBiharmonicDiffusivity{F, N}(ν::V, κ::K) where {F, V, K, N} =
-        new{F, V, K, N}(ν, κ)
+    ScalarBiharmonicDiffusivity{F, N}(ν::V, κ::K) where {F, V, K, N} = new{F, N, V, K}(ν, κ)
 end
 
 # Aliases that allow specify the floating type, assuming that the discretization is Explicit in time
@@ -46,23 +45,30 @@ Keyword arguments
 
 * `ν`: Viscosity. `Number`, `AbstractArray`, `Field`, or `Function`.
 
-* `κ`: Diffusivity. `Number`, three-dimensional `AbstractArray`, `Field`, `Function`, or
+* `κ`: Diffusivity. `Number`, `AbstractArray`, `Field`, `Function`, or
        `NamedTuple` of diffusivities with entries for each tracer.
 
-* `discrete_form`: `Boolean`; default: `False`.
+* `discrete_form`: `Boolean`; default: `false`.
 
-When prescribing the viscosities or diffusivities as functions, depending on the value of keyword argument
-`discrete_form`, the constructor expects:
+* `required_halo_size = 2`: the required halo size for the closure. This value should be an integer.
+  change only if using a function for `ν` or `κ` that requires a halo size larger than 1 to compute.
 
-* `discrete_form = false` (default): functions of the grid's native coordinates and time, e.g., `(x, y, z, t)` for
-                                     a `RectilinearGrid` or `(λ, φ, z, t)` for a `LatitudeLongitudeGrid`.
+When prescribing the viscosities or diffusivities as functions, depending on the
+value of keyword argument `discrete_form`, the constructor expects:
 
-* `discrete_form = true`: 
-  * with `loc = (nothing, nothing, nothing)` (default): functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy` and `ℓz`
-                                                        either `Face()` or `Center()`.
-  * with `loc = (ℓx, ℓy, ℓz)` with `ℓx`, `ℓy` and `ℓz` either `Face()` or `Center()`: functions of `(i, j, k, grid)`.
+* `discrete_form = false` (default): functions of the grid's native coordinates
+  and time, e.g., `(x, y, z, t)` for a `RectilinearGrid` or `(λ, φ, z, t)` for
+  a `LatitudeLongitudeGrid`.
 
-* `parameters`: `NamedTuple` with parameters used by the functions that compute viscosity and/or diffusivity; default: `nothing`.
+* `discrete_form = true`:
+  - with `loc = (nothing, nothing, nothing)` (default):
+    functions of `(i, j, k, grid, ℓx, ℓy, ℓz)` with `ℓx`, `ℓy`,
+    and `ℓz` either `Face()` or `Center()`.
+  - with `loc = (ℓx, ℓy, ℓz)` with `ℓx`, `ℓy`, and `ℓz` either
+    `Face()` or `Center()`: functions of `(i, j, k, grid)`.
+
+* `parameters`: `NamedTuple` with parameters used by the functions
+  that compute viscosity and/or diffusivity; default: `nothing`.
 
 For examples see [`ScalarDiffusivity`](@ref).
 """
@@ -72,14 +78,22 @@ function ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation()
                                      discrete_form = false,
                                      loc = (nothing, nothing, nothing),
                                      parameters = nothing,
-                                     required_halo_size = 2)
+                                     required_halo_size::Int = 2) 
 
     ν = convert_diffusivity(FT, ν; discrete_form, loc, parameters)
     κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
+    
+    # Force a type-stable constructor if ν and κ are numbers
+    # This particular short-circuiting of the required_halo_size kwargs is necessary to perform parameter
+    # estimation of the diffusivity coefficients using autodiff.
+    if ν isa Number && κ isa Number
+        return ScalarBiharmonicDiffusivity{typeof(formulation), 2}(ν, κ)
+    end
+
     return ScalarBiharmonicDiffusivity{typeof(formulation), required_halo_size}(ν, κ)
 end
 
-function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{F, N}) where {F, N}
+function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{F, N, V, K}) where {F, N, V, K}
     κ = tracer_diffusivities(tracers, closure.κ)
     return ScalarBiharmonicDiffusivity{F, N}(closure.ν, κ)
 end
@@ -109,3 +123,8 @@ function Adapt.adapt_structure(to, closure::ScalarBiharmonicDiffusivity{F, <:Any
     return ScalarBiharmonicDiffusivity{F, N}(ν, κ)
 end
 
+function on_architecture(to, closure::ScalarBiharmonicDiffusivity{F, <:Any, <:Any, N}) where {F, N}
+    ν = on_architecture(to, closure.ν)
+    κ = on_architecture(to, closure.κ)
+    return ScalarBiharmonicDiffusivity{F, N}(ν, κ)
+end

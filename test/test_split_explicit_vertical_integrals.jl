@@ -1,43 +1,51 @@
 include("dependencies_for_runtests.jl")
+
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitAuxiliaryFields, SplitExplicitSettings
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!, barotropic_split_explicit_corrector!, initialize_free_surface_state!
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState,
+                                                        SplitExplicitAuxiliaryFields,
+                                                        SplitExplicitSettings
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!,
+                                                        barotropic_split_explicit_corrector!,
+                                                        initialize_free_surface_state!
 
 @testset "Barotropic Kernels" begin
 
     for arch in archs
         FT = Float64
         topology = (Periodic, Periodic, Bounded)
-        Nx = Ny = 16 * 8
-        Nz = 32
-        Nx = 128
-        Ny = 64
+        Nx, Ny, Nz = 128, 64, 32
         Lx = Ly = Lz = 2π
+
         grid = RectilinearGrid(arch, topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
 
-        tmp = SplitExplicitFreeSurface(; substeps = 200)
+        tmp = SplitExplicitFreeSurface(substeps = 200)
+
         sefs = SplitExplicitState(grid, tmp.settings.timestepper)
         sefs = SplitExplicitAuxiliaryFields(grid)
-        sefs = SplitExplicitFreeSurface(grid)
+        sefs = SplitExplicitFreeSurface(substeps = 200)
+        sefs = materialize_free_surface(sefs, nothing, grid)
 
         state = sefs.state
         auxiliary = sefs.auxiliary
         U, V, η̅, U̅, V̅ = state.U, state.V, state.η̅, state.U̅, state.V̅
         Gᵁ, Gⱽ = auxiliary.Gᵁ, auxiliary.Gⱽ
 
-        u = Field{Face,Center,Center}(grid)
-        v = Field{Center,Face,Center}(grid)
+        u = Field{Face, Center, Center}(grid)
+        v = Field{Center, Face, Center}(grid)
 
         @testset "Average to zero" begin
             # set equal to something else
             η̅ .= U̅ .= V̅ .= 1.0
+
             # now set equal to zero
             initialize_free_surface_state!(sefs.state, sefs.η, sefs.settings.timestepper)
-            # don't forget the ghost points
+
+            # don't forget the halo points
             fill_halo_regions!(η̅)
             fill_halo_regions!(U̅)
             fill_halo_regions!(V̅)
+
             # check
             @test all(Array(η̅.data.parent) .== 0.0)
             @test all(Array(U̅.data.parent .== 0.0))
@@ -102,22 +110,21 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!
             # Test 4: Test Barotropic Correction
             FT = Float64
             topology = (Periodic, Periodic, Bounded)
-            Nx = Ny = 16 * 8
-            Nz = 32
-            Nx = 128
-            Ny = 64
+            Nx, Ny, Nz = 128, 64, 32
             Lx = Ly = Lz = 2π
+
             grid = RectilinearGrid(arch, topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
 
-            sefs = SplitExplicitFreeSurface(grid)
+            sefs = SplitExplicitFreeSurface(grid, cfl=0.7)
+            sefs = materialize_free_surface(sefs, nothing, grid)
 
             state = sefs.state
             auxiliary = sefs.auxiliary
             U, V, η̅, U̅, V̅ = state.U, state.V, state.η̅, state.U̅, state.V̅
             Gᵁ, Gⱽ = auxiliary.Gᵁ, auxiliary.Gⱽ
 
-            u = Field{Face,Center,Center}(grid)
-            v = Field{Center,Face,Center}(grid)
+            u = Field{Face, Center, Center}(grid)
+            v = Field{Center, Face, Center}(grid)
             u_corrected = similar(u)
             v_corrected = similar(v)
 

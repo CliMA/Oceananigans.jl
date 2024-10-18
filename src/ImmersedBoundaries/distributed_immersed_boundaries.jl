@@ -26,12 +26,16 @@ function with_halo(new_halo, grid::DistributedImmersedBoundaryGrid)
     return ImmersedBoundaryGrid(new_underlying_grid, new_immersed_boundary)
 end
 
-function scatter_local_grids(arch::Distributed, global_grid::ImmersedBoundaryGrid, local_size)
+function scatter_local_grids(global_grid::ImmersedBoundaryGrid, arch::Distributed, local_size)
     ib = global_grid.immersed_boundary
     ug = global_grid.underlying_grid
 
-    local_ug = scatter_local_grids(arch, ug, local_size)
-    local_ib = getnamewrapper(ib)(partition_global_array(arch, ib.bottom_height, local_size))
+    local_ug = scatter_local_grids(ug, arch, local_size)
+
+    # Kinda hacky
+    local_bottom_height = partition(ib.bottom_height, arch, local_size)
+    ImmersedBoundaryConstructor = getnamewrapper(ib)
+    local_ib = ImmersedBoundaryConstructor(local_bottom_height)
     
     return ImmersedBoundaryGrid(local_ug, local_ib)
 end
@@ -75,7 +79,7 @@ function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, g
     if any(size(ib.bottom_height) .!= bottom_heigth_size)
         @warn "Resizing the bottom field to match the grids' halos"
         bottom_field = Field((Center, Center, Nothing), grid)
-        cpu_bottom   = arch_array(CPU(), ib.bottom_height)[1:Nx, 1:Ny] 
+        cpu_bottom   = on_architecture(CPU(), ib.bottom_height)[1:Nx, 1:Ny] 
         set!(bottom_field, cpu_bottom)
         fill_halo_regions!(bottom_field)
         offset_bottom_array = dropdims(bottom_field.data, dims=3)

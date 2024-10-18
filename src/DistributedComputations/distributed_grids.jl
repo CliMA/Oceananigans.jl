@@ -1,7 +1,7 @@
 using MPI
 using OffsetArrays
 using Oceananigans.Utils: getnamewrapper
-using Oceananigans.Grids: topology, size, halo_size, architecture, pop_flat_elements
+using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture, pop_flat_elements
 using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_args, validate_size
 using Oceananigans.Grids: generate_coordinate, with_precomputed_metrics
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
@@ -41,8 +41,9 @@ end
 @inline local_sizes(N, R::Fractional) = Tuple(ceil(Int, N * r) for r in R.sizes)
 @inline function local_sizes(N, R::Sizes)
     if N != sum(R.sizes)
-        @warn "The domain size specified in the architecture $(sum(R.sizes)) is inconsistent 
-               with the grid size $N: using the architecture-specified size"
+        @warn "The Sizes specified in the architecture $(R.sizes) is inconsistent  
+               with the grid size: (N = $N != sum(Sizes) = $(sum(R.sizes))). 
+               Using $(R.sizes)..."
     end
     return R.sizes
 end
@@ -65,7 +66,7 @@ function RectilinearGrid(arch::Distributed,
                          extent = nothing,
                          topology = (Periodic, Periodic, Bounded))
 
-    TX, TY, TZ, global_sz, halo, x, y, z =
+    topology, global_sz, halo, x, y, z = 
         validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
 
     local_sz = local_size(arch, global_sz)
@@ -76,14 +77,17 @@ function RectilinearGrid(arch::Distributed,
     ri, rj, rk = arch.local_index
     Rx, Ry, Rz = arch.ranks
 
-    TX = insert_connected_topology(TX, Rx, ri)
-    TY = insert_connected_topology(TY, Ry, rj)
-    TZ = insert_connected_topology(TZ, Rz, rk)
+    TX = insert_connected_topology(topology[1], Rx, ri)
+    TY = insert_connected_topology(topology[2], Ry, rj)
+    TZ = insert_connected_topology(topology[3], Rz, rk)
     
     xl = Rx == 1 ? x : partition_coordinate(x, nx, arch, 1)
     yl = Ry == 1 ? y : partition_coordinate(y, ny, arch, 2)
     zl = Rz == 1 ? z : partition_coordinate(z, nz, arch, 3)
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main
     Lx, xᶠᵃᵃ, xᶜᵃᵃ, Δxᶠᵃᵃ, Δxᶜᵃᵃ = generate_coordinate(FT, topology[1](), nx, Hx, xl, :x, child_architecture(arch))
     Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, topology[2](), ny, Hy, yl, :y, child_architecture(arch))
     Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, topology[3](), nz, Hz, zl, :z, child_architecture(arch))
@@ -113,12 +117,13 @@ function LatitudeLongitudeGrid(arch::Distributed,
                                radius = R_Earth,
                                halo = (1, 1, 1))
     
-    Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, z, topology, precompute_metrics =
-        validate_lat_lon_grid_args(FT, latitude, longitude, z, size, halo, topology, precompute_metrics)
-
-    local_sz = local_size(arch, (Nλ, Nφ, Nz))
+    topology, global_sz, halo, latitude, longitude, z, precompute_metrics =
+                validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
+                       
+    local_sz = local_size(arch, global_sz)
 
     nλ, nφ, nz = local_sz
+    Hλ, Hφ, Hz = halo
     ri, rj, rk = arch.local_index
     Rx, Ry, Rz = arch.ranks
 
@@ -158,6 +163,9 @@ function LatitudeLongitudeGrid(arch::Distributed,
     return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid)
 end
 
+# Fallback!
+reconstruct_global_grid(grid::AbstractGrid) = grid
+
 """
     reconstruct_global_grid(grid::DistributedGrid)
 
@@ -172,7 +180,7 @@ function reconstruct_global_grid(grid::DistributedRectilinearGrid)
 
     nx, ny, nz = n = size(grid)
     Hx, Hy, Hz = H = halo_size(grid)
-    Nx, Ny, Nz = map(sum, concatenate_local_sizes(n, arch))
+    Nx, Ny, Nz = global_size(arch, n)
 
     TX, TY, TZ = topology(grid)
 
@@ -185,9 +193,9 @@ function reconstruct_global_grid(grid::DistributedRectilinearGrid)
     z = cpu_face_constructor_z(grid)
 
     ## This will not work with 3D parallelizations!!
-    xG = Rx == 1 ? x : assemble_coordinate(x, nx, Rx, ri, rj, rk, arch.communicator)
-    yG = Ry == 1 ? y : assemble_coordinate(y, ny, Ry, rj, ri, rk, arch.communicator)
-    zG = Rz == 1 ? z : assemble_coordinate(z, nz, Rz, rk, ri, rj, arch.communicator)
+    xG = Rx == 1 ? x : assemble_coordinate(x, nx, arch, 1)
+    yG = Ry == 1 ? y : assemble_coordinate(y, ny, arch, 2)
+    zG = Rz == 1 ? z : assemble_coordinate(z, nz, arch, 3)
 
     child_arch = child_architecture(arch)
 
@@ -215,7 +223,7 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
 
     nλ, nφ, nz = n = size(grid)
     Hλ, Hφ, Hz = H = halo_size(grid)
-    Nλ, Nφ, Nz = map(sum, concatenate_local_sizes(n, arch))
+    Nλ, Nφ, Nz = global_size(arch, n)
 
     TX, TY, TZ = topology(grid)
 
@@ -228,9 +236,9 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
     z = cpu_face_constructor_z(grid)
 
     ## This will not work with 3D parallelizations!!
-    λG = Rx == 1 ? λ : assemble_coordinate(λ, nλ, Rx, ri, rj, rk, arch.communicator)
-    φG = Ry == 1 ? φ : assemble_coordinate(φ, nφ, Ry, rj, ri, rk, arch.communicator)
-    zG = Rz == 1 ? z : assemble_coordinate(z, nz, Rz, rk, ri, rj, arch.communicator)
+    λG = Rx == 1 ? λ : assemble_coordinate(λ, nλ, arch, 1)
+    φG = Ry == 1 ? φ : assemble_coordinate(φ, nφ, arch, 2)
+    zG = Rz == 1 ? z : assemble_coordinate(z, nz, arch, 3)
 
     child_arch = child_architecture(arch)
 
@@ -262,13 +270,17 @@ end
 # take precedence on `DistributedGrid` 
 function with_halo(new_halo, grid::DistributedRectilinearGrid) 
     new_grid = with_halo(new_halo, reconstruct_global_grid(grid))    
-    return scatter_local_grids(architecture(grid), new_grid, size(grid))
+    return scatter_local_grids(new_grid, architecture(grid), size(grid))
 end
 
 function with_halo(new_halo, grid::DistributedLatitudeLongitudeGrid) 
     new_grid = with_halo(new_halo, reconstruct_global_grid(grid))    
-    return scatter_local_grids(architecture(grid), new_grid, size(grid))
+    return scatter_local_grids(new_grid, architecture(grid), size(grid))
 end
+
+# Extending child_architecture for grids
+child_architecture(grid::AbstractGrid) = architecture(grid)
+child_architecture(grid::DistributedGrid) = child_architecture(architecture(grid))
 
 """ 
     scatter_grid_properties(global_grid)
@@ -287,13 +299,13 @@ function scatter_grid_properties(global_grid)
     return x, y, z, topo, halo
 end
 
-function scatter_local_grids(arch::Distributed, global_grid::RectilinearGrid, local_size)
+function scatter_local_grids(global_grid::RectilinearGrid, arch::Distributed, local_size)
     x, y, z, topo, halo = scatter_grid_properties(global_grid)
     global_sz = global_size(arch, local_size)
     return RectilinearGrid(arch, eltype(global_grid); size=global_sz, x=x, y=y, z=z, halo=halo, topology=topo)
 end
 
-function scatter_local_grids(arch::Distributed, global_grid::LatitudeLongitudeGrid, local_size)
+function scatter_local_grids(global_grid::LatitudeLongitudeGrid, arch::Distributed, local_size)
     x, y, z, topo, halo = scatter_grid_properties(global_grid)
     global_sz = global_size(arch, local_size)
     return LatitudeLongitudeGrid(arch, eltype(global_grid); size=global_sz, longitude=x, 
