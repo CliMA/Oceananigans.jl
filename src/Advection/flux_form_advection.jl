@@ -26,6 +26,14 @@ function FluxFormAdvection(x_advection, y_advection, z_advection)
     return FluxFormAdvection{H, FT}(x_advection, y_advection, z_advection)
 end
 
+@inline x_advection(flux_form::FluxFormAdvection) = flux_form.x
+@inline y_advection(flux_form::FluxFormAdvection) = flux_form.y
+@inline z_advection(flux_form::FluxFormAdvection) = flux_form.z
+
+@inline x_advection(advection) = advection
+@inline y_advection(advection) = advection
+@inline z_advection(advection) = advection
+
 Base.show(io::IO, scheme::FluxFormAdvection) = 
     print(io, "FluxFormAdvection with reconstructions: ", " \n",
           "    ├── x: ", summary(scheme.x), "\n",

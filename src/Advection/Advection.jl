@@ -76,6 +76,7 @@ include("vector_invariant_advection.jl")
 include("vector_invariant_self_upwinding.jl")
 include("vector_invariant_cross_upwinding.jl")
 include("flux_form_advection.jl")
+include("rotated_advection.jl")
 
 include("flat_advective_fluxes.jl")
 include("topologically_conditional_interpolation.jl")

@@ -41,6 +41,8 @@ function validate_buoyancy(buoyancy, tracers)
     return nothing
 end
 
+import Oceananigans: ∂x_b, ∂y_b, ∂z_b
+
 include("buoyancy.jl")
 include("no_buoyancy.jl")
 include("buoyancy_tracer.jl")

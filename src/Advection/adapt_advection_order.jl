@@ -45,19 +45,11 @@ function adapt_advection_order(advection, grid::AbstractGrid)
     return ifelse(changed_advection, new_advection, advection)
 end
 
-
-x_advection(flux_form::FluxFormAdvection) = flux_form.x
-y_advection(flux_form::FluxFormAdvection) = flux_form.y
-z_advection(flux_form::FluxFormAdvection) = flux_form.z
-
-x_advection(advection) = advection
-y_advection(advection) = advection
-z_advection(advection) = advection
-
 # For the moment, we do not adapt the advection order for the VectorInvariant advection scheme
 adapt_advection_order(advection::VectorInvariant, grid::AbstractGrid) = advection
 adapt_advection_order(advection::Nothing, grid::AbstractGrid) = nothing
 adapt_advection_order(advection::Nothing, N::Int, grid::AbstractGrid) = nothing
+adapt_advection_order(advection::RotatedAdvection, grid::AbstractGrid) = RotatedAdvection(adapt_advection_order(advection.upwind_scheme, grid))
 
 #####
 ##### Directional adapt advection order

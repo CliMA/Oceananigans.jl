@@ -10,6 +10,7 @@ using Oceananigans.Forcings: with_advective_forcing
 using Oceananigans.TurbulenceClosures: shear_production, buoyancy_flux, dissipation
 using Oceananigans.Utils: SumOfArrays
 using KernelAbstractions: @private
+using Oceananigans.Advection: rotated_div_Uc
 
 import Oceananigans.TurbulenceClosures: hydrostatic_turbulent_kinetic_energy_tendency
 
@@ -130,7 +131,7 @@ where `c = C[tracer_index]`.
 
     total_velocities = with_advective_forcing(forcing, total_velocities)
 
-    return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
+    return ( - rotated_div_Uc(i, j, k, grid, advection, total_velocities, c, buoyancy, tracers)
              - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
              + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
