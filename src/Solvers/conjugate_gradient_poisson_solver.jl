@@ -31,7 +31,8 @@ end
 
 @kernel function laplacian!(∇²ϕ, grid, ϕ)
     i, j, k = @index(Global, NTuple)
-    @inbounds ∇²ϕ[i, j, k] = ∇²ᶜᶜᶜ(i, j, k, grid, ϕ)
+    active = !inactive_cell(i, j, k, grid)
+    @inbounds ∇²ϕ[i, j, k] = ∇²ᶜᶜᶜ(i, j, k, grid, ϕ) * active
 end
 
 struct RegularizedLaplacian{D}
@@ -47,7 +48,10 @@ function (L::RegularizedLaplacian)(Lϕ, ϕ)
     if !isnothing(L.δ)
         # Add regularization
         ϕ̄ = mean(ϕ)
-        parent(Lϕ) .+= L.δ * ϕ̄
+        ΔLϕ = L.δ * ϕ̄
+        grid = ϕ.grid
+        arch = architecture(grid)
+        launch!(arch, grid, :xyz, subtract_and_mask!, Lϕ, grid, ΔLϕ)
     end
 
     return nothing
@@ -136,15 +140,19 @@ const FFTBasedPreconditioner = RegularizedPreconditioner{<:SolverWithFFT}
 function precondition!(p, regularized::FFTBasedPreconditioner, r, args...)
     solver = regularized.preconditioner
     compute_preconditioner_rhs!(solver, r)
-    p = solve!(p, solver)
+    solve!(p, solver)
+    regularize_poisson_solution!(p, regularized)
+    return p
+end
 
+function regularize_poisson_solution!(p, regularized)
     δ = regularized.regularization
     rhs = regularized.rhs
     mean_p = mean(p)
 
     if !isnothing(δ)
         mean_rhs = mean(rhs)
-        Δp = mean_p - mean_rhs / δ
+        Δp = mean_p + mean_rhs / δ
     else
         Δp = mean_p
     end
@@ -175,22 +183,7 @@ Base.summary(::AsymptoticPoissonPreconditioner) = "AsymptoticPoissonPrecondition
     arch = architecture(p)
     fill_halo_regions!(r)
     launch!(arch, grid, :xyz, _asymptotic_poisson_precondition!, p, grid, r)
-
-    δ = preconditioner.regularization
-    rhs = preconditioner.rhs
-    mean_p = mean(p)
-
-    if !isnothing(δ)
-        mean_rhs = mean(rhs)
-        Δp = mean_p - mean_rhs / δ
-    else
-        Δp = mean_p
-    end
-
-    grid = p.grid
-    arch = architecture(grid)
-    launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, Δp)
-
+    regularize_poisson_solution!(p, preconditioner)
     return p
 end
 
