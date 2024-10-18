@@ -67,7 +67,7 @@ function stable_diffusion!(model, amplitude, diffusivity)
     return sum_c²::Float64
 end
 
-@testset "Enzyme Unit Tests" begin
+@testset "Enzyme unit tests" begin
     arch = CPU()
     FT = Float64
 
@@ -231,8 +231,6 @@ end
 
     tol = 0.01
     rel_error = abs(dc²_dκ[1][3] - dc²_dκ_fd) / abs(dc²_dκ_fd)
-    @show dc²_dκ, dc²_dκ_fd
     @test rel_error < tol
-    
 end
 
