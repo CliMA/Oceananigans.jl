@@ -88,15 +88,19 @@ const AVBD = AbstractScalarBiharmonicDiffusivity{<:VerticalFormulation}
 
 # See https://mitgcm.readthedocs.io/en/latest/algorithm/algorithm.html#horizontal-dissipation
 @inline function δ★ᶜᶜᶜ(i, j, k, grid, closure, u, v)
-
     return 1 / Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_∇²u, closure, u, v) +
                                        δyᵃᶜᵃ(i, j, k, grid, Δx_∇²v, closure, u, v))
 end
 
 @inline function ζ★ᶠᶠᶜ(i, j, k, grid, closure, u, v)
-
     return 1 / Azᶠᶠᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_∇²v, closure, u, v) -
                                        δyᵃᶠᵃ(i, j, k, grid, Δx_∇²u, closure, u, v))
+end
+
+@inline function ζ★ᶠᶠᶜ(i, j, k, grid, ::VectorInvariantASBD, u, v)
+    ∇²u = ∇²u_vector_invariantᶠᶜᶜ(i, j, k, grid, u, v)
+    ∇²v = ∇²v_vector_invariantᶜᶠᶜ(i, j, k, grid, u, v)
+    return ζ₃ᶠᶠᶜ(i, j, k, grid, ∇²u, ∇²v)
 end
 
 #####
