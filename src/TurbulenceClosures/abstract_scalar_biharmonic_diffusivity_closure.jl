@@ -5,11 +5,13 @@ using Oceananigans.Grids: peripheral_node
 
 Abstract type for closures with scalar biharmonic diffusivities.
 """
-abstract type AbstractScalarBiharmonicDiffusivity{F, N} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization, N} end
+abstract type AbstractScalarBiharmonicDiffusivity{F, N, V} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization, N} end
 
 @inline formulation(::AbstractScalarBiharmonicDiffusivity{F}) where {F} = F()
 
 const ASBD = AbstractScalarBiharmonicDiffusivity
+
+const VectorInvariantASBD = AbstractScalarBiharmonicDiffusivity{<:HorizontalFormulation, <:Nothing, <:VectorInvariantForm}
 
 #####
 ##### Coefficient extractors
@@ -71,27 +73,30 @@ const AVBD = AbstractScalarBiharmonicDiffusivity{<:VerticalFormulation}
 ##### Biharmonic-specific viscous operators
 #####
 
+@inline ∇²_vector_invariantᶠᶜᶜ(i, j, k, grid, u, v) = δxᶠᶜᶜ(i, j, k, grid, div_xyᶜᶜᶜ, u, v) - δyᶠᶜᶜ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v)
+@inline ∇²_vector_invariantᶜᶠᶜ(i, j, k, grid, u, v) = δxᶜᶠᶜ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v)     - δyᶜᶠᶜ(i, j, k, grid, div_xyᶜᶜᶜ, u, v)
+
+# These closures seem to be needed to help the compiler infer types
+# (either of u and v or of the function arguments)
+@inline Δy_∇²u(i, j, k, grid, closure, u, v) = Δy_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²hᶠᶜᶜ, u)
+@inline Δx_∇²v(i, j, k, grid, closure, u, v) = Δx_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²hᶜᶠᶜ, v)
+
+# These closures seem to be needed to help the compiler infer types
+# (either of u and v or of the function arguments)
+@inline Δy_∇²u(i, j, k, grid, ::VectorInvariantASBD, u, v) = Δy_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²_vector_invariantᶠᶜᶜ, u, v)
+@inline Δx_∇²v(i, j, k, grid, ::VectorInvariantASBD, u, v) = Δx_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²_vector_invariantᶜᶠᶜ, u, v)
+
 # See https://mitgcm.readthedocs.io/en/latest/algorithm/algorithm.html#horizontal-dissipation
-@inline function δ★ᶜᶜᶜ(i, j, k, grid, u, v)
+@inline function δ★ᶜᶜᶜ(i, j, k, grid, closure, u, v)
 
-    # These closures seem to be needed to help the compiler infer types
-    # (either of u and v or of the function arguments)
-    @inline Δy_∇²u(i, j, k, grid, u) = Δy_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²hᶠᶜᶜ, u)
-    @inline Δx_∇²v(i, j, k, grid, v) = Δx_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²hᶜᶠᶜ, v)
-
-    return 1 / Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_∇²u, u) +
-                                       δyᵃᶜᵃ(i, j, k, grid, Δx_∇²v, v))
+    return 1 / Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_∇²u, closure, u, v) +
+                                       δyᵃᶜᵃ(i, j, k, grid, Δx_∇²v, closure, u, v))
 end
 
-@inline function ζ★ᶠᶠᶜ(i, j, k, grid, u, v)
+@inline function ζ★ᶠᶠᶜ(i, j, k, grid, closure, u, v)
 
-    # These closures seem to be needed to help the compiler infer types
-    # (either of u and v or of the function arguments)
-    @inline Δy_∇²v(i, j, k, grid, v) = Δy_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²hᶜᶠᶜ, v)
-    @inline Δx_∇²u(i, j, k, grid, u) = Δx_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²hᶠᶜᶜ, u)
-
-    return 1 / Azᶠᶠᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_∇²v, v) -
-                                       δyᵃᶠᵃ(i, j, k, grid, Δx_∇²u, u))
+    return 1 / Azᶠᶠᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_∇²v, closure, u, v) -
+                                       δyᵃᶠᵃ(i, j, k, grid, Δx_∇²u, closure, u, v))
 end
 
 #####
