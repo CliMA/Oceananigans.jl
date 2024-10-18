@@ -1,12 +1,12 @@
 using Oceananigans.Utils: prettysummary
 
 import Adapt
-import Oceananigans.Grids: required_halo_size
+import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 
-struct ScalarDiffusivity{TD, F, V, K, N} <: AbstractScalarDiffusivity{TD, F, N}
+struct ScalarDiffusivity{TD, F, N, V, K} <: AbstractScalarDiffusivity{TD, F, N}
     ν :: V
     κ :: K
-    ScalarDiffusivity{TD, F, N}(ν::V, κ::K) where {TD, F, V, K, N} = new{TD, F, V, K, N}(ν, κ)
+    ScalarDiffusivity{TD, F, N}(ν::V, κ::K) where {TD, F, N, V, K} = new{TD, F, N, V, K}(ν, κ)
 end
 
 """
@@ -63,6 +63,9 @@ value of keyword argument `discrete_form`, the constructor expects:
   - with `loc = (ℓx, ℓy, ℓz)` and specified `parameters`:
     functions of `(i, j, k, grid, clock, fields, parameters)`.
 
+* `required_halo_size = 1`: the required halo size for the closure. This value should be an integer.
+  change only if using a function for `ν` or `κ` that requires a halo size larger than 1 to compute.
+
 * `parameters`: `NamedTuple` with parameters used by the functions
   that compute viscosity and/or diffusivity; default: `nothing`.
 
@@ -111,20 +114,28 @@ ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.Turbulence
 ```
 """
 function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
-                           formulation=ThreeDimensionalFormulation(), FT=Float64;
+                           formulation=ThreeDimensionalFormulation(), 
+                           FT=Float64;
                            ν=0, κ=0,
                            discrete_form = false,
                            loc = (nothing, nothing, nothing),
                            parameters = nothing,
-                           required_halo_size = 1)
+                           required_halo_size::Int = 1) 
 
     if formulation == HorizontalFormulation() && time_discretization == VerticallyImplicitTimeDiscretization()
-    throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for \
+      throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for \
           `VerticalFormulation` or `ThreeDimensionalFormulation`"))
     end
 
     κ = convert_diffusivity(FT, κ; discrete_form, loc, parameters)
     ν = convert_diffusivity(FT, ν; discrete_form, loc, parameters)
+
+    # Force a type-stable constructor if ν and κ are numbers
+    # This particular short-circuiting of the required_halo_size kwargs is necessary to perform parameter
+    # estimation of the diffusivity coefficients using autodiff.
+    if ν isa Number && κ isa Number
+      return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), 1}(ν, κ)
+    end
 
     return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), required_halo_size}(ν, κ)
 end
@@ -173,8 +184,6 @@ Shorthand for a `ScalarDiffusivity` with `HorizontalDivergenceFormulation()`. Se
           HorizontalScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivity(ExplicitTimeDiscretization(), HorizontalFormulation(), FT; kwargs...)
 HorizontalDivergenceScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivity(ExplicitTimeDiscretization(), HorizontalDivergenceFormulation(), FT; kwargs...)
 
-required_halo_size(closure::ScalarDiffusivity) = 1 
- 
 @inline function with_tracers(tracers, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
     κ = tracer_diffusivities(tracers, closure.κ)
     return ScalarDiffusivity{TD, F, N}(closure.ν, κ)
