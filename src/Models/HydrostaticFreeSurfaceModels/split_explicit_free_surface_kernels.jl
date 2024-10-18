@@ -369,6 +369,14 @@ function iterate_split_explicit!(free_surface, grid, Δτᴮ, weights, ::Val{Nsu
     auxiliary = free_surface.auxiliary
     settings  = free_surface.settings
     g         = free_surface.gravitational_acceleration
+    
+    # unpack state quantities, parameters and forcing terms 
+    U, V             = state.U,    state.V
+    Uᵐ⁻¹, Uᵐ⁻²       = state.Uᵐ⁻¹, state.Uᵐ⁻²
+    Vᵐ⁻¹, Vᵐ⁻²       = state.Vᵐ⁻¹, state.Vᵐ⁻²
+    ηᵐ, ηᵐ⁻¹, ηᵐ⁻²   = state.ηᵐ,   state.ηᵐ⁻¹, state.ηᵐ⁻²
+    η̅, U̅, V̅          = state.η̅, state.U̅, state.V̅
+    Gᵁ, Gⱽ           = auxiliary.Gᵁ, auxiliary.Gⱽ
 
     # unpack state quantities, parameters and forcing terms 
     U, V             = state.U,    state.V

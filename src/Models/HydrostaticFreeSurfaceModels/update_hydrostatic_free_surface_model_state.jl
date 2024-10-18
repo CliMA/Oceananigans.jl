@@ -86,3 +86,8 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
     end
     return nothing
 end
+
+import Oceananigans.Advection: correct_mpdata_momentum!
+
+correct_mpdata_momentum!(model::HydrostaticFreeSurfaceModel, Δt) = 
+    correct_mpdata_momentum!(model.velocities, model.grid, Δt, model.advection.momentum, 2)

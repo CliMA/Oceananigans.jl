@@ -236,6 +236,46 @@ function map_interior_active_cells(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any
               north_halo_dependent_cells)
 end
 
+map_interior_active_cells(ibg) = active_interior_indices(ibg; parameters = :xyz)
+
+# In case of a `DistributedGrid` we want to have different maps depending on the 
+# partitioning of the domain
+function map_interior_active_cells(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid})
+
+    arch = architecture(ibg)
+    Rx, Ry, _  = arch.ranks
+    Tx, Ty, _  = topology(ibg)
+    Nx, Ny, Nz = size(ibg)
+    Hx, Hy, _  = halo_size(ibg)
+    
+    x_boundary = (Hx, Ny, Nz)
+    y_boundary = (Nx, Hy, Nz)
+         
+    left_offsets    = (0,  0,  0)
+    right_x_offsets = (Nx-Hx, 0,     0)
+    right_y_offsets = (0,     Ny-Hy, 0)
+
+    include_west  = !isa(ibg, XFlatGrid) && (Rx != 1) && !(Tx == RightConnected)
+    include_east  = !isa(ibg, XFlatGrid) && (Rx != 1) && !(Tx == LeftConnected)
+    include_south = !isa(ibg, YFlatGrid) && (Ry != 1) && !(Ty == RightConnected)
+    include_north = !isa(ibg, YFlatGrid) && (Ry != 1) && !(Ty == LeftConnected)
+
+    west  = include_west  ? active_interior_indices(ibg; parameters = KernelParameters(x_boundary, left_offsets))    : nothing
+    east  = include_east  ? active_interior_indices(ibg; parameters = KernelParameters(x_boundary, right_x_offsets)) : nothing
+    south = include_south ? active_interior_indices(ibg; parameters = KernelParameters(y_boundary, left_offsets))    : nothing
+    north = include_north ? active_interior_indices(ibg; parameters = KernelParameters(y_boundary, right_y_offsets)) : nothing
+    
+    nx = Rx == 1 ? Nx : (Tx == RightConnected || Tx == LeftConnected ? Nx - Hx : Nx - 2Hx)
+    ny = Ry == 1 ? Ny : (Ty == RightConnected || Ty == LeftConnected ? Ny - Hy : Ny - 2Hy)
+
+    ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
+    oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
+     
+    interior = active_interior_indices(ibg; parameters = KernelParameters((nx, ny, Nz), (ox, oy, 0)))
+
+    return (; interior, west, east, south, north)
+end
+
 # If we eventually want to perform also barotropic step, `w` computation and `p` 
 # computation only on active `columns`
 function map_active_z_columns(ibg)

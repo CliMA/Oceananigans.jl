@@ -111,7 +111,11 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch} <: AbstractGrid{FT
     underlying_grid :: G
     immersed_boundary :: I
     interior_active_cells :: M
+<<<<<<< HEAD
+    surface_active_cells :: S
+=======
     active_z_columns :: S
+>>>>>>> origin/main
 
     # Internal interface
     function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I, mi::M, ms::S) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I, M, S}

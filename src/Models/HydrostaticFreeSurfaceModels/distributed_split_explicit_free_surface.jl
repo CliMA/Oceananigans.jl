@@ -18,6 +18,9 @@ function SplitExplicitAuxiliaryFields(grid::DistributedGrid)
 
     fill_halo_regions!((Hᶠᶜ, Hᶜᶠ))
 
+    Gᵁ = XFaceField(grid, indices = (:, :, Nz))
+    Gⱽ = YFaceField(grid, indices = (:, :, Nz))
+    
     # In a non-parallel grid we calculate only the interior
     kernel_size    = augmented_kernel_size(grid)
     kernel_offsets = augmented_kernel_offsets(grid)

@@ -94,6 +94,14 @@ function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, new_ib)
 end
 
+# Make sure that `abs(bottom_height) <= grid.Lz` to constrain the bottom
+@kernel function _limit_bottom_height!(bottom_field, Lz)
+    i, j = @index(Global, NTuple)
+    if abs(bottom_field[i, j, 1]) > Lz
+        bottom_field[i, j, 1] = sign(bottom_field[i, j, 1]) * Lz
+    end
+end
+
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:InterfaceImmersedCondition})
     z = znode(i, j, k+1, underlying_grid, c, c, f)
     h = @inbounds ib.bottom_height[i, j, 1]

@@ -224,8 +224,7 @@ Return the `SplitExplicitAuxiliaryFields` for `grid`.
 """
 function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
 
-    Gᵁ = Field((Face,   Center, Nothing), grid)
-    Gⱽ = Field((Center, Face,   Nothing), grid)
+    Nz = size(grid, 3)
 
     Hᶠᶜ = Field((Face,   Center, Nothing), grid)
     Hᶜᶠ = Field((Center, Face,   Nothing), grid)

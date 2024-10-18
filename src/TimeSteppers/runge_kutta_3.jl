@@ -1,5 +1,6 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans: fields
+using Oceananigans.Advection: correct_advection!
 
 """
     RungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
@@ -103,6 +104,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     #
 
     rk3_substep!(model, Δt, γ¹, nothing)
+    correct_advection!(model, Δt)
 
     tick!(model.clock, first_stage_Δt; stage=true)
     model.clock.last_stage_Δt = first_stage_Δt
@@ -119,6 +121,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     #
 
     rk3_substep!(model, Δt, γ², ζ²)
+    correct_advection!(model, Δt)
 
     tick!(model.clock, second_stage_Δt; stage=true)
     model.clock.last_stage_Δt = second_stage_Δt
@@ -140,6 +143,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # round-off error when Δt is added to model.clock.time. Note that we still use 
     # third_stage_Δt for the substep, pressure correction, and Lagrangian particles step.
     corrected_third_stage_Δt = tⁿ⁺¹ - model.clock.time
+
+    correct_advection!(model, Δt)
 
     tick!(model.clock, third_stage_Δt)
     model.clock.last_stage_Δt = corrected_third_stage_Δt
