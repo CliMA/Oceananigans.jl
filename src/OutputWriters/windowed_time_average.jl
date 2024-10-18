@@ -20,6 +20,7 @@ mutable struct AveragedTimeInterval <: AbstractSchedule
     stride :: Int
     first_actuation_time :: Float64
     actuations :: Int
+    previous_interval_stop_time :: Float64
     collecting :: Bool
 end
 
@@ -85,7 +86,7 @@ JLD2OutputWriter scheduled on TimeInterval(4 days):
 """
 function AveragedTimeInterval(interval; window=interval, stride=1)
     window > interval && throw(ArgumentError("Averaging window $window is greater than the output interval $interval."))
-    return AveragedTimeInterval(Float64(interval), Float64(window), stride, 0.0, 0, false)
+    return AveragedTimeInterval(Float64(interval), Float64(window), stride, 0.0, 0, 0.0, false)
 end
 
 # function initialize_schedule!(sch::AveragedTimeInterval, first_actuation_time::Number)
@@ -100,9 +101,9 @@ end
 function next_actuation_time(sch::AveragedTimeInterval)
     t₀ = sch.first_actuation_time
     N = sch.actuations
-    T = sch.window
-    return t₀ + (N + 1) * T
-    # print("first_actuation_time:",t₀)
+    window = sch.window
+    interval = sch.interval
+    return t₀ + (N + 1) * interval - window
 end
 
 # function (sch::AveragedTimeInterval)(model)
@@ -113,7 +114,7 @@ end
 #         if sch.actuations < typemax(Int)
 #             sch.actuations += 1
 #         else # re-initialize the schedule to t★
-#             initialize!(sch, t★)
+            # initialize!(sch, t★)
 #         end
 #         return true
 #     else
@@ -122,10 +123,10 @@ end
 # end
 
 # Schedule actuation
-(sch::AveragedTimeInterval)(model) = sch.collecting || model.clock.time >= next_actuation_time(sch) - sch.window
-initialize_schedule!(sch::AveragedTimeInterval, clock) = nothing
-outside_window(sch::AveragedTimeInterval, clock) = clock.time <  next_actuation_time(sch) - sch.window   
-end_of_window(sch::AveragedTimeInterval, clock) = clock.time >= next_actuation_time(sch) 
+(sch::AveragedTimeInterval)(model) = sch.collecting || model.clock.time >= next_actuation_time(sch)
+initialize_schedule!(sch::AveragedTimeInterval, clock) = sch.previous_interval_stop_time = next_actuation_time(sch) - sch.interval + sch.window
+outside_window(sch::AveragedTimeInterval, clock) = clock.time <  next_actuation_time(sch)    
+end_of_window(sch::AveragedTimeInterval, clock) = clock.time >= next_actuation_time(sch) + sch.window
 
 TimeInterval(sch::AveragedTimeInterval) = TimeInterval(sch.interval)
 Base.copy(sch::AveragedTimeInterval) = AveragedTimeInterval(sch.interval, window=sch.window, stride=sch.stride)
@@ -276,20 +277,25 @@ function advance_time_average!(wta::WindowedTimeAverage, model)
 
         if end_of_window(wta.schedule, model.clock)
             accumulate_result!(wta, model)
-
-            # Save averaging start time and the initial data collection time
+            # Save averaging start time and the initial data collection time            
             wta.window_start_time = model.clock.time
             wta.window_start_iteration = model.clock.iteration
             wta.previous_collection_time = model.clock.time
-
             wta.schedule.collecting = false
             wta.schedule.actuations += 1
+            # Reset the "previous" interval time, subtracting a sliver that presents overshoot from accumulating.
+            initialize_schedule!(wta.schedule, model.clock)
 
         elseif mod(model.clock.iteration - wta.window_start_iteration, stride(wta)) == 0
             accumulate_result!(wta, model)
         else
             # Off stride, so do nothing.
         end
+        # if model.clock.time == next_actuation_time(wta.schedule)
+        #     wta.schedule.actuations =  wta.schedule.actuations + 1
+        # end 
+        #     wta.schedule.actuations += 1
+        # end
     end
     return nothing
 end
