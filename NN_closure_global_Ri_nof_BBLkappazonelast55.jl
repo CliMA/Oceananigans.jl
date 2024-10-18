@@ -69,7 +69,7 @@ Adapt.adapt_structure(to, nn :: NN) =
 
 function NNFluxClosure(arch)
     dev = ifelse(arch == GPU(), gpu_device(), cpu_device())
-    nn_path = "./NDE_FC_Qb_Ri_nof_BBLkappazonelast55_trainFC19new_scalingtrain59new_1layer_512_relu_10seed_2Pr_model_temp.jld2"
+    nn_path = "./NDE_FC_Qb_Ri_nof_BBLkappazonelast55_trainFC19new_scalingtrain59new_2layer_256_relu_10seed_2Pr_model_temp.jld2"
 
     ps, sts, scaling_params, wT_model, wS_model = jldopen(nn_path, "r") do file
         ps = file["u"] |> dev |> f64
