@@ -73,8 +73,8 @@ const AVBD = AbstractScalarBiharmonicDiffusivity{<:VerticalFormulation}
 ##### Biharmonic-specific viscous operators
 #####
 
-@inline ∇²_vector_invariantᶠᶜᶜ(i, j, k, grid, u, v) = δxᶠᶜᶜ(i, j, k, grid, div_xyᶜᶜᶜ, u, v) - δyᶠᶜᶜ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v)
-@inline ∇²_vector_invariantᶜᶠᶜ(i, j, k, grid, u, v) = δxᶜᶠᶜ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v)     - δyᶜᶠᶜ(i, j, k, grid, div_xyᶜᶜᶜ, u, v)
+@inline ∇²u_vector_invariantᶠᶜᶜ(i, j, k, grid, u, v) = δxᶠᶜᶜ(i, j, k, grid, div_xyᶜᶜᶜ, u, v) - δyᶠᶜᶜ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v)
+@inline ∇²v_vector_invariantᶜᶠᶜ(i, j, k, grid, u, v) = δxᶜᶠᶜ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v)     + δyᶜᶠᶜ(i, j, k, grid, div_xyᶜᶜᶜ, u, v)
 
 # These closures seem to be needed to help the compiler infer types
 # (either of u and v or of the function arguments)
@@ -83,8 +83,8 @@ const AVBD = AbstractScalarBiharmonicDiffusivity{<:VerticalFormulation}
 
 # These closures seem to be needed to help the compiler infer types
 # (either of u and v or of the function arguments)
-@inline Δy_∇²u(i, j, k, grid, ::VectorInvariantASBD, u, v) = Δy_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²_vector_invariantᶠᶜᶜ, u, v)
-@inline Δx_∇²v(i, j, k, grid, ::VectorInvariantASBD, u, v) = Δx_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²_vector_invariantᶜᶠᶜ, u, v)
+@inline Δy_∇²u(i, j, k, grid, ::VectorInvariantASBD, u, v) = Δy_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²u_vector_invariantᶠᶜᶜ, u, v)
+@inline Δx_∇²v(i, j, k, grid, ::VectorInvariantASBD, u, v) = Δx_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²v_vector_invariantᶜᶠᶜ, u, v)
 
 # See https://mitgcm.readthedocs.io/en/latest/algorithm/algorithm.html#horizontal-dissipation
 @inline function δ★ᶜᶜᶜ(i, j, k, grid, closure, u, v)
