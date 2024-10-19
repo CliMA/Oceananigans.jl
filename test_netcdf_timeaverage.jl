@@ -87,27 +87,33 @@ function test_simulation(stop_time, Δt, window_nΔt, interval_nΔt, stride, ove
 end
     
 
+
 function next_actuation_time(sch::AveragedTimeInterval)
     t₀ = sch.first_actuation_time
     N = sch.actuations
-    T = sch.window
-    return t₀ + (N + 1) * T
+    interval = sch.interval
+    return t₀ + (N + 1) * interval 
+    # the actuation time is the end of the time averaging window
 end
+
     Δt = 0.01 #1/64 # Nice floating-point number
-    T1 = 10Δt      # first simulation stop time (s)
+    T1 = 100Δt      # first simulation stop time (s)
     T2 = 2T1      # second simulation stop time (s)
-    window_nΔt = 2
-    interval_nΔt = 2
+    window_nΔt = 3
+    interval_nΔt = 5
     stride = 1
     # Run a simulation that saves data to a checkpoint
     simulation = test_simulation(T1, Δt, window_nΔt, interval_nΔt, stride, true)
     run!(simulation)
+    checkpointed_wta = simulation.output_writers[:single_output_time_average].outputs["c1"]
+    checkpointed_actuations = checkpointed_wta.schedule.actuations
 
     # Now try again, but picking up from the previous checkpoint
-    # N = iteration(simulation)
-    # checkpoint = "test_iteration$N.jld2"
-    # simulation = test_simulation(T2, Δt, window_nΔt, interval_nΔt, stride, false)
-    # run!(simulation, pickup=checkpoint)
+    N = iteration(simulation)
+    checkpoint = "test_iteration$N.jld2"
+    simulation = test_simulation(T2, Δt, window_nΔt, interval_nΔt, stride, false)
+    simulation.output_writers[:single_output_time_average].outputs["c1"].schedule.actuations = checkpointed_actuations
+    run!(simulation, pickup=checkpoint)
 
     ##### For each λ, horizontal average should evaluate to
     #####
@@ -167,11 +173,11 @@ end
     window = window_size*Δt
     # @info "    Testing time-averaging of a single NetCDF output [$(typeof(arch))]..."
 
-    # for (n, t) in enumerate(single_ds["time"][2:end])
-    #     averaging_times = [t - n*Δt for n in 0:stride:window_size-1 if t - n*Δt >= 0]
-    #     @info n,t,averaging_times, c̄1(averaging_times), single_ds["c1"][:, n+1], c̄1(averaging_times)./single_ds["c1"][:, n+1]
-    #     # @test all(isapprox.(single_ds["c1"][:, n+1], c̄1(averaging_times), rtol=rtol))
-    # end
+    for (n, t) in enumerate(single_ds["time"][2:end])
+        averaging_times = [t - n*Δt for n in 0:stride:window_size-1 if t - n*Δt >= 0]
+        # @info n,t,averaging_times, c̄1(averaging_times), single_ds["c1"][:, n+1], c̄1(averaging_times)./single_ds["c1"][:, n+1]
+        @test all(isapprox.(single_ds["c1"][:, n+1], c̄1(averaging_times), rtol=rtol))
+    end
 
     time = single_ds["time"][:]
     data_plot = single_ds["c1"][1:4, :]
@@ -182,9 +188,6 @@ end
         c̄1_timeaverage[:,n] = c̄1(averaging_times)
         # @test all(isapprox.(single_ds["c1"][:, n+1], c̄1(averaging_times), rtol=rtol))
     end
-    # ds_timeinterval = NCDataset(horizontal_average_nc_filepath)
-    # time_interval = ds_timeinterval["time"][:]
-    # data_interval = ds_timeinterval["c1"][1:4, :]
 
     # Plot each of the four lines
     pl = plot()
@@ -193,21 +196,12 @@ end
     plot!(time, data_plot[3, :], label="3", color=:orange)
     plot!(time, data_plot[4, :], label="4", color=:green)
     
-    # plot!(time, data_plot[1, :], label="1 (window≠interval)", color=:blue,linestyle=:dash)
-    # plot!(time, data_plot[2, :], label="2 (window≠interval)",  color=:red,linestyle=:dash)
-    # plot!(time, data_plot[3, :], label="3 (window≠interval)", color=:orange,linestyle=:dash)
-    # plot!(time, data_plot[4, :], label="4 (window≠interval)", color=:green,linestyle=:dash)
-
     plot!(time[1:end],c̄1_timeaverage[1,:], color=:black, linestyle=:dash, label="1-analytic")
     plot!(time[1:end],c̄1_timeaverage[2,:], color=:black, linestyle=:dash, label="2-analytic")
     plot!(time[1:end],c̄1_timeaverage[3,:], color=:black, linestyle=:dash, label="3-analytic")
     plot!(time[1:end],c̄1_timeaverage[4,:], color=:black, linestyle=:dash, label="4-analytic")
     
-    # plot!(time[1:end],c̄1_timeaverage[1,:], color=:black, linestyle=:dot, label="1-analytic (window≠interval)")
-    # plot!(time[1:end],c̄1_timeaverage[2,:], color=:black, linestyle=:dot, label="2-analytic (window≠interval)")
-    # plot!(time[1:end],c̄1_timeaverage[3,:], color=:black, linestyle=:dot, label="3-analytic (window≠interval)")
-    # plot!(time[1:end],c̄1_timeaverage[4,:], color=:black, linestyle=:dot, label="4-analytic (window≠interval)")
-    
+
     tt = 0:window:T2
     for i in 1:length(tt)
     plot!([tt[i], tt[i]],[0,1],color=:grey,label="")
