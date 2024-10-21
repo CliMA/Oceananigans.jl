@@ -28,7 +28,7 @@ using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
 
 Return the `M`th root of unity raised to the `k`th power.
 """
-@inline ω(M, k) = exp(-2im*π*k/M)
+@inline ω(M, k) = exp(-2im * π * k / M)
 
 reshaped_size(N, dim) = dim == 1 ? (N, 1, 1) :
                         dim == 2 ? (1, N, 1) :
@@ -51,8 +51,13 @@ include("heptadiagonal_iterative_solver.jl")
 const GridWithFFTSolver = Union{XYZRegularRG, XYRegularRG, XZRegularRG, YZRegularRG}
 const GridWithFourierTridiagonalSolver = Union{XYRegularRG, XZRegularRG, YZRegularRG}
 
+# TODO: will be unnecessary when ImmersedBoundaries precedes Solvers
+has_fft_poisson_solver(grid) = false
+has_fft_poisson_solver(::GridWithFFTSolver) = true
+
 fft_poisson_solver(grid::XYZRegularRG) = FFTBasedPoissonSolver(grid)
 fft_poisson_solver(grid::GridWithFourierTridiagonalSolver) =
     FourierTridiagonalPoissonSolver(grid.underlying_grid)
 
 end # module
+
