@@ -15,7 +15,11 @@ function fill_open_boundary_regions!(field, boundary_conditions, indices, loc, g
     # gets `open_fill`, the function which fills open boundaries at `loc`, as well as `regular_fill`
     # which is the function which fills non-open boundaries at `loc` which informs `fill_halo_size` 
     open_fill, regular_fill = get_open_halo_filling_functions(loc) 
-    size = fill_halo_size(field, regular_fill, indices, boundary_conditions, loc, grid)
+
+    # Computing the size of the fill halo kernel. We use the `regular_fill` function to
+    # calculate the index range. Remember: windowed fields require the halos
+    # to be computed only on a part of the boundary so we need to offset the kernel indices 
+    size   = fill_halo_size(field, regular_fill, indices, boundary_conditions, loc, grid)
     offset = fill_halo_offset(size, regular_fill, indices)
     params = KernelParameters(size, offset)
     
