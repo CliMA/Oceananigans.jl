@@ -50,9 +50,12 @@ using Oceananigans.Utils
 
 using Oceananigans.Architectures: AbstractArchitecture, device
 using Oceananigans.Fields: FunctionField
+using Oceananigans.ImmersedBoundaries: z_bottom
+
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 import Oceananigans.Architectures: on_architecture
 
+import Oceananigans.ImmersedBoundaries: z_bottom
 const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
 #####
@@ -153,6 +156,7 @@ include("abstract_scalar_diffusivity_closure.jl")
 include("abstract_scalar_biharmonic_diffusivity_closure.jl")
 include("closure_tuples.jl")
 include("isopycnal_rotation_tensor_components.jl")
+include("immersed_diffusive_fluxes.jl")
 
 # Implicit closure terms (diffusion + linear terms)
 include("vertically_implicit_diffusion_solver.jl")
