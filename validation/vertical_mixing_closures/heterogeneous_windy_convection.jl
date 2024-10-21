@@ -34,8 +34,8 @@ grid = RectilinearGrid(size = (Nx, Ny, Nz),
                        z = z,
                        topology=(Periodic, Bounded, Bounded))
 
-z_bottom(x, y) = - Lz * (1 - (2y / Ly)^2)
-grid = ImmersedBoundaryGrid(grid, PartialCellBottom(z_bottom, minimum_fractional_cell_height=0.1))
+bottom_height(x, y) = - Lz * (1 - (2y / Ly)^2)
+grid = ImmersedBoundaryGrid(grid, PartialCellBottom(bottom_height, minimum_fractional_cell_height=0.1))
 
 @show grid
 @inline Qᵇ(x, y, t) = 1e-7

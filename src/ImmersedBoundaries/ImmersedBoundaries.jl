@@ -17,14 +17,17 @@ import Base: show, summary
 import Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
                            x_domain, y_domain, z_domain
 
-import Oceananigans.Grids: architecture, on_architecture, with_halo, inflate_halo_size_one_dimension,
+import Oceananigans.Grids: architecture, with_halo, inflate_halo_size_one_dimension,
                            xnode, ynode, znode, λnode, φnode, node,
                            ξnode, ηnode, rnode,
                            ξname, ηname, rname, node_names,
                            xnodes, ynodes, znodes, λnodes, φnodes, nodes,
                            ξnodes, ηnodes, rnodes,
+                           static_column_depthᶜᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶠᵃ,
                            inactive_cell
 
+
+import Oceananigans.Architectures: on_architecture
 
 import Oceananigans.Fields: fractional_x_index, fractional_y_index, fractional_z_index
 
