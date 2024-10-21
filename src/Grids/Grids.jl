@@ -18,7 +18,7 @@ export xnodes, ynodes, znodes, λnodes, φnodes
 export spacings
 export xspacings, yspacings, zspacings, xspacing, yspacing, zspacing
 export minimum_xspacing, minimum_yspacing, minimum_zspacing
-export domain_depthᶜᶜᵃ, domain_depthᶠᶜᵃ, domain_depthᶜᶠᵃ, domain_depthᶠᶠᵃ
+export static_column_depthᶜᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶠᵃ
 export offset_data, new_data
 export on_architecture
 
