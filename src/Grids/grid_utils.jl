@@ -315,7 +315,7 @@ coordinate_summary(topo, Δ::Union{AbstractVector, AbstractMatrix}, name) =
              name, prettysummary(maximum(parent(Δ))))
 
 #####
-##### Bottom height
+##### Static column depth
 #####
 
 @inline static_column_depthᶜᶜᵃ(i, j, grid) = grid.Lz
