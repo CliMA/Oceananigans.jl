@@ -1,11 +1,11 @@
-using Oceananigans.Advection: AbstractAdvectionScheme, advection_buffers
-using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑxᶜᵃᵃ, ℑyᵃᶠᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, ℑzᵃᵃᶜ 
-using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization
-using Oceananigans.Advection: LOADV, HOADV, WENO, FluxFormAdvection
+using Oceananigans.ImmersedBoundaries
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, inactive_node
 using Oceananigans.Fields: ZeroField
 
-const ATC = AbstractTurbulenceClosure
-const ATD = AbstractTimeDiscretization
+const IBG = ImmersedBoundaryGrid
+
+const c = Center()
+const f = Face()
 
 """
     conditional_flux(i, j, k, ibg::IBG, ℓx, ℓy, ℓz, qᴮ, qᴵ, nc)
@@ -33,31 +33,7 @@ end
 @inline conditional_flux_ccf(i, j, k, ibg::IBG, qᴮ, qᴵ) = conditional_flux(i, j, k, ibg, c, c, f, qᴮ, qᴵ)
 
 #####
-##### Diffusive fluxes
-#####
-
-# ccc, ffc, fcf
-@inline _viscous_flux_ux(i, j, k, ibg::IBG, args...) = conditional_flux_ccc(i, j, k, ibg, zero(ibg), viscous_flux_ux(i, j, k, ibg, args...))
-@inline _viscous_flux_uy(i, j, k, ibg::IBG, args...) = conditional_flux_ffc(i, j, k, ibg, zero(ibg), viscous_flux_uy(i, j, k, ibg, args...))
-@inline _viscous_flux_uz(i, j, k, ibg::IBG, args...) = conditional_flux_fcf(i, j, k, ibg, zero(ibg), viscous_flux_uz(i, j, k, ibg, args...))
- 
- # ffc, ccc, cff
-@inline _viscous_flux_vx(i, j, k, ibg::IBG, args...) = conditional_flux_ffc(i, j, k, ibg, zero(ibg), viscous_flux_vx(i, j, k, ibg, args...))
-@inline _viscous_flux_vy(i, j, k, ibg::IBG, args...) = conditional_flux_ccc(i, j, k, ibg, zero(ibg), viscous_flux_vy(i, j, k, ibg, args...))
-@inline _viscous_flux_vz(i, j, k, ibg::IBG, args...) = conditional_flux_cff(i, j, k, ibg, zero(ibg), viscous_flux_vz(i, j, k, ibg, args...))
-
- # fcf, cff, ccc
-@inline _viscous_flux_wx(i, j, k, ibg::IBG, args...) = conditional_flux_fcf(i, j, k, ibg, zero(ibg), viscous_flux_wx(i, j, k, ibg, args...))
-@inline _viscous_flux_wy(i, j, k, ibg::IBG, args...) = conditional_flux_cff(i, j, k, ibg, zero(ibg), viscous_flux_wy(i, j, k, ibg, args...))
-@inline _viscous_flux_wz(i, j, k, ibg::IBG, args...) = conditional_flux_ccc(i, j, k, ibg, zero(ibg), viscous_flux_wz(i, j, k, ibg, args...))
-
-# fcc, cfc, ccf
-@inline _diffusive_flux_x(i, j, k, ibg::IBG, args...) = conditional_flux_fcc(i, j, k, ibg, zero(ibg), diffusive_flux_x(i, j, k, ibg, args...))
-@inline _diffusive_flux_y(i, j, k, ibg::IBG, args...) = conditional_flux_cfc(i, j, k, ibg, zero(ibg), diffusive_flux_y(i, j, k, ibg, args...))
-@inline _diffusive_flux_z(i, j, k, ibg::IBG, args...) = conditional_flux_ccf(i, j, k, ibg, zero(ibg), diffusive_flux_z(i, j, k, ibg, args...))
-
-#####
-##### Advective fluxes
+##### Immersed Advective fluxes
 #####
 
 # dx(uu), dy(vu), dz(wu)
@@ -82,69 +58,27 @@ end
 @inline _advective_tracer_flux_y(i, j, k, ibg::IBG, args...) = conditional_flux_cfc(i, j, k, ibg, zero(ibg), advective_tracer_flux_y(i, j, k, ibg, args...))
 @inline _advective_tracer_flux_z(i, j, k, ibg::IBG, args...) = conditional_flux_ccf(i, j, k, ibg, zero(ibg), advective_tracer_flux_z(i, j, k, ibg, args...))
 
-# Disambiguation for tracer fluxes....
-@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
-        _advective_tracer_flux_x(i, j, k, ibg, advection.x, args...)
-
-@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
-        _advective_tracer_flux_y(i, j, k, ibg, advection.y, args...)
-
-@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
-        _advective_tracer_flux_z(i, j, k, ibg, advection.z, args...)
-
-# Disambiguation for momentum fluxes in x....
-@inline _advective_momentum_flux_Uu(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
-        _advective_momentum_flux_Uu(i, j, k, ibg, advection.x, args...)
-
-@inline _advective_momentum_flux_Uv(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
-        _advective_momentum_flux_Uv(i, j, k, ibg, advection.x, args...)
-
-@inline _advective_momentum_flux_Uw(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
-        _advective_momentum_flux_Uw(i, j, k, ibg, advection.x, args...)
-
-# Disambiguation for momentum fluxes in y....
-@inline _advective_momentum_flux_Vu(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
-        _advective_momentum_flux_Vu(i, j, k, ibg, advection.y, args...)
-
-@inline _advective_momentum_flux_Vv(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
-        _advective_momentum_flux_Vv(i, j, k, ibg, advection.y, args...)
-
-@inline _advective_momentum_flux_Vw(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
-        _advective_momentum_flux_Vw(i, j, k, ibg, advection.y, args...)
-
-# Disambiguation for momentum fluxes in z....
-@inline _advective_momentum_flux_Wu(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
-        _advective_momentum_flux_Wu(i, j, k, ibg, advection.z, args...)
-
-@inline _advective_momentum_flux_Wv(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
-        _advective_momentum_flux_Wv(i, j, k, ibg, advection.z, args...)
-
-@inline _advective_momentum_flux_Ww(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
-        _advective_momentum_flux_Ww(i, j, k, ibg, advection.z, args...)
-
-# Fallback for `nothing` Advection
-
-# dx(uu), dy(vu), dz(wu)
-# ccc,    ffc,    fcf
-@inline _advective_momentum_flux_Uu(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
-@inline _advective_momentum_flux_Vu(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
-@inline _advective_momentum_flux_Wu(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
-
-# dx(uv), dy(vv), dz(wv)
-# ffc,    ccc,    cff
-@inline _advective_momentum_flux_Uv(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
-@inline _advective_momentum_flux_Vv(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
-@inline _advective_momentum_flux_Wv(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
-
-# dx(uw), dy(vw), dz(ww)
-# fcf,    cff,    ccc
-@inline _advective_momentum_flux_Uw(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
-@inline _advective_momentum_flux_Vw(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
-@inline _advective_momentum_flux_Ww(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
-
+# Fallback for `nothing` advection
 @inline _advective_tracer_flux_x(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
 @inline _advective_tracer_flux_y(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
 @inline _advective_tracer_flux_z(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
+
+# Disambiguation for `FluxForm` advection
+@inline _advective_momentum_flux_Uu(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) = conditional_flux_ccc(i, j, k, ibg, zero(ibg), advective_momentum_flux_Uu(i, j, k, ibg, advection.x, args...))
+@inline _advective_momentum_flux_Vu(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) = conditional_flux_ffc(i, j, k, ibg, zero(ibg), advective_momentum_flux_Vu(i, j, k, ibg, advection.y, args...))
+@inline _advective_momentum_flux_Wu(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) = conditional_flux_fcf(i, j, k, ibg, zero(ibg), advective_momentum_flux_Wu(i, j, k, ibg, advection.z, args...))
+
+@inline _advective_momentum_flux_Uv(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) = conditional_flux_ffc(i, j, k, ibg, zero(ibg), advective_momentum_flux_Uv(i, j, k, ibg, advection.x, args...))
+@inline _advective_momentum_flux_Vv(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) = conditional_flux_ccc(i, j, k, ibg, zero(ibg), advective_momentum_flux_Vv(i, j, k, ibg, advection.y, args...))
+@inline _advective_momentum_flux_Wv(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) = conditional_flux_cff(i, j, k, ibg, zero(ibg), advective_momentum_flux_Wv(i, j, k, ibg, advection.z, args...))
+
+@inline _advective_momentum_flux_Uw(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) = conditional_flux_fcf(i, j, k, ibg, zero(ibg), advective_momentum_flux_Uw(i, j, k, ibg, advection.x, args...))
+@inline _advective_momentum_flux_Vw(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) = conditional_flux_cff(i, j, k, ibg, zero(ibg), advective_momentum_flux_Vw(i, j, k, ibg, advection.y, args...))
+@inline _advective_momentum_flux_Ww(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) = conditional_flux_ccc(i, j, k, ibg, zero(ibg), advective_momentum_flux_Ww(i, j, k, ibg, advection.z, args...))
+
+@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) = conditional_flux_fcc(i, j, k, ibg, zero(ibg), advective_tracer_flux_x(i, j, k, ibg, advection.x, args...))
+@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) = conditional_flux_cfc(i, j, k, ibg, zero(ibg), advective_tracer_flux_y(i, j, k, ibg, advection.y, args...))
+@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) = conditional_flux_ccf(i, j, k, ibg, zero(ibg), advective_tracer_flux_z(i, j, k, ibg, advection.z, args...))
 
 #####
 ##### "Boundary-aware" reconstruct
