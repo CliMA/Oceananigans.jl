@@ -11,7 +11,7 @@ import Oceananigans.Fields: Field
 MetricField(loc, grid, metric) = compute!(Field(GridMetricOperation(loc, metric, grid)))
 
 VolumeField(grid, loc=(Center, Center, Center)) = MetricField(loc, grid, Oceananigans.AbstractOperations.volume)
-  AreaField(grid, loc=(Center, Center, Nothing)) = MetricField(loc, grid, Oceananigans.AbstractOperations.Az)
+AreaField(grid, loc=(Center, Center, Nothing))  = MetricField(loc, grid, Oceananigans.AbstractOperations.Az)
 
 struct RPEDensityOperation{Z, R, V, A, B}
     z★ :: Z
@@ -21,19 +21,19 @@ struct RPEDensityOperation{Z, R, V, A, B}
     buoyancy :: B
 end
 
-@inline _density_operation(i, j, k, grid, buoyancy, tracers) = buoyancy.equation_of_state.reference_density * 
+@inline _density_operation(i, j, k, grid, buoyancy, tracers, reference_density) = reference_density * 
             (1 - buoyancy_perturbationᶜᶜᶜ(i, j, k, grid, buoyancy, tracers) / buoyancy.gravitational_acceleration)
 
-DensityOperation(grid, buoyancy, tracers) = 
-    KernelFunctionOperation{Center, Center, Center}(_density_operation, grid, buoyancy, tracers)
+DensityOperation(grid, buoyancy, tracers, reference_density) = 
+    KernelFunctionOperation{Center, Center, Center}(_density_operation, grid, buoyancy, tracers, reference_density)
 
 Field(operand::RPEDensityOperation) = Field{Center, Center, Center}(operand.ρ.grid; operand)
 
-function RPEDensityOperation(grid; tracers, buoyancy)
+function RPEDensityOperation(grid; tracers, buoyancy, reference_density)
     vol = VolumeField(grid)
     z★  = CenterField(grid)
     A   = sum(AreaField(grid))
-    ρ   = Field(DensityOperation(grid, buoyancy.model, tracers))
+    ρ   = Field(DensityOperation(grid, buoyancy.model, tracers, reference_density))
     return RPEDensityOperation(z★, ρ, vol, A, buoyancy)
 end
 
@@ -70,6 +70,12 @@ function compute!(ε::RPEDensityField, time=nothing)
 end
 
 total_RPE(RPE::RPEDensityField) = sum(RPE * RPE.operand.vol) 
+
+function total_RPE(RPE::Field) 
+    grid = RPE.grid
+    vol  = VolumeField(grid)
+    return sum(RPE * vol)
+end
 
 @kernel function _calculate_z★(z★, b, b_sorted, integrated_v)
     i, j, k = @index(Global, NTuple)
