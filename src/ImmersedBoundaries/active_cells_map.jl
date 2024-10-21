@@ -5,7 +5,6 @@ using Oceananigans.Grids: AbstractGrid
 using KernelAbstractions: @kernel, @index
 
 import Oceananigans.Grids: retrieve_surface_active_cells_map, retrieve_interior_active_cells_map
-import Oceananigans.Utils: active_cells_work_layout
 
 # REMEMBER: since the active map is stripped out of the grid when `Adapt`ing to the GPU, 
 # The following types cannot be used to dispatch in kernels!!!
@@ -38,21 +37,6 @@ const ActiveZColumnsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any
 @inline retrieve_interior_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:south})    = grid.interior_active_cells.south_halo_dependent_cells
 @inline retrieve_interior_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:north})    = grid.interior_active_cells.north_halo_dependent_cells
 @inline retrieve_interior_active_cells_map(grid::ActiveZColumnsIBG,      ::Val{:surface})  = grid.active_z_columns
-
-"""
-    active_cells_work_layout(group, size, map_type, grid)
-
-Compute the work layout for active cells based on the given map type and grid.
-
-# Arguments
-- `group`: The previous workgroup.
-- `size`: The previous worksize.
-- `active_cells_map`: The map containing the index of the active cells
-
-# Returns
-- A tuple `(workgroup, worksize)` representing the work layout for active cells.
-"""
-@inline active_cells_work_layout(group, size, active_cells_map) = min(length(active_cells_map), 256), length(active_cells_map)
 
 """
     active_linear_index_to_tuple(idx, map, grid)
