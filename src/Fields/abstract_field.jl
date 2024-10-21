@@ -126,3 +126,21 @@ for f in (:+, :-)
     @eval Base.$f(ϕ::AbstractField, ψ::AbstractArray) = $f(interior(ϕ), ψ)
 end
 
+# TODO: support dims? test
+function Statistics.norm(a::AbstractField; condition = nothing)
+    conditional_a = condition_operand(a, condition, 0)
+    result = zeros(a.grid, 1)
+    Base.mapreducedim!(x -> x * x, +, result, conditional_a)
+    return CUDA.@allowscalar sqrt(first(result))
+end
+
+# TODO: needs test
+function Statistics.dot(a::AbstractField, b::AbstractField)
+    conditional_a = condition_operand(a, condition, 0)
+    conditional_b = condition_operand(b, condition, 0)
+    result = zeros(a.grid, 1)
+    Base.mapreducedim!((x, y) -> x * y, +, result, conditional_a, conditional_b)
+    return CUDA.@allowscalar first(result)
+end
+
+
