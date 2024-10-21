@@ -107,7 +107,7 @@ include("update_nonhydrostatic_model_state.jl")
 include("pressure_correction.jl")
 include("nonhydrostatic_tendency_kernel_functions.jl")
 include("compute_nonhydrostatic_tendencies.jl")
-include("compute_nonhydrostatic_boundary_tendencies.jl")
+include("compute_nonhydrostatic_buffer_tendencies.jl")
 
 end # module
 
