@@ -211,16 +211,13 @@ function WENOVectorInvariant(FT::DataType = Float64;
     default_upwinding = OnlySelfUpwinding(cross_scheme = divergence_scheme)
     upwinding = nothing_to_default(upwinding; default = default_upwinding)
 
-    schemes = (vorticity_scheme, vertical_scheme, kinetic_energy_gradient_scheme, divergence_scheme)
-    N = maximum(required_halo_size(s) for s in schemes)
-    FT = eltype(vorticity_scheme) # assumption
-
-    return VectorInvariant{N, FT, multi_dimensional_stencil}(vorticity_scheme,
-                                                             vorticity_stencil, 
-                                                             vertical_scheme, 
-                                                             kinetic_energy_gradient_scheme, 
-                                                             divergence_scheme, 
-                                                             upwinding)
+    return VectorInvariant(; vorticity_scheme,
+                             vorticity_stencil,
+                             vertical_scheme,
+                             divergence_scheme,
+                             kinetic_energy_gradient_scheme,
+                             upwinding,
+                             multi_dimensional_stencil)
 end
 
 # Since vorticity itself requires one halo, if we use an upwinding scheme (N > 1) we require one additional
