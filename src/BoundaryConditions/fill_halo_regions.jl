@@ -212,6 +212,7 @@ end
     _fill_bottom_halo!(i, j, grid, c, bottom_bc, loc, args...)
        _fill_top_halo!(i, j, grid, c, top_bc,    loc, args...)
 end
+
 #####
 ##### Single-sided fill_halo! kernels
 #####
@@ -437,3 +438,4 @@ end
 @inline fill_halo_offset(::Tuple, ::WEB, idx) = (idx[2] == Colon() ? 0 : first(idx[2])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
 @inline fill_halo_offset(::Tuple, ::SNB, idx) = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
 @inline fill_halo_offset(::Tuple, ::TBB, idx) = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[2] == Colon() ? 0 : first(idx[2])-1)
+

@@ -4,7 +4,7 @@
 
 using KernelAbstractions: @kernel, @index
 using Oceananigans.Grids: default_indices
-using Oceananigans.Fields: FunctionField, FieldStatus, reduced_dimensions, validate_indices, offset_index
+using Oceananigans.Fields: FunctionField, FieldStatus, validate_indices, offset_index
 using Oceananigans.Utils: launch!
 
 import Oceananigans.Fields: Field, compute!
