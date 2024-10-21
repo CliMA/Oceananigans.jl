@@ -15,9 +15,15 @@ function fill_open_boundary_regions!(field, boundary_conditions, indices, loc, g
     # gets `open_fill`, the function which fills open boundaries at `loc`, as well as `regular_fill`
     # which is the function which fills non-open boundaries at `loc` which informs `fill_halo_size` 
     open_fill, regular_fill = get_open_halo_filling_functions(loc) 
-    fill_size = fill_halo_size(field, regular_fill, indices, boundary_conditions, loc, grid)
 
-    launch!(arch, grid, fill_size, open_fill, field, left_bc, right_bc, loc, grid, args)
+    # Computing the size of the fill halo kernel. We use the `regular_fill` function to
+    # calculate the index range. Remember: windowed fields require the halos
+    # to be computed only on a part of the boundary so we need to offset the kernel indices 
+    size   = fill_halo_size(field, regular_fill, indices, boundary_conditions, loc, grid)
+    offset = fill_halo_offset(size, regular_fill, indices)
+    params = KernelParameters(size, offset)
+    
+    launch!(arch, grid, params, open_fill, field, left_bc, right_bc, loc, grid, args)
 
     return nothing
 end
@@ -52,7 +58,8 @@ fill_open_boundary_regions!(fields::NTuple, boundary_conditions, indices, loc, g
 
 @kernel _no_fill!(args...) = nothing
 
-@inline fill_halo_size(field, ::typeof(_no_fill!), args...) = (0, 0)
+@inline fill_halo_size(field, ::typeof(_no_fill!), args...)    = (0, 0)
+@inline fill_halo_offset(field, ::typeof(_no_fill!), args...) = (0, 0)
 
 @kernel function _fill_west_and_east_open_halo!(c, west_bc, east_bc, loc, grid, args) 
     j, k = @index(Global, NTuple)
