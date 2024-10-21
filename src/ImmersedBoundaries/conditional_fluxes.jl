@@ -1,7 +1,7 @@
 using Oceananigans.Advection: AbstractAdvectionScheme, advection_buffers
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑxᶜᵃᵃ, ℑyᵃᶠᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, ℑzᵃᵃᶜ 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization
-using Oceananigans.Advection: LOADV, HOADV, WENO, TracerAdvection
+using Oceananigans.Advection: LOADV, HOADV, WENO, FluxFormAdvection
 using Oceananigans.Fields: ZeroField
 
 const ATC = AbstractTurbulenceClosure
@@ -83,46 +83,68 @@ end
 @inline _advective_tracer_flux_z(i, j, k, ibg::IBG, args...) = conditional_flux_ccf(i, j, k, ibg, zero(ibg), advective_tracer_flux_z(i, j, k, ibg, args...))
 
 # Disambiguation for tracer fluxes....
-@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, advection::TracerAdvection, args...) =
+@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
         _advective_tracer_flux_x(i, j, k, ibg, advection.x, args...)
 
-@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, advection::TracerAdvection, args...) =
+@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
         _advective_tracer_flux_y(i, j, k, ibg, advection.y, args...)
 
-@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, advection::TracerAdvection, args...) =
+@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
         _advective_tracer_flux_z(i, j, k, ibg, advection.z, args...)
 
-# Fallback for `nothing` advection
+# Disambiguation for momentum fluxes in x....
+@inline _advective_momentum_flux_Uu(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
+        _advective_momentum_flux_Uu(i, j, k, ibg, advection.x, args...)
+
+@inline _advective_momentum_flux_Uv(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
+        _advective_momentum_flux_Uv(i, j, k, ibg, advection.x, args...)
+
+@inline _advective_momentum_flux_Uw(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
+        _advective_momentum_flux_Uw(i, j, k, ibg, advection.x, args...)
+
+# Disambiguation for momentum fluxes in y....
+@inline _advective_momentum_flux_Vu(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
+        _advective_momentum_flux_Vu(i, j, k, ibg, advection.y, args...)
+
+@inline _advective_momentum_flux_Vv(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
+        _advective_momentum_flux_Vv(i, j, k, ibg, advection.y, args...)
+
+@inline _advective_momentum_flux_Vw(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
+        _advective_momentum_flux_Vw(i, j, k, ibg, advection.y, args...)
+
+# Disambiguation for momentum fluxes in z....
+@inline _advective_momentum_flux_Wu(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
+        _advective_momentum_flux_Wu(i, j, k, ibg, advection.z, args...)
+
+@inline _advective_momentum_flux_Wv(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
+        _advective_momentum_flux_Wv(i, j, k, ibg, advection.z, args...)
+
+@inline _advective_momentum_flux_Ww(i, j, k, ibg::IBG, advection::FluxFormAdvection, args...) =
+        _advective_momentum_flux_Ww(i, j, k, ibg, advection.z, args...)
+
+# Fallback for `nothing` Advection
+
+# dx(uu), dy(vu), dz(wu)
+# ccc,    ffc,    fcf
+@inline _advective_momentum_flux_Uu(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
+@inline _advective_momentum_flux_Vu(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
+@inline _advective_momentum_flux_Wu(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
+
+# dx(uv), dy(vv), dz(wv)
+# ffc,    ccc,    cff
+@inline _advective_momentum_flux_Uv(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
+@inline _advective_momentum_flux_Vv(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
+@inline _advective_momentum_flux_Wv(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
+
+# dx(uw), dy(vw), dz(ww)
+# fcf,    cff,    ccc
+@inline _advective_momentum_flux_Uw(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
+@inline _advective_momentum_flux_Vw(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
+@inline _advective_momentum_flux_Ww(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
+
 @inline _advective_tracer_flux_x(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
 @inline _advective_tracer_flux_y(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
 @inline _advective_tracer_flux_z(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
-
-# Fallback for `nothing` advection and `ZeroField` tracers and velocities
-@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, ::Nothing, ::ZeroField, ::ZeroField) = zero(ibg)
-@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, ::Nothing, ::ZeroField, ::ZeroField) = zero(ibg)
-@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, ::Nothing, ::ZeroField, ::ZeroField) = zero(ibg)
-
-@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, ::Nothing, U, ::ZeroField) = zero(ibg)
-@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, ::Nothing, V, ::ZeroField) = zero(ibg)
-@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, ::Nothing, W, ::ZeroField) = zero(ibg)
-@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, ::Nothing, ::ZeroField, c) = zero(ibg)
-@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, ::Nothing, ::ZeroField, c) = zero(ibg)
-@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, ::Nothing, ::ZeroField, c) = zero(ibg)
-
-# Fallback for `ZeroField` tracers and velocities
-@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, scheme, ::ZeroField, ::ZeroField) = zero(ibg)
-@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, scheme, ::ZeroField, ::ZeroField) = zero(ibg)
-@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, scheme, ::ZeroField, ::ZeroField) = zero(ibg)
-
-# Fallback for `ZeroField` tracers
-@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, scheme, U, ::ZeroField) = zero(ibg)
-@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, scheme, V, ::ZeroField) = zero(ibg)
-@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, scheme, W, ::ZeroField) = zero(ibg)
-
-# Fallback for `ZeroField` velocities
-@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, scheme, ::ZeroField, c) = zero(ibg)
-@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, scheme, ::ZeroField, c) = zero(ibg)
-@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, scheme, ::ZeroField, c) = zero(ibg)
 
 #####
 ##### "Boundary-aware" reconstruct
