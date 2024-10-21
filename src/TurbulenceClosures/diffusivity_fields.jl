@@ -10,8 +10,11 @@ function DiffusivityFields(diffusivity_fields::NamedTuple, grid, tracer_names, b
     return diffusivity_fields
 end
 
-DiffusivityFields(::Nothing, grid, tracer_names, bcs, closure) =
-    DiffusivityFields(grid, tracer_names, bcs, closure)
+DiffusivityFields(::Nothing, grid, tracer_names, bcs, closure; velocities) =
+    DiffusivityFields(grid, tracer_names, bcs, closure; velocities)
+
+DiffusivityFields(args...; velocities) = DiffusivityFields(args...)
+
 
 #####
 ##### Closures without precomputed diffusivities
