@@ -50,7 +50,7 @@ Adapt.adapt_structure(to, coriolis::HydrostaticSphericalCoriolis) =
 
 @inline φᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)        = φnode(j, grid, Face())
 @inline φᶠᶠᵃ(i, j, k, grid::OrthogonalSphericalShellGrid) = φnode(i, j, grid, Face(), Face())
-@inline φᶠᶠᵃ(i, j, k, grid::ImmersedBoundaryGrid)         =  φᶠᶠᵃ(i, j, k, grid.underlying_grid)
+@inline φᶠᶠᵃ(i, j, k, grid::ImmersedBoundaryGrid)         = φᶠᶠᵃ(i, j, k, grid.underlying_grid)
 
 @inline fᶠᶠᵃ(i, j, k, grid, coriolis::HydrostaticSphericalCoriolis) =
     2 * coriolis.rotation_rate * hack_sind(φᶠᶠᵃ(i, j, k, grid))
