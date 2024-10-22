@@ -38,13 +38,14 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
     @apply_regionally update_boundary_condition!(fields(model), model)
 
     if grid isa ConformalCubedSphereGrid
-        # Temporarily hardcode fill_halo_regions! for buoyancy and SSH.
-        fill_halo_regions!(model.tracers.b)
-        fill_halo_regions!(model.free_surface.η)
-        #=
-        prognostic_fields_minus_u_v = (; filter(kv -> kv[1] ∉ (:u, :v), pairs(prognostic_fields(model)))...)
-        fill_halo_regions!(prognostic_fields_minus_u_v, model.clock, fields(model); async = true)
-        =#
+        if model.tracers != nothing
+            for tracer in model.tracers
+                fill_halo_regions!(tracer)
+            end
+        end
+        if model.free_surface != nothing
+            fill_halo_regions!(model.free_surface.η)
+        end
         fill_halo_regions!((model.velocities.u, model.velocities.v))
     else
         fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
