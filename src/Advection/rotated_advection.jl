@@ -4,21 +4,24 @@ using Oceananigans.Operators
 
 struct RotatedAdvection{N, FT, U} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
     upwind_scheme :: U
-    rotation_percentage :: FT
+    minimum_rotation_percentage :: FT
     maximum_slope :: FT
 end
 
-function RotatedAdvection(upwind_scheme::U, maximum_slope = 1e5, rotation_percentage = 1) where U 
+function RotatedAdvection(upwind_scheme::U;
+                          maximum_slope = 1e5, 
+                          minimum_rotation_percentage = 0.1) where U 
+
     FT = eltype(upwind_scheme)
     
     N  = max(required_halo_size_x(upwind_scheme),
              required_halo_size_y(upwind_scheme),
              required_halo_size_z(upwind_scheme))
     
-    rotation_percentage = convert(FT, rotation_percentage)
+    minimum_rotation_percentage = convert(FT, minimum_rotation_percentage)
     maximum_slope = convert(FT, maximum_slope)
 
-    return RotatedAdvection{N, FT, U}(upwind_scheme, rotation_percentage, maximum_slope)
+    return RotatedAdvection{N, FT, U}(upwind_scheme, minimum_rotation_percentage, maximum_slope)
 end
 
 @inline rotated_div_Uc(i, j, k, grid, scheme, U, c, buoyancy, tracers) = div_Uc(i, j, k, grid, scheme, U, c)
@@ -78,15 +81,26 @@ end
     ℛz⁺ = R₃₁⁺ * 𝒟x⁺ + R₃₂⁺ * 𝒟y⁺ + R₃₃⁺ * 𝒟z⁺
     ℛz⁻ = R₃₁⁻ * 𝒟x⁻ + R₃₂⁻ * 𝒟y⁻ + R₃₃⁻ * 𝒟z⁻
 
-    α = scheme.rotation_percentage
+    # Limiting the scheme to a minimum rotation
+    α = scheme.minimum_rotation_percentage
+    αx⁺ = min(α, abs(ℛx⁺) / abs(𝒟x⁺))
+    αx⁻ = min(α, abs(ℛx⁻) / abs(𝒟x⁻))
+        
+    αy⁺ = min(α, abs(ℛy⁺) / abs(𝒟y⁺))
+    αy⁻ = min(α, abs(ℛy⁻) / abs(𝒟y⁻))
+       
+    αz⁺ = min(α, abs(ℛz⁺) / abs(𝒟z⁺))
+    αz⁻ = min(α, abs(ℛz⁻) / abs(𝒟z⁻))
 
-    Fx⁺ = 𝒞x⁺ + α * ℛx⁺ + (1 - α) * 𝒟x⁺
-    Fy⁺ = 𝒞y⁺ + α * ℛy⁺ + (1 - α) * 𝒟y⁺
-    Fz⁺ = 𝒞z⁺ + α * ℛz⁺ + (1 - α) * 𝒟z⁺
 
-    Fx⁻ = 𝒞x⁻ + α * ℛx⁻ + (1 - α) * 𝒟x⁻
-    Fy⁻ = 𝒞y⁻ + α * ℛy⁻ + (1 - α) * 𝒟y⁻
-    Fz⁻ = 𝒞z⁻ + α * ℛz⁻ + (1 - α) * 𝒟z⁻
+    Fx⁺ = 𝒞x⁺ + αx⁺ * ℛx⁺ + (1 - αx⁺) * 𝒟x⁺
+    Fx⁻ = 𝒞x⁻ + αx⁻ * ℛx⁻ + (1 - αx⁻) * 𝒟x⁻
+                                            
+    Fy⁻ = 𝒞y⁻ + αy⁺ * ℛy⁻ + (1 - αy⁺) * 𝒟y⁻
+    Fy⁺ = 𝒞y⁺ + αy⁻ * ℛy⁺ + (1 - αy⁻) * 𝒟y⁺
+                                             
+    Fz⁺ = 𝒞z⁺ + αz⁺ * ℛz⁺ + (1 - αz⁺) * 𝒟z⁺
+    Fz⁻ = 𝒞z⁻ + αz⁻ * ℛz⁻ + (1 - αz⁻) * 𝒟z⁻
 
     return 1 / Vᶜᶜᶜ(i, j, k, grid) * (Fx⁺ - Fx⁻ + Fy⁺ - Fy⁻ + Fz⁺ - Fz⁻)
 end
