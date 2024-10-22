@@ -15,26 +15,23 @@ AreaField(grid, loc=(Center, Center, Nothing))  = MetricField(loc, grid, Oceanan
 
 struct RPEDensityOperation{Z, R, V, A, B}
     z★ :: Z
-    ρ :: R
+    b :: R
     vol :: V
     A :: A
     buoyancy :: B
 end
 
-@inline _density_operation(i, j, k, grid, buoyancy, tracers, reference_density) = reference_density * 
-            (1 - buoyancy_perturbationᶜᶜᶜ(i, j, k, grid, buoyancy, tracers) / buoyancy.gravitational_acceleration)
+BuoyancyOperation(grid, buoyancy, tracers) = 
+    KernelFunctionOperation{Center, Center, Center}(buoyancy_perturbationᶜᶜᶜ, grid, buoyancy, tracers)
 
-DensityOperation(grid, buoyancy, tracers, reference_density) = 
-    KernelFunctionOperation{Center, Center, Center}(_density_operation, grid, buoyancy, tracers, reference_density)
+Field(operand::RPEDensityOperation) = Field{Center, Center, Center}(operand.b.grid; operand)
 
-Field(operand::RPEDensityOperation) = Field{Center, Center, Center}(operand.ρ.grid; operand)
-
-function RPEDensityOperation(grid; tracers, buoyancy, reference_density)
+function RPEDensityOperation(grid; tracers, buoyancy)
     vol = VolumeField(grid)
     z★  = CenterField(grid)
     A   = sum(AreaField(grid))
-    ρ   = Field(DensityOperation(grid, buoyancy.model, tracers, reference_density))
-    return RPEDensityOperation(z★, ρ, vol, A, buoyancy)
+    b   = Field(BuoyancyOperation(grid, buoyancy.model, tracers))
+    return RPEDensityOperation(z★, b, vol, A, buoyancy)
 end
 
 RPEDensityField = Field{<:Any, <:Any, <:Any, <:RPEDensityOperation}
@@ -44,27 +41,24 @@ function compute!(ε::RPEDensityField, time=nothing)
     arch = architecture(grid)
 
     z★  = ε.operand.z★
-    ρ   = ε.operand.ρ
+    b   = ε.operand.b
     vol = ε.operand.vol
 
-    compute!(ρ)
+    compute!(b)
 
-    ρ_arr = Array(interior(ρ))[:]
+    b_arr = Array(interior(b))[:]
     v_arr = Array(interior(vol))[:]
 
-    perm           = sortperm(ρ_arr)
-    sorted_ρ_field = ρ_arr[perm]
+    perm           = sortperm(b_arr)
+    sorted_b_field = b_arr[perm]
     sorted_v_field = v_arr[perm]
     integrated_v   = cumsum(sorted_v_field)    
 
-    sorted_ρ_field = on_architecture(arch, sorted_ρ_field)
+    sorted_b_field = on_architecture(arch, sorted_b_field)
     integrated_v   = on_architecture(arch, integrated_v)
 
-    launch!(arch, grid, :xyz, _calculate_z★, z★, ρ, sorted_ρ_field, integrated_v)
-    
-    z★ ./= ε.operand.A
-
-    set!(ε, z★ * ρ)
+    launch!(arch, grid, :xyz, _calculate_z★, z★, b, sorted_b_field, integrated_v, ε.operand.A)
+    set!(ε, z★ * (1 - b / 9.80665) * 1020)
 
     return ε
 end
@@ -77,32 +71,13 @@ function total_RPE(RPE::Field)
     return sum(RPE * vol)
 end
 
-@kernel function _calculate_z★(z★, b, b_sorted, integrated_v)
+@kernel function _calculate_z★(z★, b, b_sorted, integrated_v, A)
     i, j, k = @index(Global, NTuple)
     bl  = b[i, j, k]
-    i₁  = searchsortedfirst(b_sorted, bl)
-    z★[i, j, k] = integrated_v[i₁] 
-end
+    i₁  = searchsortedlast(b_sorted, bl)
+    i₂  = searchsortedfirst(b_sorted, bl)
+    z★₁ = integrated_v[i₁] / A
+    z★₂ = integrated_v[i₂] / A
 
-@inline function linear_interpolate(x, y, x₀)
-    i₁ = searchsortedfirst(x, x₀)
-    i₂ =  searchsortedlast(x, x₀)
-
-    @inbounds y₂ = y[i₂]
-    @inbounds y₁ = y[i₁]
-
-    @inbounds x₂ = x[i₂]
-    @inbounds x₁ = x[i₁]
-
-    if i₁ > length(x)
-        return y₂
-    elseif i₁ == i₂
-        isnan(y₁) && @show i₁, i₂, x₁, x₂, y₁, y₂
-        return 
-    else
-        if isnan(y₁) || isnan(y₂) || isnan(x₁) || isnan(x₂) 
-            @show i₁, i₂, x₁, x₂, y₁, y₂
-        end
-        return (y₂ - y₁) / (x₂ - x₁) * (x₀ - x₁) + y₁
-    end
+    @inbounds z★[i, j, k] = (z★₁ + z★₂) / 2
 end
