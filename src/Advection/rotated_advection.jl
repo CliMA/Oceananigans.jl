@@ -83,14 +83,14 @@ end
 
     # Limiting the scheme to a minimum rotation
     α = scheme.minimum_rotation_percentage
-    αx⁺ = min(α, abs(ℛx⁺) / abs(𝒟x⁺))
-    αx⁻ = min(α, abs(ℛx⁻) / abs(𝒟x⁻))
+    αx⁺ = min(α, abs(ℛx⁺) / (abs(𝒟x⁺) + ϵ))
+    αx⁻ = min(α, abs(ℛx⁻) / (abs(𝒟x⁻) + ϵ))
         
-    αy⁺ = min(α, abs(ℛy⁺) / abs(𝒟y⁺))
-    αy⁻ = min(α, abs(ℛy⁻) / abs(𝒟y⁻))
+    αy⁺ = min(α, abs(ℛy⁺) / (abs(𝒟y⁺) + ϵ))
+    αy⁻ = min(α, abs(ℛy⁻) / (abs(𝒟y⁻) + ϵ))
        
-    αz⁺ = min(α, abs(ℛz⁺) / abs(𝒟z⁺))
-    αz⁻ = min(α, abs(ℛz⁻) / abs(𝒟z⁻))
+    αz⁺ = min(α, abs(ℛz⁺) / (abs(𝒟z⁺) + ϵ))
+    αz⁻ = min(α, abs(ℛz⁻) / (abs(𝒟z⁻) + ϵ))
 
 
     Fx⁺ = 𝒞x⁺ + αx⁺ * ℛx⁺ + (1 - αx⁺) * 𝒟x⁺
