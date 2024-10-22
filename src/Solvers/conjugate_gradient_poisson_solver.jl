@@ -46,7 +46,7 @@ function (L::RegularizedLaplacian)(Lϕ, ϕ)
     launch!(arch, grid, :xyz, laplacian!, Lϕ, grid, ϕ)
 
     if !isnothing(L.δ)
-        # Add regularization
+        # Add regularizer
         ϕ̄ = mean(ϕ)
         ΔLϕ = L.δ * ϕ̄
         grid = ϕ.grid
@@ -60,7 +60,7 @@ end
 struct DefaultPreconditioner end
 
 function ConjugateGradientPoissonSolver(grid;
-                                        regularization = nothing,
+                                        regularizer = nothing,
                                         preconditioner = DefaultPreconditioner(),
                                         reltol = sqrt(eps(grid)),
                                         abstol = sqrt(eps(grid)),
@@ -75,8 +75,8 @@ function ConjugateGradientPoissonSolver(grid;
     end
 
     rhs = CenterField(grid)
-    operator = RegularizedLaplacian(regularization)
-    preconditioner = RegularizedPreconditioner(preconditioner, rhs, regularization)
+    operator = RegularizedLaplacian(regularizer)
+    preconditioner = RegularizedPoissonPreconditioner(preconditioner, rhs, regularizer)
 
     conjugate_gradient_solver = ConjugateGradientSolver(operator;
                                                         reltol,
@@ -128,17 +128,17 @@ function compute_preconditioner_rhs!(solver::FourierTridiagonalPoissonSolver, rh
     return nothing
 end
 
-struct RegularizedPreconditioner{P, R, D}
-    preconditioner :: P
+struct RegularizedPoissonPreconditioner{P, R, D}
+    unregularized_preconditioner :: P
     rhs :: R
-    regularization :: D
+    regularizer :: D
 end
 
 const SolverWithFFT = Union{FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver}
-const FFTBasedPreconditioner = RegularizedPreconditioner{<:SolverWithFFT}
+const FFTBasedPreconditioner = RegularizedPoissonPreconditioner{<:SolverWithFFT}
 
 function precondition!(p, regularized::FFTBasedPreconditioner, r, args...)
-    solver = regularized.preconditioner
+    solver = regularized.unregularized_preconditioner
     compute_preconditioner_rhs!(solver, r)
     solve!(p, solver)
     regularize_poisson_solution!(p, regularized)
@@ -146,13 +146,16 @@ function precondition!(p, regularized::FFTBasedPreconditioner, r, args...)
 end
 
 function regularize_poisson_solution!(p, regularized)
-    δ = regularized.regularization
+    δ = regularized.regularizer
     rhs = regularized.rhs
     mean_p = mean(p)
 
     if !isnothing(δ)
         mean_rhs = mean(rhs)
         Δp = mean_p + mean_rhs / δ
+
+        # TODO: figure out if we should avoid zeroing the mean_p
+        # Δp = mean_rhs / δ
     else
         Δp = mean_p
     end
@@ -175,10 +178,10 @@ end
 #####
 
 struct AsymptoticPoissonPreconditioner end
-const RegularizedNDPP = RegularizedPreconditioner{<:AsymptoticPoissonPreconditioner}
+const RegularizedAPP = RegularizedPoissonPreconditioner{<:AsymptoticPoissonPreconditioner}
 Base.summary(::AsymptoticPoissonPreconditioner) = "AsymptoticPoissonPreconditioner"
 
-@inline function precondition!(p, preconditioner::RegularizedNDPP, r, args...)
+@inline function precondition!(p, preconditioner::RegularizedAPP, r, args...)
     grid = r.grid
     arch = architecture(p)
     fill_halo_regions!(r)
