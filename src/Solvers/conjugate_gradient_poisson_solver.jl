@@ -221,4 +221,3 @@ end
     active = !inactive_cell(i, j, k, grid)
     @inbounds p[i, j, k] = heuristic_poisson_solution(i, j, k, grid, r) * active
 end
-
