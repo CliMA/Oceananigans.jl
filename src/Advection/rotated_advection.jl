@@ -5,9 +5,10 @@ using Oceananigans.Operators
 struct RotatedAdvection{N, FT, U} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
     upwind_scheme :: U
     rotation_percentage :: FT
+    maximum_slope :: FT
 end
 
-function RotatedAdvection(upwind_scheme::U, rotation_percentage = 1) where U 
+function RotatedAdvection(upwind_scheme::U, maximum_slope = 1e5, rotation_percentage = 1) where U 
     FT = eltype(upwind_scheme)
     
     N  = max(required_halo_size_x(upwind_scheme),
@@ -15,8 +16,9 @@ function RotatedAdvection(upwind_scheme::U, rotation_percentage = 1) where U
              required_halo_size_z(upwind_scheme))
     
     rotation_percentage = convert(FT, rotation_percentage)
+    maximum_slope = convert(FT, maximum_slope)
 
-    return RotatedAdvection{N, FT, U}(upwind_scheme, rotation_percentage)
+    return RotatedAdvection{N, FT, U}(upwind_scheme, rotation_percentage, maximum_slope)
 end
 
 @inline rotated_div_Uc(i, j, k, grid, scheme, U, c, buoyancy, tracers) = div_Uc(i, j, k, grid, scheme, U, c)
@@ -52,19 +54,19 @@ end
     𝒟z⁺ = 𝒜z⁺ - 𝒞z⁺
     𝒟z⁻ = 𝒜z⁻ - 𝒞z⁻
 
+    # TODO: make this a parameter?
     ϵ = Δzᶜᶜᶜ(i, j, k, grid)^2 / max(Δxᶜᶜᶜ(i, j, k, grid), Δyᶜᶜᶜ(i, j, k, grid))^2
+    Smax = scheme.maximum_slope
 
     # Elements of the rotation tensor
-    R₁₁⁺, R₁₂⁺, R₁₃⁺ = rotation_tensorᶠᶜᶜ(i+1, j, k, grid, buoyancy, tracers, ϵ)
-    R₁₁⁻, R₁₂⁻, R₁₃⁻ = rotation_tensorᶠᶜᶜ(i,   j, k, grid, buoyancy, tracers, ϵ)
+    R₁₁⁺, R₁₂⁺, R₁₃⁺ = rotation_tensorᶠᶜᶜ(i+1, j, k, grid, buoyancy, tracers, Smax, ϵ)
+    R₁₁⁻, R₁₂⁻, R₁₃⁻ = rotation_tensorᶠᶜᶜ(i,   j, k, grid, buoyancy, tracers, Smax, ϵ)
 
-    R₂₁⁺, R₂₂⁺, R₂₃⁺ = rotation_tensorᶜᶠᶜ(i, j+1, k, grid, buoyancy, tracers, ϵ)
-    R₂₁⁻, R₂₂⁻, R₂₃⁻ = rotation_tensorᶜᶠᶜ(i, j,   k, grid, buoyancy, tracers, ϵ)
+    R₂₁⁺, R₂₂⁺, R₂₃⁺ = rotation_tensorᶜᶠᶜ(i, j+1, k, grid, buoyancy, tracers, Smax, ϵ)
+    R₂₁⁻, R₂₂⁻, R₂₃⁻ = rotation_tensorᶜᶠᶜ(i, j,   k, grid, buoyancy, tracers, Smax, ϵ)
     
-    R₃₁⁺, R₃₂⁺, R₃₃⁺ = rotation_tensorᶜᶜᶠ(i, j, k+1, grid, buoyancy, tracers, ϵ)
-    R₃₁⁻, R₃₂⁻, R₃₃⁻ = rotation_tensorᶜᶜᶠ(i, j, k,   grid, buoyancy, tracers, ϵ)
-
-    α = scheme.rotation_percentage
+    R₃₁⁺, R₃₂⁺, R₃₃⁺ = rotation_tensorᶜᶜᶠ(i, j, k+1, grid, buoyancy, tracers, Smax, ϵ)
+    R₃₁⁻, R₃₂⁻, R₃₃⁻ = rotation_tensorᶜᶜᶠ(i, j, k,   grid, buoyancy, tracers, Smax, ϵ)
 
     # Rotated fluxes
     ℛx⁺ = R₁₁⁺ * 𝒟x⁺ + R₁₂⁺ * 𝒟y⁺ + R₁₃⁺ * 𝒟z⁺
@@ -89,50 +91,50 @@ end
     return 1 / Vᶜᶜᶜ(i, j, k, grid) * (Fx⁺ - Fx⁻ + Fy⁺ - Fy⁻ + Fz⁺ - Fz⁻)
 end
 
-@inline function rotation_tensorᶠᶜᶜ(i, j, k, grid, buoyancy, tracers, ϵ)
+@inline function rotation_tensorᶠᶜᶜ(i, j, k, grid, buoyancy, tracers, Smax, ϵ)
     bx =   ∂x_b(i, j, k, grid,       buoyancy, tracers) 
     by = ℑxyᶜᶠᵃ(i, j, k, grid, ∂y_b, buoyancy, tracers) 
     bz = ℑxzᶜᵃᶠ(i, j, k, grid, ∂z_b, buoyancy, tracers) 
     S  = bx^2 + by^2 + bz^2
     Sx = abs(bx / bz)
     Sy = abs(by / bz)
-    cond = (Sx < 10000) & (Sy < 10000) & (S > 0) # Tapering
+    condition = (Sx < Smax) & (Sy < Smax) & (S > 0) # Tapering
 
-    R₁₁ = ifelse(cond,   (by^2 + bz^2 + ϵ * bx^2) / S, one(grid)) 
-    R₁₂ = ifelse(cond,        ((ϵ - 1) * bx * by) / S, zero(grid)) 
-    R₁₃ = ifelse(cond,        ((ϵ - 1) * bx * bz) / S, zero(grid))
+    R₁₁ = ifelse(condition,   (by^2 + bz^2 + ϵ * bx^2) / S, one(grid)) 
+    R₁₂ = ifelse(condition,        ((ϵ - 1) * bx * by) / S, zero(grid)) 
+    R₁₃ = ifelse(condition,        ((ϵ - 1) * bx * bz) / S, zero(grid))
 
     return R₁₁, R₁₂, R₁₃
 end
 
-@inline function rotation_tensorᶜᶠᶜ(i, j, k, grid, buoyancy, tracers, ϵ)
+@inline function rotation_tensorᶜᶠᶜ(i, j, k, grid, buoyancy, tracers, Smax, ϵ)
     bx = ℑxyᶜᶠᵃ(i, j, k, grid, ∂x_b, buoyancy, tracers) 
     by =   ∂y_b(i, j, k, grid,       buoyancy, tracers) 
     bz = ℑyzᵃᶜᶠ(i, j, k, grid, ∂z_b, buoyancy, tracers) 
     S  = bx^2 + by^2 + bz^2
     Sx = abs(bx / bz)
     Sy = abs(by / bz)
-    cond = (Sx < 10000) & (Sy < 10000) & (S > 0) # Tapering
+    condition = (Sx < Smax) & (Sy < Smax) & (S > 0) # Tapering
 
-    R₂₁ = ifelse(cond,      ((ϵ - 1) * by * bx) / S, zero(grid)) 
-    R₂₂ = ifelse(cond, (bx^2 + bz^2 + ϵ * by^2) / S, one(grid)) 
-    R₂₃ = ifelse(cond,      ((ϵ - 1) * by * bz) / S, zero(grid))
+    R₂₁ = ifelse(condition,      ((ϵ - 1) * by * bx) / S, zero(grid)) 
+    R₂₂ = ifelse(condition, (bx^2 + bz^2 + ϵ * by^2) / S, one(grid)) 
+    R₂₃ = ifelse(condition,      ((ϵ - 1) * by * bz) / S, zero(grid))
 
     return R₂₁, R₂₂, R₂₃
 end
 
-@inline function rotation_tensorᶜᶜᶠ(i, j, k, grid, buoyancy, tracers, ϵ)
+@inline function rotation_tensorᶜᶜᶠ(i, j, k, grid, buoyancy, tracers, Smax, ϵ)
     bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂x_b, buoyancy, tracers) 
     by = ℑyzᵃᶜᶠ(i, j, k, grid, ∂y_b, buoyancy, tracers) 
     bz =   ∂z_b(i, j, k, grid,       buoyancy, tracers) 
     S  = bx^2 + by^2 + bz^2
     Sx = abs(bx / bz)
     Sy = abs(by / bz)
-    cond = (Sx < 10000) & (Sy < 10000) & (S > 0) # Tapering
+    condition = (Sx < Smax) & (Sy < Smax) & (S > 0) # Tapering
 
-    R₃₁ = ifelse(cond,      ((ϵ - 1) * bz * bx) / S, zero(grid)) 
-    R₃₂ = ifelse(cond,      ((ϵ - 1) * bz * by) / S, zero(grid))
-    R₃₃ = ifelse(cond, (bx^2 + by^2 + ϵ * bz^2) / S, one(grid)) 
+    R₃₁ = ifelse(condition,      ((ϵ - 1) * bz * bx) / S, zero(grid)) 
+    R₃₂ = ifelse(condition,      ((ϵ - 1) * bz * by) / S, zero(grid))
+    R₃₃ = ifelse(condition, (bx^2 + by^2 + ϵ * bz^2) / S, one(grid)) 
 
     return R₃₁, R₃₂, R₃₃
 end

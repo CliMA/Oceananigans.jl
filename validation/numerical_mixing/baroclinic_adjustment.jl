@@ -31,7 +31,7 @@ function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = F
                                           tracer_advection = WENO(FT; order = 7),
                                           background_νz = 1e-4,
                                           φ₀ = - 50,
-                                          stop_time = 200days)
+                                          stop_time = 1000days)
     
     # Domain
     Lz = 1kilometers     # depth [m]
@@ -52,7 +52,7 @@ function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = F
     closures = isnothing(horizontal_closure) ? vertical_closure : (vertical_closure, horizontal_closure)
 
     N² = 4e-6  # [s⁻²] buoyancy frequency / stratification
-    Δb = 0.015 # [m/s²] buoyancy difference
+    Δb = 0.025 # [m/s²] buoyancy difference
 
     coriolis = HydrostaticSphericalCoriolis(FT)
 
@@ -81,7 +81,7 @@ function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = F
 
     Tᵢᵣ(x, y, z) = (bᵢ(x, y, z, param) + ϵb * randn()) / 2e-4 / 10 
     uᵢᵣ(x, y, z) = uᵢ(x, y, z, param)
-    Sᵢᵣ(x, y, z) = 32.5 - (grid.Lz + z) / grid.Lz * 0.2
+    Sᵢᵣ(x, y, z) = 32.5 - (grid.Lz + z) / grid.Lz * 0.5
 
     set!(model, T=Tᵢᵣ, S=Sᵢᵣ)
 
@@ -94,7 +94,7 @@ function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = F
     # add progress callback
     wall_clock = [time_ns()]
 
-    RPE = Field(RPEDensityOperation(grid, tracers = model.tracers, buoyancy = model.buoyancy, reference_density = 1020.0))
+    RPE = Field(RPEDensityOperation(grid, tracers = model.tracers, buoyancy = model.buoyancy))
     compute!(RPE)
 
     function progress(sim)
@@ -117,7 +117,7 @@ function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = F
     
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
     
-    outputs = merge(model.velocities, model.tracers, (; RPE))
+    outputs = merge(model.velocities, model.tracers, (; RPE, z★ = RPE.operand.z★, b = RPE.operand.b))
 
     simulation.output_writers[:outputs] = JLD2OutputWriter(model, outputs;
                                                            overwrite_existing = true,
