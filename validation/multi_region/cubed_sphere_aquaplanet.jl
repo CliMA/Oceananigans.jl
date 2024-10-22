@@ -366,7 +366,8 @@ free_surface       = SplitExplicitFreeSurface(grid; substeps, extended_halos = t
 @inline νhb(i, j, k, grid, lx, ly, lz, clock, fields, p) = Δ²ᶜᶜᶜ(i, j, k, grid, lx, ly, lz)^2 / p.λ_rts
 
 horizontal_viscosity = HorizontalScalarBiharmonicDiffusivity(ν = νhb, discrete_form = true,
-                                                             parameters = (; λ_rts = 1day))
+                                                             vector_invariant_form = true,
+                                                             parameters = (; λ_rts = 2days))
 
 νz_surface = 1e-3
 νz_bottom = 1e-4
