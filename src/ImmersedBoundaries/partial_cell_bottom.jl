@@ -72,14 +72,28 @@ end
 
 @kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::PartialCellBottom)
     i, j = @index(Global, NTuple)
+
+    # Save analytical bottom height
     zb = @inbounds bottom_field[i, j, 1]
-    @inbounds bottom_field[i, j, 1] = znode(i, j, 1, grid, c, c, f)
+
+    # Cap bottom height at Lz and at rnode(i, j, grid.Nz+1, grid, c, c, f)
+    domain_bottom = znode(i, j, 1, grid, c, c, f)
+    domain_top    = znode(i, j, grid.Nz+1, grid, c, c, f)
+    @inbounds bottom_field[i, j, 1] = clamp(zb, domain_bottom, domain_top)
+
     ϵ  = ib.minimum_fractional_cell_height
     for k in 1:grid.Nz
-        z⁻ = znode(i, j, k, grid, c, c, f)
+        z⁻ = znode(i, j, k,   grid, c, c, f)
+        z⁺ = znode(i, j, k+1, grid, c, c, f)
         Δz = Δzᶜᶜᶜ(i, j, k, grid)
-        bottom_cell =  z⁻ + Δz * (1 - ϵ) ≤ zb
-        @inbounds bottom_field[i, j, 1] = ifelse(bottom_cell, z⁻ + Δz * (1 - ϵ), zb)
+        bottom_cell = (z⁻ ≤ zb) & (z⁺ ≥ zb)
+
+        # If the size of the bottom cell is less than ϵ Δz, use 
+        # a simple `GridFittedBottom` approach where the bottom 
+        # height is the top interface of cell k.
+        capped_zb   = ifelse(zb < z⁻ + Δz * (1 - ϵ), zb, z⁺)
+
+        @inbounds bottom_field[i, j, 1] = ifelse(bottom_cell, capped_zb, bottom_field[i, j, 1])
     end
 end
 
