@@ -123,6 +123,15 @@ const RGY = AbstractGrid{<:Any, <:RightConnected}
 @inline ℑxᶠᵃᵃ_η(i, j, k, grid::RGX, η) = ifelse(i == 1, η[1, j, k], ℑxᶠᵃᵃ(i, j, k, grid, η))
 @inline ℑyᵃᶠᵃ_η(i, j, k, grid::RGY, η) = ifelse(j == 1, η[i, 1, k], ℑyᵃᶠᵃ(i, j, k, grid, η))
 
+@inline ℑxᶠᵃᵃ_η(i, j, k, grid,      η::Function, args...) = ℑxᶠᵃᵃ(i, j, k, grid, η, args...)
+@inline ℑyᵃᶠᵃ_η(i, j, k, grid,      η::Function, args...) = ℑyᵃᶠᵃ(i, j, k, grid, η, args...)
+@inline ℑxᶠᵃᵃ_η(i, j, k, grid::PGX, η::Function, args...) = ifelse(i == 1, (η(1, j, k, grid, args...) + η(grid.Nx, j, k, grid, args...)) / 2, ℑxᶠᵃᵃ(i, j, k, grid, η, args...))
+@inline ℑyᵃᶠᵃ_η(i, j, k, grid::PGY, η::Function, args...) = ifelse(j == 1, (η(i, 1, k, grid, args...) + η(i, grid.Ny, k, grid, args...)) / 2, ℑyᵃᶠᵃ(i, j, k, grid, η, args...))
+@inline ℑxᶠᵃᵃ_η(i, j, k, grid::BGX, η::Function, args...) = ifelse(i == 1, η(1, j, k, grid, args...), ℑxᶠᵃᵃ(i, j, k, grid, η, args...))
+@inline ℑyᵃᶠᵃ_η(i, j, k, grid::BGY, η::Function, args...) = ifelse(j == 1, η(i, 1, k, grid, args...), ℑyᵃᶠᵃ(i, j, k, grid, η, args...))
+@inline ℑxᶠᵃᵃ_η(i, j, k, grid::RGX, η::Function, args...) = ifelse(i == 1, η(1, j, k, grid, args...), ℑxᶠᵃᵃ(i, j, k, grid, η, args...))
+@inline ℑyᵃᶠᵃ_η(i, j, k, grid::RGY, η::Function, args...) = ifelse(j == 1, η(i, 1, k, grid, args...), ℑyᵃᶠᵃ(i, j, k, grid, η, args...))
+
 # Time stepping extrapolation U★, and η★
 
 # AB3 step
@@ -179,12 +188,12 @@ end
 end
 
 # Linear free surface implementation
-@inline dynamic_static_column_depthᶠᶜᵃ(i, j, k, grid, η) = static_column_depthᶠᶜᵃ(i, j, grid)
-@inline dynamic_static_column_depthᶜᶠᵃ(i, j, k, grid, η) = static_column_depthᶜᶠᵃ(i, j, grid)
+@inline dynamic_column_depthᶠᶜᵃ(i, j, k, grid, η, args...) = static_column_depthᶠᶜᵃ(i, j, grid)
+@inline dynamic_column_depthᶜᶠᵃ(i, j, k, grid, η, args...) = static_column_depthᶜᶠᵃ(i, j, grid)
 
 # Non-linear free surface implementation
-@inline dynamic_static_column_depthᶠᶜᵃ(i, j, k, grid::ZStarSpacingGrid, η) = static_column_depthᶠᶜᵃ(i, j, grid) + ℑxᶠᵃᵃ_η(i, j, k, grid, η)
-@inline dynamic_static_column_depthᶜᶠᵃ(i, j, k, grid::ZStarSpacingGrid, η) = static_column_depthᶜᶠᵃ(i, j, grid) + ℑyᵃᶠᵃ_η(i, j, k, grid, η)
+@inline dynamic_column_depthᶠᶜᵃ(i, j, k, grid::ZStarSpacingGrid, η, args...) = static_column_depthᶠᶜᵃ(i, j, grid) + ℑxᶠᵃᵃ_η(i, j, k, grid, η, args...)
+@inline dynamic_column_depthᶜᶠᵃ(i, j, k, grid::ZStarSpacingGrid, η, args...) = static_column_depthᶜᶠᵃ(i, j, grid) + ℑyᵃᶠᵃ_η(i, j, k, grid, η, args...)
 
 @kernel function _split_explicit_barotropic_velocity!(averaging_weight, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
                                                       U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,
@@ -211,8 +220,8 @@ end
         advance_previous_velocity!(i, j, k_top-1, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²)
         advance_previous_velocity!(i, j, k_top-1, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²)
 
-        Hᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, grid)
-        Hᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, grid)
+        Hᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, k_top, grid, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)
+        Hᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, k_top, grid, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)
         
         # ∂τ(U) = - ∇η + G
         U[i, j, k_top-1] +=  Δτ * (- g * Hᶠᶜ * ∂xᶠᶜᶠ_η(i, j, k_top, grid, TX, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gᵁ[i, j, k_top-1])
@@ -237,8 +246,8 @@ end
     hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
     hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
 
-    sᶠᶜ = ifelse(hᶠᶜ == 0, one(grid), dynamic_static_column_depthᶠᶜᵃ(i, j, k_top, grid, η) / hᶠᶜ)
-    sᶜᶠ = ifelse(hᶜᶠ == 0, one(grid), dynamic_static_column_depthᶜᶠᵃ(i, j, k_top, grid, η) / hᶜᶠ)
+    sᶠᶜ = ifelse(hᶠᶜ == 0, one(grid), dynamic_column_depthᶠᶜᵃ(i, j, k_top, grid, η) / hᶠᶜ)
+    sᶜᶠ = ifelse(hᶜᶠ == 0, one(grid), dynamic_column_depthᶜᶠᵃ(i, j, k_top, grid, η) / hᶜᶠ)
 
     # hand unroll first loop
     @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δrᶠᶜᶜ(i, j, 1, grid) * sᶠᶜ
@@ -260,8 +269,8 @@ end
     hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
     hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
 
-    sᶠᶜ = ifelse(hᶠᶜ == 0, one(grid), dynamic_static_column_depthᶠᶜᵃ(i, j, k_top, grid, η) / hᶠᶜ)
-    sᶜᶠ = ifelse(hᶜᶠ == 0, one(grid), dynamic_static_column_depthᶜᶠᵃ(i, j, k_top, grid, η) / hᶜᶠ)
+    sᶠᶜ = ifelse(hᶠᶜ == 0, one(grid), dynamic_column_depthᶠᶜᵃ(i, j, k_top, grid, η) / hᶠᶜ)
+    sᶜᶠ = ifelse(hᶜᶠ == 0, one(grid), dynamic_column_depthᶜᶠᵃ(i, j, k_top, grid, η) / hᶜᶠ)
 
     # hand unroll first loop
     @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δrᶠᶜᶜ(i, j, 1, grid) * sᶠᶜ
@@ -285,8 +294,8 @@ end
     i, j, k = @index(Global, NTuple)
     k_top   = grid.Nz + 1
 
-    Hᶠᶜ = dynamic_static_column_depthᶠᶜᵃ(i, j, k_top, grid, η) 
-    Hᶜᶠ = dynamic_static_column_depthᶜᶠᵃ(i, j, k_top, grid, η) 
+    Hᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, k_top, grid, η) 
+    Hᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, k_top, grid, η) 
 
     @inbounds begin
         u[i, j, k] = u[i, j, k] + (U̅[i, j, k_top-1] - U[i, j, k_top-1]) / Hᶠᶜ 

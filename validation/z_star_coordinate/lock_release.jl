@@ -12,7 +12,7 @@ grid = RectilinearGrid(size = (128, 20),
                           x = (0, 64kilometers), 
                           z = z_faces, 
                        halo = (6, 6),
-                   topology = (Periodic, Flat, Bounded))
+                   topology = (Bounded, Flat, Bounded))
 
 grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> - (64kilometers - x) / 64kilometers * 20))
 
