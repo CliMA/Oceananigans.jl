@@ -2,8 +2,8 @@ using CairoMakie, JLD2, Statistics, HDF5
 data_directory = "/nobackup1/sandre/OceananigansData/"
 figure_directory = "oceananigans_figure/"
 
-jlfile = jldopen(data_directory * "baroclinic_double_gyre_free_surface.jld2", "r")
-jlfile2 = jldopen(data_directory * "baroclinic_double_gyre.jld2", "r")
+jlfile = jldopen("baroclinic_double_gyre_free_surface.jld2", "r")
+jlfile2 = jldopen("baroclinic_double_gyre.jld2", "r")
 ηkeys =  keys(jlfile["timeseries"]["η"])[2:end]
 
 η = zeros(size(jlfile["timeseries"]["η"]["0"])[1:2]..., length(ηkeys))
@@ -21,6 +21,7 @@ for (i, ηkey) in enumerate(ηkeys)
 end
 close(jlfile)
 close(jlfile2)
+kmax = 1
 
 NN = 3
 fig = Figure() 
@@ -43,7 +44,7 @@ for i in 1:NN
 end
 save(figure_directory * "etafield_start.png", fig)
 
-for k in 1:2
+for k in 1:kmax
     fig = Figure() 
     for i in 1:NN
         for j in 1:NN
@@ -55,7 +56,7 @@ for k in 1:2
     save(figure_directory * "ufield$k.png", fig)
 end
 
-for k in 1:2
+for k in 1:kmax
     fig = Figure() 
     for i in 1:NN
         for j in 1:NN
@@ -68,38 +69,18 @@ for k in 1:2
 end
 
 fig = Figure() 
-for i in 1:NN
-    for j in 1:NN
-        ii = (i - 1) * NN + j
-        ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y")
-        heatmap!(ax, v[:, :, 2, end - ii], colormap = :viridis)
+for k in 1:kmax
+    for i in 1:NN
+        for j in 1:NN
+            ii = (i - 1) * NN + j
+            ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y")
+            heatmap!(ax, b[:, :, k, end - ii], colormap = :viridis)
+        end
     end
+
+    save(figure_directory * "bfield$k.png", fig)
 end
-save(figure_directory * "vfield2.png", fig)
-
-
-fig = Figure() 
-for i in 1:NN
-    for j in 1:NN
-        ii = (i - 1) * NN + j
-        ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y")
-        heatmap!(ax, b[:, :, 1, end - ii], colormap = :viridis)
-    end
-end
-
-save(figure_directory * "bfield1.png", fig)
-
-fig = Figure() 
-for i in 1:NN
-    for j in 1:NN
-        ii = (i - 1) * NN + j
-        ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y")
-        heatmap!(ax, b[:, :, 2, end - ii], colormap = :viridis)
-    end
-end
-
-save(figure_directory * "bfield2.png", fig)
-
+#=
 fig = Figure() 
 for i in 1:NN
     for j in 1:NN
@@ -110,7 +91,7 @@ for i in 1:NN
 end
 
 save(figure_directory * "wfield2.png", fig)
-
+=#
 
 ##
 squareheight = [mean(η[:, :, i] .^2) for i in eachindex(ηkeys)]
@@ -118,7 +99,7 @@ squareheight = [mean(η[:, :, i] .^2) for i in eachindex(ηkeys)]
 
 fig = Figure()
 ax = Axis(fig[1,1]; xlabel = "time", ylabel = "mean(η^2)")
-lines!(ax, squareheight[120:end], color = :blue)
+lines!(ax, squareheight, color = :blue)
 save(figure_directory * "squareheight.png", fig)
 
 ##
@@ -139,6 +120,7 @@ b̄ = mean(b[:,:,:,si:end], dims = 4)
 σb = std(b[:,:,:,si:end], dims = 4)
 rb = (b[:, :, :, si:end] .- b̄ ) ./ σb
 
+#=
 hfile = h5open(data_directory * "baroclinic_double_gyre.hdf5", "w")
 hfile["eta"] = rη
 hfile["u"] = ru
@@ -162,3 +144,41 @@ state[:, :, 4, :] .= rη[:, :, :]
 hfile = h5open(data_directory * "baroclinic_training_data.hdf5", "w")
 hfile["timeseries"] = state
 close(hfile)
+=#
+
+##
+
+using Oceananigans.Utils
+using Oceananigans.Architectures: device
+using KernelAbstractions: @kernel, @index
+using Oceananigans.Operators
+using Oceananigans.Architectures: architecture
+
+u = FieldTimeSeries("baroclinic_double_gyre.jld2", "u")
+
+function barotropic_streamfunction(u)
+    U = Field(Integral(u, dims=3))
+    compute!(U)
+    ψ = Field{Face,Face,Nothing}(u.grid)
+    D = device(architecture(u.grid))
+
+    _compute_ψ!(D, 16, u.grid.Nx + 1)(ψ, u.grid, U)
+
+    return ψ
+end
+
+@kernel function _compute_ψ!(ψ, grid, U)
+    i = @index(Global, Linear)
+    ψ[i, 1, 1] = 0
+
+    for j in 2:grid.Ny
+        ψ[i, j, 1] = ψ[i, j-1, 1] + U[i, j, 1] * Δyᶠᶜᶜ(i, j, 1, grid)
+    end
+end
+ψ = barotropic_streamfunction(u[end])
+
+fig = Figure()
+ax = Axis(fig[1,1]; xlabel = "x", ylabel = "y")
+heatmap!(ax, ψ, colormap = :viridis)
+# contour!(ax, ψ, color = :black)
+save(figure_directory * "streamfunction.png", fig)
