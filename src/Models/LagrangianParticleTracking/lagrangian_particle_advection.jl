@@ -62,14 +62,14 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
     i⁻, j⁻, k⁻ = previous_particle_indices
 
     # Left bounds of the previous cell
-    xᴿ = xnode(i⁻ + 1, j⁻ + 1, k⁻ + 1, ibg, f, f, f)
-    yᴿ = ynode(i⁻ + 1, j⁻ + 1, k⁻ + 1, ibg, f, f, f)
-    zᴿ = znode(i⁻ + 1, j⁻ + 1, k⁻ + 1, ibg, f, f, f)
+    xᴿ = ξnode(i⁻ + 1, j⁻ + 1, k⁻ + 1, ibg, f, f, f)
+    yᴿ = ηnode(i⁻ + 1, j⁻ + 1, k⁻ + 1, ibg, f, f, f)
+    zᴿ = rnode(i⁻ + 1, j⁻ + 1, k⁻ + 1, ibg, f, f, f)
 
     # Right bounds of the previous cell
-    xᴸ = xnode(i⁻, j⁻, k⁻, ibg, f, f, f)
-    yᴸ = ynode(i⁻, j⁻, k⁻, ibg, f, f, f)
-    zᴸ = znode(i⁻, j⁻, k⁻, ibg, f, f, f)
+    xᴸ = ξnode(i⁻, j⁻, k⁻, ibg, f, f, f)
+    yᴸ = ηnode(i⁻, j⁻, k⁻, ibg, f, f, f)
+    zᴸ = rnode(i⁻, j⁻, k⁻, ibg, f, f, f)
 
     Cʳ = restitution
     tx, ty, tz = map(immersed_boundary_topology, topology(ibg))
@@ -133,13 +133,13 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     jᴿ = rightmost_interface_index(ty, Ny)
     kᴿ = rightmost_interface_index(tz, Nz)
 
-    xᴸ = xnode(1, j, k, grid, f, f, f)
-    yᴸ = ynode(i, 1, k, grid, f, f, f)
-    zᴸ = znode(i, j, 1, grid, f, f, f)
+    xᴸ = ξnode(1, j, k, grid, f, f, f)
+    yᴸ = ηnode(i, 1, k, grid, f, f, f)
+    zᴸ = rnode(i, j, 1, grid, f, f, f)
 
-    xᴿ = xnode(iᴿ, j, k, grid, f, f, f)
-    yᴿ = ynode(i, jᴿ, k, grid, f, f, f)
-    zᴿ = znode(i, j, kᴿ, grid, f, f, f)
+    xᴿ = ξnode(iᴿ, j, k, grid, f, f, f)
+    yᴿ = ηnode(i, jᴿ, k, grid, f, f, f)
+    zᴿ = rnode(i, j, kᴿ, grid, f, f, f)
 
     # Enforce boundary conditions for particles.
     Cʳ = restitution
