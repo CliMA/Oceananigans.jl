@@ -24,17 +24,12 @@ model = HydrostaticFreeSurfaceModel(; grid, buoyancy,
 
 g = model.free_surface.gravitational_acceleration
 
-h₀        = 7.5meters
-width     = 10kilometers
-hill(x)   = h₀ * exp(- (x - 32kilometers) ^2 / 2width^2)
-bottom(x) = - 12.5 + hill(x)
-
-Tᵢ(x, z) = x < 32kilometers ? 10 : 0
-Sᵢ(x, z) = 32 - (grid.Lz + z) / grid.Lz
+Tᵢ(x, z) = x < 32kilometers ? 30 : 5
+Sᵢ(x, z) = 32.5 - (Lz + z) / z
 
 set!(model, T = Tᵢ, S = Sᵢ)
 
-Δt = 10
+Δt = 1
 
 @info "the time step is $Δt"
 
@@ -49,24 +44,24 @@ simulation.output_writers[:other_variables] = JLD2OutputWriter(model, field_outp
 
 RPE = Field(RPEDensityOperation(grid, tracers = model.tracers, buoyancy = model.buoyancy))
 compute!(RPE)
+RPE_init_field = deepcopy(RPE)
 
 function progress(sim)
     w  = interior(sim.model.velocities.w, :, :, sim.model.grid.Nz+1)
     u  = sim.model.velocities.u
-    T  = sim.model.tracers.T
+    T  = sim.model.tracers.b
 
     compute!(RPE)
     msg0 = @sprintf("Time: %s iteration %d ", prettytime(sim.model.clock.time), sim.model.clock.iteration)
     msg1 = @sprintf("extrema w: %.2e %.2e ",  maximum(w),  minimum(w))
-    msg2 = @sprintf("extrema u: %.2e %.2e ",  maximum(u),  minimum(u))
-    msg3 = @sprintf("extrema Δz: %.2e %.2e ", maximum(T),  minimum(T))
+    msg3 = @sprintf("extrema T: %.2e %.2e ", maximum(T),  minimum(T))
     msg4 = @sprintf("total RPE: %6.3e ", total_RPE(RPE))
     @info msg0 * msg1 * msg3 * msg4
 
     return nothing
 end
 
-RPE_init = total_RPE(RPE)
+RPE_init = total_RPE(RPE_init_field)
 delta_RPE = Float64[]
 
 function save_RPE(sim)
@@ -76,7 +71,7 @@ function save_RPE(sim)
 end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
-simulation.callbacks[:save_RPE] = Callback(save_RPE, IterationInterval(1)) 
+simulation.callbacks[:save_RPE] = Callback(save_RPE, IterationInterval(100)) 
 run!(simulation)
 
 ρ = Oceananigans.Models.seawater_density(model)

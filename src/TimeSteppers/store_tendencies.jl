@@ -11,9 +11,10 @@ end
 """ Store previous source terms before updating them. """
 function store_tendencies!(model)
     model_fields = prognostic_fields(model)
+    grid = model.grid
 
     for field_name in keys(model_fields)
-        launch!(model.architecture, model.grid, :xyz, store_field_tendencies!,
+        launch!(architecture(grid), grid, :xyz, store_field_tendencies!,
                 model.timestepper.G⁻[field_name],
                 model.timestepper.Gⁿ[field_name])
     end
