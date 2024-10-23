@@ -2,7 +2,7 @@ import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_
 using Oceananigans.Utils: prettysummary
 
 """
-    struct ScalarBiharmonicDiffusivity{F, N, K} <: AbstractScalarBiharmonicDiffusivity{F}
+    struct ScalarBiharmonicDiffusivity{F, N, VI, V, K} <: AbstractScalarBiharmonicDiffusivity{F}
 
 Holds viscosity and diffusivities for models with prescribed isotropic diffusivities.
 """
@@ -120,14 +120,14 @@ end
 
 Base.show(io::IO, closure::ScalarBiharmonicDiffusivity) = print(io, summary(closure))
 
-function Adapt.adapt_structure(to, closure::ScalarBiharmonicDiffusivity{F, <:Any, <:Any, N}) where {F, N}
+function Adapt.adapt_structure(to, closure::ScalarBiharmonicDiffusivity{F, N, VI, V, K}) where {F, N, VI, V, K}
     ν = Adapt.adapt(to, closure.ν)
     κ = Adapt.adapt(to, closure.κ)
-    return ScalarBiharmonicDiffusivity{F, N}(ν, κ)
+    return ScalarBiharmonicDiffusivity{F, N, VI, typeof(ν), typeof(κ)}(ν, κ)
 end
 
-function on_architecture(to, closure::ScalarBiharmonicDiffusivity{F, <:Any, <:Any, N}) where {F, N}
+function on_architecture(to, closure::ScalarBiharmonicDiffusivity{F, N, VI, V, K}) where {F, N, VI, V, K}
     ν = on_architecture(to, closure.ν)
     κ = on_architecture(to, closure.κ)
-    return ScalarBiharmonicDiffusivity{F, N}(ν, κ)
+    return ScalarBiharmonicDiffusivity{F, N, VI, typeof(ν), typeof(κ)}(ν, κ)
 end
