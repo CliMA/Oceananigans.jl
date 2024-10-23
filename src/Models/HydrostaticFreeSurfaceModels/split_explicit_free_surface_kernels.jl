@@ -179,12 +179,12 @@ end
 end
 
 # Linear free surface implementation
-@inline dynamic_domain_depthᶠᶜᵃ(i, j, k, grid, η) = domain_depthᶠᶜᵃ(i, j, grid)
-@inline dynamic_domain_depthᶜᶠᵃ(i, j, k, grid, η) = domain_depthᶜᶠᵃ(i, j, grid)
+@inline dynamic_static_column_depthᶠᶜᵃ(i, j, k, grid, η) = static_column_depthᶠᶜᵃ(i, j, grid)
+@inline dynamic_static_column_depthᶜᶠᵃ(i, j, k, grid, η) = static_column_depthᶜᶠᵃ(i, j, grid)
 
 # Non-linear free surface implementation
-@inline dynamic_domain_depthᶠᶜᵃ(i, j, k, grid::ZStarSpacingGrid, η) = domain_depthᶠᶜᵃ(i, j, grid) + ℑxᶠᵃᵃ_η(i, j, k, grid, η)
-@inline dynamic_domain_depthᶜᶠᵃ(i, j, k, grid::ZStarSpacingGrid, η) = domain_depthᶜᶠᵃ(i, j, grid) + ℑyᵃᶠᵃ_η(i, j, k, grid, η)
+@inline dynamic_static_column_depthᶠᶜᵃ(i, j, k, grid::ZStarSpacingGrid, η) = static_column_depthᶠᶜᵃ(i, j, grid) + ℑxᶠᵃᵃ_η(i, j, k, grid, η)
+@inline dynamic_static_column_depthᶜᶠᵃ(i, j, k, grid::ZStarSpacingGrid, η) = static_column_depthᶜᶠᵃ(i, j, grid) + ℑyᵃᶠᵃ_η(i, j, k, grid, η)
 
 @kernel function _split_explicit_barotropic_velocity!(averaging_weight, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
                                                       U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,
@@ -211,8 +211,8 @@ end
         advance_previous_velocity!(i, j, k_top-1, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²)
         advance_previous_velocity!(i, j, k_top-1, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²)
 
-        Hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
-        Hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
+        Hᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, grid)
+        Hᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, grid)
         
         # ∂τ(U) = - ∇η + G
         U[i, j, k_top-1] +=  Δτ * (- g * Hᶠᶜ * ∂xᶠᶜᶠ_η(i, j, k_top, grid, TX, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gᵁ[i, j, k_top-1])
@@ -234,11 +234,11 @@ end
     i, j  = @index(Global, NTuple)	
     k_top = grid.Nz+1
 
-    hᶠᶜ = domain_depthᶠᶜᵃ(i, j, grid)
-    hᶜᶠ = domain_depthᶜᶠᵃ(i, j, grid)
+    hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
+    hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
 
-    sᶠᶜ = ifelse(hᶠᶜ == 0, one(grid), dynamic_domain_depthᶠᶜᵃ(i, j, k_top, grid, η) / hᶠᶜ)
-    sᶜᶠ = ifelse(hᶜᶠ == 0, one(grid), dynamic_domain_depthᶜᶠᵃ(i, j, k_top, grid, η) / hᶜᶠ)
+    sᶠᶜ = ifelse(hᶠᶜ == 0, one(grid), dynamic_static_column_depthᶠᶜᵃ(i, j, k_top, grid, η) / hᶠᶜ)
+    sᶜᶠ = ifelse(hᶜᶠ == 0, one(grid), dynamic_static_column_depthᶜᶠᵃ(i, j, k_top, grid, η) / hᶜᶠ)
 
     # hand unroll first loop
     @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δrᶠᶜᶜ(i, j, 1, grid) * sᶠᶜ
@@ -257,11 +257,11 @@ end
     i, j = active_linear_index_to_tuple(idx, active_cells_map)
     k_top = grid.Nz+1
 
-    hᶠᶜ = domain_depthᶠᶜᵃ(i, j, grid)
-    hᶜᶠ = domain_depthᶜᶠᵃ(i, j, grid)
+    hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
+    hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
 
-    sᶠᶜ = ifelse(hᶠᶜ == 0, one(grid), dynamic_domain_depthᶠᶜᵃ(i, j, k_top, grid, η) / hᶠᶜ)
-    sᶜᶠ = ifelse(hᶜᶠ == 0, one(grid), dynamic_domain_depthᶜᶠᵃ(i, j, k_top, grid, η) / hᶜᶠ)
+    sᶠᶜ = ifelse(hᶠᶜ == 0, one(grid), dynamic_static_column_depthᶠᶜᵃ(i, j, k_top, grid, η) / hᶠᶜ)
+    sᶜᶠ = ifelse(hᶜᶠ == 0, one(grid), dynamic_static_column_depthᶜᶠᵃ(i, j, k_top, grid, η) / hᶜᶠ)
 
     # hand unroll first loop
     @inbounds U[i, j, k_top-1] = u[i, j, 1] * Δrᶠᶜᶜ(i, j, 1, grid) * sᶠᶜ
@@ -285,8 +285,8 @@ end
     i, j, k = @index(Global, NTuple)
     k_top   = grid.Nz + 1
 
-    Hᶠᶜ = dynamic_domain_depthᶠᶜᵃ(i, j, k_top, grid, η) 
-    Hᶜᶠ = dynamic_domain_depthᶜᶠᵃ(i, j, k_top, grid, η) 
+    Hᶠᶜ = dynamic_static_column_depthᶠᶜᵃ(i, j, k_top, grid, η) 
+    Hᶜᶠ = dynamic_static_column_depthᶜᶠᵃ(i, j, k_top, grid, η) 
 
     @inbounds begin
         u[i, j, k] = u[i, j, k] + (U̅[i, j, k_top-1] - U[i, j, k_top-1]) / Hᶠᶜ 
