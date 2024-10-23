@@ -139,6 +139,20 @@ function advective_timescale_cfl_on_lat_lon_grid(arch, FT)
     return cfl(model) ≈ CFL_by_hand
 end
 
+function advective_timescale_cfl_on_flat_2d_grid(arch, FT)
+    Δx = 0.5
+    topo = (Periodic, Flat, Bounded)
+    grid = RectilinearGrid(arch, FT, topology=topo, size=(3, 3), x=(0, 3Δx), z=(0, 3Δx))
+
+    model = NonhydrostaticModel(; grid)
+    set!(model, v=1)
+
+    Δt = FT(1.7)
+    cfl = CFL(FT(Δt), Oceananigans.Advection.cell_advection_timescale)
+
+    return cfl(model) == 0
+end
+
 get_iteration(model) = model.clock.iteration
 get_time(model) = model.clock.time
 
@@ -177,6 +191,7 @@ end
                 @test advective_timescale_cfl_on_regular_grid(arch, FT)
                 @test advective_timescale_cfl_on_stretched_grid(arch, FT)
                 @test advective_timescale_cfl_on_lat_lon_grid(arch, FT)
+                @test advective_timescale_cfl_on_flat_2d_grid(arch, FT)
             end
         end
     end

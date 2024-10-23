@@ -12,7 +12,8 @@ struct ConditionalOperation{LX, LY, LZ, O, F, G, C, M, T} <: AbstractOperation{L
     condition :: C
     mask :: M
 
-    function ConditionalOperation{LX, LY, LZ}(operand::O, func::F, grid::G, condition::C, mask::M) where {LX, LY, LZ, O, F, G, C, M}
+    function ConditionalOperation{LX, LY, LZ}(operand::O, func::F, grid::G,
+                                              condition::C, mask::M) where {LX, LY, LZ, O, F, G, C, M}
         T = eltype(operand)
         return new{LX, LY, LZ, O, F, G, C, M, T}(operand, func, grid, condition, mask)
     end
@@ -58,25 +59,28 @@ julia> using Oceananigans.Fields: condition_operand
 
 julia> c = CenterField(RectilinearGrid(size=(2, 1, 1), extent=(1, 1, 1)));
 
-julia> f(i, j, k, grid, c) = i < 2; d = condition_operand(cos, c, f, 10)
+julia> add_2(c) = c + 2
+add_2 (generic function with 1 method)
+
+julia> f(i, j, k, grid, c) = i < 2; d = condition_operand(add_2, c, f, 10.0)
 ConditionalOperation at (Center, Center, Center)
 ├── operand: 2×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 2×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×1×1 halo
-├── func: cos (generic function with 41 methods)
+├── func: add_2 (generic function with 1 method)
 ├── condition: f (generic function with 1 method)
-└── mask: 10
+└── mask: 10.0
 
 julia> d[1, 1, 1]
-1.0
+2.0
 
 julia> d[2, 1, 1]
-10
+10.0
 ```
 """
 function ConditionalOperation(operand::AbstractField;
                               func = identity,
                               condition = nothing,
-                              mask = 0)
+                              mask = zero(eltype(operand)))
 
     LX, LY, LZ = location(operand)
     return ConditionalOperation{LX, LY, LZ}(operand, func, operand.grid, condition, mask)

@@ -56,8 +56,9 @@ function BoundaryCondition(classification::AbstractBoundaryConditionClassificati
     return BoundaryCondition(classification, condition)
 end
 
-# Convenience constructor
+# Convenience constructors for buondary condition passing classification types
 BoundaryCondition(Classification::DataType, args...; kwargs...) = BoundaryCondition(Classification(), args...; kwargs...)
+BoundaryCondition(::Type{Open}, args...; kwargs...)             = BoundaryCondition(Open(nothing),    args...; kwargs...)
 
 # Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
 Adapt.adapt_structure(to, b::BoundaryCondition) =
@@ -149,3 +150,4 @@ validate_boundary_condition_architecture(::CuArray, ::CPU, bc, side) =
 
 validate_boundary_condition_architecture(::Array, ::GPU, bc, side) =
     throw(ArgumentError("$side $bc must use `CuArray` rather than `Array` on GPU architectures!"))
+

@@ -1,9 +1,5 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
-using Oceananigans.Fields: ZeroField, ConstantField, compute_at!, indices
-using Oceananigans.BuoyancyModels: BuoyancyField
-
 function simple_binary_operation(op, a, b, num1, num2)
     a_b = op(a, b)
     interior(a) .= num1
@@ -371,3 +367,4 @@ for arch in archs
         end
     end
 end
+
