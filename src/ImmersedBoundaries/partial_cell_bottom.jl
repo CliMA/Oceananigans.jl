@@ -74,17 +74,26 @@ end
 
 @kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::PartialCellBottom)
     i, j = @index(Global, NTuple)
+
+    # Save analytical bottom height
     zb = @inbounds bottom_field[i, j, 1]
+
+    # Cap bottom height at Lz and at rnode(i, j, grid.Nz+1, grid, c, c, f)
+    domain_bottom = rnode(i, j, 1, grid, c, c, f)
+    domain_top    = rnode(i, j, grid.Nz+1, grid, c, c, f)
+    @inbounds bottom_field[i, j, 1] = clamp(zb, domain_bottom, domain_top)
+
     ϵ  = ib.minimum_fractional_cell_height
-    @inbounds bottom_field[i, j, 1] = rnode(i, j, 1, grid, c, c, f)
     for k in 1:grid.Nz
-        # We use `rnode` for the `immersed_cell` because we do not want to have
-        # wetting or drying that could happen for a moving grid if we use znode
-        z⁻ = rnode(i, j, k, grid, c, c, c)
+        # We use `rnode` (reference vertical coordinate) instead of `znode`
+        # because we do not want to possibly using a moving grid to compute the bottom height
+        z⁻ = rnode(i, j, k,   grid, c, c, f)
+        z⁺ = rnode(i, j, k+1, grid, c, c, f)
         # For the same reason, here we use `Δrᶜᶜᶜ` instead of `Δzᶜᶜᶜ`
         Δz = Δrᶜᶜᶜ(i, j, k, grid)
-        bottom_cell =  z⁻ + Δz * (1 - ϵ) ≤ zb
-        @inbounds bottom_field[i, j, 1] = ifelse(bottom_cell, z⁻ + Δz * (1 - ϵ), bottom_field[i, j, 1])
+        bottom_cell = (z⁻ ≤ zb) & (z⁺ ≥ zb)
+        capped_zb   = ifelse(z⁻ + Δz * ϵ > zb, z⁻, zb)
+        @inbounds bottom_field[i, j, 1] = ifelse(bottom_cell, capped_zb, bottom_field[i, j, 1])
     end
 end
 
