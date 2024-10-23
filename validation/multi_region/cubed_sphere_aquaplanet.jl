@@ -131,6 +131,7 @@ underlying_grid = ConformalCubedSphereGrid(arch;
                                            z = hyperbolic_tangential_z_faces(Lz),
                                            horizontal_direction_halo = Nhalo,
                                            radius,
+                                           non_uniform_conformal_mapping = true,
                                            partition = CubedSpherePartition(; R = 1))
 
 import Oceananigans: on_architecture
@@ -675,7 +676,7 @@ end
 ##### Simulation setup
 #####
 
-Δt = 5minutes
+Δt = 12minutes
 
 # Compute the minimum number of substeps required to satisfy the CFL condition for a given Courant number.
 CUDA.@allowscalar min_spacing = filter(!iszero, grid.Δxᶠᶠᵃ) |> minimum
