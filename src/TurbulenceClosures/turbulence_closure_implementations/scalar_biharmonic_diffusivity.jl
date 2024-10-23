@@ -96,7 +96,7 @@ function ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation()
     return ScalarBiharmonicDiffusivity{typeof(formulation), required_halo_size, VI}(ν, κ)
 end
 
-function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{F, N, VI}) where {F, N, VI}
+function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{F, N, VI, <:Any, <:Any}) where {F, N, VI}
     κ = tracer_diffusivities(tracers, closure.κ)
     return ScalarBiharmonicDiffusivity{F, N, VI}(closure.ν, κ)
 end
@@ -120,14 +120,14 @@ end
 
 Base.show(io::IO, closure::ScalarBiharmonicDiffusivity) = print(io, summary(closure))
 
-function Adapt.adapt_structure(to, closure::ScalarBiharmonicDiffusivity{F, N, VI, V, K}) where {F, N, VI, V, K}
+function Adapt.adapt_structure(to, closure::ScalarBiharmonicDiffusivity{F, N, VI, <:Any, <:Any}) where {F, N, VI}
     ν = Adapt.adapt(to, closure.ν)
     κ = Adapt.adapt(to, closure.κ)
-    return ScalarBiharmonicDiffusivity{F, N, VI, typeof(ν), typeof(κ)}(ν, κ)
+    return ScalarBiharmonicDiffusivity{F, N, VI}(ν, κ)
 end
 
-function on_architecture(to, closure::ScalarBiharmonicDiffusivity{F, N, VI, V, K}) where {F, N, VI, V, K}
+function on_architecture(to, closure::ScalarBiharmonicDiffusivity{F, N, VI, <:Any, <:Any}) where {F, N, VI}
     ν = on_architecture(to, closure.ν)
     κ = on_architecture(to, closure.κ)
-    return ScalarBiharmonicDiffusivity{F, N, VI, typeof(ν), typeof(κ)}(ν, κ)
+    return ScalarBiharmonicDiffusivity{F, N, VI}(ν, κ)
 end
