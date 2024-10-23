@@ -74,7 +74,9 @@ end
             for grid in grids
                 @info info_message(grid)
 
-                free_surface = SplitExplicitFreeSurface(grid; cfl = 0.75)
+                # TODO: minimum_xspacing(grid) on a Immersed GPU grid with ZStarVerticalCoordinate
+                # fails because it uses too much parameter space. Figure out a way to reduce it 
+                free_surface = SplitExplicitFreeSurface(grid; substeps = 10)
                 model = HydrostaticFreeSurfaceModel(; grid, 
                                                       free_surface, 
                                                       tracers = (:b, :c), 
