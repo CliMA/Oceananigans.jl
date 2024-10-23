@@ -99,17 +99,17 @@ of the last ``immersed`` cell in the column.
 function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set!(bottom_field, ib.bottom_height)
-    @apply_regionally correct_bottom_height!(bottom_field, grid, ib)
+    @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, ib)
     fill_halo_regions!(bottom_field)
     new_ib = GridFittedBottom(bottom_field)
     TX, TY, TZ = topology(grid)
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, new_ib)
 end
 
-correct_bottom_height!(bottom_field, grid, ib) = 
-    launch!(architecture(grid), grid, :xy, _correct_bottom_height!, bottom_field, grid, ib)
+compute_numerical_bottom_height!(bottom_field, grid, ib) = 
+    launch!(architecture(grid), grid, :xy, _compute_numerical_bottom_height!, bottom_field, grid, ib)
 
-@kernel function _correct_bottom_height!(bottom_field, grid, ib::GridFittedBottom)
+@kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::GridFittedBottom)
     i, j = @index(Global, NTuple)
     zb = @inbounds bottom_field[i, j, 1]
     @inbounds bottom_field[i, j, 1] = znode(i, j, 1, grid, c, c, f)
