@@ -12,18 +12,31 @@ function fill_open_boundary_regions!(field, boundary_conditions, indices, loc, g
     left_bc = left_velocity_open_boundary_condition(boundary_conditions, loc)
     right_bc = right_velocity_open_boundary_condition(boundary_conditions, loc)
 
-    # gets `open_fill`, the function which fills open boundaries at `loc`, as well as `regular_fill`
-    # which is the function which fills non-open boundaries at `loc` which informs `fill_halo_size` 
-    open_fill, regular_fill = get_open_halo_filling_functions(loc) 
-    fill_size = fill_halo_size(field, regular_fill, indices, boundary_conditions, loc, grid)
+    # gets `fill_function`, the function which fills open boundaries at `loc` and informs `fill_size` 
+    fill_function, fill_size = get_open_halo_filling(field, indices, boundary_conditions, loc, grid)
 
-    launch!(arch, grid, fill_size, open_fill, field, left_bc, right_bc, loc, grid, args)
+    fill_open_halo_event!(fill_function, field, left_bc, right_bc, fill_size, loc, arch, grid, args) 
 
     return nothing
 end
 
-fill_open_boundary_regions!(fields::NTuple, boundary_conditions, indices, loc, grid, args...; kwargs...) =
-    [fill_open_boundary_regions!(field, boundary_conditions[n], indices, loc[n], grid, args...; kwargs...) for (n, field) in enumerate(fields)]
+@inline fill_open_halo_event!(open_fill, field, left_bc, right_bc, fill_size, loc, arch, grid, args) =
+    launch!(arch, grid, fill_size, open_fill, field, left_bc, right_bc, loc, grid, args)
+
+@inline fill_open_halo_event!(::Nothing, field, left_bc, right_bc, fill_size, loc, arch, grid, args) = nothing
+
+@inline function fill_open_boundary_regions!(fields::NTuple{N}, boundary_conditions, indices, loc, grid, args...; kwargs...) where N
+    ntuple(Val(N)) do n
+        fill_open_boundary_regions!(fields[n], 
+                                    boundary_conditions[n], 
+                                    indices, 
+                                    loc[n], 
+                                    grid, 
+                                    args...; kwargs...)
+    end
+
+    return nothing
+end
 
 # for regular halo fills
 @inline left_velocity_open_boundary_condition(boundary_condition, loc) = nothing
@@ -45,14 +58,17 @@ fill_open_boundary_regions!(fields::NTuple, boundary_conditions, indices, loc, g
 @inline right_velocity_open_boundary_condition(boundary_conditions::Tuple, ::Tuple{Center, Face, Center}) = @inbounds boundary_conditions[2]
 @inline right_velocity_open_boundary_condition(boundary_conditions::Tuple, ::Tuple{Center, Center, Face}) = @inbounds boundary_conditions[2]
 
-@inline get_open_halo_filling_functions(loc) = _no_fill!, _no_fill!
-@inline get_open_halo_filling_functions(::Tuple{Face, Center, Center}) = _fill_west_and_east_open_halo!, fill_west_and_east_halo!
-@inline get_open_halo_filling_functions(::Tuple{Center, Face, Center}) = _fill_south_and_north_open_halo!, fill_south_and_north_halo!
-@inline get_open_halo_filling_functions(::Tuple{Center, Center, Face}) = _fill_bottom_and_top_open_halo!, fill_bottom_and_top_halo!
+# no open fills
+@inline get_open_halo_filling(args...) = nothing, nothing
 
-@kernel _no_fill!(args...) = nothing
+@inline get_open_halo_filling(field, indices, boundary_conditions, loc::Tuple{Face, Center, Center}, grid) = 
+    _fill_west_and_east_open_halo!, fill_halo_size(field, fill_west_and_east_halo!, indices, boundary_conditions, loc, grid)
 
-@inline fill_halo_size(field, ::typeof(_no_fill!), args...) = (0, 0)
+@inline get_open_halo_filling(field, indices, boundary_conditions, loc::Tuple{Center, Face, Center}, grid) = 
+    _fill_south_and_north_open_halo!, fill_halo_size(field, fill_south_and_north_halo!, indices, boundary_conditions, loc, grid)
+
+@inline get_open_halo_filling(field, indices, boundary_conditions, loc::Tuple{Center, Center, Face}, grid) = 
+    _fill_bottom_and_top_open_halo!, fill_halo_size(field, fill_bottom_and_top_halo!, indices, boundary_conditions, loc, grid)
 
 @kernel function _fill_west_and_east_open_halo!(c, west_bc, east_bc, loc, grid, args) 
     j, k = @index(Global, NTuple)
