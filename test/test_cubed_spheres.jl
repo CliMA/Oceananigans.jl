@@ -173,7 +173,6 @@ end
                 test_vector_rotation(grid)
             end
 
-
             @testset "CubedSphereData and CubedSphereFields [$(typeof(arch))]" begin
                 @info "  Testing CubedSphereData and CubedSphereFields [$(typeof(arch))]..."
                 c = model.tracers.c
