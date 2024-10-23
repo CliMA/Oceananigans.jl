@@ -91,7 +91,7 @@ end
         z⁺ = rnode(i, j, k+1, grid, c, c, f)
         # For the same reason, here we use `Δrᶜᶜᶜ` instead of `Δzᶜᶜᶜ`
         Δz = Δrᶜᶜᶜ(i, j, k, grid)
-        bottom_cell = (z⁻ ≤ zb) & (z⁺ ≥ zb)
+        bottom_cell = (z⁻ < zb) & (z⁺ ≥ zb)
         capped_zb   = ifelse(zb < z⁻ + Δz * (1 - ϵ), zb, z⁺)
 
         @inbounds bottom_field[i, j, 1] = ifelse(bottom_cell, capped_zb, bottom_field[i, j, 1])
@@ -134,9 +134,12 @@ Criterion is zb ≥ z - ϵ Δz
 
 """
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::PartialCellBottom)
-    z  = rnode(i, j, k+1, underlying_grid, c, c, f)
+    z⁻ = rnode(i, j, k, underlying_grid, c, c, f)
+    ϵ  = ib.minimum_fractional_cell_height
+    Δr = Δrᶜᶜᶜ(i, j, k, underlying_grid)
+    z★ = z⁻ + Δr * (1 - ϵ)
     zb = @inbounds ib.bottom_height[i, j, 1]
-    return z ≤ zb
+    return z★ < zb
 end
 
 @inline function bottom_cell(i, j, k, ibg::PCBIBG)
