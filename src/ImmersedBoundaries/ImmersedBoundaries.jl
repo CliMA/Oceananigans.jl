@@ -95,10 +95,6 @@ with_halo(halo, ibg::ImmersedBoundaryGrid) =
 inflate_halo_size_one_dimension(req_H, old_H, _, ::IBG)            = max(req_H + 1, old_H)
 inflate_halo_size_one_dimension(req_H, old_H, ::Type{Flat}, ::IBG) = 0
 
-# Defining the bottom
-@inline z_bottom(i, j, grid) = znode(i, j, 1, grid, c, c, f)
-@inline z_bottom(i, j, ibg::IBG) = error("The function `bottom` has not been defined for $(summary(ibg))!")
-
 function Base.summary(grid::ImmersedBoundaryGrid)
     FT = eltype(grid)
     TX, TY, TZ = topology(grid)
