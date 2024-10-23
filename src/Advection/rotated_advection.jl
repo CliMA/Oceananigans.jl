@@ -81,24 +81,27 @@ end
     ℛz⁺ = R₃₁⁺ * 𝒟x⁺ + R₃₂⁺ * 𝒟y⁺ + R₃₃⁺ * 𝒟z⁺
     ℛz⁻ = R₃₁⁻ * 𝒟x⁻ + R₃₂⁻ * 𝒟y⁻ + R₃₃⁻ * 𝒟z⁻
 
-    # Limiting the scheme to a minimum rotation
-    α = scheme.minimum_rotation_percentage
-    αx⁺ = min(α, abs(ℛx⁺) / (abs(𝒟x⁺) + ϵ))
-    αx⁻ = min(α, abs(ℛx⁻) / (abs(𝒟x⁻) + ϵ))
-        
-    αy⁺ = min(α, abs(ℛy⁺) / (abs(𝒟y⁺) + ϵ))
-    αy⁻ = min(α, abs(ℛy⁻) / (abs(𝒟y⁻) + ϵ))
-       
-    αz⁺ = min(α, abs(ℛz⁺) / (abs(𝒟z⁺) + ϵ))
-    αz⁻ = min(α, abs(ℛz⁻) / (abs(𝒟z⁻) + ϵ))
+    Rx⁺ = abs(ℛx⁺) / (abs(𝒟x⁺) + ϵ)
+    Rx⁻ = abs(ℛx⁻) / (abs(𝒟x⁻) + ϵ)
+    Ry⁺ = abs(ℛy⁺) / (abs(𝒟y⁺) + ϵ)
+    Ry⁻ = abs(ℛy⁻) / (abs(𝒟y⁻) + ϵ)
+    Rz⁺ = abs(ℛz⁺) / (abs(𝒟z⁺) + ϵ)
+    Rz⁻ = abs(ℛz⁻) / (abs(𝒟z⁻) + ϵ)
 
+    # Tapering when the slope of the tracer is
+    # the same as the slope of the buoyancy
+    αx⁺ = sqrt(min(Rx⁺, one(grid)))
+    αx⁻ = sqrt(min(Rx⁻, one(grid)))
+    αy⁺ = sqrt(min(Ry⁺, one(grid)))
+    αy⁻ = sqrt(min(Ry⁻, one(grid)))
+    αz⁺ = sqrt(min(Rz⁺, one(grid)))
+    αz⁻ = sqrt(min(Rz⁻, one(grid)))
 
+    # Fluxes
     Fx⁺ = 𝒞x⁺ + αx⁺ * ℛx⁺ + (1 - αx⁺) * 𝒟x⁺
-    Fx⁻ = 𝒞x⁻ + αx⁻ * ℛx⁻ + (1 - αx⁻) * 𝒟x⁻
-                                            
+    Fx⁻ = 𝒞x⁻ + αx⁻ * ℛx⁻ + (1 - αx⁻) * 𝒟x⁻                                           
     Fy⁻ = 𝒞y⁻ + αy⁺ * ℛy⁻ + (1 - αy⁺) * 𝒟y⁻
-    Fy⁺ = 𝒞y⁺ + αy⁻ * ℛy⁺ + (1 - αy⁻) * 𝒟y⁺
-                                             
+    Fy⁺ = 𝒞y⁺ + αy⁻ * ℛy⁺ + (1 - αy⁻) * 𝒟y⁺                                             
     Fz⁺ = 𝒞z⁺ + αz⁺ * ℛz⁺ + (1 - αz⁺) * 𝒟z⁺
     Fz⁻ = 𝒞z⁻ + αz⁻ * ℛz⁻ + (1 - αz⁻) * 𝒟z⁻
 
