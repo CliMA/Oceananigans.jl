@@ -15,6 +15,7 @@ function test_zstar_coordinate(model, Ni, Δt)
     # (2) vertical velocities are zero at the top surface
     for _ in 1:Ni
         time_step!(model, Δt)
+        @show extrema(interior(model.velocities.w, :, :, model.grid.Nz+1))
     end
 
     ∫b = Field(Integral(model.tracers.b))
@@ -49,8 +50,8 @@ end
         for topology in topologies
             Random.seed!(1234)
 
-            rtg  = RectilinearGrid(arch; size = (10, 10, 10), x = (-10, 10), y = (-10, 10), topology, z = z_uniform)
-            rtgv = RectilinearGrid(arch; size = (10, 10, 10), x = (-10, 10), y = (-10, 10), topology, z = z_stretched)
+            rtg  = RectilinearGrid(arch; size = (10, 10, 10), x = (0, 20), y = (-10, 10), topology, z = z_uniform)
+            rtgv = RectilinearGrid(arch; size = (10, 10, 10), x = (0, 20), y = (-10, 10), topology, z = z_stretched)
             
             irtg  = ImmersedBoundaryGrid(rtg,  GridFittedBottom((x, y) -> - rand() - 5))
             irtgv = ImmersedBoundaryGrid(rtgv, GridFittedBottom((x, y) -> - rand() - 5))
@@ -58,8 +59,8 @@ end
             prtgv = ImmersedBoundaryGrid(rtgv, PartialCellBottom((x, y) -> - rand() - 5))
 
             if topology[2] == Bounded
-                llg  = LatitudeLongitudeGrid(arch; size = (10, 10, 10), latitude = (-10, 10), longitude = (-180, 180), topology, z = z_uniform)
-                llgv = LatitudeLongitudeGrid(arch; size = (10, 10, 10), latitude = (-10, 10), longitude = (-180, 180), topology, z = z_stretched)
+                llg  = LatitudeLongitudeGrid(arch; size = (10, 10, 10), latitude = (0, 20), longitude = (-180, 180), topology, z = z_uniform)
+                llgv = LatitudeLongitudeGrid(arch; size = (10, 10, 10), latitude = (0, 20), longitude = (-180, 180), topology, z = z_stretched)
 
                 illg  = ImmersedBoundaryGrid(llg,  GridFittedBottom((x, y) -> - rand() - 5))
                 illgv = ImmersedBoundaryGrid(llgv, GridFittedBottom((x, y) -> - rand() - 5))
