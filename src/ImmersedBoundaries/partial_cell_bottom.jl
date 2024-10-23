@@ -135,7 +135,7 @@ Criterion is zb ≥ z - ϵ Δz
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::PartialCellBottom)
     z⁻ = znode(i, j, k, underlying_grid, c, c, f)
     ϵ  = ib.minimum_fractional_cell_height
-    Δrz= Δzᶜᶜᶜ(i, j, k, underlying_grid)
+    Δz = Δzᶜᶜᶜ(i, j, k, underlying_grid)
     z★ = z⁻ + Δz * (1 - ϵ)
     zb = @inbounds ib.bottom_height[i, j, 1]
     return z★ < zb
