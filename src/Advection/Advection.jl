@@ -21,7 +21,7 @@ export
     UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder,
     WENO, WENOThirdOrder, WENOFifthOrder,
     VectorInvariant, WENOVectorInvariant,
-    TracerAdvection,
+    FluxFormAdvection,
     EnergyConserving,
     EnstrophyConserving
 
@@ -38,7 +38,7 @@ using Oceananigans.Architectures: architecture, CPU
 using Oceananigans.Operators
 
 import Base: show, summary
-import Oceananigans.Grids: required_halo_size
+import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 import Oceananigans.Architectures: on_architecture
 
 abstract type AbstractAdvectionScheme{B, FT} end
@@ -55,8 +55,11 @@ abstract type AbstractUpwindBiasedAdvectionScheme{B, FT} <: AbstractAdvectionSch
 # Note that it is not possible to compile schemes for `advection_buffer = 41` or higher.
 const advection_buffers = [1, 2, 3, 4, 5, 6]
 
-@inline required_halo_size(::AbstractAdvectionScheme{B}) where B = B
 @inline Base.eltype(::AbstractAdvectionScheme{<:Any, FT}) where FT = FT
+
+@inline required_halo_size_x(::AbstractAdvectionScheme{B}) where B = B
+@inline required_halo_size_y(::AbstractAdvectionScheme{B}) where B = B
+@inline required_halo_size_z(::AbstractAdvectionScheme{B}) where B = B
 
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
@@ -72,12 +75,15 @@ include("vector_invariant_upwinding.jl")
 include("vector_invariant_advection.jl")
 include("vector_invariant_self_upwinding.jl")
 include("vector_invariant_cross_upwinding.jl")
+include("flux_form_advection.jl")
 
 include("flat_advective_fluxes.jl")
 include("topologically_conditional_interpolation.jl")
+include("immersed_advective_fluxes.jl")
 include("momentum_advection_operators.jl")
 include("tracer_advection_operators.jl")
 include("positivity_preserving_tracer_advection_operators.jl")
 include("cell_advection_timescale.jl")
+include("adapt_advection_order.jl")
 
 end # module
