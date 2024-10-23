@@ -4,7 +4,7 @@ import Oceananigans.Architectures: architecture
 using CUDA, CUDA.CUSPARSE
 using KernelAbstractions: @kernel, @index
 
-using LinearAlgebra, SparseArrays, IncompleteLU
+using LinearAlgebra, SparseArrays, KrylovPreconditioners
 using SparseArrays: nnz
 
 import LinearAlgebra.ldiv!
