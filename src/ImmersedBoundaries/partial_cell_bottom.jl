@@ -63,14 +63,14 @@ end
 function ImmersedBoundaryGrid(grid, ib::PartialCellBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set!(bottom_field, ib.bottom_height)
-    @apply_regionally correct_bottom_height!(bottom_field, grid, ib)
+    @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, ib)
     fill_halo_regions!(bottom_field)
     new_ib = PartialCellBottom(bottom_field, ib.minimum_fractional_cell_height)
     TX, TY, TZ = topology(grid)
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, new_ib)
 end
 
-@kernel function _correct_bottom_height!(bottom_field, grid, ib::PartialCellBottom)
+@kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::PartialCellBottom)
     i, j = @index(Global, NTuple)
     zb = @inbounds bottom_field[i, j, 1]
     @inbounds bottom_field[i, j, 1] = znode(i, j, 1, grid, c, c, f)
@@ -183,6 +183,3 @@ YFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:Partial
 @inline Δzᶜᶠᶠ(i, j, k, ibg::YFlatPCBIBG) = Δzᶜᶜᶠ(i, j, k, ibg)
 @inline Δzᶠᶠᶜ(i, j, k, ibg::XFlatPCBIBG) = Δzᶜᶠᶜ(i, j, k, ibg)
 @inline Δzᶠᶠᶜ(i, j, k, ibg::YFlatPCBIBG) = Δzᶠᶜᶜ(i, j, k, ibg)
-
-@inline bottom_height(i, j, ibg::PCBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
-

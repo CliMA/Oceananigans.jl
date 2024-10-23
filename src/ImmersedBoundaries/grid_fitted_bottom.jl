@@ -23,8 +23,6 @@ struct GridFittedBottom{H, I} <: AbstractGridFittedBottom{H}
     immersed_condition :: I
 end
 
-GridFittedBottom(bottom_height) = GridFittedBottom(bottom_height, CenterImmersedCondition())
-
 Base.summary(::CenterImmersedCondition) = "CenterImmersedCondition"
 Base.summary(::InterfaceImmersedCondition) = "InterfaceImmersedCondition"
 
@@ -38,14 +36,21 @@ Return a bottom immersed boundary.
 Keyword Arguments
 =================
 
-* `bottom_height`: an array or function that gives the height of the
-              bottom in absolute ``z`` coordinates.
 
-* `immersed_condition`: Determine whether the part of the domain that is immersed are all the cell centers that lie below
-        `bottom_height` (`CenterImmersedCondition()`; default) or all the cell faces that lie below `bottom_height` (`InterfaceImmersedCondition()`). 
-        The only purpose of `immersed_condition` to allow `GridFittedBottom` and `PartialCellBottom` to have the same behavior when the
-        minimum fractional cell height for partial cells is set to 0.
+* `bottom_height`: an array or function that gives the height of the
+                   bottom in absolute ``z`` coordinates.
+
+* `immersed_condition`: Determine whether the part of the domain that is 
+                        immersed are all the cell centers that lie below
+                        `bottom_height` (`CenterImmersedCondition()`; default)
+                        or all the cell faces that lie below `bottom_height`
+                        (`InterfaceImmersedCondition()`). The only purpose of
+                        `immersed_condition` to allow `GridFittedBottom` and
+                        `PartialCellBottom` to have the same behavior when the
+                        minimum fractional cell height for partial cells is set
+                        to 0.
 """
+GridFittedBottom(bottom_height) = GridFittedBottom(bottom_height, CenterImmersedCondition())
 
 function Base.summary(ib::GridFittedBottom)
     zmax  = maximum(ib.bottom_height)
@@ -123,13 +128,13 @@ end
     return z ≤ zb
 end
 
-@inline z_bottom(i, j, ibg::GFBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
-
 #####
 ##### Bottom height
 #####
 
 const AGFBIB = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
+
+@inline z_bottom(i, j, ibg::AGFBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
 
 @inline static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIB) = @inbounds znode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.bottom_height[i, j, 1] 
 @inline static_column_depthᶜᶠᵃ(i, j, ibg::AGFBIB) = min(static_column_depthᶜᶜᵃ(i, j-1, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
