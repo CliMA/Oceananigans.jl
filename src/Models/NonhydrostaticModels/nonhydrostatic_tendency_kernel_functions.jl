@@ -32,9 +32,9 @@ hydrostatic_pressure_gradient_y(i, j, k, grid, ::Nothing) = zero(grid)
 @inline function assemble_closure_velocities(velocities,
                                              background_fields::BackgroundFieldsWithClosureFluxes)
 
-    u = sum_fields(velocities.u, background_fields.u)
-    v = sum_fields(velocities.v, background_fields.v)
-    w = sum_fields(velocities.w, background_fields.w)
+    u = sum_fields(velocities.u, background_fields.velocities.u)
+    v = sum_fields(velocities.v, background_fields.velocities.v)
+    w = sum_fields(velocities.w, background_fields.velocities.w)
 
     return (; u, v, w)
 end
