@@ -7,8 +7,6 @@ using Oceananigans.Fields: fill_halo_regions!
 using Oceananigans.BoundaryConditions: FBC
 using Printf
 
-import Oceananigans.TurbulenceClosures: z_bottom
-
 #####
 ##### GridFittedBottom (2.5D immersed boundary with modified bottom height)
 #####
@@ -25,8 +23,6 @@ struct GridFittedBottom{H, I} <: AbstractGridFittedBottom{H}
     immersed_condition :: I
 end
 
-GridFittedBottom(bottom_height) = GridFittedBottom(bottom_height, CenterImmersedCondition())
-
 Base.summary(::CenterImmersedCondition) = "CenterImmersedCondition"
 Base.summary(::InterfaceImmersedCondition) = "InterfaceImmersedCondition"
 
@@ -40,14 +36,21 @@ Return a bottom immersed boundary.
 Keyword Arguments
 =================
 
-* `bottom_height`: an array or function that gives the height of the
-              bottom in absolute ``z`` coordinates.
 
-* `immersed_condition`: Determine whether the part of the domain that is immersed are all the cell centers that lie below
-        `bottom_height` (`CenterImmersedCondition()`; default) or all the cell faces that lie below `bottom_height` (`InterfaceImmersedCondition()`). 
-        The only purpose of `immersed_condition` to allow `GridFittedBottom` and `PartialCellBottom` to have the same behavior when the
-        minimum fractional cell height for partial cells is set to 0.
+* `bottom_height`: an array or function that gives the height of the
+                   bottom in absolute ``z`` coordinates.
+
+* `immersed_condition`: Determine whether the part of the domain that is 
+                        immersed are all the cell centers that lie below
+                        `bottom_height` (`CenterImmersedCondition()`; default)
+                        or all the cell faces that lie below `bottom_height`
+                        (`InterfaceImmersedCondition()`). The only purpose of
+                        `immersed_condition` to allow `GridFittedBottom` and
+                        `PartialCellBottom` to have the same behavior when the
+                        minimum fractional cell height for partial cells is set
+                        to 0.
 """
+GridFittedBottom(bottom_height) = GridFittedBottom(bottom_height, CenterImmersedCondition())
 
 function Base.summary(ib::GridFittedBottom)
     zmax  = maximum(ib.bottom_height)
@@ -96,17 +99,17 @@ of the last ``immersed`` cell in the column.
 function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set!(bottom_field, ib.bottom_height)
-    @apply_regionally correct_bottom_height!(bottom_field, grid, ib)
+    @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, ib)
     fill_halo_regions!(bottom_field)
     new_ib = GridFittedBottom(bottom_field)
     TX, TY, TZ = topology(grid)
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, new_ib)
 end
 
-correct_bottom_height!(bottom_field, grid, ib) = 
-    launch!(architecture(grid), grid, :xy, _correct_bottom_height!, bottom_field, grid, ib)
+compute_numerical_bottom_height!(bottom_field, grid, ib) = 
+    launch!(architecture(grid), grid, :xy, _compute_numerical_bottom_height!, bottom_field, grid, ib)
 
-@kernel function _correct_bottom_height!(bottom_field, grid, ib::GridFittedBottom)
+@kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::GridFittedBottom)
     i, j = @index(Global, NTuple)
     zb = @inbounds bottom_field[i, j, 1]
     @inbounds bottom_field[i, j, 1] = rnode(i, j, 1, grid, c, c, f)
@@ -127,24 +130,28 @@ end
     return z ≤ zb
 end
 
-@inline z_bottom(i, j, ibg::GFBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
-
-#####
-##### Bottom height
+#####  
+##### Utilities for `AbstractGridFittedBottom` ImmersedBoundaryGrids
 #####
 
 const AGFBIB = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
 
-@inline domain_depthᶜᶜᵃ(i, j, ibg::AGFBIB) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.bottom_height[i, j, 1] 
-@inline domain_depthᶜᶠᵃ(i, j, ibg::AGFBIB) = min(domain_depthᶜᶜᵃ(i, j-1, ibg), domain_depthᶜᶜᵃ(i, j, ibg))
-@inline domain_depthᶠᶜᵃ(i, j, ibg::AGFBIB) = min(domain_depthᶜᶜᵃ(i-1, j, ibg), domain_depthᶜᶜᵃ(i, j, ibg))
-@inline domain_depthᶠᶠᵃ(i, j, ibg::AGFBIB) = min(domain_depthᶠᶜᵃ(i, j-1, ibg), domain_depthᶠᶜᵃ(i, j, ibg))
+@inline z_bottom(i, j, ibg::AGFBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
+
+#####
+##### Static column depth
+#####
+
+@inline static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIB) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.bottom_height[i, j, 1] 
+@inline static_column_depthᶜᶠᵃ(i, j, ibg::AGFBIB) = min(static_column_depthᶜᶜᵃ(i, j-1, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
+@inline static_column_depthᶠᶜᵃ(i, j, ibg::AGFBIB) = min(static_column_depthᶜᶜᵃ(i-1, j, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
+@inline static_column_depthᶠᶠᵃ(i, j, ibg::AGFBIB) = min(static_column_depthᶠᶜᵃ(i, j-1, ibg), static_column_depthᶠᶜᵃ(i, j, ibg))
 
 # Make sure column_height works for horizontally-Flat topologies.
 XFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
 YFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:AbstractGridFittedBottom}
 
-@inline domain_depthᶠᶜᵃ(i, j, ibg::XFlatAGFIBG) = domain_depthᶜᶜᵃ(i, j, ibg)
-@inline domain_depthᶜᶠᵃ(i, j, ibg::YFlatAGFIBG) = domain_depthᶜᶜᵃ(i, j, ibg)
-@inline domain_depthᶠᶠᵃ(i, j, ibg::XFlatAGFIBG) = domain_depthᶜᶠᵃ(i, j, ibg)
-@inline domain_depthᶠᶠᵃ(i, j, ibg::YFlatAGFIBG) = domain_depthᶠᶜᵃ(i, j, ibg)
+@inline static_column_depthᶠᶜᵃ(i, j, ibg::XFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
+@inline static_column_depthᶜᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
+@inline static_column_depthᶠᶠᵃ(i, j, ibg::XFlatAGFIBG) = static_column_depthᶜᶠᵃ(i, j, ibg)
+@inline static_column_depthᶠᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶠᶜᵃ(i, j, ibg)

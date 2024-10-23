@@ -10,42 +10,12 @@ using Oceananigans.Fields
 using Oceananigans.Utils
 using Oceananigans.Architectures
 
-using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, time_discretization
-using Oceananigans.Grids: size_summary, inactive_node, peripheral_node, AbstractGrid, AbstractUnderlyingGrid
-
-using Oceananigans.TurbulenceClosures:
-    viscous_flux_ux,
-    viscous_flux_uy,
-    viscous_flux_uz,
-    viscous_flux_vx,
-    viscous_flux_vy,
-    viscous_flux_vz,
-    viscous_flux_wx,
-    viscous_flux_wy,
-    viscous_flux_wz,
-    diffusive_flux_x,
-    diffusive_flux_y,
-    diffusive_flux_z
-
-using Oceananigans.Advection:
-    advective_momentum_flux_Uu,
-    advective_momentum_flux_Uv,
-    advective_momentum_flux_Uw,
-    advective_momentum_flux_Vu,
-    advective_momentum_flux_Vv,
-    advective_momentum_flux_Vw,
-    advective_momentum_flux_Wu,
-    advective_momentum_flux_Wv,
-    advective_momentum_flux_Ww,
-    advective_tracer_flux_x,
-    advective_tracer_flux_y,
-    advective_tracer_flux_z
+using Oceananigans.Grids: size_summary, inactive_node, peripheral_node, AbstractGrid
 
 import Base: show, summary
-import Oceananigans.Advection: cell_advection_timescale
 
-import Oceananigans.Grids:  cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
-                            x_domain, y_domain, z_domain
+import Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
+                           x_domain, y_domain, z_domain
 
 import Oceananigans.Grids: architecture, with_halo, inflate_halo_size_one_dimension,
                            xnode, ynode, znode, λnode, φnode, node,
@@ -53,48 +23,11 @@ import Oceananigans.Grids: architecture, with_halo, inflate_halo_size_one_dimens
                            ξname, ηname, rname, node_names,
                            xnodes, ynodes, znodes, λnodes, φnodes, nodes,
                            ξnodes, ηnodes, rnodes,
-                           domain_depthᶜᶜᵃ, domain_depthᶠᶜᵃ, domain_depthᶜᶠᵃ, domain_depthᶠᶠᵃ,
+                           static_column_depthᶜᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶠᵃ,
                            inactive_cell
 
-import Oceananigans.Coriolis: φᶠᶠᵃ
 
 import Oceananigans.Architectures: on_architecture
-
-import Oceananigans.Advection:
-    _advective_momentum_flux_Uu,
-    _advective_momentum_flux_Uv,
-    _advective_momentum_flux_Uw,
-    _advective_momentum_flux_Vu,
-    _advective_momentum_flux_Vv,
-    _advective_momentum_flux_Vw,
-    _advective_momentum_flux_Wu,
-    _advective_momentum_flux_Wv,
-    _advective_momentum_flux_Ww,
-    _advective_tracer_flux_x,
-    _advective_tracer_flux_y,
-    _advective_tracer_flux_z
-
-import Oceananigans.TurbulenceClosures:
-    _viscous_flux_ux,
-    _viscous_flux_uy,
-    _viscous_flux_uz,
-    _viscous_flux_vx,
-    _viscous_flux_vy,
-    _viscous_flux_vz,
-    _viscous_flux_wx,
-    _viscous_flux_wy,
-    _viscous_flux_wz,
-    _diffusive_flux_x,
-    _diffusive_flux_y,
-    _diffusive_flux_z,
-    κᶠᶜᶜ,
-    κᶜᶠᶜ,
-    κᶜᶜᶠ,
-    νᶜᶜᶜ,
-    νᶠᶠᶜ,
-    νᶜᶠᶠ,
-    νᶠᶜᶠ,
-    z_bottom
 
 import Oceananigans.Fields: fractional_x_index, fractional_y_index, fractional_z_index
 
@@ -165,6 +98,8 @@ end
 inflate_halo_size_one_dimension(req_H, old_H, _, ::IBG)            = max(req_H + 1, old_H)
 inflate_halo_size_one_dimension(req_H, old_H, ::Type{Flat}, ::IBG) = 0
 
+# Defining the bottom
+@inline z_bottom(i, j, grid) = znode(i, j, 1, grid, c, c, f)
 @inline z_bottom(i, j, ibg::IBG) = error("The function `bottom` has not been defined for $(summary(ibg))!")
 
 function Base.summary(grid::ImmersedBoundaryGrid)
@@ -257,7 +192,6 @@ const c = Center()
 const f = Face()
 
 @inline Base.zero(ibg::IBG) = zero(ibg.underlying_grid)
-@inline φᶠᶠᵃ(i, j, k, ibg::IBG) = φᶠᶠᵃ(i, j, k, ibg.underlying_grid)
 
 @inline xnode(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = xnode(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
 @inline ynode(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = ynode(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
@@ -318,41 +252,18 @@ isrectilinear(ibg::IBG) = isrectilinear(ibg.underlying_grid)
 @inline fractional_y_index(x, locs, grid::ImmersedBoundaryGrid) = fractional_y_index(x, locs, grid.underlying_grid)
 @inline fractional_z_index(x, locs, grid::ImmersedBoundaryGrid) = fractional_z_index(x, locs, grid.underlying_grid)
 
-#####
-##### Diffusivities (for VerticallyImplicit)
-##### (the diffusivities on the immersed boundaries are kept)
-#####
-
-for (locate_coeff, loc) in ((:κᶠᶜᶜ, (f, c, c)),
-                            (:κᶜᶠᶜ, (c, f, c)),
-                            (:κᶜᶜᶠ, (c, c, f)),
-                            (:νᶜᶜᶜ, (c, c, c)),
-                            (:νᶠᶠᶜ, (f, f, c)),
-                            (:νᶠᶜᶠ, (f, c, f)),
-                            (:νᶜᶠᶠ, (c, f, f)))
-
-    @eval begin
-        @inline $locate_coeff(i, j, k, ibg::IBG{FT}, coeff) where FT =
-            ifelse(inactive_node(i, j, k, ibg, loc...), $locate_coeff(i, j, k, ibg.underlying_grid, coeff), zero(FT))
-    end
-end
-
 include("active_cells_map.jl")
 include("immersed_grid_metrics.jl")
 include("abstract_grid_fitted_boundary.jl")
 include("grid_fitted_boundary.jl")
 include("grid_fitted_bottom.jl")
 include("partial_cell_bottom.jl")
-include("conditional_fluxes.jl")
 include("immersed_boundary_condition.jl")
 include("conditional_differences.jl")
 include("mask_immersed_field.jl")
 include("immersed_reductions.jl")
 
-# Extension to distributed Immersed boundaries
-include("distributed_immersed_boundaries.jl")
-
-# Extension to Immersed boundaries with turbulence closures
+# Extension to Immersed boundaries with zstar
 include("abstract_zstar_immersed_grid.jl")
 
 end # module

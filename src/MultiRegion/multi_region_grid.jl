@@ -183,15 +183,15 @@ end
 
 function reconstruct_global_grid(mrg::ImmersedMultiRegionGrid) 
     global_grid     = reconstruct_global_grid(mrg.underlying_grid)
-    global_boundary = reconstruct_global_boundary(mrg.immersed_boundary)
-    global_boundary = on_architecture(architecture(mrg), global_boundary)
+    global_immersed_boundary = reconstruct_global_immersed_boundary(mrg.immersed_boundary)
+    global_immersed_boundary = on_architecture(architecture(mrg), global_immersed_boundary)
 
-    return ImmersedBoundaryGrid(global_grid, global_boundary)
+    return ImmersedBoundaryGrid(global_grid, global_immersed_boundary)
 end
 
-reconstruct_global_boundary(g::GridFittedBottom{<:Field})   =   GridFittedBottom(reconstruct_global_field(g.bottom_height), g.immersed_condition)
-reconstruct_global_boundary(g::PartialCellBottom{<:Field})  =  PartialCellBottom(reconstruct_global_field(g.bottom_height), g.minimum_fractional_cell_height)
-reconstruct_global_boundary(g::GridFittedBoundary{<:Field}) = GridFittedBoundary(reconstruct_global_field(g.mask))
+reconstruct_global_immersed_boundary(g::GridFittedBottom{<:Field})   =   GridFittedBottom(reconstruct_global_field(g.bottom_height), g.immersed_condition)
+reconstruct_global_immersed_boundary(g::PartialCellBottom{<:Field})  =  PartialCellBottom(reconstruct_global_field(g.bottom_height), g.minimum_fractional_cell_height)
+reconstruct_global_immersed_boundary(g::GridFittedBoundary{<:Field}) = GridFittedBoundary(reconstruct_global_field(g.mask))
 
 @inline  getregion(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}(_getregion(mrg.underlying_grid, r), _getregion(mrg.immersed_boundary, r))
 @inline _getregion(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}( getregion(mrg.underlying_grid, r),  getregion(mrg.immersed_boundary, r))

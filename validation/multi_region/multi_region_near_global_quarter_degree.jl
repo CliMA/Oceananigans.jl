@@ -147,7 +147,7 @@ biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete
 @inline cyclic_interpolate(u₁::Number, u₂, time) = u₁ + mod(time / thirty_days, 1) * (u₂ - u₁)
 
 Δz_top    = @allowscalar Δzᵃᵃᶜ(1, 1, grid.Nz, grid.underlying_grid)
-Δbottom_height = @allowscalar Δzᵃᵃᶜ(1, 1, 1, grid.underlying_grid)
+Δz_bottom = @allowscalar Δzᵃᵃᶜ(1, 1, 1, grid.underlying_grid)
 
 @inline function surface_wind_stress(i, j, grid, clock, fields, τ)
     time = clock.time
