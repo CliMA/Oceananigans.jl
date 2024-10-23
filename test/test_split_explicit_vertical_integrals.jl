@@ -7,7 +7,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState,
                                                         SplitExplicitSettings
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!,
                                                         barotropic_split_explicit_corrector!,
-                                                        initialize_free_surface_state!
+                                                        initialize_free_surface_state!,
+                                                        materialize_free_surface
 
 @testset "Barotropic Kernels" begin
 
@@ -36,7 +37,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!
 
         @testset "Average to zero" begin
             # set equal to something else
-            η̅ .= U̅ .= V̅ .= 1.0
+            η̅ .= 1
+            U̅ .= 1
+            V̅ .= 1
 
             # now set equal to zero
             initialize_free_surface_state!(sefs.state, sefs.η, sefs.settings.timestepper)
@@ -48,13 +51,12 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!
 
             # check
             @test all(Array(η̅.data.parent) .== 0.0)
-            @test all(Array(U̅.data.parent .== 0.0))
-            @test all(Array(V̅.data.parent .== 0.0))
+            @test all(Array(U̅.data.parent) .== 0.0)
+            @test all(Array(V̅.data.parent) .== 0.0)
         end
 
         @testset "Inexact integration" begin
             # Test 2: Check that vertical integrals work on the CPU(). The following should be "inexact"
-
             set_u_check(x, y, z) = cos((π / 2) * z / Lz)
             set_U_check(x, y, z) = (sin(0) - (-2 * Lz / (π)))
             set!(u, set_u_check)
@@ -75,13 +77,13 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!
 
         @testset "Vertical Integral " begin
 
-            u .= 0.0
-            U .= 1.0
+            set!(u, 0.0)
+            set!(U, 1.0)
             compute_barotropic_mode!(U, V, grid, u, v, η̅)
-            @test all(Array(U.data.parent) .== 0.0)
+            @test all(Array(interior(U)) .== 0.0)
 
-            u .= 1.0
-            U .= 1.0
+            set!(u, 1.0)
+            set!(U, 1.0)
             compute_barotropic_mode!(U, V, grid, u, v, η̅)
             @test all(Array(interior(U)) .≈ Lz)
 
