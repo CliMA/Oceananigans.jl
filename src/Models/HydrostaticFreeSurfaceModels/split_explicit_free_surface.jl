@@ -403,10 +403,6 @@ Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
 Adapt.adapt_structure(to, auxiliary::SplitExplicitAuxiliaryFields) =
     SplitExplicitAuxiliaryFields(Adapt.adapt(to, auxiliary.Gᵁ), 
                                  Adapt.adapt(to, auxiliary.Gⱽ), 
-                                 Adapt.adapt(to, auxiliary.Hᶠᶜ),
-                                 Adapt.adapt(to, auxiliary.Hᶜᶠ),
-                                 Adapt.adapt(to, auxiliary.Hᶜᶜ),
-                                 Adapt.adapt(to, auxiliary.Hᶠᶠ),
                                  nothing)
 
 for Type in (:SplitExplicitFreeSurface, 

@@ -203,7 +203,7 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
         @warn """Failed to execute user `init` for $filepath because $(typeof(err)): $(sprint(showerror, err))"""
     end
 
-    # try 
+    try 
         jldopen(filepath, "a+"; jld2_kw...) do file
             saveproperties!(file, model, including)
 
@@ -212,9 +212,9 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
                 serializeproperty!(file, "serialized/$property", getproperty(model, property))
             end
         end
-    # catch err
-    #     @warn """Failed to save and serialize $including in $filepath because $(typeof(err)): $(sprint(showerror, err))"""
-    # end
+    catch err
+        @warn """Failed to save and serialize $including in $filepath because $(typeof(err)): $(sprint(showerror, err))"""
+    end
 
     # Serialize the location and boundary conditions of each output.
     for (name, field) in pairs(outputs)
