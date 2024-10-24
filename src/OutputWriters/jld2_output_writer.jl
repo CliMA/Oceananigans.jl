@@ -71,7 +71,7 @@ Keyword arguments
              will save xy-slices of the bottom-most index.
 
 - `with_halos` (Bool): Whether or not to slice halo regions from fields before writing output.
-                       Preserving halo region data can be useful for postprocessing.
+                       Preserving halo region data can be useful for postprocessing. Default: false.
 
 - `array_type`: The array type to which output arrays are converted to prior to saving.
                 Default: `Array{Float64}`.
