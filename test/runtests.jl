@@ -208,6 +208,12 @@ CUDA.allowscalar() do
         end
     end
 
+    if group == :vertical_coordinate || group == :all
+        @testset "Vertical coordinate tests" begin
+            include("test_zstar_coordinate.jl")
+        end
+    end
+
     # Tests for Enzyme extension
     if group == :enzyme || group == :all
         @testset "Enzyme extension tests" begin

@@ -3,8 +3,9 @@ using Oceananigans.Architectures
 using Oceananigans.Fields
 using Oceananigans.Grids
 using Oceananigans.Grids: AbstractGrid
+using Oceananigans.BoundaryConditions: default_prognostic_bc
 using Oceananigans.AbstractOperations: Δz, GridMetricOperation
-
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, c, f
 using Adapt
 using Base
 using KernelAbstractions: @index, @kernel
@@ -158,6 +159,10 @@ Base.@kwdef struct SplitExplicitState{CC, ACC, FC, AFC, CF, ACF}
     U̅    :: FC
     "The time-filtered barotropic meridional velocity. (`ReducedField` over ``z``)"
     V̅    :: CF
+    # "The time-filtered barotropic zonal velocity. (`ReducedField` over ``z``)"
+    # Ũ    :: FC
+    # "The time-filtered barotropic meridional velocity. (`ReducedField` over ``z``)"
+    # Ṽ    :: CF
 end
 
 """
@@ -179,18 +184,20 @@ function SplitExplicitState(grid::AbstractGrid, timestepper)
     ηᵐ⁻¹ = auxiliary_free_surface_field(grid, timestepper)
     ηᵐ⁻² = auxiliary_free_surface_field(grid, timestepper)
 
-    U    = XFaceField(grid, indices = (:, :, Nz))
-    V    = YFaceField(grid, indices = (:, :, Nz))
+    𝒰 = VelocityFields(grid)
+    
+    U = Field(𝒰.u, indices = (:, :, Nz))
+    V = Field(𝒰.v, indices = (:, :, Nz))
 
-    Uᵐ⁻¹ = auxiliary_barotropic_U_field(grid, timestepper)
-    Vᵐ⁻¹ = auxiliary_barotropic_V_field(grid, timestepper)
-    Uᵐ⁻² = auxiliary_barotropic_U_field(grid, timestepper)
-    Vᵐ⁻² = auxiliary_barotropic_V_field(grid, timestepper)
+    Uᵐ⁻¹ = auxiliary_barotropic_velocity_field(U, timestepper)
+    Vᵐ⁻¹ = auxiliary_barotropic_velocity_field(V, timestepper)
+    Uᵐ⁻² = auxiliary_barotropic_velocity_field(U, timestepper)
+    Vᵐ⁻² = auxiliary_barotropic_velocity_field(V, timestepper)
+    
+    U̅ = deepcopy(U)
+    V̅ = deepcopy(V)
 
-    U̅ = XFaceField(grid, indices = (:, :, Nz))
-    V̅ = YFaceField(grid, indices = (:, :, Nz))
-
-    return SplitExplicitState(; ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, Uᵐ⁻¹, Uᵐ⁻², V, Vᵐ⁻¹, Vᵐ⁻², η̅, U̅, V̅)
+    return SplitExplicitState(; ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, Uᵐ⁻¹, Uᵐ⁻², V, Vᵐ⁻¹, Vᵐ⁻², η̅, U̅, V̅) 
 end
 
 """
@@ -204,15 +211,11 @@ large (or `:xy` in case of a serial computation), and start computing from
 
 $(FIELDS)
 """
-Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒦}
+Base.@kwdef struct SplitExplicitAuxiliaryFields{ℱ𝒞, 𝒞ℱ, 𝒦}
     "Vertically-integrated slow barotropic forcing function for `U` (`ReducedField` over ``z``)"
     Gᵁ :: ℱ𝒞
     "Vertically-integrated slow barotropic forcing function for `V` (`ReducedField` over ``z``)"
     Gⱽ :: 𝒞ℱ
-    "Depth at `(Face, Center)` (`ReducedField` over ``z``)"
-    Hᶠᶜ :: ℱ𝒞
-    "Depth at `(Center, Face)` (`ReducedField` over ``z``)"
-    Hᶜᶠ :: 𝒞ℱ
     "kernel size for barotropic time stepping"
     kernel_parameters :: 𝒦
 end
@@ -224,23 +227,12 @@ Return the `SplitExplicitAuxiliaryFields` for `grid`.
 """
 function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
 
-    Gᵁ = Field((Face,   Center, Nothing), grid)
-    Gⱽ = Field((Center, Face,   Nothing), grid)
-
-    Hᶠᶜ = Field((Face,   Center, Nothing), grid)
-    Hᶜᶠ = Field((Center, Face,   Nothing), grid)
-
-    dz = GridMetricOperation((Face, Center, Center), Δz, grid)
-    sum!(Hᶠᶜ, dz)
-
-    dz = GridMetricOperation((Center, Face, Center), Δz, grid)
-    sum!(Hᶜᶠ, dz)
-
-    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ))
+    Gᵁ = Field{Face,   Center, Nothing}(grid)
+    Gⱽ = Field{Center, Face,   Nothing}(grid)
 
     kernel_parameters = :xy
 
-    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, kernel_parameters)
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, kernel_parameters)
 end
 
 """
@@ -259,14 +251,11 @@ end
 struct AdamsBashforth3Scheme end
 struct ForwardBackwardScheme end
 
-
 auxiliary_free_surface_field(grid, ::AdamsBashforth3Scheme) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 auxiliary_free_surface_field(grid, ::ForwardBackwardScheme) = nothing
 
-auxiliary_barotropic_U_field(grid, ::AdamsBashforth3Scheme) = XFaceField(grid, indices = (:, :, size(grid, 3)))
-auxiliary_barotropic_U_field(grid, ::ForwardBackwardScheme) = nothing
-auxiliary_barotropic_V_field(grid, ::AdamsBashforth3Scheme) = YFaceField(grid, indices = (:, :, size(grid, 3)))
-auxiliary_barotropic_V_field(grid, ::ForwardBackwardScheme) = nothing
+auxiliary_barotropic_velocity_field(U, ::AdamsBashforth3Scheme) = deecopy(u)
+auxiliary_barotropic_velocity_field(U, ::ForwardBackwardScheme) = nothing
 
 # (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002 
 @inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT
@@ -321,7 +310,7 @@ end
 
     averaging_weights = averaging_weights[1:idx]
     averaging_weights ./= sum(averaging_weights)
-
+       
     return Δτ, tuple(averaging_weights...)
 end
 
@@ -405,11 +394,19 @@ end
 
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
-    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η), nothing, nothing,
+    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η), 
+                             nothing, 
+                             Adapt.adapt(to, free_surface.auxiliary),
                              free_surface.gravitational_acceleration, nothing)
 
-for Type in (:SplitExplicitFreeSurface,
-             :SplitExplicitSettings,
+# Adapt
+Adapt.adapt_structure(to, auxiliary::SplitExplicitAuxiliaryFields) =
+    SplitExplicitAuxiliaryFields(Adapt.adapt(to, auxiliary.Gᵁ), 
+                                 Adapt.adapt(to, auxiliary.Gⱽ), 
+                                 nothing)
+
+for Type in (:SplitExplicitFreeSurface, 
+             :SplitExplicitSettings, 
              :SplitExplicitState, 
              :SplitExplicitAuxiliaryFields,
              :FixedTimeStepSize,

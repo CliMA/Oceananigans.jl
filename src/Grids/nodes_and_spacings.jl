@@ -233,6 +233,17 @@ julia> zspacings(grid, Center(), Center(), Center())
 """
 @inline zspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = zspacings(grid, ℓz; with_halos)
 
+
+"""
+    rspacings(grid, ℓx, ℓy, ℓz; with_halos=true)
+
+Return the "reference" spacings over the interior nodes on `grid` in the ``z``-direction for the location `ℓx`,
+`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points. These are equal to the `zspacings`
+for a _static_ grid.
+"""
+@inline rspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = rspacings(grid, ℓz; with_halos)
+
+
 destantiate(::Face)   = Face
 destantiate(::Center) = Center
 

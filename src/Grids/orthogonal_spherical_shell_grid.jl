@@ -1119,7 +1119,10 @@ end
 function nodes(grid::OSSG, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
     λ = λnodes(grid, ℓx, ℓy, ℓz; with_halos)
     φ = φnodes(grid, ℓx, ℓy, ℓz; with_halos)
-    z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
+    # We use rnodes here. This is intentional. znodes return the actual zcoordinate 
+    # which might be moving in case of a ZStarVerticalCoordinate. rnodes return the
+    # reference zcoordinate which is constant.
+    z = rnodes(grid, ℓx, ℓy, ℓz; with_halos)
 
     if reshape
         # λ and φ are 2D arrays
@@ -1158,10 +1161,16 @@ end
 @inline znodes(grid::OSSG, ℓz::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ :
     view(grid.zᵃᵃᶜ, interior_indices(ℓz, topology(grid, 3)(), grid.Nz))
 
+@inline rnodes(grid::OSSG, ℓz::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ :
+    view(grid.zᵃᵃᶠ, interior_indices(ℓz, topology(grid, 3)(), grid.Nz))
+@inline rnodes(grid::OSSG, ℓz::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ :
+    view(grid.zᵃᵃᶜ, interior_indices(ℓz, topology(grid, 3)(), grid.Nz))
+
 # convenience
 @inline λnodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = λnodes(grid, ℓx, ℓy; with_halos)
 @inline φnodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = φnodes(grid, ℓx, ℓy; with_halos)
 @inline znodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = znodes(grid, ℓz    ; with_halos)
+@inline rnodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = rnodes(grid, ℓz    ; with_halos)
 @inline xnodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx, ℓy; with_halos)
 @inline ynodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓx, ℓy; with_halos)
 
@@ -1225,7 +1234,11 @@ rname(::OSSG) = :z
 @inline zspacings(grid::OSSG,     ℓz::Face;   with_halos=false) = with_halos ? grid.Δzᵃᵃᶠ :
     view(grid.Δzᵃᵃᶠ, interior_indices(ℓz, topology(grid, 3)(), grid.Nz))
 @inline zspacings(grid::ZRegOSSG, ℓz::Face;   with_halos=false) = grid.Δzᵃᵃᶠ
+@inline rspacings(grid::OSSG,     ℓz::Face;   with_halos=false) = with_halos ? grid.Δzᵃᵃᶠ :
+    view(grid.Δzᵃᵃᶠ, interior_indices(ℓz, topology(grid, 3)(), grid.Nz))
+@inline rspacings(grid::ZRegOSSG, ℓz::Face;   with_halos=false) = grid.Δzᵃᵃᶠ
 
 @inline xspacings(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = xspacings(grid, ℓx, ℓy; with_halos)
 @inline yspacings(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = yspacings(grid, ℓx, ℓy; with_halos)
 @inline zspacings(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = zspacings(grid, ℓz; with_halos)
+@inline rspacings(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = rspacings(grid, ℓz; with_halos)

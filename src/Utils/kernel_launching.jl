@@ -2,6 +2,7 @@
 ##### Utilities for launching kernels
 #####
 
+using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Grids: AbstractGrid

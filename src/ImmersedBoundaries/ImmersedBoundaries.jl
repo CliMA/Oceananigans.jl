@@ -17,14 +17,17 @@ import Base: show, summary
 import Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
                            x_domain, y_domain, z_domain
 
-import Oceananigans.Grids: architecture, on_architecture, with_halo, inflate_halo_size_one_dimension,
+import Oceananigans.Grids: architecture, with_halo, inflate_halo_size_one_dimension,
                            xnode, ynode, znode, λnode, φnode, node,
                            ξnode, ηnode, rnode,
                            ξname, ηname, rname, node_names,
                            xnodes, ynodes, znodes, λnodes, φnodes, nodes,
                            ξnodes, ηnodes, rnodes,
+                           static_column_depthᶜᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶠᵃ,
                            inactive_cell
 
+
+import Oceananigans.Architectures: on_architecture
 
 import Oceananigans.Fields: fractional_x_index, fractional_y_index, fractional_z_index
 
@@ -84,17 +87,16 @@ Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
                                      nothing,
                                      nothing)
 
-with_halo(halo, ibg::ImmersedBoundaryGrid) =
-    ImmersedBoundaryGrid(with_halo(halo, ibg.underlying_grid), ibg.immersed_boundary)
+function with_halo(halo, ibg::ImmersedBoundaryGrid)
+    new_grid = with_halo(halo, ibg.underlying_grid)
+    active_cells_map = !isnothing(ibg.interior_active_cells)
+    return ImmersedBoundaryGrid(new_grid, ibg.immersed_boundary; active_cells_map)
+end
 
 # ImmersedBoundaryGrids require an extra halo point to check the "inactivity" of a `Face` node at N + H
 # (which requires checking `Center` nodes at N + H and N + H + 1)
 inflate_halo_size_one_dimension(req_H, old_H, _, ::IBG)            = max(req_H + 1, old_H)
 inflate_halo_size_one_dimension(req_H, old_H, ::Type{Flat}, ::IBG) = 0
-
-# Defining the bottom
-@inline z_bottom(i, j, grid) = znode(i, j, 1, grid, c, c, f)
-@inline z_bottom(i, j, ibg::IBG) = error("The function `bottom` has not been defined for $(summary(ibg))!")
 
 function Base.summary(grid::ImmersedBoundaryGrid)
     FT = eltype(grid)
@@ -174,6 +176,10 @@ As well as
 @inline immersed_inactive_node(i, j, k, ibg::IBG, LX, LY, LZ) =  inactive_node(i, j, k, ibg, LX, LY, LZ) &
                                                                 !inactive_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
 
+# Underlying grids are never immersed!                                                                
+@inline immersed_peripheral_node(i, j, k, grid::AbstractUnderlyingGrid, LX, LY, LZ) = false
+@inline   immersed_inactive_node(i, j, k, grid::AbstractUnderlyingGrid, LX, LY, LZ) = false
+
 #####
 ##### Utilities
 #####
@@ -252,5 +258,8 @@ include("immersed_boundary_condition.jl")
 include("conditional_differences.jl")
 include("mask_immersed_field.jl")
 include("immersed_reductions.jl")
+
+# Extension to Immersed boundaries with zstar
+include("abstract_zstar_immersed_grid.jl")
 
 end # module

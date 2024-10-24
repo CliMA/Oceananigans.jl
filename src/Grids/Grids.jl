@@ -14,10 +14,12 @@ export conformal_cubed_sphere_panel
 export node, nodes
 export ξnode, ηnode, rnode
 export xnode, ynode, znode, λnode, φnode
-export xnodes, ynodes, znodes, λnodes, φnodes
+export xnodes, ynodes, znodes, λnodes, φnodes, rnodes
 export spacings
-export xspacings, yspacings, zspacings, xspacing, yspacing, zspacing
+export xspacings, yspacings, zspacings, rspacings, xspacing, yspacing, zspacing, rspacing
 export minimum_xspacing, minimum_yspacing, minimum_zspacing
+export ZStarVerticalCoordinate, vertical_scaling, previous_vertical_scaling, reference_zspacings
+export static_column_depthᶜᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶠᵃ
 export offset_data, new_data
 export on_architecture
 
@@ -127,5 +129,6 @@ include("grid_generation.jl")
 include("rectilinear_grid.jl")
 include("orthogonal_spherical_shell_grid.jl")
 include("latitude_longitude_grid.jl")
+include("z_star_vertical_coordinate.jl")
 
 end # module

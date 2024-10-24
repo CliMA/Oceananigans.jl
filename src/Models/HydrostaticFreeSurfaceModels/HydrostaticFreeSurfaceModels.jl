@@ -3,7 +3,8 @@ module HydrostaticFreeSurfaceModels
 export
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface, 
-    PrescribedVelocityFields
+    PrescribedVelocityFields,
+    ZStar
 
 using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
@@ -31,7 +32,12 @@ fill_horizontal_velocity_halos!(args...) = nothing
 free_surface_displacement_field(velocities, free_surface, grid) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 
+# Generalized vertical coordinate functionality
+include("generalized_vertical_spacing.jl")
+include("z_star_vertical_spacing.jl")
 include("compute_w_from_continuity.jl")
+
+# Rigid-lid
 include("rigid_lid.jl")
 
 # Explicit free-surface solver functionality

@@ -1,4 +1,5 @@
 using Oceananigans.Grids: Center, Face
+using Oceananigans.Grids: AbstractVerticalCoordinateUnderlyingGrid, ZStarUnderlyingGrid
 
 const RG  = RectilinearGrid
 const RGX = XRegularRG
@@ -12,6 +13,8 @@ const LLG  = LatitudeLongitudeGrid
 const LLGX = XRegularLLG
 const LLGY = YRegularLLG
 const LLGZ = ZRegularLLG
+
+const ZSG = ZStarUnderlyingGrid
 
 # On the fly calculations of metrics
 const LLGF  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing}
@@ -58,7 +61,7 @@ The operators in this file fall into three categories:
 @inline Δyᵃᶠᵃ(i, j, k, grid) = nothing
 @inline Δyᵃᶜᵃ(i, j, k, grid) = nothing
 
-const ZRG = Union{LLGZ, RGZ}
+const ZRG = Union{LLGZ, RGZ, OSSGZ}
 
 @inline Δzᵃᵃᶠ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶠ[k]
 @inline Δzᵃᵃᶜ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶜ[k]
@@ -66,11 +69,15 @@ const ZRG = Union{LLGZ, RGZ}
 @inline Δzᵃᵃᶠ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶠ
 @inline Δzᵃᵃᶜ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶜ
 
-@inline Δzᵃᵃᶜ(i, j, k, grid::OSSG) = @inbounds grid.Δzᵃᵃᶜ[k]
-@inline Δzᵃᵃᶠ(i, j, k, grid::OSSG) = @inbounds grid.Δzᵃᵃᶠ[k]
+# Reference spacing, they differ only for a ZStar vertical coordinate grid
+@inline Δrᵃᵃᶜ(i, j, k, grid) = Δzᵃᵃᶜ(i, j, k, grid)
+@inline Δrᵃᵃᶠ(i, j, k, grid) = Δzᵃᵃᶠ(i, j, k, grid)
 
-@inline Δzᵃᵃᶜ(i, j, k, grid::OSSGZ) = grid.Δzᵃᵃᶜ
-@inline Δzᵃᵃᶠ(i, j, k, grid::OSSGZ) = grid.Δzᵃᵃᶠ
+@inline getspacing(k, Δz::AbstractVector) = @inbounds Δz[k]
+@inline getspacing(k, Δz::Number)         = @inbounds Δz
+
+@inline Δrᵃᵃᶜ(i, j, k, grid::ZSG) = getspacing(k, grid.Δzᵃᵃᶜ.reference)
+@inline Δrᵃᵃᶠ(i, j, k, grid::ZSG) = getspacing(k, grid.Δzᵃᵃᶠ.reference)
 
 # Convenience Functions for all grids
 for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
@@ -93,13 +100,34 @@ for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
         z_spacing_1D = Symbol(:Δz, :ᵃ, :ᵃ, LZ)
         z_spacing_3D = Symbol(:Δz, LX, LY, LZ)
 
+        r_spacing_1D = Symbol(:Δr, :ᵃ, :ᵃ, LZ)
+        r_spacing_3D = Symbol(:Δr, LX, LY, LZ)
+
         @eval begin
             @inline $x_spacing_3D(i, j, k, grid) = $x_spacing_2D(i, j, k, grid)
             @inline $y_spacing_3D(i, j, k, grid) = $y_spacing_2D(i, j, k, grid)
             @inline $z_spacing_3D(i, j, k, grid) = $z_spacing_1D(i, j, k, grid)
+            @inline $r_spacing_3D(i, j, k, grid) = $r_spacing_1D(i, j, k, grid)
         end
     end
 end
+
+##### 
+##### 3D spacings for AbstractVerticalCoordinate grids
+#####
+
+const AVCG = AbstractVerticalCoordinateUnderlyingGrid
+const c = Center()
+const f = Face()
+
+@inline Δzᶜᶜᶠ(i, j, k, grid::AVCG) = @inbounds Δrᶜᶜᶠ(i, j, k, grid) * vertical_scaling(i, j, k, grid, c, c, f)
+@inline Δzᶜᶜᶜ(i, j, k, grid::AVCG) = @inbounds Δrᶜᶜᶜ(i, j, k, grid) * vertical_scaling(i, j, k, grid, c, c, c)
+@inline Δzᶠᶜᶠ(i, j, k, grid::AVCG) = @inbounds Δrᶠᶜᶠ(i, j, k, grid) * vertical_scaling(i, j, k, grid, f, c, f)
+@inline Δzᶠᶜᶜ(i, j, k, grid::AVCG) = @inbounds Δrᶠᶜᶜ(i, j, k, grid) * vertical_scaling(i, j, k, grid, f, c, c)
+@inline Δzᶜᶠᶠ(i, j, k, grid::AVCG) = @inbounds Δrᶜᶠᶠ(i, j, k, grid) * vertical_scaling(i, j, k, grid, c, f, f)
+@inline Δzᶜᶠᶜ(i, j, k, grid::AVCG) = @inbounds Δrᶜᶠᶜ(i, j, k, grid) * vertical_scaling(i, j, k, grid, c, f, c)
+@inline Δzᶠᶠᶠ(i, j, k, grid::AVCG) = @inbounds Δrᶠᶠᶠ(i, j, k, grid) * vertical_scaling(i, j, k, grid, f, f, f)
+@inline Δzᶠᶠᶜ(i, j, k, grid::AVCG) = @inbounds Δrᶠᶠᶜ(i, j, k, grid) * vertical_scaling(i, j, k, grid, f, f, c)
 
 #####
 ##### Rectilinear Grids (Flat grids already have Δ = 1)
@@ -267,6 +295,11 @@ for LX in (:Center, :Face)
                 @eval begin
                     @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
                 end
+            end
+
+            metric_function = Symbol(:Δr, location_code(LXe, LYe, LZe))
+            @eval begin
+                @inline Δr(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric_function(i, j, k, grid)
             end
         end
     end

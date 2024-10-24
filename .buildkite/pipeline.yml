@@ -662,6 +662,41 @@ steps:
     depends_on: "init_cpu"
 
 #####
+##### Vertical Coordinates tests
+#####
+
+  - label: "🦧 gpu vertical coordinate"
+    env:
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "vertical_coordinate"
+    commands:
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
+    depends_on: "init_gpu"
+
+  - label: "🦍 cpu vertical coordinate"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "vertical_coordinate"
+      CUDA_VISIBLE_DEVICES: "-1"
+    commands:
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
+    depends_on: "init_cpu"
+
+#####
 ##### Enzyme extension tests
 #####
 

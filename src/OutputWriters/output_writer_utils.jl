@@ -1,10 +1,12 @@
+using Oceananigans.DistributedComputations
 using StructArrays: StructArray, replace_storage
 using Oceananigans.Grids: on_architecture, architecture
-using Oceananigans.DistributedComputations
+using Oceananigans.Grids: retrieve_static_grid
 using Oceananigans.DistributedComputations: DistributedGrid, Partition
 using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instantiated_location
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractVerticalCoordinateGrid
 using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: AbstractSchedule
 
@@ -89,6 +91,11 @@ function saveproperty!(file, address, grid::DistributedGrid)
     _saveproperty!(file, address, on_architecture(cpu_arch, grid))
 end
 
+function saveproperty!(file, address, grid::AbstractVerticalCoordinateGrid) 
+    static_grid = retrieve_static_grid(grid)
+    saveproperty!(file, address, static_grid)
+end
+
 # Special saveproperty! so boundary conditions are easily readable outside julia.
 function saveproperty!(file, address, bcs::FieldBoundaryConditions)
     for boundary in propertynames(bcs)
@@ -128,6 +135,11 @@ function serializeproperty!(file, address, grid::DistributedGrid)
     arch = architecture(grid)
     cpu_arch = Distributed(CPU(); partition = arch.partition)
     file[address] = on_architecture(cpu_arch, grid)
+end
+
+function serializeproperty!(file, address, grid::AbstractVerticalCoordinateGrid) 
+    static_grid = retrieve_static_grid(grid)
+    serializeproperty!(file, address, static_grid)
 end
 
 function serializeproperty!(file, address, p::FieldBoundaryConditions)
