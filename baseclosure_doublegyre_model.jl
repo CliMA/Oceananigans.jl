@@ -205,7 +205,7 @@ T, S = model.tracers.T, model.tracers.S
 U_bt = Field(Integral(u, dims=3));
 Ψ = Field(CumulativeIntegral(-U_bt, dims=2));
 
-κ = model.diffusivity_fields[1].κᶜ
+κ = model.diffusivity_fields.κᶜ
 wT_base = κ * ∂z(T)
 wS_base = κ * ∂z(S)
 wTbar_zonal = Average(wT_base, dims=1)
