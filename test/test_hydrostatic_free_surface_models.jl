@@ -230,7 +230,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
         end
 
         for tracer_advection in [WENO(),
-                                 FluxFormAdvection(WENO(), WENO(), Centered())
+                                 FluxFormAdvection(WENO(), WENO(), Centered()),
                                  (b=WENO(), c=nothing())]
 
             T = typeof(tracer_advection)
