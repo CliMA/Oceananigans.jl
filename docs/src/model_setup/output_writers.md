@@ -237,7 +237,7 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 ├── file_splitting: NoFileSplitting
-└── file size: 28.5 KiB
+└── file size: 29.1 KiB
 ```
 
 and a time- and horizontal-average of tracer `c` every 20 minutes of simulation time
@@ -255,7 +255,7 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 ├── file_splitting: NoFileSplitting
-└── file size: 18.3 KiB
+└── file size: 17.9 KiB
 ```
 
 
@@ -312,5 +312,5 @@ JLD2OutputWriter scheduled on TimeInterval(4 days):
 ├── array type: Array{Float64}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 ├── file_splitting: NoFileSplitting
-└── file size: 27.6 KiB
+└── file size: 27.1 KiB
 ```
