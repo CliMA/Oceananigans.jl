@@ -212,6 +212,9 @@ wS_NN = model.diffusivity_fields[2].wS
 wT_base = κ * ∂z(T)
 wS_base = κ * ∂z(S)
 
+wT = wT_NN + wT_base
+wS = wS_NN + wS_base
+
 @inline function get_N²(i, j, k, grid, b, C)
   return ∂z_b(i, j, k, grid, b, C)
 end
@@ -242,8 +245,17 @@ Tbar_zonal = Average(T, dims=1)
 Sbar_zonal = Average(S, dims=1)
 ρbar_zonal = Average(ρ, dims=1)
 
-outputs = (; u, v, w, T, S, ρ, N², wT_NN, wS_NN, wT_base, wS_base)
-zonal_outputs = (; ubar_zonal, vbar_zonal, wbar_zonal, Tbar_zonal, Sbar_zonal, ρbar_zonal)
+wT_NNbar_zonal = Average(wT_NN, dims=1)
+wS_NNbar_zonal = Average(wS_NN, dims=1)
+
+wT_basebar_zonal = Average(wT_base, dims=1)
+wS_basebar_zonal = Average(wS_base, dims=1)
+
+wTbar_zonal = Average(wT, dims=1)
+wSbar_zonal = Average(wS, dims=1)
+
+outputs = (; u, v, w, T, S, ρ, N², wT_NN, wS_NN, wT_base, wS_base, wT, wS)
+zonal_outputs = (; ubar_zonal, vbar_zonal, wbar_zonal, Tbar_zonal, Sbar_zonal, ρbar_zonal, wT_NNbar_zonal, wS_NNbar_zonal, wT_basebar_zonal, wS_basebar_zonal, wTbar_zonal, wSbar_zonal)
 
 #####
 ##### Build checkpointer and output writer

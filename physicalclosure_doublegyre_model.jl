@@ -248,9 +248,11 @@ wbar_zonal = Average(w, dims=1)
 Tbar_zonal = Average(T, dims=1)
 Sbar_zonal = Average(S, dims=1)
 ρbar_zonal = Average(ρ, dims=1)
+wTbar_zonal = Average(wT, dims=1)
+wSbar_zonal = Average(wS, dims=1)
 
 outputs = (; u, v, w, T, S, ρ, ρᶠ, ∂ρ∂z, ∂²ρ∂z², N², wT, wS)
-zonal_outputs = (; ubar_zonal, vbar_zonal, wbar_zonal, Tbar_zonal, Sbar_zonal, ρbar_zonal)
+zonal_outputs = (; ubar_zonal, vbar_zonal, wbar_zonal, Tbar_zonal, Sbar_zonal, ρbar_zonal, wTbar_zonal, wSbar_zonal)
 
 #####
 ##### Build checkpointer and output writer
