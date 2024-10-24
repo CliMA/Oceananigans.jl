@@ -26,9 +26,8 @@ using SeawaterPolynomials:TEOS10
 using ColorSchemes
 using Glob
 
-
 #%%
-filename = "doublegyre_30Cwarmflushbottom10_relaxation_8days_CATKEVerticalDiffusivity"
+filename = "doublegyre_30Cwarmflushbottom10_relaxation_8days_zC2O_CATKEVerticalDiffusivity"
 FILE_DIR = "./Output/$(filename)"
 # FILE_DIR = "/storage6/xinkai/NN_Oceananigans/$(filename)"
 mkpath(FILE_DIR)
@@ -46,6 +45,8 @@ end
 convection_closure = CATKE_ocean_closure()
 closure = convection_closure
 # closure = vertical_base_closure
+
+advection_scheme = FluxFormAdvection(WENO(order=5), WENO(order=5), CenteredSecondOrder())
 
 # number of grid points
 const Nx = 100
@@ -139,8 +140,8 @@ coriolis = BetaPlane(rotation_rate=7.292115e-5, latitude=45, radius=6371e3)
 model = HydrostaticFreeSurfaceModel(
     grid = grid,
     free_surface = SplitExplicitFreeSurface(grid, cfl=0.75),
-    momentum_advection = WENO(order=5),
-    tracer_advection = WENO(order=5),
+    momentum_advection = advection_scheme,
+    tracer_advection = advection_scheme,
     buoyancy = SeawaterBuoyancy(equation_of_state=TEOS10.TEOS10EquationOfState()),
     coriolis = coriolis,
     closure = VerticalScalarDiffusivity(ν=1e-5, κ=1e-5),
@@ -151,8 +152,8 @@ model = HydrostaticFreeSurfaceModel(
 model = HydrostaticFreeSurfaceModel(
     grid = grid,
     free_surface = SplitExplicitFreeSurface(grid, cfl=0.75),
-    momentum_advection = WENO(order=5),
-    tracer_advection = WENO(order=5),
+    momentum_advection = advection_scheme,
+    tracer_advection = advection_scheme,
     buoyancy = SeawaterBuoyancy(equation_of_state=TEOS10.TEOS10EquationOfState()),
     coriolis = coriolis,
     closure = closure,
