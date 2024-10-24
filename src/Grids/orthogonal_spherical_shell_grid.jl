@@ -213,6 +213,11 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
             ηᵃᶠᵃ = ynodes(ξη_grid, Face())
             ηᵃᶜᵃ = ynodes(ξη_grid, Center())
         end
+    else
+        ξᶠᵃᵃ = on_architecture(CPU(), ξᶠᵃᵃ)
+        ηᵃᶠᵃ = on_architecture(CPU(), ηᵃᶠᵃ)
+        ξᶜᵃᵃ = on_architecture(CPU(), ξᶜᵃᵃ)
+        ηᵃᶜᵃ = on_architecture(CPU(), ηᵃᶜᵃ)
     end
 
     ## The vertical coordinates and metrics can come out of the regular rectilinear grid!
@@ -615,6 +620,8 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
     Azᶜᶠᵃ = add_halos(Azᶜᶠᵃ, (Center, Face,   Nothing), args...; warnings)
     Azᶠᶠᵃ = add_halos(Azᶠᶠᵃ, (Face,   Face,   Nothing), args...; warnings)
 
+    computational_coordinate_arrays = (ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ)
+
     coordinate_arrays = (λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
                          φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ,
                          zᵃᵃᶜ, zᵃᵃᶠ)
@@ -626,7 +633,8 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
 
     conformal_mapping = (; ξ, η, rotation)
 
-    grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(CPU(), Nξ, Nη, Nz, Hx, Hy, Hz, Lz, ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ,
+    grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(CPU(), Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
+                                                    computational_coordinate_arrays...,
                                                     coordinate_arrays...,
                                                     metric_arrays...,
                                                     radius,
@@ -635,6 +643,8 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
     fill_metric_halo_regions!(grid)
 
     # now convert to proper architecture
+
+    computational_coordinate_arrays = (grid.ξᶠᵃᵃ, grid.ηᵃᶠᵃ, grid.ξᶜᵃᵃ, grid.ηᵃᶜᵃ)
 
     coordinate_arrays = (grid.λᶜᶜᵃ, grid.λᶠᶜᵃ, grid.λᶜᶠᵃ, grid.λᶠᶠᵃ,
                          grid.φᶜᶜᵃ, grid.φᶠᶜᵃ, grid.φᶜᶠᵃ, grid.φᶠᶠᵃ,
@@ -645,11 +655,14 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
                      grid.Δzᵃᵃᶜ, grid.Δzᵃᵃᶠ,
                      grid.Azᶜᶜᵃ, grid.Azᶠᶜᵃ, grid.Azᶜᶠᵃ, grid.Azᶠᶠᵃ)
 
+    computational_coordinate_arrays = map(a -> on_architecture(architecture, a), computational_coordinate_arrays)
+
     coordinate_arrays = map(a -> on_architecture(architecture, a), coordinate_arrays)
 
     metric_arrays = map(a -> on_architecture(architecture, a), metric_arrays)
 
-    grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, Lz, ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ,
+    grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
+                                                    computational_coordinate_arrays...,
                                                     coordinate_arrays...,
                                                     metric_arrays...,
                                                     radius,
