@@ -1,5 +1,4 @@
-using Oceananigans.Operators: divᶜᶜᶜ, ∇²ᶜᶜᶜ 
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Operators
 using Statistics: mean
 
 using KernelAbstractions: @kernel, @index
@@ -32,36 +31,54 @@ end
 
 @kernel function laplacian!(∇²ϕ, grid, ϕ)
     i, j, k = @index(Global, NTuple)
-    @inbounds ∇²ϕ[i, j, k] = ∇²ᶜᶜᶜ(i, j, k, grid, ϕ)
+    active = !inactive_cell(i, j, k, grid)
+    @inbounds ∇²ϕ[i, j, k] = ∇²ᶜᶜᶜ(i, j, k, grid, ϕ) * active
 end
 
-function compute_laplacian!(∇²ϕ, ϕ)
+struct RegularizedLaplacian{D}
+    δ :: D
+end
+
+function (L::RegularizedLaplacian)(Lϕ, ϕ)
     grid = ϕ.grid
     arch = architecture(grid)
     fill_halo_regions!(ϕ)
-    launch!(arch, grid, :xyz, laplacian!, ∇²ϕ, grid, ϕ)
+    launch!(arch, grid, :xyz, laplacian!, Lϕ, grid, ϕ)
+
+    if !isnothing(L.δ)
+        # Add regularizer
+        ϕ̄ = mean(ϕ)
+        ΔLϕ = L.δ * ϕ̄
+        grid = ϕ.grid
+        arch = architecture(grid)
+        launch!(arch, grid, :xyz, subtract_and_mask!, Lϕ, grid, ΔLϕ)
+    end
+
     return nothing
 end
 
 struct DefaultPreconditioner end
 
 function ConjugateGradientPoissonSolver(grid;
+                                        regularizer = nothing,
                                         preconditioner = DefaultPreconditioner(),
                                         reltol = sqrt(eps(grid)),
                                         abstol = sqrt(eps(grid)),
                                         kw...)
 
     if preconditioner isa DefaultPreconditioner # try to make a useful default
-        if grid isa ImmersedBoundaryGrid && grid.underlying_grid isa GridWithFFTSolver
-            preconditioner = fft_poisson_solver(grid.underlying_grid)
+        if has_fft_poisson_solver(grid)
+            preconditioner = fft_poisson_solver(grid)
         else
-            preconditioner = DiagonallyDominantPreconditioner()
+            preconditioner = AsymptoticPoissonPreconditioner()
         end
     end
 
     rhs = CenterField(grid)
+    operator = RegularizedLaplacian(regularizer)
+    preconditioner = RegularizedPoissonPreconditioner(preconditioner, rhs, regularizer)
 
-    conjugate_gradient_solver = ConjugateGradientSolver(compute_laplacian!;
+    conjugate_gradient_solver = ConjugateGradientSolver(operator;
                                                         reltol,
                                                         abstol,
                                                         preconditioner,
@@ -111,16 +128,41 @@ function compute_preconditioner_rhs!(solver::FourierTridiagonalPoissonSolver, rh
     return nothing
 end
 
-const FFTBasedPreconditioner = Union{FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver}
+struct RegularizedPoissonPreconditioner{P, R, D}
+    unregularized_preconditioner :: P
+    rhs :: R
+    regularizer :: D
+end
 
-function precondition!(p, preconditioner::FFTBasedPreconditioner, r, args...)
-    compute_preconditioner_rhs!(preconditioner, r)
-    p = solve!(p, preconditioner)
+const SolverWithFFT = Union{FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver}
+const FFTBasedPreconditioner = RegularizedPoissonPreconditioner{<:SolverWithFFT}
 
+function precondition!(p, regularized::FFTBasedPreconditioner, r, args...)
+    solver = regularized.unregularized_preconditioner
+    compute_preconditioner_rhs!(solver, r)
+    solve!(p, solver)
+    regularize_poisson_solution!(p, regularized)
+    return p
+end
+
+function regularize_poisson_solution!(p, regularized)
+    δ = regularized.regularizer
+    rhs = regularized.rhs
     mean_p = mean(p)
+
+    if !isnothing(δ)
+        mean_rhs = mean(rhs)
+        Δp = mean_p + mean_rhs / δ
+
+        # TODO: figure out if we should avoid zeroing the mean_p
+        # Δp = mean_rhs / δ
+    else
+        Δp = mean_p
+    end
+
     grid = p.grid
     arch = architecture(grid)
-    launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, mean_p)
+    launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, Δp)
 
     return p
 end
@@ -128,25 +170,23 @@ end
 @kernel function subtract_and_mask!(a, grid, b)
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
-    a[i, j, k] = (a[i, j, k] - b) * active
+    @inbounds a[i, j, k] = (a[i, j, k] - b) * active
 end
 
 #####
-##### The "DiagonallyDominantPreconditioner" (Marshall et al 1997)
+##### The "AsymptoticPoissonPreconditioner" (Marshall et al 1997)
 #####
 
-struct DiagonallyDominantPreconditioner end
-Base.summary(::DiagonallyDominantPreconditioner) = "DiagonallyDominantPreconditioner"
+struct AsymptoticPoissonPreconditioner end
+const RegularizedAPP = RegularizedPoissonPreconditioner{<:AsymptoticPoissonPreconditioner}
+Base.summary(::AsymptoticPoissonPreconditioner) = "AsymptoticPoissonPreconditioner"
 
-@inline function precondition!(p, ::DiagonallyDominantPreconditioner, r, args...)
+@inline function precondition!(p, preconditioner::RegularizedAPP, r, args...)
     grid = r.grid
     arch = architecture(p)
     fill_halo_regions!(r)
-    launch!(arch, grid, :xyz, _diagonally_dominant_precondition!, p, grid, r)
-
-    mean_p = mean(p)
-    launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, mean_p)
-
+    launch!(arch, grid, :xyz, _asymptotic_poisson_precondition!, p, grid, r)
+    regularize_poisson_solution!(p, preconditioner)
     return p
 end
 
@@ -162,17 +202,22 @@ end
                               Ay⁻(i, j, k, grid) - Ay⁺(i, j, k, grid) -
                               Az⁻(i, j, k, grid) - Az⁺(i, j, k, grid)
                               
-@inline heuristic_residual(i, j, k, grid, r) =
-    @inbounds 1 / Ac(i, j, k, grid) * (r[i, j, k] - 2 * Ax⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i-1, j, k, grid)) * r[i-1, j, k] -
-                                                    2 * Ax⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i+1, j, k, grid)) * r[i+1, j, k] -
-                                                    2 * Ay⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j-1, k, grid)) * r[i, j-1, k] -
-                                                    2 * Ay⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j+1, k, grid)) * r[i, j+1, k] -
-                                                    2 * Az⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j, k-1, grid)) * r[i, j, k-1] -
-                                                    2 * Az⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j, k+1, grid)) * r[i, j, k+1])
+@inline function heuristic_poisson_solution(i, j, k, grid, r)
+    @inbounds begin
+        a⁰⁰⁰ = r[i, j, k]
+        a⁻⁰⁰ = 2 * Ax⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i-1, j, k, grid)) * r[i-1, j, k]
+        a⁺⁰⁰ = 2 * Ax⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i+1, j, k, grid)) * r[i+1, j, k]
+        a⁰⁻⁰ = 2 * Ay⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j-1, k, grid)) * r[i, j-1, k]
+        a⁰⁺⁰ = 2 * Ay⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j+1, k, grid)) * r[i, j+1, k]
+        a⁰⁰⁻ = 2 * Az⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j, k-1, grid)) * r[i, j, k-1]
+        a⁰⁰⁺ = 2 * Az⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j, k+1, grid)) * r[i, j, k+1]
+    end
 
-@kernel function _diagonally_dominant_precondition!(p, grid, r)
-    i, j, k = @index(Global, NTuple)
-    active = !inactive_cell(i, j, k, grid)
-    @inbounds p[i, j, k] = heuristic_residual(i, j, k, grid, r) * active
+    return (a⁰⁰⁰ - a⁻⁰⁰ - a⁺⁰⁰ - a⁰⁻⁰ - a⁰⁺⁰ - a⁰⁰⁻ - a⁰⁰⁺) / Ac(i, j, k, grid)
 end
 
+@kernel function _asymptotic_poisson_precondition!(p, grid, r)
+    i, j, k = @index(Global, NTuple)
+    active = !inactive_cell(i, j, k, grid)
+    @inbounds p[i, j, k] = heuristic_poisson_solution(i, j, k, grid, r) * active
+end
