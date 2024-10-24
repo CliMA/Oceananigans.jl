@@ -5,16 +5,15 @@
 # forcings and boundary conditions originally designed for `v` aere then used for `w` without
 # modification).
 #
-# This case also has a stretched grid to validate the zero wall normal velocity gradient matching
-# scheme on a stretched grid.
+# This case also has a stretched grid to validate the matching scheme on a stretched grid.
 
 using Oceananigans, CairoMakie
 using Oceananigans.BoundaryConditions: FlatExtrapolationOpenBoundaryCondition
 
 @kwdef struct Cylinder{FT}
-    D :: FT = 1.
-   x₀ :: FT = 0.
-   y₀ :: FT = 0.
+    D :: FT = 1.0
+   x₀ :: FT = 0.0
+   y₀ :: FT = 0.0
 end
 
 @inline (cylinder::Cylinder)(x, y) = ifelse((x - cylinder.x₀)^2 + (y - cylinder.y₀)^2 < (cylinder.D/2)^2, 1, 0)
@@ -29,7 +28,6 @@ T = 50
 cylinder = Cylinder(; D)
 
 L = 10
-
 Nx = Ny = 40
 
 β = 0.2
@@ -62,13 +60,12 @@ function run_cylinder(grid, boundary_conditions; plot=true, stop_time = 50, simn
     @info "Set initial conditions"
     simulation = Simulation(model; Δt = Δt, stop_time = stop_time)
 
-    #+++ Callbacks
+    # Callbacks
     wizard = TimeStepWizard(cfl = 0.1)
     simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(100))
 
     progress(sim) = @info "$(time(sim)) with Δt = $(prettytime(sim.Δt)) in $(prettytime(sim.run_wall_time))"
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
-    #---
 
     u, v, w = model.velocities
     filename = "cylinder_$(simname)_Nx_$Nx.jld2"
