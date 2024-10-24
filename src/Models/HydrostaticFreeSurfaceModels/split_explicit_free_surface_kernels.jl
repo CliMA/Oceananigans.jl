@@ -382,8 +382,8 @@ function iterate_split_explicit!(free_surface, grid, Δτᴮ, weights, ::Val{Nsu
 
     parameters = auxiliary.kernel_parameters
 
-    free_surface_kernel! = configured_kernel(arch, grid, parameters, _split_explicit_free_surface!)
-    barotropic_velocity_kernel! = configured_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
+    free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
+    barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
 
     η_args = (grid, Δτᴮ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², 
               U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², 
