@@ -6,11 +6,13 @@ struct RotatedAdvection{N, FT, U} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
     upwind_scheme :: U
     minimum_rotation_percentage :: FT
     maximum_slope :: FT
+    percentage_of_diapycnal_flux :: FT
 end
 
 function RotatedAdvection(upwind_scheme::U;
                           maximum_slope = 1e5, 
-                          minimum_rotation_percentage = 0.1) where U 
+                          minimum_rotation_percentage = 0.1,
+                          percentage_of_diapycnal_flux = 1e-7) where U 
 
     FT = eltype(upwind_scheme)
     
@@ -20,13 +22,16 @@ function RotatedAdvection(upwind_scheme::U;
     
     minimum_rotation_percentage = convert(FT, minimum_rotation_percentage)
     maximum_slope = convert(FT, maximum_slope)
+    percentage_of_diapycnal_flux = convert(FT, percentage_of_diapycnal_flux)
 
-    return RotatedAdvection{N, FT, U}(upwind_scheme, minimum_rotation_percentage, maximum_slope)
+    return RotatedAdvection{N, FT, U}(upwind_scheme, minimum_rotation_percentage, maximum_slope, percentage_of_diapycnal_flux)
 end
 
+# Fallback, we cannot rotate the fluxes if we do not at least have two active tracers!
 @inline rotated_div_Uc(i, j, k, grid, scheme, U, c, buoyancy, tracers) = div_Uc(i, j, k, grid, scheme, U, c)
+@inline rotated_div_Uc(i, j, k, grid, scheme::RotatedAdvection, U, c, buoyancy, tracers) = div_Uc(i, j, k, grid, scheme.upwind_scheme, U, c)
 
-@inline function rotated_div_Uc(i, j, k, grid, scheme::RotatedAdvection, U, c, buoyancy, tracers)
+@inline function rotated_div_Uc(i, j, k, grid, scheme::RotatedAdvection, U, c, buoyancy::SeawaterBuoyancy, tracers)
     
     upwind_scheme = scheme.upwind_scheme
     centered_scheme_x = x_advection(upwind_scheme).advecting_velocity_scheme
@@ -34,33 +39,121 @@ end
     centered_scheme_z = z_advection(upwind_scheme).advecting_velocity_scheme
 
     # Total advective fluxes
-    𝒜x⁺ = _advective_tracer_flux_x(i+1, j,   k,   grid, upwind_scheme, U.u, c)
-    𝒜x⁻ = _advective_tracer_flux_x(i,   j,   k,   grid, upwind_scheme, U.u, c)
-    𝒜y⁺ = _advective_tracer_flux_y(i,   j+1, k,   grid, upwind_scheme, U.v, c)
-    𝒜y⁻ = _advective_tracer_flux_y(i,   j,   k,   grid, upwind_scheme, U.v, c)
-    𝒜z⁺ = _advective_tracer_flux_z(i,   j,   k+1, grid, upwind_scheme, U.w, c)
-    𝒜z⁻ = _advective_tracer_flux_z(i,   j,   k,   grid, upwind_scheme, U.w, c)
+    𝒜x₀⁺ = _advective_tracer_flux_x(i+1, j,   k-1, grid, upwind_scheme, U.u, c)
+    𝒜x₀⁻ = _advective_tracer_flux_x(i,   j,   k-1, grid, upwind_scheme, U.u, c)
+    𝒜x₁⁺ = _advective_tracer_flux_x(i+1, j,   k  , grid, upwind_scheme, U.u, c)
+    𝒜x₁⁻ = _advective_tracer_flux_x(i,   j,   k  , grid, upwind_scheme, U.u, c)
+    𝒜x₂⁺ = _advective_tracer_flux_x(i+1, j,   k+1, grid, upwind_scheme, U.u, c)
+    𝒜x₂⁻ = _advective_tracer_flux_x(i,   j,   k+1, grid, upwind_scheme, U.u, c)
+
+    𝒜y₀⁺ = _advective_tracer_flux_y(i,   j+1, k-1, grid, upwind_scheme, U.v, c)
+    𝒜y₀⁻ = _advective_tracer_flux_y(i,   j,   k-1, grid, upwind_scheme, U.v, c)
+    𝒜y₁⁺ = _advective_tracer_flux_y(i,   j+1, k,   grid, upwind_scheme, U.v, c)
+    𝒜y₁⁻ = _advective_tracer_flux_y(i,   j,   k,   grid, upwind_scheme, U.v, c)
+    𝒜y₂⁺ = _advective_tracer_flux_y(i,   j+1, k+1, grid, upwind_scheme, U.v, c)
+    𝒜y₂⁻ = _advective_tracer_flux_y(i,   j,   k+1, grid, upwind_scheme, U.v, c)
+    
+    𝒜zˣ₀⁺ = _advective_tracer_flux_z(i+1, j,   k+1, grid, upwind_scheme, U.w, c)
+    𝒜zˣ₀⁻ = _advective_tracer_flux_z(i+1, j,   k,   grid, upwind_scheme, U.w, c)
+    𝒜zˣ₁⁺ = _advective_tracer_flux_z(i,   j,   k+1, grid, upwind_scheme, U.w, c)
+    𝒜zˣ₁⁻ = _advective_tracer_flux_z(i,   j,   k,   grid, upwind_scheme, U.w, c)
+    𝒜zˣ₁⁺ = _advective_tracer_flux_z(i-1, j,   k+1, grid, upwind_scheme, U.w, c)
+    𝒜zˣ₁⁻ = _advective_tracer_flux_z(i-1, j,   k,   grid, upwind_scheme, U.w, c)
+    𝒜zʸ₀⁺ = _advective_tracer_flux_z(i,   j+1, k+1, grid, upwind_scheme, U.w, c)
+    𝒜zʸ₀⁻ = _advective_tracer_flux_z(i,   j+1, k,   grid, upwind_scheme, U.w, c)
+    𝒜zʸ₁⁺ = _advective_tracer_flux_z(i,   j,   k+1, grid, upwind_scheme, U.w, c)
+    𝒜zʸ₁⁻ = _advective_tracer_flux_z(i,   j,   k,   grid, upwind_scheme, U.w, c)
+    𝒜zʸ₁⁺ = _advective_tracer_flux_z(i,   j-1, k+1, grid, upwind_scheme, U.w, c)
+    𝒜zʸ₁⁻ = _advective_tracer_flux_z(i,   j-1, k,   grid, upwind_scheme, U.w, c)
 
     # Centered advective fluxes
-    𝒞x⁺ = _advective_tracer_flux_x(i+1, j,   k,   grid, centered_scheme_x, U.u, c)
-    𝒞x⁻ = _advective_tracer_flux_x(i,   j,   k,   grid, centered_scheme_x, U.u, c)
-    𝒞y⁺ = _advective_tracer_flux_y(i,   j+1, k,   grid, centered_scheme_y, U.v, c)
-    𝒞y⁻ = _advective_tracer_flux_y(i,   j,   k,   grid, centered_scheme_y, U.v, c)
-    𝒞z⁺ = _advective_tracer_flux_z(i,   j,   k+1, grid, centered_scheme_z, U.w, c)
-    𝒞z⁻ = _advective_tracer_flux_z(i,   j,   k,   grid, centered_scheme_z, U.w, c)
+    𝒞x₀⁺ = _advective_tracer_flux_x(i+1, j,   k-1, grid, centered_scheme_x, U.u, c)
+    𝒞x₀⁻ = _advective_tracer_flux_x(i,   j,   k-1, grid, centered_scheme_x, U.u, c)
+    𝒞x₁⁺ = _advective_tracer_flux_x(i+1, j,   k  , grid, centered_scheme_x, U.u, c)
+    𝒞x₁⁻ = _advective_tracer_flux_x(i,   j,   k  , grid, centered_scheme_x, U.u, c)
+    𝒞x₂⁺ = _advective_tracer_flux_x(i+1, j,   k+1, grid, centered_scheme_x, U.u, c)
+    𝒞x₂⁻ = _advective_tracer_flux_x(i,   j,   k+1, grid, centered_scheme_x, U.u, c)
 
-    # Diffusive fluxes
-    𝒟x⁺ = 𝒜x⁺ - 𝒞x⁺
-    𝒟x⁻ = 𝒜x⁻ - 𝒞x⁻
-    𝒟y⁺ = 𝒜y⁺ - 𝒞y⁺
-    𝒟y⁻ = 𝒜y⁻ - 𝒞y⁻
-    𝒟z⁺ = 𝒜z⁺ - 𝒞z⁺
-    𝒟z⁻ = 𝒜z⁻ - 𝒞z⁻
+    𝒞y₀⁺ = _advective_tracer_flux_y(i,   j+1, k-1, grid, centered_scheme_y, U.v, c)
+    𝒞y₀⁻ = _advective_tracer_flux_y(i,   j,   k-1, grid, centered_scheme_y, U.v, c)
+    𝒞y₁⁺ = _advective_tracer_flux_y(i,   j+1, k,   grid, centered_scheme_y, U.v, c)
+    𝒞y₁⁻ = _advective_tracer_flux_y(i,   j,   k,   grid, centered_scheme_y, U.v, c)
+    𝒞y₂⁺ = _advective_tracer_flux_y(i,   j+1, k+1, grid, centered_scheme_y, U.v, c)
+    𝒞y₂⁻ = _advective_tracer_flux_y(i,   j,   k+1, grid, centered_scheme_y, U.v, c) 
+     
+    𝒞zˣ₀⁺ = _advective_tracer_flux_z(i+1, j,   k+1, grid, centered_scheme_z, U.w, c)
+    𝒞zˣ₀⁻ = _advective_tracer_flux_z(i+1, j,   k,   grid, centered_scheme_z, U.w, c)
+    𝒞zˣ₁⁺ = _advective_tracer_flux_z(i,   j,   k+1, grid, centered_scheme_z, U.w, c)
+    𝒞zˣ₁⁻ = _advective_tracer_flux_z(i,   j,   k,   grid, centered_scheme_z, U.w, c)
+    𝒞zˣ₂⁺ = _advective_tracer_flux_z(i-1, j,   k+1, grid, centered_scheme_z, U.w, c)
+    𝒞zˣ₂⁻ = _advective_tracer_flux_z(i-1, j,   k,   grid, centered_scheme_z, U.w, c)
+    𝒞zʸ₀⁺ = _advective_tracer_flux_z(i,   j-1, k+1, grid, centered_scheme_z, U.w, c)
+    𝒞zʸ₀⁻ = _advective_tracer_flux_z(i,   j-1, k,   grid, centered_scheme_z, U.w, c)
+    𝒞zʸ₁⁺ = _advective_tracer_flux_z(i,   j,   k+1, grid, centered_scheme_z, U.w, c)
+    𝒞zʸ₁⁻ = _advective_tracer_flux_z(i,   j,   k,   grid, centered_scheme_z, U.w, c)
+    𝒞zʸ₂⁺ = _advective_tracer_flux_z(i,   j+1, k+1, grid, centered_scheme_z, U.w, c)
+    𝒞zʸ₂⁻ = _advective_tracer_flux_z(i,   j+1, k,   grid, centered_scheme_z, U.w, c)
+
+    # Diffusive fluxes for the whole triad
+    𝒟x₀⁺ = 𝒜x₀⁺ - 𝒞x₀⁺ # @ fcc ->  i+1, j, k-1
+    𝒟x₀⁻ = 𝒜x₀⁻ - 𝒞x₀⁻ # @ fcc ->  i,   j, k-1
+    𝒟x₁⁺ = 𝒜x₁⁺ - 𝒞x₁⁺ # @ fcc ->  i+1, j, k
+    𝒟x₁⁻ = 𝒜x₁⁻ - 𝒞x₁⁻ # @ fcc ->  i,   j, k
+    𝒟x₂⁺ = 𝒜x₂⁺ - 𝒞x₂⁺ # @ fcc ->  i+1, j, k+1
+    𝒟x₂⁻ = 𝒜x₂⁻ - 𝒞x₂⁻ # @ fcc ->  i,   j, k+1
+
+    𝒟y₀⁺ = 𝒜y₀⁺ - 𝒞y₀⁺ # @ cfc ->  i, j+1, k-1
+    𝒟y₀⁻ = 𝒜y₀⁻ - 𝒞y₀⁻ # @ cfc ->  i, j,   k-1
+    𝒟y₁⁺ = 𝒜y₁⁺ - 𝒞y₁⁺ # @ cfc ->  i, j+1, k
+    𝒟y₁⁻ = 𝒜y₁⁻ - 𝒞y₁⁻ # @ cfc ->  i, j,   k
+    𝒟y₂⁺ = 𝒜y₂⁺ - 𝒞y₂⁺ # @ cfc ->  i, j+1, k+1
+    𝒟y₂⁻ = 𝒜y₂⁻ - 𝒞y₂⁻ # @ cfc ->  i, j,   k+1
+    
+    𝒟zˣ₀⁺ = 𝒜zˣ₀⁺ - 𝒞zˣ₀⁺ # @ ccf ->  i-1, j, k+1
+    𝒟zˣ₀⁻ = 𝒜zˣ₀⁻ - 𝒞zˣ₀⁻ # @ ccf ->  i-1, j, k
+    𝒟zˣ₁⁺ = 𝒜zˣ₁⁺ - 𝒞zˣ₁⁺ # @ ccf ->  i,   j, k+1
+    𝒟zˣ₁⁻ = 𝒜zˣ₁⁻ - 𝒞zˣ₁⁻ # @ ccf ->  i,   j, k
+    𝒟zˣ₂⁺ = 𝒜zˣ₁⁺ - 𝒞zˣ₁⁺ # @ ccf ->  i+1, j, k+1
+    𝒟zˣ₂⁻ = 𝒜zˣ₁⁻ - 𝒞zˣ₁⁻ # @ ccf ->  i+1, j, k
+    𝒟zʸ₀⁺ = 𝒜zʸ₀⁺ - 𝒞zʸ₀⁺ # @ ccf ->  i, j-1, k+1
+    𝒟zʸ₀⁻ = 𝒜zʸ₀⁻ - 𝒞zʸ₀⁻ # @ ccf ->  i, j-1, k
+    𝒟zʸ₁⁺ = 𝒜zʸ₁⁺ - 𝒞zʸ₁⁺ # @ ccf ->  i, j,   k+1
+    𝒟zʸ₁⁻ = 𝒜zʸ₁⁻ - 𝒞zʸ₁⁻ # @ ccf ->  i, j,   k
+    𝒟zʸ₂⁺ = 𝒜zʸ₁⁺ - 𝒞zʸ₁⁺ # @ ccf ->  i, j+1, k+1
+    𝒟zʸ₂⁻ = 𝒜zʸ₁⁻ - 𝒞zʸ₁⁻ # @ ccf ->  i, j+1, k
 
     # TODO: make this a parameter?
-    ϵ = Δzᶜᶜᶜ(i, j, k, grid)^2 / max(Δxᶜᶜᶜ(i, j, k, grid), Δyᶜᶜᶜ(i, j, k, grid))^2
+    ϵ = scheme.percentage_of_diapycnal_flux
     Smax = scheme.maximum_slope
 
+    # Start with the triads!!
+    bx₀⁺ = ∂x_b(i+1, j, k-1, grid, buoyancy, tracers)
+    bx₀⁻ = ∂x_b(i,   j, k-1, grid, buoyancy, tracers)
+    bx₁⁺ = ∂x_b(i+1, j, k  , grid, buoyancy, tracers)
+    bx₁⁻ = ∂x_b(i,   j, k  , grid, buoyancy, tracers)
+    bx₂⁺ = ∂x_b(i+1, j, k+1, grid, buoyancy, tracers)
+    bx₂⁻ = ∂x_b(i,   j, k+1, grid, buoyancy, tracers)
+
+    by₀⁺ = ∂y_b(i, j+1, k-1, grid, buoyancy, tracers)
+    by₀⁻ = ∂y_b(i, j,   k-1, grid, buoyancy, tracers)
+    by₁⁺ = ∂y_b(i, j+1, k  , grid, buoyancy, tracers)
+    by₁⁻ = ∂y_b(i, j,   k  , grid, buoyancy, tracers)
+    by₂⁺ = ∂y_b(i, j+1, k+1, grid, buoyancy, tracers)
+    by₂⁻ = ∂y_b(i, j,   k+1, grid, buoyancy, tracers)
+    
+    bzˣ₀⁺ = ∂z_b(i+1, j,   k+1, grid, buoyancy, tracers)
+    bzˣ₀⁻ = ∂z_b(i+1, j,   k,   grid, buoyancy, tracers)
+    bzˣ₁⁺ = ∂z_b(i,   j,   k+1, grid, buoyancy, tracers)
+    bzˣ₁⁻ = ∂z_b(i,   j,   k,   grid, buoyancy, tracers)
+    bzˣ₂⁺ = ∂z_b(i-1, j,   k+1, grid, buoyancy, tracers)
+    bzˣ₂⁻ = ∂z_b(i-1, j,   k,   grid, buoyancy, tracers)
+    bzʸ₀⁺ = ∂z_b(i,   j-1, k+1, grid, buoyancy, tracers)
+    bzʸ₀⁻ = ∂z_b(i,   j-1, k,   grid, buoyancy, tracers)
+    bzʸ₁⁺ = ∂z_b(i,   j,   k+1, grid, buoyancy, tracers)
+    bzʸ₁⁻ = ∂z_b(i,   j,   k,   grid, buoyancy, tracers)
+    bzʸ₂⁺ = ∂z_b(i,   j+1, k+1, grid, buoyancy, tracers)
+    bzʸ₂⁻ = ∂z_b(i,   j+1, k,   grid, buoyancy, tracers)
+    
     # Elements of the rotation tensor
     R₁₁⁺, R₁₂⁺, R₁₃⁺ = rotation_tensorᶠᶜᶜ(i+1, j, k, grid, buoyancy, tracers, Smax, ϵ)
     R₁₁⁻, R₁₂⁻, R₁₃⁻ = rotation_tensorᶠᶜᶜ(i,   j, k, grid, buoyancy, tracers, Smax, ϵ)
@@ -71,13 +164,11 @@ end
     R₃₁⁺, R₃₂⁺, R₃₃⁺ = rotation_tensorᶜᶜᶠ(i, j, k+1, grid, buoyancy, tracers, Smax, ϵ)
     R₃₁⁻, R₃₂⁻, R₃₃⁻ = rotation_tensorᶜᶜᶠ(i, j, k,   grid, buoyancy, tracers, Smax, ϵ)
 
-    # Rotated fluxes
+    # Rotated fluxes, Cannot do this!!!
     ℛx⁺ = R₁₁⁺ * 𝒟x⁺ + R₁₂⁺ * 𝒟y⁺ + R₁₃⁺ * 𝒟z⁺
     ℛx⁻ = R₁₁⁻ * 𝒟x⁻ + R₁₂⁻ * 𝒟y⁻ + R₁₃⁻ * 𝒟z⁻
-
     ℛy⁺ = R₂₁⁺ * 𝒟x⁺ + R₂₂⁺ * 𝒟y⁺ + R₂₃⁺ * 𝒟z⁺
     ℛy⁻ = R₂₁⁻ * 𝒟x⁻ + R₂₂⁻ * 𝒟y⁻ + R₂₃⁻ * 𝒟z⁻
-
     ℛz⁺ = R₃₁⁺ * 𝒟x⁺ + R₃₂⁺ * 𝒟y⁺ + R₃₃⁺ * 𝒟z⁺
     ℛz⁻ = R₃₁⁻ * 𝒟x⁻ + R₃₂⁻ * 𝒟y⁻ + R₃₃⁻ * 𝒟z⁻
 
@@ -110,58 +201,13 @@ end
     # Fluxes
     Fx⁺ = 𝒞x⁺ + ℛx⁺ + (1 - αx⁺) * 𝒟x⁺
     Fx⁻ = 𝒞x⁻ + ℛx⁻ + (1 - αx⁻) * 𝒟x⁻                                           
-    Fy⁻ = 𝒞y⁻ + ℛy⁻ + (1 - αy⁺) * 𝒟y⁻
-    Fy⁺ = 𝒞y⁺ + ℛy⁺ + (1 - αy⁻) * 𝒟y⁺                                             
     Fz⁺ = 𝒞z⁺ + ℛz⁺ + (1 - αz⁺) * 𝒟z⁺
     Fz⁻ = 𝒞z⁻ + ℛz⁻ + (1 - αz⁻) * 𝒟z⁻
 
+    # Nothing in y 
+    # for the moment
+    Fy⁻ = 𝒜⁻
+    Fy⁺ = 𝒜⁺
+        
     return 1 / Vᶜᶜᶜ(i, j, k, grid) * (Fx⁺ - Fx⁻ + Fy⁺ - Fy⁻ + Fz⁺ - Fz⁻)
-end
-
-@inline function rotation_tensorᶠᶜᶜ(i, j, k, grid, buoyancy, tracers, Smax, ϵ)
-    bx =   ∂x_b(i, j, k, grid,       buoyancy, tracers) 
-    by = ℑxyᶜᶠᵃ(i, j, k, grid, ∂y_b, buoyancy, tracers) 
-    bz = ℑxzᶜᵃᶠ(i, j, k, grid, ∂z_b, buoyancy, tracers) 
-    S  = bx^2 + by^2 + bz^2
-    Sx = abs(bx / bz)
-    Sy = abs(by / bz)
-    condition = (Sx < Smax) & (Sy < Smax) & (S > 0) # Tapering
-
-    R₁₁ = ifelse(condition,   (by^2 + bz^2 + ϵ * bx^2) / S, one(grid)) 
-    R₁₂ = ifelse(condition,        ((ϵ - 1) * bx * by) / S, zero(grid)) 
-    R₁₃ = ifelse(condition,        ((ϵ - 1) * bx * bz) / S, zero(grid))
-
-    return R₁₁, R₁₂, R₁₃
-end
-
-@inline function rotation_tensorᶜᶠᶜ(i, j, k, grid, buoyancy, tracers, Smax, ϵ)
-    bx = ℑxyᶜᶠᵃ(i, j, k, grid, ∂x_b, buoyancy, tracers) 
-    by =   ∂y_b(i, j, k, grid,       buoyancy, tracers) 
-    bz = ℑyzᵃᶜᶠ(i, j, k, grid, ∂z_b, buoyancy, tracers) 
-    S  = bx^2 + by^2 + bz^2
-    Sx = abs(bx / bz)
-    Sy = abs(by / bz)
-    condition = (Sx < Smax) & (Sy < Smax) & (S > 0) # Tapering
-
-    R₂₁ = ifelse(condition,      ((ϵ - 1) * by * bx) / S, zero(grid)) 
-    R₂₂ = ifelse(condition, (bx^2 + bz^2 + ϵ * by^2) / S, one(grid)) 
-    R₂₃ = ifelse(condition,      ((ϵ - 1) * by * bz) / S, zero(grid))
-
-    return R₂₁, R₂₂, R₂₃
-end
-
-@inline function rotation_tensorᶜᶜᶠ(i, j, k, grid, buoyancy, tracers, Smax, ϵ)
-    bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂x_b, buoyancy, tracers) 
-    by = ℑyzᵃᶜᶠ(i, j, k, grid, ∂y_b, buoyancy, tracers) 
-    bz =   ∂z_b(i, j, k, grid,       buoyancy, tracers) 
-    S  = bx^2 + by^2 + bz^2
-    Sx = abs(bx / bz)
-    Sy = abs(by / bz)
-    condition = (Sx < Smax) & (Sy < Smax) & (S > 0) # Tapering
-
-    R₃₁ = ifelse(condition,      ((ϵ - 1) * bz * bx) / S, zero(grid)) 
-    R₃₂ = ifelse(condition,      ((ϵ - 1) * bz * by) / S, zero(grid))
-    R₃₃ = ifelse(condition, (bx^2 + by^2 + ϵ * bz^2) / S, one(grid)) 
-
-    return R₃₁, R₃₂, R₃₃
 end
