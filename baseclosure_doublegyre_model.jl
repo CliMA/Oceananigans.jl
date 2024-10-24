@@ -30,8 +30,7 @@ mkpath(FILE_DIR)
 model_architecture = GPU()
 
 base_closure = XinKaiLocalVerticalDiffusivity()
-vertical_scalar_closure = VerticalScalarDiffusivity(ν=1e-5, κ=1e-5)
-closure = (base_closure, vertical_scalar_closure)
+closure = base_closure
 
 advection_scheme = FluxFormAdvection(WENO(order=5), WENO(order=5), CenteredSecondOrder())
 
