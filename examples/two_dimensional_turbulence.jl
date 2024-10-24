@@ -126,11 +126,6 @@ run!(simulation)
 s_timeseries = FieldTimeSeries(filename * ".jld2", "s")
 
 times = ω_timeseries.times
-
-# Construct the ``x, y, z`` grid for plotting purposes,
-
-xω, yω, zω = nodes(ω_timeseries)
-xs, ys, zs = nodes(s_timeseries)
 nothing #hide
 
 # and animate the vorticity and fluid speed.

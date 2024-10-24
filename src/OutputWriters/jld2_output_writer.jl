@@ -30,7 +30,7 @@ ext(::Type{JLD2OutputWriter}) = ".jld2"
     JLD2OutputWriter(model, outputs; filename, schedule,
                               dir = ".",
                           indices = (:, :, :),
-                       with_halos = false,
+                       with_halos = true,
                        array_type = Array{Float64},
                    file_splitting = NoFileSplitting(),
                overwrite_existing = false,
@@ -71,9 +71,7 @@ Keyword arguments
              will save xy-slices of the bottom-most index.
 
 - `with_halos` (Bool): Whether or not to slice halo regions from fields before writing output.
-                       Note, that to postprocess saved output (e.g., compute derivatives, etc)
-                       information about the boundary conditions is often crucial. In that case
-                       you might need to set `with_halos = true`.
+                       Preserving halo region data can be useful for postprocessing. Default: false.
 
 - `array_type`: The array type to which output arrays are converted to prior to saving.
                 Default: `Array{Float64}`.
@@ -112,7 +110,7 @@ Example
 
 Write out 3D fields for ``u``, ``v``, ``w``, and a tracer ``c``, along with a horizontal average:
 
-```
+```@example
 using Oceananigans
 using Oceananigans.Utils: hour, minute
 
@@ -133,39 +131,21 @@ simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocitie
                                                           filename = "some_data.jld2",
                                                           schedule = TimeInterval(20minute),
                                                           init = init_save_some_metadata!)
-
-# output
-JLD2OutputWriter scheduled on TimeInterval(20 minutes):
-├── filepath: ./some_data.jld2
-├── 3 outputs: (u, v, w)
-├── array type: Array{Float64}
-├── including: [:grid, :coriolis, :buoyancy, :closure]
-├── file_splitting: NoFileSplitting
-└── file size: 28.0 KiB
 ```
 
 and a time- and horizontal-average of tracer ``c`` every 20 minutes of simulation time
 to a file called `some_averaged_data.jld2`
 
-```
+```@example
 simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (; c=c_avg),
                                                      filename = "some_averaged_data.jld2",
                                                      schedule = AveragedTimeInterval(20minute, window=5minute))
-
-# output
-JLD2OutputWriter scheduled on TimeInterval(20 minutes):
-├── filepath: ./some_averaged_data.jld2
-├── 1 outputs: c averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
-├── array type: Array{Float64}
-├── including: [:grid, :coriolis, :buoyancy, :closure]
-├── file_splitting: NoFileSplitting
-└── file size: 17.8 KiB
 ```
 """
 function JLD2OutputWriter(model, outputs; filename, schedule,
                                    dir = ".",
                                indices = (:, :, :),
-                            with_halos = false,
+                            with_halos = true,
                             array_type = Array{Float64},
                         file_splitting = NoFileSplitting(),
                     overwrite_existing = false,

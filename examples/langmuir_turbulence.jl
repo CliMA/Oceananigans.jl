@@ -254,8 +254,6 @@ time_series = (;
     wv = FieldTimeSeries("langmuir_turbulence_averages.jld2", "wv"))
 
 times = time_series.w.times
-xw, yw, zw = nodes(time_series.w)
-xu, yu, zu = nodes(time_series.u)
 nothing #hide
 
 # We are now ready to animate using Makie. We use Makie's `Observable` to animate
@@ -309,43 +307,43 @@ nothing #hide
 
 wₙ = @lift time_series.w[$n]
 uₙ = @lift time_series.u[$n]
-Bₙ = @lift time_series.B[$n][1, 1, :]
-Uₙ = @lift time_series.U[$n][1, 1, :]
-Vₙ = @lift time_series.V[$n][1, 1, :]
-wuₙ = @lift time_series.wu[$n][1, 1, :]
-wvₙ = @lift time_series.wv[$n][1, 1, :]
+Bₙ = @lift view(time_series.B[$n], 1, 1, :)
+Uₙ = @lift view(time_series.U[$n], 1, 1, :)
+Vₙ = @lift view(time_series.V[$n], 1, 1, :)
+wuₙ = @lift view(time_series.wu[$n], 1, 1, :)
+wvₙ = @lift view(time_series.wv[$n], 1, 1, :)
 
 k = searchsortedfirst(grid.zᵃᵃᶠ[:], -8)
-wxyₙ = @lift interior(time_series.w[$n], :, :, k)
-wxzₙ = @lift interior(time_series.w[$n], :, 1, :)
-uxzₙ = @lift interior(time_series.u[$n], :, 1, :)
+wxyₙ = @lift view(time_series.w[$n], :, :, k)
+wxzₙ = @lift view(time_series.w[$n], :, 1, :)
+uxzₙ = @lift view(time_series.u[$n], :, 1, :)
 
 wlims = (-0.03, 0.03)
 ulims = (-0.05, 0.05)
 
-lines!(ax_B, Bₙ, zu)
+lines!(ax_B, Bₙ)
 
-lines!(ax_U, Uₙ, zu; label = L"\bar{u}")
-lines!(ax_U, Vₙ, zu; label = L"\bar{v}")
+lines!(ax_U, Uₙ; label = L"\bar{u}")
+lines!(ax_U, Vₙ; label = L"\bar{v}")
 axislegend(ax_U; position = :rb)
 
-lines!(ax_fluxes, wuₙ, zw; label = L"mean $wu$")
-lines!(ax_fluxes, wvₙ, zw; label = L"mean $wv$")
+lines!(ax_fluxes, wuₙ; label = L"mean $wu$")
+lines!(ax_fluxes, wvₙ; label = L"mean $wv$")
 axislegend(ax_fluxes; position = :rb)
 
-hm_wxy = heatmap!(ax_wxy, xw, yw, wxyₙ;
+hm_wxy = heatmap!(ax_wxy, wxyₙ;
                   colorrange = wlims,
                   colormap = :balance)
 
 Colorbar(fig[1, 3], hm_wxy; label = "m s⁻¹")
 
-hm_wxz = heatmap!(ax_wxz, xw, zw, wxzₙ;
+hm_wxz = heatmap!(ax_wxz, wxzₙ;
                   colorrange = wlims,
                   colormap = :balance)
 
 Colorbar(fig[2, 3], hm_wxz; label = "m s⁻¹")
 
-ax_uxz = heatmap!(ax_uxz, xu, zu, uxzₙ;
+ax_uxz = heatmap!(ax_uxz, uxzₙ;
                   colorrange = ulims,
                   colormap = :balance)
 
