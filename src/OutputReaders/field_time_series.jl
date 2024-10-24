@@ -285,7 +285,7 @@ on_architecture(to, fts::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} =
 ##### Supports reduced locations + time-interpolation / extrapolation
 #####
 
-struct GPUAdaptedFieldTimeSeries{LX, LY, LZ, TI, K, ET, D, χ} <: AbstractArray{ET, 4}
+struct GPUAdaptedFieldTimeSeries{LX, LY, LZ, TI, K, ET, D, χ} <: AbstractField{LX, LY, LZ, Nothing, ET, 4}
              data :: D
             times :: χ
           backend :: K
@@ -586,8 +586,6 @@ interior(fts::FieldTimeSeries, I...)  = view(interior(fts), I...)
 Base.length(fts::FlavorOfFTS)     = length(fts.times)
 Base.lastindex(fts::FlavorOfFTS)  = length(fts.times)
 Base.firstindex(fts::FlavorOfFTS) = 1
-
-Base.length(fts::PartlyInMemoryFTS) = length(fts.backend)
 
 function interior(fts::FieldTimeSeries)
     loc = map(instantiate, location(fts))

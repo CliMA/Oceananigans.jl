@@ -232,7 +232,7 @@ julia> grid = RectilinearGrid(GPU(); size=(1, 1, 1), extent=(1, 1, 1), halo=(1, 
 julia> model = NonhydrostaticModel(; grid)
 NonhydrostaticModel{GPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on GPU with 1×1×1 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
+├── timestepper: RungeKutta3TimeStepper
 ├── tracers: ()
 ├── closure: Nothing
 ├── buoyancy: Nothing

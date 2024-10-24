@@ -1,10 +1,20 @@
 module OceananigansMakieExt
 
 using Oceananigans
+using Oceananigans.Grids: OrthogonalSphericalShellGrid
+using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 using MakieCore: AbstractPlot
 import MakieCore: convert_arguments, _create_plot
+import Makie: args_preferred_axis
+
+# Extending args_preferred_axis here ensures that Field
+# do not overstate a preference for being plotted in a 3D LScene.
+# Because often we are trying to plot 1D and 2D Field, even though
+# (perhaps incorrectly) all Field are AbstractArray{3}.
+args_preferred_axis(::Field) = nothing
 
 function drop_singleton_indices(N)
     if N == 1
@@ -19,10 +29,47 @@ function _create_plot(F::Function, attributes::Dict, f::Field)
     return _create_plot(F, attributes, converted_args...)
 end
 
+function _create_plot(F::Function, attributes::Dict, op::AbstractOperation)
+    f = Field(op)
+    compute!(f)
+    return _create_plot(F::Function, attributes::Dict, f)
+end
+
 convert_arguments(pl::Type{<:AbstractPlot}, f::Field) =
     convert_arguments(pl, convert_field_argument(f)...)
 
-function flattened_cpu_interior(f)
+function convert_arguments(pl::Type{<:AbstractPlot}, fop::AbstractOperation)
+    f = Field(op)
+    compute!(f)
+    return convert_arguments(pl, f)
+end
+
+function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, op::AbstractOperation)
+    f = Field(op)
+    compute!(f)
+    return convert_arguments(pl, ξ1, f)
+end
+
+function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, ξ2::AbstractArray, op::AbstractOperation)
+    f = Field(op)
+    compute!(f)
+    return convert_arguments(pl, ξ1, ξ2, f)
+end
+
+"""
+    make_plottable_array(f)
+
+Convert a field `f` to an array that can be plotted with Makie by
+
+- masking immersed cells (for fields on immersed boundary
+grids) with NaNs;
+- dropping singleton dimensions, and
+- transferring data from GPU to CPU if necessary.
+"""
+function make_plottable_array(f)
+    compute!(f)
+    mask_immersed_field!(f, NaN)
+
     Nx, Ny, Nz = size(f)
 
     ii = drop_singleton_indices(Nx)
@@ -37,8 +84,7 @@ end
 
 function convert_field_argument(f::Field)
 
-    # Drop singleton dimensions and convert to CPU if necessary
-    fi_cpu = flattened_cpu_interior(f)
+    fi_cpu = make_plottable_array(f)
 
     # Indices of the non-zero dimensions
     d1 = findfirst(n -> n > 1, size(f))
@@ -57,10 +103,10 @@ function convert_field_argument(f::Field)
         ξ1_cpu = on_architecture(CPU(), ξ1)
 
         # Shenanigans
-        if d1 === 3 # vertical plot...
-            return fi_cpu, ξ1_cpu
-        else
+        if d1 === 1 # horizontal plot, in x
             return ξ1_cpu, fi_cpu
+        else # vertical plot instead
+            return fi_cpu, ξ1_cpu
         end
 
     elseif D == 2
@@ -78,17 +124,24 @@ function convert_field_argument(f::Field)
     end
 end
 
+# For Fields on OrthogonalSphericalShellGrid, just return the interior without coordinates
+# TODO: support plotting in geographic coordinates using mesh
+# See for example
+# https://github.com/navidcy/Imaginocean.jl/blob/f5cc5f27dd2e99e0af490e8dca5a53daf6837ead/src/Imaginocean.jl#L259
+const OSSGField = Field{<:Any, <:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid}
+convert_field_argument(f::OSSGField) = make_plottable_array(f)
+
 #####
 ##### When nodes are provided
 #####
 
 function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, f::Field)
-    fi_cpu = flattened_cpu_interior(f)
+    fi_cpu = make_plottable_array(f)
     return convert_arguments(pl, ξ1, fi_cpu)
 end
 
 function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, ξ2::AbstractArray, f::Field)
-    fi_cpu = flattened_cpu_interior(f)
+    fi_cpu = make_plottable_array(f)
     return convert_arguments(pl, ξ1, ξ2, fi_cpu)
 end
 
