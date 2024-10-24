@@ -38,7 +38,7 @@ struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: Abstract
                                                                  FX, VX, FY,
                                                                  VY, FZ, VZ} =
         new{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch}(arch, Nx, Ny, Nz,
-                                                          Hx, Hy, Hz, Lx, Ly, Lz, 
+                                                          Hx, Hy, Hz, Lx, Ly, Lz,
                                                           Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
                                                           Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
                                                           Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
@@ -261,7 +261,7 @@ function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
                          extent = nothing,
                          topology = (Periodic, Periodic, Bounded))
 
-    if architecture == GPU() && !has_cuda() 
+    if architecture == GPU() && !has_cuda()
         throw(ArgumentError("Cannot create a GPU grid. No CUDA-enabled GPU was detected!"))
     end
 
@@ -371,42 +371,73 @@ cpu_face_constructor_x(grid::XRegularRG) = x_domain(grid)
 cpu_face_constructor_y(grid::YRegularRG) = y_domain(grid)
 cpu_face_constructor_z(grid::ZRegularRG) = z_domain(grid)
 
-function with_halo(new_halo, old_grid::RectilinearGrid)
+function constructor_arguments(grid::RectilinearGrid)
+    arch = architecture(grid)
+    FT = eltype(grid)
+    args = Dict(:architecture => arch, :number_type => eltype(grid))
 
-    size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
-    topo = topology(old_grid)
+    # Kwargs
+    topo = topology(grid)
+    size = (grid.Nx, grid.Ny, grid.Nz)
+    halo = (grid.Hx, grid.Hy, grid.Hz)
+    size = pop_flat_elements(size, topo)
+    halo = pop_flat_elements(halo, topo)
 
-    x = cpu_face_constructor_x(old_grid)
-    y = cpu_face_constructor_y(old_grid)
-    z = cpu_face_constructor_z(old_grid)
+    kwargs = Dict(:size => size,
+                  :halo => halo,
+                  :x => cpu_face_constructor_x(grid),
+                  :y => cpu_face_constructor_y(grid),
+                  :z => cpu_face_constructor_z(grid),
+                  :topology => topo)
 
-    # Remove elements of size and new_halo in Flat directions as expected by grid
-    # constructor
-    size     = pop_flat_elements(size, topo)
-    new_halo = pop_flat_elements(new_halo, topo)
-
-    new_grid = RectilinearGrid(architecture(old_grid), eltype(old_grid);
-                               size, x, y, z,
-                               topology = topo,
-                               halo = new_halo)
-
-    return new_grid
+    return args, kwargs
 end
 
-function on_architecture(new_arch::AbstractSerialArchitecture, old_grid::RectilinearGrid)
-    old_properties = (old_grid.Δxᶠᵃᵃ, old_grid.Δxᶜᵃᵃ, old_grid.xᶠᵃᵃ, old_grid.xᶜᵃᵃ,
-                      old_grid.Δyᵃᶠᵃ, old_grid.Δyᵃᶜᵃ, old_grid.yᵃᶠᵃ, old_grid.yᵃᶜᵃ,
-                      old_grid.Δzᵃᵃᶠ, old_grid.Δzᵃᵃᶜ, old_grid.zᵃᵃᶠ, old_grid.zᵃᵃᶜ)
+function Base.similar(grid::RectilinearGrid)
+    args, kwargs = constructor_arguments(grid)
+    arch = args[:architecture]
+    FT = args[:number_type]
+    return RectilinearGrid(arch, FT; kwargs...)
+end
 
-    new_properties = Tuple(on_architecture(new_arch, p) for p in old_properties)
+"""
+    with_number_type(number_type, grid)
 
-    TX, TY, TZ = topology(old_grid)
+Return a `new_grid` that's identical to `grid` but with `number_type`.
+"""
+function with_number_type(FT, grid::RectilinearGrid)
+    args, kwargs = constructor_arguments(grid)
+    arch = args[:architecture]
+    return RectilinearGrid(arch, FT; kwargs...)
+end
 
-    return RectilinearGrid{TX, TY, TZ}(new_arch,
-                                       old_grid.Nx, old_grid.Ny, old_grid.Nz,
-                                       old_grid.Hx, old_grid.Hy, old_grid.Hz,
-                                       old_grid.Lx, old_grid.Ly, old_grid.Lz,
-                                       new_properties...)
+"""
+    with_halo(halo, grid)
+
+Return a `new_grid` that's identical to `grid` but with `halo`.
+"""
+function with_halo(halo, grid::RectilinearGrid)
+    args, kwargs = constructor_arguments(grid)
+    halo = pop_flat_elements(halo, topology(grid))
+    kwargs[:halo] = halo
+    arch = args[:architecture]
+    FT = args[:number_type]
+    return RectilinearGrid(arch, FT; kwargs...)
+end
+
+"""
+    on_architecture(architecture, grid)
+
+Return a `new_grid` that's identical to `grid` but on `architecture`.
+"""
+function on_architecture(arch::AbstractSerialArchitecture, grid::RectilinearGrid)
+    if arch == architecture(grid)
+        return grid
+    end
+
+    args, kwargs = constructor_arguments(grid)
+    FT = args[:number_type]
+    return RectilinearGrid(arch, FT; kwargs...)
 end
 
 coordinates(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
@@ -448,7 +479,7 @@ function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halo
         # might be to omit the `nothing` nodes in the `reshape`. In other words,
         # if `TX === Flat`, then we should return `(x, z)`. This is for future
         # consideration...
-        # 
+        #
         # See also `nodes` for `LatitudeLongitudeGrid`.
 
         Nx = isnothing(x) ? 1 : length(x)
@@ -478,6 +509,15 @@ const C = Center
 @inline ynodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓy; with_halos)
 @inline znodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false) = znodes(grid, ℓz; with_halos)
 
+# Generalized coordinates
+@inline ξnodes(grid::RG, ℓx; kwargs...) = xnodes(grid, ℓx; kwargs...)
+@inline ηnodes(grid::RG, ℓy; kwargs...) = ynodes(grid, ℓy; kwargs...)
+@inline rnodes(grid::RG, ℓz; kwargs...) = znodes(grid, ℓz; kwargs...)
+
+@inline ξnodes(grid::RG, ℓx, ℓy, ℓz; kwargs...) = xnodes(grid, ℓx; kwargs...)
+@inline ηnodes(grid::RG, ℓx, ℓy, ℓz; kwargs...) = ynodes(grid, ℓy; kwargs...)
+@inline rnodes(grid::RG, ℓx, ℓy, ℓz; kwargs...) = znodes(grid, ℓz; kwargs...)
+
 #####
 ##### Grid spacings
 #####
@@ -494,4 +534,3 @@ const C = Center
 @inline zspacings(grid::RG, ℓx, ℓy, ℓz; kwargs...) = zspacings(grid, ℓz; kwargs...)
 
 @inline isrectilinear(::RG) = true
-

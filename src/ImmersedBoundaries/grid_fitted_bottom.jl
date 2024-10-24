@@ -7,8 +7,6 @@ using Oceananigans.Fields: fill_halo_regions!
 using Oceananigans.BoundaryConditions: FBC
 using Printf
 
-import Oceananigans.TurbulenceClosures: z_bottom
-
 #####
 ##### GridFittedBottom (2.5D immersed boundary with modified bottom height)
 #####
@@ -54,15 +52,15 @@ Keyword Arguments
 GridFittedBottom(bottom_height) = GridFittedBottom(bottom_height, CenterImmersedCondition())
 
 function Base.summary(ib::GridFittedBottom)
-    hmax  = maximum(ib.bottom_height)
-    hmin  = minimum(ib.bottom_height)
-    hmean = mean(ib.bottom_height)
+    zmax  = maximum(ib.bottom_height)
+    zmin  = minimum(ib.bottom_height)
+    zmean = mean(ib.bottom_height)
 
     summary1 = "GridFittedBottom("
 
-    summary2 = string("mean(z)=", prettysummary(hmean),
-                      ", min(z)=", prettysummary(hmin),
-                      ", max(z)=", prettysummary(hmax))
+    summary2 = string("mean(z)=", prettysummary(zmean),
+                      ", min(z)=", prettysummary(zmin),
+                      ", max(z)=", prettysummary(zmax))
 
     summary3 = ")"
 
@@ -77,6 +75,8 @@ function Base.show(io::IO, ib::GridFittedBottom)
     print(io, "└── immersed_condition: ", summary(ib.immersed_condition))
 end
 
+@inline z_bottom(i, j, ibg::GFBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
+
 """
     ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
 
@@ -87,6 +87,7 @@ Computes `ib.bottom_height` and wraps it in a Field.
 function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set!(bottom_field, ib.bottom_height)
+    @apply_regionally clamp_bottom_height!(bottom_field, grid)
     fill_halo_regions!(bottom_field)
     new_ib = GridFittedBottom(bottom_field, ib.immersed_condition)
     TX, TY, TZ = topology(grid)
@@ -104,8 +105,6 @@ end
     h = @inbounds ib.bottom_height[i, j, 1]
     return z ≤ h
 end
-
-@inline z_bottom(i, j, ibg::GFBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
 
 on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(ib.bottom_height, ib.immersed_condition)
 
