@@ -233,12 +233,19 @@ end
     @test rel_error < tol
 end
 
+function set_viscosity!(model, viscosity)
+    new_closure = ScalarDiffusivity(ν=viscosity)
+    names = ()
+    new_closure = with_tracers(names, new_closure)
+    model.closure = new_closure
+    return nothing
+end
+
 function viscous_hydrostatic_turbulence(ν, model, u_init, v_init, Δt, u_truth, v_truth)
     # Initialize the model
     model.clock.iteration = 0
     model.clock.time = 0
-    new_closure = ScalarDiffusivity(; ν, κ=NamedTuple())
-    model.closure = new_closure
+    set_viscosity!(model, ν)
     set!(model, u=u_init, v=v_init)
 
     # Step it forward

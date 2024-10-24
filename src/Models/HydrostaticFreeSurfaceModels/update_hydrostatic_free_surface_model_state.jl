@@ -8,7 +8,7 @@ using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
 using Oceananigans.Models: update_model_field_time_series!
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, p_kernel_parameters
-using Oceananigans.Fields: replace_horizontal_vector_halos!
+using Oceananigans.Fields: replace_horizontal_vector_halos!, tupled_fill_halo_regions!
 
 import Oceananigans.Models.NonhydrostaticModels: compute_auxiliaries!
 import Oceananigans.TimeSteppers: update_state!
@@ -38,7 +38,10 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
     # Update the boundary conditions
     @apply_regionally update_boundary_condition!(fields(model), model)
 
-    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
+    fill_halo_regions!(model.free_surface.η, model.clock, fields(model), async=true)
+    prognostic_3d_fields = (model.velocities.u, model.velocities.v, model.tracers...)
+    tupled_fill_halo_regions!(prognostic_3d_fields, model.grid, model.clock, fields(model); async=true)
+
     @apply_regionally replace_horizontal_vector_halos!(model.velocities, model.grid)
     @apply_regionally compute_auxiliaries!(model)
 
