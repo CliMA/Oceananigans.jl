@@ -254,8 +254,6 @@ time_series = (;
     wv = FieldTimeSeries("langmuir_turbulence_averages.jld2", "wv"))
 
 times = time_series.w.times
-xw, yw, zw = nodes(time_series.w)
-xu, yu, zu = nodes(time_series.u)
 nothing #hide
 
 # We are now ready to animate using Makie. We use Makie's `Observable` to animate
@@ -333,19 +331,19 @@ lines!(ax_fluxes, wuₙ; label = L"mean $wu$")
 lines!(ax_fluxes, wvₙ; label = L"mean $wv$")
 axislegend(ax_fluxes; position = :rb)
 
-hm_wxy = heatmap!(ax_wxy, xw, yw, wxyₙ;
+hm_wxy = heatmap!(ax_wxy, wxyₙ;
                   colorrange = wlims,
                   colormap = :balance)
 
 Colorbar(fig[1, 3], hm_wxy; label = "m s⁻¹")
 
-hm_wxz = heatmap!(ax_wxz, xw, zw, wxzₙ;
+hm_wxz = heatmap!(ax_wxz, wxzₙ;
                   colorrange = wlims,
                   colormap = :balance)
 
 Colorbar(fig[2, 3], hm_wxz; label = "m s⁻¹")
 
-ax_uxz = heatmap!(ax_uxz, xu, zu, uxzₙ;
+ax_uxz = heatmap!(ax_uxz, uxzₙ;
                   colorrange = ulims,
                   colormap = :balance)
 
