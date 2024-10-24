@@ -7,7 +7,7 @@ using Printf
 
 arch    = CPU()
 z_faces = ZStarVerticalCoordinate((-1800, 0))
-grid    = LatitudeLongitudeGrid(arch; size = (60, 60, 18), 
+grid    = LatitudeLongitudeGrid(arch; size = (60, 60, 2), 
                                   latitude = (15, 75), 
                                  longitude = (0, 60),
                                       halo = (5, 5, 5), 
@@ -75,7 +75,7 @@ end
     return p.𝓋 * (b - b★)
 end
 
-Δz₀ = Δzᶜᶜᶜ(1, 1, grid.Nz, grid) # Surface layer thickness
+Δz₀ = 10 # Surface layer thickness [m]
 
 Δb = α * g * (θ⁺ - θ⁻) # Buoyancy difference
 
@@ -103,6 +103,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                       tracers = :b, 
                                       numerics...,
                                       closure)
+
 
 N² = Δb / grid.Lz
 bᵢ(x, y, z) = N² * (grid.Lz + z)
@@ -148,12 +149,12 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 simulation.output_writers[:snapshots] = JLD2OutputWriter(model, field_outputs, 
                                                          overwrite_existing = true,
                                                          schedule = TimeInterval(60days),
-                                                         filename = "baroclinic_double_gyre")
+                                                         filename = "baroclinic_double_gyre_new")
                                                          
 simulation.output_writers[:free_surface] = JLD2OutputWriter(model, (; η = model.free_surface.η), 
                                                             overwrite_existing = true,
                                                             indices  = (:, :, grid.Nz+1),
                                                             schedule = TimeInterval(60days),
-                                                            filename = "baroclinic_double_gyre_free_surface")
+                                                            filename = "baroclinic_double_gyre_free_surface_new")
                                                          
 run!(simulation)

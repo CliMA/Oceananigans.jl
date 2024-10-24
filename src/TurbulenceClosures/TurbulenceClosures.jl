@@ -50,6 +50,9 @@ using Oceananigans.Utils
 
 using Oceananigans.Architectures: AbstractArchitecture, device
 using Oceananigans.Fields: FunctionField
+using Oceananigans.ImmersedBoundaries
+using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom
+
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 import Oceananigans.Architectures: on_architecture
 
@@ -118,11 +121,18 @@ end
 
 @inline clip(x) = max(zero(x), x)
 
+#####
+##### Height, Depth and Bottom interfaces
+#####
+
 const c = Center()
 const f = Face()
 
+const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
+
 @inline z_top(i, j, grid) = znode(i, j, grid.Nz+1, grid, c, c, f)
 @inline z_bottom(i, j, grid) = znode(i, j, 1, grid, c, c, f)
+@inline z_bottom(i, j, ibg::AGFBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
 
 @inline depthᶜᶜᶠ(i, j, k, grid) = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, f))
 @inline depthᶜᶜᶜ(i, j, k, grid) = clip(z_top(i, j, grid) - znode(i, j, k, grid, c, c, c))
@@ -153,6 +163,7 @@ include("abstract_scalar_diffusivity_closure.jl")
 include("abstract_scalar_biharmonic_diffusivity_closure.jl")
 include("closure_tuples.jl")
 include("isopycnal_rotation_tensor_components.jl")
+include("immersed_diffusive_fluxes.jl")
 
 # Implicit closure terms (diffusion + linear terms)
 include("vertically_implicit_diffusion_solver.jl")

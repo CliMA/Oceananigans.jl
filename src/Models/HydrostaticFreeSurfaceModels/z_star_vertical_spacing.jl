@@ -55,7 +55,7 @@ end
     δy_V = δyᶜᶜᶠ(i, j, k_top-1, grid, Δx_qᶜᶠᶠ, V̅)
 
     δh_U = (δx_U + δy_V) / Azᶜᶜᶠ(i, j, k_top-1, grid)
-    H    = domain_depthᶜᶜᵃ(i, j, grid)
+    H    = static_column_depthᶜᶜᵃ(i, j, grid)
 
     @inbounds ∂t_s[i, j] = ifelse(H == 0, zero(grid), - δh_U / H)
 end
@@ -64,10 +64,10 @@ end
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
-    hᶜᶜ = domain_depthᶜᶜᵃ(i, j, grid)
-    hᶠᶜ = domain_depthᶠᶜᵃ(i, j, grid)
-    hᶜᶠ = domain_depthᶜᶠᵃ(i, j, grid)
-    hᶠᶠ = domain_depthᶠᶠᵃ(i, j, grid)
+    hᶜᶜ = static_column_depthᶜᶜᵃ(i, j, grid)
+    hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
+    hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
+    hᶠᶠ = static_column_depthᶠᶠᵃ(i, j, grid)
 
     @inbounds begin
         sᶜᶜ = ifelse(hᶜᶜ == 0, one(grid), (hᶜᶜ +               η[i, j, k_top]) / hᶜᶜ)
@@ -95,7 +95,7 @@ end
 ##### ZStar-specific implementation of the additional terms to be included in the momentum equations
 #####
 
-@inline z_minus_rᶜᶜᶜ(i, j, k, grid, η) = @inbounds η[i, j, grid.Nz+1] * (1 + rnode(i, j, k, grid, Center(), Center(), Center()) / domain_depthᶜᶜᵃ(i, j, grid))
+@inline z_minus_rᶜᶜᶜ(i, j, k, grid, η) = @inbounds η[i, j, grid.Nz+1] * (1 + rnode(i, j, k, grid, Center(), Center(), Center()) / static_column_depthᶜᶜᵃ(i, j, grid))
 
 @inline ∂x_z(i, j, k, grid, free_surface) = @inbounds ∂xᶠᶜᶜ(i, j, k, grid, z_minus_rᶜᶜᶜ, free_surface.η)
 @inline ∂y_z(i, j, k, grid, free_surface) = @inbounds ∂yᶜᶠᶜ(i, j, k, grid, z_minus_rᶜᶜᶜ, free_surface.η)

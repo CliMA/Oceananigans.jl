@@ -17,7 +17,7 @@ grid = LatitudeLongitudeGrid(arch; size=(Nxy, Nxy, Nz),
     latitude=(15, 75),
     longitude=(0, 60),
     halo=(5, 5, 5),
-    z=z_faces)
+    z=z_faces_2)
 
 #####
 ##### Parameters
@@ -34,7 +34,7 @@ g = 9.80665 # m s⁻² gravitational acceleration
 ##### Numerics
 #####
 
-Δt = 40minutes * (32 / Nxy ) # Time step
+Δt = 40minutes
 
 Δx = minimum_xspacing(grid)
 Δy = minimum_yspacing(grid)
