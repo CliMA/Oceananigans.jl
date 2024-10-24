@@ -21,7 +21,7 @@ for (i, ηkey) in enumerate(ηkeys)
 end
 close(jlfile)
 close(jlfile2)
-kmax = 1
+kmax = 2
 
 NN = 3
 fig = Figure() 
@@ -80,18 +80,21 @@ for k in 1:kmax
 
     save(figure_directory * "bfield$k.png", fig)
 end
-#=
+
+
+
 fig = Figure() 
-for i in 1:NN
-    for j in 1:NN
-        ii = (i - 1) * NN + j
-        ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y")
-        heatmap!(ax, w[:, :, 2, end - ii], colormap = :viridis)
+for k in 2:kmax
+    for i in 1:NN
+        for j in 1:NN
+            ii = (i - 1) * NN + j
+            ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y")
+            heatmap!(ax, w[:, :, k, end - ii], colormap = :viridis)
+        end
     end
+    save(figure_directory * "wfield$k.png", fig)
 end
 
-save(figure_directory * "wfield2.png", fig)
-=#
 
 ##
 squareheight = [mean(η[:, :, i] .^2) for i in eachindex(ηkeys)]
@@ -177,8 +180,14 @@ end
 end
 ψ = barotropic_streamfunction(u[end])
 
+Nt = size(u, 4)
+avgψ = mean([interior(barotropic_streamfunction(u[i]))[:,:,1] for i in 30:Nt])
+
 fig = Figure()
-ax = Axis(fig[1,1]; xlabel = "x", ylabel = "y")
-heatmap!(ax, ψ, colormap = :viridis)
+psimax = quantile(avgψ[:], 0.99)
+ax = Axis(fig[1,1]; xlabel = "x", ylabel = "y", title = "instantaneous streamfunction")
+heatmap!(ax, ψ, colormap = :balance, colorrange = (-psimax, psimax))
+ax = Axis(fig[1,2]; xlabel = "x", ylabel = "y", title = "average streamfunction")
+heatmap!(ax, avgψ, colormap = :balance, colorrange = (-psimax, psimax))
 # contour!(ax, ψ, color = :black)
 save(figure_directory * "streamfunction.png", fig)

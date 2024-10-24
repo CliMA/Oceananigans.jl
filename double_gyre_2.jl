@@ -7,11 +7,11 @@ using Printf
 
 arch = CPU()
 
-Nz = 1
-Nxy = 32
+Nz = 2
+Nxy = 32 * 2
 Lz = 1800
 σ = 1.1
-# z_faces = ZStarVerticalCoordinate((-Lz, 0))
+z_faces_2 = ZStarVerticalCoordinate((-Lz, 0))
 z_faces(k) = -Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ));
 grid = LatitudeLongitudeGrid(arch; size=(Nxy, Nxy, Nz),
     latitude=(15, 75),
@@ -34,7 +34,7 @@ g = 9.80665 # m s⁻² gravitational acceleration
 ##### Numerics
 #####
 
-Δt = 40minutes
+Δt = 40minutes * (32 / Nxy ) # Time step
 
 Δx = minimum_xspacing(grid)
 Δy = minimum_yspacing(grid)
@@ -61,7 +61,7 @@ closure1 = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=1.0,
     background_κz=1e-5,
     convective_νz=1e-2,
     background_νz=1e-2)
-closure2 = ScalarDiffusivity(ν=10^4, κ=10^(-2))
+closure2 = HorizontalScalarDiffusivity(ν=10^4, κ=10^2)
 closure = (closure1, closure2)
 
 ##### 
@@ -83,7 +83,7 @@ end
     return p.𝓋 * (b - b★)
 end
 
-Δz₀ = minimum([2.0, Δzᶜᶜᶜ(1, 1, grid.Nz, grid)]) # Surface layer thickness
+Δz₀ = 10.0 # minimum([20.0, Δzᶜᶜᶜ(1, 1, grid.Nz, grid)]) # Surface layer thickness
 
 Δb = α * g * (θ⁺ - θ⁻) # Buoyancy difference
 
