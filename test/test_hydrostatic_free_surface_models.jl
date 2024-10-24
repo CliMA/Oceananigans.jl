@@ -160,6 +160,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
     end
 
     for arch in archs
+
         for topo in topos_3d
             grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1), topology=topo)
 
@@ -231,7 +232,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
         for tracer_advection in [WENO(),
                                  FluxFormAdvection(WENO(), WENO(), Centered()),
-                                 (b=WENO(), c=nothing())]
+                                 (b=WENO(), c=nothing)]
 
             T = typeof(tracer_advection)
             @testset "Time-stepping HydrostaticFreeSurfaceModels with tracer advection [$arch, $T]" begin
