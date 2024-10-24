@@ -1,6 +1,7 @@
 module TKEBasedVerticalDiffusivities
 
 using Adapt
+using Adapt
 using CUDA
 using KernelAbstractions: @kernel, @index
 
@@ -27,7 +28,7 @@ using Oceananigans.TurbulenceClosures:
     VerticallyImplicitTimeDiscretization,
     VerticalFormulation
     
-import Oceananigans.BoundaryConditions: getbc
+import Oceananigans.BoundaryConditions: getbc, fill_halo_regions!
 import Oceananigans.Utils: with_tracers
 import Oceananigans.TurbulenceClosures:
     validate_closure,
