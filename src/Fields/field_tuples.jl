@@ -55,43 +55,33 @@ Fill halo regions for all `fields`. The algorithm:
 """
 function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args...; kwargs...)
     flattened = flattened_unique_values(maybe_nested_tuple)
-
-    # Sort fields into ReducedField and Field with non-nothing boundary conditions
-    fields_with_bcs = filter(f -> !isnothing(boundary_conditions(f)), flattened)
-    reduced_fields  = filter(f -> f isa ReducedField, fields_with_bcs)
+    return tupled_fill_halo_regions!(flattened, args...; kwargs...)
+end
     
-    for field in reduced_fields
-        fill_halo_regions!(field, args...; kwargs...)
+function tupled_fill_halo_regions!(fields, args...; kwargs...)
+
+    ordinary_fields = Field[]
+    for fields in fields
+        if !isnothing(boundary_conditions(f))
+            if field isa ReducedField || !(field isa FullField)
+                # Windowed and reduced fields
+                fill_halo_regions!(field, args...; kwargs...)
+            else
+                push!(ordinary_fields, field)
+            end
+        end
     end
 
-    # MultiRegion fields are considered windowed_fields (indices isa MultiRegionObject))
-    windowed_fields = filter(f -> !(f isa FullField), fields_with_bcs)
-    ordinary_fields = filter(f -> (f isa FullField) && !(f isa ReducedField), fields_with_bcs)
-
-    # Fill halo regions for reduced and windowed fields
-    for field in windowed_fields
-        fill_halo_regions!(field, args...; kwargs...)
-    end
-
-    # Fill the rest
-    if !isempty(ordinary_fields)
+    if !isempty(ordinary_fields) # ie not reduced, and with default_indices
         grid = first(ordinary_fields).grid
-        tupled_fill_halo_regions!(ordinary_fields, grid, args...; kwargs...)
+        fill_halo_regions!(map(data, fields),
+                           map(boundary_conditions, fields),
+                           default_indices(3),
+                           map(instantiated_location, fields),
+                           grid, args...; kwargs...)
     end
 
     return nothing
-end
-
-function tupled_fill_halo_regions!(fields, grid, args...; kwargs...)
-
-    # We cannot group windowed fields together, the indices must be (:, :, :)!
-    indices = default_indices(3)        
-
-    return fill_halo_regions!(map(data, fields),
-                              map(boundary_conditions, fields),
-                              indices,
-                              map(instantiated_location, fields),
-                              grid, args...; kwargs...)
 end
 
 #####
