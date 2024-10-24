@@ -121,23 +121,23 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
-    @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)
 
-    # Reduce the advection order in directions that do not have enough grid points
-    default_tracer_advection, tracer_advection = validate_tracer_advection(tracer_advection, grid)
-
-    # Generate tracer advection scheme for each tracer
+    # Validate biogeochemistry (add biogeochemical tracers automagically)
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
-    tracer_advection_tuple = with_tracers(tracernames(tracers),
-                                          tracer_advection,
-                                          (name, tracer_advection) -> default_tracer_advection,
-                                          with_velocities=false)
-
-    advection = merge((; momentum=momentum_advection), tracer_advection_tuple)
-    advection = NamedTuple(name => adapt_advection_order(scheme, grid) for (name, scheme) in pairs(advection))
-
     biogeochemical_fields = merge(auxiliary_fields, biogeochemical_auxiliary_fields(biogeochemistry))
     tracers, auxiliary_fields = validate_biogeochemistry(tracers, biogeochemical_fields, biogeochemistry, grid, clock)
+
+    # Reduce the advection order in directions that do not have enough grid points
+    @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)
+    default_tracer_advection, tracer_advection = validate_tracer_advection(tracer_advection, grid)
+    default_generator(name, tracer_advection) = default_tracer_advection
+
+    # Generate tracer advection scheme for each tracer
+    tracer_advection_tuple = with_tracers(tracernames(tracers), tracer_advection, default_generator, with_velocities=false)
+    momentum_advection_tuple = (; momentum = momentum_advection)
+    advection = merge(momentum_advection_tuple, tracer_advection_tuple)
+    advection = NamedTuple(name => adapt_advection_order(scheme, grid) for (name, scheme) in pairs(advection))
+
     validate_buoyancy(buoyancy, tracernames(tracers))
     buoyancy = regularize_buoyancy(buoyancy)
 
@@ -155,7 +155,8 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     # Next, we form a list of default boundary conditions:
     prognostic_field_names = (:u, :v, :w, tracernames(tracers)..., :η, keys(auxiliary_fields)...)
-    default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions() for name in prognostic_field_names))
+    default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions()
+                                                                           for name in prognostic_field_names))
 
     # Then we merge specified, embedded, and default boundary conditions. Specified boundary conditions
     # have precedence, followed by embedded, followed by default.
@@ -164,7 +165,11 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     # Finally, we ensure that closure-specific boundary conditions, such as
     # those required by CATKEVerticalDiffusivity, are enforced:
-    boundary_conditions = add_closure_specific_boundary_conditions(closure, boundary_conditions, grid, tracernames(tracers), buoyancy)
+    boundary_conditions = add_closure_specific_boundary_conditions(closure,
+                                                                   boundary_conditions,
+                                                                   grid,
+                                                                   tracernames(tracers),
+                                                                   buoyancy)
 
     # Ensure `closure` describes all tracers
     closure = with_tracers(tracernames(tracers), closure)
