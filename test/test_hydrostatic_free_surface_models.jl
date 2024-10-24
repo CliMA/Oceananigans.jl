@@ -238,6 +238,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
                 @info "  Testing time-stepping HydrostaticFreeSurfaceModels with tracer advection [$arch, $T]..."
                 @test time_step_hydrostatic_model_works(rectilinear_grid; tracer_advection, tracers=[:b, :c])
             end
+        end
 
         for closure in (ScalarDiffusivity(),
                         HorizontalScalarDiffusivity(),
