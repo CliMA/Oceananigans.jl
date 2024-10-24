@@ -63,11 +63,38 @@ end
 function ImmersedBoundaryGrid(grid, ib::PartialCellBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set!(bottom_field, ib.bottom_height)
-    @apply_regionally clamp_bottom_height!(bottom_field, grid)
+    @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, ib)
     fill_halo_regions!(bottom_field)
     new_ib = PartialCellBottom(bottom_field, ib.minimum_fractional_cell_height)
     TX, TY, TZ = topology(grid)
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, new_ib)
+end
+
+@kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::PartialCellBottom)
+    i, j = @index(Global, NTuple)
+
+    # Save analytical bottom height
+    zb = @inbounds bottom_field[i, j, 1]
+
+    # Cap bottom height at Lz and at rnode(i, j, grid.Nz+1, grid, c, c, f)
+    domain_bottom = znode(i, j, 1, grid, c, c, f)
+    domain_top    = znode(i, j, grid.Nz+1, grid, c, c, f)
+    @inbounds bottom_field[i, j, 1] = clamp(zb, domain_bottom, domain_top)
+
+    ϵ  = ib.minimum_fractional_cell_height
+    for k in 1:grid.Nz
+        z⁻ = znode(i, j, k,   grid, c, c, f)
+        z⁺ = znode(i, j, k+1, grid, c, c, f)
+        Δz = Δzᶜᶜᶜ(i, j, k, grid)
+        bottom_cell = (z⁻ ≤ zb) & (z⁺ ≥ zb)
+
+        # If the size of the bottom cell is less than ϵ Δz, use 
+        # a simple `GridFittedBottom` approach where the bottom 
+        # height is the top interface of cell k.
+        capped_zb   = ifelse(zb < z⁻ + Δz * (1 - ϵ), zb, z⁺)
+
+        @inbounds bottom_field[i, j, 1] = ifelse(bottom_cell, capped_zb, bottom_field[i, j, 1])
+    end
 end
 
 function on_architecture(arch, ib::PartialCellBottom{<:Field})
@@ -106,13 +133,12 @@ Criterion is zb ≥ z - ϵ Δz
 
 """
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::PartialCellBottom)
-    # Face node below current cell
-    z  = znode(i, j, k, underlying_grid, c, c, f)
-    zb = @inbounds ib.bottom_height[i, j, 1]
+    z⁻ = znode(i, j, k, underlying_grid, c, c, f)
     ϵ  = ib.minimum_fractional_cell_height
-    # z + Δz is equal to the face above the current cell
     Δz = Δzᶜᶜᶜ(i, j, k, underlying_grid)
-    return (z + Δz * (1 - ϵ)) ≤ zb
+    z★ = z⁻ + Δz * (1 - ϵ)
+    zb = @inbounds ib.bottom_height[i, j, 1]
+    return z★ < zb
 end
 
 @inline function bottom_cell(i, j, k, ibg::PCBIBG)
@@ -129,15 +155,14 @@ end
     # Get node at face above and defining nodes on c,c,f
     z = znode(i, j, k+1, underlying_grid, c, c, f)
 
-    # Get bottom height and fractional Δz parameter
-    h = @inbounds ib.bottom_height[i, j, 1]
-    ϵ = ibg.immersed_boundary.minimum_fractional_cell_height
+    # Get bottom z-coordinate and fractional Δz parameter
+    zb = @inbounds ib.bottom_height[i, j, 1]
 
     # Are we in a bottom cell?
     at_the_bottom = bottom_cell(i, j, k, ibg)
 
-    full_Δz = Δzᶜᶜᶜ(i, j, k, ibg.underlying_grid)
-    partial_Δz = max(ϵ * full_Δz, z - h)
+    full_Δz    = Δzᶜᶜᶜ(i, j, k, ibg.underlying_grid)
+    partial_Δz = z - zb
 
     return ifelse(at_the_bottom, partial_Δz, full_Δz)
 end
@@ -175,6 +200,3 @@ YFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:Partial
 @inline Δzᶜᶠᶠ(i, j, k, ibg::YFlatPCBIBG) = Δzᶜᶜᶠ(i, j, k, ibg)
 @inline Δzᶠᶠᶜ(i, j, k, ibg::XFlatPCBIBG) = Δzᶜᶠᶜ(i, j, k, ibg)
 @inline Δzᶠᶠᶜ(i, j, k, ibg::YFlatPCBIBG) = Δzᶠᶜᶜ(i, j, k, ibg)
-
-@inline z_bottom(i, j, ibg::PCBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
-
