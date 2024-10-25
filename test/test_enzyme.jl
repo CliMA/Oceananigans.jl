@@ -259,8 +259,8 @@ function viscous_hydrostatic_turbulence(ν, model, u_init, v_init, Δt, u_truth,
     Nx, Ny, Nz = size(model.grid)
     err = 0.0
     for j = 1:Ny, i = 1:Nx
-        err += @inbounds (u[i, j, 3] - u_truth[i, j, 3])^2 +
-                         (v[i, j, 3] - v_truth[i, j, 3])^2
+        err += @inbounds (u[i, j, 1] - u_truth[i, j, 1])^2 +
+                         (v[i, j, 1] - v_truth[i, j, 1])^2
     end
 
     return err::Float64
@@ -328,7 +328,7 @@ end
     @info "Elapsed time: " * prettytime(1e-9 * (time_ns() - start_time))
 
     tol = 1e-1
-    rel_error = abs(dedν[1][3] - ΔeΔν) / abs(ΔeΔν)
+    rel_error = abs(dedν[1][1] - ΔeΔν) / abs(ΔeΔν)
     @test rel_error < tol
 end
 
