@@ -70,8 +70,8 @@ Keyword arguments
              halo regions are removed from `indices`. For example, `indices = (:, :, 1)`
              will save xy-slices of the bottom-most index.
 
-- `with_halos` (Bool): Whether or not to slice halo regions from fields before writing output.
-                       Preserving halo region data can be useful for postprocessing. Default: false.
+- `with_halos` (Bool): Whether or not to slice off or keep halo regions from fields before writing output.
+                       Preserving halo region data can be useful for postprocessing. Default: true.
 
 - `array_type`: The array type to which output arrays are converted to prior to saving.
                 Default: `Array{Float64}`.
