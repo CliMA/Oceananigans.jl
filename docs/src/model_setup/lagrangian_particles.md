@@ -108,6 +108,17 @@ Particle properties can be written to disk using JLD2 or NetCDF.
 
 When writing to JLD2 you can pass `model.particles` as part of the named tuple of outputs.
 
+```@setup particles
+using Oceananigans
+grid = RectilinearGrid(size=(10, 10, 10), extent=(1, 1, 1));
+n_particles = 10
+x₀ = zeros(n_particles)
+y₀ = rand(n_particles)
+z₀ = -0.5 * ones(n_particles)
+lagrangian_particles = LagrangianParticles(x=x₀, y=y₀, z=z₀)
+model = NonhydrostaticModel(grid=grid, particles=lagrangian_particles)
+```
+
 ```@example particles
 JLD2OutputWriter(model, (particles=model.particles,), filename="particles", schedule=TimeInterval(15))
 ```
