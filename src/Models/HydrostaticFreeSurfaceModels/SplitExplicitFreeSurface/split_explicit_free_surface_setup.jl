@@ -43,28 +43,6 @@ end
 
     return nothing
 end
-            
-# Setting up the RHS for the barotropic step (tendencies of the barotropic velocity components)
-# This function is called after `calculate_tendency` and before `ab2_step_velocities!`
-function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, timestepper::QuasiAdamsBashforth2TimeStepper, stage)
-    
-    χ = timestepper.χ
-
-    # we start the time integration of η from the average ηⁿ     
-    Gu⁻ = model.timestepper.G⁻.u
-    Gv⁻ = model.timestepper.G⁻.v
-    Guⁿ = model.timestepper.Gⁿ.u
-    Gvⁿ = model.timestepper.Gⁿ.v
-
-    auxiliary = free_surface.auxiliary
-
-    @apply_regionally ab2_split_explicit_forcing!(auxiliary, model.grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
-
-    fields_to_fill = (auxiliary.Gᵁ, auxiliary.Gⱽ)
-    fill_halo_regions!(fields_to_fill; async = true)
-
-    return nothing
-end
 
 # Calculate RHS for the barotropic time step.
 @kernel function _compute_integrated_tendencies!(Gᵁ, Gⱽ, grid, Guⁿ, Gvⁿ)
@@ -120,18 +98,85 @@ function ssprk3_split_explicit_forcing!(auxiliary, grid, Guⁿ, Gvⁿ, ::Val{3})
     return nothing
 end
 
-function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, ::SSPRK3TimeStepper, stage)
+function split_explicit_forcing!(auxiliary, grid, timestepper::QuasiAdamsBashforth2TimeStepper, stage) 
+    Gu⁻ = timestepper.G⁻.u
+    Gv⁻ = timestepper.G⁻.v
+    Guⁿ = timestepper.Gⁿ.u
+    Gvⁿ = timestepper.Gⁿ.v
+    
+    ab2_split_explicit_forcing!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, timestepper.χ)
 
+    return nothing
+end
+
+function split_explicit_forcing!(auxiliary, grid, timestepper::SSPRK3TimeStepper, stage) 
+    Guⁿ = timestepper.Gⁿ.u
+    Gvⁿ = timestepper.Gⁿ.v
+
+    ssprk3_split_explicit_forcing!(auxiliary, grid, Guⁿ, Gvⁿ, Val(stage))
+
+    return nothing
+end
+
+# Setting up the RHS for the barotropic step (tendencies of the barotropic velocity components)
+# This function is called after `calculate_tendency` and before `ab2_step_velocities!`
+function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, timestepper, stage)
+    
     # we start the time integration of η from the average ηⁿ     
-    Guⁿ = model.timestepper.Gⁿ.u
-    Gvⁿ = model.timestepper.Gⁿ.v
+    arch = architecture(free_surface.η.grid)
+
+    wait_free_surface_communication!(free_surface, arch)
 
     auxiliary = free_surface.auxiliary
+    settings  = free_surface.settings
 
-    @apply_regionally ssprk3_split_explicit_forcing!(auxiliary, model.grid, Guⁿ, Gvⁿ, Val(stage))
+    @apply_regionally split_explicit_forcing!(auxiliary, model.grid, timestepper, stage)
+
+    initialize_free_surface_state!(free_surface.state, free_surface.η, settings.timestepper, stage)
 
     fields_to_fill = (auxiliary.Gᵁ, auxiliary.Gⱽ)
     fill_halo_regions!(fields_to_fill; async = true)
+
+    return nothing
+end
+
+function initialize_free_surface_state!(state, η, timestepper, stage)
+
+    initialize_barotropic_velocities!(state, η, timestepper, Val(stage))
+    initialize_auxiliary_state!(state, η, timestepper)
+
+    fill!(state.η̅, 0)
+    fill!(state.U̅, 0)
+    fill!(state.V̅, 0)
+
+    return nothing
+end
+
+function initialize_barotropic_velocities!(state, η, timestepper, stage) 
+    parent(state.U) .= parent(state.U̅)
+    parent(state.V) .= parent(state.V̅)
+    return nothing
+end
+
+function initialize_barotropic_velocities!(state, η, ::SSPRungeKutta3Scheme, ::Val{3}) 
+    parent(state.U) .= parent(state.Uᵐ⁻²)
+    parent(state.V) .= parent(state.Vᵐ⁻²)
+    parent(η)       .= parent(state.ηᵐ⁻²)
+    return nothing
+end
+
+initialize_auxiliary_state!(state, η, timestepper) = nothing
+
+function initialize_auxiliary_state!(state, η, ::AdamsBashforth3Scheme)
+    parent(state.Uᵐ⁻¹) .= parent(state.U̅)
+    parent(state.Vᵐ⁻¹) .= parent(state.V̅)
+
+    parent(state.Uᵐ⁻²) .= parent(state.U̅)
+    parent(state.Vᵐ⁻²) .= parent(state.V̅)
+
+    parent(state.ηᵐ)   .= parent(η)
+    parent(state.ηᵐ⁻¹) .= parent(η)
+    parent(state.ηᵐ⁻²) .= parent(η)
 
     return nothing
 end

@@ -39,36 +39,6 @@ end
     return nothing
 end
 
-function initialize_free_surface_state!(state, η, timestepper)
-
-    parent(state.U) .= parent(state.U̅)
-    parent(state.V) .= parent(state.V̅)
-
-    initialize_auxiliary_state!(state, η, timestepper)
-
-    fill!(state.η̅, 0)
-    fill!(state.U̅, 0)
-    fill!(state.V̅, 0)
-
-    return nothing
-end
-
-initialize_auxiliary_state!(state, η, ::ForwardBackwardScheme) = nothing
-
-function initialize_auxiliary_state!(state, η, timestepper)
-    parent(state.Uᵐ⁻¹) .= parent(state.U̅)
-    parent(state.Vᵐ⁻¹) .= parent(state.V̅)
-
-    parent(state.Uᵐ⁻²) .= parent(state.U̅)
-    parent(state.Vᵐ⁻²) .= parent(state.V̅)
-
-    parent(state.ηᵐ)   .= parent(η)
-    parent(state.ηᵐ⁻¹) .= parent(η)
-    parent(state.ηᵐ⁻²) .= parent(η)
-
-    return nothing
-end
-
 @kernel function _barotropic_split_explicit_corrector!(u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ, grid)
     i, j, k = @index(Global, NTuple)
     k_top = grid.Nz+1
@@ -127,9 +97,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     Δτᴮ = fractional_Δt * Δt  
     
     # reset free surface averages
-    @apply_regionally begin 
-        initialize_free_surface_state!(free_surface.state, free_surface.η, settings.timestepper)
-        
+    @apply_regionally begin         
         # Solve for the free surface at tⁿ⁺¹
         iterate_split_explicit!(free_surface, free_surface_grid, Δτᴮ, weights, Val(Nsubsteps))
 

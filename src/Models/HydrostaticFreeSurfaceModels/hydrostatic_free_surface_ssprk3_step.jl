@@ -41,7 +41,6 @@ function time_step!(model::AbstractModel{<:SSPRK3TimeStepper}, Δt; callbacks=[]
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
     ssprk3_substep_free_surface!(model.free_surface, γ², ζ²)
     pressure_correct_velocities!(model, Δt)
-
     update_state!(model, callbacks; compute_tendencies = true)
 
     ####
@@ -73,17 +72,24 @@ function store_old_fields!(model::HydrostaticFreeSurfaceModel)
         parent(previous_fields[name]) .= parent(new_fields[name])
     end
     
-    Uᵐ = model.free_surface.state.Uᵐ⁻²
-    Vᵐ = model.free_surface.state.Vᵐ⁻²
+    if model.free_surface isa SplitExplicitFreeSurface
+        Uᵐ = model.free_surface.state.Uᵐ⁻²
+        Vᵐ = model.free_surface.state.Vᵐ⁻²
+        ηᵐ = model.free_surface.state.ηᵐ⁻²
 
-    U̅ = model.free_surface.state.U̅
-    V̅ = model.free_surface.state.V̅
+        U̅ = model.free_surface.state.U̅
+        V̅ = model.free_surface.state.V̅
+        η = model.free_surface.η
 
-    parent(Uᵐ) .= parent(U̅)
-    parent(Vᵐ) .= parent(V̅)
+        parent(Uᵐ) .= parent(U̅)
+        parent(Vᵐ) .= parent(V̅)
+        parent(ηᵐ) .= parent(η)
+    end
 
     return nothing
 end
+
+ssprk3_substep_free_surface!(::Nothing, args...) = nothing
 
 function ssprk3_substep_free_surface!(free_surface, γⁿ, ζⁿ)
 
@@ -93,10 +99,9 @@ function ssprk3_substep_free_surface!(free_surface, γⁿ, ζⁿ)
     U̅ = free_surface.state.U̅
     V̅ = free_surface.state.V̅
     
-    if !isnothing(ζⁿ)
-        parent(U̅) .= ζⁿ * parent(Uᵐ) + γⁿ * parent(U̅)
-        parent(V̅) .= ζⁿ * parent(Vᵐ) + γⁿ * parent(V̅)
-    end
+    @show γⁿ, ζⁿ
+    parent(U̅) .= ζⁿ * parent(Uᵐ) + γⁿ * parent(U̅)
+    parent(V̅) .= ζⁿ * parent(Vᵐ) + γⁿ * parent(V̅)
     
     return nothing
 end
