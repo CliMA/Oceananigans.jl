@@ -182,10 +182,7 @@ end
 ψ = barotropic_streamfunction(u[end])
 
 Nt = size(u, 4)
-avgψ = mean([interior(barotropic_streamfunction(u[i]))[:,:,1] for i in 30:Nt])
-
-Nt = size(u, 4)
-avgψ = mean([interior(barotropic_streamfunction(u[i]))[:,:,1] for i in 30:Nt])
+avgψ = mean([interior(barotropic_streamfunction(u[i]))[:,:,1] for i in Nt-120:Nt])
 
 fig = Figure()
 psimax = quantile(avgψ[:], 0.99)

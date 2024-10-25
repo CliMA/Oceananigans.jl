@@ -5,10 +5,10 @@ using Oceananigans.Grids: φnode
 using Oceananigans.AbstractOperations: GridMetricOperation
 using Printf
 
-arch = CPU()
+arch = GPU()
 
 Nz = 2
-Nxy = 32 * 2
+Nxy = 32 * 4
 Lz = 1800
 σ = 1.1
 z_faces_2 = ZStarVerticalCoordinate((-Lz, 0))
@@ -34,7 +34,7 @@ g = 9.80665 # m s⁻² gravitational acceleration
 ##### Numerics
 #####
 
-Δt = 40minutes
+Δt = 40minutes * (32 / Nxy)
 
 Δx = minimum_xspacing(grid)
 Δy = minimum_yspacing(grid)
@@ -61,7 +61,7 @@ closure1 = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=1.0,
     background_κz=1e-5,
     convective_νz=1e-2,
     background_νz=1e-2)
-closure2 = HorizontalScalarDiffusivity(ν=10^4, κ=10^2)
+closure2 = HorizontalScalarDiffusivity(ν = 10^3, κ = 10^3)
 closure = (closure1, closure2)
 
 ##### 
@@ -76,14 +76,14 @@ closure = (closure1, closure2)
 end
 
 @inline function buoyancy_restoring(i, j, grid, clock, fields, p)
-    b = @inbounds fields.b[i, j, 1]
+    b = @inbounds fields.b[i, j, grid.Nz]
     y = (φnode(j, grid, Center()) - p.φ₀) / grid.Ly
     b★ = p.Δb * y
 
     return p.𝓋 * (b - b★)
 end
 
-Δz₀ = 10.0 # minimum([20.0, Δzᶜᶜᶜ(1, 1, grid.Nz, grid)]) # Surface layer thickness
+Δz₀ = 25.0 # minimum([20.0, Δzᶜᶜᶜ(1, 1, grid.Nz, grid)]) # Surface layer thickness
 
 Δb = α * g * (θ⁺ - θ⁻) # Buoyancy difference
 
