@@ -128,7 +128,7 @@ end
 
     spacing_factor = Δz₁ / (Δz₂ + Δz₃)
 
-    gradient_free_ϕ = @inbounds ϕ[i, j, 3] - (ϕ[i, k, 2] - ϕ[i, j, 4]) * spacing_factor
+    gradient_free_ϕ = @inbounds ϕ[i, j, 3] - (ϕ[i, j, 2] - ϕ[i, j, 4]) * spacing_factor
 
     @inbounds ϕ[i, j, 1] = relax(i, j, grid, gradient_free_ϕ, bc, clock, model_fields)
 
