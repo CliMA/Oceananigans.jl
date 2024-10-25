@@ -99,7 +99,6 @@ function ssprk3_substep_free_surface!(free_surface, γⁿ, ζⁿ)
     U̅ = free_surface.state.U̅
     V̅ = free_surface.state.V̅
     
-    @show γⁿ, ζⁿ
     parent(U̅) .= ζⁿ * parent(Uᵐ) + γⁿ * parent(U̅)
     parent(V̅) .= ζⁿ * parent(Vᵐ) + γⁿ * parent(V̅)
     
