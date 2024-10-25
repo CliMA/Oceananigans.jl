@@ -17,13 +17,13 @@ end
 ```jldoctest particles
 grid = RectilinearGrid(size=(10, 10, 10), extent=(1, 1, 1));
 
-n_particles = 10;
+Nparticles = 10
 
-x₀ = zeros(n_particles);
+x₀ = zeros(Nparticles)
 
-y₀ = rand(n_particles);
+y₀ = rand(Nparticles)
 
-z₀ = -0.5 * ones(n_particles);
+z₀ = -0.5 * ones(Nparticles)
 
 lagrangian_particles = LagrangianParticles(x=x₀, y=y₀, z=z₀)
 
@@ -73,13 +73,13 @@ struct LagrangianMicrobe{T, S, D}
     dna :: D
 end
 
-n_particles = 3;
+Nparticles = 3
 
-x₀ = zeros(n_particles);
+x₀ = zeros(Nparticles)
 
-y₀ = rand(n_particles);
+y₀ = rand(Nparticles)
 
-z₀ = -0.5 * ones(n_particles);
+z₀ = -0.5 * ones(Nparticles)
 
 species = [:rock, :paper, :scissors]
 
@@ -111,7 +111,7 @@ When writing to JLD2 you can pass `model.particles` as part of the named tuple o
 ```@setup particles
 using Oceananigans
 grid = RectilinearGrid(size=(10, 10, 10), extent=(1, 1, 1));
-Nparticles = 10
+Nparticles = 3
 x₀ = zeros(Nparticles)
 y₀ = rand(Nparticles)
 z₀ = -0.5 * ones(Nparticles)
