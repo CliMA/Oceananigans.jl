@@ -144,9 +144,9 @@ end
 
 @inline square_smagorinsky_coefficient(i, j, k, grid, c::ConstantSmagorinsky, K) = c.coefficient^2
 
-@inline function square_smagorinsky_coefficient(i, j, k, grid, closure::DirectionallyAveragedSmagorinsky, diffusivity_fields)
-    LM_avg = diffusivity_fields.LM_avg
-    MM_avg = diffusivity_fields.MM_avg
+@inline function square_smagorinsky_coefficient(i, j, k, grid, ::DirectionallyAveragedSmagorinsky, K)
+    LM_avg = K.LM_avg
+    MM_avg = K.MM_avg
 
     @inbounds begin
         LM⁺ = max(LM_avg[i, j, k], zero(grid))

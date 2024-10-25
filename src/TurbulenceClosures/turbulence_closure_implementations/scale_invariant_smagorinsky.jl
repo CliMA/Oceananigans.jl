@@ -2,17 +2,18 @@
 ##### In this version of the Smagorinsky closure, the coefficient is dynamically calculated but it's assumed to be invariant
 ##### with scale. Hence the name Scale-Invariant Smagorinsky. This a type of "dynamic Smagorinsky" closures.
 #####
+
 using Oceananigans.Operators: volume
 using Statistics: mean!
 
 abstract type AbstractAveragingProcedure end
+
 struct DirectionalAveraging{D} <: AbstractAveragingProcedure
     dims :: D
 end
 
 Base.summary(averaging::DirectionalAveraging) = string("DirectionalAveraging over directions $(averaging.dims)")
 Base.show(io::IO, averaging::DirectionalAveraging) = print(io, summary(averaging))
-
 
 struct ScaleInvariantSmagorinsky{TD, AP, FT, P, UF} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
     averaging :: AP
@@ -76,14 +77,13 @@ end
             + 2 * M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1)^2)
 end
 
-
 @kernel function _compute_scale_invariant_smagorinsky_viscosity!(νₑ, LM_avg, MM_avg, grid, closure, buoyancy, velocities, tracers)
     i, j, k = @index(Global, NTuple)
 
     # Strain tensor dot product
     Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, velocities.u, velocities.v, velocities.w)
 
-    cₛ² = @inbounds max(LM_avg[i, j, k] / MM_avg[i, j, k], 0)
+    cₛ² = @inbounds max(LM_avg[i, j, k] / MM_avg[i, j, k], zero(grid))
     @inbounds νₑ[i, j, k] = cₛ² * (Δᶠ(i, j, k, grid))^2 * sqrt(2Σ²)
 end
 
@@ -112,7 +112,8 @@ end
 #####
 
 # TODO: Generalize filter to stretched directions
-AG = AbstractGrid
+const AG{FT} = AbstractGrid{FT} where FT
+
 @inline ℱx²ᵟ(i, j, k, grid::AG{FT}, ϕ) where FT = @inbounds FT(0.5) * ϕ[i, j, k] + FT(0.25) * (ϕ[i-1, j, k] + ϕ[i+1, j,  k])
 @inline ℱy²ᵟ(i, j, k, grid::AG{FT}, ϕ) where FT = @inbounds FT(0.5) * ϕ[i, j, k] + FT(0.25) * (ϕ[i, j-1, k] + ϕ[i,  j+1, k])
 @inline ℱz²ᵟ(i, j, k, grid::AG{FT}, ϕ) where FT = @inbounds FT(0.5) * ϕ[i, j, k] + FT(0.25) * (ϕ[i, j, k-1] + ϕ[i,  j, k+1])
@@ -125,7 +126,6 @@ AG = AbstractGrid
 @inline ℱyz²ᵟ(i, j, k, grid, f, args...)  = ℱz²ᵟ(i, j, k, grid, ℱy²ᵟ, f, args...)
 @inline ℱxz²ᵟ(i, j, k, grid, f, args...)  = ℱz²ᵟ(i, j, k, grid, ℱz²ᵟ, f, args...)
 @inline ℱ²ᵟ(i, j, k, grid, f, args...) = ℱz²ᵟ(i, j, k, grid, ℱxy²ᵟ, f, args...)
-
 
 #####
 ##### Velocity gradients
@@ -187,42 +187,28 @@ AG = AbstractGrid
 #####
 
 "Return the double dot product of strain at `ccc` on a 2δ test grid."
-@inline function Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
-    return (tr_Σ̄²(i, j, k, grid, u, v, w)
-            + 2 * ℑxyᶜᶜᵃ(i, j, k, grid, Σ̄₁₂², u, v, w)
-            + 2 * ℑxzᶜᵃᶜ(i, j, k, grid, Σ̄₁₃², u, v, w)
-            + 2 * ℑyzᵃᶜᶜ(i, j, k, grid, Σ̄₂₃², u, v, w))
-end
+@inline Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w) = (tr_Σ̄²(i, j, k, grid, u, v, w)
+                                             + 2 * ℑxyᶜᶜᵃ(i, j, k, grid, Σ̄₁₂², u, v, w)
+                                             + 2 * ℑxzᶜᵃᶜ(i, j, k, grid, Σ̄₁₃², u, v, w)
+                                             + 2 * ℑyzᵃᶜᶜ(i, j, k, grid, Σ̄₂₃², u, v, w))
 
 "Return the double dot product of strain at `ffc`."
-@inline function Σ̄ᵢⱼΣ̄ᵢⱼᶠᶠᶜ(i, j, k, grid, u, v, w)
-    return (
-                  ℑxyᶠᶠᵃ(i, j, k, grid, tr_Σ̄², u, v, w)
-            + 2 *   Σ̄₁₂²(i, j, k, grid, u, v, w)
-            + 2 * ℑyzᵃᶠᶜ(i, j, k, grid, Σ̄₁₃², u, v, w)
-            + 2 * ℑxzᶠᵃᶜ(i, j, k, grid, Σ̄₂₃², u, v, w)
-            )
-end
+@inline Σ̄ᵢⱼΣ̄ᵢⱼᶠᶠᶜ(i, j, k, grid, u, v, w) =  (      ℑxyᶠᶠᵃ(i, j, k, grid, tr_Σ̄², u, v, w)
+                                              + 2 *   Σ̄₁₂²(i, j, k, grid, u, v, w)
+                                              + 2 * ℑyzᵃᶠᶜ(i, j, k, grid, Σ̄₁₃², u, v, w)
+                                              + 2 * ℑxzᶠᵃᶜ(i, j, k, grid, Σ̄₂₃², u, v, w))
 
 "Return the double dot product of strain at `fcf`."
-@inline function Σ̄ᵢⱼΣ̄ᵢⱼᶠᶜᶠ(i, j, k, grid, u, v, w)
-    return (
-                  ℑxzᶠᵃᶠ(i, j, k, grid, tr_Σ̄², u, v, w)
-            + 2 * ℑyzᵃᶜᶠ(i, j, k, grid, Σ̄₁₂², u, v, w)
-            + 2 *   Σ̄₁₃²(i, j, k, grid, u, v, w)
-            + 2 * ℑxyᶠᶜᵃ(i, j, k, grid, Σ̄₂₃², u, v, w)
-            )
-end
+@inline Σ̄ᵢⱼΣ̄ᵢⱼᶠᶜᶠ(i, j, k, grid, u, v, w) = (      ℑxzᶠᵃᶠ(i, j, k, grid, tr_Σ̄², u, v, w)
+                                             + 2 * ℑyzᵃᶜᶠ(i, j, k, grid, Σ̄₁₂², u, v, w)
+                                             + 2 *   Σ̄₁₃²(i, j, k, grid, u, v, w)
+                                             + 2 * ℑxyᶠᶜᵃ(i, j, k, grid, Σ̄₂₃², u, v, w))
 
 "Return the double dot product of strain at `cff`."
-@inline function Σ̄ᵢⱼΣ̄ᵢⱼᶜᶠᶠ(i, j, k, grid, u, v, w)
-    return (
-                  ℑyzᵃᶠᶠ(i, j, k, grid, tr_Σ̄², u, v, w)
-            + 2 * ℑxzᶜᵃᶠ(i, j, k, grid, Σ̄₁₂², u, v, w)
-            + 2 * ℑxyᶜᶠᵃ(i, j, k, grid, Σ̄₁₃², u, v, w)
-            + 2 *   Σ̄₂₃²(i, j, k, grid, u, v, w)
-            )
-end
+@inline Σ̄ᵢⱼΣ̄ᵢⱼᶜᶠᶠ(i, j, k, grid, u, v, w) = (      ℑyzᵃᶠᶠ(i, j, k, grid, tr_Σ̄², u, v, w)
+                                             + 2 * ℑxzᶜᵃᶠ(i, j, k, grid, Σ̄₁₂², u, v, w)
+                                             + 2 * ℑxyᶜᶠᵃ(i, j, k, grid, Σ̄₁₃², u, v, w)
+                                             + 2 *   Σ̄₂₃²(i, j, k, grid, u, v, w))
 
 # Here the notation ⟨A⟩ is equivalent to Ā: a filter of size 2Δᶠ, where Δᶠ is the grid scale.
 
