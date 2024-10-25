@@ -187,11 +187,12 @@ end
     @inline function tracer_flux(i, j, grid, clock, model_fields, p)
         c₀ = p.surface_tracer_concentration
         u★ = p.piston_velocity
-        return - u★ * (c₀ - model_fields.c[i, j, end])
+        return - u★ * (c₀ - model_fields.c[i, j, p.level])
     end
 
     parameters = (surface_tracer_concentration = 1,
-                  piston_velocity = 0.1)
+                  piston_velocity = 0.1,
+                  level = Nz)
 
     top_c_bc = FluxBoundaryCondition(tracer_flux; discrete_form=true, parameters=parameters)
     c_bcs = FieldBoundaryConditions(top=top_c_bc)
@@ -202,17 +203,17 @@ end
     # 3. Do a problem where we invert for the tracer fluxes (maybe with CATKE)
 
     model_no_bc = HydrostaticFreeSurfaceModel(; grid,
-                                        tracer_advection = WENO(),
-                                        tracers = :c,
-                                        velocities = PrescribedVelocityFields(; u, v),
-                                        closure = diffusion)
+                                              tracer_advection = WENO(),
+                                              tracers = :c,
+                                              velocities = PrescribedVelocityFields(; u, v),
+                                              closure = diffusion)
 
     model_bc = HydrostaticFreeSurfaceModel(; grid,
-                                        tracer_advection = WENO(),
-                                        tracers = :c,
-                                        velocities = PrescribedVelocityFields(; u, v),
-                                        boundary_conditions = (; c=c_bcs),
-                                        closure = diffusion)
+                                           tracer_advection = WENO(),
+                                           tracers = :c,
+                                           velocities = PrescribedVelocityFields(; u, v),
+                                           boundary_conditions = (; c=c_bcs),
+                                           closure = diffusion)
 
     models = [model_no_bc, model_bc]
 
