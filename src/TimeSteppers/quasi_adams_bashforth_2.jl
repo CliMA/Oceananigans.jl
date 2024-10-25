@@ -52,9 +52,6 @@ end
 
 reset!(timestepper::QuasiAdamsBashforth2TimeStepper) = nothing
 
-@inline zero!(::Nothing) = nothing
-@inline zero!(field) = fill!(parent(field), 0)
-
 #####
 ##### Time steppping
 #####
@@ -99,7 +96,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     else
         ab2_step!(model, Δt)
     end
-    
+
     tick!(model.clock, Δt)
     model.clock.last_Δt = Δt
     model.clock.last_stage_Δt = Δt # just one stage
@@ -199,6 +196,4 @@ end
 end
 
 @kernel euler_step_field!(::FunctionField, Δt, Gⁿ) = nothing
-
-
 
