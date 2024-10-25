@@ -54,7 +54,7 @@ function with_tracers(tracers, closure::ScaleInvariantSmagorinsky{TD, AP, FT}) w
     return ScaleInvariantSmagorinsky{TD, AP, FT}(closure.averaging, Pr, update_interval=closure.update_interval)
 end
 
-function LᵢⱼMᵢⱼ_ccc(i, j, k, grid, u, v, w)
+@inline function LᵢⱼMᵢⱼ_ccc(i, j, k, grid, u, v, w)
     Sᶜᶜᶜ = √(ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w))
     S̄ᶜᶜᶜ = √(Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w))
     return (      L₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w) * M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Sᶜᶜᶜ, S̄ᶜᶜᶜ)
@@ -65,7 +65,7 @@ function LᵢⱼMᵢⱼ_ccc(i, j, k, grid, u, v, w)
             + 2 * L₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w) * M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1) )
 end
 
-function MᵢⱼMᵢⱼ_ccc(i, j, k, grid, u, v, w)
+@inline function MᵢⱼMᵢⱼ_ccc(i, j, k, grid, u, v, w)
     Sᶜᶜᶜ = √(ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w))
     S̄ᶜᶜᶜ = √(Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w))
     return (      M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Sᶜᶜᶜ, S̄ᶜᶜᶜ)^2
@@ -162,7 +162,6 @@ AG = AbstractGrid
 @inline Σ̄₁₂(i, j, k, grid::AG{FT}, u, v) where FT = FT(0.5) * (∂y_ū(i, j, k, grid, u) + ∂x_v̄(i, j, k, grid, v))
 @inline Σ̄₁₂²(i, j, k, grid, u, v) = Σ̄₁₂(i, j, k, grid, u, v)^2
 
-
 # fcf
 @inline Σ̄₁₃(i, j, k, grid::AG{FT}, u, w) where FT = FT(0.5) * (∂z_ū(i, j, k, grid, u) + ∂x_w̄(i, j, k, grid, w))
 @inline Σ̄₁₃²(i, j, k, grid, u, w) = Σ̄₁₃(i, j, k, grid, u, w)^2
@@ -170,8 +169,6 @@ AG = AbstractGrid
 # cff
 @inline Σ̄₂₃(i, j, k, grid::AG{FT}, v, w) where FT = FT(0.5) * (∂z_v̄(i, j, k, grid, v) + ∂y_w̄(i, j, k, grid, w))
 @inline Σ̄₂₃²(i, j, k, grid, v, w) = Σ̄₂₃(i, j, k, grid, v, w)^2
-
-
 
 @inline Σ̄₁₁(i, j, k, grid, u, v, w) = Σ̄₁₁(i, j, k, grid, u)
 @inline Σ̄₂₂(i, j, k, grid, u, v, w) = Σ̄₂₂(i, j, k, grid, v)
@@ -181,13 +178,9 @@ AG = AbstractGrid
 @inline Σ̄₁₃(i, j, k, grid, u, v, w) = Σ̄₁₃(i, j, k, grid, u, w)
 @inline Σ̄₂₃(i, j, k, grid, u, v, w) = Σ̄₂₃(i, j, k, grid, v, w)
 
-
 @inline Σ̄₁₂²(i, j, k, grid, u, v, w) = Σ̄₁₂²(i, j, k, grid, u, v)
 @inline Σ̄₁₃²(i, j, k, grid, u, v, w) = Σ̄₁₃²(i, j, k, grid, u, w)
 @inline Σ̄₂₃²(i, j, k, grid, u, v, w) = Σ̄₂₃²(i, j, k, grid, v, w)
-
-
-
 
 #####
 ##### Double dot product of strain on cell edges
@@ -198,8 +191,7 @@ AG = AbstractGrid
     return (tr_Σ̄²(i, j, k, grid, u, v, w)
             + 2 * ℑxyᶜᶜᵃ(i, j, k, grid, Σ̄₁₂², u, v, w)
             + 2 * ℑxzᶜᵃᶜ(i, j, k, grid, Σ̄₁₃², u, v, w)
-            + 2 * ℑyzᵃᶜᶜ(i, j, k, grid, Σ̄₂₃², u, v, w)
-            )
+            + 2 * ℑyzᵃᶜᶜ(i, j, k, grid, Σ̄₂₃², u, v, w))
 end
 
 "Return the double dot product of strain at `ffc`."
@@ -262,7 +254,6 @@ end
 @inline S̄S̄₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℑxzᶜᵃᶜ(i, j, k, grid, S̄S̄₁₃ᶠᶜᶠ, u, v, w)
 @inline S̄S̄₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℑyzᵃᶜᶜ(i, j, k, grid, S̄S̄₂₃ᶜᶠᶠ, u, v, w)
 
-
 @inline Δᶠ(i, j, k, grid) = ∛volume(i, j, k, grid, Center(), Center(), Center())
 @inline M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Sᶜᶜᶜ, S̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₁₁⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) - α^2*β * S̄S̄₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ))
 @inline M₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Sᶜᶜᶜ, S̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₂₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) - α^2*β * S̄S̄₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ))
@@ -271,8 +262,6 @@ end
 @inline M₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₁₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) - α^2*β * S̄S̄₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w))
 @inline M₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₁₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) - α^2*β * S̄S̄₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w))
 @inline M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₂₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) - α^2*β * S̄S̄₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w))
-
-
 
 @inline ϕψ(i, j, k, grid, ϕ, ψ) = @inbounds ϕ[i, j, k] * ψ[i, j, k]
 @inline u₁u₁ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℑxᶜᵃᵃ(i, j, k, grid, ϕψ, u, u)
@@ -299,7 +288,6 @@ end
 @inline L₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℱ²ᵟ(i, j, k, grid, u₁u₂ᶜᶜᶜ, u, v, w) - ū₁ū₂ᶜᶜᶜ(i, j, k, grid, u, v, w)
 @inline L₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℱ²ᵟ(i, j, k, grid, u₁u₃ᶜᶜᶜ, u, v, w) - ū₁ū₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
 @inline L₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℱ²ᵟ(i, j, k, grid, u₂u₃ᶜᶜᶜ, u, v, w) - ū₂ū₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
-
 
 Base.summary(closure::ScaleInvariantSmagorinsky) = string("ScaleInvariantSmagorinsky: averaging=$(closure.averaging), Pr=$(closure.Pr), update_interval=$(closure.update_interval)")
 Base.show(io::IO, closure::ScaleInvariantSmagorinsky) = print(io, summary(closure))

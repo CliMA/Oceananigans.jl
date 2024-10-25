@@ -3,23 +3,35 @@
 ##### We also call this 'Constant Smagorinsky'.
 #####
 
-struct SmagorinskyLilly{TD, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
-     C :: FT
+struct DirectionallyAveragedCoefficient end
+struct LagrangianAveragedCoefficient end
+struct LillyCoefficient end
+
+struct SmagorinskyLilly{TD, CO, FT, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
+    coefficient :: CO
     Cb :: FT
     Pr :: P
 
-    function SmagorinskyLilly{TD, FT}(C, Cb, Pr) where {TD, FT}
+    function SmagorinskyLilly{TD}(coefficient, Cb, Pr) where TD
+        FT = typeof(Cb)
         Pr = convert_diffusivity(FT, Pr; discrete_form=false)
         P = typeof(Pr)
-        return new{TD, FT, P}(C, Cb, Pr)
+        CO = typeof(coefficient)
+        return new{TD, CO, FT, P}(coefficient, Cb, Pr)
     end
 end
+
+const DirectionallyAveragedSmagorinsky = SmagorinskyLilly{<:Any, <:DirectionallyAveragedCoefficient}
+const ConstantSmagorinsky = SmagorinskyLilly{<:Any, <:Number}
 
 @inline viscosity(::SmagorinskyLilly, K) = K.νₑ
 @inline diffusivity(closure::SmagorinskyLilly, K, ::Val{id}) where id = K.νₑ / closure.Pr[id]
 
 """
-    SmagorinskyLilly([time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64;] C=0.16, Cb=1.0, Pr=1.0)
+    SmagorinskyLilly([time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64;]
+                     C = 0.16,
+                     Cb = 1.0,
+                     Pr = 1.0)
 
 Return a `SmagorinskyLilly` type associated with the turbulence closure proposed by
 [Lilly62](@citet), [Smagorinsky1958](@citet), [Smagorinsky1963](@citet), and [Lilly66](@citet),
@@ -75,14 +87,22 @@ Smagorinsky, J. "General circulation experiments with the primitive equations: I
 Lilly, D. K. "The representation of small-scale turbulence in numerical simulation experiments." 
     NCAR Manuscript No. 281, 0, (1966)
 """
-SmagorinskyLilly(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64; C=0.16, Cb=1.0, Pr=1.0) where TD =
-        SmagorinskyLilly{TD, FT}(C, Cb, Pr)
+function SmagorinskyLilly(time_discretization = ExplicitTimeDiscretization(), FT=Float64;
+                          coefficient = 0.16,
+                          Cb = 1.0,
+                          Pr = 1.0)
+
+    TD = typeof(time_discretization)
+    Cb = convert(FT, Cb)
+    Pr = convert_diffusivity(FT, Pr; discrete_form=false)
+    return SmagorinskyLilly{TD}(coefficient, Cb, Pr)
+end
 
 SmagorinskyLilly(FT::DataType; kwargs...) = SmagorinskyLilly(ExplicitTimeDiscretization(), FT; kwargs...)
 
-function with_tracers(tracers, closure::SmagorinskyLilly{TD, FT}) where {TD, FT}
+function with_tracers(tracers, closure::SmagorinskyLilly{TD}) where TD
     Pr = tracer_diffusivities(tracers, closure.Pr)
-    return SmagorinskyLilly{TD, FT}(closure.C, closure.Cb, Pr)
+    return SmagorinskyLilly{TD}(closure.coefficient, closure.Cb, Pr)
 end
 
 """
@@ -102,8 +122,10 @@ when ``N^2 > 0``, and 1 otherwise.
     return ifelse(Σ²==0, zero(FT), sqrt(ς²))
 end
 
-@kernel function _compute_smagorinsky_viscosity!(νₑ, grid, closure, buoyancy, velocities, tracers)
+@kernel function _compute_smagorinsky_viscosity!(diffusivity_fields, grid, closure, buoyancy, velocities, tracers)
     i, j, k = @index(Global, NTuple)
+
+    νₑ = diffusivity_fields.νₑ
 
     # Strain tensor dot product
     Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, velocities.u, velocities.v, velocities.w)
@@ -115,9 +137,32 @@ end
     # Filter width
     Δ³ = Δxᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid) * Δzᶜᶜᶜ(i, j, k, grid)
     Δᶠ = cbrt(Δ³)
-    C = closure.C # free parameter
+    cˢ² = square_smagorinsky_coefficient(i, j, k, grid, closure, diffusivity_fields)
 
-    @inbounds νₑ[i, j, k] = ς * (C * Δᶠ)^2 * sqrt(2Σ²)
+    @inbounds νₑ[i, j, k] = ς * cˢ² * Δᶠ^2 * sqrt(2Σ²)
+end
+
+@inline square_smagorinsky_coefficient(i, j, k, grid, c::ConstantSmagorinsky, K) = c.coefficient^2
+
+@inline function square_smagorinsky_coefficient(i, j, k, grid, closure::DirectionallyAveragedSmagorinsky, diffusivity_fields)
+    LM_avg = diffusivity_fields.LM_avg
+    MM_avg = diffusivity_fields.MM_avg
+
+    @inbounds begin
+        LM⁺ = max(LM_avg[i, j, k], zero(grid))
+        MM = MM_avg[i, j, k]
+    end
+
+    return ifelse(MM == 0, zero(grid), LM⁺ / MM)
+end
+
+@kernel function _compute_LM_MM!(LM, MM, grid, u, v, w)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds begin
+        LM[i, j, k] = LᵢⱼMᵢⱼ_ccc(i, j, k, grid, u, v, w)
+        MM[i, j, k] = MᵢⱼMᵢⱼ_ccc(i, j, k, grid, u, v, w)
+    end
 end
 
 function compute_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly, model; parameters = :xyz)
@@ -127,8 +172,20 @@ function compute_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly, m
     velocities = model.velocities
     tracers = model.tracers
 
+    if closure.coefficient isa DirectionallyAveragedCoefficient
+        LM = diffusivity_fields.LM
+        MM = diffusivity_fields.MM
+        u, v, w = velocities
+        launch!(arch, grid, :xyz, _compute_LM_MM!, LM, MM, grid, u, v, w)
+
+        LM_avg = diffusivity_fields.LM_avg
+        MM_avg = diffusivity_fields.MM_avg
+        compute!(LM_avg)
+        compute!(MM_avg)
+    end
+
     launch!(arch, grid, parameters, _compute_smagorinsky_viscosity!,
-            diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
+            diffusivity_fields, grid, closure, buoyancy, velocities, tracers)
 
     return nothing
 end
@@ -196,7 +253,8 @@ end
             )
 end
 
-Base.summary(closure::SmagorinskyLilly) = string("SmagorinskyLilly: C=$(closure.C), Cb=$(closure.Cb), Pr=$(closure.Pr)")
+Base.summary(closure::SmagorinskyLilly) =
+    string("SmagorinskyLilly: coefficient=$(closure.coefficient), Cb=$(closure.Cb), Pr=$(closure.Pr)")
 Base.show(io::IO, closure::SmagorinskyLilly) = print(io, summary(closure))
 
 #####
@@ -209,5 +267,16 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::SmagorinskyLilly)
     bcs = merge(default_eddy_viscosity_bcs, bcs)
     νₑ = CenterField(grid, boundary_conditions=bcs.νₑ)
 
-    return (; νₑ)
+    if closure.coefficient isa DirectionallyAveragedCoefficient
+        LM = CenterField(grid)
+        MM = CenterField(grid)
+
+        LM_avg = Field(Average(LM, dims=(1, 2)))
+        MM_avg = Field(Average(MM, dims=(1, 2)))
+
+        return (; νₑ, LM, MM, LM_avg, MM_avg)
+    else closure.coefficient isa Number
+        return (; νₑ)
+    end
 end
+
