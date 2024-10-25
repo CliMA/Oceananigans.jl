@@ -272,7 +272,7 @@ end
     Nx = Ny = 32
     Nz = 1
     x = y = (0, 2π)
-    z = 1
+    z = (0, 1)
     ν₀ = 1e-2
 
     grid = RectilinearGrid(arch, size=(Nx, Ny, 1); x, y, z, topology=(Periodic, Periodic, Bounded))
