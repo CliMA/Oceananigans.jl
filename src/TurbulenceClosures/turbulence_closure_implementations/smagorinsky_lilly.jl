@@ -3,7 +3,12 @@
 ##### We also call this 'Constant Smagorinsky'.
 #####
 
-struct DirectionallyAveragedCoefficient end
+struct DirectionallyAveragedCoefficient{D}
+    dims :: D
+end
+
+DirectionallyAveragedCoefficient(; dims) = DirectionallyAveragedCoefficient(dims)
+
 struct LagrangianAveragedCoefficient end
 
 struct LillyCoefficient{FT}
@@ -275,8 +280,8 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::SmagorinskyLilly)
         LM = CenterField(grid)
         MM = CenterField(grid)
 
-        LM_avg = Field(Average(LM, dims=(1, 2)))
-        MM_avg = Field(Average(MM, dims=(1, 2)))
+        LM_avg = Field(Average(LM, dims=closure.coefficient.dims))
+        MM_avg = Field(Average(MM, dims=closure.coefficient.dims))
 
         return (; νₑ, LM, MM, LM_avg, MM_avg)
 
