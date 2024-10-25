@@ -157,75 +157,8 @@ end
     end
 end
 
-@testset "Enzyme on advection and diffusion" begin
-    Nx = Ny = 64
-    Nz = 8
 
-    Lx = Ly = L = 2π
-    Lz = 1
-
-    x = y = (-L/2, L/2)
-    z = (-Lz/2, Lz/2)
-    topology = (Periodic, Periodic, Bounded)
-
-    grid = RectilinearGrid(size=(Nx, Ny, Nz); x, y, z, topology)
-    diffusion = VerticalScalarDiffusivity(κ=0.1)
-
-    u = XFaceField(grid)
-    v = YFaceField(grid)
-
-    U = 1
-    u₀(x, y, z) = - U * cos(x + L/8) * sin(y) * (z + L/2)
-    v₀(x, y, z) = + U * sin(x + L/8) * cos(y) * (z + L/2)
-
-    set!(u, u₀)
-    set!(v, v₀)
-    fill_halo_regions!(u)
-    fill_halo_regions!(v)
-
-    # TODO:
-    # 1. Make the velocity fields evolve
-    # 2. Add surface fluxes
-    # 3. Do a problem where we invert for the tracer fluxes (maybe with CATKE)
-
-    model = HydrostaticFreeSurfaceModel(; grid,
-                                        tracer_advection = WENO(),
-                                        tracers = :c,
-                                        buoyancy = nothing,
-                                        velocities = PrescribedVelocityFields(; u, v),
-                                        closure = diffusion)
-
-    # Compute derivative by hand
-    κ₁, κ₂ = 0.9, 1.1
-    c²₁ = stable_diffusion!(model, 1, κ₁)
-    c²₂ = stable_diffusion!(model, 1, κ₂)
-    dc²_dκ_fd = (c²₂ - c²₁) / (κ₂ - κ₁)
-
-    # Now for real
-    amplitude = 1.0
-    κ = 1.0
-    dmodel = Enzyme.make_zero(model)
-    set_diffusivity!(dmodel, 0)
-
-    dc²_dκ = autodiff(Enzyme.set_runtime_activity(Enzyme.Reverse),
-                      stable_diffusion!,
-                      Duplicated(model, dmodel),
-                      Const(amplitude),
-                      Active(κ))
-
-    @info """ \n
-    Advection-diffusion:
-    Enzyme computed $dc²_dκ
-    Finite differences computed $dc²_dκ_fd
-    """
-
-    tol = 0.01
-    rel_error = abs(dc²_dκ[1][3] - dc²_dκ_fd) / abs(dc²_dκ_fd)
-    @test  rel_error < tol
-end
-
-
-@testset "Enzyme on advection and diffusion WITH flux boundary condition" begin
+@testset "Enzyme on advection and diffusion WITHOUT then WITH flux boundary condition" begin
     Nx = Ny = 64
     Nz = 8
 
@@ -254,7 +187,7 @@ end
     @inline function tracer_flux(i, j, grid, clock, model_fields, p)
         c₀ = p.surface_tracer_concentration
         u★ = p.piston_velocity
-        return - u★ * (c₀ - model_fields.c[i,j,end])
+        return - u★ * (c₀ - model_fields.c[i, j, end])
     end
 
     parameters = (surface_tracer_concentration = 1,
@@ -268,39 +201,51 @@ end
     # 2. Add surface fluxes
     # 3. Do a problem where we invert for the tracer fluxes (maybe with CATKE)
 
-    model = HydrostaticFreeSurfaceModel(; grid,
+    model_no_bc = HydrostaticFreeSurfaceModel(; grid,
+                                        tracer_advection = WENO(),
+                                        tracers = :c,
+                                        velocities = PrescribedVelocityFields(; u, v),
+                                        closure = diffusion)
+
+    model_bc = HydrostaticFreeSurfaceModel(; grid,
                                         tracer_advection = WENO(),
                                         tracers = :c,
                                         velocities = PrescribedVelocityFields(; u, v),
                                         boundary_conditions = (; c=c_bcs),
                                         closure = diffusion)
 
-    # Compute derivative by hand
-    κ₁, κ₂ = 0.9, 1.1
-    c²₁ = stable_diffusion!(model, 1, κ₁)
-    c²₂ = stable_diffusion!(model, 1, κ₂)
-    dc²_dκ_fd = (c²₂ - c²₁) / (κ₂ - κ₁)
+    models = [model_no_bc, model_bc]
 
-    # Now for real
-    amplitude = 1.0
-    κ = 1.0
-    dmodel = Enzyme.make_zero(model)
-    set_diffusivity!(dmodel, 0)
+    @show "Advection-diffusion results, first without then with flux BC"
 
-    dc²_dκ = autodiff(Enzyme.set_runtime_activity(Enzyme.Reverse),
-                      stable_diffusion!,
-                      Duplicated(model, dmodel),
-                      Const(amplitude),
-                      Active(κ))
+    for i in 1:2
+        # Compute derivative by hand
+        κ₁, κ₂ = 0.9, 1.1
+        c²₁ = stable_diffusion!(models[i], 1, κ₁)
+        c²₂ = stable_diffusion!(models[i], 1, κ₂)
+        dc²_dκ_fd = (c²₂ - c²₁) / (κ₂ - κ₁)
 
-    @info """ \n
-    Advection-diffusion with flux BC:
-    Enzyme computed $dc²_dκ
-    Finite differences computed $dc²_dκ_fd
-    """
+        # Now for real
+        amplitude = 1.0
+        κ = 1.0
+        dmodel = Enzyme.make_zero(models[i])
+        set_diffusivity!(dmodel, 0)
 
-    tol = 0.01
-    rel_error = abs(dc²_dκ[1][3] - dc²_dκ_fd) / abs(dc²_dκ_fd)
-    @test rel_error < tol
+        dc²_dκ = autodiff(Enzyme.set_runtime_activity(Enzyme.Reverse),
+                        stable_diffusion!,
+                        Duplicated(models[i], dmodel),
+                        Const(amplitude),
+                        Active(κ))
+
+        @info """ \n
+        Advection-diffusion:
+        Enzyme computed $dc²_dκ
+        Finite differences computed $dc²_dκ_fd
+        """
+
+        tol = 0.01
+        rel_error = abs(dc²_dκ[1][3] - dc²_dκ_fd) / abs(dc²_dκ_fd)
+        @test rel_error < tol
+    end
 end
 
