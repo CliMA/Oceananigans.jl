@@ -5,8 +5,9 @@ using Oceananigans.Grids: φnode
 using Oceananigans.AbstractOperations: GridMetricOperation
 using Printf
 
-arch = GPU()
 
+data_directory = "/nobackup1/sandre/OceananigansData/"
+arch = GPU()
 Nz = 2
 Nxy = 32 * 4
 Lz = 1800
@@ -161,12 +162,12 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 simulation.output_writers[:snapshots] = JLD2OutputWriter(model, field_outputs,
     overwrite_existing=true,
     schedule=TimeInterval(30days),
-    filename="baroclinic_double_gyre")
+    filename= data_directory * "baroclinic_double_gyre_2")
 
 simulation.output_writers[:free_surface] = JLD2OutputWriter(model, (; η=model.free_surface.η),
     overwrite_existing=true,
     indices=(:, :, grid.Nz + 1),
     schedule=TimeInterval(30days),
-    filename="baroclinic_double_gyre_free_surface")
+    filename= data_directory * "baroclinic_double_gyre_free_surface_2")
 
 run!(simulation)

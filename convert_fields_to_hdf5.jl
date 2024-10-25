@@ -2,8 +2,8 @@ using CairoMakie, JLD2, Statistics, HDF5, Oceananigans
 data_directory = "/nobackup1/sandre/OceananigansData/"
 figure_directory = "oceananigans_figure/"
 
-jlfile = jldopen("baroclinic_double_gyre_free_surface.jld2", "r")
-jlfile2 = jldopen("baroclinic_double_gyre.jld2", "r")
+jlfile = jldopen(data_directory * "baroclinic_double_gyre_free_surface.jld2", "r")
+jlfile2 = jldopen(data_directory * "baroclinic_double_gyre.jld2", "r")
 ηkeys =  keys(jlfile["timeseries"]["η"])[2:end]
 
 η = zeros(size(jlfile["timeseries"]["η"]["0"])[1:2]..., length(ηkeys))
@@ -107,7 +107,7 @@ lines!(ax, squareheight, color = :blue)
 save(figure_directory * "squareheight.png", fig)
 
 ##
-si = 120 #starting index
+si = 200 #starting index
 η̄ = mean(η[:,:,si:end], dims = 3)
 ση = std(η[:,:,si:end], dims = 3)
 rη = (η[:, :, si:end] .- η̄ ) ./ ση
