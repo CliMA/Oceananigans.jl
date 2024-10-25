@@ -5,10 +5,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spli
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface, SplitExplicitAuxiliaryFields
 
-function SplitExplicitAuxiliaryFields(grid::DistributedGrid)
+function SplitExplicitAuxiliaryFields(grid::DistributedGrid, timestepper)
     
-    Gᵁ = Field((Face,   Center, Nothing), grid)
-    Gⱽ = Field((Center, Face,   Nothing), grid)
+    Gᵁ = barotropic_forcing(timestepper, (Face,   Center, Nothing), grid)
+    Gⱽ = barotropic_forcing(timestepper, (Center, Face,   Nothing), grid)
     
     Hᶠᶜ = Field((Face,   Center, Nothing), grid)
     Hᶜᶠ = Field((Center, Face,   Nothing), grid)
@@ -75,7 +75,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
 
         return SplitExplicitFreeSurface(η,
                                         SplitExplicitState(extended_grid, settings.timestepper),
-                                        SplitExplicitAuxiliaryFields(extended_grid),
+                                        SplitExplicitAuxiliaryFields(extended_grid, settings.timestepper),
                                         free_surface.gravitational_acceleration,
                                         free_surface.settings)
 end

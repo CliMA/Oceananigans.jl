@@ -10,8 +10,8 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surfac
 
 function SplitExplicitAuxiliaryFields(grid::MultiRegionGrids)
 
-    Gᵁ = Field((Face,   Center, Nothing), grid)
-    Gⱽ = Field((Center, Face,   Nothing), grid)
+    Gᵁ = barotropic_forcing(timestepper, (Face,   Center, Nothing), grid)
+    Gⱽ = barotropic_forcing(timestepper, (Center, Face,   Nothing), grid)    
 
     Hᶠᶜ = Field((Face,   Center, Nothing), grid)
     Hᶜᶠ = Field((Center, Face,   Nothing), grid)

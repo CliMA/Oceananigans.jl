@@ -4,6 +4,7 @@ using Oceananigans.Fields
 using Oceananigans.Grids
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.AbstractOperations: Δz, GridMetricOperation
+using Oceananigans.TimeSteppers: SSPRK3TimeStepper
 
 using Adapt
 using Base
@@ -120,7 +121,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
 
     return SplitExplicitFreeSurface(η,
                                     SplitExplicitState(grid, settings.timestepper),
-                                    SplitExplicitAuxiliaryFields(grid),
+                                    SplitExplicitAuxiliaryFields(grid, settings.timestepper),
                                     gravitational_acceleration,
                                     settings)
 end
@@ -179,8 +180,8 @@ function SplitExplicitState(grid::AbstractGrid, timestepper)
     ηᵐ⁻¹ = auxiliary_free_surface_field(grid, timestepper)
     ηᵐ⁻² = auxiliary_free_surface_field(grid, timestepper)
 
-    U    = XFaceField(grid, indices = (:, :, Nz))
-    V    = YFaceField(grid, indices = (:, :, Nz))
+    U = XFaceField(grid, indices = (:, :, Nz))
+    V = YFaceField(grid, indices = (:, :, Nz))
 
     Uᵐ⁻¹ = auxiliary_barotropic_U_field(grid, timestepper)
     Vᵐ⁻¹ = auxiliary_barotropic_V_field(grid, timestepper)
@@ -204,15 +205,15 @@ large (or `:xy` in case of a serial computation), and start computing from
 
 $(FIELDS)
 """
-Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒦}
+Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, ℋ𝒞, ℋℱ, 𝒦}
     "Vertically-integrated slow barotropic forcing function for `U` (`ReducedField` over ``z``)"
     Gᵁ :: ℱ𝒞
     "Vertically-integrated slow barotropic forcing function for `V` (`ReducedField` over ``z``)"
     Gⱽ :: 𝒞ℱ
     "Depth at `(Face, Center)` (`ReducedField` over ``z``)"
-    Hᶠᶜ :: ℱ𝒞
+    Hᶠᶜ :: ℋ𝒞
     "Depth at `(Center, Face)` (`ReducedField` over ``z``)"
-    Hᶜᶠ :: 𝒞ℱ
+    Hᶜᶠ :: ℋℱ
     "kernel size for barotropic time stepping"
     kernel_parameters :: 𝒦
 end
@@ -222,10 +223,10 @@ end
 
 Return the `SplitExplicitAuxiliaryFields` for `grid`.
 """
-function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
+function SplitExplicitAuxiliaryFields(grid::AbstractGrid, timestepper)
 
-    Gᵁ = Field((Face,   Center, Nothing), grid)
-    Gⱽ = Field((Center, Face,   Nothing), grid)
+    Gᵁ = barotropic_forcing(timestepper, (Face,   Center, Nothing), grid)
+    Gⱽ = barotropic_forcing(timestepper, (Center, Face,   Nothing), grid)    
 
     Hᶠᶜ = Field((Face,   Center, Nothing), grid)
     Hᶜᶠ = Field((Center, Face,   Nothing), grid)
@@ -259,14 +260,16 @@ end
 struct AdamsBashforth3Scheme end
 struct ForwardBackwardScheme end
 
+auxiliary_free_surface_field(grid, timestepper) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+auxiliary_barotropic_U_field(grid, timestepper) = XFaceField(grid, indices = (:, :, size(grid, 3)))
+auxiliary_barotropic_V_field(grid, timestepper) = YFaceField(grid, indices = (:, :, size(grid, 3)))
 
-auxiliary_free_surface_field(grid, ::AdamsBashforth3Scheme) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 auxiliary_free_surface_field(grid, ::ForwardBackwardScheme) = nothing
-
-auxiliary_barotropic_U_field(grid, ::AdamsBashforth3Scheme) = XFaceField(grid, indices = (:, :, size(grid, 3)))
 auxiliary_barotropic_U_field(grid, ::ForwardBackwardScheme) = nothing
-auxiliary_barotropic_V_field(grid, ::AdamsBashforth3Scheme) = YFaceField(grid, indices = (:, :, size(grid, 3)))
 auxiliary_barotropic_V_field(grid, ::ForwardBackwardScheme) = nothing
+
+barotropic_forcing(timestepper, location, grid)           = Field((location), grid)
+barotropic_forcing(::SSPRK3TimeStepper, location, grid) = (new = Field((location), grid), old = Field((location), grid))
 
 # (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002 
 @inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT
