@@ -61,8 +61,8 @@ end
 function tupled_fill_halo_regions!(fields, args...; kwargs...)
 
     ordinary_fields = Field[]
-    for fields in fields
-        if !isnothing(boundary_conditions(f))
+    for field in fields
+        if !isnothing(boundary_conditions(field))
             if field isa ReducedField || !(field isa FullField)
                 # Windowed and reduced fields
                 fill_halo_regions!(field, args...; kwargs...)
@@ -71,6 +71,8 @@ function tupled_fill_halo_regions!(fields, args...; kwargs...)
             end
         end
     end
+
+    ordinary_fields = tuple(ordinary_fields...)
 
     if !isempty(ordinary_fields) # ie not reduced, and with default_indices
         grid = first(ordinary_fields).grid
