@@ -1,4 +1,5 @@
 using Oceananigans.Operators: divᶜᶜᶜ, ∇²ᶜᶜᶜ 
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Statistics: mean
 
 using KernelAbstractions: @kernel, @index
