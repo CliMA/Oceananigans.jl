@@ -48,7 +48,7 @@ include("implicit_free_surface.jl")
 # Split-Explicit free-surface solver functionality
 include("SplitExplicitFreeSurface/split_explicit_free_surface.jl")
 include("SplitExplicitFreeSurface/split_explicit_free_surface_kernels.jl")
-include("SplitExplicitFreeSurface/split_explicit_free_surface_kernels.jl")
+include("SplitExplicitFreeSurface/split_explicit_free_surface_evolution.jl")
 include("SplitExplicitFreeSurface/split_explicit_free_surface_setup.jl")
 include("SplitExplicitFreeSurface/distributed_split_explicit_free_surface.jl")
 

@@ -18,18 +18,14 @@ function time_step!(model::AbstractModel{<:SSPRK3TimeStepper}, Δt; callbacks=[]
     ζ² = model.timestepper.ζ²
     ζ³ = model.timestepper.ζ³
 
-    # Compute the next time step a priori to reduce floating point error accumulation
-    tⁿ⁺¹ = next_time(model.clock, Δt)
-
     #
     # First stage
     #
 
     setup_free_surface!(model, model.free_surface, timestepper, 1)
-    ssprk3_substep_velocities!(model.velocities, Δt, γ¹, nothing)
-    ssprk3_substep_tracers!(model.tracers, Δt, γ¹, nothing)
+    ssprk3_substep_velocities!(model.velocities, model, Δt, γ¹, nothing)
+    ssprk3_substep_tracers!(model.tracers, model, Δt, γ¹, nothing)
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
-    sspk3_substep_free_surface!(model.free_surface, model, Δt, γ¹, nothing)
     pressure_correct_velocities!(model, Δt)
     update_state!(model, callbacks; compute_tendencies = true)
 
@@ -38,12 +34,12 @@ function time_step!(model::AbstractModel{<:SSPRK3TimeStepper}, Δt; callbacks=[]
     #
 
     setup_free_surface!(model, model.free_surface, timestepper, 2)
-    ssprk3_substep_velocities!(model.velocities, Δt, γ², ζ²)
-    ssprk3_substep_tracer!(model.tracers, Δt, γ², ζ²)
+    ssprk3_substep_velocities!(model.velocities, model, Δt, γ², ζ²)
+    ssprk3_substep_tracers!(model.tracers, model, Δt, γ², ζ²)
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
-    sspk3_substep_free_surface!(model.free_surface, model, Δt, γ², ζ²)
+    ssprk3_substep_free_surface!(model.free_surface, γ², ζ²)
     pressure_correct_velocities!(model, Δt)
-    
+
     update_state!(model, callbacks; compute_tendencies = true)
 
     #
@@ -57,7 +53,7 @@ function time_step!(model::AbstractModel{<:SSPRK3TimeStepper}, Δt; callbacks=[]
     pressure_correct_velocities!(model, Δt)
   
     update_state!(model, callbacks; compute_tendencies = true)
-    step_lagrangian_particles!(model, third_stage_Δt)
+    step_lagrangian_particles!(model, Δt)
 
     store_old_fields!(model)
 
@@ -67,14 +63,14 @@ function time_step!(model::AbstractModel{<:SSPRK3TimeStepper}, Δt; callbacks=[]
     return nothing
 end
 
-function store_old_fields!(model::HydrostaticFreeSurface)
+function store_old_fields!(model::HydrostaticFreeSurfaceModel)
     
     timestepper = model.timestepper
     previous_fields   = timestepper.previous_model_fields
-    prognostic_fields = prognostic_fields(model)
+    new_fields = prognostic_fields(model)
 
-    for (name, field) in prognostic_fields
-        parent(previous_fields[name]) .= parent(field)
+    for name in keys(new_fields)
+        parent(previous_fields[name]) .= parent(new_fields[name])
     end
     
     Uᵐ = model.free_surface.state.Uᵐ⁻¹
@@ -89,20 +85,19 @@ function store_old_fields!(model::HydrostaticFreeSurface)
     return nothing
 end
 
-function ssprk3_substep_free_surface!(model.free_surface, model, Δt, γⁿ, ζⁿ)
+function ssprk3_substep_free_surface!(free_surface, γⁿ, ζⁿ)
 
-    Uᵐ = model.free_surface.state.Uᵐ⁻¹
-    Vᵐ = model.free_surface.state.Vᵐ⁻¹
+    Uᵐ = free_surface.state.Uᵐ⁻¹
+    Vᵐ = free_surface.state.Vᵐ⁻¹
 
-    U̅ = model.free_surface.state.U̅
-    V̅ = model.free_surface.state.V̅
+    U̅ = free_surface.state.U̅
+    V̅ = free_surface.state.V̅
     
-    launch!(model.architecture, model.grid, :xy,
-            _ssprk3_substep_field!, U̅, Δt, γⁿ, ζⁿ, Uᵐ)
-
-    launch!(model.architecture, model.grid, :xy,
-            _ssprk3_substep_field!, V̅, Δt, γⁿ, ζⁿ, Vᵐ)
-
+    if !isnothing(ζⁿ)
+        parent(U̅) .= ζⁿ * parent(Uᵐ) + γⁿ * parent(U̅)
+        parent(V̅) .= ζⁿ * parent(Vᵐ) + γⁿ * parent(V̅)
+    end
+    
     return nothing
 end
 
@@ -120,8 +115,6 @@ end
     field[i, j, k] = γⁿ * (field[i, j, k] + Δt * Gⁿ[i, j, k])
 end
 
-ssprk3_substep_velocities!(::PrescribedVelocityFields, model, Δt, γⁿ, ζⁿ) = nothing
-
 function ssprk3_substep_velocities!(velocities, model, Δt, γⁿ, ζⁿ)
 
     for (i, name) in enumerate((:u, :v))
@@ -130,7 +123,7 @@ function ssprk3_substep_velocities!(velocities, model, Δt, γⁿ, ζⁿ)
         velocity_field = model.velocities[name]
 
         launch!(model.architecture, model.grid, :xyz,
-                _ssprk3_substep_field!, velocity_field, Δt, γⁿ, ζⁿ Gⁿ, old_field)
+                _ssprk3_substep_field!, velocity_field, Δt, γⁿ, ζⁿ, Gⁿ, old_field)
 
         implicit_step!(velocity_field,
                        model.timestepper.implicit_solver,

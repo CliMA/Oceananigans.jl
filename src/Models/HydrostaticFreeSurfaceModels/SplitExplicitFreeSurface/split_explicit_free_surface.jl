@@ -259,6 +259,7 @@ end
 
 struct AdamsBashforth3Scheme end
 struct ForwardBackwardScheme end
+struct SSPRungeKutta3Scheme end
 
 auxiliary_free_surface_field(grid, timestepper) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 auxiliary_barotropic_U_field(grid, timestepper) = XFaceField(grid, indices = (:, :, size(grid, 3)))
@@ -269,7 +270,7 @@ auxiliary_barotropic_U_field(grid, ::ForwardBackwardScheme) = nothing
 auxiliary_barotropic_V_field(grid, ::ForwardBackwardScheme) = nothing
 
 barotropic_forcing(timestepper, location, grid)           = Field((location), grid)
-barotropic_forcing(::SSPRK3TimeStepper, location, grid) = (new = Field((location), grid), old = Field((location), grid))
+barotropic_forcing(::SSPRungeKutta3Scheme, location, grid) = (new = Field((location), grid), old = Field((location), grid))
 
 # (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002 
 @inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT

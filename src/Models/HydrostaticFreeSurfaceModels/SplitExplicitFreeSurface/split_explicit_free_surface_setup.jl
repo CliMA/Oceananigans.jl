@@ -116,7 +116,7 @@ function ssprk3_split_explicit_forcing!(auxiliary, grid, Guⁿ, Gvⁿ, ::Val{3})
     return nothing
 end
 
-function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, timestepper::SSPRK3TimeStepper, stage)
+function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, ::SSPRK3TimeStepper, stage)
 
     # we start the time integration of η from the average ηⁿ     
     Guⁿ = model.timestepper.Gⁿ.u

@@ -100,14 +100,14 @@ end
 Explicitly step forward η in substeps.
 """
 step_free_surface!(free_surface::SplitExplicitFreeSurface, model, timestepper, Δt) =
-    split_explicit_free_surface_step!(free_surface, model, Δt, χ)
+    split_explicit_free_surface_step!(free_surface, model, Δt)
 
 function initialize_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocities)
     @apply_regionally compute_barotropic_mode!(sefs.state.U̅, sefs.state.V̅, grid, velocities.u, velocities.v)
     fill_halo_regions!((sefs.state.U̅, sefs.state.V̅, sefs.η))
 end
 
-function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ)
+function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt)
 
     # Note: free_surface.η.grid != model.grid for DistributedSplitExplicitFreeSurface
     # since halo_size(free_surface.η.grid) != halo_size(model.grid)
