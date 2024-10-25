@@ -13,7 +13,7 @@ grid = RectilinearGrid(size = (128, 20),
                        halo = (6, 6),
                    topology = (Bounded, Flat, Bounded))
 
-buoyancy = SeawaterBuoyancy(equation_of_state = TEOS10EquationOfState())
+buoyancy = SeawaterBuoyancy(equation_of_state = LinearEquationOfState())
 
 model = HydrostaticFreeSurfaceModel(; grid, buoyancy,
                          momentum_advection = WENO(),
@@ -25,7 +25,7 @@ model = HydrostaticFreeSurfaceModel(; grid, buoyancy,
 g = model.free_surface.gravitational_acceleration
 
 Tᵢ(x, z) = x < 32kilometers ? 30 : 5
-Sᵢ(x, z) = 32.5 - (Lz + z) / z
+Sᵢ(x, z) = 32.5 - (grid.Lz + z) / z
 
 set!(model, T = Tᵢ, S = Sᵢ)
 
@@ -49,7 +49,7 @@ RPE_init_field = deepcopy(RPE)
 function progress(sim)
     w  = interior(sim.model.velocities.w, :, :, sim.model.grid.Nz+1)
     u  = sim.model.velocities.u
-    T  = sim.model.tracers.b
+    T  = sim.model.tracers.T
 
     compute!(RPE)
     msg0 = @sprintf("Time: %s iteration %d ", prettytime(sim.model.clock.time), sim.model.clock.iteration)
@@ -70,7 +70,7 @@ function save_RPE(sim)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 simulation.callbacks[:save_RPE] = Callback(save_RPE, IterationInterval(100)) 
 run!(simulation)
 
