@@ -154,15 +154,8 @@ end
     bzʸ₂⁺ = ∂z_b(i,   j+1, k+1, grid, buoyancy, tracers)
     bzʸ₂⁻ = ∂z_b(i,   j+1, k,   grid, buoyancy, tracers)
     
-    # Elements of the rotation tensor
-    R₁₁⁺, R₁₂⁺, R₁₃⁺ = rotation_tensorᶠᶜᶜ(i+1, j, k, grid, buoyancy, tracers, Smax, ϵ)
-    R₁₁⁻, R₁₂⁻, R₁₃⁻ = rotation_tensorᶠᶜᶜ(i,   j, k, grid, buoyancy, tracers, Smax, ϵ)
-
-    R₂₁⁺, R₂₂⁺, R₂₃⁺ = rotation_tensorᶜᶠᶜ(i, j+1, k, grid, buoyancy, tracers, Smax, ϵ)
-    R₂₁⁻, R₂₂⁻, R₂₃⁻ = rotation_tensorᶜᶠᶜ(i, j,   k, grid, buoyancy, tracers, Smax, ϵ)
+    # Slopes
     
-    R₃₁⁺, R₃₂⁺, R₃₃⁺ = rotation_tensorᶜᶜᶠ(i, j, k+1, grid, buoyancy, tracers, Smax, ϵ)
-    R₃₁⁻, R₃₂⁻, R₃₃⁻ = rotation_tensorᶜᶜᶠ(i, j, k,   grid, buoyancy, tracers, Smax, ϵ)
 
     # Rotated fluxes, Cannot do this!!!
     ℛx⁺ = R₁₁⁺ * 𝒟x⁺ + R₁₂⁺ * 𝒟y⁺ + R₁₃⁺ * 𝒟z⁺
@@ -171,13 +164,6 @@ end
     ℛy⁻ = R₂₁⁻ * 𝒟x⁻ + R₂₂⁻ * 𝒟y⁻ + R₂₃⁻ * 𝒟z⁻
     ℛz⁺ = R₃₁⁺ * 𝒟x⁺ + R₃₂⁺ * 𝒟y⁺ + R₃₃⁺ * 𝒟z⁺
     ℛz⁻ = R₃₁⁻ * 𝒟x⁻ + R₃₂⁻ * 𝒟y⁻ + R₃₃⁻ * 𝒟z⁻
-
-    Rx⁺ = abs(ℛx⁺) / (abs(𝒟x⁺) + ϵ)
-    Rx⁻ = abs(ℛx⁻) / (abs(𝒟x⁻) + ϵ)
-    Ry⁺ = abs(ℛy⁺) / (abs(𝒟y⁺) + ϵ)
-    Ry⁻ = abs(ℛy⁻) / (abs(𝒟y⁻) + ϵ)
-    Rz⁺ = abs(ℛz⁺) / (abs(𝒟z⁺) + ϵ)
-    Rz⁻ = abs(ℛz⁻) / (abs(𝒟z⁻) + ϵ)
 
     α = scheme.minimum_rotation_percentage
 
@@ -203,11 +189,6 @@ end
     Fx⁻ = 𝒞x⁻ + ℛx⁻ + (1 - αx⁻) * 𝒟x⁻                                           
     Fz⁺ = 𝒞z⁺ + ℛz⁺ + (1 - αz⁺) * 𝒟z⁺
     Fz⁻ = 𝒞z⁻ + ℛz⁻ + (1 - αz⁻) * 𝒟z⁻
-
-    # Nothing in y 
-    # for the moment
-    Fy⁻ = 𝒜⁻
-    Fy⁺ = 𝒜⁺
         
     return 1 / Vᶜᶜᶜ(i, j, k, grid) * (Fx⁺ - Fx⁻ + Fy⁺ - Fy⁻ + Fz⁺ - Fz⁻)
 end
