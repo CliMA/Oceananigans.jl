@@ -132,7 +132,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
         
         # Solve for the free surface at tⁿ⁺¹
         iterate_split_explicit!(free_surface, free_surface_grid, Δτᴮ, weights, Val(Nsubsteps))
-        
+
         # Reset eta for the next timestep
         set!(free_surface.η, free_surface.state.η̅)
     end

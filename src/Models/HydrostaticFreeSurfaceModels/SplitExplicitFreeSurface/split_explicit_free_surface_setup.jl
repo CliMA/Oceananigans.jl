@@ -71,8 +71,8 @@ end
     i, j  = @index(Global, NTuple)
     k_top = grid.Nz + 1
 
-    @inbounds Gᵁ[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * ifelse(peripheral_node(i, j, 1, grid, f, c, c), zero(grid), Guⁿ[i, j, k])
-    @inbounds Gⱽ[i, j, k_top-1] = Δzᶜᶠᶜ(i, j, 1, grid) * ifelse(peripheral_node(i, j, 1, grid, c, f, c), zero(grid), Gvⁿ[i, j, k])
+    @inbounds Gᵁ[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * ifelse(peripheral_node(i, j, 1, grid, f, c, c), zero(grid), Guⁿ[i, j, 1])
+    @inbounds Gⱽ[i, j, k_top-1] = Δzᶜᶠᶜ(i, j, 1, grid) * ifelse(peripheral_node(i, j, 1, grid, c, f, c), zero(grid), Gvⁿ[i, j, 1])
 
     for k in 2:grid.Nz	
         @inbounds Gᵁ[i, j, k_top-1] += Δzᶠᶜᶜ(i, j, k, grid) * ifelse(peripheral_node(i, j, k, grid, f, c, c), zero(grid), Guⁿ[i, j, k])
@@ -81,37 +81,41 @@ end
 end
 
 function ssprk3_split_explicit_forcing!(auxiliary, grid, Guⁿ, Gvⁿ, ::Val{1}) 
-    active_cells_map = retrieve_surface_active_cells_map(grid)
+    Gᵁⁿ = auxiliary.Gᵁ.new
+    Gⱽⁿ = auxiliary.Gⱽ.new
 
-    launch!(architecture(grid), grid, :xy, _compute_integrated_tendencies!, auxiliary.Gᵁ, auxiliary.Gⱽ, grid, 
-            Guⁿ.new, Gvⁿ.new)
+    launch!(architecture(grid), grid, :xy, _compute_integrated_tendencies!, Gᵁⁿ, Gⱽⁿ, grid, Guⁿ, Gvⁿ)
 
     return nothing
 end
 
 function ssprk3_split_explicit_forcing!(auxiliary, grid, Guⁿ, Gvⁿ, ::Val{2}) 
-    active_cells_map = retrieve_surface_active_cells_map(grid)
+    Gᵁⁿ = auxiliary.Gᵁ.new
+    Gⱽⁿ = auxiliary.Gⱽ.new
+    Gᵁᵒ = auxiliary.Gᵁ.old
+    Gⱽᵒ = auxiliary.Gⱽ.old
 
-    parent(Guⁿ.old) .= parent(Guⁿ.new)
-    parent(Gvⁿ.old) .= parent(Gvⁿ.new)
+    parent(Gᵁᵒ) .= parent(Gᵁⁿ)
+    parent(Gⱽᵒ) .= parent(Gⱽⁿ)
 
-    launch!(architecture(grid), grid, :xy, _compute_integrated_tendencies!, auxiliary.Gᵁ, auxiliary.Gⱽ, grid, 
-            Guⁿ.new, Gvⁿ.new)
+    launch!(architecture(grid), grid, :xy, _compute_integrated_tendencies!, Gᵁⁿ, Gⱽⁿ, grid, Guⁿ, Gvⁿ)
 
     return nothing
 end
 
 function ssprk3_split_explicit_forcing!(auxiliary, grid, Guⁿ, Gvⁿ, ::Val{3}) 
-    active_cells_map = retrieve_surface_active_cells_map(grid)
+    Gᵁⁿ = auxiliary.Gᵁ.new
+    Gⱽⁿ = auxiliary.Gⱽ.new
+    Gᵁᵒ = auxiliary.Gᵁ.old
+    Gⱽᵒ = auxiliary.Gⱽ.old
 
-    parent(Guⁿ.old) .= 1 // 6 .* parent(Guⁿ.new) .+ 1 // 6 .* parent(Guⁿ.old)
-    parent(Gvⁿ.old) .= 1 // 6 .* parent(Gvⁿ.new) .+ 1 // 6 .* parent(Guⁿ.old)
+    parent(Gᵁᵒ) .= 1 // 6 .* parent(Gᵁⁿ) .+ 1 // 6 .* parent(Gᵁᵒ)
+    parent(Gⱽᵒ) .= 1 // 6 .* parent(Gⱽⁿ) .+ 1 // 6 .* parent(Gⱽᵒ)
 
-    launch!(architecture(grid), grid, :xy, _compute_integrated_tendencies!, auxiliary.Gᵁ, auxiliary.Gⱽ, grid, 
-            Guⁿ.new, Gvⁿ.new)
+    launch!(architecture(grid), grid, :xy, _compute_integrated_tendencies!, Gᵁⁿ, Gⱽⁿ, grid, Guⁿ, Gvⁿ)
 
-    parent(Guⁿ.new) .= parent(Guⁿ.old) .+ 2 // 3 .* parent(Guⁿ.new)
-    parent(Gvⁿ.new) .= parent(Gvⁿ.old) .+ 2 // 3 .* parent(Gvⁿ.new)
+    parent(Gᵁⁿ) .= parent(Gᵁᵒ) .+ 2 // 3 .* parent(Gᵁⁿ)
+    parent(Gⱽⁿ) .= parent(Gⱽᵒ) .+ 2 // 3 .* parent(Gⱽⁿ)
 
     return nothing
 end

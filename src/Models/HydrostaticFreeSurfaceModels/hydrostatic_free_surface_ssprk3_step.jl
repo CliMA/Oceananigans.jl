@@ -24,7 +24,7 @@ function time_step!(model::AbstractModel{<:SSPRK3TimeStepper}, Δt; callbacks=[]
     #### First stage
     ####
 
-    setup_free_surface!(model, model.free_surface, timestepper, 1)
+    setup_free_surface!(model, model.free_surface, model.timestepper, 1)
     ssprk3_substep_velocities!(model.velocities, model, Δt, nothing, nothing)
     ssprk3_substep_tracers!(model.tracers, model, Δt, nothing, nothing)
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
@@ -35,7 +35,7 @@ function time_step!(model::AbstractModel{<:SSPRK3TimeStepper}, Δt; callbacks=[]
     #### Second stage
     ####
 
-    setup_free_surface!(model, model.free_surface, timestepper, 2)
+    setup_free_surface!(model, model.free_surface, model.timestepper, 2)
     ssprk3_substep_velocities!(model.velocities, model, Δt, γ², ζ²)
     ssprk3_substep_tracers!(model.tracers, model, Δt, γ², ζ²)
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
@@ -48,7 +48,7 @@ function time_step!(model::AbstractModel{<:SSPRK3TimeStepper}, Δt; callbacks=[]
     #### Third stage
     ####
     
-    setup_free_surface!(model, model.free_surface, timestepper, 3)
+    setup_free_surface!(model, model.free_surface, model.timestepper, 3)
     ssprk3_substep_velocities!(model.velocities, model, Δt, γ³, ζ³)
     ssprk3_substep_tracers!(model.tracers, model, Δt, γ³, ζ³)
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
@@ -79,8 +79,8 @@ function store_old_fields!(model::HydrostaticFreeSurfaceModel)
     U̅ = model.free_surface.state.U̅
     V̅ = model.free_surface.state.V̅
 
-    parent(Uᵐ⁻²) .= parent(U̅)
-    parent(Vᵐ⁻²) .= parent(V̅)
+    parent(Uᵐ) .= parent(U̅)
+    parent(Vᵐ) .= parent(V̅)
 
     return nothing
 end

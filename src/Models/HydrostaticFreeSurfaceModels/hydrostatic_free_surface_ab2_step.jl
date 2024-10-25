@@ -13,7 +13,7 @@ setup_free_surface!(model, free_surface, timestepper, stage) = nothing
 
 function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
 
-    setup_free_surface!(model, model.free_surface, timestepper, 1)
+    setup_free_surface!(model, model.free_surface, model.timestepper, 1)
 
     # Step locally velocity and tracers
     @apply_regionally local_ab2_step!(model, Δt, model.timestepper.χ)
