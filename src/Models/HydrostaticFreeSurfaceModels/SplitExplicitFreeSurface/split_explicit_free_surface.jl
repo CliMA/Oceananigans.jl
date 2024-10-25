@@ -94,7 +94,7 @@ function SplitExplicitFreeSurface(grid = nothing;
                                   cfl = nothing,
                                   fixed_Δt = nothing,
                                   averaging_kernel = averaging_shape_function,
-                                  timestepper = ForwardBackwardScheme())
+                                  timestepper = SSPRungeKutta3Scheme())
 
     settings = SplitExplicitSettings(grid;
                                      gravitational_acceleration,

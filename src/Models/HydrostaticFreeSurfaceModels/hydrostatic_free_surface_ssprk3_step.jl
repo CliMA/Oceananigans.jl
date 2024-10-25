@@ -18,20 +18,22 @@ function time_step!(model::AbstractModel{<:SSPRK3TimeStepper}, Δt; callbacks=[]
     ζ² = model.timestepper.ζ²
     ζ³ = model.timestepper.ζ³
 
-    #
-    # First stage
-    #
+    store_old_fields!(model)
+
+    ####
+    #### First stage
+    ####
 
     setup_free_surface!(model, model.free_surface, timestepper, 1)
-    ssprk3_substep_velocities!(model.velocities, model, Δt, γ¹, nothing)
-    ssprk3_substep_tracers!(model.tracers, model, Δt, γ¹, nothing)
+    ssprk3_substep_velocities!(model.velocities, model, Δt, nothing, nothing)
+    ssprk3_substep_tracers!(model.tracers, model, Δt, nothing, nothing)
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
     pressure_correct_velocities!(model, Δt)
     update_state!(model, callbacks; compute_tendencies = true)
 
-    #
-    # Second stage
-    #
+    ####
+    #### Second stage
+    ####
 
     setup_free_surface!(model, model.free_surface, timestepper, 2)
     ssprk3_substep_velocities!(model.velocities, model, Δt, γ², ζ²)
@@ -42,9 +44,9 @@ function time_step!(model::AbstractModel{<:SSPRK3TimeStepper}, Δt; callbacks=[]
 
     update_state!(model, callbacks; compute_tendencies = true)
 
-    #
-    # Third stage
-    #
+    ####
+    #### Third stage
+    ####
     
     setup_free_surface!(model, model.free_surface, timestepper, 3)
     ssprk3_substep_velocities!(model.velocities, model, Δt, γ³, ζ³)
@@ -54,8 +56,6 @@ function time_step!(model::AbstractModel{<:SSPRK3TimeStepper}, Δt; callbacks=[]
   
     update_state!(model, callbacks; compute_tendencies = true)
     step_lagrangian_particles!(model, Δt)
-
-    store_old_fields!(model)
 
     tick!(model.clock, Δt)
     model.clock.last_Δt = Δt
@@ -73,22 +73,22 @@ function store_old_fields!(model::HydrostaticFreeSurfaceModel)
         parent(previous_fields[name]) .= parent(new_fields[name])
     end
     
-    Uᵐ = model.free_surface.state.Uᵐ⁻¹
-    Vᵐ = model.free_surface.state.Vᵐ⁻¹
+    Uᵐ = model.free_surface.state.Uᵐ⁻²
+    Vᵐ = model.free_surface.state.Vᵐ⁻²
 
     U̅ = model.free_surface.state.U̅
     V̅ = model.free_surface.state.V̅
 
-    parent(Uᵐ) .= parent(U̅)
-    parent(Vᵐ) .= parent(V̅)
+    parent(Uᵐ⁻²) .= parent(U̅)
+    parent(Vᵐ⁻²) .= parent(V̅)
 
     return nothing
 end
 
 function ssprk3_substep_free_surface!(free_surface, γⁿ, ζⁿ)
 
-    Uᵐ = free_surface.state.Uᵐ⁻¹
-    Vᵐ = free_surface.state.Vᵐ⁻¹
+    Uᵐ = free_surface.state.Uᵐ⁻²
+    Vᵐ = free_surface.state.Vᵐ⁻²
 
     U̅ = free_surface.state.U̅
     V̅ = free_surface.state.V̅
@@ -110,9 +110,9 @@ end
     field[i, j, k] =  ζⁿ * old_field[i, j, k] + γⁿ * (field[i, j, k] + Δt * Gⁿ[i, j, k])
 end
 
-@kernel function _ssprk3_substep_field!(field, Δt, γⁿ, ::Nothing, Gⁿ, old_field)
+@kernel function _ssprk3_substep_field!(field, Δt, ::Nothing, ::Nothing, Gⁿ, old_field)
     i, j, k = @index(Global, NTuple)
-    field[i, j, k] = γⁿ * (field[i, j, k] + Δt * Gⁿ[i, j, k])
+    field[i, j, k] = old_field[i, j, k] + Δt * Gⁿ[i, j, k]
 end
 
 function ssprk3_substep_velocities!(velocities, model, Δt, γⁿ, ζⁿ)

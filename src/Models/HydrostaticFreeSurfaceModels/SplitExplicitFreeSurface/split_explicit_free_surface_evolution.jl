@@ -85,7 +85,6 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     Hᶠᶜ, Hᶜᶠ   = free_surface.auxiliary.Hᶠᶜ, free_surface.auxiliary.Hᶜᶠ
     arch       = architecture(grid)
 
-
     # take out "bad" barotropic mode, 
     # !!!! reusing U and V for this storage since last timestep doesn't matter
     compute_barotropic_mode!(U, V, grid, u, v)
