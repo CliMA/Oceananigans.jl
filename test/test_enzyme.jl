@@ -233,10 +233,10 @@ end
         set_diffusivity!(dmodel, 0)
 
         dc²_dκ = autodiff(Enzyme.set_runtime_activity(Enzyme.Reverse),
-                        stable_diffusion!,
-                        Duplicated(models[i], dmodel),
-                        Const(amplitude),
-                        Active(κ))
+                          stable_diffusion!,
+                          Duplicated(models[i], dmodel),
+                          Const(amplitude),
+                          Active(κ))
 
         @info """ \n
         Advection-diffusion:
