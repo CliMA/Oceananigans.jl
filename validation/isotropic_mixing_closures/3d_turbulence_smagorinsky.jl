@@ -1,6 +1,7 @@
 using Oceananigans
 using Oceananigans.Fields: interpolate!
 using Statistics
+using Oceananigans.TurbulenceClosures: DirectionallyAveragedCoefficient
 
 N = 64
 arch = GPU()
@@ -32,14 +33,14 @@ function run_3d_turbulence(closure; grid = grid, coarse_grid = coarse_grid)
 
     S² = KernelFunctionOperation{Center, Center, Center}(Oceananigans.TurbulenceClosures.ΣᵢⱼΣᵢⱼᶜᶜᶜ, model.grid, u, v, w)
 
-    if closure isa ScaleInvariantSmagorinsky
+    if closure.coefficient isa DirectionallyAveragedCoefficient
         c²ₛ = model.diffusivity_fields.LM_avg / model.diffusivity_fields.MM_avg
         outputs = (; S², c²ₛ)
     else
         outputs = (; S²)
     end
 
-    filename = "3d_turbulence_" * string(nameof(typeof(closure)))
+    filename = "3d_turbulence_" * string(nameof(typeof(closure.coefficient)))
     simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                           schedule = TimeInterval(0.6),
                                                           filename = filename * ".jld2",
@@ -47,7 +48,7 @@ function run_3d_turbulence(closure; grid = grid, coarse_grid = coarse_grid)
     run!(simulation)
 end
 
-closures = [SmagorinskyLilly(), ScaleInvariantSmagorinsky()]
+closures = [SmagorinskyLilly(coefficient=0.16), SmagorinskyLilly(coefficient=DirectionallyAveragedCoefficient(:))]
 for closure in closures
     @info "Running" closure
     run_3d_turbulence(closure)
@@ -62,7 +63,7 @@ axis_kwargs = (xlabel = "x", ylabel = "y", limits = ((0, 2π), (0, 2π)), aspect
 n = Observable(1)
 
 for (i, closure) in enumerate(closures)
-    closure_name = string(nameof(typeof(closure)))
+    closure_name = string(nameof(typeof(closure.coefficient)))
     local filename = "3d_turbulence_" * closure_name
     @info "Plotting from " * filename
     local S²_timeseries = FieldTimeSeries(filename * ".jld2", "S²")
@@ -73,7 +74,7 @@ for (i, closure) in enumerate(closures)
     heatmap!(ax, xc, yc, S²; colormap = :speed, colorrange = (0, 2))
 
     global times = S²_timeseries.times
-    if closure isa ScaleInvariantSmagorinsky
+    if closure.coefficient isa DirectionallyAveragedCoefficient
         c²ₛ_timeseries = FieldTimeSeries(filename * ".jld2", "c²ₛ")
         c²ₛ = interior(c²ₛ_timeseries, 1, 1, 1, :)
         global cₛ = sqrt.(max.(c²ₛ, 0))

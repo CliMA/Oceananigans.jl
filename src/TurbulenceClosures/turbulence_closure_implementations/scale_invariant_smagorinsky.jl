@@ -130,7 +130,7 @@ const AG{FT} = AbstractGrid{FT} where FT
 @inline ℱxy²ᵟ(i, j, k, grid, f, args...)  = ℱy²ᵟ(i, j, k, grid, ℱx²ᵟ, f, args...)
 @inline ℱyz²ᵟ(i, j, k, grid, f, args...)  = ℱz²ᵟ(i, j, k, grid, ℱy²ᵟ, f, args...)
 @inline ℱxz²ᵟ(i, j, k, grid, f, args...)  = ℱz²ᵟ(i, j, k, grid, ℱz²ᵟ, f, args...)
-@inline ℱ²ᵟ(i, j, k, grid, f, args...) = ℱz²ᵟ(i, j, k, grid, ℱxy²ᵟ, f, args...)
+@inline ℱ²ᵟ(i, j, k, grid, f, args...)    = ℱz²ᵟ(i, j, k, grid, ℱxy²ᵟ, f, args...)
 
 #####
 ##### Velocity gradients
