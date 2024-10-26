@@ -194,7 +194,7 @@ end
                   piston_velocity = 0.1,
                   level = Nz)
 
-    top_c_bc = FluxBoundaryCondition(tracer_flux; discrete_form=true, parameters=parameters)
+    top_c_bc = FluxBoundaryCondition(tracer_flux; discrete_form=true, parameters)
     c_bcs = FieldBoundaryConditions(top=top_c_bc)
 
     # TODO:
