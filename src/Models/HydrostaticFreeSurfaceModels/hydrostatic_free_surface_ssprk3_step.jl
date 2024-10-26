@@ -11,7 +11,6 @@ function time_step!(model::AbstractModel{<:SSPRK3TimeStepper}, Δt; callbacks=[]
     # Be paranoid and update state at iteration 0, in case run! is not used:
     model.clock.iteration == 0 && update_state!(model, callbacks; compute_tendencies = true)
 
-    γ¹ = model.timestepper.γ¹
     γ² = model.timestepper.γ²
     γ³ = model.timestepper.γ³
 
