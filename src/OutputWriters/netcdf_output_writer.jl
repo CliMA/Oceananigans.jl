@@ -363,7 +363,7 @@ function NetCDFOutputWriter(model, outputs;
                             filename,
                             schedule,
                             grid = model.grid,
-                            dir = pwd(),
+                            dir = ".",
                             array_type = Array{Float64},
                             indices = (:, :, :),
                             with_halos = false,
@@ -377,7 +377,7 @@ function NetCDFOutputWriter(model, outputs;
                             verbose = false)
     mkpath(dir)
     filename = auto_extension(filename, ".nc")
-    filepath = joinpath(dir, filename)
+    filepath = abspath(joinpath(dir, filename))
 
     initialize!(file_splitting, model)
     update_file_splitting_schedule!(file_splitting, filepath)
