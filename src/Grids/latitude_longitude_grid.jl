@@ -332,9 +332,9 @@ function Base.show(io::IO, grid::LatitudeLongitudeGrid, withsummary=true)
                      "└── ", z_summary)
 end
 
-@inline x_domain(grid::LLG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX(), grid.Nx, grid.λᶠᵃᵃ)
-@inline y_domain(grid::LLG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TY(), grid.Ny, grid.φᵃᶠᵃ)
-@inline z_domain(grid::LLG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TZ(), grid.Nz, grid.zᵃᵃᶠ)
+@inline x_domain(grid::LLG) = domain(topology(grid, 1)(), grid.Nx, grid.λᶠᵃᵃ)
+@inline y_domain(grid::LLG) = domain(topology(grid, 2)(), grid.Ny, grid.φᵃᶠᵃ)
+@inline z_domain(grid::LLG) = domain(topology(grid, 3)(), grid.Nz, grid.zᵃᵃᶠ)
 
 @inline cpu_face_constructor_x(grid::XRegularLLG) = x_domain(grid)
 @inline cpu_face_constructor_y(grid::YRegularLLG) = y_domain(grid)
@@ -351,8 +351,6 @@ function constructor_arguments(grid::LatitudeLongitudeGrid)
     halo = (grid.Hx, grid.Hy, grid.Hz)
     size = pop_flat_elements(size, topo)
     halo = pop_flat_elements(halo, topo)
-
-    @show grid
 
     kwargs = Dict(:size => size,
                   :halo => halo,
