@@ -8,8 +8,8 @@ using Printf
 
 data_directory = "/nobackup1/sandre/OceananigansData/"
 arch = GPU()
-Nz = 2
-Nxy = 32 * 8
+Nz = 3
+Nxy = 32 * 4
 Lz = 1800
 σ = 1.1
 z_faces_2 = ZStarVerticalCoordinate((-Lz, 0))
@@ -62,7 +62,7 @@ closure1 = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=1.0,
     background_κz=1e-5,
     convective_νz=1e-2,
     background_νz=1e-2)
-closure2 = HorizontalScalarDiffusivity(ν = 2 * 10^3, κ = 2 * 10^3)
+closure2 = HorizontalScalarDiffusivity(ν= 10^3, κ= 10^3)
 closure = (closure1, closure2)
 
 ##### 
@@ -162,12 +162,12 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 simulation.output_writers[:snapshots] = JLD2OutputWriter(model, field_outputs,
     overwrite_existing=true,
     schedule=TimeInterval(30days),
-    filename= data_directory * "baroclinic_double_gyre_1")
+    filename=data_directory * "baroclinic_double_gyre_3")
 
-simulation.output_writers[:free_surface] = JLD2OutdputWriter(model, (; η=model.free_surface.η),
+simulation.output_writers[:free_surface] = JLD2OutputWriter(model, (; η=model.free_surface.η),
     overwrite_existing=true,
     indices=(:, :, grid.Nz + 1),
     schedule=TimeInterval(30days),
-    filename= data_directory * "baroclinic_double_gyre_free_surface_1")
+    filename=data_directory * "baroclinic_double_gyre_free_surface_3")
 
 run!(simulation)
