@@ -158,7 +158,7 @@ end
 end
 
 
-@testset "Enzyme on advection and diffusion WITHOUT then WITH flux boundary condition" begin
+@testset "Enzyme for advection and diffusion with various boundary conditions" begin
     Nx = Ny = 64
     Nz = 8
 
