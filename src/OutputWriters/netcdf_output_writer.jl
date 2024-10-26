@@ -363,7 +363,7 @@ function NetCDFOutputWriter(model, outputs;
                             filename,
                             schedule,
                             grid = model.grid,
-                            dir = ".",
+                            dir = pwd(),
                             array_type = Array{Float64},
                             indices = (:, :, :),
                             with_halos = false,
