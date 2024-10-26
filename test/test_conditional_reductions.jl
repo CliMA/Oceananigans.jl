@@ -1,9 +1,5 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
-using Oceananigans.ImmersedBoundaries: conditional_length
-using Statistics: mean, mean!, norm
-
 @testset "Conditional Reductions" begin
     for arch in archs
         @info "    Testing Reductions on Immersed fields"

@@ -34,7 +34,7 @@ export
     UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, 
     WENO, WENOThirdOrder, WENOFifthOrder,
     VectorInvariant, WENOVectorInvariant, EnergyConserving, EnstrophyConserving,
-    TracerAdvection,
+    FluxFormAdvection,
 
     # Boundary conditions
     BoundaryCondition,
@@ -145,7 +145,6 @@ import Base:
     iterate, similar, show,
     getindex, lastindex, setindex!,
     push!
-
     
 #####
 ##### Abstract types
@@ -208,14 +207,13 @@ include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
 include("TimeSteppers/TimeSteppers.jl")
+include("ImmersedBoundaries/ImmersedBoundaries.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
 include("OutputReaders/OutputReaders.jl")
 include("DistributedComputations/DistributedComputations.jl")
 
 # TODO: move here
-#include("ImmersedBoundaries/ImmersedBoundaries.jl")
-#include("Distributed/Distributed.jl")
 #include("MultiRegion/MultiRegion.jl")
 
 # Physics, time-stepping, and models
@@ -227,9 +225,6 @@ include("Forcings/Forcings.jl")
 include("Biogeochemistry.jl")
 
 # TODO: move above
-include("ImmersedBoundaries/ImmersedBoundaries.jl")
-# include("DistributedComputations/DistributedComputations.jl")
-
 include("Models/Models.jl")
 
 # Output and Physics, time-stepping, and models

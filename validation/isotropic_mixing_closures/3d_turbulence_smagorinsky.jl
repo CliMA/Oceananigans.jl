@@ -2,17 +2,20 @@ using Oceananigans
 using Oceananigans.Fields: interpolate!
 using Statistics
 
-N = 32
-grid = RectilinearGrid(size=(N, N, N), extent=(2π, 2π, 2π), topology=(Periodic, Periodic, Periodic))
-coarse_grid = RectilinearGrid(size=(N÷4, N÷4, N÷4), extent=(2π, 2π, 2π), topology=(Periodic, Periodic, Periodic))
+N = 64
+arch = GPU()
+grid = RectilinearGrid(arch, size=(N, N, N), extent=(2π, 2π, 2π), topology=(Periodic, Periodic, Periodic))
+coarse_grid = RectilinearGrid(arch, size=(N÷4, N÷4, N÷4), extent=(2π, 2π, 2π), topology=(Periodic, Periodic, Periodic))
 
 
 function run_3d_turbulence(closure; grid = grid, coarse_grid = coarse_grid)
-    model = NonhydrostaticModel(; grid, timestepper = :RungeKutta3, advection = UpwindBiasedFifthOrder(),
+    model = NonhydrostaticModel(; grid, timestepper = :RungeKutta3,
+                                advection = WENO(order=5),
                                 closure = closure)
 
     random_c = CenterField(coarse_grid) # Technically this shouldn't be a CenterField, but oh well
-    random_c .= rand(size(random_c)...)
+    noise(x, y, z) = rand()
+    set!(random_c, noise)
 
     u, v, w = model.velocities
     interpolate!(u, random_c)
@@ -74,9 +77,11 @@ for (i, closure) in enumerate(closures)
         c²ₛ_timeseries = FieldTimeSeries(filename * ".jld2", "c²ₛ")
         c²ₛ = interior(c²ₛ_timeseries, 1, 1, 1, :)
         global cₛ = sqrt.(max.(c²ₛ, 0))
-        local ax_cₛ = Axis(fig[3, 1:length(closures)]; title = "Smagorinsky coefficient", xlabel = "Time", limits = ((0, nothing), (0, 0.2)))
+        local ax_cₛ = Axis(fig[3, 1:length(closures)]; title = "Smagorinsky coefficient", xlabel = "Time", limits = ((0, nothing), (0, 0.25)))
         lines!(ax_cₛ, times, cₛ, color=:black, label="Scale Invariant Smagorinsky")
         hlines!(ax_cₛ, [0.16], linestyle=:dash, color=:blue)
+        timesₙ = @lift times[$n]
+        vlines!(ax_cₛ, timesₙ, linestyle=:dash, color=:black)
     end
 end
 

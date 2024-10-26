@@ -3,8 +3,23 @@ using KernelAbstractions: @kernel, @index
 using Adapt: adapt_structure
 
 using Oceananigans.Grids: on_architecture, node_names
-using Oceananigans.Architectures: device, GPU, CPU
+using Oceananigans.Architectures: child_architecture, device, GPU, CPU
 using Oceananigans.Utils: work_layout
+
+#####
+##### Utilities
+#####
+
+function tuple_string(tup::Tuple)
+    str = prod(string(t, ", ") for t in tup)
+    return str[1:end-2] # remove trailing ", "
+end
+
+tuple_string(tup::Tuple{}) = ""
+
+#####
+##### set!
+#####
 
 function set!(Φ::NamedTuple; kwargs...)
     for (fldname, value) in kwargs
@@ -14,25 +29,29 @@ function set!(Φ::NamedTuple; kwargs...)
     return nothing
 end
 
+# This interface helps us do things like set distributed fields
+set!(u::Field, f::Function) = set_to_function!(u, f)
+set!(u::Field, a::Union{Array, CuArray, OffsetArray}) = set_to_array!(u, a)
+set!(u::Field, v::Field) = set_to_field!(u, v)
+
 function set!(u::Field, v)
     u .= v # fallback
     return u
 end
 
-function tuple_string(tup::Tuple)
-    str = prod(string(t, ", ") for t in tup)
-    return str[1:end-2] # remove trailing ", "
-end
+#####
+##### Setting to specific things
+#####
 
-tuple_string(tup::Tuple{}) = ""
-
-function set!(u::Field, f::Function)
+function set_to_function!(u, f)
+    # Supports serial and distributed
+    arch = child_architecture(u)
 
     # Determine cpu_grid and cpu_u
-    if architecture(u) isa GPU
+    if arch isa GPU
         cpu_grid = on_architecture(CPU(), u.grid)
         cpu_u = Field(location(u), cpu_grid; indices = indices(u))
-    elseif architecture(u) isa CPU
+    elseif arch isa CPU
         cpu_grid = u.grid
         cpu_u = u
     end
@@ -40,7 +59,7 @@ function set!(u::Field, f::Function)
     # Form a FunctionField from `f`
     f_field = field(location(u), f, cpu_grid)
 
-    # Try to set the FuncitonField to cpu_u
+    # Try to set the FunctionField to cpu_u
     try
         set!(cpu_u, f_field)
     catch err
@@ -62,14 +81,14 @@ function set!(u::Field, f::Function)
     end
 
     # Transfer data to GPU if u is on the GPU
-    if architecture(u) isa GPU
+    if child_architecture(u) isa GPU
         set!(u, cpu_u)
     end
 
     return u
 end
 
-function set!(u::Field, f::Union{Array, CuArray, OffsetArray})
+function set_to_array!(u, f)
     f = on_architecture(architecture(u), f)
 
     try
@@ -91,11 +110,11 @@ function set!(u::Field, f::Union{Array, CuArray, OffsetArray})
     return u
 end
 
-function set!(u::Field, v::Field)
+function set_to_field!(u, v)
     # We implement some niceities in here that attempt to copy halo data,
     # and revert to copying just interior points if that fails.
     
-    if architecture(u) === architecture(v)
+    if child_architecture(u) === child_architecture(v)
         # Note: we could try to copy first halo point even when halo
         # regions are a different size. That's a bit more complicated than
         # the below so we leave it for the future.
@@ -107,7 +126,7 @@ function set!(u::Field, v::Field)
             interior(u) .= interior(v)
         end
     else
-        v_data = on_architecture(architecture(u), v.data)
+        v_data = on_architecture(child_architecture(u), v.data)
         
         # As above, we permit ourselves a little ambition and try to copy halo data:
         try

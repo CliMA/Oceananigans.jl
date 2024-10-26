@@ -1,7 +1,7 @@
-import Oceananigans.Utils: launch!
+import Oceananigans.Utils: _launch!
 
-function launch!(arch::Distributed, args...; kwargs...)
+function _launch!(arch::Distributed, args...; kwargs...)
     child_arch = child_architecture(arch)
-    return launch!(child_arch, args...; kwargs...)
+    return _launch!(child_arch, args...; kwargs...)
 end
 

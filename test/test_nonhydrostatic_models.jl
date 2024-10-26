@@ -1,5 +1,7 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
+
 @testset "Models" begin
     @info "Testing models..."
 
@@ -66,6 +68,28 @@ include("dependencies_for_runtests.jl")
 
         model = NonhydrostaticModel(closure=ScalarBiharmonicDiffusivity(), grid=funny_grid)
         @test model.grid.Hx == 2 && model.grid.Hy == 3 && model.grid.Hz == 4
+
+        @info "  Testing adjustment of advection schemes in NonhydrostaticModel constructor..."
+        small_grid = RectilinearGrid(size=(4, 2, 4), extent=(1, 2, 3), halo=(1, 1, 1))
+        
+        # Model ensures that halos are at least of size 1
+        model = NonhydrostaticModel(grid=small_grid, advection=WENO())
+        @test model.advection isa FluxFormAdvection
+        @test required_halo_size_x(model.advection) == 3
+        @test required_halo_size_y(model.advection) == 2
+        @test required_halo_size_z(model.advection) == 3
+
+        model = NonhydrostaticModel(grid=small_grid, advection=UpwindBiased(; order = 9))
+        @test model.advection isa FluxFormAdvection
+        @test required_halo_size_x(model.advection) == 4
+        @test required_halo_size_y(model.advection) == 2
+        @test required_halo_size_z(model.advection) == 4
+
+        model = NonhydrostaticModel(grid=small_grid, advection=Centered(; order = 10))
+        @test model.advection isa FluxFormAdvection
+        @test required_halo_size_x(model.advection) == 4
+        @test required_halo_size_y(model.advection) == 2
+        @test required_halo_size_z(model.advection) == 4
     end
 
     @testset "Model construction with single tracer and nothing tracer" begin

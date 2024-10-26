@@ -2,10 +2,12 @@
 ##### In this version of the Smagorinsky closure, the coefficient is dynamically calculated but it's assumed to be invariant
 ##### with scale. Hence the name Scale-Invariant Smagorinsky. This a type of "dynamic Smagorinsky" closures.
 #####
+
 using Oceananigans.Operators: volume
 using Statistics: mean!
 
 abstract type AbstractAveragingProcedure end
+
 struct DirectionalAveraging{D} <: AbstractAveragingProcedure
     dims :: D
 end
@@ -13,25 +15,24 @@ end
 Base.summary(averaging::DirectionalAveraging) = string("DirectionalAveraging over directions $(averaging.dims)")
 Base.show(io::IO, averaging::DirectionalAveraging) = print(io, summary(averaging))
 
-
 struct ScaleInvariantSmagorinsky{TD, AP, FT, P, UF} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFormulation, 2}
     averaging :: AP
     Pr :: P
-    update_frequency :: UF
+    update_interval :: UF
 
-    function ScaleInvariantSmagorinsky{TD, AP, FT}(averaging, Pr; update_frequency = 5) where {TD, AP, FT}
+    function ScaleInvariantSmagorinsky{TD, AP, FT}(averaging, Pr; update_interval = 5) where {TD, AP, FT}
         Pr = convert_diffusivity(FT, Pr; discrete_form=false)
         P = typeof(Pr)
-        update_frequency = Int(update_frequency)
-        return new{TD, AP, FT, P, Int}(averaging, Pr, update_frequency)
+        update_interval = Int(update_interval)
+        return new{TD, AP, FT, P, Int}(averaging, Pr, update_interval)
     end
 end
 
 
 function Adapt.adapt_structure(to, closure::ScaleInvariantSmagorinsky{TD, AP, FT, <:Any, <:Any}) where {TD, AP, FT}
-    update_frequency = Adapt.adapt(to, closure.update_frequency)
+    update_interval = Adapt.adapt(to, closure.update_interval)
     Pr = Adapt.adapt(to, closure.Pr)
-    return ScaleInvariantSmagorinsky{TD, AP, FT}(closure.averaging, Pr; update_frequency)
+    return ScaleInvariantSmagorinsky{TD, AP, FT}(closure.averaging, Pr; update_interval)
 end
 
 @inline viscosity(::ScaleInvariantSmagorinsky, K) = K.νₑ
@@ -40,10 +41,10 @@ end
 """
     ScaleInvariantSmagorinsky([time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64;] averaging=1.0, Pr=1.0)
 """
-function ScaleInvariantSmagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64; averaging=DirectionalAveraging(Colon()), Pr=1.0, update_frequency=5) where TD
+function ScaleInvariantSmagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64; averaging=DirectionalAveraging(Colon()), Pr=1.0, update_interval=5) where TD
     averaging = (averaging isa AbstractAveragingProcedure) ? averaging : DirectionalAveraging(averaging)
     AP = typeof(averaging)
-    return ScaleInvariantSmagorinsky{TD, AP, FT}(averaging, Pr; update_frequency)
+    return ScaleInvariantSmagorinsky{TD, AP, FT}(averaging, Pr; update_interval)
 end
 
 
@@ -51,10 +52,10 @@ ScaleInvariantSmagorinsky(FT::DataType; kwargs...) = ScaleInvariantSmagorinsky(E
 
 function with_tracers(tracers, closure::ScaleInvariantSmagorinsky{TD, AP, FT}) where {TD, AP, FT}
     Pr = tracer_diffusivities(tracers, closure.Pr)
-    return ScaleInvariantSmagorinsky{TD, AP, FT}(closure.averaging, Pr, update_frequency=closure.update_frequency)
+    return ScaleInvariantSmagorinsky{TD, AP, FT}(closure.averaging, Pr, update_interval=closure.update_interval)
 end
 
-function LᵢⱼMᵢⱼ_ccc(i, j, k, grid, u, v, w)
+@inline function LᵢⱼMᵢⱼ_ccc(i, j, k, grid, u, v, w)
     Sᶜᶜᶜ = √(ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w))
     S̄ᶜᶜᶜ = √(Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w))
     return (      L₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w) * M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Sᶜᶜᶜ, S̄ᶜᶜᶜ)
@@ -63,9 +64,10 @@ function LᵢⱼMᵢⱼ_ccc(i, j, k, grid, u, v, w)
             + 2 * L₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w) * M₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1) 
             + 2 * L₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w) * M₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1) 
             + 2 * L₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w) * M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1) )
+
 end
 
-function MᵢⱼMᵢⱼ_ccc(i, j, k, grid, u, v, w)
+@inline function MᵢⱼMᵢⱼ_ccc(i, j, k, grid, u, v, w)
     Sᶜᶜᶜ = √(ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w))
     S̄ᶜᶜᶜ = √(Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w))
     return (      M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Sᶜᶜᶜ, S̄ᶜᶜᶜ)^2
@@ -76,14 +78,13 @@ function MᵢⱼMᵢⱼ_ccc(i, j, k, grid, u, v, w)
             + 2 * M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1)^2)
 end
 
-
 @kernel function _compute_scale_invariant_smagorinsky_viscosity!(νₑ, LM_avg, MM_avg, grid, closure, buoyancy, velocities, tracers)
     i, j, k = @index(Global, NTuple)
 
     # Strain tensor dot product
     Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, velocities.u, velocities.v, velocities.w)
 
-    cₛ² = @inbounds max(LM_avg[i, j, k] / MM_avg[i, j, k], 0)
+    cₛ² = @inbounds max(LM_avg[i, j, k] / MM_avg[i, j, k], zero(grid))
     @inbounds νₑ[i, j, k] = cₛ² * (Δᶠ(i, j, k, grid))^2 * sqrt(2Σ²)
 end
 
@@ -94,15 +95,9 @@ function compute_diffusivities!(diffusivity_fields, closure::ScaleInvariantSmago
     velocities = model.velocities
     tracers = model.tracers
 
-    LM_op = Average(KernelFunctionOperation{Center, Center, Center}(LᵢⱼMᵢⱼ_ccc, grid, model.velocities...))
-    MM_op = Average(KernelFunctionOperation{Center, Center, Center}(MᵢⱼMᵢⱼ_ccc, grid, model.velocities...))
-
-    if model.clock.iteration % closure.update_frequency == 0
-        mean!(diffusivity_fields.LM_avg, LM_op.operand)
-        mean!(diffusivity_fields.MM_avg, MM_op.operand)
-
-        launch!(arch, grid, parameters, _compute_scale_invariant_smagorinsky_viscosity!,
-                diffusivity_fields.νₑ, diffusivity_fields.LM_avg, diffusivity_fields.MM_avg, grid, closure, buoyancy, velocities, tracers)
+    if model.clock.iteration % closure.update_interval == 0
+        compute!(diffusivity_fields.LM_avg)
+        compute!(diffusivity_fields.MM_avg)
     end
 
     return nothing
@@ -112,26 +107,30 @@ end
 @inline κᶜᶠᶜ(i, j, k, grid, closure::ScaleInvariantSmagorinsky, K, ::Val{id}, args...) where id = ℑyᵃᶠᵃ(i, j, k, grid, K.νₑ) / closure.Pr[id]
 @inline κᶜᶜᶠ(i, j, k, grid, closure::ScaleInvariantSmagorinsky, K, ::Val{id}, args...) where id = ℑzᵃᵃᶠ(i, j, k, grid, K.νₑ) / closure.Pr[id]
 
-
 #####
 ##### Filters
 #####
 
 # TODO: Generalize filter to stretched directions
-AG = AbstractGrid
+const AG{FT} = AbstractGrid{FT} where FT
+
 @inline ℱx²ᵟ(i, j, k, grid::AG{FT}, ϕ) where FT = @inbounds FT(0.5) * ϕ[i, j, k] + FT(0.25) * (ϕ[i-1, j, k] + ϕ[i+1, j,  k])
 @inline ℱy²ᵟ(i, j, k, grid::AG{FT}, ϕ) where FT = @inbounds FT(0.5) * ϕ[i, j, k] + FT(0.25) * (ϕ[i, j-1, k] + ϕ[i,  j+1, k])
 @inline ℱz²ᵟ(i, j, k, grid::AG{FT}, ϕ) where FT = @inbounds FT(0.5) * ϕ[i, j, k] + FT(0.25) * (ϕ[i, j, k-1] + ϕ[i,  j, k+1])
 
-@inline ℱx²ᵟ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * f(i, j, k, grid, args...) + FT(0.25) * (f(i-1, j, k, grid, args...) + f(i+1, j, k, grid, args...))
-@inline ℱy²ᵟ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * f(i, j, k, grid, args...) + FT(0.25) * (f(i, j-1, k, grid, args...) + f(i, j+1, k, grid, args...))
-@inline ℱz²ᵟ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} = FT(0.5) * f(i, j, k, grid, args...) + FT(0.25) * (f(i, j, k-1, grid, args...) + f(i, j, k+1, grid, args...))
+@inline ℱx²ᵟ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} =
+    FT(0.5) * f(i, j, k, grid, args...) + FT(0.25) * (f(i-1, j, k, grid, args...) + f(i+1, j, k, grid, args...))
+
+@inline ℱy²ᵟ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} =
+    FT(0.5) * f(i, j, k, grid, args...) + FT(0.25) * (f(i, j-1, k, grid, args...) + f(i, j+1, k, grid, args...))
+
+@inline ℱz²ᵟ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F<:Function} =
+    FT(0.5) * f(i, j, k, grid, args...) + FT(0.25) * (f(i, j, k-1, grid, args...) + f(i, j, k+1, grid, args...))
 
 @inline ℱxy²ᵟ(i, j, k, grid, f, args...)  = ℱy²ᵟ(i, j, k, grid, ℱx²ᵟ, f, args...)
 @inline ℱyz²ᵟ(i, j, k, grid, f, args...)  = ℱz²ᵟ(i, j, k, grid, ℱy²ᵟ, f, args...)
 @inline ℱxz²ᵟ(i, j, k, grid, f, args...)  = ℱz²ᵟ(i, j, k, grid, ℱz²ᵟ, f, args...)
 @inline ℱ²ᵟ(i, j, k, grid, f, args...) = ℱz²ᵟ(i, j, k, grid, ℱxy²ᵟ, f, args...)
-
 
 #####
 ##### Velocity gradients
@@ -144,10 +143,10 @@ AG = AbstractGrid
 
 # Off-diagonal
 @inline ∂x_v̄(i, j, k, grid, v) = ∂xᶠᶠᶜ(i, j, k, grid, ℱ²ᵟ, v)
-@inline ∂x_w̄(i, j, k, grid, w) = ∂xᶠᶜᶜ(i, j, k, grid, ℱ²ᵟ, w)
+@inline ∂x_w̄(i, j, k, grid, w) = ∂xᶠᶜᶠ(i, j, k, grid, ℱ²ᵟ, w)
 
 @inline ∂y_ū(i, j, k, grid, u) = ∂yᶠᶠᶜ(i, j, k, grid, ℱ²ᵟ, u)
-@inline ∂y_w̄(i, j, k, grid, w) = ∂yᶜᶠᶜ(i, j, k, grid, ℱ²ᵟ, w)
+@inline ∂y_w̄(i, j, k, grid, w) = ∂yᶜᶠᶠ(i, j, k, grid, ℱ²ᵟ, w)
 
 @inline ∂z_ū(i, j, k, grid, u) = ∂zᶠᶜᶠ(i, j, k, grid, ℱ²ᵟ, u)
 @inline ∂z_v̄(i, j, k, grid, v) = ∂zᶜᶠᶠ(i, j, k, grid, ℱ²ᵟ, v)
@@ -176,8 +175,6 @@ AG = AbstractGrid
 @inline Σ̄₂₃(i, j, k, grid::AG{FT}, v, w) where FT = FT(0.5) * (∂z_v̄(i, j, k, grid, v) + ∂y_w̄(i, j, k, grid, w))
 @inline Σ̄₂₃²(i, j, k, grid, v, w) = Σ̄₂₃(i, j, k, grid, v, w)^2
 
-
-
 @inline Σ̄₁₁(i, j, k, grid, u, v, w) = Σ̄₁₁(i, j, k, grid, u)
 @inline Σ̄₂₂(i, j, k, grid, u, v, w) = Σ̄₂₂(i, j, k, grid, v)
 @inline Σ̄₃₃(i, j, k, grid, u, v, w) = Σ̄₃₃(i, j, k, grid, w)
@@ -186,56 +183,37 @@ AG = AbstractGrid
 @inline Σ̄₁₃(i, j, k, grid, u, v, w) = Σ̄₁₃(i, j, k, grid, u, w)
 @inline Σ̄₂₃(i, j, k, grid, u, v, w) = Σ̄₂₃(i, j, k, grid, v, w)
 
-
 @inline Σ̄₁₂²(i, j, k, grid, u, v, w) = Σ̄₁₂²(i, j, k, grid, u, v)
 @inline Σ̄₁₃²(i, j, k, grid, u, v, w) = Σ̄₁₃²(i, j, k, grid, u, w)
 @inline Σ̄₂₃²(i, j, k, grid, u, v, w) = Σ̄₂₃²(i, j, k, grid, v, w)
-
-
-
 
 #####
 ##### Double dot product of strain on cell edges
 #####
 
 "Return the double dot product of strain at `ccc` on a 2δ test grid."
-@inline function Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
-    return (tr_Σ̄²(i, j, k, grid, u, v, w)
-            + 2 * ℑxyᶜᶜᵃ(i, j, k, grid, Σ̄₁₂², u, v, w)
-            + 2 * ℑxzᶜᵃᶜ(i, j, k, grid, Σ̄₁₃², u, v, w)
-            + 2 * ℑyzᵃᶜᶜ(i, j, k, grid, Σ̄₂₃², u, v, w)
-            )
-end
+@inline Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w) = (tr_Σ̄²(i, j, k, grid, u, v, w)
+                                             + 2 * ℑxyᶜᶜᵃ(i, j, k, grid, Σ̄₁₂², u, v, w)
+                                             + 2 * ℑxzᶜᵃᶜ(i, j, k, grid, Σ̄₁₃², u, v, w)
+                                             + 2 * ℑyzᵃᶜᶜ(i, j, k, grid, Σ̄₂₃², u, v, w))
 
 "Return the double dot product of strain at `ffc`."
-@inline function Σ̄ᵢⱼΣ̄ᵢⱼᶠᶠᶜ(i, j, k, grid, u, v, w)
-    return (
-                  ℑxyᶠᶠᵃ(i, j, k, grid, tr_Σ̄², u, v, w)
-            + 2 *   Σ̄₁₂²(i, j, k, grid, u, v, w)
-            + 2 * ℑyzᵃᶠᶜ(i, j, k, grid, Σ̄₁₃², u, v, w)
-            + 2 * ℑxzᶠᵃᶜ(i, j, k, grid, Σ̄₂₃², u, v, w)
-            )
-end
+@inline Σ̄ᵢⱼΣ̄ᵢⱼᶠᶠᶜ(i, j, k, grid, u, v, w) =  (      ℑxyᶠᶠᵃ(i, j, k, grid, tr_Σ̄², u, v, w)
+                                              + 2 *   Σ̄₁₂²(i, j, k, grid, u, v, w)
+                                              + 2 * ℑyzᵃᶠᶜ(i, j, k, grid, Σ̄₁₃², u, v, w)
+                                              + 2 * ℑxzᶠᵃᶜ(i, j, k, grid, Σ̄₂₃², u, v, w))
 
 "Return the double dot product of strain at `fcf`."
-@inline function Σ̄ᵢⱼΣ̄ᵢⱼᶠᶜᶠ(i, j, k, grid, u, v, w)
-    return (
-                  ℑxzᶠᵃᶠ(i, j, k, grid, tr_Σ̄², u, v, w)
-            + 2 * ℑyzᵃᶜᶠ(i, j, k, grid, Σ̄₁₂², u, v, w)
-            + 2 *   Σ̄₁₃²(i, j, k, grid, u, v, w)
-            + 2 * ℑxyᶠᶜᵃ(i, j, k, grid, Σ̄₂₃², u, v, w)
-            )
-end
+@inline Σ̄ᵢⱼΣ̄ᵢⱼᶠᶜᶠ(i, j, k, grid, u, v, w) = (      ℑxzᶠᵃᶠ(i, j, k, grid, tr_Σ̄², u, v, w)
+                                             + 2 * ℑyzᵃᶜᶠ(i, j, k, grid, Σ̄₁₂², u, v, w)
+                                             + 2 *   Σ̄₁₃²(i, j, k, grid, u, v, w)
+                                             + 2 * ℑxyᶠᶜᵃ(i, j, k, grid, Σ̄₂₃², u, v, w))
 
 "Return the double dot product of strain at `cff`."
-@inline function Σ̄ᵢⱼΣ̄ᵢⱼᶜᶠᶠ(i, j, k, grid, u, v, w)
-    return (
-                  ℑyzᵃᶠᶠ(i, j, k, grid, tr_Σ̄², u, v, w)
-            + 2 * ℑxzᶜᵃᶠ(i, j, k, grid, Σ̄₁₂², u, v, w)
-            + 2 * ℑxyᶜᶠᵃ(i, j, k, grid, Σ̄₁₃², u, v, w)
-            + 2 *   Σ̄₂₃²(i, j, k, grid, u, v, w)
-            )
-end
+@inline Σ̄ᵢⱼΣ̄ᵢⱼᶜᶠᶠ(i, j, k, grid, u, v, w) = (      ℑyzᵃᶠᶠ(i, j, k, grid, tr_Σ̄², u, v, w)
+                                             + 2 * ℑxzᶜᵃᶠ(i, j, k, grid, Σ̄₁₂², u, v, w)
+                                             + 2 * ℑxyᶜᶠᵃ(i, j, k, grid, Σ̄₁₃², u, v, w)
+                                             + 2 *   Σ̄₂₃²(i, j, k, grid, u, v, w))
 
 # Here the notation ⟨A⟩ is equivalent to Ā: a filter of size 2Δᶠ, where Δᶠ is the grid scale.
 
@@ -247,13 +225,13 @@ end
 @inline SS₁₃ᶠᶜᶠ(i, j, k, grid, u, v, w) = √(ΣᵢⱼΣᵢⱼᶠᶜᶠ(i, j, k, grid, u, v, w)) * Σ₁₃(i, j, k, grid, u, v, w) # fcf
 @inline SS₂₃ᶜᶠᶠ(i, j, k, grid, u, v, w) = √(ΣᵢⱼΣᵢⱼᶜᶠᶠ(i, j, k, grid, u, v, w)) * Σ₂₃(i, j, k, grid, u, v, w) # cff
 
-@inline var"⟨|S|S₁₁⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₁₁ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
-@inline var"⟨|S|S₂₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₂₂ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
-@inline var"⟨|S|S₃₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₃₃ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
+@inline var"⟨SS₁₁⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₁₁ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
+@inline var"⟨SS₂₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₂₂ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
+@inline var"⟨SS₃₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₃₃ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
 
-@inline var"⟨|S|S₁₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) = ℑxyᶜᶜᵃ(i, j, k, grid, ℱ²ᵟ, SS₁₂ᶠᶠᶜ, u, v, w)
-@inline var"⟨|S|S₁₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) = ℑxzᶜᵃᶜ(i, j, k, grid, ℱ²ᵟ, SS₁₃ᶠᶜᶠ, u, v, w)
-@inline var"⟨|S|S₂₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) = ℑyzᵃᶜᶜ(i, j, k, grid, ℱ²ᵟ, SS₂₃ᶜᶠᶠ, u, v, w)
+@inline var"⟨SS₁₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) = ℑxyᶜᶜᵃ(i, j, k, grid, ℱ²ᵟ, SS₁₂ᶠᶠᶜ, u, v, w)
+@inline var"⟨SS₁₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) = ℑxzᶜᵃᶜ(i, j, k, grid, ℱ²ᵟ, SS₁₃ᶠᶜᶠ, u, v, w)
+@inline var"⟨SS₂₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) = ℑyzᵃᶜᶜ(i, j, k, grid, ℱ²ᵟ, SS₂₃ᶜᶠᶠ, u, v, w)
 
 @inline S̄S̄₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = S̄ᶜᶜᶜ * Σ̄₁₁(i, j, k, grid, u, v, w) # ccc
 @inline S̄S̄₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = S̄ᶜᶜᶜ * Σ̄₂₂(i, j, k, grid, u, v, w) # ccc
@@ -267,17 +245,14 @@ end
 @inline S̄S̄₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℑxzᶜᵃᶜ(i, j, k, grid, S̄S̄₁₃ᶠᶜᶠ, u, v, w)
 @inline S̄S̄₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℑyzᵃᶜᶜ(i, j, k, grid, S̄S̄₂₃ᶜᶠᶠ, u, v, w)
 
-
 @inline Δᶠ(i, j, k, grid) = ∛volume(i, j, k, grid, Center(), Center(), Center())
-@inline M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Sᶜᶜᶜ, S̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨|S|S₁₁⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) - α^2*β * S̄S̄₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ))
-@inline M₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Sᶜᶜᶜ, S̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨|S|S₂₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) - α^2*β * S̄S̄₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ))
-@inline M₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Sᶜᶜᶜ, S̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨|S|S₃₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) - α^2*β * S̄S̄₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ))
+@inline M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Sᶜᶜᶜ, S̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₁₁⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) - α^2*β * S̄S̄₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ))
+@inline M₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Sᶜᶜᶜ, S̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₂₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) - α^2*β * S̄S̄₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ))
+@inline M₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Sᶜᶜᶜ, S̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₃₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) - α^2*β * S̄S̄₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ))
 
-@inline M₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨|S|S₁₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) - α^2*β * S̄S̄₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w))
-@inline M₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨|S|S₁₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) - α^2*β * S̄S̄₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w))
-@inline M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨|S|S₂₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) - α^2*β * S̄S̄₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w))
-
-
+@inline M₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₁₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) - α^2*β * S̄S̄₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w))
+@inline M₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₁₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) - α^2*β * S̄S̄₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w))
+@inline M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₂₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w) - α^2*β * S̄S̄₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w))
 
 @inline ϕψ(i, j, k, grid, ϕ, ψ) = @inbounds ϕ[i, j, k] * ψ[i, j, k]
 @inline u₁u₁ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℑxᶜᵃᵃ(i, j, k, grid, ϕψ, u, u)
@@ -305,33 +280,21 @@ end
 @inline L₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℱ²ᵟ(i, j, k, grid, u₁u₃ᶜᶜᶜ, u, v, w) - ū₁ū₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
 @inline L₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℱ²ᵟ(i, j, k, grid, u₂u₃ᶜᶜᶜ, u, v, w) - ū₂ū₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
 
-
-Base.summary(closure::ScaleInvariantSmagorinsky) = string("ScaleInvariantSmagorinsky: averaging=$(closure.averaging), Pr=$(closure.Pr), update_frequency=$(closure.update_frequency)")
+Base.summary(closure::ScaleInvariantSmagorinsky) = string("ScaleInvariantSmagorinsky: averaging=$(closure.averaging), Pr=$(closure.Pr), update_interval=$(closure.update_interval)")
 Base.show(io::IO, closure::ScaleInvariantSmagorinsky) = print(io, summary(closure))
 
 #####
 ##### For closures that only require an eddy viscosity νₑ field.
 #####
 
-directionally_averaged_field(grid, ::Val{DirectionalAveraging(1)})         = Field{Nothing, Center,  Center }(grid)
-directionally_averaged_field(grid, ::Val{DirectionalAveraging(2)})         = Field{Center,  Nothing, Center }(grid)
-directionally_averaged_field(grid, ::Val{DirectionalAveraging(3)})         = Field{Center,  Center,  Nothing}(grid)
-directionally_averaged_field(grid, ::Val{DirectionalAveraging((1, 2))})    = Field{Nothing, Nothing, Center }(grid)
-directionally_averaged_field(grid, ::Val{DirectionalAveraging((1, 3))})    = Field{Nothing, Center,  Nothing}(grid)
-directionally_averaged_field(grid, ::Val{DirectionalAveraging((2, 3))})    = Field{Center,  Nothing, Nothing}(grid)
-directionally_averaged_field(grid, ::Val{DirectionalAveraging((1, 2, 3))}) = Field{Nothing, Nothing, Nothing}(grid)
-directionally_averaged_field(grid, ::Val{DirectionalAveraging(Colon())})   = Field{Nothing, Nothing, Nothing}(grid)
-directionally_averaged_field(grid, ::Any)                                  = Field{Center,  Center,  Center}(grid)
-
-
-function DiffusivityFields(grid, tracer_names, bcs, closure::ScaleInvariantSmagorinsky)
+function DiffusivityFields(grid, tracer_names, bcs, closure::ScaleInvariantSmagorinsky; velocities::NamedTuple)
 
     default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))
     bcs = merge(default_eddy_viscosity_bcs, bcs)
     νₑ = CenterField(grid, boundary_conditions=bcs.νₑ)
 
-    LM_avg = directionally_averaged_field(grid, Val(closure.averaging))
-    MM_avg = directionally_averaged_field(grid, Val(closure.averaging))
+    LM_avg = Field(Average(KernelFunctionOperation{Center, Center, Center}(LᵢⱼMᵢⱼ_ccc, grid, velocities...), dims=closure.averaging.dims))
+    MM_avg = Field(Average(KernelFunctionOperation{Center, Center, Center}(MᵢⱼMᵢⱼ_ccc, grid, velocities...), dims=closure.averaging.dims))
 
     return (; νₑ, LM_avg, MM_avg)
 end
