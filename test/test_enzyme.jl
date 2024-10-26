@@ -301,7 +301,7 @@ end
     
     # Use a manual finite difference to compute a gradient
     Δν = 1e-6
-    ν1 = ν₀
+    ν1 = ν₀ + Δν
     ν2 = ν1 + Δν
     e1 = viscous_hydrostatic_turbulence(ν1, model, u_init, v_init, Δt, u_truth, v_truth)
     e2 = viscous_hydrostatic_turbulence(ν2, model, u_init, v_init, Δt, u_truth, v_truth)
