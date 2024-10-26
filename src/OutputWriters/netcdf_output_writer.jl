@@ -389,7 +389,6 @@ function NetCDFOutputWriter(model, outputs;
             overwrite_existing = true
         end
     else
-
         if isfile(filepath) && !overwrite_existing
             @warn "$filepath already exists and `overwrite_existing = false`. Mode will be set to append to existing file. " *
                   "You might experience errors when writing output if the existing file belonged to a different simulation!"
@@ -593,7 +592,7 @@ function Base.show(io::IO, ow::NetCDFOutputWriter)
     Noutputs = length(ow.outputs)
 
     print(io, "NetCDFOutputWriter scheduled on $(summary(ow.schedule)):", "\n",
-              "├── filepath: ", ow.filepath, "\n",
+              "├── filepath: ", relpath(ow.filepath), "\n",
               "├── dimensions: $dims", "\n",
               "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
               "└── array type: ", show_array_type(ow.array_type), "\n",

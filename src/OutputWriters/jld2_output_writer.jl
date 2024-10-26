@@ -157,7 +157,8 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
 
     mkpath(dir)
     filename = auto_extension(filename, ".jld2")
-    filepath = joinpath(dir, filename)
+    filepath = abspath(joinpath(dir, filename))
+
     initialize!(file_splitting, model)
     update_file_splitting_schedule!(file_splitting, filepath)
     overwrite_existing && isfile(filepath) && rm(filepath, force=true)
@@ -327,7 +328,7 @@ function Base.show(io::IO, ow::JLD2OutputWriter)
     Noutputs = length(ow.outputs)
 
     print(io, "JLD2OutputWriter scheduled on $(summary(ow.schedule)):", "\n",
-              "├── filepath: $(ow.filepath)", "\n",
+              "├── filepath: ", relpath(ow.filepath), "\n",
               "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
               "├── array type: ", show_array_type(ow.array_type), "\n",
               "├── including: ", ow.including, "\n",
