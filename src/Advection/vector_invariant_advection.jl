@@ -188,6 +188,11 @@ nothing_to_default(user_value; default) = isnothing(user_value) ? default : user
 
 Return a vector-invariant weighted essentially non-oscillatory (WENO) scheme.
 See [`VectorInvariant`](@ref) and [`WENO`](@ref) for kwargs definitions.
+
+If `multi_dimensional_stencil = true` is selected, then a 2D horizontal stencil
+is implemented for the WENO scheme (instead of a 1D stencil). This 2D horizontal
+stencil performs a centered 5th-order WENO reconstruction of vorticity,
+divergence and kinetic energy in the tangential direction.
 """
 function WENOVectorInvariant(FT::DataType = Float64; 
                              upwinding = nothing,
