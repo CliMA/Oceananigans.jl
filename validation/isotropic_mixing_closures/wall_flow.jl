@@ -1,6 +1,7 @@
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Grids: znode
+using Oceananigans.TurbulenceClosures: DirectionallyAveragedCoefficient
 using Printf
 simname = "wall_flow"
 
@@ -42,10 +43,11 @@ function run_wall_flow(closure; arch=CPU(), H=1, L=2π*H, N=32, u★=1, z₀ = 1
 
     start_time = time_ns() # so we can print the total elapsed wall time
     progress_message(sim) = @printf("Iteration: %04d,  time: %s,  Δt: %s,  max|u|: %.2e m/s,  wall time: %s\n",
-                                    iteration(sim), prettytime(time(sim)), prettytime(sim.Δt), maximum(abs, sim.model.velocities.u), prettytime((time_ns() - start_time) * 1e-9))
+                                    iteration(sim), prettytime(time(sim)), prettytime(sim.Δt), maximum(abs, sim.model.velocities.u),
+                                    prettytime((time_ns() - start_time) * 1e-9))
     add_callback!(simulation, Callback(progress_message, IterationInterval(100)))
 
-    closure_name = string(nameof(typeof(closure)))
+    closure_name = string(nameof(typeof(closure.coefficient)))
 
     u, v, w = model.velocities
 
@@ -53,11 +55,11 @@ function run_wall_flow(closure; arch=CPU(), H=1, L=2π*H, N=32, u★=1, z₀ = 1
     z = @show KernelFunctionOperation{Nothing, Nothing, Face}(znode, model.grid, Center(), Center(), Face())
     ϕ = @show @at (Nothing, Nothing, Center) κ * z / u★ * ∂z(Field(U))
 
-    if closure isa ScaleInvariantSmagorinsky
+    if closure.coefficient isa DirectionallyAveragedCoefficient
         cₛ² = model.diffusivity_fields.LM_avg / model.diffusivity_fields.MM_avg
     else
         cₛ² = Field{Nothing, Nothing, Center}(grid)
-        cₛ² .= model.closure.C^2
+        cₛ² .= model.closure.coefficient^2
     end
     outputs = (; u, w, U, ϕ, cₛ²)
 
@@ -70,7 +72,7 @@ function run_wall_flow(closure; arch=CPU(), H=1, L=2π*H, N=32, u★=1, z₀ = 1
 
 end
 
-closures = [SmagorinskyLilly(), ScaleInvariantSmagorinsky(averaging = (1,2), update_interval=5)]
+closures = [SmagorinskyLilly(coefficient=0.16), SmagorinskyLilly(coefficient=DirectionallyAveragedCoefficient(1,2))]
 for closure in closures
     @info "Running" closure
     run_wall_flow(closure, N=64, stop_time=60, arch=GPU())
@@ -94,7 +96,7 @@ n = Observable(1)
 colors = [:red, :blue]
 Δt = 10
 for (i, closure) in enumerate(closures)
-    closure_name = string(nameof(typeof(closure)))
+    closure_name = string(nameof(typeof(closure.coefficient)))
     local filename = simname * "_" * closure_name
     @info "Plotting from " * filename
     ds = NCDataset(filename * ".nc", "r")

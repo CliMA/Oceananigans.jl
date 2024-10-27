@@ -31,6 +31,12 @@ function run_3d_turbulence(closure; grid = grid, coarse_grid = coarse_grid)
     wizard = TimeStepWizard(cfl=0.7, max_change=1.1, max_Δt=0.5)
     add_callback!(simulation, wizard, IterationInterval(10))
 
+    start_time = time_ns() # so we can print the total elapsed wall time
+    progress_message(sim) = @printf("Iteration: %04d,  time: %s,  Δt: %s,  max|u|: %.2e m/s,  wall time: %s\n",
+                                    iteration(sim), prettytime(time(sim)), prettytime(sim.Δt), maximum(abs, sim.model.velocities.u),
+                                    prettytime((time_ns() - start_time) * 1e-9))
+    add_callback!(simulation, Callback(progress_message, IterationInterval(100)))
+
     S² = KernelFunctionOperation{Center, Center, Center}(Oceananigans.TurbulenceClosures.ΣᵢⱼΣᵢⱼᶜᶜᶜ, model.grid, u, v, w)
 
     if closure.coefficient isa DirectionallyAveragedCoefficient
