@@ -17,6 +17,10 @@ function fill_open_boundary_regions!(field, boundary_conditions, indices, loc, g
     open_fill, regular_fill = get_open_halo_filling_functions(loc) 
     fill_size = fill_halo_size(field, regular_fill, indices, boundary_conditions, loc, grid)
 
+    if fill_size == :yz
+        #@show fill_size indices
+        fill_size = KernelParameters((grid.Ny+2, grid.Nz), (-1, 0))
+    end
     launch!(arch, grid, fill_size, open_fill, field, left_bc, right_bc, loc, grid, args)
 
     return nothing
