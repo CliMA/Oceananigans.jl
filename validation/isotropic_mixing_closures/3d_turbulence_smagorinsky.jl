@@ -2,6 +2,7 @@ using Oceananigans
 using Oceananigans.Fields: interpolate!
 using Statistics
 using Oceananigans.TurbulenceClosures: DirectionallyAveragedCoefficient
+using Printf: @printf
 
 N = 64
 arch = GPU()
@@ -26,7 +27,7 @@ function run_3d_turbulence(closure; grid = grid, coarse_grid = coarse_grid)
     v .-= mean(v)
     w .-= mean(w)
 
-    simulation = Simulation(model, Δt=0.2, stop_time=80)
+    simulation = Simulation(model, Δt=0.5minimum_zspacing(grid)/maximum(u), stop_time=80)
 
     wizard = TimeStepWizard(cfl=0.7, max_change=1.1, max_Δt=0.5)
     add_callback!(simulation, wizard, IterationInterval(10))

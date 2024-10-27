@@ -2,7 +2,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Grids: znode
 using Oceananigans.TurbulenceClosures: DirectionallyAveragedCoefficient
-using Printf
+using Printf: @printf
 simname = "wall_flow"
 
 const κ = 0.4
