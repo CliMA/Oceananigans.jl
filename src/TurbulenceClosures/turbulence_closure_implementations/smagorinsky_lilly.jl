@@ -167,11 +167,17 @@ end
     return ς * c₀^2
 end
 
-@kernel function _compute_LM_MM!(LM, MM, grid, u, v, w)
+@kernel function _compute_S_S̄!(S, S̄, grid, u, v, w)
     i, j, k = @index(Global, NTuple)
 
-    Sᶜᶜᶜ = √(ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w))
-    S̄ᶜᶜᶜ = √(Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w))
+    @inbounds begin
+        S[i, j, k] = √(ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w))
+        S̄[i, j, k] = √(Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w))
+    end
+end
+
+@kernel function _compute_LM_MM!(S, S̄, LM, MM, grid, u, v, w)
+    i, j, k = @index(Global, NTuple)
 
     L₁₁ = L₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w)
     L₂₂ = L₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w)
@@ -180,12 +186,12 @@ end
     L₁₃ = L₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
     L₂₃ = L₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
 
-    M₁₁ = M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Sᶜᶜᶜ, S̄ᶜᶜᶜ)
-    M₂₂ = M₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Sᶜᶜᶜ, S̄ᶜᶜᶜ)
-    M₃₃ = M₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Sᶜᶜᶜ, S̄ᶜᶜᶜ)
-    M₁₂ = M₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Sᶜᶜᶜ, S̄ᶜᶜᶜ)
-    M₁₃ = M₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Sᶜᶜᶜ, S̄ᶜᶜᶜ)
-    M₂₃ = M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Sᶜᶜᶜ, S̄ᶜᶜᶜ)
+    M₁₁ = M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, S, S̄)
+    M₂₂ = M₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, S, S̄)
+    M₃₃ = M₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, S, S̄)
+    M₁₂ = M₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, S, S̄)
+    M₁₃ = M₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, S, S̄)
+    M₂₃ = M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, S, S̄)
 
     @inbounds begin
         LM[i, j, k] = L₁₁ * M₁₁ + L₂₂ * M₂₂ + L₃₃ * M₃₃ + 2L₁₂ * M₁₂ + 2L₁₃ * M₁₃ + 2L₂₃ * M₂₃
@@ -201,10 +207,13 @@ function compute_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly, m
     tracers = model.tracers
 
     if closure.coefficient isa DirectionallyAveragedCoefficient
+        S = diffusivity_fields.S
+        S̄ = diffusivity_fields.S̄
+        launch!(arch, grid, :xyz, _compute_S_S̄!, S, S̄, grid, velocities...)
+
         LM = diffusivity_fields.LM
         MM = diffusivity_fields.MM
-        u, v, w = velocities
-        launch!(arch, grid, :xyz, _compute_LM_MM!, LM, MM, grid, u, v, w)
+        launch!(arch, grid, :xyz, _compute_LM_MM!, S, S̄, LM, MM, grid, velocities...)
 
         LM_avg = diffusivity_fields.LM_avg
         MM_avg = diffusivity_fields.MM_avg
@@ -280,10 +289,13 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::SmagorinskyLilly)
         LM = CenterField(grid)
         MM = CenterField(grid)
 
+        S = CenterField(grid)
+        S̄ = CenterField(grid)
+
         LM_avg = Field(Average(LM, dims=closure.coefficient.dims))
         MM_avg = Field(Average(MM, dims=closure.coefficient.dims))
 
-        return (; νₑ, LM, MM, LM_avg, MM_avg)
+        return (; νₑ, S, S̄, LM, MM, LM_avg, MM_avg)
 
     else closure.coefficient isa Number
         return (; νₑ)
