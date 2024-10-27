@@ -2,8 +2,9 @@ using CairoMakie, JLD2, Statistics, HDF5, Oceananigans
 data_directory = "/nobackup1/sandre/OceananigansData/"
 figure_directory = "oceananigans_figure/"
 
-jlfile = jldopen(data_directory * "baroclinic_double_gyre_free_surface_2.jld2", "r")
-jlfile2 = jldopen(data_directory * "baroclinic_double_gyre_2.jld2", "r")
+casevar = 1
+jlfile = jldopen(data_directory * "baroclinic_double_gyre_free_surface_$casevar.jld2", "r")
+jlfile2 = jldopen(data_directory * "baroclinic_double_gyre_$casevar.jld2", "r")
 ηkeys =  keys(jlfile["timeseries"]["η"])[2:end]
 
 η = zeros(size(jlfile["timeseries"]["η"]["0"])[1:2]..., length(ηkeys))
@@ -158,7 +159,7 @@ using KernelAbstractions: @kernel, @index
 using Oceananigans.Operators
 using Oceananigans.Architectures: architecture
 
-u = FieldTimeSeries(data_directory * "baroclinic_double_gyre_2.jld2", "u")
+u = FieldTimeSeries(data_directory * "baroclinic_double_gyre_$casevar.jld2", "u")
 
 function barotropic_streamfunction(u)
     U = Field(Integral(u, dims=3))
