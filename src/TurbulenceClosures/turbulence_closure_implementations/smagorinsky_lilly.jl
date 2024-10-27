@@ -130,9 +130,9 @@ end
 
 @inline square_smagorinsky_coefficient(i, j, k, grid, c::ConstantSmagorinsky, args...) = c.coefficient^2
 
-@inline function square_smagorinsky_coefficient(i, j, k, grid, ::DirectionallyAveragedSmagorinsky, K, args...)
-    LM_avg = K.LM_avg
-    MM_avg = K.MM_avg
+@inline function square_smagorinsky_coefficient(i, j, k, grid, ::DirectionallyAveragedSmagorinsky, diffusivity_fields, args...)
+    LM_avg = diffusivity_fields.LM_avg
+    MM_avg = diffusivity_fields.MM_avg
 
     @inbounds begin
         LM⁺ = max(LM_avg[i, j, k], zero(grid))
@@ -159,7 +159,7 @@ when ``N^2 > 0``, and 1 otherwise.
     return ifelse(Σ²==0, zero(FT), sqrt(ς²))
 end
 
-@inline function square_smagorinsky_coefficient(i, j, k, grid, closure::SmagLilly, K, Σ², buoyancy, tracers)
+@inline function square_smagorinsky_coefficient(i, j, k, grid, closure::SmagLilly, diffusivity_fields, Σ², buoyancy, tracers)
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     c₀ = closure.coefficient.smagorinsky
     cᵇ = closure.coefficient.reduction_factor
@@ -167,16 +167,16 @@ end
     return ς * c₀^2
 end
 
-@kernel function _compute_S_S̄!(S, S̄, grid, u, v, w)
+@kernel function _compute_Σ_Σ̄!(Σ, Σ̄, grid, u, v, w)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        S[i, j, k] = √(ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w))
-        S̄[i, j, k] = √(Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w))
+        Σ[i, j, k] = √(ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w))
+        Σ̄[i, j, k] = √(Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w))
     end
 end
 
-@kernel function _compute_LM_MM!(S, S̄, LM, MM, grid, u, v, w)
+@kernel function _compute_LM_MM!(Σ, Σ̄, LM, MM, grid, u, v, w)
     i, j, k = @index(Global, NTuple)
 
     L₁₁ = L₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w)
@@ -186,12 +186,12 @@ end
     L₁₃ = L₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
     L₂₃ = L₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
 
-    M₁₁ = M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, S, S̄)
-    M₂₂ = M₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, S, S̄)
-    M₃₃ = M₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, S, S̄)
-    M₁₂ = M₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, S, S̄)
-    M₁₃ = M₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, S, S̄)
-    M₂₃ = M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, S, S̄)
+    M₁₁ = M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
+    M₂₂ = M₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
+    M₃₃ = M₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
+    M₁₂ = M₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
+    M₁₃ = M₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
+    M₂₃ = M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
 
     @inbounds begin
         LM[i, j, k] = L₁₁ * M₁₁ + L₂₂ * M₂₂ + L₃₃ * M₃₃ + 2L₁₂ * M₁₂ + 2L₁₃ * M₁₃ + 2L₂₃ * M₂₃
@@ -207,13 +207,13 @@ function compute_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly, m
     tracers = model.tracers
 
     if closure.coefficient isa DirectionallyAveragedCoefficient
-        S = diffusivity_fields.S
-        S̄ = diffusivity_fields.S̄
-        launch!(arch, grid, :xyz, _compute_S_S̄!, S, S̄, grid, velocities...)
+        Σ = diffusivity_fields.Σ
+        Σ̄ = diffusivity_fields.Σ̄
+        launch!(arch, grid, :xyz, _compute_Σ_Σ̄!, Σ, Σ̄, grid, velocities...)
 
         LM = diffusivity_fields.LM
         MM = diffusivity_fields.MM
-        launch!(arch, grid, :xyz, _compute_LM_MM!, S, S̄, LM, MM, grid, velocities...)
+        launch!(arch, grid, :xyz, _compute_LM_MM!, Σ, Σ̄, LM, MM, grid, velocities...)
 
         LM_avg = diffusivity_fields.LM_avg
         MM_avg = diffusivity_fields.MM_avg
@@ -289,13 +289,13 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::SmagorinskyLilly)
         LM = CenterField(grid)
         MM = CenterField(grid)
 
-        S = CenterField(grid)
-        S̄ = CenterField(grid)
+        Σ = CenterField(grid)
+        Σ̄ = CenterField(grid)
 
         LM_avg = Field(Average(LM, dims=closure.coefficient.dims))
         MM_avg = Field(Average(MM, dims=closure.coefficient.dims))
 
-        return (; νₑ, S, S̄, LM, MM, LM_avg, MM_avg)
+        return (; νₑ, Σ, Σ̄, LM, MM, LM_avg, MM_avg)
 
     else closure.coefficient isa Number
         return (; νₑ)

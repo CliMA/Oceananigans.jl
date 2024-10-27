@@ -13,7 +13,6 @@ end
 DiffusivityFields(::Nothing, grid, tracer_names, bcs, closure) =
     DiffusivityFields(grid, tracer_names, bcs, closure)
 
-
 #####
 ##### Closures without precomputed diffusivities
 #####

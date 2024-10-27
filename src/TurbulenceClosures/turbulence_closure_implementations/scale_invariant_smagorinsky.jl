@@ -98,38 +98,38 @@ const AG{FT} = AbstractGrid{FT} where FT
 
 # Here the notation ⟨A⟩ is equivalent to Ā: a filter of size 2Δᶠ, where Δᶠ is the grid scale.
 
-@inline SS₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = @inbounds Sᶜᶜᶜ[i, j, k] * Σ₁₁(i, j, k, grid, u, v, w)
-@inline SS₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = @inbounds Sᶜᶜᶜ[i, j, k] * Σ₂₂(i, j, k, grid, u, v, w)
-@inline SS₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = @inbounds Sᶜᶜᶜ[i, j, k] * Σ₃₃(i, j, k, grid, u, v, w)
+@inline SS₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, Σᶜᶜᶜ) = @inbounds Σᶜᶜᶜ[i, j, k] * Σ₁₁(i, j, k, grid, u, v, w)
+@inline SS₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, Σᶜᶜᶜ) = @inbounds Σᶜᶜᶜ[i, j, k] * Σ₂₂(i, j, k, grid, u, v, w)
+@inline SS₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Σᶜᶜᶜ) = @inbounds Σᶜᶜᶜ[i, j, k] * Σ₃₃(i, j, k, grid, u, v, w)
 
-@inline SS₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = @inbounds Sᶜᶜᶜ[i, j, k] * ℑxyᶜᶜᵃ(i, j, k, grid, Σ₁₂, u, v, w)
-@inline SS₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = @inbounds Sᶜᶜᶜ[i, j, k] * ℑxzᶜᵃᶜ(i, j, k, grid, Σ₁₃, u, v, w)
-@inline SS₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = @inbounds Sᶜᶜᶜ[i, j, k] * ℑyzᵃᶜᶜ(i, j, k, grid, Σ₂₃, u, v, w)
+@inline SS₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, Σᶜᶜᶜ) = @inbounds Σᶜᶜᶜ[i, j, k] * ℑxyᶜᶜᵃ(i, j, k, grid, Σ₁₂, u, v, w)
+@inline SS₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Σᶜᶜᶜ) = @inbounds Σᶜᶜᶜ[i, j, k] * ℑxzᶜᵃᶜ(i, j, k, grid, Σ₁₃, u, v, w)
+@inline SS₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Σᶜᶜᶜ) = @inbounds Σᶜᶜᶜ[i, j, k] * ℑyzᵃᶜᶜ(i, j, k, grid, Σ₂₃, u, v, w)
 
-@inline var"⟨SS₁₁⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₁₁ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
-@inline var"⟨SS₂₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₂₂ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
-@inline var"⟨SS₃₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₃₃ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
+@inline var"⟨SS₁₁⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Σᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₁₁ᶜᶜᶜ, u, v, w, Σᶜᶜᶜ)
+@inline var"⟨SS₂₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Σᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₂₂ᶜᶜᶜ, u, v, w, Σᶜᶜᶜ)
+@inline var"⟨SS₃₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Σᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₃₃ᶜᶜᶜ, u, v, w, Σᶜᶜᶜ)
 
-@inline var"⟨SS₁₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₁₂ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
-@inline var"⟨SS₁₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₁₃ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
-@inline var"⟨SS₂₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₂₃ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
+@inline var"⟨SS₁₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Σᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₁₂ᶜᶜᶜ, u, v, w, Σᶜᶜᶜ)
+@inline var"⟨SS₁₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Σᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₁₃ᶜᶜᶜ, u, v, w, Σᶜᶜᶜ)
+@inline var"⟨SS₂₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Σᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₂₃ᶜᶜᶜ, u, v, w, Σᶜᶜᶜ)
 
-@inline S̄S̄₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = @inbounds S̄ᶜᶜᶜ[i, j, k] * Σ̄₁₁(i, j, k, grid, u, v, w)
-@inline S̄S̄₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = @inbounds S̄ᶜᶜᶜ[i, j, k] * Σ̄₂₂(i, j, k, grid, u, v, w)
-@inline S̄S̄₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = @inbounds S̄ᶜᶜᶜ[i, j, k] * Σ̄₃₃(i, j, k, grid, u, v, w)
+@inline S̄S̄₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ̄ᶜᶜᶜ) = @inbounds Σ̄ᶜᶜᶜ[i, j, k] * Σ̄₁₁(i, j, k, grid, u, v, w)
+@inline S̄S̄₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ̄ᶜᶜᶜ) = @inbounds Σ̄ᶜᶜᶜ[i, j, k] * Σ̄₂₂(i, j, k, grid, u, v, w)
+@inline S̄S̄₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ̄ᶜᶜᶜ) = @inbounds Σ̄ᶜᶜᶜ[i, j, k] * Σ̄₃₃(i, j, k, grid, u, v, w)
 
-@inline S̄S̄₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = @inbounds S̄ᶜᶜᶜ[i, j, k] * ℑxyᶜᶜᵃ(i, j, k, grid, Σ̄₁₂, u, v, w)
-@inline S̄S̄₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = @inbounds S̄ᶜᶜᶜ[i, j, k] * ℑxzᶜᵃᶜ(i, j, k, grid, Σ̄₁₃, u, v, w)
-@inline S̄S̄₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = @inbounds S̄ᶜᶜᶜ[i, j, k] * ℑyzᵃᶜᶜ(i, j, k, grid, Σ̄₂₃, u, v, w)
+@inline S̄S̄₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ̄ᶜᶜᶜ) = @inbounds Σ̄ᶜᶜᶜ[i, j, k] * ℑxyᶜᶜᵃ(i, j, k, grid, Σ̄₁₂, u, v, w)
+@inline S̄S̄₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ̄ᶜᶜᶜ) = @inbounds Σ̄ᶜᶜᶜ[i, j, k] * ℑxzᶜᵃᶜ(i, j, k, grid, Σ̄₁₃, u, v, w)
+@inline S̄S̄₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ̄ᶜᶜᶜ) = @inbounds Σ̄ᶜᶜᶜ[i, j, k] * ℑyzᵃᶜᶜ(i, j, k, grid, Σ̄₂₃, u, v, w)
 
 @inline Δᶠ(i, j, k, grid) = ∛volume(i, j, k, grid, Center(), Center(), Center())
-@inline M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Sᶜᶜᶜ, S̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₁₁⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) - α^2*β * S̄S̄₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ))
-@inline M₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Sᶜᶜᶜ, S̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₂₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) - α^2*β * S̄S̄₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ))
-@inline M₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Sᶜᶜᶜ, S̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₃₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) - α^2*β * S̄S̄₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ))
+@inline M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Σᶜᶜᶜ, Σ̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₁₁⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Σᶜᶜᶜ) - α^2*β * S̄S̄₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ̄ᶜᶜᶜ))
+@inline M₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Σᶜᶜᶜ, Σ̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₂₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Σᶜᶜᶜ) - α^2*β * S̄S̄₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ̄ᶜᶜᶜ))
+@inline M₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Σᶜᶜᶜ, Σ̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₃₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Σᶜᶜᶜ) - α^2*β * S̄S̄₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ̄ᶜᶜᶜ))
 
-@inline M₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Sᶜᶜᶜ, S̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₁₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) - α^2*β * S̄S̄₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ))
-@inline M₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Sᶜᶜᶜ, S̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₁₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) - α^2*β * S̄S̄₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ))
-@inline M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Sᶜᶜᶜ, S̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₂₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) - α^2*β * S̄S̄₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ))
+@inline M₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Σᶜᶜᶜ, Σ̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₁₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Σᶜᶜᶜ) - α^2*β * S̄S̄₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ̄ᶜᶜᶜ))
+@inline M₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Σᶜᶜᶜ, Σ̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₁₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Σᶜᶜᶜ) - α^2*β * S̄S̄₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ̄ᶜᶜᶜ))
+@inline M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Σᶜᶜᶜ, Σ̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₂₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Σᶜᶜᶜ) - α^2*β * S̄S̄₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ̄ᶜᶜᶜ))
 
 @inline ϕψ(i, j, k, grid, ϕ, ψ) = @inbounds ϕ[i, j, k] * ψ[i, j, k]
 @inline u₁u₁ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℑxᶜᵃᵃ(i, j, k, grid, ϕψ, u, u)
