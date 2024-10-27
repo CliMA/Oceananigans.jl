@@ -114,17 +114,13 @@ const AG{FT} = AbstractGrid{FT} where FT
 @inline var"⟨SS₁₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℑxzᶜᵃᶜ(i, j, k, grid, ℱ²ᵟ, SS₁₃ᶠᶜᶠ, u, v, w, Sᶜᶜᶜ)
 @inline var"⟨SS₂₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℑyzᵃᶜᶜ(i, j, k, grid, ℱ²ᵟ, SS₂₃ᶜᶠᶠ, u, v, w, Sᶜᶜᶜ)
 
-@inline S̄S̄₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = S̄ᶜᶜᶜ * Σ̄₁₁(i, j, k, grid, u, v, w) # ccc
-@inline S̄S̄₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = S̄ᶜᶜᶜ * Σ̄₂₂(i, j, k, grid, u, v, w) # ccc
-@inline S̄S̄₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = S̄ᶜᶜᶜ * Σ̄₃₃(i, j, k, grid, u, v, w) # ccc
+@inline S̄S̄₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = S̄ᶜᶜᶜ * Σ̄₁₁(i, j, k, grid, u, v, w)
+@inline S̄S̄₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = S̄ᶜᶜᶜ * Σ̄₂₂(i, j, k, grid, u, v, w)
+@inline S̄S̄₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = S̄ᶜᶜᶜ * Σ̄₃₃(i, j, k, grid, u, v, w)
 
-@inline S̄S̄₁₂ᶠᶠᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = S̄ᶜᶜᶜ * Σ̄₁₂(i, j, k, grid, u, v, w) # ffc
-@inline S̄S̄₁₃ᶠᶜᶠ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = S̄ᶜᶜᶜ * Σ̄₁₃(i, j, k, grid, u, v, w) # fcf
-@inline S̄S̄₂₃ᶜᶠᶠ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = S̄ᶜᶜᶜ * Σ̄₂₃(i, j, k, grid, u, v, w) # cff
-
-@inline S̄S̄₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = ℑxyᶜᶜᵃ(i, j, k, grid, S̄S̄₁₂ᶠᶠᶜ, u, v, w, S̄ᶜᶜᶜ)
-@inline S̄S̄₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = ℑxzᶜᵃᶜ(i, j, k, grid, S̄S̄₁₃ᶠᶜᶠ, u, v, w, S̄ᶜᶜᶜ)
-@inline S̄S̄₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = ℑyzᵃᶜᶜ(i, j, k, grid, S̄S̄₂₃ᶜᶠᶠ, u, v, w, S̄ᶜᶜᶜ)
+@inline S̄S̄₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = S̄ᶜᶜᶜ * ℑxyᶜᶜᵃ(i, j, k, grid, Σ̄₁₂, u, v, w)
+@inline S̄S̄₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = S̄ᶜᶜᶜ * ℑxzᶜᵃᶜ(i, j, k, grid, Σ̄₁₃, u, v, w)
+@inline S̄S̄₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = S̄ᶜᶜᶜ * ℑyzᵃᶜᶜ(i, j, k, grid, Σ̄₂₃, u, v, w)
 
 @inline Δᶠ(i, j, k, grid) = ∛volume(i, j, k, grid, Center(), Center(), Center())
 @inline M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, α, β, Sᶜᶜᶜ, S̄ᶜᶜᶜ) = 2*Δᶠ(i, j, k, grid)^2 * (var"⟨SS₁₁⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) - α^2*β * S̄S̄₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ))
