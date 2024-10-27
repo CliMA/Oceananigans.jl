@@ -8,6 +8,11 @@ struct DirectionallyAveragedCoefficient{D}
 end
 
 DirectionallyAveragedCoefficient(; dims) = DirectionallyAveragedCoefficient(dims)
+DirectionallyAveragedCoefficient(args...) = DirectionallyAveragedCoefficient(tuple(args...))
+
+Base.summary(dac::DirectionallyAveragedCoefficient) = string("DirectionallyAveragedCoefficient($(dac.dims))")
+Base.show(io::IO, dac::DirectionallyAveragedCoefficient) = print(io, summary(dac))
+
 
 struct LagrangianAveragedCoefficient end
 
@@ -301,4 +306,3 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::SmagorinskyLilly)
         return (; νₑ)
     end
 end
-
