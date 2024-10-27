@@ -98,21 +98,21 @@ const AG{FT} = AbstractGrid{FT} where FT
 
 # Here the notation ⟨A⟩ is equivalent to Ā: a filter of size 2Δᶠ, where Δᶠ is the grid scale.
 
-@inline SS₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = Sᶜᶜᶜ * Σ₁₁(i, j, k, grid, u, v, w) # ccc
-@inline SS₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = Sᶜᶜᶜ * Σ₂₂(i, j, k, grid, u, v, w) # ccc
-@inline SS₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = Sᶜᶜᶜ * Σ₃₃(i, j, k, grid, u, v, w) # ccc
+@inline SS₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = Sᶜᶜᶜ * Σ₁₁(i, j, k, grid, u, v, w)
+@inline SS₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = Sᶜᶜᶜ * Σ₂₂(i, j, k, grid, u, v, w)
+@inline SS₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = Sᶜᶜᶜ * Σ₃₃(i, j, k, grid, u, v, w)
 
-@inline SS₁₂ᶠᶠᶜ(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = Sᶜᶜᶜ * Σ₁₂(i, j, k, grid, u, v, w) # ffc
-@inline SS₁₃ᶠᶜᶠ(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = Sᶜᶜᶜ * Σ₁₃(i, j, k, grid, u, v, w) # fcf
-@inline SS₂₃ᶜᶠᶠ(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = Sᶜᶜᶜ * Σ₂₃(i, j, k, grid, u, v, w) # cff
+@inline SS₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = Sᶜᶜᶜ * ℑxyᶜᶜᵃ(i, j, k, grid, Σ₁₂, u, v, w)
+@inline SS₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = Sᶜᶜᶜ * ℑxzᶜᵃᶜ(i, j, k, grid, Σ₁₃, u, v, w)
+@inline SS₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = Sᶜᶜᶜ * ℑyzᵃᶜᶜ(i, j, k, grid, Σ₂₃, u, v, w)
 
 @inline var"⟨SS₁₁⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₁₁ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
 @inline var"⟨SS₂₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₂₂ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
 @inline var"⟨SS₃₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₃₃ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
 
-@inline var"⟨SS₁₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℑxyᶜᶜᵃ(i, j, k, grid, ℱ²ᵟ, SS₁₂ᶠᶠᶜ, u, v, w, Sᶜᶜᶜ)
-@inline var"⟨SS₁₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℑxzᶜᵃᶜ(i, j, k, grid, ℱ²ᵟ, SS₁₃ᶠᶜᶠ, u, v, w, Sᶜᶜᶜ)
-@inline var"⟨SS₂₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℑyzᵃᶜᶜ(i, j, k, grid, ℱ²ᵟ, SS₂₃ᶜᶠᶠ, u, v, w, Sᶜᶜᶜ)
+@inline var"⟨SS₁₂⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₁₂ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
+@inline var"⟨SS₁₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₁₃ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
+@inline var"⟨SS₂₃⟩ᶜᶜᶜ"(i, j, k, grid, u, v, w, Sᶜᶜᶜ) = ℱ²ᵟ(i, j, k, grid, SS₂₃ᶜᶜᶜ, u, v, w, Sᶜᶜᶜ)
 
 @inline S̄S̄₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = S̄ᶜᶜᶜ * Σ̄₁₁(i, j, k, grid, u, v, w)
 @inline S̄S̄₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, S̄ᶜᶜᶜ) = S̄ᶜᶜᶜ * Σ̄₂₂(i, j, k, grid, u, v, w)
