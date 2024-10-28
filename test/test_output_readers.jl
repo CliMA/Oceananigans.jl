@@ -391,7 +391,7 @@ end
             @info "  Testing FieldDataset{$Backend} parallel reading..."
 
             backend_kw = Dict(:parallel_read => true)
-            ds = FieldDataset(filepath3d, backend=Backend())
+            ds = FieldDataset(filepath3d; backend=Backend(), backend_kw)
 
             @test ds isa FieldDataset
             @test ds.u isa FieldTimeSeries
