@@ -1,7 +1,7 @@
 using Oceananigans
 using Oceananigans.Fields: VelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: PrescribedVelocityFields
-using Oceananigans.Models: VarianceDissipationComputation
+using Oceananigans.Models: TracerVarianceDissipation
 using Printf
 using GLMakie
 
@@ -38,7 +38,7 @@ function one_dimensional_simulation(grid, advection, label)
 
     Δt = 0.1 * minimum_xspacing(grid)
 
-    dissipation_computation = VarianceDissipationComputation(model; tracers = :b)
+    dissipation_computation = TracerVarianceDissipation(model; tracers = :b)
     simulation  = Simulation(model; Δt, stop_time = 10)
     simulation.callbacks[:compute_dissipation] = Callback(dissipation_computation, IterationInterval(1))
 
@@ -46,7 +46,7 @@ function one_dimensional_simulation(grid, advection, label)
     bⁿ⁻¹ = dissipation_computation.previous_state.b
     bⁿ   = model.tracers.b
 
-    Σb²  = @at((Center, Center, Center), Px) + (bⁿ^2 - bⁿ⁻¹^2) / Δt # Actually not at the same time-step
+    Σb²  = (bⁿ^2 - bⁿ⁻¹^2) / Δt # Not at the same time-step of Px unfortunately
     outputs  = (; Px, b = model.tracers.b, Σb²)
     filename = "dissipation_" * label * ".jld2"
 
@@ -107,7 +107,7 @@ axislegend(ax, position = :rb)
 
 ax  = Axis(fig[1, 2], xlabel = L"x", ylabel = L"variance dissipation")
 lines!(ax, x, Pn[1], color = :red , label = labels[1])
-lines!(ax, x, Pn[1], color = :blue, label = labels[2])
+lines!(ax, x, Pn[3], color = :blue, label = labels[2])
 lines!(ax, x, Bn[1], color = :red , linestyle = :dash)
 lines!(ax, x, Bn[3], color = :blue, linestyle = :dash)
 ylims!(ax, (-1, 1))

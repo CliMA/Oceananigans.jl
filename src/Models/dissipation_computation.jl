@@ -12,7 +12,7 @@ using KernelAbstractions: @kernel, @index
 
 import Oceananigans.Utils: KernelParameters
 
-struct VarianceDissipationComputation{P, A, S}
+struct TracerVarianceDissipation{P, A, S}
     production :: P
     advective_fluxes :: A
     previous_state :: S
@@ -26,7 +26,7 @@ function fluxes_fields(grid)
     return (; x, y, z)
 end
 
-function VarianceDissipationComputation(model; tracers = propertynames(model.tracers))
+function TracerVarianceDissipation(model; tracers = propertynames(model.tracers))
         
     if !(model.timestepper isa QuasiAdamsBashforth2TimeStepper)
         throw(ArgumentError("DissipationComputation requires a QuasiAdamsBashforth2TimeStepper"))
@@ -47,7 +47,7 @@ function VarianceDissipationComputation(model; tracers = propertynames(model.tra
     previous_state = merge(cⁿ⁻¹, (; Uⁿ⁻¹, Uⁿ))
     advective_fluxes = (; Fⁿ, Fⁿ⁻¹)
 
-    return VarianceDissipationComputation(P, advective_fluxes, previous_state)
+    return TracerVarianceDissipation(P, advective_fluxes, previous_state)
 end
 
 # Function to call in a callback
@@ -55,7 +55,7 @@ end
 # previous fluxes and velocities will not be correct
 # TODO: make sure that the correct velocities and fluxes are used even if 
 # the callback is not called with an IterationInterval(1)
-function (dc::VarianceDissipationComputation)(simulation)
+function (dc::TracerVarianceDissipation)(simulation)
     # We first assemble values for Pⁿ⁻¹
     assemble_P_values!(simulation, dc)
 
