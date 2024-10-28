@@ -123,8 +123,8 @@ build_implicit_step_solver(::Val{:Default}, grid, settings, gravitational_accele
 """
 Implicitly step forward η.
 """
-step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper, Δt, χ) =
-    implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ)
+step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper, Δt) =
+    implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, timestepper.χ)
 
 function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ)
     η      = free_surface.η

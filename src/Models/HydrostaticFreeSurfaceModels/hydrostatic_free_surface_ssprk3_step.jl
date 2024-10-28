@@ -71,6 +71,7 @@ function store_old_fields!(model::HydrostaticFreeSurfaceModel)
         parent(previous_fields[name]) .= parent(new_fields[name])
     end
     
+    # TODO: These should be part of the main timestepper
     if model.free_surface isa SplitExplicitFreeSurface
         Uᵐ = model.free_surface.state.Uᵐ⁻²
         Vᵐ = model.free_surface.state.Vᵐ⁻²

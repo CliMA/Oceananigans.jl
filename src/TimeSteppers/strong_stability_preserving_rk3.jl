@@ -8,7 +8,6 @@ Holds parameters and tendency fields for a low storage, third-order Runge-Kutta-
 time-stepping scheme described by [LeMoin1991](@citet).
 """
 struct SSPRK3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
-    γ¹ :: FT
     γ² :: FT
     γ³ :: FT
     ζ² :: FT
@@ -54,7 +53,6 @@ function SSPRK3TimeStepper(grid, tracers;
         @warn("Implicit-explicit time-stepping with RungeKutta3TimeStepper is not tested. " * 
                 "\n implicit_solver: $(typeof(implicit_solver))")
 
-    γ¹ = 1
     γ² = 1 // 4
     γ³ = 2 // 3
 
@@ -63,5 +61,5 @@ function SSPRK3TimeStepper(grid, tracers;
 
     FT = eltype(grid)
 
-    return SSPRK3TimeStepper{FT, TG, TI}(γ¹, γ², γ³, ζ², ζ³, Gⁿ, G⁻, implicit_solver)
+    return SSPRK3TimeStepper{FT, TG, TI}(γ², γ³, ζ², ζ³, Gⁿ, G⁻, implicit_solver)
 end
