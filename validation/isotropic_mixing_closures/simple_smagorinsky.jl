@@ -8,8 +8,8 @@ grid = RectilinearGrid(arch,
                        extent=(2π, 2π, 2π),
                        topology=(Periodic, Periodic, Periodic))
 
-#closure = SmagorinskyLilly(coefficient=0.16)
-closure = SmagorinskyLilly(coefficient=DirectionallyAveragedCoefficient((1, 2)))
+#closure = Smagorinsky(coefficient=0.16)
+closure = Smagorinsky(coefficient=DirectionallyAveragedCoefficient((1, 2)))
 @time model = NonhydrostaticModel(; grid, closure)
 
 ϵ(x, y, z) = 2rand() - 1

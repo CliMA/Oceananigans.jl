@@ -11,7 +11,7 @@ export
     HorizontalDivergenceScalarBiharmonicDiffusivity,
     ScalarBiharmonicDiffusivity,
     TwoDimensionalLeith,
-    SmagorinskyLilly,
+    Smagorinsky,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
@@ -78,7 +78,7 @@ compute_diffusivities!(K, closure::AbstractTurbulenceClosure, args...; kwargs...
 # be calculated from local information, still `B = 1`, because we need at least one additional
 # point at each side to calculate viscous fluxes at the edge of the domain. 
 # If diffusivity itself requires one halo to be computed (e.g. κ = ℑxᶠᵃᵃ(i, j, k, grid, ℑxᶜᵃᵃ, T),
-# or `AnisotropicMinimumDissipation` and `SmagorinskyLilly`) then B = 2
+# or `AnisotropicMinimumDissipation` and `Smagorinsky`) then B = 2
 @inline required_halo_size_x(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B 
 @inline required_halo_size_y(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B 
 @inline required_halo_size_z(::AbstractTurbulenceClosure{TD, B}) where {TD, B} = B 
@@ -166,9 +166,8 @@ include("turbulence_closure_implementations/nothing_closure.jl")
 # AbstractScalarDiffusivity closures:
 include("turbulence_closure_implementations/scalar_diffusivity.jl")
 include("turbulence_closure_implementations/scalar_biharmonic_diffusivity.jl")
-include("turbulence_closure_implementations/smagorinsky_lilly.jl")
-include("turbulence_closure_implementations/scale_invariant_smagorinsky.jl")
 include("turbulence_closure_implementations/anisotropic_minimum_dissipation.jl")
+include("turbulence_closure_implementations/Smagorinskys/Smagorinskys.jl")
 include("turbulence_closure_implementations/convective_adjustment_vertical_diffusivity.jl")
 include("turbulence_closure_implementations/TKEBasedVerticalDiffusivities/TKEBasedVerticalDiffusivities.jl")
 include("turbulence_closure_implementations/ri_based_vertical_diffusivity.jl")
@@ -179,6 +178,7 @@ include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 
 using .TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity, TKEDissipationVerticalDiffusivity
+using .Smagorinskys: Smagorinsky, DirectionallyAveragedCoefficient, LillyCoefficient
 
 # Miscellaneous utilities
 include("diffusivity_fields.jl")

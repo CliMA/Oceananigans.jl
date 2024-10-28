@@ -1,14 +1,11 @@
-#####
-##### In this version of the Smagorinsky closure, the coefficient is dynamically calculated but it's assumed to be invariant
-##### with scale. Hence the name Scale-Invariant Smagorinsky. This a type of "dynamic Smagorinsky" closures.
-#####
-
+using Oceananigans.TurbulenceClosures: tr_Σ, Σ₁₁, Σ₂₂, Σ₃₃, Σ₁₂, Σ₁₃, Σ₂₃         
+using Oceananigans.TurbulenceClosures: tr_Σ², Σ₁₂², Σ₁₃², Σ₂₃²         
 using Oceananigans.Operators: volume
-using Statistics: mean!
 
 #####
 ##### Filters
 #####
+
 const AG{FT} = AbstractGrid{FT} where FT
 
 # For a regularly-spaced grids, the double interpolations below
@@ -16,9 +13,7 @@ const AG{FT} = AbstractGrid{FT} where FT
 @inline ℱ²ᵟ(i, j, k, grid::AG{FT}, f::Field{Center, Face,   Center}) where FT = ℑxyzᶜᶠᶜ(i, j, k, grid, ℑxyzᶠᶜᶠ, f)
 @inline ℱ²ᵟ(i, j, k, grid::AG{FT}, f::Field{Center, Center, Face  }) where FT = ℑxyzᶜᶜᶠ(i, j, k, grid, ℑxyzᶠᶠᶜ, f)
 @inline ℱ²ᵟ(i, j, k, grid::AG{FT}, f::Field{Center, Center, Center}) where FT = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, f)
-
 @inline ℱ²ᵟ(i, j, k, grid::AG{FT}, f::F, args...) where {FT, F <:Function} = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, f, args...)
-
 
 #####
 ##### Velocity gradients
@@ -145,3 +140,4 @@ const AG{FT} = AbstractGrid{FT} where FT
 @inline L₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℱ²ᵟ(i, j, k, grid, u₁u₂ᶜᶜᶜ, u, v, w) - ū₁ū₂ᶜᶜᶜ(i, j, k, grid, u, v, w)
 @inline L₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℱ²ᵟ(i, j, k, grid, u₁u₃ᶜᶜᶜ, u, v, w) - ū₁ū₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
 @inline L₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℱ²ᵟ(i, j, k, grid, u₂u₃ᶜᶜᶜ, u, v, w) - ū₂ū₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
+
