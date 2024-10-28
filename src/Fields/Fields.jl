@@ -17,7 +17,7 @@ using Oceananigans.Utils
 import Oceananigans.Architectures: on_architecture
 import Oceananigans: location, instantiated_location
 
-"Returns the location `(LX, LY, LZ)` of an `AbstractField{LX, LY, LZ}`."
+"Return the location `(LX, LY, LZ)` of an `AbstractField{LX, LY, LZ}`."
 @inline location(a) = (Nothing, Nothing, Nothing) # used in AbstractOperations for location inference
 @inline location(a, i) = location(a)[i]
 @inline instantiated_location(a) = (nothing, nothing, nothing)
