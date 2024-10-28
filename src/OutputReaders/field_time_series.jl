@@ -378,9 +378,6 @@ function FieldTimeSeries(loc, grid, times=();
     data = new_data(eltype(grid), grid, loc, indices, Nt)
 
     if backend isa OnDisk
-        isnothing(name) && isnothing(name) &&
-            error(ArgumentError("Must provide the keyword arguments `path` and `name` when `backend=OnDisk()`."))
-
         isnothing(path) && error(ArgumentError("Must provide the keyword argument `path` when `backend=OnDisk()`."))
         isnothing(name) && error(ArgumentError("Must provide the keyword argument `name` when `backend=OnDisk()`."))
     end
