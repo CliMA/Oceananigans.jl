@@ -10,7 +10,6 @@ using Base: @propagate_inbounds
 import Adapt
 using CUDA
 
-using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Operators
@@ -18,9 +17,9 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 using Oceananigans.Utils
 
+using Oceananigans: location, AbstractModel
 using Oceananigans.Operators: interpolation_operator
 using Oceananigans.Architectures: device
-using Oceananigans: AbstractModel
 
 import Oceananigans.Architectures: architecture, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
