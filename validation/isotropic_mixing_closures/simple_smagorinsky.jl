@@ -1,21 +1,26 @@
 using Oceananigans
-using Oceananigans.TurbulenceClosures: DirectionallyAveragedCoefficient
+using Oceananigans.TurbulenceClosures: Smagorinsky, DynamicCoefficient, LagrangianAveraging
 
 N = 16
 arch = CPU()
 grid = RectilinearGrid(arch,
                        size=(N, N, N),
-                       extent=(2π, 2π, 2π),
+                       extent=(N, N, N),
                        topology=(Periodic, Periodic, Periodic))
 
+advection = Centered(order=2)
+#closure = nothing
 #closure = Smagorinsky(coefficient=0.16)
-closure = Smagorinsky(coefficient=DirectionallyAveragedCoefficient((1, 2)))
-@time model = NonhydrostaticModel(; grid, closure)
+#coefficient = DynamicCoefficient(averaging=(1, 2))
+coefficient = DynamicCoefficient(averaging=LagrangianAveraging())
+#coefficient = DynamicCoefficient(dims=(1, 2), schedule=IterationInterval(2))
+closure = Smagorinsky(; coefficient)
+@time model = NonhydrostaticModel(; grid, closure, advection)
 
 ϵ(x, y, z) = 2rand() - 1
 set!(model, u=ϵ, v=ϵ, w=ϵ)
 
-simulation = Simulation(model, Δt=0.2, stop_iteration=10)
+simulation = Simulation(model, Δt=0.1, stop_iteration=100)
 wizard = TimeStepWizard(cfl=0.7, max_change=1.1, max_Δt=0.5)
 add_callback!(simulation, wizard, IterationInterval(10))
 
@@ -29,3 +34,4 @@ using GLMakie
 u, v, w = model.velocities
 k = round(Int, size(grid, 3)/2)
 heatmap(view(u, :, :, k))
+

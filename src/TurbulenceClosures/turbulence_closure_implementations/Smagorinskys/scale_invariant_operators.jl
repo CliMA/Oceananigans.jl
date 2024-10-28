@@ -3,6 +3,46 @@ using Oceananigans.TurbulenceClosures: tr_Σ², Σ₁₂², Σ₁₃², Σ₂₃
 using Oceananigans.Operators: volume
 
 #####
+##### Double dot product of strain on cell edges (currently unused)
+#####
+
+# tr_Σ² : ccc
+#   Σ₁₂ : ffc
+#   Σ₁₃ : fcf
+#   Σ₂₃ : cff
+
+"Return the double dot product of strain at `ccc`."
+@inline ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w) =      tr_Σ²(i, j, k, grid, u, v, w) +
+                                            2 * ℑxyᶜᶜᵃ(i, j, k, grid, Σ₁₂², u, v, w) +
+                                            2 * ℑxzᶜᵃᶜ(i, j, k, grid, Σ₁₃², u, v, w) +
+                                            2 * ℑyzᵃᶜᶜ(i, j, k, grid, Σ₂₃², u, v, w)
+
+"Return the double dot product of strain at `ffc`."
+@inline ΣᵢⱼΣᵢⱼᶠᶠᶜ(i, j, k, grid, u, v, w) =     ℑxyᶠᶠᵃ(i, j, k, grid, tr_Σ², u, v, w) +
+                                            2 *   Σ₁₂²(i, j, k, grid, u, v, w) +
+                                            2 * ℑyzᵃᶠᶜ(i, j, k, grid, Σ₁₃², u, v, w) + 
+                                            2 * ℑxzᶠᵃᶜ(i, j, k, grid, Σ₂₃², u, v, w)
+
+"Return the double dot product of strain at `fcf`."
+@inline ΣᵢⱼΣᵢⱼᶠᶜᶠ(i, j, k, grid, u, v, w) =     ℑxzᶠᵃᶠ(i, j, k, grid, tr_Σ², u, v, w) +
+                                            2 * ℑyzᵃᶜᶠ(i, j, k, grid, Σ₁₂², u, v, w) +
+                                            2 *   Σ₁₃²(i, j, k, grid, u, v, w) +
+                                            2 * ℑxyᶠᶜᵃ(i, j, k, grid, Σ₂₃², u, v, w)
+
+"Return the double dot product of strain at `cff`."
+@inline ΣᵢⱼΣᵢⱼᶜᶠᶠ(i, j, k, grid, u, v, w) =     ℑyzᵃᶠᶠ(i, j, k, grid, tr_Σ², u, v, w) +
+                                            2 * ℑxzᶜᵃᶠ(i, j, k, grid, Σ₁₂², u, v, w) +
+                                            2 * ℑxyᶜᶠᵃ(i, j, k, grid, Σ₁₃², u, v, w) +
+                                            2 *   Σ₂₃²(i, j, k, grid, u, v, w)
+
+"Return the double dot product of strain at `ccf`."
+@inline ΣᵢⱼΣᵢⱼᶜᶜᶠ(i, j, k, grid, u, v, w) =       ℑzᵃᵃᶠ(i, j, k, grid, tr_Σ², u, v, w) +
+                                            2 * ℑxyzᶜᶜᶠ(i, j, k, grid, Σ₁₂², u, v, w) +
+                                            2 *   ℑxᶜᵃᵃ(i, j, k, grid, Σ₁₃², u, v, w) +
+                                            2 *   ℑyᵃᶜᵃ(i, j, k, grid, Σ₂₃², u, v, w)
+
+
+#####
 ##### Filters
 #####
 

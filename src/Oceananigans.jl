@@ -67,7 +67,7 @@ export
     VerticalScalarBiharmonicDiffusivity,
     HorizontalScalarBiharmonicDiffusivity,
     ScalarBiharmonicDiffusivity,
-    Smagorinsky,
+    SmagorinskyLilly,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     RiBasedVerticalDiffusivity,

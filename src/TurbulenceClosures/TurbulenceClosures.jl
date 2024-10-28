@@ -11,7 +11,7 @@ export
     HorizontalDivergenceScalarBiharmonicDiffusivity,
     ScalarBiharmonicDiffusivity,
     TwoDimensionalLeith,
-    Smagorinsky,
+    SmagorinskyLilly,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
@@ -178,7 +178,7 @@ include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 
 using .TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity, TKEDissipationVerticalDiffusivity
-using .Smagorinskys: Smagorinsky, DirectionallyAveragedCoefficient, LillyCoefficient
+using .Smagorinskys: SmagorinskyLilly, Smagorinsky, DynamicCoefficient, LillyCoefficient, LagrangianAveraging
 
 # Miscellaneous utilities
 include("diffusivity_fields.jl")
