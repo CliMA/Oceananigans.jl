@@ -5,10 +5,9 @@ export Δx, Δy, Δz, Ax, Ay, Az, volume
 export Average, Integral, CumulativeIntegral, KernelFunctionOperation
 export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation, ConditionalOperation
 
-using Base: @propagate_inbounds
 
-import Adapt
 using CUDA
+using Base: @propagate_inbounds
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
@@ -20,6 +19,8 @@ using Oceananigans.Utils
 using Oceananigans: location, AbstractModel
 using Oceananigans.Operators: interpolation_operator
 using Oceananigans.Architectures: device
+
+import Adapt
 
 import Oceananigans.Architectures: architecture, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
