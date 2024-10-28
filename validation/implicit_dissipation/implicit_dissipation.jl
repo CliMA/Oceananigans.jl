@@ -29,17 +29,8 @@ const α = 10
     end
 end
 
-grid = RectilinearGrid(size = 100, halo = 6, x = (-1, 1), topology = (Periodic, Flat, Flat))
+function one_dimensional_simulation(grid, advection, label)
 
-advections = [UpwindBiased(; order = 3), 
-              WENO(; order = 5), 
-              WENO(; order = 7)]
-
-labels  = ["upwind3",
-           "WENO5",
-           "WENO7"]
-
-for (advection, label) in zip(advections, labels)
     model = NonhydrostaticModel(; grid, tracers = :b, timestepper = :QuasiAdamsBashforth2, advection) 
 
     set!(model.tracers.b, bᵢ)
@@ -51,8 +42,12 @@ for (advection, label) in zip(advections, labels)
     simulation  = Simulation(model; Δt, stop_time = 10)
     simulation.callbacks[:compute_dissipation] = Callback(dissipation_computation, IterationInterval(1))
 
-    outputs = (; Px = dissipation_computation.production.b.x, b = model.tracers.b)
+    Px   = dissipation_computation.production.b.x
+    bⁿ⁻¹ = dissipation_computation.previous_state.b
+    bⁿ   = model.tracers.b
 
+    Σb²  = @at((Center, Center, Center), Px) + (bⁿ^2 - bⁿ⁻¹^2) / Δt
+    outputs  = (; Px, b = model.tracers.b, Σb²)
     filename = "dissipation_" * label * ".jld2"
 
     # Save the dissipation
@@ -64,6 +59,22 @@ for (advection, label) in zip(advections, labels)
     run!(simulation)
 end
 
+grid = RectilinearGrid(size = 100, halo = 6, x = (-1, 1), topology = (Periodic, Flat, Flat))
+
+advections = [UpwindBiased(; order = 3), 
+              WENO(; order = 5), 
+              WENO(; order = 7)]
+
+labels  = ["upwind3",
+           "WENO5",
+           "WENO7"]
+
+# Run the simulations
+for (advection, label) in zip(advections, labels)
+    one_dimensional_simulation(grid, advection, label)
+end
+
+B_series = []
 b_series = []
 P_series = []
 
@@ -72,31 +83,33 @@ iter = Observable(1)
 bn = []
 Pn = []
 
-for label in labels
+for (i, label) in enumerate(labels)
     filename = "dissipation_" * label * ".jld2"
 
     push!(b_series, FieldTimeSeries(filename, "b"))
     push!(P_series, FieldTimeSeries(filename, "Px"))
+    push!(B_series, FieldTimeSeries(filename, "Σb²"))
 
-    push!(bn, @lift(interior(b_series[end][$iter], :, 1, 1)))
-    push!(Pn, @lift(interior(P_series[end][$iter], :, 1, 1)))
+    push!(bn, @lift(interior(b_series[i][$iter], :, 1, 1)))
+    push!(Pn, @lift(interior(P_series[i][$iter], :, 1, 1)))
 end
 
 x = xnodes(b_series[1][1])
 
-fig = Figure(size = (800, 400))
+fig = Figure(size = (1200, 400))
 ax  = Axis(fig[1, 1], xlabel = L"x", ylabel = L"tracer")
 lines!(ax, xnodes(b[1]), interior(b[1], :, 1, 1), color = :grey, linestyle = :dash, linewidth = 2)
 for case in eachindex(labels)
     lines!(ax, x, bn[case], label = labels[case])
 end
 
-ax  = Axis(fig[1, 1], xlabel = L"x", ylabel = L"variance dissipation")
+ax  = Axis(fig[1, 2], xlabel = L"x", ylabel = L"variance dissipation")
 for case in eachindex(labels)
     lines!(ax, x, Pn[case], label = labels[case])
 end
+ylims!(ax, (-1e-2, 1e-2))
 
-record(fig, "implicit_dissipation.mp4", 1:length(b), framerate=8) do i
+record(fig, "implicit_dissipation.mp4", 1:length(b_series[1]), framerate=8) do i
     @info "doing iter $i"
     iter[] = i
 end

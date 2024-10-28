@@ -1,3 +1,4 @@
+using Oceananigans: instantiated_location
 using Oceananigans.Grids: architecture
 using Oceananigans.Utils
 using Oceananigans.TimeSteppers
@@ -6,6 +7,7 @@ using Oceananigans.Fields: Field, VelocityFields
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 using Oceananigans.Advection: _advective_tracer_flux_x, _advective_tracer_flux_y, _advective_tracer_flux_z
+using Oceananigans.Operators: volume
 using KernelAbstractions: @kernel, @index
 
 import Oceananigans.Utils: KernelParameters
@@ -29,7 +31,7 @@ function VarianceDissipationComputation(model; tracers = propertynames(model.tra
     if !(model.timestepper isa QuasiAdamsBashforth2TimeStepper)
         throw(ArgumentError("DissipationComputation requires a QuasiAdamsBashforth2TimeStepper"))
     end
-    
+
     tracers = tupleit(tracers)
 
     grid = model.grid
@@ -188,8 +190,9 @@ end
 
 @inline function compute_dissipation(i, j, k, grid, χ, fⁿ, fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, δc★, δc²)
 
-    C₁ = convert(eltype(grid), 1.5 + χ)
-    C₂ = convert(eltype(grid), 0.5 + χ)
+    C₁  = convert(eltype(grid), 1.5 + χ)
+    C₂  = convert(eltype(grid), 0.5 + χ)
+    loc = instantiated_location(Uⁿ)
 
     @inbounds begin
         𝒰ⁿ   = C₁ * Uⁿ[i, j, k] 
@@ -200,5 +203,5 @@ end
         D = 𝒰ⁿ - 𝒰ⁿ⁻¹
     end
     
-    return 2 * δc★ * A - δc² * D
+    return (2 * δc★ * A - δc² * D) / volume(i, j, k, grid, loc...)
 end 
