@@ -178,7 +178,6 @@ nothing_to_default(user_value; default = nothing) = isnothing(user_value) ? defa
     WENOVectorInvariant(; upwinding = nothing,
                           multi_dimensional_stencil = false,
                           weno_kw...)
-
 """
 function WENOVectorInvariant(FT::DataType = Float64; 
                              upwinding = nothing,
