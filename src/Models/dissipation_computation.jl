@@ -25,10 +25,12 @@ function fluxes_fields(grid)
 end
 
 function VarianceDissipationComputation(model; tracers = propertynames(model.tracers))
-    
+        
     if !(model.timestepper isa QuasiAdamsBashforth2TimeStepper)
         throw(ArgumentError("DissipationComputation requires a QuasiAdamsBashforth2TimeStepper"))
     end
+    
+    tracers = tupleit(tracers)
 
     grid = model.grid
     P    = NamedTuple{tracers}(fluxes_fields(grid) for tracer in tracers)

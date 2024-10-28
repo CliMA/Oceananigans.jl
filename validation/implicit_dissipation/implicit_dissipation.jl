@@ -30,9 +30,9 @@ const α = 10
 end
 
 
-grid = RectilinearGrid(size = N, halo = 6, x = (-1, 1), topology = (Periodic, Flat, Flat))
-
-model = NonhydrostaticModel(; grid, tracers = :b, timestepper = :QuasiAdamsBashforth2, advection) 
+grid      = RectilinearGrid(size = 100, halo = 6, x = (-1, 1), topology = (Periodic, Flat, Flat))
+advection = WENO(; order = 7) 
+model     = NonhydrostaticModel(; grid, tracers = :b, timestepper = :QuasiAdamsBashforth2, advection) 
 
 set!(model.tracers.b, bᵢ)
 set!(model.velocities.u, 1.0)
@@ -40,20 +40,21 @@ set!(model.velocities.u, 1.0)
 b₀ = deepcopy(model.tracers.b)
 Δt = 0.1 * minimum_xspacing(grid)
 
-dissipation_computation = VarianceDissipationComputation(model)
+dissipation_computation = VarianceDissipationComputation(model; tracers = :b)
 simulation  = Simulation(model; Δt, stop_time = 10)
 simulation.callbacks[:compute_dissipation] = Callback(dissipation_computation, IterationInterval(1))
 
 outputs = (; Px = dissipation_computation.production.b.x, b = model.tracers.b)
 
 # Save the dissipation
-simulation.output_writers[:dissipation] = JLD2OutputWriter(model, dissipation_computation.production.b,
+simulation.output_writers[:dissipation] = JLD2OutputWriter(model, outputs,
                                                             filename = "dissipation.jld2", 
-                                                            schedule = IterationInterval(10))
+                                                            schedule = IterationInterval(1),
+                                                            overwrite_existing = true)
 
 run!(simulation)
-b = FieldTimesSeries("dissipation.jld2", "b")
-P = FieldTimesSeries("dissipation.jld2", "Px")
+b = FieldTimeSeries("dissipation.jld2", "b")
+P = FieldTimeSeries("dissipation.jld2", "Px")
 
 iter = Observable(1)
 
