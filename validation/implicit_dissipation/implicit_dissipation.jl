@@ -46,7 +46,7 @@ function one_dimensional_simulation(grid, advection, label)
     bⁿ⁻¹ = dissipation_computation.previous_state.b
     bⁿ   = model.tracers.b
 
-    Σb²  = @at((Center, Center, Center), Px) + (bⁿ^2 - bⁿ⁻¹^2) / Δt
+    Σb²  = @at((Center, Center, Center), Px) + (bⁿ^2 - bⁿ⁻¹^2) / Δt # Actually not at the same time-step
     outputs  = (; Px, b = model.tracers.b, Σb²)
     filename = "dissipation_" * label * ".jld2"
 
@@ -82,6 +82,7 @@ iter = Observable(1)
 
 bn = []
 Pn = []
+Bn = []
 
 for (i, label) in enumerate(labels)
     filename = "dissipation_" * label * ".jld2"
@@ -92,22 +93,25 @@ for (i, label) in enumerate(labels)
 
     push!(bn, @lift(interior(b_series[i][$iter], :, 1, 1)))
     push!(Pn, @lift(interior(P_series[i][$iter], :, 1, 1)))
+    push!(Bn, @lift(interior(B_series[i][$iter], :, 1, 1)))
 end
 
 x = xnodes(b_series[1][1])
 
 fig = Figure(size = (1200, 400))
 ax  = Axis(fig[1, 1], xlabel = L"x", ylabel = L"tracer")
-lines!(ax, xnodes(b[1]), interior(b[1], :, 1, 1), color = :grey, linestyle = :dash, linewidth = 2)
-for case in eachindex(labels)
-    lines!(ax, x, bn[case], label = labels[case])
-end
+lines!(ax, xnodes(b[1]), interior(b[1], :, 1, 1), color = :grey, linestyle = :dash, linewidth = 2, label = "initial condition")
+lines!(ax, x, bn[1], label = labels[1], color = :red )
+lines!(ax, x, bn[3], label = labels[2], color = :blue)
+axislegend(ax, position = :rb)
 
 ax  = Axis(fig[1, 2], xlabel = L"x", ylabel = L"variance dissipation")
-for case in eachindex(labels)
-    lines!(ax, x, Pn[case], label = labels[case])
-end
-ylims!(ax, (-1e-2, 1e-2))
+lines!(ax, x, Pn[1], color = :red , label = labels[1])
+lines!(ax, x, Pn[1], color = :blue, label = labels[2])
+lines!(ax, x, Bn[1], color = :red , linestyle = :dash)
+lines!(ax, x, Bn[3], color = :blue, linestyle = :dash)
+ylims!(ax, (-1, 1))
+axislegend(ax, position = :rb)
 
 record(fig, "implicit_dissipation.mp4", 1:length(b_series[1]), framerate=8) do i
     @info "doing iter $i"
