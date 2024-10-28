@@ -188,4 +188,7 @@ default_nan_checker(::OnlyParticleTrackingModel) = nothing
 # applicable to both `NonhydrostaticModel` and  `HydrostaticFreeSurfaceModel`
 include("seawater_density.jl")
 
+# Implementation of the diagnostic for computing the dissipation rate
+include("dissipation_computation.jl")
+
 end # module
