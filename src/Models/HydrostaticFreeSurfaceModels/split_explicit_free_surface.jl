@@ -3,9 +3,8 @@ using Oceananigans.Architectures
 using Oceananigans.Fields
 using Oceananigans.Grids
 using Oceananigans.Grids: AbstractGrid
-using Oceananigans.BoundaryConditions: default_prognostic_bc
 using Oceananigans.AbstractOperations: Δz, GridMetricOperation
-using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, c, f
+
 using Adapt
 using Base
 using KernelAbstractions: @index, @kernel
@@ -182,8 +181,8 @@ function SplitExplicitState(grid::AbstractGrid, timestepper)
 
     𝒰 = VelocityFields(grid)
     
-    U = XFaceField(grid, indices = (:, :, Nz))
-    V = YFaceField(grid, indices = (:, :, Nz))
+    U = Field(𝒰.u, indices = (:, :, Nz))
+    V = Field(𝒰.v, indices = (:, :, Nz))
 
     Uᵐ⁻¹ = auxiliary_barotropic_velocity_field(U, timestepper)
     Vᵐ⁻¹ = auxiliary_barotropic_velocity_field(V, timestepper)
@@ -193,7 +192,7 @@ function SplitExplicitState(grid::AbstractGrid, timestepper)
     U̅ = deepcopy(U)
     V̅ = deepcopy(V)
 
-    return SplitExplicitState(; ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, Uᵐ⁻¹, Uᵐ⁻², V, Vᵐ⁻¹, Vᵐ⁻², η̅, U̅, V̅) 
+    return SplitExplicitState(; ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, Uᵐ⁻¹, Uᵐ⁻², V, Vᵐ⁻¹, Vᵐ⁻², η̅, U̅, V̅)
 end
 
 """
@@ -207,7 +206,7 @@ large (or `:xy` in case of a serial computation), and start computing from
 
 $(FIELDS)
 """
-Base.@kwdef struct SplitExplicitAuxiliaryFields{ℱ𝒞, 𝒞ℱ, 𝒦}
+Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒦}
     "Vertically-integrated slow barotropic forcing function for `U` (`ReducedField` over ``z``)"
     Gᵁ :: ℱ𝒞
     "Vertically-integrated slow barotropic forcing function for `V` (`ReducedField` over ``z``)"
@@ -246,6 +245,7 @@ end
 
 struct AdamsBashforth3Scheme end
 struct ForwardBackwardScheme end
+
 
 auxiliary_free_surface_field(grid, ::AdamsBashforth3Scheme) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 auxiliary_free_surface_field(grid, ::ForwardBackwardScheme) = nothing
@@ -306,7 +306,7 @@ end
 
     averaging_weights = averaging_weights[1:idx]
     averaging_weights ./= sum(averaging_weights)
-       
+
     return Δτ, tuple(averaging_weights...)
 end
 
@@ -390,19 +390,11 @@ end
 
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
-    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η), 
-                             nothing, 
-                             Adapt.adapt(to, free_surface.auxiliary),
+    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η), nothing, nothing,
                              free_surface.gravitational_acceleration, nothing)
 
-# Adapt
-Adapt.adapt_structure(to, auxiliary::SplitExplicitAuxiliaryFields) =
-    SplitExplicitAuxiliaryFields(Adapt.adapt(to, auxiliary.Gᵁ), 
-                                 Adapt.adapt(to, auxiliary.Gⱽ), 
-                                 nothing)
-
-for Type in (:SplitExplicitFreeSurface, 
-             :SplitExplicitSettings, 
+for Type in (:SplitExplicitFreeSurface,
+             :SplitExplicitSettings,
              :SplitExplicitState, 
              :SplitExplicitAuxiliaryFields,
              :FixedTimeStepSize,

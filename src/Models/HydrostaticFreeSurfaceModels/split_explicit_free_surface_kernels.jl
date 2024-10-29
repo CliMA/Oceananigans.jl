@@ -463,7 +463,7 @@ end
 
     Gi = Fⁿ - F⁻
 
-    return ifelse(peripheral_node(i, j, k, grid, f, c, c), zero(grid), Gi)
+    return ifelse(peripheral_node(i, j, k, grid, c, f, c), zero(grid), Gi)
 end
 
 # Setting up the RHS for the barotropic step (tendencies of the barotropic velocity components)
