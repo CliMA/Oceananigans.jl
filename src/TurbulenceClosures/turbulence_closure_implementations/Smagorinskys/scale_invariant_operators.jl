@@ -162,7 +162,7 @@ const AG{FT} = AbstractGrid{FT} where FT
 
 @inline ūᵢūⱼ(i, j, k, grid, uᵢ, uⱼ) = ℱ²ᵟ(i, j, k, grid, uᵢ) * ℱ²ᵟ(i, j, k, grid, uⱼ)
 @inline ū₁ū₁ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℑxᶜᵃᵃ(i, j, k, grid, ūᵢūⱼ, u, u)
-@inline ū₂ū₂ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℑxᶜᵃᵃ(i, j, k, grid, ūᵢūⱼ, v, v)
+@inline ū₂ū₂ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℑyᵃᶜᵃ(i, j, k, grid, ūᵢūⱼ, v, v)
 @inline ū₃ū₃ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℑzᵃᵃᶜ(i, j, k, grid, ūᵢūⱼ, w, w)
 
 @inline u₁u₂ᶜᶜᶜ(i, j, k, grid, u, v, w) = ℑxᶜᵃᵃ(i, j, k, grid, u) * ℑyᵃᶜᵃ(i, j, k, grid, v)
