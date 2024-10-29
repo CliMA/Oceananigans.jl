@@ -267,7 +267,7 @@ end
     return convert(FT, κu★)
 end
 
-@inline function κcᶜᶜᶠ(i, j, k, grid::AbstractGrid{FT}, closure, velocities, tracers, buoyancy, surface_buoyancy_flux) where FT
+@inline function κcᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
     w★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
     ℓc = tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
     κc = ℓc * w★
@@ -276,7 +276,7 @@ end
     return convert(FT, κc★)
 end
 
-@inline function κeᶜᶜᶠ(i, j, k, grid::AbstractGrid{FT}, closure, velocities, tracers, buoyancy, surface_buoyancy_flux) where FT
+@inline function κeᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
     w★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
     ℓe = TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
     κe = ℓe * w★
