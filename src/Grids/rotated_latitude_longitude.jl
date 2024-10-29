@@ -41,6 +41,18 @@ function RotatedLatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU()
     TX, TY, TZ = Grids.topology(latitude_longitude_grid)
     conformal_mapping = RotatedLatitudeLongitude(north_pole)
 
+    φᶜᶜᵃ = new_data(FT, architecture, (Center, Center, Nothing), topology, size, halo)
+    φᶠᶜᵃ = new_data(FT, architecture, (Face, Center, Nothing),   topology, size, halo)
+    φᶜᶠᵃ = new_data(FT, architecture, (Center, Face, Nothing),   topology, size, halo)
+    φᶠᶠᵃ = new_data(FT, architecture, (Face, Face, Nothing),     topology, size, halo)
+
+    λᶜᶜᵃ = new_data(FT, architecture, (Center, Center, Nothing), topology, size, halo)
+    λᶠᶜᵃ = new_data(FT, architecture, (Face, Center, Nothing),   topology, size, halo)
+    λᶜᶠᵃ = new_data(FT, architecture, (Center, Face, Nothing),   topology, size, halo)
+    λᶠᶠᵃ = new_data(FT, architecture, (Face, Face, Nothing),     topology, size, halo)
+
+    
+
     arch = architecture
 
     φᶜᶜᵃ = latitude_longitude_grid.φᵃᶜᵃ .+ north_pole[2]
@@ -77,20 +89,20 @@ function RotatedLatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU()
                                                     on_architecture(arch, φᶠᶠᵃ),
                                                     on_architecture(arch, latitude_longitude_grid.zᵃᵃᶜ),
                                                     on_architecture(arch, latitude_longitude_grid.zᵃᵃᶠ),
-                                                    on_architecture(arch, latitude_longitude_grid.Δxᶜᶜᵃ),
-                                                    on_architecture(arch, latitude_longitude_grid.Δxᶠᶜᵃ),
-                                                    on_architecture(arch, latitude_longitude_grid.Δxᶜᶠᵃ),
-                                                    on_architecture(arch, latitude_longitude_grid.Δxᶠᶠᵃ),
-                                                    on_architecture(arch, latitude_longitude_grid.Δyᶜᶠᵃ),
-                                                    on_architecture(arch, latitude_longitude_grid.Δyᶜᶠᵃ),
-                                                    on_architecture(arch, latitude_longitude_grid.Δyᶠᶜᵃ),
-                                                    on_architecture(arch, latitude_longitude_grid.Δyᶠᶜᵃ),
+                                                    on_architecture(arch, Δxᶜᶜᵃ),
+                                                    on_architecture(arch, Δxᶠᶜᵃ),
+                                                    on_architecture(arch, Δxᶜᶠᵃ),
+                                                    on_architecture(arch, Δxᶠᶠᵃ),
+                                                    on_architecture(arch, Δyᶜᶜᵃ),
+                                                    on_architecture(arch, Δyᶜᶠᵃ),
+                                                    on_architecture(arch, Δyᶠᶜᵃ),
+                                                    on_architecture(arch, Δyᶠᶠᵃ),
                                                     on_architecture(arch, latitude_longitude_grid.Δzᵃᵃᶜ),
                                                     on_architecture(arch, latitude_longitude_grid.Δzᵃᵃᶠ),
-                                                    on_architecture(arch, latitude_longitude_grid.Azᶜᶜᵃ),
-                                                    on_architecture(arch, latitude_longitude_grid.Azᶠᶜᵃ),
-                                                    on_architecture(arch, latitude_longitude_grid.Azᶜᶠᵃ),
-                                                    on_architecture(arch, latitude_longitude_grid.Azᶠᶠᵃ),
+                                                    on_architecture(arch, Azᶜᶜᵃ),
+                                                    on_architecture(arch, Azᶠᶜᵃ),
+                                                    on_architecture(arch, Azᶜᶠᵃ),
+                                                    on_architecture(arch, Azᶠᶠᵃ),
                                                     radius,
                                                     conformal_mapping)
 
