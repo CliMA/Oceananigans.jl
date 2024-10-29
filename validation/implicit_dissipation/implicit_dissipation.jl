@@ -29,9 +29,20 @@ const α = 10
     end
 end
 
+function save_previous_buoyancy!(simulation)
+    bⁿ⁻¹ = simulation.model.auxiliary_fields.bⁿ⁻¹
+    bⁿ   = simulation.model.tracers.b
+
+    parent(bⁿ⁻¹) .= parent(bⁿ)
+    
+    return nothing
+end
+
 function one_dimensional_simulation(grid, advection, label)
 
-    model = NonhydrostaticModel(; grid, tracers = :b, timestepper = :QuasiAdamsBashforth2, advection) 
+    auxiliary_fields = (; bⁿ⁻¹ = CenterField(grid))
+
+    model = NonhydrostaticModel(; grid, auxiliary_fields, tracers = :b, timestepper = :QuasiAdamsBashforth2, advection) 
 
     set!(model.tracers.b, bᵢ)
     set!(model.velocities.u, 1.0)
@@ -40,10 +51,11 @@ function one_dimensional_simulation(grid, advection, label)
 
     dissipation_computation = TracerVarianceDissipation(model; tracers = :b)
     simulation  = Simulation(model; Δt, stop_time = 10)
-    simulation.callbacks[:compute_dissipation] = Callback(dissipation_computation, IterationInterval(1))
+    simulation.callbacks[:compute_dissipation]    = Callback(dissipation_computation, IterationInterval(1))
+    simulation.callbacks[:save_previous_buoyancy] = Callback(save_previous_buoyancy!, IterationInterval(1); callsite = Oceananigans.BeforeTimeStepCallsite())
 
     Px   = dissipation_computation.production.b.x
-    bⁿ⁻¹ = dissipation_computation.previous_state.b
+    bⁿ⁻¹ = simulation.model.auxiliary_fields.bⁿ⁻¹
     bⁿ   = model.tracers.b
 
     Σb²  = (bⁿ^2 - bⁿ⁻¹^2) / Δt # Not at the same time-step of Px unfortunately
@@ -96,11 +108,12 @@ for (i, label) in enumerate(labels)
     push!(Bn, @lift(interior(B_series[i][$iter], :, 1, 1)))
 end
 
-x = xnodes(b_series[1][1])
+b0 = b_series[1][1]  
+x  = xnodes(b0)
 
 fig = Figure(size = (1200, 400))
 ax  = Axis(fig[1, 1], xlabel = L"x", ylabel = L"tracer")
-lines!(ax, xnodes(b[1]), interior(b[1], :, 1, 1), color = :grey, linestyle = :dash, linewidth = 2, label = "initial condition")
+lines!(ax, x, interior(b0, :, 1, 1), color = :grey, linestyle = :dash, linewidth = 2, label = "initial condition")
 lines!(ax, x, bn[1], label = labels[1], color = :red )
 lines!(ax, x, bn[3], label = labels[2], color = :blue)
 axislegend(ax, position = :rb)
@@ -117,3 +130,21 @@ record(fig, "implicit_dissipation.mp4", 1:length(b_series[1]), framerate=8) do i
     @info "doing iter $i"
     iter[] = i
 end
+
+Nt = length(b_series[1])
+time = (0:Nt-1) .* 0.1 .* minimum_xspacing(grid)
+
+fig = Figure()
+ax  = Axis(fig[1, 1], xlabel = L"time", ylabel = L"tracer variance budget")
+Σb² = [sum(B_series[1][i]) for i in 1:Nt]
+ΣP  = [sum(P_series[1][i]) for i in 1:Nt]
+lines!(ax, time, Σb²,        label = "Σb²", color = :red)
+lines!(ax, time, ΣP / 0.002, label = "ΣP",  color = :red, linestyle = :dash)
+Σb² = [sum(B_series[2][i]) for i in 1:Nt]
+ΣP  = [sum(P_series[2][i]) for i in 1:Nt]
+lines!(ax, time, Σb²,        label = "Σb²", color = :blue)
+lines!(ax, time, ΣP / 0.002, label = "ΣP",  color = :blue, linestyle = :dash)
+Σb² = [sum(B_series[3][i]) for i in 1:Nt]
+ΣP  = [sum(P_series[3][i]) for i in 1:Nt]
+lines!(ax, time, Σb²,        label = "Σb²", color = :green)
+lines!(ax, time, ΣP / 0.002, label = "ΣP",  color = :green, linestyle = :dash)
