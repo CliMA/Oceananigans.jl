@@ -163,7 +163,7 @@ function run_simulation_date_tests(arch, start_time, stop_time, Δt)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
 
     clock = Clock(time=start_time)
-    model = NonhydrostaticModel(; grid, clock)
+    model = NonhydrostaticModel(; grid, clock, timestepper=:QuasiAdamsBashforth2)
     simulation = Simulation(model; Δt, stop_time)
 
     @test model.clock.time == start_time
