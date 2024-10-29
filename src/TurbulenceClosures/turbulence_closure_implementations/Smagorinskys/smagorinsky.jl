@@ -15,11 +15,15 @@ import Oceananigans.Utils: with_tracers
 import ..TurbulenceClosures:
     viscosity,
     diffusivity,
-    compute_diffusivities!, DiffusivityFields, tracer_diffusivities
+    κᶠᶜᶜ,
+    κᶜᶠᶜ,
+    κᶜᶜᶠ,
+    compute_diffusivities!,
+    DiffusivityFields,
+    tracer_diffusivities
 
 #####
 ##### The turbulence closure proposed by Smagorinsky and Lilly.
-##### We also call this 'Constant Smagorinsky'.
 #####
 
 # struct LagrangianAveragedCoefficient end
