@@ -10,10 +10,11 @@ using ..TurbulenceClosures:
     ExplicitTimeDiscretization,
     convert_diffusivity
 
+import Oceananigans.Utils: with_tracers
+
 import ..TurbulenceClosures:
     viscosity,
     diffusivity,
-    with_tracers,
     compute_diffusivities!, DiffusivityFields, tracer_diffusivities
 
 #####
