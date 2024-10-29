@@ -248,6 +248,30 @@ function Distributed(child_architecture = CPU();
         MPI.Init()
     end
 
+    # Make sure that we have CUDA-aware MPI.
+    if child_architecture isa GPU
+        try
+            if !(MPI.has_cuda())
+                msg = "We found that MPI.has_cuda() == false: your MPI library does not appear to be CUDA-aware. \
+                      Oceananigans requires CUDA-aware MPI; see
+
+                        https://juliaparallel.org/MPI.jl/stable/usage/#CUDA-aware-MPI-support \
+
+                      for more information about CUDA-aware MPI."
+
+                error(msg)
+            end
+        catch err
+            msg = "Calling MPI.has_cuda() returned an error. Oceananigans requires CUDA-aware MPI; see \
+
+                      https://juliaparallel.org/MPI.jl/stable/usage/#CUDA-aware-MPI-support \
+
+                  for more information about CUDA-aware MPI."
+            @warn msg
+            throw(err)
+        end
+    end
+
     if isnothing(communicator) # default communicator
         communicator = MPI.COMM_WORLD
     end
