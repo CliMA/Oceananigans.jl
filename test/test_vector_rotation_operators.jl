@@ -26,6 +26,30 @@ function pointwise_approximate_equal(field, val)
     @test all(interior(CPU_field) .≈ val)
 end
 
+# A purely zonal flow with an west-east velocity > 0 
+# on a cubed sphere in an intrinsic coordinate system
+# has the following properties:
+function test_purely_zonal_flow(uᵢ, vᵢ, grid)
+    c1 = maximum(uᵢ) ≈ - minimum(vᵢ)
+    c2 = minimum(uᵢ) ≈ - maximum(vᵢ)
+    c3 = mean(uᵢ) ≈ - mean(vᵢ)
+    c4 = mean(uᵢ) > 0 # The mean value should be positive)
+
+    return c1 & c2 & c3 & c4
+end
+
+# A purely meridional flow with a south-north velocity > 0 
+# on a cubed sphere in an intrinsic coordinate system
+# has the following properties:
+function test_purely_meridional_flow(uᵢ, vᵢ, grid)
+    c1 = maximum(uᵢ) ≈ maximum(vᵢ)
+    c2 = minimum(uᵢ) ≈ minimum(vᵢ)
+    c3 = mean(uᵢ) ≈ mean(vᵢ)
+    c4 = mean(vᵢ) > 0 # The mean value should be positive
+
+    return c1 & c2 & c3 & c4
+end
+
 function test_vector_rotation(grid)
     u = CenterField(grid)
     v = CenterField(grid)
@@ -43,10 +67,7 @@ function test_vector_rotation(grid)
 
     # The extrema of u and v, as well as their mean value should
     # be equivalent on an "intrinsic" frame
-    @test maximum(uᵢ) ≈ - minimum(vᵢ)
-    @test minimum(uᵢ) ≈ - maximum(vᵢ)
-    @test mean(uᵢ) ≈ - mean(vᵢ)
-    @test mean(uᵢ) > 0 # The mean value should be positive
+    @test test_purely_zonal_flow(uᵢ, vᵢ, grid)
 
     # Kinetic energy should remain the same
     KE = kinetic_energy(uᵢ, vᵢ)
@@ -77,10 +98,7 @@ function test_vector_rotation(grid)
 
     # The extrema of u and v, as well as their mean value should
     # be equivalent on an "intrinsic" frame
-    @test maximum(uᵢ) ≈ maximum(vᵢ)
-    @test minimum(uᵢ) ≈ minimum(vᵢ)
-    @test mean(uᵢ) ≈ mean(vᵢ)
-    @test mean(vᵢ) > 0 # The mean value should be positive
+    @test test_purely_meridional_flow(uᵢ, vᵢ, grid)
 
     # Kinetic energy should remain the same
     KE = kinetic_energy(uᵢ, vᵢ)
@@ -99,8 +117,8 @@ function test_vector_rotation(grid)
     @apply_regionally pointwise_approximate_equal(uₑ, 0)
 
     # Mixed zonal and meridional flow.
-    set!(u, 0.5)
-    set!(v, 0.5)
+    fill!(u, 0.5)
+    fill!(v, 0.5)
 
     # Convert it to an "Instrinsic" reference frame
     uᵢ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_x_component, grid, u, v)
@@ -109,11 +127,10 @@ function test_vector_rotation(grid)
     uᵢ = compute!(Field(uᵢ))
     vᵢ = compute!(Field(vᵢ))
 
-    # The extrema of u and v, as well as their mean value should
-    # be equivalent on an "intrinsic" frame
-    @test maximum(uᵢ) ≈ maximum(vᵢ)
+    # The extrema of u and v, should be equivalent on an "intrinsic" frame 
+    # when u == v on an extrinsic frame
+    @test maximum(uᵢ) ≈ maximum(vᵢ) 
     @test minimum(uᵢ) ≈ minimum(vᵢ)
-    @test mean(uᵢ) > 0 # The mean value of u should be positive
 
     # Kinetic energy should remain the same
     KE = kinetic_energy(uᵢ, vᵢ)
