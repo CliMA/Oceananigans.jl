@@ -18,18 +18,20 @@ steps:
       TEST_GROUP: "init"
     command:
       - "echo '--- Instantiate project'"
-      - "julia --project -e 'using Pkg; Pkg.instantiate(verbose=true)'"
+      - "srun julia --project -e 'using Pkg; Pkg.instantiate(verbose=true)'"
 
       - "echo '--- Precompile project'"
-      - "julia --project -e 'using Pkg; Pkg.precompile(strict=true)'"
-      - "julia --project -e 'using Pkg; Pkg.status()'"
+      - "srun julia --project -e 'using Pkg; Pkg.precompile(strict=true)'"
+      - "srun julia --project -e 'using Pkg; Pkg.status()'"
 
       # Force the initialization of the CUDA runtime as it is lazily loaded by default:
       - "echo '--- Initialize the CUDA runtime'"
-      - "julia --project -e 'using CUDA; CUDA.precompile_runtime()'"
-      - "julia --project -e 'using Pkg; Pkg.test()'"
+      - "srun julia --project -e 'using CUDA; CUDA.precompile_runtime()'"
+      - "srun julia --project -e 'using Pkg; Pkg.test()'"
     agents:
+      slurm_ntasks: 1
       slurm_gpus: 1
+      slurm_gpus_per_task: 1
       slurm_cpus_per_task: 8
 
   - wait
@@ -52,7 +54,6 @@ steps:
       GPU_TEST: "true"
       MPI_TEST: "true"
     commands:
-      - "julia -O0 --color=yes --project -e 'using CUDA; CUDA.precompile_runtime()'"
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       slurm_mem: 120G
