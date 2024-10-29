@@ -159,10 +159,6 @@ Base.@kwdef struct SplitExplicitState{CC, ACC, FC, AFC, CF, ACF}
     U̅    :: FC
     "The time-filtered barotropic meridional velocity. (`ReducedField` over ``z``)"
     V̅    :: CF
-    # "The time-filtered barotropic zonal velocity. (`ReducedField` over ``z``)"
-    # Ũ    :: FC
-    # "The time-filtered barotropic meridional velocity. (`ReducedField` over ``z``)"
-    # Ṽ    :: CF
 end
 
 """
@@ -186,8 +182,8 @@ function SplitExplicitState(grid::AbstractGrid, timestepper)
 
     𝒰 = VelocityFields(grid)
     
-    U = Field(𝒰.u, indices = (:, :, Nz))
-    V = Field(𝒰.v, indices = (:, :, Nz))
+    U = XFaceField(grid, indices = (:, :, Nz))
+    V = YFaceField(grid, indices = (:, :, Nz))
 
     Uᵐ⁻¹ = auxiliary_barotropic_velocity_field(U, timestepper)
     Vᵐ⁻¹ = auxiliary_barotropic_velocity_field(V, timestepper)
