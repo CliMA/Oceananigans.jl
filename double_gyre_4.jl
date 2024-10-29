@@ -62,7 +62,7 @@ closure1 = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=1.0,
     background_κz=1e-5,
     convective_νz=1e-2,
     background_νz=1e-2)
-closure2 = HorizontalScalarDiffusivity(ν=2 * 10^3, κ=2 * 10^3)
+closure2 = HorizontalScalarDiffusivity(ν= 10^3, κ= 10^3)
 closure = (closure1, closure2)
 
 ##### 
