@@ -17,7 +17,10 @@ using Oceananigans.Operators
     @inbounds extrinsic_vector(i, j, k, grid, uᵢ, vᵢ)[2]
 
 function kinetic_energy(u, v)
-    ke = Field(0.5 * (u * u + v * v))
+    u² = compute!(Field(u * u))
+    v² = compute!(Field(v * v))
+    ke = Field(u² + v²)
+    ke = Field(0.5 * ke)
     return compute!(ke)
 end
 
