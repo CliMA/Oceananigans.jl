@@ -20,12 +20,12 @@ $(FIELDS)
 """
 struct SplitExplicitFreeSurface{H, U, M, FT, K , S, T} <: AbstractFreeSurface{H, FT}
     η :: H
-    barotropic_velocities :: U # A namedtuple with U, V 
-    filtered_state :: M # A namedtuple with η, U, V averaged throughout the substepping
+    barotropic_velocities :: U 
+    filtered_state :: M 
     gravitational_acceleration :: FT
     kernel_parameters :: K
-    substepping :: S  # Either `FixedSubstepNumber` or `FixedTimeStepSize`
-    timestepper :: T # redesigned to contain all auxiliary field and settings necessary to the particular timestepping
+    substepping :: S 
+    timestepper :: T 
 end
 
 """
