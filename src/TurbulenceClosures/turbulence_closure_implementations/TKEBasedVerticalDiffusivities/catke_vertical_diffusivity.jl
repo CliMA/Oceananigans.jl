@@ -264,6 +264,7 @@ end
     ℓu = momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
     κu = ℓu * w★
     κu_max = closure.maximum_viscosity
+    FT = eltype(grid)
     return convert(FT, min(κu, κu_max))
 end
 
