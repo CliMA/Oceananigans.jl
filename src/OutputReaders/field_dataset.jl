@@ -2,7 +2,7 @@ struct FieldDataset{F, M, P, KW}
         fields :: F
       metadata :: M
       filepath :: P
-    backend_kw :: KW
+    reader_kw :: KW
 end
 
 """
@@ -24,23 +24,23 @@ linearly.
 
 - `grid`: May be specified to override the grid used in the JLD2 file.
 
-- `backend_kw`: A dictionary of keyword arguments to pass to the backend (currently only JLD2)
-                to be used when opening files.
+- `reader_kw`: A dictionary of keyword arguments to pass to the reader (currently only JLD2)
+               to be used when opening files.
 """
 function FieldDataset(filepath;
                       architecture = CPU(),
                       grid = nothing,
                       backend = InMemory(),
                       metadata_paths = ["metadata"],
-                      backend_kw = Dict{Symbol, Any}())
+                      reader_kw = Dict{Symbol, Any}())
 
-  file = jldopen(filepath; backend_kw...)
+  file = jldopen(filepath; reader_kw...)
 
   field_names = keys(file["timeseries"])
   filter!(k -> k != "t", field_names)  # Time is not a field.
 
   ds = Dict{String, FieldTimeSeries}(
-      name => FieldTimeSeries(filepath, name; architecture, backend, grid, backend_kw)
+      name => FieldTimeSeries(filepath, name; architecture, backend, grid, reader_kw)
       for name in field_names
   )
 
@@ -52,7 +52,7 @@ function FieldDataset(filepath;
 
   close(file)
 
-  return FieldDataset(ds, metadata, abspath(filepath), backend_kw)
+  return FieldDataset(ds, metadata, abspath(filepath), reader_kw)
 end
 
 Base.getindex(fds::FieldDataset, inds...) = Base.getindex(fds.fields, inds...)

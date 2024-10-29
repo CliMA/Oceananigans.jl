@@ -375,9 +375,9 @@ end
         @testset "FieldTimeSeries{$Backend} parallel reading" begin
             @info "  Testing FieldTimeSeries{$Backend} parallel reading..."
 
-            backend_kw = Dict(:parallel_read => true)
-            u3 = FieldTimeSeries(filepath3d, "u"; backend=Backend(), backend_kw)
-            b3 = FieldTimeSeries(filepath3d, "b"; backend=Backend(), backend_kw)
+            reader_kw = Dict(:parallel_read => true)
+            u3 = FieldTimeSeries(filepath3d, "u"; backend=Backend(), reader_kw)
+            b3 = FieldTimeSeries(filepath3d, "b"; backend=Backend(), reader_kw)
 
             @test u3 isa FieldTimeSeries
             @test b3 isa FieldTimeSeries
@@ -390,8 +390,8 @@ end
         @testset "FieldDataset{$Backend} parallel reading" begin
             @info "  Testing FieldDataset{$Backend} parallel reading..."
 
-            backend_kw = Dict(:parallel_read => true)
-            ds = FieldDataset(filepath3d; backend=Backend(), backend_kw)
+            reader_kw = Dict(:parallel_read => true)
+            ds = FieldDataset(filepath3d; backend=Backend(), reader_kw)
 
             @test ds isa FieldDataset
             @test ds.u isa FieldTimeSeries

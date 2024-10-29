@@ -223,7 +223,7 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} 
                    path :: P
                    name :: N
           time_indexing :: TI
-             backend_kw :: KW
+             reader_kw :: KW
 
     function FieldTimeSeries{LX, LY, LZ}(data::D,
                                          grid::G,
@@ -234,7 +234,7 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} 
                                          path,
                                          name,
                                          time_indexing,
-                                         backend_kw) where {LX, LY, LZ, K, D, G, B, I}
+                                         reader_kw) where {LX, LY, LZ, K, D, G, B, I}
 
         ET = eltype(data)
 
@@ -263,11 +263,11 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} 
         TI = typeof(time_indexing)
         P = typeof(path)
         N = typeof(name)
-        KW = typeof(backend_kw)
+        KW = typeof(reader_kw)
 
         return new{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW}(data, grid, backend, bcs,
                                                                    indices, times, path, name,
-                                                                   time_indexing, backend_kw)
+                                                                   time_indexing, reader_kw)
     end
 end
 
@@ -281,7 +281,7 @@ on_architecture(to, fts::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} =
                                 on_architecture(to, fts.path),
                                 on_architecture(to, fts.name),
                                 on_architecture(to, fts.time_indexing),
-                                on_architecture(to, fts.backend_kw))
+                                on_architecture(to, fts.reader_kw))
 
 #####
 ##### Minimal implementation of FieldTimeSeries for use in GPU kernels
@@ -370,7 +370,7 @@ function FieldTimeSeries(loc, grid, times=();
                          name = nothing,
                          time_indexing = Linear(),
                          boundary_conditions = nothing,
-                         backend_kw = Dict{Symbol, Any}())
+                         reader_kw = Dict{Symbol, Any}())
 
     LX, LY, LZ = loc
 
@@ -383,7 +383,7 @@ function FieldTimeSeries(loc, grid, times=();
     end
 
     return FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
-                                       times, path, name, time_indexing, backend_kw)
+                                       times, path, name, time_indexing, reader_kw)
 end
 
 """
@@ -419,7 +419,7 @@ struct UnspecifiedBoundaryConditions end
                     time_indexing = Linear(),
                     iterations = nothing,
                     times = nothing,
-                    backend_kw = Dict{Symbol, Any}())
+                    reader_kw = Dict{Symbol, Any}())
 
 Return a `FieldTimeSeries` containing a time-series of the field `name`
 load from JLD2 output located at `path`.
@@ -439,8 +439,8 @@ Keyword arguments
            comparison to recorded save times. Defaults to times associated with `iterations`.
            Takes precedence over `iterations` if `times` is specified.
 
-- `backend_kw`: A dictionary of keyword arguments to pass to the backend (currently only JLD2)
-                to be used when opening files.
+- `reader_kw`: A dictionary of keyword arguments to pass to the reader (currently only JLD2)
+               to be used when opening files.
 """
 function FieldTimeSeries(path::String, name::String;
                          backend = InMemory(),
@@ -451,9 +451,9 @@ function FieldTimeSeries(path::String, name::String;
                          time_indexing = Linear(),
                          iterations = nothing,
                          times = nothing,
-                         backend_kw = Dict{Symbol, Any}())
+                         reader_kw = Dict{Symbol, Any}())
 
-    file = jldopen(path; backend_kw...)
+    file = jldopen(path; reader_kw...)
 
     # Defaults
     isnothing(iterations)   && (iterations = parse.(Int, keys(file["timeseries/t"])))
@@ -536,7 +536,7 @@ function FieldTimeSeries(path::String, name::String;
     data = new_data(eltype(grid), grid, loc, indices, Nt)
 
     time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
-                                              times, path, name, time_indexing, backend_kw)
+                                              times, path, name, time_indexing, reader_kw)
 
     set!(time_series, path, name)
 
@@ -549,7 +549,7 @@ end
           architecture = nothing,
           indices = (:, :, :),
           boundary_conditions = nothing,
-          backend_kw = Dict{Symbol, Any}())
+          reader_kw = Dict{Symbol, Any}())
 
 Load a field called `name` saved in a JLD2 file at `path` at `iter`ation.
 Unless specified, the `grid` is loaded from `path`.
@@ -559,7 +559,7 @@ function Field(location, path::String, name::String, iter;
                architecture = nothing,
                indices = (:, :, :),
                boundary_conditions = nothing,
-               backend_kw = Dict{Symbol, Any}())
+               reader_kw = Dict{Symbol, Any}())
 
     # Default to CPU if neither architecture nor grid is specified
     if isnothing(architecture)
@@ -571,7 +571,7 @@ function Field(location, path::String, name::String, iter;
     end
 
     # Load the grid and data from file
-    file = jldopen(path; backend_kw...)
+    file = jldopen(path; reader_kw...)
 
     isnothing(grid) && (grid = file["serialized/grid"])
     raw_data = file["timeseries/$name/$iter"]
