@@ -3,7 +3,7 @@ struct LillyCoefficient{FT}
     reduction_factor :: FT
 end
 
-LillyCoefficient(FT=Float64, smagorinsky=0.16, reduction_factor=1.0) =
+LillyCoefficient(FT=Float64; smagorinsky=0.16, reduction_factor=1.0) =
     LillyCoefficient(convert(FT, smagorinsky), convert(FT, reduction_factor))
 
 const SmagorinskyLilly = Smagorinsky{<:Any, <:LillyCoefficient}
