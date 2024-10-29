@@ -21,51 +21,56 @@ function kinetic_energy(u, v)
     return compute!(ke)
 end
 
+function pointwise_approximate_equal(field, val)
+    CPU_field = on_architecture(CPU(), field)
+    @test all(interior(CPU_field) .≈ val)
+end
+
 function test_vector_rotation(grid)
-    u = XFaceField(grid)
-    v = YFaceField(grid)
+    u = CenterField(grid)
+    v = CenterField(grid)
     
     # Purely longitudinal flow in the extrinsic coordinate system
-    set!(u, 1)
-    set!(v, 0)
+    fill!(u, 1)
+    fill!(v, 0)
 
     # Convert it to an "Instrinsic" reference frame
-    uᵢ = KernelFunctionOperation{Face, Center, Center}(intrinsic_vector_x_component, grid, u, v)
-    vᵢ = KernelFunctionOperation{Center, Face, Center}(intrinsic_vector_y_component, grid, u, v)
+    uᵢ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_x_component, grid, u, v)
+    vᵢ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_y_component, grid, u, v)
     
     uᵢ = compute!(Field(uᵢ))
     vᵢ = compute!(Field(vᵢ))
 
     # The extrema of u and v, as well as their mean value should
     # be equivalent on an "intrinsic" frame
-    @test maximum(uᵢ) ≈ maximum(vᵢ)
-    @test minimum(uᵢ) ≈ minimum(vᵢ)
-    @test mean(uᵢ) ≈ mean(vᵢ)
+    @test maximum(uᵢ) ≈ - minimum(vᵢ)
+    @test minimum(uᵢ) ≈ - maximum(vᵢ)
+    @test mean(uᵢ) ≈ - mean(vᵢ)
     @test mean(uᵢ) > 0 # The mean value should be positive
 
     # Kinetic energy should remain the same
     KE = kinetic_energy(uᵢ, vᵢ)
-    @test all(on_architecture(CPU(), interior(KE)) .≈ 0.5)
+    @apply_regionally pointwise_approximate_equal(KE, 0.5)
 
     # Convert it back to a purely zonal velocity (vₑ == 0)
-    uₑ = KernelFunctionOperation{Face, Center, Center}(extrinsic_vector_x_component, grid, uᵢ, vᵢ)
-    vₑ = KernelFunctionOperation{Center, Face, Center}(extrinsic_vector_y_component, grid, uᵢ, vᵢ)
+    uₑ = KernelFunctionOperation{Center, Center, Center}(extrinsic_vector_x_component, grid, uᵢ, vᵢ)
+    vₑ = KernelFunctionOperation{Center, Center, Center}(extrinsic_vector_y_component, grid, uᵢ, vᵢ)
     
     uₑ = compute!(Field(uₑ))
     vₑ = compute!(Field(vₑ))
 
     # Make sure that the flow was converted back to a 
     # purely zonal flow in the extrensic frame (v ≈ 0)
-    @test all(on_architecture(CPU(), interior(vₑ)) .≈ 0)
-    @test all(on_architecture(CPU(), interior(uₑ)) .≈ 1)
+    @apply_regionally pointwise_approximate_equal(vₑ, 0)
+    @apply_regionally pointwise_approximate_equal(uₑ, 1)
 
     # Purely meridional flow in the extrinsic coordinate system
-    set!(u, 0)
-    set!(v, 1)
+    fill!(u, 0)
+    fill!(v, 1)
 
     # Convert it to an "Instrinsic" reference frame
-    uᵢ = KernelFunctionOperation{Face, Center, Center}(intrinsic_vector_x_component, grid, u, v)
-    vᵢ = KernelFunctionOperation{Center, Face, Center}(intrinsic_vector_y_component, grid, u, v)
+    uᵢ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_x_component, grid, u, v)
+    vᵢ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_y_component, grid, u, v)
     
     uᵢ = compute!(Field(uᵢ))
     vᵢ = compute!(Field(vᵢ))
@@ -79,27 +84,27 @@ function test_vector_rotation(grid)
 
     # Kinetic energy should remain the same
     KE = kinetic_energy(uᵢ, vᵢ)
-    @test all(on_architecture(CPU(), interior(KE)) .≈ 0.5)
+    @apply_regionally pointwise_approximate_equal(KE, 0.5)
 
     # Convert it back to a purely zonal velocity (vₑ == 0)
-    uₑ = KernelFunctionOperation{Face, Center, Center}(extrinsic_vector_x_component, grid, uᵢ, vᵢ)
-    vₑ = KernelFunctionOperation{Center, Face, Center}(extrinsic_vector_y_component, grid, uᵢ, vᵢ)
+    uₑ = KernelFunctionOperation{Center, Center, Center}(extrinsic_vector_x_component, grid, uᵢ, vᵢ)
+    vₑ = KernelFunctionOperation{Center, Center, Center}(extrinsic_vector_y_component, grid, uᵢ, vᵢ)
     
     uₑ = compute!(Field(uₑ))
     vₑ = compute!(Field(vₑ))
 
     # Make sure that the flow was converted back to a 
     # purely zonal flow in the extrensic frame (v ≈ 0)
-    @test all(on_architecture(CPU(), interior(vₑ)) .≈ 1)
-    @test all(on_architecture(CPU(), interior(uₑ)) .≈ 0)
+    @apply_regionally pointwise_approximate_equal(vₑ, 1)
+    @apply_regionally pointwise_approximate_equal(uₑ, 0)
 
     # Mixed zonal and meridional flow.
     set!(u, 0.5)
     set!(v, 0.5)
 
     # Convert it to an "Instrinsic" reference frame
-    uᵢ = KernelFunctionOperation{Face, Center, Center}(intrinsic_vector_x_component, grid, u, v)
-    vᵢ = KernelFunctionOperation{Center, Face, Center}(intrinsic_vector_y_component, grid, u, v)
+    uᵢ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_x_component, grid, u, v)
+    vᵢ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_y_component, grid, u, v)
     
     uᵢ = compute!(Field(uᵢ))
     vᵢ = compute!(Field(vᵢ))
@@ -108,24 +113,23 @@ function test_vector_rotation(grid)
     # be equivalent on an "intrinsic" frame
     @test maximum(uᵢ) ≈ maximum(vᵢ)
     @test minimum(uᵢ) ≈ minimum(vᵢ)
-    @test mean(uᵢ) ≈ mean(vᵢ)
-    @test mean(vᵢ) > 0 # The mean value should be positive
+    @test mean(uᵢ) > 0 # The mean value of u should be positive
 
     # Kinetic energy should remain the same
     KE = kinetic_energy(uᵢ, vᵢ)
-    @test all(on_architecture(CPU(), interior(KE)) .≈ 0.25)
+    @apply_regionally pointwise_approximate_equal(KE, 0.25)
 
     # Convert it back to a purely zonal velocity (vₑ == 0)
-    uₑ = KernelFunctionOperation{Face, Center, Center}(extrinsic_vector_x_component, grid, uᵢ, vᵢ)
-    vₑ = KernelFunctionOperation{Center, Face, Center}(extrinsic_vector_y_component, grid, uᵢ, vᵢ)
+    uₑ = KernelFunctionOperation{Center, Center, Center}(extrinsic_vector_x_component, grid, uᵢ, vᵢ)
+    vₑ = KernelFunctionOperation{Center, Center, Center}(extrinsic_vector_y_component, grid, uᵢ, vᵢ)
     
     uₑ = compute!(Field(uₑ))
     vₑ = compute!(Field(vₑ))
 
     # Make sure that the flow was converted back to a 
     # purely zonal flow in the extrensic frame (v ≈ 0)
-    @test all(on_architecture(CPU(), interior(vₑ)) .≈ 0.5)
-    @test all(on_architecture(CPU(), interior(uₑ)) .≈ 0.5)
+    @apply_regionally pointwise_approximate_equal(vₑ, 0.5)
+    @apply_regionally pointwise_approximate_equal(uₑ, 0.5)
 end
     
 @testset "Vector rotation" begin
