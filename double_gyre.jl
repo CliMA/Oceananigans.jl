@@ -12,13 +12,15 @@ Nz = 2
 Nxy = 32 
 Lz = 1800
 σ = 1.1
-z_faces_2 = ZStarVerticalCoordinate((-Lz, 0))
+
 z_faces(k) = -Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ));
+z_faces_2 = ZStarVerticalCoordinate(z_faces)
+
 grid = LatitudeLongitudeGrid(arch; size=(Nxy, Nxy, Nz),
     latitude=(15, 75),
     longitude=(0, 60),
     halo=(5, 5, 5),
-    z=z_faces)
+    z=z_faces_2)
 
 #####
 ##### Parameters
@@ -62,7 +64,7 @@ closure1 = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=1.0,
     background_κz=1e-5,
     convective_νz=1e-2,
     background_νz=1e-2)
-closure2 = HorizontalScalarDiffusivity(ν = 10^3, κ = 10^3)
+closure2 = HorizontalScalarDiffusivity(ν = 5 * 10^3, κ = 5 * 10^3)
 closure = (closure1, closure2)
 
 ##### 

@@ -1,5 +1,5 @@
 using CairoMakie, JLD2, Statistics, HDF5, Oceananigans
-data_directory = "/nobackup1/sandre/OceananigansData/"
+data_directory = "" # "/nobackup1/sandre/OceananigansData/"
 figure_directory = "oceananigans_figure/"
 
 casevar = 1
@@ -183,7 +183,8 @@ end
 ψ = barotropic_streamfunction(u[end])
 
 Nt = size(u, 4)
-avgψ = mean([interior(barotropic_streamfunction(u[i]))[:,:,1] for i in Nt-120:Nt])
+Ntmin = max(1, Nt-120)
+avgψ = mean([interior(barotropic_streamfunction(u[i]))[:,:,1] for i in Ntmin:Nt])
 
 fig = Figure()
 psimax = quantile(avgψ[:], 0.99)

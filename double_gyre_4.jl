@@ -12,8 +12,8 @@ Nz = 15
 Nxy = 32 * 4
 Lz = 1800
 σ = 1.1
-z_faces_2 = ZStarVerticalCoordinate((-Lz, 0))
 z_faces(k) = -Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ));
+z_faces_2 = ZStarVerticalCoordinate(z_faces)
 grid = LatitudeLongitudeGrid(arch; size=(Nxy, Nxy, Nz),
     latitude=(15, 75),
     longitude=(0, 60),
