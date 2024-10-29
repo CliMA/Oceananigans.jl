@@ -3,8 +3,6 @@ agents:
   slurm_mem: 8G
   modules: climacommon/2024_05_27
 
-timeout_in_minutes: 1440
-
 env:
   OPENBLAS_NUM_THREADS: 1
   OMPI_MCA_opal_warn_on_missing_libcuda: 0
