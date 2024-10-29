@@ -80,6 +80,7 @@ end
 # Convenience constructors
 ZStarVerticalCoordinate(r_faces::Union{Tuple, AbstractVector}) = ZStarVerticalCoordinate(r_faces, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing)
 ZStarVerticalCoordinate(r⁻::Number, r⁺::Number) = ZStarVerticalCoordinate((r⁻, r⁺), nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing)
+ZStarVerticalCoordinate(r_generator::Function)  = ZStarVerticalCoordinate(r_generator, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing)
 
 Adapt.adapt_structure(to, coord::ZStarVerticalCoordinate) = 
     ZStarVerticalCoordinate(Adapt.adapt(to, coord.reference),
