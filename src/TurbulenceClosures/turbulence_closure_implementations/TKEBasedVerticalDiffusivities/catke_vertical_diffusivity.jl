@@ -259,7 +259,7 @@ end
     end
 end
 
-@inline function κuᶜᶜᶠ(i, j, k, grid::AbstractGrid{FT}, closure, velocities, tracers, buoyancy, surface_buoyancy_flux) where FT
+@inline function κuᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
     w★ = ℑzᵃᵃᶠ(i, j, k, grid, turbulent_velocityᶜᶜᶜ, closure, tracers.e)
     ℓu = momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
     κu = ℓu * w★
