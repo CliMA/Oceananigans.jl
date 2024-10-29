@@ -4,6 +4,7 @@ using Oceananigans.DistributedComputations: Distributed, Partition, child_archit
 import Oceananigans.Fields: interior
 
 test_child_arch() = parse(Bool, get(ENV, "GPU_TEST", "false")) ? GPU() : CPU()
+mpi_test() = parse(Bool, get(ENV, "MPI_TEST", "false"))
 
 function test_architectures() 
     child_arch =  test_child_arch()
@@ -11,13 +12,17 @@ function test_architectures()
     # If MPI is initialized with MPI.Comm_size > 0, we are running in parallel.
     # We test several different configurations: `Partition(x = 4)`, `Partition(y = 4)`, 
     # `Partition(x = 2, y = 2)`, and different fractional subdivisions in x, y and xy
-    if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
-        return (Distributed(child_arch; partition = Partition(4)),
-                Distributed(child_arch; partition = Partition(1, 4)),
-                Distributed(child_arch; partition = Partition(2, 2)),
-                Distributed(child_arch; partition = Partition(x = Fractional(1, 2, 3, 4))),
-                Distributed(child_arch; partition = Partition(y = Fractional(1, 2, 3, 4))),
-                Distributed(child_arch; partition = Partition(x = Fractional(1, 2), y = Equal()))) 
+    if mpi_test()
+        if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
+            return (Distributed(child_arch; partition = Partition(4)),
+                    Distributed(child_arch; partition = Partition(1, 4)),
+                    Distributed(child_arch; partition = Partition(2, 2)),
+                    Distributed(child_arch; partition = Partition(x = Fractional(1, 2, 3, 4))),
+                    Distributed(child_arch; partition = Partition(y = Fractional(1, 2, 3, 4))),
+                    Distributed(child_arch; partition = Partition(x = Fractional(1, 2), y = Equal()))) 
+        else
+            return throw("The MPI partitioning is not correctly configured.")
+        end
     else
         return tuple(child_arch)
     end
@@ -31,10 +36,14 @@ function nonhydrostatic_regression_test_architectures()
     # If MPI is initialized with MPI.Comm_size > 0, we are running in parallel.
     # We test 3 different configurations: `Partition(x = 4)`, `Partition(y = 4)` 
     # and `Partition(x = 2, y = 2)`
-    if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
-        return (Distributed(child_arch; partition = Partition(4)),
-                Distributed(child_arch; partition = Partition(1, 4)),
-                Distributed(child_arch; partition = Partition(2, 2)))
+    if mpi_test()
+        if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
+            return (Distributed(child_arch; partition = Partition(4)),
+                    Distributed(child_arch; partition = Partition(1, 4)),
+                    Distributed(child_arch; partition = Partition(2, 2)))
+        else
+            return throw("The MPI partitioning is not correctly configured.")
+        end        
     else
         return tuple(child_arch)
     end

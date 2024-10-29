@@ -38,6 +38,7 @@ steps:
     key: "distributed_cpu"
     env:
       TEST_GROUP: "distributed"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -49,6 +50,7 @@ steps:
     env:
       TEST_GROUP: "distributed"
       GPU_TEST: "true"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -65,6 +67,7 @@ steps:
     key: "distributed_solvers_cpu"
     env:
       TEST_GROUP: "distributed_solvers"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -76,6 +79,7 @@ steps:
     env:
       TEST_GROUP: "distributed_solvers"
       GPU_TEST: "true"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -91,6 +95,7 @@ steps:
     key: "distributed_hydrostatic_model_cpu"
     env:
       TEST_GROUP: "distributed_hydrostatic_model"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -102,6 +107,7 @@ steps:
     env:
       TEST_GROUP: "distributed_hydrostatic_model"
       GPU_TEST: "true"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -117,6 +123,7 @@ steps:
     key: "distributed_nonhydrostatic_regression_cpu"
     env:
       TEST_GROUP: "distributed_nonhydrostatic_regression"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -128,6 +135,7 @@ steps:
     env:
       TEST_GROUP: "distributed_nonhydrostatic_regression"
       GPU_TEST: "true"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
