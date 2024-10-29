@@ -52,6 +52,7 @@ steps:
       GPU_TEST: "true"
       MPI_TEST: "true"
     commands:
+      - "julia -O0 --color=yes --project -e 'using CUDA; CUDA.precompile_runtime()'"
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       slurm_mem: 120G
