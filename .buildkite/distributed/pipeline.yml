@@ -1,19 +1,18 @@
 agents:
   queue: new-central
   slurm_mem: 8G
-  modules: climacommon/2024_02_27
+  modules: climacommon/2024_05_27
+
+timeout_in_minutes: 1440
 
 env:
-  JULIA_LOAD_PATH: "${JULIA_LOAD_PATH}:${BUILDKITE_BUILD_CHECKOUT_PATH}/.buildkite/distributed"
   OPENBLAS_NUM_THREADS: 1
-  JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
-  JULIA_NUM_PRECOMPILE_TASKS: 8
-  JULIA_NUM_THREADS: 8
   OMPI_MCA_opal_warn_on_missing_libcuda: 0
+  JULIA_NUM_PRECOMPILE_TASKS: 8
 
 steps:
   - label: "initialize"
-    key: "init_central"
+    key: "init"
     env:
       TEST_GROUP: "init"
     command:
