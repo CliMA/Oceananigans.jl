@@ -79,7 +79,7 @@ end
 @inline function buoyancy_restoring(i, j, grid, clock, fields, p)
     b = @inbounds fields.b[i, j, grid.Nz]
     y = (φnode(j, grid, Center()) - p.φ₀) / grid.Ly
-    b★ = p.Δb * y
+    b★ = p.Δb * (1-y)
 
     return p.𝓋 * (b - b★)
 end
@@ -168,6 +168,6 @@ simulation.output_writers[:free_surface] = JLD2OutputWriter(model, (; η=model.f
     overwrite_existing=true,
     indices=(:, :, grid.Nz + 1),
     schedule=TimeInterval(30days),
-    filename=data_directory * "baroclinic_double_gyre_free_surface_2")
+    filename=data_directory * "baroclinic_double_gyre_free_surface_4")
     
 run!(simulation)

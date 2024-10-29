@@ -6,10 +6,10 @@ using Oceananigans.AbstractOperations: GridMetricOperation
 using Printf
 
 
-data_directory = "/nobackup1/sandre/OceananigansData/"
-arch = GPU()
+data_directory = ""# "/nobackup1/sandre/OceananigansData/"
+arch = CPU()
 Nz = 2
-Nxy = 32 * 8
+Nxy = 32 
 Lz = 1800
 σ = 1.1
 z_faces_2 = ZStarVerticalCoordinate((-Lz, 0))
@@ -18,7 +18,7 @@ grid = LatitudeLongitudeGrid(arch; size=(Nxy, Nxy, Nz),
     latitude=(15, 75),
     longitude=(0, 60),
     halo=(5, 5, 5),
-    z=z_faces_2)
+    z=z_faces)
 
 #####
 ##### Parameters
@@ -79,7 +79,7 @@ end
 @inline function buoyancy_restoring(i, j, grid, clock, fields, p)
     b = @inbounds fields.b[i, j, grid.Nz]
     y = (φnode(j, grid, Center()) - p.φ₀) / grid.Ly
-    b★ = p.Δb * y
+    b★ = p.Δb * (1-y)
 
     return p.𝓋 * (b - b★)
 end
@@ -164,7 +164,7 @@ simulation.output_writers[:snapshots] = JLD2OutputWriter(model, field_outputs,
     schedule=TimeInterval(30days),
     filename= data_directory * "baroclinic_double_gyre_1")
 
-simulation.output_writers[:free_surface] = JLD2OutdputWriter(model, (; η=model.free_surface.η),
+simulation.output_writers[:free_surface] = JLD2OutputWriter(model, (; η=model.free_surface.η),
     overwrite_existing=true,
     indices=(:, :, grid.Nz + 1),
     schedule=TimeInterval(30days),

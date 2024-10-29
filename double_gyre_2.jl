@@ -79,7 +79,7 @@ end
 @inline function buoyancy_restoring(i, j, grid, clock, fields, p)
     b = @inbounds fields.b[i, j, grid.Nz]
     y = (φnode(j, grid, Center()) - p.φ₀) / grid.Ly
-    b★ = p.Δb * y
+    b★ = p.Δb * (1-y)
 
     return p.𝓋 * (b - b★)
 end

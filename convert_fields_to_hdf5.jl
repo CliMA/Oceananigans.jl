@@ -177,7 +177,7 @@ end
     ψ[i, 1, 1] = 0
 
     for j in 2:grid.Ny
-        ψ[i, j, 1] = ψ[i, j-1, 1] + U[i, j, 1] * Δyᶠᶜᶜ(i, j, 1, grid)
+        ψ[i, j, 1] = ψ[i, j-1, 1] - U[i, j, 1] * Δyᶠᶜᶜ(i, j, 1, grid)
     end
 end
 ψ = barotropic_streamfunction(u[end])
