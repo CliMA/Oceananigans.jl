@@ -117,16 +117,19 @@ function SplitExplicitFreeSurface(grid = nothing;
             throw(ArgumentError(string("Need to provide the grid to calculate the barotropic substeps from the cfl. ",
                                 "For example, SplitExplicitFreeSurface(grid, cfl=0.7, ...)")))
         end
-        substepping = FixedTimeStepSize(grid; cfl, gravitational_acceleration, averaging_kernel)
-        if isnothing(fixed_Δt)
-            return SplitExplicitSettings(substepping, timestepper, settings_kwargs)
-        else
-            substeps = ceil(Int, 2 * fixed_Δt / substepping.Δt_barotropic)
-        end
-    end
 
-    fractional_step_size, averaging_weights = weights_from_substeps(FT, substeps, averaging_kernel)
-    substepping = FixedSubstepNumber(fractional_step_size, averaging_weights)
+        substepping = FixedTimeStepSize(grid; cfl, gravitational_acceleration, averaging_kernel)
+
+        if !isnothing(fixed_Δt)
+            substeps = ceil(Int, 2 * fixed_Δt / substepping.Δt_barotropic)
+            fractional_step_size, averaging_weights = weights_from_substeps(FT, substeps, averaging_kernel)
+            substepping = FixedSubstepNumber(fractional_step_size, averaging_weights)        
+        end
+        
+    else # a number of substeps is provided
+        fractional_step_size, averaging_weights = weights_from_substeps(FT, substeps, averaging_kernel)
+        substepping = FixedSubstepNumber(fractional_step_size, averaging_weights)
+    end    
 
     return SplitExplicitFreeSurface(nothing,
                                     nothing,
