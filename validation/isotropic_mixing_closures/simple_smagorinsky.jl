@@ -11,9 +11,8 @@ grid = RectilinearGrid(arch,
 advection = Centered(order=2)
 #closure = nothing
 #closure = Smagorinsky(coefficient=0.16)
-#coefficient = DynamicCoefficient(averaging=(1, 2))
-coefficient = DynamicCoefficient(averaging=LagrangianAveraging())
-#coefficient = DynamicCoefficient(dims=(1, 2), schedule=IterationInterval(2))
+coefficient = DynamicCoefficient(averaging=(1, 2))
+#coefficient = DynamicCoefficient(averaging=LagrangianAveraging())
 closure = Smagorinsky(; coefficient)
 @time model = NonhydrostaticModel(; grid, closure, advection)
 
