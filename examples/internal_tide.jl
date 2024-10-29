@@ -14,6 +14,7 @@
 
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.ImmersedBoundaries: PartialCellBottom
 
 # ## Grid
 
