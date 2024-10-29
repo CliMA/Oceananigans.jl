@@ -3,7 +3,7 @@ using Oceananigans.DistributedComputations: Distributed, Partition, child_archit
 
 import Oceananigans.Fields: interior
 
-test_child_arch() = CUDA.has_cuda() ? GPU() : CPU()
+test_child_arch() = parse(Bool, get(ENV, "GPU_TEST", "false")) ? GPU() : CPU()
 
 function test_architectures() 
     child_arch =  test_child_arch()

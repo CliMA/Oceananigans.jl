@@ -17,10 +17,18 @@ steps:
     env:
       TEST_GROUP: "init"
     command:
-      - echo "--- Instantiate project"
-      - "julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "echo '--- Instantiate project'"
+      - "julia --project -e 'using Pkg; Pkg.instantiate(verbose=true)'"
+
+      - "echo '--- Precompile project'"
+      - "julia --project -e 'using Pkg; Pkg.precompile(strict=true)'"
+      - "julia --project -e 'using Pkg; Pkg.status()'"
+
+      # Force the initialization of the CUDA runtime as it is lazily loaded by default:
+      - "echo '--- Initialize the CUDA runtime'"
+      - "julia --project -e 'using CUDA; CUDA.precompile_runtime()'"
+      - "julia --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
       slurm_gpus: 1
       slurm_cpus_per_task: 8
 
@@ -40,6 +48,7 @@ steps:
     key: "distributed_gpu"
     env:
       TEST_GROUP: "distributed"
+      GPU_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -66,6 +75,7 @@ steps:
     key: "distributed_solvers_gpu"
     env:
       TEST_GROUP: "distributed_solvers"
+      GPU_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -91,6 +101,7 @@ steps:
     key: "distributed_hydrostatic_model_gpu"
     env:
       TEST_GROUP: "distributed_hydrostatic_model"
+      GPU_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -116,6 +127,7 @@ steps:
     key: "distributed_nonhydrostatic_regression_gpu"
     env:
       TEST_GROUP: "distributed_nonhydrostatic_regression"
+      GPU_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
