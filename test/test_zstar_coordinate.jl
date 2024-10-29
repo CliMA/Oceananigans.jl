@@ -15,7 +15,6 @@ function test_zstar_coordinate(model, Ni, Δt)
     # (2) vertical velocities are zero at the top surface
     for _ in 1:Ni
         time_step!(model, Δt)
-        @show extrema(interior(model.velocities.w, :, :, model.grid.Nz+1))
     end
 
     ∫b = Field(Integral(model.tracers.b))
