@@ -1,9 +1,11 @@
+using Oceananigans.BuoyancyModels: ∂z_b
+
 struct LillyCoefficient{FT}
     smagorinsky :: FT
     reduction_factor :: FT
 end
 
-LillyCoefficient(FT=Float64, smagorinsky=0.16, reduction_factor=1.0) =
+LillyCoefficient(FT=Float64; smagorinsky=0.16, reduction_factor=1) =
     LillyCoefficient(convert(FT, smagorinsky), convert(FT, reduction_factor))
 
 const SmagorinskyLilly = Smagorinsky{<:Any, <:LillyCoefficient}
@@ -66,7 +68,7 @@ Lilly, D. K. "The representation of small-scale turbulence in numerical simulati
     NCAR Manuscript No. 281, 0, (1966)
 """
 function SmagorinskyLilly(time_discretization=ExplicitTimeDiscretization(), FT=Float64; C=0.16, Cb=1, Pr=1)
-    coefficient = LillyCoefficient(smagorinsky=C, reduction_factor=Cb)
+    coefficient = LillyCoefficient(FT, smagorinsky=C, reduction_factor=Cb)
     TD = typeof(time_discretization)
     Pr = convert_diffusivity(FT, Pr; discrete_form=false)
     return Smagorinsky{TD}(coefficient, Pr)

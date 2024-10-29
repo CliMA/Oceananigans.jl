@@ -10,6 +10,8 @@ using ..TurbulenceClosures:
     ExplicitTimeDiscretization,
     convert_diffusivity
 
+import Oceananigans.Utils: with_tracers
+
 import ..TurbulenceClosures:
     viscosity,
     diffusivity,
@@ -19,8 +21,6 @@ import ..TurbulenceClosures:
     compute_diffusivities!,
     DiffusivityFields,
     tracer_diffusivities
-
-import Oceananigans.Utils: with_tracers
 
 #####
 ##### The turbulence closure proposed by Smagorinsky and Lilly.
