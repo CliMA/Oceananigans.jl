@@ -1,7 +1,7 @@
 agents:
   queue: new-central
   slurm_mem: 8G
-  modules: climacommon/2024_10_09
+  modules: climacommon/2024_05_27
 
 env:
   JULIA_LOAD_PATH: "${JULIA_LOAD_PATH}:${BUILDKITE_BUILD_CHECKOUT_PATH}/.buildkite/distributed"
@@ -18,20 +18,18 @@ steps:
       TEST_GROUP: "init"
     command:
       - "echo '--- Instantiate project'"
-      - "srun julia --project -e 'using Pkg; Pkg.instantiate(verbose=true)'"
+      - "julia --project -e 'using Pkg; Pkg.instantiate(verbose=true)'"
 
       - "echo '--- Precompile project'"
-      - "srun julia --project -e 'using Pkg; Pkg.precompile(strict=true)'"
-      - "srun julia --project -e 'using Pkg; Pkg.status()'"
+      - "julia --project -e 'using Pkg; Pkg.precompile(strict=true)'"
+      - "julia --project -e 'using Pkg; Pkg.status()'"
 
       # Force the initialization of the CUDA runtime as it is lazily loaded by default:
       - "echo '--- Initialize the CUDA runtime'"
-      - "srun julia --project -e 'using CUDA; CUDA.precompile_runtime()'"
-      - "srun julia --project -e 'using Pkg; Pkg.test()'"
+      - "julia --project -e 'using CUDA; CUDA.precompile_runtime()'"
+      - "julia --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_ntasks: 1
       slurm_gpus: 1
-      slurm_gpus_per_task: 1
       slurm_cpus_per_task: 8
 
   - wait
