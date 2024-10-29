@@ -18,17 +18,14 @@ The split-explicit free surface solver.
 
 $(FIELDS)
 """
-struct SplitExplicitFreeSurface{𝒩, 𝒮, ℱ, 𝒫 ,ℰ} <: AbstractFreeSurface{𝒩, 𝒫}
-    "The instantaneous free surface (`ReducedField`)"
-    η :: 𝒩
-    "The entire state for the split-explicit solver (`SplitExplicitState`)"
-    state :: 𝒮
-    "Parameters for timestepping split-explicit solver (`NamedTuple`)"
-    auxiliary :: ℱ
-    "Gravitational acceleration"
-    gravitational_acceleration :: 𝒫
-    "Settings for the split-explicit scheme"
-    settings :: ℰ
+struct SplitExplicitFreeSurface{H, U, M, FT, K , S, T} <: AbstractFreeSurface{H, FT}
+    η :: H
+    barotropic_velocities :: U # A namedtuple with U, V 
+    filtered_state :: M # A namedtuple with η, U, V averaged throughout the substepping
+    gravitational_acceleration :: FT
+    kernel_parameters :: K
+    substepping :: S  # Either `FixedSubstepNumber` or `FixedTimeStepSize`
+    timestepper :: T # redesigned to contain all auxiliary field and settings necessary to the particular timestepping
 end
 
 """
@@ -38,7 +35,7 @@ end
                              cfl = nothing,
                              fixed_Δt = nothing,
                              averaging_kernel = averaging_shape_function,
-                             timestepper = ForwardBackwardScheme())
+                             timestepper = :ForwardBackward)
 
 Return a `SplitExplicitFreeSurface` representing an explicit time discretization
 of a free surface dynamics with `gravitational_acceleration`.
@@ -79,8 +76,8 @@ Keyword Arguments
                       is used.
 
 - `timestepper`: Time stepping scheme used for the barotropic advancement. Choose one of:
-  * `ForwardBackwardScheme()` (default): `η = f(U)`   then `U = f(η)`,
-  * `AdamsBashforth3Scheme()`: `η = f(U, Uᵐ⁻¹, Uᵐ⁻²)` then `U = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)`.
+  * `:ForwardBackward`: (default): `ηᵐ⁺¹ = f(U)`   then `Uᵐ⁺¹ = f(η)`,
+  * `:AdamsBashforth3`: `ηᵐ⁺¹ = f(U, Uᵐ⁻¹, Uᵐ⁻²)` then `Uᵐ⁺¹ = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)`.
 
 References
 ==========
@@ -95,34 +92,77 @@ function SplitExplicitFreeSurface(grid = nothing;
                                   averaging_kernel = averaging_shape_function,
                                   timestepper = ForwardBackwardScheme())
 
-    settings = SplitExplicitSettings(grid;
-                                     gravitational_acceleration,
-                                     substeps,
-                                     cfl,
-                                     fixed_Δt,
-                                     averaging_kernel,
-                                     timestepper)
+    # The barotropic time stepping is launched on a grid `(kernel_size[1], kernel_size[2])`
+    # large (or `:xy` in case of a serial computation), and start computing from 
+    # `(i - kernel_offsets[1], j - kernel_offsets[2])`.
+    kernel_parameters = :xy
+
+
+    if !isnothing(grid)
+        FT = eltype(grid)
+    else
+        # this is a fallback and only used via the outer constructor,
+        # in case no grid is provided; when afterwards the free surfade
+        # is materialized via materialize_free_surface
+        # FT becomes eltype(grid)
+        FT = Float64
+    end
+
+    if (!isnothing(substeps) && !isnothing(cfl)) || (isnothing(substeps) && isnothing(cfl))
+        throw(ArgumentError("either specify a cfl or a number of substeps"))
+    end
+
+    if !isnothing(cfl)
+        if isnothing(grid)
+            throw(ArgumentError(string("Need to provide the grid to calculate the barotropic substeps from the cfl. ",
+                                "For example, SplitExplicitFreeSurface(grid, cfl=0.7, ...)")))
+        end
+        substepping = FixedTimeStepSize(grid; cfl, gravitational_acceleration, averaging_kernel)
+        if isnothing(fixed_Δt)
+            return SplitExplicitSettings(substepping, timestepper, settings_kwargs)
+        else
+            substeps = ceil(Int, 2 * fixed_Δt / substepping.Δt_barotropic)
+        end
+    end
+
+    fractional_step_size, averaging_weights = weights_from_substeps(FT, substeps, averaging_kernel)
+    substepping = FixedSubstepNumber(fractional_step_size, averaging_weights)
 
     return SplitExplicitFreeSurface(nothing,
                                     nothing,
                                     nothing,
                                     gravitational_acceleration,
-                                    settings)
+                                    kernel_parameters,
+                                    substepping,
+                                    timestepper)
 end
 
 # Internal function for HydrostaticFreeSurfaceModel
 function materialize_free_surface(free_surface::SplitExplicitFreeSurface, velocities, grid)
-    settings = SplitExplicitSettings(grid; free_surface.settings.settings_kwargs...)
+
+    timestepper = materialize_free_surface_timestepper(free_surface.timestepper, grid)
+
+    Nz = size(grid, 3)
 
     η = free_surface_displacement_field(velocities, free_surface, grid)
+    U = XFaceField(grid, indices = (:, :, Nz))
+    V = YFaceField(grid, indices = (:, :, Nz))
+    η̅ = free_surface_displacement_field(velocities, free_surface, grid)
+    U̅ = XFaceField(grid, indices = (:, :, Nz))
+    V̅ = YFaceField(grid, indices = (:, :, Nz))
+
+    barotropic_velocities = (; U, V)
+    filtered_state = (; η = η̅, U = U̅, V = V̅)
 
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
 
     return SplitExplicitFreeSurface(η,
-                                    SplitExplicitState(grid, settings.timestepper),
-                                    SplitExplicitAuxiliaryFields(grid),
-                                    gravitational_acceleration,
-                                    settings)
+                                    barotropic_velocities,
+                                    filtered_state,
+                                    gravitational_acceleration,    
+                                    free_surface.kernel_parameters,
+                                    free_surface.substepping,
+                                    timestepper)
 end
 
 
@@ -191,30 +231,6 @@ function SplitExplicitState(grid::AbstractGrid, timestepper)
     V̅ = YFaceField(grid, indices = (:, :, Nz))
 
     return SplitExplicitState(; ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, Uᵐ⁻¹, Uᵐ⁻², V, Vᵐ⁻¹, Vᵐ⁻², η̅, U̅, V̅)
-end
-
-"""
-    struct SplitExplicitAuxiliaryFields
-
-A type containing auxiliary fields for the split-explicit free surface.
-
-The barotropic time stepping is launched on a grid `(kernel_size[1], kernel_size[2])`
-large (or `:xy` in case of a serial computation), and start computing from 
-`(i - kernel_offsets[1], j - kernel_offsets[2])`.
-
-$(FIELDS)
-"""
-Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒦}
-    "Vertically-integrated slow barotropic forcing function for `U` (`ReducedField` over ``z``)"
-    Gᵁ :: ℱ𝒞
-    "Vertically-integrated slow barotropic forcing function for `V` (`ReducedField` over ``z``)"
-    Gⱽ :: 𝒞ℱ
-    "Depth at `(Face, Center)` (`ReducedField` over ``z``)"
-    Hᶠᶜ :: ℱ𝒞
-    "Depth at `(Center, Face)` (`ReducedField` over ``z``)"
-    Hᶜᶠ :: 𝒞ℱ
-    "kernel size for barotropic time stepping"
-    kernel_parameters :: 𝒦
 end
 
 """
@@ -323,54 +339,6 @@ end
     averaging_weights ./= sum(averaging_weights)
 
     return Δτ, tuple(averaging_weights...)
-end
-
-function SplitExplicitSettings(grid = nothing;
-                               gravitational_acceleration = g_Earth,
-                               substeps = nothing,
-                               cfl = nothing,
-                               fixed_Δt = nothing,
-                               averaging_kernel = averaging_shape_function,
-                               timestepper = ForwardBackwardScheme())
-
-    settings_kwargs = (; gravitational_acceleration,
-                         substeps,
-                         cfl,
-                         fixed_Δt,
-                         averaging_kernel,
-                         timestepper)
-
-    if !isnothing(grid)
-        FT = eltype(grid)
-    else
-        # this is a fallback and only used via the outer constructor,
-        # in case no grid is provided; when afterwards the free surfade
-        # is materialized via materialize_free_surface
-        # FT becomes eltype(grid)
-        FT = Float64
-    end
-
-    if (!isnothing(substeps) && !isnothing(cfl)) || (isnothing(substeps) && isnothing(cfl))
-        throw(ArgumentError("either specify a cfl or a number of substeps"))
-    end
-
-    if !isnothing(cfl)
-        if isnothing(grid)
-            throw(ArgumentError(string("Need to provide the grid to calculate the barotropic substeps from the cfl. ",
-                                "For example, SplitExplicitFreeSurface(grid, cfl=0.7, ...)")))
-        end
-        substepping = FixedTimeStepSize(grid; cfl, gravitational_acceleration, averaging_kernel)
-        if isnothing(fixed_Δt)
-            return SplitExplicitSettings(substepping, timestepper, settings_kwargs)
-        else
-            substeps = ceil(Int, 2 * fixed_Δt / substepping.Δt_barotropic)
-        end
-    end
-
-    fractional_step_size, averaging_weights = weights_from_substeps(FT, substeps, averaging_kernel)
-    substepping = FixedSubstepNumber(fractional_step_size, averaging_weights)
-
-    return SplitExplicitSettings(substepping, timestepper, settings_kwargs)
 end
 
 # Convenience Functions for grabbing free surface
