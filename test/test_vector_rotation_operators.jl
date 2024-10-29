@@ -1,11 +1,7 @@
 include("dependencies_for_runtests.jl")
-include("data_dependencies.jl")
 
 using Statistics: mean
 using Oceananigans.Operators
-using Oceananigans.CubedSpheres
-using Oceananigans.Models.HydrostaticFreeSurfaceModels
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
     
 # To be used in the test below as `KernelFunctionOperation`s
 @inline intrinsic_vector_x_component(i, j, k, grid, uₑ, vₑ) = 
@@ -136,7 +132,6 @@ end
     for arch in archs
         @testset "Conversion from Intrinsic to Extrinsic reference frame [$(typeof(arch))]" begin
             @info "  Testing the conversion of a vector between the Intrinsic and Extrinsic reference frame"
-
             grid = ConformalCubedSphereGrid(arch; panel_size=(10, 10, 1), z=(-1, 0))
             test_vector_rotation(grid)
         end
