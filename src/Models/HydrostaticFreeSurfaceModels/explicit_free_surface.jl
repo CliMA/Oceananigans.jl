@@ -50,8 +50,8 @@ end
 ##### Time stepping
 #####
 
-ab2_step_free_surface!(free_surface::ExplicitFreeSurface, model, Δt, χ) = 
-    @apply_regionally explicit_ab2_step_free_surface!(free_surface, model, Δt, χ)
+step_free_surface!(free_surface::ExplicitFreeSurface, model, Δt) = 
+    @apply_regionally explicit_ab2_step_free_surface!(free_surface, model, Δt, model.timestepper.χ)
 
 explicit_ab2_step_free_surface!(free_surface, model, Δt, χ) =
     launch!(model.architecture, model.grid, :xy,

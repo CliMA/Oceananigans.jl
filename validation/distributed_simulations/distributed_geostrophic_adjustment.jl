@@ -8,24 +8,26 @@
 #
 # $ export JULIA_NUM_THREADS=1
 
-using MPI
+# using MPI
 using Oceananigans
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: Sizes
 using Oceananigans.Grids: topology, architecture
 using Oceananigans.Units: kilometers, meters
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: DissipativeForwardBackwardScheme, ForwardBackwardScheme
 using Printf
 using JLD2
+using GLMakie
 
 topo = (Bounded, Periodic, Bounded)
 
 partition = Partition(x = Sizes(10, 13, 18, 39))
 
-arch = Distributed(CPU(); partition)
+arch = CPU()
 
 # Distribute problem irregularly
 Nx = 80
-rank = MPI.Comm_rank(arch.communicator)
+# rank = MPI.Comm_rank(arch.communicator)
 
 Lh = 100kilometers
 Lz = 400meters
@@ -37,8 +39,6 @@ grid = RectilinearGrid(arch,
                        z = (-Lz, 0),
                        topology = topo)
 
-@show rank, grid
-
 bottom(x, y) = x > 80kilometers && x < 90kilometers ? 100 : -500meters
 grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom); active_cells_map = true)
 
@@ -46,7 +46,10 @@ coriolis = FPlane(f=1e-4)
 
 model = HydrostaticFreeSurfaceModel(; grid,
                                       coriolis,
-                                      free_surface = SplitExplicitFreeSurface(grid; substeps=10))
+                                      timestepper = :RungeKutta3,
+                                      free_surface = SplitExplicitFreeSurface(grid; 
+                                                                              substeps=30,
+                                                                              timestepper = ForwardBackwardScheme()))
 
 gaussian(x, L) = exp(-x^2 / 2L^2)
 
@@ -90,5 +93,15 @@ simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(1
 
 run!(simulation)
 
-jldsave("variables_rank$(rank).jld2", v=vt, η=ηt, u=ut)
+iter = Observable(1)    
+ηi = @lift(interior(ηt[$iter], :, 1, 1))
 
+fig = Figure()
+ax = Axis(fig[1, 1])
+
+lines!(ax, ηi, color = :blue)
+
+GLMakie.record(fig, "test.mp4", 1:length(ηt), framerate = 10) do i
+    @info "frame $i"
+    iter[] = i
+end
