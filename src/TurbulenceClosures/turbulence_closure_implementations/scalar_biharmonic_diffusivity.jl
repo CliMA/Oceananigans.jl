@@ -126,7 +126,7 @@ function Adapt.adapt_structure(to, closure::ScalarBiharmonicDiffusivity{F, N, VI
     return ScalarBiharmonicDiffusivity{F, N, VI}(ν, κ)
 end
 
-function on_architecture(to, closure::ScalarBiharmonicDiffusivity{F, N, VI, <:Any, <:Any}) where {F, N, VI}
+function on_architecture(to, closure::ScalarBiharmonicDiffusivity{F, N, VI}) where {F, N, VI}
     ν = on_architecture(to, closure.ν)
     κ = on_architecture(to, closure.κ)
     return ScalarBiharmonicDiffusivity{F, N, VI}(ν, κ)
