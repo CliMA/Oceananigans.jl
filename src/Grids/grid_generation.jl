@@ -113,10 +113,6 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
     F = range(FT(F₋), FT(F₊), length = TF)
     C = range(FT(C₋), FT(C₊), length = TC)
 
-    # See: https://github.com/CliMA/Oceananigans.jl/issues/3870#issuecomment-2445532635
-    F = StepRangeLen{FT, FT, FT, Int}(F)
-    C = StepRangeLen{FT, FT, FT, Int}(C)
-
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)
 
