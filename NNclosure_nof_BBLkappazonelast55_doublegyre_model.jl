@@ -22,7 +22,8 @@ using ColorSchemes
 
 
 #%%
-filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_zC2O_NN_closure_NDE_BBLkappazonelast55_temp"
+# filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_zC2O_NN_closure_NDE_BBLkappazonelast55_temp"
+filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_zWENO5_NN_closure_NDE_BBLkappazonelast55_temp"
 FILE_DIR = "./Output/$(filename)"
 # FILE_DIR = "/storage6/xinkai/NN_Oceananigans/$(filename)"
 mkpath(FILE_DIR)
@@ -34,7 +35,8 @@ nn_closure = NNFluxClosure(model_architecture)
 base_closure = XinKaiLocalVerticalDiffusivity()
 closure = (base_closure, nn_closure)
 
-advection_scheme = FluxFormAdvection(WENO(order=5), WENO(order=5), CenteredSecondOrder())
+# advection_scheme = FluxFormAdvection(WENO(order=5), WENO(order=5), CenteredSecondOrder())
+advection_scheme = FluxFormAdvection(WENO(order=5), WENO(order=5), WENO(order=5))
 
 # number of grid points
 const Nx = 100

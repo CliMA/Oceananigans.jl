@@ -27,7 +27,8 @@ using ColorSchemes
 using Glob
 
 #%%
-filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_zC2O_CATKEVerticalDiffusivity"
+# filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_zC2O_CATKEVerticalDiffusivity"
+filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_zWENO5_CATKEVerticalDiffusivity"
 FILE_DIR = "./Output/$(filename)"
 # FILE_DIR = "/storage6/xinkai/NN_Oceananigans/$(filename)"
 mkpath(FILE_DIR)
@@ -46,7 +47,7 @@ convection_closure = CATKE_ocean_closure()
 closure = convection_closure
 # closure = vertical_base_closure
 
-advection_scheme = FluxFormAdvection(WENO(order=5), WENO(order=5), CenteredSecondOrder())
+advection_scheme = FluxFormAdvection(WENO(order=5), WENO(order=5), WENO(order=5))
 
 # number of grid points
 const Nx = 100
