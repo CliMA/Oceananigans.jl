@@ -22,7 +22,7 @@ using ColorSchemes
 
 
 #%%
-filename = "doublegyre_30Cwarmflushbottom10_relaxation_8days_zC2O_NN_closure_NDE_BBLkappazonelast55_temp"
+filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_zC2O_NN_closure_NDE_BBLkappazonelast55_temp"
 FILE_DIR = "./Output/$(filename)"
 # FILE_DIR = "/storage6/xinkai/NN_Oceananigans/$(filename)"
 mkpath(FILE_DIR)
@@ -71,7 +71,7 @@ const S_mid = (S_north + S_south) / 2
 const τ₀ = 1e-4
 
 const μ_drag = 1/30days
-const μ_T = 1/8days
+const μ_T = 1/30days
 
 #####
 ##### Forcing and initial condition
