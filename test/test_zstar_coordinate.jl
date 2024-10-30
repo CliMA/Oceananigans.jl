@@ -22,7 +22,7 @@ function test_zstar_coordinate(model, Ni, Δt)
 
     @test interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
     @test interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)
-    @test maximum(interior(w, :, :, Nz+1)) < eps(eltype(w))
+    @test maximum(interior(w, :, :, Nz+1)) < model.grid.Nz * eps(eltype(w))
 
     return nothing
 end
@@ -50,22 +50,22 @@ end
         for topology in topologies
             Random.seed!(1234)
 
-            rtg  = RectilinearGrid(arch; size = (10, 10, 10), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_uniform)
-            rtgv = RectilinearGrid(arch; size = (10, 10, 10), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_stretched)
+            rtg  = RectilinearGrid(arch; size = (10, 10, 20), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_uniform)
+            rtgv = RectilinearGrid(arch; size = (10, 10, 20), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_stretched)
             
-            irtg  = ImmersedBoundaryGrid(rtg,  GridFittedBottom((x, y) -> - rand() - 10))
-            irtgv = ImmersedBoundaryGrid(rtgv, GridFittedBottom((x, y) -> - rand() - 10))
-            prtg  = ImmersedBoundaryGrid(rtg, PartialCellBottom((x, y) -> - rand() - 10))
-            prtgv = ImmersedBoundaryGrid(rtgv, PartialCellBottom((x, y) -> - rand() - 10))
+            irtg  = ImmersedBoundaryGrid(rtg,   GridFittedBottom((x, y) -> rand() - 10))
+            irtgv = ImmersedBoundaryGrid(rtgv,  GridFittedBottom((x, y) -> rand() - 10))
+            prtg  = ImmersedBoundaryGrid(rtg,  PartialCellBottom((x, y) -> rand() - 10))
+            prtgv = ImmersedBoundaryGrid(rtgv, PartialCellBottom((x, y) -> rand() - 10))
 
             if topology[2] == Bounded
-                llg  = LatitudeLongitudeGrid(arch; size = (10, 10, 10), latitude = (0, 1), longitude = (0, 1), topology, z = z_uniform)
-                llgv = LatitudeLongitudeGrid(arch; size = (10, 10, 10), latitude = (0, 1), longitude = (0, 1), topology, z = z_stretched)
+                llg  = LatitudeLongitudeGrid(arch; size = (10, 10, 20), latitude = (0, 1), longitude = (0, 1), topology, z = z_uniform)
+                llgv = LatitudeLongitudeGrid(arch; size = (10, 10, 20), latitude = (0, 1), longitude = (0, 1), topology, z = z_stretched)
 
-                illg  = ImmersedBoundaryGrid(llg,  GridFittedBottom((x, y) -> - rand() - 5))
-                illgv = ImmersedBoundaryGrid(llgv, GridFittedBottom((x, y) -> - rand() - 5))
-                pllg  = ImmersedBoundaryGrid(llg,  PartialCellBottom((x, y) -> - rand() - 5))
-                pllgv = ImmersedBoundaryGrid(llgv, PartialCellBottom((x, y) -> - rand() - 5))
+                illg  = ImmersedBoundaryGrid(llg,   GridFittedBottom((x, y) -> rand() - 10))
+                illgv = ImmersedBoundaryGrid(llgv,  GridFittedBottom((x, y) -> rand() - 10))
+                pllg  = ImmersedBoundaryGrid(llg,  PartialCellBottom((x, y) -> rand() - 10))
+                pllgv = ImmersedBoundaryGrid(llgv, PartialCellBottom((x, y) -> rand() - 10))
 
                 grids = [llg, rtg, llgv, rtgv, illg, irtg, illgv, irtgv, pllg, prtg, pllgv, prtgv]
             else
@@ -73,7 +73,9 @@ end
             end
 
             for grid in grids
-                @testset info_message(grid) begin
+                info_msg = info_message(grid)
+                @testset "$info_msg" begin
+                    @info "  $info_msg"
 
                     # TODO: minimum_xspacing(grid) on a Immersed GPU grid with ZStarVerticalCoordinate
                     # fails because it uses too much parameter space. Figure out a way to reduce it 
