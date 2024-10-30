@@ -264,7 +264,7 @@ end
     κu_max = closure.maximum_viscosity
     κu★ = min(κu, κu_max)
     FT = eltype(grid)
-    return convert(FT, κu★)
+    return κu★::FT
 end
 
 @inline function κcᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
@@ -274,7 +274,7 @@ end
     κc_max = closure.maximum_tracer_diffusivity
     κc★ = min(κc, κc_max)
     FT = eltype(grid)
-    return convert(FT, κc★)
+    return κc★::FT
 end
 
 @inline function κeᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
@@ -284,7 +284,7 @@ end
     κe_max = closure.maximum_tke_diffusivity
     κe★ = min(κe, κe_max)
     FT = eltype(grid)
-    return convert(FT, κe★)
+    return κe★::FT
 end
 
 @inline viscosity(::FlavorOfCATKE, diffusivities) = diffusivities.κu
