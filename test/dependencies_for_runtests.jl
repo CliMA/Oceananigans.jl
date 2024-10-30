@@ -71,7 +71,10 @@ closures = (
     :ScalarDiffusivity,
     :ScalarBiharmonicDiffusivity,
     :TwoDimensionalLeith,
+    :ConstantSmagorinsky,
     :SmagorinskyLilly,
+    :DirectionallyAveragedDynamicSmagorinsky,
+    :LagrangianAveragedDynamicSmagorinsky,
     :AnisotropicMinimumDissipation,
     :ConvectiveAdjustmentVerticalDiffusivity,
 )

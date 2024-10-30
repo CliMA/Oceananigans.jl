@@ -10,11 +10,14 @@ using Oceananigans.TurbulenceClosures: diffusive_flux_x, diffusive_flux_y, diffu
                                        viscous_flux_vx, viscous_flux_vy, viscous_flux_vz,
                                        viscous_flux_wx, viscous_flux_wy, viscous_flux_wz
 
-for closure in closures
-    @eval begin
-        using Oceananigans.TurbulenceClosures: $closure
-    end
-end
+using Oceananigans.TurbulenceClosures: ScalarDiffusivity, ScalarBiharmonicDiffusivity, TwoDimensionalLeith, ConvectiveAdjustmentVerticalDiffusivity,
+                                       Smagorinsky, SmagorinskyLilly, LagrangianAveraging, AnisotropicMinimumDissipation
+
+ConstantSmagorinsky(FT=Float64) = Smagorinsky(FT, coefficient=0.16)
+DirectionallyAveragedDynamicSmagorinsky(FT=Float64) =
+    Smagorinsky(FT, coefficient=DynamicCoefficient(averaging=(1,2)))
+LagrangianAveragedDynamicSmagorinsky(FT=Float64) =
+    Smagorinsky(FT, coefficient=DynamicCoefficient(averaging=LagrangianAveraging()))
 
 function tracer_specific_horizontal_diffusivity(T=Float64; νh=T(0.3), κh=T(0.7))
     closure = HorizontalScalarDiffusivity(κ=(T=κh, S=κh), ν=νh)
@@ -212,7 +215,7 @@ end
     @testset "Closure instantiation" begin
         @info "  Testing closure instantiation..."
         for closurename in closures
-            closure = getproperty(TurbulenceClosures, closurename)()
+            closure = @eval $closurename()
             @test closure isa TurbulenceClosures.AbstractTurbulenceClosure
 
             grid = RectilinearGrid(CPU(), size=(2, 2, 2), extent=(1, 2, 3))
@@ -326,7 +329,7 @@ end
     @testset "Diagnostics" begin
         @info "  Testing turbulence closure diagnostics..."
         for closurename in closures
-            closure = getproperty(TurbulenceClosures, closurename)()
+            closure = @eval $closurename()
             compute_closure_specific_diffusive_cfl(closure)
         end
 
