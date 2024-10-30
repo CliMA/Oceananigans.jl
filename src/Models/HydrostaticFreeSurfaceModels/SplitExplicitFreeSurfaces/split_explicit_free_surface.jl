@@ -134,7 +134,7 @@ function split_explicit_substepping(cfl, ::Nothing, ::Nothing, grid, averaging_k
     return FixedTimeStepSize(grid; cfl, averaging_kernel)
 end
 
-# The number of substeps are calculated based on the cfl and the fixed_Δt
+# The number of substeps are calculated based on the cfl an2d the fixed_Δt
 function split_explicit_substepping(cfl, ::Nothing, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
     
     substepping = split_explicit_substepping(cfl, nothing, nothing, grid, averaging_kernel, gravitational_acceleration)    
@@ -144,115 +144,90 @@ function split_explicit_substepping(cfl, ::Nothing, fixed_Δt, grid, averaging_k
     return substepping
 end
 
+# TODO: When open boundary conditions are online
+# We need to calculate the barotropic boundary conditions 
+# from the baroclinic boundary conditions by integrating the BC upwards
+@inline  west_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.west
+@inline  east_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.east
+@inline south_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.south
+@inline north_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.north
+
+@inline barotropic_bc(baroclinic_velocity) = FieldBoundaryConditions(
+    west = west_barotropic_bc(baroclinic_velocity),
+    east = east_barotropic_bc(baroclinic_velocity),
+    south = south_barotropic_bc(baroclinic_velocity),
+    north = north_barotropic_bc(baroclinic_velocity),
+    top = nothing,
+    bottom = nothing
+)
+
 # Internal function for HydrostaticFreeSurfaceModel
 function materialize_free_surface(free_surface::SplitExplicitFreeSurface, velocities, grid)
-    settings = SplitExplicitSettings(grid; free_surface.settings.settings_kwargs...)
 
     η = free_surface_displacement_field(velocities, free_surface, grid)
+    η̅ = free_surface_displacement_field(velocities, free_surface, grid)
+
+    u_baroclinic = velocities.u
+    v_baroclinic = velocities.v
+
+    u_bc = barotropic_bc(u_baroclinic)
+    v_bc = barotropic_bc(v_baroclinic)
+
+    U = Field{Center, Center, Nothing}(grid, boundary_conditions = u_bc)
+    V = Field{Center, Center, Nothing}(grid, boundary_conditions = v_bc)
+
+    U̅ = Field{Center, Center, Nothing}(grid, boundary_conditions = u_bc)
+    V̅ = Field{Center, Center, Nothing}(grid, boundary_conditions = v_bc)
+
+    filtered_state = (η = η̅, U = U̅, V = V̅)
+    barotropic_velocities = (U = U, V = V)
 
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
-
-    timestepper = materialize_timestepper(free_surface.timestepper, grid)
+    timestepper = materialize_timestepper(free_surface.timestepper, grid, free_surface, velocities, u_bc, v_bc)
 
     return SplitExplicitFreeSurface(η,
-                                    SplitExplicitState(grid, settings.timestepper),
-                                    free_surface.kernel_parameters,
+                                    barotropic_velocities,
+                                    filtered_state,
                                     gravitational_acceleration,
+                                    free_surface.kernel_parameters,
+                                    free_surface.substepping,
                                     timestepper)
 end
 
-
-"""
-    struct SplitExplicitState
-
-A type containing the state fields for the split-explicit free surface.
-
-$(FIELDS)
-"""
-Base.@kwdef struct SplitExplicitState{CC, ACC, FC, AFC, CF, ACF}
-    "The free surface at time `m`. (`ReducedField` over ``z``)"
-    ηᵐ   :: ACC
-    "The free surface at time `m-1`. (`ReducedField` over ``z``)"
-    ηᵐ⁻¹ :: ACC
-    "The free surface at time `m-2`. (`ReducedField` over ``z``)"
-    ηᵐ⁻² :: ACC
-    "The barotropic zonal velocity at time `m`. (`ReducedField` over ``z``)"
-    U    :: FC
-    "The barotropic zonal velocity at time `m-1`. (`ReducedField` over ``z``)"
-    Uᵐ⁻¹ :: AFC
-    "The barotropic zonal velocity at time `m-2`. (`ReducedField` over ``z``)"
-    Uᵐ⁻² :: AFC
-    "The barotropic meridional velocity at time `m`. (`ReducedField` over ``z``)"
-    V    :: CF
-    "The barotropic meridional velocity at time `m-1`. (`ReducedField` over ``z``)"
-    Vᵐ⁻¹ :: ACF
-    "The barotropic meridional velocity at time `m-2`. (`ReducedField` over ``z``)"
-    Vᵐ⁻² :: ACF
-    "The time-filtered free surface. (`ReducedField` over ``z``)"
-    η̅    :: CC
-    "The time-filtered barotropic zonal velocity. (`ReducedField` over ``z``)"
-    U̅    :: FC
-    "The time-filtered barotropic meridional velocity. (`ReducedField` over ``z``)"
-    V̅    :: CF
+function materialize_timestepper(timestepper::Symbol, args...) 
+    fullname = Symbol(name, :Scheme)
+    TS = getglobal(@__MODULE__, fullname)
+    return materialize_timestepper(TS, args...)
 end
 
-"""
-    SplitExplicitState(grid, timestepper)
-
-Return the split-explicit state for `grid`.
-
-Note that `η̅` is solely used for setting the `η` at the next substep iteration -- it essentially
-acts as a filter for `η`. Values with superscripts `m-1` and `m-2` correspond to previous stored
-time steps to allow using a higher-order time stepping scheme, e.g., `AdamsBashforth3Scheme`.
-"""
-function SplitExplicitState(grid::AbstractGrid, timestepper)
-
-    Nz = size(grid, 3)
-
-    η̅ = ZFaceField(grid, indices = (:, :, Nz+1))
-
-    ηᵐ   = auxiliary_free_surface_field(grid, timestepper)
-    ηᵐ⁻¹ = auxiliary_free_surface_field(grid, timestepper)
-    ηᵐ⁻² = auxiliary_free_surface_field(grid, timestepper)
-
-    U    = XFaceField(grid, indices = (:, :, Nz))
-    V    = YFaceField(grid, indices = (:, :, Nz))
-
-    Uᵐ⁻¹ = auxiliary_barotropic_U_field(grid, timestepper)
-    Vᵐ⁻¹ = auxiliary_barotropic_V_field(grid, timestepper)
-    Uᵐ⁻² = auxiliary_barotropic_U_field(grid, timestepper)
-    Vᵐ⁻² = auxiliary_barotropic_V_field(grid, timestepper)
-
-    U̅ = XFaceField(grid, indices = (:, :, Nz))
-    V̅ = YFaceField(grid, indices = (:, :, Nz))
-
-    return SplitExplicitState(; ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, Uᵐ⁻¹, Uᵐ⁻², V, Vᵐ⁻¹, Vᵐ⁻², η̅, U̅, V̅)
-end
-
-"""
-    struct SplitExplicitSettings
-
-A type containing settings for the split-explicit free surface.
-
-$(FIELDS)
-"""
-struct SplitExplicitSettings{𝒩, 𝒮}
-    substepping :: 𝒩              # Either `FixedSubstepNumber` or `FixedTimeStepSize`"
-    timestepper :: 𝒮              # time-stepping scheme
-    settings_kwargs :: NamedTuple # kwargs to reproduce current settings
-end
-
-struct AdamsBashforth3Scheme end
 struct ForwardBackwardScheme end
 
+materialize_timestepper(::ForwardBackwardScheme, grid, args...) = ForwardBackwardScheme()
 
-auxiliary_free_surface_field(grid, ::AdamsBashforth3Scheme) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
-auxiliary_free_surface_field(grid, ::ForwardBackwardScheme) = nothing
+struct AdamsBashforth3Scheme{CC, FC, CF}
+    ηᵐ   :: CC
+    ηᵐ⁻¹ :: CC
+    ηᵐ⁻² :: CC
+    Uᵐ⁻¹ :: FC
+    Uᵐ⁻² :: FC
+    Vᵐ⁻¹ :: CF
+    Vᵐ⁻² :: CF
+end
 
-auxiliary_barotropic_U_field(grid, ::AdamsBashforth3Scheme) = XFaceField(grid, indices = (:, :, size(grid, 3)))
-auxiliary_barotropic_U_field(grid, ::ForwardBackwardScheme) = nothing
-auxiliary_barotropic_V_field(grid, ::AdamsBashforth3Scheme) = YFaceField(grid, indices = (:, :, size(grid, 3)))
-auxiliary_barotropic_V_field(grid, ::ForwardBackwardScheme) = nothing
+AdamsBashforth3Scheme() = AdamsBashforth3Scheme(nothing, nothing, nothing, nothing, nothing, nothing, nothing)
+
+function materialize_timestepper(::AdamsBashforth3Scheme, grid, free_surface, velocities, u_bc, v_bc)
+    ηᵐ   = free_surface_displacement_field(velocities, free_surface, grid)
+    ηᵐ⁻¹ = free_surface_displacement_field(velocities, free_surface, grid)
+    ηᵐ⁻² = free_surface_displacement_field(velocities, free_surface, grid)
+
+    Uᵐ⁻¹ = Field{Face, Center, Nothing}(grid; boundary_conditions = u_bc)
+    Uᵐ⁻² = Field{Face, Center, Nothing}(grid; boundary_conditions = u_bc)
+    Vᵐ⁻¹ = Field{Center, Face, Nothing}(grid; boundary_conditions = v_bc)
+    Vᵐ⁻² = Field{Center, Face, Nothing}(grid; boundary_conditions = v_bc)
+
+    return AdamsBashforth3Scheme(ηᵐ, ηᵐ⁻¹, ηᵐ⁻², Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²)
+end
 
 # (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002 
 @inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT
@@ -318,10 +293,6 @@ free_surface(free_surface::SplitExplicitFreeSurface) = free_surface.η
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::SplitExplicitFreeSurface) = zero(grid)
 @inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, ::SplitExplicitFreeSurface) = zero(grid)
 
-# convenience functor
-(sefs::SplitExplicitFreeSurface)(settings::SplitExplicitSettings) =
-    SplitExplicitFreeSurface(sefs.η, sefs.state, sefs.auxiliary, sefs.gravitational_acceleration, settings)
-
 Base.summary(s::FixedTimeStepSize)  = string("Barotropic time step equal to $(prettytime(s.Δt_barotropic))")
 Base.summary(s::FixedSubstepNumber) = string("Barotropic fractional step equal to $(s.fractional_step_size) times the baroclinic step")
 
@@ -329,26 +300,13 @@ Base.summary(sefs::SplitExplicitFreeSurface) = string("SplitExplicitFreeSurface 
 
 Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\n")
 
-function reset!(sefs::SplitExplicitFreeSurface)
-    for name in propertynames(sefs.state)
-        var = getproperty(sefs.state, name)
-        fill!(var, 0)
-    end
-
-    fill!(sefs.auxiliary.Gᵁ, 0)
-    fill!(sefs.auxiliary.Gⱽ, 0)
-
-    return nothing
-end
-
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
     SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η), nothing, nothing,
                              free_surface.gravitational_acceleration, nothing)
 
 for Type in (:SplitExplicitFreeSurface,
-             :SplitExplicitSettings,
-             :SplitExplicitState, 
+             :AdamsBashforth3Scheme,
              :FixedTimeStepSize,
              :FixedSubstepNumber)
     
