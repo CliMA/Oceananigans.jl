@@ -1,5 +1,5 @@
 using Oceananigans
-using Oceananigans.TurbulenceClosures: Smagorinsky, DynamicCoefficient, LagrangianAveraging
+using Oceananigans.TurbulenceClosures: LagrangianAveraging
 
 N = 16
 arch = CPU()
@@ -10,9 +10,10 @@ grid = RectilinearGrid(arch,
 
 advection = Centered(order=2)
 #closure = nothing
-#closure = Smagorinsky(coefficient=0.16)
-coefficient = DynamicCoefficient(averaging=(1, 2))
-#coefficient = DynamicCoefficient(averaging=LagrangianAveraging())
+closure = Smagorinsky(coefficient=0.16)
+closure = Smagorinsky(coefficient=LillyCoefficient())
+#coefficient = DynamicCoefficient(averaging=(1, 2))
+coefficient = DynamicCoefficient(averaging=LagrangianAveraging())
 closure = Smagorinsky(; coefficient)
 @time model = NonhydrostaticModel(; grid, closure, advection)
 
@@ -24,6 +25,7 @@ wizard = TimeStepWizard(cfl=0.7, max_change=1.1, max_Δt=0.5)
 add_callback!(simulation, wizard, IterationInterval(10))
 
 @time time_step!(model, 1)
+pause
 run!(simulation)
 
 simulation.stop_iteration += 100

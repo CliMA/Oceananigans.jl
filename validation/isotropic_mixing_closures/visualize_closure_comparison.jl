@@ -9,7 +9,8 @@ filenames = [
     "wind_driven_WENO9_$r.jld2",
     "wind_driven_constant_smagorinsky_$r.jld2",
     "wind_driven_smagorinsky_lilly_$r.jld2",
-    "wind_driven_dynamic_smagorinsky_$r.jld2",
+    "wind_driven_directional_smagorinsky_$r.jld2",
+    "wind_driven_lagrangian_smagorinsky_$r.jld2",
 ]
 
 labels = [
@@ -18,7 +19,8 @@ labels = [
     "WENO(order=9)",
     "Constant Smagorinsky",
     "Smagorinsky-Lilly",
-    "Dynamic Smagorinsky",
+    "Dynamic Smagorinsky (directional average)",
+    "Dynamic Smagorinsky (Lagrangian average)",
 ]
 
 Bs = []

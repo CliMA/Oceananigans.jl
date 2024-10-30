@@ -5,6 +5,7 @@ using Oceananigans.Grids: topological_tuple_length, total_size
 using Oceananigans.Fields: BackgroundField
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
+using Oceananigans.TurbulenceClosures.Smagorinskys: LagrangianAveraging
 
 function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
@@ -240,11 +241,20 @@ Planes = (FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane)
 
 BuoyancyModifiedAnisotropicMinimumDissipation(FT) = AnisotropicMinimumDissipation(FT, Cb=1.0)
 
+ConstantSmagorinsky(FT=Float64) = Smagorinsky(FT, coefficient=0.16)
+DirectionallyAveragedDynamicSmagorinsky(FT=Float64) =
+    Smagorinsky(FT, coefficient=DynamicCoefficient(averaging=(1,2)))
+LagrangianAveragedDynamicSmagorinsky(FT=Float64) =
+    Smagorinsky(FT, coefficient=DynamicCoefficient(averaging=LagrangianAveraging()))
+
 Closures = (ScalarDiffusivity,
             ScalarBiharmonicDiffusivity,
             TwoDimensionalLeith,
             IsopycnalSkewSymmetricDiffusivity,
+            ConstantSmagorinsky,
             SmagorinskyLilly,
+            DirectionallyAveragedDynamicSmagorinsky,
+            LagrangianAveragedDynamicSmagorinsky,
             AnisotropicMinimumDissipation,
             BuoyancyModifiedAnisotropicMinimumDissipation,
             CATKEVerticalDiffusivity)
