@@ -151,6 +151,45 @@ function time_step_with_variable_discrete_diffusivity(arch)
     return true
 end
 
+function diffusivity_fields_sizes_are_correct(arch)
+    grid = RectilinearGrid(arch, size=(2, 3, 4), extent=(1, 2, 3))
+
+    closure = Smagorinsky(coefficient=DynamicCoefficient(averaging=1))
+    model = NonhydrostaticModel(; grid, closure)
+    @test size(model.diffusivity_fields.𝒥ᴸᴹ) == (1, grid.Ny, grid.Nz)
+    @test size(model.diffusivity_fields.𝒥ᴹᴹ) == (1, grid.Ny, grid.Nz)
+    @test size(model.diffusivity_fields.LM)  == size(grid)
+    @test size(model.diffusivity_fields.MM)  == size(grid)
+    @test size(model.diffusivity_fields.Σ)   == size(grid)
+    @test size(model.diffusivity_fields.Σ̄)   == size(grid)
+
+    closure = Smagorinsky(coefficient=DynamicCoefficient(averaging=(1, 2)))
+    model = NonhydrostaticModel(; grid, closure)
+    @test size(model.diffusivity_fields.𝒥ᴸᴹ) == (1, 1, grid.Nz)
+    @test size(model.diffusivity_fields.𝒥ᴹᴹ) == (1, 1, grid.Nz)
+
+    closure = Smagorinsky(coefficient=DynamicCoefficient(averaging=Colon()))
+    model = NonhydrostaticModel(; grid, closure)
+    @test size(model.diffusivity_fields.𝒥ᴸᴹ) == (1, 1, 1)
+    @test size(model.diffusivity_fields.𝒥ᴹᴹ) == (1, 1, 1)
+
+    closure = Smagorinsky(coefficient=DynamicCoefficient(averaging=(2, 3)))
+    model = NonhydrostaticModel(; grid, closure)
+    @test size(model.diffusivity_fields.𝒥ᴸᴹ) == (grid.Nx, 1, 1)
+    @test size(model.diffusivity_fields.𝒥ᴹᴹ) == (grid.Nx, 1, 1)
+
+    closure = Smagorinsky(coefficient=DynamicCoefficient(averaging=LagrangianAveraging()))
+    model = NonhydrostaticModel(; grid, closure)
+    @test size(model.diffusivity_fields.𝒥ᴸᴹ)  == size(grid)
+    @test size(model.diffusivity_fields.𝒥ᴹᴹ)  == size(grid)
+    @test size(model.diffusivity_fields.𝒥ᴸᴹ⁻) == size(grid)
+    @test size(model.diffusivity_fields.𝒥ᴹᴹ⁻) == size(grid)
+    @test size(model.diffusivity_fields.Σ)    == size(grid)
+    @test size(model.diffusivity_fields.Σ̄)    == size(grid)
+
+    return true
+end
+
 function time_step_with_tupled_closure(FT, arch)
     closure_tuple = (AnisotropicMinimumDissipation(FT), ScalarDiffusivity(FT))
 
@@ -288,6 +327,17 @@ end
             @test time_step_with_field_isotropic_diffusivity(arch)
             @test time_step_with_variable_anisotropic_diffusivity(arch)
             @test time_step_with_variable_discrete_diffusivity(arch)
+        end
+    end
+
+    @testset "Dynamic Smagorinsky closures" begin
+        @info "  Testing that dynamic Smagorinsky closures produce diffusivit fields of correct sizes..."
+        for arch in archs
+            for closurename in [:ConstantSmagorinsky, :SmagorinskyLilly,
+                                :DirectionallyAveragedDynamicSmagorinsky, :LagrangianAveragedDynamicSmagorinsky]
+                closure = @eval $closurename()
+                @test diffusivity_fields_sizes_are_correct(arch)
+            end
         end
     end
 

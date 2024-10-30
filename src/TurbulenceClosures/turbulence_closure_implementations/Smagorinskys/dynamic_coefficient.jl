@@ -13,7 +13,7 @@ Adapt.adapt_structure(to, dc::DynamicCoefficient) = DynamicCoefficient(dc.averag
 
 # Directional averaging with averaging=(1, 2), etc
 
-const DirectionallyAveragedCoefficient{N} = DynamicCoefficient{<:NTuple{N, Int}} where N
+const DirectionallyAveragedCoefficient{N} = DynamicCoefficient{<:Union{NTuple{N, Int}, Int, Colon}} where N
 const DirectionallyAveragedDynamicSmagorinsky{N} = Smagorinsky{<:Any, <:DirectionallyAveragedCoefficient{N}} where N
 
 # Lagrangian averaging with averaging=(1, 2), etc
