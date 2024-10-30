@@ -96,7 +96,7 @@ function ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation()
     return ScalarBiharmonicDiffusivity{typeof(formulation), required_halo_size, VI}(ν, κ)
 end
 
-function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{F, N, VI, <:Any, <:Any}) where {F, N, VI}
+function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{F, N, VI}) where {F, N, VI}
     κ = tracer_diffusivities(tracers, closure.κ)
     return ScalarBiharmonicDiffusivity{F, N, VI}(closure.ν, κ)
 end
