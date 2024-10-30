@@ -49,16 +49,21 @@ steps:
       GPU_TEST: "true"
       MPI_TEST: "true"
     commands:
+      - "echo '--- Instantiate project'"
+      - "julia --project -e 'using Pkg; Pkg.instantiate(verbose=true)'"
+
+      - "echo '--- Precompile project'"
+      - "julia --project -e 'using Pkg; Pkg.precompile(strict=true)'"
+      - "julia --project -e 'using Pkg; Pkg.status()'"
+
+      # Force the initialization of the CUDA runtime as it is lazily loaded by default:
+      - "echo '--- Initialize the CUDA runtime'"
+      - "julia --project -e 'using CUDA; CUDA.precompile_runtime()'"
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       slurm_mem: 120G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
-    retry:
-      automatic:
-        - exit_status: 1      
-          limit: 1
-
 
   - label: "🦾 cpu distributed solvers tests"
     key: "distributed_solvers_cpu"
