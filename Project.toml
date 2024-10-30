@@ -43,7 +43,7 @@ OceananigansEnzymeExt = "Enzyme"
 OceananigansMakieExt = ["MakieCore", "Makie"]
 
 [compat]
-Adapt = "3, 4"
+Adapt = "^4.1.1"
 CUDA = "4.1.1, 5"
 Crayons = "4"
 CubedSphere = "0.2, 0.3"
