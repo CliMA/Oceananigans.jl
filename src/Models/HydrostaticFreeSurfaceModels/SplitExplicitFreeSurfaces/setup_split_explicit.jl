@@ -1,26 +1,31 @@
+# `initialize_free_surface!` is called at the beginning of the simulation to initialize the free surface state
+# from the initial velocity conditions.
+function initialize_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocities)
+    @apply_regionally compute_barotropic_mode!(sefs.state.U̅, sefs.state.V̅, grid, velocities.u, velocities.v)
+    fill_halo_regions!((sefs.state.U̅, sefs.state.V̅, sefs.η))
+end
 
-function initialize_free_surface_state!(filtered_state, η, barotropic_velocities, timestepper)
+# `initialize_free_surface_state!` is called at the beginning of the substepping to 
+# reset the filtered state to zero and reinitialize the state from the filtered state.
+function initialize_free_surface_state!(filtered_state, η, velocities, timestepper)
 
-    parent(barotropic_velocities.U) .= parent(filtered_state.U̅)
-    parent(barotropic_velocities.V) .= parent(filtered_state.V̅)
+    initialize_free_surface_timestepper!(timestepper, η, velocities)
 
-    initialize_auxiliary_state!(filtered_state, η, timestepper)
-
-    fill!(filtered_state.η̅, 0)
-    fill!(filtered_state.U̅, 0)
-    fill!(filtered_state.V̅, 0)
+    fill!(filtered_state.η, 0)
+    fill!(filtered_state.U, 0)
+    fill!(filtered_state.V, 0)
 
     return nothing
 end
 
-initialize_auxiliary_state!(state, η, ::ForwardBackwardScheme) = nothing
+initialize_auxiliary_state!(::ForwardBackwardScheme, args...) = nothing
 
-function initialize_auxiliary_state!(filtered_state, η, timestepper::AdamsBashforth3Scheme)
-    parent(timestepper.Uᵐ⁻¹) .= parent(filtered_state.U̅)
-    parent(timestepper.Vᵐ⁻¹) .= parent(filtered_state.V̅)
+function initialize_auxiliary_state!(timestepper::AdamsBashforth3Scheme, η, velocities)
+    parent(timestepper.Uᵐ⁻¹) .= parent(velocities.U)
+    parent(timestepper.Vᵐ⁻¹) .= parent(velocities.V)
 
-    parent(timestepper.Uᵐ⁻²) .= parent(filtered_state.U̅)
-    parent(timestepper.Vᵐ⁻²) .= parent(filtered_state.V̅)
+    parent(timestepper.Uᵐ⁻²) .= parent(velocities.U)
+    parent(timestepper.Vᵐ⁻²) .= parent(velocities.V)
 
     parent(timestepper.ηᵐ)   .= parent(η)
     parent(timestepper.ηᵐ⁻¹) .= parent(η)

@@ -208,6 +208,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     filtered_state    = free_surface.filtered_state
     substepping       = free_surface.substepping
     timestepper       = free_surface.timestepper
+    velocities        = free_surface.barotropic_velocities
 
     # Wait for previous set up
     wait_free_surface_communication!(free_surface, architecture(free_surface_grid))
@@ -227,17 +228,19 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     # reset free surface averages
     @apply_regionally begin
-        initialize_free_surface_state!(filtered_state, free_surface.η, free_surface.barotropic_velocities, timestepper)
+        initialize_free_surface_state!(filtered_state, free_surface.η, velocities, timestepper)
 
         # Solve for the free surface at tⁿ⁺¹
         iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, weights, Val(Nsubsteps))
-
-        # Reset eta for the next timestep
-        set!(free_surface.η, free_surface.filtered_state.η̅)
     end
 
-    fields_to_fill = (free_surface.filtered_state.U̅, free_surface.filtered_state.V̅)
-    fill_halo_regions!(fields_to_fill; async = true)
+    # Reset eta and velocities for the next timestep
+    set!(free_surface.η, filtered_state.η)
+    set!(velocities.U,   filtered_state.U) 
+    set!(velocities.U,   filtered_state.V)
+    
+    # fields_to_fill = (velocities.U, velocities.V) TODO: do this?
+    # fill_halo_regions!(fields_to_fill; async = true)
 
     # Preparing velocities for the barotropic correction
     @apply_regionally begin
