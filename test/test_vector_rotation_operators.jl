@@ -23,8 +23,9 @@ using Oceananigans.Operators
 end
 
 function kinetic_energy(u, v)
+    grid  = u.grid
     ke_op = KernelFunctionOperation{Center, Center, Center}(kinetic_energyᶜᶜᶜ, grid, u, v)
-    ke = Field(ke_op)
+    ke    = Field(ke_op)
     return compute!(ke)
 end
 
