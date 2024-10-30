@@ -85,6 +85,13 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Hydros
                                                                                   η = free_surface.η),
                                                                                   tracers)
 
+@inline hydrostatic_prognostic_fields(velocities, free_surface::SplitExplicitFreeSurface, tracers) = merge((u = velocities.u,
+                                                                                                            v = velocities.v,
+                                                                                                            η = free_surface.η,
+                                                                                                            U = free_surface.barotropic_velocities.U,
+                                                                                                            V = free_surface.barotropic_velocities.V),
+                                                                                                            tracers)
+
 @inline hydrostatic_prognostic_fields(velocities, ::Nothing, tracers) = merge((u = velocities.u,
                                                                                v = velocities.v),
                                                                                tracers)
@@ -94,6 +101,14 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Hydros
                                                                        w = velocities.w),
                                                                        tracers,
                                                                        (; η = free_surface.η))
+
+@inline hydrostatic_fields(velocities, free_surface::SplitExplicitFreeSurface, tracers) = merge((u = velocities.u,
+                                                                                                 v = velocities.v,
+                                                                                                 w = velocities.w,
+                                                                                                 η = free_surface.η,
+                                                                                                 U = free_surface.barotropic_velocities.U,
+                                                                                                 V = free_surface.barotropic_velocities.V),
+                                                                                                 tracers)
 
 @inline hydrostatic_fields(velocities, ::Nothing, tracers) = merge((u = velocities.u,
                                                                     v = velocities.v,

@@ -18,17 +18,14 @@ The split-explicit free surface solver.
 
 $(FIELDS)
 """
-struct SplitExplicitFreeSurface{𝒩, 𝒮, ℱ, 𝒫 ,ℰ} <: AbstractFreeSurface{𝒩, 𝒫}
-    "The instantaneous free surface (`ReducedField`)"
-    η :: 𝒩
-    "The entire state for the split-explicit solver (`SplitExplicitState`)"
-    state :: 𝒮
-    "Parameters for timestepping split-explicit solver (`NamedTuple`)"
-    auxiliary :: ℱ
-    "Gravitational acceleration"
-    gravitational_acceleration :: 𝒫
-    "Settings for the split-explicit scheme"
-    settings :: ℰ
+struct SplitExplicitFreeSurface{H, U, M, FT, K , S, T} <: AbstractFreeSurface{H, FT}
+    η :: H
+    barotropic_velocities :: U # A namedtuple with U, V 
+    filtered_state :: M # A namedtuple with η, U, V averaged throughout the substepping
+    gravitational_acceleration :: FT
+    kernel_parameters :: K
+    substepping :: S  # Either `FixedSubstepNumber` or `FixedTimeStepSize`
+    timestepper :: T # redesigned to contain all auxiliary field and settings necessary to the particular timestepping
 end
 
 """
