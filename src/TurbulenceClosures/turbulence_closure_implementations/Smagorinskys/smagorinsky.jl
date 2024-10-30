@@ -134,6 +134,11 @@ end
 @inline κᶜᶠᶜ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑyᵃᶠᵃ(i, j, k, grid, K.νₑ) / c.Pr[id]
 @inline κᶜᶜᶠ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑzᵃᵃᶠ(i, j, k, grid, K.νₑ) / c.Pr[id]
 
-Base.summary(closure::Smagorinsky) = string("Smagorinsky: coefficient=", summary(closure.coefficient), ", Pr=$(closure.Pr)")
-Base.show(io::IO, closure::Smagorinsky) = print(io, summary(closure))
+Base.summary(closure::Smagorinsky) = string("Smagorinsky with coefficient = ", summary(closure.coefficient), ", Pr=$(closure.Pr)")
+function Base.show(io::IO, closure::Smagorinsky)
+    coefficient_summary = closure.coefficient isa Number ? closure.coefficient : summary(closure.coefficient)
+    print(io, "Smagorinsky closure with\n",
+              "├── coefficient = ", coefficient_summary, "\n",
+              "└── Pr = ", closure.Pr)
+end
 

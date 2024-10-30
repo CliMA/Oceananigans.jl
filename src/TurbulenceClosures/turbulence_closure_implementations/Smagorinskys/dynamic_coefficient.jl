@@ -26,8 +26,11 @@ function DynamicCoefficient(FT=Float64; averaging, schedule=IterationInterval(1)
     return DynamicCoefficient(averaging, minimum_numerator, schedule)
 end
 
-Base.summary(dc::DynamicCoefficient) = string("DynamicCoefficient($(dc.dims))")
-Base.show(io::IO, dc::DynamicCoefficient) = print(io, summary(dc))
+Base.summary(dc::DynamicCoefficient) = string("DynamicCoefficient(averaging = $(dc.averaging), schedule = $(dc.schedule))")
+Base.show(io::IO, dc::DynamicCoefficient) = print(io, "DynamicCoefficient with\n",
+                                                      "├── averaging = ", dc.averaging, "\n",
+                                                      "├── schedule = ", dc.schedule, "\n",
+                                                      "└── minimum_numerator = ", dc.minimum_numerator)
 
 #####
 ##### Some common utilities independent of averaging

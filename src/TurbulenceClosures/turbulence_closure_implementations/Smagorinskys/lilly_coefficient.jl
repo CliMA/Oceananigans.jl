@@ -100,4 +100,9 @@ end
     return ς * c₀^2
 end
 
+Base.summary(dc::LillyCoefficient) = string("LillyCoefficient(smagorinsky = $(dc.smagorinsky), reduction_factor = $(dc.reduction_factor))")
+Base.show(io::IO, dc::LillyCoefficient) = print(io, "LillyCoefficient with\n",
+                                                    "├── Smagorinsky coefficient = ", dc.smagorinsky, "\n",
+                                                    "└── reduction_factor = ", dc.reduction_factor)
+
 
