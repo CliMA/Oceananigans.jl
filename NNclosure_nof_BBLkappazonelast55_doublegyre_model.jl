@@ -22,8 +22,8 @@ using ColorSchemes
 
 
 #%%
-# filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_zC2O_NN_closure_NDE_BBLkappazonelast55_temp"
-filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_zWENO5_NN_closure_NDE_BBLkappazonelast55_temp"
+# filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_zC2O_NN_closure_NDE_BBLkappazonelast55"
+filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_zWENO5_NN_closure_NDE_BBLkappazonelast55"
 FILE_DIR = "./Output/$(filename)"
 # FILE_DIR = "/storage6/xinkai/NN_Oceananigans/$(filename)"
 mkpath(FILE_DIR)
