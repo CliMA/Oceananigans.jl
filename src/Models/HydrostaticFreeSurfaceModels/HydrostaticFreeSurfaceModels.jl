@@ -46,7 +46,7 @@ include("matrix_implicit_free_surface_solver.jl")
 include("implicit_free_surface.jl")
 
 # Split-Explicit free-surface solver functionality
-include("split_explicit_free_surface.jl")
+include("SplitExplicitFreeSurfaces/split_explicit_free_surface.jl")
 include("distributed_split_explicit_free_surface.jl")
 include("split_explicit_free_surface_kernels.jl")
 
