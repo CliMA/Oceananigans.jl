@@ -151,22 +151,21 @@ const c = Center()
 
 @kernel function _lagrangian_average_LM_MM!(𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, 𝒥ᴸᴹ_min, Σ, Σ̄, grid, Δt, u, v, w)
     i, j, k = @index(Global, NTuple)
-    LMⁿ, MMⁿ = LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
+    LM, MM = LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
     FT = eltype(grid)
 
     @inbounds begin
-        𝒥ᴸᴹ⁻ᵢ = max(𝒥ᴸᴹ⁻[i, j, k], 𝒥ᴸᴹ_min)
-        𝒥ᴹᴹ⁻ᵢ = 𝒥ᴹᴹ⁻[i, j, k]
+        𝒥ᴸᴹ⁻ᵢⱼₖ = max(𝒥ᴸᴹ⁻[i, j, k], 𝒥ᴸᴹ_min)
+        𝒥ᴹᴹ⁻ᵢⱼₖ = 𝒥ᴹᴹ⁻[i, j, k]
 
         # Compute time scale
-        𝒥ᴸᴹ𝒥ᴹᴹ = 𝒥ᴸᴹ⁻ᵢ * 𝒥ᴹᴹ⁻ᵢ
+        𝒥ᴸᴹ𝒥ᴹᴹ = 𝒥ᴸᴹ⁻ᵢⱼₖ * 𝒥ᴹᴹ⁻ᵢⱼₖ
 
         if 𝒥ᴸᴹ𝒥ᴹᴹ < 0
-            @show 𝒥ᴸᴹ⁻ᵢ 𝒥ᴹᴹ⁻ᵢ 
+            @show 𝒥ᴸᴹ⁻ᵢⱼₖ 𝒥ᴹᴹ⁻ᵢⱼₖ
         end
 
-        eighth_root_𝒥ᴸᴹ𝒥ᴹᴹ = sqrt(sqrt(sqrt(sqrt(𝒥ᴸᴹ𝒥ᴹᴹ))))
-        T⁻ = convert(FT, 1.5) * Δᶠ(i, j, k, grid) / eighth_root_𝒥ᴸᴹ𝒥ᴹᴹ
+        T⁻ = convert(FT, 1.5) * Δᶠ(i, j, k, grid) / ∜(∜(𝒥ᴸᴹ𝒥ᴹᴹ))
         τ = Δt / T⁻
         ϵ = τ / (1 + τ)
                         
@@ -195,13 +194,13 @@ const c = Center()
         z⁻ = z - δz
         X⁻ = (x⁻, y⁻, z⁻)
 
-        itp_𝒥ᴹᴹ = interpolate(X⁻, 𝒥ᴹᴹ⁻, (c, c, c), grid)
-        itp_𝒥ᴸᴹ = interpolate(X⁻, 𝒥ᴸᴹ⁻, (c, c, c), grid)
+        itp_𝒥ᴹᴹ⁻ = interpolate(X⁻, 𝒥ᴹᴹ⁻, (c, c, c), grid)
+        itp_𝒥ᴸᴹ⁻ = interpolate(X⁻, 𝒥ᴸᴹ⁻, (c, c, c), grid)
 
         # Take time-step
-        𝒥ᴹᴹ[i, j, k] = ϵ * MMⁿ + (1 - ϵ) * itp_𝒥ᴹᴹ
+        𝒥ᴹᴹ[i, j, k] = ϵ * MM + (1 - ϵ) * itp_𝒥ᴹᴹ⁻
 
-        𝒥ᴸᴹ★ = ϵ * LMⁿ + (1 - ϵ) * max(itp_𝒥ᴸᴹ, 𝒥ᴸᴹ_min)
+        𝒥ᴸᴹ★ = ϵ * LM + (1 - ϵ) * max(itp_𝒥ᴸᴹ⁻, 𝒥ᴸᴹ_min)
         𝒥ᴸᴹ[i, j, k] = max(𝒥ᴸᴹ★, 𝒥ᴸᴹ_min)
     end
 end
@@ -222,6 +221,9 @@ function compute_coefficient_fields!(diffusivity_fields, closure::LagrangianAver
         Σ̄ = diffusivity_fields.Σ̄
         launch!(arch, grid, :xyz, _compute_Σ_Σ̄!, Σ, Σ̄, grid, u, v, w)
 
+        parent(diffusivity_fields.𝒥ᴸᴹ⁻) .= parent(diffusivity_fields.𝒥ᴸᴹ)
+        parent(diffusivity_fields.𝒥ᴹᴹ⁻) .= parent(diffusivity_fields.𝒥ᴹᴹ)
+
         𝒥ᴸᴹ⁻ = diffusivity_fields.𝒥ᴸᴹ⁻
         𝒥ᴹᴹ⁻ = diffusivity_fields.𝒥ᴹᴹ⁻
         𝒥ᴸᴹ  = diffusivity_fields.𝒥ᴸᴹ
@@ -236,9 +238,6 @@ function compute_coefficient_fields!(diffusivity_fields, closure::LagrangianAver
             launch!(arch, grid, :xyz,
                     _lagrangian_average_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, 𝒥ᴸᴹ_min, Σ, Σ̄, grid, Δt, u, v, w)
         end
-
-        parent(𝒥ᴸᴹ⁻) .= parent(𝒥ᴸᴹ)
-        parent(𝒥ᴹᴹ⁻) .= parent(𝒥ᴹᴹ)
     end
 
     return nothing
