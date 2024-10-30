@@ -21,6 +21,20 @@ struct LagrangianAveraging end
 const LagrangianAveragedCoefficient = DynamicCoefficient{<:LagrangianAveraging}
 const LagrangianAveragedDynamicSmagorinsky = Smagorinsky{<:Any, <:LagrangianAveragedCoefficient}
 
+"""
+    DynamicCoefficient([FT=Float64;] averaging, schedule=IterationInterval(1), minimum_numerator=1e-32)
+
+When used with `Smagorinsky`, it calculates the Smagorinsky coefficient dynamically from the flow
+according to the procedure in [BouZeid05](@citet).
+
+`DynamicCoefficient` requires an `averaging` procedure, which can be a `LagrangianAveraging` (which
+averages fluid parcels along their Lagrangian trajectory) or a tuple of integers indicating
+a directional averaging procedure along chosen dimensions (e.g. `averaging=(1,2)` uses averages
+in the `x` and `y` directions).
+
+`DynamicCoefficient` is updated according to `schedule`, and `minimum_numerator` defines the minimum
+value that is acceptable in the denominator of the final calculation.
+"""
 function DynamicCoefficient(FT=Float64; averaging, schedule=IterationInterval(1), minimum_numerator=1e-32)
     minimum_numerator = convert(FT, minimum_numerator)
     return DynamicCoefficient(averaging, minimum_numerator, schedule)
