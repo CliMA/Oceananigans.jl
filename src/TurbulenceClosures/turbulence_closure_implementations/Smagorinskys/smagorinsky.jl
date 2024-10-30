@@ -68,9 +68,8 @@ the strain tensor `Σᵢⱼ`, `Pr` is the turbulent Prandtl number, `N²` is the
 total buoyancy gradient, and `Cb` is a constant the multiplies the Richardson
 number modification to the eddy viscosity.
 """
-function Smagorinsky(time_discretization = ExplicitTimeDiscretization(), FT=Float64;
-                     coefficient = 0.16, Pr = 1.0)
-    TD = typeof(time_discretization)
+function Smagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64;
+                     coefficient = 0.16, Pr = 1.0) where TD
     Pr = convert_diffusivity(FT, Pr; discrete_form=false)
     return Smagorinsky{TD}(coefficient, Pr)
 end

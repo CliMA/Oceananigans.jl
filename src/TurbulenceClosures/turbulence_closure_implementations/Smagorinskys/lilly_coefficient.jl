@@ -74,6 +74,8 @@ function SmagorinskyLilly(time_discretization=ExplicitTimeDiscretization(), FT=F
     return Smagorinsky{TD}(coefficient, Pr)
 end
 
+SmagorinskyLilly(FT::DataType; kwargs...) = SmagorinskyLilly(ExplicitTimeDiscretization(), FT; kwargs...)
+
 """
     stability(N², Σ², Cb)
 
