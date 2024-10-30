@@ -1,7 +1,7 @@
 using Oceananigans
 using GLMakie
 
-r = "20"
+r = "0"
 
 filenames = [
     "wind_driven_AMD_$r.jld2",
@@ -21,10 +21,20 @@ labels = [
     "Dynamic Smagorinsky",
 ]
 
+hasnu = [
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+]
+
 Bs = []
 Us = []
 w²s = []
-for name in filenames
+νs = []
+for (hasν, name) in zip(hasnu, filenames)
     bt = FieldTimeSeries(name, "b", backend=OnDisk())
     ut = FieldTimeSeries(name, "u", backend=OnDisk())
     wt = FieldTimeSeries(name, "w", backend=OnDisk())
@@ -40,13 +50,23 @@ for name in filenames
     push!(Bs, Bn)
     push!(Us, Un)
     push!(w²s, w²n)
+
+    if hasν
+        νt = FieldTimeSeries(name, "νₑ", backend=OnDisk())
+        νn = νt[end]
+        Nun = compute!(Field(Average(νn, dims=(1, 2))))
+        push!(νs, Nun)
+    else
+        push!(νs, nothing)
+    end
 end
 
-fig = Figure(size=(1200, 600))
+fig = Figure(size=(1400, 800))
 
 axb = Axis(fig[1, 1], ylabel="z (m)", xlabel="Buoyancy (m s⁻²)")
 axu = Axis(fig[1, 2], ylabel="z (m)", xlabel="x-velocity (m s⁻¹)")
 axw = Axis(fig[1, 3], ylabel="z (m)", xlabel="Vertical velocity variance, w² (m² s⁻²)")
+axν = Axis(fig[1, 4], ylabel="z (m)", xlabel="Eddy viscosity (m² s⁻¹)")
 
 for (label, Bn) in zip(labels, Bs)
     lines!(axb, Bn; label)
@@ -60,7 +80,19 @@ for w²n in w²s
     lines!(axw, w²n)
 end
 
+for i = 1:length(hasnu)
+    hasν = hasnu[i]
+    νn = νs[i]
+    label = labels[i]
+    if hasν
+        lines!(axν, νn; label)
+    else
+        lines!(axν, [NaN], [NaN])
+    end
+end
+
 axislegend(axb, position=:lt)
+axislegend(axν, position=:rb)
 
 display(fig)
 
