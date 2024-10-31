@@ -8,7 +8,7 @@ using Printf
 
 data_directory = "/nobackup1/sandre/OceananigansData/"
 arch = GPU()
-Nz = 2
+Nz = 3
 Nxy = 32 * 4
 Lz = 1800
 σ = 1.1
@@ -45,7 +45,7 @@ sp = sqrt(g * grid.Lz)
 CFL = 0.75
 Δτ = Δs / sp * CFL
 
-substeps = ceil(Int, 3 * Δt / Δτ)
+substeps = ceil(Int, 2 * Δt / Δτ)
 
 coriolis = HydrostaticSphericalCoriolis()
 momentum_advection = WENOVectorInvariant(vorticity_order=5)

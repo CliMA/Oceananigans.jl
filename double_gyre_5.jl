@@ -9,9 +9,9 @@ using Printf
 data_directory = "/nobackup1/sandre/OceananigansData/"
 arch = GPU()
 Nz = 15
-Nxy = 32 * 4
+Nxy = 32 * 8
 Lz = 1800
-σ = 1.1
+σ = 1.3
 z_faces(k) = -Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ));
 z_faces_2 = ZStarVerticalCoordinate(z_faces)
 grid = LatitudeLongitudeGrid(arch; size=(Nxy, Nxy, Nz),
@@ -162,12 +162,12 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 simulation.output_writers[:snapshots] = JLD2OutputWriter(model, field_outputs,
     overwrite_existing=true,
     schedule=TimeInterval(30days),
-    filename=data_directory * "baroclinic_double_gyre_3")
+    filename=data_directory * "baroclinic_double_gyre_5")
 
 simulation.output_writers[:free_surface] = JLD2OutputWriter(model, (; η=model.free_surface.η),
     overwrite_existing=true,
     indices=(:, :, grid.Nz + 1),
     schedule=TimeInterval(30days),
-    filename=data_directory * "baroclinic_double_gyre_free_surface_3")
+    filename=data_directory * "baroclinic_double_gyre_free_surface_5")
 
 run!(simulation)

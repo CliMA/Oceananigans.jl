@@ -1,37 +1,38 @@
 using CairoMakie, JLD2, Statistics, HDF5, Oceananigans
-data_directory = "" # "/nobackup1/sandre/OceananigansData/"
+data_directory = "/nobackup1/sandre/OceananigansData/"
 figure_directory = "oceananigans_figure/"
 
-casevar = 1
+casevar = 5
 jlfile = jldopen(data_directory * "baroclinic_double_gyre_free_surface_$casevar.jld2", "r")
 jlfile2 = jldopen(data_directory * "baroclinic_double_gyre_$casevar.jld2", "r")
 ηkeys =  keys(jlfile["timeseries"]["η"])[2:end]
 
 η = zeros(size(jlfile["timeseries"]["η"]["0"])[1:2]..., length(ηkeys))
 M, N, L = size(jlfile2["timeseries"]["b"]["0"])
-u = zeros(M, N, L, length(ηkeys))
-v = zeros(M, N, L, length(ηkeys))
-w = zeros(M, N, L, length(ηkeys))
-b = zeros(M, N, L, length(ηkeys))
+u = zeros(M, N, L, length(ηkeys));
+v = zeros(M, N, L, length(ηkeys));
+w = zeros(M, N, L, length(ηkeys));
+b = zeros(M, N, L, length(ηkeys));
 for (i, ηkey) in enumerate(ηkeys)
     η[:, :, i] .= jlfile["timeseries"]["η"][ηkey]
-    u[:, :, :, i] .= (jlfile2["timeseries"]["u"][ηkey][2:end, :, :] + jlfile2["timeseries"]["u"][ηkey][1:end-1, :, :])/2
-    v[:, :, :, i] .= (jlfile2["timeseries"]["v"][ηkey][:, 2:end, :] + jlfile2["timeseries"]["v"][ηkey][:, 1:end-1, :])/2
-    w[:, :, :, i] .= (jlfile2["timeseries"]["w"][ηkey][:, :, 2:end] + jlfile2["timeseries"]["w"][ηkey][:, :, 1:end-1])/2
+    u[:, :, :, i] .= (jlfile2["timeseries"]["u"][ηkey][2:end, :, :] .+ jlfile2["timeseries"]["u"][ηkey][1:end-1, :, :])/2
+    v[:, :, :, i] .= (jlfile2["timeseries"]["v"][ηkey][:, 2:end, :] .+ jlfile2["timeseries"]["v"][ηkey][:, 1:end-1, :])/2
+    w[:, :, :, i] .= (jlfile2["timeseries"]["w"][ηkey][:, :, 2:end] .+ jlfile2["timeseries"]["w"][ηkey][:, :, 1:end-1])/2
     b[:, :, :, i] .= jlfile2["timeseries"]["b"][ηkey]
 end
 close(jlfile)
 close(jlfile2)
-kmax = 2
-kmax = 2
+kmax = 3
 
+
+etamax = maximum(abs.(η[:, :, end]))
 NN = 3
 fig = Figure() 
 for i in 1:NN
     for j in 1:NN
         ii = (i - 1) * NN + j
         ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y")
-        heatmap!(ax, η[:, :, end - ii], colormap = :viridis)
+        heatmap!(ax, η[:, :, end - ii], colormap = :balance, colorrange = (-etamax, etamax))
     end
 end
 save(figure_directory * "etafield.png", fig)
@@ -108,7 +109,10 @@ lines!(ax, squareheight, color = :blue)
 save(figure_directory * "squareheight.png", fig)
 
 ##
-si = 200 #starting index
+
+
+#=
+si = 2000 #starting index
 η̄ = mean(η[:,:,si:end], dims = 3)
 ση = std(η[:,:,si:end], dims = 3)
 rη = (η[:, :, si:end] .- η̄ ) ./ ση
@@ -125,8 +129,7 @@ b̄ = mean(b[:,:,:,si:end], dims = 4)
 σb = std(b[:,:,:,si:end], dims = 4)
 rb = (b[:, :, :, si:end] .- b̄ ) ./ σb
 
-#=
-hfile = h5open(data_directory * "baroclinic_double_gyre.hdf5", "w")
+hfile = h5open(data_directory * "baroclinic_double_gyre_$casevar.hdf5", "w")
 hfile["eta"] = rη
 hfile["u"] = ru
 hfile["v"] = rv
@@ -146,7 +149,7 @@ state[:, :, 1, :] .= ru[:, :, 1, :]
 state[:, :, 2, :] .= rv[:, :, 1, :]
 state[:, :, 3, :] .= rb[:, :, 1, :]
 state[:, :, 4, :] .= rη[:, :, :]
-hfile = h5open(data_directory * "baroclinic_training_data.hdf5", "w")
+hfile = h5open(data_directory * "baroclinic_training_data_$casevar.hdf5", "w")
 hfile["timeseries"] = state
 close(hfile)
 =#
@@ -180,7 +183,7 @@ end
         ψ[i, j, 1] = ψ[i, j-1, 1] - U[i, j, 1] * Δyᶠᶜᶜ(i, j, 1, grid)
     end
 end
-ψ = barotropic_streamfunction(u[end])
+ψ = interior(barotropic_streamfunction(u[end]))[:, :, 1]
 
 Nt = size(u, 4)
 Ntmin = max(1, Nt-120)
@@ -192,10 +195,12 @@ ax = Axis(fig[1,1]; xlabel = "x", ylabel = "y", title = "instantaneous streamfun
 heatmap!(ax, ψ, colormap = :balance, colorrange = (-psimax, psimax))
 ax = Axis(fig[1,2]; xlabel = "x", ylabel = "y", title = "average streamfunction")
 heatmap!(ax, avgψ, colormap = :balance, colorrange = (-psimax, psimax))
-psimax = quantile(avgψ[:], 0.99)
-ax = Axis(fig[1,1]; xlabel = "x", ylabel = "y", title = "instantaneous streamfunction")
-heatmap!(ax, ψ, colormap = :balance, colorrange = (-psimax, psimax))
-ax = Axis(fig[1,2]; xlabel = "x", ylabel = "y", title = "average streamfunction")
-heatmap!(ax, avgψ, colormap = :balance, colorrange = (-psimax, psimax))
-# contour!(ax, ψ, color = :black)
 save(figure_directory * "streamfunction.png", fig)
+#=
+psimax = maximum(abs.(ψ[:])) # quantile(avgψ[:], 0.99)
+ax = Axis(fig[1,1]; xlabel = "x", ylabel = "y", title = "instantaneous streamfunction")
+contourf!(ax, ψ, colormap = :balance, levels = range(-psimax, psimax, length = 10))
+ax = Axis(fig[1,2]; xlabel = "x", ylabel = "y", title = "average streamfunction")
+contourf!(ax, avgψ, colormap = :balance, levels = range(-psimax, psimax, length = 10))
+=#
+# contour!(ax, ψ, color = :black)

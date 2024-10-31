@@ -6,10 +6,10 @@ using Oceananigans.AbstractOperations: GridMetricOperation
 using Printf
 
 
-data_directory = ""# "/nobackup1/sandre/OceananigansData/"
-arch = CPU()
+data_directory = "/nobackup1/sandre/OceananigansData/"
+arch = GPU()
 Nz = 2
-Nxy = 32 
+Nxy = 32 * 4
 Lz = 1800
 σ = 1.1
 
@@ -64,7 +64,7 @@ closure1 = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=1.0,
     background_κz=1e-5,
     convective_νz=1e-2,
     background_νz=1e-2)
-closure2 = HorizontalScalarDiffusivity(ν = 5 * 10^3, κ = 5 * 10^3)
+closure2 = HorizontalScalarDiffusivity(ν = 2 * 10^3, κ = 2 * 10^3)
 closure = (closure1, closure2)
 
 ##### 

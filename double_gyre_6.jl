@@ -8,12 +8,14 @@ using Printf
 
 data_directory = "/nobackup1/sandre/OceananigansData/"
 arch = GPU()
-Nz = 15
-Nxy = 32 * 4
+Nz = 2
+Nxy = 32 * 8
 Lz = 1800
-σ = 1.1
+σ = 1.3
+
 z_faces(k) = -Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ));
 z_faces_2 = ZStarVerticalCoordinate(z_faces)
+
 grid = LatitudeLongitudeGrid(arch; size=(Nxy, Nxy, Nz),
     latitude=(15, 75),
     longitude=(0, 60),
@@ -62,7 +64,7 @@ closure1 = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=1.0,
     background_κz=1e-5,
     convective_νz=1e-2,
     background_νz=1e-2)
-closure2 = HorizontalScalarDiffusivity(ν= 10^3, κ= 10^3)
+closure2 = HorizontalScalarDiffusivity(ν=10^3, κ=10^3)
 closure = (closure1, closure2)
 
 ##### 
@@ -79,7 +81,7 @@ end
 @inline function buoyancy_restoring(i, j, grid, clock, fields, p)
     b = @inbounds fields.b[i, j, grid.Nz]
     y = (φnode(j, grid, Center()) - p.φ₀) / grid.Ly
-    b★ = p.Δb * (1-y)
+    b★ = p.Δb * (1 - y)
 
     return p.𝓋 * (b - b★)
 end
@@ -162,12 +164,12 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 simulation.output_writers[:snapshots] = JLD2OutputWriter(model, field_outputs,
     overwrite_existing=true,
     schedule=TimeInterval(30days),
-    filename=data_directory * "baroclinic_double_gyre_3")
+    filename=data_directory * "baroclinic_double_gyre_6")
 
 simulation.output_writers[:free_surface] = JLD2OutputWriter(model, (; η=model.free_surface.η),
     overwrite_existing=true,
     indices=(:, :, grid.Nz + 1),
     schedule=TimeInterval(30days),
-    filename=data_directory * "baroclinic_double_gyre_free_surface_3")
+    filename=data_directory * "baroclinic_double_gyre_free_surface_6")
 
 run!(simulation)
