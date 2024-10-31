@@ -102,43 +102,24 @@ Keyword arguments
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
 """
 function HydrostaticFreeSurfaceModel(; grid,
-<<<<<<< HEAD
-                                     clock = Clock{eltype(grid)}(time = 0),
-                                     momentum_advection = VectorInvariant(),
-                                     tracer_advection = CenteredSecondOrder(),
-                                     buoyancy = nothing,
-                                     coriolis = nothing,
-                                     free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
-                                     tracers = nothing,
-                                     forcing::NamedTuple = NamedTuple(),
-                                     closure = nothing,
-                                     boundary_conditions::NamedTuple = NamedTuple(),
-                                     particles::ParticlesOrNothing = nothing,
-                                     biogeochemistry::AbstractBGCOrNothing = nothing,
-                                     velocities = nothing,
-                                     pressure = nothing,
-                                     diffusivity_fields = nothing,
-                                     auxiliary_fields = NamedTuple())
-=======
-                                             clock = Clock{eltype(grid)}(time = 0),
-                                momentum_advection = CenteredSecondOrder(),
-                                  tracer_advection = CenteredSecondOrder(),
-                                          buoyancy = nothing,
-                                          coriolis = nothing,
-                                      free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
-                                           tracers = nothing,
-                               forcing::NamedTuple = NamedTuple(),
-                                       timestepper = :QuasiAdamsBashforth2,
-                                           closure = nothing,
-                   boundary_conditions::NamedTuple = NamedTuple(),
-                     particles::ParticlesOrNothing = nothing,
-             biogeochemistry::AbstractBGCOrNothing = nothing,
-                                        velocities = nothing,
-                                          pressure = nothing,
-                                diffusivity_fields = nothing,
-                                  auxiliary_fields = NamedTuple()
+                                    clock = Clock{eltype(grid)}(time = 0),
+                       momentum_advection = CenteredSecondOrder(),
+                         tracer_advection = CenteredSecondOrder(),
+                                 buoyancy = nothing,
+                                 coriolis = nothing,
+                             free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
+                                  tracers = nothing,
+                      forcing::NamedTuple = NamedTuple(),
+                              timestepper = :QuasiAdamsBashforth2,
+                                  closure = nothing,
+          boundary_conditions::NamedTuple = NamedTuple(),
+            particles::ParticlesOrNothing = nothing,
+    biogeochemistry::AbstractBGCOrNothing = nothing,
+                               velocities = nothing,
+                                 pressure = nothing,
+                       diffusivity_fields = nothing,
+                         auxiliary_fields = NamedTuple()
     )
->>>>>>> 85141d63bb00f8317e25ce60fd804f06ddb6c3a9
 
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)

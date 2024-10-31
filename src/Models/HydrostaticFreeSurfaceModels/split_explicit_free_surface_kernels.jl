@@ -269,34 +269,19 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     Nsubsteps = calculate_substeps(settings.substepping, Δt)
 
     # barotropic time step as fraction of baroclinic step and averaging weights
-<<<<<<< HEAD
-    fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps)
-=======
     fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps, settings.timestepper) 
->>>>>>> 85141d63bb00f8317e25ce60fd804f06ddb6c3a9
     Nsubsteps = length(weights)
 
     # barotropic time step in seconds
     Δτᴮ = fractional_Δt * Δt
-<<<<<<< HEAD
-
-=======
-    
->>>>>>> 85141d63bb00f8317e25ce60fd804f06ddb6c3a9
     # reset free surface averages
     @apply_regionally begin
         initialize_free_surface_state!(free_surface.state, free_surface.η, settings.timestepper)
 
         # Solve for the free surface at tⁿ⁺¹
         iterate_split_explicit!(free_surface, free_surface_grid, Δτᴮ, weights, Val(Nsubsteps))
-<<<<<<< HEAD
-
-        # Reset eta for the next timestep
-        set!(free_surface.η, free_surface.state.η̅)
-=======
         
         update_free_surface_state!(free_surface.state, free_surface.η, settings.timestepper)
->>>>>>> 85141d63bb00f8317e25ce60fd804f06ddb6c3a9
     end
 
     fields_to_fill = (free_surface.state.U̅, free_surface.state.V̅)
@@ -395,11 +380,7 @@ function iterate_split_explicit!(free_surface, grid, Δτᴮ, weights, ::Val{Nsu
 end
 
 # Calculate RHS for the barotropic time step.
-<<<<<<< HEAD
-@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, ::Nothing, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
-=======
 @kernel function _ab2_compute_integrated_tendencies!(Gᵁ, Gⱽ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
->>>>>>> 85141d63bb00f8317e25ce60fd804f06ddb6c3a9
     i, j  = @index(Global, NTuple)
     k_top = grid.Nz + 1
 
@@ -413,11 +394,7 @@ end
 end
 
 # Calculate RHS for the barotropic time step.q
-<<<<<<< HEAD
-@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
-=======
 @kernel function _ab2_compute_integrated_tendencies!(Gᵁ, Gⱽ, grid::ActiveZColumnsIBG, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
->>>>>>> 85141d63bb00f8317e25ce60fd804f06ddb6c3a9
     idx = @index(Global, Linear)
     i, j = active_linear_index_to_tuple(idx, active_cells_map)
     k_top = grid.Nz+1
@@ -474,15 +451,9 @@ end
 
 # Setting up the RHS for the barotropic step (tendencies of the barotropic velocity components)
 # This function is called after `calculate_tendency` and before `ab2_step_velocities!`
-<<<<<<< HEAD
-function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
-
-    # we start the time integration of η from the average ηⁿ
-=======
 function ab2_setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, χ)
     
     # we start the time integration of η from the average ηⁿ     
->>>>>>> 85141d63bb00f8317e25ce60fd804f06ddb6c3a9
     Gu⁻ = model.timestepper.G⁻.u
     Gv⁻ = model.timestepper.G⁻.v
     Guⁿ = model.timestepper.Gⁿ.u
@@ -498,10 +469,6 @@ function ab2_setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, 
     return nothing
 end
 
-<<<<<<< HEAD
-@inline function setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
-    active_cells_map = retrieve_surface_active_cells_map(grid)
-=======
 ab2_setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ) =
     launch!(architecture(grid), grid, :xy, _ab2_compute_integrated_tendencies!, auxiliary.Gᵁ, auxiliary.Gⱽ, grid, 
             Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ; active_cells_map = active_surface_map(grid))
@@ -531,7 +498,6 @@ rk3_setup_split_explicit_tendency!(auxiliary, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, 
             Gu⁻, Gv⁻, Guⁿ, Gvⁿ,  γⁿ, ζⁿ; active_cells_map = active_surface_map(grid))
             
 wait_free_surface_communication!(free_surface, arch) = nothing
->>>>>>> 85141d63bb00f8317e25ce60fd804f06ddb6c3a9
 
     launch!(architecture(grid), grid, :xy, _compute_integrated_ab2_tendencies!, auxiliary.Gᵁ, auxiliary.Gⱽ, grid,
             active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ; active_cells_map)
