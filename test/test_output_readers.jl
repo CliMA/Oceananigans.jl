@@ -290,8 +290,8 @@ end
         @test t[1, 1, 1] == 3.8
     end
 
-    @testset "Test chunked abstraction" begin  
-        @info "  Testing Chunked abstraction..."      
+    @testset "Test chunked abstraction" begin
+        @info "  Testing Chunked abstraction..."
         filepath = "testfile.jld2"
         fts = FieldTimeSeries(filepath, "c")
         fts_chunked = FieldTimeSeries(filepath, "c"; backend = InMemory(2), time_indexing = Cyclical())
@@ -342,8 +342,8 @@ end
     end
 
     for Backend in [InMemory, OnDisk]
-        @testset "FieldDataset{$Backend}" begin
-            @info "  Testing FieldDataset{$Backend}..."
+        @testset "FieldDataset{$Backend} indexing" begin
+            @info "  Testing FieldDataset{$Backend} indexing..."
 
             ds = FieldDataset(filepath3d, backend=Backend())
 
@@ -354,7 +354,7 @@ end
                 @test ds[var_str] isa FieldTimeSeries
                 @test ds[var_str][1] isa Field
             end
-            
+
             for var_sym in (:u, :v, :w, :T, :S, :b, :ζ, :ke)
                 @test ds[var_sym] isa FieldTimeSeries
                 @test ds[var_sym][2] isa Field
@@ -368,6 +368,36 @@ end
             @test ds.b isa FieldTimeSeries
             @test ds.ζ isa FieldTimeSeries
             @test ds.ke isa FieldTimeSeries
+        end
+    end
+
+    for Backend in [InMemory, OnDisk]
+        @testset "FieldTimeSeries{$Backend} parallel reading" begin
+            @info "  Testing FieldTimeSeries{$Backend} parallel reading..."
+
+            reader_kw = Dict(:parallel_read => true)
+            u3 = FieldTimeSeries(filepath3d, "u"; backend=Backend(), reader_kw)
+            b3 = FieldTimeSeries(filepath3d, "b"; backend=Backend(), reader_kw)
+
+            @test u3 isa FieldTimeSeries
+            @test b3 isa FieldTimeSeries
+            @test u3[1] isa Field
+            @test b3[1] isa Field
+        end
+    end
+
+    for Backend in [InMemory, OnDisk]
+        @testset "FieldDataset{$Backend} parallel reading" begin
+            @info "  Testing FieldDataset{$Backend} parallel reading..."
+
+            reader_kw = Dict(:parallel_read => true)
+            ds = FieldDataset(filepath3d; backend=Backend(), reader_kw)
+
+            @test ds isa FieldDataset
+            @test ds.u isa FieldTimeSeries
+            @test ds.b isa FieldTimeSeries
+            @test ds.u[1] isa Field
+            @test ds.b[1] isa Field
         end
     end
 
