@@ -49,16 +49,7 @@ steps:
       GPU_TEST: "true"
       MPI_TEST: "true"
     commands:
-      - "echo '--- Instantiate project'"
-      - "julia --project -e 'using Pkg; Pkg.instantiate(verbose=true)'"
-
-      - "echo '--- Precompile project'"
-      - "julia --project -e 'using Pkg; Pkg.precompile(strict=true)'"
-      - "julia --project -e 'using Pkg; Pkg.status()'"
-
-      # Force the initialization of the CUDA runtime as it is lazily loaded by default:
-      - "echo '--- Initialize the CUDA runtime'"
-      - "julia --project -e 'using CUDA; CUDA.precompile_runtime()'"
+      - "julia -O0 -O0 --color=yes --project -e 'pkg = Base.PkgId(Base.UUID("76a88914-d11a-5bdc-97e0-2f5a05c973a2"), "CUDA_Runtime_jll"); Base.compilecache(pkg)'"
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       slurm_mem: 120G
