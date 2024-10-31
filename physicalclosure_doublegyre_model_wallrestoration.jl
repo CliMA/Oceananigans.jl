@@ -117,7 +117,7 @@ v_bcs = FieldBoundaryConditions(   top = FluxBoundaryCondition(0),
 @inline surface_T_flux(x, y, t, T) = μ_T * Δz * (T - T_ref(y))
 surface_T_flux_bc = FluxBoundaryCondition(surface_T_flux; field_dependencies=:T)
 
-@inline T_north_ref(z) = ifelse(z >= -500, 0, -5 + 5 * (1 + (z + 500) / (Lz - 500)))
+@inline T_north_ref(z) = min(0, -5 + 5 * (1 + (z + 500) / (Lz - 500)))
 @inline north_T_flux(x, z, t, T) = μ_T * δy * (T - T_north_ref(z))
 north_T_flux_bc = FluxBoundaryCondition(north_T_flux; field_dependencies=:T)
 
