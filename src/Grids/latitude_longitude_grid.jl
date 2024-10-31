@@ -704,8 +704,6 @@ end
                                                                                     size(grid, 2), with_halos)
 
 @inline yspacings(grid::YRegularLLG, ℓx, ℓy; with_halos=false) = yspacings(grid, ℓy; with_halos)
-@inline yspacings(grid, ℓy::C; kwargs...) = grid.Δyᶠᶜᵃ
-@inline yspacings(grid, ℓy::F; kwargs...) = grid.Δyᶜᶠᵃ
 
 @inline xspacings(grid::LLG, ℓx, ℓy, ℓz; kwargs...) = xspacings(grid, ℓx, ℓy; kwargs...)
 @inline yspacings(grid::LLG, ℓx, ℓy, ℓz; kwargs...) = yspacings(grid, ℓx, ℓy; kwargs...)
