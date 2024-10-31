@@ -54,6 +54,31 @@ function hydrostatic_free_surface_model_tracers_and_forcings_work(arch)
     return nothing
 end
 
+function time_step_hydrostatic_model_with_catke_works(arch, FT)
+    grid = LatitudeLongitudeGrid(
+        arch,
+        FT,
+        topology = (Bounded, Bounded, Bounded),
+        size = (8, 8, 8),
+        longitude = (0, 1),
+        latitude = (0, 1),
+        z = (-100, 0)
+    )
+
+    model = HydrostaticFreeSurfaceModel(;
+        grid,
+        buoyancy = BuoyancyTracer(),
+        tracers = (:b, :e),
+        closure = CATKEVerticalDiffusivity(FT)
+    )
+
+    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+
+    run!(simulation)
+
+    return model.clock.iteration == 1
+end
+
 topo_1d = (Flat, Flat, Bounded)
 
 topos_2d = ((Periodic, Flat, Bounded),
@@ -66,7 +91,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
 @testset "Hydrostatic free surface Models" begin
     @info "Testing hydrostatic free surface models..."
-      
+
     @testset "$topo_1d model construction" begin
         @info "  Testing $topo_1d model construction..."
         for arch in archs, FT in [Float64] #float_types
@@ -80,7 +105,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @test !(:η ∈ keys(fields(model))) # doesn't include free surface
         end
     end
-    
+
     for topo in topos_2d
         @testset "$topo model construction" begin
             @info "  Testing $topo model construction..."
@@ -92,7 +117,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             end
         end
     end
-    
+
     for topo in topos_3d
         @testset "$topo model construction" begin
             @info "  Testing $topo model construction..."
@@ -180,8 +205,8 @@ topos_3d = ((Periodic, Periodic, Bounded),
         precompute_metrics = true
         lat_lon_sector_grid = LatitudeLongitudeGrid(arch; size=(H, H, H), longitude=(0, 60), latitude=(15, 75), z=(-1, 0), precompute_metrics, halo)
         lat_lon_strip_grid  = LatitudeLongitudeGrid(arch; size=(H, H, H), longitude=(-180, 180), latitude=(15, 75), z=(-1, 0), precompute_metrics, halo)
-        
-        z = z_face_generator() 
+
+        z = z_face_generator()
         lat_lon_sector_grid_stretched = LatitudeLongitudeGrid(arch; size=(H, H, H), longitude=(0, 60), latitude=(15, 75), z, precompute_metrics, halo)
         lat_lon_strip_grid_stretched  = LatitudeLongitudeGrid(arch; size=(H, H, H), longitude=(-180, 180), latitude=(15, 75), z, precompute_metrics, halo)
 
@@ -196,7 +221,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
                 topo = topology(grid)
                 grid_type = typeof(grid).name.wrapper
                 free_surface_type = typeof(free_surface).name.wrapper
-                test_label = "[$arch, $grid_type, $topo, $free_surface_type]"                
+                test_label = "[$arch, $grid_type, $topo, $free_surface_type]"
                 @testset "Time-stepping HydrostaticFreeSurfaceModels with various grids $test_label" begin
                     @info "  Testing time-stepping HydrostaticFreeSurfaceModels with various grids $test_label..."
                     @test time_step_hydrostatic_model_works(grid; free_surface)
@@ -278,7 +303,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
             @test time_step_hydrostatic_model_works(rectilinear_grid, momentum_advection  = nothing, velocities = velocities)
             @test time_step_hydrostatic_model_works(lat_lon_sector_grid, momentum_advection = nothing, velocities = velocities)
-                                            
+
             parameters = (U=1, m=0.1, W=0.001)
             u(x, y, z, t, p) = p.U
             v(x, y, z, t, p) = exp(p.m * z)
@@ -293,6 +318,12 @@ topos_3d = ((Periodic, Periodic, Bounded),
         @testset "HydrostaticFreeSurfaceModel with tracers and forcings [$arch]" begin
             @info "  Testing HydrostaticFreeSurfaceModel with tracers and forcings [$arch]..."
             hydrostatic_free_surface_model_tracers_and_forcings_work(arch)
+        end
+
+        # See: https://github.com/CliMA/Oceananigans.jl/issues/3870
+        @testset "HydrostaticFreeSurfaceModel with Float32 CATKE [$arch]" begin
+            @info "  Testing HydrostaticFreeSurfaceModel with Float32 CATKE [$arch]..."
+            @test time_step_hydrostatic_model_with_catke_works(arch, Float32)
         end
     end
 end
