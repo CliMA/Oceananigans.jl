@@ -1,16 +1,3 @@
-using Oceananigans
-using Oceananigans.Architectures
-using Oceananigans.Fields
-using Oceananigans.Grids
-using Oceananigans.Grids: AbstractGrid
-using Oceananigans.AbstractOperations: Δz, GridMetricOperation
-
-using Adapt
-using Base
-using KernelAbstractions: @index, @kernel
-
-import Oceananigans.TimeSteppers: reset!
-
 """
     struct SplitExplicitFreeSurface
 
@@ -192,41 +179,6 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
                                     free_surface.kernel_parameters,
                                     free_surface.substepping,
                                     timestepper)
-end
-
-function materialize_timestepper(timestepper::Symbol, args...) 
-    fullname = Symbol(name, :Scheme)
-    TS = getglobal(@__MODULE__, fullname)
-    return materialize_timestepper(TS, args...)
-end
-
-struct ForwardBackwardScheme end
-
-materialize_timestepper(::ForwardBackwardScheme, grid, args...) = ForwardBackwardScheme()
-
-struct AdamsBashforth3Scheme{CC, FC, CF}
-    ηᵐ   :: CC
-    ηᵐ⁻¹ :: CC
-    ηᵐ⁻² :: CC
-    Uᵐ⁻¹ :: FC
-    Uᵐ⁻² :: FC
-    Vᵐ⁻¹ :: CF
-    Vᵐ⁻² :: CF
-end
-
-AdamsBashforth3Scheme() = AdamsBashforth3Scheme(nothing, nothing, nothing, nothing, nothing, nothing, nothing)
-
-function materialize_timestepper(::AdamsBashforth3Scheme, grid, free_surface, velocities, u_bc, v_bc)
-    ηᵐ   = free_surface_displacement_field(velocities, free_surface, grid)
-    ηᵐ⁻¹ = free_surface_displacement_field(velocities, free_surface, grid)
-    ηᵐ⁻² = free_surface_displacement_field(velocities, free_surface, grid)
-
-    Uᵐ⁻¹ = Field{Face, Center, Nothing}(grid; boundary_conditions = u_bc)
-    Uᵐ⁻² = Field{Face, Center, Nothing}(grid; boundary_conditions = u_bc)
-    Vᵐ⁻¹ = Field{Center, Face, Nothing}(grid; boundary_conditions = v_bc)
-    Vᵐ⁻² = Field{Center, Face, Nothing}(grid; boundary_conditions = v_bc)
-
-    return AdamsBashforth3Scheme(ηᵐ, ηᵐ⁻¹, ηᵐ⁻², Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻²)
 end
 
 # (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002 

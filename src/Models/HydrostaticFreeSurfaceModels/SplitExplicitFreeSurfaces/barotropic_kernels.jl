@@ -16,15 +16,6 @@ using Printf
 using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
-# constants for AB3 time stepping scheme (from https://doi.org/10.1016/j.ocemod.2004.08.002)
-const β = 0.281105
-const α = 1.5 + β
-const θ = - 0.5 - 2β
-const γ = 0.088
-const δ = 0.614
-const ϵ = 0.013
-const μ = 1 - δ - γ - ϵ
-
 # Evolution Kernels
 #
 # ∂t(η) = -∇⋅U
@@ -37,49 +28,10 @@ const μ = 1 - δ - γ - ϵ
 @inline div_Txᶜᶜᶠ(i, j, k, grid, U★::Function, args...) =  1 / Azᶜᶜᶠ(i, j, k, grid) * δxTᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶠ, U★, args...)
 @inline div_Tyᶜᶜᶠ(i, j, k, grid, V★::Function, args...) =  1 / Azᶜᶜᶠ(i, j, k, grid) * δyTᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶠ, V★, args...)
 
-# The functions `η★` `U★` and `V★` represent the value of free surface, barotropic zonal and meridional velocity at time step m+1/2
-
-# Time stepping extrapolation U★, and η★
-
-# AB3 step
-@inline function U★(i, j, k, grid, ::AdamsBashforth3Scheme, Uᵐ)
-    FT = eltype(grid)
-    return @inbounds FT(α) * Uᵐ[i, j, k] + FT(θ) * t.Uᵐ⁻¹[i, j, k] + FT(β) * t.Uᵐ⁻²[i, j, k]
-end
-
-@inline function η★(i, j, k, grid, t::AdamsBashforth3Scheme, ηᵐ⁺¹)
-    FT = eltype(grid)
-    return @inbounds FT(δ) * ηᵐ⁺¹[i, j, k] + FT(μ) * t.ηᵐ[i, j, k] + FT(γ) * t.ηᵐ⁻¹[i, j, k] + FT(ϵ) * t.ηᵐ⁻²[i, j, k]
-end
-
-# Forward Backward Step
-@inline U★(i, j, k, grid, ::ForwardBackwardScheme, U) = @inbounds U[i, j, k]
-@inline η★(i, j, k, grid, ::ForwardBackwardScheme, η) = @inbounds η[i, j, k]
-
-@inline advance_previous_velocities!(::ForwardBackwardScheme, i, j, k, U) = nothing
-
-@inline function advance_previous_velocities!(t::AdamsBashforth3Scheme, i, j, k, U)
-    @inbounds t.Uᵐ⁻²[i, j, k] = t.Uᵐ⁻¹[i, j, k]
-    @inbounds t.Uᵐ⁻¹[i, j, k] =      U[i, j, k]
-
-    return nothing
-end
-
-@inline advance_previous_free_surface!(::ForwardBackwardScheme, i, j, k, η) = nothing
-
-@inline function advance_previous_free_surface!(t::AdamsBashforth3Scheme, i, j, k, η)
-    @inbounds t.ηᵐ⁻²[i, j, k] = t.ηᵐ⁻¹[i, j, k]
-    @inbounds t.ηᵐ⁻¹[i, j, k] =   t.ηᵐ[i, j, k]
-    @inbounds   t.ηᵐ[i, j, k] =      η[i, j, k]
-
-    return nothing
-end
-
 @kernel function _split_explicit_free_surface!(grid, Δτ, η, U, V, timestepper)
     i, j = @index(Global, NTuple)
     free_surface_evolution!(η, i, j, grid, Δτ, U, V, timestepper)
 end
-
 
 @inline function free_surface_evolution!(η, i, j, grid, Δτ, U, V, timestepper)
     k_top = grid.Nz+1
@@ -239,8 +191,8 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     set!(velocities.U,   filtered_state.U) 
     set!(velocities.U,   filtered_state.V)
     
-    # fields_to_fill = (velocities.U, velocities.V) TODO: do this?
-    # fill_halo_regions!(fields_to_fill; async = true)
+    fields_to_fill = (velocities.U, velocities.V, free_surface.η) #  TODO: do this?
+    fill_halo_regions!(fields_to_fill; async = true)
 
     # Preparing velocities for the barotropic correction
     @apply_regionally begin
