@@ -693,41 +693,6 @@ end
 @inline xspacings(grid::HRegularLLG, ℓx::F, ℓy::C; with_halos=false) = _property(grid.Δxᶠᶜᵃ, ℓy, topology(grid, 2),
                                                                                  size(grid, 2), with_halos)
 
-@inline xspacings(grid::LatLonGrid, ℓx::Center, ℓy::Center; with_halos=false) = with_halos ? grid.Δxᶜᶜᵃ :
-    view(grid.Δxᶜᶜᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), size(grid, 2)))
-@inline xspacings(grid::LatLonGrid, ℓx::Center, ℓy::Face;   with_halos=false) = with_halos ? grid.Δxᶜᶠᵃ :
-    view(grid.Δxᶜᶠᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), size(grid, 2)))
-@inline xspacings(grid::LatLonGrid, ℓx::Face, ℓy::Center;   with_halos=false) = with_halos ? grid.Δxᶠᶜᵃ :
-    view(grid.Δxᶠᶜᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), size(grid, 2)))
-@inline xspacings(grid::LatLonGrid, ℓx::Face, ℓy::Face;     with_halos=false) = with_halos ? grid.Δxᶠᶠᵃ :
-    view(grid.Δxᶠᶠᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), size(grid, 2)))
-
-@inline xspacings(grid::HRegLatLonGrid, ℓx::Center, ℓy::Center; with_halos=false) = with_halos ? grid.Δxᶜᶜᵃ :
-    view(grid.Δxᶜᶜᵃ, interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
-@inline xspacings(grid::HRegLatLonGrid, ℓx::Center, ℓy::Face;   with_halos=false) = with_halos ? grid.Δxᶜᶠᵃ :
-    view(grid.Δxᶜᶠᵃ, interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
-@inline xspacings(grid::HRegLatLonGrid, ℓx::Face, ℓy::Center;   with_halos=false) = with_halos ? grid.Δxᶠᶜᵃ :
-    view(grid.Δxᶠᶜᵃ, interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
-@inline xspacings(grid::HRegLatLonGrid, ℓx::Face, ℓy::Face;     with_halos=false) = with_halos ? grid.Δxᶠᶠᵃ :
-    view(grid.Δxᶠᶠᵃ, interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
-
-@inline yspacings(grid::YNonRegLatLonGrid, ℓx::Center, ℓy::Face;   with_halos=false) = with_halos ? grid.Δyᶜᶠᵃ :
-    view(grid.Δyᶜᶠᵃ, interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
-@inline yspacings(grid::YNonRegLatLonGrid, ℓx::Face,   ℓy::Center; with_halos=false) = with_halos ? grid.Δyᶠᶜᵃ :
-    view(grid.Δyᶠᶜᵃ, interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
-
-@inline yspacings(grid::YRegLatLonGrid, ℓx, ℓy; with_halos=false) = yspacings(grid, ℓy; with_halos)
-@inline yspacings(grid::LatLonGrid, ℓy::Center; kwargs...) = grid.Δyᶠᶜᵃ
-@inline yspacings(grid::LatLonGrid, ℓy::Face; kwargs...)   = grid.Δyᶜᶠᵃ
-
-@inline zspacings(grid::LatLonGrid,     ℓz::Center; with_halos=false) = with_halos ? grid.Δzᵃᵃᶜ : view(grid.Δzᵃᵃᶜ, interior_indices(ℓz, topology(grid, 3)(), size(grid, 3)))
-@inline zspacings(grid::ZRegLatLonGrid, ℓz::Center; with_halos=false) = grid.Δzᵃᵃᶜ
-@inline zspacings(grid::LatLonGrid,     ℓz::Face;   with_halos=false) = with_halos ? grid.Δzᵃᵃᶠ : view(grid.Δzᵃᵃᶠ, interior_indices(ℓz, topology(grid, 3)(), size(grid, 3)))
-@inline zspacings(grid::ZRegLatLonGrid, ℓz::Face;   with_halos=false) = grid.Δzᵃᵃᶠ
-
-@inline xspacings(grid::LatLonGrid, ℓx, ℓy, ℓz; kwargs...) = xspacings(grid, ℓx, ℓy; kwargs...)
-@inline yspacings(grid::LatLonGrid, ℓx, ℓy, ℓz; kwargs...) = yspacings(grid, ℓx, ℓy; kwargs...)
-@inline zspacings(grid::LatLonGrid, ℓx, ℓy, ℓz; kwargs...) = zspacings(grid, ℓz; kwargs...)
 @inline xspacings(grid::HRegularLLG, ℓx::F, ℓy::F; with_halos=false) = _property(grid.Δxᶠᶠᵃ, ℓy, topology(grid, 2),
                                                                                  size(grid, 2), with_halos)
 
