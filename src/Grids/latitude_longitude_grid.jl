@@ -277,8 +277,8 @@ function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitud
     λ₁ <= λ₂      || throw(ArgumentError("Longitudes must increase west to east."))
 
     φ₁, φ₂ = get_domain_extent(latitude, Nφ)
-    -90 <= φ₁ || throw(ArgumentError("The southernmost latitude cannot be less than -90 degrees."))
-    φ₂ <= 90  || throw(ArgumentError("The northern latitude cannot be less than -90 degrees."))
+    -90 <= φ₁ || throw(ArgumentError("The southernmost latitude cannot be lower than -90 degrees."))
+    φ₂ <= 90  || throw(ArgumentError("The northern latitude cannot be larger than 90 degrees."))
     φ₁ <= φ₂  || throw(ArgumentError("Latitudes must increase south to north."))
 
     if TX == Flat || TY == Flat
