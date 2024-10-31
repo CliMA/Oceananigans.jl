@@ -267,6 +267,7 @@ julia> minimum_xspacing(grid, Center(), Center(), Center())
 """
 minimum_xspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(Val(:x), grid, ℓx, ℓy, ℓz)
 minimum_xspacing(grid) = minimum_spacing(Val(:x), grid, Center(), Center(), Center())
+
 """
     minimum_yspacing(grid, ℓx, ℓy, ℓz)
     minimum_yspacing(grid) = minimum_yspacing(grid, Center(), Center(), Center())
@@ -306,4 +307,3 @@ julia> minimum_zspacing(grid, Center(), Center(), Center())
 """
 minimum_zspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(Val(:z), grid, ℓx, ℓy, ℓz)
 minimum_zspacing(grid) = minimum_spacing(Val(:z), grid, Center(), Center(), Center())
-
