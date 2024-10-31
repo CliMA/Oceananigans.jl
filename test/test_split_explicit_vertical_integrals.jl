@@ -2,9 +2,6 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState,
-                                                        SplitExplicitAuxiliaryFields,
-                                                        SplitExplicitSettings
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!,
                                                         barotropic_split_explicit_corrector!,
                                                         initialize_free_surface_state!

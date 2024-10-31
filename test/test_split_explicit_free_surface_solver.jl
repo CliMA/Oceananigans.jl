@@ -6,9 +6,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps,
                                                         constant_averaging_kernel,
                                                         materialize_free_surface,
                                                         SplitExplicitFreeSurface,
-                                                        SplitExplicitState,
-                                                        SplitExplicitAuxiliaryFields,
-                                                        SplitExplicitSettings,
                                                         iterate_split_explicit!
 
 @testset "Split-Explicit Dynamics" begin

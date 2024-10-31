@@ -1,9 +1,9 @@
 using Oceananigans.AbstractOperations: GridMetricOperation, Δz
 using Oceananigans.DistributedComputations: DistributedGrid, DistributedField
 using Oceananigans.DistributedComputations: SynchronizedDistributed, synchronize_communication!
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitFreeSurface
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
 
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface, SplitExplicitAuxiliaryFields
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface
 
 # Internal function for HydrostaticFreeSurfaceModel
 function materialize_free_surface(free_surface::SplitExplicitFreeSurface, velocities, grid::DistributedGrid)

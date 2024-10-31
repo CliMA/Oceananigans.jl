@@ -113,7 +113,7 @@ function SplitExplicitFreeSurface(grid = nothing;
                                     gravitational_acceleration,
                                     kernel_parameters,
                                     substepping,
-                                    settings)
+                                    timestepper)
 end
 
 # Simplest case: we have the substeps and the averaging kernel

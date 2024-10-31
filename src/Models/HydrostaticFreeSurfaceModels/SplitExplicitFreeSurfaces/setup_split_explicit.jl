@@ -1,8 +1,9 @@
 # `initialize_free_surface!` is called at the beginning of the simulation to initialize the free surface state
 # from the initial velocity conditions.
 function initialize_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocities)
-    @apply_regionally compute_barotropic_mode!(sefs.state.U̅, sefs.state.V̅, grid, velocities.u, velocities.v)
-    fill_halo_regions!((sefs.state.U̅, sefs.state.V̅, sefs.η))
+    barotropic_velocities = sefs.barotropic_velocities
+    @apply_regionally compute_barotropic_mode!(barotropic_velocities.U, barotropic_velocities.V, grid, velocities.u, velocities.v)
+    fill_halo_regions!((barotropic_velocities.U, barotropic_velocities.V, sefs.η))
 end
 
 # `initialize_free_surface_state!` is called at the beginning of the substepping to 
@@ -18,9 +19,9 @@ function initialize_free_surface_state!(filtered_state, η, velocities, timestep
     return nothing
 end
 
-initialize_auxiliary_state!(::ForwardBackwardScheme, args...) = nothing
+initialize_free_surface_timestepper!(::ForwardBackwardScheme, args...) = nothing
 
-function initialize_auxiliary_state!(timestepper::AdamsBashforth3Scheme, η, velocities)
+function initialize_free_surface_timestepper!(timestepper::AdamsBashforth3Scheme, η, velocities)
     parent(timestepper.Uᵐ⁻¹) .= parent(velocities.U)
     parent(timestepper.Vᵐ⁻¹) .= parent(velocities.V)
 

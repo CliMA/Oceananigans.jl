@@ -42,87 +42,90 @@ const μ = 1 - δ - γ - ϵ
 # Time stepping extrapolation U★, and η★
 
 # AB3 step
-@inline function U★(i, j, k, grid, ::AdamsBashforth3Scheme, Uᵐ, Uᵐ⁻¹, Uᵐ⁻²)
+@inline function U★(i, j, k, grid, ::AdamsBashforth3Scheme, Uᵐ)
     FT = eltype(grid)
-    return @inbounds FT(α) * Uᵐ[i, j, k] + FT(θ) * Uᵐ⁻¹[i, j, k] + FT(β) * Uᵐ⁻²[i, j, k]
+    return @inbounds FT(α) * Uᵐ[i, j, k] + FT(θ) * t.Uᵐ⁻¹[i, j, k] + FT(β) * t.Uᵐ⁻²[i, j, k]
 end
 
-@inline function η★(i, j, k, grid, ::AdamsBashforth3Scheme, ηᵐ⁺¹, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)
+@inline function η★(i, j, k, grid, t::AdamsBashforth3Scheme, ηᵐ⁺¹)
     FT = eltype(grid)
-    return @inbounds FT(δ) * ηᵐ⁺¹[i, j, k] + FT(μ) * ηᵐ[i, j, k] + FT(γ) * ηᵐ⁻¹[i, j, k] + FT(ϵ) * ηᵐ⁻²[i, j, k]
+    return @inbounds FT(δ) * ηᵐ⁺¹[i, j, k] + FT(μ) * t.ηᵐ[i, j, k] + FT(γ) * t.ηᵐ⁻¹[i, j, k] + FT(ϵ) * t.ηᵐ⁻²[i, j, k]
 end
 
 # Forward Backward Step
-@inline U★(i, j, k, grid, ::ForwardBackwardScheme, U, args...) = @inbounds U[i, j, k]
-@inline η★(i, j, k, grid, ::ForwardBackwardScheme, η, args...) = @inbounds η[i, j, k]
+@inline U★(i, j, k, grid, ::ForwardBackwardScheme, U) = @inbounds U[i, j, k]
+@inline η★(i, j, k, grid, ::ForwardBackwardScheme, η) = @inbounds η[i, j, k]
 
-@inline advance_previous_velocity!(i, j, k, ::ForwardBackwardScheme, U, Uᵐ⁻¹, Uᵐ⁻²) = nothing
+@inline advance_previous_velocities!(::ForwardBackwardScheme, i, j, k, U) = nothing
 
-@inline function advance_previous_velocity!(i, j, k, ::AdamsBashforth3Scheme, U, Uᵐ⁻¹, Uᵐ⁻²)
-    @inbounds Uᵐ⁻²[i, j, k] = Uᵐ⁻¹[i, j, k]
-    @inbounds Uᵐ⁻¹[i, j, k] =    U[i, j, k]
-
-    return nothing
-end
-
-@inline advance_previous_free_surface!(i, j, k, ::ForwardBackwardScheme, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) = nothing
-
-@inline function advance_previous_free_surface!(i, j, k, ::AdamsBashforth3Scheme, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)
-    @inbounds ηᵐ⁻²[i, j, k] = ηᵐ⁻¹[i, j, k]
-    @inbounds ηᵐ⁻¹[i, j, k] =   ηᵐ[i, j, k]
-    @inbounds   ηᵐ[i, j, k] =    η[i, j, k]
+@inline function advance_previous_velocities!(t::AdamsBashforth3Scheme, i, j, k, U)
+    @inbounds t.Uᵐ⁻²[i, j, k] = t.Uᵐ⁻¹[i, j, k]
+    @inbounds t.Uᵐ⁻¹[i, j, k] =      U[i, j, k]
 
     return nothing
 end
 
-@kernel function _split_explicit_free_surface!(grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
+@inline advance_previous_free_surface!(::ForwardBackwardScheme, i, j, k, η) = nothing
+
+@inline function advance_previous_free_surface!(t::AdamsBashforth3Scheme, i, j, k, η)
+    @inbounds t.ηᵐ⁻²[i, j, k] = t.ηᵐ⁻¹[i, j, k]
+    @inbounds t.ηᵐ⁻¹[i, j, k] =   t.ηᵐ[i, j, k]
+    @inbounds   t.ηᵐ[i, j, k] =      η[i, j, k]
+
+    return nothing
+end
+
+@kernel function _split_explicit_free_surface!(grid, Δτ, η, U, V, timestepper)
     i, j = @index(Global, NTuple)
-    free_surface_evolution!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
+    free_surface_evolution!(η, i, j, grid, Δτ, U, V, timestepper)
 end
 
 
-@inline function free_surface_evolution!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻², U, V, Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², timestepper)
+@inline function free_surface_evolution!(η, i, j, grid, Δτ, U, V, timestepper)
     k_top = grid.Nz+1
 
     @inbounds begin
-        advance_previous_free_surface!(i, j, k_top, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)
+        advance_previous_free_surface!(timestepper, i, j, k_top, η)
 
-        η[i, j, k_top] -= Δτ * (div_Txᶜᶜᶠ(i, j, k_top-1, grid, U★, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²) +
-                                div_Tyᶜᶜᶠ(i, j, k_top-1, grid, U★, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²))
+        η[i, j, k_top] -= Δτ * (div_Txᶜᶜᶠ(i, j, k_top-1, grid, U★, timestepper, U) +
+                                div_Tyᶜᶜᶠ(i, j, k_top-1, grid, U★, timestepper, V))
     end
 
     return nothing
 end
 
-@kernel function _split_explicit_barotropic_velocity!(averaging_weight, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²,
-                                                      U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,
-                                                      η̅, U̅, V̅, Gᵁ, Gⱽ, g, 
+@kernel function _split_explicit_barotropic_velocity!(averaging_weight, grid, Δτ, 
+                                                      η, U, V, 
+                                                      η̅, U̅, V̅, 
+                                                      Gᵁ, Gⱽ, g, 
                                                       timestepper)
     i, j = @index(Global, NTuple)
-    velocity_evolution!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²,
-                        U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,
-                        η̅, U̅, V̅, averaging_weight,
+    velocity_evolution!(η, U, V, 
+                        η̅, U̅, V̅, 
+                        i, j, grid, Δτ,
+                        averaging_weight,
                         Gᵁ, Gⱽ, g, 
                         timestepper)
 end
 
-@inline function velocity_evolution!(i, j, grid, Δτ, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²,
-                                     U, Uᵐ⁻¹, Uᵐ⁻², V,  Vᵐ⁻¹, Vᵐ⁻²,
-                                     η̅, U̅, V̅, averaging_weight,
+@inline function velocity_evolution!(η, U, V, 
+                                     η̅, U̅, V̅,
+                                     i, j, grid, Δτ, 
+                                     averaging_weight,
                                      Gᵁ, Gⱽ, g, 
                                      timestepper)
     k_top = grid.Nz+1
 
     @inbounds begin
-        advance_previous_velocity!(i, j, k_top-1, timestepper, U, Uᵐ⁻¹, Uᵐ⁻²)
-        advance_previous_velocity!(i, j, k_top-1, timestepper, V, Vᵐ⁻¹, Vᵐ⁻²)
+        advance_previous_velocities!(timestepper, i, j, k_top-1, U)
+        advance_previous_velocities!(timestepper, i, j, k_top-1, V)
 
         Hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
         Hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
         
         # ∂τ(U) = - ∇η + G
-        U[i, j, k_top-1] +=  Δτ * (- g * Hᶠᶜ * ∂xTᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gᵁ[i, j, k_top-1])
-        V[i, j, k_top-1] +=  Δτ * (- g * Hᶜᶠ * ∂yTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²) + Gⱽ[i, j, k_top-1])
+        U[i, j, k_top-1] +=  Δτ * (- g * Hᶠᶜ * ∂xTᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, k_top-1])
+        V[i, j, k_top-1] +=  Δτ * (- g * Hᶜᶠ * ∂yTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, k_top-1])
                           
         # time-averaging
         η̅[i, j, k_top]   += averaging_weight * η[i, j, k_top]
@@ -146,9 +149,6 @@ const MINIMUM_SUBSTEPS = 5
 @inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic),
                                                                                         substeps, substepping.averaging_kernel)
 
-const FixedSubstepsSetting{N} = SplitExplicitSettings{<:FixedSubstepNumber{<:Any, <:NTuple{N, <:Any}}} where N
-const FixedSubstepsSplitExplicit{F} = SplitExplicitFreeSurface{<:Any, <:Any, <:Any, <:Any, <:FixedSubstepsSetting{N}} where N
-
 function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weights, ::Val{Nsubsteps}) where Nsubsteps
     arch = architecture(grid)
 
@@ -161,7 +161,7 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
 
     # unpack state quantities, parameters and forcing terms
     U, V    = free_surface.barotropic_velocities
-    η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
+    η̅, U̅, V̅ = state.η, state.U, state.V
 
     free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
     barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)

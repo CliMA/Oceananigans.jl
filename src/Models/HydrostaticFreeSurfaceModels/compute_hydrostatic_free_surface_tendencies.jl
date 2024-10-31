@@ -185,7 +185,9 @@ function compute_hydrostatic_boundary_tendency_contributions!(Gⁿ, arch, veloci
     end
 
     # Free surface
-    apply_flux_bcs!(Gⁿ.η, displacement(free_surface), arch, args)
+    if free_surface isa ExplicitFreeSurface
+        apply_flux_bcs!(Gⁿ.η, displacement(free_surface), arch, args)
+    end
 
     # Tracer fields
     for i in propertynames(tracers)
