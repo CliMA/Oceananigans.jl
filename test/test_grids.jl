@@ -339,7 +339,6 @@ end
 function test_grid_equality_over_architectures()
     grid_cpu = RectilinearGrid(CPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
     grid_gpu = RectilinearGrid(GPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
-
     return grid_cpu == grid_gpu
 end
 
@@ -876,6 +875,16 @@ end
             
             @test grid isa RectilinearGrid
         end
+
+        for arch in archs
+            @info "  Testing on_architecture for RectilinearGrid..."
+            cpu_grid = RectilinearGrid(CPU(), size=(1, 1, 4), x=(0, 1), y=(0, 1), z=collect(0:4).^2)
+            grid = on_architecture(arch, cpu_grid)
+            @test grid isa RectilinearGrid
+            @test architecture(grid) == arch
+            cpu_grid_again = on_architecture(CPU(), grid)
+            @test cpu_grid_again == cpu_grid
+        end
     end
     
     @testset "Latitude-longitude grid" begin
@@ -888,7 +897,7 @@ end
             test_lat_lon_areas(FT)
         end
 
-        @info "  Testing precomputed metrics on latitude-longitude grid..."
+        @info "  Testing precomputed metrics on LatitudeLongitudeGrid..."
         for arch in archs, FT in float_types
             test_lat_lon_precomputed_metrics(FT, arch)
             test_lat_lon_xyzλφ_node_nodes(FT, arch)
@@ -908,19 +917,40 @@ end
 
         @test grid isa LatitudeLongitudeGrid
 
-        # Testing show function for stretched grid
-        grid = LatitudeLongitudeGrid(CPU(), size=(36, 32, 10), longitude=(-180, 180), latitude=(-80, 80), z=collect(0:10))
+        for arch in archs
+            @info "  Testing show for vertically-stretched LatitudeLongitudeGrid..."
+            grid = LatitudeLongitudeGrid(arch,
+                                         size = (36, 32, 10),
+                                         longitude = (-180, 180),
+                                         latitude = (-80, 80),
+                                         z = collect(0:10))
 
-        @test try
-            show(grid); println()
-            true
-        catch err
-            println("error in show(::LatitudeLongitudeGrid)")
-            println(sprint(showerror, err))
-            false
+            @test try
+                show(grid); println()
+                true
+            catch err
+                println("error in show(::LatitudeLongitudeGrid)")
+                println(sprint(showerror, err))
+                false
+            end
+
+            @test grid isa LatitudeLongitudeGrid
         end
 
-        @test grid isa LatitudeLongitudeGrid
+        for arch in archs
+            @info "  Testing on_architecture for LatitudeLongitudeGrid..."
+            cpu_grid = LatitudeLongitudeGrid(CPU(),
+                                             size = (36, 32, 10),
+                                             longitude = (-180, 180),
+                                             latitude = (-80, 80),
+                                             z = collect(0:10))
+            grid = on_architecture(arch, cpu_grid)
+            @test grid isa LatitudeLongitudeGrid
+            @test architecture(grid) == arch
+
+            cpu_grid_again = on_architecture(CPU(), grid)
+            @test cpu_grid_again == cpu_grid
+        end
     end
 
     @testset "Single column grids" begin
@@ -1017,3 +1047,4 @@ end
         end
     end
 end
+
