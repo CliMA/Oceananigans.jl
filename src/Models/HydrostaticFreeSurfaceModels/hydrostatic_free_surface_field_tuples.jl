@@ -23,11 +23,11 @@ function HydrostaticFreeSurfaceTendencyFields(velocities, free_surface::Explicit
     return merge((u=u, v=v, η=η), tracers)
 end
 
-function HydrostaticFreeSurfaceTendencyFields(velocities, ::SplitExplicitFreeSurface, grid, tracer_names)
+function HydrostaticFreeSurfaceTendencyFields(velocities, free_surface::SplitExplicitFreeSurface, grid, tracer_names)
     u = XFaceField(grid)
     v = YFaceField(grid)
-    U = Field{Face, Center, Nothing}(grid)
-    V = Field{Center, Face, Nothing}(grid)
+    U = deepcopy(free_surface.barotropic_velocities.U)
+    V = deepcopy(free_surface.barotropic_velocities.V)
     tracers = TracerFields(tracer_names, grid)
     return merge((u=u, v=v, U=U, V=V), tracers)
 end

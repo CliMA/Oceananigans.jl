@@ -211,7 +211,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     velocities        = free_surface.barotropic_velocities
 
     # Wait for previous set up
-    wait_free_surface_communication!(free_surface, architecture(free_surface_grid))
+    wait_free_surface_communication!(free_surface, model, architecture(free_surface_grid))
 
     # Calculate the substepping parameterers
     # barotropic time step as fraction of baroclinic step and averaging weights

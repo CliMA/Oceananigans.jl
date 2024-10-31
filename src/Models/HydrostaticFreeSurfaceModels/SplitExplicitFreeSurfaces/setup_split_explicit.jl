@@ -98,5 +98,3 @@ end
 
     return nothing
 end
-
-wait_free_surface_communication!(free_surface, arch) = nothing
