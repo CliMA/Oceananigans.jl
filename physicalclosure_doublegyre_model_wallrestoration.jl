@@ -60,6 +60,8 @@ const Lx = 4000kilometers
 const Ly = 6000kilometers
 const Lz = Nz * Δz
 
+const δy = Ly / Ny
+
 grid = RectilinearGrid(model_architecture, Float64,
                        topology = (Bounded, Bounded, Bounded),
                        size = (Nx, Ny, Nz),
