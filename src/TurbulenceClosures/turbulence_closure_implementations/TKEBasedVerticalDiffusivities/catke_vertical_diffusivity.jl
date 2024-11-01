@@ -1,3 +1,5 @@
+using Oceananigans.BuoyancyModels: BuoyancyTracer, SeawaterBuoyancy
+
 struct CATKEVerticalDiffusivity{TD, CL, FT, DT, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
     mixing_length :: CL
     turbulent_kinetic_energy_equation :: TKE
@@ -214,7 +216,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
     tracers = model.tracers
     buoyancy = model.buoyancy
     clock = model.clock
-    top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
+    top_tracer_bcs = get_top_tracer_bcs(model.buoyancy.model, tracers)
     Δt = model.clock.time - diffusivities.previous_compute_time[]
     diffusivities.previous_compute_time[] = model.clock.time
 
