@@ -3,16 +3,16 @@ using Oceananigans.DistributedComputations: Distributed, Partition, child_archit
 
 import Oceananigans.Fields: interior
 
-test_child_arch() = parse(Bool, get(ENV, "GPU_TEST", "false")) ? GPU() : CPU()
-mpi_test() = parse(Bool, get(ENV, "MPI_TEST", "false"))
+# Are the test running on the GPUs? 
+# Are the test running in parallel?
+child_arch = parse(Bool, get(ENV, "GPU_TEST", "false")) ? GPU() : CPU()
+mpi_test   = parse(Bool, get(ENV, "MPI_TEST", "false"))
 
 function test_architectures() 
-    child_arch =  test_child_arch()
-
     # If MPI is initialized with MPI.Comm_size > 0, we are running in parallel.
     # We test several different configurations: `Partition(x = 4)`, `Partition(y = 4)`, 
     # `Partition(x = 2, y = 2)`, and different fractional subdivisions in x, y and xy
-    if mpi_test()
+    if mpi_test
         if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
             return (Distributed(child_arch; partition = Partition(4)),
                     Distributed(child_arch; partition = Partition(1, 4)),
@@ -31,12 +31,10 @@ end
 # For nonhydrostatic simulations we cannot use `Fractional` at the moment (requirements
 # for the tranpose are more stringent than for hydrostatic simulations).
 function nonhydrostatic_regression_test_architectures() 
-    child_arch =  test_child_arch()
-
     # If MPI is initialized with MPI.Comm_size > 0, we are running in parallel.
     # We test 3 different configurations: `Partition(x = 4)`, `Partition(y = 4)` 
     # and `Partition(x = 2, y = 2)`
-    if mpi_test()
+    if mpi_test
         if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
             return (Distributed(child_arch; partition = Partition(4)),
                     Distributed(child_arch; partition = Partition(1, 4)),
