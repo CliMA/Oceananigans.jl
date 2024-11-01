@@ -1,3 +1,4 @@
+using .SplitExplicitFreeSurfaces: barotropic_split_explicit_corrector
 import Oceananigans.TimeSteppers: calculate_pressure_correction!, pressure_correct_velocities!
 
 calculate_pressure_correction!(::HydrostaticFreeSurfaceModel, Δt) = nothing
@@ -16,7 +17,7 @@ pressure_correct_velocities!(model, free_surface, Δt; kwargs...) = nothing
 ##### Barotropic pressure correction for models with an Implicit free surface
 #####
 
-function pressure_correct_velocities!(model::ImplicitFreeSurfaceHFSM, Δt)
+function pressure_correct_velocities!(model, ::ImplicitFreeSurface, Δt)
 
     launch!(model.architecture, model.grid, :xyz,
             _barotropic_pressure_correction,
@@ -29,7 +30,7 @@ function pressure_correct_velocities!(model::ImplicitFreeSurfaceHFSM, Δt)
     return nothing
 end
 
-function pressure_correct_velocities!(model::SplitExplicitFreeSurfaceHFSM, Δt)
+function pressure_correct_velocities!(model, ::SplitExplicitFreeSurface, Δt)
     u, v, _ = model.velocities
     grid = model.grid 
     barotropic_split_explicit_corrector!(u, v, model.free_surface, grid)
