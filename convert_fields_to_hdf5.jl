@@ -20,9 +20,10 @@ for (i, ηkey) in enumerate(ηkeys)
     w[:, :, :, i] .= (jlfile2["timeseries"]["w"][ηkey][:, :, 2:end] .+ jlfile2["timeseries"]["w"][ηkey][:, :, 1:end-1])/2
     b[:, :, :, i] .= jlfile2["timeseries"]["b"][ηkey]
 end
+
 close(jlfile)
 close(jlfile2)
-kmax = 3
+kmax = 2
 
 
 etamax = maximum(abs.(η[:, :, end]))
@@ -53,7 +54,7 @@ for k in 1:kmax
         for j in 1:NN
             ii = (i - 1) * NN + j
             ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y")
-            heatmap!(ax, u[:, :, k, end - ii], colormap = :viridis)
+            heatmap!(ax, u[:, :, k, end - ii], colormap = :balance, colorrange = (-0.5, 0.5))
         end
     end
     save(figure_directory * "ufield$k.png", fig)
@@ -65,7 +66,7 @@ for k in 1:kmax
         for j in 1:NN
             ii = (i - 1) * NN + j
             ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y")
-            heatmap!(ax, v[:, :, k, end - ii], colormap = :viridis)
+            heatmap!(ax, v[:, :, k, end - ii], colormap = :balance, colorrange = (-0.5, 0.5))
         end
     end
     save(figure_directory * "vfield$k.png", fig)
@@ -112,7 +113,7 @@ save(figure_directory * "squareheight.png", fig)
 
 
 #=
-si = 2000 #starting index
+si = 500 #starting index
 η̄ = mean(η[:,:,si:end], dims = 3)
 ση = std(η[:,:,si:end], dims = 3)
 rη = (η[:, :, si:end] .- η̄ ) ./ ση
