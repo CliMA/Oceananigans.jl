@@ -32,12 +32,4 @@ end
 @inline Δzᵃᵃᶜ(i, j, k, ibg::IBG) = Δzᵃᵃᶜ(i, j, k, ibg.underlying_grid)
 @inline Δzᵃᵃᶠ(i, j, k, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.underlying_grid)
 
-xspacings(grid::IBG, args...; kwargs...) = xspacings(grid.underlying_grid, args...; kwargs...)
-yspacings(grid::IBG, args...; kwargs...) = yspacings(grid.underlying_grid, args...; kwargs...)
-zspacings(grid::IBG, args...; kwargs...) = zspacings(grid.underlying_grid, args...; kwargs...)
-
 coordinates(grid::IBG) = coordinates(grid.underlying_grid)
-
-xspacings(X, grid::IBG) = xspacings(X, grid.underlying_grid)
-yspacings(Y, grid::IBG) = yspacings(Y, grid.underlying_grid)
-zspacings(Z, grid::IBG) = zspacings(Z, grid.underlying_grid)

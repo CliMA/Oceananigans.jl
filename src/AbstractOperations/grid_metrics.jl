@@ -1,26 +1,28 @@
 using Adapt
 using Oceananigans.Operators
-using Oceananigans.Fields: default_indices
+using Oceananigans.Fields: default_indices, location
+
+import Oceananigans.Grids: xspacings, yspacings, zspacings
 
 abstract type AbstractGridMetric end
 
-struct XSpacingMetric <: AbstractGridMetric end 
-struct YSpacingMetric <: AbstractGridMetric end 
-struct ZSpacingMetric <: AbstractGridMetric end 
+struct XSpacingMetric <: AbstractGridMetric end
+struct YSpacingMetric <: AbstractGridMetric end
+struct ZSpacingMetric <: AbstractGridMetric end
 
 metric_function_prefix(::XSpacingMetric) = :Δx
 metric_function_prefix(::YSpacingMetric) = :Δy
 metric_function_prefix(::ZSpacingMetric) = :Δz
 
-struct XAreaMetric <: AbstractGridMetric end 
-struct YAreaMetric <: AbstractGridMetric end 
-struct ZAreaMetric <: AbstractGridMetric end 
+struct XAreaMetric <: AbstractGridMetric end
+struct YAreaMetric <: AbstractGridMetric end
+struct ZAreaMetric <: AbstractGridMetric end
 
 metric_function_prefix(::XAreaMetric) = :Ax
 metric_function_prefix(::YAreaMetric) = :Ay
 metric_function_prefix(::ZAreaMetric) = :Az
 
-struct VolumeMetric <: AbstractGridMetric end 
+struct VolumeMetric <: AbstractGridMetric end
 
 metric_function_prefix(::VolumeMetric) = :V
 
@@ -33,7 +35,7 @@ const Δy = YSpacingMetric()
 
 Instance of `ZSpacingMetric` that generates `BinaryOperation`s
 between `AbstractField`s and the vertical grid spacing evaluated
-at the same location as the `AbstractField`. 
+at the same location as the `AbstractField`.
 
 `Δx` and `Δy` play a similar role for horizontal grid spacings.
 
@@ -133,7 +135,7 @@ Adapt.adapt_structure(to, gm::GridMetricOperation{LX, LY, LZ}) where {LX, LY, LZ
 on_architecture(to, gm::GridMetricOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     GridMetricOperation{LX, LY, LZ}(on_architecture(to, gm.metric),
                                     on_architecture(to, gm.grid))
-                                
+
 
 @inline Base.getindex(gm::GridMetricOperation, i, j, k) = gm.metric(i, j, k, gm.grid)
 
@@ -141,3 +143,32 @@ indices(::GridMetricOperation) = default_indices(3)
 
 # Special constructor for BinaryOperation
 GridMetricOperation(L, metric, grid) = GridMetricOperation{L[1], L[2], L[3]}(metric_function(L, metric), grid)
+
+#####
+##### Spacings
+#####
+
+function xspacings(grid, LX, LY, LZ)
+    Δx_op = KernelFunctionOperation{LX, LY, LZ}(xspacing, grid, LX(), LY(), LZ())
+    Δx_field = Field(Δx_op)
+    compute!(Δx_field)
+    return Δx_field
+end
+
+function yspacings(grid, LX, LY, LZ)
+    Δy_op = KernelFunctionOperation{LX, LY, LZ}(yspacing, grid, LX(), LY(), LZ())
+    Δy_field = Field(Δy_op)
+    compute!(Δy_field)
+    return Δy_field
+end
+
+function zspacings(grid, LX, LY, LZ)
+    Δz_op = KernelFunctionOperation{LX, LY, LZ}(zspacing, grid, LX(), LY(), LZ())
+    Δz_field = Field(Δz_op)
+    compute!(Δz_field)
+    return Δz_field
+end
+
+xspacings(field) = xspacings(field.grid, location(field)...)
+yspacings(field) = yspacings(field.grid, location(field)...)
+zspacings(field) = zspacings(field.grid, location(field)...)
