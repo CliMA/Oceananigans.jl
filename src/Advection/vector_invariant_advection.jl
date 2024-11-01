@@ -36,12 +36,12 @@ end
     VectorInvariant(; vorticity_scheme = EnstrophyConserving(),
                       vorticity_stencil = VelocityStencil(),
                       vertical_scheme = EnergyConserving(),
-                      kinetic_energy_gradient_scheme = vertical_scheme,
                       divergence_scheme = vertical_scheme,
-                      upwinding = OnlySelfUpwinding(; cross_scheme = vertical_scheme),
+                      kinetic_energy_gradient_scheme = divergence_scheme,
+                      upwinding  = OnlySelfUpwinding(; cross_scheme = divergence_scheme),
                       multi_dimensional_stencil = false)
 
-Return a vector invariant momentum advection scheme.
+Return a vector-invariant momentum advection scheme.
 
 Keyword arguments
 =================
@@ -65,13 +65,10 @@ Keyword arguments
 - `upwinding`: Treatment of upwinded reconstruction of divergence and kinetic energy gradient. Default: `OnlySelfUpwinding()`. Options:
   * `CrossAndSelfUpwinding()`
   * `OnlySelfUpwinding()`
-  * `VelocityUpwinding()`
 
-- `upwinding`  
-
-- `multi_dimensional_stencil` : whether or not to use a horizontal two-dimensional stencil for the reconstruction
-                                of vorticity, divergence and kinetic energy gradient. Currently the "tangential"
-                                direction uses 5th-order centered WENO reconstruction.
+- `multi_dimensional_stencil`: whether or not to use a horizontal two-dimensional stencil for the reconstruction
+                               of vorticity, divergence and kinetic energy gradient. Currently the "tangential"
+                               direction uses 5th-order centered WENO reconstruction. Default: false
 
 Examples
 ========
@@ -85,7 +82,6 @@ Vector Invariant, Dimension-by-dimension reconstruction
  └── EnstrophyConserving{Float64} 
  Vertical advection / Divergence flux scheme: 
  └── EnergyConserving{Float64}
-
 ```
 
 ```jldoctest
@@ -127,9 +123,9 @@ function VectorInvariant(; vorticity_scheme = EnstrophyConserving(),
     FT = eltype(vorticity_scheme)
 
     return VectorInvariant{N, FT, multi_dimensional_stencil}(vorticity_scheme,
-                                                             vorticity_stencil, 
+                                                             vorticity_stencil,
                                                              vertical_scheme, 
-                                                             kinetic_energy_gradient_scheme, 
+                                                             kinetic_energy_gradient_scheme,
                                                              divergence_scheme, 
                                                              upwinding)
 end
@@ -194,7 +190,7 @@ is implemented for the WENO scheme (instead of a 1D stencil). This 2D horizontal
 stencil performs a centered 5th-order WENO reconstruction of vorticity,
 divergence and kinetic energy in the horizontal direction tangential to the upwind direction.
 """
-function WENOVectorInvariant(FT::DataType = Float64; 
+function WENOVectorInvariant(FT::DataType = Float64;
                              upwinding = nothing,
                              vorticity_stencil = VelocityStencil(),
                              order = nothing,
@@ -236,10 +232,10 @@ function WENOVectorInvariant(FT::DataType = Float64;
     FT = eltype(vorticity_scheme) # assumption
 
     return VectorInvariant{N, FT, multi_dimensional_stencil}(vorticity_scheme,
-                                                             vorticity_stencil, 
+                                                             vorticity_stencil,
                                                              vertical_scheme, 
-                                                             kinetic_energy_gradient_scheme, 
-                                                             divergence_scheme, 
+                                                             kinetic_energy_gradient_scheme,
+                                                             divergence_scheme,
                                                              upwinding)
 end
 
@@ -254,8 +250,8 @@ end
     return Hx == 1 ? Hx : Hx + 1 
 end
 
-@inline required_halo_size_y(scheme::VectorInvariant) = required_halo_size_x(scheme) 
-@inline required_halo_size_z(scheme::VectorInvariant) = required_halo_size_z(scheme.vertical_scheme)  
+@inline required_halo_size_y(scheme::VectorInvariant) = required_halo_size_x(scheme)
+@inline required_halo_size_z(scheme::VectorInvariant) = required_halo_size_z(scheme.vertical_scheme)
     
 Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, M}) where {N, FT, M} =
     VectorInvariant{N, FT, M}(Adapt.adapt(to, scheme.vorticity_scheme),
@@ -288,10 +284,10 @@ for bias in (:_biased, :_symmetric)
         multidim_interp = Symbol(:_multi_dimensional_reconstruction_, dir2)
 
         @eval begin
-            @inline $interp_func(i, j, k, grid, ::VectorInvariant, interp_scheme, args...) = 
+            @inline $interp_func(i, j, k, grid, ::VectorInvariant, interp_scheme, args...) =
                         $interp_func(i, j, k, grid, interp_scheme, args...)
 
-            @inline $interp_func(i, j, k, grid, ::MultiDimensionalVectorInvariant, interp_scheme, args...) = 
+            @inline $interp_func(i, j, k, grid, ::MultiDimensionalVectorInvariant, interp_scheme, args...) =
                         $multidim_interp(i, j, k, grid, interp_scheme, $interp_func, args...)
         end
     end
@@ -319,8 +315,8 @@ end
 ##### Follows https://mitgcm.readthedocs.io/en/latest/algorithm/algorithm.html#vector-invariant-momentum-equations
 #####
 
-@inbounds ζ₂wᶠᶜᶠ(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶠᶜᶠ(i, j, k, grid, u) 
-@inbounds ζ₁wᶜᶠᶠ(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶜᶠᶠ(i, j, k, grid, v) 
+@inbounds ζ₂wᶠᶜᶠ(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶠᶜᶠ(i, j, k, grid, u)
+@inbounds ζ₁wᶜᶠᶠ(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶜᶠᶠ(i, j, k, grid, v)
 
 @inline vertical_advection_U(i, j, k, grid, ::VectorInvariantVerticalEnergyConserving, U) = ℑzᵃᵃᶜ(i, j, k, grid, ζ₂wᶠᶜᶠ, U.u, U.w) / Azᶠᶜᶜ(i, j, k, grid)
 @inline vertical_advection_V(i, j, k, grid, ::VectorInvariantVerticalEnergyConserving, U) = ℑzᵃᵃᶜ(i, j, k, grid, ζ₁wᶜᶠᶠ, U.v, U.w) / Azᶜᶠᶜ(i, j, k, grid)
@@ -349,8 +345,8 @@ end
 ##### Horizontal advection 4 formulations:
 #####  1. Energy conservative         
 #####  2. Enstrophy conservative      
-#####  3. Dimension-By-Dimension Vorticity upwinding   
-#####  4. Two-Dimensional (x and y) Vorticity upwinding         
+#####  3. Dimension-By-Dimension Vorticity upwinding
+#####  4. Two-Dimensional (x and y) Vorticity upwinding
 #####
 
 #####
@@ -381,7 +377,7 @@ end
     return - v̂ * ζᴿ
 end
 
-@inline function horizontal_advection_V(i, j, k, grid, scheme::VectorInvariantUpwindVorticity, u, v) 
+@inline function horizontal_advection_V(i, j, k, grid, scheme::VectorInvariantUpwindVorticity, u, v)
 
     Sζ = scheme.vorticity_stencil
 
@@ -395,7 +391,7 @@ end
 ##### Fallback to flux form advection (LatitudeLongitudeGrid)
 #####
 
-@inline function U_dot_∇u(i, j, k, grid, advection::AbstractAdvectionScheme, U) 
+@inline function U_dot_∇u(i, j, k, grid, advection::AbstractAdvectionScheme, U)
 
     v̂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, U.v) / Δxᶠᶜᶜ(i, j, k, grid)
     û = @inbounds U.u[i, j, k]
@@ -445,7 +441,7 @@ const CZ{N} = Centered{N, <:Any, <:Any, <:Any, <:Nothing}
 
 const AS = AbstractSmoothnessStencil
 
-# To adapt passing smoothness stencils to upwind biased schemes and centered schemes (not WENO) 
+# To adapt passing smoothness stencils to upwind biased schemes and centered schemes (not WENO)
 for b in 1:6
     @eval begin
         @inline inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s::C{$b},  f::Function, idx, loc, ::AS, args...) = inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, f, idx, loc, args...)
