@@ -79,6 +79,9 @@ end
 contiguousrange(range::NTuple{N, Int}, offset::NTuple{N, Int}) where N = Tuple(1+o:r+o for (r, o) in zip(range, offset))
 flatten_reduced_dimensions(worksize, dims) = Tuple(d ∈ dims ? 1 : worksize[d] for d = 1:3)
 
+# Support for 1D
+heuristic_workgroup(Wx) = min(Wx, 256)
+
 # This supports 2D, 3D and 4D work sizes (but the 3rd and 4th dimension are discarded)
 function heuristic_workgroup(Wx, Wy, Wz=nothing, Wt=nothing)
 
@@ -282,7 +285,9 @@ end
                                        active_cells_map)
                                        
     # Don't launch kernels with no size
-    if worksize != 0
+    if worksize isa OffsetStaticSize && length(worksize) > 0 || worksize == 0
+        # skip
+    else
         loop!(first_kernel_arg, other_kernel_args...)
     end
 
