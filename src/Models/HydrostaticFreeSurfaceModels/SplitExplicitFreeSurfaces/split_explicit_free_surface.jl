@@ -1,10 +1,4 @@
-"""
-    struct SplitExplicitFreeSurface
 
-The split-explicit free surface solver.
-
-$(FIELDS)
-"""
 struct SplitExplicitFreeSurface{H, U, M, FT, K , S, T} <: AbstractFreeSurface{H, FT}
     η :: H
     barotropic_velocities :: U # A namedtuple with U, V 
@@ -237,13 +231,6 @@ end
 
     return Δτ, tuple(averaging_weights...)
 end
-
-# Convenience Functions for grabbing free surface
-free_surface(free_surface::SplitExplicitFreeSurface) = free_surface.η
-
-# extend
-@inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::SplitExplicitFreeSurface) = zero(grid)
-@inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, ::SplitExplicitFreeSurface) = zero(grid)
 
 Base.summary(s::FixedTimeStepSize)  = string("Barotropic time step equal to $(prettytime(s.Δt_barotropic))")
 Base.summary(s::FixedSubstepNumber) = string("Barotropic fractional step equal to $(s.fractional_step_size) times the baroclinic step")

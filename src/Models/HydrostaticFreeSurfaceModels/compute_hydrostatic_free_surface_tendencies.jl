@@ -115,24 +115,6 @@ function apply_flux_bcs!(Gcⁿ, c, arch, args)
     return nothing
 end
 
-function compute_free_surface_tendency!(grid, model, kernel_parameters)
-
-    arch = architecture(grid)
-
-    args = tuple(model.velocities,
-                 model.free_surface,
-                 model.tracers,
-                 model.auxiliary_fields,
-                 model.forcing,
-                 model.clock)
-
-    launch!(arch, grid, kernel_parameters,
-            compute_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, 
-            grid, args)
-
-    return nothing
-end
-
 """ Calculate momentum tendencies if momentum is not prescribed."""
 function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map = nothing)
 
@@ -169,10 +151,14 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
             active_cells_map, v_kernel_args;
             active_cells_map)
 
-    compute_free_surface_tendency!(grid, model, :xy)
+    compute_free_surface_tendency!(grid, model, model.free_surface, :xy)
 
     return nothing
 end
+
+# Fallback
+compute_free_surface_tendency!(grid, model, free_surface, args...) = nothing
+
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
 function compute_hydrostatic_boundary_tendency_contributions!(Gⁿ, arch, velocities, free_surface, tracers, args...)
@@ -239,14 +225,4 @@ end
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_tuple(idx, active_cells_map)
     @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
-end
-
-#####
-##### Tendency calculators for an explicit free surface
-#####
-
-""" Calculate the right-hand-side of the free surface displacement (``η``) equation. """
-@kernel function compute_hydrostatic_free_surface_Gη!(Gη, grid, args)
-    i, j = @index(Global, NTuple)
-    @inbounds Gη[i, j, grid.Nz+1] = free_surface_tendency(i, j, grid, args...)
 end

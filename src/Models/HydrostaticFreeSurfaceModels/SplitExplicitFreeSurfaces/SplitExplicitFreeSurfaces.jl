@@ -8,6 +8,7 @@ using Oceananigans.Fields
 using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface
 
 using Adapt
 using Base
@@ -24,5 +25,11 @@ include("distributed_split_explicit_free_surface.jl")
 include("setup_split_explicit.jl")
 include("barotropic_kernels.jl")
 include("barotropic_correction.jl")
+
+# extend
+@inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::SplitExplicitFreeSurface) = zero(grid)
+@inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, ::SplitExplicitFreeSurface) = zero(grid)
+
+
 
 end
