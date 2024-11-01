@@ -28,7 +28,6 @@ function HydrostaticFreeSurfaceTendencyFields(velocities, free_surface::SplitExp
     v = YFaceField(grid)
     U = deepcopy(free_surface.barotropic_velocities.U)
     V = deepcopy(free_surface.barotropic_velocities.V)
-    η = free_surface_displacement_field(velocities, free_surface, grid)
     tracers = TracerFields(tracer_names, grid)
-    return merge((u=u, v=v, U=U, V=V, η=η), tracers)
+    return merge((u=u, v=v, U=U, V=V), tracers)
 end
