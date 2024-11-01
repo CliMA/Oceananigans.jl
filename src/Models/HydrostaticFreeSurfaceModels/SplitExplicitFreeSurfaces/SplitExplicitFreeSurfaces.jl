@@ -28,7 +28,7 @@ include("split_explicit_timesteppers.jl")
 include("split_explicit_free_surface.jl")
 include("distributed_split_explicit_free_surface.jl")
 include("setup_split_explicit.jl")
-include("substepping_kernels.jl")
+include("step_split_explicit_free_surface.jl")
 include("barotropic_correction.jl")
 
 # extend

@@ -28,12 +28,9 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
     
-    @inbounds begin
-        advance_previous_free_surface!(timestepper, i, j, k_top, η)
-
-        η[i, j, k_top] -= Δτ * (δxTᶜᵃᵃ(i, j, k_top, grid, U★, timestepper, U) +
-                                δyTᵃᶜᵃ(i, j, k_top, grid, U★, timestepper, V)) / Azᶜᶜᶠ(i, j, k_top, grid)
-    end
+    advance_previous_free_surface!(timestepper, i, j, k_top, η)
+    @inbounds  η[i, j, k_top] -= Δτ * (δxTᶜᵃᵃ(i, j, k_top, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
+                                       δyTᵃᶜᵃ(i, j, k_top, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) / Azᶜᶜᶠ(i, j, k_top, grid)
 end
 
 @kernel function _split_explicit_barotropic_velocity!(averaging_weight, grid, Δτ, 
@@ -44,13 +41,13 @@ end
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
-    @inbounds begin
-        advance_previous_velocities!(timestepper, i, j, 1, U)
-        advance_previous_velocities!(timestepper, i, j, 1, V)
+    advance_previous_velocities!(timestepper, i, j, 1, U)
+    advance_previous_velocities!(timestepper, i, j, 1, V)
 
-        Hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
-        Hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
-        
+    Hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
+    Hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
+    
+    @inbounds begin
         # ∂τ(U) = - ∇η + G
         U[i, j, 1] +=  Δτ * (- g * Hᶠᶜ * ∂xTᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
         V[i, j, 1] +=  Δτ * (- g * Hᶜᶠ * ∂yTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
@@ -165,7 +162,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     # Reset eta and velocities for the next timestep
     parent(free_surface.η) .= parent(filtered_state.η)
     parent(velocities.U)   .= parent(filtered_state.U) 
-    parent(velocities.U)   .= parent(filtered_state.V)
+    parent(velocities.V)   .= parent(filtered_state.V)
     
     fields_to_fill = (velocities.U, velocities.V, free_surface.η) #  TODO: do this?
     fill_halo_regions!(fields_to_fill; async = true)

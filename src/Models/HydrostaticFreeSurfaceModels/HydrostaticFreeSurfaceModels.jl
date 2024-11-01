@@ -36,7 +36,9 @@ initialize_free_surface!(free_surface, grid, velocities) = nothing
 setup_free_surface!(model, free_surface, χ) = nothing
 
 include("compute_w_from_continuity.jl")
-include("rigid_lid.jl")
+
+# No free surface
+include("nothing_free_surface.jl")
 
 # Explicit free-surface solver functionality
 include("explicit_free_surface.jl")
