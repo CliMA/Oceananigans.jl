@@ -19,48 +19,49 @@ minutes, and hours.
 """
 function prettytime(t, longform=true)
     # Modified from: https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/trials.jl
-    
-    # Some shortcuts
-    s = longform ? "seconds" : "s" 
-    iszero(t) && return "0 $s"
-    t < 1e-9 && return @sprintf("%.3e %s", t, s) # yah that's small
-
-    t = maybe_int(t)
     value, units = prettytimeunits(t, longform)
 
-    if isinteger(value)
-        return @sprintf("%d %s", value, units)
+    if iszero(value)
+        msg = "0 $units"
+    elseif value < 1e-9 
+        msg = @sprintf("%.3e %s", value, units) # yah that's small
+    elseif isinteger(value)
+        msg = @sprintf("%d %s", value, units)
     else
-        return @sprintf("%.3f %s", value, units)
+        msg = @sprintf("%.3f %s", value, units)
     end
+
+    return msg::String
 end
 
-function prettytimeunits(t, longform=true)
-    t < 1e-9 && return t, "" # just _forget_ picoseconds!
-    t < 1e-6 && return t * 1e9, "ns"
-    t < 1e-3 && return t * 1e6, "μs"
-    t < 1    && return t * 1e3, "ms"
-    if t < minute
+function prettytimeunits(t::T, longform=true) where T
+    if t < 1e-9 # just _forget_ picoseconds!
         value = t
-        !longform && return value, "s"
-        units = value == 1 ? "second" : "seconds"
-        return value, units
+        units = !longform ? "s" : "seconds"
+    elseif t < 1e-6
+        value = t * 1e9
+        units = "ns"
+    elseif t < 1e-3
+        value = t * 1e6
+        units = "μs"
+    elseif t < 1
+        value = t * 1e3
+        units = "ms"
+    elseif t < minute
+        value = t
+        units = !longform ? "s" : value==1 ? "second" : "seconds"
     elseif t < hour
-        value = maybe_int(t / minute)
-        !longform && return value, "m"
-        units = value == 1 ? "minute" : "minutes"
-        return value, units
+        value = t / minute
+        units = !longform ? "m" : value==1 ? "minute" : "minutes"
     elseif t < day
-        value = maybe_int(t / hour)
-        units = value == 1 ? (longform ? "hour" : "hr") :
-                             (longform ? "hours" : "hrs")
-        return value, units
+        value = t / hour
+        units = !longform ? "hr" : value==1 ? "hour" : "hours"
     else
-        value = maybe_int(t / day)
-        !longform && return value, "d"
-        units = value == 1 ? "day" : "days"
-        return value, units
+        value = t / day
+        units = !longform ? "d" : value==1 ? "day" : "days"
     end
+
+    return convert(T, value), units::String
 end
 
 prettytime(dt::AbstractTime) = "$dt"
