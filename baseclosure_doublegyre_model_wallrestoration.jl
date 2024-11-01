@@ -21,8 +21,8 @@ using SeawaterPolynomials:TEOS10
 using ColorSchemes
 
 #%%
-filename = "doublegyre_30Cwarmflushbottom10_relaxation_wallrestoration_30days_zC2O_baseclosure_trainFC24new_scalingtrain54new_2Pr_2step"
-# filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_zWENO5_baseclosure_trainFC24new_scalingtrain54new_2Pr_2step"
+# filename = "doublegyre_30Cwarmflushbottom10_relaxation_wallrestoration_30days_zC2O_baseclosure_trainFC24new_scalingtrain54new_2Pr_2step"
+filename = "doublegyre_30Cwarmflushbottom10_relaxation_wallrestoration_30days_zWENO5_baseclosure_trainFC24new_scalingtrain54new_2Pr_2step"
 FILE_DIR = "./Output/$(filename)"
 # FILE_DIR = "/storage6/xinkai/NN_Oceananigans/$(filename)"
 mkpath(FILE_DIR)
@@ -33,8 +33,8 @@ model_architecture = GPU()
 base_closure = XinKaiLocalVerticalDiffusivity()
 closure = base_closure
 
-advection_scheme = FluxFormAdvection(WENO(order=5), WENO(order=5), CenteredSecondOrder())
-# advection_scheme = FluxFormAdvection(WENO(order=5), WENO(order=5), WENO(order=5))
+# advection_scheme = FluxFormAdvection(WENO(order=5), WENO(order=5), CenteredSecondOrder())
+advection_scheme = FluxFormAdvection(WENO(order=5), WENO(order=5), WENO(order=5))
 
 # number of grid points
 const Nx = 100
