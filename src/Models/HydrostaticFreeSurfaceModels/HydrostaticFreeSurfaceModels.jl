@@ -46,12 +46,7 @@ include("matrix_implicit_free_surface_solver.jl")
 include("implicit_free_surface.jl")
 
 # Split-Explicit free-surface solver functionality
-include("SplitExplicitFreeSurfaces/split_explicit_timesteppers.jl")
-include("SplitExplicitFreeSurfaces/split_explicit_free_surface.jl")
-include("SplitExplicitFreeSurfaces/setup_split_explicit.jl")
-include("SplitExplicitFreeSurfaces/barotropic_kernels.jl")
-include("SplitExplicitFreeSurfaces/barotropic_correction.jl")
-include("SplitExplicitFreeSurfaces/distributed_split_explicit_free_surface.jl")
+include("SplitExplicitFreeSurfaces/SplitExplicitFreeSurfaces.jl")
 
 include("hydrostatic_free_surface_field_tuples.jl")
 include("hydrostatic_free_surface_model.jl")
@@ -140,5 +135,7 @@ include("slice_ensemble_model_mode.jl")
 #####
 
 include("vertical_vorticity_field.jl")
+
+using .SplitExplicitFreeSurfaces
 
 end # module

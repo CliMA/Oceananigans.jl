@@ -1,13 +1,3 @@
-using Oceananigans
-using Oceananigans.Architectures
-using Oceananigans.Fields
-using Oceananigans.Grids
-using Oceananigans.Grids: AbstractGrid
-
-using Adapt
-using Base
-using KernelAbstractions: @index, @kernel
-
 function materialize_timestepper(name::Symbol, args...) 
     fullname = Symbol(name, :Scheme)
     TS = getglobal(@__MODULE__, fullname)
