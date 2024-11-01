@@ -577,30 +577,695 @@ zlims!(axv, (-Lz, 0))
 
 @info "Recording 3D fields"
 CairoMakie.record(fig, "$(FILE_DIR)/$(filename)_3D_instantaneous_fields.mp4", 1:Nt, framerate=15, px_per_unit=2) do nn
-    @info "Recording frame $nn"
     n[] = nn
 end
 
-@info "Done!"
 #%%
-# Ψ_data = FieldTimeSeries("$(FILE_DIR)/averaged_fields_streamfunction.jld2", "Ψ")
+@info "Recording T fields and fluxes in yz"
 
-# xF = Ψ_data.grid.xᶠᵃᵃ[1:Ψ_data.grid.Nx+1]
-# yC = Ψ_data.grid.yᵃᶜᵃ[1:Ψ_data.grid.Ny]
+fieldname = "T"
+fluxname = "wT_NN"
+field_NN_data_00 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz.jld2", fieldname, backend=OnDisk())
+field_NN_data_10 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_10.jld2", fieldname, backend=OnDisk())
+field_NN_data_20 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_20.jld2", fieldname, backend=OnDisk())
+field_NN_data_30 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_30.jld2", fieldname, backend=OnDisk())
+field_NN_data_40 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_40.jld2", fieldname, backend=OnDisk())
+field_NN_data_50 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_50.jld2", fieldname, backend=OnDisk())
+field_NN_data_60 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_60.jld2", fieldname, backend=OnDisk())
+field_NN_data_70 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_70.jld2", fieldname, backend=OnDisk())
+field_NN_data_80 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_80.jld2", fieldname, backend=OnDisk())
+field_NN_data_90 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_90.jld2", fieldname, backend=OnDisk())
 
-# Nt = length(Ψ_data)
-# times = Ψ_data.times / 24 / 60^2 / 365
-# #%%
-# timeframe = Nt
-# Ψ_frame = interior(Ψ_data[timeframe], :, :, 1) ./ 1e6
-# clim = maximum(abs, Ψ_frame) + 1e-13
-# N_levels = 16
-# levels = range(-clim, stop=clim, length=N_levels)
-# fig = Figure(size=(800, 800))
-# ax = CairoMakie.Axis(fig[1, 1], xlabel="x (m)", ylabel="y (m)", title="CATKE Vertical Diffusivity, Yearly-Averaged Barotropic streamfunction Ψ, Year $(times[timeframe])")
-# cf = contourf!(ax, xF, yC, Ψ_frame, levels=levels, colormap=Reverse(:RdBu_11))
-# Colorbar(fig[1, 2], cf, label="Ψ (Sv)")
-# tightlimits!(ax)
-# save("$(FILE_DIR)/barotropic_streamfunction_$(timeframe).png", fig, px_per_unit=4)
+flux_NN_data_00 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz.jld2", fluxname, backend=OnDisk())
+flux_NN_data_10 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_10.jld2", fluxname, backend=OnDisk())
+flux_NN_data_20 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_20.jld2", fluxname, backend=OnDisk())
+flux_NN_data_30 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_30.jld2", fluxname, backend=OnDisk())
+flux_NN_data_40 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_40.jld2", fluxname, backend=OnDisk())
+flux_NN_data_50 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_50.jld2", fluxname, backend=OnDisk())
+flux_NN_data_60 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_60.jld2", fluxname, backend=OnDisk())
+flux_NN_data_70 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_70.jld2", fluxname, backend=OnDisk())
+flux_NN_data_80 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_80.jld2", fluxname, backend=OnDisk())
+flux_NN_data_90 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_90.jld2", fluxname, backend=OnDisk())
+
+xC = field_NN_data_00.grid.xᶜᵃᵃ[1:field_NN_data_00.grid.Nx]
+yC = field_NN_data_00.grid.yᵃᶜᵃ[1:field_NN_data_00.grid.Ny]
+zC = field_NN_data_00.grid.zᵃᵃᶜ[1:field_NN_data_00.grid.Nz]
+zF = field_NN_data_00.grid.zᵃᵃᶠ[1:field_NN_data_00.grid.Nz+1]
+
+Nt = length(field_NN_data_90)
+times = field_NN_data_00.times / 24 / 60^2 / 365
+timeframes = 1:Nt
+
+function find_min(a...)
+  return minimum(minimum.([a...]))
+end
+
+function find_max(a...)
+  return maximum(maximum.([a...]))
+end
+
+#%%
+fig = Figure(size=(3000, 1200))
+
+axfield_00 = CairoMakie.Axis(fig[1, 1], xlabel="y (m)", ylabel="z (m)", title="x = $(field_NN_data_00.grid.xᶜᵃᵃ[field_NN_data_00.indices[1][1]] / 1000) km")
+axfield_10 = CairoMakie.Axis(fig[1, 5], xlabel="y (m)", ylabel="z (m)", title="x = $(field_NN_data_10.grid.xᶜᵃᵃ[field_NN_data_10.indices[1][1]] / 1000) km")
+axfield_20 = CairoMakie.Axis(fig[2, 1], xlabel="y (m)", ylabel="z (m)", title="x = $(field_NN_data_20.grid.xᶜᵃᵃ[field_NN_data_20.indices[1][1]] / 1000) km")
+axfield_30 = CairoMakie.Axis(fig[2, 5], xlabel="y (m)", ylabel="z (m)", title="x = $(field_NN_data_30.grid.xᶜᵃᵃ[field_NN_data_30.indices[1][1]] / 1000) km")
+axfield_40 = CairoMakie.Axis(fig[3, 1], xlabel="y (m)", ylabel="z (m)", title="x = $(field_NN_data_40.grid.xᶜᵃᵃ[field_NN_data_40.indices[1][1]] / 1000) km")
+axfield_50 = CairoMakie.Axis(fig[3, 5], xlabel="y (m)", ylabel="z (m)", title="x = $(field_NN_data_50.grid.xᶜᵃᵃ[field_NN_data_50.indices[1][1]] / 1000) km")
+axfield_60 = CairoMakie.Axis(fig[4, 1], xlabel="y (m)", ylabel="z (m)", title="x = $(field_NN_data_60.grid.xᶜᵃᵃ[field_NN_data_60.indices[1][1]] / 1000) km")
+axfield_70 = CairoMakie.Axis(fig[4, 5], xlabel="y (m)", ylabel="z (m)", title="x = $(field_NN_data_70.grid.xᶜᵃᵃ[field_NN_data_70.indices[1][1]] / 1000) km")
+axfield_80 = CairoMakie.Axis(fig[5, 1], xlabel="y (m)", ylabel="z (m)", title="x = $(field_NN_data_80.grid.xᶜᵃᵃ[field_NN_data_80.indices[1][1]] / 1000) km")
+axfield_90 = CairoMakie.Axis(fig[5, 5], xlabel="y (m)", ylabel="z (m)", title="x = $(field_NN_data_90.grid.xᶜᵃᵃ[field_NN_data_90.indices[1][1]] / 1000) km")
+
+axflux_00 = CairoMakie.Axis(fig[1, 3], xlabel="y (m)", ylabel="z (m)", title="x = $(flux_NN_data_00.grid.xᶜᵃᵃ[flux_NN_data_00.indices[1][1]] / 1000) km")
+axflux_10 = CairoMakie.Axis(fig[1, 7], xlabel="y (m)", ylabel="z (m)", title="x = $(flux_NN_data_10.grid.xᶜᵃᵃ[flux_NN_data_10.indices[1][1]] / 1000) km")
+axflux_20 = CairoMakie.Axis(fig[2, 3], xlabel="y (m)", ylabel="z (m)", title="x = $(flux_NN_data_20.grid.xᶜᵃᵃ[flux_NN_data_20.indices[1][1]] / 1000) km")
+axflux_30 = CairoMakie.Axis(fig[2, 7], xlabel="y (m)", ylabel="z (m)", title="x = $(flux_NN_data_30.grid.xᶜᵃᵃ[flux_NN_data_30.indices[1][1]] / 1000) km")
+axflux_40 = CairoMakie.Axis(fig[3, 3], xlabel="y (m)", ylabel="z (m)", title="x = $(flux_NN_data_40.grid.xᶜᵃᵃ[flux_NN_data_40.indices[1][1]] / 1000) km")
+axflux_50 = CairoMakie.Axis(fig[3, 7], xlabel="y (m)", ylabel="z (m)", title="x = $(flux_NN_data_50.grid.xᶜᵃᵃ[flux_NN_data_50.indices[1][1]] / 1000) km")
+axflux_60 = CairoMakie.Axis(fig[4, 3], xlabel="y (m)", ylabel="z (m)", title="x = $(flux_NN_data_60.grid.xᶜᵃᵃ[flux_NN_data_60.indices[1][1]] / 1000) km")
+axflux_70 = CairoMakie.Axis(fig[4, 7], xlabel="y (m)", ylabel="z (m)", title="x = $(flux_NN_data_70.grid.xᶜᵃᵃ[flux_NN_data_70.indices[1][1]] / 1000) km")
+axflux_80 = CairoMakie.Axis(fig[5, 3], xlabel="y (m)", ylabel="z (m)", title="x = $(flux_NN_data_80.grid.xᶜᵃᵃ[flux_NN_data_80.indices[1][1]] / 1000) km")
+axflux_90 = CairoMakie.Axis(fig[5, 7], xlabel="y (m)", ylabel="z (m)", title="x = $(flux_NN_data_90.grid.xᶜᵃᵃ[flux_NN_data_90.indices[1][1]] / 1000) km")
+
+n = Observable(1096)
+
+zC_indices = 1:200
+zF_indices = 2:200
+
+field_lim = (find_min(interior(field_NN_data_00[timeframes[1]], :, :, zC_indices), interior(field_NN_data_00[timeframes[end]], :, :, zC_indices), interior(flux_NN_data_00[timeframes[1]], :, :, zC_indices), interior(flux_NN_data_00[timeframes[end]], :, :, zC_indices)),
+         find_max(interior(field_NN_data_00[timeframes[1]], :, :, zC_indices), interior(field_NN_data_00[timeframes[end]], :, :, zC_indices), interior(flux_NN_data_00[timeframes[1]], :, :, zC_indices), interior(flux_NN_data_00[timeframes[end]], :, :, zC_indices)))
+
+flux_lim = (find_min(interior(flux_NN_data_00[timeframes[1]], :, :, zC_indices), interior(flux_NN_data_00[timeframes[end]], :, :, zC_indices)),
+         find_max(interior(flux_NN_data_00[timeframes[1]], :, :, zC_indices), interior(flux_NN_data_00[timeframes[end]], :, :, zC_indices)))
+
+flux_lim = (-maximum(abs, flux_lim), maximum(abs, flux_lim))
+
+NN_00ₙ = @lift interior(field_NN_data_00[$n], 1, :, zC_indices)
+NN_10ₙ = @lift interior(field_NN_data_10[$n], 1, :, zC_indices)
+NN_20ₙ = @lift interior(field_NN_data_20[$n], 1, :, zC_indices)
+NN_30ₙ = @lift interior(field_NN_data_30[$n], 1, :, zC_indices)
+NN_40ₙ = @lift interior(field_NN_data_40[$n], 1, :, zC_indices)
+NN_50ₙ = @lift interior(field_NN_data_50[$n], 1, :, zC_indices)
+NN_60ₙ = @lift interior(field_NN_data_60[$n], 1, :, zC_indices)
+NN_70ₙ = @lift interior(field_NN_data_70[$n], 1, :, zC_indices)
+NN_80ₙ = @lift interior(field_NN_data_80[$n], 1, :, zC_indices)
+NN_90ₙ = @lift interior(field_NN_data_90[$n], 1, :, zC_indices)
+
+flux_00ₙ = @lift interior(flux_NN_data_00[$n], 1, :, zF_indices)
+flux_10ₙ = @lift interior(flux_NN_data_10[$n], 1, :, zF_indices)
+flux_20ₙ = @lift interior(flux_NN_data_20[$n], 1, :, zF_indices)
+flux_30ₙ = @lift interior(flux_NN_data_30[$n], 1, :, zF_indices)
+flux_40ₙ = @lift interior(flux_NN_data_40[$n], 1, :, zF_indices)
+flux_50ₙ = @lift interior(flux_NN_data_50[$n], 1, :, zF_indices)
+flux_60ₙ = @lift interior(flux_NN_data_60[$n], 1, :, zF_indices)
+flux_70ₙ = @lift interior(flux_NN_data_70[$n], 1, :, zF_indices)
+flux_80ₙ = @lift interior(flux_NN_data_80[$n], 1, :, zF_indices)
+flux_90ₙ = @lift interior(flux_NN_data_90[$n], 1, :, zF_indices)
+
+colorscheme_field = colorschemes[:viridis]
+colorscheme_flux = colorschemes[:balance]
+
+field_00_surface = heatmap!(axfield_00, yC, zC[zC_indices], NN_00ₙ, colormap=colorscheme_field, colorrange=field_lim)
+field_10_surface = heatmap!(axfield_10, yC, zC[zC_indices], NN_10ₙ, colormap=colorscheme_field, colorrange=field_lim)
+field_20_surface = heatmap!(axfield_20, yC, zC[zC_indices], NN_20ₙ, colormap=colorscheme_field, colorrange=field_lim)
+field_30_surface = heatmap!(axfield_30, yC, zC[zC_indices], NN_30ₙ, colormap=colorscheme_field, colorrange=field_lim)
+field_40_surface = heatmap!(axfield_40, yC, zC[zC_indices], NN_40ₙ, colormap=colorscheme_field, colorrange=field_lim)
+field_50_surface = heatmap!(axfield_50, yC, zC[zC_indices], NN_50ₙ, colormap=colorscheme_field, colorrange=field_lim)
+field_60_surface = heatmap!(axfield_60, yC, zC[zC_indices], NN_60ₙ, colormap=colorscheme_field, colorrange=field_lim)
+field_70_surface = heatmap!(axfield_70, yC, zC[zC_indices], NN_70ₙ, colormap=colorscheme_field, colorrange=field_lim)
+field_80_surface = heatmap!(axfield_80, yC, zC[zC_indices], NN_80ₙ, colormap=colorscheme_field, colorrange=field_lim)
+field_90_surface = heatmap!(axfield_90, yC, zC[zC_indices], NN_90ₙ, colormap=colorscheme_field, colorrange=field_lim)
+
+flux_00_surface = heatmap!(axflux_00, yC, zC[zF_indices], flux_00ₙ, colormap=colorscheme_flux, colorrange=flux_lim)
+flux_10_surface = heatmap!(axflux_10, yC, zC[zF_indices], flux_10ₙ, colormap=colorscheme_flux, colorrange=flux_lim)
+flux_20_surface = heatmap!(axflux_20, yC, zC[zF_indices], flux_20ₙ, colormap=colorscheme_flux, colorrange=flux_lim)
+flux_30_surface = heatmap!(axflux_30, yC, zC[zF_indices], flux_30ₙ, colormap=colorscheme_flux, colorrange=flux_lim)
+flux_40_surface = heatmap!(axflux_40, yC, zC[zF_indices], flux_40ₙ, colormap=colorscheme_flux, colorrange=flux_lim)
+flux_50_surface = heatmap!(axflux_50, yC, zC[zF_indices], flux_50ₙ, colormap=colorscheme_flux, colorrange=flux_lim)
+flux_60_surface = heatmap!(axflux_60, yC, zC[zF_indices], flux_60ₙ, colormap=colorscheme_flux, colorrange=flux_lim)
+flux_70_surface = heatmap!(axflux_70, yC, zC[zF_indices], flux_70ₙ, colormap=colorscheme_flux, colorrange=flux_lim)
+flux_80_surface = heatmap!(axflux_80, yC, zC[zF_indices], flux_80ₙ, colormap=colorscheme_flux, colorrange=flux_lim)
+flux_90_surface = heatmap!(axflux_90, yC, zC[zF_indices], flux_90ₙ, colormap=colorscheme_flux, colorrange=flux_lim)
+
+Colorbar(fig[1:5, 2], field_00_surface, label="Field")
+Colorbar(fig[1:5, 4], flux_00_surface, label="NN Flux")
+Colorbar(fig[1:5, 6], field_00_surface, label="Field")
+Colorbar(fig[1:5, 8], flux_00_surface, label="NN Flux")
+
+xlims!(axfield_00, minimum(yC), maximum(yC))
+xlims!(axfield_10, minimum(yC), maximum(yC))
+xlims!(axfield_20, minimum(yC), maximum(yC))
+xlims!(axfield_30, minimum(yC), maximum(yC))
+xlims!(axfield_40, minimum(yC), maximum(yC))
+xlims!(axfield_50, minimum(yC), maximum(yC))
+xlims!(axfield_60, minimum(yC), maximum(yC))
+xlims!(axfield_70, minimum(yC), maximum(yC))
+xlims!(axfield_80, minimum(yC), maximum(yC))
+xlims!(axfield_90, minimum(yC), maximum(yC))
+
+ylims!(axfield_00, minimum(zC[zC_indices]), maximum(zC[zC_indices]))
+ylims!(axfield_10, minimum(zC[zC_indices]), maximum(zC[zC_indices]))
+ylims!(axfield_20, minimum(zC[zC_indices]), maximum(zC[zC_indices]))
+ylims!(axfield_30, minimum(zC[zC_indices]), maximum(zC[zC_indices]))
+ylims!(axfield_40, minimum(zC[zC_indices]), maximum(zC[zC_indices]))
+ylims!(axfield_50, minimum(zC[zC_indices]), maximum(zC[zC_indices]))
+ylims!(axfield_60, minimum(zC[zC_indices]), maximum(zC[zC_indices]))
+ylims!(axfield_70, minimum(zC[zC_indices]), maximum(zC[zC_indices]))
+ylims!(axfield_80, minimum(zC[zC_indices]), maximum(zC[zC_indices]))
+ylims!(axfield_90, minimum(zC[zC_indices]), maximum(zC[zC_indices]))
+
+xlims!(axflux_00, minimum(yC), maximum(yC))
+xlims!(axflux_10, minimum(yC), maximum(yC))
+xlims!(axflux_20, minimum(yC), maximum(yC))
+xlims!(axflux_30, minimum(yC), maximum(yC))
+xlims!(axflux_40, minimum(yC), maximum(yC))
+xlims!(axflux_50, minimum(yC), maximum(yC))
+xlims!(axflux_60, minimum(yC), maximum(yC))
+xlims!(axflux_70, minimum(yC), maximum(yC))
+xlims!(axflux_80, minimum(yC), maximum(yC))
+xlims!(axflux_90, minimum(yC), maximum(yC))
+
+ylims!(axflux_00, minimum(zF[zF_indices]), maximum(zF[zF_indices]))
+ylims!(axflux_10, minimum(zF[zF_indices]), maximum(zF[zF_indices]))
+ylims!(axflux_20, minimum(zF[zF_indices]), maximum(zF[zF_indices]))
+ylims!(axflux_30, minimum(zF[zF_indices]), maximum(zF[zF_indices]))
+ylims!(axflux_40, minimum(zF[zF_indices]), maximum(zF[zF_indices]))
+ylims!(axflux_50, minimum(zF[zF_indices]), maximum(zF[zF_indices]))
+ylims!(axflux_60, minimum(zF[zF_indices]), maximum(zF[zF_indices]))
+ylims!(axflux_70, minimum(zF[zF_indices]), maximum(zF[zF_indices]))
+ylims!(axflux_80, minimum(zF[zF_indices]), maximum(zF[zF_indices]))
+ylims!(axflux_90, minimum(zF[zF_indices]), maximum(zF[zF_indices]))
+
+title_str = @lift "Temperature (°C), Time = $(round(times[$n], digits=2)) years"
+Label(fig[0, :], text=title_str, tellwidth=false, font=:bold)
+
+trim!(fig.layout)
+
+# save("./Output/compare_3D_instantaneous_fields_slices_NNclosure_fluxes.png", fig)
 # display(fig)
+CairoMakie.record(fig, "$(FILE_DIR)/$(filename)_yzslices_fluxes_T.mp4", 1:Nt, framerate=15, px_per_unit=2) do nn
+  n[] = nn
+end
+#%%
+@info "Recording S fields and fluxes in yz"
+
+fieldname = "S"
+fluxname = "wS_NN"
+field_NN_data_00 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz.jld2", fieldname, backend=OnDisk())
+field_NN_data_10 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_10.jld2", fieldname, backend=OnDisk())
+field_NN_data_20 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_20.jld2", fieldname, backend=OnDisk())
+field_NN_data_30 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_30.jld2", fieldname, backend=OnDisk())
+field_NN_data_40 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_40.jld2", fieldname, backend=OnDisk())
+field_NN_data_50 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_50.jld2", fieldname, backend=OnDisk())
+field_NN_data_60 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_60.jld2", fieldname, backend=OnDisk())
+field_NN_data_70 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_70.jld2", fieldname, backend=OnDisk())
+field_NN_data_80 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_80.jld2", fieldname, backend=OnDisk())
+field_NN_data_90 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_90.jld2", fieldname, backend=OnDisk())
+
+flux_NN_data_00 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz.jld2", fluxname, backend=OnDisk())
+flux_NN_data_10 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_10.jld2", fluxname, backend=OnDisk())
+flux_NN_data_20 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_20.jld2", fluxname, backend=OnDisk())
+flux_NN_data_30 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_30.jld2", fluxname, backend=OnDisk())
+flux_NN_data_40 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_40.jld2", fluxname, backend=OnDisk())
+flux_NN_data_50 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_50.jld2", fluxname, backend=OnDisk())
+flux_NN_data_60 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_60.jld2", fluxname, backend=OnDisk())
+flux_NN_data_70 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_70.jld2", fluxname, backend=OnDisk())
+flux_NN_data_80 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_80.jld2", fluxname, backend=OnDisk())
+flux_NN_data_90 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_yz_90.jld2", fluxname, backend=OnDisk())
+
+xC = field_NN_data_00.grid.xᶜᵃᵃ[1:field_NN_data_00.grid.Nx]
+yC = field_NN_data_00.grid.yᵃᶜᵃ[1:field_NN_data_00.grid.Ny]
+zC = field_NN_data_00.grid.zᵃᵃᶜ[1:field_NN_data_00.grid.Nz]
+zF = field_NN_data_00.grid.zᵃᵃᶠ[1:field_NN_data_00.grid.Nz+1]
+
+Nt = length(field_NN_data_90)
+times = field_NN_data_00.times / 24 / 60^2 / 365
+timeframes = 1:Nt
+
+function find_min(a...)
+  return minimum(minimum.([a...]))
+end
+
+function find_max(a...)
+  return maximum(maximum.([a...]))
+end
+
+#%%
+fig = Figure(size=(3000, 1200))
+
+axfield_00 = CairoMakie.Axis(fig[1, 1], xlabel="y (m)", ylabel="z (m)", title="x = $(field_NN_data_00.grid.xᶜᵃᵃ[field_NN_data_00.indices[1][1]] / 1000) km")
+axfield_10 = CairoMakie.Axis(fig[1, 5], xlabel="y (m)", ylabel="z (m)", title="x = $(field_NN_data_10.grid.xᶜᵃᵃ[field_NN_data_10.indices[1][1]] / 1000) km")
+axfield_20 = CairoMakie.Axis(fig[2, 1], xlabel="y (m)", ylabel="z (m)", title="x = $(field_NN_data_20.grid.xᶜᵃᵃ[field_NN_data_20.indices[1][1]] / 1000) km")
+axfield_30 = CairoMakie.Axis(fig[2, 5], xlabel="y (m)", ylabel="z (m)", title="x = $(field_NN_data_30.grid.xᶜᵃᵃ[field_NN_data_30.indices[1][1]] / 1000) km")
+axfield_40 = CairoMakie.Axis(fig[3, 1], xlabel="y (m)", ylabel="z (m)", title="x = $(field_NN_data_40.grid.xᶜᵃᵃ[field_NN_data_40.indices[1][1]] / 1000) km")
+axfield_50 = CairoMakie.Axis(fig[3, 5], xlabel="y (m)", ylabel="z (m)", title="x = $(field_NN_data_50.grid.xᶜᵃᵃ[field_NN_data_50.indices[1][1]] / 1000) km")
+axfield_60 = CairoMakie.Axis(fig[4, 1], xlabel="y (m)", ylabel="z (m)", title="x = $(field_NN_data_60.grid.xᶜᵃᵃ[field_NN_data_60.indices[1][1]] / 1000) km")
+axfield_70 = CairoMakie.Axis(fig[4, 5], xlabel="y (m)", ylabel="z (m)", title="x = $(field_NN_data_70.grid.xᶜᵃᵃ[field_NN_data_70.indices[1][1]] / 1000) km")
+axfield_80 = CairoMakie.Axis(fig[5, 1], xlabel="y (m)", ylabel="z (m)", title="x = $(field_NN_data_80.grid.xᶜᵃᵃ[field_NN_data_80.indices[1][1]] / 1000) km")
+axfield_90 = CairoMakie.Axis(fig[5, 5], xlabel="y (m)", ylabel="z (m)", title="x = $(field_NN_data_90.grid.xᶜᵃᵃ[field_NN_data_90.indices[1][1]] / 1000) km")
+
+axflux_00 = CairoMakie.Axis(fig[1, 3], xlabel="y (m)", ylabel="z (m)", title="x = $(flux_NN_data_00.grid.xᶜᵃᵃ[flux_NN_data_00.indices[1][1]] / 1000) km")
+axflux_10 = CairoMakie.Axis(fig[1, 7], xlabel="y (m)", ylabel="z (m)", title="x = $(flux_NN_data_10.grid.xᶜᵃᵃ[flux_NN_data_10.indices[1][1]] / 1000) km")
+axflux_20 = CairoMakie.Axis(fig[2, 3], xlabel="y (m)", ylabel="z (m)", title="x = $(flux_NN_data_20.grid.xᶜᵃᵃ[flux_NN_data_20.indices[1][1]] / 1000) km")
+axflux_30 = CairoMakie.Axis(fig[2, 7], xlabel="y (m)", ylabel="z (m)", title="x = $(flux_NN_data_30.grid.xᶜᵃᵃ[flux_NN_data_30.indices[1][1]] / 1000) km")
+axflux_40 = CairoMakie.Axis(fig[3, 3], xlabel="y (m)", ylabel="z (m)", title="x = $(flux_NN_data_40.grid.xᶜᵃᵃ[flux_NN_data_40.indices[1][1]] / 1000) km")
+axflux_50 = CairoMakie.Axis(fig[3, 7], xlabel="y (m)", ylabel="z (m)", title="x = $(flux_NN_data_50.grid.xᶜᵃᵃ[flux_NN_data_50.indices[1][1]] / 1000) km")
+axflux_60 = CairoMakie.Axis(fig[4, 3], xlabel="y (m)", ylabel="z (m)", title="x = $(flux_NN_data_60.grid.xᶜᵃᵃ[flux_NN_data_60.indices[1][1]] / 1000) km")
+axflux_70 = CairoMakie.Axis(fig[4, 7], xlabel="y (m)", ylabel="z (m)", title="x = $(flux_NN_data_70.grid.xᶜᵃᵃ[flux_NN_data_70.indices[1][1]] / 1000) km")
+axflux_80 = CairoMakie.Axis(fig[5, 3], xlabel="y (m)", ylabel="z (m)", title="x = $(flux_NN_data_80.grid.xᶜᵃᵃ[flux_NN_data_80.indices[1][1]] / 1000) km")
+axflux_90 = CairoMakie.Axis(fig[5, 7], xlabel="y (m)", ylabel="z (m)", title="x = $(flux_NN_data_90.grid.xᶜᵃᵃ[flux_NN_data_90.indices[1][1]] / 1000) km")
+
+n = Observable(1096)
+
+zC_indices = 1:200
+zF_indices = 2:200
+
+field_lim = (find_min(interior(field_NN_data_00[timeframes[1]], :, :, zC_indices), interior(field_NN_data_00[timeframes[end]], :, :, zC_indices), interior(flux_NN_data_00[timeframes[1]], :, :, zC_indices), interior(flux_NN_data_00[timeframes[end]], :, :, zC_indices)),
+         find_max(interior(field_NN_data_00[timeframes[1]], :, :, zC_indices), interior(field_NN_data_00[timeframes[end]], :, :, zC_indices), interior(flux_NN_data_00[timeframes[1]], :, :, zC_indices), interior(flux_NN_data_00[timeframes[end]], :, :, zC_indices)))
+
+flux_lim = (find_min(interior(flux_NN_data_00[timeframes[1]], :, :, zC_indices), interior(flux_NN_data_00[timeframes[end]], :, :, zC_indices)),
+         find_max(interior(flux_NN_data_00[timeframes[1]], :, :, zC_indices), interior(flux_NN_data_00[timeframes[end]], :, :, zC_indices)))
+
+flux_lim = (-maximum(abs, flux_lim), maximum(abs, flux_lim))
+
+NN_00ₙ = @lift interior(field_NN_data_00[$n], 1, :, zC_indices)
+NN_10ₙ = @lift interior(field_NN_data_10[$n], 1, :, zC_indices)
+NN_20ₙ = @lift interior(field_NN_data_20[$n], 1, :, zC_indices)
+NN_30ₙ = @lift interior(field_NN_data_30[$n], 1, :, zC_indices)
+NN_40ₙ = @lift interior(field_NN_data_40[$n], 1, :, zC_indices)
+NN_50ₙ = @lift interior(field_NN_data_50[$n], 1, :, zC_indices)
+NN_60ₙ = @lift interior(field_NN_data_60[$n], 1, :, zC_indices)
+NN_70ₙ = @lift interior(field_NN_data_70[$n], 1, :, zC_indices)
+NN_80ₙ = @lift interior(field_NN_data_80[$n], 1, :, zC_indices)
+NN_90ₙ = @lift interior(field_NN_data_90[$n], 1, :, zC_indices)
+
+flux_00ₙ = @lift interior(flux_NN_data_00[$n], 1, :, zF_indices)
+flux_10ₙ = @lift interior(flux_NN_data_10[$n], 1, :, zF_indices)
+flux_20ₙ = @lift interior(flux_NN_data_20[$n], 1, :, zF_indices)
+flux_30ₙ = @lift interior(flux_NN_data_30[$n], 1, :, zF_indices)
+flux_40ₙ = @lift interior(flux_NN_data_40[$n], 1, :, zF_indices)
+flux_50ₙ = @lift interior(flux_NN_data_50[$n], 1, :, zF_indices)
+flux_60ₙ = @lift interior(flux_NN_data_60[$n], 1, :, zF_indices)
+flux_70ₙ = @lift interior(flux_NN_data_70[$n], 1, :, zF_indices)
+flux_80ₙ = @lift interior(flux_NN_data_80[$n], 1, :, zF_indices)
+flux_90ₙ = @lift interior(flux_NN_data_90[$n], 1, :, zF_indices)
+
+colorscheme_field = colorschemes[:viridis]
+colorscheme_flux = colorschemes[:balance]
+
+field_00_surface = heatmap!(axfield_00, yC, zC[zC_indices], NN_00ₙ, colormap=colorscheme_field, colorrange=field_lim)
+field_10_surface = heatmap!(axfield_10, yC, zC[zC_indices], NN_10ₙ, colormap=colorscheme_field, colorrange=field_lim)
+field_20_surface = heatmap!(axfield_20, yC, zC[zC_indices], NN_20ₙ, colormap=colorscheme_field, colorrange=field_lim)
+field_30_surface = heatmap!(axfield_30, yC, zC[zC_indices], NN_30ₙ, colormap=colorscheme_field, colorrange=field_lim)
+field_40_surface = heatmap!(axfield_40, yC, zC[zC_indices], NN_40ₙ, colormap=colorscheme_field, colorrange=field_lim)
+field_50_surface = heatmap!(axfield_50, yC, zC[zC_indices], NN_50ₙ, colormap=colorscheme_field, colorrange=field_lim)
+field_60_surface = heatmap!(axfield_60, yC, zC[zC_indices], NN_60ₙ, colormap=colorscheme_field, colorrange=field_lim)
+field_70_surface = heatmap!(axfield_70, yC, zC[zC_indices], NN_70ₙ, colormap=colorscheme_field, colorrange=field_lim)
+field_80_surface = heatmap!(axfield_80, yC, zC[zC_indices], NN_80ₙ, colormap=colorscheme_field, colorrange=field_lim)
+field_90_surface = heatmap!(axfield_90, yC, zC[zC_indices], NN_90ₙ, colormap=colorscheme_field, colorrange=field_lim)
+
+flux_00_surface = heatmap!(axflux_00, yC, zC[zF_indices], flux_00ₙ, colormap=colorscheme_flux, colorrange=flux_lim)
+flux_10_surface = heatmap!(axflux_10, yC, zC[zF_indices], flux_10ₙ, colormap=colorscheme_flux, colorrange=flux_lim)
+flux_20_surface = heatmap!(axflux_20, yC, zC[zF_indices], flux_20ₙ, colormap=colorscheme_flux, colorrange=flux_lim)
+flux_30_surface = heatmap!(axflux_30, yC, zC[zF_indices], flux_30ₙ, colormap=colorscheme_flux, colorrange=flux_lim)
+flux_40_surface = heatmap!(axflux_40, yC, zC[zF_indices], flux_40ₙ, colormap=colorscheme_flux, colorrange=flux_lim)
+flux_50_surface = heatmap!(axflux_50, yC, zC[zF_indices], flux_50ₙ, colormap=colorscheme_flux, colorrange=flux_lim)
+flux_60_surface = heatmap!(axflux_60, yC, zC[zF_indices], flux_60ₙ, colormap=colorscheme_flux, colorrange=flux_lim)
+flux_70_surface = heatmap!(axflux_70, yC, zC[zF_indices], flux_70ₙ, colormap=colorscheme_flux, colorrange=flux_lim)
+flux_80_surface = heatmap!(axflux_80, yC, zC[zF_indices], flux_80ₙ, colormap=colorscheme_flux, colorrange=flux_lim)
+flux_90_surface = heatmap!(axflux_90, yC, zC[zF_indices], flux_90ₙ, colormap=colorscheme_flux, colorrange=flux_lim)
+
+Colorbar(fig[1:5, 2], field_00_surface, label="Field")
+Colorbar(fig[1:5, 4], flux_00_surface, label="NN Flux")
+Colorbar(fig[1:5, 6], field_00_surface, label="Field")
+Colorbar(fig[1:5, 8], flux_00_surface, label="NN Flux")
+
+xlims!(axfield_00, minimum(yC), maximum(yC))
+xlims!(axfield_10, minimum(yC), maximum(yC))
+xlims!(axfield_20, minimum(yC), maximum(yC))
+xlims!(axfield_30, minimum(yC), maximum(yC))
+xlims!(axfield_40, minimum(yC), maximum(yC))
+xlims!(axfield_50, minimum(yC), maximum(yC))
+xlims!(axfield_60, minimum(yC), maximum(yC))
+xlims!(axfield_70, minimum(yC), maximum(yC))
+xlims!(axfield_80, minimum(yC), maximum(yC))
+xlims!(axfield_90, minimum(yC), maximum(yC))
+
+ylims!(axfield_00, minimum(zC[zC_indices]), maximum(zC[zC_indices]))
+ylims!(axfield_10, minimum(zC[zC_indices]), maximum(zC[zC_indices]))
+ylims!(axfield_20, minimum(zC[zC_indices]), maximum(zC[zC_indices]))
+ylims!(axfield_30, minimum(zC[zC_indices]), maximum(zC[zC_indices]))
+ylims!(axfield_40, minimum(zC[zC_indices]), maximum(zC[zC_indices]))
+ylims!(axfield_50, minimum(zC[zC_indices]), maximum(zC[zC_indices]))
+ylims!(axfield_60, minimum(zC[zC_indices]), maximum(zC[zC_indices]))
+ylims!(axfield_70, minimum(zC[zC_indices]), maximum(zC[zC_indices]))
+ylims!(axfield_80, minimum(zC[zC_indices]), maximum(zC[zC_indices]))
+ylims!(axfield_90, minimum(zC[zC_indices]), maximum(zC[zC_indices]))
+
+xlims!(axflux_00, minimum(yC), maximum(yC))
+xlims!(axflux_10, minimum(yC), maximum(yC))
+xlims!(axflux_20, minimum(yC), maximum(yC))
+xlims!(axflux_30, minimum(yC), maximum(yC))
+xlims!(axflux_40, minimum(yC), maximum(yC))
+xlims!(axflux_50, minimum(yC), maximum(yC))
+xlims!(axflux_60, minimum(yC), maximum(yC))
+xlims!(axflux_70, minimum(yC), maximum(yC))
+xlims!(axflux_80, minimum(yC), maximum(yC))
+xlims!(axflux_90, minimum(yC), maximum(yC))
+
+ylims!(axflux_00, minimum(zF[zF_indices]), maximum(zF[zF_indices]))
+ylims!(axflux_10, minimum(zF[zF_indices]), maximum(zF[zF_indices]))
+ylims!(axflux_20, minimum(zF[zF_indices]), maximum(zF[zF_indices]))
+ylims!(axflux_30, minimum(zF[zF_indices]), maximum(zF[zF_indices]))
+ylims!(axflux_40, minimum(zF[zF_indices]), maximum(zF[zF_indices]))
+ylims!(axflux_50, minimum(zF[zF_indices]), maximum(zF[zF_indices]))
+ylims!(axflux_60, minimum(zF[zF_indices]), maximum(zF[zF_indices]))
+ylims!(axflux_70, minimum(zF[zF_indices]), maximum(zF[zF_indices]))
+ylims!(axflux_80, minimum(zF[zF_indices]), maximum(zF[zF_indices]))
+ylims!(axflux_90, minimum(zF[zF_indices]), maximum(zF[zF_indices]))
+
+title_str = @lift "Salinity (psu), Time = $(round(times[$n], digits=2)) years"
+Label(fig[0, :], text=title_str, tellwidth=false, font=:bold)
+
+trim!(fig.layout)
+
+CairoMakie.record(fig, "$(FILE_DIR)/$(filename)_yzslices_fluxes_S.mp4", 1:Nt, framerate=15, px_per_unit=2) do nn
+  n[] = nn
+end
+
+#%%
+@info "Recording T fields and fluxes in xz"
+
+fieldname = "T"
+fluxname = "wT_NN"
+
+field_NN_data_5 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_5.jld2", fieldname, backend=OnDisk())
+field_NN_data_15 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_15.jld2", fieldname, backend=OnDisk())
+field_NN_data_25 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_25.jld2", fieldname, backend=OnDisk())
+field_NN_data_35 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_35.jld2", fieldname, backend=OnDisk())
+field_NN_data_45 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_45.jld2", fieldname, backend=OnDisk())
+field_NN_data_55 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_55.jld2", fieldname, backend=OnDisk())
+field_NN_data_65 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_65.jld2", fieldname, backend=OnDisk())
+field_NN_data_75 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_75.jld2", fieldname, backend=OnDisk())
+field_NN_data_85 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_85.jld2", fieldname, backend=OnDisk())
+field_NN_data_95 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_95.jld2", fieldname, backend=OnDisk())
+
+flux_NN_data_5 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_5.jld2", fluxname, backend=OnDisk())
+flux_NN_data_15 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_15.jld2", fluxname, backend=OnDisk())
+flux_NN_data_25 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_25.jld2", fluxname, backend=OnDisk())
+flux_NN_data_35 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_35.jld2", fluxname, backend=OnDisk())
+flux_NN_data_45 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_45.jld2", fluxname, backend=OnDisk())
+flux_NN_data_55 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_55.jld2", fluxname, backend=OnDisk())
+flux_NN_data_65 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_65.jld2", fluxname, backend=OnDisk())
+flux_NN_data_75 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_75.jld2", fluxname, backend=OnDisk())
+flux_NN_data_85 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_85.jld2", fluxname, backend=OnDisk())
+flux_NN_data_95 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_95.jld2", fluxname, backend=OnDisk())
+
+field_datas = [field_NN_data_5, field_NN_data_15, field_NN_data_25, field_NN_data_35, field_NN_data_45, field_NN_data_55, field_NN_data_65, field_NN_data_75, field_NN_data_85, field_NN_data_95]
+flux_datas = [flux_NN_data_5, flux_NN_data_15, flux_NN_data_25, flux_NN_data_35, flux_NN_data_45, flux_NN_data_55, flux_NN_data_65, flux_NN_data_75, flux_NN_data_85, flux_NN_data_95]
+
+xC = field_NN_data_5.grid.xᶜᵃᵃ[1:field_NN_data_5.grid.Nx]
+yC = field_NN_data_5.grid.yᵃᶜᵃ[1:field_NN_data_5.grid.Ny]
+zC = field_NN_data_5.grid.zᵃᵃᶜ[1:field_NN_data_5.grid.Nz]
+zF = field_NN_data_5.grid.zᵃᵃᶠ[1:field_NN_data_5.grid.Nz+1]
+
+Nt = length(field_NN_data_95)
+times = field_NN_data_5.times / 24 / 60^2 / 365
+timeframes = 1:Nt
+
+function find_min(a...)
+  return minimum(minimum.([a...]))
+end
+
+function find_max(a...)
+  return maximum(maximum.([a...]))
+end
+
+#%%
+fig = Figure(size=(3000, 1200))
+
+axfield_5 = CairoMakie.Axis(fig[1, 1], xlabel="x (m)", ylabel="z (m)", title="y = $(field_NN_data_5.grid.yᵃᶜᵃ[field_NN_data_5.indices[2][1]] / 1000) km")
+axfield_15 = CairoMakie.Axis(fig[1, 5], xlabel="x (m)", ylabel="z (m)", title="y = $(field_NN_data_15.grid.yᵃᶜᵃ[field_NN_data_15.indices[2][1]] / 1000) km")
+axfield_25 = CairoMakie.Axis(fig[2, 1], xlabel="x (m)", ylabel="z (m)", title="y = $(field_NN_data_25.grid.yᵃᶜᵃ[field_NN_data_25.indices[2][1]] / 1000) km")
+axfield_35 = CairoMakie.Axis(fig[2, 5], xlabel="x (m)", ylabel="z (m)", title="y = $(field_NN_data_35.grid.yᵃᶜᵃ[field_NN_data_35.indices[2][1]] / 1000) km")
+axfield_45 = CairoMakie.Axis(fig[3, 1], xlabel="x (m)", ylabel="z (m)", title="y = $(field_NN_data_45.grid.yᵃᶜᵃ[field_NN_data_45.indices[2][1]] / 1000) km")
+axfield_55 = CairoMakie.Axis(fig[3, 5], xlabel="x (m)", ylabel="z (m)", title="y = $(field_NN_data_55.grid.yᵃᶜᵃ[field_NN_data_55.indices[2][1]] / 1000) km")
+axfield_65 = CairoMakie.Axis(fig[4, 1], xlabel="x (m)", ylabel="z (m)", title="y = $(field_NN_data_65.grid.yᵃᶜᵃ[field_NN_data_65.indices[2][1]] / 1000) km")
+axfield_75 = CairoMakie.Axis(fig[4, 5], xlabel="x (m)", ylabel="z (m)", title="y = $(field_NN_data_75.grid.yᵃᶜᵃ[field_NN_data_75.indices[2][1]] / 1000) km")
+axfield_85 = CairoMakie.Axis(fig[5, 1], xlabel="x (m)", ylabel="z (m)", title="y = $(field_NN_data_85.grid.yᵃᶜᵃ[field_NN_data_85.indices[2][1]] / 1000) km")
+axfield_95 = CairoMakie.Axis(fig[5, 5], xlabel="x (m)", ylabel="z (m)", title="y = $(field_NN_data_95.grid.yᵃᶜᵃ[field_NN_data_95.indices[2][1]] / 1000) km")
+
+axflux_5 = CairoMakie.Axis(fig[1, 3], xlabel="x (m)", ylabel="z (m)", title="y = $(flux_NN_data_5.grid.yᵃᶜᵃ[flux_NN_data_5.indices[2][1]] / 1000) km")
+axflux_15 = CairoMakie.Axis(fig[1, 7], xlabel="x (m)", ylabel="z (m)", title="y = $(flux_NN_data_15.grid.yᵃᶜᵃ[flux_NN_data_15.indices[2][1]] / 1000) km")
+axflux_25 = CairoMakie.Axis(fig[2, 3], xlabel="x (m)", ylabel="z (m)", title="y = $(flux_NN_data_25.grid.yᵃᶜᵃ[flux_NN_data_25.indices[2][1]] / 1000) km")
+axflux_35 = CairoMakie.Axis(fig[2, 7], xlabel="x (m)", ylabel="z (m)", title="y = $(flux_NN_data_35.grid.yᵃᶜᵃ[flux_NN_data_35.indices[2][1]] / 1000) km")
+axflux_45 = CairoMakie.Axis(fig[3, 3], xlabel="x (m)", ylabel="z (m)", title="y = $(flux_NN_data_45.grid.yᵃᶜᵃ[flux_NN_data_45.indices[2][1]] / 1000) km")
+axflux_55 = CairoMakie.Axis(fig[3, 7], xlabel="x (m)", ylabel="z (m)", title="y = $(flux_NN_data_55.grid.yᵃᶜᵃ[flux_NN_data_55.indices[2][1]] / 1000) km")
+axflux_65 = CairoMakie.Axis(fig[4, 3], xlabel="x (m)", ylabel="z (m)", title="y = $(flux_NN_data_65.grid.yᵃᶜᵃ[flux_NN_data_65.indices[2][1]] / 1000) km")
+axflux_75 = CairoMakie.Axis(fig[4, 7], xlabel="x (m)", ylabel="z (m)", title="y = $(flux_NN_data_75.grid.yᵃᶜᵃ[flux_NN_data_75.indices[2][1]] / 1000) km")
+axflux_85 = CairoMakie.Axis(fig[5, 3], xlabel="x (m)", ylabel="z (m)", title="y = $(flux_NN_data_85.grid.yᵃᶜᵃ[flux_NN_data_85.indices[2][1]] / 1000) km")
+axflux_95 = CairoMakie.Axis(fig[5, 7], xlabel="x (m)", ylabel="z (m)", title="y = $(flux_NN_data_95.grid.yᵃᶜᵃ[flux_NN_data_95.indices[2][1]] / 1000) km")
+
+axfields = [axfield_5, axfield_15, axfield_25, axfield_35, axfield_45, axfield_55, axfield_65, axfield_75, axfield_85, axfield_95]
+axfluxes = [axflux_5, axflux_15, axflux_25, axflux_35, axflux_45, axflux_55, axflux_65, axflux_75, axflux_85, axflux_95]
+
+n = Observable(1096)
+
+zC_indices = 1:200
+zF_indices = 2:200
+
+field_lims = [(find_min(interior(field_data[timeframes[1]], :, :, zC_indices), interior(field_data[timeframes[end]], :, :, zC_indices)), 
+               find_max(interior(field_data[timeframes[1]], :, :, zC_indices), interior(field_data[timeframes[end]], :, :, zC_indices))) for field_data in field_datas]
+
+flux_lims = [(find_min(interior(flux_data[timeframes[1]], :, :, zC_indices), interior(flux_data[timeframes[end]], :, :, zC_indices)),
+              find_max(interior(flux_data[timeframes[1]], :, :, zC_indices), interior(flux_data[timeframes[end]], :, :, zC_indices))) for flux_data in flux_datas]
+
+flux_lims = [(-maximum(abs, flux_lim), maximum(abs, flux_lim)) for flux_lim in flux_lims]
+
+NNₙs = [@lift interior(field_data[$n], :, 1, zC_indices) for field_data in field_datas]
+fluxₙs = [@lift interior(flux_data[$n], :, 1, zF_indices) for flux_data in flux_datas]
+
+colorscheme_field = colorschemes[:viridis]
+colorscheme_flux = colorschemes[:balance]
+
+field_5_surface = heatmap!(axfield_5, xC, zC[zC_indices], NN_5ₙ, colormap=colorscheme_field, colorrange=field_lims[1])
+field_15_surface = heatmap!(axfield_15, xC, zC[zC_indices], NN_15ₙ, colormap=colorscheme_field, colorrange=field_lims[2])
+field_25_surface = heatmap!(axfield_25, xC, zC[zC_indices], NN_25ₙ, colormap=colorscheme_field, colorrange=field_lims[3])
+field_35_surface = heatmap!(axfield_35, xC, zC[zC_indices], NN_35ₙ, colormap=colorscheme_field, colorrange=field_lims[4])
+field_45_surface = heatmap!(axfield_45, xC, zC[zC_indices], NN_45ₙ, colormap=colorscheme_field, colorrange=field_lims[5])
+field_55_surface = heatmap!(axfield_55, xC, zC[zC_indices], NN_55ₙ, colormap=colorscheme_field, colorrange=field_lims[6])
+field_65_surface = heatmap!(axfield_65, xC, zC[zC_indices], NN_65ₙ, colormap=colorscheme_field, colorrange=field_lims[7])
+field_75_surface = heatmap!(axfield_75, xC, zC[zC_indices], NN_75ₙ, colormap=colorscheme_field, colorrange=field_lims[8])
+field_85_surface = heatmap!(axfield_85, xC, zC[zC_indices], NN_85ₙ, colormap=colorscheme_field, colorrange=field_lims[9])
+field_95_surface = heatmap!(axfield_95, xC, zC[zC_indices], NN_95ₙ, colormap=colorscheme_field, colorrange=field_lims[10])
+
+flux_5_surface = heatmap!(axflux_5, xC, zC[zF_indices], flux_5ₙ, colormap=colorscheme_flux, colorrange=flux_lims[1])
+flux_15_surface = heatmap!(axflux_15, xC, zC[zF_indices], flux_15ₙ, colormap=colorscheme_flux, colorrange=flux_lims[2])
+flux_25_surface = heatmap!(axflux_25, xC, zC[zF_indices], flux_25ₙ, colormap=colorscheme_flux, colorrange=flux_lims[3])
+flux_35_surface = heatmap!(axflux_35, xC, zC[zF_indices], flux_35ₙ, colormap=colorscheme_flux, colorrange=flux_lims[4])
+flux_45_surface = heatmap!(axflux_45, xC, zC[zF_indices], flux_45ₙ, colormap=colorscheme_flux, colorrange=flux_lims[5])
+flux_55_surface = heatmap!(axflux_55, xC, zC[zF_indices], flux_55ₙ, colormap=colorscheme_flux, colorrange=flux_lims[6])
+flux_65_surface = heatmap!(axflux_65, xC, zC[zF_indices], flux_65ₙ, colormap=colorscheme_flux, colorrange=flux_lims[7])
+flux_75_surface = heatmap!(axflux_75, xC, zC[zF_indices], flux_75ₙ, colormap=colorscheme_flux, colorrange=flux_lims[8])
+flux_85_surface = heatmap!(axflux_85, xC, zC[zF_indices], flux_85ₙ, colormap=colorscheme_flux, colorrange=flux_lims[9])
+flux_95_surface = heatmap!(axflux_95, xC, zC[zF_indices], flux_95ₙ, colormap=colorscheme_flux, colorrange=flux_lims[10])
+
+Colorbar(fig[1, 2], field_5_surface, label="Field")
+Colorbar(fig[1, 4], flux_5_surface, label="NN Flux")
+Colorbar(fig[1, 6], field_15_surface, label="Field")
+Colorbar(fig[1, 8], flux_15_surface, label="NN Flux")
+Colorbar(fig[2, 2], field_25_surface, label="Field")
+Colorbar(fig[2, 4], flux_25_surface, label="NN Flux")
+Colorbar(fig[2, 6], field_35_surface, label="Field")
+Colorbar(fig[2, 8], flux_35_surface, label="NN Flux")
+Colorbar(fig[3, 2], field_45_surface, label="Field")
+Colorbar(fig[3, 4], flux_45_surface, label="NN Flux")
+Colorbar(fig[3, 6], field_55_surface, label="Field")
+Colorbar(fig[3, 8], flux_55_surface, label="NN Flux")
+Colorbar(fig[4, 2], field_65_surface, label="Field")
+Colorbar(fig[4, 4], flux_65_surface, label="NN Flux")
+Colorbar(fig[4, 6], field_75_surface, label="Field")
+Colorbar(fig[4, 8], flux_75_surface, label="NN Flux")
+Colorbar(fig[5, 2], field_85_surface, label="Field")
+Colorbar(fig[5, 4], flux_85_surface, label="NN Flux")
+Colorbar(fig[5, 6], field_95_surface, label="Field")
+Colorbar(fig[5, 8], flux_95_surface, label="NN Flux")
+
+for axfield in axfields
+  xlims!(axfield, minimum(xC), maximum(xC))
+  ylims!(axfield, minimum(zC[zC_indices]), maximum(zC[zC_indices]))
+end
+
+for axflux in axfluxes
+  xlims!(axflux, minimum(xC), maximum(xC))
+  ylims!(axflux, minimum(zC[zF_indices]), maximum(zC[zF_indices]))
+end
+
+title_str = @lift "Temperature (°C), Time = $(round(times[$n], digits=2)) years"
+Label(fig[0, :], text=title_str, tellwidth=false, font=:bold)
+
+trim!(fig.layout)
+
+CairoMakie.record(fig, "$(FILE_DIR)/$(filename)_xzslices_fluxes_T.mp4", 1:Nt, framerate=15, px_per_unit=2) do nn
+  n[] = nn
+end
+
+#%%
+@info "Recording S fields and fluxes in xz"
+
+fieldname = "S"
+fluxname = "wS_NN"
+
+field_NN_data_5 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_5.jld2", fieldname, backend=OnDisk())
+field_NN_data_15 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_15.jld2", fieldname, backend=OnDisk())
+field_NN_data_25 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_25.jld2", fieldname, backend=OnDisk())
+field_NN_data_35 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_35.jld2", fieldname, backend=OnDisk())
+field_NN_data_45 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_45.jld2", fieldname, backend=OnDisk())
+field_NN_data_55 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_55.jld2", fieldname, backend=OnDisk())
+field_NN_data_65 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_65.jld2", fieldname, backend=OnDisk())
+field_NN_data_75 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_75.jld2", fieldname, backend=OnDisk())
+field_NN_data_85 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_85.jld2", fieldname, backend=OnDisk())
+field_NN_data_95 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_95.jld2", fieldname, backend=OnDisk())
+
+flux_NN_data_5 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_5.jld2", fluxname, backend=OnDisk())
+flux_NN_data_15 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_15.jld2", fluxname, backend=OnDisk())
+flux_NN_data_25 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_25.jld2", fluxname, backend=OnDisk())
+flux_NN_data_35 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_35.jld2", fluxname, backend=OnDisk())
+flux_NN_data_45 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_45.jld2", fluxname, backend=OnDisk())
+flux_NN_data_55 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_55.jld2", fluxname, backend=OnDisk())
+flux_NN_data_65 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_65.jld2", fluxname, backend=OnDisk())
+flux_NN_data_75 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_75.jld2", fluxname, backend=OnDisk())
+flux_NN_data_85 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_85.jld2", fluxname, backend=OnDisk())
+flux_NN_data_95 = FieldTimeSeries("$(FILE_DIR)/instantaneous_fields_xz_95.jld2", fluxname, backend=OnDisk())
+
+field_datas = [field_NN_data_5, field_NN_data_15, field_NN_data_25, field_NN_data_35, field_NN_data_45, field_NN_data_55, field_NN_data_65, field_NN_data_75, field_NN_data_85, field_NN_data_95]
+flux_datas = [flux_NN_data_5, flux_NN_data_15, flux_NN_data_25, flux_NN_data_35, flux_NN_data_45, flux_NN_data_55, flux_NN_data_65, flux_NN_data_75, flux_NN_data_85, flux_NN_data_95]
+
+xC = field_NN_data_5.grid.xᶜᵃᵃ[1:field_NN_data_5.grid.Nx]
+yC = field_NN_data_5.grid.yᵃᶜᵃ[1:field_NN_data_5.grid.Ny]
+zC = field_NN_data_5.grid.zᵃᵃᶜ[1:field_NN_data_5.grid.Nz]
+zF = field_NN_data_5.grid.zᵃᵃᶠ[1:field_NN_data_5.grid.Nz+1]
+
+Nt = length(field_NN_data_95)
+times = field_NN_data_5.times / 24 / 60^2 / 365
+timeframes = 1:Nt
+
+function find_min(a...)
+  return minimum(minimum.([a...]))
+end
+
+function find_max(a...)
+  return maximum(maximum.([a...]))
+end
+
+#%%
+fig = Figure(size=(3000, 1200))
+
+axfield_5 = CairoMakie.Axis(fig[1, 1], xlabel="x (m)", ylabel="z (m)", title="y = $(field_NN_data_5.grid.yᵃᶜᵃ[field_NN_data_5.indices[2][1]] / 1000) km")
+axfield_15 = CairoMakie.Axis(fig[1, 5], xlabel="x (m)", ylabel="z (m)", title="y = $(field_NN_data_15.grid.yᵃᶜᵃ[field_NN_data_15.indices[2][1]] / 1000) km")
+axfield_25 = CairoMakie.Axis(fig[2, 1], xlabel="x (m)", ylabel="z (m)", title="y = $(field_NN_data_25.grid.yᵃᶜᵃ[field_NN_data_25.indices[2][1]] / 1000) km")
+axfield_35 = CairoMakie.Axis(fig[2, 5], xlabel="x (m)", ylabel="z (m)", title="y = $(field_NN_data_35.grid.yᵃᶜᵃ[field_NN_data_35.indices[2][1]] / 1000) km")
+axfield_45 = CairoMakie.Axis(fig[3, 1], xlabel="x (m)", ylabel="z (m)", title="y = $(field_NN_data_45.grid.yᵃᶜᵃ[field_NN_data_45.indices[2][1]] / 1000) km")
+axfield_55 = CairoMakie.Axis(fig[3, 5], xlabel="x (m)", ylabel="z (m)", title="y = $(field_NN_data_55.grid.yᵃᶜᵃ[field_NN_data_55.indices[2][1]] / 1000) km")
+axfield_65 = CairoMakie.Axis(fig[4, 1], xlabel="x (m)", ylabel="z (m)", title="y = $(field_NN_data_65.grid.yᵃᶜᵃ[field_NN_data_65.indices[2][1]] / 1000) km")
+axfield_75 = CairoMakie.Axis(fig[4, 5], xlabel="x (m)", ylabel="z (m)", title="y = $(field_NN_data_75.grid.yᵃᶜᵃ[field_NN_data_75.indices[2][1]] / 1000) km")
+axfield_85 = CairoMakie.Axis(fig[5, 1], xlabel="x (m)", ylabel="z (m)", title="y = $(field_NN_data_85.grid.yᵃᶜᵃ[field_NN_data_85.indices[2][1]] / 1000) km")
+axfield_95 = CairoMakie.Axis(fig[5, 5], xlabel="x (m)", ylabel="z (m)", title="y = $(field_NN_data_95.grid.yᵃᶜᵃ[field_NN_data_95.indices[2][1]] / 1000) km")
+
+axflux_5 = CairoMakie.Axis(fig[1, 3], xlabel="x (m)", ylabel="z (m)", title="y = $(flux_NN_data_5.grid.yᵃᶜᵃ[flux_NN_data_5.indices[2][1]] / 1000) km")
+axflux_15 = CairoMakie.Axis(fig[1, 7], xlabel="x (m)", ylabel="z (m)", title="y = $(flux_NN_data_15.grid.yᵃᶜᵃ[flux_NN_data_15.indices[2][1]] / 1000) km")
+axflux_25 = CairoMakie.Axis(fig[2, 3], xlabel="x (m)", ylabel="z (m)", title="y = $(flux_NN_data_25.grid.yᵃᶜᵃ[flux_NN_data_25.indices[2][1]] / 1000) km")
+axflux_35 = CairoMakie.Axis(fig[2, 7], xlabel="x (m)", ylabel="z (m)", title="y = $(flux_NN_data_35.grid.yᵃᶜᵃ[flux_NN_data_35.indices[2][1]] / 1000) km")
+axflux_45 = CairoMakie.Axis(fig[3, 3], xlabel="x (m)", ylabel="z (m)", title="y = $(flux_NN_data_45.grid.yᵃᶜᵃ[flux_NN_data_45.indices[2][1]] / 1000) km")
+axflux_55 = CairoMakie.Axis(fig[3, 7], xlabel="x (m)", ylabel="z (m)", title="y = $(flux_NN_data_55.grid.yᵃᶜᵃ[flux_NN_data_55.indices[2][1]] / 1000) km")
+axflux_65 = CairoMakie.Axis(fig[4, 3], xlabel="x (m)", ylabel="z (m)", title="y = $(flux_NN_data_65.grid.yᵃᶜᵃ[flux_NN_data_65.indices[2][1]] / 1000) km")
+axflux_75 = CairoMakie.Axis(fig[4, 7], xlabel="x (m)", ylabel="z (m)", title="y = $(flux_NN_data_75.grid.yᵃᶜᵃ[flux_NN_data_75.indices[2][1]] / 1000) km")
+axflux_85 = CairoMakie.Axis(fig[5, 3], xlabel="x (m)", ylabel="z (m)", title="y = $(flux_NN_data_85.grid.yᵃᶜᵃ[flux_NN_data_85.indices[2][1]] / 1000) km")
+axflux_95 = CairoMakie.Axis(fig[5, 7], xlabel="x (m)", ylabel="z (m)", title="y = $(flux_NN_data_95.grid.yᵃᶜᵃ[flux_NN_data_95.indices[2][1]] / 1000) km")
+
+axfields = [axfield_5, axfield_15, axfield_25, axfield_35, axfield_45, axfield_55, axfield_65, axfield_75, axfield_85, axfield_95]
+axfluxes = [axflux_5, axflux_15, axflux_25, axflux_35, axflux_45, axflux_55, axflux_65, axflux_75, axflux_85, axflux_95]
+
+n = Observable(1096)
+
+zC_indices = 1:200
+zF_indices = 2:200
+
+field_lims = [(find_min(interior(field_data[timeframes[1]], :, :, zC_indices), interior(field_data[timeframes[end]], :, :, zC_indices)), 
+               find_max(interior(field_data[timeframes[1]], :, :, zC_indices), interior(field_data[timeframes[end]], :, :, zC_indices))) for field_data in field_datas]
+
+flux_lims = [(find_min(interior(flux_data[timeframes[1]], :, :, zC_indices), interior(flux_data[timeframes[end]], :, :, zC_indices)),
+              find_max(interior(flux_data[timeframes[1]], :, :, zC_indices), interior(flux_data[timeframes[end]], :, :, zC_indices))) for flux_data in flux_datas]
+
+flux_lims = [(-maximum(abs, flux_lim), maximum(abs, flux_lim)) for flux_lim in flux_lims]
+
+NNₙs = [@lift interior(field_data[$n], :, 1, zC_indices) for field_data in field_datas]
+fluxₙs = [@lift interior(flux_data[$n], :, 1, zF_indices) for flux_data in flux_datas]
+
+colorscheme_field = colorschemes[:viridis]
+colorscheme_flux = colorschemes[:balance]
+
+field_5_surface = heatmap!(axfield_5, xC, zC[zC_indices], NN_5ₙ, colormap=colorscheme_field, colorrange=field_lims[1])
+field_15_surface = heatmap!(axfield_15, xC, zC[zC_indices], NN_15ₙ, colormap=colorscheme_field, colorrange=field_lims[2])
+field_25_surface = heatmap!(axfield_25, xC, zC[zC_indices], NN_25ₙ, colormap=colorscheme_field, colorrange=field_lims[3])
+field_35_surface = heatmap!(axfield_35, xC, zC[zC_indices], NN_35ₙ, colormap=colorscheme_field, colorrange=field_lims[4])
+field_45_surface = heatmap!(axfield_45, xC, zC[zC_indices], NN_45ₙ, colormap=colorscheme_field, colorrange=field_lims[5])
+field_55_surface = heatmap!(axfield_55, xC, zC[zC_indices], NN_55ₙ, colormap=colorscheme_field, colorrange=field_lims[6])
+field_65_surface = heatmap!(axfield_65, xC, zC[zC_indices], NN_65ₙ, colormap=colorscheme_field, colorrange=field_lims[7])
+field_75_surface = heatmap!(axfield_75, xC, zC[zC_indices], NN_75ₙ, colormap=colorscheme_field, colorrange=field_lims[8])
+field_85_surface = heatmap!(axfield_85, xC, zC[zC_indices], NN_85ₙ, colormap=colorscheme_field, colorrange=field_lims[9])
+field_95_surface = heatmap!(axfield_95, xC, zC[zC_indices], NN_95ₙ, colormap=colorscheme_field, colorrange=field_lims[10])
+
+flux_5_surface = heatmap!(axflux_5, xC, zC[zF_indices], flux_5ₙ, colormap=colorscheme_flux, colorrange=flux_lims[1])
+flux_15_surface = heatmap!(axflux_15, xC, zC[zF_indices], flux_15ₙ, colormap=colorscheme_flux, colorrange=flux_lims[2])
+flux_25_surface = heatmap!(axflux_25, xC, zC[zF_indices], flux_25ₙ, colormap=colorscheme_flux, colorrange=flux_lims[3])
+flux_35_surface = heatmap!(axflux_35, xC, zC[zF_indices], flux_35ₙ, colormap=colorscheme_flux, colorrange=flux_lims[4])
+flux_45_surface = heatmap!(axflux_45, xC, zC[zF_indices], flux_45ₙ, colormap=colorscheme_flux, colorrange=flux_lims[5])
+flux_55_surface = heatmap!(axflux_55, xC, zC[zF_indices], flux_55ₙ, colormap=colorscheme_flux, colorrange=flux_lims[6])
+flux_65_surface = heatmap!(axflux_65, xC, zC[zF_indices], flux_65ₙ, colormap=colorscheme_flux, colorrange=flux_lims[7])
+flux_75_surface = heatmap!(axflux_75, xC, zC[zF_indices], flux_75ₙ, colormap=colorscheme_flux, colorrange=flux_lims[8])
+flux_85_surface = heatmap!(axflux_85, xC, zC[zF_indices], flux_85ₙ, colormap=colorscheme_flux, colorrange=flux_lims[9])
+flux_95_surface = heatmap!(axflux_95, xC, zC[zF_indices], flux_95ₙ, colormap=colorscheme_flux, colorrange=flux_lims[10])
+
+Colorbar(fig[1, 2], field_5_surface, label="Field")
+Colorbar(fig[1, 4], flux_5_surface, label="NN Flux")
+Colorbar(fig[1, 6], field_15_surface, label="Field")
+Colorbar(fig[1, 8], flux_15_surface, label="NN Flux")
+Colorbar(fig[2, 2], field_25_surface, label="Field")
+Colorbar(fig[2, 4], flux_25_surface, label="NN Flux")
+Colorbar(fig[2, 6], field_35_surface, label="Field")
+Colorbar(fig[2, 8], flux_35_surface, label="NN Flux")
+Colorbar(fig[3, 2], field_45_surface, label="Field")
+Colorbar(fig[3, 4], flux_45_surface, label="NN Flux")
+Colorbar(fig[3, 6], field_55_surface, label="Field")
+Colorbar(fig[3, 8], flux_55_surface, label="NN Flux")
+Colorbar(fig[4, 2], field_65_surface, label="Field")
+Colorbar(fig[4, 4], flux_65_surface, label="NN Flux")
+Colorbar(fig[4, 6], field_75_surface, label="Field")
+Colorbar(fig[4, 8], flux_75_surface, label="NN Flux")
+Colorbar(fig[5, 2], field_85_surface, label="Field")
+Colorbar(fig[5, 4], flux_85_surface, label="NN Flux")
+Colorbar(fig[5, 6], field_95_surface, label="Field")
+Colorbar(fig[5, 8], flux_95_surface, label="NN Flux")
+
+for axfield in axfields
+  xlims!(axfield, minimum(xC), maximum(xC))
+  ylims!(axfield, minimum(zC[zC_indices]), maximum(zC[zC_indices]))
+end
+
+for axflux in axfluxes
+  xlims!(axflux, minimum(xC), maximum(xC))
+  ylims!(axflux, minimum(zC[zF_indices]), maximum(zC[zF_indices]))
+end
+
+title_str = @lift "Salinity (psu), Time = $(round(times[$n], digits=2)) years"
+Label(fig[0, :], text=title_str, tellwidth=false, font=:bold)
+
+trim!(fig.layout)
+
+CairoMakie.record(fig, "$(FILE_DIR)/$(filename)_xzslices_fluxes_S.mp4", 1:Nt, framerate=15, px_per_unit=2) do nn
+  n[] = nn
+end
 #%%
