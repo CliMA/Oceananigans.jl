@@ -63,7 +63,7 @@ compute_free_surface_tendency!(::SingleColumnGrid, ::SplitExplicitFreeSurfaceHFS
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks; compute_tendencies = true)
 
-    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
+    tupled_fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
 
     # Compute auxiliaries
     compute_auxiliary_fields!(model.auxiliary_fields)
