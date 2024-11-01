@@ -1,3 +1,5 @@
+using Oceananigans.BuoyancyModels: g_Earth
+
 struct SplitExplicitFreeSurface{H, U, M, FT, K , S, T} <: AbstractFreeSurface{H, FT}
     η :: H
     barotropic_velocities :: U # A namedtuple with U, V 
