@@ -24,26 +24,16 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 # the free surface field η and its average η̄ are located on `Face`s at the surface (grid.Nz +1). All other intermediate variables
 # (U, V, Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined
 
-# Special ``partial'' divergence for free surface evolution
-@inline div_Txᶜᶜᶠ(i, j, k, grid, U★::Function, args...) =  1 / Azᶜᶜᶠ(i, j, k, grid) * δxTᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶠ, U★, args...)
-@inline div_Tyᶜᶜᶠ(i, j, k, grid, V★::Function, args...) =  1 / Azᶜᶜᶠ(i, j, k, grid) * δyTᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶠ, V★, args...)
-
 @kernel function _split_explicit_free_surface!(grid, Δτ, η, U, V, timestepper)
     i, j = @index(Global, NTuple)
-    free_surface_evolution!(η, i, j, grid, Δτ, U, V, timestepper)
-end
-
-@inline function free_surface_evolution!(η, i, j, grid, Δτ, U, V, timestepper)
     k_top = grid.Nz+1
-
+    
     @inbounds begin
         advance_previous_free_surface!(timestepper, i, j, k_top, η)
 
-        η[i, j, k_top] -= Δτ * (div_Txᶜᶜᶠ(i, j, k_top-1, grid, U★, timestepper, U) +
-                                div_Tyᶜᶜᶠ(i, j, k_top-1, grid, U★, timestepper, V))
+        η[i, j, k_top] -= Δτ * (δxTᶜᵃᵃ(i, j, k_top, grid, U★, timestepper, U) +
+                                δyTᵃᶜᵃ(i, j, k_top, grid, U★, timestepper, V)) / Azᶜᶜᶠ(i, j, k_top, grid)
     end
-
-    return nothing
 end
 
 @kernel function _split_explicit_barotropic_velocity!(averaging_weight, grid, Δτ, 
@@ -52,20 +42,6 @@ end
                                                       Gᵁ, Gⱽ, g, 
                                                       timestepper)
     i, j = @index(Global, NTuple)
-    velocity_evolution!(η, U, V, 
-                        η̅, U̅, V̅, 
-                        i, j, grid, Δτ,
-                        averaging_weight,
-                        Gᵁ, Gⱽ, g, 
-                        timestepper)
-end
-
-@inline function velocity_evolution!(η, U, V, 
-                                     η̅, U̅, V̅,
-                                     i, j, grid, Δτ, 
-                                     averaging_weight,
-                                     Gᵁ, Gⱽ, g, 
-                                     timestepper)
     k_top = grid.Nz+1
 
     @inbounds begin
