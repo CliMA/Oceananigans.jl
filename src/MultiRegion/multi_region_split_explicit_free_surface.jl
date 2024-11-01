@@ -1,8 +1,9 @@
 using Oceananigans.Utils
 using Oceananigans.AbstractOperations: GridMetricOperation, Δz
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface,
-                                                        FixedSubstepNumber, FixedTimeStepSize,
-                                                        calculate_substeps
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: calculate_substeps, 
+                                                                                  barotropic_bc, 
+                                                                                  materialize_timestepper
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface
 

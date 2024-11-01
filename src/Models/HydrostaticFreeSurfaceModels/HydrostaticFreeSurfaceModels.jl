@@ -52,6 +52,8 @@ include("implicit_free_surface.jl")
 # Split-Explicit free-surface solver functionality
 include("SplitExplicitFreeSurfaces/SplitExplicitFreeSurfaces.jl")
 
+using .SplitExplicitFreeSurfaces
+
 include("hydrostatic_free_surface_field_tuples.jl")
 include("hydrostatic_free_surface_model.jl")
 include("show_hydrostatic_free_surface_model.jl")
@@ -139,7 +141,5 @@ include("slice_ensemble_model_mode.jl")
 #####
 
 include("vertical_vorticity_field.jl")
-
-using .SplitExplicitFreeSurface
 
 end # module
