@@ -31,7 +31,6 @@ end
 
 @kernel function _barotropic_split_explicit_corrector!(u, v, U, V, U̅, V̅, grid)
     i, j, k = @index(Global, NTuple)
-    k_top = grid.Nz+1
 
     @inbounds begin
         Hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)

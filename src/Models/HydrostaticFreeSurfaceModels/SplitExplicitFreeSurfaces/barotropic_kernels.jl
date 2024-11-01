@@ -69,20 +69,20 @@ end
     k_top = grid.Nz+1
 
     @inbounds begin
-        advance_previous_velocities!(timestepper, i, j, k_top-1, U)
-        advance_previous_velocities!(timestepper, i, j, k_top-1, V)
+        advance_previous_velocities!(timestepper, i, j, 1, U)
+        advance_previous_velocities!(timestepper, i, j, 1, V)
 
         Hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
         Hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
         
         # ∂τ(U) = - ∇η + G
-        U[i, j, k_top-1] +=  Δτ * (- g * Hᶠᶜ * ∂xTᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, k_top-1])
-        V[i, j, k_top-1] +=  Δτ * (- g * Hᶜᶠ * ∂yTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, k_top-1])
+        U[i, j, 1] +=  Δτ * (- g * Hᶠᶜ * ∂xTᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
+        V[i, j, 1] +=  Δτ * (- g * Hᶜᶠ * ∂yTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
                           
         # time-averaging
-        η̅[i, j, k_top]   += averaging_weight * η[i, j, k_top]
-        U̅[i, j, k_top-1] += averaging_weight * U[i, j, k_top-1]
-        V̅[i, j, k_top-1] += averaging_weight * V[i, j, k_top-1]
+        η̅[i, j, 1] += averaging_weight * η[i, j, k_top]
+        U̅[i, j, 1] += averaging_weight * U[i, j, 1]
+        V̅[i, j, 1] += averaging_weight * V[i, j, 1]
     end
 end
 
@@ -187,9 +187,9 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     end
 
     # Reset eta and velocities for the next timestep
-    set!(free_surface.η, filtered_state.η)
-    set!(velocities.U,   filtered_state.U) 
-    set!(velocities.U,   filtered_state.V)
+    parent(free_surface.η) .= parent(filtered_state.η)
+    parent(velocities.U)   .= parent(filtered_state.U) 
+    parent(velocities.U)   .= parent(filtered_state.V)
     
     fields_to_fill = (velocities.U, velocities.V, free_surface.η) #  TODO: do this?
     fill_halo_regions!(fields_to_fill; async = true)
