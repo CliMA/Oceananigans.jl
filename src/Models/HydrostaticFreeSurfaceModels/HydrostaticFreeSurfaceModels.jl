@@ -136,6 +136,6 @@ include("slice_ensemble_model_mode.jl")
 
 include("vertical_vorticity_field.jl")
 
-using .SplitExplicitFreeSurfaces
+using .SplitExplicitFreeSurface
 
 end # module
