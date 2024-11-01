@@ -28,6 +28,17 @@ end
 AdamsBashforth3Scheme(; β = 0.281105, α = 1.5 + β, θ = - 0.5 - 2β, γ = 0.088, δ = 0.614, ϵ = 0.013, μ = 1 - δ - γ - ϵ) = 
         AdamsBashforth3Scheme(nothing, nothing, nothing, nothing, nothing, nothing, nothing, β, α, θ, γ, δ, ϵ, μ)
 
+Adapt.adapt_structure(to, t::AdamsBashforth3Scheme) = 
+    AdamsBashforth3Scheme(
+        Adapt.adapt(to, t.ηᵐ  ),
+        Adapt.adapt(to, t.ηᵐ⁻¹),
+        Adapt.adapt(to, t.ηᵐ⁻²),
+        Adapt.adapt(to, t.Uᵐ⁻¹),
+        Adapt.adapt(to, t.Uᵐ⁻²),
+        Adapt.adapt(to, t.Vᵐ⁻¹),
+        Adapt.adapt(to, t.Vᵐ⁻²),
+        t.β, t.α, t.θ, t.γ, t.δ, t.ϵ, t.μ)
+
 function materialize_timestepper(t::AdamsBashforth3Scheme, grid, free_surface, velocities, u_bc, v_bc)
     ηᵐ   = free_surface_displacement_field(velocities, free_surface, grid)
     ηᵐ⁻¹ = free_surface_displacement_field(velocities, free_surface, grid)
@@ -47,6 +58,7 @@ function materialize_timestepper(t::AdamsBashforth3Scheme, grid, free_surface, v
     δ = convert(FT, t.δ)
     ϵ = convert(FT, t.ϵ)
     μ = convert(FT, t.μ)
+    
     return AdamsBashforth3Scheme(ηᵐ, ηᵐ⁻¹, ηᵐ⁻², Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², β, α, θ, γ, δ, ϵ, μ)
 end
 

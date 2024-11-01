@@ -80,9 +80,9 @@ end
         V[i, j, 1] +=  Δτ * (- g * Hᶜᶠ * ∂yTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
                           
         # time-averaging
-        η̅[i, j, 1] += averaging_weight * η[i, j, k_top]
-        U̅[i, j, 1] += averaging_weight * U[i, j, 1]
-        V̅[i, j, 1] += averaging_weight * V[i, j, 1]
+        η̅[i, j, k_top] += averaging_weight * η[i, j, k_top]
+        U̅[i, j, 1]     += averaging_weight * U[i, j, 1]
+        V̅[i, j, 1]     += averaging_weight * V[i, j, 1]
     end
 end
 

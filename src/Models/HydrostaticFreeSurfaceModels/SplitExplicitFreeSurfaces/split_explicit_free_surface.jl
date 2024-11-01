@@ -236,14 +236,19 @@ end
 Base.summary(s::FixedTimeStepSize)  = string("Barotropic time step equal to $(prettytime(s.Δt_barotropic))")
 Base.summary(s::FixedSubstepNumber) = string("Barotropic fractional step equal to $(s.fractional_step_size) times the baroclinic step")
 
-Base.summary(sefs::SplitExplicitFreeSurface) = string("SplitExplicitFreeSurface with $(summary(sefs.settings.substepping))")
+Base.summary(sefs::SplitExplicitFreeSurface) = string("SplitExplicitFreeSurface with $(summary(sefs.substepping))")
 
 Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\n")
 
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
-    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η), nothing, nothing,
-                             free_surface.gravitational_acceleration, nothing)
+    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η), 
+                             Adapt.adapt(to, free_surface.barotropic_velocities), 
+                             Adapt.adapt(to, free_surface.filtered_state),
+                             free_surface.gravitational_acceleration, 
+                             nothing,  
+                             Adapt.adapt(to, free_surface.substepping), 
+                             Adapt.adapt(to, free_surface.timestepper))
 
 for Type in (:SplitExplicitFreeSurface,
              :AdamsBashforth3Scheme,
