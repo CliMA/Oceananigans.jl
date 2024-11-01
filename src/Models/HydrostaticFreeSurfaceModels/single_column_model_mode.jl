@@ -2,13 +2,12 @@ using CUDA: @allowscalar
 
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Advection: AbstractAdvectionScheme
-using Oceananigans.Grids: Flat, Bounded
+using Oceananigans.Grids: Flat, Bounded, ColumnEnsembleSize
 using Oceananigans.Fields: ZeroField
 using Oceananigans.Coriolis: AbstractRotation
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVDArray
 
-import Oceananigans.Grids: validate_size, validate_halo
 import Oceananigans.Models: validate_tracer_advection
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.TurbulenceClosures: time_discretization, compute_diffusivities!
@@ -102,17 +101,6 @@ end
     return ∇_dot_qᶜ(i, j, k, grid, closure, c, tracer_index, args...)
 end
     
-struct ColumnEnsembleSize{C<:Tuple{Int, Int}}
-    ensemble :: C
-    Nz :: Int
-    Hz :: Int
-end
-
-ColumnEnsembleSize(; Nz, ensemble=(0, 0), Hz=1) = ColumnEnsembleSize(ensemble, Nz, Hz)
-
-validate_size(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(e.ensemble[1], e.ensemble[2], e.Nz)
-validate_halo(TX, TY, TZ, size, e::ColumnEnsembleSize) = tuple(0, 0, e.Hz)
-
 @inline function time_discretization(closure_array::AbstractArray)
     first_closure = @allowscalar first(closure_array) # assumes all closures have same time-discretization
     return time_discretization(first_closure)
