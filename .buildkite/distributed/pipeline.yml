@@ -4,15 +4,18 @@ agents:
   modules: climacommon/2024_10_09
 
 env:
+  JULIA_LOAD_PATH: "${JULIA_LOAD_PATH}:${BUILDKITE_BUILD_CHECKOUT_PATH}/.buildkite/distributed"
   OPENBLAS_NUM_THREADS: 1
-  OMPI_MCA_opal_warn_on_missing_libcuda: 0
+  JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
   JULIA_NUM_PRECOMPILE_TASKS: 8
+  JULIA_NUM_THREADS: 8
+  OMPI_MCA_opal_warn_on_missing_libcuda: 0
 
 steps:
   - label: "initialize"
     key: "init"
     env:
-      TEST_GROUP: "init"
+      TEST_GROUP: "init_central"
     command:
       - "echo '--- Instantiate project'"
       - "julia --project -e 'using Pkg; Pkg.instantiate(verbose=true)'"
@@ -26,6 +29,7 @@ steps:
       - "julia --project -e 'using CUDA; CUDA.precompile_runtime()'"
       - "julia --project -e 'using Pkg; Pkg.test()'"
     agents:
+      slurm_mem: 120G
       slurm_gpus: 1
       slurm_cpus_per_task: 8
 
