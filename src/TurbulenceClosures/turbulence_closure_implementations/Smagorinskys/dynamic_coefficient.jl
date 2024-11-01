@@ -11,12 +11,9 @@ end
 const DynamicSmagorinsky = Smagorinsky{<:Any, <:DynamicCoefficient}
 Adapt.adapt_structure(to, dc::DynamicCoefficient) = DynamicCoefficient(dc.averaging, dc.minimum_numerator, nothing)
 
-# Directional averaging with averaging=(1, 2), etc
-
 const DirectionallyAveragedCoefficient{N} = DynamicCoefficient{<:Union{NTuple{N, Int}, Int, Colon}} where N
 const DirectionallyAveragedDynamicSmagorinsky{N} = Smagorinsky{<:Any, <:DirectionallyAveragedCoefficient{N}} where N
 
-# Lagrangian averaging with averaging=(1, 2), etc
 struct LagrangianAveraging end
 const LagrangianAveragedCoefficient = DynamicCoefficient{<:LagrangianAveraging}
 const LagrangianAveragedDynamicSmagorinsky = Smagorinsky{<:Any, <:LagrangianAveragedCoefficient}
