@@ -1,9 +1,15 @@
-function materialize_timestepper(name::Symbol, args...) 
-    fullname = Symbol(name, :Scheme)
-    TS = getglobal(@__MODULE__, fullname)
-    return materialize_timestepper(TS, args...)
-end
+"""
+    struct ForwardBackwardScheme end
 
+a timestepping scheme used for substepping in the split-explicit free surface solver, 
+    
+The equations are evolved as follows:
+```math
+ηᵐ⁺¹ = ηᵐ - Δτ g H (∂x Uᵐ + ∂y Vᵐ)
+Uᵐ⁺¹ = Uᵐ - Δτ (∂x ηᵐ⁺¹ - Gᵁ)
+Vᵐ⁺¹ = Vᵐ - Δτ (∂y ηᵐ⁺¹ - Gⱽ)
+```
+"""
 struct ForwardBackwardScheme end
 
 materialize_timestepper(::ForwardBackwardScheme, grid, args...) = ForwardBackwardScheme()
@@ -25,6 +31,27 @@ struct AdamsBashforth3Scheme{CC, FC, CF, FT}
        μ :: FT 
 end
 
+"""
+    AdamsBashforth3Scheme(; β=0.281105, α=1.5 + β, θ=-0.5 - 2β, γ=0.088, δ=0.614, ϵ=0.013, μ=1 - δ - γ - ϵ)
+
+Creates an instance of `AdamsBashforth3Scheme` with the specified parameters. 
+This scheme is used for substepping in the split-explicit free surface solver, where an AB3 extrapolation is used to 
+evaluate barotropic velocities and free surface at time-step `m+1/2`:
+
+The equations are evolved as follows:
+```math
+ηᵐ⁺¹ = ηᵐ - Δτ g H (∂x Ũ + Δτ ∂y Ṽ)
+Uᵐ⁺¹ = Uᵐ - Δτ (∂x η̃ - Gᵁ)
+Vᵐ⁺¹ = Vᵐ - Δτ (∂y η̃ - Gⱽ)
+```    
+where `η̃`, `Ũ` and `Ṽ` are the AB3 time-extrapolated values of free surface, 
+barotropic zonal and meridional velocities, respectively:
+```math
+Ũ = α Uᵐ   + θ Uᵐ⁻¹ + β Uᵐ⁻²
+Ṽ = α Vᵐ   + θ Vᵐ⁻¹ + β Vᵐ⁻²
+η̃ = δ ηᵐ⁺¹ + μ ηᵐ   + γ ηᵐ⁻¹ + ϵ ηᵐ⁻²
+```
+"""
 AdamsBashforth3Scheme(; β = 0.281105, α = 1.5 + β, θ = - 0.5 - 2β, γ = 0.088, δ = 0.614, ϵ = 0.013, μ = 1 - δ - γ - ϵ) = 
         AdamsBashforth3Scheme(nothing, nothing, nothing, nothing, nothing, nothing, nothing, β, α, θ, γ, δ, ϵ, μ)
 
@@ -62,6 +89,16 @@ function materialize_timestepper(t::AdamsBashforth3Scheme, grid, free_surface, v
     return AdamsBashforth3Scheme(ηᵐ, ηᵐ⁻¹, ηᵐ⁻², Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², β, α, θ, γ, δ, ϵ, μ)
 end
 
+#####
+##### Timestepper extrapolations and utils
+#####
+
+function materialize_timestepper(name::Symbol, args...) 
+    fullname = Symbol(name, :Scheme)
+    TS = getglobal(@__MODULE__, fullname)
+    return materialize_timestepper(TS, args...)
+end
+
 # The functions `η★` `U★` and `V★` represent the value of free surface, barotropic zonal and meridional velocity at time step m+1/2
 @inline U★(i, j, k, grid, t::ForwardBackwardScheme, Uᵐ) = @inbounds Uᵐ[i, j, k]
 @inline U★(i, j, k, grid, t::AdamsBashforth3Scheme, Uᵐ) = @inbounds t.α * Uᵐ[i, j, k] + t.θ * t.Uᵐ⁻¹[i, j, k] + t.β * t.Uᵐ⁻²[i, j, k]
@@ -69,7 +106,8 @@ end
 @inline η★(i, j, k, grid, t::ForwardBackwardScheme, ηᵐ⁺¹) = @inbounds ηᵐ⁺¹[i, j, k]
 @inline η★(i, j, k, grid, t::AdamsBashforth3Scheme, ηᵐ⁺¹) = @inbounds t.δ * ηᵐ⁺¹[i, j, k] + t.μ * t.ηᵐ[i, j, k] + t.γ * t.ηᵐ⁻¹[i, j, k] + t.ϵ * t.ηᵐ⁻²[i, j, k]
 
-@inline advance_previous_velocities!(::ForwardBackwardScheme, i, j, k, U) = nothing
+@inline advance_previous_velocities!(::ForwardBackwardScheme,   i, j, k, U) = nothing
+@inline advance_previous_free_surface!(::ForwardBackwardScheme, i, j, k, η) = nothing
 
 @inline function advance_previous_velocities!(t::AdamsBashforth3Scheme, i, j, k, U)
     @inbounds t.Uᵐ⁻²[i, j, k] = t.Uᵐ⁻¹[i, j, k]
@@ -77,8 +115,6 @@ end
 
     return nothing
 end
-
-@inline advance_previous_free_surface!(::ForwardBackwardScheme, i, j, k, η) = nothing
 
 @inline function advance_previous_free_surface!(t::AdamsBashforth3Scheme, i, j, k, η)
     @inbounds t.ηᵐ⁻²[i, j, k] = t.ηᵐ⁻¹[i, j, k]

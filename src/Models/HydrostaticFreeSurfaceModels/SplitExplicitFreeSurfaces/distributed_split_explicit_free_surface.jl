@@ -5,10 +5,8 @@ using Oceananigans.DistributedComputations: SynchronizedDistributed, synchronize
 # Internal function for HydrostaticFreeSurfaceModel
 function materialize_free_surface(free_surface::SplitExplicitFreeSurface, velocities, grid::DistributedGrid)
 
-        settings  = free_surface.settings 
-
         old_halos  = halo_size(grid)
-        Nsubsteps  = length(settings.substepping.averaging_weights)
+        Nsubsteps  = length(free_surface.substepping.averaging_weights)
 
         extended_halos = distributed_split_explicit_halos(old_halos, Nsubsteps+1, grid)         
         extended_grid  = with_halo(extended_halos, grid)

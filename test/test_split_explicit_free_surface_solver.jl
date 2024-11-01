@@ -80,7 +80,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps,
                 GU .= 0
                 GV .= 0
 
-                weights = sefs.settings.substepping.averaging_weights
+                weights = sefs.substepping.averaging_weights
 
                 for _ in 1:Nt
                     iterate_split_explicit!(sefs, grid, GU, GV, Δτ, weights, Val(1)) 
@@ -126,10 +126,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps,
                 fill!(Gᵁ, 0)
                 fill!(Gⱽ, 0)
 
-                settings = sefs.settings
 
-                Nsubsteps  = calculate_substeps(settings.substepping, 1)
-                fractional_Δt, weights = calculate_adaptive_settings(settings.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
+                Nsubsteps  = calculate_substeps(sefs.substepping, 1)
+                fractional_Δt, weights = calculate_adaptive_settings(sefs.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
                 
                 for step in 1:Nsubsteps
                     iterate_split_explicit!(sefs, grid, GU, GV, Δτ, weights, Val(1))
@@ -191,10 +190,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps,
                 GU .= gu_c
                 GV .= gv_c
 
-                settings = SplitExplicitSettings(grid; substeps = Nt + 1, averaging_kernel = constant_averaging_kernel)
-                sefs = sefs(settings)
-
-                weights = settings.substepping.averaging_weights
+                sefs = SplitExplicitFreeSurface(grid; substeps = Nt + 1, averaging_kernel = constant_averaging_kernel)
+                
+                weights = sefs.substepping.averaging_weights
                 for i in 1:Nt
                     iterate_split_explicit!(sefs, grid, GU, GV, Δτ, weights, Val(1))
                 end
