@@ -221,6 +221,40 @@ end
                 @test v1[2] isa Field
             end
         end
+
+        if arch isa GPU
+            @testset "FieldTimeSeries with CuArray boundary conditions [$(typeof(arch))]" begin
+                @info "  Testing FieldTimeSeries with CuArray boundary conditions..."
+
+                    x = y = z = (0, 1)
+                    grid = RectilinearGrid(GPU(); size=(1, 1, 1), x, y, z)
+                    
+                    τx = CuArray(zeros(size(grid)...))
+                    τy = Field{Center, Face, Nothing}(grid)
+                    u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
+                    v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τy))
+                    model = NonhydrostaticModel(; grid, boundary_conditions = (; u=u_bcs, v=v_bcs))
+                    simulation = Simulation(model; Δt=1, stop_iteration=1)
+                    
+                    simulation.output_writers[:jld2] = JLD2OutputWriter(model, model.velocities,
+                                                                        filename = "test_cuarray_bc.jld2",
+                                                                        schedule=IterationInterval(1),
+                                                                        overwrite_existing = true)
+                    
+                    run!(simulation)
+                    
+                    ut = FieldTimeSeries("test_cuarray_bc.jld2", "u")
+                    vt = FieldTimeSeries("test_cuarray_bc.jld2", "v")
+                    @test ut.boundary_conditions.top.classification isa Flux
+                    @test ut.boundary_conditions.top.condition isa Array
+
+                    τy_ow = vt.boundary_conditions.top.condition
+                    @test τy_ow isa Field{Center, Face, Center}
+                    @test architecture(τy_ow) isa CPU
+                    @test parent(τy_ow) isa Array
+                end
+            end
+        end
     end
 
     for arch in archs
