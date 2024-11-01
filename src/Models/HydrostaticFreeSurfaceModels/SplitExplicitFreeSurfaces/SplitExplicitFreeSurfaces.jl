@@ -10,7 +10,8 @@ using Oceananigans.Utils
 using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
+                                                        free_surface_displacement_field
 
 using Adapt
 using Base
