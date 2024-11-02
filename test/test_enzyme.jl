@@ -77,7 +77,7 @@ end
     fwd, rev = Enzyme.autodiff_thunk(ReverseSplitWithPrimal, Const{typeof(f)}, Duplicated, typeof(Const(grid)))
     tape, primal, shadowp = fwd(Const(f), Const(grid))
 
-    @show tape primal shadowp
+    # @show tape primal shadowp
 
     shadow = if shadowp isa Base.RefValue
         shadowp[]
@@ -215,7 +215,7 @@ end
 
     models = [model_no_bc, model_bc]
 
-    @show "Advection-diffusion results, first without then with flux BC"
+    @info "Advection-diffusion results, first without then with flux BC"
 
     for i in 1:2
         # Compute derivative by hand
@@ -262,7 +262,8 @@ function viscous_hydrostatic_turbulence(ν, model, u_init, v_init, Δt, u_truth,
     model.clock.time = 0
     model.clock.last_Δt = Inf
     set_viscosity!(model, ν)
-    set!(model, u=u_init, v=v_init, η=0)
+    set!(model, u=u_init, v=v_init)
+    fill!(model.free_surface.η, 0)
 
     # Step it forward
     for n = 1:10

@@ -35,7 +35,7 @@ set!(u::Field, a::Union{Array, CuArray, OffsetArray}) = set_to_array!(u, a)
 set!(u::Field, v::Field) = set_to_field!(u, v)
 
 function set!(u::Field, a::Number)
-    fill!(parent(u), a)
+    fill!(interior(u), a) # note all other set! only change interior
     return u # return u, not parent(u), for type-stability
 end
 
