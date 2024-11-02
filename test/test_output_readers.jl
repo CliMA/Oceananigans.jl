@@ -252,6 +252,7 @@ end
                 @test τy_ow isa Field{Center, Face, Center}
                 @test architecture(τy_ow) isa CPU
                 @test parent(τy_ow) isa Array
+                rm("test_cuarray_bc.jld2")
             end
         end
     end
