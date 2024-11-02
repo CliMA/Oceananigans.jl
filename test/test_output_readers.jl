@@ -249,7 +249,7 @@ end
                 @test ut.boundary_conditions.top.condition isa Array
 
                 τy_ow = vt.boundary_conditions.top.condition
-                @test τy_ow isa Field{Center, Face, Center}
+                @test τy_ow isa Field{Center, Face, Nothing}
                 @test architecture(τy_ow) isa CPU
                 @test parent(τy_ow) isa Array
             end
