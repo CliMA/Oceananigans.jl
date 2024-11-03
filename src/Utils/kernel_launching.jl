@@ -285,9 +285,7 @@ end
                                        active_cells_map)
                                        
     # Don't launch kernels with no size
-    if worksize isa OffsetStaticSize && length(worksize) > 0 || worksize == 0
-        # skip
-    else
+    if worksize > 0 && !(worksize isa OffsetStaticSize && length(worksize) == 0)
         loop!(first_kernel_arg, other_kernel_args...)
     end
 
