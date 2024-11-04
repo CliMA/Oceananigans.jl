@@ -1,12 +1,12 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: calculate_substeps,
-                                                        calculate_adaptive_settings,
-                                                        constant_averaging_kernel,
-                                                        materialize_free_surface,
-                                                        SplitExplicitFreeSurface,
-                                                        iterate_split_explicit!
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: calculate_substeps,
+                                                                                  calculate_adaptive_settings,
+                                                                                  constant_averaging_kernel,
+                                                                                  materialize_free_surface,
+                                                                                  SplitExplicitFreeSurface,
+                                                                                  iterate_split_explicit!
 
 @testset "Split-Explicit Dynamics" begin
 
