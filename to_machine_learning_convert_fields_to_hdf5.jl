@@ -1,10 +1,16 @@
 using CairoMakie, JLD2, Statistics, HDF5, Oceananigans, ProgressBars
+using KernelAbstractions
+using Oceananigans.Utils
+using Oceananigans.Architectures: device
+using KernelAbstractions: @kernel, @index
+using Oceananigans.Operators
+using Oceananigans.Architectures: architecture
+
 plot_data = true 
 save_data = true
-plot_stream_function = false
+plot_stream_function = true
 data_directory = "/nobackup1/sandre/OceananigansData/"
 figure_directory = "oceananigans_figure/"
-
 
 casevar = 7
 
@@ -161,7 +167,7 @@ if plot_data
 end
 
 if save_data
-    @Info "saving training data"
+    @info "saving training data"
     state = zeros(M, N, 4, length(ηkeys) - si+1)
     state[:, :, 1, :] .= ru[:, :, 1, :]
     state[:, :, 2, :] .= rv[:, :, 1, :]
@@ -173,11 +179,7 @@ if save_data
 end
 
 if plot_stream_function 
-    using Oceananigans.Utils
-    using Oceananigans.Architectures: device
-    using KernelAbstractions: @kernel, @index
-    using Oceananigans.Operators
-    using Oceananigans.Architectures: architecture
+
 
     u = FieldTimeSeries(data_directory * "baroclinic_double_gyre_$casevar.jld2", "u")
 
