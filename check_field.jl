@@ -5,6 +5,12 @@ jlfile = jldopen("baroclinic_double_gyre_free_surface.jld2", "r")
 jlfile2 = jldopen("baroclinic_double_gyre.jld2", "r")
 ηkeys =  keys(jlfile["timeseries"]["η"])[2:end]
 
+η = FieldTimeSeries("baroclinic_double_gyre_free_surface.jld2", "η"; backend = InMemory(10))
+u = FieldTimeSeries("baroclinic_double_gyre.jld2", "u";              backend = InMemory(10))
+v = FieldTimeSeries("baroclinic_double_gyre.jld2", "v";              backend = InMemory(10))
+w = FieldTimeSeries("baroclinic_double_gyre.jld2", "w";              backend = InMemory(10))
+b = FieldTimeSeries("baroclinic_double_gyre.jld2", "b";              backend = InMemory(10))
+
 η = zeros(size(jlfile["timeseries"]["η"]["0"])[1:2]..., length(ηkeys))
 M, N, L = size(jlfile2["timeseries"]["b"]["0"])
 u = zeros(M, N, L, length(ηkeys))
@@ -21,13 +27,14 @@ end
 close(jlfile)
 close(jlfile2)
 
+Nt = length(u.times)
 NN = 3
 fig = Figure() 
 for i in 1:NN
     for j in 1:NN
         ii = (i - 1) * NN + j
         ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y")
-        heatmap!(ax, η[:, :, end - ii], colormap = :viridis)
+        heatmap!(ax, interior(η[Nt - ii], :, :, 1), colormap = :viridis)
     end
 end
 save("etafield.png", fig)
@@ -37,7 +44,7 @@ for i in 1:NN
     for j in 1:NN
         ii = (i - 1) * NN + j
         ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y")
-        heatmap!(ax, η[:, :, ii], colormap = :viridis)
+        heatmap!(ax, interior(η[ii], :, :, 1), colormap = :viridis)
     end
 end
 save("etafield_start.png", fig)
@@ -48,7 +55,7 @@ for k in 1:2
         for j in 1:NN
             ii = (i - 1) * NN + j
             ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y")
-            heatmap!(ax, u[:, :, k, end - ii], colormap = :viridis)
+            heatmap!(ax, interior(u[Nt - ii], :, :, k), colormap = :viridis)
         end
     end
     save("ufield$k.png", fig)
@@ -60,7 +67,7 @@ for k in 1:2
         for j in 1:NN
             ii = (i - 1) * NN + j
             ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y")
-            heatmap!(ax, v[:, :, k, end - ii], colormap = :viridis)
+            heatmap!(ax, interior(v[Nt - ii], :, :, k), colormap = :viridis)
         end
     end
     save("vfield$k.png", fig)
@@ -71,7 +78,7 @@ for i in 1:NN
     for j in 1:NN
         ii = (i - 1) * NN + j
         ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y")
-        heatmap!(ax, v[:, :, 2, end - ii], colormap = :viridis)
+        heatmap!(ax, interior(v[Nt - ii], :, :, 2), colormap = :viridis)
     end
 end
 save("vfield2.png", fig)
@@ -82,7 +89,7 @@ for i in 1:NN
     for j in 1:NN
         ii = (i - 1) * NN + j
         ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y")
-        heatmap!(ax, b[:, :, 1, end - ii], colormap = :viridis)
+        heatmap!(ax, interior(b[Nt - ii], :, :, 1), colormap = :viridis)
     end
 end
 
@@ -93,7 +100,7 @@ for i in 1:NN
     for j in 1:NN
         ii = (i - 1) * NN + j
         ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y")
-        heatmap!(ax, b[:, :, 2, end - ii], colormap = :viridis)
+        heatmap!(ax, interior(b[Nt - ii], :, :, 2), colormap = :viridis)
     end
 end
 
@@ -104,16 +111,13 @@ for i in 1:NN
     for j in 1:NN
         ii = (i - 1) * NN + j
         ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y")
-        heatmap!(ax, w[:, :, 2, end - ii], colormap = :viridis)
+        heatmap!(ax, interior(w[Nt - ii], :, :, 2), colormap = :viridis)
     end
 end
 
 save("wfield2.png", fig)
 
-
-##
-squareheight = [mean(η[:, :, i] .^2) for i in eachindex(ηkeys)]
-
+squareheight = [mean(interior(η[i], :, :, 1) .^2) for i in eachindex(ηkeys)]
 
 fig = Figure()
 ax = Axis(fig[1,1]; xlabel = "time", ylabel = "mean(η^2)")
@@ -127,8 +131,6 @@ using Oceananigans.Architectures: device
 using KernelAbstractions: @kernel, @index
 using Oceananigans.Operators
 using Oceananigans.Architectures: architecture
-
-u = FieldTimeSeries("baroclinic_double_gyre.jld2", "u")
 
 function barotropic_streamfunction(u)
     U = Field(Integral(u, dims = 3))
@@ -150,6 +152,7 @@ end
     end
 end
 ψ = barotropic_streamfunction(u[1000])
+
 ##
 fig = Figure() 
 ax = Axis(fig[1, 1]; xlabel = "x", ylabel = "y")
@@ -157,42 +160,57 @@ heatmap!(ax, ψ, colormap = :viridis)
 save("streamfunction.png", fig)
 ##
 si = 120 #starting index
-η̄ = mean(η[:,:,si:end], dims = 3)
-ση = std(η[:,:,si:end], dims = 3)
-rη = (η[:, :, si:end] .- η̄ ) ./ ση
+η̄  = Field{Center, Center, Nothing}(u.grid)
+ση = Field{Center, Center, Nothing}(u.grid)
+b̄  = CenterField(u.grid)
+σb = CenterField(u.grid)
+v̄  = XFaceField(u.grid)
+σv = XFaceField(u.grid)
+ū  = YFaceField(u.grid)
+σu = YFaceField(u.grid)
 
-ū = mean(u[:,:,:,si:end], dims = 4)
-σu = std(u[:,:,:,si:end], dims = 4)
-ru = (u[:, :, :, si:end] .- ū ) ./ σu
+averaging_steps = Nt - si + 1 : Nt
+samples = length(averaging_steps)
 
-v̄ = mean(v[:,:,:,si:end], dims = 4)
-σv = std(v[:,:,:,si:end], dims = 4)
-rv = (v[:, :, :, si:end] .- v̄ ) ./ σv
+for t in averaging_steps
+    η̄ .+= η[t] / samples
+    v̄ .+= v[t] / samples
+    ū .+= u[t] / samples
+    b̄ .+= b[t] / samples
+end
 
-b̄ = mean(b[:,:,:,si:end], dims = 4)
-σb = std(b[:,:,:,si:end], dims = 4)
-rb = (b[:, :, :, si:end] .- b̄ ) ./ σb
+for t in averaging_steps
+    ση .+= (η[t] .- η̄) .^ 2 / samples
+    σv .+= (v[t] .- v̄) .^ 2 / samples
+    σu .+= (u[t] .- ū) .^ 2 / samples
+    σb .+= (b[t] .- b̄) .^ 2 / samples
+end
 
-hfile = h5open(data_directory * "baroclinic_double_gyre.hdf5", "w")
-hfile["eta"] = rη
-hfile["u"] = ru
-hfile["v"] = rv
-hfile["b"] = rb
-hfile["mean eta"] = η̄
-hfile["mean u"] = ū
-hfile["mean v"] = v̄
-hfile["mean b"] = b̄
-hfile["std eta"] = ση
-hfile["std u"] = σu
-hfile["std v"] = σv
-hfile["std b"] = σb
-close(hfile)
+ση .= sqrt.(ση)
+σv .= sqrt.(σv)
+σu .= sqrt.(σu)
+σb .= sqrt.(σb)
 
-state = zeros(M, N, 4, length(ηkeys) - si+1)
-state[:, :, 1, :] .= ru[:, :, 1, :]
-state[:, :, 2, :] .= rv[:, :, 1, :]
-state[:, :, 3, :] .= rb[:, :, 1, :]
-state[:, :, 4, :] .= rη[:, :, :]
-hfile = h5open(data_directory * "baroclinic_training_data.hdf5", "w")
-hfile["timeseries"] = state
-close(hfile)
+# hfile = h5open(data_directory * "baroclinic_double_gyre.hdf5", "w")
+# hfile["eta"] = rη
+# hfile["u"] = ru
+# hfile["v"] = rv
+# hfile["b"] = rb
+# hfile["mean eta"] = η̄
+# hfile["mean u"]  = ū
+# hfile["mean v"]  = v̄
+# hfile["mean b"]  = b̄
+# hfile["std eta"] = ση
+# hfile["std u"]   = σu
+# hfile["std v"]   = σv
+# hfile["std b"]   = σb
+# close(hfile)
+
+# state = zeros(M, N, 4, length(ηkeys) - si+1)
+# state[:, :, 1, :] .= ru[:, :, 1, :]
+# state[:, :, 2, :] .= rv[:, :, 1, :]
+# state[:, :, 3, :] .= rb[:, :, 1, :]
+# state[:, :, 4, :] .= rη[:, :, :]
+# hfile = h5open(data_directory * "baroclinic_training_data.hdf5", "w")
+# hfile["timeseries"] = state
+# close(hfile)
