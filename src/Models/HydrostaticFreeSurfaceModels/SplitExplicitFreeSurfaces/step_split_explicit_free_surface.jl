@@ -136,7 +136,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     timestepper       = free_surface.timestepper
     velocities        = free_surface.barotropic_velocities
 
-    # Wait for previous set up
+    # Wait for setup step to finish
     wait_free_surface_communication!(free_surface, model, architecture(free_surface_grid))
 
     # Calculate the substepping parameterers
