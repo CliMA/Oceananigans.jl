@@ -52,23 +52,47 @@ function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath)
     return nothing
 end 
 
-# Update schedule based on user input
-find_existing_splitted_output!(schedule, filepath) = nothing
-
-function find_existing_splitted_output!(schedule::TimeInterval, filepath, overwrite_existing) 
-    folder = dirname(filepath)
+function current_split_filelist(dir, filepath)
     filename = first(split(basename(filepath),".")) * "_part"
-    filelist = filter(startswith(filename), readdir(folder))
+    filelist = filter(startswith(filename), readdir(dir))
+    return filelist
+end
+
+function current_split_filename(dir, filepath)
+    filelist = current_split_filelist(dir, filepath)
+    existing_files = length(filelist) > 0
+    if existing_files
+        return last(filelist)
+    end
+    return filepath
+end
+
+# Update schedule based on user input
+number_of_split_files!(schedule, filepath) = nothing
+
+function number_of_split_files!(schedule::TimeInterval, dir, filepath, overwrite_existing) 
+    filelist = current_split_filelist(dir, filepath)
     existing_files = length(filelist) > 0
     if existing_files && !overwrite_existing
-        @warn "Split files found, Mode will be set to append to existing file:"*
-              joinpath(folder, last(filelist))
+        @warn "Split files found, Model will be set to append 
+                to existing file:"* joinpath(dir, last(filelist))
         schedule.actuations = length(filelist) - 1
-        return Int(length(filelist)), joinpath(folder, last(filelist))
+        return Int(length(filelist))
     end
-    return 1, filepath
+    return 1
 end 
 
+function number_of_split_files!(schedule::FileSizeLimit, dir, filepath, overwrite_existing) 
+    filelist = current_split_filelist(dir, filepath)
+    existing_files = length(filelist) > 0
+    if existing_files && !overwrite_existing
+        @warn "Split files found, Model will be set to append 
+                to existing file:"* joinpath(dir, last(filelist))
+        schedule.actuations = length(filelist) - 1
+        return Int(length(filelist))
+    end
+    return 1
+end 
 
 """
     ext(ow)

@@ -448,13 +448,16 @@ function NetCDFOutputWriter(model, outputs;
                             file_splitting = NoFileSplitting(),
                             verbose = false)
     mkpath(dir)
+
+    part = number_of_split_files!(file_splitting, dir, filename, overwrite_existing)
+    filename = current_split_filename(dir, filename)
+
     filename = auto_extension(filename, ".nc")
     filepath = joinpath(dir, filename)
+    
     initialize!(file_splitting, model)
     update_file_splitting_schedule!(file_splitting, filepath)
-
-    part, filepath = find_existing_splitted_output!(file_splitting, filepath, overwrite_existing)
-
+    
     if isnothing(overwrite_existing)
         if isfile(filepath)
             overwrite_existing = false
