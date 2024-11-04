@@ -91,6 +91,8 @@ wait_free_surface_communication!(::DistributedSplitExplicit, model, ::Synchroniz
     
 function wait_free_surface_communication!(free_surface::DistributedSplitExplicit, model, arch)
     
+    barotropic_velocities = free_surface.barotropic_velocities
+
     for field in (barotropic_velocities.U, barotropic_velocities.V)
         synchronize_communication!(field)
     end

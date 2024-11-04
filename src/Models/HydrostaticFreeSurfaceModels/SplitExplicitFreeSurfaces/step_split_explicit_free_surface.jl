@@ -11,6 +11,7 @@ using Oceananigans.ImmersedBoundaries: mask_immersed_field!, retrieve_surface_ac
 using Oceananigans.ImmersedBoundaries: active_linear_index_to_tuple, ActiveCellsIBG, ActiveZColumnsIBG
 using Oceananigans.DistributedComputations: child_architecture
 using Oceananigans.DistributedComputations: Distributed
+using Oceananigans: fields
 
 using Printf
 using KernelAbstractions: @index, @kernel
@@ -164,8 +165,8 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     parent(velocities.U)   .= parent(filtered_state.U) 
     parent(velocities.V)   .= parent(filtered_state.V)
     
-    fields_to_fill = (velocities.U, velocities.V, free_surface.η) #  TODO: do this?
-    fill_halo_regions!(fields_to_fill; async = true)
+    fields_to_fill = (velocities.U, velocities.V, free_surface.η) 
+    fill_halo_regions!(fields_to_fill, model.clock, fields(model); async = true)
 
     # Preparing velocities for the barotropic correction
     @apply_regionally begin

@@ -38,7 +38,9 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
     # Update the boundary conditions
     @apply_regionally update_boundary_condition!(fields(model), model)
 
-    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
+    # Depends on which free surface model is used
+    update_model_halos!(model, free_surface)
+
     @apply_regionally replace_horizontal_vector_halos!(model.velocities, model.grid)
     @apply_regionally compute_auxiliaries!(model)
 
@@ -51,6 +53,27 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
     compute_tendencies &&
         @apply_regionally compute_tendencies!(model, callbacks)
 
+    return nothing
+end
+
+function update_model_halos!(model, free_surface)
+    u, v, _ = model.velocities
+    η = free_surface.η
+
+    fields_to_fill = merge((; u, v, η), model.tracers)
+
+    fill_halo_regions!(fields_to_fill, model.clock, fields(model); async = true)
+
+    return nothing
+end
+
+function update_model_halos!(model, ::SplitExplicitFreeSurface)
+    u, v, _ = model.velocities
+
+    fields_to_fill = merge((; u, v), model.tracers)
+
+    fill_halo_regions!(fields_to_fill, model.clock, fields(model); async = true)
+    
     return nothing
 end
 

@@ -135,11 +135,11 @@ end
 @inline north_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.north
 
 @inline barotropic_bc(baroclinic_velocity) = FieldBoundaryConditions(
-    west = west_barotropic_bc(baroclinic_velocity),
-    east = east_barotropic_bc(baroclinic_velocity),
-    south = south_barotropic_bc(baroclinic_velocity),
-    north = north_barotropic_bc(baroclinic_velocity),
-    top = nothing,
+    west   = west_barotropic_bc(baroclinic_velocity),
+    east   = east_barotropic_bc(baroclinic_velocity),
+    south  = south_barotropic_bc(baroclinic_velocity),
+    north  = north_barotropic_bc(baroclinic_velocity),
+    top    = nothing,
     bottom = nothing
 )
 
