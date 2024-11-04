@@ -1,15 +1,17 @@
 using CairoMakie, JLD2, Statistics, HDF5, Oceananigans
 data_directory = "/nobackup1/sandre/OceananigansData/"
 
-jlfile = jldopen("baroclinic_double_gyre_free_surface.jld2", "r")
-jlfile2 = jldopen("baroclinic_double_gyre.jld2", "r")
-ηkeys =  keys(jlfile["timeseries"]["η"])[2:end]
 
-η = FieldTimeSeries("baroclinic_double_gyre_free_surface.jld2", "η"; backend = InMemory(10))
-u = FieldTimeSeries("baroclinic_double_gyre.jld2", "u";              backend = InMemory(10))
-v = FieldTimeSeries("baroclinic_double_gyre.jld2", "v";              backend = InMemory(10))
-w = FieldTimeSeries("baroclinic_double_gyre.jld2", "w";              backend = InMemory(10))
-b = FieldTimeSeries("baroclinic_double_gyre.jld2", "b";              backend = InMemory(10))
+casevar = 6
+# jlfile = jldopen("baroclinic_double_gyre_free_surface_$casevar.jld2", "r")
+# jlfile2 = jldopen("baroclinic_double_gyre_$casevar.jld2", "r")
+# ηkeys =  keys(jlfile["timeseries"]["η"])[2:end]
+
+η = FieldTimeSeries(data_directory  * "baroclinic_double_gyre_free_surface_$casevar.jld2", "η"; backend = InMemory(10))
+u = FieldTimeSeries(data_directory  * "baroclinic_double_gyre_$casevar.jld2", "u";              backend = InMemory(10))
+v = FieldTimeSeries(data_directory  * "baroclinic_double_gyre_$casevar.jld2", "v";              backend = InMemory(10))
+w = FieldTimeSeries(data_directory  * "baroclinic_double_gyre_$casevar.jld2", "w";              backend = InMemory(10))
+b = FieldTimeSeries(data_directory  * "baroclinic_double_gyre_$casevar.jld2", "b";              backend = InMemory(10))
 
 η = zeros(size(jlfile["timeseries"]["η"]["0"])[1:2]..., length(ηkeys))
 M, N, L = size(jlfile2["timeseries"]["b"]["0"])
