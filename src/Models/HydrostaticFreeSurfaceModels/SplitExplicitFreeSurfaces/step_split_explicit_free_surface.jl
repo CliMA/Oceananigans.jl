@@ -161,13 +161,11 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     end
 
     # Reset eta and velocities for the next timestep
+    # The halos are updated in the `update_state!` function
     parent(free_surface.η) .= parent(filtered_state.η)
     parent(velocities.U)   .= parent(filtered_state.U) 
     parent(velocities.V)   .= parent(filtered_state.V)
     
-    fields_to_fill = (velocities.U, velocities.V, free_surface.η) 
-    fill_halo_regions!(fields_to_fill, model.clock, fields(model); async = true)
-
     # Preparing velocities for the barotropic correction
     @apply_regionally begin
         mask_immersed_field!(model.velocities.u)
