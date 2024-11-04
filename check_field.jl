@@ -220,19 +220,19 @@ using FFTW
 using Oceananigans.Grids: φnode
 using Statistics: mean
 
-struct Spectrum{S, F}
-    spec :: S
+struct Spectrum{F, S}
     freq :: F
+    spec :: S
 end
 
 import Base
 
-Base.:(+)(s::Spectrum, t::Spectrum) = Spectrum(s.spec .+ t.spec, s.freq)
-Base.:(*)(s::Spectrum, t::Spectrum) = Spectrum(s.spec .* t.spec, s.freq)
-Base.:(/)(s::Spectrum, t::Int)      = Spectrum(s.spec ./ t, s.freq)
+Base.:(+)(s::Spectrum, t::Spectrum) = Spectrum(s.freq, s.spec .+ t.spec)
+Base.:(*)(s::Spectrum, t::Spectrum) = Spectrum(s.freq, s.spec .* t.spec)
+Base.:(/)(s::Spectrum, t::Int)      = Spectrum(s.frew, s.spec ./ t)
 
-Base.real(s::Spectrum) = Spectrum(real.(s.spec), s.freq)
-Base.abs(s::Spectrum)  = Spectrum( abs.(s.spec), s.freq)
+Base.real(s::Spectrum) = Spectrum(s.freq, real.(s.spec))
+Base.abs(s::Spectrum)  = Spectrum(s.freq,  abs.(s.spec))
 
 @inline onefunc(args...)  = 1.0
 @inline hann_window(n, N) = sin(π * n / N)^2 
@@ -259,7 +259,7 @@ function power_cospectrum_1d(var1, var2, x; windowing = onefunc)
         spectra[m] += fourier1[m] .* conj(fourier2[m]) .+ fourier2[m] .* conj(fourier1[m])
     end
 
-    return Spectrum(spectra, freqs)
+    return Spectrum(freqs, spectra)
 end
 
 function zonal_spectrum(field, j, k)
@@ -270,3 +270,14 @@ function zonal_spectrum(field, j, k)
 
     return power_cospectrum_1d(var1, var2, x)
 end
+
+# An example: zonal Kinetic Energy spectrum at j = 128, k = 1 and time Nt
+𝒰 = zonal_spectrum(u[Nt], 128, 1)
+𝒱 = zonal_spectrum(v[Nt], 128, 1)
+
+# Keep only the real part
+E = real(𝒰 + 𝒱)
+
+fig = Figure()
+ax  = Axis(fig[1, 1]; xlabel = "k", ylabel = "E(k)", yscale = :log10, xscale = :log10)
+lines!(E.freq[2:end], E.spec[2:end], color = :blue)
