@@ -273,9 +273,15 @@ function zonal_spectrum(field, j, k)
     return power_cospectrum_1d(var1, var2, x)
 end
 
+uNt = Field(@at(Center, Center, Center), u[Nt])
+vNt = Field(@at(Center, Center, Center), v[Nt])
+
+compute!(uNt)
+compute!(vNt)
+
 # An example: zonal Kinetic Energy spectrum at j = 128, k = 1 and time Nt
-𝒰 = zonal_spectrum(u[Nt], 128, 1)
-𝒱 = zonal_spectrum(v[Nt], 128, 1)
+𝒰 = zonal_spectrum(uNt, 128, 1)
+𝒱 = zonal_spectrum(vNt, 128, 1)
 
 # Keep only the real part
 E = real(𝒰 + 𝒱)
