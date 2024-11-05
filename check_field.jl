@@ -1,4 +1,4 @@
-using CairoMakie, JLD2, Statistics, HDF5, Oceananigans
+using CairoMakie, JLD2, Statistics, HDF5, Oceananigans, ProgressBars
 data_directory = "/nobackup1/sandre/OceananigansData/"
 
 
@@ -264,17 +264,20 @@ function power_cospectrum_1d(var1, var2, x; windowing = onefunc)
     return Spectrum(freqs, spectra)
 end
 
-function zonal_spectrum(field, j, k)
+function zonal_spectrum(field, j, k; windowing = hann_window)
     x, y, z = nodes(field)
 
     var1 = Array(interior(field, :, j, k))
     var2 = Array(interior(field, :, j, k))
 
-    return power_cospectrum_1d(var1, var2, x)
+    return power_cospectrum_1d(var1, var2, x; windowing)
 end
 
-uNt = Field(@at(Center, Center, Center), u[Nt])
-vNt = Field(@at(Center, Center, Center), v[Nt])
+
+nval = Nt-101 
+
+uNt = Field(@at((Center, Center, Center), u[nval]))
+vNt = Field(@at((Center, Center, Center), v[nval]))
 
 compute!(uNt)
 compute!(vNt)
@@ -286,6 +289,23 @@ compute!(vNt)
 # Keep only the real part
 E = real(𝒰 + 𝒱)
 
+for nval in ProgressBar(Nt-100:Nt)
+    uNt = Field(@at((Center, Center, Center), u[nval]))
+    vNt = Field(@at((Center, Center, Center), v[nval]))
+
+    compute!(uNt)
+    compute!(vNt)
+
+    # An example: zonal Kinetic Energy spectrum at j = 128, k = 1 and time Nt
+    𝒰 = zonal_spectrum(uNt, 128, 1)
+    𝒱 = zonal_spectrum(vNt, 128, 1)
+
+    # Keep only the real part
+    E += real(𝒰 + 𝒱)
+
+end
+
 fig = Figure()
-ax  = Axis(fig[1, 1]; xlabel = "k", ylabel = "E(k)", yscale = :log10, xscale = :log10)
-lines!(E.freq[2:end], E.spec[2:end], color = :blue)
+ax  = Axis(fig[1, 1]; xlabel = "k", ylabel = "E(k)")
+scatter!(log10.(E.freq[2:end]), log10.(abs.(E.spec[2:end])), color = :blue)
+save("ke_spectrum_at_128_1.png", fig)
