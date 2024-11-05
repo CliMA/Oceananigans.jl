@@ -4,12 +4,11 @@ using Random
 using Oceananigans
 using Oceananigans.Units
 using GLMakie
+using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity
+using Oceananigans.TurbulenceClosures: TriadIsopycnalSkewSymmetricDiffusivity
 
-gradient = "x"
+gradient = "y"
 filename = "coarse_baroclinic_adjustment_" * gradient
-
-# Architecture
-architecture = CPU()
 
 # Domain
 Ly = 1000kilometers  # north-south extent [m]
@@ -18,11 +17,10 @@ Ny = 20
 Nz = 20
 save_fields_interval = 0.5day
 stop_time = 30days
-Δt = 20minutes
+Δt = 10minutes
 
-grid = RectilinearGrid(architecture;
-                       topology = (Bounded, Bounded, Bounded),
-                       size = (Ny, Ny, Nz), 
+grid = RectilinearGrid(topology = (Periodic, Bounded, Bounded),
+                       size = (3, Ny, Nz), 
                        x = (-Ly/2, Ly/2),
                        y = (-Ly/2, Ly/2),
                        z = (-Lz, 0),
@@ -30,28 +28,21 @@ grid = RectilinearGrid(architecture;
 
 coriolis = FPlane(latitude = -45)
 
-Δy = Ly/Ny
-@show κh = νh = Δy^4 / 10days
-vertical_closure = VerticalScalarDiffusivity(ν=1e-2, κ=1e-4)
-horizontal_closure = HorizontalScalarBiharmonicDiffusivity(ν=νh, κ=κh)
-
 gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
-gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3,
-                                                                κ_symmetric=1e3,
-                                                                slope_limiter=gerdes_koberle_willebrand_tapering)
+triad_closure = TriadIsopycnalSkewSymmetricDiffusivity(κ_skew = 1e3,
+                                                       κ_symmetric = 1e3,
+                                                       slope_limiter = gerdes_koberle_willebrand_tapering)
 
-closures = (vertical_closure, horizontal_closure, gent_mcwilliams_diffusivity)
+cox_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1e3,
+                                                κ_symmetric = 1e3,
+                                                slope_limiter = gerdes_koberle_willebrand_tapering)
 
 @info "Building a model..."
 
-model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    coriolis = coriolis,
+model = HydrostaticFreeSurfaceModel(; grid, coriolis,
+                                    closure = triad_closure,
                                     buoyancy = BuoyancyTracer(),
-                                    closure = closures,
-                                    tracers = (:b, :c),
-                                    momentum_advection = WENO5(),
-                                    tracer_advection = WENO5(),
-                                    free_surface = ImplicitFreeSurface())
+                                    tracers = (:b, :c))
 
 @info "Built $model."
 
@@ -91,30 +82,25 @@ set!(model, b=bᵢ, c=cᵢ)
 
 simulation = Simulation(model; Δt, stop_time)
 
-# add timestep wizard callback
-wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=Δt)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
+wall_clock = Ref(time_ns())
 
-# add progress callback
-wall_clock = [time_ns()]
-
-function print_progress(sim)
+function progress(sim)
     @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, next Δt: %s\n",
             100 * (sim.model.clock.time / sim.stop_time),
             sim.model.clock.iteration,
             prettytime(sim.model.clock.time),
-            prettytime(1e-9 * (time_ns() - wall_clock[1])),
+            prettytime(1e-9 * (time_ns() - wall_clock[])),
             maximum(abs, sim.model.velocities.u),
             maximum(abs, sim.model.velocities.v),
             maximum(abs, sim.model.velocities.w),
             prettytime(sim.Δt))
 
-    wall_clock[1] = time_ns()
+    wall_clock[] = time_ns()
     
     return nothing
 end
 
-simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
+add_callback!(simulation, progress, IterationInterval(10))
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                       schedule = TimeInterval(save_fields_interval),
@@ -140,7 +126,7 @@ bt = FieldTimeSeries(filepath, "b")
 ct = FieldTimeSeries(filepath, "c")
 
 # Build coordinates, rescaling the vertical coordinate
-x, y, z = nodes((Center, Center, Center), grid)
+x, y, z = nodes(bt)
 
 zscale = 1
 z = z .* zscale
