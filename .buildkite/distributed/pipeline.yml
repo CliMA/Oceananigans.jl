@@ -5,13 +5,15 @@ agents:
 
 env:
   JULIA_LOAD_PATH: "${JULIA_LOAD_PATH}:${BUILDKITE_BUILD_CHECKOUT_PATH}/.buildkite/distributed"
-  JULIA_MPI_HAS_CUDA: "true"
   OPENBLAS_NUM_THREADS: 1
   OMPI_MCA_opal_warn_on_missing_libcuda: 0
 
 steps:
   - label: "initialize"
     key: "init_central"
+    env:
+      TEST_GROUP: "init"
+      GPU_TEST: "true"
     command:
       - echo "--- Instantiate project"
       - "julia --project -e 'using Pkg; Pkg.instantiate(; verbose=true); Pkg.precompile(; strict=true)'"
@@ -25,6 +27,10 @@ steps:
 
       - echo "--- Instantiate status"
       - "julia --project -e 'using Pkg; Pkg.status()'"
+    agents:
+      slurm_mem: 120G
+      slurm_ntasks: 1
+      slurm_gpus_per_task: 1
 
   - wait
 
