@@ -179,7 +179,18 @@ CUDA.allowscalar() do
 
     if group == :distributed_solvers || group == :all
         MPI.Initialized() || MPI.Init()
-        CUDA.set_runtime_version!(v"12.6")
+        Pkg.instantiate(; verbose=true)
+        Pkg.precompile(; strict=true)
+        Pkg.status()
+
+        try
+            MPI.versioninfo()
+        catch; end
+
+        try
+            CUDA.precompile_runtime()
+            CUDA.versioninfo()
+        catch; end
         include("test_distributed_transpose.jl")
         include("test_distributed_poisson_solvers.jl")
     end
