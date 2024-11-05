@@ -181,7 +181,8 @@ include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 
 using .TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity, TKEDissipationVerticalDiffusivity
-using .Smagorinskys: Smagorinsky, SmagorinskyLilly, LillyCoefficient, DynamicCoefficient, LagrangianAveraging
+using .Smagorinskys: Smagorinsky, DynamicSmagorinsky, SmagorinskyLilly
+using .Smagorinskys: LillyCoefficient, DynamicCoefficient, LagrangianAveraging
 
 # Miscellaneous utilities
 include("diffusivity_fields.jl")
