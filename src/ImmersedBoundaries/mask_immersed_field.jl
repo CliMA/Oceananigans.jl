@@ -109,7 +109,7 @@ end
     @inbounds field[i, j, k] = ifelse(mask, value, field[i, j, k]) 
 end
 
-@inline masking_range(i, grid, dim, dims) = ifelse(dim ∈ dims, 1:size(grid, dim), i:1)
+@inline masking_range(i, grid, dim, dims) = ifelse(dim ∈ dims, 1:size(grid, dim), i:i)
 
 @inline function mask_reduced_direction(i₀, j₀, k₀, grid, dims, loc)
     mask = true
