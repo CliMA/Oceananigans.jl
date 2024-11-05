@@ -10,14 +10,19 @@ using Oceananigans.TurbulenceClosures: diffusive_flux_x, diffusive_flux_y, diffu
                                        viscous_flux_vx, viscous_flux_vy, viscous_flux_vz,
                                        viscous_flux_wx, viscous_flux_wy, viscous_flux_wz
 
-using Oceananigans.TurbulenceClosures: ScalarDiffusivity, ScalarBiharmonicDiffusivity, TwoDimensionalLeith, ConvectiveAdjustmentVerticalDiffusivity,
-                                       Smagorinsky, SmagorinskyLilly, LagrangianAveraging, AnisotropicMinimumDissipation
+using Oceananigans.TurbulenceClosures:
+    ScalarDiffusivity,
+    ScalarBiharmonicDiffusivity,
+    TwoDimensionalLeith,
+    ConvectiveAdjustmentVerticalDiffusivity,
+    Smagorinsky,
+    SmagorinskyLilly,
+    LagrangianAveraging,
+    AnisotropicMinimumDissipation
 
 ConstantSmagorinsky(FT=Float64) = Smagorinsky(FT, coefficient=0.16)
-DirectionallyAveragedDynamicSmagorinsky(FT=Float64) =
-    Smagorinsky(FT, coefficient=DynamicCoefficient(averaging=(1,2)))
-LagrangianAveragedDynamicSmagorinsky(FT=Float64) =
-    Smagorinsky(FT, coefficient=DynamicCoefficient(averaging=LagrangianAveraging()))
+DirectionallyAveragedDynamicSmagorinsky(FT=Float64) = Smagorinsky(FT, coefficient=DynamicCoefficient(averaging=(1, 2)))
+LagrangianAveragedDynamicSmagorinsky(FT=Float64) = Smagorinsky(FT, coefficient=DynamicCoefficient(averaging=LagrangianAveraging()))
 
 function tracer_specific_horizontal_diffusivity(T=Float64; νh=T(0.3), κh=T(0.7))
     closure = HorizontalScalarDiffusivity(κ=(T=κh, S=κh), ν=νh)
