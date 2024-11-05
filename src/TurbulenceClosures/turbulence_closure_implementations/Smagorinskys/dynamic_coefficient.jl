@@ -9,6 +9,13 @@ struct DynamicCoefficient{A, FT, S}
 end
 
 const DynamicSmagorinsky = Smagorinsky{<:Any, <:DynamicCoefficient}
+
+function DynamicSmagorinsky(time_discretization=ExplicitTimeDiscretization(), FT=Float64; 
+                            Pr = 1.0, averaging, schedule, minimum_numerator)
+    coefficient = DynamicCoefficient(FT; averaging, schedule, minimum_numerator)
+    return Smagorinsky(TD, FT; coefficient, Pr)
+end
+
 Adapt.adapt_structure(to, dc::DynamicCoefficient) = DynamicCoefficient(dc.averaging, dc.minimum_numerator, nothing)
 
 const DirectionallyAveragedCoefficient{N} = DynamicCoefficient{<:Union{NTuple{N, Int}, Int, Colon}} where N

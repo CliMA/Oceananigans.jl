@@ -16,13 +16,14 @@ using Oceananigans.TurbulenceClosures:
     TwoDimensionalLeith,
     ConvectiveAdjustmentVerticalDiffusivity,
     Smagorinsky,
+    DynamicSmagorinsky,
     SmagorinskyLilly,
     LagrangianAveraging,
     AnisotropicMinimumDissipation
 
 ConstantSmagorinsky(FT=Float64) = Smagorinsky(FT, coefficient=0.16)
-DirectionallyAveragedDynamicSmagorinsky(FT=Float64) = Smagorinsky(FT, coefficient=DynamicCoefficient(averaging=(1, 2)))
-LagrangianAveragedDynamicSmagorinsky(FT=Float64) = Smagorinsky(FT, coefficient=DynamicCoefficient(averaging=LagrangianAveraging()))
+DirectionallyAveragedDynamicSmagorinsky(FT=Float64) = DynamicSmagorinsky(FT, averaging=(1, 2))
+LagrangianAveragedDynamicSmagorinsky(FT=Float64) = DynamicSmagorinsky(FT, averaging=LagrangianAveraging())
 
 function tracer_specific_horizontal_diffusivity(T=Float64; νh=T(0.3), κh=T(0.7))
     closure = HorizontalScalarDiffusivity(κ=(T=κh, S=κh), ν=νh)
@@ -168,22 +169,22 @@ function diffusivity_fields_sizes_are_correct(arch)
     @test size(model.diffusivity_fields.Σ)   == size(grid)
     @test size(model.diffusivity_fields.Σ̄)   == size(grid)
 
-    closure = Smagorinsky(coefficient=DynamicCoefficient(averaging=(1, 2)))
+    closure = DynamicSmagorinsky(averaging=(1, 2))
     model = NonhydrostaticModel(; grid, closure)
     @test size(model.diffusivity_fields.𝒥ᴸᴹ) == (1, 1, grid.Nz)
     @test size(model.diffusivity_fields.𝒥ᴹᴹ) == (1, 1, grid.Nz)
 
-    closure = Smagorinsky(coefficient=DynamicCoefficient(averaging=Colon()))
+    closure = DynamicSmagorinsky(averaging=Colon())
     model = NonhydrostaticModel(; grid, closure)
     @test size(model.diffusivity_fields.𝒥ᴸᴹ) == (1, 1, 1)
     @test size(model.diffusivity_fields.𝒥ᴹᴹ) == (1, 1, 1)
 
-    closure = Smagorinsky(coefficient=DynamicCoefficient(averaging=(2, 3)))
+    closure = DynamicSmagorinsky(averaging=(2, 3))
     model = NonhydrostaticModel(; grid, closure)
     @test size(model.diffusivity_fields.𝒥ᴸᴹ) == (grid.Nx, 1, 1)
     @test size(model.diffusivity_fields.𝒥ᴹᴹ) == (grid.Nx, 1, 1)
 
-    closure = Smagorinsky(coefficient=DynamicCoefficient(averaging=LagrangianAveraging()))
+    closure = DynamicSmagorinsky(averaging=LagrangianAveraging())
     model = NonhydrostaticModel(; grid, closure)
     @test size(model.diffusivity_fields.𝒥ᴸᴹ)  == size(grid)
     @test size(model.diffusivity_fields.𝒥ᴹᴹ)  == size(grid)
