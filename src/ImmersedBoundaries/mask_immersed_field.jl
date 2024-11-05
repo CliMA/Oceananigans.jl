@@ -93,7 +93,7 @@ end
 ##### Masking a `ReducedField`
 #####
 
-# For a `ReducedField` we mask if the entire direction is immerded in the reduced direction.
+# We mask a `ReducedField` if the entire reduced direction is immersed.
 # This requires a sweep over the reduced direction
 
 function mask_immersed_field!(field::ReducedField, grid, loc, value)
