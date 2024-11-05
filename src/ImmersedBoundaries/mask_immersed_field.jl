@@ -96,44 +96,32 @@ end
 # For a `ReducedField` we mask if the entire direction is immerded in the reduced direction.
 # This requires a sweep over the reduced direction
 
-function mask_immersed_field!(field::ReducedField, grid, loc, value)
-    loc = instantiate.(loc)
-    launch!(architecture(field), grid, size(field), _mask_immersed_reduced_field!, field, loc, grid, value)
+function mask_immersed_field!(field::ReducedField, grid::ImmersedBoundaryGrid, loc, value)
+    loc  = instantiate.(loc)
+    dims = reduced_dimensions(field)
+    launch!(architecture(field), grid, size(field), _mask_immersed_reduced_field!, field, dims, loc, grid, value)
     return nothing
 end
 
-@kernel function _mask_immersed_reduced_field!(field, loc, grid, value)
+@kernel function _mask_immersed_reduced_field!(field, dims, loc, grid, value)
     i, j, k = @index(Global, NTuple)
-
-    mask = mask_reduced_x_direction!(field, i, j, k, grid, loc, true)
-    mask = mask_reduced_y_direction!(field, i, j, k, grid, loc, mask)
-    mask = mask_reduced_z_direction!(field, i, j, k, grid, loc, mask)
-
+    mask = mask_reduced_direction(i, j, k, grid, dims, loc)
     @inbounds field[i, j, k] = ifelse(mask, value, field[i, j, k]) 
 end
 
-@inline mask_reduced_x_direction!(field, i, j, k, grid, loc, mask = true) = mask & peripheral_node(i, j, k, grid, loc...)
-@inline mask_reduced_y_direction!(field, i, j, k, grid, loc, mask = true) = mask & peripheral_node(i, j, k, grid, loc...)
-@inline mask_reduced_z_direction!(field, i, j, k, grid, loc, mask = true) = mask & peripheral_node(i, j, k, grid, loc...)
+@inline masking_range(i, grid, dim, dims) = ifelse(dim ∈ dims, 1:size(grid, dim), i:1)
 
-@inline function mask_reduced_x_direction!(::XReducedField, i₀, j, k, grid, loc, mask = true)
-    for i in 1:size(grid, 1)
-        mask = mask & peripheral_node(i, j, k, grid, loc...)
+@inline function mask_reduced_direction(i₀, j₀, k₀, grid, dims, loc)
+    mask = true
+    irange = masking_range(i₀, grid, 1, dims)
+    jrange = masking_range(j₀, grid, 2, dims)
+    krange = masking_range(k₀, grid, 3, dims)
+    
+    # The loop activates over the whole direction only if reduced directions
+    for i in irange, j in jrange, k in krange
+        mask = mask & peripheral_node(i, j, k, grid, loc...) 
     end
-    return mask
-end
 
-@inline function mask_reduced_y_direction!(::YReducedField, i, j₀, k, grid, loc, mask = true)
-    for j in 1:size(grid, 2)
-        mask = mask & peripheral_node(i, j, k, grid, loc...)
-    end
-    return mask
-end
-
-@inline function mask_reduced_z_direction!(::ZReducedField, i, j, k₀, grid, loc, mask = true)
-    for k in 1:size(grid, 3)
-        mask = mask & peripheral_node(i, j, k, grid, loc...)
-    end
     return mask
 end
 
