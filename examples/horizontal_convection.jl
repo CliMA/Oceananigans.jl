@@ -179,10 +179,6 @@ b_timeseries = FieldTimeSeries(saved_output_filename, "b")
 ζ_timeseries = FieldTimeSeries(saved_output_filename, "ζ")
 
 times = b_timeseries.times
-
-## Coordinate arrays
-xc, yc, zc = nodes(b_timeseries[1])
-xζ, yζ, zζ = nodes(ζ_timeseries[1])
 nothing #hide
 
 χ_timeseries = deepcopy(b_timeseries)
@@ -329,4 +325,3 @@ lines!(ax_Nu, t, Nu; linewidth = 3)
 
 current_figure() #hide
 fig
-
