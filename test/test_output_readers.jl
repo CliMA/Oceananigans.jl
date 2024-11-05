@@ -390,7 +390,7 @@ end
         @testset "FieldDataset{$Backend} parallel reading" begin
             @info "  Testing FieldDataset{$Backend} parallel reading..."
 
-            reader_kw = Dict(:parallel_read => true)
+            reader_kw = (parallel_read = true,)
             ds = FieldDataset(filepath3d; backend=Backend(), reader_kw)
 
             @test ds isa FieldDataset
