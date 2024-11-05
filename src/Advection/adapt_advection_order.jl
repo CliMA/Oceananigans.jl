@@ -39,7 +39,7 @@ function adapt_advection_order(advection, grid::AbstractGrid)
         @info "Using the advection scheme $(summary(new_advection.y)) in the y-direction because size(grid, 2) = $(size(grid, 2))"
     end
     if changed_z
-        @info "Using the advection scheme $(summary(new_advection.z)) in the x-direction because size(grid, 3) = $(size(grid, 3))"
+        @info "Using the advection scheme $(summary(new_advection.z)) in the z-direction because size(grid, 3) = $(size(grid, 3))"
     end
 
     return ifelse(changed_advection, new_advection, advection)

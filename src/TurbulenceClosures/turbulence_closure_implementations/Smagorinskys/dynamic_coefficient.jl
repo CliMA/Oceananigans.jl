@@ -10,10 +10,10 @@ end
 
 const DynamicSmagorinsky = Smagorinsky{<:Any, <:DynamicCoefficient}
 
-function DynamicSmagorinsky(time_discretization=ExplicitTimeDiscretization(), FT=Float64; 
-                            Pr = 1.0, averaging, schedule, minimum_numerator)
+function DynamicSmagorinsky(time_discretization=ExplicitTimeDiscretization(), FT=Float64; averaging,
+                            Pr=1.0, schedule=IterationInterval(1), minimum_numerator=1e-32)
     coefficient = DynamicCoefficient(FT; averaging, schedule, minimum_numerator)
-    return Smagorinsky(TD, FT; coefficient, Pr)
+    return Smagorinsky(time_discretization, FT; coefficient, Pr)
 end
 
 Adapt.adapt_structure(to, dc::DynamicCoefficient) = DynamicCoefficient(dc.averaging, dc.minimum_numerator, nothing)
