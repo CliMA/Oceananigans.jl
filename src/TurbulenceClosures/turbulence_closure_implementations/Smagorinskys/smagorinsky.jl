@@ -50,11 +50,11 @@ const ConstantSmagorinsky = Smagorinsky{<:Any, <:Number}
                 Pr = 1.0)
 
 Return a `Smagorinsky` type associated with the turbulence closure proposed by
-[Lilly62](@citet), [Smagorinsky1958](@citet), [Smagorinsky1963](@citet), and [Lilly66](@citet),
+[Smagorinsky1958](@citet) and [Smagorinsky1963](@citet)
 which has an eddy viscosity of the form
 
 ```
-νₑ = (C * Δᶠ)² * √(2Σ²)
+νₑ = (Cˢ * Δᶠ)² * √(2Σ²)
 ```
 
 and an eddy diffusivity of the form
@@ -67,10 +67,13 @@ where `Δᶠ` is the filter width, `Σ² = ΣᵢⱼΣᵢⱼ` is the double dot p
 the strain tensor `Σᵢⱼ`, `Pr` is the turbulent Prandtl number, `N²` is the
 total buoyancy gradient, and `Cb` is a constant the multiplies the Richardson
 number modification to the eddy viscosity.
+
+`Cˢ` is the Smagorinsky coefficient and the default value is 0.16, according
+to the analysis by [Lilly66](@citet). For other options, see `LillyCoefficient`
+and `DynamicCoefficient`.
 """
-function Smagorinsky(time_discretization = ExplicitTimeDiscretization(), FT=Float64;
-                     coefficient = 0.16, Pr = 1.0)
-    TD = typeof(time_discretization)
+function Smagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64;
+                     coefficient = 0.16, Pr = 1.0) where TD
     Pr = convert_diffusivity(FT, Pr; discrete_form=false)
     return Smagorinsky{TD}(coefficient, Pr)
 end
@@ -134,6 +137,11 @@ end
 @inline κᶜᶠᶜ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑyᵃᶠᵃ(i, j, k, grid, K.νₑ) / c.Pr[id]
 @inline κᶜᶜᶠ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑzᵃᵃᶠ(i, j, k, grid, K.νₑ) / c.Pr[id]
 
-Base.summary(closure::Smagorinsky) = string("Smagorinsky: coefficient=", summary(closure.coefficient), ", Pr=$(closure.Pr)")
-Base.show(io::IO, closure::Smagorinsky) = print(io, summary(closure))
+Base.summary(closure::Smagorinsky) = string("Smagorinsky with coefficient = ", summary(closure.coefficient), ", Pr=$(closure.Pr)")
+function Base.show(io::IO, closure::Smagorinsky)
+    coefficient_summary = closure.coefficient isa Number ? closure.coefficient : summary(closure.coefficient)
+    print(io, "Smagorinsky closure with\n",
+              "├── coefficient = ", coefficient_summary, "\n",
+              "└── Pr = ", closure.Pr)
+end
 
