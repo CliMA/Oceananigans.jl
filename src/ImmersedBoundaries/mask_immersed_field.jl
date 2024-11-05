@@ -1,7 +1,7 @@
 using KernelAbstractions: @kernel, @index
 using Statistics
 using Oceananigans.AbstractOperations: BinaryOperation
-using Oceananigans.Fields: location, ZReducedField, Field
+using Oceananigans.Fields: location, XReducedField, YReducedField, ZReducedField, Field, ReducedField
 
 instantiate(T::Type) = T()
 instantiate(t) = t
@@ -89,6 +89,67 @@ end
     @inbounds field[i, j, k] = scalar_mask(i, j, k, grid, grid.immersed_boundary, loc..., value, field, mask)
 end
 
+#####
+##### Masking a `ReducedField`
+#####
+
+# For a `ReducedField` we mask if the entire direction is immerded in the reduced direction.
+# This requires a sweep over the reduced direction
+
+function mask_immersed_field!(field::ReducedField, grid, loc, value)
+    loc = instantiate.(loc)
+    launch!(architecture(field), grid, size(field), _mask_immersed_reduced_field!, field, loc, grid, value)
+    return nothing
+end
+
+@kernel function _mask_immersed_reduced_field!(field, loc, grid, value)
+    i, j, k = @index(Global, NTuple)
+
+    mask = mask_reduced_x_direction!(field, i, j, k, grid, loc, true)
+    mask = mask_reduced_y_direction!(field, i, j, k, grid, loc, mask)
+    mask = mask_reduced_z_direction!(field, i, j, k, grid, loc, mask)
+
+    @inbounds field[i, j, k] = ifelse(mask, value, field[i, j, k]) 
+end
+
+@inline mask_reduced_x_direction!(field, i, j, k, grid, loc, mask = true) = mask & peripheral_node(i, j, k, grid, loc...)
+@inline mask_reduced_y_direction!(field, i, j, k, grid, loc, mask = true) = mask & peripheral_node(i, j, k, grid, loc...)
+@inline mask_reduced_z_direction!(field, i, j, k, grid, loc, mask = true) = mask & peripheral_node(i, j, k, grid, loc...)
+
+@inline function mask_reduced_x_direction!(::XReducedField, i₀, j, k, grid, loc, mask = true)
+    for i in 1:size(grid, 1)
+        mask = mask & peripheral_node(i, j, k, grid, loc...)
+    end
+    return mask
+end
+
+@inline function mask_reduced_y_direction!(::YReducedField, i, j₀, k, grid, loc, mask = true)
+    for j in 1:size(grid, 2)
+        mask = mask & peripheral_node(i, j, k, grid, loc...)
+    end
+    return mask
+end
+
+@inline function mask_reduced_z_direction!(::ZReducedField, i, j, k₀, grid, loc, mask = true)
+    for k in 1:size(grid, 3)
+        mask = mask & peripheral_node(i, j, k, grid, loc...)
+    end
+    return mask
+end
+
+###
+### Efficient masking for `OnlyZReducedField` and an `AbstractGridFittedBoundary`
+###
+
+const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
+
+const CenterOrFace = Union{Center, Face}
+const OnlyZReducedField = Field{<:CenterOrFace, <:CenterOrFace, Nothing}
+
+# Does not require a sweep
+mask_immersed_field!(field::OnlyZReducedField, grid::AGFBIBG, loc, value) = 
+    mask_immersed_field_xy!(field, grid, loc, value; k=size(grid, 3), mask=peripheral_node)
+    
 #####
 ##### Masking for GridFittedBoundary
 #####
