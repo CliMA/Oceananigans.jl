@@ -105,17 +105,17 @@ end
 
 @kernel function _mask_immersed_reduced_field!(field, dims, loc, grid, value)
     i, j, k = @index(Global, NTuple)
-    mask = mask_reduced_direction(i, j, k, grid, dims, loc)
+    mask = inactive_dimensions(i, j, k, grid, dims, loc)
     @inbounds field[i, j, k] = ifelse(mask, value, field[i, j, k]) 
 end
 
-@inline masking_range(i, grid, dim, dims) = ifelse(dim ∈ dims, 1:size(grid, dim), i:i)
+@inline inactive_search_range(i, grid, dim, dims) = ifelse(dim ∈ dims, 1:size(grid, dim), i:i)
 
-@inline function mask_reduced_direction(i₀, j₀, k₀, grid, dims, loc)
+@inline function inactive_dimensions(i₀, j₀, k₀, grid, dims, loc)
     mask = true
-    irange = masking_range(i₀, grid, 1, dims)
-    jrange = masking_range(j₀, grid, 2, dims)
-    krange = masking_range(k₀, grid, 3, dims)
+    irange = inactive_search_range(i₀, grid, 1, dims)
+    jrange = inactive_search_range(j₀, grid, 2, dims)
+    krange = inactive_search_range(k₀, grid, 3, dims)
     
     # The loop activates over the whole direction only if reduced directions
     for i in irange, j in jrange, k in krange
