@@ -214,16 +214,16 @@ Base.length(backend::PartlyInMemory) = backend.length
 #####
 
 mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} <: AbstractField{LX, LY, LZ, G, ET, 4}
-                   data :: D
-                   grid :: G
-                backend :: K
+    data :: D
+    grid :: G
+    backend :: K
     boundary_conditions :: B
-                indices :: I
-                  times :: χ
-                   path :: P
-                   name :: N
-          time_indexing :: TI
-             reader_kw :: KW
+    indices :: I
+    times :: χ
+    path :: P
+    name :: N
+    time_indexing :: TI
+    reader_kw :: KW
 
     function FieldTimeSeries{LX, LY, LZ}(data::D,
                                          grid::G,
@@ -350,7 +350,8 @@ new_data(FT, grid, loc, indices, ::Nothing) = nothing
 
 # Apparently, not explicitly specifying Int64 in here makes this function
 # fail on x86 processors where `Int` is implied to be `Int32`
-# see ClimaOcean commit 3c47d887659d81e0caed6c9df41b7438e1f1cd52 at https://github.com/CliMA/ClimaOcean.jl/actions/runs/8804916198/job/24166354095)
+# see ClimaOcean commit 3c47d887659d81e0caed6c9df41b7438e1f1cd52 at
+# https://github.com/CliMA/ClimaOcean.jl/actions/runs/8804916198/job/24166354095)
 function new_data(FT, grid, loc, indices, Nt::Union{Int, Int64})
     space_size = total_size(grid, loc, indices)
     underlying_data = zeros(FT, architecture(grid), space_size..., Nt)
