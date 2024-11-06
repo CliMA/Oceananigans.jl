@@ -38,7 +38,7 @@ end
 convert_arguments(pl::Type{<:AbstractPlot}, f::Field) =
     convert_arguments(pl, convert_field_argument(f)...)
 
-function convert_arguments(pl::Type{<:AbstractPlot}, fop::AbstractOperation)
+function convert_arguments(pl::Type{<:AbstractPlot}, op::AbstractOperation)
     f = Field(op)
     compute!(f)
     return convert_arguments(pl, f)
