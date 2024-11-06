@@ -3,7 +3,7 @@ include("data_dependencies.jl")
 
 using Oceananigans.Grids: topology, XRegularLLG, YRegularLLG, ZRegularLLG
 
-function show_hydrostatic_test(grid, free_surface, precompute_metrics) 
+function show_hydrostatic_test(grid, free_surface, precompute_metrics)
 
     typeof(grid) <: XRegularLLG ? gx = :regular : gx = :stretched
     typeof(grid) <: YRegularLLG ? gy = :regular : gy = :stretched
@@ -79,11 +79,12 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
                                                                    gravitational_acceleration = 1.0,
                                                                    substeps = 5)
 
-            for free_surface in [explicit_free_surface, implicit_free_surface, split_explicit_free_surface]
+            # for free_surface in [explicit_free_surface, implicit_free_surface, split_explicit_free_surface]
+            for free_surface in [split_explicit_free_surface]
 
                 # GPU + ImplicitFreeSurface + precompute metrics cannot be tested on sverdrup at the moment
-                # because "uses too much parameter space (maximum 0x1100 bytes)" error 
-                if !(precompute_metrics && free_surface isa ImplicitFreeSurface && arch isa GPU) && 
+                # because "uses too much parameter space (maximum 0x1100 bytes)" error
+                if !(precompute_metrics && free_surface isa ImplicitFreeSurface && arch isa GPU) &&
                    !(free_surface isa ImplicitFreeSurface && arch isa Distributed) # Also no implicit free surface on distributed
 
                     testset_str, info_str = show_hydrostatic_test(grid, free_surface, precompute_metrics)

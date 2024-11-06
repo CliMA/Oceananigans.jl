@@ -66,3 +66,32 @@ explicit_ab2_step_free_surface!(free_surface, model, Δt, χ) =
     i, j = @index(Global, NTuple)
     @inbounds η[i, j, Nz+1] += Δt * ((FT(1.5) + χ) * Gηⁿ[i, j, Nz+1] - (FT(0.5) + χ) * Gη⁻[i, j, Nz+1])
 end
+
+# Comopute free surface tendency
+function compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface, kernel_parameters)
+
+    arch = architecture(grid)
+
+    args = tuple(model.velocities,
+                 model.free_surface,
+                 model.tracers,
+                 model.auxiliary_fields,
+                 model.forcing,
+                 model.clock)
+
+    launch!(arch, grid, kernel_parameters,
+            compute_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, 
+            grid, args)
+
+    return nothing
+end
+
+#####
+##### Tendency calculators for an explicit free surface
+#####
+
+""" Calculate the right-hand-side of the free surface displacement (``η``) equation. """
+@kernel function compute_hydrostatic_free_surface_Gη!(Gη, grid, args)
+    i, j = @index(Global, NTuple)
+    @inbounds Gη[i, j, grid.Nz+1] = free_surface_tendency(i, j, grid, args...)
+end

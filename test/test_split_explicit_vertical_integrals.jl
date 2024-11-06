@@ -2,12 +2,9 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState,
-                                                        SplitExplicitAuxiliaryFields,
-                                                        SplitExplicitSettings
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!,
-                                                        barotropic_split_explicit_corrector!,
-                                                        initialize_free_surface_state!
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: compute_barotropic_mode!,
+                                                                                  barotropic_split_explicit_corrector!,
+                                                                                  initialize_free_surface_state!
 
 @testset "Barotropic Kernels" begin
 
@@ -19,27 +16,25 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!
 
         grid = RectilinearGrid(arch, topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
 
-        tmp = SplitExplicitFreeSurface(substeps = 200)
-
-        sefs = SplitExplicitState(grid, tmp.settings.timestepper)
-        sefs = SplitExplicitAuxiliaryFields(grid)
         sefs = SplitExplicitFreeSurface(substeps = 200)
         sefs = materialize_free_surface(sefs, nothing, grid)
 
-        state = sefs.state
-        auxiliary = sefs.auxiliary
-        U, V, η̅, U̅, V̅ = state.U, state.V, state.η̅, state.U̅, state.V̅
-        Gᵁ, Gⱽ = auxiliary.Gᵁ, auxiliary.Gⱽ
+        state = sefs.filtered_state
+        barotropic_velocities = sefs.barotropic_velocities
+        η̅, U̅, V̅ = state.η, state.U, state.V
 
         u = Field{Face, Center, Center}(grid)
         v = Field{Center, Face, Center}(grid)
+
+        GU = Field{Face, Center, Nothing}(grid)
+        GV = Field{Center, Face, Nothing}(grid)
 
         @testset "Average to zero" begin
             # set equal to something else
             η̅ .= U̅ .= V̅ .= 1.0
 
             # now set equal to zero
-            initialize_free_surface_state!(sefs.state, sefs.η, sefs.settings.timestepper)
+            initialize_free_surface_state!(state, sefs.η, barotropic_velocities, sefs.timestepper)
 
             # don't forget the halo points
             fill_halo_regions!(η̅)
@@ -118,11 +113,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!
             sefs = SplitExplicitFreeSurface(grid, cfl=0.7)
             sefs = materialize_free_surface(sefs, nothing, grid)
 
-            state = sefs.state
-            auxiliary = sefs.auxiliary
-            U, V, η̅, U̅, V̅ = state.U, state.V, state.η̅, state.U̅, state.V̅
-            Gᵁ, Gⱽ = auxiliary.Gᵁ, auxiliary.Gⱽ
-
+            state   = sefs.filtered_state
+            U, V    = sefs.barotropic_velocities
+            η̅, U̅, V̅ = state.η, state.U, state.V
+            
             u = Field{Face, Center, Center}(grid)
             v = Field{Center, Face, Center}(grid)
             u_corrected = similar(u)
@@ -132,14 +126,14 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_barotropic_mode!
             set_U̅(x, y, z) = cos(x) * Lz
             set_u_corrected(x, y, z) = z + Lz / 2 + cos(x)
             set!(u, set_u)
-            set!(U̅, set_U̅)
+            set!(U, set_U̅)
             set!(u_corrected, set_u_corrected)
 
             set_v(x, y, z) = (z + Lz / 2) * sin(y) + sin(x)
             set_V̅(x, y, z) = (cos(x) + x) * Lz
             set_v_corrected(x, y, z) = (z + Lz / 2) * sin(y) + cos(x) + x
             set!(v, set_v)
-            set!(V̅, set_V̅)
+            set!(V, set_V̅)
             set!(v_corrected, set_v_corrected)
 
             Δz = zeros(Nz)

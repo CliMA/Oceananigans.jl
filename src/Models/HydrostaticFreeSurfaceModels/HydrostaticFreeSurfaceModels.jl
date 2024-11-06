@@ -31,8 +31,14 @@ fill_horizontal_velocity_halos!(args...) = nothing
 free_surface_displacement_field(velocities, free_surface, grid) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 
+# free surface initialization functions
+initialize_free_surface!(free_surface, grid, velocities) = nothing
+setup_free_surface!(model, free_surface, χ) = nothing
+
 include("compute_w_from_continuity.jl")
-include("rigid_lid.jl")
+
+# No free surface
+include("nothing_free_surface.jl")
 
 # Explicit free-surface solver functionality
 include("explicit_free_surface.jl")
@@ -46,11 +52,9 @@ include("matrix_implicit_free_surface_solver.jl")
 include("implicit_free_surface.jl")
 
 # Split-Explicit free-surface solver functionality
-include("SplitExplicitFreeSurface/split_explicit_free_surface.jl")
-include("SplitExplicitFreeSurface/split_explicit_free_surface_kernels.jl")
-include("SplitExplicitFreeSurface/split_explicit_free_surface_evolution.jl")
-include("SplitExplicitFreeSurface/split_explicit_free_surface_setup.jl")
-include("SplitExplicitFreeSurface/distributed_split_explicit_free_surface.jl")
+include("SplitExplicitFreeSurfaces/SplitExplicitFreeSurfaces.jl")
+
+using .SplitExplicitFreeSurfaces
 
 include("hydrostatic_free_surface_field_tuples.jl")
 include("hydrostatic_free_surface_model.jl")
@@ -87,6 +91,13 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Hydros
                                                                                   η = free_surface.η),
                                                                                   tracers)
 
+@inline hydrostatic_prognostic_fields(velocities, free_surface::SplitExplicitFreeSurface, tracers) = merge((u = velocities.u,
+                                                                                                            v = velocities.v,
+                                                                                                            η = free_surface.η,
+                                                                                                            U = free_surface.barotropic_velocities.U,
+                                                                                                            V = free_surface.barotropic_velocities.V),
+                                                                                                            tracers)
+
 @inline hydrostatic_prognostic_fields(velocities, ::Nothing, tracers) = merge((u = velocities.u,
                                                                                v = velocities.v),
                                                                                tracers)
@@ -96,6 +107,14 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Hydros
                                                                        w = velocities.w),
                                                                        tracers,
                                                                        (; η = free_surface.η))
+
+@inline hydrostatic_fields(velocities, free_surface::SplitExplicitFreeSurface, tracers) = merge((u = velocities.u,
+                                                                                                 v = velocities.v,
+                                                                                                 w = velocities.w,
+                                                                                                 η = free_surface.η,
+                                                                                                 U = free_surface.barotropic_velocities.U,
+                                                                                                 V = free_surface.barotropic_velocities.V),
+                                                                                                 tracers)
 
 @inline hydrostatic_fields(velocities, ::Nothing, tracers) = merge((u = velocities.u,
                                                                     v = velocities.v,

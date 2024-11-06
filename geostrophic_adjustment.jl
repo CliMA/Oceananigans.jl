@@ -96,7 +96,7 @@ ax    = Axis(fig[1, 1])
 lines!(ax, η_img, color=:black)
 lines!(ax, η_im2, color=:grey)
 
-record(fig, "test.mp4", 1:length(ηt), framerate=2) do i
+GLMakie.record(fig, "test.mp4", 1:length(ηt), framerate=2) do i
     @info "Animating iteration $i/$(length(ηt))..."
     iter[] = i
 end
