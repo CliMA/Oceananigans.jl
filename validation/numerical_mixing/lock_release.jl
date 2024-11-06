@@ -13,27 +13,27 @@ grid = RectilinearGrid(size = (128, 20),
                        halo = (6, 6),
                    topology = (Bounded, Flat, Bounded))
 
-buoyancy = SeawaterBuoyancy(equation_of_state = LinearEquationOfState())
+buoyancy = SeawaterBuoyancy(equation_of_state = TEOS10EquationOfState())
 
 model = HydrostaticFreeSurfaceModel(; grid, buoyancy,
                          momentum_advection = WENO(),
-                           tracer_advection = Oceananigans.Advection.RotatedAdvection(WENO()),
+                           tracer_advection = Oceananigans.Advection.RotatedAdvection(WENO()), # WENO(), # 
                                     closure = nothing, 
                                     tracers = (:T, :S),
-                               free_surface = SplitExplicitFreeSurface(; substeps = 10))
+                               free_surface = SplitExplicitFreeSurface(; substeps = 15))
 
 g = model.free_surface.gravitational_acceleration
 
 Tᵢ(x, z) = x < 32kilometers ? 30 : 5
-Sᵢ(x, z) = 32.5 - (grid.Lz + z) / z
+Sᵢ(x, z) = 32.5 - (grid.Lz + z) / grid.Lz
 
 set!(model, T = Tᵢ, S = Sᵢ)
 
-Δt = 1
+Δt = 10
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_iteration = 10000000, stop_time = 17hours) 
+simulation = Simulation(model; Δt, stop_iteration = 100000, stop_time = 17hours) 
 
 field_outputs = merge(model.velocities, model.tracers)
 
