@@ -397,7 +397,7 @@ function constructor_arguments(grid::RectilinearGrid)
 
     if (topo[1] == Flat && grid.Nx > 1) ||
        (topo[2] == Flat && grid.Ny > 1)
-        size = halo = ColumnEnsembleSize(Nz=grid.Nz, Hz=grid.Nz, ensemble=(grid.Nx, grid.Ny))
+        size = halo = ColumnEnsembleSize(Nz=grid.Nz, Hz=grid.Hz, ensemble=(grid.Nx, grid.Ny))
     else
         size = (grid.Nx, grid.Ny, grid.Nz)
         halo = (grid.Hx, grid.Hy, grid.Hz)
