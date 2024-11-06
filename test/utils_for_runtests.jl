@@ -5,11 +5,11 @@ import Oceananigans.Fields: interior
 
 test_child_arch() = CUDA.has_cuda() ? GPU() : CPU()
 
-function test_architectures() 
+function test_architectures()
     child_arch =  test_child_arch()
 
     # If MPI is initialized with MPI.Comm_size > 0, we are running in parallel.
-    # We test several different configurations: `Partition(x = 4)`, `Partition(y = 4)`, 
+    # We test several different configurations: `Partition(x = 4)`, `Partition(y = 4)`,
     # `Partition(x = 2, y = 2)`, and different fractional subdivisions in x, y and xy
     if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
         return (Distributed(child_arch; partition = Partition(4)),
@@ -17,7 +17,7 @@ function test_architectures()
                 Distributed(child_arch; partition = Partition(2, 2)),
                 Distributed(child_arch; partition = Partition(x = Fractional(1, 2, 3, 4))),
                 Distributed(child_arch; partition = Partition(y = Fractional(1, 2, 3, 4))),
-                Distributed(child_arch; partition = Partition(x = Fractional(1, 2), y = Equal()))) 
+                Distributed(child_arch; partition = Partition(x = Fractional(1, 2), y = Equal())))
     else
         return tuple(child_arch)
     end
@@ -25,11 +25,11 @@ end
 
 # For nonhydrostatic simulations we cannot use `Fractional` at the moment (requirements
 # for the tranpose are more stringent than for hydrostatic simulations).
-function nonhydrostatic_regression_test_architectures() 
+function nonhydrostatic_regression_test_architectures()
     child_arch =  test_child_arch()
 
     # If MPI is initialized with MPI.Comm_size > 0, we are running in parallel.
-    # We test 3 different configurations: `Partition(x = 4)`, `Partition(y = 4)` 
+    # We test 3 different configurations: `Partition(x = 4)`, `Partition(y = 4)`
     # and `Partition(x = 2, y = 2)`
     if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
         return (Distributed(child_arch; partition = Partition(4)),
@@ -62,8 +62,8 @@ end
 
 # TODO: docstring?
 function center_clustered_coord(N, L, x₀)
-    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1 
-    z_faces = zeros(N+1) 
+    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1
+    z_faces = zeros(N+1)
     for k = 2:N+1
         z_faces[k] = z_faces[k-1] + 3 - Δz(k-1)
     end
@@ -73,13 +73,48 @@ end
 
 # TODO: docstring?
 function boundary_clustered_coord(N, L, x₀)
-    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1 
-    z_faces = zeros(N+1) 
+    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1
+    z_faces = zeros(N+1)
     for k = 2:N+1
         z_faces[k] = z_faces[k-1] + Δz(k-1)
     end
-    z_faces = z_faces ./ z_faces[end] .* L .+ x₀ 
+    z_faces = z_faces ./ z_faces[end] .* L .+ x₀
     return z_faces
+end
+
+function xspacings_field(grid, ℓ...)
+    Δx_op = xspacings(grid, ℓ...)
+    Δx_field = Field(Δx_op)
+    compute!(Δx_field)
+    return Δx_field
+end
+
+function yspacings_field(grid, ℓ...)
+    Δy_op = yspacings(grid, ℓ...)
+    Δy_field = Field(Δy_op)
+    compute!(Δy_field)
+    return Δy_field
+end
+
+function zspacings_field(grid, ℓ...)
+    Δz_op = zspacings(grid, ℓ...)
+    Δz_field = Field(Δz_op)
+    compute!(Δz_field)
+    return Δz_field
+end
+
+function λspacings_field(grid, ℓ...)
+    Δλ_op = λspacings(grid, ℓ...)
+    Δλ_field = Field(Δλ_op)
+    compute!(Δλ_field)
+    return Δλ_field
+end
+
+function φspacings_field(grid, ℓ...)
+    Δφ_op = φspacings(grid, ℓ...)
+    Δφ_field = Field(Δφ_op)
+    compute!(Δφ_field)
+    return Δφ_field
 end
 
 #####

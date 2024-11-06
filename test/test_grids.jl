@@ -4,7 +4,7 @@ include("data_dependencies.jl")
 using Oceananigans.Grids: total_extent,
                           xspacings, yspacings, zspacings,
                           xnode, ynode, znode, λnode, φnode,
-                          λspacings, φspacings, λspacing, φspacing
+                          λspacing, φspacing, λspacings, φspacings
 
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 
@@ -204,17 +204,17 @@ function test_regular_rectilinear_xnode_ynode_znode_and_spacings(arch, FT)
         @test minimum_yspacing(grid) ≈ FT(π/3)
         @test minimum_zspacing(grid) ≈ FT(π/3)
 
-        @test all(xspacings(grid, Center()) .≈ FT(π/N))
-        @test all(yspacings(grid, Center()) .≈ FT(π/N))
-        @test all(zspacings(grid, Center()) .≈ FT(π/N))
+        @test all(xspacings_field(grid, Center()) .≈ FT(π/N))
+        @test all(yspacings_field(grid, Center()) .≈ FT(π/N))
+        @test all(zspacings_field(grid, Center()) .≈ FT(π/N))
 
-        @test all(x ≈ FT(π/N) for x in xspacings(grid, Face()))
-        @test all(y ≈ FT(π/N) for y in yspacings(grid, Face()))
-        @test all(z ≈ FT(π/N) for z in zspacings(grid, Face()))
+        @test all(x ≈ FT(π/N) for x in xspacings_field(grid, Face()))
+        @test all(y ≈ FT(π/N) for y in yspacings_field(grid, Face()))
+        @test all(z ≈ FT(π/N) for z in zspacings_field(grid, Face()))
 
-        @test all(xspacings(grid, Face()) .== xspacings(grid, Face(), Center(), Center()))
-        @test all(yspacings(grid, Face()) .== yspacings(grid, Center(), Face(), Center()))
-        @test all(zspacings(grid, Face()) .== zspacings(grid, Center(), Center(), Face()))
+        @test all(xspacings_field(grid, Face()) .== xspacings_field(grid, Face(), Center(), Center()))
+        @test all(yspacings_field(grid, Face()) .== yspacings_field(grid, Center(), Face(), Center()))
+        @test all(zspacings_field(grid, Face()) .== zspacings_field(grid, Center(), Center(), Face()))
 
         @test xspacing(1, 1, 1, grid, Face(), Center(), Center()) ≈ FT(π/N)
         @test yspacing(1, 1, 1, grid, Center(), Face(), Center()) ≈ FT(π/N)
@@ -411,8 +411,8 @@ function test_rectilinear_grid_correct_spacings(FT, N)
     @test all(isapprox.(  grid.zᵃᵃᶜ[1:N],    zᵃᵃᶜ.(1:N)   ))
     @test all(isapprox.( grid.Δzᵃᵃᶜ[1:N],   Δzᵃᵃᶜ.(1:N)   ))
 
-    @test all(isapprox.(zspacings(grid, Face()), reshape(grid.Δzᵃᵃᶠ[1:N+1], 1, 1, N+1)))
-    @test all(isapprox.(zspacings(grid, Center()), reshape(grid.Δzᵃᵃᶜ[1:N], 1, 1, N)))
+    @test all(isapprox.(zspacings_field(grid, Face()), reshape(grid.Δzᵃᵃᶠ[1:N+1], 1, 1, N+1)))
+    @test all(isapprox.(zspacings_field(grid, Center()), reshape(grid.Δzᵃᵃᶜ[1:N], 1, 1, N)))
 
     @test zspacing(1, 1, 2, grid, Center(), Center(), Face()) == grid.Δzᵃᵃᶠ[2]
 
@@ -544,21 +544,21 @@ function test_basic_lat_lon_general_grid(FT)
 
     @test typeof(grid_reg.Δzᵃᵃᶜ) == typeof(grid_reg.Δzᵃᵃᶠ) == FT
 
-    @test all(xspacings(grid_reg, Center(), Center()) .== reshape(grid_reg.Δxᶜᶜᵃ[1:Nφ],   1, Nφ,   1))
-    @test all(xspacings(grid_reg, Center(), Face()  ) .== reshape(grid_reg.Δxᶜᶠᵃ[1:Nφ+1], 1, Nφ+1, 1))
-    @test all(xspacings(grid_reg, Face(),   Center()) .== reshape(grid_reg.Δxᶠᶜᵃ[1:Nφ],   1, Nφ,   1))
-    @test all(xspacings(grid_reg, Face(),   Face())   .== reshape(grid_reg.Δxᶠᶠᵃ[1:Nφ+1], 1, Nφ+1, 1))
-    @test all(yspacings(grid_reg, Center(), Face()) .== grid_reg.Δyᶜᶠᵃ)
-    @test all(yspacings(grid_reg, Face(),   Center()) .== grid_reg.Δyᶠᶜᵃ)
-    @test all(zspacings(grid_reg, Center()) .== grid_reg.Δzᵃᵃᶜ)
-    @test all(zspacings(grid_reg, Face()) .== grid_reg.Δzᵃᵃᶠ)
+    @test all(xspacings_field(grid_reg, Center(), Center()) .== reshape(grid_reg.Δxᶜᶜᵃ[1:Nφ],   1, Nφ,   1))
+    @test all(xspacings_field(grid_reg, Center(), Face()  ) .== reshape(grid_reg.Δxᶜᶠᵃ[1:Nφ+1], 1, Nφ+1, 1))
+    @test all(xspacings_field(grid_reg, Face(),   Center()) .== reshape(grid_reg.Δxᶠᶜᵃ[1:Nφ],   1, Nφ,   1))
+    @test all(xspacings_field(grid_reg, Face(),   Face())   .== reshape(grid_reg.Δxᶠᶠᵃ[1:Nφ+1], 1, Nφ+1, 1))
+    @test all(yspacings_field(grid_reg, Center(), Face()) .== grid_reg.Δyᶜᶠᵃ)
+    @test all(yspacings_field(grid_reg, Face(),   Center()) .== grid_reg.Δyᶠᶜᵃ)
+    @test all(zspacings_field(grid_reg, Center()) .== grid_reg.Δzᵃᵃᶜ)
+    @test all(zspacings_field(grid_reg, Face()) .== grid_reg.Δzᵃᵃᶠ)
 
-    @test xspacings(grid_reg, Center(), Center(), Center()) == xspacings(grid_reg, Center(), Center())
-    @test xspacings(grid_reg, Face(),   Face(),   Center()) == xspacings(grid_reg, Face(),   Face())
-    @test yspacings(grid_reg, Center(), Face(),   Center()) == yspacings(grid_reg, Center(), Face())
-    @test yspacings(grid_reg, Face(),   Center(), Center()) == yspacings(grid_reg, Face(),   Center())
-    @test zspacings(grid_reg, Face(),   Center(), Center()) == zspacings(grid_reg, Center())
-    @test zspacings(grid_reg, Face(),   Center(), Face()  ) == zspacings(grid_reg, Face())
+    @test xspacings_field(grid_reg, Center(), Center(), Center()) == xspacings_field(grid_reg, Center(), Center())
+    @test xspacings_field(grid_reg, Face(),   Face(),   Center()) == xspacings_field(grid_reg, Face(),   Face())
+    @test yspacings_field(grid_reg, Center(), Face(),   Center()) == yspacings_field(grid_reg, Center(), Face())
+    @test yspacings_field(grid_reg, Face(),   Center(), Center()) == yspacings_field(grid_reg, Face(),   Center())
+    @test zspacings_field(grid_reg, Face(),   Center(), Center()) == zspacings_field(grid_reg, Center())
+    @test zspacings_field(grid_reg, Face(),   Center(), Face()  ) == zspacings_field(grid_reg, Face())
 
     @test xspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == grid_reg.Δxᶜᶜᵃ[2]
     @test xspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δxᶜᶠᵃ[2]
@@ -567,10 +567,10 @@ function test_basic_lat_lon_general_grid(FT)
     @test zspacing(1, 2, 3, grid_reg, Center(), Center(), Face()  ) == grid_reg.Δzᵃᵃᶠ
     @test zspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == grid_reg.Δzᵃᵃᶜ
 
-    @test all(λspacings(grid_reg, Center()) .== grid_reg.Δλᶜᵃᵃ)
-    @test all(λspacings(grid_reg, Face()) .== grid_reg.Δλᶠᵃᵃ)
-    @test all(φspacings(grid_reg, Center()) .== grid_reg.Δφᵃᶜᵃ)
-    @test all(φspacings(grid_reg, Face()) .== grid_reg.Δφᵃᶠᵃ)
+    @test all(λspacings_field(grid_reg, Center()) .== grid_reg.Δλᶜᵃᵃ)
+    @test all(λspacings_field(grid_reg, Face()) .== grid_reg.Δλᶠᵃᵃ)
+    @test all(φspacings_field(grid_reg, Center()) .== grid_reg.Δφᵃᶜᵃ)
+    @test all(φspacings_field(grid_reg, Face()) .== grid_reg.Δφᵃᶠᵃ)
 
     @test λspacing(1, 2, 3, grid_reg, Face(),   Center(), Face())   == grid_reg.Δλᶠᵃᵃ
     @test φspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δφᵃᶠᵃ
@@ -605,19 +605,19 @@ function test_basic_lat_lon_general_grid(FT)
     @test sum(grid_str.Δzᵃᵃᶜ) == grid_reg.Δzᵃᵃᶜ * length(grid_str.Δzᵃᵃᶜ)
     @test sum(grid_str.Δzᵃᵃᶠ) == grid_reg.Δzᵃᵃᶠ * length(grid_str.Δzᵃᵃᶠ)
 
-    @test all(xspacings(grid_str, Center(), Center()) .== reshape(grid_str.Δxᶜᶜᵃ[1:Nλ, 1:Nφ],   Nλ, Nφ,   1))
-    @test all(xspacings(grid_str, Center(), Face())   .== reshape(grid_str.Δxᶜᶠᵃ[1:Nλ, 1:Nφ+1], Nλ, Nφ+1, 1))
-    @test all(xspacings(grid_str, Face(),   Center()) .== reshape(grid_str.Δxᶠᶜᵃ[1:Nλ, 1:Nφ],   Nλ, Nφ,   1))
-    @test all(xspacings(grid_str, Face(),   Face())   .== reshape(grid_str.Δxᶠᶠᵃ[1:Nλ, 1:Nφ+1], Nλ, Nφ+1, 1))
+    @test all(xspacings_field(grid_str, Center(), Center()) .== reshape(grid_str.Δxᶜᶜᵃ[1:Nλ, 1:Nφ],   Nλ, Nφ,   1))
+    @test all(xspacings_field(grid_str, Center(), Face())   .== reshape(grid_str.Δxᶜᶠᵃ[1:Nλ, 1:Nφ+1], Nλ, Nφ+1, 1))
+    @test all(xspacings_field(grid_str, Face(),   Center()) .== reshape(grid_str.Δxᶠᶜᵃ[1:Nλ, 1:Nφ],   Nλ, Nφ,   1))
+    @test all(xspacings_field(grid_str, Face(),   Face())   .== reshape(grid_str.Δxᶠᶠᵃ[1:Nλ, 1:Nφ+1], Nλ, Nφ+1, 1))
 
-    @test all(yspacings(grid_str, Center(), Face())   .== grid_str.Δyᶜᶠᵃ)
-    @test all(yspacings(grid_str, Face(),   Center()) .== grid_str.Δyᶠᶜᵃ)
+    @test all(yspacings_field(grid_str, Center(), Face())   .== grid_str.Δyᶜᶠᵃ)
+    @test all(yspacings_field(grid_str, Face(),   Center()) .== grid_str.Δyᶠᶜᵃ)
 
-    @test all(zspacings(grid_str, Center()) .== reshape(grid_str.Δzᵃᵃᶜ[1:Nz], 1, 1, Nz))
-    @test all(zspacings(grid_str, Face()) .== reshape(grid_str.Δzᵃᵃᶠ[1:Nz+1], 1, 1, Nz+1))
+    @test all(zspacings_field(grid_str, Center()) .== reshape(grid_str.Δzᵃᵃᶜ[1:Nz], 1, 1, Nz))
+    @test all(zspacings_field(grid_str, Face()) .== reshape(grid_str.Δzᵃᵃᶠ[1:Nz+1], 1, 1, Nz+1))
 
-    @test zspacings(grid_str, Center()) == zspacings(grid_str, Center(), Center(),   Center())
-    @test zspacings(grid_str, Face()) == zspacings(grid_str, Face(), Center(), Face())
+    @test zspacings_field(grid_str, Center()) == zspacings_field(grid_str, Center(), Center(),   Center())
+    @test zspacings_field(grid_str, Face()) == zspacings_field(grid_str, Face(), Center(), Face())
 
     return nothing
 end

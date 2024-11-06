@@ -151,41 +151,31 @@ GridMetricOperation(L, metric, grid) = GridMetricOperation{L[1], L[2], L[3]}(met
 function xspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = typeof.((ℓx, ℓy, ℓz))
     Δx_op = KernelFunctionOperation{LX, LY, LZ}(xspacing, grid, ℓx, ℓy, ℓz)
-    Δx_field = Field(Δx_op)
-    compute!(Δx_field)
-    return Δx_field
+    return Δx_op
 end
 
 function yspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = typeof.((ℓx, ℓy, ℓz))
     Δy_op = KernelFunctionOperation{LX, LY, LZ}(yspacing, grid, ℓx, ℓy, ℓz)
-    Δy_field = Field(Δy_op)
-    compute!(Δy_field)
-    return Δy_field
+    return Δy_op
 end
 
 function zspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = typeof.((ℓx, ℓy, ℓz))
     Δz_op = KernelFunctionOperation{LX, LY, LZ}(zspacing, grid, ℓx, ℓy, ℓz)
-    Δz_field = Field(Δz_op)
-    compute!(Δz_field)
-    return Δz_field
+    return Δz_op
 end
 
 function λspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = typeof.((ℓx, ℓy, ℓz))
     Δλ_op = KernelFunctionOperation{LX, LY, LZ}(λspacing, grid, ℓx, ℓy, ℓz)
-    Δλ_field = Field(Δλ_op)
-    compute!(Δλ_field)
-    return Δλ_field
+    return Δλ_op
 end
 
 function φspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = typeof.((ℓx, ℓy, ℓz))
     Δφ_op = KernelFunctionOperation{LX, LY, LZ}(φspacing, grid, ℓx, ℓy, ℓz)
-    Δφ_field = Field(Δφ_op)
-    compute!(Δφ_field)
-    return Δφ_field
+    return Δφ_op
 end
 
 @inline xspacings(grid, ℓx) = xspacings(grid, ℓx, Center(), Center())
