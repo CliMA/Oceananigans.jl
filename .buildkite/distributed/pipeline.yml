@@ -24,6 +24,9 @@ steps:
       # Force the initialization of the CUDA runtime as it is lazily loaded by default
       - "julia -O0 --project -e 'using CUDA; CUDA.precompile_runtime(); CUDA.versioninfo()'"
       - "julia -O0 --project -e 'using MPI; MPI.versioninfo()'"
+
+      - echo "--- Initialize tests"
+      - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
     agents:
       slurm_mem: 8G
       slurm_ntasks: 1
