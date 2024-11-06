@@ -117,7 +117,7 @@ end
     # Then the contribution of Jᵉ to the implicit flux is
     #
     #       Lᵂ = - Cᵂϵ * √e / Δz.
-    
+
     on_bottom = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k-1, grid)
     Δz = Δzᶜᶜᶜ(i, j, k, grid)
     Cᵂϵ = closure_ij.turbulent_kinetic_energy_equation.Cᵂϵ
@@ -190,7 +190,7 @@ function tracer_tendency_kernel_function(model::HFSM, ::Val{:e}, closures::Tuple
     else
         catke_closure = closures[catke_index]
         catke_diffusivity_fields = diffusivity_fields[catke_index]
-        return compute_hydrostatic_free_surface_Ge!, catke_closure, catke_diffusivity_fields 
+        return compute_hydrostatic_free_surface_Ge!, catke_closure, catke_diffusivity_fields
     end
 end
 
@@ -202,4 +202,3 @@ end
     return NamedTuple{tuple(names...)}(tuple(values...))
 end
 =#
-

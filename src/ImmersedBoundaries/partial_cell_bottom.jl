@@ -89,10 +89,14 @@ end
         # because we do not want to possibly using a moving grid to compute the bottom height
         z⁻ = rnode(i, j, k,   grid, c, c, f)
         z⁺ = rnode(i, j, k+1, grid, c, c, f)
-        # For the same reason, here we use `Δrᶜᶜᶜ` instead of `Δzᶜᶜᶜ`
         Δz = Δrᶜᶜᶜ(i, j, k, grid)
-        bottom_cell = (z⁻ < zb) & (z⁺ ≥ zb)
-        capped_zb   = ifelse(zb < z⁻ + Δz * (1 - ϵ), zb, z⁺)
+        
+        bottom_cell = (z⁻ ≤ zb) & (z⁺ ≥ zb)
+
+        # If the size of the bottom cell is less than ϵ Δz, use 
+        # a simple `GridFittedBottom` approach where the bottom 
+        # height is the top interface of cell k.
+        capped_zb = ifelse(zb < z⁻ + Δz * (1 - ϵ), zb, z⁺)
 
         @inbounds bottom_field[i, j, 1] = ifelse(bottom_cell, capped_zb, bottom_field[i, j, 1])
     end

@@ -15,8 +15,8 @@ abstract type AbstractGridFittedBottom{H} <: AbstractGridFittedBoundary end
 
 # To enable comparison with PartialCellBottom in the limiting case that
 # fractional cell height is 1.0.
-struct InterfaceImmersedCondition end
 struct CenterImmersedCondition end
+struct InterfaceImmersedCondition end
 
 struct GridFittedBottom{H, I} <: AbstractGridFittedBottom{H}
     bottom_height :: H

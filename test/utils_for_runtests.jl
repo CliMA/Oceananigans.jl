@@ -3,21 +3,26 @@ using Oceananigans.DistributedComputations: Distributed, Partition, child_archit
 
 import Oceananigans.Fields: interior
 
-test_child_arch() = CUDA.has_cuda() ? GPU() : CPU()
+# Are the test running on the GPUs? 
+# Are the test running in parallel?
+child_arch = get(ENV, "GPU_TEST", nothing) == "true" ? GPU() : CPU()
+mpi_test   = get(ENV, "MPI_TEST", nothing) == "true"
 
 function test_architectures() 
-    child_arch =  test_child_arch()
-
     # If MPI is initialized with MPI.Comm_size > 0, we are running in parallel.
     # We test several different configurations: `Partition(x = 4)`, `Partition(y = 4)`, 
     # `Partition(x = 2, y = 2)`, and different fractional subdivisions in x, y and xy
-    if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
-        return (Distributed(child_arch; partition = Partition(4)),
-                Distributed(child_arch; partition = Partition(1, 4)),
-                Distributed(child_arch; partition = Partition(2, 2)),
-                Distributed(child_arch; partition = Partition(x = Fractional(1, 2, 3, 4))),
-                Distributed(child_arch; partition = Partition(y = Fractional(1, 2, 3, 4))),
-                Distributed(child_arch; partition = Partition(x = Fractional(1, 2), y = Equal()))) 
+    if mpi_test
+        if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
+            return (Distributed(child_arch; partition = Partition(4)),
+                    Distributed(child_arch; partition = Partition(1, 4)),
+                    Distributed(child_arch; partition = Partition(2, 2)),
+                    Distributed(child_arch; partition = Partition(x = Fractional(1, 2, 3, 4))),
+                    Distributed(child_arch; partition = Partition(y = Fractional(1, 2, 3, 4))),
+                    Distributed(child_arch; partition = Partition(x = Fractional(1, 2), y = Equal()))) 
+        else
+            return throw("The MPI partitioning is not correctly configured.")
+        end
     else
         return tuple(child_arch)
     end
@@ -26,15 +31,17 @@ end
 # For nonhydrostatic simulations we cannot use `Fractional` at the moment (requirements
 # for the tranpose are more stringent than for hydrostatic simulations).
 function nonhydrostatic_regression_test_architectures() 
-    child_arch =  test_child_arch()
-
     # If MPI is initialized with MPI.Comm_size > 0, we are running in parallel.
     # We test 3 different configurations: `Partition(x = 4)`, `Partition(y = 4)` 
     # and `Partition(x = 2, y = 2)`
-    if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
-        return (Distributed(child_arch; partition = Partition(4)),
-                Distributed(child_arch; partition = Partition(1, 4)),
-                Distributed(child_arch; partition = Partition(2, 2)))
+    if mpi_test
+        if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
+            return (Distributed(child_arch; partition = Partition(4)),
+                    Distributed(child_arch; partition = Partition(1, 4)),
+                    Distributed(child_arch; partition = Partition(2, 2)))
+        else
+            return throw("The MPI partitioning is not correctly configured.")
+        end        
     else
         return tuple(child_arch)
     end
