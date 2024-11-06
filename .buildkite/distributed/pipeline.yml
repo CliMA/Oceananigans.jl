@@ -31,7 +31,7 @@ steps:
       - echo "--- Instantiate status"
       - "julia --project -e 'using Pkg; Pkg.status()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 8G
       slurm_ntasks: 1
       slurm_gpus_per_task: 1
 
@@ -45,7 +45,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 8G
       slurm_ntasks: 4
 
   - label: "🐲 gpu distributed unit tests"
@@ -57,7 +57,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 8G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
 
@@ -69,7 +69,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 8G
       slurm_ntasks: 4
 
   - label: "🛸 gpu distributed solvers tests"
@@ -81,7 +81,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 8G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
     retry:
@@ -97,7 +97,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 8G
       slurm_ntasks: 4
 
   - label: "🦏 gpu distributed hydrostatic model tests"
@@ -109,7 +109,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 8G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
     retry:
@@ -125,7 +125,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 8G
       slurm_ntasks: 4
 
   - label: "🕺 gpu distributed nonhydrostatic regression"
@@ -137,7 +137,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 8G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
     retry:
