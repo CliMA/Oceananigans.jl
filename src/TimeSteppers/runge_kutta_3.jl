@@ -14,15 +14,14 @@ struct RungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
                  ζ² :: FT
                  ζ³ :: FT
                  Gⁿ :: TG
-                 G⁻ :: TG
+  auxiliary_storage :: TG
     implicit_solver :: TI
 end
 
 """
     RungeKutta3TimeStepper(grid, tracers;
                            implicit_solver = nothing,
-                           Gⁿ = TendencyFields(grid, tracers),
-                           G⁻ = TendencyFields(grid, tracers))
+                           Gⁿ = TendencyFields(grid, tracers))
 
 Return a 3rd-order Runge0Kutta timestepper (`RungeKutta3TimeStepper`) on `grid` and with `tracers`.
 The tendency fields `Gⁿ` and `G⁻` can be specified via  optional `kwargs`.
@@ -46,24 +45,33 @@ The state at the first substep is taken to be the one that corresponds to the ``
 `U¹ = Uⁿ`, and the state after the third substep is then the state at the `Uⁿ⁺¹ = U⁴`.
 """
 function RungeKutta3TimeStepper(grid, tracers;
+                                hydrostatic_model = false,
                                 implicit_solver::TI = nothing,
-                                Gⁿ::TG = TendencyFields(grid, tracers),
-                                G⁻ = TendencyFields(grid, tracers)) where {TI, TG}
+                                Gⁿ::TG = TendencyFields(grid, tracers)) where {TI, TG}
 
     !isnothing(implicit_solver) &&
         @warn("Implicit-explicit time-stepping with RungeKutta3TimeStepper is not tested. " * 
               "\n implicit_solver: $(typeof(implicit_solver))")
 
-    γ¹ = 8 // 15
-    γ² = 5 // 12
-    γ³ = 3 // 4
+    if hydrostatic_model
+        γ¹ = 1
+        γ² = 1 // 4
+        γ³ = 2 // 3
+    
+        ζ² = 3 // 4
+        ζ³ = 1 // 3
+    else
+        γ¹ = 8 // 15
+        γ² = 5 // 12
+        γ³ = 3 // 4
 
-    ζ² = -17 // 60
-    ζ³ = -5 // 12
+        ζ² = -17 // 60
+        ζ³ = -5 // 12
+    end
 
     FT = eltype(grid)
 
-    return RungeKutta3TimeStepper{FT, TG, TI}(γ¹, γ², γ³, ζ², ζ³, Gⁿ, G⁻, implicit_solver)
+    return RungeKutta3TimeStepper{FT, TG, TI}(γ¹, γ², γ³, ζ², ζ³, Gⁿ, deepcopy(Gⁿ), implicit_solver)
 end
 
 #####
