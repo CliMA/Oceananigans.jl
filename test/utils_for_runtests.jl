@@ -5,8 +5,8 @@ import Oceananigans.Fields: interior
 
 # Are the test running on the GPUs? 
 # Are the test running in parallel?
-child_arch = parse(Bool, get(ENV, "GPU_TEST", "false")) ? GPU() : CPU()
-mpi_test   = parse(Bool, get(ENV, "MPI_TEST", "false"))
+child_arch = get(ENV, "GPU_TEST", nothing) == "true" ? GPU() : CPU()
+mpi_test   = get(ENV, "MPI_TEST", nothing) == "true"
 
 function test_architectures() 
     # If MPI is initialized with MPI.Comm_size > 0, we are running in parallel.

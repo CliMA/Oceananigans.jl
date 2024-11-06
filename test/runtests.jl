@@ -175,18 +175,6 @@ CUDA.allowscalar() do
 
     if group == :distributed_solvers || group == :all
         MPI.Initialized() || MPI.Init()
-        Pkg.instantiate(; verbose=true)
-        Pkg.precompile(; strict=true)
-        Pkg.status()
-
-        try
-            MPI.versioninfo()
-        catch; end
-
-        try
-            CUDA.precompile_runtime()
-            CUDA.versioninfo()
-        catch; end
         include("test_distributed_transpose.jl")
         include("test_distributed_poisson_solvers.jl")
     end
@@ -218,12 +206,12 @@ CUDA.allowscalar() do
         end
     end
 
-    # # Tests for Enzyme extension
-    # if group == :enzyme || group == :all
-    #     @testset "Enzyme extension tests" begin
-    #         include("test_enzyme.jl")
-    #     end
-    # end
+    # Tests for Enzyme extension
+    if group == :enzyme || group == :all
+        @testset "Enzyme extension tests" begin
+            include("test_enzyme.jl")
+        end
+    end
 
     if group == :convergence
         include("test_convergence.jl")
