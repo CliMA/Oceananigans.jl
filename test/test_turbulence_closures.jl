@@ -10,16 +10,15 @@ using Oceananigans.TurbulenceClosures: diffusive_flux_x, diffusive_flux_y, diffu
                                        viscous_flux_vx, viscous_flux_vy, viscous_flux_vz,
                                        viscous_flux_wx, viscous_flux_wy, viscous_flux_wz
 
-using Oceananigans.TurbulenceClosures:
-    ScalarDiffusivity,
-    ScalarBiharmonicDiffusivity,
-    TwoDimensionalLeith,
-    ConvectiveAdjustmentVerticalDiffusivity,
-    Smagorinsky,
-    DynamicSmagorinsky,
-    SmagorinskyLilly,
-    LagrangianAveraging,
-    AnisotropicMinimumDissipation
+using Oceananigans.TurbulenceClosures: ScalarDiffusivity,
+                                       ScalarBiharmonicDiffusivity,
+                                       TwoDimensionalLeith,
+                                       ConvectiveAdjustmentVerticalDiffusivity,
+                                       Smagorinsky,
+                                       DynamicSmagorinsky,
+                                       SmagorinskyLilly,
+                                       LagrangianAveraging,
+                                       AnisotropicMinimumDissipation
 
 ConstantSmagorinsky(FT=Float64) = Smagorinsky(FT, coefficient=0.16)
 DirectionallyAveragedDynamicSmagorinsky(FT=Float64) = DynamicSmagorinsky(FT, averaging=(1, 2))
@@ -337,7 +336,7 @@ end
     end
 
     @testset "Dynamic Smagorinsky closures" begin
-        @info "  Testing that dynamic Smagorinsky closures produce diffusivit fields of correct sizes..."
+        @info "  Testing that dynamic Smagorinsky closures produce diffusivity fields of correct sizes..."
         for arch in archs
             for closurename in [:ConstantSmagorinsky, :SmagorinskyLilly,
                                 :DirectionallyAveragedDynamicSmagorinsky, :LagrangianAveragedDynamicSmagorinsky]
