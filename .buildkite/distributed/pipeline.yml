@@ -8,7 +8,7 @@ env:
   OPENBLAS_NUM_THREADS: 1
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
   JULIA_NUM_PRECOMPILE_TASKS: 8
-  JULIA_NUM_THREADS: 1
+  JULIA_NUM_THREADS: 8
   OMPI_MCA_opal_warn_on_missing_libcuda: 0
 
 steps:
@@ -92,7 +92,7 @@ steps:
       - "julia -O0 --project -e 'using CUDA; CUDA.precompile_runtime(); CUDA.versioninfo()'"
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 8G
+      slurm_mem: 32G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
     retry:
@@ -108,7 +108,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 8G
+      slurm_mem: 32G
       slurm_ntasks: 4
     retry:
       automatic:
@@ -125,7 +125,7 @@ steps:
       - "julia -O0 --project -e 'using CUDA; CUDA.precompile_runtime(); CUDA.versioninfo()'"
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 8G
+      slurm_mem: 32G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
     retry:
@@ -141,7 +141,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 8G
+      slurm_mem: 32G
       slurm_ntasks: 4
     retry:
       automatic:
@@ -158,7 +158,7 @@ steps:
       - "julia -O0 --project -e 'using CUDA; CUDA.precompile_runtime(); CUDA.versioninfo()'"
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 8G
+      slurm_mem: 32G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
     retry:
