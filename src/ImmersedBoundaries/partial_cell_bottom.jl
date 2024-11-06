@@ -79,20 +79,20 @@ function on_architecture(arch, ib::PartialCellBottom{<:Field})
 end
 
 Adapt.adapt_structure(to, ib::PartialCellBottom) = PartialCellBottom(adapt(to, ib.bottom_height),
-                                                                     ib.minimum_fractional_cell_height)     
+                                                                     ib.minimum_fractional_cell_height)
 
 on_architecture(to, ib::PartialCellBottom) = PartialCellBottom(on_architecture(to, ib.bottom_height),
-                                                               on_architecture(to, ib.minimum_fractional_cell_height))     
+                                                               on_architecture(to, ib.minimum_fractional_cell_height))
 
 """
     immersed     underlying
 
       --x--        --x--
-            
-            
+
+
         ∘   ↑        ∘   k+1
             |
-            |               
+            |
   k+1 --x-- |  k+1 --x--    ↑      <- node z
         ∘   ↓               |
    zb ⋅⋅x⋅⋅                 |
@@ -101,7 +101,7 @@ on_architecture(to, ib::PartialCellBottom) = PartialCellBottom(on_architecture(t
                             |
                             |
                  k --x--    ↓
-      
+
 Criterion is zb ≥ z - ϵ Δz
 
 """
@@ -158,9 +158,9 @@ end
 @inline Δzᶠᶜᶜ(i, j, k, ibg::PCBIBG) = min(Δzᶜᶜᶜ(i-1, j, k, ibg), Δzᶜᶜᶜ(i, j, k, ibg))
 @inline Δzᶜᶠᶜ(i, j, k, ibg::PCBIBG) = min(Δzᶜᶜᶜ(i, j-1, k, ibg), Δzᶜᶜᶜ(i, j, k, ibg))
 @inline Δzᶠᶠᶜ(i, j, k, ibg::PCBIBG) = min(Δzᶠᶜᶜ(i, j-1, k, ibg), Δzᶠᶜᶜ(i, j, k, ibg))
-      
+
 @inline Δzᶠᶜᶠ(i, j, k, ibg::PCBIBG) = min(Δzᶜᶜᶠ(i-1, j, k, ibg), Δzᶜᶜᶠ(i, j, k, ibg))
-@inline Δzᶜᶠᶠ(i, j, k, ibg::PCBIBG) = min(Δzᶜᶜᶠ(i, j-1, k, ibg), Δzᶜᶜᶠ(i, j, k, ibg))      
+@inline Δzᶜᶠᶠ(i, j, k, ibg::PCBIBG) = min(Δzᶜᶜᶠ(i, j-1, k, ibg), Δzᶜᶜᶠ(i, j, k, ibg))
 @inline Δzᶠᶠᶠ(i, j, k, ibg::PCBIBG) = min(Δzᶠᶜᶠ(i, j-1, k, ibg), Δzᶠᶜᶠ(i, j, k, ibg))
 
 # Make sure Δz works for horizontally-Flat topologies.
@@ -177,4 +177,3 @@ YFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:Partial
 @inline Δzᶠᶠᶜ(i, j, k, ibg::YFlatPCBIBG) = Δzᶠᶜᶜ(i, j, k, ibg)
 
 @inline z_bottom(i, j, ibg::PCBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
-

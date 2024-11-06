@@ -75,7 +75,7 @@ import Oceananigans.Grids: xspacing, yspacing, zspacing
 ##### Convenient aliases
 #####
 
-const AG   = AbstractGrid
+const AG = AbstractGrid
 
 const Δx = xspacing
 const Δy = yspacing

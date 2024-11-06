@@ -1,9 +1,6 @@
 using Oceananigans.AbstractOperations: GridMetricOperation
 
-import Oceananigans.Grids:
-    coordinates,
-    xspacing, yspacing, zspacing,
-    xspacings, yspacings, zspacings
+import Oceananigans.Grids: coordinates
 
 # Grid metrics for ImmersedBoundaryGrid
 #

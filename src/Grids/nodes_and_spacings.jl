@@ -165,73 +165,14 @@ nodes(grid::AbstractGrid, (ℓx, ℓy, ℓz); reshape=false, with_halos=false) =
 function xspacing end
 function yspacing end
 function zspacing end
+function λspacing end
+function φspacing end
 
-# """
-#     xspacings(grid, ℓx, ℓy, ℓz; with_halos=true)
-
-# Return the spacings over the interior nodes on `grid` in the ``x``-direction for the location `ℓx`,
-# `ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-# ```jldoctest xspacings
-# julia> using Oceananigans
-
-# julia> grid = LatitudeLongitudeGrid(size=(8, 15, 10), longitude=(-20, 60), latitude=(-10, 50), z=(-100, 0));
-
-# julia> xspacings(grid, Center(), Face(), Center())
-# 16-element view(OffsetArray(::Vector{Float64}, -2:18), 1:16) with eltype Float64:
-#       1.0950562585518518e6
-#       1.1058578920188267e6
-#       1.1112718969963323e6
-#       1.1112718969963323e6
-#       1.1058578920188267e6
-#       1.0950562585518518e6
-#       1.0789196210678827e6
-#       1.0575265956426917e6
-#       1.0309814069457315e6
-#  999413.38046802
-#  962976.3124613502
-#  921847.720658409
-#  876227.979424229
-#  826339.3435524226
-#  772424.8654621692
-#  714747.2110712599
-# ```
-# """
-# @inline xspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = xspacings(grid, ℓx; with_halos)
-
-# """
-#     yspacings(grid, ℓx, ℓy, ℓz; with_halos=true)
-
-# Return the spacings over the interior nodes on `grid` in the ``y``-direction for the location `ℓx`,
-# `ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-# ```jldoctest yspacings
-# julia> using Oceananigans
-
-# julia> grid = LatitudeLongitudeGrid(size=(20, 15, 10), longitude=(0, 20), latitude=(-15, 15), z=(-100, 0));
-
-# julia> yspacings(grid, Center(), Center(), Center())
-# 222389.85328911748
-# ```
-# """
-# @inline yspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = yspacings(grid, ℓy; with_halos)
-
-# """
-#     zspacings(grid, ℓx, ℓy, ℓz; with_halos=true)
-
-# Return the spacings over the interior nodes on `grid` in the ``z``-direction for the location `ℓx`,
-# `ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-# ```jldoctest zspacings
-# julia> using Oceananigans
-
-# julia> grid = LatitudeLongitudeGrid(size=(20, 15, 10), longitude=(0, 20), latitude=(-15, 15), z=(-100, 0));
-
-# julia> zspacings(grid, Center(), Center(), Center())
-# 10.0
-# ```
-# """
-# @inline zspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = zspacings(grid, ℓz; with_halos)
+function xspacings end
+function yspacings end
+function zspacings end
+function λspacings end
+function φspacings end
 
 destantiate(::Face)   = Face
 destantiate(::Center) = Center
@@ -239,6 +180,8 @@ destantiate(::Center) = Center
 spacing_function(::Val{:x}) = xspacing
 spacing_function(::Val{:y}) = yspacing
 spacing_function(::Val{:z}) = zspacing
+spacing_function(::Val{:λ}) = λspacing
+spacing_function(::Val{:φ}) = φspacing
 
 function minimum_spacing(s, grid, ℓx, ℓy, ℓz)
     spacing = spacing_function(s)

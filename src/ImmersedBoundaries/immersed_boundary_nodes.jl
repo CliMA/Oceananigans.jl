@@ -1,5 +1,16 @@
+import Oceananigans.Grids: xspacings, yspacings, zspacings
+
 const c = Center()
 const f = Face()
+
+@inline xnode(i, ibg::IBG, ℓx) = xnode(i, ibg.underlying_grid, ℓx)
+@inline ynode(j, ibg::IBG, ℓy) = ynode(j, ibg.underlying_grid, ℓy)
+@inline znode(k, ibg::IBG, ℓz) = znode(k, ibg.underlying_grid, ℓz)
+
+@inline λnode(i, ibg::IBG, ℓx) = λnode(i, ibg.underlying_grid, ℓx)
+@inline φnode(j, ibg::IBG, ℓy) = φnode(i, ibg.underlying_grid, ℓy)
+
+@inline xnode(i, j, ibg::IBG, ℓx, ℓy) = xnode(i, j, ibg.underlying_grid, ℓx, ℓy)
 
 @inline xnode(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = xnode(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
 @inline ynode(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = ynode(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
@@ -51,3 +62,7 @@ rname(ibg::IBG) = rname(ibg.underlying_grid)
 @inline fractional_x_index(x, locs, grid::ImmersedBoundaryGrid) = fractional_x_index(x, locs, grid.underlying_grid)
 @inline fractional_y_index(x, locs, grid::ImmersedBoundaryGrid) = fractional_y_index(x, locs, grid.underlying_grid)
 @inline fractional_z_index(x, locs, grid::ImmersedBoundaryGrid) = fractional_z_index(x, locs, grid.underlying_grid)
+
+xspacings(ibg::ImmersedBoundaryGrid, LX, LY, LZ) = xspacings(ibg.underlying_grid, LX, LY, LZ)
+yspacings(ibg::ImmersedBoundaryGrid, LX, LY, LZ) = yspacings(ibg.underlying_grid, LX, LY, LZ)
+zspacings(ibg::ImmersedBoundaryGrid, LX, LY, LZ) = zspacings(ibg.underlying_grid, LX, LY, LZ)

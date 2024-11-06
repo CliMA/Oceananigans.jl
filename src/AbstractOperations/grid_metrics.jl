@@ -2,7 +2,7 @@ using Adapt
 using Oceananigans.Operators
 using Oceananigans.Fields: default_indices, location
 
-import Oceananigans.Grids: xspacings, yspacings, zspacings
+import Oceananigans.Grids: xspacings, yspacings, zspacings, λspacings, φspacings
 
 abstract type AbstractGridMetric end
 
@@ -148,27 +148,56 @@ GridMetricOperation(L, metric, grid) = GridMetricOperation{L[1], L[2], L[3]}(met
 ##### Spacings
 #####
 
-function xspacings(grid, LX, LY, LZ)
-    Δx_op = KernelFunctionOperation{LX, LY, LZ}(xspacing, grid, LX(), LY(), LZ())
+function xspacings(grid, ℓx, ℓy, ℓz)
+    LX, LY, LZ = typeof.((ℓx, ℓy, ℓz))
+    Δx_op = KernelFunctionOperation{LX, LY, LZ}(xspacing, grid, ℓx, ℓy, ℓz)
     Δx_field = Field(Δx_op)
     compute!(Δx_field)
     return Δx_field
 end
 
-function yspacings(grid, LX, LY, LZ)
-    Δy_op = KernelFunctionOperation{LX, LY, LZ}(yspacing, grid, LX(), LY(), LZ())
+function yspacings(grid, ℓx, ℓy, ℓz)
+    LX, LY, LZ = typeof.((ℓx, ℓy, ℓz))
+    Δy_op = KernelFunctionOperation{LX, LY, LZ}(yspacing, grid, ℓx, ℓy, ℓz)
     Δy_field = Field(Δy_op)
     compute!(Δy_field)
     return Δy_field
 end
 
-function zspacings(grid, LX, LY, LZ)
-    Δz_op = KernelFunctionOperation{LX, LY, LZ}(zspacing, grid, LX(), LY(), LZ())
+function zspacings(grid, ℓx, ℓy, ℓz)
+    LX, LY, LZ = typeof.((ℓx, ℓy, ℓz))
+    Δz_op = KernelFunctionOperation{LX, LY, LZ}(zspacing, grid, ℓx, ℓy, ℓz)
     Δz_field = Field(Δz_op)
     compute!(Δz_field)
     return Δz_field
 end
 
-xspacings(field) = xspacings(field.grid, location(field)...)
-yspacings(field) = yspacings(field.grid, location(field)...)
-zspacings(field) = zspacings(field.grid, location(field)...)
+function λspacings(grid, ℓx, ℓy, ℓz)
+    LX, LY, LZ = typeof.((ℓx, ℓy, ℓz))
+    Δλ_op = KernelFunctionOperation{LX, LY, LZ}(λspacing, grid, ℓx, ℓy, ℓz)
+    Δλ_field = Field(Δλ_op)
+    compute!(Δλ_field)
+    return Δλ_field
+end
+
+function φspacings(grid, ℓx, ℓy, ℓz)
+    LX, LY, LZ = typeof.((ℓx, ℓy, ℓz))
+    Δφ_op = KernelFunctionOperation{LX, LY, LZ}(φspacing, grid, ℓx, ℓy, ℓz)
+    Δφ_field = Field(Δφ_op)
+    compute!(Δφ_field)
+    return Δφ_field
+end
+
+@inline xspacings(grid, ℓx) = xspacings(grid, ℓx, Center(), Center())
+@inline yspacings(grid, ℓy) = yspacings(grid, Center(), ℓy, Center())
+@inline zspacings(grid, ℓz) = zspacings(grid, Center(), Center(), ℓz)
+
+@inline λspacings(grid, ℓx) = λspacings(grid, ℓx, Center(), Center())
+@inline φspacings(grid, ℓy) = φspacings(grid, Center(), ℓy, Center())
+
+@inline xspacings(grid, ℓx, ℓy) = xspacings(grid, ℓx, ℓy, Center())
+@inline yspacings(grid, ℓx, ℓy) = yspacings(grid, ℓx, ℓy, Center())
+
+@inline xspacings(field) = xspacings(field.grid, location(field)...)
+@inline yspacings(field) = yspacings(field.grid, location(field)...)
+@inline zspacings(field) = zspacings(field.grid, location(field)...)

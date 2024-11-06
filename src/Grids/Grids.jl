@@ -16,7 +16,8 @@ export ξnode, ηnode, rnode
 export xnode, ynode, znode, λnode, φnode
 export xnodes, ynodes, znodes, λnodes, φnodes
 export spacings
-export xspacings, yspacings, zspacings, xspacing, yspacing, zspacing
+export xspacing, yspacing, zspacing, λspacing, φspacing
+export xspacings, yspacings, zspacings, λspacings, φspacings
 export minimum_xspacing, minimum_yspacing, minimum_zspacing
 export offset_data, new_data
 export on_architecture
