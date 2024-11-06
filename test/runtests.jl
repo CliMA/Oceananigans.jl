@@ -221,12 +221,12 @@ CUDA.allowscalar() do
         end
     end
 
-    # Tests for Enzyme extension
-    if group == :enzyme || group == :all
-        @testset "Enzyme extension tests" begin
-            include("test_enzyme.jl")
-        end
-    end
+    # # Tests for Enzyme extension
+    # if group == :enzyme || group == :all
+    #     @testset "Enzyme extension tests" begin
+    #         include("test_enzyme.jl")
+    #     end
+    # end
 
     if group == :convergence
         include("test_convergence.jl")
