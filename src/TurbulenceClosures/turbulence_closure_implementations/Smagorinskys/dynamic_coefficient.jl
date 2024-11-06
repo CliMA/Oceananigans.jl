@@ -13,8 +13,12 @@ const DynamicSmagorinsky = Smagorinsky{<:Any, <:DynamicCoefficient}
 function DynamicSmagorinsky(time_discretization=ExplicitTimeDiscretization(), FT=Float64; averaging,
                             Pr=1.0, schedule=IterationInterval(1), minimum_numerator=1e-32)
     coefficient = DynamicCoefficient(FT; averaging, schedule, minimum_numerator)
-    return Smagorinsky(time_discretization, FT; coefficient, Pr)
+    TD = typeof(time_discretization)
+    Pr = convert_diffusivity(FT, Pr; discrete_form=false)
+    return Smagorinsky{TD}(coefficient, Pr)
 end
+
+DynamicSmagorinsky(FT::DataType; kwargs...) = DynamicSmagorinsky(ExplicitTimeDiscretization(), FT; kwargs...)
 
 Adapt.adapt_structure(to, dc::DynamicCoefficient) = DynamicCoefficient(dc.averaging, dc.minimum_numerator, nothing)
 
@@ -29,7 +33,7 @@ const LagrangianAveragedDynamicSmagorinsky = Smagorinsky{<:Any, <:LagrangianAver
     DynamicCoefficient([FT=Float64;] averaging, schedule=IterationInterval(1), minimum_numerator=1e-32)
 
 When used with `Smagorinsky`, it calculates the Smagorinsky coefficient dynamically from the flow
-according to the procedure in [BouZeid05](@citet).
+according to the scale invariant procedure in [BouZeid05](@citet).
 
 `DynamicCoefficient` requires an `averaging` procedure, which can be a `LagrangianAveraging` (which
 averages fluid parcels along their Lagrangian trajectory) or a tuple of integers indicating
