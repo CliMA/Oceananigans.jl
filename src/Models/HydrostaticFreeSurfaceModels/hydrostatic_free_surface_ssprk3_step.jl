@@ -61,34 +61,6 @@ function time_step!(model::AbstractModel{<:SSPRK3TimeStepper}, Δt; callbacks=[]
     return nothing
 end
 
-function store_old_fields!(model::HydrostaticFreeSurfaceModel)
-    
-    timestepper = model.timestepper
-    previous_fields   = timestepper.previous_model_fields
-    new_fields = prognostic_fields(model)
-
-    for name in keys(new_fields)
-        parent(previous_fields[name]) .= parent(new_fields[name])
-    end
-    
-    # TODO: These should be part of the main timestepper
-    if model.free_surface isa SplitExplicitFreeSurface
-        Uᵐ = model.free_surface.state.Uᵐ⁻²
-        Vᵐ = model.free_surface.state.Vᵐ⁻²
-        ηᵐ = model.free_surface.state.ηᵐ⁻²
-
-        U̅ = model.free_surface.state.U̅
-        V̅ = model.free_surface.state.V̅
-        η = model.free_surface.η
-
-        parent(Uᵐ) .= parent(U̅)
-        parent(Vᵐ) .= parent(V̅)
-        parent(ηᵐ) .= parent(η)
-    end
-
-    return nothing
-end
-
 ssprk3_substep_free_surface!(::Nothing, args...) = nothing
 
 function ssprk3_substep_free_surface!(free_surface, γⁿ, ζⁿ)
@@ -109,12 +81,12 @@ end
 ##### Time stepping in each substep
 #####
 
-@kernel function _ssprk3_substep_field!(field, Δt, γⁿ, ζⁿ, Gⁿ, old_field)
+@kernel function _ssprk3_substep_field!(field, Δt, γⁿ::FT, ζⁿ, Gⁿ, old_field) where FT
     i, j, k = @index(Global, NTuple)
-    field[i, j, k] =  ζⁿ * old_field[i, j, k] + γⁿ * (field[i, j, k] + Δt * Gⁿ[i, j, k])
+    field[i, j, k] =  ζⁿ * old_field[i, j, k] + γⁿ * (field[i, j, k] + convert(FT, Δt) * Gⁿ[i, j, k])
 end
 
-@kernel function _ssprk3_substep_field!(field, Δt, ::Nothing, ::Nothing, Gⁿ, old_field)
+@kernel function _ssprk3_substep_field!(field, Δt, γ¹, ::Nothing, Gⁿ, old_field)
     i, j, k = @index(Global, NTuple)
     field[i, j, k] = old_field[i, j, k] + Δt * Gⁿ[i, j, k]
 end

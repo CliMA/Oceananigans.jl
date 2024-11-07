@@ -63,3 +63,107 @@ function SSPRK3TimeStepper(grid, tracers;
 
     return SSPRK3TimeStepper{FT, TG, TI}(γ², γ³, ζ², ζ³, Gⁿ, G⁻, implicit_solver)
 end
+
+function time_step!(model::AbstractModel{<:SSPRK3TimeStepper}, Δt; callbacks=[])
+    Δt == 0 && @warn "Δt == 0 may cause model blowup!"
+
+    # Be paranoid and update state at iteration 0, in case run! is not used:
+    model.clock.iteration == 0 && update_state!(model, callbacks; compute_tendencies = true)
+
+    γ² = model.timestepper.γ²
+    γ³ = model.timestepper.γ³
+
+    ζ² = model.timestepper.ζ²
+    ζ³ = model.timestepper.ζ³
+
+    store_old_fields!(model)
+
+    ####
+    #### First stage
+    ####
+
+    setup_free_surface!(model, model.free_surface, model.timestepper, 1)
+    ssprk3_substep!(model.velocities, model.tracers, model, Δt, nothing, nothing)
+    step_free_surface!(model.free_surface, model, model.timestepper, Δt)
+    pressure_correct_velocities!(model, Δt)
+    update_state!(model, callbacks; compute_tendencies = true)
+
+    ####
+    #### Second stage
+    ####
+
+    setup_free_surface!(model, model.free_surface, model.timestepper, 2)
+    ssprk3_substep!(model.velocities, model.tracers, model, Δt, γ², ζ²)
+    step_free_surface!(model.free_surface, model, model.timestepper, Δt)
+    ssprk3_substep_free_surface!(model.free_surface, γ², ζ²)
+    pressure_correct_velocities!(model, Δt)
+    update_state!(model, callbacks; compute_tendencies = true)
+
+    ####
+    #### Third stage
+    ####
+    
+    setup_free_surface!(model, model.free_surface, model.timestepper, 3)
+    ssprk3_substep!(model.velocities, model.tracers, model, Δt, γ³, ζ³)
+    step_free_surface!(model.free_surface, model, model.timestepper, Δt)
+    pressure_correct_velocities!(model, Δt)
+  
+    update_state!(model, callbacks; compute_tendencies = true)
+    step_lagrangian_particles!(model, Δt)
+
+    tick!(model.clock, Δt)
+    model.clock.last_Δt = Δt
+
+    return nothing
+end
+
+function store_old_fields!(model)
+    
+    timestepper = model.timestepper
+    previous_fields = timestepper.previous_model_fields
+    new_fields = prognostic_fields(model)
+
+    for name in keys(new_fields)
+        parent(previous_fields[name]) .= parent(new_fields[name])
+    end
+    
+    return nothing
+end
+
+@kernel function _ssprk3_substep_field!(field, Δt, γⁿ::FT, ζⁿ, Gⁿ, old_field) where FT
+    i, j, k = @index(Global, NTuple)
+    field[i, j, k] =  ζⁿ * old_field[i, j, k] + γⁿ * (field[i, j, k] + convert(FT, Δt) * Gⁿ[i, j, k])
+end
+
+@kernel function _ssprk3_substep_field!(field, Δt, γ¹::FT, ::Nothing, Gⁿ, old_field) where FT
+    i, j, k = @index(Global, NTuple)
+    field[i, j, k] = old_field[i, j, k] + convert(FT, Δt) * Gⁿ[i, j, k]
+end
+
+function ssprk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
+
+    closure = model.closure
+    grid = model.grid
+
+    # Tracer update kernels
+    for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
+        
+        Gⁿ = model.timestepper.Gⁿ[tracer_name]
+        old_field = model.timestepper.previous_model_fields[tracer_name]
+        tracer_field = tracers[tracer_name]
+        closure = model.closure
+
+        launch!(architecture(grid), grid, :xyz,
+                _ssprk3_substep_field!, tracer_field, Δt, γⁿ, ζⁿ, Gⁿ, old_field)
+
+        implicit_step!(tracer_field,
+                       model.timestepper.implicit_solver,
+                       closure,
+                       model.diffusivity_fields,
+                       Val(tracer_index),
+                       model.clock,
+                       Δt)
+    end
+
+    return nothing
+end
