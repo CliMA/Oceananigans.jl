@@ -100,8 +100,8 @@ v_bcs = FieldBoundaryConditions(   top = FluxBoundaryCondition(0),
                                 bottom = v_drag_bc,
                                   east = ValueBoundaryCondition(0),
                                   west = ValueBoundaryCondition(0))
-
-@inline T_north_ref(z) = min(0, -5 + 5 * (1 + (z + 500) / (Lz - 500)))
+                                  
+@inline T_seasonal(y, t) = seasonal_T_amplitude * (y/Ly + 1/2) * sin(2π * t / seasonal_period)
 @inline T_ref(y, t) = T_mid - ΔT / Ly * y + T_seasonal(y, t)
 @inline surface_T_flux(x, y, t, T) = μ_T * Δz * (T - T_ref(y, t))
 surface_T_flux_bc = FluxBoundaryCondition(surface_T_flux; field_dependencies=:T)
