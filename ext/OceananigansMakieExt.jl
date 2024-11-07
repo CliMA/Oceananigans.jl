@@ -3,6 +3,7 @@ module OceananigansMakieExt
 using Oceananigans
 using Oceananigans.Grids: OrthogonalSphericalShellGrid
 using Oceananigans.AbstractOperations: AbstractOperation
+using Oceananigans.Field: AbstractField
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
@@ -14,7 +15,7 @@ import Makie: args_preferred_axis
 # do not overstate a preference for being plotted in a 3D LScene.
 # Because often we are trying to plot 1D and 2D Field, even though
 # (perhaps incorrectly) all Field are AbstractArray{3}.
-args_preferred_axis(::Field) = nothing
+args_preferred_axis(::AbstractField) = nothing
 
 function drop_singleton_indices(N)
     if N == 1
