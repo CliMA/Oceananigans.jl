@@ -3,7 +3,7 @@ using KernelAbstractions: @kernel, @index
 using Adapt: adapt_structure
 
 using Oceananigans.Grids: on_architecture, node_names
-using Oceananigans.Architectures: child_architecture, device, GPU, CPU
+using Oceananigans.Architectures: child_architecture, cpu_architecture, device, GPU, CPU
 using Oceananigans.Utils: work_layout
 
 #####
@@ -49,8 +49,10 @@ function set_to_function!(u, f)
 
     # Determine cpu_grid and cpu_u
     if arch isa GPU
-        cpu_grid = on_architecture(CPU(), u.grid)
-        cpu_u = Field(location(u), cpu_grid; indices = indices(u))
+        cpu_arch = cpu_architecture(arch)
+        cpu_grid = on_architecture(cpu_arch, u.grid)
+        cpu_u    = Field(location(u), cpu_grid; indices = indices(u))
+    
     elseif arch isa CPU
         cpu_grid = u.grid
         cpu_u = u
@@ -65,8 +67,8 @@ function set_to_function!(u, f)
     catch err
         u_loc = Tuple(L() for L in location(u))
 
-        arg_str = tuple_string(node_names(u.grid, u_loc...))
-        loc_str = tuple_string(location(u))
+        arg_str  = tuple_string(node_names(u.grid, u_loc...))
+        loc_str  = tuple_string(location(u))
         topo_str = tuple_string(topology(u.grid))
 
         msg = string("An error was encountered within set! while setting the field", '\n', '\n',
@@ -81,10 +83,8 @@ function set_to_function!(u, f)
     end
 
     # Transfer data to GPU if u is on the GPU
-    if child_architecture(u) isa GPU
-        set!(u, cpu_u)
-    end
-
+    arch isa GPU && set!(u, cpu_u)
+    
     return u
 end
 
