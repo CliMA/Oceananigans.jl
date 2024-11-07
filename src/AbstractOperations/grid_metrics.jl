@@ -1,6 +1,7 @@
 using Adapt
 using Oceananigans.Operators
-using Oceananigans.Fields: default_indices, location
+using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Fields: AbstractField, default_indices, location
 
 import Oceananigans.Grids: xspacings, yspacings, zspacings, λspacings, φspacings
 
@@ -149,45 +150,44 @@ GridMetricOperation(L, metric, grid) = GridMetricOperation{L[1], L[2], L[3]}(met
 #####
 
 function xspacings(grid, ℓx, ℓy, ℓz)
-    LX, LY, LZ = typeof.((ℓx, ℓy, ℓz))
+    LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δx_op = KernelFunctionOperation{LX, LY, LZ}(xspacing, grid, ℓx, ℓy, ℓz)
     return Δx_op
 end
 
 function yspacings(grid, ℓx, ℓy, ℓz)
-    LX, LY, LZ = typeof.((ℓx, ℓy, ℓz))
+    LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δy_op = KernelFunctionOperation{LX, LY, LZ}(yspacing, grid, ℓx, ℓy, ℓz)
     return Δy_op
 end
 
 function zspacings(grid, ℓx, ℓy, ℓz)
-    LX, LY, LZ = typeof.((ℓx, ℓy, ℓz))
+    LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δz_op = KernelFunctionOperation{LX, LY, LZ}(zspacing, grid, ℓx, ℓy, ℓz)
     return Δz_op
 end
 
 function λspacings(grid, ℓx, ℓy, ℓz)
-    LX, LY, LZ = typeof.((ℓx, ℓy, ℓz))
+    LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δλ_op = KernelFunctionOperation{LX, LY, LZ}(λspacing, grid, ℓx, ℓy, ℓz)
     return Δλ_op
 end
 
 function φspacings(grid, ℓx, ℓy, ℓz)
-    LX, LY, LZ = typeof.((ℓx, ℓy, ℓz))
+    LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δφ_op = KernelFunctionOperation{LX, LY, LZ}(φspacing, grid, ℓx, ℓy, ℓz)
     return Δφ_op
 end
 
-@inline xspacings(grid, ℓx) = xspacings(grid, ℓx, Center(), Center())
-@inline yspacings(grid, ℓy) = yspacings(grid, Center(), ℓy, Center())
-@inline zspacings(grid, ℓz) = zspacings(grid, Center(), Center(), ℓz)
+@inline xspacings(field::AbstractField) = xspacings(field.grid, location(field)...)
+@inline yspacings(field::AbstractField) = yspacings(field.grid, location(field)...)
+@inline zspacings(field::AbstractField) = zspacings(field.grid, location(field)...)
+@inline λspacings(field::AbstractField) = λspacings(field.grid, location(field)...)
+@inline φspacings(field::AbstractField) = φspacings(field.grid, location(field)...)
 
-@inline λspacings(grid, ℓx) = λspacings(grid, ℓx, Center(), Center())
-@inline φspacings(grid, ℓy) = φspacings(grid, Center(), ℓy, Center())
-
-@inline xspacings(grid, ℓx, ℓy) = xspacings(grid, ℓx, ℓy, Center())
-@inline yspacings(grid, ℓx, ℓy) = yspacings(grid, ℓx, ℓy, Center())
-
-@inline xspacings(field) = xspacings(field.grid, location(field)...)
-@inline yspacings(field) = yspacings(field.grid, location(field)...)
-@inline zspacings(field) = zspacings(field.grid, location(field)...)
+# Some defaults for e.g. easy CFL computations.
+@inline xspacings(grid::AbstractGrid) = xspacings(grid, Center(), Center(), Center())
+@inline yspacings(grid::AbstractGrid) = yspacings(grid, Center(), Center(), Center())
+@inline zspacings(grid::AbstractGrid) = zspacings(grid, Center(), Center(), Center())
+@inline λspacings(grid::AbstractGrid) = λspacings(grid, Center(), Center(), Center())
+@inline φspacings(grid::AbstractGrid) = φspacings(grid, Center(), Center(), Center())

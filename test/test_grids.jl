@@ -739,18 +739,18 @@ function test_orthogonal_shell_grid_array_sizes_and_spacings(FT)
     @test size(grid.φᶜᶠᵃ) == (Nx + 2Hx,     Ny + 2Hy + 1)
     @test size(grid.φᶠᶠᵃ) == (Nx + 2Hx + 1, Ny + 2Hy + 1)
 
-    @test xspacings(grid, Center(), Center(), Face(), with_halos=true) == xspacings(grid, Center(), Center(), with_halos=true) == grid.Δxᶜᶜᵃ
-    @test xspacings(grid, Center(), Face(),   Face(), with_halos=true) == xspacings(grid, Center(), Face(),   with_halos=true) == grid.Δxᶜᶠᵃ
-    @test xspacings(grid, Face(),   Center(), Face())                  == xspacings(grid, Face(),   Center())                  == grid.Δxᶠᶜᵃ[1:grid.Nx+1, 1:grid.Ny]
-    @test xspacings(grid, Face(),   Face(),   Face())                  == xspacings(grid, Face(),   Face())                    == grid.Δxᶠᶠᵃ[1:grid.Nx+1, 1:grid.Ny+1]
+    @test all(xspacings(grid, Center(), Center(), Face()) .== xspacings(grid, Center(), Center()) .== grid.Δxᶜᶜᵃ[1:Nx,   1:Ny])
+    @test all(xspacings(grid, Center(), Face(),   Face()) .== xspacings(grid, Center(), Face()  ) .== grid.Δxᶜᶠᵃ[1:Nx,   1:Ny+1])
+    @test all(xspacings(grid, Face(),   Center(), Face()) .== xspacings(grid, Face(),   Center()) .== grid.Δxᶠᶜᵃ[1:Nx+1, 1:Ny])
+    @test all(xspacings(grid, Face(),   Face(),   Face()) .== xspacings(grid, Face(),   Face()  ) .== grid.Δxᶠᶠᵃ[1:Nx+1, 1:Ny+1])
 
-    @test yspacings(grid, Center(), Center(), Face(), with_halos=true) == yspacings(grid, Center(), Center(), with_halos=true) == grid.Δyᶜᶜᵃ
-    @test yspacings(grid, Center(), Face(),   Face(), with_halos=true) == yspacings(grid, Center(), Face(),   with_halos=true) == grid.Δyᶜᶠᵃ
-    @test yspacings(grid, Face(),   Center(), Face())                  == yspacings(grid, Face(),   Center())                  == grid.Δyᶠᶜᵃ[1:grid.Nx+1, 1:grid.Ny]
-    @test yspacings(grid, Face(),   Face(),   Face())                  == yspacings(grid, Face(),   Face())                    == grid.Δyᶠᶠᵃ[1:grid.Nx+1, 1:grid.Ny+1]
+    @test all(yspacings(grid, Center(), Center(), Face()) .== yspacings(grid, Center(), Center()) .== grid.Δyᶜᶜᵃ[1:Nx,   1:Ny])
+    @test all(yspacings(grid, Center(), Face(),   Face()) .== yspacings(grid, Center(), Face()  ) .== grid.Δyᶜᶠᵃ[1:Nx,   1:Ny+1])
+    @test all(yspacings(grid, Face(),   Center(), Face()) .== yspacings(grid, Face(),   Center()) .== grid.Δyᶠᶜᵃ[1:Nx+1, 1:Ny])
+    @test all(yspacings(grid, Face(),   Face(),   Face()) .== yspacings(grid, Face(),   Face()  ) .== grid.Δyᶠᶠᵃ[1:Nx+1, 1:Ny+1])
 
-    @test zspacings(grid, Center(), Face(),   Face(), with_halos=true) == zspacings(grid, Face(), with_halos=true) == grid.Δzᵃᵃᶠ
-    @test zspacings(grid, Center(), Face(), Center())                  == zspacings(grid, Center())                == grid.Δzᵃᵃᶜ
+    @test all(zspacings(grid, Center(), Center(), Face()  ) .== zspacings(grid, Face()  ) .== grid.Δzᵃᵃᶠ)
+    @test all(zspacings(grid, Center(), Center(), Center()) .== zspacings(grid, Center()) .== grid.Δzᵃᵃᶜ)
 
     return nothing
 end

@@ -519,3 +519,11 @@ const C = Center
 @inline rnodes(grid::RG, ℓx, ℓy, ℓz; kwargs...) = znodes(grid, ℓz; kwargs...)
 
 @inline isrectilinear(::RG) = true
+
+#####
+##### Grid-specific grid spacings
+#####
+
+@inline xspacings(grid::RG, ℓx) = xspacings(grid, ℓx, Center(), Center())
+@inline yspacings(grid::RG, ℓy) = yspacings(grid, Center(), ℓy, Center())
+@inline zspacings(grid::RG, ℓz) = zspacings(grid, Center(), Center(), ℓz)

@@ -685,3 +685,10 @@ end
 
 @inline λspacing(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = λspacing(i, grid, ℓx)
 @inline φspacing(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = φspacing(j, grid, ℓy)
+
+@inline xspacings(grid::LLG, ℓx, ℓy) = xspacings(grid, ℓx, ℓy, Center())
+@inline yspacings(grid::LLG, ℓx, ℓy) = yspacings(grid, ℓx, ℓy, Center())
+@inline zspacings(grid::LLG, ℓz)     = zspacings(grid, Center(), Center(), ℓz)
+
+@inline λspacings(grid::LLG, ℓx) = λspacings(grid, ℓx, Center(), Center())
+@inline φspacings(grid::LLG, ℓy) = φspacings(grid, Center(), ℓy, Center())

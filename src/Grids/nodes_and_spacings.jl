@@ -161,7 +161,8 @@ nodes(grid::AbstractGrid, (ℓx, ℓy, ℓz); reshape=false, with_halos=false) =
 ##### << Spacings >>
 #####
 
-# placeholders; see Oceananigans.Operators for x/y/zspacing definitions
+# placeholders
+# see Oceananigans/AbstractOperations/grid_metrics.jl for definitions
 function xspacing end
 function yspacing end
 function zspacing end
