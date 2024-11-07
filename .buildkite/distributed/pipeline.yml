@@ -51,7 +51,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 8G
+      slurm_mem: 50G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
     retry:
@@ -67,7 +67,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 8G
+      slurm_mem: 50G
       slurm_ntasks: 4
     retry:
       automatic:
@@ -83,7 +83,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 32G
+      slurm_mem: 50G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
     retry:
@@ -99,7 +99,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 32G
+      slurm_mem: 50G
       slurm_ntasks: 4
     retry:
       automatic:
@@ -115,7 +115,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 32G
+      slurm_mem: 50G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
     retry:
@@ -131,7 +131,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 32G
+      slurm_mem: 50G
       slurm_ntasks: 4
     retry:
       automatic:
@@ -147,7 +147,7 @@ steps:
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 32G
+      slurm_mem: 50G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
     retry:
