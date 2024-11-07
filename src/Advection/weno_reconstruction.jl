@@ -58,14 +58,14 @@ Examples
 julia> using Oceananigans
 
 julia> WENO()
-WENO reconstruction order 5
- Boundary scheme: 
-    └── WENO reconstruction order 3
- Symmetric scheme: 
-    └── Centered reconstruction order 4
+WENO(order=5)
+ Boundary scheme:
+    └── WENO(order=3)
+ Symmetric scheme:
+    └── Centered(order=4)
  Directions:
-    ├── X regular 
-    ├── Y regular 
+    ├── X regular
+    ├── Y regular
     └── Z regular
 ```
 
@@ -82,14 +82,14 @@ julia> grid = RectilinearGrid(size = (Nx, Nz), halo = (4, 4), topology=(Periodic
                               x = (0, Lx), z = chebychev_spaced_z_faces);
 
 julia> WENO(grid; order=7)
-WENO reconstruction order 7
- Boundary scheme: 
-    └── WENO reconstruction order 5
- Symmetric scheme: 
-    └── Centered reconstruction order 6
+WENO(order=7)
+ Boundary scheme:
+    └── WENO(order=5)
+ Symmetric scheme:
+    └── Centered(order=6)
  Directions:
-    ├── X regular 
-    ├── Y regular 
+    ├── X regular
+    ├── Y regular
     └── Z stretched
 ```
 """
