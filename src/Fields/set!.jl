@@ -45,15 +45,16 @@ end
 
 function set_to_function!(u, f)
     # Supports serial and distributed
-    arch = child_architecture(u)
+    arch = architecture(u)
+    child_arch = child_architecture(u)
 
     # Determine cpu_grid and cpu_u
-    if arch isa GPU
+    if child_arch isa GPU
         cpu_arch = cpu_architecture(arch)
         cpu_grid = on_architecture(cpu_arch, u.grid)
         cpu_u    = Field(location(u), cpu_grid; indices = indices(u))
     
-    elseif arch isa CPU
+    elseif child_arch isa CPU
         cpu_grid = u.grid
         cpu_u = u
     end
@@ -83,7 +84,7 @@ function set_to_function!(u, f)
     end
 
     # Transfer data to GPU if u is on the GPU
-    arch isa GPU && set!(u, cpu_u)
+    child_arch isa GPU && set!(u, cpu_u)
     
     return u
 end

@@ -8,6 +8,10 @@ import Oceananigans.Fields: interior
 child_arch = get(ENV, "GPU_TEST", nothing) == "true" ? GPU() : CPU()
 mpi_test   = get(ENV, "MPI_TEST", nothing) == "true"
 
+# Sometimes when running tests in parallel, the CUDA.jl package is not loaded correctly.
+# This function is a failsafe to re-load CUDA.jl using the suggested cach compilation from 
+# https://github.com/JuliaGPU/CUDA.jl/blob/a085bbb3d7856dfa929e6cdae04a146a259a2044/src/initialization.jl#L105
+# To make sure Julia restarts, an error is thrown.
 function reset_cuda_if_necessary()
     
     # Do nothing if we are on the CPU
@@ -18,12 +22,16 @@ function reset_cuda_if_necessary()
     try 
         c = CUDA.zeros(10) # This will fail if CUDA is not available
     catch err
+
+        # Avoid race conditions and precompile on rank 0 only
         if MPI.Comm_rank(MPI.COMM_WORLD) == 0
             pkg = Base.PkgId(Base.UUID("76a88914-d11a-5bdc-97e0-2f5a05c973a2"), "CUDA_Runtime_jll")
             Base.compilecache(pkg)
-            @info "CUDA.jl was not loaded. Re-loading CUDA.jl and re-starting Julia."
+            @info "CUDA.jl was not correctly loaded. Re-loading CUDA.jl and re-starting Julia."
         end
+
         MPI.Barrier(MPI.COMM_WORLD)
+
         # re-start Julia and re-load CUDA.jl
         throw(err)
     end
