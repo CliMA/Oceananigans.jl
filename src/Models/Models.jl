@@ -189,6 +189,8 @@ default_nan_checker(::OnlyParticleTrackingModel) = nothing
 include("seawater_density.jl")
 
 # Implementation of the diagnostic for computing the dissipation rate
-include("dissipation_computation.jl")
+include("VarianceDissipationComputation/VarianceDissipationComputation.jl")
+
+using .VarianceDissipationComputation
 
 end # module
