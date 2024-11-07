@@ -319,9 +319,9 @@ end
     Δν = 1e-6
     ν1 = ν₀ + Δν
     ν2 = ν1 + Δν
-    e1 = viscous_hydrostatic_turbulence(ν1, model, u_init, v_init, Δt, u_truth, v_truth)
+    e1 = viscous_hydrostatic_turbulence(ν₀, model, u_init, v_init, Δt, u_truth, v_truth)
     e2 = viscous_hydrostatic_turbulence(ν2, model, u_init, v_init, Δt, u_truth, v_truth)
-    ΔeΔν = (e2 - e1) / Δν
+    ΔeΔν = (e2 - e1) / 2Δν
 
     @info "Finite difference computed: $ΔeΔν"
 
@@ -345,6 +345,8 @@ end
 
     tol = 1e-1
     rel_error = abs(dedν[1][1] - ΔeΔν) / abs(ΔeΔν)
+    @show dedν
+    @show ΔeΔν
     @test rel_error < tol
 end
 
