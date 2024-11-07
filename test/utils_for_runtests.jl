@@ -82,41 +82,6 @@ function boundary_clustered_coord(N, L, x₀)
     return z_faces
 end
 
-function xspacings_field(grid, ℓ...)
-    Δx_op = xspacings(grid, ℓ...)
-    Δx_field = Field(Δx_op)
-    compute!(Δx_field)
-    return Δx_field
-end
-
-function yspacings_field(grid, ℓ...)
-    Δy_op = yspacings(grid, ℓ...)
-    Δy_field = Field(Δy_op)
-    compute!(Δy_field)
-    return Δy_field
-end
-
-function zspacings_field(grid, ℓ...)
-    Δz_op = zspacings(grid, ℓ...)
-    Δz_field = Field(Δz_op)
-    compute!(Δz_field)
-    return Δz_field
-end
-
-function λspacings_field(grid, ℓ...)
-    Δλ_op = λspacings(grid, ℓ...)
-    Δλ_field = Field(Δλ_op)
-    compute!(Δλ_field)
-    return Δλ_field
-end
-
-function φspacings_field(grid, ℓ...)
-    Δφ_op = φspacings(grid, ℓ...)
-    Δφ_field = Field(Δφ_op)
-    compute!(Δφ_field)
-    return Δφ_field
-end
-
 #####
 ##### Useful kernels
 #####

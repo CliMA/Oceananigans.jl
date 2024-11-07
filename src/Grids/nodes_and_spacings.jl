@@ -178,23 +178,19 @@ function φspacings end
 destantiate(::Face)   = Face
 destantiate(::Center) = Center
 
-spacing_function(::Val{:x}) = xspacing
-spacing_function(::Val{:y}) = yspacing
-spacing_function(::Val{:z}) = zspacing
-spacing_function(::Val{:λ}) = λspacing
-spacing_function(::Val{:φ}) = φspacing
+spacings_function(::Val{:x}) = xspacings
+spacings_function(::Val{:y}) = yspacings
+spacings_function(::Val{:z}) = zspacings
+spacings_function(::Val{:λ}) = λspacings
+spacings_function(::Val{:φ}) = φspacings
 
 function minimum_spacing(s, grid, ℓx, ℓy, ℓz)
-    spacing = spacing_function(s)
-    LX, LY, LZ = map(destantiate, (ℓx, ℓy, ℓz))
-    Δ = KernelFunctionOperation{LX, LY, LZ}(spacing, grid, ℓx, ℓy, ℓz)
-
-    return minimum(Δ)
+    spacings = spacing_function(s)
+    return minimum(spacings(grid, ℓx, ℓy, ℓz))
 end
 
 """
     minimum_xspacing(grid, ℓx, ℓy, ℓz)
-    minimum_xspacing(grid) = minimum_xspacing(grid, Center(), Center(), Center())
 
 Return the minimum spacing for `grid` in ``x`` direction at location `ℓx, ℓy, ℓz`.
 
@@ -209,12 +205,11 @@ julia> minimum_xspacing(grid, Center(), Center(), Center())
 0.5
 ```
 """
-minimum_xspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(Val(:x), grid, ℓx, ℓy, ℓz)
-minimum_xspacing(grid) = minimum_spacing(Val(:x), grid, Center(), Center(), Center())
+minimum_xspacing(grid, loc...) = minimum(xspacings(grid, loc...))
+minimum_xspacing(grid) = minimum(xspacings(grid))
 
 """
     minimum_yspacing(grid, ℓx, ℓy, ℓz)
-    minimum_yspacing(grid) = minimum_yspacing(grid, Center(), Center(), Center())
 
 Return the minimum spacing for `grid` in ``y`` direction at location `ℓx, ℓy, ℓz`.
 
@@ -229,8 +224,8 @@ julia> minimum_yspacing(grid, Center(), Center(), Center())
 0.25
 ```
 """
-minimum_yspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(Val(:y), grid, ℓx, ℓy, ℓz)
-minimum_yspacing(grid) = minimum_spacing(Val(:y), grid, Center(), Center(), Center())
+minimum_yspacing(grid, loc...) = minimum(yspacings(grid, loc...))
+minimum_yspacing(grid) = minimum(yspacings(grid))
 
 """
     minimum_zspacing(grid, ℓx, ℓy, ℓz)
@@ -249,5 +244,5 @@ julia> minimum_zspacing(grid, Center(), Center(), Center())
 0.125
 ```
 """
-minimum_zspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(Val(:z), grid, ℓx, ℓy, ℓz)
-minimum_zspacing(grid) = minimum_spacing(Val(:z), grid, Center(), Center(), Center())
+minimum_zspacing(grid, loc...) = minimum(zspacings(grid, loc...))
+minimum_zspacing(grid) = minimum(zspacings(grid))

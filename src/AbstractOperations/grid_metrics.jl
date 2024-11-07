@@ -149,30 +149,136 @@ GridMetricOperation(L, metric, grid) = GridMetricOperation{L[1], L[2], L[3]}(met
 ##### Spacings
 #####
 
+"""
+    xspacings(grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``x`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> xspacings(grid, Center(), Center(), Center())
+KernelFunctionOperation at (Center, Center, Center)
+├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── kernel_function: xspacing (generic function with 8 methods)
+└── arguments: ("Center", "Center", "Center")
+```
+"""
 function xspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δx_op = KernelFunctionOperation{LX, LY, LZ}(xspacing, grid, ℓx, ℓy, ℓz)
     return Δx_op
 end
 
+"""
+    yspacings(grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``y`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> yspacings(grid, Center(), Face(), Center())
+KernelFunctionOperation at (Center, Face, Center)
+├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── kernel_function: yspacing (generic function with 8 methods)
+└── arguments: ("Center", "Face", "Center")
+```
+"""
 function yspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δy_op = KernelFunctionOperation{LX, LY, LZ}(yspacing, grid, ℓx, ℓy, ℓz)
     return Δy_op
 end
 
+"""
+    zspacings(grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``z`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> zspacings(grid, Center(), Center(), Face())
+KernelFunctionOperation at (Center, Center, Face)
+├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── kernel_function: zspacing (generic function with 8 methods)
+└── arguments: ("Center", "Center", "Face")
+```
+"""
 function zspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δz_op = KernelFunctionOperation{LX, LY, LZ}(zspacing, grid, ℓx, ℓy, ℓz)
     return Δz_op
 end
 
+"""
+    λspacings(grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``z`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = LatitudeLongitudeGrid(size=(36, 34, 25),
+                                    longitude = (-180, 180),
+                                    latitude = (-85, 85),
+                                    z = (-1000, 0));
+
+julia> λspacings(grid, Center(), Face(), Center())
+KernelFunctionOperation at (Center, Face, Center)
+├── grid: 36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+├── kernel_function: λspacing (generic function with 5 methods)
+└── arguments: ("Center", "Face", "Center")
+```
+"""
 function λspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δλ_op = KernelFunctionOperation{LX, LY, LZ}(λspacing, grid, ℓx, ℓy, ℓz)
     return Δλ_op
 end
 
+"""
+    φspacings(grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``z`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = LatitudeLongitudeGrid(size=(36, 34, 25),
+                                    longitude = (-180, 180),
+                                    latitude = (-85, 85),
+                                    z = (-1000, 0));
+
+julia> φspacings(grid, Center(), Face(), Center())
+KernelFunctionOperation at (Center, Face, Center)
+├── grid: 36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+├── kernel_function: φspacing (generic function with 5 methods)
+└── arguments: ("Center", "Face", "Center")
+```
+"""
 function φspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
     Δφ_op = KernelFunctionOperation{LX, LY, LZ}(φspacing, grid, ℓx, ℓy, ℓz)
