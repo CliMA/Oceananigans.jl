@@ -8,6 +8,27 @@ import Oceananigans.Fields: interior
 child_arch = get(ENV, "GPU_TEST", nothing) == "true" ? GPU() : CPU()
 mpi_test   = get(ENV, "MPI_TEST", nothing) == "true"
 
+function reset_cuda_if_necessary()
+    
+    # Do nothing if we are on the CPU
+    if child_arch isa CPU
+        return
+    end
+    
+    try 
+        c = CUDA.zeros(10) # This will fail if CUDA is not available
+    catch err
+        if MPI.Comm_rank(MPI.COMM_WORLD) == 0
+            pkg = Base.PkgId(Base.UUID("76a88914-d11a-5bdc-97e0-2f5a05c973a2"), "CUDA_Runtime_jll")
+            Base.compilecache(pkg)
+            @info "CUDA.jl was not loaded. Re-loading CUDA.jl and re-starting Julia."
+        end
+        MPI.Barrier(MPI.COMM_WORLD)
+        # re-start Julia and re-load CUDA.jl
+        throw(err)
+    end
+end
+
 function test_architectures() 
     # If MPI is initialized with MPI.Comm_size > 0, we are running in parallel.
     # We test several different configurations: `Partition(x = 4)`, `Partition(y = 4)`, 
