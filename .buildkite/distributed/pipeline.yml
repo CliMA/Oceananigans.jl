@@ -18,13 +18,6 @@ steps:
       TEST_GROUP: "init"
       GPU_TEST: "true"
     command:
-      - echo "--- Instantiate project"
-      - "julia -O0 --project -e 'using Pkg; Pkg.instantiate(; verbose=true); Pkg.precompile(; strict=true)'"
-
-      # Force the initialization of the CUDA runtime as it is lazily loaded by default
-      - "julia -O0 --project -e 'using CUDA; CUDA.precompile_runtime(); CUDA.versioninfo()'"
-      - "julia -O0 --project -e 'using MPI; MPI.versioninfo()'"
-
       - echo "--- Initialize tests"
       - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
     agents:
