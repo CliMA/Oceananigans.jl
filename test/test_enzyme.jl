@@ -315,24 +315,25 @@ end
     u_truth = deepcopy(model.velocities.u)
     v_truth = deepcopy(model.velocities.v)
     
-    # Use a manual finite difference to compute a gradient
+    # Use a manual finite difference (central difference) to compute a gradient at ν1 = ν₀ + Δν
     Δν = 1e-6
-    ν1 = ν₀ - Δν
-    ν2 = ν₀ + Δν
-    e1 = viscous_hydrostatic_turbulence(ν1, model, u_init, v_init, Δt, u_truth, v_truth)
+    ν0 = ν₀
+    ν1 = ν₀ + Δν
+    ν2 = ν₀ + 2Δν
+    e0 = viscous_hydrostatic_turbulence(ν0, model, u_init, v_init, Δt, u_truth, v_truth)
     e2 = viscous_hydrostatic_turbulence(ν2, model, u_init, v_init, Δt, u_truth, v_truth)
-    ΔeΔν = (e2 - e1) / 2Δν
+    ΔeΔν = (e2 - e0) / 2Δν
 
     @info "Finite difference computed: $ΔeΔν"
 
     @info "Now with autodiff..."
     start_time = time_ns()
 
-    # Use autodiff to compute a gradient
+    # Use autodiff to compute a gradient at ν1 = ν₀ + Δν
     dmodel = Enzyme.make_zero(model)
     dedν = autodiff(set_runtime_activity(Enzyme.Reverse),
                     viscous_hydrostatic_turbulence,
-                    Active(ν₀),
+                    Active(ν1),
                     Duplicated(model, dmodel),
                     Const(u_init),
                     Const(v_init),
