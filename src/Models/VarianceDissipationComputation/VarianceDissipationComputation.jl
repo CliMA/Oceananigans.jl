@@ -90,7 +90,7 @@ function VarianceDissipation(model;
 
     gradients = deepcopy(P)
 
-    return TracerVarianceDissipation(P, K, advective_fluxes, diffusive_fluxes, previous_state, gradients)
+    return VarianceDissipation(P, K, advective_fluxes, diffusive_fluxes, previous_state, gradients)
 end
 
 # Function to call in a callback
@@ -98,7 +98,7 @@ end
 # previous fluxes and velocities will not be correct
 # TODO: make sure that the correct velocities and fluxes are used even if 
 # the callback is not called with an IterationInterval(1)
-function (ϵ::TracerVarianceDissipation)(simulation)
+function (ϵ::VarianceDissipation)(simulation)
 
     # We first assemble values for Pⁿ⁻¹
     assemble_dissipation!(simulation, ϵ)
