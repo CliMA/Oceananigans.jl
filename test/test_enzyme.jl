@@ -346,8 +346,6 @@ end
 
     tol = 1e-1
     rel_error = abs(dedν[1][1] - ΔeΔν) / abs(ΔeΔν)
-    @show dedν
-    @show ΔeΔν
     @test rel_error < tol
 end
 
