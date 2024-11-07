@@ -317,9 +317,9 @@ end
     
     # Use a manual finite difference to compute a gradient
     Δν = 1e-6
-    ν1 = ν₀ + Δν
-    ν2 = ν1 + Δν
-    e1 = viscous_hydrostatic_turbulence(ν₀, model, u_init, v_init, Δt, u_truth, v_truth)
+    ν1 = ν₀ - Δν
+    ν2 = ν₀ + Δν
+    e1 = viscous_hydrostatic_turbulence(ν1, model, u_init, v_init, Δt, u_truth, v_truth)
     e2 = viscous_hydrostatic_turbulence(ν2, model, u_init, v_init, Δt, u_truth, v_truth)
     ΔeΔν = (e2 - e1) / 2Δν
 
@@ -332,7 +332,7 @@ end
     dmodel = Enzyme.make_zero(model)
     dedν = autodiff(set_runtime_activity(Enzyme.Reverse),
                     viscous_hydrostatic_turbulence,
-                    Active(ν1),
+                    Active(ν₀),
                     Duplicated(model, dmodel),
                     Const(u_init),
                     Const(v_init),
