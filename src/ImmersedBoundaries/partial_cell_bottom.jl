@@ -80,21 +80,23 @@ end
     domain_bottom = znode(i, j, 1, grid, c, c, f)
     domain_top    = znode(i, j, grid.Nz+1, grid, c, c, f)
     @inbounds bottom_field[i, j, 1] = clamp(zb, domain_bottom, domain_top)
+    adjusted_zb = bottom_field[i, j, 1]
 
     ϵ  = ib.minimum_fractional_cell_height
+
     for k in 1:grid.Nz
         z⁻ = znode(i, j, k,   grid, c, c, f)
         z⁺ = znode(i, j, k+1, grid, c, c, f)
         Δz = Δzᶜᶜᶜ(i, j, k, grid)
         bottom_cell = (z⁻ ≤ zb) & (z⁺ ≥ zb)
+        capped_zb   = min(z⁺ - ϵ * Δz, zb)
 
-        # If the size of the bottom cell is less than ϵ Δz, use 
-        # a simple `GridFittedBottom` approach where the bottom 
-        # height is the top interface of cell k.
-        capped_zb   = ifelse(zb < z⁻ + Δz * (1 - ϵ), zb, z⁺)
-
-        @inbounds bottom_field[i, j, 1] = ifelse(bottom_cell, capped_zb, bottom_field[i, j, 1])
+        # If the size of the bottom cell is less than ϵ Δz, 
+        # we enforce a minimum size of ϵ Δz.
+        adjusted_zb = ifelse(bottom_cell, capped_zb, zb)
     end
+
+    @inbounds bottom_field[i, j, 1] = adjusted_zb
 end
 
 function on_architecture(arch, ib::PartialCellBottom{<:Field})
@@ -133,10 +135,10 @@ Criterion is zb ≥ z - ϵ Δz
 
 """
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::PartialCellBottom)
-    z⁻ = znode(i, j, k, underlying_grid, c, c, f)
+    z⁺ = znode(i, j, k+1, underlying_grid, c, c, f)
     ϵ  = ib.minimum_fractional_cell_height
     Δz = Δzᶜᶜᶜ(i, j, k, underlying_grid)
-    z★ = z⁻ + Δz * (1 - ϵ)
+    z★ = z⁺ - Δz * ϵ
     zb = @inbounds ib.bottom_height[i, j, 1]
     return z★ < zb
 end
