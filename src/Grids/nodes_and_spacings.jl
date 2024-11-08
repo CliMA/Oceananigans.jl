@@ -185,7 +185,7 @@ spacings_function(::Val{:λ}) = λspacings
 spacings_function(::Val{:φ}) = φspacings
 
 function minimum_spacing(s, grid, ℓx, ℓy, ℓz)
-    spacings = spacing_function(s)
+    spacings = spacings_function(s)
     return minimum(spacings(grid, ℓx, ℓy, ℓz))
 end
 
