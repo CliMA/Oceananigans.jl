@@ -289,6 +289,8 @@ end
         length(worksize) > 0
     elseif worksize isa Number
         worksize > 0
+    else
+        true
     end
 
     if haswork
