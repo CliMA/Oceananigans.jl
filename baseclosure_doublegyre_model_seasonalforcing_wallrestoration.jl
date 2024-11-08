@@ -58,7 +58,7 @@ grid = RectilinearGrid(model_architecture, Float64,
 #####
 ##### Boundary conditions
 #####
-const T_north = 10
+const T_north = 0
 const T_south = 30
 const T_mid = (T_north + T_south) / 2
 const ΔT = T_south - T_north
@@ -100,7 +100,7 @@ v_bcs = FieldBoundaryConditions(   top = FluxBoundaryCondition(0),
                                 bottom = v_drag_bc,
                                   east = ValueBoundaryCondition(0),
                                   west = ValueBoundaryCondition(0))
-                                  
+
 @inline T_seasonal(y, t) = seasonal_T_amplitude * (y/Ly + 1/2) * sin(2π * t / seasonal_period)
 @inline T_ref(y, t) = T_mid - ΔT / Ly * y + T_seasonal(y, t)
 @inline surface_T_flux(x, y, t, T) = μ_T * Δz * (T - T_ref(y, t))
@@ -475,11 +475,10 @@ ulim = (-find_max(interior(u_xy_data, :, :, 1, timeframes), interior(u_yz_data, 
 vlim = (-find_max(interior(v_xy_data, :, :, 1, timeframes), interior(v_yz_data, 1, :, startheight:Nz, timeframes), interior(v_xz_data, :, 1, startheight:Nz, timeframes)),
          find_max(interior(v_xy_data, :, :, 1, timeframes), interior(v_yz_data, 1, :, startheight:Nz, timeframes), interior(v_xz_data, :, 1, startheight:Nz, timeframes)))
 
-colorscheme = colorschemes[:balance]
-T_colormap = colorscheme
-S_colormap = colorscheme
-u_colormap = colorscheme
-v_colormap = colorscheme
+T_colormap = colorschemes[:viridis]
+S_colormap = colorschemes[:viridis]
+u_colormap = colorschemes[:balance]
+v_colormap = colorschemes[:balance]
 
 T_color_range = Tlim
 S_color_range = Slim
