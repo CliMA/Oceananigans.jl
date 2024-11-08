@@ -1205,5 +1205,5 @@ rname(::OSSG) = :z
 @inline yspacings(grid::OSSG, ℓx, ℓy) = yspacings(grid, ℓx, ℓy, Center())
 @inline zspacings(grid::OSSG, ℓz)     = zspacings(grid, Center(), Center(), ℓz)
 
-@inline λspacings(grid::OSSG, ℓx) = λspacings(grid, ℓx, Center(), Center())
-@inline φspacings(grid::OSSG, ℓy) = φspacings(grid, Center(), ℓy, Center())
+@inline λspacings(grid::OSSG, ℓx, ℓy) = λspacings(grid, ℓx, ℓy, nothing)
+@inline φspacings(grid::OSSG, ℓx, ℓy) = φspacings(grid, ℓx, ℓy, nothing)
