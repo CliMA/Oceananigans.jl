@@ -73,8 +73,8 @@ closures = (
     :TwoDimensionalLeith,
     :ConstantSmagorinsky,
     :SmagorinskyLilly,
-    :DirectionallyAveragedDynamicSmagorinsky,
     :LagrangianAveragedDynamicSmagorinsky,
+    :DirectionallyAveragedDynamicSmagorinsky,
     :AnisotropicMinimumDissipation,
     :ConvectiveAdjustmentVerticalDiffusivity,
 )

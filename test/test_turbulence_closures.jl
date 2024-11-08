@@ -259,7 +259,6 @@ end
     @testset "Closure instantiation" begin
         @info "  Testing closure instantiation..."
         for closurename in closures
-            @info "    Instantiating $closurename"
             closure = @eval $closurename()
             @test closure isa TurbulenceClosures.AbstractTurbulenceClosure
 
@@ -268,6 +267,7 @@ end
             model = NonhydrostaticModel(grid=grid, closure=closure, tracers=:c)
             c = model.tracers.c
             u = model.velocities.u
+            @info "    Extracting viscosity and diffusivity using closure $closurename"
             κ = diffusivity(model.closure, model.diffusivity_fields, Val(:c)) 
             κ_dx_c = κ * ∂x(c)
             ν = viscosity(model.closure, model.diffusivity_fields)
