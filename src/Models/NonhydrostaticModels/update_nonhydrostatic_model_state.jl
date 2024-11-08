@@ -23,31 +23,27 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
     foreach(model.tracers) do tracer
         @apply_regionally mask_immersed_field!(tracer)
     end
-    @info "        masked immersed tracers"
 
     # Update all FieldTimeSeries used in the model
     update_model_field_time_series!(model, model.clock)
-    @info "        updated time series"
 
     # Update the boundary conditions
     update_boundary_condition!(fields(model), model)
-    @info "        updated boundary conditions"
 
     # Fill halos for velocities and tracers
     fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model); 
                        fill_boundary_normal_velocities = false, async = true)
-    @info "        filled halo regions"
 
     # Compute auxiliary fields
     for aux_field in model.auxiliary_fields
         compute!(aux_field)
     end
-    @info "        computed aux fields"
 
     # Calculate diffusivities and hydrostatic pressure
     @apply_regionally compute_auxiliaries!(model)
+    @info "        computed auxiliaries"
     fill_halo_regions!(model.diffusivity_fields; only_local_halos = true)
-    @info "        computed auxiliaries and filled regions"
+    @info "        filled halo regions of diffusivity_fields"
     
     for callback in callbacks
         callback.callsite isa UpdateStateCallsite && callback(model)

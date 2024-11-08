@@ -27,6 +27,7 @@ hasnu = [
     true,
     false,
     false,
+    false,
     true,
     true,
     true,
