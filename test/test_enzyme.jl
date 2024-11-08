@@ -67,27 +67,6 @@ function stable_diffusion!(model, amplitude, diffusivity)
     return sum_c²::Float64
 end
 
-@testset "Enzyme unit tests" begin
-    arch = CPU()
-    FT = Float64
-
-    N = 100
-    topo = (Periodic, Flat, Flat)
-    grid = RectilinearGrid(arch, FT, topology=topo, size=N, halo=2, x=(-1, 1), y=(-1, 1), z=(-1, 1))
-    fwd, rev = Enzyme.autodiff_thunk(ReverseSplitWithPrimal, Const{typeof(f)}, Duplicated, typeof(Const(grid)))
-    tape, primal, shadowp = fwd(Const(f), Const(grid))
-
-    @show tape primal shadowp
-
-    shadow = if shadowp isa Base.RefValue
-        shadowp[]
-    else
-        shadowp
-    end
-
-    @test size(primal) == size(shadow)
-end
-
 function set_initial_condition_via_launch!(model_tracer, amplitude)
     # Set initial condition
     amplitude = Ref(amplitude)
@@ -105,148 +84,159 @@ function set_initial_condition_via_launch!(model_tracer, amplitude)
     return nothing
 end
 
-@testset "Enzyme + Oceananigans Initialization Broadcast Kernel" begin
+@testset "Enzyme unit tests" begin
+    for arch in archs
+        FT = Float64
 
-    Nx = Ny = 64
-    Nz = 8
+        N = 100
+        topo = (Periodic, Flat, Flat)
+        grid = RectilinearGrid(arch, FT, topology=topo, size=N, halo=2, x=(-1, 1), y=(-1, 1), z=(-1, 1))
+        fwd, rev = Enzyme.autodiff_thunk(ReverseSplitWithPrimal, Const{typeof(f)}, Duplicated, typeof(Const(grid)))
+        tape, primal, shadowp = fwd(Const(f), Const(grid))
 
-    x = y = (-π, π)
-    z = (-0.5, 0.5)
-    topology = (Periodic, Periodic, Bounded)
+        @show tape primal shadowp
 
-    grid = RectilinearGrid(size=(Nx, Ny, Nz); x, y, z, topology)
-    model = HydrostaticFreeSurfaceModel(; grid, tracers=:c)
-    model_tracer = model.tracers.c
+        shadow = if shadowp isa Base.RefValue
+            shadowp[]
+        else
+            shadowp
+        end
 
-    amplitude = 1.0
-    amplitude = Ref(amplitude)
-    cᵢ(x, y, z) = amplitude[]
-    temp = Base.broadcasted(Base.identity, FunctionField((Center, Center, Center), cᵢ, model_tracer.grid))
-
-    temp = convert(Base.Broadcast.Broadcasted{Nothing}, temp)
-    grid = model_tracer.grid
-    arch = architecture(model_tracer)
-
-    if arch == CPU()
-        param = Oceananigans.Utils.KernelParameters(size(model_tracer),
-                                                    map(Oceananigans.Fields.offset_index, model_tracer.indices))
-        dmodel_tracer = Enzyme.make_zero(model_tracer)
-
-        # Test the individual kernel launch
-        autodiff(Enzyme.set_runtime_activity(Enzyme.Reverse),
-                 Oceananigans.Utils.launch!,
-                 Const(arch),
-                 Const(grid),
-                 Const(param),
-                 Const(Oceananigans.Fields._broadcast_kernel!),
-                 Duplicated(model_tracer, dmodel_tracer),
-                 Const(temp))
-
-        # Test out differentiation of the broadcast infrastructure
-        autodiff(Enzyme.set_runtime_activity(Enzyme.Reverse),
-                 set_initial_condition_via_launch!,
-                 Duplicated(model_tracer, dmodel_tracer),
-                 Active(1.0))
-
-        # Test differentiation of the high-level set interface
-        dmodel = Enzyme.make_zero(model)
-        autodiff(Enzyme.set_runtime_activity(Enzyme.Reverse),
-                 set_initial_condition!,
-                 Duplicated(model, dmodel),
-                 Active(1.0))
+        @test size(primal) == size(shadow)
     end
 end
 
+@testset "Enzyme + Oceananigans Initialization Broadcast Kernel" begin
+    for arch in archs
+        Nx = Ny = 4
+        Nz = 2
+
+        x = y = (-π, π)
+        z = (-0.5, 0.5)
+        topology = (Periodic, Periodic, Bounded)
+
+        grid = RectilinearGrid(size=(Nx, Ny, Nz); x, y, z, topology)
+        model = HydrostaticFreeSurfaceModel(; grid, tracers=:c)
+        model_tracer = model.tracers.c
+
+        amplitude = 1.0
+        amplitude = Ref(amplitude)
+        cᵢ(x, y, z) = amplitude[]
+        temp = Base.broadcasted(Base.identity, FunctionField((Center, Center, Center), cᵢ, model_tracer.grid))
+
+        temp = convert(Base.Broadcast.Broadcasted{Nothing}, temp)
+        grid = model_tracer.grid
+        arch = architecture(model_tracer)
+
+        if arch == CPU()
+            param = Oceananigans.Utils.KernelParameters(size(model_tracer),
+                                                        map(Oceananigans.Fields.offset_index, model_tracer.indices))
+            dmodel_tracer = Enzyme.make_zero(model_tracer)
+
+            # Test the individual kernel launch
+            autodiff(Enzyme.set_runtime_activity(Enzyme.Reverse),
+                     Oceananigans.Utils.launch!,
+                     Const(arch),
+                     Const(grid),
+                     Const(param),
+                     Const(Oceananigans.Fields._broadcast_kernel!),
+                     Duplicated(model_tracer, dmodel_tracer),
+                     Const(temp))
+
+            # Test out differentiation of the broadcast infrastructure
+            autodiff(Enzyme.set_runtime_activity(Enzyme.Reverse),
+                     set_initial_condition_via_launch!,
+                     Duplicated(model_tracer, dmodel_tracer),
+                     Active(1.0))
+
+            # Test differentiation of the high-level set interface
+            dmodel = Enzyme.make_zero(model)
+            autodiff(Enzyme.set_runtime_activity(Enzyme.Reverse),
+                     set_initial_condition!,
+                     Duplicated(model, dmodel),
+                     Active(1.0))
+        end
+    end
+end
+
+@inline function tracer_flux(i, j, grid, clock, model_fields, p)
+    c₀ = p.surface_tracer_concentration
+    u★ = p.piston_velocity
+    return - u★ * (c₀ - model_fields.c[i, j, p.level])
+end
 
 @testset "Enzyme for advection and diffusion with various boundary conditions" begin
-    Nx = Ny = 64
-    Nz = 8
+    for arch in archs
+        @info "  Running Enzyme advection-diffusion tests on $arch..."
+        Nx = Ny = 4
+        Nz = 2
+        x = y = (-π, π)
+        z = (-1/2, 1/2)
+        topology = (Periodic, Periodic, Bounded)
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz); x, y, z, topology)
+        diffusion = VerticalScalarDiffusivity(κ=0.1)
 
-    Lx = Ly = L = 2π
-    Lz = 1
+        u = XFaceField(grid)
+        v = YFaceField(grid)
 
-    x = y = (-L/2, L/2)
-    z = (-Lz/2, Lz/2)
-    topology = (Periodic, Periodic, Bounded)
+        U = 1
+        u₀(x, y, z) = - U * cos(x + L/8) * sin(y) * (z + L/2)
+        v₀(x, y, z) = + U * sin(x + L/8) * cos(y) * (z + L/2)
 
-    grid = RectilinearGrid(size=(Nx, Ny, Nz); x, y, z, topology)
-    diffusion = VerticalScalarDiffusivity(κ=0.1)
+        set!(u, u₀)
+        set!(v, v₀)
+        fill_halo_regions!(u)
+        fill_halo_regions!(v)
+        parameters = (surface_tracer_concentration=1, piston_velocity=0.1, level=Nz)
+        top_c_bc = FluxBoundaryCondition(tracer_flux; discrete_form=true, parameters)
+        c_bcs = FieldBoundaryConditions(top=top_c_bc)
 
-    u = XFaceField(grid)
-    v = YFaceField(grid)
+        model_no_bc = HydrostaticFreeSurfaceModel(; grid,
+                                                  tracer_advection = WENO(),
+                                                  tracers = :c,
+                                                  velocities = PrescribedVelocityFields(; u, v),
+                                                  closure = diffusion)
 
-    U = 1
-    u₀(x, y, z) = - U * cos(x + L/8) * sin(y) * (z + L/2)
-    v₀(x, y, z) = + U * sin(x + L/8) * cos(y) * (z + L/2)
+        model_bc = HydrostaticFreeSurfaceModel(; grid,
+                                               tracer_advection = WENO(),
+                                               tracers = :c,
+                                               velocities = PrescribedVelocityFields(; u, v),
+                                               boundary_conditions = (; c=c_bcs),
+                                               closure = diffusion)
 
-    set!(u, u₀)
-    set!(v, v₀)
-    fill_halo_regions!(u)
-    fill_halo_regions!(v)
+        models = [model_no_bc, model_bc]
 
-    @inline function tracer_flux(i, j, grid, clock, model_fields, p)
-        c₀ = p.surface_tracer_concentration
-        u★ = p.piston_velocity
-        return - u★ * (c₀ - model_fields.c[i, j, p.level])
-    end
+        for model in models
+            bc = model.tracers.c.top.boundary_condition.condition
+            @info "    Running advection-diffusion tests on $arch with $bc top tracer boundary condition..."
+            # Compute derivative by hand
+            κ₁, κ₂ = 0.9, 1.1
+            c²₁ = stable_diffusion!(model, 1, κ₁)
+            c²₂ = stable_diffusion!(model, 1, κ₂)
+            dc²_dκ_fd = (c²₂ - c²₁) / (κ₂ - κ₁)
 
-    parameters = (surface_tracer_concentration = 1,
-                  piston_velocity = 0.1,
-                  level = Nz)
+            # Now for real
+            amplitude = 1.0
+            κ = 1.0
+            dmodel = Enzyme.make_zero(model)
+            set_diffusivity!(dmodel, 0)
 
-    top_c_bc = FluxBoundaryCondition(tracer_flux; discrete_form=true, parameters)
-    c_bcs = FieldBoundaryConditions(top=top_c_bc)
+            dc²_dκ = autodiff(Enzyme.set_runtime_activity(Enzyme.Reverse),
+                              stable_diffusion!,
+                              Duplicated(model, dmodel),
+                              Const(amplitude),
+                              Active(κ))
 
-    # TODO:
-    # 1. Make the velocity fields evolve
-    # 2. Add surface fluxes
-    # 3. Do a problem where we invert for the tracer fluxes (maybe with CATKE)
+            @info """ \n
+            Advection-diffusion:
+            Enzyme computed $dc²_dκ
+            Finite differences computed $dc²_dκ_fd
+            """
 
-    model_no_bc = HydrostaticFreeSurfaceModel(; grid,
-                                              tracer_advection = WENO(),
-                                              tracers = :c,
-                                              velocities = PrescribedVelocityFields(; u, v),
-                                              closure = diffusion)
-
-    model_bc = HydrostaticFreeSurfaceModel(; grid,
-                                           tracer_advection = WENO(),
-                                           tracers = :c,
-                                           velocities = PrescribedVelocityFields(; u, v),
-                                           boundary_conditions = (; c=c_bcs),
-                                           closure = diffusion)
-
-    models = [model_no_bc, model_bc]
-
-    @show "Advection-diffusion results, first without then with flux BC"
-
-    for i in 1:2
-        # Compute derivative by hand
-        κ₁, κ₂ = 0.9, 1.1
-        c²₁ = stable_diffusion!(models[i], 1, κ₁)
-        c²₂ = stable_diffusion!(models[i], 1, κ₂)
-        dc²_dκ_fd = (c²₂ - c²₁) / (κ₂ - κ₁)
-
-        # Now for real
-        amplitude = 1.0
-        κ = 1.0
-        dmodel = Enzyme.make_zero(models[i])
-        set_diffusivity!(dmodel, 0)
-
-        dc²_dκ = autodiff(Enzyme.set_runtime_activity(Enzyme.Reverse),
-                          stable_diffusion!,
-                          Duplicated(models[i], dmodel),
-                          Const(amplitude),
-                          Active(κ))
-
-        @info """ \n
-        Advection-diffusion:
-        Enzyme computed $dc²_dκ
-        Finite differences computed $dc²_dκ_fd
-        """
-
-        tol = 0.01
-        rel_error = abs(dc²_dκ[1][3] - dc²_dκ_fd) / abs(dc²_dκ_fd)
-        @test rel_error < tol
+            tol = 0.01
+            rel_error = abs(dc²_dκ[1][3] - dc²_dκ_fd) / abs(dc²_dκ_fd)
+            @test rel_error < tol
+        end
     end
 end
 
