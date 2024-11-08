@@ -211,6 +211,7 @@ function NonhydrostaticModel(; grid,
     tracers            = TracerFields(tracers,      grid, boundary_conditions)
     pressures          = (pNHS=nonhydrostatic_pressure, pHY′=hydrostatic_pressure_anomaly)
     diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
+    @info "Created diffusivity fields"
 
     if isnothing(pressure_solver)
         pressure_solver = nonhydrostatic_pressure_solver(grid)
