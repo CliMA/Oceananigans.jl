@@ -1201,9 +1201,9 @@ rname(::OSSG) = :z
 ##### Grid spacings in x, y, z (in meters)
 #####
 
-@inline xspacings(grid::OSSG, ℓx, ℓy) = xspacings(grid, ℓx, ℓy, Center())
-@inline yspacings(grid::OSSG, ℓx, ℓy) = yspacings(grid, ℓx, ℓy, Center())
-@inline zspacings(grid::OSSG, ℓz)     = zspacings(grid, Center(), Center(), ℓz)
+@inline xspacings(grid::OSSG, ℓx, ℓy) = xspacings(grid, ℓx, ℓy, nothing)
+@inline yspacings(grid::OSSG, ℓx, ℓy) = yspacings(grid, ℓx, ℓy, nothing)
+@inline zspacings(grid::OSSG, ℓz)     = zspacings(grid, nothing, nothing, ℓz)
 
 @inline λspacings(grid::OSSG, ℓx, ℓy) = λspacings(grid, ℓx, ℓy, nothing)
 @inline φspacings(grid::OSSG, ℓx, ℓy) = φspacings(grid, ℓx, ℓy, nothing)
