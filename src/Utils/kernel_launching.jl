@@ -287,7 +287,7 @@ end
     # Don't launch kernels with no size
     haswork = if worksize isa OffsetStaticSize
         length(worksize) > 0
-    else
+    elseif worksize isa Number
         worksize > 0
     end
 
@@ -333,16 +333,16 @@ end
 @pure get(::OffsetStaticSize{S}) where {S} = S
 @pure Base.getindex(::OffsetStaticSize{S}, i::Int) where {S} = i <= length(S) ? S[i] : 1
 @pure Base.ndims(::OffsetStaticSize{S}) where {S}  = length(S)
-@pure Base.length(::OffsetStaticSize{S}) where {S} = prod(worksize.(S))
+@pure Base.length(::OffsetStaticSize{S}) where {S} = prod(map(worksize, S))
 
 @inline getrange(::OffsetStaticSize{S}) where {S} = worksize(S), offsets(S)
 @inline getrange(::Type{OffsetStaticSize{S}}) where {S} = worksize(S), offsets(S)
 
 @inline offsets(ranges::Tuple{Vararg{UnitRange}}) = Tuple(r.start - 1 for r in ranges)
 
-@inline worksize(i::Tuple) = worksize.(i)
-@inline worksize(i::Int) = i
-@inline worksize(i::UnitRange) = length(i)
+@inline worksize(t::Tuple) = map(worksize, t)
+@inline worksize(sz::Int) = sz
+@inline worksize(r::UnitRange) = length(r)
 
 """a type used to store offsets in `NDRange` types"""
 struct KernelOffsets{O}
