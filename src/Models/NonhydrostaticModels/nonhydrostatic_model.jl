@@ -233,7 +233,6 @@ function NonhydrostaticModel(; grid,
     @info "        Built NonhydrostaticModel"
 
     update_state!(model; compute_tendencies = false)
-    @info "        Updated its state"
     
     return model
 end
