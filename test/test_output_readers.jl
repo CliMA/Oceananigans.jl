@@ -221,6 +221,40 @@ end
                 @test v1[2] isa Field
             end
         end
+
+        if arch isa GPU
+            @testset "FieldTimeSeries with CuArray boundary conditions [$(typeof(arch))]" begin
+                @info "  Testing FieldTimeSeries with CuArray boundary conditions..."
+
+                x = y = z = (0, 1)
+                grid = RectilinearGrid(GPU(); size=(1, 1, 1), x, y, z)
+                
+                τx = CuArray(zeros(size(grid)...))
+                τy = Field{Center, Face, Nothing}(grid)
+                u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
+                v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τy))
+                model = NonhydrostaticModel(; grid, boundary_conditions = (; u=u_bcs, v=v_bcs))
+                simulation = Simulation(model; Δt=1, stop_iteration=1)
+                
+                simulation.output_writers[:jld2] = JLD2OutputWriter(model, model.velocities,
+                                                                    filename = "test_cuarray_bc.jld2",
+                                                                    schedule=IterationInterval(1),
+                                                                    overwrite_existing = true)
+                
+                run!(simulation)
+                
+                ut = FieldTimeSeries("test_cuarray_bc.jld2", "u")
+                vt = FieldTimeSeries("test_cuarray_bc.jld2", "v")
+                @test ut.boundary_conditions.top.classification isa Flux
+                @test ut.boundary_conditions.top.condition isa Array
+
+                τy_ow = vt.boundary_conditions.top.condition
+                @test τy_ow isa Field{Center, Face, Nothing}
+                @test architecture(τy_ow) isa CPU
+                @test parent(τy_ow) isa Array
+                rm("test_cuarray_bc.jld2")
+            end
+        end
     end
 
     for arch in archs
@@ -290,8 +324,8 @@ end
         @test t[1, 1, 1] == 3.8
     end
 
-    @testset "Test chunked abstraction" begin  
-        @info "  Testing Chunked abstraction..."      
+    @testset "Test chunked abstraction" begin
+        @info "  Testing Chunked abstraction..."
         filepath = "testfile.jld2"
         fts = FieldTimeSeries(filepath, "c")
         fts_chunked = FieldTimeSeries(filepath, "c"; backend = InMemory(2), time_indexing = Cyclical())
@@ -342,8 +376,8 @@ end
     end
 
     for Backend in [InMemory, OnDisk]
-        @testset "FieldDataset{$Backend}" begin
-            @info "  Testing FieldDataset{$Backend}..."
+        @testset "FieldDataset{$Backend} indexing" begin
+            @info "  Testing FieldDataset{$Backend} indexing..."
 
             ds = FieldDataset(filepath3d, backend=Backend())
 
@@ -354,7 +388,7 @@ end
                 @test ds[var_str] isa FieldTimeSeries
                 @test ds[var_str][1] isa Field
             end
-            
+
             for var_sym in (:u, :v, :w, :T, :S, :b, :ζ, :ke)
                 @test ds[var_sym] isa FieldTimeSeries
                 @test ds[var_sym][2] isa Field
@@ -368,6 +402,36 @@ end
             @test ds.b isa FieldTimeSeries
             @test ds.ζ isa FieldTimeSeries
             @test ds.ke isa FieldTimeSeries
+        end
+    end
+
+    for Backend in [InMemory, OnDisk]
+        @testset "FieldTimeSeries{$Backend} parallel reading" begin
+            @info "  Testing FieldTimeSeries{$Backend} parallel reading..."
+
+            reader_kw = Dict(:parallel_read => true)
+            u3 = FieldTimeSeries(filepath3d, "u"; backend=Backend(), reader_kw)
+            b3 = FieldTimeSeries(filepath3d, "b"; backend=Backend(), reader_kw)
+
+            @test u3 isa FieldTimeSeries
+            @test b3 isa FieldTimeSeries
+            @test u3[1] isa Field
+            @test b3[1] isa Field
+        end
+    end
+
+    for Backend in [InMemory, OnDisk]
+        @testset "FieldDataset{$Backend} parallel reading" begin
+            @info "  Testing FieldDataset{$Backend} parallel reading..."
+
+            reader_kw = Dict(:parallel_read => true)
+            ds = FieldDataset(filepath3d; backend=Backend(), reader_kw)
+
+            @test ds isa FieldDataset
+            @test ds.u isa FieldTimeSeries
+            @test ds.b isa FieldTimeSeries
+            @test ds.u[1] isa Field
+            @test ds.b[1] isa Field
         end
     end
 
