@@ -1,6 +1,6 @@
 module Fields
 
-export Face, Center
+export Face, Center, location
 export AbstractField, Field, Average, Integral, Reduction, Accumulation, field
 export CenterField, XFaceField, YFaceField, ZFaceField
 export BackgroundField
