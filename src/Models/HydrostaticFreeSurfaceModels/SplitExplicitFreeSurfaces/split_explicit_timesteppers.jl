@@ -99,6 +99,22 @@ function materialize_timestepper(name::Symbol, args...)
     return materialize_timestepper(TS, args...)
 end
 
+initialize_free_surface_timestepper!(::ForwardBackwardScheme, args...) = nothing
+
+function initialize_free_surface_timestepper!(timestepper::AdamsBashforth3Scheme, η, velocities)
+    parent(timestepper.Uᵐ⁻¹) .= parent(velocities.U)
+    parent(timestepper.Vᵐ⁻¹) .= parent(velocities.V)
+
+    parent(timestepper.Uᵐ⁻²) .= parent(velocities.U)
+    parent(timestepper.Vᵐ⁻²) .= parent(velocities.V)
+
+    parent(timestepper.ηᵐ)   .= parent(η)
+    parent(timestepper.ηᵐ⁻¹) .= parent(η)
+    parent(timestepper.ηᵐ⁻²) .= parent(η)
+
+    return nothing
+end
+
 # The functions `η★` `U★` and `V★` represent the value of free surface, barotropic zonal and meridional velocity at time step m+1/2
 @inline U★(i, j, k, grid, t::ForwardBackwardScheme, Uᵐ) = @inbounds Uᵐ[i, j, k]
 @inline U★(i, j, k, grid, t::AdamsBashforth3Scheme, Uᵐ) = @inbounds t.α * Uᵐ[i, j, k] + t.θ * t.Uᵐ⁻¹[i, j, k] + t.β * t.Uᵐ⁻²[i, j, k]

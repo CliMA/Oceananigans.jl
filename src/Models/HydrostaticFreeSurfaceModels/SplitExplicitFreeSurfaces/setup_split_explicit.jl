@@ -20,22 +20,6 @@ function initialize_free_surface_state!(filtered_state, η, velocities, timestep
     return nothing
 end
 
-initialize_free_surface_timestepper!(::ForwardBackwardScheme, args...) = nothing
-
-function initialize_free_surface_timestepper!(timestepper::AdamsBashforth3Scheme, η, velocities)
-    parent(timestepper.Uᵐ⁻¹) .= parent(velocities.U)
-    parent(timestepper.Vᵐ⁻¹) .= parent(velocities.V)
-
-    parent(timestepper.Uᵐ⁻²) .= parent(velocities.U)
-    parent(timestepper.Vᵐ⁻²) .= parent(velocities.V)
-
-    parent(timestepper.ηᵐ)   .= parent(η)
-    parent(timestepper.ηᵐ⁻¹) .= parent(η)
-    parent(timestepper.ηᵐ⁻²) .= parent(η)
-
-    return nothing
-end
-
 # Calculate RHS for the barotropic time step.
 @kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, ::Nothing, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     i, j  = @index(Global, NTuple)
