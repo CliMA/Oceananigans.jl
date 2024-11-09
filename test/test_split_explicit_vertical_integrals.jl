@@ -1,5 +1,6 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans.Fields: VelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: compute_barotropic_mode!,
@@ -15,9 +16,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
         Lx = Ly = Lz = 2π
 
         grid = RectilinearGrid(arch, topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
-
+        
+        velocities = VelocityFields(grid)
         sefs = SplitExplicitFreeSurface(substeps = 200)
-        sefs = materialize_free_surface(sefs, nothing, grid)
+        sefs = materialize_free_surface(sefs, velocities, grid)
 
         state = sefs.filtered_state
         barotropic_velocities = sefs.barotropic_velocities
@@ -111,7 +113,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             grid = RectilinearGrid(arch, topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
 
             sefs = SplitExplicitFreeSurface(grid, cfl=0.7)
-            sefs = materialize_free_surface(sefs, nothing, grid)
+            sefs = materialize_free_surface(sefs, velocities, grid)
 
             state   = sefs.filtered_state
             U, V    = sefs.barotropic_velocities

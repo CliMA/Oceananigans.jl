@@ -1,5 +1,6 @@
 using Oceananigans.Utils
 using Oceananigans.AbstractOperations: GridMetricOperation, Δz
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: free_surface_displacement_field
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: calculate_substeps, 
                                                                                   barotropic_bc, 

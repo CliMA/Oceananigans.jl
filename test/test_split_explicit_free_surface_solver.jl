@@ -1,5 +1,6 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans.Fields: VelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: calculate_substeps,
                                                                                   calculate_adaptive_settings,
@@ -23,8 +24,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                                    x = (0, Lx), y = (0, Ly), z = (-Lz, 0),
                                    halo = (1, 1, 1))
 
+            velocities = VelocityFields(grid)
+
             sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = constant_averaging_kernel)
-            sefs = materialize_free_surface(sefs, nothing, grid)
+            sefs = materialize_free_surface(sefs, velocities, grid)
 
             sefs.η .= 0
             GU = Field{Face, Center, Nothing}(grid)
@@ -64,7 +67,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                 Δτ_end = T - Nt * Δτ
 
                 sefs = SplitExplicitFreeSurface(substeps = Nt, averaging_kernel = constant_averaging_kernel)
-                sefs = materialize_free_surface(sefs, nothing, grid)
+                sefs = materialize_free_surface(sefs, velocities, grid)
 
                 # set!(η, f(x, y))
                 η₀(x, y, z) = sin(x)
@@ -99,13 +102,13 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             end
 
             sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = constant_averaging_kernel)
-            sefs = materialize_free_surface(sefs, nothing, grid)
+            sefs = materialize_free_surface(sefs, velocities, grid)
 
             sefs.η .= 0
 
             @testset "Averaging / Do Nothing test " begin
                 state = sefs.filtered_state
-                U, V = sefs.barotropic_velocities
+                U, V  = sefs.barotropic_velocities
                 η̅, U̅, V̅ = state.η, state.U, state.V
                 η = sefs.η
                 g = sefs.gravitational_acceleration
