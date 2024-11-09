@@ -85,7 +85,7 @@ Example
 ```jldoctest; filter = r".*@ Oceananigans.MultiRegion.*"
 julia> using Oceananigans
 
-julia> using Oceananigans.MultiRegion: XPartition
+julia> using Oceananigans.MultiRegion: MultiRegionGrid, XPartition
 
 julia> grid = RectilinearGrid(size=(12, 12), extent=(1, 1), topology=(Bounded, Bounded, Flat))
 12×12×1 RectilinearGrid{Float64, Bounded, Bounded, Flat} on CPU with 3×3×0 halo
