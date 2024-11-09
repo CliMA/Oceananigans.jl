@@ -72,10 +72,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                 # set!(η, f(x, y))
                 η₀(x, y, z) = sin(x)
                 set!(η, η₀)
-                U₀(x, y, z) = 0
-                set!(U, U₀)
-                V₀(x, y, z) = 0
-                set!(V, V₀)
+                set!(U, 0)
+                set!(V, 0)
 
                 η̅  .= 0
                 U̅  .= 0

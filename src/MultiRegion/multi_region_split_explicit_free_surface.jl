@@ -28,8 +28,8 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
     u_baroclinic = velocities.u
     v_baroclinic = velocities.v
 
-    u_bc = barotropic_bc(u_baroclinic)
-    v_bc = barotropic_bc(v_baroclinic)
+    @apply_regionally u_bc = barotropic_bc(u_baroclinic)
+    @apply_regionally v_bc = barotropic_bc(v_baroclinic)
 
     U = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = u_bc)
     V = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = v_bc)
