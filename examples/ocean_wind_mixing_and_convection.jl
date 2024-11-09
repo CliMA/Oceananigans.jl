@@ -84,18 +84,18 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(thermal_expa
 # We calculate the surface temperature flux associated with surface cooling of
 # 200 W m⁻², reference density `ρₒ`, and heat capacity `cᴾ`,
 
-Qʰ = 200.0  # W m⁻², surface _heat_ flux
+Q = 200.0  # W m⁻², surface _heat_ flux
 ρₒ = 1026.0 # kg m⁻³, average density at the surface of the world ocean
 cᴾ = 3991.0 # J K⁻¹ kg⁻¹, typical heat capacity for seawater
 
-Qᵀ = Qʰ / (ρₒ * cᴾ) # K m s⁻¹, surface _temperature_ flux
+Jᵀ = Q / (ρₒ * cᴾ) # K m s⁻¹, surface _temperature_ flux
 
 # Finally, we impose a temperature gradient `dTdz` both initially and at the
 # bottom of the domain, culminating in the boundary conditions on temperature,
 
 dTdz = 0.01 # K m⁻¹
 
-T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵀ),
+T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵀ),
                                 bottom = GradientBoundaryCondition(dTdz))
 
 # Note that a positive temperature flux at the surface of the ocean
@@ -111,26 +111,26 @@ u₁₀ = 10    # m s⁻¹, average wind velocity 10 meters above the ocean
 cᴰ = 2.5e-3 # dimensionless drag coefficient
 ρₐ = 1.225  # kg m⁻³, average density of air at sea-level
 
-Qᵘ = - ρₐ / ρₒ * cᴰ * u₁₀ * abs(u₁₀) # m² s⁻²
+τx = - ρₐ / ρₒ * cᴰ * u₁₀ * abs(u₁₀) # m² s⁻²
 
 # The boundary conditions on `u` are thus
 
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 
 # For salinity, `S`, we impose an evaporative flux of the form
 
-@inline Qˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S # [salinity unit] m s⁻¹
+@inline Jˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S # [salinity unit] m s⁻¹
 nothing #hide
 
 # where `S` is salinity. We use an evporation rate of 1 millimeter per hour,
 
 evaporation_rate = 1e-3 / hour # m s⁻¹
 
-# We build the `Flux` evaporation `BoundaryCondition` with the function `Qˢ`,
-# indicating that `Qˢ` depends on salinity `S` and passing
+# We build the `Flux` evaporation `BoundaryCondition` with the function `Jˢ`,
+# indicating that `Jˢ` depends on salinity `S` and passing
 # the parameter `evaporation_rate`,
 
-evaporation_bc = FluxBoundaryCondition(Qˢ, field_dependencies=:S, parameters=evaporation_rate)
+evaporation_bc = FluxBoundaryCondition(Jˢ, field_dependencies=:S, parameters=evaporation_rate)
 
 # The full salinity boundary conditions are
 
@@ -173,7 +173,7 @@ model = NonhydrostaticModel(; grid, buoyancy,
 Tᵢ(x, y, z) = 20 + dTdz * z + dTdz * model.grid.Lz * 1e-6 * Ξ(z)
 
 ## Velocity initial condition: random noise scaled by the friction velocity.
-uᵢ(x, y, z) = sqrt(abs(Qᵘ)) * 1e-3 * Ξ(z)
+uᵢ(x, y, z) = sqrt(abs(τx)) * 1e-3 * Ξ(z)
 
 ## `set!` the `model` fields using functions or constants:
 set!(model, u=uᵢ, w=uᵢ, T=Tᵢ, S=35)

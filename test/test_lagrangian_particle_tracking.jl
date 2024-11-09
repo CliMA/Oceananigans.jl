@@ -324,4 +324,22 @@ lagrangian_particle_test_curvilinear_grid(arch, z) =
         grid = lagrangian_particle_test_curvilinear_grid(arch, z)
         run_simple_particle_tracking_tests(grid)
     end
+
+    for arch in archs
+        @info "  Testing Lagrangian particle tracking [$(typeof(arch))] with 0 particles ..."
+        xp = Array{Float64}(undef, 0)
+        yp = Array{Float64}(undef, 0)
+        zp = Array{Float64}(undef, 0)
+
+        xp = on_architecture(arch, xp)
+        yp = on_architecture(arch, yp)
+        zp = on_architecture(arch, zp)
+        
+        grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+        particles = LagrangianParticles(x=xp, y=yp, z=zp)
+        model = NonhydrostaticModel(; grid, particles)
+        time_step!(model, 1)
+        @test model.particles isa LagrangianParticles
+    end
 end
+
