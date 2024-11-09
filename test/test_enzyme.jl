@@ -180,6 +180,7 @@ end
         v = YFaceField(grid)
 
         U = 1
+        L = grid.Lx
         u₀(x, y, z) = - U * cos(x + L/8) * sin(y) * (z + L/2)
         v₀(x, y, z) = + U * sin(x + L/8) * cos(y) * (z + L/2)
 
