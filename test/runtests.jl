@@ -173,18 +173,24 @@ CUDA.allowscalar() do
 
     if group == :distributed || group == :all
         MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
         archs = test_architectures()
         include("test_distributed_models.jl")
     end
 
     if group == :distributed_solvers || group == :all
         MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
         include("test_distributed_transpose.jl")
         include("test_distributed_poisson_solvers.jl")
     end
 
     if group == :distributed_hydrostatic_model || group == :all
         MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
         archs = test_architectures()
         include("test_hydrostatic_regression.jl")
         include("test_distributed_hydrostatic_model.jl")
@@ -192,6 +198,8 @@ CUDA.allowscalar() do
 
     if group == :distributed_nonhydrostatic_regression || group == :all
         MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
         archs = nonhydrostatic_regression_test_architectures()
         include("test_nonhydrostatic_regression.jl")
     end
