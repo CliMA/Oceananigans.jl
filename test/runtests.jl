@@ -28,6 +28,8 @@ CUDA.allowscalar() do
 
     # Initialization steps
     if group == :init || group == :all
+        Pkg.instantiate(; verbose=true)
+        Pkg.precompile(; strict=true)
         Pkg.status()
 
         try
@@ -35,6 +37,7 @@ CUDA.allowscalar() do
         catch; end
 
         try
+            CUDA.precompile_runtime()
             CUDA.versioninfo()
         catch; end
     end
