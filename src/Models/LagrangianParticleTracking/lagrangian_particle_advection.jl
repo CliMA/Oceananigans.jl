@@ -1,4 +1,4 @@
-using Oceananigans.Utils: instantiate
+using Oceananigans.Utils: instantiate, KernelParameters
 using Oceananigans.Models: total_velocities
 
 #####
@@ -186,11 +186,11 @@ end
 function advect_lagrangian_particles!(particles, model, Δt)
     grid = model.grid
     arch = architecture(grid)
-    workgroup = min(length(particles), 256)
-    worksize = length(particles)
+    parameters = KernelParameters(1:length(particles))
 
-    advect_particles_kernel! = _advect_particles!(device(arch), workgroup, worksize)
-    advect_particles_kernel!(particles.properties, particles.restitution, model.grid, Δt, total_velocities(model))
+    launch!(arch, grid, parameters,
+            _advect_particles!,
+            particles.properties, particles.restitution, model.grid, Δt, total_velocities(model))
 
     return nothing
 end

@@ -214,16 +214,16 @@ Base.length(backend::PartlyInMemory) = backend.length
 #####
 
 mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} <: AbstractField{LX, LY, LZ, G, ET, 4}
-                   data :: D
-                   grid :: G
-                backend :: K
+    data :: D
+    grid :: G
+    backend :: K
     boundary_conditions :: B
-                indices :: I
-                  times :: χ
-                   path :: P
-                   name :: N
-          time_indexing :: TI
-             reader_kw :: KW
+    indices :: I
+    times :: χ
+    path :: P
+    name :: N
+    time_indexing :: TI
+    reader_kw :: KW
 
     function FieldTimeSeries{LX, LY, LZ}(data::D,
                                          grid::G,
@@ -460,10 +460,6 @@ function FieldTimeSeries(path::String, name::String;
     isnothing(times)        && (times      = [file["timeseries/t/$i"] for i in iterations])
     isnothing(location)     && (Location   = file["timeseries/$name/serialized/location"])
 
-    if boundary_conditions isa UnspecifiedBoundaryConditions
-        boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
-    end
-
     indices = try
         file["timeseries/$name/serialized/indices"]
     catch
@@ -479,6 +475,12 @@ function FieldTimeSeries(path::String, name::String;
             architecture = Architectures.architecture(grid)
         end
     end
+
+    if boundary_conditions isa UnspecifiedBoundaryConditions
+        boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
+        boundary_conditions = on_architecture(architecture, boundary_conditions)
+    end
+
 
     # This should be removed eventually... (4/5/2022)
     grid = try
