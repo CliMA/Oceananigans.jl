@@ -255,7 +255,7 @@ const ConnectedTopologies = Union{LeftConnected, RightConnected, FullyConnected}
 # Extending halos is not allowed with variable time-stepping
 function maybe_extend_halos(TX, TY, grid, ::FixedTimeStepSize) 
 
-    if TX isa ConnectedTopologies || TY isa ConnectedTopologies
+    if TX() isa ConnectedTopologies || TY() isa ConnectedTopologies
         throw(ArgumentError("A variable substepping through a CFL condition is not supported for the `SplitExplicitFreeSurface` on $(summary(grid)). \n
                              Provide a fixed number of substeps through the `substeps` keyword argument as: \n
                              `free_surface = SplitExplicitFreeSurface(grid; substeps = N)` where `N::Int`"))
@@ -270,8 +270,8 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
     Nsubsteps = length(substepping.averaging_weights)
     step_halo = Nsubsteps + 1
 
-    Hx = TX isa ConnectedTopologies ? max(step_halo, old_halos[1]) : old_halos[1] 
-    Hy = TY isa ConnectedTopologies ? max(step_halo, old_halos[2]) : old_halos[2] 
+    Hx = TX() isa ConnectedTopologies ? max(step_halo, old_halos[1]) : old_halos[1] 
+    Hy = TY() isa ConnectedTopologies ? max(step_halo, old_halos[2]) : old_halos[2] 
 
     new_halos = (Hx, Hy, old_halos[3])
 
@@ -285,13 +285,14 @@ function maybe_augment_kernel_parameters(TX, TY, ::FixedSubstepNumber, grid)
     Hx, Hy, _ = halo_size(grid)
 
     kernel_sizes = map(split_explicit_kernel_size, (TX, TY), (Nx, Ny), (Hx, Hy))
+
     return KernelParameters(kernel_sizes...)
 end
 
-split_explicit_kernel_size(topo, N, H)             =    1:N
-split_explicit_kernel_size(::FullyConnected, N, H) = -H+2:N+2H-1
-split_explicit_kernel_size(::RightConnected, N, H) = -H+2:N
-split_explicit_kernel_size(::LeftConnected, N, H)  =    1:N+2H-1
+split_explicit_kernel_size(topo, N, H)                   =    1:N
+split_explicit_kernel_size(::Type{FullyConnected}, N, H) = -H+2:N+2H-1
+split_explicit_kernel_size(::Type{RightConnected}, N, H) = -H+2:N
+split_explicit_kernel_size(::Type{LeftConnected},  N, H) =    1:N+2H-1
 
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
