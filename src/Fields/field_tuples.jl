@@ -55,10 +55,21 @@ Fill halo regions for all `fields`. The algorithm:
 """
 function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args...; kwargs...)
     flattened = flattened_unique_values(maybe_nested_tuple)
-    return tupled_fill_halo_regions!(flattened, args...; kwargs...)
+
+    # Check to find grid:
+    for f in flattened
+        if !isnothing(boundary_conditions(f))
+            if !(f isa ReducedField) && (f isa FullField)
+                grid = f.grid
+                break
+            end
+        end
+    end
+
+    return tupled_fill_halo_regions!(flattened, grid, args...; kwargs...)
 end
     
-function tupled_fill_halo_regions!(fields, args...; kwargs...)
+function tupled_fill_halo_regions!(fields, grid, args...; kwargs...)
 
     ordinary_fields = Field[]
     for f in fields
