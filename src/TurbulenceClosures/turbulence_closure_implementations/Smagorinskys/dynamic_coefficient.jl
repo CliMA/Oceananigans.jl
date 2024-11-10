@@ -159,6 +159,7 @@ const c = Center()
 
 @kernel function _lagrangian_average_LM_MM!(𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, 𝒥ᴸᴹ_min, Σ, Σ̄, grid, Δt, u, v, w)
     i, j, k = @index(Global, NTuple)
+    @info "                 Inside _compute_LM_MM!"
     LM, MM = LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
     FT = eltype(grid)
 
@@ -240,12 +241,15 @@ function compute_coefficient_fields!(diffusivity_fields, closure::LagrangianAver
         if !isfinite(clock.last_Δt) || Δt == 0 # first time-step
             @info "               Lauching _compute_LM_MM!"
             launch!(arch, grid, :xyz, _compute_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, Σ, Σ̄, grid, u, v, w)
+            @info "               Finished _compute_LM_MM!"
             parent(𝒥ᴸᴹ) .= max(mean(𝒥ᴸᴹ), 𝒥ᴸᴹ_min)
             parent(𝒥ᴹᴹ) .= mean(𝒥ᴹᴹ)
         else
             @info "               Lauching _compute_LM_MM!"
             launch!(arch, grid, :xyz,
                     _lagrangian_average_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, 𝒥ᴸᴹ_min, Σ, Σ̄, grid, Δt, u, v, w)
+            @info "               Finished _compute_LM_MM!"
+
         end
     end
     @info "               Calculations done"
