@@ -7,7 +7,7 @@ struct SplitExplicitFreeSurface{H, U, M, FT, K , S, T} <: AbstractFreeSurface{H,
     gravitational_acceleration :: FT
     kernel_parameters :: K
     substepping :: S  # Either `FixedSubstepNumber` or `FixedTimeStepSize`
-    timestepper :: T # redesigned to contain all auxiliary field and settings necessary to the particular timestepping
+    timestepper :: T # Contains all auxiliary field and settings necessary to the particular timestepping
 end
 
 """
