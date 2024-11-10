@@ -1,5 +1,3 @@
-# # Tilted bottom boundary layer example
-#
 # This example simulates a two-dimensional oceanic bottom boundary layer
 # in a domain that's tilted with respect to gravity. We simulate the perturbation
 # away from a constant along-slope (y-direction) velocity constant density stratification.
@@ -141,18 +139,16 @@ V∞_field = BackgroundField(V∞)
 
 # ## Create the `NonhydrostaticModel`
 #
-# We are now ready to create the model. We create a `NonhydrostaticModel` with an
-# `UpwindBiasedFifthOrder` advection scheme, a `RungeKutta3` timestepper,
-# and a constant viscosity and diffusivity. Here we use a smallish value
-# of ``10^{-4} \, \rm{m}^2\, \rm{s}^{-1}``.
+# We are now ready to create the model. We create a `NonhydrostaticModel` with a
+# fifth-order `UpwindBiased` advection scheme and a constant viscosity and diffusivity.
+# Here we use a smallish value of ``10^{-4} \, \rm{m}^2\, \rm{s}^{-1}``.
 
 ν = 1e-4
 κ = 1e-4
 closure = ScalarDiffusivity(ν=ν, κ=κ)
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
-                            timestepper = :RungeKutta3,
-                            advection = UpwindBiasedFifthOrder(),
+                            advection = UpwindBiased(order=5),
                             tracers = :b,
                             boundary_conditions = (u=u_bcs, v=v_bcs, b=b_bcs),
                             background_fields = (; b=B∞_field, v=V∞_field))
