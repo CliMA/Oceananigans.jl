@@ -82,7 +82,10 @@ end
 
 @kernel function _compute_LM_MM!(LM, MM, Σ, Σ̄, grid, u, v, w)
     i, j, k = @index(Global, NTuple)
+    @info "                 Inside _compute_LM_MM!"
+    @info "                 Calling LL_and_MM"
     LM_ijk, MM_ijk = LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
+    @info "                 Finished LM_and_MM"
     @inbounds begin
         LM[i, j, k] = LM_ijk
         MM[i, j, k] = MM_ijk
@@ -158,9 +161,7 @@ end
 const c = Center()
 
 @kernel function _lagrangian_average_LM_MM!(𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, 𝒥ᴸᴹ_min, Σ, Σ̄, grid, Δt, u, v, w)
-    @info "                 Inside _compute_LM_MM!"
     i, j, k = @index(Global, NTuple)
-    @info "                 Startinf LL_and_MM"
     LM, MM = LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
     FT = eltype(grid)
 
