@@ -290,9 +290,9 @@ function maybe_augment_kernel_parameters(TX, TY, ::FixedSubstepNumber, grid)
 end
 
 split_explicit_kernel_size(topo, N, H)                   =    1:N
-split_explicit_kernel_size(::Type{FullyConnected}, N, H) = -H+2:N+2H-1
+split_explicit_kernel_size(::Type{FullyConnected}, N, H) = -H+2:N+H-1
 split_explicit_kernel_size(::Type{RightConnected}, N, H) = -H+2:N
-split_explicit_kernel_size(::Type{LeftConnected},  N, H) =    1:N+2H-1
+split_explicit_kernel_size(::Type{LeftConnected},  N, H) =    1:N+H-1
 
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
