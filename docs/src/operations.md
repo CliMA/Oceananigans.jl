@@ -132,6 +132,8 @@ quadratic[1, 1, 1] = 1.0431614901668005
 Also like `Field`s, `AbstractOperation`s have a _location_. For example,
 
 ```jldoctest operations
+using Oceananigans: location
+
 @show location(c)
 @show location(dx_c)
 nothing

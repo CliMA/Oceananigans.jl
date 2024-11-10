@@ -82,23 +82,14 @@ Keyword Arguments
 Example
 =======
 
-```jldoctest; filter = r".*@ Oceananigans.MultiRegion.*"
+```@example multiregion
 julia> using Oceananigans
 
-julia> grid = RectilinearGrid(size=(12, 12), extent=(1, 1), topology=(Bounded, Bounded, Flat))
-12×12×1 RectilinearGrid{Float64, Bounded, Bounded, Flat} on CPU with 3×3×0 halo
-├── Bounded  x ∈ [0.0, 1.0] regularly spaced with Δx=0.0833333
-├── Bounded  y ∈ [0.0, 1.0] regularly spaced with Δy=0.0833333
-└── Flat z
+julia> using Oceananigans.MultiRegion: MultiRegionGrid, XPartition
+
+julia> grid = RectilinearGrid(size=(12, 12), extent=(1, 1), topology=(Bounded, Bounded, Flat));
 
 julia> multi_region_grid = MultiRegionGrid(grid, partition = XPartition(4))
-┌ Warning: MultiRegion functionalities are experimental: help the development by reporting bugs or non-implemented features!
-└ @ Oceananigans.MultiRegion ~/Research/OC11.jl/src/MultiRegion/multi_region_grid.jl:108
-MultiRegionGrid{Float64, Bounded, Bounded, Flat} partitioned on CPU():
-├── grids: 3×12×1 RectilinearGrid{Float64, RightConnected, Bounded, Flat} on CPU with 3×3×0 halo
-├── partitioning: Equal partitioning in X with (4 regions)
-├── connectivity: MultiRegionObject{Tuple{@NamedTuple{west::Nothing, east::Oceananigans.MultiRegion.RegionalConnectivity{Oceananigans.MultiRegion.East, Oceananigans.MultiRegion.West}, north::Nothing, south::Nothing}, @NamedTuple{west::Oceananigans.MultiRegion.RegionalConnectivity{Oceananigans.MultiRegion.West, Oceananigans.MultiRegion.East}, east::Oceananigans.MultiRegion.RegionalConnectivity{Oceananigans.MultiRegion.East, Oceananigans.MultiRegion.West}, north::Nothing, south::Nothing}, @NamedTuple{west::Oceananigans.MultiRegion.RegionalConnectivity{Oceananigans.MultiRegion.West, Oceananigans.MultiRegion.East}, east::Oceananigans.MultiRegion.RegionalConnectivity{Oceananigans.MultiRegion.East, Oceananigans.MultiRegion.West}, north::Nothing, south::Nothing}, @NamedTuple{west::Oceananigans.MultiRegion.RegionalConnectivity{Oceananigans.MultiRegion.West, Oceananigans.MultiRegion.East}, east::Nothing, north::Nothing, south::Nothing}}, NTuple{4, CPU}}
-└── devices: (CPU(), CPU(), CPU(), CPU())
 ```
 """
 function MultiRegionGrid(global_grid; partition = XPartition(2),
