@@ -65,7 +65,7 @@ function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3)
     return UpwindBiased{N, FT}(coefficients..., buffer_scheme, advecting_velocity_scheme)
 end
 
-Base.summary(a::UpwindBiased{N}) where N = string("Upwind Biased reconstruction order ", N*2-1)
+Base.summary(a::UpwindBiased{N}) where N = string("UpwindBiased(order=", 2N-1, ")")
 
 Base.show(io::IO, a::UpwindBiased{N, FT, XT, YT, ZT}) where {N, FT, XT, YT, ZT} =
     print(io, summary(a), " \n",
