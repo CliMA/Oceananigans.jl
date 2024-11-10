@@ -241,8 +241,8 @@ function compute_coefficient_fields!(diffusivity_fields, closure::LagrangianAver
         𝒥ᴸᴹ_min = cˢ.minimum_numerator
 
         if !isfinite(clock.last_Δt) || Δt == 0 # first time-step
-            @info "               Lauching _compute_LM_MM!"
-            launch!(arch, grid, :xyz, _compute_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, Σ, Σ̄, grid, u, v, w)
+            @info "               Skipping _compute_LM_MM! at t=0"
+            #launch!(arch, grid, :xyz, _compute_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, Σ, Σ̄, grid, u, v, w)
             @info "               Finished _compute_LM_MM!"
             parent(𝒥ᴸᴹ) .= max(mean(𝒥ᴸᴹ), 𝒥ᴸᴹ_min)
             parent(𝒥ᴹᴹ) .= mean(𝒥ᴹᴹ)
