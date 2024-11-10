@@ -68,15 +68,15 @@ Logging.global_logger(OceananigansLogger())
 #####
 
 closures = (
-    :ScalarDiffusivity,
-    :ScalarBiharmonicDiffusivity,
-    :TwoDimensionalLeith,
-    :ConstantSmagorinsky,
-    :SmagorinskyLilly,
+    #:ScalarDiffusivity,
+    #:ScalarBiharmonicDiffusivity,
+    #:TwoDimensionalLeith,
+    #:ConstantSmagorinsky,
+    #:SmagorinskyLilly,
     :LagrangianAveragedDynamicSmagorinsky,
-    :DirectionallyAveragedDynamicSmagorinsky,
-    :AnisotropicMinimumDissipation,
-    :ConvectiveAdjustmentVerticalDiffusivity,
+    #:DirectionallyAveragedDynamicSmagorinsky,
+    #:AnisotropicMinimumDissipation,
+    #:ConvectiveAdjustmentVerticalDiffusivity,
 )
 
 if !(@isdefined already_included)
