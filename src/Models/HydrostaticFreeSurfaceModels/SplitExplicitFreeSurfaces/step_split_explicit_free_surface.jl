@@ -158,16 +158,14 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
         # Solve for the free surface at tⁿ⁺¹
         iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, weights, Val(Nsubsteps))
-    end
+        
+        # Reset eta and velocities for the next timestep
+        # The halos are updated in the `update_state!` function
+        parent(free_surface.η) .= parent(filtered_state.η)
+        parent(velocities.U)   .= parent(filtered_state.U) 
+        parent(velocities.V)   .= parent(filtered_state.V)
 
-    # Reset eta and velocities for the next timestep
-    # The halos are updated in the `update_state!` function
-    parent(free_surface.η) .= parent(filtered_state.η)
-    parent(velocities.U)   .= parent(filtered_state.U) 
-    parent(velocities.V)   .= parent(filtered_state.V)
-    
-    # Preparing velocities for the barotropic correction
-    @apply_regionally begin
+        # Preparing velocities for the barotropic correction
         mask_immersed_field!(model.velocities.u)
         mask_immersed_field!(model.velocities.v)
     end
