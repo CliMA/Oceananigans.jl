@@ -159,11 +159,11 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
     u_bc = barotropic_bc(u_baroclinic)
     v_bc = barotropic_bc(v_baroclinic)
 
-    U = Field{Center, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bc)
-    V = Field{Center, Center, Nothing}(maybe_extended_grid, boundary_conditions = v_bc)
+    U = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bc)
+    V = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bc)
 
-    U̅ = Field{Center, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bc)
-    V̅ = Field{Center, Center, Nothing}(maybe_extended_grid, boundary_conditions = v_bc)
+    U̅ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bc)
+    V̅ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bc)
 
     filtered_state = (η = η̅, U = U̅, V = V̅)
     barotropic_velocities = (U = U, V = V)

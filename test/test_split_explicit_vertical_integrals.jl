@@ -2,6 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Fields: VelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: compute_barotropic_mode!,
                                                                                   barotropic_split_explicit_corrector!,
@@ -56,7 +57,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             Δz .= grid.Δzᵃᵃᶠ
 
             set_u_check(x, y, z) = cos((π / 2) * z / Lz)
-            set_U_check(x, y, z) = (sin(0) - (-2 * Lz / (π)))
+            set_U_check(x, y)    = (sin(0) - (-2 * Lz / (π)))
             set!(u, set_u_check)
             exact_U = similar(U)
             set!(exact_U, set_U_check)
@@ -88,7 +89,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             @test all(Array(interior(U)) .≈ Lz)
 
             set_u_check(x, y, z) = sin(x)
-            set_U_check(x, y, z) = sin(x) * Lz
+            set_U_check(x, y)    = sin(x) * Lz
             set!(u, set_u_check)
             exact_U = similar(U)
             set!(exact_U, set_U_check)
@@ -111,17 +112,15 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             Nx, Ny, Nz = 128, 64, 32
             Lx = Ly = Lz = 2π
 
-            grid = RectilinearGrid(arch, topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
+            grid       = RectilinearGrid(arch, topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
+            velocities = VelocityFields(grid)
 
             sefs = SplitExplicitFreeSurface(grid, cfl=0.7)
             sefs = materialize_free_surface(sefs, velocities, grid)
 
-            state   = sefs.filtered_state
-            U, V    = sefs.barotropic_velocities
-            η̅, U̅, V̅ = state.η, state.U, state.V
-            
-            u = Field{Face, Center, Center}(grid)
-            v = Field{Center, Face, Center}(grid)
+            U, V = sefs.barotropic_velocities            
+            u = velocities.u
+            v = velocities.v
             u_corrected = similar(u)
             v_corrected = similar(v)
 
@@ -138,9 +137,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             set!(v, set_v)
             set!(V, set_V̅)
             set!(v_corrected, set_v_corrected)
-
-            Δz = zeros(Nz)
-            Δz .= grid.Δzᵃᵃᶜ
 
             barotropic_split_explicit_corrector!(u, v, sefs, grid)
             @test all(Array((interior(u) .- interior(u_corrected))) .< 1e-14)
