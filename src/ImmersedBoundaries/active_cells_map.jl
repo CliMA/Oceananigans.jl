@@ -5,12 +5,6 @@ using Oceananigans.Grids: AbstractGrid
 using KernelAbstractions: @kernel, @index
 
 import Oceananigans.Grids: retrieve_surface_active_cells_map, retrieve_interior_active_cells_map
-import Oceananigans.Utils: active_cells_work_layout
-
-using Oceananigans.Solvers: solve_batched_tridiagonal_system_z!, ZDirection
-using Oceananigans.DistributedComputations: DistributedGrid, SynchronizedDistributed
-
-import Oceananigans.Solvers: solve_batched_tridiagonal_system_kernel!
 
 # REMEMBER: since the active map is stripped out of the grid when `Adapt`ing to the GPU, 
 # The following types cannot be used to dispatch in kernels!!!
@@ -24,13 +18,10 @@ const WholeActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, 
 # (; halo_independent_cells), and the "halo-dependent" regions in the west, east, north, and south, respectively
 const SplitActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NamedTuple}
 
-# A distributed grid with split interior map
-const DistributedActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid, <:Any, <:NamedTuple} 
-
 """
 A constant representing an immersed boundary grid, where interior active cells are mapped to linear indices in grid.interior_active_cells
 """
-const ActiveCellsIBG = Union{DistributedActiveCellsIBG, WholeActiveCellsMapIBG, SplitActiveCellsMapIBG}
+const ActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Union{AbstractArray, NamedTuple}}
 
 """
 A constant representing an immersed boundary grid, where active columns in the Z-direction are mapped to linear indices in grid.active_z_columns
@@ -46,21 +37,6 @@ const ActiveZColumnsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any
 @inline retrieve_interior_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:south})    = grid.interior_active_cells.south_halo_dependent_cells
 @inline retrieve_interior_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:north})    = grid.interior_active_cells.north_halo_dependent_cells
 @inline retrieve_interior_active_cells_map(grid::ActiveZColumnsIBG,      ::Val{:surface})  = grid.active_z_columns
-
-"""
-    active_cells_work_layout(group, size, map_type, grid)
-
-Compute the work layout for active cells based on the given map type and grid.
-
-# Arguments
-- `group`: The previous workgroup.
-- `size`: The previous worksize.
-- `active_cells_map`: The map containing the index of the active cells
-
-# Returns
-- A tuple `(workgroup, worksize)` representing the work layout for active cells.
-"""
-@inline active_cells_work_layout(group, size, active_cells_map) = min(length(active_cells_map), 256), length(active_cells_map)
 
 """
     active_linear_index_to_tuple(idx, map, grid)
@@ -195,62 +171,6 @@ end
 # domain. Therefore, the `interior_active_cells` field contains the indices of all the active cells in 
 # the range 1:Nx, 1:Ny and 1:Nz (i.e., we construct the map with parameters :xyz)
 map_interior_active_cells(ibg) = interior_active_indices(ibg; parameters = :xyz)
-
-# In case of a `DistributedGrid` we want to have different maps depending on the partitioning of the domain:
-#
-# If we partition the domain in the x-direction, we typically want to have the option to split three-dimensional 
-# kernels in a `halo-independent` part in the range Hx+1:Nx-Hx, 1:Ny, 1:Nz and two `halo-dependent` computations:
-# a west one spanning 1:Hx, 1:Ny, 1:Nz and an east one spanning Nx-Hx+1:Nx, 1:Ny, 1:Nz. 
-# For this reason we need three different maps, one containing the `halo_independent` active region, a `west` map and an `east` map. 
-# For the same reason we need to construct `south` and `north` maps if we partition the domain in the y-direction.
-# Therefore, the `interior_active_cells` in this case is a `NamedTuple` containing 5 elements.
-# Note that boundary-adjacent maps corresponding to non-partitioned directions are set to `nothing`
-function map_interior_active_cells(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid})
-
-    arch = architecture(ibg)
-
-    # If we using a synchronized architecture, nothing
-    # changes with serial execution.
-    if arch isa SynchronizedDistributed
-        return interior_active_indices(ibg; parameters = :xyz)
-    end
-
-    Rx, Ry, _  = arch.ranks
-    Tx, Ty, _  = topology(ibg)
-    Nx, Ny, Nz = size(ibg)
-    Hx, Hy, _  = halo_size(ibg)
-    
-    x_boundary = (Hx, Ny, Nz)
-    y_boundary = (Nx, Hy, Nz)
-         
-    left_offsets    = (0,  0,  0)
-    right_x_offsets = (Nx-Hx, 0,     0)
-    right_y_offsets = (0,     Ny-Hy, 0)
-
-    include_west  = !isa(ibg, XFlatGrid) && (Rx != 1) && !(Tx == RightConnected)
-    include_east  = !isa(ibg, XFlatGrid) && (Rx != 1) && !(Tx == LeftConnected)
-    include_south = !isa(ibg, YFlatGrid) && (Ry != 1) && !(Ty == RightConnected)
-    include_north = !isa(ibg, YFlatGrid) && (Ry != 1) && !(Ty == LeftConnected)
-
-    west_halo_dependent_cells  = include_west  ? interior_active_indices(ibg; parameters = KernelParameters(x_boundary, left_offsets))    : nothing
-    east_halo_dependent_cells  = include_east  ? interior_active_indices(ibg; parameters = KernelParameters(x_boundary, right_x_offsets)) : nothing
-    south_halo_dependent_cells = include_south ? interior_active_indices(ibg; parameters = KernelParameters(y_boundary, left_offsets))    : nothing
-    north_halo_dependent_cells = include_north ? interior_active_indices(ibg; parameters = KernelParameters(y_boundary, right_y_offsets)) : nothing
-    
-    nx = Rx == 1 ? Nx : (Tx == RightConnected || Tx == LeftConnected ? Nx - Hx : Nx - 2Hx)
-    ny = Ry == 1 ? Ny : (Ty == RightConnected || Ty == LeftConnected ? Ny - Hy : Ny - 2Hy)
-
-    ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
-    oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
-     
-    halo_independent_cells = interior_active_indices(ibg; parameters = KernelParameters((nx, ny, Nz), (ox, oy, 0)))
-
-    return (; halo_independent_cells, 
-              west_halo_dependent_cells, 
-              east_halo_dependent_cells, 
-              south_halo_dependent_cells, 
-              north_halo_dependent_cells)
-end
 
 # If we eventually want to perform also barotropic step, `w` computation and `p` 
 # computation only on active `columns`

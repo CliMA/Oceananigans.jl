@@ -98,7 +98,7 @@ function saveproperty!(file, address, bcs::FieldBoundaryConditions)
         if bc.condition isa Function || bc.condition isa ContinuousBoundaryFunction
             file[address * "/$boundary/condition"] = missing
         else
-            file[address * "/$boundary/condition"] = bc.condition
+            file[address * "/$boundary/condition"] = on_architecture(CPU(), bc.condition)
         end
     end
 end
@@ -130,13 +130,13 @@ function serializeproperty!(file, address, grid::DistributedGrid)
     file[address] = on_architecture(cpu_arch, grid)
 end
 
-function serializeproperty!(file, address, p::FieldBoundaryConditions)
+function serializeproperty!(file, address, fbcs::FieldBoundaryConditions)
     # TODO: it'd be better to "filter" `FieldBoundaryCondition` and then serialize
     # rather than punting with `missing` instead.
-    if has_reference(Function, p)
+    if has_reference(Function, fbcs)
         file[address] = missing
     else
-        file[address] = p
+        file[address] = on_architecture(CPU(), fbcs)
     end
 end
 
