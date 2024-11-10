@@ -38,8 +38,6 @@ function test_transpose(grid_points, ranks, topo, child_arch)
 end
 
 @testset "Distributed Transpose" begin
-    child_arch = test_child_arch()
-
     for topology in ((Periodic, Periodic, Periodic), 
                      (Periodic, Periodic, Bounded),
                      (Periodic, Bounded, Bounded),
