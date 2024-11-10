@@ -82,14 +82,14 @@ Keyword Arguments
 Example
 =======
 
-```jldoctest; filter = r".*@ Oceananigans.MultiRegion.*"
+```@example multiregion
 julia> using Oceananigans
 
 julia> using Oceananigans.MultiRegion: MultiRegionGrid, XPartition
 
 julia> grid = RectilinearGrid(size=(12, 12), extent=(1, 1), topology=(Bounded, Bounded, Flat));
 
-julia> multi_region_grid = MultiRegionGrid(grid, partition = XPartition(4));
+julia> multi_region_grid = MultiRegionGrid(grid, partition = XPartition(4))
 ```
 """
 function MultiRegionGrid(global_grid; partition = XPartition(2),
