@@ -5,7 +5,7 @@ using Random
 using Statistics
 using LinearAlgebra
 using Logging
-using Enzyme
+#using Enzyme
 using SparseArrays
 using JLD2
 using FFTW
@@ -72,7 +72,7 @@ closures = (
     #:ScalarBiharmonicDiffusivity,
     #:TwoDimensionalLeith,
     #:ConstantSmagorinsky,
-    #:SmagorinskyLilly,
+    :SmagorinskyLilly,
     :LagrangianAveragedDynamicSmagorinsky,
     #:DirectionallyAveragedDynamicSmagorinsky,
     #:AnisotropicMinimumDissipation,
