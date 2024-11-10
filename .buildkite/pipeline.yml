@@ -7,7 +7,7 @@ env:
   JULIA_NUM_PRECOMPILE_TASKS: 8
   JULIA_NUM_THREADS: 8
 
-#steps:
+steps:
 #  - label: "🎪 initialize gpu environment"
 #    key: "init_gpu"
 #    env:
