@@ -210,6 +210,7 @@ const c = Center()
 end
 
 function compute_coefficient_fields!(diffusivity_fields, closure::LagrangianAveragedDynamicSmagorinsky, model; parameters)
+    @info "               Inside compute_coefficient_fields!"
     grid = model.grid
     arch = architecture(grid)
     clock = model.clock
@@ -220,6 +221,7 @@ function compute_coefficient_fields!(diffusivity_fields, closure::LagrangianAver
     Δt = clock.time - t⁻[]
     t⁻[] = model.clock.time
 
+    @info "               Preamble done"
     if cˢ.schedule(model)
         Σ = diffusivity_fields.Σ
         Σ̄ = diffusivity_fields.Σ̄
@@ -243,6 +245,7 @@ function compute_coefficient_fields!(diffusivity_fields, closure::LagrangianAver
                     _lagrangian_average_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, 𝒥ᴸᴹ_min, Σ, Σ̄, grid, Δt, u, v, w)
         end
     end
+    @info "               Calculations done"
 
     return nothing
 end
