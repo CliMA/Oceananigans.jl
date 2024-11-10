@@ -79,9 +79,9 @@ julia> using Oceananigans
 julia> VectorInvariant()
 Vector Invariant, Dimension-by-dimension reconstruction 
  Vorticity flux scheme: 
- └── EnstrophyConserving{Float64} 
+ └── Oceananigans.Advection.EnstrophyConserving{Float64} 
  Vertical advection / Divergence flux scheme: 
- └── EnergyConserving{Float64}
+ └── Oceananigans.Advection.EnergyConserving{Float64}
 ```
 
 ```jldoctest
