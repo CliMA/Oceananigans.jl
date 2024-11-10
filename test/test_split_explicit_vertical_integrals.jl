@@ -24,6 +24,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
         state = sefs.filtered_state
         barotropic_velocities = sefs.barotropic_velocities
         η̅, U̅, V̅ = state.η, state.U, state.V
+        U, V = barotropic_velocities
 
         u = Field{Face, Center, Center}(grid)
         v = Field{Center, Face, Center}(grid)
@@ -125,14 +126,14 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             v_corrected = similar(v)
 
             set_u(x, y, z) = z + Lz / 2 + sin(x)
-            set_U̅(x, y, z) = cos(x) * Lz
+            set_U̅(x, y)    = cos(x) * Lz
             set_u_corrected(x, y, z) = z + Lz / 2 + cos(x)
             set!(u, set_u)
             set!(U, set_U̅)
             set!(u_corrected, set_u_corrected)
 
             set_v(x, y, z) = (z + Lz / 2) * sin(y) + sin(x)
-            set_V̅(x, y, z) = (cos(x) + x) * Lz
+            set_V̅(x, y)    = (cos(x) + x) * Lz
             set_v_corrected(x, y, z) = (z + Lz / 2) * sin(y) + cos(x) + x
             set!(v, set_v)
             set!(V, set_V̅)

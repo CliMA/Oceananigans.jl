@@ -91,7 +91,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                 U_computed = Array(deepcopy(interior(U)))
                 η_computed = Array(deepcopy(interior(η)))
                 set!(η, η₀)
-                set!(U, U₀)
+                set!(U, 0)
                 U_exact = Array(deepcopy(interior(U)))
                 η_exact = Array(deepcopy(interior(η)))
 
@@ -124,8 +124,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                 fill!(η̅ , 0)
                 fill!(U̅ , 0)
                 fill!(V̅ , 0)
-                fill!(Gᵁ, 0)
-                fill!(Gⱽ, 0)
+                fill!(GU, 0)
+                fill!(GV, 0)
 
 
                 Nsubsteps  = calculate_substeps(sefs.substepping, 1)
@@ -167,7 +167,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                 Δτ_end = T - Nt * Δτ
 
                 sefs = SplitExplicitFreeSurface(substeps=200)
-                sefs = materialize_free_surface(sefs, nothing, grid)
+                sefs = materialize_free_surface(sefs, velocities, grid)
 
                 tate = sefs.filtered_state
                 U, V = sefs.barotropic_velocities
@@ -217,11 +217,11 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                 # ∂ₜₜ(η) = Δη
                 η_exact = cos(ω * T) * (Array(interior(η, :, 1, 1)) .- 1) .+ 1
 
-                U₀(x, y, z) = kx * cos(kx * x) * sin(ky * y) # ∂ₜU = - ∂x(η), since we know η
+                U₀(x, y) = kx * cos(kx * x) * sin(ky * y) # ∂ₜU = - ∂x(η), since we know η
                 set!(U, U₀)
                 U_exact = -(sin(ω * T) * 1 / ω) .* Array(interior(U, :, 1, 1)) .+ gu_c * T
 
-                V₀(x, y, z) = ky * sin(kx * x) * cos(ky * y) # ∂ₜV = - ∂y(η), since we know η
+                V₀(x, y) = ky * sin(kx * x) * cos(ky * y) # ∂ₜV = - ∂y(η), since we know η
                 set!(V, V₀)
                 V_exact = -(sin(ω * T) * 1 / ω) .* Array(interior(V, :, 1, 1)) .+ gv_c * T
 
