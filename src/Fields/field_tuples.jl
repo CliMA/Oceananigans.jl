@@ -57,14 +57,7 @@ function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args..
     flattened = flattened_unique_values(maybe_nested_tuple)
 
     # Check to find grid:
-    for f in flattened
-        if !isnothing(boundary_conditions(f))
-            if !(f isa ReducedField) && (f isa FullField)
-                grid = f.grid
-                break
-            end
-        end
-    end
+    grid = flattened[1].grid
 
     return tupled_fill_halo_regions!(flattened, grid, args...; kwargs...)
 end
