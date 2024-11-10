@@ -146,8 +146,9 @@ end
 # Internal function for HydrostaticFreeSurfaceModel
 function materialize_free_surface(free_surface::SplitExplicitFreeSurface, velocities, grid)
 
-    TX, TY, _ = topology(grid)
-    maybe_extended_grid = maybe_extend_halos(TX, TY, grid, free_surface.substepping)
+    TX, TY, _   = topology(grid)
+    substepping = free_surface.substepping
+    maybe_extended_grid = maybe_extend_halos(TX, TY, grid, substepping)
 
     η = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid)
     η̅ = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid)
@@ -177,7 +178,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
                                     filtered_state,
                                     gravitational_acceleration,
                                     kernel_parameters,
-                                    free_surface.substepping,
+                                    substepping,
                                     timestepper)
 end
 
