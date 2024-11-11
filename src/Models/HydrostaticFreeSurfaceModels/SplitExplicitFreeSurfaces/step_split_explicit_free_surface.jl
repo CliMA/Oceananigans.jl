@@ -30,8 +30,8 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
     k_top = grid.Nz+1
     
     advance_previous_free_surface!(timestepper, i, j, k_top, η)
-    @inbounds  η[i, j, k_top] -= Δτ * (δxTᶜᵃᵃ(i, j, k_top, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
-                                       δyTᵃᶜᵃ(i, j, k_top, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) / Azᶜᶜᶠ(i, j, k_top, grid)
+    @inbounds  η[i, j, k_top] -= Δτ * (δxTᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
+                                       δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) / Azᶜᶜᶠ(i, j, k_top, grid)
 end
 
 @kernel function _split_explicit_barotropic_velocity!(averaging_weight, grid, Δτ, 
