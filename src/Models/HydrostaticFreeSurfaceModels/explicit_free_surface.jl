@@ -98,3 +98,28 @@ end
     i, j = @index(Global, NTuple)
     @inbounds Gη[i, j, grid.Nz+1] = free_surface_tendency(i, j, grid, args...)
 end
+
+"""
+Return the tendency for an explicit free surface at horizontal grid point `i, j`.
+
+The tendency is called ``G_η`` and defined via
+
+```
+∂_t η = G_η
+```
+"""
+@inline function free_surface_tendency(i, j, grid,
+                                       velocities,
+                                       free_surface,
+                                       tracers,
+                                       auxiliary_fields,
+                                       forcings,
+                                       clock)
+
+    k_top = grid.Nz + 1
+    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
+
+    return @inbounds (   velocities.w[i, j, k_top]
+                       + forcings.η(i, j, k_top, grid, clock, model_fields))
+end
+
