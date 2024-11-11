@@ -15,9 +15,12 @@ end
 
 # `initialize_free_surface_state!` is called at the beginning of the substepping to 
 # reset the filtered state to zero and reinitialize the state from the filtered state.
-function initialize_free_surface_state!(filtered_state, η, velocities, ::QuasiAdamsBashforth2TimeStepper, timestepper, stage)
+function initialize_free_surface_state!(free_surface, baroclinic_timestepper, timestepper, stage)
 
-    initialize_free_surface_timestepper!(timestepper, η, velocities)
+    η = free_surface.η
+    U, V = free_surface.barotropic_velocities
+
+    initialize_free_surface_timestepper!(timestepper, η, U, V)
 
     fill!(filtered_state.η, 0)
     fill!(filtered_state.U, 0)
@@ -26,9 +29,19 @@ function initialize_free_surface_state!(filtered_state, η, velocities, ::QuasiA
     return nothing
 end
 
-function initialize_free_surface_state!(filtered_state, η, velocities, ::RungeKutta3TimeStepper, timestepper, stage)
+# At the first stage we reset the velocities and perform the complete substepping from n to n+1
+function initialize_free_surface_state!(free_surface, ts::RungeKutta3TimeStepper, timestepper, ::Val{3})
 
-    initialize_free_surface_timestepper!(timestepper, η, velocities)
+    η = free_surface.η
+    U, V = free_surface.barotropic_velocities
+
+    Uⁿ⁻¹ = ts.previous_model_fields.U
+    Vⁿ⁻¹ = ts.previous_model_fields.v
+
+    parent(U) .= parent(Uⁿ⁻¹)
+    parent(V) .= parent(Vⁿ⁻¹)
+
+    initialize_free_surface_timestepper!(timestepper, η, U, V)
 
     fill!(filtered_state.η, 0)
     fill!(filtered_state.U, 0)
@@ -150,7 +163,7 @@ end
 
 # Setting up the RHS for the barotropic step (tendencies of the barotropic velocity components)
 # This function is called after `calculate_tendency` and before `ab2_step_velocities!`
-function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, timestepper, stage)
+function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, baroclinic_timestepper, stage)
     
     # we start the time integration of η from the average ηⁿ     
     Gu⁻ = model.timestepper.G⁻.u
@@ -162,10 +175,12 @@ function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, time
     GV⁻ = model.timestepper.Gⁿ.V
     GUⁿ = model.timestepper.Gⁿ.U
     GVⁿ = model.timestepper.Gⁿ.V
-    
-    @apply_regionally split_explicit_forcing!(GUⁿ, GVⁿ, GU⁻, GV⁻, model.grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, timestepper, stage)
 
-    initialize_free_surface_state!(free_surface.state, free_surface.η, settings.timestepper, stage)
+    barotropic_timestepper = free_surface.timestepper
+    
+    @apply_regionally split_explicit_forcing!(GUⁿ, GVⁿ, GU⁻, GV⁻, model.grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, baroclinic_timestepper, stage)
+
+    initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper, Val(stage))
 
     fields_to_fill = (GUⁿ, GVⁿ)
     fill_halo_regions!(fields_to_fill; async = true)

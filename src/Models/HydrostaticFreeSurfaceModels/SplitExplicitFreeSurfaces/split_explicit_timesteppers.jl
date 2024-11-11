@@ -101,12 +101,12 @@ end
 
 initialize_free_surface_timestepper!(::ForwardBackwardScheme, args...) = nothing
 
-function initialize_free_surface_timestepper!(timestepper::AdamsBashforth3Scheme, η, velocities)
-    parent(timestepper.Uᵐ⁻¹) .= parent(velocities.U)
-    parent(timestepper.Vᵐ⁻¹) .= parent(velocities.V)
+function initialize_free_surface_timestepper!(timestepper::AdamsBashforth3Scheme, η, U, V)
+    parent(timestepper.Uᵐ⁻¹) .= parent(U)
+    parent(timestepper.Vᵐ⁻¹) .= parent(V)
 
-    parent(timestepper.Uᵐ⁻²) .= parent(velocities.U)
-    parent(timestepper.Vᵐ⁻²) .= parent(velocities.V)
+    parent(timestepper.Uᵐ⁻²) .= parent(U)
+    parent(timestepper.Vᵐ⁻²) .= parent(V)
 
     parent(timestepper.ηᵐ)   .= parent(η)
     parent(timestepper.ηᵐ⁻¹) .= parent(η)
