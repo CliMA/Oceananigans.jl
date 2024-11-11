@@ -58,16 +58,6 @@ fill_open_boundary_regions!(fields::NTuple, boundary_conditions, indices, loc, g
 @inline get_open_halo_filling_functions(::Tuple{Center, Face, Center}) = _fill_south_and_north_open_halo!
 @inline get_open_halo_filling_functions(::Tuple{Center, Center, Face}) = _fill_bottom_and_top_open_halo!
 
-# Extending the fill_halo_size and fill_halo_offset functions for the 
-# open boundary conditions kernels. There are exactly the same as for the regular boundary conditions
-@inline fill_halo_size(field, ::typeof(_fill_west_and_east_open_halo!),   args...) = fill_halo_size(field, _fill_west_and_east_halo!, args...)
-@inline fill_halo_size(field, ::typeof(_fill_south_and_north_open_halo!), args...) = fill_halo_size(field, _fill_sourth_and_north_halo!, args...)
-@inline fill_halo_size(field, ::typeof(_fill_bottom_and_top_open_halo!),  args...) = fill_halo_size(field, _fill_bottom_and_top_halo!, args...)
-
-@inline fill_halo_offset(size, ::typeof(_fill_west_and_east_open_halo!),   args...) = fill_halo_offset(size, _fill_west_and_east_halo!, args...)
-@inline fill_halo_offset(size, ::typeof(_fill_south_and_north_open_halo!), args...) = fill_halo_offset(size, _fill_sourth_and_north_halo!, args...)
-@inline fill_halo_offset(size, ::typeof(_fill_bottom_and_top_open_halo!),  args...) = fill_halo_offset(size, _fill_bottom_and_top_halo!, args...)
-
 @kernel function _fill_west_and_east_open_halo!(c, west_bc, east_bc, loc, grid, args) 
     j, k = @index(Global, NTuple)
     _fill_west_open_halo!(j, k, grid, c, west_bc, loc, args...)
@@ -85,6 +75,16 @@ end
     _fill_bottom_open_halo!(i, j, grid, c, bottom_bc, loc, args...)
        _fill_top_open_halo!(i, j, grid, c, top_bc,    loc, args...)
 end
+
+# Extending the fill_halo_size and fill_halo_offset functions for the 
+# open boundary conditions kernels. There are exactly the same as for the regular boundary conditions
+@inline fill_halo_size(field, ::typeof(_fill_west_and_east_open_halo!),   args...) = fill_halo_size(field, _fill_west_and_east_halo!, args...)
+@inline fill_halo_size(field, ::typeof(_fill_south_and_north_open_halo!), args...) = fill_halo_size(field, _fill_sourth_and_north_halo!, args...)
+@inline fill_halo_size(field, ::typeof(_fill_bottom_and_top_open_halo!),  args...) = fill_halo_size(field, _fill_bottom_and_top_halo!, args...)
+
+@inline fill_halo_offset(size, ::typeof(_fill_west_and_east_open_halo!),   args...) = fill_halo_offset(size, _fill_west_and_east_halo!, args...)
+@inline fill_halo_offset(size, ::typeof(_fill_south_and_north_open_halo!), args...) = fill_halo_offset(size, _fill_sourth_and_north_halo!, args...)
+@inline fill_halo_offset(size, ::typeof(_fill_bottom_and_top_open_halo!),  args...) = fill_halo_offset(size, _fill_bottom_and_top_halo!, args...)
 
 # Generic fallback
 
