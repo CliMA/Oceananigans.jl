@@ -166,10 +166,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                 Nt = floor(Int, T / Δτ)
                 Δτ_end = T - Nt * Δτ
 
-                sefs = SplitExplicitFreeSurface(substeps=200)
+                sefs = SplitExplicitFreeSurface(grid; substeps = Nt + 1, averaging_kernel = constant_averaging_kernel)
                 sefs = materialize_free_surface(sefs, velocities, grid)
 
-                tate = sefs.filtered_state
+                state = sefs.filtered_state
                 U, V = sefs.barotropic_velocities
                 η̅, U̅, V̅ = state.η, state.U, state.V
                 η = sefs.η
@@ -191,8 +191,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                 GU .= gu_c
                 GV .= gv_c
 
-                sefs = SplitExplicitFreeSurface(grid; substeps = Nt + 1, averaging_kernel = constant_averaging_kernel)
-                
                 weights = sefs.substepping.averaging_weights
                 for i in 1:Nt
                     iterate_split_explicit!(sefs, grid, GU, GV, Δτ, weights, Val(1))

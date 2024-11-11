@@ -66,7 +66,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             @test all((Array(interior(U) .- interior(exact_U))) .< tolerance)
 
             set_v_check(x, y, z) = sin(x * y) * cos((π / 2) * z / Lz)
-            set_V_check(x, y, z) = sin(x * y) * (sin(0) - (-2 * Lz / (π)))
+            set_V_check(x, y)    = sin(x * y) * (sin(0) - (-2 * Lz / (π)))
             set!(v, set_v_check)
             exact_V = similar(V)
             set!(exact_V, set_V_check)
@@ -97,7 +97,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             @test all(Array(interior(U)) .≈ Array(interior(exact_U)))
 
             set_v_check(x, y, z) = sin(x) * z * cos(y)
-            set_V_check(x, y, z) = -sin(x) * Lz^2 / 2.0 * cos(y)
+            set_V_check(x, y)    = -sin(x) * Lz^2 / 2.0 * cos(y)
             set!(v, set_v_check)
             exact_V = similar(V)
             set!(exact_V, set_V_check)

@@ -119,6 +119,19 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
     return nothing
 end
 
+@kernel function _update_split_explicit_state!(η, barotropic_velocities, filtered_state)
+    i, j = @index(Global, NTuple)
+    k_top = η.grid.Nz+1
+
+    U, V = barotropic_velocities
+
+    @inbounds begin
+        η[i, j, k_top] = filtered_state.η̅[i, j, k_top]
+        U[i, j, 1]     = filtered_state.U̅[i, j, 1]
+        V[i, j, 1]     = filtered_state.V̅[i, j, 1]
+    end
+end
+
 #####
 ##### SplitExplicitFreeSurface barotropic subcylicing
 #####
@@ -159,11 +172,11 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
         # Solve for the free surface at tⁿ⁺¹
         iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, weights, Val(Nsubsteps))
         
-        # Reset eta and velocities for the next timestep
+        # Update eta and velocities for the next timestep
         # The halos are updated in the `update_state!` function
-        parent(free_surface.η) .= parent(filtered_state.η)
-        parent(velocities.U)   .= parent(filtered_state.U) 
-        parent(velocities.V)   .= parent(filtered_state.V)
+        launch!(architecture(free_surface_grid), free_surface_grid, :xy, 
+                _update_split_explicit_state!,
+                free_surface.η, velocities, filtered_state)
 
         # Preparing velocities for the barotropic correction
         mask_immersed_field!(model.velocities.u)
