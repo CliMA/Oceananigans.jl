@@ -8,7 +8,7 @@ using Base: @propagate_inbounds
 
 import Oceananigans: boundary_conditions
 import Oceananigans.Architectures: on_architecture
-import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc, validate_boundary_condition_location
+import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc
 import Statistics: norm, mean, mean!
 import Base: ==
 

@@ -84,7 +84,7 @@ A classification specifying a distributed memory communicating boundary conditio
 struct DistributedCommunication <: AbstractBoundaryConditionClassification end
 
 """
-    struct DistributedCommunication <: AbstractBoundaryConditionClassification
+    struct Zipper <: AbstractBoundaryConditionClassification
 
 A classification specifying a Zipper boundary condition where one boundary is folded onto itself.
 Used only for a tripolar grid.
