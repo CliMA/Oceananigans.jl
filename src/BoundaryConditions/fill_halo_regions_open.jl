@@ -19,7 +19,7 @@ function fill_open_boundary_regions!(field, boundary_conditions, indices, loc, g
         left_bc  =  left_open_boundary_condition(boundary_conditions, loc)
         right_bc = right_open_boundary_condition(boundary_conditions, loc)
     
-        fill_halo_event!(c, fill_halo!, (left_bc, right_bc), indices, loc, arch, grid, args...; kwargs...)
+        fill_halo_event!(field, fill_halo!, (left_bc, right_bc), indices, loc, arch, grid, args...; kwargs...)
     end
 
     return nothing
