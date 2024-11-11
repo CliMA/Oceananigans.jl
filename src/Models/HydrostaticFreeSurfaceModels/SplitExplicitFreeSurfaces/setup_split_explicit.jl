@@ -171,8 +171,8 @@ function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, baro
     Guⁿ = model.timestepper.Gⁿ.u
     Gvⁿ = model.timestepper.Gⁿ.v
 
-    GU⁻ = model.timestepper.Gⁿ.U
-    GV⁻ = model.timestepper.Gⁿ.V
+    GU⁻ = model.timestepper.G⁻.U
+    GV⁻ = model.timestepper.G⁻.V
     GUⁿ = model.timestepper.Gⁿ.U
     GVⁿ = model.timestepper.Gⁿ.V
 
