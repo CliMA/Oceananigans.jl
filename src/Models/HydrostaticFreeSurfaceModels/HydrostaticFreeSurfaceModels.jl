@@ -33,7 +33,7 @@ free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 
 # free surface initialization functions
 initialize_free_surface!(free_surface, grid, velocities) = nothing
-setup_free_surface!(model, free_surface, χ) = nothing
+setup_free_surface!(model, free_surface, timestepper, stage) = nothing
 
 include("compute_w_from_continuity.jl")
 
@@ -133,7 +133,7 @@ include("compute_hydrostatic_free_surface_tendencies.jl")
 include("compute_hydrostatic_free_surface_buffers.jl")
 include("update_hydrostatic_free_surface_model_state.jl")
 include("hydrostatic_free_surface_ab2_step.jl")
-include("hydrostatic_free_surface_ssprk3_step.jl")
+include("hydrostatic_free_surface_rk3_step.jl")
 include("store_hydrostatic_free_surface_tendencies.jl")
 include("prescribed_hydrostatic_velocity_fields.jl")
 include("single_column_model_mode.jl")

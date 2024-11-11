@@ -136,10 +136,7 @@ end
 ##### SplitExplicitFreeSurface barotropic subcylicing
 #####
 
-ab2_step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt, χ) =
-    split_explicit_free_surface_step!(free_surface, model, Δt)
-
-function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt)
+function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroclinic_timestepper, Δt)
 
     # Note: free_surface.η.grid != model.grid for DistributedSplitExplicitFreeSurface
     # since halo_size(free_surface.η.grid) != halo_size(model.grid)

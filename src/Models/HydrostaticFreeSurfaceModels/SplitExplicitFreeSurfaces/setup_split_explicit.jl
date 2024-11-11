@@ -1,4 +1,4 @@
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKutta3TimeStepper
 
 #####
 ##### Initialize Free Surface state
@@ -30,7 +30,7 @@ function initialize_free_surface_state!(free_surface, baroclinic_timestepper, ti
 end
 
 # At the first stage we reset the velocities and perform the complete substepping from n to n+1
-function initialize_free_surface_state!(free_surface, ts::RungeKutta3TimeStepper, timestepper, ::Val{3})
+function initialize_free_surface_state!(free_surface, ts::SplitRungeKutta3TimeStepper, timestepper, ::Val{3})
 
     η = free_surface.η
     U, V = free_surface.barotropic_velocities
@@ -153,7 +153,7 @@ end
     @inbounds GVⁿ[i, j, 1] = convert(FT, 2/3) * GVⁿ[i, j, 1] + GV⁻[i, j, 1]
 end
 
-function split_explicit_forcing!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, ::RungeKutta3TimeStepper, stage)  
+function split_explicit_forcing!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, ::SplitRungeKutta3TimeStepper, stage)  
     active_cells_map = retrieve_surface_active_cells_map(grid)    
     launch!(architecture(grid), grid, :xy, _compute_integrated_rk3_tendencies!, 
             GUⁿ, GVⁿ, GU⁻, GV⁻, grid, active_cells_map, Guⁿ, Gvⁿ, Val(stage); active_cells_map)

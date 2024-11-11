@@ -40,14 +40,13 @@ timestep (`G⁻`).
 function QuasiAdamsBashforth2TimeStepper(grid, tracers,
                                          χ = 0.1;
                                          implicit_solver::IT = nothing,
-                                         Gⁿ = TendencyFields(grid, tracers),
-                                         G⁻ = TendencyFields(grid, tracers)) where IT
+                                         Gⁿ = TendencyFields(grid, tracers)) where IT
 
     FT = eltype(grid)
     GT = typeof(Gⁿ)
     χ  = convert(FT, χ)
 
-    return QuasiAdamsBashforth2TimeStepper{FT, GT, IT}(χ, Gⁿ, G⁻, implicit_solver)
+    return QuasiAdamsBashforth2TimeStepper{FT, GT, IT}(χ, Gⁿ, deepcopy(Gⁿ), implicit_solver)
 end
 
 reset!(timestepper::QuasiAdamsBashforth2TimeStepper) = nothing
