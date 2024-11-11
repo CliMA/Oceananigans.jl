@@ -90,18 +90,18 @@ uˢ(z) = Uˢ * exp(z / vertical_scale)
 #
 # At the surface ``z = 0``, Wagner et al. (2021) impose
 
-Qᵘ = -3.72e-5 # m² s⁻², surface kinematic momentum flux
+τx = -3.72e-5 # m² s⁻², surface kinematic momentum flux
 
-u_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
+u_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 
 # Wagner et al. (2021) impose a linear buoyancy gradient `N²` at the bottom
 # along with a weak, destabilizing flux of buoyancy at the surface to faciliate
 # spin-up from rest.
 
-Qᵇ = 2.307e-8 # m² s⁻³, surface buoyancy flux
+Jᵇ = 2.307e-8 # m² s⁻³, surface buoyancy flux
 N² = 1.936e-5 # s⁻², initial and bottom buoyancy gradient
 
-b_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ),
+b_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ),
                                                 bottom = GradientBoundaryCondition(N²))
 
 # !!! info "The flux convention in Oceananigans"
@@ -153,7 +153,7 @@ bᵢ(x, y, z) = stratification(z) + 1e-1 * Ξ(z) * N² * model.grid.Lz
 # This initial condition is consistent with a wavy, quiescent ocean suddenly impacted
 # by winds. To this quiescent state we add noise scaled by the friction velocity to ``u`` and ``w``.
 
-u★ = sqrt(abs(Qᵘ))
+u★ = sqrt(abs(τx))
 uᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 wᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 

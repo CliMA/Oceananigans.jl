@@ -30,8 +30,8 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
     k_top = grid.Nz+1
     
     advance_previous_free_surface!(timestepper, i, j, k_top, η)
-    @inbounds  η[i, j, k_top] -= Δτ * (δxTᶜᵃᵃ(i, j, k_top, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
-                                       δyTᵃᶜᵃ(i, j, k_top, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) / Azᶜᶜᶠ(i, j, k_top, grid)
+    @inbounds  η[i, j, k_top] -= Δτ * (δxTᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
+                                       δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) / Azᶜᶜᶠ(i, j, k_top, grid)
 end
 
 @kernel function _split_explicit_barotropic_velocity!(averaging_weight, grid, Δτ, 
@@ -119,6 +119,19 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
     return nothing
 end
 
+@kernel function _update_split_explicit_state!(η, barotropic_velocities, filtered_state)
+    i, j = @index(Global, NTuple)
+    k_top = η.grid.Nz+1
+
+    U, V = barotropic_velocities
+
+    @inbounds begin
+        η[i, j, k_top] = filtered_state.η[i, j, k_top]
+        U[i, j, 1]     = filtered_state.U[i, j, 1]
+        V[i, j, 1]     = filtered_state.V[i, j, 1]
+    end
+end
+
 #####
 ##### SplitExplicitFreeSurface barotropic subcylicing
 #####
@@ -158,16 +171,14 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
         # Solve for the free surface at tⁿ⁺¹
         iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, weights, Val(Nsubsteps))
-    end
+        
+        # Update eta and velocities for the next timestep
+        # The halos are updated in the `update_state!` function
+        launch!(architecture(free_surface_grid), free_surface_grid, :xy, 
+                _update_split_explicit_state!,
+                free_surface.η, velocities, filtered_state)
 
-    # Reset eta and velocities for the next timestep
-    # The halos are updated in the `update_state!` function
-    parent(free_surface.η) .= parent(filtered_state.η)
-    parent(velocities.U)   .= parent(filtered_state.U) 
-    parent(velocities.V)   .= parent(filtered_state.V)
-    
-    # Preparing velocities for the barotropic correction
-    @apply_regionally begin
+        # Preparing velocities for the barotropic correction
         mask_immersed_field!(model.velocities.u)
         mask_immersed_field!(model.velocities.v)
     end

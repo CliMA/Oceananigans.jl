@@ -1,5 +1,6 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans.Fields: VelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: calculate_substeps,
                                                                                   calculate_adaptive_settings,
@@ -23,8 +24,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                                    x = (0, Lx), y = (0, Ly), z = (-Lz, 0),
                                    halo = (1, 1, 1))
 
+            velocities = VelocityFields(grid)
+
             sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = constant_averaging_kernel)
-            sefs = materialize_free_surface(sefs, nothing, grid)
+            sefs = materialize_free_surface(sefs, velocities, grid)
 
             sefs.η .= 0
             GU = Field{Face, Center, Nothing}(grid)
@@ -64,15 +67,13 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                 Δτ_end = T - Nt * Δτ
 
                 sefs = SplitExplicitFreeSurface(substeps = Nt, averaging_kernel = constant_averaging_kernel)
-                sefs = materialize_free_surface(sefs, nothing, grid)
+                sefs = materialize_free_surface(sefs, velocities, grid)
 
                 # set!(η, f(x, y))
                 η₀(x, y, z) = sin(x)
                 set!(η, η₀)
-                U₀(x, y, z) = 0
-                set!(U, U₀)
-                V₀(x, y, z) = 0
-                set!(V, V₀)
+                set!(U, 0)
+                set!(V, 0)
 
                 η̅  .= 0
                 U̅  .= 0
@@ -90,7 +91,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                 U_computed = Array(deepcopy(interior(U)))
                 η_computed = Array(deepcopy(interior(η)))
                 set!(η, η₀)
-                set!(U, U₀)
+                set!(U, 0)
                 U_exact = Array(deepcopy(interior(U)))
                 η_exact = Array(deepcopy(interior(η)))
 
@@ -99,13 +100,13 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             end
 
             sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = constant_averaging_kernel)
-            sefs = materialize_free_surface(sefs, nothing, grid)
+            sefs = materialize_free_surface(sefs, velocities, grid)
 
             sefs.η .= 0
 
             @testset "Averaging / Do Nothing test " begin
                 state = sefs.filtered_state
-                U, V = sefs.barotropic_velocities
+                U, V  = sefs.barotropic_velocities
                 η̅, U̅, V̅ = state.η, state.U, state.V
                 η = sefs.η
                 g = sefs.gravitational_acceleration
@@ -123,8 +124,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                 fill!(η̅ , 0)
                 fill!(U̅ , 0)
                 fill!(V̅ , 0)
-                fill!(Gᵁ, 0)
-                fill!(Gⱽ, 0)
+                fill!(GU, 0)
+                fill!(GV, 0)
 
 
                 Nsubsteps  = calculate_substeps(sefs.substepping, 1)
@@ -165,10 +166,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                 Nt = floor(Int, T / Δτ)
                 Δτ_end = T - Nt * Δτ
 
-                sefs = SplitExplicitFreeSurface(substeps=200)
-                sefs = materialize_free_surface(sefs, nothing, grid)
+                sefs = SplitExplicitFreeSurface(grid; substeps = Nt + 1, averaging_kernel = constant_averaging_kernel)
+                sefs = materialize_free_surface(sefs, velocities, grid)
 
-                tate = sefs.filtered_state
+                state = sefs.filtered_state
                 U, V = sefs.barotropic_velocities
                 η̅, U̅, V̅ = state.η, state.U, state.V
                 η = sefs.η
@@ -190,8 +191,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                 GU .= gu_c
                 GV .= gv_c
 
-                sefs = SplitExplicitFreeSurface(grid; substeps = Nt + 1, averaging_kernel = constant_averaging_kernel)
-                
                 weights = sefs.substepping.averaging_weights
                 for i in 1:Nt
                     iterate_split_explicit!(sefs, grid, GU, GV, Δτ, weights, Val(1))
@@ -216,11 +215,11 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
                 # ∂ₜₜ(η) = Δη
                 η_exact = cos(ω * T) * (Array(interior(η, :, 1, 1)) .- 1) .+ 1
 
-                U₀(x, y, z) = kx * cos(kx * x) * sin(ky * y) # ∂ₜU = - ∂x(η), since we know η
+                U₀(x, y) = kx * cos(kx * x) * sin(ky * y) # ∂ₜU = - ∂x(η), since we know η
                 set!(U, U₀)
                 U_exact = -(sin(ω * T) * 1 / ω) .* Array(interior(U, :, 1, 1)) .+ gu_c * T
 
-                V₀(x, y, z) = ky * sin(kx * x) * cos(ky * y) # ∂ₜV = - ∂y(η), since we know η
+                V₀(x, y) = ky * sin(kx * x) * cos(ky * y) # ∂ₜV = - ∂y(η), since we know η
                 set!(V, V₀)
                 V_exact = -(sin(ω * T) * 1 / ω) .* Array(interior(V, :, 1, 1)) .+ gv_c * T
 

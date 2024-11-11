@@ -1,5 +1,4 @@
-# Barotropic Model Kernels
-# u_Δz = u * Δz
+# Kernels to compute the vertical integral of the velocities
 @kernel function _barotropic_mode_kernel!(U, V, grid, ::Nothing, u, v)
     i, j  = @index(Global, NTuple)
     barotropic_mode_kernel!(U, V, i, j, grid, u, v)
