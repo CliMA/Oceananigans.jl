@@ -553,12 +553,12 @@ function test_basic_lat_lon_general_grid(FT)
     @test all(zspacings(grid_reg, Center()) .== grid_reg.Δzᵃᵃᶜ)
     @test all(zspacings(grid_reg, Face()) .== grid_reg.Δzᵃᵃᶠ)
 
-    @test xspacings(grid_reg, Center(), Center(), Center()) == xspacings(grid_reg, Center(), Center())
-    @test xspacings(grid_reg, Face(),   Face(),   Center()) == xspacings(grid_reg, Face(),   Face())
-    @test yspacings(grid_reg, Center(), Face(),   Center()) == yspacings(grid_reg, Center(), Face())
-    @test yspacings(grid_reg, Face(),   Center(), Center()) == yspacings(grid_reg, Face(),   Center())
-    @test zspacings(grid_reg, Face(),   Center(), Center()) == zspacings(grid_reg, Center())
-    @test zspacings(grid_reg, Face(),   Center(), Face()  ) == zspacings(grid_reg, Face())
+    @test all(xspacings(grid_reg, Center(), Center(), Center()) .== xspacings(grid_reg, Center(), Center()))
+    @test all(xspacings(grid_reg, Face(),   Face(),   Center()) .== xspacings(grid_reg, Face(),   Face()))
+    @test all(yspacings(grid_reg, Center(), Face(),   Center()) .== yspacings(grid_reg, Center(), Face()))
+    @test all(yspacings(grid_reg, Face(),   Center(), Center()) .== yspacings(grid_reg, Face(),   Center()))
+    @test all(zspacings(grid_reg, Face(),   Center(), Center()) .== zspacings(grid_reg, Center()))
+    @test all(zspacings(grid_reg, Face(),   Center(), Face()  ) .== zspacings(grid_reg, Face()))
 
     @test xspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == grid_reg.Δxᶜᶜᵃ[2]
     @test xspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δxᶜᶠᵃ[2]
