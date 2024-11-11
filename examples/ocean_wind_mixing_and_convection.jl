@@ -145,8 +145,7 @@ S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 # scales smaller than the grid scale that we cannot explicitly resolve.
 
 model = NonhydrostaticModel(; grid, buoyancy,
-                            advection = UpwindBiasedFifthOrder(),
-                            timestepper = :RungeKutta3,
+                            advection = UpwindBiased(order=5),
                             tracers = (:T, :S),
                             coriolis = FPlane(f=1e-4),
                             closure = AnisotropicMinimumDissipation(),
