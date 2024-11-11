@@ -84,30 +84,31 @@ end
     i, j, k = @index(Global, NTuple)
     @info "                 Inside _compute_LM_MM!"
     @info "                 Calling LL_and_MM"
-    #LM_ijk, MM_ijk = 1, 2#LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
-    @inbounds begin
-        LM[i, j, k], MM[i, j, k] = LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
-    end
+    LM_ijk, MM_ijk = LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
     @info "                 Finished LM_and_MM"
+    @inbounds begin
+        LM[i, j, k] = LM_ijk
+        MM[i, j, k] = MM_ijk
+    end
 end
 
 @inline function LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
     L₁₁ = L₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w)
     L₂₂ = L₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w)
     L₃₃ = L₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
-    L₁₂ = L₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w)
-    L₁₃ = L₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
-    L₂₃ = L₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
+    #L₁₂ = L₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w)
+    #L₁₃ = L₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
+    #L₂₃ = L₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
 
     M₁₁ = M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
     M₂₂ = M₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
     M₃₃ = M₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
-    M₁₂ = M₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
-    M₁₃ = M₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
-    M₂₃ = M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
+    #M₁₂ = M₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
+    #M₁₃ = M₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
+    #M₂₃ = M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
 
-    LM_ijk = L₁₁ * M₁₁ + L₂₂ * M₂₂ + L₃₃ * M₃₃ + 2L₁₂ * M₁₂ + 2L₁₃ * M₁₃ + 2L₂₃ * M₂₃
-    MM_ijk = M₁₁ * M₁₁ + M₂₂ * M₂₂ + M₃₃ * M₃₃ + 2M₁₂ * M₁₂ + 2M₁₃ * M₁₃ + 2M₂₃ * M₂₃
+    LM_ijk = L₁₁ * M₁₁ + L₂₂ * M₂₂ + L₃₃ * M₃₃ #+ 2L₁₂ * M₁₂ + 2L₁₃ * M₁₃ + 2L₂₃ * M₂₃
+    MM_ijk = M₁₁ * M₁₁ + M₂₂ * M₂₂ + M₃₃ * M₃₃ #+ 2M₁₂ * M₁₂ + 2M₁₃ * M₁₃ + 2M₂₃ * M₂₃
 
     return LM_ijk, MM_ijk
 end
@@ -240,7 +241,7 @@ function compute_coefficient_fields!(diffusivity_fields, closure::LagrangianAver
         𝒥ᴸᴹ_min = cˢ.minimum_numerator
 
         if !isfinite(clock.last_Δt) || Δt == 0 # first time-step
-            @info "               Skipping _compute_LM_MM! at t=0"
+            @info "               Launching _compute_LM_MM! at t=0"
             launch!(arch, grid, :xyz, _compute_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, Σ, Σ̄, grid, u, v, w)
             @info "               Finished _compute_LM_MM!"
             parent(𝒥ᴸᴹ) .= max(mean(𝒥ᴸᴹ), 𝒥ᴸᴹ_min)
