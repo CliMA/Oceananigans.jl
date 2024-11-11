@@ -126,9 +126,9 @@ end
     U, V = barotropic_velocities
 
     @inbounds begin
-        η[i, j, k_top] = filtered_state.η̅[i, j, k_top]
-        U[i, j, 1]     = filtered_state.U̅[i, j, 1]
-        V[i, j, 1]     = filtered_state.V̅[i, j, 1]
+        η[i, j, k_top] = filtered_state.η[i, j, k_top]
+        U[i, j, 1]     = filtered_state.U[i, j, 1]
+        V[i, j, 1]     = filtered_state.V[i, j, 1]
     end
 end
 
