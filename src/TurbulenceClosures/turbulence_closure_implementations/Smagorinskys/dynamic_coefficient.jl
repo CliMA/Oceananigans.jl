@@ -84,12 +84,11 @@ end
     i, j, k = @index(Global, NTuple)
     @info "                 Inside _compute_LM_MM!"
     @info "                 Calling LL_and_MM"
-    LM_ijk, MM_ijk = 1, 2#LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
-    @info "                 Finished LM_and_MM"
+    #LM_ijk, MM_ijk = 1, 2#LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
     @inbounds begin
-        LM[i, j, k] = LM_ijk
-        MM[i, j, k] = MM_ijk
+        LM[i, j, k], MM[i, j, k] = LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
     end
+    @info "                 Finished LM_and_MM"
 end
 
 @inline function LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
