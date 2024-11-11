@@ -46,6 +46,7 @@ CUDA.allowscalar() do
     if group == :unit || group == :all
         @testset "Unit tests" begin
             include("test_grids.jl")
+            include("test_tripolar_grid.jl")
             include("test_operators.jl")
             include("test_vector_rotation_operators.jl")
             include("test_boundary_conditions.jl")
