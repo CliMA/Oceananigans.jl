@@ -10,6 +10,7 @@ export XFlatGrid, YFlatGrid, ZFlatGrid
 export XRegularRG, YRegularRG, ZRegularRG, XYRegularRG, XYZRegularRG
 export LatitudeLongitudeGrid, XRegularLLG, YRegularLLG, ZRegularLLG
 export OrthogonalSphericalShellGrid, ConformalCubedSphereGrid, ZRegOrthogonalSphericalShellGrid
+export TripolarGrid
 export conformal_cubed_sphere_panel
 export node, nodes
 export ξnode, ηnode, rnode
