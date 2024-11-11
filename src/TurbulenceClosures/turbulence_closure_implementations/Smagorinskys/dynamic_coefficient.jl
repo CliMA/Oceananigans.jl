@@ -82,7 +82,6 @@ end
 
 @kernel function _compute_LM_MM!(LM, MM, Σ, Σ̄, grid, u, v, w)
     i, j, k = @index(Global, NTuple)
-    @info "                 Inside _compute_LM_MM!"
     @info "                 Calling LL_and_MM"
     LM_ijk, MM_ijk = LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
     @info "                 Finished LM_and_MM"
@@ -100,9 +99,9 @@ end
     L₁₃ = L₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
     L₂₃ = L₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w)
 
-    #M₁₁ = M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
-    #M₂₂ = M₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
-    #M₃₃ = M₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
+    M₁₁ = M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ, Σ̄)
+    M₂₂ = M₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ, Σ̄)
+    M₃₃ = M₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ, Σ̄)
     M₁₂ = M₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ, Σ̄)
     M₁₃ = M₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ, Σ̄)
     M₂₃ = M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, Σ, Σ̄)
@@ -213,7 +212,6 @@ const c = Center()
 end
 
 function compute_coefficient_fields!(diffusivity_fields, closure::LagrangianAveragedDynamicSmagorinsky, model; parameters)
-    @info "               Inside compute_coefficient_fields!"
     grid = model.grid
     arch = architecture(grid)
     clock = model.clock
@@ -224,11 +222,9 @@ function compute_coefficient_fields!(diffusivity_fields, closure::LagrangianAver
     Δt = clock.time - t⁻[]
     t⁻[] = model.clock.time
 
-    @info "               Preamble done"
     if cˢ.schedule(model)
         Σ = diffusivity_fields.Σ
         Σ̄ = diffusivity_fields.Σ̄
-        @info "               Lauching _compute_Σ_Σ̄"
         launch!(arch, grid, :xyz, _compute_Σ_Σ̄!, Σ, Σ̄, grid, u, v, w)
 
         parent(diffusivity_fields.𝒥ᴸᴹ⁻) .= parent(diffusivity_fields.𝒥ᴸᴹ)
@@ -254,7 +250,6 @@ function compute_coefficient_fields!(diffusivity_fields, closure::LagrangianAver
 
         end
     end
-    @info "               Calculations done"
 
     return nothing
 end
