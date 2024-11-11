@@ -248,9 +248,9 @@ end
 
 location_code(LX, LY, LZ) = Symbol(interpolation_code(LX), interpolation_code(LY), interpolation_code(LZ))
 
-for LX in (:Center, :Face)
-    for LY in (:Center, :Face)
-        for LZ in (:Center, :Face)
+for LX in (:Center, :Face, :Nothing)
+    for LY in (:Center, :Face, :Nothing)
+        for LZ in (:Center, :Face, :Nothing)
             LXe = @eval $LX
             LYe = @eval $LY
             LZe = @eval $LZ
