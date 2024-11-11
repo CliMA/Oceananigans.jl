@@ -105,15 +105,39 @@ end
 ##### Rectilinear Grids (Flat grids already have Δ = 1)
 #####
 
-@inline Δxᶠᵃᵃ(i, j, k, grid::RG)  = @inbounds grid.Δxᶠᵃᵃ[i]
-@inline Δxᶜᵃᵃ(i, j, k, grid::RG)  = @inbounds grid.Δxᶜᵃᵃ[i]
-@inline Δyᵃᶠᵃ(i, j, k, grid::RG)  = @inbounds grid.Δyᵃᶠᵃ[j]
-@inline Δyᵃᶜᵃ(i, j, k, grid::RG)  = @inbounds grid.Δyᵃᶜᵃ[j]
+@inline Δxᶠᵃᵃ(i, j, k, grid::RG) = @inbounds grid.Δxᶠᵃᵃ[i]
+@inline Δxᶜᵃᵃ(i, j, k, grid::RG) = @inbounds grid.Δxᶜᵃᵃ[i]
+@inline Δyᵃᶠᵃ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶠᵃ[j]
+@inline Δyᵃᶜᵃ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶜᵃ[j]
+@inline Δzᵃᵃᶠ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶠ[k]
+@inline Δzᵃᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶜ[k]
+
+@inline Δxᶜᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δxᶜᵃᵃ[i]
+@inline Δxᶠᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δxᶠᵃᵃ[i]
+@inline Δxᶜᵃᶠ(i, j, k, grid::RG) = @inbounds grid.Δxᶜᵃᵃ[i]
+@inline Δyᶜᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶜᵃ[j]
+@inline Δyᶠᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶜᵃ[j]
+@inline Δyᶜᵃᶠ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶜᵃ[j]
+@inline Δzᶜᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶜ[k]
+@inline Δzᶠᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶜ[k]
+@inline Δzᶜᵃᶠ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶠ[k]
 
 @inline Δxᶠᵃᵃ(i, j, k, grid::RGX) = grid.Δxᶠᵃᵃ
 @inline Δxᶜᵃᵃ(i, j, k, grid::RGX) = grid.Δxᶜᵃᵃ
 @inline Δyᵃᶠᵃ(i, j, k, grid::RGY) = grid.Δyᵃᶠᵃ
 @inline Δyᵃᶜᵃ(i, j, k, grid::RGY) = grid.Δyᵃᶜᵃ
+@inline Δzᵃᵃᶜ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶜ
+@inline Δzᵃᵃᶠ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶠ
+
+@inline Δxᶜᵃᶜ(i, j, k, grid::RGX) = grid.Δxᶜᵃᵃ
+@inline Δxᶠᵃᶜ(i, j, k, grid::RGX) = grid.Δxᶠᵃᵃ
+@inline Δxᶜᵃᶠ(i, j, k, grid::RGX) = grid.Δxᶜᵃᵃ
+@inline Δyᶜᵃᶜ(i, j, k, grid::RGY) = grid.Δyᵃᶜᵃ
+@inline Δyᶠᵃᶜ(i, j, k, grid::RGY) = grid.Δyᵃᶜᵃ
+@inline Δyᶜᵃᶠ(i, j, k, grid::RGY) = grid.Δyᵃᶜᵃ
+@inline Δzᶜᵃᶜ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶜ
+@inline Δzᶠᵃᶜ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶜ
+@inline Δzᶜᵃᶠ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶠ
 
 #####
 ##### LatitudeLongitudeGrid
