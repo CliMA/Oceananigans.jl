@@ -3,9 +3,9 @@
 #####
 
 """
-    struct UpwindBiasedFifthOrder <: AbstractUpwindBiasedAdvectionScheme{3}
+    struct UpwindBiased <: AbstractUpwindBiasedAdvectionScheme{3}
 
-Upwind-biased fifth-order advection scheme.
+Upwind-biased reconstruction scheme.
 """
 struct UpwindBiased{N, FT, XT, YT, ZT, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT} 
     "Coefficient for Upwind reconstruction on stretched ``x``-faces" 
