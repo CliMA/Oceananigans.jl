@@ -19,7 +19,7 @@ local_rank = MPI.Comm_rank(arch.communicator)
 
 model = ShallowWaterModel(grid = grid,
                           timestepper = :RungeKutta3,
-                          momentum_advection = UpwindBiasedFifthOrder(),
+                          momentum_advection = UpwindBiased(order=5),
                           gravitational_acceleration = 1)
 
 set!(model, h=1)
