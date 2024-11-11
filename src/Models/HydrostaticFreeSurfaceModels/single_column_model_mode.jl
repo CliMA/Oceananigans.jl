@@ -43,7 +43,7 @@ end
 validate_velocity_boundary_conditions(::SingleColumnGrid, velocities) = nothing
 validate_velocity_boundary_conditions(::SingleColumnGrid, ::PrescribedVelocityFields) = nothing
 validate_momentum_advection(momentum_advection, ::SingleColumnGrid) = nothing
-validate_tracer_advection(tracer_advection_tuple::NamedTuple, ::SingleColumnGrid) = CenteredSecondOrder(), tracer_advection_tuple
+validate_tracer_advection(tracer_advection_tuple::NamedTuple, ::SingleColumnGrid) = Centered(), tracer_advection_tuple
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, ::SingleColumnGrid) = tracer_advection, NamedTuple()
 
 compute_w_from_continuity!(velocities, arch, ::SingleColumnGrid; kwargs...) = nothing
