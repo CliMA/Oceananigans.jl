@@ -1,5 +1,9 @@
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
 
+#####
+##### Initialize Free Surface state
+#####
+
 # `initialize_free_surface!` is called at the beginning of the simulation to initialize the free surface state
 # from the initial velocity conditions.
 function initialize_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocities)
@@ -21,6 +25,10 @@ function initialize_free_surface_state!(filtered_state, η, velocities, timestep
 
     return nothing
 end
+
+#####
+##### Compute slow tendencies for the AB2 timestepper
+#####
 
 # Calculate RHS for the barotropic time step.
 @kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, ::Nothing, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
@@ -55,28 +63,18 @@ end
 @inline ab2_step_Gv(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT =
     @inbounds ifelse(peripheral_node(i, j, k, grid, c, f, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
 
-# Calculate RHS for the barotropic time step.
-@kernel function _compute_integrated_tendencies!(Gᵁ, Gⱽ, grid, Guⁿ, Gvⁿ)
-    i, j  = @index(Global, NTuple)
-    k_top = grid.Nz + 1
 
-    @inbounds Gᵁ[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * ifelse(peripheral_node(i, j, 1, grid, f, c, c), zero(grid), Guⁿ[i, j, 1])
-    @inbounds Gⱽ[i, j, k_top-1] = Δzᶜᶠᶜ(i, j, 1, grid) * ifelse(peripheral_node(i, j, 1, grid, c, f, c), zero(grid), Gvⁿ[i, j, 1])
-
-    for k in 2:grid.Nz	
-        @inbounds Gᵁ[i, j, k_top-1] += Δzᶠᶜᶜ(i, j, k, grid) * ifelse(peripheral_node(i, j, k, grid, f, c, c), zero(grid), Guⁿ[i, j, k])
-        @inbounds Gⱽ[i, j, k_top-1] += Δzᶜᶠᶜ(i, j, k, grid) * ifelse(peripheral_node(i, j, k, grid, c, f, c), zero(grid), Gvⁿ[i, j, k])
-    end	
-end
-
-@inline function ab2_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+function split_explicit_forcing!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, timestepper::QuasiAdamsBashforth2TimeStepper, stage)     active_cells_map = retrieve_surface_active_cells_map(grid)
     active_cells_map = retrieve_surface_active_cells_map(grid)
-
     launch!(architecture(grid), grid, :xy, _compute_integrated_ab2_tendencies!, GUⁿ, GVⁿ, grid,
-            active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ; active_cells_map)
+            active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, timestepper.χ; active_cells_map)
 
     return nothing
-end
+end 
+
+#####
+##### Compute slow tendencies for the RK3 timestepper
+#####
 
 @inline function vertical_integral(i, j, grid, Gⁿ, ℓx, ℓy, ℓz)
     G = Δz(i, j, 1, grid, ℓx, ℓy, ℓz) * ifelse(peripheral_node(i, j, 1, grid, ℓx, ℓy, ℓz), zero(grid), Gⁿ[i, j, 1])
@@ -88,9 +86,18 @@ end
     return G
 end
 
-@kernel function _compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Guⁿ, Gvⁿ, ::Val{1})
-    i, j = @index(Global, NTuple)
+@kernel function _compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, active_cells_map, Guⁿ, Gvⁿ, stage)
+    idx = @index(Global, Linear)
+    i, j = active_linear_index_to_tuple(idx, active_cells_map)
+    compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, stage)
+end
 
+@kernel function _compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, ::Nothing, Guⁿ, Gvⁿ, stage)
+    i, j = @index(Global, NTuple)
+    compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, stage)
+end
+
+function compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, ::Val{1})
     @inbounds GUⁿ[i, j, 1] = vertical_integral(i, j, grid, Guⁿ, f, c, c)
     @inbounds GVⁿ[i, j, 1] = vertical_integral(i, j, grid, Gvⁿ, c, f, c)
 
@@ -118,14 +125,17 @@ end
     @inbounds GVⁿ[i, j, 1] = 2 // 3 * GVⁿ[i, j, 1] + GV⁻[i, j, 1]
 end
 
-rk3_split_explicit_forcing!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Guⁿ, Gvⁿ, stage) =
-    launch!(architecture(grid), grid, :xy, _compute_integrated_rk3_tendencies!, GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Guⁿ, Gvⁿ, stage)
+function split_explicit_forcing!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, ::RungeKutta3TimeStepper, stage)  
+    active_cells_map = retrieve_surface_active_cells_map(grid)    
+    launch!(architecture(grid), grid, :xy, _compute_integrated_rk3_tendencies!, 
+            GUⁿ, GVⁿ, GU⁻, GV⁻, grid, active_cells_map, Guⁿ, Gvⁿ, Val(stage); active_cells_map)
 
-split_explicit_forcing!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, timestepper::QuasiAdamsBashforth2TimeStepper, stage) = 
-    ab2_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, timestepper.χ)
+    return nothing
+end 
 
-split_explicit_forcing!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, ::RungeKutta3TimeStepper, stage)  = 
-    rk3_split_explicit_forcing!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Guⁿ, Gvⁿ, Val(stage))
+#####
+##### Free surface setup
+#####
 
 # Setting up the RHS for the barotropic step (tendencies of the barotropic velocity components)
 # This function is called after `calculate_tendency` and before `ab2_step_velocities!`
