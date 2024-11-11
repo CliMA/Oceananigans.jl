@@ -63,7 +63,7 @@ end
 
 ssprk3_substep_free_surface!(::Nothing, args...) = nothing
 
-function ssprk3_substep_free_surface!(free_surface, γⁿ, ζⁿ)
+function ssprk3_substep_free_surface!(free_surface::SplitExplicitFreeSurface, γⁿ, ζⁿ)
 
     Uᵐ = free_surface.state.Uᵐ⁻²
     Vᵐ = free_surface.state.Vᵐ⁻²

@@ -15,7 +15,18 @@ end
 
 # `initialize_free_surface_state!` is called at the beginning of the substepping to 
 # reset the filtered state to zero and reinitialize the state from the filtered state.
-function initialize_free_surface_state!(filtered_state, η, velocities, timestepper)
+function initialize_free_surface_state!(filtered_state, η, velocities, ::QuasiAdamsBashforth2TimeStepper, timestepper, stage)
+
+    initialize_free_surface_timestepper!(timestepper, η, velocities)
+
+    fill!(filtered_state.η, 0)
+    fill!(filtered_state.U, 0)
+    fill!(filtered_state.V, 0)
+
+    return nothing
+end
+
+function initialize_free_surface_state!(filtered_state, η, velocities, ::RungeKutta3TimeStepper, timestepper, stage)
 
     initialize_free_surface_timestepper!(timestepper, η, velocities)
 
