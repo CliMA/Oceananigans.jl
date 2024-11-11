@@ -14,7 +14,7 @@ include("dependencies_for_runtests.jl")
         x⁺² = xF[i, j + 1]
         y⁺² = yF[i, j + 1]
         z⁺² = zF[i, j + 1]
-        
+
         v1 = (x⁺¹ - x⁻, y⁺¹ - y⁻, z⁺¹ - z⁻)
         v2 = (x⁺² - x⁻, y⁺² - y⁻, z⁺² - z⁻)
 
@@ -76,7 +76,7 @@ end
         Hx, Hy, _ = halo_size(grid)
 
         @test Hy == length(free_surface.substepping.averaging_weights) + 1
-        
+
         @test begin
             time_step!(model, 1.0)
             true
@@ -138,7 +138,7 @@ end
     @test u.boundary_conditions.north.classification isa Zipper
     @test v.boundary_conditions.north.classification isa Zipper
 
-    # The velocity fields are reversed at the north boundary 
+    # The velocity fields are reversed at the north boundary
     # boundary_conditions.north.condition == -1, while the tracer
     # is not: boundary_conditions.north.condition == 1
     @test c.boundary_conditions.north.condition == 1
@@ -150,7 +150,7 @@ end
     set!(v, 1)
 
     fill_halo_regions!(c)
-    fill_halo_regions!(u)   
+    fill_halo_regions!(u)
     fill_halo_regions!(v)
 
     north_boundary_c = view(c.data, :, Ny+1:Ny+Hy, 1)

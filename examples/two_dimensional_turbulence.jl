@@ -26,8 +26,7 @@ using Oceananigans
 grid = RectilinearGrid(size=(128, 128), extent=(2π, 2π), topology=(Periodic, Periodic, Flat))
 
 model = NonhydrostaticModel(; grid,
-                            timestepper = :RungeKutta3,
-                            advection = UpwindBiasedFifthOrder(),
+                            advection = UpwindBiased(order=5),
                             closure = ScalarDiffusivity(ν=1e-5))
 
 # ## Random initial conditions

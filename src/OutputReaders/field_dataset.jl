@@ -24,15 +24,15 @@ linearly.
 
 - `grid`: May be specified to override the grid used in the JLD2 file.
 
-- `reader_kw`: A dictionary of keyword arguments to pass to the reader (currently only JLD2)
-               to be used when opening files.
+- `reader_kw`: A named tuple or dictionary of keyword arguments to pass to the reader
+               (currently only JLD2) to be used when opening files.
 """
 function FieldDataset(filepath;
                       architecture = CPU(),
                       grid = nothing,
                       backend = InMemory(),
                       metadata_paths = ["metadata"],
-                      reader_kw = Dict{Symbol, Any}())
+                      reader_kw = NamedTuple())
 
   file = jldopen(filepath; reader_kw...)
 
