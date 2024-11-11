@@ -1,9 +1,8 @@
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Utils: KernelParameters, launch!
-
-import Oceananigans.BoundaryConditions: bc_str, _fill_north_halo!, apply_y_north_bc!
 using Oceananigans.BoundaryConditions: AbstractBoundaryConditionClassification, BoundaryCondition
-import Oceananigans.Fields: validate_boundary_condition_location
+
+import Oceananigans.BoundaryConditions: bc_str, _fill_north_halo!
 
 struct Zipper <: AbstractBoundaryConditionClassification end
 
