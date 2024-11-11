@@ -4,7 +4,7 @@ const ω̂₁ = 5/18
 const ω̂ₙ = 5/18  
 const ε₂ = 1e-20
 
-# Here in the future we can easily add UpwindBiasedFifthOrder 
+# Here in the future we can easily add UpwindBiased
 const BoundPreservingScheme = PositiveWENO
 
 # Is this immersed-boundary safe without having to extend it in ImmersedBoundaries.jl? I think so... (velocity on immmersed boundaries is masked to 0)
