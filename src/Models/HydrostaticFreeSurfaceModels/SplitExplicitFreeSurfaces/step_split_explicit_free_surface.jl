@@ -119,9 +119,9 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
     return nothing
 end
 
-@kernel function _update_split_explicit_state!(η, barotropic_velocities, filtered_state)
+@kernel function _update_split_explicit_state!(η, barotropic_velocities, grid, filtered_state)
     i, j = @index(Global, NTuple)
-    k_top = η.grid.Nz+1
+    k_top = grid.Nz+1
 
     U, V = barotropic_velocities
 
@@ -176,7 +176,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
         # The halos are updated in the `update_state!` function
         launch!(architecture(free_surface_grid), free_surface_grid, :xy, 
                 _update_split_explicit_state!,
-                free_surface.η, velocities, filtered_state)
+                free_surface.η, velocities, free_surface_grid, filtered_state)
 
         # Preparing velocities for the barotropic correction
         mask_immersed_field!(model.velocities.u)
