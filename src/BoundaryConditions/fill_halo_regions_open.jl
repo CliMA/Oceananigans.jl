@@ -9,15 +9,19 @@ Fill open boundary halo regions by filling boundary conditions on field faces wi
 function fill_open_boundary_regions!(field, boundary_conditions, indices, loc, grid, args...; kwargs...)
     arch = architecture(grid)
 
-    left_bc  =  left_open_boundary_condition(boundary_conditions, loc)
-    right_bc = right_open_boundary_condition(boundary_conditions, loc)
+    # gets `open_fill`, the function which fills open boundaries at `loc`
+    # if `loc` is not either a (Face, Center, Center), (Center, Face, Center), or (Center, Center, Face),
+    # we do not fill any open boundaries
+    fill_halo! = get_open_halo_filling_functions(loc) 
 
-    # gets `open_fill`, the function which fills open boundaries at `loc`, as well as `regular_fill`
-    # which is the function which fills non-open boundaries at `loc` which informs `fill_halo_size` 
-    fill_halo_function = get_open_halo_filling_functions(loc) 
+    if !isnothing(fill_halo!)
 
-    fill_halo_event!(c, fill_halo_function, (left_bc, right_bc), indices, loc, arch, grid, args...; kwargs...)
+        left_bc  =  left_open_boundary_condition(boundary_conditions, loc)
+        right_bc = right_open_boundary_condition(boundary_conditions, loc)
     
+        fill_halo_event!(c, fill_halo!, (left_bc, right_bc), indices, loc, arch, grid, args...; kwargs...)
+    end
+
     return nothing
 end
 
