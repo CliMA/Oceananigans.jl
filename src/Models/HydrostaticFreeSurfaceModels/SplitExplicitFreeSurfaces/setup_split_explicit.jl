@@ -122,8 +122,8 @@ end
 end
 
 function compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, ::Val{1})
-    @inbounds GUⁿ[i, j, 1] = vertical_integral(i, j, grid, Guⁿ, f, c, c)
-    @inbounds GVⁿ[i, j, 1] = vertical_integral(i, j, grid, Gvⁿ, c, f, c)
+    @inbounds GUⁿ[i, j, 1] = vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
+    @inbounds GVⁿ[i, j, 1] = vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
 
     @inbounds GU⁻[i, j, 1] = GUⁿ[i, j, 1]
     @inbounds GV⁻[i, j, 1] = GVⁿ[i, j, 1]
@@ -132,21 +132,25 @@ end
 @kernel function _compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Guⁿ, Gvⁿ, ::Val{2})
     i, j = @index(Global, NTuple)
 
-    @inbounds GUⁿ[i, j, 1] = vertical_integral(i, j, grid, Guⁿ, f, c, c)
-    @inbounds GVⁿ[i, j, 1] = vertical_integral(i, j, grid, Gvⁿ, c, f, c)
+    FT = eltype(GUⁿ)
 
-    @inbounds GU⁻[i, j, 1] = 1 // 6 * GUⁿ[i, j, 1] + 1  // 6 * GU⁻[i, j, 1]
-    @inbounds GV⁻[i, j, 1] = 1 // 6 * GVⁿ[i, j, 1] + 1  // 6 * GU⁻[i, j, 1]
+    @inbounds GUⁿ[i, j, 1] = vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
+    @inbounds GVⁿ[i, j, 1] = vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
+
+    @inbounds GU⁻[i, j, 1] = convert(FT, 1/6) * GUⁿ[i, j, 1] + convert(FT, 1/6) * GU⁻[i, j, 1]
+    @inbounds GV⁻[i, j, 1] = convert(FT, 1/6) * GVⁿ[i, j, 1] + convert(FT, 1/6) * GU⁻[i, j, 1]
 end
 
 @kernel function _compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Guⁿ, Gvⁿ, ::Val{3})
     i, j = @index(Global, NTuple)
 
-    @inbounds GUⁿ[i, j, 1] = vertical_integral(i, j, grid, Guⁿ, f, c, c)
-    @inbounds GVⁿ[i, j, 1] = vertical_integral(i, j, grid, Gvⁿ, c, f, c)
+    FT = eltype(GUⁿ)
 
-    @inbounds GUⁿ[i, j, 1] = 2 // 3 * GUⁿ[i, j, 1] + GU⁻[i, j, 1]
-    @inbounds GVⁿ[i, j, 1] = 2 // 3 * GVⁿ[i, j, 1] + GV⁻[i, j, 1]
+    @inbounds GUⁿ[i, j, 1] = vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
+    @inbounds GVⁿ[i, j, 1] = vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
+
+    @inbounds GUⁿ[i, j, 1] = convert(FT, 2/3) * GUⁿ[i, j, 1] + GU⁻[i, j, 1]
+    @inbounds GVⁿ[i, j, 1] = convert(FT, 2/3) * GVⁿ[i, j, 1] + GV⁻[i, j, 1]
 end
 
 function split_explicit_forcing!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, ::RungeKutta3TimeStepper, stage)  
