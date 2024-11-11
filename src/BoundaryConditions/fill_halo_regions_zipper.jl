@@ -1,12 +1,6 @@
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Utils: KernelParameters, launch!
 
-import Oceananigans.BoundaryConditions: bc_str, _fill_north_halo!, apply_y_north_bc!
-using Oceananigans.BoundaryConditions: AbstractBoundaryConditionClassification, BoundaryCondition
-import Oceananigans.Fields: validate_boundary_condition_location
-
-struct Zipper <: AbstractBoundaryConditionClassification end
-
 """
     ZipperBoundaryCondition(sign = 1)
 
@@ -47,19 +41,6 @@ c₂ == c₃
 
 This is not the case for the v-velocity (or any field on the j-faces) where the last grid point is not repeated.
 """
-ZipperBoundaryCondition(sign = 1) = BoundaryCondition(Zipper(), sign)
-
-const ZBC = BoundaryCondition{<:Zipper}
-
-bc_str(zip::ZBC) = "Zipper"
-
-validate_boundary_condition_location(bc::Zipper, loc::Center, side) = 
-    side == :north ? nothing : throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc) (north only)!"))
-
-validate_boundary_condition_location(bc::Zipper, loc::Face, side) = 
-    side == :north ? nothing : throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc) (north only)!"))
-
-@inline apply_y_north_bc!(Gc, loc, ::ZBC, args...) = nothing
     
 #####
 ##### Outer functions for filling halo regions for Zipper boundary conditions.

@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition
+using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition, Zipper
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
 using Oceananigans.Grids: index_range_contains
 
@@ -79,6 +79,14 @@ function validate_boundary_conditions(loc, grid, bcs)
 
     return nothing
 end
+
+# Some special validation for a zipper boundary condition
+validate_boundary_condition_location(bc::Zipper, loc::Center, side) = 
+    side == :north ? nothing : throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc) (north only)!"))
+
+validate_boundary_condition_location(bc::Zipper, loc::Face, side) = 
+    side == :north ? nothing : throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc) (north only)!"))
+
 
 #####
 ##### Some basic constructors

@@ -29,36 +29,34 @@ include("dependencies_for_runtests.jl")
 end
 
 @testset "Unit tests..." begin
-    if archs == tuple(CPU()) # Only on the CPU
-        grid = TripolarGrid(size = (4, 5, 1), z = (0, 1), 
-                            first_pole_longitude = 75, 
-                            north_poles_latitude = 35,
-                            southernmost_latitude = -80)
+    grid = TripolarGrid(size = (4, 5, 1), z = (0, 1), 
+                        first_pole_longitude = 75, 
+                        north_poles_latitude = 35,
+                        southernmost_latitude = -80)
 
-        @test grid isa TripolarGrid
+    @test grid isa TripolarGrid
 
-        @test grid.Nx == 4
-        @test grid.Ny == 5
-        @test grid.Nz == 1
+    @test grid.Nx == 4
+    @test grid.Ny == 5
+    @test grid.Nz == 1
 
-        @test grid.conformal_mapping.first_pole_longitude == 75
-        @test grid.conformal_mapping.north_poles_latitude == 35
-        @test grid.conformal_mapping.southernmost_latitude == -80
+    @test grid.conformal_mapping.first_pole_longitude == 75
+    @test grid.conformal_mapping.north_poles_latitude == 35
+    @test grid.conformal_mapping.southernmost_latitude == -80
 
-        λᶜᶜᵃ = λnodes(grid, Center(), Center())
-        φᶜᶜᵃ = φnodes(grid, Center(), Center())
+    λᶜᶜᵃ = λnodes(grid, Center(), Center())
+    φᶜᶜᵃ = φnodes(grid, Center(), Center())
 
-        min_Δφ = minimum(φᶜᶜᵃ[:, 2] .- φᶜᶜᵃ[:, 1])
+    min_Δφ = minimum(φᶜᶜᵃ[:, 2] .- φᶜᶜᵃ[:, 1])
 
-        @test minimum(λᶜᶜᵃ) ≥ 0
-        @test maximum(λᶜᶜᵃ) ≤ 360
-        @test maximum(φᶜᶜᵃ) ≤ 90
+    @test minimum(λᶜᶜᵃ) ≥ 0
+    @test maximum(λᶜᶜᵃ) ≤ 360
+    @test maximum(φᶜᶜᵃ) ≤ 90
 
-        # The minimum latitude is not exactly the southermost latitude because the grid 
-        # undulates slightly to maintain the same analytical description in the whole sphere
-        # (i.e. constant latitude lines do not exist anywhere in this grid)
-        @test minimum(φᶜᶜᵃ .+ min_Δφ / 10) ≥ grid.conformal_mapping.southernmost_latitude 
-    end
+    # The minimum latitude is not exactly the southermost latitude because the grid 
+    # undulates slightly to maintain the same analytical description in the whole sphere
+    # (i.e. constant latitude lines do not exist anywhere in this grid)
+    @test minimum(φᶜᶜᵃ .+ min_Δφ / 10) ≥ grid.conformal_mapping.southernmost_latitude 
 end
 
 @testset "Model tests..." begin
@@ -87,47 +85,44 @@ end
 end
 
 @testset "Orthogonality of family of ellipses and hyperbolae..." begin
-    if archs == tuple(CPU()) # Only on the CPU
+    # Test the orthogonality of a tripolar grid based on the orthogonality of a 
+    # cubed sphere of the same size (1ᵒ in latitude and longitude)
+    cubed_sphere_grid = ConformalCubedSphereGrid(panel_size = (90, 90, 1), z = (0, 1))
+    cubed_sphere_panel = getregion(cubed_sphere_grid, 1)
 
-        # Test the orthogonality of a tripolar grid based on the orthogonality of a 
-        # cubed sphere of the same size (1ᵒ in latitude and longitude)
-        cubed_sphere_grid = ConformalCubedSphereGrid(panel_size = (90, 90, 1), z = (0, 1))
-        cubed_sphere_panel = getregion(cubed_sphere_grid, 1)
+    angle_cubed_sphere = zeros(size(cubed_sphere_panel)...)
+    cartesian_nodes, _ = get_cartesian_nodes_and_vertices(cubed_sphere_panel, Face(), Face(), Center())
+    xF, yF, zF = cartesian_nodes
+    Nx, Ny, _  = size(cubed_sphere_panel)
 
-        angle_cubed_sphere = zeros(size(cubed_sphere_panel)...)
-        cartesian_nodes, _ = get_cartesian_nodes_and_vertices(cubed_sphere_panel, Face(), Face(), Center())
-        xF, yF, zF = cartesian_nodes
-        Nx, Ny, _  = size(cubed_sphere_panel)
+    # Exclude the corners from the computation! (They are definitely not orthogonal)
+    params = KernelParameters(5:Nx-5, 5:Ny-5)
 
-        # Exclude the corners from the computation! (They are definitely not orthogonal)
-        params = KernelParameters(5:Nx-5, 5:Ny-5)
+    launch!(CPU(), cubed_sphere_panel, params, compute_nonorthogonality_angle!, angle_cubed_sphere, cubed_sphere_panel, xF, yF, zF)
 
-        launch!(CPU(), cubed_sphere_panel, params, compute_nonorthogonality_angle!, angle_cubed_sphere, cubed_sphere_panel, xF, yF, zF)
+    first_pole_longitude = λ¹ₚ = 75
+    north_poles_latitude = φₚ  = 35
+    
+    λ²ₚ = λ¹ₚ + 180
 
-        first_pole_longitude = λ¹ₚ = 75
-        north_poles_latitude = φₚ  = 35
-        
-        λ²ₚ = λ¹ₚ + 180
+    # Build a tripolar grid at 1ᵒ
+    underlying_grid = TripolarGrid(; size = (360, 180, 1), first_pole_longitude, north_poles_latitude)
 
-        # Build a tripolar grid at 1ᵒ
-        underlying_grid = TripolarGrid(; size = (360, 180, 1), first_pole_longitude, north_poles_latitude)
+    # We need a bottom height field that ``masks'' the singularities
+    bottom_height(λ, φ) = ((abs(λ - λ¹ₚ) < 5) & (abs(φₚ - φ) < 5)) |
+                        ((abs(λ - λ²ₚ) < 5) & (abs(φₚ - φ) < 5)) | (φ < -78) ? 1 : 0
 
-        # We need a bottom height field that ``masks'' the singularities
-        bottom_height(λ, φ) = ((abs(λ - λ¹ₚ) < 5) & (abs(φₚ - φ) < 5)) |
-                            ((abs(λ - λ²ₚ) < 5) & (abs(φₚ - φ) < 5)) | (φ < -78) ? 1 : 0
+    # Exclude the singularities from the computation! (They are definitely not orthogonal)
+    tripolar_grid      = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
+    angle_tripolar     = zeros(size(tripolar_grid)...)
+    cartesian_nodes, _ = get_cartesian_nodes_and_vertices(tripolar_grid.underlying_grid, Face(), Face(), Center())
+    xF, yF, zF = cartesian_nodes
+    Nx, Ny, _  = size(tripolar_grid)
 
-        # Exclude the singularities from the computation! (They are definitely not orthogonal)
-        tripolar_grid      = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
-        angle_tripolar     = zeros(size(tripolar_grid)...)
-        cartesian_nodes, _ = get_cartesian_nodes_and_vertices(tripolar_grid.underlying_grid, Face(), Face(), Center())
-        xF, yF, zF = cartesian_nodes
-        Nx, Ny, _  = size(tripolar_grid)
+    launch!(CPU(), tripolar_grid, (Nx-1, Ny-1), compute_nonorthogonality_angle!, angle_tripolar, tripolar_grid, xF, yF, zF)
 
-        launch!(CPU(), tripolar_grid, (Nx-1, Ny-1), compute_nonorthogonality_angle!, angle_tripolar, tripolar_grid, xF, yF, zF)
-
-        @test maximum(angle_tripolar) < maximum(angle_cubed_sphere)
-        @test minimum(angle_tripolar) > minimum(angle_cubed_sphere)
-    end
+    @test maximum(angle_tripolar) < maximum(angle_cubed_sphere)
+    @test minimum(angle_tripolar) > minimum(angle_cubed_sphere)
 end
 
 @testset "Zipper boundary conditions..." begin
