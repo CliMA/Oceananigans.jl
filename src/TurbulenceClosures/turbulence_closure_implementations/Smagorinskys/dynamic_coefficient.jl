@@ -103,12 +103,12 @@ end
     M₁₁ = M₁₁ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
     M₂₂ = M₂₂ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
     M₃₃ = M₃₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
-    #M₁₂ = M₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
-    #M₁₃ = M₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
-    #M₂₃ = M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
+    M₁₂ = M₁₂ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
+    M₁₃ = M₁₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
+    M₂₃ = M₂₃ᶜᶜᶜ(i, j, k, grid, u, v, w, 2, 1, Σ, Σ̄)
 
     LM_ijk = L₁₁ * M₁₁ + L₂₂ * M₂₂ + L₃₃ * M₃₃ #+ 2L₁₂ * M₁₂ + 2L₁₃ * M₁₃ + 2L₂₃ * M₂₃
-    MM_ijk = M₁₁ * M₁₁ + M₂₂ * M₂₂ + M₃₃ * M₃₃ #+ 2M₁₂ * M₁₂ + 2M₁₃ * M₁₃ + 2M₂₃ * M₂₃
+    MM_ijk = M₁₁ * M₁₁ + M₂₂ * M₂₂ + M₃₃ * M₃₃ + 2M₁₂ * M₁₂ + 2M₁₃ * M₁₃ + 2M₂₃ * M₂₃
 
     return LM_ijk, MM_ijk
 end
