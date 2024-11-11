@@ -9,7 +9,7 @@ import Oceananigans.Grids: coordinates
 # For non "full-cell" immersed boundaries, grid metric functions
 # must be extended for the specific immersed boundary grid in question.
 
-for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
+for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ), LZ in (:ᶜ, :ᶠ, :ᵃ)
     for dir in (:x, :y, :z), operator in (:Δ, :A)
 
         metric = Symbol(operator, dir, LX, LY, LZ)
@@ -25,8 +25,5 @@ for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
         @inline $volume(i, j, k, ibg::IBG) = $volume(i, j, k, ibg.underlying_grid)
     end
 end
-
-@inline Δzᵃᵃᶜ(i, j, k, ibg::IBG) = Δzᵃᵃᶜ(i, j, k, ibg.underlying_grid)
-@inline Δzᵃᵃᶠ(i, j, k, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.underlying_grid)
 
 coordinates(grid::IBG) = coordinates(grid.underlying_grid)
