@@ -45,7 +45,6 @@ The state at the first substep is taken to be the one that corresponds to the ``
 `U¹ = Uⁿ`, and the state after the third substep is then the state at the `Uⁿ⁺¹ = U⁴`.
 """
 function RungeKutta3TimeStepper(grid, tracers;
-                                hydrostatic_model = false,
                                 implicit_solver::TI = nothing,
                                 Gⁿ::TG = TendencyFields(grid, tracers)) where {TI, TG}
 
@@ -53,21 +52,12 @@ function RungeKutta3TimeStepper(grid, tracers;
         @warn("Implicit-explicit time-stepping with RungeKutta3TimeStepper is not tested. " * 
               "\n implicit_solver: $(typeof(implicit_solver))")
 
-    if hydrostatic_model
-        γ¹ = 1
-        γ² = 1 // 4
-        γ³ = 2 // 3
-    
-        ζ² = 3 // 4
-        ζ³ = 1 // 3
-    else
-        γ¹ = 8 // 15
-        γ² = 5 // 12
-        γ³ = 3 // 4
+    γ¹ = 1
+    γ² = 1 // 4
+    γ³ = 2 // 3
 
-        ζ² = -17 // 60
-        ζ³ = -5 // 12
-    end
+    ζ² = 3 // 4
+    ζ³ = 1 // 3
 
     FT = eltype(grid)
 

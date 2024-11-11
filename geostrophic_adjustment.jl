@@ -14,7 +14,7 @@ using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: Sizes
 using Oceananigans.Grids: topology, architecture
 using Oceananigans.Units: kilometers, meters
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: SSPRungeKutta3Scheme, ForwardBackwardScheme
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ForwardBackwardScheme
 using Printf
 using JLD2
 
@@ -38,13 +38,12 @@ grid = RectilinearGrid(arch,
 
 coriolis = FPlane(f=1e-4)
 
-timestepper = :SSPRK3
-split_explicit_timestepper = SSPRungeKutta3Scheme() # ForwardBackwardScheme() # 
+timestepper = :SplitRungeKutta3
 
 model = HydrostaticFreeSurfaceModel(; grid,
                                       coriolis,
                                       timestepper,
-                                      free_surface = SplitExplicitFreeSurface(grid; substeps=10, timestepper = split_explicit_timestepper))
+                                      free_surface = SplitExplicitFreeSurface(grid; substeps=10))
 
 gaussian(x, L) = exp(-x^2 / 2L^2)
 

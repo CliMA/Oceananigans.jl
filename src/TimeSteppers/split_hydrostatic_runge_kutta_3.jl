@@ -18,10 +18,10 @@ struct SplitRungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
 end
 
 """
-    RungeKutta3TimeStepper(grid, tracers;
-                            implicit_solver = nothing,
-                            Gⁿ = TendencyFields(grid, tracers),
-                            G⁻ = TendencyFields(grid, tracers))
+    SplitRungeKutta3TimeStepper(grid, tracers;
+                                implicit_solver = nothing,
+                                Gⁿ = TendencyFields(grid, tracers),
+                                G⁻ = TendencyFields(grid, tracers))
 
 Return a 3rd-order Runge0Kutta timestepper (`RungeKutta3TimeStepper`) on `grid` and with `tracers`.
 The tendency fields `Gⁿ` and `G⁻` can be specified via  optional `kwargs`.
@@ -95,7 +95,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     compute_pressure_correction!(model, Δt)
  
     # The second stage is "particular" because we need to compute the average pressure
-    rk3_average_pressure!(model)
+    rk3_average_pressure!(model, γ², ζ²)
     pressure_correct_velocities!(model, Δt)
     update_state!(model, callbacks; compute_tendencies = true)
 
@@ -142,6 +142,29 @@ end
     field[i, j, k] = old_field[i, j, k] + Δt * Gⁿ[i, j, k]
 end
 
+function split_rk3_substep!(model, Δt, γⁿ, ζⁿ, stage)
+
+    grid = model.grid
+    arch = architecture(grid)
+    model_fields = prognostic_fields(model)
+
+    for (i, field) in enumerate(model_fields)
+        kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[i], model.timestepper.previous_model_fields[i])
+        launch!(arch, grid, :xyz, rk3_substep_field!, kernel_args...; exclude_periphery=true)
+
+        # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
+        tracer_index = Val(i - 3) # assumption
+
+        implicit_step!(field,
+                       model.timestepper.implicit_solver,
+                       model.closure,
+                       model.diffusivity_fields,
+                       tracer_index,
+                       model.clock,
+                       stage_Δt(Δt, γⁿ, ζⁿ))
+    end
+end
+
 @kernel function _store_old_fields!(previous_fields, fields)
     i, j, k, n = @index(Global, NTuple)
     previous_fields[n][i, j, k] = fields[n][i, j, k]
@@ -158,3 +181,4 @@ function store_old_fields!(model)
     
     return nothing
 end
+
