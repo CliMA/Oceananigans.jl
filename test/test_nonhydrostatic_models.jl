@@ -54,7 +54,7 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
         end
 
         # Model ensures that halos are at least of size 3
-        for scheme in (WENO(), UpwindBiased())
+        for scheme in (WENO(), UpwindBiased(order=5))
             model = NonhydrostaticModel(advection=scheme, grid=minimal_grid)
             @test model.grid.Hx == 3 && model.grid.Hy == 3 && model.grid.Hz == 3
 
