@@ -53,7 +53,15 @@ The operators in this file fall into three categories:
 #####
 #####
 
+@inline Δxᶠᵃᵃ(i, j, k, grid) = nothing
+@inline Δxᶜᵃᵃ(i, j, k, grid) = nothing
+@inline Δyᵃᶠᵃ(i, j, k, grid) = nothing
+@inline Δyᵃᶜᵃ(i, j, k, grid) = nothing
+
 const ZRG = Union{LLGZ, RGZ}
+
+@inline Δzᵃᵃᶠ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶠ[k]
+@inline Δzᵃᵃᶜ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶜ[k]
 
 @inline Δzᵃᵃᶠ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶠ
 @inline Δzᵃᵃᶜ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶜ
@@ -64,8 +72,8 @@ const ZRG = Union{LLGZ, RGZ}
 @inline Δzᵃᵃᶜ(i, j, k, grid::OSSGZ) = grid.Δzᵃᵃᶜ
 @inline Δzᵃᵃᶠ(i, j, k, grid::OSSGZ) = grid.Δzᵃᵃᶠ
 
-# 2D horizontal spacings
-for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ)
+# Convenience Functions for all grids
+for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
 
     x_spacing_1D = Symbol(:Δx, LX, :ᵃ, :ᵃ)
     x_spacing_2D = Symbol(:Δx, LX, LY, :ᵃ)
@@ -77,24 +85,19 @@ for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ)
         @inline $x_spacing_2D(i, j, k, grid) = $x_spacing_1D(i, j, k, grid)
         @inline $y_spacing_2D(i, j, k, grid) = $y_spacing_1D(i, j, k, grid)
     end
-end
 
-# 3D spacings
-for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ), LZ in (:ᶜ, :ᶠ)
+    for LZ in (:ᶜ, :ᶠ)
+        x_spacing_3D = Symbol(:Δx, LX, LY, LZ)
+        y_spacing_3D = Symbol(:Δy, LX, LY, LZ)
 
-    x_spacing_2D = Symbol(:Δx, LX, LY, :ᵃ)
-    y_spacing_2D = Symbol(:Δy, LX, LY, :ᵃ)
+        z_spacing_1D = Symbol(:Δz, :ᵃ, :ᵃ, LZ)
+        z_spacing_3D = Symbol(:Δz, LX, LY, LZ)
 
-    x_spacing_3D = Symbol(:Δx, LX, LY, LZ)
-    y_spacing_3D = Symbol(:Δy, LX, LY, LZ)
-
-    z_spacing_1D = Symbol(:Δz, :ᵃ, :ᵃ, LZ)
-    z_spacing_3D = Symbol(:Δz, LX, LY, LZ)
-
-    @eval begin
-        @inline $x_spacing_3D(i, j, k, grid) = $x_spacing_2D(i, j, k, grid)
-        @inline $y_spacing_3D(i, j, k, grid) = $y_spacing_2D(i, j, k, grid)
-        @inline $z_spacing_3D(i, j, k, grid) = $z_spacing_1D(i, j, k, grid)
+        @eval begin
+            @inline $x_spacing_3D(i, j, k, grid) = $x_spacing_2D(i, j, k, grid)
+            @inline $y_spacing_3D(i, j, k, grid) = $y_spacing_2D(i, j, k, grid)
+            @inline $z_spacing_3D(i, j, k, grid) = $z_spacing_1D(i, j, k, grid)
+        end
     end
 end
 
@@ -194,17 +197,15 @@ end
 #####
 #####
 
-for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ)
+for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
 
     x_spacing_2D = Symbol(:Δx, LX, LY, :ᵃ)
     y_spacing_2D = Symbol(:Δy, LX, LY, :ᵃ)
     z_area_2D    = Symbol(:Az, LX, LY, :ᵃ)
 
-    @eval begin
-        @inline $z_area_2D(i, j, k, grid) = $x_spacing_2D(i, j, k, grid) * $y_spacing_2D(i, j, k, grid)
-    end
+    @eval $z_area_2D(i, j, k, grid) = $x_spacing_2D(i, j, k, grid) * $y_spacing_2D(i, j, k, grid)
 
-    for LZ in (:ᶜ, :ᶠ, :ᵃ)  # Added :ᵃ here
+    for LZ in (:ᶜ, :ᶠ)
         x_spacing_3D = Symbol(:Δx, LX, LY, LZ)
         y_spacing_3D = Symbol(:Δy, LX, LY, LZ)
         z_spacing_3D = Symbol(:Δz, LX, LY, LZ)
@@ -220,6 +221,7 @@ for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ)
         end
     end
 end
+
 
 ####
 #### Special 2D z Areas for LatitudeLongitudeGrid and OrthogonalSphericalShellGrid
@@ -251,16 +253,14 @@ end
 #####
 #####
 
-for LX in (:ᶠ, :ᶜ, :ᵃ), LY in (:ᶠ, :ᶜ, :ᵃ), LZ in (:ᶠ, :ᶜ, :ᵃ)
-
-    volume = Symbol(:V, LX, LY, LZ)
-    z_area = Symbol(:Az, LX, LY, LZ)
-    z_spacing = Symbol(:Δz, LX, LY, LZ)
-
-    @eval begin
-        @inline $volume(i, j, k, grid) = $z_area(i, j, k, grid) * $z_spacing(i, j, k, grid)
-    end
-end
+@inline Vᶜᶜᶜ(i, j, k, grid) = Azᶜᶜᶜ(i, j, k, grid) * Δzᶜᶜᶜ(i, j, k, grid)
+@inline Vᶠᶜᶜ(i, j, k, grid) = Azᶠᶜᶜ(i, j, k, grid) * Δzᶠᶜᶜ(i, j, k, grid)
+@inline Vᶜᶠᶜ(i, j, k, grid) = Azᶜᶠᶜ(i, j, k, grid) * Δzᶜᶠᶜ(i, j, k, grid)
+@inline Vᶜᶜᶠ(i, j, k, grid) = Azᶜᶜᶠ(i, j, k, grid) * Δzᶜᶜᶠ(i, j, k, grid)
+@inline Vᶠᶠᶜ(i, j, k, grid) = Azᶠᶠᶜ(i, j, k, grid) * Δzᶠᶠᶜ(i, j, k, grid)
+@inline Vᶠᶜᶠ(i, j, k, grid) = Azᶠᶜᶠ(i, j, k, grid) * Δzᶠᶜᶠ(i, j, k, grid)
+@inline Vᶜᶠᶠ(i, j, k, grid) = Azᶜᶠᶠ(i, j, k, grid) * Δzᶜᶠᶠ(i, j, k, grid)
+@inline Vᶠᶠᶠ(i, j, k, grid) = Azᶠᶠᶠ(i, j, k, grid) * Δzᶠᶠᶠ(i, j, k, grid)
 
 #####
 ##### Generic functions for specified locations
