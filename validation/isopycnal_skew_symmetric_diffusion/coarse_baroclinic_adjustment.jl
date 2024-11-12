@@ -6,6 +6,7 @@ using Oceananigans.Units
 using GLMakie
 using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity
 using Oceananigans.TurbulenceClosures: TriadIsopycnalSkewSymmetricDiffusivity
+using Oceananigans.TurbulenceClosures: FluxTapering
 
 gradient = "y"
 filename = "coarse_baroclinic_adjustment_" * gradient
