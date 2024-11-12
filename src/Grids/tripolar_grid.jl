@@ -1,3 +1,9 @@
+using Distances
+
+device = Oceananigans.Architectures.device
+
+@inline convert_to_0_360(x) = ((x % 360) + 360) % 360
+
 """ a structure to represent a tripolar grid on a spherical shell """
 struct Tripolar{N, F, S}
     north_poles_latitude :: N
@@ -56,21 +62,21 @@ The north singularities are located at
 `i = 1, j = Nφ` and `i = Nλ ÷ 2 + 1, j = Nλ` 
 """
 function TripolarGrid(arch = CPU(), FT::DataType = Float64; 
-                      size, 
+                      size,
                       southernmost_latitude = -80, # The southermost `Center` latitude of the grid
-                      halo = (4, 4, 4), 
-                      radius = R_Earth, 
+                      halo = (4, 4, 4),
+                      radius = R_Earth,
                       z = (0, 1),
                       north_poles_latitude = 55,
                       first_pole_longitude = 70)  # The second pole is at `λ = first_pole_longitude + 180ᵒ`
 
-    # TODO: change a couple of allocations here and there to be able 
+    # TODO: change a couple of allocations here and there to be able
     # to construct the grid on the GPU. This is not a huge problem as
     # grid generation is quite fast, but it might become for sub-kilometer grids
 
     latitude  = (southernmost_latitude, 90)
     longitude = (-180, 180) 
-        
+
     focal_distance = tand((90 - north_poles_latitude) / 2)
 
     Nλ, Nφ, Nz = size
@@ -106,7 +112,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     φCC = zeros(Nλ, Nφ)
 
     loop! = _compute_tripolar_coordinates!(device(CPU()), (16, 16), (Nλ, Nφ))
-    
+
     loop!(λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC, 
           λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶠᵃ, φᵃᶜᵃ, 
           first_pole_longitude,
@@ -419,21 +425,9 @@ for which it is possible to retrieve the longitude and latitude by:
     end
 end
 
-# Is this the same as in Oceananigans? 
-# TODO: check it out
-function haversine(a, b, radius)
-    λ₁, φ₁ = a
-    λ₂, φ₂ = b
-
-    x₁, y₁, z₁ = lat_lon_to_cartesian(φ₁, λ₁, radius)
-    x₂, y₂, z₂ = lat_lon_to_cartesian(φ₂, λ₂, radius)
-
-    return radius * acos(max(-1.0, min((x₁ * x₂ + y₁ * y₂ + z₁ * z₂) / radius^2, 1.0)))
-end
-
 # Calculate the metric terms from the coordinates of the grid
-# Note: There is probably a better way to do this, in Murray (2016) they give analytical 
-# expressions for the metric terms.
+# Note: There is probably a better way to do this. Murray (1996) gives
+# analytical expressions for the metric terms.
 @kernel function _calculate_metrics!(Δxᶠᶜᵃ, Δxᶜᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                                      Δyᶠᶜᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
                                      Azᶠᶜᵃ, Azᶜᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
@@ -452,16 +446,16 @@ end
         Δyᶠᶜᵃ[i, j] = haversine((λᶠᶠᵃ[i, j+1], φᶠᶠᵃ[i, j+1]),   (λᶠᶠᵃ[i, j],   φᶠᶠᵃ[i, j]),   radius)
         Δyᶜᶠᵃ[i, j] = haversine((λᶜᶜᵃ[i, j  ],   φᶜᶜᵃ[i, j]),   (λᶜᶜᵃ[i, j-1], φᶜᶜᵃ[i, j-1]), radius)
         Δyᶠᶠᵃ[i, j] = haversine((λᶠᶜᵃ[i, j  ],   φᶠᶜᵃ[i, j]),   (λᶠᶜᵃ[i, j-1], φᶠᶜᵃ[i, j-1]), radius)
-    
+
         a = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
         b = lat_lon_to_cartesian(φᶠᶠᵃ[i+1,  j ], λᶠᶠᵃ[i+1,  j ], 1)
         c = lat_lon_to_cartesian(φᶠᶠᵃ[i+1, j+1], λᶠᶠᵃ[i+1, j+1], 1)
         d = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j+1], λᶠᶠᵃ[ i , j+1], 1)
 
         Azᶜᶜᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2
-        
+
         # To be able to conserve kinetic energy specifically the momentum equation, 
-        # it is better to define the face areas as products of 
+        # it is better to define the face areas as products of
         # the edge lengths rather than using the spherical area of the face (cit JMC).
         # TODO: find a reference to support this statement
         Azᶠᶜᵃ[i, j] = Δyᶠᶜᵃ[i, j] * Δxᶠᶜᵃ[i, j]

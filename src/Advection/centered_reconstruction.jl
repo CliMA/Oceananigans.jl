@@ -85,9 +85,6 @@ on_architecture(to, scheme::Centered{N, FT}) where {N, FT} =
 # Useful aliases
 Centered(grid, FT::DataType=Float64; kwargs...) = Centered(FT; grid, kwargs...)
 
-CenteredSecondOrder(grid=nothing, FT::DataType=Float64) = Centered(grid, FT; order=2)
-CenteredFourthOrder(grid=nothing, FT::DataType=Float64) = Centered(grid, FT; order=4)
-
 const ACAS = AbstractCenteredAdvectionScheme
 
 # left and right biased for Centered reconstruction are just symmetric!
