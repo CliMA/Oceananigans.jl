@@ -461,12 +461,12 @@ const MappedNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:IndexMa
 # Remember, dynamic offset kernels are not possible with this extension!!
 # Also, mapped kernels work only with a 1D kernel and a 1D map, it is not possible to launch a ND kernel.
 # TODO: maybe don't do this
-@inline function expand(ndrange::MappedNDRange, groupidx::CartesianIndex{N}, idx::CartesianIndex{N})
+@inline function expand(ndrange::MappedNDRange, groupidx::CartesianIndex, idx::CartesianIndex) 
     Base.@_inline_meta
     offsets = workitems(ndrange)
-    stride = size(offsets, I)
-    gidx = groupidx.I[I]
-    @inbounds ndrange.workitems.index_map[(gidx - 1) * stride + idx.I[I]]
+    stride = size(offsets, 1)
+    gidx = groupidx.I[1]
+    @inbounds ndrange.workitems.index_map[(gidx - 1) * stride + idx.I[1]]
     return CartesianIndex(nI)
 end
 
