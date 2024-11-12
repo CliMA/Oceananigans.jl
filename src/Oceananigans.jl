@@ -227,6 +227,7 @@ using .Advection
 using .Grids
 using .BoundaryConditions
 using .Fields
+using .OrthogonalSphericalShellGrids
 using .Coriolis
 using .BuoyancyModels
 using .StokesDrifts
