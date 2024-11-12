@@ -94,8 +94,13 @@ end
 Adapt.adapt_structure(to, m::MappedFunction) = 
     MappedFunction(Adapt.adapt(to, m.f), Adapt.adapt(to, m.index_map))
 
-@inline (m::MappedFunction)(_ctx_)          = m.f(_ctx_)
-@inline (m::MappedFunction)(_ctx_, args...) = m.f(_ctx_, args...)
+@inline function (m::MappedFunction)(_ctx_)  
+    m.f(_ctx_)
+end
+
+@inline function (m::MappedFunction)(_ctx_, args...) 
+    m.f(_ctx_, args...)
+end
 
 # Support for 1D
 heuristic_workgroup(Wx) = min(Wx, 256)
