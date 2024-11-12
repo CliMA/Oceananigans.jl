@@ -5,7 +5,7 @@ A timestepping scheme used for substepping in the split-explicit free surface so
     
 The equations are evolved as follows:
 ```julia
-ηᵐ⁺¹ = ηᵐ - Δτ g H (∂x Uᵐ + ∂y Vᵐ)
+ηᵐ⁺¹ = ηᵐ - Δτ (∂x Uᵐ + ∂y Vᵐ)
 Uᵐ⁺¹ = Uᵐ - Δτ (∂x ηᵐ⁺¹ - Gᵁ)
 Vᵐ⁺¹ = Vᵐ - Δτ (∂y ηᵐ⁺¹ - Gⱽ)
 ```

@@ -86,7 +86,7 @@ function SplitExplicitFreeSurface(grid = nothing;
 
     gravitational_acceleration = convert(FT, gravitational_acceleration)
     substepping = split_explicit_substepping(cfl, substeps, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
-    
+
     kernel_parameters = :xy 
 
     return SplitExplicitFreeSurface(nothing,
@@ -118,11 +118,11 @@ end
 
 # The number of substeps are calculated based on the cfl an2d the fixed_Δt
 function split_explicit_substepping(cfl, ::Nothing, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
-    
+
     substepping = split_explicit_substepping(cfl, nothing, nothing, grid, averaging_kernel, gravitational_acceleration)    
     substeps    = ceil(Int, 2 * fixed_Δt / substepping.Δt_barotropic)
     substepping = split_explicit_substepping(nothing, substeps, nothing, grid, averaging_kernel, gravitational_acceleration)        
-    
+
     return substepping
 end
 
@@ -270,8 +270,8 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
     Nsubsteps = length(substepping.averaging_weights)
     step_halo = Nsubsteps + 1
 
-    Hx = TX() isa ConnectedTopologies ? max(step_halo, old_halos[1]) : old_halos[1] 
-    Hy = TY() isa ConnectedTopologies ? max(step_halo, old_halos[2]) : old_halos[2] 
+    Hx = TX() isa ConnectedTopologies ? max(step_halo, old_halos[1]) : old_halos[1]
+    Hy = TY() isa ConnectedTopologies ? max(step_halo, old_halos[2]) : old_halos[2]
 
     new_halos = (Hx, Hy, old_halos[3])
 
@@ -292,23 +292,23 @@ end
 split_explicit_kernel_size(topo, N, H)                   =    1:N
 split_explicit_kernel_size(::Type{FullyConnected}, N, H) = -H+2:N+H-1
 split_explicit_kernel_size(::Type{RightConnected}, N, H) =    1:N+H-1
-split_explicit_kernel_size(::Type{LeftConnected},  N, H) = -H+2:N   
+split_explicit_kernel_size(::Type{LeftConnected},  N, H) = -H+2:N
 
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
-    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η), 
-                             Adapt.adapt(to, free_surface.barotropic_velocities), 
+    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η),
+                             Adapt.adapt(to, free_surface.barotropic_velocities),
                              Adapt.adapt(to, free_surface.filtered_state),
-                             free_surface.gravitational_acceleration, 
-                             nothing,  
-                             Adapt.adapt(to, free_surface.substepping), 
+                             free_surface.gravitational_acceleration,
+                             nothing,
+                             Adapt.adapt(to, free_surface.substepping),
                              Adapt.adapt(to, free_surface.timestepper))
 
 for Type in (:SplitExplicitFreeSurface,
              :AdamsBashforth3Scheme,
              :FixedTimeStepSize,
              :FixedSubstepNumber)
-    
+
     @eval begin
         function on_architecture(to, fs::$Type)
             args = Tuple(on_architecture(to, prop) for prop in propertynames(fs))
