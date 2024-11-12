@@ -450,7 +450,7 @@ end
 #####
 
 struct IndexMap{M}
-    index_map :: M
+    imap :: M
 end
 
 Adapt.adapt_structure(to, m::IndexMap) = IndexMap(Adapt.adapt(to, m.index_map))
@@ -467,7 +467,7 @@ const MappedNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:IndexMa
     stride = size(offsets, 1)
     gidx = groupidx.I[1]
     tI = (gidx - 1) * stride + idx.I[1]
-    nI = ndrange.workitems.index_map[tI]
+    nI = ndrange.workitems.imap[tI]
     return CartesianIndex(nI)
 end
 
