@@ -12,6 +12,7 @@ using KernelAbstractions: Kernel
 
 import Oceananigans
 import KernelAbstractions: get, expand
+import Base
 
 struct KernelParameters{S, O} end
 
@@ -82,21 +83,10 @@ end
 contiguousrange(range::NTuple{N, Int}, offset::NTuple{N, Int}) where N = Tuple(1+o:r+o for (r, o) in zip(range, offset))
 flatten_reduced_dimensions(worksize, dims) = Tuple(d ∈ dims ? 1 : worksize[d] for d = 1:3)
 
-#### 
-#### Internal utility to launch a function mapped on an index_map
-####
-
+# Internal utility to launch a function mapped on an index_map
 struct MappedFunction{F, M} <: Function
     func::F
     index_map::M
-end
-
-Adapt.adapt_structure(to, m::MappedFunction) = 
-    MappedFunction(Adapt.adapt(to, m.func), Adapt.adapt(to, m.index_map))
-
-@inline function (m::MappedFunction)(_ctx_, args...) 
-    m.func(_ctx_, args...)
-    return nothing
 end
 
 # Support for 1D
@@ -440,35 +430,41 @@ end
 ##### Utilities for Mapped kernels
 #####
 
-struct IndexMap{M}
-    index_map :: M
-end
+struct IndexMap end
 
-Adapt.adapt_structure(to, m::IndexMap) = IndexMap(Adapt.adapt(to, m.index_map))
-
-const MappedNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:IndexMap} where N
+const MappedNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:IndexMap, <:AbstractArray} where N
 
 # NDRange has been modified to include an index_map in place of workitems.
 # Remember, dynamic offset kernels are not possible with this extension!!
 # Also, mapped kernels work only with a 1D kernel and a 1D map, it is not possible to launch a ND kernel.
 # TODO: maybe don't do this
-@inline function expand(ndrange::MappedNDRange, groupidx::CartesianIndex, idx::CartesianIndex) 
-    Base.@_inline_meta
-    offsets = workitems(ndrange)
-    stride = size(offsets, 1)
-    gidx = groupidx.I[1]
-    tI = (gidx - 1) * stride + idx.I[1]
-    nI = ndrange.workitems.index_map[tI]
-    return CartesianIndex(nI)
+@inline function expand(ndrange::MappedNDRange, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where N
+    nI = ntuple(Val(N)) do I
+        Base.@_inline_meta
+        offsets = workitems(ndrange)
+        stride = size(offsets, I)
+        gidx = groupidx.I[I]
+        ndrange.workitems[(gidx - 1) * stride + idx.I[I]]
+    end
+    return CartesianIndex(nI...)
 end
 
 const MappedKernel{D} = Kernel{D, <:Any, <:Any, <:MappedFunction} where D
 
-# Override the getproperty to make sure we get the correct properties
-@inline getproperty(k::MappedKernel, prop::Symbol) = get_mapped_property(k, Val(prop))
+# Override the getproperty to make sure we launch the correct function in the kernel
+@inline Base.getproperty(k::MappedKernel, prop::Symbol) = get_mapped_kernel_property(k, Val(prop))
 
-@inline get_mapped_property(k, ::Val{:index_map}) = k.f.index_map
-@inline get_mapped_property(k, ::Val{:func}) = k.f.func
+@inline get_mapped_kernel_property(k, ::Val{prop}) where prop = getfield(k, prop)
+@inline get_mapped_kernel_property(k, ::Val{:index_map}) = getfield(getfield(k, :f), :index_map)
+@inline get_mapped_kernel_property(k, ::Val{:f})         = getfield(getfield(k, :f), :func)
+
+Adapt.adapt_structure(to, cm::CompilerMetadata{N, C}) where {N, C} = 
+    CompilerMetadata{N, C}(Adapt.adapt(to, cm.groupindex), 
+                           Adapt.adapt(to, cm.ndrange),
+                           Adapt.adapt(to, cm.iterspace))
+
+Adapt.adapt_structure(to, ndrange::NDRange{N, B, W}) where {N, B, W} = 
+    NDRange{N, B, W}(Adapt.adapt(to, ndrange.blocks), Adapt.adapt(to, ndrange.workitems))
 
 # Extending the partition function to include offsets in NDRange: note that in this case the 
 # offsets take the place of the DynamicWorkitems which we assume is not needed in static kernels
@@ -476,9 +472,8 @@ function partition(kernel::MappedKernel, inrange, ingroupsize)
     static_workgroupsize = workgroupsize(kernel)
     
     # Calculate the static NDRange and WorkgroupSize
-    index_map = getproperty(kernel, :index_map)
+    index_map = kernel.index_map
     range = length(index_map)
-    arch  = Oceananigans.Architectures.architecture(index_map)
     groupsize = get(static_workgroupsize)
 
     blocks, groupsize, dynamic = NDIteration.partition(range, groupsize)
@@ -486,8 +481,34 @@ function partition(kernel::MappedKernel, inrange, ingroupsize)
     static_blocks = StaticSize{blocks}
     static_workgroupsize = StaticSize{groupsize} # we might have padded workgroupsize
     
-    index_map = Oceananigans.Architectures.convert_args(arch, index_map)
-    iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(blocks, IndexMap(index_map))
+    iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(IndexMap(), index_map)
 
     return iterspace, dynamic
 end
+
+using KernelAbstractions: CompilerMetadata, NoDynamicCheck
+using CUDA: CUDABackend
+
+import KernelAbstractions: mkcontext, __dynamic_checkbounds, __validindex
+
+# Very dangerous override of mkcontext which will not work if we are not 
+# carefull with making sure that indices are correct when launching a `MappedKernel`
+# TODO: Definitely change this with options below
+function mkcontext(kernel::Kernel{CUDABackend}, _ndrange, iterspace::MappedNDRange)
+    return CompilerMetadata{ndrange(kernel), NoDynamicCheck}(_ndrange, iterspace)
+end
+
+# Alternative to the above to fix:
+# const MappedCompilerMetadata = CompilerMetadata{<:Any, <:Any, <:Any, <:Any, <:MappedNDRange}
+
+# @inline __ndrange(cm::MappedCompilerMetadata) = cm.iterspace
+
+# @inline function __validindex(ctx::MappedCompilerMetadata, idx::CartesianIndex)
+#     # Turns this into a noop for code where we can turn of checkbounds of
+#     if __dynamic_checkbounds(ctx)
+#         I = @inbounds expand(__iterspace(ctx), __groupindex(ctx), idx)
+#         return I in __ndrange(ctx)
+#     else
+#         return true
+#     end
+# end
