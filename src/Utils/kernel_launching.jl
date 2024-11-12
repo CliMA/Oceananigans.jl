@@ -7,6 +7,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Grids: AbstractGrid
 using Base: @pure
+using KernelAbstractions: Kernel
 
 import Oceananigans
 import KernelAbstractions: get, expand
@@ -79,6 +80,18 @@ end
 
 contiguousrange(range::NTuple{N, Int}, offset::NTuple{N, Int}) where N = Tuple(1+o:r+o for (r, o) in zip(range, offset))
 flatten_reduced_dimensions(worksize, dims) = Tuple(d ∈ dims ? 1 : worksize[d] for d = 1:3)
+
+#### 
+#### Internal utility to launch a function mapped on an index_map
+####
+
+struct MappedFunction{M} <: Function
+    f::Function
+    index_map::M
+end
+
+@inline (m::MappedFunction)(_ctx_)          = m.f(_ctx_)
+@inline (m::MappedFunction)(_ctx_, args...) = m.f(_ctx_, args...)
 
 # Support for 1D
 heuristic_workgroup(Wx) = min(Wx, 256)
@@ -238,9 +251,20 @@ the architecture `arch`.
 
     dev = Architectures.device(arch)
     loop = kernel!(dev, workgroup, worksize)
+
+    # Map out the function to use active_cells_map
+    # as an index map
+    if !isnothing(active_cells_map)
+        func  = MappedFunction(loop.f, active_cells_map)
+        param = get_kernel_parameters(loop)
+        M     = typeof(func)
+        loop  = Kernel{param..., M}(dev, func)
+    end
+
     return loop, worksize
 end
 
+@inline get_kernel_parameters(k::Kernel{A, B, C}) where {A, B, C} = A, B, C
        
 """
     launch!(arch, grid, workspec, kernel!, kernel_args...; kw...)
@@ -272,10 +296,7 @@ end
 @inline function _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;
                           exclude_periphery = false,
                           reduced_dimensions = (),
-                          active_cells_map = nothing,
-                          # TODO: these two kwargs do nothing:
-                          only_local_halos = false,
-                          async = false)
+                          active_cells_map = nothing)
 
     location = Oceananigans.location(first_kernel_arg)
 
@@ -319,6 +340,13 @@ end
 using KernelAbstractions: Kernel
 using KernelAbstractions.NDIteration: _Size, StaticSize
 using KernelAbstractions.NDIteration: NDRange
+
+using KernelAbstractions.NDIteration
+using KernelAbstractions: ndrange, workgroupsize
+import KernelAbstractions: partition
+
+using KernelAbstractions: CompilerMetadata
+import KernelAbstractions: __ndrange, __groupsize
 
 struct OffsetStaticSize{S} <: _Size
     function OffsetStaticSize{S}() where S
@@ -369,13 +397,6 @@ const OffsetNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:KernelO
     return CartesianIndex(nI)
 end
 
-using KernelAbstractions.NDIteration
-using KernelAbstractions: ndrange, workgroupsize
-import KernelAbstractions: partition
-
-using KernelAbstractions: CompilerMetadata
-import KernelAbstractions: __ndrange, __groupsize
-
 @inline __ndrange(::CompilerMetadata{NDRange}) where {NDRange<:OffsetStaticSize}  = CartesianIndices(get(NDRange))
 @inline __groupsize(cm::CompilerMetadata{NDRange}) where {NDRange<:OffsetStaticSize} = size(__ndrange(cm))
 
@@ -413,3 +434,47 @@ function partition(kernel::OffsetKernel, inrange, ingroupsize)
     return iterspace, dynamic
 end
 
+#####
+##### Utilities for Mapped kernels
+#####
+
+struct IndexMap{M}
+    index_map :: M
+end
+
+const MappedNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:IndexMap} where N
+
+# NDRange has been modified to have offsets in place of workitems: Remember, dynamic offset kernels are not possible with this extension!!
+# TODO: maybe don't do this
+@inline function expand(ndrange::MappedNDRange{N}, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where {N}
+    nI = ntuple(Val(N)) do I
+        Base.@_inline_meta
+        offsets = workitems(ndrange)
+        stride = size(offsets, I)
+        gidx = groupidx.I[I]
+        @inbounds ndrange.workitems.index_map[(gidx - 1) * stride + idx.I[I]]
+    end
+    return CartesianIndex(nI...)
+end
+
+const MappedKernel = Kernel{<:Any, <:Any, <:Any, <:MappedFunction}
+
+# Extending the partition function to include offsets in NDRange: note that in this case the 
+# offsets take the place of the DynamicWorkitems which we assume is not needed in static kernels
+function partition(kernel::MappedKernel, inrange, ingroupsize)
+    static_workgroupsize = workgroupsize(kernel)
+    
+    # Calculate the static NDRange and WorkgroupSize
+    index_map = kernel.f.index_map
+    range = length(index_map)
+    groupsize = get(static_workgroupsize)
+
+    blocks, groupsize, dynamic = NDIteration.partition(range, groupsize)
+
+    static_blocks = StaticSize{blocks}
+    static_workgroupsize = StaticSize{groupsize} # we might have padded workgroupsize
+    
+    iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(blocks, IndexMap(index_map))
+
+    return iterspace, dynamic
+end
