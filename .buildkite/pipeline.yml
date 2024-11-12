@@ -23,7 +23,7 @@ steps:
 #      architecture: GPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #
   - label: "🏕️ initialize cpu environment"
@@ -44,7 +44,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
 #
 ######
@@ -62,7 +62,7 @@ steps:
 #      architecture: GPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_gpu"
 #
@@ -78,7 +78,7 @@ steps:
 #      architecture: CPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_cpu"
 #
@@ -97,7 +97,7 @@ steps:
 #      architecture: GPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_gpu"
 #
@@ -113,7 +113,7 @@ steps:
 #      architecture: CPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_cpu"
 #
@@ -128,7 +128,7 @@ steps:
 #      architecture: GPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_gpu"
 #
@@ -144,7 +144,7 @@ steps:
 #      architecture: CPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_cpu"
 #
@@ -159,7 +159,7 @@ steps:
 #      architecture: GPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_gpu"
 #
@@ -175,7 +175,7 @@ steps:
 #      architecture: CPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_cpu"
 #
@@ -190,7 +190,7 @@ steps:
 #      architecture: GPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_gpu"
 #
@@ -206,7 +206,7 @@ steps:
 #      architecture: CPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_cpu"
 #
@@ -225,7 +225,7 @@ steps:
 #      architecture: GPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_gpu"
 #
@@ -241,7 +241,7 @@ steps:
 #      architecture: CPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_cpu"
 #
@@ -260,7 +260,7 @@ steps:
 #      architecture: GPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_gpu"
 #
@@ -276,7 +276,7 @@ steps:
 #      architecture: CPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_cpu"
 #
@@ -295,7 +295,7 @@ steps:
 #      architecture: GPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_gpu"
 #
@@ -311,29 +311,29 @@ steps:
 #      architecture: CPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_cpu"
 #
 ######
 ###### Turbulence Closures
 ######
-#
-#  - label: "🎣 gpu turbulence closures"
-#    env:
-#      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-#      TEST_GROUP: "turbulence_closures"
-#    commands:
-#      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-#    agents:
-#      queue: Oceananigans
-#      architecture: GPU
-#    retry:
-#      automatic:
-#        - exit_status: 1      
-#          limit: 1
-#    depends_on: "init_gpu"
-#
+
+  - label: "🎣 gpu turbulence closures"
+    env:
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "turbulence_closures"
+    commands:
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
+    depends_on: "init_gpu"
+
   - label: "🎏 cpu turbulence closures"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
@@ -346,7 +346,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_cpu"
 #
@@ -365,7 +365,7 @@ steps:
 #      architecture: GPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_gpu"
 #
@@ -381,7 +381,7 @@ steps:
 #      architecture: CPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_cpu"
 #
@@ -400,7 +400,7 @@ steps:
 #      architecture: GPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_gpu"
 #
@@ -416,7 +416,7 @@ steps:
 #      architecture: CPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_cpu"
 #
@@ -435,7 +435,7 @@ steps:
 #      architecture: GPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_gpu"
 #
@@ -451,7 +451,7 @@ steps:
 #      architecture: CPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_cpu"
 #
@@ -470,7 +470,7 @@ steps:
 #      architecture: GPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_gpu"
 #
@@ -486,7 +486,7 @@ steps:
 #      architecture: CPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_cpu"
 #
@@ -505,7 +505,7 @@ steps:
 #      architecture: GPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_gpu"
 #
@@ -521,7 +521,7 @@ steps:
 #      architecture: CPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_cpu"
 #
@@ -540,7 +540,7 @@ steps:
 #      architecture: GPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_gpu"
 #
@@ -556,7 +556,7 @@ steps:
 #      architecture: CPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_cpu"
 #
@@ -575,7 +575,7 @@ steps:
 #      architecture: GPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_gpu"
 #
@@ -591,7 +591,7 @@ steps:
 #      architecture: CPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_cpu"
 #
@@ -606,7 +606,7 @@ steps:
 #      architecture: GPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_gpu"
 #
@@ -622,7 +622,7 @@ steps:
 #      architecture: CPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_cpu"
 #
@@ -641,7 +641,7 @@ steps:
 #      architecture: GPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_gpu"
 #
@@ -657,7 +657,7 @@ steps:
 #      architecture: CPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_cpu"
 #
@@ -676,7 +676,7 @@ steps:
 #      architecture: GPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_gpu"
 #
@@ -692,7 +692,7 @@ steps:
 #      architecture: CPU
 #    retry:
 #      automatic:
-#        - exit_status: 1      
+#        - exit_status: 1
 #          limit: 1
 #    depends_on: "init_cpu"
 #
