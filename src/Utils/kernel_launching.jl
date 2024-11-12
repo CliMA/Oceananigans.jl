@@ -86,8 +86,8 @@ flatten_reduced_dimensions(worksize, dims) = Tuple(d ∈ dims ? 1 : worksize[d] 
 #### Internal utility to launch a function mapped on an index_map
 ####
 
-struct MappedFunction{M} <: Function
-    f::Function
+struct MappedFunction{F, M} <: Function
+    f::F
     index_map::M
 end
 
@@ -453,19 +453,21 @@ struct IndexMap{M}
     index_map :: M
 end
 
+Adapt.adapt_structure(to, m::IndexMap) = IndexMap(Adapt.adapt(to, m.index_map))
+
 const MappedNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:IndexMap} where N
 
-# NDRange has been modified to have offsets in place of workitems: Remember, dynamic offset kernels are not possible with this extension!!
+# NDRange has been modified to include an index_map in place of workitems: R
+# Remember, dynamic offset kernels are not possible with this extension!!
+# Also, mapped kernels work only with a 1D kernel and a 1D map, it is not possible to launch a ND kernel.
 # TODO: maybe don't do this
-@inline function expand(ndrange::MappedNDRange{N}, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where {N}
-    nI = ntuple(Val(N)) do I
-        Base.@_inline_meta
-        offsets = workitems(ndrange)
-        stride = size(offsets, I)
-        gidx = groupidx.I[I]
-        @inbounds ndrange.workitems.index_map[(gidx - 1) * stride + idx.I[I]]
-    end
-    return CartesianIndex(nI...)
+@inline function expand(ndrange::MappedNDRange, groupidx::CartesianIndex{N}, idx::CartesianIndex{N})
+    Base.@_inline_meta
+    offsets = workitems(ndrange)
+    stride = size(offsets, I)
+    gidx = groupidx.I[I]
+    @inbounds ndrange.workitems.index_map[(gidx - 1) * stride + idx.I[I]]
+    return CartesianIndex(nI)
 end
 
 const MappedKernel = Kernel{<:Any, <:Any, <:Any, <:MappedFunction}
@@ -478,6 +480,7 @@ function partition(kernel::MappedKernel, inrange, ingroupsize)
     # Calculate the static NDRange and WorkgroupSize
     index_map = kernel.f.index_map
     range = length(index_map)
+    arch  = Oceananigans.Architectures.architecture(index_map)
     groupsize = get(static_workgroupsize)
 
     blocks, groupsize, dynamic = NDIteration.partition(range, groupsize)
@@ -485,6 +488,7 @@ function partition(kernel::MappedKernel, inrange, ingroupsize)
     static_blocks = StaticSize{blocks}
     static_workgroupsize = StaticSize{groupsize} # we might have padded workgroupsize
     
+    index_map = Oceananigans.Architectures.convert_args(arch, index_map)
     iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(blocks, IndexMap(index_map))
 
     return iterspace, dynamic

@@ -46,7 +46,11 @@ const MaybeTupledData = Union{OffsetArray, NTuple{<:Any, OffsetArray}}
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
 function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, loc, grid, args...; 
-                            fill_boundary_normal_velocities = true, kwargs...)
+                            fill_boundary_normal_velocities = true, 
+                            only_local_halos = false,  # Only valid for `DistributedGrids`, we throw it away here
+                            async = false,  # Only valid for `DistributedGrids`, we throw it away here
+                            kwargs...)
+                            
     arch = architecture(grid)
 
     if fill_boundary_normal_velocities
