@@ -1,10 +1,10 @@
 """
-    struct ForwardBackwardScheme end
+    struct ForwardBackwardScheme
 
-a timestepping scheme used for substepping in the split-explicit free surface solver, 
+A timestepping scheme used for substepping in the split-explicit free surface solver.
     
 The equations are evolved as follows:
-```math
+```julia
 ηᵐ⁺¹ = ηᵐ - Δτ g H (∂x Uᵐ + ∂y Vᵐ)
 Uᵐ⁺¹ = Uᵐ - Δτ (∂x ηᵐ⁺¹ - Gᵁ)
 Vᵐ⁺¹ = Vᵐ - Δτ (∂y ηᵐ⁺¹ - Gⱽ)
@@ -32,21 +32,31 @@ struct AdamsBashforth3Scheme{CC, FC, CF, FT}
 end
 
 """
-    AdamsBashforth3Scheme(; β=0.281105, α=1.5 + β, θ=-0.5 - 2β, γ=0.088, δ=0.614, ϵ=0.013, μ=1 - δ - γ - ϵ)
+    AdamsBashforth3Scheme(; β = 0.281105,
+                            α = 1.5 + β,
+                            θ = -0.5 - 2β,
+                            γ = 0.088,
+                            δ = 0.614,
+                            ϵ = 0.013,
+                            μ = 1 - δ - γ - ϵ)
 
-Creates an instance of `AdamsBashforth3Scheme` with the specified parameters. 
-This scheme is used for substepping in the split-explicit free surface solver, where an AB3 extrapolation is used to 
-evaluate barotropic velocities and free surface at time-step `m+1/2`:
+Create an instance of `AdamsBashforth3Scheme` with the specified parameters.
+This scheme is used for substepping in the split-explicit free surface solver,
+where an AB3 extrapolation is used to evaluate barotropic velocities and
+free surface at time-step `m + 1/2`:
 
 The equations are evolved as follows:
-```math
-ηᵐ⁺¹ = ηᵐ - Δτ g H (∂x Ũ + Δτ ∂y Ṽ)
+
+```julia
+ηᵐ⁺¹ = ηᵐ - Δτ g H (∂x Ũ + ∂y Ṽ)
 Uᵐ⁺¹ = Uᵐ - Δτ (∂x η̃ - Gᵁ)
 Vᵐ⁺¹ = Vᵐ - Δτ (∂y η̃ - Gⱽ)
 ```    
+
 where `η̃`, `Ũ` and `Ṽ` are the AB3 time-extrapolated values of free surface, 
 barotropic zonal and meridional velocities, respectively:
-```math
+
+```julia
 Ũ = α Uᵐ   + θ Uᵐ⁻¹ + β Uᵐ⁻²
 Ṽ = α Vᵐ   + θ Vᵐ⁻¹ + β Vᵐ⁻²
 η̃ = δ ηᵐ⁺¹ + μ ηᵐ   + γ ηᵐ⁻¹ + ϵ ηᵐ⁻²
