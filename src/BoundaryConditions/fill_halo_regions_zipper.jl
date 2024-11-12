@@ -45,13 +45,12 @@ This is not the case for the v-velocity (or any field on the j-faces) where the 
 
 # tracers or similar fields
 @inline function _fill_north_halo!(i, k, grid, c, bc::ZBC, loc, args...) 
-    c_view    = view(c, :, :, k)
     Nx, Ny, _ = size(grid)
     
     @inbounds ℓx = loc[1]
     @inbounds ℓy = loc[2]
 
-    fold_north_boundary!(c_view, i, ℓx, ℓy, Nx, Ny, Hy, bc.condition)
+    fold_north_boundary!(c, i, k, ℓx, ℓy, Nx, Ny, Hy, bc.condition)
 
     return nothing
 end

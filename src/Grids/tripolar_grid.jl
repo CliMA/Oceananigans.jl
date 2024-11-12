@@ -124,14 +124,15 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     # at the north edge of the domain
     shift = Base.size(λᶜᶜᵃ, 1) ÷ 4
 
-    λᶜᶜᵃ = @allowscalar circshift(λᶜᶜᵃ, (shift, 0)) 
-    λᶠᶜᵃ = @allowscalar circshift(λᶠᶜᵃ, (shift, 0))
-    λᶜᶠᵃ = @allowscalar circshift(λᶜᶠᵃ, (shift, 0))
-    λᶠᶠᵃ = @allowscalar circshift(λᶠᶠᵃ, (shift, 0)) 
-    φᶜᶜᵃ = @allowscalar circshift(φᶜᶜᵃ, (shift, 0)) 
-    φᶠᶜᵃ = @allowscalar circshift(φᶠᶜᵃ, (shift, 0)) 
-    φᶜᶠᵃ = @allowscalar circshift(φᶜᶠᵃ, (shift, 0)) 
-    φᶠᶠᵃ = @allowscalar circshift(φᶠᶠᵃ, (shift, 0)) 
+    @show shift
+    λᶜᶜᵃ = @allowscalar circshift(λᶜᶜᵃ, (shift, 0, 0)) 
+    λᶠᶜᵃ = @allowscalar circshift(λᶠᶜᵃ, (shift, 0, 0))
+    λᶜᶠᵃ = @allowscalar circshift(λᶜᶠᵃ, (shift, 0, 0))
+    λᶠᶠᵃ = @allowscalar circshift(λᶠᶠᵃ, (shift, 0, 0)) 
+    φᶜᶜᵃ = @allowscalar circshift(φᶜᶜᵃ, (shift, 0, 0)) 
+    φᶠᶜᵃ = @allowscalar circshift(φᶠᶜᵃ, (shift, 0, 0)) 
+    φᶜᶠᵃ = @allowscalar circshift(φᶜᶠᵃ, (shift, 0, 0)) 
+    φᶠᶠᵃ = @allowscalar circshift(φᶠᶠᵃ, (shift, 0, 0)) 
 
     # Metrics fields to fill fill_halo_size
     coords_x_loc = (Center(), Face(), Center(), Face(), Center(), Face(), Center(), Face())
@@ -142,32 +143,34 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
         _fill_periodic_metric_halos!(device(arch), 16, Nφ)(coord, Nλ, Hλ, Hφ)
     end
 
+    λᶜᶜᵃ = dropdims(λᶜᶜᵃ, dims = 3)
+    λᶠᶜᵃ = dropdims(λᶠᶜᵃ, dims = 3)
+    λᶜᶠᵃ = dropdims(λᶜᶠᵃ, dims = 3)
+    λᶠᶠᵃ = dropdims(λᶠᶠᵃ, dims = 3)
+    φᶜᶜᵃ = dropdims(φᶜᶜᵃ, dims = 3)
+    φᶠᶜᵃ = dropdims(φᶠᶜᵃ, dims = 3)
+    φᶜᶠᵃ = dropdims(φᶜᶠᵃ, dims = 3)
+    φᶠᶠᵃ = dropdims(φᶠᶠᵃ, dims = 3)
+
     # Allocate Metrics
     Δxᶜᶜᵃ = new_data(FT, arch, (Face,   Face,   Nothing), data_args...)
     Δxᶠᶜᵃ = new_data(FT, arch, (Face,   Center, Nothing), data_args...)
     Δxᶜᶠᵃ = new_data(FT, arch, (Center, Face,   Nothing), data_args...)
-    Δxᶠᶠᵃ = new_data(FT, arch, (Center, Center, Nothing), data_args...)
-
+    Δxᶠᶠᵃ = new_data(FT, arch, (Center, Center, Nothing), data_args...)     
     Δyᶜᶜᵃ = new_data(FT, arch, (Face,   Face,   Nothing), data_args...)
     Δyᶠᶜᵃ = new_data(FT, arch, (Face,   Center, Nothing), data_args...)
     Δyᶜᶠᵃ = new_data(FT, arch, (Center, Face,   Nothing), data_args...)
     Δyᶠᶠᵃ = new_data(FT, arch, (Center, Center, Nothing), data_args...)
-
     Azᶜᶜᵃ = new_data(FT, arch, (Face,   Face,   Nothing), data_args...)
     Azᶠᶜᵃ = new_data(FT, arch, (Face,   Center, Nothing), data_args...)
     Azᶜᶠᵃ = new_data(FT, arch, (Center, Face,   Nothing), data_args...)
     Azᶠᶠᵃ = new_data(FT, arch, (Center, Center, Nothing), data_args...)
 
-    trg_metrics = 
-
-    # Calculate metrics
-    loop! = _calculate_metrics!(device(arch), (16, 16), (Nλ, Nφ))
-
     metrics = (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
                Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
 
-    loop!(metrics..., coords..., radius)
+    _calculate_metrics!(device(arch), (16, 16), (Nλ, Nφ))(metrics..., coords..., radius)
 
     metrics_x_loc = (Center(), Face(), Center(), Face(), Center(), Face(), Center(), Face(), Center(), Face(), Center(), Face())
     metrics_y_loc = (Center(), Center(), Face(), Face(), Center(), Center(), Face(), Face(), Center(), Center(), Face(), Face())
@@ -176,6 +179,19 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
         _fold_tripolar_metrics!(device(arch), 16, Nλ)(metric, ℓx, ℓy, Nλ, Nφ, Hλ, Hφ)
         _fill_periodic_metric_halos!(device(arch), 16, Nφ)(metric, Nλ, Hλ, Hφ)
     end
+
+    Δxᶜᶜᵃ = dropdims(Δxᶜᶜᵃ, dims = 3)
+    Δxᶠᶜᵃ = dropdims(Δxᶠᶜᵃ, dims = 3)
+    Δxᶜᶠᵃ = dropdims(Δxᶜᶠᵃ, dims = 3)
+    Δxᶠᶠᵃ = dropdims(Δxᶠᶠᵃ, dims = 3)
+    Δyᶜᶜᵃ = dropdims(Δyᶜᶜᵃ, dims = 3)
+    Δyᶠᶜᵃ = dropdims(Δyᶠᶜᵃ, dims = 3)
+    Δyᶜᶠᵃ = dropdims(Δyᶜᶠᵃ, dims = 3)
+    Δyᶠᶠᵃ = dropdims(Δyᶠᶠᵃ, dims = 3)
+    Azᶜᶜᵃ = dropdims(Azᶜᶜᵃ, dims = 3)
+    Azᶠᶜᵃ = dropdims(Azᶠᶜᵃ, dims = 3)
+    Azᶜᶠᵃ = dropdims(Azᶜᶠᵃ, dims = 3)
+    Azᶠᶠᵃ = dropdims(Azᶠᶠᵃ, dims = 3)
 
     conformal_map = Tripolar(north_poles_latitude, first_pole_longitude, southernmost_latitude)
 
@@ -205,62 +221,62 @@ end
 
     # Fill periodic halos:
     for i = 1 : Hx
-        metric[1  - i, j′] = metric[Nx - i + 1, j′]
-        metric[Nx + i, j′] = metric[1 + 1, j′]
+        metric[1  - i, j′, 1] = metric[Nx - i + 1, j′, 1]
+        metric[Nx + i, j′, 1] = metric[i,          j′, 1]
     end
 end
 
 @kernel function _fold_tripolar_metrics!(metric, ℓx, ℓy, Nx, Ny, Hx, Hy)
     i = @index(Global, Linear)
-    fold_north_boundary!(metric, i, ℓx, ℓy, Nx, Ny, Hy, 1)
+    fold_north_boundary!(metric, i, 1, ℓx, ℓy, Nx, Ny, Hy, 1)
 end
 
-@inline function fold_north_boundary!(c, i, ::Center, ::Center, Nx, Ny, Hy, sign)    
+@inline function fold_north_boundary!(c, i, k, ::Center, ::Center, Nx, Ny, Hy, sign)    
     i′ = Nx - i + 1
     
     for j = 1 : Hy
         @inbounds begin
-            c[i, Ny + j] = sign * c[i′, Ny - j] # The Ny line is duplicated so we substitute starting Ny-1
+            c[i, Ny + j, k] = sign * c[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
         end
     end
 
     return nothing
 end
 
-@inline function fold_north_boundary!(c, i, ::Face, ::Center, Nx, Ny, Hy, sign)    
+@inline function fold_north_boundary!(c, i, k, ::Face, ::Center, Nx, Ny, Hy, sign)    
     i′ = Nx - i + 2 # Remember! element Nx + 1 does not exist!
     s  = ifelse(i′ > Nx , abs(sign), sign) # for periodic elements we change the sign
     i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
     
     for j = 1 : Hy
         @inbounds begin
-            c[i, Ny + j] = s * c[i′, Ny - j] # The Ny line is duplicated so we substitute starting Ny-1
+            c[i, Ny + j, k] = s * c[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
         end
     end
 
     return nothing
 end
 
-@inline function fold_north_boundary!(c, i, ::Center, ::Face, Nx, Ny, Hy, sign)    
+@inline function fold_north_boundary!(c, i, k, ::Center, ::Face, Nx, Ny, Hy, sign)    
     i′ = Nx - i + 1
     
     for j = 1 : Hy
         @inbounds begin
-            c[i, Ny + j] = sign * c[i′, Ny - j + 1] 
+            c[i, Ny + j, k] = sign * c[i′, Ny - j + 1, k] 
         end
     end
 
     return nothing
 end
 
-@inline function fold_north_boundary!(c, i, ::Face, ::Face, Nx, Ny, Hy, sign)    
+@inline function fold_north_boundary!(c, i, k, ::Face, ::Face, Nx, Ny, Hy, sign)    
     i′ = Nx - i + 2 # Remember! element Nx + 1 does not exist!
     s  = ifelse(i′ > Nx , abs(sign), sign) # for periodic elements we change the sign
     i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
     
     for j = 1 : Hy
         @inbounds begin
-            c[i, Ny + j] = s * c[i′, Ny - j + 1] 
+            c[i, Ny + j, k] = s * c[i′, Ny - j + 1, k] 
         end
     end
 
@@ -343,17 +359,17 @@ for which it is possible to retrieve the longitude and latitude by:
         on_the_north_pole = (x == 0) & (y == 0)
         north_pole_value  = ifelse(i == 1, -90, 90) 
 
-        λ2D[i, j] = ifelse(on_the_north_pole, north_pole_value, - 180 / π * atan(y / x))
-        φ2D[i, j] = 90 - 360 / π * atan(sqrt(y^2 + x^2)) # The latitude will be in the range [-90, 90]
+        λ2D[i, j, 1] = ifelse(on_the_north_pole, north_pole_value, - 180 / π * atan(y / x))
+        φ2D[i, j, 1] = 90 - 360 / π * atan(sqrt(y^2 + x^2)) # The latitude will be in the range [-90, 90]
 
         # Shift longitude to the range [-180, 180], the 
         # the north singularities will be located at -90 and 90
-        λ2D[i, j] += ifelse(i ≤ Nλ÷2, -90, 90) 
+        λ2D[i, j, 1] += ifelse(i ≤ Nλ÷2, -90, 90) 
 
         # Make sure the singularities are at longitude we want them to be at.
         # (`first_pole_longitude` and `first_pole_longitude` + 180)
-        λ2D[i, j] += first_pole_longitude + 90
-        λ2D[i, j]  = convert_to_0_360(λ2D[i, j])
+        λ2D[i, j, 1] += first_pole_longitude + 90
+        λ2D[i, j, 1]  = convert_to_0_360(λ2D[i, j])
     end
 end
 
@@ -369,29 +385,29 @@ end
     i, j = @index(Global, NTuple)
 
     @inbounds begin
-        Δxᶜᶜᵃ[i, j] = haversine((λᶠᶜᵃ[i+1, j], φᶠᶜᵃ[i+1, j]), (λᶠᶜᵃ[i, j],   φᶠᶜᵃ[i, j]),   radius)
-        Δxᶠᶜᵃ[i, j] = haversine((λᶜᶜᵃ[i, j],   φᶜᶜᵃ[i, j]),   (λᶜᶜᵃ[i-1, j], φᶜᶜᵃ[i-1, j]), radius)
-        Δxᶜᶠᵃ[i, j] = haversine((λᶠᶠᵃ[i+1, j], φᶠᶠᵃ[i+1, j]), (λᶠᶠᵃ[i, j],   φᶠᶠᵃ[i, j]),   radius) 
-        Δxᶠᶠᵃ[i, j] = haversine((λᶜᶠᵃ[i, j],   φᶜᶠᵃ[i, j]),   (λᶜᶠᵃ[i-1, j], φᶜᶠᵃ[i-1, j]), radius)
+        Δxᶜᶜᵃ[i, j, 1] = haversine((λᶠᶜᵃ[i+1, j], φᶠᶜᵃ[i+1, j]), (λᶠᶜᵃ[i, j],   φᶠᶜᵃ[i, j]),   radius)
+        Δxᶠᶜᵃ[i, j, 1] = haversine((λᶜᶜᵃ[i, j],   φᶜᶜᵃ[i, j]),   (λᶜᶜᵃ[i-1, j], φᶜᶜᵃ[i-1, j]), radius)
+        Δxᶜᶠᵃ[i, j, 1] = haversine((λᶠᶠᵃ[i+1, j], φᶠᶠᵃ[i+1, j]), (λᶠᶠᵃ[i, j],   φᶠᶠᵃ[i, j]),   radius) 
+        Δxᶠᶠᵃ[i, j, 1] = haversine((λᶜᶠᵃ[i, j],   φᶜᶠᵃ[i, j]),   (λᶜᶠᵃ[i-1, j], φᶜᶠᵃ[i-1, j]), radius)
 
-        Δyᶜᶜᵃ[i, j] = haversine((λᶜᶠᵃ[i, j+1], φᶜᶠᵃ[i, j+1]),   (λᶜᶠᵃ[i, j],   φᶜᶠᵃ[i, j]),   radius)
-        Δyᶠᶜᵃ[i, j] = haversine((λᶠᶠᵃ[i, j+1], φᶠᶠᵃ[i, j+1]),   (λᶠᶠᵃ[i, j],   φᶠᶠᵃ[i, j]),   radius)
-        Δyᶜᶠᵃ[i, j] = haversine((λᶜᶜᵃ[i, j  ],   φᶜᶜᵃ[i, j]),   (λᶜᶜᵃ[i, j-1], φᶜᶜᵃ[i, j-1]), radius)
-        Δyᶠᶠᵃ[i, j] = haversine((λᶠᶜᵃ[i, j  ],   φᶠᶜᵃ[i, j]),   (λᶠᶜᵃ[i, j-1], φᶠᶜᵃ[i, j-1]), radius)
+        Δyᶜᶜᵃ[i, j, 1] = haversine((λᶜᶠᵃ[i, j+1], φᶜᶠᵃ[i, j+1]),   (λᶜᶠᵃ[i, j],   φᶜᶠᵃ[i, j]),   radius)
+        Δyᶠᶜᵃ[i, j, 1] = haversine((λᶠᶠᵃ[i, j+1], φᶠᶠᵃ[i, j+1]),   (λᶠᶠᵃ[i, j],   φᶠᶠᵃ[i, j]),   radius)
+        Δyᶜᶠᵃ[i, j, 1] = haversine((λᶜᶜᵃ[i, j  ],   φᶜᶜᵃ[i, j]),   (λᶜᶜᵃ[i, j-1], φᶜᶜᵃ[i, j-1]), radius)
+        Δyᶠᶠᵃ[i, j, 1] = haversine((λᶠᶜᵃ[i, j  ],   φᶠᶜᵃ[i, j]),   (λᶠᶜᵃ[i, j-1], φᶠᶜᵃ[i, j-1]), radius)
 
         a = lat_lon_to_cartesian(φᶠᶠᵃ[ i ,  j ], λᶠᶠᵃ[ i ,  j ], 1)
         b = lat_lon_to_cartesian(φᶠᶠᵃ[i+1,  j ], λᶠᶠᵃ[i+1,  j ], 1)
         c = lat_lon_to_cartesian(φᶠᶠᵃ[i+1, j+1], λᶠᶠᵃ[i+1, j+1], 1)
         d = lat_lon_to_cartesian(φᶠᶠᵃ[ i , j+1], λᶠᶠᵃ[ i , j+1], 1)
 
-        Azᶜᶜᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2
+        Azᶜᶜᵃ[i, j, 1] = spherical_area_quadrilateral(a, b, c, d) * radius^2
 
         # To be able to conserve kinetic energy specifically the momentum equation, 
         # it is better to define the face areas as products of
         # the edge lengths rather than using the spherical area of the face (cit JMC).
         # TODO: find a reference to support this statement
-        Azᶠᶜᵃ[i, j] = Δyᶠᶜᵃ[i, j] * Δxᶠᶜᵃ[i, j]
-        Azᶜᶠᵃ[i, j] = Δyᶜᶠᵃ[i, j] * Δxᶜᶠᵃ[i, j]
+        Azᶠᶜᵃ[i, j, 1] = Δyᶠᶜᵃ[i, j, 1] * Δxᶠᶜᵃ[i, j, 1]
+        Azᶜᶠᵃ[i, j, 1] = Δyᶜᶠᵃ[i, j, 1] * Δxᶜᶠᵃ[i, j, 1]
 
         # Face - Face areas are calculated as the Center - Center ones
         a = lat_lon_to_cartesian(φᶜᶜᵃ[i-1, j-1], λᶜᶜᵃ[i-1, j-1], 1)
@@ -399,7 +415,7 @@ end
         c = lat_lon_to_cartesian(φᶜᶜᵃ[ i ,  j ], λᶜᶜᵃ[ i ,  j ], 1)
         d = lat_lon_to_cartesian(φᶜᶜᵃ[i-1,  j ], λᶜᶜᵃ[i-1,  j ], 1)
 
-        Azᶠᶠᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2 
+        Azᶠᶠᵃ[i, j, 1] = spherical_area_quadrilateral(a, b, c, d) * radius^2 
     end
 end
 
