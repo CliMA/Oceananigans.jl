@@ -6,7 +6,7 @@
 
 Fill open boundary halo regions by filling boundary conditions on field faces with `open_fill`. 
 """
-function fill_open_boundary_regions!(field, boundary_conditions, indices, loc, grid, args...; kwargs...)
+function fill_open_boundary_regions!(field, boundary_conditions, indices, loc, grid, args...; only_local_halos = false, kwargs...)
     arch = architecture(grid)
 
     # gets `open_fill`, the function which fills open boundaries at `loc`
@@ -14,12 +14,18 @@ function fill_open_boundary_regions!(field, boundary_conditions, indices, loc, g
     # we do not fill any open boundaries
     fill_halo! = get_open_halo_filling_functions(loc) 
 
-    if !isnothing(fill_halo!)
+    left_bc  =  left_open_boundary_condition(boundary_conditions, loc)
+    right_bc = right_open_boundary_condition(boundary_conditions, loc)
 
-        left_bc  =  left_open_boundary_condition(boundary_conditions, loc)
-        right_bc = right_open_boundary_condition(boundary_conditions, loc)
-    
-        fill_halo_event!(field, fill_halo!, (left_bc, right_bc), indices, loc, arch, grid, args...; kwargs...)
+    bcs_tuple = (left_bc, right_bc)
+
+    if !isnothing(fill_halo!) && any(!isnothing, bcs_tuple)
+
+        # Overwrite the `only_local_halos` keyword argument, because open boundaries 
+        # are always local boundaries that do not require communication
+        only_local_halos = true
+
+        fill_halo_event!(field, fill_halo!, bcs_tuple, indices, loc, arch, grid, args...; only_local_halos, kwargs...)
     end
 
     return nothing
@@ -47,7 +53,7 @@ fill_open_boundary_regions!(fields::NTuple, boundary_conditions, indices, loc, g
 @inline right_open_boundary_condition(boundary_conditions, ::Tuple{Center, Face, Center}) = retrieve_open_bc(boundary_conditions.north)
 @inline right_open_boundary_condition(boundary_conditions, ::Tuple{Center, Center, Face}) = retrieve_open_bc(boundary_conditions.top)
 
-# for multi region halo fills ???
+# for multi region halo fills
 @inline left_open_boundary_condition(boundary_conditions::Tuple, ::Tuple{Face, Center, Center}) = @inbounds boundary_conditions[1]
 @inline left_open_boundary_condition(boundary_conditions::Tuple, ::Tuple{Center, Face, Center}) = @inbounds boundary_conditions[1]
 @inline left_open_boundary_condition(boundary_conditions::Tuple, ::Tuple{Center, Center, Face}) = @inbounds boundary_conditions[1]
