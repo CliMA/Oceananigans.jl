@@ -1,6 +1,6 @@
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Utils: KernelParameters, launch!
-using Oceananigans.Grids: fold_north_center_center!, fold_north_face_center!, fold_north_center_face!, fold_north_face_face!
+using Oceananigans.Grids: fold_north_boundary!
 
 """
     ZipperBoundaryCondition(sign = 1)
@@ -43,19 +43,15 @@ c₂ == c₃
 This is not the case for the v-velocity (or any field on the j-faces) where the last grid point is not repeated.
 """
 
-const CCLocation = Tuple{<:Center, <:Center, <:Any} 
-const FCLocation = Tuple{<:Face,   <:Center, <:Any} 
-const CFLocation = Tuple{<:Center, <:Face,   <:Any} 
-const FFLocation = Tuple{<:Face,   <:Face,   <:Any} 
-
 # tracers or similar fields
-@inline _fill_north_halo!(i, k, grid, c, bc::ZBC, ::CCLocation, args...) = fold_north_center_center!(i, k, grid, bc.condition, c)
+@inline function _fill_north_halo!(i, k, grid, c, bc::ZBC, loc, args...) 
+    c_view    = view(c, :, :, k)
+    Nx, Ny, _ = size(grid)
+    
+    @inbounds ℓx = loc[1]
+    @inbounds ℓy = loc[2]
 
-# u-velocity or similar fields
-@inline _fill_north_halo!(i, k, grid, u, bc::ZBC, ::FCLocation, args...) = fold_north_face_center!(i, k, grid, bc.condition, u)
+    fold_north_boundary!(c_view, i, ℓx, ℓy, Nx, Ny, Hy, bc.condition)
 
-# v-velocity or similar fields
-@inline _fill_north_halo!(i, k, grid, v, bc::ZBC, ::CFLocation, args...) = fold_north_center_face!(i, k, grid, bc.condition, v)
-
-# vorticity or similar fields
-@inline _fill_north_halo!(i, k, grid, ζ, bc::ZBC, ::FFLocation, args...) = fold_north_face_face!(i, k, grid, bc.condition, ζ)
+    return nothing
+end

@@ -1,6 +1,6 @@
 using Distances
-
-device = Oceananigans.Architectures.device
+using CUDA: @allowscalar
+using Oceananigans.Architectures: device
 
 @inline convert_to_0_360(x) = ((x % 360) + 360) % 360
 
@@ -98,213 +98,155 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     Δφ = φᵃᶜᵃ[2] - φᵃᶜᵃ[1]
     φᵃᶠᵃ = φᵃᶜᵃ .- Δφ / 2
 
+    data_args = ((Periodic, Bounded, Bounded), size, halo)
+
     # Start with the NH stereographic projection
     # TODO: make these on_architecture(arch, zeros(Nx, Ny))
     # to build the grid on GPU
-    λFF = zeros(Nλ, Nφ)
-    φFF = zeros(Nλ, Nφ)
-    λFC = zeros(Nλ, Nφ)
-    φFC = zeros(Nλ, Nφ)
+    λᶜᶜᵃ = new_data(FT, arch, (Center, Center, Nothing), data_args...)
+    λᶠᶜᵃ = new_data(FT, arch, (Face,   Center, Nothing), data_args...)
+    λᶜᶠᵃ = new_data(FT, arch, (Center, Face,   Nothing), data_args...)
+    λᶠᶠᵃ = new_data(FT, arch, (Face,   Face,   Nothing), data_args...)
+    φᶜᶜᵃ = new_data(FT, arch, (Center, Center, Nothing), data_args...)
+    φᶠᶜᵃ = new_data(FT, arch, (Face,   Center, Nothing), data_args...)
+    φᶜᶠᵃ = new_data(FT, arch, (Center, Face,   Nothing), data_args...)
+    φᶠᶠᵃ = new_data(FT, arch, (Face,   Face,   Nothing), data_args...)
 
-    λCF = zeros(Nλ, Nφ)
-    φCF = zeros(Nλ, Nφ)
-    λCC = zeros(Nλ, Nφ)
-    φCC = zeros(Nλ, Nφ)
+    coords     = (λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ, φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ)
+    coords_llg = (λᶜᵃᵃ, λᶠᵃᵃ, φᵃᶜᵃ, φᵃᶠᵃ)
 
-    loop! = _compute_tripolar_coordinates!(device(CPU()), (16, 16), (Nλ, Nφ))
+    loop! = _compute_tripolar_coordinates!(device(arch), (16, 16), (Nλ, Nφ))
 
-    loop!(λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC, 
-          λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶠᵃ, φᵃᶜᵃ, 
+    loop!(coords..., coords_llg...,
           first_pole_longitude,
           focal_distance, Nλ)
 
     # We need to circshift eveything to have the first pole at the beginning of the 
-    # grid and the second pole in the middle
-    shift = Nλ÷4
+    # grid and the second pole in the middle which is necessary for the folding
+    # at the north edge of the domain
+    shift = size(λᶜᶜᵃ, 1) ÷ 4
 
-    λFF = circshift(λFF, (shift, 0))
-    φFF = circshift(φFF, (shift, 0)) 
-    λFC = circshift(λFC, (shift, 0)) 
-    φFC = circshift(φFC, (shift, 0)) 
-    λCF = circshift(λCF, (shift, 0)) 
-    φCF = circshift(φCF, (shift, 0)) 
-    λCC = circshift(λCC, (shift, 0)) 
-    φCC = circshift(φCC, (shift, 0))
+    λᶜᶜᵃ = @allowscalar circshift(λᶜᶜᵃ, (shift, 0)) 
+    λᶠᶜᵃ = @allowscalar circshift(λᶠᶜᵃ, (shift, 0))
+    λᶜᶠᵃ = @allowscalar circshift(λᶜᶠᵃ, (shift, 0))
+    λᶠᶠᵃ = @allowscalar circshift(λᶠᶠᵃ, (shift, 0)) 
+    φᶜᶜᵃ = @allowscalar circshift(φᶜᶜᵃ, (shift, 0)) 
+    φᶠᶜᵃ = @allowscalar circshift(φᶠᶜᵃ, (shift, 0)) 
+    φᶜᶠᵃ = @allowscalar circshift(φᶜᶠᵃ, (shift, 0)) 
+    φᶠᶠᵃ = @allowscalar circshift(φᶠᶠᵃ, (shift, 0)) 
 
-    Nx = Nλ
-    Ny = Nφ
-            
+    # Metrics fields to fill fill_halo_size
+    fold! = _fold_tripolar_metrics!(device(arch), (16, ), (Nλ, ))
+    fill_periodic_halos! = _fill_periodic_metric_halos!(device(arch), (16, ), (Nφ, ))
+    
+    coords_x_loc = (Center(), Face(), Center(), Face(), Center(), Face(), Center(), Face())
+    coords_y_loc = (Center(), Center(), Face(), Face(), Center(), Center(), Face(), Face())
+
+    for (coord, ℓx, ℓy) in zip(trg_coords, coords_x_loc, coords_y_loc)
+        fold!(coord, ℓx, ℓy, Nλ, Nφ, Hλ, Hφ)
+        fill_periodic_halos!(coord, Nλ, Hλ, Hφ)
+    end
+
     # Allocate Metrics
-    # TODO: make these on_architecture(arch, zeros(Nx, Ny))
-    # to build the grid on GPU
-    Δxᶜᶜᵃ = zeros(Nx, Ny)
-    Δxᶠᶜᵃ = zeros(Nx, Ny)
-    Δxᶜᶠᵃ = zeros(Nx, Ny)
-    Δxᶠᶠᵃ = zeros(Nx, Ny)
+    Δxᶜᶜᵃ = new_data(FT, arch, (Face,   Face,   Nothing), data_args...)
+    Δxᶠᶜᵃ = new_data(FT, arch, (Face,   Center, Nothing), data_args...)
+    Δxᶜᶠᵃ = new_data(FT, arch, (Center, Face,   Nothing), data_args...)
+    Δxᶠᶠᵃ = new_data(FT, arch, (Center, Center, Nothing), data_args...)
 
-    Δyᶜᶜᵃ = zeros(Nx, Ny)
-    Δyᶠᶜᵃ = zeros(Nx, Ny)
-    Δyᶜᶠᵃ = zeros(Nx, Ny)
-    Δyᶠᶠᵃ = zeros(Nx, Ny)
+    Δyᶜᶜᵃ = new_data(FT, arch, (Face,   Face,   Nothing), data_args...)
+    Δyᶠᶜᵃ = new_data(FT, arch, (Face,   Center, Nothing), data_args...)
+    Δyᶜᶠᵃ = new_data(FT, arch, (Center, Face,   Nothing), data_args...)
+    Δyᶠᶠᵃ = new_data(FT, arch, (Center, Center, Nothing), data_args...)
 
-    Azᶜᶜᵃ = zeros(Nx, Ny)
-    Azᶠᶜᵃ = zeros(Nx, Ny)
-    Azᶜᶠᵃ = zeros(Nx, Ny)
-    Azᶠᶠᵃ = zeros(Nx, Ny)
+    Azᶜᶜᵃ = new_data(FT, arch, (Face,   Face,   Nothing), data_args...)
+    Azᶠᶜᵃ = new_data(FT, arch, (Face,   Center, Nothing), data_args...)
+    Azᶜᶠᵃ = new_data(FT, arch, (Center, Face,   Nothing), data_args...)
+    Azᶠᶠᵃ = new_data(FT, arch, (Center, Center, Nothing), data_args...)
+
+    trg_metrics = 
 
     # Calculate metrics
-    loop! = _calculate_metrics!(device(CPU()), (16, 16), (Nx, Ny))
+    loop! = _calculate_metrics!(device(arch), (16, 16), (Nλ, Nφ))
 
-    loop!(Δxᶠᶜᵃ, Δxᶜᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
-          Δyᶠᶜᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
-          Azᶠᶜᵃ, Azᶜᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
-          λᶠᶜᵃ, λᶜᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
-          φᶠᶜᵃ, φᶜᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ,
-          radius)
-          
-    # Metrics fields to fill fill_halo_size
+    metrics = (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+               Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
+               Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
 
-    # Fill all periodic halos
-    Hx, Hy, Hz = halo
+    loop!(metrics..., trg_coords..., radius)
 
-    latitude_longitude_grid = LatitudeLongitudeGrid(; size,
-                                                      latitude,
-                                                      longitude,
-                                                      z,
-                                                      halo,
-                                                      radius)
+    metrics_x_loc = (Center(), Face(), Center(), Face(), Center(), Face(), Center(), Face(), Center(), Face(), Center(), Face())
+    metrics_y_loc = (Center(), Center(), Face(), Face(), Center(), Center(), Face(), Face(), Center(), Center(), Face(), Face())
 
-    # Continue the metrics to the south with the LatitudeLongitudeGrid
-    # metrics (probably we don't even need to do this, since the tripolar grid should
-    # terminate below Antartica, but it's better to be safe)
-    continue_south!(Δxᶠᶠᵃ, latitude_longitude_grid.Δxᶠᶠᵃ)
-    continue_south!(Δxᶠᶜᵃ, latitude_longitude_grid.Δxᶠᶜᵃ)
-    continue_south!(Δxᶜᶠᵃ, latitude_longitude_grid.Δxᶜᶠᵃ)
-    continue_south!(Δxᶜᶜᵃ, latitude_longitude_grid.Δxᶜᶜᵃ)
-    
-    continue_south!(Δyᶠᶠᵃ, latitude_longitude_grid.Δyᶠᶜᵃ)
-    continue_south!(Δyᶠᶜᵃ, latitude_longitude_grid.Δyᶠᶜᵃ)
-    continue_south!(Δyᶜᶠᵃ, latitude_longitude_grid.Δyᶜᶠᵃ)
-    continue_south!(Δyᶜᶜᵃ, latitude_longitude_grid.Δyᶜᶠᵃ)
+    for (metric, ℓx, ℓy) in zip(metrics, metrics_x_loc, metrics_y_loc)
+        fold!(metric, ℓx, ℓy, Nλ, Nφ, Hλ, Hφ)
+        fill_periodic_halos!(metric, Nλ, Hλ, Hφ)
+    end
 
-    continue_south!(Azᶠᶠᵃ, latitude_longitude_grid.Azᶠᶠᵃ)
-    continue_south!(Azᶠᶜᵃ, latitude_longitude_grid.Azᶠᶜᵃ)
-    continue_south!(Azᶜᶠᵃ, latitude_longitude_grid.Azᶜᶠᵃ)
-    continue_south!(Azᶜᶜᵃ, latitude_longitude_grid.Azᶜᶜᵃ)
+    conformal_map = Tripolar(north_poles_latitude, first_pole_longitude, southernmost_latitude)
 
     # Final grid with correct metrics
-    # TODO: remove `on_architecture(arch, ...)` when we shift grid construction to GPU
-    grid = OrthogonalSphericalShellGrid{Periodic, RightConnected, Bounded}(arch,
+    return OrthogonalSphericalShellGrid{Periodic, RightConnected, Bounded}(arch,
                                                                            Nx, Ny, Nz,
                                                                            Hx, Hy, Hz,
                                                                            convert(eltype(radius), Lz),
-                                                                           on_architecture(arch, λᶜᶜᵃ),
-                                                                           on_architecture(arch, λᶠᶜᵃ),
-                                                                           on_architecture(arch, λᶜᶠᵃ),
-                                                                           on_architecture(arch, λᶠᶠᵃ),
-                                                                           on_architecture(arch, φᶜᶜᵃ),
-                                                                           on_architecture(arch, φᶠᶜᵃ),
-                                                                           on_architecture(arch, φᶜᶠᵃ),
-                                                                           on_architecture(arch, φᶠᶠᵃ),
-                                                                           on_architecture(arch, zᵃᵃᶜ),
-                                                                           on_architecture(arch, zᵃᵃᶠ),
-                                                                           on_architecture(arch, Δxᶜᶜᵃ),
-                                                                           on_architecture(arch, Δxᶠᶜᵃ),
-                                                                           on_architecture(arch, Δxᶜᶠᵃ),
-                                                                           on_architecture(arch, Δxᶠᶠᵃ),
-                                                                           on_architecture(arch, Δyᶜᶜᵃ),
-                                                                           on_architecture(arch, Δyᶜᶠᵃ),
-                                                                           on_architecture(arch, Δyᶠᶜᵃ),
-                                                                           on_architecture(arch, Δyᶠᶠᵃ),
-                                                                           on_architecture(arch, Δzᵃᵃᶜ),
-                                                                           on_architecture(arch, Δzᵃᵃᶠ),
-                                                                           on_architecture(arch, Azᶜᶜᵃ),
-                                                                           on_architecture(arch, Azᶠᶜᵃ),
-                                                                           on_architecture(arch, Azᶜᶠᵃ),
-                                                                           on_architecture(arch, Azᶠᶠᵃ),
+                                                                           λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
+                                                                           φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ,
+                                                                           zᵃᵃᶜ, zᵃᵃᶠ,
+                                                                           Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+                                                                           Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
+                                                                           Δzᵃᵃᶜ, Δzᵃᵃᶠ, 
+                                                                           Azᶜᶜᵃ, Azᶠᶜᵃ, zᶜᶠᵃ, Azᶠᶠᵃ,
                                                                            radius,
-                                                                           Tripolar(north_poles_latitude, first_pole_longitude, southernmost_latitude))
-             
-    return grid
-end
-
-# Continue the metrics to the south with LatitudeLongitudeGrid metrics
-function continue_south!(new_metric, lat_lon_metric::Number)
-    Hx, Hy = new_metric.offsets
-    Nx, Ny = size(new_metric)
-    for i in Hx+1:Nx+Hx, j in Hy+1:1
-        new_metric[i, j] = lat_lon_metric
-    end
-
-    return nothing
-end
-
-# Continue the metrics to the south with LatitudeLongitudeGrid metrics
-function continue_south!(new_metric, lat_lon_metric::AbstractArray{<:Any, 1})
-    Hx, Hy = new_metric.offsets
-    Nx, Ny = size(new_metric)
-    for i in Hx+1:Nx+Hx, j in Hy+1:1
-        new_metric[i, j] = lat_lon_metric[j]
-    end
-
-    return nothing
-end
-
-# Continue the metrics to the south with LatitudeLongitudeGrid metrics
-function continue_south!(new_metric, lat_lon_metric::AbstractArray{<:Any, 2})
-    Hx, Hy = - new_metric.offsets
-    Nx, Ny = size(new_metric)
-    for i in Hx+1:Nx+Hx, j in Hy+1:1
-        new_metric[i, j] = lat_lon_metric[i, j]
-    end
-
-    return nothing
-end
-
-    
-#####
-##### Outer functions for filling halo regions for Zipper boundary conditions.
-#####
-
-@inline function fold_north_face_face!(i, k, grid, sign, c)
-    Nx, Ny, _ = size(grid)
-    
-    i′ = Nx - i + 2 # Remember! element Nx + 1 does not exist!
-    s  = ifelse(i′ > Nx , abs(sign), sign) # for periodic elements we change the sign
-    i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
-    Hy = grid.Hy
-    
-    for j = 1 : Hy
-        @inbounds begin
-            c[i, Ny + j, k] = s * c[i′, Ny - j + 1, k] 
-        end
-    end
-
-    return nothing
+                                                                           conformal_map)
 end
 
 #####
 ##### Fold north functions, used to fold the north direction onto itself
 #####
 
-@inline function fold_north_face_center!(i, k, grid, sign, c)
-    Nx, Ny, _ = size(grid)
+@kernel function _fill_periodic_metric_halos!(metric, Nx, Hx, Hy)    
+    j  = @index(Global, NTuple)
+    j′ = j - Hy 
+
+    # Fill periodic halos:
+    for i = 1 : Hx
+        metric[1  - i, j] = metric[Nx - i + 1, j]
+        metric[Nx + i, j] = metric[1 + 1, j]
+    end
+end
+
+@kernel function _fold_tripolar_metrics!(metric, ℓx, ℓy, Nx, Ny, Hx, Hy)
+    i = @index(Global, NTuple)
+    fold_north_boundary!(metric, i, ℓx, ℓy, Nx, Ny, Hy, 1)
+end
+
+@inline function fold_north_boundary!(c, i, ::Center, ::Center, Nx, Ny, Hy, sign)    
+    i′ = Nx - i + 1
     
+    for j = 1 : Hy
+        @inbounds begin
+            c[i, Ny + j] = sign * c[i′, Ny - j] # The Ny line is duplicated so we substitute starting Ny-1
+        end
+    end
+
+    return nothing
+end
+
+@inline function fold_north_boundary!(c, i, ::Face, ::Center, Nx, Ny, Hy, sign)    
     i′ = Nx - i + 2 # Remember! element Nx + 1 does not exist!
     s  = ifelse(i′ > Nx , abs(sign), sign) # for periodic elements we change the sign
     i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
-    Hy = grid.Hy
     
     for j = 1 : Hy
         @inbounds begin
-            c[i, Ny + j, k] = s * c[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
+            c[i, Ny + j] = s * c[i′, Ny - j] # The Ny line is duplicated so we substitute starting Ny-1
         end
     end
 
     return nothing
 end
 
-@inline function fold_north_center_face!(i, k, grid, sign, c)
+@inline function fold_north_boundary!(c, i, ::Center, ::Face, Nx, Ny, Hy, sign)    
     Nx, Ny, _ = size(grid)
     
     i′ = Nx - i + 1
@@ -312,32 +254,30 @@ end
     
     for j = 1 : Hy
         @inbounds begin
-            c[i, Ny + j, k] = sign * c[i′, Ny - j + 1, k] 
+            c[i, Ny + j] = sign * c[i′, Ny - j + 1] 
         end
     end
 
     return nothing
 end
 
-@inline function fold_north_center_center!(i, k, grid, sign, c)
-    Nx, Ny, _ = size(grid)
-    
-    i′ = Nx - i + 1
-    Hy = grid.Hy
+@inline function fold_north_boundary!(c, i, ::Face, ::Face, Nx, Ny, Hy, sign)    
+    i′ = Nx - i + 2 # Remember! element Nx + 1 does not exist!
+    s  = ifelse(i′ > Nx , abs(sign), sign) # for periodic elements we change the sign
+    i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
     
     for j = 1 : Hy
         @inbounds begin
-            c[i, Ny + j, k] = sign * c[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
+            c[i, Ny + j] = s * c[i′, Ny - j + 1] 
         end
     end
 
     return nothing
 end
-
 
 """
-    _compute_tripolar_coordinates!(λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC, 
-                                   λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶠᵃ, φᵃᶜᵃ, 
+    _compute_tripolar_coordinates!(λCC, λFC, λCF, λFF, φCC, φFC, φCF, φFF, 
+                                   λᶜᵃᵃ, λᶠᵃᵃ, φᵃᶜᵃ, φᵃᶠᵃ, 
                                    first_pole_longitude,
                                    focal_distance, Nλ)
 
@@ -387,8 +327,8 @@ for which it is possible to retrieve the longitude and latitude by:
     \\end{align}
 ```
 """
-@kernel function _compute_tripolar_coordinates!(λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC,
-                                                λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
+@kernel function _compute_tripolar_coordinates!(λCC, λFC, λCF, λFF, φCC, φFC, φCF, φFF, 
+                                                λᶜᵃᵃ, λᶠᵃᵃ, φᵃᶜᵃ, φᵃᶠᵃ,
                                                 first_pole_longitude,
                                                 focal_distance, Nλ)
 
@@ -428,11 +368,11 @@ end
 # Calculate the metric terms from the coordinates of the grid
 # Note: There is probably a better way to do this. Murray (1996) gives
 # analytical expressions for the metric terms.
-@kernel function _calculate_metrics!(Δxᶠᶜᵃ, Δxᶜᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
-                                     Δyᶠᶜᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
-                                     Azᶠᶜᵃ, Azᶜᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
-                                     λᶠᶜᵃ, λᶜᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
-                                     φᶠᶜᵃ, φᶜᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ, radius)
+@kernel function _calculate_metrics!(Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+                                     Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
+                                     Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
+                                     λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
+                                     φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ, radius)
 
     i, j = @index(Global, NTuple)
 
