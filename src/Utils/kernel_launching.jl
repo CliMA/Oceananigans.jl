@@ -87,20 +87,15 @@ flatten_reduced_dimensions(worksize, dims) = Tuple(d ∈ dims ? 1 : worksize[d] 
 ####
 
 struct MappedFunction{F, M} <: Function
-    f::F
-    imap::M
+    func::F
+    index_map::M
 end
 
 Adapt.adapt_structure(to, m::MappedFunction) = 
-    MappedFunction(Adapt.adapt(to, m.f), Adapt.adapt(to, m.imap))
-
-@inline function (m::MappedFunction)(_ctx_)  
-    m.f(_ctx_)
-    return nothing
-end
+    MappedFunction(Adapt.adapt(to, m.func), Adapt.adapt(to, m.index_map))
 
 @inline function (m::MappedFunction)(_ctx_, args...) 
-    m.f(_ctx_, args...)
+    m.func(_ctx_, args...)
     return nothing
 end
 
@@ -251,6 +246,7 @@ the architecture `arch`.
                                   location = nothing,
                                   active_cells_map = nothing)
 
+
     if !isnothing(active_cells_map) # everything else is irrelevant
         workgroup = min(length(active_cells_map), 256)
         worksize = length(active_cells_map)
@@ -263,19 +259,16 @@ the architecture `arch`.
     dev = Architectures.device(arch)
     loop = kernel!(dev, workgroup, worksize)
 
-    # Map out the function to use active_cells_map
-    # as an index map
+    # Map out the function to use active_cells_map as an index map
     if !isnothing(active_cells_map)
-        func  = MappedFunction(loop.f, active_cells_map)
-        param = get_kernel_parameters(loop)
-        M     = typeof(func)
-        loop  = Kernel{param..., M}(dev, func)
+        func = MappedFunction(loop.f, active_cells_map)
+        loop = Kernel{get_kernel_parameters(loop)..., typeof(func)}(dev, func)
     end
 
     return loop, worksize
 end
 
-@inline get_kernel_parameters(k::Kernel{A, B, C}) where {A, B, C} = A, B, C
+@inline get_kernel_parameters(::Kernel{Dev, B, W}) where {Dev, B, W} = Dev, B, W
        
 """
     launch!(arch, grid, workspec, kernel!, kernel_args...; kw...)
@@ -347,8 +340,6 @@ end
 #####
 
 # TODO: when offsets are implemented in KA so that we can call `kernel(dev, group, size, offsets)`, remove all of this
-
-using KernelAbstractions: Kernel
 using KernelAbstractions.NDIteration: _Size, StaticSize
 using KernelAbstractions.NDIteration: NDRange
 
@@ -450,14 +441,14 @@ end
 #####
 
 struct IndexMap{M}
-    imap :: M
+    index_map :: M
 end
 
 Adapt.adapt_structure(to, m::IndexMap) = IndexMap(Adapt.adapt(to, m.index_map))
 
 const MappedNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:IndexMap} where N
 
-# NDRange has been modified to include an index_map in place of workitems: R
+# NDRange has been modified to include an index_map in place of workitems.
 # Remember, dynamic offset kernels are not possible with this extension!!
 # Also, mapped kernels work only with a 1D kernel and a 1D map, it is not possible to launch a ND kernel.
 # TODO: maybe don't do this
@@ -467,7 +458,7 @@ const MappedNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:IndexMa
     stride = size(offsets, 1)
     gidx = groupidx.I[1]
     tI = (gidx - 1) * stride + idx.I[1]
-    nI = ndrange.workitems.imap[tI]
+    nI = ndrange.workitems.index_map[tI]
     return CartesianIndex(nI)
 end
 
@@ -476,8 +467,8 @@ const MappedKernel{D} = Kernel{D, <:Any, <:Any, <:MappedFunction} where D
 # Override the getproperty to make sure we get the correct properties
 @inline getproperty(k::MappedKernel, prop::Symbol) = get_mapped_property(k, Val(prop))
 
-@inline get_mapped_property(k, ::Val{:imap}) = k.f.imap
-@inline get_mapped_property(k, ::Val{:f}) = k.f.f
+@inline get_mapped_property(k, ::Val{:index_map}) = k.f.index_map
+@inline get_mapped_property(k, ::Val{:func}) = k.f.func
 
 # Extending the partition function to include offsets in NDRange: note that in this case the 
 # offsets take the place of the DynamicWorkitems which we assume is not needed in static kernels
@@ -485,7 +476,7 @@ function partition(kernel::MappedKernel, inrange, ingroupsize)
     static_workgroupsize = workgroupsize(kernel)
     
     # Calculate the static NDRange and WorkgroupSize
-    index_map = getproperty(kernel, :imap)
+    index_map = getproperty(kernel, :index_map)
     range = length(index_map)
     arch  = Oceananigans.Architectures.architecture(index_map)
     groupsize = get(static_workgroupsize)
