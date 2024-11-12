@@ -124,9 +124,9 @@ end
     k_top = grid.Nz+1
 
     @inbounds begin
-        η[i, j, k_top] = filtered_state.η[i, j, k_top]
-        U[i, j, 1]     = filtered_state.U[i, j, 1]
-        V[i, j, 1]     = filtered_state.V[i, j, 1]
+        η[i, j, k_top] = η̅[i, j, k_top]
+        U[i, j, 1]     = U̅[i, j, 1]
+        V[i, j, 1]     = V̅[i, j, 1]
     end
 end
 
@@ -166,8 +166,8 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     #free surface state
     η = free_surface.η
-    U = barotropic_velocities.u
-    V = barotropic_velocities.v
+    U = barotropic_velocities.U
+    V = barotropic_velocities.V
     η̅ = filtered_state.η
     U̅ = filtered_state.U
     V̅ = filtered_state.V
