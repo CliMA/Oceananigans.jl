@@ -88,11 +88,11 @@ flatten_reduced_dimensions(worksize, dims) = Tuple(d ∈ dims ? 1 : worksize[d] 
 
 struct MappedFunction{F, M} <: Function
     f::F
-    index_map::M
+    imap::M
 end
 
 Adapt.adapt_structure(to, m::MappedFunction) = 
-    MappedFunction(Adapt.adapt(to, m.f), Adapt.adapt(to, m.index_map))
+    MappedFunction(Adapt.adapt(to, m.f), Adapt.adapt(to, m.imap))
 
 @inline function (m::MappedFunction)(_ctx_)  
     m.f(_ctx_)
@@ -466,11 +466,18 @@ const MappedNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:IndexMa
     offsets = workitems(ndrange)
     stride = size(offsets, 1)
     gidx = groupidx.I[1]
-    @inbounds ndrange.workitems.index_map[(gidx - 1) * stride + idx.I[1]]
+    tI = (gidx - 1) * stride + idx.I[1]
+    nI = ndrange.workitems.index_map[tI]
     return CartesianIndex(nI)
 end
 
-const MappedKernel = Kernel{<:Any, <:Any, <:Any, <:MappedFunction}
+const MappedKernel{D} = Kernel{D, <:Any, <:Any, <:MappedFunction} where D
+
+# Override the getproperty to make sure we get the correct properties
+@inline getproperty(k::MappedKernel, prop::Symbol) = get_mapped_property(k, Val(prop))
+
+@inline get_mapped_property(k, ::Val{:imap}) = k.f.imap
+@inline get_mapped_property(k, ::Val{:f}) = k.f.f
 
 # Extending the partition function to include offsets in NDRange: note that in this case the 
 # offsets take the place of the DynamicWorkitems which we assume is not needed in static kernels
@@ -478,7 +485,7 @@ function partition(kernel::MappedKernel, inrange, ingroupsize)
     static_workgroupsize = workgroupsize(kernel)
     
     # Calculate the static NDRange and WorkgroupSize
-    index_map = kernel.f.index_map
+    index_map = getproperty(kernel, :imap)
     range = length(index_map)
     arch  = Oceananigans.Architectures.architecture(index_map)
     groupsize = get(static_workgroupsize)
