@@ -115,16 +115,14 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     coords     = (λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ, φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ)
     coords_llg = (λᶜᵃᵃ, λᶠᵃᵃ, φᵃᶜᵃ, φᵃᶠᵃ)
 
-    loop! = _compute_tripolar_coordinates!(device(arch), (16, 16), (Nλ, Nφ))
-
-    loop!(coords..., coords_llg...,
-          first_pole_longitude,
-          focal_distance, Nλ)
+    _compute_tripolar_coordinates!(device(arch), (16, 16), (Nλ, Nφ))(coords..., coords_llg...,
+                                                                     first_pole_longitude,
+                                                                     focal_distance, Nλ)
 
     # We need to circshift eveything to have the first pole at the beginning of the 
     # grid and the second pole in the middle which is necessary for the folding
     # at the north edge of the domain
-    shift = size(λᶜᶜᵃ, 1) ÷ 4
+    shift = Base.size(λᶜᶜᵃ, 1) ÷ 4
 
     λᶜᶜᵃ = @allowscalar circshift(λᶜᶜᵃ, (shift, 0)) 
     λᶠᶜᵃ = @allowscalar circshift(λᶠᶜᵃ, (shift, 0))
@@ -136,15 +134,12 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     φᶠᶠᵃ = @allowscalar circshift(φᶠᶠᵃ, (shift, 0)) 
 
     # Metrics fields to fill fill_halo_size
-    fold! = _fold_tripolar_metrics!(device(arch), (16, ), (Nλ, ))
-    fill_periodic_halos! = _fill_periodic_metric_halos!(device(arch), (16, ), (Nφ, ))
-    
     coords_x_loc = (Center(), Face(), Center(), Face(), Center(), Face(), Center(), Face())
     coords_y_loc = (Center(), Center(), Face(), Face(), Center(), Center(), Face(), Face())
 
-    for (coord, ℓx, ℓy) in zip(trg_coords, coords_x_loc, coords_y_loc)
-        fold!(coord, ℓx, ℓy, Nλ, Nφ, Hλ, Hφ)
-        fill_periodic_halos!(coord, Nλ, Hλ, Hφ)
+    for (coord, ℓx, ℓy) in zip(coords, coords_x_loc, coords_y_loc)
+        _fold_tripolar_metrics!(device(arch), 16, Nλ)(coord, ℓx, ℓy, Nλ, Nφ, Hλ, Hφ)
+        _fill_periodic_metric_halos!(device(arch), 16, Nφ)(coord, Nλ, Hλ, Hφ)
     end
 
     # Allocate Metrics
@@ -172,22 +167,22 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
                Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
                Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
 
-    loop!(metrics..., trg_coords..., radius)
+    loop!(metrics..., coords..., radius)
 
     metrics_x_loc = (Center(), Face(), Center(), Face(), Center(), Face(), Center(), Face(), Center(), Face(), Center(), Face())
     metrics_y_loc = (Center(), Center(), Face(), Face(), Center(), Center(), Face(), Face(), Center(), Center(), Face(), Face())
 
     for (metric, ℓx, ℓy) in zip(metrics, metrics_x_loc, metrics_y_loc)
-        fold!(metric, ℓx, ℓy, Nλ, Nφ, Hλ, Hφ)
-        fill_periodic_halos!(metric, Nλ, Hλ, Hφ)
+        _fold_tripolar_metrics!(device(arch), 16, Nλ)(metric, ℓx, ℓy, Nλ, Nφ, Hλ, Hφ)
+        _fill_periodic_metric_halos!(device(arch), 16, Nφ)(metric, Nλ, Hλ, Hφ)
     end
 
     conformal_map = Tripolar(north_poles_latitude, first_pole_longitude, southernmost_latitude)
 
     # Final grid with correct metrics
     return OrthogonalSphericalShellGrid{Periodic, RightConnected, Bounded}(arch,
-                                                                           Nx, Ny, Nz,
-                                                                           Hx, Hy, Hz,
+                                                                           Nλ, Nφ, Nz,
+                                                                           Hλ, Hφ, Hz,
                                                                            convert(eltype(radius), Lz),
                                                                            λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
                                                                            φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ,
@@ -195,7 +190,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
                                                                            Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                                                                            Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
                                                                            Δzᵃᵃᶜ, Δzᵃᵃᶠ, 
-                                                                           Azᶜᶜᵃ, Azᶠᶜᵃ, zᶜᶠᵃ, Azᶠᶠᵃ,
+                                                                           Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
                                                                            radius,
                                                                            conformal_map)
 end
@@ -205,18 +200,18 @@ end
 #####
 
 @kernel function _fill_periodic_metric_halos!(metric, Nx, Hx, Hy)    
-    j  = @index(Global, NTuple)
+    j  = @index(Global, Linear)
     j′ = j - Hy 
 
     # Fill periodic halos:
     for i = 1 : Hx
-        metric[1  - i, j] = metric[Nx - i + 1, j]
-        metric[Nx + i, j] = metric[1 + 1, j]
+        metric[1  - i, j′] = metric[Nx - i + 1, j′]
+        metric[Nx + i, j′] = metric[1 + 1, j′]
     end
 end
 
 @kernel function _fold_tripolar_metrics!(metric, ℓx, ℓy, Nx, Ny, Hx, Hy)
-    i = @index(Global, NTuple)
+    i = @index(Global, Linear)
     fold_north_boundary!(metric, i, ℓx, ℓy, Nx, Ny, Hy, 1)
 end
 
@@ -247,10 +242,7 @@ end
 end
 
 @inline function fold_north_boundary!(c, i, ::Center, ::Face, Nx, Ny, Hy, sign)    
-    Nx, Ny, _ = size(grid)
-    
     i′ = Nx - i + 1
-    Hy = grid.Hy
     
     for j = 1 : Hy
         @inbounds begin
