@@ -1,4 +1,5 @@
-using Oceananigans.Operators: divᶜᶜᶜ, ∇²ᶜᶜᶜ 
+using Oceananigans.Operators
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Statistics: mean
 
 using KernelAbstractions: @kernel, @index
@@ -106,7 +107,7 @@ function compute_preconditioner_rhs!(solver::FourierTridiagonalPoissonSolver, rh
     arch = architecture(grid)
     tridiagonal_dir = solver.batched_tridiagonal_solver.tridiagonal_direction
     launch!(arch, grid, :xyz, fourier_tridiagonal_preconditioner_rhs!,
-            solver.storage, tridiagonal_dir, rhs)
+            solver.storage, tridiagonal_dir, grid, rhs)
     return nothing
 end
 
@@ -114,7 +115,7 @@ const FFTBasedPreconditioner = Union{FFTBasedPoissonSolver, FourierTridiagonalPo
 
 function precondition!(p, preconditioner::FFTBasedPreconditioner, r, args...)
     compute_preconditioner_rhs!(preconditioner, r)
-    p = solve!(p, preconditioner)
+    solve!(p, preconditioner)
 
     mean_p = mean(p)
     grid = p.grid

@@ -278,7 +278,7 @@ function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitud
 
     φ₁, φ₂ = get_domain_extent(latitude, Nφ)
     -90 <= φ₁ || throw(ArgumentError("The southernmost latitude cannot be less than -90 degrees."))
-    φ₂ <= 90  || throw(ArgumentError("The northern latitude cannot be less than -90 degrees."))
+    φ₂ <= 90  || throw(ArgumentError("The northern latitude cannot be greater than 90 degrees."))
     φ₁ <= φ₂  || throw(ArgumentError("Latitudes must increase south to north."))
 
     if TX == Flat || TY == Flat
@@ -332,9 +332,9 @@ function Base.show(io::IO, grid::LatitudeLongitudeGrid, withsummary=true)
                      "└── ", z_summary)
 end
 
-@inline x_domain(grid::LLG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.λᶠᵃᵃ)
-@inline y_domain(grid::LLG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TY, grid.Ny, grid.φᵃᶠᵃ)
-@inline z_domain(grid::LLG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TZ, grid.Nz, grid.zᵃᵃᶠ)
+@inline x_domain(grid::LLG) = domain(topology(grid, 1)(), grid.Nx, grid.λᶠᵃᵃ)
+@inline y_domain(grid::LLG) = domain(topology(grid, 2)(), grid.Ny, grid.φᵃᶠᵃ)
+@inline z_domain(grid::LLG) = domain(topology(grid, 3)(), grid.Nz, grid.zᵃᵃᶠ)
 
 @inline cpu_face_constructor_x(grid::XRegularLLG) = x_domain(grid)
 @inline cpu_face_constructor_y(grid::YRegularLLG) = y_domain(grid)

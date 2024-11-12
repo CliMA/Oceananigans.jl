@@ -17,9 +17,7 @@ export
     advective_tracer_flux_z,
 
     AdvectionScheme,
-    Centered, CenteredSecondOrder, CenteredFourthOrder,
-    UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder,
-    WENO, WENOThirdOrder, WENOFifthOrder,
+    Centered, UpwindBiased, WENO, 
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     EnergyConserving,
@@ -79,6 +77,7 @@ include("flux_form_advection.jl")
 
 include("flat_advective_fluxes.jl")
 include("topologically_conditional_interpolation.jl")
+include("immersed_advective_fluxes.jl")
 include("momentum_advection_operators.jl")
 include("tracer_advection_operators.jl")
 include("positivity_preserving_tracer_advection_operators.jl")

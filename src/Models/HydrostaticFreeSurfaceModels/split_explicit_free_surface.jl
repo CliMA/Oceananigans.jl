@@ -209,10 +209,6 @@ Base.@kwdef struct SplitExplicitAuxiliaryFields{𝒞ℱ, ℱ𝒞, 𝒦}
     Gᵁ :: ℱ𝒞
     "Vertically-integrated slow barotropic forcing function for `V` (`ReducedField` over ``z``)"
     Gⱽ :: 𝒞ℱ
-    "Depth at `(Face, Center)` (`ReducedField` over ``z``)"
-    Hᶠᶜ :: ℱ𝒞
-    "Depth at `(Center, Face)` (`ReducedField` over ``z``)"
-    Hᶜᶠ :: 𝒞ℱ
     "kernel size for barotropic time stepping"
     kernel_parameters :: 𝒦
 end
@@ -227,20 +223,9 @@ function SplitExplicitAuxiliaryFields(grid::AbstractGrid)
     Gᵁ = Field((Face,   Center, Nothing), grid)
     Gⱽ = Field((Center, Face,   Nothing), grid)
 
-    Hᶠᶜ = Field((Face,   Center, Nothing), grid)
-    Hᶜᶠ = Field((Center, Face,   Nothing), grid)
-
-    dz = GridMetricOperation((Face, Center, Center), Δz, grid)
-    sum!(Hᶠᶜ, dz)
-
-    dz = GridMetricOperation((Center, Face, Center), Δz, grid)
-    sum!(Hᶜᶠ, dz)
-
-    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ))
-
     kernel_parameters = :xy
 
-    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, kernel_parameters)
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, kernel_parameters)
 end
 
 """
