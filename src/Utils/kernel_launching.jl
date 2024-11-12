@@ -6,6 +6,7 @@ using Oceananigans: location
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Grids: AbstractGrid
+using Adapt
 using Base: @pure
 using KernelAbstractions: Kernel
 
@@ -89,6 +90,9 @@ struct MappedFunction{M} <: Function
     f::Function
     index_map::M
 end
+
+Adapt.adapt_structure(to, m::MappedFunction) = 
+    MappedFunction(Adapt.adapt(to, m.f), Adapt.adapt(to, m.index_map))
 
 @inline (m::MappedFunction)(_ctx_)          = m.f(_ctx_)
 @inline (m::MappedFunction)(_ctx_, args...) = m.f(_ctx_, args...)
