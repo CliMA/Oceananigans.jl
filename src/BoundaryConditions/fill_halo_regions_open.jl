@@ -9,9 +9,11 @@ Fill open boundary halo regions by filling boundary conditions on field faces wi
 function fill_open_boundary_regions!(field, boundary_conditions, indices, loc, grid, args...; only_local_halos = false, kwargs...)
     arch = architecture(grid)
 
-    # gets `open_fill`, the function which fills open boundaries at `loc`
-    # if `loc` is not either a (Face, Center, Center), (Center, Face, Center), or (Center, Center, Face),
-    # we do not fill any open boundaries
+    # gets `fill_halo!`, the function which fills open boundaries at `loc`
+    # The underlying assumption is that open boundaries are uniquely defined by the location `loc`:
+    # (Face, Center, Center) -> fill west and east
+    # (Center, Face, Center) -> fill south and north
+    # (Center, Center, Face) -> fill bottom and top
     fill_halo! = get_open_halo_filling_functions(loc) 
 
     left_bc  =  left_open_boundary_condition(boundary_conditions, loc)
@@ -36,8 +38,12 @@ end
 @inline get_open_halo_filling_functions(::Tuple{Center, Face, Center}) = fill_south_and_north_halo!
 @inline get_open_halo_filling_functions(::Tuple{Center, Center, Face}) = fill_bottom_and_top_halo!
 
-fill_open_boundary_regions!(fields::NTuple, boundary_conditions, indices, loc, grid, args...; kwargs...) =
-    [fill_open_boundary_regions!(field, boundary_conditions[n], indices, loc[n], grid, args...; kwargs...) for (n, field) in enumerate(fields)]
+function fill_open_boundary_regions!(fields::Tuple, boundary_conditions, indices, loc, grid, args...; kwargs...) 
+    for n in eachindex(fields)
+        fill_open_boundary_regions!(fields[n], boundary_conditions[n], indices, loc[n], grid, args...; kwargs...)
+    end
+    return nothing
+end
 
 @inline retrieve_open_bc(bc::OBC) = bc
 @inline retrieve_open_bc(bc) = nothing
@@ -52,15 +58,6 @@ fill_open_boundary_regions!(fields::NTuple, boundary_conditions, indices, loc, g
 @inline right_open_boundary_condition(boundary_conditions, ::Tuple{Face, Center, Center}) = retrieve_open_bc(boundary_conditions.east)
 @inline right_open_boundary_condition(boundary_conditions, ::Tuple{Center, Face, Center}) = retrieve_open_bc(boundary_conditions.north)
 @inline right_open_boundary_condition(boundary_conditions, ::Tuple{Center, Center, Face}) = retrieve_open_bc(boundary_conditions.top)
-
-# for multi region halo fills
-@inline left_open_boundary_condition(boundary_conditions::Tuple, ::Tuple{Face, Center, Center}) = @inbounds boundary_conditions[1]
-@inline left_open_boundary_condition(boundary_conditions::Tuple, ::Tuple{Center, Face, Center}) = @inbounds boundary_conditions[1]
-@inline left_open_boundary_condition(boundary_conditions::Tuple, ::Tuple{Center, Center, Face}) = @inbounds boundary_conditions[1]
-
-@inline right_open_boundary_condition(boundary_conditions::Tuple, ::Tuple{Face, Center, Center}) = @inbounds boundary_conditions[2]
-@inline right_open_boundary_condition(boundary_conditions::Tuple, ::Tuple{Center, Face, Center}) = @inbounds boundary_conditions[2]
-@inline right_open_boundary_condition(boundary_conditions::Tuple, ::Tuple{Center, Center, Face}) = @inbounds boundary_conditions[2]
 
 # Opern boundary fill 
 @inline   _fill_west_halo!(j, k, grid, c, bc::OBC, loc, args...) = @inbounds c[1, j, k]           = getbc(bc, j, k, grid, args...)
