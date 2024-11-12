@@ -53,25 +53,6 @@ The operators in this file fall into three categories:
 #####
 #####
 
-@inline Δxᶠᵃᵃ(i, j, k, grid) = nothing
-@inline Δxᶜᵃᵃ(i, j, k, grid) = nothing
-@inline Δyᵃᶠᵃ(i, j, k, grid) = nothing
-@inline Δyᵃᶜᵃ(i, j, k, grid) = nothing
-
-const ZRG = Union{LLGZ, RGZ}
-
-@inline Δzᵃᵃᶠ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶠ[k]
-@inline Δzᵃᵃᶜ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶜ[k]
-
-@inline Δzᵃᵃᶠ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶠ
-@inline Δzᵃᵃᶜ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶜ
-
-@inline Δzᵃᵃᶜ(i, j, k, grid::OSSG) = @inbounds grid.Δzᵃᵃᶜ[k]
-@inline Δzᵃᵃᶠ(i, j, k, grid::OSSG) = @inbounds grid.Δzᵃᵃᶠ[k]
-
-@inline Δzᵃᵃᶜ(i, j, k, grid::OSSGZ) = grid.Δzᵃᵃᶜ
-@inline Δzᵃᵃᶠ(i, j, k, grid::OSSGZ) = grid.Δzᵃᵃᶠ
-
 # Convenience Functions for all grids
 for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
 
@@ -126,8 +107,8 @@ end
 @inline Δxᶜᵃᵃ(i, j, k, grid::RGX) = grid.Δxᶜᵃᵃ
 @inline Δyᵃᶠᵃ(i, j, k, grid::RGY) = grid.Δyᵃᶠᵃ
 @inline Δyᵃᶜᵃ(i, j, k, grid::RGY) = grid.Δyᵃᶜᵃ
-@inline Δzᵃᵃᶜ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶜ
 @inline Δzᵃᵃᶠ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶠ
+@inline Δzᵃᵃᶜ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶜ
 
 @inline Δxᶜᵃᶜ(i, j, k, grid::RGX) = grid.Δxᶜᵃᵃ
 @inline Δxᶠᵃᶜ(i, j, k, grid::RGX) = grid.Δxᶠᵃᵃ
@@ -149,6 +130,7 @@ end
 @inline Δxᶠᶜᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δxᶠᶜᵃ[i, j]
 @inline Δxᶠᶠᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δxᶠᶠᵃ[i, j]
 @inline Δxᶜᶜᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δxᶜᶜᵃ[i, j]
+
 @inline Δxᶠᶜᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δxᶠᶜᵃ[j]
 @inline Δxᶜᶠᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δxᶜᶠᵃ[j]
 @inline Δxᶠᶠᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δxᶠᶠᵃ[j]
@@ -156,10 +138,14 @@ end
 
 @inline Δyᶜᶠᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δyᶜᶠᵃ[j]
 @inline Δyᶠᶜᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δyᶠᶜᵃ[j]
-@inline Δyᶜᶠᵃ(i, j, k, grid::LLGY) = grid.Δyᶜᶠᵃ
-@inline Δyᶠᶜᵃ(i, j, k, grid::LLGY) = grid.Δyᶠᶜᵃ
 @inline Δyᶜᶜᵃ(i, j, k, grid::LLG)  = Δyᶠᶜᵃ(i, j, k, grid)
 @inline Δyᶠᶠᵃ(i, j, k, grid::LLG)  = Δyᶜᶠᵃ(i, j, k, grid)
+
+@inline Δyᶜᶠᵃ(i, j, k, grid::LLGY) = grid.Δyᶜᶠᵃ
+@inline Δyᶠᶜᵃ(i, j, k, grid::LLGY) = grid.Δyᶠᶜᵃ
+
+@inline Δzᵃᵃᶠ(i, j, k, grid::LLGZ) = grid.Δzᵃᵃᶠ
+@inline Δzᵃᵃᶜ(i, j, k, grid::LLGZ) = grid.Δzᵃᵃᶜ
 
 ## On the fly metrics
 
@@ -190,6 +176,12 @@ end
 @inline Δyᶠᶜᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶠᶜᵃ[i, j]
 @inline Δyᶜᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶜᶠᵃ[i, j]
 @inline Δyᶠᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶠᶠᵃ[i, j]
+
+@inline Δzᵃᵃᶜ(i, j, k, grid::OSSG) = @inbounds grid.Δzᵃᵃᶜ[k]
+@inline Δzᵃᵃᶠ(i, j, k, grid::OSSG) = @inbounds grid.Δzᵃᵃᶠ[k]
+
+@inline Δzᵃᵃᶜ(i, j, k, grid::OSSGZ) = grid.Δzᵃᵃᶜ
+@inline Δzᵃᵃᶠ(i, j, k, grid::OSSGZ) = grid.Δzᵃᵃᶠ
 
 #####
 #####
@@ -253,14 +245,16 @@ end
 #####
 #####
 
-@inline Vᶜᶜᶜ(i, j, k, grid) = Azᶜᶜᶜ(i, j, k, grid) * Δzᶜᶜᶜ(i, j, k, grid)
-@inline Vᶠᶜᶜ(i, j, k, grid) = Azᶠᶜᶜ(i, j, k, grid) * Δzᶠᶜᶜ(i, j, k, grid)
-@inline Vᶜᶠᶜ(i, j, k, grid) = Azᶜᶠᶜ(i, j, k, grid) * Δzᶜᶠᶜ(i, j, k, grid)
-@inline Vᶜᶜᶠ(i, j, k, grid) = Azᶜᶜᶠ(i, j, k, grid) * Δzᶜᶜᶠ(i, j, k, grid)
-@inline Vᶠᶠᶜ(i, j, k, grid) = Azᶠᶠᶜ(i, j, k, grid) * Δzᶠᶠᶜ(i, j, k, grid)
-@inline Vᶠᶜᶠ(i, j, k, grid) = Azᶠᶜᶠ(i, j, k, grid) * Δzᶠᶜᶠ(i, j, k, grid)
-@inline Vᶜᶠᶠ(i, j, k, grid) = Azᶜᶠᶠ(i, j, k, grid) * Δzᶜᶠᶠ(i, j, k, grid)
-@inline Vᶠᶠᶠ(i, j, k, grid) = Azᶠᶠᶠ(i, j, k, grid) * Δzᶠᶠᶠ(i, j, k, grid)
+for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ), LZ in (:ᶠ, :ᶜ)
+
+    volume = Symbol(:V, LX, LY, LZ)
+    z_area = Symbol(:Az, LX, LY, LZ)
+    z_spacing = Symbol(:Δz, LX, LY, LZ)
+
+    @eval begin
+        @inline $volume(i, j, k, grid) = $z_area(i, j, k, grid) * $z_spacing(i, j, k, grid)
+    end
+end
 
 #####
 ##### Generic functions for specified locations
