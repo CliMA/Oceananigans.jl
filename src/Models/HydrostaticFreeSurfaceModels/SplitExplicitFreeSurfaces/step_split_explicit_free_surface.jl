@@ -182,7 +182,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
         # Update eta and velocities for the next timestep
         # The halos are updated in the `update_state!` function
         launch!(architecture(free_surface_grid), free_surface_grid, :xy, 
-                _update_split_explicit_state!, η, U, V, grid, η̅, U̅, V̅)
+                _update_split_explicit_state!, η, U, V, free_surface_grid, η̅, U̅, V̅)
 
         # Preparing velocities for the barotropic correction
         mask_immersed_field!(model.velocities.u)
