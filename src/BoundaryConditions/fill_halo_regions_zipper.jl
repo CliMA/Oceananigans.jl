@@ -1,5 +1,6 @@
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Utils: KernelParameters, launch!
+using Oceananigans.Grids: fold_north_center_center!, fold_north_face_center!, fold_north_center_face!, fold_north_face_face!
 
 """
     ZipperBoundaryCondition(sign = 1)
@@ -41,74 +42,6 @@ c₂ == c₃
 
 This is not the case for the v-velocity (or any field on the j-faces) where the last grid point is not repeated.
 """
-    
-#####
-##### Outer functions for filling halo regions for Zipper boundary conditions.
-#####
-
-@inline function fold_north_face_face!(i, k, grid, sign, c)
-    Nx, Ny, _ = size(grid)
-    
-    i′ = Nx - i + 2 # Remember! element Nx + 1 does not exist!
-    s  = ifelse(i′ > Nx , abs(sign), sign) # for periodic elements we change the sign
-    i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
-    Hy = grid.Hy
-    
-    for j = 1 : Hy
-        @inbounds begin
-            c[i, Ny + j, k] = s * c[i′, Ny - j + 1, k] 
-        end
-    end
-
-    return nothing
-end
-
-@inline function fold_north_face_center!(i, k, grid, sign, c)
-    Nx, Ny, _ = size(grid)
-    
-    i′ = Nx - i + 2 # Remember! element Nx + 1 does not exist!
-    s  = ifelse(i′ > Nx , abs(sign), sign) # for periodic elements we change the sign
-    i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
-    Hy = grid.Hy
-    
-    for j = 1 : Hy
-        @inbounds begin
-            c[i, Ny + j, k] = s * c[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
-        end
-    end
-
-    return nothing
-end
-
-@inline function fold_north_center_face!(i, k, grid, sign, c)
-    Nx, Ny, _ = size(grid)
-    
-    i′ = Nx - i + 1
-    Hy = grid.Hy
-    
-    for j = 1 : Hy
-        @inbounds begin
-            c[i, Ny + j, k] = sign * c[i′, Ny - j + 1, k] 
-        end
-    end
-
-    return nothing
-end
-
-@inline function fold_north_center_center!(i, k, grid, sign, c)
-    Nx, Ny, _ = size(grid)
-    
-    i′ = Nx - i + 1
-    Hy = grid.Hy
-    
-    for j = 1 : Hy
-        @inbounds begin
-            c[i, Ny + j, k] = sign * c[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
-        end
-    end
-
-    return nothing
-end
 
 const CCLocation = Tuple{<:Center, <:Center, <:Any} 
 const FCLocation = Tuple{<:Face,   <:Center, <:Any} 

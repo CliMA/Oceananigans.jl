@@ -128,68 +128,6 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     Nx = Nλ
     Ny = Nφ
             
-    # return λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC
-    # Helper grid to fill halo 
-    grid = RectilinearGrid(; size = (Nx, Ny), halo = (Hλ, Hφ), topology = (Periodic, RightConnected, Flat), x = (0, 1), y = (0, 1))
-
-    # Boundary conditions to fill halos of the coordinate and metric terms
-    # We need to define them manually because of the convention in the 
-    # ZipperBoundaryCondition that edge fields need to switch sign (which we definitely do not
-    # want for coordinates and metrics)
-    default_boundary_conditions = FieldBoundaryConditions(north  = ZipperBoundaryCondition(),
-                                                          south  = nothing, # The south should be `continued`
-                                                          west   = Oceananigans.PeriodicBoundaryCondition(),
-                                                          east   = Oceananigans.PeriodicBoundaryCondition(),
-                                                          top    = nothing,
-                                                          bottom = nothing)
-
-    lFF = Field((Face, Face, Center), grid; boundary_conditions = default_boundary_conditions)
-    pFF = Field((Face, Face, Center), grid; boundary_conditions = default_boundary_conditions)
-
-    lFC = Field((Face, Center, Center), grid; boundary_conditions = default_boundary_conditions)
-    pFC = Field((Face, Center, Center), grid; boundary_conditions = default_boundary_conditions)
-    
-    lCF = Field((Center, Face, Center), grid; boundary_conditions = default_boundary_conditions)
-    pCF = Field((Center, Face, Center), grid; boundary_conditions = default_boundary_conditions)
-
-    lCC = Field((Center, Center, Center), grid; boundary_conditions = default_boundary_conditions)
-    pCC = Field((Center, Center, Center), grid; boundary_conditions = default_boundary_conditions)
-
-    set!(lFF, λFF)
-    set!(pFF, φFF)
-
-    set!(lFC, λFC)
-    set!(pFC, φFC)
-
-    set!(lCF, λCF)
-    set!(pCF, φCF)
-
-    set!(lCC, λCC)
-    set!(pCC, φCC)
-
-    fill_halo_regions!(lFF)
-    fill_halo_regions!(lCF)
-    fill_halo_regions!(lFC)
-    fill_halo_regions!(lCC)
-    
-    fill_halo_regions!(pFF)
-    fill_halo_regions!(pCF)
-    fill_halo_regions!(pFC)
-    fill_halo_regions!(pCC)
-
-    # Coordinates
-    λᶠᶠᵃ = dropdims(lFF.data, dims=3)
-    φᶠᶠᵃ = dropdims(pFF.data, dims=3)
-
-    λᶠᶜᵃ = dropdims(lFC.data, dims=3)
-    φᶠᶜᵃ = dropdims(pFC.data, dims=3)
-
-    λᶜᶠᵃ = dropdims(lCF.data, dims=3)
-    φᶜᶠᵃ = dropdims(pCF.data, dims=3)
-
-    λᶜᶜᵃ = dropdims(lCC.data, dims=3)
-    φᶜᶜᵃ = dropdims(pCC.data, dims=3)
-
     # Allocate Metrics
     # TODO: make these on_architecture(arch, zeros(Nx, Ny))
     # to build the grid on GPU
@@ -218,52 +156,9 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
           φᶠᶜᵃ, φᶜᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ,
           radius)
           
-    # Metrics fields to fill halos
-    FF = Field((Face, Face, Center),     grid; boundary_conditions = default_boundary_conditions)
-    FC = Field((Face, Center, Center),   grid; boundary_conditions = default_boundary_conditions)
-    CF = Field((Center, Face, Center),   grid; boundary_conditions = default_boundary_conditions)
-    CC = Field((Center, Center, Center), grid; boundary_conditions = default_boundary_conditions)
+    # Metrics fields to fill fill_halo_size
 
     # Fill all periodic halos
-    set!(FF, Δxᶠᶠᵃ) 
-    set!(CF, Δxᶜᶠᵃ) 
-    set!(FC, Δxᶠᶜᵃ) 
-    set!(CC, Δxᶜᶜᵃ) 
-    fill_halo_regions!(FF)
-    fill_halo_regions!(CF)
-    fill_halo_regions!(FC)
-    fill_halo_regions!(CC)
-    Δxᶠᶠᵃ = deepcopy(dropdims(FF.data, dims=3))
-    Δxᶜᶠᵃ = deepcopy(dropdims(CF.data, dims=3))
-    Δxᶠᶜᵃ = deepcopy(dropdims(FC.data, dims=3))
-    Δxᶜᶜᵃ = deepcopy(dropdims(CC.data, dims=3))
-
-    set!(FF, Δyᶠᶠᵃ)
-    set!(CF, Δyᶜᶠᵃ)
-    set!(FC, Δyᶠᶜᵃ) 
-    set!(CC, Δyᶜᶜᵃ)
-    fill_halo_regions!(FF)
-    fill_halo_regions!(CF)
-    fill_halo_regions!(FC)
-    fill_halo_regions!(CC)
-    Δyᶠᶠᵃ = deepcopy(dropdims(FF.data, dims=3))
-    Δyᶜᶠᵃ = deepcopy(dropdims(CF.data, dims=3))
-    Δyᶠᶜᵃ = deepcopy(dropdims(FC.data, dims=3))
-    Δyᶜᶜᵃ = deepcopy(dropdims(CC.data, dims=3))
-
-    set!(FF, Azᶠᶠᵃ) 
-    set!(CF, Azᶜᶠᵃ)
-    set!(FC, Azᶠᶜᵃ)
-    set!(CC, Azᶜᶜᵃ)
-    fill_halo_regions!(FF)
-    fill_halo_regions!(CF)
-    fill_halo_regions!(FC)
-    fill_halo_regions!(CC)
-    Azᶠᶠᵃ = deepcopy(dropdims(FF.data, dims=3))
-    Azᶜᶠᵃ = deepcopy(dropdims(CF.data, dims=3))
-    Azᶠᶜᵃ = deepcopy(dropdims(FC.data, dims=3))
-    Azᶜᶜᵃ = deepcopy(dropdims(CC.data, dims=3))
-
     Hx, Hy, Hz = halo
 
     latitude_longitude_grid = LatitudeLongitudeGrid(; size,
@@ -359,6 +254,80 @@ function continue_south!(new_metric, lat_lon_metric::AbstractArray{<:Any, 2})
 
     return nothing
 end
+
+    
+#####
+##### Outer functions for filling halo regions for Zipper boundary conditions.
+#####
+
+@inline function fold_north_face_face!(i, k, grid, sign, c)
+    Nx, Ny, _ = size(grid)
+    
+    i′ = Nx - i + 2 # Remember! element Nx + 1 does not exist!
+    s  = ifelse(i′ > Nx , abs(sign), sign) # for periodic elements we change the sign
+    i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
+    Hy = grid.Hy
+    
+    for j = 1 : Hy
+        @inbounds begin
+            c[i, Ny + j, k] = s * c[i′, Ny - j + 1, k] 
+        end
+    end
+
+    return nothing
+end
+
+#####
+##### Fold north functions, used to fold the north direction onto itself
+#####
+
+@inline function fold_north_face_center!(i, k, grid, sign, c)
+    Nx, Ny, _ = size(grid)
+    
+    i′ = Nx - i + 2 # Remember! element Nx + 1 does not exist!
+    s  = ifelse(i′ > Nx , abs(sign), sign) # for periodic elements we change the sign
+    i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
+    Hy = grid.Hy
+    
+    for j = 1 : Hy
+        @inbounds begin
+            c[i, Ny + j, k] = s * c[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
+        end
+    end
+
+    return nothing
+end
+
+@inline function fold_north_center_face!(i, k, grid, sign, c)
+    Nx, Ny, _ = size(grid)
+    
+    i′ = Nx - i + 1
+    Hy = grid.Hy
+    
+    for j = 1 : Hy
+        @inbounds begin
+            c[i, Ny + j, k] = sign * c[i′, Ny - j + 1, k] 
+        end
+    end
+
+    return nothing
+end
+
+@inline function fold_north_center_center!(i, k, grid, sign, c)
+    Nx, Ny, _ = size(grid)
+    
+    i′ = Nx - i + 1
+    Hy = grid.Hy
+    
+    for j = 1 : Hy
+        @inbounds begin
+            c[i, Ny + j, k] = sign * c[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
+        end
+    end
+
+    return nothing
+end
+
 
 """
     _compute_tripolar_coordinates!(λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC, 
