@@ -81,6 +81,24 @@ const Δx = xspacing
 const Δy = yspacing
 const Δz = zspacing
 
+const RG  = RectilinearGrid
+const RGX = XRegularRG
+const RGY = YRegularRG
+const RGZ = ZRegularRG
+
+const OSSG  = OrthogonalSphericalShellGrid
+const OSSGZ = ZRegOrthogonalSphericalShellGrid
+
+const LLG  = LatitudeLongitudeGrid
+const LLGX = XRegularLLG
+const LLGY = YRegularLLG
+const LLGZ = ZRegularLLG
+
+# On the fly calculations of metrics
+const LLGF  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing}
+const LLGFX = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Number}
+const LLGFY = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Any, <:Number}
+
 include("difference_operators.jl")
 include("interpolation_operators.jl")
 include("interpolation_utils.jl")
