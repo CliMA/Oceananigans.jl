@@ -1,7 +1,7 @@
 using KernelAbstractions: @kernel, @index
 using Statistics
 using Oceananigans.AbstractOperations: BinaryOperation
-using Oceananigans.Fields: location, ZReducedField, Field
+using Oceananigans.Fields: location, XReducedField, YReducedField, ZReducedField, Field, ReducedField
 
 instantiate(T::Type) = T()
 instantiate(t) = t
@@ -89,6 +89,55 @@ end
     @inbounds field[i, j, k] = scalar_mask(i, j, k, grid, grid.immersed_boundary, loc..., value, field, mask)
 end
 
+#####
+##### Masking a `ReducedField`
+#####
+
+# We mask a `ReducedField` if the entire reduced direction is immersed.
+# This requires a sweep over the reduced direction
+
+function mask_immersed_field!(field::ReducedField, grid::ImmersedBoundaryGrid, loc, value)
+    loc  = instantiate.(loc)
+    dims = reduced_dimensions(field)
+    launch!(architecture(field), grid, size(field), _mask_immersed_reduced_field!, field, dims, loc, grid, value)
+    return nothing
+end
+
+@kernel function _mask_immersed_reduced_field!(field, dims, loc, grid, value)
+    i, j, k = @index(Global, NTuple)
+    mask = inactive_dimensions(i, j, k, grid, dims, loc)
+    @inbounds field[i, j, k] = ifelse(mask, value, field[i, j, k]) 
+end
+
+@inline inactive_search_range(i, grid, dim, dims) = ifelse(dim ∈ dims, 1:size(grid, dim), i:i)
+
+@inline function inactive_dimensions(i₀, j₀, k₀, grid, dims, loc)
+    mask = true
+    irange = inactive_search_range(i₀, grid, 1, dims)
+    jrange = inactive_search_range(j₀, grid, 2, dims)
+    krange = inactive_search_range(k₀, grid, 3, dims)
+    
+    # The loop activates over the whole direction only if reduced directions
+    for i in irange, j in jrange, k in krange
+        mask = mask & peripheral_node(i, j, k, grid, loc...) 
+    end
+
+    return mask
+end
+
+###
+### Efficient masking for `OnlyZReducedField` and an `AbstractGridFittedBoundary`
+###
+
+const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
+
+const CenterOrFace = Union{Center, Face}
+const OnlyZReducedField = Field{<:CenterOrFace, <:CenterOrFace, Nothing}
+
+# Does not require a sweep
+mask_immersed_field!(field::OnlyZReducedField, grid::AGFBIBG, loc, value) = 
+    mask_immersed_field_xy!(field, grid, loc, value; k=size(grid, 3), mask=peripheral_node)
+    
 #####
 ##### Masking for GridFittedBoundary
 #####
