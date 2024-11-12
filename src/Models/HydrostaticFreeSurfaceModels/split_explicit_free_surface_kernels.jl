@@ -133,24 +133,8 @@ end
 
 # Barotropic Model Kernels
 # u_Δz = u * Δz
-@kernel function _barotropic_mode_kernel!(U, V, grid, ::Nothing, u, v)
+@kernel function _barotropic_mode_kernel!(U, V, grid, u, v)
     i, j  = @index(Global, NTuple)
-    k_top = grid.Nz+1
-
-    @inbounds U[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]
-    @inbounds V[i, j, k_top-1] = Δzᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1]
-
-    for k in 2:grid.Nz
-        @inbounds U[i, j, k_top-1] += Δzᶠᶜᶜ(i, j, k, grid) * u[i, j, k]
-        @inbounds V[i, j, k_top-1] += Δzᶜᶠᶜ(i, j, k, grid) * v[i, j, k]
-    end
-end
-
-# Barotropic Model Kernels
-# u_Δz = u * Δz
-@kernel function _barotropic_mode_kernel!(U, V, grid, active_cells_map, u, v)
-    idx = @index(Global, Linear)
-    i, j = active_linear_index_to_tuple(idx, active_cells_map)
     k_top = grid.Nz+1
 
     @inbounds U[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]
@@ -164,8 +148,7 @@ end
 
 @inline function compute_barotropic_mode!(U, V, grid, u, v)
     active_cells_map = retrieve_surface_active_cells_map(grid)
-
-    launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, active_cells_map, u, v; active_cells_map)
+    launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, u, v; active_cells_map)
 
     return nothing
 end
