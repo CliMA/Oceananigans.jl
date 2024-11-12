@@ -96,10 +96,12 @@ Adapt.adapt_structure(to, m::MappedFunction) =
 
 @inline function (m::MappedFunction)(_ctx_)  
     m.f(_ctx_)
+    return nothing
 end
 
 @inline function (m::MappedFunction)(_ctx_, args...) 
     m.f(_ctx_, args...)
+    return nothing
 end
 
 # Support for 1D
