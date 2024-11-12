@@ -1,3 +1,5 @@
+using Distances
+
 device = Oceananigans.Architectures.device
 
 @inline convert_to_0_360(x) = ((x % 360) + 360) % 360
@@ -452,18 +454,6 @@ for which it is possible to retrieve the longitude and latitude by:
         λ2D[i, j] += first_pole_longitude + 90
         λ2D[i, j]  = convert_to_0_360(λ2D[i, j])
     end
-end
-
-# Is this the same as in Oceananigans? 
-# TODO: check it out
-function haversine(a, b, radius)
-    λ₁, φ₁ = a
-    λ₂, φ₂ = b
-
-    x₁, y₁, z₁ = lat_lon_to_cartesian(φ₁, λ₁, radius)
-    x₂, y₂, z₂ = lat_lon_to_cartesian(φ₂, λ₂, radius)
-
-    return radius * acos(max(-1.0, min((x₁ * x₂ + y₁ * y₂ + z₁ * z₂) / radius^2, 1.0)))
 end
 
 # Calculate the metric terms from the coordinates of the grid
