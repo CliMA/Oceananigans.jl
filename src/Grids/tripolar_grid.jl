@@ -1,3 +1,7 @@
+device = Oceananigans.Architectures.device
+
+@inline convert_to_0_360(x) = ((x % 360) + 360) % 360
+
 """ a structure to represent a tripolar grid on a spherical shell """
 struct Tripolar{N, F, S}
     north_poles_latitude :: N
@@ -56,21 +60,21 @@ The north singularities are located at
 `i = 1, j = Nφ` and `i = Nλ ÷ 2 + 1, j = Nλ` 
 """
 function TripolarGrid(arch = CPU(), FT::DataType = Float64; 
-                      size, 
+                      size,
                       southernmost_latitude = -80, # The southermost `Center` latitude of the grid
-                      halo = (4, 4, 4), 
-                      radius = R_Earth, 
+                      halo = (4, 4, 4),
+                      radius = R_Earth,
                       z = (0, 1),
                       north_poles_latitude = 55,
                       first_pole_longitude = 70)  # The second pole is at `λ = first_pole_longitude + 180ᵒ`
 
-    # TODO: change a couple of allocations here and there to be able 
+    # TODO: change a couple of allocations here and there to be able
     # to construct the grid on the GPU. This is not a huge problem as
     # grid generation is quite fast, but it might become for sub-kilometer grids
 
     latitude  = (southernmost_latitude, 90)
     longitude = (-180, 180) 
-        
+
     focal_distance = tand((90 - north_poles_latitude) / 2)
 
     Nλ, Nφ, Nz = size
@@ -106,7 +110,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     φCC = zeros(Nλ, Nφ)
 
     loop! = _compute_tripolar_coordinates!(device(CPU()), (16, 16), (Nλ, Nφ))
-    
+
     loop!(λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC, 
           λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶠᵃ, φᵃᶜᵃ, 
           first_pole_longitude,
@@ -127,7 +131,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
 
     Nx = Nλ
     Ny = Nφ
-            
+
     # return λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC
     # Helper grid to fill halo 
     grid = RectilinearGrid(; size = (Nx, Ny), halo = (Hλ, Hφ), topology = (Periodic, RightConnected, Flat), x = (0, 1), y = (0, 1))
@@ -148,7 +152,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
 
     lFC = Field((Face, Center, Center), grid; boundary_conditions = default_boundary_conditions)
     pFC = Field((Face, Center, Center), grid; boundary_conditions = default_boundary_conditions)
-    
+
     lCF = Field((Center, Face, Center), grid; boundary_conditions = default_boundary_conditions)
     pCF = Field((Center, Face, Center), grid; boundary_conditions = default_boundary_conditions)
 
