@@ -1,6 +1,5 @@
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Utils: KernelParameters, launch!
-using Oceananigans.Grids: fold_north_boundary!
 
 """
     ZipperBoundaryCondition(sign = 1)
@@ -42,15 +41,87 @@ c₂ == c₃
 
 This is not the case for the v-velocity (or any field on the j-faces) where the last grid point is not repeated.
 """
+#####
+##### Outer functions for filling halo regions for Zipper boundary conditions.
+#####
 
-# tracers or similar fields
-@inline function _fill_north_halo!(i, k, grid, c, bc::ZBC, loc, args...) 
+@inline function fold_north_face_face!(i, k, grid, sign, c)
     Nx, Ny, _ = size(grid)
     
-    @inbounds ℓx = loc[1]
-    @inbounds ℓy = loc[2]
-
-    fold_north_boundary!(c, i, k, ℓx, ℓy, Nx, Ny, Hy, bc.condition)
+    i′ = Nx - i + 2 # Remember! element Nx + 1 does not exist!
+    s  = ifelse(i′ > Nx , abs(sign), sign) # for periodic elements we change the sign
+    i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
+    Hy = grid.Hy
+    
+    for j = 1 : Hy
+        @inbounds begin
+            c[i, Ny + j, k] = s * c[i′, Ny - j + 1, k] 
+        end
+    end
 
     return nothing
 end
+
+@inline function fold_north_face_center!(i, k, grid, sign, c)
+    Nx, Ny, _ = size(grid)
+    
+    i′ = Nx - i + 2 # Remember! element Nx + 1 does not exist!
+    s  = ifelse(i′ > Nx , abs(sign), sign) # for periodic elements we change the sign
+    i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
+    Hy = grid.Hy
+    
+    for j = 1 : Hy
+        @inbounds begin
+            c[i, Ny + j, k] = s * c[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
+        end
+    end
+
+    return nothing
+end
+
+@inline function fold_north_center_face!(i, k, grid, sign, c)
+    Nx, Ny, _ = size(grid)
+    
+    i′ = Nx - i + 1
+    Hy = grid.Hy
+    
+    for j = 1 : Hy
+        @inbounds begin
+            c[i, Ny + j, k] = sign * c[i′, Ny - j + 1, k] 
+        end
+    end
+
+    return nothing
+end
+
+@inline function fold_north_center_center!(i, k, grid, sign, c)
+    Nx, Ny, _ = size(grid)
+    
+    i′ = Nx - i + 1
+    Hy = grid.Hy
+    
+    for j = 1 : Hy
+        @inbounds begin
+            c[i, Ny + j, k] = sign * c[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
+        end
+    end
+
+    return nothing
+end
+
+const CCLocation = Tuple{<:Center, <:Center, <:Any} 
+const FCLocation = Tuple{<:Face,   <:Center, <:Any} 
+const CFLocation = Tuple{<:Center, <:Face,   <:Any} 
+const FFLocation = Tuple{<:Face,   <:Face,   <:Any} 
+
+# tracers or similar fields
+@inline _fill_north_halo!(i, k, grid, c, bc::ZBC, ::CCLocation, args...) = fold_north_center_center!(i, k, grid, bc.condition, c)
+
+# u-velocity or similar fields
+@inline _fill_north_halo!(i, k, grid, u, bc::ZBC, ::FCLocation, args...) = fold_north_face_center!(i, k, grid, bc.condition, u)
+
+# v-velocity or similar fields
+@inline _fill_north_halo!(i, k, grid, v, bc::ZBC, ::CFLocation, args...) = fold_north_center_face!(i, k, grid, bc.condition, v)
+
+# vorticity or similar fields
+@inline _fill_north_halo!(i, k, grid, ζ, bc::ZBC, ::FFLocation, args...) = fold_north_face_face!(i, k, grid, bc.condition, ζ)
