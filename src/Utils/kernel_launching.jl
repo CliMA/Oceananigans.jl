@@ -466,7 +466,7 @@ const MappedNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:IndexMa
     offsets = workitems(ndrange)
     stride = size(offsets, 1)
     gidx = groupidx.I[1]
-    @inbounds ndrange.workitems.index_map[(gidx - 1) * stride + idx.I[1]]
+    nI = @inbounds ndrange.workitems.index_map[(gidx - 1) * stride + idx.I[1]]
     return CartesianIndex(nI)
 end
 
