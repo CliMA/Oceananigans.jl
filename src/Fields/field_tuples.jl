@@ -85,7 +85,7 @@ function tupled_fill_halo_regions!(fields, args...; kwargs...)
 end
     
 # Version where grid is provided:
-function tupled_fill_halo_regions!(fields, grid, args...; kwargs...)
+function tupled_fill_halo_regions!(fields, grid::AbstractGrid, args...; kwargs...)
 
     ordinary_fields = produce_ordinary_fields(fields, args...; kwargs)
 
