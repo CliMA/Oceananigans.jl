@@ -1,7 +1,7 @@
 using Oceananigans
 using GLMakie
 
-r = "0"
+r = "20"
 
 filenames = [
     "wind_driven_AMD_$r.jld2",
