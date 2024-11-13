@@ -9,6 +9,7 @@ using Oceananigans.Fields: reduced_location
 using Oceananigans.Fields: fractional_indices, truncate_fractional_indices
 using Oceananigans.Grids: ξnode, ηnode, rnode
 
+using Random
 using CUDA: @allowscalar
 
 """
@@ -419,21 +420,28 @@ end
                 @info "    Testing interpolation for $(latitude) latitude and longitude, $(z) z on $(typeof(loc))s..."
                 grid = LatitudeLongitudeGrid(arch; size = (20, 20, 32), longitude, latitude, z, halo = (5, 5, 5))
             
-                (x, y, z)  = X = (-0.082, 0.034, -49.9)
-                fi, fj, fk = fractional_indices(X, grid, loc, loc, loc)
-                i, j, k    = truncate_fractional_indices(fi, fj, fk)
+                # Test random positions, 
+                # set seed for reproducibility
+                Random.seed!(1234)
+                Xs = [(2rand()-1, 2rand()-1, -100rand()) for p in 1:20]
 
-                x⁻ = @allowscalar ξnode(i, j, k, grid, loc, loc, loc)
-                y⁻ = @allowscalar ηnode(i, j, k, grid, loc, loc, loc)
-                z⁻ = @allowscalar rnode(i, j, k, grid, loc, loc, loc)
+                for X in Xs
+                    (x, y, z)  = X 
+                    fi, fj, fk = fractional_indices(X, grid, loc, loc, loc)
+                    i, j, k    = truncate_fractional_indices(fi, fj, fk)
 
-                x⁺ = @allowscalar ξnode(i+1, j, k, grid, loc, loc, loc)
-                y⁺ = @allowscalar ηnode(i, j+1, k, grid, loc, loc, loc)
-                z⁺ = @allowscalar rnode(i, j, k+1, grid, loc, loc, loc)
+                    x⁻ = @allowscalar ξnode(i, j, k, grid, loc, loc, loc)
+                    y⁻ = @allowscalar ηnode(i, j, k, grid, loc, loc, loc)
+                    z⁻ = @allowscalar rnode(i, j, k, grid, loc, loc, loc)
 
-                @test x⁻ ≤ x ≤ x⁺
-                @test y⁻ ≤ y ≤ y⁺
-                @test z⁻ ≤ z ≤ z⁺
+                    x⁺ = @allowscalar ξnode(i+1, j, k, grid, loc, loc, loc)
+                    y⁺ = @allowscalar ηnode(i, j+1, k, grid, loc, loc, loc)
+                    z⁺ = @allowscalar rnode(i, j, k+1, grid, loc, loc, loc)
+
+                    @test x⁻ ≤ x ≤ x⁺
+                    @test y⁻ ≤ y ≤ y⁺
+                    @test z⁻ ≤ z ≤ z⁺
+                end 
             end
         end
     end
