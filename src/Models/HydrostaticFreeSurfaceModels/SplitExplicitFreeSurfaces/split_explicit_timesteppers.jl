@@ -5,8 +5,8 @@ A timestepping scheme used for substepping in the split-explicit free surface so
     
 The equations are evolved as follows:
 ```math
-ηᵐ⁺¹ = ηᵐ - Δτ (∂x Uᵐ + ∂y Vᵐ)
-Uᵐ⁺¹ = Uᵐ - Δτ (∂x ηᵐ⁺¹ - Gᵁ)
+ηᵐ⁺¹ = ηᵐ - Δτ (∂x Uᵐ + ∂y Vᵐ) \\
+Uᵐ⁺¹ = Uᵐ - Δτ (∂x ηᵐ⁺¹ - Gᵁ) \\
 Vᵐ⁺¹ = Vᵐ - Δτ (∂y ηᵐ⁺¹ - Gⱽ)
 ```
 """
@@ -48,8 +48,8 @@ free surface at time-step `m + 1/2`:
 The equations are evolved as follows:
 
 ```math
-ηᵐ⁺¹ = ηᵐ - Δτ g H (∂x Ũ + ∂y Ṽ)
-Uᵐ⁺¹ = Uᵐ - Δτ (∂x η̃ - Gᵁ)
+ηᵐ⁺¹ = ηᵐ - Δτ g H (∂x Ũ + ∂y Ṽ) \\
+Uᵐ⁺¹ = Uᵐ - Δτ (∂x η̃ - Gᵁ) \\
 Vᵐ⁺¹ = Vᵐ - Δτ (∂y η̃ - Gⱽ)
 ```    
 
@@ -57,8 +57,8 @@ where `η̃`, `Ũ` and `Ṽ` are the AB3 time-extrapolated values of free surfa
 barotropic zonal and meridional velocities, respectively:
 
 ```math
-Ũ = α Uᵐ   + θ Uᵐ⁻¹ + β Uᵐ⁻²
-Ṽ = α Vᵐ   + θ Vᵐ⁻¹ + β Vᵐ⁻²
+Ũ = α Uᵐ   + θ Uᵐ⁻¹ + β Uᵐ⁻² \\
+Ṽ = α Vᵐ   + θ Vᵐ⁻¹ + β Vᵐ⁻² \\
 η̃ = δ ηᵐ⁺¹ + μ ηᵐ   + γ ηᵐ⁻¹ + ϵ ηᵐ⁻²
 ```
 
