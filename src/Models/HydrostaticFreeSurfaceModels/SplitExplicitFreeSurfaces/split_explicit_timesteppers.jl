@@ -5,9 +5,9 @@ A timestepping scheme used for substepping in the split-explicit free surface so
     
 The equations are evolved as follows:
 ```math
-ηᵐ⁺¹ = ηᵐ - Δτ (∂x Uᵐ + ∂y Vᵐ) \\
-Uᵐ⁺¹ = Uᵐ - Δτ (∂x ηᵐ⁺¹ - Gᵁ) \\
-Vᵐ⁺¹ = Vᵐ - Δτ (∂y ηᵐ⁺¹ - Gⱽ)
+η^{m+1} = η^m - Δτ (∂_x U^m + ∂_y V^m), \\
+U^{m+1} = U^m - Δτ (∂_x η^{m+1} - G^U), \\
+V^{m+1} = V^m - Δτ (∂_y η^{m+1} - G^V).
 ```
 """
 struct ForwardBackwardScheme end
@@ -48,18 +48,18 @@ free surface at time-step `m + 1/2`:
 The equations are evolved as follows:
 
 ```math
-ηᵐ⁺¹ = ηᵐ - Δτ g H (∂x Ũ + ∂y Ṽ) \\
-Uᵐ⁺¹ = Uᵐ - Δτ (∂x η̃ - Gᵁ) \\
-Vᵐ⁺¹ = Vᵐ - Δτ (∂y η̃ - Gⱽ)
+η^{m+1} = η^m - Δτ g H (∂_x Ũ + ∂y Ṽ), \\
+U^{m+1} = U^m - Δτ (∂_x η̃ - G^U), \\
+V^{m+1} = V^m - Δτ (∂_y η̃ - G^V),
 ```    
 
 where `η̃`, `Ũ` and `Ṽ` are the AB3 time-extrapolated values of free surface, 
 barotropic zonal and meridional velocities, respectively:
 
 ```math
-Ũ = α Uᵐ   + θ Uᵐ⁻¹ + β Uᵐ⁻² \\
-Ṽ = α Vᵐ   + θ Vᵐ⁻¹ + β Vᵐ⁻² \\
-η̃ = δ ηᵐ⁺¹ + μ ηᵐ   + γ ηᵐ⁻¹ + ϵ ηᵐ⁻²
+Ũ = α U^m   + θ U^{m-1} + β U^{m-2}, \\
+Ṽ = α V^m   + θ V^{m-1} + β V^{m-2}, \\
+η̃ = δ η^{m+1} + μ η^m   + γ η^{m-1} + ϵ η^{m-2}.
 ```
 
 The default values for the time-extrapolation coefficients, described by [Shchepetkin2005](@citet), 
