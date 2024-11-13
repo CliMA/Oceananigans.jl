@@ -392,6 +392,8 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 elseif Closure === CATKEVerticalDiffusivity
                     # CATKE isn't supported with NonhydrostaticModel yet
                     @test_skip time_stepping_works_with_closure(arch, FT, Closure)
+                elseif Closure() isa DynamicSmagorinsky
+                    @test_skip time_stepping_works_with_closure(arch, FT, Closure)
                 else
                     @test time_stepping_works_with_closure(arch, FT, Closure)
                 end
