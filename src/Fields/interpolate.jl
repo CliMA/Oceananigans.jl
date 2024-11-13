@@ -218,23 +218,6 @@ end
 end
 
 """
-    truncate_fractional_indices(fi, fj, fk)
-
-Truncate _fractional_ indices output from fractional indices `fi, fj, fk` to integer indices, dealing
-with `nothing` indices for `Flat` domains.
-"""
-@inline function truncate_fractional_indices(fi, fj, fk)
-    i = truncate_fractional_index(fi)
-    j = truncate_fractional_index(fj)
-    k = truncate_fractional_index(fk)
-    return (i, j, k)
-end
-
-@inline truncate_fractional_index(::Nothing) = 1
-@inline truncate_fractional_index(fi) = Base.unsafe_trunc(Int, fi)
-
-
-"""
     interpolate(at_node, from_field, from_loc, from_grid)
 
 Interpolate `from_field`, `at_node`, on `from_grid` and at `from_loc`ation,
