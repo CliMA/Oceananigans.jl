@@ -1,5 +1,7 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans
+
 @kernel function compute_nonorthogonality_angle!(angle, grid, xF, yF, zF)
     i, j = @index(Global, NTuple)
     
@@ -75,6 +77,8 @@ end
 
         Hx, Hy, _ = halo_size(grid)
 
+        # NOTE: This test will fail until the 
+        # refactor of the split-explicit free surface model is done
         @test Hy == length(free_surface.substepping.averaging_weights) + 1
 
         @test begin
