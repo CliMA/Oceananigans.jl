@@ -41,9 +41,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
 
     # Calculate diffusivities and hydrostatic pressure
     @apply_regionally compute_auxiliaries!(model)
-    @info "        computed auxiliaries"
     fill_halo_regions!(model.diffusivity_fields; only_local_halos = true)
-    @info "        filled halo regions of diffusivity_fields"
     
     for callback in callbacks
         callback.callsite isa UpdateStateCallsite && callback(model)
@@ -53,7 +51,6 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
 
     compute_tendencies && 
         @apply_regionally compute_tendencies!(model, callbacks)
-    @info "        finished updating"
 
     return nothing
 end

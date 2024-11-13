@@ -230,7 +230,6 @@ function NonhydrostaticModel(; grid,
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                 forcing, closure, background_fields, particles, biogeochemistry, velocities, tracers,
                                 pressures, diffusivity_fields, timestepper, pressure_solver, auxiliary_fields)
-    @info "        Built NonhydrostaticModel"
 
     update_state!(model; compute_tendencies = false)
     

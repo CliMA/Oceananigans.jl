@@ -6,11 +6,6 @@ using Oceananigans.Operators: volume
 ##### Double dot product of strain on cell edges (currently unused)
 #####
 
-# tr_Σ² : ccc
-#   Σ₁₂ : ffc
-#   Σ₁₃ : fcf
-#   Σ₂₃ : cff
-
 "Return the double dot product of strain at `ccc`."
 @inline ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w) =      tr_Σ²(i, j, k, grid, u, v, w) +
                                             2 * ℑxyᶜᶜᵃ(i, j, k, grid, Σ₁₂², u, v, w) +

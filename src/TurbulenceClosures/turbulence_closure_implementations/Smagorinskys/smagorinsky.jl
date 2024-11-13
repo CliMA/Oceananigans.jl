@@ -112,9 +112,7 @@ function compute_diffusivities!(diffusivity_fields, closure::Smagorinsky, model;
     velocities = model.velocities
     tracers = model.tracers
 
-    @info "         Starting call to compute_coefficient_fields!"
     compute_coefficient_fields!(diffusivity_fields, closure, model; parameters)
-    @info "         Finished compute_coefficient_fields!"
 
     launch!(arch, grid, parameters, _compute_smagorinsky_viscosity!,
             diffusivity_fields, grid, closure, buoyancy, velocities, tracers)

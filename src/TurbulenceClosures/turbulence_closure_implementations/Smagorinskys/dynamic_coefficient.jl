@@ -83,7 +83,6 @@ end
 @kernel function _compute_LM_MM!(LM, MM, Σ, Σ̄, grid, u, v, w)
     i, j, k = @index(Global, NTuple)
     LM_ijk, MM_ijk = LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
-    @info "                 Finished calling LM_and_MM"
     @inbounds begin
         LM[i, j, k] = LM_ijk
         MM[i, j, k] = MM_ijk
@@ -236,9 +235,7 @@ function compute_coefficient_fields!(diffusivity_fields, closure::LagrangianAver
         𝒥ᴸᴹ_min = cˢ.minimum_numerator
 
         if !isfinite(clock.last_Δt) || Δt == 0 # first time-step
-            @info "               Launching _compute_LM_MM! at t=0"
             launch!(arch, grid, :xyz, _compute_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, Σ, Σ̄, grid, u, v, w)
-            @info "               Finished _compute_LM_MM!"
             parent(𝒥ᴸᴹ) .= max(mean(𝒥ᴸᴹ), 𝒥ᴸᴹ_min)
             parent(𝒥ᴹᴹ) .= mean(𝒥ᴹᴹ)
         else
