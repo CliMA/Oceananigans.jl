@@ -5,7 +5,7 @@ using Oceananigans.Grids: topological_tuple_length, total_size
 using Oceananigans.Fields: BackgroundField
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
-using Oceananigans.TurbulenceClosures.Smagorinskys: LagrangianAveraging
+using Oceananigans.TurbulenceClosures.Smagorinskys: LagrangianAveraging, DynamicSmagorinsky
 
 function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
