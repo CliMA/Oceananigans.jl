@@ -165,7 +165,7 @@ julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
 julia> xspacings(grid, Center(), Center(), Center())
 KernelFunctionOperation at (Center, Center, Center)
 ├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
-├── kernel_function: xspacing (generic function with 8 methods)
+├── kernel_function: xspacing (generic function with 27 methods)
 └── arguments: ("Center", "Center", "Center")
 ```
 """
@@ -191,7 +191,7 @@ julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
 julia> yspacings(grid, Center(), Face(), Center())
 KernelFunctionOperation at (Center, Face, Center)
 ├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
-├── kernel_function: yspacing (generic function with 8 methods)
+├── kernel_function: yspacing (generic function with 27 methods)
 └── arguments: ("Center", "Face", "Center")
 ```
 """
@@ -217,7 +217,7 @@ julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
 julia> zspacings(grid, Center(), Center(), Face())
 KernelFunctionOperation at (Center, Center, Face)
 ├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
-├── kernel_function: zspacing (generic function with 8 methods)
+├── kernel_function: zspacing (generic function with 27 methods)
 └── arguments: ("Center", "Center", "Face")
 ```
 """
