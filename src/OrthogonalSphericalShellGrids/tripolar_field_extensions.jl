@@ -11,10 +11,20 @@ using Oceananigans.Fields: architecture,
                            validate_field_data, 
                            FieldBoundaryBuffers
 
+using Oceananigans.ImmersedBoundaries
+
 import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 import Oceananigans.Grids: x_domain, y_domain
 import Oceananigans.Fields: Field
 import Oceananigans.Fields: tupled_fill_halo_regions!
+
+# Some aliases
+const TRG = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
+
+# A tripolar grid is always between 0 and 360 in longitude
+# and always caps at the north pole (90°N)
+x_domain(grid::TRG) = 0, 360
+y_domain(grid::TRG) = minimum(parent(grid.φᶠᶠᵃ)), 90
 
 # a `TripolarGrid` needs a `ZipperBoundaryCondition` for the north boundary
 # The `sign` 1 for regular tracers and -1 for velocities and signed vectors
@@ -25,14 +35,16 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
 
     loc = assumed_field_location(field_name)
 
+    # Assumption: :u and :v are signed vectors, all other fields are scalars
     sign = field_name == :u || field_name == :v ? -1 : 1
 
     west   = regularize_boundary_condition(bcs.west,   grid, loc, 1, LeftBoundary,  prognostic_names)
     east   = regularize_boundary_condition(bcs.east,   grid, loc, 1, RightBoundary, prognostic_names)
     south  = regularize_boundary_condition(bcs.south,  grid, loc, 2, LeftBoundary,  prognostic_names)
-    north  = ZipperBoundaryCondition(sign)
     bottom = regularize_boundary_condition(bcs.bottom, grid, loc, 3, LeftBoundary,  prognostic_names)
     top    = regularize_boundary_condition(bcs.top,    grid, loc, 3, RightBoundary, prognostic_names)
+
+    north  = ZipperBoundaryCondition(sign)
 
     immersed = regularize_immersed_boundary_condition(bcs.immersed, grid, loc, field_name, prognostic_names)
 
@@ -40,8 +52,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
 end
 
 # HEAVY ASSUMPTION!!!!
-# Fields on edges are signed vectors and fields on
-# nodes and centers are scalars)
+# Fields living on edges are signed vectors while fields living on nodes and centers are scalars
 sign(LX, LY) = 1
 sign(::Type{Face},   ::Type{Face})   = 1
 sign(::Type{Face},   ::Type{Center}) = - 1 # u-velocity type

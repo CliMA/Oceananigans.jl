@@ -24,6 +24,5 @@ using OffsetArrays
 include("generate_tripolar_coordinates.jl")
 include("tripolar_grid.jl")
 include("tripolar_field_extensions.jl")
-include("with_halo.jl")
 
 end

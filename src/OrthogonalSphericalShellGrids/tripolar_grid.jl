@@ -1,4 +1,7 @@
 using Oceananigans.BoundaryConditions: ZipperBoundaryCondition
+using Oceananigans.Grids: architecture, cpu_face_constructor_z
+
+import Oceananigans.Grids: with_halo
 
 """ a structure to represent a tripolar grid on a spherical shell """
 struct Tripolar{N, F, S}
@@ -362,6 +365,22 @@ function continue_south!(new_metric, lat_lon_metric::AbstractArray{<:Any, 2})
     return nothing
 end
 
-# A tripolar grid is always between 0 and 360 in longitude!
-x_domain(grid::TripolarGrid) = 0, 360
-y_domain(grid::TripolarGrid) = minimum(parent(grid.φᶠᶠᵃ)), 90
+function with_halo(new_halo, old_grid::TripolarGrid)
+
+    size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
+
+    z = cpu_face_constructor_z(old_grid)
+
+    north_poles_latitude = old_grid.conformal_mapping.north_poles_latitude
+    first_pole_longitude = old_grid.conformal_mapping.first_pole_longitude
+    southernmost_latitude = old_grid.conformal_mapping.southernmost_latitude
+
+    new_grid = TripolarGrid(architecture(old_grid), eltype(old_grid);
+                            size, z, halo = new_halo,
+                            radius = old_grid.radius,
+                            north_poles_latitude,
+                            first_pole_longitude,
+                            southernmost_latitude)
+
+    return new_grid
+end
