@@ -414,7 +414,7 @@ end
             zs = range(-100, 0, length=32)
 
             for latitude in (hu, hs), longitude in (hu, hs), z in (zu, zs)
-                grid = LatitudeLongitudeGrid(arch; longitude, longitude, z, halo = (5, 5, 5))
+                grid = LatitudeLongitudeGrid(arch; longitude, latitude, z, halo = (5, 5, 5))
             
                 (x, y, z)  = X = (-0.082, 0.034, -49.9)
                 fi, fj, fk = fractional_indices(X, underlying_grid, c, c, c)
