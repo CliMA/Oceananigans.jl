@@ -1,5 +1,6 @@
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.Grids: XDirection, YDirection, ZDirection
+using Oceananigans.ImmersedBoundaries: retrieve_surface_active_cells_map
 
 import Oceananigans.Architectures: architecture
 
