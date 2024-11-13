@@ -7,6 +7,8 @@ using Oceananigans.Fields: ReducedField, has_velocities
 using Oceananigans.Fields: VelocityFields, TracerFields, interpolate, interpolate!
 using Oceananigans.Fields: reduced_location
 
+using CUDA: @allowscalar
+
 """
     correct_field_size(grid, FieldType, Tx, Ty, Tz)
 
@@ -401,6 +403,35 @@ end
 
         for arch in archs, FT in float_types
             run_field_reduction_tests(FT, arch)
+        end
+    end
+
+    @testset "Unit interpolation" begin
+        for arch in archs
+            hu = (-1, 1)
+            hs = range(-1, 1, length=21)
+            zu = (-100, 0)
+            zs = range(-100, 0, length=32)
+
+            for latitude in (hu, hs), longitude in (hu, hs), z in (zu, zs)
+                grid = LatitudeLongitudeGrid(arch; longitude, longitude, z, halo = (5, 5, 5))
+            
+                (x, y, z)  = X = (-0.082, 0.034, -49.9)
+                fi, fj, fk = fractional_indices(X, underlying_grid, c, c, c)
+                i, j, k    = truncate_fractional_indices(fi, fj, fk)
+
+                x⁻ = @allowscalar ξnode(i, j, k, underlying_grid, f, f, f)
+                y⁻ = @allowscalar ηnode(i, j, k, underlying_grid, f, f, f)
+                z⁻ = @allowscalar rnode(i, j, k, underlying_grid, f, f, f)
+
+                x⁺ = @allowscalar ξnode(i+1, j, k, underlying_grid, f, f, f)
+                y⁺ = @allowscalar ηnode(i, j+1, k, underlying_grid, f, f, f)
+                z⁺ = @allowscalar rnode(i, j, k+1, underlying_grid, f, f, f)
+
+                @test x⁻ ≤ x ≤ x⁺
+                @test y⁻ ≤ y ≤ y⁺
+                @test z⁻ ≤ z ≤ z⁺
+            end
         end
     end
 

@@ -61,10 +61,16 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
     # Determine whether particle was _previously_ in a non-immersed cell
     i⁻, j⁻, k⁻ = previous_particle_indices
 
+    tx, ty, tz = map(immersed_boundary_topology, topology(ibg))
+
     # Left bounds of the previous cell
-    xᴿ = ξnode(i⁻ + 1, j⁻ + 1, k⁻ + 1, ibg, f, f, f)
-    yᴿ = ηnode(i⁻ + 1, j⁻ + 1, k⁻ + 1, ibg, f, f, f)
-    zᴿ = rnode(i⁻ + 1, j⁻ + 1, k⁻ + 1, ibg, f, f, f)
+    iᴿ = rightmost_interface_index(tx, i⁻)
+    jᴿ = rightmost_interface_index(ty, j⁻)
+    kᴿ = rightmost_interface_index(tz, k⁻)
+
+    xᴿ = ξnode(iᴿ, j⁻, k⁻, ibg, f, f, f)
+    yᴿ = ηnode(i⁻, jᴿ, k⁻, ibg, f, f, f)
+    zᴿ = rnode(i⁻, j⁻, kᴿ, ibg, f, f, f)
 
     # Right bounds of the previous cell
     xᴸ = ξnode(i⁻, j⁻, k⁻, ibg, f, f, f)
@@ -72,10 +78,12 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
     zᴸ = rnode(i⁻, j⁻, k⁻, ibg, f, f, f)
 
     Cʳ = restitution
-    tx, ty, tz = map(immersed_boundary_topology, topology(ibg))
+    
     xb⁺ = enforce_boundary_conditions(tx, x, xᴸ, xᴿ, Cʳ)
     yb⁺ = enforce_boundary_conditions(ty, y, yᴸ, yᴿ, Cʳ)
     zb⁺ = enforce_boundary_conditions(tz, z, zᴸ, zᴿ, Cʳ)
+
+    @show zᴿ, zᴸ, zb⁺, fi, fj, fk, i⁻, j⁻, k⁻
 
     immersed = immersed_cell(i, j, k, ibg)
     x⁺ = ifelse(immersed, xb⁺, x)
@@ -107,6 +115,8 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     fi, fj, fk = fractional_indices(X, grid, c, c, c)
     i, j, k = truncate_fractional_indices(fi, fj, fk)
 
+    @show X, fi, fj, fk
+    
     current_particle_indices = (i, j, k)
 
     # Interpolate velocity to particle position
@@ -133,9 +143,9 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     jᴿ = rightmost_interface_index(ty, Ny)
     kᴿ = rightmost_interface_index(tz, Nz)
 
-    xᴸ = ξnode(1, j, k, grid, f, f, f)
-    yᴸ = ηnode(i, 1, k, grid, f, f, f)
-    zᴸ = rnode(i, j, 1, grid, f, f, f)
+    xᴸ = ξnode(i, j, k, grid, f, f, f)
+    yᴸ = ηnode(i, j, k, grid, f, f, f)
+    zᴸ = rnode(i, j, k, grid, f, f, f)
 
     xᴿ = ξnode(iᴿ, j, k, grid, f, f, f)
     yᴿ = ηnode(i, jᴿ, k, grid, f, f, f)
@@ -146,9 +156,12 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     x⁺ = enforce_boundary_conditions(tx, x⁺, xᴸ, xᴿ, Cʳ)
     y⁺ = enforce_boundary_conditions(ty, y⁺, yᴸ, yᴿ, Cʳ)
     z⁺ = enforce_boundary_conditions(tz, z⁺, zᴸ, zᴿ, Cʳ)
+
     if grid isa ImmersedBoundaryGrid
         previous_particle_indices = current_particle_indices # particle has been advected
+        @show x⁺, y⁺, z⁺, zᴸ, zᴿ, i, j, k
         (x⁺, y⁺, z⁺) = bounce_immersed_particle((x⁺, y⁺, z⁺), grid, Cʳ, previous_particle_indices)
+        @show x⁺, y⁺, z⁺, i, j, k
     end
 
     return (x⁺, y⁺, z⁺)
