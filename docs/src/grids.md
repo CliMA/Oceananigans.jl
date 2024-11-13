@@ -219,7 +219,7 @@ current_figure()
 
 ## Once more with feeling
 
-In summary, making a grid requires 
+In summary, making a grid requires
 
 * The machine architecture, or whether data is stored on the CPU, GPU, or distributed across multiple devices or nodes.
 * Information about the domain geometry. Domains can take a variety of shapes, including
@@ -413,7 +413,7 @@ hidespines!(axy)
 
 axΔy = Axis(fig[2, 1]; xlabel = "y (m)", ylabel = "y-spacing (m)")
 scatter!(axΔy, yc, Δy)
-hidespines!(axΔy, :t, :r) 
+hidespines!(axΔy, :t, :r)
 
 axz = Axis(fig[3, 1], title="z-grid")
 lines!(axz, [-Lz, 0], [0, 0], color=:gray)
@@ -440,18 +440,17 @@ using Oceananigans
 
 ```@example latlon_nodes
 grid = LatitudeLongitudeGrid(size = (1, 44),
-                             longitude = (0, 1),   
+                             longitude = (0, 1),
                              latitude = (0, 88),
                              topology = (Bounded, Bounded, Flat))
 
-φ = φnodes(grid, Center())
 Δx = xspacings(grid, Center(), Center())
 
 using CairoMakie
 
 fig = Figure(size=(600, 400))
 ax = Axis(fig[1, 1], xlabel="Zonal spacing on 2 degree grid (km)", ylabel="Latitude (degrees)")
-scatter!(ax, Δx ./ 1e3, φ)
+scatter!(ax, Δx ./ 1e3)
 
 current_figure()
 ```
@@ -473,7 +472,7 @@ m = 2 # spacing at the equator in degrees
 function latitude_faces(j)
     if j == 1 # equator
         return 0
-    else # crudely estimate the location of the jth face 
+    else # crudely estimate the location of the jth face
         φ₋ = latitude_faces(j-1)
         φ′ = φ₋ + m * scale_factor(φ₋) / 2
         return φ₋ + m * scale_factor(φ′)
@@ -493,7 +492,7 @@ grid = LatitudeLongitudeGrid(size = (Nx, Ny),
 180×28×1 LatitudeLongitudeGrid{Float64, Bounded, Bounded, Flat} on CPU with 3×3×0 halo and with precomputed metrics
 ├── longitude: Bounded  λ ∈ [0.0, 360.0]   regularly spaced with Δλ=2.0
 ├── latitude:  Bounded  φ ∈ [0.0, 77.2679] variably spaced with min(Δφ)=2.0003, max(Δφ)=6.95319
-└── z:         Flat z                      
+└── z:         Flat z
 ```
 
 We've also illustrated the construction of a grid that is `Flat` in the vertical direction.
@@ -508,7 +507,7 @@ m = 2 # spacing at the equator in degrees
 function latitude_faces(j)
     if j == 1 # equator
         return 0
-    else # crudely estimate the location of the jth face 
+    else # crudely estimate the location of the jth face
         φ₋ = latitude_faces(j-1)
         φ′ = φ₋ + m * scale_factor(φ₋) / 2
         return φ₋ + m * scale_factor(φ′)
@@ -529,18 +528,17 @@ grid = LatitudeLongitudeGrid(size = (Nx, Ny),
 ```
 
 ```@example plot
-φ = φnodes(grid, Center())
-Δx = xspacings(grid, Center(), Center(), with_halos=true)[1:Ny]
+Δx = xspacings(grid, Center(), Center())[1:Ny]
 Δy = yspacings(grid, Center())[1:Ny]
 
 using CairoMakie
 
 fig = Figure(size=(800, 400), title="Spacings on a Mercator grid")
 axx = Axis(fig[1, 1], xlabel="Zonal spacing (km)", ylabel="Latitude (degrees)")
-scatter!(axx, Δx ./ 1e3, φ)
+scatter!(axx, Δx ./ 1e3)
 
 axy = Axis(fig[1, 2], xlabel="Meridional spacing (km)")
-scatter!(axy, Δy ./ 1e3, φ)
+scatter!(axy, Δy ./ 1e3)
 
 hidespines!(axx, :t, :r)
 hidespines!(axy, :t, :l, :r)
