@@ -155,6 +155,8 @@ flip(::Face)    = Center()
 Convert the coordinates `(x, y, z)` to _fractional_ indices on a regular rectilinear grid
 located at `loc`, where `loc` is a 3-tuple of `Center` and `Face`. Fractional indices are
 floats indicating a location between grid points.
+
+NOTE: the fractional indices are 0-based! This means that the fractional index `0.0` corresponds to indices 1 and 2.
 """
 @inline fractional_indices(at_node, grid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, ℓy, ℓz)
 
