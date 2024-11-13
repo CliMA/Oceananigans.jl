@@ -134,9 +134,9 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     jᴿ = rightmost_interface_index(ty, Ny)
     kᴿ = rightmost_interface_index(tz, Nz)
 
-    xᴸ = ξnode(i, j, k, grid, f, f, f)
-    yᴸ = ηnode(i, j, k, grid, f, f, f)
-    zᴸ = rnode(i, j, k, grid, f, f, f)
+    xᴸ = ξnode(1, j, k, grid, f, f, f)
+    yᴸ = ηnode(i, 1, k, grid, f, f, f)
+    zᴸ = rnode(i, j, 1, grid, f, f, f)
 
     xᴿ = ξnode(iᴿ, j, k, grid, f, f, f)
     yᴿ = ηnode(i, jᴿ, k, grid, f, f, f)
