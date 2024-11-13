@@ -68,14 +68,14 @@ end
     x₀ = xnode(1, 1, 1, grid, locs...)
     Δx = xspacings(grid, locs...)
     FT = eltype(grid)
-    return convert(FT, (x - x₀) / Δx) + 1 # 0 - based indexing so we sum 1
+    return convert(FT, (x - x₀) / Δx) # 0 - based indexing!
 end
 
 @inline function fractional_x_index(λ, locs, grid::XRegularLLG)
     λ₀ = λnode(1, 1, 1, grid, locs...)
     Δλ = λspacings(grid, locs...)
     FT = eltype(grid)
-    return convert(FT, (λ - λ₀) / Δλ) + 1 # 0 - based indexing so we sum 1
+    return convert(FT, (λ - λ₀) / Δλ) # 0 - based indexing!
 end
 
 @inline function fractional_x_index(x, locs, grid::RectilinearGrid)
@@ -83,7 +83,7 @@ end
      Tx = topology(grid, 1)()
      Nx = length(loc, Tx, grid.Nx)
      xn = xnodes(grid, locs...)
-    return fractional_index(x, xn, Nx)
+    return fractional_index(x, xn, Nx) - 1  # 0 - based indexing!
 end
 
 @inline function fractional_x_index(x, locs, grid::LatitudeLongitudeGrid)
@@ -91,7 +91,7 @@ end
      Tx = topology(grid, 1)()
      Nx = length(loc, Tx, grid.Nx)
      xn = λnodes(grid, locs...)
-    return fractional_index(x, xn, Nx) 
+    return fractional_index(x, xn, Nx) - 1  # 0 - based indexing!
 end
 
 @inline fractional_y_index(y, locs, grid::YFlatGrid) = zero(grid)
@@ -100,14 +100,14 @@ end
     y₀ = ynode(1, 1, 1, grid, locs...)
     Δy = yspacings(grid, locs...)
     FT = eltype(grid)
-    return convert(FT, (y - y₀) / Δy) + 1 # 0 - based indexing so we sum 1
+    return convert(FT, (y - y₀) / Δy) # 0 - based indexing!
 end
 
 @inline function fractional_y_index(φ, locs, grid::YRegularLLG)
     φ₀ = φnode(1, 1, 1, grid, locs...)
     Δφ = φspacings(grid, locs...)
     FT = eltype(grid)
-    return convert(FT, (φ - φ₀) / Δφ) + 1 # 0 - based indexing so we sum 1
+    return convert(FT, (φ - φ₀) / Δφ) # 0 - based indexing!
 end
 
 @inline function fractional_y_index(y, locs, grid::RectilinearGrid)
@@ -115,7 +115,7 @@ end
      Ty = topology(grid, 2)()
      Ny = length(loc, Ty, grid.Ny)
      yn = ynodes(grid, locs...)
-    return fractional_index(y, yn, Ny) 
+    return fractional_index(y, yn, Ny) - 1 # 0 - based indexing!
 end
 
 @inline function fractional_y_index(y, locs, grid::LatitudeLongitudeGrid)
@@ -123,7 +123,7 @@ end
      Ty = topology(grid, 2)()
      Ny = length(loc, Ty, grid.Ny)
      yn = φnodes(grid, locs...)
-    return fractional_index(y, yn, Ny) 
+    return fractional_index(y, yn, Ny) - 1 # 0 - based indexing!
 end
 
 @inline fractional_z_index(z, locs, grid::ZFlatGrid) = zero(grid)
@@ -133,7 +133,7 @@ ZRegGrid = Union{ZRegularRG, ZRegularLLG, ZRegOrthogonalSphericalShellGrid}
 @inline function fractional_z_index(z::FT, locs, grid::ZRegGrid) where FT
     z₀ = znode(1, 1, 1, grid, locs...)
     Δz = zspacings(grid, locs...)
-    return convert(FT, (z - z₀) / Δz) + 1 # 0 - based indexing so we sum 1
+    return convert(FT, (z - z₀) / Δz) # 0 - based indexing!
 end
 
 @inline function fractional_z_index(z, locs, grid)
@@ -141,7 +141,7 @@ end
      Tz = topology(grid, 3)()
      Nz = length(loc, Tz, grid.Nz)
      zn = znodes(grid, loc)
-    return fractional_index(z, zn, Nz) 
+    return fractional_index(z, zn, Nz) - 1 # 0 - based indexing!
 end
 
 flip(t::Tuple) = map(flip, t)
