@@ -239,7 +239,7 @@ end
 
 Planes = (FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane)
 
-BuoyancyModifiedAnisotropicMinimumDissipation(FT) = AnisotropicMinimumDissipation(FT, Cb=1.0)
+BuoyancyModifiedAnisotropicMinimumDissipation(FT=Float64) = AnisotropicMinimumDissipation(FT, Cb=1.0)
 
 ConstantSmagorinsky(FT=Float64) = Smagorinsky(FT, coefficient=0.16)
 DirectionallyAveragedDynamicSmagorinsky(FT=Float64) =
@@ -329,7 +329,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         end
     end
 
-   @testset "Flat dimensions" begin
+    @testset "Flat dimensions" begin
         for arch in archs
             for topology in ((Flat, Periodic, Periodic),
                              (Periodic, Flat, Periodic),
