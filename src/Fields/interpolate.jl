@@ -83,7 +83,7 @@ end
      Tx = topology(grid, 1)()
      Nx = length(loc, Tx, grid.Nx)
      xn = xnodes(grid, locs...)
-    return fractional_index(x, xn, Nx) - 1
+    return fractional_index(x, xn, Nx)
 end
 
 @inline function fractional_x_index(x, locs, grid::LatitudeLongitudeGrid)
@@ -91,7 +91,7 @@ end
      Tx = topology(grid, 1)()
      Nx = length(loc, Tx, grid.Nx)
      xn = λnodes(grid, locs...)
-    return fractional_index(x, xn, Nx) - 1
+    return fractional_index(x, xn, Nx) 
 end
 
 @inline fractional_y_index(y, locs, grid::YFlatGrid) = zero(grid)
@@ -115,7 +115,7 @@ end
      Ty = topology(grid, 2)()
      Ny = length(loc, Ty, grid.Ny)
      yn = ynodes(grid, locs...)
-    return fractional_index(y, yn, Ny) - 1 
+    return fractional_index(y, yn, Ny) 
 end
 
 @inline function fractional_y_index(y, locs, grid::LatitudeLongitudeGrid)
@@ -123,7 +123,7 @@ end
      Ty = topology(grid, 2)()
      Ny = length(loc, Ty, grid.Ny)
      yn = φnodes(grid, locs...)
-    return fractional_index(y, yn, Ny) - 1
+    return fractional_index(y, yn, Ny) 
 end
 
 @inline fractional_z_index(z, locs, grid::ZFlatGrid) = zero(grid)
@@ -141,7 +141,7 @@ end
      Tz = topology(grid, 3)()
      Nz = length(loc, Tz, grid.Nz)
      zn = znodes(grid, loc)
-    return fractional_index(z, zn, Nz) - 1
+    return fractional_index(z, zn, Nz) 
 end
 
 flip(t::Tuple) = map(flip, t)
@@ -156,15 +156,15 @@ Convert the coordinates `(x, y, z)` to _fractional_ indices on a regular rectili
 located at `loc`, where `loc` is a 3-tuple of `Center` and `Face`. Fractional indices are
 floats indicating a location between grid points.
 """
-@inline fractional_indices(at_node, grid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, flip((ℓx, ℓy, ℓz))...)
+@inline fractional_indices(at_node, grid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, ℓy, ℓz)
 
-@inline fractional_indices(at_node, grid::XFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, flip((nothing, ℓy, ℓz))...)
-@inline fractional_indices(at_node, grid::YFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, flip((ℓx, nothing, ℓz))...)
-@inline fractional_indices(at_node, grid::ZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, flip((ℓx, ℓy, nothing))...)
+@inline fractional_indices(at_node, grid::XFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, nothing, ℓy, ℓz)
+@inline fractional_indices(at_node, grid::YFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, nothing, ℓz)
+@inline fractional_indices(at_node, grid::ZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, ℓy, nothing)
 
-@inline fractional_indices(at_node, grid::XYFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, flip((nothing, nothing, ℓz))...)
-@inline fractional_indices(at_node, grid::YZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, flip((ℓx, nothing, nothing))...)
-@inline fractional_indices(at_node, grid::XZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, flip((nothing, ℓy, nothing))...)
+@inline fractional_indices(at_node, grid::XYFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, nothing, nothing, ℓz)
+@inline fractional_indices(at_node, grid::YZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, nothing, nothing)
+@inline fractional_indices(at_node, grid::XZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, nothing, ℓy, nothing)
 
 @inline function _fractional_indices((x, y, z), grid, ℓx, ℓy, ℓz)
     ii = fractional_x_index(x, (ℓx, ℓy, ℓz), grid)

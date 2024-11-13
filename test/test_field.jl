@@ -6,6 +6,8 @@ using Oceananigans.Grids: total_length
 using Oceananigans.Fields: ReducedField, has_velocities
 using Oceananigans.Fields: VelocityFields, TracerFields, interpolate, interpolate!
 using Oceananigans.Fields: reduced_location
+using Oceananigans.Fields: fractional_indices, truncate_fractional_indices
+using Oceananigans.Grids: ξnode, ηnode, rnode
 
 using CUDA: @allowscalar
 
@@ -411,22 +413,23 @@ end
             hu = (-1, 1)
             hs = range(-1, 1, length=21)
             zu = (-100, 0)
-            zs = range(-100, 0, length=32)
+            zs = range(-100, 0, length=33)
 
-            for latitude in (hu, hs), longitude in (hu, hs), z in (zu, zs)
-                grid = LatitudeLongitudeGrid(arch; longitude, latitude, z, halo = (5, 5, 5))
+            for latitude in (hu, hs), longitude in (hu, hs), z in (zu, zs), loc in (Center(), Face())
+                @info "    Testing interpolation for $(latitude) latitude and longitude, $(z) z on $(typeof(loc))s..."
+                grid = LatitudeLongitudeGrid(arch; size = (20, 20, 32), longitude, latitude, z, halo = (5, 5, 5))
             
                 (x, y, z)  = X = (-0.082, 0.034, -49.9)
-                fi, fj, fk = fractional_indices(X, underlying_grid, c, c, c)
+                fi, fj, fk = fractional_indices(X, grid, loc, loc, loc)
                 i, j, k    = truncate_fractional_indices(fi, fj, fk)
 
-                x⁻ = @allowscalar ξnode(i, j, k, underlying_grid, f, f, f)
-                y⁻ = @allowscalar ηnode(i, j, k, underlying_grid, f, f, f)
-                z⁻ = @allowscalar rnode(i, j, k, underlying_grid, f, f, f)
+                x⁻ = @allowscalar ξnode(i, j, k, grid, loc, loc, loc)
+                y⁻ = @allowscalar ηnode(i, j, k, grid, loc, loc, loc)
+                z⁻ = @allowscalar rnode(i, j, k, grid, loc, loc, loc)
 
-                x⁺ = @allowscalar ξnode(i+1, j, k, underlying_grid, f, f, f)
-                y⁺ = @allowscalar ηnode(i, j+1, k, underlying_grid, f, f, f)
-                z⁺ = @allowscalar rnode(i, j, k+1, underlying_grid, f, f, f)
+                x⁺ = @allowscalar ξnode(i+1, j, k, grid, loc, loc, loc)
+                y⁺ = @allowscalar ηnode(i, j+1, k, grid, loc, loc, loc)
+                z⁺ = @allowscalar rnode(i, j, k+1, grid, loc, loc, loc)
 
                 @test x⁻ ≤ x ≤ x⁺
                 @test y⁻ ≤ y ≤ y⁺

@@ -63,14 +63,9 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
 
     tx, ty, tz = map(immersed_boundary_topology, topology(ibg))
 
-    # Left bounds of the previous cell
-    iᴿ = rightmost_interface_index(tx, i⁻)
-    jᴿ = rightmost_interface_index(ty, j⁻)
-    kᴿ = rightmost_interface_index(tz, k⁻)
-
-    xᴿ = ξnode(iᴿ, j⁻, k⁻, ibg, f, f, f)
-    yᴿ = ηnode(i⁻, jᴿ, k⁻, ibg, f, f, f)
-    zᴿ = rnode(i⁻, j⁻, kᴿ, ibg, f, f, f)
+    xᴿ = ξnode(i⁻+1, j⁻,   k⁻,   ibg, f, f, f)
+    yᴿ = ηnode(i⁻,   j⁻+1, k⁻,   ibg, f, f, f)
+    zᴿ = rnode(i⁻,   j⁻,   k⁻+1, ibg, f, f, f)
 
     # Right bounds of the previous cell
     xᴸ = ξnode(i⁻, j⁻, k⁻, ibg, f, f, f)
