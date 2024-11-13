@@ -83,8 +83,6 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
     yb⁺ = enforce_boundary_conditions(ty, y, yᴸ, yᴿ, Cʳ)
     zb⁺ = enforce_boundary_conditions(tz, z, zᴸ, zᴿ, Cʳ)
 
-    @show zᴿ, zᴸ, zb⁺, fi, fj, fk, i⁻, j⁻, k⁻
-
     immersed = immersed_cell(i, j, k, ibg)
     x⁺ = ifelse(immersed, xb⁺, x)
     y⁺ = ifelse(immersed, yb⁺, y)
@@ -115,8 +113,6 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     fi, fj, fk = fractional_indices(X, grid, c, c, c)
     i, j, k = truncate_fractional_indices(fi, fj, fk)
 
-    @show X, fi, fj, fk
-    
     current_particle_indices = (i, j, k)
 
     # Interpolate velocity to particle position
@@ -159,9 +155,7 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
 
     if grid isa ImmersedBoundaryGrid
         previous_particle_indices = current_particle_indices # particle has been advected
-        @show x⁺, y⁺, z⁺, zᴸ, zᴿ, i, j, k
         (x⁺, y⁺, z⁺) = bounce_immersed_particle((x⁺, y⁺, z⁺), grid, Cʳ, previous_particle_indices)
-        @show x⁺, y⁺, z⁺, i, j, k
     end
 
     return (x⁺, y⁺, z⁺)
