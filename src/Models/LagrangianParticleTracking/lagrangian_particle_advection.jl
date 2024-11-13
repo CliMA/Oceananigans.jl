@@ -55,8 +55,8 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
 @inline function bounce_immersed_particle((x, y, z), ibg, restitution, previous_particle_indices)
     X = flattened_node((x, y, z), ibg)
 
-    # Determine current particle cell
-    fi, fj, fk = fractional_indices(X, ibg.underlying_grid, c, c, c)
+    # Determine current particle cell from the interfaces
+    fi, fj, fk = fractional_indices(X, ibg.underlying_grid, f, f, f)
     
     i, i⁺, _ = interpolator(fi)
     j, j⁺, _ = interpolator(fj)
@@ -68,9 +68,9 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
     tx, ty, tz = map(immersed_boundary_topology, topology(ibg))
 
     # Right bounds of the previous cell
-    xᴿ = ξnode(i⁺, j⁻, k⁻, ibg, f, f, f)
-    yᴿ = ηnode(i⁻, j⁺, k⁻, ibg, f, f, f)
-    zᴿ = rnode(i⁻, j⁻, k⁺, ibg, f, f, f)
+    xᴿ = ξnode(i⁺, j,  k, ibg, f, f, f)
+    yᴿ = ηnode(i,  j⁺, k, ibg, f, f, f)
+    zᴿ = rnode(i,  j,  k⁺, ibg, f, f, f)
 
     # Left bounds of the previous cell
     xᴸ = ξnode(i⁻, j⁻, k⁻, ibg, f, f, f)
@@ -83,7 +83,7 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
     yb⁺ = enforce_boundary_conditions(ty, y, yᴸ, yᴿ, Cʳ)
     zb⁺ = enforce_boundary_conditions(tz, z, zᴸ, zᴿ, Cʳ)
 
-    immersed = immersed_cell(i, j, k, ibg)
+    immersed = immersed_cell(i⁺, j⁺, k⁺, ibg)
     x⁺ = ifelse(immersed, xb⁺, x)
     y⁺ = ifelse(immersed, yb⁺, y)
     z⁺ = ifelse(immersed, zb⁺, z)
@@ -109,8 +109,8 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
 @inline function advect_particle((x, y, z), p, restitution, grid, Δt, velocities)
     X = flattened_node((x, y, z), grid)
 
-    # Obtain current particle indices
-    fi, fj, fk = fractional_indices(X, grid, c, c, c)
+    # Obtain current particle indices, looking at the interfaces
+    fi, fj, fk = fractional_indices(X, grid, f, f, f)
     
     i, i⁺, _ = interpolator(fi)
     j, j⁺, _ = interpolator(fj)
