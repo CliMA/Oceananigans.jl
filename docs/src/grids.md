@@ -450,7 +450,7 @@ using CairoMakie
 
 fig = Figure(size=(600, 400))
 ax = Axis(fig[1, 1], xlabel="Zonal spacing on 2 degree grid (km)", ylabel="Latitude (degrees)")
-scatter!(ax, Δx ./ 1e3)
+scatter!(ax, Δx / 1e3)
 
 current_figure()
 ```
@@ -528,17 +528,18 @@ grid = LatitudeLongitudeGrid(size = (Nx, Ny),
 ```
 
 ```@example plot
-Δx = xspacings(grid, Center(), Center())[1:Ny]
-Δy = yspacings(grid, Center())[1:Ny]
+φ = φnodes(grid, Center())
+Δx = xspacings(grid, Center(), Center())[1, 1:Ny]
+Δy = yspacings(grid, Center(), Center())[1, 1:Ny]
 
 using CairoMakie
 
 fig = Figure(size=(800, 400), title="Spacings on a Mercator grid")
 axx = Axis(fig[1, 1], xlabel="Zonal spacing (km)", ylabel="Latitude (degrees)")
-scatter!(axx, Δx ./ 1e3)
+scatter!(axx, Δx / 1e3, φ)
 
 axy = Axis(fig[1, 2], xlabel="Meridional spacing (km)")
-scatter!(axy, Δy ./ 1e3)
+scatter!(axy, Δy / 1e3, φ)
 
 hidespines!(axx, :t, :r)
 hidespines!(axy, :t, :l, :r)
