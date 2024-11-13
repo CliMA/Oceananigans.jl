@@ -4,7 +4,7 @@
 A timestepping scheme used for substepping in the split-explicit free surface solver.
     
 The equations are evolved as follows:
-```julia
+```math
 ηᵐ⁺¹ = ηᵐ - Δτ (∂x Uᵐ + ∂y Vᵐ)
 Uᵐ⁺¹ = Uᵐ - Δτ (∂x ηᵐ⁺¹ - Gᵁ)
 Vᵐ⁺¹ = Vᵐ - Δτ (∂y ηᵐ⁺¹ - Gⱽ)
@@ -47,7 +47,7 @@ free surface at time-step `m + 1/2`:
 
 The equations are evolved as follows:
 
-```julia
+```math
 ηᵐ⁺¹ = ηᵐ - Δτ g H (∂x Ũ + ∂y Ṽ)
 Uᵐ⁺¹ = Uᵐ - Δτ (∂x η̃ - Gᵁ)
 Vᵐ⁺¹ = Vᵐ - Δτ (∂y η̃ - Gⱽ)
@@ -56,11 +56,14 @@ Vᵐ⁺¹ = Vᵐ - Δτ (∂y η̃ - Gⱽ)
 where `η̃`, `Ũ` and `Ṽ` are the AB3 time-extrapolated values of free surface, 
 barotropic zonal and meridional velocities, respectively:
 
-```julia
+```math
 Ũ = α Uᵐ   + θ Uᵐ⁻¹ + β Uᵐ⁻²
 Ṽ = α Vᵐ   + θ Vᵐ⁻¹ + β Vᵐ⁻²
 η̃ = δ ηᵐ⁺¹ + μ ηᵐ   + γ ηᵐ⁻¹ + ϵ ηᵐ⁻²
 ```
+
+The default values for the time-extrapolation coefficients, described by [Shchepetkin2005](@citet), 
+correspond to the best stability range for the AB3 algorithm.
 """
 AdamsBashforth3Scheme(; β = 0.281105, α = 1.5 + β, θ = - 0.5 - 2β, γ = 0.088, δ = 0.614, ϵ = 0.013, μ = 1 - δ - γ - ϵ) = 
         AdamsBashforth3Scheme(nothing, nothing, nothing, nothing, nothing, nothing, nothing, β, α, θ, γ, δ, ϵ, μ)
