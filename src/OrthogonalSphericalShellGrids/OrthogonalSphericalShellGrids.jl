@@ -3,8 +3,7 @@ module OrthogonalSphericalShellGrids
 # The only things we need!
 export TripolarGrid, ZipperBoundaryCondition
 
-using Oceananigans
-using Oceananigans: Face, Center
+using Oceananigans.Grids
 using Oceananigans.Architectures: device, on_architecture
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields: index_binary_search
