@@ -102,7 +102,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
                             fill_boundary_normal_velocities=true, kwargs...)
 
     if fill_boundary_normal_velocities
-        fill_open_boundary_regions!(c, bcs, indices, loc, grid, args...; kwargs...)
+        fill_open_boundary_regions!(c, bcs, indices, loc, grid, buffers, args...; kwargs...)
     end
     
     arch = architecture(grid)

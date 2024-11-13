@@ -79,25 +79,25 @@ julia> using Oceananigans
 julia> VectorInvariant()
 Vector Invariant, Dimension-by-dimension reconstruction 
  Vorticity flux scheme: 
- └── EnstrophyConserving{Float64} 
+ └── Oceananigans.Advection.EnstrophyConserving{Float64} 
  Vertical advection / Divergence flux scheme: 
- └── EnergyConserving{Float64}
+ └── Oceananigans.Advection.EnergyConserving{Float64}
 ```
 
 ```jldoctest
 julia> using Oceananigans
 
 julia> VectorInvariant(vorticity_scheme = WENO(), vertical_scheme = WENO(order = 3))
-Vector Invariant, Dimension-by-dimension reconstruction 
- Vorticity flux scheme: 
- ├── WENO reconstruction order 5 
+Vector Invariant, Dimension-by-dimension reconstruction
+ Vorticity flux scheme:
+ ├── WENO(order=5)
  └── smoothness ζ: Oceananigans.Advection.VelocityStencil()
- Vertical advection / Divergence flux scheme: 
- ├── WENO reconstruction order 3
- └── upwinding treatment: OnlySelfUpwinding 
- KE gradient and Divergence flux cross terms reconstruction: 
- └── Centered reconstruction order 2
- Smoothness measures: 
+ Vertical advection / Divergence flux scheme:
+ ├── WENO(order=3)
+ └── upwinding treatment: OnlySelfUpwinding
+ KE gradient and Divergence flux cross terms reconstruction:
+ └── Centered(order=2)
+ Smoothness measures:
  ├── smoothness δU: FunctionStencil f = divergence_smoothness
  ├── smoothness δV: FunctionStencil f = divergence_smoothness
  ├── smoothness δu²: FunctionStencil f = u_smoothness

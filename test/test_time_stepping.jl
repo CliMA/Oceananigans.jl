@@ -260,11 +260,11 @@ Closures = (ScalarDiffusivity,
             CATKEVerticalDiffusivity)
 
 advection_schemes = (nothing,
-                     UpwindBiasedFirstOrder(),
-                     CenteredSecondOrder(),
-                     UpwindBiasedThirdOrder(),
-                     CenteredFourthOrder(),
-                     UpwindBiasedFifthOrder(),
+                     UpwindBiased(order=1),
+                     Centered(order=2),
+                     UpwindBiased(order=3),
+                     Centered(order=4),
+                     UpwindBiased(order=5),
                      WENO())
 
 @inline ∂t_uˢ_uniform(z, t, h) = exp(z / h) * cos(t)

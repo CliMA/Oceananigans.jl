@@ -77,7 +77,7 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1, IPS_reltol=1e-
     
     if solver == "FFT"
         model = NonhydrostaticModel(; grid,
-                                    # advection = CenteredSecondOrder(),
+                                    # advection = Centered(),
                                     advection = WENO(order=7),
                                     tracers = (:b),
                                     buoyancy = BuoyancyTracer(),
@@ -87,7 +87,7 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1, IPS_reltol=1e-
     else
         model = NonhydrostaticModel(; grid,
                                     pressure_solver = ImmersedPoissonSolver(grid, preconditioner=preconditioner, reltol=IPS_reltol),
-                                    # advection = CenteredSecondOrder(),
+                                    # advection = Centered(),
                                     advection = WENO(order=7),
                                     tracers = (:b),
                                     buoyancy = BuoyancyTracer(),
