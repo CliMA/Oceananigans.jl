@@ -124,7 +124,7 @@ function compute_free_surface_tendency!(grid, model, kernel_parameters)
                  model.tracers,
                  model.auxiliary_fields,
                  model.clock,
-                 model.forcing)
+                 model.forcing.η)
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, 
