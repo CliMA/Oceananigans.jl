@@ -2,7 +2,7 @@ using Oceananigans.Fields: location
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, retrieve_surface_active_cells_map
 
-import Oceananigans.TimeSteppers: split_rk3_substep!, _split_rk3_substep_field!, rk3_average_pressure!, _rk3_average_pressure!
+import Oceananigans.TimeSteppers: split_rk3_substep!, _split_rk3_substep_field!
 
 function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζⁿ)
     
@@ -40,7 +40,7 @@ function rk3_average_free_surface!(free_surface::ImplicitFreeSurface, grid, time
     return nothing
 end
 
-function rk3_average_pressure!(free_surface::SplitExplicitFreeSurface, grid, timestepper, γⁿ, ζⁿ)
+function rk3_average_free_surface!(free_surface::SplitExplicitFreeSurface, grid, timestepper, γⁿ, ζⁿ)
 
     arch = architecture(grid)
 

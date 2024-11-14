@@ -51,8 +51,12 @@ function SplitRungeKutta3TimeStepper(grid, tracers;
                                      G⁻::TE = TendencyFields(grid, tracers),
                                      S⁻::PF = TendencyFields(grid, tracers)) where {TI, TG, TE, PF}
 
+
+    @warn("Split barotropic-baroclinic time stepping with SplitRungeKutta3TimeStepper is not tested and experimental.\n" *
+          "Use at own risk, and report any issues encountered.")
+
     !isnothing(implicit_solver) &&
-        @warn("Implicit-explicit time-stepping with RungeKutta3TimeStepper is not tested. " * 
+        @warn("Implicit-explicit time-stepping with SplitRungeKutta3TimeStepper is not tested. " * 
                 "\n implicit_solver: $(typeof(implicit_solver))")
 
     γ² = 1 // 4
