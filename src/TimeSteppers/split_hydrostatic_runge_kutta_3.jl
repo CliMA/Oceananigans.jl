@@ -82,6 +82,8 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     #### First stage
     ####
 
+    model.clock.stage = 1
+
     split_rk3_substep!(model, Δt, nothing, nothing)
     compute_pressure_correction!(model, Δt)
     pressure_correct_velocities!(model, Δt)
@@ -90,6 +92,8 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     ####
     #### Second stage
     ####
+
+    model.clock.stage = 2
 
     split_rk3_substep!(model, Δt, γ², ζ²)
     compute_pressure_correction!(model, Δt)
@@ -102,6 +106,8 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     ####
     #### Third stage
     ####
+
+    model.clock.stage = 3
     
     split_rk3_substep!(model, Δt, γ³, ζ³)
     compute_pressure_correction!(model, Δt)

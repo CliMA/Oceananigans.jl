@@ -122,7 +122,6 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     free_surface_grid = free_surface.η.grid
     filtered_state    = free_surface.filtered_state
     substepping       = free_surface.substepping
-    timestepper       = free_surface.timestepper
     
     barotropic_velocities = free_surface.barotropic_velocities
 
@@ -152,8 +151,6 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
 
     # reset free surface averages
     @apply_regionally begin
-        initialize_free_surface_state!(filtered_state, free_surface.η, barotropic_velocities, timestepper)
-
         # Solve for the free surface at tⁿ⁺¹
         iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, weights, Val(Nsubsteps))
         

@@ -197,9 +197,10 @@ function compute_free_surface_tendency!(grid, model, free_surface::SplitExplicit
     baroclinic_timestepper = model.timestepper
     stage = model.clock.stage
 
-    @apply_regionally compute_split_explicit_forcing!(GUⁿ, GVⁿ, GU⁻, GV⁻, model.grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, baroclinic_timestepper, stage)
-
-    initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper, Val(stage))
+    @apply_regionally begin
+        compute_split_explicit_forcing!(GUⁿ, GVⁿ, GU⁻, GV⁻, model.grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, baroclinic_timestepper, stage)
+        initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper, Val(stage))
+    end
 
     fields_to_fill = (GUⁿ, GVⁿ)
     fill_halo_regions!(fields_to_fill; async = true)
