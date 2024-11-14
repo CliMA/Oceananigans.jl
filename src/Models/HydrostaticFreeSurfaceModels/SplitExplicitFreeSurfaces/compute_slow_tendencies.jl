@@ -42,7 +42,6 @@ end
 # This function is called after `calculate_tendency` and before `ab2_step_velocities!`
 function compute_free_surface_tendency!(grid, model, ::SplitExplicitFreeSurface)
 
-    @show "Computing tendency"
     # we start the time integration of η from the average ηⁿ
     Gu⁻ = model.timestepper.G⁻.u
     Gv⁻ = model.timestepper.G⁻.v
