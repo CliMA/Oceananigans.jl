@@ -98,7 +98,7 @@ function SplitExplicitFreeSurface(grid = nothing;
         FT = Float64
     end
 
-    if isnothing(grid) && !inothing(cfl) && !isnothing(fixed_Δt)
+    if isnothing(grid) && !isnothing(cfl) && !isnothing(fixed_Δt)
         throw(ArgumentError(string("The grid is a required positional argument to SplitExplicitFreeSurface when cfl is specified and `fixed_Δt != nothing`.",
                                     "For example, SplitExplicitFreeSurface(grid; fixed_Δt=$(fixed_Δt), cfl=$(cfl), ...)")))
     end
