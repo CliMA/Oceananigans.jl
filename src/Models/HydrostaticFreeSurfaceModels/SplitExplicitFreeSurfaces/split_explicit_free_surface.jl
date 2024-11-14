@@ -259,7 +259,7 @@ end
 end
 
 Base.summary(s::FixedTimeStepSize)  = string("FixedTimeStepSize with a barotropic time step equal to $(prettytime(s.Δt_barotropic))")
-Base.summary(s::FixedSubstepNumber) = string("FixedSubstepNumber with $(length(s.averaging_weights)) substeps")
+Base.summary(s::FixedSubstepNumber) = string("FixedSubstepNumber($(length(s.averaging_weights)))")
 
 Base.summary(sefs::SplitExplicitFreeSurface) = string("SplitExplicitFreeSurface substepping with $(summary(sefs.substepping))")
 
