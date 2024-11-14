@@ -58,7 +58,7 @@ step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::SplitR
 
 @inline rk3_coeffs(ts, ::Val{1}) = (1,     0)
 @inline rk3_coeffs(ts, ::Val{2}) = (ts.γ², ts.ζ²)
-@inline rk3_coeffs(ts, ::Val{2}) = (ts.γ³, ts.ζ³)
+@inline rk3_coeffs(ts, ::Val{3}) = (ts.γ³, ts.ζ³)
 
 function explicit_rk3_step_free_surface!(free_surface, model, Δt, timestepper)
     

@@ -1,7 +1,6 @@
 using Oceananigans.Fields: location
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, retrieve_surface_active_cells_map
-using Oceananigans.TimeSteppers: SplitRungeKutta3TimeStepper
 
 import Oceananigans.TimeSteppers: split_rk3_substep!, _split_rk3_substep_field!, rk3_average_pressure!, _rk3_average_pressure!
 

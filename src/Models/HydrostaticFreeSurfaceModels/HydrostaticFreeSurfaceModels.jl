@@ -19,6 +19,8 @@ import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
 import Oceananigans.Architectures: on_architecture
 
+using Oceananigans.TimeSteppers: SplitRungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
+
 abstract type AbstractFreeSurface{E, G} end
 
 # This is only used by the cubed sphere for now.
