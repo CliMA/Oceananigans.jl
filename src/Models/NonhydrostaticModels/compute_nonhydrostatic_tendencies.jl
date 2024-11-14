@@ -95,7 +95,7 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
 
     v_kernel_args = tuple(start_momentum_kernel_args...,
                           v_immersed_bc, end_momentum_kernel_args...,
-                          forcings, hydrostatic_pressure, clock, forcings.v)
+                          hydrostatic_pressure, clock, forcings.v)
 
     w_kernel_args = tuple(start_momentum_kernel_args...,
                           w_immersed_bc, end_momentum_kernel_args...,
