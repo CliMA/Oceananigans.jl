@@ -30,9 +30,9 @@ end
 
     # multiply G⁻ by false if C₂ is zero to 
     # prevent propagationg possible NaNs
-    euler = C₂ != 0
+    not_euler = C₂ != 0
 
-    Gⁿ⁺¹ = @inbounds C₁ * Gⁿ[i, j, k] - C₂ * G⁻[i, j, k] * euler
+    Gⁿ⁺¹ = @inbounds C₁ * Gⁿ[i, j, k] - C₂ * G⁻[i, j, k] * not_euler
     immersed = peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
 
     return ifelse(immersed, zero(grid), Gⁿ⁺¹)
