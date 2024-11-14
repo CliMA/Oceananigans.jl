@@ -4,6 +4,7 @@ using TimesDates: TimeDate
 using Oceananigans.Grids: topological_tuple_length, total_size
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
+using Oceananigans.TurbulenceClosures.Smagorinskys: LagrangianAveraging, DynamicSmagorinsky
 
 function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
@@ -237,23 +238,32 @@ end
 
 Planes = (FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane)
 
-BuoyancyModifiedAnisotropicMinimumDissipation(FT) = AnisotropicMinimumDissipation(FT, Cb=1.0)
+BuoyancyModifiedAnisotropicMinimumDissipation(FT=Float64) = AnisotropicMinimumDissipation(FT, Cb=1.0)
+
+ConstantSmagorinsky(FT=Float64) = Smagorinsky(FT, coefficient=0.16)
+DirectionallyAveragedDynamicSmagorinsky(FT=Float64) =
+    Smagorinsky(FT, coefficient=DynamicCoefficient(averaging=(1, 2)))
+LagrangianAveragedDynamicSmagorinsky(FT=Float64) =
+    Smagorinsky(FT, coefficient=DynamicCoefficient(averaging=LagrangianAveraging()))
 
 Closures = (ScalarDiffusivity,
             ScalarBiharmonicDiffusivity,
             TwoDimensionalLeith,
             IsopycnalSkewSymmetricDiffusivity,
+            ConstantSmagorinsky,
             SmagorinskyLilly,
+            DirectionallyAveragedDynamicSmagorinsky,
+            LagrangianAveragedDynamicSmagorinsky,
             AnisotropicMinimumDissipation,
             BuoyancyModifiedAnisotropicMinimumDissipation,
             CATKEVerticalDiffusivity)
 
 advection_schemes = (nothing,
-                     UpwindBiasedFirstOrder(),
-                     CenteredSecondOrder(),
-                     UpwindBiasedThirdOrder(),
-                     CenteredFourthOrder(),
-                     UpwindBiasedFifthOrder(),
+                     UpwindBiased(order=1),
+                     Centered(order=2),
+                     UpwindBiased(order=3),
+                     Centered(order=4),
+                     UpwindBiased(order=5),
                      WENO())
 
 @inline ∂t_uˢ_uniform(z, t, h) = exp(z / h) * cos(t)
@@ -318,7 +328,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         end
     end
 
-   @testset "Flat dimensions" begin
+    @testset "Flat dimensions" begin
         for arch in archs
             for topology in ((Flat, Periodic, Periodic),
                              (Periodic, Flat, Periodic),
@@ -380,6 +390,8 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                     @test time_stepping_works_with_closure(arch, FT, Closure)
                 elseif Closure === CATKEVerticalDiffusivity
                     # CATKE isn't supported with NonhydrostaticModel yet
+                    @test_skip time_stepping_works_with_closure(arch, FT, Closure)
+                elseif Closure() isa DynamicSmagorinsky
                     @test_skip time_stepping_works_with_closure(arch, FT, Closure)
                 else
                     @test time_stepping_works_with_closure(arch, FT, Closure)

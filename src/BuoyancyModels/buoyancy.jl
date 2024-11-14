@@ -32,7 +32,7 @@ model = NonhydrostaticModel(; grid, buoyancy, tracers=:b)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 1×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
-├── advection scheme: Centered reconstruction order 2
+├── advection scheme: Centered(order=2)
 ├── tracers: b
 ├── closure: Nothing
 ├── buoyancy: BuoyancyTracer with ĝ = (0.0, -0.707107, -0.707107)

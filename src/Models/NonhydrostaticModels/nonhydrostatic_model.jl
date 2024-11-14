@@ -3,7 +3,7 @@ using OrderedCollections: OrderedDict
 
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.DistributedComputations: Distributed
-using Oceananigans.Advection: CenteredSecondOrder, adapt_advection_order
+using Oceananigans.Advection: Centered, adapt_advection_order
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
@@ -57,7 +57,7 @@ end
 """
     NonhydrostaticModel(;           grid,
                                     clock = Clock{eltype(grid)}(time = 0),
-                                advection = CenteredSecondOrder(),
+                                advection = Centered(),
                                  buoyancy = nothing,
                                  coriolis = nothing,
                              stokes_drift = nothing,
@@ -114,7 +114,7 @@ Keyword arguments
 """
 function NonhydrostaticModel(; grid,
                              clock = Clock{eltype(grid)}(time = 0),
-                             advection = CenteredSecondOrder(),
+                             advection = Centered(),
                              buoyancy = nothing,
                              coriolis = nothing,
                              stokes_drift = nothing,
