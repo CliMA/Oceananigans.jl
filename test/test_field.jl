@@ -427,7 +427,7 @@ end
 
                 for X in Xs
                     (x, y, z)  = X 
-                    fi, fj, fk = fractional_indices(X, grid, loc, loc, loc)
+                    fi, fj, fk = @allowscalar fractional_indices(X, grid, loc, loc, loc)
 
                     i⁻, i⁺, _ = interpolator(fi)
                     j⁻, j⁺, _ = interpolator(fj)
