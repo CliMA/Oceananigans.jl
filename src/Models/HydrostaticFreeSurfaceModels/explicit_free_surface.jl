@@ -100,11 +100,19 @@ end
 end
 
 """
+    free_surface_tendency(i, j, grid,
+                          velocities,
+                          free_surface,
+                          tracers,
+                          auxiliary_fields,
+                          forcings,
+                          clock)
+
 Return the tendency for an explicit free surface at horizontal grid point `i, j`.
 
 The tendency is called ``G_η`` and defined via
 
-```
+```math
 ∂_t η = G_η
 ```
 """
@@ -119,7 +127,6 @@ The tendency is called ``G_η`` and defined via
     k_top = grid.Nz + 1
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
-    return @inbounds (   velocities.w[i, j, k_top]
-                       + forcings.η(i, j, k_top, grid, clock, model_fields))
+    return @inbounds (  velocities.w[i, j, k_top]
+                      + forcings.η(i, j, k_top, grid, clock, model_fields))
 end
-

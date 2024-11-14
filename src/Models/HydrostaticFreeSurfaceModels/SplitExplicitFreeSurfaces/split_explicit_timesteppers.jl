@@ -1,13 +1,15 @@
 """
-    struct ForwardBackwardScheme end
+    struct ForwardBackwardScheme
 
-a timestepping scheme used for substepping in the split-explicit free surface solver, 
+A timestepping scheme used for substepping in the split-explicit free surface solver.
     
 The equations are evolved as follows:
 ```math
-ηᵐ⁺¹ = ηᵐ - Δτ g H (∂x Uᵐ + ∂y Vᵐ)
-Uᵐ⁺¹ = Uᵐ - Δτ (∂x ηᵐ⁺¹ - Gᵁ)
-Vᵐ⁺¹ = Vᵐ - Δτ (∂y ηᵐ⁺¹ - Gⱽ)
+\begin{gather}
+η^{m+1} = η^m - Δτ (∂_x U^m + ∂_y V^m), \\
+U^{m+1} = U^m - Δτ (∂_x η^{m+1} - G^U), \\
+V^{m+1} = V^m - Δτ (∂_y η^{m+1} - G^V).
+\end{gather}
 ```
 """
 struct ForwardBackwardScheme end
@@ -23,34 +25,51 @@ struct AdamsBashforth3Scheme{CC, FC, CF, FT}
     Vᵐ⁻¹ :: CF
     Vᵐ⁻² :: CF
        β :: FT
-       α :: FT 
-       θ :: FT 
-       γ :: FT 
-       δ :: FT 
-       ϵ :: FT 
-       μ :: FT 
+       α :: FT
+       θ :: FT
+       γ :: FT
+       δ :: FT
+       ϵ :: FT
+       μ :: FT
 end
 
 """
-    AdamsBashforth3Scheme(; β=0.281105, α=1.5 + β, θ=-0.5 - 2β, γ=0.088, δ=0.614, ϵ=0.013, μ=1 - δ - γ - ϵ)
+    AdamsBashforth3Scheme(; β = 0.281105,
+                            α = 1.5 + β,
+                            θ = -0.5 - 2β,
+                            γ = 0.088,
+                            δ = 0.614,
+                            ϵ = 0.013,
+                            μ = 1 - δ - γ - ϵ)
 
-Creates an instance of `AdamsBashforth3Scheme` with the specified parameters. 
-This scheme is used for substepping in the split-explicit free surface solver, where an AB3 extrapolation is used to 
-evaluate barotropic velocities and free surface at time-step `m+1/2`:
+Create an instance of `AdamsBashforth3Scheme` with the specified parameters.
+This scheme is used for substepping in the split-explicit free surface solver,
+where an AB3 extrapolation is used to evaluate barotropic velocities and
+free surface at time-step `m + 1/2`:
 
 The equations are evolved as follows:
+
 ```math
-ηᵐ⁺¹ = ηᵐ - Δτ g H (∂x Ũ + Δτ ∂y Ṽ)
-Uᵐ⁺¹ = Uᵐ - Δτ (∂x η̃ - Gᵁ)
-Vᵐ⁺¹ = Vᵐ - Δτ (∂y η̃ - Gⱽ)
+\begin{gather}
+η^{m+1} = η^m - Δτ g H (∂_x Ũ + ∂y Ṽ), \\
+U^{m+1} = U^m - Δτ (∂_x η̃ - G^U), \\
+V^{m+1} = V^m - Δτ (∂_y η̃ - G^V),
+\end{gather}
 ```    
+
 where `η̃`, `Ũ` and `Ṽ` are the AB3 time-extrapolated values of free surface, 
 barotropic zonal and meridional velocities, respectively:
+
 ```math
-Ũ = α Uᵐ   + θ Uᵐ⁻¹ + β Uᵐ⁻²
-Ṽ = α Vᵐ   + θ Vᵐ⁻¹ + β Vᵐ⁻²
-η̃ = δ ηᵐ⁺¹ + μ ηᵐ   + γ ηᵐ⁻¹ + ϵ ηᵐ⁻²
+\begin{gather}
+Ũ = α U^m + θ U^{m-1} + β U^{m-2}, \\
+Ṽ = α V^m + θ V^{m-1} + β V^{m-2}, \\
+η̃ = δ η^{m+1} + μ η^m + γ η^{m-1} + ϵ η^{m-2}.
+\end{gather}
 ```
+
+The default values for the time-extrapolation coefficients, described by [Shchepetkin2005](@citet), 
+correspond to the best stability range for the AB3 algorithm.
 """
 AdamsBashforth3Scheme(; β = 0.281105, α = 1.5 + β, θ = - 0.5 - 2β, γ = 0.088, δ = 0.614, ϵ = 0.013, μ = 1 - δ - γ - ϵ) = 
         AdamsBashforth3Scheme(nothing, nothing, nothing, nothing, nothing, nothing, nothing, β, α, θ, γ, δ, ϵ, μ)
@@ -93,7 +112,7 @@ end
 ##### Timestepper extrapolations and utils
 #####
 
-function materialize_timestepper(name::Symbol, args...) 
+function materialize_timestepper(name::Symbol, args...)
     fullname = Symbol(name, :Scheme)
     TS = getglobal(@__MODULE__, fullname)
     return materialize_timestepper(TS, args...)
