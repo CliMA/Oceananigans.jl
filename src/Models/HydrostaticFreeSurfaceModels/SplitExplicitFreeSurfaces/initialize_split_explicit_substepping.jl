@@ -100,7 +100,7 @@ end
     active_cells_map = retrieve_surface_active_cells_map(grid)
 
     launch!(architecture(grid), grid, :xy, _compute_integrated_ab2_tendencies!, GUⁿ, GVⁿ, grid,
-            active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, model.timestepper.χ; active_cells_map)
+            active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, timestepper.χ; active_cells_map)
 
     return nothing
 end
