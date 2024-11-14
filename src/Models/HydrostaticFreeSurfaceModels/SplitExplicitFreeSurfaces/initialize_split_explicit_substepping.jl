@@ -109,14 +109,17 @@ end
 ##### Compute slow tendencies for the RK3 timestepper
 #####
 
-@inline function vertical_integral(i, j, grid, Gⁿ, ℓx, ℓy, ℓz)
-    G = Δz(i, j, 1, grid, ℓx, ℓy, ℓz) * ifelse(peripheral_node(i, j, 1, grid, ℓx, ℓy, ℓz), zero(grid), Gⁿ[i, j, 1])
+@inline function G_vertical_integral(i, j, grid, Gⁿ, ℓx, ℓy, ℓz)
+    immersed = peripheral_node(i, j, 1, grid, ℓx, ℓy, ℓz)
+
+    Gⁿ⁺¹ = Δz(i, j, 1, grid, ℓx, ℓy, ℓz) * ifelse(immersed, zero(grid), Gⁿ[i, j, 1])
     
-    for k in 2:grid.Nz	
-        @inbounds G += Δz(i, j, k, grid, ℓx, ℓy, ℓz) * ifelse(peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz), zero(grid), Gⁿ[i, j, k])
+    @inbounds for k in 2:grid.Nz	
+        immersed = peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
+        Gⁿ⁺¹    += Δz(i, j, k, grid, ℓx, ℓy, ℓz) * ifelse(immersed, zero(grid), Gⁿ[i, j, k])
     end
     
-    return G
+    return Gⁿ⁺¹
 end
 
 @kernel function _compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, active_cells_map, Guⁿ, Gvⁿ, stage)
@@ -131,8 +134,8 @@ end
 end
 
 function compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, ::Val{1})
-    @inbounds GUⁿ[i, j, 1] = vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
-    @inbounds GVⁿ[i, j, 1] = vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
+    @inbounds GUⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
+    @inbounds GVⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
 
     @inbounds GU⁻[i, j, 1] = GUⁿ[i, j, 1]
     @inbounds GV⁻[i, j, 1] = GVⁿ[i, j, 1]
@@ -143,8 +146,8 @@ end
 
     FT = eltype(GUⁿ)
 
-    @inbounds GUⁿ[i, j, 1] = vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
-    @inbounds GVⁿ[i, j, 1] = vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
+    @inbounds GUⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
+    @inbounds GVⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
 
     @inbounds GU⁻[i, j, 1] = convert(FT, 1/6) * GUⁿ[i, j, 1] + convert(FT, 1/6) * GU⁻[i, j, 1]
     @inbounds GV⁻[i, j, 1] = convert(FT, 1/6) * GVⁿ[i, j, 1] + convert(FT, 1/6) * GU⁻[i, j, 1]
@@ -155,8 +158,8 @@ end
 
     FT = eltype(GUⁿ)
 
-    @inbounds GUⁿ[i, j, 1] = vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
-    @inbounds GVⁿ[i, j, 1] = vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
+    @inbounds GUⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
+    @inbounds GVⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
 
     @inbounds GUⁿ[i, j, 1] = convert(FT, 2/3) * GUⁿ[i, j, 1] + GU⁻[i, j, 1]
     @inbounds GVⁿ[i, j, 1] = convert(FT, 2/3) * GVⁿ[i, j, 1] + GV⁻[i, j, 1]
