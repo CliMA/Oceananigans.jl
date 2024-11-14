@@ -191,13 +191,17 @@ function HydrostaticFreeSurfaceModel(; grid,
     free_surface = materialize_free_surface(free_surface, velocities, grid)
 
     # Instantiate timestepper if not already instantiated
-    implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
+    implicit_solver   = implicit_diffusion_solver(time_discretization(closure), grid)
+    prognostic_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
+
     timestepper = TimeStepper(timestepper, grid, tracernames(tracers);
                               implicit_solver = implicit_solver,
-                              Gⁿ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, grid, tracernames(tracers)))
+                              Gⁿ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, grid, tracernames(tracers)),
+                              G⁻ = PreviousHydrostaticTendencyFields(Val(timestepper), velocities, free_surface, grid, tracernames(tracers)),
+                              S⁻ = deepcopy(prognostic_fields))
 
     # Regularize forcing for model tracer and velocity fields.
-    model_fields = merge(hydrostatic_prognostic_fields(velocities, free_surface, tracers), auxiliary_fields)
+    model_fields = merge(prognostic_fields, auxiliary_fields)
     forcing = model_forcing(model_fields; forcing...)
     
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,

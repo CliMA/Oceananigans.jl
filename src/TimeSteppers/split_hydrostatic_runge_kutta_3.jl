@@ -7,14 +7,14 @@ using Oceananigans: fields
 Holds parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
 time-stepping scheme described by [LeMoin1991](@citet).
 """
-struct SplitRungeKutta3TimeStepper{FT, TG, TE, TI} <: AbstractTimeStepper
+struct SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI} <: AbstractTimeStepper
     γ² :: FT
     γ³ :: FT
     ζ² :: FT
     ζ³ :: FT
     Gⁿ :: TG
     G⁻ :: TE
-    previous_model_fields :: TG
+    S⁻ :: PF # state at the previous timestep
     implicit_solver :: TI
 end
 
@@ -47,7 +47,9 @@ The state at the first substep is taken to be the one that corresponds to the ``
 """
 function SplitRungeKutta3TimeStepper(grid, tracers;
                                      implicit_solver::TI = nothing,
-                                     Gⁿ::TG = TendencyFields(grid, tracers)) where {TI, TG}
+                                     Gⁿ::TG = TendencyFields(grid, tracers),
+                                     G⁻::TE = TendencyFields(grid, tracers),
+                                     S⁻::PF = TendencyFields(grid, tracers)) where {TI, TG, TE, PF}
 
     !isnothing(implicit_solver) &&
         @warn("Implicit-explicit time-stepping with RungeKutta3TimeStepper is not tested. " * 
@@ -61,16 +63,7 @@ function SplitRungeKutta3TimeStepper(grid, tracers;
 
     FT = eltype(grid)
 
-    G⁻ = NamedTuple()
-
-    # G⁻ is needed only in case of a split-explicit time-stepping
-    if haskey(Gⁿ, :U) &&  haskey(Gⁿ, :V)
-        G⁻ = merge(G⁻, (; U = deepcopy(Gⁿ.U), V = deepcopy(Gⁿ.V)))
-    end
-
-    TE = typeof(G⁻)
-
-    return SplitRungeKutta3TimeStepper{FT, TG, TE, TI}(γ², γ³, ζ², ζ³, Gⁿ, G⁻, deepcopy(Gⁿ), implicit_solver)
+    return SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI}(γ², γ³, ζ², ζ³, Gⁿ, G⁻, S⁻, implicit_solver)
 end
 
 
@@ -146,7 +139,7 @@ function split_rk3_substep!(model, Δt, γⁿ, ζⁿ)
     model_fields = prognostic_fields(model)
 
     for (i, field) in enumerate(model_fields)
-        kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[i], model.timestepper.previous_model_fields[i])
+        kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[i], model.timestepper.S⁻[i])
         launch!(arch, grid, :xyz, rk3_substep_field!, kernel_args...; exclude_periphery=true)
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
@@ -164,7 +157,7 @@ end
 
 function store_fields!(model)
     
-    previous_fields = model.timestepper.previous_model_fields
+    previous_fields = model.timestepper.S⁻
     model_fields = prognostic_fields(model)
     
     for name in keys(previous_fields)

@@ -66,7 +66,7 @@ function explicit_rk3_step_free_surface!(free_surface, model, Δt, timestepper)
 
     launch!(model.architecture, model.grid, :xy,
             _explicit_rk3_step_free_surface!, free_surface.η, Δt, γⁿ, ζⁿ,
-            model.timestepper.Gⁿ.η, model.timestepper.previous_model_fields.η, size(model.grid, 3))
+            model.timestepper.Gⁿ.η, model.timestepper.S⁻.η, size(model.grid, 3))
 
     return nothing
 end

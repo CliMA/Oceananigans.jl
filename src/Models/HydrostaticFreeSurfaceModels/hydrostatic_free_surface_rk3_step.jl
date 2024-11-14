@@ -32,7 +32,7 @@ rk3_average_free_surface!(free_surface, args...) = nothing
 function rk3_average_free_surface!(free_surface::ImplicitFreeSurface, grid, timestepper, γⁿ, ζⁿ)
     arch = architecture(grid)
 
-    ηⁿ⁻¹ = timestepper.previous_model_fields.η    
+    ηⁿ⁻¹ = timestepper.S⁻.η    
     ηⁿ   = free_surface.η 
     
     launch!(arch, grid, :xy, _rk3_average_free_surface!, ηⁿ, grid, ηⁿ⁻¹, γⁿ, ζⁿ)
@@ -44,8 +44,8 @@ function rk3_average_pressure!(free_surface::SplitExplicitFreeSurface, grid, tim
 
     arch = architecture(grid)
 
-    Uⁿ⁻¹ = timestepper.previous_model_fields.U
-    Vⁿ⁻¹ = timestepper.previous_model_fields.V
+    Uⁿ⁻¹ = timestepper.S⁻.U
+    Vⁿ⁻¹ = timestepper.S⁻.V
     Uⁿ   = free_surface.barotropic_velocities.U
     Vⁿ   = free_surface.barotropic_velocities.V
 
@@ -69,11 +69,11 @@ function rk3_substep_velocities!(velocities, model, Δt, γⁿ, ζⁿ)
 
     for name in (:u, :v)
         Gⁿ = model.timestepper.Gⁿ[name]
-        old_field = model.timestepper.previous_model_fields[name]
+        S⁻ = model.timestepper.S⁻[name]
         velocity_field = velocities[name]
 
         launch!(model.architecture, model.grid, :xyz,
-                _split_rk3_substep_field!, velocity_field, Δt, γⁿ, ζⁿ, Gⁿ, old_field)
+                _split_rk3_substep_field!, velocity_field, Δt, γⁿ, ζⁿ, Gⁿ, S⁻)
 
         implicit_step!(velocity_field,
                        model.timestepper.implicit_solver,
@@ -102,12 +102,12 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         
         Gⁿ = model.timestepper.Gⁿ[tracer_name]
-        old_field = model.timestepper.previous_model_fields[tracer_name]
+        S⁻ = model.timestepper.S⁻[tracer_name]
         tracer_field = tracers[tracer_name]
         closure = model.closure
 
         launch!(architecture(grid), grid, :xyz,
-                _split_rk3_substep_field!, tracer_field, Δt, γⁿ, ζⁿ, Gⁿ, old_field)
+                _split_rk3_substep_field!, tracer_field, Δt, γⁿ, ζⁿ, Gⁿ, S⁻)
 
         implicit_step!(tracer_field,
                        model.timestepper.implicit_solver,

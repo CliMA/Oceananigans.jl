@@ -46,7 +46,8 @@ The state at the first substep is taken to be the one that corresponds to the ``
 """
 function RungeKutta3TimeStepper(grid, tracers;
                                 implicit_solver::TI = nothing,
-                                Gⁿ::TG = TendencyFields(grid, tracers)) where {TI, TG}
+                                Gⁿ::TG = TendencyFields(grid, tracers),
+                                G⁻::TG = TendencyFields(grid, tracers)) where {TI, TG}
 
     !isnothing(implicit_solver) &&
         @warn("Implicit-explicit time-stepping with RungeKutta3TimeStepper is not tested. " * 
@@ -61,7 +62,7 @@ function RungeKutta3TimeStepper(grid, tracers;
 
     FT = eltype(grid)
 
-    return RungeKutta3TimeStepper{FT, TG, TI}(γ¹, γ², γ³, ζ², ζ³, Gⁿ, deepcopy(Gⁿ), implicit_solver)
+    return RungeKutta3TimeStepper{FT, TG, TI}(γ¹, γ², γ³, ζ², ζ³, Gⁿ, G⁻, implicit_solver)
 end
 
 #####
