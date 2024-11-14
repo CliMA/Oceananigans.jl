@@ -1,5 +1,6 @@
 using Oceananigans.ImmersedBoundaries: retrieve_surface_active_cells_map, peripheral_node
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKutta3TimeStepper
+using Oceananigans.Operators: Δz
 
 # This file contains two different initializations methods performed at different stages of the simulation.
 #
@@ -27,9 +28,9 @@ function initialize_free_surface_state!(free_surface, baroclinic_timestepper, ti
 
     initialize_free_surface_timestepper!(timestepper, η, U, V)
 
-    fill!(filtered_state.η, 0)
-    fill!(filtered_state.U, 0)
-    fill!(filtered_state.V, 0)
+    fill!(free_surface.filtered_state.η, 0)
+    fill!(free_surface.filtered_state.U, 0)
+    fill!(free_surface.filtered_state.V, 0)
 
     return nothing
 end
@@ -48,9 +49,9 @@ function initialize_free_surface_state!(free_surface, ts::SplitRungeKutta3TimeSt
 
     initialize_free_surface_timestepper!(timestepper, η, U, V)
 
-    fill!(filtered_state.η, 0)
-    fill!(filtered_state.U, 0)
-    fill!(filtered_state.V, 0)
+    fill!(free_surface.filtered_state.η, 0)
+    fill!(free_surface.filtered_state.U, 0)
+    fill!(free_surface.filtered_state.V, 0)
 
     return nothing
 end
@@ -183,9 +184,11 @@ end
 # This function is called after `calculate_tendency` and before `ab2_step_velocities!`
 function compute_free_surface_tendency!(grid, model, free_surface::SplitExplicitFreeSurface)
 
+    G⁻ = model.timestepper.G⁻
+
     # we start the time integration of η from the average ηⁿ
-    Gu⁻ = model.timestepper.G⁻.u
-    Gv⁻ = model.timestepper.G⁻.v
+    Gu⁻ = haskey(G⁻, :u) ? G⁻.u : nothing
+    Gv⁻ = haskey(G⁻, :v) ? G⁻.v : nothing
     Guⁿ = model.timestepper.Gⁿ.u
     Gvⁿ = model.timestepper.Gⁿ.v
 

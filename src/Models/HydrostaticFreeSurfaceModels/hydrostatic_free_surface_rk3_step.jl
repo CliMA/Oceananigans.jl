@@ -3,7 +3,7 @@ using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, retrieve_surface_active_cells_map
 using Oceananigans.TimeSteppers: SplitRungeKutta3TimeStepper
 
-import Oceananigans.TimeSteppers: split_rk3_substep!, rk3_average_pressure!, _rk3_average_pressure!
+import Oceananigans.TimeSteppers: split_rk3_substep!, _split_rk3_substep_field!, rk3_average_pressure!, _rk3_average_pressure!
 
 function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζⁿ)
     
@@ -15,31 +15,45 @@ function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζ�
 end
 
 rk3_average_pressure!(model::HydrostaticFreeSurfaceModel, γⁿ, ζⁿ) = 
-    rk3_average_pressure!(model.free_surface, model.timestepper, γⁿ, ζⁿ)
+    rk3_average_pressure!(model.grid, model.free_surface, model.timestepper, γⁿ, ζⁿ)
 
-function rk3_average_pressure!(free_surface::ImplicitFreeSurface, timestepper, γⁿ, ζⁿ)
+function rk3_average_pressure!(grid, free_surface::ImplicitFreeSurface, timestepper, γⁿ, ζⁿ)
+
+    arch = architecture(grid)
 
     ηⁿ⁻¹ = timestepper.previous_model_fields.η    
     ηⁿ   = free_surface.η 
     
-    launch!(arch, grid, _rk3_average_pressure!, ηⁿ, ηⁿ⁻¹, γⁿ, ζⁿ)
+    Nx, Ny, _ = size(grid)
+    params = KernelParameters(1:Nx, 1:Ny)
+
+    launch!(arch, grid, params, _rk3_average_free_surface!, parent(ηⁿ), parent(ηⁿ⁻¹), γⁿ, ζⁿ)
     
     return nothing
 end
 
 rk3_average_pressure!(::Nothing, args...) = nothing
 
-function rk3_average_pressure!(free_surface::SplitExplicitFreeSurface, timestepper, γⁿ, ζⁿ)
+function rk3_average_pressure!(grid, free_surface::SplitExplicitFreeSurface, timestepper, γⁿ, ζⁿ)
+
+    arch = architecture(grid)
 
     Uⁿ⁻¹ = timestepper.previous_model_fields.U
     Vⁿ⁻¹ = timestepper.previous_model_fields.V
     Uⁿ   = free_surface.barotropic_velocities.U
     Vⁿ   = free_surface.barotropic_velocities.V
-    
-    launch!(arch, grid, _rk3_average_pressure!, Uⁿ, Uⁿ⁻¹, γⁿ, ζⁿ)
-    launch!(arch, grid, _rk3_average_pressure!, Vⁿ, Vⁿ⁻¹, γⁿ, ζⁿ)
+
+    Nx, Ny, _ = size(grid)
+
+    launch!(arch, grid, (Nx, Ny), _rk3_average_free_surface!, Uⁿ, Uⁿ⁻¹, γⁿ, ζⁿ)
+    launch!(arch, grid, (Nx, Ny), _rk3_average_free_surface!, Vⁿ, Vⁿ⁻¹, γⁿ, ζⁿ)
 
     return nothing
+end
+
+@kernel function _rk3_average_free_surface!(pressure, old_pressure, γⁿ, ζⁿ) 
+    i, j = @index(Global, NTuple)
+    pressure[i, j, k] = γⁿ * pressure[i, j, k] + ζⁿ * old_pressure[i, j, k]
 end
 
 #####

@@ -14,7 +14,7 @@ struct RungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
                  ζ² :: FT
                  ζ³ :: FT
                  Gⁿ :: TG
-  auxiliary_storage :: TG
+                 G⁻ :: TI
     implicit_solver :: TI
 end
 
@@ -52,12 +52,12 @@ function RungeKutta3TimeStepper(grid, tracers;
         @warn("Implicit-explicit time-stepping with RungeKutta3TimeStepper is not tested. " * 
               "\n implicit_solver: $(typeof(implicit_solver))")
 
-    γ¹ = 1
-    γ² = 1 // 4
-    γ³ = 2 // 3
+    γ¹ = 8 // 15
+    γ² = 5 // 12
+    γ³ = 3 // 4
 
-    ζ² = 3 // 4
-    ζ³ = 1 // 3
+    ζ² = -17 // 60
+    ζ³ = -5 // 12
 
     FT = eltype(grid)
 

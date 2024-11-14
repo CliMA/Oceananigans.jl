@@ -7,12 +7,13 @@ using Oceananigans: fields
 Holds parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
 time-stepping scheme described by [LeMoin1991](@citet).
 """
-struct SplitRungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
+struct SplitRungeKutta3TimeStepper{FT, TG, TE, TI} <: AbstractTimeStepper
     γ² :: FT
     γ³ :: FT
     ζ² :: FT
     ζ³ :: FT
     Gⁿ :: TG
+    G⁻ :: TE
     previous_model_fields :: TG
     implicit_solver :: TI
 end
@@ -60,7 +61,15 @@ function SplitRungeKutta3TimeStepper(grid, tracers;
 
     FT = eltype(grid)
 
-    return SplitRungeKutta3TimeStepper{FT, TG, TI}(γ², γ³, ζ², ζ³, Gⁿ, deepcopy(Gⁿ), implicit_solver)
+    G⁻ = NamedTuple()
+    # G⁻ is needed only in case of a split-explicit time-stepping
+    if haskey(Gⁿ, :U) &&  haskey(Gⁿ, :V)
+        G⁻ = merge(G⁻, (; U = deepcopy(Gⁿ.U), V = deepcopy(Gⁿ.V)))
+    end
+
+    TE = typeof(G⁻)
+
+    return SplitRungeKutta3TimeStepper{FT, TG, TE, TI}(γ², γ³, ζ², ζ³, Gⁿ, G⁻, deepcopy(Gⁿ), implicit_solver)
 end
 
 
@@ -85,7 +94,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     model.clock.stage = 1
 
     split_rk3_substep!(model, Δt, nothing, nothing)
-    compute_pressure_correction!(model, Δt)
+    calculate_pressure_correction!(model, Δt)
     pressure_correct_velocities!(model, Δt)
     update_state!(model, callbacks; compute_tendencies = true)
 
@@ -96,7 +105,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     model.clock.stage = 2
 
     split_rk3_substep!(model, Δt, γ², ζ²)
-    compute_pressure_correction!(model, Δt)
+    calculate_pressure_correction!(model, Δt)
  
     # The second stage is "particular" because we need to compute the average pressure
     rk3_average_pressure!(model, γ², ζ²)
@@ -110,7 +119,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     model.clock.stage = 3
     
     split_rk3_substep!(model, Δt, γ³, ζ³)
-    compute_pressure_correction!(model, Δt)
+    calculate_pressure_correction!(model, Δt)
     pressure_correct_velocities!(model, Δt)
     update_state!(model, callbacks; compute_tendencies = true)
 
@@ -171,20 +180,15 @@ function split_rk3_substep!(model, Δt, γⁿ, ζⁿ)
     end
 end
 
-@kernel function _store_fields!(previous_fields, fields)
-    i, j, k, n = @index(Global, NTuple)
-    previous_fields[n][i, j, k] = fields[n][i, j, k]
-end
-
 function store_fields!(model)
     
-    timestepper = model.timestepper
-    previous_fields = timestepper.previous_model_fields
-    grid = model.grid
-
-    params = (size(grid)..., length(previous_fields))
-    launch!(architecture(grid), grid, params, _store_old_fields!, previous_fields, fields(model))
+    previous_fields = model.timestepper.previous_model_fields
+    model_fields = prognostic_fields(model)
     
+    for name in keys(previous_fields)
+        parent(previous_fields[name]) .= parent(model_fields[name])
+    end
+
     return nothing
 end
 
