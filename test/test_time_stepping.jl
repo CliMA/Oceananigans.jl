@@ -243,7 +243,7 @@ BuoyancyModifiedAnisotropicMinimumDissipation(FT=Float64) = AnisotropicMinimumDi
 
 ConstantSmagorinsky(FT=Float64) = Smagorinsky(FT, coefficient=0.16)
 DirectionallyAveragedDynamicSmagorinsky(FT=Float64) =
-    Smagorinsky(FT, coefficient=DynamicCoefficient(averaging=(1,2)))
+    Smagorinsky(FT, coefficient=DynamicCoefficient(averaging=(1, 2)))
 LagrangianAveragedDynamicSmagorinsky(FT=Float64) =
     Smagorinsky(FT, coefficient=DynamicCoefficient(averaging=LagrangianAveraging()))
 
