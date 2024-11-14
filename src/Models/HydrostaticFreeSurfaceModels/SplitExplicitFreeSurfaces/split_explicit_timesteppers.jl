@@ -5,9 +5,11 @@ A timestepping scheme used for substepping in the split-explicit free surface so
     
 The equations are evolved as follows:
 ```math
+\begin{gather}
 η^{m+1} = η^m - Δτ (∂_x U^m + ∂_y V^m), \\
 U^{m+1} = U^m - Δτ (∂_x η^{m+1} - G^U), \\
 V^{m+1} = V^m - Δτ (∂_y η^{m+1} - G^V).
+\end{gather}
 ```
 """
 struct ForwardBackwardScheme end
@@ -23,12 +25,12 @@ struct AdamsBashforth3Scheme{CC, FC, CF, FT}
     Vᵐ⁻¹ :: CF
     Vᵐ⁻² :: CF
        β :: FT
-       α :: FT 
-       θ :: FT 
-       γ :: FT 
-       δ :: FT 
-       ϵ :: FT 
-       μ :: FT 
+       α :: FT
+       θ :: FT
+       γ :: FT
+       δ :: FT
+       ϵ :: FT
+       μ :: FT
 end
 
 """
@@ -48,18 +50,22 @@ free surface at time-step `m + 1/2`:
 The equations are evolved as follows:
 
 ```math
+\begin{gather}
 η^{m+1} = η^m - Δτ g H (∂_x Ũ + ∂y Ṽ), \\
 U^{m+1} = U^m - Δτ (∂_x η̃ - G^U), \\
 V^{m+1} = V^m - Δτ (∂_y η̃ - G^V),
+\end{gather}
 ```    
 
 where `η̃`, `Ũ` and `Ṽ` are the AB3 time-extrapolated values of free surface, 
 barotropic zonal and meridional velocities, respectively:
 
 ```math
-Ũ = α U^m   + θ U^{m-1} + β U^{m-2}, \\
-Ṽ = α V^m   + θ V^{m-1} + β V^{m-2}, \\
-η̃ = δ η^{m+1} + μ η^m   + γ η^{m-1} + ϵ η^{m-2}.
+\begin{gather}
+Ũ = α U^m + θ U^{m-1} + β U^{m-2}, \\
+Ṽ = α V^m + θ V^{m-1} + β V^{m-2}, \\
+η̃ = δ η^{m+1} + μ η^m + γ η^{m-1} + ϵ η^{m-2}.
+\end{gather}
 ```
 
 The default values for the time-extrapolation coefficients, described by [Shchepetkin2005](@citet), 
@@ -106,7 +112,7 @@ end
 ##### Timestepper extrapolations and utils
 #####
 
-function materialize_timestepper(name::Symbol, args...) 
+function materialize_timestepper(name::Symbol, args...)
     fullname = Symbol(name, :Scheme)
     TS = getglobal(@__MODULE__, fullname)
     return materialize_timestepper(TS, args...)
