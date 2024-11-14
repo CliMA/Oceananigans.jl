@@ -70,8 +70,11 @@ explicit_ab2_step_free_surface!(free_surface, model, Δt, χ) =
     end
 end
 
+compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface) = 
+    @apply_regionally compute_explicit_free_surface_tendency!(grid, model) 
+
 # Compute free surface tendency
-function compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface)
+function compute_explicit_free_surface_tendency!(grid, model) 
 
     arch = architecture(grid)
 
