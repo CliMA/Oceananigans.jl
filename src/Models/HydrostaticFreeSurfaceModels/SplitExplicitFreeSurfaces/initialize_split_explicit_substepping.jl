@@ -1,5 +1,8 @@
 using Oceananigans.ImmersedBoundaries: retrieve_surface_active_cells_map, peripheral_node
 
+const c = Center()
+const f = Face()
+
 # This file contains two different initializations methods performed at different stages of the simulation.
 #
 # - `initialize_free_surface!`: the first initialization, performed only once at the beginning of the simulation, 
@@ -33,37 +36,72 @@ end
 # Calculate RHS for the barotropic time step.
 @kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, ::Nothing, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     i, j  = @index(Global, NTuple)
-    ab2_integrate_tendencies!(Gᵁ, Gⱽ, i, j, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
-end
+    k_top = grid.Nz + 1
 
-@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
-    idx = @index(Global, Linear)
-    i, j = active_linear_index_to_tuple(idx, active_cells_map)
-    ab2_integrate_tendencies!(Gᵁ, Gⱽ, i, j, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
-end
-
-@inline function ab2_integrate_tendencies!(Gᵁ, Gⱽ, i, j, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
-    locU = (Face(), Center(), Center())
-    locV = (Center(), Face(), Center())
-
-    @inbounds Gᵁ[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_G(i, j, 1, grid, locU, Gu⁻, Guⁿ, χ)
-    @inbounds Gⱽ[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_step_G(i, j, 1, grid, locV, Gv⁻, Gvⁿ, χ)
+    @inbounds Gᵁ[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, χ)
+    @inbounds Gⱽ[i, j, k_top-1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_step_Gv(i, j, 1, grid, Gv⁻, Gvⁿ, χ)
 
     for k in 2:grid.Nz
-        @inbounds Gᵁ[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * ab2_step_G(i, j, k, grid, locU, Gu⁻, Guⁿ, χ)
-        @inbounds Gⱽ[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * ab2_step_G(i, j, k, grid, locV, Gv⁻, Gvⁿ, χ)
+        @inbounds Gᵁ[i, j, k_top-1] += Δzᶠᶜᶜ(i, j, k, grid) * ab2_step_Gu(i, j, k, grid, Gu⁻, Guⁿ, χ)
+        @inbounds Gⱽ[i, j, k_top-1] += Δzᶜᶠᶜ(i, j, k, grid) * ab2_step_Gv(i, j, k, grid, Gv⁻, Gvⁿ, χ)
     end
 end
 
-@inline function ab2_step_G(i, j, k, grid, (ℓx, ℓy, ℓz), G⁻, Gⁿ, χ::FT) where FT 
-    C₁ = convert(FT, 3/2) + χ
-    C₂ = convert(FT, 1/2) + χ
-    
-    Gⁿ⁺¹ = @inbounds C₁ * Gⁿ[i, j, k] - C₂ * G⁻[i, j, k]
-    immersed = peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
+# Calculate RHS for the barotropic time step.q
+@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+    idx = @index(Global, Linear)
+    i, j = active_linear_index_to_tuple(idx, active_cells_map)
+    k_top = grid.Nz+1
 
-    return ifelse(immersed, zero(grid), Gⁿ⁺¹)
+    @inbounds Gᵁ[i, j, k_top-1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, χ)
+    @inbounds Gⱽ[i, j, k_top-1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_step_Gv(i, j, 1, grid, Gv⁻, Gvⁿ, χ)
+
+    for k in 2:grid.Nz
+        @inbounds Gᵁ[i, j, k_top-1] += Δzᶠᶜᶜ(i, j, k, grid) * ab2_step_Gu(i, j, k, grid, Gu⁻, Guⁿ, χ)
+        @inbounds Gⱽ[i, j, k_top-1] += Δzᶜᶠᶜ(i, j, k, grid) * ab2_step_Gv(i, j, k, grid, Gv⁻, Gvⁿ, χ)
+    end
 end
+
+@inline ab2_step_Gu(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT =
+    @inbounds ifelse(peripheral_node(i, j, k, grid, f, c, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
+
+@inline ab2_step_Gv(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT =
+    @inbounds ifelse(peripheral_node(i, j, k, grid, c, f, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
+
+# # Calculate RHS for the barotropic time step.
+# @kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, ::Nothing, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+#     i, j  = @index(Global, NTuple)
+#     ab2_integrate_tendencies!(Gᵁ, Gⱽ, i, j, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+# end
+
+# @kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+#     idx = @index(Global, Linear)
+#     i, j = active_linear_index_to_tuple(idx, active_cells_map)
+#     ab2_integrate_tendencies!(Gᵁ, Gⱽ, i, j, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+# end
+
+# @inline function ab2_integrate_tendencies!(Gᵁ, Gⱽ, i, j, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+#     locU = (Face(), Center(), Center())
+#     locV = (Center(), Face(), Center())
+
+#     @inbounds Gᵁ[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_G(i, j, 1, grid, locU, Gu⁻, Guⁿ, χ)
+#     @inbounds Gⱽ[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_step_G(i, j, 1, grid, locV, Gv⁻, Gvⁿ, χ)
+
+#     for k in 2:grid.Nz
+#         @inbounds Gᵁ[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * ab2_step_G(i, j, k, grid, locU, Gu⁻, Guⁿ, χ)
+#         @inbounds Gⱽ[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * ab2_step_G(i, j, k, grid, locV, Gv⁻, Gvⁿ, χ)
+#     end
+# end
+
+# @inline function ab2_step_G(i, j, k, grid, (ℓx, ℓy, ℓz), G⁻, Gⁿ, χ::FT) where FT 
+#     C₁ = convert(FT, 3/2) + χ
+#     C₂ = convert(FT, 1/2) + χ
+    
+#     Gⁿ⁺¹ = @inbounds C₁ * Gⁿ[i, j, k] - C₂ * G⁻[i, j, k]
+#     immersed = peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
+
+#     return ifelse(immersed, zero(grid), Gⁿ⁺¹)
+# end
 
 # Setting up the RHS for the barotropic step (tendencies of the barotropic velocity components)
 # This function is called after `calculate_tendency` and before `ab2_step_velocities!`
