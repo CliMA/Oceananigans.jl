@@ -144,11 +144,6 @@ end
     return fractional_index(z, zn, Nz) 
 end
 
-flip(t::Tuple) = map(flip, t)
-flip(::Nothing) = nothing
-flip(::Center)  = Face()
-flip(::Face)    = Center() 
-
 """
     fractional_indices(x, y, z, grid, loc...)
 
