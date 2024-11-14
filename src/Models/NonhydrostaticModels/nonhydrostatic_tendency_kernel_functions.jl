@@ -56,9 +56,9 @@ pressure anomaly.
                                      tracers,
                                      auxiliary_fields,
                                      diffusivities,
-                                     forcings,
                                      hydrostatic_pressure,
-                                     clock)
+                                     clock,
+                                     forcing)
 
     model_fields = merge(velocities, tracers, auxiliary_fields)
 
@@ -77,7 +77,7 @@ pressure anomaly.
              - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, diffusivities, clock, model_fields)
              + x_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
              + ∂t_uˢ(i, j, k, grid, stokes_drift, clock.time)
-             + forcings.u(i, j, k, grid, clock, model_fields))
+             + forcing(i, j, k, grid, clock, model_fields))
 end
 
 """
@@ -119,9 +119,9 @@ pressure anomaly.
                                      tracers,
                                      auxiliary_fields,
                                      diffusivities,
-                                     forcings,
                                      hydrostatic_pressure,
-                                     clock)
+                                     clock,
+                                     forcing)
 
     model_fields = merge(velocities, tracers, auxiliary_fields)
 
@@ -140,7 +140,7 @@ pressure anomaly.
              - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, diffusivities, clock, model_fields)
              + y_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
              + ∂t_vˢ(i, j, k, grid, stokes_drift, clock.time)
-             + forcings.v(i, j, k, grid, clock, model_fields))
+             + forcing(i, j, k, grid, clock, model_fields))
 end
 
 # Only add buoyancy if the hydrostatic pressure isa Nothing
@@ -185,9 +185,9 @@ velocity components, tracer fields, and precalculated diffusivities where applic
                                      tracers,
                                      auxiliary_fields,
                                      diffusivities,
-                                     forcings,
                                      hydrostatic_pressure,
-                                     clock)
+                                     clock,
+                                     forcing)
 
     model_fields = merge(velocities, tracers, auxiliary_fields)
 
@@ -205,7 +205,7 @@ velocity components, tracer fields, and precalculated diffusivities where applic
              - immersed_∂ⱼ_τ₃ⱼ(i, j, k, grid, velocities, w_immersed_bc, closure, diffusivities, clock, model_fields)
              + z_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
              + ∂t_wˢ(i, j, k, grid, stokes_drift, clock.time)
-             + forcings.w(i, j, k, grid, clock, model_fields))
+             + forcing(i, j, k, grid, clock, model_fields))
 end
 
 """
