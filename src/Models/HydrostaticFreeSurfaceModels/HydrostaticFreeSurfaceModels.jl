@@ -33,7 +33,6 @@ free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 
 # free surface initialization functions
 initialize_free_surface!(free_surface, grid, velocities) = nothing
-setup_free_surface!(model, free_surface, χ) = nothing
 
 include("compute_w_from_continuity.jl")
 

@@ -48,8 +48,6 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
         callback.callsite isa TendencyCallsite && callback(model)
     end
 
-    compute_free_surface_tendency!(grid, model, model.free_surface)
-
     update_tendencies!(model.biogeochemistry, model)
 
     return nothing
