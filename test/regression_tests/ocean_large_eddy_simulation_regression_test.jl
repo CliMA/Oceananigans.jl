@@ -3,7 +3,14 @@ using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.DistributedComputations: cpu_architecture, partition
 
 function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)
-    name = "ocean_large_eddy_simulation_" * string(typeof(first(closure)).name.wrapper)
+    if first(closure) isa SmagorinskyLilly
+        name = "ocean_large_eddy_simulation_SmagorinskyLilly"
+    else
+        firstclosure = first(closure)
+        closurename = typeof(firstclosure).name.wrapper
+        closurestr = string(closurename)
+        name = "ocean_large_eddy_simulation_$closurestr"
+    end
 
     spinup_steps = 10000
       test_steps = 10
@@ -40,7 +47,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
                                 boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs))
 
     # The type of the underlying data, not the offset array.
-    ArrayType = typeof(model.velocities.u.data.parent)
+    ArrayType = typeof(parent(model.velocities.u))
     nx, ny, nz = size(model.tracers.T)
 
     u, v, w = model.velocities
