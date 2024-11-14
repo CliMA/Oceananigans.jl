@@ -19,8 +19,21 @@ end
                              averaging_kernel = averaging_shape_function,
                              timestepper = ForwardBackwardScheme())
 
-Return a `SplitExplicitFreeSurface` representing an explicit time discretization
-of a free surface dynamics with `gravitational_acceleration`.
+Return a `SplitExplicitFreeSurface` representing an explicit time discretization of 
+a free surface dynamics with `gravitational_acceleration`. The free surface dynamics are solved by discretizing:
+```math
+\begin{gather}
+∂_t η = - \nabla ⋅ U, \\
+∂_t U = - g H \nabla η + G^U,
+\end{gather}
+```
+where ``η`` is the free surface displacement, ``U`` is the barotropic velocity vector, calculated as the vertical integral 
+of the velocity field ``u`` and ``v``, ``H`` is the column depth, ``G^U`` is the slow forcing calculated as the integral of the 
+tendency of ``u`` and ``v``, and ``g`` is the gravitational acceleration. 
+
+The discretized equations are solved within a baroclinic timestep (``Δt``) by substepping with a ``Δτ < Δt``. 
+The barotropic velocities are filtered throughout the substepping and, finally, 
+the barotropic mode of the velocities at the new time step is corrected with the filtered velocities.
 
 Keyword Arguments
 =================
