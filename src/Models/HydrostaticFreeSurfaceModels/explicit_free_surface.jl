@@ -90,8 +90,11 @@ end
     @inbounds η[i, j, Nz+1] += Δt * ((FT(1.5) + χ) * Gηⁿ[i, j, Nz+1] - (FT(0.5) + χ) * Gη⁻[i, j, Nz+1])
 end
 
+compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface) = 
+    @apply_regionally compute_explicit_free_surface_tendency!(grid, model) 
+
 # Compute free surface tendency
-function compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface)
+function compute_explicit_free_surface_tendency!(grid, model) 
 
     arch = architecture(grid)
 

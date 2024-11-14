@@ -32,6 +32,7 @@ include("split_explicit_timesteppers.jl")
 include("split_explicit_free_surface.jl")
 include("distributed_split_explicit_free_surface.jl")
 include("initialize_split_explicit_substepping.jl")
+include("compute_slow_tendencies.jl")
 include("step_split_explicit_free_surface.jl")
 include("barotropic_split_explicit_corrector.jl")
 
