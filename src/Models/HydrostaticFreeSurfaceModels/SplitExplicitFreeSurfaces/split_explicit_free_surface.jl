@@ -127,7 +127,7 @@ function split_explicit_substepping(cfl, ::Nothing, ::Nothing, grid, averaging_k
     return FixedTimeStepSize(grid; cfl, averaging_kernel)
 end
 
-# The number of substeps are calculated based on the cfl an2d the fixed_Δt
+# The number of substeps are calculated based on the cfl and the fixed_Δt
 function split_explicit_substepping(cfl, ::Nothing, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
 
     substepping = split_explicit_substepping(cfl, nothing, nothing, grid, averaging_kernel, gravitational_acceleration)    
