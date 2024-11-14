@@ -11,7 +11,7 @@ import Oceananigans.TimeSteppers: ab2_step!
 
 function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
 
-    setup_free_surface!(model, model.free_surface, model.timestepper, 1)
+    χ = model.timestepper.χ
 
     # Step locally velocity and tracers
     @apply_regionally begin

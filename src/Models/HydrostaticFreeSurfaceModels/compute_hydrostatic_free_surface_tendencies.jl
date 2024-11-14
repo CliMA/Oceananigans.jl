@@ -38,7 +38,6 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     compute_hydrostatic_boundary_tendency_contributions!(model.timestepper.Gⁿ,
                                                          model.architecture,
                                                          model.velocities,
-                                                         model.free_surface,
                                                          model.tracers,
                                                          model.clock,
                                                          fields(model),
@@ -49,10 +48,15 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
         callback.callsite isa TendencyCallsite && callback(model)
     end
 
+    compute_free_surface_tendency!(grid, model, model.free_surface)
+
     update_tendencies!(model.biogeochemistry, model)
 
     return nothing
 end
+
+# Fallback
+compute_free_surface_tendency!(grid, model, free_surface) = nothing
 
 @inline function top_tracer_boundary_conditions(grid, tracers)
     names = propertynames(tracers)
@@ -151,28 +155,18 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
             active_cells_map, v_kernel_args;
             active_cells_map)
 
-    compute_free_surface_tendency!(grid, model, model.free_surface, :xy)
-
     return nothing
 end
 
-# Fallback
-compute_free_surface_tendency!(grid, model, free_surface, args...) = nothing
-
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function compute_hydrostatic_boundary_tendency_contributions!(Gⁿ, arch, velocities, free_surface, tracers, args...)
+function compute_hydrostatic_boundary_tendency_contributions!(Gⁿ, arch, velocities, tracers, args...)
 
     args = Tuple(args)
 
     # Velocity fields
     for i in (:u, :v)
         apply_flux_bcs!(Gⁿ[i], velocities[i], arch, args)
-    end
-
-    # Free surface
-    if free_surface isa ExplicitFreeSurface
-        apply_flux_bcs!(Gⁿ.η, displacement(free_surface), arch, args)
     end
 
     # Tracer fields

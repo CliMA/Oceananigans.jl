@@ -1,8 +1,13 @@
+using Oceananigans.ImmersedBoundaries: retrieve_surface_active_cells_map, peripheral_node
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKutta3TimeStepper
 
-#####
-##### Initialize Free Surface state
-#####
+# This file contains two different initializations methods performed at different stages of the simulation.
+#
+# - `initialize_free_surface!`: the first initialization, performed only once at the beginning of the simulation, 
+#                               calculates the barotropic velocities from the velocity initial conditions.
+#
+# - `initialize_free_surface_state!`: is performed at the beginning of the substepping procedure, resets the filtered state to zero
+#                                     and reinitializes the timestepper auxiliaries from the previous filtered state.           
 
 # `initialize_free_surface!` is called at the beginning of the simulation to initialize the free surface state
 # from the initial velocity conditions.
@@ -58,12 +63,12 @@ end
 @kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, ::Nothing, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     i, j  = @index(Global, NTuple)
 
-    @inbounds Gᵁ[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, χ)
-    @inbounds Gⱽ[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_step_Gv(i, j, 1, grid, Gv⁻, Gvⁿ, χ)
+    @inbounds Gᵁ[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_G(i, j, 1, grid, Face(), Center(), Center(), Gu⁻, Guⁿ, χ)
+    @inbounds Gⱽ[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_step_G(i, j, 1, grid, Face(), Center(), Center(), Gv⁻, Gvⁿ, χ)
 
     for k in 2:grid.Nz
-        @inbounds Gᵁ[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * ab2_step_Gu(i, j, k, grid, Gu⁻, Guⁿ, χ)
-        @inbounds Gⱽ[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * ab2_step_Gv(i, j, k, grid, Gv⁻, Gvⁿ, χ)
+        @inbounds Gᵁ[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * ab2_step_G(i, j, k, grid, Face(), Center(), Center(), Gu⁻, Guⁿ, χ)
+        @inbounds Gⱽ[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * ab2_step_G(i, j, k, grid, Face(), Center(), Center(), Gv⁻, Gvⁿ, χ)
     end
 end
 
@@ -72,29 +77,35 @@ end
     idx = @index(Global, Linear)
     i, j = active_linear_index_to_tuple(idx, active_cells_map)
 
-    @inbounds Gᵁ[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_Gu(i, j, 1, grid, Gu⁻, Guⁿ, χ)
-    @inbounds Gⱽ[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_step_Gv(i, j, 1, grid, Gv⁻, Gvⁿ, χ)
+    @inbounds Gᵁ[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_G(i, j, 1, grid, Face(), Center(), Center(), Gu⁻, Guⁿ, χ)
+    @inbounds Gⱽ[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_step_G(i, j, 1, grid, Face(), Center(), Center(), Gv⁻, Gvⁿ, χ)
 
     for k in 2:grid.Nz
-        @inbounds Gᵁ[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * ab2_step_Gu(i, j, k, grid, Gu⁻, Guⁿ, χ)
-        @inbounds Gⱽ[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * ab2_step_Gv(i, j, k, grid, Gv⁻, Gvⁿ, χ)
+        @inbounds Gᵁ[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * ab2_step_G(i, j, k, grid, Face(), Center(), Center(), Gu⁻, Guⁿ, χ)
+        @inbounds Gⱽ[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * ab2_step_G(i, j, k, grid, Face(), Center(), Center(), Gv⁻, Gvⁿ, χ)
     end
 end
 
-@inline ab2_step_Gu(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT =
-    @inbounds ifelse(peripheral_node(i, j, k, grid, f, c, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
+@inline function ab2_step_G(i, j, k, grid, ℓx, ℓy, ℓz, G⁻, Gⁿ, χ::FT) where FT 
+    C₁ = convert(FT, 3/2) + χ
+    C₂ = convert(FT, 1/2) + χ
+    
+    G̃ = @inbounds C₁ * Gⁿ[i, j, k] - C₂ * G⁻[i, j, k]
+    immersed = peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
 
-@inline ab2_step_Gv(i, j, k, grid, G⁻, Gⁿ, χ::FT) where FT =
-    @inbounds ifelse(peripheral_node(i, j, k, grid, c, f, c), zero(grid), (convert(FT, 1.5) + χ) *  Gⁿ[i, j, k] - G⁻[i, j, k] * (convert(FT, 0.5) + χ))
+    return ifelse(immersed, zero(grid), G̃)
+end
 
-
-function split_explicit_forcing!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, timestepper::QuasiAdamsBashforth2TimeStepper, stage)     active_cells_map = retrieve_surface_active_cells_map(grid)
+@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, 
+                                                 timestepper::QuasiAdamsBashforth2TimeStepper, stage)
     active_cells_map = retrieve_surface_active_cells_map(grid)
+
     launch!(architecture(grid), grid, :xy, _compute_integrated_ab2_tendencies!, GUⁿ, GVⁿ, grid,
-            active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, timestepper.χ; active_cells_map)
+            active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ; active_cells_map)
 
     return nothing
-end 
+end
+
 
 #####
 ##### Compute slow tendencies for the RK3 timestepper
@@ -153,7 +164,9 @@ end
     @inbounds GVⁿ[i, j, 1] = convert(FT, 2/3) * GVⁿ[i, j, 1] + GV⁻[i, j, 1]
 end
 
-function split_explicit_forcing!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, ::SplitRungeKutta3TimeStepper, stage)  
+@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, 
+                                                 ::SplitRungeKutta3TimeStepper, stage)
+
     active_cells_map = retrieve_surface_active_cells_map(grid)    
     launch!(architecture(grid), grid, :xy, _compute_integrated_rk3_tendencies!, 
             GUⁿ, GVⁿ, GU⁻, GV⁻, grid, active_cells_map, Guⁿ, Gvⁿ, Val(stage); active_cells_map)
@@ -167,9 +180,9 @@ end
 
 # Setting up the RHS for the barotropic step (tendencies of the barotropic velocity components)
 # This function is called after `calculate_tendency` and before `ab2_step_velocities!`
-function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, baroclinic_timestepper, stage)
-    
-    # we start the time integration of η from the average ηⁿ     
+function compute_free_surface_tendency!(grid, model, free_surface::SplitExplicitFreeSurface)
+
+    # we start the time integration of η from the average ηⁿ
     Gu⁻ = model.timestepper.G⁻.u
     Gv⁻ = model.timestepper.G⁻.v
     Guⁿ = model.timestepper.Gⁿ.u
@@ -181,8 +194,10 @@ function setup_free_surface!(model, free_surface::SplitExplicitFreeSurface, baro
     GVⁿ = model.timestepper.Gⁿ.V
 
     barotropic_timestepper = free_surface.timestepper
-    
-    @apply_regionally split_explicit_forcing!(GUⁿ, GVⁿ, GU⁻, GV⁻, model.grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, baroclinic_timestepper, stage)
+    baroclinic_timestepper = model.timestepper
+    stage = model.clock.stage
+
+    @apply_regionally compute_split_explicit_forcing!(GUⁿ, GVⁿ, GU⁻, GV⁻, model.grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, baroclinic_timestepper, stage)
 
     initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper, Val(stage))
 

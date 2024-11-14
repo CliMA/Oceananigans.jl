@@ -119,10 +119,6 @@ end
 
 WENO(grid, FT::DataType=Float64; kwargs...) = WENO(FT; grid, kwargs...)
 
-# Some usefull aliases
-WENOThirdOrder(grid=nothing, FT::DataType=Float64;  kwargs...) = WENO(grid, FT; order=3, kwargs...)
-WENOFifthOrder(grid=nothing, FT::DataType=Float64;  kwargs...) = WENO(grid, FT; order=5, kwargs...)
-
 # Flavours of WENO
 const PositiveWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple}
 

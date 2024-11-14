@@ -1,6 +1,4 @@
-using Oceananigans.Grids: with_halo
-using Oceananigans.AbstractOperations: GridMetricOperation, Δz
-using Oceananigans.DistributedComputations: DistributedGrid, DistributedField
+using Oceananigans.DistributedComputations: DistributedField
 using Oceananigans.DistributedComputations: SynchronizedDistributed, synchronize_communication!
 
 const DistributedSplitExplicit = SplitExplicitFreeSurface{<:DistributedField}

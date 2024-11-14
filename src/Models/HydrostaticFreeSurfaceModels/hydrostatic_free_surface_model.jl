@@ -3,7 +3,7 @@ using OrderedCollections: OrderedDict
 
 using Oceananigans.DistributedComputations
 using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant, adapt_advection_order
+using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, adapt_advection_order
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
@@ -57,7 +57,7 @@ default_free_surface(grid; gravitational_acceleration=g_Earth) =
     HydrostaticFreeSurfaceModel(; grid,
                                 clock = Clock{eltype(grid)}(time = 0),
                                 momentum_advection = VectorInvariant(),
-                                tracer_advection = CenteredSecondOrder(),
+                                tracer_advection = Centered(),
                                 buoyancy = SeawaterBuoyancy(eltype(grid)),
                                 coriolis = nothing,
                                 free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
@@ -102,19 +102,18 @@ Keyword arguments
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
 """
 function HydrostaticFreeSurfaceModel(; grid,
-                                          clock = Clock{eltype(grid)}(time = 0),
-                             momentum_advection = VectorInvariant(),
-                               tracer_advection = CenteredSecondOrder(),
-                                       buoyancy = nothing,
-                                       coriolis = nothing,
-                                    timestepper = :QuasiAdamsBashforth2,
-                                   free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
-                                        tracers = nothing,
-                            forcing::NamedTuple = NamedTuple(),
-                                        closure = nothing,
-                boundary_conditions::NamedTuple = NamedTuple(),
-                  particles::ParticlesOrNothing = nothing,
-          biogeochemistry::AbstractBGCOrNothing = nothing,
+                                     clock = Clock{eltype(grid)}(time = 0),
+                                     momentum_advection = VectorInvariant(),
+                                     tracer_advection = Centered(),
+                                     buoyancy = nothing,
+                                     coriolis = nothing,
+                                     free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
+                                     tracers = nothing,
+                                     forcing::NamedTuple = NamedTuple(),
+                                     closure = nothing,
+                                     boundary_conditions::NamedTuple = NamedTuple(),
+                                     particles::ParticlesOrNothing = nothing,
+                                     biogeochemistry::AbstractBGCOrNothing = nothing,
                                      velocities = nothing,
                                      pressure = nothing,
                                      diffusivity_fields = nothing,

@@ -40,14 +40,16 @@ end
     end
 end
 
+# Correcting `u` and `v` with the barotropic mode computed in `free_surface`
 function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     state = free_surface.filtered_state
     U, V  = free_surface.barotropic_velocities
     U̅, V̅  = state.U, state.V
     arch  = architecture(grid)
 
-    # take out "bad" barotropic mode, 
-    # !!!! reusing U̅ and V̅ for U and V have already been restarted
+    # NOTE: the filtered `U̅` and `V̅` have been copied in the instantaneous `U` and `V`,
+    # so we use the filtered velocities as "work arrays" to store the vertical integrals
+    # of the instantaneous velocities `u` and `v`.
     compute_barotropic_mode!(U̅, V̅, grid, u, v)
 
     # add in "good" barotropic mode

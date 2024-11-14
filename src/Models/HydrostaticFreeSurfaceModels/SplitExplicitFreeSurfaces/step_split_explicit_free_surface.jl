@@ -1,22 +1,3 @@
-using Oceananigans.Grids
-using Oceananigans.Grids: topology
-using Oceananigans.Utils
-using Oceananigans.AbstractOperations: Δz
-using Oceananigans.BoundaryConditions
-using Oceananigans.Operators
-using Oceananigans.Architectures: convert_args
-using Oceananigans.ImmersedBoundaries: peripheral_node, immersed_inactive_node, GFBIBG
-using Oceananigans.ImmersedBoundaries: inactive_node, IBG, c, f
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!, retrieve_surface_active_cells_map, retrieve_interior_active_cells_map
-using Oceananigans.ImmersedBoundaries: active_linear_index_to_tuple, ActiveCellsIBG, ActiveZColumnsIBG
-using Oceananigans.DistributedComputations: child_architecture
-using Oceananigans.DistributedComputations: Distributed
-using Oceananigans: fields
-
-using Printf
-using KernelAbstractions: @index, @kernel
-using KernelAbstractions.Extras.LoopInfo: @unroll
-
 # Evolution Kernels
 #
 # ∂t(η) = -∇⋅U
@@ -29,7 +10,7 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
     
-    advance_previous_free_surface!(timestepper, i, j, k_top, η)
+    store_previous_free_surface!(timestepper, i, j, k_top, η)
     @inbounds  η[i, j, k_top] -= Δτ * (δxTᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
                                        δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) / Azᶜᶜᶠ(i, j, k_top, grid)
 end
@@ -42,8 +23,8 @@ end
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
-    advance_previous_velocities!(timestepper, i, j, 1, U)
-    advance_previous_velocities!(timestepper, i, j, 1, V)
+    store_previous_velocities!(timestepper, i, j, 1, U)
+    store_previous_velocities!(timestepper, i, j, 1, V)
 
     Hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
     Hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
@@ -119,16 +100,14 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
     return nothing
 end
 
-@kernel function _update_split_explicit_state!(η, barotropic_velocities, filtered_state)
+@kernel function _update_split_explicit_state!(η, U, V, grid, η̅, U̅, V̅)
     i, j = @index(Global, NTuple)
-    k_top = η.grid.Nz+1
-
-    U, V = barotropic_velocities
+    k_top = grid.Nz+1
 
     @inbounds begin
-        η[i, j, k_top] = filtered_state.η[i, j, k_top]
-        U[i, j, 1]     = filtered_state.U[i, j, 1]
-        V[i, j, 1]     = filtered_state.V[i, j, 1]
+        η[i, j, k_top] = η̅[i, j, k_top]
+        U[i, j, 1]     = U̅[i, j, 1]
+        V[i, j, 1]     = V̅[i, j, 1]
     end
 end
 
@@ -144,7 +123,8 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     filtered_state    = free_surface.filtered_state
     substepping       = free_surface.substepping
     timestepper       = free_surface.timestepper
-    velocities        = free_surface.barotropic_velocities
+    
+    barotropic_velocities = free_surface.barotropic_velocities
 
     # Wait for setup step to finish
     wait_free_surface_communication!(free_surface, model, architecture(free_surface_grid))
@@ -162,9 +142,17 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     GUⁿ = model.timestepper.Gⁿ.U
     GVⁿ = model.timestepper.Gⁿ.V
 
+    #free surface state
+    η = free_surface.η
+    U = barotropic_velocities.U
+    V = barotropic_velocities.V
+    η̅ = filtered_state.η
+    U̅ = filtered_state.U
+    V̅ = filtered_state.V
+
     # reset free surface averages
     @apply_regionally begin
-        initialize_free_surface_state!(filtered_state, free_surface.η, velocities, timestepper)
+        initialize_free_surface_state!(filtered_state, free_surface.η, barotropic_velocities, timestepper)
 
         # Solve for the free surface at tⁿ⁺¹
         iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, weights, Val(Nsubsteps))
@@ -172,8 +160,7 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
         # Update eta and velocities for the next timestep
         # The halos are updated in the `update_state!` function
         launch!(architecture(free_surface_grid), free_surface_grid, :xy, 
-                _update_split_explicit_state!,
-                free_surface.η, velocities, filtered_state)
+                _update_split_explicit_state!, η, U, V, free_surface_grid, η̅, U̅, V̅)
 
         # Preparing velocities for the barotropic correction
         mask_immersed_field!(model.velocities.u)
