@@ -29,7 +29,7 @@ include("split_explicit_free_surface.jl")
 include("distributed_split_explicit_free_surface.jl")
 include("setup_split_explicit.jl")
 include("step_split_explicit_free_surface.jl")
-include("barotropic_correction.jl")
+include("barotropic_split_explicit_corrector.jl")
 
 # extend
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::SplitExplicitFreeSurface) = zero(grid)
