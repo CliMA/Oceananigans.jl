@@ -48,10 +48,15 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
         callback.callsite isa TendencyCallsite && callback(model)
     end
 
+    compute_free_surface_tendency!(grid, model, model.free_surface)
+
     update_tendencies!(model.biogeochemistry, model)
 
     return nothing
 end
+
+# Fallback
+compute_free_surface_tendency!(grid, model, free_surface) = nothing
 
 @inline function top_tracer_boundary_conditions(grid, tracers)
     names = propertynames(tracers)
