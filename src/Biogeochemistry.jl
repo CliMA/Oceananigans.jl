@@ -1,7 +1,7 @@
 module Biogeochemistry
 
 using Oceananigans.Grids: Center, xnode, ynode, znode
-using Oceananigans.Advection: div_Uc, CenteredSecondOrder
+using Oceananigans.Advection: div_Uc, Centered
 using Oceananigans.Architectures: device, architecture
 using Oceananigans.Fields: ZeroField
 

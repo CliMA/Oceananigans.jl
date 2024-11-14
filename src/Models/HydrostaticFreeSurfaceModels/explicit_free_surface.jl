@@ -50,8 +50,26 @@ end
 ##### Time stepping
 #####
 
-step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper, Δt) = 
+step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::QuasiAdamsBashforth2TimeStepper, Δt) = 
     @apply_regionally explicit_ab2_step_free_surface!(free_surface, model, Δt, timestepper.χ)
+
+step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::SplitRungeKutta3TimeStepper, Δt) =
+    @apply_regionally explicit_rk3_step_free_surface!(free_surface, model, Δt, timestepper)
+
+@inline rk3_coeffs(ts, ::Val{1}) = (1,     0)
+@inline rk3_coeffs(ts, ::Val{2}) = (ts.γ², ts.ζ²)
+@inline rk3_coeffs(ts, ::Val{3}) = (ts.γ³, ts.ζ³)
+
+function explicit_rk3_step_free_surface!(free_surface, model, Δt, timestepper)
+    
+    γⁿ, ζⁿ = rk3_coeffs(timestepper, Val(model.clock.stage))
+
+    launch!(model.architecture, model.grid, :xy,
+            _explicit_rk3_step_free_surface!, free_surface.η, Δt, γⁿ, ζⁿ,
+            model.timestepper.Gⁿ.η, model.timestepper.S⁻.η, size(model.grid, 3))
+
+    return nothing
+end
 
 explicit_ab2_step_free_surface!(free_surface, model, Δt, χ) =
     launch!(model.architecture, model.grid, :xy,
@@ -59,10 +77,86 @@ explicit_ab2_step_free_surface!(free_surface, model, Δt, χ) =
             model.timestepper.Gⁿ.η, model.timestepper.G⁻.η, size(model.grid, 3))
 
 #####
-##### Kernel
+##### Kernels
 #####
+
+@kernel function _explicit_rk3_step_free_surface!(η, Δt, γⁿ, ζⁿ, Gⁿ, η⁻, Nz)
+    i, j = @index(Global, NTuple)
+    @inbounds η[i, j, Nz+1] += ζⁿ * η⁻[i, j, k] + γⁿ * (η[i, j, k] + convert(FT, Δt) * Gⁿ[i, j, k])
+end
 
 @kernel function _explicit_ab2_step_free_surface!(η, Δt, χ::FT, Gηⁿ, Gη⁻, Nz) where FT
     i, j = @index(Global, NTuple)
     @inbounds η[i, j, Nz+1] += Δt * ((FT(1.5) + χ) * Gηⁿ[i, j, Nz+1] - (FT(0.5) + χ) * Gη⁻[i, j, Nz+1])
+end
+
+compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface) = 
+    @apply_regionally compute_explicit_free_surface_tendency!(grid, model) 
+
+# Compute free surface tendency
+function compute_explicit_free_surface_tendency!(grid, model) 
+
+    arch = architecture(grid)
+
+    args = tuple(model.velocities,
+                 model.free_surface,
+                 model.tracers,
+                 model.auxiliary_fields,
+                 model.forcing,
+                 model.clock)
+
+    launch!(arch, grid, :xy,
+            compute_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, 
+            grid, args)
+
+    args = (model.clock,
+            fields(model),
+            model.closure,
+            model.buoyancy)
+
+    apply_flux_bcs!(model.timestepper.Gⁿ.η, displacement(model.free_surface), arch, args)
+
+    return nothing
+end
+
+#####
+##### Tendency calculators for an explicit free surface
+#####
+
+""" Calculate the right-hand-side of the free surface displacement (``η``) equation. """
+@kernel function compute_hydrostatic_free_surface_Gη!(Gη, grid, args)
+    i, j = @index(Global, NTuple)
+    @inbounds Gη[i, j, grid.Nz+1] = free_surface_tendency(i, j, grid, args...)
+end
+
+"""
+    free_surface_tendency(i, j, grid,
+                          velocities,
+                          free_surface,
+                          tracers,
+                          auxiliary_fields,
+                          forcings,
+                          clock)
+
+Return the tendency for an explicit free surface at horizontal grid point `i, j`.
+
+The tendency is called ``G_η`` and defined via
+
+```math
+∂_t η = G_η
+```
+"""
+@inline function free_surface_tendency(i, j, grid,
+                                       velocities,
+                                       free_surface,
+                                       tracers,
+                                       auxiliary_fields,
+                                       forcings,
+                                       clock)
+
+    k_top = grid.Nz + 1
+    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
+
+    return @inbounds (  velocities.w[i, j, k_top]
+                      + forcings.η(i, j, k_top, grid, clock, model_fields))
 end
