@@ -1,3 +1,11 @@
+# This file contains two different initializations methods performed at different stages of the simulation.
+#
+# - `initialize_free_surface!`: the first initialization, performed only once at the beginning of the simulation, 
+#                               calculates the barotropic velocities from the velocity initial conditions.
+#
+# - `initialize_free_surface_state!`: is performed at the beginning of the substepping procedure, resets the filtered state to zero
+#                                     and reinitializes the timestepper auxiliaries from the previous filtered state.           
+
 # `initialize_free_surface!` is called at the beginning of the simulation to initialize the free surface state
 # from the initial velocity conditions.
 function initialize_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocities)
@@ -55,7 +63,7 @@ end
 
 # Setting up the RHS for the barotropic step (tendencies of the barotropic velocity components)
 # This function is called after `calculate_tendency` and before `ab2_step_velocities!`
-function setup_free_surface!(model, ::SplitExplicitFreeSurface, χ)
+function compute_free_surface_tendency!(grid, model, ::SplitExplicitFreeSurface)
 
     # we start the time integration of η from the average ηⁿ
     Gu⁻ = model.timestepper.G⁻.u
@@ -66,7 +74,7 @@ function setup_free_surface!(model, ::SplitExplicitFreeSurface, χ)
     GUⁿ = model.timestepper.Gⁿ.U
     GVⁿ = model.timestepper.Gⁿ.V
 
-    @apply_regionally setup_split_explicit_tendency!(GUⁿ, GVⁿ, model.grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+    @apply_regionally compute_free_surface_forcing!(GUⁿ, GVⁿ, model.grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, model.timestepper.χ)
 
     fields_to_fill = (GUⁿ, GVⁿ)
     fill_halo_regions!(fields_to_fill; async = true)
@@ -74,7 +82,7 @@ function setup_free_surface!(model, ::SplitExplicitFreeSurface, χ)
     return nothing
 end
 
-@inline function setup_split_explicit_tendency!(GUⁿ, GVⁿ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+@inline function compute_free_surface_forcing!(GUⁿ, GVⁿ, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     active_cells_map = retrieve_surface_active_cells_map(grid)
 
     launch!(architecture(grid), grid, :xy, _compute_integrated_ab2_tendencies!, GUⁿ, GVⁿ, grid,

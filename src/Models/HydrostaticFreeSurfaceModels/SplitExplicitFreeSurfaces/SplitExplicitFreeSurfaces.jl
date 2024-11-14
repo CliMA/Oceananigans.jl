@@ -21,13 +21,14 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: initialize_free_surface
                                                          setup_free_surface!,
                                                          materialize_free_surface,
                                                          ab2_step_free_surface!,
+                                                         compute_free_surface_tendency!,
                                                          explicit_barotropic_pressure_x_gradient,
                                                          explicit_barotropic_pressure_y_gradient
 
 include("split_explicit_timesteppers.jl")
 include("split_explicit_free_surface.jl")
 include("distributed_split_explicit_free_surface.jl")
-include("setup_split_explicit.jl")
+include("initialize_split_explicit_substepping.jl")
 include("step_split_explicit_free_surface.jl")
 include("barotropic_split_explicit_corrector.jl")
 

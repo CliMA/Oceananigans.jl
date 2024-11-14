@@ -70,8 +70,8 @@ explicit_ab2_step_free_surface!(free_surface, model, Δt, χ) =
     end
 end
 
-# Comopute free surface tendency
-function compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface, kernel_parameters)
+# Compute free surface tendency
+function compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface)
 
     arch = architecture(grid)
 
@@ -82,9 +82,16 @@ function compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface, kern
                  model.forcing,
                  model.clock)
 
-    launch!(arch, grid, kernel_parameters,
+    launch!(arch, grid, :xy,
             compute_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, 
             grid, args)
+
+    args = (model.clock,
+            fields(model),
+            model.closure,
+            model.buoyancy)
+
+    apply_flux_bcs!(model.timestepper.Gⁿ.η, displacement(model.free_surface), arch, args)
 
     return nothing
 end
