@@ -84,7 +84,7 @@ function next_actuation_time(sch::AveragedTimeInterval)
     N = sch.actuations
     interval = sch.interval
     return t₀ + (N + 1) * interval 
-    # the actuation time is the end of the time averaging window
+    # the next actuation time is the end of the time averaging window
 end
 
 # Schedule actuation
@@ -118,7 +118,6 @@ AveragedSpecifiedTimes(specified_times::SpecifiedTimes; window, stride=1) =
 
 AveragedSpecifiedTimes(times; kw...) = AveragedSpecifiedTimes(SpecifiedTimes(times); kw...)
 
-# Schedule actuation
 function (schedule::AveragedSpecifiedTimes)(model)
     time = model.clock.time
 
