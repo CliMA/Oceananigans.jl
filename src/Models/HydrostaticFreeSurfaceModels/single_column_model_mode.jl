@@ -53,11 +53,9 @@ compute_w_from_continuity!(::PrescribedVelocityFields, arch, ::SingleColumnGrid;
 ##### Time-step optimizations
 #####
 
-compute_free_surface_tendency!(::SingleColumnGrid, args...) = nothing
-
 # Disambiguation
-compute_free_surface_tendency!(::SingleColumnGrid, ::ImplicitFreeSurfaceHFSM     , args...) = nothing
-compute_free_surface_tendency!(::SingleColumnGrid, ::SplitExplicitFreeSurfaceHFSM, args...) = nothing
+compute_free_surface_tendency!(::SingleColumnGrid, model, ::ExplicitFreeSurface)      = nothing
+compute_free_surface_tendency!(::SingleColumnGrid, model, ::SplitExplicitFreeSurface) = nothing
 
 # Fast state update and halo filling
 
