@@ -100,4 +100,3 @@ axislegend(axν, position=:rb)
 display(fig)
 
 save("closure_comparison_$r.png", fig)
-#save("smag_comparison_$r.png", fig)

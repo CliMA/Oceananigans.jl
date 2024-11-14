@@ -5,7 +5,7 @@ using Random
 using Statistics
 using LinearAlgebra
 using Logging
-#using Enzyme
+using Enzyme
 using SparseArrays
 using JLD2
 using FFTW
@@ -68,15 +68,15 @@ Logging.global_logger(OceananigansLogger())
 #####
 
 closures = (
-    #:ScalarDiffusivity,
-    #:ScalarBiharmonicDiffusivity,
-    #:TwoDimensionalLeith,
-    #:ConstantSmagorinsky,
+    :ScalarDiffusivity,
+    :ScalarBiharmonicDiffusivity,
+    :TwoDimensionalLeith,
+    :ConstantSmagorinsky,
     :SmagorinskyLilly,
     :LagrangianAveragedDynamicSmagorinsky,
-    #:DirectionallyAveragedDynamicSmagorinsky,
-    #:AnisotropicMinimumDissipation,
-    #:ConvectiveAdjustmentVerticalDiffusivity,
+    :DirectionallyAveragedDynamicSmagorinsky,
+    :AnisotropicMinimumDissipation,
+    :ConvectiveAdjustmentVerticalDiffusivity,
 )
 
 if !(@isdefined already_included)
