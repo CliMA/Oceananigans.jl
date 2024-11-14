@@ -247,8 +247,8 @@ velocity components, tracer fields, and precalculated diffusivities where applic
                                  tracers,
                                  auxiliary_fields,
                                  diffusivities,
-                                 forcing,
-                                 clock) where tracer_index
+                                 clock,
+                                 forcing) where tracer_index
 
     @inbounds c = tracers[tracer_index]
     @inbounds background_fields_c = background_fields.tracers[tracer_index]

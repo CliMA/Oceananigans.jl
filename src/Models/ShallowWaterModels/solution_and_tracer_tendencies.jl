@@ -103,9 +103,9 @@ end
                                  solution,
                                  tracers,
                                  diffusivities,
-                                 forcing,
                                  clock,
-                                 formulation) where tracer_index
+                                 formulation,
+                                 forcing) where tracer_index
 
     @inbounds c = tracers[tracer_index]
 
