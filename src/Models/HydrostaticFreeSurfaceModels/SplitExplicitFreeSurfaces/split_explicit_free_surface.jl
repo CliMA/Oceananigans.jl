@@ -100,13 +100,11 @@ function SplitExplicitFreeSurface(grid = nothing;
     gravitational_acceleration = convert(FT, gravitational_acceleration)
     substepping = split_explicit_substepping(cfl, substeps, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
 
-    kernel_parameters = :xy 
-
     return SplitExplicitFreeSurface(nothing,
                                     nothing,
                                     nothing,
                                     gravitational_acceleration,
-                                    kernel_parameters,
+                                    nothing,
                                     substepping,
                                     timestepper)
 end
@@ -181,7 +179,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
     filtered_state = (η = η̅, U = U̅, V = V̅)
     barotropic_velocities = (U = U, V = V)
 
-    kernel_parameters = maybe_augment_kernel_parameters(TX, TY, substepping, maybe_extended_grid)
+    kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, substepping, maybe_extended_grid)
 
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
     timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities, u_bc, v_bc)
@@ -291,9 +289,9 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
     return with_halo(new_halos, grid)
 end
 
-maybe_augment_kernel_parameters(TX, TY, ::FixedTimeStepSize, grid) = :xy
+maybe_augmented_kernel_parameters(TX, TY, ::FixedTimeStepSize, grid) = :xy
 
-function maybe_augment_kernel_parameters(TX, TY, ::FixedSubstepNumber, grid)
+function maybe_augmented_kernel_parameters(TX, TY, ::FixedSubstepNumber, grid)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
