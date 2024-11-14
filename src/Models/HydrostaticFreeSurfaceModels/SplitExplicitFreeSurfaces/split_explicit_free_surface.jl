@@ -97,6 +97,11 @@ function SplitExplicitFreeSurface(grid = nothing;
         FT = Float64
     end
 
+    if isnothing(grid) && !inothing(cfl) && !isnothing(fixed_Δt)
+        throw(ArgumentError(string("The grid is a required positional argument to SplitExplicitFreeSurface when cfl is specified and `fixed_Δt != nothing`.",
+                                    "For example, SplitExplicitFreeSurface(grid; fixed_Δt=$(fixed_Δt), cfl=$(cfl), ...)")))
+    end
+
     gravitational_acceleration = convert(FT, gravitational_acceleration)
     substepping = split_explicit_substepping(cfl, substeps, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
 
@@ -118,22 +123,15 @@ end
 
 # The substeps are calculated dynamically when a cfl without a fixed_Δt is provided
 function split_explicit_substepping(cfl, ::Nothing, ::Nothing, grid, averaging_kernel, gravitational_acceleration)  
-    if isnothing(grid)
-        throw(ArgumentError(string("Need to provide the grid to calculate the barotropic substeps from the cfl. ",
-                                    "For example, SplitExplicitFreeSurface(grid, cfl=0.7, ...)")))
-    end
     cfl = convert(eltype(grid), cfl)
-
     return FixedTimeStepSize(grid; cfl, averaging_kernel)
 end
 
 # The number of substeps are calculated based on the cfl and the fixed_Δt
 function split_explicit_substepping(cfl, ::Nothing, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
-
     substepping = split_explicit_substepping(cfl, nothing, nothing, grid, averaging_kernel, gravitational_acceleration)    
     substeps    = ceil(Int, 2 * fixed_Δt / substepping.Δt_barotropic)
     substepping = split_explicit_substepping(nothing, substeps, nothing, grid, averaging_kernel, gravitational_acceleration)        
-
     return substepping
 end
 
@@ -154,11 +152,20 @@ end
     bottom = nothing
 )
 
+const ConnectedTopologies = Union{LeftConnected, RightConnected, FullyConnected}
+
 # Internal function for HydrostaticFreeSurfaceModel
 function materialize_free_surface(free_surface::SplitExplicitFreeSurface, velocities, grid)
 
     TX, TY, _   = topology(grid)
     substepping = free_surface.substepping
+
+    if (TX() isa ConnectedTopologies || TY() isa ConnectedTopologies) && substepping isa FixedTimeStepSize
+        throw(ArgumentError("A variable substepping through a CFL condition is not supported for the `SplitExplicitFreeSurface` on $(summary(grid)). \n
+                             Provide a fixed number of substeps through the `substeps` keyword argument as: \n
+                             `free_surface = SplitExplicitFreeSurface(grid; substeps = N)` where `N::Int`"))
+    end
+
     maybe_extended_grid = maybe_extend_halos(TX, TY, grid, substepping)
 
     η = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid)
@@ -261,19 +268,8 @@ Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\
 ##### Maybe extend halos in Connected topologies
 #####
 
-const ConnectedTopologies = Union{LeftConnected, RightConnected, FullyConnected}
-
 # Extending halos is not allowed with variable time-stepping
-function maybe_extend_halos(TX, TY, grid, ::FixedTimeStepSize) 
-
-    if TX() isa ConnectedTopologies || TY() isa ConnectedTopologies
-        throw(ArgumentError("A variable substepping through a CFL condition is not supported for the `SplitExplicitFreeSurface` on $(summary(grid)). \n
-                             Provide a fixed number of substeps through the `substeps` keyword argument as: \n
-                             `free_surface = SplitExplicitFreeSurface(grid; substeps = N)` where `N::Int`"))
-    end
-
-    return grid
-end
+maybe_extend_halos(TX, TY, grid, ::FixedTimeStepSize) = grid
 
 function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
     
