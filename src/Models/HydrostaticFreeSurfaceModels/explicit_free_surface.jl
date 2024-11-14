@@ -50,8 +50,26 @@ end
 ##### Time stepping
 #####
 
-step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper, Δt) = 
+step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::QuasiAdamsBashforth2TimeStepper, Δt) = 
     @apply_regionally explicit_ab2_step_free_surface!(free_surface, model, Δt, timestepper.χ)
+
+step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::SplitRungeKutta3TimeStepper, Δt) =
+    @apply_regionally explicit_rk3_step_free_surface!(free_surface, model, Δt, timestepper)
+
+@inline rk3_coeffs(ts, ::Val{1}) = (1,     0)
+@inline rk3_coeffs(ts, ::Val{2}) = (ts.γ², ts.ζ²)
+@inline rk3_coeffs(ts, ::Val{2}) = (ts.γ³, ts.ζ³)
+
+function explicit_rk3_step_free_surface!(free_surface, model, Δt, timestepper)
+    
+    γⁿ, ζⁿ = rk3_coeffs(timestepper, Val(model.clock.stage))
+
+    launch!(model.architecture, model.grid, :xy,
+            _explicit_rk3_step_free_surface!, free_surface.η, Δt, γⁿ, ζⁿ,
+            model.timestepper.Gⁿ.η, model.timestepper.previous_model_fields.η, size(model.grid, 3))
+
+    return nothing
+end
 
 explicit_ab2_step_free_surface!(free_surface, model, Δt, χ) =
     launch!(model.architecture, model.grid, :xy,
@@ -59,8 +77,13 @@ explicit_ab2_step_free_surface!(free_surface, model, Δt, χ) =
             model.timestepper.Gⁿ.η, model.timestepper.G⁻.η, size(model.grid, 3))
 
 #####
-##### Kernel
+##### Kernels
 #####
+
+@kernel function _explicit_rk3_step_free_surface!(η, Δt, γⁿ, ζⁿ, Gⁿ, η⁻, Nz)
+    i, j = @index(Global, NTuple)
+    @inbounds η[i, j, Nz+1] += ζⁿ * η⁻[i, j, k] + γⁿ * (η[i, j, k] + convert(FT, Δt) * Gⁿ[i, j, k])
+end
 
 @kernel function _explicit_ab2_step_free_surface!(η, Δt, χ::FT, Gηⁿ, Gη⁻, Nz) where FT
     i, j = @index(Global, NTuple)

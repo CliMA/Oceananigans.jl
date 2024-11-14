@@ -7,6 +7,7 @@ import Oceananigans.TimeSteppers: split_rk3_substep!, _split_rk3_substep_field!,
 
 function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζⁿ)
     
+    compute_free_surface_tendency!(model.grid, model, model.free_surface)
     rk3_substep_velocities!(model.velocities, model, Δt, γⁿ, ζⁿ)
     rk3_substep_tracers!(model.tracers, model, Δt, γⁿ, ζⁿ)
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
