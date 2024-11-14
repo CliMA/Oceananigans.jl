@@ -37,9 +37,12 @@ end
     return ifelse(immersed, zero(grid), Gⁿ⁺¹)
 end
 
-@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, 
+@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, 
                                                  timestepper::QuasiAdamsBashforth2TimeStepper, stage)
     active_cells_map = retrieve_surface_active_cells_map(grid)
+
+    Gu⁻ = timestepper.G⁻.u
+    Gv⁻ = timestepper.G⁻.v
 
     launch!(architecture(grid), grid, :xy, _compute_integrated_ab2_tendencies!, GUⁿ, GVⁿ, grid,
             active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, timestepper.χ; active_cells_map)
@@ -47,9 +50,8 @@ end
     return nothing
 end
 
-
 #####
-##### Compute slow tendencies with an RK3 timestepper
+##### Compute slow tendencies with a RK3 timestepper
 #####
 
 @inline function G_vertical_integral(i, j, grid, Gⁿ, ℓx, ℓy, ℓz)
@@ -104,12 +106,15 @@ end
     @inbounds GVⁿ[i, j, 1] = convert(FT, 2/3) * GVⁿ[i, j, 1] + GV⁻[i, j, 1]
 end
 
-@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, 
-                                                 ::SplitRungeKutta3TimeStepper, stage)
+@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, 
+                                                 timestepper::SplitRungeKutta3TimeStepper, stage)
+
+    GU⁻ = timestepper.G⁻.U
+    GV⁻ = timestepper.G⁻.V
 
     active_cells_map = retrieve_surface_active_cells_map(grid)    
     launch!(architecture(grid), grid, :xy, _compute_integrated_rk3_tendencies!, 
-            GUⁿ, GVⁿ, GU⁻, GV⁻, grid, active_cells_map, Guⁿ, Gvⁿ, Val(stage); active_cells_map)
+            GUⁿ, GVⁿ, GU⁻, GV⁻, grid, active_cells_map, Guⁿ, Gvⁿ, stage; active_cells_map)
 
     return nothing
 end 
@@ -122,25 +127,19 @@ end
 # This function is called after `calculate_tendency` and before `ab2_step_velocities!`
 function compute_free_surface_tendency!(grid, model, free_surface::SplitExplicitFreeSurface)
 
-    G⁻ = model.timestepper.G⁻
-
-    # we start the time integration of η from the average ηⁿ
-    Gu⁻ = haskey(G⁻, :u) ? G⁻.u : nothing
-    Gv⁻ = haskey(G⁻, :v) ? G⁻.v : nothing
     Guⁿ = model.timestepper.Gⁿ.u
     Gvⁿ = model.timestepper.Gⁿ.v
 
-    GU⁻ = model.timestepper.G⁻.U
-    GV⁻ = model.timestepper.G⁻.V
     GUⁿ = model.timestepper.Gⁿ.U
     GVⁿ = model.timestepper.Gⁿ.V
 
     barotropic_timestepper = free_surface.timestepper
     baroclinic_timestepper = model.timestepper
+    
     stage = model.clock.stage
 
     @apply_regionally begin
-        compute_split_explicit_forcing!(GUⁿ, GVⁿ, GU⁻, GV⁻, model.grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, baroclinic_timestepper, stage)
+        compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, baroclinic_timestepper, Val(stage))
         initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper, Val(stage))
     end
 

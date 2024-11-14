@@ -62,6 +62,7 @@ function SplitRungeKutta3TimeStepper(grid, tracers;
     FT = eltype(grid)
 
     G⁻ = NamedTuple()
+
     # G⁻ is needed only in case of a split-explicit time-stepping
     if haskey(Gⁿ, :U) &&  haskey(Gⁿ, :V)
         G⁻ = merge(G⁻, (; U = deepcopy(Gⁿ.U), V = deepcopy(Gⁿ.V)))
@@ -106,9 +107,6 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
 
     split_rk3_substep!(model, Δt, γ², ζ²)
     calculate_pressure_correction!(model, Δt)
- 
-    # The second stage is "particular" because we need to compute the average pressure
-    rk3_average_pressure!(model, γ², ζ²)
     pressure_correct_velocities!(model, Δt)
     update_state!(model, callbacks; compute_tendencies = true)
 
@@ -131,30 +129,14 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     return nothing
 end
 
-@kernel function _rk3_average_pressure!(pressure, old_pressure, γⁿ, ζⁿ) 
+@kernel function _split_rk3_substep_field!(cⁿ, Δt, γⁿ::FT, ζⁿ, Gⁿ, cⁿ⁻¹) where FT
     i, j, k = @index(Global, NTuple)
-    pressure[i, j, k] = γⁿ * pressure[i, j, k] + ζⁿ * old_pressure[i, j, k]
+    cⁿ[i, j, k] =  ζⁿ * cⁿ⁻¹[i, j, k] + γⁿ * (cⁿ[i, j, k] + convert(FT, Δt) * Gⁿ[i, j, k])
 end
 
-function rk3_average_pressure!(model, ζⁿ, γⁿ) 
-    grid = model.grid
-    arch = architecture(grid)
-
-    old_pressure = model.timestepper.previous_model_fields.pressure
-
-    launch!(arch, grid, _rk3_average_pressure!, model.pressure, old_pressure, γⁿ, ζⁿ) 
-
-    return nothing
-end
-
-@kernel function _split_rk3_substep_field!(field, Δt, γⁿ::FT, ζⁿ, Gⁿ, old_field) where FT
+@kernel function _split_rk3_substep_field!(cⁿ, Δt, ::Nothing, ::Nothing, Gⁿ, cⁿ⁻¹)
     i, j, k = @index(Global, NTuple)
-    field[i, j, k] =  ζⁿ * old_field[i, j, k] + γⁿ * (field[i, j, k] + convert(FT, Δt) * Gⁿ[i, j, k])
-end
-
-@kernel function _split_rk3_substep_field!(field, Δt, γ¹, ::Nothing, Gⁿ, old_field)
-    i, j, k = @index(Global, NTuple)
-    field[i, j, k] = old_field[i, j, k] + Δt * Gⁿ[i, j, k]
+    cⁿ[i, j, k] = cⁿ[i, j, k] + Δt * Gⁿ[i, j, k]
 end
 
 function split_rk3_substep!(model, Δt, γⁿ, ζⁿ)
@@ -186,7 +168,9 @@ function store_fields!(model)
     model_fields = prognostic_fields(model)
     
     for name in keys(previous_fields)
-        parent(previous_fields[name]) .= parent(model_fields[name])
+        if !isnothing(previous_fields[name])
+            parent(previous_fields[name]) .= parent(model_fields[name])
+        end
     end
 
     return nothing

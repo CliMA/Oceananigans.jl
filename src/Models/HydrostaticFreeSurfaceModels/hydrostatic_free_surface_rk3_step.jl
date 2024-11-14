@@ -6,19 +6,30 @@ import Oceananigans.TimeSteppers: split_rk3_substep!, _split_rk3_substep_field!,
 
 function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζⁿ)
     
-    compute_free_surface_tendency!(model.grid, model, model.free_surface)
+    grid         = model.grid
+    timestepper  = model.timestepper
+    free_surface = model.free_surface
+
+    compute_free_surface_tendency!(grid, model, free_surface)
+
     rk3_substep_velocities!(model.velocities, model, Δt, γⁿ, ζⁿ)
     rk3_substep_tracers!(model.tracers, model, Δt, γⁿ, ζⁿ)
-    step_free_surface!(model.free_surface, model, model.timestepper, Δt)
+
+    # Full step for Implicit and Split-Explicit, substep for Explicit
+    step_free_surface!(free_surface, model, timestepper, Δt)
+
+    # Average free surface variables 
+    # in the second stage
+    if model.clock.stage == 2
+        rk3_average_free_surface!(free_surface, grid, timestepper, γⁿ, ζⁿ)
+    end
     
     return nothing
 end
 
-rk3_average_pressure!(model::HydrostaticFreeSurfaceModel, γⁿ, ζⁿ) = 
-    rk3_average_pressure!(model.grid, model.free_surface, model.timestepper, γⁿ, ζⁿ)
+rk3_average_free_surface!(free_surface, args...) = nothing
 
-function rk3_average_pressure!(grid, free_surface::ImplicitFreeSurface, timestepper, γⁿ, ζⁿ)
-
+function rk3_average_free_surface!(free_surface::ImplicitFreeSurface, grid, timestepper, γⁿ, ζⁿ)
     arch = architecture(grid)
 
     ηⁿ⁻¹ = timestepper.previous_model_fields.η    
@@ -29,9 +40,7 @@ function rk3_average_pressure!(grid, free_surface::ImplicitFreeSurface, timestep
     return nothing
 end
 
-rk3_average_pressure!(::Nothing, args...) = nothing
-
-function rk3_average_pressure!(grid, free_surface::SplitExplicitFreeSurface, timestepper, γⁿ, ζⁿ)
+function rk3_average_pressure!(free_surface::SplitExplicitFreeSurface, grid, timestepper, γⁿ, ζⁿ)
 
     arch = architecture(grid)
 
@@ -49,7 +58,7 @@ end
 @kernel function _rk3_average_free_surface!(η, grid, η⁻, γⁿ, ζⁿ) 
     i, j = @index(Global, NTuple)
     k = grid.Nz + 1
-    @inbounds η[i, j, ] = γⁿ * η[i, j, k] + ζⁿ * η⁻[i, j, k]
+    @inbounds η[i, j, k] = ζⁿ * η⁻[i, j, k] + γⁿ * η[i, j, k] 
 end
 
 #####
@@ -58,10 +67,10 @@ end
 
 function rk3_substep_velocities!(velocities, model, Δt, γⁿ, ζⁿ)
 
-    for (i, name) in enumerate((:u, :v))
+    for name in (:u, :v)
         Gⁿ = model.timestepper.Gⁿ[name]
         old_field = model.timestepper.previous_model_fields[name]
-        velocity_field = model.velocities[name]
+        velocity_field = velocities[name]
 
         launch!(model.architecture, model.grid, :xyz,
                 _split_rk3_substep_field!, velocity_field, Δt, γⁿ, ζⁿ, Gⁿ, old_field)

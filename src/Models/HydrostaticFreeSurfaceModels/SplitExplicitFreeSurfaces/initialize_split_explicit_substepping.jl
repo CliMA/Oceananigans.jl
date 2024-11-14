@@ -35,7 +35,7 @@ function initialize_free_surface_state!(free_surface, baroclinic_timestepper, ti
     return nothing
 end
 
-# At the first stage we reset the velocities and perform the complete substepping from n to n+1
+# At the last stage we reset the velocities and perform the complete substepping from n to n+1
 function initialize_free_surface_state!(free_surface, ts::SplitRungeKutta3TimeStepper, timestepper, ::Val{3})
 
     η = free_surface.η
@@ -44,6 +44,7 @@ function initialize_free_surface_state!(free_surface, ts::SplitRungeKutta3TimeSt
     Uⁿ⁻¹ = ts.previous_model_fields.U
     Vⁿ⁻¹ = ts.previous_model_fields.V
 
+    # Restart from the state at baroclinic step n
     parent(U) .= parent(Uⁿ⁻¹)
     parent(V) .= parent(Vⁿ⁻¹)
 

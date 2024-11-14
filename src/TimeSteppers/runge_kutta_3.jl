@@ -14,7 +14,7 @@ struct RungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
                  ζ² :: FT
                  ζ³ :: FT
                  Gⁿ :: TG
-                 G⁻ :: TI
+                 G⁻ :: TG
     implicit_solver :: TI
 end
 

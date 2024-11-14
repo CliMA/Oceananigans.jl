@@ -38,7 +38,7 @@ grid = RectilinearGrid(arch,
 
 coriolis = FPlane(f=1e-4)
 
-timestepper = :QuasiAdamsBashforth2
+timestepper = :SplitRungeKutta3
 
 model = HydrostaticFreeSurfaceModel(; grid,
                                       coriolis,
@@ -86,6 +86,8 @@ simulation.callbacks[:save_u]   = Callback(save_u, IterationInterval(1))
 simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(10))
 
 run!(simulation)
+
+η2 = jldopen("ab2_geo.jld2")["ηt"]
  
 iter  = Observable(1)
 η_img = @lift(interior(ηt[$iter], :, 1, 1)) 
