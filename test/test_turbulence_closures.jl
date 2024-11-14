@@ -219,11 +219,12 @@ end
     @info "Testing turbulence closures..."
 
     @testset "Closure instantiation" begin
-        @info "  Testing closure instantiation..."
         for closurename in closures
+            @info "  Testing the instantiation of $closurename..."
             closure = @eval $closurename()
             @test closure isa TurbulenceClosures.AbstractTurbulenceClosure
 
+            @info "  Testing the instantiation of NonhydrostaticModel with $closurename..."
             grid = RectilinearGrid(CPU(), size=(2, 2, 2), extent=(1, 2, 3))
             model = NonhydrostaticModel(; grid, closure, tracers=:c)
             c = model.tracers.c
