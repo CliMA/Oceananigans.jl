@@ -162,7 +162,7 @@ function store_fields!(model)
     
     for name in keys(previous_fields)
         if !isnothing(previous_fields[name])
-            parent(previous_fields[name]) .= parent(model_fields[name])
+            parent(previous_fields[name]) .= parent(model_fields[name]) # Storing also the halos
         end
     end
 
