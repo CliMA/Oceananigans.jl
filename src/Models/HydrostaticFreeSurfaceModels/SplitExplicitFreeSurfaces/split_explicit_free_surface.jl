@@ -257,10 +257,10 @@ end
     return Δτ, tuple(averaging_weights...)
 end
 
-Base.summary(s::FixedTimeStepSize)  = string("Barotropic time step equal to $(prettytime(s.Δt_barotropic))")
-Base.summary(s::FixedSubstepNumber) = string("Barotropic fractional step equal to $(s.fractional_step_size) times the baroclinic step")
+Base.summary(s::FixedTimeStepSize)  = string("FixedTimeStepSize with a barotropic time step equal to $(prettytime(s.Δt_barotropic))")
+Base.summary(s::FixedSubstepNumber) = string("FixedSubstepNumber with $(length(s.averaging_kernel)) substeps")
 
-Base.summary(sefs::SplitExplicitFreeSurface) = string("SplitExplicitFreeSurface with $(summary(sefs.substepping))")
+Base.summary(sefs::SplitExplicitFreeSurface) = string("SplitExplicitFreeSurface substepping with $(summary(sefs.substepping))")
 
 Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\n")
 
