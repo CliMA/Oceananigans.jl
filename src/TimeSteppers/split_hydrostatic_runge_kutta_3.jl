@@ -13,8 +13,8 @@ struct SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI} <: AbstractTimeStepper
     ζ² :: FT
     ζ³ :: FT
     Gⁿ :: TG
-    G⁻ :: TE
-    S⁻ :: PF # state at the previous timestep
+    G⁻ :: TE # only used as storage when needed
+    S⁻ :: PF # prognostic state at the previous timestep
     implicit_solver :: TI
 end
 
