@@ -30,6 +30,8 @@ export δyᶠᶠᶠ, δyᶠᶠᶜ, δyᶠᶜᶠ, δyᶠᶜᶜ, δyᶜᶠᶠ, δy
 export δzᶠᶠᶠ, δzᶠᶠᶜ, δzᶠᶜᶠ, δzᶠᶜᶜ, δzᶜᶠᶠ, δzᶜᶠᶜ, δzᶜᶜᶠ, δzᶜᶜᶜ
 
 # Derivatives
+export ∂xᶜᵃᵃ, ∂xᶠᵃᵃ, ∂yᵃᶜᵃ, ∂yᵃᶠᵃ, ∂zᵃᵃᶜ, ∂zᵃᵃᶠ
+
 export ∂xᶠᶠᶠ, ∂xᶠᶠᶜ, ∂xᶠᶜᶠ, ∂xᶠᶜᶜ, ∂xᶜᶠᶠ, ∂xᶜᶠᶜ, ∂xᶜᶜᶠ, ∂xᶜᶜᶜ
 export ∂yᶠᶠᶠ, ∂yᶠᶠᶜ, ∂yᶠᶜᶠ, ∂yᶠᶜᶜ, ∂yᶜᶠᶠ, ∂yᶜᶠᶜ, ∂yᶜᶜᶠ, ∂yᶜᶜᶜ
 export ∂zᶠᶠᶠ, ∂zᶠᶠᶜ, ∂zᶠᶜᶠ, ∂zᶠᶜᶜ, ∂zᶜᶠᶠ, ∂zᶜᶠᶜ, ∂zᶜᶜᶠ, ∂zᶜᶜᶜ
@@ -75,11 +77,29 @@ import Oceananigans.Grids: xspacing, yspacing, zspacing
 ##### Convenient aliases
 #####
 
-const AG   = AbstractGrid
+const AG = AbstractGrid
 
 const Δx = xspacing
 const Δy = yspacing
 const Δz = zspacing
+
+const RG  = RectilinearGrid
+const RGX = XRegularRG
+const RGY = YRegularRG
+const RGZ = ZRegularRG
+
+const OSSG  = OrthogonalSphericalShellGrid
+const OSSGZ = ZRegOrthogonalSphericalShellGrid
+
+const LLG  = LatitudeLongitudeGrid
+const LLGX = XRegularLLG
+const LLGY = YRegularLLG
+const LLGZ = ZRegularLLG
+
+# On the fly calculations of metrics
+const LLGF  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing}
+const LLGFX = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Number}
+const LLGFY = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Any, <:Number}
 
 include("difference_operators.jl")
 include("interpolation_operators.jl")
