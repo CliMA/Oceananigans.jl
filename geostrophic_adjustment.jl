@@ -8,7 +8,6 @@
 #
 # $ export JULIA_NUM_THREADS=1
 
-using MPI
 using Oceananigans
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: Sizes
@@ -17,6 +16,7 @@ using Oceananigans.Units: kilometers, meters
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ForwardBackwardScheme
 using Printf
 using JLD2
+using GLMakie
 
 arch = CPU()
 
@@ -38,7 +38,7 @@ grid = RectilinearGrid(arch,
 
 coriolis = FPlane(f=1e-4)
 
-timestepper = :SplitRungeKutta3
+timestepper = :QuasiAdamsBashforth2
 
 model = HydrostaticFreeSurfaceModel(; grid,
                                       coriolis,
@@ -64,7 +64,7 @@ set!(model, η = ηⁱ)
 
 gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 Δt = 2 * model.grid.Δxᶜᵃᵃ / gravity_wave_speed
-simulation = Simulation(model; Δt, stop_iteration = 50)
+simulation = Simulation(model; Δt, stop_iteration = 1000)
 
 ut = []
 vt = []

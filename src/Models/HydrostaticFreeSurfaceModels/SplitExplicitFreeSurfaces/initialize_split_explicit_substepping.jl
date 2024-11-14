@@ -42,7 +42,7 @@ function initialize_free_surface_state!(free_surface, ts::SplitRungeKutta3TimeSt
     U, V = free_surface.barotropic_velocities
 
     Uⁿ⁻¹ = ts.previous_model_fields.U
-    Vⁿ⁻¹ = ts.previous_model_fields.v
+    Vⁿ⁻¹ = ts.previous_model_fields.V
 
     parent(U) .= parent(Uⁿ⁻¹)
     parent(V) .= parent(Vⁿ⁻¹)
@@ -100,7 +100,7 @@ end
     active_cells_map = retrieve_surface_active_cells_map(grid)
 
     launch!(architecture(grid), grid, :xy, _compute_integrated_ab2_tendencies!, GUⁿ, GVⁿ, grid,
-            active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ; active_cells_map)
+            active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, model.timestepper.χ; active_cells_map)
 
     return nothing
 end
@@ -134,7 +134,7 @@ end
     compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, stage)
 end
 
-function compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, ::Val{1})
+@inline function compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, ::Val{1})
     @inbounds GUⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
     @inbounds GVⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
 
@@ -142,9 +142,7 @@ function compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, gr
     @inbounds GV⁻[i, j, 1] = GVⁿ[i, j, 1]
 end
 
-@kernel function _compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Guⁿ, Gvⁿ, ::Val{2})
-    i, j = @index(Global, NTuple)
-
+@inline function compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, ::Val{2})
     FT = eltype(GUⁿ)
 
     @inbounds GUⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
@@ -154,9 +152,7 @@ end
     @inbounds GV⁻[i, j, 1] = convert(FT, 1/6) * GVⁿ[i, j, 1] + convert(FT, 1/6) * GU⁻[i, j, 1]
 end
 
-@kernel function _compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Guⁿ, Gvⁿ, ::Val{3})
-    i, j = @index(Global, NTuple)
-
+@inline function compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, ::Val{3})
     FT = eltype(GUⁿ)
 
     @inbounds GUⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())

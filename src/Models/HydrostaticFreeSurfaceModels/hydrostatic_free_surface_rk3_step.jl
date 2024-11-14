@@ -24,10 +24,7 @@ function rk3_average_pressure!(grid, free_surface::ImplicitFreeSurface, timestep
     ηⁿ⁻¹ = timestepper.previous_model_fields.η    
     ηⁿ   = free_surface.η 
     
-    Nx, Ny, _ = size(grid)
-    params = KernelParameters(1:Nx, 1:Ny)
-
-    launch!(arch, grid, params, _rk3_average_free_surface!, parent(ηⁿ), parent(ηⁿ⁻¹), γⁿ, ζⁿ)
+    launch!(arch, grid, :xy, _rk3_average_free_surface!, ηⁿ, grid, ηⁿ⁻¹, γⁿ, ζⁿ)
     
     return nothing
 end
@@ -43,17 +40,16 @@ function rk3_average_pressure!(grid, free_surface::SplitExplicitFreeSurface, tim
     Uⁿ   = free_surface.barotropic_velocities.U
     Vⁿ   = free_surface.barotropic_velocities.V
 
-    Nx, Ny, _ = size(grid)
-
-    launch!(arch, grid, (Nx, Ny), _rk3_average_free_surface!, Uⁿ, Uⁿ⁻¹, γⁿ, ζⁿ)
-    launch!(arch, grid, (Nx, Ny), _rk3_average_free_surface!, Vⁿ, Vⁿ⁻¹, γⁿ, ζⁿ)
+    launch!(arch, grid, :xy, _rk3_average_free_surface!, Uⁿ, grid, Uⁿ⁻¹, γⁿ, ζⁿ)
+    launch!(arch, grid, :xy, _rk3_average_free_surface!, Vⁿ, grid, Vⁿ⁻¹, γⁿ, ζⁿ)
 
     return nothing
 end
 
-@kernel function _rk3_average_free_surface!(pressure, old_pressure, γⁿ, ζⁿ) 
+@kernel function _rk3_average_free_surface!(η, grid, η⁻, γⁿ, ζⁿ) 
     i, j = @index(Global, NTuple)
-    pressure[i, j, k] = γⁿ * pressure[i, j, k] + ζⁿ * old_pressure[i, j, k]
+    k = grid.Nz + 1
+    @inbounds η[i, j, ] = γⁿ * η[i, j, k] + ζⁿ * η⁻[i, j, k]
 end
 
 #####
