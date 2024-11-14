@@ -38,8 +38,8 @@ implicitly during time-stepping.
                                                               diffusivities,
                                                               hydrostatic_pressure_anomaly,
                                                               auxiliary_fields,
-                                                              forcings,
-                                                              clock)
+                                                              clock, 
+                                                              forcing)
  
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
@@ -49,7 +49,7 @@ implicitly during time-stepping.
              - ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
              - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, diffusivities, clock, model_fields)
-             + forcings.u(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
+             + forcing(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end
 
 """
@@ -77,8 +77,8 @@ implicitly during time-stepping.
                                                               diffusivities,
                                                               hydrostatic_pressure_anomaly,
                                                               auxiliary_fields,
-                                                              forcings,
-                                                              clock)
+                                                              clock,
+                                                              forcing)
     
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
@@ -88,7 +88,7 @@ implicitly during time-stepping.
              - ∂yᶜᶠᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
              - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, diffusivities, clock, model_fields)
-             + forcings.v(i, j, k, grid, clock, model_fields))
+             + forcing(i, j, k, grid, clock, model_fields))
 end
 
 """
@@ -151,13 +151,13 @@ The tendency is called ``G_η`` and defined via
                                        free_surface,
                                        tracers,
                                        auxiliary_fields,
-                                       forcings,
+                                       forcing,
                                        clock)
 
     k_top = grid.Nz + 1
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
     return @inbounds (   velocities.w[i, j, k_top]
-                       + forcings.η(i, j, k_top, grid, clock, model_fields))
+                       + forcing(i, j, k_top, grid, clock, model_fields))
 end
 

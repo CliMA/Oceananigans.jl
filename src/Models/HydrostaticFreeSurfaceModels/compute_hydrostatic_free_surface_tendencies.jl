@@ -153,7 +153,6 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
                                 model.diffusivity_fields,
                                 model.pressure.pHY′,
                                 model.auxiliary_fields,
-                                model.forcing,
                                 model.clock)
 
     u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args...)
@@ -161,12 +160,12 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, 
-            active_cells_map, u_kernel_args;
+            active_cells_map, u_kernel_args, model.forcing.u;
             active_cells_map)
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid, 
-            active_cells_map, v_kernel_args;
+            active_cells_map, v_kernel_args, model.forcing.v;
             active_cells_map)
 
     compute_free_surface_tendency!(grid, model, :xy)
@@ -200,27 +199,27 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, ::Nothing, args)
+@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, ::Nothing, args, forcing)
     i, j, k = @index(Global, NTuple)
-    @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
+    @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args..., forcing)
 end
 
-@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, active_cells_map, args)
+@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, active_cells_map, args, forcing)
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_tuple(idx, active_cells_map)
-    @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
+    @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args..., forcing)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, ::Nothing, args)
+@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, ::Nothing, args, forcing)
     i, j, k = @index(Global, NTuple)
-    @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
+    @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args..., forcing)
 end
 
-@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, active_cells_map, args)
+@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, active_cells_map, args, forcing)
     idx = @index(Global, Linear)
     i, j, k = active_linear_index_to_tuple(idx, active_cells_map)
-    @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
+    @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args..., forcing)
 end
 
 #####
