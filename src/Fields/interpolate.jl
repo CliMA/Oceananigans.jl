@@ -68,14 +68,14 @@ end
     x₀ = xnode(1, 1, 1, grid, locs...)
     Δx = xspacings(grid, locs...)
     FT = eltype(grid)
-    return convert(FT, (x - x₀) / Δx) + 1 # 0 - based indexing so we add 1
+    return convert(FT, (x - x₀) / Δx) + 1 # 1 - based indexing 
 end
 
 @inline function fractional_x_index(λ, locs, grid::XRegularLLG)
     λ₀ = λnode(1, 1, 1, grid, locs...)
     Δλ = λspacings(grid, locs...)
     FT = eltype(grid)
-    return convert(FT, (λ - λ₀) / Δλ) + 1 # 0 - based indexing so we add 1
+    return convert(FT, (λ - λ₀) / Δλ) + 1 # 1 - based indexing 
 end
 
 @inline function fractional_x_index(x, locs, grid::RectilinearGrid)
@@ -100,14 +100,14 @@ end
     y₀ = ynode(1, 1, 1, grid, locs...)
     Δy = yspacings(grid, locs...)
     FT = eltype(grid)
-    return convert(FT, (y - y₀) / Δy) + 1 # 0 - based indexing so we add 1
+    return convert(FT, (y - y₀) / Δy) + 1 # 1 - based indexing 
 end
 
 @inline function fractional_y_index(φ, locs, grid::YRegularLLG)
     φ₀ = φnode(1, 1, 1, grid, locs...)
     Δφ = φspacings(grid, locs...)
     FT = eltype(grid)
-    return convert(FT, (φ - φ₀) / Δφ) + 1 # 0 - based indexing so we add 1
+    return convert(FT, (φ - φ₀) / Δφ) + 1 # 1 - based indexing 
 end
 
 @inline function fractional_y_index(y, locs, grid::RectilinearGrid)
@@ -133,7 +133,7 @@ ZRegGrid = Union{ZRegularRG, ZRegularLLG, ZRegOrthogonalSphericalShellGrid}
 @inline function fractional_z_index(z::FT, locs, grid::ZRegGrid) where FT
     z₀ = znode(1, 1, 1, grid, locs...)
     Δz = zspacings(grid, locs...)
-    return convert(FT, (z - z₀) / Δz) + 1 # 0 - based indexing so we add 1
+    return convert(FT, (z - z₀) / Δz) + 1 # 1 - based indexing 
 end
 
 @inline function fractional_z_index(z, locs, grid)
@@ -150,8 +150,6 @@ end
 Convert the coordinates `(x, y, z)` to _fractional_ indices on a regular rectilinear grid
 located at `loc`, where `loc` is a 3-tuple of `Center` and `Face`. Fractional indices are
 floats indicating a location between grid points.
-
-NOTE: the fractional indices are 0-based! This means that the fractional index `0.0` corresponds to indices 1 and 2.
 """
 @inline fractional_indices(at_node, grid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, ℓy, ℓz)
 
@@ -245,7 +243,6 @@ right of `i`, and `ξ` is the fractional distance between `i` and the
 left bound `i⁻`, such that `ξ ∈ [0, 1)`.
 """
 @inline function interpolator(fractional_idx)
-    # We use mod and trunc as CUDA.modf is not defined.
     # For why we use Base.unsafe_trunc instead of trunc see:
     # https://github.com/CliMA/Oceananigans.jl/issues/828
     # https://github.com/CliMA/Oceananigans.jl/pull/997
