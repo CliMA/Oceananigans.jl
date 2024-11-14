@@ -606,7 +606,7 @@ function test_netcdf_spatial_average(arch)
                                 closure = nothing)
     set!(model, c=1)
 
-    Δt = 1/64 # Nice floating-point number
+    Δt = 0.01 # Floating point number chosen conservatively to flag rounding errors
     simulation = Simulation(model, Δt=Δt, stop_iteration=10)
 
     ∫c_dx = Field(Average(model.tracers.c, dims=(1)))
