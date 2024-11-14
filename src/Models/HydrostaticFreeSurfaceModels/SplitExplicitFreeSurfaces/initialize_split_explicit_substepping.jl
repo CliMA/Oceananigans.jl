@@ -1,3 +1,5 @@
+using Oceananigans.ImmersedBoundaries: retrieve_surface_active_cells_map, peripheral_node
+
 # This file contains two different initializations methods performed at different stages of the simulation.
 #
 # - `initialize_free_surface!`: the first initialization, performed only once at the beginning of the simulation, 

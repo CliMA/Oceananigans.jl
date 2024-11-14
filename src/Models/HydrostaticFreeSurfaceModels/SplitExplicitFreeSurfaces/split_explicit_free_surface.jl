@@ -1,4 +1,5 @@
 using Oceananigans.BuoyancyModels: g_Earth
+using Oceananigans.Grids: with_halo
 
 struct SplitExplicitFreeSurface{H, U, M, FT, K , S, T} <: AbstractFreeSurface{H, FT}
     η :: H

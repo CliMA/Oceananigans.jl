@@ -5,17 +5,21 @@ export FixedSubstepNumber, FixedTimeStepSize
 
 using Oceananigans
 using Oceananigans.Architectures
+using Oceananigans.Architectures: convert_args
 using Oceananigans.Fields
 using Oceananigans.Utils
 using Oceananigans.Grids
 using Oceananigans.Operators
-using Oceananigans.Grids: AbstractGrid
+using Oceananigans.BoundaryConditions
+using Oceananigans.Grids: AbstractGrid, topology
+using Oceananigans.ImmersedBoundaries: active_linear_index_to_tuple, mask_immersed_field!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
                                                         free_surface_displacement_field
 
 using Adapt
 using Base
 using KernelAbstractions: @index, @kernel
+using KernelAbstractions.Extras.LoopInfo: @unroll
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: initialize_free_surface!,
                                                          setup_free_surface!,

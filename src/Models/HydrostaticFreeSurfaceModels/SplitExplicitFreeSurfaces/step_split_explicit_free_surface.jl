@@ -1,22 +1,3 @@
-using Oceananigans.Grids
-using Oceananigans.Grids: topology
-using Oceananigans.Utils
-using Oceananigans.AbstractOperations: Δz
-using Oceananigans.BoundaryConditions
-using Oceananigans.Operators
-using Oceananigans.Architectures: convert_args
-using Oceananigans.ImmersedBoundaries: peripheral_node, immersed_inactive_node, GFBIBG
-using Oceananigans.ImmersedBoundaries: inactive_node, IBG, c, f
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!, retrieve_surface_active_cells_map, retrieve_interior_active_cells_map
-using Oceananigans.ImmersedBoundaries: active_linear_index_to_tuple, ActiveCellsIBG, ActiveZColumnsIBG
-using Oceananigans.DistributedComputations: child_architecture
-using Oceananigans.DistributedComputations: Distributed
-using Oceananigans: fields
-
-using Printf
-using KernelAbstractions: @index, @kernel
-using KernelAbstractions.Extras.LoopInfo: @unroll
-
 # Evolution Kernels
 #
 # ∂t(η) = -∇⋅U
