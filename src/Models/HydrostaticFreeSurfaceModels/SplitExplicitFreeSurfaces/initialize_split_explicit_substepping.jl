@@ -76,16 +76,16 @@ end
     locU = (Face(), Center(), Center())
     locV = (Center(), Face(), Center())
 
-    @inbounds Gᵁ[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_G(i, j, 1, grid, locU, Gu⁻, Guⁿ, χ)
-    @inbounds Gⱽ[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_step_G(i, j, 1, grid, locV, Gv⁻, Gvⁿ, χ)
+    @inbounds Gᵁ[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * ab2_step_G(i, j, 1, grid, locU..., Gu⁻, Guⁿ, χ)
+    @inbounds Gⱽ[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * ab2_step_G(i, j, 1, grid, locV..., Gv⁻, Gvⁿ, χ)
 
     for k in 2:grid.Nz
-        @inbounds Gᵁ[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * ab2_step_G(i, j, k, grid, locU, Gu⁻, Guⁿ, χ)
-        @inbounds Gⱽ[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * ab2_step_G(i, j, k, grid, locV, Gv⁻, Gvⁿ, χ)
+        @inbounds Gᵁ[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * ab2_step_G(i, j, k, grid, locU..., Gu⁻, Guⁿ, χ)
+        @inbounds Gⱽ[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * ab2_step_G(i, j, k, grid, locV..., Gv⁻, Gvⁿ, χ)
     end
 end
 
-@inline function ab2_step_G(i, j, k, grid, (ℓx, ℓy, ℓz), G⁻, Gⁿ, χ::FT) where FT 
+@inline function ab2_step_G(i, j, k, grid, ℓx, ℓy, ℓz, G⁻, Gⁿ, χ::FT) where FT 
     C₁ = convert(FT, 3/2) + χ
     C₂ = convert(FT, 1/2) + χ
     

@@ -11,8 +11,13 @@ import Oceananigans.TimeSteppers: ab2_step!
 
 function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
 
+<<<<<<< HEAD
     compute_free_surface_tendency!(grid, model, model.free_surface)
     
+=======
+    compute_free_surface_tendency!(model.grid, model, model.free_surface)
+
+>>>>>>> origin/ss/refactor-split-explicit
     χ = model.timestepper.χ
 
     # Step locally velocity and tracers
