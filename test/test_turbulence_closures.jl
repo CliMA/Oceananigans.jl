@@ -264,7 +264,7 @@ end
 
             closure isa DynamicSmagorinsky && continue # `DynamicSmagorinsky`s `_compute_LM_MM!()` kernel isn't compiling on buildkite
             grid = RectilinearGrid(CPU(), size=(2, 2, 2), extent=(1, 2, 3))
-            model = NonhydrostaticModel(grid=grid, closure=closure, tracers=:c)
+            model = NonhydrostaticModel(; grid, closure, tracers=:c)
             c = model.tracers.c
             u = model.velocities.u
             κ = diffusivity(model.closure, model.diffusivity_fields, Val(:c)) 
