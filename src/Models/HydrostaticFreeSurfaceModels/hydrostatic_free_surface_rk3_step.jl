@@ -5,9 +5,8 @@ using Oceananigans.TimeSteppers: SplitRungeKutta3TimeStepper
 
 import Oceananigans.TimeSteppers: split_rk3_substep!, rk3_average_pressure!, _rk3_average_pressure!
 
-function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζⁿ, stage)
+function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζⁿ)
     
-    setup_free_surface!(model, model.free_surface, model.timestepper, stage)
     rk3_substep_velocities!(model.velocities, model, Δt, γⁿ, ζⁿ)
     rk3_substep_tracers!(model.tracers, model, Δt, γⁿ, ζⁿ)
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)

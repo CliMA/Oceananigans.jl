@@ -76,13 +76,13 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     ζ² = model.timestepper.ζ²
     ζ³ = model.timestepper.ζ³
 
-    store_old_fields!(model)
+    store_fields!(model)
 
     ####
     #### First stage
     ####
 
-    split_rk3_substep!(model, Δt, nothing, nothing, 1)
+    split_rk3_substep!(model, Δt, nothing, nothing)
     compute_pressure_correction!(model, Δt)
     pressure_correct_velocities!(model, Δt)
     update_state!(model, callbacks; compute_tendencies = true)
@@ -91,7 +91,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     #### Second stage
     ####
 
-    split_rk3_substep!(model, Δt, γ², ζ², 2)
+    split_rk3_substep!(model, Δt, γ², ζ²)
     compute_pressure_correction!(model, Δt)
  
     # The second stage is "particular" because we need to compute the average pressure
@@ -103,7 +103,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     #### Third stage
     ####
     
-    split_rk3_substep!(model, Δt, γ³, ζ³, 3)
+    split_rk3_substep!(model, Δt, γ³, ζ³)
     compute_pressure_correction!(model, Δt)
     pressure_correct_velocities!(model, Δt)
     update_state!(model, callbacks; compute_tendencies = true)
@@ -142,7 +142,7 @@ end
     field[i, j, k] = old_field[i, j, k] + Δt * Gⁿ[i, j, k]
 end
 
-function split_rk3_substep!(model, Δt, γⁿ, ζⁿ, stage)
+function split_rk3_substep!(model, Δt, γⁿ, ζⁿ)
 
     grid = model.grid
     arch = architecture(grid)
@@ -165,12 +165,12 @@ function split_rk3_substep!(model, Δt, γⁿ, ζⁿ, stage)
     end
 end
 
-@kernel function _store_old_fields!(previous_fields, fields)
+@kernel function _store_fields!(previous_fields, fields)
     i, j, k, n = @index(Global, NTuple)
     previous_fields[n][i, j, k] = fields[n][i, j, k]
 end
 
-function store_old_fields!(model)
+function store_fields!(model)
     
     timestepper = model.timestepper
     previous_fields = timestepper.previous_model_fields
