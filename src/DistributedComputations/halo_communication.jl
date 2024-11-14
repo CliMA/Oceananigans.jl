@@ -78,8 +78,8 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-function tupled_fill_halo_regions!(full_fields, grid::DistributedGrid, args...; kwargs...)
-    for field in full_fields
+function tupled_fill_halo_regions!(fields, grid::DistributedGrid, args...; kwargs...)
+    for field in fields
         fill_halo_regions!(field, args...; kwargs...)
     end
 end
@@ -98,12 +98,14 @@ function fill_halo_regions!(field::DistributedField, args...; kwargs...)
                               kwargs...)
 end
 
-function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, args...; fill_boundary_normal_velocities = true, kwargs...)
+function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, args...;
+                            fill_boundary_normal_velocities=true, kwargs...)
+
     if fill_boundary_normal_velocities
-        fill_open_boundary_regions!(c, bcs, indices, loc, grid, args...; kwargs...)
+        fill_open_boundary_regions!(c, bcs, indices, loc, grid, buffers, args...; kwargs...)
     end
     
-    arch             = architecture(grid)
+    arch = architecture(grid)
     fill_halos!, bcs = permute_boundary_conditions(bcs) 
 
     number_of_tasks = length(fill_halos!)
@@ -136,16 +138,17 @@ end
 
     # Syncronous MPI fill_halo_event!
     cooperative_waitall!(requests)
+
     # Reset MPI tag
     arch.mpi_tag[] -= arch.mpi_tag[]
-
     recv_from_buffers!(c, buffers, grid, Val(side))    
 
     return nothing
 end
 
 # corner passing routine
-function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args...; async = false, only_local_halos = false, kwargs...)
+function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args...;
+                       async=false, only_local_halos=false, kw...)
     
     # No corner filling needed!
     only_local_halos && return nothing
@@ -156,10 +159,10 @@ function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args.
 
     requests = MPI.Request[]
 
-    reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest, args...; kwargs...)
-    reqse = fill_southeast_halo!(c, connectivity.southeast, indices, loc, arch, grid, buffers, buffers.southeast, args...; kwargs...)
-    reqnw = fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest, args...; kwargs...)
-    reqne = fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast, args...; kwargs...)
+    reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest, args...; kw...)
+    reqse = fill_southeast_halo!(c, connectivity.southeast, indices, loc, arch, grid, buffers, buffers.southeast, args...; kw...)
+    reqnw = fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest, args...; kw...)
+    reqne = fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast, args...; kw...)
 
     !isnothing(reqsw) && push!(requests, reqsw...)
     !isnothing(reqse) && push!(requests, reqse...)
@@ -187,7 +190,8 @@ cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 # There are two additional keyword arguments (with respect to serial `fill_halo_event!`s) that take an effect on `DistributedGrids`: 
 # - only_local_halos: if true, only the local halos are filled, i.e. corresponding to non-communicating boundary conditions
 # - async: if true, ansynchronous MPI communication is enabled
-function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid::DistributedGrid, buffers, args...; async = false, only_local_halos = false, kwargs...)
+function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid::DistributedGrid, buffers, args...;
+                          async = false, only_local_halos = false, kwargs...)
 
     buffer_side = communication_side(Val(fill_halos!))
 
@@ -202,7 +206,6 @@ function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid::Distrib
     offset = fill_halo_offset(size, fill_halos!, indices)
 
     requests = fill_halos!(c, bcs..., size, offset, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
-
     pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, buffer_side)
     
     return nothing
