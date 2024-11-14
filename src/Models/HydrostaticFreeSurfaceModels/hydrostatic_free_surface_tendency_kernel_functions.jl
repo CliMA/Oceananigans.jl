@@ -116,8 +116,8 @@ where `c = C[tracer_index]`.
                                                           tracers,
                                                           diffusivities,
                                                           auxiliary_fields,
-                                                          forcing,
-                                                          clock) where tracer_index
+                                                          clock,
+                                                          forcing) where tracer_index
 
     @inbounds c = tracers[tracer_index]
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
@@ -151,8 +151,8 @@ The tendency is called ``G_η`` and defined via
                                        free_surface,
                                        tracers,
                                        auxiliary_fields,
-                                       forcing,
-                                       clock)
+                                       clock,
+                                       forcing)
 
     k_top = grid.Nz + 1
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)

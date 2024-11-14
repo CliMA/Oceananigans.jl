@@ -89,8 +89,8 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
                      model.tracers,
                      model.diffusivity_fields,
                      model.auxiliary_fields,
-                     c_forcing,
-                     model.clock)
+                     model.clock,
+                     c_forcing)
 
         launch!(arch, grid, kernel_parameters,
                 compute_hydrostatic_free_surface_Gc!,
@@ -123,8 +123,8 @@ function compute_free_surface_tendency!(grid, model, kernel_parameters)
                  model.free_surface,
                  model.tracers,
                  model.auxiliary_fields,
-                 model.forcing,
-                 model.clock)
+                 model.clock,
+                 model.forcing)
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, 
