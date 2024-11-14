@@ -29,7 +29,7 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
     
-    advance_previous_free_surface!(timestepper, i, j, k_top, η)
+    store_previous_free_surface!(timestepper, i, j, k_top, η)
     @inbounds  η[i, j, k_top] -= Δτ * (δxTᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
                                        δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) / Azᶜᶜᶠ(i, j, k_top, grid)
 end
@@ -42,8 +42,8 @@ end
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
-    advance_previous_velocities!(timestepper, i, j, 1, U)
-    advance_previous_velocities!(timestepper, i, j, 1, V)
+    store_previous_velocities!(timestepper, i, j, 1, U)
+    store_previous_velocities!(timestepper, i, j, 1, V)
 
     Hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
     Hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
