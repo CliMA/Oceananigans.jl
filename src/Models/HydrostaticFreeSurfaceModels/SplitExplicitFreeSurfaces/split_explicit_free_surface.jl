@@ -1,5 +1,5 @@
 using Oceananigans.BuoyancyModels: g_Earth
-using Oceananigans.Grids: with_halo
+using Oceananigans.Grids: with_halo, on_architecture
 
 struct SplitExplicitFreeSurface{H, U, M, FT, K , S, T} <: AbstractFreeSurface{H, FT}
     η :: H
@@ -119,6 +119,10 @@ end
 function split_explicit_substepping(::Nothing, substeps, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
     FT = eltype(gravitational_acceleration)
     fractional_step_size, averaging_weights = weights_from_substeps(FT, substeps, averaging_kernel)
+
+    # Make the weights into an array to reduce the parameter space
+    averaging_weights = on_architecture(architecture(grid), [averaging_weights...])
+
     return FixedSubstepNumber(fractional_step_size, averaging_weights)
 end
 
