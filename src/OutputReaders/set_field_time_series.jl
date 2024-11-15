@@ -1,6 +1,75 @@
 using Printf
 using Oceananigans.Architectures: cpu_architecture
 
+import Oceananigans.Fields: set!
+
+function set!(u::InMemoryFTS, v)
+    u .= v
+    return u
+end
+
+function set!(u::InMemoryFTS, v::InMemoryFTS)
+    if child_architecture(u) === child_architecture(v)
+        # Note: we could try to copy first halo point even when halo
+        # regions are a different size. That's a bit more complicated than
+        # the below so we leave it for the future.
+        
+        try # to copy halo regions along with interior data
+            parent(u) .= parent(v)
+        catch # this could fail if the halo regions are different sizes?
+            # copy just the interior data
+            interior(u) .= interior(v)
+        end
+    else
+        v_data = on_architecture(child_architecture(u), v.data)
+        
+        # As above, we permit ourselves a little ambition and try to copy halo data:
+        try
+            parent(u) .= parent(v_data)
+        catch
+            interior(u) .= interior(v_data, location(v), v.grid, v.indices)
+        end
+    end
+
+    return u
+end
+
+function set!(u::InMemoryFTS, v::Function)
+    # Supports serial and distributed
+    arch = architecture(u)
+    child_arch = child_architecture(u)
+    LX, LY, LZ = location(u)
+
+    # Determine cpu_grid and cpu_u
+    if child_arch isa GPU
+        cpu_arch = cpu_architecture(arch)
+        cpu_grid = on_architecture(cpu_arch, u.grid)
+        cpu_times = on_architecture(cpu_arch, u.times)
+        cpu_u = FieldTimeSeries{LX, LY, LZ}(cpu_grid, cpu_times; indices=indices(u))
+    elseif child_arch isa CPU
+        cpu_arch = child_arch
+        cpu_grid = u.grid
+        cpu_times = u.times
+        cpu_u = u
+    end
+
+    launch!(cpu_arch, cpu_grid, size(cpu_u),
+            _set_fts_to_function!, cpu_u, (LX(), LY(), LZ()), cpu_grid, cpu_times, v)
+
+    # Transfer data to GPU if u is on the GPU
+    child_arch isa GPU && set!(u, cpu_u)
+    
+    return u
+end
+
+@kernel function _set_fts_to_function!(fts, loc, grid, times, func)
+    i, j, k, n = @index(Global, NTuple)
+    X = node(i, j, k, grid, loc...)
+    @inbounds begin
+        fts[i, j, k, n] = func(X..., times[n])
+    end
+end
+
 #####
 ##### set!
 #####
@@ -44,7 +113,7 @@ function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name)
         set!(fts[n], field_n)
     end
 
-    return nothing
+    return fts
 end
 
 set!(fts::InMemoryFTS, value, n::Int) = set!(fts[n], value)
@@ -61,7 +130,7 @@ function set!(fts::InMemoryFTS, fields_vector::AbstractVector{<:AbstractField})
 
     close(file)
 
-    return nothing
+    return fts
 end
 
 # Write property only if it does not already exist
@@ -90,6 +159,8 @@ function set!(fts::OnDiskFTS, field::Field, n::Int, time=fts.times[n])
         maybe_write_property!(file, "timeseries/t/$n", time)
         maybe_write_property!(file, "timeseries/$name/$n", Array(parent(field)))
     end
+
+    return fts
 end
 
 function initialize_file!(file, name, fts)
@@ -100,4 +171,4 @@ function initialize_file!(file, name, fts)
     return nothing
 end
 
-set!(fts::OnDiskFTS, path::String, name::String) = nothing
+set!(fts::OnDiskFTS, path::String, name::String) = fts

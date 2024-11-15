@@ -23,7 +23,7 @@ using Oceananigans.Utils: launch!
 
 import Oceananigans.Architectures: architecture, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!, BoundaryCondition, getbc
-import Oceananigans.Fields: Field, set!, interior, indices, interpolate!
+import Oceananigans.Fields: Field, interior, indices, interpolate!
 
 #####
 ##### Data backends for FieldTimeSeries
