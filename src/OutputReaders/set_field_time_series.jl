@@ -3,11 +3,6 @@ using Oceananigans.Architectures: cpu_architecture
 
 import Oceananigans.Fields: set!
 
-function set!(u::InMemoryFTS, v)
-    u .= v
-    return u
-end
-
 function set!(u::InMemoryFTS, v::InMemoryFTS)
     if child_architecture(u) === child_architecture(v)
         # Note: we could try to copy first halo point even when halo
@@ -116,7 +111,7 @@ function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name)
     return fts
 end
 
-set!(fts::InMemoryFTS, value, n::Int) = set!(fts[n], value)
+set!(fts::InMemoryFTS, v, n::Int) = set!(fts[n], value)
 
 function set!(fts::InMemoryFTS, fields_vector::AbstractVector{<:AbstractField})
     raw_data = parent(fts)
@@ -172,3 +167,4 @@ function initialize_file!(file, name, fts)
 end
 
 set!(fts::OnDiskFTS, path::String, name::String) = fts
+

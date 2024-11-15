@@ -190,7 +190,7 @@ end
 ##### set! for checkpointer filepaths
 #####
 
-set!(model, ::Nothing) = nothing
+set!(model::AbstractModel, ::Nothing) = nothing
 
 """
     set!(model, filepath::AbstractString)
@@ -198,7 +198,7 @@ set!(model, ::Nothing) = nothing
 Set data in `model.velocities`, `model.tracers`, `model.timestepper.Gⁿ`, and
 `model.timestepper.G⁻` to checkpointed data stored at `filepath`.
 """
-function set!(model, filepath::AbstractString)
+function set!(model::AbstractModel, filepath::AbstractString)
 
     jldopen(filepath, "r") do file
 
