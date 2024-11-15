@@ -122,6 +122,13 @@ Modules = [Oceananigans.Models.HydrostaticFreeSurfaceModels]
 Private = false
 ```
 
+### Split-explicit free-surface
+
+```@autodocs
+Modules = [Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces]
+Private = false
+```
+
 ### Shallow-water models
 
 ```@autodocs
