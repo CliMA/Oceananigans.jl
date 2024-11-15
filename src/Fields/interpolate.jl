@@ -1,4 +1,4 @@
-using Oceananigans.Grids: topology, node, _node,
+using Oceananigans.Grids: topology, node, _node, φnode, λnode,
                           xspacings, yspacings, zspacings, λspacings, φspacings,
                           XFlatGrid, YFlatGrid, ZFlatGrid,
                           XYFlatGrid, YZFlatGrid, XZFlatGrid,
@@ -6,6 +6,8 @@ using Oceananigans.Grids: topology, node, _node,
                           XRegularLLG, YRegularLLG, ZRegularLLG,
                           ZRegOrthogonalSphericalShellGrid,
                           RectilinearGrid, LatitudeLongitudeGrid
+
+using Oceananigans.Operators: Δx, Δy, Δz
 
 using Oceananigans.Architectures: child_architecture
 
@@ -66,16 +68,16 @@ end
 
 @inline function fractional_x_index(x, locs, grid::XRegularRG)
     x₀ = xnode(1, 1, 1, grid, locs...)
-    Δx = @inbounds first(xspacings(grid, locs...))
+    Δx = Δx(1, 1, 1, grid, locs...)
     FT = eltype(grid)
     return convert(FT, (x - x₀) / Δx) + 1 # 1 - based indexing 
 end
 
 @inline function fractional_x_index(λ, locs, grid::XRegularLLG)
     λ₀ = λnode(1, 1, 1, grid, locs...)
-    Δλ = @inbounds first(λspacings(grid, locs...))
+    λ₁ = λnode(2, 1, 1, grid, locs...)
     FT = eltype(grid)
-    return convert(FT, (λ - λ₀) / Δλ) + 1 # 1 - based indexing 
+    return convert(FT, (λ - λ₀) / (λ₁ - λ₀)) + 1 # 1 - based indexing 
 end
 
 @inline function fractional_x_index(x, locs, grid::RectilinearGrid)
@@ -98,16 +100,16 @@ end
 
 @inline function fractional_y_index(y, locs, grid::YRegularRG)
     y₀ = ynode(1, 1, 1, grid, locs...)
-    Δy = @inbounds first(yspacings(grid, locs...))
+    Δy = Δy(1, 1, 1, grid, locs...)
     FT = eltype(grid)
     return convert(FT, (y - y₀) / Δy) + 1 # 1 - based indexing 
 end
 
 @inline function fractional_y_index(φ, locs, grid::YRegularLLG)
-    φ₀ = φnode(1, 1, 1, grid, locs...)
-    Δφ = @inbounds first(φspacings(grid, locs...))
+    φ₀ = φnode(1, 1, 1, grid, locs...)    
+    φ₁ = φnode(2, 1, 1, grid, locs...)
     FT = eltype(grid)
-    return convert(FT, (φ - φ₀) / Δφ) + 1 # 1 - based indexing 
+    return convert(FT, (φ - φ₀) / (φ₁ - φ₀)) + 1 # 1 - based indexing 
 end
 
 @inline function fractional_y_index(y, locs, grid::RectilinearGrid)
@@ -132,7 +134,7 @@ ZRegGrid = Union{ZRegularRG, ZRegularLLG, ZRegOrthogonalSphericalShellGrid}
 
 @inline function fractional_z_index(z::FT, locs, grid::ZRegGrid) where FT
     z₀ = znode(1, 1, 1, grid, locs...)
-    Δz = @inbounds first(zspacings(grid, locs...))
+    Δz = Δz(1, 1, 1, grid, locs...)
     return convert(FT, (z - z₀) / Δz) + 1 # 1 - based indexing 
 end
 
