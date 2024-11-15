@@ -139,7 +139,6 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
 
     end_momentum_kernel_args = (model_fields,
                                 free_surface,
-                                model.tracers,
                                 model.buoyancy,
                                 model.diffusivity_fields,
                                 model.pressure.pHY′,
