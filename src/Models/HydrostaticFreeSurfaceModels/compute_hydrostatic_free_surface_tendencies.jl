@@ -142,7 +142,6 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
                                 model.buoyancy,
                                 model.diffusivity_fields,
                                 model.pressure.pHY′,
-                                model.auxiliary_fields,
                                 model.clock)
 
     u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args...)
