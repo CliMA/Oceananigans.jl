@@ -72,6 +72,8 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
 
     compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; active_cells_map)
 
+    model_fields = merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers), model.auxiliary_fields)
+
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
 
 
@@ -81,7 +83,6 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
         @inbounds c_forcing     = model.forcing[tracer_name]
         @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
 
-        model_fields = merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers), model.auxiliary_fields)
 
         # We need to pass the free_surface only if it 
         args = tuple(Val(tracer_index),
