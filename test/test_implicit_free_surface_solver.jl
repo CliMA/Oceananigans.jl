@@ -52,7 +52,7 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
                                         free_surface)
 
     set_simple_divergent_velocity!(model)
-    step_free_surface!(model.free_surface, model, Δt)
+    step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
     acronym = free_surface.solver_method == :HeptadiagonalIterativeSolver ? "Matrix" : "PCG"
 
@@ -167,9 +167,9 @@ end
         
         for m in (mat_model, pcg_model, fft_model)
             set_simple_divergent_velocity!(m)
-            step_free_surface!(m.free_surface, m, Δt₁)
-            step_free_surface!(m.free_surface, m, Δt₁)
-            step_free_surface!(m.free_surface, m, Δt₂)
+            step_free_surface!(m.free_surface, m, m.timestepper, Δt₁)
+            step_free_surface!(m.free_surface, m, m.timestepper, Δt₁)
+            step_free_surface!(m.free_surface, m, m.timestepper, Δt₂)
         end
 
         mat_η = mat_model.free_surface.η
