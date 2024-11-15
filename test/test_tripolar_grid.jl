@@ -1,5 +1,12 @@
 include("dependencies_for_runtests.jl")
 
+using Statistics
+using Oceananigans.Utils: get_cartesian_nodes_and_vertices
+using Oceananigans.ImmersedBoundaries: immersed_cell
+using Oceananigans.BoundaryConditions: Zipper
+
+using Oceananigans.Utils: KernelParameters, contiguousrange
+
 
 @kernel function compute_nonorthogonality_angle!(angle, grid, xF, yF, zF)
     i, j = @index(Global, NTuple)
@@ -76,11 +83,18 @@ end
         η = model.free_surface.η
         P = model.free_surface.kernel_parameters
 
-        Hx, Hy, _ = halo_size(grid)
+        range = contiguousrange(P)
 
-        # NOTE: This test will fail until the 
-        # refactor of the split-explicit free surface model is done, until then, 
-        # the tripolar grid cannot be used
+        # Should have extended halos in the north
+        Hx, Hy, _ = halo_size(η.grid)
+        Nx, Ny, _ = size(grid)
+
+        @test P isa KernelParameters
+        @test range[1] == 1:Nx
+        @test range[2] == 1:Ny+Hy-1 
+        
+        @test Hx == halo_size(grid, 1)
+        @test Hy != halo_size(grid, 2)
         @test Hy == length(free_surface.substepping.averaging_weights) + 1
 
         @test begin
