@@ -56,8 +56,8 @@ const ZRG = Union{LLGZ, RGZ, OSSGZ}
 @inline getspacing(k, Δz::AbstractVector) = @inbounds Δz[k]
 @inline getspacing(k, Δz::Number)         = @inbounds Δz
 
-@inline Δrᵃᵃᶜ(i, j, k, grid::ZSG) = getspacing(k, grid.Δzᵃᵃᶜ.reference)
-@inline Δrᵃᵃᶠ(i, j, k, grid::ZSG) = getspacing(k, grid.Δzᵃᵃᶠ.reference)
+@inline Δrᵃᵃᶜ(i, j, k, grid::ZStarUnderlyingGrid) = getspacing(k, grid.Δzᵃᵃᶜ.reference)
+@inline Δrᵃᵃᶠ(i, j, k, grid::ZStarUnderlyingGrid) = getspacing(k, grid.Δzᵃᵃᶠ.reference)
 
 # Convenience Functions for all grids
 for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
