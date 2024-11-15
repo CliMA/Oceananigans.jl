@@ -30,8 +30,12 @@ end
 @inline function ab2_step_G(i, j, k, grid, ℓx, ℓy, ℓz, G⁻, Gⁿ, χ::FT) where FT 
     C₁ = convert(FT, 3/2) + χ
     C₂ = convert(FT, 1/2) + χ
-    
-    Gⁿ⁺¹ = @inbounds C₁ * Gⁿ[i, j, k] - C₂ * G⁻[i, j, k]
+
+    # multiply G⁻ by false if C₂ is zero to 
+    # prevent propagationg possible NaNs
+    not_euler = C₂ != 0
+
+    Gⁿ⁺¹ = @inbounds C₁ * Gⁿ[i, j, k] - C₂ * G⁻[i, j, k] * not_euler
     immersed = peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
 
     return ifelse(immersed, zero(grid), Gⁿ⁺¹)
