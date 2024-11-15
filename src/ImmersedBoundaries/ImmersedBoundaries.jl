@@ -31,114 +31,6 @@ import Oceananigans.Architectures: on_architecture
 
 import Oceananigans.Fields: fractional_x_index, fractional_y_index, fractional_z_index
 
-"""
-    abstract type AbstractImmersedBoundary
-
-Abstract supertype for immersed boundary grids.
-"""
-abstract type AbstractImmersedBoundary end
-
-#####
-##### ImmersedBoundaryGrid
-#####
-
-struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch}
-    architecture :: Arch
-    underlying_grid :: G
-    immersed_boundary :: I
-    interior_active_cells :: M
-    active_z_columns :: S
-
-    # Internal interface
-    function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I, mi::M, ms::S) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I, M, S}
-        FT = eltype(grid)
-        arch = architecture(grid)
-        Arch = typeof(arch)
-        return new{FT, TX, TY, TZ, G, I, M, S, Arch}(arch, grid, ib, mi, ms)
-    end
-
-    # Constructor with no active map
-    function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I}
-        FT = eltype(grid)
-        arch = architecture(grid)
-        Arch = typeof(arch)
-        return new{FT, TX, TY, TZ, G, I, Nothing, Nothing, Arch}(arch, grid, ib, nothing, nothing)
-    end
-end
-
-const IBG = ImmersedBoundaryGrid
-
-@inline Base.getproperty(ibg::IBG, property::Symbol) = get_ibg_property(ibg, Val(property))
-@inline get_ibg_property(ibg::IBG, ::Val{property}) where property = getfield(getfield(ibg, :underlying_grid), property)
-@inline get_ibg_property(ibg::IBG, ::Val{:immersed_boundary})      = getfield(ibg, :immersed_boundary)
-@inline get_ibg_property(ibg::IBG, ::Val{:underlying_grid})        = getfield(ibg, :underlying_grid)
-@inline get_ibg_property(ibg::IBG, ::Val{:interior_active_cells})  = getfield(ibg, :interior_active_cells)
-@inline get_ibg_property(ibg::IBG, ::Val{:active_z_columns})       = getfield(ibg, :active_z_columns)
-
-@inline architecture(ibg::IBG) = architecture(ibg.underlying_grid)
-
-@inline x_domain(ibg::IBG) = x_domain(ibg.underlying_grid)
-@inline y_domain(ibg::IBG) = y_domain(ibg.underlying_grid)
-@inline z_domain(ibg::IBG) = z_domain(ibg.underlying_grid)
-
-Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
-    ImmersedBoundaryGrid{TX, TY, TZ}(adapt(to, ibg.underlying_grid),
-                                     adapt(to, ibg.immersed_boundary),
-                                     nothing,
-                                     nothing)
-
-function with_halo(halo, ibg::ImmersedBoundaryGrid)
-    new_grid = with_halo(halo, ibg.underlying_grid)
-    active_cells_map = !isnothing(ibg.interior_active_cells)
-    return ImmersedBoundaryGrid(new_grid, ibg.immersed_boundary; active_cells_map)
-end
-
-# ImmersedBoundaryGrids require an extra halo point to check the "inactivity" of a `Face` node at N + H
-# (which requires checking `Center` nodes at N + H and N + H + 1)
-inflate_halo_size_one_dimension(req_H, old_H, _, ::IBG)            = max(req_H + 1, old_H)
-inflate_halo_size_one_dimension(req_H, old_H, ::Type{Flat}, ::IBG) = 0
-
-function Base.summary(grid::ImmersedBoundaryGrid)
-    FT = eltype(grid)
-    TX, TY, TZ = topology(grid)
-
-    return string(size_summary(size(grid)),
-                  " ImmersedBoundaryGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
-                  " with ", size_summary(halo_size(grid)), " halo")
-end
-
-function show(io::IO, ibg::ImmersedBoundaryGrid)
-    print(io, summary(ibg), ":", "\n",
-             "├── immersed_boundary: ", summary(ibg.immersed_boundary), "\n",
-             "├── underlying_grid: ", summary(ibg.underlying_grid), "\n")
-
-    return show(io, ibg.underlying_grid, false)
-end
-
-#####
-##### Interface for immersed_boundary
-#####
-
-"""
-    immersed_cell(i, j, k, grid)
-
-Return true if a `cell` is "completely" immersed, and thus
-is not part of the prognostic state.
-"""
-@inline immersed_cell(i, j, k, grid) = false
-
-# Unpack to make defining new immersed boundaries more convenient
-@inline immersed_cell(i, j, k, grid::ImmersedBoundaryGrid) =
-    immersed_cell(i, j, k, grid.underlying_grid, grid.immersed_boundary)
-
-"""
-    inactive_cell(i, j, k, grid::ImmersedBoundaryGrid)
-
-Return `true` if the tracer cell at `i, j, k` either (i) lies outside the `Bounded` domain
-or (ii) lies within the immersed region of `ImmersedBoundaryGrid`.
-
-Example
-=======
 
 Consider the configuration
 
@@ -248,6 +140,10 @@ isrectilinear(ibg::IBG) = isrectilinear(ibg.underlying_grid)
 @inline fractional_y_index(x, locs, grid::ImmersedBoundaryGrid) = fractional_y_index(x, locs, grid.underlying_grid)
 @inline fractional_z_index(x, locs, grid::ImmersedBoundaryGrid) = fractional_z_index(x, locs, grid.underlying_grid)
 
+=======
+include("immersed_boundary_grid.jl")
+include("immersed_boundary_interface.jl")
+include("immersed_boundary_nodes.jl")
 include("active_cells_map.jl")
 include("immersed_grid_metrics.jl")
 include("abstract_grid_fitted_boundary.jl")

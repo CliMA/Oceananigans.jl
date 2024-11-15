@@ -56,13 +56,13 @@ pnorm = 1
 uh(x, y, z) = U * h(x, y, z)
 
 schemes = (
-    CenteredFourthOrder(), 
-    UpwindBiasedFifthOrder(), 
-    WENO(order = 3),
-    WENO(order = 5),
-    WENO(order = 7),
-    WENO(order = 9),
-    WENO(order = 11)
+    Centered(order=4), 
+    UpwindBiased(order=5), 
+    WENO(order=3),
+    WENO(order=5),
+    WENO(order=7),
+    WENO(order=9),
+    WENO(order=11)
 )s
 
 error = Dict()

@@ -23,7 +23,7 @@ steps:
       architecture: GPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
 
   - label: "🏕️ initialize cpu environment"
@@ -44,7 +44,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
 
 #####
@@ -63,7 +63,7 @@ steps:
       architecture: GPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_gpu"
 
@@ -78,7 +78,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_cpu"
 
@@ -98,7 +98,7 @@ steps:
       architecture: GPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_gpu"
 
@@ -113,7 +113,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_cpu"
 
@@ -129,7 +129,7 @@ steps:
       architecture: GPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_gpu"
 
@@ -144,7 +144,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_cpu"
 
@@ -160,7 +160,7 @@ steps:
       architecture: GPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_gpu"
 
@@ -175,7 +175,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_cpu"
 
@@ -191,7 +191,7 @@ steps:
       architecture: GPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_gpu"
 
@@ -206,7 +206,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_cpu"
 
@@ -226,7 +226,7 @@ steps:
       architecture: GPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_gpu"
 
@@ -241,7 +241,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_cpu"
 
@@ -261,7 +261,7 @@ steps:
       architecture: GPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_gpu"
 
@@ -276,7 +276,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_cpu"
 
@@ -296,7 +296,7 @@ steps:
       architecture: GPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_gpu"
 
@@ -311,7 +311,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_cpu"
 
@@ -331,7 +331,7 @@ steps:
       architecture: GPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_gpu"
 
@@ -346,7 +346,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_cpu"
 
@@ -366,7 +366,7 @@ steps:
       architecture: GPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_gpu"
 
@@ -381,7 +381,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_cpu"
 
@@ -401,7 +401,7 @@ steps:
       architecture: GPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_gpu"
 
@@ -416,7 +416,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_cpu"
 
@@ -436,7 +436,7 @@ steps:
       architecture: GPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_gpu"
 
@@ -451,7 +451,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_cpu"
 
@@ -471,7 +471,7 @@ steps:
       architecture: GPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_gpu"
 
@@ -486,7 +486,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_cpu"
 
@@ -506,7 +506,7 @@ steps:
       architecture: GPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_gpu"
 
@@ -521,7 +521,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_cpu"
 
@@ -541,7 +541,7 @@ steps:
       architecture: GPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_gpu"
 
@@ -556,7 +556,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_cpu"
 
@@ -576,7 +576,7 @@ steps:
       architecture: GPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_gpu"
 
@@ -591,7 +591,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_cpu"
 
@@ -607,7 +607,7 @@ steps:
       architecture: GPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_gpu"
 
@@ -622,7 +622,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_cpu"
 
@@ -642,7 +642,7 @@ steps:
       architecture: GPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_gpu"
 
@@ -657,7 +657,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_cpu"
 
@@ -712,7 +712,7 @@ steps:
       architecture: GPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_gpu"
 
@@ -727,7 +727,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init_cpu"
 

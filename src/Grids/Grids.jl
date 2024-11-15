@@ -16,7 +16,8 @@ export ξnode, ηnode, rnode
 export xnode, ynode, znode, λnode, φnode
 export xnodes, ynodes, znodes, λnodes, φnodes, rnodes
 export spacings
-export xspacings, yspacings, zspacings, rspacings, xspacing, yspacing, zspacing, rspacing
+export xspacing, yspacing, zspacing, λspacing, φspacing, rspacing
+export xspacings, yspacings, zspacings, λspacings, φspacings, rspacings
 export minimum_xspacing, minimum_yspacing, minimum_zspacing
 export ZStarVerticalCoordinate, vertical_scaling, previous_vertical_scaling, reference_zspacings
 export static_column_depthᶜᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶠᵃ

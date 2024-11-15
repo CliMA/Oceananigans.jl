@@ -3,7 +3,7 @@
 # away from a constant along-slope (y-direction) velocity constant density stratification.
 # This perturbation develops into a turbulent bottom boundary layer due to momentum
 # loss at the bottom boundary modeled with a quadratic drag law.
-# 
+#
 # This example illustrates
 #
 #   * changing the direction of gravitational acceleration in the buoyancy model;
@@ -33,7 +33,7 @@ Nz = 64
 ## Creates a grid with near-constant spacing `refinement * Lz / Nz`
 ## near the bottom:
 refinement = 1.8 # controls spacing near surface (higher means finer spaced)
-stretching = 10  # controls rate of stretching at bottom 
+stretching = 10  # controls rate of stretching at bottom
 
 ## "Warped" height coordinate
 h(k) = (Nz + 1 - k) / Nz
@@ -41,7 +41,7 @@ h(k) = (Nz + 1 - k) / Nz
 ## Linear near-surface generator
 ζ(k) = 1 + (h(k) - 1) / refinement
 
-## Bottom-intensified stretching function 
+## Bottom-intensified stretching function
 Σ(k) = (1 - exp(-stretching * h(k))) / (1 - exp(-stretching))
 
 ## Generating function
@@ -56,11 +56,9 @@ grid = RectilinearGrid(topology = (Periodic, Flat, Bounded),
 
 using CairoMakie
 
-lines(zspacings(grid, Center()), znodes(grid, Center()),
-      axis = (ylabel = "Depth (m)",
-              xlabel = "Vertical spacing (m)"))
-
-scatter!(zspacings(grid, Center()), znodes(grid, Center()))
+scatterlines(zspacings(grid, Center()),
+             axis = (ylabel = "Depth (m)",
+                     xlabel = "Vertical spacing (m)"))
 
 current_figure() #hide
 

@@ -6,7 +6,7 @@ module Oceananigans
 
 export
     # Architectures
-    CPU, GPU, 
+    CPU, GPU,
 
     # Grids
     Center, Face,
@@ -14,7 +14,7 @@ export
     ZStarVerticalCoordinate,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
     nodes, xnodes, ynodes, znodes, λnodes, φnodes,
-    xspacings, yspacings, zspacings,
+    xspacings, yspacings, zspacings, λspacings, φspacings,
     minimum_xspacing, minimum_yspacing, minimum_zspacing,
 
     # Immersed boundaries
@@ -61,6 +61,9 @@ export
     HorizontalScalarBiharmonicDiffusivity,
     ScalarBiharmonicDiffusivity,
     SmagorinskyLilly,
+    Smagorinsky,
+    LillyCoefficient,
+    DynamicCoefficient,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     CATKEVerticalDiffusivity,
@@ -245,4 +248,3 @@ using .AbstractOperations
 using .MultiRegion
 
 end # module
-

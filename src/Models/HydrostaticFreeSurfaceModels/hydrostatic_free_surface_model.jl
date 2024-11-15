@@ -3,7 +3,7 @@ using OrderedCollections: OrderedDict
 
 using Oceananigans.DistributedComputations
 using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant, adapt_advection_order
+using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, adapt_advection_order
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
@@ -57,7 +57,7 @@ default_free_surface(grid; gravitational_acceleration=g_Earth) =
     HydrostaticFreeSurfaceModel(; grid,
                                 clock = Clock{eltype(grid)}(time = 0),
                                 momentum_advection = VectorInvariant(),
-                                tracer_advection = CenteredSecondOrder(),
+                                tracer_advection = Centered(),
                                 buoyancy = SeawaterBuoyancy(eltype(grid)),
                                 coriolis = nothing,
                                 free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
@@ -104,7 +104,7 @@ Keyword arguments
 function HydrostaticFreeSurfaceModel(; grid,
                                      clock = Clock{eltype(grid)}(time = 0),
                                      momentum_advection = VectorInvariant(),
-                                     tracer_advection = CenteredSecondOrder(),
+                                     tracer_advection = Centered(),
                                      buoyancy = nothing,
                                      coriolis = nothing,
                                      free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
@@ -230,7 +230,6 @@ validate_momentum_advection(momentum_advection::VectorInvariant, grid::Orthogona
 validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
 initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
-initialize_free_surface!(free_surface, grid, velocities) = nothing
 
 # return the total advective velocities
 @inline total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities

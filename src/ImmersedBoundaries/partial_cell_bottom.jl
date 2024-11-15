@@ -94,7 +94,7 @@ end
         bottom_cell = (z⁻ ≤ zb) & (z⁺ ≥ zb)
         capped_zb   = min(z⁺ - ϵ * Δz, zb)
 
-        # If the size of the bottom cell is less than ϵ Δz, 
+        # If the size of the bottom cell is less than ϵ Δz,
         # we enforce a minimum size of ϵ Δz.
         adjusted_zb = ifelse(bottom_cell, capped_zb, zb)
     end
@@ -111,20 +111,20 @@ function on_architecture(arch, ib::PartialCellBottom{<:Field})
 end
 
 Adapt.adapt_structure(to, ib::PartialCellBottom) = PartialCellBottom(adapt(to, ib.bottom_height),
-                                                                     ib.minimum_fractional_cell_height)     
+                                                                     ib.minimum_fractional_cell_height)
 
 on_architecture(to, ib::PartialCellBottom) = PartialCellBottom(on_architecture(to, ib.bottom_height),
-                                                               on_architecture(to, ib.minimum_fractional_cell_height))     
+                                                               on_architecture(to, ib.minimum_fractional_cell_height))
 
 """
     immersed     underlying
 
       --x--        --x--
-            
-            
+
+
         ∘   ↑        ∘   k+1
             |
-            |               
+            |
   k+1 --x-- |  k+1 --x--    ↑      <- node z
         ∘   ↓               |
    zb ⋅⋅x⋅⋅                 |
@@ -133,7 +133,7 @@ on_architecture(to, ib::PartialCellBottom) = PartialCellBottom(on_architecture(t
                             |
                             |
                  k --x--    ↓
-      
+
 Criterion is zb ≥ z - ϵ Δz
 
 """
