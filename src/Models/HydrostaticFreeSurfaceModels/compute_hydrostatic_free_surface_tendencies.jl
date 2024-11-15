@@ -74,11 +74,16 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
 
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
 
+
+        @inbounds tracer        = model.tracers[tracer_name]
         @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
         @inbounds c_advection   = model.advection[tracer_name]
         @inbounds c_forcing     = model.forcing[tracer_name]
         @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
 
+        model_fields = merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers), model.auxiliary_fields)
+
+        # We need to pass the free_surface only if it 
         args = tuple(Val(tracer_index),
                      Val(tracer_name),
                      c_advection,
@@ -86,11 +91,9 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
                      c_immersed_bc,
                      model.buoyancy,
                      model.biogeochemistry,
-                     model.velocities,
-                     model.free_surface,
-                     model.tracers,
+                     model_fields,
+                     tracer,
                      model.diffusivity_fields,
-                     model.auxiliary_fields,
                      model.clock,
                      c_forcing)
 
@@ -126,12 +129,15 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     u_immersed_bc = immersed_boundary_condition(velocities.u)
     v_immersed_bc = immersed_boundary_condition(velocities.v)
 
+    model_fields = merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers), model.auxiliary_fields)
+    free_surface = model.free_surface isa ExplicitFreeSurface ? model.free_surface : nothing
+
     start_momentum_kernel_args = (model.advection.momentum,
                                   model.coriolis,
                                   model.closure)
 
-    end_momentum_kernel_args = (velocities,
-                                model.free_surface,
+    end_momentum_kernel_args = (model_fields,
+                                free_surface,
                                 model.tracers,
                                 model.buoyancy,
                                 model.diffusivity_fields,
