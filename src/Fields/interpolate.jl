@@ -318,6 +318,12 @@ end
 @inline flatten_node(x, ::Nothing, z) = flatten_node(x, z)
 @inline flatten_node(x, y, ::Nothing) = flatten_node(x, y)
 
+@inline flatten_node(x, ::Nothing, ::Nothing) = tuple(x)
+@inline flatten_node(::Nothing, y, ::Nothing) = tuple(y)
+@inline flatten_node(::Nothing, ::Nothing, z) = tuple(z)
+
+@inline flatten_node(::Nothing, ::Nothing, ::Nothing) = tuple()
+
 @inline flatten_node(x, y) = (x, y)
 @inline flatten_node(::Nothing, y) = flatten_node(y)
 @inline flatten_node(x, ::Nothing) = flatten_node(x)
