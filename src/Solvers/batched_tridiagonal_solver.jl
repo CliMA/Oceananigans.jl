@@ -1,4 +1,4 @@
-using Oceananigans.Architectures: arch_array
+using Oceananigans.Architectures: on_architecture
 using Oceananigans.Grids: XDirection, YDirection, ZDirection
 
 import Oceananigans.Architectures: architecture
@@ -18,15 +18,19 @@ struct BatchedTridiagonalSolver{A, B, C, T, G, P, D}
     tridiagonal_direction :: D
 end
 
-architecture(solver::BatchedTridiagonalSolver) = architecture(solver.grid)
+# Some aliases...
+const XTridiagonalSolver = BatchedTridiagonalSolver{A, B, C, T, G, P, <:XDirection} where {A, B, C, T, G, P}
+const YTridiagonalSolver = BatchedTridiagonalSolver{A, B, C, T, G, P, <:YDirection} where {A, B, C, T, G, P}
+const ZTridiagonalSolver = BatchedTridiagonalSolver{A, B, C, T, G, P, <:ZDirection} where {A, B, C, T, G, P}
 
+architecture(solver::BatchedTridiagonalSolver) = architecture(solver.grid)
 
 """
     BatchedTridiagonalSolver(grid;
                              lower_diagonal,
                              diagonal,
                              upper_diagonal,
-                             scratch = arch_array(architecture(grid), zeros(eltype(grid), size(grid)...)),
+                             scratch = on_architecture(architecture(grid), zeros(eltype(grid), size(grid)...)),
                              tridiagonal_direction = ZDirection()
                              parameters = nothing)
 
@@ -66,7 +70,7 @@ function BatchedTridiagonalSolver(grid;
                                   lower_diagonal,
                                   diagonal,
                                   upper_diagonal,
-                                  scratch = arch_array(architecture(grid), zeros(eltype(grid), grid.Nx, grid.Ny, grid.Nz)),
+                                  scratch = on_architecture(architecture(grid), zeros(eltype(grid), grid.Nx, grid.Ny, grid.Nz)),
                                   parameters = nothing,
                                   tridiagonal_direction = ZDirection())
 

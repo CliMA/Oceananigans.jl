@@ -162,3 +162,10 @@ Adapt.adapt_structure(to, forcing::ContinuousForcing{LX, LY, LZ}) where {LX, LY,
                                   Adapt.adapt(to, forcing.field_dependencies_indices),
                                   Adapt.adapt(to, forcing.field_dependencies_interp))
 
+on_architecture(to, forcing::ContinuousForcing{LX, LY, LZ}) where {LX, LY, LZ} =
+    ContinuousForcing{LX, LY, LZ}(on_architecture(to, forcing.func),
+                                  on_architecture(to, forcing.parameters),
+                                  on_architecture(to, forcing.field_dependencies),
+                                  on_architecture(to, forcing.field_dependencies_indices),
+                                  on_architecture(to, forcing.field_dependencies_interp))
+

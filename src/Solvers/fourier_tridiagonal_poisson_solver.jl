@@ -50,7 +50,6 @@ end
     @inbounds D[i, j, Nz] = -1 / Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
 end
 
-
 stretched_direction(::YZRegularRG) = XDirection()
 stretched_direction(::XZRegularRG) = YDirection()
 stretched_direction(::XYRegularRG) = ZDirection()
@@ -75,20 +74,20 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     λ2 = poisson_eigenvalues(regular_siz2, regular_ext2, 2, regular_top2())
 
     arch = architecture(grid)
-    λ1 = arch_array(arch, λ1)
-    λ2 = arch_array(arch, λ2)
+    λ1 = on_architecture(arch, λ1)
+    λ2 = on_architecture(arch, λ2)
 
     # Plan required transforms for x and y
-    sol_storage = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
+    sol_storage = on_architecture(arch, zeros(complex(eltype(grid)), size(grid)...))
     transforms = plan_transforms(grid, sol_storage, planner_flag)
 
     # Lower and upper diagonals are the same
     lower_diagonal = CUDA.@allowscalar [ 1 / Δξᶠ(q, grid) for q in 2:size(grid, irreg_dim) ]
-    lower_diagonal = arch_array(arch, lower_diagonal)
+    lower_diagonal = on_architecture(arch, lower_diagonal)
     upper_diagonal = lower_diagonal
 
     # Compute diagonal coefficients for each grid point
-    diagonal = arch_array(arch, zeros(size(grid)...))
+    diagonal = on_architecture(arch, zeros(size(grid)...))
     launch_config = if grid isa YZRegularRG
                         :yz
                     elseif grid isa XZRegularRG
@@ -108,7 +107,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     buffer = buffer_needed ? similar(sol_storage) : nothing
 
     # Storage space for right hand side of Poisson equation
-    rhs = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
+    rhs = on_architecture(arch, zeros(complex(eltype(grid)), size(grid)...))
 
     return FourierTridiagonalPoissonSolver(grid, btsolver, rhs, sol_storage, buffer, transforms)
 end
@@ -120,13 +119,17 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     ϕ = solver.storage
 
     # Apply forward transforms in order
-    [transform!(solver.source_term, solver.buffer) for transform! in solver.transforms.forward]
+    for transform! in solver.transforms.forward
+        transform!(solver.source_term, solver.buffer)
+    end
 
     # Solve tridiagonal system of linear equations at every column.
     solve!(ϕ, solver.batched_tridiagonal_solver, solver.source_term)
 
     # Apply backward transforms in order
-    [transform!(ϕ, solver.buffer) for transform! in solver.transforms.backward]
+    for transform! in solver.transforms.backward
+        transform!(ϕ, solver.buffer)
+    end
 
     # Set the volume mean of the solution to be zero.
     # Solutions to Poisson's equation are only unique up to a constant (the global mean
@@ -149,9 +152,7 @@ function set_source_term!(solver::FourierTridiagonalPoissonSolver, source_term)
     grid = solver.grid
     arch = architecture(solver)
     solver.source_term .= source_term
-
     launch!(arch, grid, :xyz, multiply_by_stretched_spacing!, solver.source_term, grid)
-
     return nothing
 end
 
@@ -170,3 +171,4 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds a[i, j, k] *= Δzᵃᵃᶜ(i, j, k, grid)
 end
+

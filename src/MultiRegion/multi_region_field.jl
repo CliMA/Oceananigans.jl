@@ -6,6 +6,7 @@ using Oceananigans.OutputWriters: output_indices
 
 using Base: @propagate_inbounds
 
+import Oceananigans.DistributedComputations: reconstruct_global_field
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 import Oceananigans.Grids: xnodes, ynodes
 import Oceananigans.Fields: set!, compute!, compute_at!, validate_field_data, validate_boundary_conditions
@@ -69,6 +70,8 @@ Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
 Reconstruct a global field from `mrf::MultiRegionField` on the `CPU`.
 """
 function reconstruct_global_field(mrf::MultiRegionField)
+
+    # TODO: Is this correct? Shall we reconstruct a global field on the architecture of the grid?
     global_grid  = on_architecture(CPU(), reconstruct_global_grid(mrf.grid))
     indices      = reconstruct_global_indices(mrf.indices, mrf.grid.partition, size(global_grid))
     global_field = Field(location(mrf), global_grid; indices)
@@ -80,9 +83,6 @@ function reconstruct_global_field(mrf::MultiRegionField)
     fill_halo_regions!(global_field)
     return global_field
 end
-
-# Fallback!
-@inline reconstruct_global_field(f::AbstractField) = f
 
 function reconstruct_global_indices(indices, p::XPartition, N)
     idx1 = getregion(indices, 1)[1]

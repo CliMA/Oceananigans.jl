@@ -58,7 +58,7 @@ function Centered(FT::DataType = Float64; grid = nothing, order = 2)
     return Centered{N, FT}(coefficients..., buffer_scheme)
 end
 
-Base.summary(a::Centered{N}) where N = string("Centered reconstruction order ", N*2)
+Base.summary(a::Centered{N}) where N = string("Centered(order=", 2N, ")")
 
 Base.show(io::IO, a::Centered{N, FT, XT, YT, ZT}) where {N, FT, XT, YT, ZT} =
     print(io, summary(a), " \n",
@@ -76,30 +76,26 @@ Adapt.adapt_structure(to, scheme::Centered{N, FT}) where {N, FT} =
                     Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ), Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
                     Adapt.adapt(to, scheme.buffer_scheme))
 
+on_architecture(to, scheme::Centered{N, FT}) where {N, FT} =
+    Centered{N, FT}(on_architecture(to, scheme.coeff_xᶠᵃᵃ), on_architecture(to, scheme.coeff_xᶜᵃᵃ),
+                    on_architecture(to, scheme.coeff_yᵃᶠᵃ), on_architecture(to, scheme.coeff_yᵃᶜᵃ),
+                    on_architecture(to, scheme.coeff_zᵃᵃᶠ), on_architecture(to, scheme.coeff_zᵃᵃᶜ),
+                    on_architecture(to, scheme.buffer_scheme))
+
 # Useful aliases
 Centered(grid, FT::DataType=Float64; kwargs...) = Centered(FT; grid, kwargs...)
-
-CenteredSecondOrder(grid=nothing, FT::DataType=Float64) = Centered(grid, FT; order=2)
-CenteredFourthOrder(grid=nothing, FT::DataType=Float64) = Centered(grid, FT; order=4)
 
 const ACAS = AbstractCenteredAdvectionScheme
 
 # left and right biased for Centered reconstruction are just symmetric!
-@inline left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::ACAS, c, args...) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c, args...)
-@inline left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::ACAS, c, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, c, args...)
-@inline left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::ACAS, c, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, c, args...)
+@inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::ACAS, bias, c, args...) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c, args...)
+@inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::ACAS, bias, c, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, c, args...)
+@inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::ACAS, bias, c, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, c, args...)
 
-@inline right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::ACAS, c, args...) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c, args...)
-@inline right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::ACAS, c, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, c, args...)
-@inline right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::ACAS, c, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, c, args...)
-
-@inline left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::ACAS, u, args...) = symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, u, args...)
-@inline left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::ACAS, v, args...) = symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, v, args...)
-@inline left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::ACAS, w, args...) = symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, w, args...)
-
-@inline right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::ACAS, u, args...) = symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, u, args...)
-@inline right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::ACAS, v, args...) = symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, v, args...)
-@inline right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::ACAS, w, args...) = symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, w, args...)
+# left and right biased for Centered reconstruction are just symmetric!
+@inline biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::ACAS, bias, c, args...) = symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, c, args...)
+@inline biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::ACAS, bias, c, args...) = symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, c, args...)
+@inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::ACAS, bias, c, args...) = symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, c, args...)
 
 # uniform centered reconstruction
 for buffer in advection_buffers

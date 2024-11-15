@@ -15,6 +15,7 @@ function Base.show(io::IO, model::NonhydrostaticModel)
     print(io, summary(model), "\n",
         "├── grid: ", summary(model.grid), "\n",
         "├── timestepper: ", TS, "\n",
+        "├── advection scheme: ", summary(model.advection), "\n",
         "├── tracers: ", tracernames, "\n",
         "├── closure: ", closure_summary(model.closure), "\n",
         "├── buoyancy: ", summary(model.buoyancy), "\n")

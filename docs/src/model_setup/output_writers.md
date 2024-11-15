@@ -50,7 +50,7 @@ passing it a dictionary of (label, field) pairs and any indices for slicing if y
 Saving the u velocity field and temperature fields as full 3D fields, surface 2D slices, and
 1D columns to separate NetCDF files:
 
-```jldoctest netcdf1
+```@example netcdf1
 using Oceananigans
 
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
@@ -63,47 +63,26 @@ fields = Dict("u" => model.velocities.u, "c" => model.tracers.c)
 
 simulation.output_writers[:field_writer] =
     NetCDFOutputWriter(model, fields, filename="more_fields.nc", schedule=TimeInterval(60))
-
-# output
-NetCDFOutputWriter scheduled on TimeInterval(1 minute):
-├── filepath: ./more_fields.nc
-├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 2 outputs: (c, u)
-└── array type: Array{Float64}
 ```
 
-```jldoctest netcdf1
+```@example netcdf1
 simulation.output_writers[:surface_slice_writer] =
     NetCDFOutputWriter(model, fields, filename="another_surface_xy_slice.nc",
                        schedule=TimeInterval(60), indices=(:, :, grid.Nz))
-
-# output
-NetCDFOutputWriter scheduled on TimeInterval(1 minute):
-├── filepath: ./another_surface_xy_slice.nc
-├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 2 outputs: (c, u)
-└── array type: Array{Float64}
 ```
 
-```jldoctest netcdf1
+```@example netcdf1
 simulation.output_writers[:averaged_profile_writer] =
     NetCDFOutputWriter(model, fields,
                        filename = "another_averaged_z_profile.nc",
                        schedule = AveragedTimeInterval(60, window=20),
                        indices = (1, 1, :))
-
-# output
-NetCDFOutputWriter scheduled on TimeInterval(1 minute):
-├── filepath: ./another_averaged_z_profile.nc
-├── dimensions: zC(16), zF(17), xC(1), yF(1), xF(1), yC(1), time(0)
-├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
-└── array type: Array{Float64}
 ```
 
 `NetCDFOutputWriter` also accepts output functions that write scalars and arrays to disk,
 provided that their `dimensions` are provided:
 
-```jldoctest
+```@example
 using Oceananigans
 
 Nx, Ny, Nz = 16, 16, 16
@@ -116,7 +95,7 @@ simulation = Simulation(model, Δt=1.25, stop_iteration=3)
 
 f(model) = model.clock.time^2; # scalar output
 
-g(model) = model.clock.time .* exp.(znodes(Center, grid)) # single-column profile output (vector)
+g(model) = model.clock.time .* exp.(znodes(grid, Center())) # single-column profile output (vector)
 
 xC, yF = xnodes(grid, Center()), ynodes(grid, Face())
 
@@ -141,13 +120,29 @@ simulation.output_writers[:things] =
     NetCDFOutputWriter(model, outputs,
                        schedule=IterationInterval(1), filename="things.nc", dimensions=dims, verbose=true,
                        global_attributes=global_attributes, output_attributes=output_attributes)
+```
 
-# output
-NetCDFOutputWriter scheduled on IterationInterval(1):
-├── filepath: ./things.nc
-├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 3 outputs: (profile, slice, scalar)
-└── array type: Array{Float64}
+`NetCDFOutputWriter` can also be configured for `outputs` that are interpolated or regridded
+to a different grid than `model.grid`. To use this functionality, include the keyword argument
+`grid = output_grid`.
+
+```@example
+using Oceananigans
+using Oceananigans.Fields: interpolate!
+
+grid = RectilinearGrid(size=(1, 1, 8), extent=(1, 1, 1));
+model = NonhydrostaticModel(; grid)
+
+coarse_grid = RectilinearGrid(size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
+coarse_u = Field{Face, Center, Center}(coarse_grid)
+
+interpolate_u(model) = interpolate!(coarse_u, model.velocities.u)
+outputs = (; u = interpolate_u)
+
+output_writer = NetCDFOutputWriter(model, outputs;
+                                   grid = coarse_grid,
+                                   filename = "coarse_u.nc",
+                                   schedule = IterationInterval(1))
 ```
 
 See [`NetCDFOutputWriter`](@ref) for more information.
@@ -168,7 +163,7 @@ of the function will be saved to the JLD2 file.
 
 Write out 3D fields for u, v, w, and a tracer c, along with a horizontal average:
 
-```jldoctest jld2_output_writer
+```@example jld2_output_writer
 using Oceananigans
 using Oceananigans.Utils: hour, minute
 
@@ -189,33 +184,16 @@ simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocitie
                                                           filename = "some_more_data.jld2",
                                                           schedule = TimeInterval(20minute),
                                                           init = init_save_some_metadata!)
-
-# output
-JLD2OutputWriter scheduled on TimeInterval(20 minutes):
-├── filepath: ./some_more_data.jld2
-├── 3 outputs: (u, v, w)
-├── array type: Array{Float64}
-├── including: [:grid, :coriolis, :buoyancy, :closure]
-└── max filesize: Inf YiB
 ```
 
 and a time- and horizontal-average of tracer `c` every 20 minutes of simulation time
 to a file called `some_more_averaged_data.jld2`
 
-```jldoctest jld2_output_writer
+```@example jld2_output_writer
 simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (; c=c_avg),
                                                      filename = "some_more_averaged_data.jld2",
                                                      schedule = AveragedTimeInterval(20minute, window=5minute))
-
-# output
-JLD2OutputWriter scheduled on TimeInterval(20 minutes):
-├── filepath: ./some_more_averaged_data.jld2
-├── 1 outputs: c averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
-├── array type: Array{Float64}
-├── including: [:grid, :coriolis, :buoyancy, :closure]
-└── max filesize: Inf YiB
 ```
-
 
 See [`JLD2OutputWriter`](@ref) for more information.
 
@@ -239,7 +217,7 @@ time `interval`. The ``t_i`` specify both the end of the averaging window and th
 Building an `AveragedTimeInterval` that averages over a 1 day window, every 4 days,
 
 ```jldoctest averaged_time_interval
-using Oceananigans.OutputWriters: AveragedTimeInterval
+using Oceananigans
 using Oceananigans.Units
 
 schedule = AveragedTimeInterval(4days, window=1day)
@@ -251,9 +229,8 @@ AveragedTimeInterval(window=1 day, stride=1, interval=4 days)
 An `AveragedTimeInterval` schedule directs an output writer
 to time-average its outputs before writing them to disk:
 
-```jldoctest averaged_time_interval
+```@example averaged_time_interval
 using Oceananigans
-using Oceananigans.OutputWriters: JLD2OutputWriter
 using Oceananigans.Units
 
 model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
@@ -263,12 +240,4 @@ simulation = Simulation(model, Δt=10minutes, stop_time=30days)
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
                                                           filename = "even_more_averaged_velocity_data.jld2",
                                                           schedule = AveragedTimeInterval(4days, window=1day, stride=2))
-
-# output
-JLD2OutputWriter scheduled on TimeInterval(4 days):
-├── filepath: ./even_more_averaged_velocity_data.jld2
-├── 3 outputs: (u, v, w) averaged on AveragedTimeInterval(window=1 day, stride=2, interval=4 days)
-├── array type: Array{Float64}
-├── including: [:grid, :coriolis, :buoyancy, :closure]
-└── max filesize: Inf YiB
 ```

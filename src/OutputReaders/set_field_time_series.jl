@@ -1,3 +1,6 @@
+using Printf
+using Oceananigans.Architectures: cpu_architecture
+
 #####
 ##### set!
 #####
@@ -8,10 +11,12 @@ find_time_index(time::Number, file_times)       = findfirst(t -> t ≈ time, fil
 find_time_index(time::AbstractTime, file_times) = findfirst(t -> t == time, file_times)
 
 function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name)
-    file = jldopen(path)
+    file = jldopen(path; fts.reader_kw...)
     file_iterations = iterations_from_file(file)
     file_times = [file["timeseries/t/$i"] for i in file_iterations]
     close(file)
+
+    arch = architecture(fts)
 
     # TODO: a potential optimization here might be to load
     # all of the data into a single array, and then transfer that
@@ -19,11 +24,19 @@ function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name)
     for n in time_indices(fts)
         t = fts.times[n]
         file_index = find_time_index(t, file_times)
+
+        if isnothing(file_index)
+            msg = string("Error setting ", summary(fts), '\n')
+            msg *= @sprintf("Can't find data for time %.1e and time index %d\n", t, n)
+            msg *= @sprintf("for field %s at path %s", path, name)
+            error(msg)
+        end
+
         file_iter = file_iterations[file_index]
-        
+
         # Note: use the CPU for this step
         field_n = Field(location(fts), path, name, file_iter,
-                        architecture = CPU(),
+                        architecture = cpu_architecture(arch),
                         indices = fts.indices,
                         boundary_conditions = fts.boundary_conditions)
 
@@ -38,7 +51,7 @@ set!(fts::InMemoryFTS, value, n::Int) = set!(fts[n], value)
 
 function set!(fts::InMemoryFTS, fields_vector::AbstractVector{<:AbstractField})
     raw_data = parent(fts)
-    file = jldopen(path)
+    file = jldopen(path; fts.reader_kw...)
 
     for (n, field) in enumerate(fields_vector)
         nth_raw_data = view(raw_data, :, :, :, n)
@@ -55,7 +68,7 @@ end
 function maybe_write_property!(file, property, data)
     try
         test = file[property]
-    catch 
+    catch
         file[property] = data
     end
 end
@@ -88,4 +101,3 @@ function initialize_file!(file, name, fts)
 end
 
 set!(fts::OnDiskFTS, path::String, name::String) = nothing
-

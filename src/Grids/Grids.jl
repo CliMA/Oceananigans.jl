@@ -16,8 +16,10 @@ export ξnode, ηnode, rnode
 export xnode, ynode, znode, λnode, φnode
 export xnodes, ynodes, znodes, λnodes, φnodes
 export spacings
-export xspacings, yspacings, zspacings, xspacing, yspacing, zspacing
+export xspacing, yspacing, zspacing, λspacing, φspacing
+export xspacings, yspacings, zspacings, λspacings, φspacings
 export minimum_xspacing, minimum_yspacing, minimum_zspacing
+export static_column_depthᶜᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶠᵃ
 export offset_data, new_data
 export on_architecture
 
@@ -30,7 +32,7 @@ using Oceananigans
 using Oceananigans.Architectures
 
 import Base: size, length, eltype, show, -
-import Oceananigans.Architectures: architecture
+import Oceananigans.Architectures: architecture, on_architecture
 
 # Physical constants for constructors.
 const R_Earth = 6371.0e3    # [m] Mean radius of the Earth https://en.wikipedia.org/wiki/Earth
@@ -103,35 +105,6 @@ Grid topology for dimensions that are connected to other models or domains only 
 """
 struct RightConnected <: AbstractTopology end
 
-"""
-    AbstractGrid{FT, TX, TY, TZ}
-
-Abstract supertype for grids with elements of type `FT` and topology `{TX, TY, TZ}`.
-"""
-abstract type AbstractGrid{FT, TX, TY, TZ, Arch} end
-
-"""
-    AbstractUnderlyingGrid{FT, TX, TY, TZ}
-
-Abstract supertype for "primary" grids (as opposed to grids with immersed boundaries)
-with elements of type `FT` and topology `{TX, TY, TZ}`.
-"""
-abstract type AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch} end
-
-"""
-    AbstractCurvilinearGrid{FT, TX, TY, TZ}
-
-Abstract supertype for curvilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
-"""
-abstract type AbstractCurvilinearGrid{FT, TX, TY, TZ, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch} end
-
-"""
-    AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ}
-
-Abstract supertype for horizontally-curvilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
-"""
-abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch} <: AbstractCurvilinearGrid{FT, TX, TY, TZ, Arch} end
-
 #####
 ##### Directions (for tilted domains)
 #####
@@ -144,18 +117,7 @@ struct ZDirection <: AbstractDirection end
 
 struct NegativeZDirection <: AbstractDirection end
 
-const XFlatGrid = AbstractGrid{<:Any, Flat}
-const YFlatGrid = AbstractGrid{<:Any, <:Any, Flat}
-const ZFlatGrid = AbstractGrid{<:Any, <:Any, <:Any, Flat}
-
-const XYFlatGrid = AbstractGrid{<:Any, Flat, Flat}
-const XZFlatGrid = AbstractGrid{<:Any, Flat, <:Any, Flat}
-const YZFlatGrid = AbstractGrid{<:Any, <:Any, Flat, Flat}
-
-const XYZFlatGrid = AbstractGrid{<:Any, Flat, Flat, Flat}
-
-isrectilinear(grid) = false
-
+include("abstract_grid.jl")
 include("grid_utils.jl")
 include("nodes_and_spacings.jl")
 include("zeros_and_ones.jl")

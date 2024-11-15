@@ -61,7 +61,7 @@ end
 
 function calc_smoothness_coefficients(FT, beta, coord, arch, N; order) 
 
-    cpu_coord = arch_array(CPU(), coord)
+    cpu_coord = on_architecture(CPU(), coord)
 
     order == 3 || throw(ArgumentError("The stretched smoothness coefficients are only implemented for order == 3"))
 
@@ -104,7 +104,7 @@ function create_smoothness_coefficients(FT, r, op, cpu_coord, arch, N; order)
         end
     end
 
-    return OffsetArray(arch_array(arch, stencil), -1)
+    return OffsetArray(on_architecture(arch, stencil), -1)
 end
 
 @inline dagger(ψ)    = (ψ[2], ψ[3], ψ[1])

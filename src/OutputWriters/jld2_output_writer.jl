@@ -2,14 +2,14 @@ using Printf
 using JLD2
 using Oceananigans.Utils
 using Oceananigans.Models
-using Oceananigans.Utils: TimeInterval, pretty_filesize, prettykeys
+using Oceananigans.Utils: TimeInterval, prettykeys
 using Oceananigans.Fields: boundary_conditions, indices
 
 default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyancy, :closure]
 default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
 default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
 
-mutable struct JLD2OutputWriter{O, T, D, IF, IN, KW} <: AbstractOutputWriter
+mutable struct JLD2OutputWriter{O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter
     filepath :: String
     outputs :: O
     schedule :: T
@@ -17,7 +17,7 @@ mutable struct JLD2OutputWriter{O, T, D, IF, IN, KW} <: AbstractOutputWriter
     init :: IF
     including :: IN
     part :: Int
-    max_filesize :: Float64
+    file_splitting :: FS
     overwrite_existing :: Bool
     verbose :: Bool
     jld2_kw :: KW
@@ -30,9 +30,9 @@ ext(::Type{JLD2OutputWriter}) = ".jld2"
     JLD2OutputWriter(model, outputs; filename, schedule,
                               dir = ".",
                           indices = (:, :, :),
-                       with_halos = false,
+                       with_halos = true,
                        array_type = Array{Float64},
-                     max_filesize = Inf,
+                   file_splitting = NoFileSplitting(),
                overwrite_existing = false,
                              init = noinit,
                         including = [:grid, :coriolis, :buoyancy, :closure],
@@ -54,7 +54,7 @@ Keyword arguments
 ## Filenaming
 
 - `filename` (required): Descriptive filename. `".jld2"` is appended to `filename` in the file path
-                        if `filename` does not end in `".jld2"`.
+                         if `filename` does not end in `".jld2"`.
 
 - `dir`: Directory to save output to. Default: `"."` (current working directory).
 
@@ -70,20 +70,20 @@ Keyword arguments
              halo regions are removed from `indices`. For example, `indices = (:, :, 1)`
              will save xy-slices of the bottom-most index.
 
-- `with_halos` (Bool): Whether or not to slice halo regions from fields before writing output.
-                       Note, that to postprocess saved output (e.g., compute derivatives, etc)
-                       information about the boundary conditions is often crucial. In that case
-                       you might need to set `with_halos = true`.
+- `with_halos` (Bool): Whether or not to slice off or keep halo regions from fields before writing output.
+                       Preserving halo region data can be useful for postprocessing. Default: true.
 
 - `array_type`: The array type to which output arrays are converted to prior to saving.
                 Default: `Array{Float64}`.
 
 ## File management
 
-- `max_filesize`: The writer will stop writing to the output file once the file size exceeds `max_filesize`,
-                  and write to a new one with a consistent naming scheme ending in `part1`, `part2`, etc.
-                  Defaults to `Inf`.
-
+- `file_splitting`: Schedule for splitting the output file. The new files will be suffixed with
+                    `_part1`, `_part2`, etc. For example `file_splitting = FileSizeLimit(sz)` will
+                    split the output file when its size exceeds `sz`. Another example is 
+                    `file_splitting = TimeInterval(30days)`, which will split files every 30 days of
+                    simulation time. The default incurs no splitting (`NoFileSplitting()`).
+                    
 - `overwrite_existing`: Remove existing files if their filenames conflict.
                         Default: `false`.
 
@@ -100,7 +100,7 @@ Keyword arguments
 - `verbose`: Log what the output writer is doing with statistics on compute/write times and file sizes.
              Default: `false`.
 
-- `part`: The starting part number used if `max_filesize` is finite.
+- `part`: The starting part number used when file splitting.
           Default: 1.
 
 - `jld2_kw`: Dict of kwargs to be passed to `jldopen` when data is written.
@@ -110,11 +110,11 @@ Example
 
 Write out 3D fields for ``u``, ``v``, ``w``, and a tracer ``c``, along with a horizontal average:
 
-```jldoctest jld2_output_writer
+```@example
 using Oceananigans
 using Oceananigans.Utils: hour, minute
 
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)), tracers=(:c,))
+model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)), tracers=:c)
 simulation = Simulation(model, Δt=12, stop_time=1hour)
 
 function init_save_some_metadata!(file, model)
@@ -131,39 +131,23 @@ simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocitie
                                                           filename = "some_data.jld2",
                                                           schedule = TimeInterval(20minute),
                                                           init = init_save_some_metadata!)
-
-# output
-JLD2OutputWriter scheduled on TimeInterval(20 minutes):
-├── filepath: ./some_data.jld2
-├── 3 outputs: (u, v, w)
-├── array type: Array{Float64}
-├── including: [:grid, :coriolis, :buoyancy, :closure]
-└── max filesize: Inf YiB
 ```
 
 and a time- and horizontal-average of tracer ``c`` every 20 minutes of simulation time
 to a file called `some_averaged_data.jld2`
 
-```jldoctest jld2_output_writer
+```@example
 simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (; c=c_avg),
                                                      filename = "some_averaged_data.jld2",
                                                      schedule = AveragedTimeInterval(20minute, window=5minute))
-
-# output
-JLD2OutputWriter scheduled on TimeInterval(20 minutes):
-├── filepath: ./some_averaged_data.jld2
-├── 1 outputs: c averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
-├── array type: Array{Float64}
-├── including: [:grid, :coriolis, :buoyancy, :closure]
-└── max filesize: Inf YiB
 ```
 """
 function JLD2OutputWriter(model, outputs; filename, schedule,
                                    dir = ".",
                                indices = (:, :, :),
-                            with_halos = false,
+                            with_halos = true,
                             array_type = Array{Float64},
-                          max_filesize = Inf,
+                        file_splitting = NoFileSplitting(),
                     overwrite_existing = false,
                                   init = noinit,
                              including = default_included_properties(model),
@@ -173,9 +157,12 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
 
     mkpath(dir)
     filename = auto_extension(filename, ".jld2")
-    filepath = joinpath(dir, filename)
+    filepath = abspath(joinpath(dir, filename))
+
+    initialize!(file_splitting, model)
+    update_file_splitting_schedule!(file_splitting, filepath)
     overwrite_existing && isfile(filepath) && rm(filepath, force=true)
-    
+
     outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], model.grid, indices, with_halos)
                          for name in keys(outputs))
 
@@ -183,9 +170,9 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
     schedule, outputs = time_average_outputs(schedule, outputs, model)
 
     initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
-    
+
     return JLD2OutputWriter(filepath, outputs, schedule, array_type, init,
-                            including, part, max_filesize, overwrite_existing, verbose, jld2_kw)
+                            including, part, file_splitting, overwrite_existing, verbose, jld2_kw)
 end
 
 function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
@@ -247,18 +234,17 @@ end
 function write_output!(writer::JLD2OutputWriter, model)
 
     verbose = writer.verbose
-    path = writer.filepath
     current_iteration = model.clock.iteration
 
     # Some logic to handle writing to existing files
-    if iteration_exists(path, current_iteration)
+    if iteration_exists(writer.filepath, current_iteration)
 
         if writer.overwrite_existing
             # Something went wrong, so we remove the file and re-initialize it.
-            rm(path, force=true)
+            rm(writer.filepath, force=true)
             initialize_jld2_file!(writer, model)
         else # nothing we can do since we were asked not to overwrite_existing, so we skip output writing
-            @warn "Iteration $current_iteration was found in $path. Skipping output writing (for now...)"
+            @warn "Iteration $current_iteration was found in $(writer.filepath). Skipping output writing (for now...)"
         end
 
     else # ok let's do this
@@ -271,16 +257,15 @@ function write_output!(writer::JLD2OutputWriter, model)
 
         verbose && @info "Fetching time: $(prettytime(tc))"
 
-        # Start a new file if the filesize exceeds max_filesize
-        filesize(path) >= writer.max_filesize && start_next_file(model, writer)
-        path = writer.filepath # we might have a new path...
-
+        # Start a new file if the file_splitting(model) is true
+        writer.file_splitting(model) && start_next_file(model, writer)
+        update_file_splitting_schedule!(writer.file_splitting, writer.filepath)
         # Write output from `data`
         verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $path..."
 
-        start_time, old_filesize = time_ns(), filesize(path)
-        jld2output!(path, model.clock.iteration, model.clock.time, data, writer.jld2_kw)
-        end_time, new_filesize = time_ns(), filesize(path)
+        start_time, old_filesize = time_ns(), filesize(writer.filepath)
+        jld2output!(writer.filepath, model.clock.iteration, model.clock.time, data, writer.jld2_kw)
+        end_time, new_filesize = time_ns(), filesize(writer.filepath)
 
         verbose && @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
                                   prettytime((end_time - start_time) / 1e9),
@@ -311,9 +296,10 @@ end
 
 function start_next_file(model, writer::JLD2OutputWriter)
     verbose = writer.verbose
-    sz = filesize(writer.filepath)
+
     verbose && @info begin
-        "Filesize $(pretty_filesize(sz)) has exceeded maximum file size $(pretty_filesize(writer.max_filesize))."
+        schedule_type = summary(writer.file_splitting)
+        "Splitting output because $(schedule_type) is activated."
     end
 
     if writer.part == 1
@@ -329,7 +315,7 @@ function start_next_file(model, writer::JLD2OutputWriter)
     verbose && @info "Now writing to: $(writer.filepath)"
 
     initialize_jld2_file!(writer, model)
-    
+
     return nothing
 end
 
@@ -342,9 +328,10 @@ function Base.show(io::IO, ow::JLD2OutputWriter)
     Noutputs = length(ow.outputs)
 
     print(io, "JLD2OutputWriter scheduled on $(summary(ow.schedule)):", "\n",
-              "├── filepath: $(ow.filepath)", "\n",
+              "├── filepath: ", relpath(ow.filepath), "\n",
               "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
               "├── array type: ", show_array_type(ow.array_type), "\n",
               "├── including: ", ow.including, "\n",
-              "└── max filesize: ", pretty_filesize(ow.max_filesize))
+              "├── file_splitting: ", summary(ow.file_splitting), "\n",
+              "└── file size: ", pretty_filesize(filesize(ow.filepath)))
 end

@@ -138,14 +138,12 @@ fig
 
 # # The model
 
-model = NonhydrostaticModel(timestepper = :RungeKutta3,
-                              advection = UpwindBiasedFifthOrder(),
-                                   grid = grid,
-                               coriolis = nothing,
-                      background_fields = (u=U, b=B),
-                                closure = ScalarDiffusivity(ν=2e-4, κ=2e-4),
-                               buoyancy = BuoyancyTracer(),
-                                tracers = :b)
+model = NonhydrostaticModel(; grid,
+                            advection = UpwindBiased(order=5),
+                            background_fields = (u=U, b=B),
+                            closure = ScalarDiffusivity(ν=2e-4, κ=2e-4),
+                            buoyancy = BuoyancyTracer(),
+                            tracers = :b)
 
 # We have included a "pinch" of viscosity and diffusivity in anticipation of what will follow furtherdown:
 # viscosity and diffusivity will ensure numerical stability when we evolve the unstable mode to the point
@@ -253,7 +251,7 @@ function estimate_growth_rate(simulation, energy, ω, b; convergence_criterion=1
     σ = []
     power_method_data = []
     compute!(ω)
-    push!(power_method_data, (ω=collect(interior(ω)[:, 1, :]), b=collect(interior(b)[:, 1, :]), σ=deepcopy(σ)))
+    push!(power_method_data, (ω=collect(interior(ω, :, 1, :)), b=collect(interior(b, :, 1, :)), σ=deepcopy(σ)))
 
     while convergence(σ) > convergence_criterion
         compute!(energy)
@@ -267,7 +265,7 @@ function estimate_growth_rate(simulation, energy, ω, b; convergence_criterion=1
 
         compute!(ω)
         rescale!(simulation.model, energy)
-        push!(power_method_data, (ω=collect(interior(ω)[:, 1, :]), b=collect(interior(b)[:, 1, :]), σ=deepcopy(σ)))
+        push!(power_method_data, (ω=collect(interior(ω, :, 1, :)), b=collect(interior(b, :, 1, :)), σ=deepcopy(σ)))
     end
 
     return σ, power_method_data

@@ -82,7 +82,7 @@ tracer_advection = WENO()
 
 buoyancy = SeawaterBuoyancy(equation_of_state = LinearEquationOfState(), constant_salinity = 35)
 
-free_surface = SplitExplicitFreeSurface(; grid, cfl = 0.7)
+free_surface = SplitExplicitFreeSurface(grid, cfl = 0.7)
 
 coriolis = HydrostaticSphericalCoriolis()
 

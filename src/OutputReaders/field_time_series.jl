@@ -4,6 +4,7 @@ using OffsetArrays
 using Statistics
 using JLD2
 using Adapt
+using CUDA: @allowscalar
 
 using Dates: AbstractTime
 using KernelAbstractions: @kernel, @index
@@ -20,7 +21,7 @@ using Oceananigans.Fields: interior_view_indices, index_binary_search,
 using Oceananigans.Units: Time
 using Oceananigans.Utils: launch!
 
-import Oceananigans.Architectures: architecture
+import Oceananigans.Architectures: architecture, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!, BoundaryCondition, getbc
 import Oceananigans.Fields: Field, set!, interior, indices, interpolate!
 
@@ -84,7 +85,7 @@ period = t[end] - t[1] + Δt
 """
 struct Cyclical{FT}
     period :: FT
-end 
+end
 
 Cyclical() = Cyclical(nothing)
 
@@ -163,7 +164,7 @@ Nt = 5
 backend = InMemory(4, 3) # so we have (4, 5, 1)
 n = 1 # so, the right answer is m̃ = 3
 m = 1 - (4 - 1) # = -2
-m̃ = mod1(-2, 5)  # = 3 ✓ 
+m̃ = mod1(-2, 5)  # = 3 ✓
 ```
 
 # Another shifting + wrapping example
@@ -212,26 +213,28 @@ Base.length(backend::PartlyInMemory) = backend.length
 ##### FieldTimeSeries
 #####
 
-mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N} <: AbstractField{LX, LY, LZ, G, ET, 4}
-                   data :: D
-                   grid :: G
-                backend :: K
+mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} <: AbstractField{LX, LY, LZ, G, ET, 4}
+    data :: D
+    grid :: G
+    backend :: K
     boundary_conditions :: B
-                indices :: I
-                  times :: χ
-                   path :: P
-                   name :: N
-          time_indexing :: TI
-    
+    indices :: I
+    times :: χ
+    path :: P
+    name :: N
+    time_indexing :: TI
+    reader_kw :: KW
+
     function FieldTimeSeries{LX, LY, LZ}(data::D,
                                          grid::G,
                                          backend::K,
                                          bcs::B,
-                                         indices::I, 
+                                         indices::I,
                                          times,
                                          path,
                                          name,
-                                         time_indexing) where {LX, LY, LZ, K, D, G, B, I}
+                                         time_indexing,
+                                         reader_kw) where {LX, LY, LZ, K, D, G, B, I}
 
         ET = eltype(data)
 
@@ -247,12 +250,12 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N} <: A
                 times = time_range
             end
 
-            times = arch_array(architecture(grid), times)
+            times = on_architecture(architecture(grid), times)
         end
-        
+
         if time_indexing isa Cyclical{Nothing} # we have to infer the period
-            Δt = times[end] - times[end-1]
-            period = times[end] - times[1] + Δt
+            Δt = @allowscalar times[end] - times[end-1]
+            period = @allowscalar times[end] - times[1] + Δt
             time_indexing = Cyclical(period)
         end
 
@@ -260,12 +263,25 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N} <: A
         TI = typeof(time_indexing)
         P = typeof(path)
         N = typeof(name)
+        KW = typeof(reader_kw)
 
-        return new{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N}(data, grid, backend, bcs,
-                                                               indices, times, path, name,
-                                                               time_indexing)
+        return new{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW}(data, grid, backend, bcs,
+                                                                   indices, times, path, name,
+                                                                   time_indexing, reader_kw)
     end
 end
+
+on_architecture(to, fts::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} =
+    FieldTimeSeries{LX, LY, LZ}(on_architecture(to, fts.data),
+                                on_architecture(to, fts.grid),
+                                on_architecture(to, fts.backend),
+                                on_architecture(to, fts.bcs),
+                                on_architecture(to, fts.indices),
+                                on_architecture(to, fts.times),
+                                on_architecture(to, fts.path),
+                                on_architecture(to, fts.name),
+                                on_architecture(to, fts.time_indexing),
+                                on_architecture(to, fts.reader_kw))
 
 #####
 ##### Minimal implementation of FieldTimeSeries for use in GPU kernels
@@ -273,12 +289,12 @@ end
 ##### Supports reduced locations + time-interpolation / extrapolation
 #####
 
-struct GPUAdaptedFieldTimeSeries{LX, LY, LZ, TI, K, ET, D, χ} <: AbstractArray{ET, 4}
+struct GPUAdaptedFieldTimeSeries{LX, LY, LZ, TI, K, ET, D, χ} <: AbstractField{LX, LY, LZ, Nothing, ET, 4}
              data :: D
             times :: χ
           backend :: K
     time_indexing :: TI
-    
+
     function GPUAdaptedFieldTimeSeries{LX, LY, LZ}(data::D,
                                                    times::χ,
                                                    backend::K,
@@ -301,7 +317,7 @@ const    FTS{LX, LY, LZ, TI, K} =           FieldTimeSeries{LX, LY, LZ, TI, K} w
 const GPUFTS{LX, LY, LZ, TI, K} = GPUAdaptedFieldTimeSeries{LX, LY, LZ, TI, K} where {LX, LY, LZ, TI, K}
 
 const FlavorOfFTS{LX, LY, LZ, TI, K} = Union{GPUFTS{LX, LY, LZ, TI, K},
-                                                FTS{LX, LY, LZ, TI, K}} where {LX, LY, LZ, TI, K} 
+                                                FTS{LX, LY, LZ, TI, K}} where {LX, LY, LZ, TI, K}
 
 const InMemoryFTS        = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:AbstractInMemoryBackend}
 const OnDiskFTS          = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:OnDisk}
@@ -332,7 +348,10 @@ instantiate(T::Type) = T()
 
 new_data(FT, grid, loc, indices, ::Nothing) = nothing
 
-function new_data(FT, grid, loc, indices, Nt::Int)
+# Apparently, not explicitly specifying Int64 in here makes this function
+# fail on x86 processors where `Int` is implied to be `Int32`
+# see ClimaOcean commit 3c47d887659d81e0caed6c9df41b7438e1f1cd52 at https://github.com/CliMA/ClimaOcean.jl/actions/runs/8804916198/job/24166354095)
+function new_data(FT, grid, loc, indices, Nt::Union{Int, Int64})
     space_size = total_size(grid, loc, indices)
     underlying_data = zeros(FT, architecture(grid), space_size..., Nt)
     data = offset_data(underlying_data, grid, loc, indices)
@@ -345,12 +364,13 @@ time_indices_length(backend::PartlyInMemory, times) = length(backend)
 time_indices_length(::OnDisk, times) = nothing
 
 function FieldTimeSeries(loc, grid, times=();
-                         indices = (:, :, :), 
+                         indices = (:, :, :),
                          backend = InMemory(),
-                         path = nothing, 
+                         path = nothing,
                          name = nothing,
                          time_indexing = Linear(),
-                         boundary_conditions = nothing)
+                         boundary_conditions = nothing,
+                         reader_kw = NamedTuple())
 
     LX, LY, LZ = loc
 
@@ -358,15 +378,12 @@ function FieldTimeSeries(loc, grid, times=();
     data = new_data(eltype(grid), grid, loc, indices, Nt)
 
     if backend isa OnDisk
-        isnothing(name) && isnothing(name) &&
-            error(ArgumentError("Must provide the keyword arguments `path` and `name` when `backend=OnDisk()`."))
-
         isnothing(path) && error(ArgumentError("Must provide the keyword argument `path` when `backend=OnDisk()`."))
         isnothing(name) && error(ArgumentError("Must provide the keyword argument `name` when `backend=OnDisk()`."))
     end
-    
-    return FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions,
-                                       indices, times, path, name, time_indexing)
+
+    return FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
+                                       times, path, name, time_indexing, reader_kw)
 end
 
 """
@@ -393,10 +410,16 @@ end
 struct UnspecifiedBoundaryConditions end
 
 """
-    FieldTimeSeries(path, name, backend = InMemory();
+    FieldTimeSeries(path, name;
+                    backend = InMemory(),
+                    architecture = nothing,
                     grid = nothing,
+                    location = nothing,
+                    boundary_conditions = UnspecifiedBoundaryConditions(),
+                    time_indexing = Linear(),
                     iterations = nothing,
-                    times = nothing)
+                    times = nothing,
+                    reader_kw = Dict{Symbol, Any}())
 
 Return a `FieldTimeSeries` containing a time-series of the field `name`
 load from JLD2 output located at `path`.
@@ -415,6 +438,9 @@ Keyword arguments
 - `times`: Save times to load, as determined through an approximate floating point
            comparison to recorded save times. Defaults to times associated with `iterations`.
            Takes precedence over `iterations` if `times` is specified.
+
+- `reader_kw`: A named tuple or dictionary of keyword arguments to pass to the reader
+               (currently only JLD2) to be used when opening files.
 """
 function FieldTimeSeries(path::String, name::String;
                          backend = InMemory(),
@@ -424,18 +450,15 @@ function FieldTimeSeries(path::String, name::String;
                          boundary_conditions = UnspecifiedBoundaryConditions(),
                          time_indexing = Linear(),
                          iterations = nothing,
-                         times = nothing)
+                         times = nothing,
+                         reader_kw = NamedTuple())
 
-    file = jldopen(path)
+    file = jldopen(path; reader_kw...)
 
     # Defaults
     isnothing(iterations)   && (iterations = parse.(Int, keys(file["timeseries/t"])))
     isnothing(times)        && (times      = [file["timeseries/t/$i"] for i in iterations])
     isnothing(location)     && (Location   = file["timeseries/$name/serialized/location"])
-
-    if boundary_conditions isa UnspecifiedBoundaryConditions
-        boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
-    end
 
     indices = try
         file["timeseries/$name/serialized/indices"]
@@ -452,6 +475,12 @@ function FieldTimeSeries(path::String, name::String;
             architecture = Architectures.architecture(grid)
         end
     end
+
+    if boundary_conditions isa UnspecifiedBoundaryConditions
+        boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
+        boundary_conditions = on_architecture(architecture, boundary_conditions)
+    end
+
 
     # This should be removed eventually... (4/5/2022)
     grid = try
@@ -508,8 +537,8 @@ function FieldTimeSeries(path::String, name::String;
     Nt = time_indices_length(backend, times)
     data = new_data(eltype(grid), grid, loc, indices, Nt)
 
-    time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions,
-                                              indices, times, path, name, time_indexing)
+    time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
+                                              times, path, name, time_indexing, reader_kw)
 
     set!(time_series, path, name)
 
@@ -521,7 +550,8 @@ end
           grid = nothing,
           architecture = nothing,
           indices = (:, :, :),
-          boundary_conditions = nothing)
+          boundary_conditions = nothing,
+          reader_kw = NamedTuple())
 
 Load a field called `name` saved in a JLD2 file at `path` at `iter`ation.
 Unless specified, the `grid` is loaded from `path`.
@@ -530,7 +560,8 @@ function Field(location, path::String, name::String, iter;
                grid = nothing,
                architecture = nothing,
                indices = (:, :, :),
-               boundary_conditions = nothing)
+               boundary_conditions = nothing,
+               reader_kw = NamedTuple())
 
     # Default to CPU if neither architecture nor grid is specified
     if isnothing(architecture)
@@ -540,9 +571,9 @@ function Field(location, path::String, name::String, iter;
             architecture = Architectures.architecture(grid)
         end
     end
-    
+
     # Load the grid and data from file
-    file = jldopen(path)
+    file = jldopen(path; reader_kw...)
 
     isnothing(grid) && (grid = file["serialized/grid"])
     raw_data = file["timeseries/$name/$iter"]
@@ -551,9 +582,9 @@ function Field(location, path::String, name::String, iter;
 
     # Change grid to specified architecture?
     grid     = on_architecture(architecture, grid)
-    raw_data = arch_array(architecture, raw_data)
+    raw_data = on_architecture(architecture, raw_data)
     data     = offset_data(raw_data, grid, location, indices)
-    
+
     return Field(location, grid; boundary_conditions, indices, data)
 end
 
@@ -571,8 +602,6 @@ interior(fts::FieldTimeSeries, I...)  = view(interior(fts), I...)
 Base.length(fts::FlavorOfFTS)     = length(fts.times)
 Base.lastindex(fts::FlavorOfFTS)  = length(fts.times)
 Base.firstindex(fts::FlavorOfFTS) = 1
-
-Base.length(fts::PartlyInMemoryFTS) = length(fts.backend)
 
 function interior(fts::FieldTimeSeries)
     loc = map(instantiate, location(fts))
@@ -615,4 +644,3 @@ function fill_halo_regions!(fts::InMemoryFTS)
 
     return nothing
 end
-

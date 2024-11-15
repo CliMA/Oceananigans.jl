@@ -4,7 +4,7 @@ const ω̂₁ = 5/18
 const ω̂ₙ = 5/18  
 const ε₂ = 1e-20
 
-# Here in the future we can easily add UpwindBiasedFifthOrder 
+# Here in the future we can easily add UpwindBiased
 const BoundPreservingScheme = PositiveWENO
 
 # Is this immersed-boundary safe without having to extend it in ImmersedBoundaries.jl? I think so... (velocity on immmersed boundaries is masked to 0)
@@ -29,10 +29,10 @@ end
 
     cᵢⱼ = @inbounds c[i, j, k]
 
-    c₊ᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, advection, c)
-    c₊ᴿ = _right_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, advection, c)
-    c₋ᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, advection, c)
-    c₋ᴿ = _right_biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, advection, c)
+    c₊ᴸ = _biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, advection, LeftBias(),  c)
+    c₊ᴿ = _biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, advection, RightBias(), c)
+    c₋ᴸ = _biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, advection, LeftBias(),  c)
+    c₋ᴿ = _biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, advection, RightBias(), c)
 
     p̃   = (cᵢⱼ - ω̂₁ * c₋ᴿ - ω̂ₙ * c₊ᴸ) / (1 - 2ω̂₁)
     M   = max(p̃, c₊ᴸ, c₋ᴿ) 
@@ -53,10 +53,10 @@ end
 
     cᵢⱼ = @inbounds c[i, j, k]
 
-    c₊ᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, advection, c)
-    c₊ᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, advection, c)
-    c₋ᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j,   k, grid, advection, c)
-    c₋ᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j,   k, grid, advection, c)
+    c₊ᴸ = _biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, advection, LeftBias(),  c)
+    c₊ᴿ = _biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, advection, RightBias(), c)
+    c₋ᴸ = _biased_interpolate_yᵃᶠᵃ(i, j,   k, grid, advection, LeftBias(),  c)
+    c₋ᴿ = _biased_interpolate_yᵃᶠᵃ(i, j,   k, grid, advection, RightBias(), c)
 
     p̃   =  (cᵢⱼ - ω̂₁ * c₋ᴿ - ω̂ₙ * c₊ᴸ) / (1 - 2ω̂₁)
     M   = max(p̃, c₊ᴸ, c₋ᴿ) 
@@ -77,10 +77,10 @@ end
 
     cᵢⱼ = @inbounds c[i, j, k]
 
-    c₊ᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, advection, c)
-    c₊ᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, advection, c)
-    c₋ᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k,   grid, advection, c)
-    c₋ᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k,   grid, advection, c)
+    c₊ᴸ = _biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, advection, LeftBias(),  c)
+    c₊ᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, advection, RightBias(), c)
+    c₋ᴸ = _biased_interpolate_zᵃᵃᶠ(i, j, k,   grid, advection, LeftBias(),  c)
+    c₋ᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k,   grid, advection, RightBias(), c)
 
     p̃   =  (cᵢⱼ - ω̂₁ * c₋ᴿ - ω̂ₙ * c₊ᴸ) / (1 - 2ω̂₁)
     M   = max(p̃, c₊ᴸ, c₋ᴿ) 
