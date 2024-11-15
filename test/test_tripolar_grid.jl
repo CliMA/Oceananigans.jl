@@ -81,7 +81,7 @@ end
         # NOTE: This test will fail until the 
         # refactor of the split-explicit free surface model is done, until then, 
         # the tripolar grid cannot be used
-        @test_broken Hy == length(free_surface.substepping.averaging_weights) + 1
+        @test Hy == length(free_surface.substepping.averaging_weights) + 1
 
         @test begin
             time_step!(model, 1.0)

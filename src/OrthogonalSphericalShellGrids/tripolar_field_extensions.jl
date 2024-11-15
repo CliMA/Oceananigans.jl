@@ -3,7 +3,11 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions,
                                        regularize_boundary_condition,
                                        regularize_immersed_boundary_condition,
                                        LeftBoundary,
-                                       RightBoundary
+                                       RightBoundary,
+                                       BoundaryCondition,
+                                       ZipperBoundaryCondition,
+                                       Zipper,
+                                       ZBC
 
 using Oceananigans.Fields: architecture, 
                            validate_indices, 
@@ -71,7 +75,7 @@ function Field((LX, LY, LZ)::Tuple, grid::TRG, data, old_bcs, indices::Tuple, op
     else
         default_zipper = ZipperBoundaryCondition(sign(LX, LY))
 
-        north_bc = old_bcs.north isa ZBC ? old_bcs.north : default_zipper
+        north_bc = old_bcs.north isa BoundaryCondition{<:Zipper} ? old_bcs.north : default_zipper
 
         new_bcs = FieldBoundaryConditions(; west = old_bcs.west, 
                                             east = old_bcs.east, 
