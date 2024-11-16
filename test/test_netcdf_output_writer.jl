@@ -642,7 +642,7 @@ function test_netcdf_time_averaging(arch)
     for Δt in [1/64, 0.01]
         # Results should be very close (rtol < 1e-5) for stride = 1.
         # stride > 2 is currently not very robust and can give inconsistent
-        # results due to floating number errors that can result in very timesteps,
+        # results due to floating number errors that can result in very small timesteps,
         # which essentially decouples the clock time from the iteration number.
         # Can add stride > 1 cases to the following line to test them.
         for (stride, rtol) in zip([1], [1.e-5])
