@@ -128,8 +128,7 @@ plankton_dynamics = Forcing(growing_and_grazing, field_dependencies = :P,
 # and Coriolis forces appropriate for planktonic convection at mid-latitudes on Earth.
 
 model = NonhydrostaticModel(; grid,
-                            advection = UpwindBiasedFifthOrder(),
-                            timestepper = :RungeKutta3,
+                            advection = UpwindBiased(order=5),
                             closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
                             coriolis = FPlane(f=1e-4),
                             tracers = (:b, :P), # P for Plankton
@@ -212,15 +211,9 @@ avg_P_timeseries = FieldTimeSeries(filepath, "avg_P")
 
 times = w_timeseries.times
 buoyancy_flux_time_series = [buoyancy_flux(0, t, buoyancy_flux_parameters) for t in times]
-nothing #hide
+nothing # hide
 
-# and then we construct the ``x, z`` grid,
-
-xw, yw, zw = nodes(w_timeseries)
-xp, yp, zp = nodes(P_timeseries)
-nothing #hide
-
-# Finally, we animate plankton mixing and blooming,
+# Now, we animate plankton mixing and blooming,
 
 using CairoMakie
 
@@ -230,9 +223,9 @@ n = Observable(1)
 
 title = @lift @sprintf("t = %s", prettytime(times[$n]))
 
-wₙ = @lift interior(w_timeseries[$n], :, 1, :)
-Pₙ = @lift interior(P_timeseries[$n], :, 1, :)
-avg_Pₙ = @lift interior(avg_P_timeseries[$n], 1, 1, :)
+wn = @lift w_timeseries[$n]
+Pn = @lift P_timeseries[$n]
+avg_Pn = @lift avg_P_timeseries[$n]
 
 w_lim = maximum(abs, interior(w_timeseries))
 w_lims = (-w_lim, w_lim)
@@ -250,17 +243,17 @@ xlims!(ax_avg_P, 0.85, 1.3)
 
 fig[1, 1:3] = Label(fig, title, tellwidth=false)
 
-hm_w = heatmap!(ax_w, xw, zw, wₙ; colormap = :balance, colorrange = w_lims)
+hm_w = heatmap!(ax_w, wn; colormap = :balance, colorrange = w_lims)
 Colorbar(fig[2, 1], hm_w; label = "Vertical velocity (m s⁻¹)", flipaxis = false)
 
-hm_P = heatmap!(ax_P, xp, zp, Pₙ; colormap = :matter, colorrange = P_lims)
+hm_P = heatmap!(ax_P, Pn; colormap = :matter, colorrange = P_lims)
 Colorbar(fig[3, 1], hm_P; label = "Plankton 'concentration'", flipaxis = false)
 
 lines!(ax_b, times ./ hour, buoyancy_flux_time_series; linewidth = 1, color = :black, alpha = 0.4)
 
 b_flux_point = @lift Point2(times[$n] / hour, buoyancy_flux_time_series[$n])
 scatter!(ax_b, b_flux_point; marker = :circle, markersize = 16, color = :black)
-lines!(ax_avg_P, avg_Pₙ, zp)
+lines!(ax_avg_P, avg_Pn)
 
 current_figure() #hide
 fig

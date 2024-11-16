@@ -27,14 +27,14 @@ const nu = 2*R/Re  # viscosity
 
 """
     run_cylinder_steadyflow(output_time_interval = 1, stop_time = 100, arch = CPU(), Nh = 250, ν = 1/20,
-                    momentum_advection = UpwindBiasedFifthOrder(), radius = R)
+                    momentum_advection = UpwindBiased(order=5), radius = R)
 
 Run the steady state cylinder validation experiment until `stop_time` using `momentum_advection`
 scheme or formulation, with horizontal resolution `Nh`, viscosity `ν`, and cylinder radius `R`, on `arch`itecture.
 """
 
 function run_cylinder_steadystate(; output_time_interval = 1, stop_time = 100, arch = CPU(), Nh = 250, ν = nu, 
-                                    advection = UpwindBiasedFifthOrder(), radius = R)
+                                    advection = UpwindBiased(order=5), radius = R)
 
 
     inside_cylinder(x, y, z) = (x^2 + y^2) <= radius # immersed solid
@@ -380,7 +380,7 @@ function analyze_cylinder_steadystate(experiment_name)
     Plots.savefig(analysisplot, "analysis_" * experiment_name * ".png")
 end
 
-advection = CenteredSecondOrder()
+advection = Centered()
 experiment_name = run_cylinder_steadystate(Nh = 350, advection = advection, radius = R, stop_time = 100, ν = nu)
 visualize_cylinder_steadystate(experiment_name)
 analyze_cylinder_steadystate(experiment_name)

@@ -1,4 +1,4 @@
-using Oceananigans.Grids: topology, node,
+using Oceananigans.Grids: topology, node, _node,
                           xspacings, yspacings, zspacings, λspacings, φspacings,
                           XFlatGrid, YFlatGrid, ZFlatGrid,
                           XYFlatGrid, YZFlatGrid, XZFlatGrid,
@@ -66,14 +66,14 @@ end
 
 @inline function fractional_x_index(x, locs, grid::XRegularRG)
     x₀ = xnode(1, 1, 1, grid, locs...)
-    Δx = xspacings(grid, locs...)
+    Δx = @inbounds first(xspacings(grid, locs...))
     FT = eltype(grid)
     return convert(FT, (x - x₀) / Δx)
 end
 
 @inline function fractional_x_index(λ, locs, grid::XRegularLLG)
     λ₀ = λnode(1, 1, 1, grid, locs...)
-    Δλ = λspacings(grid, locs...)
+    Δλ = @inbounds first(λspacings(grid, locs...))
     FT = eltype(grid)
     return convert(FT, (λ - λ₀) / Δλ)
 end
@@ -98,14 +98,14 @@ end
 
 @inline function fractional_y_index(y, locs, grid::YRegularRG)
     y₀ = ynode(1, 1, 1, grid, locs...)
-    Δy = yspacings(grid, locs...)
+    Δy = @inbounds first(yspacings(grid, locs...))
     FT = eltype(grid)
     return convert(FT, (y - y₀) / Δy)
 end
 
 @inline function fractional_y_index(φ, locs, grid::YRegularLLG)
     φ₀ = φnode(1, 1, 1, grid, locs...)
-    Δφ = φspacings(grid, locs...)
+    Δφ = @inbounds first(φspacings(grid, locs...))
     FT = eltype(grid)
     return convert(FT, (φ - φ₀) / Δφ)
 end
@@ -132,7 +132,7 @@ ZRegGrid = Union{ZRegularRG, ZRegularLLG, ZRegOrthogonalSphericalShellGrid}
 
 @inline function fractional_z_index(z::FT, locs, grid::ZRegGrid) where FT
     z₀ = znode(1, 1, 1, grid, locs...)
-    Δz = zspacings(grid, locs...)
+    Δz = @inbounds first(zspacings(grid, locs...))
     return convert(FT, (z - z₀) / Δz)
 end
 
@@ -183,7 +183,6 @@ end
 @inline function _fractional_indices((x, y), grid, ℓx, ℓy, ::Nothing)
     ii = fractional_x_index(x, (ℓx, ℓy, nothing), grid)
     jj = fractional_y_index(y, (ℓx, ℓy, nothing), grid)
-
     return (ii, jj, nothing)
 end
 
@@ -237,7 +236,6 @@ where `at_node` is a tuple of coordinates and and `from_loc = (ℓx, ℓy, ℓz)
 Note that this is a lower-level `interpolate` method defined for use in CPU/GPU kernels.
 """
 @inline function interpolate(at_node, from_field, from_loc, from_grid)
-    # field, LX, LY, LZ, grid, x, y, z)
     ii, jj, kk = fractional_indices(at_node, from_grid, from_loc...)
 
     ix = interpolator(ii)
@@ -314,11 +312,33 @@ Interpolate `field` to the physical point `(x, y, z)` using trilinear interpolat
     return interpolate(to_node, from_field, from_loc, from_field.grid)
 end
 
+@inline flatten_node(x, y, z) = (x, y, z)
+
+@inline flatten_node(::Nothing, y, z) = flatten_node(y, z)
+@inline flatten_node(x, ::Nothing, z) = flatten_node(x, z)
+@inline flatten_node(x, y, ::Nothing) = flatten_node(x, y)
+
+@inline flatten_node(x, ::Nothing, ::Nothing) = tuple(x)
+@inline flatten_node(::Nothing, y, ::Nothing) = tuple(y)
+@inline flatten_node(::Nothing, ::Nothing, z) = tuple(z)
+
+@inline flatten_node(::Nothing, ::Nothing, ::Nothing) = tuple()
+
+@inline flatten_node(x, y) = (x, y)
+@inline flatten_node(::Nothing, y) = flatten_node(y)
+@inline flatten_node(x, ::Nothing) = flatten_node(x)
+
+@inline flatten_node(x) = tuple(x)
+@inline flatten_node(::Nothing) = tuple()
+
 @kernel function _interpolate!(to_field, to_grid, to_location,
                                from_field, from_grid, from_location)
 
     i, j, k = @index(Global, NTuple)
-    to_node = node(i, j, k, to_grid, to_location...)
+
+    to_node = _node(i, j, k, to_grid, to_location...)
+    to_node = flatten_node(to_node...)
+
     @inbounds to_field[i, j, k] = interpolate(to_node, from_field, from_location, from_grid)
 end
 

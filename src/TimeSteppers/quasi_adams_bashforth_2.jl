@@ -57,14 +57,24 @@ reset!(timestepper::QuasiAdamsBashforth2TimeStepper) = nothing
 #####
 
 """
-    time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false, compute_tendencies=true)
+    time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false)
 
 Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method and
 pressure-correction substep. Setting `euler=true` will take a forward Euler time step.
-Setting `compute_tendencies=false` will not calculate new tendencies
+The tendencies are calculated by the `update_step!` at the end of the `time_step!` function.
+
+The steps of the Quasi-Adams-Bashforth second-order (AB2) algorithm are:
+
+1. If this the first time step (`model.clock.iteration == 0`), then call `update_state!` and calculate the tendencies.
+2. Advance tracers in time and compute predictor velocities (including implicit vertical diffusion).
+3. Solve the elliptic equation for pressure (three dimensional for the non-hydrostatic model, two-dimensional for the hydrostatic model).
+4. Correct the velocities based on the results of step 3.
+5. Store the old tendencies.
+6. Update the model state.
+7. Compute tendencies for the next time step
 """
 function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt;
-                    callbacks=[], euler=false, compute_tendencies=true)
+                    callbacks=[], euler=false)
 
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
@@ -98,14 +108,19 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
         end
     end
 
+    # Be paranoid and update state at iteration 0
+    model.clock.iteration == 0 && update_state!(model, callbacks; compute_tendencies=true)
+    
     ab2_step!(model, Δt) # full step for tracers, fractional step for velocities.
-    calculate_pressure_correction!(model, Δt)
-    @apply_regionally correct_velocities_and_store_tendencies!(model, Δt)
-
+    
     tick!(model.clock, Δt)
     model.clock.last_Δt = Δt
     model.clock.last_stage_Δt = Δt # just one stage
-    update_state!(model, callbacks; compute_tendencies)
+    
+    calculate_pressure_correction!(model, Δt)
+    @apply_regionally correct_velocities_and_store_tendencies!(model, Δt)
+
+    update_state!(model, callbacks; compute_tendencies=true)
     step_lagrangian_particles!(model, Δt)
 
     # Return χ to initial value
@@ -127,17 +142,14 @@ end
 """ Generic implementation. """
 function ab2_step!(model, Δt)
 
-    workgroup, worksize = work_layout(model.grid, :xyz)
-    arch = model.architecture
-    step_field_kernel! = ab2_step_field!(device(arch), workgroup, worksize)
+    grid = model.grid
+    arch = architecture(grid)
     model_fields = prognostic_fields(model)
     χ = model.timestepper.χ
 
     for (i, field) in enumerate(model_fields)
-
-        step_field_kernel!(field, Δt, χ,
-                           model.timestepper.Gⁿ[i],
-                           model.timestepper.G⁻[i])
+        kernel_args = (field, Δt, χ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
+        launch!(arch, grid, :xyz, ab2_step_field!, kernel_args...; exclude_periphery=true)
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
         tracer_index = Val(i - 3) # assumption

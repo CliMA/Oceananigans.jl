@@ -1,3 +1,5 @@
+using Pkg
+
 include("dependencies_for_runtests.jl")
 
 group     = get(ENV, "TEST_GROUP", :all) |> Symbol
@@ -17,10 +19,27 @@ end
 CUDA.allowscalar() do
 
 @testset "Oceananigans" begin
+
     if test_file != :none
         @testset "Single file test" begin
             include(String(test_file))
         end
+    end
+
+    # Initialization steps
+    if group == :init || group == :all
+        Pkg.instantiate(; verbose=true)
+        Pkg.precompile(; strict=true)
+        Pkg.status()
+
+        try
+            MPI.versioninfo()
+        catch; end
+
+        try
+            CUDA.precompile_runtime()
+            CUDA.versioninfo()
+        catch; end
     end
 
     # Core Oceananigans
@@ -28,6 +47,7 @@ CUDA.allowscalar() do
         @testset "Unit tests" begin
             include("test_grids.jl")
             include("test_operators.jl")
+            include("test_vector_rotation_operators.jl")
             include("test_boundary_conditions.jl")
             include("test_field.jl")
             include("test_regrid.jl")
@@ -59,6 +79,7 @@ CUDA.allowscalar() do
     if group == :poisson_solvers_2 || group == :all
         @testset "Poisson Solvers 2" begin
             include("test_poisson_solvers_stretched_grids.jl")
+            include("test_conjugate_gradient_poisson_solver.jl")
         end
     end
 
@@ -152,19 +173,35 @@ CUDA.allowscalar() do
 
     if group == :distributed || group == :all
         MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
+        archs = test_architectures()
         include("test_distributed_models.jl")
     end
 
     if group == :distributed_solvers || group == :all
         MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
+        include("test_distributed_transpose.jl")
         include("test_distributed_poisson_solvers.jl")
     end
 
     if group == :distributed_hydrostatic_model || group == :all
         MPI.Initialized() || MPI.Init()
-        archs = test_architectures() 
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
+        archs = test_architectures()
         include("test_hydrostatic_regression.jl")
         include("test_distributed_hydrostatic_model.jl")
+    end
+
+    if group == :distributed_nonhydrostatic_regression || group == :all
+        MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
+        archs = nonhydrostatic_regression_test_architectures()
+        include("test_nonhydrostatic_regression.jl")
     end
 
     if group == :nonhydrostatic_regression || group == :all

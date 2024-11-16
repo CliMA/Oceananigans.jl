@@ -26,7 +26,7 @@ MPI.Initialized() || MPI.Init()
 # to initialize MPI.
 
 using Oceananigans.Operators: hack_cosd
-using Oceananigans.DistributedComputations: partition_global_array, all_reduce, cpu_architecture, reconstruct_global_grid
+using Oceananigans.DistributedComputations: partition, all_reduce, cpu_architecture, reconstruct_global_grid
 
 function Δ_min(grid) 
     Δx_min = minimum_xspacing(grid, Center(), Center(), Center())
@@ -88,12 +88,13 @@ for arch in archs
 
         bottom(λ, φ) = -30 < λ < 30 && -40 < φ < 20 ? 0 : - 1
 
-        immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
+        immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+        immersed_active_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
         global_underlying_grid = reconstruct_global_grid(underlying_grid)
-        global_immersed_grid   = ImmersedBoundaryGrid(global_underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
+        global_immersed_grid   = ImmersedBoundaryGrid(global_underlying_grid, GridFittedBottom(bottom))
 
-        for (grid, global_grid) in zip((underlying_grid, immersed_grid), (global_underlying_grid, global_immersed_grid))
+        for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid), (global_underlying_grid, global_immersed_grid, global_immersed_grid))
 
             # "s" for "serial" computation
             us, vs, ws, cs, ηs = solid_body_rotation_test(global_grid)
@@ -115,11 +116,11 @@ for arch in archs
             c = interior(on_architecture(cpu_arch, c))
             η = interior(on_architecture(cpu_arch, η))
 
-            us = partition_global_array(cpu_arch, us, size(u))
-            vs = partition_global_array(cpu_arch, vs, size(v))
-            ws = partition_global_array(cpu_arch, ws, size(w))
-            cs = partition_global_array(cpu_arch, cs, size(c))
-            ηs = partition_global_array(cpu_arch, ηs, size(η))
+            us = partition(us, cpu_arch, size(u))
+            vs = partition(vs, cpu_arch, size(v))
+            ws = partition(ws, cpu_arch, size(w))
+            cs = partition(cs, cpu_arch, size(c))
+            ηs = partition(ηs, cpu_arch, size(η))
 
             atol = eps(eltype(grid))
             rtol = sqrt(eps(eltype(grid)))
