@@ -204,6 +204,8 @@ function (wta::WindowedTimeAverage)(model)
         model.clock.iteration > 0 &&
         @warn "Returning a WindowedTimeAverage before the collection period is complete."
 
+    stride(wta) > 1 && @warn "WindowedTimeAverage can be erroneous when stride > 1 and either the timestep is variable or there are floating point rounding errors in times, both of which result in a decoupling of the model clock times (used in the OutputWriters) and iteration numbers (used for stride)."
+
     return wta.result
 end
 
