@@ -50,13 +50,13 @@ h(k) = (k - 1) / Nz
 ## Linear near-surface generator
 ζ₀(k) = 1 + (h(k) - 1) / refinement
 
-## Bottom-intensified stretching function 
+## Bottom-intensified stretching function
 Σ(k) = (1 - exp(-stretching * h(k))) / (1 - exp(-stretching))
 
 ## Generating function
 z_faces(k) = Lz * (ζ₀(k) * Σ(k) - 1)
 
-grid = RectilinearGrid(size = (Nx, Nx, Nz), 
+grid = RectilinearGrid(size = (Nx, Nx, Nz),
                           x = (0, Lx),
                           y = (0, Ly),
                           z = z_faces)
@@ -66,8 +66,8 @@ grid = RectilinearGrid(size = (Nx, Nx, Nz),
 fig = Figure(size=(1200, 800))
 ax = Axis(fig[1, 1], ylabel = "Depth (m)", xlabel = "Vertical spacing (m)")
 
-lines!(ax, zspacings(grid, Center()), znodes(grid, Center()))
-scatter!(ax, zspacings(grid, Center()), znodes(grid, Center()))
+lines!(ax, zspacings(grid, Center()))
+scatter!(ax, zspacings(grid, Center()))
 
 current_figure() #hide
 fig

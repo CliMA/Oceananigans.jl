@@ -3,23 +3,23 @@ using Oceananigans.DistributedComputations: Distributed, Partition, child_archit
 
 import Oceananigans.Fields: interior
 
-# Are the test running on the GPUs? 
+# Are the test running on the GPUs?
 # Are the test running in parallel?
 child_arch = get(ENV, "GPU_TEST", nothing) == "true" ? GPU() : CPU()
 mpi_test   = get(ENV, "MPI_TEST", nothing) == "true"
 
 # Sometimes when running tests in parallel, the CUDA.jl package is not loaded correctly.
-# This function is a failsafe to re-load CUDA.jl using the suggested cach compilation from 
+# This function is a failsafe to re-load CUDA.jl using the suggested cach compilation from
 # https://github.com/JuliaGPU/CUDA.jl/blob/a085bbb3d7856dfa929e6cdae04a146a259a2044/src/initialization.jl#L105
 # To make sure Julia restarts, an error is thrown.
 function reset_cuda_if_necessary()
-    
+
     # Do nothing if we are on the CPU
     if child_arch isa CPU
         return
     end
-    
-    try 
+
+    try
         c = CUDA.zeros(10) # This will fail if CUDA is not available
     catch err
 
@@ -37,9 +37,9 @@ function reset_cuda_if_necessary()
     end
 end
 
-function test_architectures() 
+function test_architectures()
     # If MPI is initialized with MPI.Comm_size > 0, we are running in parallel.
-    # We test several different configurations: `Partition(x = 4)`, `Partition(y = 4)`, 
+    # We test several different configurations: `Partition(x = 4)`, `Partition(y = 4)`,
     # `Partition(x = 2, y = 2)`, and different fractional subdivisions in x, y and xy
     if mpi_test
         if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
@@ -48,7 +48,7 @@ function test_architectures()
                     Distributed(child_arch; partition = Partition(2, 2)),
                     Distributed(child_arch; partition = Partition(x = Fractional(1, 2, 3, 4))),
                     Distributed(child_arch; partition = Partition(y = Fractional(1, 2, 3, 4))),
-                    Distributed(child_arch; partition = Partition(x = Fractional(1, 2), y = Equal()))) 
+                    Distributed(child_arch; partition = Partition(x = Fractional(1, 2), y = Equal())))
         else
             return throw("The MPI partitioning is not correctly configured.")
         end
@@ -59,9 +59,9 @@ end
 
 # For nonhydrostatic simulations we cannot use `Fractional` at the moment (requirements
 # for the tranpose are more stringent than for hydrostatic simulations).
-function nonhydrostatic_regression_test_architectures() 
+function nonhydrostatic_regression_test_architectures()
     # If MPI is initialized with MPI.Comm_size > 0, we are running in parallel.
-    # We test 3 different configurations: `Partition(x = 4)`, `Partition(y = 4)` 
+    # We test 3 different configurations: `Partition(x = 4)`, `Partition(y = 4)`
     # and `Partition(x = 2, y = 2)`
     if mpi_test
         if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
@@ -70,7 +70,7 @@ function nonhydrostatic_regression_test_architectures()
                     Distributed(child_arch; partition = Partition(2, 2)))
         else
             return throw("The MPI partitioning is not correctly configured.")
-        end        
+        end
     else
         return tuple(child_arch)
     end
@@ -98,8 +98,8 @@ end
 
 # TODO: docstring?
 function center_clustered_coord(N, L, x₀)
-    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1 
-    z_faces = zeros(N+1) 
+    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1
+    z_faces = zeros(N+1)
     for k = 2:N+1
         z_faces[k] = z_faces[k-1] + 3 - Δz(k-1)
     end
@@ -109,12 +109,12 @@ end
 
 # TODO: docstring?
 function boundary_clustered_coord(N, L, x₀)
-    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1 
-    z_faces = zeros(N+1) 
+    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1
+    z_faces = zeros(N+1)
     for k = 2:N+1
         z_faces[k] = z_faces[k-1] + Δz(k-1)
     end
-    z_faces = z_faces ./ z_faces[end] .* L .+ x₀ 
+    z_faces = z_faces ./ z_faces[end] .* L .+ x₀
     return z_faces
 end
 
