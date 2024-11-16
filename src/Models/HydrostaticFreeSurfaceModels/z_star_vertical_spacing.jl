@@ -2,6 +2,11 @@ using Oceananigans.Grids
 using Oceananigans.Grids: ZStarUnderlyingGrid, rnode
 using Oceananigans.ImmersedBoundaries: ImmersedZStarGrid
 
+using Oceananigans.Models.SplitExplicitFreeSurfaces: dynamic_column_depthᶜᶜᵃ,
+                                                     dynamic_column_depthᶜᶠᵃ,
+                                                     dynamic_column_depthᶠᶜᵃ,
+                                                     dynamic_column_depthᶠᶠᵃ
+
 const ZStarSpacingGrid = Union{ZStarUnderlyingGrid, ImmersedZStarGrid}
 
 #####
@@ -25,8 +30,8 @@ function update_grid!(model, grid::ZStarSpacingGrid; parameters = :xy)
     # TODO: At the moment only SplitExplicitFreeSurface is supported,
     # but zstar can be extended to other free surface solvers by calculating
     # the barotropic velocity in this step
-    U̅   = model.free_surface.state.U̅ 
-    V̅   = model.free_surface.state.V̅ 
+    U̅   = model.free_surface.barotropic_velocities.U 
+    V̅   = model.free_surface.barotropic_velocities.V 
     η   = model.free_surface.η
 
     # Update vertical spacing with available parameters 
@@ -51,8 +56,8 @@ end
     k_top = grid.Nz + 1 
 
     # ∂(η / H)/∂t = - ∇ ⋅ ∫udz / H
-    δx_U = δxᶜᶜᶠ(i, j, k_top-1, grid, Δy_qᶠᶜᶠ, U̅)
-    δy_V = δyᶜᶜᶠ(i, j, k_top-1, grid, Δx_qᶜᶠᶠ, V̅)
+    δx_U = δxᶜᶜᶠ(i, j, k_top-1, grid, Δy_qᶠᶜᶠ, U)
+    δy_V = δyᶜᶜᶠ(i, j, k_top-1, grid, Δx_qᶜᶠᶠ, V)
 
     δh_U = (δx_U + δy_V) / Azᶜᶜᶠ(i, j, k_top-1, grid)
     H    = static_column_depthᶜᶜᵃ(i, j, grid)
@@ -69,11 +74,16 @@ end
     hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
     hᶠᶠ = static_column_depthᶠᶠᵃ(i, j, grid)
 
+    Hᶜᶜ = dynamic_column_depthᶜᶜᵃ(i, j, k_top, grid, η)
+    Hᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, k_top, grid, η)
+    Hᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, k_top, grid, η)
+    Hᶠᶠ = dynamic_column_depthᶠᶠᵃ(i, j, k_top, grid, η)
+
     @inbounds begin
-        sᶜᶜ = ifelse(hᶜᶜ == 0, one(grid), (hᶜᶜ +               η[i, j, k_top]) / hᶜᶜ)
-        sᶠᶜ = ifelse(hᶠᶜ == 0, one(grid), (hᶠᶜ +  ℑxᶠᵃᵃ(i, j, k_top, grid, η)) / hᶠᶜ)
-        sᶜᶠ = ifelse(hᶜᶠ == 0, one(grid), (hᶜᶠ +  ℑyᵃᶠᵃ(i, j, k_top, grid, η)) / hᶜᶠ)
-        sᶠᶠ = ifelse(hᶠᶠ == 0, one(grid), (hᶠᶠ + ℑxyᶠᶠᵃ(i, j, k_top, grid, η)) / hᶠᶠ)
+        sᶜᶜ = ifelse(hᶜᶜ == 0, one(grid), Hᶜᶜ / hᶜᶜ)
+        sᶠᶜ = ifelse(hᶠᶜ == 0, one(grid), Hᶠᶜ / hᶠᶜ)
+        sᶜᶠ = ifelse(hᶜᶠ == 0, one(grid), Hᶜᶠ / hᶜᶠ)
+        sᶠᶠ = ifelse(hᶠᶠ == 0, one(grid), Hᶠᶠ / hᶠᶠ)
 
         # Update previous scaling
         sᶜᶜ⁻[i, j] = sᶜᶜⁿ[i, j]

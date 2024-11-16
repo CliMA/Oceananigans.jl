@@ -11,12 +11,14 @@ end
 end
 
 @inline function barotropic_mode_kernel!(U, V, i, j, grid, u, v)
-    @inbounds U[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]
-    @inbounds V[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1]
+    # TODO: 
+
+    @inbounds U[i, j, 1] = Δrᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]
+    @inbounds V[i, j, 1] = Δrᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1]
 
     for k in 2:grid.Nz
-        @inbounds U[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * u[i, j, k]
-        @inbounds V[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * v[i, j, k]
+        @inbounds U[i, j, 1] += Δrᶠᶜᶜ(i, j, k, grid) * u[i, j, k]
+        @inbounds V[i, j, 1] += Δrᶜᶠᶜ(i, j, k, grid) * v[i, j, k]
     end
 
     return nothing
@@ -28,12 +30,12 @@ end
     return nothing
 end
 
-@kernel function _barotropic_split_explicit_corrector!(u, v, U, V, U̅, V̅, grid)
+@kernel function _barotropic_split_explicit_corrector!(u, v, U, V, U̅, V̅, η, grid)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        Hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
-        Hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
+        Hᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, grid, η)
+        Hᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, grid, η)
         
         u[i, j, k] = u[i, j, k] + (U[i, j, 1] - U̅[i, j, 1]) / Hᶠᶜ
         v[i, j, k] = v[i, j, k] + (V[i, j, 1] - V̅[i, j, 1]) / Hᶜᶠ
@@ -43,6 +45,7 @@ end
 # Correcting `u` and `v` with the barotropic mode computed in `free_surface`
 function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     state = free_surface.filtered_state
+    η     = free_surface.η
     U, V  = free_surface.barotropic_velocities
     U̅, V̅  = state.U, state.V
     arch  = architecture(grid)
@@ -54,7 +57,7 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
 
     # add in "good" barotropic mode
     launch!(arch, grid, :xyz, _barotropic_split_explicit_corrector!,
-            u, v, U, V, U̅, V̅, grid)
+            u, v, U, V, U̅, V̅, η, grid)
 
     return nothing
 end

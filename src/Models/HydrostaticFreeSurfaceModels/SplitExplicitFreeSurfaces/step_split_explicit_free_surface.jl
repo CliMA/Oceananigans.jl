@@ -26,8 +26,8 @@ end
     store_previous_velocities!(timestepper, i, j, 1, U)
     store_previous_velocities!(timestepper, i, j, 1, V)
 
-    Hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
-    Hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
+    Hᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, grid, η)
+    Hᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, grid, η)
     
     @inbounds begin
         # ∂τ(U) = - ∇η + G

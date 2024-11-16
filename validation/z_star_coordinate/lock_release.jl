@@ -1,9 +1,9 @@
 using Oceananigans
+using Oceananigans.Grids
 using Oceananigans.Units
 using Oceananigans.Utils: prettytime
 using Oceananigans.Advection: WENOVectorInvariant
 using Oceananigans.AbstractOperations: GridMetricOperation  
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStarSpacingGrid
 using Printf
 
 z_faces = ZStarVerticalCoordinate(-20, 0)

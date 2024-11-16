@@ -11,10 +11,12 @@ using Oceananigans.Utils
 using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
+using Oceananigans.ImmersedBoundaries
 using Oceananigans.Grids: AbstractGrid, topology
 using Oceananigans.ImmersedBoundaries: active_linear_index_to_tuple, mask_immersed_field!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
-                                                        free_surface_displacement_field
+                                                        free_surface_displacement_field,
+                                                        ZStarSpacingGrid
 
 using Adapt
 using Base
@@ -28,6 +30,17 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: initialize_free_surface
                                                          compute_free_surface_tendency!,
                                                          explicit_barotropic_pressure_x_gradient,
                                                          explicit_barotropic_pressure_y_gradient
+
+
+@inline dynamic_column_depthᶜᶜᵃ(i, j, grid, η) = static_column_depthᶜᶜᵃ(i, j, grid) 
+@inline dynamic_column_depthᶜᶠᵃ(i, j, grid, η) = static_column_depthᶜᶠᵃ(i, j, grid) 
+@inline dynamic_column_depthᶠᶜᵃ(i, j, grid, η) = static_column_depthᶠᶜᵃ(i, j, grid) 
+@inline dynamic_column_depthᶠᶠᵃ(i, j, grid, η) = static_column_depthᶠᶠᵃ(i, j, grid) 
+
+@inline dynamic_column_depthᶜᶜᵃ(i, j, grid::ZStarSpacingGrid, η) = static_column_depthᶜᶜᵃ(i, j, grid) + @inbounds η[i, j, grid.Nz+1]
+@inline dynamic_column_depthᶜᶠᵃ(i, j, grid::ZStarSpacingGrid, η) = static_column_depthᶜᶠᵃ(i, j, grid) +  ℑxᶠᵃᵃ(i, j, grid.Nz+1, grid, η)
+@inline dynamic_column_depthᶠᶜᵃ(i, j, grid::ZStarSpacingGrid, η) = static_column_depthᶠᶜᵃ(i, j, grid) +  ℑyᵃᶠᵃ(i, j, grid.Nz+1, grid, η)
+@inline dynamic_column_depthᶠᶠᵃ(i, j, grid::ZStarSpacingGrid, η) = static_column_depthᶠᶠᵃ(i, j, grid) + ℑxyᶠᶠᵃ(i, j, grid.Nz+1, grid, η)
 
 include("split_explicit_timesteppers.jl")
 include("split_explicit_free_surface.jl")
