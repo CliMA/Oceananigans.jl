@@ -11,7 +11,8 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils
 using Oceananigans.Utils: launch!, SumOfArrays
-using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Grids: AbstractGrid, ZStarUnderlyingGrid, rnode
+using Oceananigans.ImmersedBoundaries: ImmersedZStarGrid
 
 using DocStringExtensions
 
@@ -19,6 +20,8 @@ import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
 import Oceananigans.Architectures: on_architecture
+
+const ZStarSpacingGrid = Union{ZStarUnderlyingGrid, ImmersedZStarGrid}
 
 abstract type AbstractFreeSurface{E, G} end
 
@@ -34,6 +37,9 @@ free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 
 # free surface initialization functions
 initialize_free_surface!(free_surface, grid, velocities) = nothing
+
+# ZStar implementation
+include("generalized_vertical_spacing.jl")
 
 include("compute_w_from_continuity.jl")
 
@@ -60,6 +66,8 @@ include("hydrostatic_free_surface_field_tuples.jl")
 include("hydrostatic_free_surface_model.jl")
 include("show_hydrostatic_free_surface_model.jl")
 include("set_hydrostatic_free_surface_model.jl")
+
+include("z_star_vertical_spacing.jl")
 
 #####
 ##### AbstractModel interface

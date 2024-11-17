@@ -2,9 +2,9 @@ using Oceananigans
 using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceananigans.BuoyancyModels: buoyancy_perturbationᶜᶜᶜ
-using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, halo_size, AbstractVerticalCoordinateUnderlyingGrid
+using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, halo_size
 using Oceananigans.ImmersedBoundaries
-using Oceananigans.ImmersedBoundaries: ImmersedAbstractVerticalCoordinateGrid
+using Oceananigans.Models: AbstractVerticalCoordinateGrid
 using Oceananigans.Utils: getnamewrapper
 using Oceananigans.Grids: with_halo, ∂t_grid, vertical_scaling, previous_vertical_scaling
 using Adapt 
@@ -12,13 +12,11 @@ using Printf
 
 import Oceananigans.Architectures: arch_array
 
-const AbstractVerticalCoordinateGrid = Union{AbstractVerticalCoordinateUnderlyingGrid, ImmersedAbstractVerticalCoordinateGrid}
-
 #####
 ##### General implementation
 #####
 
-update_grid!(model, grid; kwargs...) = nothing
+update_grid!(model, grid; parameters = :xy) = nothing
 
 #####
 ##### Additional terms to be included in the momentum equations (fallbacks)

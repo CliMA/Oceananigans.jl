@@ -16,6 +16,7 @@ using Oceananigans: AbstractOutputWriter
 using Oceananigans.Grids: interior_indices
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, instantiate
 using Oceananigans.Utils: pretty_filesize
+using Oceananigans.Models: AbstractVerticalCoordinateGrid
 
 using OffsetArrays
 

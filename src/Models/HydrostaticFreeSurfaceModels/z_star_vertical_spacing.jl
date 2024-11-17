@@ -1,20 +1,16 @@
 using Oceananigans.Grids
-using Oceananigans.Grids: ZStarUnderlyingGrid, rnode
-using Oceananigans.ImmersedBoundaries: ImmersedZStarGrid
 
-using Oceananigans.Models.SplitExplicitFreeSurfaces: dynamic_column_depthᶜᶜᵃ,
-                                                     dynamic_column_depthᶜᶠᵃ,
-                                                     dynamic_column_depthᶠᶜᵃ,
-                                                     dynamic_column_depthᶠᶠᵃ
-
-const ZStarSpacingGrid = Union{ZStarUnderlyingGrid, ImmersedZStarGrid}
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: dynamic_column_depthᶜᶜᵃ,
+                                                                                  dynamic_column_depthᶜᶠᵃ,
+                                                                                  dynamic_column_depthᶠᶜᵃ,
+                                                                                  dynamic_column_depthᶠᶠᵃ
 
 #####
 ##### ZStar-specific vertical spacings update
 #####
 
 function update_grid!(model, grid::ZStarSpacingGrid; parameters = :xy)
-    
+
     # Scaling (just update once, they are the same for all the metrics)
     sᶜᶜ⁻   = grid.Δzᵃᵃᶠ.sᶜᶜ⁻
     sᶜᶜⁿ   = grid.Δzᵃᵃᶠ.sᶜᶜⁿ
@@ -30,9 +26,9 @@ function update_grid!(model, grid::ZStarSpacingGrid; parameters = :xy)
     # TODO: At the moment only SplitExplicitFreeSurface is supported,
     # but zstar can be extended to other free surface solvers by calculating
     # the barotropic velocity in this step
-    U̅   = model.free_surface.barotropic_velocities.U 
-    V̅   = model.free_surface.barotropic_velocities.V 
-    η   = model.free_surface.η
+    U = model.free_surface.barotropic_velocities.U 
+    V = model.free_surface.barotropic_velocities.V 
+    η = model.free_surface.η
 
     # Update vertical spacing with available parameters 
     # No need to fill the halo as the scaling is updated _IN_ the halos
@@ -44,22 +40,22 @@ function update_grid!(model, grid::ZStarSpacingGrid; parameters = :xy)
     # to the divergence of the vertically integrated velocity field, such that
     # ∂ₜ((H + η) / H) = H⁻¹ ∂ₜη =  - H⁻¹ ∇ ⋅ ∫udz 
     launch!(architecture(grid), grid, parameters, _update_∂t_s!, 
-            ∂t_s, U̅, V̅, grid)
+            ∂t_s, U, V, grid)
 
     return nothing
 end
 
 # NOTE: The ZStar vertical spacing only supports a SplitExplicitFreeSurface
 # TODO: extend to support other free surface solvers
-@kernel function _update_∂t_s!(∂t_s, U̅, V̅, grid)
+@kernel function _update_∂t_s!(∂t_s, U, V, grid)
     i, j  = @index(Global, NTuple)
-    k_top = grid.Nz + 1 
+    kᴺ = size(grid, 3)
 
     # ∂(η / H)/∂t = - ∇ ⋅ ∫udz / H
-    δx_U = δxᶜᶜᶠ(i, j, k_top-1, grid, Δy_qᶠᶜᶠ, U)
-    δy_V = δyᶜᶜᶠ(i, j, k_top-1, grid, Δx_qᶜᶠᶠ, V)
+    δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, U)
+    δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, V)
 
-    δh_U = (δx_U + δy_V) / Azᶜᶜᶠ(i, j, k_top-1, grid)
+    δh_U = (δx_U + δy_V) / Azᶜᶜᶜ(i, j, kᴺ, grid)
     H    = static_column_depthᶜᶜᵃ(i, j, grid)
 
     @inbounds ∂t_s[i, j] = ifelse(H == 0, zero(grid), - δh_U / H)
@@ -74,10 +70,10 @@ end
     hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
     hᶠᶠ = static_column_depthᶠᶠᵃ(i, j, grid)
 
-    Hᶜᶜ = dynamic_column_depthᶜᶜᵃ(i, j, k_top, grid, η)
-    Hᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, k_top, grid, η)
-    Hᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, k_top, grid, η)
-    Hᶠᶠ = dynamic_column_depthᶠᶠᵃ(i, j, k_top, grid, η)
+    Hᶜᶜ = dynamic_column_depthᶜᶜᵃ(i, j, grid, η)
+    Hᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, grid, η)
+    Hᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, grid, η)
+    Hᶠᶠ = dynamic_column_depthᶠᶠᵃ(i, j, grid, η)
 
     @inbounds begin
         sᶜᶜ = ifelse(hᶜᶜ == 0, one(grid), Hᶜᶜ / hᶜᶜ)

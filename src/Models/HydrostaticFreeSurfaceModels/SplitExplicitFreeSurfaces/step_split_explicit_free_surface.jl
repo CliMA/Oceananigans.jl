@@ -170,5 +170,8 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
         mask_immersed_field!(model.velocities.v)
     end
 
+    # Needed for ZStar
+    fill_halo_regions!(η)
+
     return nothing
 end

@@ -6,7 +6,6 @@ using Oceananigans.DistributedComputations: DistributedGrid, Partition
 using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instantiated_location
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractVerticalCoordinateGrid
 using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: AbstractSchedule
 

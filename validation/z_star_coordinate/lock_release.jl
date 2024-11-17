@@ -14,7 +14,7 @@ grid = RectilinearGrid(size = (128, 20),
                        halo = (6, 6),
                    topology = (Bounded, Flat, Bounded))
 
-grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> - (64kilometers - x) / 64kilometers * 20))
+# grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> - (64kilometers - x) / 64kilometers * 20))
 
 model = HydrostaticFreeSurfaceModel(; grid, 
                          momentum_advection = FluxFormAdvection(WENO(; order = 5), nothing, WENO(; order = 5)),
