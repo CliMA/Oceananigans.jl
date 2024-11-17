@@ -23,7 +23,8 @@ const issd_coefficient_loc = (Center(), Center(), Center())
                                            κ_skew = 0,
                                            κ_symmetric = 0,
                                            isopycnal_tensor = SmallSlopeIsopycnalTensor(),
-                                           slope_limiter = FluxTapering(1e-2))
+                                           slope_limiter = FluxTapering(1e-2),
+                                           required_halo_size::Int = 1)
 
 Return parameters for an isopycnal skew-symmetric tracer diffusivity with skew diffusivity
 `κ_skew` and symmetric diffusivity `κ_symmetric` that uses an `isopycnal_tensor` model for
@@ -31,6 +32,12 @@ for calculating the isopycnal slopes, and (optionally) applying a `slope_limiter
 calculated isopycnal slope values.
     
 Both `κ_skew` and `κ_symmetric` may be constants, arrays, fields, or functions of `(x, y, z, t)`.
+
+The formulation follows Griffies et al. (1998)
+
+References
+==========
+* Griffies, S. M., A. Gnanadesikan, R. C. Pacanowski, V. D. Larichev, J. K. Dukowicz, and R. D. Smith (1998) Isoneutral diffusion in a z-coordinate ocean model. _J. Phys. Oceanogr._, **28**, 805–830, doi:10.1175/1520-0485(1998)028<0805:IDIAZC>2.0.CO;2
 """
 function TriadIsopycnalSkewSymmetricDiffusivity(time_disc=ExplicitTimeDiscretization(), FT=Float64;
                                                 κ_skew = 0,
