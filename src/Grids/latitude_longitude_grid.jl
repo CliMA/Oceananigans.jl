@@ -321,7 +321,7 @@ function Base.show(io::IO, grid::LatitudeLongitudeGrid, withsummary=true)
 
     x_summary = "longitude: " * dimension_summary(TX(), "λ", Ωλ, grid.Δλᶜᵃᵃ, longest - length(x_summary))
     y_summary = "latitude:  " * dimension_summary(TY(), "φ", Ωφ, grid.Δφᵃᶜᵃ, longest - length(y_summary))
-    z_summary = "z:         " * dimension_summary(TZ(), "z", Ωz, grid.Δzᵃᵃᶜ, longest - length(z_summary))
+    z_summary = "z:         " * dimension_summary(TZ(), "z", Ωz, grid.z,     longest - length(z_summary))
 
     if withsummary
         print(io, summary(grid), "\n")
@@ -583,14 +583,10 @@ rname(::LLG) = :z
 @inline λnode(i, grid::LLG, ::Face)   = getnode(grid.λᶠᵃᵃ, i)
 @inline φnode(j, grid::LLG, ::Center) = getnode(grid.φᵃᶜᵃ, j)
 @inline φnode(j, grid::LLG, ::Face)   = getnode(grid.φᵃᶠᵃ, j)
-@inline znode(k, grid::LLG, ::Center) = getnode(grid.zᵃᵃᶜ, k)
-@inline znode(k, grid::LLG, ::Face)   = getnode(grid.zᵃᵃᶠ, k)
 
 # Definitions for node
 @inline ξnode(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = λnode(i, grid, ℓx)
 @inline ηnode(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = φnode(j, grid, ℓy)
-@inline rnode(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = znode(k, grid, ℓz)
-
 @inline xnode(i, j, grid::LLG, ℓx, ℓy) = grid.radius * deg2rad(λnode(i, grid, ℓx)) * hack_cosd((φnode(j, grid, ℓy)))
 @inline ynode(j, grid::LLG, ℓy)        = grid.radius * deg2rad(φnode(j, grid, ℓy))
 
@@ -599,7 +595,6 @@ rname(::LLG) = :z
 @inline φnode(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = φnode(j, grid, ℓy)
 @inline xnode(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = xnode(i, j, grid, ℓx, ℓy)
 @inline ynode(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = ynode(j, grid, ℓy)
-@inline znode(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = znode(k, grid, ℓz)
 
 function nodes(grid::LLG, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
     λ = λnodes(grid, ℓx, ℓy, ℓz; with_halos)
@@ -648,10 +643,10 @@ end
     return @. R * deg2rad(φ)
 end
 
-@inline znodes(grid::LLG, ℓz::F; with_halos=false) = _property(grid.zᵃᵃᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
-@inline znodes(grid::LLG, ℓz::C; with_halos=false) = _property(grid.zᵃᵃᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
-@inline rnodes(grid::LLG, ℓz::F; with_halos=false) = _property(grid.zᵃᵃᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
-@inline rnodes(grid::LLG, ℓz::C; with_halos=false) = _property(grid.zᵃᵃᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline znodes(grid::LLG, ℓz::F; with_halos=false) = _property(grid.z.cᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline znodes(grid::LLG, ℓz::C; with_halos=false) = _property(grid.z.cᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline rnodes(grid::LLG, ℓz::F; with_halos=false) = _property(grid.z.cᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline rnodes(grid::LLG, ℓz::C; with_halos=false) = _property(grid.z.cᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
 
 # Convenience
 @inline λnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = λnodes(grid, ℓx; with_halos)

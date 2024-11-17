@@ -87,7 +87,11 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
     F = OffsetArray(on_architecture(arch, F.parent), F.offsets...)
     C = OffsetArray(on_architecture(arch, C.parent), C.offsets...)
 
-    return L, F, C, Δᶠ, Δᶜ
+    if coordinate_name == :z
+        return L, StaticVerticalCoordinate(F, C, Δᶠ, Δᶜ)
+    else    
+        return L, F, C, Δᶠ, Δᶜ
+    end
 end
 
 # Generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points
@@ -120,16 +124,65 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)
 
-    return FT(L), F, C, FT(Δᶠ), FT(Δᶜ)
+    if coordinate_name == :z
+        return FT(L), StaticVerticalCoordinate(F, C, FT(Δᶠ), FT(Δᶜ))
+    else    
+        return FT(L), F, C, FT(Δᶠ), FT(Δᶜ)
+    end
 end
 
 # Flat domains
-generate_coordinate(FT, ::Flat, N, H, c::Number, coordinate_name, arch) =
-    FT(1), range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1)
+function generate_coordinate(FT, ::Flat, N, H, c::Number, coordinate_name, arch) 
+    if coordinate_name == :z
+        return FT(1), StaticVerticalCoordinate(range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1))
+    else    
+        return FT(1), range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1)
+    end
+end
 
 # What's the use case for this?
 # generate_coordinate(FT, ::Flat, N, H, c::Tuple{Number, Number}, coordinate_name, arch) =
 #     FT(1), c, c, FT(1), FT(1)
+function generate_coordinate(FT, ::Flat, N, H, ::Nothing, coordinate_name, arch) 
+    if coordinate_name == :z
+        return FT(1), StaticVerticalCoordinate(nothing, nothing, FT(1), FT(1))
+    else    
+        return FT(1), nothing, nothing, FT(1), FT(1)
+    end
+end    
 
-generate_coordinate(FT, ::Flat, N, H, ::Nothing, coordinate_name, arch) =
-    FT(1), nothing, nothing, FT(1), FT(1)
+####
+#### ZStarVerticalCoordinate
+####
+
+generate_coordinate(FT, ::Periodic, N, H, ::ZStarVerticalCoordinate, coordinate_name, arch, args...) = 
+    throw(ArgumentError("Periodic domains are not supported for ZStarVerticalCoordinate"))
+
+# Generate a moving coordinate with evolving scaling (`s`) for spacings and znodes
+function generate_coordinate(FT, topo, size, halo, coordinate::ZStarVerticalCoordinate, coordinate_name, dim::Int, arch)
+
+    Nx, Ny, Nz = size
+    Hx, Hy, Hz = halo
+
+    if dim != 3 
+        msg = "ZStarVerticalCoordinate is supported only in the third dimension (z)"
+        throw(ArgumentError(msg))
+    end
+
+    if coordinate_name != :z
+        msg = "Only z-coordinate is supported for ZStarVerticalCoordinate"
+        throw(ArgumentError(msg))
+    end
+
+    r_faces = coordinate.reference
+
+    Lr, rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ = generate_coordinate(FT, topo[3](), Nz, Hz, r_faces, :z, arch)
+
+    args = (topo, (Nx, Ny, Nz), (Hx, Hy, Hz))
+
+    sᶜᶜᵃ  = new_data(FT, arch, (Center, Center, Nothing), args...)
+    sᶜᶜᵃ₋ = new_data(FT, arch, (Center, Center, Nothing), args...)
+    ∂t_s  = new_data(FT, arch, (Center, Center, Nothing), args...)
+
+    return Lr, ZStarVerticalCoordinate(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, sᶜᶜᵃ, sᶜᶜᵃ₋, ∂t_s)
+end

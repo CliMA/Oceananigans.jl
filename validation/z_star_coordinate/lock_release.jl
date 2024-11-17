@@ -17,7 +17,7 @@ grid = RectilinearGrid(size = (128, 20),
 # grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> - (64kilometers - x) / 64kilometers * 20))
 
 model = HydrostaticFreeSurfaceModel(; grid, 
-                         momentum_advection = FluxFormAdvection(WENO(; order = 5), nothing, WENO(; order = 5)),
+                         momentum_advection = WENO(order = 5),
                            tracer_advection = FluxFormAdvection(WENO(; order = 5), nothing, WENO(; order = 5)),
                                    buoyancy = BuoyancyTracer(),
                                     closure = nothing, 
@@ -26,7 +26,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
 
 g = model.free_surface.gravitational_acceleration
 
-model.timestepper.χ = 0.0
+model.timestepper.χ = 0.1
 
 bᵢ(x, z) = x < 32kilometers ? 0.06 : 0.01
 
@@ -63,7 +63,7 @@ function progress(sim)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 
 run!(simulation)
 

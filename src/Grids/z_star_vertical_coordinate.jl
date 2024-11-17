@@ -152,8 +152,8 @@ function generate_coordinate(FT, topo, size, halo, coordinate::ZStarVerticalCoor
 
     # The scaling is the same for everyone, the vertical coordinate requires 
     # to add the free surface to retrieve the znode.
-    zᵃᵃᶠ = ZStarVerticalCoordinate(rᵃᵃᶠ, sᶜᶜᵃ, sᶠᶜᵃ, sᶜᶠᵃ, sᶠᶠᵃ, sᶜᶜᵃ₋, sᶠᶜᵃ₋, sᶜᶠᵃ₋, η)
-    zᵃᵃᶜ = ZStarVerticalCoordinate(rᵃᵃᶜ, sᶜᶜᵃ, sᶠᶜᵃ, sᶜᶠᵃ, sᶠᶠᵃ, sᶜᶜᵃ₋, sᶠᶜᵃ₋, sᶜᶠᵃ₋, η)
+    zᵃᵃᶠ = ZStarVerticalCoordinate(rᵃᵃᶠ, ηᶜᶜᵃ, sᶠᶜᵃ, sᶜᶠᵃ, sᶠᶠᵃ, sᶜᶜᵃ₋, sᶠᶜᵃ₋, sᶜᶠᵃ₋, η)
+    zᵃᵃᶜ = ZStarVerticalCoordinate(rᵃᵃᶜ, ηᶜᶜᵃ, sᶠᶜᵃ, sᶜᶠᵃ, sᶠᶠᵃ, sᶜᶜᵃ₋, sᶠᶜᵃ₋, sᶜᶠᵃ₋, η)
 
     Δzᵃᵃᶠ = ZStarVerticalCoordinate(Δrᵃᵃᶠ, sᶜᶜᵃ, sᶠᶜᵃ, sᶜᶠᵃ, sᶠᶠᵃ, sᶜᶜᵃ₋, sᶠᶜᵃ₋, sᶜᶠᵃ₋, ∂t_s)
     Δzᵃᵃᶜ = ZStarVerticalCoordinate(Δrᵃᵃᶜ, sᶜᶜᵃ, sᶠᶜᵃ, sᶜᶠᵃ, sᶠᶠᵃ, sᶜᶜᵃ₋, sᶠᶜᵃ₋, sᶜᶠᵃ₋, ∂t_s)
@@ -186,36 +186,13 @@ const F = Face
 
 const ZSG = ZStarUnderlyingGrid
 
-# Fallbacks
-@inline vertical_scaling(i, j, k, grid, ℓx, ℓy, ℓz) = one(grid)
-@inline previous_vertical_scaling(i, j, k, grid, ℓx, ℓy, ℓz) = one(grid)
-
-@inline ∂t_grid(i, j, k, grid) = zero(grid)
-
 @inline rnodes(grid::ZSG, ℓz::C; with_halos=false) = _property(grid.zᵃᵃᶜ.reference, ℓz, topology(grid, 3), size(grid, 3), with_halos)
 @inline rnodes(grid::ZSG, ℓz::F; with_halos=false) = _property(grid.zᵃᵃᶠ.reference, ℓz, topology(grid, 3), size(grid, 3), with_halos)
 
 @inline rspacings(grid::ZSG, ℓz::C; with_halos=false) = _property(grid.Δzᵃᵃᶜ.reference, ℓz, topology(grid, 3), size(grid, 3), with_halos)
 @inline rspacings(grid::ZSG, ℓz::F; with_halos=false) = _property(grid.Δzᵃᵃᶠ.reference, ℓz, topology(grid, 3), size(grid, 3), with_halos)
 
-@inline vertical_scaling(i, j, k, grid::ZSG, ::C, ::C, ::C) = @inbounds grid.Δzᵃᵃᶜ.sᶜᶜⁿ[i, j]
-@inline vertical_scaling(i, j, k, grid::ZSG, ::F, ::C, ::C) = @inbounds grid.Δzᵃᵃᶜ.sᶠᶜⁿ[i, j]
-@inline vertical_scaling(i, j, k, grid::ZSG, ::C, ::F, ::C) = @inbounds grid.Δzᵃᵃᶜ.sᶜᶠⁿ[i, j]
-@inline vertical_scaling(i, j, k, grid::ZSG, ::F, ::F, ::C) = @inbounds grid.Δzᵃᵃᶜ.sᶠᶠⁿ[i, j]
-
-@inline vertical_scaling(i, j, k, grid::ZSG, ::C, ::C, ::F) = @inbounds grid.Δzᵃᵃᶠ.sᶜᶜⁿ[i, j]
-@inline vertical_scaling(i, j, k, grid::ZSG, ::F, ::C, ::F) = @inbounds grid.Δzᵃᵃᶠ.sᶠᶜⁿ[i, j]
-@inline vertical_scaling(i, j, k, grid::ZSG, ::C, ::F, ::F) = @inbounds grid.Δzᵃᵃᶠ.sᶜᶠⁿ[i, j]
-@inline vertical_scaling(i, j, k, grid::ZSG, ::F, ::F, ::F) = @inbounds grid.Δzᵃᵃᶠ.sᶠᶠⁿ[i, j]
-
-@inline previous_vertical_scaling(i, j, k, grid::ZSG, ::C, ::C, ::C) = @inbounds grid.Δzᵃᵃᶜ.sᶜᶜ⁻[i, j]
-@inline previous_vertical_scaling(i, j, k, grid::ZSG, ::F, ::C, ::C) = @inbounds grid.Δzᵃᵃᶜ.sᶠᶜ⁻[i, j]
-@inline previous_vertical_scaling(i, j, k, grid::ZSG, ::C, ::F, ::C) = @inbounds grid.Δzᵃᵃᶜ.sᶜᶠ⁻[i, j]
-
-@inline previous_vertical_scaling(i, j, k, grid::ZSG, ::C, ::C, ::F) = @inbounds grid.Δzᵃᵃᶠ.sᶜᶜ⁻[i, j]
-@inline previous_vertical_scaling(i, j, k, grid::ZSG, ::F, ::C, ::F) = @inbounds grid.Δzᵃᵃᶠ.sᶠᶜ⁻[i, j]
-@inline previous_vertical_scaling(i, j, k, grid::ZSG, ::C, ::F, ::F) = @inbounds grid.Δzᵃᵃᶠ.sᶜᶠ⁻[i, j]
-
+@inline ∂t_grid(i, j, k, grid) = zero(grid)
 @inline ∂t_grid(i, j, k, grid::ZSG) = @inbounds grid.Δzᵃᵃᶜ.∂t_s[i, j] 
 
 #####
@@ -228,15 +205,3 @@ const f = Face()
 # rnode for an ZStarUnderlyingGrid is the reference node
 @inline rnode(i, j, k, grid::ZSG, ℓx, ℓy, ::Center) = @inbounds grid.zᵃᵃᶜ.reference[k] 
 @inline rnode(i, j, k, grid::ZSG, ℓx, ℓy, ::Face)   = @inbounds grid.zᵃᵃᶠ.reference[k] 
-
-# rnode for an ZStarUnderlyingGrid grid is scaled 
-# TODO: fix this when bottom height is implemented
-@inline znode(i, j, k, grid::ZSG, ::C, ::C, ::C) = @inbounds grid.zᵃᵃᶜ.reference[k] * vertical_scaling(i, j, k, grid, c, c, c) + grid.zᵃᵃᶜ.∂t_s[i, j] 
-@inline znode(i, j, k, grid::ZSG, ::C, ::F, ::C) = @inbounds grid.zᵃᵃᶜ.reference[k] * vertical_scaling(i, j, k, grid, c, f, c) + grid.zᵃᵃᶜ.∂t_s[i, j] 
-@inline znode(i, j, k, grid::ZSG, ::F, ::C, ::C) = @inbounds grid.zᵃᵃᶜ.reference[k] * vertical_scaling(i, j, k, grid, f, c, c) + grid.zᵃᵃᶜ.∂t_s[i, j] 
-@inline znode(i, j, k, grid::ZSG, ::F, ::F, ::C) = @inbounds grid.zᵃᵃᶜ.reference[k] * vertical_scaling(i, j, k, grid, f, f, c) + grid.zᵃᵃᶜ.∂t_s[i, j] 
-
-@inline znode(i, j, k, grid::ZSG, ::C, ::C, ::F) = @inbounds grid.zᵃᵃᶠ.reference[k] * vertical_scaling(i, j, k, grid, c, c, c) + grid.zᵃᵃᶠ.∂t_s[i, j] 
-@inline znode(i, j, k, grid::ZSG, ::C, ::F, ::F) = @inbounds grid.zᵃᵃᶠ.reference[k] * vertical_scaling(i, j, k, grid, c, f, c) + grid.zᵃᵃᶠ.∂t_s[i, j] 
-@inline znode(i, j, k, grid::ZSG, ::F, ::C, ::F) = @inbounds grid.zᵃᵃᶠ.reference[k] * vertical_scaling(i, j, k, grid, f, c, c) + grid.zᵃᵃᶠ.∂t_s[i, j] 
-@inline znode(i, j, k, grid::ZSG, ::F, ::F, ::F) = @inbounds grid.zᵃᵃᶠ.reference[k] * vertical_scaling(i, j, k, grid, f, f, c) + grid.zᵃᵃᶠ.∂t_s[i, j] 

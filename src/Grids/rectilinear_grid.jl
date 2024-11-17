@@ -332,7 +332,7 @@ function Base.show(io::IO, grid::RectilinearGrid, withsummary=true)
 
     x_summary = dimension_summary(TX(), "x", Ωx, grid.Δxᶜᵃᵃ, longest - length(x_summary))
     y_summary = dimension_summary(TY(), "y", Ωy, grid.Δyᵃᶜᵃ, longest - length(y_summary))
-    z_summary = dimension_summary(TZ(), "z", Ωz, grid.Δzᵃᵃᶜ, longest - length(z_summary))
+    z_summary = dimension_summary(TZ(), "z", Ωz, grid.z,     longest - length(z_summary))
 
     if withsummary
         print(io, summary(grid), "\n")
@@ -454,17 +454,13 @@ rname(::RG) = :z
 @inline xnode(i, grid::RG, ::Face)   = getnode(grid.xᶠᵃᵃ, i)
 @inline ynode(j, grid::RG, ::Center) = getnode(grid.yᵃᶜᵃ, j)
 @inline ynode(j, grid::RG, ::Face)   = getnode(grid.yᵃᶠᵃ, j)
-@inline znode(k, grid::RG, ::Center) = getnode(grid.zᵃᵃᶜ, k)
-@inline znode(k, grid::RG, ::Face)   = getnode(grid.zᵃᵃᶠ, k)
 
 @inline ξnode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = xnode(i, grid, ℓx)
 @inline ηnode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = ynode(j, grid, ℓy)
-@inline rnode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = znode(k, grid, ℓz)
 
 # Convenience definitions for x, y, znode
 @inline xnode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = xnode(i, grid, ℓx)
 @inline ynode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = ynode(j, grid, ℓy)
-@inline znode(i, j, k, grid::RG, ℓx, ℓy, ℓz) = znode(k, grid, ℓz)
 
 function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
     x = xnodes(grid, ℓx, ℓy, ℓz; with_halos)

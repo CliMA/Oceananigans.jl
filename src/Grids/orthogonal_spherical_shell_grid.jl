@@ -1081,7 +1081,7 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
     φ_summary = "latitude:  $(TY)  extent $(prettysummary(extent_φ)) degrees" * padding_φ * " " *
                 coordinate_summary(TY, rad2deg.(grid.Δyᶠᶠᵃ[1:Nx_face, 1:Ny_face] ./ grid.radius), "φ")
 
-    z_summary = "z:         " * dimension_summary(TZ(), "z", Ωz, grid.Δzᵃᵃᶜ, longest - length(z_summary))
+    z_summary = "z:         " * dimension_summary(TZ(), "z", Ωz, grid.z, longest - length(z_summary))
 
     if withsummary
         print(io, summary(grid), "\n")
@@ -1186,9 +1186,6 @@ end
 
 @inline xnode(i, j, grid::OSSG, ℓx, ℓy) = grid.radius * deg2rad(λnode(i, j, grid, ℓx, ℓy)) * hack_cosd((φnode(i, j, grid, ℓx, ℓy)))
 @inline ynode(i, j, grid::OSSG, ℓx, ℓy) = grid.radius * deg2rad(φnode(i, j, grid, ℓx, ℓy))
-
-@inline znode(k, grid::OSSG, ::Center) = @inbounds grid.zᵃᵃᶜ[k]
-@inline znode(k, grid::OSSG, ::Face  ) = @inbounds grid.zᵃᵃᶠ[k]
 
 # convenience
 @inline λnode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = λnode(i, j, grid, ℓx, ℓy)

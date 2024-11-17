@@ -23,17 +23,17 @@ using Base
 using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
+import Oceananigans.Grids: dynamic_column_depthᶜᶜᵃ, 
+                           dynamic_column_depthᶜᶠᵃ,
+                           dynamic_column_depthᶠᶜᵃ,
+                           dynamic_column_depthᶠᶠᵃ
+
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: initialize_free_surface!,
                                                          materialize_free_surface,
                                                          ab2_step_free_surface!,
                                                          compute_free_surface_tendency!,
                                                          explicit_barotropic_pressure_x_gradient,
                                                          explicit_barotropic_pressure_y_gradient
-
-@inline dynamic_column_depthᶜᶜᵃ(i, j, grid, η) = static_column_depthᶜᶜᵃ(i, j, grid) 
-@inline dynamic_column_depthᶜᶠᵃ(i, j, grid, η) = static_column_depthᶜᶠᵃ(i, j, grid) 
-@inline dynamic_column_depthᶠᶜᵃ(i, j, grid, η) = static_column_depthᶠᶜᵃ(i, j, grid) 
-@inline dynamic_column_depthᶠᶠᵃ(i, j, grid, η) = static_column_depthᶠᶠᵃ(i, j, grid) 
 
 @inline dynamic_column_depthᶜᶜᵃ(i, j, grid::ZStarSpacingGrid, η) = static_column_depthᶜᶜᵃ(i, j, grid) + @inbounds η[i, j, grid.Nz+1]
 @inline dynamic_column_depthᶜᶠᵃ(i, j, grid::ZStarSpacingGrid, η) = static_column_depthᶜᶠᵃ(i, j, grid) +  ℑxᶠᵃᵃ(i, j, grid.Nz+1, grid, η)
