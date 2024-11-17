@@ -212,6 +212,8 @@ end
     return (ii, jj, kk)
 end
 
+@inline _fractional_indices(at_node, grid, ::Nothing, ::Nothing, ::Nothing) = (nothing, nothing, nothing)
+
 """
     interpolate(at_node, from_field, from_loc, from_grid)
 
