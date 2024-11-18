@@ -61,7 +61,7 @@ end
 
 const c = Center()
 
-@inline function _fill_west_open_halo!(j, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
+@inline function _fill_west_halo!(j, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
     Δx₁ = xspacing(1, j, k, grid, c, c, c)
     Δx₂ = xspacing(2, j, k, grid, c, c, c)
     Δx₃ = xspacing(3, j, k, grid, c, c, c)
@@ -75,7 +75,7 @@ const c = Center()
     return nothing
 end
 
-@inline function _fill_east_open_halo!(j, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
+@inline function _fill_east_halo!(j, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
     i = grid.Nx + 1
 
     Δx₁ = xspacing(i-1, j, k, grid, c, c, c)
@@ -91,7 +91,7 @@ end
     return nothing
 end
 
-@inline function _fill_south_open_halo!(i, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
+@inline function _fill_south_halo!(i, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
     Δy₁ = yspacing(i, 1, k, grid, c, c, c)
     Δy₂ = yspacing(i, 2, k, grid, c, c, c)
     Δy₃ = yspacing(i, 3, k, grid, c, c, c)
@@ -105,7 +105,7 @@ end
     return nothing
 end
 
-@inline function _fill_north_open_halo!(i, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
+@inline function _fill_north_halo!(i, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
     j = grid.Ny + 1
 
     Δy₁ = yspacing(i, j-1, k, grid, c, c, c)
@@ -121,7 +121,7 @@ end
     return nothing
 end
 
-@inline function _fill_bottom_open_halo!(i, j, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
+@inline function _fill_bottom_halo!(i, j, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
     Δz₁ = zspacing(i, j, 1, grid, c, c, c)
     Δz₂ = zspacing(i, j, 2, grid, c, c, c)
     Δz₃ = zspacing(i, j, 3, grid, c, c, c)
@@ -135,7 +135,7 @@ end
     return nothing
 end
 
-@inline function _fill_top_open_halo!(i, j, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
+@inline function _fill_top_halo!(i, j, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
     k = grid.Nz + 1
 
     Δz₁ = zspacing(i, j, k-1, grid, c, c, c)
