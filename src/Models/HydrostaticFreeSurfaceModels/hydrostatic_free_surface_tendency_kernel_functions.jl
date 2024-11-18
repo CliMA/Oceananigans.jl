@@ -31,21 +31,25 @@ implicitly during time-stepping.
                                                               coriolis,
                                                               closure,
                                                               u_immersed_bc,
-                                                              model_fields,
+                                                              velocities,
                                                               free_surface,
+                                                              tracers,
                                                               buoyancy,
                                                               diffusivities,
                                                               hydrostatic_pressure_anomaly,
+                                                              auxiliary_fields,
                                                               clock, 
                                                               forcing)
+ 
+    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
-    return ( - U_dot_∇u(i, j, k, grid, advection, model_fields)
+    return ( - U_dot_∇u(i, j, k, grid, advection, velocities)
              - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
-             - x_f_cross_U(i, j, k, grid, coriolis, model_fields)
+             - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
              - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
-             - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, model_fields, u_immersed_bc, closure, diffusivities, clock, model_fields)
-             + forcing(i, j, k, grid, clock, model_fields))
+             - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, diffusivities, clock, model_fields)
+             + forcing(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end
 
 """
@@ -66,20 +70,24 @@ implicitly during time-stepping.
                                                               coriolis,
                                                               closure,
                                                               v_immersed_bc,
-                                                              model_fields,
+                                                              velocities,
                                                               free_surface,
+                                                              tracers,
                                                               buoyancy,
                                                               diffusivities,
                                                               hydrostatic_pressure_anomaly,
+                                                              auxiliary_fields,
                                                               clock,
                                                               forcing)
     
-    return ( - U_dot_∇v(i, j, k, grid, advection, model_fields)
+    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
+
+    return ( - U_dot_∇v(i, j, k, grid, advection, velocities)
              - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
-             - y_f_cross_U(i, j, k, grid, coriolis, model_fields)
+             - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂yᶜᶠᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
              - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
-             - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, model_fields, v_immersed_bc, closure, diffusivities, clock, model_fields)
+             - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, diffusivities, clock, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))
 end
 
@@ -103,17 +111,22 @@ where `c = C[tracer_index]`.
                                                           c_immersed_bc,
                                                           buoyancy,
                                                           biogeochemistry,
-                                                          model_fields,
-                                                          c,
+                                                          velocities,
+                                                          free_surface,
+                                                          tracers,
                                                           diffusivities,
+                                                          auxiliary_fields,
                                                           clock,
                                                           forcing) where tracer_index
 
+    @inbounds c = tracers[tracer_index]
+    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
+
     biogeochemical_velocities = biogeochemical_drift_velocity(biogeochemistry, val_tracer_name)
 
-    total_velocities = (u = SumOfArrays{2}(model_fields.u, biogeochemical_velocities.u),
-                        v = SumOfArrays{2}(model_fields.v, biogeochemical_velocities.v),
-                        w = SumOfArrays{2}(model_fields.w, biogeochemical_velocities.w))
+    total_velocities = (u = SumOfArrays{2}(velocities.u, biogeochemical_velocities.u),
+                        v = SumOfArrays{2}(velocities.v, biogeochemical_velocities.v),
+                        w = SumOfArrays{2}(velocities.w, biogeochemical_velocities.w))
 
     total_velocities = with_advective_forcing(forcing, total_velocities)
 
