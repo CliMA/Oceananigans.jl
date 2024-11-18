@@ -78,8 +78,6 @@ function (schedule::TimeInterval)(model)
     end
 end
 
-next_actuation_time(schedule::TimeInterval) = schedule.previous_actuation_time + schedule.interval
-
 function schedule_aligned_time_step(schedule::TimeInterval, clock, Δt)
     t★ = next_actuation_time(schedule)
     t = clock.time
