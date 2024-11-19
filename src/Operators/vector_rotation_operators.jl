@@ -79,8 +79,8 @@ _intrinsic_ coordinate systems are equivalent. However, for other grids (e.g., f
     cosθᵢ = Rcosθᵢ / Rᵢ
     sinθᵢ = Rsinθᵢ / Rᵢ
 
-    uᵢ =   u * cosθᵢ + v * sinθᵢ
-    vᵢ = - u * sinθᵢ + v * cosθᵢ
+    uᵢ = u * cosθᵢ + v * sinθᵢ
+    vᵢ = u * sinθᵢ - v * cosθᵢ
 
     return uᵢ, vᵢ
 end
