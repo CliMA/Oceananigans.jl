@@ -75,14 +75,14 @@ function compute_interior_tendency_contributions!(tendencies,
                                                   formulation)
 
     transport_args = (grid, gravitational_acceleration, advection.momentum, velocities, coriolis, closure, 
-                      bathymetry, solution, tracers, diffusivities, forcings, clock, formulation)
+                      bathymetry, solution, tracers, diffusivities, clock, formulation)
 
     h_args = (grid, gravitational_acceleration, advection.mass, coriolis, closure, 
-              solution, tracers, diffusivities, forcings, clock, formulation)
+              solution, tracers, diffusivities, clock, formulation)
 
-    launch!(arch, grid, :xyz, compute_Guh!, tendencies[1], transport_args...; exclude_periphery=true)
-    launch!(arch, grid, :xyz, compute_Gvh!, tendencies[2], transport_args...; exclude_periphery=true)
-    launch!(arch, grid, :xyz,  compute_Gh!, tendencies[3], h_args...)
+    launch!(arch, grid, :xyz, compute_Guh!, tendencies[1], transport_args..., forcings[1]; exclude_periphery=true)
+    launch!(arch, grid, :xyz, compute_Gvh!, tendencies[2], transport_args..., forcings[2]; exclude_periphery=true)
+    launch!(arch, grid, :xyz,  compute_Gh!, tendencies[3], h_args..., forcings.h)
 
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         @inbounds Gc = tendencies[tracer_index+3]
@@ -90,7 +90,7 @@ function compute_interior_tendency_contributions!(tendencies,
         @inbounds c_advection = advection[tracer_name]
 
         launch!(arch, grid, :xyz, compute_Gc!, Gc, grid, Val(tracer_index),
-                c_advection, closure, solution, tracers, diffusivities, forcing, clock, formulation)
+                c_advection, closure, solution, tracers, diffusivities, clock, formulation, forcing)
     end
 
     return nothing
