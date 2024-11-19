@@ -5,16 +5,16 @@ using Oceananigans.Operators
     
 # To be used in the test below as `KernelFunctionOperation`s
 @inline intrinsic_vector_x_component(i, j, k, grid, uₑ, vₑ) = 
-    @inbounds intrinsic_vector(i, j, k, grid, uₑ[i, j, k], vₑ[i, j, k])[1]
+    @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ)[1]
     
 @inline intrinsic_vector_y_component(i, j, k, grid, uₑ, vₑ) =
-    @inbounds intrinsic_vector(i, j, k, grid, uₑ[i, j, k], vₑ[i, j, k])[2]
+    @inbounds intrinsic_vector(i, j, k, grid, uₑ, vₑ)[2]
 
 @inline extrinsic_vector_x_component(i, j, k, grid, uᵢ, vᵢ) =
-    @inbounds extrinsic_vector(i, j, k, grid, uᵢ[i, j, k], vᵢ[i, j, k])[1]
+    @inbounds extrinsic_vector(i, j, k, grid, uᵢ, vᵢ)[1]
     
 @inline extrinsic_vector_y_component(i, j, k, grid, uᵢ, vᵢ) =
-    @inbounds extrinsic_vector(i, j, k, grid, uᵢ[i, j, k], vᵢ[i, j, k])[2]
+    @inbounds extrinsic_vector(i, j, k, grid, uᵢ, vᵢ)[2]
 
 @inline function kinetic_energyᶜᶜᶜ(i, j, k, grid, uᶜᶜᶜ, vᶜᶜᶜ)
     @inbounds u² = uᶜᶜᶜ[i, j, k]^2
