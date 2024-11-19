@@ -29,7 +29,7 @@ const α = 10
     end
 end
 
-function one_dimensional_advection(N, advection = WENO(order = 7); timestepper = :QuasiAdamsBashforth2)
+function one_dimensional_advection(N, advection = WENO(order = 7), CFL = 0.75; timestepper = :QuasiAdamsBashforth2)
 
     grid = RectilinearGrid(size = N, halo = 6, x = (-1, 1), topology = (Periodic, Flat, Flat))
     
@@ -39,7 +39,7 @@ function one_dimensional_advection(N, advection = WENO(order = 7); timestepper =
 
     set!(model.tracers.b, bᵢ)
 
-    Δt = 0.2 * minimum_xspacing(grid)
+    Δt = CFL * minimum_xspacing(grid)
 
     simulation  = Simulation(model; Δt, stop_time = 2)
 
