@@ -60,11 +60,8 @@ end
 TriadIsopycnalSkewSymmetricDiffusivity(FT::DataType; kw...) = 
     TriadIsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
-function with_tracers(tracers, closure::TISSD{TD, N}) where {TD, N}
-    κ_skew = !isa(closure.κ_skew, NamedTuple) ? closure.κ_skew : tracer_diffusivities(tracers, closure.κ_skew)
-    κ_symmetric = !isa(closure.κ_symmetric, NamedTuple) ? closure.κ_symmetric : tracer_diffusivities(tracers, closure.κ_symmetric)
-    return TriadIsopycnalSkewSymmetricDiffusivity{TD, N}(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
-end
+with_tracers(tracers, closure::TISSD{TD, N}) where {TD, N} = 
+    TriadIsopycnalSkewSymmetricDiffusivity{TD, N}(closure.κ_skew, closure.κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
 
 # For ensembles of closures
 function with_tracers(tracers, closure_vector::TISSDVector)
@@ -81,37 +78,39 @@ function with_tracers(tracers, closure_vector::TISSDVector)
 end
 
 # Note: computing diffusivities at cell centers for now.
-function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfTISSD{TD}) where TD
+function DiffusivityFields(grid, tracer_names, bcs, ::FlavorOfTISSD{TD}) where TD
     if TD() isa VerticallyImplicitTimeDiscretization
         # Precompute the _tapered_ 33 component of the isopycnal rotation tensor
-        return (; ϵ_R₃₃ = Field((Center, Center, Face), grid))
+        K = (; ϵκR₃₃ = ZFaceField(grid))
     else
         return nothing
     end
+
+    return with_tracers(tracer_names, K)
 end
 
 function compute_diffusivities!(diffusivities, closure::FlavorOfTISSD{TD}, model; parameters = :xyz) where TD
 
     arch = model.architecture
     grid = model.grid
+    clock = model.clock
     tracers = model.tracers
     buoyancy = model.buoyancy
 
     if TD() isa VerticallyImplicitTimeDiscretization
         launch!(arch, grid, parameters,
                 triad_compute_tapered_R₃₃!,
-                diffusivities.ϵ_R₃₃, grid, closure, tracers, buoyancy)
+                diffusivities, grid, closure, clock, buoyancy, tracers)
     end
 
     return nothing
 end
 
-@kernel function triad_compute_tapered_R₃₃!(ϵ_R₃₃, grid, closure, tracers, buoyancy) 
+@kernel function triad_compute_tapered_R₃₃!(K, grid, closure, clock, b, C) 
     i, j, k, = @index(Global, NTuple)
     closure = getclosure(i, j, closure)
-    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
-    ϵ = tapering_factorᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
-    @inbounds ϵ_R₃₃[i, j, k] = ϵ * R₃₃
+    κ = closure.κ_symmetric
+    @inbounds K.ϵκR₃₃[i, j, k] = ϵκR₃₃(i, j, k, grid, κ, clock, b, C) 
 end
 
 #####
@@ -182,64 +181,10 @@ struct FluxTapering{FT}
     max_slope :: FT
 end
 
-"""
-    taper_factor(i, j, k, grid, closure, tracers, buoyancy) 
-
-Return the tapering factor `min(1, Sₘₐₓ² / slope²)`, where `slope² = slope_x² + slope_y²`
-that multiplies all components of the isopycnal slope tensor. The tapering factor is calculated on all the
-faces involved in the isopycnal slope tensor calculation. The minimum value of tapering is selected.
-
-References
-==========
-R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical advection schemes
-    on the results of ocean general circulation models", Clim. Dynamics, 5 (4), 211–226.
-"""
-@inline function tapering_factor(i, j, k, grid, closure, tracers, buoyancy)
-    ϵᶠᶜᶜ = tapering_factorᶠᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
-    ϵᶜᶠᶜ = tapering_factorᶜᶠᶜ(i, j, k, grid, closure, tracers, buoyancy)
-    ϵᶜᶜᶠ = tapering_factorᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
-    return min(ϵᶠᶜᶜ, ϵᶜᶠᶜ, ϵᶜᶜᶠ)
-end
-
-@inline function tapering_factorᶠᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
-    by = ℑxyᶠᶜᵃ(i, j, k, grid, ∂y_b, buoyancy, tracers)
-    bz = ℑxzᶠᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    bx = ∂x_b(i, j, k, grid, buoyancy, tracers)
-    return calc_tapering(bx, by, bz, grid, closure.isopycnal_tensor, closure.slope_limiter)
-end
-
-@inline function tapering_factorᶜᶠᶜ(i, j, k, grid, closure, tracers, buoyancy)
-    bx = ℑxyᶜᶠᵃ(i, j, k, grid, ∂x_b, buoyancy, tracers)
-    bz = ℑyzᵃᶠᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    by = ∂y_b(i, j, k, grid, buoyancy, tracers)
-    return calc_tapering(bx, by, bz, grid, closure.isopycnal_tensor, closure.slope_limiter)
-end
-
-@inline function tapering_factorᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
-    bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂x_b, buoyancy, tracers)
-    by = ℑyzᵃᶜᶠ(i, j, k, grid, ∂y_b, buoyancy, tracers)
-    bz = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    return calc_tapering(bx, by, bz, grid, closure.isopycnal_tensor, closure.slope_limiter)
-end
-
-@inline function calc_tapering(bx, by, bz, grid, slope_model, slope_limiter)
-    
-    bz = max(bz, slope_model.minimum_bz)
-    
-    slope_x = - bx / bz
-    slope_y = - by / bz
-   
-    # in case of a stable buoyancy gradient (bz > 0), the slope is set to zero
-    slope² = ifelse(bz <= 0, zero(grid), slope_x^2 + slope_y^2) 
-
-    return min(one(grid), slope_limiter.max_slope^2 / slope²)
-end
-
 # Diffusive fluxes
 
 @inline get_tracer_κ(κ::NamedTuple, tracer_index) = @inbounds κ[tracer_index]
 @inline get_tracer_κ(κ, tracer_index) = κ
-
 
 # Triad diagram key
 # =================
@@ -255,8 +200,7 @@ end
                                   c, clock, C, b) where id
 
     closure = getclosure(i, j, closure)
-
-    κ = get_tracer_κ(closure.κ_skew, id)
+    κ = closure.κ_symmetric
     
     ϵκ⁺⁺ = ϵκx⁺⁺(i-1, j, k, grid, κ, clock, b, C)
     ϵκ⁺⁻ = ϵκx⁺⁻(i-1, j, k, grid, κ, clock, b, C)
@@ -286,8 +230,7 @@ end
                                   c, clock, C, b) where id
 
     closure = getclosure(i, j, closure)
-
-    κ = get_tracer_κ(closure.κ_skew, id)
+    κ = closure.κ_symmetric
 
     ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
 
@@ -309,8 +252,7 @@ end
                                   c, clock, C, b) where {TD, id}
 
     closure = getclosure(i, j, closure)
-
-    κ = get_tracer_κ(closure.κ_skew, id)
+    κ = closure.κ_symmetric
 
     ϵκˣ⁻⁻ = ϵκx⁻⁻(i, j, k,   grid, κ, clock, b, C)
     ϵκˣ⁺⁻ = ϵκx⁺⁻(i, j, k,   grid, κ, clock, b, C)
@@ -321,7 +263,6 @@ end
     ϵκʸ⁺⁻ = ϵκʸ⁺⁻(i, j, k,   grid, κ, clock, b, C)
     ϵκʸ⁻⁺ = ϵκʸ⁻⁺(i, j, k-1, grid, κ, clock, b, C)
     ϵκʸ⁺⁺ = ϵκʸ⁺⁺(i, j, k-1, grid, κ, clock, b, C)
-
 
     # Triad diagram:
     #
@@ -337,136 +278,49 @@ end
     # --------------------
     
     κR₃₁_∂x_c = (ϵκˣ⁻⁻ * Sx⁻⁻(i, j, k,   grid, b, C) * ∂xᶠᶜᶜ(i,   j, k,   grid, c) +
-                ϵκˣ⁺⁻ * Sx⁺⁻(i, j, k,   grid, b, C) * ∂xᶠᶜᶜ(i+1, j, k,   grid, c) +
-                ϵκˣ⁻⁺ * Sx⁻⁺(i, j, k-1, grid, b, C) * ∂xᶠᶜᶜ(i,   j, k-1, grid, c) +
-                ϵκˣ⁺⁺ * Sx⁺⁺(i, j, k-1, grid, b, C) * ∂xᶠᶜᶜ(i+1, j, k-1, grid, c)) / 4
+                 ϵκˣ⁺⁻ * Sx⁺⁻(i, j, k,   grid, b, C) * ∂xᶠᶜᶜ(i+1, j, k,   grid, c) +
+                 ϵκˣ⁻⁺ * Sx⁻⁺(i, j, k-1, grid, b, C) * ∂xᶠᶜᶜ(i,   j, k-1, grid, c) +
+                 ϵκˣ⁺⁺ * Sx⁺⁺(i, j, k-1, grid, b, C) * ∂xᶠᶜᶜ(i+1, j, k-1, grid, c)) / 4
 
     κR₃₂_∂y_c = (ϵκʸ⁻⁻ * Sy⁻⁻(i, j, k,   grid, b, C) * ∂yᶜᶠᶜ(i, j,   k,   grid, c) +
-                ϵκʸ⁺⁻ * Sy⁺⁻(i, j, k,   grid, b, C) * ∂yᶜᶠᶜ(i, j+1, k,   grid, c) +
-                ϵκʸ⁻⁺ * Sy⁻⁺(i, j, k-1, grid, b, C) * ∂yᶜᶠᶜ(i, j,   k-1, grid, c) +
-                ϵκʸ⁺⁺ * Sy⁺⁺(i, j, k-1, grid, b, C) * ∂yᶜᶠᶜ(i, j+1, k-1, grid, c)) / 4
+                 ϵκʸ⁺⁻ * Sy⁺⁻(i, j, k,   grid, b, C) * ∂yᶜᶠᶜ(i, j+1, k,   grid, c) +
+                 ϵκʸ⁻⁺ * Sy⁻⁺(i, j, k-1, grid, b, C) * ∂yᶜᶠᶜ(i, j,   k-1, grid, c) +
+                 ϵκʸ⁺⁺ * Sy⁺⁺(i, j, k-1, grid, b, C) * ∂yᶜᶠᶜ(i, j+1, k-1, grid, c)) / 4
 
-    κϵ_R₃₃_∂z_c = explicit_R₃₃_∂z_c(i, j, k, grid, TD(), c, closure, b, C)
+    κϵ_R₃₃_∂z_c = explicit_R₃₃_∂z_c(i, j, k, grid, TD(), c, )
 
     return - κR₃₁_∂x_c - κR₃₂_∂y_c - κϵ_R₃₃_∂z_c
 end
 
-@inline function explicit_R₃₃_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, c, closure, b, C)
-    ϵ = tapering_factorᶜᶜᶠ(i, j, k, grid, closure, C, b)
-    ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
-    Sx = Sxᶜᶜᶠ(i, j, k, grid, b, C)
-    Sy = Syᶜᶜᶠ(i, j, k, grid, b, C)
-    R₃₃ = Sx^2 + Sy^2
-    return ϵ * R₃₃ * ∂z_c
+@inline function ϵκR₃₃(i, j, k, grid, κ, clock, b, C) 
+
+    ϵκˣ⁻⁻ = ϵκx⁻⁻(i, j, k,   grid, κ, clock, b, C)
+    ϵκˣ⁺⁻ = ϵκx⁺⁻(i, j, k,   grid, κ, clock, b, C)
+    ϵκˣ⁻⁺ = ϵκx⁻⁺(i, j, k-1, grid, κ, clock, b, C)
+    ϵκˣ⁺⁺ = ϵκx⁺⁺(i, j, k-1, grid, κ, clock, b, C)
+
+    ϵκʸ⁻⁻ = ϵκʸ⁻⁻(i, j, k,   grid, κ, clock, b, C)
+    ϵκʸ⁺⁻ = ϵκʸ⁺⁻(i, j, k,   grid, κ, clock, b, C)
+    ϵκʸ⁻⁺ = ϵκʸ⁻⁺(i, j, k-1, grid, κ, clock, b, C)
+    ϵκʸ⁺⁺ = ϵκʸ⁺⁺(i, j, k-1, grid, κ, clock, b, C)
+
+    ϵκR₃₃ = (ϵκˣ⁻⁻ * Sx⁻⁻(i, j, k,   grid, b, C)^2 + ϵκʸ⁻⁻ * Sy⁻⁻(i, j, k,   grid, b, C)^2 +
+             ϵκˣ⁺⁻ * Sx⁺⁻(i, j, k,   grid, b, C)^2 + ϵκʸ⁺⁻ * Sy⁺⁻(i, j, k,   grid, b, C)^2 +
+             ϵκˣ⁻⁺ * Sx⁻⁺(i, j, k-1, grid, b, C)^2 + ϵκʸ⁻⁺ * Sy⁻⁺(i, j, k-1, grid, b, C)^2 +
+             ϵκˣ⁺⁺ * Sx⁺⁺(i, j, k-1, grid, b, C)^2 + ϵκʸ⁺⁺ * Sy⁺⁺(i, j, k-1, grid, b, C)^2) / 4 
+
+    return ϵκR₃₃
 end
 
-#=
-# defined at fcc
-@inline function diffusive_flux_x(i, j, k, grid,
-                                  closure::Union{TISSD, TISSDVector}, diffusivity_fields, ::Val{tracer_index},
-                                  c, clock, fields, buoyancy) where tracer_index
+@inline explicit_R₃₃_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, c, closure, b, C) = ϵκR₃₃(i, j, k, grid, κ, clock, b, C) * ∂zᶜᶜᶠ(i, j, k, grid, c)
 
-    closure = getclosure(i, j, closure)
-
-    κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
-    κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)
-
-    κ_skewᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, issd_coefficient_loc, κ_skew, clock)
-    κ_symmetricᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock)
-
-    ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
-
-    # Average... of... the gradient!
-    ∂y_c = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, c)
-    ∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
-
-    R₁₁ = one(grid)
-    R₁₂ = zero(grid)
-    R₁₃ = isopycnal_rotation_tensor_xz_fcc(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
-    
-    ϵ = tapering_factorᶠᶜᶜ(i, j, k, grid, closure, fields, buoyancy)
-
-    return  - ϵ * ( κ_symmetricᶠᶜᶜ * R₁₁ * ∂x_c +
-                    κ_symmetricᶠᶜᶜ * R₁₂ * ∂y_c +
-                   (κ_symmetricᶠᶜᶜ - κ_skewᶠᶜᶜ) * R₁₃ * ∂z_c)
-end
-
-# defined at cfc
-@inline function diffusive_flux_y(i, j, k, grid,
-                                  closure::Union{TISSD, TISSDVector}, diffusivity_fields, ::Val{tracer_index},
-                                  c, clock, fields, buoyancy) where tracer_index
-
-    closure = getclosure(i, j, closure)
-
-    κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
-    κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)
-
-    κ_skewᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, issd_coefficient_loc, κ_skew, clock)
-    κ_symmetricᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock)
-
-    ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
-
-    # Average... of... the gradient!
-    ∂x_c = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, c)
-    ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
-
-    R₂₁ = zero(grid)
-    R₂₂ = one(grid)
-    R₂₃ = isopycnal_rotation_tensor_yz_cfc(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
-
-    ϵ = tapering_factorᶜᶠᶜ(i, j, k, grid, closure, fields, buoyancy)
-
-    return - ϵ * (κ_symmetricᶜᶠᶜ * R₂₁ * ∂x_c +
-                  κ_symmetricᶜᶠᶜ * R₂₂ * ∂y_c +
-                 (κ_symmetricᶜᶠᶜ - κ_skewᶜᶠᶜ) * R₂₃ * ∂z_c)
-end
-
-# defined at ccf
-@inline function diffusive_flux_z(i, j, k, grid,
-                                  closure::FlavorOfTISSD{TD}, diffusivity_fields, ::Val{tracer_index},
-                                  c, clock, fields, buoyancy) where {tracer_index, TD}
-
-    closure = getclosure(i, j, closure)
-
-    κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
-    κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)
-
-    κ_skewᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ_skew, clock)
-    κ_symmetricᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock)
-
-    # Average... of... the gradient!
-    ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
-    ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
-
-    R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
-    R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
-
-    κ_symmetric_∂z_c = explicit_κ_∂z_c(i, j, k, grid, TD(), c, κ_symmetricᶜᶜᶠ, closure, buoyancy, fields)
-
-    ϵ = tapering_factorᶜᶜᶠ(i, j, k, grid, closure, fields, buoyancy)
-    
-    return - ϵ * κ_symmetric_∂z_c - ϵ * ((κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₁ * ∂x_c +
-                                         (κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₂ * ∂y_c)
-end
-=#
-
-@inline function explicit_κ_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, κ_symmetricᶜᶜᶠ, closure, buoyancy, tracers)
-    ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
-    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
-    ϵ = tapering_factorᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
-    return ϵ * κ_symmetricᶜᶜᶠ * R₃₃ * ∂z_c
-end
+@inline explicit_R₃₃_∂z_c(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, c, closure, b, C) = zero(grid)
 
 @inline explicit_R₃₃_∂z_c(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, args...) = zero(grid)
 @inline explicit_R₃₃_∂z_u(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, args...) = zero(grid)
 @inline explicit_R₃₃_∂z_v(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, args...) = zero(grid)
 
-@inline function κzᶜᶜᶠ(i, j, k, grid, closure::FlavorOfTISSD, K, ::Val{id}, clock) where id
-    closure = getclosure(i, j, closure)
-    κ_symmetric = get_tracer_κ(closure.κ_symmetric, id)
-    ϵ_R₃₃ = @inbounds K.ϵ_R₃₃[i, j, k] # tapered 33 component of rotation tensor
-    return ϵ_R₃₃ * κᶜᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock)
-end
+@inline κzᶜᶜᶠ(i, j, k, grid, closure::FlavorOfTISSD, K, ::Val{id}, clock) where id = @inbounds K[id].ϵκR₃₃[i, j, k]
 
 @inline viscous_flux_ux(i, j, k, grid, closure::Union{TISSD, TISSDVector}, args...) = zero(grid)
 @inline viscous_flux_uy(i, j, k, grid, closure::Union{TISSD, TISSDVector}, args...) = zero(grid)
@@ -493,4 +347,58 @@ Base.show(io::IO, closure::TISSD) =
     print(io, "TriadIsopycnalSkewSymmetricDiffusivity: " *
               "(κ_symmetric=$(closure.κ_symmetric), κ_skew=$(closure.κ_skew), " *
               "(isopycnal_tensor=$(closure.isopycnal_tensor), slope_limiter=$(closure.slope_limiter))")
-              
+
+@inline tapering_factorᶜᶜᶜ(i, j, k, grid, b, C) = one(grid)
+
+# """
+#     taper_factor(i, j, k, grid, closure, tracers, buoyancy) 
+
+# Return the tapering factor `min(1, Sₘₐₓ² / slope²)`, where `slope² = slope_x² + slope_y²`
+# that multiplies all components of the isopycnal slope tensor. The tapering factor is calculated on all the
+# faces involved in the isopycnal slope tensor calculation. The minimum value of tapering is selected.
+
+# References
+# ==========
+# R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical advection schemes
+#     on the results of ocean general circulation models", Clim. Dynamics, 5 (4), 211–226.
+# """
+# @inline function tapering_factor(i, j, k, grid, closure, tracers, buoyancy)
+#     ϵᶠᶜᶜ = tapering_factorᶠᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
+#     ϵᶜᶠᶜ = tapering_factorᶜᶠᶜ(i, j, k, grid, closure, tracers, buoyancy)
+#     ϵᶜᶜᶠ = tapering_factorᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
+#     return min(ϵᶠᶜᶜ, ϵᶜᶠᶜ, ϵᶜᶜᶠ)
+# end
+
+# @inline function tapering_factorᶠᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
+#     by = ℑxyᶠᶜᵃ(i, j, k, grid, ∂y_b, buoyancy, tracers)
+#     bz = ℑxzᶠᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+#     bx = ∂x_b(i, j, k, grid, buoyancy, tracers)
+#     return calc_tapering(bx, by, bz, grid, closure.isopycnal_tensor, closure.slope_limiter)
+# end
+
+# @inline function tapering_factorᶜᶠᶜ(i, j, k, grid, closure, tracers, buoyancy)
+#     bx = ℑxyᶜᶠᵃ(i, j, k, grid, ∂x_b, buoyancy, tracers)
+#     bz = ℑyzᵃᶠᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+#     by = ∂y_b(i, j, k, grid, buoyancy, tracers)
+#     return calc_tapering(bx, by, bz, grid, closure.isopycnal_tensor, closure.slope_limiter)
+# end
+
+# @inline function tapering_factorᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
+#     bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂x_b, buoyancy, tracers)
+#     by = ℑyzᵃᶜᶠ(i, j, k, grid, ∂y_b, buoyancy, tracers)
+#     bz = ∂z_b(i, j, k, grid, buoyancy, tracers)
+#     return calc_tapering(bx, by, bz, grid, closure.isopycnal_tensor, closure.slope_limiter)
+# end
+
+# @inline function calc_tapering(bx, by, bz, grid, slope_model, slope_limiter)
+    
+#     bz = max(bz, slope_model.minimum_bz)
+    
+#     slope_x = - bx / bz
+#     slope_y = - by / bz
+   
+#     # in case of a stable buoyancy gradient (bz > 0), the slope is set to zero
+#     slope² = ifelse(bz <= 0, zero(grid), slope_x^2 + slope_y^2) 
+
+#     return min(one(grid), slope_limiter.max_slope^2 / slope²)
+# end
