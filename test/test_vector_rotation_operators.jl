@@ -172,7 +172,7 @@ end
         @testset "Conversion from Intrinsic to Extrinsic reference frame [$(typeof(arch))]" begin
             @info "  Testing the conversion of a vector between the Intrinsic and Extrinsic reference frame"
             grid = ConformalCubedSphereGrid(arch; panel_size=(10, 10, 1), z=(-1, 0))
-            immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(grid))
+            immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(-2))
             for grid in (grid, immersed_grid)
                 test_vector_rotation(grid)
             end
