@@ -70,15 +70,15 @@ _intrinsic_ coordinate systems are equivalent. However, for other grids (e.g., f
     # θᵢ is the rotation angle between intrinsic and extrinsic reference frame
     Rcosθ =   (deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁺⁻) / Δyᶠᶜᵃ⁺ + deg2rad(φᶠᶠᵃ⁻⁺ - φᶠᶠᵃ⁻⁻) / Δyᶠᶜᵃ⁻) / 2
     Rsinθ = - (deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁻⁺) / Δxᶜᶠᵃ⁺ + deg2rad(φᶠᶠᵃ⁺⁻ - φᶠᶠᵃ⁻⁻) / Δxᶜᶠᵃ⁻) / 2
-    
+
     # Normalization for the rotation angles
     R = sqrt(Rcosθ^2 + Rsinθ^2)
 
     u  = getvalue(uₑ, i, j, k, grid)
     v  = getvalue(vₑ, i, j, k, grid)
 
-    cosθ = Rcosθ / Rᵢ
-    sinθ = Rsinθ / Rᵢ
+    cosθ = Rcosθ / R
+    sinθ = Rsinθ / R
 
     uᵢ =   u * cosθ + v * sinθ
     vᵢ = - u * sinθ + v * cosθ
