@@ -98,7 +98,7 @@ function Base.show(io::IO, s::Simulation)
                      "├── Elapsed wall time: $(prettytime(s.run_wall_time))", "\n",
                      "├── Wall time per iteration: $(prettytime(s.run_wall_time / iteration(s)))", "\n",
                      "├── Stop time: $(prettytime(s.stop_time))", "\n",
-                     "├── Stop iteration : $(s.stop_iteration)", "\n",
+                     "├── Stop iteration: $(s.stop_iteration)", "\n",
                      "├── Wall time limit: $(s.wall_time_limit)", "\n",
                      "├── Callbacks: $(ordered_dict_show(s.callbacks, "│"))", "\n",
                      "├── Output writers: $(ordered_dict_show(s.output_writers, "│"))", "\n",
