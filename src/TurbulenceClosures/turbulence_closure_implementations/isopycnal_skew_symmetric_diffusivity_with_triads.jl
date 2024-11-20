@@ -134,29 +134,49 @@ end
 ##### from https://github.com/CliMA/Oceananigans.jl/blob/glw/homogeneous-bounded/src/TurbulenceClosures/turbulence_closure_implementations/isopycnal_potential_vorticity_diffusivity.jl
 #####
 
-@inline function triad_Sx(ix, jx, kx, iz, jz, kz, grid, buoyancy, tracers)
-    bx = ∂x_b(ix, jx, kx, grid, buoyancy, tracers)
-    bz = ∂z_b(iz, jz, kz, grid, buoyancy, tracers)
+@inline function triad_Sx(ix, iz, j, kx, kz, grid, buoyancy, tracers)
+    bx = ∂x_b(ix, j, kx, grid, buoyancy, tracers)
+    bz = ∂z_b(iz, j, kz, grid, buoyancy, tracers)
     bz = max(bz, zero(grid))
     return ifelse(bz == 0, zero(grid), - bx / bz)
 end
 
-@inline function triad_Sy(iy, jy, ky, iz, jz, kz, grid, buoyancy, tracers)
-    by = ∂y_b(iy, jy, ky, grid, buoyancy, tracers)
-    bz = ∂z_b(iz, jz, kz, grid, buoyancy, tracers)
+@inline function triad_Sy(i, jy, jz, ky, kz, grid, buoyancy, tracers)
+    by = ∂y_b(i, jy, ky, grid, buoyancy, tracers)
+    bz = ∂z_b(i, jz, kz, grid, buoyancy, tracers)
     bz = max(bz, zero(grid))
     return ifelse(bz == 0, zero(grid), - by / bz)
 end
 
-@inline Sx⁺⁺(i, j, k, grid, buoyancy, tracers) = triad_Sx(i+1, j, k, i, j, k+1, grid, buoyancy, tracers)
-@inline Sx⁺⁻(i, j, k, grid, buoyancy, tracers) = triad_Sx(i+1, j, k, i, j, k,   grid, buoyancy, tracers)
-@inline Sx⁻⁺(i, j, k, grid, buoyancy, tracers) = triad_Sx(i,   j, k, i, j, k+1, grid, buoyancy, tracers)
-@inline Sx⁻⁻(i, j, k, grid, buoyancy, tracers) = triad_Sx(i,   j, k, i, j, k,   grid, buoyancy, tracers)
+@inline Sx⁺⁺(i, j, k, grid, buoyancy, tracers) = triad_Sx(i+1, i, j, k, k+1, grid, buoyancy, tracers)
+@inline Sx⁺⁻(i, j, k, grid, buoyancy, tracers) = triad_Sx(i+1, i, j, k, k,   grid, buoyancy, tracers)
+@inline Sx⁻⁺(i, j, k, grid, buoyancy, tracers) = triad_Sx(i,   i, j, k, k+1, grid, buoyancy, tracers)
+@inline Sx⁻⁻(i, j, k, grid, buoyancy, tracers) = triad_Sx(i,   i, j, k, k,   grid, buoyancy, tracers)
 
-@inline Sy⁺⁺(i, j, k, grid, buoyancy, tracers) = triad_Sy(i, j+1, k, i, j, k+1, grid, buoyancy, tracers)
-@inline Sy⁺⁻(i, j, k, grid, buoyancy, tracers) = triad_Sy(i, j+1, k, i, j, k,   grid, buoyancy, tracers)
-@inline Sy⁻⁺(i, j, k, grid, buoyancy, tracers) = triad_Sy(i, j,   k, i, j, k+1, grid, buoyancy, tracers)
-@inline Sy⁻⁻(i, j, k, grid, buoyancy, tracers) = triad_Sy(i, j,   k, i, j, k,   grid, buoyancy, tracers)
+@inline Sy⁺⁺(i, j, k, grid, buoyancy, tracers) = triad_Sy(i, j+1, k, j, k+1, grid, buoyancy, tracers)
+@inline Sy⁺⁻(i, j, k, grid, buoyancy, tracers) = triad_Sy(i, j+1, k, j, k,   grid, buoyancy, tracers)
+@inline Sy⁻⁺(i, j, k, grid, buoyancy, tracers) = triad_Sy(i, j,   k, j, k+1, grid, buoyancy, tracers)
+@inline Sy⁻⁻(i, j, k, grid, buoyancy, tracers) = triad_Sy(i, j,   k, j, k,   grid, buoyancy, tracers)
+
+# We remove triads that have at least one immersed interface
+@inline triad_mask_x(ix, iz, j, kx, kz, grid) = one(grid)
+@inline triad_mask_y(ix, iz, j, kx, kz, grid) = one(grid)
+
+@inline triad_mask_x(ix, iz, j, kx, kz, grid::ImmersedBoundaryGrid) = 
+    immersed_peripheral_node(ix, j, kx, grid) | immersed_peripheral_node(iz, j, kz, grid) 
+
+@inline triad_mask_y(i, jy, jz, ky, kz, grid::ImmersedBoundaryGrid) = 
+    immersed_peripheral_node(i, jy, ky, grid) | immersed_peripheral_node(i, jz, kz, grid) 
+
+@inline ϵκx⁺⁺(i, j, k, grid, κ, clock, b, C) = triad_mask_x(i+1, i, j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
+@inline ϵκx⁺⁻(i, j, k, grid, κ, clock, b, C) = triad_mask_x(i+1, i, j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
+@inline ϵκx⁻⁺(i, j, k, grid, κ, clock, b, C) = triad_mask_x(i,   i, j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
+@inline ϵκx⁻⁻(i, j, k, grid, κ, clock, b, C) = triad_mask_x(i,   i, j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
+
+@inline ϵκy⁺⁺(i, j, k, grid, κ, clock, b, C) = triad_mask_y(i, j+1, j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
+@inline ϵκy⁺⁻(i, j, k, grid, κ, clock, b, C) = triad_mask_y(i, j+1, j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
+@inline ϵκy⁻⁺(i, j, k, grid, κ, clock, b, C) = triad_mask_y(i, j,   j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
+@inline ϵκy⁻⁻(i, j, k, grid, κ, clock, b, C) = triad_mask_y(i, j,   j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
 
 # Tensor components
 @inline Sxᶠᶜᶜ(i, j, k, grid, args...) = (Sx⁻⁺(i,   j, k, grid, args...) + Sx⁻⁻(i,   j, k, grid, args...) +    # west cell, z-average
@@ -173,9 +193,6 @@ end
 
 @inline Syᶜᶜᶠ(i, j, k, grid, args...) = (Sy⁺⁻(i, j, k,   grid, args...) + Sy⁻⁻(i, j, k,   grid, args...) +    # top cell, y-average
                                          Sy⁺⁺(i, j, k-1, grid, args...) + Sy⁻⁺(i, j, k-1, grid, args...)) / 4 # bottom cell, y-average
-
-
-
 
 struct FluxTapering{FT}
     max_slope :: FT
@@ -256,25 +273,30 @@ end
     closure = getclosure(i, j, closure)
 
     κ = get_tracer_κ(closure.κ_skew, id)
-    κ = κᶠᶜᶜ(i, j, k, grid, issd_coefficient_loc, κ, clock)
+    
+    ϵκ⁺⁺ = ϵκx⁺⁺(i-1, j, k, grid, κ, clock)
+    ϵκ⁺⁻ = ϵκx⁺⁻(i-1, j, k, grid, κ, clock)
+    ϵκ⁻⁺ = ϵκx⁻⁺(i,   j, k, grid, κ, clock)
+    ϵκ⁻⁻ = ϵκx⁻⁻(i,   j, k, grid, κ, clock)
 
     # Small slope approximation
-    R₁₁_∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
-    R₁₂_∂y_c = zero(grid)
+    ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
+   
+    R₁₁_∂x_c = (ϵκ⁺ + ϵκ⁻) * ∂x_c / 2
 
     #       i-1     i 
     # k+1  -------------
     #           |      |
     #       ┏┗  ∘  ┛┓  | k
     #           |      |
-    # k   ------|------|
+    # k   ------|------|    
 
-    R₁₃_∂z_c = (Sx⁺⁺(i-1, j, k, grid, b, C) * ∂zᶜᶜᶠ(i-1, j, k+1, grid, c) +
-                Sx⁺⁻(i-1, j, k, grid, b, C) * ∂zᶜᶜᶠ(i-1, j, k,   grid, c) +
-                Sx⁻⁺(i,   j, k, grid, b, C) * ∂zᶜᶜᶠ(i,   j, k+1, grid, c) +
-                Sx⁻⁻(i,   j, k, grid, b, C) * ∂zᶜᶜᶠ(i,   j, k,   grid, c)) / 4
+    Fx = (ϵκ⁺⁺ * (∂x_c + Sx⁺⁺(i-1, j, k, grid, b, C) * ∂zᶜᶜᶠ(i-1, j, k+1, grid, c)) +
+          ϵκ⁺⁻ * (∂x_c + Sx⁺⁻(i-1, j, k, grid, b, C) * ∂zᶜᶜᶠ(i-1, j, k,   grid, c)) +
+          ϵκ⁻⁺ * (∂x_c + Sx⁻⁺(i,   j, k, grid, b, C) * ∂zᶜᶜᶠ(i,   j, k+1, grid, c)) +
+          ϵκ⁻⁻ * (∂x_c + Sx⁻⁻(i,   j, k, grid, b, C) * ∂zᶜᶜᶠ(i,   j, k,   grid, c))) / 4
     
-    return - κ * (R₁₁_∂x_c + R₁₂_∂y_c + R₁₃_∂z_c)
+    return - (R₁₁_∂x_c + R₁₃_∂z_c)
 end
 
 # defined at cfc
