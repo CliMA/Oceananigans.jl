@@ -318,9 +318,12 @@ end
     return ϵκR₃₃
 end
 
-@inline explicit_R₃₃_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, c, closure, b, C) = ϵκR₃₃(i, j, k, grid, κ, clock, b, C) * ∂zᶜᶜᶠ(i, j, k, grid, c)
-@inline explicit_R₃₃_∂z_c(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, c, closure, b, C) = zero(grid)
+@inline function explicit_R₃₃_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, c, closure, b, C) 
+    κ = closure.κ_symmetric
+    return ϵκR₃₃(i, j, k, grid, κ, clock, b, C) * ∂zᶜᶜᶠ(i, j, k, grid, c)
+end
 
+@inline explicit_R₃₃_∂z_c(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, c, closure, b, C) = zero(grid)
 
 @inline κzᶜᶜᶠ(i, j, k, grid, closure::FlavorOfTISSD, K, ::Val{id}, clock) where id = @inbounds K.ϵκR₃₃[i, j, k]
 
