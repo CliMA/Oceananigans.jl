@@ -68,9 +68,9 @@ end
 
 @inline function fractional_x_index(x, locs, grid::XRegularRG)
     x₀ = xnode(1, 1, 1, grid, locs...)
-    Δx = Δx(1, 1, 1, grid, locs...)
+    dx = Δx(1, 1, 1, grid, locs...)
     FT = eltype(grid)
-    return convert(FT, (x - x₀) / Δx) + 1 # 1 - based indexing 
+    return convert(FT, (x - x₀) / dx) + 1 # 1 - based indexing 
 end
 
 @inline function fractional_x_index(λ, locs, grid::XRegularLLG)
@@ -100,9 +100,9 @@ end
 
 @inline function fractional_y_index(y, locs, grid::YRegularRG)
     y₀ = ynode(1, 1, 1, grid, locs...)
-    Δy = Δy(1, 1, 1, grid, locs...)
+    dy = Δy(1, 1, 1, grid, locs...)
     FT = eltype(grid)
-    return convert(FT, (y - y₀) / Δy) + 1 # 1 - based indexing 
+    return convert(FT, (y - y₀) / dy) + 1 # 1 - based indexing 
 end
 
 @inline function fractional_y_index(φ, locs, grid::YRegularLLG)
@@ -134,8 +134,8 @@ ZRegGrid = Union{ZRegularRG, ZRegularLLG, ZRegOrthogonalSphericalShellGrid}
 
 @inline function fractional_z_index(z::FT, locs, grid::ZRegGrid) where FT
     z₀ = znode(1, 1, 1, grid, locs...)
-    Δz = Δz(1, 1, 1, grid, locs...)
-    return convert(FT, (z - z₀) / Δz) + 1 # 1 - based indexing 
+    dz = Δz(1, 1, 1, grid, locs...)
+    return convert(FT, (z - z₀) / dz) + 1 # 1 - based indexing 
 end
 
 @inline function fractional_z_index(z, locs, grid)
