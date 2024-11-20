@@ -178,22 +178,6 @@ end
 @inline ϵκy⁻⁺(i, j, k, grid, κ, clock, b, C) = triad_mask_y(i, j,   j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
 @inline ϵκy⁻⁻(i, j, k, grid, κ, clock, b, C) = triad_mask_y(i, j,   j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
 
-# Tensor components
-@inline Sxᶠᶜᶜ(i, j, k, grid, args...) = (Sx⁻⁺(i,   j, k, grid, args...) + Sx⁻⁻(i,   j, k, grid, args...) +    # west cell, z-average
-                                         Sx⁻⁺(i-1, j, k, grid, args...) + Sx⁻⁻(i-1, j, k, grid, args...)) / 4 # east cell, z-average
-
-@inline Syᶜᶠᶜ(i, j, k, grid, args...) = (Sy⁻⁺(i, j,   k, grid, args...) + Sy⁻⁻(i, j,   k, grid, args...) +    # south cell, z-average
-                                         Sy⁻⁺(i, j-1, k, grid, args...) + Sy⁻⁻(i, j-1, k, grid, args...)) / 4 # north cell, z-average
-
-@inline Syᶜᶜᶠ(i, j, k, grid, args...) = (Sy⁺⁻(i, j, k,   grid, args...) + Sy⁻⁻(i, j, k,   grid, args...) +    # top cell, y-average
-                                         Sy⁺⁺(i, j, k-1, grid, args...) + Sy⁻⁺(i, j, k-1, grid, args...)) / 4 # bottom cell, y-average
-
-@inline Sxᶜᶜᶠ(i, j, k, grid, args...) = (Sx⁺⁻(i, j, k,   grid, args...) + Sx⁻⁻(i, j, k,   grid, args...) +    # top cell, x-average
-                                         Sx⁺⁺(i, j, k-1, grid, args...) + Sx⁻⁺(i, j, k-1, grid, args...)) / 4 # bottom cell, x-average
-
-@inline Syᶜᶜᶠ(i, j, k, grid, args...) = (Sy⁺⁻(i, j, k,   grid, args...) + Sy⁻⁻(i, j, k,   grid, args...) +    # top cell, y-average
-                                         Sy⁺⁺(i, j, k-1, grid, args...) + Sy⁻⁺(i, j, k-1, grid, args...)) / 4 # bottom cell, y-average
-
 struct FluxTapering{FT}
     max_slope :: FT
 end
@@ -274,15 +258,13 @@ end
 
     κ = get_tracer_κ(closure.κ_skew, id)
     
-    ϵκ⁺⁺ = ϵκx⁺⁺(i-1, j, k, grid, κ, clock)
-    ϵκ⁺⁻ = ϵκx⁺⁻(i-1, j, k, grid, κ, clock)
-    ϵκ⁻⁺ = ϵκx⁻⁺(i,   j, k, grid, κ, clock)
-    ϵκ⁻⁻ = ϵκx⁻⁻(i,   j, k, grid, κ, clock)
+    ϵκ⁺⁺ = ϵκx⁺⁺(i-1, j, k, grid, κ, clock, b, C)
+    ϵκ⁺⁻ = ϵκx⁺⁻(i-1, j, k, grid, κ, clock, b, C)
+    ϵκ⁻⁺ = ϵκx⁻⁺(i,   j, k, grid, κ, clock, b, C)
+    ϵκ⁻⁻ = ϵκx⁻⁻(i,   j, k, grid, κ, clock, b, C)
 
     # Small slope approximation
     ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
-   
-    R₁₁_∂x_c = (ϵκ⁺ + ϵκ⁻) * ∂x_c / 2
 
     #       i-1     i 
     # k+1  -------------
@@ -296,7 +278,7 @@ end
           ϵκ⁻⁺ * (∂x_c + Sx⁻⁺(i,   j, k, grid, b, C) * ∂zᶜᶜᶠ(i,   j, k+1, grid, c)) +
           ϵκ⁻⁻ * (∂x_c + Sx⁻⁻(i,   j, k, grid, b, C) * ∂zᶜᶜᶠ(i,   j, k,   grid, c))) / 4
     
-    return - (R₁₁_∂x_c + R₁₃_∂z_c)
+    return - Fx
 end
 
 # defined at cfc
@@ -306,18 +288,20 @@ end
     closure = getclosure(i, j, closure)
 
     κ = get_tracer_κ(closure.κ_skew, id)
-    κ = κᶜᶠᶜ(i, j, k, grid, issd_coefficient_loc, κ, clock)
 
-    # Small slope approximation
-    R₂₁_∂x_c = zero(grid)
-    R₂₂_∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
+    ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
 
-    R₂₃_∂z_c = (Sy⁺⁺(i, j-1, k, grid, b, C) * ∂zᶜᶜᶠ(i, j-1, k+1, grid, c) +
-                Sy⁺⁻(i, j-1, k, grid, b, C) * ∂zᶜᶜᶠ(i, j-1, k,   grid, c) +
-                Sy⁻⁺(i, j,   k, grid, b, C) * ∂zᶜᶜᶠ(i, j,   k+1, grid, c) +
-                Sy⁻⁻(i, j,   k, grid, b, C) * ∂zᶜᶜᶠ(i, j,   k,   grid, c)) / 4
+    ϵκ⁺⁺ = ϵκy⁺⁺(i, j-1, k, grid, κ, clock, b, C)
+    ϵκ⁺⁻ = ϵκy⁺⁻(i, j-1, k, grid, κ, clock, b, C)
+    ϵκ⁻⁺ = ϵκy⁻⁺(i, j,   k, grid, κ, clock, b, C)
+    ϵκ⁻⁻ = ϵκy⁻⁻(i, j,   k, grid, κ, clock, b, C)
     
-    return - κ * (R₂₁_∂x_c + R₂₂_∂y_c + R₂₃_∂z_c)
+    Fy = (ϵκ⁺⁺ * (∂y_c + Sy⁺⁺(i, j-1, k, grid, b, C) * ∂zᶜᶜᶠ(i, j-1, k+1, grid, c)) +
+          ϵκ⁺⁻ * (∂y_c + Sy⁺⁻(i, j-1, k, grid, b, C) * ∂zᶜᶜᶠ(i, j-1, k,   grid, c)) +
+          ϵκ⁻⁺ * (∂y_c + Sy⁻⁺(i, j,   k, grid, b, C) * ∂zᶜᶜᶠ(i, j,   k+1, grid, c)) +
+          ϵκ⁻⁻ * (∂y_c + Sy⁻⁻(i, j,   k, grid, b, C) * ∂zᶜᶜᶠ(i, j,   k,   grid, c))) / 4
+    
+    return - Fy
 end
 
 # defined at ccf
@@ -327,7 +311,17 @@ end
     closure = getclosure(i, j, closure)
 
     κ = get_tracer_κ(closure.κ_skew, id)
-    κ = κᶜᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ, clock)
+
+    ϵκˣ⁻⁻ = ϵκx⁻⁻(i, j, k,   grid, κ, clock, b, C)
+    ϵκˣ⁺⁻ = ϵκx⁺⁻(i, j, k,   grid, κ, clock, b, C)
+    ϵκˣ⁻⁺ = ϵκx⁻⁺(i, j, k-1, grid, κ, clock, b, C)
+    ϵκˣ⁺⁺ = ϵκx⁺⁺(i, j, k-1, grid, κ, clock, b, C)
+
+    ϵκʸ⁻⁻ = ϵκʸ⁻⁻(i, j, k,   grid, κ, clock, b, C)
+    ϵκʸ⁺⁻ = ϵκʸ⁺⁻(i, j, k,   grid, κ, clock, b, C)
+    ϵκʸ⁻⁺ = ϵκʸ⁻⁺(i, j, k-1, grid, κ, clock, b, C)
+    ϵκʸ⁺⁺ = ϵκʸ⁺⁺(i, j, k-1, grid, κ, clock, b, C)
+
 
     # Triad diagram:
     #
@@ -342,19 +336,19 @@ end
     # |     |     |     |
     # --------------------
     
-    R₃₁_∂x_c = (Sx⁻⁻(i, j, k,   grid, b, C) * ∂xᶠᶜᶜ(i,   j, k,   grid, c) +
-                Sx⁺⁻(i, j, k,   grid, b, C) * ∂xᶠᶜᶜ(i+1, j, k,   grid, c) +
-                Sx⁻⁺(i, j, k-1, grid, b, C) * ∂xᶠᶜᶜ(i,   j, k-1, grid, c) +
-                Sx⁺⁺(i, j, k-1, grid, b, C) * ∂xᶠᶜᶜ(i+1, j, k-1, grid, c)) / 4
+    κR₃₁_∂x_c = (ϵκˣ⁻⁻ * Sx⁻⁻(i, j, k,   grid, b, C) * ∂xᶠᶜᶜ(i,   j, k,   grid, c) +
+                ϵκˣ⁺⁻ * Sx⁺⁻(i, j, k,   grid, b, C) * ∂xᶠᶜᶜ(i+1, j, k,   grid, c) +
+                ϵκˣ⁻⁺ * Sx⁻⁺(i, j, k-1, grid, b, C) * ∂xᶠᶜᶜ(i,   j, k-1, grid, c) +
+                ϵκˣ⁺⁺ * Sx⁺⁺(i, j, k-1, grid, b, C) * ∂xᶠᶜᶜ(i+1, j, k-1, grid, c)) / 4
 
-    R₃₂_∂y_c = (Sy⁻⁻(i, j, k,   grid, b, C) * ∂yᶜᶠᶜ(i, j,   k,   grid, c) +
-                Sy⁺⁻(i, j, k,   grid, b, C) * ∂yᶜᶠᶜ(i, j+1, k,   grid, c) +
-                Sy⁻⁺(i, j, k-1, grid, b, C) * ∂yᶜᶠᶜ(i, j,   k-1, grid, c) +
-                Sy⁺⁺(i, j, k-1, grid, b, C) * ∂yᶜᶠᶜ(i, j+1, k-1, grid, c)) / 4
+    κR₃₂_∂y_c = (ϵκʸ⁻⁻ * Sy⁻⁻(i, j, k,   grid, b, C) * ∂yᶜᶠᶜ(i, j,   k,   grid, c) +
+                ϵκʸ⁺⁻ * Sy⁺⁻(i, j, k,   grid, b, C) * ∂yᶜᶠᶜ(i, j+1, k,   grid, c) +
+                ϵκʸ⁻⁺ * Sy⁻⁺(i, j, k-1, grid, b, C) * ∂yᶜᶠᶜ(i, j,   k-1, grid, c) +
+                ϵκʸ⁺⁺ * Sy⁺⁺(i, j, k-1, grid, b, C) * ∂yᶜᶠᶜ(i, j+1, k-1, grid, c)) / 4
 
-    ϵ_R₃₃_∂z_c = explicit_R₃₃_∂z_c(i, j, k, grid, TD(), c, closure, b, C)
+    κϵ_R₃₃_∂z_c = explicit_R₃₃_∂z_c(i, j, k, grid, TD(), c, closure, b, C)
 
-    return - κ * (R₃₁_∂x_c + R₃₂_∂y_c + ϵ_R₃₃_∂z_c)
+    return - κR₃₁_∂x_c - κR₃₂_∂y_c - κϵ_R₃₃_∂z_c
 end
 
 @inline function explicit_R₃₃_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, c, closure, b, C)
