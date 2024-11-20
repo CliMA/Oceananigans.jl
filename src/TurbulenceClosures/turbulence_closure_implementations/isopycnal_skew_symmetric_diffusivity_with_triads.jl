@@ -16,7 +16,6 @@ end
 const TISSD{TD} = TriadIsopycnalSkewSymmetricDiffusivity{TD} where TD
 const TISSDVector{TD} = AbstractVector{<:TISSD{TD}} where TD
 const FlavorOfTISSD{TD} = Union{TISSD{TD}, TISSDVector{TD}} where TD
-const issd_coefficient_loc = (Center(), Center(), Center())
 
 """
     TriadIsopycnalSkewSymmetricDiffusivity([time_disc=VerticallyImplicitTimeDiscretization(), FT=Float64;]
@@ -86,7 +85,7 @@ function DiffusivityFields(grid, tracer_names, bcs, ::FlavorOfTISSD{TD}) where T
         return nothing
     end
 
-    return with_tracers(tracer_names, K)
+    return K
 end
 
 function compute_diffusivities!(diffusivities, closure::FlavorOfTISSD{TD}, model; parameters = :xyz) where TD
@@ -167,15 +166,15 @@ end
 @inline triad_mask_y(i, jy, jz, ky, kz, grid::ImmersedBoundaryGrid) = 
     immersed_peripheral_node(i, jy, ky, grid) | immersed_peripheral_node(i, jz, kz, grid) 
 
-@inline ϵκx⁺⁺(i, j, k, grid, κ, clock, b, C) = triad_mask_x(i+1, i, j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
-@inline ϵκx⁺⁻(i, j, k, grid, κ, clock, b, C) = triad_mask_x(i+1, i, j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
-@inline ϵκx⁻⁺(i, j, k, grid, κ, clock, b, C) = triad_mask_x(i,   i, j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
-@inline ϵκx⁻⁻(i, j, k, grid, κ, clock, b, C) = triad_mask_x(i,   i, j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
+@inline ϵκx⁺⁺(i, j, k, grid, loc, κ, clock, b, C) = triad_mask_x(i+1, i, j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
+@inline ϵκx⁺⁻(i, j, k, grid, loc, κ, clock, b, C) = triad_mask_x(i+1, i, j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
+@inline ϵκx⁻⁺(i, j, k, grid, loc, κ, clock, b, C) = triad_mask_x(i,   i, j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
+@inline ϵκx⁻⁻(i, j, k, grid, loc, κ, clock, b, C) = triad_mask_x(i,   i, j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
 
-@inline ϵκy⁺⁺(i, j, k, grid, κ, clock, b, C) = triad_mask_y(i, j+1, j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
-@inline ϵκy⁺⁻(i, j, k, grid, κ, clock, b, C) = triad_mask_y(i, j+1, j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
-@inline ϵκy⁻⁺(i, j, k, grid, κ, clock, b, C) = triad_mask_y(i, j,   j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
-@inline ϵκy⁻⁻(i, j, k, grid, κ, clock, b, C) = triad_mask_y(i, j,   j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
+@inline ϵκy⁺⁺(i, j, k, grid, loc, κ, clock, b, C) = triad_mask_y(i, j+1, j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
+@inline ϵκy⁺⁻(i, j, k, grid, loc, κ, clock, b, C) = triad_mask_y(i, j+1, j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
+@inline ϵκy⁻⁺(i, j, k, grid, loc, κ, clock, b, C) = triad_mask_y(i, j,   j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
+@inline ϵκy⁻⁻(i, j, k, grid, loc, κ, clock, b, C) = triad_mask_y(i, j,   j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
 
 struct FluxTapering{FT}
     max_slope :: FT
@@ -202,10 +201,12 @@ end
     closure = getclosure(i, j, closure)
     κ = closure.κ_symmetric
     
-    ϵκ⁺⁺ = ϵκx⁺⁺(i-1, j, k, grid, κ, clock, b, C)
-    ϵκ⁺⁻ = ϵκx⁺⁻(i-1, j, k, grid, κ, clock, b, C)
-    ϵκ⁻⁺ = ϵκx⁻⁺(i,   j, k, grid, κ, clock, b, C)
-    ϵκ⁻⁻ = ϵκx⁻⁻(i,   j, k, grid, κ, clock, b, C)
+    loc = (Center(), Center(), Center())
+
+    ϵκ⁺⁺ = ϵκx⁺⁺(i-1, j, k, grid, loc, κ, clock, b, C)
+    ϵκ⁺⁻ = ϵκx⁺⁻(i-1, j, k, grid, loc, κ, clock, b, C)
+    ϵκ⁻⁺ = ϵκx⁻⁺(i,   j, k, grid, loc, κ, clock, b, C)
+    ϵκ⁻⁻ = ϵκx⁻⁻(i,   j, k, grid, loc, κ, clock, b, C)
 
     # Small slope approximation
     ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
@@ -232,12 +233,14 @@ end
     closure = getclosure(i, j, closure)
     κ = closure.κ_symmetric
 
+    loc = (Center(), Center(), Center())
+
     ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
 
-    ϵκ⁺⁺ = ϵκy⁺⁺(i, j-1, k, grid, κ, clock, b, C)
-    ϵκ⁺⁻ = ϵκy⁺⁻(i, j-1, k, grid, κ, clock, b, C)
-    ϵκ⁻⁺ = ϵκy⁻⁺(i, j,   k, grid, κ, clock, b, C)
-    ϵκ⁻⁻ = ϵκy⁻⁻(i, j,   k, grid, κ, clock, b, C)
+    ϵκ⁺⁺ = ϵκy⁺⁺(i, j-1, k, grid, loc, κ, clock, b, C)
+    ϵκ⁺⁻ = ϵκy⁺⁻(i, j-1, k, grid, loc, κ, clock, b, C)
+    ϵκ⁻⁺ = ϵκy⁻⁺(i, j,   k, grid, loc, κ, clock, b, C)
+    ϵκ⁻⁻ = ϵκy⁻⁻(i, j,   k, grid, loc, κ, clock, b, C)
     
     Fy = (ϵκ⁺⁺ * (∂y_c + Sy⁺⁺(i, j-1, k, grid, b, C) * ∂zᶜᶜᶠ(i, j-1, k+1, grid, c)) +
           ϵκ⁺⁻ * (∂y_c + Sy⁺⁻(i, j-1, k, grid, b, C) * ∂zᶜᶜᶠ(i, j-1, k,   grid, c)) +
@@ -254,15 +257,17 @@ end
     closure = getclosure(i, j, closure)
     κ = closure.κ_symmetric
 
-    ϵκˣ⁻⁻ = ϵκx⁻⁻(i, j, k,   grid, κ, clock, b, C)
-    ϵκˣ⁺⁻ = ϵκx⁺⁻(i, j, k,   grid, κ, clock, b, C)
-    ϵκˣ⁻⁺ = ϵκx⁻⁺(i, j, k-1, grid, κ, clock, b, C)
-    ϵκˣ⁺⁺ = ϵκx⁺⁺(i, j, k-1, grid, κ, clock, b, C)
+    loc = (Center(), Center(), Center())
 
-    ϵκʸ⁻⁻ = ϵκʸ⁻⁻(i, j, k,   grid, κ, clock, b, C)
-    ϵκʸ⁺⁻ = ϵκʸ⁺⁻(i, j, k,   grid, κ, clock, b, C)
-    ϵκʸ⁻⁺ = ϵκʸ⁻⁺(i, j, k-1, grid, κ, clock, b, C)
-    ϵκʸ⁺⁺ = ϵκʸ⁺⁺(i, j, k-1, grid, κ, clock, b, C)
+    ϵκˣ⁻⁻ = ϵκx⁻⁻(i, j, k,   grid, loc, κ, clock, b, C)
+    ϵκˣ⁺⁻ = ϵκx⁺⁻(i, j, k,   grid, loc, κ, clock, b, C)
+    ϵκˣ⁻⁺ = ϵκx⁻⁺(i, j, k-1, grid, loc, κ, clock, b, C)
+    ϵκˣ⁺⁺ = ϵκx⁺⁺(i, j, k-1, grid, loc, κ, clock, b, C)
+
+    ϵκʸ⁻⁻ = ϵκy⁻⁻(i, j, k,   grid, loc, κ, clock, b, C)
+    ϵκʸ⁺⁻ = ϵκy⁺⁻(i, j, k,   grid, loc, κ, clock, b, C)
+    ϵκʸ⁻⁺ = ϵκy⁻⁺(i, j, k-1, grid, loc, κ, clock, b, C)
+    ϵκʸ⁺⁺ = ϵκy⁺⁺(i, j, k-1, grid, loc, κ, clock, b, C)
 
     # Triad diagram:
     #
@@ -287,22 +292,23 @@ end
                  ϵκʸ⁻⁺ * Sy⁻⁺(i, j, k-1, grid, b, C) * ∂yᶜᶠᶜ(i, j,   k-1, grid, c) +
                  ϵκʸ⁺⁺ * Sy⁺⁺(i, j, k-1, grid, b, C) * ∂yᶜᶠᶜ(i, j+1, k-1, grid, c)) / 4
 
-    κϵ_R₃₃_∂z_c = explicit_R₃₃_∂z_c(i, j, k, grid, TD(), c, )
+    κϵ_R₃₃_∂z_c = explicit_R₃₃_∂z_c(i, j, k, grid, TD(), c, closure, b, C)
 
     return - κR₃₁_∂x_c - κR₃₂_∂y_c - κϵ_R₃₃_∂z_c
 end
 
 @inline function ϵκR₃₃(i, j, k, grid, κ, clock, b, C) 
+    loc = (Center(), Center(), Center())
 
-    ϵκˣ⁻⁻ = ϵκx⁻⁻(i, j, k,   grid, κ, clock, b, C)
-    ϵκˣ⁺⁻ = ϵκx⁺⁻(i, j, k,   grid, κ, clock, b, C)
-    ϵκˣ⁻⁺ = ϵκx⁻⁺(i, j, k-1, grid, κ, clock, b, C)
-    ϵκˣ⁺⁺ = ϵκx⁺⁺(i, j, k-1, grid, κ, clock, b, C)
+    ϵκˣ⁻⁻ = ϵκx⁻⁻(i, j, k,   grid, loc, κ, clock, b, C)
+    ϵκˣ⁺⁻ = ϵκx⁺⁻(i, j, k,   grid, loc, κ, clock, b, C)
+    ϵκˣ⁻⁺ = ϵκx⁻⁺(i, j, k-1, grid, loc, κ, clock, b, C)
+    ϵκˣ⁺⁺ = ϵκx⁺⁺(i, j, k-1, grid, loc, κ, clock, b, C)
 
-    ϵκʸ⁻⁻ = ϵκʸ⁻⁻(i, j, k,   grid, κ, clock, b, C)
-    ϵκʸ⁺⁻ = ϵκʸ⁺⁻(i, j, k,   grid, κ, clock, b, C)
-    ϵκʸ⁻⁺ = ϵκʸ⁻⁺(i, j, k-1, grid, κ, clock, b, C)
-    ϵκʸ⁺⁺ = ϵκʸ⁺⁺(i, j, k-1, grid, κ, clock, b, C)
+    ϵκʸ⁻⁻ = ϵκy⁻⁻(i, j, k,   grid, loc, κ, clock, b, C)
+    ϵκʸ⁺⁻ = ϵκy⁺⁻(i, j, k,   grid, loc, κ, clock, b, C)
+    ϵκʸ⁻⁺ = ϵκy⁻⁺(i, j, k-1, grid, loc, κ, clock, b, C)
+    ϵκʸ⁺⁺ = ϵκy⁺⁺(i, j, k-1, grid, loc, κ, clock, b, C)
 
     ϵκR₃₃ = (ϵκˣ⁻⁻ * Sx⁻⁻(i, j, k,   grid, b, C)^2 + ϵκʸ⁻⁻ * Sy⁻⁻(i, j, k,   grid, b, C)^2 +
              ϵκˣ⁺⁻ * Sx⁺⁻(i, j, k,   grid, b, C)^2 + ϵκʸ⁺⁻ * Sy⁺⁻(i, j, k,   grid, b, C)^2 +
@@ -313,14 +319,10 @@ end
 end
 
 @inline explicit_R₃₃_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, c, closure, b, C) = ϵκR₃₃(i, j, k, grid, κ, clock, b, C) * ∂zᶜᶜᶠ(i, j, k, grid, c)
-
 @inline explicit_R₃₃_∂z_c(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, c, closure, b, C) = zero(grid)
 
-@inline explicit_R₃₃_∂z_c(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, args...) = zero(grid)
-@inline explicit_R₃₃_∂z_u(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, args...) = zero(grid)
-@inline explicit_R₃₃_∂z_v(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, args...) = zero(grid)
 
-@inline κzᶜᶜᶠ(i, j, k, grid, closure::FlavorOfTISSD, K, ::Val{id}, clock) where id = @inbounds K[id].ϵκR₃₃[i, j, k]
+@inline κzᶜᶜᶠ(i, j, k, grid, closure::FlavorOfTISSD, K, ::Val{id}, clock) where id = @inbounds K.ϵκR₃₃[i, j, k]
 
 @inline viscous_flux_ux(i, j, k, grid, closure::Union{TISSD, TISSDVector}, args...) = zero(grid)
 @inline viscous_flux_uy(i, j, k, grid, closure::Union{TISSD, TISSDVector}, args...) = zero(grid)
