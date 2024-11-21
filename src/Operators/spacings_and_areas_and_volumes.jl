@@ -272,9 +272,7 @@ end
 ##### We also use the function "volume" rather than `V`.
 #####
 
-location_superscript(L) = L == :Face ? Symbol("ᶠ") : Symbol("ᶜ")
-
-location_code(LX, LY, LZ) = Symbol(location_superscript(LX), location_superscript(LY), location_superscript(LZ))
+location_code(LX, LY, LZ) = Symbol(interpolation_code(LX), interpolation_code(LY), interpolation_code(LZ))
 
 for LX in (:Center, :Face, :Nothing)
     for LY in (:Center, :Face, :Nothing)
