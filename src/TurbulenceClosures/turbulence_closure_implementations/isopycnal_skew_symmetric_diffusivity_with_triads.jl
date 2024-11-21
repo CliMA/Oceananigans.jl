@@ -176,10 +176,6 @@ end
 @inline ϵκy⁻⁺(i, j, k, grid, loc, κ, clock, b, C) = triad_mask_y(i, j,   j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
 @inline ϵκy⁻⁻(i, j, k, grid, loc, κ, clock, b, C) = triad_mask_y(i, j,   j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
 
-struct FluxTapering{FT}
-    max_slope :: FT
-end
-
 # Diffusive fluxes
 
 @inline get_tracer_κ(κ::NamedTuple, tracer_index) = @inbounds κ[tracer_index]
