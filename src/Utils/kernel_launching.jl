@@ -298,6 +298,16 @@ end
     return nothing
 end
 
+macro active_index(active_map, locale, args...)
+    index = quote
+        if isnothing($active_map)
+            return @index($locale, $args...)
+        else
+            return active_linear_index_to_tuple(@index($locale, Linear), $active_map)
+        end
+    end
+end
+
 #####
 ##### Extension to KA for offset indices: to remove when implemented in KA
 ##### Allows to use `launch!` with offsets, e.g.:

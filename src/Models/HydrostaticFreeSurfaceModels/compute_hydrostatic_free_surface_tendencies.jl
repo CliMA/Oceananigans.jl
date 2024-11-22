@@ -179,26 +179,14 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, ::Nothing, args, forcing)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args..., forcing)
-end
-
 @kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, active_cells_map, args, forcing)
-    idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, active_cells_map)
+    i, j, k = @active_index(active_cells_map, Global, NTuple)
     @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args..., forcing)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, ::Nothing, args, forcing)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args..., forcing)
-end
-
 @kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, active_cells_map, args, forcing)
-    idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, active_cells_map)
+    i, j, k = @active_index(active_cells_map, Global, NTuple)
     @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args..., forcing)
 end
 
@@ -206,14 +194,7 @@ end
 ##### Tendency calculators for tracers
 #####
 
-""" Calculate the right-hand-side of the tracer advection-diffusion equation. """
-@kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid, ::Nothing, args)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
-end
-
 @kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid, active_cells_map, args)
-    idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, active_cells_map)
+    i, j, k = @active_index(active_cells_map, Global, NTuple)
     @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
 end
