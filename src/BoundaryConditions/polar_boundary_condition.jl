@@ -38,8 +38,6 @@ function regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid:
     end
 end
 
-
-
 function fill_south_halo!(c, bc::PolarBoundaryCondition, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) = 
     operand = condition_operand(c, grid, loc, nothing, 0)
     mean!(bc.condition.c, operand)
