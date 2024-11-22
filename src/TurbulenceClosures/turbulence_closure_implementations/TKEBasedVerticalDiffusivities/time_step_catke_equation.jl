@@ -9,6 +9,9 @@ using CUDA
 
 get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 
+# Compute e at the current time:
+#   * update tendency Gⁿ using current and previous velocity field
+#   * use tridiagonal solve to take an implicit step
 function time_step_catke_equation!(model)
 
     # TODO: properly handle closure tuples
@@ -18,6 +21,10 @@ function time_step_catke_equation!(model)
     else
         closure = model.closure
         diffusivity_fields = model.diffusivity_fields
+    end
+
+    if isfinite(model.clock.last_Δt) # Check that we have taken a valid time-step first.
+        return nothing
     end
 
     e = model.tracers.e
@@ -45,6 +52,8 @@ function time_step_catke_equation!(model)
 
     FT = eltype(grid)
 
+    acrive_cells_map = retrieve_interior_active_cells_map(grid)
+
     for m = 1:M # substep
         if m == 1 && M != 1
             χ = convert(FT, -0.5) # Euler step for the first substep
@@ -56,10 +65,10 @@ function time_step_catke_equation!(model)
         # and step forward
         launch!(arch, grid, :xyz,
                 substep_turbulent_kinetic_energy!,
-                κe, Le, grid, closure,
+                κe, Le, grid, active_cells_map, closure,
                 model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
                 model.tracers, model.buoyancy, diffusivity_fields,
-                Δτ, χ, Gⁿe, G⁻e)
+                Δτ, χ, Gⁿe, G⁻e; active_cells_map)
 
         # Good idea?
         # previous_time = model.clock.time - Δt
@@ -75,13 +84,35 @@ function time_step_catke_equation!(model)
     return nothing
 end
 
-@kernel function substep_turbulent_kinetic_energy!(κe, Le, grid, closure,
+@kernel function substep_turbulent_kinetic_energy!(κe, Le, grid, ::Nothing, closure,
                                                    next_velocities, previous_velocities,
                                                    tracers, buoyancy, diffusivities,
                                                    Δτ, χ, slow_Gⁿe, G⁻e)
 
     i, j, k = @index(Global, NTuple)
+    _substep_turbulent_kinetic_energy!(i, j, k, grid, κe, Le, closure,
+                                       next_velocities, previous_velocities,
+                                       tracers, buoyancy, diffusivities,
+                                       Δτ, χ, slow_Gⁿe, G⁻ei)
+end
 
+@kernel function substep_turbulent_kinetic_energy!(κe, Le, grid, active_cells_map, closure,
+                                                   next_velocities, previous_velocities,
+                                                   tracers, buoyancy, diffusivities,
+                                                   Δτ, χ, slow_Gⁿe, G⁻e)
+
+    idx = @index(Global, Linear)
+    i, j, k = active_linear_index_to_tuple(idx, active_cells_map)
+    _substep_turbulent_kinetic_energy!(i, j, k, grid, κe, Le, closure,
+                                       next_velocities, previous_velocities,
+                                       tracers, buoyancy, diffusivities,
+                                       Δτ, χ, slow_Gⁿe, G⁻ei)
+end
+
+@inline function _substep_turbulent_kinetic_energy!(i, j, k, grid, κe, Le, closure,
+                                                    next_velocities, previous_velocities,
+                                                    tracers, buoyancy, diffusivities,
+                                                    Δτ, χ, slow_Gⁿe, G⁻ei)
     Jᵇ = diffusivities.Jᵇ
     e = tracers.e
     closure_ij = getclosure(i, j, closure)

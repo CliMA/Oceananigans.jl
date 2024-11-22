@@ -1,6 +1,6 @@
 using Oceananigans.Fields: location
 using Oceananigans.TimeSteppers: ab2_step_field!
-using Oceananigans.TurbulenceClosures: implicit_step!
+using Oceananigans.TurbulenceClosures: implicit_step!, time_step_catke_equation!
 using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, retrieve_surface_active_cells_map
 
 import Oceananigans.TimeSteppers: ab2_step!
@@ -25,8 +25,8 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
 end
 
 function local_ab2_step!(model, Δt, χ)
-    ab2_step_velocities!(model.velocities, model, Δt, χ)
     ab2_step_tracers!(model.tracers, model, Δt, χ)
+    ab2_step_velocities!(model.velocities, model, Δt, χ)
     return nothing    
 end
 
@@ -60,8 +60,11 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
 end
 
 #####
-##### Step velocities
+##### Step Tracers (in case of CATKE, also compute TKE tendencies before updating TKE)
 #####
+
+hasclosure(closure, ClosureType) = closure isa ClosureType
+hasclosure(closure_tuple::Tuple, ClosureType) = any(hasclosure(c, ClosureType) for c in closure_tuple)
 
 const EmptyNamedTuple = NamedTuple{(),Tuple{}}
 
@@ -70,13 +73,14 @@ ab2_step_tracers!(::EmptyNamedTuple, model, Δt, χ) = nothing
 function ab2_step_tracers!(tracers, model, Δt, χ)
 
     closure = model.closure
+    catke_closure = hasclosure(closure, FlavorOfCATKE)
 
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         
         # TODO: do better than this silly criteria, also need to check closure tuples
-        if closure isa FlavorOfCATKE && tracer_name == :e
-            @debug "Skipping AB2 step for e"
+        if catke_closure && tracer_name == :e
+            time_step_catke_equation!(model)
         elseif closure isa FlavorOfTD && tracer_name == :ϵ
             @debug "Skipping AB2 step for ϵ"
         elseif closure isa FlavorOfTD && tracer_name == :e
