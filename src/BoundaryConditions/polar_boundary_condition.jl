@@ -13,6 +13,7 @@ update_boundary_condition!(bcs::PolarBoundaryCondition, ::Val{:south}, field, mo
 update_boundary_condition!(bcs::PolarBoundaryCondition, ::Val{:north}, field, model) = 
     bcs.value.c .= mean(interior(field, :, 1, :), dims = 1)
 
+# TODO: vectors should have a different treatment since vector components should account for the frame of reference
 # North - South flux boundary conditions are not valid on a Latitude-Longitude grid if the last / first rows represent the poles
 function regularize_north_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, dim, args...) where C
     φmax = φnode(grid.Ny+1, grid, Face()) 
