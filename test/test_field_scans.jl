@@ -371,7 +371,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 x=(0, 1), y=(0, 1), z=(0, 1)
             )
 
-            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> x + y)))
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> x + y))
 
             c = CenterField(grid)
             set!(c, (x, y, z) -> x + y + z)
