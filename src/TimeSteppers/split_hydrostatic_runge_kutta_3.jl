@@ -25,7 +25,7 @@ end
                                 G⁻ = TendencyFields(grid, tracers),
                                 Ψ⁻ = TendencyFields(grid, tracers))
 
-Return a 3rd-order SplitRungeKutta3 timestepper (`RungeKutta3TimeStepper`) on `grid` and with `tracers`.
+Return a 3rd-order `SplitRungeKutta3TimeStepper` on `grid` and with `tracers`.
 The tendency fields `Gⁿ` and `G⁻`, as well as the previous prognostic state Ψ⁻ can be specified via optional `kwargs`.
 
 The scheme described by [Lan2022](@citet). In a nutshel, the 3rd-order
