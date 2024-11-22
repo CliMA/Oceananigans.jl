@@ -51,16 +51,20 @@ end
 @inline (neural_network::NN)(input) = first(neural_network.model(input, neural_network.ps, neural_network.st))
 @inline tosarray(x::AbstractArray) = SArray{Tuple{size(x)...}}(x)
 
-struct NNFluxClosure{A <: NN, S} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization, 3}
-    wT      :: A
-    wS      :: A
-    scaling :: S
+struct NNFluxClosure{A <: NN, S, G} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization, 3}
+    wT               :: A
+    wS               :: A
+    scaling          :: S
+    grid_point_above :: G
+    grid_point_below :: G
 end
 
 Adapt.adapt_structure(to, nn :: NNFluxClosure) = 
     NNFluxClosure(Adapt.adapt(to, nn.wT), 
                   Adapt.adapt(to, nn.wS), 
-                  Adapt.adapt(to, nn.scaling))
+                  Adapt.adapt(to, nn.scaling),
+                  Adapt.adapt(to, nn.grid_point_above),
+                  Adapt.adapt(to, nn.grid_point_below))
 
 Adapt.adapt_structure(to, nn :: NN) = 
     NN(Adapt.adapt(to, nn.model), 
@@ -85,18 +89,24 @@ function NNFluxClosure(arch)
     wT_NN = NN(wT_model, ps.wT, sts.wT)
     wS_NN = NN(wS_model, ps.wS, sts.wS)
 
-    return NNFluxClosure(wT_NN, wS_NN, scaling)
+    grid_point_above = 10
+    grid_point_below = 5
+
+    return NNFluxClosure(wT_NN, wS_NN, scaling, grid_point_above, grid_point_below)
 end
 
-function DiffusivityFields(grid, tracer_names, bcs, ::NNFluxClosure)
+function DiffusivityFields(grid, tracer_names, bcs, closure::NNFluxClosure)
     arch = architecture(grid)
     wT = ZFaceField(grid)
     wS = ZFaceField(grid)
     first_index = Field((Center, Center, Nothing), grid, Int32)
     last_index = Field((Center, Center, Nothing), grid, Int32)
 
+    N_input = closure.wT.model.layers.layer_1.in_dims
+    N_levels = closure.grid_point_above + closure.grid_point_below
+
     Nx_in, Ny_in, _ = size(wT)
-    wrk_in = zeros(10, Nx_in, Ny_in, 15)
+    wrk_in = zeros(N_input, Nx_in, Ny_in, N_levels)
     wrk_in = on_architecture(arch, wrk_in)
 
     wrk_wT = zeros(Nx_in, Ny_in, 15)
@@ -117,7 +127,6 @@ function compute_diffusivities!(diffusivities, closure::NNFluxClosure, model; pa
     clock      = model.clock
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
-    κᶜ = model.diffusivity_fields[1].κᶜ
     Riᶜ = model.closure[1].Riᶜ
     Ri = model.diffusivity_fields[1].Ri
 
@@ -135,9 +144,11 @@ function compute_diffusivities!(diffusivities, closure::NNFluxClosure, model; pa
     kp = KernelParameters((Nx_in, Ny_in, Nz_in), (ox_in, oy_in, oz_in))
     kp_2D = KernelParameters((Nx_in, Ny_in), (ox_in, oy_in))
 
-    kp_wrk = KernelParameters((Nx_in, Ny_in, 10), (0, 0, 0))
+    N_levels = closure.grid_point_above + closure.grid_point_below
 
-    launch!(arch, grid, kp_2D, _find_NN_active_region!, Ri, grid, Riᶜ, first_index, last_index)
+    kp_wrk = KernelParameters((Nx_in, Ny_in, N_levels), (0, 0, 0))
+
+    launch!(arch, grid, kp_2D, _find_NN_active_region!, Ri, grid, Riᶜ, first_index, last_index, closure)
 
     launch!(arch, grid, kp_wrk, 
             _populate_input!, wrk_in, first_index, last_index, grid, closure, tracers, velocities, buoyancy, top_tracer_bcs, Ri, clock)
@@ -186,11 +197,11 @@ end
 
 end
 
-@kernel function _find_NN_active_region!(Ri, grid, Riᶜ, first_index, last_index)
+@kernel function _find_NN_active_region!(Ri, grid, Riᶜ, first_index, last_index, closure::NNFluxClosure)
     i, j = @index(Global, NTuple)
     top_index = grid.Nz + 1
-    grid_point_above_kappa = 10
-    grid_point_below_kappa = 5
+    grid_point_above_kappa = closure.grid_point_above
+    grid_point_below_kappa = closure.grid_point_below
 
     # Find the first index of the background κᶜ
     kloc = grid.Nz+1
@@ -231,7 +242,8 @@ end
     quiescent = quiescent_condition(k_first, k_last)
     within_zone = within_zone_condition(k, k_first, k_last)
 
-    @inbounds k_wrk = clamp(k - k_first + 1, 1, 10)
+    N_levels = closure.grid_point_above + closure.grid_point_below
+    @inbounds k_wrk = clamp(k - k_first + 1, 1, N_levels)
 
     NN_active = convecting & !quiescent & within_zone
 

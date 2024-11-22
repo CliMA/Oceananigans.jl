@@ -103,6 +103,7 @@ update_state!(model)
 #####
 Δt₀ = file["Δt"]
 stop_time = file["τ"]
+# stop_time = 100minutes
 
 simulation = Simulation(model, Δt = Δt₀, stop_time = stop_time)
 
@@ -125,6 +126,7 @@ function print_progress(sim)
 end
 
 simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
+# simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(1))
 
 #####
 ##### Diagnostics
