@@ -112,7 +112,7 @@ for arch in archs
         end
 
         for buffer in [2, 3, 4, 5], bounds in (nothing, (0, 1))
-            scheme = WENO(order = advective_order(buffer, adv), bounds)
+            scheme = WENO(order = advective_order(buffer, WENO), bounds)
 
             @info "  Testing immersed tracer reconstruction [$(typeof(arch)), $(summary(scheme))]"
             run_tracer_interpolation_test(c, ibg, scheme)
