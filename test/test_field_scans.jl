@@ -378,7 +378,8 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
 
             max_c² = Field(Reduction(maximum, c^2, dims=3))
             ∫max_c² = Integral(max_c², dims=(1, 2))
-            @test ∫max_c²[1, 1, 1] isa Number
+            compute!(∫max_c²)
+            @test ∫max_c² isa Reduction
         end
     end
 end
