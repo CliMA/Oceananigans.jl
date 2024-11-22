@@ -90,35 +90,6 @@ end
     @inbounds η[i, j, Nz+1] += Δt * ((FT(1.5) + χ) * Gηⁿ[i, j, Nz+1] - (FT(0.5) + χ) * Gη⁻[i, j, Nz+1])
 end
 
-compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface) = 
-    @apply_regionally compute_explicit_free_surface_tendency!(grid, model) 
-
-# Compute free surface tendency
-function compute_explicit_free_surface_tendency!(grid, model) 
-
-    arch = architecture(grid)
-
-    args = tuple(model.velocities,
-                 model.free_surface,
-                 model.tracers,
-                 model.auxiliary_fields,
-                 model.forcing,
-                 model.clock)
-
-    launch!(arch, grid, :xy,
-            compute_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, 
-            grid, args)
-
-    args = (model.clock,
-            fields(model),
-            model.closure,
-            model.buoyancy)
-
-    apply_flux_bcs!(model.timestepper.Gⁿ.η, displacement(model.free_surface), arch, args)
-
-    return nothing
-end
-
 #####
 ##### Tendency calculators for an explicit free surface
 #####
