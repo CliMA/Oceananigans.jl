@@ -3,6 +3,7 @@ using Statistics
 using Random
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.Grids: znode
 using GLMakie
 using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity
 using Oceananigans.TurbulenceClosures: TriadIsopycnalSkewSymmetricDiffusivity
@@ -28,12 +29,11 @@ stop_time = 1hours
 viscAh=300.
 viscAz=2.e-4
 
-grid = RectilinearGrid(topology = (Periodic, Bounded, Bounded),
-                       size = (Nx, Ny, Nz), 
-                       x = (-Ly/2, Ly/2),
+grid = RectilinearGrid(topology = (Flat, Bounded, Bounded),
+                       size = (Ny, Nz), 
                        y = (-Ly/2, Ly/2),
                        z = ([0 cumsum(reverse(dz))']'.-Lz),
-                       halo = (3, 3, 3))
+                       halo = (3, 3))
 
 #coriolis = FPlane(latitude = -45)
 coriolis = FPlane( f = 1.e-4)
@@ -42,7 +42,8 @@ h_visc= HorizontalScalarDiffusivity( ν=viscAh )
 v_visc= VerticalScalarDiffusivity( ν=viscAz )
 
 gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
-triad_closure = TriadIsopycnalSkewSymmetricDiffusivity(κ_skew = 0e3,
+
+triad_closure = TriadIsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(), κ_skew = 0e3,
                                                        κ_symmetric = 1e3,
                                                        slope_limiter = gerdes_koberle_willebrand_tapering)
 
@@ -53,33 +54,19 @@ cox_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew = 0e3,
 @info "Building a model..."
 
 model = HydrostaticFreeSurfaceModel(; grid, coriolis,
-                                    closure = (triad_closure, h_visc, v_visc),
+                                    closure = triad_closure, #, h_visc, v_visc),
                                     buoyancy = BuoyancyTracer(),
                                     tracers = (:b, :c))
 
 @info "Built $model."
-
-"""
-Linear ramp from 0 to 1 between -Δy/2 and +Δy/2.
-
-For example:
-
-y < y₀           => ramp = 0
-y₀ < y < y₀ + Δy => ramp = y / Δy
-y > y₀ + Δy      => ramp = 1
-"""
-function ramp(x, y, Δ)
-    gradient == "x" && return min(max(0, x / Δ + 1/2), 1)
-    gradient == "y" && return min(max(0, y / Δ + 1/2), 1)
-end
 
 # Parameters
 N² = 4e-6 # [s⁻²] buoyancy frequency / stratification, corresponds to N/f = 20
 M² = 4e-9 # [s⁻²] horizontal buoyancy gradienta, gives a slope of 1.e-3
 
 # tracer patch centered on yC,zC:
-yC=0
-zC=z[6]
+yC = 0
+zC = znode(6, grid, Center())
 Δy = Ly/8
 Δz = 500
 
@@ -87,10 +74,8 @@ zC=z[6]
 Δb = Ly/Ny * M²
 ϵb = 1e-2 * Δb # noise amplitude
 
-# bᵢ(x, y, z) = N² * z + Δb * ramp(x, y, Δy)
-# cᵢ(x, y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/4)^2 / 2Δz^2)
-bᵢ(x, y, z) = N² * z - M² * Ly*sin(pi*y/Ly) *exp(-(3*z/Lz)^2)
-cᵢ(x, y, z) = exp( -((y-yC)/Δy)^2 )*exp( -((z-zC)/Δz).^2);
+bᵢ(y, z) = N² * z - M² * Ly*sin(pi*y/Ly) *exp(-(3*z/Lz)^2)
+cᵢ(y, z) = exp( -((y-yC)/Δy)^2 )*exp( -((z-zC)/Δz).^2);
 
 set!(model, b=bᵢ, c=cᵢ)
 
@@ -98,7 +83,7 @@ set!(model, b=bᵢ, c=cᵢ)
 ##### Simulation building
 #####
 
-simulation = Simulation(model; Δt, stop_time)
+simulation = Simulation(model; Δt, stop_time, stop_iteration = 10)
 
 wall_clock = Ref(time_ns())
 
@@ -120,10 +105,10 @@ end
 
 add_callback!(simulation, progress, IterationInterval(10))
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
-                                                      schedule = TimeInterval(save_fields_interval),
-                                                      filename = filename * "_fields",
-                                                      overwrite_existing = true)
+# simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
+#                                                       schedule = TimeInterval(save_fields_interval),
+#                                                       filename = filename * "_fields",
+#                                                       overwrite_existing = true)
 
 @info "Running the simulation..."
 

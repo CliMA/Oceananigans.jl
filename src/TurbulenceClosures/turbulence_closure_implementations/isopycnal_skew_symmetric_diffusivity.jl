@@ -175,7 +175,6 @@ end
 end
 
 # Diffusive fluxes
-
 @inline get_tracer_κ(κ::NamedTuple, tracer_index) = @inbounds κ[tracer_index]
 @inline get_tracer_κ(κ, tracer_index) = κ
 
