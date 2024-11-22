@@ -21,8 +21,8 @@ Ny = 32
 Nz = 15
 #save_fields_interval = 1day
 stop_time = 30days
-save_fields_interval = 15minutes
-Δt = 30minutes
+save_fields_interval = 1days
+Δt = 15minutes
 
 # viscosity
 viscAh=300.
