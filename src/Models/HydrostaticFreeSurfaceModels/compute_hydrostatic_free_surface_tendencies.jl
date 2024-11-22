@@ -10,8 +10,7 @@ using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
-using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, ActiveCellsIBG, 
-                                       active_linear_index_to_tuple
+using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, ActiveCellsIBG
 
 """
     compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)

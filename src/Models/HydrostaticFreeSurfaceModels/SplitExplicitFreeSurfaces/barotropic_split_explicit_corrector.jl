@@ -1,16 +1,7 @@
 # Kernels to compute the vertical integral of the velocities
-@kernel function _barotropic_mode_kernel!(U, V, grid, ::Nothing, u, v)
-    i, j  = @index(Global, NTuple)
-    barotropic_mode_kernel!(U, V, i, j, grid, u, v)
-end
-
 @kernel function _barotropic_mode_kernel!(U, V, grid, active_cells_map, u, v)
-    idx = @index(Global, Linear)
-    i, j = active_linear_index_to_tuple(idx, active_cells_map)
-    barotropic_mode_kernel!(U, V, i, j, grid, u, v)
-end
-
-@inline function barotropic_mode_kernel!(U, V, i, j, grid, u, v)
+    i, j = @active_index(active_cells_map, Global, NTuple)
+    
     @inbounds U[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]
     @inbounds V[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1]
 
@@ -18,8 +9,6 @@ end
         @inbounds U[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * u[i, j, k]
         @inbounds V[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * v[i, j, k]
     end
-
-    return nothing
 end
 
 @inline function compute_barotropic_mode!(U, V, grid, u, v)

@@ -6,6 +6,7 @@ using Oceananigans: location
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Grids: AbstractGrid
+using KernelAbstractions: @index
 using Base: @pure
 
 import Oceananigans
@@ -298,6 +299,21 @@ end
     return nothing
 end
 
+"""
+    active_linear_index_to_tuple(idx, map, grid)
+
+Converts a linear index to a tuple of indices based on the given index map.
+
+# Arguments
+- `idx`: The linear index to convert.
+- `active_cells_map`: The map containing the N-dimensional index of the active cells
+
+# Returns
+A tuple of indices corresponding to the linear index.
+"""
+@inline active_linear_index_to_tuple(idx, active_cells_map) = @inbounds Base.map(Int, active_cells_map[idx])
+
+# Deal with an index map
 macro active_index(active_map, locale, args...)
     index = quote
         if isnothing($active_map)

@@ -143,38 +143,20 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function compute_Gu!(Gu, grid, ::Nothing, args) 
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, args...)
-end
-
 @kernel function compute_Gu!(Gu, grid, interior_map, args) 
-    idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, interior_map)
+    i, j, k = @active_index(interior_map, Global, NTuple)
     @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, args...)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-@kernel function compute_Gv!(Gv, grid, ::Nothing, args) 
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, args...)
-end
-
 @kernel function compute_Gv!(Gv, grid, interior_map, args) 
-    idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, interior_map)
+    i, j, k = @active_index(interior_map, Global, NTuple)
     @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, args...)
 end
 
 """ Calculate the right-hand-side of the w-velocity equation. """
-@kernel function compute_Gw!(Gw, grid, ::Nothing, args) 
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, args...)
-end
-
 @kernel function compute_Gw!(Gw, grid, interior_map, args)
-    idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, interior_map)
+    i, j, k = @active_index(interior_map, Global, NTuple)
     @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, args...)
 end
 
@@ -183,14 +165,8 @@ end
 #####
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-@kernel function compute_Gc!(Gc, grid, ::Nothing, args)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, args...)
-end
-
-@kernel function compute_Gc!(Gc, grid, interior_map, args) 
-    idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, interior_map)
+@kernel function compute_Gc!(Gc, grid, interior_map, args)
+    i, j, k = @active_index(interior_map, Global, NTuple)
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, args...)
 end
 

@@ -1,17 +1,8 @@
 
 # Calculate RHS for the barotropic time step.
-@kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, ::Nothing, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
-    i, j  = @index(Global, NTuple)
-    ab2_integrate_tendencies!(Gᵁ, Gⱽ, i, j, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
-end
-
 @kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
-    idx = @index(Global, Linear)
-    i, j = active_linear_index_to_tuple(idx, active_cells_map)
-    ab2_integrate_tendencies!(Gᵁ, Gⱽ, i, j, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
-end
-
-@inline function ab2_integrate_tendencies!(Gᵁ, Gⱽ, i, j, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
+    i, j = @active_index(active_cells_map, Global, NTuple)
+    
     locU = (Face(), Center(), Center())
     locV = (Center(), Face(), Center())
 

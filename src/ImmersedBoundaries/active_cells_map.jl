@@ -38,20 +38,6 @@ const ActiveZColumnsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any
 @inline retrieve_interior_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:north})    = grid.interior_active_cells.north_halo_dependent_cells
 @inline retrieve_interior_active_cells_map(grid::ActiveZColumnsIBG,      ::Val{:surface})  = grid.active_z_columns
 
-"""
-    active_linear_index_to_tuple(idx, map, grid)
-
-Converts a linear index to a tuple of indices based on the given map and grid.
-
-# Arguments
-- `idx`: The linear index to convert.
-- `active_cells_map`: The map containing the N-dimensional index of the active cells
-
-# Returns
-A tuple of indices corresponding to the linear index.
-"""
-@inline active_linear_index_to_tuple(idx, active_cells_map) = @inbounds Base.map(Int, active_cells_map[idx])
-
 function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool = true) 
 
     ibg = ImmersedBoundaryGrid(grid, ib)

@@ -12,7 +12,7 @@ using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 using Oceananigans.Grids: AbstractGrid, topology
-using Oceananigans.ImmersedBoundaries: active_linear_index_to_tuple, mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
                                                         free_surface_displacement_field
 
