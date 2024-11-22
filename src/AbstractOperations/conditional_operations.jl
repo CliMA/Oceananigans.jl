@@ -115,6 +115,14 @@ end
     return ConditionalOperation(operand; func, condition, mask)
 end
 
+@inline function condition_operand(data::OffsetArray, grid::AbstractGrid, Loc::Tuple, condition, mask)
+    condition = on_architecture(architecture(grid), condition)    
+    return ConditionalOperation{Loc...}(operand, identity, grid, condition, mask)
+end
+
+condition_operand(data::OffsetArray, grid::AbstractGrid, Loc::Tuple, ::Nothing, mask) = 
+    condition_operand(data, grid, Loc, TrueCondition(), mask)
+
 @inline condition_operand(func::typeof(identity), c::ConditionalOperation, ::Nothing, mask) = ConditionalOperation(c; mask)
 @inline condition_operand(func::Function,         c::ConditionalOperation, ::Nothing, mask) = ConditionalOperation(c; func, mask)
 
