@@ -16,15 +16,20 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
     χ = model.timestepper.χ
 
     # Step locally velocity and tracers
-    @apply_regionally begin
-        ab2_step_velocities!(model.velocities, model, Δt, χ)
-        ab2_step_tracers!(model.tracers, model, Δt, χ)
-    end
+    @apply_regionally local_ab2_step!(model, Δt, χ)
 
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
     return nothing
 end
+
+function local_ab2_step!(model, Δt, χ)
+    ab2_step_velocities!(model.velocities, model, Δt, χ)
+    ab2_step_tracers!(model.tracers, model, Δt, χ)
+
+    return nothing
+end
+
 
 #####
 ##### Step velocities
