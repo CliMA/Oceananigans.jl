@@ -20,10 +20,9 @@ Nx = 3
 Ny = 32
 Nz = 15
 #save_fields_interval = 1day
-#stop_time = 2days
+stop_time = 30days
 save_fields_interval = 15minutes
-stop_time = 1hours
-Δt = 15minutes
+Δt = 30minutes
 
 # viscosity
 viscAh=300.
@@ -83,7 +82,7 @@ set!(model, b=bᵢ, c=cᵢ)
 ##### Simulation building
 #####
 
-simulation = Simulation(model; Δt, stop_time, stop_iteration = 10)
+simulation = Simulation(model; Δt, stop_time) #, stop_iteration = 10)
 
 wall_clock = Ref(time_ns())
 
@@ -105,10 +104,10 @@ end
 
 add_callback!(simulation, progress, IterationInterval(10))
 
-# simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
-#                                                       schedule = TimeInterval(save_fields_interval),
-#                                                       filename = filename * "_fields",
-#                                                       overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
+                                                      schedule = TimeInterval(save_fields_interval),
+                                                      filename = filename * "_fields",
+                                                      overwrite_existing = true)
 
 @info "Running the simulation..."
 
@@ -141,18 +140,9 @@ z = z .* zscale
 times = bt.times
 Nt = length(times)
 
-if gradient == "y" # average in x
-  # un(n) = interior(ut[n], 1, :, :)
-  # bn(n) = interior(bt[n], 1, :, :)
-  # cn(n) = interior(ct[n], 1, :, :)
-    un(n) = interior(mean(ut[n], dims=1), 1, :, :)
-    bn(n) = interior(mean(bt[n], dims=1), 1, :, :)
-    cn(n) = interior(mean(ct[n], dims=1), 1, :, :)
-else # average in y
-    un(n) = interior(mean(ut[n], dims=2), :, 1, :)
-    bn(n) = interior(mean(bt[n], dims=2), :, 1, :)
-    cn(n) = interior(mean(ct[n], dims=2), :, 1, :)
-end
+un(n) = interior(mean(ut[n], dims=1), 1, :, :)
+bn(n) = interior(mean(bt[n], dims=1), 1, :, :)
+cn(n) = interior(mean(ct[n], dims=1), 1, :, :)
 
 @show min_c = 0
 @show max_c = 1
