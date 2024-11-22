@@ -178,6 +178,31 @@ function regularize_immersed_boundary_condition(ibc, grid, loc, field_name, args
     return NoFluxBoundaryCondition()
 end
 
+  regularize_west_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)    
+  regularize_east_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)    
+ regularize_south_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)   
+ regularize_north_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)  
+regularize_bottom_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
+   regularize_top_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
+
+# North - South flux boundary conditions are not valid on a Latitude-Longitude grid if the last / first rows represent the poles
+function regularize_north_boundary_condition(bc::BoundaryCondition{<:Flux}, grid::LatitudeLongitudeGrid, args...)
+    if φnode(grid.Ny+1, grid, Face()) == 90
+        throw(ArgumentError("a north FluxBoundaryCondition is not valid on a Latitude-Longitude grid that reaches the North Pole"))
+    end
+
+    return regularize_boundary_condition(bc, grid, args...)
+end
+
+# North - South flux boundary conditions are not valid on a Latitude-Longitude grid if the last / first rows represent the poles
+function regularize_south_boundary_condition(bc::BoundaryCondition{<:Flux}, grid::LatitudeLongitudeGrid, args...)
+    if φnode(1, grid, Face()) == - 90
+        throw(ArgumentError("a south FluxBoundaryCondition is not valid on a Latitude-Longitude grid that reaches the South Pole"))
+    end
+
+    return regularize_boundary_condition(bc, grid, args...)
+end
+
 # regularize default boundary conditions
 function regularize_boundary_condition(default::DefaultBoundaryCondition, grid, loc, dim, args...)
     default_bc = default_prognostic_bc(topology(grid, dim)(), loc[dim](), default)
@@ -212,12 +237,12 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
 
     loc = assumed_field_location(field_name)
     
-    west   = regularize_boundary_condition(bcs.west,   grid, loc, 1, LeftBoundary,  prognostic_names)
-    east   = regularize_boundary_condition(bcs.east,   grid, loc, 1, RightBoundary, prognostic_names)
-    south  = regularize_boundary_condition(bcs.south,  grid, loc, 2, LeftBoundary,  prognostic_names)
-    north  = regularize_boundary_condition(bcs.north,  grid, loc, 2, RightBoundary, prognostic_names)
-    bottom = regularize_boundary_condition(bcs.bottom, grid, loc, 3, LeftBoundary,  prognostic_names)
-    top    = regularize_boundary_condition(bcs.top,    grid, loc, 3, RightBoundary, prognostic_names)
+    west   = regularize_west_boundary_condition(bcs.west,     grid, loc, 1, LeftBoundary,  prognostic_names)
+    east   = regularize_east_boundary_condition(bcs.east,     grid, loc, 1, RightBoundary, prognostic_names)
+    south  = regularize_south_boundary_condition(bcs.south,   grid, loc, 2, LeftBoundary,  prognostic_names)
+    north  = regularize_north_boundary_condition(bcs.north,   grid, loc, 2, RightBoundary, prognostic_names)
+    bottom = regularize_bottom_boundary_condition(bcs.bottom, grid, loc, 3, LeftBoundary,  prognostic_names)
+    top    = regularize_top_boundary_condition(bcs.top,       grid, loc, 3, RightBoundary, prognostic_names)
 
     immersed = regularize_immersed_boundary_condition(bcs.immersed, grid, loc, field_name, prognostic_names)
 
