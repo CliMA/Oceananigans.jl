@@ -32,7 +32,7 @@ rk3_average_free_surface!(free_surface, args...) = nothing
 function rk3_average_free_surface!(free_surface::ImplicitFreeSurface, grid, timestepper, γⁿ, ζⁿ)
     arch = architecture(grid)
 
-    ηⁿ⁻¹ = timestepper.S⁻.η    
+    ηⁿ⁻¹ = timestepper.Ψ⁻.η    
     ηⁿ   = free_surface.η 
     
     launch!(arch, grid, :xy, _rk3_average_free_surface!, ηⁿ, grid, ηⁿ⁻¹, γⁿ, ζⁿ)
@@ -44,8 +44,8 @@ function rk3_average_free_surface!(free_surface::SplitExplicitFreeSurface, grid,
 
     arch = architecture(grid)
 
-    Uⁿ⁻¹ = timestepper.S⁻.U
-    Vⁿ⁻¹ = timestepper.S⁻.V
+    Uⁿ⁻¹ = timestepper.Ψ⁻.U
+    Vⁿ⁻¹ = timestepper.Ψ⁻.V
     Uⁿ   = free_surface.barotropic_velocities.U
     Vⁿ   = free_surface.barotropic_velocities.V
 
@@ -69,11 +69,11 @@ function rk3_substep_velocities!(velocities, model, Δt, γⁿ, ζⁿ)
 
     for name in (:u, :v)
         Gⁿ = model.timestepper.Gⁿ[name]
-        S⁻ = model.timestepper.S⁻[name]
+        Ψ⁻ = model.timestepper.Ψ⁻[name]
         velocity_field = velocities[name]
 
         launch!(model.architecture, model.grid, :xyz,
-                _split_rk3_substep_field!, velocity_field, Δt, γⁿ, ζⁿ, Gⁿ, S⁻)
+                _split_rk3_substep_field!, velocity_field, Δt, γⁿ, ζⁿ, Gⁿ, Ψ⁻)
 
         implicit_step!(velocity_field,
                        model.timestepper.implicit_solver,
@@ -102,12 +102,12 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         
         Gⁿ = model.timestepper.Gⁿ[tracer_name]
-        S⁻ = model.timestepper.S⁻[tracer_name]
+        Ψ⁻ = model.timestepper.Ψ⁻[tracer_name]
         tracer_field = tracers[tracer_name]
         closure = model.closure
 
         launch!(architecture(grid), grid, :xyz,
-                _split_rk3_substep_field!, tracer_field, Δt, γⁿ, ζⁿ, Gⁿ, S⁻)
+                _split_rk3_substep_field!, tracer_field, Δt, γⁿ, ζⁿ, Gⁿ, Ψ⁻)
 
         implicit_step!(tracer_field,
                        model.timestepper.implicit_solver,

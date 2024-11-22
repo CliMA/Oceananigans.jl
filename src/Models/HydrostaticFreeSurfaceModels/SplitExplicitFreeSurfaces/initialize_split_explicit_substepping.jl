@@ -41,9 +41,9 @@ function initialize_free_surface_state!(free_surface, baroclinic_ts::SplitRungeK
     η = free_surface.η
     U, V = free_surface.barotropic_velocities
 
-    Uⁿ⁻¹ = baroclinic_ts.S⁻.U
-    Vⁿ⁻¹ = baroclinic_ts.S⁻.V
-    ηⁿ⁻¹ = baroclinic_ts.S⁻.η
+    Uⁿ⁻¹ = baroclinic_ts.Ψ⁻.U
+    Vⁿ⁻¹ = baroclinic_ts.Ψ⁻.V
+    ηⁿ⁻¹ = baroclinic_ts.Ψ⁻.η
 
     # Restart from the state at baroclinic step n
     parent(U) .= parent(Uⁿ⁻¹)

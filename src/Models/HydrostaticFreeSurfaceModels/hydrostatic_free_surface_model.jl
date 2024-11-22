@@ -198,7 +198,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                               implicit_solver = implicit_solver,
                               Gⁿ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, grid, tracernames(tracers)),
                               G⁻ = PreviousHydrostaticTendencyFields(Val(timestepper), velocities, free_surface, grid, tracernames(tracers)),
-                              S⁻ = deepcopy(prognostic_fields))
+                              Ψ⁻ = deepcopy(prognostic_fields))
 
     # Regularize forcing for model tracer and velocity fields.
     model_fields = merge(prognostic_fields, auxiliary_fields)
