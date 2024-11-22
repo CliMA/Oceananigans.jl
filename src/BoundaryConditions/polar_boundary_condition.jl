@@ -7,6 +7,7 @@ end
 PolarBoundaryCondition(field) = 
     ValueBoundaryCondition(PolarValue(field))
 
+# Will this work also on GPUs?
 update_boundary_condition!(bcs::PolarBoundaryCondition, ::Val{:south}, field, model) = 
     bcs.value.c .= mean(interior(field, :, 1, :), dims = 1)
 
