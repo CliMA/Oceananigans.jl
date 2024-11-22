@@ -66,14 +66,14 @@ end
 
 @inline function fractional_x_index(x, locs, grid::XRegularRG)
     x₀ = xnode(1, 1, 1, grid, locs...)
-    Δx = xspacings(grid, locs...)
+    Δx = @inbounds first(xspacings(grid, locs...))
     FT = eltype(grid)
     return convert(FT, (x - x₀) / Δx)
 end
 
 @inline function fractional_x_index(λ, locs, grid::XRegularLLG)
     λ₀ = λnode(1, 1, 1, grid, locs...)
-    Δλ = λspacings(grid, locs...)
+    Δλ = @inbounds first(λspacings(grid, locs...))
     FT = eltype(grid)
     return convert(FT, (λ - λ₀) / Δλ)
 end
@@ -98,14 +98,14 @@ end
 
 @inline function fractional_y_index(y, locs, grid::YRegularRG)
     y₀ = ynode(1, 1, 1, grid, locs...)
-    Δy = yspacings(grid, locs...)
+    Δy = @inbounds first(yspacings(grid, locs...))
     FT = eltype(grid)
     return convert(FT, (y - y₀) / Δy)
 end
 
 @inline function fractional_y_index(φ, locs, grid::YRegularLLG)
     φ₀ = φnode(1, 1, 1, grid, locs...)
-    Δφ = φspacings(grid, locs...)
+    Δφ = @inbounds first(φspacings(grid, locs...))
     FT = eltype(grid)
     return convert(FT, (φ - φ₀) / Δφ)
 end
@@ -132,7 +132,7 @@ ZRegGrid = Union{ZRegularRG, ZRegularLLG, ZRegOrthogonalSphericalShellGrid}
 
 @inline function fractional_z_index(z::FT, locs, grid::ZRegGrid) where FT
     z₀ = znode(1, 1, 1, grid, locs...)
-    Δz = zspacings(grid, locs...)
+    Δz = @inbounds first(zspacings(grid, locs...))
     return convert(FT, (z - z₀) / Δz)
 end
 
@@ -317,6 +317,12 @@ end
 @inline flatten_node(::Nothing, y, z) = flatten_node(y, z)
 @inline flatten_node(x, ::Nothing, z) = flatten_node(x, z)
 @inline flatten_node(x, y, ::Nothing) = flatten_node(x, y)
+
+@inline flatten_node(x, ::Nothing, ::Nothing) = tuple(x)
+@inline flatten_node(::Nothing, y, ::Nothing) = tuple(y)
+@inline flatten_node(::Nothing, ::Nothing, z) = tuple(z)
+
+@inline flatten_node(::Nothing, ::Nothing, ::Nothing) = tuple()
 
 @inline flatten_node(x, y) = (x, y)
 @inline flatten_node(::Nothing, y) = flatten_node(y)

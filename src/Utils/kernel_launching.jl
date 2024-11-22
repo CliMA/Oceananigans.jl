@@ -2,6 +2,7 @@
 ##### Utilities for launching kernels
 #####
 
+using Oceananigans: location
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Grids: AbstractGrid
@@ -271,12 +272,9 @@ end
 @inline function _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;
                           exclude_periphery = false,
                           reduced_dimensions = (),
-                          active_cells_map = nothing,
-                          # TODO: these two kwargs do nothing:
-                          only_local_halos = false,
-                          async = false)
+                          active_cells_map = nothing)
 
-    location = Oceananigans.Grids.location(first_kernel_arg)
+    location = Oceananigans.location(first_kernel_arg)
 
     loop!, worksize = configure_kernel(arch, grid, workspec, kernel!;
                                        location,
