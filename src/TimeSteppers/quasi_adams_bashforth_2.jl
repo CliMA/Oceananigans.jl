@@ -41,8 +41,7 @@ function QuasiAdamsBashforth2TimeStepper(grid, tracers,
                                          χ = 0.1;
                                          implicit_solver::IT = nothing,
                                          Gⁿ = TendencyFields(grid, tracers),
-                                         G⁻ = TendencyFields(grid, tracers),
-                                         kw...) where IT
+                                         G⁻ = TendencyFields(grid, tracers)) where IT
 
     FT = eltype(grid)
     GT = typeof(Gⁿ)

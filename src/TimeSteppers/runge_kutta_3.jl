@@ -21,7 +21,8 @@ end
 """
     RungeKutta3TimeStepper(grid, tracers;
                            implicit_solver = nothing,
-                           Gⁿ = TendencyFields(grid, tracers))
+                           Gⁿ = TendencyFields(grid, tracers),
+                           G⁻ = TendencyFields(grid, tracers))
 
 Return a 3rd-order Runge0Kutta timestepper (`RungeKutta3TimeStepper`) on `grid` and with `tracers`.
 The tendency fields `Gⁿ` and `G⁻` can be specified via  optional `kwargs`.
@@ -47,7 +48,7 @@ The state at the first substep is taken to be the one that corresponds to the ``
 function RungeKutta3TimeStepper(grid, tracers;
                                 implicit_solver::TI = nothing,
                                 Gⁿ::TG = TendencyFields(grid, tracers),
-                                G⁻::TG = TendencyFields(grid, tracers)) where {TI, TG}
+                                G⁻ = TendencyFields(grid, tracers)) where {TI, TG}
 
     !isnothing(implicit_solver) &&
         @warn("Implicit-explicit time-stepping with RungeKutta3TimeStepper is not tested. " * 

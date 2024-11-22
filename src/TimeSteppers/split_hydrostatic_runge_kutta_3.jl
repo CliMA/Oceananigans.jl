@@ -22,28 +22,28 @@ end
     SplitRungeKutta3TimeStepper(grid, tracers;
                                 implicit_solver = nothing,
                                 Gⁿ = TendencyFields(grid, tracers),
-                                G⁻ = TendencyFields(grid, tracers))
+                                G⁻ = TendencyFields(grid, tracers),
+                                S⁻ = TendencyFields(grid, tracers))
 
-Return a 3rd-order Runge0Kutta timestepper (`RungeKutta3TimeStepper`) on `grid` and with `tracers`.
-The tendency fields `Gⁿ` and `G⁻` can be specified via  optional `kwargs`.
+Return a 3rd-order SplitRungeKutta3 timestepper (`RungeKutta3TimeStepper`) on `grid` and with `tracers`.
+The tendency fields `Gⁿ` and `G⁻`, as well as the previous prognostic state S⁻ can be specified via optional `kwargs`.
 
-The scheme described by [LeMoin1991](@citet). In a nutshel, the 3rd-order
-Runge Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps. A pressure correction
+The scheme described by [Lan2022](@citet). In a nutshel, the 3rd-order
+Runge Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps. A baroptropic velocity correction
 step is applied after at each substep.
 
 The state `U` after each substep `m` is
 
 ```julia
-Uᵐ⁺¹ = Uᵐ + Δt * (γᵐ * Gᵐ + ζᵐ * Gᵐ⁻¹)
+Uᵐ⁺¹ = ζᵐ * Uⁿ + γᵐ * (Uᵐ + Δt * Gᵐ)
 ```
 
-where `Uᵐ` is the state at the ``m``-th substep, `Gᵐ` is the tendency
-at the ``m``-th substep, `Gᵐ⁻¹` is the tendency at the previous substep,
-and constants ``γ¹ = 8/15``, ``γ² = 5/12``, ``γ³ = 3/4``,
-``ζ¹ = 0``, ``ζ² = -17/60``, ``ζ³ = -5/12``.
+where `Uᵐ` is the state at the ``m``-th substep, `Uⁿ` is the state at the ``n``-th timestep, `Gᵐ` is the tendency
+at the ``m``-th substep, and constants ``γ¹ = 1`, ``γ² = 1/4``, ``γ³ = 1/3``,
+``ζ¹ = 0``, ``ζ² = 3/4``, ``ζ³ = 1/3``.
 
 The state at the first substep is taken to be the one that corresponds to the ``n``-th timestep,
-`U¹ = Uⁿ`, and the state after the third substep is then the state at the `Uⁿ⁺¹ = U⁴`.
+`U¹ = Uⁿ`, and the state after the third substep is then the state at the `Uⁿ⁺¹ = U³`.
 """
 function SplitRungeKutta3TimeStepper(grid, tracers;
                                      implicit_solver::TI = nothing,
