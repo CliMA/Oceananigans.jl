@@ -5,7 +5,7 @@ using Oceananigans: fields
     SplitRungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
 
 Holds parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
-time-stepping scheme described by [LeMoin1991](@citet).
+time-stepping scheme described by [Lan2022](@citet).
 """
 struct SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI} <: AbstractTimeStepper
     γ² :: FT
@@ -14,7 +14,7 @@ struct SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI} <: AbstractTimeStepper
     ζ³ :: FT
     Gⁿ :: TG
     G⁻ :: TE # only used as storage when needed
-    S⁻ :: PF # prognostic state at the previous timestep
+    Ψ⁻ :: PF # prognostic state at the previous timestep
     implicit_solver :: TI
 end
 
@@ -23,10 +23,10 @@ end
                                 implicit_solver = nothing,
                                 Gⁿ = TendencyFields(grid, tracers),
                                 G⁻ = TendencyFields(grid, tracers),
-                                S⁻ = TendencyFields(grid, tracers))
+                                Ψ⁻ = TendencyFields(grid, tracers))
 
 Return a 3rd-order SplitRungeKutta3 timestepper (`RungeKutta3TimeStepper`) on `grid` and with `tracers`.
-The tendency fields `Gⁿ` and `G⁻`, as well as the previous prognostic state S⁻ can be specified via optional `kwargs`.
+The tendency fields `Gⁿ` and `G⁻`, as well as the previous prognostic state Ψ⁻ can be specified via optional `kwargs`.
 
 The scheme described by [Lan2022](@citet). In a nutshel, the 3rd-order
 Runge Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps. A baroptropic velocity correction
@@ -49,7 +49,7 @@ function SplitRungeKutta3TimeStepper(grid, tracers;
                                      implicit_solver::TI = nothing,
                                      Gⁿ::TG = TendencyFields(grid, tracers),
                                      G⁻::TE = TendencyFields(grid, tracers),
-                                     S⁻::PF = TendencyFields(grid, tracers)) where {TI, TG, TE, PF}
+                                     Ψ⁻::PF = TendencyFields(grid, tracers)) where {TI, TG, TE, PF}
 
 
     @warn("Split barotropic-baroclinic time stepping with SplitRungeKutta3TimeStepper is not tested and experimental.\n" *
@@ -67,7 +67,7 @@ function SplitRungeKutta3TimeStepper(grid, tracers;
 
     FT = eltype(grid)
 
-    return SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI}(γ², γ³, ζ², ζ³, Gⁿ, G⁻, S⁻, implicit_solver)
+    return SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI}(γ², γ³, ζ², ζ³, Gⁿ, G⁻, Ψ⁻, implicit_solver)
 end
 
 
@@ -143,7 +143,7 @@ function split_rk3_substep!(model, Δt, γⁿ, ζⁿ)
     model_fields = prognostic_fields(model)
 
     for (i, field) in enumerate(model_fields)
-        kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[i], model.timestepper.S⁻[i])
+        kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[i], model.timestepper.Ψ⁻[i])
         launch!(arch, grid, :xyz, rk3_substep_field!, kernel_args...; exclude_periphery=true)
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
@@ -161,7 +161,7 @@ end
 
 function store_fields!(model)
     
-    previous_fields = model.timestepper.S⁻
+    previous_fields = model.timestepper.Ψ⁻
     model_fields = prognostic_fields(model)
     
     for name in keys(previous_fields)
