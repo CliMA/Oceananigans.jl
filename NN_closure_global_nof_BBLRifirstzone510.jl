@@ -192,8 +192,6 @@ end
     grid_point_above_kappa = 10
     grid_point_below_kappa = 5
 
-    background_κ_index = findfirst(Ri[2:end] .< Riᶜ)
-
     # Find the first index of the background κᶜ
     kloc = grid.Nz+1
     @inbounds for k in grid.Nz:-1:2
