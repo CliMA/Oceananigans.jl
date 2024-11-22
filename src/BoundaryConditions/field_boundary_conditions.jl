@@ -185,24 +185,6 @@ end
 regularize_bottom_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
    regularize_top_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
 
-# North - South flux boundary conditions are not valid on a Latitude-Longitude grid if the last / first rows represent the poles
-function regularize_north_boundary_condition(bc::BoundaryCondition{C}, grid::LatitudeLongitudeGrid, args...) where C <: Union{Flux, Gradient}
-    if φnode(grid.Ny+1, grid, Face()) == 90
-        throw(ArgumentError("a north FluxBoundaryCondition is not valid on a Latitude-Longitude grid that reaches the North Pole"))
-    end
-
-    return regularize_boundary_condition(bc, grid, args...)
-end
-
-# North - South flux boundary conditions are not valid on a Latitude-Longitude grid if the last / first rows represent the poles
-function regularize_south_boundary_condition(bc::BoundaryCondition{C}, grid::LatitudeLongitudeGrid, args...) where C <: Union{Flux, Gradient}
-    if φnode(1, grid, Face()) == - 90
-        throw(ArgumentError("a south FluxBoundaryCondition is not valid on a Latitude-Longitude grid that reaches the South Pole"))
-    end
-
-    return regularize_boundary_condition(bc, grid, args...)
-end
-
 # regularize default boundary conditions
 function regularize_boundary_condition(default::DefaultBoundaryCondition, grid, loc, dim, args...)
     default_bc = default_prognostic_bc(topology(grid, dim)(), loc[dim](), default)
