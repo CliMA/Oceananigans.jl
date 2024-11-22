@@ -9,7 +9,6 @@ using Oceananigans.Utils
 using Oceananigans.Grids: interior_indices, interior_parent_indices
 
 import Base: minimum, maximum, extrema
-import Oceananigans: location, instantiated_location
 import Oceananigans.Architectures: architecture, child_architecture
 import Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices
 import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes, node, xnode, ynode, znode
@@ -34,9 +33,6 @@ Base.IndexStyle(::AbstractField) = IndexCartesian()
 ##### AbstractField functionality
 #####
 
-"Returns the location `(LX, LY, LZ)` of an `AbstractField{LX, LY, LZ}`."
-@inline location(a) = (Nothing, Nothing, Nothing) # used in AbstractOperations for location inference
-@inline location(a, i) = location(a)[i]
 @inline location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX, LY, LZ) # note no instantiation
 @inline instantiated_location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX(), LY(), LZ())
 Base.eltype(::AbstractField{<:Any, <:Any, <:Any, <:Any, T}) where T = T
