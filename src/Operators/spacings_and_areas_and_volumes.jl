@@ -1,5 +1,5 @@
 using Oceananigans.Grids: Center, Face
-using Oceananigans.Grids: AbstractVerticalCoordinateUnderlyingGrid, ZStarUnderlyingGrid
+using Oceananigans.Grids: AbstractZStarGrid
 
 @inline hack_cosd(φ) = cos(π * φ / 180)
 @inline hack_sind(φ) = sin(π * φ / 180)
@@ -43,21 +43,14 @@ The operators in this file fall into three categories:
 
 const ZRG = Union{LLGZ, RGZ, OSSGZ}
 
-@inline Δzᵃᵃᶠ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶠ[k]
-@inline Δzᵃᵃᶜ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶜ[k]
-
-@inline Δzᵃᵃᶠ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶠ
-@inline Δzᵃᵃᶜ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶜ
-
-# Reference spacing, they differ only for a ZStar vertical coordinate grid
-@inline Δrᵃᵃᶜ(i, j, k, grid) = Δzᵃᵃᶜ(i, j, k, grid)
-@inline Δrᵃᵃᶠ(i, j, k, grid) = Δzᵃᵃᶠ(i, j, k, grid)
-
 @inline getspacing(k, Δz::AbstractVector) = @inbounds Δz[k]
 @inline getspacing(k, Δz::Number)         = @inbounds Δz
 
-@inline Δrᵃᵃᶜ(i, j, k, grid::ZStarUnderlyingGrid) = getspacing(k, grid.z.Δᶜ)
-@inline Δrᵃᵃᶠ(i, j, k, grid::ZStarUnderlyingGrid) = getspacing(k, grid.z.Δᶠ)
+@inline Δrᵃᵃᶜ(i, j, k, grid) = getspacing(k, grid.z.Δᶜ)
+@inline Δrᵃᵃᶠ(i, j, k, grid) = getspacing(k, grid.z.Δᶠ)
+
+@inline Δzᵃᵃᶠ(i, j, k, grid) = getspacing(k, grid.z.Δᶜ)
+@inline Δzᵃᵃᶜ(i, j, k, grid) = getspacing(k, grid.z.Δᶠ)
 
 # Convenience Functions for all grids
 for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ)
@@ -92,23 +85,6 @@ for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ)
     end
 end
 
-##### 
-##### 3D spacings for AbstractVerticalCoordinate grids
-#####
-
-const AVCG = AbstractVerticalCoordinateUnderlyingGrid
-const c = Center()
-const f = Face()
-
-@inline Δzᶜᶜᶠ(i, j, k, grid::AVCG) = @inbounds Δrᶜᶜᶠ(i, j, k, grid) * vertical_scaling(i, j, k, grid, c, c, f)
-@inline Δzᶜᶜᶜ(i, j, k, grid::AVCG) = @inbounds Δrᶜᶜᶜ(i, j, k, grid) * vertical_scaling(i, j, k, grid, c, c, c)
-@inline Δzᶠᶜᶠ(i, j, k, grid::AVCG) = @inbounds Δrᶠᶜᶠ(i, j, k, grid) * vertical_scaling(i, j, k, grid, f, c, f)
-@inline Δzᶠᶜᶜ(i, j, k, grid::AVCG) = @inbounds Δrᶠᶜᶜ(i, j, k, grid) * vertical_scaling(i, j, k, grid, f, c, c)
-@inline Δzᶜᶠᶠ(i, j, k, grid::AVCG) = @inbounds Δrᶜᶠᶠ(i, j, k, grid) * vertical_scaling(i, j, k, grid, c, f, f)
-@inline Δzᶜᶠᶜ(i, j, k, grid::AVCG) = @inbounds Δrᶜᶠᶜ(i, j, k, grid) * vertical_scaling(i, j, k, grid, c, f, c)
-@inline Δzᶠᶠᶠ(i, j, k, grid::AVCG) = @inbounds Δrᶠᶠᶠ(i, j, k, grid) * vertical_scaling(i, j, k, grid, f, f, f)
-@inline Δzᶠᶠᶜ(i, j, k, grid::AVCG) = @inbounds Δrᶠᶠᶜ(i, j, k, grid) * vertical_scaling(i, j, k, grid, f, f, c)
-
 #####
 ##### Rectilinear Grids (Flat grids already have Δ = 1)
 #####
@@ -124,12 +100,6 @@ const f = Face()
 @inline Δyᶜᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶜᵃ[j]
 @inline Δyᶠᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶜᵃ[j]
 @inline Δyᶜᵃᶠ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶜᵃ[j]
-
-@inline Δzᵃᵃᶠ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶠ[k]
-@inline Δzᵃᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶜ[k]
-@inline Δzᶜᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶜ[k]
-@inline Δzᶠᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶜ[k]
-@inline Δzᶜᵃᶠ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶠ[k]
 
 ## XRegularRG
 
@@ -149,15 +119,6 @@ const f = Face()
 @inline Δyᶠᵃᶜ(i, j, k, grid::RGY) = grid.Δyᵃᶜᵃ
 @inline Δyᶜᵃᶠ(i, j, k, grid::RGY) = grid.Δyᵃᶜᵃ
 
-## ZRegularRG
-
-@inline Δzᵃᵃᶠ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶠ
-@inline Δzᵃᵃᶜ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶜ
-
-@inline Δzᶜᵃᶜ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶜ
-@inline Δzᶠᵃᶜ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶜ
-@inline Δzᶜᵃᶠ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶠ
-
 #####
 ##### LatitudeLongitudeGrid
 #####
@@ -174,9 +135,6 @@ const f = Face()
 @inline Δyᶜᶜᵃ(i, j, k, grid::LLG) = Δyᶠᶜᵃ(i, j, k, grid)
 @inline Δyᶠᶠᵃ(i, j, k, grid::LLG) = Δyᶜᶠᵃ(i, j, k, grid)
 
-@inline Δzᵃᵃᶠ(i, j, k, grid::LLG) = @inbounds grid.Δzᵃᵃᶠ[k]
-@inline Δzᵃᵃᶜ(i, j, k, grid::LLG) = @inbounds grid.Δzᵃᵃᶜ[k]
-
 ### XRegularLLG with pre-computed metrics
 
 @inline Δxᶠᶜᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δxᶠᶜᵃ[j]
@@ -188,11 +146,6 @@ const f = Face()
 
 @inline Δyᶜᶠᵃ(i, j, k, grid::LLGY) = grid.Δyᶜᶠᵃ
 @inline Δyᶠᶜᵃ(i, j, k, grid::LLGY) = grid.Δyᶠᶜᵃ
-
-### ZRegularLLG with pre-computed metrics
-
-@inline Δzᵃᵃᶠ(i, j, k, grid::LLGZ) = grid.Δzᵃᵃᶠ
-@inline Δzᵃᵃᶜ(i, j, k, grid::LLGZ) = grid.Δzᵃᵃᶜ
 
 ## On the fly metrics
 
@@ -229,12 +182,6 @@ const f = Face()
 @inline Δyᶠᶜᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶠᶜᵃ[i, j]
 @inline Δyᶜᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶜᶠᵃ[i, j]
 @inline Δyᶠᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶠᶠᵃ[i, j]
-
-@inline Δzᵃᵃᶜ(i, j, k, grid::OSSG) = @inbounds grid.Δzᵃᵃᶜ[k]
-@inline Δzᵃᵃᶠ(i, j, k, grid::OSSG) = @inbounds grid.Δzᵃᵃᶠ[k]
-
-@inline Δzᵃᵃᶜ(i, j, k, grid::OSSGZ) = grid.Δzᵃᵃᶜ
-@inline Δzᵃᵃᶠ(i, j, k, grid::OSSGZ) = grid.Δzᵃᵃᶠ
 
 #####
 #####

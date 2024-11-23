@@ -1,5 +1,4 @@
-using Oceananigans.Grids: ZStarUnderlyingGrid
-import Oceananigans.Grids: znode
+import Oceananigans.Grids: znode, AbstractZStarGrid
 
 import Oceananigans.Grids: dynamic_column_depthᶜᶜᵃ, 
                            dynamic_column_depthᶜᶠᵃ, 
@@ -55,5 +54,8 @@ for Lx in (:ᶠ, :ᶜ), Lx in (:ᶠ, :ᶜ), Lx in (:ᶠ, :ᶜ)
     end
 end
 
-# rnode for an ZStarUnderlyingGrid grid is scaled 
-@inline znode(i, j, k, grid::ZSG, ℓx, ℓy, ℓz) = @inbounds rnode(i, j, k, grid, ℓx, ℓy, ℓz) * e₃ⁿ(i, j, k, grid, ℓx, ℓy, ℓz) + grid.z.ηⁿ[i, j, 1]
+# rnode for an AbstractZStarGrid grid is scaled 
+@inline znode(i, j, k, grid::ZSG, ::C, ::C, ℓz) = @inbounds rnode(i, j, k, grid, ℓx, ℓy, ℓz) * e₃ⁿ(i, j, k, grid, ℓx, ℓy, ℓz) + grid.z.ηⁿ[i, j, 1]
+@inline znode(i, j, k, grid::ZSG, ::F, ::C, ℓz) = @inbounds rnode(i, j, k, grid, ℓx, ℓy, ℓz) * e₃ⁿ(i, j, k, grid, ℓx, ℓy, ℓz) +     ℑxᶠᵃᵃ(i, j, 1, grid, grid.z.ηⁿ)
+@inline znode(i, j, k, grid::ZSG, ::C, ::F, ℓz) = @inbounds rnode(i, j, k, grid, ℓx, ℓy, ℓz) * e₃ⁿ(i, j, k, grid, ℓx, ℓy, ℓz) +     ℑyᵃᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)
+@inline znode(i, j, k, grid::ZSG, ::F, ::F, ℓz) = @inbounds rnode(i, j, k, grid, ℓx, ℓy, ℓz) * e₃ⁿ(i, j, k, grid, ℓx, ℓy, ℓz) +    ℑxyᶠᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)

@@ -11,7 +11,7 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils
 using Oceananigans.Utils: launch!, SumOfArrays
-using Oceananigans.Grids: AbstractGrid, ZStarUnderlyingGrid, rnode
+using Oceananigans.Grids: AbstractGrid, rnode
 using Oceananigans.ImmersedBoundaries: ImmersedZStarGrid
 using Oceananigans.TimeSteppers: SplitRungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
 
@@ -21,8 +21,6 @@ import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
 import Oceananigans.Architectures: on_architecture
-
-const ZStarSpacingGrid = Union{ZStarUnderlyingGrid, ImmersedZStarGrid}
 
 abstract type AbstractFreeSurface{E, G} end
 

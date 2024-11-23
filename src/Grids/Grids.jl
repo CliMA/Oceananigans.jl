@@ -29,6 +29,7 @@ using CUDA
 using CUDA: has_cuda
 using Adapt
 using OffsetArrays
+using Printf
 
 using Oceananigans
 using Oceananigans.Architectures

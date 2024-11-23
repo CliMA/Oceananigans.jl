@@ -23,12 +23,6 @@ import Oceananigans.Architectures: architecture
 import Oceananigans.TimeSteppers: reset!
 import Oceananigans.Solvers: iteration
 
-using Oceananigans.Grids: AbstractVerticalCoordinateUnderlyingGrid
-using Oceananigans.ImmersedBoundaries: ImmersedAbstractVerticalCoordinateGrid
-
-const AbstractVerticalCoordinateGrid = Union{AbstractVerticalCoordinateUnderlyingGrid, ImmersedAbstractVerticalCoordinateGrid}
-
-
 # A prototype interface for AbstractModel.
 #
 # TODO: decide if we like this.

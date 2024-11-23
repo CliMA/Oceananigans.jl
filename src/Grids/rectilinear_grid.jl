@@ -19,7 +19,7 @@ struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch} <: AbstractUnde
     Δyᵃᶜᵃ :: FY
     yᵃᶠᵃ  :: VY
     yᵃᶜᵃ  :: VY
-    z     :: FZ
+    z     :: CZ
 
     RectilinearGrid{TX, TY, TZ}(arch::Arch,
                                 Nx, Ny, Nz,
@@ -29,11 +29,11 @@ struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch} <: AbstractUnde
                                  xᶠᵃᵃ :: VX,  xᶜᵃᵃ :: VX,
                                 Δyᵃᶠᵃ :: FY, Δyᵃᶜᵃ :: FY,
                                  yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
-                                 z    :: FZ) where {Arch, FT,
+                                 z    :: CZ) where {Arch, FT,
                                                     TX, TY, TZ,
                                                     FX, VX, FY,
-                                                    VY, FZ} =
-        new{FT, TX, TY, TZ, FZ, FX, FY, VX, VY, Arch}(arch, Nx, Ny, Nz,
+                                                    VY, CZ} =
+        new{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch}(arch, Nx, Ny, Nz,
                                                       Hx, Hy, Hz, Lx, Ly, Lz,
                                                       Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
                                                       Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,

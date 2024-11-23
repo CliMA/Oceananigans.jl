@@ -1,6 +1,6 @@
 using KernelAbstractions: @kernel, @index
 
-struct LatitudeLongitudeGrid{FT, TX, TY, TZ, FZ, M, MY, FX, FY, VX, VY, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
+struct LatitudeLongitudeGrid{FT, TX, TY, TZ, CZ, M, MY, FX, FY, VX, VY, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, CZ, Arch}
     architecture :: Arch
     Nx :: Int
     Ny :: Int
@@ -20,7 +20,7 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, FZ, M, MY, FX, FY, VX, VY, Arch} <:
     Δφᵃᶠᵃ :: FY
     Δφᵃᶜᵃ :: FY
     φᵃᶠᵃ  :: VY
-    z     :: FZ
+    z     :: CZ
     # Precomputed metrics M <: Nothing means metrics will be computed on the fly
     Δxᶠᶜᵃ :: M
     Δxᶜᶠᵃ :: M
@@ -43,21 +43,20 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, FZ, M, MY, FX, FY, VX, VY, Arch} <:
                                        λᶠᵃᵃ :: VX,  λᶜᵃᵃ :: VX,
                                       Δφᵃᶠᵃ :: FY, Δφᵃᶜᵃ :: FY,
                                        φᵃᶠᵃ :: VY,  φᵃᶜᵃ :: VY,
-                                      Δzᵃᵃᶠ :: FZ, Δzᵃᵃᶜ :: FZ,
+                                       z :: CZ,
                                       Δxᶠᶜᵃ :: M,  Δxᶜᶠᵃ :: M,
                                       Δxᶠᶠᵃ :: M,  Δxᶜᶜᵃ :: M,
                                       Δyᶠᶜᵃ :: MY, Δyᶜᶠᵃ :: MY,
-                                          z :: FZ,
                                      radius :: FT) where {Arch, FT, TX, TY, TZ,
-                                                           FX, FY, FZ, VX, VY,
+                                                           FX, FY, CZ, VX, VY,
                                                            M, MY} =
-    new{FT, TX, TY, TZ, FZ, M, MY, FX, FY, VX, VY, Arch}(architecture,
+    new{FT, TX, TY, TZ, CZ, M, MY, FX, FY, VX, VY, Arch}(architecture,
                                                          Nλ, Nφ, Nz,
                                                          Hλ, Hφ, Hz,
                                                          Lλ, Lφ, Lz,
                                                          Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
                                                          Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
-                                                         Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ,
+                                                         z,
                                                          Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ,
                                                          Δyᶠᶜᵃ, Δyᶜᶠᵃ,
                                                          Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, radius)

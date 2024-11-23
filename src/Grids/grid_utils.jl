@@ -1,5 +1,3 @@
-using CUDA
-using Printf
 using Base.Ryu: writeshortest
 using LinearAlgebra: dot, cross
 using OffsetArrays: IdOffsetRange
