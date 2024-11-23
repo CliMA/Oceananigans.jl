@@ -18,8 +18,7 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
     # Step locally velocity and tracers
     @apply_regionally local_ab2_step!(model, Δt, χ)
 
-    # blocking step for implicit free surface, non blocking for explicit
-    ab2_step_free_surface!(model.free_surface, model, Δt, χ)
+    step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
     return nothing
 end
@@ -27,8 +26,10 @@ end
 function local_ab2_step!(model, Δt, χ)
     ab2_step_velocities!(model.velocities, model, Δt, χ)
     ab2_step_tracers!(model.tracers, model, Δt, χ)
-    return nothing    
+
+    return nothing
 end
+
 
 #####
 ##### Step velocities
@@ -44,9 +45,6 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
         launch!(model.architecture, model.grid, :xyz,
                 ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻)
 
-        # TODO: let next implicit solve depend on previous solve + explicit velocity step
-        # Need to distinguish between solver events and tendency calculation events.
-        # Note that BatchedTridiagonalSolver has a hard `wait`; this must be solved first.
         implicit_step!(velocity_field,
                        model.timestepper.implicit_solver,
                        model.closure,
@@ -60,7 +58,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
 end
 
 #####
-##### Step velocities
+##### Step Tracers
 #####
 
 const EmptyNamedTuple = NamedTuple{(),Tuple{}}
