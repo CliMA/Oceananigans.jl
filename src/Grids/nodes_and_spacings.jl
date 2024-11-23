@@ -178,17 +178,6 @@ function φspacings end
 destantiate(::Face)   = Face
 destantiate(::Center) = Center
 
-spacings_function(::Val{:x}) = xspacings
-spacings_function(::Val{:y}) = yspacings
-spacings_function(::Val{:z}) = zspacings
-spacings_function(::Val{:λ}) = λspacings
-spacings_function(::Val{:φ}) = φspacings
-
-function minimum_spacing(s, grid, ℓx, ℓy, ℓz)
-    spacings = spacings_function(s)
-    return minimum(spacings(grid, ℓx, ℓy, ℓz))
-end
-
 """
     minimum_xspacing(grid, ℓx, ℓy, ℓz)
 
