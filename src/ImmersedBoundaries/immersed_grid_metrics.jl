@@ -10,20 +10,22 @@ import Oceananigans.Operators: Δzᵃᵃᶠ, Δzᵃᵃᶜ, intrinsic_vector, ext
 # For non "full-cell" immersed boundaries, grid metric functions
 # must be extended for the specific immersed boundary grid in question.
 
-for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ), LZ in (:ᶜ, :ᶠ, :ᵃ)
-    for dir in (:x, :y, :z), operator in (:Δ, :A)
-
-        metric = Symbol(operator, dir, LX, LY, LZ)
+for dir in (:x, :y, :z)
+    for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ), LZ in (:ᶜ, :ᶠ, :ᵃ)
+        spacing = Symbol(:Δ, dir, LX, LY, LZ)
         @eval begin
-            import Oceananigans.Operators: $metric
-            @inline $metric(i, j, k, ibg::IBG) = $metric(i, j, k, ibg.underlying_grid)
+            import Oceananigans.Operators: $spacing
+            @inline $spacing(i, j, k, ibg::IBG) = $spacing(i, j, k, ibg.underlying_grid)
         end
     end
-
-    volume = Symbol(:V, LX, LY, LZ)
-    @eval begin
-        import Oceananigans.Operators: $volume
-        @inline $volume(i, j, k, ibg::IBG) = $volume(i, j, k, ibg.underlying_grid)
+    for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
+        area   = Symbol(:A, dir, LX, LY, LZ)
+        volume = Symbol(:V, LX, LY, LZ)
+        @eval begin
+            import Oceananigans.Operators: $area, $volume
+            @inline $area(i, j, k, ibg::IBG)   = $area(i, j, k, ibg.underlying_grid)
+            @inline $volume(i, j, k, ibg::IBG) = $volume(i, j, k, ibg.underlying_grid)
+        end
     end
 end
 
