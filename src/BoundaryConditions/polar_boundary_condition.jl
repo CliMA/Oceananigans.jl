@@ -13,7 +13,7 @@ PolarBoundaryCondition(field) =
 
 # TODO: vectors should have a different treatment since vector components should account for the frame of reference
 # North - South flux boundary conditions are not valid on a Latitude-Longitude grid if the last / first rows represent the poles
-function regularize_north_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, dim, args...) where C
+function regularize_north_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) 
     φmax = φnode(grid.Ny+1, grid, Face()) 
     
     if φmax == 90 
@@ -21,12 +21,12 @@ function regularize_north_boundary_condition(bc::DefaultBoundaryCondition, grid:
         field = Field{Nothing, LY, LZ}(grid; indices = (:, grid.Ny, :))
         return PolarBoundaryCondition(field)
     else
-        return regularize_boundary_condition(bc, grid, args...)
+        return regularize_boundary_condition(bc, grid, loc, args...)
     end
 end
 
 # North - South flux boundary conditions are not valid on a Latitude-Longitude grid if the last / first rows represent the poles
-function regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, dim, args...) 
+function regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) 
     φmin = φnode(1, grid, Face()) 
 
     if φmin == - 90 
@@ -34,7 +34,7 @@ function regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid:
         field = Field{Nothing, LY, LZ}(grid; indices = (:, 1, :))
         return PolarBoundaryCondition(field)
     else
-        return regularize_boundary_condition(bc, grid, args...)
+        return regularize_boundary_condition(bc, grid, loc, args...)
     end
 end
 
