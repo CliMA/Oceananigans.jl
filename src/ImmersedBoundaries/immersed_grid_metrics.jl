@@ -2,6 +2,7 @@ using Oceananigans.AbstractOperations: GridMetricOperation
 
 import Oceananigans.Grids: coordinates
 import Oceananigans.Operators: Δrᵃᵃᶜ, Δrᵃᵃᶠ, Δzᵃᵃᶜ, Δzᵃᵃᶠ
+import Oceananigans.Operators: intrinsic_vector, extrinsic_vector
 
 # Grid metrics for ImmersedBoundaryGrid
 #
@@ -39,3 +40,10 @@ end
 @inline Δzᵃᵃᶠ(i, j, k, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.underlying_grid)
 
 coordinates(grid::IBG) = coordinates(grid.underlying_grid)
+
+# Extend both 2D and 3D methods
+@inline intrinsic_vector(i, j, k, ibg::IBG, u, v) = intrinsic_vector(i, j, k, ibg.underlying_grid, u, v)
+@inline extrinsic_vector(i, j, k, ibg::IBG, u, v) = extrinsic_vector(i, j, k, ibg.underlying_grid, u, v)
+
+@inline intrinsic_vector(i, j, k, ibg::IBG, u, v, w) = intrinsic_vector(i, j, k, ibg.underlying_grid, u, v, w)
+@inline extrinsic_vector(i, j, k, ibg::IBG, u, v, w) = extrinsic_vector(i, j, k, ibg.underlying_grid, u, v, w)
