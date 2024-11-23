@@ -1,7 +1,8 @@
 """
     AbstractGrid{FT, TX, TY, TZ}
 
-Abstract supertype for grids with elements of type `FT` and topology `{TX, TY, TZ}`.
+Abstract supertype for grids with elements of type `FT`, 
+topology `{TX, TY, TZ}` and vertical coordinate `CZ`.
 """
 abstract type AbstractGrid{FT, TX, TY, TZ, CZ, Arch} end
 
@@ -9,21 +10,23 @@ abstract type AbstractGrid{FT, TX, TY, TZ, CZ, Arch} end
     AbstractUnderlyingGrid{FT, TX, TY, TZ}
 
 Abstract supertype for "primary" grids (as opposed to grids with immersed boundaries)
-with elements of type `FT` and topology `{TX, TY, TZ}`.
+with elements of type `FT`, topology `{TX, TY, TZ}` and vertical coordinate `CZ`.
 """
 abstract type AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, CZ, Arch} end
 
 """
     AbstractCurvilinearGrid{FT, TX, TY, TZ}
 
-Abstract supertype for curvilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
+Abstract supertype for curvilinear grids with elements of type `FT`,
+topology `{TX, TY, TZ}`, and vertical coordinate `CZ`.
 """
 abstract type AbstractCurvilinearGrid{FT, TX, TY, TZ, CZ, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch} end
 
 """
     AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ}
 
-Abstract supertype for horizontally-curvilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
+Abstract supertype for horizontally-curvilinear grids with elements of type `FT`, 
+topology `{TX, TY, TZ}` and vertical coordinate `CZ`.
 """
 abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, CZ, Arch} <: AbstractCurvilinearGrid{FT, TX, TY, TZ, CZ, Arch} end
 

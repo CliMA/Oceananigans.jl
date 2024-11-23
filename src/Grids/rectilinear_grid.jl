@@ -1,4 +1,4 @@
-struct RectilinearGrid{FT, TX, TY, TZ, FZ, FX, FY, VX, VY, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch}
+struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
     architecture :: Arch
     Nx :: Int
     Ny :: Int

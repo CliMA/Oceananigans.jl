@@ -15,7 +15,7 @@ struct CubedSphereConformalMapping{FT, Rotation}
     rotation :: Rotation
 end
 
-struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, FR, C, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
+struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, A, C, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, CZ, Arch}
     architecture :: Arch
     Nx :: Int
     Ny :: Int
@@ -32,8 +32,7 @@ struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, FR, C, Arch} <: Abstra
     φᶠᶜᵃ :: A
     φᶜᶠᵃ :: A
     φᶠᶠᵃ :: A
-    zᵃᵃᶜ :: R
-    zᵃᵃᶠ :: R
+    z :: CZ
     Δxᶜᶜᵃ :: A
     Δxᶠᶜᵃ :: A
     Δxᶜᶠᵃ :: A
@@ -42,8 +41,6 @@ struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, FR, C, Arch} <: Abstra
     Δyᶜᶠᵃ :: A
     Δyᶠᶜᵃ :: A
     Δyᶠᶠᵃ :: A
-    Δzᵃᵃᶜ :: FR
-    Δzᵃᵃᶠ :: FR
     Azᶜᶜᵃ :: A
     Azᶠᶜᵃ :: A
     Azᶜᶠᵃ :: A
@@ -56,13 +53,13 @@ struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, FR, C, Arch} <: Abstra
                                              Hx, Hy, Hz,
                                                 Lz :: FT,
                                               λᶜᶜᵃ :: A,  λᶠᶜᵃ :: A,  λᶜᶠᵃ :: A,  λᶠᶠᵃ :: A,
-                                              φᶜᶜᵃ :: A,  φᶠᶜᵃ :: A,  φᶜᶠᵃ :: A,  φᶠᶠᵃ :: A, zᵃᵃᶜ :: R, zᵃᵃᶠ :: R,
+                                              φᶜᶜᵃ :: A,  φᶠᶜᵃ :: A,  φᶜᶠᵃ :: A,  φᶠᶠᵃ :: A, z :: CZ,
                                              Δxᶜᶜᵃ :: A, Δxᶠᶜᵃ :: A, Δxᶜᶠᵃ :: A, Δxᶠᶠᵃ :: A,
-                                             Δyᶜᶜᵃ :: A, Δyᶜᶠᵃ :: A, Δyᶠᶜᵃ :: A, Δyᶠᶠᵃ :: A, Δzᵃᵃᶜ :: FR, Δzᵃᵃᶠ :: FR,
+                                             Δyᶜᶜᵃ :: A, Δyᶜᶠᵃ :: A, Δyᶠᶜᵃ :: A, Δyᶠᶠᵃ :: A, 
                                              Azᶜᶜᵃ :: A, Azᶠᶜᵃ :: A, Azᶜᶠᵃ :: A, Azᶠᶠᵃ :: A,
                                              radius :: FT,
-                                             conformal_mapping :: C) where {TX, TY, TZ, FT, A, R, FR, C, Arch} =
-        new{FT, TX, TY, TZ, A, R, FR, C, Arch}(architecture,
+                                             conformal_mapping :: C) where {TX, TY, TZ, FT, CZ, A, C, Arch} =
+        new{FT, TX, TY, TZ, CZ, A, C, Arch}(architecture,
                                             Nx, Ny, Nz,
                                             Hx, Hy, Hz,
                                             Lz,
