@@ -1,6 +1,11 @@
 using Oceananigans.Grids: ZStarUnderlyingGrid
 import Oceananigans.Grids: znode
 
+import Oceananigans.Grids: dynamic_column_depthᶜᶜᵃ, 
+                           dynamic_column_depthᶜᶠᵃ, 
+                           dynamic_column_depthᶠᶜᵃ, 
+                           dynamic_column_depthᶠᶠᵃ
+
 #####
 ##### ZStar-specific vertical spacing functions
 #####
@@ -10,10 +15,16 @@ const F = Face
 
 const ZSG = AbstractZStarGrid
 
-@inline dynamic_column_depthᶜᶜᵃ(i, j, grid, η) = static_column_depthᶜᶜᵃ(i, j, grid) 
-@inline dynamic_column_depthᶜᶠᵃ(i, j, grid, η) = static_column_depthᶜᶠᵃ(i, j, grid) 
-@inline dynamic_column_depthᶠᶜᵃ(i, j, grid, η) = static_column_depthᶠᶜᵃ(i, j, grid) 
-@inline dynamic_column_depthᶠᶠᵃ(i, j, grid, η) = static_column_depthᶠᶠᵃ(i, j, grid) 
+@inline dynamic_column_depthᶜᶜᵃ(i, j, grid::ZSG, η) = @inbounds static_column_depthᶜᶜᵃ(i, j, grid) +      η[i, j, grid.Nz+1]
+@inline dynamic_column_depthᶜᶠᵃ(i, j, grid::ZSG, η) = @inbounds static_column_depthᶜᶠᵃ(i, j, grid) +  ℑxᶠᵃᵃ(i, j, grid.Nz+1, η)
+@inline dynamic_column_depthᶠᶜᵃ(i, j, grid::ZSG, η) = @inbounds static_column_depthᶠᶜᵃ(i, j, grid) +  ℑyᵃᶠᵃ(i, j, grid.Nz+1, η)
+@inline dynamic_column_depthᶠᶠᵃ(i, j, grid::ZSG, η) = @inbounds static_column_depthᶠᶠᵃ(i, j, grid) + ℑxyᶠᶠᵃ(i, j, grid.Nz+1, η)
+
+# Convenience
+@inline dynamic_column_depthᶜᶜᵃ(i, j, grid::ZSG) = dynamic_column_depthᶜᶜᵃ(i, j, grid, grid.z.ηⁿ)
+@inline dynamic_column_depthᶜᶠᵃ(i, j, grid::ZSG) = dynamic_column_depthᶜᶠᵃ(i, j, grid, grid.z.ηⁿ)
+@inline dynamic_column_depthᶠᶜᵃ(i, j, grid::ZSG) = dynamic_column_depthᶠᶜᵃ(i, j, grid, grid.z.ηⁿ)
+@inline dynamic_column_depthᶠᶠᵃ(i, j, grid::ZSG) = dynamic_column_depthᶠᶠᵃ(i, j, grid, grid.z.ηⁿ)
 
 # Fallbacks
 @inline e₃ⁿ(i, j, k, grid, ℓx, ℓy, ℓz) = one(grid)
@@ -29,10 +40,6 @@ const ZSG = AbstractZStarGrid
 
 @inline ∂t_e₃(i, j, k, grid)      = zero(grid)
 @inline ∂t_e₃(i, j, k, grid::ZSG) = @inbounds grid.z.∂t_e₃[i, j, 1] 
-
-# rnode for an ZStarUnderlyingGrid grid is scaled 
-# TODO: fix this when bottom height is implemented
-@inline znode(i, j, k, grid::ZSG, ℓx, ℓx, ℓx) = @inbounds rnode(i, j, k, grid, ℓx, ℓy, ℓz) * e₃ⁿ(i, j, k, grid, ℓx, ℓy, ℓz) + grid.z.ηⁿ[i, j, 1]
 
 ####
 #### Vertical spacing functions
@@ -59,3 +66,5 @@ for Lx in (:ᶠ, :ᶜ), Lx in (:ᶠ, :ᶜ), Lx in (:ᶠ, :ᶜ)
     end
 end
 
+# rnode for an ZStarUnderlyingGrid grid is scaled 
+@inline znode(i, j, k, grid::ZSG, ℓx, ℓy, ℓz) = @inbounds rnode(i, j, k, grid, ℓx, ℓy, ℓz) * e₃ⁿ(i, j, k, grid, ℓx, ℓy, ℓz) + grid.z.ηⁿ[i, j, 1]

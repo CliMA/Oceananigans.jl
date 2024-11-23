@@ -37,14 +37,14 @@ update_grid!(model, grid; parameters = :xy) = nothing
     C₁ = convert(FT, 1.5) + χ
     C₂ = convert(FT, 0.5) + χ
 
-    sⁿ = vertical_scaling(i, j, k, grid, Center(), Center(), Center())
-    s⁻ = previous_vertical_scaling(i, j, k, grid, Center(), Center(), Center())
+    eⁿ = e₃ⁿ(i, j, k, grid, Center(), Center(), Center())
+    e⁻ = e₃⁻(i, j, k, grid, Center(), Center(), Center())
 
     @inbounds begin
-        ∂t_sθ = C₁ * sⁿ * Gⁿ[i, j, k] - C₂ * s⁻ * G⁻[i, j, k]
+        ∂t_sθ = C₁ * eⁿ * Gⁿ[i, j, k] - C₂ * e⁻ * G⁻[i, j, k]
         
         # We store temporarily sθ in θ. the unscaled θ will be retrived later on with `unscale_tracers!`
-        θ[i, j, k] = sⁿ * θ[i, j, k] + convert(FT, Δt) * ∂t_sθ
+        θ[i, j, k] = eⁿ * θ[i, j, k] + convert(FT, Δt) * ∂t_sθ
     end
 end
 
@@ -76,6 +76,6 @@ end
     i, j, n = @index(Global, NTuple)
 
     @unroll for k in -Hz+1:Nz+Hz
-        tracers[n][i, j, k] /= vertical_scaling(i, j, k, grid, Center(), Center(), Center())
+        tracers[n][i, j, k] /= e₃ⁿ(i, j, k, grid, Center(), Center(), Center())
     end
 end

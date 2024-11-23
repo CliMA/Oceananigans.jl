@@ -74,6 +74,9 @@ export ∂xTᶠᶜᶠ, ∂yTᶜᶠᶠ
 # Reference frame conversion
 export intrinsic_vector, extrinsic_vector
 
+# Variable grid operators
+export e₃ⁿ, e₃⁻, ∂t_e₃
+
 using Oceananigans.Grids
 
 import Oceananigans.Grids: xspacing, yspacing, zspacing

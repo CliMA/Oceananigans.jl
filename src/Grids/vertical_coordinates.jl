@@ -39,7 +39,6 @@ struct ZStarVerticalCoordinate{C, D, E, CC, FC, CF, FF} <: AbstractVerticalCoord
        Δᶜ :: D
        Δᶠ :: D
        ηⁿ :: E
-       η⁻ :: E
     e₃ᶜᶜⁿ :: CC
     e₃ᶠᶜⁿ :: FC
     e₃ᶜᶠⁿ :: CF
@@ -65,7 +64,6 @@ const RegularVerticalGrid = AbstractGrid{<:Any, <:Any, <:Any, <:Bounded, <:Regul
 #### Adapting
 ####
 
-
 Adapt.adapt_structure(to, coord::StaticVerticalCoordinate) = 
    StaticVerticalCoordinate(Adapt.adapt(to, coord.cᶠ),
                             Adapt.adapt(to, coord.cᶜ),
@@ -78,7 +76,6 @@ Adapt.adapt_structure(to, coord::ZStarVerticalCoordinate) =
                             Adapt.adapt(to, coord.Δᶠ),
                             Adapt.adapt(to, coord.Δᶠ),
                             Adapt.adapt(to, coord.ηⁿ),
-                            Adapt.adapt(to, coord.η⁻),
                             Adapt.adapt(to, coord.e₃ᶜᶜⁿ),
                             Adapt.adapt(to, coord.e₃ᶠᶜⁿ),
                             Adapt.adapt(to, coord.e₃ᶜᶠⁿ),
