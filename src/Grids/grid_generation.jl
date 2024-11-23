@@ -180,9 +180,13 @@ function generate_coordinate(FT, topo, size, halo, coordinate::ZStarVerticalCoor
 
     args = (topo, (Nx, Ny, Nz), (Hx, Hy, Hz))
 
-    sᶜᶜᵃ  = new_data(FT, arch, (Center, Center, Nothing), args...)
-    sᶜᶜᵃ₋ = new_data(FT, arch, (Center, Center, Nothing), args...)
-    ∂t_s  = new_data(FT, arch, (Center, Center, Nothing), args...)
+    e₃ᶜᶜ⁻ = new_data(FT, arch, (Center, Center, Nothing), args...)
+    e₃ᶜᶜⁿ = new_data(FT, arch, (Center, Center, Nothing), args...)
+    e₃ᶠᶜⁿ = new_data(FT, arch, (Face,   Center, Nothing), args...)
+    e₃ᶜᶠⁿ = new_data(FT, arch, (Center, Face,   Nothing), args...)
+    e₃ᶠᶠⁿ = new_data(FT, arch, (Face,   Face,   Nothing), args...)
+    ηⁿ    = new_data(FT, arch, (Center, Center, Nothing), args...)
+    ∂t_e₃ = new_data(FT, arch, (Center, Center, Nothing), args...)
 
-    return Lr, ZStarVerticalCoordinate(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, sᶜᶜᵃ, sᶜᶜᵃ₋, ∂t_s)
+    return Lr, ZStarVerticalCoordinate(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, e₃ᶜᶜⁿ, e₃ᶠᶜⁿ, e₃ᶜᶠⁿ, e₃ᶠᶠⁿ, e₃ᶜᶜ⁻, ∂t_e₃)
 end

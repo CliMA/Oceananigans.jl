@@ -47,6 +47,10 @@ struct ZStarVerticalCoordinate{C, D, E, CC, FC, CF, FF} <: AbstractVerticalCoord
     ∂t_e₃ :: CC
 end
 
+# Convenience constructors for Zstar vertical coordinate
+ZStarVerticalCoordinate(r_faces::Union{Tuple, AbstractVector}) = ZStarVerticalCoordinate(r_faces, r_faces, nothing, nothing, nothing, nothing, nothing)
+ZStarVerticalCoordinate(r⁻::Number, r⁺::Number) = ZStarVerticalCoordinate((r⁻, r⁺), (r⁻, r⁺), nothing, nothing, nothing, nothing, nothing)
+
 ####
 #### Some usefull aliases
 ####
@@ -94,21 +98,13 @@ Adapt.adapt_structure(to, coord::ZStarVerticalCoordinate) =
 @inline znode(k, grid, ℓz) = rnode(k, grid, ℓz)
 @inline znode(i, j, k, grid, ℓx, ℓy, ℓz) = rnode(k, grid, ℓz)
 
-# Extended for ZStargrids in operators
+# Extended for ZStarGrids in the Operators module
 @inline znode(i, j, k, grid, ℓx, ℓy, ℓz) = znode(k, grid, ℓz)
 @inline znode(k, grid, ℓx) = getnode(grid.z, k)
 
-# Convenience constructors for Zstar vertical coordinate
-ZStarVerticalCoordinate(r_faces::Union{Tuple, AbstractVector}) = ZStarVerticalCoordinate(r_faces, r_faces, nothing, nothing, nothing, nothing, nothing)
-ZStarVerticalCoordinate(r⁻::Number, r⁺::Number) = ZStarVerticalCoordinate((r⁻, r⁺), (r⁻, r⁺), nothing, nothing, nothing, nothing, nothing)
-
 # Summaries
-
-Grids.coordinate_summary(::Bounded, Δ::ZStarVerticalCoordinate, name) = 
-    @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(Δ.reference))
-
-Grids.coordinate_summary(::Bounded, Δ::ZStarVerticalCoordinate, name) = 
-    @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(Δ.reference))
+Grids.coordinate_summary(::Bounded, z::ZStarVerticalCoordinate, name) = 
+    @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(z.Δᶜ))
 
 function validate_dimension_specification(T, ξ::ZStarVerticalCoordinate, dir, N, FT)
     reference = validate_dimension_specification(T, ξ.reference, dir, N, FT)
