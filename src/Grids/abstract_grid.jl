@@ -12,7 +12,7 @@ abstract type AbstractGrid{FT, TX, TY, TZ, CZ, Arch} end
 Abstract supertype for "primary" grids (as opposed to grids with immersed boundaries)
 with elements of type `FT`, topology `{TX, TY, TZ}` and vertical coordinate `CZ`.
 """
-abstract type AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, CZ, Arch} end
+abstract type AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch} end
 
 """
     AbstractCurvilinearGrid{FT, TX, TY, TZ}

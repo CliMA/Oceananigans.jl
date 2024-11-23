@@ -60,9 +60,9 @@ const RegularZstarVerticalCoordinate  = ZStarVerticalCoordinate{<:Any,  <:Number
 
 const RegularVerticalCoordinate = Union{RegularStaticVerticalCoordinate, RegularZstarVerticalCoordinate}
 
-const AbstractZStarGrid   = AbstractGrid{<:Any, <:Any, <:Any, <:Bounded, <:ZStarVerticalCoordinate}
-const AbstractStaticGrid  = AbstractGrid{<:Any, <:Any, <:Any, <:Bounded, <:StaticVerticalCoordinate}
-const RegularVerticalGrid = AbstractGrid{<:Any, <:Any, <:Any, <:Bounded, <:RegularVerticalCoordinate}
+const AbstractZStarGrid   = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Bounded, <:ZStarVerticalCoordinate}
+const AbstractStaticGrid  = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,     <:StaticVerticalCoordinate}
+const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,     <:RegularVerticalCoordinate}
 
 ####
 #### Adapting

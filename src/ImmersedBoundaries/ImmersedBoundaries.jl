@@ -46,6 +46,6 @@ include("mask_immersed_field.jl")
 include("immersed_reductions.jl")
 
 # Extension to Immersed boundaries with zstar
-include("abstract_zstar_immersed_grid.jl")
+include("zstar_immersed_grid.jl")
 
 end # module

@@ -13,7 +13,6 @@ import Oceananigans.Operators: intrinsic_vector, extrinsic_vector
 
 for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
     for dir in (:x, :y, :z), operator in (:Δ, :A)
-
         metric = Symbol(operator, dir, LX, LY, LZ)
         @eval begin
             import Oceananigans.Operators: $metric
