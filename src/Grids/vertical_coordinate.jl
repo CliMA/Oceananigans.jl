@@ -3,8 +3,8 @@ abstract type AbstractVerticalCoordinate end
 # Represents a static vertical coordinate system.
 #
 # # Fields
-# - `cᶠ::C`: Face-centered coordinates.
-# - `cᶜ::C`: Cell-centered coordinates.
+# - `cᶠ::C`: Face-centered coordinate.
+# - `cᶜ::C`: Cell-centered coordinate.
 # - `Δᶠ::D`: Face-centered grid spacing.
 # - `Δᶠ::D`: Face-centered grid spacing (duplicate field, consider renaming or removing).
 #
@@ -88,7 +88,7 @@ Adapt.adapt_structure(to, coord::ZStarVerticalCoordinate) =
                             Adapt.adapt(to, coord.∂t_e₃))
 
 #####
-##### vertical nodes...
+##### Vertical nodes...
 #####
 
 @inline rnode(i, j, k, grid, ℓx, ℓy, ℓz) = rnode(k, grid, ℓz)
