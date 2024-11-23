@@ -202,3 +202,10 @@ YFlatPCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:Partial
 @inline Δzᶜᶠᶠ(i, j, k, ibg::YFlatPCBIBG) = Δzᶜᶜᶠ(i, j, k, ibg)
 @inline Δzᶠᶠᶜ(i, j, k, ibg::XFlatPCBIBG) = Δzᶜᶠᶜ(i, j, k, ibg)
 @inline Δzᶠᶠᶜ(i, j, k, ibg::YFlatPCBIBG) = Δzᶠᶜᶜ(i, j, k, ibg)
+
+# Make sure a PartialCellBottom grid cannot use :ᵃ for the z-spacings 
+# in the z-direction
+for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ)
+    metric = Symbol(operator, dir, LX, LY, :ᵃ)
+    @eval @inline $metric(i, j, k, ibg::PCBIBG) = throw(ArgumentError("PartialCellBottom grids cannot use `:ᵃ` for spacings in the z-direction"))
+end
