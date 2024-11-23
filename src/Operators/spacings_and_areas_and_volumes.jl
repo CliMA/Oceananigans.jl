@@ -36,7 +36,7 @@ The operators in this file fall into three categories:
 #####
 
 # Convenience Functions for all grids
-for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
+for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ)
 
     x_spacing_1D = Symbol(:Δx, LX, :ᵃ, :ᵃ)
     x_spacing_2D = Symbol(:Δx, LX, LY, :ᵃ)
@@ -197,7 +197,7 @@ end
 #####
 #####
 
-for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
+for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ)
 
     x_spacing_2D = Symbol(:Δx, LX, LY, :ᵃ)
     y_spacing_2D = Symbol(:Δy, LX, LY, :ᵃ)
