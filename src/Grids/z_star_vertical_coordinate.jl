@@ -81,27 +81,6 @@ end
 ZStarVerticalCoordinate(r_faces::Union{Tuple, AbstractVector}) = ZStarVerticalCoordinate(r_faces, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing)
 ZStarVerticalCoordinate(r⁻::Number, r⁺::Number) = ZStarVerticalCoordinate((r⁻, r⁺), nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing)
 
-Adapt.adapt_structure(to, coord::ZStarVerticalCoordinate) = 
-    ZStarVerticalCoordinate(Adapt.adapt(to, coord.reference),
-                            Adapt.adapt(to, coord.sᶜᶜⁿ),
-                            Adapt.adapt(to, coord.sᶠᶜⁿ),
-                            Adapt.adapt(to, coord.sᶜᶠⁿ),
-                            Adapt.adapt(to, coord.sᶠᶠⁿ),
-                            Adapt.adapt(to, coord.sᶜᶜ⁻),
-                            Adapt.adapt(to, coord.sᶠᶜ⁻),
-                            Adapt.adapt(to, coord.sᶜᶠ⁻),
-                            Adapt.adapt(to, coord.∂t_s))
-
-on_architecture(arch, coord::ZStarVerticalCoordinate) = 
-    ZStarVerticalCoordinate(on_architecture(arch, coord.reference),
-                            on_architecture(arch, coord.sᶜᶜⁿ),
-                            on_architecture(arch, coord.sᶠᶜⁿ),
-                            on_architecture(arch, coord.sᶜᶠⁿ),
-                            on_architecture(arch, coord.sᶠᶠⁿ),
-                            on_architecture(arch, coord.sᶜᶜ⁻),
-                            on_architecture(arch, coord.sᶠᶜ⁻),
-                            on_architecture(arch, coord.sᶜᶠ⁻),
-                            on_architecture(arch, coord.∂t_s))
 
 Grids.coordinate_summary(::Bounded, Δ::ZStarVerticalCoordinate, name) = 
     @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(Δ.reference))

@@ -1,4 +1,4 @@
-struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch}
+struct RectilinearGrid{FT, TX, TY, TZ, FZ, FX, FY, VX, VY, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
     Nx :: Int
     Ny :: Int
@@ -19,10 +19,7 @@ struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: Abstract
     Δyᵃᶜᵃ :: FY
     yᵃᶠᵃ  :: VY
     yᵃᶜᵃ  :: VY
-    Δzᵃᵃᶠ :: FZ
-    Δzᵃᵃᶜ :: FZ
-    zᵃᵃᶠ  :: VZ
-    zᵃᵃᶜ  :: VZ
+    z     :: FZ
 
     RectilinearGrid{TX, TY, TZ}(arch::Arch,
                                 Nx, Ny, Nz,
@@ -32,27 +29,26 @@ struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: Abstract
                                  xᶠᵃᵃ :: VX,  xᶜᵃᵃ :: VX,
                                 Δyᵃᶠᵃ :: FY, Δyᵃᶜᵃ :: FY,
                                  yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
-                                Δzᵃᵃᶠ :: FZ, Δzᵃᵃᶜ :: FZ,
-                                 zᵃᵃᶠ :: VZ,  zᵃᵃᶜ :: VZ) where {Arch, FT,
-                                                                 TX, TY, TZ,
-                                                                 FX, VX, FY,
-                                                                 VY, FZ, VZ} =
-        new{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch}(arch, Nx, Ny, Nz,
-                                                          Hx, Hy, Hz, Lx, Ly, Lz,
-                                                          Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
-                                                          Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
-                                                          Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
+                                 z    :: FZ) where {Arch, FT,
+                                                    TX, TY, TZ,
+                                                    FX, VX, FY,
+                                                    VY, FZ} =
+        new{FT, TX, TY, TZ, FZ, FX, FY, VX, VY, Arch}(arch, Nx, Ny, Nz,
+                                                      Hx, Hy, Hz, Lx, Ly, Lz,
+                                                      Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
+                                                      Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
+                                                      z)
 end
 
 const RG = RectilinearGrid
 
-const XRegularRG   = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number}
-const YRegularRG   = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any,    <:Number}
-const ZRegularRG   = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any,    <:Any,    <:Number}
-const XYRegularRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
-const XZRegularRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Any,    <:Number}
-const YZRegularRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any,    <:Number, <:Number}
-const XYZRegularRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Number}
+const XRegularRG   = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
+const YRegularRG   = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any,    <:Number}
+const ZRegularRG   = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate}
+const XYRegularRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
+const XZRegularRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate, <:Number}
+const YZRegularRG  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate, <:Any, <:Number}
+const XYZRegularRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate, <:Number, <:Number}
 
 regular_dimensions(::XRegularRG)  = tuple(1)
 regular_dimensions(::YRegularRG)  = tuple(2)
