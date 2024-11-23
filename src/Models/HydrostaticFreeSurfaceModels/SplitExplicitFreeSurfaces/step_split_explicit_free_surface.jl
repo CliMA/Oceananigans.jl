@@ -115,17 +115,13 @@ end
 ##### SplitExplicitFreeSurface barotropic subcylicing
 #####
 
-ab2_step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt, χ) =
-    split_explicit_free_surface_step!(free_surface, model, Δt)
-
-function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt)
+function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroclinic_timestepper, Δt)
 
     # Note: free_surface.η.grid != model.grid for DistributedSplitExplicitFreeSurface
     # since halo_size(free_surface.η.grid) != halo_size(model.grid)
     free_surface_grid = free_surface.η.grid
     filtered_state    = free_surface.filtered_state
     substepping       = free_surface.substepping
-    timestepper       = free_surface.timestepper
     
     barotropic_velocities = free_surface.barotropic_velocities
 
@@ -155,8 +151,6 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     # reset free surface averages
     @apply_regionally begin
-        initialize_free_surface_state!(filtered_state, free_surface.η, barotropic_velocities, timestepper)
-
         # Solve for the free surface at tⁿ⁺¹
         iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, weights, Val(Nsubsteps))
         
