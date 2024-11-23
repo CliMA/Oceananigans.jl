@@ -660,6 +660,11 @@ function test_lat_lon_xyzλφ_node_nodes(FT, arch)
     @test minimum_yspacing(grid) / grid.radius ≈ FT(π/6)
     @test minimum_zspacing(grid) ≈ 5
 
+    grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> y < 20 && y > -20))
+
+    @test minimum_xspacing(grid, Face(), Face(), Face()) / grid.radius ≈ π/6 * cosd(15)
+    @test minimum_xspacing(grid) / grid.radius ≈ π/6 * cosd(15)
+
     return nothing
 end
 
