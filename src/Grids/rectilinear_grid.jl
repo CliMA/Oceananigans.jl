@@ -496,24 +496,17 @@ const C = Center
 @inline xnodes(grid::RG, ℓx::C; with_halos=false) = _property(grid.xᶜᵃᵃ, ℓx, topology(grid, 1), size(grid, 1), with_halos)
 @inline ynodes(grid::RG, ℓy::F; with_halos=false) = _property(grid.yᵃᶠᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
 @inline ynodes(grid::RG, ℓy::C; with_halos=false) = _property(grid.yᵃᶜᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
-@inline znodes(grid::RG, ℓz::F; with_halos=false) = _property(grid.zᵃᵃᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
-@inline znodes(grid::RG, ℓz::C; with_halos=false) = _property(grid.zᵃᵃᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
-@inline rnodes(grid::RG, ℓz::F; with_halos=false) = _property(grid.zᵃᵃᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
-@inline rnodes(grid::RG, ℓz::C; with_halos=false) = _property(grid.zᵃᵃᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
 
 # convenience
 @inline xnodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx; with_halos)
 @inline ynodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓy; with_halos)
-@inline znodes(grid::RG, ℓx, ℓy, ℓz; with_halos=false) = znodes(grid, ℓz; with_halos)
 
 # Generalized coordinates
 @inline ξnodes(grid::RG, ℓx; kwargs...) = xnodes(grid, ℓx; kwargs...)
 @inline ηnodes(grid::RG, ℓy; kwargs...) = ynodes(grid, ℓy; kwargs...)
-@inline rnodes(grid::RG, ℓz; kwargs...) = znodes(grid, ℓz; kwargs...)
 
 @inline ξnodes(grid::RG, ℓx, ℓy, ℓz; kwargs...) = xnodes(grid, ℓx; kwargs...)
 @inline ηnodes(grid::RG, ℓx, ℓy, ℓz; kwargs...) = ynodes(grid, ℓy; kwargs...)
-@inline rnodes(grid::RG, ℓx, ℓy, ℓz; kwargs...) = rnodes(grid, ℓz; kwargs...)
 
 @inline isrectilinear(::RG) = true
 
@@ -523,4 +516,3 @@ const C = Center
 
 @inline xspacings(grid::RG, ℓx) = xspacings(grid, ℓx, nothing, nothing)
 @inline yspacings(grid::RG, ℓy) = yspacings(grid, nothing, ℓy, nothing)
-@inline zspacings(grid::RG, ℓz) = zspacings(grid, nothing, nothing, ℓz)

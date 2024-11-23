@@ -636,15 +636,9 @@ end
     return @. R * deg2rad(φ)
 end
 
-@inline znodes(grid::LLG, ℓz::F; with_halos=false) = _property(grid.z.cᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
-@inline znodes(grid::LLG, ℓz::C; with_halos=false) = _property(grid.z.cᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
-@inline rnodes(grid::LLG, ℓz::F; with_halos=false) = _property(grid.z.cᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
-@inline rnodes(grid::LLG, ℓz::C; with_halos=false) = _property(grid.z.cᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
-
 # Convenience
 @inline λnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = λnodes(grid, ℓx; with_halos)
 @inline φnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = φnodes(grid, ℓy; with_halos)
-@inline znodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = znodes(grid, ℓz; with_halos)
 @inline xnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx, ℓy; with_halos)
 @inline ynodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓy; with_halos)
 
@@ -656,11 +650,9 @@ end
 # Generalized coordinates
 @inline ξnodes(grid::LLG, ℓx; kwargs...) = λnodes(grid, ℓx; kwargs...)
 @inline ηnodes(grid::LLG, ℓy; kwargs...) = φnodes(grid, ℓy; kwargs...)
-@inline rnodes(grid::LLG, ℓz; kwargs...) = znodes(grid, ℓz; kwargs...)
 
 @inline ξnodes(grid::LLG, ℓx, ℓy, ℓz; kwargs...) = λnodes(grid, ℓx; kwargs...)
 @inline ηnodes(grid::LLG, ℓx, ℓy, ℓz; kwargs...) = φnodes(grid, ℓy; kwargs...)
-@inline rnodes(grid::LLG, ℓx, ℓy, ℓz; kwargs...) = rnodes(grid, ℓz; kwargs...)
 
 #####
 ##### Grid spacings
@@ -681,8 +673,6 @@ end
 
 @inline xspacings(grid::LLG, ℓx, ℓy) = xspacings(grid, ℓx, ℓy, nothing)
 @inline yspacings(grid::LLG, ℓx, ℓy) = yspacings(grid, ℓx, ℓy, nothing)
-@inline zspacings(grid::LLG, ℓz)     = zspacings(grid, nothing, nothing, ℓz)
-@inline rspacings(grid::LLG, ℓz)     = rspacings(grid, ℓz; kwargs...)
 
 @inline λspacings(grid::LLG, ℓx) = λspacings(grid, ℓx, nothing, nothing)
 @inline φspacings(grid::LLG, ℓy) = φspacings(grid, nothing, ℓy, nothing)

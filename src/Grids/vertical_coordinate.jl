@@ -109,3 +109,12 @@ end
 # Summaries
 coordinate_summary(::Bounded, z::AbstractVerticalCoordinate, name) = 
     @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(z.Δᶜ))
+
+####
+#### Nodes and spacings...
+####
+
+# znodes(....)
+# rnodes(....)
+# zspacings(....)
+# rspacings(....)
