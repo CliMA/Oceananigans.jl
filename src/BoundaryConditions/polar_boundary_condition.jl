@@ -1,10 +1,10 @@
-const PolarBoundaryCondition{V} = BoundaryCondition{<:Value, <:PolarValue}
-
 condition_operand(data, grid, Loc, condition, mask) = data
 
 struct PolarValue{C}
     c :: C
 end
+
+const PolarBoundaryCondition{V} = BoundaryCondition{<:Value, <:PolarValue}
 
 PolarBoundaryCondition(field) = 
     ValueBoundaryCondition(PolarValue(field))
@@ -44,13 +44,13 @@ function update_pole_value!(bc::PolarBoundaryCondition, c, grid, loc)
     return nothing
 end
 
-function fill_south_halo!(c, bc::PolarBoundaryCondition, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) = 
+function fill_south_halo!(c, bc::PolarBoundaryCondition, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) 
     update_pole_value!(bc, c, grid, loc)
     return launch!(arch, grid, KernelParameters(size, offset),
                    _fill_only_south_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
 end
 
-function fill_north_halo!(c, bc::PolarBoundaryCondition, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) = 
+function fill_north_halo!(c, bc::PolarBoundaryCondition, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) 
     update_pole_value!(bc, c, grid, loc)
     return launch!(arch, grid, KernelParameters(size, offset),
                    _fill_only_north_halo!, c, bc, loc, grid, Tuple(args); kwargs...)

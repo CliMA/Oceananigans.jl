@@ -677,9 +677,10 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                     mask = get_neutral_mask(Base.$(reduction!)),
                                     kwargs...)
 
+            ia = view(a, indices(r)...)
             return Base.$(reduction!)(identity,
                                       interior(r),
-                                      condition_operand(f, a, condition, mask);
+                                      condition_operand(f, ia, condition, mask);
                                       kwargs...)
         end
 
@@ -689,9 +690,10 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                     mask = get_neutral_mask(Base.$(reduction!)),
                                     kwargs...)
 
+            ia = view(a, indices(r)...)
             return Base.$(reduction!)(identity,
                                       interior(r),
-                                      condition_operand(a, condition, mask);
+                                      condition_operand(ia, condition, mask);
                                       kwargs...)
         end
 
@@ -737,9 +739,10 @@ Statistics.mean(f::Function, c::AbstractField; condition = nothing, dims=:) = St
 Statistics.mean(c::AbstractField; condition = nothing, dims=:) = Statistics._mean(identity, c, dims; condition)
 
 function Statistics.mean!(f::Function, r::ReducedAbstractField, a::AbstractField; condition = nothing, mask = 0)
-    sum!(f, r, a; condition, mask, init=true)
+    ia = view(a, indices(r)...)
+    sum!(f, r, ia; condition, mask, init=true)
     dims = reduced_dimension(location(r))
-    n = conditional_length(condition_operand(f, a, condition, mask), dims)
+    n = conditional_length(condition_operand(f, ia, condition, mask), dims)
     r ./= n
     return r
 end
