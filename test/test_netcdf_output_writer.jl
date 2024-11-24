@@ -639,13 +639,14 @@ end
 function test_netcdf_time_averaging(arch)
     # Test for both "nice" floating point number and one that is more susceptible
     # to rounding errors
-    for Δt in [1/64, 0.01]
+    for Δt in (1/64, 0.01)
         # Results should be very close (rtol < 1e-5) for stride = 1.
-        # stride > 2 is currently not very robust and can give inconsistent
-        # results due to floating number errors that can result in very small timesteps,
-        # which essentially decouples the clock time from the iteration number.
+        # stride > 2 is currently not robust and can give inconsistent
+        # results due to floating number errors that can result in vanishingly 
+        # small timesteps, which essentially decouples the clock time from
+        # the iteration number.
         # Can add stride > 1 cases to the following line to test them.
-        for (stride, rtol) in zip([1], [1.e-5])
+        for (stride, rtol) in zip((1), (1.e-5))
             @info "  Testing time-averaging of NetCDF outputs [$(typeof(arch))] with timestep of $(Δt), stride of $(stride), and relative tolerance of $(rtol)."
             topo = (Periodic, Periodic, Periodic)
             domain = (x=(0, 1), y=(0, 1), z=(0, 1))
@@ -678,8 +679,9 @@ function test_netcdf_time_averaging(arch)
 
             horizontal_average_nc_filepath = "decay_averaged_field_test.nc"
 
-            simulation.output_writers[:horizontal_average] =
-                NetCDFOutputWriter(model, nc_outputs,
+            simulation.output_writers[:horizontal_average] = NetCDFOutputWriter(
+                                model,
+                                nc_outputs,
                                 array_type = Array{Float64},
                                 verbose = true,
                                 filename = horizontal_average_nc_filepath,
@@ -693,16 +695,18 @@ function test_netcdf_time_averaging(arch)
             single_nc_output = Dict("c1" => ∫c1_dxdy)
             single_nc_dimension = Dict("c1" => ("zC",))
 
-            simulation.output_writers[:single_output_time_average] =
-                NetCDFOutputWriter(model, single_nc_output,
+            simulation.output_writers[:single_output_time_average] = NetCDFOutputWriter(
+                                model,
+                                single_nc_output,
                                 array_type = Array{Float64},
                                 verbose = true,
                                 filename = single_time_average_nc_filepath,
                                 schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
                                 dimensions = single_nc_dimension)
 
-            simulation.output_writers[:multiple_output_time_average] =
-                NetCDFOutputWriter(model, nc_outputs,
+            simulation.output_writers[:multiple_output_time_average] = NetCDFOutputWriter(
+                                model,
+                                nc_outputs,
                                 array_type = Array{Float64},
                                 verbose = true,
                                 filename = multiple_time_average_nc_filepath,
