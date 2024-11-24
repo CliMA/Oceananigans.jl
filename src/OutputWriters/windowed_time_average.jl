@@ -1,4 +1,3 @@
-
 using Oceananigans.Diagnostics: AbstractDiagnostic
 using Oceananigans.OutputWriters: fetch_output
 using Oceananigans.Models: AbstractModel
@@ -218,7 +217,6 @@ end
 function accumulate_result!(wta, clock::Clock, integrand=wta.operand)
     # Time increment:
     Δt = clock.time - wta.previous_collection_time
-    
     # Time intervals:
     T_current = clock.time - wta.window_start_time
     T_previous = wta.previous_collection_time - wta.window_start_time
