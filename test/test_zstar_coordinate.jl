@@ -37,8 +37,51 @@ function info_message(grid)
     return msg1 * msg2 * msg3 * msg4 * msg5
 end
 
-@testset "ZStar coordinate testset" begin
+const C = Center
 
+@testset "ZStar coordinate scaling tests" begin
+    @info "testing the ZStar coordinate scalings"
+
+    z = ZStarVerticalCoordinate(-20, 0)
+
+    grid = RectilinearGrid(size = (2, 1, 20), 
+                              x = (0, 2), 
+                              y = (0, 1), 
+                              z = z, 
+                       topology = (Periodic, Periodic, Bounded))
+
+    grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> -10))
+
+    model = HydrostaticFreeSurfaceModel(grid, 
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 20))
+
+    @test znode(1, 1, 21, grid, C(), C(), F()) == 0
+    @test dynamic_column_depthᶜᶜᵃ(1, 1, grid) == 10
+    @test  static_column_depthᶜᶜᵃ(1, 1, grid) == 10
+
+    set!(model, η = [1, 2])
+    set!(model, u = (x, y, z) -> x)
+
+    initialize!(model)
+    update_state!(model)
+
+    @test e₃ⁿ(1, 1, 1, grid, C(), C(), C()) == 11 / 10
+    @test e₃ⁿ(2, 1, 1, grid, C(), C(), C()) == 12 / 10
+    @test e₃⁻(1, 1, 1, grid, C(), C(), C()) == 1
+    @test e₃⁻(2, 1, 1, grid, C(), C(), C()) == 1
+
+    @test znode(1, 1, 21, grid, C(), C(), C()) == 1
+    @test znode(2, 1, 21, grid, C(), C(), C()) == 2
+    @test rnode(1, 1, 21, grid, C(), C(), F()) == 0
+    @test dynamic_column_depthᶜᶜᵃ(1, 1, grid) == 11
+    @test dynamic_column_depthᶜᶜᵃ(2, 1, grid) == 12
+    @test  static_column_depthᶜᶜᵃ(1, 1, grid) == 10
+    @test  static_column_depthᶜᶜᵃ(2, 1, grid) == 10
+
+    @test ∂t_e₃(1, 1, 1, grid) == 1 / 10
+end
+
+@testset "ZStar coordinate simulation testset" begin
     z_uniform   = ZStarVerticalCoordinate(-20, 0)
     z_stretched = ZStarVerticalCoordinate(collect(-20:0))
     topologies  = ((Periodic, Periodic, Bounded), 
