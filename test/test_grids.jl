@@ -6,7 +6,7 @@ using Oceananigans.Grids: total_extent,
                           xnode, ynode, znode, λnode, φnode,
                           λspacings, φspacings
 
-using Oceananigans.Operators
+using Oceananigans.Operators: Δx, Δy, Δz, Δλ, Δφ, Ax, Ay, Az, volume
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 
 #####
@@ -561,20 +561,20 @@ function test_basic_lat_lon_general_grid(FT)
     @test all(zspacings(grid_reg, Face(),   Center(), Center()) .== zspacings(grid_reg, Center()))
     @test all(zspacings(grid_reg, Face(),   Center(), Face()  ) .== zspacings(grid_reg, Face()))
 
-    @test Δx(1, 2, 3, grid_reg, Center(), Center(), Center()) == grid_reg.Δxᶜᶜᵃ[2]
-    @test Δx(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δxᶜᶠᵃ[2]
-    @test Δy(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δyᶜᶠᵃ
-    @test Δy(1, 2, 3, grid_reg, Face(),   Center(), Center()) == grid_reg.Δyᶠᶜᵃ
-    @test Δz(1, 2, 3, grid_reg, Center(), Center(), Face()  ) == grid_reg.Δzᵃᵃᶠ
-    @test Δz(1, 2, 3, grid_reg, Center(), Center(), Center()) == grid_reg.Δzᵃᵃᶜ
+    @test Operators.Δx(1, 2, 3, grid_reg, Center(), Center(), Center()) == grid_reg.Δxᶜᶜᵃ[2]
+    @test Operators.Δx(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δxᶜᶠᵃ[2]
+    @test Operators.Δy(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δyᶜᶠᵃ
+    @test Operators.Δy(1, 2, 3, grid_reg, Face(),   Center(), Center()) == grid_reg.Δyᶠᶜᵃ
+    @test Operators.Δz(1, 2, 3, grid_reg, Center(), Center(), Face()  ) == grid_reg.Δzᵃᵃᶠ
+    @test Operators.Δz(1, 2, 3, grid_reg, Center(), Center(), Center()) == grid_reg.Δzᵃᵃᶜ
 
     @test all(λspacings(grid_reg, Center()) .== grid_reg.Δλᶜᵃᵃ)
     @test all(λspacings(grid_reg, Face()) .== grid_reg.Δλᶠᵃᵃ)
     @test all(φspacings(grid_reg, Center()) .== grid_reg.Δφᵃᶜᵃ)
     @test all(φspacings(grid_reg, Face()) .== grid_reg.Δφᵃᶠᵃ)
 
-    @test Δλ(1, 2, 3, grid_reg, Face(),   Center(), Face())   == grid_reg.Δλᶠᵃᵃ
-    @test Δφ(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δφᵃᶠᵃ
+    @test Operators.Δλ(1, 2, 3, grid_reg, Face(),   Center(), Face())   == grid_reg.Δλᶠᵃᵃ
+    @test Operators.Δφ(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δφᵃᶠᵃ
 
     Δλ = grid_reg.Δλᶠᵃᵃ
     λₛ = (-grid_reg.Lx/2):Δλ:(grid_reg.Lx/2)
@@ -661,10 +661,10 @@ function test_lat_lon_xyzλφ_node_nodes(FT, arch)
     @test minimum_yspacing(grid) / grid.radius ≈ FT(π/6)
     @test minimum_zspacing(grid) ≈ 5
 
-    grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> y < 20 && y > -20))
+    grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> y < 20 && y > -20 ? -50 : -0))
 
-    @test minimum_xspacing(grid, Face(), Face(), Face()) / grid.radius ≈ π/6 * cosd(15)
-    @test minimum_xspacing(grid) / grid.radius ≈ π/6 * cosd(15)
+    @test minimum_xspacing(grid, Face(), Face(), Face()) / grid.radius ≈ FT(π/6) * cosd(30)
+    @test minimum_xspacing(grid) / grid.radius ≈ FT(π/6) * cosd(15)
 
     return nothing
 end

@@ -313,13 +313,13 @@ end
 @inline Δλ(i, j, k, grid::LLGX, ::Center, ℓy, ℓz) = @inbounds grid.Δλᶜᵃᵃ
 @inline Δλ(i, j, k, grid::LLGX, ::Face,   ℓy, ℓz) = @inbounds grid.Δλᶠᵃᵃ
 
-@inline Δφ(i, j, k, grid::LLG,  ::Center, ℓy, ℓz) = @inbounds grid.Δφᵃᶜᵃ[j]
-@inline Δφ(i, j, k, grid::LLG,  ::Face,   ℓy, ℓz) = @inbounds grid.Δφᵃᶠᵃ[j]
-@inline Δφ(i, j, k, grid::LLGY, ::Center, ℓy, ℓz) = @inbounds grid.Δφᵃᶜᵃ
-@inline Δφ(i, j, k, grid::LLGY, ::Face,   ℓy, ℓz) = @inbounds grid.Δφᵃᶠᵃ
+@inline Δφ(i, j, k, grid::LLG,  ℓx, ::Center, ℓz) = @inbounds grid.Δφᵃᶜᵃ[j]
+@inline Δφ(i, j, k, grid::LLG,  ℓx, ::Face,   ℓz) = @inbounds grid.Δφᵃᶠᵃ[j]
+@inline Δφ(i, j, k, grid::LLGY, ℓx, ::Center, ℓz) = @inbounds grid.Δφᵃᶜᵃ
+@inline Δφ(i, j, k, grid::LLGY, ℓx, ::Face,   ℓz) = @inbounds grid.Δφᵃᶠᵃ
 
 @inline Δλ(i, j, k, grid::OSSG, ::Center, ℓy, ℓz) = δxᶜᵃᵃ(i, j, k, grid, λnode, Face(),   ℓy, ℓz)
 @inline Δλ(i, j, k, grid::OSSG, ::Face,   ℓy, ℓz) = δxᶜᵃᵃ(i, j, k, grid, λnode, Center(), ℓy, ℓz)
 
-@inline Δφ(i, j, k, grid::OSSG, ::Center, ℓy, ℓz) = δyᵃᶜᵃ(i, j, k, grid, λnode, ℓx, Face(),   ℓz)
-@inline Δφ(i, j, k, grid::OSSG, ::Face,   ℓy, ℓz) = δyᵃᶜᵃ(i, j, k, grid, λnode, ℓx, Center(), ℓz)
+@inline Δφ(i, j, k, grid::OSSG, ℓy, ::Center, ℓz) = δyᵃᶜᵃ(i, j, k, grid, λnode, ℓx, Face(),   ℓz)
+@inline Δφ(i, j, k, grid::OSSG, ℓy, ::Face,   ℓz) = δyᵃᶜᵃ(i, j, k, grid, λnode, ℓx, Center(), ℓz)
