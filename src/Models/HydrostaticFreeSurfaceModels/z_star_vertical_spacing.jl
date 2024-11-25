@@ -109,7 +109,7 @@ unscale_tracers!(::EmptyTuples, ::ZStarGridOfSomeKind; kwargs...) = nothing
 tracer_scaling_parameters(param::Symbol, tracers, grid) = KernelParameters((size(grid, 1), size(grid, 2), length(tracers)), (0, 0, 0))
 tracer_scaling_parameters(param::KernelParameters{S, O}, tracers, grid) where {S, O} = KernelParameters((S..., length(tracers)), (O..., 0))
 
-function unscale_tracers!(tracers, grid::AbstractVerticalCoordinateGrid; parameters = :xy) 
+function unscale_tracers!(tracers, grid::ZStarGridOfSomeKind; parameters = :xy) 
     parameters = tracer_scaling_parameters(parameters, tracers, grid)
     
     launch!(architecture(grid), grid, parameters, _unscale_tracers!, tracers, grid, 

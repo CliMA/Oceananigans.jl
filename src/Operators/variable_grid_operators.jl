@@ -1,10 +1,5 @@
 import Oceananigans.Grids: znode, AbstractZStarGrid
 
-import Oceananigans.Grids: dynamic_column_depthᶜᶜᵃ, 
-                           dynamic_column_depthᶜᶠᵃ, 
-                           dynamic_column_depthᶠᶜᵃ, 
-                           dynamic_column_depthᶠᶠᵃ
-
 #####
 ##### ZStar-specific vertical spacing functions
 #####
