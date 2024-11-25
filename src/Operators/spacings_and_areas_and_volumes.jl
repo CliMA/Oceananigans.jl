@@ -35,32 +35,28 @@ The operators in this file fall into three categories:
 #####
 #####
 
+spacing_x_loc(dir) = dir == :x ? (:ᶜ, :ᶠ) : (:ᶜ, :ᶠ, :ᵃ) 
+spacing_y_loc(dir) = dir == :y ? (:ᶜ, :ᶠ) : (:ᶜ, :ᶠ, :ᵃ) 
+spacing_z_loc(dir) = dir == :z ? (:ᶜ, :ᶠ) : (:ᶜ, :ᶠ, :ᵃ) 
+
+spacing_1D(::Val{:x}, LX, LY, LZ) = Symbol(:Δx, LX, :ᵃ, :ᵃ)
+spacing_2D(::Val{:x}, LX, LY, LZ) = Symbol(:Δx, LX, LY, :ᵃ)
+spacing_1D(::Val{:y}, LX, LY, LZ) = Symbol(:Δx, :ᵃ, LY, :ᵃ)
+spacing_2D(::Val{:y}, LX, LY, LZ) = Symbol(:Δx, LX, LY, :ᵃ)
+spacing_1D(::Val{:z}, LX, LY, LZ) = Symbol(:Δx, :ᵃ, :ᵃ, LZ)
+spacing_2D(::Val{:z}, LX, LY, LZ) = Symbol(:Δx, :ᵃ, LY, LZ)
+
 # Convenience Functions for all grids
-for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ)
+# This metaprogramming loop defines all the allowed combinations of Δx, Δy, and Δz
+# Note `:ᵃ` is not allowed for the location associated with the spacing
+for dir in (:x, :y, :z)
+    for LX in spacing_x_loc(dir), LY in spacing_y_loc(dir), LZ in spacing_z_loc(dir)
+        spacing1D  = spacing_1D(Val(dir), LX, LY, LZ)
+        spacing2D  = spacing_2D(Val(dir), LX, LY, LZ)
+        spacing_3D = Symbol(:Δ, dir, LX, LY, LZ)
 
-    x_spacing_1D = Symbol(:Δx, LX, :ᵃ, :ᵃ)
-    x_spacing_2D = Symbol(:Δx, LX, LY, :ᵃ)
-
-    y_spacing_1D = Symbol(:Δy, :ᵃ, LY, :ᵃ)
-    y_spacing_2D = Symbol(:Δy, LX, LY, :ᵃ)
-
-    @eval begin
-        @inline $x_spacing_2D(i, j, k, grid) = $x_spacing_1D(i, j, k, grid)
-        @inline $y_spacing_2D(i, j, k, grid) = $y_spacing_1D(i, j, k, grid)
-    end
-
-    for LZ in (:ᶜ, :ᶠ)
-        x_spacing_3D = Symbol(:Δx, LX, LY, LZ)
-        y_spacing_3D = Symbol(:Δy, LX, LY, LZ)
-
-        z_spacing_1D = Symbol(:Δz, :ᵃ, :ᵃ, LZ)
-        z_spacing_3D = Symbol(:Δz, LX, LY, LZ)
-
-        @eval begin
-            @inline $x_spacing_3D(i, j, k, grid) = $x_spacing_2D(i, j, k, grid)
-            @inline $y_spacing_3D(i, j, k, grid) = $y_spacing_2D(i, j, k, grid)
-            @inline $z_spacing_3D(i, j, k, grid) = $z_spacing_1D(i, j, k, grid)
-        end
+        @eval @inline $spacing2D(i, j, k, grid) = $spacing1D(i, j, k, grid)
+        @eval @inline $spacing3D(i, j, k, grid) = $spacing2D(i, j, k, grid)
     end
 end
 
