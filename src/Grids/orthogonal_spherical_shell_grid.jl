@@ -821,17 +821,7 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
     TX, TY, TZ = topology
     Hx, Hy, Hz = halo
 
-    ## The vertical coordinates can come out of the regular rectilinear grid!
-
-    z_grid = RectilinearGrid(architecture, FT; size = Nz, z, topology=(Flat, Flat, topology[3]), halo=halo[3])
-
-     zᵃᵃᶠ = z_grid.zᵃᵃᶠ
-     zᵃᵃᶜ = z_grid.zᵃᵃᶜ
-    Δzᵃᵃᶜ = z_grid.Δzᵃᵃᶜ
-    Δzᵃᵃᶠ = z_grid.Δzᵃᵃᶠ
-    Lz    = z_grid.Lz
-
-    ## Read everything else from the file
+    ## Read everything from the file except the z-coordinates
 
     file = jldopen(filepath, "r")["panel$panel"]
 
@@ -880,16 +870,18 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
     φᶠᶜᵃ = offset_data(zeros(FT, architecture, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology[1:2], N[1:2], H[1:2])
     φᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology[1:2], N[1:2], H[1:2])
 
+    ## The vertical coordinates can come out of the regular rectilinear grid!
+    Lz, z  = generate_coordinate(FT, topology, (Nξ, Nη, Nz), halo, z,  :z, 3, architecture)
+
     ξ, η = (-1, 1), (-1, 1)
     conformal_mapping = CubedSphereConformalMapping(ξ, η, rotation)
 
     return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
                                                      λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
                                                      φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ,
-                                                     zᵃᵃᶜ,  zᵃᵃᶠ,
+                                                     z,
                                                     Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                                                     Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
-                                                    Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                                                     Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
                                                     radius,
                                                     conformal_mapping)
@@ -904,9 +896,8 @@ function on_architecture(arch::AbstractSerialArchitecture, grid::OrthogonalSpher
                    :φᶜᶜᵃ,
                    :φᶠᶜᵃ,
                    :φᶜᶠᵃ,
-                   :φᶠᶠᵃ,
-                   :zᵃᵃᶜ,
-                   :zᵃᵃᶠ)
+                   :φᶠᶠᵃ
+                   :z)
 
     grid_spacings = (:Δxᶜᶜᵃ,
                      :Δxᶠᶜᵃ,
@@ -915,9 +906,7 @@ function on_architecture(arch::AbstractSerialArchitecture, grid::OrthogonalSpher
                      :Δyᶜᶜᵃ,
                      :Δyᶜᶠᵃ,
                      :Δyᶠᶜᵃ,
-                     :Δyᶠᶠᵃ,
-                     :Δzᵃᵃᶜ,
-                     :Δzᵃᵃᶜ)
+                     :Δyᶠᶠᵃ)
 
     horizontal_areas = (:Azᶜᶜᵃ,
                         :Azᶠᶜᵃ,
@@ -1086,9 +1075,6 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
                      "├── ", φ_summary, "\n",
                      "└── ", z_summary)
 end
-
-@inline z_domain(grid::OrthogonalSphericalShellGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TZ, grid.Nz, grid.zᵃᵃᶠ)
-@inline cpu_face_constructor_z(grid::ZRegOrthogonalSphericalShellGrid) = z_domain(grid)
 
 function with_halo(new_halo, old_grid::OrthogonalSphericalShellGrid; rotation=nothing)
 

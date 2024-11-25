@@ -298,7 +298,6 @@ end
 
 x_domain(grid::RectilinearGrid) = domain(topology(grid, 1)(), grid.Nx, grid.xᶠᵃᵃ)
 y_domain(grid::RectilinearGrid) = domain(topology(grid, 2)(), grid.Ny, grid.yᵃᶠᵃ)
-z_domain(grid::RectilinearGrid) = domain(topology(grid, 3)(), grid.Nz, grid.z.cᶠ)
 
 # architecture = CPU() default, assuming that a DataType positional arg
 # is specifying the floating point type.
@@ -362,7 +361,6 @@ end
 
 cpu_face_constructor_x(grid::XRegularRG) = x_domain(grid)
 cpu_face_constructor_y(grid::YRegularRG) = y_domain(grid)
-cpu_face_constructor_z(grid::ZRegularRG) = z_domain(grid)
 
 function constructor_arguments(grid::RectilinearGrid)
     arch = architecture(grid)
