@@ -1,5 +1,7 @@
 using Oceananigans.Grids
 
+using Oceananigans.ImmersedBoundaries: ZStarGridOfSomeKind
+
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: dynamic_column_depthᶜᶜᵃ,
                                                                                   dynamic_column_depthᶜᶠᵃ,
                                                                                   dynamic_column_depthᶠᶜᵃ,
@@ -9,7 +11,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 ##### ZStar-specific vertical spacings update
 #####
 
-function update_grid!(model, grid::ZStarSpacingGrid; parameters = :xy)
+function update_grid!(model, grid::ZStarGridOfSomeKind; parameters = :xy)
 
     # Scaling (just update once, they are the same for all the metrics)
     e₃ᶜᶜ⁻  = grid.z.e₃ᶜᶜ⁻
@@ -84,16 +86,42 @@ end
 ##### ZStar-specific implementation of the additional terms to be included in the momentum equations
 #####
 
-@inline z_minus_rᶜᶜᶜ(i, j, k, grid, η) = @inbounds η[i, j, grid.Nz+1] * (1 + rnode(i, j, k, grid, Center(), Center(), Center()) / static_column_depthᶜᶜᵃ(i, j, grid))
+@inline ∂x_z(i, j, k, grid) = @inbounds ∂xᶠᶜᶜ(i, j, k, grid, znode)
+@inline ∂y_z(i, j, k, grid) = @inbounds ∂yᶜᶠᶜ(i, j, k, grid, znode)
 
-@inline ∂x_z(i, j, k, grid, free_surface) = @inbounds ∂xᶠᶜᶜ(i, j, k, grid, z_minus_rᶜᶜᶜ, free_surface.η)
-@inline ∂y_z(i, j, k, grid, free_surface) = @inbounds ∂yᶜᶠᶜ(i, j, k, grid, z_minus_rᶜᶜᶜ, free_surface.η)
+@inline grid_slope_contribution_x(i, j, k, grid::ZStarGridOfSomeKind, ::Nothing, model_fields) = zero(grid)
+@inline grid_slope_contribution_y(i, j, k, grid::ZStarGridOfSomeKind, ::Nothing, model_fields) = zero(grid)
 
-@inline grid_slope_contribution_x(i, j, k, grid::ZStarSpacingGrid, free_surface, ::Nothing, model_fields) = zero(grid)
-@inline grid_slope_contribution_y(i, j, k, grid::ZStarSpacingGrid, free_surface, ::Nothing, model_fields) = zero(grid)
+@inline grid_slope_contribution_x(i, j, k, grid::ZStarGridOfSomeKind, buoyancy, model_fields) = 
+    ℑxᶠᵃᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, model_fields) * ∂x_z(i, j, k, grid)
 
-@inline grid_slope_contribution_x(i, j, k, grid::ZStarSpacingGrid, free_surface, buoyancy, model_fields) = 
-    ℑxᶠᵃᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, model_fields) * ∂x_z(i, j, k, grid, free_surface)
+@inline grid_slope_contribution_y(i, j, k, grid::ZStarGridOfSomeKind, buoyancy, model_fields) = 
+    ℑyᵃᶠᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, model_fields) * ∂y_z(i, j, k, grid)
 
-@inline grid_slope_contribution_y(i, j, k, grid::ZStarSpacingGrid, free_surface, buoyancy, model_fields) = 
-    ℑyᵃᶠᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, model_fields) * ∂y_z(i, j, k, grid, free_surface)
+####
+#### Removing the scaling of the vertical coordinate from the tracer fields
+####
+
+const EmptyTuples = Union{NamedTuple{(), Tuple{}}, Tuple{}}
+
+unscale_tracers!(::EmptyTuples, ::ZStarGridOfSomeKind; kwargs...) = nothing
+
+tracer_scaling_parameters(param::Symbol, tracers, grid) = KernelParameters((size(grid, 1), size(grid, 2), length(tracers)), (0, 0, 0))
+tracer_scaling_parameters(param::KernelParameters{S, O}, tracers, grid) where {S, O} = KernelParameters((S..., length(tracers)), (O..., 0))
+
+function unscale_tracers!(tracers, grid::AbstractVerticalCoordinateGrid; parameters = :xy) 
+    parameters = tracer_scaling_parameters(parameters, tracers, grid)
+    
+    launch!(architecture(grid), grid, parameters, _unscale_tracers!, tracers, grid, 
+            Val(grid.Hz), Val(grid.Nz))
+    
+    return nothing
+end
+    
+@kernel function _unscale_tracers!(tracers, grid, ::Val{Hz}, ::Val{Nz}) where {Hz, Nz}
+    i, j, n = @index(Global, NTuple)
+
+    @unroll for k in -Hz+1:Nz+Hz
+        tracers[n][i, j, k] /= e₃ⁿ(i, j, k, grid, Center(), Center(), Center())
+    end
+end

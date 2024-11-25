@@ -12,7 +12,6 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 using Oceananigans.Utils
 using Oceananigans.Utils: launch!, SumOfArrays
 using Oceananigans.Grids: AbstractGrid, rnode
-using Oceananigans.ImmersedBoundaries: ImmersedZStarGrid
 using Oceananigans.TimeSteppers: SplitRungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
 
 using DocStringExtensions

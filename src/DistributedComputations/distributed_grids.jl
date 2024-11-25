@@ -13,11 +13,11 @@ import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, with_halo
 
 const DistributedGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:Distributed}
 
-const DistributedRectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ} =
-    RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, <:Distributed} where {FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ}
+const DistributedRectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY} =
+    RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, <:Distributed} where {FT, TX, TY, TZ, CZ, FX, FY, VX, VY}
 
-const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ} = 
-    LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, <:Distributed} where {FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ}
+const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, CZ, M, MY, FX, FY, VX, VY} = 
+    LatitudeLongitudeGrid{FT, TX, TY, TZ, CZ, M, MY, FX, FY, VX, VY, <:Distributed} where {FT, TX, TY, TZ, CZ, M, MY, FX, FY, VX, VY}
 
 # Local size from global size and architecture
 local_size(arch::Distributed, global_sz) = (local_size(global_sz[1], arch.partition.x, arch.local_index[1]),
@@ -252,7 +252,7 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
     Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, TX(), Nλ, Hλ, λG, :longitude, child_arch)
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, TY(), Nφ, Hφ, φG, :latitude,  child_arch)
     Lz, z                        = generate_coordinate(FT, (TX, TY, TZ), (Nx, Ny, Nz), H, zG, :z, 3, child_arch)
-    
+
     precompute_metrics = metrics_precomputed(grid)
 
     preliminary_grid = LatitudeLongitudeGrid{TX, TY, TZ}(child_arch,
