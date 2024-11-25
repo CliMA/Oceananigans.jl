@@ -2,7 +2,6 @@
 ##### Utilities for launching kernels
 #####
 
-using Oceananigans
 using Oceananigans: location
 using Oceananigans.Architectures
 using Oceananigans.Grids

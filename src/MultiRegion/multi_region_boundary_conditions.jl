@@ -1,5 +1,5 @@
 using Oceananigans: instantiated_location
-using Oceananigans.Architectures: device_copy_to!
+using Oceananigans.Architectures: on_architecture, device_copy_to!
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.Fields: reduced_dimensions
 using Oceananigans.DistributedComputations: communication_side
@@ -16,7 +16,6 @@ using Oceananigans.BoundaryConditions:
             fill_open_boundary_regions!
 
 import Oceananigans.Fields: tupled_fill_halo_regions!, boundary_conditions, data, fill_send_buffers!
-import Oceananigans.Architectures: on_architecture
 
 import Oceananigans.BoundaryConditions:
             fill_halo_regions!,

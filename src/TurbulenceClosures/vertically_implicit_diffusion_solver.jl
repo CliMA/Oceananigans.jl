@@ -57,7 +57,7 @@ const f = Face()
     κᵏ⁺¹   = κz(i, j, k+1, grid, closure_ij, K, id, clock)
     Δzᶜₖ   = vertical_spacing(i, j, k,   grid, ℓx, ℓy, c)
     Δzᶠₖ₊₁ = vertical_spacing(i, j, k+1, grid, ℓx, ℓy, f)
-    du     = - Δt * κᵏ⁺¹ / (Δrᶜₖ * Δrᶠₖ₊₁)
+    du     = - Δt * κᵏ⁺¹ / (Δzᶜₖ * Δzᶠₖ₊₁)
 
     # This conditional ensures the diagonal is correct
     return ifelse(k > grid.Nz-1, zero(grid), du)
@@ -67,9 +67,9 @@ end
     k = k′ + 1 # Shift index to match LinearAlgebra.Tridiagonal indexing convenction
     closure_ij = getclosure(i, j, closure)  
     κᵏ   = κz(i, j, k, grid, closure_ij, K, id, clock)
-    Δrᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
-    Δrᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
-    dl   = - Δt * κᵏ / (Δrᶜₖ * Δrᶠₖ)
+    Δzᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
+    Δzᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
+    dl   = - Δt * κᵏ / (Δzᶜₖ * Δzᶠₖ)
 
     # This conditional ensures the diagonal is correct: the lower diagonal does not
     # exist for k′ = 0. (Note we use LinearAlgebra.Tridiagonal indexing convention,
@@ -86,9 +86,9 @@ end
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Face, clock, Δt, νzᶜᶜᶜ) 
     closure_ij = getclosure(i, j, closure)  
     νᵏ = νzᶜᶜᶜ(i, j, k, grid, closure_ij, K, clock)
-    Δrᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
-    Δrᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
-    du   = - Δt * νᵏ / (Δrᶜₖ * Δrᶠₖ)
+    Δzᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
+    Δzᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
+    du   = - Δt * νᵏ / (Δzᶜₖ * Δzᶠₖ)
     return ifelse(k < 1, zero(grid), du)
 end
 
@@ -96,9 +96,9 @@ end
     k′ = k + 2 # Shift to adjust for Tridiagonal indexing convention
     closure_ij = getclosure(i, j, closure)  
     νᵏ⁻¹   = νzᶜᶜᶜ(i, j, k′-1, grid, closure_ij, K, clock)
-    Δrᶜₖ   = vertical_spacing(i, j, k′,   grid, ℓx, ℓy, c)
-    Δrᶠₖ₋₁ = vertical_spacing(i, j, k′-1, grid, ℓx, ℓy, f)
-    dl     = - Δt * νᵏ⁻¹ / (Δrᶜₖ * Δrᶠₖ₋₁)
+    Δzᶜₖ   = vertical_spacing(i, j, k′,   grid, ℓx, ℓy, c)
+    Δzᶠₖ₋₁ = vertical_spacing(i, j, k′-1, grid, ℓx, ℓy, f)
+    dl     = - Δt * νᵏ⁻¹ / (Δzᶜₖ * Δzᶠₖ₋₁)
     return ifelse(k < 1, zero(grid), dl)
 end
 

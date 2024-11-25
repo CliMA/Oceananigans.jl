@@ -49,7 +49,7 @@ for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ), LZ in (:ᶠ, :ᶜ)
     end
 end
 
-# rnode for an AbstractZStarGrid grid is scaled 
+# znode for an AbstractZStarGrid grid is scaled by the free surface
 @inline znode(i, j, k, grid::ZSG, ::C, ::C, ℓz) = @inbounds rnode(i, j, k, grid, C(), C(), ℓz) * e₃ⁿ(i, j, k, grid, C(), C(), ℓz) + grid.z.ηⁿ[i, j, 1]
 @inline znode(i, j, k, grid::ZSG, ::F, ::C, ℓz) = @inbounds rnode(i, j, k, grid, F(), C(), ℓz) * e₃ⁿ(i, j, k, grid, F(), C(), ℓz) +     ℑxᶠᵃᵃ(i, j, 1, grid, grid.z.ηⁿ)
 @inline znode(i, j, k, grid::ZSG, ::C, ::F, ℓz) = @inbounds rnode(i, j, k, grid, C(), F(), ℓz) * e₃ⁿ(i, j, k, grid, C(), F(), ℓz) +     ℑyᵃᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)

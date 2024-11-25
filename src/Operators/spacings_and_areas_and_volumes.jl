@@ -44,8 +44,8 @@ const ZRG = Union{LLGZ, RGZ, OSSGZ}
 @inline Δrᵃᵃᶜ(i, j, k, grid) = getspacing(k, grid.z.Δᶜ)
 @inline Δrᵃᵃᶠ(i, j, k, grid) = getspacing(k, grid.z.Δᶠ)
 
-@inline Δzᵃᵃᶠ(i, j, k, grid) = getspacing(k, grid.z.Δᶜ)
-@inline Δzᵃᵃᶜ(i, j, k, grid) = getspacing(k, grid.z.Δᶠ)
+@inline Δzᵃᵃᶜ(i, j, k, grid) = getspacing(k, grid.z.Δᶜ)
+@inline Δzᵃᵃᶠ(i, j, k, grid) = getspacing(k, grid.z.Δᶠ)
 
 # Convenience Functions for all grids
 for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)

@@ -11,7 +11,7 @@ using Oceananigans.Models: update_model_field_time_series!
 import Oceananigans.TimeSteppers: update_state!
 
 """
-    update_state!(model::NonhydrostaticModel, Δt, callbacks=[])
+    update_state!(model::NonhydrostaticModel, callbacks=[])
 
 Update peripheral aspects of the model (halo regions, diffusivities, hydrostatic
 pressure) to the current model state. If `callbacks` are provided (in an array),
