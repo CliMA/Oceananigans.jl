@@ -299,8 +299,8 @@ end
 
 @inline Δφ(i, j, k, grid::LLG,  ::Center, ℓy, ℓz) = @inbounds grid.Δφᵃᶜᵃ[j]
 @inline Δφ(i, j, k, grid::LLG,  ::Face,   ℓy, ℓz) = @inbounds grid.Δφᵃᶠᵃ[j]
-@inline Δφ(i, j, k, grid::LLG,  ::Center, ℓy, ℓz) = @inbounds grid.Δφᵃᶜᵃ
-@inline Δφ(i, j, k, grid::LLG,  ::Face,   ℓy, ℓz) = @inbounds grid.Δφᵃᶠᵃ
+@inline Δφ(i, j, k, grid::LLGY, ::Center, ℓy, ℓz) = @inbounds grid.Δφᵃᶜᵃ
+@inline Δφ(i, j, k, grid::LLGY, ::Face,   ℓy, ℓz) = @inbounds grid.Δφᵃᶠᵃ
 
 @inline Δλ(i, j, k, grid::OSSG, ::Center, ℓy, ℓz) = δxᶜᵃᵃ(i, j, k, grid, λnode, Face(),   ℓy, ℓz)
 @inline Δλ(i, j, k, grid::OSSG, ::Face,   ℓy, ℓz) = δxᶜᵃᵃ(i, j, k, grid, λnode, Center(), ℓy, ℓz)
