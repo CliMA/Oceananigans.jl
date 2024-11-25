@@ -13,7 +13,7 @@ const AbstractGridMetric = Union{typeof(Δx),
                                  typeof(Ax), 
                                  typeof(Ay), 
                                  typeof(Az), 
-                                 typeof(volume)}
+                                 typeof(volume)} # Do we want it to be `volume` or just `V` like in the Operators module?
 
 """
     metric_function(loc, metric::AbstractGridMetric)
@@ -22,7 +22,11 @@ Return the function associated with `metric::AbstractGridMetric` at `loc`ation.
 """
 function metric_function(loc, metric)
     code = Tuple(interpolation_code(ℓ) for ℓ in loc)
-    metric_function_symbol = Symbol(metric, code...)
+    if metric isa typeof(volume)
+        metric_function_symbol = Symbol(:V, code...)
+    else
+        metric_function_symbol = Symbol(metric, code...)
+    end
     return getglobal(@__MODULE__, metric_function_symbol)
 end
 
