@@ -101,7 +101,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
 end
 
 ab2_step_tracer_field!(tracer_field, grid, Δt, χ, Gⁿ, G⁻) =
-    launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, Δt, χ, Gⁿ, G⁻)
+    launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, Δt, χ, Gⁿ, G⁻)
 
 #####
 ##### Tracer update in generalized vertical coordinates 

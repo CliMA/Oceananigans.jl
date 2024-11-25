@@ -114,15 +114,25 @@ coordinate_summary(::Bounded, z::AbstractVerticalCoordinate, name) =
 #### Nodes and spacings...
 ####
 
-@inline rnodes(grid, ℓz::F; with_halos=false) = _property(grid.z.cᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
-@inline rnodes(grid, ℓz::C; with_halos=false) = _property(grid.z.cᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
-
+@inline rnodes(grid, ℓz::Face;   with_halos=false) = _property(grid.z.cᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline rnodes(grid, ℓz::Center; with_halos=false) = _property(grid.z.cᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
 @inline rnodes(grid, ℓx, ℓy, ℓz; with_halos=false) = rnodes(grid, ℓz; with_halos)
 
-# Extended in the Operators module
-@inline znodes(grid, ℓx, ℓy, ℓz; with_halos=false) = rnodes(grid, ℓz; with_halos)
+rnodes(grid, ::Nothing; kwargs...) = 1:1
+znodes(grid, ::Nothing; kwargs...) = 1:1
 
-# znodes(....)
-# rnodes(....)
-# zspacings(....)
-# rspacings(....)
+# TODO: extend in the Operators module
+@inline znodes(grid, ℓz; kwargs...) = rnodes(grid, ℓz; kwargs...)
+@inline znodes(grid, ℓx, ℓy, ℓz; kwargs...) = rnodes(grid, ℓx, ℓy, ℓz; kwargs...)
+
+function zspacing end
+function zspacings end
+
+"""
+    rspacings(grid, ℓx, ℓy, ℓz; with_halos=true)
+
+Return the "reference" spacings over the interior nodes on `grid` in the ``z``-direction for the location `ℓx`,
+`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points. These are equal to the `zspacings`
+for a _static_ grid.
+"""
+@inline rspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = rspacings(grid, ℓz; with_halos)
