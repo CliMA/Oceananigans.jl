@@ -11,11 +11,11 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 retrieve_barotropic_velocity(model, free_surface::SplitExplicitFreeSurface) = free_surface.barotropic_velocities
 
 # Fallback 
-update_grid!(model, grid::ZStarGridOfSomeKind) = nothing
+update_grid!(model, grid; parameters) = nothing
 
 function update_grid!(model, grid::ZStarGridOfSomeKind; parameters = :xy)
 
-    # Scaling (just update once, they are the same for all the metrics)
+    # Scalings and free surface
     e₃ᶜᶜ⁻  = grid.z.e₃ᶜᶜ⁻
     e₃ᶜᶜⁿ  = grid.z.e₃ᶜᶜⁿ
     e₃ᶠᶜⁿ  = grid.z.e₃ᶠᶜⁿ

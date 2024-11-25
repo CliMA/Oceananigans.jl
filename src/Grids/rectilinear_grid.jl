@@ -357,10 +357,7 @@ function Adapt.adapt_structure(to, grid::RectilinearGrid)
                                        Adapt.adapt(to, grid.Δyᵃᶜᵃ),
                                        Adapt.adapt(to, grid.yᵃᶠᵃ),
                                        Adapt.adapt(to, grid.yᵃᶜᵃ),
-                                       Adapt.adapt(to, grid.Δzᵃᵃᶠ),
-                                       Adapt.adapt(to, grid.Δzᵃᵃᶜ),
-                                       Adapt.adapt(to, grid.zᵃᵃᶠ),
-                                       Adapt.adapt(to, grid.zᵃᵃᶜ))
+                                       Adapt.adapt(to, grid.z))
 end
 
 cpu_face_constructor_x(grid::XRegularRG) = x_domain(grid)
