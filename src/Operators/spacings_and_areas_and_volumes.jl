@@ -191,12 +191,12 @@ end
 # Areas need to be at least 2D so we use the respective 2D spacings to define them.
 for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
     
-    Δxˡᵃ = Symbol(:Δx, L1, L2, :ᵃ)
-    Δxᵃˡ = Symbol(:Δx, L1, :ᵃ, L2)
-    Δyˡᵃ = Symbol(:Δy, L1, L2, :ᵃ)
-    Δyᵃˡ = Symbol(:Δy, :ᵃ, L1, L2)
-    Δzˡᵃ = Symbol(:Δz, L1, :ᵃ, L2)
-    Δzᵃˡ = Symbol(:Δz, :ᵃ, L1, L2)
+    Δxˡˡᵃ = Symbol(:Δx, L1, L2, :ᵃ)
+    Δxˡᵃˡ = Symbol(:Δx, L1, :ᵃ, L2)
+    Δyˡˡᵃ = Symbol(:Δy, L1, L2, :ᵃ)
+    Δyᵃˡˡ = Symbol(:Δy, :ᵃ, L1, L2)
+    Δzˡᵃˡ = Symbol(:Δz, L1, :ᵃ, L2)
+    Δzᵃˡˡ = Symbol(:Δz, :ᵃ, L1, L2)
 
     # 2D areas
     Axᵃˡˡ = Symbol(:Ax, :ᵃ, L1, L2)
@@ -204,9 +204,9 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
     Azˡˡᵃ = Symbol(:Az, L1, L2, :ᵃ)
 
     @eval begin
-        @inline $Axᵃˡˡ(i, j, k, grid) = $Δyᵃˡ(i, j, k, grid) * $Δzᵃˡ(i, j, k, grid)
-        @inline $Ayˡᵃˡ(i, j, k, grid) = $Δxᵃˡ(i, j, k, grid) * $Δzˡᵃ(i, j, k, grid)
-        @inline $Azˡˡᵃ(i, j, k, grid) = $Δxˡᵃ(i, j, k, grid) * $Δyˡᵃ(i, j, k, grid)
+        @inline $Axᵃˡˡ(i, j, k, grid) = $Δyᵃˡˡ(i, j, k, grid) * $Δzᵃˡˡ(i, j, k, grid)
+        @inline $Ayˡᵃˡ(i, j, k, grid) = $Δxˡᵃˡ(i, j, k, grid) * $Δzˡᵃˡ(i, j, k, grid)
+        @inline $Azˡˡᵃ(i, j, k, grid) = $Δxˡˡᵃ(i, j, k, grid) * $Δyˡˡᵃ(i, j, k, grid)
     end
 
     for  L3 in (:ᶜ, :ᶠ)
