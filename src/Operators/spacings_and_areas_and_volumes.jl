@@ -64,6 +64,26 @@ for dir in (:x, :y, :z)
 end
 
 #####
+##### Vertical spacings (same for all grids)
+#####
+
+@inline Δzᵃᵃᶜ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶜ[k]
+@inline Δzᵃᵃᶠ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶠ[k]
+
+@inline Δzᶜᵃᶜ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶜ[k]
+@inline Δzᶠᵃᶜ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶜ[k]
+@inline Δzᶜᵃᶠ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶠ[k]
+@inline Δzᶠᵃᶠ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶠ[k]
+
+@inline Δzᵃᵃᶜ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶜ
+@inline Δzᵃᵃᶠ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶠ
+
+@inline Δzᶜᵃᶜ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶜ
+@inline Δzᶠᵃᶜ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶜ
+@inline Δzᶜᵃᶠ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶠ
+@inline Δzᶠᵃᶠ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶠ
+
+#####
 ##### Rectilinear Grids (Flat grids already have Δ = 1)
 #####
 
@@ -82,8 +102,6 @@ end
 @inline Δzᵃᵃᶠ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶠ[k]
 @inline Δzᵃᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶜ[k]
 @inline Δzᶜᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶜ[k]
-@inline Δzᶠᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶜ[k]
-@inline Δzᶜᵃᶠ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶠ[k]
 
 ## XRegularRG
 
@@ -103,15 +121,6 @@ end
 @inline Δyᶠᵃᶜ(i, j, k, grid::RGY) = grid.Δyᵃᶜᵃ
 @inline Δyᶜᵃᶠ(i, j, k, grid::RGY) = grid.Δyᵃᶜᵃ
 
-## ZRegularRG
-
-@inline Δzᵃᵃᶠ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶠ
-@inline Δzᵃᵃᶜ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶜ
-
-@inline Δzᶜᵃᶜ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶜ
-@inline Δzᶠᵃᶜ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶜ
-@inline Δzᶜᵃᶠ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶠ
-
 #####
 ##### LatitudeLongitudeGrid
 #####
@@ -128,9 +137,6 @@ end
 @inline Δyᶜᶜᵃ(i, j, k, grid::LLG) = Δyᶠᶜᵃ(i, j, k, grid)
 @inline Δyᶠᶠᵃ(i, j, k, grid::LLG) = Δyᶜᶠᵃ(i, j, k, grid)
 
-@inline Δzᵃᵃᶠ(i, j, k, grid::LLG) = @inbounds grid.Δzᵃᵃᶠ[k]
-@inline Δzᵃᵃᶜ(i, j, k, grid::LLG) = @inbounds grid.Δzᵃᵃᶜ[k]
-
 ### XRegularLLG with pre-computed metrics
 
 @inline Δxᶠᶜᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δxᶠᶜᵃ[j]
@@ -142,11 +148,6 @@ end
 
 @inline Δyᶜᶠᵃ(i, j, k, grid::LLGY) = grid.Δyᶜᶠᵃ
 @inline Δyᶠᶜᵃ(i, j, k, grid::LLGY) = grid.Δyᶠᶜᵃ
-
-### ZRegularLLG with pre-computed metrics
-
-@inline Δzᵃᵃᶠ(i, j, k, grid::LLGZ) = grid.Δzᵃᵃᶠ
-@inline Δzᵃᵃᶜ(i, j, k, grid::LLGZ) = grid.Δzᵃᵃᶜ
 
 ## On the fly metrics
 
@@ -184,12 +185,6 @@ end
 @inline Δyᶜᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶜᶠᵃ[i, j]
 @inline Δyᶠᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶠᶠᵃ[i, j]
 
-@inline Δzᵃᵃᶜ(i, j, k, grid::OSSG) = @inbounds grid.Δzᵃᵃᶜ[k]
-@inline Δzᵃᵃᶠ(i, j, k, grid::OSSG) = @inbounds grid.Δzᵃᵃᶠ[k]
-
-@inline Δzᵃᵃᶜ(i, j, k, grid::OSSGZ) = grid.Δzᵃᵃᶜ
-@inline Δzᵃᵃᶠ(i, j, k, grid::OSSGZ) = grid.Δzᵃᵃᶠ
-
 #####
 #####
 ##### Areas!!
@@ -220,7 +215,6 @@ for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ)
         end
     end
 end
-
 
 ####
 #### Special 2D z Areas for LatitudeLongitudeGrid and OrthogonalSphericalShellGrid
@@ -308,5 +302,8 @@ end
 @inline Δφ(i, j, k, grid::LLG,  ::Center, ℓy, ℓz) = @inbounds grid.Δφᵃᶜᵃ
 @inline Δφ(i, j, k, grid::LLG,  ::Face,   ℓy, ℓz) = @inbounds grid.Δφᵃᶠᵃ
 
-@inline Δλ(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = δxᶠᵃᵃ(i, j, k, grid, λnode, flip(ℓx), ℓy, ℓz)
-@inline Δφ(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = δxᶠᵃᵃ(i, j, k, grid, λnode, ℓx, flip(ℓy), ℓz)
+@inline Δλ(i, j, k, grid::OSSG, ::Center, ℓy, ℓz) = δxᶜᵃᵃ(i, j, k, grid, λnode, Face(),   ℓy, ℓz)
+@inline Δλ(i, j, k, grid::OSSG, ::Face,   ℓy, ℓz) = δxᶜᵃᵃ(i, j, k, grid, λnode, Center(), ℓy, ℓz)
+
+@inline Δφ(i, j, k, grid::OSSG, ::Center, ℓy, ℓz) = δyᵃᶜᵃ(i, j, k, grid, λnode, ℓx, Face(),   ℓz)
+@inline Δφ(i, j, k, grid::OSSG, ::Face,   ℓy, ℓz) = δyᵃᶜᵃ(i, j, k, grid, λnode, ℓx, Center(), ℓz)
