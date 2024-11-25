@@ -219,7 +219,7 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
             # For the moment 3D areas equal their 2D counterpart. This might change if
             # we want to implement deep atmospheres where Az is a function of z
             @inline $Axˡˡˡ(i, j, k, grid) = $Axᵃˡˡ(i, j, k, grid)
-            @inline $Ayˡˡˡ(i, j, k, grid) = $Axᵃˡˡ(i, j, k, grid)
+            @inline $Ayˡˡˡ(i, j, k, grid) = $Ayˡᵃˡ(i, j, k, grid)
             @inline $Azˡˡˡ(i, j, k, grid) = $Azˡˡᵃ(i, j, k, grid)
         end
     end
