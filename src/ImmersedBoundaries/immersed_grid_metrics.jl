@@ -9,31 +9,28 @@ import Oceananigans.Operators: intrinsic_vector, extrinsic_vector
 # must be extended for the specific immersed boundary grid in question.
 
 # We need to extend only the metric explicitly defined in the `spacing_and_areas_and_volumes.jl` file. 
-# These include the one-dimensional and two-dimensional (horizontal) spacings and the horizontal areas.
+# These include all the spacings and the horizontal areas. 
+# All the other metrics are calculated from these.
+
+x_superscript(dir) = dir == :x ? (:ᶜ, :ᶠ) : (:ᶜ, :ᶠ, :ᵃ)
+y_superscript(dir) = dir == :y ? (:ᶜ, :ᶠ) : (:ᶜ, :ᶠ, :ᵃ)
+z_superscript(dir) = dir == :z ? (:ᶜ, :ᶠ) : (:ᶜ, :ᶠ, :ᵃ)
+
+for dir in (:x, :y, :z)
+    for LX in x_superscript(dir), LY in y_superscript(dir), LZ in z_superscript(dir)
+        spacing = Symbol(:Δ, dir, LX, LY, LZ)
+        @eval begin
+            import Oceananigans.Operators: $spacing
+            $spacing(i, j, k, ibg::IBG) = $spacing(i, j, k, ibg.underlying_grid)
+        end
+    end
+end
 
 for L1 in (:ᶜ, :ᶠ)
-    xspacing1D = Symbol(:Δx, L1, :ᵃ, :ᵃ)
-    yspacing1D = Symbol(:Δy, :ᵃ, L1, :ᵃ)
-    zspacing1D = Symbol(:Δz, :ᵃ, :ᵃ, L1)
-
-    @eval begin
-        import Oceananigans.Operators: $xspacing1D, $yspacing1D, $zspacing1D
-
-        $xspacing1D(i, j, k, ibg::IBG) = $xspacing1D(i, j, k, ibg.underlying_grid)
-        $yspacing1D(i, j, k, ibg::IBG) = $yspacing1D(i, j, k, ibg.underlying_grid)
-        $zspacing1D(i, j, k, ibg::IBG) = $zspacing1D(i, j, k, ibg.underlying_grid)
-    end
-
     for L2 in (:ᶜ, :ᶠ)
-        xspacing2D = Symbol(:Δx, L1, L2, :ᵃ)
-        yspacing2D = Symbol(:Δy, L2, L1, :ᵃ)
-        zarea2D    = Symbol(:Az, L1, L2, :ᵃ)
-
+        zarea2D = Symbol(:Az, L1, L2, :ᵃ)
         @eval begin
-            import Oceananigans.Operators: $xspacing2D, $yspacing2D, $zarea2D
-    
-            $xspacing2D(i, j, k, ibg::IBG) = $xspacing2D(i, j, k, ibg.underlying_grid)
-            $yspacing2D(i, j, k, ibg::IBG) = $yspacing2D(i, j, k, ibg.underlying_grid)
+            import Oceananigans.Operators: $zarea2D
             $zarea2D(i, j, k, ibg::IBG) = $zarea2D(i, j, k, ibg.underlying_grid)
         end
     end
