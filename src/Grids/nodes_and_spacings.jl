@@ -163,9 +163,9 @@ nodes(grid::AbstractGrid, (ℓx, ℓy, ℓz); reshape=false, with_halos=false) =
 
 # placeholders
 # see Oceananigans/AbstractOperations/grid_metrics.jl for definitions
-function xspacing end
-function yspacing end
-function zspacing end
+function Δx end
+function Δy end
+function Δz end
 function λspacing end
 function φspacing end
 

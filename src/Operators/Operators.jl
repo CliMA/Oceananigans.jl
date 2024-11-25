@@ -76,17 +76,13 @@ export intrinsic_vector, extrinsic_vector
 
 using Oceananigans.Grids
 
-import Oceananigans.Grids: xspacing, yspacing, zspacing
+import Oceananigans.Grids: Δx, Δy, Δz
 
 #####
 ##### Convenient aliases
 #####
 
 const AG = AbstractGrid
-
-const Δx = xspacing
-const Δy = yspacing
-const Δz = zspacing
 
 const RG  = RectilinearGrid
 const RGX = XRegularRG

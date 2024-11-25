@@ -27,10 +27,6 @@ struct VolumeMetric <: AbstractGridMetric end
 
 metric_function_prefix(::VolumeMetric) = :V
 
-# Convenient instances for users
-const Δx = XSpacingMetric()
-const Δy = YSpacingMetric()
-
 """
     Δz = ZSpacingMetric()
 
@@ -64,11 +60,10 @@ julia> c_dz[1, 1, 1]
 3.0
 ```
 """
-const Δz = ZSpacingMetric()
-
-const Ax = XAreaMetric()
-const Ay = YAreaMetric()
-const Az = ZAreaMetric()
+const zspacing = ZSpacingMetric()
+const xspacing = XAreaMetric()
+const yarea    = YAreaMetric()
+const zarea    = ZAreaMetric()
 
 """
     volume = VolumeMetric()
@@ -171,7 +166,7 @@ KernelFunctionOperation at (Center, Center, Center)
 """
 function xspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
-    Δx_op = KernelFunctionOperation{LX, LY, LZ}(xspacing, grid, ℓx, ℓy, ℓz)
+    Δx_op = KernelFunctionOperation{LX, LY, LZ}(Δx, grid, ℓx, ℓy, ℓz)
     return Δx_op
 end
 
@@ -197,7 +192,7 @@ KernelFunctionOperation at (Center, Face, Center)
 """
 function yspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
-    Δy_op = KernelFunctionOperation{LX, LY, LZ}(yspacing, grid, ℓx, ℓy, ℓz)
+    Δy_op = KernelFunctionOperation{LX, LY, LZ}(Δy, grid, ℓx, ℓy, ℓz)
     return Δy_op
 end
 
@@ -223,7 +218,7 @@ KernelFunctionOperation at (Center, Center, Face)
 """
 function zspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
-    Δz_op = KernelFunctionOperation{LX, LY, LZ}(zspacing, grid, ℓx, ℓy, ℓz)
+    Δz_op = KernelFunctionOperation{LX, LY, LZ}(Δz, grid, ℓx, ℓy, ℓz)
     return Δz_op
 end
 
