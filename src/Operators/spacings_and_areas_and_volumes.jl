@@ -210,16 +210,22 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
     end
 
     for  L3 in (:ᶜ, :ᶠ)
+        # 3D spacings
+        Δxˡˡˡ = Symbol(:Δx, L1, L2, L3)
+        Δyˡˡˡ = Symbol(:Δy, L1, L2, L3)
+        Δzˡˡˡ = Symbol(:Δz, L1, L2, L3)
+
         # 3D areas
-        Axˡˡˡ = Symbol(:Ax, L3, L1, L2)
-        Ayˡˡˡ = Symbol(:Ay, L1, L3, L2)
+        Axˡˡˡ = Symbol(:Ax, L1, L2, L3)
+        Ayˡˡˡ = Symbol(:Ay, L1, L2, L3)
         Azˡˡˡ = Symbol(:Az, L1, L2, L3)
     
         @eval begin
-            # For the moment 3D areas equal their 2D counterpart. This might change if
+            @inline $Axˡˡˡ(i, j, k, grid) = $Δyˡˡˡ(i, j, k, grid) * $Δzˡˡˡ(i, j, k, grid)
+            @inline $Ayˡˡˡ(i, j, k, grid) = $Axˡˡˡ(i, j, k, grid) * $Δzˡˡˡ(i, j, k, grid)
+
+            # For the moment the horizontal area is independent of `z`. This might change if
             # we want to implement deep atmospheres where Az is a function of z
-            @inline $Axˡˡˡ(i, j, k, grid) = $Axᵃˡˡ(i, j, k, grid)
-            @inline $Ayˡˡˡ(i, j, k, grid) = $Ayˡᵃˡ(i, j, k, grid)
             @inline $Azˡˡˡ(i, j, k, grid) = $Azˡˡᵃ(i, j, k, grid)
         end
     end
