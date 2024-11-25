@@ -35,8 +35,8 @@ The operators in this file fall into three categories:
 #####
 #####
 
-# This metaprogramming loop defines all possible combinations of locations for spacings
-# All the spacings are reconducted to their one - dimensional counterparts.
+# This metaprogramming loop defines all possible combinations of locations for spacings.
+# The general 2D and 3D spacings are reconducted to their one - dimensional counterparts.
 # Grids that do not have a specific one - dimensional spacing for a given location need to 
 # extend these functions (for example, LatitudeLongitudeGrid).
 
