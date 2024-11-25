@@ -158,6 +158,7 @@ abstract type AbstractOutputWriter end
 # Callsites for Callbacks
 struct TimeStepCallsite end
 struct TendencyCallsite end
+struct BeforeTimeStepCallsite end
 struct UpdateStateCallsite end
 
 #####
