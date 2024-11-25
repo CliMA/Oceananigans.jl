@@ -211,6 +211,25 @@ steps:
     depends_on: "init_cpu"
 
 #####
+##### Tripolar Grid tests
+#####
+
+  - label: "🦃 cpu tripolar grid tests"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "tripolar_grid"
+    commands:
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
+    depends_on: "init_cpu"
+
+#####
 ##### NonhydrostaticModel and time stepping (part 1)
 #####
 
