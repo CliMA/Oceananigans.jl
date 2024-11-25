@@ -1,3 +1,12 @@
+####
+#### Vertical coordinates
+####
+
+# This file implements everything related to vertical coordinates in Oceananigans.
+# Vertical coordinates are independent of the underlying grid type as we support grids that are 
+# "unstructured" or "curviliear" only in the horizontal direction. 
+# For this reason the vertical coodinate is _special_, and it can be implemented once for all grid types.
+
 abstract type AbstractVerticalCoordinate end
 
 # Represents a static one-dimensional vertical coordinate.
