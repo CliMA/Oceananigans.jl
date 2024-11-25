@@ -1,15 +1,17 @@
 using Oceananigans.Grids
-
 using Oceananigans.ImmersedBoundaries: ZStarGridOfSomeKind
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: dynamic_column_depthᶜᶜᵃ,
-                                                                                  dynamic_column_depthᶜᶠᵃ,
-                                                                                  dynamic_column_depthᶠᶜᵃ,
-                                                                                  dynamic_column_depthᶠᶠᵃ
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: compute_barotropic_mode!
 
 #####
 ##### ZStar-specific vertical spacings update
 #####
+
+# The easy case
+retrieve_barotropic_velocity(model, free_surface::SplitExplicitFreeSurface) = free_surface.barotropic_velocities
+
+# Fallback 
+update_grid!(model, grid::ZStarGridOfSomeKind) = nothing
 
 function update_grid!(model, grid::ZStarGridOfSomeKind; parameters = :xy)
 
@@ -21,26 +23,25 @@ function update_grid!(model, grid::ZStarGridOfSomeKind; parameters = :xy)
     e₃ᶠᶠⁿ  = grid.z.e₃ᶠᶠⁿ
     ∂t_e₃  = grid.z.∂t_e₃
     ηⁿ     = grid.z.ηⁿ
+    η      = model.free_surface.η
 
-    # Free surface variables:
-    # TODO: At the moment only SplitExplicitFreeSurface is supported,
-    # but zstar can be extended to other free surface solvers by calculating
-    # the barotropic velocity in this step
-    U = model.free_surface.barotropic_velocities.U 
-    V = model.free_surface.barotropic_velocities.V 
-    η = model.free_surface.η
+    launch!(architecture(grid), grid, parameters, _update_grid!, 
+            e₃ᶜᶜ⁻, e₃ᶜᶜⁿ, e₃ᶠᶜⁿ, e₃ᶜᶠⁿ, e₃ᶠᶠⁿ, e₃ᶜᶜ⁻, ηⁿ, grid, η)
+
+    # the barotropic velocity are retrieved from the free surface model for a
+    # SplitExplicitFreeSurface and are calculated for other free surface models
+    # For the moment only the `SplitExplicitFreeSurface` is supported
+    # TODO: find a way to support other free surface models by storing the barotropic velocities shomewhere
+    U, V = retrieve_barotropic_velocity(model, free_surface)
 
     # Update vertical spacing with available parameters 
     # No need to fill the halo as the scaling is updated _IN_ the halos
-    launch!(architecture(grid), grid, parameters, _update_zstar!, 
-            e₃ᶜᶜⁿ, e₃ᶠᶜⁿ, e₃ᶜᶠⁿ, e₃ᶠᶠⁿ, e₃ᶜᶜ⁻, ηⁿ, ∂t_e₃, grid, η, U, V)
+    launch!(architecture(grid), grid, parameters, _update_grid_vertical_velocity!, ∂t_e₃, grid, U, V)
 
     return nothing
 end
 
-# NOTE: The ZStar vertical spacing only supports a SplitExplicitFreeSurface
-# TODO: extend to support other free surface solvers
-@kernel function _update_zstar!(e₃ᶜᶜⁿ, e₃ᶠᶜⁿ, e₃ᶜᶠⁿ, e₃ᶠᶠⁿ, e₃ᶜᶜ⁻, ηⁿ, ∂t_e₃, grid, η, U, V)
+@kernel function _update_grid!(e₃ᶜᶜⁿ, e₃ᶠᶜⁿ, e₃ᶜᶠⁿ, e₃ᶠᶠⁿ, e₃ᶜᶜ⁻, ηⁿ, grid, η)
     i, j = @index(Global, NTuple)
     kᴺ = size(grid, 3)
 
@@ -71,26 +72,37 @@ end
 
         # Update η in the grid
         ηⁿ[i, j, 1] = η[i, j, kᴺ+1]
-
-        # ∂(η / H)/∂t = - ∇ ⋅ ∫udz / H
-        δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, U)
-        δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, V)
-
-        δh_U = (δx_U + δy_V) / Azᶜᶜᶜ(i, j, kᴺ, grid)
-
-        ∂t_e₃[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), - δh_U / hᶜᶜ)
     end
+end
+
+@kernel function _update_grid_vertical_velocity!(∂t_e₃, grid, U, V)
+    i, j = @index(Global, NTuple)
+    kᴺ = size(grid, 3)
+
+    hᶜᶜ = static_column_depthᶜᶜᵃ(i, j, grid)
+
+    # ∂(η / H)/∂t = - ∇ ⋅ ∫udz / H
+    δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, U)
+    δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, V)
+
+    δh_U = (δx_U + δy_V) / Azᶜᶜᶜ(i, j, kᴺ, grid)
+
+    @inbounds ∂t_e₃[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), - δh_U / hᶜᶜ)
 end
 
 #####
 ##### ZStar-specific implementation of the additional terms to be included in the momentum equations
 #####
 
-@inline ∂x_z(i, j, k, grid) = @inbounds ∂xᶠᶜᶜ(i, j, k, grid, znode, Center(), Center(), Center())
-@inline ∂y_z(i, j, k, grid) = @inbounds ∂yᶜᶠᶜ(i, j, k, grid, znode, Center(), Center(), Center())
+# Fallbacks
+@inline grid_slope_contribution_x(i, j, k, grid, buoyancy, model_fields) = zero(grid)
+@inline grid_slope_contribution_y(i, j, k, grid, buoyancy, model_fields) = zero(grid)
 
 @inline grid_slope_contribution_x(i, j, k, grid::ZStarGridOfSomeKind, ::Nothing, model_fields) = zero(grid)
 @inline grid_slope_contribution_y(i, j, k, grid::ZStarGridOfSomeKind, ::Nothing, model_fields) = zero(grid)
+
+@inline ∂x_z(i, j, k, grid) = @inbounds ∂xᶠᶜᶜ(i, j, k, grid, znode, Center(), Center(), Center())
+@inline ∂y_z(i, j, k, grid) = @inbounds ∂yᶜᶠᶜ(i, j, k, grid, znode, Center(), Center(), Center())
 
 @inline grid_slope_contribution_x(i, j, k, grid::ZStarGridOfSomeKind, buoyancy, model_fields) = 
     ℑxᶠᵃᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, model_fields) * ∂x_z(i, j, k, grid)

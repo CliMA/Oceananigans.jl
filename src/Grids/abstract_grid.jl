@@ -1,8 +1,7 @@
 """
     AbstractGrid{FT, TX, TY, TZ}
 
-Abstract supertype for grids with elements of type `FT`, 
-topology `{TX, TY, TZ}` and vertical coordinate `CZ`.
+Abstract supertype for grids with elements of type `FT` and topology `{TX, TY, TZ}`.
 """
 abstract type AbstractGrid{FT, TX, TY, TZ, Arch} end
 

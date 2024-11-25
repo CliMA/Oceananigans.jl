@@ -164,7 +164,8 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
         mask_immersed_field!(model.velocities.v)
     end
 
-    # Needed for ZStar
+    # Needed for ZStar to compute the barotropic correction? 
+    # Can we remove it?
     fill_halo_regions!(η)
 
     return nothing

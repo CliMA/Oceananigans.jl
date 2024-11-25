@@ -327,6 +327,7 @@ coordinate_summary(topo, Δ::Union{AbstractVector, AbstractMatrix}, name) =
 @inline static_column_depthᶠᶜᵃ(i, j, grid) = grid.Lz
 @inline static_column_depthᶠᶠᵃ(i, j, grid) = grid.Lz
 
+# Will be extended in the `ImmersedBoundaries` module for any ZStar grid type
 @inline dynamic_column_depthᶜᶜᵃ(i, j, grid, η) = static_column_depthᶜᶜᵃ(i, j, grid) 
 @inline dynamic_column_depthᶜᶠᵃ(i, j, grid, η) = static_column_depthᶜᶠᵃ(i, j, grid) 
 @inline dynamic_column_depthᶠᶜᵃ(i, j, grid, η) = static_column_depthᶠᶜᵃ(i, j, grid) 
