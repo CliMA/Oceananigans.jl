@@ -5,6 +5,17 @@ using Oceananigans.Fields: AbstractField, default_indices, location
 
 import Oceananigans.Grids: xspacings, yspacings, zspacings, λspacings, φspacings
 
+const AbstractGridMetric = Union{typeof(Δx), typeof(Δy), typeof(Δz), 
+                                 typeof(Ax), typeof(Ay), typeof(Az), 
+                                 typeof(volume),
+                                 typeof(Δλ), typeof(Δφ)}
+
+
+"""
+    metric_function(loc, metric::AbstractGridMetric)
+
+Return the function associated with `metric::AbstractGridMetric` at `loc`ation.
+"""
 function metric_function(loc, metric)
     code = Tuple(interpolation_code(ℓ) for ℓ in loc)
     metric_function_symbol = Symbol(metric, code...)
@@ -32,7 +43,36 @@ on_architecture(to, gm::GridMetricOperation{LX, LY, LZ}) where {LX, LY, LZ} =
 
 indices(::GridMetricOperation) = default_indices(3)
 
-# Special constructor for BinaryOperation
+"""
+    gm = GridMetricOperation(L, metric, grid)
+
+Instance of `GridMetricOperation` that generates `BinaryOperation`s between `AbstractField`s and the metric `metric`
+at the same location as the `AbstractField`.
+
+Example
+=======
+```jldoctest
+
+julia> using Oceananigans
+
+julia> using Oceananigans.Operators: Δz
+
+julia> c = CenterField(RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3)));
+
+julia> c_dz = c * Δz # returns BinaryOperation between Field and GridMetricOperation
+BinaryOperation at (Center, Center, Center)
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+└── tree:
+    * at (Center, Center, Center)
+   ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+   └── Δzᶜᶜᶜ at (Center, Center, Center)
+
+julia> c .= 1;
+
+julia> c_dz[1, 1, 1]
+3.0
+```
+"""
 GridMetricOperation(L, metric, grid) = GridMetricOperation{L[1], L[2], L[3]}(metric_function(L, metric), grid)
 
 #####

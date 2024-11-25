@@ -41,10 +41,10 @@ spacing_z_loc(dir) = dir == :z ? (:ᶜ, :ᶠ) : (:ᶜ, :ᶠ, :ᵃ)
 
 spacing_1D(::Val{:x}, LX, LY, LZ) = Symbol(:Δx, LX, :ᵃ, :ᵃ)
 spacing_2D(::Val{:x}, LX, LY, LZ) = Symbol(:Δx, LX, LY, :ᵃ)
-spacing_1D(::Val{:y}, LX, LY, LZ) = Symbol(:Δx, :ᵃ, LY, :ᵃ)
-spacing_2D(::Val{:y}, LX, LY, LZ) = Symbol(:Δx, LX, LY, :ᵃ)
-spacing_1D(::Val{:z}, LX, LY, LZ) = Symbol(:Δx, :ᵃ, :ᵃ, LZ)
-spacing_2D(::Val{:z}, LX, LY, LZ) = Symbol(:Δx, :ᵃ, LY, LZ)
+spacing_1D(::Val{:y}, LX, LY, LZ) = Symbol(:Δy, :ᵃ, LY, :ᵃ)
+spacing_2D(::Val{:y}, LX, LY, LZ) = Symbol(:Δy, LX, LY, :ᵃ)
+spacing_1D(::Val{:z}, LX, LY, LZ) = Symbol(:Δz, :ᵃ, :ᵃ, LZ)
+spacing_2D(::Val{:z}, LX, LY, LZ) = Symbol(:Δz, :ᵃ, LY, LZ)
 
 # Convenience Functions for all grids
 # This metaprogramming loop defines all the allowed combinations of Δx, Δy, and Δz
@@ -54,9 +54,12 @@ for dir in (:x, :y, :z)
         spacing1D = spacing_1D(Val(dir), LX, LY, LZ)
         spacing2D = spacing_2D(Val(dir), LX, LY, LZ)
         spacing3D = Symbol(:Δ, dir, LX, LY, LZ)
-
-        @eval @inline $spacing2D(i, j, k, grid) = $spacing1D(i, j, k, grid)
-        @eval @inline $spacing3D(i, j, k, grid) = $spacing2D(i, j, k, grid)
+        if spacing2D != spacing1D
+            @eval @inline $spacing2D(i, j, k, grid) = $spacing1D(i, j, k, grid)
+        end
+        if spacing3D != spacing2D
+            @eval @inline $spacing3D(i, j, k, grid) = $spacing2D(i, j, k, grid)
+        end
     end
 end
 

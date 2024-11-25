@@ -1,7 +1,7 @@
 module Operators
 
-# General spacings
-export Δx, Δy, Δz, Δλ, Δφ
+# General metric operators
+export Δx, Δy, Δz, Δλ, Δφ, Ax, Ay, Az, volume
 
 # Spacings
 export Δxᶠᶠᶠ, Δxᶠᶠᶜ, Δxᶠᶜᶠ, Δxᶠᶜᶜ, Δxᶜᶠᶠ, Δxᶜᶠᶜ, Δxᶜᶜᶠ, Δxᶜᶜᶜ
