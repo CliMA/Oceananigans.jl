@@ -258,7 +258,7 @@ end
 
 for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ), LZ in (:ᶠ, :ᶜ)
 
-    volume    = Symbol(:V, LX, LY, LZ)
+    volume    = Symbol(:V,  LX, LY, LZ)
     z_area    = Symbol(:Az, LX, LY, LZ)
     z_spacing = Symbol(:Δz, LX, LY, LZ)
 
