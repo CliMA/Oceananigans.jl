@@ -5,11 +5,15 @@ using Oceananigans.Fields: AbstractField, default_indices, location
 
 import Oceananigans.Grids: xspacings, yspacings, zspacings, λspacings, φspacings
 
-const AbstractGridMetric = Union{typeof(Δx), typeof(Δy), typeof(Δz), 
-                                 typeof(Ax), typeof(Ay), typeof(Az), 
-                                 typeof(volume),
-                                 typeof(Δλ), typeof(Δφ)}
-
+const AbstractGridMetric = Union{typeof(Δx), 
+                                 typeof(Δy), 
+                                 typeof(Δz), 
+                                 typeof(Δλ),
+                                 typeof(Δφ),
+                                 typeof(Ax), 
+                                 typeof(Ay), 
+                                 typeof(Az), 
+                                 typeof(volume)}
 
 """
     metric_function(loc, metric::AbstractGridMetric)
