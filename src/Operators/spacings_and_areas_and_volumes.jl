@@ -222,7 +222,7 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
     
         @eval begin
             @inline $Axˡˡˡ(i, j, k, grid) = $Δyˡˡˡ(i, j, k, grid) * $Δzˡˡˡ(i, j, k, grid)
-            @inline $Ayˡˡˡ(i, j, k, grid) = $Axˡˡˡ(i, j, k, grid) * $Δzˡˡˡ(i, j, k, grid)
+            @inline $Ayˡˡˡ(i, j, k, grid) = $Δxˡˡˡ(i, j, k, grid) * $Δzˡˡˡ(i, j, k, grid)
 
             # For the moment the horizontal area is independent of `z`. This might change if
             # we want to implement deep atmospheres where Az is a function of z
