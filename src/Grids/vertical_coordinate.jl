@@ -100,7 +100,7 @@ Adapt.adapt_structure(to, coord::ZStarVerticalCoordinate) =
 @inline znode(i, j, k, grid, ℓx, ℓy, ℓz) = rnode(k, grid, ℓz)
 
 function validate_dimension_specification(T, ξ::ZStarVerticalCoordinate, dir, N, FT)
-    reference = validate_dimension_specification(T, ξ.reference, dir, N, FT)
+    reference = validate_dimension_specification(T, ξ.cᶠ, dir, N, FT)
     args      = Tuple(getproperty(ξ, prop) for prop in propertynames(ξ))
 
     return ZStarVerticalCoordinate(reference, args[2:end]...)
