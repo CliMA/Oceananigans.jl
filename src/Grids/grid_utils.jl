@@ -236,6 +236,34 @@ const f = Face()
 @inline cpu_face_constructor_y(grid) = Array(getindex(nodes(grid, c, f, c; with_halos=true), 2)[1:size(grid, 2)+1])
 @inline cpu_face_constructor_z(grid) = Array(getindex(nodes(grid, c, c, f; with_halos=true), 3)[1:size(grid, 3)+1])
 
+flip(::Center) = Face()
+flip(::Face) = Center()
+
+active_xspacing_at_boundary(i,j,k,grid, ℓx, ℓy, ℓz) = ifelse(i==1, xnode(i,j,k, grid, flip(ℓx), ℓy, ℓz) - xnode(i,j,k, grid, ℓx, ℓy, ℓz),
+                                                                   xnode(i,j,k, grid, ℓx, ℓy, ℓz)       - xnode(i-1,j,k, grid, flip(ℓx), ℓy, ℓz))
+
+active_yspacing_at_boundary(i,j,k,grid, ℓx, ℓy, ℓz) = ifelse(j==1, ynode(i,j,k, grid, ℓx, flip(ℓy), ℓz) - ynode(i,j,k, grid, ℓx, ℓy, ℓz),
+                                                                   ynode(i,j,k, grid, ℓx, ℓy, ℓz)       - ynode(i,j-1,k, grid, ℓx, flip(ℓy), ℓz))
+
+active_zspacing_at_boundary(i,j,k,grid, ℓx, ℓy, ℓz) = ifelse(k==1, znode(i,j,k, grid, ℓx, ℓy, flip(ℓz)) - znode(i,j,k, grid, ℓx, ℓy, ℓz),
+                                                                   znode(i,j,k, grid, ℓx, ℓy, ℓz)       - znode(i,j,k-1, grid, ℓx, ℓy, flip(ℓz)))
+for dir in (:x, :y, :z)
+    active_spacing = Symbol(:active_, dir, :spacing)
+    spacing = Symbol(dir, :spacing)
+    boundary_spacing = Symbol(active_spacing, :_at_boundary)
+    @eval begin
+        function $active_spacing(i, j, k, grid, ℓx, ℓy, ℓz)
+            Δξ = ifelse(inactive_node(i, j, k, grid, ℓx, ℓy, ℓz),
+                        0, 
+                        ifelse(boundary_node(i, j, k, grid, ℓx, ℓy, ℓz),
+                               $boundary_spacing(i, j, k, grid, ℓx, ℓy, ℓz),
+                               $spacing(i, j, k, grid, ℓx, ℓy, ℓz)))
+            return Δξ
+        end
+    end
+end
+ 
+
 #####
 ##### Convenience functions
 #####
