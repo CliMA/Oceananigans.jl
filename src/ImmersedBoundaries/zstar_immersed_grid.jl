@@ -1,4 +1,4 @@
-using Oceananigans.Grids: ZStarGrid
+using Oceananigans.Grids: AbstractZStarGrid
 using Oceananigans.Operators
 
 import Oceananigans.Grids: dynamic_column_depthᶜᶜᵃ, 
@@ -6,8 +6,10 @@ import Oceananigans.Grids: dynamic_column_depthᶜᶜᵃ,
                            dynamic_column_depthᶠᶜᵃ,
                            dynamic_column_depthᶠᶠᵃ
 
-const ZStarImmersedGrid   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ZStarGrid}
-const ZStarGridOfSomeKind = Union{ZStarImmersedGrid, ZStarGrid}
+import Oceananigans.Operators: e₃ⁿ, e₃⁻, ∂t_e₃
+
+const ZStarImmersedGrid   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractZStarGrid}
+const ZStarGridOfSomeKind = Union{ZStarImmersedGrid, AbstractZStarGrid}
 
 @inline dynamic_column_depthᶜᶜᵃ(i, j, grid::ZStarGridOfSomeKind, η) = @inbounds static_column_depthᶜᶜᵃ(i, j, grid) +      η[i, j, grid.Nz+1]
 @inline dynamic_column_depthᶜᶠᵃ(i, j, grid::ZStarGridOfSomeKind, η) = @inbounds static_column_depthᶜᶠᵃ(i, j, grid) +  ℑxᶠᵃᵃ(i, j, grid.Nz+1, grid, η)

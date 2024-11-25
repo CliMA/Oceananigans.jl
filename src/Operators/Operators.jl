@@ -122,6 +122,7 @@ include("topology_aware_operators.jl")
 include("vorticity_operators.jl")
 include("laplacian_operators.jl")
 
+include("variable_grid_operators.jl")
 include("vector_rotation_operators.jl")
 
 end # module

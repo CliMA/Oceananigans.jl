@@ -2,11 +2,11 @@ using Oceananigans
 using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceananigans.BuoyancyModels: buoyancy_perturbationᶜᶜᶜ
-using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, halo_size
+using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, halo_size, with_halo
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.Models: AbstractVerticalCoordinateGrid
 using Oceananigans.Utils: getnamewrapper
-using Oceananigans.Grids: with_halo, ∂t_grid, vertical_scaling, previous_vertical_scaling
+using Oceananigans.Operators: ∂t_e₃
 using Adapt 
 using Printf
 

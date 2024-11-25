@@ -37,15 +37,15 @@ const ZSRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:ZStarVerticalCoordina
 const ZSLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:ZStarVerticalCoordinate}
 const ZSOSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:ZStarVerticalCoordinate}
 
-location(s::Symbol) = s == :ᶜ ? C() : F()
+superscript_location(s::Symbol) = s == :ᶜ ? C() : F()
 
-for Lx in (:ᶠ, :ᶜ), Lx in (:ᶠ, :ᶜ), Lx in (:ᶠ, :ᶜ)
-    zspacing = Symbol(:Δz, Lx, Ly, Lz)
-    rspacing = Symbol(:Δr, Lx, Ly, Lz)
+for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ), LZ in (:ᶠ, :ᶜ)
+    zspacing = Symbol(:Δz, LX, LY, LZ)
+    rspacing = Symbol(:Δr, LX, LY, LZ)
 
-    ℓx = location(Lx)
-    ℓy = location(Ly)
-    ℓz = location(Lz)
+    ℓx = superscript_location(LX)
+    ℓy = superscript_location(LY)
+    ℓz = superscript_location(LZ)
 
     @eval begin
         @inline $zspacing(i, j, k, grid::ZSRG)  = $rspacing(i, j, k, grid) * e₃ⁿ(i, j, k, grid, ℓx, ℓy, ℓz)

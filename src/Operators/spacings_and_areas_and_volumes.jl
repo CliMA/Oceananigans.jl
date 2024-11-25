@@ -36,11 +36,6 @@ The operators in this file fall into three categories:
 #####
 #####
 
-@inline Δxᶠᵃᵃ(i, j, k, grid) = nothing
-@inline Δxᶜᵃᵃ(i, j, k, grid) = nothing
-@inline Δyᵃᶠᵃ(i, j, k, grid) = nothing
-@inline Δyᵃᶜᵃ(i, j, k, grid) = nothing
-
 const ZRG = Union{LLGZ, RGZ, OSSGZ}
 
 @inline getspacing(k, Δz::AbstractVector) = @inbounds Δz[k]
@@ -53,7 +48,7 @@ const ZRG = Union{LLGZ, RGZ, OSSGZ}
 @inline Δzᵃᵃᶜ(i, j, k, grid) = getspacing(k, grid.z.Δᶠ)
 
 # Convenience Functions for all grids
-for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ)
+for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
 
     x_spacing_1D = Symbol(:Δx, LX, :ᵃ, :ᵃ)
     x_spacing_2D = Symbol(:Δx, LX, LY, :ᵃ)
