@@ -51,9 +51,9 @@ spacing_2D(::Val{:z}, LX, LY, LZ) = Symbol(:Δx, :ᵃ, LY, LZ)
 # Note `:ᵃ` is not allowed for the location associated with the spacing
 for dir in (:x, :y, :z)
     for LX in spacing_x_loc(dir), LY in spacing_y_loc(dir), LZ in spacing_z_loc(dir)
-        spacing1D  = spacing_1D(Val(dir), LX, LY, LZ)
-        spacing2D  = spacing_2D(Val(dir), LX, LY, LZ)
-        spacing_3D = Symbol(:Δ, dir, LX, LY, LZ)
+        spacing1D = spacing_1D(Val(dir), LX, LY, LZ)
+        spacing2D = spacing_2D(Val(dir), LX, LY, LZ)
+        spacing3D = Symbol(:Δ, dir, LX, LY, LZ)
 
         @eval @inline $spacing2D(i, j, k, grid) = $spacing1D(i, j, k, grid)
         @eval @inline $spacing3D(i, j, k, grid) = $spacing2D(i, j, k, grid)
@@ -293,3 +293,17 @@ for LX in (:Center, :Face, :Nothing)
         end
     end
 end
+
+# Special curvilinear spacings for curvilinear grids
+@inline Δλ(i, j, k, grid::LLG,  ::Center, ℓy, ℓz) = @inbounds grid.Δλᶜᵃᵃ[i]
+@inline Δλ(i, j, k, grid::LLG,  ::Face,   ℓy, ℓz) = @inbounds grid.Δλᶠᵃᵃ[i]
+@inline Δλ(i, j, k, grid::LLGX, ::Center, ℓy, ℓz) = @inbounds grid.Δλᶜᵃᵃ
+@inline Δλ(i, j, k, grid::LLGX, ::Face,   ℓy, ℓz) = @inbounds grid.Δλᶠᵃᵃ
+
+@inline Δφ(i, j, k, grid::LLG,  ::Center, ℓy, ℓz) = @inbounds grid.Δφᵃᶜᵃ[j]
+@inline Δφ(i, j, k, grid::LLG,  ::Face,   ℓy, ℓz) = @inbounds grid.Δφᵃᶠᵃ[j]
+@inline Δφ(i, j, k, grid::LLG,  ::Center, ℓy, ℓz) = @inbounds grid.Δφᵃᶜᵃ
+@inline Δφ(i, j, k, grid::LLG,  ::Face,   ℓy, ℓz) = @inbounds grid.Δφᵃᶠᵃ
+
+@inline Δλ(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = δxᶠᵃᵃ(i, j, k, grid, λnode, flip(ℓx), ℓy, ℓz)
+@inline Δφ(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = δxᶠᵃᵃ(i, j, k, grid, λnode, ℓx, flip(ℓy), ℓz)

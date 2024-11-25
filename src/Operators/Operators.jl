@@ -1,5 +1,8 @@
 module Operators
 
+# General spacings
+export Δx, Δy, Δz, Δλ, Δφ
+
 # Spacings
 export Δxᶠᶠᶠ, Δxᶠᶠᶜ, Δxᶠᶜᶠ, Δxᶠᶜᶜ, Δxᶜᶠᶠ, Δxᶜᶠᶜ, Δxᶜᶜᶠ, Δxᶜᶜᶜ
 export Δyᶠᶠᶠ, Δyᶠᶠᶜ, Δyᶠᶜᶠ, Δyᶠᶜᶜ, Δyᶜᶠᶠ, Δyᶜᶠᶜ, Δyᶜᶜᶠ, Δyᶜᶜᶜ
@@ -75,17 +78,11 @@ export intrinsic_vector, extrinsic_vector
 
 using Oceananigans.Grids
 
-import Oceananigans.Grids: xspacing, yspacing, zspacing
-
 #####
 ##### Convenient aliases
 #####
 
 const AG = AbstractGrid
-
-const Δx = xspacing
-const Δy = yspacing
-const Δz = zspacing
 
 const RG  = RectilinearGrid
 const RGX = XRegularRG
