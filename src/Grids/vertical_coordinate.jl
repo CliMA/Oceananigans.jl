@@ -4,7 +4,7 @@
 
 # This file implements everything related to vertical coordinates in Oceananigans.
 # Vertical coordinates are independent of the underlying grid type as we support grids that are 
-# "unstructured" or "curviliear" only in the horizontal direction. 
+# "unstructured" or "curvilinear" only in the horizontal direction. 
 # For this reason the vertical coodinate is _special_, and it can be implemented once for all grid types.
 
 abstract type AbstractVerticalCoordinate end
@@ -12,17 +12,13 @@ abstract type AbstractVerticalCoordinate end
 # Represents a static one-dimensional vertical coordinate.
 #
 # # Fields
-# - `cᶠ::C`: Face-centered coordinate.
 # - `cᶜ::C`: Cell-centered coordinate.
+# - `cᶠ::C`: Face-centered coordinate.
+# - `Δᶜ::D`: Cell-centered grid spacing.
 # - `Δᶠ::D`: Face-centered grid spacing.
-# - `Δᶠ::D`: Face-centered grid spacing (duplicate field, consider renaming or removing).
-#
-# # Type Parameters
-# - `C`: Type of the face-centered and cell-centered coordinates.
-# - `D`: Type of the face-centered grid spacing.
 struct StaticVerticalCoordinate{C, D} <: AbstractVerticalCoordinate
-    cᶠ :: C
     cᶜ :: C
+    cᶠ :: C
     Δᶜ :: D
     Δᶠ :: D
 end
@@ -30,21 +26,20 @@ end
 # Represents a z-star three-dimensional vertical coordinate.
 #
 # # Fields
-# - `cᶠ::C`: Face-centered coordinates.
-# - `cᶜ::C`: Cell-centered coordinates.
+# - `cᶜ::C`: Cell-centered coordinate.
+# - `cᶠ::C`: Face-centered coordinate.
+# - `Δᶜ::D`: Cell-centered grid spacing.
 # - `Δᶠ::D`: Face-centered grid spacing.
-# - `Δᶠ::D`: Face-centered grid spacing (duplicate field, consider renaming or removing).
 # - `ηⁿ::E`: Surface elevation at the current time step.
-# - `η⁻::E`: Surface elevation at the previous time step.
-# - `e₃ᶜᶜⁿ::CC`: Vertical grid scaling at cell centers at the current time step.
-# - `e₃ᶠᶜⁿ::FC`: Vertical grid scaling at face centers at the current time step.
-# - `e₃ᶜᶠⁿ::CF`: Vertical grid scaling at cell-face interfaces at the current time step.
-# - `e₃ᶠᶠⁿ::FF`: Vertical grid scaling at face-face interfaces at the current time step.
-# - `e₃ᶜᶜ⁻::CC`: Vertical grid scaling at cell centers at the previous time step.
+# - `e₃ᶜᶜⁿ::CC`: Vertical grid scaling at center-center at the current time step.
+# - `e₃ᶠᶜⁿ::FC`: Vertical grid scaling at face-center at the current time step.
+# - `e₃ᶜᶠⁿ::CF`: Vertical grid scaling at center-face at the current time step.
+# - `e₃ᶠᶠⁿ::FF`: Vertical grid scaling at face-face at the current time step.
+# - `e₃ᶜᶜ⁻::CC`: Vertical grid scaling at center-center at the previous time step.
 # - `∂t_e₃::CC`: Time derivative of the vertical grid scaling at cell centers.
 struct ZStarVerticalCoordinate{C, D, E, CC, FC, CF, FF} <: AbstractVerticalCoordinate
-       cᶠ :: C
        cᶜ :: C
+       cᶠ :: C
        Δᶜ :: D
        Δᶠ :: D
        ηⁿ :: E
@@ -78,16 +73,16 @@ const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,  
 ####
 
 Adapt.adapt_structure(to, coord::StaticVerticalCoordinate) = 
-   StaticVerticalCoordinate(Adapt.adapt(to, coord.cᶠ),
-                            Adapt.adapt(to, coord.cᶜ),
-                            Adapt.adapt(to, coord.Δᶠ),
+   StaticVerticalCoordinate(Adapt.adapt(to, coord.cᶜ),
+                            Adapt.adapt(to, coord.cᶠ),
+                            Adapt.adapt(to, coord.Δᶜ),
                             Adapt.adapt(to, coord.Δᶠ))
 
 Adapt.adapt_structure(to, coord::ZStarVerticalCoordinate) = 
     ZStarVerticalCoordinate(Adapt.adapt(to, coord.cᶠ),
                             Adapt.adapt(to, coord.cᶜ),
                             Adapt.adapt(to, coord.Δᶠ),
-                            Adapt.adapt(to, coord.Δᶠ),
+                            Adapt.adapt(to, coord.Δᶜ),
                             Adapt.adapt(to, coord.ηⁿ),
                             Adapt.adapt(to, coord.e₃ᶜᶜⁿ),
                             Adapt.adapt(to, coord.e₃ᶠᶜⁿ),
