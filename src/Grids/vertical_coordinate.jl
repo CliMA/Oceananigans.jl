@@ -103,7 +103,7 @@ function validate_dimension_specification(T, ξ::ZStarVerticalCoordinate, dir, N
     reference = validate_dimension_specification(T, ξ.cᶠ, dir, N, FT)
     args      = Tuple(getproperty(ξ, prop) for prop in propertynames(ξ))
 
-    return ZStarVerticalCoordinate(reference, args[2:end]...)
+    return ZStarVerticalCoordinate(reference, reference, args[3:end]...)
 end
 
 # Summaries
@@ -113,6 +113,14 @@ coordinate_summary(::Bounded, z::AbstractVerticalCoordinate, name) =
 ####
 #### Nodes and spacings...
 ####
+
+@inline rnodes(grid, ℓz::F; with_halos=false) = _property(grid.z.cᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline rnodes(grid, ℓz::C; with_halos=false) = _property(grid.z.cᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+
+@inline rnodes(grid, ℓx, ℓy, ℓz; with_halos=false) = rnodes(grid, ℓz; with_halos)
+
+# Extended in the Operators module
+@inline znodes(grid, ℓx, ℓy, ℓz; with_halos=false) = rnodes(grid, ℓz; with_halos)
 
 # znodes(....)
 # rnodes(....)

@@ -269,7 +269,7 @@ function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
 
     Lx, xᶠᵃᵃ, xᶜᵃᵃ, Δxᶠᵃᵃ, Δxᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, x, :x, 1, architecture)
     Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, topology, size, halo, y, :y, 2, architecture)
-    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, topology, size, halo, z, :z, 3, architecture)
+    Lz, z                        = generate_coordinate(FT, topology, size, halo, z, :z, 3, architecture)
 
     return RectilinearGrid{TX, TY, TZ}(architecture,
                                        Nx, Ny, Nz,
@@ -277,7 +277,7 @@ function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
                                        Lx, Ly, Lz,
                                        Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
                                        Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
-                                       Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
+                                       z)
 end
 
 """ Validate user input arguments to the `RectilinearGrid` constructor. """
@@ -298,7 +298,7 @@ end
 
 x_domain(grid::RectilinearGrid) = domain(topology(grid, 1)(), grid.Nx, grid.xᶠᵃᵃ)
 y_domain(grid::RectilinearGrid) = domain(topology(grid, 2)(), grid.Ny, grid.yᵃᶠᵃ)
-z_domain(grid::RectilinearGrid) = domain(topology(grid, 3)(), grid.Nz, grid.zᵃᵃᶠ)
+z_domain(grid::RectilinearGrid) = domain(topology(grid, 3)(), grid.Nz, grid.z.cᶠ)
 
 # architecture = CPU() default, assuming that a DataType positional arg
 # is specifying the floating point type.

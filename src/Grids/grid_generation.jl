@@ -174,9 +174,9 @@ function generate_coordinate(FT, topo, size, halo, coordinate::ZStarVerticalCoor
         throw(ArgumentError(msg))
     end
 
-    r_faces = coordinate.reference
+    r_faces = coordinate.cᶠ
 
-    Lr, rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ = generate_coordinate(FT, topo[3](), Nz, Hz, r_faces, :z, arch)
+    Lr, rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ = generate_coordinate(FT, topo[3](), Nz, Hz, r_faces, :r, arch)
 
     args = (topo, (Nx, Ny, Nz), (Hx, Hy, Hz))
 
