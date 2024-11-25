@@ -344,9 +344,9 @@ end
 ##### Calculate kernel size and offset for Windowed and Sliced Fields
 #####
 
-const WEB = Union{typeof(fill_west_and_east_halo!),   typeof(fill_west_halo!),   typeof(fill_east_halo!)}
-const SNB = Union{typeof(fill_south_and_north_halo!), typeof(fill_south_halo!),  typeof(fill_north_halo!)}
-const TBB = Union{typeof(fill_bottom_and_top_halo!),  typeof(fill_bottom_halo!), typeof(fill_top_halo!)}
+const WEB = Union{typeof(fill_west_and_east_halo!), typeof(fill_west_halo!), typeof(fill_east_halo!)}
+const SNB = Union{typeof(fill_south_and_north_halo!), typeof(fill_south_halo!), typeof(fill_north_halo!)}
+const TBB = Union{typeof(fill_bottom_and_top_halo!), typeof(fill_bottom_halo!), typeof(fill_top_halo!)}
 
 # Tupled halo filling _only_ deals with full fields!
 @inline fill_halo_size(::Tuple, ::WEB, args...) = :yz
