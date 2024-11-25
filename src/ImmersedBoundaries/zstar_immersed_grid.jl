@@ -23,7 +23,7 @@ const ZStarGridOfSomeKind = Union{ZStarImmersedGrid, AbstractZStarGrid}
 @inline dynamic_column_depthᶠᶠᵃ(i, j, grid::ZStarGridOfSomeKind) = dynamic_column_depthᶠᶠᵃ(i, j, grid, grid.z.ηⁿ)
 
 # Fallbacks
-@inline e₃ⁿ(i, j, k, grid::IBG, ℓx, ℓy, ℓz) = e₃ⁿ(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
-@inline e₃⁻(i, j, k, grid::IBG, ℓx, ℓy, ℓz) = e₃⁻(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
+@inline e₃ⁿ(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = e₃ⁿ(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
+@inline e₃⁻(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = e₃⁻(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
 
-@inline ∂t_e₃(i, j, k, grid::IBG) = ∂t_e₃(i, j, k, grid.underlying_grid)
+@inline ∂t_e₃(i, j, k, ibg::IBG) = ∂t_e₃(i, j, k, ibg.underlying_grid)

@@ -25,14 +25,14 @@ function update_grid!(model, grid::ZStarGridOfSomeKind; parameters = :xy)
     ηⁿ     = grid.z.ηⁿ
     η      = model.free_surface.η
 
-    launch!(architecture(grid), grid, parameters, _update_grid!, 
-            e₃ᶜᶜ⁻, e₃ᶜᶜⁿ, e₃ᶠᶜⁿ, e₃ᶜᶠⁿ, e₃ᶠᶠⁿ, e₃ᶜᶜ⁻, ηⁿ, grid, η)
+    launch!(architecture(grid), grid, parameters, _update_grid_scaling!, 
+            e₃ᶜᶜⁿ, e₃ᶠᶜⁿ, e₃ᶜᶠⁿ, e₃ᶠᶠⁿ, e₃ᶜᶜ⁻, ηⁿ, grid, η)
 
     # the barotropic velocity are retrieved from the free surface model for a
     # SplitExplicitFreeSurface and are calculated for other free surface models
     # For the moment only the `SplitExplicitFreeSurface` is supported
     # TODO: find a way to support other free surface models by storing the barotropic velocities shomewhere
-    U, V = retrieve_barotropic_velocity(model, free_surface)
+    U, V = retrieve_barotropic_velocity(model, model.free_surface)
 
     # Update vertical spacing with available parameters 
     # No need to fill the halo as the scaling is updated _IN_ the halos
@@ -41,7 +41,7 @@ function update_grid!(model, grid::ZStarGridOfSomeKind; parameters = :xy)
     return nothing
 end
 
-@kernel function _update_grid!(e₃ᶜᶜⁿ, e₃ᶠᶜⁿ, e₃ᶜᶠⁿ, e₃ᶠᶠⁿ, e₃ᶜᶜ⁻, ηⁿ, grid, η)
+@kernel function _update_grid_scaling!(e₃ᶜᶜⁿ, e₃ᶠᶜⁿ, e₃ᶜᶠⁿ, e₃ᶠᶠⁿ, e₃ᶜᶜ⁻, ηⁿ, grid, η)
     i, j = @index(Global, NTuple)
     kᴺ = size(grid, 3)
 

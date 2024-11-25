@@ -134,6 +134,7 @@ nodes(grid::AbstractGrid, (ℓx, ℓy, ℓz); reshape=false, with_halos=false) =
 # see Oceananigans/AbstractOperations/grid_metrics.jl for definitions
 function xspacing end
 function yspacing end
+function zspacing end
 function λspacing end
 function φspacing end
 

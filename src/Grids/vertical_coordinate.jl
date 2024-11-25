@@ -119,7 +119,6 @@ coordinate_summary(::Bounded, z::AbstractVerticalCoordinate, name) =
 ####
 
 z_domain(grid) = domain(topology(grid, 3)(), grid.Nz, grid.z.cᶠ)
-cpu_face_constructor_z(grid) = z_domain(grid)
 
 ####
 #### Nodes and spacings...
