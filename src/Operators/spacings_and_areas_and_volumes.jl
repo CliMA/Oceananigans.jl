@@ -35,53 +35,60 @@ The operators in this file fall into three categories:
 #####
 #####
 
-spacing_x_loc(dir) = dir == :x ? (:ᶜ, :ᶠ) : (:ᶜ, :ᶠ, :ᵃ) 
-spacing_y_loc(dir) = dir == :y ? (:ᶜ, :ᶠ) : (:ᶜ, :ᶠ, :ᵃ) 
-spacing_z_loc(dir) = dir == :z ? (:ᶜ, :ᶠ) : (:ᶜ, :ᶠ, :ᵃ) 
+# This metaprogramming loop defines all possible combinations of locations for spacings
+# All the spacings are reconducted to their one - dimensional counterparts.
+# Grids that do not have a specific one - dimensional spacing for a given location need to 
+# extend these functions (for example, LatitudeLongitudeGrid).
 
-spacing_1D(::Val{:x}, LX, LY, LZ) = Symbol(:Δx, LX, :ᵃ, :ᵃ)
-spacing_2D(::Val{:x}, LX, LY, LZ) = Symbol(:Δx, LX, LY, :ᵃ)
-spacing_1D(::Val{:y}, LX, LY, LZ) = Symbol(:Δy, :ᵃ, LY, :ᵃ)
-spacing_2D(::Val{:y}, LX, LY, LZ) = Symbol(:Δy, LX, LY, :ᵃ)
-spacing_1D(::Val{:z}, LX, LY, LZ) = Symbol(:Δz, :ᵃ, :ᵃ, LZ)
-spacing_2D(::Val{:z}, LX, LY, LZ) = Symbol(:Δz, :ᵃ, LY, LZ)
+# Calling a non existing function (for example Δxᶜᵃᶜ on an OrthogonalSphericalShellGrid) will throw an error because
+# the associated one - dimensional function is not defined. This is a feature, not a bug.
+
+spacing_1D(::Val{:x}, L1)         = Symbol(:Δx, L1, :ᵃ, :ᵃ)
+spacing_1D(::Val{:y}, L1)         = Symbol(:Δy, :ᵃ, L1, :ᵃ)
+spacing_1D(::Val{:z}, L1)         = Symbol(:Δz, :ᵃ, :ᵃ, L1)
+spacing_2D1(::Val{:x}, L1, L2)    = Symbol(:Δx, L1, L2, :ᵃ)
+spacing_2D1(::Val{:y}, L1, L2)    = Symbol(:Δy, L2, L1, :ᵃ)
+spacing_2D1(::Val{:z}, L1, L2)    = Symbol(:Δz, :ᵃ, L2, L1)
+spacing_2D2(::Val{:x}, L1, L2)    = Symbol(:Δx, L1, :ᵃ, L2)
+spacing_2D2(::Val{:y}, L1, L2)    = Symbol(:Δy, :ᵃ, L1, L2)
+spacing_2D2(::Val{:z}, L1, L2)    = Symbol(:Δz, L2, :ᵃ, L1)
+spacing_3D(::Val{:x}, L1, L2, L3) = Symbol(:Δx, L1, L2, L3)
+spacing_3D(::Val{:y}, L1, L2, L3) = Symbol(:Δy, L2, L1, L3)
+spacing_3D(::Val{:z}, L1, L2, L3) = Symbol(:Δz, L3, L2, L1)
 
 # Convenience Functions for all grids
 # This metaprogramming loop defines all the allowed combinations of Δx, Δy, and Δz
 # Note `:ᵃ` is not allowed for the location associated with the spacing
 for dir in (:x, :y, :z)
-    for LX in spacing_x_loc(dir), LY in spacing_y_loc(dir), LZ in spacing_z_loc(dir)
-        spacing1D = spacing_1D(Val(dir), LX, LY, LZ)
-        spacing2D = spacing_2D(Val(dir), LX, LY, LZ)
-        spacing3D = Symbol(:Δ, dir, LX, LY, LZ)
-        if spacing2D != spacing1D
-            @eval @inline $spacing2D(i, j, k, grid) = $spacing1D(i, j, k, grid)
-        end
-        if spacing3D != spacing2D
-            @eval @inline $spacing3D(i, j, k, grid) = $spacing2D(i, j, k, grid)
+    for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
+        spacing1D  = spacing_1D(Val(dir), L1)
+        spacing2D1 = spacing_2D(Val(dir), L1, L2)
+        spacing2D2 = spacing_2D(Val(dir), L1, L2)
+        @eval @inline $spacing2D1(i, j, k, grid) = $spacing1D(i, j, k, grid)
+        @eval @inline $spacing2D2(i, j, k, grid) = $spacing1D(i, j, k, grid)
+        
+        for L3 in (:ᶜ, :ᶠ)
+            spacing3D = spacing_3D(Val(dir), L1, L2, L3)
+            @eval @inline $spacing3D(i, j, k, grid) = $spacing2D1(i, j, k, grid)
         end
     end
 end
 
 #####
-##### Vertical spacings (same for all grids)
+##### One - dimensional Vertical spacing (same for all grids)
 #####
 
 @inline Δzᵃᵃᶜ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶜ[k]
 @inline Δzᵃᵃᶠ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶠ[k]
 
-@inline Δzᶜᵃᶜ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶜ[k]
-@inline Δzᶠᵃᶜ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶜ[k]
-@inline Δzᶜᵃᶠ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶠ[k]
-@inline Δzᶠᵃᶠ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶠ[k]
-
 @inline Δzᵃᵃᶜ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶜ
 @inline Δzᵃᵃᶠ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶠ
 
-@inline Δzᶜᵃᶜ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶜ
-@inline Δzᶠᵃᶜ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶜ
-@inline Δzᶜᵃᶠ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶠ
-@inline Δzᶠᵃᶠ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶠ
+#####
+#####
+##### One - Dimensional Horizontal Spacings
+#####
+#####
 
 #####
 ##### Rectilinear Grids (Flat grids already have Δ = 1)
@@ -89,90 +96,79 @@ end
 
 @inline Δxᶠᵃᵃ(i, j, k, grid::RG) = @inbounds grid.Δxᶠᵃᵃ[i]
 @inline Δxᶜᵃᵃ(i, j, k, grid::RG) = @inbounds grid.Δxᶜᵃᵃ[i]
-@inline Δxᶜᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δxᶜᵃᵃ[i]
-@inline Δxᶠᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δxᶠᵃᵃ[i]
-@inline Δxᶜᵃᶠ(i, j, k, grid::RG) = @inbounds grid.Δxᶜᵃᵃ[i]
 
 @inline Δyᵃᶠᵃ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶠᵃ[j]
 @inline Δyᵃᶜᵃ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶜᵃ[j]
-@inline Δyᶜᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶜᵃ[j]
-@inline Δyᶠᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶜᵃ[j]
-@inline Δyᶜᵃᶠ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶜᵃ[j]
-
-@inline Δzᵃᵃᶠ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶠ[k]
-@inline Δzᵃᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶜ[k]
-@inline Δzᶜᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶜ[k]
 
 ## XRegularRG
 
 @inline Δxᶠᵃᵃ(i, j, k, grid::RGX) = grid.Δxᶠᵃᵃ
 @inline Δxᶜᵃᵃ(i, j, k, grid::RGX) = grid.Δxᶜᵃᵃ
 
-@inline Δxᶜᵃᶜ(i, j, k, grid::RGX) = grid.Δxᶜᵃᵃ
-@inline Δxᶠᵃᶜ(i, j, k, grid::RGX) = grid.Δxᶠᵃᵃ
-@inline Δxᶜᵃᶠ(i, j, k, grid::RGX) = grid.Δxᶜᵃᵃ
 
 ## YRegularRG
 
 @inline Δyᵃᶠᵃ(i, j, k, grid::RGY) = grid.Δyᵃᶠᵃ
 @inline Δyᵃᶜᵃ(i, j, k, grid::RGY) = grid.Δyᵃᶜᵃ
 
-@inline Δyᶜᵃᶜ(i, j, k, grid::RGY) = grid.Δyᵃᶜᵃ
-@inline Δyᶠᵃᶜ(i, j, k, grid::RGY) = grid.Δyᵃᶜᵃ
-@inline Δyᶜᵃᶠ(i, j, k, grid::RGY) = grid.Δyᵃᶜᵃ
-
-#####
-##### LatitudeLongitudeGrid
+##### 
+##### LatitudeLongitude Grids (define both precomputed and non-precomputed metrics)
 #####
 
-## Pre computed metrics
+# Precomputed metrics
+
+@inline Δyᵃᶜᵃ(i, j, k, grid::LLGY) = grid.Δyᶠᶜᵃ
+@inline Δyᵃᶠᵃ(i, j, k, grid::LLGY) = grid.Δyᶜᶠᵃ
+@inline Δyᵃᶜᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δyᶠᶜᵃ[j]
+@inline Δyᵃᶠᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δyᶜᶠᵃ[j]
+
+# On-the-fly metrics
+
+@inline Δyᵃᶠᵃ(i, j, k, grid::LLGFY) = grid.radius * deg2rad(grid.Δφᵃᶠᵃ)
+@inline Δyᵃᶜᵃ(i, j, k, grid::LLGFY) = grid.radius * deg2rad(grid.Δφᵃᶜᵃ)
+@inline Δyᵃᶠᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius * deg2rad(grid.Δφᵃᶠᵃ[j])
+@inline Δyᵃᶜᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius * deg2rad(grid.Δφᵃᶜᵃ[j])
+
+#####
+#####
+##### Two - Dimensional Horizontal Spacings
+#####
+#####
+
+#####
+##### LatitudeLongitudeGrid (only the Δx are required, Δy are 1D)
+#####
+
+### Pre computed metrics
 
 @inline Δxᶜᶠᵃ(i, j, k, grid::LLG) = @inbounds grid.Δxᶜᶠᵃ[i, j]
 @inline Δxᶠᶜᵃ(i, j, k, grid::LLG) = @inbounds grid.Δxᶠᶜᵃ[i, j]
 @inline Δxᶠᶠᵃ(i, j, k, grid::LLG) = @inbounds grid.Δxᶠᶠᵃ[i, j]
 @inline Δxᶜᶜᵃ(i, j, k, grid::LLG) = @inbounds grid.Δxᶜᶜᵃ[i, j]
 
-@inline Δyᶜᶠᵃ(i, j, k, grid::LLG) = @inbounds grid.Δyᶜᶠᵃ[j]
-@inline Δyᶠᶜᵃ(i, j, k, grid::LLG) = @inbounds grid.Δyᶠᶜᵃ[j]
-@inline Δyᶜᶜᵃ(i, j, k, grid::LLG) = Δyᶠᶜᵃ(i, j, k, grid)
-@inline Δyᶠᶠᵃ(i, j, k, grid::LLG) = Δyᶜᶠᵃ(i, j, k, grid)
-
-### XRegularLLG with pre-computed metrics
+### XRegularLLG with pre computed metrics
 
 @inline Δxᶠᶜᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δxᶠᶜᵃ[j]
 @inline Δxᶜᶠᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δxᶜᶠᵃ[j]
 @inline Δxᶠᶠᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δxᶠᶠᵃ[j]
 @inline Δxᶜᶜᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δxᶜᶜᵃ[j]
 
-### YRegularLLG with pre-computed metrics
+### On-the-fly metrics
 
-@inline Δyᶜᶠᵃ(i, j, k, grid::LLGY) = grid.Δyᶜᶠᵃ
-@inline Δyᶠᶜᵃ(i, j, k, grid::LLGY) = grid.Δyᶠᶜᵃ
-
-## On the fly metrics
-
-@inline Δxᶠᶜᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius * deg2rad(grid.Δλᶠᵃᵃ[i]) * hack_cosd(grid.φᵃᶜᵃ[j])
-@inline Δxᶜᶠᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius * deg2rad(grid.Δλᶜᵃᵃ[i]) * hack_cosd(grid.φᵃᶠᵃ[j])
-@inline Δxᶠᶠᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius * deg2rad(grid.Δλᶠᵃᵃ[i]) * hack_cosd(grid.φᵃᶠᵃ[j])
-@inline Δxᶜᶜᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius * deg2rad(grid.Δλᶜᵃᵃ[i]) * hack_cosd(grid.φᵃᶜᵃ[j])
-
-@inline Δyᶜᶠᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius * deg2rad(grid.Δφᵃᶠᵃ[j])
-@inline Δyᶠᶜᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius * deg2rad(grid.Δφᵃᶜᵃ[j])
+@inline Δxᶠᶜᵃ(i, j, k, grid::LLGF) = @inbounds grid.radius * deg2rad(grid.Δλᶠᵃᵃ[i]) * hack_cosd(grid.φᵃᶜᵃ[j])
+@inline Δxᶜᶠᵃ(i, j, k, grid::LLGF) = @inbounds grid.radius * deg2rad(grid.Δλᶜᵃᵃ[i]) * hack_cosd(grid.φᵃᶠᵃ[j])
+@inline Δxᶠᶠᵃ(i, j, k, grid::LLGF) = @inbounds grid.radius * deg2rad(grid.Δλᶠᵃᵃ[i]) * hack_cosd(grid.φᵃᶠᵃ[j])
+@inline Δxᶜᶜᵃ(i, j, k, grid::LLGF) = @inbounds grid.radius * deg2rad(grid.Δλᶜᵃᵃ[i]) * hack_cosd(grid.φᵃᶜᵃ[j])
 
 ### XRegularLLG with on-the-fly metrics
 
-@inline Δxᶠᶜᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius * deg2rad(grid.Δλᶠᵃᵃ)    * hack_cosd(grid.φᵃᶜᵃ[j])
-@inline Δxᶜᶠᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius * deg2rad(grid.Δλᶜᵃᵃ)    * hack_cosd(grid.φᵃᶠᵃ[j])
-@inline Δxᶠᶠᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius * deg2rad(grid.Δλᶠᵃᵃ)    * hack_cosd(grid.φᵃᶠᵃ[j])
-@inline Δxᶜᶜᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius * deg2rad(grid.Δλᶜᵃᵃ)    * hack_cosd(grid.φᵃᶜᵃ[j])
-
-### YRegularLLG with on-the-fly metrics
-
-@inline Δyᶜᶠᵃ(i, j, k, grid::LLGFY) = grid.radius * deg2rad(grid.Δφᵃᶠᵃ)
-@inline Δyᶠᶜᵃ(i, j, k, grid::LLGFY) = grid.radius * deg2rad(grid.Δφᵃᶜᵃ)
+@inline Δxᶠᶜᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius * deg2rad(grid.Δλᶠᵃᵃ) * hack_cosd(grid.φᵃᶜᵃ[j])
+@inline Δxᶜᶠᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius * deg2rad(grid.Δλᶜᵃᵃ) * hack_cosd(grid.φᵃᶠᵃ[j])
+@inline Δxᶠᶠᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius * deg2rad(grid.Δλᶠᵃᵃ) * hack_cosd(grid.φᵃᶠᵃ[j])
+@inline Δxᶜᶜᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius * deg2rad(grid.Δλᶜᵃᵃ) * hack_cosd(grid.φᵃᶜᵃ[j])
 
 #####
-#####  OrthogonalSphericalShellGrid
+#####  OrthogonalSphericalShellGrid (does not have one-dimensional spacings)
 #####
 
 @inline Δxᶜᶜᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δxᶜᶜᵃ[i, j]
@@ -190,6 +186,9 @@ end
 ##### Areas!!
 #####
 #####
+
+# We do the same thing as for the spacings: define general areas and then specialize for each grid.
+# Areas need to be at least 2D
 
 for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ)
 
@@ -224,10 +223,11 @@ end
 @inline Azᶜᶠᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
 @inline Azᶠᶠᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
 @inline Azᶜᶜᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
-@inline Azᶠᶜᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ)    * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
-@inline Azᶜᶠᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ)    * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
-@inline Azᶠᶠᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ)    * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
-@inline Azᶜᶜᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ)    * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
+
+@inline Azᶠᶜᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
+@inline Azᶜᶠᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
+@inline Azᶠᶠᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
+@inline Azᶜᶜᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
 
 for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ)
 
@@ -242,14 +242,14 @@ end
 
 #####
 #####
-##### Volumes!!
+##### Volumes!! (quite unambiguous)
 #####
 #####
 
 for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ), LZ in (:ᶠ, :ᶜ)
 
-    volume = Symbol(:V, LX, LY, LZ)
-    z_area = Symbol(:Az, LX, LY, LZ)
+    volume    = Symbol(:V, LX, LY, LZ)
+    z_area    = Symbol(:Az, LX, LY, LZ)
     z_spacing = Symbol(:Δz, LX, LY, LZ)
 
     @eval begin
