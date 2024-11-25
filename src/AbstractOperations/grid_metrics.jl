@@ -219,7 +219,7 @@ KernelFunctionOperation at (Center, Face, Center)
 """
 function φspacings(grid, ℓx, ℓy, ℓz)
     LX, LY, LZ = map(typeof, (ℓx, ℓy, ℓz))
-    Δφ_op = KernelFunctionOperation{LX, LY, LZ}(φspacing, grid, ℓx, ℓy, ℓz)
+    Δφ_op = KernelFunctionOperation{LX, LY, LZ}(Δφ, grid, ℓx, ℓy, ℓz)
     return Δφ_op
 end
 
