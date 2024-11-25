@@ -13,8 +13,8 @@ export
     Periodic, Bounded, Flat,
     ZStarVerticalCoordinate,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
-    nodes, xnodes, ynodes, znodes, λnodes, φnodes,
-    xspacings, yspacings, zspacings, λspacings, φspacings,
+    nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
+    xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
     minimum_xspacing, minimum_yspacing, minimum_zspacing,
 
     # Immersed boundaries

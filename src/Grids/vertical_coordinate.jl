@@ -97,7 +97,7 @@ Adapt.adapt_structure(to, coord::ZStarVerticalCoordinate) =
 
 @inline rnode(i, j, k, grid, ℓx, ℓy, ℓz) = rnode(k, grid, ℓz)
 @inline rnode(k, grid, ::Center) = getnode(grid.z.cᶜ, k)
-@inline rnode(k, grid, ::Face) = getnode(grid.z.cᶠ, k)
+@inline rnode(k, grid, ::Face)   = getnode(grid.z.cᶠ, k)
 
 # These will be extended in the Operators module
 @inline znode(k, grid, ℓz) = rnode(k, grid, ℓz)
@@ -136,7 +136,7 @@ znodes(grid, ::Nothing; kwargs...) = 1:1
 @inline znodes(grid, ℓz; kwargs...) = rnodes(grid, ℓz; kwargs...)
 @inline znodes(grid, ℓx, ℓy, ℓz; kwargs...) = rnodes(grid, ℓx, ℓy, ℓz; kwargs...)
 
-function zspacing end
+function rspacings end
 function zspacings end
 
 """
@@ -147,3 +147,4 @@ Return the "reference" spacings over the interior nodes on `grid` in the ``z``-d
 for a _static_ grid.
 """
 @inline rspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = rspacings(grid, ℓz; with_halos)
+@inline zspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = rspacings(grid, ℓz; with_halos)
