@@ -48,7 +48,7 @@ const C = Center
                               x = (0, 2), 
                               y = (0, 1), 
                               z = z, 
-                       topology = (Periodic, Periodic, Bounded))
+                       topology = (Bounded, Periodic, Bounded))
 
     grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> -10))
 
