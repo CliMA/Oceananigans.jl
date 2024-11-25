@@ -188,33 +188,43 @@ end
 #####
 
 # We do the same thing as for the spacings: define general areas and then specialize for each grid.
-# Areas need to be at least 2D
+# Areas need to be at least 2D so we use the respective 2D spacings to define them.
+for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
+    
+    Δxˡᵃ = Symbol(:Δx, L1, L2, :ᵃ)
+    Δxᵃˡ = Symbol(:Δx, L1, :ᵃ, L2)
+    Δyˡᵃ = Symbol(:Δy, L1, L2, :ᵃ)
+    Δyᵃˡ = Symbol(:Δy, :ᵃ, L1, L2)
+    Δzˡᵃ = Symbol(:Δz, L1, :ᵃ, L2)
+    Δzᵃˡ = Symbol(:Δz, :ᵃ, L1, L2)
 
-for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ)
+    # 2D areas
+    Axᵃˡˡ = Symbol(:Ax, :ᵃ, L1, L2)
+    Ayˡᵃˡ = Symbol(:Ay, L1, :ᵃ, L2)
+    Azˡˡᵃ = Symbol(:Az, L1, L2, :ᵃ)
 
-    x_spacing_2D = Symbol(:Δx, LX, LY, :ᵃ)
-    y_spacing_2D = Symbol(:Δy, LX, LY, :ᵃ)
-    z_area_2D    = Symbol(:Az, LX, LY, :ᵃ)
+    @eval begin
+        @inline $Axᵃˡˡ(i, j, k, grid) = $Δyᵃˡ(i, j, k, grid) * $Δzᵃˡ(i, j, k, grid)
+        @inline $Ayˡᵃˡ(i, j, k, grid) = $Δxᵃˡ(i, j, k, grid) * $Δzˡᵃ(i, j, k, grid)
+        @inline $Azˡˡᵃ(i, j, k, grid) = $Δxˡᵃ(i, j, k, grid) * $Δyˡᵃ(i, j, k, grid)
+    end
 
-    @eval $z_area_2D(i, j, k, grid) = $x_spacing_2D(i, j, k, grid) * $y_spacing_2D(i, j, k, grid)
-
-    for LZ in (:ᶜ, :ᶠ)
-        x_spacing_3D = Symbol(:Δx, LX, LY, LZ)
-        y_spacing_3D = Symbol(:Δy, LX, LY, LZ)
-        z_spacing_3D = Symbol(:Δz, LX, LY, LZ)
-
-        x_area_3D = Symbol(:Ax, LX, LY, LZ)
-        y_area_3D = Symbol(:Ay, LX, LY, LZ)
-        z_area_3D = Symbol(:Az, LX, LY, LZ)
-
+    for  L3 in (:ᶜ, :ᶠ)
+        # 3D areas
+        Axˡˡˡ = Symbol(:Ax, L3, L1, L2)
+        Ayˡˡˡ = Symbol(:Ay, L1, L3, L2)
+        Azˡˡˡ = Symbol(:Az, L1, L2, L3)
+    
         @eval begin
-            @inline $x_area_3D(i, j, k, grid) = $y_spacing_3D(i, j, k, grid) * $z_spacing_3D(i, j, k, grid)
-            @inline $y_area_3D(i, j, k, grid) = $x_spacing_3D(i, j, k, grid) * $z_spacing_3D(i, j, k, grid)
-            @inline $z_area_3D(i, j, k, grid) = $z_area_2D(i, j, k, grid)
+            # For the moment 3D areas equal their 2D counterpart. This might change if
+            # we want to implement deep atmospheres where Az is a function of z
+            @inline $Axˡˡˡ(i, j, k, grid) = $Axᵃˡˡ(i, j, k, grid)
+            @inline $Ayˡˡˡ(i, j, k, grid) = $Axᵃˡˡ(i, j, k, grid)
+            @inline $Azˡˡˡ(i, j, k, grid) = $Azˡˡᵃ(i, j, k, grid)
         end
     end
 end
-
+   
 ####
 #### Special 2D z Areas for LatitudeLongitudeGrid and OrthogonalSphericalShellGrid
 ####
