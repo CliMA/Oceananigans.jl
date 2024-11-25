@@ -45,7 +45,4 @@ include("conditional_differences.jl")
 include("mask_immersed_field.jl")
 include("immersed_reductions.jl")
 
-# Extension to Immersed boundaries with zstar
-include("zstar_immersed_grid.jl")
-
 end # module

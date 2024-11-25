@@ -107,7 +107,7 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
         closure = model.closure
 
         launch!(architecture(grid), grid, :xyz,
-                _split_rk3_substep_tracer_field!, tracer_field, Δt, γⁿ, ζⁿ, Gⁿ, Ψ⁻)
+                _split_rk3_substep_field!, tracer_field, Δt, γⁿ, ζⁿ, Gⁿ, Ψ⁻)
 
         implicit_step!(tracer_field,
                        model.timestepper.implicit_solver,
