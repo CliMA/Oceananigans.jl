@@ -27,8 +27,7 @@ using ColorSchemes
 using Glob
 
 #%%
-filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_modewater_zC2O_CATKEVerticalDiffusivity"
-# filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_zWENO5_CATKEVerticalDiffusivity"
+filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_modewater_zWENO5_CATKEVerticalDiffusivity"
 FILE_DIR = "./Output/$(filename)"
 # FILE_DIR = "/storage6/xinkai/NN_Oceananigans/$(filename)"
 mkpath(FILE_DIR)
@@ -36,8 +35,6 @@ mkpath(FILE_DIR)
 # Architecture
 model_architecture = GPU()
 
-# vertical_base_closure = VerticalScalarDiffusivity(ν=1e-5, κ=1e-5)
-# convection_closure = XinKaiVerticalDiffusivity()
 function CATKE_ocean_closure()
   mixing_length = CATKEMixingLength(Cᵇ=0.01)
   turbulent_kinetic_energy_equation = CATKEEquation(Cᵂϵ=1.0)
@@ -45,10 +42,8 @@ function CATKE_ocean_closure()
 end
 convection_closure = CATKE_ocean_closure()
 closure = convection_closure
-# closure = vertical_base_closure
 
-advection_scheme = FluxFormAdvection(WENO(order=5), WENO(order=5), CenteredSecondOrder())
-# advection_scheme = FluxFormAdvection(WENO(order=5), WENO(order=5), WENO(order=5))
+advection_scheme = FluxFormAdvection(WENO(order=5), WENO(order=5), WENO(order=5))
 
 # number of grid points
 const Nx = 100
