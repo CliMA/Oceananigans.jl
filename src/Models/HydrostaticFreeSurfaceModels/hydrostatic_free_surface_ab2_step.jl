@@ -63,21 +63,26 @@ end
 
 const EmptyNamedTuple = NamedTuple{(),Tuple{}}
 
+hasclosure(closure, ClosureType) = closure isa ClosureType
+hasclosure(closure_tuple::Tuple, ClosureType) = any(hasclosure(c, ClosureType) for c in closure_tuple)
+
 ab2_step_tracers!(::EmptyNamedTuple, model, Δt, χ) = nothing
 
 function ab2_step_tracers!(tracers, model, Δt, χ)
 
     closure = model.closure
 
+    catke_closures = hasclosure(closure, FlavorOfCATKE)
+    td_closures    = hasclosure(closure, FlavorOfTD)
+
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         
-        # TODO: do better than this silly criteria, also need to check closure tuples
-        if closure isa FlavorOfCATKE && tracer_name == :e
+        if catke_closures && tracer_name == :e
             @debug "Skipping AB2 step for e"
-        elseif closure isa FlavorOfTD && tracer_name == :ϵ
+        elseif td_closures && tracer_name == :ϵ
             @debug "Skipping AB2 step for ϵ"
-        elseif closure isa FlavorOfTD && tracer_name == :e
+        elseif td_closures && tracer_name == :e
             @debug "Skipping AB2 step for e"
         else
             Gⁿ = model.timestepper.Gⁿ[tracer_name]
