@@ -46,7 +46,7 @@ width = 20kilometers
 hill(x) = h₀ * exp(-x^2 / 2width^2)
 bottom(x) = - H + hill(x)
 
-grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
+grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom, minimum_fractional_cell_height=1.0))
 
 # Let's see how the domain with the bathymetry is.
 
@@ -148,9 +148,10 @@ wall_clock = Ref(time_ns())
 function progress(sim)
     elapsed = 1e-9 * (time_ns() - wall_clock[])
 
-    msg = @sprintf("iteration: %d, time: %s, wall time: %s, max|w|: %6.3e, m s⁻¹\n",
+    cfl = Δt / Oceananigans.Advection.cell_advection_timescale(sim.model.grid, sim.model.velocities)
+    msg = @sprintf("iteration: %d, time: %s, wall time: %s, max|w|: %6.3e, m s⁻¹, CFL %6.3e\n",
                    iteration(sim), prettytime(sim), prettytime(elapsed),
-                   maximum(abs, sim.model.velocities.w))
+                   maximum(abs, sim.model.velocities.w), cfl)
 
     wall_clock[] = time_ns()
 
