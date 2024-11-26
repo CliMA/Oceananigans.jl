@@ -1,3 +1,4 @@
+import Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
 import Oceananigans.Grids: xspacings, yspacings, zspacings
 
 const c = Center()
