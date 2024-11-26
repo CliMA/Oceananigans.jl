@@ -72,17 +72,17 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
 
     closure = model.closure
 
-    catke_closures = hasclosure(closure, FlavorOfCATKE)
-    td_closures    = hasclosure(closure, FlavorOfTD)
+    catke_in_closures = hasclosure(closure, FlavorOfCATKE)
+    td_in_closures    = hasclosure(closure, FlavorOfTD)
 
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         
-        if catke_closures && tracer_name == :e
+        if catke_in_closures && tracer_name == :e
             @debug "Skipping AB2 step for e"
-        elseif td_closures && tracer_name == :ϵ
+        elseif td_in_closures && tracer_name == :ϵ
             @debug "Skipping AB2 step for ϵ"
-        elseif td_closures && tracer_name == :e
+        elseif td_in_closures && tracer_name == :e
             @debug "Skipping AB2 step for e"
         else
             Gⁿ = model.timestepper.Gⁿ[tracer_name]
