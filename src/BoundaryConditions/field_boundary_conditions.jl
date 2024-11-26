@@ -164,7 +164,7 @@ end
 
 # Friendly warning?
 function regularize_immersed_boundary_condition(ibc, grid, loc, field_name, args...)
-    if !(ibc isa DefaultBoundaryCondition) && !(ibc.boundary_condition isa Nothing)
+    if !(ibc isa DefaultBoundaryCondition) && !(ibc isa Nothing)
         msg = """$field_name was assigned an immersed boundary condition
               $ibc,
               but this is not supported on
