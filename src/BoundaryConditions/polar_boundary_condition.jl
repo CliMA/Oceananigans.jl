@@ -1,4 +1,4 @@
-condition_operand(data, grid, Loc, condition, mask) = data
+@inline condition_operand(data, grid, Loc, condition, mask) = data
 
 struct PolarValue{C}
     c :: C

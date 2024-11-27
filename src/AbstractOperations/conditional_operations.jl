@@ -120,7 +120,7 @@ end
 
 @inline function condition_operand(data::OffsetArray, grid::AbstractGrid, Loc::Tuple, condition, mask)
     condition = on_architecture(architecture(grid), condition)    
-    return ConditionalOperation{Loc...}(operand, identity, grid, condition, mask)
+    return ConditionalOperation{Loc...}(data, identity, grid, condition, mask)
 end
 
 condition_operand(data::OffsetArray, grid::AbstractGrid, Loc::Tuple, ::Nothing, mask) = 
