@@ -80,6 +80,8 @@ end
     domain_bottom = znode(i, j, 1, grid, c, c, f)
     domain_top    = znode(i, j, grid.Nz+1, grid, c, c, f)
     @inbounds bottom_field[i, j, 1] = clamp(zb, domain_bottom, domain_top)
+    adjusted_zb = bottom_field[i, j, 1]
+
     ϵ  = ib.minimum_fractional_cell_height
 
     for k in 1:grid.Nz
@@ -91,8 +93,10 @@ end
 
         # If the size of the bottom cell is less than ϵ Δz,
         # we enforce a minimum size of ϵ Δz.
-        @inbounds bottom_field[i, j, 1] =  ifelse(bottom_cell, capped_zb, bottom_field[i, j, 1])
+        adjusted_zb = ifelse(bottom_cell, capped_zb, zb)
     end
+
+    @inbounds bottom_field[i, j, 1] = adjusted_zb
 end
 
 function on_architecture(arch, ib::PartialCellBottom{<:Field})
@@ -155,7 +159,7 @@ end
 
     # Get bottom z-coordinate and fractional Δz parameter
     zb = @inbounds ib.bottom_height[i, j, 1]
-    
+
     # Are we in a bottom cell?
     at_the_bottom = bottom_cell(i, j, k, ibg)
 

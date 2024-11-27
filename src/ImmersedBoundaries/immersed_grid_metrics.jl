@@ -10,31 +10,27 @@ import Oceananigans.Operators: Δzᵃᵃᶠ, Δzᵃᵃᶜ, intrinsic_vector, ext
 # For non "full-cell" immersed boundaries, grid metric functions
 # must be extended for the specific immersed boundary grid in question.
 
-x_superscript(dir) = dir == :x ? (:ᶜ, :ᶠ) : (:ᶜ, :ᶠ, :ᵃ)
-y_superscript(dir) = dir == :y ? (:ᶜ, :ᶠ) : (:ᶜ, :ᶠ, :ᵃ)
-z_superscript(dir) = dir == :z ? (:ᶜ, :ᶠ) : (:ᶜ, :ᶠ, :ᵃ)
+for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
+    for dir in (:x, :y, :z), operator in (:Δ, :A)
 
-for dir in (:x, :y, :z)
-    for LX in x_superscript(dir), LY in y_superscript(dir), LZ in z_superscript(dir)
-        spacing = Symbol(:Δ, dir, LX, LY, LZ)
+        metric = Symbol(operator, dir, LX, LY, LZ)
         @eval begin
-            import Oceananigans.Operators: $spacing
-            $spacing(i, j, k, ibg::IBG) = $spacing(i, j, k, ibg.underlying_grid)
+            import Oceananigans.Operators: $metric
+            @inline $metric(i, j, k, ibg::IBG) = $metric(i, j, k, ibg.underlying_grid)
         end
     end
-end
 
-for L1 in (:ᶜ, :ᶠ)
-    for L2 in (:ᶜ, :ᶠ)
-        zarea2D = Symbol(:Az, L1, L2, :ᵃ)
-        @eval begin
-            import Oceananigans.Operators: $zarea2D
-            $zarea2D(i, j, k, ibg::IBG) = $zarea2D(i, j, k, ibg.underlying_grid)
-        end
+    volume = Symbol(:V, LX, LY, LZ)
+    @eval begin
+        import Oceananigans.Operators: $volume
+        @inline $volume(i, j, k, ibg::IBG) = $volume(i, j, k, ibg.underlying_grid)
     end
 end
 
 coordinates(grid::IBG) = coordinates(grid.underlying_grid)
+
+@inline Δzᵃᵃᶠ(i, j, k, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.underlying_grid)
+@inline Δzᵃᵃᶜ(i, j, k, ibg::IBG) = Δzᵃᵃᶜ(i, j, k, ibg.underlying_grid)
 
 # Extend both 2D and 3D methods
 @inline intrinsic_vector(i, j, k, ibg::IBG, u, v) = intrinsic_vector(i, j, k, ibg.underlying_grid, u, v)
