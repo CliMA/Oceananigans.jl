@@ -136,3 +136,12 @@ on_architecture(to, unary::UnaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
                                on_architecture(to, unary.arg),
                                on_architecture(to, unary.▶),
                                on_architecture(to, unary.grid))
+          
+# Extending views for `UnaryOperation`s
+function Base.view(unary::UnaryOperation{LX, LY, LZ}, i, j, k) where {LX, LY, LZ}
+    # Propagate view over all arguments
+    view_arg = get_field_view(unary.arg, i, j, k)
+    view_▶ =   get_field_view(unary.▶, i, j, k)
+    
+    return UnaryOperation{LX, LY, LZ}(unary.op, view_arg, view_▶, unary.grid)
+end

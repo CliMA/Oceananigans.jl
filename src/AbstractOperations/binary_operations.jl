@@ -225,3 +225,14 @@ on_architecture(to, binary::BinaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
                                 on_architecture(to, binary.▶a),
                                 on_architecture(to, binary.▶b),
                                 on_architecture(to, binary.grid))
+
+# Extending views for `BinaryOperation`s
+function Base.view(binary::BinaryOperation{LX, LY, LZ}, i, j, k) where {LX, LY, LZ}
+    # Propagate view over all arguments
+    view_a = get_field_view(binary.a, i, j, k) 
+    view_a = get_field_view(binary.b, i, j, k) 
+    view_▶a = get_field_view(binary.▶a, i, j, k) 
+    view_▶b = get_field_view(binary.▶b, i, j, k) 
+
+    return BinaryOperation{LX, LY, LZ}(binary.op, view_a, view_b, view_▶a, view_▶b, binary.grid)
+end

@@ -157,3 +157,11 @@ on_architecture(to, multiary::MultiaryOperation{LX, LY, LZ}) where {LX, LY, LZ} 
                                   on_architecture(to, multiary.▶),
                                   on_architecture(to, multiary.grid))
                                   
+# Extending views for `MultiaryOperation`s
+function Base.view(multiary::MultiaryOperation{LX, LY, LZ}, i, j, k) where {LX, LY, LZ}
+    # Propagate view over all arguments
+    view_args = [get_field_view(arg, i, j, k) for args in multiary.args]
+    view_▶ =    [get_field_view(▶, i, j, k) for ▶ in multiary.▶]
+    
+    return MultiaryOperation{LX, LY, LZ}(multiary.op, view_args, view_▶, multiary.grid)
+end
