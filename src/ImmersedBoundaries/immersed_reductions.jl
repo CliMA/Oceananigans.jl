@@ -31,7 +31,7 @@ end
 @inline function condition_operand(data::OffsetArray, grid::AbstractGrid, Loc, condition, mask)
     condition = on_architecture(architecture(grid), condition)    
     ni_condition = NotImmersed(condition)
-    return ConditionalOperation{Loc...}(operand, identity, grid, condition, mask)
+    return ConditionalOperation{Loc...}(data, identity, grid, condition, mask)
 end
 
 @inline conditional_length(c::IF)       = conditional_length(condition_operand(identity, c, nothing, 0))
