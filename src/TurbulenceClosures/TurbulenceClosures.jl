@@ -58,6 +58,7 @@ using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom
 
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 import Oceananigans.Architectures: on_architecture
+import Oceananigans.TimeSteppers: has_catke_closure, has_td_closure
 
 const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
@@ -195,6 +196,12 @@ using .Smagorinskys: LillyCoefficient, DynamicCoefficient, LagrangianAveraging
 # Miscellaneous utilities
 include("diffusivity_fields.jl")
 include("turbulence_closure_diagnostics.jl")
+
+has_catke_closure(closure) = closure isa CATKEVerticalDiffusivity
+has_catke_closure(closure::Tuple) = any(hasclosure(c, CATKEVerticalDiffusivity) for c in closure)
+
+has_td_closure(closure) = closure isa TKEVerticalDiffusivity
+has_td_closure(closure::Tuple) = any(hasclosure(c, TKEVerticalDiffusivity) for c in closure)
 
 #####
 ##### Some value judgements here

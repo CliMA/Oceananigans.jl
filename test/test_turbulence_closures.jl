@@ -1,5 +1,6 @@
 include("dependencies_for_runtests.jl")
 
+using Random
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVerticalDiffusivity, DiscreteDiffusionFunction
 
 using Oceananigans.TurbulenceClosures: viscosity_location, diffusivity_location, 
@@ -211,25 +212,26 @@ function run_catke_tke_substepping_tests(arch, closure)
     grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(100, 200, 300))
 
     model = HydrostaticFreeSurfaceModel(; grid, momentum_advection = nothing, tracer_advection = nothing, 
-                                          closure, buoyancy=BuoyancyTracer(), tracers=(:b, :e))
+                                          closure = explicit_catke, buoyancy=BuoyancyTracer(), tracers=(:b, :e))
 
     # set random velocities
+    Random.seed!(1234)
     set!(model, u = (x, y, z) -> rand(), v = (x, y, z) -> rand())
 
     # time step the model
     time_step!(model, 1)
 
     # Check that eⁿ⁺¹ = Δt * Gⁿ.e with Δt = 1 (euler step)
-    @test model.tracers.e ≈ model.timestepper.Gⁿ.e
+    @test model.tracers.e ≈ model.timestepper.G⁻.e
 
-    eⁿ = deepcopy(model.tracers.e)
-    G⁻ = deepcopy(model.timestepper.Gⁿ.e)
+    eⁿ  = deepcopy(model.tracers.e)
+    G⁻⁻ = deepcopy(model.timestepper.G⁻.e)
 
     # time step the model again
     time_step!(model, 1)
-    Gⁿ = model.timestepper.Gⁿ.e
+    G⁻ = model.timestepper.G⁻.e
 
-    eⁿ⁺¹ = compute!(Field(eⁿ + 1.5 * Gⁿ - 0.5 * G⁻))
+    eⁿ⁺¹ = compute!(Field(eⁿ + 1.5 * G⁻ - 0.5 * G⁻⁻))
 
     # Check that eⁿ⁺¹ = eⁿ + Δt * (1.5Gⁿ.e - 0.5G⁻.e) with Δt = 1
     @test model.tracers.e ≈ eⁿ⁺¹

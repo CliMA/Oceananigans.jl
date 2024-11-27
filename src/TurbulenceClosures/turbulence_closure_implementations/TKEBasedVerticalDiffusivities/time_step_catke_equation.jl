@@ -46,6 +46,7 @@ function time_step_catke_equation!(model)
     FT = eltype(grid)
 
     for m = 1:M # substep
+        @show m
         if m == 1 && M != 1
             χ = convert(FT, -0.5) # Euler step for the first substep
         else
