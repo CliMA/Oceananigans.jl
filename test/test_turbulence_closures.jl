@@ -205,6 +205,35 @@ function time_step_with_tupled_closure(FT, arch)
     return true
 end
 
+function run_catke_tke_substepping_tests(arch, closure)
+    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
+
+    model = HydrostaticFreeSurfaceModel(; grid, momentum_advection = nothing, tracer = nothing, 
+                                          closure, buoyancy=BuoyancyTracer(), tracers=(:b, :e))
+
+    # set random velocities
+    set!(model, u = (x, y, z) -> rand(), v = (x, y, z) -> rand())
+
+    # time step the model
+    time_step!(model, 1)
+
+    # Check that eⁿ⁺¹ = Δt * Gⁿ.e with Δt = 1 (euler step)
+    @test model.tracers.e ≈ model.timestepper.Gⁿ.e
+
+    eⁿ = deepcopy(model.tracers.e)
+    G⁻ = deepcopy(model.timestepper.Gⁿ.e)
+
+    # time step the model again
+    time_step!(model, 1)
+
+    eⁿ⁺¹ = compute!(Field(eⁿ + 1.5 * G⁻ - 0.5 * G⁻))
+
+    # Check that eⁿ⁺¹ = eⁿ + Δt * (1.5Gⁿ.e - 0.5G⁻.e) with Δt = 1
+    @test model.tracers.e ≈ eⁿ⁺¹
+
+    return model
+end
+
 function run_time_step_with_catke_tests(arch, closure)
     grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
     buoyancy = BuoyancyTracer()
@@ -350,23 +379,28 @@ end
             @info "    Testing time-stepping CATKE by itself..."
             closure = CATKEVerticalDiffusivity()
             run_time_step_with_catke_tests(arch, closure)
+            run_catke_tke_substepping_tests(arch, closure)
 
             @info "    Testing time-stepping CATKE in a 2-tuple with HorizontalScalarDiffusivity..."
             closure = (CATKEVerticalDiffusivity(), HorizontalScalarDiffusivity())
             model = run_time_step_with_catke_tests(arch, closure)
             @test first(model.closure) === closure[1]
+            run_catke_tke_substepping_tests(arch, closure)
+
 
             # Test that closure tuples with CATKE are correctly reordered
             @info "    Testing time-stepping CATKE in a 2-tuple with HorizontalScalarDiffusivity..."
             closure = (HorizontalScalarDiffusivity(), CATKEVerticalDiffusivity())
             model = run_time_step_with_catke_tests(arch, closure)
             @test first(model.closure) === closure[2]
+            run_catke_tke_substepping_tests(arch, closure)
 
             # These are slow to compile...
             @info "    Testing time-stepping CATKE in a 3-tuple..."
             closure = (HorizontalScalarDiffusivity(), CATKEVerticalDiffusivity(), VerticalScalarDiffusivity())
             model = run_time_step_with_catke_tests(arch, closure)
             @test first(model.closure) === closure[2]
+            run_catke_tke_substepping_tests(arch, closure)
         end
     end
 
