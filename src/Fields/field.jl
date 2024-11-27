@@ -702,8 +702,8 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                    c::AbstractField;
                                    condition = nothing,
                                    mask = get_neutral_mask(Base.$(reduction!)),
-                                   dims = :)
-
+                                   dims = Colon())
+            
             T = filltype(Base.$(reduction!), c)
             loc = reduced_location(location(c); dims)
             r = Field(loc, c.grid, T; indices=indices(c))

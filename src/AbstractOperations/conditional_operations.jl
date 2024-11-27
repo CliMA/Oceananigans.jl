@@ -170,3 +170,10 @@ Base.show(io::IO, operation::ConditionalOperation) =
           "├── func: ", summary(operation.func), "\n",
           "├── condition: ", summary(operation.condition), "\n",
           "└── mask: ", operation.mask)
+
+# Extending views for `ConditionalyOperation`s
+function Base.view(co::ConditionalOperation{LX, LY, LZ}, i, j, k) where {LX, LY, LZ}
+    # Propagate view over all arguments
+    view_operand = get_field_view(co.operand, i, j, k) 
+    return ConditionalOperation{LX, LY, LZ}(view_operand, co.func, co.grid, co.condition, co.mask)
+end

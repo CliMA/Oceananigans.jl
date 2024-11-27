@@ -190,8 +190,15 @@ end
 
 validate_index(::Colon, loc, topo, N, H) = Colon()
 validate_index(idx::UnitRange, ::Nothing, topo, N, H) = UnitRange(1, 1)
+validate_index(idx::Base.OneTo{<:Integer}, ::Nothing, topo, N, H) = UnitRange(1, 1)
 
 function validate_index(idx::UnitRange, loc, topo, N, H)
+    all_idx = all_indices(loc, topo, N, H)
+    (first(idx) ∈ all_idx && last(idx) ∈ all_idx) || throw(ArgumentError("The indices $idx must slice $all_idx"))
+    return idx
+end
+
+function validate_index(idx::Base.OneTo{<:Integer}, loc, topo, N, H)
     all_idx = all_indices(loc, topo, N, H)
     (first(idx) ∈ all_idx && last(idx) ∈ all_idx) || throw(ArgumentError("The indices $idx must slice $all_idx"))
     return idx
