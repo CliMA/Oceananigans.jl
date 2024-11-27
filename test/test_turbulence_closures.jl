@@ -210,7 +210,7 @@ function run_catke_tke_substepping_tests(arch, closure)
     # with the explicit CATKE time-stepping necessary for this test
     grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(100, 200, 300))
 
-    model = HydrostaticFreeSurfaceModel(; grid, momentum_advection = nothing, tracer = nothing, 
+    model = HydrostaticFreeSurfaceModel(; grid, momentum_advection = nothing, tracer_advection = nothing, 
                                           closure, buoyancy=BuoyancyTracer(), tracers=(:b, :e))
 
     # set random velocities
