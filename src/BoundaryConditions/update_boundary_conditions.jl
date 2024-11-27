@@ -25,4 +25,3 @@ function update_boundary_condition!(fields::Tuple, model)
 
     return nothing
 end
-
