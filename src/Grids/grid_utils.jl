@@ -75,7 +75,8 @@ total_length(::Center,  ::Flat,            N, H=0) = N
 
 # "Indices-aware" total length
 total_length(loc, topo, N, H, ::Colon) = total_length(loc, topo, N, H)
-total_length(loc, topo, N, H, ind::UnitRange) = min(total_length(loc, topo, N, H), length(ind))
+total_length(loc, topo, N, H, ind::UnitRange)  = min(total_length(loc, topo, N, H), length(ind))
+total_length(loc, topo, N, H, ind::Base.OneTo) = min(total_length(loc, topo, N, H), length(ind))
 
 @inline Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc)))) =
     size(loc, topology(grid), size(grid), indices)
@@ -199,9 +200,12 @@ regular_dimensions(grid) = ()
 # Return the index range of "full" parent arrays that span an entire dimension
 parent_index_range(::Colon,                       loc, topo, halo) = Colon()
 parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
-parent_index_range(view_indices::UnitRange, ::Nothing, ::Flat, halo) = view_indices
-parent_index_range(view_indices::UnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
-parent_index_range(view_indices::UnitRange, loc, topo, halo) = view_indices .+ interior_parent_offset(loc, topo, halo)
+parent_index_range(view_indices::UnitRange,  ::Nothing, ::Flat, halo) = view_indices
+parent_index_range(view_indices::Base.OneTo, ::Nothing, ::Flat, halo) = view_indices
+parent_index_range(view_indices::UnitRange,  ::Nothing, ::AT,   halo) = 1:1 # or Colon()
+parent_index_range(view_indices::Base.OneTo, ::Nothing, ::AT,   halo) = 1:1
+parent_index_range(view_indices::UnitRange,  loc, topo, halo) = view_indices .+ interior_parent_offset(loc, topo, halo)
+parent_index_range(view_indices::Base.OneTo, loc, topo, halo) = view_indices .+ interior_parent_offset(loc, topo, halo)
 
 # Return the index range of parent arrays that are themselves windowed
 parent_index_range(::Colon, args...) = parent_index_range(args...)
@@ -216,10 +220,13 @@ function parent_index_range(parent_indices::UnitRange, view_indices, args...)
 end
 
 # intersect_index_range(::Colon, ::Colon) = Colon()
-index_range_contains(range,   subset::UnitRange) = (first(subset) ∈ range) & (last(subset) ∈ range)
-index_range_contains(::Colon, ::UnitRange)       = true
-index_range_contains(::Colon, ::Colon)           = true
-index_range_contains(::UnitRange, ::Colon)       = true
+index_range_contains(range,   subset::UnitRange)  = (first(subset) ∈ range) & (last(subset) ∈ range)
+index_range_contains(range,   subset::Base.OneTo) = (first(subset) ∈ range) & (last(subset) ∈ range)
+index_range_contains(::Colon, ::UnitRange)        = true
+index_range_contains(::Colon, ::Colon)            = true
+index_range_contains(::UnitRange, ::Colon)        = true
+index_range_contains(::Colon, ::Base.OneTo)       = true
+index_range_contains(::Base.OneTo, ::Colon)       = true
 
 # Return the index range of "full" parent arrays that span an entire dimension
 parent_windowed_indices(::Colon, loc, topo, halo)            = Colon()

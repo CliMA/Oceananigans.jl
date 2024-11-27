@@ -26,8 +26,11 @@ Return a range of indices for a field along a 'reduced' dimension.
 offset_indices(::Nothing, topo, N, H=0) = 1:1
 
 offset_indices(ℓ,         topo, N, H, ::Colon) = offset_indices(ℓ, topo, N, H)
-offset_indices(ℓ,         topo, N, H, r::UnitRange) = r
-offset_indices(::Nothing, topo, N, H, ::UnitRange) = 1:1
+offset_indices(ℓ,         topo, N, H, r::UnitRange)  = r
+offset_indices(::Nothing, topo, N, H, ::UnitRange)   = 1:1
+offset_indices(ℓ,         topo, N, H, r::Base.OneTo) = r
+offset_indices(::Nothing, topo, N, H, ::Base.OneTo)  = 1:1
+
 
 instantiate(T::Type) = T()
 instantiate(t) = t
