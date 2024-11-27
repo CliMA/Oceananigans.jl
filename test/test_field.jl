@@ -5,7 +5,7 @@ using Statistics
 using Oceananigans.Grids: total_length
 using Oceananigans.Fields: ReducedField, has_velocities
 using Oceananigans.Fields: VelocityFields, TracerFields, interpolate, interpolate!
-using Oceananigans.Fields: reduced_location
+using Oceananigans.Fields: reduced_location, reduced_dimensions
 using Oceananigans.Fields: fractional_indices, interpolator
 using Oceananigans.Grids: ξnode, ηnode, rnode
 
@@ -435,7 +435,7 @@ end
                 sum!(ws, c)
                 mean!(wm, c)
                 
-                dim = reduced_dimensions(w)[1]
+                dim = reduced_dimensions(ws)[1]
                 @test interior(ws) == interior(sum(cview, dims = dim))
                 @test interior(wm) == interior(mean(cview, dims = dim))
             end
