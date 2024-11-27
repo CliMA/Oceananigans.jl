@@ -227,8 +227,9 @@ function run_catke_tke_substepping_tests(arch, closure)
 
     # time step the model again
     time_step!(model, 1)
+    Gⁿ = model.timestepper.Gⁿ.e
 
-    eⁿ⁺¹ = compute!(Field(eⁿ + 1.5 * G⁻ - 0.5 * G⁻))
+    eⁿ⁺¹ = compute!(Field(eⁿ + 1.5 * Gⁿ - 0.5 * G⁻))
 
     # Check that eⁿ⁺¹ = eⁿ + Δt * (1.5Gⁿ.e - 0.5G⁻.e) with Δt = 1
     @test model.tracers.e ≈ eⁿ⁺¹
