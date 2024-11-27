@@ -1,8 +1,5 @@
 module Operators
 
-# General metric operators
-export Δx, Δy, Δz, Δλ, Δφ, Ax, Ay, Az, volume
-
 # Spacings
 export Δxᶠᶠᶠ, Δxᶠᶠᶜ, Δxᶠᶜᶠ, Δxᶠᶜᶜ, Δxᶜᶠᶠ, Δxᶜᶠᶜ, Δxᶜᶜᶠ, Δxᶜᶜᶜ
 export Δyᶠᶠᶠ, Δyᶠᶠᶜ, Δyᶠᶜᶠ, Δyᶠᶜᶜ, Δyᶜᶠᶠ, Δyᶜᶠᶜ, Δyᶜᶜᶠ, Δyᶜᶜᶜ
@@ -105,6 +102,9 @@ const LLGF  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing}
 const LLGFX = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Number}
 const LLGFY = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Any, <:Number}
 
+# General metric operators
+export xspacing, yspacing, zspacing, λspacing, φspacing, xarea, yarea, zarea, volume
+
 include("difference_operators.jl")
 include("interpolation_operators.jl")
 include("interpolation_utils.jl")
@@ -119,5 +119,14 @@ include("vorticity_operators.jl")
 include("laplacian_operators.jl")
 
 include("vector_rotation_operators.jl")
+
+@inline xspacing(args...) = Δx(args...) 
+@inline yspacing(args...) = Δy(args...)
+@inline zspacing(args...) = Δz(args...)
+@inline λspacing(abs...)  = Δλ(abs...)
+@inline φspacing(abs...)  = Δφ(abs...)
+@inline xarea(args...)    = Ax(args...)
+@inline yarea(args...)    = Ay(args...)
+@inline zarea(args...)    = Az(args...)
 
 end # module

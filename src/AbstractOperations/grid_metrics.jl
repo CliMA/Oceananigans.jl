@@ -2,6 +2,7 @@ using Adapt
 using Oceananigans.Operators
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Fields: AbstractField, default_indices, location
+using Oceananigans.Operators: Δx, Δy, Δz, Ax, Ay, Az, volume
 
 import Oceananigans.Grids: xspacings, yspacings, zspacings, λspacings, φspacings
 
