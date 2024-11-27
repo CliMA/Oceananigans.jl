@@ -26,3 +26,7 @@ const CF = Union{ConstantField, ZeroField, OneField}
 fill_halo_regions!(::ZeroField, args...; kw...) = nothing
 fill_halo_regions!(::ConstantField, args...; kw...) = nothing
 
+# Views of OneField, ZeroField, ConstantField are themselves
+Base.view(f::OneField,      args...) = f
+Base.view(f::ZeroField,     args...) = f
+Base.view(f::ConstantField, args...) = f
