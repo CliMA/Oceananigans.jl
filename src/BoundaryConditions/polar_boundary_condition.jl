@@ -23,8 +23,9 @@ end
 # TODO: vectors should have a different treatment since vector components should account for the frame of reference
 # North - South flux boundary conditions are not valid on a Latitude-Longitude grid if the last / first rows represent the poles
 function latitude_north_auxiliary_bc(grid, loc, default_bc=DefaultBoundaryCondition()) 
-    φmax = φnode(grid.Ny+1, grid, Face()) 
-
+    # Check if the halo lies beyond the north pole
+    φmax = φnode(grid.Ny+1, grid, Center()) 
+    
     # No problem!
     if φmax < 90 || loc[1] == Nothing
         return default_bc
@@ -35,7 +36,8 @@ end
 
 # North - South flux boundary conditions are not valid on a Latitude-Longitude grid if the last / first rows represent the poles
 function latitude_south_auxiliary_bc(grid, loc, default_bc=DefaultBoundaryCondition()) 
-    φmin = φnode(1, grid, Face()) 
+    # Check if the halo lies beyond the south pole
+    φmin = φnode(0, grid, Face()) 
 
     # No problem!
     if φmin > -90 || loc[1] == Nothing
