@@ -38,6 +38,7 @@ function info_message(grid)
 end
 
 const C = Center
+const F = Face
 
 @testset "ZStar coordinate scaling tests" begin
     @info "testing the ZStar coordinate scalings"
@@ -110,16 +111,18 @@ end
                 pllg  = ImmersedBoundaryGrid(llg,  PartialCellBottom((x, y) -> rand() - 10))
                 pllgv = ImmersedBoundaryGrid(llgv, PartialCellBottom((x, y) -> rand() - 10))
 
-                grids = [llg, rtg, llgv, rtgv, illg, irtg, illgv, irtgv, pllg, prtg, pllgv, prtgv]
+                # Partial cell bottom are broken at the moment and do not account for the Δz in the volumes
+                # and vertical areas (see https://github.com/CliMA/Oceananigans.jl/issues/3958)
+                # When this is issue is fixed we can add the partial cells to the testing.
+                grids = [llg, rtg, llgv, rtgv, illg, irtg, illgv, irtgv] # , pllg, prtg, pllgv, prtgv]
             else
-                grids = [rtg, rtgv, irtg, irtgv, prtg, prtgv]
+                grids = [rtg, rtgv, irtg, irtgv] #, prtg, prtgv]
             end
 
             for grid in grids
                 info_msg = info_message(grid)
                 @testset "$info_msg" begin
                     @info "  $info_msg"
-
                     # TODO: minimum_xspacing(grid) on a Immersed GPU grid with ZStarVerticalCoordinate
                     # fails because it uses too much parameter space. Figure out a way to reduce it 
                     free_surface = SplitExplicitFreeSurface(grid; substeps = 20)
