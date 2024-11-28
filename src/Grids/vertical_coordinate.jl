@@ -143,7 +143,7 @@ z_domain(grid) = domain(topology(grid, 3)(), grid.Nz, grid.z.cᶠ)
 cpu_face_constructor_z(grid) = Array(rnodes(grid, Face()))
 
 ####
-#### Nodes and spacings...
+#### Nodes and spacings (common to every grid)...
 ####
 
 @inline rnodes(grid, ℓz::Face;   with_halos=false) = _property(grid.z.cᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
@@ -160,12 +160,5 @@ znodes(grid, ::Nothing; kwargs...) = 1:1
 function rspacings end
 function zspacings end
 
-"""
-    rspacings(grid, ℓx, ℓy, ℓz; with_halos=true)
-
-Return the "reference" spacings over the interior nodes on `grid` in the ``z``-direction for the location `ℓx`,
-`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points. These are equal to the `zspacings`
-for a _static_ grid.
-"""
-@inline rspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = rspacings(grid, ℓz; with_halos)
-@inline zspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = rspacings(grid, ℓz; with_halos)
+@inline rspacings(grid, ℓz) = rspacings(grid, nothing, nothing, ℓz)
+@inline zspacings(grid, ℓz) = zspacings(grid, nothing, nothing, ℓz)

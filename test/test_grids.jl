@@ -76,11 +76,11 @@ function test_regular_rectilinear_correct_halo_faces(FT)
 
     @test grid.xᶠᵃᵃ[0] == - H * Δ
     @test grid.yᵃᶠᵃ[0] == - H * Δ
-    @test grid.zᵃᵃᶠ[0] == - H * Δ
+    @test grid.z.cᶠ[0] == - H * Δ
 
     @test grid.xᶠᵃᵃ[N+1] == L  # Periodic
     @test grid.yᵃᶠᵃ[N+2] == L + H * Δ
-    @test grid.zᵃᵃᶠ[N+2] == L + H * Δ
+    @test grid.z.cᶠ[N+2] == L + H * Δ
 
     return nothing
 end
@@ -110,7 +110,7 @@ function test_regular_rectilinear_correct_end_faces(FT)
 
     @test grid.xᶠᵃᵃ[N+1] == L
     @test grid.yᵃᶠᵃ[N+2] == L + Δ
-    @test grid.zᵃᵃᶠ[N+2] == L + Δ
+    @test grid.z.cᶠ[N+2] == L + Δ
 
     return nothing
 end
@@ -159,7 +159,7 @@ function test_regular_rectilinear_grid_properties_are_same_type(FT)
 
     @test eltype(grid.xᶠᵃᵃ) == FT
     @test eltype(grid.yᵃᶠᵃ) == FT
-    @test eltype(grid.zᵃᵃᶠ) == FT
+    @test eltype(grid.z.cᶠ) == FT
     @test eltype(grid.xᶜᵃᵃ) == FT
     @test eltype(grid.yᵃᶜᵃ) == FT
     @test eltype(grid.z.cᶜ) == FT
@@ -413,8 +413,8 @@ function test_rectilinear_grid_correct_spacings(FT, N)
     @test all(isapprox.(  grid.z.cᶜ[1:N],    zᵃᵃᶜ.(1:N)   ))
     @test all(isapprox.( grid.z.Δᶜ[1:N],   Δzᵃᵃᶜ.(1:N)   ))
 
-    @test all(isapprox.(zspacings(grid, Face()), reshape(grid.z.cᶠ[1:N+1], 1, 1, N+1)))
-    @test all(isapprox.(zspacings(grid, Center()), reshape(grid.z.cᶜ[1:N], 1, 1, N)))
+    @test all(isapprox.(zspacings(grid, Face()),   reshape(grid.z.Δᶠ[1:N+1], 1, 1, N+1)))
+    @test all(isapprox.(zspacings(grid, Center()), reshape(grid.z.Δᶜ[1:N], 1, 1, N)))
 
     @test zspacing(1, 1, 2, grid, Center(), Center(), Face()) == grid.z.Δᶠ[2]
 
