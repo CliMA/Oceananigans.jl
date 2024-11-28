@@ -1,5 +1,6 @@
 using Oceananigans.Architectures: device
 using Oceananigans.Grids: inactive_node
+using CUDA: @allowscalar
 
 struct PolarValue{D, S}
     data :: D
@@ -24,7 +25,7 @@ end
 # North - South flux boundary conditions are not valid on a Latitude-Longitude grid if the last / first rows represent the poles
 function latitude_north_auxiliary_bc(grid, loc, default_bc=DefaultBoundaryCondition()) 
     # Check if the halo lies beyond the north pole
-    φmax = φnode(grid.Ny+1, grid, Center()) 
+    φmax = @allowscalar φnode(grid.Ny+1, grid, Center()) 
     
     # No problem!
     if φmax < 90 || loc[1] == Nothing
@@ -37,7 +38,7 @@ end
 # North - South flux boundary conditions are not valid on a Latitude-Longitude grid if the last / first rows represent the poles
 function latitude_south_auxiliary_bc(grid, loc, default_bc=DefaultBoundaryCondition()) 
     # Check if the halo lies beyond the south pole
-    φmin = φnode(0, grid, Face()) 
+    φmin = @allowscalar φnode(0, grid, Face()) 
 
     # No problem!
     if φmin > -90 || loc[1] == Nothing
