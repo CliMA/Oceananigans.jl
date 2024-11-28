@@ -486,29 +486,29 @@ function partition(kernel::MappedKernel, inrange, ingroupsize)
     return iterspace, dynamic
 end
 
-using KernelAbstractions: CompilerMetadata, NoDynamicCheck
+using KernelAbstractions: NoDynamicCheck
 using CUDA: CUDABackend
 
 import KernelAbstractions: mkcontext, __dynamic_checkbounds, __validindex
 
-# Very dangerous override of mkcontext which will not work if we are not 
-# carefull with making sure that indices are correct when launching a `MappedKernel`
-# TODO: Definitely change this with options below
-function mkcontext(kernel::Kernel{CUDABackend}, _ndrange, iterspace::MappedNDRange)
-    return CompilerMetadata{ndrange(kernel), NoDynamicCheck}(_ndrange, iterspace)
-end
+# # Very dangerous override of mkcontext which will not work if we are not 
+# # carefull with making sure that indices are correct when launching a `MappedKernel`
+# # TODO: Definitely change this with options below
+# function mkcontext(kernel::Kernel{CUDABackend}, _ndrange, iterspace::MappedNDRange)
+#     return CompilerMetadata{ndrange(kernel), NoDynamicCheck}(_ndrange, iterspace)
+# end
 
 # Alternative to the above to fix:
-# const MappedCompilerMetadata = CompilerMetadata{<:Any, <:Any, <:Any, <:Any, <:MappedNDRange}
+const MappedCompilerMetadata = CompilerMetadata{<:Any, <:Any, <:Any, <:Any, <:MappedNDRange}
 
-# @inline __ndrange(cm::MappedCompilerMetadata) = cm.iterspace
+@inline __ndrange(cm::MappedCompilerMetadata) = cm.iterspace
 
-# @inline function __validindex(ctx::MappedCompilerMetadata, idx::CartesianIndex)
-#     # Turns this into a noop for code where we can turn of checkbounds of
-#     if __dynamic_checkbounds(ctx)
-#         I = @inbounds expand(__iterspace(ctx), __groupindex(ctx), idx)
-#         return I in __ndrange(ctx)
-#     else
-#         return true
-#     end
-# end
+@inline function __validindex(ctx::MappedCompilerMetadata, idx::CartesianIndex)
+    # Turns this into a noop for code where we can turn of checkbounds of
+    if __dynamic_checkbounds(ctx)
+        index = @inbounds expand(__iterspace(ctx), __groupindex(ctx), idx)
+        return index.I in __ndrange(ctx)
+    else
+        return true
+    end
+end
