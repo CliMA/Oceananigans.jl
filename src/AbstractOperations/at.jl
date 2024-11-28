@@ -96,14 +96,14 @@ _compute_index_intersection(to_idx::Range, ::Colon, args...) = to_idx
 # This time we account for the possible range-reducing effect of interpolation on `from_idx`.
 function _compute_index_intersection(::Colon, from_idx::Range, to_loc, from_loc)
     shifted_idx = restrict_index_for_interpolation(from_idx, from_loc, to_loc)
-    validate_shifted_index(shifted_idx)
+    validate_shifted_index(shifted_idx, from_idx, from_loc, to_loc)
     return shifted_idx
 end
 
 # Compute the intersection of two index ranges
 function _compute_index_intersection(to_idx::Range, from_idx::Range, to_loc, from_loc)
     shifted_idx = restrict_index_for_interpolation(from_idx, from_loc, to_loc)
-    validate_shifted_index(shifted_idx)
+    validate_shifted_index(shifted_idx, from_idx, from_loc, to_loc)
     
     range_intersection = UnitRange(max(first(shifted_idx), first(to_idx)), min(last(shifted_idx), last(to_idx)))
     
@@ -114,7 +114,7 @@ function _compute_index_intersection(to_idx::Range, from_idx::Range, to_loc, fro
     return range_intersection
 end
 
-validate_shifted_index(shifted_idx) = first(shifted_idx) > last(shifted_idx) &&
+validate_shifted_index(shifted_idx, from_idx, from_loc, to_loc) = first(shifted_idx) > last(shifted_idx) &&
     throw(ArgumentError("Cannot compute index intersection for indices $(from_idx) interpolating from $(from_loc) to $(to_loc)!"))
 
 """
