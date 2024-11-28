@@ -22,21 +22,21 @@ compute_w_from_continuity!(velocities, arch, grid; parameters = w_kernel_paramet
 
 # Since the derivative of the moving grid is:
 #
-#            δx(Ax U) + δy(Ay V)       ∇ ⋅ U
+#            δx(Δy U) + δy(Δx V)       ∇ ⋅ U
 # ∂t_e₃ = - --------------------- = - --------
-#               Azᶜᶜᶜ ⋅ Hᶜᶜ             Hᶜᶜ    
+#                   Az ⋅ H               H    
 #
 # The discrete divergence is calculated as:
 #
-#  wᵏ⁺¹ - wᵏ      δx(Ax u) + δy(Ay v)     Δrᶜᶜᶜ ∂t_e₃
-# ---------- = - --------------------- - -------------
-#    Δzᶜᶜᶜ                Vᶜᶜᶜ              Δzᶜᶜᶜ
+#  wᵏ⁺¹ - wᵏ      δx(Ax u) + δy(Ay v)     Δr ∂t_e₃
+# ---------- = - --------------------- - ----------
+#     Δz                  V                  Δz
 #
 # This makes sure that if we sum up till the top of the domain, we get
 #
-#                        ∇ ⋅ U
-#  wᴺᶻ⁺¹ = w⁰ + ∂t_e₃ + ------- = 0 (if w⁰ == 0)
-#                         Hᶜᶜ   
+#                ∇ ⋅ U
+#  wᴺᶻ⁺¹ = w⁰ - ------- - ∂t_e₃ ≈ 0 (if w⁰ == 0)
+#                  H   
 # 
 @kernel function _compute_w_from_continuity!(U, grid)
     i, j = @index(Global, NTuple)
