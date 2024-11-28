@@ -56,15 +56,7 @@ Fill halo regions for all `fields`. The algorithm:
 function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args...; kwargs...)
     flattened = flattened_unique_values(maybe_nested_tuple)
 
-    # Look for grid within the flattened field tuple:
-    for f in flattened
-        if isdefined(f, :grid)
-            grid = f.grid
-            return tupled_fill_halo_regions!(flattened, grid, args...; kwargs...)
-        end
-    end
-
-    return tupled_fill_halo_regions!(flattened, args...; kwargs...)
+    return nothing
 end
 
 # Version where we find grid amongst ordinary fields:

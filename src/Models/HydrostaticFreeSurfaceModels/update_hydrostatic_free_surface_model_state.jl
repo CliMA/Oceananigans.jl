@@ -27,7 +27,7 @@ they are called in the end. Finally, the tendencies for the new time-step are co
 `compute_tendencies = true`.
 """
 update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true) =
-    update_state!(model, model.grid, callbacks; compute_tendencies)
+    fill_halo_regions!(model.diffusivity_fields)
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
     @apply_regionally mask_immersed_model_fields!(model, grid)
