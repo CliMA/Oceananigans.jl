@@ -20,6 +20,7 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, CZ, M, MY, FX, FY, VX, VY, Arch} <:
     Δφᵃᶠᵃ :: FY
     Δφᵃᶜᵃ :: FY
     φᵃᶠᵃ  :: VY
+    φᵃᶜᵃ  :: VY
     z     :: CZ
     # Precomputed metrics M <: Nothing means metrics will be computed on the fly
     Δxᶠᶜᵃ :: M
@@ -47,6 +48,8 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, CZ, M, MY, FX, FY, VX, VY, Arch} <:
                                       Δxᶠᶜᵃ :: M,  Δxᶜᶠᵃ :: M,
                                       Δxᶠᶠᵃ :: M,  Δxᶜᶜᵃ :: M,
                                       Δyᶠᶜᵃ :: MY, Δyᶜᶠᵃ :: MY,
+                                      Azᶠᶜᵃ :: M,  Azᶜᶠᵃ :: M, 
+                                      Azᶠᶠᵃ :: M,  Azᶜᶜᵃ :: M,
                                      radius :: FT) where {Arch, FT, TX, TY, TZ,
                                                            FX, FY, CZ, VX, VY,
                                                            M, MY} =
@@ -63,12 +66,12 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, CZ, M, MY, FX, FY, VX, VY, Arch} <:
 end
 
 const LLG = LatitudeLongitudeGrid
-const XRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
-const YRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any,    <:Number}
-const ZRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any,    <:Any,    <:Number}
-const HRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
-const HNonRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray, <:AbstractArray}
-const YNonRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:AbstractArray}
+const XRegularLLG    = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
+const YRegularLLG    = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
+const ZRegularLLG    = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate}
+const HRegularLLG    = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
+const HNonRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray, <:AbstractArray}
+const YNonRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:AbstractArray}
 
 regular_dimensions(::ZRegularLLG) = tuple(3)
 
@@ -241,7 +244,7 @@ function with_precomputed_metrics(grid)
                                              grid.Lx, grid.Ly, grid.Lz,
                                              grid.Δλᶠᵃᵃ, grid.Δλᶜᵃᵃ, grid.λᶠᵃᵃ, grid.λᶜᵃᵃ,
                                              grid.Δφᵃᶠᵃ, grid.Δφᵃᶜᵃ, grid.φᵃᶠᵃ, grid.φᵃᶜᵃ,
-                                             grid.Δzᵃᵃᶠ, grid.Δzᵃᵃᶜ, grid.zᵃᵃᶠ, grid.zᵃᵃᶜ,
+                                             grid.z,
                                              Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ,
                                              Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, grid.radius)
 end
