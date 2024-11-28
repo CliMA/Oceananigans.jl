@@ -1,8 +1,11 @@
 using Oceananigans.Fields: OneField
 using Oceananigans.Grids: architecture
 
+using OffsetArrays
+
 import Oceananigans.Architectures: on_architecture
 import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!, indices
+
 
 # For conditional reductions such as mean(u * v, condition = u .> 0))
 struct ConditionalOperation{LX, LY, LZ, O, F, G, C, M, T} <: AbstractOperation{LX, LY, LZ, G, T}
@@ -159,3 +162,10 @@ Base.show(io::IO, operation::ConditionalOperation) =
           "├── func: ", summary(operation.func), "\n",
           "├── condition: ", summary(operation.condition), "\n",
           "└── mask: ", operation.mask)
+
+# Extending views for `ConditionalyOperation`s
+function Base.view(co::ConditionalOperation{LX, LY, LZ}, i, j, k) where {LX, LY, LZ}
+    # Propagate view over all arguments
+    view_operand = get_field_view(co.operand, i, j, k) 
+    return ConditionalOperation{LX, LY, LZ}(view_operand, co.func, co.grid, co.condition, co.mask)
+end

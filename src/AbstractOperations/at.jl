@@ -77,6 +77,7 @@ compute_index_intersection(::Colon, to_loc; kw...) = Colon()
 
 compute_index_intersection(to_idx, to_loc, op; dim) =
     _compute_index_intersection(to_idx, indices(op)[dim],
+                                topology(op.grid)[dim],
                                 to_loc, location(op, dim))
 
 """Compute index intersection recursively for `dim`ension ∈ (1, 2, 3)."""
@@ -85,23 +86,25 @@ function compute_index_intersection(to_idx, to_loc, op1, op2, more_ops...; dim)
     return compute_index_intersection(new_to_idx, to_loc, op2, more_ops...; dim)
 end
 
+const Range = Union{UnitRange, Base.OneTo, Base.Slice{<:Base.OneTo}}
+
 # Life is pretty simple in this case.
-_compute_index_intersection(to_idx::Colon, from_idx::Colon, args...) = Colon()
+_compute_index_intersection(::Colon, ::Colon, args...) = Colon()
 
 # Because `from_idx` imposes no restrictions, we just return `to_idx`.
-_compute_index_intersection(to_idx::UnitRange, from_idx::Colon, args...) = to_idx
+_compute_index_intersection(to_idx::Range, ::Colon, args...) = to_idx
 
 # This time we account for the possible range-reducing effect of interpolation on `from_idx`.
-function _compute_index_intersection(to_idx::Colon, from_idx::UnitRange, to_loc, from_loc)
+function _compute_index_intersection(::Colon, from_idx::Range, to_loc, from_loc)
     shifted_idx = restrict_index_for_interpolation(from_idx, from_loc, to_loc)
-    validate_shifted_index(shifted_idx)
+    validate_shifted_index(shifted_idx, from_idx, from_loc, to_loc)
     return shifted_idx
 end
 
 # Compute the intersection of two index ranges
-function _compute_index_intersection(to_idx::UnitRange, from_idx::UnitRange, to_loc, from_loc)
+function _compute_index_intersection(to_idx::Range, from_idx::Range, to_loc, from_loc)
     shifted_idx = restrict_index_for_interpolation(from_idx, from_loc, to_loc)
-    validate_shifted_index(shifted_idx)
+    validate_shifted_index(shifted_idx, from_idx, from_loc, to_loc)
     
     range_intersection = UnitRange(max(first(shifted_idx), first(to_idx)), min(last(shifted_idx), last(to_idx)))
     
@@ -112,7 +115,7 @@ function _compute_index_intersection(to_idx::UnitRange, from_idx::UnitRange, to_
     return range_intersection
 end
 
-validate_shifted_index(shifted_idx) = first(shifted_idx) > last(shifted_idx) &&
+validate_shifted_index(shifted_idx, from_idx, from_loc, to_loc) = first(shifted_idx) > last(shifted_idx) &&
     throw(ArgumentError("Cannot compute index intersection for indices $(from_idx) interpolating from $(from_loc) to $(to_loc)!"))
 
 """
@@ -128,3 +131,10 @@ restrict_index_for_interpolation(from_idx, ::Type{Face},   ::Type{Face})   = Uni
 restrict_index_for_interpolation(from_idx, ::Type{Center}, ::Type{Center}) = UnitRange(first(from_idx),   last(from_idx))
 restrict_index_for_interpolation(from_idx, ::Type{Face},   ::Type{Center}) = UnitRange(first(from_idx),   last(from_idx)-1)
 restrict_index_for_interpolation(from_idx, ::Type{Center}, ::Type{Face})   = UnitRange(first(from_idx)+1, last(from_idx))
+
+# No restrictions for interpolating from `Nothing` or to `Nothing`
+restrict_index_for_interpolation(from_idx, ::Type{Nothing}, ::Type{Face})    = from_idx
+restrict_index_for_interpolation(from_idx, ::Type{Nothing}, ::Type{Center})  = from_idx
+restrict_index_for_interpolation(from_idx, ::Type{Face},    ::Type{Nothing}) = from_idx
+restrict_index_for_interpolation(from_idx, ::Type{Center},  ::Type{Nothing}) = from_idx
+restrict_index_for_interpolation(from_idx, ::Type{Nothing}, ::Type{Nothing}) = from_idx

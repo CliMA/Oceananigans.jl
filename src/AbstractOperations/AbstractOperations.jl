@@ -21,6 +21,7 @@ using Oceananigans.Operators: interpolation_operator
 using Oceananigans.Architectures: device
 
 import Adapt
+import Base
 
 import Oceananigans.Architectures: architecture, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -41,6 +42,10 @@ architecture(a::AbstractOperation) = architecture(a.grid)
 
 # AbstractOperation macros add their associated functions to this list
 const operators = Set()
+
+# To allow view(o::AbstractOperation, i, j, k) to work
+@inline get_field_view(a::Union{AbstractOperation, AbstractField}, i, j, k) = view(a, i, j, k)
+@inline get_field_view(a, i, j, k) = a
 
 """
     at(loc, abstract_operation)

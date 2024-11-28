@@ -97,3 +97,10 @@ Base.show(io::IO, kfo::KernelFunctionOperation) =
                              prettysummary(kfo.arguments[end])
                          end
 )
+
+# Extending views for KernelFunctionOperation
+function Base.view(ko::KernelFunctionOperation{LX, LY, LZ}, i, j, k) where {LX, LY, LZ}
+    # Propagate view over all arguments
+    view_args = [get_field_view(a, i, j, k) for a in ko.arguments]
+    return KernelFunctionOperation{LX, LY, LZ}(ko.kernel_function, ko.grid, view_args...)
+end
