@@ -17,10 +17,10 @@ abstract type AbstractVerticalCoordinate end
 # - `Δᶜ::D`: Cell-centered grid spacing.
 # - `Δᶠ::D`: Face-centered grid spacing.
 struct StaticVerticalCoordinate{C, D} <: AbstractVerticalCoordinate
-    cᶜ :: C
     cᶠ :: C
-    Δᶜ :: D
+    cᶜ :: C
     Δᶠ :: D
+    Δᶜ :: D
 end
 
 # Represents a z-star three-dimensional vertical coordinate.
@@ -38,10 +38,10 @@ end
 # - `e₃ᶜᶜ⁻::CC`: Vertical grid scaling at center-center at the previous time step.
 # - `∂t_e₃::CC`: Time derivative of the vertical grid scaling at cell centers.
 struct ZStarVerticalCoordinate{C, D, E, CC, FC, CF, FF} <: AbstractVerticalCoordinate
-       cᶜ :: C
        cᶠ :: C
-       Δᶜ :: D
+       cᶜ :: C
        Δᶠ :: D
+       Δᶜ :: D
        ηⁿ :: E
     e₃ᶜᶜⁿ :: CC
     e₃ᶠᶜⁿ :: FC
