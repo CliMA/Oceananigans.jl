@@ -212,7 +212,7 @@ function run_catke_tke_substepping_tests(arch, closure)
     grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(100, 200, 300))
 
     model = HydrostaticFreeSurfaceModel(; grid, momentum_advection = nothing, tracer_advection = nothing, 
-                                          closure = explicit_catke, buoyancy=BuoyancyTracer(), tracers=(:b, :e))
+                                          closure, buoyancy=BuoyancyTracer(), tracers=(:b, :e))
 
     # set random velocities
     Random.seed!(1234)
@@ -231,9 +231,13 @@ function run_catke_tke_substepping_tests(arch, closure)
     time_step!(model, 1)
     G⁻ = model.timestepper.G⁻.e
 
-    eⁿ⁺¹ = compute!(Field(eⁿ + 1.5 * G⁻ - 0.5 * G⁻⁻))
+    C₁ = 1.5 + model.timestepper.χ
+    C₂ = 0.5 + model.timestepper.χ
 
-    # Check that eⁿ⁺¹ = eⁿ + Δt * (1.5Gⁿ.e - 0.5G⁻.e) with Δt = 1
+    eⁿ⁺¹ = compute!(Field(eⁿ + C₁ * G⁻ - C₂ * G⁻⁻))
+
+    # Check that eⁿ⁺¹ = eⁿ + Δt * Gⁿ.e 
+    # (with CATKE we always use an Euler Step at the first substep)
     @test model.tracers.e ≈ eⁿ⁺¹
 
     return model
