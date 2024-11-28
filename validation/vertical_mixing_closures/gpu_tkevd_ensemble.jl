@@ -17,13 +17,13 @@ grid = RectilinearGrid(size=sz, halo=halo, z=(-128, 0), topology=(Flat, Flat, Bo
 
 closure = CuArray([CATKEVerticalDiffusivity() for i=1:Ex, j=1:Ey])
                                       
-Qᵇ = CuArray([+1e-8 for i=1:Ex, j=1:Ey])
-Qᵘ = CuArray([-1e-4 for i=1:Ex, j=1:Ey])
-Qᵛ = CuArray([0.0   for i=1:Ex, j=1:Ey])
+Jᵇ = CuArray([+1e-8 for i=1:Ex, j=1:Ey])
+τx = CuArray([-1e-4 for i=1:Ex, j=1:Ey])
+τy = CuArray([0.0   for i=1:Ex, j=1:Ey])
 
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
-v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵛ))
-b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ))
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
+v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τy))
+b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ))
 
 # Half rotating, half not
 f_ij(i, j) = j < Ey/2 ? 1e-4 : 0.0

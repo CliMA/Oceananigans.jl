@@ -121,9 +121,7 @@ function divergence_free_poisson_tridiagonal_solution(grid_points, ranks, stretc
     return Array(interior(∇²ϕ)) ≈ Array(R)
 end
 
-@testset "Distributed FFT-based Poisson solver" begin
-    child_arch = test_child_arch()
-    
+@testset "Distributed FFT-based Poisson solver" begin    
     for topology in ((Periodic, Periodic, Periodic), 
                      (Periodic, Periodic, Bounded),
                      (Periodic, Bounded, Bounded),

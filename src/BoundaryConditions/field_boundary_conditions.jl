@@ -39,12 +39,12 @@ default_auxiliary_bc(::LeftConnected,  ::Face) = nothing
 #####
 
 mutable struct FieldBoundaryConditions{W, E, S, N, B, T, I}
-        west :: W
-        east :: E
-       south :: S
-       north :: N
-      bottom :: B
-         top :: T
+    west :: W
+    east :: E
+    south :: S
+    north :: N
+    bottom :: B
+    top :: T
     immersed :: I
 end
 
@@ -64,6 +64,15 @@ FieldBoundaryConditions(indices::Tuple, ::Nothing) = nothing
 
 window_boundary_conditions(::Colon,     left, right) = left, right
 window_boundary_conditions(::UnitRange, left, right) = nothing, nothing
+
+on_architecture(arch, fbcs::FieldBoundaryConditions) =
+    FieldBoundaryConditions(on_architecture(arch, fbcs.west),
+                            on_architecture(arch, fbcs.east),
+                            on_architecture(arch, fbcs.south),
+                            on_architecture(arch, fbcs.north),
+                            on_architecture(arch, fbcs.bottom),
+                            on_architecture(arch, fbcs.top),
+                            on_architecture(arch, fbcs.immersed))
 
 """
     FieldBoundaryConditions(; kwargs...)
@@ -157,9 +166,9 @@ end
 function regularize_immersed_boundary_condition(ibc, grid, loc, field_name, args...)
     if !(ibc isa DefaultBoundaryCondition)
         msg = """$field_name was assigned an immersed boundary condition
-              $ibc ,
+              $ibc,
               but this is not supported on
-              $(summary(grid)) .
+              $(summary(grid)).
               The immersed boundary condition on $field_name will have no effect.
               """
 
