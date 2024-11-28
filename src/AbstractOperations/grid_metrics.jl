@@ -145,6 +145,9 @@ indices(::GridMetricOperation) = default_indices(3)
 # Special constructor for BinaryOperation
 GridMetricOperation(L, metric, grid) = GridMetricOperation{L[1], L[2], L[3]}(metric_function(L, metric), grid)
 
+# Extend view on a GridMetricOperation (we return the same object)
+Base.view(gm::GridMetricOperation, i, j, k) = gm
+
 #####
 ##### Spacings
 #####

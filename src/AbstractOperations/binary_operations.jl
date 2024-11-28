@@ -230,7 +230,7 @@ on_architecture(to, binary::BinaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
 function Base.view(binary::BinaryOperation{LX, LY, LZ}, i, j, k) where {LX, LY, LZ}
     # Propagate view over all arguments
     view_a = get_field_view(binary.a, i, j, k) 
-    view_a = get_field_view(binary.b, i, j, k) 
+    view_b = get_field_view(binary.b, i, j, k) 
     view_▶a = get_field_view(binary.▶a, i, j, k) 
     view_▶b = get_field_view(binary.▶b, i, j, k) 
 

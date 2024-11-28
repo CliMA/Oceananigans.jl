@@ -58,11 +58,12 @@ Base.parent(f::AbstractField) = f
 const Abstract3DField = AbstractField{<:Any, <:Any, <:Any, <:Any, <:Any, 3}
 const Abstract4DField = AbstractField{<:Any, <:Any, <:Any, <:Any, <:Any, 4}
 
+const Range = Union{UnitRange, Base.OneTo, Base.Slice{<:Base.OneTo}}
+
 # TODO: to omit boundaries on Face fields, we have to return 2:N
 # when topo=Bounded, and loc=Face
 @inline axis(::Colon, N) = Base.OneTo(N)
-@inline axis(index::UnitRange, N) = index
-@inline axis(index::Base.OneTo, N) = index
+@inline axis(index::Range, N) = index
 
 @inline function Base.axes(f::Abstract3DField)
     Nx, Ny, Nz = size(f)
