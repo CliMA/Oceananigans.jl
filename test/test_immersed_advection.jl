@@ -6,16 +6,14 @@ using Oceananigans.Advection:
         _symmetric_interpolate_xᶜᵃᵃ,
         _symmetric_interpolate_yᵃᶠᵃ,
         _symmetric_interpolate_yᵃᶜᵃ,
-        _left_biased_interpolate_xᶜᵃᵃ, 
-        _left_biased_interpolate_xᶠᵃᵃ, 
-        _right_biased_interpolate_xᶜᵃᵃ,
-        _right_biased_interpolate_xᶠᵃᵃ,
-        _left_biased_interpolate_yᵃᶜᵃ, 
-        _left_biased_interpolate_yᵃᶠᵃ, 
-        _right_biased_interpolate_yᵃᶜᵃ,
-        _right_biased_interpolate_yᵃᶠᵃ
+        _biased_interpolate_xᶜᵃᵃ, 
+        _biased_interpolate_xᶠᵃᵃ, 
+        _biased_interpolate_yᵃᶜᵃ, 
+        _biased_interpolate_yᵃᶠᵃ,
+        FluxFormAdvection
 
-advection_schemes = [Centered, UpwindBiased, WENO]
+linear_advection_schemes = [Centered, UpwindBiased]
+advection_schemes = [linear_advection_schemes... WENO]
 
 @inline advective_order(buffer, ::Type{Centered}) = buffer * 2
 @inline advective_order(buffer, AdvectionType)    = buffer * 2 - 1
@@ -26,10 +24,10 @@ function run_tracer_interpolation_test(c, ibg, scheme)
         if typeof(scheme) <: Centered
             @test CUDA.@allowscalar  _symmetric_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, c) ≈ 1.0
         else
-            @test CUDA.@allowscalar  _left_biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, c) ≈ 1.0
-            @test CUDA.@allowscalar _right_biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, c) ≈ 1.0
-            @test CUDA.@allowscalar  _left_biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, c) ≈ 1.0
-            @test CUDA.@allowscalar _right_biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, c) ≈ 1.0
+            @test CUDA.@allowscalar _biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, true,  c) ≈ 1.0
+            @test CUDA.@allowscalar _biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, false, c) ≈ 1.0
+            @test CUDA.@allowscalar _biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, true,  c) ≈ 1.0
+            @test CUDA.@allowscalar _biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, false, c) ≈ 1.0
         end
     end
 end
@@ -79,15 +77,15 @@ function run_momentum_interpolation_test(u, v, ibg, scheme)
             @test CUDA.@allowscalar  _symmetric_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, u) ≈ 1.0
             @test CUDA.@allowscalar  _symmetric_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, v) ≈ 1.0
         else
-            @test CUDA.@allowscalar  _left_biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, u) ≈ 1.0
-            @test CUDA.@allowscalar _right_biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, u) ≈ 1.0
-            @test CUDA.@allowscalar  _left_biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, u) ≈ 1.0
-            @test CUDA.@allowscalar _right_biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, u) ≈ 1.0
+            @test CUDA.@allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, true,  u) ≈ 1.0
+            @test CUDA.@allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, false, u) ≈ 1.0
+            @test CUDA.@allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, true,  u) ≈ 1.0
+            @test CUDA.@allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, false, u) ≈ 1.0
 
-            @test CUDA.@allowscalar  _left_biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, v) ≈ 1.0
-            @test CUDA.@allowscalar _right_biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, v) ≈ 1.0
-            @test CUDA.@allowscalar  _left_biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, v) ≈ 1.0
-            @test CUDA.@allowscalar _right_biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, v) ≈ 1.0
+            @test CUDA.@allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, true,  v) ≈ 1.0
+            @test CUDA.@allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, false, v) ≈ 1.0
+            @test CUDA.@allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, true,  v) ≈ 1.0
+            @test CUDA.@allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, false, v) ≈ 1.0
         end
     end
 
@@ -106,8 +104,15 @@ for arch in archs
         mask_immersed_field!(c)
         fill_halo_regions!(c)
 
-        for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
+        for adv in linear_advection_schemes, buffer in [1, 2, 3, 4, 5]
             scheme = adv(order = advective_order(buffer, adv))
+
+            @info "  Testing immersed tracer reconstruction [$(typeof(arch)), $(summary(scheme))]"
+            run_tracer_interpolation_test(c, ibg, scheme)
+        end
+
+        for buffer in [2, 3, 4, 5], bounds in (nothing, (0, 1))
+            scheme = WENO(; order = advective_order(buffer, WENO), bounds)
 
             @info "  Testing immersed tracer reconstruction [$(typeof(arch)), $(summary(scheme))]"
             run_tracer_interpolation_test(c, ibg, scheme)
@@ -123,6 +128,15 @@ for arch in archs
         for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
             scheme = adv(order = advective_order(buffer, adv))
         
+            for g in [grid, ibg]
+                @info "  Testing immersed tracer conservation [$(typeof(arch)), $(summary(scheme)), $(typeof(g).name.wrapper)]"
+                run_tracer_conservation_test(g, scheme)
+            end
+        end
+
+        for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
+            directional_scheme = adv(order = advective_order(buffer, adv))
+            scheme = FluxFormAdvection(directional_scheme, directional_scheme, directional_scheme)
             for g in [grid, ibg]
                 @info "  Testing immersed tracer conservation [$(typeof(arch)), $(summary(scheme)), $(typeof(g).name.wrapper)]"
                 run_tracer_conservation_test(g, scheme)

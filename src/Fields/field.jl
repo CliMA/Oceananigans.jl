@@ -6,6 +6,7 @@ using Adapt
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 
+import Oceananigans: boundary_conditions
 import Oceananigans.Architectures: on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc
 import Statistics: norm, mean, mean!
@@ -39,7 +40,7 @@ function validate_field_data(loc, data, grid, indices)
     Fx, Fy, Fz = total_size(grid, loc, indices)
 
     if size(data) != (Fx, Fy, Fz)
-        LX, LY, LZ = loc    
+        LX, LY, LZ = loc
         e = "Cannot construct field at ($LX, $LY, $LZ) with size(data)=$(size(data)). " *
             "`data` must have size ($Fx, $Fy, $Fz)."
         throw(ArgumentError(e))
@@ -178,7 +179,7 @@ function Field(loc::Tuple,
 
     return Field(loc, grid, data, boundary_conditions, indices, operand, status)
 end
-    
+
 Field(z::ZeroField; kw...) = z
 Field(f::Field; indices=f.indices) = view(f, indices...) # hmm...
 
@@ -251,6 +252,9 @@ function offset_windowed_data(data, data_indices, Loc, grid, view_indices)
     return offset_data(windowed_parent, loc, topo, sz, halo, view_indices)
 end
 
+convert_colon_indices(view_indices, field_indices) = view_indices
+convert_colon_indices(::Colon, field_indices) = field_indices
+
 """
     view(f::Field, indices...)
 
@@ -303,7 +307,7 @@ function Base.view(f::Field, i, j, k)
     loc = location(f)
 
     # Validate indices (convert Int to UnitRange, error for invalid indices)
-    view_indices = validate_indices((i, j, k), loc, f.grid)
+    view_indices = i, j, k = validate_indices((i, j, k), loc, f.grid)
 
     if view_indices == f.indices # nothing to "view" here
         return f # we want the whole field after all.
@@ -314,6 +318,8 @@ function Base.view(f::Field, i, j, k)
 
     all(valid_view_indices) ||
         throw(ArgumentError("view indices $((i, j, k)) do not intersect field indices $(f.indices)"))
+
+    view_indices = map(convert_colon_indices, view_indices, f.indices)
 
     # Choice: OffsetArray of view of OffsetArray, or OffsetArray of view?
     #     -> the first retains a reference to the original f.data (an OffsetArray)
@@ -349,13 +355,8 @@ Base.view(f::Field, i, j) = view(f, i, j, :)
 
 boundary_conditions(not_field) = nothing
 
-function boundary_conditions(f::Field)
-    if f.indices === default_indices(3) # default boundary conditions
-        return f.boundary_conditions
-    else # filter boundary conditions in windowed directions
-        return FieldBoundaryConditions(f.indices, f.boundary_conditions)
-    end
-end
+@inline boundary_conditions(f::Field) = f.boundary_conditions
+@inline boundary_conditions(w::WindowedField) = FieldBoundaryConditions(w.indices, w.boundary_conditions)
 
 immersed_boundary_condition(f::Field) = f.boundary_conditions.immersed
 data(field::Field) = field.data
@@ -393,17 +394,9 @@ Return a view of `f` that excludes halo points.
 interior(f::Field) = interior(f.data, location(f), f.grid, f.indices)
 interior(a::OffsetArray, loc, grid, indices) = interior(a, loc, topology(grid), size(grid), halo_size(grid), indices)
 interior(f::Field, I...) = view(interior(f), I...)
-    
+
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
-
-function Base.axes(f::Field)
-    if f.indices === (:, : ,:)
-        return Base.OneTo.(size(f))
-    else
-        return Tuple(f.indices[i] isa Colon ? Base.OneTo(size(f, i)) : f.indices[i] for i = 1:3)
-    end
-end
 
 @propagate_inbounds Base.getindex(f::Field, inds...) = getindex(f.data, inds...)
 @propagate_inbounds Base.getindex(f::Field, i::Int)  = parent(f)[i]
@@ -426,8 +419,8 @@ total_size(f::Field) = total_size(f.grid, location(f), f.indices)
 ##### Move Fields between architectures
 #####
 
-on_architecture(arch, field::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = 
-    Field{LX, LY, LZ}(on_architecture(arch, field.grid), 
+on_architecture(arch, field::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
+    Field{LX, LY, LZ}(on_architecture(arch, field.grid),
                       on_architecture(arch, field.data),
                       on_architecture(arch, field.boundary_conditions),
                       on_architecture(arch, field.indices),
@@ -520,14 +513,14 @@ const ReducedField = Union{XReducedField,
                            XYReducedField,
                            XYZReducedField}
 
-reduced_dimensions(field::Field)   = ()
-reduced_dimensions(field::XReducedField)   = tuple(1)
-reduced_dimensions(field::YReducedField)   = tuple(2)
-reduced_dimensions(field::ZReducedField)   = tuple(3)
-reduced_dimensions(field::YZReducedField)  = (2, 3)
-reduced_dimensions(field::XZReducedField)  = (1, 3)
-reduced_dimensions(field::XYReducedField)  = (1, 2)
-reduced_dimensions(field::XYZReducedField) = (1, 2, 3)
+reduced_dimensions(::Field)   = ()
+reduced_dimensions(::XReducedField)   = tuple(1)
+reduced_dimensions(::YReducedField)   = tuple(2)
+reduced_dimensions(::ZReducedField)   = tuple(3)
+reduced_dimensions(::YZReducedField)  = (2, 3)
+reduced_dimensions(::XZReducedField)  = (1, 3)
+reduced_dimensions(::XYReducedField)  = (1, 2)
+reduced_dimensions(::XYZReducedField) = (1, 2, 3)
 
 @propagate_inbounds Base.getindex(r::XReducedField, i, j, k) = getindex(r.data, 1, j, k)
 @propagate_inbounds Base.getindex(r::YReducedField, i, j, k) = getindex(r.data, i, 1, k)
@@ -597,6 +590,15 @@ const ReducedAbstractField = Union{XReducedAbstractField,
                                    XYReducedAbstractField,
                                    XYZReducedAbstractField}
 
+reduced_dimensions(::AbstractField)   = ()
+reduced_dimensions(::XReducedAbstractField)   = tuple(1)
+reduced_dimensions(::YReducedAbstractField)   = tuple(2)
+reduced_dimensions(::ZReducedAbstractField)   = tuple(3)
+reduced_dimensions(::YZReducedAbstractField)  = (2, 3)
+reduced_dimensions(::XZReducedAbstractField)  = (1, 3)
+reduced_dimensions(::XYReducedAbstractField)  = (1, 2)
+reduced_dimensions(::XYZReducedAbstractField) = (1, 2, 3)
+
 # TODO: needs test
 Statistics.dot(a::Field, b::Field) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))
 
@@ -612,7 +614,7 @@ const AnyReduction     = typeof(Base.any!)
 initialize_reduced_field!(::SumReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, Base.add_sum, true, interior(c))
 initialize_reduced_field!(::ProdReduction,    f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, Base.mul_prod, true, interior(c))
 initialize_reduced_field!(::AllReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, &, true, interior(c))
-initialize_reduced_field!(::AnyReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, |, true, interior(c))             
+initialize_reduced_field!(::AnyReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, |, true, interior(c))
 initialize_reduced_field!(::MaximumReduction, f, r::ReducedAbstractField, c) = Base.mapfirst!(f, interior(r), interior(c))
 initialize_reduced_field!(::MinimumReduction, f, r::ReducedAbstractField, c) = Base.mapfirst!(f, interior(r), interior(c))
 
@@ -665,7 +667,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
     reduction! = Symbol(reduction, '!')
 
     @eval begin
-        
+
         # In-place
         function Base.$(reduction!)(f::Function,
                                     r::ReducedAbstractField,
@@ -717,7 +719,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
     end
 end
 
-function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing, mask = 0) 
+function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing, mask = 0)
     operator = condition_operand(f, c, condition, mask)
     return sum(operator) / conditional_length(operator)
 end
@@ -774,4 +776,3 @@ function fill_halo_regions!(field::Field, args...; kwargs...)
 
     return nothing
 end
-

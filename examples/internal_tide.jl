@@ -46,13 +46,13 @@ width = 20kilometers
 hill(x) = h₀ * exp(-x^2 / 2width^2)
 bottom(x) = - H + hill(x)
 
-grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
 
 # Let's see how the domain with the bathymetry is.
 
 x = xnodes(grid, Center())
 bottom_boundary = interior(grid.immersed_boundary.bottom_height, :, 1, 1)
-top_boundary = 0*x
+top_boundary = 0 * x
 
 using CairoMakie
 
@@ -132,7 +132,7 @@ bᵢ(x, z) = Nᵢ² * z
 
 set!(model, u=uᵢ, b=bᵢ)
 
-# Now let's built a `Simulation`.
+# Now let's build a `Simulation`.
 
 Δt = 5minutes
 stop_time = 4days
@@ -205,21 +205,6 @@ wmax = maximum(abs, w_t[end])
 times = u′_t.times
 nothing #hide
 
-# For visualization purposes, we mask the region below the bathymetry with NaNs.
-
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
-
-for φ_t in (u′_t, w_t, N²_t), n in 1:length(times)
-    mask_immersed_field!(φ_t[n], NaN)
-end
-
-# We retrieve each field's coordinates and convert from meters to kilometers.
-
-xu,  yu,  zu  = nodes(u′_t[1]) ./ 1e3
-xw,  yw,  zw  = nodes(w_t[1])  ./ 1e3
-xN², yN², zN² = nodes(N²_t[1]) ./ 1e3
-nothing #hide
-
 # ## Visualize
 
 # Now we can visualize our resutls! We use `CairoMakie` here. On a system with OpenGL
@@ -235,13 +220,13 @@ n = Observable(1)
 title = @lift @sprintf("t = %1.2f days = %1.2f T₂",
                        round(times[$n] / day, digits=2) , round(times[$n] / T₂, digits=2))
 
-u′ₙ = @lift interior(u′_t[$n], :, 1, :)
- wₙ = @lift interior( w_t[$n], :, 1, :)
-N²ₙ = @lift interior(N²_t[$n], :, 1, :)
+u′ₙ = @lift u′_t[$n]
+ wₙ = @lift  w_t[$n]
+N²ₙ = @lift N²_t[$n]
 
-axis_kwargs = (xlabel = "x [km]",
-               ylabel = "z [km]",
-               limits = ((-grid.Lx/2e3, grid.Lx/2e3), (-grid.Lz/1e3, 0)), # note conversion to kilometers
+axis_kwargs = (xlabel = "x [m]",
+               ylabel = "z [m]",
+               limits = ((-grid.Lx/2, grid.Lx/2), (-grid.Lz, 0)),
                titlesize = 20)
 
 fig = Figure(size = (700, 900))
@@ -249,15 +234,15 @@ fig = Figure(size = (700, 900))
 fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 
 ax_u = Axis(fig[2, 1]; title = "u'-velocity", axis_kwargs...)
-hm_u = heatmap!(ax_u, xu, zu, u′ₙ; colorrange = (-umax, umax), colormap = :balance)
+hm_u = heatmap!(ax_u, u′ₙ; nan_color=:gray, colorrange=(-umax, umax), colormap=:balance)
 Colorbar(fig[2, 2], hm_u, label = "m s⁻¹")
 
 ax_w = Axis(fig[3, 1]; title = "w-velocity", axis_kwargs...)
-hm_w = heatmap!(ax_w, xw, zw, wₙ; colorrange = (-wmax, wmax), colormap = :balance)
+hm_w = heatmap!(ax_w, wₙ; nan_color=:gray, colorrange=(-wmax, wmax), colormap=:balance)
 Colorbar(fig[3, 2], hm_w, label = "m s⁻¹")
 
 ax_N² = Axis(fig[4, 1]; title = "stratification N²", axis_kwargs...)
-hm_N² = heatmap!(ax_N², xN², zN², N²ₙ; colorrange = (0.9Nᵢ², 1.1Nᵢ²), colormap = :thermal)
+hm_N² = heatmap!(ax_N², N²ₙ; nan_color=:gray, colorrange=(0.9Nᵢ², 1.1Nᵢ²), colormap=:magma)
 Colorbar(fig[4, 2], hm_N², label = "s⁻²")
 
 fig

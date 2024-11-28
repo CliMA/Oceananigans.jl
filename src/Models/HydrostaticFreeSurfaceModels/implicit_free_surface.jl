@@ -54,7 +54,7 @@ where
 𝐮_⋆ = 𝐮^n + \\int_{t_n}^{t_{n+1}} 𝐆ᵤ \\, 𝖽t .
 ```
 
-This equation can be solved, in general, using the [`PreconditionedConjugateGradientSolver`](@ref) but 
+This equation can be solved, in general, using the [`ConjugateGradientSolver`](@ref) but 
 other solvers can be invoked in special cases.
 
 If ``H`` is constant, we divide through out to obtain
@@ -69,7 +69,7 @@ surface can be obtained using the [`FFTBasedPoissonSolver`](@ref).
 `solver_method` can be either of:
 * `:FastFourierTransform` for [`FFTBasedPoissonSolver`](@ref)
 * `:HeptadiagonalIterativeSolver`  for [`HeptadiagonalIterativeSolver`](@ref)
-* `:PreconditionedConjugateGradient` for [`PreconditionedConjugateGradientSolver`](@ref)
+* `:PreconditionedConjugateGradient` for [`ConjugateGradientSolver`](@ref)
 
 By default, if the grid has regular spacing in the horizontal directions then the `:FastFourierTransform` is chosen,
 otherwise the `:HeptadiagonalIterativeSolver`.
@@ -123,10 +123,7 @@ build_implicit_step_solver(::Val{:Default}, grid, settings, gravitational_accele
 """
 Implicitly step forward η.
 """
-ab2_step_free_surface!(free_surface::ImplicitFreeSurface, model, Δt, χ) =
-    implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ)
-
-function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ)
+function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper, Δt)
     η      = free_surface.η
     g      = free_surface.gravitational_acceleration
     rhs    = free_surface.implicit_step_solver.right_hand_side

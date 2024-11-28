@@ -45,9 +45,13 @@ end
 const MaybeTupledData = Union{OffsetArray, NTuple{<:Any, OffsetArray}}
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
-function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, loc, grid, args...; kwargs...)
-
+function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, loc, grid, args...; 
+                            fill_boundary_normal_velocities = true, kwargs...)
     arch = architecture(grid)
+
+    if fill_boundary_normal_velocities
+        fill_open_boundary_regions!(c, boundary_conditions, indices, loc, grid, args...; kwargs...)
+    end
 
     fill_halos!, bcs = permute_boundary_conditions(boundary_conditions)
     number_of_tasks  = length(fill_halos!)
@@ -60,7 +64,9 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
     return nothing
 end
 
-function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid, args...; kwargs...)
+function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid, args...; 
+                          async = false, # This kwargs is specific to DistributedGrids, here is does nothing
+                          kwargs...)
 
     # Calculate size and offset of the fill_halo kernel
     # We assume that the kernel size is the same for west and east boundaries, 
@@ -291,27 +297,27 @@ end
 ##### Kernel launchers for single-sided fill_halos
 #####
 
-fill_west_halo!(c, bc, size, offset, loc, arch, grid, args...; kwargs...) = 
+fill_west_halo!(c, bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) = 
     launch!(arch, grid, KernelParameters(size, offset),
             _fill_only_west_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
 
-fill_east_halo!(c, bc, size, offset, loc, arch, grid, args...; kwargs...) = 
+fill_east_halo!(c, bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) = 
     launch!(arch, grid, KernelParameters(size, offset),
             _fill_only_east_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
 
-fill_south_halo!(c, bc, size, offset, loc, arch, grid, args...; kwargs...) = 
+fill_south_halo!(c, bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) = 
     launch!(arch, grid, KernelParameters(size, offset),
             _fill_only_south_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
 
-fill_north_halo!(c, bc, size, offset, loc, arch, grid, args...; kwargs...) = 
+fill_north_halo!(c, bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) = 
     launch!(arch, grid, KernelParameters(size, offset),
             _fill_only_north_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
 
-fill_bottom_halo!(c, bc, size, offset, loc, arch, grid, args...; kwargs...) = 
+fill_bottom_halo!(c, bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) = 
     launch!(arch, grid, KernelParameters(size, offset),
             _fill_only_bottom_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
 
-fill_top_halo!(c, bc, size, offset, loc, arch, grid, args...; kwargs...) = 
+fill_top_halo!(c, bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) = 
     launch!(arch, grid, KernelParameters(size, offset),
             _fill_only_top_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
 
@@ -319,17 +325,17 @@ fill_top_halo!(c, bc, size, offset, loc, arch, grid, args...; kwargs...) =
 ##### Kernel launchers for double-sided fill_halos
 #####
 
-function fill_west_and_east_halo!(c, west_bc, east_bc, size, offset, loc, arch, grid, args...; kwargs...)
+function fill_west_and_east_halo!(c, west_bc, east_bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...)
     return launch!(arch, grid, KernelParameters(size, offset),
                    _fill_west_and_east_halo!, c, west_bc, east_bc, loc, grid, Tuple(args); kwargs...)
 end
 
-function fill_south_and_north_halo!(c, south_bc, north_bc, size, offset, loc, arch, grid, args...; kwargs...)
+function fill_south_and_north_halo!(c, south_bc, north_bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...)
     return launch!(arch, grid, KernelParameters(size, offset),
                    _fill_south_and_north_halo!, c, south_bc, north_bc, loc, grid, Tuple(args); kwargs...)
 end
 
-function fill_bottom_and_top_halo!(c, bottom_bc, top_bc, size, offset, loc, arch, grid, args...; kwargs...)
+function fill_bottom_and_top_halo!(c, bottom_bc, top_bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...)
     return launch!(arch, grid, KernelParameters(size, offset),
                    _fill_bottom_and_top_halo!, c, bottom_bc, top_bc, loc, grid, Tuple(args); kwargs...)
 end
@@ -434,3 +440,4 @@ end
 @inline fill_halo_offset(::Tuple, ::WEB, idx) = (idx[2] == Colon() ? 0 : first(idx[2])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
 @inline fill_halo_offset(::Tuple, ::SNB, idx) = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
 @inline fill_halo_offset(::Tuple, ::TBB, idx) = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[2] == Colon() ? 0 : first(idx[2])-1)
+

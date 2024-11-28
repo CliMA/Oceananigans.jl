@@ -6,33 +6,27 @@ module Oceananigans
 
 export
     # Architectures
-    CPU, GPU, 
-
-    # Logging
-    OceananigansLogger,
+    CPU, GPU,
 
     # Grids
     Center, Face,
-    Periodic, Bounded, Flat, 
-    FullyConnected, LeftConnected, RightConnected,
-    RectilinearGrid, 
-    LatitudeLongitudeGrid,
-    OrthogonalSphericalShellGrid,
-    xnodes, ynodes, znodes, nodes,
-    xspacings, yspacings, zspacings,
+    Periodic, Bounded, Flat,
+    RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
+    nodes, xnodes, ynodes, znodes, λnodes, φnodes,
+    xspacings, yspacings, zspacings, λspacings, φspacings,
     minimum_xspacing, minimum_yspacing, minimum_zspacing,
 
     # Immersed boundaries
-    ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, ImmersedBoundaryCondition,
+    ImmersedBoundaryGrid,
+    GridFittedBoundary, GridFittedBottom, PartialCellBottom,
+    ImmersedBoundaryCondition,
 
     # Distributed
     Distributed, Partition,
 
     # Advection schemes
-    Centered, CenteredSecondOrder, CenteredFourthOrder, 
-    UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, 
-    WENO, WENOThirdOrder, WENOFifthOrder,
-    VectorInvariant, WENOVectorInvariant, EnergyConserving, EnstrophyConserving,
+    Centered, UpwindBiased, WENO,
+    VectorInvariant, WENOVectorInvariant, FluxFormAdvection,
 
     # Boundary conditions
     BoundaryCondition,
@@ -42,7 +36,7 @@ export
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
     Average, Integral, CumulativeIntegral, Reduction, Accumulation, BackgroundField,
-    interior, set!, compute!, regrid!, location,
+    interior, set!, compute!, regrid!,
 
     # Forcing functions
     Forcing, Relaxation, LinearTarget, GaussianMask, AdvectiveForcing,
@@ -66,11 +60,13 @@ export
     HorizontalScalarBiharmonicDiffusivity,
     ScalarBiharmonicDiffusivity,
     SmagorinskyLilly,
+    Smagorinsky,
+    LillyCoefficient,
+    DynamicCoefficient,
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
+    CATKEVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
-    IsopycnalSkewSymmetricDiffusivity,
-    FluxTapering,
     VerticallyImplicitTimeDiscretization,
     viscosity, diffusivity,
 
@@ -78,32 +74,28 @@ export
     LagrangianParticles,
 
     # Models
-    NonhydrostaticModel,
-    HydrostaticFreeSurfaceModel,
-    ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation,
-    PressureField,
-    fields,
+    NonhydrostaticModel, HydrostaticFreeSurfaceModel, ShallowWaterModel,
+    ConservativeFormulation, VectorInvariantFormulation,
+    PressureField, fields,
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    HydrostaticSphericalCoriolis, 
-    PrescribedVelocityFields,
+    HydrostaticSphericalCoriolis, PrescribedVelocityFields,
 
     # Time stepping
     Clock, TimeStepWizard, conjure_time_step_wizard!, time_step!,
 
     # Simulations
-    Simulation, run!, Callback, add_callback!, iteration, stopwatch,
+    Simulation, run!, Callback, add_callback!, iteration,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
-    TimeStepCallsite, TendencyCallsite, UpdateStateCallsite,
 
     # Diagnostics
-    StateChecker, CFL, AdvectiveCFL, DiffusiveCFL,
+    CFL, AdvectiveCFL, DiffusiveCFL,
 
     # Output writers
     NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
-    TimeInterval, IterationInterval, AveragedTimeInterval, SpecifiedTimes,
-    FileSizeLimit, AndSchedule, OrSchedule, written_names,
+    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval,
+    SpecifiedTimes, FileSizeLimit, AndSchedule, OrSchedule, written_names,
 
     # Output readers
     FieldTimeSeries, FieldDataset, InMemory, OnDisk,
@@ -111,39 +103,32 @@ export
     # Abstract operations
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
 
-    # MultiRegion and Cubed sphere
-    MultiRegionGrid, MultiRegionField,
-    XPartition, YPartition,
-    CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField,
-
     # Utils
-    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject,
+    prettytime
 
-    # Units
-    Time
-    
-using Printf
-using Logging
-using Statistics
-using LinearAlgebra
 using CUDA
-using Adapt
 using DocStringExtensions
-using OffsetArrays
 using FFTW
-using JLD2
 
-using Base: @propagate_inbounds
-using Statistics: mean
+function __init__()
+    threads = Threads.nthreads()
+    if threads > 1
+        @info "Oceananigans will use $threads threads"
 
-import Base:
-    +, -, *, /,
-    size, length, eltype,
-    iterate, similar, show,
-    getindex, lastindex, setindex!,
-    push!
+        # See: https://github.com/CliMA/Oceananigans.jl/issues/1113
+        FFTW.set_num_threads(4threads)
+    end
 
-    
+    if CUDA.has_cuda()
+        @debug "CUDA-enabled GPU(s) detected:"
+        for (gpu, dev) in enumerate(CUDA.devices())
+            @debug "$dev: $(CUDA.name(dev))"
+        end
+
+        CUDA.allowscalar(false)
+    end
+end
+
 #####
 ##### Abstract types
 #####
@@ -188,6 +173,7 @@ function tupleit end
 function fields end
 function prognostic_fields end
 function tracer_tendency_kernel_function end
+function boundary_conditions end
 
 #####
 ##### Include all the submodules
@@ -204,14 +190,13 @@ include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
 include("TimeSteppers/TimeSteppers.jl")
+include("ImmersedBoundaries/ImmersedBoundaries.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
 include("OutputReaders/OutputReaders.jl")
 include("DistributedComputations/DistributedComputations.jl")
 
 # TODO: move here
-#include("ImmersedBoundaries/ImmersedBoundaries.jl")
-#include("Distributed/Distributed.jl")
 #include("MultiRegion/MultiRegion.jl")
 
 # Physics, time-stepping, and models
@@ -223,9 +208,6 @@ include("Forcings/Forcings.jl")
 include("Biogeochemistry.jl")
 
 # TODO: move above
-include("ImmersedBoundaries/ImmersedBoundaries.jl")
-# include("DistributedComputations/DistributedComputations.jl")
-
 include("Models/Models.jl")
 
 # Output and Physics, time-stepping, and models
@@ -263,24 +245,5 @@ using .OutputWriters
 using .Simulations
 using .AbstractOperations
 using .MultiRegion
-
-function __init__()
-    threads = Threads.nthreads()
-    if threads > 1
-        @info "Oceananigans will use $threads threads"
-
-        # See: https://github.com/CliMA/Oceananigans.jl/issues/1113
-        FFTW.set_num_threads(4threads)
-    end
-
-    if CUDA.has_cuda()
-        @debug "CUDA-enabled GPU(s) detected:"
-        for (gpu, dev) in enumerate(CUDA.devices())
-            @debug "$dev: $(CUDA.name(dev))"
-        end
-
-        CUDA.allowscalar(false)
-    end
-end
 
 end # module
