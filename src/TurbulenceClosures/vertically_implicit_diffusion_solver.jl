@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Δz
+using Oceananigans.Operators: Δz, Δr
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, ImmersedBoundaryGrid
 using Oceananigans.Grids: ZDirection

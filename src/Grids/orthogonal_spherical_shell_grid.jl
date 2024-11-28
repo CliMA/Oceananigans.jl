@@ -891,7 +891,7 @@ function on_architecture(arch::AbstractSerialArchitecture, grid::OrthogonalSpher
                    :φᶜᶜᵃ,
                    :φᶠᶜᵃ,
                    :φᶜᶠᵃ,
-                   :φᶠᶠᵃ
+                   :φᶠᶠᵃ,
                    :z)
 
     grid_spacings = (:Δxᶜᶜᵃ,

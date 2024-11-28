@@ -53,8 +53,7 @@ const F = Face
 
     grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> -10))
 
-    model = HydrostaticFreeSurfaceModel(grid, 
-                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 20))
+    model = HydrostaticFreeSurfaceModel(; grid, free_surface = SplitExplicitFreeSurface(grid; substeps = 20))
 
     @test znode(1, 1, 21, grid, C(), C(), F()) == 0
     @test dynamic_column_depthᶜᶜᵃ(1, 1, grid) == 10
