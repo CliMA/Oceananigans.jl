@@ -46,7 +46,6 @@ function time_step_catke_equation!(model)
     FT = eltype(grid)
 
     for m = 1:M # substep
-        @show m
         if m == 1 && M != 1
             χ = convert(FT, -0.5) # Euler step for the first substep
         else
@@ -164,7 +163,7 @@ end
     # See below.
     α = convert(FT, 1.5) + χ
     β = convert(FT, 0.5) + χ
-
+    
     @inbounds begin
         total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe
         e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k])
