@@ -236,8 +236,7 @@ function run_catke_tke_substepping_tests(arch, closure)
 
     eⁿ⁺¹ = compute!(Field(eⁿ + C₁ * G⁻ - C₂ * G⁻⁻))
 
-    # Check that eⁿ⁺¹ = eⁿ + Δt * Gⁿ.e 
-    # (with CATKE we always use an Euler Step at the first substep)
+    # Check that eⁿ⁺¹ = eⁿ + Δt * (C₁ Gⁿ.e - C₂ G⁻.e) 
     @test model.tracers.e ≈ eⁿ⁺¹
 
     return model
