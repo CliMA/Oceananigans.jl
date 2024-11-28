@@ -231,7 +231,6 @@ const f = Face()
 # What's going on here?
 @inline cpu_face_constructor_x(grid) = Array(getindex(nodes(grid, f, c, c; with_halos=true), 1)[1:size(grid, 1)+1])
 @inline cpu_face_constructor_y(grid) = Array(getindex(nodes(grid, c, f, c; with_halos=true), 2)[1:size(grid, 2)+1])
-@inline cpu_face_constructor_z(grid) = Array(getindex(nodes(grid, c, c, f; with_halos=true), 3)[1:size(grid, 3)+1])
 
 #####
 ##### Convenience functions

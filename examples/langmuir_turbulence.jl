@@ -313,7 +313,7 @@ Vₙ = @lift view(time_series.V[$n], 1, 1, :)
 wuₙ = @lift view(time_series.wu[$n], 1, 1, :)
 wvₙ = @lift view(time_series.wv[$n], 1, 1, :)
 
-k = searchsortedfirst(grid.zᵃᵃᶠ[:], -8)
+k = searchsortedfirst(znodes(grid, Center(); with_halos=true), -8)
 wxyₙ = @lift view(time_series.w[$n], :, :, k)
 wxzₙ = @lift view(time_series.w[$n], :, 1, :)
 uxzₙ = @lift view(time_series.u[$n], :, 1, :)

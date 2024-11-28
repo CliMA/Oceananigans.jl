@@ -69,14 +69,14 @@ const AbstractStaticGrid  = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,  
 const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,     <:RegularVerticalCoordinate}
 
 ####
-#### Adapting
+#### Adapt and on_architecture
 ####
 
 Adapt.adapt_structure(to, coord::StaticVerticalCoordinate) = 
-   StaticVerticalCoordinate(Adapt.adapt(to, coord.cᶜ),
-                            Adapt.adapt(to, coord.cᶠ),
-                            Adapt.adapt(to, coord.Δᶜ),
-                            Adapt.adapt(to, coord.Δᶠ))
+   StaticVerticalCoordinate(Adapt.adapt(to, coord.cᶠ),
+                            Adapt.adapt(to, coord.cᶜ),
+                            Adapt.adapt(to, coord.Δᶠ),
+                            Adapt.adapt(to, coord.Δᶜ))
 
 Adapt.adapt_structure(to, coord::ZStarVerticalCoordinate) = 
     ZStarVerticalCoordinate(Adapt.adapt(to, coord.cᶠ),
@@ -91,6 +91,25 @@ Adapt.adapt_structure(to, coord::ZStarVerticalCoordinate) =
                             Adapt.adapt(to, coord.e₃ᶜᶜ⁻),
                             Adapt.adapt(to, coord.∂t_e₃))
 
+on_architecture(arch, coord::StaticVerticalCoordinate) = 
+   StaticVerticalCoordinate(on_architecture(arch, coord.cᶠ),
+                            on_architecture(arch, coord.cᶜ),
+                            on_architecture(arch, coord.Δᶠ),
+                            on_architecture(arch, coord.Δᶜ))
+
+on_architecture(arch, coord::ZStarVerticalCoordinate) = 
+    ZStarVerticalCoordinate(on_architecture(arch, coord.cᶠ),
+                            on_architecture(arch, coord.cᶜ),
+                            on_architecture(arch, coord.Δᶠ),
+                            on_architecture(arch, coord.Δᶜ),
+                            on_architecture(arch, coord.ηⁿ),
+                            on_architecture(arch, coord.e₃ᶜᶜⁿ),
+                            on_architecture(arch, coord.e₃ᶠᶜⁿ),
+                            on_architecture(arch, coord.e₃ᶜᶠⁿ),
+                            on_architecture(arch, coord.e₃ᶠᶠⁿ),
+                            on_architecture(arch, coord.e₃ᶜᶜ⁻),
+                            on_architecture(arch, coord.∂t_e₃))
+ 
 #####
 ##### Vertical nodes...
 #####
@@ -119,6 +138,9 @@ coordinate_summary(::Bounded, z::AbstractVerticalCoordinate, name) =
 ####
 
 z_domain(grid) = domain(topology(grid, 3)(), grid.Nz, grid.z.cᶠ)
+
+# We construct on r not on z
+cpu_face_constructor_z(grid) = Array(rnodes(grid, Face()))
 
 ####
 #### Nodes and spacings...

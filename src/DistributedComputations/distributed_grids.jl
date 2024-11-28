@@ -251,7 +251,7 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
     # it is stretched if being passed is a function or vector
     Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, TX(), Nλ, Hλ, λG, :longitude, child_arch)
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, TY(), Nφ, Hφ, φG, :latitude,  child_arch)
-    Lz, z                        = generate_coordinate(FT, (TX, TY, TZ), (Nx, Ny, Nz), H, zG, :z, 3, child_arch)
+    Lz, z                        = generate_coordinate(FT, (TX, TY, TZ), (Nλ, Nφ, Nz), H, zG, :z, 3, child_arch)
 
     precompute_metrics = metrics_precomputed(grid)
 

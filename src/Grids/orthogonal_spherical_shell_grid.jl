@@ -199,11 +199,8 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
     ηᵃᶜᵃ = ynodes(ξη_grid, Center())
 
     ## The vertical coordinates and metrics can come out of the regular rectilinear grid!
-     zᵃᵃᶠ = ξη_grid.zᵃᵃᶠ
-     zᵃᵃᶜ = ξη_grid.zᵃᵃᶜ
-    Δzᵃᵃᶜ = ξη_grid.Δzᵃᵃᶜ
-    Δzᵃᵃᶠ = ξη_grid.Δzᵃᵃᶠ
-    Lz    = ξη_grid.Lz
+    zc = ξη_grid.z
+    Lz = ξη_grid.Lz
 
 
     ## Compute staggered grid latitude-longitude (φ, λ) coordinates.
@@ -600,11 +597,10 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
 
     coordinate_arrays = (λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
                          φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ,
-                         zᵃᵃᶜ, zᵃᵃᶠ)
+                         zc)
 
     metric_arrays = (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                      Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
-                     Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                      Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
 
     conformal_mapping = CubedSphereConformalMapping(ξ, η, rotation)
@@ -621,11 +617,10 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
 
     coordinate_arrays = (grid.λᶜᶜᵃ, grid.λᶠᶜᵃ, grid.λᶜᶠᵃ, grid.λᶠᶠᵃ,
                          grid.φᶜᶜᵃ, grid.φᶠᶜᵃ, grid.φᶜᶠᵃ, grid.φᶠᶠᵃ,
-                         grid.zᵃᵃᶜ, grid.zᵃᵃᶠ)
+                         grid.zᶠ)
 
     metric_arrays = (grid.Δxᶜᶜᵃ, grid.Δxᶠᶜᵃ, grid.Δxᶜᶠᵃ, grid.Δxᶠᶠᵃ,
                      grid.Δyᶜᶜᵃ, grid.Δyᶜᶠᵃ, grid.Δyᶠᶜᵃ, grid.Δyᶠᶠᵃ,
-                     grid.Δzᵃᵃᶜ, grid.Δzᵃᵃᶠ,
                      grid.Azᶜᶜᵃ, grid.Azᶠᶜᵃ, grid.Azᶜᶠᵃ, grid.Azᶠᶠᵃ)
 
     coordinate_arrays = map(a -> on_architecture(architecture, a), coordinate_arrays)
@@ -1029,7 +1024,7 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
 
     λ₁, λ₂ = minimum(grid.λᶠᶠᵃ[1:Nx_face, 1:Ny_face]), maximum(grid.λᶠᶠᵃ[1:Nx_face, 1:Ny_face])
     φ₁, φ₂ = minimum(grid.φᶠᶠᵃ[1:Nx_face, 1:Ny_face]), maximum(grid.φᶠᶠᵃ[1:Nx_face, 1:Ny_face])
-    Ωz = domain(topology(grid, 3)(), Nz, grid.zᵃᵃᶠ)
+    Ωz = domain(topology(grid, 3)(), Nz, grid.z.cᶠ)
 
     (λ_center, φ_center), (extent_λ, extent_φ) = get_center_and_extents_of_shell(grid)
 

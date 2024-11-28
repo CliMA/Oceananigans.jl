@@ -31,7 +31,7 @@ function info_message(grid)
     msg1 = "Testing z-star coordinates on $(architecture(grid)) on a "
     msg2 = string(getnamewrapper(grid)) 
     msg3 = grid isa ImmersedBoundaryGrid ? " on a " * string(getnamewrapper(grid.underlying_grid)) : ""
-    msg4 = grid.Δzᵃᵃᶠ.reference isa Number ? " with uniform spacing" : " with stretched spacing"
+    msg4 = grid.z.Δᶠ isa Number ? " with uniform spacing" : " with stretched spacing"
     msg5 = grid isa ImmersedBoundaryGrid ? " and $(string(getnamewrapper(grid.immersed_boundary))) immersed boundary" : ""
 
     return msg1 * msg2 * msg3 * msg4 * msg5
