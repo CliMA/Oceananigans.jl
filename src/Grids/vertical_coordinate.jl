@@ -147,10 +147,6 @@ function zspacings end
 
 z_domain(grid) = domain(topology(grid, 3)(), grid.Nz, grid.z.cᶠ)
 
-# We construct on r not on z
-cpu_face_constructor_z(grid) = Array(rnodes(grid, Face()))
-cpu_face_constructor_z(::ZFlatGrid) = nothing
-
 ####
 #### Utilities
 ####
