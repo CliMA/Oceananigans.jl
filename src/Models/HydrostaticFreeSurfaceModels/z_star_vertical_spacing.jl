@@ -1,14 +1,14 @@
 using Oceananigans.Grids
 using Oceananigans.ImmersedBoundaries: ZStarGridOfSomeKind
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: compute_barotropic_mode!
-
 #####
 ##### ZStar-specific vertical spacings update
 #####
 
 # The easy case
 barotropic_velocities(free_surface::SplitExplicitFreeSurface) = free_surface.barotropic_velocities
+
+# The "harder" case, barotropic velocities are computed on the fly
 barotropic_velocities(free_surface) = nothing, nothing
 
 # Fallback 
