@@ -8,7 +8,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 #####
 
 # The easy case
-retrieve_barotropic_velocity(model, free_surface::SplitExplicitFreeSurface) = free_surface.barotropic_velocities
+barotropic_velocities(free_surface::SplitExplicitFreeSurface) = free_surface.barotropic_velocities
+barotropic_velocities(free_surface) = nothing, nothing
 
 # Fallback 
 update_grid!(model, grid; parameters) = nothing
@@ -28,15 +29,14 @@ function update_grid!(model, grid::ZStarGridOfSomeKind; parameters = :xy)
     launch!(architecture(grid), grid, parameters, _update_grid_scaling!, 
             e₃ᶜᶜⁿ, e₃ᶠᶜⁿ, e₃ᶜᶠⁿ, e₃ᶠᶠⁿ, e₃ᶜᶜ⁻, ηⁿ, grid, η)
 
-    # the barotropic velocity are retrieved from the free surface model for a
+    # the barotropic velocities are retrieved from the free surface model for a
     # SplitExplicitFreeSurface and are calculated for other free surface models
-    # For the moment only the `SplitExplicitFreeSurface` is supported
-    # TODO: find a way to support other free surface models by storing the barotropic velocities shomewhere
-    U, V = retrieve_barotropic_velocity(model, model.free_surface)
+    U, V = barotropic_velocities(model.free_surface)
+    u, v, _ = model.velocities
 
     # Update vertical spacing with available parameters 
     # No need to fill the halo as the scaling is updated _IN_ the halos
-    launch!(architecture(grid), grid, parameters, _update_grid_vertical_velocity!, ∂t_e₃, grid, U, V)
+    launch!(architecture(grid), grid, parameters, _update_grid_vertical_velocity!, ∂t_e₃, grid, U, V, u, v)
 
     return nothing
 end
@@ -75,19 +75,40 @@ end
     end
 end
 
-@kernel function _update_grid_vertical_velocity!(∂t_e₃, grid, U, V)
+@kernel function _update_grid_vertical_velocity!(∂t_e₃, grid, U, V, u, v)
     i, j = @index(Global, NTuple)
     kᴺ = size(grid, 3)
 
     hᶜᶜ = static_column_depthᶜᶜᵃ(i, j, grid)
 
     # ∂(η / H)/∂t = - ∇ ⋅ ∫udz / H
-    δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, U)
-    δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, V)
+    δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u)
+    δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
 
     δh_U = (δx_U + δy_V) / Azᶜᶜᶜ(i, j, kᴺ, grid)
 
     @inbounds ∂t_e₃[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), - δh_U / hᶜᶜ)
+end
+
+# If U and V exist, we just take them
+@inline barotropic_U(i, j, k, grid, U, u) = @inbounds U[i, j, k]
+@inline barotropic_V(i, j, k, grid, V, v) = @inbounds V[i, j, k]
+
+# If U and V are not available, we compute them
+@inline function barotropic_U(i, j, k, grid, ::Nothing, u)
+    U = 0
+    for k in 1:size(grid, 3)
+        U += u[i, j, k] * Δzᶠᶜᶜ(i, j, k, grid)
+    end
+    return U
+end
+
+@inline function barotropic_V(i, j, k, grid, ::Nothing, v)
+    V = 0
+    for k in 1:size(grid, 3)
+        V += v[i, j, k] * Δzᶠᶜᶜ(i, j, k, grid)
+    end
+    return V
 end
 
 #####

@@ -156,10 +156,11 @@ cpu_face_constructor_z(::ZFlatGrid) = nothing
 ####
 
 function validate_dimension_specification(T, ξ::ZStarVerticalCoordinate, dir, N, FT)
-    reference = validate_dimension_specification(T, ξ.cᶠ, dir, N, FT)
-    args      = Tuple(getproperty(ξ, prop) for prop in propertynames(ξ))
+    cᶠ = validate_dimension_specification(T, ξ.cᶠ, dir, N, FT)
+    cᶜ = validate_dimension_specification(T, ξ.cᶜ, dir, N, FT)
+    args = Tuple(getproperty(ξ, prop) for prop in propertynames(ξ))
 
-    return ZStarVerticalCoordinate(reference, reference, args[3:end]...)
+    return ZStarVerticalCoordinate(cᶠ, cᶜ, args[3:end]...)
 end
 
 # Summaries
