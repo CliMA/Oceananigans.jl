@@ -84,12 +84,10 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_params = w_k
     update_grid!(model, grid; parameters = w_params)
     unscale_tracers!(tracers, grid; parameters = w_params)
         
-    # Update the other auxiliary terms
+    # Update the other auxiliary terms (w, κ, p)
     compute_w_from_continuity!(model; parameters = w_params)
     compute_diffusivities!(diffusivity, closure, model; parameters = κ_params)
-    update_hydrostatic_pressure!(model.pressure.pHY′, architecture(grid),
-                                grid, model.buoyancy, model.tracers; 
-                                parameters = p_params)
+    update_hydrostatic_pressure!(grid, model; parameters = p_params)
 
     return nothing
 end
