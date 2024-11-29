@@ -111,8 +111,10 @@ on_architecture(arch, coord::ZStarVerticalCoordinate) =
                             on_architecture(arch, coord.∂t_e₃))
  
 #####
-##### Vertical nodes...
+##### Nodes and spacings (common to every grid)...
 #####
+
+AUG = AbstractUnderlyingGrid
 
 @inline rnode(i, j, k, grid, ℓx, ℓy, ℓz) = rnode(k, grid, ℓz)
 @inline rnode(k, grid, ::Center) = getnode(grid.z.cᶜ, k)
@@ -120,18 +122,24 @@ on_architecture(arch, coord::ZStarVerticalCoordinate) =
 
 # These will be extended in the Operators module
 @inline znode(k, grid, ℓz) = rnode(k, grid, ℓz)
-@inline znode(i, j, k, grid, ℓx, ℓy, ℓz) = rnode(k, grid, ℓz)
+@inline znode(i, j, k, grid, ℓx, ℓy, ℓz) = rnode(i, j, k, grid, ℓx, ℓy, ℓz)
 
-function validate_dimension_specification(T, ξ::ZStarVerticalCoordinate, dir, N, FT)
-    reference = validate_dimension_specification(T, ξ.cᶠ, dir, N, FT)
-    args      = Tuple(getproperty(ξ, prop) for prop in propertynames(ξ))
+@inline rnodes(grid::AUG, ℓz::Face;   with_halos=false) = _property(grid.z.cᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline rnodes(grid::AUG, ℓz::Center; with_halos=false) = _property(grid.z.cᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline rnodes(grid::AUG, ℓx, ℓy, ℓz; with_halos=false) = rnodes(grid, ℓz; with_halos)
 
-    return ZStarVerticalCoordinate(reference, reference, args[3:end]...)
-end
+rnodes(grid::AUG, ::Nothing; kwargs...) = 1:1
+znodes(grid::AUG, ::Nothing; kwargs...) = 1:1
 
-# Summaries
-coordinate_summary(::Bounded, z::AbstractVerticalCoordinate, name) = 
-    @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(z.Δᶜ))
+# TODO: extend in the Operators module
+@inline znodes(grid::AUG, ℓz; kwargs...) = rnodes(grid, ℓz; kwargs...)
+@inline znodes(grid::AUG, ℓx, ℓy, ℓz; kwargs...) = rnodes(grid, ℓx, ℓy, ℓz; kwargs...)
+
+function rspacings end
+function zspacings end
+
+@inline rspacings(grid, ℓz) = rspacings(grid, nothing, nothing, ℓz)
+@inline zspacings(grid, ℓz) = zspacings(grid, nothing, nothing, ℓz)
 
 ####
 #### z_domain (independent of ZStar or not)
@@ -144,22 +152,16 @@ cpu_face_constructor_z(grid) = Array(rnodes(grid, Face()))
 cpu_face_constructor_z(::ZFlatGrid) = nothing
 
 ####
-#### Nodes and spacings (common to every grid)...
+#### Utilities
 ####
 
-@inline rnodes(grid, ℓz::Face;   with_halos=false) = _property(grid.z.cᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
-@inline rnodes(grid, ℓz::Center; with_halos=false) = _property(grid.z.cᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
-@inline rnodes(grid, ℓx, ℓy, ℓz; with_halos=false) = rnodes(grid, ℓz; with_halos)
+function validate_dimension_specification(T, ξ::ZStarVerticalCoordinate, dir, N, FT)
+    reference = validate_dimension_specification(T, ξ.cᶠ, dir, N, FT)
+    args      = Tuple(getproperty(ξ, prop) for prop in propertynames(ξ))
 
-rnodes(grid, ::Nothing; kwargs...) = 1:1
-znodes(grid, ::Nothing; kwargs...) = 1:1
+    return ZStarVerticalCoordinate(reference, reference, args[3:end]...)
+end
 
-# TODO: extend in the Operators module
-@inline znodes(grid, ℓz; kwargs...) = rnodes(grid, ℓz; kwargs...)
-@inline znodes(grid, ℓx, ℓy, ℓz; kwargs...) = rnodes(grid, ℓx, ℓy, ℓz; kwargs...)
-
-function rspacings end
-function zspacings end
-
-@inline rspacings(grid, ℓz) = rspacings(grid, nothing, nothing, ℓz)
-@inline zspacings(grid, ℓz) = zspacings(grid, nothing, nothing, ℓz)
+# Summaries
+coordinate_summary(::Bounded, z::AbstractVerticalCoordinate, name) = 
+    @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(z.Δᶜ))
