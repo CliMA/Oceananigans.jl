@@ -120,21 +120,27 @@ end
 
             for grid in grids
                 info_msg = info_message(grid)
-                @testset "$info_msg" begin
-                    @info "  $info_msg"
-                    # TODO: minimum_xspacing(grid) on a Immersed GPU grid with ZStarVerticalCoordinate
-                    # fails because it uses too much parameter space. Figure out a way to reduce it 
-                    free_surface = SplitExplicitFreeSurface(grid; substeps = 20)
-                    model = HydrostaticFreeSurfaceModel(; grid, 
-                                                        free_surface, 
-                                                        tracers = (:b, :c), 
-                                                        buoyancy = BuoyancyTracer())
+                
+                split_free_surface = SplitExplicitFreeSurface(grid; substeps = 20)
+                implicit_free_surface = ImplicitFreeSurface()
+                explicit_free_surface = ExplicitFreeSurface()
+                
+                for free_surface in [split_free_surface, implicit_free_surface, explicit_free_surface]
+                    @testset "$info_msg" begin
+                        @info "  $info_msg of $(free_surface)" 
+                        # TODO: minimum_xspacing(grid) on a Immersed GPU grid with ZStarVerticalCoordinate
+                        # fails because it uses too much parameter space. Figure out a way to reduce it 
+                        model = HydrostaticFreeSurfaceModel(; grid, 
+                                                            free_surface, 
+                                                            tracers = (:b, :c), 
+                                                            buoyancy = BuoyancyTracer())
 
-                    bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01 
+                        bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01 
 
-                    set!(model, c = (x, y, z) -> rand(), b = bᵢ)
+                        set!(model, c = (x, y, z) -> rand(), b = bᵢ)
 
-                    test_zstar_coordinate(model, 100, 10)
+                        test_zstar_coordinate(model, 100, 10)
+                    end
                 end
             end
         end
