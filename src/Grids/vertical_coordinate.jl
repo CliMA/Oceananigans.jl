@@ -60,13 +60,16 @@ ZStarVerticalCoordinate(r⁻::Number, r⁺::Number) = ZStarVerticalCoordinate((r
 ####
 
 const RegularStaticVerticalCoordinate = StaticVerticalCoordinate{<:Any, <:Number}
-const RegularZstarVerticalCoordinate  = ZStarVerticalCoordinate{<:Any,  <:Number}
+const RegularZStarVerticalCoordinate  = ZStarVerticalCoordinate{<:Any,  <:Number}
 
-const RegularVerticalCoordinate = Union{RegularStaticVerticalCoordinate, RegularZstarVerticalCoordinate}
+const RegularVerticalCoordinate = Union{RegularStaticVerticalCoordinate, RegularZStarVerticalCoordinate}
 
 const AbstractZStarGrid   = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Bounded, <:ZStarVerticalCoordinate}
 const AbstractStaticGrid  = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,     <:StaticVerticalCoordinate}
 const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,     <:RegularVerticalCoordinate}
+
+const RegularStaticVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,  <:RegularStaticVerticalCoordinate}
+const RegularZStarVerticalGrid  = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,  <:RegularZStarVerticalCoordinate}
 
 ####
 #### Adapt and on_architecture
@@ -147,13 +150,17 @@ function zspacings end
 
 z_domain(grid) = domain(topology(grid, 3)(), grid.Nz, grid.z.cᶠ)
 
-@inline cpu_face_constructor_z(grid) = Array(getindex(nodes(grid, c, c, f; with_halos=true), 3)[1:size(grid, 3)+1])
+@inline cpu_face_constructor_z(grid) = on_architecture(CPU(), rnodes(grid, Face()))
 
 # In case of an AbstractZStarGrid return a ZStarVerticalCoordinate
 @inline function cpu_face_constructor_z(grid::AbstractZStarGrid) 
-    r_faces = Array(getindex(nodes(grid, c, c, f; with_halos=true), 3)[1:size(grid, 3)+1])
+    r_faces = on_architecture(CPU(), rnodes(grid, Face()))
     return ZStarVerticalCoordinate(r_faces)
 end
+
+# Easier for regular grids
+@inline cpu_face_constructor_z(grid::RegularStaticVerticalGrid) = z_domain(grid)
+@inline cpu_face_constructor_z(grid::RegularZStarVerticalGrid)  = ZStarVerticalCoordinate(z_domain(grid))
 
 ####
 #### Utilities

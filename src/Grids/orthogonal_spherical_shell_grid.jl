@@ -1094,10 +1094,7 @@ end
 function nodes(grid::OSSG, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
     λ = λnodes(grid, ℓx, ℓy, ℓz; with_halos)
     φ = φnodes(grid, ℓx, ℓy, ℓz; with_halos)
-    # We use rnodes here. This is intentional. znodes return the actual zcoordinate 
-    # which might be moving in case of a ZStarVerticalCoordinate. rnodes return the
-    # reference zcoordinate which is constant.
-    z = rnodes(grid, ℓx, ℓy, ℓz; with_halos)
+    z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
 
     if reshape
         # λ and φ are 2D arrays

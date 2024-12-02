@@ -456,10 +456,7 @@ rname(::RG) = :z
 function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
     x = xnodes(grid, ℓx, ℓy, ℓz; with_halos)
     y = ynodes(grid, ℓx, ℓy, ℓz; with_halos)
-    # We use rnodes here. This is intentional. znodes return the actual zcoordinate 
-    # which might be moving in case of a ZStarVerticalCoordinate. rnodes return the
-    # reference zcoordinate which is constant.
-    z = rnodes(grid, ℓx, ℓy, ℓz; with_halos) 
+    z = znodes(grid, ℓx, ℓy, ℓz; with_halos) 
 
     if reshape
         # Here we have to deal with the fact that Flat directions may have
