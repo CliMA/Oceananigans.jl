@@ -147,11 +147,11 @@ function zspacings end
 
 z_domain(grid) = domain(topology(grid, 3)(), grid.Nz, grid.z.cᶠ)
 
-@inline rfaces(grid::RegularGrid) = z_domain(grid)
-@inline rfaces(grid) = on_architecture(CPU(), rnodes(grid, Face()))
+@inline cpu_face_constructor_r(grid::RegularVerticalGrid) = z_domain(grid)
+@inline cpu_face_constructor_r(grid) = on_architecture(CPU(), rnodes(grid, Face()))
 
-@inline cpu_face_constructor_z(grid) = rfaces(grid)
-@inline cpu_face_constructor_z(grid::AbstractZStarGrid) = ZStarVerticalCoordinate(rfaces(grid))
+@inline cpu_face_constructor_z(grid) = cpu_face_constructor_r(grid)
+@inline cpu_face_constructor_z(grid::AbstractZStarGrid) = ZStarVerticalCoordinate(cpu_face_constructor_r(grid))
 
 ####
 #### Utilities
