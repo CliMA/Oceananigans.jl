@@ -71,9 +71,9 @@ function mask_immersed_model_fields!(model, grid)
     return nothing
 end
 
-function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_params = w_kernel_parameters(model.grid),
-                                                                  p_params = p_kernel_parameters(model.grid),
-                                                                  κ_params = :xyz) 
+function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters = w_kernel_parameters(model.grid),
+                                                                  p_parameters = p_kernel_parameters(model.grid),
+                                                                  κ_parameters = :xyz) 
     
     grid        = model.grid
     closure     = model.closure
@@ -85,15 +85,15 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_params = w_k
     arch = architecture(grid) 
 
     # Update the grid and unscale the tracers
-    update_grid!(model, grid; parameters = w_params)
-    unscale_tracers!(tracers, grid; parameters = w_params)
+    update_grid!(model, grid; parameters = w_parameters)
+    unscale_tracers!(tracers, grid; parameters = w_parameters)
 
     # Advance diagnostic quantities
-    compute_w_from_continuity!(model; parameters = w_params)
-    update_hydrostatic_pressure!(P, arch, grid, buoyancy, tracers; parameters = p_params)
+    compute_w_from_continuity!(model; parameters = w_parameters)
+    update_hydrostatic_pressure!(P, arch, grid, buoyancy, tracers; parameters = p_parameters)
 
     # Update closure diffusivities
-    compute_diffusivities!(diffusivity, closure, model; parameters = κ_params)
+    compute_diffusivities!(diffusivity, closure, model; parameters = κ_parameters)
     
     return nothing
 end
