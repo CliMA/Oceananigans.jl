@@ -68,9 +68,6 @@ const AbstractZStarGrid   = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Bounde
 const AbstractStaticGrid  = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,     <:StaticVerticalCoordinate}
 const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,     <:RegularVerticalCoordinate}
 
-const RegularStaticVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,  <:RegularStaticVerticalCoordinate}
-const RegularZStarVerticalGrid  = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,  <:RegularZStarVerticalCoordinate}
-
 ####
 #### Adapt and on_architecture
 ####
@@ -150,17 +147,11 @@ function zspacings end
 
 z_domain(grid) = domain(topology(grid, 3)(), grid.Nz, grid.z.cᶠ)
 
-@inline cpu_face_constructor_z(grid) = on_architecture(CPU(), rnodes(grid, Face()))
+@inline rfaces(grid::RegularGrid) = z_domain(grid)
+@inline rfaces(grid) = on_architecture(CPU(), rnodes(grid, Face()))
 
-# In case of an AbstractZStarGrid return a ZStarVerticalCoordinate
-@inline function cpu_face_constructor_z(grid::AbstractZStarGrid) 
-    r_faces = on_architecture(CPU(), rnodes(grid, Face()))
-    return ZStarVerticalCoordinate(r_faces)
-end
-
-# Easier for regular grids
-@inline cpu_face_constructor_z(grid::RegularStaticVerticalGrid) = z_domain(grid)
-@inline cpu_face_constructor_z(grid::RegularZStarVerticalGrid)  = ZStarVerticalCoordinate(z_domain(grid))
+@inline cpu_face_constructor_z(grid) = rfaces(grid)
+@inline cpu_face_constructor_z(grid::AbstractZStarGrid) = ZStarVerticalCoordinate(rfaces(grid))
 
 ####
 #### Utilities
