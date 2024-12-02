@@ -53,7 +53,7 @@ on_architecture(to, gm::GridMetricOperation{LX, LY, LZ}) where {LX, LY, LZ} =
 indices(::GridMetricOperation) = default_indices(3)
 
 """
-    gm = GridMetricOperation(L, metric, grid)
+    GridMetricOperation(L, metric, grid)
 
 Instance of `GridMetricOperation` that generates `BinaryOperation`s between `AbstractField`s and the metric `metric`
 at the same location as the `AbstractField`.
@@ -170,7 +170,7 @@ end
     λspacings(grid, ℓx, ℓy, ℓz)
 
 Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
-in the ``z`` direction at location `ℓx, ℓy, ℓz`.
+in the ``λ`` direction at location `ℓx, ℓy, ℓz`.
 
 Examples
 ========
@@ -199,7 +199,7 @@ end
     φspacings(grid, ℓx, ℓy, ℓz)
 
 Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
-in the ``z`` direction at location `ℓx, ℓy, ℓz`.
+in the ``φ`` direction at location `ℓx, ℓy, ℓz`.
 
 Examples
 ========
