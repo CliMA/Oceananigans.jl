@@ -21,14 +21,15 @@ end
 # Just a column
 @inline getbc(pv::BC{<:Value, <:PolarValue}, i, k, args...) = @inbounds pv.condition.data[k]
 
-# TODO: vectors should have a different treatment since vector components should account for the frame of reference
+# TODO: vectors should have a different treatment since vector components should account for the frame of reference.
+# For the moment, the `PolarBoundaryConditions` is implemented only for fields that have `loc[2] == Center()`
 # North - South flux boundary conditions are not valid on a Latitude-Longitude grid if the last / first rows represent the poles
 function latitude_north_auxiliary_bc(grid, loc, default_bc=DefaultBoundaryCondition()) 
     # Check if the halo lies beyond the north pole
     φmax = @allowscalar φnode(grid.Ny+1, grid, Center()) 
     
     # No problem!
-    if φmax < 90 || loc[1] == Nothing
+    if φmax < 90 || loc[1] == Nothing || !(loc[2] == Center)
         return default_bc
     end
 
@@ -41,7 +42,7 @@ function latitude_south_auxiliary_bc(grid, loc, default_bc=DefaultBoundaryCondit
     φmin = @allowscalar φnode(0, grid, Face()) 
 
     # No problem!
-    if φmin > -90 || loc[1] == Nothing
+    if φmin > -90 || loc[1] == Nothing || !(loc[2] == Center)
         return default_bc
     end
 
