@@ -41,7 +41,7 @@ The operators in this file fall into three categories:
 # extend these functions (for example, LatitudeLongitudeGrid).
 
 # Calling a non existing function (for example Δxᶜᵃᶜ on an OrthogonalSphericalShellGrid) will throw an error because
-# the associated one - dimensional function is not defined. This is a feature, not a bug.
+# the associated one - dimensional function is not defined. 
 for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
     Δxˡᵃᵃ = Symbol(:Δx, L1, :ᵃ, :ᵃ)
     Δyᵃˡᵃ = Symbol(:Δy, :ᵃ, L1, :ᵃ)
