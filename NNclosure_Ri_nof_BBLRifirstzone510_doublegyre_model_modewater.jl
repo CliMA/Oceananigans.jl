@@ -22,7 +22,7 @@ using ColorSchemes
 
 #%%
 const Qᵀ_mode = 3.5e-4
-filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_modewater_zWENO5_NN_closure_NDE5_Ri_BBLRifirztzone510_temp_QT$()"
+filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_modewater_zWENO5_NN_closure_NDE5_Ri_BBLRifirztzone510_temp_QT$(Qᵀ_mode)"
 FILE_DIR = "./Output/$(filename)"
 # FILE_DIR = "/storage6/xinkai/NN_Oceananigans/$(filename)"
 @info "$(FILE_DIR)"
