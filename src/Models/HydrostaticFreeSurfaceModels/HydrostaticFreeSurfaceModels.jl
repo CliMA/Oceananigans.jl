@@ -37,6 +37,7 @@ free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 initialize_free_surface!(free_surface, grid, velocities) = nothing
 
 include("compute_w_from_continuity.jl")
+include("update_hydrostatic_pressure.jl")
 
 # No free surface
 include("nothing_free_surface.jl")

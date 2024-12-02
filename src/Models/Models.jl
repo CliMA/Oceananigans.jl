@@ -94,8 +94,12 @@ include("interleave_communication_and_computation.jl")
 ##### All the code
 #####
 
-include("NonhydrostaticModels/NonhydrostaticModels.jl")
+function p_kernel_parameters end
+function compute_auxiliaries! end
+
+include("buffer_tendency_kernel_parameters.jl")
 include("HydrostaticFreeSurfaceModels/HydrostaticFreeSurfaceModels.jl")
+include("NonhydrostaticModels/NonhydrostaticModels.jl")
 include("ShallowWaterModels/ShallowWaterModels.jl")
 include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 
