@@ -209,10 +209,10 @@ end
 @inline Δλᶜᶠᵃ(i, j, k, grid::OSSG) = δxᶜᵃᵃ(i, j, k, grid, λnode, Face(),   Face(),   nothing)
 @inline Δλᶠᶠᵃ(i, j, k, grid::OSSG) = δxᶠᵃᵃ(i, j, k, grid, λnode, Center(), Face(),   nothing)
 
-@inline Δφᶜᶜᵃ(i, j, k, grid::OSSG) = δyᵃᶠᵃ(i, j, k, grid, λnode, Center(), Face(),   nothing)
+@inline Δφᶜᶜᵃ(i, j, k, grid::OSSG) = δyᵃᶜᵃ(i, j, k, grid, λnode, Center(), Face(),   nothing)
 @inline Δφᶠᶜᵃ(i, j, k, grid::OSSG) = δyᵃᶜᵃ(i, j, k, grid, λnode, Face(),   Face(),   nothing)
 @inline Δφᶜᶠᵃ(i, j, k, grid::OSSG) = δyᵃᶠᵃ(i, j, k, grid, λnode, Center(), Center(), nothing)
-@inline Δφᶠᶠᵃ(i, j, k, grid::OSSG) = δyᵃᶜᵃ(i, j, k, grid, λnode, Face(),   Center(), nothing)
+@inline Δφᶠᶠᵃ(i, j, k, grid::OSSG) = δyᵃᶠᵃ(i, j, k, grid, λnode, Face(),   Center(), nothing)
 
 ### Linear spacings
 
