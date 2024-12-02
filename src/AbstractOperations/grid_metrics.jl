@@ -73,8 +73,8 @@ BinaryOperation at (Center, Center, Center)
 ├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 └── tree:
     * at (Center, Center, Center)
-   ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
-   └── Δzᶜᶜᶜ at (Center, Center, Center)
+    ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+    └── Δzᶜᶜᶜ at (Center, Center, Center)
 
 julia> c .= 1;
 
