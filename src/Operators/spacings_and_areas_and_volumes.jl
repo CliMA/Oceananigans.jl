@@ -42,35 +42,52 @@ The operators in this file fall into three categories:
 
 # Calling a non existing function (for example Δxᶜᵃᶜ on an OrthogonalSphericalShellGrid) will throw an error because
 # the associated one - dimensional function is not defined. This is a feature, not a bug.
+for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
+    Δxˡᵃᵃ = Symbol(:Δx, L1, :ᵃ, :ᵃ)
+    Δyᵃˡᵃ = Symbol(:Δy, :ᵃ, L1, :ᵃ)
+    Δzᵃᵃˡ = Symbol(:Δz, :ᵃ, :ᵃ, L1)
+    Δλˡᵃᵃ = Symbol(:Δλ, L1, :ᵃ, :ᵃ)
+    Δφᵃˡᵃ = Symbol(:Δφ, :ᵃ, L1, :ᵃ)
 
-spacing_1D(::Val{:x}, L1)         = Symbol(:Δx, L1, :ᵃ, :ᵃ)
-spacing_1D(::Val{:y}, L1)         = Symbol(:Δy, :ᵃ, L1, :ᵃ)
-spacing_1D(::Val{:z}, L1)         = Symbol(:Δz, :ᵃ, :ᵃ, L1)
-spacing_2D1(::Val{:x}, L1, L2)    = Symbol(:Δx, L1, L2, :ᵃ)
-spacing_2D1(::Val{:y}, L1, L2)    = Symbol(:Δy, L2, L1, :ᵃ)
-spacing_2D1(::Val{:z}, L1, L2)    = Symbol(:Δz, :ᵃ, L2, L1)
-spacing_2D2(::Val{:x}, L1, L2)    = Symbol(:Δx, L1, :ᵃ, L2)
-spacing_2D2(::Val{:y}, L1, L2)    = Symbol(:Δy, :ᵃ, L1, L2)
-spacing_2D2(::Val{:z}, L1, L2)    = Symbol(:Δz, L2, :ᵃ, L1)
-spacing_3D(::Val{:x}, L1, L2, L3) = Symbol(:Δx, L1, L2, L3)
-spacing_3D(::Val{:y}, L1, L2, L3) = Symbol(:Δy, L2, L1, L3)
-spacing_3D(::Val{:z}, L1, L2, L3) = Symbol(:Δz, L3, L2, L1)
+    Δxˡˡᵃ = Symbol(:Δx, L1, L2, :ᵃ)
+    Δyˡˡᵃ = Symbol(:Δy, L2, L1, :ᵃ)
+    Δzˡᵃˡ = Symbol(:Δz, L2, :ᵃ, L1)
+    Δλˡˡᵃ = Symbol(:Δλ, L1, L2, :ᵃ)
+    Δφˡˡᵃ = Symbol(:Δφ, L2, L1, :ᵃ)
 
-# Convenience Functions for all grids
-# This metaprogramming loop defines all the allowed combinations of Δx, Δy, and Δz
-# Note `:ᵃ` is not allowed for the location associated with the spacing
-for dir in (:x, :y, :z)
-    for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
-        spacing1D  = spacing_1D(Val(dir), L1)
-        spacing2D1 = spacing_2D1(Val(dir), L1, L2)
-        spacing2D2 = spacing_2D2(Val(dir), L1, L2)
-        @eval @inline $spacing2D1(i, j, k, grid) = $spacing1D(i, j, k, grid)
-        @eval @inline $spacing2D2(i, j, k, grid) = $spacing1D(i, j, k, grid)
+    Δxˡᵃˡ = Symbol(:Δx, L1, :ᵃ, L2)
+    Δyᵃˡˡ = Symbol(:Δy, :ᵃ, L1, L2)
+    Δzᵃˡˡ = Symbol(:Δz, :ᵃ, L2, L1)
+    Δλˡᵃˡ = Symbol(:Δλ, L1, :ᵃ, L2)
+    Δφᵃˡˡ = Symbol(:Δφ, :ᵃ, L1, L2)
+    
+    @eval @inline $Δxˡˡᵃ(i, j, k, grid) = $Δxˡᵃᵃ(i, j, k, grid)
+    @eval @inline $Δxˡᵃˡ(i, j, k, grid) = $Δxˡᵃᵃ(i, j, k, grid)
+
+    @eval @inline $Δyˡˡᵃ(i, j, k, grid) = $Δyᵃˡᵃ(i, j, k, grid)
+    @eval @inline $Δyᵃˡˡ(i, j, k, grid) = $Δyᵃˡᵃ(i, j, k, grid)
+
+    @eval @inline $Δzˡᵃˡ(i, j, k, grid) = $Δzᵃᵃˡ(i, j, k, grid)
+    @eval @inline $Δzᵃˡˡ(i, j, k, grid) = $Δzᵃᵃˡ(i, j, k, grid)
         
-        for L3 in (:ᶜ, :ᶠ)
-            spacing3D = spacing_3D(Val(dir), L1, L2, L3)
-            @eval @inline $spacing3D(i, j, k, grid) = $spacing2D1(i, j, k, grid)
-        end
+    @eval @inline $Δλˡˡᵃ(i, j, k, grid) = $Δλˡᵃᵃ(i, j, k, grid)
+    @eval @inline $Δλˡᵃˡ(i, j, k, grid) = $Δλˡᵃᵃ(i, j, k, grid)
+
+    @eval @inline $Δφˡˡᵃ(i, j, k, grid) = $Δφᵃˡᵃ(i, j, k, grid)
+    @eval @inline $Δφᵃˡˡ(i, j, k, grid) = $Δφᵃˡᵃ(i, j, k, grid)
+
+    for L3 in (:ᶜ, :ᶠ)
+        Δxˡˡˡ = Symbol(:Δx, L1, L2, L3)
+        Δyˡˡˡ = Symbol(:Δy, L2, L1, L3)
+        Δzˡˡˡ = Symbol(:Δz, L2, L3, L1)
+        Δλˡˡˡ = Symbol(:Δλ, L1, L2, L3)
+        Δφˡˡˡ = Symbol(:Δφ, L2, L1, L3)
+    
+        @eval @inline $Δxˡˡˡ(i, j, k, grid) = $Δxˡˡᵃ(i, j, k, grid)
+        @eval @inline $Δyˡˡˡ(i, j, k, grid) = $Δyˡˡᵃ(i, j, k, grid)
+        @eval @inline $Δzˡˡˡ(i, j, k, grid) = $Δzˡᵃˡ(i, j, k, grid)
+        @eval @inline $Δλˡˡˡ(i, j, k, grid) = $Δλˡˡᵃ(i, j, k, grid)
+        @eval @inline $Δφˡˡˡ(i, j, k, grid) = $Δφˡˡᵃ(i, j, k, grid)
     end
 end
 
@@ -100,13 +117,13 @@ end
 @inline Δyᵃᶠᵃ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶠᵃ[j]
 @inline Δyᵃᶜᵃ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶜᵃ[j]
 
-## XRegularRG
+### XRegularRG
 
 @inline Δxᶠᵃᵃ(i, j, k, grid::RGX) = grid.Δxᶠᵃᵃ
 @inline Δxᶜᵃᵃ(i, j, k, grid::RGX) = grid.Δxᶜᵃᵃ
 
 
-## YRegularRG
+### YRegularRG
 
 @inline Δyᵃᶠᵃ(i, j, k, grid::RGY) = grid.Δyᵃᶠᵃ
 @inline Δyᵃᶜᵃ(i, j, k, grid::RGY) = grid.Δyᵃᶜᵃ
@@ -115,14 +132,28 @@ end
 ##### LatitudeLongitude Grids (define both precomputed and non-precomputed metrics)
 #####
 
-# Precomputed metrics
+### Curvilinear spacings
+
+@inline Δλᶜᵃᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δλᶜᵃᵃ[i]
+@inline Δλᶠᵃᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δλᶠᵃᵃ[i]
+@inline Δλᶜᵃᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δλᶜᵃᵃ
+@inline Δλᶠᵃᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δλᶠᵃᵃ
+
+@inline Δφᵃᶜᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δφᵃᶜᵃ[j]
+@inline Δφᵃᶠᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δφᵃᶠᵃ[j]
+@inline Δφᵃᶜᵃ(i, j, k, grid::LLGY) = @inbounds grid.Δφᵃᶜᵃ
+@inline Δφᵃᶠᵃ(i, j, k, grid::LLGY) = @inbounds grid.Δφᵃᶠᵃ
+
+### Linear spacings
+
+### Precomputed metrics
 
 @inline Δyᵃᶜᵃ(i, j, k, grid::LLGY) = grid.Δyᶠᶜᵃ
 @inline Δyᵃᶠᵃ(i, j, k, grid::LLGY) = grid.Δyᶜᶠᵃ
 @inline Δyᵃᶜᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δyᶠᶜᵃ[j]
 @inline Δyᵃᶠᵃ(i, j, k, grid::LLG)  = @inbounds grid.Δyᶜᶠᵃ[j]
 
-# On-the-fly metrics
+### On-the-fly metrics
 
 @inline Δyᵃᶠᵃ(i, j, k, grid::LLGFY) = grid.radius * deg2rad(grid.Δφᵃᶠᵃ)
 @inline Δyᵃᶜᵃ(i, j, k, grid::LLGFY) = grid.radius * deg2rad(grid.Δφᵃᶜᵃ)
@@ -136,7 +167,7 @@ end
 #####
 
 #####
-##### LatitudeLongitudeGrid (only the Δx are required, Δy are 1D)
+##### LatitudeLongitudeGrid (only the Δx are required, Δy, Δλ, and Δφ are 1D)
 #####
 
 ### Pre computed metrics
@@ -170,6 +201,20 @@ end
 #####
 #####  OrthogonalSphericalShellGrid (does not have one-dimensional spacings)
 #####
+
+### Curvilinear spacings
+
+@inline Δλᶜᶜᵃ(i, j, k, grid::OSSG) = δxᶜᵃᵃ(i, j, k, grid, λnode, Face(),   Center(), nothing)
+@inline Δλᶠᶜᵃ(i, j, k, grid::OSSG) = δxᶠᵃᵃ(i, j, k, grid, λnode, Center(), Center(), nothing)
+@inline Δλᶜᶠᵃ(i, j, k, grid::OSSG) = δxᶜᵃᵃ(i, j, k, grid, λnode, Face(),   Face(),   nothing)
+@inline Δλᶠᶠᵃ(i, j, k, grid::OSSG) = δxᶠᵃᵃ(i, j, k, grid, λnode, Center(), Face(),   nothing)
+
+@inline Δφᶜᶜᵃ(i, j, k, grid::OSSG) = δyᵃᶠᵃ(i, j, k, grid, λnode, Center(), Face(),   nothing)
+@inline Δφᶠᶜᵃ(i, j, k, grid::OSSG) = δyᵃᶜᵃ(i, j, k, grid, λnode, Face(),   Face(),   nothing)
+@inline Δφᶜᶠᵃ(i, j, k, grid::OSSG) = δyᵃᶠᵃ(i, j, k, grid, λnode, Center(), Center(), nothing)
+@inline Δφᶠᶠᵃ(i, j, k, grid::OSSG) = δyᵃᶜᵃ(i, j, k, grid, λnode, Face(),   Center(), nothing)
+
+### Linear spacings
 
 @inline Δxᶜᶜᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δxᶜᶜᵃ[i, j]
 @inline Δxᶠᶜᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δxᶠᶜᵃ[i, j]
@@ -258,7 +303,7 @@ end
 
 #####
 #####
-##### Volumes!! (quite unambiguous)
+##### Volumes!! (always 3D)
 #####
 #####
 
@@ -290,36 +335,46 @@ for LX in (:Center, :Face, :Nothing)
             LYe = @eval $LY
             LZe = @eval $LZ
 
-            volume_function = Symbol(:V, location_code(LXe, LYe, LZe))
-            @eval begin
-                @inline volume(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $volume_function(i, j, k, grid)
-            end
-
-            for op in (:Δ, :A), dir in (:x, :y, :z)
-                func   = Symbol(op, dir)
-                metric = Symbol(op, dir, location_code(LXe, LYe, LZe))
+            # General spacing functions
+            for dir in (:x, :y, :λ, :φ, :z)
+                func   = Symbol(:Δ, dir)
+                metric = Symbol(:Δ, dir, location_code(LXe, LYe, LZe))
 
                 @eval begin
                     @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
                 end
             end
+
+            # General area functions
+            for dir in (:x, :y, :z)
+                func   = Symbol(:A, dir)
+                metric = Symbol(:A, dir, location_code(LXe, LYe, LZe))
+
+                @eval begin
+                    @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
+                end
+            end
+
+            # General volume function
+            volume_function = Symbol(:V, location_code(LXe, LYe, LZe))
+            @eval begin
+                @inline volume(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $volume_function(i, j, k, grid)
+            end
         end
     end
 end
 
-# Special curvilinear spacings for curvilinear grids
-@inline Δλ(i, j, k, grid::LLG,  ::Center, ℓy, ℓz) = @inbounds grid.Δλᶜᵃᵃ[i]
-@inline Δλ(i, j, k, grid::LLG,  ::Face,   ℓy, ℓz) = @inbounds grid.Δλᶠᵃᵃ[i]
-@inline Δλ(i, j, k, grid::LLGX, ::Center, ℓy, ℓz) = @inbounds grid.Δλᶜᵃᵃ
-@inline Δλ(i, j, k, grid::LLGX, ::Face,   ℓy, ℓz) = @inbounds grid.Δλᶠᵃᵃ
+# One-dimensional convenience spacings (for grids that support them)
 
-@inline Δφ(i, j, k, grid::LLG,  ℓx, ::Center, ℓz) = @inbounds grid.Δφᵃᶜᵃ[j]
-@inline Δφ(i, j, k, grid::LLG,  ℓx, ::Face,   ℓz) = @inbounds grid.Δφᵃᶠᵃ[j]
-@inline Δφ(i, j, k, grid::LLGY, ℓx, ::Center, ℓz) = @inbounds grid.Δφᵃᶜᵃ
-@inline Δφ(i, j, k, grid::LLGY, ℓx, ::Face,   ℓz) = @inbounds grid.Δφᵃᶠᵃ
+Δx(i, grid, ℓx) = Δx(i, 1, 1, grid, ℓx, nothing, nothing)
+Δy(j, grid, ℓy) = Δy(1, j, 1, grid, nothing, ℓy, nothing)
+Δz(k, grid, ℓz) = Δz(1, 1, k, grid, nothing, nothing, ℓz)
+Δλ(i, grid, ℓx) = Δλ(i, 1, 1, grid, ℓx, nothing, nothing)
+Δφ(j, grid, ℓy) = Δφ(1, j, 1, grid, nothing, ℓy, nothing)
 
-@inline Δλ(i, j, k, grid::OSSG, ::Center, ℓy, ℓz) = δxᶜᵃᵃ(i, j, k, grid, λnode, Face(),   ℓy, ℓz)
-@inline Δλ(i, j, k, grid::OSSG, ::Face,   ℓy, ℓz) = δxᶜᵃᵃ(i, j, k, grid, λnode, Center(), ℓy, ℓz)
+# Two-dimensional horizontal convenience spacings (for grids that support them)
 
-@inline Δφ(i, j, k, grid::OSSG, ℓy, ::Center, ℓz) = δyᵃᶜᵃ(i, j, k, grid, λnode, ℓx, Face(),   ℓz)
-@inline Δφ(i, j, k, grid::OSSG, ℓy, ::Face,   ℓz) = δyᵃᶜᵃ(i, j, k, grid, λnode, ℓx, Center(), ℓz)
+Δx(i, j, grid, ℓx, ℓy) = Δx(i, j, 1, grid, ℓx, ℓy, nothing)
+Δy(i, j, grid, ℓx, ℓy) = Δy(i, j, 1, grid, ℓx, ℓy, nothing)
+Δλ(i, j, grid, ℓx, ℓy) = Δλ(i, j, 1, grid, ℓx, ℓy, nothing)
+Δφ(i, j, grid, ℓx, ℓy) = Δφ(i, j, 1, grid, ℓx, ℓy, nothing)
