@@ -147,6 +147,14 @@ function zspacings end
 
 z_domain(grid) = domain(topology(grid, 3)(), grid.Nz, grid.z.cᶠ)
 
+@inline cpu_face_constructor_z(grid) = Array(getindex(nodes(grid, c, c, f; with_halos=true), 3)[1:size(grid, 3)+1])
+
+# In case of an AbstractZStarGrid return a ZStarVerticalCoordinate
+@inline function cpu_face_constructor_z(grid::AbstractZStarGrid) 
+    r_faces = Array(getindex(nodes(grid, c, c, f; with_halos=true), 3)[1:size(grid, 3)+1])
+    return ZStarVerticalCoordinate(r_faces)
+end
+
 ####
 #### Utilities
 ####

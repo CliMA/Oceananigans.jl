@@ -90,16 +90,6 @@ function validate_halo(TX, TY, TZ, size, halo)
     return halo
 end
 
-function validate_dimension_specification(T, ξ, dir, N, FT)
-
-    isnothing(ξ)         && throw(ArgumentError("Must supply extent or $dir keyword when $dir-direction is $T"))
-    length(ξ) == 2       || throw(ArgumentError("$dir length($ξ) must be 2."))
-    all(isa.(ξ, Number)) || throw(ArgumentError("$dir=$ξ should contain numbers."))
-    ξ[2] ≥ ξ[1]          || throw(ArgumentError("$dir=$ξ should be an increasing interval."))
-
-    return FT.(ξ)
-end
-
 function validate_rectilinear_domain(TX, TY, TZ, FT, size, extent, x, y, z)
 
     # Find domain endpoints or domain extent, depending on user input:
@@ -126,6 +116,16 @@ function validate_rectilinear_domain(TX, TY, TZ, FT, size, extent, x, y, z)
     return x, y, z
 end
 
+function validate_dimension_specification(T, ξ, dir, N, FT)
+
+    isnothing(ξ)         && throw(ArgumentError("Must supply extent or $dir keyword when $dir-direction is $T"))
+    length(ξ) == 2       || throw(ArgumentError("$dir length($ξ) must be 2."))
+    all(isa.(ξ, Number)) || throw(ArgumentError("$dir=$ξ should contain numbers."))
+    ξ[2] ≥ ξ[1]          || throw(ArgumentError("$dir=$ξ should be an increasing interval."))
+
+    return FT.(ξ)
+end
+
 function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
     ξ = FT.(ξ)
 
@@ -142,11 +142,6 @@ function validate_dimension_specification(T, ξ::AbstractVector, dir, N, FT)
         @warn msg
     end
 
-    return ξ
-end
-
-function validate_dimension_specification(T, ξ::Tuple, dir, N, FT)
-    ξ[2] ≥ ξ[1] || throw(ArgumentError("$dir should have increasing values."))
     return ξ
 end
 

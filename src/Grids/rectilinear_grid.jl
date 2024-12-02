@@ -412,7 +412,7 @@ function with_halo(halo, grid::RectilinearGrid)
     halo = pop_flat_elements(halo, topology(grid))
     kwargs[:halo] = halo
     arch = args[:architecture]
-    FT = args[:number_type]
+    FT = args[:number_type]    
     return RectilinearGrid(arch, FT; kwargs...)
 end
 

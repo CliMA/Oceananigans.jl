@@ -11,9 +11,10 @@ end
 end
 
 @inline function barotropic_mode_kernel!(U, V, i, j, grid, u, v, η)
-    
-    sᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, grid, η) / static_column_depthᶠᶜᵃ(i, j, grid)
-    sᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, grid, η) / static_column_depthᶜᶠᵃ(i, j, grid)
+    k_top  = size(grid, 3) + 1
+
+    sᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, k_top, grid, η) / static_column_depthᶠᶜᵃ(i, j, grid)
+    sᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, k_top, grid, η) / static_column_depthᶜᶠᵃ(i, j, grid)
 
     @inbounds U[i, j, 1] = Δrᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1] * sᶠᶜ
     @inbounds V[i, j, 1] = Δrᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1] * sᶜᶠ
@@ -34,10 +35,11 @@ end
 
 @kernel function _barotropic_split_explicit_corrector!(u, v, U, V, U̅, V̅, η, grid)
     i, j, k = @index(Global, NTuple)
+    k_top = size(grid, 3) + 1
 
     @inbounds begin
-        Hᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, grid, η)
-        Hᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, grid, η)
+        Hᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, k_top, grid, η)
+        Hᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, k_top, grid, η)
         
         u[i, j, k] = u[i, j, k] + (U[i, j, 1] - U̅[i, j, 1]) / Hᶠᶜ
         v[i, j, k] = v[i, j, k] + (V[i, j, 1] - V̅[i, j, 1]) / Hᶜᶠ

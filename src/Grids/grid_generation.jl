@@ -188,5 +188,10 @@ function generate_coordinate(FT, topo, size, halo, coordinate::ZStarVerticalCoor
     ηⁿ    = new_data(FT, arch, (Center, Center, Nothing), args...)
     ∂t_e₃ = new_data(FT, arch, (Center, Center, Nothing), args...)
 
+    # Fill all the scalings with one (at rest coordinate)
+    for e₃ in (e₃ᶜᶜ⁻, e₃ᶜᶜⁿ, e₃ᶠᶜⁿ, e₃ᶜᶠⁿ, e₃ᶠᶠⁿ)
+        fill!(e₃, 1)
+    end
+    
     return Lr, ZStarVerticalCoordinate(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, e₃ᶜᶜⁿ, e₃ᶠᶜⁿ, e₃ᶜᶠⁿ, e₃ᶠᶠⁿ, e₃ᶜᶜ⁻, ∂t_e₃)
 end

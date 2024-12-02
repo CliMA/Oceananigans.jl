@@ -1,6 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Random
+using Oceananigans: initialize!
 using Oceananigans.ImmersedBoundaries: PartialCellBottom
 
 function test_zstar_coordinate(model, Ni, Δt)
@@ -45,7 +46,7 @@ const F = Face
 
     z = ZStarVerticalCoordinate(-20, 0)
 
-    grid = RectilinearGrid(size = (2, 1, 20), 
+    grid = RectilinearGrid(size = (2, 2, 20), 
                               x = (0, 2), 
                               y = (0, 1), 
                               z = z, 
@@ -59,11 +60,8 @@ const F = Face
     @test dynamic_column_depthᶜᶜᵃ(1, 1, grid) == 10
     @test  static_column_depthᶜᶜᵃ(1, 1, grid) == 10
 
-    set!(model, η = [1, 2])
+    set!(model, η = [1 1; 2 2])
     set!(model, u = (x, y, z) -> x)
-
-    initialize!(model)
-    update_state!(model)
 
     @test e₃ⁿ(1, 1, 1, grid, C(), C(), C()) == 11 / 10
     @test e₃ⁿ(2, 1, 1, grid, C(), C(), C()) == 12 / 10

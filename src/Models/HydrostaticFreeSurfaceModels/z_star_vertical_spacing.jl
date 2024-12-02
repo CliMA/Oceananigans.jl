@@ -43,17 +43,17 @@ end
 
 @kernel function _update_grid_scaling!(e₃ᶜᶜⁿ, e₃ᶠᶜⁿ, e₃ᶜᶠⁿ, e₃ᶠᶠⁿ, e₃ᶜᶜ⁻, ηⁿ, grid, η)
     i, j = @index(Global, NTuple)
-    kᴺ = size(grid, 3)
+    k_top = size(grid, 3) + 1
 
     hᶜᶜ = static_column_depthᶜᶜᵃ(i, j, grid)
     hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
     hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
     hᶠᶠ = static_column_depthᶠᶠᵃ(i, j, grid)
 
-    Hᶜᶜ = dynamic_column_depthᶜᶜᵃ(i, j, grid, η)
-    Hᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, grid, η)
-    Hᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, grid, η)
-    Hᶠᶠ = dynamic_column_depthᶠᶠᵃ(i, j, grid, η)
+    Hᶜᶜ = dynamic_column_depthᶜᶜᵃ(i, j, k_top, grid, η)
+    Hᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, k_top, grid, η)
+    Hᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, k_top, grid, η)
+    Hᶠᶠ = dynamic_column_depthᶠᶠᵃ(i, j, k_top, grid, η)
 
     @inbounds begin
         e₃ᶜᶜ = ifelse(hᶜᶜ == 0, one(grid), Hᶜᶜ / hᶜᶜ)
