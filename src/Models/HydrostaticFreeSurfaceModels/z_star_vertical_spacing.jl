@@ -71,7 +71,7 @@ end
         e₃ᶠᶠⁿ[i, j, 1] = e₃ᶠᶠ
 
         # Update η in the grid
-        ηⁿ[i, j, 1] = η[i, j, kᴺ+1]
+        ηⁿ[i, j, 1] = η[i, j, k_top]
     end
 end
 
@@ -86,7 +86,7 @@ end
     δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
 
     δh_U = (δx_U + δy_V) / Azᶜᶜᶜ(i, j, kᴺ, grid)
-
+    
     @inbounds ∂t_e₃[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), - δh_U / hᶜᶜ)
 end
 

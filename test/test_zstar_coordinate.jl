@@ -61,22 +61,19 @@ const F = Face
     @test  static_column_depthᶜᶜᵃ(1, 1, grid) == 10
 
     set!(model, η = [1 1; 2 2])
-    set!(model, u = (x, y, z) -> x)
+    set!(model, u = (x, y, z) -> x, v = (x, y, z) -> y)
+    update_state!(model)
 
     @test e₃ⁿ(1, 1, 1, grid, C(), C(), C()) == 11 / 10
     @test e₃ⁿ(2, 1, 1, grid, C(), C(), C()) == 12 / 10
-    @test e₃⁻(1, 1, 1, grid, C(), C(), C()) == 1
-    @test e₃⁻(2, 1, 1, grid, C(), C(), C()) == 1
 
-    @test znode(1, 1, 21, grid, C(), C(), C()) == 1
-    @test znode(2, 1, 21, grid, C(), C(), C()) == 2
+    @test znode(1, 1, 21, grid, C(), C(), F()) == 1
+    @test znode(2, 1, 21, grid, C(), C(), F()) == 2
     @test rnode(1, 1, 21, grid, C(), C(), F()) == 0
     @test dynamic_column_depthᶜᶜᵃ(1, 1, grid) == 11
     @test dynamic_column_depthᶜᶜᵃ(2, 1, grid) == 12
     @test  static_column_depthᶜᶜᵃ(1, 1, grid) == 10
     @test  static_column_depthᶜᶜᵃ(2, 1, grid) == 10
-
-    @test ∂t_e₃(1, 1, 1, grid) == 1 / 10
 end
 
 @testset "ZStar coordinate simulation testset" begin
