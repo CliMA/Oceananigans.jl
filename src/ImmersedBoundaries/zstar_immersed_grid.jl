@@ -16,7 +16,12 @@ const ZStarGridOfSomeKind = Union{ZStarImmersedGrid, AbstractZStarGrid}
 @inline dynamic_column_depthᶠᶜᵃ(i, j, k, grid::ZStarGridOfSomeKind, η) = @inbounds static_column_depthᶜᶠᵃ(i, j, grid) +  ℑxᶠᵃᵃ(i, j, k, grid, η)
 @inline dynamic_column_depthᶠᶠᵃ(i, j, k, grid::ZStarGridOfSomeKind, η) = @inbounds static_column_depthᶠᶠᵃ(i, j, grid) + ℑxyᶠᶠᵃ(i, j, k, grid, η)
 
-# Convenience functions
+# Convenience methods
+@inline dynamic_column_depthᶜᶜᵃ(i, j, grid) = static_column_depthᶜᶜᵃ(i, j, grid)
+@inline dynamic_column_depthᶜᶠᵃ(i, j, grid) = static_column_depthᶜᶠᵃ(i, j, grid)
+@inline dynamic_column_depthᶠᶜᵃ(i, j, grid) = static_column_depthᶠᶜᵃ(i, j, grid)
+@inline dynamic_column_depthᶠᶠᵃ(i, j, grid) = static_column_depthᶠᶠᵃ(i, j, grid)
+
 @inline dynamic_column_depthᶜᶜᵃ(i, j, grid::ZStarGridOfSomeKind) = dynamic_column_depthᶜᶜᵃ(i, j, 1, grid, grid.z.ηⁿ)
 @inline dynamic_column_depthᶜᶠᵃ(i, j, grid::ZStarGridOfSomeKind) = dynamic_column_depthᶜᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)
 @inline dynamic_column_depthᶠᶜᵃ(i, j, grid::ZStarGridOfSomeKind) = dynamic_column_depthᶠᶜᵃ(i, j, 1, grid, grid.z.ηⁿ)
