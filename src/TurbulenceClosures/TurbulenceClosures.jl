@@ -187,6 +187,7 @@ include("turbulence_closure_implementations/ri_based_vertical_diffusivity.jl")
 # TODO: introduce abstract typing for these
 include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity.jl")
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
+include("turbulence_closure_implementations/lagrangian_dynamic_smagorinsky.jl")
 
 using .TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity, TKEDissipationVerticalDiffusivity
 using .Smagorinskys: Smagorinsky, DynamicSmagorinsky, SmagorinskyLilly
