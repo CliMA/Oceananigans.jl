@@ -143,7 +143,7 @@ end
 
 @show min_c = 0
 @show max_c = 1
-@show max_u = maximum(abs, un(Nt))
+@show max_u = max([maximum(abs, ut[n] + ue[n]) for n in 1:Nt]...) * 0.5
 min_u = - max_u
 
 axu = Axis(fig[2, 1], xlabel="$gradient (km)", ylabel="z (km)", title="Zonal velocity")
