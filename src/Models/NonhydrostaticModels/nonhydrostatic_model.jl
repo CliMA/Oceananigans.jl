@@ -19,6 +19,9 @@ using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCAT
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
 
+using Oceananigans.Models.HydrostaticFreeSurfaceModels:
+    materialize_free_surface
+
 import Oceananigans.Architectures: architecture
 import Oceananigans.Models: total_velocities, default_nan_checker, timestepper
 
@@ -29,51 +32,53 @@ const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 # but for now we use it only for hydrostatic pressure anomalies for now.
 struct DefaultHydrostaticPressureAnomaly end
 
-mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
+mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F, FS,
                                    V, S, K, BG, P, BGC, AF} <: AbstractModel{TS}
 
-         architecture :: A        # Computer `Architecture` on which `Model` is run
-                 grid :: G        # Grid of physical points on which `Model` is solved
-                clock :: Clock{T} # Tracks iteration number and simulation time of `Model`
-            advection :: V        # Advection scheme for velocities _and_ tracers
-             buoyancy :: B        # Set of parameters for buoyancy model
-             coriolis :: R        # Set of parameters for the background rotation rate of `Model`
-         stokes_drift :: SD       # Set of parameters for surfaces waves via the Craik-Leibovich approximation
-              forcing :: F        # Container for forcing functions defined by the user
-              closure :: E        # Diffusive 'turbulence closure' for all model fields
-    background_fields :: BG       # Background velocity and tracer fields
-            particles :: P        # Particle set for Lagrangian tracking
-      biogeochemistry :: BGC      # Biogeochemistry for Oceananigans tracers
-           velocities :: U        # Container for velocity fields `u`, `v`, and `w`
-              tracers :: C        # Container for tracer fields
-            pressures :: Φ        # Container for hydrostatic and nonhydrostatic pressure
-   diffusivity_fields :: K        # Container for turbulent diffusivities
-          timestepper :: TS       # Object containing timestepper fields and parameters
-      pressure_solver :: S        # Pressure/Poisson solver
-     auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
+    architecture :: A           # Computer `Architecture` on which `Model` is run
+    grid :: G                   # Grid of physical points on which `Model` is solved
+    clock :: Clock{T}           # Tracks iteration number and simulation time of `Model`
+    advection :: V              # Advection scheme for velocities _and_ tracers
+    buoyancy :: B               # Set of parameters for buoyancy model
+    coriolis :: R               # Set of parameters for the background rotation rate of `Model`
+    stokes_drift :: SD          # Set of parameters for surfaces waves via the Craik-Leibovich approximation
+    forcing :: F                # Container for forcing functions defined by the user
+    closure :: E                # Diffusive 'turbulence closure' for all model fields
+    free_surface :: FS          # Free surface?
+    background_fields :: BG     # Background velocity and tracer fields
+    particles :: P              # Particle set for Lagrangian tracking
+    biogeochemistry :: BGC      # Biogeochemistry for Oceananigans tracers
+    velocities :: U             # Container for velocity fields `u`, `v`, and `w`
+    tracers :: C                # Container for tracer fields
+    pressures :: Φ              # Container for hydrostatic and nonhydrostatic pressure
+    diffusivity_fields :: K     # Container for turbulent diffusivities
+    timestepper :: TS           # Object containing timestepper fields and parameters
+    pressure_solver :: S        # Pressure/Poisson solver
+    auxiliary_fields :: AF      # User-specified auxiliary fields for forcing functions and boundary conditions
 end
 
 """
-    NonhydrostaticModel(;           grid,
-                                    clock = Clock{eltype(grid)}(time = 0),
-                                advection = Centered(),
-                                 buoyancy = nothing,
-                                 coriolis = nothing,
-                             stokes_drift = nothing,
-                      forcing::NamedTuple = NamedTuple(),
-                                  closure = nothing,
-          boundary_conditions::NamedTuple = NamedTuple(),
-                                  tracers = (),
-                              timestepper = :RungeKutta3,
-            background_fields::NamedTuple = NamedTuple(),
-            particles::ParticlesOrNothing = nothing,
-    biogeochemistry::AbstractBGCOrNothing = nothing,
-                               velocities = nothing,
-                  nonhydrostatic_pressure = CenterField(grid),
-             hydrostatic_pressure_anomaly = DefaultHydrostaticPressureAnomaly(),
-                       diffusivity_fields = nothing,
-                          pressure_solver = nothing,
-                         auxiliary_fields = NamedTuple())
+    NonhydrostaticModel(; grid,
+                        clock = Clock{eltype(grid)}(time = 0),
+                        advection = Centered(),
+                        buoyancy = nothing,
+                        coriolis = nothing,
+                        stokes_drift = nothing,
+                        forcing::NamedTuple = NamedTuple(),
+                        closure = nothing,
+                        free_surface = nothing,
+                        boundary_conditions::NamedTuple = NamedTuple(),
+                        tracers = (),
+                        timestepper = :RungeKutta3,
+                        background_fields::NamedTuple = NamedTuple(),
+                        particles::ParticlesOrNothing = nothing,
+                        biogeochemistry::AbstractBGCOrNothing = nothing,
+                        velocities = nothing,
+                        nonhydrostatic_pressure = CenterField(grid),
+                        hydrostatic_pressure_anomaly = DefaultHydrostaticPressureAnomaly(),
+                        diffusivity_fields = nothing,
+                        pressure_solver = nothing,
+                        auxiliary_fields = NamedTuple())
 
 Construct a model for a non-hydrostatic, incompressible fluid on `grid`, using the Boussinesq
 approximation when `buoyancy != nothing`. By default, all Bounded directions are rigid and impenetrable.
@@ -91,6 +96,7 @@ Keyword arguments
   - `stokes_drift`: Parameters for Stokes drift fields associated with surface waves. Default: `nothing`.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
   - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
+  - `free_surface`: The free surface formulation to use. Default: `nothing`, which makes the rigid lid approximation.
   - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
   - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
                preallocated `CenterField`s.
@@ -119,6 +125,7 @@ function NonhydrostaticModel(; grid,
                              stokes_drift = nothing,
                              forcing::NamedTuple = NamedTuple(),
                              closure = nothing,
+                             free_surface = nothing,
                              boundary_conditions::NamedTuple = NamedTuple(),
                              tracers = (),
                              timestepper = :RungeKutta3,
@@ -212,6 +219,11 @@ function NonhydrostaticModel(; grid,
     pressures          = (pNHS=nonhydrostatic_pressure, pHY′=hydrostatic_pressure_anomaly)
     diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
 
+    # TODO: limit free surface to `nothing` (rigid lid) or ImplicitFreeSurface
+    if !isnothing(free_surface)
+        free_surface = materialize_free_surface(free_surface, velocities, grid)
+    end
+
     if isnothing(pressure_solver)
         pressure_solver = nonhydrostatic_pressure_solver(grid)
     end
@@ -228,7 +240,7 @@ function NonhydrostaticModel(; grid,
     forcing = model_forcing(model_fields; forcing...)
 
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
-                                forcing, closure, background_fields, particles, biogeochemistry, velocities, tracers,
+                                forcing, closure, free_surface, background_fields, particles, biogeochemistry, velocities, tracers,
                                 pressures, diffusivity_fields, timestepper, pressure_solver, auxiliary_fields)
 
     update_state!(model; compute_tendencies = false)
