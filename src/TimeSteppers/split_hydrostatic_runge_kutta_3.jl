@@ -13,7 +13,7 @@ struct SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI} <: AbstractTimeStepper
     ζ² :: FT
     ζ³ :: FT
     Gⁿ :: TG
-    G⁻ :: TE # only used as storage when needed
+    G⁻ :: TE # only used as storage when needed 
     Ψ⁻ :: PF # prognostic state at the previous timestep
     implicit_solver :: TI
 end
@@ -26,7 +26,8 @@ end
                                 prognostic_fields = TendencyFields(grid, tracers))
 
 Return a 3rd-order `SplitRungeKutta3TimeStepper` on `grid` and with `tracers`.
-The tendency fields `Gⁿ` and `G⁻`, as well as the previous prognostic state Ψ⁻ can be specified via optional `kwargs`.
+The tendency fields `Gⁿ` and `G⁻`, can be specified via optional `kwargs`.
+The previous prognostic state Ψ⁻ is a deep copy of the `prognostic_fields` keyword argument.
 
 The scheme described by [Lan2022](@citet). In a nutshel, the 3rd-order
 Runge Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps. A baroptropic velocity correction
