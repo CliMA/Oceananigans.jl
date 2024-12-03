@@ -1,4 +1,4 @@
-using Oceananigans.BuoyancyModels: ∂z_b
+using Oceananigans.BuoyancyFormulations: ∂z_b
 
 struct LillyCoefficient{FT}
     smagorinsky :: FT
