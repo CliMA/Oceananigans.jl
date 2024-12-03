@@ -22,8 +22,7 @@ end
     SplitRungeKutta3TimeStepper(grid, tracers, prognostic_fields;
                                 implicit_solver = nothing,
                                 Gⁿ = TendencyFields(grid, tracers),
-                                G⁻ = nothing,
-                                prognostic_fields = TendencyFields(grid, tracers))
+                                G⁻ = nothing)
 
 Return a 3rd-order `SplitRungeKutta3TimeStepper` on `grid` and with `tracers`.
 The tendency fields `Gⁿ` and `G⁻`, can be specified via optional `kwargs`.
