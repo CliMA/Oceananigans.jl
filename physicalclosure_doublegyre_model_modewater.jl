@@ -27,9 +27,11 @@ using ColorSchemes
 using Glob
 
 #%%
-filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_modewater_zWENO5_CATKEVerticalDiffusivity"
+const Qᵀ_mode = 3.5e-4
+filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_modewater_zWENO5_CATKEVerticalDiffusivity_QT$(Qᵀ_mode)"
 FILE_DIR = "./Output/$(filename)"
 # FILE_DIR = "/storage6/xinkai/NN_Oceananigans/$(filename)"
+@info "$(FILE_DIR)"
 mkpath(FILE_DIR)
 
 # Architecture
@@ -85,7 +87,6 @@ const μ_T = 1/30days
 const X₀ = -Lx/2 + 800kilometers
 const Y₀ = -Ly/2 + 1500kilometers
 const R₀ = 700kilometers
-const Qᵀ_mode = 4.5e-4
 const σ_mode = 20kilometers
 
 #####
@@ -116,7 +117,7 @@ v_bcs = FieldBoundaryConditions(   top = FluxBoundaryCondition(0),
 
 @inline T_ref(y) = T_mid - ΔT / Ly * y
 
-@inline Qᵀ_winter(t) = max(0, -Qᵀ_mode * sin(2π * t / 360days))
+@inline Qᵀ_winter(t) = ifelse(t < 10800days, 0, max(0, -Qᵀ_mode * sin(2π * t / 360days)))
 @inline Qᵀ_subpolar(x, y, t) = ifelse((x - X₀)^2 + (y - Y₀)^2 <= R₀^2, Qᵀ_winter(t), 
                                       exp(-(sqrt((x - X₀)^2 + (y - Y₀)^2) - R₀)^2 / (2 * σ_mode^2)) * Qᵀ_winter(t))
 
@@ -188,7 +189,7 @@ update_state!(model)
 ##### Simulation building
 #####
 Δt₀ = 5minutes
-stop_time = 10800days
+stop_time = 12600days
 
 simulation = Simulation(model, Δt = Δt₀, stop_time = stop_time)
 
@@ -332,7 +333,11 @@ simulation.output_writers[:zonal_average] = JLD2OutputWriter(model, zonal_output
 
 simulation.output_writers[:streamfunction] = JLD2OutputWriter(model, (; Ψ=Ψ,),
                                                     filename = "$(FILE_DIR)/averaged_fields_streamfunction",
-                                                    schedule = AveragedTimeInterval(1825days, window=1825days))
+                                                    schedule = AveragedTimeInterval(1800days, window=1800days))
+
+simulation.output_writers[:complete_fields] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields",
+                                                    schedule = TimeInterval(1800days))
 
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                     schedule = TimeInterval(730days),
