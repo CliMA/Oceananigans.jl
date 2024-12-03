@@ -17,7 +17,7 @@ struct MultiRegionGrid{FT, TX, TY, TZ, CZ, P, C, G, D, Arch} <: AbstractUnderlyi
 
     MultiRegionGrid{FT, TX, TY, TZ, CZ}(arch::A, partition::P, connectivity::C,
                                         region_grids::G, devices::D) where {FT, TX, TY, TZ, P, C, G, D, A} =
-        new{FT, TX, TY, TZ, P, C, G, D, A}(arch, partition, connectivity, region_grids, devices)
+        new{FT, TX, TY, TZ, CZ, P, C, G, D, A}(arch, partition, connectivity, region_grids, devices)
 end
 
 const ImmersedMultiRegionGrid = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:MultiRegionGrid}
