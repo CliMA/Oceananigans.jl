@@ -179,7 +179,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     closure = validate_closure(closure)
 
     # Either check grid-correctness, or construct tuples of fields
-    velocities         = HydrostaticFreeSurfaceVelocityFields(velocities, grid, clock, boundary_conditions)
+    velocities         = hydrostatic_velocity_fields(velocities, grid, clock, boundary_conditions)
     tracers            = TracerFields(tracers, grid, boundary_conditions)
     pressure           = PressureField(grid)
     diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
@@ -196,9 +196,9 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     timestepper = TimeStepper(timestepper, grid, tracernames(tracers);
                               implicit_solver = implicit_solver,
-                              Gⁿ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, grid, tracernames(tracers)),
-                              G⁻ = PreviousHydrostaticTendencyFields(Val(timestepper), velocities, free_surface, grid, tracernames(tracers)),
-                              Ψ⁻ = deepcopy(prognostic_fields))
+                              Gⁿ = hydrostatic_tendency_fields(velocities, free_surface, grid, tracernames(tracers)),
+                              G⁻ = previous_hydrostatic_tendency_fields(Val(timestepper), velocities, free_surface, grid, tracernames(tracers)),
+                              prognostic_fields)
 
     # Regularize forcing for model tracer and velocity fields.
     model_fields = merge(prognostic_fields, auxiliary_fields)

@@ -22,8 +22,8 @@ end
     SplitRungeKutta3TimeStepper(grid, tracers;
                                 implicit_solver = nothing,
                                 Gⁿ = TendencyFields(grid, tracers),
-                                G⁻ = TendencyFields(grid, tracers),
-                                Ψ⁻ = TendencyFields(grid, tracers))
+                                G⁻ = nothing,
+                                prognostic_fields = TendencyFields(grid, tracers))
 
 Return a 3rd-order `SplitRungeKutta3TimeStepper` on `grid` and with `tracers`.
 The tendency fields `Gⁿ` and `G⁻`, as well as the previous prognostic state Ψ⁻ can be specified via optional `kwargs`.
@@ -48,8 +48,8 @@ The state at the first substep is taken to be the one that corresponds to the ``
 function SplitRungeKutta3TimeStepper(grid, tracers;
                                      implicit_solver::TI = nothing,
                                      Gⁿ::TG = TendencyFields(grid, tracers),
-                                     G⁻::TE = TendencyFields(grid, tracers),
-                                     Ψ⁻::PF = TendencyFields(grid, tracers)) where {TI, TG, TE, PF}
+                                     G⁻::TE = nothing,
+                                     prognostic_fields = TendencyFields(grid, tracers)) where {TI, TG, TE}
 
 
     @warn("Split barotropic-baroclinic time stepping with SplitRungeKutta3TimeStepper is not tested and experimental.\n" *
@@ -65,6 +65,8 @@ function SplitRungeKutta3TimeStepper(grid, tracers;
     ζ² = 3 // 4
     ζ³ = 1 // 3
 
+    Ψ⁻ = deepcopy(prognostic_fields)
+    PF = typeof(Ψ⁻)
     FT = eltype(grid)
 
     return SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI}(γ², γ³, ζ², ζ³, Gⁿ, G⁻, Ψ⁻, implicit_solver)
