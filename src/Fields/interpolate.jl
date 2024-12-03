@@ -107,7 +107,7 @@ end
 
 @inline function fractional_y_index(φ, locs, grid::YRegularLLG)
     φ₀ = φnode(1, 1, 1, grid, locs...)    
-    φ₁ = φnode(2, 1, 1, grid, locs...)
+    φ₁ = φnode(1, 2, 1, grid, locs...)
     FT = eltype(grid)
     return convert(FT, (φ - φ₀) / (φ₁ - φ₀)) + 1 # 1 - based indexing 
 end

@@ -10,6 +10,10 @@ export Axᶠᶠᶠ, Axᶠᶠᶜ, Axᶠᶜᶠ, Axᶠᶜᶜ, Axᶜᶠᶠ, Axᶜᶠ
 export Ayᶠᶠᶠ, Ayᶠᶠᶜ, Ayᶠᶜᶠ, Ayᶠᶜᶜ, Ayᶜᶠᶠ, Ayᶜᶠᶜ, Ayᶜᶜᶠ, Ayᶜᶜᶜ
 export Azᶠᶠᶠ, Azᶠᶠᶜ, Azᶠᶜᶠ, Azᶠᶜᶜ, Azᶜᶠᶠ, Azᶜᶠᶜ, Azᶜᶜᶠ, Azᶜᶜᶜ
 
+export Axᵃᶜᶜ, Axᵃᶠᶠ, Axᶜᵃᶜ, Axᶠᵃᶠ, Axᶜᶜᵃ, Axᶠᶠᵃ
+export Ayᵃᶜᶜ, Ayᵃᶠᶠ, Ayᶜᵃᶜ, Ayᶠᵃᶠ, Ayᶜᶜᵃ, Ayᶠᶠᵃ
+export Azᵃᶜᶜ, Azᵃᶠᶠ, Azᶜᵃᶜ, Azᶠᵃᶠ, Azᶜᶜᵃ, Azᶠᶠᵃ
+
 # Volumes
 export Vᶠᶠᶠ, Vᶠᶠᶜ, Vᶠᶜᶠ, Vᶠᶜᶜ, Vᶜᶠᶠ, Vᶜᶠᶜ, Vᶜᶜᶠ, Vᶜᶜᶜ
 
