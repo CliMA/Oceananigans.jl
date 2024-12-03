@@ -1,4 +1,4 @@
-using Oceananigans.Grids: Center, Face
+using Oceananigans.Grids: Center, Face, AbstractGrid
 using Oceananigans.Grids: AbstractZStarGrid
 
 @inline hack_cosd(φ) = cos(π * φ / 180)
@@ -41,11 +41,11 @@ const ZRG = Union{LLGZ, RGZ, OSSGZ}
 @inline getspacing(k, Δz::AbstractVector) = @inbounds Δz[k]
 @inline getspacing(k, Δz::Number)         = @inbounds Δz
 
-@inline Δrᵃᵃᶜ(i, j, k, grid) = getspacing(k, grid.z.Δᶜ)
-@inline Δrᵃᵃᶠ(i, j, k, grid) = getspacing(k, grid.z.Δᶠ)
+@inline Δrᵃᵃᶜ(i, j, k, grid::AbstractGrid) = getspacing(k, grid.z.Δᶜ)
+@inline Δrᵃᵃᶠ(i, j, k, grid::AbstractGrid) = getspacing(k, grid.z.Δᶠ)
 
-@inline Δzᵃᵃᶜ(i, j, k, grid) = getspacing(k, grid.z.Δᶜ)
-@inline Δzᵃᵃᶠ(i, j, k, grid) = getspacing(k, grid.z.Δᶠ)
+@inline Δzᵃᵃᶜ(i, j, k, grid::AbstractGrid) = getspacing(k, grid.z.Δᶜ)
+@inline Δzᵃᵃᶠ(i, j, k, grid::AbstractGrid) = getspacing(k, grid.z.Δᶠ)
 
 # Convenience Functions for all grids
 for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ)

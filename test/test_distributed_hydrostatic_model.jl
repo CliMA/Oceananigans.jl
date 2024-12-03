@@ -98,7 +98,7 @@ for arch in archs
         global_immersed_grid   = ImmersedBoundaryGrid(global_underlying_grid, GridFittedBottom(bottom))
 
         for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid), (global_underlying_grid, global_immersed_grid, global_immersed_grid))
-            @testset "Test solid rotation on $(summary(grid)) with $(active_cells_map(grid)))" begin
+            @testset "Test solid rotation on $(summary(grid)) with $(active_cells_map(grid)) on $arch)" begin
                 # "s" for "serial" computation
                 us, vs, ws, cs, ηs = solid_body_rotation_test(global_grid)
 
