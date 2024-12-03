@@ -1,4 +1,4 @@
-using Oceananigans.Utils: SumOfArrays
+using Oceananigans.Utils: SumOfArrays, launch!
 using Oceananigans.Grids: inactive_node, peripheral_node
 using Oceananigans.Fields: VelocityFields
 using KernelAbstractions: @kernel, @index
@@ -29,7 +29,7 @@ Adapt.adapt_structure(to, ra::ResidualTracerAdvection{B, FT}) where {B, FT} =
 
 function ResidualTracerAdvection(grid, scheme::AbstractAdvectionScheme; 
                                  diffusivity = 1000.0,
-                                 maximum_slope = 0.1)
+                                 maximum_slope = 10000.0)
 
     U = VelocityFields(grid)
     u, v, w = U
@@ -48,14 +48,19 @@ end
     v_residual = SumOfArrays{2}(U.v, advection.v_eddy)
     w_residual = SumOfArrays{2}(U.w, advection.w_eddy)
 
-    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_tracer_flux_x, advection, u_residual, c) +
-                                    δyᵃᶜᵃ(i, j, k, grid, _advective_tracer_flux_y, advection, v_residual, c) +
-                                    δzᵃᵃᶜ(i, j, k, grid, _advective_tracer_flux_z, advection, w_residual, c))
+    scheme = advection.scheme
+
+    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_tracer_flux_x, scheme, u_residual, c) +
+                                    δyᵃᶜᵃ(i, j, k, grid, _advective_tracer_flux_y, scheme, v_residual, c) +
+                                    δzᵃᵃᶜ(i, j, k, grid, _advective_tracer_flux_z, scheme, w_residual, c))
 end
 
-compute_eddy_velocities!(advection, buoyancy, tracers) = nothing
+# Fallbacks
+compute_eddy_velocities!(advection, grid, buoyancy, tracers; parameters = :xy) = nothing
+compute_eddy_velocities!(::NamedTuple, grid, ::Nothing, tracers; parameters = :xy) = nothing
+compute_eddy_velocities!(::ResidualTracerAdvection, grid, ::Nothing, tracers; parameters = :xy) = nothing
 
-function compute_eddy_velocities!(advection::NamedTuple, buoyancy, tracers) 
+function compute_eddy_velocities!(advection::NamedTuple, grid, buoyancy, tracers; parameters = :xy) 
     for adv in advection
         compute_eddy_velocities!(adv, grid, buoyancy, tracers; parameters)
     end
@@ -105,15 +110,14 @@ end
 @kernel function _compute_eddy_velocities!(uₑ, vₑ, wₑ, grid, b, C, Sₘ, κ)
     i, j = @index(Global, NTuple)
 
-    Hz = grid.Hz
     Nz = size(grid, 3)
 
-    @inbounds for k in 1-Hz:Nz+Hz
+    @inbounds for k in 0:Nz+1
         uₑ[i, j, k] = - ∂zᶠᶜᶜ(i, j, k, grid, κSxᶠᶜᶠ, b, C, Sₘ, κ)
         vₑ[i, j, k] = - ∂zᶜᶠᶜ(i, j, k, grid, κSyᶜᶠᶠ, b, C, Sₘ, κ)
 
         wˣ = ∂xᶜᶜᶠ(i, j, k, grid, κSxᶠᶜᶠ, b, C, Sₘ, κ)
-        wʸ = ∂yᶜᶜᶠ(i, j, k, grid, κSyᶠᶜᶠ, b, C, Sₘ, κ) 
+        wʸ = ∂yᶜᶜᶠ(i, j, k, grid, κSyᶜᶠᶠ, b, C, Sₘ, κ) 
         
         wₑ[i, j, k] =  wˣ + wʸ
     end

@@ -71,9 +71,9 @@ function mask_immersed_model_fields!(model, grid)
     return nothing
 end
 
-function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters = tuple(w_kernel_parameters(model.grid)),
-                                                                  p_parameters = tuple(p_kernel_parameters(model.grid)),
-                                                                  κ_parameters = tuple(:xyz))
+function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters = w_kernel_parameters(model.grid),
+                                                                  p_parameters = p_kernel_parameters(model.grid),
+                                                                  κ_parameters = :xyz)
 
     grid = model.grid
     closure = model.closure
@@ -82,13 +82,13 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
     buoyancy = model.buoyancy
     tracers  = model.tracers
 
-    compute_w_from_continuity!(model; parameters = wpar)
-    compute_eddy_velocities!(advection, grid, buoyancy, tracers; parameters = wpar)
+    compute_w_from_continuity!(model; parameters = w_parameters)
+    compute_eddy_velocities!(advection, grid, buoyancy, tracers; parameters = w_parameters)
     
-    compute_diffusivities!(diffusivity, closure, model; parameters = κpar)
+    compute_diffusivities!(diffusivity, closure, model; parameters = κ_parameters)
     update_hydrostatic_pressure!(model.pressure.pHY′, architecture(grid),
                                  grid, model.buoyancy, model.tracers; 
-                                 parameters = ppar)
+                                 parameters = p_parameters)
 
     return nothing
 end

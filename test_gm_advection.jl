@@ -14,8 +14,8 @@ Ly = 1000kilometers  # north-south extent [m]
 Lz = 1kilometers     # depth [m]
 Ny = 20
 Nz = 20
-save_fields_interval = 0.5day
-stop_time = 30days
+save_fields_interval = 2day
+stop_time = 300days
 Δt = 10minutes
 
 grid = RectilinearGrid(topology = (Periodic, Bounded, Bounded),
@@ -30,7 +30,8 @@ coriolis = FPlane(latitude = -45)
 @info "Building a model..."
 
 model = HydrostaticFreeSurfaceModel(; grid, coriolis,
-                                    tracer_advection = ResidualTracerAdvection(grid, WENO()),
+                                    buoyancy = BuoyancyTracer(),
+                                    tracer_advection = ResidualTracerAdvection(grid, WENO(); diffusivity = 100),
                                     tracers = (:b, :c))
 
 @info "Built $model."
@@ -91,7 +92,9 @@ end
 
 add_callback!(simulation, progress, IterationInterval(10))
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
+eddy_velocities = (ue = model.advection.b.u_eddy, ve = model.advection.b.v_eddy, we = model.advection.b.w_eddy)
+
+simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers, eddy_velocities),
                                                       schedule = TimeInterval(save_fields_interval),
                                                       filename = filename * "_fields",
                                                       overwrite_existing = true)
@@ -111,6 +114,7 @@ fig = Figure(size=(1400, 700))
 filepath = filename * "_fields.jld2"
 
 ut = FieldTimeSeries(filepath, "u")
+ue = FieldTimeSeries(filepath, "ue")
 bt = FieldTimeSeries(filepath, "b")
 ct = FieldTimeSeries(filepath, "c")
 
@@ -128,11 +132,11 @@ times = bt.times
 Nt = length(times)
 
 if gradient == "y" # average in x
-    un(n) = interior(mean(ut[n], dims=1), 1, :, :)
+    un(n) = interior(mean(ut[n], dims=1), 1, :, :) .+ interior(mean(ue[n], dims=1), 1, :, :) 
     bn(n) = interior(mean(bt[n], dims=1), 1, :, :)
     cn(n) = interior(mean(ct[n], dims=1), 1, :, :)
 else # average in y
-    un(n) = interior(mean(ut[n], dims=2), :, 1, :)
+    un(n) = interior(mean(ut[n], dims=2), :, 1, :) .+ interior(mean(ue[n], dims=2), :, 1, :) 
     bn(n) = interior(mean(bt[n], dims=2), :, 1, :)
     cn(n) = interior(mean(ct[n], dims=2), :, 1, :)
 end
