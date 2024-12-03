@@ -29,9 +29,9 @@ Return a 3rd-order `SplitRungeKutta3TimeStepper` on `grid` and with `tracers`.
 The tendency fields `Gⁿ` and `G⁻`, can be specified via optional `kwargs`.
 The previous prognostic state Ψ⁻ is a deep copy of the `prognostic_fields` positional argument.
 
-The scheme described by [Lan2022](@citet). In a nutshel, the 3rd-order
-Runge Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps. A baroptropic velocity correction
-step is applied after at each substep.
+The scheme described by [Lan2022](@citet). In a nutshell, the 3rd-order Runge Kutta timestepper 
+steps forward the state `Uⁿ` by `Δt` via 3 substeps. A barotropic velocity correction step is applied 
+after at each substep.
 
 The state `U` after each substep `m` is
 
