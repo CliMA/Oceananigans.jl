@@ -1,5 +1,4 @@
-using Oceananigans.Architectures: device
-using Oceananigans.Grids: inactive_node
+using Oceananigans.Grids: inactive_node, new_data
 using CUDA: @allowscalar
 
 struct PolarValue{D, S}
@@ -11,29 +10,34 @@ Adapt.adapt_structure(to, pv::PolarValue) = PolarValue(Adapt.adapt(to, pv.data),
 
 const PolarBoundaryCondition{V} = BoundaryCondition{<:Value, <:PolarValue}
 
-function PolarBoundaryCondition(grid, side)
-    FT = eltype(grid)
-    arch = architecture(grid)
-    data = on_architecture(arch, zeros(FT, grid.Nz))
+function PolarBoundaryCondition(grid, side, zloc)
+    FT   = eltype(grid)
+    loc  = (Nothing, Nothing, zloc)
+    data = new_data(FT, grid, loc)
     return ValueBoundaryCondition(PolarValue(data, side))
 end
 
 # Just a column
-@inline getbc(pv::BC{<:Value, <:PolarValue}, i, k, args...) = @inbounds pv.condition.data[k]
+@inline getbc(pv::BC{<:Value, <:PolarValue}, i, k, args...) = @inbounds pv.condition.data[1, 1, k]
 
 # TODO: vectors should have a different treatment since vector components should account for the frame of reference.
-# For the moment, the `PolarBoundaryConditions` is implemented only for fields that have `loc[2] == Center()`
+# For the moment, the `PolarBoundaryConditions` is implemented only for fields that have `loc[1] == loc[2] == Center()`, which
+# we assume are not components of horizontal vectors that would require rotation. (The `w` velocity if not a tracer, but it does
+# not require rotation since it is a scalar field.)
 # North - South flux boundary conditions are not valid on a Latitude-Longitude grid if the last / first rows represent the poles
 function latitude_north_auxiliary_bc(grid, loc, default_bc=DefaultBoundaryCondition()) 
     # Check if the halo lies beyond the north pole
     φmax = @allowscalar φnode(grid.Ny+1, grid, Center()) 
     
+    # Assumption: fields at `Center`s in x and y are not vector components
+    rotated_field = loc[1] != Center || loc[2] != Center
+
     # No problem!
-    if φmax < 90 || loc[1] == Nothing || !(loc[2] == Center)
+    if φmax < 90 || rotated_field
         return default_bc
     end
 
-    return PolarBoundaryCondition(grid, :north)
+    return PolarBoundaryCondition(grid, :north, loc[3])
 end
 
 # North - South flux boundary conditions are not valid on a Latitude-Longitude grid if the last / first rows represent the poles
@@ -41,12 +45,15 @@ function latitude_south_auxiliary_bc(grid, loc, default_bc=DefaultBoundaryCondit
     # Check if the halo lies beyond the south pole
     φmin = @allowscalar φnode(0, grid, Face()) 
 
+    # Assumption: fields at `Center`s in x and y are not vector components
+    rotated_field = loc[1] != Center || loc[2] != Center
+
     # No problem!
-    if φmin > -90 || loc[1] == Nothing || !(loc[2] == Center)
+    if φmin > -90 || rotated_field
         return default_bc
     end
 
-    return PolarBoundaryCondition(grid, :south)
+    return PolarBoundaryCondition(grid, :south, loc[3])
 end
 
 regularize_north_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) = 
@@ -56,7 +63,7 @@ regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::Latitude
     regularize_boundary_condition(latitude_south_auxiliary_bc(grid, loc, bc), grid, loc, args...)
 
 @kernel function _average_pole_value!(data, c, j, grid, loc)
-    k = @index(Global, Linear)
+    i′, j′, k = @index(Global, NTuple)
     c̄ = zero(grid)
     n = 0
     @inbounds for i in 1:grid.Nx
@@ -64,13 +71,15 @@ regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::Latitude
         c̄ += ifelse(inactive, 0, c[i, j, k])
         n += ifelse(inactive, 0, 1)
     end
-    @inbounds data[k] = ifelse(n == 0,  0,  c̄ / n)
+    @inbounds data[i′, j′, k] = ifelse(n == 0,  0,  c̄ / n)
 end
 
 function update_pole_value!(bc::PolarValue, c, grid, loc) 
     j = bc.side == :north ? grid.Ny : 1
-    dev = device(architecture(grid))
-    _average_pole_value!(dev, 16, grid.Nz)(bc.data, c, j, grid, loc)
+    Nz = size(c, 3)
+    Oz = c.offsets[3]
+    params = KernelParameters(1:1, 1:1, 1+Oz:Nz+Oz)
+    launch!(architecture(grid), grid, params, _average_pole_value!, bc.data, c, j, grid, loc)
     return nothing
 end
 
