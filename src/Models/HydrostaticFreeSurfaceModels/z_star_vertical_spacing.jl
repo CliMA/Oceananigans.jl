@@ -1,6 +1,12 @@
 using Oceananigans.Grids
 using Oceananigans.ImmersedBoundaries: ZStarGridOfSomeKind
 
+# TODO: ZStar is not currently working for an ImplicitFreeSurface on
+# - `LatitudeLongitudeGrid`s
+# - `ImmersedBoundaryGrid`s
+# and for an ExplicitFreeSurface on
+# - `ImmersedBoundaryGrid`s
+
 #####
 ##### ZStar-specific vertical spacings update
 #####

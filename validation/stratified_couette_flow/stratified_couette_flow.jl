@@ -11,7 +11,7 @@ using Oceananigans.Advection: cell_advection_timescale
 
 """ Friction velocity. See equation (16) of Vreugdenhil & Taylor (2018). """
 function uτ(model, Uavg, U_wall, n)
-    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.z.Δzᶜ
+    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.z.Δᶜ
     ν = model.closure[n].ν
 
     compute!(Uavg)

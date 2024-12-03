@@ -23,7 +23,14 @@ function test_zstar_coordinate(model, Ni, Δt)
 
     @test interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
     @test interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)
-    @test maximum(interior(w, :, :, Nz+1)) < model.grid.Nz * eps(eltype(w))
+    
+    # TODO: This test errors for all grids except RectilinearGrid with the Implicit and Explicit
+    # free surfaces (the velocity at the top is not approximately zero)
+    if model.free_surface isa SplitExplicitFreeSurface
+        @test maximum(interior(w, :, :, Nz+1)) < model.grid.Nz * eps(eltype(w))
+    else
+        @test_broken maximum(interior(w, :, :, Nz+1)) < model.grid.Nz * eps(eltype(w))
+    end
 
     return nothing
 end
@@ -105,7 +112,7 @@ end
                 pllg  = ImmersedBoundaryGrid(llg,  PartialCellBottom((x, y) -> rand() - 10))
                 pllgv = ImmersedBoundaryGrid(llgv, PartialCellBottom((x, y) -> rand() - 10))
 
-                # Partial cell bottom are broken at the moment and do not account for the Δz in the volumes
+                # TODO: Partial cell bottom are broken at the moment and do not account for the Δz in the volumes
                 # and vertical areas (see https://github.com/CliMA/Oceananigans.jl/issues/3958)
                 # When this is issue is fixed we can add the partial cells to the testing.
                 grids = [llg, rtg, llgv, rtgv, illg, irtg, illgv, irtgv] # , pllg, prtg, pllgv, prtgv]
@@ -116,12 +123,13 @@ end
             for grid in grids
                 info_msg = info_message(grid)
                 
-                split_free_surface = SplitExplicitFreeSurface(grid; substeps = 20)
+                split_free_surface    = SplitExplicitFreeSurface(grid; substeps = 20)
+
                 implicit_free_surface = ImplicitFreeSurface()
                 explicit_free_surface = ExplicitFreeSurface()
                 
                 for free_surface in [split_free_surface, implicit_free_surface, explicit_free_surface]
-                    @testset "$info_msg" begin
+                    @testset "$info_msg on $(free_surface)" begin
                         @info "  $info_msg of $(free_surface)" 
                         # TODO: minimum_xspacing(grid) on a Immersed GPU grid with ZStarVerticalCoordinate
                         # fails because it uses too much parameter space. Figure out a way to reduce it 

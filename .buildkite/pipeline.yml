@@ -669,6 +669,7 @@ steps:
     env:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "vertical_coordinate"
+      GPU_TEST: "true"
     commands:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:

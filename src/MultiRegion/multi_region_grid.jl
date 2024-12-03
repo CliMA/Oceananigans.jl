@@ -8,15 +8,15 @@ import Oceananigans.Grids: minimum_xspacing, minimum_yspacing, minimum_zspacing
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: default_free_surface
 import Oceananigans.DistributedComputations: reconstruct_global_grid
 
-struct MultiRegionGrid{FT, TX, TY, TZ, P, C, G, D, Arch} <: AbstractMultiRegionGrid{FT, TX, TY, TZ, Arch}
+struct MultiRegionGrid{FT, TX, TY, TZ, CZ, P, C, G, D, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
     architecture :: Arch
     partition :: P
     connectivity :: C
     region_grids :: G
     devices :: D
 
-    MultiRegionGrid{FT, TX, TY, TZ}(arch::A, partition::P, connectivity::C,
-                                    region_grids::G, devices::D) where {FT, TX, TY, TZ, P, C, G, D, A} =
+    MultiRegionGrid{FT, TX, TY, TZ, CZ}(arch::A, partition::P, connectivity::C,
+                                        region_grids::G, devices::D) where {FT, TX, TY, TZ, P, C, G, D, A} =
         new{FT, TX, TY, TZ, P, C, G, D, A}(arch, partition, connectivity, region_grids, devices)
 end
 
@@ -140,10 +140,13 @@ function MultiRegionGrid(global_grid; partition = XPartition(2),
 
     region_grids = construct_regionally(construct_grid, args...)
 
+    # Propagate the vertical coordinate type in the `MultiRegionGrid`
+    CZ = typeof(global_grid.z)
+
     ## If we are on GPUs we want to enable peer access, which we do by just copying fake arrays between all devices
     maybe_enable_peer_access!(devices)
 
-    return MultiRegionGrid{FT, global_topo[1], global_topo[2], global_topo[3]}(arch, partition, connectivity, region_grids, devices)
+    return MultiRegionGrid{FT, global_topo[1], global_topo[2], global_topo[3], CZ}(arch, partition, connectivity, region_grids, devices)
 end
 
 function construct_grid(grid::RectilinearGrid, child_arch, topo, size, extent, args...)

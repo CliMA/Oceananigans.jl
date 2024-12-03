@@ -48,7 +48,7 @@ const ZRG = Union{LLGZ, RGZ, OSSGZ}
 @inline Δzᵃᵃᶠ(i, j, k, grid) = getspacing(k, grid.z.Δᶠ)
 
 # Convenience Functions for all grids
-for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
+for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ)
 
     x_spacing_1D = Symbol(:Δx, LX, :ᵃ, :ᵃ)
     x_spacing_2D = Symbol(:Δx, LX, LY, :ᵃ)
