@@ -3,10 +3,10 @@ import Oceananigans.Models: compute_buffer_tendencies!
 using Oceananigans.Grids: halo_size
 using Oceananigans.DistributedComputations: DistributedActiveCellsIBG
 using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map
-using Oceananigans.Models.NonhydrostaticModels: buffer_tendency_kernel_parameters,
-                                                buffer_p_kernel_parameters, 
-                                                buffer_κ_kernel_parameters,
-                                                buffer_parameters
+using Oceananigans.Models: buffer_tendency_kernel_parameters,
+                           buffer_p_kernel_parameters, 
+                           buffer_κ_kernel_parameters,
+                           buffer_parameters
 
 # We assume here that top/bottom BC are always synchronized (no partitioning in z)
 function compute_buffer_tendencies!(model::HydrostaticFreeSurfaceModel)
