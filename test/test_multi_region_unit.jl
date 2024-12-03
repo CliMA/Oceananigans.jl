@@ -53,7 +53,7 @@ devices(::GPU, num) = Tuple(0 for i in 1:num)
             for immersed_boundary in immersed_boundaries
                 @info "Testing multi region immersed boundaries on $(getnamewrapper(grid)) on $regions $(Partition)s"
                 ibg = ImmersedBoundaryGrid(grid, immersed_boundary)
-                mrg = MultiRegionGrid(grid, partition = XPartition(region), devices = devices(arch, region))
+                mrg = MultiRegionGrid(grid, partition = Partition(region), devices = devices(arch, region))
                 mribg = ImmersedBoundaryGrid(mrg, immersed_boundary)
 
                 @test reconstruct_global_grid(mribg) == ibg

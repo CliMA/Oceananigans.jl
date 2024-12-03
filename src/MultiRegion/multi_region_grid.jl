@@ -16,7 +16,7 @@ struct MultiRegionGrid{FT, TX, TY, TZ, CZ, P, C, G, D, Arch} <: AbstractUnderlyi
     devices :: D
 
     MultiRegionGrid{FT, TX, TY, TZ, CZ}(arch::A, partition::P, connectivity::C,
-                                        region_grids::G, devices::D) where {FT, TX, TY, TZ, P, C, G, D, A} =
+                                        region_grids::G, devices::D) where {FT, TX, TY, TZ, CZ, P, C, G, D, A} =
         new{FT, TX, TY, TZ, CZ, P, C, G, D, A}(arch, partition, connectivity, region_grids, devices)
 end
 
