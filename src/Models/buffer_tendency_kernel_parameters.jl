@@ -1,3 +1,5 @@
+using Oceananigans.Advection: required_halo_size_x, required_halo_size_y
+
 function buffer_tendency_kernel_parameters(grid, arch)
     Nx, Ny, Nz = size(grid)
     Hx, Hy, _  = halo_size(grid)
