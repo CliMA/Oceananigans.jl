@@ -22,7 +22,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                    buoyancy = BuoyancyTracer(),
                                     closure = nothing, 
                                     tracers = :b,
-                               free_surface = ImplicitFreeSurface()) #SplitExplicitFreeSurface(; substeps = 10))
+                               free_surface = SplitExplicitFreeSurface(; substeps = 10))
 
 g = model.free_surface.gravitational_acceleration
 
