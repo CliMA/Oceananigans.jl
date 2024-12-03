@@ -13,13 +13,13 @@ struct SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI} <: AbstractTimeStepper
     ζ² :: FT
     ζ³ :: FT
     Gⁿ :: TG
-    G⁻ :: TE # only used as storage when needed 
+    G⁻ :: TE # only needed for barotropic velocities in the barotropic step
     Ψ⁻ :: PF # prognostic state at the previous timestep
     implicit_solver :: TI
 end
 
 """
-    SplitRungeKutta3TimeStepper(grid, tracers;
+    SplitRungeKutta3TimeStepper(grid, tracers, prognostic_fields;
                                 implicit_solver = nothing,
                                 Gⁿ = TendencyFields(grid, tracers),
                                 G⁻ = nothing,
@@ -27,7 +27,7 @@ end
 
 Return a 3rd-order `SplitRungeKutta3TimeStepper` on `grid` and with `tracers`.
 The tendency fields `Gⁿ` and `G⁻`, can be specified via optional `kwargs`.
-The previous prognostic state Ψ⁻ is a deep copy of the `prognostic_fields` keyword argument.
+The previous prognostic state Ψ⁻ is a deep copy of the `prognostic_fields` positional argument.
 
 The scheme described by [Lan2022](@citet). In a nutshel, the 3rd-order
 Runge Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps. A baroptropic velocity correction
@@ -46,11 +46,10 @@ at the ``m``-th substep, and constants ``γ¹ = 1`, ``γ² = 1/4``, ``γ³ = 1/3
 The state at the first substep is taken to be the one that corresponds to the ``n``-th timestep,
 `U¹ = Uⁿ`, and the state after the third substep is then the state at the `Uⁿ⁺¹ = U³`.
 """
-function SplitRungeKutta3TimeStepper(grid, tracers;
+function SplitRungeKutta3TimeStepper(grid, tracers, prognostic_fields;
                                      implicit_solver::TI = nothing,
                                      Gⁿ::TG = TendencyFields(grid, tracers),
-                                     G⁻::TE = nothing,
-                                     prognostic_fields = TendencyFields(grid, tracers)) where {TI, TG, TE}
+                                     G⁻::TE = nothing) where {TI, TG, TE}
 
 
     @warn("Split barotropic-baroclinic time stepping with SplitRungeKutta3TimeStepper is not tested and experimental.\n" *
