@@ -3,7 +3,7 @@ using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 using Oceananigans.Architectures: AbstractArchitecture, CPU
 using Oceananigans.AbstractOperations: @at, KernelFunctionOperation
 using Oceananigans.DistributedComputations
-using Oceananigans.Advection: CenteredSecondOrder, VectorInvariant
+using Oceananigans.Advection: Centered, VectorInvariant
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField, compute!
 using Oceananigans.Forcings: model_forcing
@@ -62,7 +62,7 @@ struct VectorInvariantFormulation end
     ShallowWaterModel(; grid,
                         gravitational_acceleration,
                               clock = Clock{eltype(grid)}(time = 0),
-                 momentum_advection = UpwindBiasedFifthOrder(),
+                 momentum_advection = UpwindBiased(order=5),
                    tracer_advection = WENO(),
                      mass_advection = WENO(),
                            coriolis = nothing,
@@ -86,7 +86,7 @@ Keyword arguments
   - `gravitational_acceleration`: (required) The gravitational acceleration constant.
   - `clock`: The `clock` for the model.
   - `momentum_advection`: The scheme that advects velocities. See `Oceananigans.Advection`.
-    Default: `UpwindBiasedFifthOrder()`.
+    Default: `UpwindBiased(order=5)`.
   - `tracer_advection`: The scheme that advects tracers. See `Oceananigans.Advection`. Default: `WENO()`.
   - `mass_advection`: The scheme that advects the mass equation. See `Oceananigans.Advection`. Default:
     `WENO()`.
@@ -113,7 +113,7 @@ function ShallowWaterModel(;
                            grid,
                            gravitational_acceleration,
                                clock = Clock{eltype(grid)}(time=0),
-                  momentum_advection = UpwindBiasedFifthOrder(),
+                  momentum_advection = UpwindBiased(order=5),
                     tracer_advection = WENO(),
                       mass_advection = WENO(),
                             coriolis = nothing,

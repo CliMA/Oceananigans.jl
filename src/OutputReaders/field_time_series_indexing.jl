@@ -168,13 +168,17 @@ end
 
     to_time = to_time_index.time
 
-    # Build space interpolators
-    to_node = flatten_node(to_node...)
-    ii, jj, kk = fractional_indices(to_node, from_grid, from_loc...)
+    if topology(from_grid) === (Flat, Flat, Flat)
+        ix = iy = iz = (1, 1, 0)
+    else
+        # Build space interpolators
+        to_node = flatten_node(to_node...)
+        ii, jj, kk = fractional_indices(to_node, from_grid, from_loc...)
 
-    ix = interpolator(ii)
-    iy = interpolator(jj)
-    iz = interpolator(kk)
+        ix = interpolator(ii)
+        iy = interpolator(jj)
+        iz = interpolator(kk)
+    end
 
     ñ, n₁, n₂ = interpolating_time_indices(time_indexing, times, to_time)
 

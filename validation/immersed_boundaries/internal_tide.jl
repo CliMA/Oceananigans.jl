@@ -45,7 +45,7 @@ tidal_forcing(x, y, z, t) = 1e-4 * cos(t)
 for free_surface in (ExplicitFreeSurface, )
     
     model = HydrostaticFreeSurfaceModel(grid = grid_with_bump,
-                                        momentum_advection = CenteredSecondOrder(),
+                                        momentum_advection = Centered(),
                                         free_surface = free_surface(gravitational_acceleration=10),
                                         closure = ScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1e-2, κ=1e-2),
                                         tracers = :b,
