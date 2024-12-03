@@ -1,47 +1,25 @@
 using Oceananigans.Utils
 using Oceananigans.AbstractOperations: GridMetricOperation, Δz
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: free_surface_displacement_field
-using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
-using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: calculate_substeps, 
-                                                                                  barotropic_bc, 
-                                                                                  materialize_timestepper
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface,
+                                                        SplitExplicitSettings,
+                                                        SplitExplicitState,
+                                                        FixedSubstepNumber, FixedTimeStepSize,
+                                                        calculate_substeps
 
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface, SplitExplicitAuxiliaryFields
 
-# Internal function for HydrostaticFreeSurfaceModel
-function materialize_free_surface(free_surface::SplitExplicitFreeSurface, velocities, grid::MultiRegionGrids)
+function SplitExplicitAuxiliaryFields(grid::MultiRegionGrids)
 
-    free_surface.substepping isa FixedTimeStepSize &&
-        throw(ArgumentError("SplitExplicitFreeSurface on MultiRegionGrids only suports FixedSubstepNumber; re-initialize SplitExplicitFreeSurface using substeps kwarg"))
+    Gᵁ = Field((Face,   Center, Nothing), grid)
+    Gⱽ = Field((Center, Face,   Nothing), grid)
 
-    switch_device!(grid.devices[1])
+    Hᶠᶜ = Field((Face,   Center, Nothing), grid)
+    Hᶜᶠ = Field((Center, Face,   Nothing), grid)
 
-    old_halos = halo_size(getregion(grid, 1))
-    Nsubsteps = calculate_substeps(free_surface.substepping)
+    @apply_regionally calculate_column_height!(Hᶠᶜ, (Face, Center, Center))
+    @apply_regionally calculate_column_height!(Hᶜᶠ, (Center, Face, Center))
 
-    extended_halos = multiregion_split_explicit_halos(old_halos, Nsubsteps+1, grid.partition)
-    extended_grid  = with_halo(extended_halos, grid)
-
-    η = free_surface_displacement_field(velocities, free_surface, extended_grid)
-    η̅ = free_surface_displacement_field(velocities, free_surface, extended_grid)
-
-    u_baroclinic = velocities.u
-    v_baroclinic = velocities.v
-
-    @apply_regionally u_bc = barotropic_bc(u_baroclinic)
-    @apply_regionally v_bc = barotropic_bc(v_baroclinic)
-
-    U = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = u_bc)
-    V = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = v_bc)
-
-    U̅ = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = u_bc)
-    V̅ = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = v_bc)
-
-    filtered_state = (η = η̅, U = U̅, V = V̅)
-    barotropic_velocities = (U = U, V = V)
-
-    gravitational_acceleration = convert(eltype(extended_grid), free_surface.gravitational_acceleration)
-    timestepper = materialize_timestepper(free_surface.timestepper, extended_grid, free_surface, velocities, u_bc, v_bc)
+    fill_halo_regions!((Hᶠᶜ, Hᶜᶠ))
 
     # In a non-parallel grid we calculate only the interior
     @apply_regionally kernel_size    = augmented_kernel_size(grid, grid.partition)
@@ -49,17 +27,14 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
 
     @apply_regionally kernel_parameters = KernelParameters(kernel_size, kernel_offsets)
 
-    return SplitExplicitFreeSurface(η,
-                                    barotropic_velocities,
-                                    filtered_state,
-                                    gravitational_acceleration,
-                                    kernel_parameters,
-                                    free_surface.substepping,
-                                    timestepper)
+    return SplitExplicitAuxiliaryFields(Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, kernel_parameters)
 end
 
-@inline multiregion_split_explicit_halos(old_halos, step_halo, ::XPartition) = (max(step_halo, old_halos[1]), old_halos[2], old_halos[3])
-@inline multiregion_split_explicit_halos(old_halos, step_halo, ::YPartition) = (old_halos[1], max(step_halo, old_halo[2]), old_halos[3])
+@inline function calculate_column_height!(height, location)
+    dz = GridMetricOperation(location, Δz, height.grid)
+    sum!(height, dz)
+    return nothing
+end
 
 @inline augmented_kernel_size(grid, ::XPartition)           = (size(grid, 1) + 2halo_size(grid)[1]-2, size(grid, 2))
 @inline augmented_kernel_size(grid, ::YPartition)           = (size(grid, 1), size(grid, 2) + 2halo_size(grid)[2]-2)
@@ -69,3 +44,29 @@ end
 @inline augmented_kernel_offsets(grid, ::YPartition) = (0, - halo_size(grid)[2] + 1)
 @inline augmented_kernel_offsets(grid, ::CubedSpherePartition) = (- halo_size(grid)[2] + 1, - halo_size(grid)[2] + 1)
 
+# Internal function for HydrostaticFreeSurfaceModel
+function materialize_free_surface(free_surface::SplitExplicitFreeSurface, velocities, grid::MultiRegionGrids)
+    settings = SplitExplicitSettings(grid; free_surface.settings.settings_kwargs...)
+
+    settings.substepping isa FixedTimeStepSize &&
+        throw(ArgumentError("SplitExplicitFreeSurface on MultiRegionGrids only suports FixedSubstepNumber; re-initialize SplitExplicitFreeSurface using substeps kwarg"))
+
+    switch_device!(grid.devices[1])
+
+    old_halos = halo_size(getregion(grid, 1))
+    Nsubsteps = calculate_substeps(settings.substepping)
+
+    new_halos = multiregion_split_explicit_halos(old_halos, Nsubsteps+1, grid.partition)
+    new_grid  = with_halo(new_halos, grid)
+
+    η = ZFaceField(new_grid, indices = (:, :, size(new_grid, 3)+1))
+
+    return SplitExplicitFreeSurface(η,
+                                    SplitExplicitState(new_grid, free_surface.settings.timestepper),
+                                    SplitExplicitAuxiliaryFields(new_grid),
+                                    free_surface.gravitational_acceleration,
+                                    free_surface.settings)
+end
+
+@inline multiregion_split_explicit_halos(old_halos, step_halo, ::XPartition) = (max(step_halo, old_halos[1]), old_halos[2], old_halos[3])
+@inline multiregion_split_explicit_halos(old_halos, step_halo, ::YPartition) = (old_halos[1], max(step_halo, old_halo[2]), old_halos[3])

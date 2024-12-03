@@ -1,9 +1,11 @@
+# # Tilted bottom boundary layer example
+#
 # This example simulates a two-dimensional oceanic bottom boundary layer
 # in a domain that's tilted with respect to gravity. We simulate the perturbation
 # away from a constant along-slope (y-direction) velocity constant density stratification.
 # This perturbation develops into a turbulent bottom boundary layer due to momentum
 # loss at the bottom boundary modeled with a quadratic drag law.
-#
+# 
 # This example illustrates
 #
 #   * changing the direction of gravitational acceleration in the buoyancy model;
@@ -33,7 +35,7 @@ Nz = 64
 ## Creates a grid with near-constant spacing `refinement * Lz / Nz`
 ## near the bottom:
 refinement = 1.8 # controls spacing near surface (higher means finer spaced)
-stretching = 10  # controls rate of stretching at bottom
+stretching = 10  # controls rate of stretching at bottom 
 
 ## "Warped" height coordinate
 h(k) = (Nz + 1 - k) / Nz
@@ -41,7 +43,7 @@ h(k) = (Nz + 1 - k) / Nz
 ## Linear near-surface generator
 ζ(k) = 1 + (h(k) - 1) / refinement
 
-## Bottom-intensified stretching function
+## Bottom-intensified stretching function 
 Σ(k) = (1 - exp(-stretching * h(k))) / (1 - exp(-stretching))
 
 ## Generating function
@@ -56,9 +58,11 @@ grid = RectilinearGrid(topology = (Periodic, Flat, Bounded),
 
 using CairoMakie
 
-scatterlines(zspacings(grid, Center()),
-             axis = (ylabel = "Depth (m)",
-                     xlabel = "Vertical spacing (m)"))
+lines(zspacings(grid, Center()), znodes(grid, Center()),
+      axis = (ylabel = "Depth (m)",
+              xlabel = "Vertical spacing (m)"))
+
+scatter!(zspacings(grid, Center()), znodes(grid, Center()))
 
 current_figure() #hide
 
@@ -137,16 +141,18 @@ V∞_field = BackgroundField(V∞)
 
 # ## Create the `NonhydrostaticModel`
 #
-# We are now ready to create the model. We create a `NonhydrostaticModel` with a
-# fifth-order `UpwindBiased` advection scheme and a constant viscosity and diffusivity.
-# Here we use a smallish value of ``10^{-4} \, \rm{m}^2\, \rm{s}^{-1}``.
+# We are now ready to create the model. We create a `NonhydrostaticModel` with an
+# `UpwindBiasedFifthOrder` advection scheme, a `RungeKutta3` timestepper,
+# and a constant viscosity and diffusivity. Here we use a smallish value
+# of ``10^{-4} \, \rm{m}^2\, \rm{s}^{-1}``.
 
 ν = 1e-4
 κ = 1e-4
 closure = ScalarDiffusivity(ν=ν, κ=κ)
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
-                            advection = UpwindBiased(order=5),
+                            timestepper = :RungeKutta3,
+                            advection = UpwindBiasedFifthOrder(),
                             tracers = :b,
                             boundary_conditions = (u=u_bcs, v=v_bcs, b=b_bcs),
                             background_fields = (; b=B∞_field, v=V∞_field))

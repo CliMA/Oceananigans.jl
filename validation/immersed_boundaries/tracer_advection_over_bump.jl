@@ -6,7 +6,7 @@ using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ
 using Printf
 
 arch = CPU()
-tracer_advection = Centered()
+tracer_advection = CenteredSecondOrder()
 
 underlying_grid = RectilinearGrid(arch,
                                   size=(128, 64), halo=(3, 3), 

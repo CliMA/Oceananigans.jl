@@ -49,7 +49,6 @@ function test_jld2_size_file_splitting(arch)
     function fake_bc_init(file, model)
         file["boundary_conditions/fake"] = π
     end
-
     ow = JLD2OutputWriter(model, (; u=model.velocities.u);
                           dir = ".",
                           filename = "test.jld2",
@@ -157,7 +156,6 @@ function test_jld2_time_averaging_of_horizontal_averages(model)
     simulation.output_writers[:fluxes] = JLD2OutputWriter(model, average_fluxes,
                                                           schedule = AveragedTimeInterval(4Δt, window=2Δt),
                                                           dir = ".",
-                                                          with_halos = false,
                                                           filename = "jld2_time_averaging_test.jld2",
                                                           overwrite_existing = true)
 
@@ -166,7 +164,7 @@ function test_jld2_time_averaging_of_horizontal_averages(model)
     test_file_name = "jld2_time_averaging_test.jld2"
     file = jldopen(test_file_name)
 
-    # Data is saved without halos
+    # Data is saved without halos by default
     wu = file["timeseries/wu/4"][1, 1, 3]
     uv = file["timeseries/uv/4"][1, 1, 3]
     wT = file["timeseries/wT/4"][1, 1, 3]

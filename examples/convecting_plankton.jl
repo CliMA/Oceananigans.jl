@@ -128,7 +128,8 @@ plankton_dynamics = Forcing(growing_and_grazing, field_dependencies = :P,
 # and Coriolis forces appropriate for planktonic convection at mid-latitudes on Earth.
 
 model = NonhydrostaticModel(; grid,
-                            advection = UpwindBiased(order=5),
+                            advection = UpwindBiasedFifthOrder(),
+                            timestepper = :RungeKutta3,
                             closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
                             coriolis = FPlane(f=1e-4),
                             tracers = (:b, :P), # P for Plankton

@@ -53,7 +53,8 @@ B = BackgroundField(B_func, parameters=N)
 # `b` that we identify as buoyancy by setting `buoyancy=BuoyancyTracer()`.
 
 model = NonhydrostaticModel(; grid, coriolis,
-                            advection = Centered(order=4),
+                            advection = CenteredFourthOrder(),
+                            timestepper = :RungeKutta3,
                             closure = ScalarDiffusivity(ν=1e-6, κ=1e-6),
                             tracers = :b,
                             buoyancy = BuoyancyTracer(),

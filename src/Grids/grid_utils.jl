@@ -315,15 +315,6 @@ coordinate_summary(topo, Δ::Union{AbstractVector, AbstractMatrix}, name) =
              name, prettysummary(maximum(parent(Δ))))
 
 #####
-##### Static column depth
-#####
-
-@inline static_column_depthᶜᶜᵃ(i, j, grid) = grid.Lz
-@inline static_column_depthᶜᶠᵃ(i, j, grid) = grid.Lz
-@inline static_column_depthᶠᶜᵃ(i, j, grid) = grid.Lz
-@inline static_column_depthᶠᶠᵃ(i, j, grid) = grid.Lz
-
-#####
 ##### Spherical geometry
 #####
 

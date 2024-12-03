@@ -15,19 +15,19 @@ end
 
 @inline fix_halo_offsets(o, co) = co > 0 ? o - co : o # Windowed fields have only positive offsets to correct
 
-function fill_west_and_east_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, grid, args...; only_local_halos = false, kw...)
+function fill_west_and_east_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, grid, args...; kw...)
     c_parent, yz_size, offset = parent_size_and_offset(c, 2, 3, size, offset)
     launch!(arch, grid, KernelParameters(yz_size, offset), fill_periodic_west_and_east_halo!, c_parent, Val(grid.Hx), grid.Nx; kw...)
     return nothing
 end
 
-function fill_south_and_north_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, grid, args...; only_local_halos = false, kw...)
+function fill_south_and_north_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, grid, args...; kw...)
     c_parent, xz_size, offset = parent_size_and_offset(c, 1, 3, size, offset)
     launch!(arch, grid, KernelParameters(xz_size, offset), fill_periodic_south_and_north_halo!, c_parent, Val(grid.Hy), grid.Ny;  kw...)
     return nothing
 end
 
-function fill_bottom_and_top_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, grid, args...; only_local_halos = false, kw...)
+function fill_bottom_and_top_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, grid, args...; kw...)
     c_parent, xy_size, offset = parent_size_and_offset(c, 1, 2, size, offset)
     launch!(arch, grid, KernelParameters(xy_size, offset), fill_periodic_bottom_and_top_halo!, c_parent, Val(grid.Hz), grid.Nz; kw...)
     return nothing

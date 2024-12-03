@@ -58,7 +58,7 @@ end
     ℓ★ = ifelse(isnan(ℓ★), zero(grid), ℓ★)
     ℓᴰ = max(ℓ★, ℓʰ)
 
-    H = static_column_depthᶜᶜᵃ(i, j, grid)
+    H = total_depthᶜᶜᵃ(i, j, grid)
     return min(H, ℓᴰ)
 end
 

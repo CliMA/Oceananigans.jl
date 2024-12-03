@@ -518,12 +518,19 @@ const C = Center
 @inline ηnodes(grid::RG, ℓx, ℓy, ℓz; kwargs...) = ynodes(grid, ℓy; kwargs...)
 @inline rnodes(grid::RG, ℓx, ℓy, ℓz; kwargs...) = znodes(grid, ℓz; kwargs...)
 
+#####
+##### Grid spacings
+#####
+
+@inline xspacings(grid::RG, ℓx::C; with_halos=false) = _property(grid.Δxᶜᵃᵃ, ℓx, topology(grid, 1), size(grid, 1), with_halos)
+@inline xspacings(grid::RG, ℓx::F; with_halos=false) = _property(grid.Δxᶠᵃᵃ, ℓx, topology(grid, 1), size(grid, 1), with_halos)
+@inline yspacings(grid::RG, ℓy::C; with_halos=false) = _property(grid.Δyᵃᶜᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
+@inline yspacings(grid::RG, ℓy::F; with_halos=false) = _property(grid.Δyᵃᶠᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
+@inline zspacings(grid::RG, ℓz::C; with_halos=false) = _property(grid.Δzᵃᵃᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline zspacings(grid::RG, ℓz::F; with_halos=false) = _property(grid.Δzᵃᵃᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+
+@inline xspacings(grid::RG, ℓx, ℓy, ℓz; kwargs...) = xspacings(grid, ℓx; kwargs...)
+@inline yspacings(grid::RG, ℓx, ℓy, ℓz; kwargs...) = yspacings(grid, ℓy; kwargs...)
+@inline zspacings(grid::RG, ℓx, ℓy, ℓz; kwargs...) = zspacings(grid, ℓz; kwargs...)
+
 @inline isrectilinear(::RG) = true
-
-#####
-##### Grid-specific grid spacings
-#####
-
-@inline xspacings(grid::RG, ℓx) = xspacings(grid, ℓx, nothing, nothing)
-@inline yspacings(grid::RG, ℓy) = yspacings(grid, nothing, ℓy, nothing)
-@inline zspacings(grid::RG, ℓz) = zspacings(grid, nothing, nothing, ℓz)
