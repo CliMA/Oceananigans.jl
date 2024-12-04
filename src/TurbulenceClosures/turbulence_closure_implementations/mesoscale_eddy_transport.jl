@@ -127,28 +127,26 @@ const CCF = (Center, Center, Face)
 end
 
 # Single closure version
-@inline closure_turbulent_velocity(clo, K, val_tracer_name) = (u = ZeroField(), v = ZeroField(), w = ZeroField())
+@inline closure_turbulent_velocity(clo, K, val_tracer_name) = nothing
 @inline closure_turbulent_velocity(::MesoscaleEddyTransport, K, val_tracer_name) = (u = K.u, v = K.v, w = K.w)
 
-const ZeroU = NamedTuple{(:u, :v, :w), Tuple{ZeroField, ZeroField, ZeroField}}
-
 # 2-tuple closure
-@inline select_velocities(::ZeroU, U) = U
-@inline select_velocities(U, ::ZeroU) = U
-@inline select_velocities(U::ZeroU, ::ZeroU) = U
+@inline select_velocities(::Nothing, U) = U
+@inline select_velocities(U, ::Nothing) = U
+@inline select_velocities(::Nothing, ::Nothing) = nothing
 
 # 3-tuple closure
-@inline select_velocities(U, ::ZeroU, ::ZeroU) = U
-@inline select_velocities(::ZeroU, U, ::ZeroU) = U
-@inline select_velocities(::ZeroU, ::ZeroU, U) = U
-@inline select_velocities(U::ZeroU, ::ZeroU, ::ZeroU) = U
+@inline select_velocities(U, ::Nothing, ::Nothing) = U
+@inline select_velocities(::Nothing, U, ::Nothing) = U
+@inline select_velocities(::Nothing, ::Nothing, U) = U
+@inline select_velocities(::Nothing, ::Nothing, ::Nothing) = nothing
 
 # 4-tuple closure
-@inline select_velocities(U, ::ZeroU, ::ZeroU, ::ZeroU) = U
-@inline select_velocities(::ZeroU, U, ::ZeroU, ::ZeroU) = U
-@inline select_velocities(::ZeroU, ::ZeroU, U, ::ZeroU) = U
-@inline select_velocities(::ZeroU, ::ZeroU, ::ZeroU, U) = U
-@inline select_velocities(U::ZeroU, ::ZeroU, ::ZeroU, ::ZeroU) = U
+@inline select_velocities(U, ::Nothing, ::Nothing, ::Nothing) = U
+@inline select_velocities(::Nothing, U, ::Nothing, ::Nothing) = U
+@inline select_velocities(::Nothing, ::Nothing, U, ::Nothing) = U
+@inline select_velocities(::Nothing, ::Nothing, ::Nothing, U) = U
+@inline select_velocities(::Nothing, ::Nothing, ::Nothing, ::Nothing) = nothing
 
 # Handle tuple of closures.
 # Assumption: there is only one MesoscaleEddyTransport closure in the tuple.
