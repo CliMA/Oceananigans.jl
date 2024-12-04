@@ -29,7 +29,7 @@ function MesoscaleEddyTransport(FT = Float64;
                                                     slope_limiter)
 end
 
-Adapt.adapt_structure(to, closure::MesoscaleEddyTransport{N}) = 
+Adapt.adapt_structure(to, closure::MesoscaleEddyTransport{N}) where N = 
     MesoscaleEddyTransport{N}(Adapt.adapt(to, closure.κ),
                               Adapt.adapt(to, closure.isopycnal_tensor),
                               Adapt.adapt(to, closure.slope_limiter))
