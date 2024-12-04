@@ -11,7 +11,7 @@ using Distances
 
 import Oceananigans.Grids: grid_name
 
-const ConformalCubedSphereGrid{FT, TX, TY, TZ} = MultiRegionGrid{FT, TX, TY, TZ, <:CubedSpherePartition}
+const ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ} = MultiRegionGrid{FT, TX, TY, TZ, CZ, <:CubedSpherePartition}
 
 """
     ConformalCubedSphereGrid(arch=CPU(), FT=Float64;
@@ -343,11 +343,14 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
 
     new_region_grids = MultiRegionObject(new_region_grids.regional_objects, new_devices)
 
-    new_grid = MultiRegionGrid{FT, region_topology...}(arch,
-                                                       partition,
-                                                       connectivity,
-                                                       new_region_grids,
-                                                       new_devices)
+    # Propagate the vertical coordinate type in the `MultiRegionGrid`
+    CZ = typeof(getregion(region_grids, 1).z)
+
+    new_grid = MultiRegionGrid{FT, region_topology..., CZ}(arch,
+                                                           partition,
+                                                           connectivity,
+                                                           new_region_grids,
+                                                           new_devices)
 
     return new_grid
 end
@@ -390,7 +393,9 @@ function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchit
 
     connectivity = CubedSphereConnectivity(devices, partition)
 
-    return MultiRegionGrid{FT, panel_topology...}(arch, partition, connectivity, region_grids, devices)
+    CZ = typeof(getregion(region_grids, 1).z)
+
+    return MultiRegionGrid{FT, panel_topology..., CZ}(arch, partition, connectivity, region_grids, devices)
 end
 
 function with_halo(new_halo, csg::ConformalCubedSphereGrid)

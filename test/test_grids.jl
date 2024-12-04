@@ -46,10 +46,11 @@ function test_regular_rectilinear_correct_coordinate_lengths(FT)
 
     @test length(grid.xᶜᵃᵃ) == Nx + 2Hx
     @test length(grid.yᵃᶜᵃ) == Ny + 2Hy
-    @test length(grid.zᵃᵃᶜ) == Nz + 2Hz
     @test length(grid.xᶠᵃᵃ) == Nx + 2Hx
     @test length(grid.yᵃᶠᵃ) == Ny + 2Hy + 1
-    @test length(grid.zᵃᵃᶠ) == Nz + 2Hz + 1
+    
+    @test length(grid.z.cᶜ) == Nz + 2Hz
+    @test length(grid.z.cᶠ) == Nz + 2Hz + 1
 
     return nothing
 end
@@ -75,11 +76,11 @@ function test_regular_rectilinear_correct_halo_faces(FT)
 
     @test grid.xᶠᵃᵃ[0] == - H * Δ
     @test grid.yᵃᶠᵃ[0] == - H * Δ
-    @test grid.zᵃᵃᶠ[0] == - H * Δ
+    @test grid.z.cᶠ[0] == - H * Δ
 
     @test grid.xᶠᵃᵃ[N+1] == L  # Periodic
     @test grid.yᵃᶠᵃ[N+2] == L + H * Δ
-    @test grid.zᵃᵃᶠ[N+2] == L + H * Δ
+    @test grid.z.cᶠ[N+2] == L + H * Δ
 
     return nothing
 end
@@ -94,7 +95,7 @@ function test_regular_rectilinear_correct_first_cells(FT)
 
     @test grid.xᶜᵃᵃ[1] == Δ/2
     @test grid.yᵃᶜᵃ[1] == Δ/2
-    @test grid.zᵃᵃᶜ[1] == Δ/2
+    @test grid.z.cᶜ[1] == Δ/2
 
     return nothing
 end
@@ -109,7 +110,7 @@ function test_regular_rectilinear_correct_end_faces(FT)
 
     @test grid.xᶠᵃᵃ[N+1] == L
     @test grid.yᵃᶠᵃ[N+2] == L + Δ
-    @test grid.zᵃᵃᶠ[N+2] == L + Δ
+    @test grid.z.cᶠ[N+2] == L + Δ
 
     return nothing
 end
@@ -123,10 +124,11 @@ function test_regular_rectilinear_ranges_have_correct_length(FT)
 
     @test length(grid.xᶜᵃᵃ) == Nx + 2Hx
     @test length(grid.yᵃᶜᵃ) == Ny + 2Hy
-    @test length(grid.zᵃᵃᶜ) == Nz + 2Hz
     @test length(grid.xᶠᵃᵃ) == Nx + 1 + 2Hx
     @test length(grid.yᵃᶠᵃ) == Ny + 1 + 2Hy
-    @test length(grid.zᵃᵃᶠ) == Nz + 1 + 2Hz
+    
+    @test length(grid.z.cᶜ) == Nz + 2Hz
+    @test length(grid.z.cᶠ) == Nz + 1 + 2Hz
 
     return nothing
 end
@@ -139,8 +141,8 @@ function test_regular_rectilinear_no_roundoff_error_in_ranges(FT)
 
     grid = RectilinearGrid(CPU(), FT, size=(Nx, Ny, Nz), extent=(1, 1, π/2), halo=(1, 1, Hz))
 
-    @test length(grid.zᵃᵃᶜ) == Nz + 2Hz
-    @test length(grid.zᵃᵃᶠ) == Nz + 2Hz + 1
+    @test length(grid.z.cᶜ) == Nz + 2Hz
+    @test length(grid.z.cᶠ) == Nz + 2Hz + 1
 
     return nothing
 end
@@ -153,14 +155,14 @@ function test_regular_rectilinear_grid_properties_are_same_type(FT)
     @test grid.Lz isa FT
     @test grid.Δxᶠᵃᵃ isa FT
     @test grid.Δyᵃᶠᵃ isa FT
-    @test grid.Δzᵃᵃᶠ isa FT
+    @test grid.z.Δᶠ isa FT
 
     @test eltype(grid.xᶠᵃᵃ) == FT
     @test eltype(grid.yᵃᶠᵃ) == FT
-    @test eltype(grid.zᵃᵃᶠ) == FT
+    @test eltype(grid.z.cᶠ) == FT
     @test eltype(grid.xᶜᵃᵃ) == FT
     @test eltype(grid.yᵃᶜᵃ) == FT
-    @test eltype(grid.zᵃᵃᶜ) == FT
+    @test eltype(grid.z.cᶜ) == FT
 
     return nothing
 end
@@ -359,11 +361,11 @@ function test_vertically_stretched_grid_properties_are_same_type(FT, arch)
     @test eltype(grid.xᶜᵃᵃ) == FT
     @test eltype(grid.yᵃᶠᵃ) == FT
     @test eltype(grid.yᵃᶜᵃ) == FT
-    @test eltype(grid.zᵃᵃᶠ) == FT
-    @test eltype(grid.zᵃᵃᶜ) == FT
+    @test eltype(grid.z.cᶠ) == FT
+    @test eltype(grid.z.cᶜ) == FT
 
-    @test eltype(grid.Δzᵃᵃᶜ) == FT
-    @test eltype(grid.Δzᵃᵃᶠ) == FT
+    @test eltype(grid.z.Δᶜ) == FT
+    @test eltype(grid.z.Δᶠ) == FT
 
     return nothing
 end
@@ -372,10 +374,10 @@ function test_architecturally_correct_stretched_grid(FT, arch, zᵃᵃᶠ)
     grid = RectilinearGrid(arch, FT, size=(1, 1, length(zᵃᵃᶠ)-1), x=(0, 1), y=(0, 1), z=zᵃᵃᶠ)
 
     ArrayType = array_type(arch)
-    @test grid.zᵃᵃᶠ  isa OffsetArray{FT, 1, <:ArrayType}
-    @test grid.zᵃᵃᶜ  isa OffsetArray{FT, 1, <:ArrayType}
-    @test grid.Δzᵃᵃᶠ isa OffsetArray{FT, 1, <:ArrayType}
-    @test grid.Δzᵃᵃᶜ isa OffsetArray{FT, 1, <:ArrayType}
+    @test grid.z.cᶠ isa OffsetArray{FT, 1, <:ArrayType}
+    @test grid.z.cᶜ isa OffsetArray{FT, 1, <:ArrayType}
+    @test grid.z.Δᶠ isa OffsetArray{FT, 1, <:ArrayType}
+    @test grid.z.Δᶜ isa OffsetArray{FT, 1, <:ArrayType}
 
     return nothing
 end
@@ -407,20 +409,20 @@ function test_rectilinear_grid_correct_spacings(FT, N)
     Δzᵃᵃᶜ(k) =  zᵃᵃᶠ(k+1) - zᵃᵃᶠ(k)
     Δzᵃᵃᶠ(k) =  zᵃᵃᶜ(k)   - zᵃᵃᶜ(k-1)
 
-    @test all(isapprox.(  grid.zᵃᵃᶠ[1:N+1],  zᵃᵃᶠ.(1:N+1) ))
-    @test all(isapprox.(  grid.zᵃᵃᶜ[1:N],    zᵃᵃᶜ.(1:N)   ))
-    @test all(isapprox.( grid.Δzᵃᵃᶜ[1:N],   Δzᵃᵃᶜ.(1:N)   ))
+    @test all(isapprox.(  grid.z.cᶠ[1:N+1],  zᵃᵃᶠ.(1:N+1) ))
+    @test all(isapprox.(  grid.z.cᶜ[1:N],    zᵃᵃᶜ.(1:N)   ))
+    @test all(isapprox.( grid.z.Δᶜ[1:N],   Δzᵃᵃᶜ.(1:N)   ))
 
-    @test all(isapprox.(zspacings(grid, Face()), reshape(grid.Δzᵃᵃᶠ[1:N+1], 1, 1, N+1)))
-    @test all(isapprox.(zspacings(grid, Center()), reshape(grid.Δzᵃᵃᶜ[1:N], 1, 1, N)))
+    @test all(isapprox.(zspacings(grid, Face()),   reshape(grid.z.Δᶠ[1:N+1], 1, 1, N+1)))
+    @test all(isapprox.(zspacings(grid, Center()), reshape(grid.z.Δᶜ[1:N], 1, 1, N)))
 
-    @test zspacing(1, 1, 2, grid, Center(), Center(), Face()) == grid.Δzᵃᵃᶠ[2]
+    @test zspacing(1, 1, 2, grid, Center(), Center(), Face()) == grid.z.Δᶠ[2]
 
-    @test minimum_zspacing(grid, Center(), Center(), Center()) ≈ minimum(grid.Δzᵃᵃᶜ[1:grid.Nz])
+    @test minimum_zspacing(grid, Center(), Center(), Center()) ≈ minimum(grid.z.Δᶜ[1:grid.Nz])
 
     # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
     # the user-supplied zᵃᵃᶠ
-    @test all(isapprox.( grid.Δzᵃᵃᶠ[2:N], Δzᵃᵃᶠ.(2:N) ))
+    @test all(isapprox.( grid.z.Δᶠ[2:N], Δzᵃᵃᶠ.(2:N) ))
 
     return nothing
 end
@@ -447,8 +449,8 @@ function test_basic_lat_lon_bounded_domain(FT)
 
     @test grid.Δλᶠᵃᵃ == 10
     @test grid.Δφᵃᶠᵃ == 5
-    @test grid.Δzᵃᵃᶜ == 1
-    @test grid.Δzᵃᵃᶠ == 1
+    @test grid.z.Δᶜ == 1
+    @test grid.z.Δᶠ == 1
 
     @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ + 1
     @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
@@ -496,8 +498,8 @@ function test_basic_lat_lon_periodic_domain(FT)
 
     @test grid.Δλᶠᵃᵃ == 10
     @test grid.Δφᵃᶠᵃ == 5
-    @test grid.Δzᵃᵃᶜ == 1
-    @test grid.Δzᵃᵃᶠ == 1
+    @test grid.z.Δᶜ == 1
+    @test grid.z.Δᶠ == 1
 
     @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ
     @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
@@ -542,7 +544,7 @@ function test_basic_lat_lon_general_grid(FT)
 
     grid_reg = LatitudeLongitudeGrid(CPU(), FT, size=grid_size, halo=halo, latitude=lat, longitude=lon, z=zᵣ)
 
-    @test typeof(grid_reg.Δzᵃᵃᶜ) == typeof(grid_reg.Δzᵃᵃᶠ) == FT
+    @test typeof(grid_reg.z.Δᶜ) == typeof(grid_reg.z.Δᶠ) == FT
 
     @test all(xspacings(grid_reg, Center(), Center()) .== reshape(grid_reg.Δxᶜᶜᵃ[1:Nφ],   1, Nφ,   1))
     @test all(xspacings(grid_reg, Center(), Face()  ) .== reshape(grid_reg.Δxᶜᶠᵃ[1:Nφ+1], 1, Nφ+1, 1))
@@ -550,8 +552,8 @@ function test_basic_lat_lon_general_grid(FT)
     @test all(xspacings(grid_reg, Face(),   Face())   .== reshape(grid_reg.Δxᶠᶠᵃ[1:Nφ+1], 1, Nφ+1, 1))
     @test all(yspacings(grid_reg, Center(), Face()) .== grid_reg.Δyᶜᶠᵃ)
     @test all(yspacings(grid_reg, Face(),   Center()) .== grid_reg.Δyᶠᶜᵃ)
-    @test all(zspacings(grid_reg, Center()) .== grid_reg.Δzᵃᵃᶜ)
-    @test all(zspacings(grid_reg, Face()) .== grid_reg.Δzᵃᵃᶠ)
+    @test all(zspacings(grid_reg, Center()) .== grid_reg.z.Δᶜ)
+    @test all(zspacings(grid_reg, Face()) .== grid_reg.z.Δᶠ)
 
     @test all(xspacings(grid_reg, Center(), Center(), Center()) .== xspacings(grid_reg, Center(), Center()))
     @test all(xspacings(grid_reg, Face(),   Face(),   Center()) .== xspacings(grid_reg, Face(),   Face()))
@@ -564,8 +566,8 @@ function test_basic_lat_lon_general_grid(FT)
     @test xspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δxᶜᶠᵃ[2]
     @test yspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δyᶜᶠᵃ
     @test yspacing(1, 2, 3, grid_reg, Face(),   Center(), Center()) == grid_reg.Δyᶠᶜᵃ
-    @test zspacing(1, 2, 3, grid_reg, Center(), Center(), Face()  ) == grid_reg.Δzᵃᵃᶠ
-    @test zspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == grid_reg.Δzᵃᵃᶜ
+    @test zspacing(1, 2, 3, grid_reg, Center(), Center(), Face()  ) == grid_reg.z.Δᶠ
+    @test zspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == grid_reg.z.Δᶜ
 
     @test all(λspacings(grid_reg, Center()) .== grid_reg.Δλᶜᵃᵃ)
     @test all(λspacings(grid_reg, Face()) .== grid_reg.Δλᶠᵃᵃ)
@@ -578,7 +580,7 @@ function test_basic_lat_lon_general_grid(FT)
     Δλ = grid_reg.Δλᶠᵃᵃ
     λₛ = (-grid_reg.Lx/2):Δλ:(grid_reg.Lx/2)
 
-    Δz = grid_reg.Δzᵃᵃᶜ
+    Δz = grid_reg.z.Δᶜ
     zₛ = -Lz:Δz:0
 
     grid_str = LatitudeLongitudeGrid(CPU(), FT, size=grid_size, halo=halo, latitude=lat, longitude=λₛ, z=zₛ)
@@ -589,21 +591,21 @@ function test_basic_lat_lon_general_grid(FT)
     @test length(grid_str.φᵃᶠᵃ) == length(grid_reg.φᵃᶠᵃ) == Nφ + 2Hφ + 1
     @test length(grid_str.φᵃᶜᵃ) == length(grid_reg.φᵃᶜᵃ) == Nφ + 2Hφ
 
-    @test length(grid_str.zᵃᵃᶠ) == length(grid_reg.zᵃᵃᶠ) == Nz + 2Hz + 1
-    @test length(grid_str.zᵃᵃᶜ) == length(grid_reg.zᵃᵃᶜ) == Nz + 2Hz
+    @test length(grid_str.z.cᶠ) == length(grid_reg.z.cᶠ) == Nz + 2Hz + 1
+    @test length(grid_str.z.cᶜ) == length(grid_reg.z.cᶜ) == Nz + 2Hz
 
-    @test length(grid_str.Δzᵃᵃᶠ) == Nz + 2Hz + 1
-    @test length(grid_str.Δzᵃᵃᶜ) == Nz + 2Hz
+    @test length(grid_str.z.Δᶠ) == Nz + 2Hz + 1
+    @test length(grid_str.z.Δᶜ) == Nz + 2Hz
 
     @test all(grid_str.λᶜᵃᵃ == grid_reg.λᶜᵃᵃ)
     @test all(grid_str.λᶠᵃᵃ == grid_reg.λᶠᵃᵃ)
     @test all(grid_str.φᵃᶜᵃ == grid_reg.φᵃᶜᵃ)
     @test all(grid_str.φᵃᶠᵃ == grid_reg.φᵃᶠᵃ)
-    @test all(grid_str.zᵃᵃᶜ == grid_reg.zᵃᵃᶜ)
-    @test all(grid_str.zᵃᵃᶠ == grid_reg.zᵃᵃᶠ)
+    @test all(grid_str.z.cᶜ == grid_reg.z.cᶜ)
+    @test all(grid_str.z.cᶠ == grid_reg.z.cᶠ)
 
-    @test sum(grid_str.Δzᵃᵃᶜ) == grid_reg.Δzᵃᵃᶜ * length(grid_str.Δzᵃᵃᶜ)
-    @test sum(grid_str.Δzᵃᵃᶠ) == grid_reg.Δzᵃᵃᶠ * length(grid_str.Δzᵃᵃᶠ)
+    @test sum(grid_str.z.Δᶜ) == grid_reg.z.Δᶜ * length(grid_str.z.Δᶜ)
+    @test sum(grid_str.z.Δᶠ) == grid_reg.z.Δᶠ * length(grid_str.z.Δᶠ)
 
     @test all(xspacings(grid_str, Center(), Center()) .== reshape(grid_str.Δxᶜᶜᵃ[1:Nλ, 1:Nφ],   Nλ, Nφ,   1))
     @test all(xspacings(grid_str, Center(), Face())   .== reshape(grid_str.Δxᶜᶠᵃ[1:Nλ, 1:Nφ+1], Nλ, Nφ+1, 1))
@@ -613,8 +615,8 @@ function test_basic_lat_lon_general_grid(FT)
     @test all(yspacings(grid_str, Center(), Face())   .== grid_str.Δyᶜᶠᵃ)
     @test all(yspacings(grid_str, Face(),   Center()) .== grid_str.Δyᶠᶜᵃ)
 
-    @test all(zspacings(grid_str, Center()) .== reshape(grid_str.Δzᵃᵃᶜ[1:Nz], 1, 1, Nz))
-    @test all(zspacings(grid_str, Face()) .== reshape(grid_str.Δzᵃᵃᶠ[1:Nz+1], 1, 1, Nz+1))
+    @test all(zspacings(grid_str, Center()) .== reshape(grid_str.z.Δᶜ[1:Nz], 1, 1, Nz))
+    @test all(zspacings(grid_str, Face()) .== reshape(grid_str.z.Δᶠ[1:Nz+1], 1, 1, Nz+1))
 
     @test all(zspacings(grid_str, Center()) .== zspacings(grid_str, Center(), Center(),   Center()))
     @test all(zspacings(grid_str, Face()) .== zspacings(grid_str, Face(), Center(), Face()))
@@ -749,8 +751,8 @@ function test_orthogonal_shell_grid_array_sizes_and_spacings(FT)
     @test all(yspacings(grid, Face(),   Center(), Face()) .== yspacings(grid, Face(),   Center()) .== grid.Δyᶠᶜᵃ[1:Nx+1, 1:Ny])
     @test all(yspacings(grid, Face(),   Face(),   Face()) .== yspacings(grid, Face(),   Face()  ) .== grid.Δyᶠᶠᵃ[1:Nx+1, 1:Ny+1])
 
-    @test all(zspacings(grid, Center(), Center(), Face()  ) .== zspacings(grid, Face()  ) .== grid.Δzᵃᵃᶠ)
-    @test all(zspacings(grid, Center(), Center(), Center()) .== zspacings(grid, Center()) .== grid.Δzᵃᵃᶜ)
+    @test all(zspacings(grid, Center(), Center(), Face()  ) .== zspacings(grid, Face()  ) .== grid.z.Δᶠ)
+    @test all(zspacings(grid, Center(), Center(), Center()) .== zspacings(grid, Center()) .== grid.z.Δᶜ)
 
     return nothing
 end

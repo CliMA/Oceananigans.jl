@@ -290,6 +290,7 @@ end
 @inline zspacings(field::AbstractField) = zspacings(field.grid, location(field)...)
 @inline λspacings(field::AbstractField) = λspacings(field.grid, location(field)...)
 @inline φspacings(field::AbstractField) = φspacings(field.grid, location(field)...)
+@inline rspacings(field::AbstractField) = rspacings(field.grid, location(field)...)
 
 # Some defaults for e.g. easy CFL computations.
 @inline xspacings(grid::AbstractGrid) = xspacings(grid, Center(), Center(), Center())
@@ -297,3 +298,4 @@ end
 @inline zspacings(grid::AbstractGrid) = zspacings(grid, Center(), Center(), Center())
 @inline λspacings(grid::AbstractGrid) = λspacings(grid, Center(), Center(), Center())
 @inline φspacings(grid::AbstractGrid) = φspacings(grid, Center(), Center(), Center())
+@inline rspacings(grid::AbstractGrid) = rspacings(grid, Center(), Center(), Center())

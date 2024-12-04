@@ -67,7 +67,7 @@ function advective_timescale_cfl_on_regular_grid(arch, FT)
 
     Δx = model.grid.Δxᶜᵃᵃ
     Δy = model.grid.Δyᵃᶜᵃ
-    Δz = model.grid.Δzᵃᵃᶜ
+    Δz = model.grid.z.Δᶜ
 
     u₀ = FT(1.2)
     v₀ = FT(-2.5)
@@ -121,7 +121,7 @@ function advective_timescale_cfl_on_lat_lon_grid(arch, FT)
     # Will be the same at every grid point.
     Δy_min = CUDA.@allowscalar Oceananigans.Operators.Δyᶜᶠᵃ(1, 1, 1, grid)
 
-    Δz = model.grid.Δzᵃᵃᶠ
+    Δz = model.grid.z.Δᶠ
 
     u₀ = FT(1.2)
     v₀ = FT(-2.5)
