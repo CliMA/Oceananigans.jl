@@ -2,37 +2,37 @@ using Oceananigans.Fields: VelocityFields
 using Oceananigans.Grids: inactive_node, peripheral_node
 using Oceananigans.BuoyancyModels: ∂x_b, ∂y_b, ∂z_b
 
-struct AdvectiveEddyClosure{K, M, L, N} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization, N}
-                    κ_skew :: K
+struct MesoscaleEddyTransport{K, M, L, N} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization, N}
+                         κ :: K
           isopycnal_tensor :: M
              slope_limiter :: L
     
-    function AdvectiveEddyClosure{N}(κ_skew :: K,
+    function MesoscaleEddyTransport{N}(κ :: K,
                                      isopycnal_tensor :: M,
                                      slope_limiter :: L) where {K, M, L, N}
 
-        return new{K, M, L, N}(κ_skew, isopycnal_tensor, slope_limiter)
+        return new{K, M, L, N}(κ, isopycnal_tensor, slope_limiter)
     end
 end
 
-function AdvectiveEddyClosure(FT = Float64;
-                              κ_skew = 1000,
-                              isopycnal_tensor = SmallSlopeIsopycnalTensor(),
-                              slope_limiter = FluxTapering(100),
-                              required_halo_size::Int = 1) 
+function MesoscaleEddyTransport(FT = Float64;
+                                κ = 1000,
+                                isopycnal_tensor = SmallSlopeIsopycnalTensor(),
+                                slope_limiter = FluxTapering(100),
+                                required_halo_size::Int = 1) 
 
     isopycnal_tensor isa SmallSlopeIsopycnalTensor ||
         error("Only isopycnal_tensor=SmallSlopeIsopycnalTensor() is currently supported.")
 
-    return AdvectiveEddyClosure{required_halo_size}(convert_diffusivity(FT, κ_skew),
+    return MesoscaleEddyTransport{required_halo_size}(convert_diffusivity(FT, κ_skew),
                                                     isopycnal_tensor,
                                                     slope_limiter)
 end
 
-DiffusivityFields(grid, tracer_names, bcs, closure::AdvectiveEddyClosure) = VelocityFields(grid)
-with_tracers(tracer_names, closure::AdvectiveEddyClosure) = closure
+DiffusivityFields(grid, tracer_names, bcs, closure::MesoscaleEddyTransport) = VelocityFields(grid)
+with_tracers(tracer_names, closure::MesoscaleEddyTransport) = closure
 
-function compute_diffusivities!(diffusivities, closure::AdvectiveEddyClosure, model; parameters = :xyz)
+function compute_diffusivities!(diffusivities, closure::MesoscaleEddyTransport, model; parameters = :xyz)
     uₑ = diffusivities.u
     vₑ = diffusivities.v
     wₑ = diffusivities.w
@@ -81,8 +81,8 @@ end
 
 const CCF = (Center, Center, Face)
 
-@inline κSxᶠᶜᶠ(i, j, k, grid, clk, clo, b, fields) = κᶠᶜᶠ(i, j, k, grid, CCF, clo.κ_skew, clk.time, fields) * Sxᶠᶜᶠ(i, j, k, grid, clo, b, fields)
-@inline κSyᶜᶠᶠ(i, j, k, grid, clk, clo, b, fields) = κᶜᶠᶠ(i, j, k, grid, CCF, clo.κ_skew, clk.time, fields) * Syᶜᶠᶠ(i, j, k, grid, clo, b, fields)
+@inline κSxᶠᶜᶠ(i, j, k, grid, clk, clo, b, fields) = κᶠᶜᶠ(i, j, k, grid, CCF, clo.κ, clk.time, fields) * Sxᶠᶜᶠ(i, j, k, grid, clo, b, fields)
+@inline κSyᶜᶠᶠ(i, j, k, grid, clk, clo, b, fields) = κᶜᶠᶠ(i, j, k, grid, CCF, clo.κ, clk.time, fields) * Syᶜᶠᶠ(i, j, k, grid, clo, b, fields)
 
 @kernel function _compute_eddy_velocities!(uₑ, vₑ, wₑ, grid, clk, clo, b, fields)
     i, j, k = @index(Global, NTuple)
@@ -100,7 +100,7 @@ end
 
 # Fallback
 @inline closure_turbulent_velocity(clo, K, val_tracer_name) = (u = ZeroField(), v = ZeroField(), w = ZeroField())
-@inline closure_turbulent_velocity(::AdvectiveEddyClosure, K, val_tracer_name) = (u = K.u, v = K.v, w = K.w)
+@inline closure_turbulent_velocity(::MesoscaleEddyTransport, K, val_tracer_name) = (u = K.u, v = K.v, w = K.w)
 
 # Handle tuple of closures.
 @inline function closure_turbulent_velocity(clo::Tuple, K::Tuple, val_tracer_name) 

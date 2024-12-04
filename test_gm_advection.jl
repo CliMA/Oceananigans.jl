@@ -4,7 +4,7 @@ using Random
 using Oceananigans
 using Oceananigans.Units
 using GLMakie
-using Oceananigans.TurbulenceClosures: AdvectiveEddyClosure
+using Oceananigans.TurbulenceClosures: MesoscaleEddyTransport
 
 gradient = "y"
 filename = "coarse_baroclinic_adjustment_" * gradient
@@ -32,7 +32,7 @@ coriolis = FPlane(latitude = -45)
 model = HydrostaticFreeSurfaceModel(; grid, coriolis,
                                     buoyancy = BuoyancyTracer(),
                                     tracer_advection = WENO(),
-                                    closure = AdvectiveEddyClosure(),
+                                    closure = MesoscaleEddyTransport(),
                                     tracers = (:b, :c))
 
 @info "Built $model."
