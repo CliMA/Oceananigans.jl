@@ -237,11 +237,14 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
                                         η = region_η,
                                         rotation = region_rotation)
 
-    grid = MultiRegionGrid{FT, region_topology...}(CPU(),
-                                                   partition,
-                                                   connectivity,
-                                                   region_grids,
-                                                   devices)
+    # Propagate the vertical coordinate type in the `MultiRegionGrid`
+    CZ = typeof(getregion(region_grids, 1).z)
+
+    grid = MultiRegionGrid{FT, region_topology..., CZ}(CPU(),
+                                                       partition,
+                                                       connectivity,
+                                                       region_grids,
+                                                       devices)
 
     λᶜᶜᵃ  = Field((Center, Center, Nothing), grid)
     φᶜᶜᵃ  = Field((Center, Center, Nothing), grid)
@@ -342,9 +345,6 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
     new_devices = arch == CPU() ? Tuple(CPU() for _ in 1:length(partition)) : Tuple(CUDA.device() for _ in 1:length(partition))
 
     new_region_grids = MultiRegionObject(new_region_grids.regional_objects, new_devices)
-
-    # Propagate the vertical coordinate type in the `MultiRegionGrid`
-    CZ = typeof(getregion(region_grids, 1).z)
 
     new_grid = MultiRegionGrid{FT, region_topology..., CZ}(arch,
                                                            partition,

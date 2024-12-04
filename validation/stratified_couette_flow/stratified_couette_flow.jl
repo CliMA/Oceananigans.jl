@@ -11,7 +11,7 @@ using Oceananigans.Advection: cell_advection_timescale
 
 """ Friction velocity. See equation (16) of Vreugdenhil & Taylor (2018). """
 function uτ(model, Uavg, U_wall, n)
-    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δzᵃᵃᶜ
+    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.z.Δᵃᵃᶜ
     ν = model.closure[n].ν
 
     compute!(Uavg)
@@ -30,7 +30,7 @@ end
 
 """ Heat flux at the wall. See equation (16) of Vreugdenhil & Taylor (2018). """
 function q_wall(model, Tavg, Θ_wall, n)
-    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δzᵃᵃᶜ
+    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.z.Δᵃᵃᶜ
     # TODO: interface function for extracting diffusivity?
     κ = model.closure[n].κ.T
 
