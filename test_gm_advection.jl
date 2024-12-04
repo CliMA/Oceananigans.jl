@@ -6,8 +6,7 @@ using Oceananigans.Units
 using GLMakie
 using Oceananigans.TurbulenceClosures: MesoscaleEddyTransport, IsopycnalSkewSymmetricDiffusivity
 
-gradient = "y"
-filename = "coarse_baroclinic_adjustment_" * gradient
+filename = "coarse_baroclinic_adjustment"
 
 # Domain
 Ly = 1000kilometers  # north-south extent [m]
@@ -18,12 +17,13 @@ save_fields_interval = 2day
 stop_time = 300days
 Δt = 10minutes
 
-grid = RectilinearGrid(topology = (Periodic, Bounded, Bounded),
-                       size = (3, Ny, Nz), 
-                       x = (-Ly/2, Ly/2),
+grid = RectilinearGrid(topology = (Flat, Bounded, Bounded),
+                       size = (Ny, Nz), 
                        y = (-Ly/2, Ly/2),
                        z = (-Lz, 0),
-                       halo = (3, 3, 3))
+                       halo = (4, 4))
+
+grid = ImmersedBoundaryGrid(grid, GridFittedBottom(y -> y > 0 ? -Lz : -Lz/2))
 
 coriolis = FPlane(latitude = -45)
 
@@ -51,10 +51,7 @@ y < y₀           => ramp = 0
 y₀ < y < y₀ + Δy => ramp = y / Δy
 y > y₀ + Δy      => ramp = 1
 """
-function ramp(x, y, Δ)
-    gradient == "x" && return min(max(0, x / Δ + 1/2), 1)
-    gradient == "y" && return min(max(0, y / Δ + 1/2), 1)
-end
+ramp(y, Δ) = min(max(0, y / Δ + 1/2), 1)
 
 # Parameters
 N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
@@ -67,8 +64,8 @@ M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
 Δb = Δy * M²
 ϵb = 1e-2 * Δb # noise amplitude
 
-bᵢ(x, y, z) = N² * z + Δb * ramp(x, y, Δy)
-cᵢ(x, y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/4)^2 / 2Δz^2)
+bᵢ(y, z) = N² * z + Δb * ramp(y, Δy)
+cᵢ(y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/4)^2 / 2Δz^2)
 
 set!(model, b=bᵢ, c=cᵢ)
 
@@ -98,9 +95,9 @@ end
 
 add_callback!(simulation, progress, IterationInterval(10))
 
-eddy_velocities = (ue = model.diffusivity_fields.u, ve = model.diffusivity_fields.v, we = model.diffusivity_fields.w)
+# eddy_velocities = (ue = model.diffusivity_fields.u, ve = model.diffusivity_fields.v, we = model.diffusivity_fields.w)
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers, eddy_velocities),
+simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers), # , eddy_velocities),
                                                       schedule = TimeInterval(save_fields_interval),
                                                       filename = filename * "_fields",
                                                       overwrite_existing = true)
@@ -120,7 +117,7 @@ fig = Figure(size=(1400, 700))
 filepath = filename * "_fields.jld2"
 
 ut = FieldTimeSeries(filepath, "u")
-ue = FieldTimeSeries(filepath, "ue")
+# ue = FieldTimeSeries(filepath, "ue")
 bt = FieldTimeSeries(filepath, "b")
 ct = FieldTimeSeries(filepath, "c")
 
@@ -137,19 +134,13 @@ z = z .* zscale
 times = bt.times
 Nt = length(times)
 
-if gradient == "y" # average in x
-    un(n) = interior(mean(ut[n], dims=1), 1, :, :) .+ interior(mean(ue[n], dims=1), 1, :, :) 
-    bn(n) = interior(mean(bt[n], dims=1), 1, :, :)
-    cn(n) = interior(mean(ct[n], dims=1), 1, :, :)
-else # average in y
-    un(n) = interior(mean(ut[n], dims=2), :, 1, :) .+ interior(mean(ue[n], dims=2), :, 1, :) 
-    bn(n) = interior(mean(bt[n], dims=2), :, 1, :)
-    cn(n) = interior(mean(ct[n], dims=2), :, 1, :)
-end
+un(n) = interior(mean(ut[n], dims=1), 1, :, :) # .+ interior(mean(ue[n], dims=1), 1, :, :) 
+bn(n) = interior(mean(bt[n], dims=1), 1, :, :)
+cn(n) = interior(mean(ct[n], dims=1), 1, :, :)
 
 @show min_c = 0
 @show max_c = 1
-@show max_u = max([maximum(abs, ut[n] + ue[n]) for n in 1:Nt]...) * 0.5
+@show max_u = max([maximum(abs, un(n)) for n in 1:Nt]...) * 0.5
 min_u = - max_u
 
 axu = Axis(fig[2, 1], xlabel="$gradient (km)", ylabel="z (km)", title="Zonal velocity")
