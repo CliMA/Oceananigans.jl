@@ -24,7 +24,7 @@ function MesoscaleEddyTransport(FT = Float64;
     isopycnal_tensor isa SmallSlopeIsopycnalTensor ||
         error("Only isopycnal_tensor=SmallSlopeIsopycnalTensor() is currently supported.")
 
-    return MesoscaleEddyTransport{required_halo_size}(convert_diffusivity(FT, κ_skew),
+    return MesoscaleEddyTransport{required_halo_size}(convert_diffusivity(FT, κ),
                                                     isopycnal_tensor,
                                                     slope_limiter)
 end

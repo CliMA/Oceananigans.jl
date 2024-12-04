@@ -29,10 +29,15 @@ coriolis = FPlane(latitude = -45)
 
 @info "Building a model..."
 
+adv_closure = MesoscaleEddyTransport()
+cox_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew = adv_closure.κ, 
+                                                isopycnal_tensor = adv_closure.isopycnal_tensor,
+                                                slope_limiter = adv_closure.slope_limiter)
+
 model = HydrostaticFreeSurfaceModel(; grid, coriolis,
                                     buoyancy = BuoyancyTracer(),
                                     tracer_advection = WENO(),
-                                    closure = MesoscaleEddyTransport(),
+                                    closure = adv_closure,
                                     tracers = (:b, :c))
 
 @info "Built $model."
