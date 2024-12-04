@@ -1,5 +1,4 @@
 using Oceananigans.Grids: Center, Face, AbstractGrid
-using Oceananigans.Grids: AbstractZStarGrid
 
 @inline hack_cosd(φ) = cos(π * φ / 180)
 @inline hack_sind(φ) = sin(π * φ / 180)

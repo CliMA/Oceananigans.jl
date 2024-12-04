@@ -78,7 +78,7 @@ function zspacings end
 @inline zspacings(grid, ℓz) = zspacings(grid, nothing, nothing, ℓz)
 
 ####
-#### `z_domain` (independent of ZStar or not) and `cpu_face_constructor_z`
+#### `z_domain` and `cpu_face_constructor_z`
 ####
 
 z_domain(grid) = domain(topology(grid, 3)(), grid.Nz, grid.z.cᵃᵃᶠ)
