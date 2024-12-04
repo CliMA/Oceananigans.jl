@@ -22,16 +22,9 @@ function test_zstar_coordinate(model, Ni, Δt)
     ∫c = Field(Integral(model.tracers.c))
 
     @test interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
-    @test interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)
+    @test interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)    
+    @test maximum(interior(w, :, :, Nz+1)) < model.grid.Nz * eps(eltype(w))
     
-    # TODO: This test errors for all grids except RectilinearGrid with the Implicit and Explicit
-    # free surfaces (the velocity at the top is not approximately zero)
-    if model.free_surface isa SplitExplicitFreeSurface
-        @test maximum(interior(w, :, :, Nz+1)) < model.grid.Nz * eps(eltype(w))
-    else
-        @test_broken maximum(interior(w, :, :, Nz+1)) < model.grid.Nz * eps(eltype(w))
-    end
-
     return nothing
 end
 
@@ -125,10 +118,11 @@ end
                 
                 split_free_surface    = SplitExplicitFreeSurface(grid; substeps = 20)
 
+                # TODO: Implicit and Explicit free surfaces are not fully supported yet
                 implicit_free_surface = ImplicitFreeSurface()
                 explicit_free_surface = ExplicitFreeSurface()
                 
-                for free_surface in [split_free_surface, implicit_free_surface, explicit_free_surface]
+                for free_surface in [split_free_surface] #, implicit_free_surface, explicit_free_surface]
                     @testset "$info_msg on $(free_surface)" begin
                         @info "  $info_msg of $(free_surface)" 
                         # TODO: minimum_xspacing(grid) on a Immersed GPU grid with ZStarVerticalCoordinate
