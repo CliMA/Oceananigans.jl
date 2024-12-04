@@ -3,7 +3,7 @@ using Oceananigans.Grids: inactive_node, peripheral_node
 using Oceananigans.BuoyancyModels: ∂x_b, ∂y_b, ∂z_b
 
 struct MesoscaleEddyTransport{K, M, L, N} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization, N}
-                         κ :: K
+                         κ :: K # Diffusivity at C, C, F locations
           isopycnal_tensor :: M
              slope_limiter :: L
     
@@ -28,6 +28,11 @@ function MesoscaleEddyTransport(FT = Float64;
                                                     isopycnal_tensor,
                                                     slope_limiter)
 end
+
+Adapt.adapt_structure(to, closure::MesoscaleEddyTransport{N}) = 
+    MesoscaleEddyTransport{N}(Adapt.adapt(to, closure.κ),
+                              Adapt.adapt(to, closure.isopycnal_tensor),
+                              Adapt.adapt(to, closure.slope_limiter))
 
 DiffusivityFields(grid, tracer_names, bcs, closure::MesoscaleEddyTransport) = VelocityFields(grid)
 with_tracers(tracer_names, closure::MesoscaleEddyTransport) = closure
@@ -81,18 +86,18 @@ end
 
 const CCF = (Center, Center, Face)
 
-@inline κSxᶠᶜᶠ(i, j, k, grid, clk, clo, b, fields) = κᶠᶜᶠ(i, j, k, grid, CCF, clo.κ, clk.time, fields) * Sxᶠᶜᶠ(i, j, k, grid, clo, b, fields)
-@inline κSyᶜᶠᶠ(i, j, k, grid, clk, clo, b, fields) = κᶜᶠᶠ(i, j, k, grid, CCF, clo.κ, clk.time, fields) * Syᶜᶠᶠ(i, j, k, grid, clo, b, fields)
+@inline κ_Sxᶠᶜᶠ(i, j, k, grid, clk, clo, b, fields) = κᶠᶜᶠ(i, j, k, grid, CCF, clo.κ, clk.time, fields) * Sxᶠᶜᶠ(i, j, k, grid, clo, b, fields)
+@inline κ_Syᶜᶠᶠ(i, j, k, grid, clk, clo, b, fields) = κᶜᶠᶠ(i, j, k, grid, CCF, clo.κ, clk.time, fields) * Syᶜᶠᶠ(i, j, k, grid, clo, b, fields)
 
 @kernel function _compute_eddy_velocities!(uₑ, vₑ, wₑ, grid, clk, clo, b, fields)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        uₑ[i, j, k] = - ∂zᶠᶜᶜ(i, j, k, grid, κSxᶠᶜᶠ, clk, clo, b, fields)
-        vₑ[i, j, k] = - ∂zᶜᶠᶜ(i, j, k, grid, κSyᶜᶠᶠ, clk, clo, b, fields)
+        uₑ[i, j, k] = - ∂zᶠᶜᶜ(i, j, k, grid, κ_Sxᶠᶜᶠ, clk, clo, b, fields)
+        vₑ[i, j, k] = - ∂zᶜᶠᶜ(i, j, k, grid, κ_Syᶜᶠᶠ, clk, clo, b, fields)
 
-        wˣ = ∂xᶜᶜᶠ(i, j, k, grid, κSxᶠᶜᶠ, clk, clo, b, fields)
-        wʸ = ∂yᶜᶜᶠ(i, j, k, grid, κSyᶜᶠᶠ, clk, clo, b, fields) 
+        wˣ = ∂xᶜᶜᶠ(i, j, k, grid, κ_Sxᶠᶜᶠ, clk, clo, b, fields)
+        wʸ = ∂yᶜᶜᶠ(i, j, k, grid, κ_Syᶜᶠᶠ, clk, clo, b, fields) 
         
         wₑ[i, j, k] =  wˣ + wʸ
     end
