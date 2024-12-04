@@ -78,6 +78,11 @@ end
     return ϵ * Sy
 end 
 
+const CCF = (Center, Center, Face)
+
+@inline κSxᶠᶜᶠ(i, j, k, grid, clk, clo, b, C) = κᶠᶜᶠ(i, j, k, grid, CCF, clo.κ_skew, clk.time) * Sxᶠᶜᶠ(i, j, k, grid, clo, b, C)
+@inline κSyᶜᶠᶠ(i, j, k, grid, clk, clo, b, C) = κᶜᶠᶠ(i, j, k, grid, CCF, clo.κ_skew, clk.time) * Syᶜᶠᶠ(i, j, k, grid, clo, b, C)
+
 @kernel function _compute_eddy_velocities!(uₑ, vₑ, wₑ, grid, clk, clo, b, C)
     i, j, k = @index(Global, NTuple)
 
