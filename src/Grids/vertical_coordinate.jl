@@ -17,10 +17,10 @@ abstract type AbstractVerticalCoordinate end
 # - `Δᶜ::D`: Cell-centered grid spacing.
 # - `Δᶠ::D`: Face-centered grid spacing.
 struct StaticVerticalCoordinate{C, D} <: AbstractVerticalCoordinate
-    cᶠ :: C
-    cᶜ :: C
-    Δᶠ :: D
-    Δᶜ :: D
+    cᵃᵃᶠ :: C
+    cᵃᵃᶜ :: C
+    Δᵃᵃᶠ :: D
+    Δᵃᵃᶜ :: D
 end
 
 ####
