@@ -37,8 +37,8 @@ const NT = NamedTuple
 
 # 2 - tuple Valid velocity fields
 @inline sum_of_velocities(U1::NT, U2::NT) = (u = SumOfArrays{2}(U1.u, U2.u),
-                                                  v = SumOfArrays{2}(U1.v, U2.v),
-                                                  w = SumOfArrays{2}(U1.w, U2.w))
+                                             v = SumOfArrays{2}(U1.v, U2.v),
+                                             w = SumOfArrays{2}(U1.w, U2.w))
 
 # 2 - tuple Combinations with `nothing`
 @inline sum_of_velocities(U1::NT, ::Nothing) = U1
@@ -46,8 +46,8 @@ const NT = NamedTuple
 
 # 3 - tuple Valid velocity fields
 @inline sum_of_velocities(U1::NT, U2::NT, U3::NT) = (u = SumOfArrays{3}(U1.u, U2.u, U3.u),
-                                                          v = SumOfArrays{3}(U1.v, U2.v, U3.v),
-                                                          w = SumOfArrays{3}(U1.w, U2.w, U3.w))
+                                                     v = SumOfArrays{3}(U1.v, U2.v, U3.v),
+                                                     w = SumOfArrays{3}(U1.w, U2.w, U3.w))
 
 # 3 - tuple Combinations with `nothing`
 @inline sum_of_velocities(U1::NT, U2::NT, ::Nothing) = sum_of_velocities(U1, U2)
