@@ -31,7 +31,7 @@ end
 adapt_structure(to, sum::SumOfArrays{N}) where N = SumOfArrays{N}((adapt_structure(to, array) for array in sum.arrays)...)
 
 # Convenience constructors for velocities with components (u, v, w) that
-# throw away the `nothing` values.
+# throw away the `nothing` values. We assume that we pass at least one valid velocity field.
 
 const NT = NamedTuple
 
@@ -56,4 +56,4 @@ const NT = NamedTuple
 
 @inline sum_of_velocities(U1::NT, ::Nothing, ::Nothing) = U1
 @inline sum_of_velocities(::Nothing, U2::NT, ::Nothing) = U2
-@inline sum_of_velocities(::Nothing, ::Nothing, U3::NT) = sU3
+@inline sum_of_velocities(::Nothing, ::Nothing, U3::NT) = U3
