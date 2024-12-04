@@ -54,6 +54,7 @@ function compute_diffusivities!(diffusivities, closure::MesoscaleEddyTransport, 
     return nothing
 end
 
+# Slope in x-direction at F, C, F locations
 @inline function Sxᶠᶜᶠ(i, j, k, grid, clo, b, C)
     bx = ℑzᵃᵃᶠ(i, j, k, grid, ∂x_b, b, C) 
     bz = ℑxᶠᵃᵃ(i, j, k, grid, ∂z_b, b, C)
@@ -69,6 +70,7 @@ end
     return ϵ * Sx
 end
 
+# Slope in y-direction at F, C, F locations
 @inline function Syᶜᶠᶠ(i, j, k, grid, clo, b, C)
     by = ℑzᵃᵃᶠ(i, j, k, grid, ∂y_b, b, C) 
     bz = ℑyᵃᶠᵃ(i, j, k, grid, ∂z_b, b, C)

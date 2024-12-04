@@ -4,7 +4,7 @@ using Random
 using Oceananigans
 using Oceananigans.Units
 using GLMakie
-using Oceananigans.TurbulenceClosures: MesoscaleEddyTransport
+using Oceananigans.TurbulenceClosures: MesoscaleEddyTransport, IsopycnalSkewSymmetricDiffusivity
 
 gradient = "y"
 filename = "coarse_baroclinic_adjustment_" * gradient
