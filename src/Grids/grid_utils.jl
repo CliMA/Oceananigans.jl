@@ -299,7 +299,7 @@ end
 function dimension_summary(topo, name, dom, z::AbstractVerticalCoordinate, pad_domain=0)
     prefix = domain_summary(topo, name, dom)
     padding = " "^(pad_domain+1) 
-    return string(prefix, padding, coordinate_summary(topo, z.Δᶜ, name))
+    return string(prefix, padding, coordinate_summary(topo, z.Δᵃᵃᶜ, name))
 end
 
 function dimension_summary(topo, name, dom, spacing, pad_domain=0)

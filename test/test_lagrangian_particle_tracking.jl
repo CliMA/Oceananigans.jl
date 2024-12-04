@@ -75,8 +75,8 @@ function run_simple_particle_tracking_tests(grid, timestepper=:QuasiAdamsBashfor
     ##### Test Boundary restitution
     #####
 
-    initial_z = CUDA.@allowscalar grid.z.cᶜ[grid.Nz-1]
-    top_boundary = CUDA.@allowscalar grid.z.cᶠ[grid.Nz+1]
+    initial_z = CUDA.@allowscalar grid.z.cᵃᵃᶜ[grid.Nz-1]
+    top_boundary = CUDA.@allowscalar grid.z.cᵃᵃᶠ[grid.Nz+1]
 
     x, y, z = on_architecture.(Ref(arch), ([0.0], [0.0], [initial_z]))
 

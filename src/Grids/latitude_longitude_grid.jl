@@ -307,7 +307,7 @@ function Base.show(io::IO, grid::LatitudeLongitudeGrid, withsummary=true)
 
     Ωλ = domain(TX(), size(grid, 1), grid.λᶠᵃᵃ)
     Ωφ = domain(TY(), size(grid, 2), grid.φᵃᶠᵃ)
-    Ωz = domain(TZ(), size(grid, 3), grid.z.cᶠ)
+    Ωz = domain(TZ(), size(grid, 3), grid.z.cᵃᵃᶠ)
 
     x_summary = domain_summary(TX(), "λ", Ωλ)
     y_summary = domain_summary(TY(), "φ", Ωφ)

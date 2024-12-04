@@ -35,16 +35,16 @@ const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any, <
 ####
 
 Adapt.adapt_structure(to, coord::StaticVerticalCoordinate) = 
-   StaticVerticalCoordinate(Adapt.adapt(to, coord.cᶠ),
-                            Adapt.adapt(to, coord.cᶜ),
-                            Adapt.adapt(to, coord.Δᶠ),
-                            Adapt.adapt(to, coord.Δᶜ))
+   StaticVerticalCoordinate(Adapt.adapt(to, coord.cᵃᵃᶠ),
+                            Adapt.adapt(to, coord.cᵃᵃᶜ),
+                            Adapt.adapt(to, coord.Δᵃᵃᶠ),
+                            Adapt.adapt(to, coord.Δᵃᵃᶜ))
 
 on_architecture(arch, coord::StaticVerticalCoordinate) = 
-   StaticVerticalCoordinate(on_architecture(arch, coord.cᶠ),
-                            on_architecture(arch, coord.cᶜ),
-                            on_architecture(arch, coord.Δᶠ),
-                            on_architecture(arch, coord.Δᶜ))
+   StaticVerticalCoordinate(on_architecture(arch, coord.cᵃᵃᶠ),
+                            on_architecture(arch, coord.cᵃᵃᶜ),
+                            on_architecture(arch, coord.Δᵃᵃᶠ),
+                            on_architecture(arch, coord.Δᵃᵃᶜ))
 
 #####
 ##### Nodes and spacings (common to every grid)...
@@ -53,15 +53,15 @@ on_architecture(arch, coord::StaticVerticalCoordinate) =
 AUG = AbstractUnderlyingGrid
 
 @inline rnode(i, j, k, grid, ℓx, ℓy, ℓz) = rnode(k, grid, ℓz)
-@inline rnode(k, grid, ::Center) = getnode(grid.z.cᶜ, k)
-@inline rnode(k, grid, ::Face)   = getnode(grid.z.cᶠ, k)
+@inline rnode(k, grid, ::Center) = getnode(grid.z.cᵃᵃᶜ, k)
+@inline rnode(k, grid, ::Face)   = getnode(grid.z.cᵃᵃᶠ, k)
 
 # These will be extended in the Operators module
 @inline znode(k, grid, ℓz) = rnode(k, grid, ℓz)
 @inline znode(i, j, k, grid, ℓx, ℓy, ℓz) = rnode(i, j, k, grid, ℓx, ℓy, ℓz)
 
-@inline rnodes(grid::AUG, ℓz::Face;   with_halos=false) = _property(grid.z.cᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
-@inline rnodes(grid::AUG, ℓz::Center; with_halos=false) = _property(grid.z.cᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline rnodes(grid::AUG, ℓz::Face;   with_halos=false) = _property(grid.z.cᵃᵃᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline rnodes(grid::AUG, ℓz::Center; with_halos=false) = _property(grid.z.cᵃᵃᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
 @inline rnodes(grid::AUG, ℓx, ℓy, ℓz; with_halos=false) = rnodes(grid, ℓz; with_halos)
 
 rnodes(grid::AUG, ::Nothing; kwargs...) = 1:1
@@ -81,7 +81,7 @@ function zspacings end
 #### `z_domain` (independent of ZStar or not) and `cpu_face_constructor_z`
 ####
 
-z_domain(grid) = domain(topology(grid, 3)(), grid.Nz, grid.z.cᶠ)
+z_domain(grid) = domain(topology(grid, 3)(), grid.Nz, grid.z.cᵃᵃᶠ)
 
 @inline cpu_face_constructor_r(grid::RegularVerticalGrid) = z_domain(grid)
 
@@ -100,4 +100,4 @@ end
 
 # Summaries
 coordinate_summary(::Bounded, z::AbstractVerticalCoordinate, name) = 
-    @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(z.Δᶜ))
+    @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(z.Δᵃᵃᶜ))
