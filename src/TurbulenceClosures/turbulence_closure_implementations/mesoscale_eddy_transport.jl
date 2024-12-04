@@ -15,6 +15,27 @@ struct MesoscaleEddyTransport{K, M, L, N} <: AbstractTurbulenceClosure{ExplicitT
     end
 end
 
+"""
+    MesoscaleEddyTransport(FT = Float64; 
+                           κ = 1000, 
+                           isopycnal_tensor = SmallSlopeIsopycnalTensor(), 
+                           slope_limiter = FluxTapering(100), 
+                           required_halo_size::Int = 1)
+
+Creates a `MesoscaleEddyTransport` turbulence closure that parameterized the transport of mesoscale eddies.
+The eddy velocities are calculated from the buoyancy slope and the diffusivity as
+```math
+u = - ∂z (κ Sx)
+v = - ∂z (κ Sy)
+w = ∂x (κ Sx) + ∂y (κ Sy)
+```
+Where `κ` is provided (can be a `Function` or an `AbstractArray`) and 
+```math
+Sx = - ∂x b / ∂z b
+Sy = - ∂y b / ∂z b
+```
+The eddy velocities are added to the model velocities to advect the tracer fields.
+"""
 function MesoscaleEddyTransport(FT = Float64;
                                 κ = 1000,
                                 isopycnal_tensor = SmallSlopeIsopycnalTensor(),
