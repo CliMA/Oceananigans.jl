@@ -27,8 +27,8 @@ end
 #### Some usefull aliases
 ####
 
-const RegularStaticVerticalCoordinate = StaticVerticalCoordinate{<:Any, <:Number}
-const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any, <:RegularStaticVerticalCoordinate}
+const RegularVerticalCoordinate = StaticVerticalCoordinate{<:Any, <:Number}
+const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate}
 
 ####
 #### Adapt and on_architecture
