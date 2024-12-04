@@ -1,7 +1,4 @@
-using Oceananigans.Utils: SumOfArrays, launch!
-using Oceananigans.Grids: inactive_node, peripheral_node
-using Oceananigans.Fields: VelocityFields
-using KernelAbstractions: @kernel, @index
+
 
 function ∂x_b end
 function ∂y_b end
@@ -66,59 +63,4 @@ function compute_eddy_velocities!(advection::NamedTuple, grid, buoyancy, tracers
     end
 
     return nothing
-end
-
-function compute_eddy_velocities!(advection::ResidualTracerAdvection, grid, buoyancy, tracers; parameters = :xy)
-    uₑ = advection.u_eddy
-    vₑ = advection.v_eddy
-    wₑ = advection.w_eddy
-    κ  = advection.diffusivity
-    Sₘ = advection.maximum_slope
-
-    launch!(architecture(grid), grid, parameters, _compute_eddy_velocities!, 
-            uₑ, vₑ, wₑ, grid, buoyancy, tracers, κ, Sₘ)
-    
-    return nothing
-end
-
-@inline function κSxᶠᶜᶠ(i, j, k, grid, b, C, Sₘ, κ)
-    bx = ℑzᵃᵃᶠ(i, j, k, grid, ∂x_b, b, C) 
-    bz = ℑxᶠᵃᵃ(i, j, k, grid, ∂z_b, b, C)
-
-    # Impose a boundary condition on immersed peripheries
-    inactive = peripheral_node(i, j, k, grid, Face(), Center(), Face())
-    Sx = ifelse(bz == 0,  zero(grid), - bx / bz)
-    ϵ  = min(one(grid), Sₘ^2 / Sx^2)
-    Sx = ifelse(inactive, zero(grid), Sx)
-
-    return ϵ * κ * Sx
-end
-
-@inline function κSyᶜᶠᶠ(i, j, k, grid, b, C, Sₘ, κ)
-    by = ℑzᵃᵃᶠ(i, j, k, grid, ∂y_b, b, C) 
-    bz = ℑyᵃᶠᵃ(i, j, k, grid, ∂z_b, b, C)
-
-    # Impose a boundary condition on immersed peripheries
-    inactive = peripheral_node(i, j, k, grid, Center(), Face(), Face())
-    Sy = ifelse(bz == 0,  zero(grid), - by / bz)
-    ϵ  = min(one(grid), Sₘ^2 / Sy^2)
-    Sy = ifelse(inactive, zero(grid), Sy)
-
-    return ϵ * κ * Sy
-end
-
-@kernel function _compute_eddy_velocities!(uₑ, vₑ, wₑ, grid, b, C, Sₘ, κ)
-    i, j = @index(Global, NTuple)
-
-    Nz = size(grid, 3)
-
-    @inbounds for k in 0:Nz+1
-        uₑ[i, j, k] = - ∂zᶠᶜᶜ(i, j, k, grid, κSxᶠᶜᶠ, b, C, Sₘ, κ)
-        vₑ[i, j, k] = - ∂zᶜᶠᶜ(i, j, k, grid, κSyᶜᶠᶠ, b, C, Sₘ, κ)
-
-        wˣ = ∂xᶜᶜᶠ(i, j, k, grid, κSxᶠᶜᶠ, b, C, Sₘ, κ)
-        wʸ = ∂yᶜᶜᶠ(i, j, k, grid, κSyᶜᶠᶠ, b, C, Sₘ, κ) 
-        
-        wₑ[i, j, k] =  wˣ + wʸ
-    end
 end
