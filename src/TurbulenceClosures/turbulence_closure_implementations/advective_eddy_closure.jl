@@ -33,9 +33,9 @@ DiffusivityFields(grid, tracer_names, bcs, closure::AdvectiveEddyClosure) = Velo
 with_tracers(tracer_names, closure::AdvectiveEddyClosure) = closure
 
 function compute_diffusivities!(diffusivities, closure::AdvectiveEddyClosure, model; parameters = :xyz)
-    uₑ = diffusivities.velocities.u
-    vₑ = diffusivities.velocities.v
-    wₑ = diffusivities.velocities.w
+    uₑ = diffusivities.u
+    vₑ = diffusivities.v
+    wₑ = diffusivities.w
 
     buoyancy = model.buoyancy
     grid     = model.grid
@@ -53,7 +53,7 @@ end
     bx = ℑzᵃᵃᶠ(i, j, k, grid, ∂x_b, b, C) 
     bz = ℑxᶠᵃᵃ(i, j, k, grid, ∂z_b, b, C)
 
-    Sₘ = clo.slope_limiter.maximum_slope
+    Sₘ = clo.slope_limiter.max_slope
 
     # Impose a boundary condition on immersed peripheries
     inactive = peripheral_node(i, j, k, grid, Face(), Center(), Face())
@@ -68,7 +68,7 @@ end
     by = ℑzᵃᵃᶠ(i, j, k, grid, ∂y_b, b, C) 
     bz = ℑyᵃᶠᵃ(i, j, k, grid, ∂z_b, b, C)
     
-    Sₘ = clo.slope_limiter.maximum_slope
+    Sₘ = clo.slope_limiter.max_slope
 
     # Impose a boundary condition on immersed peripheries
     inactive = peripheral_node(i, j, k, grid, Center(), Face(), Face())
@@ -81,40 +81,28 @@ end
 
 const CCF = (Center, Center, Face)
 
-@inline κSxᶠᶜᶠ(i, j, k, grid, clk, clo, b, C) = κᶠᶜᶠ(i, j, k, grid, CCF, clo.κ_skew, clk.time, fields) * Sxᶠᶜᶠ(i, j, k, grid, clo, b, fields)
-@inline κSyᶜᶠᶠ(i, j, k, grid, clk, clo, b, C) = κᶜᶠᶠ(i, j, k, grid, CCF, clo.κ_skew, clk.time, fields) * Syᶜᶠᶠ(i, j, k, grid, clo, b, fields)
+@inline κSxᶠᶜᶠ(i, j, k, grid, clk, clo, b, fields) = κᶠᶜᶠ(i, j, k, grid, CCF, clo.κ_skew, clk.time, fields) * Sxᶠᶜᶠ(i, j, k, grid, clo, b, fields)
+@inline κSyᶜᶠᶠ(i, j, k, grid, clk, clo, b, fields) = κᶜᶠᶠ(i, j, k, grid, CCF, clo.κ_skew, clk.time, fields) * Syᶜᶠᶠ(i, j, k, grid, clo, b, fields)
 
 @kernel function _compute_eddy_velocities!(uₑ, vₑ, wₑ, grid, clk, clo, b, fields)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        uₑ[i, j, k] = - ∂zᶠᶜᶜ(i, j, k, grid, κSxᶠᶜᶠ, clo, clk, b, fields)
-        vₑ[i, j, k] = - ∂zᶜᶠᶜ(i, j, k, grid, κSyᶜᶠᶠ, clo, clk, b, fields)
+        uₑ[i, j, k] = - ∂zᶠᶜᶜ(i, j, k, grid, κSxᶠᶜᶠ, clk, clo, b, fields)
+        vₑ[i, j, k] = - ∂zᶜᶠᶜ(i, j, k, grid, κSyᶜᶠᶠ, clk, clo, b, fields)
 
-        wˣ = ∂xᶜᶜᶠ(i, j, k, grid, κSxᶠᶜᶠ, clo, clk, b, fields)
-        wʸ = ∂yᶜᶜᶠ(i, j, k, grid, κSyᶜᶠᶠ, clo, clk, b, fields) 
+        wˣ = ∂xᶜᶜᶠ(i, j, k, grid, κSxᶠᶜᶠ, clk, clo, b, fields)
+        wʸ = ∂yᶜᶜᶠ(i, j, k, grid, κSyᶜᶠᶠ, clk, clo, b, fields) 
         
         wₑ[i, j, k] =  wˣ + wʸ
     end
 end
 
 # Fallback
-@inline closure_turbulent_velocity(clo, K) = (u = ZeroField(), v = ZeroField(), w = ZeroField())
-@inline closure_turbulent_velocity(::AdvectiveEddyClosure, K) = (u = K.u, v = K.v, w = K.w)
-
-@inline closure_turbulent_velocity(clo1, ::AdvectiveEddyClosure, K1, K2) = (u = K2.u, v = K2.v, w = K2.w)
-@inline closure_turbulent_velocity(::AdvectiveEddyClosure, clo2, K1, K2) = (u = K1.u, v = K1.v, w = K1.w)
-@inline closure_turbulent_velocity(clo1, clo2, K1, K2) = (u = ZeroField(), v = ZeroField(), w = ZeroField())
+@inline closure_turbulent_velocity(clo, K, val_tracer_name) = (u = ZeroField(), v = ZeroField(), w = ZeroField())
+@inline closure_turbulent_velocity(::AdvectiveEddyClosure, K, val_tracer_name) = (u = K.u, v = K.v, w = K.w)
 
 # Handle tuple of closures.
 @inline function closure_turbulent_velocity(clo::Tuple, K::Tuple, val_tracer_name) 
 
 end
-
-
-@inline function closure_turbulent_velocity(clo::Tuple, K::Tuple, val_tracer_name) 
-    
-end
-
-
-

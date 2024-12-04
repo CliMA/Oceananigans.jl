@@ -4,7 +4,7 @@ using Random
 using Oceananigans
 using Oceananigans.Units
 using GLMakie
-using Oceananigans.Advection: ResidualTracerAdvection
+using Oceananigans.TurbulenceClosures: AdvectiveEddyClosure
 
 gradient = "y"
 filename = "coarse_baroclinic_adjustment_" * gradient
@@ -31,7 +31,8 @@ coriolis = FPlane(latitude = -45)
 
 model = HydrostaticFreeSurfaceModel(; grid, coriolis,
                                     buoyancy = BuoyancyTracer(),
-                                    tracer_advection = ResidualTracerAdvection(grid, WENO(); diffusivity = 100),
+                                    tracer_advection = WENO(),
+                                    closure = AdvectiveEddyClosure(),
                                     tracers = (:b, :c))
 
 @info "Built $model."
@@ -92,7 +93,7 @@ end
 
 add_callback!(simulation, progress, IterationInterval(10))
 
-eddy_velocities = (ue = model.advection.b.u_eddy, ve = model.advection.b.v_eddy, we = model.advection.b.w_eddy)
+eddy_velocities = (ue = model.diffusivity_fields.u, ve = model.diffusivity_fields.v, we = model.diffusivity_fields.w)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers, eddy_velocities),
                                                       schedule = TimeInterval(save_fields_interval),
