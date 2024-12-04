@@ -44,8 +44,8 @@ const ZRG = Union{LLGZ, RGZ, OSSGZ}
 @inline Δrᵃᵃᶜ(i, j, k, grid::AbstractGrid) = getspacing(k, grid.z.Δᵃᵃᶜ)
 @inline Δrᵃᵃᶠ(i, j, k, grid::AbstractGrid) = getspacing(k, grid.z.Δᵃᵃᶠ)
 
-@inline Δzᵃᵃᶜ(i, j, k, grid::AbstractGrid) = getspacing(k, grid.z.Δᵃᵃᶜ)
-@inline Δzᵃᵃᶠ(i, j, k, grid::AbstractGrid) = getspacing(k, grid.z.Δᵃᵃᶠ)
+@inline Δzᵃᵃᶜ(i, j, k, grid::AbstractGrid) = Δrᵃᵃᶜ(i, j, k, grid)
+@inline Δzᵃᵃᶠ(i, j, k, grid::AbstractGrid) = Δrᵃᵃᶠ(i, j, k, grid)
 
 # Convenience Functions for all grids
 for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ)
@@ -74,8 +74,8 @@ for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ)
         @eval begin
             @inline $x_spacing_3D(i, j, k, grid) = $x_spacing_2D(i, j, k, grid)
             @inline $y_spacing_3D(i, j, k, grid) = $y_spacing_2D(i, j, k, grid)
-            @inline $z_spacing_3D(i, j, k, grid) = $z_spacing_1D(i, j, k, grid)
             @inline $r_spacing_3D(i, j, k, grid) = $r_spacing_1D(i, j, k, grid)
+            @inline $z_spacing_3D(i, j, k, grid) = $r_spacing_3D(i, j, k, grid)
         end
     end
 end
