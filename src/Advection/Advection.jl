@@ -83,6 +83,5 @@ include("tracer_advection_operators.jl")
 include("positivity_preserving_tracer_advection_operators.jl")
 include("cell_advection_timescale.jl")
 include("adapt_advection_order.jl")
-include("residual_tracer_advection.jl")
 
 end # module

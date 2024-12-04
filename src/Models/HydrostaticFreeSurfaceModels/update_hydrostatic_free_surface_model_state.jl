@@ -9,7 +9,6 @@ using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field
 using Oceananigans.Models: update_model_field_time_series!
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, p_kernel_parameters
 using Oceananigans.Fields: replace_horizontal_vector_halos!
-using Oceananigans.Advection: compute_eddy_velocities!
 
 import Oceananigans.Models.NonhydrostaticModels: compute_auxiliaries!
 import Oceananigans.TimeSteppers: update_state!
@@ -78,13 +77,8 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
     grid = model.grid
     closure = model.closure
     diffusivity = model.diffusivity_fields
-    advection = model.advection
-    buoyancy = model.buoyancy
-    tracers  = model.tracers
 
-    compute_w_from_continuity!(model; parameters = w_parameters)
-    compute_eddy_velocities!(advection, grid, buoyancy, tracers; parameters = w_parameters)
-    
+    compute_w_from_continuity!(model; parameters = w_parameters)    
     compute_diffusivities!(diffusivity, closure, model; parameters = κ_parameters)
     update_hydrostatic_pressure!(model.pressure.pHY′, architecture(grid),
                                  grid, model.buoyancy, model.tracers; 
