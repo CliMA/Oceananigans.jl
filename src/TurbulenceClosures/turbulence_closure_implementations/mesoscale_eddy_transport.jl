@@ -98,11 +98,52 @@ const CCF = (Center, Center, Face)
     end
 end
 
-# Fallback
+# Single closure version
 @inline closure_turbulent_velocity(clo, K, val_tracer_name) = (u = ZeroField(), v = ZeroField(), w = ZeroField())
 @inline closure_turbulent_velocity(::MesoscaleEddyTransport, K, val_tracer_name) = (u = K.u, v = K.v, w = K.w)
 
-# Handle tuple of closures.
-@inline function closure_turbulent_velocity(clo::Tuple, K::Tuple, val_tracer_name) 
+const ZeroU = NamedTuple{(:u, :v, :w), Tuple{ZeroField, ZeroField, ZeroField}}
 
-end
+# 2-tuple closure
+@inline select_velocities(::ZeroU, U) = U
+@inline select_velocities(U, ::ZeroU) = U
+@inline select_velocities(U::ZeroU, ::ZeroU) = U
+
+# 3-tuple closure
+@inline select_velocities(U, ::ZeroU, ::ZeroU) = U
+@inline select_velocities(::ZeroU, U, ::ZeroU) = U
+@inline select_velocities(::ZeroU, ::ZeroU, U) = U
+@inline select_velocities(U::ZeroU, ::ZeroU, ::ZeroU) = U
+
+# 4-tuple closure
+@inline select_velocities(U, ::ZeroU, ::ZeroU, ::ZeroU) = U
+@inline select_velocities(::ZeroU, U, ::ZeroU, ::ZeroU) = U
+@inline select_velocities(::ZeroU, ::ZeroU, U, ::ZeroU) = U
+@inline select_velocities(::ZeroU, ::ZeroU, ::ZeroU, U) = U
+@inline select_velocities(U::ZeroU, ::ZeroU, ::ZeroU, ::ZeroU) = U
+
+# Handle tuple of closures.
+# Assumption: there is only one MesoscaleEddyTransport closure in the tuple.
+@inline closure_turbulent_velocity(closures::Tuple{<:Any}, Ks, val_tracer_name) =
+            closure_turbulent_velocity(closures[1], Ks[1], val_tracer_name)
+
+@inline closure_turbulent_velocity(closures::Tuple{<:Any, <:Any}, Ks, val_tracer_name) = 
+    select_velocities(closure_turbulent_velocity(closures[1], Ks[1], val_tracer_name),
+                              closure_turbulent_velocity(closures[2], Ks[2], val_tracer_name))
+
+@inline closure_turbulent_velocity(closures::Tuple{<:Any, <:Any, <:Any}, Ks, val_tracer_name) =
+    select_velocities(closure_turbulent_velocity(closures[1], Ks[1], val_tracer_name),
+                        closure_turbulent_velocity(closures[2], Ks[2], val_tracer_name),
+                        closure_turbulent_velocity(closures[3], Ks[3], val_tracer_name))
+
+@inline closure_turbulent_velocity(closures::Tuple{<:Any, <:Any, <:Any, <:Any}, Ks, val_tracer_name) =
+    select_velocities(closure_turbulent_velocity(closures[1], Ks[1], val_tracer_name),
+                        closure_turbulent_velocity(closures[2], Ks[2], val_tracer_name),
+                        closure_turbulent_velocity(closures[3], Ks[3], val_tracer_name),
+                        closure_turbulent_velocity(closures[4], Ks[4], val_tracer_name))
+
+@inline closure_turbulent_velocity(closures::Tuple, Ks, val_tracer_name) =
+    select_velocities(closure_turbulent_velocity(closures[1], Ks[1], val_tracer_name),
+                        closure_turbulent_velocity(closures[2], Ks[2], val_tracer_name),
+                        closure_turbulent_velocity(closures[3], Ks[3], val_tracer_name),
+                        closure_turbulent_velocity(closures[4:end], Ks[4:end], val_tracer_name))
