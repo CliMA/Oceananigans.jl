@@ -49,6 +49,12 @@ function IsopycnalSkewSymmetricDiffusivity(time_disc::TD = VerticallyImplicitTim
                                            slope_limiter = FluxTapering(1e-2),
                                            required_halo_size::Int = 1) where {TD, A}
 
+    # For the moment, allow only one skew coefficient for all tracers
+    # TODO: maybe generalize it?
+    if κ_skew isa NamedTuple && skew_fluxes_formulation isa AdvectiveFormulation
+        error("Only one skew coefficient for all tracers is currently supported with the AdvectiveFormulation.")
+    end
+
     isopycnal_tensor isa SmallSlopeIsopycnalTensor ||
         error("Only isopycnal_tensor=SmallSlopeIsopycnalTensor() is currently supported.")
 
@@ -68,8 +74,6 @@ function with_tracers(tracers, closure::ISSD{TD, A, N}) where {TD, A<:DiffusiveF
 end
 
 function with_tracers(tracers, closure::ISSD{TD, A, N}) where {TD, A<:AdvectiveFormulation, N}
-    # For the moment, allow only one skew coefficient for all tracers
-    # TODO: maybe generalize it?
     κ_skew = closure.κ_skew
     κ_symmetric = !isa(closure.κ_symmetric, NamedTuple) ? closure.κ_symmetric : tracer_diffusivities(tracers, closure.κ_symmetric)
     return IsopycnalSkewSymmetricDiffusivity{TD, A, N}(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
