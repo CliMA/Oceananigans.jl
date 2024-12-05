@@ -48,7 +48,7 @@ The state at the first substep is taken to be the one that corresponds to the ``
 function SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
                                      implicit_solver::TI = nothing,
                                      Gⁿ::TG = deepcopy(prognostic_fields),
-                                     Ψ⁻::PF = deepcopy(prognostic_fields)
+                                     Ψ⁻::PF = deepcopy(prognostic_fields),
                                      G⁻::TE = nothing) where {TI, TG, PF, TE}
 
 
