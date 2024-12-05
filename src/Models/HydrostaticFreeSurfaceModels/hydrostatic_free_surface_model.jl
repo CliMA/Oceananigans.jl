@@ -194,11 +194,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     implicit_solver   = implicit_diffusion_solver(time_discretization(closure), grid)
     prognostic_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
 
-    # QuasiAdamsBashforth2 requires χ as a third positional argument, while SplitRungeKutta3 requires
-    # the prognostic_fields as a third positional argument.
-    timestepper_arg = timestepper == :QuasiAdamsBashforth2 ? 0.1 : prognostic_fields
-
-    timestepper = TimeStepper(timestepper, grid, tracernames(tracers), timestepper_arg;
+    timestepper = TimeStepper(timestepper, grid, prognostic_fields;
                               implicit_solver = implicit_solver,
                               Gⁿ = hydrostatic_tendency_fields(velocities, free_surface, grid, tracernames(tracers)),
                               G⁻ = previous_hydrostatic_tendency_fields(Val(timestepper), velocities, free_surface, grid, tracernames(tracers)))

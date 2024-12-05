@@ -19,14 +19,14 @@ struct SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI} <: AbstractTimeStepper
 end
 
 """
-    SplitRungeKutta3TimeStepper(grid, tracers, prognostic_fields;
-                                implicit_solver = nothing,
-                                Gⁿ = TendencyFields(grid, tracers),
-                                G⁻ = nothing)
+    SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
+                                implicit_solver::TI = nothing,
+                                Gⁿ::TG = deepcopy(prognostic_fields),
+                                Ψ⁻::PF = deepcopy(prognostic_fields)
+                                G⁻::TE = nothing) where {TI, TG, PF, TE}
 
 Return a 3rd-order `SplitRungeKutta3TimeStepper` on `grid` and with `tracers`.
-The tendency fields `Gⁿ` and `G⁻`, can be specified via optional `kwargs`.
-The previous prognostic state Ψ⁻ is a deep copy of the `prognostic_fields` positional argument.
+The tendency fields `Gⁿ` and `G⁻`, and the previous state ` Ψ⁻` can be modified via optional `kwargs`.
 
 The scheme described by [Lan2022](@citet). In a nutshell, the 3rd-order Runge Kutta timestepper 
 steps forward the state `Uⁿ` by `Δt` via 3 substeps. A barotropic velocity correction step is applied 
@@ -45,10 +45,11 @@ at the ``m``-th substep, and constants ``γ¹ = 1`, ``γ² = 1/4``, ``γ³ = 1/3
 The state at the first substep is taken to be the one that corresponds to the ``n``-th timestep,
 `U¹ = Uⁿ`, and the state after the third substep is then the state at the `Uⁿ⁺¹ = U³`.
 """
-function SplitRungeKutta3TimeStepper(grid, tracers, prognostic_fields;
+function SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
                                      implicit_solver::TI = nothing,
-                                     Gⁿ::TG = TendencyFields(grid, tracers),
-                                     G⁻::TE = nothing) where {TI, TG, TE}
+                                     Gⁿ::TG = deepcopy(prognostic_fields),
+                                     Ψ⁻::PF = deepcopy(prognostic_fields)
+                                     G⁻::TE = nothing) where {TI, TG, PF, TE}
 
 
     @warn("Split barotropic-baroclinic time stepping with SplitRungeKutta3TimeStepper is not tested and experimental.\n" *
@@ -64,7 +65,6 @@ function SplitRungeKutta3TimeStepper(grid, tracers, prognostic_fields;
     ζ² = 3 // 4
     ζ³ = 1 // 3
 
-    Ψ⁻ = deepcopy(prognostic_fields)
     PF = typeof(Ψ⁻)
     FT = eltype(grid)
 
