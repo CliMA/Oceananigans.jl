@@ -72,17 +72,12 @@ function hydrostatic_velocity_fields(velocities::PrescribedVelocityFields, grid,
     return PrescribedVelocityFields(u, v, w, parameters)
 end
 
-function hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names)
-    tracer_tendencies = TracerFields(tracer_names, grid)
-    momentum_tendencies = (u = nothing, v = nothing)
-    return merge(momentum_tendencies, tracer_tendencies)
-end
+hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names) = 
+    TracerFields(tracer_names, grid)
 
-function hydrostatic_tendency_fields(::PrescribedVelocityFields, ::ExplicitFreeSurface, grid, tracer_names)
-    tracers = TracerFields(tracer_names, grid)
-    return merge((u = nothing, v = nothing, η = nothing), tracers)
-end
-
+hydrostatic_tendency_fields(::PrescribedVelocityFields, ::ExplicitFreeSurface, grid, tracer_names) = 
+    TracerFields(tracer_names, grid)
+    
 @inline fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing
 @inline fill_halo_regions!(::FunctionField, args...) = nothing
 
