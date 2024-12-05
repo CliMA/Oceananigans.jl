@@ -29,23 +29,25 @@ const issd_coefficient_loc = (Center(), Center(), Face())
     IsopycnalSkewSymmetricDiffusivity([time_disc=VerticallyImplicitTimeDiscretization(), FT=Float64;]
                                       κ_skew = 0,
                                       κ_symmetric = 0,
+                                      skew_fluxes_formulation = AdvectiveFormulation(),
                                       isopycnal_tensor = SmallSlopeIsopycnalTensor(),
                                       slope_limiter = FluxTapering(1e-2))
 
 Return parameters for an isopycnal skew-symmetric tracer diffusivity with skew diffusivity
 `κ_skew` and symmetric diffusivity `κ_symmetric` that uses an `isopycnal_tensor` model for
 for calculating the isopycnal slopes, and (optionally) applying a `slope_limiter` to the
-calculated isopycnal slope values.
+calculated isopycnal slope values. The skew fluxes can be computed using either the `AdvectiveFormulation` 
+or the `DiffusiveFormulation`.
     
 Both `κ_skew` and `κ_symmetric` may be constants, arrays, fields, or functions of `(x, y, z, t)`.
 """
 function IsopycnalSkewSymmetricDiffusivity(time_disc::TD = VerticallyImplicitTimeDiscretization(), FT = Float64;
                                            κ_skew = 0,
                                            κ_symmetric = 0,
-                                           advective_skew_formulation::A = AdvectiveFormulation(),
+                                           skew_fluxes_formulation::A = AdvectiveFormulation(),
                                            isopycnal_tensor = SmallSlopeIsopycnalTensor(),
                                            slope_limiter = FluxTapering(1e-2),
-                                           required_halo_size::Int = 1) where TD
+                                           required_halo_size::Int = 1) where {TD, A}
 
     isopycnal_tensor isa SmallSlopeIsopycnalTensor ||
         error("Only isopycnal_tensor=SmallSlopeIsopycnalTensor() is currently supported.")
