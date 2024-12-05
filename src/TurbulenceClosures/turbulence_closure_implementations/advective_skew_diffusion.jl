@@ -57,18 +57,18 @@ end
 @inline κ_Sxᶠᶜᶠ(i, j, k, grid, clk, clo, κ, b, fields) = κᶠᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ, clk.time, fields) * Sxᶠᶜᶠ(i, j, k, grid, clo, b, fields)
 @inline κ_Syᶜᶠᶠ(i, j, k, grid, clk, clo, κ, b, fields) = κᶜᶠᶠ(i, j, k, grid, issd_coefficient_loc, κ, clk.time, fields) * Syᶜᶠᶠ(i, j, k, grid, clo, b, fields)
 
-@kernel function _compute_eddy_velocities!(uₑ, vₑ, wₑ, grid, clk, clo, b, fields)
+@kernel function _compute_eddy_velocities!(uₑ, vₑ, wₑ, grid, clock, closure, buoyancy, fields)
     i, j, k = @index(Global, NTuple)
 
     closure = getclosure(i, j, closure)
     κ = closure.κ_skew
 
     @inbounds begin
-        uₑ[i, j, k] = - ∂zᶠᶜᶜ(i, j, k, grid, κ_Sxᶠᶜᶠ, clk, clo, κ, b, fields)
-        vₑ[i, j, k] = - ∂zᶜᶠᶜ(i, j, k, grid, κ_Syᶜᶠᶠ, clk, clo, κ, b, fields)
+        uₑ[i, j, k] = - ∂zᶠᶜᶜ(i, j, k, grid, κ_Sxᶠᶜᶠ, clock, closure, κ, buoyancy, fields)
+        vₑ[i, j, k] = - ∂zᶜᶠᶜ(i, j, k, grid, κ_Syᶜᶠᶠ, clock, closure, κ, buoyancy, fields)
 
-        wˣ = ∂xᶜᶜᶠ(i, j, k, grid, κ_Sxᶠᶜᶠ, clk, clo, b, fields)
-        wʸ = ∂yᶜᶜᶠ(i, j, k, grid, κ_Syᶜᶠᶠ, clk, clo, b, fields) 
+        wˣ = ∂xᶜᶜᶠ(i, j, k, grid, κ_Sxᶠᶜᶠ, clock, closure, κ, buoyancy, fields)
+        wʸ = ∂yᶜᶜᶠ(i, j, k, grid, κ_Syᶜᶠᶠ, clock, closure, κ, buoyancy, fields) 
         
         wₑ[i, j, k] =  wˣ + wʸ
     end
