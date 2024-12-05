@@ -73,11 +73,8 @@ function hydrostatic_velocity_fields(velocities::PrescribedVelocityFields, grid,
 end
 
 hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names) = 
-    TracerFields(tracer_names, grid)
+    merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
 
-hydrostatic_tendency_fields(::PrescribedVelocityFields, ::ExplicitFreeSurface, grid, tracer_names) = 
-    TracerFields(tracer_names, grid)
-    
 @inline fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing
 @inline fill_halo_regions!(::FunctionField, args...) = nothing
 
