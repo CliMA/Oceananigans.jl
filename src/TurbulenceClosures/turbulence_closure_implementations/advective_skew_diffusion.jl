@@ -97,7 +97,7 @@ end
 @inline select_velocities(::Nothing, ::Nothing, ::Nothing, ::Nothing) = nothing
 
 # Handle tuple of closures.
-# Assumption: there is only one MesoscaleEddyTransport closure in the tuple.
+# Assumption: there is only one ISSD closure in the tuple of closures.
 @inline closure_turbulent_velocity(closures::Tuple{<:Any}, Ks, val_tracer_name) =
             closure_turbulent_velocity(closures[1], Ks[1], val_tracer_name)
 
