@@ -61,7 +61,7 @@ end
 IsopycnalSkewSymmetricDiffusivity(FT::DataType; kw...) = 
     IsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
-function with_tracers(tracers, closure::ISSD{TD, A, N}) where {TD, N}
+function with_tracers(tracers, closure::ISSD{TD, A, N}) where {TD, A, N}
     # For the moment, allow only one skew coefficient for all tracers
     # TODO: maybe generalize it?
     κ_skew = closure.κ_skew 
