@@ -55,7 +55,10 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
                bc.classification.matching_scheme.outflow_timescale, 
                bc.classification.matching_scheme.inflow_timescale)
 
-    uᵢⁿ⁺¹ = (uᵢⁿ + U * u′ᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * (Δt / τ + U)) / (1 + Δt / τ + U)
+
+    τ̃ = Δt / τ
+
+    uᵢⁿ⁺¹ = (uᵢⁿ + U * u′ᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * (τ̃ + U)) / (1 + τ̃ + U)
 
     @inbounds u[i, j, k] = uᵢⁿ⁺¹#ifelse(active_cell(i, j, k, grid), uᵢⁿ⁺¹, zero(grid))
 end
@@ -78,7 +81,7 @@ end
                bc.classification.matching_scheme.outflow_timescale, 
                bc.classification.matching_scheme.inflow_timescale)
 
-    τ̃ = min(1, Δt / τ)
+    τ̃ = Δt / τ
 
     u₁ⁿ⁺¹ = (uᵢⁿ - U * u′ᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * (τ̃ - U)) / (1 + τ̃ - U)
 
