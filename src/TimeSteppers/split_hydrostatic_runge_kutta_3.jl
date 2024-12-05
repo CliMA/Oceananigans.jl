@@ -65,7 +65,6 @@ function SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
     ζ² = 3 // 4
     ζ³ = 1 // 3
 
-    PF = typeof(Ψ⁻)
     FT = eltype(grid)
 
     return SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI}(γ², γ³, ζ², ζ³, Gⁿ, G⁻, Ψ⁻, implicit_solver)
