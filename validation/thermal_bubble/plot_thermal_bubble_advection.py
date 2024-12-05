@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import cmocean
 import ffmpeg
 
-# schemes = ("CenteredSecondOrder", "CenteredFourthOrder", "WENO")
+# schemes = ("Centered", "CenteredFourthOrder", "WENO")
 schemes = ("WENO",)
 Ns = (32, 128)
 

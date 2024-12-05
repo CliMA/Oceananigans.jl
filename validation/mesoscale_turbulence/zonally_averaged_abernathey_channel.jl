@@ -142,7 +142,7 @@ closure = (horizontal_closure, vertical_closure)
                                        
 model = NonhydrostaticModel(architecture,
                             grid = grid,
-                            advection = UpwindBiasedFifthOrder(),
+                            advection = UpwindBiased(order=5),
                             buoyancy = BuoyancyTracer(),
                             coriolis = coriolis,
                             closure = closure,
