@@ -60,7 +60,9 @@ IsopycnalSkewSymmetricDiffusivity(FT::DataType; kw...) =
     IsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
 function with_tracers(tracers, closure::ISSD{TD, A, N}) where {TD, N}
-    κ_skew = !isa(closure.κ_skew, NamedTuple) ? closure.κ_skew : tracer_diffusivities(tracers, closure.κ_skew)
+    # For the moment, allow only one skew coefficient for all tracers
+    # TODO: maybe generalize it?
+    κ_skew = closure.κ_skew 
     κ_symmetric = !isa(closure.κ_symmetric, NamedTuple) ? closure.κ_symmetric : tracer_diffusivities(tracers, closure.κ_symmetric)
     return IsopycnalSkewSymmetricDiffusivity{TD, A, N}(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
 end
@@ -79,7 +81,7 @@ function with_tracers(tracers, closure_vector::ISSDVector)
     return on_architecture(arch, closure_vector)
 end
 
-function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfISSD{TD, A}) where {TD, A}
+function DiffusivityFields(grid, tracer_names, bcs, ::FlavorOfISSD{TD, A}) where {TD, A}
     if TD() isa VerticallyImplicitTimeDiscretization
         # Precompute the _tapered_ 33 component of the isopycnal rotation tensor
         diffusivities = (; ϵ_R₃₃ = Field((Center, Center, Face), grid))

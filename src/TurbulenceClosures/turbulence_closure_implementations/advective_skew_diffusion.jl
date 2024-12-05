@@ -54,16 +54,14 @@ end
     return ϵ * Sy
 end 
 
-const CCF = (Center, Center, Face)
-
-@inline κ_Sxᶠᶜᶠ(i, j, k, grid, clk, clo, κ, b, fields) = κᶠᶜᶠ(i, j, k, grid, CCF, κ, clk.time, fields) * Sxᶠᶜᶠ(i, j, k, grid, clo, b, fields)
-@inline κ_Syᶜᶠᶠ(i, j, k, grid, clk, clo, κ, b, fields) = κᶜᶠᶠ(i, j, k, grid, CCF, κ, clk.time, fields) * Syᶜᶠᶠ(i, j, k, grid, clo, b, fields)
+@inline κ_Sxᶠᶜᶠ(i, j, k, grid, clk, clo, κ, b, fields) = κᶠᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ, clk.time, fields) * Sxᶠᶜᶠ(i, j, k, grid, clo, b, fields)
+@inline κ_Syᶜᶠᶠ(i, j, k, grid, clk, clo, κ, b, fields) = κᶜᶠᶠ(i, j, k, grid, issd_coefficient_loc, κ, clk.time, fields) * Syᶜᶠᶠ(i, j, k, grid, clo, b, fields)
 
 @kernel function _compute_eddy_velocities!(uₑ, vₑ, wₑ, grid, clk, clo, b, fields)
     i, j, k = @index(Global, NTuple)
 
     closure = getclosure(i, j, closure)
-    κ = get_tracer_κ(closure.κ_skew, tracer_index)
+    κ = closure.κ_skew
 
     @inbounds begin
         uₑ[i, j, k] = - ∂zᶠᶜᶜ(i, j, k, grid, κ_Sxᶠᶜᶠ, clk, clo, κ, b, fields)

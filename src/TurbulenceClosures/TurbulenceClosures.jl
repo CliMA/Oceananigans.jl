@@ -182,11 +182,11 @@ include("turbulence_closure_implementations/Smagorinskys/Smagorinskys.jl")
 include("turbulence_closure_implementations/convective_adjustment_vertical_diffusivity.jl")
 include("turbulence_closure_implementations/TKEBasedVerticalDiffusivities/TKEBasedVerticalDiffusivities.jl")
 include("turbulence_closure_implementations/ri_based_vertical_diffusivity.jl")
-include("turbulence_closure_implementations/advective_skew_diffusion.jl")
 
 # Special non-abstracted diffusivities:
 # TODO: introduce abstract typing for these
 include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity.jl")
+include("turbulence_closure_implementations/advective_skew_diffusion.jl")
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 
 using .TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity, TKEDissipationVerticalDiffusivity
