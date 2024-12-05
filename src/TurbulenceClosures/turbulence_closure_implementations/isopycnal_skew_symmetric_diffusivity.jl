@@ -12,7 +12,7 @@ struct IsopycnalSkewSymmetricDiffusivity{TD, A, K, S, M, L, N} <: AbstractTurbul
     function IsopycnalSkewSymmetricDiffusivity{TD, A, N}(κ_skew :: K,
                                                          κ_symmetric :: S,
                                                          isopycnal_tensor :: I,
-                                                         slope_limiter :: L) where {TD, K, S, I, L, N}
+                                                         slope_limiter :: L) where {TD, A, K, S, I, L, N}
 
         return new{TD, A, K, S, I, L, N}(κ_skew, κ_symmetric, isopycnal_tensor, slope_limiter)
     end
