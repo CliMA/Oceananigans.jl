@@ -1,6 +1,7 @@
 module TKEBasedVerticalDiffusivities
 
 using Adapt
+using Adapt
 using CUDA
 using KernelAbstractions: @kernel, @index
 
@@ -18,6 +19,8 @@ using Oceananigans.BoundaryConditions: default_prognostic_bc, DefaultBoundaryCon
 using Oceananigans.BoundaryConditions: BoundaryCondition, FieldBoundaryConditions
 using Oceananigans.BoundaryConditions: DiscreteBoundaryFunction, FluxBoundaryCondition
 using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
+using Oceananigans.BuoyancyModels: BuoyancyTracer, SeawaterBuoyancy
+using Oceananigans.BuoyancyModels: TemperatureSeawaterBuoyancy, SalinitySeawaterBuoyancy
 using Oceananigans.Grids: inactive_cell
 
 using Oceananigans.TurbulenceClosures:
@@ -27,7 +30,7 @@ using Oceananigans.TurbulenceClosures:
     VerticallyImplicitTimeDiscretization,
     VerticalFormulation
     
-import Oceananigans.BoundaryConditions: getbc
+import Oceananigans.BoundaryConditions: getbc, fill_halo_regions!
 import Oceananigans.Utils: with_tracers
 import Oceananigans.TurbulenceClosures:
     validate_closure,
@@ -159,8 +162,14 @@ function get_time_step(closure_array::AbstractArray)
     return get_time_step(closure)
 end
 
-include("tke_top_boundary_condition.jl")
+get_top_tracer_bcs(::Nothing, tracers) = NamedTuple()
+get_top_tracer_bcs(::BuoyancyTracer, tracers) = (; b=tracers.b.boundary_conditions.top)
+get_top_tracer_bcs(::SeawaterBuoyancy, tracers) = (T = tracers.T.boundary_conditions.top,
+                                                   S = tracers.S.boundary_conditions.top)
+get_top_tracer_bcs(::TemperatureSeawaterBuoyancy, tracers) = (; T = tracers.T.boundary_conditions.top)
+get_top_tracer_bcs(::SalinitySeawaterBuoyancy, tracers)    = (; S = tracers.S.boundary_conditions.top)
 
+include("tke_top_boundary_condition.jl")
 include("catke_vertical_diffusivity.jl")
 include("catke_mixing_length.jl")
 include("catke_equation.jl")

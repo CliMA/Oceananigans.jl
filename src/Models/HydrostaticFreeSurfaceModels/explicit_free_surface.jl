@@ -4,20 +4,17 @@ using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
 using Adapt
 
-"""
-    struct ExplicitFreeSurface{E, T}
-
-The explicit free surface solver.
-
-$(TYPEDFIELDS)
-"""
 struct ExplicitFreeSurface{E, G} <: AbstractFreeSurface{E, G}
-    "free surface elevation"
     η :: E
-    "gravitational accelerations"
     gravitational_acceleration :: G
 end
 
+"""
+    ExplicitFreeSurface(; gravitational_acceleration=g_Earth)
+
+Represents a free surface displacement stepped forward explicitly with
+`gravitational_acceleration`.
+"""
 ExplicitFreeSurface(; gravitational_acceleration=g_Earth) =
     ExplicitFreeSurface(nothing, gravitational_acceleration)
 
@@ -32,7 +29,6 @@ on_architecture(to, free_surface::ExplicitFreeSurface) =
 function materialize_free_surface(free_surface::ExplicitFreeSurface{Nothing}, velocities, grid)
     η = free_surface_displacement_field(velocities, free_surface, grid)
     g = convert(eltype(grid), free_surface.gravitational_acceleration)
-
     return ExplicitFreeSurface(η, g)
 end
 
@@ -87,7 +83,8 @@ end
 
 @kernel function _explicit_ab2_step_free_surface!(η, Δt, χ::FT, Gηⁿ, Gη⁻, Nz) where FT
     i, j = @index(Global, NTuple)
-    @inbounds η[i, j, Nz+1] += Δt * ((FT(1.5) + χ) * Gηⁿ[i, j, Nz+1] - (FT(0.5) + χ) * Gη⁻[i, j, Nz+1])
+    not_euler = χ != convert(FT, -0.5)
+    @inbounds η[i, j, Nz+1] += Δt * ((FT(1.5) + χ) * Gηⁿ[i, j, Nz+1] - (FT(0.5) + χ) * Gη⁻[i, j, Nz+1]) * not_euler
 end
 
 #####
@@ -160,3 +157,4 @@ function compute_explicit_free_surface_tendency!(grid, model)
 
     return nothing
 end
+
