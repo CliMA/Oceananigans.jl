@@ -55,7 +55,7 @@ end
     @test size(closures) == (3, 2)
     @test closures[2, 1].background_κz == 1.2 
 
-    Δt = 0.01 * grid.Δzᵃᵃᶜ^2
+    Δt = 0.01 * grid.z.Δᵃᵃᶜ^2
 
     model_kwargs = (; tracers=:c, buoyancy=nothing, coriolis=nothing)
     simulation_kwargs = (; Δt, stop_iteration=100)
