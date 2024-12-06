@@ -18,13 +18,13 @@ abstract type AbstractGridFittedBottom{H} <: AbstractGridFittedBoundary end
 struct CenterImmersedCondition end
 struct InterfaceImmersedCondition end
 
+Base.summary(::CenterImmersedCondition) = "CenterImmersedCondition"
+Base.summary(::InterfaceImmersedCondition) = "InterfaceImmersedCondition"
+
 struct GridFittedBottom{H, I} <: AbstractGridFittedBottom{H}
     bottom_height :: H
     immersed_condition :: I
 end
-
-Base.summary(::CenterImmersedCondition) = "CenterImmersedCondition"
-Base.summary(::InterfaceImmersedCondition) = "InterfaceImmersedCondition"
 
 const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBottom}
 
@@ -35,7 +35,6 @@ Return a bottom immersed boundary.
 
 Keyword Arguments
 =================
-
 
 * `bottom_height`: an array or function that gives the height of the
                    bottom in absolute ``z`` coordinates.
@@ -73,9 +72,41 @@ Base.summary(ib::GridFittedBottom{<:Function}) = @sprintf("GridFittedBottom(%s)"
 function Base.show(io::IO, ib::GridFittedBottom)
     print(io, summary(ib), '\n')
     print(io, "├── bottom_height: ", prettysummary(ib.bottom_height), '\n')
+    print(io, "└── immersed_condition: ", summary(ib.immersed_condition))
 end
 
-on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(on_architecture(arch, ib.bottom_height), ib.immersed_condition)
+@inline z_bottom(i, j, ibg::GFBIBG) = @inbounds ibg.immersed_boundary.bottom_height[i, j, 1]
+
+"""
+    ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
+
+Return a grid with `GridFittedBottom` immersed boundary (`ib`).
+
+Computes `ib.bottom_height` and wraps it in a Field.
+"""
+function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
+    bottom_field = Field{Center, Center, Nothing}(grid)
+    set!(bottom_field, ib.bottom_height)
+    @apply_regionally clamp_bottom_height!(bottom_field, grid)
+    fill_halo_regions!(bottom_field)
+    new_ib = GridFittedBottom(bottom_field, ib.immersed_condition)
+    TX, TY, TZ = topology(grid)
+    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, new_ib)
+end
+
+@inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:InterfaceImmersedCondition})
+    z = znode(i, j, k+1, underlying_grid, c, c, f)
+    h = @inbounds ib.bottom_height[i, j, 1]
+    return z ≤ h
+end
+
+@inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom{<:Any, <:CenterImmersedCondition})
+    z = znode(i, j, k, underlying_grid, c, c, c)
+    h = @inbounds ib.bottom_height[i, j, 1]
+    return z ≤ h
+end
+
+on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(ib.bottom_height, ib.immersed_condition)
 
 function on_architecture(arch, ib::GridFittedBottom{<:Field})
     architecture(ib.bottom_height) == arch && return ib
@@ -86,64 +117,5 @@ function on_architecture(arch, ib::GridFittedBottom{<:Field})
     return GridFittedBottom(new_bottom_height, ib.immersed_condition)
 end
 
-Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height), adapt(to, ib.immersed_condition))
-
-"""
-    ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
-
-Return a grid with `GridFittedBottom` immersed boundary (`ib`).
-
-Computes `ib.bottom_height` and wraps it in a Field. `ib.bottom_height` is the z-coordinate of top-most interface
-of the last ``immersed`` cell in the column.
-"""
-function ImmersedBoundaryGrid(grid, ib::GridFittedBottom)
-    bottom_field = Field{Center, Center, Nothing}(grid)
-    set!(bottom_field, ib.bottom_height)
-    @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, ib)
-    fill_halo_regions!(bottom_field)
-    new_ib = GridFittedBottom(bottom_field)
-    TX, TY, TZ = topology(grid)
-    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, new_ib)
-end
-
-compute_numerical_bottom_height!(bottom_field, grid, ib) = 
-    launch!(architecture(grid), grid, :xy, _compute_numerical_bottom_height!, bottom_field, grid, ib)
-
-@kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::GridFittedBottom)
-    i, j = @index(Global, NTuple)
-    zb = @inbounds bottom_field[i, j, 1]
-    @inbounds bottom_field[i, j, 1] = znode(i, j, 1, grid, c, c, f)
-    condition = ib.immersed_condition
-    for k in 1:grid.Nz
-        z⁺ = znode(i, j, k+1, grid, c, c, f)
-        z  = znode(i, j, k,   grid, c, c, c)
-        bottom_cell = ifelse(condition isa CenterImmersedCondition, z ≤ zb, z⁺ ≤ zb)
-        @inbounds bottom_field[i, j, 1] = ifelse(bottom_cell, z⁺, bottom_field[i, j, 1])
-    end
-end
-
-@inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom)
-    z  = znode(i, j, k, underlying_grid, c, c, c)
-    zb = @inbounds ib.bottom_height[i, j, 1]
-    return z ≤ zb
-end
-
-#####
-##### Static column depth
-#####
-
-const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
-
-@inline static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIBG) = @inbounds znode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.bottom_height[i, j, 1] 
-@inline static_column_depthᶜᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶜᶜᵃ(i, j-1, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
-@inline static_column_depthᶠᶜᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶜᶜᵃ(i-1, j, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
-@inline static_column_depthᶠᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶠᶜᵃ(i, j-1, ibg), static_column_depthᶠᶜᵃ(i, j, ibg))
-
-# Make sure column_height works for horizontally-Flat topologies.
-XFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
-YFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:AbstractGridFittedBottom}
-
-@inline static_column_depthᶠᶜᵃ(i, j, ibg::XFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
-@inline static_column_depthᶜᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶜᶜᵃ(i, j, ibg)
-@inline static_column_depthᶠᶠᵃ(i, j, ibg::XFlatAGFIBG) = static_column_depthᶜᶠᵃ(i, j, ibg)
-@inline static_column_depthᶠᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶠᶜᵃ(i, j, ibg)
+Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height),
+                                                                             ib.immersed_condition)

@@ -74,7 +74,7 @@ end
 
 function HydrostaticFreeSurfaceTendencyFields(::PrescribedVelocityFields, free_surface, grid, tracer_names)
     tracer_tendencies = TracerFields(tracer_names, grid)
-    momentum_tendencies = (u = nothing, v = nothing)
+    momentum_tendencies = (u = nothing, v = nothing, η = nothing)
     return merge(momentum_tendencies, tracer_tendencies)
 end
 
@@ -89,8 +89,7 @@ end
 @inline datatuple(obj::PrescribedVelocityFields) = (; u = datatuple(obj.u), v = datatuple(obj.v), w = datatuple(obj.w))
 
 ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
-rk3_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
-step_free_surface!(::Nothing, model, timestepper, Δt) = nothing 
+ab2_step_free_surface!(::Nothing, model, Δt, χ) = nothing 
 compute_w_from_continuity!(::PrescribedVelocityFields, args...; kwargs...) = nothing
 
 validate_velocity_boundary_conditions(grid, ::PrescribedVelocityFields) = nothing

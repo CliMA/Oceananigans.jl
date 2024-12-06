@@ -1,3 +1,4 @@
+
 struct CATKEVerticalDiffusivity{TD, CL, FT, DT, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
     mixing_length :: CL
     turbulent_kinetic_energy_equation :: TKE
@@ -17,7 +18,7 @@ function CATKEVerticalDiffusivity{TD}(mixing_length::CL,
                                       maximum_viscosity::FT,
                                       minimum_tke::FT,
                                       minimum_convective_buoyancy_flux::FT,
-                                      negative_tke_damping_time_scale::FT,
+                                      negative_tke_damping_time_scale::FT, 
                                       tke_time_step::DT) where {TD, CL, FT, DT, TKE}
 
     return CATKEVerticalDiffusivity{TD, CL, FT, DT, TKE}(mixing_length,
@@ -172,7 +173,7 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
     return (; κu, κc, κe, Le, Jᵇ,
             previous_compute_time, previous_velocities,
             _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
-end
+end        
 
 @inline viscosity_location(::FlavorOfCATKE) = (c, c, f)
 @inline diffusivity_location(::FlavorOfCATKE) = (c, c, f)
@@ -227,7 +228,7 @@ end
     Jᵇᵋ = closure.minimum_convective_buoyancy_flux
     Jᵇᵢⱼ = @inbounds Jᵇ[i, j, 1]
     Jᵇ⁺ = max(Jᵇᵋ, Jᵇᵢⱼ, Jᵇ★) # selects fastest (dominant) time-scale
-    t★ = cbrt(ℓᴰ^2 / Jᵇ⁺)
+    t★ = (ℓᴰ^2 / Jᵇ⁺)^(1/3)
     ϵ = Δt / t★
 
     @inbounds Jᵇ[i, j, 1] = (Jᵇᵢⱼ + ϵ * Jᵇ★) / (1 + ϵ)
@@ -262,9 +263,7 @@ end
     ℓu = momentum_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
     κu = ℓu * w★
     κu_max = closure.maximum_viscosity
-    κu★ = min(κu, κu_max)
-    FT = eltype(grid)
-    return κu★::FT
+    return min(κu, κu_max)
 end
 
 @inline function κcᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
@@ -272,9 +271,7 @@ end
     ℓc = tracer_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
     κc = ℓc * w★
     κc_max = closure.maximum_tracer_diffusivity
-    κc★ = min(κc, κc_max)
-    FT = eltype(grid)
-    return κc★::FT
+    return min(κc, κc_max)
 end
 
 @inline function κeᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
@@ -282,14 +279,12 @@ end
     ℓe = TKE_mixing_lengthᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy, surface_buoyancy_flux)
     κe = ℓe * w★
     κe_max = closure.maximum_tke_diffusivity
-    κe★ = min(κe, κe_max)
-    FT = eltype(grid)
-    return κe★::FT
+    return min(κe, κe_max)
 end
 
 @inline viscosity(::FlavorOfCATKE, diffusivities) = diffusivities.κu
 @inline diffusivity(::FlavorOfCATKE, diffusivities, ::Val{id}) where id = diffusivities._tupled_tracer_diffusivities[id]
-
+    
 #####
 ##### Show
 #####
@@ -339,3 +334,4 @@ function Base.show(io::IO, clo::CATKEVD)
               "    ├── CᵂwΔ: ", prettysummary(clo.turbulent_kinetic_energy_equation.CᵂwΔ), '\n',
               "    └── Cᵂϵ:  ", prettysummary(clo.turbulent_kinetic_energy_equation.Cᵂϵ))
 end
+

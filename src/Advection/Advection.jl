@@ -17,7 +17,9 @@ export
     advective_tracer_flux_z,
 
     AdvectionScheme,
-    Centered, UpwindBiased, WENO, 
+    Centered, CenteredSecondOrder, CenteredFourthOrder,
+    UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder,
+    WENO, WENOThirdOrder, WENOFifthOrder,
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     EnergyConserving,

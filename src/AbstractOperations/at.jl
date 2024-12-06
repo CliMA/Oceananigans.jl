@@ -1,6 +1,3 @@
-using Oceananigans
-using Oceananigans.Fields: default_indices
-
 """
     insert_location(ex::Expr, location)
 
@@ -53,6 +50,8 @@ macro at(location, abstract_operation)
 
     return wrapped_operation
 end
+
+using Oceananigans.Fields: default_indices
 
 # Numbers and functions do not have index restrictions
 indices(f::Function) = default_indices(3)

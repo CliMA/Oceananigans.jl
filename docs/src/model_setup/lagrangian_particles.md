@@ -15,15 +15,15 @@ end
 ```
 
 ```jldoctest particles
-grid = RectilinearGrid(size=(10, 10, 10), extent=(1, 1, 1))
+grid = RectilinearGrid(size=(10, 10, 10), extent=(1, 1, 1));
 
-Nparticles = 10
+n_particles = 10;
 
-x₀ = zeros(Nparticles)
+x₀ = zeros(n_particles);
 
-y₀ = rand(Nparticles)
+y₀ = rand(n_particles);
 
-z₀ = -0.5 * ones(Nparticles)
+z₀ = -0.5 * ones(n_particles);
 
 lagrangian_particles = LagrangianParticles(x=x₀, y=y₀, z=z₀)
 
@@ -44,7 +44,7 @@ model = NonhydrostaticModel(grid=grid, particles=lagrangian_particles)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 10×10×10 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── timestepper: RungeKutta3TimeStepper
-├── advection scheme: Centered(order=2)
+├── advection scheme: Centered reconstruction order 2
 ├── tracers: ()
 ├── closure: Nothing
 ├── buoyancy: Nothing
@@ -73,13 +73,13 @@ struct LagrangianMicrobe{T, S, D}
     dna :: D
 end
 
-Nparticles = 3
+n_particles = 3;
 
-x₀ = zeros(Nparticles)
+x₀ = zeros(n_particles);
 
-y₀ = rand(Nparticles)
+y₀ = rand(n_particles);
 
-z₀ = -0.5 * ones(Nparticles)
+z₀ = -0.5 * ones(n_particles);
 
 species = [:rock, :paper, :scissors]
 
@@ -108,28 +108,43 @@ Particle properties can be written to disk using JLD2 or NetCDF.
 
 When writing to JLD2 you can pass `model.particles` as part of the named tuple of outputs.
 
-```@setup particles
-using Oceananigans
-grid = RectilinearGrid(size=(10, 10, 10), extent=(1, 1, 1))
-Nparticles = 3
-x₀ = zeros(Nparticles)
-y₀ = rand(Nparticles)
-z₀ = -0.5 * ones(Nparticles)
-lagrangian_particles = LagrangianParticles(x=x₀, y=y₀, z=z₀)
-model = NonhydrostaticModel(; grid, particles=lagrangian_particles)
+```@meta
+DocTestFilters = r"└── file size: [0-9]*.[0-9]* KiB"
 ```
 
-```@example particles
-JLD2OutputWriter(model, (; particles=model.particles), filename="particles", schedule=TimeInterval(15))
+```jldoctest particles
+JLD2OutputWriter(model, (particles=model.particles,), filename="particles", schedule=TimeInterval(15))
+
+# output
+JLD2OutputWriter scheduled on TimeInterval(15 seconds):
+├── filepath: ./particles.jld2
+├── 1 outputs: particles
+├── array type: Array{Float64}
+├── including: [:grid, :coriolis, :buoyancy, :closure]
+├── file_splitting: NoFileSplitting
+└── file size: 17.6 KiB
 ```
 
 When writing to NetCDF you should write particles to a separate file as the NetCDF dimensions differ for
 particle trajectories. You can just pass `model.particles` straight to `NetCDFOutputWriter`:
 
-```@example particles
+```jldoctest particles
 NetCDFOutputWriter(model, model.particles, filename="particles.nc", schedule=TimeInterval(15))
+
+# output
+NetCDFOutputWriter scheduled on TimeInterval(15 seconds):
+├── filepath: ./particles.nc
+├── dimensions: particle_id(10), time(0)
+├── 1 outputs: particles
+└── array type: Array{Float64}
+├── file_splitting: NoFileSplitting
+└── file size: 9.9 KiB
 ```
 
 !!! warn "Outputting custom particle properties to NetCDF"
     NetCDF does not support arbitrary data types. If you need to write custom particle properties to disk
     that are not supported by NetCDF then you should use JLD2 (which should support almost any Julia data type).
+
+```@meta
+DocTestFilters = nothing
+```

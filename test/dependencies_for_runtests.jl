@@ -45,7 +45,7 @@ using Oceananigans.Logger
 using Oceananigans.Units
 using Oceananigans.Utils
 
-using Oceananigans: Clock, location
+using Oceananigans: Clock
 using Oceananigans.Architectures: device, array_type # to resolve conflict with CUDA.device
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
@@ -71,10 +71,7 @@ closures = (
     :ScalarDiffusivity,
     :ScalarBiharmonicDiffusivity,
     :TwoDimensionalLeith,
-    :ConstantSmagorinsky,
     :SmagorinskyLilly,
-    :LagrangianAveragedDynamicSmagorinsky,
-    :DirectionallyAveragedDynamicSmagorinsky,
     :AnisotropicMinimumDissipation,
     :ConvectiveAdjustmentVerticalDiffusivity,
 )
