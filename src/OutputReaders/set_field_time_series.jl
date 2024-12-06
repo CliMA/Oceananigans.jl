@@ -18,8 +18,6 @@ function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name; wa
 
     arch = architecture(fts)
 
-    @show time_indices(fts)
-
     # TODO: a potential optimization here might be to load
     # all of the data into a single array, and then transfer that
     # to parent(fts).

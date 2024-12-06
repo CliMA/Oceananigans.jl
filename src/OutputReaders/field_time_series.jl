@@ -19,7 +19,6 @@ using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_
 using Oceananigans.Fields: interior_view_indices, index_binary_search,
                            indices_summary, boundary_conditions
 
-using Oceananigans.OutputWriters: auto_extension
 using Oceananigans.Units: Time
 using Oceananigans.Utils: launch!
 
