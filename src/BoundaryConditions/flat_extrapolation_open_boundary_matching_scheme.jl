@@ -59,8 +59,6 @@ end
     return ϕ + Δϕ
 end
 
-const c = Center()
-
 @inline function _fill_west_halo!(j, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
     Δx₁ = Δxᶜᶜᶜ(1, j, k, grid)
     Δx₂ = Δxᶜᶜᶜ(2, j, k, grid)
