@@ -33,8 +33,8 @@ end
 
 const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 
-@inline function step_right_boundary_node!(bc, l, m, boundary_indices, boundary_adjacent_indices, 
-                                           grid, u, clock, model_fields, ΔX)
+@inline function step_right_boundary!(bc, l, m, boundary_indices, boundary_adjacent_indices, 
+                                      grid, u, clock, model_fields, ΔX)
     Δt = clock.last_stage_Δt
 
     Δt = ifelse(isinf(Δt), 0, Δt)
@@ -60,8 +60,8 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 end
 
 
-@inline function step_left_boundary_node!(bc, l, m, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices, 
-                                          grid, u, clock, model_fields, ΔX)
+@inline function step_left_boundary!(bc, l, m, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices, 
+                                     grid, u, clock, model_fields, ΔX)
     Δt = clock.last_stage_Δt
 
     Δt = ifelse(isinf(Δt), 0, Δt)
@@ -95,7 +95,7 @@ end
 
     Δx = xspacing(i, j, k, grid, loc...)
 
-    step_right_boundary_node!(bc, j, k, boundary_indices, boundary_adjacent_indices, grid, u, clock, model_fields, Δx)
+    step_right_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices, grid, u, clock, model_fields, Δx)
 
     return nothing
 end
@@ -107,7 +107,7 @@ end
 
     Δx = xspacing(1, j, k, grid, loc...)
 
-    step_left_boundary_node!(bc, j, k, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices, grid, u, clock, model_fields, Δx)
+    step_left_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices, grid, u, clock, model_fields, Δx)
 
     return nothing
 end
