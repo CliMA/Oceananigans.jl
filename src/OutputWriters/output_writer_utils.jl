@@ -221,3 +221,4 @@ function auto_extension(filename, ext)
         return filename * ext
     end
 end
+
