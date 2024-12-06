@@ -1,6 +1,5 @@
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.Grids: XDirection, YDirection, ZDirection
-
 import Oceananigans.Architectures: architecture
 
 """

@@ -1,7 +1,8 @@
 using Oceananigans.Architectures: device
 using Oceananigans.Grids: halo_size, topology
 using Oceananigans.Grids: XFlatGrid, YFlatGrid
-using Oceananigans.Operators: div_xyᶜᶜᶜ, Δzᶜᶜᶜ
+using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, div_xyᶜᶜᶜ, Δzᶜᶜᶜ
+using Oceananigans.ImmersedBoundaries: immersed_cell
 
 """
     compute_w_from_continuity!(model)
@@ -18,12 +19,37 @@ compute_w_from_continuity!(model; kwargs...) =
 compute_w_from_continuity!(velocities, arch, grid; parameters = w_kernel_parameters(grid)) = 
     launch!(arch, grid, parameters, _compute_w_from_continuity!, velocities, grid)
 
+
+# Since the derivative of the moving grid is:
+#
+#            δx(Δy U) + δy(Δx V)       ∇ ⋅ U
+# ∂t_e₃ = - --------------------- = - --------
+#                   Az ⋅ H               H    
+#
+# The discrete divergence is calculated as:
+#
+#  wᵏ⁺¹ - wᵏ      δx(Ax u) + δy(Ay v)     Δr ∂t_e₃
+# ---------- = - --------------------- - ----------
+#     Δz                  V                  Δz
+#
+# This makes sure that if we sum up till the top of the domain, we get
+#
+#                ∇ ⋅ U
+#  wᴺᶻ⁺¹ = w⁰ - ------- - ∂t_e₃ ≈ 0 (if w⁰ == 0)
+#                  H   
+# 
 @kernel function _compute_w_from_continuity!(U, grid)
     i, j = @index(Global, NTuple)
 
     @inbounds U.w[i, j, 1] = 0
     for k in 2:grid.Nz+1
-        @inbounds U.w[i, j, k] = U.w[i, j, k-1] - Δzᶜᶜᶜ(i, j, k-1, grid) * div_xyᶜᶜᶜ(i, j, k-1, grid, U.u, U.v)
+        δh_u = flux_div_xyᶜᶜᶜ(i, j, k-1, grid, U.u, U.v) / Azᶜᶜᶜ(i, j, k-1, grid) 
+        ∂te₃ = Δrᶜᶜᶜ(i, j, k-1, grid) * ∂t_e₃(i, j, k-1, grid)
+
+        immersed = immersed_cell(i, j, k-1, grid)
+        Δw       = δh_u + ifelse(immersed, 0, ∂te₃) # We do not account for grid changes in immersed cells
+
+        @inbounds U.w[i, j, k] = U.w[i, j, k-1] - Δw
     end
 end
 

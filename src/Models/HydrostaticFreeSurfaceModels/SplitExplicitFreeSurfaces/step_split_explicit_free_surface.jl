@@ -26,8 +26,8 @@ end
     store_previous_velocities!(timestepper, i, j, 1, U)
     store_previous_velocities!(timestepper, i, j, 1, V)
 
-    Hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
-    Hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
+    Hᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, k_top, grid, η)
+    Hᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, k_top, grid, η)
     
     @inbounds begin
         # ∂τ(U) = - ∇η + G
@@ -163,6 +163,10 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
         mask_immersed_field!(model.velocities.u)
         mask_immersed_field!(model.velocities.v)
     end
+
+    # Needed for ZStar to compute the barotropic correction? 
+    # Can we remove it?
+    fill_halo_regions!(η)
 
     return nothing
 end

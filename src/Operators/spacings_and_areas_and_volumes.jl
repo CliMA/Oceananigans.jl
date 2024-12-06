@@ -1,4 +1,5 @@
-using Oceananigans.Grids: Center, Face
+using Oceananigans.Grids: Center, Face, AbstractGrid
+using Oceananigans.Grids: AbstractZStarGrid
 
 @inline hack_cosd(φ) = cos(π * φ / 180)
 @inline hack_sind(φ) = sin(π * φ / 180)
@@ -35,6 +36,17 @@ The operators in this file fall into three categories:
 #####
 #####
 
+const ZRG = Union{LLGZ, RGZ, OSSGZ}
+
+@inline getspacing(k, Δz::AbstractVector) = @inbounds Δz[k]
+@inline getspacing(k, Δz::Number)         = @inbounds Δz
+
+@inline Δrᵃᵃᶜ(i, j, k, grid::AbstractGrid) = getspacing(k, grid.z.Δᶜ)
+@inline Δrᵃᵃᶠ(i, j, k, grid::AbstractGrid) = getspacing(k, grid.z.Δᶠ)
+
+@inline Δzᵃᵃᶜ(i, j, k, grid::AbstractGrid) = getspacing(k, grid.z.Δᶜ)
+@inline Δzᵃᵃᶠ(i, j, k, grid::AbstractGrid) = getspacing(k, grid.z.Δᶠ)
+
 # Convenience Functions for all grids
 for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ)
 
@@ -56,10 +68,14 @@ for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ)
         z_spacing_1D = Symbol(:Δz, :ᵃ, :ᵃ, LZ)
         z_spacing_3D = Symbol(:Δz, LX, LY, LZ)
 
+        r_spacing_1D = Symbol(:Δr, :ᵃ, :ᵃ, LZ)
+        r_spacing_3D = Symbol(:Δr, LX, LY, LZ)
+
         @eval begin
             @inline $x_spacing_3D(i, j, k, grid) = $x_spacing_2D(i, j, k, grid)
             @inline $y_spacing_3D(i, j, k, grid) = $y_spacing_2D(i, j, k, grid)
             @inline $z_spacing_3D(i, j, k, grid) = $z_spacing_1D(i, j, k, grid)
+            @inline $r_spacing_3D(i, j, k, grid) = $r_spacing_1D(i, j, k, grid)
         end
     end
 end
@@ -80,12 +96,6 @@ end
 @inline Δyᶠᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶜᵃ[j]
 @inline Δyᶜᵃᶠ(i, j, k, grid::RG) = @inbounds grid.Δyᵃᶜᵃ[j]
 
-@inline Δzᵃᵃᶠ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶠ[k]
-@inline Δzᵃᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶜ[k]
-@inline Δzᶜᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶜ[k]
-@inline Δzᶠᵃᶜ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶜ[k]
-@inline Δzᶜᵃᶠ(i, j, k, grid::RG) = @inbounds grid.Δzᵃᵃᶠ[k]
-
 ## XRegularRG
 
 @inline Δxᶠᵃᵃ(i, j, k, grid::RGX) = grid.Δxᶠᵃᵃ
@@ -104,15 +114,6 @@ end
 @inline Δyᶠᵃᶜ(i, j, k, grid::RGY) = grid.Δyᵃᶜᵃ
 @inline Δyᶜᵃᶠ(i, j, k, grid::RGY) = grid.Δyᵃᶜᵃ
 
-## ZRegularRG
-
-@inline Δzᵃᵃᶠ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶠ
-@inline Δzᵃᵃᶜ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶜ
-
-@inline Δzᶜᵃᶜ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶜ
-@inline Δzᶠᵃᶜ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶜ
-@inline Δzᶜᵃᶠ(i, j, k, grid::RGZ) = grid.Δzᵃᵃᶠ
-
 #####
 ##### LatitudeLongitudeGrid
 #####
@@ -129,9 +130,6 @@ end
 @inline Δyᶜᶜᵃ(i, j, k, grid::LLG) = Δyᶠᶜᵃ(i, j, k, grid)
 @inline Δyᶠᶠᵃ(i, j, k, grid::LLG) = Δyᶜᶠᵃ(i, j, k, grid)
 
-@inline Δzᵃᵃᶠ(i, j, k, grid::LLG) = @inbounds grid.Δzᵃᵃᶠ[k]
-@inline Δzᵃᵃᶜ(i, j, k, grid::LLG) = @inbounds grid.Δzᵃᵃᶜ[k]
-
 ### XRegularLLG with pre-computed metrics
 
 @inline Δxᶠᶜᵃ(i, j, k, grid::LLGX) = @inbounds grid.Δxᶠᶜᵃ[j]
@@ -143,11 +141,6 @@ end
 
 @inline Δyᶜᶠᵃ(i, j, k, grid::LLGY) = grid.Δyᶜᶠᵃ
 @inline Δyᶠᶜᵃ(i, j, k, grid::LLGY) = grid.Δyᶠᶜᵃ
-
-### ZRegularLLG with pre-computed metrics
-
-@inline Δzᵃᵃᶠ(i, j, k, grid::LLGZ) = grid.Δzᵃᵃᶠ
-@inline Δzᵃᵃᶜ(i, j, k, grid::LLGZ) = grid.Δzᵃᵃᶜ
 
 ## On the fly metrics
 
@@ -184,12 +177,6 @@ end
 @inline Δyᶠᶜᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶠᶜᵃ[i, j]
 @inline Δyᶜᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶜᶠᵃ[i, j]
 @inline Δyᶠᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶠᶠᵃ[i, j]
-
-@inline Δzᵃᵃᶜ(i, j, k, grid::OSSG) = @inbounds grid.Δzᵃᵃᶜ[k]
-@inline Δzᵃᵃᶠ(i, j, k, grid::OSSG) = @inbounds grid.Δzᵃᵃᶠ[k]
-
-@inline Δzᵃᵃᶜ(i, j, k, grid::OSSGZ) = grid.Δzᵃᵃᶜ
-@inline Δzᵃᵃᶠ(i, j, k, grid::OSSGZ) = grid.Δzᵃᵃᶠ
 
 #####
 #####
@@ -293,6 +280,11 @@ for LX in (:Center, :Face, :Nothing)
                 @eval begin
                     @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
                 end
+            end
+
+            metric_function = Symbol(:Δr, location_code(LXe, LYe, LZe))
+            @eval begin
+                @inline Δr(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric_function(i, j, k, grid)
             end
         end
     end

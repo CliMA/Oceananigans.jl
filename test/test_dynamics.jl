@@ -52,14 +52,14 @@ function test_ScalarDiffusivity_budget(fieldname, model)
     set!(model; Dict(fieldname => (x, y, z) -> rand())...)
     field = fields(model)[fieldname]
     ν = viscosity(model.closure, nothing)
-    return test_diffusion_budget(fieldname, field, model, ν, model.grid.Δzᵃᵃᶜ)
+    return test_diffusion_budget(fieldname, field, model, ν, model.grid.z.Δᶜ)
 end
 
 function test_ScalarBiharmonicDiffusivity_budget(fieldname, model)
     set!(model; u=0, v=0, w=0, c=0)
     set!(model; Dict(fieldname => (x, y, z) -> rand())...)
     field = fields(model)[fieldname]
-    return test_diffusion_budget(fieldname, field, model, model.closure.ν, model.grid.Δzᵃᵃᶜ, 4)
+    return test_diffusion_budget(fieldname, field, model, model.closure.ν, model.grid.z.Δᶜ, 4)
 end
 
 function test_diffusion_cosine(fieldname, grid, closure, ξ, tracers=:c) 
@@ -90,7 +90,7 @@ function test_immersed_diffusion(Nz, z, time_discretization)
     underlying_grid = RectilinearGrid(size=Nz, z=z, topology=(Flat, Flat, Bounded))
     grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(() -> 0); active_cells_map = true)
 
-    Δz_min = minimum(underlying_grid.Δzᵃᵃᶜ)
+    Δz_min = minimum(underlying_grid.z.Δᶜ)
     model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
 
     full_model     = HydrostaticFreeSurfaceModel(; grid=underlying_grid, closure, model_kwargs...)
@@ -133,7 +133,7 @@ function test_3D_immersed_diffusion(Nz, z, time_discretization)
     underlying_grid = RectilinearGrid(size=(9, 9, Nz), x=(0, 1), y=(0, 1), z=z, topology=(Periodic, Periodic, Bounded))
     grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry); active_cells_map = true)
     
-    Δz_min = minimum(grid.underlying_grid.Δzᵃᵃᶜ)
+    Δz_min = minimum(grid.underlying_grid.z.Δᶜ)
     model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
 
     full_model     = HydrostaticFreeSurfaceModel(; grid=underlying_grid, closure, model_kwargs...)

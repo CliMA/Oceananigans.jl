@@ -1,7 +1,6 @@
 using Oceananigans.Solvers
 using Oceananigans.Operators
 using Oceananigans.Architectures
-using Oceananigans.Grids: on_architecture
 using Oceananigans.Fields: Field
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integrated_lateral_areas!,
@@ -12,7 +11,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: build_implicit_step_solver,
                                                          compute_implicit_free_surface_right_hand_side!
 
-import Oceananigans.Architectures: architecture
+import Oceananigans.Architectures: architecture, on_architecture
 import Oceananigans.Solvers: solve!
 
 struct UnifiedImplicitFreeSurfaceSolver{S, R, T}
