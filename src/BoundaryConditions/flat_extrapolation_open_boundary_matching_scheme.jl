@@ -1,4 +1,4 @@
-using Oceananigans.Grids: Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ
+using Oceananigans.Operators: Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ
 
 """
     FlatExtrapolation
