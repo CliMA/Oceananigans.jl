@@ -1,5 +1,5 @@
 using Oceananigans.Grids: xspacing
-# Immersed boundaries are defined later but we probably need todo this?
+# Immersed boundaries are defined later but we probably need todo this for when a boundary intersects the bathymetry
 #using Oceananigans.ImmersedBoundaries: active_cell
 
 """
@@ -46,8 +46,8 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 
     ūⁿ⁺¹ = getbc(bc, j, k, grid, clock, model_fields)
 
-    uᵢⁿ      = @inbounds u[i, j, k]
-    u′ᵢ₋₁ⁿ⁺¹ = @inbounds u[i - 1, j, k] - ūⁿ⁺¹
+    uᵢⁿ     = @inbounds u[i, j, k]
+    uᵢ₋₁ⁿ⁺¹ = @inbounds u[i - 1, j, k]
 
     U = max(0, min(1, Δt / Δx * ūⁿ⁺¹))
 
@@ -58,7 +58,7 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 
     τ̃ = Δt / τ
 
-    uᵢⁿ⁺¹ = (uᵢⁿ + U * u′ᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * (τ̃ + U)) / (1 + τ̃ + U)
+    uᵢⁿ⁺¹ = (uᵢⁿ + U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ + U)
 
     @inbounds u[i, j, k] = uᵢⁿ⁺¹#ifelse(active_cell(i, j, k, grid), uᵢⁿ⁺¹, zero(grid))
 end
@@ -72,8 +72,8 @@ end
 
     ūⁿ⁺¹ = getbc(bc, j, k, grid, clock, model_fields)
 
-    uᵢⁿ      = @inbounds u[2, j, k]
-    u′ᵢ₋₁ⁿ⁺¹ = @inbounds u[0, j, k] - ūⁿ⁺¹
+    uᵢⁿ     = @inbounds u[2, j, k]
+    uᵢ₋₁ⁿ⁺¹ = @inbounds u[0, j, k] 
 
     U = min(0, max(-1, Δt / Δx * ūⁿ⁺¹))
 
@@ -83,7 +83,7 @@ end
 
     τ̃ = Δt / τ
 
-    u₁ⁿ⁺¹ = (uᵢⁿ - U * u′ᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * (τ̃ - U)) / (1 + τ̃ - U)
+    u₁ⁿ⁺¹ = (uᵢⁿ - U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ - U)
 
     @inbounds u[1, j, k] = u₁ⁿ⁺¹#ifelse(active_cell(i, j, k, grid), uᵢⁿ⁺¹, zero(grid))
     @inbounds u[0, j, k] = u₁ⁿ⁺¹#ifelse(active_cell(i, j, k, grid), uᵢⁿ⁺¹, zero(grid))
