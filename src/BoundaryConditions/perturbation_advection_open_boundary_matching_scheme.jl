@@ -1,6 +1,4 @@
 using Oceananigans.Grids: xspacing
-# Immersed boundaries are defined later but we probably need todo this for when a boundary intersects the bathymetry
-#using Oceananigans.ImmersedBoundaries: active_cell
 
 """
     PerturbationAdvection
@@ -35,56 +33,81 @@ end
 
 const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 
-@inline function _fill_east_halo!(j, k, grid, u, bc::PAOBC, loc::Tuple{Face, Any, Any}, clock, model_fields)
-    i = grid.Nx + 1
-
+@inline function step_right_boundary_node!(bc, l, m, boundary_indices, boundary_adjacent_indices, 
+                                           grid, u, clock, model_fields, ΔX)
     Δt = clock.last_stage_Δt
 
     Δt = ifelse(isinf(Δt), 0, Δt)
 
-    Δx = xspacing(i, j, k, grid, loc...)
+    ūⁿ⁺¹ = getbc(bc, l, m, grid, clock, model_fields)
 
-    ūⁿ⁺¹ = getbc(bc, j, k, grid, clock, model_fields)
+    uᵢⁿ     = @inbounds getindex(u, boundary_indices...)
+    uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, boundary_adjacent_indices...)
 
-    uᵢⁿ     = @inbounds u[i, j, k]
-    uᵢ₋₁ⁿ⁺¹ = @inbounds u[i - 1, j, k]
+    U = max(0, min(1, Δt / ΔX * ūⁿ⁺¹))
 
-    U = max(0, min(1, Δt / Δx * ūⁿ⁺¹))
+    pa = bc.classification.matching_scheme
 
-    τ = ifelse(ūⁿ⁺¹ >= 0, 
-               bc.classification.matching_scheme.outflow_timescale, 
-               bc.classification.matching_scheme.inflow_timescale)
-
+    τ = ifelse(ūⁿ⁺¹ >= 0, pa.outflow_timescale, pa.inflow_timescale)
 
     τ̃ = Δt / τ
 
     uᵢⁿ⁺¹ = (uᵢⁿ + U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ + U)
 
-    @inbounds u[i, j, k] = uᵢⁿ⁺¹#ifelse(active_cell(i, j, k, grid), uᵢⁿ⁺¹, zero(grid))
+    @inbounds setindex!(u, uᵢⁿ⁺¹, boundary_indices...)
+
+    return nothing
 end
 
-@inline function _fill_west_halo!(j, k, grid, u, bc::PAOBC, loc::Tuple{Face, Any, Any}, clock, model_fields)
+
+@inline function step_left_boundary_node!(bc, l, m, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices, 
+                                          grid, u, clock, model_fields, ΔX)
     Δt = clock.last_stage_Δt
 
     Δt = ifelse(isinf(Δt), 0, Δt)
 
-    Δx = xspacing(1, j, k, grid, loc...)
+    ūⁿ⁺¹ = getbc(bc, l, m, grid, clock, model_fields)
 
-    ūⁿ⁺¹ = getbc(bc, j, k, grid, clock, model_fields)
+    uᵢⁿ     = @inbounds getindex(u, boundary_secret_storage_indices...)
+    uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, boundary_adjacent_indices...)
 
-    uᵢⁿ     = @inbounds u[2, j, k]
-    uᵢ₋₁ⁿ⁺¹ = @inbounds u[0, j, k] 
+    U = min(0, max(-1, Δt / ΔX * ūⁿ⁺¹))
 
-    U = min(0, max(-1, Δt / Δx * ūⁿ⁺¹))
+    pa = bc.classification.matching_scheme
 
-    τ = ifelse(ūⁿ⁺¹ <= 0, 
-               bc.classification.matching_scheme.outflow_timescale, 
-               bc.classification.matching_scheme.inflow_timescale)
+    τ = ifelse(ūⁿ⁺¹ <= 0, pa.outflow_timescale, pa.inflow_timescale)
 
     τ̃ = Δt / τ
 
     u₁ⁿ⁺¹ = (uᵢⁿ - U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ - U)
 
-    @inbounds u[1, j, k] = u₁ⁿ⁺¹#ifelse(active_cell(i, j, k, grid), uᵢⁿ⁺¹, zero(grid))
-    @inbounds u[0, j, k] = u₁ⁿ⁺¹#ifelse(active_cell(i, j, k, grid), uᵢⁿ⁺¹, zero(grid))
+    @inbounds setindex!(u, u₁ⁿ⁺¹, boundary_indices...)
+    @inbounds setindex!(u, u₁ⁿ⁺¹, boundary_secret_storage_indices...)
+
+    return nothing
+end
+
+@inline function _fill_east_halo!(j, k, grid, u, bc::PAOBC, loc::Tuple{Face, Any, Any}, clock, model_fields)
+    i = grid.Nx + 1
+
+    boundary_indices = (i, j, k)
+    boundary_adjacent_indices = (i-1, j, k)
+
+    Δx = xspacing(i, j, k, grid, loc...)
+
+    step_right_boundary_node!(bc, j, k, boundary_indices, boundary_adjacent_indices, grid, u, clock, model_fields, Δx)
+
+    return nothing
+end
+
+@inline function _fill_west_halo!(j, k, grid, u, bc::PAOBC, loc::Tuple{Face, Any, Any}, clock, model_fields)
+    boundary_indices = (1, j, k)
+    boundary_adjacent_indices = (2, j, k)
+    boundary_secret_storage_indices = (0, j, k)
+
+    Δx = xspacing(1, j, k, grid, loc...)
+
+    step_left_boundary_node!(bc, j, k, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices, grid, u, clock, model_fields, Δx)
+
+    return nothing
 end
