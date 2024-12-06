@@ -315,7 +315,7 @@ end
     u_truth = deepcopy(model.velocities.u)
     v_truth = deepcopy(model.velocities.v)
     
-    # Use a manual finite difference (central difference) to compute a gradient at ν1 = ν₀ + Δν
+    # Use a manual finite difference (central difference) to compute the gradient at ν1 = ν₀ + Δν
     Δν = 1e-6
     ν0 = ν₀
     ν1 = ν₀ + Δν
