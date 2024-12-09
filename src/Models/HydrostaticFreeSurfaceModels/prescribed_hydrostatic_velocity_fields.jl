@@ -8,7 +8,7 @@ using Oceananigans.TimeSteppers: tick!, step_lagrangian_particles!
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Models: extract_boundary_conditions
-import Oceananigans.Utils: datatuple
+import Oceananigans.Utils: datatuple, sum_of_velocities
 import Oceananigans.TimeSteppers: time_step!
 
 using Adapt
@@ -87,6 +87,15 @@ end
 @inline fill_halo_regions!(::FunctionField, args...) = nothing
 
 @inline datatuple(obj::PrescribedVelocityFields) = (; u = datatuple(obj.u), v = datatuple(obj.v), w = datatuple(obj.w))
+@inline velocities(obj::PrescribedVelocityFields) = (u = obj.u, v = obj.v, w = obj.w)
+
+# Extend sum_of_velocities for `PrescribedVelocityFields`
+@inline sum_of_velocities(U::PrescribedVelocityFields, V) = sum_of_velocities(velocities(U), V)
+@inline sum_of_velocities(U, V::PrescribedVelocityFields) = sum_of_velocities(U, velocities(V))
+
+@inline sum_of_velocities(U::PrescribedVelocityFields, V, W) = sum_of_velocities(velocities(U), V, W)
+@inline sum_of_velocities(U, V::PrescribedVelocityFields, W) = sum_of_velocities(U, velocities(V), W)
+@inline sum_of_velocities(U, V, W::PrescribedVelocityFields) = sum_of_velocities(U, V, velocities(W))
 
 ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
 rk3_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
