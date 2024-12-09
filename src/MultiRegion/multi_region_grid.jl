@@ -3,7 +3,7 @@ using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, Grid
 
 import Oceananigans.Grids: architecture, size, new_data, halo_size
 import Oceananigans.Grids: with_halo, on_architecture
-import Oceananigans.Grids: minimum_spacing, destantiate
+import Oceananigans.Grids: destantiate
 import Oceananigans.Grids: minimum_xspacing, minimum_yspacing, minimum_zspacing
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: default_free_surface
 import Oceananigans.DistributedComputations: reconstruct_global_grid
@@ -38,9 +38,6 @@ const MultiRegionGrids = Union{MultiRegionGrid, ImmersedMultiRegionGrid}
 @inline Base.first(mrg::MultiRegionGrids) = mrg[1]
 @inline Base.lastindex(mrg::MultiRegionGrids) = length(mrg)
 number_of_regions(mrg::MultiRegionGrids) = lastindex(mrg)
-
-minimum_spacing(dir, grid::MultiRegionGrid, ℓx, ℓy, ℓz) =
-    minimum(minimum_spacing(dir, grid[r], ℓx, ℓy, ℓz) for r in 1:number_of_regions(grid))
 
 minimum_xspacing(grid::MultiRegionGrid, ℓx, ℓy, ℓz) =
     minimum(minimum_xspacing(grid[r], ℓx, ℓy, ℓz) for r in 1:number_of_regions(grid))
