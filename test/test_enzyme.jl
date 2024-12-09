@@ -105,6 +105,37 @@ function set_initial_condition_via_launch!(model_tracer, amplitude)
     return nothing
 end
 
+function momentum_equation!(model)
+        
+    # Do time-stepping
+    Nx, Ny, Nz = size(model.grid)
+    Δz = 1 / Nz
+    Δt = 1e-1 * Δz^2
+
+    model.clock.time = 0
+    model.clock.iteration = 0
+
+    for _ = 1:100
+        time_step!(model, Δt; euler=true)
+    end
+
+    # Compute scalar metric
+    u = model.velocities.u
+
+    # Hard way (for enzyme - the sum function sometimes errors with AD)
+    # c² = c^2
+    # sum_c² = sum(c²)
+
+    # Another way to compute it
+    sum_u² = 0.0
+    for k = 1:Nz, j = 1:Ny,  i = 1:Nx
+        sum_u² += u[i, j, k]^2
+    end
+
+    # Need the ::Float64 for type inference with automatic differentiation
+    return sum_u²::Float64
+end
+
 @testset "Enzyme + Oceananigans Initialization Broadcast Kernel" begin
     Nx = Ny = 64
     Nz = 8
