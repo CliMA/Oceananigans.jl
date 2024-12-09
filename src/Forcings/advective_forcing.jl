@@ -73,11 +73,13 @@ on_architecture(to, af::AdvectiveForcing) =
     AdvectiveForcing(on_architecture(to, af.u), on_architecture(to, af.v), on_architecture(to, af.w))
 
 
+@inline velocities(forcing::AdvectiveForcing) = (u=forcing.u, v=forcing.v, w=forcing.w)
+
 # fallback
 @inline with_advective_forcing(forcing, total_velocities) = total_velocities
 
 @inline with_advective_forcing(forcing::AdvectiveForcing, total_velocities) = 
-    sum_of_velocities(forcing, total_velocities)
+    sum_of_velocities(velocities(forcing), total_velocities)
 
 # Unwrap the tuple within MultipleForcings
 @inline with_advective_forcing(mf::MultipleForcings, total_velocities) =
