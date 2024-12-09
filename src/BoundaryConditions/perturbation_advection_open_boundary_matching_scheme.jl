@@ -1,0 +1,113 @@
+using Oceananigans.Grids: xspacing
+
+"""
+    PerturbationAdvection
+
+For cases where we assume that the internal flow is a small perturbation from 
+an external prescribed or coarser flow, we can split the velocity into background
+and perturbation components:
+...
+see latex document for now
+
+TODO: check what the coriolis is doing, and check what happens if U is the mean velocity
+"""
+struct PerturbationAdvection{FT}
+    inflow_timescale :: FT
+   outflow_timescale :: FT
+end
+
+Adapt.adapt_structure(to, pe::PerturbationAdvection) = 
+    PerturbationAdvection(adapt(to, pe.outflow_timescale),
+                          adapt(to, pe.inflow_timescale))
+
+function PerturbationAdvectionOpenBoundaryCondition(val, FT = Float64; 
+                                                    outflow_timescale = Inf, 
+                                                    inflow_timescale = 300.0, kwargs...)
+
+    classification = Open(PerturbationAdvection(inflow_timescale, outflow_timescale))
+
+    @warn "`PerturbationAdvection` open boundaries matching scheme is experimental and un-tested/validated"
+    
+    return BoundaryCondition(classification, val; kwargs...)
+end
+
+const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
+
+@inline function step_right_boundary!(bc, l, m, boundary_indices, boundary_adjacent_indices, 
+                                      grid, u, clock, model_fields, ΔX)
+    Δt = clock.last_stage_Δt
+
+    Δt = ifelse(isinf(Δt), 0, Δt)
+
+    ūⁿ⁺¹ = getbc(bc, l, m, grid, clock, model_fields)
+
+    uᵢⁿ     = @inbounds getindex(u, boundary_indices...)
+    uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, boundary_adjacent_indices...)
+
+    U = max(0, min(1, Δt / ΔX * ūⁿ⁺¹))
+
+    pa = bc.classification.matching_scheme
+
+    τ = ifelse(ūⁿ⁺¹ >= 0, pa.outflow_timescale, pa.inflow_timescale)
+
+    τ̃ = Δt / τ
+
+    uᵢⁿ⁺¹ = (uᵢⁿ + U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ + U)
+
+    @inbounds setindex!(u, uᵢⁿ⁺¹, boundary_indices...)
+
+    return nothing
+end
+
+
+@inline function step_left_boundary!(bc, l, m, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices, 
+                                     grid, u, clock, model_fields, ΔX)
+    Δt = clock.last_stage_Δt
+
+    Δt = ifelse(isinf(Δt), 0, Δt)
+
+    ūⁿ⁺¹ = getbc(bc, l, m, grid, clock, model_fields)
+
+    uᵢⁿ     = @inbounds getindex(u, boundary_secret_storage_indices...)
+    uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, boundary_adjacent_indices...)
+
+    U = min(0, max(-1, Δt / ΔX * ūⁿ⁺¹))
+
+    pa = bc.classification.matching_scheme
+
+    τ = ifelse(ūⁿ⁺¹ <= 0, pa.outflow_timescale, pa.inflow_timescale)
+
+    τ̃ = Δt / τ
+
+    u₁ⁿ⁺¹ = (uᵢⁿ - U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ - U)
+
+    @inbounds setindex!(u, u₁ⁿ⁺¹, boundary_indices...)
+    @inbounds setindex!(u, u₁ⁿ⁺¹, boundary_secret_storage_indices...)
+
+    return nothing
+end
+
+@inline function _fill_east_halo!(j, k, grid, u, bc::PAOBC, loc::Tuple{Face, Any, Any}, clock, model_fields)
+    i = grid.Nx + 1
+
+    boundary_indices = (i, j, k)
+    boundary_adjacent_indices = (i-1, j, k)
+
+    Δx = xspacing(i, j, k, grid, loc...)
+
+    step_right_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices, grid, u, clock, model_fields, Δx)
+
+    return nothing
+end
+
+@inline function _fill_west_halo!(j, k, grid, u, bc::PAOBC, loc::Tuple{Face, Any, Any}, clock, model_fields)
+    boundary_indices = (1, j, k)
+    boundary_adjacent_indices = (2, j, k)
+    boundary_secret_storage_indices = (0, j, k)
+
+    Δx = xspacing(1, j, k, grid, loc...)
+
+    step_left_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices, grid, u, clock, model_fields, Δx)
+
+    return nothing
+end
