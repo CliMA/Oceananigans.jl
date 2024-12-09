@@ -35,7 +35,7 @@ Distributed.addprocs(2)
     # The examples that take longer to run should be first. This ensures that the
     # docs built which extra workers is as efficient as possible.
     example_scripts = [
-        # "internal_tide.jl",
+        "internal_tide.jl",
         "shallow_water_Bickley_jet.jl",
         "kelvin_helmholtz_instability.jl",
         "horizontal_convection.jl",
@@ -74,7 +74,7 @@ example_pages = [
     "One-dimensional diffusion"        => "literated/one_dimensional_diffusion.md",
     "Two-dimensional turbulence"       => "literated/two_dimensional_turbulence.md",
     "Internal wave"                    => "literated/internal_wave.md",
-    # "Internal tide by a seamount"      => "literated/internal_tide.md",
+    "Internal tide by a seamount"      => "literated/internal_tide.md",
     "Convecting plankton"              => "literated/convecting_plankton.md",
     "Ocean wind mixing and convection" => "literated/ocean_wind_mixing_and_convection.md",
     "Langmuir turbulence"              => "literated/langmuir_turbulence.md",
