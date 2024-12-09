@@ -404,8 +404,8 @@ Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 @propagate_inbounds Base.lastindex(f::Field) = lastindex(f.data)
 @propagate_inbounds Base.lastindex(f::Field, dim) = lastindex(f.data, dim)
 
-Base.fill!(f::Field, val) = fill!(parent(f), val)
-Base.parent(f::Field) = parent(f.data)
+@inline Base.fill!(f::Field, val) = fill!(parent(f), val)
+@inline Base.parent(f::Field) = parent(f.data)
 Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
 
 total_size(f::Field) = total_size(f.grid, location(f), f.indices)
