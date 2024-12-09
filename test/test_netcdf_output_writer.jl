@@ -241,15 +241,15 @@ function test_thermal_bubble_netcdf_output(arch)
     @test ds3["xF"][1] == grid.xᶠᵃᵃ[1]
     @test ds3["yC"][1] == grid.yᵃᶜᵃ[1]
     @test ds3["yF"][1] == grid.yᵃᶠᵃ[1]
-    @test ds3["zC"][1] == grid.zᵃᵃᶜ[1]
-    @test ds3["zF"][1] == grid.zᵃᵃᶠ[1]
+    @test ds3["zC"][1] == grid.z.cᵃᵃᶜ[1]
+    @test ds3["zF"][1] == grid.z.cᵃᵃᶠ[1]
 
     @test ds3["xC"][end] == grid.xᶜᵃᵃ[Nx]
     @test ds3["xF"][end] == grid.xᶠᵃᵃ[Nx]
     @test ds3["yC"][end] == grid.yᵃᶜᵃ[Ny]
     @test ds3["yF"][end] == grid.yᵃᶠᵃ[Ny]
-    @test ds3["zC"][end] == grid.zᵃᵃᶜ[Nz]
-    @test ds3["zF"][end] == grid.zᵃᵃᶠ[Nz+1]  # z is Bounded
+    @test ds3["zC"][end] == grid.z.cᵃᵃᶜ[Nz]
+    @test ds3["zF"][end] == grid.z.cᵃᵃᶠ[Nz+1]  # z is Bounded
 
     @test eltype(ds3["u"]) == Float64
     @test eltype(ds3["v"]) == Float64
@@ -300,15 +300,15 @@ function test_thermal_bubble_netcdf_output(arch)
     @test ds2["xF"][1] == grid.xᶠᵃᵃ[i_slice[1]]
     @test ds2["yC"][1] == grid.yᵃᶜᵃ[j_slice[1]]
     @test ds2["yF"][1] == grid.yᵃᶠᵃ[j_slice[1]]
-    @test ds2["zC"][1] == grid.zᵃᵃᶜ[k_slice[1]]
-    @test ds2["zF"][1] == grid.zᵃᵃᶠ[k_slice[1]]
+    @test ds2["zC"][1] == grid.z.cᵃᵃᶜ[k_slice[1]]
+    @test ds2["zF"][1] == grid.z.cᵃᵃᶠ[k_slice[1]]
 
     @test ds2["xC"][end] == grid.xᶜᵃᵃ[i_slice[end]]
     @test ds2["xF"][end] == grid.xᶠᵃᵃ[i_slice[end]]
     @test ds2["yC"][end] == grid.yᵃᶜᵃ[j_slice[end]]
     @test ds2["yF"][end] == grid.yᵃᶠᵃ[j_slice[end]]
-    @test ds2["zC"][end] == grid.zᵃᵃᶜ[k_slice[end]]
-    @test ds2["zF"][end] == grid.zᵃᵃᶠ[k_slice[end]]
+    @test ds2["zC"][end] == grid.z.cᵃᵃᶜ[k_slice[end]]
+    @test ds2["zF"][end] == grid.z.cᵃᵃᶠ[k_slice[end]]
 
     @test eltype(ds2["u"]) == Float32
     @test eltype(ds2["v"]) == Float32
@@ -395,15 +395,15 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
     @test ds["xF"][1] == grid.xᶠᵃᵃ[1-Hx]
     @test ds["yC"][1] == grid.yᵃᶜᵃ[1-Hy]
     @test ds["yF"][1] == grid.yᵃᶠᵃ[1-Hy]
-    @test ds["zC"][1] == grid.zᵃᵃᶜ[1-Hz]
-    @test ds["zF"][1] == grid.zᵃᵃᶠ[1-Hz]
+    @test ds["zC"][1] == grid.z.cᵃᵃᶜ[1-Hz]
+    @test ds["zF"][1] == grid.z.cᵃᵃᶠ[1-Hz]
 
     @test ds["xC"][end] == grid.xᶜᵃᵃ[Nx+Hx]
     @test ds["xF"][end] == grid.xᶠᵃᵃ[Nx+Hx]
     @test ds["yC"][end] == grid.yᵃᶜᵃ[Ny+Hy]
     @test ds["yF"][end] == grid.yᵃᶠᵃ[Ny+Hy]
-    @test ds["zC"][end] == grid.zᵃᵃᶜ[Nz+Hz]
-    @test ds["zF"][end] == grid.zᵃᵃᶠ[Nz+Hz+1]  # z is Bounded
+    @test ds["zC"][end] == grid.z.cᵃᵃᶜ[Nz+Hz]
+    @test ds["zF"][end] == grid.z.cᵃᵃᶠ[Nz+Hz+1]  # z is Bounded
 
     @test eltype(ds["u"]) == Float64
     @test eltype(ds["v"]) == Float64
@@ -507,15 +507,15 @@ function test_netcdf_function_output(arch)
     @test ds["xF"][1] == grid.xᶠᵃᵃ[1]
     @test ds["yC"][1] == grid.yᵃᶜᵃ[1]
     @test ds["yF"][1] == grid.yᵃᶠᵃ[1]
-    @test ds["zC"][1] == grid.zᵃᵃᶜ[1]
-    @test ds["zF"][1] == grid.zᵃᵃᶠ[1]
+    @test ds["zC"][1] == grid.z.cᵃᵃᶜ[1]
+    @test ds["zF"][1] == grid.z.cᵃᵃᶠ[1]
 
     @test ds["xC"][end] == grid.xᶜᵃᵃ[N]
     @test ds["yC"][end] == grid.yᵃᶜᵃ[N]
-    @test ds["zC"][end] == grid.zᵃᵃᶜ[N]
     @test ds["xF"][end] == grid.xᶠᵃᵃ[N]
     @test ds["yF"][end] == grid.yᵃᶠᵃ[N]
-    @test ds["zF"][end] == grid.zᵃᵃᶠ[N+1]  # z is Bounded
+    @test ds["zC"][end] == grid.z.cᵃᵃᶜ[N]
+    @test ds["zF"][end] == grid.z.cᵃᵃᶠ[N+1]  # z is Bounded
 
     @test ds.attrib["location"] == "Bay of Fundy"
     @test ds.attrib["onions"] == 7
@@ -862,16 +862,16 @@ function test_netcdf_vertically_stretched_grid_output(arch)
     @test ds["yC"][1] == grid.yᵃᶜᵃ[1]
     @test ds["yF"][1] == grid.yᵃᶠᵃ[1]
 
-    @test CUDA.@allowscalar ds["zC"][1] == grid.zᵃᵃᶜ[1]
-    @test CUDA.@allowscalar ds["zF"][1] == grid.zᵃᵃᶠ[1]
+    @test CUDA.@allowscalar ds["zC"][1] == grid.z.cᵃᵃᶜ[1]
+    @test CUDA.@allowscalar ds["zF"][1] == grid.z.cᵃᵃᶠ[1]
 
     @test ds["xC"][end] == grid.xᶜᵃᵃ[Nx]
     @test ds["xF"][end] == grid.xᶠᵃᵃ[Nx]
     @test ds["yC"][end] == grid.yᵃᶜᵃ[Ny]
     @test ds["yF"][end] == grid.yᵃᶠᵃ[Ny]
 
-    @test CUDA.@allowscalar  ds["zC"][end] == grid.zᵃᵃᶜ[Nz]
-    @test CUDA.@allowscalar  ds["zF"][end] == grid.zᵃᵃᶠ[Nz+1]  # z is Bounded
+    @test CUDA.@allowscalar ds["zC"][end] == grid.z.cᵃᵃᶜ[Nz]
+    @test CUDA.@allowscalar ds["zF"][end] == grid.z.cᵃᵃᶠ[Nz+1]  # z is Bounded
 
     close(ds)
     rm(nc_filepath)
@@ -920,15 +920,15 @@ function test_netcdf_regular_lat_lon_grid_output(arch; immersed = false)
     @test ds["xF"][1] == grid.λᶠᵃᵃ[1]
     @test ds["yC"][1] == grid.φᵃᶜᵃ[1]
     @test ds["yF"][1] == grid.φᵃᶠᵃ[1]
-    @test ds["zC"][1] == grid.zᵃᵃᶜ[1]
-    @test ds["zF"][1] == grid.zᵃᵃᶠ[1]
+    @test ds["zC"][1] == grid.z.cᵃᵃᶜ[1]
+    @test ds["zF"][1] == grid.z.cᵃᵃᶠ[1]
 
     @test ds["xC"][end] == grid.λᶜᵃᵃ[Nx]
     @test ds["xF"][end] == grid.λᶠᵃᵃ[Nx]
     @test ds["yC"][end] == grid.φᵃᶜᵃ[Ny]
     @test ds["yF"][end] == grid.φᵃᶠᵃ[Ny+1]  # y is Bounded
-    @test ds["zC"][end] == grid.zᵃᵃᶜ[Nz]
-    @test ds["zF"][end] == grid.zᵃᵃᶠ[Nz+1]  # z is Bounded
+    @test ds["zC"][end] == grid.z.cᵃᵃᶜ[Nz]
+    @test ds["zF"][end] == grid.z.cᵃᵃᶠ[Nz+1]  # z is Bounded
 
     close(ds)
     rm(nc_filepath)
