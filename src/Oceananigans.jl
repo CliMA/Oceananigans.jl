@@ -44,7 +44,7 @@ export
     # Coriolis forces
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
 
-    # BuoyancyForces and equations of state
+    # BuoyancyFormulations and equations of state
     BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy,
     LinearEquationOfState, TEOS10,
     BuoyancyField,
