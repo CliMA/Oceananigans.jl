@@ -68,13 +68,7 @@ julia> using Oceananigans.Operators: Δz
 
 julia> c = CenterField(RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3)));
 
-julia> c_dz = c * Δz # returns BinaryOperation between Field and GridMetricOperation
-BinaryOperation at (Center, Center, Center)
-├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
-└── tree:
-    * at (Center, Center, Center)
-    ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
-    └── Δzᶜᶜᶜ at (Center, Center, Center)
+julia> c_dz = c * Δz; # returns BinaryOperation between Field and GridMetricOperation
 
 julia> c .= 1;
 
@@ -104,7 +98,7 @@ julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
 julia> xspacings(grid, Center(), Center(), Center())
 KernelFunctionOperation at (Center, Center, Center)
 ├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
-├── kernel_function: Δx (generic function with 27 methods)
+├── kernel_function: Δx (generic function with 29 methods)
 └── arguments: ("Center", "Center", "Center")
 ```
 """
@@ -130,7 +124,7 @@ julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
 julia> yspacings(grid, Center(), Face(), Center())
 KernelFunctionOperation at (Center, Face, Center)
 ├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
-├── kernel_function: Δy (generic function with 27 methods)
+├── kernel_function: Δy (generic function with 29 methods)
 └── arguments: ("Center", "Face", "Center")
 ```
 """
@@ -156,7 +150,7 @@ julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
 julia> zspacings(grid, Center(), Center(), Face())
 KernelFunctionOperation at (Center, Center, Face)
 ├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
-├── kernel_function: Δz (generic function with 27 methods)
+├── kernel_function: Δz (generic function with 28 methods)
 └── arguments: ("Center", "Center", "Face")
 ```
 """
@@ -185,7 +179,7 @@ julia> grid = LatitudeLongitudeGrid(size=(36, 34, 25),
 julia> λspacings(grid, Center(), Face(), Center())
 KernelFunctionOperation at (Center, Face, Center)
 ├── grid: 36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
-├── kernel_function: Δλ (generic function with 5 methods)
+├── kernel_function: Δλ (generic function with 29 methods)
 └── arguments: ("Center", "Face", "Center")
 ```
 """
@@ -214,7 +208,7 @@ julia> grid = LatitudeLongitudeGrid(size=(36, 34, 25),
 julia> φspacings(grid, Center(), Face(), Center())
 KernelFunctionOperation at (Center, Face, Center)
 ├── grid: 36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
-├── kernel_function: Δφ (generic function with 5 methods)
+├── kernel_function: Δφ (generic function with 29 methods)
 └── arguments: ("Center", "Face", "Center")
 ```
 """
