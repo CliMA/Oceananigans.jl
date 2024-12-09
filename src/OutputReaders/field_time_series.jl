@@ -371,7 +371,7 @@ function FieldTimeSeries(loc, grid, times=();
                          name = nothing,
                          time_indexing = Linear(),
                          boundary_conditions = nothing,
-                         reader_kw = Dict{Symbol, Any}())
+                         reader_kw = NamedTuple())
 
     LX, LY, LZ = loc
 
@@ -440,8 +440,8 @@ Keyword arguments
            comparison to recorded save times. Defaults to times associated with `iterations`.
            Takes precedence over `iterations` if `times` is specified.
 
-- `reader_kw`: A dictionary of keyword arguments to pass to the reader (currently only JLD2)
-               to be used when opening files.
+- `reader_kw`: A named tuple or dictionary of keyword arguments to pass to the reader
+               (currently only JLD2) to be used when opening files.
 """
 function FieldTimeSeries(path::String, name::String;
                          backend = InMemory(),
@@ -452,7 +452,7 @@ function FieldTimeSeries(path::String, name::String;
                          time_indexing = Linear(),
                          iterations = nothing,
                          times = nothing,
-                         reader_kw = Dict{Symbol, Any}())
+                         reader_kw = NamedTuple())
 
     file = jldopen(path; reader_kw...)
 
@@ -460,10 +460,6 @@ function FieldTimeSeries(path::String, name::String;
     isnothing(iterations)   && (iterations = parse.(Int, keys(file["timeseries/t"])))
     isnothing(times)        && (times      = [file["timeseries/t/$i"] for i in iterations])
     isnothing(location)     && (Location   = file["timeseries/$name/serialized/location"])
-
-    if boundary_conditions isa UnspecifiedBoundaryConditions
-        boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
-    end
 
     indices = try
         file["timeseries/$name/serialized/indices"]
@@ -480,6 +476,12 @@ function FieldTimeSeries(path::String, name::String;
             architecture = Architectures.architecture(grid)
         end
     end
+
+    if boundary_conditions isa UnspecifiedBoundaryConditions
+        boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
+        boundary_conditions = on_architecture(architecture, boundary_conditions)
+    end
+
 
     # This should be removed eventually... (4/5/2022)
     grid = try
@@ -550,7 +552,7 @@ end
           architecture = nothing,
           indices = (:, :, :),
           boundary_conditions = nothing,
-          reader_kw = Dict{Symbol, Any}())
+          reader_kw = NamedTuple())
 
 Load a field called `name` saved in a JLD2 file at `path` at `iter`ation.
 Unless specified, the `grid` is loaded from `path`.
@@ -560,7 +562,7 @@ function Field(location, path::String, name::String, iter;
                architecture = nothing,
                indices = (:, :, :),
                boundary_conditions = nothing,
-               reader_kw = Dict{Symbol, Any}())
+               reader_kw = NamedTuple())
 
     # Default to CPU if neither architecture nor grid is specified
     if isnothing(architecture)

@@ -3,7 +3,7 @@ using OrderedCollections: OrderedDict
 
 using Oceananigans.DistributedComputations
 using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder, VectorInvariant, adapt_advection_order
+using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, adapt_advection_order
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
@@ -12,7 +12,7 @@ using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture, halo_size
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, validate_model_halo, NaNChecker, validate_tracer_advection, extract_boundary_conditions
-using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles
+using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles, SplitRungeKutta3TimeStepper
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
 using Oceananigans.Utils: tupleit
@@ -57,7 +57,7 @@ default_free_surface(grid; gravitational_acceleration=g_Earth) =
     HydrostaticFreeSurfaceModel(; grid,
                                 clock = Clock{eltype(grid)}(time = 0),
                                 momentum_advection = VectorInvariant(),
-                                tracer_advection = CenteredSecondOrder(),
+                                tracer_advection = Centered(),
                                 buoyancy = SeawaterBuoyancy(eltype(grid)),
                                 coriolis = nothing,
                                 free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
@@ -104,13 +104,14 @@ Keyword arguments
 function HydrostaticFreeSurfaceModel(; grid,
                                      clock = Clock{eltype(grid)}(time = 0),
                                      momentum_advection = VectorInvariant(),
-                                     tracer_advection = CenteredSecondOrder(),
+                                     tracer_advection = Centered(),
                                      buoyancy = nothing,
                                      coriolis = nothing,
                                      free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
                                      tracers = nothing,
                                      forcing::NamedTuple = NamedTuple(),
                                      closure = nothing,
+                                     timestepper = :QuasiAdamsBashforth2,
                                      boundary_conditions::NamedTuple = NamedTuple(),
                                      particles::ParticlesOrNothing = nothing,
                                      biogeochemistry::AbstractBGCOrNothing = nothing,
@@ -190,14 +191,17 @@ function HydrostaticFreeSurfaceModel(; grid,
     free_surface = materialize_free_surface(free_surface, velocities, grid)
 
     # Instantiate timestepper if not already instantiated
-    implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
-    timestepper = TimeStepper(:QuasiAdamsBashforth2, grid, tracernames(tracers);
+    implicit_solver   = implicit_diffusion_solver(time_discretization(closure), grid)
+    prognostic_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
+
+    timestepper = TimeStepper(timestepper, grid, tracernames(tracers);
                               implicit_solver = implicit_solver,
                               Gⁿ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, grid, tracernames(tracers)),
-                              G⁻ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, grid, tracernames(tracers)))
+                              G⁻ = PreviousHydrostaticTendencyFields(Val(timestepper), velocities, free_surface, grid, tracernames(tracers)),
+                              Ψ⁻ = deepcopy(prognostic_fields))
 
     # Regularize forcing for model tracer and velocity fields.
-    model_fields = merge(hydrostatic_prognostic_fields(velocities, free_surface, tracers), auxiliary_fields)
+    model_fields = merge(prognostic_fields, auxiliary_fields)
     forcing = model_forcing(model_fields; forcing...)
     
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
@@ -230,7 +234,6 @@ validate_momentum_advection(momentum_advection::VectorInvariant, grid::Orthogona
 validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
 initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
-initialize_free_surface!(free_surface, grid, velocities) = nothing
 
 # return the total advective velocities
 @inline total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
