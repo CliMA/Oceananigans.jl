@@ -4,78 +4,10 @@ using Random
 using Oceananigans
 using Oceananigans.Units
 using GLMakie
-using Oceananigans.TurbulenceClosures: MesoscaleEddyTransport, IsopycnalSkewSymmetricDiffusivity
+using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity
+using Oceananigans.TurbulenceClosures: FluxTapering, DiffusiveFormulation, AdvectiveSkewClosure
 
 filename = "coarse_baroclinic_adjustment"
-
-# Domain
-Ly = 1000kilometers  # north-south extent [m]
-Lz = 1kilometers     # depth [m]
-Ny = 20
-Nz = 20
-save_fields_interval = 2day
-stop_time = 300days
-Δt = 10minutes
-
-grid = RectilinearGrid(topology = (Flat, Bounded, Bounded),
-                       size = (Ny, Nz), 
-                       y = (-Ly/2, Ly/2),
-                       z = (-Lz, 0),
-                       halo = (4, 4))
-
-grid = ImmersedBoundaryGrid(grid, GridFittedBottom(y -> y > 0 ? -Lz : -Lz/2))
-
-coriolis = FPlane(latitude = -45)
-
-@info "Building a model..."
-
-adv_closure = MesoscaleEddyTransport()
-cox_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew = adv_closure.κ, 
-                                                isopycnal_tensor = adv_closure.isopycnal_tensor,
-                                                slope_limiter = adv_closure.slope_limiter)
-
-model = HydrostaticFreeSurfaceModel(; grid, coriolis,
-                                    buoyancy = BuoyancyTracer(),
-                                    tracer_advection = WENO(),
-                                    closure = adv_closure,
-                                    tracers = (:b, :c))
-
-@info "Built $model."
-
-"""
-Linear ramp from 0 to 1 between -Δy/2 and +Δy/2.
-
-For example:
-
-y < y₀           => ramp = 0
-y₀ < y < y₀ + Δy => ramp = y / Δy
-y > y₀ + Δy      => ramp = 1
-"""
-ramp(y, Δ) = min(max(0, y / Δ + 1/2), 1)
-
-# Parameters
-N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
-M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
-
-Δy = 100kilometers
-Δz = 100
-
-Δc = 2Δy
-Δb = Δy * M²
-ϵb = 1e-2 * Δb # noise amplitude
-
-bᵢ(y, z) = N² * z + Δb * ramp(y, Δy)
-cᵢ(y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/4)^2 / 2Δz^2)
-
-set!(model, b=bᵢ, c=cᵢ)
-
-#####
-##### Simulation building
-#####
-
-simulation = Simulation(model; Δt, stop_time)
-
-wall_clock = Ref(time_ns())
 
 function progress(sim)
     @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, next Δt: %s\n",
@@ -93,75 +25,149 @@ function progress(sim)
     return nothing
 end
 
-add_callback!(simulation, progress, IterationInterval(10))
+# Domain
+Ly = 1000kilometers  # north-south extent [m]
+Lz = 1kilometers     # depth [m]
+Ny = 20
+Nz = 20
 
-# eddy_velocities = (ue = model.diffusivity_fields.u, ve = model.diffusivity_fields.v, we = model.diffusivity_fields.w)
+# Time stepping
+Δt = 10minutes
+save_fields_interval = 2day
+stop_time = 300days
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers), # , eddy_velocities),
-                                                      schedule = TimeInterval(save_fields_interval),
-                                                      filename = filename * "_fields",
-                                                      overwrite_existing = true)
+grid = RectilinearGrid(topology = (Flat, Bounded, Bounded),
+                       size = (Ny, Nz), 
+                       y = (-Ly/2, Ly/2),
+                       z = (-Lz, 0),
+                       halo = (5, 5))
 
-@info "Running the simulation..."
+grid = ImmersedBoundaryGrid(grid, GridFittedBottom(y -> y > 0 ? -Lz : -Lz/2))
 
-run!(simulation)
+@info "Building a model..."
 
-@info "Simulation completed in " * prettytime(simulation.run_wall_time)
+κ_skew = 1000
+slope_limiter = FluxTapering(1000) # Allow very steep slopes
+
+adv_closure = IsopycnalSkewSymmetricDiffusivity(; κ_skew, slope_limiter)
+dif_closure = IsopycnalSkewSymmetricDiffusivity(; κ_skew, slope_limiter, skew_fluxes_formulation = DiffusiveFormulation())
+
+function run_simulation(closure, grid)
+    model = HydrostaticFreeSurfaceModel(; grid, 
+                                        coriolis = FPlane(latitude = -45),
+                                        buoyancy = BuoyancyTracer(),
+                                        tracer_advection = WENO(order=7),
+                                        closure = adv_closure,
+                                        tracers = (:b, :c))
+
+    @info "Built $model."
+
+    ramp(y, Δ) = min(max(0, y / Δ + 1/2), 1)
+
+    # Parameters
+    N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
+    M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
+
+    Δy = 100kilometers
+    Δz = 100
+
+    Δc = 2Δy
+    Δb = Δy * M²
+    ϵb = 1e-2 * Δb # noise amplitude
+
+    bᵢ(y, z) = N² * z + Δb * ramp(y, Δy)
+    cᵢ(y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/4)^2 / 2Δz^2)
+
+    set!(model, b=bᵢ, c=cᵢ)
+
+    #####
+    ##### Simulation building
+    #####
+
+    simulation = Simulation(model; Δt, stop_time)
+
+    wall_clock = Ref(time_ns())
+
+    add_callback!(simulation, progress, IterationInterval(10))
+
+    suffix = closure isa AdvectiveSkewClosure ? "advective" : "diffusive"
+
+    simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers), 
+                                                          schedule = TimeInterval(save_fields_interval),
+                                                          filename = filename * "_fields_" * suffix,
+                                                          overwrite_existing = true)
+
+    @info "Running the simulation..."
+
+    run!(simulation)
+
+    @info "Simulation completed in " * prettytime(simulation.run_wall_time)
+end
+
+run_simulation(adv_closure, grid)
+run_simulation(dif_closure, grid)
 
 #####
 ##### Visualize
 #####
 
-fig = Figure(size=(1400, 700))
+filepath_adv = filename * "_fields_advective.jld2"
+filepath_dif = filename * "_fields_diffusive.jld2"
 
-filepath = filename * "_fields.jld2"
+uta = FieldTimeSeries(filepath_adv, "u")
+bta = FieldTimeSeries(filepath_adv, "b")
+cta = FieldTimeSeries(filepath_adv, "c")
 
-ut = FieldTimeSeries(filepath, "u")
-# ue = FieldTimeSeries(filepath, "ue")
-bt = FieldTimeSeries(filepath, "b")
-ct = FieldTimeSeries(filepath, "c")
+utd = FieldTimeSeries(filepath_dif, "u")
+btd = FieldTimeSeries(filepath_dif, "b")
+ctd = FieldTimeSeries(filepath_dif, "c")
 
-# Build coordinates, rescaling the vertical coordinate
-x, y, z = nodes(bt)
-
-zscale = 1
-z = z .* zscale
+x, y, z = nodes(bta)
 
 #####
 ##### Plot buoyancy...
 #####
 
-times = bt.times
+times = bta.times
 Nt = length(times)
 
-un(n) = interior(mean(ut[n], dims=1), 1, :, :) # .+ interior(mean(ue[n], dims=1), 1, :, :) 
-bn(n) = interior(mean(bt[n], dims=1), 1, :, :)
-cn(n) = interior(mean(ct[n], dims=1), 1, :, :)
-
-@show min_c = 0
-@show max_c = 1
-@show max_u = max([maximum(abs, un(n)) for n in 1:Nt]...) * 0.5
+max_u = max([maximum(abs, uta[n]) for n in 1:Nt]...) * 0.5
 min_u = - max_u
 
-axu = Axis(fig[2, 1], xlabel="$gradient (km)", ylabel="z (km)", title="Zonal velocity")
-axc = Axis(fig[3, 1], xlabel="$gradient (km)", ylabel="z (km)", title="Tracer concentration")
-slider = Slider(fig[4, 1:2], range=1:Nt, startvalue=1)
-n = slider.value
+n  = Observable(1)
+ua = @lift uta[$n]
+ba = @lift interior(bta[$n], 1, :, :)
+ca = @lift cta[$n]
 
-u = @lift un($n)
-b = @lift bn($n)
-c = @lift cn($n)
+ud = @lift utd[$n]
+bd = @lift interior(btd[$n], 1, :, :)
+cd = @lift ctd[$n]
 
-hm = heatmap!(axu, y * 1e-3, z * 1e-3, u, colorrange=(min_u, max_u), colormap=:balance)
-contour!(axu, y * 1e-3, z * 1e-3, b, levels = 25, color=:black, linewidth=2)
-cb = Colorbar(fig[2, 2], hm)
+fig = Figure(size=(1800, 700))
 
-hm = heatmap!(axc, y * 1e-3, z * 1e-3, c, colorrange=(0, 0.5), colormap=:speed)
-contour!(axc, y * 1e-3, z * 1e-3, b, levels = 25, color=:black, linewidth=2)
-cb = Colorbar(fig[3, 2], hm)
+axua = Axis(fig[2, 1], xlabel="y (km)", ylabel="z (km)", title="Zonal velocity")
+axca = Axis(fig[3, 1], xlabel="y (km)", ylabel="z (km)", title="Tracer concentration")
+axud = Axis(fig[2, 2], xlabel="y (km)", ylabel="z (km)", title="Zonal velocity")
+axcd = Axis(fig[3, 2], xlabel="y (km)", ylabel="z (km)", title="Tracer concentration")
+
+levels = [-0.0015 + 0.0005 * i for i in 0:19]
+
+hm = heatmap!(axua, ua, colorrange=(min_u, max_u), colormap=:balance)
+contour!(axua, y, z, ba; levels, color=:black, linewidth=2)
+
+hm = heatmap!(axca, ca, colorrange=(0, 0.5), colormap=:speed)
+contour!(axca, y, z, ba; levels, color=:black, linewidth=2)
+
+hm = heatmap!(axud, ud, colorrange=(min_u, max_u), colormap=:balance)
+contour!(axud, y, z, bd; levels, color=:black, linewidth=2)
+cb = Colorbar(fig[2, 3], hm)
+
+hm = heatmap!(axcd, cd, colorrange=(0, 0.5), colormap=:speed)
+contour!(axcd, y, z, bd; levels, color=:black, linewidth=2)
+cb = Colorbar(fig[3, 3], hm)
 
 title_str = @lift "Baroclinic adjustment with GM at t = " * prettytime(times[$n])
-ax_t = fig[1, 1:2] = Label(fig, title_str)
+ax_t = fig[1, 1:3] = Label(fig, title_str)
 
 display(fig)
 
