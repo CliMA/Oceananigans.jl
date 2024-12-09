@@ -1,6 +1,6 @@
 using Oceananigans.Advection: div_Uc, div_𝐯u, div_𝐯v, div_𝐯w
 using Oceananigans.Fields: ZeroField, ConstantField
-using Oceananigans.Utils: SumOfArrays
+using Oceananigans.Utils: sum_of_velocities
 using Adapt
 
 maybe_constant_field(u) = u
@@ -72,14 +72,13 @@ Adapt.adapt_structure(to, af::AdvectiveForcing) =
 on_architecture(to, af::AdvectiveForcing) =
     AdvectiveForcing(on_architecture(to, af.u), on_architecture(to, af.v), on_architecture(to, af.w))
 
+@inline velocities(forcing::AdvectiveForcing) = (u=forcing.u, v=forcing.v, w=forcing.w)
 
 # fallback
 @inline with_advective_forcing(forcing, total_velocities) = total_velocities
 
 @inline with_advective_forcing(forcing::AdvectiveForcing, total_velocities) = 
-    (u = SumOfArrays{2}(forcing.u, total_velocities.u),
-     v = SumOfArrays{2}(forcing.v, total_velocities.v),
-     w = SumOfArrays{2}(forcing.w, total_velocities.w))
+    sum_of_velocities(velocities(forcing), total_velocities)
 
 # Unwrap the tuple within MultipleForcings
 @inline with_advective_forcing(mf::MultipleForcings, total_velocities) =

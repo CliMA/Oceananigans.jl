@@ -19,7 +19,7 @@ using Oceananigans.Architectures: device, architecture
 using Oceananigans.Fields: interpolate, datatuple, compute!, location
 using Oceananigans.Fields: fractional_indices
 using Oceananigans.TimeSteppers: AbstractLagrangianParticles
-using Oceananigans.Utils: prettysummary, launch!, SumOfArrays
+using Oceananigans.Utils: prettysummary, launch!
 
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
 

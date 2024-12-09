@@ -9,7 +9,7 @@ using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils
-using Oceananigans.Utils: launch!, SumOfArrays
+using Oceananigans.Utils: launch!
 using Oceananigans.Grids: AbstractGrid
 
 using DocStringExtensions
