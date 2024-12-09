@@ -221,7 +221,7 @@ function run_catke_tke_substepping_tests(arch, closure)
     # time step the model
     time_step!(model, 1)
 
-    # Check that eⁿ⁺¹ = Δt * Gⁿ.e with Δt = 1 (euler step)
+    # Check that eⁿ⁺¹ == Δt * Gⁿ.e with Δt = 1 (euler step)
     @test model.tracers.e ≈ model.timestepper.G⁻.e
 
     eⁿ  = deepcopy(model.tracers.e)
@@ -236,7 +236,7 @@ function run_catke_tke_substepping_tests(arch, closure)
 
     eⁿ⁺¹ = compute!(Field(eⁿ + C₁ * G⁻ - C₂ * G⁻⁻))
 
-    # Check that eⁿ⁺¹ = eⁿ + Δt * (C₁ Gⁿ.e - C₂ G⁻.e) 
+    # Check that eⁿ⁺¹ == eⁿ + Δt * (C₁ Gⁿ.e - C₂ G⁻.e) 
     @test model.tracers.e ≈ eⁿ⁺¹
 
     return model
