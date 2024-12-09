@@ -17,7 +17,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 
             Nx, Ny, Nz = 128, 64, 1
             Lx = Ly = 2π
-            Lz = 1 / Oceananigans.BuoyancyModels.g_Earth
+            Lz = 1 / Oceananigans.BuoyancyFormulations.g_Earth
 
             grid = RectilinearGrid(arch, FT;
                                    topology, size = (Nx, Ny, Nz),

@@ -225,12 +225,9 @@ function taylor_green_vortex_test(arch, timestepper, time_discretization; FT=Flo
     @inline u(x, y, z, t) = -sin(2π * y) * exp(-4π^2 * ν * t)
     @inline v(x, y, z, t) =  sin(2π * x) * exp(-4π^2 * ν * t)
 
-    model = NonhydrostaticModel(
-         timestepper = timestepper,
-                grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
-             closure = ScalarDiffusivity(time_discretization, ThreeDimensionalFormulation(), FT, ν=1),
-             tracers = nothing,
-            buoyancy = nothing)
+    grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    closure = ScalarDiffusivity(time_discretization, ThreeDimensionalFormulation(), FT, ν=1)
+    model = NonhydrostaticModel(; timestepper, grid, closure)
 
     u₀(x, y, z) = u(x, y, z, 0)
     v₀(x, y, z) = v(x, y, z, 0)
@@ -267,7 +264,7 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(ar
     grid = RectilinearGrid(arch, FT, topology=topo, size=(1, N, N), extent=(L, L, L))
 
     g̃ = [0, sind(θ), cosd(θ)]
-    buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=-g̃)
+    buoyancy = BuoyancyForce(BuoyancyTracer(), gravity_unit_vector=-g̃)
 
     y_bc = GradientBoundaryCondition(N² * g̃[2])
     z_bc = GradientBoundaryCondition(N² * g̃[3])
@@ -312,7 +309,7 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
     grid = RectilinearGrid(arch, FT, topology=topo, size=(1, N, N), extent=(L, L, L))
 
     g̃ = (0, sind(θ), cosd(θ))
-    buoyancy = Buoyancy(model=SeawaterBuoyancy(), gravity_unit_vector=g̃)
+    buoyancy = BuoyancyForce(SeawaterBuoyancy(), gravity_unit_vector=g̃)
 
     α  = buoyancy.model.equation_of_state.thermal_expansion
     g₀ = buoyancy.model.gravitational_acceleration

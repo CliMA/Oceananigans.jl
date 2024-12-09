@@ -1,4 +1,4 @@
-module BuoyancyModels
+module BuoyancyFormulations
 
 export
     Buoyancy, BuoyancyTracer, SeawaterBuoyancy, buoyancy_perturbationᶜᶜᶜ,
@@ -19,11 +19,11 @@ import SeawaterPolynomials: ρ′, thermal_expansion, haline_contraction
 const g_Earth = 9.80665    # [m s⁻²] conventional standard value for Earth's gravity https://en.wikipedia.org/wiki/Gravitational_acceleration#Gravity_model_for_Earth
 
 """
-    AbstractBuoyancyModel{EOS}
+    AbstractBuoyancyFormulation{EOS}
 
 Abstract supertype for buoyancy models.
 """
-abstract type AbstractBuoyancyModel{EOS} end
+abstract type AbstractBuoyancyFormulation{EOS} end
 
 """
     AbstractEquationOfState
@@ -41,7 +41,7 @@ function validate_buoyancy(buoyancy, tracers)
     return nothing
 end
 
-include("buoyancy.jl")
+include("buoyancy_force.jl")
 include("no_buoyancy.jl")
 include("buoyancy_tracer.jl")
 include("seawater_buoyancy.jl")

@@ -1,5 +1,5 @@
 using Oceananigans.AbstractOperations: AbstractOperation, KernelFunctionOperation
-using Oceananigans.BuoyancyModels: SeawaterBuoyancy, Zᶜᶜᶜ
+using Oceananigans.BuoyancyFormulations: SeawaterBuoyancy, Zᶜᶜᶜ
 using Oceananigans.Fields: field
 using Oceananigans.Grids: Center
 using SeawaterPolynomials: BoussinesqEquationOfState
