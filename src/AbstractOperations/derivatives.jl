@@ -133,3 +133,11 @@ on_architecture(to, deriv::Derivative{LX, LY, LZ}) where {LX, LY, LZ} =
                            deriv.abstract_∂,
                            on_architecture(to, deriv.grid))
                            
+# Extending views for `Derivative`s
+function Base.view(deriv::Derivative{LX, LY, LZ}, i, j, k) where {LX, LY, LZ}
+    # Propagate view over all arguments
+    view_arg = get_field_view(deriv.arg, i, j, k)
+    view_▶ =   get_field_view(deriv.▶, i, j, k)
+    
+    return Derivative{LX, LY, LZ}(deriv.∂, view_arg, view_▶, deriv.grid)
+end

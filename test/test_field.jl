@@ -5,7 +5,7 @@ using Statistics
 using Oceananigans.Grids: total_length
 using Oceananigans.Fields: ReducedField, has_velocities
 using Oceananigans.Fields: VelocityFields, TracerFields, interpolate, interpolate!
-using Oceananigans.Fields: reduced_location
+using Oceananigans.Fields: reduced_location, reduced_dimensions
 using Oceananigans.Fields: fractional_indices, interpolator
 using Oceananigans.Grids: ξnode, ηnode, rnode
 
@@ -406,6 +406,39 @@ end
 
         for arch in archs, FT in float_types
             run_field_reduction_tests(FT, arch)
+        end
+
+        @info "  Testing windowed field reductions..."
+
+        for arch in archs, FT in float_types
+            grid = RectilinearGrid(arch, FT; size = (4, 4, 4), extent = (4, 4, 4))
+            c = CenterField(grid)
+
+            data = [i+j*5+k*25 for i in 1:4, j in 1:4, k in 1:4]
+
+            set!(c, data)
+
+            # Reductions on windowed fields
+            Locs = [(Center, Center, Nothing), 
+                    (Center, Nothing, Center),
+                    (Nothing, Center, Center)]
+
+            indices = [(:, 1, :), (1, :, :), (:, :, 1)]
+
+
+            for (Loc, idx) in zip(Locs, indices)
+                ws = Field{Loc...}(grid, indices=idx)
+                wm = Field{Loc...}(grid, indices=idx)
+
+                cview = view(c, idx...)
+                
+                sum!(ws, c)
+                mean!(wm, c)
+                
+                dim = reduced_dimensions(ws)[1]
+                @test interior(ws) == interior(sum(cview, dims = dim))
+                @test interior(wm) == interior(mean(cview, dims = dim))
+            end
         end
     end
 
