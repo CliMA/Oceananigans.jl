@@ -46,3 +46,4 @@ end
         U.v[i, j, k] -= g * Δt * ∂yᶜᶠᶠ(i, j, grid.Nz+1, grid, η)
     end
 end
+

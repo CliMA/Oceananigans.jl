@@ -15,6 +15,8 @@ using Oceananigans.DistributedComputations: reconstruct_global_grid, Distributed
 using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver, DistributedFourierTridiagonalPoissonSolver
 using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Models: p_kernel_parameters
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: update_hydrostatic_pressure!
 using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver 
 using Oceananigans.Utils: SumOfArrays
 
@@ -102,7 +104,6 @@ prognostic_fields(model::NonhydrostaticModel) = merge(model.velocities, model.tr
 step_lagrangian_particles!(model::NonhydrostaticModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
 
 include("solve_for_pressure.jl")
-include("update_hydrostatic_pressure.jl")
 include("update_nonhydrostatic_model_state.jl")
 include("pressure_correction.jl")
 include("nonhydrostatic_tendency_kernel_functions.jl")
