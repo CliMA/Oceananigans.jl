@@ -125,7 +125,7 @@ end_position(::Val{1}, grid) = (grid.Nx+1, 1, 1)
 end_position(::Val{2}, grid) = (1, grid.Ny+1, 1)
 end_position(::Val{3}, grid) = (1, 1, grid.Nz+1)
 
-function flat_extrapolation_open_boundary_conditions_are_correct(arch, FT)
+function test_flat_extrapolation_open_boundary_conditions(arch, FT)
     clock = Clock(; time = zero(FT))
 
     for orientation in 1:3
@@ -335,7 +335,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         for arch in archs, FT in (Float64,) #float_types
             A = typeof(arch)
             @info "  Testing open boundary conditions [$A, $FT]..."
-            @test flat_extrapolation_open_boundary_conditions_are_correct(arch, FT)
+            test_flat_extrapolation_open_boundary_conditions(arch, FT)
         end
     end
 end
