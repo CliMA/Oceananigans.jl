@@ -2,6 +2,8 @@ using Oceananigans.Utils: prettysummary
 using Oceananigans.Fields: fill_halo_regions!
 using Printf
 
+import Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶜᶠ, Δzᶜᶠᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶜ, Δzᶠᶜᶠ, Δzᶠᶠᶜ, Δzᶠᶠᶠ
+
 #####
 ##### PartialCellBottom
 #####

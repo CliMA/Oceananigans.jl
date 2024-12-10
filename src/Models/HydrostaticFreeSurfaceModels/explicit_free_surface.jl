@@ -81,10 +81,16 @@ explicit_ab2_step_free_surface!(free_surface, model, Δt, χ) =
     @inbounds η[i, j, Nz+1] += ζⁿ * η⁻[i, j, k] + γⁿ * (η[i, j, k] + convert(FT, Δt) * Gⁿ[i, j, k])
 end
 
-@kernel function _explicit_ab2_step_free_surface!(η, Δt, χ::FT, Gηⁿ, Gη⁻, Nz) where FT
+@kernel function _explicit_ab2_step_free_surface!(η, Δt, χ, Gηⁿ, Gη⁻, Nz)
     i, j = @index(Global, NTuple)
-    not_euler = χ != convert(FT, -0.5)
-    @inbounds η[i, j, Nz+1] += Δt * ((FT(1.5) + χ) * Gηⁿ[i, j, Nz+1] - (FT(0.5) + χ) * Gη⁻[i, j, Nz+1]) * not_euler
+    FT0 = typeof(χ)
+    one_point_five = convert(FT0, 1.5)
+    oh_point_five = convert(FT0, 0.5)
+    not_euler = χ != convert(FT0, -0.5)
+    @inbounds begin
+        Gη = (one_point_five + χ) * Gηⁿ[i, j, Nz+1] - (oh_point_five  + χ) * Gη⁻[i, j, Nz+1] * not_euler
+        η[i, j, Nz+1] += Δt * Gη
+    end
 end
 
 #####
