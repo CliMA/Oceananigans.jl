@@ -508,8 +508,8 @@ end
 @inline function __validindex(ctx::MappedCompilerMetadata, idx::CartesianIndex)
     # Turns this into a noop for code where we can turn of checkbounds of
     if __dynamic_checkbounds(ctx)
-        index = @inbounds linear_index(__iterspace(ctx), __groupindex(ctx), idx)
-        return index ≤ linear_ndrange(ctx)
+        # index = @inbounds linear_index(__iterspace(ctx), __groupindex(ctx), idx)
+        return true # index ≤ linear_ndrange(ctx)
     else
         return true
     end

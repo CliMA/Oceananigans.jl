@@ -95,6 +95,8 @@ for arch in archs
         global_immersed_grid   = ImmersedBoundaryGrid(global_underlying_grid, GridFittedBottom(bottom))
 
         for (grid, global_grid) in zip((immersed_active_grid, immersed_grid), (global_immersed_grid, global_immersed_grid))
+            @info "  Testing distributed solid body rotation with architecture $arch on $(typeof(grid).name.wrapper)"
+            u, v, w, c, η = solid_body_rotation_test(grid)
 
             # "s" for "serial" computation
             us, vs, ws, cs, ηs = solid_body_rotation_test(global_grid)
@@ -104,9 +106,6 @@ for arch in archs
             ws = interior(on_architecture(CPU(), ws))
             cs = interior(on_architecture(CPU(), cs))
             ηs = interior(on_architecture(CPU(), ηs))
-
-            @info "  Testing distributed solid body rotation with architecture $arch on $(typeof(grid).name.wrapper)"
-            u, v, w, c, η = solid_body_rotation_test(grid)
 
             cpu_arch = cpu_architecture(arch)
 
