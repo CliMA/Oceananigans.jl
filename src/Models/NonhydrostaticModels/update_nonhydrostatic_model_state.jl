@@ -6,7 +6,7 @@ using Oceananigans.BoundaryConditions: update_boundary_condition!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.Fields: compute!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
-using Oceananigans.Models: update_model_field_time_series!
+using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters, interior_tendency_kernel_parameters
 
 import Oceananigans.TimeSteppers: update_state!
 
