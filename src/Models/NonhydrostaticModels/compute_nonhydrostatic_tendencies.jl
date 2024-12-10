@@ -91,15 +91,15 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
 
     u_kernel_args = tuple(start_momentum_kernel_args...,
                           u_immersed_bc, end_momentum_kernel_args...,
-                          forcings, hydrostatic_pressure, clock)
+                          hydrostatic_pressure, clock, forcings.u)
 
     v_kernel_args = tuple(start_momentum_kernel_args...,
                           v_immersed_bc, end_momentum_kernel_args...,
-                          forcings, hydrostatic_pressure, clock)
+                          hydrostatic_pressure, clock, forcings.v)
 
     w_kernel_args = tuple(start_momentum_kernel_args...,
                           w_immersed_bc, end_momentum_kernel_args...,
-                          forcings, hydrostatic_pressure, clock)
+                          hydrostatic_pressure, clock, forcings.w)
 
     exclude_periphery = true
     launch!(arch, grid, kernel_parameters, compute_Gu!, 
@@ -128,7 +128,7 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
                      start_tracer_kernel_args..., 
                      c_immersed_bc,
                      end_tracer_kernel_args...,
-                     forcing, clock)
+                     clock, forcing)
 
         launch!(arch, grid, kernel_parameters, compute_Gc!, 
                 c_tendency, grid, args;
