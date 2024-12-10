@@ -100,8 +100,8 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
             @unroll for substep in 1:Nsubsteps
                 Base.@_inline_meta
                 averaging_weight = weights[substep]
-                converted_η_kernel!(converted_η_args...)
-                converted_U_kernel!(averaging_weight, converted_U_args...)
+                η_kernel!(converted_η_args...)
+                U_kernel!(averaging_weight, converted_U_args...)
             end
         end
     end

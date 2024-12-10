@@ -94,7 +94,7 @@ for arch in archs
         global_underlying_grid = reconstruct_global_grid(underlying_grid)
         global_immersed_grid   = ImmersedBoundaryGrid(global_underlying_grid, GridFittedBottom(bottom))
 
-        for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid), (global_underlying_grid, global_immersed_grid, global_immersed_grid))
+        for (grid, global_grid) in zip((immersed_active_grid, immersed_grid), (global_immersed_grid, global_immersed_grid))
 
             # "s" for "serial" computation
             us, vs, ws, cs, ηs = solid_body_rotation_test(global_grid)

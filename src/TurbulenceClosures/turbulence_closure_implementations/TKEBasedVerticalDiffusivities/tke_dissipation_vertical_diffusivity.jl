@@ -191,7 +191,7 @@ end
 @inline viscosity_location(::FlavorOfTD) = (c, c, f)
 @inline diffusivity_location(::FlavorOfTD) = (c, c, f)
 
-function compute_diffusivities!(diffusivities, closure::FlavorOfTD, model; parameters = :xyz)
+function compute_diffusivities!(diffusivities, closure::FlavorOfTD, model; parameters = :xyz, active_cells_map = nothing)
 
     arch = model.architecture
     grid = model.grid
@@ -216,7 +216,8 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfTD, model; param
 
     launch!(arch, grid, parameters,
             compute_TKEDissipation_diffusivities!,
-            diffusivities, grid, closure, velocities, tracers, buoyancy)
+            diffusivities, grid, closure, velocities, tracers, buoyancy;
+            active_cells_map)
 
     return nothing
 end

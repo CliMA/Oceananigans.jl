@@ -105,7 +105,7 @@ end
 
 compute_coefficient_fields!(diffusivity_fields, closure, model; parameters) = nothing
 
-function compute_diffusivities!(diffusivity_fields, closure::Smagorinsky, model; parameters = :xyz)
+function compute_diffusivities!(diffusivity_fields, closure::Smagorinsky, model; parameters = :xyz, active_cells_map = nothing)
     arch = model.architecture
     grid = model.grid
     buoyancy = model.buoyancy
@@ -115,7 +115,7 @@ function compute_diffusivities!(diffusivity_fields, closure::Smagorinsky, model;
     compute_coefficient_fields!(diffusivity_fields, closure, model; parameters)
 
     launch!(arch, grid, parameters, _compute_smagorinsky_viscosity!,
-            diffusivity_fields, grid, closure, buoyancy, velocities, tracers)
+            diffusivity_fields, grid, closure, buoyancy, velocities, tracers; active_cells_map)
 
     return nothing
 end

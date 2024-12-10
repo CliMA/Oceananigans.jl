@@ -190,7 +190,7 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfRBVD)
     return (; κc, κu, Ri)
 end
 
-function compute_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; parameters = :xyz)
+function compute_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; parameters = :xyz, active_cells_map = nothing)
     arch = model.architecture
     grid = model.grid
     clock = model.clock
@@ -208,7 +208,8 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; par
             tracers,
             buoyancy,
             top_tracer_bcs,
-            clock)
+            clock;
+            active_cells_map)
 
     # Use `only_local_halos` to ensure that no communication occurs during
     # this call to fill_halo_regions!
@@ -223,7 +224,8 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; par
             tracers,
             buoyancy,
             top_tracer_bcs,
-            clock)
+            clock;
+            active_cells_map)
 
     return nothing
 end
