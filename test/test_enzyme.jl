@@ -252,7 +252,7 @@ end
 
     for i in 1:2
         # Compute derivative by hand
-        κ₁, κ₂ = 0.9, 1.1
+        κ₁, κ₂ = 0.99, 1.01
         c²₁ = stable_diffusion!(models[i], 1, κ₁)
         c²₂ = stable_diffusion!(models[i], 1, κ₂)
         dc²_dκ_fd = (c²₂ - c²₁) / (κ₂ - κ₁)
