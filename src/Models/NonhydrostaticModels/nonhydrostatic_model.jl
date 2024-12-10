@@ -258,7 +258,5 @@ end
 
 # return the total advective velocities
 @inline total_velocities(m::NonhydrostaticModel) =
-    (u = SumOfArrays{2}(m.velocities.u, m.background_fields.velocities.u),
-     v = SumOfArrays{2}(m.velocities.v, m.background_fields.velocities.v),
-     w = SumOfArrays{2}(m.velocities.w, m.background_fields.velocities.w))
+    sum_of_velocities(m.velocities, m.background_fields.velocities) 
 
