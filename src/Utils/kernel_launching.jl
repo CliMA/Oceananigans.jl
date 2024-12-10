@@ -491,15 +491,26 @@ using CUDA: CUDABackend
 
 import KernelAbstractions: mkcontext, __dynamic_checkbounds, __validindex
 
-const MappedCompilerMetadata = CompilerMetadata{<:Any, <:Any, <:Any, <:Any, <:MappedNDRange}
+const MappedCompilerMetadata = CompilerMetadata{<:StaticSize, <:Any, <:Any, <:Any, <:MappedNDRange}
 
-@inline __ndrange(cm::MappedCompilerMetadata) = cm.iterspace
+@inline linear_ndrange(::MappedCompilerMetadata{NDRange}) where NDRange = CartesianIndices(get(NDRange))
+
+@inline function linear_index(ndrange::MappedNDRange, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where N
+    nI = ntuple(Val(N)) do I
+        Base.@_inline_meta
+        offsets = workitems(ndrange)
+        stride = size(offsets, I)
+        gidx = groupidx.I[I]
+        (gidx - 1) * stride + idx.I[I]
+    end
+    return CartesianIndex(nI)
+end
 
 @inline function __validindex(ctx::MappedCompilerMetadata, idx::CartesianIndex)
     # Turns this into a noop for code where we can turn of checkbounds of
     if __dynamic_checkbounds(ctx)
-        index = @inbounds expand(__iterspace(ctx), __groupindex(ctx), idx)
-        return index.I in __ndrange(ctx)
+        index = @inbounds linear_index(__iterspace(ctx), __groupindex(ctx), idx)
+        return index.I in linear_ndrange(ctx)
     else
         return true
     end
