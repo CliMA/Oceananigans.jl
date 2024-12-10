@@ -17,6 +17,9 @@ export Azᵃᶜᶜ, Azᵃᶠᶠ, Azᶜᵃᶜ, Azᶠᵃᶠ, Azᶜᶜᵃ, Azᶠᶠ
 # Volumes
 export Vᶠᶠᶠ, Vᶠᶠᶜ, Vᶠᶜᶠ, Vᶠᶜᶜ, Vᶜᶠᶠ, Vᶜᶠᶜ, Vᶜᶜᶠ, Vᶜᶜᶜ
 
+# General metric operators
+export xspacing, yspacing, zspacing, λspacing, φspacing, xarea, yarea, zarea, volume
+
 # Product between spacings and fields
 export Δx_qᶠᶠᶠ, Δx_qᶠᶠᶜ, Δx_qᶠᶜᶠ, Δx_qᶠᶜᶜ, Δx_qᶜᶠᶠ, Δx_qᶜᶠᶜ, Δx_qᶜᶜᶠ, Δx_qᶜᶜᶜ
 export Δy_qᶠᶠᶠ, Δy_qᶠᶠᶜ, Δy_qᶠᶜᶠ, Δy_qᶠᶜᶜ, Δy_qᶜᶠᶠ, Δy_qᶜᶠᶜ, Δy_qᶜᶜᶠ, Δy_qᶜᶜᶜ
@@ -75,17 +78,11 @@ export intrinsic_vector, extrinsic_vector
 
 using Oceananigans.Grids
 
-import Oceananigans.Grids: xspacing, yspacing, zspacing
-
 #####
 ##### Convenient aliases
 #####
 
 const AG = AbstractGrid
-
-const Δx = xspacing
-const Δy = yspacing
-const Δz = zspacing
 
 const RG  = RectilinearGrid
 const RGX = XRegularRG
@@ -99,6 +96,9 @@ const LLG  = LatitudeLongitudeGrid
 const LLGX = XRegularLLG
 const LLGY = YRegularLLG
 const LLGZ = ZRegularLLG
+
+# Vertically regular grids
+const ZRG = Union{RGZ, OSSGZ, LLGZ}
 
 # On the fly calculations of metrics
 const LLGF  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing}
@@ -119,5 +119,14 @@ include("vorticity_operators.jl")
 include("laplacian_operators.jl")
 
 include("vector_rotation_operators.jl")
+
+@inline xspacing(args...) = Δx(args...) 
+@inline yspacing(args...) = Δy(args...)
+@inline zspacing(args...) = Δz(args...)
+@inline λspacing(abs...)  = Δλ(abs...)
+@inline φspacing(abs...)  = Δφ(abs...)
+@inline xarea(args...)    = Ax(args...)
+@inline yarea(args...)    = Ay(args...)
+@inline zarea(args...)    = Az(args...)
 
 end # module
