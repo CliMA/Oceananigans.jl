@@ -493,24 +493,27 @@ import KernelAbstractions: __validindex
 
 const MappedCompilerMetadata = CompilerMetadata{<:StaticSize, <:Any, <:Any, <:Any, <:MappedNDRange}
 
-@inline linear_ndrange(cm::MappedCompilerMetadata) = length(cm.ndrange.workitems)
+@inline linear_ndrange(ctx::MappedCompilerMetadata) = length(__iterspace(ctx).workitems)
 
 # Mapped kernels are always 1D
 @inline function linear_index(ndrange::MappedNDRange, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where N
-    offsets = workitems(ndrange)
-    stride = size(offsets, 1)
-    gidx = groupidx.I[1]
-    return (gidx - 1) * stride + idx.I[1]
+    nI = Base.@_inline_meta begin
+        offsets = workitems(ndrange)
+        stride = size(offsets, 1)
+        gidx = groupidx.I[1]
+        (gidx - 1) * stride + idx.I[1]
+    end
+    return nI
 end
 
-# instead to check whether the index is valid in the index map, we need to 
-# check whether the index is valid by checking the size of the index map
+# To check whether the index is valid in the index map, we need to 
+# check whether the linear index is smaller than the size of the index map
 @inline function __validindex(ctx::MappedCompilerMetadata, idx::CartesianIndex)
     # Turns this into a noop for code where we can turn of checkbounds of
     if __dynamic_checkbounds(ctx)
-        # index = @inbounds linear_index(__iterspace(ctx), __groupindex(ctx), idx)
-        return true # index ≤ linear_ndrange(ctx)
+        index = @inbounds linear_index(__iterspace(ctx), __groupindex(ctx), idx)
+        return index ≤ linear_ndrange(ctx)
     else
-        return true
+        return false
     end
 end

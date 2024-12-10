@@ -9,8 +9,6 @@
         @inbounds U[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * u[i, j, k]
         @inbounds V[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * v[i, j, k]
     end
-
-    return nothing
 end
 
 @inline function compute_barotropic_mode!(U, V, grid, u, v)
