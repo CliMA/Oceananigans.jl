@@ -265,13 +265,13 @@ end
         Hx, Hy, Hz = halo_size(grid)
         new_grid   = with_halo((Hx+1, Hy+1, Hz+1), grid)
         
-        ξᶠᵃᵃ = ξnodes(grid, Face(), with_halos=true)
-        ηᵃᶠᵃ = ηnodes(grid, Face(), with_halos=true)
-        rᵃᵃᶠ = rnodes(grid, Face(), with_halos=true)
+        ξᶠᵃᵃ = ξnodes(new_grid, Face(), with_halos=true)
+        ηᵃᶠᵃ = ηnodes(new_grid, Face(), with_halos=true)
+        rᵃᵃᶠ = rnodes(new_grid, Face(), with_halos=true)
 
-        ξᶜᵃᵃ = ξnodes(grid, Center(), with_halos=true)
-        ηᵃᶜᵃ = ηnodes(grid, Center(), with_halos=true)
-        rᵃᵃᶜ = rnodes(grid, Center(), with_halos=true)
+        ξᶜᵃᵃ = ξnodes(new_grid, Center(), with_halos=true)
+        ηᵃᶜᵃ = ηnodes(new_grid, Center(), with_halos=true)
+        rᵃᵃᶜ = rnodes(new_grid, Center(), with_halos=true)
 
         coeff_xᶠᵃᵃ = reconstruction_coefficients(FT, ξᶠᵃᵃ, arch, new_grid.Nx, Val(method); order)
         coeff_xᶜᵃᵃ = reconstruction_coefficients(FT, ξᶜᵃᵃ, arch, new_grid.Nx, Val(method); order)
