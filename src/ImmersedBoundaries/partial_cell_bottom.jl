@@ -2,7 +2,7 @@ using Oceananigans.Utils: prettysummary
 using Oceananigans.Fields: fill_halo_regions!
 using Printf
 
-import Oceananigans.Architectures: on_architecture
+import Oceananigans.Operators: Δrᶜᶜᶜ, Δrᶜᶜᶠ, Δrᶜᶠᶜ, Δrᶜᶠᶠ, Δrᶠᶜᶜ, Δrᶠᶜᶠ, Δrᶠᶠᶜ, Δrᶠᶠᶠ
 
 #####
 ##### PartialCellBottom

@@ -132,12 +132,6 @@ nodes(grid::AbstractGrid, (ℓx, ℓy, ℓz); reshape=false, with_halos=false) =
 
 # placeholders
 # see Oceananigans/AbstractOperations/grid_metrics.jl for definitions
-function xspacing end
-function yspacing end
-function zspacing end
-function λspacing end
-function φspacing end
-
 function xspacings end
 function yspacings end
 function λspacings end
@@ -145,17 +139,6 @@ function φspacings end
 
 destantiate(::Face)   = Face
 destantiate(::Center) = Center
-
-spacings_function(::Val{:x}) = xspacings
-spacings_function(::Val{:y}) = yspacings
-spacings_function(::Val{:z}) = zspacings
-spacings_function(::Val{:λ}) = λspacings
-spacings_function(::Val{:φ}) = φspacings
-
-function minimum_spacing(s, grid, ℓx, ℓy, ℓz)
-    spacings = spacings_function(s)
-    return minimum(spacings(grid, ℓx, ℓy, ℓz))
-end
 
 """
     minimum_xspacing(grid, ℓx, ℓy, ℓz)
