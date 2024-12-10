@@ -1,60 +1,82 @@
-struct IsopycnalSkewSymmetricDiffusivity{TD, K, S, M, L, N} <: AbstractTurbulenceClosure{TD, N}
+using Oceananigans.Fields: VelocityFields
+
+struct AdvectiveFormulation end
+struct DiffusiveFormulation end
+
+struct IsopycnalSkewSymmetricDiffusivity{TD, A, K, S, M, L, N} <: AbstractTurbulenceClosure{TD, N}
                     κ_skew :: K
                κ_symmetric :: S
           isopycnal_tensor :: M
              slope_limiter :: L
     
-    function IsopycnalSkewSymmetricDiffusivity{TD, N}(κ_skew :: K,
-                                                      κ_symmetric :: S,
-                                                      isopycnal_tensor :: I,
-                                                      slope_limiter :: L) where {TD, K, S, I, L, N}
+    function IsopycnalSkewSymmetricDiffusivity{TD, A, N}(κ_skew :: K,
+                                                         κ_symmetric :: S,
+                                                         isopycnal_tensor :: I,
+                                                         slope_limiter :: L) where {TD, A, K, S, I, L, N}
 
-        return new{TD, K, S, I, L, N}(κ_skew, κ_symmetric, isopycnal_tensor, slope_limiter)
+        return new{TD, A, K, S, I, L, N}(κ_skew, κ_symmetric, isopycnal_tensor, slope_limiter)
     end
 end
 
-const ISSD{TD} = IsopycnalSkewSymmetricDiffusivity{TD} where TD
-const ISSDVector{TD} = AbstractVector{<:ISSD{TD}} where TD
-const FlavorOfISSD{TD} = Union{ISSD{TD}, ISSDVector{TD}} where TD
-const issd_coefficient_loc = (Center(), Center(), Center())
+const ISSD{TD, A} = IsopycnalSkewSymmetricDiffusivity{TD, A} where {TD, A}
+const ISSDVector{TD, A} = AbstractVector{<:ISSD{TD, A}} where {TD, A}
+const FlavorOfISSD{TD, A} = Union{ISSD{TD, A}, ISSDVector{TD, A}} where {TD, A}
+const AdvectiveSkewClosure = ISSD{<:Any, <:AdvectiveFormulation}
+
+const issd_coefficient_loc = (Center(), Center(), Face())
 
 """
     IsopycnalSkewSymmetricDiffusivity([time_disc=VerticallyImplicitTimeDiscretization(), FT=Float64;]
                                       κ_skew = 0,
                                       κ_symmetric = 0,
+                                      skew_flux_formulation = AdvectiveFormulation(),
                                       isopycnal_tensor = SmallSlopeIsopycnalTensor(),
                                       slope_limiter = FluxTapering(1e-2))
 
 Return parameters for an isopycnal skew-symmetric tracer diffusivity with skew diffusivity
 `κ_skew` and symmetric diffusivity `κ_symmetric` that uses an `isopycnal_tensor` model for
 for calculating the isopycnal slopes, and (optionally) applying a `slope_limiter` to the
-calculated isopycnal slope values.
+calculated isopycnal slope values. The skew fluxes can be computed using either the `AdvectiveFormulation` 
+or the `DiffusiveFormulation`.
     
 Both `κ_skew` and `κ_symmetric` may be constants, arrays, fields, or functions of `(x, y, z, t)`.
 """
 function IsopycnalSkewSymmetricDiffusivity(time_disc::TD = VerticallyImplicitTimeDiscretization(), FT = Float64;
                                            κ_skew = 0,
                                            κ_symmetric = 0,
+                                           skew_flux_formulation::A = AdvectiveFormulation(),
                                            isopycnal_tensor = SmallSlopeIsopycnalTensor(),
                                            slope_limiter = FluxTapering(1e-2),
-                                           required_halo_size::Int = 1) where TD
+                                           required_halo_size::Int = 1) where {TD, A}
+
+    # For the moment, allow only one skew coefficient for all tracers
+    # TODO: maybe generalize it?
+    if κ_skew isa NamedTuple && skew_flux_formulation isa AdvectiveFormulation
+        error("Only one skew coefficient for all tracers is currently supported with the AdvectiveFormulation.")
+    end
 
     isopycnal_tensor isa SmallSlopeIsopycnalTensor ||
         error("Only isopycnal_tensor=SmallSlopeIsopycnalTensor() is currently supported.")
 
-    return IsopycnalSkewSymmetricDiffusivity{TD, required_halo_size}(convert_diffusivity(FT, κ_skew),
-                                                    convert_diffusivity(FT, κ_symmetric),
-                                                    isopycnal_tensor,
-                                                    slope_limiter)
+    return IsopycnalSkewSymmetricDiffusivity{TD, A, required_halo_size}(convert_diffusivity(FT, κ_skew),
+                                                                        convert_diffusivity(FT, κ_symmetric),
+                                                                        isopycnal_tensor,
+                                                                        slope_limiter)
 end
 
 IsopycnalSkewSymmetricDiffusivity(FT::DataType; kw...) = 
     IsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
-function with_tracers(tracers, closure::ISSD{TD, N}) where {TD, N}
+function with_tracers(tracers, closure::ISSD{TD, A, N}) where {TD, A<:DiffusiveFormulation, N}
     κ_skew = !isa(closure.κ_skew, NamedTuple) ? closure.κ_skew : tracer_diffusivities(tracers, closure.κ_skew)
     κ_symmetric = !isa(closure.κ_symmetric, NamedTuple) ? closure.κ_symmetric : tracer_diffusivities(tracers, closure.κ_symmetric)
-    return IsopycnalSkewSymmetricDiffusivity{TD, N}(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
+    return IsopycnalSkewSymmetricDiffusivity{TD, A, N}(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
+end
+
+function with_tracers(tracers, closure::ISSD{TD, A, N}) where {TD, A<:AdvectiveFormulation, N}
+    κ_skew = closure.κ_skew
+    κ_symmetric = !isa(closure.κ_symmetric, NamedTuple) ? closure.κ_symmetric : tracer_diffusivities(tracers, closure.κ_symmetric)
+    return IsopycnalSkewSymmetricDiffusivity{TD, A, N}(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
 # For ensembles of closures
@@ -71,14 +93,20 @@ function with_tracers(tracers, closure_vector::ISSDVector)
     return on_architecture(arch, closure_vector)
 end
 
-# Note: computing diffusivities at cell centers for now.
-function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfISSD{TD}) where TD
+function DiffusivityFields(grid, tracer_names, bcs, ::FlavorOfISSD{TD, A}) where {TD, A}
     if TD() isa VerticallyImplicitTimeDiscretization
         # Precompute the _tapered_ 33 component of the isopycnal rotation tensor
-        return (; ϵ_R₃₃ = Field((Center, Center, Face), grid))
+        diffusivities = (; ϵ_R₃₃ = Field((Center, Center, Face), grid))
     else
-        return nothing
+        diffusivities = NamedFieldTuple()
     end
+
+    if A() isa AdvectiveFormulation 
+        U = VelocityFields(grid)
+        diffusivities = merge(diffusivities, U)
+    end
+
+    return diffusivities
 end
 
 function compute_diffusivities!(diffusivities, closure::FlavorOfISSD, model; parameters = :xyz)
@@ -90,6 +118,9 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfISSD, model; par
 
     launch!(arch, grid, parameters,
             compute_tapered_R₃₃!, diffusivities.ϵ_R₃₃, grid, closure, tracers, buoyancy)
+
+
+    compute_eddy_velocities!(diffusivities, closure, model; parameters)
 
     return nothing
 end
@@ -179,6 +210,10 @@ end
 @inline get_tracer_κ(κ::NamedTuple, tracer_index) = @inbounds κ[tracer_index]
 @inline get_tracer_κ(κ, tracer_index) = κ
 
+# Remove skew coefficient if we are using the advective formulation
+@inline skew_diffusivity(i, j, k, grid, closure, κ, args...) = κ(i, j, k, grid, args...)
+@inline skew_diffusivity(i, j, k, grid, ::AdvectiveSkewClosure, args...) = zero(grid)
+
 # defined at fcc
 @inline function diffusive_flux_x(i, j, k, grid,
                                   closure::Union{ISSD, ISSDVector}, diffusivity_fields, ::Val{tracer_index},
@@ -189,7 +224,7 @@ end
     κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
     κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)
 
-    κ_skewᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, issd_coefficient_loc, κ_skew, clock)
+    κ_skewᶠᶜᶜ = skew_diffusivity(i, j, k, grid, closure, κᶠᶜᶜ, issd_coefficient_loc, κ_skew, clock)
     κ_symmetricᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock)
 
     ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
@@ -219,7 +254,7 @@ end
     κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
     κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)
 
-    κ_skewᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, issd_coefficient_loc, κ_skew, clock)
+    κ_skewᶜᶠᶜ = skew_diffusivity(i, j, k, grid, closure, κᶜᶠᶜ, issd_coefficient_loc, κ_skew, clock)
     κ_symmetricᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock)
 
     ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
@@ -249,7 +284,7 @@ end
     κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
     κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)
 
-    κ_skewᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ_skew, clock)
+    κ_skewᶜᶜᶠ = skew_diffusivity(i, j, k, grid, closure, κᶜᶜᶠ, issd_coefficient_loc, κ_skew, clock)
     κ_symmetricᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock)
 
     # Average... of... the gradient!
