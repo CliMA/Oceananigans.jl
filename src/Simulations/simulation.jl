@@ -144,7 +144,7 @@ iteration(sim::Simulation) = iteration(sim.model)
 
 Return `sim.model.clock.time` as a prettily formatted string."
 """
-prettytime(sim::Simulation, longform=true) = prettytime(time(sim); longform)
+prettytime(sim::Simulation, longform=true) = prettytime(time(sim), longform)
 
 """
     run_wall_time(sim::Simulation)
