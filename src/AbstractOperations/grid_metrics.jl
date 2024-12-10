@@ -61,7 +61,6 @@ at the same location as the `AbstractField`.
 Example
 =======
 ```jldoctest
-
 julia> using Oceananigans
 
 julia> using Oceananigans.Operators: Δz
