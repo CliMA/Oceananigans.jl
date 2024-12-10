@@ -491,14 +491,6 @@ using CUDA: CUDABackend
 
 import KernelAbstractions: mkcontext, __dynamic_checkbounds, __validindex
 
-# # Very dangerous override of mkcontext which will not work if we are not 
-# # careful with making sure that indices are correct when launching a `MappedKernel`
-# # TODO: Definitely change this with options below
-# function mkcontext(kernel::Kernel{CUDABackend}, _ndrange, iterspace::MappedNDRange)
-#     return CompilerMetadata{ndrange(kernel), NoDynamicCheck}(_ndrange, iterspace)
-# end
-
-# Alternative to the above to fix:
 const MappedCompilerMetadata = CompilerMetadata{<:Any, <:Any, <:Any, <:Any, <:MappedNDRange}
 
 @inline __ndrange(cm::MappedCompilerMetadata) = cm.iterspace
