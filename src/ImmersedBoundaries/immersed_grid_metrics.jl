@@ -28,8 +28,6 @@ coordinates(grid::IBG) = coordinates(grid.underlying_grid)
 @inline Δzᵃᵃᶠ(i, j, k, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.underlying_grid)
 @inline Δzᵃᵃᶜ(i, j, k, ibg::IBG) = Δzᵃᵃᶜ(i, j, k, ibg.underlying_grid)
 
-coordinates(grid::IBG) = coordinates(grid.underlying_grid)
-
 # 1D Horizontal spacings
 
 @inline Δxᶠᵃᵃ(i, j, k, ibg::RGIBG) = Δxᶠᵃᵃ(i, j, k, ibg.underlying_grid)
