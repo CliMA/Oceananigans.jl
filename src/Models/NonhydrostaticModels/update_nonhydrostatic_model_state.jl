@@ -40,7 +40,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
     end
 
     # Calculate diffusivities and hydrostatic pressure
-    @apply_regionally compute_auxiliaries!(model)
+    @apply_regionally compute_auxiliaries!(model, grid, arch)
     fill_halo_regions!(model.diffusivity_fields; only_local_halos = true)
     
     for callback in callbacks
@@ -55,15 +55,16 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
     return nothing
 end
 
-function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = tuple(p_kernel_parameters(model.grid)),
-                                                          κ_parameters = tuple(:xyz)) 
+function compute_auxiliaries!(model::NonhydrostaticModel, grid, arch; 
+                              params2D = surface_kernel_parameters(grid),
+                              params3D = interior_tendency_kernel_parameters(arch, grid))
 
     closure = model.closure
     diffusivity = model.diffusivity_fields
 
-    for (ppar, κpar) in zip(p_parameters, κ_parameters)
-        compute_diffusivities!(diffusivity, closure, model; parameters = κpar)
-        update_hydrostatic_pressure!(model; parameters = ppar)
-    end
+    update_hydrostatic_pressure!(model; parameters=params2D)
+
+    compute_diffusivities!(diffusivity, closure, model; parameters=params3D)
+
     return nothing
 end

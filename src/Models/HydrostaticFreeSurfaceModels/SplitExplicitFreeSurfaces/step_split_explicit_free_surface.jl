@@ -92,8 +92,8 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
         converted_U_args = convert_args(arch, U_args)
 
         # We convert the kernels for the same reason (they might contain a surface map)
-        GC.@preserve η_kernel!, U_kernel! begin
-        
+        GC.@preserve η_kernel! U_kernel! begin
+
             converted_η_kernel! = convert_args(arch, η_kernel!)
             converted_U_kernel! = convert_args(arch, U_kernel!)
 
