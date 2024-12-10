@@ -59,10 +59,14 @@ for arch in archs
                                                 radius = 1,
                                                 topology=(Bounded, Bounded, Bounded))
 
-        bottom(λ, φ) = - rand() * 5 - 5
+        # Make sure the bottom is the same
+        bottom_height = zeros(Nx, Ny)
+        for i in 1:Nx, j in 1:Ny
+            bottom_height[i, j] = - rand() * 5 - 5
+        end
 
-        immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
-        immersed_active_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
+        immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
+        immersed_active_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map = true)
 
         ua, va, wa, ca, ηa = solid_body_rotation_test(immersed_active_grid)
         u, v, w, c, η      = solid_body_rotation_test(immersed_grid)
