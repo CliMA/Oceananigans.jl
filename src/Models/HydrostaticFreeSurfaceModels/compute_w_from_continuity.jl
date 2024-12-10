@@ -16,7 +16,7 @@ w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz
 compute_w_from_continuity!(model; kwargs...) =
     compute_w_from_continuity!(model.velocities, model.architecture, model.grid; kwargs...)
 
-compute_w_from_continuity!(velocities, arch, grid; parameters = surface_kernel_parameters(grid)) = 
+compute_w_from_continuity!(velocities, arch, grid; parameters = surface_kernel_parameters(arch, grid)) = 
     launch!(arch, grid, parameters, _compute_w_from_continuity!, velocities, grid)
 
 @kernel function _compute_w_from_continuity!(U, grid)

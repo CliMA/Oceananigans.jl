@@ -71,7 +71,7 @@ function mask_immersed_model_fields!(model, grid)
 end
 
 function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel, grid, arch; 
-                              params2D = surface_kernel_parameters(grid),
+                              params2D = surface_kernel_parameters(arch, grid),
                               params3D = interior_tendency_kernel_parameters(arch, grid),
                               active_cells_map = retrieve_interior_active_cells_map(grid, Val(:interior)))
 

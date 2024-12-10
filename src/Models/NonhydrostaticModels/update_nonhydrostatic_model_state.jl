@@ -56,7 +56,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
 end
 
 function compute_auxiliaries!(model::NonhydrostaticModel, grid, arch; 
-                              params2D = surface_kernel_parameters(grid),
+                              params2D = surface_kernel_parameters(arch, grid),
                               params3D = interior_tendency_kernel_parameters(arch, grid))
 
     closure = model.closure
