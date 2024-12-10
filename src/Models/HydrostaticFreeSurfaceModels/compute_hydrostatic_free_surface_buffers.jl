@@ -4,7 +4,7 @@ using Oceananigans.Grids: halo_size
 using Oceananigans.DistributedComputations: DistributedActiveCellsIBG
 using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map
 using Oceananigans.Models.NonhydrostaticModels: buffer_tendency_kernel_parameters,
-                                                buffer_parameters
+                                                buffer_surface_kernel_parameters
 
 # We assume here that top/bottom BC are always synchronized (no partitioning in z)
 function compute_buffer_tendencies!(model::HydrostaticFreeSurfaceModel)
@@ -19,7 +19,7 @@ end
 
 function compute_buffer_tendency_contributions!(grid, arch, model) 
 
-    params3D = buffer_surface_kernel_parameters(grid, arch)
+    params2D = buffer_surface_kernel_parameters(grid, arch)
     params3D = buffer_tendency_kernel_parameters(grid, model.closure, arch)
 
     # We need new values for `w`, `p` and `κ`
@@ -58,24 +58,3 @@ function compute_buffer_tendency_contributions!(grid::DistributedActiveCellsIBG,
 
     return nothing
 end
-
-# w needs computing in the range - H + 1 : 0 and N - 1 : N + H - 1
-function buffer_surface_kernel_parameters(grid, arch)
-    Nx, Ny, _ = size(grid)
-    Hx, Hy, _ = halo_size(grid)
-
-    Sx  = (Hx, Ny+2) 
-    Sy  = (Nx+2, Hy)
-             
-    # Offsets in tangential direction are == -1 to
-    # cover the required corners
-    param_west  = (-Hx+2:1,    0:Ny+1)
-    param_east  = (Nx:Nx+Hx-1, 0:Ny+1)
-    param_south = (0:Nx+1,     -Hy+2:1)
-    param_north = (0:Nx+1,     Ny:Ny+Hy-1)
-
-    params = (param_west, param_east, param_south, param_north)
-
-    return buffer_parameters(params, grid, arch)
-end
-

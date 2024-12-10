@@ -23,6 +23,23 @@ function compute_buffer_tendencies!(model::NonhydrostaticModel)
     return nothing
 end
 
+# surface needs computing in the range - H + 1 : 0 and N - 1 : N + H - 1
+function buffer_surface_kernel_parameters(grid, arch)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+
+    # Offsets in tangential direction are == -1 to
+    # cover the required corners
+    param_west  = (-Hx+2:1,    0:Ny+1)
+    param_east  = (Nx:Nx+Hx-1, 0:Ny+1)
+    param_south = (0:Nx+1,     -Hy+2:1)
+    param_north = (0:Nx+1,     Ny:Ny+Hy-1)
+
+    params = (param_west, param_east, param_south, param_north)
+
+    return buffer_parameters(params, grid, arch)
+end
+
 # tendencies need computing in the range 1 : H and N - H + 1 : N 
 function buffer_tendency_kernel_parameters(grid, arch)
     Nx, Ny, Nz = size(grid)
