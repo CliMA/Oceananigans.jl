@@ -19,8 +19,6 @@ import Oceananigans.Operators: intrinsic_vector, extrinsic_vector
 # However, for non "full-cell" immersed boundaries, grid metric functions
 # must be extended for the specific immersed boundary grid in question.
 
-coordinates(grid::IBG) = coordinates(grid.underlying_grid)
-
 # Vertical spacings
 
 @inline Δrᵃᵃᶠ(i, j, k, ibg::IBG) = Δrᵃᵃᶠ(i, j, k, ibg.underlying_grid)

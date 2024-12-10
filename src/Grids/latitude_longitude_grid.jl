@@ -557,12 +557,6 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
 end
 
 #####
-##### Utilities
-#####
-
-coordinates(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠᵃ, :φᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
-
-#####
 ##### Grid nodes
 #####
 

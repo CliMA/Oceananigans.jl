@@ -431,8 +431,6 @@ function on_architecture(arch::AbstractSerialArchitecture, grid::RectilinearGrid
     return RectilinearGrid(arch, FT; kwargs...)
 end
 
-coordinates(::RectilinearGrid) = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
-
 #####
 ##### Definition of RectilinearGrid nodes
 #####
