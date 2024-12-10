@@ -21,8 +21,8 @@ end
 """
     SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
                                 implicit_solver::TI = nothing,
-                                Gⁿ::TG = deepcopy(prognostic_fields),
-                                Ψ⁻::PF = deepcopy(prognostic_fields)
+                                Gⁿ::TG = map(similar, prognostic_fields),
+                                Ψ⁻::PF = map(similar, prognostic_fields)
                                 G⁻::TE = nothing) where {TI, TG, PF, TE}
 
 Return a 3rd-order `SplitRungeKutta3TimeStepper` on `grid` and with `tracers`.
@@ -47,8 +47,8 @@ The state at the first substep is taken to be the one that corresponds to the ``
 """
 function SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
                                      implicit_solver::TI = nothing,
-                                     Gⁿ::TG = deepcopy(prognostic_fields),
-                                     Ψ⁻::PF = deepcopy(prognostic_fields),
+                                     Gⁿ::TG = map(similar, prognostic_fields),
+                                     Ψ⁻::PF = map(similar, prognostic_fields),
                                      G⁻::TE = nothing) where {TI, TG, PF, TE}
 
 

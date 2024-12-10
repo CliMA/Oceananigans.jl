@@ -11,8 +11,8 @@ end
 """
     QuasiAdamsBashforth2TimeStepper(grid, prognostic_fields, χ = 0.1;
                                     implicit_solver = nothing,
-                                    Gⁿ = deepcopy(prognostic_fields),
-                                    G⁻ = deepcopy(prognostic_fields))
+                                    Gⁿ = map(similar, prognostic_fields),
+                                    G⁻ = map(similar, prognostic_fields))
 
 Return a 2nd-order quasi Adams-Bashforth (AB2) time stepper (`QuasiAdamsBashforth2TimeStepper`)
 on `grid`, with `tracers`, and AB2 parameter `χ`. The tendency fields `Gⁿ` and `G⁻`, usually equal to 
@@ -38,8 +38,8 @@ timestep (`G⁻`).
 """
 function QuasiAdamsBashforth2TimeStepper(grid, prognostic_fields, χ = 0.1;
                                          implicit_solver::IT = nothing,
-                                         Gⁿ = deepcopy(prognostic_fields),
-                                         G⁻ = deepcopy(prognostic_fields)) where IT
+                                         Gⁿ = map(similar, prognostic_fields),
+                                         G⁻ = map(similar, prognostic_fields)) where IT
 
     FT = eltype(grid)
     GT = typeof(Gⁿ)

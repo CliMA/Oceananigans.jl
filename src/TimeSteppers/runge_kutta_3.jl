@@ -21,11 +21,11 @@ end
 """
     RungeKutta3TimeStepper(grid, prognostic_fields;
                            implicit_solver = nothing,
-                           Gⁿ = deepcopy(prognostic_fields),
-                           G⁻ = deepcopy(prognostic_fields))
+                           Gⁿ = map(similar, prognostic_fields),
+                           G⁻ = map(similar, prognostic_fields))
 
 Return a 3rd-order Runge0Kutta timestepper (`RungeKutta3TimeStepper`) on `grid` and with `tracers`.
-The tendency fields `Gⁿ` and `G⁻`, typically equal to the prognositc_fields can be modified via an optional `kwargs`.
+The tendency fields `Gⁿ` and `G⁻`, typically equal to the prognostic_fields can be modified via an optional `kwargs`.
 
 The scheme described by [LeMoin1991](@citet). In a nutshel, the 3rd-order
 Runge Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps. A pressure correction
@@ -47,8 +47,8 @@ The state at the first substep is taken to be the one that corresponds to the ``
 """
 function RungeKutta3TimeStepper(grid, prognostic_fields;
                                 implicit_solver::TI = nothing,
-                                Gⁿ::TG = deepcopy(prognostic_fields),
-                                G⁻ = deepcopy(prognostic_fields)) where {TI, TG}
+                                Gⁿ::TG = map(similar, prognostic_fields),
+                                G⁻     = map(similar, prognostic_fields)) where {TI, TG}
 
     !isnothing(implicit_solver) &&
         @warn("Implicit-explicit time-stepping with RungeKutta3TimeStepper is not tested. " * 
