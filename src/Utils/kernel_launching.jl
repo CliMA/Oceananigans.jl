@@ -486,10 +486,10 @@ function partition(kernel::MappedKernel, inrange, ingroupsize)
     return iterspace, dynamic
 end
 
-using KernelAbstractions: NoDynamicCheck
-using CUDA: CUDABackend
+# Extend the valid index function to check whether the index is valid in the index map
 
-import KernelAbstractions: mkcontext, __dynamic_checkbounds, __validindex
+using KernelAbstractions: __iterspace, __groupindex, __dynamic_checkbounds
+import KernelAbstractions: __validindex
 
 const MappedCompilerMetadata = CompilerMetadata{<:StaticSize, <:Any, <:Any, <:Any, <:MappedNDRange}
 
