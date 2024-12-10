@@ -10,9 +10,13 @@ import Oceananigans.Operators: intrinsic_vector, extrinsic_vector
 
 # Grid metrics for ImmersedBoundaryGrid
 #
-# The "basic" grid metric functions are defined for the underlying grids.
+# The grid metric functions "specialized" for the underlying grids in the
+# Operators module are extended for immersed boundary grids here.
 #
-# For non "full-cell" immersed boundaries, grid metric functions
+# The other grid metric functions (for example 3D metrics) are general and do not need 
+# extension for "full-cell" immersed boundaries.
+#
+# However, for non "full-cell" immersed boundaries, grid metric functions
 # must be extended for the specific immersed boundary grid in question.
 
 coordinates(grid::IBG) = coordinates(grid.underlying_grid)
