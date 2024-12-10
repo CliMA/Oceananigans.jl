@@ -90,12 +90,12 @@ end
 @inline velocities(obj::PrescribedVelocityFields) = (u = obj.u, v = obj.v, w = obj.w)
 
 # Extend sum_of_velocities for `PrescribedVelocityFields`
-@inline sum_of_velocities(U::PrescribedVelocityFields, V) = sum_of_velocities(velocities(U), V)
-@inline sum_of_velocities(U, V::PrescribedVelocityFields) = sum_of_velocities(U, velocities(V))
+@inline sum_of_velocities(U1::PrescribedVelocityFields, U2) = sum_of_velocities(velocities(U1), U2)
+@inline sum_of_velocities(U1, U2::PrescribedVelocityFields) = sum_of_velocities(U1, velocities(U2))
 
-@inline sum_of_velocities(U::PrescribedVelocityFields, V, W) = sum_of_velocities(velocities(U), V, W)
-@inline sum_of_velocities(U, V::PrescribedVelocityFields, W) = sum_of_velocities(U, velocities(V), W)
-@inline sum_of_velocities(U, V, W::PrescribedVelocityFields) = sum_of_velocities(U, V, velocities(W))
+@inline sum_of_velocities(U1::PrescribedVelocityFields, U2, U3) = sum_of_velocities(velocities(U1), U2, U3)
+@inline sum_of_velocities(U1, U2::PrescribedVelocityFields, U3) = sum_of_velocities(U1, velocities(U2), U3)
+@inline sum_of_velocities(U1, U2, U3::PrescribedVelocityFields) = sum_of_velocities(U1, U2, velocities(U3))
 
 ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
 rk3_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
