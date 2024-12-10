@@ -46,22 +46,22 @@ function interior_tendency_kernel_parameters(arch::Distributed, grid)
     Sx = if local_x
         Nx
     elseif one_sided_x
-        Nx - Hx
+        Nx - Hx + 1
     else # two sided
-        Nx - 2Hx
+        Nx - 2Hx + 2
     end
 
     Sy = if local_y
         Ny
     elseif one_sided_y
-        Ny - Hy
+        Ny - Hy + 1
     else # two sided
-        Ny - 2Hy
+        Ny - 2Hy + 2
     end
 
     # Offsets
-    Ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
-    Oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
+    Ox = Rx == 1 || Tx == RightConnected ? 0 : Hx - 1
+    Oy = Ry == 1 || Ty == RightConnected ? 0 : Hy - 1
 
     sizes = (Sx, Sy, Nz)
     offsets = (Ox, Oy, 0)

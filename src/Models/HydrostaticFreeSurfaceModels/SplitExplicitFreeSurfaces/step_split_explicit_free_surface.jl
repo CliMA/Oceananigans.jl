@@ -70,8 +70,10 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
     U, V    = free_surface.barotropic_velocities
     η̅, U̅, V̅ = state.η, state.U, state.V
 
-    free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
-    barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
+    active_cells_map = retrieve_surface_active_cells_map(grid)
+
+    η_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!; active_cells_map)
+    U_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!; active_cells_map)
 
     η_args = (grid, Δτᴮ, η, U, V, 
               timestepper)
@@ -89,11 +91,18 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
         converted_η_args = convert_args(arch, η_args)
         converted_U_args = convert_args(arch, U_args)
 
-        @unroll for substep in 1:Nsubsteps
-            Base.@_inline_meta
-            averaging_weight = weights[substep]
-            free_surface_kernel!(converted_η_args...)
-            barotropic_velocity_kernel!(averaging_weight, converted_U_args...)
+        # We convert the kernels for the same reason (they might contain a surface map)
+        GC.@preserve η_kernel!, U_kernel! begin
+        
+            converted_η_kernel! = convert_args(arch, η_kernel!)
+            converted_U_kernel! = convert_args(arch, U_kernel!)
+
+            @unroll for substep in 1:Nsubsteps
+                Base.@_inline_meta
+                averaging_weight = weights[substep]
+                converted_η_kernel!(converted_η_args...)
+                converted_U_kernel!(averaging_weight, converted_U_args...)
+            end
         end
     end
 
