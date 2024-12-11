@@ -23,6 +23,7 @@ jobs:
       - uses: actions/cache@v1
         env:
           cache-name: cache-artifacts
+          TEST_GROUP: "turbulence_closures"
         with:
           path: ~/.julia/artifacts
           key: ${{ runner.os }}-test-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
