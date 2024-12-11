@@ -61,14 +61,13 @@ compute_free_surface_tendency!(::SingleColumnGrid, model, ::SplitExplicitFreeSur
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks; compute_tendencies = true)
 
-    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
+    tupled_fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
 
     # Compute auxiliaries
     compute_auxiliary_fields!(model.auxiliary_fields)
 
     # Calculate diffusivities
     compute_diffusivities!(model.diffusivity_fields, model.closure, model)
-
     fill_halo_regions!(model.diffusivity_fields, model.clock, fields(model))
 
     for callback in callbacks

@@ -71,7 +71,7 @@ end
 function tupled_fill_halo_regions!(fields, args...; kwargs...)
 
     ordinary_fields = produce_ordinary_fields(fields, args...; kwargs)
-
+  
     if !isempty(ordinary_fields) # ie not reduced, and with default_indices
         grid = first(ordinary_fields).grid
         fill_halo_regions!(map(data, ordinary_fields),
@@ -86,7 +86,6 @@ end
     
 # Version where grid is provided:
 function tupled_fill_halo_regions!(fields, grid::AbstractGrid, args...; kwargs...)
-
     ordinary_fields = produce_ordinary_fields(fields, args...; kwargs)
 
     if !isempty(ordinary_fields) # ie not reduced, and with default_indices
