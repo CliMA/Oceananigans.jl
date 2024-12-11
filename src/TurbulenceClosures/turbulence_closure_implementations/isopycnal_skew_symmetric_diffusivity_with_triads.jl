@@ -108,8 +108,9 @@ end
 @kernel function triad_compute_tapered_R₃₃!(K, grid, closure, clock, b, C) 
     i, j, k, = @index(Global, NTuple)
     closure = getclosure(i, j, closure)
-    κ = closure.κ_symmetric
-    @inbounds K.ϵκR₃₃[i, j, k] = ϵκR₃₃(i, j, k, grid, κ, clock, b, C) 
+    κ  = closure.κ_symmetric
+    sl = closure.slope_limiter
+    @inbounds K.ϵκR₃₃[i, j, k] = ϵκR₃₃(i, j, k, grid, κ, clock, sl, b, C) 
 end
 
 #####
@@ -163,15 +164,15 @@ end
 @inline triad_mask_y(i, jy, jz, ky, kz, grid) = 
    !peripheral_node(i, jy, ky, grid, Center(), Face(), Center()) & !peripheral_node(i, jz, kz, grid, Center(), Center(), Face())
 
-@inline ϵκx⁺⁺(i, j, k, grid, loc, κ, clock, b, C) = triad_mask_x(i+1, i, j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
-@inline ϵκx⁺⁻(i, j, k, grid, loc, κ, clock, b, C) = triad_mask_x(i+1, i, j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
-@inline ϵκx⁻⁺(i, j, k, grid, loc, κ, clock, b, C) = triad_mask_x(i,   i, j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
-@inline ϵκx⁻⁻(i, j, k, grid, loc, κ, clock, b, C) = triad_mask_x(i,   i, j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
+@inline ϵκx⁺⁺(i, j, k, grid, loc, κ, clock, sl, b, C) = triad_mask_x(i+1, i, j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
+@inline ϵκx⁺⁻(i, j, k, grid, loc, κ, clock, sl, b, C) = triad_mask_x(i+1, i, j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
+@inline ϵκx⁻⁺(i, j, k, grid, loc, κ, clock, sl, b, C) = triad_mask_x(i,   i, j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
+@inline ϵκx⁻⁻(i, j, k, grid, loc, κ, clock, sl, b, C) = triad_mask_x(i,   i, j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
 
-@inline ϵκy⁺⁺(i, j, k, grid, loc, κ, clock, b, C) = triad_mask_y(i, j+1, j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
-@inline ϵκy⁺⁻(i, j, k, grid, loc, κ, clock, b, C) = triad_mask_y(i, j+1, j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
-@inline ϵκy⁻⁺(i, j, k, grid, loc, κ, clock, b, C) = triad_mask_y(i, j,   j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
-@inline ϵκy⁻⁻(i, j, k, grid, loc, κ, clock, b, C) = triad_mask_y(i, j,   j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, b, C)
+@inline ϵκy⁺⁺(i, j, k, grid, loc, κ, clock, sl, b, C) = triad_mask_y(i, j+1, j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
+@inline ϵκy⁺⁻(i, j, k, grid, loc, κ, clock, sl, b, C) = triad_mask_y(i, j+1, j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
+@inline ϵκy⁻⁺(i, j, k, grid, loc, κ, clock, sl, b, C) = triad_mask_y(i, j,   j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
+@inline ϵκy⁻⁻(i, j, k, grid, loc, κ, clock, sl, b, C) = triad_mask_y(i, j,   j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
 
 # Triad diagram key
 # =================
@@ -187,14 +188,14 @@ end
                                   c, clock, C, b) where id
 
     closure = getclosure(i, j, closure)
-    κ = closure.κ_symmetric
-    
+    κ  = closure.κ_symmetric
+    sl = closure.slope_limiter
     loc = (Center(), Center(), Center())
 
-    ϵκ⁺⁺ = ϵκx⁺⁺(i-1, j, k, grid, loc, κ, clock, b, C)
-    ϵκ⁺⁻ = ϵκx⁺⁻(i-1, j, k, grid, loc, κ, clock, b, C)
-    ϵκ⁻⁺ = ϵκx⁻⁺(i,   j, k, grid, loc, κ, clock, b, C)
-    ϵκ⁻⁻ = ϵκx⁻⁻(i,   j, k, grid, loc, κ, clock, b, C)
+    ϵκ⁺⁺ = ϵκx⁺⁺(i-1, j, k, grid, loc, κ, clock, sl, b, C)
+    ϵκ⁺⁻ = ϵκx⁺⁻(i-1, j, k, grid, loc, κ, clock, sl, b, C)
+    ϵκ⁻⁺ = ϵκx⁻⁺(i,   j, k, grid, loc, κ, clock, sl, b, C)
+    ϵκ⁻⁻ = ϵκx⁻⁻(i,   j, k, grid, loc, κ, clock, sl, b, C)
 
     # Small slope approximation
     ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
@@ -219,16 +220,16 @@ end
                                   c, clock, C, b) where id
 
     closure = getclosure(i, j, closure)
-    κ = closure.κ_symmetric
-
+    κ  = closure.κ_symmetric
+    sl = closure.slope_limiter
     loc = (Center(), Center(), Center())
 
     ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
 
-    ϵκ⁺⁺ = ϵκy⁺⁺(i, j-1, k, grid, loc, κ, clock, b, C)
-    ϵκ⁺⁻ = ϵκy⁺⁻(i, j-1, k, grid, loc, κ, clock, b, C)
-    ϵκ⁻⁺ = ϵκy⁻⁺(i, j,   k, grid, loc, κ, clock, b, C)
-    ϵκ⁻⁻ = ϵκy⁻⁻(i, j,   k, grid, loc, κ, clock, b, C)
+    ϵκ⁺⁺ = ϵκy⁺⁺(i, j-1, k, grid, loc, κ, clock, sl, b, C)
+    ϵκ⁺⁻ = ϵκy⁺⁻(i, j-1, k, grid, loc, κ, clock, sl, b, C)
+    ϵκ⁻⁺ = ϵκy⁻⁺(i, j,   k, grid, loc, κ, clock, sl, b, C)
+    ϵκ⁻⁻ = ϵκy⁻⁻(i, j,   k, grid, loc, κ, clock, sl, b, C)
     
     Fy = (ϵκ⁺⁺ * (∂y_c + Sy⁺⁺(i, j-1, k, grid, b, C) * ∂zᶜᶜᶠ(i, j-1, k+1, grid, c)) +
           ϵκ⁺⁻ * (∂y_c + Sy⁺⁻(i, j-1, k, grid, b, C) * ∂zᶜᶜᶠ(i, j-1, k,   grid, c)) +
@@ -243,19 +244,20 @@ end
                                   c, clock, C, b) where {TD, id}
 
     closure = getclosure(i, j, closure)
-    κ = closure.κ_symmetric
+    κ  = closure.κ_symmetric
+    sl = closure.slope_limiter
 
     loc = (Center(), Center(), Center())
 
-    ϵκˣ⁻⁻ = ϵκx⁻⁻(i, j, k,   grid, loc, κ, clock, b, C)
-    ϵκˣ⁺⁻ = ϵκx⁺⁻(i, j, k,   grid, loc, κ, clock, b, C)
-    ϵκˣ⁻⁺ = ϵκx⁻⁺(i, j, k-1, grid, loc, κ, clock, b, C)
-    ϵκˣ⁺⁺ = ϵκx⁺⁺(i, j, k-1, grid, loc, κ, clock, b, C)
+    ϵκˣ⁻⁻ = ϵκx⁻⁻(i, j, k,   grid, loc, κ, clock, sl, b, C)
+    ϵκˣ⁺⁻ = ϵκx⁺⁻(i, j, k,   grid, loc, κ, clock, sl, b, C)
+    ϵκˣ⁻⁺ = ϵκx⁻⁺(i, j, k-1, grid, loc, κ, clock, sl, b, C)
+    ϵκˣ⁺⁺ = ϵκx⁺⁺(i, j, k-1, grid, loc, κ, clock, sl, b, C)
 
-    ϵκʸ⁻⁻ = ϵκy⁻⁻(i, j, k,   grid, loc, κ, clock, b, C)
-    ϵκʸ⁺⁻ = ϵκy⁺⁻(i, j, k,   grid, loc, κ, clock, b, C)
-    ϵκʸ⁻⁺ = ϵκy⁻⁺(i, j, k-1, grid, loc, κ, clock, b, C)
-    ϵκʸ⁺⁺ = ϵκy⁺⁺(i, j, k-1, grid, loc, κ, clock, b, C)
+    ϵκʸ⁻⁻ = ϵκy⁻⁻(i, j, k,   grid, loc, κ, clock, sl, b, C)
+    ϵκʸ⁺⁻ = ϵκy⁺⁻(i, j, k,   grid, loc, κ, clock, sl, b, C)
+    ϵκʸ⁻⁺ = ϵκy⁻⁺(i, j, k-1, grid, loc, κ, clock, sl, b, C)
+    ϵκʸ⁺⁺ = ϵκy⁺⁺(i, j, k-1, grid, loc, κ, clock, sl, b, C)
 
     # Triad diagram:
     #
@@ -285,18 +287,18 @@ end
     return - κR₃₁_∂x_c - κR₃₂_∂y_c - κϵ_R₃₃_∂z_c
 end
 
-@inline function ϵκR₃₃(i, j, k, grid, κ, clock, b, C) 
+@inline function ϵκR₃₃(i, j, k, grid, κ, clock, sl, b, C) 
     loc = (Center(), Center(), Center())
 
-    ϵκˣ⁻⁻ = ϵκx⁻⁻(i, j, k,   grid, loc, κ, clock, b, C)
-    ϵκˣ⁺⁻ = ϵκx⁺⁻(i, j, k,   grid, loc, κ, clock, b, C)
-    ϵκˣ⁻⁺ = ϵκx⁻⁺(i, j, k-1, grid, loc, κ, clock, b, C)
-    ϵκˣ⁺⁺ = ϵκx⁺⁺(i, j, k-1, grid, loc, κ, clock, b, C)
+    ϵκˣ⁻⁻ = ϵκx⁻⁻(i, j, k,   grid, loc, κ, clock, sl, b, C)
+    ϵκˣ⁺⁻ = ϵκx⁺⁻(i, j, k,   grid, loc, κ, clock, sl, b, C)
+    ϵκˣ⁻⁺ = ϵκx⁻⁺(i, j, k-1, grid, loc, κ, clock, sl, b, C)
+    ϵκˣ⁺⁺ = ϵκx⁺⁺(i, j, k-1, grid, loc, κ, clock, sl, b, C)
 
-    ϵκʸ⁻⁻ = ϵκy⁻⁻(i, j, k,   grid, loc, κ, clock, b, C)
-    ϵκʸ⁺⁻ = ϵκy⁺⁻(i, j, k,   grid, loc, κ, clock, b, C)
-    ϵκʸ⁻⁺ = ϵκy⁻⁺(i, j, k-1, grid, loc, κ, clock, b, C)
-    ϵκʸ⁺⁺ = ϵκy⁺⁺(i, j, k-1, grid, loc, κ, clock, b, C)
+    ϵκʸ⁻⁻ = ϵκy⁻⁻(i, j, k,   grid, loc, κ, clock, sl, b, C)
+    ϵκʸ⁺⁻ = ϵκy⁺⁻(i, j, k,   grid, loc, κ, clock, sl, b, C)
+    ϵκʸ⁻⁺ = ϵκy⁻⁺(i, j, k-1, grid, loc, κ, clock, sl, b, C)
+    ϵκʸ⁺⁺ = ϵκy⁺⁺(i, j, k-1, grid, loc, κ, clock, sl, b, C)
 
     ϵκR₃₃ = (ϵκˣ⁻⁻ * Sx⁻⁻(i, j, k,   grid, b, C)^2 + ϵκʸ⁻⁻ * Sy⁻⁻(i, j, k,   grid, b, C)^2 +
              ϵκˣ⁺⁻ * Sx⁺⁻(i, j, k,   grid, b, C)^2 + ϵκʸ⁺⁻ * Sy⁺⁻(i, j, k,   grid, b, C)^2 +
@@ -307,8 +309,9 @@ end
 end
 
 @inline function explicit_R₃₃_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, c, closure, b, C) 
-    κ = closure.κ_symmetric
-    return ϵκR₃₃(i, j, k, grid, κ, clock, b, C) * ∂zᶜᶜᶠ(i, j, k, grid, c)
+    κ  = closure.κ_symmetric
+    sl = closure.slope_limiter
+    return ϵκR₃₃(i, j, k, grid, κ, clock, sl, b, C) * ∂zᶜᶜᶠ(i, j, k, grid, c)
 end
 
 @inline explicit_R₃₃_∂z_c(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, c, closure, b, C) = zero(grid)
@@ -341,57 +344,23 @@ Base.show(io::IO, closure::TISSD) =
               "(κ_symmetric=$(closure.κ_symmetric), κ_skew=$(closure.κ_skew), " *
               "(isopycnal_tensor=$(closure.isopycnal_tensor), slope_limiter=$(closure.slope_limiter))")
 
-@inline tapering_factorᶜᶜᶜ(i, j, k, grid, b, C) = one(grid)
+@inline not_peripheral_node(args...) = !peripheral_node(args...)
 
-# """
-#     taper_factor(i, j, k, grid, closure, tracers, buoyancy) 
+@inline function mask_inactive_points_ℑxzᶜᵃᶜ(i, j, k, grid, f::Function, args...) 
+    neighboring_active_nodes = ℑxzᶜᵃᶜ(i, j, k, grid, not_peripheral_node, Face(), Center(), Face())
+    return ifelse(neighboring_active_nodes == 0, zero(grid),
+                  ℑxzᶜᵃᶜ(i, j, k, grid, f, args...) / neighboring_active_nodes)
+end
 
-# Return the tapering factor `min(1, Sₘₐₓ² / slope²)`, where `slope² = slope_x² + slope_y²`
-# that multiplies all components of the isopycnal slope tensor. The tapering factor is calculated on all the
-# faces involved in the isopycnal slope tensor calculation. The minimum value of tapering is selected.
+@inline function mask_inactive_points_ℑyzᵃᶜᶜ(i, j, k, grid, f::Function, args...) 
+    neighboring_active_nodes = @inbounds ℑyzᵃᶜᶜ(i, j, k, grid, not_peripheral_node, Center(), Face(), Face())
+    return ifelse(neighboring_active_nodes == 0, zero(grid),
+                  ℑyzᵃᶜᶜ(i, j, k, grid, f, args...) / neighboring_active_nodes)
+end
 
-# References
-# ==========
-# R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical advection schemes
-#     on the results of ocean general circulation models", Clim. Dynamics, 5 (4), 211–226.
-# """
-# @inline function tapering_factor(i, j, k, grid, closure, tracers, buoyancy)
-#     ϵᶠᶜᶜ = tapering_factorᶠᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
-#     ϵᶜᶠᶜ = tapering_factorᶜᶠᶜ(i, j, k, grid, closure, tracers, buoyancy)
-#     ϵᶜᶜᶠ = tapering_factorᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
-#     return min(ϵᶠᶜᶜ, ϵᶜᶠᶜ, ϵᶜᶜᶠ)
-# end
-
-# @inline function tapering_factorᶠᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
-#     by = ℑxyᶠᶜᵃ(i, j, k, grid, ∂y_b, buoyancy, tracers)
-#     bz = ℑxzᶠᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-#     bx = ∂x_b(i, j, k, grid, buoyancy, tracers)
-#     return calc_tapering(bx, by, bz, grid, closure.isopycnal_tensor, closure.slope_limiter)
-# end
-
-# @inline function tapering_factorᶜᶠᶜ(i, j, k, grid, closure, tracers, buoyancy)
-#     bx = ℑxyᶜᶠᵃ(i, j, k, grid, ∂x_b, buoyancy, tracers)
-#     bz = ℑyzᵃᶠᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-#     by = ∂y_b(i, j, k, grid, buoyancy, tracers)
-#     return calc_tapering(bx, by, bz, grid, closure.isopycnal_tensor, closure.slope_limiter)
-# end
-
-# @inline function tapering_factorᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
-#     bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂x_b, buoyancy, tracers)
-#     by = ℑyzᵃᶜᶠ(i, j, k, grid, ∂y_b, buoyancy, tracers)
-#     bz = ∂z_b(i, j, k, grid, buoyancy, tracers)
-#     return calc_tapering(bx, by, bz, grid, closure.isopycnal_tensor, closure.slope_limiter)
-# end
-
-# @inline function calc_tapering(bx, by, bz, grid, slope_model, slope_limiter)
+@inline function tapering_factorᶜᶜᶜ(i, j, k, grid, slope_limiter, buoyancy, tracers)
+    Sx = mask_inactive_points_ℑxzᶜᵃᶜ(i, j, k, grid, Sxᶠᶜᶠ, buoyancy, tracers)
+    Sy = mask_inactive_points_ℑyzᵃᶜᶜ(i, j, k, grid, Syᶜᶠᶠ, buoyancy, tracers)
     
-#     bz = max(bz, slope_model.minimum_bz)
-    
-#     slope_x = - bx / bz
-#     slope_y = - by / bz
-   
-#     # in case of a stable buoyancy gradient (bz > 0), the slope is set to zero
-#     slope² = ifelse(bz <= 0, zero(grid), slope_x^2 + slope_y^2) 
-
-#     return min(one(grid), slope_limiter.max_slope^2 / slope²)
-# end
+    return tapering_factor(Sx, Sy, slope_limiter)
+end

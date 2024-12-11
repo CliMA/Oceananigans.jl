@@ -30,12 +30,13 @@ grid = RectilinearGrid(topology = (Periodic, Bounded, Bounded),
 coriolis = FPlane(latitude = -45)
 
 gerdes_koberle_willebrand_tapering = FluxTapering(1e-2)
-triad_closure = TriadIsopycnalSkewSymmetricDiffusivity(κ_skew = 1e3,
+triad_closure = TriadIsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(),
+                                                       κ_skew = 0,
                                                        κ_symmetric = 1e3,
                                                        slope_limiter = gerdes_koberle_willebrand_tapering)
 
 cox_closure = IsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(),
-                                                κ_skew = 1e3,
+                                                κ_skew = 0,
                                                 κ_symmetric = 1e3,
                                                 slope_limiter = gerdes_koberle_willebrand_tapering)
 
