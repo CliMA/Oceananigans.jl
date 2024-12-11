@@ -6,7 +6,7 @@ struct BuoyancyForce{M, G}
 end
 
 """
-    Buoyancy(; model, gravity_unit_vector=NegativeZDirection())
+    BuoyancyForce(formulation; gravity_unit_vector=NegativeZDirection())
 
 Construct a `buoyancy` given a buoyancy `model`. Optional keyword argument `gravity_unit_vector`
 can be used to specify the direction of gravity (default `NegativeZDirection()`).
