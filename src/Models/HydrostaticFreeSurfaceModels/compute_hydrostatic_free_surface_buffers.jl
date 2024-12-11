@@ -35,14 +35,17 @@ end
 function compute_buffer_tendency_contributions!(grid::DistributedActiveCellsIBG, arch, model)
     maps = grid.interior_active_cells
     
-    for (name, map) in zip(keys(maps), maps)
+    for name in (:west_dependent_halo_cells, 
+                 :east_dependent_halo_cells, 
+                 :south_dependent_halo_cells, 
+                 :north_dependent_halo_cells)
+        
+        map = @inbounds maps[name]
         
         # If there exists a buffer map, then we compute the buffer contributions. If not, the 
         # buffer contributions have already been calculated. We exclude the interior because it has
         # already been calculated
-        compute_buffer = (name != :interior) && !isnothing(map) 
-
-        if compute_buffer
+        if !isnothing(map) 
             active_cells_map = retrieve_interior_active_cells_map(grid, Val(name))
             compute_hydrostatic_free_surface_tendency_contributions!(model, :xyz; active_cells_map)
         end
