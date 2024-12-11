@@ -83,13 +83,13 @@ Nz = 10
             for i in 1:Nx, j in 1:Ny, k in 1:Nz
                 immersed = immersed_cell(i, j, k, grid)
                 active = (i, j, k) ∈ interior_active_cells_map
-                @test immersed | active
+                @test immersed ⊻ active
             end
             
             for i in 1:Nx, j in 1:Ny
                 immersed = all(immersed_cell(i, j, k, grid) for k in 1:Nz)
                 active = (i, j) ∈ surface_active_cells_map
-                @test immersed | active
+                @test immersed ⊻ active
             end
         end
 
