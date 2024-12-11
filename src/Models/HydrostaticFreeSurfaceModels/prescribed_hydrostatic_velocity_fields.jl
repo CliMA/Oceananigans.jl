@@ -90,6 +90,7 @@ hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, trac
 @inline sum_of_velocities(U1, U2, U3::PrescribedVelocityFields) = sum_of_velocities(U1, U2, velocities(U3))
 
 ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
+rk3_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
 step_free_surface!(::Nothing, model, timestepper, Δt) = nothing 
 compute_w_from_continuity!(::PrescribedVelocityFields, args...; kwargs...) = nothing
 
