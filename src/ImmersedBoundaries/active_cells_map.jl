@@ -103,7 +103,6 @@ function compute_active_z_columns(ibg)
     is_immersed_column = KernelFunctionOperation{Center, Center, Nothing}(active_column, ibg, active_cells_in_column)
     active_z_columns = Field{Center, Center, Nothing}(ibg, Bool)
     set!(active_z_columns, is_immersed_column)
-    fill_halo_regions!(active_z_columns)
 
     return active_z_columns
 end
@@ -177,13 +176,9 @@ map_interior_active_cells(ibg) = interior_active_indices(ibg; parameters = :xyz)
 # computation only on active `columns`
 function map_active_z_columns(ibg)
     active_cells_field = compute_active_z_columns(ibg)
-
-    Hx, Hy, _ = halo_size(ibg)
-    Nx, Ny, _ = size(ibg)
-
-    # Limit to -H+2:N+H-1
-    surface_cells = on_architecture(CPU(), active_cells_field.data)[-Hx+2:Nx+Hx-1, -Hy+2:Ny+Hy-1, 1]
-    full_indices  = findall(surface_cells)
+    interior_cells     = on_architecture(CPU(), interior(active_cells_field, :, :, 1))
+  
+    full_indices = findall(interior_cells)
 
     Nx, Ny, _ = size(ibg)
     # Reduce the size of the active_cells_map (originally a tuple of Int64)

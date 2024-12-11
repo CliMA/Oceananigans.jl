@@ -26,17 +26,10 @@ complete_communication_and_compute_buffer!(model, grid, arch) = nothing
 compute_buffer_tendencies!(model) = nothing
 
 """ Kernel parameters for computing interior tendencies. """
-function interior_tendency_kernel_parameters(arch, grid)
-    Nx, Ny, Nz = size(grid)
-    return KernelParameters(0:Nx+1, 0:Ny+1, 1:Nz)
-end
+interior_tendency_kernel_parameters(arch, grid) = :xyz # fallback
+interior_tendency_kernel_parameters(::SynchronizedDistributed, grid) = :xyz
 
-function interior_tendency_kernel_parameters(::SynchronizedDistributed, grid) 
-    Nx, Ny, Nz = size(grid)
-    return KernelParameters(0:Nx+1, 0:Ny+1, 1:Nz)
-end
-
-function interior_parameters_without_halo(arch, grid)
+function interior_tendency_kernel_parameters(arch::Distributed, grid)
     Rx, Ry, _ = arch.ranks
     Hx, Hy, _ = halo_size(grid)
     Tx, Ty, _ = topology(grid)
@@ -51,52 +44,28 @@ function interior_parameters_without_halo(arch, grid)
 
     # Sizes
     Sx = if local_x
-        Nx + 2
+        Nx
     elseif one_sided_x
-        Nx - Hx + 2
+        Nx - Hx
     else # two sided
-        Nx - 2Hx + 2
+        Nx - 2Hx
     end
 
     Sy = if local_y
-        Ny + 2
+        Ny
     elseif one_sided_y
-        Ny - Hy + 2
+        Ny - Hy
     else # two sided
-        Ny - 2Hy + 2
+        Ny - 2Hy
     end
 
     # Offsets
-    Ox = Rx == 1 || Tx == RightConnected ? -1 : Hx-1
-    Oy = Ry == 1 || Ty == RightConnected ? -1 : Hy-1
+    Ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
+    Oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
 
     sizes = (Sx, Sy, Nz)
     offsets = (Ox, Oy, 0)
      
-    return sizes, offsets
+    return KernelParameters(sizes, offsets)
 end
 
-function interior_tendency_kernel_parameters(arch::Distributed, grid)
-    return KernelParameters(interior_parameters_without_halo(arch, grid)...)
-end
-
-@inline surface_kernel_parameters(arch, grid) = surface_kernel_parameters(grid) 
-@inline surface_kernel_parameters(::SynchronizedDistributed, grid) = surface_kernel_parameters(grid) 
-
-# extend w kernel to compute also the boundaries
-# If Flat, do not calculate on halos!
-@inline function surface_kernel_parameters(grid) 
-    Nx, Ny, _ = size(grid)
-    Hx, Hy, _ = halo_size(grid)
-    Tx, Ty, _ = topology(grid)
-
-    ii = ifelse(Tx == Flat, 1:Nx, -Hx+2:Nx+Hx-1)
-    jj = ifelse(Ty == Flat, 1:Ny, -Hy+2:Ny+Hy-1)
-
-    return KernelParameters(ii, jj)
-end
-
-@inline function surface_kernel_parameters(arch::Distributed, grid) 
-    size, offset = interior_parameters_without_halo(arch, grid)
-    return KernelParameters(size[1:2], offset[1:2])
-end

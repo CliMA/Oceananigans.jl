@@ -188,7 +188,7 @@ end
     @inbounds κₑ[i, j, k] = max(zero(FT), κˢᵍˢ)
 end
 
-function compute_diffusivities!(diffusivity_fields, closure::AnisotropicMinimumDissipation, model; parameters=:xyz, active_cells_map=nothing)
+function compute_diffusivities!(diffusivity_fields, closure::AnisotropicMinimumDissipation, model; parameters = :xyz)
     grid = model.grid
     arch = model.architecture
     velocities = model.velocities
@@ -201,7 +201,7 @@ function compute_diffusivities!(diffusivity_fields, closure::AnisotropicMinimumD
     for (tracer_index, κₑ) in enumerate(diffusivity_fields.κₑ)
         @inbounds tracer = tracers[tracer_index]
         launch!(arch, grid, parameters, _compute_AMD_diffusivity!, 
-                κₑ, grid, closure, tracer, Val(tracer_index), velocities; active_cells_map)
+                κₑ, grid, closure, tracer, Val(tracer_index), velocities)
     end
 
     return nothing

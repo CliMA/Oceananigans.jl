@@ -6,7 +6,7 @@ using Oceananigans.BoundaryConditions: update_boundary_condition!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.Fields: compute!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
-using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters, interior_tendency_kernel_parameters
+using Oceananigans.Models: update_model_field_time_series!
 
 import Oceananigans.TimeSteppers: update_state!
 
@@ -40,7 +40,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
     end
 
     # Calculate diffusivities and hydrostatic pressure
-    @apply_regionally compute_auxiliaries!(model, grid, arch)
+    @apply_regionally compute_auxiliaries!(model)
     fill_halo_regions!(model.diffusivity_fields; only_local_halos = true)
     
     for callback in callbacks
@@ -55,16 +55,15 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
     return nothing
 end
 
-function compute_auxiliaries!(model::NonhydrostaticModel, grid, arch; 
-                              params2D = surface_kernel_parameters(arch, grid),
-                              params3D = interior_tendency_kernel_parameters(arch, grid))
+function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = tuple(p_kernel_parameters(model.grid)),
+                                                          κ_parameters = tuple(:xyz)) 
 
     closure = model.closure
     diffusivity = model.diffusivity_fields
 
-    update_hydrostatic_pressure!(model; parameters=params2D)
-
-    compute_diffusivities!(diffusivity, closure, model; parameters=params3D)
-
+    for (ppar, κpar) in zip(p_parameters, κ_parameters)
+        compute_diffusivities!(diffusivity, closure, model; parameters = κpar)
+        update_hydrostatic_pressure!(model; parameters = ppar)
+    end
     return nothing
 end

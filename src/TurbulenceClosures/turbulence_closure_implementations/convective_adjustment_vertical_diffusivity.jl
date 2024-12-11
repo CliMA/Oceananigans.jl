@@ -88,7 +88,7 @@ DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCAVD) = (; κᶜ = Z
 @inline viscosity(::FlavorOfCAVD, diffusivities) = diffusivities.κᵘ
 @inline diffusivity(::FlavorOfCAVD, diffusivities, id) = diffusivities.κᶜ
 
-function compute_diffusivities!(diffusivities, closure::FlavorOfCAVD, model; parameters=:xyz, active_cells_map=nothing)
+function compute_diffusivities!(diffusivities, closure::FlavorOfCAVD, model; parameters = :xyz)
 
     arch = model.architecture
     grid = model.grid
@@ -98,7 +98,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCAVD, model; par
     launch!(arch, grid, parameters,
             ## If we can figure out how to only precompute the "stability" of a cell:
             # compute_stability!, diffusivities, grid, closure, tracers, buoyancy,
-            compute_convective_adjustment_diffusivities!, diffusivities, grid, closure, tracers, buoyancy, active_cells_map)
+            compute_convective_adjustment_diffusivities!, diffusivities, grid, closure, tracers, buoyancy)
 
     return nothing
 end

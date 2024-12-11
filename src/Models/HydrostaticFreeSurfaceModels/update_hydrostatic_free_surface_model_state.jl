@@ -7,7 +7,7 @@ using Oceananigans.BoundaryConditions: update_boundary_condition!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
 using Oceananigans.Models: update_model_field_time_series!
-using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, surface_kernel_parameters, interior_tendency_kernel_parameters
+using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, p_kernel_parameters
 using Oceananigans.Fields: replace_horizontal_vector_halos!, tupled_fill_halo_regions!
 
 import Oceananigans.Models.NonhydrostaticModels: compute_auxiliaries!
@@ -42,7 +42,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
     tupled_fill_halo_regions!(prognostic_fields(model), grid, model.clock, fields(model), async=true)
 
     @apply_regionally replace_horizontal_vector_halos!(model.velocities, model.grid)
-    @apply_regionally compute_auxiliaries!(model, grid, architecture(grid))
+    @apply_regionally compute_auxiliaries!(model)
 
     fill_halo_regions!(model.diffusivity_fields; only_local_halos = true)
 
@@ -71,10 +71,9 @@ function mask_immersed_model_fields!(model, grid)
     return nothing
 end
 
-function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel, grid, arch; 
-                              params2D = surface_kernel_parameters(arch, grid),
-                              params3D = interior_tendency_kernel_parameters(arch, grid),
-                              active_cells_map = retrieve_interior_active_cells_map(grid, Val(:interior)))
+function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters = w_kernel_parameters(model.grid),
+                                                                  p_parameters = p_kernel_parameters(model.grid),
+                                                                  κ_parameters = :xyz) 
     
     grid        = model.grid
     closure     = model.closure
@@ -86,11 +85,11 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel, grid, arch;
     arch = architecture(grid) 
 
     # Advance diagnostic quantities
-    compute_w_from_continuity!(model; parameters = params2D)
-    update_hydrostatic_pressure!(P, arch, grid, buoyancy, tracers; parameters = params2D)
+    compute_w_from_continuity!(model; parameters = w_parameters)
+    update_hydrostatic_pressure!(P, arch, grid, buoyancy, tracers; parameters = p_parameters)
 
     # Update closure diffusivities
-    compute_diffusivities!(diffusivity, closure, model; parameters=params3D, active_cells_map)
+    compute_diffusivities!(diffusivity, closure, model; parameters = κ_parameters)
     
     return nothing
 end

@@ -9,7 +9,7 @@ using CUDA
 
 get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 
-function time_step_catke_equation!(model; parameters, active_cells_map)
+function time_step_catke_equation!(model)
 
     # TODO: properly handle closure tuples
     if model.closure isa Tuple
@@ -54,12 +54,12 @@ function time_step_catke_equation!(model; parameters, active_cells_map)
 
         # Compute the linear implicit component of the RHS (diffusivities, L)
         # and step forward
-        launch!(arch, grid, parameters,
+        launch!(arch, grid, :xyz,
                 substep_turbulent_kinetic_energy!,
                 κe, Le, grid, closure,
                 model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
                 model.tracers, model.buoyancy, diffusivity_fields,
-                Δτ, χ, Gⁿe, G⁻e; active_cells_map)
+                Δτ, χ, Gⁿe, G⁻e)
 
         # Good idea?
         # previous_time = model.clock.time - Δt

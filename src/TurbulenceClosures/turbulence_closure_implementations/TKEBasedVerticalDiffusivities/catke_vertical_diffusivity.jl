@@ -177,8 +177,7 @@ end
 @inline viscosity_location(::FlavorOfCATKE) = (c, c, f)
 @inline diffusivity_location(::FlavorOfCATKE) = (c, c, f)
 
-function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; 
-                                parameters = :xyz, active_cells_map = nothing)
+function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; parameters = :xyz)
 
     arch = model.architecture
     grid = model.grid
@@ -194,7 +193,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model;
         # Compute e at the current time:
         #   * update tendency Gⁿ using current and previous velocity field
         #   * use tridiagonal solve to take an implicit step
-        time_step_catke_equation!(model; parameters, active_cells_map)
+        time_step_catke_equation!(model)
     end
 
     # Update "previous velocities"
@@ -209,8 +208,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model;
 
     launch!(arch, grid, parameters,
             compute_CATKE_diffusivities!,
-            diffusivities, grid, closure, velocities, tracers, buoyancy;
-            active_cells_map)
+            diffusivities, grid, closure, velocities, tracers, buoyancy)
 
     return nothing
 end

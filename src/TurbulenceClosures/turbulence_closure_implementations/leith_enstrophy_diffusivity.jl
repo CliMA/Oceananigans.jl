@@ -91,7 +91,7 @@ end
     @inbounds νₑ[i, j, k] = prefactor * dynamic_ν
 end
 
-function compute_diffusivities!(diffusivity_fields, closure::TwoDimensionalLeith, model; parameters=:xyz, active_cells_map=nothing)
+function compute_diffusivities!(diffusivity_fields, closure::TwoDimensionalLeith, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
@@ -99,7 +99,7 @@ function compute_diffusivities!(diffusivity_fields, closure::TwoDimensionalLeith
     buoyancy = model.buoyancy
 
     launch!(arch, grid, parameters, _compute_leith_viscosity!,
-            diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers; active_cells_map)
+            diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers)
 
     return nothing
 end

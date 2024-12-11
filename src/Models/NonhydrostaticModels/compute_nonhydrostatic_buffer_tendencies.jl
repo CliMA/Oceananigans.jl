@@ -11,33 +11,17 @@ function compute_buffer_tendencies!(model::NonhydrostaticModel)
     grid = model.grid
     arch = architecture(grid)
 
-    params2D = buffer_surface_kernel_parameters(grid, arch)
-    params3D = buffer_tendency_kernel_parameters(grid, arch)
-    
+    p_parameters = buffer_p_kernel_parameters(grid, arch)
+    κ_parameters = buffer_κ_kernel_parameters(grid, model.closure, arch)
+
     # We need new values for `p` and `κ`
-    compute_auxiliaries!(model, grid, arch; params2D, params3D)
+    compute_auxiliaries!(model; p_parameters, κ_parameters)
 
     # parameters for communicating North / South / East / West side
+    kernel_parameters = buffer_tendency_kernel_parameters(grid, arch)
     compute_interior_tendency_contributions!(model, kernel_parameters)
 
     return nothing
-end
-
-# surface needs computing in the range - H + 1 : 0 and N - 1 : N + H - 1
-function buffer_surface_kernel_parameters(grid, arch)
-    Nx, Ny, _ = size(grid)
-    Hx, Hy, _ = halo_size(grid)
-
-    # Offsets in tangential direction are == -1 to
-    # cover the required corners
-    param_west  = (-Hx+2:1,    0:Ny+1)
-    param_east  = (Nx:Nx+Hx-1, 0:Ny+1)
-    param_south = (0:Nx+1,     -Hy+2:1)
-    param_north = (0:Nx+1,     Ny:Ny+Hy-1)
-
-    params = (param_west, param_east, param_south, param_north)
-
-    return buffer_parameters(params, grid, arch)
 end
 
 # tendencies need computing in the range 1 : H and N - H + 1 : N 
@@ -45,10 +29,39 @@ function buffer_tendency_kernel_parameters(grid, arch)
     Nx, Ny, Nz = size(grid)
     Hx, Hy, _  = halo_size(grid)
 
-    param_west  = (0:Hx,         1:Ny,         1:Nz)
-    param_east  = (Nx-Hx+1:Nx+1, 1:Ny,         1:Nz)
-    param_south = (1:Nx,         0:Hy,         1:Nz)
-    param_north = (1:Nx,         Ny-Hy+1:Ny+1, 1:Nz)
+    param_west  = (1:Hx,       1:Ny,       1:Nz)
+    param_east  = (Nx-Hx+1:Nx, 1:Ny,       1:Nz)
+    param_south = (1:Nx,       1:Hy,       1:Nz)
+    param_north = (1:Nx,       Ny-Hy+1:Ny, 1:Nz)
+
+    params = (param_west, param_east, param_south, param_north)
+    return buffer_parameters(params, grid, arch)
+end
+
+# p needs computing in the range  0 : 0 and N + 1 : N + 1
+function buffer_p_kernel_parameters(grid, arch)
+    Nx, Ny, _ = size(grid)
+
+    param_west  = (0:0,       1:Ny)
+    param_east  = (Nx+1:Nx+1, 1:Ny)
+    param_south = (1:Nx,      0:0)
+    param_north = (1:Nx,      Ny+1:Ny+1)
+
+    params = (param_west, param_east, param_south, param_north)
+    return buffer_parameters(params, grid, arch)
+end
+
+# diffusivities need recomputing in the range 0 : B and N - B + 1 : N + 1
+function buffer_κ_kernel_parameters(grid, closure, arch)
+    Nx, Ny, Nz = size(grid)
+
+    Bx = required_halo_size_x(closure)
+    By = required_halo_size_y(closure)
+
+    param_west  = (0:Bx,         1:Ny,         1:Nz)
+    param_east  = (Nx-Bx+1:Nx+1, 1:Ny,         1:Nz)
+    param_south = (1:Nx,         0:By,         1:Nz)
+    param_north = (1:Nx,         Ny-By+1:Ny+1, 1:Nz)
 
     params = (param_west, param_east, param_south, param_north)
     return buffer_parameters(params, grid, arch)

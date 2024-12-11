@@ -28,10 +28,10 @@ update_hydrostatic_pressure!(grid, model; kwargs...) =
 const PCB = PartialCellBottom
 const PCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PCB}
 
-update_hydrostatic_pressure!(pHY′, arch, ibg::PCBIBG, buoyancy, tracers; parameters = surface_kernel_parameters(arch, ibg.underlying_grid)) =
+update_hydrostatic_pressure!(pHY′, arch, ibg::PCBIBG, buoyancy, tracers; parameters = p_kernel_parameters(ibg.underlying_grid)) =
     update_hydrostatic_pressure!(pHY′, arch, ibg.underlying_grid, buoyancy, tracers; parameters)
 
-update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers; parameters = surface_kernel_parameters(arch, grid)) =
+update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers; parameters = p_kernel_parameters(grid)) =
     launch!(arch, grid, parameters, _update_hydrostatic_pressure!, pHY′, grid, buoyancy, tracers)
 
 update_hydrostatic_pressure!(::Nothing, arch, grid, args...; kw...) = nothing
