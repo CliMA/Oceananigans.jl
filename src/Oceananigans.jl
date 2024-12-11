@@ -6,16 +6,19 @@ module Oceananigans
 
 export
     # Architectures
-    CPU, GPU, 
+    CPU, GPU,
 
     # Grids
     Center, Face,
-    Periodic, Bounded, Flat, 
+    Periodic, Bounded, Flat,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
     nodes, xnodes, ynodes, znodes, λnodes, φnodes,
-    xspacings, yspacings, zspacings,
+    xspacings, yspacings, zspacings, λspacings, φspacings,
     minimum_xspacing, minimum_yspacing, minimum_zspacing,
 
+    # Pointwise spacing, area, and volume operators
+    xspacing, yspacing, zspacing, λspacing, φspacing, xarea, yarea, zarea, volume,
+    
     # Immersed boundaries
     ImmersedBoundaryGrid,
     GridFittedBoundary, GridFittedBottom, PartialCellBottom,
@@ -247,4 +250,3 @@ using .AbstractOperations
 using .MultiRegion
 
 end # module
-
