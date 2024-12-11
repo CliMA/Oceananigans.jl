@@ -3,7 +3,7 @@
 @inline y_dot_g_bᶜᶠᶜ(i, j, k, grid, buoyancy, C) = ĝ_y(buoyancy) * ℑyᵃᶠᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, C)
 @inline z_dot_g_bᶜᶜᶠ(i, j, k, grid, buoyancy, C) = ĝ_z(buoyancy) * ℑzᵃᵃᶠ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, C)
 
-const NZBF = ::BuoyancyForce{<:Any, NegativeZDirection}
+const NZBF = BuoyancyForce{<:Any, NegativeZDirection}
 
 @inline x_dot_g_bᶠᶜᶜ(i, j, k, grid, ::NZBF) = 0
 @inline y_dot_g_bᶜᶠᶜ(i, j, k, grid, ::NZBF) = 0
