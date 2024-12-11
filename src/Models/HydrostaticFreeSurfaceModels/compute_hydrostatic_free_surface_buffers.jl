@@ -35,10 +35,10 @@ end
 function compute_buffer_tendency_contributions!(grid::DistributedActiveCellsIBG, arch, model)
     maps = grid.interior_active_cells
     
-    for name in (:west_dependent_halo_cells, 
-                 :east_dependent_halo_cells, 
-                 :south_dependent_halo_cells, 
-                 :north_dependent_halo_cells)
+    for name in (:west_halo_dependent_cells, 
+                 :east_halo_dependent_cells, 
+                 :south_halo_dependent_cells, 
+                 :north_halo_dependent_cells)
         
         active_cells_map = @inbounds maps[name]
         
