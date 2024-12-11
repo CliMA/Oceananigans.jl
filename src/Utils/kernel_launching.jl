@@ -6,10 +6,13 @@ using Oceananigans: location
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Grids: AbstractGrid
+using Adapt
 using Base: @pure
+using KernelAbstractions: Kernel
 
 import Oceananigans
 import KernelAbstractions: get, expand
+import Base
 
 struct KernelParameters{S, O} end
 
@@ -79,6 +82,12 @@ end
 
 contiguousrange(range::NTuple{N, Int}, offset::NTuple{N, Int}) where N = Tuple(1+o:r+o for (r, o) in zip(range, offset))
 flatten_reduced_dimensions(worksize, dims) = Tuple(d ∈ dims ? 1 : worksize[d] for d = 1:3)
+
+# Internal utility to launch a function mapped on an index_map
+struct MappedFunction{F, M} <: Function
+    func::F
+    index_map::M
+end
 
 # Support for 1D
 heuristic_workgroup(Wx) = min(Wx, 256)
@@ -227,6 +236,7 @@ the architecture `arch`.
                                   location = nothing,
                                   active_cells_map = nothing)
 
+
     if !isnothing(active_cells_map) # everything else is irrelevant
         workgroup = min(length(active_cells_map), 256)
         worksize = length(active_cells_map)
@@ -238,9 +248,17 @@ the architecture `arch`.
 
     dev = Architectures.device(arch)
     loop = kernel!(dev, workgroup, worksize)
+
+    # Map out the function to use active_cells_map as an index map
+    if !isnothing(active_cells_map)
+        func = MappedFunction(loop.f, active_cells_map)
+        loop = Kernel{get_kernel_parameters(loop)..., typeof(func)}(dev, func)
+    end
+
     return loop, worksize
 end
 
+@inline get_kernel_parameters(::Kernel{Dev, B, W}) where {Dev, B, W} = Dev, B, W
        
 """
     launch!(arch, grid, workspec, kernel!, kernel_args...; kw...)
@@ -312,10 +330,15 @@ end
 #####
 
 # TODO: when offsets are implemented in KA so that we can call `kernel(dev, group, size, offsets)`, remove all of this
-
-using KernelAbstractions: Kernel
 using KernelAbstractions.NDIteration: _Size, StaticSize
 using KernelAbstractions.NDIteration: NDRange
+
+using KernelAbstractions.NDIteration
+using KernelAbstractions: ndrange, workgroupsize
+import KernelAbstractions: partition
+
+using KernelAbstractions: CompilerMetadata
+import KernelAbstractions: __ndrange, __groupsize
 
 struct OffsetStaticSize{S} <: _Size
     function OffsetStaticSize{S}() where S
@@ -366,13 +389,6 @@ const OffsetNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:KernelO
     return CartesianIndex(nI)
 end
 
-using KernelAbstractions.NDIteration
-using KernelAbstractions: ndrange, workgroupsize
-import KernelAbstractions: partition
-
-using KernelAbstractions: CompilerMetadata
-import KernelAbstractions: __ndrange, __groupsize
-
 @inline __ndrange(::CompilerMetadata{NDRange}) where {NDRange<:OffsetStaticSize}  = CartesianIndices(get(NDRange))
 @inline __groupsize(cm::CompilerMetadata{NDRange}) where {NDRange<:OffsetStaticSize} = size(__ndrange(cm))
 
@@ -410,3 +426,91 @@ function partition(kernel::OffsetKernel, inrange, ingroupsize)
     return iterspace, dynamic
 end
 
+#####
+##### Utilities for Mapped kernels
+#####
+
+struct IndexMap end
+
+const MappedNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:IndexMap, <:AbstractArray} where N
+
+# NDRange has been modified to include an index_map in place of workitems.
+# Remember, dynamic offset kernels are not possible with this extension!!
+# Also, mapped kernels work only with a 1D kernel and a 1D map, it is not possible to launch a ND kernel.
+# TODO: maybe don't do this
+@inline function expand(ndrange::MappedNDRange, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where N
+    nI = ntuple(Val(N)) do I
+        Base.@_inline_meta
+        offsets = workitems(ndrange)
+        stride = size(offsets, I)
+        gidx = groupidx.I[I]
+        ndrange.workitems[(gidx - 1) * stride + idx.I[I]]
+    end
+    return CartesianIndex(nI...)
+end
+
+const MappedKernel{D} = Kernel{D, <:Any, <:Any, <:MappedFunction} where D
+
+# Override the getproperty to make sure we launch the correct function in the kernel
+@inline Base.getproperty(k::MappedKernel, prop::Symbol) = get_mapped_kernel_property(k, Val(prop))
+
+@inline get_mapped_kernel_property(k, ::Val{prop}) where prop = getfield(k, prop)
+@inline get_mapped_kernel_property(k, ::Val{:index_map}) = getfield(getfield(k, :f), :index_map)
+@inline get_mapped_kernel_property(k, ::Val{:f})         = getfield(getfield(k, :f), :func)
+
+Adapt.adapt_structure(to, cm::CompilerMetadata{N, C}) where {N, C} = 
+    CompilerMetadata{N, C}(Adapt.adapt(to, cm.groupindex), 
+                           Adapt.adapt(to, cm.ndrange),
+                           Adapt.adapt(to, cm.iterspace))
+
+Adapt.adapt_structure(to, ndrange::NDRange{N, B, W}) where {N, B, W} = 
+    NDRange{N, B, W}(Adapt.adapt(to, ndrange.blocks), Adapt.adapt(to, ndrange.workitems))
+
+# Extending the partition function to include offsets in NDRange: note that in this case the 
+# offsets take the place of the DynamicWorkitems which we assume is not needed in static kernels
+function partition(kernel::MappedKernel, inrange, ingroupsize)
+    static_workgroupsize = workgroupsize(kernel)
+    
+    # Calculate the static NDRange and WorkgroupSize
+    index_map = kernel.index_map
+    range = length(index_map)
+    groupsize = get(static_workgroupsize)
+
+    blocks, groupsize, dynamic = NDIteration.partition(range, groupsize)
+
+    static_blocks = StaticSize{blocks}
+    static_workgroupsize = StaticSize{groupsize} # we might have padded workgroupsize
+    
+    iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(IndexMap(), index_map)
+
+    return iterspace, dynamic
+end
+
+# Extend the valid index function to check whether the index is valid in the index map
+
+using KernelAbstractions: __iterspace, __groupindex, __dynamic_checkbounds
+import KernelAbstractions: __validindex
+
+const MappedCompilerMetadata = CompilerMetadata{<:StaticSize, <:Any, <:Any, <:Any, <:MappedNDRange}
+
+@inline linear_ndrange(ctx::MappedCompilerMetadata) = length(__iterspace(ctx).workitems)
+
+# Mapped kernels are always 1D
+@inline function linear_index(ndrange::MappedNDRange, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where N
+    offsets = workitems(ndrange)
+    stride = size(offsets, 1)
+    gidx = groupidx.I[1]
+    return (gidx - 1) * stride + idx.I[1]
+end
+
+# # To check whether the index is valid in the index map, we need to 
+# # check whether the linear index is smaller than the size of the index map
+@inline function __validindex(ctx::MappedCompilerMetadata, idx::CartesianIndex)
+    # Turns this into a noop for code where we can turn of checkbounds of
+    if __dynamic_checkbounds(ctx)
+        index = @inbounds linear_index(__iterspace(ctx), __groupindex(ctx), idx)
+        return index ≤ linear_ndrange(ctx)
+    else
+        return true
+    end
+end
