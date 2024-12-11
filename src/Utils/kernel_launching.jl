@@ -506,14 +506,14 @@ const MappedCompilerMetadata = CompilerMetadata{<:StaticSize, <:Any, <:Any, <:An
     return nI
 end
 
-# To check whether the index is valid in the index map, we need to 
-# check whether the linear index is smaller than the size of the index map
+# # To check whether the index is valid in the index map, we need to 
+# # check whether the linear index is smaller than the size of the index map
 @inline function __validindex(ctx::MappedCompilerMetadata, idx::CartesianIndex)
     # Turns this into a noop for code where we can turn of checkbounds of
     if __dynamic_checkbounds(ctx)
         index = @inbounds linear_index(__iterspace(ctx), __groupindex(ctx), idx)
         return index ≤ linear_ndrange(ctx)
     else
-        return false
+        return true
     end
 end
