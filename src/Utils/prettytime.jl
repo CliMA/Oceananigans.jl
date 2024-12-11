@@ -64,4 +64,4 @@ function prettytimeunits(t::T, longform=true) where T
     return convert(T, value), units::String
 end
 
-prettytime(dt::AbstractTime) = "$dt"
+prettytime(dt::AbstractTime, longform=true) = "$dt"
