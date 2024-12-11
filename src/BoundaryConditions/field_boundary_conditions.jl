@@ -98,6 +98,7 @@ and the topology in the boundary-normal direction is used:
  - `NoFluxBoundaryCondition` for `Bounded` directions and `Centered`-located fields
  - `ImpenetrableBoundaryCondition` for `Bounded` directions and `Face`-located fields
  - `nothing` for `Flat` directions and/or `Nothing`-located fields
+ - `nothing` for `immersed` boundaries
 """
 FieldBoundaryConditions(default_bounded_bc::BoundaryCondition = NoFluxBoundaryCondition();
                         west = DefaultBoundaryCondition(default_bounded_bc),
@@ -106,7 +107,7 @@ FieldBoundaryConditions(default_bounded_bc::BoundaryCondition = NoFluxBoundaryCo
                         north = DefaultBoundaryCondition(default_bounded_bc),
                         bottom = DefaultBoundaryCondition(default_bounded_bc),
                         top = DefaultBoundaryCondition(default_bounded_bc),
-                        immersed = DefaultBoundaryCondition(default_bounded_bc)) =
+                        immersed = DefaultBoundaryCondition(nothing)) =
     FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 
 """
@@ -117,7 +118,7 @@ FieldBoundaryConditions(default_bounded_bc::BoundaryCondition = NoFluxBoundaryCo
                             north    = default_auxiliary_bc(topology(grid, 2)(), location[2]()),
                             bottom   = default_auxiliary_bc(topology(grid, 3)(), location[3]()),
                             top      = default_auxiliary_bc(topology(grid, 3)(), location[3]()),
-                            immersed = NoFluxBoundaryCondition())
+                            immersed = nothing)
 
 Return boundary conditions for auxiliary fields (fields whose values are
 derived from a model's prognostic fields) on `grid` and at `location`.
@@ -142,6 +143,7 @@ and the topology in the boundary-normal direction is used:
 - `GradientBoundaryCondition(0)` for `Bounded` directions and `Centered`-located fields
 - `nothing` for `Bounded` directions and `Face`-located fields
 - `nothing` for `Flat` directions and/or `Nothing`-located fields
+- `nothing` for `immersed` boundaries
 """
 function FieldBoundaryConditions(grid::AbstractGrid, location, indices=(:, :, :);
                                  west     = default_auxiliary_bc(topology(grid, 1)(), location[1]()),
@@ -150,7 +152,7 @@ function FieldBoundaryConditions(grid::AbstractGrid, location, indices=(:, :, :)
                                  north    = default_auxiliary_bc(topology(grid, 2)(), location[2]()),
                                  bottom   = default_auxiliary_bc(topology(grid, 3)(), location[3]()),
                                  top      = default_auxiliary_bc(topology(grid, 3)(), location[3]()),
-                                 immersed = NoFluxBoundaryCondition())
+                                 immersed = nothing)
 
     return FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
 end
