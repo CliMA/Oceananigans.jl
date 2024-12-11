@@ -22,7 +22,6 @@ function compute_eddy_velocities!(diffusivities, closure::AdvectiveSkewClosure, 
     return nothing
 end
 
-
 """
     tapering_factor(Sx, Sy, slope_limiter)
 
