@@ -39,6 +39,8 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     filepath3d = "test_3d_output_with_halos.jld2"
     filepath2d = "test_2d_output_with_halos.jld2"
     filepath1d = "test_1d_output_with_halos.jld2"
+    split_filepath = "test_split_output.jld2"
+    unsplit_filepath = "test_unsplit_output.jld2"
 
     simulation.output_writers[:jld2_3d_with_halos] =
         JLD2OutputWriter(model, fields_to_output,
@@ -64,9 +66,24 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
                          schedule = TimeInterval(30seconds),
                          overwrite_existing = true)
 
+    simulation.output_writers[:unsplit_jld2] =
+        JLD2OutputWriter(model, profiles,
+                         filename = unsplit_filepath,
+                         with_halos = true,
+                         schedule = TimeInterval(10seconds),
+                         overwrite_existing = true)
+
+    simulation.output_writers[:split_jld2] =
+        JLD2OutputWriter(model, profiles,
+                         filename = split_filepath,
+                         with_halos = true,
+                         schedule = TimeInterval(10seconds),
+                         file_splitting = TimeInterval(30seconds),
+                         overwrite_existing = true)
+
     run!(simulation)
 
-    return filepath1d, filepath2d, filepath3d
+    return filepath1d, filepath2d, filepath3d, unsplit_filepath, split_filepath
 end
 
 @testset "OutputReaders" begin
@@ -74,7 +91,7 @@ end
 
     Nt = 5
     Nx, Ny, Nz = 16, 10, 5
-    filepath1d, filepath2d, filepath3d = generate_some_interesting_simulation_data(Nx, Ny, Nz)
+    filepath1d, filepath2d, filepath3d, unsplit_filepath, split_filepath = generate_some_interesting_simulation_data(Nx, Ny, Nz)
 
     for arch in archs
         @testset "FieldTimeSeries{InMemory} [$(typeof(arch))]" begin
@@ -219,6 +236,28 @@ end
                 @test u1[1, 1, 3, 4] isa Number
                 @test u1[1] isa Field
                 @test v1[2] isa Field
+            end
+
+            us = FieldTimeSeries(split_filepath, "u", architecture=arch)
+            vs = FieldTimeSeries(split_filepath, "v", architecture=arch)
+            ws = FieldTimeSeries(split_filepath, "w", architecture=arch)
+            Ts = FieldTimeSeries(split_filepath, "T", architecture=arch)
+            bs = FieldTimeSeries(split_filepath, "b", architecture=arch)
+            ζs = FieldTimeSeries(split_filepath, "ζ", architecture=arch)
+
+            uu = FieldTimeSeries(unsplit_filepath, "u", architecture=arch)
+            vu = FieldTimeSeries(unsplit_filepath, "v", architecture=arch)
+            wu = FieldTimeSeries(unsplit_filepath, "w", architecture=arch)
+            Tu = FieldTimeSeries(unsplit_filepath, "T", architecture=arch)
+            bu = FieldTimeSeries(unsplit_filepath, "b", architecture=arch)
+            ζu = FieldTimeSeries(unsplit_filepath, "ζ", architecture=arch)
+
+            split = (us, vs, ws, Ts, bs, ζs)                
+            unsplit = (uu, vu, wu, Tu, bu, ζu)                
+            for pair in zip(split, unsplit)    
+                s, u = pair
+                @test s.times == u.times
+                @test parent(s) == parent(u)
             end
         end
 

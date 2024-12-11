@@ -97,6 +97,7 @@ function test_jld2_time_file_splitting(arch)
     function fake_bc_init(file, model)
         file["boundary_conditions/fake"] = π
     end
+
     ow = JLD2OutputWriter(model, (; u=model.velocities.u);
                           dir = ".",
                           filename = "test",
