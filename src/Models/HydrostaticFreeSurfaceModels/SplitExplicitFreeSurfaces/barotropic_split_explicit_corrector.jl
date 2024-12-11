@@ -1,35 +1,35 @@
 # Kernels to compute the vertical integral of the velocities
-@kernel function _barotropic_mode_kernel!(u, v, grid, ::Nothing, U, V, η)
+@kernel function _barotropic_mode_kernel!(U̅, V̅, grid, ::Nothing, u, v, η)
     i, j  = @index(Global, NTuple)
-    barotropic_mode_kernel!(u, v, i, j, grid, U, V, η)
+    barotropic_mode_kernel!(U̅, V̅, i, j, grid, u, v, η)
 end
 
-@kernel function _barotropic_mode_kernel!(u, v, grid, active_cells_map, U, V, η)
+@kernel function _barotropic_mode_kernel!(U̅, V̅, grid, active_cells_map, u, v, η)
     idx = @index(Global, Linear)
     i, j = active_linear_index_to_tuple(idx, active_cells_map)
-    barotropic_mode_kernel!(U, V, i, j, grid, u, v, η)
+    barotropic_mode_kernel!(U̅, V̅, i, j, grid, u, v, η)
 end
 
-@inline function barotropic_mode_kernel!(U, V, i, j, grid, u, v, η)
+@inline function barotropic_mode_kernel!(U̅, V̅, i, j, grid, u, v, η)
     k_top  = size(grid, 3) + 1
 
     sᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, k_top, grid, η) / static_column_depthᶠᶜᵃ(i, j, grid)
     sᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, k_top, grid, η) / static_column_depthᶜᶠᵃ(i, j, grid)
 
-    @inbounds U[i, j, 1] = Δrᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1] * sᶠᶜ
-    @inbounds V[i, j, 1] = Δrᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1] * sᶜᶠ
+    @inbounds U̅[i, j, 1] = Δrᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1] * sᶠᶜ
+    @inbounds V̅[i, j, 1] = Δrᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1] * sᶜᶠ
 
     for k in 2:grid.Nz
-        @inbounds U[i, j, 1] += Δrᶠᶜᶜ(i, j, k, grid) * u[i, j, k] * sᶠᶜ
-        @inbounds V[i, j, 1] += Δrᶜᶠᶜ(i, j, k, grid) * v[i, j, k] * sᶜᶠ
+        @inbounds U̅[i, j, 1] += Δrᶠᶜᶜ(i, j, k, grid) * u[i, j, k] * sᶠᶜ
+        @inbounds V̅[i, j, 1] += Δrᶜᶠᶜ(i, j, k, grid) * v[i, j, k] * sᶜᶠ
     end
 
     return nothing
 end
 
-@inline function compute_barotropic_mode!(U, V, grid, u, v, η)
+@inline function compute_barotropic_mode!(U̅, V̅, grid, u, v, η)
     active_cells_map = retrieve_surface_active_cells_map(grid)
-    launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U, V, grid, active_cells_map, u, v, η; active_cells_map)
+    launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U̅, V̅, grid, active_cells_map, u, v, η; active_cells_map)
     return nothing
 end
 
