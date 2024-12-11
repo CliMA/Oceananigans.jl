@@ -47,7 +47,7 @@ function geostrophic_adjustment_simulation(free_surface, topology, multi_region;
     L = grid.Lx / 40 # gaussian width
     x₀ = grid.Lx / 4 # gaussian center
 
-    vᵍ(x) = -U * (x - x₀) / L * gaussian(x - x₀, L)
+    vᵍ(x, y, z) = -U * (x - x₀) / L * gaussian(x - x₀, L)
 
     g = model.free_surface.gravitational_acceleration
     η = model.free_surface.η
@@ -56,7 +56,7 @@ function geostrophic_adjustment_simulation(free_surface, topology, multi_region;
 
     ηᵍ(x) = η₀ * gaussian(x - x₀, L)
 
-    ηⁱ(x) = 2 * ηᵍ(x)
+    ηⁱ(x, y, z) = 2 * ηᵍ(x)
 
     set!(model, v = vᵍ)
     set!(model.free_surface.η, ηⁱ)
@@ -112,12 +112,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: averaging_shape_function
                                                         AdamsBashforth3Scheme
 
 # @inline new_function(t) = averaging_shape_function(t; r = 0.15766, p = 2, q = 2)
-@inline new_function(t) =  t >= 1/2 && t <= 3/2 ? 1.0 : 0.0
-
-splitexplicit_free_surface = SplitExplicitFreeSurface(substeps = 10, 
-                                                      averaging_weighting_function = averaging_shape_function,
-                                                      timestepper = AdamsBashforth3Scheme())
-explicit_free_surface = ExplicitFreeSurface()
+@inline new_function(t) =  t ≥ 1/2 && t ≤ 3/2 ? 1.0 : 0.0
 
 topology_types = [(Bounded, Periodic, Bounded), (Periodic, Periodic, Bounded)]
 topology_types = [topology_types[2]]

@@ -1,6 +1,5 @@
 using Oceananigans.Operators: ℑxyz
 using Oceananigans.Utils: instantiate
-import Oceananigans.Architectures: on_architecture
 
 """
     struct DiscreteDiffusionFunction{LX, LY, LZ, P, F} 

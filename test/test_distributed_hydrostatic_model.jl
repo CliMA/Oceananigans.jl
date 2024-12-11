@@ -76,9 +76,6 @@ end
 Nx = 32
 Ny = 32
 
-active_cells_map(grid) = false
-active_cells_map(grid::ImmersedBoundaryGrid) = !isnothing(grid.interior_active_cells)
-
 for arch in archs
     @testset "Testing distributed solid body rotation" begin
         underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
@@ -98,42 +95,41 @@ for arch in archs
         global_immersed_grid   = ImmersedBoundaryGrid(global_underlying_grid, GridFittedBottom(bottom))
 
         for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid), (global_underlying_grid, global_immersed_grid, global_immersed_grid))
-            @testset "Test solid rotation on $(summary(grid)) with $(active_cells_map(grid)) on $arch)" begin
-                # "s" for "serial" computation
-                us, vs, ws, cs, ηs = solid_body_rotation_test(global_grid)
 
-                us = interior(on_architecture(CPU(), us))
-                vs = interior(on_architecture(CPU(), vs))
-                ws = interior(on_architecture(CPU(), ws))
-                cs = interior(on_architecture(CPU(), cs))
-                ηs = interior(on_architecture(CPU(), ηs))
+            # "s" for "serial" computation
+            us, vs, ws, cs, ηs = solid_body_rotation_test(global_grid)
 
-                @info "  Testing distributed solid body rotation with architecture $arch on $(typeof(grid).name.wrapper)"
-                u, v, w, c, η = solid_body_rotation_test(grid)
+            us = interior(on_architecture(CPU(), us))
+            vs = interior(on_architecture(CPU(), vs))
+            ws = interior(on_architecture(CPU(), ws))
+            cs = interior(on_architecture(CPU(), cs))
+            ηs = interior(on_architecture(CPU(), ηs))
 
-                cpu_arch = cpu_architecture(arch)
+            @info "  Testing distributed solid body rotation with architecture $arch on $(typeof(grid).name.wrapper)"
+            u, v, w, c, η = solid_body_rotation_test(grid)
 
-                u = interior(on_architecture(cpu_arch, u))
-                v = interior(on_architecture(cpu_arch, v))
-                w = interior(on_architecture(cpu_arch, w))
-                c = interior(on_architecture(cpu_arch, c))
-                η = interior(on_architecture(cpu_arch, η))
+            cpu_arch = cpu_architecture(arch)
 
-                us = partition(us, cpu_arch, size(u))
-                vs = partition(vs, cpu_arch, size(v))
-                ws = partition(ws, cpu_arch, size(w))
-                cs = partition(cs, cpu_arch, size(c))
-                ηs = partition(ηs, cpu_arch, size(η))
+            u = interior(on_architecture(cpu_arch, u))
+            v = interior(on_architecture(cpu_arch, v))
+            w = interior(on_architecture(cpu_arch, w))
+            c = interior(on_architecture(cpu_arch, c))
+            η = interior(on_architecture(cpu_arch, η))
 
-                atol = eps(eltype(grid))
-                rtol = sqrt(eps(eltype(grid)))
+            us = partition(us, cpu_arch, size(u))
+            vs = partition(vs, cpu_arch, size(v))
+            ws = partition(ws, cpu_arch, size(w))
+            cs = partition(cs, cpu_arch, size(c))
+            ηs = partition(ηs, cpu_arch, size(η))
 
-                @test all(isapprox(u, us; atol, rtol))
-                @test all(isapprox(v, vs; atol, rtol))
-                @test all(isapprox(w, ws; atol, rtol))
-                @test all(isapprox(c, cs; atol, rtol))
-                @test all(isapprox(η, ηs; atol, rtol))
-            end
+            atol = eps(eltype(grid))
+            rtol = sqrt(eps(eltype(grid)))
+
+            @test all(isapprox(u, us; atol, rtol))
+            @test all(isapprox(v, vs; atol, rtol))
+            @test all(isapprox(w, ws; atol, rtol))
+            @test all(isapprox(c, cs; atol, rtol))
+            @test all(isapprox(η, ηs; atol, rtol))
         end
     end
 end

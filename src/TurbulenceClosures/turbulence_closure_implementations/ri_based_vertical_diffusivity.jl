@@ -4,8 +4,6 @@ using Oceananigans.Operators
 using Oceananigans.Grids: inactive_node
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 
-import Oceananigans.Architectures: on_architecture
-
 struct RiBasedVerticalDiffusivity{TD, FT, R, HR} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
     ν₀  :: FT
     κ₀  :: FT

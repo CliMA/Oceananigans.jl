@@ -1,6 +1,6 @@
-using Oceananigans.DistributedComputations
 using StructArrays: StructArray, replace_storage
 using Oceananigans.Grids: on_architecture, architecture
+using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid, Partition
 using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instantiated_location
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction

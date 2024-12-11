@@ -99,7 +99,6 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     ab2_step!(model, Δt)
 
     tick!(model.clock, Δt)
-
     model.clock.last_Δt = Δt
     model.clock.last_stage_Δt = Δt # just one stage
     
