@@ -229,6 +229,22 @@ topos_3d = ((Periodic, Periodic, Bounded),
             end
         end
 
+        for topo in [topos_3d..., topos_2d...]
+            size = Flat in topo ? (10, 10, 10) : (10, 10)
+            halo = Flat in topo ? (7, 7, 7)  : (7, 7)
+            x    = topo[1] == Flat ? nothing : (0, 1)
+            y    = topo[2] == Flat ? nothing : (0, 1)
+
+            grid = RectilinearGrid(arch; size, halo, x, y, z=(-1, 0), topology=topo)
+
+            for advection in [WENOVectorInvariant(), VectorInvariant(), WENO()]
+                @testset "Time-stepping HydrostaticFreeSurfaceModels with $advection [$arch, $topo]" begin
+                    @info "  Testing time-stepping HydrostaticFreeSurfaceModels with $advection [$arch, $topo]..."
+                    @test time_step_hydrostatic_model_works(grid; momentum_advection=advection)
+                end
+            end
+        end
+
         for coriolis in (nothing, FPlane(f=1), BetaPlane(f₀=1, β=0.1))
             @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(coriolis))]" begin
                 @info "  Testing time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(coriolis))]..."
