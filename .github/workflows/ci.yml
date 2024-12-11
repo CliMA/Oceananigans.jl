@@ -23,7 +23,6 @@ jobs:
       - uses: actions/cache@v1
         env:
           cache-name: cache-artifacts
-          TEST_GROUP: "turbulence_closures"
         with:
           path: ~/.julia/artifacts
           key: ${{ runner.os }}-test-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
@@ -33,3 +32,5 @@ jobs:
             ${{ runner.os }}-
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
+        env:
+          TEST_GROUP: "turbulence_closures"
