@@ -11,7 +11,7 @@ export
     # Grids
     Center, Face,
     Periodic, Bounded, Flat,
-    RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
+    RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, TripolarGrid,
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
     xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
     minimum_xspacing, minimum_yspacing, minimum_zspacing,
@@ -192,8 +192,9 @@ include("Operators/Operators.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
-include("TimeSteppers/TimeSteppers.jl")
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
+include("OrthogonalSphericalShellGrids/OrthogonalSphericalShellGrids.jl")
+include("TimeSteppers/TimeSteppers.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
 include("OutputReaders/OutputReaders.jl")
@@ -232,6 +233,7 @@ using .Advection
 using .Grids
 using .BoundaryConditions
 using .Fields
+using .OrthogonalSphericalShellGrids
 using .Coriolis
 using .BuoyancyModels
 using .StokesDrifts
