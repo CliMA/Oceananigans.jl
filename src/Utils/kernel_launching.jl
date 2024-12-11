@@ -497,13 +497,10 @@ const MappedCompilerMetadata = CompilerMetadata{<:StaticSize, <:Any, <:Any, <:An
 
 # Mapped kernels are always 1D
 @inline function linear_index(ndrange::MappedNDRange, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where N
-    nI = Base.@_inline_meta begin
-        offsets = workitems(ndrange)
-        stride = size(offsets, 1)
-        gidx = groupidx.I[1]
-        (gidx - 1) * stride + idx.I[1]
-    end
-    return nI
+    offsets = workitems(ndrange)
+    stride = size(offsets, 1)
+    gidx = groupidx.I[1]
+    return (gidx - 1) * stride + idx.I[1]
 end
 
 # # To check whether the index is valid in the index map, we need to 
