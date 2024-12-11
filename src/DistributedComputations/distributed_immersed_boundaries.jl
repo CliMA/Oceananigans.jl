@@ -131,10 +131,10 @@ function map_interior_active_cells(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any
     include_south = !isa(ibg, YFlatGrid) && (Ry != 1) && !(Ty == RightConnected)
     include_north = !isa(ibg, YFlatGrid) && (Ry != 1) && !(Ty == LeftConnected)
 
-    west_halo_dependent_cells  = interior_active_indices(ibg; parameters = KernelParameters(west_boundary))
-    east_halo_dependent_cells  = interior_active_indices(ibg; parameters = KernelParameters(east_boundary))
-    south_halo_dependent_cells = interior_active_indices(ibg; parameters = KernelParameters(south_boundary))
-    north_halo_dependent_cells = interior_active_indices(ibg; parameters = KernelParameters(north_boundary))
+    west_halo_dependent_cells  = interior_active_indices(ibg; parameters = KernelParameters(west_boundary...))
+    east_halo_dependent_cells  = interior_active_indices(ibg; parameters = KernelParameters(east_boundary...))
+    south_halo_dependent_cells = interior_active_indices(ibg; parameters = KernelParameters(south_boundary...))
+    north_halo_dependent_cells = interior_active_indices(ibg; parameters = KernelParameters(north_boundary...))
     
     west_halo_dependent_cells  = ifelse(include_west,  west_halo_dependent_cells,  nothing)
     east_halo_dependent_cells  = ifelse(include_east,  east_halo_dependent_cells,  nothing)

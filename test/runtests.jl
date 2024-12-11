@@ -120,6 +120,7 @@ CUDA.allowscalar() do
         @testset "Model and time stepping tests (part 1)" begin
             include("test_nonhydrostatic_models.jl")
             include("test_time_stepping.jl")
+            include("test_active_cells_map.jl")
         end
     end
 
