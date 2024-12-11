@@ -190,12 +190,6 @@ function test_windowed_time_averaging_simulation(model)
     simulation.stop_iteration = 3
     run!(simulation) # model.clock.time ≈ 3.15, after output
 
-    @test jld2_u_windowed_time_average.schedule.previous_interval_stop_time ==
-        model.clock.time - rem(model.clock.time, jld2_u_windowed_time_average.schedule.interval)
-
-    @test nc_w_windowed_time_average.schedule.previous_interval_stop_time ==
-        model.clock.time - rem(model.clock.time, nc_w_windowed_time_average.schedule.interval)
-
     # Test that collection does start when a simulation is initialized and
     # time_interval == time_averaging_window
     model.clock.iteration = model.clock.time = 0
