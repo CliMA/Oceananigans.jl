@@ -230,8 +230,8 @@ topos_3d = ((Periodic, Periodic, Bounded),
         end
 
         for topo in [topos_3d..., topos_2d...]
-            size = Flat in topo ? (10, 10, 10) : (10, 10)
-            halo = Flat in topo ? (7, 7, 7)  : (7, 7)
+            size = Flat in topo ? (10, 10) : (10, 10, 10)
+            halo = Flat in topo ? (7,  7)  : (7, 7, 7)
             x    = topo[1] == Flat ? nothing : (0, 1)
             y    = topo[2] == Flat ? nothing : (0, 1)
 
