@@ -76,7 +76,7 @@ end
 
 # tapered slope in y-direction at F, C, F locations
 @inline function ϵSyᶜᶠᶠ(i, j, k, grid, slope_limiter, b, C)
-    Sy = Syᶠᶜᶠ(i, j, k, grid, b, C) 
+    Sy = Syᶜᶠᶠ(i, j, k, grid, b, C) 
     ϵ  = tapering_factor(zero(grid), Sy, slope_limiter)
     return ϵ * Sy
 end 
