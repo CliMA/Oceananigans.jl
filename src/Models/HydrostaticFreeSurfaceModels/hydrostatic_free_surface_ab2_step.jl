@@ -110,7 +110,7 @@ ab2_step_tracer_field!(tracer_field, grid, Δt, χ, Gⁿ, G⁻) =
 
 #####
 ##### Tracer update in generalized vertical coordinates 
-##### We advance e₃θ but store θ once e₃ⁿ⁺¹ is known
+##### We advance σθ but store θ once σⁿ⁺¹ is known
 #####
 
 @kernel function _ab2_step_tracer_field!(θ, grid, Δt, χ, Gⁿ, G⁻)
@@ -120,8 +120,8 @@ ab2_step_tracer_field!(tracer_field, grid, Δt, χ, Gⁿ, G⁻) =
     C₁ = convert(FT, 1.5) + χ
     C₂ = convert(FT, 0.5) + χ
 
-    eⁿ = e₃ⁿ(i, j, k, grid, Center(), Center(), Center())
-    e⁻ = e₃⁻(i, j, k, grid, Center(), Center(), Center())
+    eⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
+    e⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
 
     @inbounds begin
         ∂t_sθ = C₁ * eⁿ * Gⁿ[i, j, k] - C₂ * e⁻ * G⁻[i, j, k]
@@ -132,5 +132,5 @@ ab2_step_tracer_field!(tracer_field, grid, Δt, χ, Gⁿ, G⁻) =
 end
 
 # Fallback! We need to unscale the tracers only in case of 
-# a grid with a moving vertical cocrdinate, i.e. where e₃ is not constant
+# a grid with a moving vertical cocrdinate, i.e. where σ is not constant
 unscale_tracers!(tracers, grid; kwargs...) = nothing

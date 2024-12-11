@@ -34,7 +34,7 @@ using Oceananigans.Grids: with_halo
 using Oceananigans.Architectures: architecture, CPU
 
 using Oceananigans.Operators
-using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, Γᶠᶠᶜ, ∂t_e₃
+using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, Γᶠᶠᶜ, ∂t_σ
 
 import Base: show, summary
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z

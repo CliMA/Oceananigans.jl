@@ -64,8 +64,8 @@ const F = Face
     set!(model, u = (x, y, z) -> x, v = (x, y, z) -> y)
     update_state!(model)
 
-    @test e₃ⁿ(1, 1, 1, grid, C(), C(), C()) == 11 / 10
-    @test e₃ⁿ(2, 1, 1, grid, C(), C(), C()) == 12 / 10
+    @test σⁿ(1, 1, 1, grid, C(), C(), C()) == 11 / 10
+    @test σⁿ(2, 1, 1, grid, C(), C(), C()) == 12 / 10
 
     @test znode(1, 1, 21, grid, C(), C(), F()) == 1
     @test znode(2, 1, 21, grid, C(), C(), F()) == 2

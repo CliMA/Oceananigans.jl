@@ -31,24 +31,24 @@ end
 # - `Δᶜ::D`: Cell-centered grid spacing.
 # - `Δᶠ::D`: Face-centered grid spacing.
 # - `ηⁿ::E`: Surface elevation at the current time step.
-# - `e₃ᶜᶜⁿ::CC`: Vertical grid scaling at center-center at the current time step.
-# - `e₃ᶠᶜⁿ::FC`: Vertical grid scaling at face-center at the current time step.
-# - `e₃ᶜᶠⁿ::CF`: Vertical grid scaling at center-face at the current time step.
-# - `e₃ᶠᶠⁿ::FF`: Vertical grid scaling at face-face at the current time step.
-# - `e₃ᶜᶜ⁻::CC`: Vertical grid scaling at center-center at the previous time step.
-# - `∂t_e₃::CC`: Time derivative of the vertical grid scaling at cell centers.
+# - `σᶜᶜⁿ::CC`: Vertical grid scaling at center-center at the current time step.
+# - `σᶠᶜⁿ::FC`: Vertical grid scaling at face-center at the current time step.
+# - `σᶜᶠⁿ::CF`: Vertical grid scaling at center-face at the current time step.
+# - `σᶠᶠⁿ::FF`: Vertical grid scaling at face-face at the current time step.
+# - `σᶜᶜ⁻::CC`: Vertical grid scaling at center-center at the previous time step.
+# - `∂t_σ::CC`: Time derivative of the vertical grid scaling at cell centers.
 struct ZStarVerticalCoordinate{C, D, E, CC, FC, CF, FF} <: AbstractVerticalCoordinate
     cᵃᵃᶠ :: C
     cᵃᵃᶜ :: C
     Δᵃᵃᶠ :: D
     Δᵃᵃᶜ :: D
       ηⁿ :: E
-   e₃ᶜᶜⁿ :: CC
-   e₃ᶠᶜⁿ :: FC
-   e₃ᶜᶠⁿ :: CF
-   e₃ᶠᶠⁿ :: FF
-   e₃ᶜᶜ⁻ :: CC
-   ∂t_e₃ :: CC
+   σᶜᶜⁿ :: CC
+   σᶠᶜⁿ :: FC
+   σᶜᶠⁿ :: CF
+   σᶠᶠⁿ :: FF
+   σᶜᶜ⁻ :: CC
+   ∂t_σ :: CC
 end
 
 # Convenience constructors for Zstar vertical coordinate
@@ -90,12 +90,12 @@ Adapt.adapt_structure(to, coord::ZStarVerticalCoordinate) =
                             Adapt.adapt(to, coord.Δᵃᵃᶠ),
                             Adapt.adapt(to, coord.Δᵃᵃᶜ),
                             Adapt.adapt(to, coord.ηⁿ),
-                            Adapt.adapt(to, coord.e₃ᶜᶜⁿ),
-                            Adapt.adapt(to, coord.e₃ᶠᶜⁿ),
-                            Adapt.adapt(to, coord.e₃ᶜᶠⁿ),
-                            Adapt.adapt(to, coord.e₃ᶠᶠⁿ),
-                            Adapt.adapt(to, coord.e₃ᶜᶜ⁻),
-                            Adapt.adapt(to, coord.∂t_e₃))
+                            Adapt.adapt(to, coord.σᶜᶜⁿ),
+                            Adapt.adapt(to, coord.σᶠᶜⁿ),
+                            Adapt.adapt(to, coord.σᶜᶠⁿ),
+                            Adapt.adapt(to, coord.σᶠᶠⁿ),
+                            Adapt.adapt(to, coord.σᶜᶜ⁻),
+                            Adapt.adapt(to, coord.∂t_σ))
 
 on_architecture(arch, coord::ZStarVerticalCoordinate) = 
     ZStarVerticalCoordinate(on_architecture(arch, coord.cᵃᵃᶠ),
@@ -103,12 +103,12 @@ on_architecture(arch, coord::ZStarVerticalCoordinate) =
                             on_architecture(arch, coord.Δᵃᵃᶠ),
                             on_architecture(arch, coord.Δᵃᵃᶜ),
                             on_architecture(arch, coord.ηⁿ),
-                            on_architecture(arch, coord.e₃ᶜᶜⁿ),
-                            on_architecture(arch, coord.e₃ᶠᶜⁿ),
-                            on_architecture(arch, coord.e₃ᶜᶠⁿ),
-                            on_architecture(arch, coord.e₃ᶠᶠⁿ),
-                            on_architecture(arch, coord.e₃ᶜᶜ⁻),
-                            on_architecture(arch, coord.∂t_e₃))
+                            on_architecture(arch, coord.σᶜᶜⁿ),
+                            on_architecture(arch, coord.σᶠᶜⁿ),
+                            on_architecture(arch, coord.σᶜᶠⁿ),
+                            on_architecture(arch, coord.σᶠᶠⁿ),
+                            on_architecture(arch, coord.σᶜᶜ⁻),
+                            on_architecture(arch, coord.∂t_σ))
 
 #####
 ##### Nodes and spacings (common to every grid)...

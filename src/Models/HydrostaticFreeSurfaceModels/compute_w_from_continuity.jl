@@ -23,19 +23,19 @@ compute_w_from_continuity!(velocities, arch, grid; parameters = w_kernel_paramet
 # Since the derivative of the moving grid is:
 #
 #            δx(Δy U) + δy(Δx V)       ∇ ⋅ U
-# ∂t_e₃ = - --------------------- = - --------
+# ∂t_σ = - --------------------- = - --------
 #                   Az ⋅ H               H    
 #
 # The discrete divergence is calculated as:
 #
-#  wᵏ⁺¹ - wᵏ      δx(Ax u) + δy(Ay v)     Δr ∂t_e₃
+#  wᵏ⁺¹ - wᵏ      δx(Ax u) + δy(Ay v)     Δr ∂t_σ
 # ---------- = - --------------------- - ----------
 #     Δz                  V                  Δz
 #
 # This makes sure that if we sum up till the top of the domain, we get
 #
 #                ∇ ⋅ U
-#  wᴺᶻ⁺¹ = w⁰ - ------- - ∂t_e₃ ≈ 0 (if w⁰ == 0)
+#  wᴺᶻ⁺¹ = w⁰ - ------- - ∂t_σ ≈ 0 (if w⁰ == 0)
 #                  H   
 # 
 @kernel function _compute_w_from_continuity!(U, grid)
@@ -44,10 +44,10 @@ compute_w_from_continuity!(velocities, arch, grid; parameters = w_kernel_paramet
     @inbounds U.w[i, j, 1] = 0
     for k in 2:grid.Nz+1
         δh_u = flux_div_xyᶜᶜᶜ(i, j, k-1, grid, U.u, U.v) / Azᶜᶜᶜ(i, j, k-1, grid) 
-        ∂te₃ = Δrᶜᶜᶜ(i, j, k-1, grid) * ∂t_e₃(i, j, k-1, grid)
+        ∂tσ = Δrᶜᶜᶜ(i, j, k-1, grid) * ∂t_σ(i, j, k-1, grid)
 
         immersed = immersed_cell(i, j, k-1, grid)
-        Δw       = δh_u + ifelse(immersed, 0, ∂te₃) # We do not account for grid changes in immersed cells
+        Δw       = δh_u + ifelse(immersed, 0, ∂tσ) # We do not account for grid changes in immersed cells
 
         @inbounds U.w[i, j, k] = U.w[i, j, k-1] - Δw
     end

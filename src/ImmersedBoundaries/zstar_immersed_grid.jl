@@ -6,7 +6,7 @@ import Oceananigans.Grids: dynamic_column_depthᶜᶜᵃ,
                            dynamic_column_depthᶠᶜᵃ,
                            dynamic_column_depthᶠᶠᵃ
 
-import Oceananigans.Operators: e₃ⁿ, e₃⁻, ∂t_e₃
+import Oceananigans.Operators: σⁿ, σ⁻, ∂t_σ
 
 const ZStarImmersedGrid   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractZStarGrid}
 const ZStarGridOfSomeKind = Union{ZStarImmersedGrid, AbstractZStarGrid}
@@ -28,7 +28,7 @@ const ZStarGridOfSomeKind = Union{ZStarImmersedGrid, AbstractZStarGrid}
 @inline dynamic_column_depthᶠᶠᵃ(i, j, grid::ZStarGridOfSomeKind) = dynamic_column_depthᶠᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)
 
 # Fallbacks
-@inline e₃ⁿ(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = e₃ⁿ(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
-@inline e₃⁻(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = e₃⁻(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
+@inline σⁿ(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = σⁿ(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
+@inline σ⁻(i, j, k, ibg::IBG, ℓx, ℓy, ℓz) = σ⁻(i, j, k, ibg.underlying_grid, ℓx, ℓy, ℓz)
 
-@inline ∂t_e₃(i, j, k, ibg::IBG) = ∂t_e₃(i, j, k, ibg.underlying_grid)
+@inline ∂t_σ(i, j, k, ibg::IBG) = ∂t_σ(i, j, k, ibg.underlying_grid)

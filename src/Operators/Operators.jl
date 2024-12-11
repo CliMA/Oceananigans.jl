@@ -78,7 +78,7 @@ export ∂xTᶠᶜᶠ, ∂yTᶜᶠᶠ
 export intrinsic_vector, extrinsic_vector
 
 # Variable grid operators
-export e₃ⁿ, e₃⁻, ∂t_e₃
+export σⁿ, σ⁻, ∂t_σ
 
 using Oceananigans.Grids
 

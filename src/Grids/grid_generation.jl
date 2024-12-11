@@ -180,18 +180,18 @@ function generate_coordinate(FT, topo, size, halo, coordinate::ZStarVerticalCoor
 
     args = (topo, (Nx, Ny, Nz), (Hx, Hy, Hz))
 
-    e₃ᶜᶜ⁻ = new_data(FT, arch, (Center, Center, Nothing), args...)
-    e₃ᶜᶜⁿ = new_data(FT, arch, (Center, Center, Nothing), args...)
-    e₃ᶠᶜⁿ = new_data(FT, arch, (Face,   Center, Nothing), args...)
-    e₃ᶜᶠⁿ = new_data(FT, arch, (Center, Face,   Nothing), args...)
-    e₃ᶠᶠⁿ = new_data(FT, arch, (Face,   Face,   Nothing), args...)
+    σᶜᶜ⁻ = new_data(FT, arch, (Center, Center, Nothing), args...)
+    σᶜᶜⁿ = new_data(FT, arch, (Center, Center, Nothing), args...)
+    σᶠᶜⁿ = new_data(FT, arch, (Face,   Center, Nothing), args...)
+    σᶜᶠⁿ = new_data(FT, arch, (Center, Face,   Nothing), args...)
+    σᶠᶠⁿ = new_data(FT, arch, (Face,   Face,   Nothing), args...)
     ηⁿ    = new_data(FT, arch, (Center, Center, Nothing), args...)
-    ∂t_e₃ = new_data(FT, arch, (Center, Center, Nothing), args...)
+    ∂t_σ = new_data(FT, arch, (Center, Center, Nothing), args...)
 
     # Fill all the scalings with one (at rest coordinate)
-    for e₃ in (e₃ᶜᶜ⁻, e₃ᶜᶜⁿ, e₃ᶠᶜⁿ, e₃ᶜᶠⁿ, e₃ᶠᶠⁿ)
-        fill!(e₃, 1)
+    for σ in (σᶜᶜ⁻, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ)
+        fill!(σ, 1)
     end
     
-    return Lr, ZStarVerticalCoordinate(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, e₃ᶜᶜⁿ, e₃ᶠᶜⁿ, e₃ᶜᶠⁿ, e₃ᶠᶠⁿ, e₃ᶜᶜ⁻, ∂t_e₃)
+    return Lr, ZStarVerticalCoordinate(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
 end

@@ -23,17 +23,17 @@ update_grid!(model, grid; parameters) = nothing
 function update_grid!(model, grid::ZStarGridOfSomeKind; parameters = :xy)
 
     # Scalings and free surface
-    e₃ᶜᶜ⁻  = grid.z.e₃ᶜᶜ⁻
-    e₃ᶜᶜⁿ  = grid.z.e₃ᶜᶜⁿ
-    e₃ᶠᶜⁿ  = grid.z.e₃ᶠᶜⁿ
-    e₃ᶜᶠⁿ  = grid.z.e₃ᶜᶠⁿ
-    e₃ᶠᶠⁿ  = grid.z.e₃ᶠᶠⁿ
-    ∂t_e₃  = grid.z.∂t_e₃
+    σᶜᶜ⁻  = grid.z.σᶜᶜ⁻
+    σᶜᶜⁿ  = grid.z.σᶜᶜⁿ
+    σᶠᶜⁿ  = grid.z.σᶠᶜⁿ
+    σᶜᶠⁿ  = grid.z.σᶜᶠⁿ
+    σᶠᶠⁿ  = grid.z.σᶠᶠⁿ
+    ∂t_σ  = grid.z.∂t_σ
     ηⁿ     = grid.z.ηⁿ
     η      = model.free_surface.η
 
     launch!(architecture(grid), grid, parameters, _update_grid_scaling!, 
-            e₃ᶜᶜⁿ, e₃ᶠᶜⁿ, e₃ᶜᶠⁿ, e₃ᶠᶠⁿ, e₃ᶜᶜ⁻, ηⁿ, grid, η)
+            σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, grid, η)
 
     # the barotropic velocities are retrieved from the free surface model for a
     # SplitExplicitFreeSurface and are calculated for other free surface models
@@ -42,12 +42,12 @@ function update_grid!(model, grid::ZStarGridOfSomeKind; parameters = :xy)
 
     # Update vertical spacing with available parameters 
     # No need to fill the halo as the scaling is updated _IN_ the halos
-    launch!(architecture(grid), grid, parameters, _update_grid_vertical_velocity!, ∂t_e₃, grid, U, V, u, v)
+    launch!(architecture(grid), grid, parameters, _update_grid_vertical_velocity!, ∂t_σ, grid, U, V, u, v)
 
     return nothing
 end
 
-@kernel function _update_grid_scaling!(e₃ᶜᶜⁿ, e₃ᶠᶜⁿ, e₃ᶜᶠⁿ, e₃ᶠᶠⁿ, e₃ᶜᶜ⁻, ηⁿ, grid, η)
+@kernel function _update_grid_scaling!(σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, grid, η)
     i, j = @index(Global, NTuple)
     k_top = size(grid, 3) + 1
 
@@ -62,26 +62,26 @@ end
     Hᶠᶠ = dynamic_column_depthᶠᶠᵃ(i, j, k_top, grid, η)
 
     @inbounds begin
-        e₃ᶜᶜ = ifelse(hᶜᶜ == 0, one(grid), Hᶜᶜ / hᶜᶜ)
-        e₃ᶠᶜ = ifelse(hᶠᶜ == 0, one(grid), Hᶠᶜ / hᶠᶜ)
-        e₃ᶜᶠ = ifelse(hᶜᶠ == 0, one(grid), Hᶜᶠ / hᶜᶠ)
-        e₃ᶠᶠ = ifelse(hᶠᶠ == 0, one(grid), Hᶠᶠ / hᶠᶠ)
+        σᶜᶜ = ifelse(hᶜᶜ == 0, one(grid), Hᶜᶜ / hᶜᶜ)
+        σᶠᶜ = ifelse(hᶠᶜ == 0, one(grid), Hᶠᶜ / hᶠᶜ)
+        σᶜᶠ = ifelse(hᶜᶠ == 0, one(grid), Hᶜᶠ / hᶜᶠ)
+        σᶠᶠ = ifelse(hᶠᶠ == 0, one(grid), Hᶠᶠ / hᶠᶠ)
 
         # Update previous scaling
-        e₃ᶜᶜ⁻[i, j, 1] = e₃ᶜᶜⁿ[i, j, 1]
+        σᶜᶜ⁻[i, j, 1] = σᶜᶜⁿ[i, j, 1]
         
         # update current scaling
-        e₃ᶜᶜⁿ[i, j, 1] = e₃ᶜᶜ
-        e₃ᶠᶜⁿ[i, j, 1] = e₃ᶠᶜ
-        e₃ᶜᶠⁿ[i, j, 1] = e₃ᶜᶠ
-        e₃ᶠᶠⁿ[i, j, 1] = e₃ᶠᶠ
+        σᶜᶜⁿ[i, j, 1] = σᶜᶜ
+        σᶠᶜⁿ[i, j, 1] = σᶠᶜ
+        σᶜᶠⁿ[i, j, 1] = σᶜᶠ
+        σᶠᶠⁿ[i, j, 1] = σᶠᶠ
 
         # Update η in the grid
         ηⁿ[i, j, 1] = η[i, j, k_top]
     end
 end
 
-@kernel function _update_grid_vertical_velocity!(∂t_e₃, grid, U, V, u, v)
+@kernel function _update_grid_vertical_velocity!(∂t_σ, grid, U, V, u, v)
     i, j = @index(Global, NTuple)
     kᴺ = size(grid, 3)
 
@@ -93,7 +93,7 @@ end
 
     δh_U = (δx_U + δy_V) / Azᶜᶜᶜ(i, j, kᴺ, grid)
     
-    @inbounds ∂t_e₃[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), - δh_U / hᶜᶜ)
+    @inbounds ∂t_σ[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), - δh_U / hᶜᶜ)
 end
 
 # If U and V exist, we just take them
@@ -161,6 +161,6 @@ end
     i, j, n = @index(Global, NTuple)
 
     @unroll for k in -Hz+1:Nz+Hz
-        tracers[n][i, j, k] /= e₃ⁿ(i, j, k, grid, Center(), Center(), Center())
+        tracers[n][i, j, k] /= σⁿ(i, j, k, grid, Center(), Center(), Center())
     end
 end
