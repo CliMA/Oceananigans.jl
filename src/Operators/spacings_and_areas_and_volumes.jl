@@ -103,20 +103,14 @@ end
 ##### One - dimensional Vertical spacing (same for all grids)
 #####
 
+@inline getspacing(k, Δz::Number) = Δz
+@inline getspacing(k, Δz::AbstractVector) = @inbounds Δz[k]
 
-const ZRG = Union{LLGZ, RGZ, OSSGZ}
+@inline Δrᵃᵃᶜ(i, j, k, grid) = getspacing(k, grid.z.Δᵃᵃᶜ)
+@inline Δrᵃᵃᶠ(i, j, k, grid) = getspacing(k, grid.z.Δᵃᵃᶠ)
 
-@inline Δrᵃᵃᶜ(i, j, k, grid) = @inbounds grid.z.Δᵃᵃᶜ[k]
-@inline Δrᵃᵃᶠ(i, j, k, grid) = @inbounds grid.z.Δᵃᵃᶠ[k]
-
-@inline Δrᵃᵃᶜ(i, j, k, grid::ZRG) = grid.z.Δᵃᵃᶜ
-@inline Δrᵃᵃᶠ(i, j, k, grid::ZRG) = grid.z.Δᵃᵃᶠ
-
-@inline Δzᵃᵃᶜ(i, j, k, grid) = @inbounds grid.z.Δᵃᵃᶜ[k]
-@inline Δzᵃᵃᶠ(i, j, k, grid) = @inbounds grid.z.Δᵃᵃᶠ[k]
-
-@inline Δzᵃᵃᶜ(i, j, k, grid::ZRG) = grid.z.Δᵃᵃᶜ
-@inline Δzᵃᵃᶠ(i, j, k, grid::ZRG) = grid.z.Δᵃᵃᶠ
+@inline Δzᵃᵃᶜ(i, j, k, grid) = getspacing(k, grid.z.Δᵃᵃᶜ)
+@inline Δzᵃᵃᶠ(i, j, k, grid) = getspacing(k, grid.z.Δᵃᵃᶠ)
 
 #####
 #####
