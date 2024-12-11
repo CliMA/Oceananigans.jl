@@ -6,7 +6,7 @@ buoyancy(::BuoyancyTracer, grid, tracers) = tracers.b
 
 # TODO: move to Models
 buoyancy(model) = buoyancy(model.buoyancy, model.grid, model.tracers)
-buoyancy(buoyancy::BuoyancyForce, grid, tracers) = buoyancy(buoyancy.formulation, grid, tracers)
+buoyancy(bf::BuoyancyForce, grid, tracers) = buoyancy(bf.formulation, grid, tracers)
 
 buoyancy(bm::AbstractBuoyancyFormulation, grid, tracers) =
     KernelFunctionOperation{Center, Center, Center}(buoyancy_perturbationᶜᶜᶜ, grid, bm, tracers)
