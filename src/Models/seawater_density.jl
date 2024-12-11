@@ -121,11 +121,11 @@ Values for `temperature`, `salinity` and `geopotential_height` can be passed to
 `seawater_density` to override the defaults that are obtained from the `model`.
 """
 function seawater_density(model::ModelsWithBuoyancy;
-                         temperature = model_temperature(model.buoyancy.model, model),
-                         salinity = model_salinity(model.buoyancy.model, model),
+                         temperature = model_temperature(model.buoyancy.formulation, model),
+                         salinity = model_salinity(model.buoyancy.formulation, model),
                          geopotential_height = model_geopotential_height(model))
 
-    eos = model.buoyancy.model.equation_of_state
+    eos = model.buoyancy.formulation.equation_of_state
     validate_model_eos(eos)
     # Convert function or constant user input to AbstractField
     grid = model.grid
