@@ -116,7 +116,7 @@ end
             for grid in grids
                 info_msg = info_message(grid)
                 
-                split_free_surface    = SplitExplicitFreeSurface(grid; substeps = 20)
+                split_free_surface    = SplitExplicitFreeSurface(grid; cfl = 0.75)
 
                 # TODO: Implicit and Explicit free surfaces are not fully supported yet
                 implicit_free_surface = ImplicitFreeSurface()
@@ -136,7 +136,7 @@ end
 
                         set!(model, c = (x, y, z) -> rand(), b = bᵢ)
 
-                        test_zstar_coordinate(model, 100, 10)
+                        test_zstar_coordinate(model, 100, 5minutes)
                     end
                 end
             end
