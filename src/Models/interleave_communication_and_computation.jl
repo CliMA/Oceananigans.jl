@@ -26,8 +26,15 @@ complete_communication_and_compute_buffer!(model, grid, arch) = nothing
 compute_buffer_tendencies!(model) = nothing
 
 """ Kernel parameters for computing interior tendencies. """
-interior_tendency_kernel_parameters(arch, grid) = :xyz # fallback
-interior_tendency_kernel_parameters(::SynchronizedDistributed, grid) = :xyz
+function interior_tendency_kernel_parameters(arch, grid)
+    Nx, Ny, Nz = size(grid)
+    return KernelParameters(0:Nx+1, 0:Ny+1, 1:Nz)
+end
+
+function interior_tendency_kernel_parameters(::SynchronizedDistributed, grid) 
+    Nx, Ny, Nz = size(grid)
+    return KernelParameters(0:Nx+1, 0:Ny+1, 1:Nz)
+end
 
 function interior_parameters_without_halo(arch, grid)
     Rx, Ry, _ = arch.ranks
@@ -44,24 +51,24 @@ function interior_parameters_without_halo(arch, grid)
 
     # Sizes
     Sx = if local_x
-        Nx
+        Nx + 2
     elseif one_sided_x
-        Nx - Hx + 1
+        Nx - Hx + 2
     else # two sided
         Nx - 2Hx + 2
     end
 
     Sy = if local_y
-        Ny
+        Ny + 2
     elseif one_sided_y
-        Ny - Hy + 1
+        Ny - Hy + 2
     else # two sided
         Ny - 2Hy + 2
     end
 
     # Offsets
-    Ox = Rx == 1 || Tx == RightConnected ? 0 : Hx - 1
-    Oy = Ry == 1 || Ty == RightConnected ? 0 : Hy - 1
+    Ox = Rx == 1 || Tx == RightConnected ? -1 : Hx-1
+    Oy = Ry == 1 || Ty == RightConnected ? -1 : Hy-1
 
     sizes = (Sx, Sy, Nz)
     offsets = (Ox, Oy, 0)
