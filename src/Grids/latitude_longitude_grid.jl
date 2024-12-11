@@ -307,7 +307,7 @@ function Base.show(io::IO, grid::LatitudeLongitudeGrid, withsummary=true)
 
     Ωλ = domain(TX(), size(grid, 1), grid.λᶠᵃᵃ)
     Ωφ = domain(TY(), size(grid, 2), grid.φᵃᶠᵃ)
-    Ωz = domain(TZ(), size(grid, 3), grid.z.cᶠ)
+    Ωz = domain(TZ(), size(grid, 3), grid.z.cᵃᵃᶠ)
 
     x_summary = domain_summary(TX(), "λ", Ωλ)
     y_summary = domain_summary(TY(), "φ", Ωφ)
@@ -557,12 +557,6 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
 end
 
 #####
-##### Utilities
-#####
-
-coordinates(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠᵃ, :φᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
-
-#####
 ##### Grid nodes
 #####
 
@@ -652,19 +646,6 @@ end
 #####
 ##### Grid spacings
 #####
-
-@inline λspacing(i, grid::LLG, ::C) = @inbounds grid.Δλᶜᵃᵃ[i]
-@inline λspacing(i, grid::LLG, ::F) = @inbounds grid.Δλᶠᵃᵃ[i]
-@inline λspacing(i, grid::XRegularLLG, ::C) = grid.Δλᶜᵃᵃ
-@inline λspacing(i, grid::XRegularLLG, ::F) = grid.Δλᶠᵃᵃ
-
-@inline φspacing(j, grid::LLG, ::C) = @inbounds grid.Δφᵃᶜᵃ[j]
-@inline φspacing(j, grid::LLG, ::F) = @inbounds grid.Δφᵃᶠᵃ[j]
-@inline φspacing(j, grid::YRegularLLG, ::C) = grid.Δφᵃᶜᵃ
-@inline φspacing(j, grid::YRegularLLG, ::F) = grid.Δφᵃᶠᵃ
-
-@inline λspacing(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = λspacing(i, grid, ℓx)
-@inline φspacing(i, j, k, grid::LLG, ℓx, ℓy, ℓz) = φspacing(j, grid, ℓy)
 
 @inline xspacings(grid::LLG, ℓx, ℓy) = xspacings(grid, ℓx, ℓy, nothing)
 @inline yspacings(grid::LLG, ℓx, ℓy) = yspacings(grid, ℓx, ℓy, nothing)

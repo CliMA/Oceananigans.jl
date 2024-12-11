@@ -56,42 +56,66 @@ Fill halo regions for all `fields`. The algorithm:
 function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args...; kwargs...)
     flattened = flattened_unique_values(maybe_nested_tuple)
 
-    # Sort fields into ReducedField and Field with non-nothing boundary conditions
-    fields_with_bcs = filter(f -> !isnothing(boundary_conditions(f)), flattened)
-    reduced_fields  = filter(f -> f isa ReducedField, fields_with_bcs)
-    
-    for field in reduced_fields
-        fill_halo_regions!(field, args...; kwargs...)
+    # Look for grid within the flattened field tuple:
+    for f in flattened
+        if isdefined(f, :grid)
+            grid = f.grid
+            return tupled_fill_halo_regions!(flattened, grid, args...; kwargs...)
+        end
     end
 
-    # MultiRegion fields are considered windowed_fields (indices isa MultiRegionObject))
-    windowed_fields = filter(f -> !(f isa FullField), fields_with_bcs)
-    ordinary_fields = filter(f -> (f isa FullField) && !(f isa ReducedField), fields_with_bcs)
+    return tupled_fill_halo_regions!(flattened, args...; kwargs...)
+end
 
-    # Fill halo regions for reduced and windowed fields
-    for field in windowed_fields
-        fill_halo_regions!(field, args...; kwargs...)
-    end
+# Version where we find grid amongst ordinary fields:
+function tupled_fill_halo_regions!(fields, args...; kwargs...)
 
-    # Fill the rest
-    if !isempty(ordinary_fields)
+    ordinary_fields = produce_ordinary_fields(fields, args...; kwargs)
+
+    if !isempty(ordinary_fields) # ie not reduced, and with default_indices
         grid = first(ordinary_fields).grid
-        tupled_fill_halo_regions!(ordinary_fields, grid, args...; kwargs...)
+        fill_halo_regions!(map(data, ordinary_fields),
+                           map(boundary_conditions, ordinary_fields),
+                           default_indices(3),
+                           map(instantiated_location, ordinary_fields),
+                           grid, args...; kwargs...)
+    end
+
+    return nothing
+end
+    
+# Version where grid is provided:
+function tupled_fill_halo_regions!(fields, grid::AbstractGrid, args...; kwargs...)
+
+    ordinary_fields = produce_ordinary_fields(fields, args...; kwargs)
+
+    if !isempty(ordinary_fields) # ie not reduced, and with default_indices
+        fill_halo_regions!(map(data, ordinary_fields),
+                           map(boundary_conditions, ordinary_fields),
+                           default_indices(3),
+                           map(instantiated_location, ordinary_fields),
+                           grid, args...; kwargs...)
     end
 
     return nothing
 end
 
-function tupled_fill_halo_regions!(fields, grid, args...; kwargs...)
+# Helper function to create the tuple of ordinary fields:
+@inline function produce_ordinary_fields(fields, args...; kwargs)
 
-    # We cannot group windowed fields together, the indices must be (:, :, :)!
-    indices = default_indices(3)        
+    ordinary_fields = Field[]
+    for f in fields
+        if !isnothing(boundary_conditions(f))
+            if f isa ReducedField || !(f isa FullField)
+                # Windowed and reduced fields
+                fill_halo_regions!(f, args...; kwargs...)
+            else
+                push!(ordinary_fields, f)
+            end
+        end
+    end
 
-    return fill_halo_regions!(map(data, fields),
-                              map(boundary_conditions, fields),
-                              indices,
-                              map(instantiated_location, fields),
-                              grid, args...; kwargs...)
+    return tuple(ordinary_fields...)
 end
 
 #####
@@ -191,7 +215,7 @@ Return a `NamedTuple` with tracer fields specified by `tracer_names` initialized
 `CenterField`s on `grid`. Fields may be passed via optional
 keyword arguments `kwargs` for each field.
 
-This function is used by `OutputWriters.Checkpointer` and `TendencyFields`.
+This function is used by `OutputWriters.Checkpointer`
 ```
 """
 TracerFields(tracer_names, grid; kwargs...) =
@@ -202,30 +226,6 @@ TracerFields(::Union{Tuple{}, Nothing}, grid, bcs) = NamedTuple()
 
 "Shortcut constructor for empty tracer fields."
 TracerFields(::NamedTuple{(), Tuple{}}, grid, bcs) = NamedTuple()
-
-"""
-    TendencyFields(grid, tracer_names;
-                   u = XFaceField(grid),
-                   v = YFaceField(grid),
-                   w = ZFaceField(grid),
-                   kwargs...)
-
-Return a `NamedTuple` with tendencies for all solution fields (velocity fields and
-tracer fields), initialized on `grid`. Optional `kwargs`
-can be specified to assign data arrays to each tendency field.
-"""
-function TendencyFields(grid, tracer_names;
-                        u = XFaceField(grid),
-                        v = YFaceField(grid),
-                        w = ZFaceField(grid),
-                        kwargs...)
-
-    velocities = (u=u, v=v, w=w)
-
-    tracers = TracerFields(tracer_names, grid; kwargs...)
-
-    return merge(velocities, tracers)
-end
 
 #####
 ##### Helper functions for NonhydrostaticModel constructor

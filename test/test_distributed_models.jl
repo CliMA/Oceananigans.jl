@@ -237,8 +237,8 @@ function test_triply_periodic_local_grid_with_411_ranks()
     @test local_grid.xᶠᵃᵃ[nx+1] == 0.25*(local_rank+1)
     @test local_grid.yᵃᶠᵃ[1] == 0
     @test local_grid.yᵃᶠᵃ[ny+1] == 2
-    @test local_grid.z.cᶠ[1] == -3
-    @test local_grid.z.cᶠ[nz+1] == 0
+    @test local_grid.z.cᵃᵃᶠ[1] == -3
+    @test local_grid.z.cᵃᵃᶠ[nz+1] == 0
 
     return nothing
 end
@@ -254,8 +254,8 @@ function test_triply_periodic_local_grid_with_141_ranks()
     @test local_grid.xᶠᵃᵃ[nx+1] == 1
     @test local_grid.yᵃᶠᵃ[1] == 0.5*local_rank
     @test local_grid.yᵃᶠᵃ[ny+1] == 0.5*(local_rank+1)
-    @test local_grid.z.cᶠ[1] == -3
-    @test local_grid.z.cᶠ[nz+1] == 0
+    @test local_grid.z.cᵃᵃᶠ[1] == -3
+    @test local_grid.z.cᵃᵃᶠ[nz+1] == 0
 
     return nothing
 end
@@ -271,8 +271,8 @@ function test_triply_periodic_local_grid_with_221_ranks()
     @test local_grid.xᶠᵃᵃ[nx+1] == 0.5*i
     @test local_grid.yᵃᶠᵃ[1] == j-1
     @test local_grid.yᵃᶠᵃ[ny+1] == j
-    @test local_grid.z.cᶠ[1] == -3
-    @test local_grid.z.cᶠ[nz+1] == 0
+    @test local_grid.z.cᵃᵃᶠ[1] == -3
+    @test local_grid.z.cᵃᵃᶠ[nz+1] == 0
 
     return nothing
 end

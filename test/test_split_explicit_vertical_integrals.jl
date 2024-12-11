@@ -55,6 +55,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 
         @testset "Inexact integration" begin
             # Test 2: Check that vertical integrals work on the CPU(). The following should be "inexact"
+            Δz = zeros(Nz)
+            Δz .= grid.z.Δᵃᵃᶠ
+
             set_u_check(x, y, z) = cos((π / 2) * z / Lz)
             set_U_check(x, y)    = (sin(0) - (-2 * Lz / (π)))
             set!(u, set_u_check)
@@ -74,6 +77,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
         end
 
         @testset "Vertical Integral " begin
+            Δz = zeros(Nz)
+            Δz .= grid.z.Δᵃᵃᶜ
 
             set!(u, 0.0)
             set!(U, 1.0)

@@ -17,10 +17,10 @@ abstract type AbstractVerticalCoordinate end
 # - `Δᶜ::D`: Cell-centered grid spacing.
 # - `Δᶠ::D`: Face-centered grid spacing.
 struct StaticVerticalCoordinate{C, D} <: AbstractVerticalCoordinate
-    cᶠ :: C
-    cᶜ :: C
-    Δᶠ :: D
-    Δᶜ :: D
+    cᵃᵃᶠ :: C
+    cᵃᵃᶜ :: C
+    Δᵃᵃᶠ :: D
+    Δᵃᵃᶜ :: D
 end
 
 # Represents a z-star three-dimensional vertical coordinate.
@@ -38,17 +38,17 @@ end
 # - `e₃ᶜᶜ⁻::CC`: Vertical grid scaling at center-center at the previous time step.
 # - `∂t_e₃::CC`: Time derivative of the vertical grid scaling at cell centers.
 struct ZStarVerticalCoordinate{C, D, E, CC, FC, CF, FF} <: AbstractVerticalCoordinate
-       cᶠ :: C
-       cᶜ :: C
-       Δᶠ :: D
-       Δᶜ :: D
-       ηⁿ :: E
-    e₃ᶜᶜⁿ :: CC
-    e₃ᶠᶜⁿ :: FC
-    e₃ᶜᶠⁿ :: CF
-    e₃ᶠᶠⁿ :: FF
-    e₃ᶜᶜ⁻ :: CC
-    ∂t_e₃ :: CC
+    cᵃᵃᶠ :: C
+    cᵃᵃᶜ :: C
+    Δᵃᵃᶠ :: D
+    Δᵃᵃᶜ :: D
+      ηⁿ :: E
+   e₃ᶜᶜⁿ :: CC
+   e₃ᶠᶜⁿ :: FC
+   e₃ᶜᶠⁿ :: CF
+   e₃ᶠᶠⁿ :: FF
+   e₃ᶜᶜ⁻ :: CC
+   ∂t_e₃ :: CC
 end
 
 # Convenience constructors for Zstar vertical coordinate
@@ -73,16 +73,22 @@ const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,  
 ####
 
 Adapt.adapt_structure(to, coord::StaticVerticalCoordinate) = 
-   StaticVerticalCoordinate(Adapt.adapt(to, coord.cᶠ),
-                            Adapt.adapt(to, coord.cᶜ),
-                            Adapt.adapt(to, coord.Δᶠ),
-                            Adapt.adapt(to, coord.Δᶜ))
+   StaticVerticalCoordinate(Adapt.adapt(to, coord.cᵃᵃᶠ),
+                            Adapt.adapt(to, coord.cᵃᵃᶜ),
+                            Adapt.adapt(to, coord.Δᵃᵃᶠ),
+                            Adapt.adapt(to, coord.Δᵃᵃᶜ))
+
+on_architecture(arch, coord::StaticVerticalCoordinate) = 
+   StaticVerticalCoordinate(on_architecture(arch, coord.cᵃᵃᶠ),
+                            on_architecture(arch, coord.cᵃᵃᶜ),
+                            on_architecture(arch, coord.Δᵃᵃᶠ),
+                            on_architecture(arch, coord.Δᵃᵃᶜ))
 
 Adapt.adapt_structure(to, coord::ZStarVerticalCoordinate) = 
-    ZStarVerticalCoordinate(Adapt.adapt(to, coord.cᶠ),
-                            Adapt.adapt(to, coord.cᶜ),
-                            Adapt.adapt(to, coord.Δᶠ),
-                            Adapt.adapt(to, coord.Δᶜ),
+    ZStarVerticalCoordinate(Adapt.adapt(to, coord.cᵃᵃᶠ),
+                            Adapt.adapt(to, coord.cᵃᵃᶜ),
+                            Adapt.adapt(to, coord.Δᵃᵃᶠ),
+                            Adapt.adapt(to, coord.Δᵃᵃᶜ),
                             Adapt.adapt(to, coord.ηⁿ),
                             Adapt.adapt(to, coord.e₃ᶜᶜⁿ),
                             Adapt.adapt(to, coord.e₃ᶠᶜⁿ),
@@ -91,17 +97,11 @@ Adapt.adapt_structure(to, coord::ZStarVerticalCoordinate) =
                             Adapt.adapt(to, coord.e₃ᶜᶜ⁻),
                             Adapt.adapt(to, coord.∂t_e₃))
 
-on_architecture(arch, coord::StaticVerticalCoordinate) = 
-   StaticVerticalCoordinate(on_architecture(arch, coord.cᶠ),
-                            on_architecture(arch, coord.cᶜ),
-                            on_architecture(arch, coord.Δᶠ),
-                            on_architecture(arch, coord.Δᶜ))
-
 on_architecture(arch, coord::ZStarVerticalCoordinate) = 
-    ZStarVerticalCoordinate(on_architecture(arch, coord.cᶠ),
-                            on_architecture(arch, coord.cᶜ),
-                            on_architecture(arch, coord.Δᶠ),
-                            on_architecture(arch, coord.Δᶜ),
+    ZStarVerticalCoordinate(on_architecture(arch, coord.cᵃᵃᶠ),
+                            on_architecture(arch, coord.cᵃᵃᶜ),
+                            on_architecture(arch, coord.Δᵃᵃᶠ),
+                            on_architecture(arch, coord.Δᵃᵃᶜ),
                             on_architecture(arch, coord.ηⁿ),
                             on_architecture(arch, coord.e₃ᶜᶜⁿ),
                             on_architecture(arch, coord.e₃ᶠᶜⁿ),
@@ -109,7 +109,7 @@ on_architecture(arch, coord::ZStarVerticalCoordinate) =
                             on_architecture(arch, coord.e₃ᶠᶠⁿ),
                             on_architecture(arch, coord.e₃ᶜᶜ⁻),
                             on_architecture(arch, coord.∂t_e₃))
- 
+
 #####
 ##### Nodes and spacings (common to every grid)...
 #####
@@ -117,15 +117,15 @@ on_architecture(arch, coord::ZStarVerticalCoordinate) =
 AUG = AbstractUnderlyingGrid
 
 @inline rnode(i, j, k, grid, ℓx, ℓy, ℓz) = rnode(k, grid, ℓz)
-@inline rnode(k, grid, ::Center) = getnode(grid.z.cᶜ, k)
-@inline rnode(k, grid, ::Face)   = getnode(grid.z.cᶠ, k)
+@inline rnode(k, grid, ::Center) = getnode(grid.z.cᵃᵃᶜ, k)
+@inline rnode(k, grid, ::Face)   = getnode(grid.z.cᵃᵃᶠ, k)
 
 # These will be extended in the Operators module
 @inline znode(k, grid, ℓz) = rnode(k, grid, ℓz)
 @inline znode(i, j, k, grid, ℓx, ℓy, ℓz) = rnode(i, j, k, grid, ℓx, ℓy, ℓz)
 
-@inline rnodes(grid::AUG, ℓz::Face;   with_halos=false) = _property(grid.z.cᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
-@inline rnodes(grid::AUG, ℓz::Center; with_halos=false) = _property(grid.z.cᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline rnodes(grid::AUG, ℓz::Face;   with_halos=false) = _property(grid.z.cᵃᵃᶠ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
+@inline rnodes(grid::AUG, ℓz::Center; with_halos=false) = _property(grid.z.cᵃᵃᶜ, ℓz, topology(grid, 3), size(grid, 3), with_halos)
 @inline rnodes(grid::AUG, ℓx, ℓy, ℓz; with_halos=false) = rnodes(grid, ℓz; with_halos)
 
 rnodes(grid::AUG, ::Nothing; kwargs...) = 1:1
@@ -142,10 +142,10 @@ function zspacings end
 @inline zspacings(grid, ℓz) = zspacings(grid, nothing, nothing, ℓz)
 
 ####
-#### `z_domain` (independent of ZStar or not) and `cpu_face_constructor_z`
+#### `z_domain` and `cpu_face_constructor_z`
 ####
 
-z_domain(grid) = domain(topology(grid, 3)(), grid.Nz, grid.z.cᶠ)
+z_domain(grid) = domain(topology(grid, 3)(), grid.Nz, grid.z.cᵃᵃᶠ)
 
 @inline cpu_face_constructor_r(grid::RegularVerticalGrid) = z_domain(grid)
 
@@ -164,8 +164,8 @@ end
 ####
 
 function validate_dimension_specification(T, ξ::ZStarVerticalCoordinate, dir, N, FT)
-    cᶠ = validate_dimension_specification(T, ξ.cᶠ, dir, N, FT)
-    cᶜ = validate_dimension_specification(T, ξ.cᶜ, dir, N, FT)
+    cᶠ = validate_dimension_specification(T, ξ.cᵃᵃᶠ, dir, N, FT)
+    cᶜ = validate_dimension_specification(T, ξ.cᵃᵃᶜ, dir, N, FT)
     args = Tuple(getproperty(ξ, prop) for prop in propertynames(ξ))
 
     return ZStarVerticalCoordinate(cᶠ, cᶜ, args[3:end]...)
@@ -173,4 +173,4 @@ end
 
 # Summaries
 coordinate_summary(::Bounded, z::AbstractVerticalCoordinate, name) = 
-    @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(z.Δᶜ))
+    @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(z.Δᵃᵃᶜ))

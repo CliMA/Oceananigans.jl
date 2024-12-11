@@ -262,6 +262,8 @@ end
 @inline κ_σᶠᶜᶜ(i, j, k, grid, closure, K, id, clock, fields, σᶠᶜᶜ, args...) = κᶠᶜᶜ(i, j, k, grid, closure, K, id, clock, fields) * σᶠᶜᶜ(i, j, k, grid, args...)
 @inline κ_σᶜᶠᶜ(i, j, k, grid, closure, K, id, clock, fields, σᶜᶠᶜ, args...) = κᶜᶠᶜ(i, j, k, grid, closure, K, id, clock, fields) * σᶜᶠᶜ(i, j, k, grid, args...)
 @inline κ_σᶜᶜᶠ(i, j, k, grid, closure, K, id, clock, fields, σᶜᶜᶠ, args...) = κᶜᶜᶠ(i, j, k, grid, closure, K, id, clock, fields) * σᶜᶜᶠ(i, j, k, grid, args...)
+@inline κ_σᶠᶜᶠ(i, j, k, grid, closure, K, id, clock, fields, σᶠᶜᶠ, args...) = κᶠᶜᶠ(i, j, k, grid, closure, K, id, clock, fields) * σᶠᶜᶠ(i, j, k, grid, args...)
+@inline κ_σᶜᶠᶠ(i, j, k, grid, closure, K, id, clock, fields, σᶜᶠᶠ, args...) = κᶜᶠᶠ(i, j, k, grid, closure, K, id, clock, fields) * σᶜᶠᶠ(i, j, k, grid, args...)
 
 #####
 ##### Viscosity "extractors"
@@ -277,6 +279,9 @@ end
 @inline κᶠᶜᶜ(i, j, k, grid, loc, κ::Number, args...) = κ
 @inline κᶜᶠᶜ(i, j, k, grid, loc, κ::Number, args...) = κ
 @inline κᶜᶜᶠ(i, j, k, grid, loc, κ::Number, args...) = κ
+@inline κᶠᶜᶠ(i, j, k, grid, loc, κ::Number, args...) = κ
+@inline κᶜᶠᶠ(i, j, k, grid, loc, κ::Number, args...) = κ
+
 
 # Array / Field at `Center, Center, Center`
 const Lᶜᶜᶜ = Tuple{Center, Center, Center}
@@ -288,6 +293,8 @@ const Lᶜᶜᶜ = Tuple{Center, Center, Center}
 @inline κᶠᶜᶜ(i, j, k, grid, ::Lᶜᶜᶜ, κ::AbstractArray, args...) = ℑxᶠᵃᵃ(i, j, k, grid, κ)
 @inline κᶜᶠᶜ(i, j, k, grid, ::Lᶜᶜᶜ, κ::AbstractArray, args...) = ℑyᵃᶠᵃ(i, j, k, grid, κ)
 @inline κᶜᶜᶠ(i, j, k, grid, ::Lᶜᶜᶜ, κ::AbstractArray, args...) = ℑzᵃᵃᶠ(i, j, k, grid, κ)
+@inline κᶠᶜᶠ(i, j, k, grid, ::Lᶜᶜᶜ, κ::AbstractArray, args...) = ℑxzᶠᵃᶠ(i, j, k, grid, κ)
+@inline κᶜᶠᶠ(i, j, k, grid, ::Lᶜᶜᶜ, κ::AbstractArray, args...) = ℑyzᵃᶠᶠ(i, j, k, grid, κ)
 
 # Array / Field at `Center, Center, Face`
 const Lᶜᶜᶠ = Tuple{Center, Center, Face}
@@ -299,6 +306,8 @@ const Lᶜᶜᶠ = Tuple{Center, Center, Face}
 @inline κᶠᶜᶜ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, args...) = ℑxzᶠᵃᶠ(i, j, k, grid, κ)
 @inline κᶜᶠᶜ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, args...) = ℑyzᵃᶠᶠ(i, j, k, grid, κ)
 @inline κᶜᶜᶠ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, args...) = @inbounds κ[i, j, k]
+@inline κᶠᶜᶠ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, args...) = ℑxᶠᵃᵃ(i, j, k, grid, κ)
+@inline κᶜᶠᶠ(i, j, k, grid, ::Lᶜᶜᶠ, κ::AbstractArray, args...) = ℑyᵃᶠᵃ(i, j, k, grid, κ)
 
 # Function
 
@@ -313,6 +322,8 @@ const f = Face()
 @inline κᶠᶜᶜ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(i, j, k, grid, f, c, c)..., clock.time)
 @inline κᶜᶠᶜ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(i, j, k, grid, c, f, c)..., clock.time)
 @inline κᶜᶜᶠ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(i, j, k, grid, c, c, f)..., clock.time)
+@inline κᶠᶜᶠ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(i, j, k, grid, f, c, f)..., clock.time)
+@inline κᶜᶠᶠ(i, j, k, grid, loc, κ::F, clock, args...) where F<:Function = κ(node(i, j, k, grid, c, f, f)..., clock.time)
 
 # "DiscreteDiffusionFunction"
 @inline νᶜᶜᶜ(i, j, k, grid, loc, ν::DiscreteDiffusionFunction, clock, fields) = getdiffusivity(ν, i, j, k, grid, (c, c, c), clock, fields)
@@ -323,5 +334,8 @@ const f = Face()
 @inline κᶠᶜᶜ(i, j, k, grid, loc, κ::DiscreteDiffusionFunction, clock, fields) = getdiffusivity(κ, i, j, k, grid, (f, c, c), clock, fields)
 @inline κᶜᶠᶜ(i, j, k, grid, loc, κ::DiscreteDiffusionFunction, clock, fields) = getdiffusivity(κ, i, j, k, grid, (c, f, c), clock, fields)
 @inline κᶜᶜᶠ(i, j, k, grid, loc, κ::DiscreteDiffusionFunction, clock, fields) = getdiffusivity(κ, i, j, k, grid, (c, c, f), clock, fields)
+@inline κᶠᶜᶠ(i, j, k, grid, loc, κ::DiscreteDiffusionFunction, clock, fields) = getdiffusivity(κ, i, j, k, grid, (f, c, f), clock, fields)
+@inline κᶜᶠᶠ(i, j, k, grid, loc, κ::DiscreteDiffusionFunction, clock, fields) = getdiffusivity(κ, i, j, k, grid, (c, f, f), clock, fields)
+
 
 
