@@ -124,10 +124,10 @@ ab2_step_tracer_field!(tracer_field, grid, Δt, χ, Gⁿ, G⁻) =
     e⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
 
     @inbounds begin
-        ∂t_sθ = C₁ * eⁿ * Gⁿ[i, j, k] - C₂ * e⁻ * G⁻[i, j, k]
+        ∂t_σθ = C₁ * eⁿ * Gⁿ[i, j, k] - C₂ * e⁻ * G⁻[i, j, k]
         
         # We store temporarily sθ in θ. the unscaled θ will be retrived later on with `unscale_tracers!`
-        θ[i, j, k] = eⁿ * θ[i, j, k] + convert(FT, Δt) * ∂t_sθ
+        θ[i, j, k] = eⁿ * θ[i, j, k] + convert(FT, Δt) * ∂t_σθ
     end
 end
 
