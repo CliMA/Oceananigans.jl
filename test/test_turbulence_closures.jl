@@ -257,7 +257,6 @@ end
 
     @testset "Closure instantiation" begin
         for closurename in closures
-            @info "  Testing the instantiation of $closurename..."
             closure = @eval $closurename()
             @test closure isa TurbulenceClosures.AbstractTurbulenceClosure
 
