@@ -23,7 +23,7 @@ function test_zstar_coordinate(model, Ni, Δt)
 
     @test interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
     @test interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)    
-    @test maximum(interior(w, :, :, Nz+1)) < model.grid.Nz * eps(eltype(w))
+    @test maximum(abs, interior(w, :, :, Nz+1)) < eps(eltype(w))
     
     return nothing
 end
