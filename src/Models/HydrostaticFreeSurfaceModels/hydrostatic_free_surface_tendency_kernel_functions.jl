@@ -7,8 +7,8 @@ using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_dr
 using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Forcings: with_advective_forcing
-using Oceananigans.TurbulenceClosures: shear_production, buoyancy_flux, dissipation
-using Oceananigans.Utils: SumOfArrays
+using Oceananigans.TurbulenceClosures: shear_production, buoyancy_flux, dissipation, closure_turbulent_velocity
+using Oceananigans.Utils: sum_of_velocities
 using KernelAbstractions: @private
 
 import Oceananigans.TurbulenceClosures: hydrostatic_turbulent_kinetic_energy_tendency
@@ -123,11 +123,9 @@ where `c = C[tracer_index]`.
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
     biogeochemical_velocities = biogeochemical_drift_velocity(biogeochemistry, val_tracer_name)
+    closure_velocities = closure_turbulent_velocity(closure, diffusivities, val_tracer_name)
 
-    total_velocities = (u = SumOfArrays{2}(velocities.u, biogeochemical_velocities.u),
-                        v = SumOfArrays{2}(velocities.v, biogeochemical_velocities.v),
-                        w = SumOfArrays{2}(velocities.w, biogeochemical_velocities.w))
-
+    total_velocities = sum_of_velocities(velocities, biogeochemical_velocities, closure_velocities)
     total_velocities = with_advective_forcing(forcing, total_velocities)
 
     return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)

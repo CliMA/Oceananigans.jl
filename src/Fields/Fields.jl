@@ -6,7 +6,7 @@ export CenterField, XFaceField, YFaceField, ZFaceField
 export BackgroundField
 export interior, data, xnode, ynode, znode
 export set!, compute!, @compute, regrid!
-export VelocityFields, TracerFields, TendencyFields, tracernames
+export VelocityFields, TracerFields, tracernames
 export interpolate
 
 using Oceananigans.Architectures
