@@ -27,9 +27,10 @@ they are called in the end. Finally, the tendencies for the new time-step are co
 `compute_tendencies = true`.
 """
 update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true) =
-    update_state!(model, model.grid, callbacks; compute_tendencies)
+         update_state!(model, model.grid, callbacks; compute_tendencies)
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
+
     @apply_regionally mask_immersed_model_fields!(model, grid)
 
     # Update possible FieldTimeSeries used in the model
@@ -49,7 +50,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
-    compute_tendencies &&
+    compute_tendencies && 
         @apply_regionally compute_tendencies!(model, callbacks)
 
     return nothing
@@ -72,17 +73,23 @@ end
 
 function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters = w_kernel_parameters(model.grid),
                                                                   p_parameters = p_kernel_parameters(model.grid),
-                                                                  κ_parameters = :xyz)
-
-    grid = model.grid
-    closure = model.closure
+                                                                  κ_parameters = :xyz) 
+    
+    grid        = model.grid
+    closure     = model.closure
+    tracers     = model.tracers
     diffusivity = model.diffusivity_fields
+    buoyancy    = model.buoyancy
+    
+    P    = model.pressure.pHY′
+    arch = architecture(grid) 
 
-    compute_w_from_continuity!(model; parameters = w_parameters)    
+    # Advance diagnostic quantities
+    compute_w_from_continuity!(model; parameters = w_parameters)
+    update_hydrostatic_pressure!(P, arch, grid, buoyancy, tracers; parameters = p_parameters)
+
+    # Update closure diffusivities
     compute_diffusivities!(diffusivity, closure, model; parameters = κ_parameters)
-    update_hydrostatic_pressure!(model.pressure.pHY′, architecture(grid),
-                                 grid, model.buoyancy, model.tracers; 
-                                 parameters = p_parameters)
-
+    
     return nothing
 end
