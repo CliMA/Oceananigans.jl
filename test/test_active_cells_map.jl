@@ -69,6 +69,7 @@ Nz = 10
             bottom_height[i, j] = - rand() * 5 - 5
         end
 
+        bottom_height = on_architecture(arch, bottom_height)
         immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
         immersed_active_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map = true)
 
