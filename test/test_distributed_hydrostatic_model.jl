@@ -26,52 +26,7 @@ MPI.Initialized() || MPI.Init()
 # to initialize MPI.
 
 using Oceananigans.Operators: hack_cosd
-using Oceananigans.DistributedComputations: partition, all_reduce, cpu_architecture, reconstruct_global_grid
-
-function Δ_min(grid) 
-    Δx_min = minimum_xspacing(grid, Center(), Center(), Center())
-    Δy_min = minimum_yspacing(grid, Center(), Center(), Center())
-    return min(Δx_min, Δy_min)
-end
-
-@inline Gaussian(x, y, L) = exp(-(x^2 + y^2) / L^2)
-
-function solid_body_rotation_test(grid)
-
-    free_surface = SplitExplicitFreeSurface(grid; substeps = 5, gravitational_acceleration = 1)
-    coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
-
-    model = HydrostaticFreeSurfaceModel(; grid,
-                                        momentum_advection = VectorInvariant(),
-                                        free_surface = free_surface,
-                                        coriolis = coriolis,
-                                        tracers = :c,
-                                        tracer_advection = WENO(),
-                                        buoyancy = nothing,
-                                        closure = nothing)
-
-    g = model.free_surface.gravitational_acceleration
-    R = grid.radius
-    Ω = model.coriolis.rotation_rate
-
-    uᵢ(λ, φ, z) = 0.1 * cosd(φ) * sind(λ)
-    ηᵢ(λ, φ, z) = (R * Ω * 0.1 + 0.1^2 / 2) * sind(φ)^2 / g * sind(λ)
-
-    # Gaussian leads to values with O(1e-60),
-    # too small for repetible testing. We cap it at 0.1
-    cᵢ(λ, φ, z) = max(Gaussian(λ, φ - 5, 10), 0.1)
-    vᵢ(λ, φ, z) = 0.1
-
-    set!(model, u=uᵢ, η=ηᵢ, c=cᵢ)
-
-    @show Δt_local = 0.1 * Δ_min(grid) / sqrt(g * grid.Lz) 
-    @show Δt = all_reduce(min, Δt_local, architecture(grid))
-
-    simulation = Simulation(model; Δt, stop_iteration = 10)
-    run!(simulation)
-
-    return merge(model.velocities, model.tracers, (; η = model.free_surface.η))
-end
+using Oceananigans.DistributedComputations: partition, cpu_architecture, reconstruct_global_grid
 
 Nx = 32
 Ny = 32
@@ -94,7 +49,9 @@ for arch in archs
         global_underlying_grid = reconstruct_global_grid(underlying_grid)
         global_immersed_grid   = ImmersedBoundaryGrid(global_underlying_grid, GridFittedBottom(bottom))
 
-        for (grid, global_grid) in zip((immersed_active_grid, immersed_grid), (global_immersed_grid, global_immersed_grid))
+        for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid), 
+                                       (global_underlying_grid, global_immersed_grid, global_immersed_grid))
+            
             @info "  Testing distributed solid body rotation with architecture $arch on $(typeof(grid).name.wrapper)"
             u, v, w, c, η = solid_body_rotation_test(grid)
 
