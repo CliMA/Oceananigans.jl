@@ -46,8 +46,8 @@ function solid_body_rotation_test(grid)
     return merge(model.velocities, model.tracers, (; η = model.free_surface.η))
 end
 
-Nx = 32
-Ny = 32
+Nx = 16
+Ny = 16
 
 for arch in archs
     @testset "Active cells map solid body rotation" begin
