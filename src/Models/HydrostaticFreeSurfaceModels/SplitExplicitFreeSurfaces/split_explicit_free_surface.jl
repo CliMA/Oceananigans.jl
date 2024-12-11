@@ -1,4 +1,4 @@
-using Oceananigans.BuoyancyModels: g_Earth
+using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.Grids: with_halo
 import Oceananigans.Grids: on_architecture
 

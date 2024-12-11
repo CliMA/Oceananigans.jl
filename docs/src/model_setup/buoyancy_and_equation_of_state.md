@@ -220,8 +220,9 @@ BoussinesqEquationOfState{Float64}:
 ## The direction of gravitational acceleration
 
 To simulate gravitational accelerations that don't align with the vertical (`z`) coordinate,
-we wrap the buoyancy model in
-`Buoyancy()` function call, which takes the keyword arguments `model` and `gravity_unit_vector`,
+we use `BuoyancyForce(formulation; gravity_unit_vector)`, wherein the buoyancy `formulation`
+can be `BuoyancyTracer`, `SeawaterBuoyancy`, etc, in addition to the `gravity_unit_vector`.
+For example,
 
 ```jldoctest buoyancy
 julia> grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1));
@@ -230,9 +231,9 @@ julia> θ = 45; # degrees
 
 julia> g̃ = (0, sind(θ), cosd(θ));
 
-julia> buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=g̃)
-Buoyancy:
-├── model: BuoyancyTracer
+julia> buoyancy = BuoyancyForce(BuoyancyTracer(), gravity_unit_vector=g̃)
+BuoyancyForce:
+├── formulation: BuoyancyTracer
 └── gravity_unit_vector: (0.0, 0.707107, 0.707107)
 
 julia> model = NonhydrostaticModel(; grid, buoyancy, tracers=:b)
