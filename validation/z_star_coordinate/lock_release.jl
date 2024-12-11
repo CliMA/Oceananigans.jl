@@ -18,15 +18,13 @@ grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> - (64kilometers - x) / 6
 
 model = HydrostaticFreeSurfaceModel(; grid, 
                          momentum_advection = WENO(order = 5),
-                           tracer_advection = FluxFormAdvection(WENO(; order = 5), nothing, WENO(; order = 5)),
+                           tracer_advection = WENO(order = 5),
                                    buoyancy = BuoyancyTracer(),
                                     closure = nothing, 
                                     tracers = :b,
-                               free_surface = SplitExplicitFreeSurface(; substeps = 10))
+                               free_surface = SplitExplicitFreeSurface(grid; substeps = 10))
 
 g = model.free_surface.gravitational_acceleration
-
-model.timestepper.χ = 0.1
 
 bᵢ(x, z) = x < 32kilometers ? 0.06 : 0.01
 
@@ -38,7 +36,7 @@ set!(model, b = bᵢ)
 
 simulation = Simulation(model; Δt, stop_iteration = 10000, stop_time = 17hours) 
 
-Δz = GridMetricOperation((Center, Center, Center), Oceananigans.AbstractOperations.Δz, model.grid)
+Δz = zspacings(grid, Center(), Center(), Center())
 ∫b_init = sum(model.tracers.b * Δz) / sum(Δz)
 
 field_outputs = merge(model.velocities, model.tracers, (; Δz))
@@ -63,7 +61,7 @@ function progress(sim)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 run!(simulation)
 
@@ -71,12 +69,12 @@ using Oceananigans.Fields: OneField
 
 # # Check tracer conservation
 b  = FieldTimeSeries("zstar_model.jld2", "b")
-Δz = FieldTimeSeries("zstar_model.jld2", "Δz")
+dz = FieldTimeSeries("zstar_model.jld2", "Δz")
 
-init  = sum(Δz[1] * b[1]) / sum(Δz[1])
+init  = sum(dz[1] * b[1]) / sum(dz[1])
 drift = []
 
 for t in 1:length(b.times)
-  push!(drift, sum(Δz[t] * b[t]) /  sum(Δz[t]) - init) 
+  push!(drift, sum(dz[t] * b[t]) /  sum(dz[t]) - init) 
 end
 
