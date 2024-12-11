@@ -39,41 +39,45 @@ R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical ad
     return min(one(Sx), Sₘ² / S²)
 end
 
-# Slope in x-direction at F, C, F locations
+# Slope in x-direction at F, C, F locations, zeroed out on peripheries
 @inline function Sxᶠᶜᶠ(i, j, k, grid, b, C) 
     bx = ℑzᵃᵃᶠ(i, j, k, grid, ∂x_b, b, C) 
     bz = ℑxᶠᵃᵃ(i, j, k, grid, ∂z_b, b, C)
-    return ifelse(bz == 0, zero(grid), - bx / bz)
+    
+    Sx = ifelse(bz == 0, zero(grid), - bx / bz)
+
+    # Impose a boundary condition on immersed peripheries
+    inactive = peripheral_node(i, j, k, grid, Face(), Center(), Face())
+    Sx = ifelse(inactive, zero(grid), Sx)
+    
+    return Sx
 end
 
-# Slope in y-direction at F, C, F locations
+# Slope in y-direction at F, C, F locations, zeroed out on peripheries
 @inline function Syᶜᶠᶠ(i, j, k, grid, b, C) 
     by = ℑzᵃᵃᶠ(i, j, k, grid, ∂y_b, b, C) 
     bz = ℑyᵃᶠᵃ(i, j, k, grid, ∂z_b, b, C)
+
+    Sy = ifelse(bz == 0, zero(grid), - by / bz)
+
+    # Impose a boundary condition on immersed peripheries
+    inactive = peripheral_node(i, j, k, grid, Center(), Face(), Face())
+    Sy = ifelse(inactive, zero(grid), Sy)
+    
     return ifelse(bz == 0, zero(grid), - by / bz)
 end
 
 # tapered slope in x-direction at F, C, F locations
 @inline function ϵSxᶠᶜᶠ(i, j, k, grid, slope_limiter, b, C)
     Sx = Sxᶠᶜᶠ(i, j, k, grid, b, C) 
-
-    # Impose a boundary condition on immersed peripheries
-    inactive = peripheral_node(i, j, k, grid, Face(), Center(), Face())
     ϵ  = tapering_factor(Sx, zero(grid), slope_limiter)
-    Sx = ifelse(inactive, zero(grid), Sx)
-
     return ϵ * Sx
 end
 
 # tapered slope in y-direction at F, C, F locations
 @inline function ϵSyᶜᶠᶠ(i, j, k, grid, slope_limiter, b, C)
     Sy = Syᶠᶜᶠ(i, j, k, grid, b, C) 
-
-    # Impose a boundary condition on immersed peripheries
-    inactive = peripheral_node(i, j, k, grid, Center(), Face(), Face())
     ϵ  = tapering_factor(zero(grid), Sy, slope_limiter)
-    Sy = ifelse(inactive, zero(grid), Sy)
-
     return ϵ * Sy
 end 
 
