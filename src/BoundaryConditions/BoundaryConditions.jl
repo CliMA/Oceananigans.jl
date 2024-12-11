@@ -38,6 +38,7 @@ include("fill_halo_regions_zipper.jl")
 include("apply_flux_bcs.jl")
 
 include("update_boundary_conditions.jl")
+include("polar_boundary_condition.jl")
 
 include("flat_extrapolation_open_boundary_matching_scheme.jl")
 end # module

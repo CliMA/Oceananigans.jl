@@ -10,12 +10,15 @@ export
 
     # Grids
     Center, Face,
-    Periodic, Bounded, Flat, 
+    Periodic, Bounded, Flat,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, TripolarGrid,
-    nodes, xnodes, ynodes, znodes, λnodes, φnodes,
-    xspacings, yspacings, zspacings, λspacings, φspacings,
+    nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
+    xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
     minimum_xspacing, minimum_yspacing, minimum_zspacing,
 
+    # Pointwise spacing, area, and volume operators
+    xspacing, yspacing, zspacing, λspacing, φspacing, xarea, yarea, zarea, volume,
+    
     # Immersed boundaries
     ImmersedBoundaryGrid,
     GridFittedBoundary, GridFittedBottom, PartialCellBottom,

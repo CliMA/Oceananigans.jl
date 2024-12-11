@@ -2,7 +2,7 @@ using Adapt
 using CUDA: CuArray
 using OffsetArrays: OffsetArray
 using Oceananigans.Utils: getnamewrapper
-using Oceananigans.Grids: total_size
+using Oceananigans.Grids: total_size, rnode
 using Oceananigans.Fields: fill_halo_regions!
 using Oceananigans.BoundaryConditions: FBC
 using Printf
@@ -112,18 +112,20 @@ compute_numerical_bottom_height!(bottom_field, grid, ib) =
 @kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::GridFittedBottom)
     i, j = @index(Global, NTuple)
     zb = @inbounds bottom_field[i, j, 1]
-    @inbounds bottom_field[i, j, 1] = znode(i, j, 1, grid, c, c, f)
+    @inbounds bottom_field[i, j, 1] = rnode(i, j, 1, grid, c, c, f)
     condition = ib.immersed_condition
     for k in 1:grid.Nz
-        z⁺ = znode(i, j, k+1, grid, c, c, f)
-        z  = znode(i, j, k,   grid, c, c, c)
+        z⁺ = rnode(i, j, k+1, grid, c, c, f)
+        z  = rnode(i, j, k,   grid, c, c, c)
         bottom_cell = ifelse(condition isa CenterImmersedCondition, z ≤ zb, z⁺ ≤ zb)
-        @inbounds bottom_field[i, j, 1] = ifelse(bottom_cell, z⁺, zb)
+        @inbounds bottom_field[i, j, 1] = ifelse(bottom_cell, z⁺, bottom_field[i, j, 1])
     end
 end
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom)
-    z  = znode(i, j, k, underlying_grid, c, c, c)
+    # We use `rnode` for the `immersed_cell` because we do not want to have
+    # wetting or drying that could happen for a moving grid if we use znode
+    z  = rnode(i, j, k, underlying_grid, c, c, c)
     zb = @inbounds ib.bottom_height[i, j, 1]
     return z ≤ zb
 end
@@ -134,7 +136,7 @@ end
 
 const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
 
-@inline static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIBG) = @inbounds znode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.bottom_height[i, j, 1] 
+@inline static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIBG) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.bottom_height[i, j, 1] 
 @inline static_column_depthᶜᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶜᶜᵃ(i, j-1, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
 @inline static_column_depthᶠᶜᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶜᶜᵃ(i-1, j, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶠᶜᵃ(i, j-1, ibg), static_column_depthᶠᶜᵃ(i, j, ibg))

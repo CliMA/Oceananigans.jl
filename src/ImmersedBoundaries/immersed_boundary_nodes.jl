@@ -1,3 +1,4 @@
+import Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
 import Oceananigans.Grids: xspacings, yspacings, zspacings
 
 const c = Center()
@@ -64,6 +65,28 @@ rname(ibg::IBG) = rname(ibg.underlying_grid)
 @inline fractional_y_index(x, locs, grid::ImmersedBoundaryGrid) = fractional_y_index(x, locs, grid.underlying_grid)
 @inline fractional_z_index(x, locs, grid::ImmersedBoundaryGrid) = fractional_z_index(x, locs, grid.underlying_grid)
 
-xspacings(ibg::ImmersedBoundaryGrid, ℓ...) = xspacings(ibg.underlying_grid, ℓ...)
-yspacings(ibg::ImmersedBoundaryGrid, ℓ...) = yspacings(ibg.underlying_grid, ℓ...)
-zspacings(ibg::ImmersedBoundaryGrid, ℓ...) = zspacings(ibg.underlying_grid, ℓ...)
+#####
+##### Grid-specific grid spacings
+#####
+
+const RGIBG{F, X, Y, Z} = ImmersedBoundaryGrid{F, X, Y, Z, <:RectilinearGrid}
+const LLIBG{F, X, Y, Z} = ImmersedBoundaryGrid{F, X, Y, Z, <:LatitudeLongitudeGrid}
+const OSIBG{F, X, Y, Z} = ImmersedBoundaryGrid{F, X, Y, Z, <:OrthogonalSphericalShellGrid}
+
+@inline xspacings(grid::RGIBG, ℓx) = xspacings(grid, ℓx, nothing, nothing)
+@inline yspacings(grid::RGIBG, ℓy) = yspacings(grid, nothing, ℓy, nothing)
+@inline zspacings(grid::RGIBG, ℓz) = zspacings(grid, nothing, nothing, ℓz)
+
+@inline xspacings(grid::LLIBG, ℓx, ℓy) = xspacings(grid, ℓx, ℓy, nothing)
+@inline yspacings(grid::LLIBG, ℓx, ℓy) = yspacings(grid, ℓx, ℓy, nothing)
+@inline zspacings(grid::LLIBG, ℓz)     = zspacings(grid, nothing, nothing, ℓz)
+
+@inline xspacings(grid::OSIBG, ℓx, ℓy) = xspacings(grid, ℓx, ℓy, nothing)
+@inline yspacings(grid::OSIBG, ℓx, ℓy) = yspacings(grid, ℓx, ℓy, nothing)
+@inline zspacings(grid::OSIBG, ℓz)     = zspacings(grid, nothing, nothing, ℓz)
+
+@inline λspacings(grid::LLIBG, ℓx) = λspacings(grid, ℓx, nothing, nothing)
+@inline φspacings(grid::LLIBG, ℓy) = φspacings(grid, nothing, ℓy, nothing)
+
+@inline λspacings(grid::OSIBG, ℓx, ℓy) = λspacings(grid, ℓx, ℓy, nothing)
+@inline φspacings(grid::OSIBG, ℓx, ℓy) = φspacings(grid, ℓx, ℓy, nothing)
