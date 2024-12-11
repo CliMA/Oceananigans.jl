@@ -1,4 +1,4 @@
-using Oceananigans.Grids: Center, Face
+using Oceananigans.Grids: Center, Face, AbstractGrid
 
 @inline hack_cosd(φ) = cos(π * φ / 180)
 @inline hack_sind(φ) = sin(π * φ / 180)
@@ -35,6 +35,17 @@ The operators in this file fall into three categories:
 #####
 #####
 
+const ZRG = Union{LLGZ, RGZ, OSSGZ}
+
+@inline getspacing(k, Δz::AbstractVector) = @inbounds Δz[k]
+@inline getspacing(k, Δz::Number)         = @inbounds Δz
+
+@inline Δrᵃᵃᶜ(i, j, k, grid::AbstractGrid) = getspacing(k, grid.z.Δᵃᵃᶜ)
+@inline Δrᵃᵃᶠ(i, j, k, grid::AbstractGrid) = getspacing(k, grid.z.Δᵃᵃᶠ)
+
+@inline Δzᵃᵃᶜ(i, j, k, grid::AbstractGrid) = Δrᵃᵃᶜ(i, j, k, grid)
+@inline Δzᵃᵃᶠ(i, j, k, grid::AbstractGrid) = Δrᵃᵃᶠ(i, j, k, grid)
+
 # This metaprogramming loop defines all possible combinations of locations for spacings.
 # The general 2D and 3D spacings are reconducted to their one - dimensional counterparts.
 # Grids that do not have a specific one - dimensional spacing for a given location need to 
@@ -48,18 +59,21 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
     Δzᵃᵃˡ = Symbol(:Δz, :ᵃ, :ᵃ, L1)
     Δλˡᵃᵃ = Symbol(:Δλ, L1, :ᵃ, :ᵃ)
     Δφᵃˡᵃ = Symbol(:Δφ, :ᵃ, L1, :ᵃ)
+    Δrᵃᵃˡ = Symbol(:Δr, :ᵃ, :ᵃ, L1)
 
     Δxˡˡᵃ = Symbol(:Δx, L1, L2, :ᵃ)
     Δyˡˡᵃ = Symbol(:Δy, L2, L1, :ᵃ)
     Δzˡᵃˡ = Symbol(:Δz, L2, :ᵃ, L1)
     Δλˡˡᵃ = Symbol(:Δλ, L1, L2, :ᵃ)
     Δφˡˡᵃ = Symbol(:Δφ, L2, L1, :ᵃ)
+    Δrˡᵃˡ = Symbol(:Δr, L2, :ᵃ, L1)
 
     Δxˡᵃˡ = Symbol(:Δx, L1, :ᵃ, L2)
     Δyᵃˡˡ = Symbol(:Δy, :ᵃ, L1, L2)
     Δzᵃˡˡ = Symbol(:Δz, :ᵃ, L2, L1)
     Δλˡᵃˡ = Symbol(:Δλ, L1, :ᵃ, L2)
     Δφᵃˡˡ = Symbol(:Δφ, :ᵃ, L1, L2)
+    Δrᵃˡˡ = Symbol(:Δr, :ᵃ, L2, L1)
     
     @eval @inline $Δxˡˡᵃ(i, j, k, grid) = $Δxˡᵃᵃ(i, j, k, grid)
     @eval @inline $Δxˡᵃˡ(i, j, k, grid) = $Δxˡᵃᵃ(i, j, k, grid)
@@ -76,18 +90,23 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
     @eval @inline $Δφˡˡᵃ(i, j, k, grid) = $Δφᵃˡᵃ(i, j, k, grid)
     @eval @inline $Δφᵃˡˡ(i, j, k, grid) = $Δφᵃˡᵃ(i, j, k, grid)
 
+    @eval @inline $Δrˡᵃˡ(i, j, k, grid) = $Δrᵃᵃˡ(i, j, k, grid)
+    @eval @inline $Δrᵃˡˡ(i, j, k, grid) = $Δrᵃᵃˡ(i, j, k, grid)
+
     for L3 in (:ᶜ, :ᶠ)
         Δxˡˡˡ = Symbol(:Δx, L1, L2, L3)
         Δyˡˡˡ = Symbol(:Δy, L2, L1, L3)
         Δzˡˡˡ = Symbol(:Δz, L2, L3, L1)
         Δλˡˡˡ = Symbol(:Δλ, L1, L2, L3)
         Δφˡˡˡ = Symbol(:Δφ, L2, L1, L3)
+        Δrˡˡˡ = Symbol(:Δr, L2, L3, L1)
     
         @eval @inline $Δxˡˡˡ(i, j, k, grid) = $Δxˡˡᵃ(i, j, k, grid)
         @eval @inline $Δyˡˡˡ(i, j, k, grid) = $Δyˡˡᵃ(i, j, k, grid)
         @eval @inline $Δzˡˡˡ(i, j, k, grid) = $Δzˡᵃˡ(i, j, k, grid)
         @eval @inline $Δλˡˡˡ(i, j, k, grid) = $Δλˡˡᵃ(i, j, k, grid)
         @eval @inline $Δφˡˡˡ(i, j, k, grid) = $Δφˡˡᵃ(i, j, k, grid)
+        @eval @inline $Δrˡˡˡ(i, j, k, grid) = $Δrˡᵃˡ(i, j, k, grid)
     end
 end
 
@@ -95,11 +114,11 @@ end
 ##### One - dimensional Vertical spacing (same for all grids)
 #####
 
-@inline Δzᵃᵃᶜ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶜ[k]
-@inline Δzᵃᵃᶠ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶠ[k]
+@inline Δzᵃᵃᶜ(i, j, k, grid) = @inbounds grid.z.Δᵃᵃᶜ[k]
+@inline Δzᵃᵃᶠ(i, j, k, grid) = @inbounds grid.z.Δᵃᵃᶠ[k]
 
-@inline Δzᵃᵃᶜ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶜ
-@inline Δzᵃᵃᶠ(i, j, k, grid::ZRG) = grid.Δzᵃᵃᶠ
+@inline Δzᵃᵃᶜ(i, j, k, grid::ZRG) = grid.z.Δᵃᵃᶜ
+@inline Δzᵃᵃᶠ(i, j, k, grid::ZRG) = grid.z.Δᵃᵃᶠ
 
 #####
 #####
@@ -336,7 +355,7 @@ for LX in (:Center, :Face, :Nothing)
             LZe = @eval $LZ
 
             # General spacing functions
-            for dir in (:x, :y, :λ, :φ, :z)
+            for dir in (:x, :y, :λ, :φ, :z, :r)
                 func   = Symbol(:Δ, dir)
                 metric = Symbol(:Δ, dir, location_code(LXe, LYe, LZe))
 
@@ -371,6 +390,7 @@ end
 Δz(k, grid, ℓz) = Δz(1, 1, k, grid, nothing, nothing, ℓz)
 Δλ(i, grid, ℓx) = Δλ(i, 1, 1, grid, ℓx, nothing, nothing)
 Δφ(j, grid, ℓy) = Δφ(1, j, 1, grid, nothing, ℓy, nothing)
+Δr(k, grid, ℓz) = Δr(1, 1, k, grid, nothing, nothing, ℓz)
 
 # Two-dimensional horizontal convenience spacings (for grids that support them)
 

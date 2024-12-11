@@ -8,7 +8,7 @@ using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
 using Oceananigans.Models: update_model_field_time_series!
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, surface_kernel_parameters, interior_tendency_kernel_parameters
-using Oceananigans.Fields: replace_horizontal_vector_halos!
+using Oceananigans.Fields: replace_horizontal_vector_halos!, tupled_fill_halo_regions!
 
 import Oceananigans.Models.NonhydrostaticModels: compute_auxiliaries!
 import Oceananigans.TimeSteppers: update_state!
@@ -27,9 +27,10 @@ they are called in the end. Finally, the tendencies for the new time-step are co
 `compute_tendencies = true`.
 """
 update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true) =
-    update_state!(model, model.grid, callbacks; compute_tendencies)
+         update_state!(model, model.grid, callbacks; compute_tendencies)
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
+
     @apply_regionally mask_immersed_model_fields!(model, grid)
 
     # Update possible FieldTimeSeries used in the model
@@ -38,7 +39,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
     # Update the boundary conditions
     @apply_regionally update_boundary_condition!(fields(model), model)
 
-    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async = true)
+    tupled_fill_halo_regions!(prognostic_fields(model), grid, model.clock, fields(model), async=true)
 
     @apply_regionally replace_horizontal_vector_halos!(model.velocities, model.grid)
     @apply_regionally compute_auxiliaries!(model, grid, architecture(grid))
@@ -49,7 +50,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
-    compute_tendencies &&
+    compute_tendencies && 
         @apply_regionally compute_tendencies!(model, callbacks)
 
     return nothing
@@ -74,18 +75,22 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel, grid, arch;
                               params2D = surface_kernel_parameters(arch, grid),
                               params3D = interior_tendency_kernel_parameters(arch, grid),
                               active_cells_map = retrieve_interior_active_cells_map(grid, Val(:interior)))
-
-    grid = model.grid
-    closure = model.closure
+    
+    grid        = model.grid
+    closure     = model.closure
+    tracers     = model.tracers
     diffusivity = model.diffusivity_fields
+    buoyancy    = model.buoyancy
+    
+    P    = model.pressure.pHY′
+    arch = architecture(grid) 
 
+    # Advance diagnostic quantities
     compute_w_from_continuity!(model; parameters = params2D)
+    update_hydrostatic_pressure!(P, arch, grid, buoyancy, tracers; parameters = params2D)
 
-    update_hydrostatic_pressure!(model.pressure.pHY′, architecture(grid),
-                                 grid, model.buoyancy, model.tracers; 
-                                 parameters = params2D)
-
+    # Update closure diffusivities
     compute_diffusivities!(diffusivity, closure, model; parameters=params3D, active_cells_map)
-  
+    
     return nothing
 end
