@@ -28,14 +28,14 @@ function test_zstar_coordinate(model, Ni, Δt)
     return nothing
 end
 
-function info_message(grid)
-    msg1 = "Testing z-star coordinates on $(architecture(grid)) on a "
+function info_message(grid, free_surface)
+    msg1 = "$(architecture(grid)) "
     msg2 = string(getnamewrapper(grid)) 
     msg3 = grid isa ImmersedBoundaryGrid ? " on a " * string(getnamewrapper(grid.underlying_grid)) : ""
     msg4 = grid.z.Δᵃᵃᶠ isa Number ? " with uniform spacing" : " with stretched spacing"
     msg5 = grid isa ImmersedBoundaryGrid ? " and $(string(getnamewrapper(grid.immersed_boundary))) immersed boundary" : ""
-
-    return msg1 * msg2 * msg3 * msg4 * msg5
+    msg6 = " using a " * string(getnamewrapper(free_surface))
+    return msg1 * msg2 * msg3 * msg4 * msg5 * msg6
 end
 
 const C = Center
@@ -114,15 +114,14 @@ end
             end
 
             for grid in grids
-                info_msg = info_message(grid)
-                
                 split_free_surface    = SplitExplicitFreeSurface(grid; cfl = 0.75)
                 implicit_free_surface = ImplicitFreeSurface()
                 explicit_free_surface = ExplicitFreeSurface()
                 
                 for free_surface in [explicit_free_surface, implicit_free_surface, explicit_free_surface]
-                    @testset "$info_msg on $(free_surface)" begin
-                        @info "  $info_msg of $(free_surface)" 
+                    info_msg = info_message(grid, free_surface)
+                    @testset "$info_msg" begin
+                        @info "  Testing a $info_msg" 
                         # TODO: minimum_xspacing(grid) on a Immersed GPU grid with ZStarVerticalCoordinate
                         # fails because it uses too much parameter space. Figure out a way to reduce it 
                         model = HydrostaticFreeSurfaceModel(; grid, 
