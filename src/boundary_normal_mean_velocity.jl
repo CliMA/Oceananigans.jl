@@ -31,9 +31,8 @@ const MOPABC = BoundaryCondition{<:Open{<:PerturbationAdvection}, <:BoundaryNorm
 @inline boundary_adjacent_index(::Val{:top}, grid)    = (1, 1, size(grid, 3)), (2, 3)
 @inline boundary_adjacent_index(::Val{:bottom}, grid) = (1, 1, 2), (2, 3)
 
-function update_boundary_condition!(bc::MOPABC, side, u, model)
+function update_boundary_condition!(bc::MOPABC, val_side, u, model)
     grid = model.grid
-    val_side = Val(side)
 
     An = boundary_normal_area(val_side, grid)
 
