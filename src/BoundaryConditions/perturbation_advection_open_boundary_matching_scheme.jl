@@ -1,4 +1,4 @@
-using Oceananigans.Grids: xspacing
+using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ, Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ, Az_qᶜᶜᶠ
 
 """
     PerturbationAdvection
@@ -59,7 +59,6 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
     return nothing
 end
 
-
 @inline function step_left_boundary!(bc, l, m, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices, 
                                      grid, u, clock, model_fields, ΔX)
     Δt = clock.last_stage_Δt
@@ -87,25 +86,25 @@ end
     return nothing
 end
 
-@inline function _fill_east_halo!(j, k, grid, u, bc::PAOBC, loc::Tuple{Face, Any, Any}, clock, model_fields)
+@inline function _fill_east_halo!(j, k, grid, u, bc::PAOBC, ::Tuple{Face, Any, Any}, clock, model_fields)
     i = grid.Nx + 1
 
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i-1, j, k)
 
-    Δx = xspacing(i, j, k, grid, loc...)
+    Δx = Δxᶠᶜᶜ(i, j, k, grid)
 
     step_right_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices, grid, u, clock, model_fields, Δx)
 
     return nothing
 end
 
-@inline function _fill_west_halo!(j, k, grid, u, bc::PAOBC, loc::Tuple{Face, Any, Any}, clock, model_fields)
+@inline function _fill_west_halo!(j, k, grid, u, bc::PAOBC, ::Tuple{Face, Any, Any}, clock, model_fields)
     boundary_indices = (1, j, k)
     boundary_adjacent_indices = (2, j, k)
     boundary_secret_storage_indices = (0, j, k)
 
-    Δx = xspacing(1, j, k, grid, loc...)
+    Δx = Δxᶠᶜᶜ(1, j, k, grid)
 
     step_left_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices, grid, u, clock, model_fields, Δx)
 
