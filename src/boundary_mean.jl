@@ -16,7 +16,7 @@ end
 @inline (bam::BoundaryAdjacentMean)(args...) = bam.value[]
 
 Adapt.adapt_structure(to, mo::BoundaryAdjacentMean) = 
-    BoundaryAdjacentMean(adapt(to, mo.mean_outflow_velocity[]))
+    BoundaryAdjacentMean(; value = adapt(to, mo.value[]))
 
 const MOPABC = BoundaryCondition{<:Open{<:PerturbationAdvection}, <:BoundaryAdjacentMean}
 
@@ -50,9 +50,11 @@ function update_boundary_condition!(bc::MOPABC, val_side, u, model)
 
     (i, j, k), dims = boundary_adjacent_index(val_side, grid, loc)
     
-    total_area = sum(An; dims)[i, j, k]
+    total_area = CUDA.@allowscalar sum(An; dims)[i, j, k]
 
     Ū = sum(u * An; dims) / total_area
 
-    bc.condition.value[] = Ū[i, j, k]
+    bc.condition.value[] = CUDA.@allowscalar Ū[i, j, k]
+
+    return nothing
 end
