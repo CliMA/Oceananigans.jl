@@ -11,6 +11,7 @@ export
     # Grids
     Center, Face,
     Periodic, Bounded, Flat,
+    ZStarVerticalCoordinate,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
     xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
