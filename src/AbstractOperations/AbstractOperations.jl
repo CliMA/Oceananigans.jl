@@ -6,7 +6,6 @@ export Average, Integral, CumulativeIntegral, KernelFunctionOperation
 export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation, ConditionalOperation
 
 
-using CUDA
 using Base: @propagate_inbounds
 
 using Oceananigans.Architectures

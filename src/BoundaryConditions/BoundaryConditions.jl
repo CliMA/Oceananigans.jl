@@ -10,7 +10,7 @@ export
     apply_x_bcs!, apply_y_bcs!, apply_z_bcs!,
     fill_halo_regions!
 
-using CUDA, Adapt
+using Adapt
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans.Architectures: CPU, GPU, device

@@ -1,4 +1,3 @@
-using CUDA
 using KernelAbstractions: @kernel, @index
 using Adapt: adapt_structure
 

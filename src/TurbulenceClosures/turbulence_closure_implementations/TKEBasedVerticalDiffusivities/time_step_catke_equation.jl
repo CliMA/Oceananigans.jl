@@ -5,7 +5,6 @@ using Oceananigans.Grids: retrieve_interior_active_cells_map
 using Oceananigans.BoundaryConditions: apply_x_bcs!, apply_y_bcs!, apply_z_bcs!
 using Oceananigans.TimeSteppers: store_field_tendencies!, ab2_step_field!, implicit_step!
 using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
-using CUDA
 
 get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 
