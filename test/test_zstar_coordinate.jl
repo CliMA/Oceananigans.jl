@@ -109,7 +109,6 @@ end
                 # and vertical areas (see https://github.com/CliMA/Oceananigans.jl/issues/3958)
                 # When this is issue is fixed we can add the partial cells to the testing.
                 grids = [llg, rtg, llgv, rtgv, illg, irtg, illgv, irtgv] # , pllg, prtg, pllgv, prtgv]
-                grids = [llg, llgv, illg, illgv] # , pllg, prtg, pllgv, prtgv]
             else
                 grids = [rtg, rtgv, irtg, irtgv] #, prtg, prtgv]
             end
