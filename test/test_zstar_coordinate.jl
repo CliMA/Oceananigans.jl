@@ -118,6 +118,7 @@ end
 
             for grid in grids
                 split_free_surface    = SplitExplicitFreeSurface(grid; cfl = 0.75)
+                
                 implicit_free_surface = ImplicitFreeSurface()
                 explicit_free_surface = ExplicitFreeSurface()
                 
@@ -136,6 +137,7 @@ end
 
                         set!(model, c = (x, y, z) -> rand(), b = bᵢ)
 
+                        Δt = free_surface isa ExplicitFreeSurface ? 10 : 5minutes
                         test_zstar_coordinate(model, 100, 5minutes)
                     end
                 end
