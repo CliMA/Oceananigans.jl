@@ -121,7 +121,7 @@ end
                 implicit_free_surface = ImplicitFreeSurface()
                 explicit_free_surface = ExplicitFreeSurface()
                 
-                for free_surface in [explicit_free_surface, implicit_free_surface, explicit_free_surface]
+                for free_surface in [split_free_surface, implicit_free_surface, explicit_free_surface]
                     info_msg = info_message(grid, free_surface)
                     @testset "$info_msg" begin
                         @info "  Testing a $info_msg" 
@@ -136,8 +136,8 @@ end
 
                         set!(model, c = (x, y, z) -> rand(), b = bᵢ)
 
-                        Δt = free_surface isa ExplicitFreeSurface ? 10 : 5minutes
-                        test_zstar_coordinate(model, 100, 5minutes)
+                        Δt = free_surface isa ExplicitFreeSurface ? 10 : 2minutes
+                        test_zstar_coordinate(model, 100, Δt)
                     end
                 end
             end
