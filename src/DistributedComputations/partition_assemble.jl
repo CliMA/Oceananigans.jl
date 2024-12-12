@@ -128,7 +128,7 @@ Partition the globally-sized `A` into local arrays with the same size as `b`.
 partition(A, b::Field) = partition(A, architecture(b), size(b))
 partition(F::Field, b::Field) = partition(interior(F), b)
 partition(f::Function, arch, n) = f
-partition(A::AbstractArray, arch::AbstractSerialArchitecture, local_size) = A
+partition(A::AbstractArray, ::AbstractSerialArchitecture, local_size) = A
 
 """
     partition(A, arch, local_size)
