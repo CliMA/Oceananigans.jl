@@ -118,7 +118,6 @@ end
 
             for grid in grids
                 split_free_surface    = SplitExplicitFreeSurface(grid; cfl = 0.75)
-                
                 implicit_free_surface = ImplicitFreeSurface()
                 explicit_free_surface = ExplicitFreeSurface()
                 
