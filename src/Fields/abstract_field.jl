@@ -11,7 +11,7 @@ using Oceananigans.Grids: interior_indices, interior_parent_indices
 import Base: minimum, maximum, extrema
 import Oceananigans.Architectures: architecture, child_architecture
 import Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices
-import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes, node, xnode, ynode, znode
+import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes, rnodes, node, xnode, ynode, znode, rnode
 import Oceananigans.Utils: datatuple
 
 const ArchOrNothing = Union{AbstractArchitecture, Nothing}
@@ -104,10 +104,12 @@ interior(f::AbstractField) = f
 @propagate_inbounds xnode(i, j, k, ψ::AbstractField) = xnode(i, j, k, ψ.grid, instantiated_location(ψ)...)
 @propagate_inbounds ynode(i, j, k, ψ::AbstractField) = ynode(i, j, k, ψ.grid, instantiated_location(ψ)...)
 @propagate_inbounds znode(i, j, k, ψ::AbstractField) = znode(i, j, k, ψ.grid, instantiated_location(ψ)...)
+@propagate_inbounds rnode(i, j, k, ψ::AbstractField) = rnode(i, j, k, ψ.grid, instantiated_location(ψ)...)
 
 xnodes(ψ::AbstractField; kwargs...) = xnodes(ψ.grid, instantiated_location(ψ)...; kwargs...)
 ynodes(ψ::AbstractField; kwargs...) = ynodes(ψ.grid, instantiated_location(ψ)...; kwargs...)
 znodes(ψ::AbstractField; kwargs...) = znodes(ψ.grid, instantiated_location(ψ)...; kwargs...)
+rnodes(ψ::AbstractField; kwargs...) = rnodes(ψ.grid, instantiated_location(ψ)...; kwargs...)
 
 nodes(ψ::AbstractField; kwargs...) = nodes(ψ.grid, instantiated_location(ψ); kwargs...)
 
