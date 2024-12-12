@@ -1,12 +1,6 @@
 using Oceananigans.Grids
 using Oceananigans.ImmersedBoundaries: ZStarGridOfSomeKind
 
-# TODO: ZStar is not currently working for an ImplicitFreeSurface on
-# - `LatitudeLongitudeGrid`s
-# - `ImmersedBoundaryGrid`s
-# and for an ExplicitFreeSurface on
-# - `ImmersedBoundaryGrid`s
-
 #####
 ##### ZStar-specific vertical spacings update
 #####
@@ -112,7 +106,7 @@ end
 @inline function barotropic_V(i, j, k, grid, ::Nothing, v)
     V = 0
     for k in 1:size(grid, 3)
-        V += v[i, j, k] * Δzᶠᶜᶜ(i, j, k, grid)
+        V += v[i, j, k] * Δzᶜᶠᶜ(i, j, k, grid)
     end
     return V
 end

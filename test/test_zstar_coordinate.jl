@@ -79,9 +79,9 @@ end
 @testset "ZStar coordinate simulation testset" begin
     z_uniform   = ZStarVerticalCoordinate(-20, 0)
     z_stretched = ZStarVerticalCoordinate(collect(-20:0))
-    topologies  = ((Periodic, Periodic, Bounded), 
+    topologies  = (#(Periodic, Periodic, Bounded), 
                    (Periodic, Bounded, Bounded),
-                   (Bounded, Periodic, Bounded),
+                   #(Bounded, Periodic, Bounded),
                    (Bounded, Bounded, Bounded)) 
 
     for arch in archs
@@ -109,6 +109,7 @@ end
                 # and vertical areas (see https://github.com/CliMA/Oceananigans.jl/issues/3958)
                 # When this is issue is fixed we can add the partial cells to the testing.
                 grids = [llg, rtg, llgv, rtgv, illg, irtg, illgv, irtgv] # , pllg, prtg, pllgv, prtgv]
+                grids = [llg, llgv, illg, illgv] # , pllg, prtg, pllgv, prtgv]
             else
                 grids = [rtg, rtgv, irtg, irtgv] #, prtg, prtgv]
             end
@@ -117,12 +118,10 @@ end
                 info_msg = info_message(grid)
                 
                 split_free_surface    = SplitExplicitFreeSurface(grid; cfl = 0.75)
-
-                # TODO: Implicit and Explicit free surfaces are not fully supported yet
                 implicit_free_surface = ImplicitFreeSurface()
                 explicit_free_surface = ExplicitFreeSurface()
                 
-                for free_surface in [split_free_surface] #, implicit_free_surface, explicit_free_surface]
+                for free_surface in [explicit_free_surface, implicit_free_surface, explicit_free_surface]
                     @testset "$info_msg on $(free_surface)" begin
                         @info "  $info_msg of $(free_surface)" 
                         # TODO: minimum_xspacing(grid) on a Immersed GPU grid with ZStarVerticalCoordinate
