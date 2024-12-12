@@ -152,7 +152,7 @@ function findall_active_indices!(active_indices, active_cells_field, ibg, Indice
     for k in 1:size(ibg, 3)
         interior_indices = findall(on_architecture(CPU(), interior(active_cells_field, :, :, k:k)))
         interior_indices = convert_interior_indices(interior_indices, k, IndicesType)
-        active_indices = vcat(active_indices, interior_indices)
+        active_indices   = vcat(active_indices, interior_indices)
         GC.gc()
     end
 
