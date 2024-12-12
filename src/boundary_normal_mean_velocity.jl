@@ -5,18 +5,18 @@ using Oceananigans.BoundaryConditions: BoundaryCondition, Open, PerturbationAdve
 import Adapt: adapt_structure
 import Oceananigans.BoundaryConditions: update_boundary_condition!
 
-struct BoundaryNormalMeanVelocity{BV}
-   boundary_velocity :: BV
+struct BoundaryMean{V}
+   value :: V
 
-   BoundaryNormalMeanVelocity(; value::BV = Ref(0.0)) where BV = new{BV}(value)
+   BoundaryMean(; value::BV = Ref(0.0)) where BV = new{BV}(value)
 end
 
-@inline (value::BoundaryNormalMeanVelocity)(args...) = value.boundary_velocity[]
+@inline (value::BoundaryMean)(args...) = value.boundary_velocity[]
 
-Adapt.adapt_structure(to, mo::BoundaryNormalMeanVelocity) = 
-    BoundaryNormalMeanVelocity(adapt(to, mo.mean_outflow_velocity[]))
+Adapt.adapt_structure(to, mo::BoundaryMean) = 
+    BoundaryMean(adapt(to, mo.mean_outflow_velocity[]))
 
-const MOPABC = BoundaryCondition{<:Open{<:PerturbationAdvection}, <:BoundaryNormalMeanVelocity}
+const MOPABC = BoundaryCondition{<:Open{<:PerturbationAdvection}, <:BoundaryMean}
 
 @inline boundary_normal_area(::Union{Val{:west}, Val{:east}}, grid)   = GridMetricOperation((Face, Center, Center), Ax, grid)
 @inline boundary_normal_area(::Union{Val{:south}, Val{:north}}, grid) = GridMetricOperation((Center, Face, Center), Ay, grid)
@@ -42,5 +42,5 @@ function update_boundary_condition!(bc::MOPABC, val_side, u, model)
 
     Ū = sum(u * An; dims) / total_area
 
-    bc.condition.boundary_velocity[] = Ū[i, j, k]
+    bc.condition.value[] = Ū[i, j, k]
 end
