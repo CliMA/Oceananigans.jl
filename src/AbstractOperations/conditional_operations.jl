@@ -98,7 +98,7 @@ function ConditionalOperation(c::ConditionalOperation;
     return ConditionalOperation{LX, LY, LZ}(c.operand, func, c.grid, condition, mask)
 end
 
-@inline function Base.getindex(co::ConditionalOperation, i, j, k)
+@propagate_inbounds function Base.getindex(co::ConditionalOperation, i, j, k)
     conditioned = evaluate_condition(co.condition, i, j, k, c.grid, c)
     value = getindex(co.operand, i, j, k)
     func_value = co.func(value)
