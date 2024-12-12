@@ -142,12 +142,14 @@ validate_boundary_condition_architecture(bc::BoundaryCondition, arch, side) =
     validate_boundary_condition_architecture(bc.condition, arch, bc, side)
 
 validate_boundary_condition_architecture(condition, arch, bc, side) = nothing
-validate_boundary_condition_architecture(::Array, ::CPU, bc, side) = nothing
-validate_boundary_condition_architecture(::CuArray, ::GPU, bc, side) = nothing
 
-validate_boundary_condition_architecture(::CuArray, ::CPU, bc, side) =
-    throw(ArgumentError("$side $bc must use `Array` rather than `CuArray` on CPU architectures!"))
+function validate_boundary_condition_architecture(array::AbstractArray, arch, bc, side) 
+    arch_array = on_architecture(arch, array)
+    valid_condition = arch_array === array 
 
-validate_boundary_condition_architecture(::Array, ::GPU, bc, side) =
-    throw(ArgumentError("$side $bc must use `CuArray` rather than `Array` on GPU architectures!"))
+    if !valid_condition
+        throw(ArgumentError("$side $bc must use $(array_type(arch)) on $(arch) architectures!"))
+    end
 
+    return nothing
+end
