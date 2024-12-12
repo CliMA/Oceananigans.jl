@@ -6,8 +6,11 @@ using Oceananigans.ImmersedBoundaries: PartialCellBottom
 
 function test_zstar_coordinate(model, Ni, Δt)
     
-    ∫bᵢ = Field(Integral(model.tracers.b))
-    ∫cᵢ = Field(Integral(model.tracers.c))
+    bᵢ = deepcopy(model.tracers.b)
+    cᵢ = deepcopy(model.tracers.c)
+
+    ∫bᵢ = Field(Integral(bᵢ))
+    ∫cᵢ = Field(Integral(cᵢ))
     w   = model.velocities.w
     Nz  = model.grid.Nz
 
