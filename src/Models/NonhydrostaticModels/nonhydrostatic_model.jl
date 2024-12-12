@@ -218,13 +218,15 @@ function NonhydrostaticModel(; grid,
 
     # Materialize background fields
     background_fields = BackgroundFields(background_fields, tracernames(tracers), grid, clock)
+    model_fields = merge(velocities, tracers, auxiliary_fields)
+    prognostic_fields = merge(velocities, tracers)
+
 
     # Instantiate timestepper if not already instantiated
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
-    timestepper = TimeStepper(timestepper, grid, tracernames(tracers), implicit_solver=implicit_solver)
+    timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver=implicit_solver)
 
     # Regularize forcing for model tracer and velocity fields.
-    model_fields = merge(velocities, tracers, auxiliary_fields)
     forcing = model_forcing(model_fields; forcing...)
 
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
@@ -256,7 +258,5 @@ end
 
 # return the total advective velocities
 @inline total_velocities(m::NonhydrostaticModel) =
-    (u = SumOfArrays{2}(m.velocities.u, m.background_fields.velocities.u),
-     v = SumOfArrays{2}(m.velocities.v, m.background_fields.velocities.v),
-     w = SumOfArrays{2}(m.velocities.w, m.background_fields.velocities.w))
+    sum_of_velocities(m.velocities, m.background_fields.velocities) 
 

@@ -11,7 +11,7 @@ using Oceananigans.Advection: cell_advection_timescale
 
 """ Friction velocity. See equation (16) of Vreugdenhil & Taylor (2018). """
 function uτ(model, Uavg, U_wall, n)
-    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δzᵃᵃᶜ
+    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.z.Δᵃᵃᶜ
     ν = model.closure[n].ν
 
     compute!(Uavg)
@@ -30,7 +30,7 @@ end
 
 """ Heat flux at the wall. See equation (16) of Vreugdenhil & Taylor (2018). """
 function q_wall(model, Tavg, Θ_wall, n)
-    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δzᵃᵃᶜ
+    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.z.Δᵃᵃᶜ
     # TODO: interface function for extracting diffusivity?
     κ = model.closure[n].κ.T
 
@@ -261,7 +261,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
         wmax = maximum(abs, model.velocities.w.data.parent)
         CFL = simulation.Δt / cell_advection_timescale(model)
 
-        Δ = min(model.grid.Δxᶜᵃᵃ, model.grid.Δyᵃᶜᵃ, model.grid.Δzᵃᵃᶜ)
+        Δ = min(model.grid.Δxᶜᵃᵃ, model.grid.Δyᵃᶜᵃ, model.grid.z.Δᵃᵃᶜ)
         νmax = maximum(model.diffusivity_fields[n_amd].νₑ.data.parent)
         κmax = maximum(model.diffusivity_fields[n_amd].κₑ.T.data.parent)
         νCFL = simulation.Δt / (Δ^2 / νmax)
