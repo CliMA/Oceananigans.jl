@@ -173,10 +173,6 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
                                       halo = (1, 1, 1),
                                       rotation = nothing)
 
-    if architecture == GPU() && !has_cuda()
-        throw(ArgumentError("Cannot create a GPU grid. No CUDA-enabled GPU was detected!"))
-    end
-
     radius = FT(radius)
 
     TX, TY, TZ = topology

@@ -6,6 +6,9 @@ export device, architecture, unified_array, device_copy_to!
 export array_type, on_architecture, arch_array
 
 using CUDA
+using Metal
+using CUDA: CUDABackend
+using Metal: MetalBackend   
 using KernelAbstractions
 using Adapt
 using OffsetArrays
@@ -37,19 +40,51 @@ struct CPU <: AbstractSerialArchitecture end
 
 Run Oceananigans on a single NVIDIA CUDA GPU.
 """
-struct GPU <: AbstractSerialArchitecture end
+struct GPU{D} <: AbstractSerialArchitecture 
+    device :: D
+end
+
+function GPU(; device=nothing)
+    if isnothing(device)
+        if CUDA.has_cuda()
+            device = CUDABackend(; always_inline = true)
+        elseif has_metal_device()
+            device = MetalBackend()
+        else
+            error("No compatible GPU detected")
+        end
+    end
+    return GPU(device)
+end
+
+"""
+    has_metal_device()
+Returns true if a metal device is present (not a current function available from Metal.jl)
+"""
+function has_metal_device()
+    try 
+        Metal.current_device()
+        return true
+    catch
+        return false
+    end
+end
 
 #####
 ##### These methods are extended in DistributedComputations.jl
 #####
 
-device(::CPU) = KernelAbstractions.CPU()
-device(::GPU) = CUDA.CUDABackend(; always_inline=true)
+default_GPU_backend = CUDA.CUDABackend(; always_inline = true)
+
+device(::CPU)     = KernelAbstractions.CPU()
+device(arch::GPU) = arch.device
 
 architecture() = nothing
 architecture(::Number) = nothing
 architecture(::Array) = CPU()
-architecture(::CuArray) = GPU()
+architecture(::CuArray)  = GPU(default_GPU_backend)
+architecture(::MtlArray) = GPU(MetalBackend())
+
 architecture(a::SubArray) = architecture(parent(a))
 architecture(a::OffsetArray) = architecture(parent(a))
 
@@ -62,7 +97,8 @@ On single-process, non-distributed systems, return `arch`.
 child_architecture(arch::AbstractSerialArchitecture) = arch
 
 array_type(::CPU) = Array
-array_type(::GPU) = CuArray
+array_type(::GPU{<:CUDABackend}) = CuArray
+archt_type(::GPU{<:MetalBackend}) = MtlArray
 
 # Fallback 
 on_architecture(arch, a) = a
@@ -72,14 +108,19 @@ on_architecture(arch::AbstractSerialArchitecture, t::Tuple) = Tuple(on_architect
 on_architecture(arch::AbstractSerialArchitecture, nt::NamedTuple) = NamedTuple{keys(nt)}(on_architecture(arch, Tuple(nt)))
 
 # On architecture for array types
-on_architecture(::CPU, a::Array) = a
-on_architecture(::GPU, a::Array) = CuArray(a)
+on_architecture(::CPU, a::Array)    = a
+on_architecture(::CPU, a::CuArray)  = Array(a)
+on_architecture(::CPU, a::MtlArray) = Array(a)
 
-on_architecture(::CPU, a::CuArray) = Array(a)
-on_architecture(::GPU, a::CuArray) = a
+on_architecture(::GPU{<:CUDABackend}, a::CuArray) = a
+on_architecture(::GPU{<:CUDABackend}, a::Array)   = CuArray(a)
 
-on_architecture(::CPU, a::BitArray) = a
-on_architecture(::GPU, a::BitArray) = CuArray(a)
+on_architecture(::GPU{<:MetalBackend}, a::MtlArray) = a
+on_architecture(::GPU{<:MetalBackend}, a::Array)    = MtlArray(a)
+
+on_architecture(::CPU,                 a::BitArray) = a
+on_architecture(::GPU{<:CUDABackend},  a::BitArray) = CuArray(a)
+on_architecture(::GPU{<:MetalBackend}, a::BitArray) = MtlArray(a)
 
 on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
 on_architecture(::GPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
