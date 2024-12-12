@@ -79,9 +79,9 @@ end
 @testset "ZStar coordinate simulation testset" begin
     z_uniform   = ZStarVerticalCoordinate(-20, 0)
     z_stretched = ZStarVerticalCoordinate(collect(-20:0))
-    topologies  = (#(Periodic, Periodic, Bounded), 
+    topologies  = ((Periodic, Periodic, Bounded), 
                    (Periodic, Bounded, Bounded),
-                   #(Bounded, Periodic, Bounded),
+                   (Bounded, Periodic, Bounded),
                    (Bounded, Bounded, Bounded)) 
 
     for arch in archs
