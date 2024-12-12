@@ -172,5 +172,5 @@ function validate_dimension_specification(T, ξ::ZStarVerticalCoordinate, dir, N
 end
 
 # Summaries
-coordinate_summary(::Bounded, z::AbstractVerticalCoordinate, name) = 
+coordinate_summary(::Bounded, z::ZStarVerticalCoordinate, name) = 
     @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(z.Δᵃᵃᶜ))
