@@ -2,17 +2,17 @@ using Oceananigans.BoundaryConditions: NoFluxBoundaryCondition
 using Oceananigans.Utils: prettysummary
 
 """
-    SeawaterBuoyancy{FT, EOS, T, S} <: AbstractBuoyancyModel{EOS}
+    SeawaterBuoyancy{FT, EOS, T, S} <: AbstractBuoyancyFormulation{EOS}
 
-BuoyancyModels model for seawater. `T` and `S` are either `nothing` if both
+Buoyancy formulation for seawater. `T` and `S` are either `nothing` if both
 temperature and salinity are active, or of type `FT` if temperature
 or salinity are constant, respectively.
 """
-struct SeawaterBuoyancy{FT, EOS, T, S} <: AbstractBuoyancyModel{EOS}
-             equation_of_state :: EOS
+struct SeawaterBuoyancy{FT, EOS, T, S} <: AbstractBuoyancyFormulation{EOS}
+    equation_of_state :: EOS
     gravitational_acceleration :: FT
-          constant_temperature :: T
-             constant_salinity :: S
+    constant_temperature :: T
+    constant_salinity :: S
 end
 
 required_tracers(::SeawaterBuoyancy) = (:T, :S)

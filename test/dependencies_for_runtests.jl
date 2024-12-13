@@ -31,7 +31,7 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 using Oceananigans.AbstractOperations
 using Oceananigans.Coriolis
-using Oceananigans.BuoyancyModels
+using Oceananigans.BuoyancyFormulations
 using Oceananigans.Forcings
 using Oceananigans.Solvers
 using Oceananigans.Models
@@ -50,7 +50,7 @@ using Oceananigans.Architectures: device, array_type # to resolve conflict with 
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
 using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.BuoyancyModels: BuoyancyField
+using Oceananigans.BuoyancyFormulations: BuoyancyField
 using Oceananigans.Grids: architecture
 using Oceananigans.Fields: ZeroField, ConstantField, FunctionField, compute_at!, indices
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: tracernames

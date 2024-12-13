@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Statistics
-using Oceananigans.BuoyancyModels: g_Earth
+using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.Operators
 using Oceananigans.Grids: inactive_cell
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
