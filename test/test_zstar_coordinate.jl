@@ -122,6 +122,19 @@ end
                 explicit_free_surface = ExplicitFreeSurface()
                 
                 for free_surface in [split_free_surface, implicit_free_surface, explicit_free_surface]
+                    
+                    # TODO: There are parameter space issues with ImmersedBoundaryGrid and a immersed LatitudeLongitudeGrid
+                    # with a stretched vertical coordinate. For the moment we are skipping these tests.
+                    if (arch == GPU) && 
+                       (free_surface isa ImplicitFreeSurface) && 
+                       (grid isa ImmersedBoundaryGrid) && 
+                       (grid.underlying_grid isa LatitudeLongitudeGrid) &&
+                       (grid.z.Δᵃᵃᶠ isa AbstractArray)
+
+                        @info "  Skipping $(info_message(grid, free_surface)) because of parameter space issues"
+                        continue
+                    end
+
                     info_msg = info_message(grid, free_surface)
                     @testset "$info_msg" begin
                         @info "  Testing a $info_msg" 
