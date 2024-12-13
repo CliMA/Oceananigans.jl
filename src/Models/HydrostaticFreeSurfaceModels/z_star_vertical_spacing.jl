@@ -23,8 +23,8 @@ function update_grid!(model, grid::ZStarGridOfSomeKind; parameters = :xy)
     σᶜᶠⁿ  = grid.z.σᶜᶠⁿ
     σᶠᶠⁿ  = grid.z.σᶠᶠⁿ
     ∂t_σ  = grid.z.∂t_σ
-    ηⁿ     = grid.z.ηⁿ
-    η      = model.free_surface.η
+    ηⁿ    = grid.z.ηⁿ
+    η     = model.free_surface.η
 
     launch!(architecture(grid), grid, parameters, _update_grid_scaling!, 
             σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, grid, η)
