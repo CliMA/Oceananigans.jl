@@ -20,6 +20,7 @@ end
 # Just a column
 @inline getbc(pv::BC{<:Value, <:PolarValue}, i, k, args...) = @inbounds pv.condition.data[1, 1, k]
 
+# YFlat grids do not have boundary conditions!
 latitude_north_auxiliary_bc(::YFlatGrid, args...) = nothing
 latitude_south_auxiliary_bc(::YFlatGrid, args...) = nothing
 
