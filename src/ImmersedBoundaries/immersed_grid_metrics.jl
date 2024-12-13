@@ -1,7 +1,7 @@
 using Oceananigans.AbstractOperations: GridMetricOperation
 
 import Oceananigans.Grids: coordinates
-import Oceananigans.Operators: Δzᵃᵃᶠ, Δzᵃᵃᶜ
+import Oceananigans.Operators: Δrᵃᵃᶠ, Δrᵃᵃᶜ
 import Oceananigans.Operators: Δxᶠᵃᵃ, Δxᶜᵃᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ
 import Oceananigans.Operators: Δyᵃᶠᵃ, Δyᵃᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ, Δyᶜᶜᵃ
 import Oceananigans.Operators: Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
@@ -19,10 +19,10 @@ import Oceananigans.Operators: intrinsic_vector, extrinsic_vector
 # However, for non "full-cell" immersed boundaries, grid metric functions
 # must be extended for the specific immersed boundary grid in question.
 
-coordinates(grid::IBG) = coordinates(grid.underlying_grid)
-
 # Vertical spacings
 
+@inline Δrᵃᵃᶠ(i, j, k, ibg::IBG) = Δrᵃᵃᶠ(i, j, k, ibg.underlying_grid)
+@inline Δrᵃᵃᶜ(i, j, k, ibg::IBG) = Δrᵃᵃᶜ(i, j, k, ibg.underlying_grid)
 @inline Δzᵃᵃᶠ(i, j, k, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.underlying_grid)
 @inline Δzᵃᵃᶜ(i, j, k, ibg::IBG) = Δzᵃᵃᶜ(i, j, k, ibg.underlying_grid)
 

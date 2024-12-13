@@ -36,7 +36,7 @@ function time_stepping_works_with_coriolis(arch, FT, Coriolis)
     return true # Test that no errors/crashes happen when time stepping.
 end
 
-function time_stepping_works_with_closure(arch, FT, Closure; Model=NonhydrostaticModel, buoyancy=Buoyancy(model=SeawaterBuoyancy(FT)))
+function time_stepping_works_with_closure(arch, FT, Closure; Model=NonhydrostaticModel, buoyancy=BuoyancyForce(SeawaterBuoyancy(FT)))
     # Add TKE tracer "e" to tracers when using CATKEVerticalDiffusivity
     tracers = [:T, :S]
     Closure === CATKEVerticalDiffusivity && push!(tracers, :e)

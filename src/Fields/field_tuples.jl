@@ -214,7 +214,7 @@ Return a `NamedTuple` with tracer fields specified by `tracer_names` initialized
 `CenterField`s on `grid`. Fields may be passed via optional
 keyword arguments `kwargs` for each field.
 
-This function is used by `OutputWriters.Checkpointer` and `TendencyFields`.
+This function is used by `OutputWriters.Checkpointer`
 ```
 """
 TracerFields(tracer_names, grid; kwargs...) =
@@ -225,30 +225,6 @@ TracerFields(::Union{Tuple{}, Nothing}, grid, bcs) = NamedTuple()
 
 "Shortcut constructor for empty tracer fields."
 TracerFields(::NamedTuple{(), Tuple{}}, grid, bcs) = NamedTuple()
-
-"""
-    TendencyFields(grid, tracer_names;
-                   u = XFaceField(grid),
-                   v = YFaceField(grid),
-                   w = ZFaceField(grid),
-                   kwargs...)
-
-Return a `NamedTuple` with tendencies for all solution fields (velocity fields and
-tracer fields), initialized on `grid`. Optional `kwargs`
-can be specified to assign data arrays to each tendency field.
-"""
-function TendencyFields(grid, tracer_names;
-                        u = XFaceField(grid),
-                        v = YFaceField(grid),
-                        w = ZFaceField(grid),
-                        kwargs...)
-
-    velocities = (u=u, v=v, w=w)
-
-    tracers = TracerFields(tracer_names, grid; kwargs...)
-
-    return merge(velocities, tracers)
-end
 
 #####
 ##### Helper functions for NonhydrostaticModel constructor

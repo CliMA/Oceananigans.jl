@@ -56,7 +56,7 @@ end
 wrap_prescribed_field(X, Y, Z, f::Function, grid; kwargs...) = FunctionField{X, Y, Z}(f, grid; kwargs...)
 wrap_prescribed_field(X, Y, Z, f, grid; kwargs...) = field((X, Y, Z), f, grid)
 
-function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFields, grid, clock, bcs)
+function hydrostatic_velocity_fields(velocities::PrescribedVelocityFields, grid, clock, bcs)
 
     parameters = velocities.parameters
     u = wrap_prescribed_field(Face, Center, Center, velocities.u, grid; clock, parameters)
@@ -72,16 +72,8 @@ function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFiel
     return PrescribedVelocityFields(u, v, w, parameters)
 end
 
-function HydrostaticFreeSurfaceTendencyFields(::PrescribedVelocityFields, free_surface, grid, tracer_names)
-    tracer_tendencies = TracerFields(tracer_names, grid)
-    momentum_tendencies = (u = nothing, v = nothing)
-    return merge(momentum_tendencies, tracer_tendencies)
-end
-
-function HydrostaticFreeSurfaceTendencyFields(::PrescribedVelocityFields, ::ExplicitFreeSurface, grid, tracer_names)
-    tracers = TracerFields(tracer_names, grid)
-    return merge((u = nothing, v = nothing, η = nothing), tracers)
-end
+hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names) = 
+    merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
 
 @inline fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing
 @inline fill_halo_regions!(::FunctionField, args...) = nothing

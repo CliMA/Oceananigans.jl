@@ -12,8 +12,8 @@ export
     Center, Face,
     Periodic, Bounded, Flat,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
-    nodes, xnodes, ynodes, znodes, λnodes, φnodes,
-    xspacings, yspacings, zspacings, λspacings, φspacings,
+    nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
+    xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
     minimum_xspacing, minimum_yspacing, minimum_zspacing,
 
     # Pointwise spacing, area, and volume operators
@@ -47,8 +47,8 @@ export
     # Coriolis forces
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
 
-    # BuoyancyModels and equations of state
-    Buoyancy, BuoyancyTracer, SeawaterBuoyancy,
+    # BuoyancyFormulations and equations of state
+    BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy,
     LinearEquationOfState, TEOS10,
     BuoyancyField,
 
@@ -204,7 +204,7 @@ include("DistributedComputations/DistributedComputations.jl")
 
 # Physics, time-stepping, and models
 include("Coriolis/Coriolis.jl")
-include("BuoyancyModels/BuoyancyModels.jl")
+include("BuoyancyFormulations/BuoyancyFormulations.jl")
 include("StokesDrifts.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Forcings/Forcings.jl")
@@ -233,7 +233,7 @@ using .Grids
 using .BoundaryConditions
 using .Fields
 using .Coriolis
-using .BuoyancyModels
+using .BuoyancyFormulations
 using .StokesDrifts
 using .TurbulenceClosures
 using .Solvers
