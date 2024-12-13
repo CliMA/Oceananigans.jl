@@ -481,42 +481,53 @@ function FieldTimeSeries(path::String, name::String;
 
     isnothing(grid) && (grid = file["serialized/grid"])
 
-    if isreconstructed(grid) # We weren't able to get a real grid, so let's try.
+    # If isreconstructed(grid), it probably means that the data was generated prior to
+    # Oceananigans version 0.95.0 (12/13/2024). In this case, the best we can do is to try to rebuild
+    # the grids manually using the non-serialized grid data. Here, we support RectilinearGrid
+    # and LatitudeLongitudeGrid (but not OrthogonalSphericalShellGrid) and we also assume
+    # GridFittedBottom if the grid is an ImmersedBoundaryGrid. If these assumptions can be relaxed
+    # in the future, they should.
+    if isreconstructed(grid)
         isibg = grid isa ImmersedBoundaryGrid
         test_grid = isibg ? grid.underlying_grid : grid
+        address = isibg ? "grid/underlying_grid" : "grid"
+        Nx = file["$address/Nx"]
+        Ny = file["$address/Ny"]
+        Nz = file["$address/Nz"]
+        Hx = file["$address/Hx"]
+        Hy = file["$address/Hy"]
+        Hz = file["$address/Hz"]
+        zᵃᵃᶠ = file["$address/zᵃᵃᶠ"]
+        z = file["$address/Δzᵃᵃᶠ"] isa Number ? (zᵃᵃᶠ[1], zᵃᵃᶠ[Nz+1]) : zᵃᵃᶠ[1:Nz+1]
+        topo = topology(grid)
+        size = (Nx, Ny, Nz)
+        halo = (Hx, Hy, Hz)
+
         if :λᶜᵃᵃ ∈ propertynames(test_grid) # I guess its a LatitudeLongitudeGrid.
-            address = isibg ? "grid/underlying_grid" : "grid"
-            Nx = file["$address/Nx"]
-            Ny = file["$address/Ny"]
-            Nz = file["$address/Nz"]
-            Hx = file["$address/Hx"]
-            Hy = file["$address/Hy"]
-            Hz = file["$address/Hz"]
             λᶠᵃᵃ = file["$address/λᶠᵃᵃ"]
             φᵃᶠᵃ = file["$address/φᵃᶠᵃ"]
-            zᵃᵃᶠ = file["$address/zᵃᵃᶠ"]
             λ = file["$address/Δλᶠᵃᵃ"] isa Number ? (λᶠᵃᵃ[1], λᶠᵃᵃ[Nx+1]) : λᶠᵃᵃ[1:Nx+1]
             φ = file["$address/Δφᵃᶠᵃ"] isa Number ? (φᵃᶠᵃ[1], φᵃᶠᵃ[Ny+1]) : φᵃᶠᵃ[1:Ny+1]
-            z = file["$address/Δzᵃᵃᶠ"] isa Number ? (zᵃᵃᶠ[1], zᵃᵃᶠ[Nz+1]) : zᵃᵃᶠ[1:Nz+1]
-            topo = topology(grid)
-            size = (Nx, Ny, Nz)
-            halo = (Hx, Hy, Hz)
             domain = (latitude=φ, longitude=λ, z=z)
             underlying_grid = LatitudeLongitudeGrid(architecture; size, halo, topology=topo, domain...)
+        else
+            xᶠᵃᵃ = file["$address/xᶠᵃᵃ"]
+            yᵃᶠᵃ = file["$address/yᵃᶠᵃ"]
+            x = file["$address/Δxᶠᵃᵃ"] isa Number ? (xᶠᵃᵃ[1], xᶠᵃᵃ[Nx+1]) : xᶠᵃᵃ[1:Nx+1]
+            y = file["$address/Δyᵃᶠᵃ"] isa Number ? (yᵃᶠᵃ[1], yᵃᶠᵃ[Ny+1]) : yᵃᶠᵃ[1:Ny+1]
+            domain = (; x, y, z)
+            underlying_grid = RectilinearGrid(architecture; size, halo, topology=topo, domain...)
+        end
 
-            if isibg
-                bottom_height = file["grid/immersed_boundary/bottom_height"]
-                bottom_height = view(bottom_height, Hx+1:Nx-Hx, Hy+1:Ny-Hy, 1)
-                @show Base.size(bottom_height)
-                @show Base.size(underlying_grid)
-                grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
-            else
-                grid = underlying_grid
-            end
+        if isibg
+            bottom_height = file["grid/immersed_boundary/bottom_height"]
+            bottom_height = view(bottom_height, 1+Hx:Nx+Hx, 1+Hy:Ny+Hy, 1)
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
+        else
+            grid = underlying_grid
         end
     end
 
-    
     # This should be removed eventually... (4/5/2022)
     grid = try
         on_architecture(architecture, grid)
