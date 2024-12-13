@@ -63,7 +63,7 @@ const LinearTemperatureSeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationO
 const LinearSalinitySeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState, <:Number, <:Nothing} where FT
 
 #####
-##### BuoyancyModels perturbation
+##### buoyancy perturbation
 #####
 
 @inline buoyancy_perturbationᶜᶜᶜ(i, j, k, grid, b::LinearSeawaterBuoyancy, C) =
