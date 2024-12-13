@@ -260,17 +260,23 @@ end
             closure = @eval $closurename()
             @test closure isa TurbulenceClosures.AbstractTurbulenceClosure
 
-            @info "  Testing the instantiation of NonhydrostaticModel with $closurename..."
-            grid = RectilinearGrid(CPU(), size=(2, 2, 2), extent=(1, 2, 3))
-            model = NonhydrostaticModel(; grid, closure, tracers=:c)
-            c = model.tracers.c
-            u = model.velocities.u
-            κ = diffusivity(model.closure, model.diffusivity_fields, Val(:c)) 
-            κ_dx_c = κ * ∂x(c)
-            ν = viscosity(model.closure, model.diffusivity_fields)
-            ν_dx_u = ν * ∂x(u)
-            @test ν_dx_u[1, 1, 1] == 0.0
-            @test κ_dx_c[1, 1, 1] == 0.0
+            for arch in archs
+                @info "  Testing the instantiation of NonhydrostaticModel with $closurename on $arch..."
+                if arch isa GPU && closurename == :LagrangianAveragedDynamicSmagorinsky
+                    @info "Skipping GPU test of $closurename."
+                else
+                    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
+                    model = NonhydrostaticModel(; grid, closure, tracers=:c)
+                    c = model.tracers.c
+                    u = model.velocities.u
+                    κ = diffusivity(model.closure, model.diffusivity_fields, Val(:c)) 
+                    κ_dx_c = κ * ∂x(c)
+                    ν = viscosity(model.closure, model.diffusivity_fields)
+                    ν_dx_u = ν * ∂x(u)
+                    @test ν_dx_u[1, 1, 1] == 0
+                    @test κ_dx_c[1, 1, 1] == 0
+                end
+            end
         end
 
         c = Center()
@@ -312,7 +318,6 @@ end
         @test required_halo_size_x(closure) == 2
         @test required_halo_size_y(closure) == 2
         @test required_halo_size_z(closure) == 2
-
     end
 
     @testset "HorizontalScalarDiffusivity" begin
