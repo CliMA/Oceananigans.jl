@@ -13,7 +13,8 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
 
-using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range
+using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range, AbstractGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 
 using Oceananigans.Fields: interior_view_indices, index_binary_search,
                            indices_summary, boundary_conditions
@@ -386,6 +387,10 @@ function FieldTimeSeries(loc, grid, times=();
                                        times, path, name, time_indexing, reader_kw)
 end
 
+isreconstructed(grid::JLD2.ReconstructedStatic) = true
+isreconstructed(grid::AbstractGrid) = false
+isreconstructed(grid::ImmersedBoundaryGrid) = isreconstructed(grid.underlying_grid)
+
 """
     FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid [, times=()]; kwargs...)
 
@@ -466,8 +471,6 @@ function FieldTimeSeries(path::String, name::String;
         (:, :, :)
     end
 
-    isnothing(grid) && (grid = file["serialized/grid"])
-
     if isnothing(architecture) # determine architecture
         if isnothing(grid) # go to default
             architecture = CPU()
@@ -476,12 +479,44 @@ function FieldTimeSeries(path::String, name::String;
         end
     end
 
-    if boundary_conditions isa UnspecifiedBoundaryConditions
-        boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
-        boundary_conditions = on_architecture(architecture, boundary_conditions)
+    isnothing(grid) && (grid = file["serialized/grid"])
+
+    if isreconstructed(grid) # We weren't able to get a real grid, so let's try.
+        isibg = grid isa ImmersedBoundaryGrid
+        test_grid = isibg ? grid.underlying_grid : grid
+        if :λᶜᵃᵃ ∈ propertynames(test_grid) # I guess its a LatitudeLongitudeGrid.
+            address = isibg ? "grid/underlying_grid" : "grid"
+            Nx = file["$address/Nx"]
+            Ny = file["$address/Ny"]
+            Nz = file["$address/Nz"]
+            Hx = file["$address/Hx"]
+            Hy = file["$address/Hy"]
+            Hz = file["$address/Hz"]
+            λᶠᵃᵃ = file["$address/λᶠᵃᵃ"]
+            φᵃᶠᵃ = file["$address/φᵃᶠᵃ"]
+            zᵃᵃᶠ = file["$address/zᵃᵃᶠ"]
+            λ = file["$address/Δλᶠᵃᵃ"] isa Number ? (λᶠᵃᵃ[1], λᶠᵃᵃ[Nx+1]) : λᶠᵃᵃ[1:Nx+1]
+            φ = file["$address/Δφᵃᶠᵃ"] isa Number ? (φᵃᶠᵃ[1], φᵃᶠᵃ[Ny+1]) : φᵃᶠᵃ[1:Ny+1]
+            z = file["$address/Δzᵃᵃᶠ"] isa Number ? (zᵃᵃᶠ[1], zᵃᵃᶠ[Nz+1]) : zᵃᵃᶠ[1:Nz+1]
+            topo = topology(grid)
+            size = (Nx, Ny, Nz)
+            halo = (Hx, Hy, Hz)
+            domain = (latitude=φ, longitude=λ, z=z)
+            underlying_grid = LatitudeLongitudeGrid(architecture; size, halo, topology=topo, domain...)
+
+            if isibg
+                bottom_height = file["grid/immersed_boundary/bottom_height"]
+                bottom_height = view(bottom_height, Hx+1:Nx-Hx, Hy+1:Ny-Hy, 1)
+                @show Base.size(bottom_height)
+                @show Base.size(underlying_grid)
+                grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
+            else
+                grid = underlying_grid
+            end
+        end
     end
 
-
+    
     # This should be removed eventually... (4/5/2022)
     grid = try
         on_architecture(architecture, grid)
@@ -527,6 +562,11 @@ function FieldTimeSeries(path::String, name::String;
         else
             throw(err)
         end
+    end
+
+    if boundary_conditions isa UnspecifiedBoundaryConditions
+        boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
+        boundary_conditions = on_architecture(architecture, boundary_conditions)
     end
 
     close(file)
