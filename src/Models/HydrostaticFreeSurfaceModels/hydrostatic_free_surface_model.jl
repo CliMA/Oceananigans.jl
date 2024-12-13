@@ -4,7 +4,7 @@ using OrderedCollections: OrderedDict
 using Oceananigans.DistributedComputations
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, adapt_advection_order
-using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
+using Oceananigans.BuoyancyFormulations: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
@@ -82,7 +82,7 @@ Keyword arguments
             of the `grid`.
   - `momentum_advection`: The scheme that advects velocities. See `Oceananigans.Advection`.
   - `tracer_advection`: The scheme that advects tracers. See `Oceananigans.Advection`.
-  - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
+  - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyFormulations`.
   - `coriolis`: Parameters for the background rotation rate of the model.
   - `free_surface`: The free surface model. The default free-surface solver depends on the
                     geometry of the `grid`. If the `grid` is a `RectilinearGrid` that is
@@ -179,7 +179,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     closure = validate_closure(closure)
 
     # Either check grid-correctness, or construct tuples of fields
-    velocities         = HydrostaticFreeSurfaceVelocityFields(velocities, grid, clock, boundary_conditions)
+    velocities         = hydrostatic_velocity_fields(velocities, grid, clock, boundary_conditions)
     tracers            = TracerFields(tracers, grid, boundary_conditions)
     pressure           = PressureField(grid)
     diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
@@ -194,11 +194,10 @@ function HydrostaticFreeSurfaceModel(; grid,
     implicit_solver   = implicit_diffusion_solver(time_discretization(closure), grid)
     prognostic_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
 
-    timestepper = TimeStepper(timestepper, grid, tracernames(tracers);
+    timestepper = TimeStepper(timestepper, grid, prognostic_fields;
                               implicit_solver = implicit_solver,
-                              Gⁿ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, grid, tracernames(tracers)),
-                              G⁻ = PreviousHydrostaticTendencyFields(Val(timestepper), velocities, free_surface, grid, tracernames(tracers)),
-                              Ψ⁻ = deepcopy(prognostic_fields))
+                              Gⁿ = hydrostatic_tendency_fields(velocities, free_surface, grid, tracernames(tracers)),
+                              G⁻ = previous_hydrostatic_tendency_fields(Val(timestepper), velocities, free_surface, grid, tracernames(tracers)))
 
     # Regularize forcing for model tracer and velocity fields.
     model_fields = merge(prognostic_fields, auxiliary_fields)

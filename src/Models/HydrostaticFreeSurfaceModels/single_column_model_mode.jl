@@ -32,7 +32,7 @@ materialize_free_surface(free_surface::ExplicitFreeSurface{Nothing}, ::Prescribe
 materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
 materialize_free_surface(free_surface::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
 
-function HydrostaticFreeSurfaceVelocityFields(::Nothing, grid::SingleColumnGrid, clock, bcs=NamedTuple())
+function hydrostatic_velocity_fields(::Nothing, grid::SingleColumnGrid, clock, bcs=NamedTuple())
     u = XFaceField(grid, boundary_conditions=bcs.u)
     v = YFaceField(grid, boundary_conditions=bcs.v)
     w = ZeroField()

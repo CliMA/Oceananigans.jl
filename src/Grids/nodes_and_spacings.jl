@@ -66,7 +66,6 @@ _node_names(grid, ::Nothing, ::Nothing, ::Nothing) = tuple()
 
 xnodes(grid, ::Nothing; kwargs...) = 1:1
 ynodes(grid, ::Nothing; kwargs...) = 1:1
-znodes(grid, ::Nothing; kwargs...) = 1:1
 
 """
     xnodes(grid, ℓx, ℓy, ℓz, with_halos=false)
@@ -87,36 +86,6 @@ Return the positions over the interior nodes on `grid` in the ``y``-direction fo
 See [`znodes`](@ref) for examples.
 """
 @inline ynodes(grid, ℓx, ℓy, ℓz; kwargs...) = ynodes(grid, ℓy; kwargs...)
-
-"""
-    znodes(grid, ℓx, ℓy, ℓz; with_halos=false)
-
-Return the positions over the interior nodes on `grid` in the ``z``-direction for the location `ℓx`,
-`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-```jldoctest znodes
-julia> using Oceananigans
-
-julia> horz_periodic_grid = RectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1), halo=(1, 1, 1),
-                                            topology=(Periodic, Periodic, Bounded));
-
-julia> zC = znodes(horz_periodic_grid, Center())
-3-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), 1:3) with eltype Float64:
- -0.8333333333333334
- -0.5
- -0.16666666666666666
-
-julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center())
-3-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), 1:3) with eltype Float64:
- -0.8333333333333334
- -0.5
- -0.16666666666666666
-
-julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center(), with_halos=true)
--1.1666666666666667:0.3333333333333333:0.16666666666666666 with indices 0:4
-```
-"""
-@inline znodes(grid, ℓx, ℓy, ℓz; kwargs...) = znodes(grid, ℓz; kwargs...)
 
 """
     λnodes(grid::AbstractCurvilinearGrid, ℓx, ℓy, ℓz, with_halos=false)
@@ -163,31 +132,13 @@ nodes(grid::AbstractGrid, (ℓx, ℓy, ℓz); reshape=false, with_halos=false) =
 
 # placeholders
 # see Oceananigans/AbstractOperations/grid_metrics.jl for definitions
-function xspacing end
-function yspacing end
-function zspacing end
-function λspacing end
-function φspacing end
-
 function xspacings end
 function yspacings end
-function zspacings end
 function λspacings end
 function φspacings end
 
 destantiate(::Face)   = Face
 destantiate(::Center) = Center
-
-spacings_function(::Val{:x}) = xspacings
-spacings_function(::Val{:y}) = yspacings
-spacings_function(::Val{:z}) = zspacings
-spacings_function(::Val{:λ}) = λspacings
-spacings_function(::Val{:φ}) = φspacings
-
-function minimum_spacing(s, grid, ℓx, ℓy, ℓz)
-    spacings = spacings_function(s)
-    return minimum(spacings(grid, ℓx, ℓy, ℓz))
-end
 
 """
     minimum_xspacing(grid, ℓx, ℓy, ℓz)
