@@ -9,18 +9,19 @@ import Oceananigans.TimeSteppers: reset!
 default_progress(simulation) = nothing
 
 mutable struct Simulation{ML, DT, ST, DI, OW, CB}
-              model :: ML
-                 Δt :: DT
-     stop_iteration :: Float64
-          stop_time :: ST
-    wall_time_limit :: Float64
-        diagnostics :: DI
-     output_writers :: OW
-          callbacks :: CB
-      run_wall_time :: Float64
-            running :: Bool
-        initialized :: Bool
-            verbose :: Bool
+                    model :: ML
+                       Δt :: DT
+           stop_iteration :: Float64
+                stop_time :: ST
+          wall_time_limit :: Float64
+              diagnostics :: DI
+           output_writers :: OW
+                callbacks :: CB
+            run_wall_time :: Float64
+                  running :: Bool
+              initialized :: Bool
+                  verbose :: Bool
+    minimum_relative_step :: Float64
 end
 
 """
@@ -49,7 +50,8 @@ function Simulation(model; Δt,
                     verbose = true,
                     stop_iteration = Inf,
                     stop_time = Inf,
-                    wall_time_limit = Inf)
+                    wall_time_limit = Inf,
+                    minimum_relative_step = 0)
 
    if stop_iteration == Inf && stop_time == Inf && wall_time_limit == Inf
        @warn "This simulation will run forever as stop iteration = stop time " *
@@ -88,7 +90,8 @@ function Simulation(model; Δt,
                      0.0,
                      false,
                      false,
-                     verbose)
+                     verbose,
+                     Float64(minimum_relative_step))
 end
 
 function Base.show(io::IO, s::Simulation)
@@ -100,6 +103,7 @@ function Base.show(io::IO, s::Simulation)
                      "├── Stop time: $(prettytime(s.stop_time))", "\n",
                      "├── Stop iteration: $(s.stop_iteration)", "\n",
                      "├── Wall time limit: $(s.wall_time_limit)", "\n",
+                     "├── Minimum relative step: $(s.minimum_relative_step)", "\n",
                      "├── Callbacks: $(ordered_dict_show(s.callbacks, "│"))", "\n",
                      "├── Output writers: $(ordered_dict_show(s.output_writers, "│"))", "\n",
                      "└── Diagnostics: $(ordered_dict_show(s.diagnostics, "│"))")
