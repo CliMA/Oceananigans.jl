@@ -665,7 +665,7 @@ steps:
 ##### Vertical Coordinates tests
 #####
 
-  - label: "🦧 gpu vertical coordinate"
+  - label: "🥑 gpu vertical coordinate"
     env:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "vertical_coordinate"
@@ -681,7 +681,7 @@ steps:
           limit: 1
     depends_on: "init_gpu"
 
-  - label: "🦍 cpu vertical coordinate"
+  - label: "🥒 cpu vertical coordinate"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "vertical_coordinate"
