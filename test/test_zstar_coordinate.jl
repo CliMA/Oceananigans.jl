@@ -125,7 +125,7 @@ end
                     
                     # TODO: There are parameter space issues with ImplicitFreeSurface and a immersed LatitudeLongitudeGrid
                     # For the moment we are skipping these tests.
-                    if (arch == GPU) && 
+                    if (arch isa GPU) && 
                        (free_surface isa ImplicitFreeSurface) && 
                        (grid isa ImmersedBoundaryGrid) && 
                        (grid.underlying_grid isa LatitudeLongitudeGrid)
