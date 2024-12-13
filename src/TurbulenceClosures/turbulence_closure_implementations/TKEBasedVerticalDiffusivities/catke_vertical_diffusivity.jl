@@ -1,5 +1,3 @@
-using Oceananigans.BuoyancyModels: BuoyancyTracer, SeawaterBuoyancy
-
 struct CATKEVerticalDiffusivity{TD, CL, FT, DT, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
     mixing_length :: CL
     turbulent_kinetic_energy_equation :: TKE
