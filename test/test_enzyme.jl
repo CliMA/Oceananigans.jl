@@ -318,7 +318,7 @@ end
                                             boundary_conditions=(; b_bcs))
 
         # Compute derivative by hand
-        e₁, e₂ = 1e-5, 2e-5
+        e₁, e₂ = 9.9e-6, 1.1e-5
         b²₁ = buoyancy_variance!(model, e₁)
         b²₂ = buoyancy_variance!(model, e₂)
         db²_de_fd = (b²₂ - b²₁) / (e₂ - e₁)
@@ -326,12 +326,7 @@ end
         # Now for real
         e = 1e-5
         dmodel = Enzyme.make_zero(model)
-
-        @show dmodel
-
         buoyancy_variance!(dmodel, 0)
-
-        @show dmodel
 
         db²_de = autodiff(Enzyme.set_runtime_activity(Enzyme.Reverse),
                           buoyancy_variance!,
@@ -343,13 +338,9 @@ end
             Finite differences computed $db²_de_fd
         """
 
-        @show db²_de_fd
-        @show db²_de
-
-        #tol = 0.01
-        #rel_error = abs(db²_de[1][3] - db²_de_fd) / abs(db²_de_fd)
-        #@show db²_de, db²_de_fd
-        #@test rel_error < tol
+        tol = 0.01
+        rel_error = abs(db²_de[1][3] - db²_de_fd) / abs(db²_de_fd)
+        @test rel_error < tol
     end
 end
 
@@ -520,7 +511,7 @@ end
     v_truth = deepcopy(model.velocities.v)
     
     # Use a manual finite difference (central difference) to compute the gradient at ν1 = ν₀ + Δν
-    Δν = 1e-6
+    Δν = 1e-7
     ν0 = ν₀
     ν1 = ν₀ + Δν
     ν2 = ν₀ + 2Δν
