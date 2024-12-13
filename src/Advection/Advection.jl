@@ -17,9 +17,7 @@ export
     advective_tracer_flux_z,
 
     AdvectionScheme,
-    Centered, CenteredSecondOrder, CenteredFourthOrder,
-    UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder,
-    WENO, WENOThirdOrder, WENOFifthOrder,
+    Centered, UpwindBiased, WENO, 
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     EnergyConserving,
@@ -32,7 +30,7 @@ using Adapt
 using OffsetArrays
 
 using Oceananigans.Grids
-using Oceananigans.Grids: with_halo, coordinates
+using Oceananigans.Grids: with_halo
 using Oceananigans.Architectures: architecture, CPU
 
 using Oceananigans.Operators

@@ -57,7 +57,7 @@ has_fft_poisson_solver(::GridWithFFTSolver) = true
 
 fft_poisson_solver(grid::XYZRegularRG) = FFTBasedPoissonSolver(grid)
 fft_poisson_solver(grid::GridWithFourierTridiagonalSolver) =
-    FourierTridiagonalPoissonSolver(grid.underlying_grid)
+    FourierTridiagonalPoissonSolver(grid)
 
 end # module
 

@@ -41,7 +41,7 @@ particles = LagrangianParticles(x=x₀, y=y₀, z=z₀, restitution=0)
 b_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(1e-8))
 
 model = NonhydrostaticModel(; grid, particles,
-                            advection = UpwindBiasedFifthOrder(),
+                            advection = UpwindBiased(order=5),
                             timestepper = :RungeKutta3,
                             tracers = :b,
                             buoyancy = BuoyancyTracer(),

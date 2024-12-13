@@ -124,7 +124,7 @@ function compute_preconditioner_rhs!(solver::FourierTridiagonalPoissonSolver, rh
     arch = architecture(grid)
     tridiagonal_dir = solver.batched_tridiagonal_solver.tridiagonal_direction
     launch!(arch, grid, :xyz, fourier_tridiagonal_preconditioner_rhs!,
-            solver.storage, tridiagonal_dir, rhs)
+            solver.storage, tridiagonal_dir, grid, rhs)
     return nothing
 end
 

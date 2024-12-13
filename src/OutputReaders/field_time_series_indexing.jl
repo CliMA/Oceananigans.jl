@@ -14,7 +14,7 @@ import Oceananigans.Fields: interpolate
 # Cyclical implementation if out-of-bounds (wrap around the time-series)
 @inline function interpolating_time_indices(ti::Cyclical, times, t)
     Nt = length(times)
-    t¹ = first(times) 
+    t¹ = first(times)
     tᴺ = last(times)
 
     T = ti.period
@@ -32,14 +32,14 @@ import Oceananigans.Fields: interpolate
     uncycled_indices = (ñ, n₁, n₂)
 
     return ifelse(cycling, cycled_indices, uncycled_indices)
-end   
+end
 
 # Clamp mode if out-of-bounds, i.e get the neareast neighbor
 @inline function interpolating_time_indices(::Clamp, times, t)
     n, n₁, n₂ = time_index_binary_search(times, t)
 
     beyond_indices    = (0, n₂, n₂) # Beyond the last time:  return n₂
-    before_indices    = (0, n₁, n₁) # Before the first time: return n₁   
+    before_indices    = (0, n₁, n₁) # Before the first time: return n₁
     unclamped_indices = (n, n₁, n₂) # Business as usual
 
     Nt = length(times)
@@ -53,13 +53,13 @@ end
 @inline function time_index_binary_search(times, t)
     Nt = length(times)
 
-    # n₁ and n₂ are the index to interpolate inbetween and 
+    # n₁ and n₂ are the index to interpolate inbetween and
     # n is a fractional index where 0 ≤ n ≤ 1
     n₁, n₂ = index_binary_search(times, t, Nt)
 
     @inbounds begin
-        t₁ = times[n₁]    
-        t₂ = times[n₂]    
+        t₁ = times[n₁]
+        t₂ = times[n₂]
     end
 
     # "Fractional index" ñ ∈ (0, 1)
@@ -79,7 +79,7 @@ import Base: getindex
 function getindex(fts::OnDiskFTS, n::Int)
     # Load data
     arch = architecture(fts)
-    file = jldopen(fts.path)
+    file = jldopen(fts.path; fts.reader_kw...)
     iter = keys(file["timeseries/t"])[n]
     raw_data = on_architecture(arch, file["timeseries/$(fts.name)/$iter"])
     close(file)
@@ -117,7 +117,7 @@ const YZFTS = FlavorOfFTS{Nothing, <:Any, <:Any, <:Any, <:Any}
 
 @inline function interpolating_getindex(fts, i, j, k, time_index)
     ñ, n₁, n₂ = interpolating_time_indices(fts.time_indexing, fts.times, time_index.time)
-    
+
     @inbounds begin
         ψ₁ = getindex(fts, i, j, k, n₁)
         ψ₂ = getindex(fts, i, j, k, n₂)
@@ -168,13 +168,17 @@ end
 
     to_time = to_time_index.time
 
-    # Build space interpolators
-    to_node = flatten_node(to_node...)
-    ii, jj, kk = fractional_indices(to_node, from_grid, from_loc...)
+    if topology(from_grid) === (Flat, Flat, Flat)
+        ix = iy = iz = (1, 1, 0)
+    else
+        # Build space interpolators
+        to_node = flatten_node(to_node...)
+        ii, jj, kk = fractional_indices(to_node, from_grid, from_loc...)
 
-    ix = interpolator(ii)
-    iy = interpolator(jj)
-    iz = interpolator(kk)
+        ix = interpolator(ii)
+        iy = interpolator(jj)
+        iz = interpolator(kk)
+    end
 
     ñ, n₁, n₂ = interpolating_time_indices(time_indexing, times, to_time)
 
@@ -229,14 +233,14 @@ end
 ##### FieldTimeSeries updating
 #####
 
-# Let's make sure `times` is available on the CPU. This is always the case 
-# for ranges. if `times` is a vector that resides on the GPU, it has to be moved to the CPU for safe indexing. 
+# Let's make sure `times` is available on the CPU. This is always the case
+# for ranges. if `times` is a vector that resides on the GPU, it has to be moved to the CPU for safe indexing.
 # TODO: Copying the whole array is a bit unclean, maybe find a way that avoids the penalty of allocating and copying memory.
 # This would require refactoring `FieldTimeSeries` to include a cpu-allocated times array
 cpu_interpolating_time_indices(::CPU, times, time_indexing, t, arch) = interpolating_time_indices(time_indexing, times, t)
 cpu_interpolating_time_indices(::CPU, times::AbstractVector, time_indexing, t) = interpolating_time_indices(time_indexing, times, t)
 
-function cpu_interpolating_time_indices(::GPU, times::AbstractVector, time_indexing, t) 
+function cpu_interpolating_time_indices(::GPU, times::AbstractVector, time_indexing, t)
     cpu_times = on_architecture(CPU(), times)
     return interpolating_time_indices(time_indexing, cpu_times, t)
 end
@@ -279,4 +283,3 @@ function getindex(fts::InMemoryFTS, n::Int)
 
     return Field(location(fts), fts.grid; data, fts.boundary_conditions, fts.indices)
 end
-

@@ -1,6 +1,8 @@
 module OceananigansMakieExt
 
 using Oceananigans
+using Oceananigans.Grids: OrthogonalSphericalShellGrid
+using Oceananigans.Fields: AbstractField
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
@@ -13,7 +15,7 @@ import Makie: args_preferred_axis
 # do not overstate a preference for being plotted in a 3D LScene.
 # Because often we are trying to plot 1D and 2D Field, even though
 # (perhaps incorrectly) all Field are AbstractArray{3}.
-args_preferred_axis(::Field) = nothing
+args_preferred_axis(::AbstractField) = nothing
 
 function drop_singleton_indices(N)
     if N == 1
@@ -37,7 +39,7 @@ end
 convert_arguments(pl::Type{<:AbstractPlot}, f::Field) =
     convert_arguments(pl, convert_field_argument(f)...)
 
-function convert_arguments(pl::Type{<:AbstractPlot}, fop::AbstractOperation)
+function convert_arguments(pl::Type{<:AbstractPlot}, op::AbstractOperation)
     f = Field(op)
     compute!(f)
     return convert_arguments(pl, f)
@@ -123,6 +125,13 @@ function convert_field_argument(f::Field)
     end
 end
 
+# For Fields on OrthogonalSphericalShellGrid, just return the interior without coordinates
+# TODO: support plotting in geographic coordinates using mesh
+# See for example
+# https://github.com/navidcy/Imaginocean.jl/blob/f5cc5f27dd2e99e0af490e8dca5a53daf6837ead/src/Imaginocean.jl#L259
+const OSSGField = Field{<:Any, <:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid}
+convert_field_argument(f::OSSGField) = make_plottable_array(f)
+
 #####
 ##### When nodes are provided
 #####
@@ -138,3 +147,4 @@ function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, ξ2::Ab
 end
 
 end # module
+

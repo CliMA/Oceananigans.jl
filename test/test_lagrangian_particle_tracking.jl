@@ -75,8 +75,8 @@ function run_simple_particle_tracking_tests(grid, timestepper=:QuasiAdamsBashfor
     ##### Test Boundary restitution
     #####
 
-    initial_z = CUDA.@allowscalar grid.zᵃᵃᶜ[grid.Nz-1]
-    top_boundary = CUDA.@allowscalar grid.zᵃᵃᶠ[grid.Nz+1]
+    initial_z = CUDA.@allowscalar grid.z.cᵃᵃᶜ[grid.Nz-1]
+    top_boundary = CUDA.@allowscalar grid.z.cᵃᵃᶠ[grid.Nz+1]
 
     x, y, z = on_architecture.(Ref(arch), ([0.0], [0.0], [initial_z]))
 
@@ -324,4 +324,22 @@ lagrangian_particle_test_curvilinear_grid(arch, z) =
         grid = lagrangian_particle_test_curvilinear_grid(arch, z)
         run_simple_particle_tracking_tests(grid)
     end
+
+    for arch in archs
+        @info "  Testing Lagrangian particle tracking [$(typeof(arch))] with 0 particles ..."
+        xp = Array{Float64}(undef, 0)
+        yp = Array{Float64}(undef, 0)
+        zp = Array{Float64}(undef, 0)
+
+        xp = on_architecture(arch, xp)
+        yp = on_architecture(arch, yp)
+        zp = on_architecture(arch, zp)
+        
+        grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+        particles = LagrangianParticles(x=xp, y=yp, z=zp)
+        model = NonhydrostaticModel(; grid, particles)
+        time_step!(model, 1)
+        @test model.particles isa LagrangianParticles
+    end
 end
+
