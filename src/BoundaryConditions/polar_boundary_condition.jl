@@ -1,4 +1,4 @@
-using Oceananigans.Grids: inactive_node, new_data
+using Oceananigans.Grids: inactive_node, new_data, YFlatGrid
 using CUDA: @allowscalar
 
 struct PolarValue{D, S}
@@ -19,6 +19,9 @@ end
 
 # Just a column
 @inline getbc(pv::BC{<:Value, <:PolarValue}, i, k, args...) = @inbounds pv.condition.data[1, 1, k]
+
+latitude_north_auxiliary_bc(::YFlatGrid, args...) = nothing
+latitude_south_auxiliary_bc(::YFlatGrid, args...) = nothing
 
 # TODO: vectors should have a different treatment since vector components should account for the frame of reference.
 # For the moment, the `PolarBoundaryConditions` is implemented only for fields that have `loc[1] == loc[2] == Center()`, which
