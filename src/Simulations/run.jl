@@ -140,11 +140,12 @@ function time_step!(sim::Simulation)
 
     else # business as usual...
         Δt = aligned_time_step(sim, sim.Δt)
-        if Δt > (sim.Δt / 1e10)
-            time_step!(sim.model, Δt, callbacks=model_callbacks)
+        if Δt < sim.minimum_relative_step * sim.Δt
+            next_time = next_actuation_time(sim)
+            @warn "Reseting clock to $next_time and skipping aligned time step Δt = $Δt"
+            sim.model.clock.time = next_time
         else
-            println("Skipping aligned time step, which is of ", Δt)
-            sim.model.clock.time = next_actuation_time(sim)
+            time_step!(sim.model, Δt, callbacks=model_callbacks)
         end
     end
 
