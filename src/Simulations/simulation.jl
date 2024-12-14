@@ -103,7 +103,7 @@ function Base.show(io::IO, s::Simulation)
                      "├── Stop time: $(prettytime(s.stop_time))", "\n",
                      "├── Stop iteration: $(s.stop_iteration)", "\n",
                      "├── Wall time limit: $(s.wall_time_limit)", "\n",
-                     "├── Minimum relative step: $(s.minimum_relative_step)", "\n",
+                     "├── Minimum relative step: ", prettysummary(s.minimum_relative_step), "\n",
                      "├── Callbacks: $(ordered_dict_show(s.callbacks, "│"))", "\n",
                      "├── Output writers: $(ordered_dict_show(s.output_writers, "│"))", "\n",
                      "└── Diagnostics: $(ordered_dict_show(s.diagnostics, "│"))")
