@@ -23,6 +23,8 @@ import Oceananigans.Architectures: architecture
 import Oceananigans.TimeSteppers: reset!
 import Oceananigans.Solvers: iteration
 
+import Base
+
 # A prototype interface for AbstractModel.
 #
 # TODO: decide if we like this.
@@ -34,6 +36,7 @@ import Oceananigans.Solvers: iteration
 
 iteration(model::AbstractModel) = model.clock.iteration
 Base.time(model::AbstractModel) = model.clock.time
+Base.eltype(model::AbstractModel) = eltype(model.grid)
 architecture(model::AbstractModel) = model.grid.architecture
 initialize!(model::AbstractModel) = nothing
 total_velocities(model::AbstractModel) = nothing
