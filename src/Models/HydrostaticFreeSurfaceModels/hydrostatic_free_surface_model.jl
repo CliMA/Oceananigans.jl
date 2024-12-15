@@ -63,6 +63,7 @@ default_free_surface(grid; gravitational_acceleration=g_Earth) =
                                 free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
                                 forcing::NamedTuple = NamedTuple(),
                                 closure = nothing,
+                                timestepper = :QuasiAdamsBashforth2,
                                 boundary_conditions::NamedTuple = NamedTuple(),
                                 tracers = (:T, :S),
                                 particles::ParticlesOrNothing = nothing,
@@ -93,6 +94,8 @@ Keyword arguments
                preallocated `CenterField`s.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
   - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
+  - `timestepper`: A symbol that specifies the time-stepping method. 
+                   Either `:QuasiAdamsBashforth2` (default) or `:SplitRungeKutta3`.
   - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
   - `biogeochemistry`: Biogeochemical model for `tracers`.
