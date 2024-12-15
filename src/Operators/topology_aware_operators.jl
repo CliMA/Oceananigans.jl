@@ -81,6 +81,11 @@ const AGYL = AbstractUnderlyingGrid{FT, <:Any, LeftConnected} where FT
     return ifelse(immersed, zero(grid), f(i, j, k, grid, args...))
 end
 
+@inline function mask_periphery(i, j, k, grid, ℓx, ℓy, ℓz, c) 
+    immersed = peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
+    return @inbounds ifelse(immersed, zero(grid), c[i, j, k])
+end
+
 @inline flip(::Center) = Face()
 @inline flip(::Face)   = Center()
 
@@ -106,22 +111,22 @@ for LX in (:Center, :Face), LY in (:Center, :Face), LZ in (:Center, :Face)
     ℑzMˡˡˡ = Symbol(:ℑzM, location_code(LXe, LYe, LZe))
     
     @eval begin
-        @inline function $ℑxMˡˡˡ(i, j, k, grid, f::Function, args...)
+        @inline function $ℑxMˡˡˡ(i, j, k, grid, args...)
             neighboring_active_nodes = $ℑxˡᵃᵃ(i, j, k, grid, not_peripheral_node, $𝒻x, $ℓy, $ℓz)
             return ifelse(neighboring_active_nodes == 0, zero(grid),
-                          $ℑxˡᵃᵃ(i, j, k, grid, mask_periphery, $𝒻x, $ℓy, $ℓz, f, args...) / neighboring_active_nodes)
+                          $ℑxˡᵃᵃ(i, j, k, grid, mask_periphery, $𝒻x, $ℓy, $ℓz, args...) / neighboring_active_nodes)
         end
 
-        @inline function $ℑyMˡˡˡ(i, j, k, grid, f::Function, args...)
+        @inline function $ℑyMˡˡˡ(i, j, k, grid, args...)
             neighboring_active_nodes = $ℑyᵃˡᵃ(i, j, k, grid, not_peripheral_node, $ℓx, $𝒻y, $ℓz)
             return ifelse(neighboring_active_nodes == 0, zero(grid),
-                          $ℑyᵃˡᵃ(i, j, k, grid, mask_periphery, $ℓx, $𝒻y, $ℓz, f, args...) / neighboring_active_nodes)
+                          $ℑyᵃˡᵃ(i, j, k, grid, mask_periphery, $ℓx, $𝒻y, $ℓz, args...) / neighboring_active_nodes)
         end
 
-        @inline function $ℑzMˡˡˡ(i, j, k, grid, f::Function, args...)
+        @inline function $ℑzMˡˡˡ(i, j, k, grid, args...)
             neighboring_active_nodes = $ℑzᵃᵃˡ(i, j, k, grid, not_peripheral_node, $ℓx, $ℓy, $𝒻z)
             return ifelse(neighboring_active_nodes == 0, zero(grid),
-                          $ℑzᵃᵃˡ(i, j, k, grid, mask_periphery, $ℓx, $ℓy, $𝒻z, f, args...) / neighboring_active_nodes)
+                          $ℑzᵃᵃˡ(i, j, k, grid, mask_periphery, $ℓx, $ℓy, $𝒻z, args...) / neighboring_active_nodes)
         end
     end
 
@@ -134,22 +139,22 @@ for LX in (:Center, :Face), LY in (:Center, :Face), LZ in (:Center, :Face)
     ℑxzMˡˡˡ = Symbol(:ℑxzM, location_code(LXe, LYe, LZe))
 
     @eval begin
-        @inline function $ℑxyMˡˡˡ(i, j, k, grid, f::Function, args...)
+        @inline function $ℑxyMˡˡˡ(i, j, k, grid, args...)
             neighboring_active_nodes = $ℑxyˡˡᵃ(i, j, k, grid, not_peripheral_node, $𝒻x, $𝒻y, $ℓz)
             return ifelse(neighboring_active_nodes == 0, zero(grid),
-                          $ℑxyˡˡᵃ(i, j, k, grid, mask_periphery, $𝒻x, $𝒻y, $ℓz, f, args...) / neighboring_active_nodes)
+                          $ℑxyˡˡᵃ(i, j, k, grid, mask_periphery, $𝒻x, $𝒻y, $ℓz, args...) / neighboring_active_nodes)
         end
 
-        @inline function $ℑyzMˡˡˡ(i, j, k, grid, f::Function, args...)
+        @inline function $ℑyzMˡˡˡ(i, j, k, grid, args...)
             neighboring_active_nodes = $ℑyzᵃˡˡ(i, j, k, grid, not_peripheral_node, $ℓx, $𝒻y, $𝒻z)
             return ifelse(neighboring_active_nodes == 0, zero(grid),
-                          $ℑyzᵃˡˡ(i, j, k, grid, mask_periphery, $ℓx, $𝒻y, $𝒻z, f, args...) / neighboring_active_nodes)
+                          $ℑyzᵃˡˡ(i, j, k, grid, mask_periphery, $ℓx, $𝒻y, $𝒻z, args...) / neighboring_active_nodes)
         end
 
-        @inline function $ℑxzMˡˡˡ(i, j, k, grid, f::Function, args...)
+        @inline function $ℑxzMˡˡˡ(i, j, k, grid, args...)
             neighboring_active_nodes = $ℑxzˡᵃˡ(i, j, k, grid, not_peripheral_node, $𝒻x, $ℓy, $𝒻z)
             return ifelse(neighboring_active_nodes == 0, zero(grid),
-                          $ℑxzˡᵃˡ(i, j, k, grid, mask_periphery, $𝒻x, $ℓy, $𝒻z, f, args...) / neighboring_active_nodes)
+                          $ℑxzˡᵃˡ(i, j, k, grid, mask_periphery, $𝒻x, $ℓy, $𝒻z, args...) / neighboring_active_nodes)
         end
     end
 
@@ -157,10 +162,10 @@ for LX in (:Center, :Face), LY in (:Center, :Face), LZ in (:Center, :Face)
     ℑxyzMˡˡˡ = Symbol(:ℑxyzM, location_code(LXe, LYe, LZe))            
 
     @eval begin
-        @inline function $ℑxyzMˡˡˡ(i, j, k, grid, f::Function, args...)
+        @inline function $ℑxyzMˡˡˡ(i, j, k, grid, args...)
             neighboring_active_nodes = $ℑxyzˡˡˡ(i, j, k, grid, not_peripheral_node, $𝒻x, $𝒻y, $𝒻z)
             return ifelse(neighboring_active_nodes == 0, zero(grid),
-                          $ℑxyzˡˡˡ(i, j, k, grid, mask_periphery, $𝒻x, $𝒻y, $𝒻z, f, args...) / neighboring_active_nodes)
+                          $ℑxyzˡˡˡ(i, j, k, grid, mask_periphery, $𝒻x, $𝒻y, $𝒻z, args...) / neighboring_active_nodes)
         end
     end
 end
