@@ -13,8 +13,8 @@ const ZStarImmersedGrid   = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:A
 const ZStarGridOfSomeKind = Union{ZStarImmersedGrid, AbstractZStarGrid}
 
 @inline dynamic_column_depthᶜᶜᵃ(i, j, k, grid::ZStarGridOfSomeKind, η) = @inbounds static_column_depthᶜᶜᵃ(i, j, grid) +      η[i, j, k]
-@inline dynamic_column_depthᶜᶠᵃ(i, j, k, grid::ZStarGridOfSomeKind, η) = @inbounds static_column_depthᶠᶜᵃ(i, j, grid) +  ℑyᵃᶠᵃ(i, j, k, grid, η)
-@inline dynamic_column_depthᶠᶜᵃ(i, j, k, grid::ZStarGridOfSomeKind, η) = @inbounds static_column_depthᶜᶠᵃ(i, j, grid) +  ℑxᶠᵃᵃ(i, j, k, grid, η)
+@inline dynamic_column_depthᶠᶜᵃ(i, j, k, grid::ZStarGridOfSomeKind, η) = @inbounds static_column_depthᶠᶜᵃ(i, j, grid) +  ℑxᶠᵃᵃ(i, j, k, grid, η)
+@inline dynamic_column_depthᶜᶠᵃ(i, j, k, grid::ZStarGridOfSomeKind, η) = @inbounds static_column_depthᶜᶠᵃ(i, j, grid) +  ℑyᵃᶠᵃ(i, j, k, grid, η)
 @inline dynamic_column_depthᶠᶠᵃ(i, j, k, grid::ZStarGridOfSomeKind, η) = @inbounds static_column_depthᶠᶠᵃ(i, j, grid) + ℑxyᶠᶠᵃ(i, j, k, grid, η)
 
 # Convenience methods
