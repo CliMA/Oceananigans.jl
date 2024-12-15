@@ -1,6 +1,6 @@
 using Oceananigans.Operators
 using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, Γᶠᶠᶜ
-using Oceananigans.Operators: mask_inactive_points_ℑxyᶠᶜᵃ, mask_inactive_points_ℑxyᶜᶠᵃ
+using Oceananigans.Operators: ℑxyMᶠᶜᵃ, ℑxyMᶜᶠᵃ
 
 # These are also used in Coriolis/hydrostatic_spherical_coriolis.jl
 struct EnergyConserving{FT}    <: AbstractAdvectionScheme{1, FT} end
@@ -372,7 +372,7 @@ end
 
     Sζ = scheme.vorticity_stencil
 
-    @inbounds v̂ = mask_inactive_points_ℑxyᶠᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
+    @inbounds v̂ = ℑxyMᶠᶜᶜ(i, j, k, grid, Δx_qᶜᶠᶜ, v) / Δxᶠᶜᶜ(i, j, k, grid) 
     ζᴿ = _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, bias(v̂), ζ₃ᶠᶠᶜ, Sζ, u, v)
 
     return - v̂ * ζᴿ
@@ -382,7 +382,7 @@ end
 
     Sζ = scheme.vorticity_stencil
 
-    @inbounds û = mask_inactive_points_ℑxyᶜᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
+    @inbounds û = ℑxyMᶜᶠᶜ(i, j, k, grid, Δy_qᶠᶜᶜ, u) / Δyᶜᶠᶜ(i, j, k, grid)
     ζᴿ = _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, bias(û), ζ₃ᶠᶠᶜ, Sζ, u, v)
 
     return + û * ζᴿ
@@ -394,7 +394,7 @@ end
 
 @inline function U_dot_∇u(i, j, k, grid, advection::AbstractAdvectionScheme, U)
 
-    v̂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, U.v) / Δxᶠᶜᶜ(i, j, k, grid)
+    v̂ = ℑxyMᶠᶜᶜ(i, j, k, grid, Δx_qᶜᶠᶜ, U.v) / Δxᶠᶜᶜ(i, j, k, grid)
     û = @inbounds U.u[i, j, k]
 
     return div_𝐯u(i, j, k, grid, advection, U, U.u) - 
@@ -404,7 +404,7 @@ end
 
 @inline function U_dot_∇v(i, j, k, grid, advection::AbstractAdvectionScheme, U) 
 
-    û = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, U.u) / Δyᶜᶠᶜ(i, j, k, grid)
+    û = ℑxyMᶜᶠᶜ(i, j, k, grid, Δy_qᶠᶜᶜ, U.u) / Δyᶜᶠᶜ(i, j, k, grid)
     v̂ = @inbounds U.v[i, j, k]
 
     return div_𝐯v(i, j, k, grid, advection, U, U.v) + 

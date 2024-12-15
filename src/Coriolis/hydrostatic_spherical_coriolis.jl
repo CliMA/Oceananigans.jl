@@ -1,5 +1,5 @@
 using Oceananigans.Grids: LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, peripheral_node, φnode
-using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, hack_sind, mask_inactive_points_ℑxyᶠᶜᵃ, mask_inactive_points_ℑxyᶜᶠᵃ
+using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, hack_sind, ℑxyMᶠᶜᶜ, ℑxyMᶜᶠᶜ
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
@@ -69,11 +69,11 @@ const CoriolisActiveCellEnstrophyConserving = HydrostaticSphericalCoriolis{<:Act
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::CoriolisActiveCellEnstrophyConserving, U) =
     @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) *
-                mask_inactive_points_ℑxyᶠᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)
+                ℑxyMᶠᶜᶜ(i, j, k, grid, Δx_qᶜᶠᶜ, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)
 
 @inline y_f_cross_U(i, j, k, grid, coriolis::CoriolisActiveCellEnstrophyConserving, U) =
     @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) *
-                mask_inactive_points_ℑxyᶜᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, U[1]) / Δyᶜᶠᶜ(i, j, k, grid)
+                ℑxyMᶜᶠᶜ(i, j, k, grid, Δy_qᶠᶜᶜ, U[1]) / Δyᶜᶠᶜ(i, j, k, grid)
 
 #####
 ##### Enstrophy-conserving scheme
