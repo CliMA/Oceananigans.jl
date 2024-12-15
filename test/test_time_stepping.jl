@@ -40,10 +40,10 @@ function time_stepping_works_with_closure(arch, FT, Closure; Model=Nonhydrostati
     # Add TKE tracer "e" to tracers when using CATKEVerticalDiffusivity
     tracers = [:T, :S]
     Closure === CATKEVerticalDiffusivity && push!(tracers, :e)
-
+    
     # Use halos of size 3 to be conservative
     grid = RectilinearGrid(arch, FT; size=(3, 3, 3), halo=(3, 3, 3), extent=(1, 2, 3))
-    closure = Closure(FT)
+    closure = Closure === IsopycnalSkewSymmetricDiffusivity ? Closure(FT, κ_skew=1, κ_symmetric=1) : Closure(FT)
     model = Model(; grid, closure, tracers, buoyancy)
     time_step!(model, 1)
 
