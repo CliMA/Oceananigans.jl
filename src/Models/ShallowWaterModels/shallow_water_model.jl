@@ -19,7 +19,7 @@ import Oceananigans.Models: default_nan_checker, timestepper
 
 const RectilinearGrids = Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
 
-function ShallowWaterTendencyFields(grid, tracer_names, prognostic_names)
+function shallow_water_tendency_fields(grid, tracer_names, prognostic_names)
     u =  XFaceField(grid)
     v =  YFaceField(grid)
     h = CenterField(grid)
@@ -181,8 +181,8 @@ function ShallowWaterModel(;
 
     # Instantiate timestepper if not already instantiated
     timestepper = TimeStepper(timestepper, grid, tracernames(tracers);
-                              Gⁿ = ShallowWaterTendencyFields(grid, tracernames(tracers), prognostic_field_names),
-                              G⁻ = ShallowWaterTendencyFields(grid, tracernames(tracers), prognostic_field_names))
+                              Gⁿ = shallow_water_tendency_fields(grid, tracernames(tracers), prognostic_field_names),
+                              G⁻ = shallow_water_tendency_fields(grid, tracernames(tracers), prognostic_field_names))
 
     # Regularize forcing and closure for model tracer and velocity fields.
     model_fields = merge(solution, tracers)
