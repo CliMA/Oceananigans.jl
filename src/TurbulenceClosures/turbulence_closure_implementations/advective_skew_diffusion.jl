@@ -77,6 +77,7 @@ end
 
 # Single closure version
 @inline closure_turbulent_velocity(clo, K, val_tracer_name) = nothing
+@inline closure_turbulent_velocity(::NoSkewAdvectionISSD, K, val_tracer_name) = nothing
 @inline closure_turbulent_velocity(::SkewAdvectionISSD, K, val_tracer_name) = (u = K.u, v = K.v, w = K.w)
 
 # 2-tuple closure
