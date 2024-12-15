@@ -65,3 +65,19 @@ const AGYL = AbstractUnderlyingGrid{FT, <:Any, LeftConnected} where FT
 
 @inline ∂xTᶠᶜᶠ(i, j, k, grid, f::Function, args...) = δxTᶠᵃᵃ(i, j, k, grid, f, args...) / Δxᶠᶜᶠ(i, j, k, grid)
 @inline ∂yTᶜᶠᶠ(i, j, k, grid, f::Function, args...) = δyTᵃᶠᵃ(i, j, k, grid, f, args...) / Δyᶜᶠᶠ(i, j, k, grid)
+
+# Masking interpolation operators
+
+@inline not_peripheral_node(args...) = !peripheral_node(args...)
+
+@inline function mask_inactive_points_ℑxyᶠᶜᵃ(i, j, k, grid, f::Function, args...) 
+    neighboring_active_nodes = ℑxyᶠᶜᵃ(i, j, k, grid, not_peripheral_node, Center(), Face(), Center())
+    return ifelse(neighboring_active_nodes == 0, zero(grid),
+                  ℑxyᶠᶜᵃ(i, j, k, grid, f, args...) / neighboring_active_nodes)
+end
+
+@inline function mask_inactive_points_ℑxyᶜᶠᵃ(i, j, k, grid, f::Function, args...) 
+    neighboring_active_nodes = @inbounds ℑxyᶜᶠᵃ(i, j, k, grid, not_peripheral_node, Face(), Center(), Center())
+    return ifelse(neighboring_active_nodes == 0, zero(grid),
+                  ℑxyᶜᶠᵃ(i, j, k, grid, f, args...) / neighboring_active_nodes)
+end

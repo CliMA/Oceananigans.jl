@@ -1,5 +1,5 @@
 using Oceananigans.Grids: LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, peripheral_node, φnode
-using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, hack_sind
+using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, hack_sind, mask_inactive_points_ℑxyᶠᶜᵃ, mask_inactive_points_ℑxyᶜᶠᵃ
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
