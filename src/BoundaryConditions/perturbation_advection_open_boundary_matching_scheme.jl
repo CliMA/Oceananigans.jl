@@ -18,7 +18,8 @@ struct PerturbationAdvection{VT, FT}
 end
 
 Adapt.adapt_structure(to, pe::PerturbationAdvection) = 
-    PerturbationAdvection(adapt(to, pe.outflow_timescale),
+    PerturbationAdvection(adapt(to, pe.backward_step),
+                          adapt(to, pe.outflow_timescale),
                           adapt(to, pe.inflow_timescale))
 
 function PerturbationAdvectionOpenBoundaryCondition(val, FT = Float64; 
