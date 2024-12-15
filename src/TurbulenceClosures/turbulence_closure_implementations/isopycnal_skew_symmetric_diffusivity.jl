@@ -214,8 +214,9 @@ end
 @inline diffusive_flux_z(i, j, k, grid, ::NoDiffusionISSD, args...) = zero(grid)
 
 # Diffusive fluxes
-@inline get_tracer_κ(κ::NamedTuple, tracer_index) = @inbounds κ[tracer_index]
-@inline get_tracer_κ(κ, tracer_index) = κ
+@inline get_tracer_κ(κ::NamedTuple, grid, tracer_index) = @inbounds κ[tracer_index]
+@inline get_tracer_κ(::Nothing, grid, tracer_index) = zero(grid)
+@inline get_tracer_κ(κ, grid, tracer_index) = κ
 
 # Remove skew coefficient if we are using the advective formulation
 @inline skew_diffusivity(i, j, k, grid, closure, κ, args...) = κ(i, j, k, grid, args...)
@@ -228,8 +229,8 @@ end
 
     closure = getclosure(i, j, closure)
 
-    κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
-    κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)
+    κ_skew = get_tracer_κ(closure.κ_skew, grid, tracer_index)
+    κ_symmetric = get_tracer_κ(closure.κ_symmetric, grid, tracer_index)
 
     κ_skewᶠᶜᶜ = skew_diffusivity(i, j, k, grid, closure, κᶠᶜᶜ, issd_coefficient_loc, κ_skew, clock)
     κ_symmetricᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock)
@@ -258,8 +259,8 @@ end
 
     closure = getclosure(i, j, closure)
 
-    κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
-    κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)
+    κ_skew = get_tracer_κ(closure.κ_skew, grid, tracer_index)
+    κ_symmetric = get_tracer_κ(closure.κ_symmetric, grid, tracer_index)
 
     κ_skewᶜᶠᶜ = skew_diffusivity(i, j, k, grid, closure, κᶜᶠᶜ, issd_coefficient_loc, κ_skew, clock)
     κ_symmetricᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock)
@@ -288,8 +289,8 @@ end
 
     closure = getclosure(i, j, closure)
 
-    κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
-    κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)
+    κ_skew = get_tracer_κ(closure.κ_skew, grid, tracer_index)
+    κ_symmetric = get_tracer_κ(closure.κ_symmetric, grid, tracer_index)
 
     κ_skewᶜᶜᶠ = skew_diffusivity(i, j, k, grid, closure, κᶜᶜᶠ, issd_coefficient_loc, κ_skew, clock)
     κ_symmetricᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock)
@@ -322,7 +323,7 @@ end
 
 @inline function κzᶜᶜᶠ(i, j, k, grid, closure::FlavorOfISSD, K, ::Val{id}, clock) where id
     closure = getclosure(i, j, closure)
-    κ_symmetric = get_tracer_κ(closure.κ_symmetric, id)
+    κ_symmetric = get_tracer_κ(closure.κ_symmetric, grid, id)
     ϵ_R₃₃ = @inbounds K.ϵ_R₃₃[i, j, k] # tapered 33 component of rotation tensor
     return ϵ_R₃₃ * κᶜᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock)
 end
