@@ -1,4 +1,4 @@
-using Oceananigans.Grids: AbstractUnderlyingGrid
+using Oceananigans.Grids: AbstractUnderlyingGrid, peripheral_node
 
 const AGXB = AbstractUnderlyingGrid{FT, Bounded} where FT
 const AGXP = AbstractUnderlyingGrid{FT, Periodic} where FT
