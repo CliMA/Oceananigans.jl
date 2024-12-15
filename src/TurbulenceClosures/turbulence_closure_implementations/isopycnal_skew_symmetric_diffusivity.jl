@@ -21,10 +21,13 @@ end
 const ISSD{TD, A} = IsopycnalSkewSymmetricDiffusivity{TD, A} where {TD, A}
 const ISSDVector{TD, A} = AbstractVector{<:ISSD{TD, A}} where {TD, A}
 const FlavorOfISSD{TD, A} = Union{ISSD{TD, A}, ISSDVector{TD, A}} where {TD, A}
-const AdvectiveSkewClosure = ISSD{<:Any, <:AdvectiveFormulation}
+const SkewAdvectionISSD = ISSD{<:Any, <:AdvectiveFormulation}
 
 # An ISSD type for which diffusive_flux_x, diffusive_flux_y, and diffusive_flux_z are all zero
 const NoDiffusionISSD = ISSD{<:Any, <:AdvectiveFormulation, <:Any, Nothing}
+
+# An ISSD type that does not have skew advection
+const NoSkewAdvectionISSD = ISSD{<:Any, <:AdvectiveFormulation, Nothing}
 
 const issd_coefficient_loc = (Center(), Center(), Face())
 
@@ -104,7 +107,7 @@ function DiffusivityFields(grid, tracer_names, bcs, ::FlavorOfISSD{TD, A}) where
         diffusivities = NamedFieldTuple()
     end
 
-    if A() isa AdvectiveFormulation 
+    if A() isa AdvectiveFormulation && !(closure.κ_skew isa Nothing)
         U = VelocityFields(grid)
         diffusivities = merge(diffusivities, U)
     end
@@ -220,7 +223,7 @@ end
 
 # Remove skew coefficient if we are using the advective formulation
 @inline skew_diffusivity(i, j, k, grid, closure, κ, args...) = κ(i, j, k, grid, args...)
-@inline skew_diffusivity(i, j, k, grid, ::AdvectiveSkewClosure, args...) = zero(grid)
+@inline skew_diffusivity(i, j, k, grid, ::SkewAdvectionISSD, args...) = zero(grid)
 
 # defined at fcc
 @inline function diffusive_flux_x(i, j, k, grid,
