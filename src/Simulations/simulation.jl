@@ -29,7 +29,8 @@ end
                verbose = true,
                stop_iteration = Inf,
                stop_time = Inf,
-               wall_time_limit = Inf)
+               wall_time_limit = Inf,
+               minimum_relative_step = 0)
 
 Construct a `Simulation` for a `model` with time step `Δt`.
 
