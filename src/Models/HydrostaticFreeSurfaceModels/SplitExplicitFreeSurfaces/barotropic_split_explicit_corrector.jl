@@ -13,8 +13,14 @@ end
 @inline function barotropic_mode_kernel!(U̅, V̅, i, j, grid, u, v, η)
     k_top  = size(grid, 3) + 1
 
-    sᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, k_top, grid, η) / static_column_depthᶠᶜᵃ(i, j, grid)
-    sᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, k_top, grid, η) / static_column_depthᶜᶠᵃ(i, j, grid)
+    hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
+    hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
+
+    Hᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, k_top, grid, η)
+    Hᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, k_top, grid, η)
+
+    sᶠᶜ = ifelse(hᶠᶜ == 0, zero(grid), Hᶠᶜ / hᶠᶜ)
+    sᶜᶠ = ifelse(hᶜᶠ == 0, zero(grid), Hᶜᶠ / hᶜᶠ)
 
     @inbounds U̅[i, j, 1] = Δrᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1] * sᶠᶜ
     @inbounds V̅[i, j, 1] = Δrᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1] * sᶜᶠ
