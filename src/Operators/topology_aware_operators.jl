@@ -90,10 +90,6 @@ end
 @inline flip(::Face)   = Center()
 
 for LX in (:Center, :Face), LY in (:Center, :Face), LZ in (:Center, :Face)
-    LXe = @eval $LX
-    LYe = @eval $LY
-    LZe = @eval $LZ
-    
     ℓx = @eval $LX()
     ℓy = @eval $LY()
     ℓz = @eval $LZ()
@@ -102,13 +98,13 @@ for LX in (:Center, :Face), LY in (:Center, :Face), LZ in (:Center, :Face)
     𝒻y = flip(ℓy)
     𝒻z = flip(ℓz)
     
-    ℑxˡᵃᵃ = Symbol(:ℑx, location_code(LXe, nothing, nothing))
-    ℑyᵃˡᵃ = Symbol(:ℑy, location_code(nothing, LYe, nothing))
-    ℑzᵃᵃˡ = Symbol(:ℑz, location_code(nothing, nothing, LZe))
+    ℑxˡᵃᵃ = Symbol(:ℑx, location_code(ℓx, nothing, nothing))
+    ℑyᵃˡᵃ = Symbol(:ℑy, location_code(nothing, ℓy, nothing))
+    ℑzᵃᵃˡ = Symbol(:ℑz, location_code(nothing, nothing, ℓz))
 
-    ℑxMˡˡˡ = Symbol(:ℑxM, location_code(LXe, LYe, LZe))            
-    ℑyMˡˡˡ = Symbol(:ℑyM, location_code(LXe, LYe, LZe))
-    ℑzMˡˡˡ = Symbol(:ℑzM, location_code(LXe, LYe, LZe))
+    ℑxMˡˡˡ = Symbol(:ℑxM, location_code(ℓx, ℓy, ℓz))            
+    ℑyMˡˡˡ = Symbol(:ℑyM, location_code(ℓx, ℓy, ℓz))
+    ℑzMˡˡˡ = Symbol(:ℑzM, location_code(ℓx, ℓy, ℓz))
     
     @eval begin
         @inline function $ℑxMˡˡˡ(i, j, k, grid, args...)
@@ -130,13 +126,13 @@ for LX in (:Center, :Face), LY in (:Center, :Face), LZ in (:Center, :Face)
         end
     end
 
-    ℑxyˡˡᵃ = Symbol(:ℑxy, location_code(LXe, LYe, nothing))
-    ℑyzᵃˡˡ = Symbol(:ℑyz, location_code(nothing, LYe, LZe))
-    ℑxzˡᵃˡ = Symbol(:ℑxz, location_code(LXe, nothing, LZe))
+    ℑxyˡˡᵃ = Symbol(:ℑxy, location_code(ℓx, ℓy, nothing))
+    ℑyzᵃˡˡ = Symbol(:ℑyz, location_code(nothing, ℓy, ℓz))
+    ℑxzˡᵃˡ = Symbol(:ℑxz, location_code(ℓx, nothing, ℓz))
 
-    ℑxyMˡˡˡ = Symbol(:ℑxyM, location_code(LXe, LYe, LZe))            
-    ℑyzMˡˡˡ = Symbol(:ℑyzM, location_code(LXe, LYe, LZe))
-    ℑxzMˡˡˡ = Symbol(:ℑxzM, location_code(LXe, LYe, LZe))
+    ℑxyMˡˡˡ = Symbol(:ℑxyM, location_code(ℓx, ℓy, ℓz))            
+    ℑyzMˡˡˡ = Symbol(:ℑyzM, location_code(ℓx, ℓy, ℓz))
+    ℑxzMˡˡˡ = Symbol(:ℑxzM, location_code(ℓx, ℓy, ℓz))
 
     @eval begin
         @inline function $ℑxyMˡˡˡ(i, j, k, grid, args...)
@@ -158,8 +154,8 @@ for LX in (:Center, :Face), LY in (:Center, :Face), LZ in (:Center, :Face)
         end
     end
 
-    ℑxyzˡˡˡ  = Symbol(:ℑxyz,  location_code(LXe, LYe, LZe))
-    ℑxyzMˡˡˡ = Symbol(:ℑxyzM, location_code(LXe, LYe, LZe))            
+    ℑxyzˡˡˡ  = Symbol(:ℑxyz,  location_code(ℓx, ℓy, ℓz))
+    ℑxyzMˡˡˡ = Symbol(:ℑxyzM, location_code(ℓx, ℓy, ℓz))   
 
     @eval begin
         @inline function $ℑxyzMˡˡˡ(i, j, k, grid, args...)
