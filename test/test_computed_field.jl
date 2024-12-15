@@ -619,8 +619,8 @@ for arch in archs
 
                 uT = Field(u * T)
 
-                α = model.buoyancy.model.equation_of_state.thermal_expansion
-                g = model.buoyancy.model.gravitational_acceleration
+                α = model.buoyancy.formulation.equation_of_state.thermal_expansion
+                g = model.buoyancy.formulation.gravitational_acceleration
                 b = BuoyancyField(model)
 
                 compute_at!(uT, 1.0)
