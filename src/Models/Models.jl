@@ -23,8 +23,6 @@ import Oceananigans.Architectures: architecture
 import Oceananigans.TimeSteppers: reset!
 import Oceananigans.Solvers: iteration
 
-import Base
-
 # A prototype interface for AbstractModel.
 #
 # TODO: decide if we like this.
