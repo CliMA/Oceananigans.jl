@@ -179,11 +179,10 @@ function map_active_z_columns(ibg)
 
     # Include also the halos.
     interior_cells = on_architecture(CPU(), active_cells_field.data)[:, :, 1]
-  
-    full_indices = findall(interior_cells)
+    full_indices   = findall(interior_cells)
 
-    Nx, Ny, _ = size(ibg)
     # Reduce the size of the active_cells_map (originally a tuple of Int64)
+    Nx, Ny, _ = size(ibg)
     N = max(Nx, Ny)
     IntType = N > MAXUInt8 ? (N > MAXUInt16 ? (N > MAXUInt32 ? UInt64 : UInt32) : UInt16) : UInt8
     surface_map = getproperty.(full_indices, Ref(:I)) .|> Tuple{IntType, IntType}
