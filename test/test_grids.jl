@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
-using Oceananigans.Grids: total_extent,
+using Oceananigans.Grids: total_extent, ColumnEnsembleSize,
                           xspacings, yspacings, zspacings,
                           xnode, ynode, znode, λnode, φnode,
                           λspacings, φspacings
@@ -997,6 +997,21 @@ end
                 @test φ[1] isa FT
                 @test λ[1] == λ₀
                 @test φ[1] == convert(FT, φ₀)
+
+                halo_sz = ColumnEnsembleSize(; Nz=4, ensemble=(2, 3), Hz=5)
+                grid = RectilinearGrid(arch, FT; size=halo_sz, halo=halo_sz,
+                                       z=(-10, 0), topology=(Flat, Flat, Bounded))
+                @test size(grid) == (2, 3, 4)
+                @test halo_size(grid) == (0, 0, 5)
+
+                if arch isa GPU
+                    cpu_grid = on_architecture(CPU(), grid)
+                    @test size(cpu_grid) == (2, 3, 4)
+                    @test halo_size(cpu_grid) == (0, 0, 5)
+
+                    gpu_grid = on_architecture(GPU(), grid)
+                    @test gpu_grid == grid
+                end
             end
         end
     end
