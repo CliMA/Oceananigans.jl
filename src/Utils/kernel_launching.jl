@@ -330,15 +330,19 @@ end
 #####
 
 # TODO: when offsets are implemented in KA so that we can call `kernel(dev, group, size, offsets)`, remove all of this
+using CUDA: @device_override
 using KernelAbstractions.NDIteration: _Size, StaticSize
 using KernelAbstractions.NDIteration: NDRange
 
 using KernelAbstractions.NDIteration
 using KernelAbstractions: ndrange, workgroupsize
-import KernelAbstractions: partition
 
+using KernelAbstractions: __iterspace, __groupindex, __dynamic_checkbounds
 using KernelAbstractions: CompilerMetadata
+
+import KernelAbstractions: partition
 import KernelAbstractions: __ndrange, __groupsize
+import KernelAbstractions: __validindex
 
 struct OffsetStaticSize{S} <: _Size
     function OffsetStaticSize{S}() where S
@@ -487,10 +491,6 @@ function partition(kernel::MappedKernel, inrange, ingroupsize)
 end
 
 # Extend the valid index function to check whether the index is valid in the index map
-
-using KernelAbstractions: __iterspace, __groupindex, __dynamic_checkbounds
-import KernelAbstractions: __validindex
-
 const MappedCompilerMetadata = CompilerMetadata{<:StaticSize, <:Any, <:Any, <:Any, <:MappedNDRange}
 
 @inline linear_ndrange(ctx::MappedCompilerMetadata) = length(__iterspace(ctx).workitems)
@@ -509,6 +509,16 @@ end
     # Turns this into a noop for code where we can turn of checkbounds of
     if __dynamic_checkbounds(ctx)
         index = @inbounds linear_index(__iterspace(ctx), __groupindex(ctx), idx)
+        return index ≤ linear_ndrange(ctx)
+    else
+        return true
+    end
+end
+
+# Override for GPU computations
+@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
+    if KA.__dynamic_checkbounds(ctx)
+        index = @inbounds linear_index(KA.__iterspace(ctx), blockIdx().x, threadIdx().x)
         return index ≤ linear_ndrange(ctx)
     else
         return true
