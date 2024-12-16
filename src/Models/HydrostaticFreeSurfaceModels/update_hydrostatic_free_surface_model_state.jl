@@ -73,7 +73,8 @@ end
 
 function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters = w_kernel_parameters(model.grid),
                                                                   p_parameters = p_kernel_parameters(model.grid),
-                                                                  κ_parameters = :xyz) 
+                                                                  κ_parameters = :xyz,
+                                                                  active_cells_map = retrieve_interior_active_cells_map(grid, Val(:interior))) 
     
     grid        = model.grid
     closure     = model.closure
@@ -87,8 +88,6 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
     # Advance diagnostic quantities
     compute_w_from_continuity!(model; parameters=w_parameters)
     update_hydrostatic_pressure!(P, arch, grid, buoyancy, tracers; parameters=p_parameters)
-
-    active_cells_map = retrieve_interior_active_cells_map(grid)
 
     # Update closure diffusivities
     compute_diffusivities!(diffusivity, closure, model; parameters=κ_parameters, active_cells_map)
