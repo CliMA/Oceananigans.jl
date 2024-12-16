@@ -102,11 +102,24 @@ end
 
 const ModelCallsite = Union{TendencyCallsite, UpdateStateCallsite}
 
+
+function time_step_or_skip!(sim)
+    model_callbacks = Tuple(cb for cb in values(sim.callbacks) if cb.callsite isa ModelCallsite)
+    Δt = aligned_time_step(sim, sim.Δt)
+    if Δt < sim.minimum_relative_step * sim.Δt
+        next_time = sim.model.clock.time + Δt
+        @warn "Resetting clock to $next_time and skipping time step of size Δt = $Δt"
+        sim.model.clock.time = next_time
+    else
+        time_step!(sim.model, Δt, callbacks=model_callbacks)
+    end
+end
+
+
 """ Step `sim`ulation forward by one time step. """
 function time_step!(sim::Simulation)
 
     start_time_step = time_ns()
-    model_callbacks = Tuple(cb for cb in values(sim.callbacks) if cb.callsite isa ModelCallsite)
 
     if !(sim.initialized) # execute initialization step
         initialize!(sim)
@@ -118,8 +131,7 @@ function time_step!(sim::Simulation)
                 start_time = time_ns()
             end
 
-            Δt = aligned_time_step(sim, sim.Δt)
-            time_step!(sim.model, Δt, callbacks=model_callbacks)
+            time_step_or_skip!(sim)
 
             if sim.verbose
                 elapsed_initial_step_time = prettytime(1e-9 * (time_ns() - start_time))
@@ -130,8 +142,7 @@ function time_step!(sim::Simulation)
         end
 
     else # business as usual...
-        Δt = aligned_time_step(sim, sim.Δt)
-        time_step!(sim.model, Δt, callbacks=model_callbacks)
+        time_step_or_skip!(sim)
     end
 
     # Callbacks and callback-like things
