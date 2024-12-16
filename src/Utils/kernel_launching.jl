@@ -505,6 +505,14 @@ Base.@propagate_inbounds function linear_expand(ndrange::MappedNDRange, gidx::In
     return (gidx - 1) * stride + idx
 end
 
+# Mapped kernels are always 1D
+Base.@propagate_inbounds function linear_expand(ndrange::MappedNDRange, gidx::CartesianIndex{1}, idx::CartesianIndex{1})
+    offsets = workitems(ndrange)
+    stride = size(offsets, 1)
+    gidx = groupidx.I[1]
+    return (gidx - 1) * stride + idx.I[1]
+end
+
 # To check whether the index is valid in the index map, we need to 
 # check whether the linear index is smaller than the size of the index map
 
