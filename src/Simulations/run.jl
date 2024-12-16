@@ -108,7 +108,7 @@ function time_step_or_skip!(sim)
     Δt = aligned_time_step(sim, sim.Δt)
     if Δt < sim.minimum_relative_step * sim.Δt
         next_time = sim.model.clock.time + Δt
-        @warn "Reseting clock to $next_time and skipping aligned time step Δt = $Δt"
+        @warn "Resetting clock to $next_time and skipping time step of size Δt = $Δt"
         sim.model.clock.time = next_time
     else
         time_step!(sim.model, Δt, callbacks=model_callbacks)
