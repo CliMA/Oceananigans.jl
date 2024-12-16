@@ -330,7 +330,7 @@ end
 #####
 
 # TODO: when offsets are implemented in KA so that we can call `kernel(dev, group, size, offsets)`, remove all of this
-using CUDA: @device_override
+using CUDA: @device_override, blockIdx, threadIdx
 using KernelAbstractions.NDIteration: _Size, StaticSize
 using KernelAbstractions.NDIteration: NDRange
 
@@ -518,7 +518,7 @@ end
 # Override for GPU computations
 @device_override @inline function __validindex(ctx::MappedCompilerMetadata)
     if KA.__dynamic_checkbounds(ctx)
-        index = @inbounds linear_index(KA.__iterspace(ctx), blockIdx().x, threadIdx().x)
+        index = @inbounds linear_index(__iterspace(ctx), blockIdx().x, threadIdx().x)
         return index ≤ linear_ndrange(ctx)
     else
         return true
