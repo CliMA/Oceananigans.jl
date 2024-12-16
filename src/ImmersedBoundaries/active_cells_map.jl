@@ -178,7 +178,7 @@ function map_active_z_columns(ibg)
     active_cells_field = compute_active_z_columns(ibg)
 
     # Include also the halos.
-    interior_cells = on_architecture(CPU(), active_cells_field.data[:, :, 1])
+    interior_cells = on_architecture(CPU(), active_cells_field.data)[:, :, 1]
   
     full_indices = findall(interior_cells)
 
