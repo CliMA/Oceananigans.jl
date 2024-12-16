@@ -1,6 +1,6 @@
 using Oceananigans.Fields: VelocityFields, ZeroField
 using Oceananigans.Grids: inactive_node, peripheral_node
-using Oceananigans.BuoyancyModels: ∂x_b, ∂y_b, ∂z_b
+using Oceananigans.BuoyancyFormulations: ∂x_b, ∂y_b, ∂z_b
 
 # Fallback
 compute_eddy_velocities!(diffusivities, closure, model; parameters = :xyz) = nothing
