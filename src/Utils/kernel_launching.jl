@@ -506,7 +506,7 @@ Base.@propagate_inbounds function linear_expand(ndrange::MappedNDRange, gidx::In
 end
 
 # Mapped kernels are always 1D
-Base.@propagate_inbounds function linear_expand(ndrange::MappedNDRange, gidx::CartesianIndex{1}, idx::CartesianIndex{1})
+Base.@propagate_inbounds function linear_expand(ndrange::MappedNDRange, groupidx::CartesianIndex{1}, idx::CartesianIndex{1})
     offsets = workitems(ndrange)
     stride = size(offsets, 1)
     gidx = groupidx.I[1]
