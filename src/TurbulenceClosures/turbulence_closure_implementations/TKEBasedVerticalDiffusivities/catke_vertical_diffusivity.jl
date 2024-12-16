@@ -214,7 +214,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
     tracers = model.tracers
     buoyancy = model.buoyancy
     clock = model.clock
-    top_tracer_bcs = get_top_tracer_bcs(model.buoyancy.model, tracers)
+    top_tracer_bcs = get_top_tracer_bcs(model.buoyancy.formulation, tracers)
     Δt = model.clock.time - diffusivities.previous_compute_time[]
     diffusivities.previous_compute_time[] = model.clock.time
 
