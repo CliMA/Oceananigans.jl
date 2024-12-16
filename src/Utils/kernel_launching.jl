@@ -517,7 +517,7 @@ end
 
 # Override for GPU computations
 @device_override @inline function __validindex(ctx::MappedCompilerMetadata)
-    if KA.__dynamic_checkbounds(ctx)
+    if __dynamic_checkbounds(ctx)
         index = @inbounds linear_index(__iterspace(ctx), blockIdx().x, threadIdx().x)
         return index ≤ linear_ndrange(ctx)
     else
