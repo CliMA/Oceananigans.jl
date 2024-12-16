@@ -210,11 +210,12 @@ end
 
 @inline Gaussian(x, y, L) = exp(-(x^2 + y^2) / L^2)
 
-function solid_body_rotation_test(grid)
+function solid_body_rotation_test(grid;
+                                  closure=VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν = 0.01, κ = 0.01),
+                                  momentum_advection=VectorInvariant())
 
     free_surface = SplitExplicitFreeSurface(grid; substeps = 10, gravitational_acceleration = 1)
     coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
-    closure      = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν = 0.01, κ = 0.01)
 
     model = HydrostaticFreeSurfaceModel(; grid,
                                         momentum_advection = VectorInvariant(),

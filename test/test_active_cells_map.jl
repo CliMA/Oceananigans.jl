@@ -51,9 +51,38 @@ Nz = 10
         end
 
         @testset "Active cells map solid body rotation" begin
-
             ua, va, wa, ca, ηa = solid_body_rotation_test(immersed_active_grid)
             u, v, w, c, η      = solid_body_rotation_test(immersed_grid)
+
+            ua = interior(on_architecture(CPU(), ua))
+            va = interior(on_architecture(CPU(), va))
+            wa = interior(on_architecture(CPU(), wa))
+            ca = interior(on_architecture(CPU(), ca))
+            ηa = interior(on_architecture(CPU(), ηa))
+
+            u = interior(on_architecture(CPU(), u))
+            v = interior(on_architecture(CPU(), v))
+            w = interior(on_architecture(CPU(), w))
+            c = interior(on_architecture(CPU(), c))
+            η = interior(on_architecture(CPU(), η))
+
+            atol = eps(eltype(immersed_grid))
+            rtol = sqrt(eps(eltype(immersed_grid)))
+
+            @test all(isapprox(u, ua; atol, rtol))
+            @test all(isapprox(v, va; atol, rtol))
+            @test all(isapprox(w, wa; atol, rtol))
+            @test all(isapprox(c, ca; atol, rtol))
+            @test all(isapprox(η, ηa; atol, rtol))
+        end
+
+
+        @testset "Active cells map solid body rotation with CATKE and WENOVectorInvariant" begin
+            closure = CATKEVerticalDiffusivity()
+            momentum_advection = WENOVectorInvariant(vorticity_order=5)
+
+            ua, va, wa, ca, ηa = solid_body_rotation_test(immersed_active_grid; closure, momentum_advection)
+            u, v, w, c, η      = solid_body_rotation_test(immersed_grid; closure, momentum_advection)
 
             ua = interior(on_architecture(CPU(), ua))
             va = interior(on_architecture(CPU(), va))
