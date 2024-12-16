@@ -127,7 +127,12 @@ if plot_data
     end
 end
 
-
+hfile = h5open(analysis_directory * "anaylsis_baroclinic_double_gyre_$casevar.hdf5", "w")
+hfile["meanabsus"] = meanabsus
+hfile["meanabsvs"] = meanabsvs
+hfile["meanabsws"] = meanabsws
+hfile["meanbs"] = meanbs
+close(hfile)
 ##
 meanbs_avgd_8 = zeros(32, 32, 15, length(ηkeys));
 for i in ProgressBar(1:length(ηkeys))
@@ -136,9 +141,52 @@ for i in ProgressBar(1:length(ηkeys))
         meanbs_avgd_8[:, :, k, i] .= coarse_grain(bfield[:, :, k], 8)
     end
 end
+hfile = h5open(analysis_directory * "anaylsis_baroclinic_double_gyre_$casevar.hdf5", "r+")
+hfile["meanbs_avgd_8"] = meanbs_avgd_8
+close(hfile)
+
+meanus_avgd_8 = zeros(32, 32, 15, length(ηkeys));
+for i in ProgressBar(1:length(ηkeys))
+    ufield = interior(u[i])
+    ufield = (ufield[1:end-1, 1:end, :] .+ ufield[2:end, 1:end, :])/2
+    for k in 1:15
+        meanus_avgd_8[:, :, k, i] .= coarse_grain(ufield[:, :, k], 8)
+    end
+end
+
+hfile = h5open(analysis_directory * "anaylsis_baroclinic_double_gyre_$casevar.hdf5", "r+")
+hfile["meanus_avgd_8"] = meanus_avgd_8
+close(hfile)
+
+meanvs_aggd_8 = zeros(32, 32, 15, length(ηkeys));
+for i in ProgressBar(1:length(ηkeys))
+    vfield = interior(v[i])
+    vfield = (vfield[1:end, 1:end-1, :] .+ vfield[1:end, 2:end, :])/2
+    for k in 1:15
+        meanvs_aggd_8[:, :, k, i] .= coarse_grain(vfield[:, :, k], 8)
+    end
+end
+
+hfile = h5open(analysis_directory * "anaylsis_baroclinic_double_gyre_$casevar.hdf5", "r+")
+hfile["meanvs_avgd_8"] = meanvs_aggd_8
+close(hfile)
+
+meanws_aggd_8 = zeros(32, 32, 15, length(ηkeys));
+for i in ProgressBar(1:length(ηkeys))
+    wfield = interior(w[i])
+    wfield = (wfield[1:end, 1:end, 1:end-1] .+ wfield[1:end, 1:end, 2:end])/2
+    for k in 1:15
+        meanws_aggd_8[:, :, k, i] .= coarse_grain(wfield[:, :, k], 8)
+    end
+end
+
+hfile = h5open(analysis_directory * "anaylsis_baroclinic_double_gyre_$casevar.hdf5", "r+")
+hfile["meanws_avgd_8"] = meanws_aggd_8
+close(hfile)
+
 
 if plot_data 
-    @info "plotting data"
+    @info "plotting b data"
     for plot_index in 1:15
         blims = extrema(meanbs_avgd_8[:, :, plot_index, (length(ηkeys)÷4 * 3):end])
         fig = Figure() 
@@ -164,20 +212,112 @@ if plot_data
         end
         save(figure_directory * "absolute_bfield_level_$(plot_index).png", fig)
     end
+
+    @info "plotting u data"
+    ulims = maximum(abs.((meanus_avgd_8[:, :, :, (length(ηkeys)÷4 * 3):end])))
+    ulims = (-ulims, ulims)
+    for plot_index in 1:15
+        fig = Figure() 
+        for i in 1:NN
+            for j in 1:NN
+                ii = (i - 1) * NN + j
+                ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y", title = "$(month_indices[ii])")
+                heatmap!(ax, meanus_avgd_8[:, :, plot_index, month_indices[ii]], colormap = :balance, colorrange = ulims)
+            end
+        end
+        save(figure_directory * "absolute_ufield_level_$(plot_index).png", fig)
+    end
+
+    for plot_index in 1:15
+        ulims = maximum(abs.((meanus_avgd_8[:, :, plot_index, (length(ηkeys)÷4 * 3):end])))
+        ulims = (-ulims, ulims)
+        fig = Figure() 
+        for i in 1:NN
+            for j in 1:NN
+                ii = (i - 1) * NN + j
+                ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y", title = "$(month_indices[ii])")
+                heatmap!(ax, meanus_avgd_8[:, :, plot_index, month_indices[ii]], colormap = :balance, colorrange = ulims)
+            end
+        end
+        save(figure_directory * "relative_ufield_level_$(plot_index).png", fig)
+    end
+
+    @info "plotting v data"
+
+    vlims = maximum(abs.((meanvs_aggd_8[:, :, :, (length(ηkeys)÷4 * 3):end])))
+    vlims = (-vlims, vlims)
+    for plot_index in 1:15
+        fig = Figure() 
+        for i in 1:NN
+            for j in 1:NN
+                ii = (i - 1) * NN + j
+                ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y", title = "$(month_indices[ii])")
+                heatmap!(ax, meanvs_aggd_8[:, :, plot_index, month_indices[ii]], colormap = :balance, colorrange = vlims)
+            end
+        end
+        save(figure_directory * "absolute_vfield_level_$(plot_index).png", fig)
+    end
+
+    for plot_index in 1:15
+        vlims = maximum(abs.((meanvs_aggd_8[:, :, plot_index, (length(ηkeys)÷4 * 3):end])))
+        vlims = (-vlims, vlims)
+        fig = Figure() 
+        for i in 1:NN
+            for j in 1:NN
+                ii = (i - 1) * NN + j
+                ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y", title = "$(month_indices[ii])")
+                heatmap!(ax, meanvs_aggd_8[:, :, plot_index, month_indices[ii]], colormap = :balance, colorrange = vlims)
+            end
+        end
+        save(figure_directory * "relative_vfield_level_$(plot_index).png", fig)
+    end
+
+    @info "plotting w data"
+    wlims = maximum(abs.((meanws_aggd_8[:, :, :, (length(ηkeys)÷4 * 3):end])))
+    wlims = (-wlims, wlims)
+    for plot_index in 1:15
+        fig = Figure() 
+        for i in 1:NN
+            for j in 1:NN
+                ii = (i - 1) * NN + j
+                ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y", title = "$(month_indices[ii])")
+                heatmap!(ax, meanws_aggd_8[:, :, plot_index, month_indices[ii]], colormap = :balance, colorrange = wlims)
+            end
+        end
+        save(figure_directory * "absolute_wfield_level_$(plot_index).png", fig)
+    end
+
+    for plot_index in 1:15
+        wlims = maximum(abs.((meanws_aggd_8[:, :, plot_index, (length(ηkeys)÷4 * 3):end])))
+        wlims = (-wlims, wlims)
+        fig = Figure() 
+        for i in 1:NN
+            for j in 1:NN
+                ii = (i - 1) * NN + j
+                ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y", title = "$(month_indices[ii])")
+                heatmap!(ax, meanws_aggd_8[:, :, plot_index, month_indices[ii]], colormap = :balance, colorrange = wlims)
+            end
+        end
+        save(figure_directory * "relative_wfield_level_$(plot_index).png", fig)
+    end
 end
 
+
 fig = Figure(resolution = (2000, 2000)) 
-field = meanbs_avgd_8;
+α = 2e-4    # ᵒC⁻¹ thermal expansion coefficient
+g = 9.80665 # m s⁻² gravitational acceleration
+
+field = meanbs_avgd_8 / (α * g);
 months = Int[]
 
 ij_index = (16, 16)
-ij_indices = [(i, j) for i in 4:4:20, j in 4:4:20]
+ij_indices = [(i, j) for i in 4:6:28, j in 4:6:28]
 for (k, ij_index) in enumerate(ij_indices)
     ii = (k - 1) ÷ 5 + 1
     jj = (k - 1) % 5 + 1
     i_index = ij_index[1]
     j_index = ij_index[2]
-    ax = Axis(fig[6 - ii, jj]; ylabel = "depth", xlabel = "buoyancy", title = "location $(i_index), $(j_index)")
+    ax = Axis(fig[6 - ii, jj]; ylabel = "Depth [m]", xlabel = "Temperature [Celcius]", title = "location $(i_index), $(j_index)")
     month_color = [:black, :red, :purple, :orange, :green, :blue]
     for (i, mi) in enumerate([120, 1000, 2000, 3000, 4000, 5000])
         if k == 1
@@ -186,13 +326,40 @@ for (k, ij_index) in enumerate(ij_indices)
         field_2std = 2 * std(field[i_index, j_index, :, mi-12:mi+12], dims = 2)[:]
         mfield = mean(field[i_index, j_index, :, mi-12:mi+12], dims = 2)[:]
         scatter!(ax, mfield, zs,  color = month_color[i])
-        lines!(ax, mfield, zs,  color = month_color[i], label = string(mi))
+        lines!(ax, mfield, zs,  color = month_color[i], label = string(mi)  * " months")
+        xlims!(ax, (0, 30))
     end
     if k ==1
         axislegend(ax, position = :rb)
     end
 end
-save(figure_directory * "buoyancy_profile.png", fig)
+save(figure_directory * "temperature_profiles_in_time.png", fig)
+
+fig = Figure(resolution = (1000, 1000)) 
+months = Int[]
+
+for (k, ij_index) in enumerate(ij_indices)
+    ii = (k - 1) ÷ 5 + 1
+    jj = (k - 1) % 5 + 1
+    i_index = ij_index[1]
+    j_index = ij_index[2]
+    ax = Axis(fig[6 - ii, jj]; ylabel = "Depth [m]", xlabel = "Temperature [Celcius]", title = "location $(i_index), $(j_index)")
+    month_color = [:black, :red, :purple, :orange, :green, :blue]
+    for (i, mi) in enumerate([5000])
+        if k == 1
+            push!(months, mi)
+        end
+        field_2std = 2 * std(field[i_index, j_index, :, mi-12:mi+12], dims = 2)[:]
+        mfield = mean(field[i_index, j_index, :, mi-12:mi+12], dims = 2)[:]
+        scatter!(ax, mfield, zs,  color = month_color[i])
+        lines!(ax, mfield, zs,  color = month_color[i], label = string(mi) * " months")
+        xlims!(ax, (0, 30))
+    end
+    if k ==1
+        # axislegend(ax, position = :rb)
+    end
+end
+save(figure_directory * "temperature_profile_end_time.png", fig)
 
 #=
 mi = month_indices[end-3]
