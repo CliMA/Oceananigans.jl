@@ -490,7 +490,10 @@ function partition(kernel::MappedKernel, inrange, ingroupsize)
     return iterspace, dynamic
 end
 
-# Extend the valid index function to check whether the index is valid in the index map
+#####
+##### Extend the valid index function to check whether the index is valid in the index map
+#####
+
 const MappedCompilerMetadata = CompilerMetadata{<:StaticSize, <:Any, <:Any, <:Any, <:MappedNDRange}
 
 @inline __linear_ndrange(ctx::MappedCompilerMetadata) = length(__iterspace(ctx).workitems)
