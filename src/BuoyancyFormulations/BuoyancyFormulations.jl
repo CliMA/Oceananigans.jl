@@ -1,12 +1,9 @@
 module BuoyancyFormulations
 
 export
-    BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, buoyancy_perturbationᶜᶜᶜ,
-    LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
+    BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState,
     ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbationᶜᶜᶜ, x_dot_g_bᶠᶜᶜ, y_dot_g_bᶜᶠᶜ, z_dot_g_bᶜᶜᶠ,
-    top_buoyancy_flux,
-    buoyancy_frequency_squared,
-    BuoyancyField
+    top_buoyancy_flux, buoyancy, buoyancy_frequency, BuoyancyField
 
 using Printf
 using Oceananigans.Grids
