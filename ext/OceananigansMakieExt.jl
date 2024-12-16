@@ -25,13 +25,22 @@ function drop_singleton_indices(N)
     end
 end
 
+"""
+    deduce_dimensionality(f)
+
+Deduce the dimensionality of the field `f` and return a 3-tuple `d1, d2, D`, where
+`d1` is the first dimension along which `f` varies, `d2` is the second dimension (if any),
+and `D` is the total dimensionality of `f`.
+"""
 function deduce_dimensionality(f)
-    # Indices of the non-zero dimensions
+    # Find indices of the dimensions along which `f` varies
     d1 = findfirst(n -> n > 1, size(f))
     d2 =  findlast(n -> n > 1, size(f))
-    # Deduce dimensionality
+
+    # Deduce total dimensionality
     Nx, Ny, Nz = size(f)
     D = (Nx > 1) + (Ny > 1) + (Nz > 1)
+
     return d1, d2, D
 end
 
@@ -44,13 +53,17 @@ function _create_plot(F::Function, attributes::Dict, f::Field)
     if !(:axis ∈ keys(attributes)) # Let's try to add labels automatically
         d1, d2, D = deduce_dimensionality(f) 
         grid = f.grid
+
         if D === 1 # 1D plot
-            if d1 === 1 # horizontal
+
+            # See `convert_field_argument` for this horizontal/vertical plotting convention.
+            if d1 === 1 # This is a horizontal plot, so we add xlabel
                 axis = (; xlabel=axis_str(grid, 1))
-            else # vertical plot
+            else # vertical plot with a ylabel
                 axis = (; ylabel=axis_str(grid, d1))
             end
-        elseif D === 2
+
+        elseif D === 2 # it's a two-dimensional plot
             axis = (xlabel=axis_str(grid, d1), ylabel=axis_str(grid, d2))
         else
             throw(ArgumentError("Cannot create axis labels for a 3D field!"))
