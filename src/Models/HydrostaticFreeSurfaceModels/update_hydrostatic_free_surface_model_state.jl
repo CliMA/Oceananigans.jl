@@ -74,7 +74,7 @@ end
 function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters = w_kernel_parameters(model.grid),
                                                                   p_parameters = p_kernel_parameters(model.grid),
                                                                   κ_parameters = :xyz,
-                                                                  active_cells_map = retrieve_interior_active_cells_map(grid, Val(:interior))) 
+                                                                  active_cells_map = retrieve_interior_active_cells_map(model.grid, Val(:interior))) 
     
     grid        = model.grid
     closure     = model.closure
