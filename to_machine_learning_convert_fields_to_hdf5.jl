@@ -12,7 +12,7 @@ plot_stream_function = true
 data_directory = "/nobackup1/sandre/OceananigansData/"
 figure_directory = "oceananigans_figure/"
 
-casevar = 7
+casevar = 8
 
 si = 1000 #starting index
 levels = 1:1
@@ -30,6 +30,21 @@ end
 close(jlfile)
 @info "closing jld2 file"
 
+month_indices = zeros(Int, NN^2)
+if length(ηkeys) ≥ 5000
+    month_indices[1] = 1
+    month_indices[2] = argmax( squareheight )
+    month_indices[3] = 100 
+    month_indices[4] = 1000
+    month_indices[5] = 2000
+    month_indices[6] = 3000
+    month_indices[7] = 4000
+    month_indices[8] = 5000
+    month_indices[9] = 5100
+else
+    month_indices .= rand(1:length(ηkeys), NN^2)
+end
+
 if plot_data 
     @info "plotting data"
     etamax = maximum(abs.(η[:, :, end]))
@@ -37,8 +52,8 @@ if plot_data
     for i in 1:NN
         for j in 1:NN
             ii = (i - 1) * NN + j
-            ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y")
-            heatmap!(ax, η[:, :, end - ii], colormap = :balance, colorrange = (-etamax, etamax))
+            ax = Axis(fig[i, j]; xlabel = "x", ylabel = "y", title = "$(month_indices[ii])")
+            heatmap!(ax, η[:, :, month_indices[ii]], colormap = :balance, colorrange = (-etamax, etamax))
         end
     end
     save(figure_directory * "etafield.png", fig)
