@@ -1,6 +1,5 @@
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.Grids: XDirection, YDirection, ZDirection
-using Oceananigans.ImmersedBoundaries: retrieve_surface_active_cells_map
 
 import Oceananigans.Architectures: architecture
 
@@ -100,16 +99,13 @@ Press William, H., Teukolsky Saul, A., Vetterling William, T., & Flannery Brian,
 """
 function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
 
-    if solver.tridiagonal_direction isa XDirection
-        launch_config = :yz
-        active_cells_map = nothing
-    elseif solver.tridiagonal_direction isa YDirection
-        launch_config = :xz
-        active_cells_map = nothing
-    elseif solver.tridiagonal_direction isa ZDirection
-        launch_config = :xy
-        active_cells_map = retrieve_surface_active_cells_map(solver.grid)
-    end
+    launch_config = if solver.tridiagonal_direction isa XDirection
+                        :yz
+                    elseif solver.tridiagonal_direction isa YDirection
+                        :xz
+                    elseif solver.tridiagonal_direction isa ZDirection
+                        :xy
+                    end
 
     launch!(architecture(solver), solver.grid, launch_config,
             solve_batched_tridiagonal_system_kernel!, ϕ,
@@ -121,8 +117,7 @@ function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
             solver.grid,
             solver.parameters,
             Tuple(args),
-            solver.tridiagonal_direction;
-            active_cells_map)
+            solver.tridiagonal_direction)
 
     return nothing
 end
