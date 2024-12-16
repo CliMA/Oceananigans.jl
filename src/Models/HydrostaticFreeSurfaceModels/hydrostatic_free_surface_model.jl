@@ -4,7 +4,7 @@ using OrderedCollections: OrderedDict
 using Oceananigans.DistributedComputations
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, adapt_advection_order
-using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
+using Oceananigans.BuoyancyFormulations: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
@@ -63,6 +63,7 @@ default_free_surface(grid; gravitational_acceleration=g_Earth) =
                                 free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
                                 forcing::NamedTuple = NamedTuple(),
                                 closure = nothing,
+                                timestepper = :QuasiAdamsBashforth2,
                                 boundary_conditions::NamedTuple = NamedTuple(),
                                 tracers = (:T, :S),
                                 particles::ParticlesOrNothing = nothing,
@@ -82,7 +83,7 @@ Keyword arguments
             of the `grid`.
   - `momentum_advection`: The scheme that advects velocities. See `Oceananigans.Advection`.
   - `tracer_advection`: The scheme that advects tracers. See `Oceananigans.Advection`.
-  - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
+  - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyFormulations`.
   - `coriolis`: Parameters for the background rotation rate of the model.
   - `free_surface`: The free surface model. The default free-surface solver depends on the
                     geometry of the `grid`. If the `grid` is a `RectilinearGrid` that is
@@ -93,6 +94,8 @@ Keyword arguments
                preallocated `CenterField`s.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
   - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
+  - `timestepper`: A symbol that specifies the time-stepping method. 
+                   Either `:QuasiAdamsBashforth2` (default) or `:SplitRungeKutta3`.
   - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
   - `biogeochemistry`: Biogeochemical model for `tracers`.
