@@ -25,8 +25,40 @@ function drop_singleton_indices(N)
     end
 end
 
+function deduce_dimensionality(f)
+    # Indices of the non-zero dimensions
+    d1 = findfirst(n -> n > 1, size(f))
+    d2 =  findlast(n -> n > 1, size(f))
+    # Deduce dimensionality
+    Nx, Ny, Nz = size(f)
+    D = (Nx > 1) + (Ny > 1) + (Nz > 1)
+    return d1, d2, D
+end
+
+axis_str(::RectilinearGrid, dim) = ("x", "y", "z")[dim]
+axis_str(::LatitudeLongitudeGrid, dim) = ("Longitude (deg)", "Latitude (deg)", "z")[dim]
+
 function _create_plot(F::Function, attributes::Dict, f::Field)
     converted_args = convert_field_argument(f)
+
+    if !(:axis ∈ keys(attributes)) # Let's try to add labels automatically
+        d1, d2, D = deduce_dimensionality(f) 
+        grid = f.grid
+        if D === 1 # 1D plot
+            if d1 === 1 # horizontal
+                axis = (; xlabel=axis_str(grid, 1))
+            else # vertical plot
+                axis = (; ylabel=axis_str(grid, d1))
+            end
+        elseif D === 2
+            axis = (xlabel=axis_str(grid, d1), ylabel=axis_str(grid, d2))
+        else
+            throw(ArgumentError("Cannot create axis labels for a 3D field!"))
+        end
+
+        attributes[:axis] = axis
+    end
+
     return _create_plot(F, attributes, converted_args...)
 end
 
@@ -86,17 +118,8 @@ end
 function convert_field_argument(f::Field)
 
     fi_cpu = make_plottable_array(f)
-
-    # Indices of the non-zero dimensions
-    d1 = findfirst(n -> n > 1, size(f))
-    d2 =  findlast(n -> n > 1, size(f))
-    
-    # Nodes shenanigans
+    d1, d2, D = deduce_dimensionality(f)
     fnodes = nodes(f)
-
-    # Deduce dimensionality
-    Nx, Ny, Nz = size(f)
-    D = (Nx > 1) + (Ny > 1) + (Nz > 1)
 
     if D == 1
 
