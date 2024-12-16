@@ -88,7 +88,7 @@ DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCAVD) = (; κᶜ = Z
 @inline viscosity(::FlavorOfCAVD, diffusivities) = diffusivities.κᵘ
 @inline diffusivity(::FlavorOfCAVD, diffusivities, id) = diffusivities.κᶜ
 
-function compute_diffusivities!(diffusivities, closure::FlavorOfCAVD, model; parameters = :xyz)
+function compute_diffusivities!(diffusivities, closure::FlavorOfCAVD, model; parameters = :xyz, kwargs...)
 
     arch = model.architecture
     grid = model.grid

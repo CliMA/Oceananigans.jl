@@ -109,7 +109,7 @@ function DiffusivityFields(grid, tracer_names, bcs, ::FlavorOfISSD{TD, A}) where
     return diffusivities
 end
 
-function compute_diffusivities!(diffusivities, closure::FlavorOfISSD, model; parameters = :xyz)
+function compute_diffusivities!(diffusivities, closure::FlavorOfISSD, model; parameters = :xyz, kwargs...)
 
     arch = model.architecture
     grid = model.grid

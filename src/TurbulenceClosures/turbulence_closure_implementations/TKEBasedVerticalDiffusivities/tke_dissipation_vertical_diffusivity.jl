@@ -191,7 +191,7 @@ end
 @inline viscosity_location(::FlavorOfTD) = (c, c, f)
 @inline diffusivity_location(::FlavorOfTD) = (c, c, f)
 
-function compute_diffusivities!(diffusivities, closure::FlavorOfTD, model; parameters = :xyz)
+function compute_diffusivities!(diffusivities, closure::FlavorOfTD, model; parameters = :xyz, kwargs...)
 
     arch = model.architecture
     grid = model.grid

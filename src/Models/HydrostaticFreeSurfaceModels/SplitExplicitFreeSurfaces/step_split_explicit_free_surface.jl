@@ -70,8 +70,10 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
     U, V    = free_surface.barotropic_velocities
     η̅, U̅, V̅ = state.η, state.U, state.V
 
-    free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
-    barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
+    active_cells_map = retireve_surface_active_cells_map(grid)
+
+    free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!; active_cells_map)
+    barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!; active_cells_map)
 
     η_args = (grid, Δτᴮ, η, U, V, 
               timestepper)

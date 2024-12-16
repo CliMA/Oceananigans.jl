@@ -85,11 +85,13 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
     arch = architecture(grid) 
 
     # Advance diagnostic quantities
-    compute_w_from_continuity!(model; parameters = w_parameters)
-    update_hydrostatic_pressure!(P, arch, grid, buoyancy, tracers; parameters = p_parameters)
+    compute_w_from_continuity!(model; parameters=w_parameters)
+    update_hydrostatic_pressure!(P, arch, grid, buoyancy, tracers; parameters=p_parameters)
+
+    active_cells_map = retrieve_interior_active_cells_map(grid)
 
     # Update closure diffusivities
-    compute_diffusivities!(diffusivity, closure, model; parameters = κ_parameters)
+    compute_diffusivities!(diffusivity, closure, model; parameters=κ_parameters, active_cells_map)
     
     return nothing
 end

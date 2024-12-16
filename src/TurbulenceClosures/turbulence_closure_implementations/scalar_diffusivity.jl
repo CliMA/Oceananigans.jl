@@ -192,7 +192,7 @@ end
 @inline viscosity(closure::ScalarDiffusivity, K) = closure.ν
 @inline diffusivity(closure::ScalarDiffusivity, K, ::Val{id}) where id = closure.κ[id]
 
-compute_diffusivities!(diffusivities, ::ScalarDiffusivity, args...) = nothing
+compute_diffusivities!(diffusivities, ::ScalarDiffusivity, args...; kwargs...) = nothing
 
 # Note: we could compute ν and κ (if they are Field):
 # function compute_diffusivities!(diffusivities, closure::ScalarDiffusivity, args...)

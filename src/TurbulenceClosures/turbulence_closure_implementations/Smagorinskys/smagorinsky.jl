@@ -105,7 +105,7 @@ end
 
 compute_coefficient_fields!(diffusivity_fields, closure, model; parameters) = nothing
 
-function compute_diffusivities!(diffusivity_fields, closure::Smagorinsky, model; parameters = :xyz)
+function compute_diffusivities!(diffusivity_fields, closure::Smagorinsky, model; parameters = :xyz, kwargs...)
     arch = model.architecture
     grid = model.grid
     buoyancy = model.buoyancy
