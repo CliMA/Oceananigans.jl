@@ -27,69 +27,69 @@ steps:
 
   - wait
 
-  # - label: "🐉 cpu distributed unit tests"
-  #   key: "distributed_cpu"
-  #   env:
-  #     TEST_GROUP: "distributed"
-  #     MPI_TEST: "true"
-  #   commands:
-  #     - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-  #   agents:
-  #     slurm_mem: 8G
-  #     slurm_ntasks: 4
-  #   retry:
-  #     automatic:
-  #       - exit_status: 1      
-  #         limit: 1
+  - label: "🐉 cpu distributed unit tests"
+    key: "distributed_cpu"
+    env:
+      TEST_GROUP: "distributed"
+      MPI_TEST: "true"
+    commands:
+      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      slurm_mem: 8G
+      slurm_ntasks: 4
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
-  # - label: "🐲 gpu distributed unit tests"
-  #   key: "distributed_gpu"
-  #   env:
-  #     TEST_GROUP: "distributed"
-  #     GPU_TEST: "true"
-  #     MPI_TEST: "true"
-  #   commands:
-  #     - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-  #   agents:
-  #     slurm_mem: 8G
-  #     slurm_ntasks: 4
-  #     slurm_gpus_per_task: 1
-  #   retry:
-  #     automatic:
-  #       - exit_status: 1      
-  #         limit: 1
+  - label: "🐲 gpu distributed unit tests"
+    key: "distributed_gpu"
+    env:
+      TEST_GROUP: "distributed"
+      GPU_TEST: "true"
+      MPI_TEST: "true"
+    commands:
+      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      slurm_mem: 8G
+      slurm_ntasks: 4
+      slurm_gpus_per_task: 1
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
-  # - label: "🦾 cpu distributed solvers tests"
-  #   key: "distributed_solvers_cpu"
-  #   env:
-  #     TEST_GROUP: "distributed_solvers"
-  #     MPI_TEST: "true"
-  #   commands:
-  #     - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-  #   agents:
-  #     slurm_mem: 50G
-  #     slurm_ntasks: 4
-  #   retry:
-  #     automatic:
-  #       - exit_status: 1      
-  #         limit: 1
+  - label: "🦾 cpu distributed solvers tests"
+    key: "distributed_solvers_cpu"
+    env:
+      TEST_GROUP: "distributed_solvers"
+      MPI_TEST: "true"
+    commands:
+      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      slurm_mem: 50G
+      slurm_ntasks: 4
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
-  # - label: "🛸 gpu distributed solvers tests"
-  #   key: "distributed_solvers_gpu"
-  #   env:
-  #     TEST_GROUP: "distributed_solvers"
-  #     GPU_TEST: "true"
-  #     MPI_TEST: "true"
-  #   commands:
-  #     - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-  #   agents:
-  #     slurm_mem: 50G
-  #     slurm_ntasks: 4
-  #     slurm_gpus_per_task: 1
-  #   retry:
-  #     automatic:
-  #       - exit_status: 1      
-  #         limit: 1
+  - label: "🛸 gpu distributed solvers tests"
+    key: "distributed_solvers_gpu"
+    env:
+      TEST_GROUP: "distributed_solvers"
+      GPU_TEST: "true"
+      MPI_TEST: "true"
+    commands:
+      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      slurm_mem: 50G
+      slurm_ntasks: 4
+      slurm_gpus_per_task: 1
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
   - label: "🤺 cpu distributed hydrostatic model tests"
     key: "distributed_hydrostatic_model_cpu"
@@ -123,37 +123,37 @@ steps:
         - exit_status: 1      
           limit: 1
 
-  # - label: "🦍 cpu distributed nonhydrostatic regression"
-  #   key: "distributed_nonhydrostatic_regression_cpu"
-  #   env:
-  #     TEST_GROUP: "distributed_nonhydrostatic_regression"
-  #     MPI_TEST: "true"
-  #   commands:
-  #     - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-  #   agents:
-  #     slurm_mem: 50G
-  #     slurm_ntasks: 4
-  #   retry:
-  #     automatic:
-  #       - exit_status: 1      
-  #         limit: 1
+  - label: "🦍 cpu distributed nonhydrostatic regression"
+    key: "distributed_nonhydrostatic_regression_cpu"
+    env:
+      TEST_GROUP: "distributed_nonhydrostatic_regression"
+      MPI_TEST: "true"
+    commands:
+      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      slurm_mem: 50G
+      slurm_ntasks: 4
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
-  # - label: "🕺 gpu distributed nonhydrostatic regression"
-  #   key: "distributed_nonhydrostatic_regression_gpu"
-  #   env:
-  #     TEST_GROUP: "distributed_nonhydrostatic_regression"
-  #     GPU_TEST: "true"
-  #     MPI_TEST: "true"
-  #   commands:
-  #     - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-  #   agents:
-  #     slurm_mem: 50G
-  #     slurm_ntasks: 4
-  #     slurm_gpus_per_task: 1
-  #   retry:
-  #     automatic:
-  #       - exit_status: 1      
-  #         limit: 1
+  - label: "🕺 gpu distributed nonhydrostatic regression"
+    key: "distributed_nonhydrostatic_regression_gpu"
+    env:
+      TEST_GROUP: "distributed_nonhydrostatic_regression"
+      GPU_TEST: "true"
+      MPI_TEST: "true"
+    commands:
+      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      slurm_mem: 50G
+      slurm_ntasks: 4
+      slurm_gpus_per_task: 1
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
   - wait
 
