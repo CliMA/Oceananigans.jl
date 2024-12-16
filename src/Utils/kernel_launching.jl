@@ -438,10 +438,10 @@ struct IndexMap end
 
 const MappedNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:IndexMap, <:AbstractArray} where N
 
-# NDRange has been modified to include an index_map in place of workitems.
-# Remember, dynamic offset kernels are not possible with this extension!!
-# Also, mapped kernels work only with a 1D kernel and a 1D map, it is not possible to launch a ND kernel.
 # TODO: maybe don't do this
+# NDRange has been modified to include an index_map in place of workitems.
+# Remember, dynamic kernels are not possible in combination with this extension!!
+# Also, mapped kernels work only with a 1D kernel and a 1D map, it is not possible to launch a ND kernel.
 @inline function expand(ndrange::MappedNDRange, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where N
     nI = ntuple(Val(N)) do I
         Base.@_inline_meta
@@ -470,8 +470,8 @@ Adapt.adapt_structure(to, cm::CompilerMetadata{N, C}) where {N, C} =
 Adapt.adapt_structure(to, ndrange::NDRange{N, B, W}) where {N, B, W} = 
     NDRange{N, B, W}(Adapt.adapt(to, ndrange.blocks), Adapt.adapt(to, ndrange.workitems))
 
-# Extending the partition function to include offsets in NDRange: note that in this case the 
-# offsets take the place of the DynamicWorkitems which we assume is not needed in static kernels
+# Extending the partition function to include the index_map in NDRange: note that in this case the 
+# index_map takes the place of the DynamicWorkitems which we assume is not needed in static kernels
 function partition(kernel::MappedKernel, inrange, ingroupsize)
     static_workgroupsize = workgroupsize(kernel)
     
