@@ -499,27 +499,16 @@ const MappedCompilerMetadata = CompilerMetadata{<:StaticSize, <:Any, <:Any, <:An
 @inline __linear_ndrange(ctx::MappedCompilerMetadata) = length(__iterspace(ctx).workitems)
 
 # Mapped kernels are always 1D
-@inline function linear_expand(ndrange::MappedNDRange, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where N
+Base.@propagate_inbounds function linear_expand(ndrange::MappedNDRange, gidx::Integer, idx::Integer)
     offsets = workitems(ndrange)
     stride = size(offsets, 1)
-    gidx = groupidx.I[1]
-    return (gidx - 1) * stride + idx.I[1]
+    return (gidx - 1) * stride + idx
 end
 
-Base.@propagate_inbounds function linear_expand(ndrange::NDRange, groupidx::Integer, idx::Integer)
-    linear_expand(ndrange, blocks(ndrange)[groupidx], workitems(ndrange)[idx])
-end
+# To check whether the index is valid in the index map, we need to 
+# check whether the linear index is smaller than the size of the index map
 
-Base.@propagate_inbounds function linear_expand(ndrange::NDRange{N}, groupidx::CartesianIndex{N}, idx::Integer) where {N}
-    linear_expand(ndrange, groupidx, workitems(ndrange)[idx])
-end
-
-Base.@propagate_inbounds function linear_expand(ndrange::NDRange{N}, groupidx::Integer, idx::CartesianIndex{N}) where {N}
-    linear_expand(ndrange, blocks(ndrange)[groupidx], idx)
-end
-
-# # To check whether the index is valid in the index map, we need to 
-# # check whether the linear index is smaller than the size of the index map
+# CPU version, the index is passed explicitly
 @inline function __validindex(ctx::MappedCompilerMetadata, idx::CartesianIndex)
     # Turns this into a noop for code where we can turn of checkbounds of
     if __dynamic_checkbounds(ctx)
@@ -530,15 +519,11 @@ end
     end
 end
 
-# Override for GPU computations
+# GPU version, the indices are passed implicitly
 @device_override @inline function __validindex(ctx::MappedCompilerMetadata)
     if __dynamic_checkbounds(ctx)
-        try
-            index = @inbounds linear_expand(__iterspace(ctx), blockIdx().x, threadIdx().x)
-            return index ≤ __linear_ndrange(ctx)
-        catch err 
-            code_typed(err; interactive = true)
-        end
+        index = @inbounds linear_expand(__iterspace(ctx), blockIdx().x, threadIdx().x)
+        return index ≤ __linear_ndrange(ctx)
     else
         return true
     end
