@@ -102,6 +102,9 @@ end
 """ Return the full prefix (the `superprefix`) associated with `checkpointer`. """
 checkpoint_superprefix(prefix) = prefix * "_iteration"
 
+# This is the default name used in the simulation.output_writers ordered dict.
+defaultname(::Checkpointer, nelems) = :checkpointer
+
 """
     checkpoint_path(iteration::Int, c::Checkpointer)
 
@@ -110,13 +113,10 @@ Return the path to the `c`heckpointer file associated with model `iteration`.
 checkpoint_path(iteration::Int, c::Checkpointer) =
     joinpath(c.dir, string(checkpoint_superprefix(c.prefix), iteration, ".jld2"))
 
-# This is the default name used in the simulation.output_writers ordered dict.
-defaultname(::Checkpointer, nelems) = :checkpointer
-
 """ Returns `filepath`. Shortcut for `run!(simulation, pickup=filepath)`. """
-checkpoint_path(filepath::AbstractString, output_writers) = filepath
+checkpoint_path(filepath::String, output_writers) = filepath
 
-function checkpoint_path(pickup, output_writers)
+function checkpoint_path(pickup::Bool, output_writers)
     checkpointers = filter(writer -> writer isa Checkpointer, collect(values(output_writers)))
     length(checkpointers) == 0 && error("No checkpointers found: cannot pickup simulation!")
     length(checkpointers) > 1 && error("Multiple checkpointers found: not sure which one to pickup simulation from!")
