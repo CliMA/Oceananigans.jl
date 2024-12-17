@@ -7,6 +7,7 @@ using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, Continuo
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
 using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: AbstractSchedule
+using Oceananigans.OutputReaders: auto_extension
 
 #####
 ##### Output writer utilities
@@ -210,15 +211,3 @@ output_averaging_schedule(output) = nothing # fallback
 
 show_array_type(a::Type{Array{T}}) where T = "Array{$T}"
 
-"""
-    auto_extension(filename, ext)                                                             
-
-If `filename` ends in `ext`, return `filename`. Otherwise return `filename * ext`.
-"""
-function auto_extension(filename, ext) 
-    if endswith(filename, ext)
-        return filename
-    else
-        return filename * ext
-    end
-end
