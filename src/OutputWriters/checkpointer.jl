@@ -212,8 +212,6 @@ end
 ##### set! for checkpointer filepaths
 #####
 
-set!(model::AbstractModel, ::Nothing) = nothing
-
 """
     set!(model, filepath::AbstractString)
 
