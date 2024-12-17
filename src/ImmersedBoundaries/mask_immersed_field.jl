@@ -12,6 +12,11 @@ mask_immersed_field!(::OneField, args...) = nothing
 mask_immersed_field!(::ZeroField, args...) = nothing
 mask_immersed_field!(::ConstantField, args...) = nothing
 
+# No masking for constant fields
+mask_immersed_field_xy!(::OneField, args...; kw...) = nothing
+mask_immersed_field_xy!(::ZeroField, args...; kw...) = nothing
+mask_immersed_field_xy!(::ConstantField, args...; kw...) = nothing
+
 mask_immersed_field!(field, grid, loc, value) = nothing
 mask_immersed_field!(field::Field, value=zero(eltype(field.grid))) =
     mask_immersed_field!(field, field.grid, location(field), value)
