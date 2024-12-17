@@ -24,14 +24,14 @@ const MOPABC = BoundaryCondition{<:Open{<:PerturbationAdvection}, <:BoundaryAdja
 @inline boundary_normal_area(::Union{Val{:south}, Val{:north}}, grid) = GridMetricOperation((Center, Face, Center), Ay, grid)
 @inline boundary_normal_area(::Union{Val{:bottom}, Val{:top}}, grid)  = GridMetricOperation((Center, Center, Face), Az, grid)
 
-@inline boundary_adjacent_index(::Val{:east}, grid, loc) = (size(grid, 1), 1, 1), (2, 3)
-@inline boundary_adjacent_index(val_side::Val{:west}, grid, loc) = (first_interior_index(val_side, loc), 1, 1), (2, 3)
+@inline boundary_adjacent_indices(::Val{:east}, grid, loc) = (size(grid, 1), 1, 1), (2, 3)
+@inline boundary_adjacent_indices(val_side::Val{:west}, grid, loc) = (first_interior_index(val_side, loc), 1, 1), (2, 3)
 
-@inline boundary_adjacent_index(::Val{:north}, grid, loc) = (1, size(grid, 2), 1), (1, 3)
-@inline boundary_adjacent_index(val_side::Val{:south}, grid, loc) = (1, first_interior_index(val_side, loc), 1), (1, 3)
+@inline boundary_adjacent_indices(::Val{:north}, grid, loc) = (1, size(grid, 2), 1), (1, 3)
+@inline boundary_adjacent_indices(val_side::Val{:south}, grid, loc) = (1, first_interior_index(val_side, loc), 1), (1, 3)
 
-@inline boundary_adjacent_index(::Val{:top}, grid, loc) = (1, 1, size(grid, 3)), (2, 3)
-@inline boundary_adjacent_index(val_side::Val{:bottom}, grid, loc) = (1, 1, first_interior_index(val_side, loc)), (2, 3)
+@inline boundary_adjacent_indices(::Val{:top}, grid, loc) = (1, 1, size(grid, 3)), (2, 3)
+@inline boundary_adjacent_indices(val_side::Val{:bottom}, grid, loc) = (1, 1, first_interior_index(val_side, loc)), (2, 3)
 
 @inline first_interior_index(::Union{Val{:west}, Val{:east}}, ::Tuple{Center, <:Any, <:Any}) = 1
 @inline first_interior_index(::Union{Val{:west}, Val{:east}}, ::Tuple{Face, <:Any, <:Any}) = 2
@@ -48,7 +48,7 @@ function update_boundary_condition!(bc::MOPABC, val_side, u, model)
 
     An = boundary_normal_area(val_side, grid)
 
-    (i, j, k), dims = boundary_adjacent_index(val_side, grid, loc)
+    (i, j, k), dims = boundary_adjacent_indices(val_side, grid, loc)
     
     total_area = CUDA.@allowscalar sum(An; dims)[i, j, k]
 
