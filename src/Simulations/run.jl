@@ -1,11 +1,11 @@
+using Oceananigans.Fields: set!
 using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_superprefix
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!, next_time, unit_time
 
 using Oceananigans: AbstractModel, run_diagnostic!, write_output!
 
 import Oceananigans: initialize!
-import Oceananigans.Fields: set!
-import Oceananigans.OutputWriters: checkpoint_path
+import Oceananigans.OutputWriters: checkpoint_path, set!
 import Oceananigans.TimeSteppers: time_step!
 import Oceananigans.Utils: schedule_aligned_time_step
 
@@ -55,12 +55,6 @@ function aligned_time_step(sim::Simulation, Δt)
     return aligned_Δt
 end
 
-function set!(sim::Simulation, pickup::Union{Bool, Integer, String})
-    checkpoint_file_path = checkpoint_path(pickup, sim.output_writers)
-    set!(sim.model, checkpoint_file_path)
-    return nothing
-end
-
 """
     run!(simulation; pickup=false)
 
@@ -91,7 +85,8 @@ more than one checkpointer.
 function run!(sim; pickup=false)
 
     if we_want_to_pickup(pickup)
-        set!(sim, pickup)
+        checkpoint_file_path = checkpoint_path(pickup, sim.output_writers)
+        set!(sim.model, checkpoint_file_path)
     end
 
     sim.initialized = false
@@ -107,12 +102,24 @@ end
 
 const ModelCallsite = Union{TendencyCallsite, UpdateStateCallsite}
 
+
+function time_step_or_skip!(sim)
+    model_callbacks = Tuple(cb for cb in values(sim.callbacks) if cb.callsite isa ModelCallsite)
+    Δt = aligned_time_step(sim, sim.Δt)
+    if Δt < sim.minimum_relative_step * sim.Δt
+        next_time = sim.model.clock.time + Δt
+        @warn "Resetting clock to $next_time and skipping time step of size Δt = $Δt"
+        sim.model.clock.time = next_time
+    else
+        time_step!(sim.model, Δt, callbacks=model_callbacks)
+    end
+end
+
+
 """ Step `sim`ulation forward by one time step. """
 function time_step!(sim::Simulation)
 
     start_time_step = time_ns()
-    model_callbacks = Tuple(cb for cb in values(sim.callbacks) if cb.callsite isa ModelCallsite)
-    Δt = aligned_time_step(sim, sim.Δt)
 
     if !(sim.initialized) # execute initialization step
         initialize!(sim)
@@ -124,8 +131,7 @@ function time_step!(sim::Simulation)
                 start_time = time_ns()
             end
 
-            # Take first time-step
-            time_step!(sim.model, Δt, callbacks=model_callbacks)
+            time_step_or_skip!(sim)
 
             if sim.verbose
                 elapsed_initial_step_time = prettytime(1e-9 * (time_ns() - start_time))
@@ -136,13 +142,7 @@ function time_step!(sim::Simulation)
         end
 
     else # business as usual...
-        if Δt < sim.minimum_relative_step * sim.Δt
-            next_time = sim.model.clock.time + Δt
-            @warn "Resetting clock to $next_time and skipping time step of size Δt = $Δt"
-            sim.model.clock.time = next_time
-        else
-            time_step!(sim.model, Δt, callbacks=model_callbacks)
-        end
+        time_step_or_skip!(sim)
     end
 
     # Callbacks and callback-like things
