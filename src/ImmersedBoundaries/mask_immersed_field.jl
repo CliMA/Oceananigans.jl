@@ -2,9 +2,15 @@ using KernelAbstractions: @kernel, @index
 using Statistics
 using Oceananigans.AbstractOperations: BinaryOperation
 using Oceananigans.Fields: location, XReducedField, YReducedField, ZReducedField, Field, ReducedField
+using Oceananigans.Fields: ConstantField, OneField, ZeroField
 
 instantiate(T::Type) = T()
 instantiate(t) = t
+
+# No masking for constant fields
+mask_immersed_field!(::OneField, args...) = nothing
+mask_immersed_field!(::ZeroField, args...) = nothing
+mask_immersed_field!(::ConstantField, args...) = nothing
 
 mask_immersed_field!(field, grid, loc, value) = nothing
 mask_immersed_field!(field::Field, value=zero(eltype(field.grid))) =
