@@ -185,7 +185,7 @@ function generate_coordinate(FT, topo, size, halo, coordinate::ZStarVerticalCoor
     σᶠᶜⁿ = new_data(FT, arch, (Face,   Center, Nothing), args...)
     σᶜᶠⁿ = new_data(FT, arch, (Center, Face,   Nothing), args...)
     σᶠᶠⁿ = new_data(FT, arch, (Face,   Face,   Nothing), args...)
-    ηⁿ    = new_data(FT, arch, (Center, Center, Nothing), args...)
+    ηⁿ   = new_data(FT, arch, (Center, Center, Nothing), args...)
     ∂t_σ = new_data(FT, arch, (Center, Center, Nothing), args...)
 
     # Fill all the scalings with one (at rest coordinate)
