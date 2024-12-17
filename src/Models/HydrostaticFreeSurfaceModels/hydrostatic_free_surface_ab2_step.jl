@@ -110,24 +110,25 @@ ab2_step_tracer_field!(tracer_field, grid, Δt, χ, Gⁿ, G⁻) =
 
 #####
 ##### Tracer update in generalized vertical coordinates 
-##### We advance σθ but store θ once σⁿ⁺¹ is known
 #####
 
+# σθ is the evolved quantity. Once σⁿ⁺¹ is known we can retrieve θⁿ⁺¹
+# with the `unscale_tracers!` function
 @kernel function _ab2_step_tracer_field!(θ, grid, Δt, χ, Gⁿ, G⁻)
     i, j, k = @index(Global, NTuple)
 
     FT = eltype(χ)
-    C₁ = convert(FT, 1.5) + χ
-    C₂ = convert(FT, 0.5) + χ
+    α = convert(FT, 1.5) + χ
+    β = convert(FT, 0.5) + χ
 
-    eⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
-    e⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
+    σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
+    σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
 
     @inbounds begin
-        ∂t_σθ = C₁ * eⁿ * Gⁿ[i, j, k] - C₂ * e⁻ * G⁻[i, j, k]
+        ∂t_σθ = α * σᶜᶜⁿ * Gⁿ[i, j, k] - β * σᶜᶜ⁻ * G⁻[i, j, k]
         
         # We store temporarily sθ in θ. the unscaled θ will be retrived later on with `unscale_tracers!`
-        θ[i, j, k] = eⁿ * θ[i, j, k] + convert(FT, Δt) * ∂t_σθ
+        θ[i, j, k] = σᶜᶜⁿ * θ[i, j, k] + convert(FT, Δt) * ∂t_σθ
     end
 end
 

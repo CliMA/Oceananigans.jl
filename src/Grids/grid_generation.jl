@@ -158,7 +158,7 @@ end
 generate_coordinate(FT, ::Periodic, N, H, ::ZStarVerticalCoordinate, coordinate_name, arch, args...) = 
     throw(ArgumentError("Periodic domains are not supported for ZStarVerticalCoordinate"))
 
-# Generate a moving coordinate with evolving scaling (`s`) for spacings and znodes
+# Generate a moving coordinate with evolving scaling (`σ`) for spacings and znodes
 function generate_coordinate(FT, topo, size, halo, coordinate::ZStarVerticalCoordinate, coordinate_name, dim::Int, arch)
 
     Nx, Ny, Nz = size

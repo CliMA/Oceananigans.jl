@@ -19,15 +19,15 @@ end
     Hᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, k_top, grid, η)
     Hᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, k_top, grid, η)
 
-    sᶠᶜ = ifelse(hᶠᶜ == 0, zero(grid), Hᶠᶜ / hᶠᶜ)
-    sᶜᶠ = ifelse(hᶜᶠ == 0, zero(grid), Hᶜᶠ / hᶜᶠ)
+    σᶠᶜ = ifelse(hᶠᶜ == 0, one(grid), Hᶠᶜ / hᶠᶜ)
+    σᶜᶠ = ifelse(hᶜᶠ == 0, one(grid), Hᶜᶠ / hᶜᶠ)
 
-    @inbounds U̅[i, j, 1] = Δrᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1] * sᶠᶜ
-    @inbounds V̅[i, j, 1] = Δrᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1] * sᶜᶠ
+    @inbounds U̅[i, j, 1] = Δrᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1] * σᶠᶜ
+    @inbounds V̅[i, j, 1] = Δrᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1] * σᶜᶠ
 
     for k in 2:grid.Nz
-        @inbounds U̅[i, j, 1] += Δrᶠᶜᶜ(i, j, k, grid) * u[i, j, k] * sᶠᶜ
-        @inbounds V̅[i, j, 1] += Δrᶜᶠᶜ(i, j, k, grid) * v[i, j, k] * sᶜᶠ
+        @inbounds U̅[i, j, 1] += Δrᶠᶜᶜ(i, j, k, grid) * u[i, j, k] * σᶠᶜ
+        @inbounds V̅[i, j, 1] += Δrᶜᶠᶜ(i, j, k, grid) * v[i, j, k] * σᶜᶠ
     end
 
     return nothing

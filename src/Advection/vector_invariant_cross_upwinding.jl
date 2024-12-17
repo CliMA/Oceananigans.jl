@@ -17,14 +17,13 @@
 ##### Cross and Self Upwinding of the Divergence flux
 #####
 
-# This is the additional term appearing in the continuity equation due to a moving grid. 
-# The discrete divergence is calculated as:
+# The discrete continuity equation is calculated as:
 #
 #  wᵏ⁺¹ - wᵏ      δx(Ax u) + δy(Ay v)     Δrᶜᶜᶜ ∂t_σ
 # ---------- = - --------------------- - -------------
 #    Δzᶜᶜᶜ                Vᶜᶜᶜ              Δzᶜᶜᶜ
 #
-# We upwind with the discrete divergence `δx(Ax u) + δy(Ay v)` and then divide by the volume, 
+# We upwind the discrete divergence `δx(Ax u) + δy(Ay v)` and then divide by the volume, 
 # therefore, the correct term to be added to the divergence transport due to the moving grid is:
 #
 #  Azᶜᶜᶜ Δrᶜᶜᶜ ∂t_σ

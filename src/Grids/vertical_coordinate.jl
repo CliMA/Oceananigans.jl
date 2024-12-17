@@ -26,10 +26,10 @@ end
 # Represents a z-star three-dimensional vertical coordinate.
 #
 # # Fields
-# - `cᶜ::C`: Cell-centered coordinate.
 # - `cᶠ::C`: Face-centered coordinate.
-# - `Δᶜ::D`: Cell-centered grid spacing.
+# - `cᶜ::C`: Cell-centered coordinate.
 # - `Δᶠ::D`: Face-centered grid spacing.
+# - `Δᶜ::D`: Cell-centered grid spacing.
 # - `ηⁿ::E`: Surface elevation at the current time step.
 # - `σᶜᶜⁿ::CC`: Vertical grid scaling at center-center at the current time step.
 # - `σᶠᶜⁿ::FC`: Vertical grid scaling at face-center at the current time step.
@@ -43,12 +43,12 @@ struct ZStarVerticalCoordinate{C, D, E, CC, FC, CF, FF} <: AbstractVerticalCoord
     Δᵃᵃᶠ :: D
     Δᵃᵃᶜ :: D
       ηⁿ :: E
-   σᶜᶜⁿ :: CC
-   σᶠᶜⁿ :: FC
-   σᶜᶠⁿ :: CF
-   σᶠᶠⁿ :: FF
-   σᶜᶜ⁻ :: CC
-   ∂t_σ :: CC
+    σᶜᶜⁿ :: CC
+    σᶠᶜⁿ :: FC
+    σᶜᶠⁿ :: CF
+    σᶠᶠⁿ :: FF
+    σᶜᶜ⁻ :: CC
+    ∂t_σ :: CC
 end
 
 # Convenience constructors for Zstar vertical coordinate
@@ -172,5 +172,12 @@ function validate_dimension_specification(T, ξ::ZStarVerticalCoordinate, dir, N
 end
 
 # Summaries
+coordinate_summary(topo, z::StaticVerticalCoordinate, name) = coordinate_summary(topo, z.Δᵃᵃᶜ, name)
+
+coordinate_summary(::Bounded, z::RegularZStarVerticalCoordinate, name) = 
+    @sprintf("Free-surface following with Δr=%s", prettysummary(z.Δᵃᵃᶜ))
+
 coordinate_summary(::Bounded, z::ZStarVerticalCoordinate, name) = 
-    @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(z.Δᵃᵃᶜ))
+    @sprintf("Free-surface following with min(Δr)=%s, max(Δr)=%s", 
+             prettysummary(minimum(z.Δᵃᵃᶜ)), 
+             prettysummary(maximum(z.Δᵃᵃᶜ)))

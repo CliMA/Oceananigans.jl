@@ -34,7 +34,7 @@ function update_grid!(model, grid::ZStarGridOfSomeKind; parameters = :xy)
     U, V = barotropic_velocities(model.free_surface)
     u, v, _ = model.velocities
 
-    # Update vertical spacing with available parameters 
+    # Update the time derivative of the vertical spacing,
     # No need to fill the halo as the scaling is updated _IN_ the halos
     launch!(architecture(grid), grid, parameters, _update_grid_vertical_velocity!, ∂t_σ, grid, U, V, u, v)
 

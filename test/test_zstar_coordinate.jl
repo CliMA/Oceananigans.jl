@@ -14,16 +14,16 @@ function test_zstar_coordinate(model, Ni, Δt)
     w   = model.velocities.w
     Nz  = model.grid.Nz
 
-    # Testing that at each timestep
-    # (1) tracers are conserved down to machine precision
-    # (2) vertical velocities are zero at the top surface
     for _ in 1:Ni
         time_step!(model, Δt)
     end
 
     ∫b = Field(Integral(model.tracers.b))
     ∫c = Field(Integral(model.tracers.c))
-
+    
+    # Testing that:
+    # (1) tracers are conserved down to machine precision
+    # (2) vertical velocities are zero at the top surface
     @test interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
     @test interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)    
     @test maximum(abs, interior(w, :, :, Nz+1)) < eps(eltype(w))
@@ -137,8 +137,6 @@ end
                     info_msg = info_message(grid, free_surface)
                     @testset "$info_msg" begin
                         @info "  Testing a $info_msg" 
-                        # TODO: minimum_xspacing(grid) on a Immersed GPU grid with ZStarVerticalCoordinate
-                        # fails because it uses too much parameter space. Figure out a way to reduce it 
                         model = HydrostaticFreeSurfaceModel(; grid, 
                                                             free_surface, 
                                                             tracers = (:b, :c), 
