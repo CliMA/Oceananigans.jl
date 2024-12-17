@@ -18,10 +18,10 @@ mutable struct Checkpointer{T, P} <: AbstractOutputWriter
 end
 
 function default_checkpointed_properties(model)
-    properties = [:grid, :particles, :clock]
-    if has_ab2_timestepper(model)
-        push!(properties, :timestepper)
-    end
+    properties = [:grid, :particles, :clock, :timestepper]
+    #if has_ab2_timestepper(model)
+    #    push!(properties, :timestepper)
+    #end
     return properties
 end
 
@@ -184,7 +184,6 @@ function write_output!(c::Checkpointer, model)
     jldopen(filepath, "w") do file
         file["$addr/checkpointed_properties"] = c.properties
         serializeproperties!(file, model, c.properties, addr)
-
         model_fields = prognostic_fields(model)
         field_names = keys(model_fields)
         for name in field_names
@@ -233,7 +232,7 @@ function set!(model::AbstractModel, filepath::AbstractString)
         model_fields = prognostic_fields(model)
 
         for name in keys(model_fields)
-            if string(name) ∈ keys(file) # Test if variable exists in checkpoint.
+            if string(name) ∈ keys(file[addr]) # Test if variable exists in checkpoint.
                 model_field = model_fields[name]
                 parent_data = file["$addr/$name/data"]
                 copyto!(parent(model_field), parent_data)
