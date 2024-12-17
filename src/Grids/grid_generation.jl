@@ -151,9 +151,9 @@ function generate_coordinate(FT, ::Flat, N, H, ::Nothing, coordinate_name, arch)
     end
 end    
 
-####
-#### ZStarVerticalCoordinate
-####
+#####
+##### ZStarVerticalCoordinate
+#####
 
 generate_coordinate(FT, ::Periodic, N, H, ::ZStarVerticalCoordinate, coordinate_name, arch, args...) = 
     throw(ArgumentError("Periodic domains are not supported for ZStarVerticalCoordinate"))
