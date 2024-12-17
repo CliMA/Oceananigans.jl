@@ -135,7 +135,7 @@ checkpoint_path(iteration::Int, c::Checkpointer) =
 """ Returns `filepath`. Shortcut for `run!(simulation, pickup=filepath)`. """
 checkpoint_path(filepath::String, output_writers) = filepath
 
-function checkpoint_path(pickup::Bool, output_writers)
+function checkpoint_path(pickup, output_writers)
     checkpointers = filter(writer -> writer isa Checkpointer, collect(values(output_writers)))
     length(checkpointers) == 0 && error("No checkpointers found: cannot pickup simulation!")
     length(checkpointers) > 1 && error("Multiple checkpointers found: not sure which one to pickup simulation from!")
