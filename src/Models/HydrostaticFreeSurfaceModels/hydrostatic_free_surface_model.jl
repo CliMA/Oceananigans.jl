@@ -179,7 +179,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     closure = with_tracers(tracernames(tracers), closure)
 
     # Put CATKE first in the list of closures
-    closure = validate_closure(closure, grid)
+    closure = validate_closure(closure)
 
     # Either check grid-correctness, or construct tuples of fields
     velocities         = hydrostatic_velocity_fields(velocities, grid, clock, boundary_conditions)
