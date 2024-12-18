@@ -170,6 +170,7 @@ serializeproperty!(file, address, p::LagrangianParticles) = serializeproperty!(f
 
 saveproperties!(file, structure, ps) = [saveproperty!(file, "$p", getproperty(structure, p)) for p in ps]
 serializeproperties!(file, structure, ps) = [serializeproperty!(file, "$p", getproperty(structure, p)) for p in ps]
+serializeproperties!(file, structure, ps, addr) = [serializeproperty!(file, "$addr/$p", getproperty(structure, p)) for p in ps]
 
 # Don't check arrays because we don't need that noise.
 has_reference(T, ::AbstractArray{<:Number}) = false
