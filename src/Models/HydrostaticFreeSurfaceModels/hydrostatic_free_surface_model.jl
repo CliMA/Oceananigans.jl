@@ -158,14 +158,14 @@ function HydrostaticFreeSurfaceModel(; grid,
                                          extract_boundary_conditions(diffusivity_fields))
 
     # Next, we form a list of default boundary conditions:
-    hydrostatic_field_names = field_names(free_surface, tracernames(tracers), auxiliary_fields)
-    default_boundary_conditions = NamedTuple{hydrostatic_field_names}(Tuple(FieldBoundaryConditions()
-                                                                      for name in hydrostatic_field_names))
+    field_names = (:u, :v, :w, tracernames(tracers)..., :η, :U, :V, keys(auxiliary_fields)...)
+    default_boundary_conditions = NamedTuple{field_names}(Tuple(FieldBoundaryConditions()
+                                                          for name in field_names))
 
     # Then we merge specified, embedded, and default boundary conditions. Specified boundary conditions
     # have precedence, followed by embedded, followed by default.
     boundary_conditions = merge(default_boundary_conditions, embedded_boundary_conditions, boundary_conditions)
-    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, hydrostatic_field_names)
+    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, field_names)
 
     # Finally, we ensure that closure-specific boundary conditions, such as
     # those required by CATKEVerticalDiffusivity, are enforced:
