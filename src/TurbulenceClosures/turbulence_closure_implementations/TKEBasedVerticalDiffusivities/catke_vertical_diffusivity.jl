@@ -128,16 +128,12 @@ function with_tracers(tracer_names, closure::FlavorOfCATKE)
 end
 
 # For tuples of closures, we need to know _which_ closure is CATKE.
-# Here we take the approach that we validate each individual closure first, then 
-# we sort the tuple so that the CATKE closure is first.
+# Here we take a "simple" approach that sorts the tuple so CATKE is first.
 # This is not sustainable though if multiple closures require this.
 # The two other possibilities are:
 # 1. Recursion to find which closure is CATKE in a compiler-inferrable way
 # 2. Store the "CATKE index" inside CATKE via validate_closure.
-function validate_closure(closure_tuple::Tuple, grid) 
-    closure_tuple = Tuple(validate_closure(closure, grid) for closure in closure_tuple)
-    return Tuple(sort(collect(closure_tuple), lt=catke_first))
-end
+validate_closure(closure_tuple::Tuple) = Tuple(sort(collect(closure_tuple), lt=catke_first))
 
 catke_first(closure1, catke::FlavorOfCATKE) = false
 catke_first(catke::FlavorOfCATKE, closure2) = true

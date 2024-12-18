@@ -1,4 +1,3 @@
-using Oceananigans.Grids: topology
 using Oceananigans.AbstractOperations: Average
 using Oceananigans.Fields: FieldBoundaryConditions
 using Oceananigans.Utils: launch!, IterationInterval
@@ -21,8 +20,7 @@ import ..TurbulenceClosures:
     κᶜᶜᶠ,
     compute_diffusivities!,
     DiffusivityFields,
-    tracer_diffusivities,
-    validate_closure
+    tracer_diffusivities
 
 #####
 ##### The turbulence closure proposed by Smagorinsky and Lilly.
@@ -81,15 +79,6 @@ function Smagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=
 end
 
 Smagorinsky(FT::DataType; kwargs...) = Smagorinsky(ExplicitTimeDiscretization(), FT; kwargs...)
-
-# Smagorinsky is not correct for 2D Grids
-function validate_closure(closure::Smagorinsky, grid) 
-    if Flat in topology(grid)
-        @warn "A smagorinsky closure relies on assumptions that do not hold for two-dimensional Grids. \n 
-               Consider using a different closure."
-    end
-    return closure
-end
 
 function with_tracers(tracers, closure::Smagorinsky{TD}) where TD
     Pr = tracer_diffusivities(tracers, closure.Pr)
