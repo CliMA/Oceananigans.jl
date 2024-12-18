@@ -127,11 +127,11 @@ ab2_step_tracer_field!(tracer_field, grid, Δt, χ, Gⁿ, G⁻) =
     @inbounds begin
         ∂t_σθ = α * σᶜᶜⁿ * Gⁿ[i, j, k] - β * σᶜᶜ⁻ * G⁻[i, j, k]
         
-        # We store temporarily sθ in θ. the unscaled θ will be retrived later on with `unscale_tracers!`
+        # We store temporarily sθ in θ. The unscaled θ will be retrieved with `unscale_tracers!`
         θ[i, j, k] = σᶜᶜⁿ * θ[i, j, k] + convert(FT, Δt) * ∂t_σθ
     end
 end
 
 # Fallback! We need to unscale the tracers only in case of 
-# a grid with a moving vertical cocrdinate, i.e. where σ is not constant
+# a grid with a moving vertical coordinate, i.e. where σ is not constant
 unscale_tracers!(tracers, grid; kwargs...) = nothing
