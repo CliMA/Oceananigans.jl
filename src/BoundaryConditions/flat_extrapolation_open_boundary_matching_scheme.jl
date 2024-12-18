@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Δx, Δy, Δz
+using Oceananigans.Operators: Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ
 
 """
     FlatExtrapolation
@@ -59,12 +59,10 @@ end
     return ϕ + Δϕ
 end
 
-const c = Center()
-
-@inline function _fill_west_open_halo!(j, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
-    Δx₁ = Δx(1, j, k, grid, c, c, c)
-    Δx₂ = Δx(2, j, k, grid, c, c, c)
-    Δx₃ = Δx(3, j, k, grid, c, c, c)
+@inline function _fill_west_halo!(j, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
+    Δx₁ = Δxᶜᶜᶜ(1, j, k, grid)
+    Δx₂ = Δxᶜᶜᶜ(2, j, k, grid)
+    Δx₃ = Δxᶜᶜᶜ(3, j, k, grid)
 
     spacing_factor = Δx₁ / (Δx₂ + Δx₃)
 
@@ -75,12 +73,12 @@ const c = Center()
     return nothing
 end
 
-@inline function _fill_east_open_halo!(j, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
+@inline function _fill_east_halo!(j, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
     i = grid.Nx + 1
 
-    Δx₁ = Δx(i-1, j, k, grid, c, c, c)
-    Δx₂ = Δx(i-2, j, k, grid, c, c, c)
-    Δx₃ = Δx(i-3, j, k, grid, c, c, c)
+    Δx₁ = Δxᶜᶜᶜ(i-1, j, k, grid)
+    Δx₂ = Δxᶜᶜᶜ(i-2, j, k, grid)
+    Δx₃ = Δxᶜᶜᶜ(i-3, j, k, grid)
 
     spacing_factor = Δx₁ / (Δx₂ + Δx₃)
 
@@ -91,10 +89,10 @@ end
     return nothing
 end
 
-@inline function _fill_south_open_halo!(i, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
-    Δy₁ = Δy(i, 1, k, grid, c, c, c)
-    Δy₂ = Δy(i, 2, k, grid, c, c, c)
-    Δy₃ = Δy(i, 3, k, grid, c, c, c)
+@inline function _fill_south_halo!(i, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
+    Δy₁ = Δyᶜᶜᶜ(i, 1, k, grid)
+    Δy₂ = Δyᶜᶜᶜ(i, 2, k, grid)
+    Δy₃ = Δyᶜᶜᶜ(i, 3, k, grid)
 
     spacing_factor = Δy₁ / (Δy₂ + Δy₃)
 
@@ -105,12 +103,12 @@ end
     return nothing
 end
 
-@inline function _fill_north_open_halo!(i, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
+@inline function _fill_north_halo!(i, k, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
     j = grid.Ny + 1
 
-    Δy₁ = Δy(i, j-1, k, grid, c, c, c)
-    Δy₂ = Δy(i, j-2, k, grid, c, c, c)
-    Δy₃ = Δy(i, j-3, k, grid, c, c, c)
+    Δy₁ = Δyᶜᶜᶜ(i, j-1, k, grid)
+    Δy₂ = Δyᶜᶜᶜ(i, j-2, k, grid)
+    Δy₃ = Δyᶜᶜᶜ(i, j-3, k, grid)
 
     spacing_factor = Δy₁ / (Δy₂ + Δy₃)
 
@@ -121,10 +119,10 @@ end
     return nothing
 end
 
-@inline function _fill_bottom_open_halo!(i, j, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
-    Δz₁ = Δz(i, j, 1, grid, c, c, c)
-    Δz₂ = Δz(i, j, 2, grid, c, c, c)
-    Δz₃ = Δz(i, j, 3, grid, c, c, c)
+@inline function _fill_bottom_halo!(i, j, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
+    Δz₁ = Δzᶜᶜᶜ(i, j, 1, grid)
+    Δz₂ = Δzᶜᶜᶜ(i, j, 2, grid)
+    Δz₃ = Δzᶜᶜᶜ(i, j, 3, grid)
 
     spacing_factor = Δz₁ / (Δz₂ + Δz₃)
 
@@ -135,12 +133,12 @@ end
     return nothing
 end
 
-@inline function _fill_top_open_halo!(i, j, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
+@inline function _fill_top_halo!(i, j, grid, ϕ, bc::FEOBC, loc, clock, model_fields)
     k = grid.Nz + 1
 
-    Δz₁ = Δz(i, j, k-1, grid, c, c, c)
-    Δz₂ = Δz(i, j, k-2, grid, c, c, c)
-    Δz₃ = Δz(i, j, k-3, grid, c, c, c)
+    Δz₁ = Δzᶜᶜᶜ(i, j, k-1, grid)
+    Δz₂ = Δzᶜᶜᶜ(i, j, k-2, grid)
+    Δz₃ = Δzᶜᶜᶜ(i, j, k-3, grid)
 
     spacing_factor = Δz₁ / (Δz₂ + Δz₃)
 
