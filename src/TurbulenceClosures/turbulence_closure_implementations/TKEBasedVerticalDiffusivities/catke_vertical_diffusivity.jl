@@ -162,10 +162,10 @@ Adapt.adapt_structure(to, catke_diffusivity_fields::CATKEDiffusivityFields) =
                            adapt(to, catke_diffusivity_fields.κe),
                            adapt(to, catke_diffusivity_fields.Le),
                            adapt(to, catke_diffusivity_fields.Jᵇ),
-                           previous_compute_time[],
-                           adapt(to, previous_velocities),
-                           adapt(to, _tupled_tracer_diffusivities),
-                           adapt(to, _tupled_implicit_linear_coefficients))
+                           catke_diffusivity_fields.previous_compute_time[],
+                           adapt(to, catke_diffusivity_fields.previous_velocities),
+                           adapt(to, catke_diffusivity_fields._tupled_tracer_diffusivities),
+                           adapt(to, catke_diffusivity_fields._tupled_implicit_linear_coefficients))
 
 function fill_halo_regions!(catke_diffusivity_fields::CATKEDiffusivityFields, args...; kw...)
     grid = catke_diffusivity_fields.κu.grid
