@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid, field_names
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving, FluxFormAdvection
 using Oceananigans.TurbulenceClosures
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
@@ -103,7 +103,6 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @test grid isa SingleColumnGrid
             @test isnothing(model.free_surface)
             @test !(:η ∈ keys(fields(model))) # doesn't include free surface
-            @test field_names(model) == keys(fields(model))
         end
     end
 
@@ -115,7 +114,6 @@ topos_3d = ((Periodic, Periodic, Bounded),
                 model = HydrostaticFreeSurfaceModel(; grid)
                 @test model isa HydrostaticFreeSurfaceModel
                 @test :η ∈ keys(fields(model)) # contrary to the SingleColumnGrid case
-                @test field_names(model) == keys(fields(model))
             end
         end
     end
@@ -138,7 +136,6 @@ topos_3d = ((Periodic, Periodic, Bounded),
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
                 model = HydrostaticFreeSurfaceModel(; grid, free_surface=FreeSurface())
                 @test model isa HydrostaticFreeSurfaceModel
-                @test field_names(model) == keys(fields(model))
             end
         end
     end
