@@ -131,7 +131,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
         end
     end
 
-    for FreeSurface in (ExplicitFreeSurface, ImplicitFreeSurface, SpliExplicitFreeSurface, Nothing)
+    for FreeSurface in (ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface, Nothing)
         @testset "$topo model construction" begin
             @info "  Testing $free_surface model construction..."
             for arch in archs, FT in float_types
