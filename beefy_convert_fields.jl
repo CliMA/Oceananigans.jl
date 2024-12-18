@@ -35,6 +35,7 @@ close(jlfile)
 @info "closing jld2 file"
 
 
+squareheight = [mean(η[:, :, i] .^2) for i in eachindex(ηkeys)]
 month_indices = zeros(Int, NN^2)
 if length(ηkeys) ≥ 5000
     month_indices[1] = 1
@@ -94,7 +95,7 @@ b = FieldTimeSeries(data_directory  * "baroclinic_double_gyre_$casevar.jld2", "b
 
 zs = u.grid.zᵃᵃᶜ[1:15]
 
-
+@info "coarse graining fields"
 meanabsus = zeros(15, length(ηkeys))
 for i in ProgressBar(1:length(ηkeys))
     meanabsus[:, i] = mean(abs.(interior(u[i])), dims = (1, 2))
@@ -134,6 +135,18 @@ hfile["meanabsws"] = meanabsws
 hfile["meanbs"] = meanbs
 close(hfile)
 ##
+@info "saving eta"
+mean_etas_avgd_8 = zeros(32, 32, 1, length(ηkeys));
+for i in ProgressBar(1:length(ηkeys))
+    for k in 1:1
+        mean_etas_avgd_8[:, :, k, i] .= coarse_grain(η[:, :, i], 8)
+    end
+end
+hfile = h5open(analysis_directory * "anaylsis_baroclinic_double_gyre_$casevar.hdf5", "r+")
+hfile["mean_etas_avgd_8"] = mean_etas_avgd_8
+close(hfile)
+
+@info "saving b"
 meanbs_avgd_8 = zeros(32, 32, 15, length(ηkeys));
 for i in ProgressBar(1:length(ηkeys))
     bfield = interior(b[i])
@@ -145,6 +158,7 @@ hfile = h5open(analysis_directory * "anaylsis_baroclinic_double_gyre_$casevar.hd
 hfile["meanbs_avgd_8"] = meanbs_avgd_8
 close(hfile)
 
+@info "saving u"
 meanus_avgd_8 = zeros(32, 32, 15, length(ηkeys));
 for i in ProgressBar(1:length(ηkeys))
     ufield = interior(u[i])
@@ -158,6 +172,7 @@ hfile = h5open(analysis_directory * "anaylsis_baroclinic_double_gyre_$casevar.hd
 hfile["meanus_avgd_8"] = meanus_avgd_8
 close(hfile)
 
+@info "saving v"
 meanvs_aggd_8 = zeros(32, 32, 15, length(ηkeys));
 for i in ProgressBar(1:length(ηkeys))
     vfield = interior(v[i])
@@ -171,6 +186,7 @@ hfile = h5open(analysis_directory * "anaylsis_baroclinic_double_gyre_$casevar.hd
 hfile["meanvs_avgd_8"] = meanvs_aggd_8
 close(hfile)
 
+@info "saving w"
 meanws_aggd_8 = zeros(32, 32, 15, length(ηkeys));
 for i in ProgressBar(1:length(ηkeys))
     wfield = interior(w[i])
@@ -361,22 +377,4 @@ for (k, ij_index) in enumerate(ij_indices)
 end
 save(figure_directory * "temperature_profile_end_time.png", fig)
 
-#=
-mi = month_indices[end-3]
-push!(months, mi)
-mfield = mean(field[i_index, j_index, :, mi-23:mi], dims = 2)[:]
-scatter!(ax, mfield, zs,  color = :red)
-lines!(ax, mfield, zs,  color = :red, label = string(mi))
 
-mi = month_indices[end-4]
-push!(months, mi)
-mfield = mean(field[i_index, j_index, :, mi-23:mi], dims = 2)[:]
-scatter!(ax, mfield, zs,  color = :purple)
-lines!(ax, mfield, zs,  color = :purple, label = string(mi))
-
-mi = month_indices[end-6]
-push!(months, mi)
-mfield = mean(field[i_index, j_index, :, mi-23:mi], dims = 2)[:]
-scatter!(ax, mfield, zs,  color = :orange)
-lines!(ax, mfield, zs,  color = :orange, label = string(mi))
-=#
