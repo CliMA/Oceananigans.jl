@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid, field_names
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving, FluxFormAdvection
 using Oceananigans.TurbulenceClosures
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
