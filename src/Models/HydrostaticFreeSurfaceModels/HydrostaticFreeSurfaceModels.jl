@@ -82,7 +82,7 @@ Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.free
 
 Return a tuple of the field names associated with `HydrostaticFreeSurfaceModel`, which is equivalent to `keys(fields(model))`.
 """
-@inline field_names(model::HydrostaticFreeSurfaceModel) = field_names(model.free_surface, model.tracernames, model.auxiliary_fields)
+@inline field_names(model::HydrostaticFreeSurfaceModel) = field_names(model.free_surface, tracernames(model.tracers), model.auxiliary_fields)
 
 @inline field_names(free_surface, tracernames, auxiliary_fields) = (:u, :v, :w, tracernames..., :η, keys(auxiliary_fields)...)
 @inline field_names(::Nothing, tracernames, auxiliary_fields)    = (:u, :v, :w, tracernames..., keys(auxiliary_fields)...)
