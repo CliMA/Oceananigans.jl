@@ -33,7 +33,7 @@ T₀[T₀ .< 0.5] .= 0
 
 set!(model, u=u₀, v=v₀, T=T₀)
 
-@model.velocities.u
+model.velocities.u
 
 # output
 
