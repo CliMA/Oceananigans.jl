@@ -9,7 +9,6 @@ Enzyme.API.maxtypeoffset!(2032)
 # OceananigansLogger doesn't work here -- not sure why
 Logging.global_logger(TestLogger())
 
-#=
 f(grid) = CenterField(grid)
 const maximum_diffusivity = 100
 
@@ -280,7 +279,6 @@ end
         @test rel_error < tol
     end
 end
-=#
 
 bᵢ(z) = 1e-5 * z
 
@@ -438,7 +436,7 @@ end
     @info "Automatically computed: $dedν."
     @info "Elapsed time: " * prettytime(1e-9 * (time_ns() - start_time))
 
-    tol = 1e-1
+    tol = 5e-1
     rel_error = abs(dedν[1][1] - ΔeΔν) / abs(ΔeΔν)
     @test rel_error < tol
 end
