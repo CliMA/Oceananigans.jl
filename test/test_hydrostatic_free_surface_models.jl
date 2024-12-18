@@ -103,6 +103,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @test grid isa SingleColumnGrid
             @test isnothing(model.free_surface)
             @test !(:η ∈ keys(fields(model))) # doesn't include free surface
+            @test field_names(model) == keys(fields(model))
         end
     end
 
@@ -114,6 +115,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
                 model = HydrostaticFreeSurfaceModel(; grid)
                 @test model isa HydrostaticFreeSurfaceModel
                 @test :η ∈ keys(fields(model)) # contrary to the SingleColumnGrid case
+                @test field_names(model) == keys(fields(model))
             end
         end
     end
@@ -125,6 +127,18 @@ topos_3d = ((Periodic, Periodic, Bounded),
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
                 model = HydrostaticFreeSurfaceModel(; grid)
                 @test model isa HydrostaticFreeSurfaceModel
+            end
+        end
+    end
+
+    for FreeSurface in (ExplicitFreeSurface, ImplicitFreeSurface, SpliExplicitFreeSurface, Nothing)
+        @testset "$topo model construction" begin
+            @info "  Testing $free_surface model construction..."
+            for arch in archs, FT in float_types
+                grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
+                model = HydrostaticFreeSurfaceModel(; grid, free_surface=FreeSurface())
+                @test model isa HydrostaticFreeSurfaceModel
+                @test field_names(model) == keys(fields(model))
             end
         end
     end
