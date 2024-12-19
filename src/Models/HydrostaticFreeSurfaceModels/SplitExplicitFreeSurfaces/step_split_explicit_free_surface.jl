@@ -1,3 +1,5 @@
+using Oceananigans.ImmersedBoundaries: ZStarGridOfSomeKind
+
 # Evolution Kernels
 #
 # ∂t(η) = -∇⋅U
@@ -166,7 +168,9 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
 
     # Needed for ZStar to compute the barotropic correction.
     # TODO: Would it be possible to remove it in some way?
-    fill_halo_regions!(η)
+    if grid isa ZStarGridOfSomeKind
+        fill_halo_regions!(η)
+    end
 
     return nothing
 end
