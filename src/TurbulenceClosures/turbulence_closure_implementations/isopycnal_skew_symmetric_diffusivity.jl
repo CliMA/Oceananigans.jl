@@ -212,9 +212,9 @@ end
 end
 
 # Make sure we do not need to perform heavy calculations if we really do not need to
-@inline diffusive_flux_x(i, j, k, grid, ::NoDiffusionISSD, args...) = zero(grid)
-@inline diffusive_flux_y(i, j, k, grid, ::NoDiffusionISSD, args...) = zero(grid)
-@inline diffusive_flux_z(i, j, k, grid, ::NoDiffusionISSD, args...) = zero(grid)
+@inline diffusive_flux_x(i, j, k, grid, ::NoDiffusionISSD, K, ::Val{tracer_index}, args...) where tracer_index = zero(grid)
+@inline diffusive_flux_y(i, j, k, grid, ::NoDiffusionISSD, K, ::Val{tracer_index}, args...) where tracer_index = zero(grid)
+@inline diffusive_flux_z(i, j, k, grid, ::NoDiffusionISSD, K, ::Val{tracer_index}, args...) where tracer_index = zero(grid)
 
 # Diffusive fluxes
 @inline get_tracer_κ(κ::NamedTuple, grid, tracer_index) = @inbounds κ[tracer_index]
