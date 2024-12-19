@@ -36,7 +36,7 @@ end
 
 @inline Gaussian(x, y, L) = exp(-(x^2 + y^2) / L^2)
 
-function solid_body_rotation_test(grid)
+function solid_body_rotation_test(grid, closure=nothing)
 
     free_surface = SplitExplicitFreeSurface(grid; substeps = 5, gravitational_acceleration = 1)
     coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
@@ -45,6 +45,7 @@ function solid_body_rotation_test(grid)
                                         momentum_advection = VectorInvariant(),
                                         free_surface = free_surface,
                                         coriolis = coriolis,
+                                        closure,
                                         tracers = :c,
                                         tracer_advection = WENO(),
                                         buoyancy = nothing,
@@ -94,42 +95,44 @@ for arch in archs
         global_underlying_grid = reconstruct_global_grid(underlying_grid)
         global_immersed_grid   = ImmersedBoundaryGrid(global_underlying_grid, GridFittedBottom(bottom))
 
-        for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid), (global_underlying_grid, global_immersed_grid, global_immersed_grid))
+        for closure in (nothing, CATKEVerticalDiffusivity())
+            for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid), (global_underlying_grid, global_immersed_grid, global_immersed_grid))
 
-            # "s" for "serial" computation
-            us, vs, ws, cs, ηs = solid_body_rotation_test(global_grid)
+                # "s" for "serial" computation
+                us, vs, ws, cs, ηs = solid_body_rotation_test(global_grid; closure)
 
-            us = interior(on_architecture(CPU(), us))
-            vs = interior(on_architecture(CPU(), vs))
-            ws = interior(on_architecture(CPU(), ws))
-            cs = interior(on_architecture(CPU(), cs))
-            ηs = interior(on_architecture(CPU(), ηs))
+                us = interior(on_architecture(CPU(), us))
+                vs = interior(on_architecture(CPU(), vs))
+                ws = interior(on_architecture(CPU(), ws))
+                cs = interior(on_architecture(CPU(), cs))
+                ηs = interior(on_architecture(CPU(), ηs))
 
-            @info "  Testing distributed solid body rotation with architecture $arch on $(typeof(grid).name.wrapper)"
-            u, v, w, c, η = solid_body_rotation_test(grid)
+                @info "  Testing distributed solid body rotation with architecture $arch on $(typeof(grid).name.wrapper)"
+                u, v, w, c, η = solid_body_rotation_test(grid; closure)
 
-            cpu_arch = cpu_architecture(arch)
+                cpu_arch = cpu_architecture(arch)
 
-            u = interior(on_architecture(cpu_arch, u))
-            v = interior(on_architecture(cpu_arch, v))
-            w = interior(on_architecture(cpu_arch, w))
-            c = interior(on_architecture(cpu_arch, c))
-            η = interior(on_architecture(cpu_arch, η))
+                u = interior(on_architecture(cpu_arch, u))
+                v = interior(on_architecture(cpu_arch, v))
+                w = interior(on_architecture(cpu_arch, w))
+                c = interior(on_architecture(cpu_arch, c))
+                η = interior(on_architecture(cpu_arch, η))
 
-            us = partition(us, cpu_arch, size(u))
-            vs = partition(vs, cpu_arch, size(v))
-            ws = partition(ws, cpu_arch, size(w))
-            cs = partition(cs, cpu_arch, size(c))
-            ηs = partition(ηs, cpu_arch, size(η))
+                us = partition(us, cpu_arch, size(u))
+                vs = partition(vs, cpu_arch, size(v))
+                ws = partition(ws, cpu_arch, size(w))
+                cs = partition(cs, cpu_arch, size(c))
+                ηs = partition(ηs, cpu_arch, size(η))
 
-            atol = eps(eltype(grid))
-            rtol = sqrt(eps(eltype(grid)))
+                atol = eps(eltype(grid))
+                rtol = sqrt(eps(eltype(grid)))
 
-            @test all(isapprox(u, us; atol, rtol))
-            @test all(isapprox(v, vs; atol, rtol))
-            @test all(isapprox(w, ws; atol, rtol))
-            @test all(isapprox(c, cs; atol, rtol))
-            @test all(isapprox(η, ηs; atol, rtol))
+                @test all(isapprox(u, us; atol, rtol))
+                @test all(isapprox(v, vs; atol, rtol))
+                @test all(isapprox(w, ws; atol, rtol))
+                @test all(isapprox(c, cs; atol, rtol))
+                @test all(isapprox(η, ηs; atol, rtol))
+            end
         end
     end
 end
