@@ -80,7 +80,10 @@ end
 
 function tupled_fill_halo_regions!(fields, grid::DistributedGrid, args...; kwargs...)
     for field in fields
-        fill_halo_regions!(field, args...; kwargs...)
+        # Sometimes diffusivity_fields might not be Field objects
+        if field isa Field
+            fill_halo_regions!(field, args...; kwargs...)
+        end
     end
 end
 
