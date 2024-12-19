@@ -21,6 +21,8 @@ tuple_string(tup::Tuple{}) = ""
 ##### set!
 #####
 
+set!(obj, ::Nothing) = nothing
+
 function set!(Φ::NamedTuple; kwargs...)
     for (fldname, value) in kwargs
         ϕ = getproperty(Φ, fldname)

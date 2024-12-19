@@ -20,12 +20,14 @@ conditions, possibly recursing into `fields` if it is a nested tuple-of-tuples.
 # Some fields have `nothing` boundary conditions, such as `FunctionField` and `ZeroField`.
 fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
 
+retrieve_bc(bc) = bc
+
 # Returns the boundary conditions a specific side for `FieldBoundaryConditions` inputs and
 # a tuple of boundary conditions for `NTuple{N, <:FieldBoundaryConditions}` inputs
 for dir in (:west, :east, :south, :north, :bottom, :top)
     extract_side_bc = Symbol(:extract_, dir, :_bc)
     @eval begin
-        @inline $extract_side_bc(bc) = bc.$dir
+        @inline $extract_side_bc(bc) = retrieve_bc(bc.$dir)
         @inline $extract_side_bc(bc::Tuple) = map($extract_side_bc, bc)
     end
 end

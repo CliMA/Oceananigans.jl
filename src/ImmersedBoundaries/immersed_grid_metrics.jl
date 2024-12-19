@@ -1,6 +1,5 @@
 using Oceananigans.AbstractOperations: GridMetricOperation
 
-import Oceananigans.Grids: coordinates
 import Oceananigans.Operators: Δrᵃᵃᶠ, Δrᵃᵃᶜ
 import Oceananigans.Operators: Δxᶠᵃᵃ, Δxᶜᵃᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ
 import Oceananigans.Operators: Δyᵃᶠᵃ, Δyᵃᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ, Δyᶜᶜᵃ
