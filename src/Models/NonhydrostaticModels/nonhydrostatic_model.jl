@@ -162,7 +162,7 @@ function NonhydrostaticModel(; grid,
         throw(ArgumentError("hydrostatic_pressure_anomaly must be `nothing` or `CenterField(grid)`."))
 
     # We don't support CAKTE for NonhydrostaticModel yet.
-    closure = validate_closure(closure, grid)
+    closure = validate_closure(closure)
     first_closure = closure isa Tuple ? first(closure) : closure
     first_closure isa FlavorOfCATKE &&
         error("CATKEVerticalDiffusivity is not supported for NonhydrostaticModel --- yet!")
