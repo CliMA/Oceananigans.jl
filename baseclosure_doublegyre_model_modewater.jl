@@ -1,7 +1,7 @@
 #using Pkg
 # pkg"add Oceananigans CairoMakie"
 using Oceananigans
-include("xin_kai_vertical_diffusivity_local_2step_new.jl")
+include("xin_kai_vertical_diffusivity_local_2step_train56newstrongSO.jl")
 
 ENV["GKSwstype"] = "100"
 
@@ -21,7 +21,7 @@ using ColorSchemes
 
 #%%
 const Qᵀ_mode = 3.5e-4
-filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_modewater_zWENO5_newbaseclosure_QT$(Qᵀ_mode)"
+filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_modewater_zWENO5_newbaseclosur_train56newstrongSO_QT$(Qᵀ_mode)"
 FILE_DIR = "./Output/$(filename)"
 # FILE_DIR = "/storage6/xinkai/NN_Oceananigans/$(filename)"
 @info "$(FILE_DIR)"
