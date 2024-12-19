@@ -3,14 +3,14 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction, FlatExtrapolationOpenBoundaryCondition, fill_halo_regions!
 using Oceananigans: prognostic_fields
 
-function test_boundary_condition(arch, FT, topo, side, field_name, boundary_condition)
+function test_boundary_condition(arch, FT, Model, topo, side, field_name, boundary_condition)
     grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, π, 42), topology=topo)
 
     boundary_condition_kwarg = (; side => boundary_condition)
     field_boundary_conditions = FieldBoundaryConditions(; boundary_condition_kwarg...)
     bcs = (; field_name => field_boundary_conditions)
-    model = NonhydrostaticModel(; grid, boundary_conditions=bcs,
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = Model(; grid, boundary_conditions=bcs,
+                    buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     success = try
         time_step!(model, 1e-16)
@@ -256,16 +256,18 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
 
             topo = (Bounded, Bounded, Bounded)
 
-            for C in (Gradient, Flux, Value), boundary_condition in test_boundary_conditions(C, FT, array_type(arch))
-                @test test_boundary_condition(arch, FT, topo, :east, :T, boundary_condition)
-                @test test_boundary_condition(arch, FT, topo, :south, :T, boundary_condition)
-                @test test_boundary_condition(arch, FT, topo, :top, :T, boundary_condition)
-            end
+            for Model in (NonhydrostaticModel, HydrostaticFreeSurfaceModel)
+                for C in (Gradient, Flux, Value), boundary_condition in test_boundary_conditions(C, FT, array_type(arch))
+                    @test test_boundary_condition(arch, FT, Model, topo, :east, :T, boundary_condition)
+                    @test test_boundary_condition(arch, FT, Model, topo, :south, :T, boundary_condition)
+                    @test test_boundary_condition(arch, FT, Model, topo, :top, :T, boundary_condition)
+                end
 
-            for boundary_condition in test_boundary_conditions(Open, FT, array_type(arch))
-                @test test_boundary_condition(arch, FT, topo, :east, :u, boundary_condition)
-                @test test_boundary_condition(arch, FT, topo, :south, :v, boundary_condition)
-                @test test_boundary_condition(arch, FT, topo, :top, :w, boundary_condition)
+                for boundary_condition in test_boundary_conditions(Open, FT, array_type(arch))
+                    @test test_boundary_condition(arch, FT, Model, topo, :east, :u, boundary_condition)
+                    @test test_boundary_condition(arch, FT, Model, topo, :south, :v, boundary_condition)
+                    @test test_boundary_condition(arch, FT, Model, topo, :top, :w, boundary_condition)
+                end
             end
         end
     end
