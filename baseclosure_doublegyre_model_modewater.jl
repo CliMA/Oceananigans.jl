@@ -311,6 +311,56 @@ simulation.output_writers[:yz_90] = JLD2OutputWriter(model, outputs,
                                                     indices = (90, :, :),
                                                     schedule = TimeInterval(10days))
 
+simulation.output_writers[:xz_5] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_5",
+                                                    indices = (:, 5, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:xz_15] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_15",
+                                                    indices = (:, 15, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:xz_25] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_25",
+                                                    indices = (:, 25, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:xz_35] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_35",
+                                                    indices = (:, 35, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:xz_45] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_45",
+                                                    indices = (:, 45, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:xz_55] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_55",
+                                                    indices = (:, 55, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:xz_65] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_65",
+                                                    indices = (:, 65, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:xz_75] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_75",
+                                                    indices = (:, 75, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:xz_85] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_85",
+                                                    indices = (:, 85, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:xz_95] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_95",
+                                                    indices = (:, 95, :),
+                                                    schedule = TimeInterval(10days))
+
 simulation.output_writers[:zonal_average] = JLD2OutputWriter(model, zonal_outputs,
                                                              filename = "$(FILE_DIR)/averaged_fields_zonal",
                                                              schedule = TimeInterval(10days))
