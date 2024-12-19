@@ -135,10 +135,10 @@ function initialize_free_surface_timestepper!(timestepper::AdamsBashforth3Scheme
 end
 
 # The functions `η★` `U★` and `V★` represent the value of free surface, barotropic zonal and meridional velocity at time step m+1/2
-@inline U★(i, j, k, grid, t::ForwardBackwardScheme, Uᵐ) = @inbounds Uᵐ[i, j, k]
+@inline U★(i, j, k, grid,  ::ForwardBackwardScheme, Uᵐ) = @inbounds Uᵐ[i, j, k]
 @inline U★(i, j, k, grid, t::AdamsBashforth3Scheme, Uᵐ) = @inbounds t.α * Uᵐ[i, j, k] + t.θ * t.Uᵐ⁻¹[i, j, k] + t.β * t.Uᵐ⁻²[i, j, k]
 
-@inline η★(i, j, k, grid, t::ForwardBackwardScheme, ηᵐ⁺¹) = @inbounds ηᵐ⁺¹[i, j, k]
+@inline η★(i, j, k, grid,  ::ForwardBackwardScheme, ηᵐ⁺¹) = @inbounds ηᵐ⁺¹[i, j, k]
 @inline η★(i, j, k, grid, t::AdamsBashforth3Scheme, ηᵐ⁺¹) = @inbounds t.δ * ηᵐ⁺¹[i, j, k] + t.μ * t.ηᵐ[i, j, k] + t.γ * t.ηᵐ⁻¹[i, j, k] + t.ϵ * t.ηᵐ⁻²[i, j, k]
 
 @inline store_previous_velocities!(::ForwardBackwardScheme,   i, j, k, U) = nothing

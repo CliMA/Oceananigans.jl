@@ -62,6 +62,9 @@ include("hydrostatic_free_surface_model.jl")
 include("show_hydrostatic_free_surface_model.jl")
 include("set_hydrostatic_free_surface_model.jl")
 
+# ZStar implementation
+include("z_star_vertical_spacing.jl")
+
 #####
 ##### AbstractModel interface
 #####

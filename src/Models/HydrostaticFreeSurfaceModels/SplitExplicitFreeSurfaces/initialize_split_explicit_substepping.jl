@@ -14,7 +14,7 @@ using Oceananigans.Operators: Δz
 # from the initial velocity conditions.
 function initialize_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocities)
     barotropic_velocities = sefs.barotropic_velocities
-    @apply_regionally compute_barotropic_mode!(barotropic_velocities.U, barotropic_velocities.V, grid, velocities.u, velocities.v)
+    @apply_regionally compute_barotropic_mode!(barotropic_velocities.U, barotropic_velocities.V, grid, velocities.u, velocities.v, sefs.η)
     fill_halo_regions!((barotropic_velocities.U, barotropic_velocities.V))
     return nothing
 end

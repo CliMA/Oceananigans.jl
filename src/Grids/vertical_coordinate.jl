@@ -23,12 +23,50 @@ struct StaticVerticalCoordinate{C, D} <: AbstractVerticalCoordinate
     Δᵃᵃᶜ :: D
 end
 
+# Represents a z-star three-dimensional vertical coordinate.
+#
+# # Fields
+# - `cᶠ::C`: Face-centered coordinate.
+# - `cᶜ::C`: Cell-centered coordinate.
+# - `Δᶠ::D`: Face-centered grid spacing.
+# - `Δᶜ::D`: Cell-centered grid spacing.
+# - `ηⁿ::E`: Surface elevation at the current time step.
+# - `σᶜᶜⁿ::CC`: Vertical grid scaling at center-center at the current time step.
+# - `σᶠᶜⁿ::FC`: Vertical grid scaling at face-center at the current time step.
+# - `σᶜᶠⁿ::CF`: Vertical grid scaling at center-face at the current time step.
+# - `σᶠᶠⁿ::FF`: Vertical grid scaling at face-face at the current time step.
+# - `σᶜᶜ⁻::CC`: Vertical grid scaling at center-center at the previous time step.
+# - `∂t_σ::CC`: Time derivative of the vertical grid scaling at cell centers.
+struct ZStarVerticalCoordinate{C, D, E, CC, FC, CF, FF} <: AbstractVerticalCoordinate
+    cᵃᵃᶠ :: C
+    cᵃᵃᶜ :: C
+    Δᵃᵃᶠ :: D
+    Δᵃᵃᶜ :: D
+      ηⁿ :: E
+    σᶜᶜⁿ :: CC
+    σᶠᶜⁿ :: FC
+    σᶜᶠⁿ :: CF
+    σᶠᶠⁿ :: FF
+    σᶜᶜ⁻ :: CC
+    ∂t_σ :: CC
+end
+
+# Convenience constructors for Zstar vertical coordinate
+ZStarVerticalCoordinate(r_faces::Union{Tuple, AbstractVector}) = ZStarVerticalCoordinate(r_faces, r_faces, [nothing for i in 1:9]...)
+ZStarVerticalCoordinate(r⁻::Number, r⁺::Number) = ZStarVerticalCoordinate((r⁻, r⁺), (r⁻, r⁺), [nothing for i in 1:9]...)
+
 ####
 #### Some usefull aliases
 ####
 
-const RegularVerticalCoordinate = StaticVerticalCoordinate{<:Any, <:Number}
-const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate}
+const RegularStaticVerticalCoordinate = StaticVerticalCoordinate{<:Any, <:Number}
+const RegularZStarVerticalCoordinate  = ZStarVerticalCoordinate{<:Any,  <:Number}
+
+const RegularVerticalCoordinate = Union{RegularStaticVerticalCoordinate, RegularZStarVerticalCoordinate}
+
+const AbstractZStarGrid   = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Bounded, <:ZStarVerticalCoordinate}
+const AbstractStaticGrid  = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,     <:StaticVerticalCoordinate}
+const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,     <:RegularVerticalCoordinate}
 
 ####
 #### Adapt and on_architecture
@@ -45,6 +83,32 @@ on_architecture(arch, coord::StaticVerticalCoordinate) =
                             on_architecture(arch, coord.cᵃᵃᶜ),
                             on_architecture(arch, coord.Δᵃᵃᶠ),
                             on_architecture(arch, coord.Δᵃᵃᶜ))
+
+Adapt.adapt_structure(to, coord::ZStarVerticalCoordinate) = 
+    ZStarVerticalCoordinate(Adapt.adapt(to, coord.cᵃᵃᶠ),
+                            Adapt.adapt(to, coord.cᵃᵃᶜ),
+                            Adapt.adapt(to, coord.Δᵃᵃᶠ),
+                            Adapt.adapt(to, coord.Δᵃᵃᶜ),
+                            Adapt.adapt(to, coord.ηⁿ),
+                            Adapt.adapt(to, coord.σᶜᶜⁿ),
+                            Adapt.adapt(to, coord.σᶠᶜⁿ),
+                            Adapt.adapt(to, coord.σᶜᶠⁿ),
+                            Adapt.adapt(to, coord.σᶠᶠⁿ),
+                            Adapt.adapt(to, coord.σᶜᶜ⁻),
+                            Adapt.adapt(to, coord.∂t_σ))
+
+on_architecture(arch, coord::ZStarVerticalCoordinate) = 
+    ZStarVerticalCoordinate(on_architecture(arch, coord.cᵃᵃᶠ),
+                            on_architecture(arch, coord.cᵃᵃᶜ),
+                            on_architecture(arch, coord.Δᵃᵃᶠ),
+                            on_architecture(arch, coord.Δᵃᵃᶜ),
+                            on_architecture(arch, coord.ηⁿ),
+                            on_architecture(arch, coord.σᶜᶜⁿ),
+                            on_architecture(arch, coord.σᶠᶜⁿ),
+                            on_architecture(arch, coord.σᶜᶠⁿ),
+                            on_architecture(arch, coord.σᶠᶠⁿ),
+                            on_architecture(arch, coord.σᶜᶜ⁻),
+                            on_architecture(arch, coord.∂t_σ))
 
 #####
 ##### Nodes and spacings (common to every grid)...
@@ -93,11 +157,27 @@ z_domain(grid) = domain(topology(grid, 3)(), grid.Nz, grid.z.cᵃᵃᶠ)
 end
 
 @inline cpu_face_constructor_z(grid) = cpu_face_constructor_r(grid)
+@inline cpu_face_constructor_z(grid::AbstractZStarGrid) = ZStarVerticalCoordinate(cpu_face_constructor_r(grid))
 
 ####
 #### Utilities
 ####
 
+function validate_dimension_specification(T, ξ::ZStarVerticalCoordinate, dir, N, FT)
+    cᶠ = validate_dimension_specification(T, ξ.cᵃᵃᶠ, dir, N, FT)
+    cᶜ = validate_dimension_specification(T, ξ.cᵃᵃᶜ, dir, N, FT)
+    args = Tuple(getproperty(ξ, prop) for prop in propertynames(ξ))
+
+    return ZStarVerticalCoordinate(cᶠ, cᶜ, args[3:end]...)
+end
+
 # Summaries
-coordinate_summary(::Bounded, z::AbstractVerticalCoordinate, name) = 
-    @sprintf("Free-surface following with Δ%s=%s", name, prettysummary(z.Δᵃᵃᶜ))
+coordinate_summary(topo, z::StaticVerticalCoordinate, name) = coordinate_summary(topo, z.Δᵃᵃᶜ, name)
+
+coordinate_summary(::Bounded, z::RegularZStarVerticalCoordinate, name) = 
+    @sprintf("Free-surface following with Δr=%s", prettysummary(z.Δᵃᵃᶜ))
+
+coordinate_summary(::Bounded, z::ZStarVerticalCoordinate, name) = 
+    @sprintf("Free-surface following with min(Δr)=%s, max(Δr)=%s", 
+             prettysummary(minimum(z.Δᵃᵃᶜ)), 
+             prettysummary(maximum(z.Δᵃᵃᶜ)))
