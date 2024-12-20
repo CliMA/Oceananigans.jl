@@ -121,23 +121,26 @@ function map_interior_active_cells(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any
     Nx, Ny, Nz = size(ibg)
     Hx, Hy, _  = halo_size(ibg)
     
-    x_boundary = (Hx, Ny, Nz)
-    y_boundary = (Nx, Hy, Nz)
+    west_boundary  = (1:Hx,       1:Ny,       1:Nz)
+    east_boundary  = (Nx-Hx+1:Nx, 1:Ny,       1:Nz)
+    south_boundary = (1:Nx,       1:Hy,       1:Nz)
+    north_boundary = (1:Nx,       Ny-Hy+1:Ny, 1:Nz)
          
-    left_offsets    = (0,  0,  0)
-    right_x_offsets = (Nx-Hx, 0,     0)
-    right_y_offsets = (0,     Ny-Hy, 0)
-
     include_west  = !isa(ibg, XFlatGrid) && (Rx != 1) && !(Tx == RightConnected)
     include_east  = !isa(ibg, XFlatGrid) && (Rx != 1) && !(Tx == LeftConnected)
     include_south = !isa(ibg, YFlatGrid) && (Ry != 1) && !(Ty == RightConnected)
     include_north = !isa(ibg, YFlatGrid) && (Ry != 1) && !(Ty == LeftConnected)
 
-    west_halo_dependent_cells  = include_west  ? interior_active_indices(ibg; parameters = KernelParameters(x_boundary, left_offsets))    : nothing
-    east_halo_dependent_cells  = include_east  ? interior_active_indices(ibg; parameters = KernelParameters(x_boundary, right_x_offsets)) : nothing
-    south_halo_dependent_cells = include_south ? interior_active_indices(ibg; parameters = KernelParameters(y_boundary, left_offsets))    : nothing
-    north_halo_dependent_cells = include_north ? interior_active_indices(ibg; parameters = KernelParameters(y_boundary, right_y_offsets)) : nothing
+    west_halo_dependent_cells  = interior_active_indices(ibg; parameters = KernelParameters(west_boundary...)) 
+    east_halo_dependent_cells  = interior_active_indices(ibg; parameters = KernelParameters(east_boundary...)) 
+    south_halo_dependent_cells = interior_active_indices(ibg; parameters = KernelParameters(south_boundary...)) 
+    north_halo_dependent_cells = interior_active_indices(ibg; parameters = KernelParameters(north_boundary...)) 
     
+    west_halo_dependent_cells  = include_west  ? west_halo_dependent_cells  : nothing
+    east_halo_dependent_cells  = include_east  ? east_halo_dependent_cells  : nothing
+    south_halo_dependent_cells = include_south ? south_halo_dependent_cells : nothing
+    north_halo_dependent_cells = include_north ? north_halo_dependent_cells : nothing
+
     nx = Rx == 1 ? Nx : (Tx == RightConnected || Tx == LeftConnected ? Nx - Hx : Nx - 2Hx)
     ny = Ry == 1 ? Ny : (Ty == RightConnected || Ty == LeftConnected ? Ny - Hy : Ny - 2Hy)
 
