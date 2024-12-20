@@ -394,13 +394,6 @@ isreconstructed(grid::AbstractGrid) = false
 isreconstructed(grid::ImmersedBoundaryGrid) = isreconstructed(grid.underlying_grid)
 reconstructed_name(::JLD2.ReconstructedStatic{N}) where N = string(N)
 
-function reconstructed_grid_type(grid::JLD2.ReconstructedStatic)
-    name = reconstructed_name(grid)
-    curly = findfirst('{', name)
-    grid_type = name[1:curly-1]
-    return grid_type
-end
-
 function reconstructed_topology(grid::JLD2.ReconstructedStatic)
     name = reconstructed_name(grid)
     firstcurly = findfirst('{', name)
