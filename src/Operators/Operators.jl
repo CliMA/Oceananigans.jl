@@ -78,6 +78,7 @@ export ∂xTᶠᶜᶠ, ∂yTᶜᶠᶠ
 export intrinsic_vector, extrinsic_vector
 
 using Oceananigans.Grids
+using Oceananigans.Grids: inactive_node
 
 #####
 ##### Convenient aliases
@@ -109,6 +110,8 @@ const LLGFY = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing
 include("difference_operators.jl")
 include("interpolation_operators.jl")
 include("interpolation_utils.jl")
+include("boundary_aware_difference_operators.jl")
+include("boundary_aware_interpolation_operators.jl")
 
 include("spacings_and_areas_and_volumes.jl")
 include("products_between_fields_and_grid_metrics.jl")
