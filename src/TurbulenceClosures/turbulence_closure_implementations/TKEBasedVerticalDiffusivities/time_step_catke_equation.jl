@@ -74,55 +74,56 @@ function substep_turbulent_kinetic_energy!(model, Δτ, M, timestepper::QuasiAda
     end
 end
 
-# Is this the correct way to handle substepping? Probably we have to come up with a better strategy, because with
-# RK3, this `substep_turbulent_kinetic_energy!` function is called three times within the RK3 timestepper.
-function substep_turbulent_kinetic_energy!(model, Δτ, M, timestepper::SplitRungeKutta3TimeStepper, closure, diffusivity_fields)
+# This is all wrong!
+# # Is this the correct way to handle substepping? Probably we have to come up with a better strategy, because with
+# # RK3, this `substep_turbulent_kinetic_energy!` function is called three times within the RK3 timestepper.
+# function substep_turbulent_kinetic_energy!(model, Δτ, M, timestepper::SplitRungeKutta3TimeStepper, closure, diffusivity_fields)
     
-    grid = model.grid
-    e   = model.tracers.e
-    Gⁿe = timestepper.Gⁿ.e
-    Ψ⁻e = timestepper.Ψ⁻.e
+#     grid = model.grid
+#     e   = model.tracers.e
+#     Gⁿe = timestepper.Gⁿ.e
+#     Ψ⁻e = timestepper.Ψ⁻.e
 
-    FT = eltype(grid)
+#     FT = eltype(grid)
 
-    κe = diffusivity_fields.κe
-    Le = diffusivity_fields.Le
-    previous_velocities = diffusivity_fields.previous_velocities
-    tracer_index = findfirst(k -> k == :e, keys(model.tracers))
-    implicit_solver = timestepper.implicit_solver
+#     κe = diffusivity_fields.κe
+#     Le = diffusivity_fields.Le
+#     previous_velocities = diffusivity_fields.previous_velocities
+#     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
+#     implicit_solver = timestepper.implicit_solver
 
-    substep_kernel!, _ = configure_kernel(architecture(grid), grid, :xyz, _substep_turbulent_kinetic_energy!)
+#     substep_kernel!, _ = configure_kernel(architecture(grid), grid, :xyz, _substep_turbulent_kinetic_energy!)
 
-    α, β = if model.clock.stage == 1
-        (convert(FT, 1.0), convert(FT, 0.0))
-    elseif model.clock.stage == 2
-        timestepper.γ², timestepper.ζ²
-    else
-        timestepper.γ³, timestepper.ζ³
-    end
+#     α, β = if model.clock.stage == 1
+#         (convert(FT, 1.0), convert(FT, 0.0))
+#     elseif model.clock.stage == 2
+#         timestepper.γ², timestepper.ζ²
+#     else
+#         timestepper.γ³, timestepper.ζ³
+#     end
 
-    # With RK3 we use a simple euler stepping for the fast tendencies
-    for m = 1:M # substep
-        # We end up solving a repeated
-        # eᵐ⁺¹ + I(eᵐ⁺¹) = β Ψe + α (eᵐ + Δτ * (slow_Gⁿe + fast_Gᵐe))
-        # where Ψe is e at the previous baroclinic time-step, and I(eᵐ⁺¹) is the implicit step.
-        # For fast_Gᵐe = 0 and no implicit terms (I(eᵐ⁺¹)), is equivalent to
-        # just the one RK3 substep corresponding to the current stage.
-        # i.e. -> eⁿ⁺¹ = β Ψe + α (eⁿ + Δt * slow_Gⁿe) with Δt = M * Δτ.
-        # This is actually not true for stages other than the first...
-        # We need to verify that including the fast_Gᵐe term calculated repeteadly,
-        # and the implicit step, allows convergence to the correct solution. 
-        # For stage 1 (β = 0 and α = 1) this is easily verifyiable because we are taking a
-        # succession of Euler steps.
-        substep_kernel!(κe, Le, grid, closure, model.velocities, previous_velocities, 
-                        model.tracers, model.buoyancy, diffusivity_fields,
-                        Δτ, α, β, Gⁿe, nothing, Ψ⁻e)
+#     # With RK3 we use a simple euler stepping for the fast tendencies
+#     for m = 1:M # substep
+#         # We end up solving a repeated
+#         # eᵐ⁺¹ + I(eᵐ⁺¹) = β Ψe + α (eᵐ + Δτ * (slow_Gⁿe + fast_Gᵐe))
+#         # where Ψe is e at the previous baroclinic time-step, and I(eᵐ⁺¹) is the implicit step.
+#         # For fast_Gᵐe = 0 and no implicit terms (I(eᵐ⁺¹)), is equivalent to
+#         # just the one RK3 substep corresponding to the current stage.
+#         # i.e. -> eⁿ⁺¹ = β Ψe + α (eⁿ + Δt * slow_Gⁿe) with Δt = M * Δτ.
+#         # This is actually not true for stages other than the first...
+#         # We need to verify that including the fast_Gᵐe term calculated repeteadly,
+#         # and the implicit step, allows convergence to the correct solution. 
+#         # For stage 1 (β = 0 and α = 1) this is easily verifyiable because we are taking a
+#         # succession of Euler steps.
+#         substep_kernel!(κe, Le, grid, closure, model.velocities, previous_velocities, 
+#                         model.tracers, model.buoyancy, diffusivity_fields,
+#                         Δτ, α, β, Gⁿe, nothing, Ψ⁻e)
 
-        implicit_step!(e, implicit_solver, closure,
-                       diffusivity_fields, Val(tracer_index),
-                       model.clock, Δτ)
-    end
-end
+#         implicit_step!(e, implicit_solver, closure,
+#                        diffusivity_fields, Val(tracer_index),
+#                        model.clock, Δτ)
+#     end
+# end
 
 @kernel function _substep_turbulent_kinetic_energy!(κe, Le, grid, closure,
                                                     next_velocities, previous_velocities,
