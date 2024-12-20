@@ -38,7 +38,7 @@ end
 
 function solid_body_rotation_test(grid, closure=nothing)
 
-    free_surface = SplitExplicitFreeSurface(grid; substeps = 5, gravitational_acceleration = 1)
+    free_surface = SplitExplicitFreeSurface(grid; substeps = 8, gravitational_acceleration = 1)
     coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
 
     model = HydrostaticFreeSurfaceModel(; grid,
@@ -46,10 +46,9 @@ function solid_body_rotation_test(grid, closure=nothing)
                                         free_surface = free_surface,
                                         coriolis = coriolis,
                                         closure,
-                                        tracers = :c,
+                                        tracers = (:c, :b),
                                         tracer_advection = WENO(),
-                                        buoyancy = nothing,
-                                        closure = nothing)
+                                        buoyancy = BuoyancyTracer())
 
     g = model.free_surface.gravitational_acceleration
     R = grid.radius
