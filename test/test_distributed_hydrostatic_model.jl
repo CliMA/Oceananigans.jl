@@ -27,6 +27,7 @@ MPI.Initialized() || MPI.Init()
 
 using Oceananigans.Operators: hack_cosd
 using Oceananigans.DistributedComputations: partition, all_reduce, cpu_architecture, reconstruct_global_grid
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity
 
 function Δ_min(grid) 
     Δx_min = minimum_xspacing(grid, Center(), Center(), Center())
