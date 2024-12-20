@@ -42,7 +42,7 @@ function substep_turbulent_kinetic_energy!(model, Δτ, M, timestepper::QuasiAda
     Le = diffusivity_fields.Le
     previous_velocities = diffusivity_fields.previous_velocities
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
-    implicit_solver = 
+    implicit_solver = timestepper.implicit_solver
 
     for m = 1:M # substep
         if m == 1 && M != 1
@@ -93,42 +93,25 @@ function substep_turbulent_kinetic_energy!(model, Δτ, M, timestepper::SplitRun
 
     substep_kernel!, _ = configure_kernel(architecture(grid), grid, :xyz, _substep_turbulent_kinetic_energy!)
 
+    α, β = if model.clock.stage == 1
+        (convert(FT, 1.0), convert(FT, 0.0))
+    elseif model.clock.stage == 2
+        timestepper.γ², timestepper.ζ²
+    else
+        timestepper.γ³, timestepper.ζ³
+    end
+
+    # With RK3 we use a simple euler stepping for the fast tendencies
     for m = 1:M # substep
-        # Store Ψ⁻e for the next substep
-        parent(Ψ⁻e) .= parent(e)
-
-        # First RK3 substep (Euler forward)
-        α = convert(FT, 1)
-        β = convert(FT, 0)
-
+        # We end up solving a repeated
+        # eᵐ⁺¹ = β eⁿ + α (eᵐ + Δτ * (slow_Gⁿe + fast_Gⁿe))
+        # which, for fast_Gⁿe = 0 and no implicit steps, is equivalent to
+        # just the one RK3 substep corresponding to the current stage.
+        # We need to verify that including the fast_Gⁿe term calculated repeteadly,
+        # and the implicit step, allows convergence to the correct solution
         substep_kernel!(κe, Le, grid, closure, model.velocities, previous_velocities, 
                         model.tracers, model.buoyancy, diffusivity_fields,
                         Δτ, α, β, Gⁿe, nothing, Ψ⁻e)
-
-        implicit_step!(e, implicit_solver, closure,
-                       diffusivity_fields, Val(tracer_index),
-                       model.clock, Δτ)
-
-        # Second RK3 substep
-        α = timestepper.γ²
-        β = timestepper.ζ²
-
-        substep_kernel!(κe, Le, grid, closure, model.velocities, previous_velocities, 
-                        model.tracers, model.buoyancy, diffusivity_fields,
-                        Δτ, α, β, Gⁿe, nothing, Ψ⁻e)
-        
-        implicit_step!(e, implicit_solver, closure,
-                       diffusivity_fields, Val(tracer_index),
-                       model.clock, Δτ)
-
-        # Third RK3 substep
-        α = timestepper.γ³
-        β = timestepper.ζ³
-
-        substep_kernel!(κe, Le, grid, closure, model.velocities, previous_velocities, 
-                        model.tracers, model.buoyancy, diffusivity_fields,
-                        Δτ, α, β, Gⁿe, nothing, Ψ⁻e)
-
 
         implicit_step!(e, implicit_solver, closure,
                        diffusivity_fields, Val(tracer_index),
@@ -221,7 +204,6 @@ end
     @inbounds begin
         total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe
         advance_tke!(e, i, j, k, Δτ, α, β, total_Gⁿe, G⁻e, Ψ⁻e)
-        G⁻e[i, j, k] = total_Gⁿe
     end
 end
 
