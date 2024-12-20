@@ -31,9 +31,8 @@ end
 
 function substep_turbulent_kinetic_energy!(model, Δτ, M, timestepper::QuasiAdamsBashforth2TimeStepper, closure, diffusivity_fields)
     
-    e = model.tracers.e
-    arch = model.architecture
     grid = model.grid
+    e   = model.tracers.e
     Gⁿe = timestepper.Gⁿ.e
     G⁻e = timestepper.G⁻.e
 
@@ -43,7 +42,7 @@ function substep_turbulent_kinetic_energy!(model, Δτ, M, timestepper::QuasiAda
     Le = diffusivity_fields.Le
     previous_velocities = diffusivity_fields.previous_velocities
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
-    implicit_solver = timestepper.implicit_solver
+    implicit_solver = 
 
     for m = 1:M # substep
         if m == 1 && M != 1
@@ -51,13 +50,13 @@ function substep_turbulent_kinetic_energy!(model, Δτ, M, timestepper::QuasiAda
             α = convert(FT, 1.0)
             β = convert(FT, 0.0)
         else
-            α =   convert(FT, 1.5) + χ
-            β = - convert(FT, 0.5) - χ
+            α =   convert(FT, 1.5) + timestepper.χ
+            β = - convert(FT, 0.5) - timestepper.χ
         end
 
         # Compute the linear implicit component of the RHS (diffusivities, L)
         # and step forward
-        launch!(arch, grid, :xyz,
+        launch!(architecture(grid), grid, :xyz,
                 _substep_turbulent_kinetic_energy!,
                 κe, Le, grid, closure,
                 model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
@@ -69,18 +68,16 @@ function substep_turbulent_kinetic_energy!(model, Δτ, M, timestepper::QuasiAda
         # previous_iteration = model.clock.iteration - 1
         # current_time = previous_time + m * Δτ
         # previous_clock = (; time=current_time, iteration=previous_iteration)
-
         implicit_step!(e, implicit_solver, closure,
-                    diffusivity_fields, Val(tracer_index),
-                    model.clock, Δτ)
+                       diffusivity_fields, Val(tracer_index),
+                       model.clock, Δτ)
     end
 end
 
 function substep_turbulent_kinetic_energy!(model, Δτ, M, timestepper::SplitRungeKutta3TimeStepper, closure, diffusivity_fields)
     
-    e = model.tracers.e
-    arch = model.architecture
     grid = model.grid
+    e   = model.tracers.e
     Gⁿe = timestepper.Gⁿ.e
     Ψ⁻e = timestepper.Ψ⁻.e
 
@@ -92,13 +89,13 @@ function substep_turbulent_kinetic_energy!(model, Δτ, M, timestepper::SplitRun
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = timestepper.implicit_solver
 
-    substep_kernel!, _ = configure_kernel(arch, grid, :xyz, _substep_turbulent_kinetic_energy!)
+    substep_kernel!, _ = configure_kernel(architecture(grid), grid, :xyz, _substep_turbulent_kinetic_energy!)
 
     for m = 1:M # substep
         # Store Ψ⁻e for the next substep
         parent(Ψ⁻e) .= parent(e)
 
-        # First RK3 substep
+        # First RK3 substep (Euler forward)
         α = convert(FT, 1)
         β = convert(FT, 0)
 
