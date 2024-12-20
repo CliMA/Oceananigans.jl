@@ -104,8 +104,8 @@ function substep_turbulent_kinetic_energy!(model, Δτ, M, timestepper::SplitRun
     # With RK3 we use a simple euler stepping for the fast tendencies
     for m = 1:M # substep
         # We end up solving a repeated
-        # eᵐ⁺¹ = β eⁿ + α (eᵐ + Δτ * (slow_Gⁿe + fast_Gⁿe))
-        # which, for fast_Gⁿe = 0 and no implicit steps, is equivalent to
+        # eᵐ⁺¹ + I(eᵐ⁺¹) = β eⁿ + α (eᵐ + Δτ * (slow_Gⁿe + fast_Gⁿe))
+        # which, for fast_Gⁿe = 0 and no implicit terms (I(eᵐ⁺¹)), is equivalent to
         # just the one RK3 substep corresponding to the current stage.
         # We need to verify that including the fast_Gⁿe term calculated repeteadly,
         # and the implicit step, allows convergence to the correct solution
