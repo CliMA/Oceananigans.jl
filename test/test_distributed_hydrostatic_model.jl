@@ -37,17 +37,23 @@ end
 
 @inline Gaussian(x, y, L) = exp(-(x^2 + y^2) / L^2)
 
-function solid_body_rotation_test(grid, closure=nothing)
+function rotation_with_shear_test(grid, closure=nothing)
 
     free_surface = SplitExplicitFreeSurface(grid; substeps = 8, gravitational_acceleration = 1)
     coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
+
+    tracers = if closure isa CATKEVerticalDiffusivity
+        (:c, :b, :e)
+    else
+        (:c, :b)
+    end
 
     model = HydrostaticFreeSurfaceModel(; grid,
                                         momentum_advection = VectorInvariant(),
                                         free_surface = free_surface,
                                         coriolis = coriolis,
                                         closure,
-                                        tracers = (:c, :b),
+                                        tracers,
                                         tracer_advection = WENO(),
                                         buoyancy = BuoyancyTracer())
 
@@ -55,7 +61,8 @@ function solid_body_rotation_test(grid, closure=nothing)
     R = grid.radius
     Ω = model.coriolis.rotation_rate
 
-    uᵢ(λ, φ, z) = 0.1 * cosd(φ) * sind(λ)
+    # Add some shear on the velocity field
+    uᵢ(λ, φ, z) = 0.1 * cosd(φ) * sind(λ) + 0.05 * z
     ηᵢ(λ, φ, z) = (R * Ω * 0.1 + 0.1^2 / 2) * sind(φ)^2 / g * sind(λ)
 
     # Gaussian leads to values with O(1e-60),
@@ -79,7 +86,7 @@ Ny = 32
 
 for arch in archs
     @testset "Testing distributed solid body rotation" begin
-        underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
+        underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 3),
                                                 halo = (4, 4, 4),
                                                 latitude = (-80, 80),
                                                 longitude = (-160, 160),
@@ -99,7 +106,7 @@ for arch in archs
             for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid), (global_underlying_grid, global_immersed_grid, global_immersed_grid))
 
                 # "s" for "serial" computation
-                us, vs, ws, cs, ηs = solid_body_rotation_test(global_grid; closure)
+                us, vs, ws, cs, ηs = rotation_with_shear_test(global_grid; closure)
 
                 us = interior(on_architecture(CPU(), us))
                 vs = interior(on_architecture(CPU(), vs))
@@ -108,7 +115,7 @@ for arch in archs
                 ηs = interior(on_architecture(CPU(), ηs))
 
                 @info "  Testing distributed solid body rotation with architecture $arch on $(typeof(grid).name.wrapper)"
-                u, v, w, c, η = solid_body_rotation_test(grid; closure)
+                u, v, w, c, η = rotation_with_shear_test(grid; closure)
 
                 cpu_arch = cpu_architecture(arch)
 
