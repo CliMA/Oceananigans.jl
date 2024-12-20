@@ -1,11 +1,4 @@
-using Oceananigans: fields
-using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
-using Oceananigans.Fields: immersed_boundary_condition
-using Oceananigans.Grids: retrieve_interior_active_cells_map
-using Oceananigans.BoundaryConditions: apply_x_bcs!, apply_y_bcs!, apply_z_bcs!
-using Oceananigans.TimeSteppers: store_field_tendencies!, ab2_step_field!, implicit_step!
-using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
-using CUDA
+using Oceananigans.TimeSteppers: implicit_step!, QuasiAdamsBashforth2TimeStepper, SplitRungeKutta3TimeStepper
 
 get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 
@@ -236,7 +229,7 @@ end
 # AB2 time-stepping for the TKE equation
 @inline function advance_tke!(e, i, j, k, Δτ, α, β, Gⁿe, G⁻e, ::Nothing) 
     @inbounds begin
-        e[i, j, k] += Δτ *(α * Gⁿe + β * G⁻e[i, j, k])
+        e[i, j, k] += Δτ * (α * Gⁿe + β * G⁻e[i, j, k])
         G⁻e[i, j, k] = Gⁿe
     end
 
