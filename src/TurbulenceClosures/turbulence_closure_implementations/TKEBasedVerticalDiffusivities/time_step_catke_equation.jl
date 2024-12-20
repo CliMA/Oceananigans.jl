@@ -108,7 +108,8 @@ function substep_turbulent_kinetic_energy!(model, Δτ, M, timestepper::SplitRun
         # which, for fast_Gⁿe = 0 and no implicit terms (I(eᵐ⁺¹)), is equivalent to
         # just the one RK3 substep corresponding to the current stage.
         # We need to verify that including the fast_Gⁿe term calculated repeteadly,
-        # and the implicit step, allows convergence to the correct solution
+        # and the implicit step, allows convergence to the correct solution. 
+        # For stage 1 this is easily verifyiable because we are taking a succession of Euler steps.
         substep_kernel!(κe, Le, grid, closure, model.velocities, previous_velocities, 
                         model.tracers, model.buoyancy, diffusivity_fields,
                         Δτ, α, β, Gⁿe, nothing, Ψ⁻e)
