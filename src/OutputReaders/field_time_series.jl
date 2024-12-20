@@ -392,6 +392,38 @@ end
 isreconstructed(grid::JLD2.ReconstructedStatic) = true
 isreconstructed(grid::AbstractGrid) = false
 isreconstructed(grid::ImmersedBoundaryGrid) = isreconstructed(grid.underlying_grid)
+reconstructed_name(::JLD2.ReconstructedStatic{N}) where N = string(N)
+
+function reconstructed_grid_type(grid::JLD2.ReconstructedStatic)
+    name = reconstructed_name(grid)
+    curly = findfirst('{', name)
+    grid_type = name[1:curly-1]
+    return grid_type
+end
+
+function reconstructed_topology(grid::JLD2.ReconstructedStatic)
+    name = reconstructed_name(grid)
+    firstcurly = findfirst('{', name)
+    grid_type = name[1:firstcurly-1]
+
+    type_parameters = name[firstcurly+1:end-1]
+    parameter_list = split(type_parameters, ',')
+
+    FTstr = parameter_list[1]
+    TXstr = parameter_list[2]
+    TYstr = parameter_list[3]
+    TZstr = parameter_list[4]
+
+    TXsym = Symbol(TXstr)
+    TYsym = Symbol(TYstr)
+    TZsym = Symbol(TZstr)
+
+    TX = eval(:($(TXsym)))
+    TY = eval(:($(TYsym)))
+    TZ = eval(:($(TZsym)))
+
+    return (TX, TY, TZ)
+end
 
 """
     FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid [, times=()]; kwargs...)
@@ -509,7 +541,13 @@ function FieldTimeSeries(path::String, name::String;
         Hz = file["$address/Hz"]
         zᵃᵃᶠ = file["$address/zᵃᵃᶠ"]
         z = file["$address/Δzᵃᵃᶠ"] isa Number ? (zᵃᵃᶠ[1], zᵃᵃᶠ[Nz+1]) : zᵃᵃᶠ[1:Nz+1]
-        topo = topology(grid)
+
+        if isibg
+            topo = topology(grid)
+        else
+            topo = reconstructed_topology(grid)
+        end
+
         size = (Nx, Ny, Nz)
         halo = (Hx, Hy, Hz)
 
