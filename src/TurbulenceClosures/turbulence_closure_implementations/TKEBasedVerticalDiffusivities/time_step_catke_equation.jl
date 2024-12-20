@@ -31,13 +31,13 @@ end
 
 function substep_turbulent_kinetic_energy!(model, Δτ, M, timestepper::QuasiAdamsBashforth2TimeStepper, closure, diffusivity_fields)
     
-    FT = eltype(grid)
-
     e = model.tracers.e
     arch = model.architecture
     grid = model.grid
     Gⁿe = timestepper.Gⁿ.e
     G⁻e = timestepper.G⁻.e
+
+    FT = eltype(grid)
 
     κe = diffusivity_fields.κe
     Le = diffusivity_fields.Le
@@ -78,13 +78,13 @@ end
 
 function substep_turbulent_kinetic_energy!(model, Δτ, M, timestepper::SplitRungeKutta3TimeStepper, closure, diffusivity_fields)
     
-    FT = eltype(grid)
-
     e = model.tracers.e
     arch = model.architecture
     grid = model.grid
     Gⁿe = timestepper.Gⁿ.e
     Ψ⁻e = timestepper.Ψ⁻.e
+
+    FT = eltype(grid)
 
     κe = diffusivity_fields.κe
     Le = diffusivity_fields.Le
