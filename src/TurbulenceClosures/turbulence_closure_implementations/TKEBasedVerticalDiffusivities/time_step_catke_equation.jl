@@ -74,6 +74,8 @@ function substep_turbulent_kinetic_energy!(model, Δτ, M, timestepper::QuasiAda
     end
 end
 
+# Is this the correct way to handle substepping? Probably we have to come up with a better strategy, because with
+# RK3, this `substep_turbulent_kinetic_energy!` function is called three times within the RK3 timestepper.
 function substep_turbulent_kinetic_energy!(model, Δτ, M, timestepper::SplitRungeKutta3TimeStepper, closure, diffusivity_fields)
     
     grid = model.grid
