@@ -1,6 +1,7 @@
 using Oceananigans.TimeSteppers: implicit_step!, QuasiAdamsBashforth2TimeStepper, SplitRungeKutta3TimeStepper
 
-get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
+get_time_step(closure::FlavorOfCATKEWithSubsteps, Δt) = closure.tke_time_step
+get_time_step(::FlavorOfCATKEWithoutSubsteps, Δt) = Δt
 
 function time_step_catke_equation!(model)
 
@@ -14,23 +15,9 @@ function time_step_catke_equation!(model)
     end
 
     Δt = model.clock.last_Δt
-    Δτ = get_time_step(closure)
+    Δτ = get_time_step(closure, Δt)
+    M  = ceil(Int, Δt / Δτ) # Number of substeps
 
-    if isnothing(Δτ)
-        Δτ = Δt
-        M = 1
-    else
-        M = ceil(Int, Δt / Δτ) # number of substeps
-        Δτ = Δt / M
-    end
-
-    substep_turbulent_kinetic_energy!(model, Δτ, M, model.timestepper, closure, diffusivity_fields)
-
-    return nothing
-end
-
-function substep_turbulent_kinetic_energy!(model, Δτ, M, timestepper::QuasiAdamsBashforth2TimeStepper, closure, diffusivity_fields)
-    
     grid = model.grid
     e   = model.tracers.e
     Gⁿe = timestepper.Gⁿ.e
@@ -44,93 +31,71 @@ function substep_turbulent_kinetic_energy!(model, Δτ, M, timestepper::QuasiAda
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = timestepper.implicit_solver
 
-    for m = 1:M # substep
-        if m == 1 && M != 1
-            # Euler step for the first substep
-            α = convert(FT, 1.0)
-            β = convert(FT, 0.0)
-        else
+    if M == 1 # Just add the fast terms. Substepping will be done like the other tracers
+        launch!(architecture(grid), grid, :xyz,
+                _compute_tke_tendency!,
+                Gⁿe, κe, Le, grid, closure,
+                model.velocities, previous_velocities, 
+                model.tracers, model.buoyancy, diffusivity_fields)
+    else # Substep using an AB2 scheme for the fast evolution terms
+        # Euler step for the first substep
+        α = convert(FT, 1.0)
+        β = convert(FT, 0.0)
+
+        for m = 1:M # substep
+            # Compute the linear implicit component of the RHS (diffusivities, L)
+            # and step forward
+            launch!(architecture(grid), grid, :xyz,
+                    _substep_turbulent_kinetic_energy!,
+                    κe, Le, grid, closure,
+                    model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
+                    model.tracers, model.buoyancy, diffusivity_fields,
+                    Δτ, α, β, Gⁿe, G⁻e)
+
+            # Good idea?
+            # previous_time = model.clock.time - Δt
+            # previous_iteration = model.clock.iteration - 1
+            # current_time = previous_time + m * Δτ
+            # previous_clock = (; time=current_time, iteration=previous_iteration)
+            implicit_step!(e, implicit_solver, closure,
+                        diffusivity_fields, Val(tracer_index),
+                        model.clock, Δτ)
+
+            # Update the time stepping coefficients
             α =   convert(FT, 1.5) + timestepper.χ
             β = - convert(FT, 0.5) - timestepper.χ
         end
-
-        # Compute the linear implicit component of the RHS (diffusivities, L)
-        # and step forward
-        launch!(architecture(grid), grid, :xyz,
-                _substep_turbulent_kinetic_energy!,
-                κe, Le, grid, closure,
-                model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
-                model.tracers, model.buoyancy, diffusivity_fields,
-                Δτ, α, β, Gⁿe, G⁻e, nothing)
-
-        # Good idea?
-        # previous_time = model.clock.time - Δt
-        # previous_iteration = model.clock.iteration - 1
-        # current_time = previous_time + m * Δτ
-        # previous_clock = (; time=current_time, iteration=previous_iteration)
-        implicit_step!(e, implicit_solver, closure,
-                       diffusivity_fields, Val(tracer_index),
-                       model.clock, Δτ)
     end
 end
 
-# This is all wrong!
-# # Is this the correct way to handle substepping? Probably we have to come up with a better strategy, because with
-# # RK3, this `substep_turbulent_kinetic_energy!` function is called three times within the RK3 timestepper.
-# function substep_turbulent_kinetic_energy!(model, Δτ, M, timestepper::SplitRungeKutta3TimeStepper, closure, diffusivity_fields)
-    
-#     grid = model.grid
-#     e   = model.tracers.e
-#     Gⁿe = timestepper.Gⁿ.e
-#     Ψ⁻e = timestepper.Ψ⁻.e
+@kernel function _compute_tke_tendency!(Gⁿe, κe, Le, grid, closure, next_velocities, previous_velocities,
+                                        tracers, buoyancy, diffusivities)
 
-#     FT = eltype(grid)
-
-#     κe = diffusivity_fields.κe
-#     Le = diffusivity_fields.Le
-#     previous_velocities = diffusivity_fields.previous_velocities
-#     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
-#     implicit_solver = timestepper.implicit_solver
-
-#     substep_kernel!, _ = configure_kernel(architecture(grid), grid, :xyz, _substep_turbulent_kinetic_energy!)
-
-#     α, β = if model.clock.stage == 1
-#         (convert(FT, 1.0), convert(FT, 0.0))
-#     elseif model.clock.stage == 2
-#         timestepper.γ², timestepper.ζ²
-#     else
-#         timestepper.γ³, timestepper.ζ³
-#     end
-
-#     # With RK3 we use a simple euler stepping for the fast tendencies
-#     for m = 1:M # substep
-#         # We end up solving a repeated
-#         # eᵐ⁺¹ + I(eᵐ⁺¹) = β Ψe + α (eᵐ + Δτ * (slow_Gⁿe + fast_Gᵐe))
-#         # where Ψe is e at the previous baroclinic time-step, and I(eᵐ⁺¹) is the implicit step.
-#         # For fast_Gᵐe = 0 and no implicit terms (I(eᵐ⁺¹)), is equivalent to
-#         # just the one RK3 substep corresponding to the current stage.
-#         # i.e. -> eⁿ⁺¹ = β Ψe + α (eⁿ + Δt * slow_Gⁿe) with Δt = M * Δτ.
-#         # This is actually not true for stages other than the first...
-#         # We need to verify that including the fast_Gᵐe term calculated repeteadly,
-#         # and the implicit step, allows convergence to the correct solution. 
-#         # For stage 1 (β = 0 and α = 1) this is easily verifyiable because we are taking a
-#         # succession of Euler steps.
-#         substep_kernel!(κe, Le, grid, closure, model.velocities, previous_velocities, 
-#                         model.tracers, model.buoyancy, diffusivity_fields,
-#                         Δτ, α, β, Gⁿe, nothing, Ψ⁻e)
-
-#         implicit_step!(e, implicit_solver, closure,
-#                        diffusivity_fields, Val(tracer_index),
-#                        model.clock, Δτ)
-#     end
-# end
+    i, j, k = @index(Global, NTuple)
+    @inbounds Gⁿe[i, j, k] = compute_tke_tendency(i, j, k, grid, κe, Le, closure, next_velocities, previous_velocities,
+                                                  tracers, buoyancy, diffusivities, Gⁿe)
+end
 
 @kernel function _substep_turbulent_kinetic_energy!(κe, Le, grid, closure,
                                                     next_velocities, previous_velocities,
                                                     tracers, buoyancy, diffusivities,
-                                                    Δτ, α, β, slow_Gⁿe, G⁻e, Ψ⁻e) 
+                                                    Δτ, α, β, slow_Gⁿe, G⁻e) 
 
     i, j, k = @index(Global, NTuple)
+
+    # Compute total tendency
+    @inbounds Gⁿe = compute_tke_tendency(i, j, k, grid, κe, Le, closure, next_velocities, previous_velocities,
+                                         tracers, buoyancy, diffusivities, slow_Gⁿe)
+
+    # Advance TKE and store tendency
+    @inbounds begin
+        e[i, j, k] += Δτ * (α * Gⁿe + β * G⁻e[i, j, k])
+        G⁻e[i, j, k] = Gⁿe
+    end
+end
+
+@inline function compute_tke_tendency(i, j, k, grid, κe, Le, closure, next_velocities, previous_velocities,
+                                      tracers, buoyancy, diffusivities, slow_Gⁿe)
 
     Jᵇ = diffusivities.Jᵇ
     e = tracers.e
@@ -206,26 +171,8 @@ end
     ϵ = dissipation(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, diffusivities)
     fast_Gⁿe = P + wb⁺ - ϵ
 
-    # Advance TKE and store tendency
-    @inbounds begin
-        total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe
-        advance_tke!(e, i, j, k, Δτ, α, β, total_Gⁿe, G⁻e, Ψ⁻e)
-    end
+    return fast_Gⁿe + slow_Gⁿe[i, j, k]
 end
-
-# AB2 time-stepping for the TKE equation
-@inline function advance_tke!(e, i, j, k, Δτ, α, β, Gⁿe, G⁻e, ::Nothing) 
-    @inbounds begin
-        e[i, j, k] += Δτ * (α * Gⁿe + β * G⁻e[i, j, k])
-        G⁻e[i, j, k] = Gⁿe
-    end
-
-    return nothing
-end
-
-# RK3 time-stepping for the TKE equation
-@inline advance_tke!(e, i, j, k, Δτ, α, β, Gⁿe, ::Nothing, Ψ⁻e) = 
-    @inbounds e[i, j, k] = β * Ψ⁻e[i, j, k] + α * (e[i, j, k] + Δτ * Gⁿe)
 
 @inline function implicit_linear_coefficient(i, j, k, grid, ::FlavorOfCATKE{<:VITD}, K, ::Val{id}, args...) where id
     L = K._tupled_implicit_linear_coefficients[id]
