@@ -210,7 +210,8 @@ end
 
 @inline Gaussian(x, y, L) = exp(-(x^2 + y^2) / L^2)
 
-function solid_body_rotation_test(grid;
+function rotation_with_shear_test(grid;
+                                  tracers=(:b, :c),
                                   closure=VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν = 0.01, κ = 0.01),
                                   momentum_advection=VectorInvariant())
 
@@ -221,16 +222,16 @@ function solid_body_rotation_test(grid;
                                         momentum_advection = VectorInvariant(),
                                         free_surface = free_surface,
                                         coriolis = coriolis,
-                                        tracers = :c,
+                                        tracers,
                                         tracer_advection = WENO(),
-                                        buoyancy = nothing,
+                                        buoyancy = BuoyancyTracer(),
                                         closure)
 
     g = model.free_surface.gravitational_acceleration
     R = grid.radius
     Ω = model.coriolis.rotation_rate
 
-    uᵢ(λ, φ, z) = 0.1 * cosd(φ) * sind(λ)
+    uᵢ(λ, φ, z) = 0.1 * cosd(φ) * sind(λ) + 0.05 * z
     ηᵢ(λ, φ, z) = (R * Ω * 0.1 + 0.1^2 / 2) * sind(φ)^2 / g * sind(λ)
 
     # Gaussian leads to values with O(1e-60),
@@ -246,7 +247,7 @@ function solid_body_rotation_test(grid;
     simulation = Simulation(model; Δt, stop_iteration = 10)
     run!(simulation)
 
-    return merge(model.velocities, model.tracers, (; η = model.free_surface.η))
+    return model
 end
 
 #####

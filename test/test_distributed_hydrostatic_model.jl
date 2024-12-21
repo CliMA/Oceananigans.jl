@@ -52,40 +52,46 @@ for arch in archs
         for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid), 
                                        (global_underlying_grid, global_immersed_grid, global_immersed_grid))
             
-            @info "  Testing distributed solid body rotation with architecture $arch on $(typeof(grid).name.wrapper)"
-            u, v, w, c, η = solid_body_rotation_test(grid)
+            # We test a couple of different settings
+            for (momentum_advection, closure) in zip((VectorInvariant(), WENOVectorInvariant()), 
+                                                               (nothing, CATKEVerticalDiffusivity()))
+                @info "  Testing distributed model: $(typeof(grid).name.wrapper) on $(summary(arch)) with $(summary(closure)) and $(summary(momentum_advection))"
+                
+                tracers = (:b, :c, :e)
 
-            # "s" for "serial" computation
-            us, vs, ws, cs, ηs = solid_body_rotation_test(global_grid)
+                # "s" for "serial" computation, "p" for "parallel" computation
+                ms = rotation_with_shear_test(global_grid; tracers, closure, momentum_advection)
+                mp = rotation_with_shear_test(grid;        tracers, closure, momentum_advection)
 
-            us = interior(on_architecture(CPU(), us))
-            vs = interior(on_architecture(CPU(), vs))
-            ws = interior(on_architecture(CPU(), ws))
-            cs = interior(on_architecture(CPU(), cs))
-            ηs = interior(on_architecture(CPU(), ηs))
+                us = interior(on_architecture(CPU(), ms.velocities.u))
+                vs = interior(on_architecture(CPU(), ms.velocities.v))
+                ws = interior(on_architecture(CPU(), ms.velocities.w))
+                cs = interior(on_architecture(CPU(), ms.tracers.c))
+                ηs = interior(on_architecture(CPU(), ms.free_surface.η))
 
-            cpu_arch = cpu_architecture(arch)
+                cpu_arch = cpu_architecture(arch)
 
-            u = interior(on_architecture(cpu_arch, u))
-            v = interior(on_architecture(cpu_arch, v))
-            w = interior(on_architecture(cpu_arch, w))
-            c = interior(on_architecture(cpu_arch, c))
-            η = interior(on_architecture(cpu_arch, η))
+                u = interior(on_architecture(cpu_arch, mp.velocities.u))
+                v = interior(on_architecture(cpu_arch, mp.velocities.v))
+                w = interior(on_architecture(cpu_arch, mp.velocities.w))
+                c = interior(on_architecture(cpu_arch, mp.tracers.c))
+                η = interior(on_architecture(cpu_arch, mp.free_surface.η))
 
-            us = partition(us, cpu_arch, size(u))
-            vs = partition(vs, cpu_arch, size(v))
-            ws = partition(ws, cpu_arch, size(w))
-            cs = partition(cs, cpu_arch, size(c))
-            ηs = partition(ηs, cpu_arch, size(η))
+                us = partition(us, cpu_arch, size(u))
+                vs = partition(vs, cpu_arch, size(v))
+                ws = partition(ws, cpu_arch, size(w))
+                cs = partition(cs, cpu_arch, size(c))
+                ηs = partition(ηs, cpu_arch, size(η))
 
-            atol = eps(eltype(grid))
-            rtol = sqrt(eps(eltype(grid)))
+                atol = eps(eltype(grid))
+                rtol = sqrt(eps(eltype(grid)))
 
-            @test all(isapprox(u, us; atol, rtol))
-            @test all(isapprox(v, vs; atol, rtol))
-            @test all(isapprox(w, ws; atol, rtol))
-            @test all(isapprox(c, cs; atol, rtol))
-            @test all(isapprox(η, ηs; atol, rtol))
+                @test all(isapprox(u, us; atol, rtol))
+                @test all(isapprox(v, vs; atol, rtol))
+                @test all(isapprox(w, ws; atol, rtol))
+                @test all(isapprox(c, cs; atol, rtol))
+                @test all(isapprox(η, ηs; atol, rtol))
+            end
         end
     end
 end

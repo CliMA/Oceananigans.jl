@@ -5,6 +5,8 @@ using Oceananigans.ImmersedBoundaries: retrieve_surface_active_cells_map,
                                        retrieve_interior_active_cells_map,
                                        immersed_cell
 
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity
+
 Nx = 16
 Ny = 16
 Nz = 10
@@ -51,20 +53,20 @@ Nz = 10
         end
 
         @testset "Active cells map solid body rotation" begin
-            ua, va, wa, ca, ηa = solid_body_rotation_test(immersed_active_grid)
-            u, v, w, c, η      = solid_body_rotation_test(immersed_grid)
+            ma = rotation_with_shear_test(immersed_active_grid)
+            m  = rotation_with_shear_test(immersed_grid)
 
-            ua = interior(on_architecture(CPU(), ua))
-            va = interior(on_architecture(CPU(), va))
-            wa = interior(on_architecture(CPU(), wa))
-            ca = interior(on_architecture(CPU(), ca))
-            ηa = interior(on_architecture(CPU(), ηa))
+            ua = interior(on_architecture(CPU(), ma.velocities.u))
+            va = interior(on_architecture(CPU(), ma.velocities.v))
+            wa = interior(on_architecture(CPU(), ma.velocities.w))
+            ca = interior(on_architecture(CPU(), ma.tracers.c))
+            ηa = interior(on_architecture(CPU(), ma.free_surface.η))
 
-            u = interior(on_architecture(CPU(), u))
-            v = interior(on_architecture(CPU(), v))
-            w = interior(on_architecture(CPU(), w))
-            c = interior(on_architecture(CPU(), c))
-            η = interior(on_architecture(CPU(), η))
+            u = interior(on_architecture(CPU(), m.velocities.u))
+            v = interior(on_architecture(CPU(), m.velocities.v))
+            w = interior(on_architecture(CPU(), m.velocities.w))
+            c = interior(on_architecture(CPU(), m.tracers.c))
+            η = interior(on_architecture(CPU(), m.free_surface.η))
 
             atol = eps(eltype(immersed_grid))
             rtol = sqrt(eps(eltype(immersed_grid)))
@@ -76,25 +78,25 @@ Nz = 10
             @test all(isapprox(η, ηa; atol, rtol))
         end
 
-
         @testset "Active cells map solid body rotation with CATKE and WENOVectorInvariant" begin
             closure = CATKEVerticalDiffusivity()
             momentum_advection = WENOVectorInvariant(vorticity_order=5)
+            tracers = (:b, :c, :e)
 
-            ua, va, wa, ca, ηa = solid_body_rotation_test(immersed_active_grid; closure, momentum_advection)
-            u, v, w, c, η      = solid_body_rotation_test(immersed_grid; closure, momentum_advection)
+            ma = rotation_with_shear_test(immersed_active_grid; tracers, closure, momentum_advection)
+            m  = rotation_with_shear_test(immersed_grid; tracers, closure, momentum_advection)
 
-            ua = interior(on_architecture(CPU(), ua))
-            va = interior(on_architecture(CPU(), va))
-            wa = interior(on_architecture(CPU(), wa))
-            ca = interior(on_architecture(CPU(), ca))
-            ηa = interior(on_architecture(CPU(), ηa))
+            ua = interior(on_architecture(CPU(), ma.velocities.u))
+            va = interior(on_architecture(CPU(), ma.velocities.v))
+            wa = interior(on_architecture(CPU(), ma.velocities.w))
+            ca = interior(on_architecture(CPU(), ma.tracers.c))
+            ηa = interior(on_architecture(CPU(), ma.free_surface.η))
 
-            u = interior(on_architecture(CPU(), u))
-            v = interior(on_architecture(CPU(), v))
-            w = interior(on_architecture(CPU(), w))
-            c = interior(on_architecture(CPU(), c))
-            η = interior(on_architecture(CPU(), η))
+            u = interior(on_architecture(CPU(), m.velocities.u))
+            v = interior(on_architecture(CPU(), m.velocities.v))
+            w = interior(on_architecture(CPU(), m.velocities.w))
+            c = interior(on_architecture(CPU(), m.tracers.c))
+            η = interior(on_architecture(CPU(), m.free_surface.η))
 
             atol = eps(eltype(immersed_grid))
             rtol = sqrt(eps(eltype(immersed_grid)))
