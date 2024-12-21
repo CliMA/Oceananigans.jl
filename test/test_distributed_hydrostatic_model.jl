@@ -123,11 +123,11 @@ for arch in archs
             cp = interior(on_architecture(cpu_arch, mp.tracers.c))
             ηp = interior(on_architecture(cpu_arch, mp.free_surface.η))
 
-            us = partition(us, cpu_arch, size(u))
-            vs = partition(vs, cpu_arch, size(v))
-            ws = partition(ws, cpu_arch, size(w))
-            cs = partition(cs, cpu_arch, size(c))
-            ηs = partition(ηs, cpu_arch, size(η))
+            us = partition(us, cpu_arch, size(up))
+            vs = partition(vs, cpu_arch, size(vp))
+            ws = partition(ws, cpu_arch, size(wp))
+            cs = partition(cs, cpu_arch, size(cp))
+            ηs = partition(ηs, cpu_arch, size(ηp))
 
             atol = eps(eltype(grid))
             rtol = sqrt(eps(eltype(grid)))
@@ -159,11 +159,11 @@ for arch in archs
         cp = interior(on_architecture(cpu_arch, mp.tracers.c))
         ηp = interior(on_architecture(cpu_arch, mp.free_surface.η))
 
-        us = partition(us, cpu_arch, size(u))
-        vs = partition(vs, cpu_arch, size(v))
-        ws = partition(ws, cpu_arch, size(w))
-        cs = partition(cs, cpu_arch, size(c))
-        ηs = partition(ηs, cpu_arch, size(η))
+        us = partition(us, cpu_arch, size(up))
+        vs = partition(vs, cpu_arch, size(vp))
+        ws = partition(ws, cpu_arch, size(wp))
+        cs = partition(cs, cpu_arch, size(cp))
+        ηs = partition(ηs, cpu_arch, size(ηp))
 
         atol = eps(eltype(grid))
         rtol = sqrt(eps(eltype(grid)))
