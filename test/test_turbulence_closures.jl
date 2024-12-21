@@ -99,12 +99,12 @@ function horizontal_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), ν
 
     return (∇_dot_qᶜ(2, 1, 3, grid, closureh, K, Val(1), T, closure_args...) == -  8κh &&
             ∇_dot_qᶜ(2, 1, 3, grid, closurez, K, Val(1), T, closure_args...) == - 10κz &&
-              ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closureh, K, closure_args...) == - (2νh) &&
-              ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closurez, K, closure_args...) == - (4νz) &&
-              ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, closureh, K, closure_args...) == - (4νh) &&
-              ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, closurez, K, closure_args...) == - (6νz) &&
-              ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, closureh, K, closure_args...) == - (6νh) &&
-              ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, closurez, K, closure_args...) == - (8νz))
+              ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closureh, K, closure_args...) == - 2νh &&
+              ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closurez, K, closure_args...) == - 4νz &&
+              ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, closureh, K, closure_args...) == - 4νh &&
+              ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, closurez, K, closure_args...) == - 6νz &&
+              ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, closureh, K, closure_args...) == - 6νh &&
+              ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, closurez, K, closure_args...) == - 8νz)
 end
 
 function time_step_with_variable_isotropic_diffusivity(arch)
@@ -113,7 +113,6 @@ function time_step_with_variable_isotropic_diffusivity(arch)
                                 κ = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t))
 
     model = NonhydrostaticModel(; grid, closure)
-
     time_step!(model, 1)
     return true
 end
@@ -154,45 +153,6 @@ function time_step_with_variable_discrete_diffusivity(arch)
                                 closure = (closure_ν, closure_κ))
 
     time_step!(model, 1)
-    return true
-end
-
-function diffusivity_fields_sizes_are_correct(arch)
-    grid = RectilinearGrid(arch, size=(2, 3, 4), extent=(1, 2, 3))
-
-    closure = Smagorinsky(coefficient=DynamicCoefficient(averaging=1))
-    model = NonhydrostaticModel(; grid, closure)
-    @test size(model.diffusivity_fields.𝒥ᴸᴹ) == (1, grid.Ny, grid.Nz)
-    @test size(model.diffusivity_fields.𝒥ᴹᴹ) == (1, grid.Ny, grid.Nz)
-    @test size(model.diffusivity_fields.LM)  == size(grid)
-    @test size(model.diffusivity_fields.MM)  == size(grid)
-    @test size(model.diffusivity_fields.Σ)   == size(grid)
-    @test size(model.diffusivity_fields.Σ̄)   == size(grid)
-
-    closure = DynamicSmagorinsky(averaging=(1, 2))
-    model = NonhydrostaticModel(; grid, closure)
-    @test size(model.diffusivity_fields.𝒥ᴸᴹ) == (1, 1, grid.Nz)
-    @test size(model.diffusivity_fields.𝒥ᴹᴹ) == (1, 1, grid.Nz)
-
-    closure = DynamicSmagorinsky(averaging=Colon())
-    model = NonhydrostaticModel(; grid, closure)
-    @test size(model.diffusivity_fields.𝒥ᴸᴹ) == (1, 1, 1)
-    @test size(model.diffusivity_fields.𝒥ᴹᴹ) == (1, 1, 1)
-
-    closure = DynamicSmagorinsky(averaging=(2, 3))
-    model = NonhydrostaticModel(; grid, closure)
-    @test size(model.diffusivity_fields.𝒥ᴸᴹ) == (grid.Nx, 1, 1)
-    @test size(model.diffusivity_fields.𝒥ᴹᴹ) == (grid.Nx, 1, 1)
-
-    closure = DynamicSmagorinsky(averaging=LagrangianAveraging())
-    model = NonhydrostaticModel(; grid, closure)
-    @test size(model.diffusivity_fields.𝒥ᴸᴹ)  == size(grid)
-    @test size(model.diffusivity_fields.𝒥ᴹᴹ)  == size(grid)
-    @test size(model.diffusivity_fields.𝒥ᴸᴹ⁻) == size(grid)
-    @test size(model.diffusivity_fields.𝒥ᴹᴹ⁻) == size(grid)
-    @test size(model.diffusivity_fields.Σ)    == size(grid)
-    @test size(model.diffusivity_fields.Σ̄)    == size(grid)
-
     return true
 end
 
@@ -274,18 +234,20 @@ function compute_closure_specific_diffusive_cfl(closure)
     grid = RectilinearGrid(CPU(), size=(2, 2, 2), extent=(1, 2, 3))
 
     model = NonhydrostaticModel(; grid, closure, buoyancy=BuoyancyTracer(), tracers=:b)
+    args = (model.closure, model.diffusivity_fields, Val(1), model.tracers.b, model.clock, fields(model), model.buoyancy)
     dcfl = DiffusiveCFL(0.1)
     @test dcfl(model) isa Number
-    @test diffusive_flux_x(1, 1, 1, grid, model.closure, model.diffusivity_fields, Val(1), model.tracers.b, model.clock, fields(model), model.buoyancy) == 0
-    @test diffusive_flux_y(1, 1, 1, grid, model.closure, model.diffusivity_fields, Val(1), model.tracers.b, model.clock, fields(model), model.buoyancy) == 0
-    @test diffusive_flux_z(1, 1, 1, grid, model.closure, model.diffusivity_fields, Val(1), model.tracers.b, model.clock, fields(model), model.buoyancy) == 0
+    @test diffusive_flux_x(1, 1, 1, grid, args...) == 0
+    @test diffusive_flux_y(1, 1, 1, grid, args...) == 0
+    @test diffusive_flux_z(1, 1, 1, grid, args...) == 0
 
     tracerless_model = NonhydrostaticModel(; grid, closure, buoyancy=nothing, tracers=nothing)
+    args = (model.closure, model.diffusivity_fields, model.clock, fields(model), model.buoyancy)
     dcfl = DiffusiveCFL(0.2)
     @test dcfl(tracerless_model) isa Number
-    @test viscous_flux_ux(1, 1, 1, grid, model.closure, model.diffusivity_fields, model.clock, fields(model), model.buoyancy) == 0
-    @test viscous_flux_uy(1, 1, 1, grid, model.closure, model.diffusivity_fields, model.clock, fields(model), model.buoyancy) == 0
-    @test viscous_flux_uz(1, 1, 1, grid, model.closure, model.diffusivity_fields, model.clock, fields(model), model.buoyancy) == 0
+    @test viscous_flux_ux(1, 1, 1, grid, args...) == 0
+    @test viscous_flux_uy(1, 1, 1, grid, args...) == 0
+    @test viscous_flux_uz(1, 1, 1, grid, args...) == 0
 
     return nothing
 end
@@ -294,22 +256,27 @@ end
     @info "Testing turbulence closures..."
 
     @testset "Closure instantiation" begin
-        @info "  Testing closure instantiation..."
         for closurename in closures
             closure = @eval $closurename()
             @test closure isa TurbulenceClosures.AbstractTurbulenceClosure
 
-            closure isa DynamicSmagorinsky && continue # `DynamicSmagorinsky`s `_compute_LM_MM!()` kernel isn't compiling on buildkite
-            grid = RectilinearGrid(CPU(), size=(2, 2, 2), extent=(1, 2, 3))
-            model = NonhydrostaticModel(; grid, closure, tracers=:c)
-            c = model.tracers.c
-            u = model.velocities.u
-            κ = diffusivity(model.closure, model.diffusivity_fields, Val(:c)) 
-            κ_dx_c = κ * ∂x(c)
-            ν = viscosity(model.closure, model.diffusivity_fields)
-            ν_dx_u = ν * ∂x(u)
-            @test ν_dx_u[1, 1, 1] == 0.0
-            @test κ_dx_c[1, 1, 1] == 0.0
+            for arch in archs
+                @info "  Testing the instantiation of NonhydrostaticModel with $closurename on $arch..."
+                if arch isa GPU && closurename == :LagrangianAveragedDynamicSmagorinsky
+                    @info "Skipping GPU test of $closurename."
+                else
+                    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
+                    model = NonhydrostaticModel(; grid, closure, tracers=:c)
+                    c = model.tracers.c
+                    u = model.velocities.u
+                    κ = diffusivity(model.closure, model.diffusivity_fields, Val(:c)) 
+                    κ_dx_c = κ * ∂x(c)
+                    ν = viscosity(model.closure, model.diffusivity_fields)
+                    ν_dx_u = ν * ∂x(u)
+                    @test ν_dx_u[1, 1, 1] == 0
+                    @test κ_dx_c[1, 1, 1] == 0
+                end
+            end
         end
 
         c = Center()
@@ -351,7 +318,6 @@ end
         @test required_halo_size_x(closure) == 2
         @test required_halo_size_y(closure) == 2
         @test required_halo_size_z(closure) == 2
-
     end
 
     @testset "HorizontalScalarDiffusivity" begin
@@ -376,8 +342,40 @@ end
     @testset "Dynamic Smagorinsky closures" begin
         @info "  Testing that dynamic Smagorinsky closures produce diffusivity fields of correct sizes..."
         for arch in archs
-            # `DynamicSmagorinsky`s `_compute_LM_MM!()` kernel isn't compiling on buildkite
-            @test_skip diffusivity_fields_sizes_are_correct(arch)
+            grid = RectilinearGrid(arch, size=(2, 3, 4), extent=(1, 2, 3))
+
+            closure = Smagorinsky(coefficient=DynamicCoefficient(averaging=1))
+            model = NonhydrostaticModel(; grid, closure)
+            @test size(model.diffusivity_fields.𝒥ᴸᴹ) == (1, grid.Ny, grid.Nz)
+            @test size(model.diffusivity_fields.𝒥ᴹᴹ) == (1, grid.Ny, grid.Nz)
+            @test size(model.diffusivity_fields.LM)  == size(grid)
+            @test size(model.diffusivity_fields.MM)  == size(grid)
+            @test size(model.diffusivity_fields.Σ)   == size(grid)
+            @test size(model.diffusivity_fields.Σ̄)   == size(grid)
+
+            closure = DynamicSmagorinsky(averaging=(1, 2))
+            model = NonhydrostaticModel(; grid, closure)
+            @test size(model.diffusivity_fields.𝒥ᴸᴹ) == (1, 1, grid.Nz)
+            @test size(model.diffusivity_fields.𝒥ᴹᴹ) == (1, 1, grid.Nz)
+
+            closure = DynamicSmagorinsky(averaging=(2, 3))
+            model = NonhydrostaticModel(; grid, closure)
+            @test size(model.diffusivity_fields.𝒥ᴸᴹ) == (grid.Nx, 1, 1)
+            @test size(model.diffusivity_fields.𝒥ᴹᴹ) == (grid.Nx, 1, 1)
+
+            closure = DynamicSmagorinsky(averaging=Colon())
+            model = NonhydrostaticModel(; grid, closure)
+            @test size(model.diffusivity_fields.𝒥ᴸᴹ) == (1, 1, 1)
+            @test size(model.diffusivity_fields.𝒥ᴹᴹ) == (1, 1, 1)
+
+            closure = DynamicSmagorinsky(averaging=LagrangianAveraging())
+            model = NonhydrostaticModel(; grid, closure)
+            @test size(model.diffusivity_fields.𝒥ᴸᴹ)  == size(grid)
+            @test size(model.diffusivity_fields.𝒥ᴹᴹ)  == size(grid)
+            @test size(model.diffusivity_fields.𝒥ᴸᴹ⁻) == size(grid)
+            @test size(model.diffusivity_fields.𝒥ᴹᴹ⁻) == size(grid)
+            @test size(model.diffusivity_fields.Σ)    == size(grid)
+            @test size(model.diffusivity_fields.Σ̄)    == size(grid)
         end
     end
 
@@ -429,11 +427,14 @@ end
         @info "  Testing turbulence closure diagnostics..."
         for closurename in closures
             closure = @eval $closurename()
-            closure isa DynamicSmagorinsky && continue # `DynamicSmagorinsky`s `_compute_LM_MM!()` kernel isn't compiling on buildkite
             compute_closure_specific_diffusive_cfl(closure)
         end
 
         # now test also a case for a tuple of closures
-        compute_closure_specific_diffusive_cfl((ScalarDiffusivity(), ScalarBiharmonicDiffusivity(), SmagorinskyLilly(), AnisotropicMinimumDissipation()))
+        compute_closure_specific_diffusive_cfl((ScalarDiffusivity(),
+                                                ScalarBiharmonicDiffusivity(),
+                                                SmagorinskyLilly(),
+                                                AnisotropicMinimumDissipation()))
     end
 end
+
