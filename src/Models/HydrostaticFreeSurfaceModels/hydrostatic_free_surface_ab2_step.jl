@@ -1,6 +1,6 @@
 using Oceananigans.Fields: location
 using Oceananigans.TimeSteppers: ab2_step_field!
-using Oceananigans.TurbulenceClosures: implicit_step!
+using Oceananigans.TurbulenceClosures: implicit_step!, FlavorOfCATKEWithSubsteps
 using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, retrieve_surface_active_cells_map
 
 import Oceananigans.TimeSteppers: ab2_step!
@@ -72,7 +72,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
 
     closure = model.closure
 
-    catke_in_closures = hasclosure(closure, FlavorOfCATKE)
+    catke_in_closures = hasclosure(closure, FlavorOfCATKEWithSubsteps)
     td_in_closures    = hasclosure(closure, FlavorOfTD)
 
     # Tracer update kernels

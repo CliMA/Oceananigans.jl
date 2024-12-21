@@ -153,10 +153,10 @@ end
 
 @inline clip(x) = max(zero(x), x)
 
-function get_time_step(closure_array::AbstractArray)
+function get_time_step(closure_array::AbstractArray, Δt)
     # assume they are all the same
     closure = CUDA.@allowscalar closure_array[1, 1]
-    return get_time_step(closure)
+    return get_time_step(closure, Δt)
 end
 
 include("tke_top_boundary_condition.jl")

@@ -19,7 +19,7 @@ Base.@kwdef struct TKEDissipationEquations{FT}
     minimum_roughness_length :: FT = 1e-4
 end
 
-get_time_step(closure::TKEDissipationVerticalDiffusivity) = closure.tke_dissipation_time_step
+get_time_step(closure::TKEDissipationVerticalDiffusivity, Δt) = closure.tke_dissipation_time_step
 
 function time_step_tke_dissipation_equations!(model)
 
@@ -46,7 +46,7 @@ function time_step_tke_dissipation_equations!(model)
     implicit_solver = model.timestepper.implicit_solver
 
     Δt = model.clock.last_Δt
-    Δτ = get_time_step(closure)
+    Δτ = get_time_step(closure, Δt)
 
     if isnothing(Δτ)
         Δτ = Δt
