@@ -106,7 +106,7 @@ for arch in archs
             for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid), (global_underlying_grid, global_immersed_grid, global_immersed_grid))
 
                 # "s" for "serial" computation
-                us, vs, ws, cs, ηs = rotation_with_shear_test(global_grid; closure)
+                us, vs, ws, cs, ηs = rotation_with_shear_test(global_grid, closure)
 
                 us = interior(on_architecture(CPU(), us))
                 vs = interior(on_architecture(CPU(), vs))
@@ -115,7 +115,7 @@ for arch in archs
                 ηs = interior(on_architecture(CPU(), ηs))
 
                 @info "  Testing distributed solid body rotation with architecture $arch on $(typeof(grid).name.wrapper)"
-                u, v, w, c, η = rotation_with_shear_test(grid; closure)
+                u, v, w, c, η = rotation_with_shear_test(grid, closure)
 
                 cpu_arch = cpu_architecture(arch)
 
