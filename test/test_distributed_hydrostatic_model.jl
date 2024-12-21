@@ -78,7 +78,7 @@ function rotation_with_shear_test(grid, closure=nothing)
     simulation = Simulation(model; Δt, stop_iteration = 10)
     run!(simulation)
 
-    return merge(model.velocities, model.tracers, (; η = model.free_surface.η))
+    return model
 end
 
 Nx = 32
@@ -102,44 +102,76 @@ for arch in archs
         global_underlying_grid = reconstruct_global_grid(underlying_grid)
         global_immersed_grid   = ImmersedBoundaryGrid(global_underlying_grid, GridFittedBottom(bottom))
 
-        for closure in (nothing, CATKEVerticalDiffusivity())
-            for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid), (global_underlying_grid, global_immersed_grid, global_immersed_grid))
+        for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid), (global_underlying_grid, global_immersed_grid, global_immersed_grid))
+            @info "  Testing distributed solid body rotation with architecture $arch on $(typeof(grid).name.wrapper)"
 
-                # "s" for "serial" computation
-                us, vs, ws, cs, ηs = rotation_with_shear_test(global_grid, closure)
+            # "s" for "serial" computation, "p" for parallel
+            ms = rotation_with_shear_test(global_grid)
+            mp = rotation_with_shear_test(grid)
 
-                us = interior(on_architecture(CPU(), us))
-                vs = interior(on_architecture(CPU(), vs))
-                ws = interior(on_architecture(CPU(), ws))
-                cs = interior(on_architecture(CPU(), cs))
-                ηs = interior(on_architecture(CPU(), ηs))
+            us = interior(on_architecture(CPU(), ms.velocities.u))
+            vs = interior(on_architecture(CPU(), ms.velocities.v))
+            ws = interior(on_architecture(CPU(), ms.velocities.w))
+            cs = interior(on_architecture(CPU(), ms.tracers.c))
+            ηs = interior(on_architecture(CPU(), ms.free_surface.η))
 
-                @info "  Testing distributed solid body rotation with architecture $arch on $(typeof(grid).name.wrapper)"
-                u, v, w, c, η = rotation_with_shear_test(grid, closure)
+            cpu_arch = cpu_architecture(arch)
 
-                cpu_arch = cpu_architecture(arch)
+            up = interior(on_architecture(cpu_arch, mp.velocities.u))
+            vp = interior(on_architecture(cpu_arch, mp.velocities.v))
+            wp = interior(on_architecture(cpu_arch, mp.velocities.w))
+            cp = interior(on_architecture(cpu_arch, mp.tracers.c))
+            ηp = interior(on_architecture(cpu_arch, mp.free_surface.η))
 
-                u = interior(on_architecture(cpu_arch, u))
-                v = interior(on_architecture(cpu_arch, v))
-                w = interior(on_architecture(cpu_arch, w))
-                c = interior(on_architecture(cpu_arch, c))
-                η = interior(on_architecture(cpu_arch, η))
+            us = partition(us, cpu_arch, size(u))
+            vs = partition(vs, cpu_arch, size(v))
+            ws = partition(ws, cpu_arch, size(w))
+            cs = partition(cs, cpu_arch, size(c))
+            ηs = partition(ηs, cpu_arch, size(η))
 
-                us = partition(us, cpu_arch, size(u))
-                vs = partition(vs, cpu_arch, size(v))
-                ws = partition(ws, cpu_arch, size(w))
-                cs = partition(cs, cpu_arch, size(c))
-                ηs = partition(ηs, cpu_arch, size(η))
+            atol = eps(eltype(grid))
+            rtol = sqrt(eps(eltype(grid)))
 
-                atol = eps(eltype(grid))
-                rtol = sqrt(eps(eltype(grid)))
-
-                @test all(isapprox(u, us; atol, rtol))
-                @test all(isapprox(v, vs; atol, rtol))
-                @test all(isapprox(w, ws; atol, rtol))
-                @test all(isapprox(c, cs; atol, rtol))
-                @test all(isapprox(η, ηs; atol, rtol))
-            end
+            @test all(isapprox(up, us; atol, rtol))
+            @test all(isapprox(vp, vs; atol, rtol))
+            @test all(isapprox(wp, ws; atol, rtol))
+            @test all(isapprox(cp, cs; atol, rtol))
+            @test all(isapprox(ηp, ηs; atol, rtol))
         end
+
+        closure = CATKEVerticalDiffusivity()
+
+        # "s" for "serial" computation, "p" for parallel
+        ms = rotation_with_shear_test(global_grid, closure)
+        mp = rotation_with_shear_test(grid, closure)
+
+        us = interior(on_architecture(CPU(), ms.velocities.u))
+        vs = interior(on_architecture(CPU(), ms.velocities.v))
+        ws = interior(on_architecture(CPU(), ms.velocities.w))
+        cs = interior(on_architecture(CPU(), ms.tracers.c))
+        ηs = interior(on_architecture(CPU(), ms.free_surface.η))
+
+        cpu_arch = cpu_architecture(arch)
+
+        up = interior(on_architecture(cpu_arch, mp.velocities.u))
+        vp = interior(on_architecture(cpu_arch, mp.velocities.v))
+        wp = interior(on_architecture(cpu_arch, mp.velocities.w))
+        cp = interior(on_architecture(cpu_arch, mp.tracers.c))
+        ηp = interior(on_architecture(cpu_arch, mp.free_surface.η))
+
+        us = partition(us, cpu_arch, size(u))
+        vs = partition(vs, cpu_arch, size(v))
+        ws = partition(ws, cpu_arch, size(w))
+        cs = partition(cs, cpu_arch, size(c))
+        ηs = partition(ηs, cpu_arch, size(η))
+
+        atol = eps(eltype(grid))
+        rtol = sqrt(eps(eltype(grid)))
+
+        @test all(isapprox(up, us; atol, rtol))
+        @test all(isapprox(vp, vs; atol, rtol))
+        @test all(isapprox(wp, ws; atol, rtol))
+        @test all(isapprox(cp, cs; atol, rtol))
+        @test all(isapprox(ηp, ηs; atol, rtol))
     end
 end
