@@ -21,9 +21,7 @@ function time_step_catke_equation!(model)
     grid = model.grid
     e   = model.tracers.e
     Gⁿe = timestepper.Gⁿ.e
-    G⁻e = timestepper.G⁻.e
-
-    FT = eltype(grid)
+    FT  = eltype(grid)
 
     κe = diffusivity_fields.κe
     Le = diffusivity_fields.Le
@@ -41,6 +39,8 @@ function time_step_catke_equation!(model)
         # Euler step for the first substep
         α = convert(FT, 1.0)
         β = convert(FT, 0.0)
+
+        G⁻e = timestepper.G⁻.e
 
         for m = 1:M # substep
             # Compute the linear implicit component of the RHS (diffusivities, L)
