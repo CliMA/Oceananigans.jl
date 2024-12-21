@@ -79,6 +79,19 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
         
         if catke_in_closures && tracer_name == :e
             @debug "Skipping AB2 step for e"
+            # catke = findfirst(c -> c isa CATKE, closure)
+            # if time_step(catke) == nothing
+            #     tracer_field = tracers[tracer_name]
+            #     closure = model.closure
+    
+            #     implicit_step!(tracer_field,
+            #                 model.timestepper.implicit_solver,
+            #                 closure,
+            #                 model.diffusivity_fields,
+            #                 Val(tracer_index),
+            #                 model.clock,
+            #                 Δt)
+            # end
         elseif td_in_closures && tracer_name == :ϵ
             @debug "Skipping AB2 step for ϵ"
         elseif td_in_closures && tracer_name == :e

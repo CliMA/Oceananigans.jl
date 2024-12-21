@@ -27,6 +27,8 @@ MPI.Initialized() || MPI.Init()
 
 using Oceananigans.Operators: hack_cosd
 using Oceananigans.DistributedComputations: partition, cpu_architecture, reconstruct_global_grid
+using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity
 
 Nx = 32
 Ny = 32
@@ -53,8 +55,8 @@ for arch in archs
                                        (global_underlying_grid, global_immersed_grid, global_immersed_grid))
             
             # We test a couple of different settings
-            for (momentum_advection, closure) in zip((VectorInvariant(), WENOVectorInvariant()), 
-                                                               (nothing, CATKEVerticalDiffusivity()))
+            for (momentum_advection, closure) in zip((WENOVectorInvariant(), VectorInvariant()), 
+                                                     (CATKEVerticalDiffusivity(ExplicitTimeDiscretization()), nothing))
                 @info "  Testing distributed model: $(typeof(grid).name.wrapper) on $(summary(arch)) with $(summary(closure)) and $(summary(momentum_advection))"
                 
                 tracers = (:b, :c, :e)

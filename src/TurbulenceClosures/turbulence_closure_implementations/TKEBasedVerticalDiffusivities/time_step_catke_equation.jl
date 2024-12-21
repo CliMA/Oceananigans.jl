@@ -68,9 +68,11 @@ function time_step_catke_equation!(model; parameters = :xyz, active_cells_map = 
         # current_time = previous_time + m * Δτ
         # previous_clock = (; time=current_time, iteration=previous_iteration)
 
-        implicit_step!(e, implicit_solver, closure,
-                       diffusivity_fields, Val(tracer_index),
-                       model.clock, Δτ)
+        if M != 1 # Only if we are truly substepping
+            implicit_step!(e, implicit_solver, closure,
+                           diffusivity_fields, Val(tracer_index),
+                           model.clock, Δτ)
+        end
     end
 
     return nothing

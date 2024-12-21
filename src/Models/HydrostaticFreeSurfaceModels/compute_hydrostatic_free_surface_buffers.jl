@@ -13,13 +13,6 @@ function compute_buffer_tendencies!(model::HydrostaticFreeSurfaceModel)
     grid = model.grid
     arch = architecture(grid)
 
-    w_parameters = buffer_w_kernel_parameters(grid, arch)
-    p_parameters = buffer_p_kernel_parameters(grid, arch)
-    κ_parameters = buffer_κ_kernel_parameters(grid, model.closure, arch)
-
-    # We need new values for `w`, `p` and `κ`
-    compute_auxiliaries!(model; w_parameters, p_parameters, κ_parameters)
-
     # parameters for communicating North / South / East / West side
     compute_buffer_tendency_contributions!(grid, arch, model)
 
@@ -28,13 +21,23 @@ end
 
 function compute_buffer_tendency_contributions!(grid, arch, model) 
     kernel_parameters = buffer_tendency_kernel_parameters(grid, arch)
+
+    w_parameters = buffer_surface_kernel_parameters(grid, arch)
+    p_parameters = buffer_surface_kernel_parameters(grid, arch)
+    κ_parameters = kernel_parameters
+
+    # We need new values for `w`, `p` and `κ`
+    compute_auxiliaries!(model; w_parameters, p_parameters, κ_parameters)
+
     compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters)
     return nothing
 end
 
 function compute_buffer_tendency_contributions!(grid::DistributedActiveCellsIBG, arch, model)
     maps = grid.interior_active_cells
-    
+    params2D = buffer_surface_kernel_parameters(grid, arch)
+
+    idx = 1
     for name in (:west_halo_dependent_cells, 
                  :east_halo_dependent_cells, 
                  :south_halo_dependent_cells, 
@@ -42,16 +45,27 @@ function compute_buffer_tendency_contributions!(grid::DistributedActiveCellsIBG,
         
         active_cells_map = @inbounds maps[name]
         
-        # If the map == nothing, we don't need to compute the buffer because 
-        # the buffer is not adjacent to a processor boundary
-        !isnothing(map) && compute_hydrostatic_free_surface_tendency_contributions!(model, :xyz; active_cells_map)
+        # If the map == nothing there is no need to recompute the direction
+        # (the boundary is not a processor boundary but a physical boundary)
+        if !isnothing(map) 
+            # We need new values for `w`, `p` and `κ`
+            compute_auxiliaries!(model; w_parameters=params2D[idx], 
+                                        p_parameters=params2D[idx], 
+                                        κ_parameters=:xyz,  # Do not actually matter here, we use the active map
+                                        active_cells_map)
+            
+            compute_hydrostatic_free_surface_tendency_contributions!(model, :xyz; active_cells_map)
+            
+            idx += 1
+        end
     end
 
     return nothing
 end
 
-# w needs computing in the range - H + 1 : 0 and N - 1 : N + H - 1
-function buffer_w_kernel_parameters(grid, arch)
+# Parameters for quantities that need computing in the range 
+# - H + 1 : 0 and N - 1 : N + H - 1
+function buffer_surface_kernel_parameters(grid, arch)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
