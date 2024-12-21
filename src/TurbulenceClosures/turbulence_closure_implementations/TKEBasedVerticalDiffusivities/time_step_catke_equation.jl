@@ -29,12 +29,13 @@ function time_step_catke_equation!(model)
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = timestepper.implicit_solver
 
-    if M == 1 # Just add the fast terms. Substepping will be done like the other tracers
+    if M == 1 # Just add the fast terms. Substepping will be done with the other tracers
         launch!(architecture(grid), grid, :xyz,
                 _compute_tke_tendency!,
                 Gⁿe, κe, Le, grid, closure,
                 model.velocities, previous_velocities, 
                 model.tracers, model.buoyancy, diffusivity_fields)
+
     else # Substep using an AB2 scheme for the fast evolution terms
         # Euler step for the first substep
         α = convert(FT, 1.0)
