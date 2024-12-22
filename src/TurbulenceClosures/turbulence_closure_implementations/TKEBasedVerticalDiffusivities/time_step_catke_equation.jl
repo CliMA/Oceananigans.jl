@@ -16,7 +16,7 @@ function time_step_catke_equation!(model)
 
     Δt = model.clock.last_Δt
     
-    if Δt == 0 || !isfinite(Δt)
+    if Δt == 0 || !isfinite(Δt) # Not a valid time step
         return nothing
     end
 
