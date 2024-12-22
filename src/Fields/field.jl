@@ -1,7 +1,6 @@
 using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
 using Oceananigans.Grids: index_range_contains
-using Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices
 
 using Adapt
 using KernelAbstractions: @kernel, @index
@@ -374,19 +373,15 @@ interior_view_indices(::Colon,       interior_indices) = interior_indices
 instantiate(T::Type) = T()
 instantiate(t) = t
 
+interior_x_indices(f::Field) = interior_view_indices(interior_x_indices(f.grid, instantiate(location(f)[1])), f.indices[1])
+interior_y_indices(f::Field) = interior_view_indices(interior_y_indices(f.grid, instantiate(location(f)[2])), f.indices[2])
+interior_z_indices(f::Field) = interior_view_indices(interior_z_indices(f.grid, instantiate(location(f)[3])), f.indices[3])
+
 # Interior indices for a field with a given location and topology
 function interior_indices(f::Field)
-    loc  = map(instantiate, location(f))
-    grid = f.grid
-
-    ind_x = interior_x_indices(grid, loc[1])
-    ind_y = interior_y_indices(grid, loc[2])
-    ind_z = interior_z_indices(grid, loc[3])
-
-    ind_x = interior_view_indices(ind_x, f.indices[1])
-    ind_y = interior_view_indices(ind_y, f.indices[2])
-    ind_z = interior_view_indices(ind_z, f.indices[3])
-
+    ind_x = interior_x_indices(f)
+    ind_y = interior_y_indices(f)
+    ind_z = interior_z_indices(f)
     return (ind_x, ind_y, ind_z)
 end
 
