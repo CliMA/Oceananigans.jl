@@ -15,6 +15,11 @@ function time_step_catke_equation!(model)
     end
 
     Δt = model.clock.last_Δt
+    
+    if Δt == 0 || !isfinite(Δt)
+        return nothing
+    end
+
     Δτ = get_time_step(closure, Δt)
     M  = ceil(Int, Δt / Δτ) # Number of substeps
 
