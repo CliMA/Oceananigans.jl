@@ -26,7 +26,7 @@ MPI.Initialized() || MPI.Init()
 # to initialize MPI.
 
 using Oceananigans.Operators: hack_cosd
-using Oceananigans.DistributedComputations: partition, all_reduce, cpu_architecture, reconstruct_global_grid
+using Oceananigans.DistributedComputations: partition, all_reduce, cpu_architecture, reconstruct_global_grid, synchronized
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity
 
 function Δ_min(grid) 
@@ -139,11 +139,26 @@ for arch in archs
             @test all(isapprox(ηp, ηs; atol, rtol))
         end
 
+        # CATKE works only with synchronized communication at the moment
+        arch    = synchronized(arch)
         closure = CATKEVerticalDiffusivity()
 
+        underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 3),
+                                                halo = (4, 4, 4),
+                                                latitude = (-80, 80),
+                                                longitude = (-160, 160),
+                                                z = (-1, 0),
+                                                radius = 1,
+                                                topology=(Bounded, Bounded, Bounded))
+
+        bottom(λ, φ) = -30 < λ < 30 && -40 < φ < 20 ? 0 : - 1
+
+        immersed_active_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
+        global_immersed_grid = ImmersedBoundaryGrid(global_underlying_grid, GridFittedBottom(bottom))
+
         # "s" for "serial" computation, "p" for parallel
-        ms = rotation_with_shear_test(global_underlying_grid, closure)
-        mp = rotation_with_shear_test(underlying_grid, closure)
+        ms = rotation_with_shear_test(global_immersed_grid, closure)
+        mp = rotation_with_shear_test(immersed_active_grid, closure)
 
         us = interior(on_architecture(CPU(), ms.velocities.u))
         vs = interior(on_architecture(CPU(), ms.velocities.v))
@@ -165,8 +180,8 @@ for arch in archs
         cs = partition(cs, cpu_arch, size(cp))
         ηs = partition(ηs, cpu_arch, size(ηp))
 
-        atol = eps(eltype(grid))
-        rtol = sqrt(eps(eltype(grid)))
+        atol = eps(eltype(immersed_active_grid))
+        rtol = sqrt(eps(eltype(immersed_active_grid)))
 
         @test all(isapprox(up, us; atol, rtol))
         @test all(isapprox(vp, vs; atol, rtol))
