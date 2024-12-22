@@ -29,7 +29,7 @@ function local_ab2_step!(model, Δt, χ)
 
     # Adds the fast tendency if we are not substepping. 
     # Performs the time step for `e` otherwise.
-    time_step_catke_equation!(model, parameters=:xyz)
+    time_step_catke_equation!(model)
 
     ab2_step_tracers!(model.tracers, model, Δt, χ)
 
