@@ -68,7 +68,7 @@ end
 const MB = Union{MinimalDiscreteBiogeochemistry, MinimalContinuousBiogeochemistry}
 
 @inline          required_biogeochemical_tracers(::MB) = tuple(:P)
-@inline required_biogeochemical_auxiliary_fields(::MB) = tuple(:Iᴾᴬᴿ)
+@inline required_biogeochemical_auxiliary_fields(::MB) = ()
 @inline      biogeochemical_auxiliary_fields(bgc::MB) = (; Iᴾᴬᴿ = bgc.photosynthetic_active_radiation)
 @inline   biogeochemical_drift_velocity(bgc::MB, ::Val{:P}) = bgc.sinking_velocity
 

@@ -128,8 +128,8 @@ topos_3d = ((Periodic, Periodic, Bounded),
     end
 
     for FreeSurface in (ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface, Nothing)
-        @testset "$topo model construction" begin
-            @info "  Testing $free_surface model construction..."
+        @testset "$FreeSurface model construction" begin
+            @info "  Testing $FreeSurface model construction..."
             for arch in archs, FT in float_types
                 grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, 2, 3))
                 model = HydrostaticFreeSurfaceModel(; grid, free_surface=FreeSurface())
