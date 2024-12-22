@@ -34,9 +34,9 @@ end
 CATKEVerticalDiffusivity(FT::DataType; kw...) =
     CATKEVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
-const CATKEVD{TD} = CATKEVerticalDiffusivity{TD, <:Any, <:Any, DT} where {TD, DT}
+const CATKEVD{TD, DT} = CATKEVerticalDiffusivity{TD, <:Any, <:Any, DT} where {TD, DT}
 const CATKEVDArray{TD, DT} = AbstractArray{<:CATKEVD{TD, DT}} where {TD, DT}
-const FlavorOfCATKE{TD, DT} = Union{CATKEVD{TD, DT}, CATKEVDArray{TD, DT}} where TD, DT
+const FlavorOfCATKE{TD, DT} = Union{CATKEVD{TD, DT}, CATKEVDArray{TD, DT}} where {TD, DT}
 
 const FlavorOfCATKEWithoutSubsteps{TD} = FlavorOfCATKE{TD, Nothing} where TD
 

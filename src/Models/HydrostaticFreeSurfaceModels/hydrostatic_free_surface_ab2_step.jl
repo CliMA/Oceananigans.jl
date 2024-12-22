@@ -1,6 +1,7 @@
 using Oceananigans.Fields: location
 using Oceananigans.TimeSteppers: ab2_step_field!
-using Oceananigans.TurbulenceClosures: implicit_step!, FlavorOfCATKEWithSubsteps, time_step_catke_equation!
+using Oceananigans.TurbulenceClosures: implicit_step!
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: time_step_catke_equation!
 using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, retrieve_surface_active_cells_map
 
 import Oceananigans.TimeSteppers: ab2_step!
