@@ -369,6 +369,7 @@ indices(a::OffsetArray, i=default_indices(ndims(a))) = indices(parent(a), i)
 interior_view_indices(field_indices, interior_indices) = Colon()
 interior_view_indices(field_indices, ::Colon)          = field_indices
 interior_view_indices(::Colon,       interior_indices) = interior_indices
+interior_view_indices(::Colon,       ::Colon)           = Colon()
 
 instantiate(T::Type) = T()
 instantiate(t) = t
