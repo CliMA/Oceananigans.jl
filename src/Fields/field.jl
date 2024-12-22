@@ -372,6 +372,22 @@ interior_view_indices(::Colon,       interior_indices) = interior_indices
 instantiate(T::Type) = T()
 instantiate(t) = t
 
+# Interior indices for a field with a given location and topology
+function interior_indices(f::Field)
+    loc  = map(instantiate, location(f))
+    grid = f.grid
+
+    ind_x = interior_x_indices(grid, loc[1])
+    ind_y = interior_y_indices(grid, loc[2])
+    ind_z = interior_z_indices(grid, loc[3])
+
+    ind_x = interior_view_indices(ind_x, f.indices[1])
+    ind_y = interior_view_indices(ind_x, f.indices[2])
+    ind_z = interior_view_indices(ind_x, f.indices[3])
+
+    return (ind_x, ind_y, ind_z)
+end
+
 function interior(a::OffsetArray,
                   Loc::Tuple,
                   Topo::Tuple,
