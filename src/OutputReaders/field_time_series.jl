@@ -4,6 +4,7 @@ using OffsetArrays
 using Statistics
 using JLD2
 using Adapt
+using Glob
 using CUDA: @allowscalar
 
 using Dates: AbstractTime
@@ -351,7 +352,8 @@ new_data(FT, grid, loc, indices, ::Nothing) = nothing
 
 # Apparently, not explicitly specifying Int64 in here makes this function
 # fail on x86 processors where `Int` is implied to be `Int32`
-# see ClimaOcean commit 3c47d887659d81e0caed6c9df41b7438e1f1cd52 at https://github.com/CliMA/ClimaOcean.jl/actions/runs/8804916198/job/24166354095)
+# see ClimaOcean commit 3c47d887659d81e0caed6c9df41b7438e1f1cd52 at
+# https://github.com/CliMA/ClimaOcean.jl/actions/runs/8804916198/job/24166354095)
 function new_data(FT, grid, loc, indices, Nt::Union{Int, Int64})
     space_size = total_size(grid, loc, indices)
     underlying_data = zeros(FT, architecture(grid), space_size..., Nt)
@@ -458,12 +460,20 @@ function FieldTimeSeries(path::String, name::String;
                          times = nothing,
                          reader_kw = NamedTuple())
 
-    file = jldopen(path; reader_kw...)
+    path = auto_extension(path, ".jld2")
 
-    # Defaults
-    isnothing(iterations)   && (iterations = parse.(Int, keys(file["timeseries/t"])))
-    isnothing(times)        && (times      = [file["timeseries/t/$i"] for i in iterations])
-    isnothing(location)     && (Location   = file["timeseries/$name/serialized/location"])
+    if !isfile(path)
+        start = path[1:end-5]
+        # Look for part1, etc
+        lookfor = string(start, "_part*.jld2")
+        part_paths = glob(lookfor)
+        Nparts = length(part_paths)
+        path = first(part_paths) # part1 is first?
+    else
+        Nparts = nothing
+    end
+
+    file = jldopen(path; reader_kw...)
 
     indices = try
         file["timeseries/$name/serialized/indices"]
@@ -574,24 +584,56 @@ function FieldTimeSeries(path::String, name::String;
             throw(err)
         end
     end
-
+        
     if boundary_conditions isa UnspecifiedBoundaryConditions
         boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
         boundary_conditions = on_architecture(architecture, boundary_conditions)
     end
 
-    close(file)
+    isnothing(location) && (location = file["timeseries/$name/serialized/location"])
+    LX, LY, LZ = location
+    loc = map(instantiate, location)
 
-    LX, LY, LZ = Location
+    if isnothing(Nparts)
+        isnothing(iterations) && (iterations = parse.(Int, keys(file["timeseries/t"])))
+        isnothing(times) && (times = [file["timeseries/t/$i"] for i in iterations])
+        close(file)
+    else
+        all_iterations = []
+        all_times = []
+        part_iterations = parse.(Int, keys(file["timeseries/t"]))
+        part_times = [file["timeseries/t/$i"] for i in part_iterations]
+        push!(all_iterations, part_iterations)
+        push!(all_times, part_times)
+        close(file)
 
-    loc = map(instantiate, Location)
+        for part in 2:Nparts
+            path = part_paths[part]
+            file = jldopen(path; reader_kw...)
+            part_iterations = parse.(Int, keys(file["timeseries/t"]))
+            part_times = [file["timeseries/t/$i"] for i in part_iterations]
+            push!(all_iterations, part_iterations)
+            push!(all_times, part_times)
+            close(file)
+        end
+
+        iterations = vcat(all_iterations...)
+        times = vcat(all_times...)
+    end
+
     Nt = time_indices_length(backend, times)
     data = new_data(eltype(grid), grid, loc, indices, Nt)
 
     time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
                                               times, path, name, time_indexing, reader_kw)
 
-    set!(time_series, path, name)
+    if isnothing(Nparts)
+        set!(time_series, path, name)
+    else
+        for path in part_paths
+            set!(time_series, path, name; warn_missing_data=false)
+        end
+    end
 
     return time_series
 end
