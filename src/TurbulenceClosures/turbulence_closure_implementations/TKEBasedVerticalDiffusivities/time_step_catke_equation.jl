@@ -41,7 +41,7 @@ function time_step_catke_equation!(model)
                 _compute_tke_tendency!,
                 Gⁿe, κe, Le, grid, closure,
                 model.velocities, previous_velocities, 
-                model.tracers, model.buoyancy, diffusivity_fields,
+                model.tracers, model.buoyancy, diffusivity_fields;
                 active_cells_map)
 
     else # Substep using an AB2 scheme for the fast evolution terms
