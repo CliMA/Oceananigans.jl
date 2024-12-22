@@ -366,7 +366,7 @@ indices(a::SubArray, i=default_indices(ndims(a))) = a.indices
 indices(a::OffsetArray, i=default_indices(ndims(a))) = indices(parent(a), i)
 
 """Return indices that create a `view` over the interior of a Field."""
-interior_view_indices(field_indices, interior_indices) = Colon()
+interior_view_indices(field_indices, interior_indices) = field_indices
 interior_view_indices(field_indices, ::Colon)          = field_indices
 interior_view_indices(::Colon,       interior_indices) = interior_indices
 interior_view_indices(::Colon,       ::Colon)          = Colon()
