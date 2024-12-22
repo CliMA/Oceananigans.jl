@@ -352,7 +352,7 @@ function interpolate!(to_field::Field, from_field::AbstractField)
     from_location = Tuple(L() for L in location(from_field))
     to_location   = Tuple(L() for L in location(to_field))
 
-    params = KernelParameters(interior_indices(to_field)...)
+    params = KernelParameters(interior_indices(to_field))
 
     launch!(to_arch, to_grid, params,
             _interpolate!, to_field, to_grid, to_location,

@@ -367,6 +367,7 @@ indices(a::OffsetArray, i=default_indices(ndims(a))) = indices(parent(a), i)
 
 """Return indices that create a `view` over the interior of a Field."""
 interior_view_indices(field_indices, interior_indices) = Colon()
+interior_view_indices(field_indices, ::Colon)          = field_indices
 interior_view_indices(::Colon,       interior_indices) = interior_indices
 
 instantiate(T::Type) = T()
@@ -382,8 +383,8 @@ function interior_indices(f::Field)
     ind_z = interior_z_indices(grid, loc[3])
 
     ind_x = interior_view_indices(ind_x, f.indices[1])
-    ind_y = interior_view_indices(ind_x, f.indices[2])
-    ind_z = interior_view_indices(ind_x, f.indices[3])
+    ind_y = interior_view_indices(ind_y, f.indices[2])
+    ind_z = interior_view_indices(ind_z, f.indices[3])
 
     return (ind_x, ind_y, ind_z)
 end
