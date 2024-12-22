@@ -217,10 +217,19 @@ end
     grid_point_above_kappa = closure.grid_point_above
     grid_point_below_kappa = closure.grid_point_below
 
+    n_stable = 0
+    n_unstable = 0
+
     # Find the first index of the background κᶜ
     kloc = grid.Nz+1
     @inbounds for k in grid.Nz:-1:2
-        kloc = ifelse(Ri[i, j, k] < Riᶜ, k, kloc)
+        unstable = Ri[i, j, k] < Riᶜ
+
+        # Count the number of stable and unstable points including and above the current point k
+        n_stable = ifelse(unstable, n_stable, n_stable + 1)
+        n_unstable = ifelse(unstable, n_unstable + 1, n_unstable)
+
+        kloc = ifelse(unstable, ifelse(n_unstable >= n_stable, k, kloc), kloc)
     end
 
     background_κ_index = kloc - 1
