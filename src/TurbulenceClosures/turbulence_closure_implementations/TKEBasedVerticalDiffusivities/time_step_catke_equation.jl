@@ -3,7 +3,7 @@ using Oceananigans.TimeSteppers: implicit_step!, QuasiAdamsBashforth2TimeStepper
 get_time_step(closure::FlavorOfCATKEWithSubsteps, Δt) = closure.tke_time_step
 get_time_step(::FlavorOfCATKEWithoutSubsteps, Δt) = Δt
 
-function time_step_catke_equation!(model; parameters=:xyz)
+function time_step_catke_equation!(model)
 
     # TODO: properly handle closure tuples
     if model.closure isa Tuple
@@ -29,12 +29,15 @@ function time_step_catke_equation!(model; parameters=:xyz)
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = timestepper.implicit_solver
 
+    active_cells_map  = retrieve_interior_active_cells_map(model.grid, Val(:interior))
+
     if M == 1 # Just add the fast terms. Substepping will be done with the other tracers
         launch!(architecture(grid), grid, :xyz,
                 _compute_tke_tendency!,
                 Gⁿe, κe, Le, grid, closure,
                 model.velocities, previous_velocities, 
-                model.tracers, model.buoyancy, diffusivity_fields)
+                model.tracers, model.buoyancy, diffusivity_fields,
+                active_cells_map)
 
     else # Substep using an AB2 scheme for the fast evolution terms
         # Euler step for the first substep
@@ -51,7 +54,8 @@ function time_step_catke_equation!(model; parameters=:xyz)
                     κe, Le, grid, closure,
                     model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
                     model.tracers, model.buoyancy, diffusivity_fields,
-                    Δτ, α, β, Gⁿe, G⁻e)
+                    Δτ, α, β, Gⁿe, G⁻e;
+                    active_cells_map)
 
             # Good idea?
             # previous_time = model.clock.time - Δt
