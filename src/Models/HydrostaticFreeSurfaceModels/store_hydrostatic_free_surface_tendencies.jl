@@ -31,7 +31,7 @@ function store_tendencies!(model::HydrostaticFreeSurfaceModel)
     three_dimensional_prognostic_field_names = filter(name -> name != :η, prognostic_field_names)
 
     closure = model.closure
-    catke_in_closures = hasclosure(closure, FlavorOfCATKE)
+    catke_in_closures = hasclosure(closure, FlavorOfCATKEWithSubsteps)
     td_in_closures    = hasclosure(closure, FlavorOfTD)
 
     for field_name in three_dimensional_prognostic_field_names

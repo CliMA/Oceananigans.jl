@@ -98,6 +98,10 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
     closure = model.closure
     grid = model.grid
 
+    # Adds the fast tendency if we are not substepping. 
+    # (We are never substepping with RK3)
+    time_step_catke_equation!(model, parameters=:xyz)
+
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         

@@ -1,6 +1,8 @@
 using Oceananigans.Fields: location
 using Oceananigans.TimeSteppers: ab2_step_field!
 using Oceananigans.TurbulenceClosures: implicit_step!
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: time_step_catke_equation!
+using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, retrieve_surface_active_cells_map
 
 import Oceananigans.TimeSteppers: ab2_step!
 
@@ -24,11 +26,15 @@ end
 
 function local_ab2_step!(model, Δt, χ)
     ab2_step_velocities!(model.velocities, model, Δt, χ)
+
+    # Adds the fast tendency if we are not substepping. 
+    # Performs the time step for `e` otherwise.
+    time_step_catke_equation!(model, parameters=:xyz)
+
     ab2_step_tracers!(model.tracers, model, Δt, χ)
 
     return nothing
 end
-
 
 #####
 ##### Step velocities
@@ -71,7 +77,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
 
     closure = model.closure
 
-    catke_in_closures = hasclosure(closure, FlavorOfCATKE)
+    catke_in_closures = hasclosure(closure, FlavorOfCATKEWithSubsteps)
     td_in_closures    = hasclosure(closure, FlavorOfTD)
 
     # Tracer update kernels

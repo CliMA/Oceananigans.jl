@@ -34,9 +34,14 @@ end
 CATKEVerticalDiffusivity(FT::DataType; kw...) =
     CATKEVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
-const CATKEVD{TD} = CATKEVerticalDiffusivity{TD} where TD
-const CATKEVDArray{TD} = AbstractArray{<:CATKEVD{TD}} where TD
-const FlavorOfCATKE{TD} = Union{CATKEVD{TD}, CATKEVDArray{TD}} where TD
+const CATKEVD{TD, DT} = CATKEVerticalDiffusivity{TD, <:Any, <:Any, DT} where {TD, DT}
+const CATKEVDArray{TD, DT} = AbstractArray{<:CATKEVD{TD, DT}} where {TD, DT}
+const FlavorOfCATKE{TD, DT} = Union{CATKEVD{TD, DT}, CATKEVDArray{TD, DT}} where {TD, DT}
+
+const FlavorOfCATKEWithoutSubsteps{TD} = FlavorOfCATKE{TD, Nothing} where TD
+
+# TODO: Support Dates time step
+const FlavorOfCATKEWithSubsteps{TD} = FlavorOfCATKE{TD, <:Number} where TD
 
 """
     CATKEVerticalDiffusivity([time_discretization = VerticallyImplicitTimeDiscretization(),
@@ -188,13 +193,6 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
     Δt = model.clock.time - diffusivities.previous_compute_time[]
     diffusivities.previous_compute_time[] = model.clock.time
-
-    if isfinite(model.clock.last_Δt) # Check that we have taken a valid time-step first.
-        # Compute e at the current time:
-        #   * update tendency Gⁿ using current and previous velocity field
-        #   * use tridiagonal solve to take an implicit step
-        time_step_catke_equation!(model; parameters, active_cells_map)
-    end
 
     # Update "previous velocities"
     u, v, w = model.velocities
