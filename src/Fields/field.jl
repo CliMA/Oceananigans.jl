@@ -1,6 +1,7 @@
 using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
 using Oceananigans.Grids: index_range_contains
+using Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices
 
 using Adapt
 using KernelAbstractions: @kernel, @index
