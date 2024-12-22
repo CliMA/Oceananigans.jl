@@ -142,8 +142,8 @@ for arch in archs
         closure = CATKEVerticalDiffusivity()
 
         # "s" for "serial" computation, "p" for parallel
-        ms = rotation_with_shear_test(global_grid, closure)
-        mp = rotation_with_shear_test(grid, closure)
+        ms = rotation_with_shear_test(global_underlying_grid, closure)
+        mp = rotation_with_shear_test(underlying_grid, closure)
 
         us = interior(on_architecture(CPU(), ms.velocities.u))
         vs = interior(on_architecture(CPU(), ms.velocities.v))
