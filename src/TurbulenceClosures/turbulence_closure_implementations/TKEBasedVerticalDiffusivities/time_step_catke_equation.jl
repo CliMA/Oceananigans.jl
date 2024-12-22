@@ -25,14 +25,14 @@ function time_step_catke_equation!(model)
 
     grid = model.grid
     e   = model.tracers.e
-    Gⁿe = timestepper.Gⁿ.e
+    Gⁿe = model.timestepper.Gⁿ.e
     FT  = eltype(grid)
 
     κe = diffusivity_fields.κe
     Le = diffusivity_fields.Le
     previous_velocities = diffusivity_fields.previous_velocities
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
-    implicit_solver = timestepper.implicit_solver
+    implicit_solver = model.timestepper.implicit_solver
 
     active_cells_map  = retrieve_interior_active_cells_map(model.grid, Val(:interior))
 
