@@ -118,8 +118,8 @@ CUDA.allowscalar() do
     # Models
     if group == :time_stepping_1 || group == :all
         @testset "Model and time stepping tests (part 1)" begin
-            # include("test_nonhydrostatic_models.jl")
-            # include("test_time_stepping.jl")
+            include("test_nonhydrostatic_models.jl")
+            include("test_time_stepping.jl")
             include("test_active_cells_map.jl")
         end
     end
@@ -194,7 +194,7 @@ CUDA.allowscalar() do
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
         archs = test_architectures()
-        # include("test_hydrostatic_regression.jl")
+        include("test_hydrostatic_regression.jl")
         include("test_distributed_hydrostatic_model.jl")
     end
 
