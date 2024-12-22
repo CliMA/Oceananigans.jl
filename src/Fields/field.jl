@@ -375,19 +375,19 @@ instantiate(T::Type) = T()
 instantiate(t) = t
 
 function interior_x_indices(f::Field) 
-    loc = instantiate(location(f)[1])
+    loc = map(instantiate, location(f))
     interior_indices = interior_x_indices(f.grid, loc)
     return interior_view_indices(interior_indices, f.indices[1])
 end
 
 function interior_y_indices(f::Field) 
-    loc = instantiate(location(f)[2])
+    loc = map(instantiate, location(f))
     interior_indices = interior_y_indices(f.grid, loc)
     return interior_view_indices(interior_indices, f.indices[2])
 end
 
 function interior_z_indices(f::Field) 
-    loc = instantiate(location(f)[3])
+    loc = map(instantiate, location(f))
     interior_indices = interior_z_indices(f.grid, loc)
     return interior_view_indices(interior_indices, f.indices[3])
 end
