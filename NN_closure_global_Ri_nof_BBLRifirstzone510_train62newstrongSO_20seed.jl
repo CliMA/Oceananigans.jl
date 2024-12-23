@@ -222,6 +222,9 @@ end
 
     # Find the first index of the background κᶜ
     kloc = grid.Nz+1
+
+    stability_threshold_cutoff = grid.Nz - 49
+    stability_threshold = 8/2
     @inbounds for k in grid.Nz:-1:2
         unstable = Ri[i, j, k] < Riᶜ
 
@@ -229,7 +232,7 @@ end
         n_stable = ifelse(unstable, n_stable, n_stable + 1)
         n_unstable = ifelse(unstable, n_unstable + 1, n_unstable)
 
-        kloc = ifelse(unstable, ifelse(n_unstable >= n_stable, k, kloc), kloc)
+        kloc = ifelse(unstable, ifelse(n_unstable >= n_stable, ifelse(k > stability_threshold_cutoff, k, ifelse(n_unstable/n_stable >= stability_threshold, k, kloc)), kloc), kloc)
     end
 
     background_κ_index = kloc - 1
