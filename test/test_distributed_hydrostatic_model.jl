@@ -72,8 +72,8 @@ function rotation_with_shear_test(grid, closure=nothing)
 
     set!(model, u=uᵢ, η=ηᵢ, c=cᵢ)
 
-    @show Δt_local = 0.1 * Δ_min(grid) / sqrt(g * grid.Lz) 
-    @show Δt = all_reduce(min, Δt_local, architecture(grid))
+    Δt_local = 0.1 * Δ_min(grid) / sqrt(g * grid.Lz) 
+    Δt = all_reduce(min, Δt_local, architecture(grid))
 
     simulation = Simulation(model; Δt, stop_iteration = 10, verbose = false)
     run!(simulation)
