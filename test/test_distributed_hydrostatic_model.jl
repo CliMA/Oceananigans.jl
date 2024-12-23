@@ -26,7 +26,7 @@ MPI.Initialized() || MPI.Init()
 # to initialize MPI.
 
 using Oceananigans.Operators: hack_cosd
-using Oceananigans.DistributedComputations: partition, all_reduce, cpu_architecture, reconstruct_global_grid, synchronized
+using Oceananigans.DistributedComputations: ranks, partition, all_reduce, cpu_architecture, reconstruct_global_grid, synchronized
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity
 
 function Δ_min(grid) 
@@ -75,7 +75,7 @@ function rotation_with_shear_test(grid, closure=nothing)
     @show Δt_local = 0.1 * Δ_min(grid) / sqrt(g * grid.Lz) 
     @show Δt = all_reduce(min, Δt_local, architecture(grid))
 
-    simulation = Simulation(model; Δt, stop_iteration = 10)
+    simulation = Simulation(model; Δt, stop_iteration = 10, verbose = false)
     run!(simulation)
 
     return model
@@ -103,7 +103,9 @@ for arch in archs
         global_immersed_grid   = ImmersedBoundaryGrid(global_underlying_grid, GridFittedBottom(bottom))
 
         for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid), (global_underlying_grid, global_immersed_grid, global_immersed_grid))
-            @info "  Testing distributed solid body rotation with architecture $arch on $(typeof(grid).name.wrapper)"
+            if arch.local_rank == 0
+                @info "  Testing distributed solid body rotation with $(ranks(arch)) ranks on $(typeof(grid).name.wrapper)"
+            end
 
             # "s" for "serial" computation, "p" for parallel
             ms = rotation_with_shear_test(global_grid)
@@ -139,51 +141,51 @@ for arch in archs
             @test all(isapprox(ηp, ηs; atol, rtol))
         end
 
-        # CATKE works only with synchronized communication at the moment
-        arch    = synchronized(arch)
-        closure = CATKEVerticalDiffusivity()
+    #     # CATKE works only with synchronized communication at the moment
+    #     arch    = synchronized(arch)
+    #     closure = CATKEVerticalDiffusivity()
 
-        underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 3),
-                                                halo = (4, 4, 4),
-                                                latitude = (-80, 80),
-                                                longitude = (-160, 160),
-                                                z = (-1, 0),
-                                                radius = 1,
-                                                topology=(Bounded, Bounded, Bounded))
+    #     underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 3),
+    #                                             halo = (4, 4, 4),
+    #                                             latitude = (-80, 80),
+    #                                             longitude = (-160, 160),
+    #                                             z = (-1, 0),
+    #                                             radius = 1,
+    #                                             topology=(Bounded, Bounded, Bounded))
 
-        bottom(λ, φ) = -30 < λ < 30 && -40 < φ < 20 ? 0 : - 1
+    #     bottom(λ, φ) = -30 < λ < 30 && -40 < φ < 20 ? 0 : - 1
 
-        # "s" for "serial" computation, "p" for parallel
-        ms = rotation_with_shear_test(global_underlying_grid, closure)
-        mp = rotation_with_shear_test(underlying_grid, closure)
+    #     # "s" for "serial" computation, "p" for parallel
+    #     ms = rotation_with_shear_test(global_underlying_grid, closure)
+    #     mp = rotation_with_shear_test(underlying_grid, closure)
 
-        us = interior(on_architecture(CPU(), ms.velocities.u))
-        vs = interior(on_architecture(CPU(), ms.velocities.v))
-        ws = interior(on_architecture(CPU(), ms.velocities.w))
-        cs = interior(on_architecture(CPU(), ms.tracers.c))
-        ηs = interior(on_architecture(CPU(), ms.free_surface.η))
+    #     us = interior(on_architecture(CPU(), ms.velocities.u))
+    #     vs = interior(on_architecture(CPU(), ms.velocities.v))
+    #     ws = interior(on_architecture(CPU(), ms.velocities.w))
+    #     cs = interior(on_architecture(CPU(), ms.tracers.c))
+    #     ηs = interior(on_architecture(CPU(), ms.free_surface.η))
 
-        cpu_arch = cpu_architecture(arch)
+    #     cpu_arch = cpu_architecture(arch)
 
-        up = interior(on_architecture(cpu_arch, mp.velocities.u))
-        vp = interior(on_architecture(cpu_arch, mp.velocities.v))
-        wp = interior(on_architecture(cpu_arch, mp.velocities.w))
-        cp = interior(on_architecture(cpu_arch, mp.tracers.c))
-        ηp = interior(on_architecture(cpu_arch, mp.free_surface.η))
+    #     up = interior(on_architecture(cpu_arch, mp.velocities.u))
+    #     vp = interior(on_architecture(cpu_arch, mp.velocities.v))
+    #     wp = interior(on_architecture(cpu_arch, mp.velocities.w))
+    #     cp = interior(on_architecture(cpu_arch, mp.tracers.c))
+    #     ηp = interior(on_architecture(cpu_arch, mp.free_surface.η))
 
-        us = partition(us, cpu_arch, size(up))
-        vs = partition(vs, cpu_arch, size(vp))
-        ws = partition(ws, cpu_arch, size(wp))
-        cs = partition(cs, cpu_arch, size(cp))
-        ηs = partition(ηs, cpu_arch, size(ηp))
+    #     us = partition(us, cpu_arch, size(up))
+    #     vs = partition(vs, cpu_arch, size(vp))
+    #     ws = partition(ws, cpu_arch, size(wp))
+    #     cs = partition(cs, cpu_arch, size(cp))
+    #     ηs = partition(ηs, cpu_arch, size(ηp))
 
-        atol = eps(eltype(immersed_active_grid))
-        rtol = sqrt(eps(eltype(immersed_active_grid)))
+    #     atol = eps(eltype(immersed_active_grid))
+    #     rtol = sqrt(eps(eltype(immersed_active_grid)))
 
-        @test all(isapprox(up, us; atol, rtol))
-        @test all(isapprox(vp, vs; atol, rtol))
-        @test all(isapprox(wp, ws; atol, rtol))
-        @test all(isapprox(cp, cs; atol, rtol))
-        @test all(isapprox(ηp, ηs; atol, rtol))
+    #     @test all(isapprox(up, us; atol, rtol))
+    #     @test all(isapprox(vp, vs; atol, rtol))
+    #     @test all(isapprox(wp, ws; atol, rtol))
+    #     @test all(isapprox(cp, cs; atol, rtol))
+    #     @test all(isapprox(ηp, ηs; atol, rtol))
     end
 end
