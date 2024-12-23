@@ -364,6 +364,10 @@ data(field::Field) = field.data
 instantiate(T::Type) = T()
 instantiate(t) = t
 
+"""Return indices that create a `view` over the interior of a Field."""
+interior_view_indices(field_indices, interior_indices)   = Colon()
+interior_view_indices(::Colon,       interior_indices)   = interior_indices
+
 function interior(a::OffsetArray,
                   Loc::Tuple,
                   Topo::Tuple,
@@ -373,11 +377,8 @@ function interior(a::OffsetArray,
 
     loc = map(instantiate, Loc)
     topo = map(instantiate, Topo)
-
-    # Validate indices (convert Int to UnitRange, error for invalid indices)
-    view_indices = default_indices(3)
-    view_indices = map(convert_colon_indices, view_indices, ind)
-    i_view = map(parent_index_range, ind, view_indices, loc, topo, halo_sz)
+    i_interior = map(interior_parent_indices, loc, topo, sz, halo_sz)
+    i_view = map(interior_view_indices, ind, i_interior)
 
     return view(parent(a), i_view...)
 end
