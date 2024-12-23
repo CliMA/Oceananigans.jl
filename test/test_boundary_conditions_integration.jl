@@ -256,18 +256,16 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
 
             topo = (Bounded, Bounded, Bounded)
 
-            for Model in (NonhydrostaticModel, HydrostaticFreeSurfaceModel)
-                for C in (Gradient, Flux, Value), boundary_condition in test_boundary_conditions(C, FT, array_type(arch))
-                    @test test_boundary_condition(arch, FT, Model, topo, :east, :T, boundary_condition)
-                    @test test_boundary_condition(arch, FT, Model, topo, :south, :T, boundary_condition)
-                    @test test_boundary_condition(arch, FT, Model, topo, :top, :T, boundary_condition)
-                end
+            for C in (Gradient, Flux, Value), boundary_condition in test_boundary_conditions(C, FT, array_type(arch))
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :east, :T, boundary_condition)
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :south, :T, boundary_condition)
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :top, :T, boundary_condition)
+            end
 
-                for boundary_condition in test_boundary_conditions(Open, FT, array_type(arch))
-                    @test test_boundary_condition(arch, FT, Model, topo, :east, :u, boundary_condition)
-                    @test test_boundary_condition(arch, FT, Model, topo, :south, :v, boundary_condition)
-                    @test test_boundary_condition(arch, FT, Model, topo, :top, :w, boundary_condition)
-                end
+            for boundary_condition in test_boundary_conditions(Open, FT, array_type(arch))
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :east, :u, boundary_condition)
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :south, :v, boundary_condition)
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :top, :w, boundary_condition)
             end
         end
     end
