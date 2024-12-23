@@ -153,12 +153,9 @@ for arch in archs
 
         bottom(λ, φ) = -30 < λ < 30 && -40 < φ < 20 ? 0 : - 1
 
-        immersed_active_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
-        global_immersed_grid = ImmersedBoundaryGrid(global_underlying_grid, GridFittedBottom(bottom))
-
         # "s" for "serial" computation, "p" for parallel
-        ms = rotation_with_shear_test(global_immersed_grid, closure)
-        mp = rotation_with_shear_test(immersed_active_grid, closure)
+        ms = rotation_with_shear_test(global_underlying_grid, closure)
+        mp = rotation_with_shear_test(underlying_grid, closure)
 
         us = interior(on_architecture(CPU(), ms.velocities.u))
         vs = interior(on_architecture(CPU(), ms.velocities.v))
