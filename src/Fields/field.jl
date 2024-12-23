@@ -360,45 +360,9 @@ boundary_conditions(not_field) = nothing
 
 immersed_boundary_condition(f::Field) = f.boundary_conditions.immersed
 data(field::Field) = field.data
-indices(obj, i=default_indices(3)) = i
-indices(f::Field, i=default_indices(3)) = f.indices
-indices(a::SubArray, i=default_indices(ndims(a))) = a.indices
-indices(a::OffsetArray, i=default_indices(ndims(a))) = indices(parent(a), i)
-
-"""Return indices that create a `view` over the interior of a Field."""
-interior_view_indices(field_indices, interior_indices) = field_indices
-interior_view_indices(field_indices, ::Colon)          = field_indices
-interior_view_indices(::Colon,       interior_indices) = interior_indices
-interior_view_indices(::Colon,       ::Colon)          = Colon()
 
 instantiate(T::Type) = T()
 instantiate(t) = t
-
-function interior_x_indices(f::Field) 
-    loc = map(instantiate, location(f))
-    interior_indices = interior_x_indices(f.grid, loc)
-    return interior_view_indices(interior_indices, f.indices[1])
-end
-
-function interior_y_indices(f::Field) 
-    loc = map(instantiate, location(f))
-    interior_indices = interior_y_indices(f.grid, loc)
-    return interior_view_indices(interior_indices, f.indices[2])
-end
-
-function interior_z_indices(f::Field) 
-    loc = map(instantiate, location(f))
-    interior_indices = interior_z_indices(f.grid, loc)
-    return interior_view_indices(interior_indices, f.indices[3])
-end
-
-# Interior indices for a field with a given location and topology
-function interior_indices(f::Field)
-    ind_x = interior_x_indices(f)
-    ind_y = interior_y_indices(f)
-    ind_z = interior_z_indices(f)
-    return (ind_x, ind_y, ind_z)
-end
 
 function interior(a::OffsetArray,
                   Loc::Tuple,
@@ -409,8 +373,12 @@ function interior(a::OffsetArray,
 
     loc = map(instantiate, Loc)
     topo = map(instantiate, Topo)
-    i_interior = map(interior_parent_indices, loc, topo, sz, halo_sz)
-    i_view = map(interior_view_indices, ind, i_interior)
+
+    # Validate indices (convert Int to UnitRange, error for invalid indices)
+    view_indices = default_indices(3)
+    view_indices = map(convert_colon_indices, view_indices, ind)
+    i_view = map(parent_index_range, ind, view_indices, loc, topo, halo_sz)
+
     return view(parent(a), i_view...)
 end
 
