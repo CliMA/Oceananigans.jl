@@ -184,6 +184,16 @@ function run_field_interpolation_tests(grid)
         end
     end
 
+    # Check interpolation on Windowed fields
+    wf = ZFaceField(grid; indices=(:, :, grid.Nz+1))
+    If = Field{Center, Center, Nothing}(grid)
+    set!(If, (x, y)-> x * y)
+    interpolate!(wf, If)   
+
+    CUDA.@allowscalar begin
+        @test all(interior(wf) .≈ interior(If))
+    end
+    
     return nothing
 end
 
