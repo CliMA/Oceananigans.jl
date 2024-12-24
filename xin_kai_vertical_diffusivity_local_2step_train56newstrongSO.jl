@@ -184,7 +184,7 @@ end
 @inline function Riᶜᶜᶠ(i, j, k, grid, velocities, buoyancy, tracers)
     S² = shear_squaredᶜᶜᶠ(i, j, k, grid, velocities)
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    Ri = N² / S²
+    Ri = N² / (S² + 10^-11)
 
     # Clip N² and avoid NaN
     return ifelse(N² == 0, zero(grid), Ri)
