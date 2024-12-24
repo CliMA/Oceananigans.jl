@@ -7,6 +7,7 @@ using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
+using Makie: Observable
 using MakieCore: AbstractPlot
 import MakieCore: convert_arguments, _create_plot
 import Makie: args_preferred_axis
@@ -46,6 +47,7 @@ end
 
 axis_str(::RectilinearGrid, dim) = ("x", "y", "z")[dim]
 axis_str(::LatitudeLongitudeGrid, dim) = ("Longitude (deg)", "Latitude (deg)", "z")[dim]
+axis_str(grid::ImmersedBoundaryGrid, dim) = axis_str(grid.underlying_grid, dim)
 
 function _create_plot(F::Function, attributes::Dict, f::Field)
     converted_args = convert_field_argument(f)
@@ -80,6 +82,9 @@ function _create_plot(F::Function, attributes::Dict, op::AbstractOperation)
     compute!(f)
     return _create_plot(F::Function, attributes::Dict, f)
 end
+
+_create_plot(F::Function, attributes::Dict, f::Observable{<:Field}) =
+    _create_plot(F, attributes, f[])
 
 convert_arguments(pl::Type{<:AbstractPlot}, f::Field) =
     convert_arguments(pl, convert_field_argument(f)...)
@@ -183,4 +188,3 @@ function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, ξ2::Ab
 end
 
 end # module
-
