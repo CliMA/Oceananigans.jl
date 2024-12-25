@@ -10,6 +10,8 @@ using MPI
 
 using Oceananigans.Utils
 using Oceananigans.Grids
+using OffsetArrays
+using CUDA: CuArray
 
 include("distributed_architectures.jl")
 include("partition_assemble.jl")
