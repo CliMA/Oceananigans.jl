@@ -97,6 +97,7 @@ function test_jld2_time_file_splitting(arch)
     function fake_bc_init(file, model)
         file["boundary_conditions/fake"] = π
     end
+
     ow = JLD2OutputWriter(model, (; u=model.velocities.u);
                           dir = ".",
                           filename = "test",
@@ -272,7 +273,7 @@ function test_jld2_time_averaging(arch)
             c2 = FieldTimeSeries(horizontal_average_jld2_filepath, "c2")
 
             Nx, Ny, Nz = size(c1.grid)
-            xs, ys, zs = c1.grid.xᶜᵃᵃ[1:Nx], c1.grid.yᵃᶜᵃ[1:Ny], c1.grid.zᵃᵃᶜ[1:Nz]
+            xs, ys, zs = c1.grid.xᶜᵃᵃ[1:Nx], c1.grid.yᵃᶜᵃ[1:Ny], c1.grid.z.cᵃᵃᶜ[1:Nz]
 
             c̄1(z, t) = 1 / (Nx * Ny) * sum(exp(-λ1(x, y, z) * t) for x in xs for y in ys)
             c̄2(z, t) = 1 / (Nx * Ny) * sum(exp(-λ2(x, y, z) * t) for x in xs for y in ys)
