@@ -1,7 +1,7 @@
 module OceananigansMakieExt
 
 using Oceananigans
-using Oceananigans.Grids: OrthogonalSphericalShellGrid
+using Oceananigans.Grids: OrthogonalSphericalShellGrid, topology
 using Oceananigans.Fields: AbstractField
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture
@@ -49,10 +49,12 @@ axis_str(::RectilinearGrid, dim) = ("x", "y", "z")[dim]
 axis_str(::LatitudeLongitudeGrid, dim) = ("Longitude (deg)", "Latitude (deg)", "z")[dim]
 axis_str(grid::ImmersedBoundaryGrid, dim) = axis_str(grid.underlying_grid, dim)
 
+const LLG_or_IBLLG = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:LatitudeLongitudeGrid}}
+
 function _create_plot(F::Function, attributes::Dict, f::Field)
     converted_args = convert_field_argument(f)
 
-    if !(:axis ∈ keys(attributes)) # Let's try to add labels automatically
+    if !(:axis ∈ keys(attributes)) # Let's try to automatically add labels and ticks
         d1, d2, D = deduce_dimensionality(f) 
         grid = f.grid
 
@@ -69,6 +71,11 @@ function _create_plot(F::Function, attributes::Dict, f::Field)
             axis = (xlabel=axis_str(grid, d1), ylabel=axis_str(grid, d2))
         else
             throw(ArgumentError("Cannot create axis labels for a 3D field!"))
+        end
+
+        # if longitude wraps around the globe then adjust the longitude ticks
+        if grid isa LLG_or_IBLLG && grid.Lx == 360 &&  topology(grid, 1) == Periodic
+            axis = merge(axis, (xticks = -360:60:360,))
         end
 
         attributes[:axis] = axis
