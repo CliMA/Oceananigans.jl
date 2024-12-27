@@ -74,7 +74,7 @@ function _create_plot(F::Function, attributes::Dict, f::Field)
         end
 
         # if longitude wraps around the globe then adjust the longitude ticks
-        if grid isa LLG_or_IBLLG && grid.Lx == 360 &&  topology(grid, 1) == Periodic
+        if grid isa LLG_or_IBLLG && grid.Lx == 360 && topology(grid, 1) == Periodic
             axis = merge(axis, (xticks = -360:60:360,))
         end
 
