@@ -86,7 +86,7 @@ implicitly during time-stepping.
     return ( - U_dot_∇v(i, j, k, grid, advection, velocities) 
              - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
-             - δyᶜᶠᶜ(i, j, k, grid, Δx_qᶜᶜᶜ, hydrostatic_pressure_anomaly) / Azᶜᶠᶜ(i, j, grid.Nz+1, grid)
+             - δyᶜᶠᶜ(i, j, k, grid, Δx_qᶜᶜᶜ, hydrostatic_pressure_anomaly) / Azᶜᶠᶜ(i, j, k, grid)
              - grid_slope_contribution_y(i, j, k, grid, buoyancy, model_fields)
              - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, diffusivities, clock, model_fields)
