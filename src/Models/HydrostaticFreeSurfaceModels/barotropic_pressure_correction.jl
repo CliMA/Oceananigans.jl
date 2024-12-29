@@ -42,7 +42,7 @@ end
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        U.u[i, j, k] -= g * Δt * ∂xᶠᶜᶠ(i, j, grid.Nz+1, grid, η)
-        U.v[i, j, k] -= g * Δt * ∂yᶜᶠᶠ(i, j, grid.Nz+1, grid, η)
+        U.u[i, j, k] -= g * Δt * δxᶠᶜᶠ(i, j, grid.Nz+1, grid, Δy_qᶜᶜᶜ, η) / Azᶠᶜᶜ(i, j, grid.Nz+1, grid)
+        U.v[i, j, k] -= g * Δt * δyᶜᶠᶠ(i, j, grid.Nz+1, grid, Δx_qᶜᶜᶜ, η) / Azᶜᶠᶜ(i, j, grid.Nz+1, grid)
     end
 end
