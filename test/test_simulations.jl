@@ -156,6 +156,17 @@ function run_basic_simulation_tests(arch)
     @show called_at
     @test all(called_at .≈ 0.0:schedule.interval:simulation.stop_time)
 
+
+    # Test that minimum_relative_step is running correctly
+    final_time = 1.0 + 1e-11
+    model.clock.time = 0
+    model.clock.iteration = 0
+    simulation = Simulation(model, Δt=1, stop_time=final_time, minimum_relative_step=1e-10)
+    run!(simulation)
+
+    @test simulation.model.clock.time == final_time
+    @test simulation.model.clock.iteration == 1
+
     return nothing
 end
 
