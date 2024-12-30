@@ -169,7 +169,7 @@ end
 adapt_structure(to, sd::StokesDrift) = StokesDrift(adapt(to, sd.uˢ),
                                                    adapt(to, sd.vˢ),
                                                    adapt(to, sd.wˢ),
-                                                   adapt(to, sd.∂x_wˢ),
+                                                   adapt(to, sd.∂x_vˢ),
                                                    adapt(to, sd.∂x_wˢ),
                                                    adapt(to, sd.∂y_uˢ),
                                                    adapt(to, sd.∂y_wˢ),
