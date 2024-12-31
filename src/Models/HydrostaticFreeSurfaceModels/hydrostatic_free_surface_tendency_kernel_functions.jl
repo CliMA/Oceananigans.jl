@@ -49,7 +49,7 @@ implicitly during time-stepping.
              - ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
              - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, diffusivities, clock, model_fields)
-             + forcing(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
+             + forcing(i, j, k, grid, clock, model_fields))
 end
 
 """
@@ -120,7 +120,9 @@ where `c = C[tracer_index]`.
                                                           forcing) where tracer_index
 
     @inbounds c = tracers[tracer_index]
-    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
+    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), 
+                         auxiliary_fields,
+                         biogeochemical_auxiliary_fields(biogeochemistry))
 
     biogeochemical_velocities = biogeochemical_drift_velocity(biogeochemistry, val_tracer_name)
     closure_velocities = closure_turbulent_velocity(closure, diffusivities, val_tracer_name)
