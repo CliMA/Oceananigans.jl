@@ -18,6 +18,8 @@ using Oceananigans.Operators
 using Oceananigans.Grids: AbstractGrid, node
 using Oceananigans.Utils: prettysummary
 
+using KernelAbstractions: @kernel, @index
+
 import Adapt: adapt_structure
 
 #####
@@ -148,7 +150,10 @@ const c = Center()
 @inline z_curl_Uˢ_cross_U(i, j, k, grid, sw::USDnoP, U, time) = (- ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * sw.∂z_uˢ(znode(k, grid, f), time)
                                                                  - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * sw.∂z_vˢ(znode(k, grid, f), time))
 
-struct StokesDrift{P, VX, WX, UY, WY, UZ, VZ, UT, VT, WT}
+struct StokesDrift{P, US, VS, WS, VX, WX, UY, WY, UZ, VZ, UT, VT, WT}
+    uˢ    :: US
+    vˢ    :: VS
+    wˢ    :: WS
     ∂x_vˢ :: VX
     ∂x_wˢ :: WX
     ∂y_uˢ :: UY
@@ -161,7 +166,10 @@ struct StokesDrift{P, VX, WX, UY, WY, UZ, VZ, UT, VT, WT}
     parameters :: P
 end
 
-adapt_structure(to, sd::StokesDrift) = StokesDrift(adapt(to, sd.∂x_vˢ),
+adapt_structure(to, sd::StokesDrift) = StokesDrift(adapt(to, sd.uˢ),
+                                                   adapt(to, sd.vˢ),
+                                                   adapt(to, sd.wˢ),
+                                                   adapt(to, sd.∂x_vˢ),
                                                    adapt(to, sd.∂x_wˢ),
                                                    adapt(to, sd.∂y_uˢ),
                                                    adapt(to, sd.∂y_wˢ),
@@ -283,7 +291,10 @@ StokesDrift{Nothing}:
 └── ∂t_wˢ: ∂t_wˢ
 ```
 """
-function StokesDrift(; ∂x_vˢ = zerofunction,
+function StokesDrift(; uˢ = zerofunction,
+                       vˢ = zerofunction,
+                       wˢ = zerofunction,
+                       ∂x_vˢ = zerofunction,
                        ∂x_wˢ = zerofunction,
                        ∂y_uˢ = zerofunction,
                        ∂y_wˢ = zerofunction,
@@ -294,7 +305,7 @@ function StokesDrift(; ∂x_vˢ = zerofunction,
                        ∂t_wˢ = zerofunction,
                        parameters = nothing)
 
-    return StokesDrift(∂x_vˢ, ∂x_wˢ, ∂y_uˢ, ∂y_wˢ, ∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, ∂t_wˢ, parameters)
+    return StokesDrift(uˢ, vˢ, wˢ, ∂x_vˢ, ∂x_wˢ, ∂y_uˢ, ∂y_wˢ, ∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, ∂t_wˢ, parameters)
 end
 
 const SD = StokesDrift
@@ -324,7 +335,6 @@ const SDnoP = StokesDrift{<:Nothing}
 
     return wᶠᶜᶜ * (∂z_uˢ - ∂x_wˢ) - vᶠᶜᶜ * (∂x_vˢ - ∂y_uˢ)
 end
-
 
 @inline function y_curl_Uˢ_cross_U(i, j, k, grid, sw::SD, U, time)
     wᶜᶠᶜ = ℑyzᵃᶠᶜ(i, j, k, grid, U.w)
