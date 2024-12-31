@@ -46,7 +46,7 @@ b = FieldTimeSeries(data_directory  * "baroclinic_double_gyre_$casevar.jld2", "b
 
 zs = u.grid.zᵃᵃᶜ[1:15]
 
-levels = setdiff(1:15, levels)
+levels = setdiff(1:15, [3, collect(9:14)...])
 timekeys = 1126:length(ηkeys)
 
 Ns = reverse([2^i for i in 1:1])
