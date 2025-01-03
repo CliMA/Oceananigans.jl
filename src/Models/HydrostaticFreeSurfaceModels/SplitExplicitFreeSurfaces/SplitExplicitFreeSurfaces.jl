@@ -22,9 +22,8 @@ using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: initialize_free_surface!,
-                                                         setup_free_surface!,
                                                          materialize_free_surface,
-                                                         ab2_step_free_surface!,
+                                                         step_free_surface!,
                                                          compute_free_surface_tendency!,
                                                          explicit_barotropic_pressure_x_gradient,
                                                          explicit_barotropic_pressure_y_gradient

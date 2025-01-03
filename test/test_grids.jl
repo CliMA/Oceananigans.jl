@@ -4,8 +4,9 @@ include("data_dependencies.jl")
 using Oceananigans.Grids: total_extent,
                           xspacings, yspacings, zspacings,
                           xnode, ynode, znode, λnode, φnode,
-                          λspacing, φspacing, λspacings, φspacings
+                          λspacings, φspacings
 
+using Oceananigans.Operators: Δx, Δy, Δz, Δλ, Δφ, Ax, Ay, Az, volume
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 
 #####
@@ -216,9 +217,9 @@ function test_regular_rectilinear_xnode_ynode_znode_and_spacings(arch, FT)
         @test all(yspacings(grid, Face()) .== yspacings(grid, Center(), Face(), Center()))
         @test all(zspacings(grid, Face()) .== zspacings(grid, Center(), Center(), Face()))
 
-        @test xspacing(1, 1, 1, grid, Face(), Center(), Center()) ≈ FT(π/N)
-        @test yspacing(1, 1, 1, grid, Center(), Face(), Center()) ≈ FT(π/N)
-        @test zspacing(1, 1, 1, grid, Center(), Center(), Face()) ≈ FT(π/N)
+        @test Δx(1, 1, 1, grid, Face(), Center(), Center()) ≈ FT(π/N)
+        @test Δy(1, 1, 1, grid, Center(), Face(), Center()) ≈ FT(π/N)
+        @test Δz(1, 1, 1, grid, Center(), Center(), Face()) ≈ FT(π/N)
     end
 
     return nothing
@@ -414,7 +415,7 @@ function test_rectilinear_grid_correct_spacings(FT, N)
     @test all(isapprox.(zspacings(grid, Face()), reshape(grid.Δzᵃᵃᶠ[1:N+1], 1, 1, N+1)))
     @test all(isapprox.(zspacings(grid, Center()), reshape(grid.Δzᵃᵃᶜ[1:N], 1, 1, N)))
 
-    @test zspacing(1, 1, 2, grid, Center(), Center(), Face()) == grid.Δzᵃᵃᶠ[2]
+    @test Δz(1, 1, 2, grid, Center(), Center(), Face()) == grid.Δzᵃᵃᶠ[2]
 
     @test minimum_zspacing(grid, Center(), Center(), Center()) ≈ minimum(grid.Δzᵃᵃᶜ[1:grid.Nz])
 
@@ -560,20 +561,20 @@ function test_basic_lat_lon_general_grid(FT)
     @test all(zspacings(grid_reg, Face(),   Center(), Center()) .== zspacings(grid_reg, Center()))
     @test all(zspacings(grid_reg, Face(),   Center(), Face()  ) .== zspacings(grid_reg, Face()))
 
-    @test xspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == grid_reg.Δxᶜᶜᵃ[2]
-    @test xspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δxᶜᶠᵃ[2]
-    @test yspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δyᶜᶠᵃ
-    @test yspacing(1, 2, 3, grid_reg, Face(),   Center(), Center()) == grid_reg.Δyᶠᶜᵃ
-    @test zspacing(1, 2, 3, grid_reg, Center(), Center(), Face()  ) == grid_reg.Δzᵃᵃᶠ
-    @test zspacing(1, 2, 3, grid_reg, Center(), Center(), Center()) == grid_reg.Δzᵃᵃᶜ
+    @test Operators.Δx(1, 2, 3, grid_reg, Center(), Center(), Center()) == grid_reg.Δxᶜᶜᵃ[2]
+    @test Operators.Δx(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δxᶜᶠᵃ[2]
+    @test Operators.Δy(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δyᶜᶠᵃ
+    @test Operators.Δy(1, 2, 3, grid_reg, Face(),   Center(), Center()) == grid_reg.Δyᶠᶜᵃ
+    @test Operators.Δz(1, 2, 3, grid_reg, Center(), Center(), Face()  ) == grid_reg.Δzᵃᵃᶠ
+    @test Operators.Δz(1, 2, 3, grid_reg, Center(), Center(), Center()) == grid_reg.Δzᵃᵃᶜ
 
     @test all(λspacings(grid_reg, Center()) .== grid_reg.Δλᶜᵃᵃ)
     @test all(λspacings(grid_reg, Face()) .== grid_reg.Δλᶠᵃᵃ)
     @test all(φspacings(grid_reg, Center()) .== grid_reg.Δφᵃᶜᵃ)
     @test all(φspacings(grid_reg, Face()) .== grid_reg.Δφᵃᶠᵃ)
 
-    @test λspacing(1, 2, 3, grid_reg, Face(),   Center(), Face())   == grid_reg.Δλᶠᵃᵃ
-    @test φspacing(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δφᵃᶠᵃ
+    @test Operators.Δλ(1, 2, 3, grid_reg, Face(),   Center(), Face())   == grid_reg.Δλᶠᵃᵃ
+    @test Operators.Δφ(1, 2, 3, grid_reg, Center(), Face(),   Center()) == grid_reg.Δφᵃᶠᵃ
 
     Δλ = grid_reg.Δλᶠᵃᵃ
     λₛ = (-grid_reg.Lx/2):Δλ:(grid_reg.Lx/2)
@@ -659,6 +660,11 @@ function test_lat_lon_xyzλφ_node_nodes(FT, arch)
     @test minimum_xspacing(grid) / grid.radius ≈ FT(π/6) * cosd(45)
     @test minimum_yspacing(grid) / grid.radius ≈ FT(π/6)
     @test minimum_zspacing(grid) ≈ 5
+
+    grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> y < 20 && y > -20 ? -50 : -0))
+
+    @test minimum_xspacing(grid, Face(), Face(), Face()) / grid.radius ≈ FT(π/6) * cosd(30)
+    @test minimum_xspacing(grid) / grid.radius ≈ FT(π/6) * cosd(15)
 
     return nothing
 end

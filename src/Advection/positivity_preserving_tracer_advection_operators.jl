@@ -7,6 +7,8 @@ const ε₂ = 1e-20
 # Here in the future we can easily add UpwindBiased
 const BoundPreservingScheme = PositiveWENO
 
+@inline div_Uc(i, j, k, grid, advection::BoundPreservingScheme, U, ::ZeroField) = zero(grid)
+
 # Is this immersed-boundary safe without having to extend it in ImmersedBoundaries.jl? I think so... (velocity on immmersed boundaries is masked to 0)
 @inline function div_Uc(i, j, k, grid, advection::BoundPreservingScheme, U, c)
 

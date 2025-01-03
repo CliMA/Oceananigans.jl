@@ -92,7 +92,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 for T′ in (Tx, Txy)
                     @test T′.operand.operand === T
                 end
-                
+
                 for w′ in (wx, wxy)
                     @test w′.operand.operand === w
                 end
@@ -255,7 +255,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 push!(results, all(interior(C) .== 1))
             end
 
-            @test mean(results) == 1.0              
+            @test mean(results) == 1.0
         end
 
         @testset "Allocating reductions [$arch_str]" begin
@@ -331,7 +331,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
         @testset "Immersed Fields reduction [$(typeof(arch))]" begin
             @info "  Testing reductions of immersed Fields [$(typeof(arch))]"
             underlying_grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(1, 1, 1))
-            
+
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> y < 0.5 ? - 0.6 : 0))
             c = Field((Center, Center, Nothing), grid)
 
@@ -363,6 +363,23 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
             compute!(bottom_half_average_field)
             bottom_half_average_array = Array(interior(bottom_half_average_field))
             @test bottom_half_average_array[1, 1, 1] == bottom_half_average_manual
+
+            # See: https://github.com/CliMA/Oceananigans.jl/issues/3948
+            underlying_grid = RectilinearGrid(
+                topology=(Periodic, Periodic, Periodic),
+                size=(3, 3, 3),
+                x=(0, 1), y=(0, 1), z=(0, 1)
+            )
+
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> x + y))
+
+            c = CenterField(grid)
+            set!(c, (x, y, z) -> x + y + z)
+
+            max_c² = Field(Reduction(maximum, c^2, dims=3))
+            ∫max_c² = Integral(max_c², dims=(1, 2))
+            compute!(∫max_c²)
+            @test ∫max_c² isa Reduction
         end
     end
 end

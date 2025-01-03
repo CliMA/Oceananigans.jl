@@ -174,7 +174,7 @@ mountain_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(mountain))
 
 # output
 20×20×20 ImmersedBoundaryGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo:
-├── immersed_boundary: GridFittedBottom(mean(z)=6.28318, min(z)=1.58939e-8, max(z)=93.9413)
+├── immersed_boundary: GridFittedBottom(mean(z)=4.5, min(z)=0.0, max(z)=100.0)
 ├── underlying_grid: 20×20×20 RectilinearGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── Bounded  x ∈ [-5000.0, 5000.0] regularly spaced with Δx=500.0
 ├── Bounded  y ∈ [-5000.0, 5000.0] regularly spaced with Δy=500.0

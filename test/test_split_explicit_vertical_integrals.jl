@@ -38,7 +38,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             η̅ .= U̅ .= V̅ .= 1.0
 
             # now set equal to zero
-            initialize_free_surface_state!(state, sefs.η, barotropic_velocities, sefs.timestepper)
+            initialize_free_surface_state!(sefs, sefs.timestepper, sefs.timestepper, Val(1))
 
             # don't forget the halo points
             fill_halo_regions!(η̅)

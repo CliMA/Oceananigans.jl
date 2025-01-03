@@ -186,6 +186,143 @@ function test_jld2_time_averaging_of_horizontal_averages(model)
     return nothing
 end
 
+function test_jld2_time_averaging(arch)
+    # Test for both "nice" floating point number and one that is more susceptible
+    # to rounding errors
+    for Δt in (1/64, 0.01)
+        # Results should be very close (rtol < 1e-5) for stride = 1.
+        # stride > 2 is currently not robust and can give inconsistent
+        # results due to floating number errors that can result in vanishingly 
+        # small timesteps, which essentially decouples the clock time from
+        # the iteration number.
+        # Can add stride > 1 cases to the following line to test them.
+        for (stride, rtol) in zip((1), (1.e-5))
+            @info "  Testing time-averaging of NetCDF outputs [$(typeof(arch))] with stride of $(stride) and relative tolerance of $(rtol)"
+            topo = (Periodic, Periodic, Periodic)
+            domain = (x=(0, 1), y=(0, 1), z=(0, 1))
+            grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4); domain...)
+
+            λ1(x, y, z) = x + (1 - y)^2 + tanh(z)
+            λ2(x, y, z) = x + (1 - y)^2 + tanh(4z)
+
+            Fc1(x, y, z, t, c1) = - λ1(x, y, z) * c1
+            Fc2(x, y, z, t, c2) = - λ2(x, y, z) * c2
+
+            c1_forcing = Forcing(Fc1, field_dependencies=:c1)
+            c2_forcing = Forcing(Fc2, field_dependencies=:c2)
+
+            model = NonhydrostaticModel(; grid,
+                                        tracers = (:c1, :c2),
+                                        forcing = (c1=c1_forcing, c2=c2_forcing))
+
+            set!(model, c1=1, c2=1)
+
+            Δt = 0.01 # Floating point number chosen conservatively to flag rounding errors
+            simulation = Simulation(model, Δt=Δt, stop_time=50Δt)
+
+            ∫c1_dxdy = Field(Average(model.tracers.c1, dims=(1, 2)))
+            ∫c2_dxdy = Field(Average(model.tracers.c2, dims=(1, 2)))
+
+            jld2_outputs = Dict("c1" => ∫c1_dxdy, "c2" => ∫c2_dxdy)
+            horizontal_average_jld2_filepath = "decay_averaged_field_test.jld2"
+
+            simulation.output_writers[:horizontal_average] = JLD2OutputWriter(
+                                model,
+                                jld2_outputs,
+                                schedule = TimeInterval(10Δt),
+                                dir = ".",
+                                with_halos = false,
+                                filename = horizontal_average_jld2_filepath,
+                                overwrite_existing = true)
+
+            multiple_time_average_jld2_filepath = "decay_windowed_time_average_test.jld2"
+            single_time_average_jld2_filepath = "single_decay_windowed_time_average_test.jld2"
+            window = 6Δt
+
+            single_jld2_output = Dict("c1" => ∫c1_dxdy)
+
+            simulation.output_writers[:single_output_time_average] = JLD2OutputWriter(
+                                model,
+                                single_jld2_output,
+                                schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
+                                dir = ".",
+                                with_halos = false,
+                                filename = single_time_average_jld2_filepath,
+                                overwrite_existing = true)
+
+            simulation.output_writers[:multiple_output_time_average] = JLD2OutputWriter(
+                                model,
+                                jld2_outputs,
+                                schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
+                                dir = ".",
+                                with_halos = false,
+                                filename = multiple_time_average_jld2_filepath,
+                                overwrite_existing = true)
+
+            run!(simulation)
+
+            ##### For each λ, horizontal average should evaluate to
+            #####
+            #####     c̄(z, t) = ∫₀¹ ∫₀¹ exp{- λ(x, y, z) * t} dx dy
+            #####             = 1 / (Nx*Ny) * Σᵢ₌₁ᴺˣ Σⱼ₌₁ᴺʸ exp{- λ(i, j, k) * t}
+            #####
+            ##### which we can compute analytically.
+
+            c1 = FieldTimeSeries(horizontal_average_jld2_filepath, "c1")
+            c2 = FieldTimeSeries(horizontal_average_jld2_filepath, "c2")
+
+            Nx, Ny, Nz = size(c1.grid)
+            xs, ys, zs = c1.grid.xᶜᵃᵃ[1:Nx], c1.grid.yᵃᶜᵃ[1:Ny], c1.grid.zᵃᵃᶜ[1:Nz]
+
+            c̄1(z, t) = 1 / (Nx * Ny) * sum(exp(-λ1(x, y, z) * t) for x in xs for y in ys)
+            c̄2(z, t) = 1 / (Nx * Ny) * sum(exp(-λ2(x, y, z) * t) for x in xs for y in ys)
+
+            for (n, t) in enumerate(c1.times)
+                @test all(isapprox.(c1[1, 1, :, n], c̄1.(zs, t), rtol=rtol))
+                @test all(isapprox.(c2[1, 1, :, n], c̄2.(zs, t), rtol=rtol))
+            end
+
+            # Compute time averages...
+            c̄1(ts) = 1/length(ts) * sum(c̄1.(zs, t) for t in ts)
+            c̄2(ts) = 1/length(ts) * sum(c̄2.(zs, t) for t in ts)
+
+            #####
+            ##### Test strided windowed time average against analytic solution
+            ##### for *single* JLD2 output
+            #####
+            c1_single = FieldTimeSeries(single_time_average_jld2_filepath, "c1")
+
+            window_size = Int(window/Δt)
+
+            @info "    Testing time-averaging of a single JLD2 output [$(typeof(arch))]..."
+
+            for (n, t) in enumerate(c1_single.times[2:end])
+                averaging_times = [t - n*Δt for n in 0:stride:window_size-1 if t - n*Δt >= 0]
+                @test all(isapprox.(c1_single[1, 1, :, n+1], c̄1(averaging_times), rtol=rtol, atol=rtol))
+            end
+
+            #####
+            ##### Test strided windowed time average against analytic solution
+            ##### for *multiple* JLD2 outputs
+            #####
+
+            c2_multiple = FieldTimeSeries(multiple_time_average_jld2_filepath, "c2")
+
+            @info "    Testing time-averaging of multiple JLD2 outputs [$(typeof(arch))]..."
+
+            for (n, t) in enumerate(c2_multiple.times[2:end])
+                averaging_times = [t - n*Δt for n in 0:stride:window_size-1 if t - n*Δt >= 0]
+                @test all(isapprox.(c2_multiple[1, 1, :, n+1], c̄2(averaging_times), rtol=rtol))
+            end
+
+            rm(horizontal_average_jld2_filepath)
+            rm(single_time_average_jld2_filepath)
+            rm(multiple_time_average_jld2_filepath)
+        end
+    end
+    return nothing
+end
+
 for arch in archs
     # Some tests can reuse this same grid and model.
     topo =(Periodic, Periodic, Bounded)
@@ -327,5 +464,10 @@ for arch in archs
         #####
 
         test_jld2_time_averaging_of_horizontal_averages(model)
+
+        #####
+        ##### Time-averaging (same test as in NetCDFOutputWriter)
+        #####
+        test_jld2_time_averaging(arch)
     end
 end
