@@ -357,3 +357,281 @@ Base.show(io::IO, closure::ISSD) =
               "(κ_symmetric=$(closure.κ_symmetric), κ_skew=$(closure.κ_skew), " *
               "(isopycnal_tensor=$(closure.isopycnal_tensor), slope_limiter=$(closure.slope_limiter))")
               
+
+function compute_diffusivities!(diffusivities, closure::FlavorOfTISSD{TD}, model; parameters = :xyz) where TD
+
+    arch = model.architecture
+    grid = model.grid
+    clock = model.clock
+    tracers = model.tracers
+    buoyancy = model.buoyancy
+
+    if TD() isa VerticallyImplicitTimeDiscretization
+        launch!(arch, grid, parameters,
+                triad_compute_tapered_R₃₃!,
+                diffusivities, grid, closure, clock, buoyancy, tracers)
+    end
+
+    return nothing
+end
+
+@kernel function triad_compute_tapered_R₃₃!(K, grid, closure, clock, b, C) 
+    i, j, k, = @index(Global, NTuple)
+    closure = getclosure(i, j, closure)
+    κ  = closure.κ_symmetric
+    sl = closure.slope_limiter
+    @inbounds K.ϵκR₃₃[i, j, k] = ϵκR₃₃(i, j, k, grid, κ, clock, sl, b, C) 
+end
+
+#####
+##### _triads_
+#####
+##### There are two horizontal slopes: Sx and Sy
+#####
+##### Both slopes are "located" at tracer cell centers.
+#####
+##### The slopes are computed by a directional derivative, which lends an
+##### "orientation" to the slope. For example, the x-slope `Sx` computed
+##### with a "+" directional derivative in x, and a "+" directional derivative
+##### in z, is
+#####
+##### Sx⁺⁺ᵢₖ = Δz / Δx * (bᵢ₊₁ - bᵢ) / (bₖ₊₁ - bₖ)
+#####
+##### The superscript codes ⁺⁺, ⁺⁻, ⁻⁺, ⁻⁻, denote the direction of the derivative
+##### in (h, z).
+#####
+##### from https://github.com/CliMA/Oceananigans.jl/blob/glw/homogeneous-bounded/src/TurbulenceClosures/turbulence_closure_implementations/isopycnal_potential_vorticity_diffusivity.jl
+#####
+
+@inline function triad_Sx(ix, iz, j, kx, kz, grid, buoyancy, tracers)
+    bx = ∂x_b(ix, j, kx, grid, buoyancy, tracers)
+    bz = ∂z_b(iz, j, kz, grid, buoyancy, tracers)
+    bz = max(bz, zero(grid))
+    return ifelse(bz == 0, zero(grid), - bx / bz)
+end
+
+@inline function triad_Sy(i, jy, jz, ky, kz, grid, buoyancy, tracers)
+    by = ∂y_b(i, jy, ky, grid, buoyancy, tracers)
+    bz = ∂z_b(i, jz, kz, grid, buoyancy, tracers)
+    bz = max(bz, zero(grid))
+    return ifelse(bz == 0, zero(grid), - by / bz)
+end
+
+@inline Sx⁺⁺(i, j, k, grid, buoyancy, tracers) = triad_Sx(i+1, i, j, k, k+1, grid, buoyancy, tracers)
+@inline Sx⁺⁻(i, j, k, grid, buoyancy, tracers) = triad_Sx(i+1, i, j, k, k,   grid, buoyancy, tracers)
+@inline Sx⁻⁺(i, j, k, grid, buoyancy, tracers) = triad_Sx(i,   i, j, k, k+1, grid, buoyancy, tracers)
+@inline Sx⁻⁻(i, j, k, grid, buoyancy, tracers) = triad_Sx(i,   i, j, k, k,   grid, buoyancy, tracers)
+
+@inline Sy⁺⁺(i, j, k, grid, buoyancy, tracers) = triad_Sy(i, j+1, j, k, k+1, grid, buoyancy, tracers)
+@inline Sy⁺⁻(i, j, k, grid, buoyancy, tracers) = triad_Sy(i, j+1, j, k, k,   grid, buoyancy, tracers)
+@inline Sy⁻⁺(i, j, k, grid, buoyancy, tracers) = triad_Sy(i, j,   j, k, k+1, grid, buoyancy, tracers)
+@inline Sy⁻⁻(i, j, k, grid, buoyancy, tracers) = triad_Sy(i, j,   j, k, k,   grid, buoyancy, tracers)
+
+# We remove triads that live on a boundary (immersed or top / bottom / north / south / east / west)
+@inline triad_mask_x(ix, iz, j, kx, kz, grid) = 
+   !peripheral_node(ix, j, kx, grid, Face(), Center(), Center()) & !peripheral_node(iz, j, kz, grid, Center(), Center(), Face()) 
+
+@inline triad_mask_y(i, jy, jz, ky, kz, grid) = 
+   !peripheral_node(i, jy, ky, grid, Center(), Face(), Center()) & !peripheral_node(i, jz, kz, grid, Center(), Center(), Face())
+
+@inline ϵκx⁺⁺(i, j, k, grid, loc, κ, clock, sl, b, C) = triad_mask_x(i+1, i, j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
+@inline ϵκx⁺⁻(i, j, k, grid, loc, κ, clock, sl, b, C) = triad_mask_x(i+1, i, j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
+@inline ϵκx⁻⁺(i, j, k, grid, loc, κ, clock, sl, b, C) = triad_mask_x(i,   i, j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
+@inline ϵκx⁻⁻(i, j, k, grid, loc, κ, clock, sl, b, C) = triad_mask_x(i,   i, j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
+
+@inline ϵκy⁺⁺(i, j, k, grid, loc, κ, clock, sl, b, C) = triad_mask_y(i, j+1, j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
+@inline ϵκy⁺⁻(i, j, k, grid, loc, κ, clock, sl, b, C) = triad_mask_y(i, j+1, j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
+@inline ϵκy⁻⁺(i, j, k, grid, loc, κ, clock, sl, b, C) = triad_mask_y(i, j,   j, k, k+1, grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
+@inline ϵκy⁻⁻(i, j, k, grid, loc, κ, clock, sl, b, C) = triad_mask_y(i, j,   j, k, k,   grid) * κᶜᶜᶜ(i, j, k, grid, loc, κ, clock) * tapering_factorᶜᶜᶜ(i, j, k, grid, sl, b, C)
+
+# Triad diagram key
+# =================
+#
+#   * ┗ : Sx⁺⁺ / Sy⁺⁺
+#   * ┛ : Sx⁻⁺ / Sy⁻⁺
+#   * ┓ : Sx⁻⁻ / Sy⁻⁻
+#   * ┏ : Sx⁺⁻ / Sy⁺⁻
+#
+
+# defined at fcc
+@inline function diffusive_flux_x(i, j, k, grid, closure::FlavorOfTISSD, K, ::Val{id},
+                                  c, clock, C, b) where id
+
+    closure = getclosure(i, j, closure)
+    κ  = closure.κ_symmetric
+    sl = closure.slope_limiter
+    loc = (Center(), Center(), Center())
+
+    ϵκ⁺⁺ = ϵκx⁺⁺(i-1, j, k, grid, loc, κ, clock, sl, b, C)
+    ϵκ⁺⁻ = ϵκx⁺⁻(i-1, j, k, grid, loc, κ, clock, sl, b, C)
+    ϵκ⁻⁺ = ϵκx⁻⁺(i,   j, k, grid, loc, κ, clock, sl, b, C)
+    ϵκ⁻⁻ = ϵκx⁻⁻(i,   j, k, grid, loc, κ, clock, sl, b, C)
+
+    # Small slope approximation
+    ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
+
+    #       i-1     i 
+    # k+1  -------------
+    #           |      |
+    #       ┏┗  ∘  ┛┓  | k
+    #           |      |
+    # k   ------|------|    
+
+    Fx = (ϵκ⁺⁺ * (∂x_c + Sx⁺⁺(i-1, j, k, grid, b, C) * ∂zᶜᶜᶠ(i-1, j, k+1, grid, c)) +
+          ϵκ⁺⁻ * (∂x_c + Sx⁺⁻(i-1, j, k, grid, b, C) * ∂zᶜᶜᶠ(i-1, j, k,   grid, c)) +
+          ϵκ⁻⁺ * (∂x_c + Sx⁻⁺(i,   j, k, grid, b, C) * ∂zᶜᶜᶠ(i,   j, k+1, grid, c)) +
+          ϵκ⁻⁻ * (∂x_c + Sx⁻⁻(i,   j, k, grid, b, C) * ∂zᶜᶜᶠ(i,   j, k,   grid, c))) / 4
+    
+    return - Fx
+end
+
+# defined at cfc
+@inline function diffusive_flux_y(i, j, k, grid, closure::FlavorOfTISSD, K, ::Val{id},
+                                  c, clock, C, b) where id
+
+    closure = getclosure(i, j, closure)
+    κ  = closure.κ_symmetric
+    sl = closure.slope_limiter
+    loc = (Center(), Center(), Center())
+
+    ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
+
+    ϵκ⁺⁺ = ϵκy⁺⁺(i, j-1, k, grid, loc, κ, clock, sl, b, C)
+    ϵκ⁺⁻ = ϵκy⁺⁻(i, j-1, k, grid, loc, κ, clock, sl, b, C)
+    ϵκ⁻⁺ = ϵκy⁻⁺(i, j,   k, grid, loc, κ, clock, sl, b, C)
+    ϵκ⁻⁻ = ϵκy⁻⁻(i, j,   k, grid, loc, κ, clock, sl, b, C)
+    
+    Fy = (ϵκ⁺⁺ * (∂y_c + Sy⁺⁺(i, j-1, k, grid, b, C) * ∂zᶜᶜᶠ(i, j-1, k+1, grid, c)) +
+          ϵκ⁺⁻ * (∂y_c + Sy⁺⁻(i, j-1, k, grid, b, C) * ∂zᶜᶜᶠ(i, j-1, k,   grid, c)) +
+          ϵκ⁻⁺ * (∂y_c + Sy⁻⁺(i, j,   k, grid, b, C) * ∂zᶜᶜᶠ(i, j,   k+1, grid, c)) +
+          ϵκ⁻⁻ * (∂y_c + Sy⁻⁻(i, j,   k, grid, b, C) * ∂zᶜᶜᶠ(i, j,   k,   grid, c))) / 4
+
+    return - Fy
+end
+
+# defined at ccf
+@inline function diffusive_flux_z(i, j, k, grid, closure::FlavorOfTISSD{TD}, K, ::Val{id},
+                                  c, clock, C, b) where {TD, id}
+
+    closure = getclosure(i, j, closure)
+    κ  = closure.κ_symmetric
+    sl = closure.slope_limiter
+
+    loc = (Center(), Center(), Center())
+
+    ϵκˣ⁻⁻ = ϵκx⁻⁻(i, j, k,   grid, loc, κ, clock, sl, b, C)
+    ϵκˣ⁺⁻ = ϵκx⁺⁻(i, j, k,   grid, loc, κ, clock, sl, b, C)
+    ϵκˣ⁻⁺ = ϵκx⁻⁺(i, j, k-1, grid, loc, κ, clock, sl, b, C)
+    ϵκˣ⁺⁺ = ϵκx⁺⁺(i, j, k-1, grid, loc, κ, clock, sl, b, C)
+
+    ϵκʸ⁻⁻ = ϵκy⁻⁻(i, j, k,   grid, loc, κ, clock, sl, b, C)
+    ϵκʸ⁺⁻ = ϵκy⁺⁻(i, j, k,   grid, loc, κ, clock, sl, b, C)
+    ϵκʸ⁻⁺ = ϵκy⁻⁺(i, j, k-1, grid, loc, κ, clock, sl, b, C)
+    ϵκʸ⁺⁺ = ϵκy⁺⁺(i, j, k-1, grid, loc, κ, clock, sl, b, C)
+
+    # Triad diagram:
+    #
+    #   i-1    i    i+1
+    # -------------------
+    # |     |     |     |
+    # |     | ┓ ┏ |  k  |
+    # |     |     |     |
+    # -  k  -- ∘ --     -
+    # |     |     |     |
+    # |     | ┛ ┗ | k-1 |
+    # |     |     |     |
+    # --------------------
+    
+    κR₃₁_∂x_c = (ϵκˣ⁻⁻ * Sx⁻⁻(i, j, k,   grid, b, C) * ∂xᶠᶜᶜ(i,   j, k,   grid, c) +
+                 ϵκˣ⁺⁻ * Sx⁺⁻(i, j, k,   grid, b, C) * ∂xᶠᶜᶜ(i+1, j, k,   grid, c) +
+                 ϵκˣ⁻⁺ * Sx⁻⁺(i, j, k-1, grid, b, C) * ∂xᶠᶜᶜ(i,   j, k-1, grid, c) +
+                 ϵκˣ⁺⁺ * Sx⁺⁺(i, j, k-1, grid, b, C) * ∂xᶠᶜᶜ(i+1, j, k-1, grid, c)) / 4
+
+    κR₃₂_∂y_c = (ϵκʸ⁻⁻ * Sy⁻⁻(i, j, k,   grid, b, C) * ∂yᶜᶠᶜ(i, j,   k,   grid, c) +
+                 ϵκʸ⁺⁻ * Sy⁺⁻(i, j, k,   grid, b, C) * ∂yᶜᶠᶜ(i, j+1, k,   grid, c) +
+                 ϵκʸ⁻⁺ * Sy⁻⁺(i, j, k-1, grid, b, C) * ∂yᶜᶠᶜ(i, j,   k-1, grid, c) +
+                 ϵκʸ⁺⁺ * Sy⁺⁺(i, j, k-1, grid, b, C) * ∂yᶜᶠᶜ(i, j+1, k-1, grid, c)) / 4
+
+    κϵ_R₃₃_∂z_c = explicit_R₃₃_∂z_c(i, j, k, grid, TD(), c, closure, b, C)
+
+    return - κR₃₁_∂x_c - κR₃₂_∂y_c - κϵ_R₃₃_∂z_c
+end
+
+@inline function ϵκR₃₃(i, j, k, grid, κ, clock, sl, b, C) 
+    loc = (Center(), Center(), Center())
+
+    ϵκˣ⁻⁻ = ϵκx⁻⁻(i, j, k,   grid, loc, κ, clock, sl, b, C)
+    ϵκˣ⁺⁻ = ϵκx⁺⁻(i, j, k,   grid, loc, κ, clock, sl, b, C)
+    ϵκˣ⁻⁺ = ϵκx⁻⁺(i, j, k-1, grid, loc, κ, clock, sl, b, C)
+    ϵκˣ⁺⁺ = ϵκx⁺⁺(i, j, k-1, grid, loc, κ, clock, sl, b, C)
+
+    ϵκʸ⁻⁻ = ϵκy⁻⁻(i, j, k,   grid, loc, κ, clock, sl, b, C)
+    ϵκʸ⁺⁻ = ϵκy⁺⁻(i, j, k,   grid, loc, κ, clock, sl, b, C)
+    ϵκʸ⁻⁺ = ϵκy⁻⁺(i, j, k-1, grid, loc, κ, clock, sl, b, C)
+    ϵκʸ⁺⁺ = ϵκy⁺⁺(i, j, k-1, grid, loc, κ, clock, sl, b, C)
+
+    ϵκR₃₃ = (ϵκˣ⁻⁻ * Sx⁻⁻(i, j, k,   grid, b, C)^2 + ϵκʸ⁻⁻ * Sy⁻⁻(i, j, k,   grid, b, C)^2 +
+             ϵκˣ⁺⁻ * Sx⁺⁻(i, j, k,   grid, b, C)^2 + ϵκʸ⁺⁻ * Sy⁺⁻(i, j, k,   grid, b, C)^2 +
+             ϵκˣ⁻⁺ * Sx⁻⁺(i, j, k-1, grid, b, C)^2 + ϵκʸ⁻⁺ * Sy⁻⁺(i, j, k-1, grid, b, C)^2 +
+             ϵκˣ⁺⁺ * Sx⁺⁺(i, j, k-1, grid, b, C)^2 + ϵκʸ⁺⁺ * Sy⁺⁺(i, j, k-1, grid, b, C)^2) / 4 
+
+    return ϵκR₃₃
+end
+
+@inline function explicit_R₃₃_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, c, closure, b, C) 
+    κ  = closure.κ_symmetric
+    sl = closure.slope_limiter
+    return ϵκR₃₃(i, j, k, grid, κ, clock, sl, b, C) * ∂zᶜᶜᶠ(i, j, k, grid, c)
+end
+
+@inline explicit_R₃₃_∂z_c(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, c, closure, b, C) = zero(grid)
+
+@inline κzᶜᶜᶠ(i, j, k, grid, closure::FlavorOfTISSD, K, ::Val{id}, clock) where id = @inbounds K.ϵκR₃₃[i, j, k]
+
+@inline viscous_flux_ux(i, j, k, grid, closure::Union{TISSD, TISSDVector}, args...) = zero(grid)
+@inline viscous_flux_uy(i, j, k, grid, closure::Union{TISSD, TISSDVector}, args...) = zero(grid)
+@inline viscous_flux_uz(i, j, k, grid, closure::Union{TISSD, TISSDVector}, args...) = zero(grid)
+
+@inline viscous_flux_vx(i, j, k, grid, closure::Union{TISSD, TISSDVector}, args...) = zero(grid)
+@inline viscous_flux_vy(i, j, k, grid, closure::Union{TISSD, TISSDVector}, args...) = zero(grid)
+@inline viscous_flux_vz(i, j, k, grid, closure::Union{TISSD, TISSDVector}, args...) = zero(grid)
+
+@inline viscous_flux_wx(i, j, k, grid, closure::Union{TISSD, TISSDVector}, args...) = zero(grid)
+@inline viscous_flux_wy(i, j, k, grid, closure::Union{TISSD, TISSDVector}, args...) = zero(grid)
+@inline viscous_flux_wz(i, j, k, grid, closure::Union{TISSD, TISSDVector}, args...) = zero(grid)
+
+#####
+##### Show
+#####
+
+Base.summary(closure::TISSD) = string("TriadIsopycnalSkewSymmetricDiffusivity",
+                                     "(κ_skew=",
+                                     prettysummary(closure.κ_skew),
+                                     ", κ_symmetric=", prettysummary(closure.κ_symmetric), ")")
+
+Base.show(io::IO, closure::TISSD) =
+    print(io, "TriadIsopycnalSkewSymmetricDiffusivity: " *
+              "(κ_symmetric=$(closure.κ_symmetric), κ_skew=$(closure.κ_skew), " *
+              "(isopycnal_tensor=$(closure.isopycnal_tensor), slope_limiter=$(closure.slope_limiter))")
+
+@inline not_peripheral_node(args...) = !peripheral_node(args...)
+
+@inline function mask_inactive_points_ℑxzᶜᵃᶜ(i, j, k, grid, f::Function, args...) 
+    neighboring_active_nodes = ℑxzᶜᵃᶜ(i, j, k, grid, not_peripheral_node, Face(), Center(), Face())
+    return ifelse(neighboring_active_nodes == 0, zero(grid),
+                  ℑxzᶜᵃᶜ(i, j, k, grid, f, args...) / neighboring_active_nodes)
+end
+
+@inline function mask_inactive_points_ℑyzᵃᶜᶜ(i, j, k, grid, f::Function, args...) 
+    neighboring_active_nodes = @inbounds ℑyzᵃᶜᶜ(i, j, k, grid, not_peripheral_node, Center(), Face(), Face())
+    return ifelse(neighboring_active_nodes == 0, zero(grid),
+                  ℑyzᵃᶜᶜ(i, j, k, grid, f, args...) / neighboring_active_nodes)
+end
+
+# the `tapering_factor` function as well as the slope function `Sxᶠᶜᶠ` and `Syᶜᶠᶠ`
+# are defined in the `advective_skew_diffusion.jl` file
+@inline function tapering_factorᶜᶜᶜ(i, j, k, grid, slope_limiter, buoyancy, tracers)
+    Sx = mask_inactive_points_ℑxzᶜᵃᶜ(i, j, k, grid, Sxᶠᶜᶠ, buoyancy, tracers)
+    Sy = mask_inactive_points_ℑyzᵃᶜᶜ(i, j, k, grid, Syᶜᶠᶠ, buoyancy, tracers)
+    return tapering_factor(Sx, Sy, slope_limiter)
+end
