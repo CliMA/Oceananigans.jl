@@ -50,14 +50,14 @@ grid = ImmersedBoundaryGrid(grid, GridFittedBottom(y -> y > 0 ? -Lz : -Lz/2))
 slope_limiter = FluxTapering(1000) # Allow very steep slopes
 
 adv_closure = IsopycnalSkewSymmetricDiffusivity(; κ_skew, slope_limiter)
-dif_closure = IsopycnalSkewSymmetricDiffusivity(; κ_skew, slope_limiter, skew_fluxes_formulation = DiffusiveFormulation())
+dif_closure = IsopycnalSkewSymmetricDiffusivity(; κ_skew, slope_limiter, skew_flux_formulation = DiffusiveFormulation())
 
 function run_simulation(closure, grid)
     model = HydrostaticFreeSurfaceModel(; grid, 
                                         coriolis = FPlane(latitude = -45),
                                         buoyancy = BuoyancyTracer(),
                                         tracer_advection = WENO(order=7),
-                                        closure = adv_closure,
+                                        closure,
                                         tracers = (:b, :c))
 
     @info "Built $model."
