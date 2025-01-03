@@ -73,7 +73,7 @@ Abstract supertype for turbulence closures.
 abstract type AbstractTurbulenceClosure{TimeDiscretization, RequiredHalo} end
 
 # Fallbacks
-validate_closure(closure) = closure
+validate_closure(closure, grid) = closure
 closure_summary(closure) = summary(closure)
 with_tracers(tracers, closure::AbstractTurbulenceClosure) = closure
 compute_diffusivities!(K, closure::AbstractTurbulenceClosure, args...; kwargs...) = nothing
