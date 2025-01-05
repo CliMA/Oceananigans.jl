@@ -34,11 +34,13 @@ const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any, <
 #### Adapt and on_architecture
 ####
 
-Adapt.adapt_structure(to, coord::StaticVerticalCoordinate) = 
-   StaticVerticalCoordinate(Adapt.adapt(to, coord.cᵃᵃᶠ),
-                            Adapt.adapt(to, coord.cᵃᵃᶜ),
-                            Adapt.adapt(to, coord.Δᵃᵃᶠ),
-                            Adapt.adapt(to, coord.Δᵃᵃᶜ))
+function Adapt.adapt_structure(to, coord::StaticVerticalCoordinate)
+   a1 = Adapt.adapt(to, coord.cᵃᵃᶠ)
+   a2 = Adapt.adapt(to, coord.cᵃᵃᶜ)
+   a3 = Adapt.adapt(to, coord.Δᵃᵃᶠ)
+   a4 = Adapt.adapt(to, coord.Δᵃᵃᶜ)
+   StaticVerticalCoordinate{Union{typeof(a1), typeof(a2)}, Union{typeof(a3), typeof(a4)}}(a1, a2, a3, a4)
+end
 
 on_architecture(arch, coord::StaticVerticalCoordinate) = 
    StaticVerticalCoordinate(on_architecture(arch, coord.cᵃᵃᶠ),
