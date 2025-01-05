@@ -44,6 +44,7 @@ zs = v.grid.zᵃᵃᶜ[1:15]
 levels = 1:15
 timekeys = 1126:length(ηkeys)
 
+
 @info "saving v"
 averaged_field_v = zeros(256, 15, length(timekeys));
 for i in ProgressBar(eachindex(timekeys))
@@ -73,16 +74,25 @@ hfile["z"] = zs[levels]
 hfile["time"] = collect(timekeys) 
 close(hfile)
 
+dx = v.grid.Δxᶠᶠᵃ[1:256]
 dz = reshape(v.grid.Δzᵃᵃᶜ[1:15], (1, 15, 1))
-dy = reshape(v.grid.Δxᶜᶜᵃ[1:256], (256, 1, 1))
+dy = reshape(dx, (256, 1, 1)) * 0 .+ v.grid.Δyᶜᶠᵃ
 hfile = h5open(analysis_directory * "moc_$casevar.hdf5", "r+")
 hfile["dz"] = dz
 hfile["dy"] = dy
+hfile["dx"] = dx
 
+
+rad_to_deg = π / 180
+dλ = 60 / 128 * rad_to_deg
+Lλ = 60 * rad_to_deg
+# comment vbar uses the mean, technically we need to  sum, we multiply by the factor here 
+vfactor = reshape(cosd.(range(15, 75, length = 256)), (256, 1, 1)) * 40007863 / 1e6  * Lλ
+
+streamfunction_from_v = reverse(vfactor .* cumsum(reverse(averaged_field_v .* dz, dims = 2), dims = 2), dims = 2)
 streamfunction_from_w = cumsum(averaged_field_w .* dy, dims = 1)
-stream_function_from_w = streamfunction_from_w .- mean(streamfunction_from_w)
-streamfunction_from_v = -cumsum(averaged_field_v .* dz, dims = 2)
-stream_function_from_v = streamfunction_from_v .- mean(streamfunction_from_v)
+stream_function_from_w = streamfunction_from_w .- mean(streamfunction_from_w) .+ mean(streamfunction_from_v)
+
 
 
 hfile["streamfunction_from_w"] = streamfunction_from_w
@@ -130,16 +140,26 @@ contour!(ax, lats, zs, streamfunction_from_w[:, :, 1000], colormap = :viridis, c
 ax = Axis(fig[2, 2])
 contour!(ax, lats, zs, streamfunction_from_w[:, :, 2000], colormap = :viridis, colorrange = cr)
 
-offset = 2
-ax = Axis(fig[1+offset, 1])
-msf =  mean(streamfunction_from_v[:, :, 1:2000], dims = 3)[:, :, 1]
-contour!(ax, lats, zs, msf, colormap = :viridis, colorrange = cr)
-ax = Axis(fig[1+offset, 2])
-contour!(ax, lats, zs, streamfunction_from_v[:, :, 1], colormap = :viridis, colorrange = cr)
-ax = Axis(fig[2+offset, 1])
-contour!(ax, lats, zs, streamfunction_from_v[:, :, 1000], colormap = :viridis, colorrange = cr)
-ax = Axis(fig[2+offset, 2])
-contour!(ax, lats, zs, streamfunction_from_v[:, :, 2000], colormap = :viridis, colorrange = cr)
+
+
+
+fig = Figure(resolution = (700, 200) .* 3)
+offset = 0
+ax = Axis(fig[1, 1]; title = "average")
+cr = (-15, 60)
+contour_levels = -15:5:60
+msf =  mean(streamfunction_from_v, dims = 3)[:, :, 1]
+contour!(ax, lats, zs, msf, colormap = :viridis, colorrange = cr, levels = contour_levels, labels = true)
+for i in 1:5
+    ii = 1 + (i-1) * 1000
+    ax = Axis(fig[1, 1 + i]; title = "$(ii +  1126)")
+    contour!(ax, lats, zs, streamfunction_from_v[:, :, ii], colormap = :viridis, colorrange = cr, levels = contour_levels, labels = true)
+end
+for i in 1:6
+    ii = 1+ (i-1) * 12
+    ax = Axis(fig[2, i]; title = "$(ii + 1126)")
+    contour!(ax, lats, zs, streamfunction_from_v[:, :, ii], colormap = :viridis, colorrange = cr, levels = contour_levels, labels = true)
+end
 save("moc_contour_$(casevar).png", fig)
 
 
