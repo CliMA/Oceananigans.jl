@@ -13,14 +13,14 @@ abstract type AbstractVerticalCoordinate end
 #
 # # Fields
 # - `cᶜ::C`: Cell-centered coordinate.
-# - `cᶠ::C`: Face-centered coordinate.
-# - `Δᶜ::D`: Cell-centered grid spacing.
-# - `Δᶠ::D`: Face-centered grid spacing.
-struct StaticVerticalCoordinate{C, D} <: AbstractVerticalCoordinate
+# - `cᶠ::D`: Face-centered coordinate.
+# - `Δᶜ::E`: Cell-centered grid spacing.
+# - `Δᶠ::F`: Face-centered grid spacing.
+struct StaticVerticalCoordinate{C, D, E, F} <: AbstractVerticalCoordinate
     cᵃᵃᶠ :: C
-    cᵃᵃᶜ :: C
-    Δᵃᵃᶠ :: D
-    Δᵃᵃᶜ :: D
+    cᵃᵃᶜ :: D
+    Δᵃᵃᶠ :: E
+    Δᵃᵃᶜ :: F
 end
 
 ####
@@ -34,13 +34,11 @@ const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any, <
 #### Adapt and on_architecture
 ####
 
-function Adapt.adapt_structure(to, coord::StaticVerticalCoordinate)
-   a1 = Adapt.adapt(to, coord.cᵃᵃᶠ)
-   a2 = Adapt.adapt(to, coord.cᵃᵃᶜ)
-   a3 = Adapt.adapt(to, coord.Δᵃᵃᶠ)
-   a4 = Adapt.adapt(to, coord.Δᵃᵃᶜ)
-   StaticVerticalCoordinate{Union{typeof(a1), typeof(a2)}, Union{typeof(a3), typeof(a4)}}(a1, a2, a3, a4)
-end
+Adapt.adapt_structure(to, coord::StaticVerticalCoordinate) =
+   StaticVerticalCoordinate(Adapt.adapt(to, coord.cᵃᵃᶠ),
+                            Adapt.adapt(to, coord.cᵃᵃᶜ),
+                            Adapt.adapt(to, coord.Δᵃᵃᶠ),
+                            Adapt.adapt(to, coord.Δᵃᵃᶜ))
 
 on_architecture(arch, coord::StaticVerticalCoordinate) = 
    StaticVerticalCoordinate(on_architecture(arch, coord.cᵃᵃᶠ),
