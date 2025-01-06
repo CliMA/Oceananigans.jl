@@ -24,10 +24,10 @@ struct StaticVerticalCoordinate{C, D, E, F} <: AbstractVerticalCoordinate
 end
 
 ####
-#### Some usefull aliases
+#### Some useful aliases
 ####
 
-const RegularVerticalCoordinate = StaticVerticalCoordinate{<:Any, <:Number}
+const RegularVerticalCoordinate = StaticVerticalCoordinate{<:Any, <:Any, <:Number, <:Number}
 const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate}
 
 ####
