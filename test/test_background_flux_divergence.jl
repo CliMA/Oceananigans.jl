@@ -1,7 +1,8 @@
 include("depedencies_for_runtests.jl")
 
 """
-run_with_background_fields(arch; with_background=true)
+    function run_with_background_fields(arch; with_background=true)
+    
 Run a model with or without background fields and compare the two.
 """
 function run_with_background_fields(arch; with_background=true)
