@@ -24,7 +24,7 @@ function run_with_background_fields(arch; with_background=true)
     else
         # again we want no flux bottom boundary (∂B∂z = 0) and infinite ocean at the top boundary
         B_bcs = FieldBoundaryConditions(
-            bottom = GradientBoundaryCondition(0.), # ∂B∂z = 0
+            bottom = GradientBoundaryCondition(0), # ∂B∂z = 0
             top = GradientBoundaryCondition(N^2) # ∂B∂z =  N²
         );
         model = NonhydrostaticModel(; grid, tracers = :b, buoyancy=BuoyancyTracer(),
