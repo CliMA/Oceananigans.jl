@@ -40,7 +40,7 @@ function run_with_background_fields(arch; with_background=true)
 
     # Run for a few iterations
     simulation = Simulation(model, Δt=0.1, stop_iteration=5)
-    simulation.output_writers[:profile] = NetCDFOutputWriter(model, (B=B,),
+    simulation.output_writers[:profile] = NetCDFOutputWriter(model, (; B),
                                                 schedule = IterationInterval(1),
                                                 verbose=true,
                                                 filename = filepath,
