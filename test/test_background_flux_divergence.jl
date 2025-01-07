@@ -58,18 +58,19 @@ N = 1e-3
 B̄_field = BackgroundField(constant_stratification, parameters=(; N² = N^2))
 
 @testset "Background Fields Tests" begin
-    arch = CPU()
+    for arch in test_archs
     
-    # Test model runs with background fields
-    @test run_with_background_fields(arch, with_background=true) !== nothing
+        # Test model runs with background fields
+        @test run_with_background_fields(arch, with_background=true) !== nothing
     
-    # Test model runs without background fields
-    @test run_with_background_fields(arch, with_background=false) !== nothing
+        # Test model runs without background fields
+        @test run_with_background_fields(arch, with_background=false) !== nothing
     
-    # Test that background fields affect the solution
-    b_with = run_with_background_fields(arch, with_background=true)
-    b_without = run_with_background_fields(arch, with_background=false)
+        # Test that background fields affect the solution
+        b_with = run_with_background_fields(arch, with_background=true)
+        b_without = run_with_background_fields(arch, with_background=false)
 
-    # Compare the computed values
-    @test all(isapprox.(b_with, b_without, rtol=1e-10))
+        # Compare the computed values
+        @test all(isapprox.(b_with, b_without, rtol=1e-10))
+    end
 end
