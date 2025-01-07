@@ -19,7 +19,7 @@ function run_with_background_fields(arch; with_background=true)
             top = GradientBoundaryCondition(0.) # ∂B∂z = ∂B̄∂z+∂b∂z = N² → ∂b∂z = 0 
         );                                
         model = NonhydrostaticModel(; grid, background_fields, tracers = :b, buoyancy=BuoyancyTracer(),
-                                boundary_conditions=(b = B_bcs,))
+                                boundary_conditions=(; b = B_bcs))
         b = model.tracers.b
         B̄ = model.background_fields.tracers.b
         B = B̄ + b # total buoyancy field
