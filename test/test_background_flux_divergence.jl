@@ -1,7 +1,4 @@
-using Oceananigans
-using Test
-using CUDA:has_cuda
-using NCDatasets
+include("depedencies_for_runtests.jl")
 
 """
 run_with_background_fields(arch; with_background=true)
