@@ -29,7 +29,7 @@ function run_with_background_fields(arch; with_background=true)
         );
         model = NonhydrostaticModel(; grid, tracers = :b, buoyancy=BuoyancyTracer(),
                                 boundary_conditions=(b = B_bcs,))
-        Bᵢ(z) = constant_stratification(z, 0., (; N² = N^2))
+        Bᵢ(z) = constant_stratification(z, 0, (; N² = N^2))
         set!(model, b=Bᵢ)  # add background buoyancy as an initial condition
         b = model.tracers.b
         B = b # total buoyancy field = perturbation buoyancy because there is no background buoyancy
