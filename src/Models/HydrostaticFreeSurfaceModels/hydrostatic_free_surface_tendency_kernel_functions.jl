@@ -38,7 +38,7 @@ implicitly during time-stepping.
                                                               diffusivities,
                                                               hydrostatic_pressure_anomaly,
                                                               auxiliary_fields,
-                                                              clock, 
+                                                              clock,
                                                               forcing)
  
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
@@ -50,7 +50,7 @@ implicitly during time-stepping.
              - grid_slope_contribution_x(i, j, k, grid, buoyancy, model_fields)
              - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, diffusivities, clock, model_fields)
-             + forcing(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
+             + forcing(i, j, k, grid, clock, model_fields))
 end
 
 """
