@@ -273,7 +273,7 @@ end
 ##### NetCDFOutputWriter definition and constructor
 #####
 
-mutable struct NetCDFOutputWriter{G, D, O, T, A, FS} <: AbstractOutputWriter
+mutable struct NetCDFOutputWriter{G, D, O, T, A, FS, DN} <: AbstractOutputWriter
     grid :: G
     filepath :: String
     dataset :: D
@@ -290,6 +290,7 @@ mutable struct NetCDFOutputWriter{G, D, O, T, A, FS} <: AbstractOutputWriter
     part :: Int
     file_splitting :: FS
     verbose :: Bool
+    dimension_name_generator :: DN
 end
 
 """
@@ -486,14 +487,15 @@ function NetCDFOutputWriter(model, outputs;
                             array_type = Array{Float64},
                             indices = (:, :, :),
                             with_halos = false,
+                            overwrite_existing = nothing,
+                            verbose = false,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                             dimensions = Dict(),
-                            overwrite_existing = nothing,
                             deflatelevel = 0,
                             part = 1,
                             file_splitting = NoFileSplitting(),
-                            verbose = false)
+                            dimension_name_generator = default_dim_name)
 
     if with_halos && indices != (:, :, :)
         throw(ArgumentError("If with_halos=true then you cannot pass indices: $indices"))
@@ -543,7 +545,8 @@ function NetCDFOutputWriter(model, outputs;
                                                      overwrite_existing,
                                                      deflatelevel,
                                                      grid,
-                                                     model)
+                                                     model,
+                                                     dimension_name_generator)
 
     return NetCDFOutputWriter(grid,
                               filepath,
@@ -560,7 +563,8 @@ function NetCDFOutputWriter(model, outputs;
                               deflatelevel,
                               part,
                               file_splitting,
-                              verbose)
+                              verbose,
+                              dimension_name_generator)
 end
 
 #####
@@ -579,7 +583,8 @@ function initialize_nc_file!(filepath,
                              overwrite_existing,
                              deflatelevel,
                              grid,
-                             model)
+                             model,
+                             dimension_name_generator)
 
     mode = overwrite_existing ? "c" : "a"
 
@@ -594,12 +599,12 @@ function initialize_nc_file!(filepath,
     # schedule::AveragedTimeInterval
     schedule, outputs = time_average_outputs(schedule, outputs, model)
 
-    dims = gather_dimensions(outputs, grid, indices, with_halos, default_dim_name)
+    dims = gather_dimensions(outputs, grid, indices, with_halos, dimension_name_generator)
 
     # Open the NetCDF dataset file
     dataset = NCDataset(filepath, mode, attrib=global_attributes)
 
-    default_dim_attrs = default_dimension_attributes(grid, default_dim_name)
+    default_dim_attrs = default_dimension_attributes(grid, dimension_name_generator)
 
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
@@ -635,7 +640,8 @@ function initialize_nc_file!(filepath,
                                     deflatelevel,
                                     attributes,
                                     dimensions,
-                                    filepath) # for better error messages
+                                    filepath, # for better error messages
+                                    dimension_name_generator)
         end
 
         sync(dataset)
@@ -659,7 +665,8 @@ initialize_nc_file!(ow::NetCDFOutputWriter, model) =
                         ow.overwrite_existing,
                         ow.deflatelevel,
                         ow.grid,
-                        model)
+                        model,
+                        ow.dimension_name_generator)
 
 #####
 ##### Variable definition
@@ -672,7 +679,8 @@ materialize_output(output::WindowedTimeAverage{<:AbstractField}, model) = output
 
 """ Defines empty variables for 'custom' user-supplied `output`. """
 function define_output_variable!(dataset, output, name, array_type,
-                                 deflatelevel, attrib, dimensions, filepath)
+                                 deflatelevel, attrib, dimensions, filepath,
+                                 dimension_name_generator)
 
     if name ∉ keys(dimensions)
         msg = string("dimensions[$name] for output $name=$(typeof(output)) into $filepath" *
@@ -689,9 +697,10 @@ end
 
 """ Defines empty field variable. """
 function define_output_variable!(dataset, output::AbstractField, name, array_type,
-                                 deflatelevel, attrib, dimensions, filepath)
+                                 deflatelevel, attrib, dimensions, filepath,
+                                 dimension_name_generator)
 
-    dims = field_dimensions(output, default_dim_name)
+    dims = field_dimensions(output, dimension_name_generator)
     FT = eltype(array_type)
     defVar(dataset, name, FT, (dims..., "time"); deflatelevel, attrib)
 
@@ -705,7 +714,8 @@ define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, a
 
 """ Defines empty variable for particle trackting. """
 function define_output_variable!(dataset, output::LagrangianParticles, name, array_type,
-                                 deflatelevel, output_attributes, dimensions, filepath)
+                                 deflatelevel, output_attributes, dimensions, filepath,
+                                 dimension_name_generator)
 
     particle_fields = eltype(output.properties) |> fieldnames .|> string
     T = eltype(array_type)
