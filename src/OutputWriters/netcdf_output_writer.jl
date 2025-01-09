@@ -108,7 +108,7 @@ end
 ##### Gathering of rectilinear grid dimensions and metrics
 #####
 
-function gather_dimensions(grid::RectilinearGrid, indices, with_halos, dim_name_generator)
+function gather_dimensions(outputs, grid::RectilinearGrid, indices, with_halos, dim_name_generator)
     TX, TY, TZ = topology(grid)
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
@@ -132,7 +132,16 @@ function gather_dimensions(grid::RectilinearGrid, indices, with_halos, dim_name_
         yᵃᶜᵃ_name => yᵃᶜᵃ_data
     )
 
-    return merge(horizontal_dims, vertical_dims)
+    dims = merge(horizontal_dims, vertical_dims)
+
+    if "particles" in keys(outputs)
+        particle_dims = Dict(
+            "particle_id" => collect(1:length(outputs["particles"]))
+        )
+        dims = merge(dims, particle_dims)
+    end
+
+    return dims
 end
 
 # function gather_grid_metrics(grid::RectilinearGrid, dim_name_generator)
@@ -164,71 +173,6 @@ function field_dimensions(field::AbstractField{LX, LY, LZ}, dim_name_generator) 
 
     return tuple(x_dim_name..., y_dim_name..., z_dim_name...)
 end
-
-# xdim(::Face) = tuple("xF")
-# ydim(::Face) = tuple("yF")
-# zdim(::Face) = tuple("zF")
-
-# xdim(::Center) = tuple("xC")
-# ydim(::Center) = tuple("yC")
-# zdim(::Center) = tuple("zC")
-
-# xdim(::Nothing) = tuple()
-# ydim(::Nothing) = tuple()
-# zdim(::Nothing) = tuple()
-
-# netcdf_spatial_dimensions(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
-#     tuple(xdim(instantiate(LX))..., ydim(instantiate(LY))..., zdim(instantiate(LZ))...)
-
-# function native_dimensions_for_netcdf_output(grid, indices, TX, TY, TZ, Hx, Hy, Hz)
-#     with_halos = true
-
-#     xC = ξnodes(grid, c; with_halos)
-#     xF = ξnodes(grid, f; with_halos)
-#     yC = ηnodes(grid, c; with_halos)
-#     yF = ηnodes(grid, f; with_halos)
-#     zC = rnodes(grid, c; with_halos)
-#     zF = rnodes(grid, f; with_halos)
-
-#     xC = isnothing(xC) ? [0.0] : parent(xC)
-#     xF = isnothing(xF) ? [0.0] : parent(xF)
-#     yC = isnothing(yC) ? [0.0] : parent(yC)
-#     yF = isnothing(yF) ? [0.0] : parent(yF)
-#     zC = isnothing(zC) ? [0.0] : parent(zC)
-#     zF = isnothing(zF) ? [0.0] : parent(zF)
-
-#     dims = Dict("xC" => xC[parent_index_range(indices["xC"][1], c, TX(), Hx)],
-#                 "xF" => xF[parent_index_range(indices["xF"][1], f, TX(), Hx)],
-#                 "yC" => yC[parent_index_range(indices["yC"][2], c, TY(), Hy)],
-#                 "yF" => yF[parent_index_range(indices["yF"][2], f, TY(), Hy)],
-#                 "zC" => zC[parent_index_range(indices["zC"][3], c, TZ(), Hz)],
-#                 "zF" => zF[parent_index_range(indices["zF"][3], f, TZ(), Hz)])
-
-#     return dims
-# end
-
-# function default_dimensions(output, grid, indices, with_halos)
-#     Hx, Hy, Hz = halo_size(grid)
-#     TX, TY, TZ = topo = topology(grid)
-
-#     locs = Dict("xC" => (c, c, c),
-#                 "xF" => (f, c, c),
-#                 "yC" => (c, c, c),
-#                 "yF" => (c, f, c),
-#                 "zC" => (c, c, c),
-#                 "zF" => (c, c, f))
-
-#     topo = map(instantiate, topology(grid))
-
-#     indices = Dict(name => validate_indices(indices, locs[name], grid) for name in keys(locs))
-
-#     if !with_halos
-#         indices = Dict(name => restrict_to_interior.(indices[name], locs[name], topo, size(grid))
-#                        for name in keys(locs))
-#     end
-
-#     return native_dimensions_for_netcdf_output(grid, indices, TX, TY, TZ, Hx, Hy, Hz)
-# end
 
 const base_dimension_attributes = Dict(
     "time"        => Dict("long_name" => "Time", "units" => "s"),
@@ -274,28 +218,6 @@ function default_dimension_attributes(grid::RectilinearGrid, dim_name_generator)
         horizontal_dimension_attributes
     )
 end
-
-# const default_rectilinear_dimension_attributes = Dict(
-#     "xC"          => Dict("long_name" => "Locations of the cell centers in the x-direction.", "units" => "m"),
-#     "xF"          => Dict("long_name" => "Locations of the cell faces in the x-direction.",   "units" => "m"),
-#     "yC"          => Dict("long_name" => "Locations of the cell centers in the y-direction.", "units" => "m"),
-#     "yF"          => Dict("long_name" => "Locations of the cell faces in the y-direction.",   "units" => "m"),
-#     "zC"          => Dict("long_name" => "Locations of the cell centers in the z-direction.", "units" => "m"),
-#     "zF"          => Dict("long_name" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
-#     "time"        => Dict("long_name" => "Time", "units" => "s"),
-#     "particle_id" => Dict("long_name" => "Particle ID")
-# )
-
-# const default_curvilinear_dimension_attributes = Dict(
-#     "xC"          => Dict("long_name" => "Locations of the cell centers in the λ-direction.", "units" => "degrees"),
-#     "xF"          => Dict("long_name" => "Locations of the cell faces in the λ-direction.",   "units" => "degrees"),
-#     "yC"          => Dict("long_name" => "Locations of the cell centers in the φ-direction.", "units" => "degrees"),
-#     "yF"          => Dict("long_name" => "Locations of the cell faces in the φ-direction.",   "units" => "degrees"),
-#     "zC"          => Dict("long_name" => "Locations of the cell centers in the z-direction.", "units" => "m"),
-#     "zF"          => Dict("long_name" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
-#     "time"        => Dict("long_name" => "Time", "units" => "s"),
-#     "particle_id" => Dict("long_name" => "Particle ID")
-# )
 
 const default_output_attributes = Dict(
     "u" => Dict("long_name" => "Velocity in the x-direction", "units" => "m/s"),
@@ -673,6 +595,23 @@ end
 define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, args...) =
     define_output_variable!(dataset, output.operand, args...)
 
+
+""" Defines empty variable for particle trackting. """
+function define_output_variable!(dataset, output::LagrangianParticles, name, array_type,
+                                 deflatelevel, output_attributes, dimensions, filepath)
+
+    particle_fields = eltype(output.properties) |> fieldnames .|> string
+    T = eltype(array_type)
+
+    @show particle_fields
+
+    for particle_field in particle_fields
+        defVar(dataset, particle_field, T, ("particle_id", "time"); deflatelevel)
+    end
+
+    return nothing
+end
+
 #####
 ##### Write output
 #####
@@ -781,29 +720,6 @@ function Base.show(io::IO, ow::NetCDFOutputWriter)
 end
 
 #####
-##### Support / hacks for Lagrangian particles output
-#####
-
-""" Defines empty variable for particle trackting. """
-function define_output_variable!(dataset, output::LagrangianParticles, name, array_type,
-                                 deflatelevel, output_attributes, dimensions, filepath)
-
-    particle_fields = eltype(output.properties) |> fieldnames .|> string
-    T = eltype(array_type)
-
-    for particle_field in particle_fields
-        defVar(dataset, particle_field, T, ("particle_id", "time"); deflatelevel)
-    end
-
-    return nothing
-end
-
-dictify(outputs::LagrangianParticles) = Dict("particles" => outputs)
-
-default_dimensions(outputs::Dict{String,<:LagrangianParticles}, grid, indices, with_halos) =
-    Dict("particle_id" => collect(1:length(outputs["particles"])))
-
-#####
 ##### File splitting
 #####
 
@@ -859,7 +775,7 @@ function initialize_nc_file!(filepath,
     # schedule::AveragedTimeInterval
     schedule, outputs = time_average_outputs(schedule, outputs, model)
 
-    dims = gather_dimensions(grid, indices, with_halos, default_dim_name)
+    dims = gather_dimensions(outputs, grid, indices, with_halos, default_dim_name)
     # dims = default_dimensions(outputs, grid, indices, with_halos)
 
     # Open the NetCDF dataset file

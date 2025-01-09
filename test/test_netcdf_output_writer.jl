@@ -975,6 +975,127 @@ function test_netcdf_output_alignment(arch)
     return nothing
 end
 
+function test_netcdf_output_just_particles(arch)
+    grid = RectilinearGrid(arch;
+        topology = (Periodic, Periodic, Bounded),
+        size = (5, 5, 5),
+        x = (-1, 1),
+        y = (-1, 1),
+        z = (-1, 0)
+    )
+
+    Np = 10
+    xs = on_architecture(arch, 0.25 * ones(Np))
+    ys = on_architecture(arch, -0.4 * ones(Np))
+    zs = on_architecture(arch, -0.12 * ones(Np))
+
+    particles = LagrangianParticles(x=xs, y=ys, z=zs)
+
+    model = NonhydrostaticModel(; grid, particles)
+
+    set!(model, u=1, v=1)
+
+    Nt = 10
+    simulation = Simulation(model, Δt=1e-2, stop_iteration=Nt)
+
+    filepath = "test_just_particles.nc"
+    simulation.output_writers[:particles_nc] =
+        NetCDFOutputWriter(model,
+            (; particles = model.particles),
+            filename = filepath,
+            schedule = IterationInterval(1)
+        )
+
+    run!(simulation)
+
+    ds = NCDataset(filepath)
+
+    @test haskey(ds, "time")
+    @test length(ds[:time]) == Nt + 1
+
+    @test haskey(ds, "particle_id")
+    @test length(ds[:particle_id]) == Np
+
+    @test haskey(ds, "x")
+    @test haskey(ds, "y")
+    @test haskey(ds, "z")
+
+    @test size(ds[:x]) == (Np, Nt+1)
+    @test size(ds[:y]) == (Np, Nt+1)
+    @test size(ds[:z]) == (Np, Nt+1)
+
+    close(ds)
+    rm(filepath)
+
+    return nothing
+end
+
+function test_netcdf_output_particles_and_fields(arch)
+    N = 5
+
+    grid = RectilinearGrid(arch;
+        topology = (Periodic, Periodic, Bounded),
+        size = (N, N, N),
+        x = (-1, 1),
+        y = (-1, 1),
+        z = (-1, 0)
+    )
+
+    Np = 10
+    xs = on_architecture(arch, 0.25 * ones(Np))
+    ys = on_architecture(arch, -0.4 * ones(Np))
+    zs = on_architecture(arch, -0.12 * ones(Np))
+
+    particles = LagrangianParticles(x=xs, y=ys, z=zs)
+
+    model = NonhydrostaticModel(; grid, particles)
+
+    set!(model, u=1, v=1)
+
+    Nt = 10
+    simulation = Simulation(model, Δt=1e-2, stop_iteration=Nt)
+
+    outputs = (
+        particles = model.particles,
+        u = model.velocities.u,
+        v = model.velocities.v,
+        w = model.velocities.w
+    )
+
+    filepath = "test_particles_and_fields.nc"
+    simulation.output_writers[:particles_nc] =
+        NetCDFOutputWriter(model, outputs,
+            filename = filepath,
+            schedule = IterationInterval(1)
+        )
+
+    run!(simulation)
+
+    ds = NCDataset(filepath)
+
+    @test haskey(ds, "time")
+    @test length(ds[:time]) == Nt + 1
+
+    @test haskey(ds, "particle_id")
+    @test length(ds[:particle_id]) == Np
+
+    @test haskey(ds, "x")
+    @test haskey(ds, "y")
+    @test haskey(ds, "z")
+
+    @test size(ds[:x]) == (Np, Nt+1)
+    @test size(ds[:y]) == (Np, Nt+1)
+    @test size(ds[:z]) == (Np, Nt+1)
+
+    @test haskey(ds, "u")
+    @test haskey(ds, "v")
+    @test haskey(ds, "w")
+
+    @test size(ds[:u]) == (N, N, N,   Nt+1)
+    @test size(ds[:v]) == (N, N, N,   Nt+1)
+    @test size(ds[:w]) == (N, N, N+1, Nt+1)
+end
+
 function test_netcdf_vertically_stretched_grid_output(arch)
     Nx = Ny = 8
     Nz = 16
@@ -1103,7 +1224,7 @@ function test_netcdf_regular_lat_lon_grid_output(arch; immersed = false)
     return nothing
 end
 
-for arch in archs
+for arch in [CPU(), GPU()]
     @testset "NetCDF output writer [$(typeof(arch))]" begin
         @info "  Testing NetCDF output writer [$(typeof(arch))]..."
 
@@ -1121,6 +1242,9 @@ for arch in archs
 
         test_netcdf_spatial_average(arch)
         test_netcdf_time_averaging(arch)
+
+        test_netcdf_output_just_particles(arch)
+        test_netcdf_output_particles_and_fields(arch)
 
         test_netcdf_vertically_stretched_grid_output(arch)
 
