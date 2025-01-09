@@ -773,7 +773,6 @@ function test_netcdf_spatial_average(arch)
     return nothing
 end
 
-
 function test_netcdf_time_averaging(arch)
     # Test for both "nice" floating point number and one that is more susceptible
     # to rounding errors

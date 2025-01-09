@@ -1,6 +1,6 @@
 using NCDatasets
 
-using Dates: AbstractTime, now
+using Dates: AbstractTime, UTC, now
 
 using Oceananigans.Fields
 
@@ -11,30 +11,9 @@ using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, pretty
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location
 
-mutable struct NetCDFOutputWriter{G, D, O, T, A, FS} <: AbstractOutputWriter
-    grid :: G
-    filepath :: String
-    dataset :: D
-    outputs :: O
-    schedule :: T
-    array_type :: A
-    indices :: Tuple
-    with_halos :: Bool
-    global_attributes :: Dict
-    output_attributes :: Dict
-    dimensions :: Dict
-    overwrite_existing :: Bool
-    deflatelevel :: Int
-    part :: Int
-    file_splitting :: FS
-    verbose :: Bool
-end
-
 #####
 ##### Utils
 #####
-
-ext(::Type{NetCDFOutputWriter}) = ".nc"
 
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
@@ -78,7 +57,7 @@ default_dim_name(var_name, ::RectilinearGrid, ::Nothing, ::Nothing, ::Nothing, :
 default_dim_name(var_name, ::RectilinearGrid, ::Nothing, ::Nothing, ::Nothing, ::Val{:z}) = ""
 
 #####
-##### Gathering of vertical grid dimensions and metrics
+##### Gathering of grid dimensions
 #####
 
 function gather_vertical_dimensions(coordinate::StaticVerticalCoordinate, TZ, Nz, Hz, z_indices, with_halos, dim_name_generator)
@@ -93,20 +72,6 @@ function gather_vertical_dimensions(coordinate::StaticVerticalCoordinate, TZ, Nz
         zᵃᵃᶜ_name => zᵃᵃᶜ_data
     )
 end
-
-# function gather_vertical_metrics(coordinate::StaticVerticalCoordinate, dim_name_generator)
-#     Δzᵃᵃᶜ_name = dim_name_generator("z", coordinate, nothing, nothing, f, Val(:z))
-#     Δzᵃᵃᶠ_name = dim_name_generator("z", coordinate, nothing, nothing, c, Val(:z))
-
-#     return Dict(
-#         Δzᵃᵃᶜ_name => coordinate.Δᵃᵃᶜ,
-#         Δzᵃᵃᶠ_name => coordinate.Δᵃᵃᶠ
-#     )
-# end
-
-#####
-##### Gathering of rectilinear grid dimensions and metrics
-#####
 
 function gather_dimensions(outputs, grid::RectilinearGrid, indices, with_halos, dim_name_generator)
     TX, TY, TZ = topology(grid)
@@ -144,23 +109,41 @@ function gather_dimensions(outputs, grid::RectilinearGrid, indices, with_halos, 
     return dims
 end
 
-# function gather_grid_metrics(grid::RectilinearGrid, dim_name_generator)
-#     vertical_metrics = gather_vertical_metrics(grid.z, dim_name_generator)
+#####
+##### Gathering of grid metrics
+#####
 
-#     Δxᶠᵃᵃ_name = dim_name_generator("Δx", grid, f, nothing, nothing, Val(:x))
-#     Δxᶜᵃᵃ_name = dim_name_generator("Δx", grid, c, nothing, nothing, Val(:x))
-#     Δyᵃᶠᵃ_name = dim_name_generator("Δy", grid, nothing, f, nothing, Val(:y))
-#     Δyᵃᶜᵃ_name = dim_name_generator("Δy", grid, nothing, c, nothing, Val(:y))
+function gather_vertical_metrics(coordinate::StaticVerticalCoordinate, dim_name_generator)
+    Δzᵃᵃᶜ_name = dim_name_generator("z", coordinate, nothing, nothing, f, Val(:z))
+    Δzᵃᵃᶠ_name = dim_name_generator("z", coordinate, nothing, nothing, c, Val(:z))
 
-#     horizontal_metrics = Dict(
-#         Δxᶠᵃᵃ_name => grid.Δxᶠᵃᵃ,
-#         Δxᶜᵃᵃ_name => grid.Δxᶜᵃᵃ,
-#         Δyᵃᶠᵃ_name => grid.Δyᵃᶠᵃ,
-#         Δyᵃᶜᵃ_name => grid.Δyᵃᶜᵃ
-#     )
+    return Dict(
+        Δzᵃᵃᶜ_name => coordinate.Δᵃᵃᶜ,
+        Δzᵃᵃᶠ_name => coordinate.Δᵃᵃᶠ
+    )
+end
 
-#     return merge(horizontal_metrics, vertical_metrics)
-# end
+function gather_grid_metrics(grid::RectilinearGrid, dim_name_generator)
+    vertical_metrics = gather_vertical_metrics(grid.z, dim_name_generator)
+
+    Δxᶠᵃᵃ_name = dim_name_generator("Δx", grid, f, nothing, nothing, Val(:x))
+    Δxᶜᵃᵃ_name = dim_name_generator("Δx", grid, c, nothing, nothing, Val(:x))
+    Δyᵃᶠᵃ_name = dim_name_generator("Δy", grid, nothing, f, nothing, Val(:y))
+    Δyᵃᶜᵃ_name = dim_name_generator("Δy", grid, nothing, c, nothing, Val(:y))
+
+    horizontal_metrics = Dict(
+        Δxᶠᵃᵃ_name => grid.Δxᶠᵃᵃ,
+        Δxᶜᵃᵃ_name => grid.Δxᶜᵃᵃ,
+        Δyᵃᶠᵃ_name => grid.Δyᵃᶠᵃ,
+        Δyᵃᶜᵃ_name => grid.Δyᵃᶜᵃ
+    )
+
+    return merge(horizontal_metrics, vertical_metrics)
+end
+
+#####
+##### Mapping outputs/fields to dimensions
+#####
 
 function field_dimensions(field::AbstractField{LX, LY, LZ}, dim_name_generator) where {LX, LY, LZ}
     x_dim_name = dim_name_generator("x", field.grid, LX(), LY(), LZ(), Val(:x))
@@ -173,6 +156,10 @@ function field_dimensions(field::AbstractField{LX, LY, LZ}, dim_name_generator) 
 
     return tuple(x_dim_name..., y_dim_name..., z_dim_name...)
 end
+
+#####
+##### Dimension attributes
+#####
 
 const base_dimension_attributes = Dict(
     "time"        => Dict("long_name" => "Time", "units" => "s"),
@@ -219,6 +206,13 @@ function default_dimension_attributes(grid::RectilinearGrid, dim_name_generator)
     )
 end
 
+default_dimension_attributes(grid::ImmersedBoundaryGrid, dim_name_generator) =
+    default_dimension_attributes(grid.underlying_grid, dim_name_generator)
+
+#####
+##### Variable attributes
+#####
+
 const default_output_attributes = Dict(
     "u" => Dict("long_name" => "Velocity in the x-direction", "units" => "m/s"),
     "v" => Dict("long_name" => "Velocity in the y-direction", "units" => "m/s"),
@@ -227,6 +221,10 @@ const default_output_attributes = Dict(
     "T" => Dict("long_name" => "Conservative temperature",    "units" => "°C"),
     "S" => Dict("long_name" => "Absolute salinity",           "units" => "g/kg")
 )
+
+#####
+##### Saving schedule metadata as global attributes
+#####
 
 add_schedule_metadata!(attributes, schedule) = nothing
 
@@ -269,6 +267,29 @@ function add_schedule_metadata!(global_attributes, schedule::AveragedTimeInterva
         "Output was time averaged with a stride of $(schedule.stride) iteration(s) within the time averaging window."
 
     return nothing
+end
+
+#####
+##### NetCDFOutputWriter definition and constructor
+#####
+
+mutable struct NetCDFOutputWriter{G, D, O, T, A, FS} <: AbstractOutputWriter
+    grid :: G
+    filepath :: String
+    dataset :: D
+    outputs :: O
+    schedule :: T
+    array_type :: A
+    indices :: Tuple
+    with_halos :: Bool
+    global_attributes :: Dict
+    output_attributes :: Dict
+    dimensions :: Dict
+    overwrite_existing :: Bool
+    deflatelevel :: Int
+    part :: Int
+    file_splitting :: FS
+    verbose :: Bool
 end
 
 """
@@ -500,10 +521,7 @@ function NetCDFOutputWriter(model, outputs;
             @warn "Overwriting existing $filepath."
         end
     end
-    # TODO: This call to dictify is only necessary because "dictify" is hacked to help
-    # with LagrangianParticles output (see the end of the file).
-    # We shouldn't support this in the future; we should require users to 'name' LagrangianParticles output.
-    outputs = dictify(outputs)
+
     outputs = Dict(string(name) => construct_output(outputs[name], grid, indices, with_halos) for name in keys(outputs))
 
     output_attributes = dictify(output_attributes)
@@ -545,208 +563,9 @@ function NetCDFOutputWriter(model, outputs;
                               verbose)
 end
 
-get_default_dimension_attributes(::RectilinearGrid) =
-    default_rectilinear_dimension_attributes
-
-get_default_dimension_attributes(::AbstractCurvilinearGrid) =
-    default_curvilinear_dimension_attributes
-
-get_default_dimension_attributes(grid::ImmersedBoundaryGrid) =
-    get_default_dimension_attributes(grid.underlying_grid)
-
 #####
-##### Variable definition
+##### NetCDF file initialization
 #####
-
-materialize_output(func, model) = func(model)
-materialize_output(field::AbstractField, model) = field
-materialize_output(particles::LagrangianParticles, model) = particles
-materialize_output(output::WindowedTimeAverage{<:AbstractField}, model) = output
-
-""" Defines empty variables for 'custom' user-supplied `output`. """
-function define_output_variable!(dataset, output, name, array_type,
-                                 deflatelevel, attrib, dimensions, filepath)
-
-    if name ∉ keys(dimensions)
-        msg = string("dimensions[$name] for output $name=", typeof(output), " into ", filepath, '\n',
-                     " must be provided when constructing NetCDFOutputWriter")
-        throw(ArgumentError(msg))
-    end
-
-    dims = dimensions[name]
-    FT = eltype(array_type)
-    defVar(dataset, name, FT, (dims..., "time"); deflatelevel, attrib)
-
-    return nothing
-end
-
-""" Defines empty field variable. """
-function define_output_variable!(dataset, output::AbstractField, name, array_type,
-                                 deflatelevel, attrib, dimensions, filepath)
-
-    dims = field_dimensions(output, default_dim_name)
-    FT = eltype(array_type)
-    defVar(dataset, name, FT, (dims..., "time"); deflatelevel, attrib)
-
-    return nothing
-end
-
-""" Defines empty field variable for `WindowedTimeAverage`s over fields. """
-define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, args...) =
-    define_output_variable!(dataset, output.operand, args...)
-
-
-""" Defines empty variable for particle trackting. """
-function define_output_variable!(dataset, output::LagrangianParticles, name, array_type,
-                                 deflatelevel, output_attributes, dimensions, filepath)
-
-    particle_fields = eltype(output.properties) |> fieldnames .|> string
-    T = eltype(array_type)
-
-    @show particle_fields
-
-    for particle_field in particle_fields
-        defVar(dataset, particle_field, T, ("particle_id", "time"); deflatelevel)
-    end
-
-    return nothing
-end
-
-#####
-##### Write output
-#####
-
-Base.open(nc::NetCDFOutputWriter) = NCDataset(nc.filepath, "a")
-Base.close(nc::NetCDFOutputWriter) = close(nc.dataset)
-
-function save_output!(ds, output, model, ow, time_index, name)
-    data = fetch_and_convert_output(output, model, ow)
-    data = drop_output_dims(output, data)
-    colons = Tuple(Colon() for _ in 1:ndims(data))
-    ds[name][colons..., time_index:time_index] = data
-    return nothing
-end
-
-function save_output!(ds, output::LagrangianParticles, model, ow, time_index, name)
-    data = fetch_and_convert_output(output, model, ow)
-    for (particle_field, vals) in pairs(data)
-        ds[string(particle_field)][:, time_index] = vals
-    end
-
-    return nothing
-end
-
-"""
-    write_output!(output_writer, model)
-
-Write output to netcdf file `output_writer.filepath` at specified intervals. Increments the `time` dimension
-every time an output is written to the file.
-"""
-function write_output!(ow::NetCDFOutputWriter, model)
-    # Start a new file if the file_splitting(model) is true
-    ow.file_splitting(model) && start_next_file(model, ow)
-    update_file_splitting_schedule!(ow.file_splitting, ow.filepath)
-
-    ow.dataset = open(ow)
-
-    ds, verbose, filepath = ow.dataset, ow.verbose, ow.filepath
-
-    time_index = length(ds["time"]) + 1
-    ds["time"][time_index] = float_or_date_time(model.clock.time)
-
-    if verbose
-        @info "Writing to NetCDF: $filepath..."
-        @info "Computing NetCDF outputs for time index $(time_index): $(keys(ow.outputs))..."
-
-        # Time and file size before computing any outputs.
-        t0, sz0 = time_ns(), filesize(filepath)
-    end
-
-    for (name, output) in ow.outputs
-        # Time before computing this output.
-        verbose && (t0′ = time_ns())
-
-        save_output!(ds, output, model, ow, time_index, name)
-
-        if verbose
-            # Time after computing this output.
-            t1′ = time_ns()
-            @info "Computing $name done: time=$(prettytime((t1′-t0′) / 1e9))"
-        end
-    end
-
-    if verbose
-        # Time and file size after computing and writing all outputs.
-        t1, sz1 = time_ns(), filesize(filepath)
-        verbose && @info begin
-            @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
-                    prettytime((t1-t0)/1e9), pretty_filesize(sz1), pretty_filesize(sz1-sz0))
-        end
-    end
-
-    sync(ds)
-    close(ow)
-
-    return nothing
-end
-
-drop_output_dims(output, data) = data # fallback
-drop_output_dims(output::Field, data) = dropdims(data, dims=reduced_dimensions(output))
-drop_output_dims(output::WindowedTimeAverage{<:Field}, data) = dropdims(data, dims=reduced_dimensions(output.operand))
-
-#####
-##### Show
-#####
-
-Base.summary(ow::NetCDFOutputWriter) =
-    string("NetCDFOutputWriter writing ", prettykeys(ow.outputs), " to ", ow.filepath, " on ", summary(ow.schedule))
-
-function Base.show(io::IO, ow::NetCDFOutputWriter)
-    dims = NCDataset(ow.filepath, "r") do ds
-        join([dim * "(" * string(length(ds[dim])) * "), "
-              for dim in keys(ds.dim)])[1:end-2]
-    end
-
-    averaging_schedule = output_averaging_schedule(ow)
-    Noutputs = length(ow.outputs)
-
-    print(io, "NetCDFOutputWriter scheduled on $(summary(ow.schedule)):", "\n",
-              "├── filepath: ", relpath(ow.filepath), "\n",
-              "├── dimensions: $dims", "\n",
-              "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
-              "└── array type: ", show_array_type(ow.array_type), "\n",
-              "├── file_splitting: ", summary(ow.file_splitting), "\n",
-              "└── file size: ", pretty_filesize(filesize(ow.filepath)))
-end
-
-#####
-##### File splitting
-#####
-
-function start_next_file(model, ow::NetCDFOutputWriter)
-    verbose = ow.verbose
-
-    verbose && @info begin
-        schedule_type = summary(ow.file_splitting)
-        "Splitting output because $(schedule_type) is activated."
-    end
-
-    if ow.part == 1
-        part1_path = replace(ow.filepath, r".nc$" => "_part1.nc")
-        verbose && @info "Renaming first part: $(ow.filepath) -> $part1_path"
-        mv(ow.filepath, part1_path, force=ow.overwrite_existing)
-        ow.filepath = part1_path
-    end
-
-    ow.part += 1
-    ow.filepath = replace(ow.filepath, r"part\d+.nc$" => "part" * string(ow.part) * ".nc")
-    ow.overwrite_existing && isfile(ow.filepath) && rm(ow.filepath, force=true)
-    verbose && @info "Now writing to: $(ow.filepath)"
-
-    initialize_nc_file!(ow, model)
-
-    return nothing
-end
 
 function initialize_nc_file!(filepath,
                              outputs,
@@ -765,7 +584,7 @@ function initialize_nc_file!(filepath,
     mode = overwrite_existing ? "c" : "a"
 
     # Add useful metadata
-    global_attributes["date"] = "This file was generated on $(now())."
+    global_attributes["date"] = "This file was generated on $(now()) local time ($(now(UTC)) UTC)."
     global_attributes["Julia"] = "This file was generated using " * versioninfo_with_gpu()
     global_attributes["Oceananigans"] = "This file was generated using " * oceananigans_versioninfo()
 
@@ -776,7 +595,6 @@ function initialize_nc_file!(filepath,
     schedule, outputs = time_average_outputs(schedule, outputs, model)
 
     dims = gather_dimensions(outputs, grid, indices, with_halos, default_dim_name)
-    # dims = default_dimensions(outputs, grid, indices, with_halos)
 
     # Open the NetCDF dataset file
     dataset = NCDataset(filepath, mode, attrib=global_attributes)
@@ -842,3 +660,201 @@ initialize_nc_file!(ow::NetCDFOutputWriter, model) =
                         ow.deflatelevel,
                         ow.grid,
                         model)
+
+#####
+##### Variable definition
+#####
+
+materialize_output(func, model) = func(model)
+materialize_output(field::AbstractField, model) = field
+materialize_output(particles::LagrangianParticles, model) = particles
+materialize_output(output::WindowedTimeAverage{<:AbstractField}, model) = output
+
+""" Defines empty variables for 'custom' user-supplied `output`. """
+function define_output_variable!(dataset, output, name, array_type,
+                                 deflatelevel, attrib, dimensions, filepath)
+
+    if name ∉ keys(dimensions)
+        msg = string("dimensions[$name] for output $name=$(typeof(output)) into $filepath" *
+                     " must be provided when constructing NetCDFOutputWriter")
+        throw(ArgumentError(msg))
+    end
+
+    dims = dimensions[name]
+    FT = eltype(array_type)
+    defVar(dataset, name, FT, (dims..., "time"); deflatelevel, attrib)
+
+    return nothing
+end
+
+""" Defines empty field variable. """
+function define_output_variable!(dataset, output::AbstractField, name, array_type,
+                                 deflatelevel, attrib, dimensions, filepath)
+
+    dims = field_dimensions(output, default_dim_name)
+    FT = eltype(array_type)
+    defVar(dataset, name, FT, (dims..., "time"); deflatelevel, attrib)
+
+    return nothing
+end
+
+""" Defines empty field variable for `WindowedTimeAverage`s over fields. """
+define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, args...) =
+    define_output_variable!(dataset, output.operand, args...)
+
+
+""" Defines empty variable for particle trackting. """
+function define_output_variable!(dataset, output::LagrangianParticles, name, array_type,
+                                 deflatelevel, output_attributes, dimensions, filepath)
+
+    particle_fields = eltype(output.properties) |> fieldnames .|> string
+    T = eltype(array_type)
+
+    for particle_field in particle_fields
+        defVar(dataset, particle_field, T, ("particle_id", "time"); deflatelevel)
+    end
+
+    return nothing
+end
+
+#####
+##### Write output
+#####
+
+Base.open(nc::NetCDFOutputWriter) = NCDataset(nc.filepath, "a")
+Base.close(nc::NetCDFOutputWriter) = close(nc.dataset)
+
+function save_output!(ds, output, model, ow, time_index, name)
+    data = fetch_and_convert_output(output, model, ow)
+    data = drop_output_dims(output, data)
+    colons = Tuple(Colon() for _ in 1:ndims(data))
+    ds[name][colons..., time_index:time_index] = data
+    return nothing
+end
+
+function save_output!(ds, output::LagrangianParticles, model, ow, time_index, name)
+    data = fetch_and_convert_output(output, model, ow)
+    for (particle_field, vals) in pairs(data)
+        ds[string(particle_field)][:, time_index] = vals
+    end
+
+    return nothing
+end
+
+"""
+    write_output!(ow::NetCDFOutputWriter, model)
+
+Write output to netcdf file `output_writer.filepath` at specified intervals. Increments the `time` dimension
+every time an output is written to the file.
+"""
+function write_output!(ow::NetCDFOutputWriter, model)
+    # Start a new file if the file_splitting(model) is true
+    ow.file_splitting(model) && start_next_file(model, ow)
+    update_file_splitting_schedule!(ow.file_splitting, ow.filepath)
+
+    ow.dataset = open(ow)
+
+    ds, verbose, filepath = ow.dataset, ow.verbose, ow.filepath
+
+    time_index = length(ds["time"]) + 1
+    ds["time"][time_index] = float_or_date_time(model.clock.time)
+
+    if verbose
+        @info "Writing to NetCDF: $filepath..."
+        @info "Computing NetCDF outputs for time index $(time_index): $(keys(ow.outputs))..."
+
+        # Time and file size before computing any outputs.
+        t0, sz0 = time_ns(), filesize(filepath)
+    end
+
+    for (name, output) in ow.outputs
+        # Time before computing this output.
+        verbose && (t0′ = time_ns())
+
+        save_output!(ds, output, model, ow, time_index, name)
+
+        if verbose
+            # Time after computing this output.
+            t1′ = time_ns()
+            @info "Computing $name done: time=$(prettytime((t1′-t0′) / 1e9))"
+        end
+    end
+
+    sync(ds)
+    close(ow)
+
+    if verbose
+        # Time and file size after computing and writing all outputs to disk.
+        t1, sz1 = time_ns(), filesize(filepath)
+        verbose && @info begin
+            @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
+                    prettytime((t1-t0)/1e9), pretty_filesize(sz1), pretty_filesize(sz1-sz0))
+        end
+    end
+
+    return nothing
+end
+
+drop_output_dims(output, data) = data # fallback
+drop_output_dims(output::Field, data) = dropdims(data, dims=reduced_dimensions(output))
+drop_output_dims(output::WindowedTimeAverage{<:Field}, data) = dropdims(data, dims=reduced_dimensions(output.operand))
+
+#####
+##### Show
+#####
+
+Base.summary(ow::NetCDFOutputWriter) =
+    string("NetCDFOutputWriter writing ", prettykeys(ow.outputs), " to ", ow.filepath, " on ", summary(ow.schedule))
+
+function Base.show(io::IO, ow::NetCDFOutputWriter)
+    dims = NCDataset(ow.filepath, "r") do ds
+        join([dim * "(" * string(length(ds[dim])) * "), "
+              for dim in keys(ds.dim)])[1:end-2]
+    end
+
+    averaging_schedule = output_averaging_schedule(ow)
+    num_outputs = length(ow.outputs)
+
+    print(io, "NetCDFOutputWriter scheduled on $(summary(ow.schedule)):", "\n",
+              "├── filepath: ", relpath(ow.filepath), "\n",
+              "├── dimensions: $dims", "\n",
+              "├── $num_outputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
+              "└── array type: ", show_array_type(ow.array_type), "\n",
+              "├── file_splitting: ", summary(ow.file_splitting), "\n",
+              "└── file size: ", pretty_filesize(filesize(ow.filepath)))
+end
+
+#####
+##### File splitting
+#####
+
+function start_next_file(model, ow::NetCDFOutputWriter)
+    verbose = ow.verbose
+
+    verbose && @info begin
+        schedule_type = summary(ow.file_splitting)
+        "Splitting output because $(schedule_type) is activated."
+    end
+
+    if ow.part == 1
+        part1_path = replace(ow.filepath, r".nc$" => "_part1.nc")
+        verbose && @info "Renaming first part: $(ow.filepath) -> $part1_path"
+        mv(ow.filepath, part1_path, force=ow.overwrite_existing)
+        ow.filepath = part1_path
+    end
+
+    ow.part += 1
+    ow.filepath = replace(ow.filepath, r"part\d+.nc$" => "part" * string(ow.part) * ".nc")
+    ow.overwrite_existing && isfile(ow.filepath) && rm(ow.filepath, force=true)
+    verbose && @info "Now writing to: $(ow.filepath)"
+
+    initialize_nc_file!(ow, model)
+
+    return nothing
+end
+
+#####
+##### More utils
+#####
+
+ext(::Type{NetCDFOutputWriter}) = ".nc"
