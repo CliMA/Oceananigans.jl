@@ -775,6 +775,7 @@ function test_netcdf_time_averaging(arch)
         # small timesteps, which essentially decouples the clock time from
         # the iteration number.
         # Can add stride > 1 cases to the following line to test them.
+        # for (stride, rtol) in zip((1, 2), (1e-5, 1e-3))
         for (stride, rtol) in zip((1), (1e-5))
             @info "  Testing time-averaging of NetCDF outputs [$(typeof(arch))] with " *
                   "timestep of $(Δt), stride of $(stride), and relative tolerance of $(rtol)."
@@ -811,11 +812,6 @@ function test_netcdf_time_averaging(arch)
                 "c2" => ∫c2_dxdy
             )
 
-            nc_dimensions = Dict(
-                "c1" => ("z_c",),
-                "c2" => ("z_c",)
-            )
-
             horizontal_average_nc_filepath = "decay_averaged_field_test.nc"
 
             simulation.output_writers[:horizontal_average] =
@@ -825,8 +821,7 @@ function test_netcdf_time_averaging(arch)
                     array_type = Array{Float64},
                     verbose = true,
                     filename = horizontal_average_nc_filepath,
-                    schedule = TimeInterval(10Δt),
-                    dimensions = nc_dimensions
+                    schedule = TimeInterval(10Δt)
                 )
 
             multiple_time_average_nc_filepath = "decay_windowed_time_average_test.nc"
@@ -834,7 +829,6 @@ function test_netcdf_time_averaging(arch)
             window = 6Δt
 
             single_nc_output = Dict("c1" => ∫c1_dxdy)
-            single_nc_dimension = Dict("c1" => ("z_c",))
 
             simulation.output_writers[:single_output_time_average] =
                 NetCDFOutputWriter(
@@ -843,8 +837,7 @@ function test_netcdf_time_averaging(arch)
                     array_type = Array{Float64},
                     verbose = true,
                     filename = single_time_average_nc_filepath,
-                    schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
-                    dimensions = single_nc_dimension
+                    schedule = AveragedTimeInterval(10Δt; window, stride)
                 )
 
             simulation.output_writers[:multiple_output_time_average] =
@@ -854,8 +847,7 @@ function test_netcdf_time_averaging(arch)
                     array_type = Array{Float64},
                     verbose = true,
                     filename = multiple_time_average_nc_filepath,
-                    schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
-                    dimensions = nc_dimensions
+                    schedule = AveragedTimeInterval(10Δt; window, stride)
                 )
 
             run!(simulation)
@@ -1128,7 +1120,7 @@ for arch in archs
         test_netcdf_output_alignment(arch)
 
         test_netcdf_spatial_average(arch)
-        # test_netcdf_time_averaging(arch)
+        test_netcdf_time_averaging(arch)
 
         test_netcdf_vertically_stretched_grid_output(arch)
 

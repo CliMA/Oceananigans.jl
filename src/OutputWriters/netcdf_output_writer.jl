@@ -65,7 +65,17 @@ default_dim_name(var_name, ::RectilinearGrid, LX, LY, LZ, ::Val{:z}) = "$(var_na
 default_dim_name(var_name, ::StaticVerticalCoordinate, LX, LY, LZ, ::Val{:z}) = "$(var_name)_" * loc2letter(LZ)
 
 default_dim_name(var_name, grid, LX, LY, LZ, dim) = "$(var_name)_" * loc2letter(LX) * loc2letter(LY) * loc2letter(LZ)
+
 default_dim_name(var_name, grid, ::Nothing, ::Nothing, ::Nothing, dim) = ""
+
+default_dim_name(var_name, ::RectilinearGrid, ::Nothing, LY, LZ, ::Val{:x}) = ""
+default_dim_name(var_name, ::RectilinearGrid, LX, ::Nothing, LZ, ::Val{:y}) = ""
+default_dim_name(var_name, ::RectilinearGrid, LX, LY, ::Nothing, ::Val{:z}) = ""
+
+# disambiguate
+default_dim_name(var_name, ::RectilinearGrid, ::Nothing, ::Nothing, ::Nothing, ::Val{:x}) = ""
+default_dim_name(var_name, ::RectilinearGrid, ::Nothing, ::Nothing, ::Nothing, ::Val{:y}) = ""
+default_dim_name(var_name, ::RectilinearGrid, ::Nothing, ::Nothing, ::Nothing, ::Val{:z}) = ""
 
 #####
 ##### Gathering of vertical grid dimensions and metrics
