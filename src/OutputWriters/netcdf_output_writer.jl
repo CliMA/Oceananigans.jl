@@ -4,11 +4,12 @@ using Dates: AbstractTime, now
 
 using Oceananigans.Fields
 
-using Oceananigans.Grids: AbstractCurvilinearGrid, RectilinearGrid, topology, halo_size, parent_index_range, ξnodes, ηnodes, rnodes
+using Oceananigans.Grids: AbstractCurvilinearGrid, RectilinearGrid, StaticVerticalCoordinate
+using Oceananigans.Grids: topology, halo_size, parent_index_range, ξnodes, ηnodes, rnodes, validate_index
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 using Oceananigans.TimeSteppers: float_or_date_time
-using Oceananigans.Fields: reduced_dimensions, reduced_location, location, validate_indices
+using Oceananigans.Fields: reduced_dimensions, reduced_location, location
 
 mutable struct NetCDFOutputWriter{G, D, O, T, A, FS} <: AbstractOutputWriter
     grid :: G
@@ -29,97 +30,262 @@ mutable struct NetCDFOutputWriter{G, D, O, T, A, FS} <: AbstractOutputWriter
     verbose :: Bool
 end
 
+#####
+##### Utils
+#####
+
 ext(::Type{NetCDFOutputWriter}) = ".nc"
 
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
 
-xdim(::Face) = tuple("xF")
-ydim(::Face) = tuple("yF")
-zdim(::Face) = tuple("zF")
-
-xdim(::Center) = tuple("xC")
-ydim(::Center) = tuple("yC")
-zdim(::Center) = tuple("zC")
-
-xdim(::Nothing) = tuple()
-ydim(::Nothing) = tuple()
-zdim(::Nothing) = tuple()
-
-netcdf_spatial_dimensions(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
-    tuple(xdim(instantiate(LX))..., ydim(instantiate(LY))..., zdim(instantiate(LZ))...)
-
-function native_dimensions_for_netcdf_output(grid, indices, TX, TY, TZ, Hx, Hy, Hz)
-    with_halos = true
-
-    xC = ξnodes(grid, c; with_halos)
-    xF = ξnodes(grid, f; with_halos)
-    yC = ηnodes(grid, c; with_halos)
-    yF = ηnodes(grid, f; with_halos)
-    zC = rnodes(grid, c; with_halos)
-    zF = rnodes(grid, f; with_halos)
-
-    xC = isnothing(xC) ? [0.0] : parent(xC)
-    xF = isnothing(xF) ? [0.0] : parent(xF)
-    yC = isnothing(yC) ? [0.0] : parent(yC)
-    yF = isnothing(yF) ? [0.0] : parent(yF)
-    zC = isnothing(zC) ? [0.0] : parent(zC)
-    zF = isnothing(zF) ? [0.0] : parent(zF)
-
-    dims = Dict("xC" => xC[parent_index_range(indices["xC"][1], c, TX(), Hx)],
-                "xF" => xF[parent_index_range(indices["xF"][1], f, TX(), Hx)],
-                "yC" => yC[parent_index_range(indices["yC"][2], c, TY(), Hy)],
-                "yF" => yF[parent_index_range(indices["yF"][2], f, TY(), Hy)],
-                "zC" => zC[parent_index_range(indices["zC"][3], c, TZ(), Hz)],
-                "zF" => zF[parent_index_range(indices["zF"][3], f, TZ(), Hz)])
-
-    return dims
-end
-
-function default_dimensions(output, grid, indices, with_halos)
-    Hx, Hy, Hz = halo_size(grid)
-    TX, TY, TZ = topo = topology(grid)
-
-    locs = Dict("xC" => (c, c, c),
-                "xF" => (f, c, c),
-                "yC" => (c, c, c),
-                "yF" => (c, f, c),
-                "zC" => (c, c, c),
-                "zF" => (c, c, f))
-
-    topo = map(instantiate, topology(grid))
-
-    indices = Dict(name => validate_indices(indices, locs[name], grid) for name in keys(locs))
-
-    if !with_halos
-        indices = Dict(name => restrict_to_interior.(indices[name], locs[name], topo, size(grid))
-                       for name in keys(locs))
+function collect_dim(ξ, ℓ, T, N, H, inds, with_halos)
+    if with_halos
+        # collect to ensure we return an array instead of a range or offset array
+        return collect(ξ)
+    else
+        inds = validate_index(inds, ℓ, T, N, H)
+        inds = restrict_to_interior(inds, ℓ, T, N)
+        return collect(view(ξ, inds))
     end
-
-    return native_dimensions_for_netcdf_output(grid, indices, TX, TY, TZ, Hx, Hy, Hz)
 end
 
-const default_rectilinear_dimension_attributes = Dict(
-    "xC"          => Dict("long_name" => "Locations of the cell centers in the x-direction.", "units" => "m"),
-    "xF"          => Dict("long_name" => "Locations of the cell faces in the x-direction.",   "units" => "m"),
-    "yC"          => Dict("long_name" => "Locations of the cell centers in the y-direction.", "units" => "m"),
-    "yF"          => Dict("long_name" => "Locations of the cell faces in the y-direction.",   "units" => "m"),
-    "zC"          => Dict("long_name" => "Locations of the cell centers in the z-direction.", "units" => "m"),
-    "zF"          => Dict("long_name" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
+#####
+##### Dimension name generator (the default one)
+#####
+
+loc2letter(::Face) = "f"
+loc2letter(::Center) = "c"
+loc2letter(::Nothing) = ""
+
+default_dim_name(var_name, ::RectilinearGrid, LX, LY, LZ, ::Val{:x}) = "$(var_name)_" * loc2letter(LX)
+default_dim_name(var_name, ::RectilinearGrid, LX, LY, LZ, ::Val{:y}) = "$(var_name)_" * loc2letter(LY)
+default_dim_name(var_name, ::RectilinearGrid, LX, LY, LZ, ::Val{:z}) = "$(var_name)_" * loc2letter(LZ)
+
+default_dim_name(var_name, ::StaticVerticalCoordinate, LX, LY, LZ, ::Val{:z}) = "$(var_name)_" * loc2letter(LZ)
+
+default_dim_name(var_name, grid, LX, LY, LZ, dim) = "$(var_name)_" * loc2letter(LX) * loc2letter(LY) * loc2letter(LZ)
+default_dim_name(var_name, grid, ::Nothing, ::Nothing, ::Nothing, dim) = ""
+
+#####
+##### Gathering of vertical grid dimensions and metrics
+#####
+
+function gather_vertical_dimensions(coordinate::StaticVerticalCoordinate, TZ, Nz, Hz, z_indices, with_halos, dim_name_generator)
+    zᵃᵃᶠ_name = dim_name_generator("z", coordinate, nothing, nothing, f, Val(:z))
+    zᵃᵃᶜ_name = dim_name_generator("z", coordinate, nothing, nothing, c, Val(:z))
+
+    zᵃᵃᶠ_data = collect_dim(coordinate.cᵃᵃᶠ, f, TZ(), Nz, Hz, z_indices, with_halos)
+    zᵃᵃᶜ_data = collect_dim(coordinate.cᵃᵃᶜ, c, TZ(), Nz, Hz, z_indices, with_halos)
+
+    return Dict(
+        zᵃᵃᶠ_name => zᵃᵃᶠ_data,
+        zᵃᵃᶜ_name => zᵃᵃᶜ_data
+    )
+end
+
+# function gather_vertical_metrics(coordinate::StaticVerticalCoordinate, dim_name_generator)
+#     Δzᵃᵃᶜ_name = dim_name_generator("z", coordinate, nothing, nothing, f, Val(:z))
+#     Δzᵃᵃᶠ_name = dim_name_generator("z", coordinate, nothing, nothing, c, Val(:z))
+
+#     return Dict(
+#         Δzᵃᵃᶜ_name => coordinate.Δᵃᵃᶜ,
+#         Δzᵃᵃᶠ_name => coordinate.Δᵃᵃᶠ
+#     )
+# end
+
+#####
+##### Gathering of rectilinear grid dimensions and metrics
+#####
+
+function gather_dimensions(grid::RectilinearGrid, indices, with_halos, dim_name_generator)
+    TX, TY, TZ = topology(grid)
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+
+    vertical_dims = gather_vertical_dimensions(grid.z, TZ, Nz, Hz, indices[3], with_halos, dim_name_generator)
+
+    xᶠᵃᵃ_name = dim_name_generator("x", grid, f, nothing, nothing, Val(:x))
+    xᶜᵃᵃ_name = dim_name_generator("x", grid, c, nothing, nothing, Val(:x))
+    yᵃᶠᵃ_name = dim_name_generator("y", grid, nothing, f, nothing, Val(:y))
+    yᵃᶜᵃ_name = dim_name_generator("y", grid, nothing, c, nothing, Val(:y))
+
+    xᶠᵃᵃ_data = collect_dim(grid.xᶠᵃᵃ, f, TX(), Nx, Hx, indices[1], with_halos)
+    xᶜᵃᵃ_data = collect_dim(grid.xᶜᵃᵃ, c, TX(), Nx, Hx, indices[1], with_halos)
+    yᵃᶠᵃ_data = collect_dim(grid.yᵃᶠᵃ, f, TY(), Ny, Hy, indices[2], with_halos)
+    yᵃᶜᵃ_data = collect_dim(grid.yᵃᶜᵃ, c, TY(), Ny, Hy, indices[2], with_halos)
+
+    horizontal_dims = Dict(
+        xᶠᵃᵃ_name => xᶠᵃᵃ_data,
+        xᶜᵃᵃ_name => xᶜᵃᵃ_data,
+        yᵃᶠᵃ_name => yᵃᶠᵃ_data,
+        yᵃᶜᵃ_name => yᵃᶜᵃ_data
+    )
+
+    return merge(horizontal_dims, vertical_dims)
+end
+
+# function gather_grid_metrics(grid::RectilinearGrid, dim_name_generator)
+#     vertical_metrics = gather_vertical_metrics(grid.z, dim_name_generator)
+
+#     Δxᶠᵃᵃ_name = dim_name_generator("Δx", grid, f, nothing, nothing, Val(:x))
+#     Δxᶜᵃᵃ_name = dim_name_generator("Δx", grid, c, nothing, nothing, Val(:x))
+#     Δyᵃᶠᵃ_name = dim_name_generator("Δy", grid, nothing, f, nothing, Val(:y))
+#     Δyᵃᶜᵃ_name = dim_name_generator("Δy", grid, nothing, c, nothing, Val(:y))
+
+#     horizontal_metrics = Dict(
+#         Δxᶠᵃᵃ_name => grid.Δxᶠᵃᵃ,
+#         Δxᶜᵃᵃ_name => grid.Δxᶜᵃᵃ,
+#         Δyᵃᶠᵃ_name => grid.Δyᵃᶠᵃ,
+#         Δyᵃᶜᵃ_name => grid.Δyᵃᶜᵃ
+#     )
+
+#     return merge(horizontal_metrics, vertical_metrics)
+# end
+
+function field_dimensions(field::AbstractField{LX, LY, LZ}, dim_name_generator) where {LX, LY, LZ}
+    x_dim_name = dim_name_generator("x", field.grid, LX(), LY(), LZ(), Val(:x))
+    y_dim_name = dim_name_generator("y", field.grid, LX(), LY(), LZ(), Val(:y))
+    z_dim_name = dim_name_generator("z", field.grid, LX(), LY(), LZ(), Val(:z))
+
+    x_dim_name = isempty(x_dim_name) ? tuple() : tuple(x_dim_name)
+    y_dim_name = isempty(y_dim_name) ? tuple() : tuple(y_dim_name)
+    z_dim_name = isempty(z_dim_name) ? tuple() : tuple(z_dim_name)
+
+    return tuple(x_dim_name..., y_dim_name..., z_dim_name...)
+end
+
+# xdim(::Face) = tuple("xF")
+# ydim(::Face) = tuple("yF")
+# zdim(::Face) = tuple("zF")
+
+# xdim(::Center) = tuple("xC")
+# ydim(::Center) = tuple("yC")
+# zdim(::Center) = tuple("zC")
+
+# xdim(::Nothing) = tuple()
+# ydim(::Nothing) = tuple()
+# zdim(::Nothing) = tuple()
+
+# netcdf_spatial_dimensions(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
+#     tuple(xdim(instantiate(LX))..., ydim(instantiate(LY))..., zdim(instantiate(LZ))...)
+
+# function native_dimensions_for_netcdf_output(grid, indices, TX, TY, TZ, Hx, Hy, Hz)
+#     with_halos = true
+
+#     xC = ξnodes(grid, c; with_halos)
+#     xF = ξnodes(grid, f; with_halos)
+#     yC = ηnodes(grid, c; with_halos)
+#     yF = ηnodes(grid, f; with_halos)
+#     zC = rnodes(grid, c; with_halos)
+#     zF = rnodes(grid, f; with_halos)
+
+#     xC = isnothing(xC) ? [0.0] : parent(xC)
+#     xF = isnothing(xF) ? [0.0] : parent(xF)
+#     yC = isnothing(yC) ? [0.0] : parent(yC)
+#     yF = isnothing(yF) ? [0.0] : parent(yF)
+#     zC = isnothing(zC) ? [0.0] : parent(zC)
+#     zF = isnothing(zF) ? [0.0] : parent(zF)
+
+#     dims = Dict("xC" => xC[parent_index_range(indices["xC"][1], c, TX(), Hx)],
+#                 "xF" => xF[parent_index_range(indices["xF"][1], f, TX(), Hx)],
+#                 "yC" => yC[parent_index_range(indices["yC"][2], c, TY(), Hy)],
+#                 "yF" => yF[parent_index_range(indices["yF"][2], f, TY(), Hy)],
+#                 "zC" => zC[parent_index_range(indices["zC"][3], c, TZ(), Hz)],
+#                 "zF" => zF[parent_index_range(indices["zF"][3], f, TZ(), Hz)])
+
+#     return dims
+# end
+
+# function default_dimensions(output, grid, indices, with_halos)
+#     Hx, Hy, Hz = halo_size(grid)
+#     TX, TY, TZ = topo = topology(grid)
+
+#     locs = Dict("xC" => (c, c, c),
+#                 "xF" => (f, c, c),
+#                 "yC" => (c, c, c),
+#                 "yF" => (c, f, c),
+#                 "zC" => (c, c, c),
+#                 "zF" => (c, c, f))
+
+#     topo = map(instantiate, topology(grid))
+
+#     indices = Dict(name => validate_indices(indices, locs[name], grid) for name in keys(locs))
+
+#     if !with_halos
+#         indices = Dict(name => restrict_to_interior.(indices[name], locs[name], topo, size(grid))
+#                        for name in keys(locs))
+#     end
+
+#     return native_dimensions_for_netcdf_output(grid, indices, TX, TY, TZ, Hx, Hy, Hz)
+# end
+
+const base_dimension_attributes = Dict(
     "time"        => Dict("long_name" => "Time", "units" => "s"),
     "particle_id" => Dict("long_name" => "Particle ID")
 )
 
-const default_curvilinear_dimension_attributes = Dict(
-    "xC"          => Dict("long_name" => "Locations of the cell centers in the λ-direction.", "units" => "degrees"),
-    "xF"          => Dict("long_name" => "Locations of the cell faces in the λ-direction.",   "units" => "degrees"),
-    "yC"          => Dict("long_name" => "Locations of the cell centers in the φ-direction.", "units" => "degrees"),
-    "yF"          => Dict("long_name" => "Locations of the cell faces in the φ-direction.",   "units" => "degrees"),
-    "zC"          => Dict("long_name" => "Locations of the cell centers in the z-direction.", "units" => "m"),
-    "zF"          => Dict("long_name" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
-    "time"        => Dict("long_name" => "Time", "units" => "s"),
-    "particle_id" => Dict("long_name" => "Particle ID")
-)
+function default_vertical_dimension_attributes(coordinate::StaticVerticalCoordinate, dim_name_generator)
+    zᵃᵃᶠ_name = dim_name_generator("z", coordinate, nothing, nothing, f, Val(:z))
+    zᵃᵃᶜ_name = dim_name_generator("z", coordinate, nothing, nothing, c, Val(:z))
+
+    zᵃᵃᶠ_attrs = Dict("long_name" => "Locations of the cell faces in the z-direction.",   "units" => "m")
+    zᵃᵃᶜ_attrs = Dict("long_name" => "Locations of the cell centers in the z-direction.", "units" => "m")
+
+    return Dict(
+        zᵃᵃᶠ_name => zᵃᵃᶠ_attrs,
+        zᵃᵃᶜ_name => zᵃᵃᶜ_attrs
+    )
+end
+
+function default_dimension_attributes(grid::RectilinearGrid, dim_name_generator)
+    vertical_dimension_attributes = default_vertical_dimension_attributes(grid.z, dim_name_generator)
+
+    xᶠᵃᵃ_name = dim_name_generator("x", grid, f, nothing, nothing, Val(:x))
+    xᶜᵃᵃ_name = dim_name_generator("x", grid, c, nothing, nothing, Val(:x))
+    yᵃᶠᵃ_name = dim_name_generator("y", grid, nothing, f, nothing, Val(:y))
+    yᵃᶜᵃ_name = dim_name_generator("y", grid, nothing, c, nothing, Val(:y))
+
+    xᶠᵃᵃ_attrs = Dict("long_name" => "Locations of the cell faces in the x-direction.",   "units" => "m")
+    xᶜᵃᵃ_attrs = Dict("long_name" => "Locations of the cell centers in the x-direction.", "units" => "m")
+    yᵃᶠᵃ_attrs = Dict("long_name" => "Locations of the cell faces in the y-direction.",   "units" => "m")
+    yᵃᶜᵃ_attrs = Dict("long_name" => "Locations of the cell centers in the y-direction.", "units" => "m")
+
+    horizontal_dimension_attributes = Dict(
+        xᶠᵃᵃ_name => xᶠᵃᵃ_attrs,
+        xᶜᵃᵃ_name => xᶜᵃᵃ_attrs,
+        yᵃᶠᵃ_name => yᵃᶠᵃ_attrs,
+        yᵃᶜᵃ_name => yᵃᶜᵃ_attrs
+    )
+
+    return merge(
+        base_dimension_attributes,
+        vertical_dimension_attributes,
+        horizontal_dimension_attributes
+    )
+end
+
+# const default_rectilinear_dimension_attributes = Dict(
+#     "xC"          => Dict("long_name" => "Locations of the cell centers in the x-direction.", "units" => "m"),
+#     "xF"          => Dict("long_name" => "Locations of the cell faces in the x-direction.",   "units" => "m"),
+#     "yC"          => Dict("long_name" => "Locations of the cell centers in the y-direction.", "units" => "m"),
+#     "yF"          => Dict("long_name" => "Locations of the cell faces in the y-direction.",   "units" => "m"),
+#     "zC"          => Dict("long_name" => "Locations of the cell centers in the z-direction.", "units" => "m"),
+#     "zF"          => Dict("long_name" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
+#     "time"        => Dict("long_name" => "Time", "units" => "s"),
+#     "particle_id" => Dict("long_name" => "Particle ID")
+# )
+
+# const default_curvilinear_dimension_attributes = Dict(
+#     "xC"          => Dict("long_name" => "Locations of the cell centers in the λ-direction.", "units" => "degrees"),
+#     "xF"          => Dict("long_name" => "Locations of the cell faces in the λ-direction.",   "units" => "degrees"),
+#     "yC"          => Dict("long_name" => "Locations of the cell centers in the φ-direction.", "units" => "degrees"),
+#     "yF"          => Dict("long_name" => "Locations of the cell faces in the φ-direction.",   "units" => "degrees"),
+#     "zC"          => Dict("long_name" => "Locations of the cell centers in the z-direction.", "units" => "m"),
+#     "zF"          => Dict("long_name" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
+#     "time"        => Dict("long_name" => "Time", "units" => "s"),
+#     "particle_id" => Dict("long_name" => "Particle ID")
+# )
 
 const default_output_attributes = Dict(
     "u" => Dict("long_name" => "Velocity in the x-direction", "units" => "m/s"),
@@ -375,6 +541,11 @@ function NetCDFOutputWriter(model, outputs;
                             part = 1,
                             file_splitting = NoFileSplitting(),
                             verbose = false)
+
+    if with_halos && indices != (:, :, :)
+        throw(ArgumentError("If with_halos=true then you cannot pass indices: $indices"))
+    end
+
     mkpath(dir)
     filename = auto_extension(filename, ".nc")
     filepath = abspath(joinpath(dir, filename))
@@ -477,12 +648,11 @@ function define_output_variable!(dataset, output, name, array_type,
     return nothing
 end
 
-
 """ Defines empty field variable. """
 function define_output_variable!(dataset, output::AbstractField, name, array_type,
                                  deflatelevel, attrib, dimensions, filepath)
 
-    dims = netcdf_spatial_dimensions(output)
+    dims = field_dimensions(output, default_dim_name)
     FT = eltype(array_type)
     defVar(dataset, name, FT, (dims..., "time"); deflatelevel, attrib)
 
@@ -679,18 +849,19 @@ function initialize_nc_file!(filepath,
     # schedule::AveragedTimeInterval
     schedule, outputs = time_average_outputs(schedule, outputs, model)
 
-    dims = default_dimensions(outputs, grid, indices, with_halos)
+    dims = gather_dimensions(grid, indices, with_halos, default_dim_name)
+    # dims = default_dimensions(outputs, grid, indices, with_halos)
 
     # Open the NetCDF dataset file
     dataset = NCDataset(filepath, mode, attrib=global_attributes)
 
-    default_dimension_attributes = get_default_dimension_attributes(grid)
+    default_dim_attrs = default_dimension_attributes(grid, default_dim_name)
 
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
         for (dim_name, dim_array) in dims
             defVar(dataset, dim_name, array_type(dim_array), (dim_name,),
-                   deflatelevel=deflatelevel, attrib=default_dimension_attributes[dim_name])
+                   deflatelevel=deflatelevel, attrib=default_dim_attrs[dim_name])
         end
 
         # DateTime and TimeDate are both <: AbstractTime
