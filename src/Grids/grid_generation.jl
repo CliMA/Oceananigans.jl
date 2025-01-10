@@ -170,7 +170,7 @@ function generate_coordinate(FT, topo, size, halo, coordinate::ZStarVerticalCoor
     end
 
     if coordinate_name != :z
-        msg = "Only z-coordinate is supported for ZStarVerticalCoordinate"
+        msg = "ZStarVerticalCoordinate is supported only for the z-coordinate"
         throw(ArgumentError(msg))
     end
 
