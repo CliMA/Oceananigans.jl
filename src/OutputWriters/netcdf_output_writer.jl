@@ -617,7 +617,7 @@ function initialize_nc_file!(filepath,
 
         # Create an unlimited dimension "time"
         defDim(dataset, "time", Inf)
-        defVar(dataset, "time", eltype(grid), ("time",), attrib=time_attrib)
+        defVar(dataset, "time", eltype(array_type), ("time",), attrib=time_attrib)
 
         # Create spatial dimensions
         for (dim_name, dim_array) in dims
