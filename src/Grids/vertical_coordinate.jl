@@ -51,9 +51,8 @@ struct ZStarVerticalCoordinate{C, D, E, CC, FC, CF, FF} <: AbstractVerticalCoord
     ∂t_σ :: CC
 end
 
-# Convenience constructors for Zstar vertical coordinate
+# Convenience constructors for z-star vertical coordinate for use in grid constructors
 ZStarVerticalCoordinate(r_faces) = ZStarVerticalCoordinate(r_faces, r_faces, [nothing for i in 1:9]...)
-ZStarVerticalCoordinate(r⁻::Number, r⁺::Number) = ZStarVerticalCoordinate((r⁻, r⁺), (r⁻, r⁺), [nothing for i in 1:9]...)
 
 ####
 #### Some usefull aliases

@@ -47,7 +47,7 @@ const F = Face
 @testset "ZStar coordinate scaling tests" begin
     @info "testing the ZStar coordinate scalings"
 
-    z = ZStarVerticalCoordinate(-20, 0)
+    z = ZStarVerticalCoordinate((-20, 0))
 
     grid = RectilinearGrid(size = (2, 2, 20), 
                               x = (0, 2), 
@@ -80,7 +80,7 @@ const F = Face
 end
 
 @testset "ZStar coordinate simulation testset" begin
-    z_uniform   = ZStarVerticalCoordinate(-20, 0)
+    z_uniform   = ZStarVerticalCoordinate((-20, 0))
     z_stretched = ZStarVerticalCoordinate(collect(-20:0))
     topologies  = ((Periodic, Periodic, Bounded), 
                    (Periodic, Bounded, Bounded),
