@@ -658,6 +658,7 @@ function initialize_nc_file!(filepath,
         if include_grid_metrics
             grid_metrics = gather_grid_metrics(grid, dimension_name_generator)
             for (name, output) in grid_metrics
+                output = construct_output(output, grid, indices, with_halos)
                 attributes = try default_dim_attrs[name]; catch; Dict(); end
                 materialized = materialize_output(output, model)
                 time_dependent = false
