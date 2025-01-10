@@ -113,32 +113,29 @@ end
 ##### Gathering of grid metrics
 #####
 
-function gather_vertical_metrics(coordinate::StaticVerticalCoordinate, dim_name_generator)
-    Δzᵃᵃᶜ_name = dim_name_generator("z", coordinate, nothing, nothing, f, Val(:z))
-    Δzᵃᵃᶠ_name = dim_name_generator("z", coordinate, nothing, nothing, c, Val(:z))
+function gather_grid_metrics(grid::RectilinearGrid, dim_name_generator)
+    Δxᶠᵃᵃ_name = dim_name_generator("dx", grid, f, nothing, nothing, Val(:x))
+    Δxᶜᵃᵃ_name = dim_name_generator("dx", grid, c, nothing, nothing, Val(:x))
+    Δyᵃᶠᵃ_name = dim_name_generator("dy", grid, nothing, f, nothing, Val(:y))
+    Δyᵃᶜᵃ_name = dim_name_generator("dy", grid, nothing, c, nothing, Val(:y))
+    Δzᵃᵃᶜ_name = dim_name_generator("dz", grid, nothing, nothing, f, Val(:z))
+    Δzᵃᵃᶠ_name = dim_name_generator("dz", grid, nothing, nothing, c, Val(:z))
+
+    Δxᶠᵃᵃ_field = Field(xspacings(grid, f, nothing, nothing))
+    Δxᶜᵃᵃ_field = Field(xspacings(grid, c, nothing, nothing))
+    Δyᵃᶠᵃ_field = Field(yspacings(grid, nothing, f, nothing))
+    Δyᵃᶜᵃ_field = Field(yspacings(grid, nothing, c, nothing))
+    Δzᵃᵃᶠ_field = Field(zspacings(grid, nothing, nothing, f))
+    Δzᵃᵃᶜ_field = Field(zspacings(grid, nothing, nothing, c))
 
     return Dict(
-        Δzᵃᵃᶜ_name => coordinate.Δᵃᵃᶜ,
-        Δzᵃᵃᶠ_name => coordinate.Δᵃᵃᶠ
+        Δxᶠᵃᵃ_name => Δxᶠᵃᵃ_field,
+        Δxᶜᵃᵃ_name => Δxᶜᵃᵃ_field,
+        Δyᵃᶠᵃ_name => Δyᵃᶠᵃ_field,
+        Δyᵃᶜᵃ_name => Δyᵃᶜᵃ_field,
+        Δzᵃᵃᶠ_name => Δzᵃᵃᶠ_field,
+        Δzᵃᵃᶜ_name => Δzᵃᵃᶜ_field
     )
-end
-
-function gather_grid_metrics(grid::RectilinearGrid, dim_name_generator)
-    vertical_metrics = gather_vertical_metrics(grid.z, dim_name_generator)
-
-    Δxᶠᵃᵃ_name = dim_name_generator("Δx", grid, f, nothing, nothing, Val(:x))
-    Δxᶜᵃᵃ_name = dim_name_generator("Δx", grid, c, nothing, nothing, Val(:x))
-    Δyᵃᶠᵃ_name = dim_name_generator("Δy", grid, nothing, f, nothing, Val(:y))
-    Δyᵃᶜᵃ_name = dim_name_generator("Δy", grid, nothing, c, nothing, Val(:y))
-
-    horizontal_metrics = Dict(
-        Δxᶠᵃᵃ_name => grid.Δxᶠᵃᵃ,
-        Δxᶜᵃᵃ_name => grid.Δxᶜᵃᵃ,
-        Δyᵃᶠᵃ_name => grid.Δyᵃᶠᵃ,
-        Δyᵃᶜᵃ_name => grid.Δyᵃᶜᵃ
-    )
-
-    return merge(horizontal_metrics, vertical_metrics)
 end
 
 #####
@@ -291,6 +288,7 @@ mutable struct NetCDFOutputWriter{G, D, O, T, A, FS, DN} <: AbstractOutputWriter
     file_splitting :: FS
     verbose :: Bool
     dimension_name_generator :: DN
+    include_grid_metrics :: Bool
 end
 
 """
@@ -487,6 +485,7 @@ function NetCDFOutputWriter(model, outputs;
                             array_type = Array{Float64},
                             indices = (:, :, :),
                             with_halos = false,
+                            include_grid_metrics = true,
                             overwrite_existing = nothing,
                             verbose = false,
                             global_attributes = Dict(),
@@ -546,7 +545,8 @@ function NetCDFOutputWriter(model, outputs;
                                                      deflatelevel,
                                                      grid,
                                                      model,
-                                                     dimension_name_generator)
+                                                     dimension_name_generator,
+                                                     include_grid_metrics)
 
     return NetCDFOutputWriter(grid,
                               filepath,
@@ -564,7 +564,8 @@ function NetCDFOutputWriter(model, outputs;
                               part,
                               file_splitting,
                               verbose,
-                              dimension_name_generator)
+                              dimension_name_generator,
+                              include_grid_metrics)
 end
 
 #####
@@ -584,7 +585,8 @@ function initialize_nc_file!(filepath,
                              deflatelevel,
                              grid,
                              model,
-                             dimension_name_generator)
+                             dimension_name_generator,
+                             include_grid_metrics)
 
     mode = overwrite_existing ? "c" : "a"
 
@@ -608,19 +610,20 @@ function initialize_nc_file!(filepath,
 
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
-        for (dim_name, dim_array) in dims
-            defVar(dataset, dim_name, array_type(dim_array), (dim_name,),
-                   deflatelevel=deflatelevel, attrib=default_dim_attrs[dim_name])
-        end
-
         # DateTime and TimeDate are both <: AbstractTime
         time_attrib = model.clock.time isa AbstractTime ?
             Dict("long_name" => "Time", "units" => "seconds since 2000-01-01 00:00:00") :
             Dict("long_name" => "Time", "units" => "seconds")
 
-        # Creates an unlimited dimension "time"
+        # Create an unlimited dimension "time"
         defDim(dataset, "time", Inf)
         defVar(dataset, "time", eltype(grid), ("time",), attrib=time_attrib)
+
+        # Create spatial dimensions
+        for (dim_name, dim_array) in dims
+            defVar(dataset, dim_name, array_type(dim_array), (dim_name,),
+                   deflatelevel=deflatelevel, attrib=default_dim_attrs[dim_name])
+        end
 
         # Use default output attributes for known outputs if the user has not specified any.
         # Unknown outputs get an empty tuple (no output attributes).
@@ -630,18 +633,47 @@ function initialize_nc_file!(filepath,
             end
         end
 
+        if include_grid_metrics
+            grid_metrics = gather_grid_metrics(grid, dimension_name_generator)
+            for (name, output) in grid_metrics
+                attributes = try output_attributes[name]; catch; Dict(); end
+                materialized = materialize_output(output, model)
+                time_dependent = false
+
+                define_output_variable!(
+                    dataset,
+                    materialized,
+                    name,
+                    array_type,
+                    deflatelevel,
+                    attributes,
+                    dimensions,
+                    filepath, # for better error messages
+                    dimension_name_generator,
+                    time_dependent
+                )
+
+                save_output!(dataset, output, model, name, array_type)
+            end
+        end
+
         for (name, output) in outputs
             attributes = try output_attributes[name]; catch; Dict(); end
             materialized = materialize_output(output, model)
-            define_output_variable!(dataset,
-                                    materialized,
-                                    name,
-                                    array_type,
-                                    deflatelevel,
-                                    attributes,
-                                    dimensions,
-                                    filepath, # for better error messages
-                                    dimension_name_generator)
+            time_dependent = true
+
+            define_output_variable!(
+                dataset,
+                materialized,
+                name,
+                array_type,
+                deflatelevel,
+                attributes,
+                dimensions,
+                filepath, # for better error messages
+                dimension_name_generator,
+                time_dependent
+            )
         end
 
         sync(dataset)
@@ -666,7 +698,8 @@ initialize_nc_file!(ow::NetCDFOutputWriter, model) =
                         ow.deflatelevel,
                         ow.grid,
                         model,
-                        ow.dimension_name_generator)
+                        ow.dimension_name_generator,
+                        ow.include_grid_metrics)
 
 #####
 ##### Variable definition
@@ -680,7 +713,7 @@ materialize_output(output::WindowedTimeAverage{<:AbstractField}, model) = output
 """ Defines empty variables for 'custom' user-supplied `output`. """
 function define_output_variable!(dataset, output, name, array_type,
                                  deflatelevel, attrib, dimensions, filepath,
-                                 dimension_name_generator)
+                                 dimension_name_generator, time_dependent)
 
     if name ∉ keys(dimensions)
         msg = string("dimensions[$name] for output $name=$(typeof(output)) into $filepath" *
@@ -698,11 +731,14 @@ end
 """ Defines empty field variable. """
 function define_output_variable!(dataset, output::AbstractField, name, array_type,
                                  deflatelevel, attrib, dimensions, filepath,
-                                 dimension_name_generator)
+                                 dimension_name_generator, time_dependent)
 
     dims = field_dimensions(output, dimension_name_generator)
     FT = eltype(array_type)
-    defVar(dataset, name, FT, (dims..., "time"); deflatelevel, attrib)
+
+    all_dims = time_dependent ? (dims..., "time") : dims
+
+    defVar(dataset, name, FT, all_dims; deflatelevel, attrib)
 
     return nothing
 end
@@ -714,8 +750,7 @@ define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, a
 
 """ Defines empty variable for particle trackting. """
 function define_output_variable!(dataset, output::LagrangianParticles, name, array_type,
-                                 deflatelevel, output_attributes, dimensions, filepath,
-                                 dimension_name_generator)
+                                 deflatelevel, args...)
 
     particle_fields = eltype(output.properties) |> fieldnames .|> string
     T = eltype(array_type)
@@ -734,6 +769,17 @@ end
 Base.open(nc::NetCDFOutputWriter) = NCDataset(nc.filepath, "a")
 Base.close(nc::NetCDFOutputWriter) = close(nc.dataset)
 
+# Saving outputs with no time dependence (e.g. grid metrics)
+function save_output!(ds, output, model, name, array_type)
+    fetched = fetch_output(output, model)
+    data = convert_output(fetched, array_type)
+    data = drop_output_dims(output, data)
+    colons = Tuple(Colon() for _ in 1:ndims(data))
+    ds[name][colons...] = data
+    return nothing
+end
+
+# Saving time-dependent outputs
 function save_output!(ds, output, model, ow, time_index, name)
     data = fetch_and_convert_output(output, model, ow)
     data = drop_output_dims(output, data)
