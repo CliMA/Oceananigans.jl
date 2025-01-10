@@ -118,15 +118,15 @@ function gather_grid_metrics(grid::RectilinearGrid, dim_name_generator)
     Δxᶜᵃᵃ_name = dim_name_generator("dx", grid, c, nothing, nothing, Val(:x))
     Δyᵃᶠᵃ_name = dim_name_generator("dy", grid, nothing, f, nothing, Val(:y))
     Δyᵃᶜᵃ_name = dim_name_generator("dy", grid, nothing, c, nothing, Val(:y))
-    Δzᵃᵃᶜ_name = dim_name_generator("dz", grid, nothing, nothing, f, Val(:z))
-    Δzᵃᵃᶠ_name = dim_name_generator("dz", grid, nothing, nothing, c, Val(:z))
+    Δzᵃᵃᶠ_name = dim_name_generator("dz", grid, nothing, nothing, f, Val(:z))
+    Δzᵃᵃᶜ_name = dim_name_generator("dz", grid, nothing, nothing, c, Val(:z))
 
-    Δxᶠᵃᵃ_field = Field(xspacings(grid, f, nothing, nothing))
-    Δxᶜᵃᵃ_field = Field(xspacings(grid, c, nothing, nothing))
-    Δyᵃᶠᵃ_field = Field(yspacings(grid, nothing, f, nothing))
-    Δyᵃᶜᵃ_field = Field(yspacings(grid, nothing, c, nothing))
-    Δzᵃᵃᶠ_field = Field(zspacings(grid, nothing, nothing, f))
-    Δzᵃᵃᶜ_field = Field(zspacings(grid, nothing, nothing, c))
+    Δxᶠᵃᵃ_field = Field(xspacings(grid, f))
+    Δxᶜᵃᵃ_field = Field(xspacings(grid, c))
+    Δyᵃᶠᵃ_field = Field(yspacings(grid, f))
+    Δyᵃᶜᵃ_field = Field(yspacings(grid, c))
+    Δzᵃᵃᶠ_field = Field(zspacings(grid, f))
+    Δzᵃᵃᶜ_field = Field(zspacings(grid, c))
 
     return Dict(
         Δxᶠᵃᵃ_name => Δxᶠᵃᵃ_field,
@@ -639,6 +639,9 @@ function initialize_nc_file!(filepath,
                 attributes = try output_attributes[name]; catch; Dict(); end
                 materialized = materialize_output(output, model)
                 time_dependent = false
+
+                @show name
+                @show output
 
                 define_output_variable!(
                     dataset,
