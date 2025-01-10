@@ -113,7 +113,7 @@ end
 ##### Gathering of grid metrics
 #####
 
-function gather_grid_metrics(grid::RectilinearGrid, dim_name_generator)
+function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator)
     Δxᶠᵃᵃ_name = dim_name_generator("dx", grid, f, nothing, nothing, Val(:x))
     Δxᶜᵃᵃ_name = dim_name_generator("dx", grid, c, nothing, nothing, Val(:x))
     Δyᵃᶠᵃ_name = dim_name_generator("dy", grid, nothing, f, nothing, Val(:y))
@@ -121,12 +121,12 @@ function gather_grid_metrics(grid::RectilinearGrid, dim_name_generator)
     Δzᵃᵃᶠ_name = dim_name_generator("dz", grid, nothing, nothing, f, Val(:z))
     Δzᵃᵃᶜ_name = dim_name_generator("dz", grid, nothing, nothing, c, Val(:z))
 
-    Δxᶠᵃᵃ_field = Field(xspacings(grid, f))
-    Δxᶜᵃᵃ_field = Field(xspacings(grid, c))
-    Δyᵃᶠᵃ_field = Field(yspacings(grid, f))
-    Δyᵃᶜᵃ_field = Field(yspacings(grid, c))
-    Δzᵃᵃᶠ_field = Field(zspacings(grid, f))
-    Δzᵃᵃᶜ_field = Field(zspacings(grid, c))
+    Δxᶠᵃᵃ_field = Field(xspacings(grid, f); indices)
+    Δxᶜᵃᵃ_field = Field(xspacings(grid, c); indices)
+    Δyᵃᶠᵃ_field = Field(yspacings(grid, f); indices)
+    Δyᵃᶜᵃ_field = Field(yspacings(grid, c); indices)
+    Δzᵃᵃᶠ_field = Field(zspacings(grid, f); indices)
+    Δzᵃᵃᶜ_field = Field(zspacings(grid, c); indices)
 
     return Dict(
         Δxᶠᵃᵃ_name => Δxᶠᵃᵃ_field,
@@ -656,7 +656,7 @@ function initialize_nc_file!(filepath,
         end
 
         if include_grid_metrics
-            grid_metrics = gather_grid_metrics(grid, dimension_name_generator)
+            grid_metrics = gather_grid_metrics(grid, indices, dimension_name_generator)
             for (name, output) in grid_metrics
                 output = construct_output(output, grid, indices, with_halos)
                 attributes = try default_dim_attrs[name]; catch; Dict(); end

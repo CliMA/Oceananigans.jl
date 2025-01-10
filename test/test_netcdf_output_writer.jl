@@ -100,9 +100,8 @@ function test_timedate_netcdf_output(arch)
     return nothing
 end
 
-# TODO: test with and without halos (+ sliced output)
 function test_netcdf_grid_metrics_rectilinear(arch, FT)
-    Nx, Ny, Nz = 4, 6, 8
+    Nx, Ny, Nz = 8, 6, 4
     Hx, Hy, Hz = 1, 2, 3
 
     grid = RectilinearGrid(arch,
@@ -158,6 +157,28 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
             array_type = Array{FT},
             with_halos = true,
             include_grid_metrics = false,
+            verbose = true
+        )
+
+    i_slice = Colon()
+    j_slice = 2:4
+    k_slice = Nz
+
+    nx = Nx
+    ny = length(j_slice)
+    nz = 1
+
+    filepath_sliced = "test_grid_metrics_rectilinear_sliced_$(Arch)_$FT.nc"
+    isfile(filepath_sliced) && rm(filepath_sliced)
+
+    simulation.output_writers[:sliced] =
+        NetCDFOutputWriter(model, fields(model),
+            filename = filepath_sliced,
+            indices = (i_slice, j_slice, k_slice),
+            schedule = IterationInterval(1),
+            array_type = Array{FT},
+            with_halos = false,
+            include_grid_metrics = true,
             verbose = true
         )
 
@@ -263,6 +284,38 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     @test dimsize(ds_mh[:w]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_f=Nz + 2Hz + 1, time=Nt + 1)
     @test dimsize(ds_mh[:T]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_c=Nz + 2Hz,     time=Nt + 1)
     @test dimsize(ds_mh[:S]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_c=Nz + 2Hz,     time=Nt + 1)
+
+    # Test NetCDF sliced output with metrics
+    ds_s = NCDataset(filepath_sliced)
+
+    @test haskey(ds_s, "time")
+
+    for var in (dims..., metrics..., vars...)
+        @test haskey(ds_s, var)
+        @test haskey(ds_s[var].attrib, "long_name")
+        @test haskey(ds_s[var].attrib, "units")
+        @test eltype(ds_s[var]) == FT
+    end
+
+    @test dimsize(ds_s[:x_f]) == (x_f=nx,)
+    @test dimsize(ds_s[:x_c]) == (x_c=nx,)
+    @test dimsize(ds_s[:y_f]) == (y_f=ny,)
+    @test dimsize(ds_s[:y_c]) == (y_c=ny,)
+    @test dimsize(ds_s[:z_f]) == (z_f=nz,)
+    @test dimsize(ds_s[:z_c]) == (z_c=nz,)
+
+    @test dimsize(ds_s[:dx_f]) == (x_f=nx,)
+    @test dimsize(ds_s[:dx_c]) == (x_c=nx,)
+    @test dimsize(ds_s[:dy_f]) == (y_f=ny,)
+    @test dimsize(ds_s[:dy_c]) == (y_c=ny,)
+    @test dimsize(ds_s[:dz_f]) == (z_f=nz,)
+    @test dimsize(ds_s[:dz_c]) == (z_c=nz,)
+
+    @test dimsize(ds_s[:u]) == (x_f=nx, y_c=ny, z_c=nz, time=Nt + 1)
+    @test dimsize(ds_s[:v]) == (x_c=nx, y_f=ny, z_c=nz, time=Nt + 1)
+    @test dimsize(ds_s[:w]) == (x_c=nx, y_c=ny, z_f=nz, time=Nt + 1)
+    @test dimsize(ds_s[:T]) == (x_c=nx, y_c=ny, z_c=nz, time=Nt + 1)
+    @test dimsize(ds_s[:S]) == (x_c=nx, y_c=ny, z_c=nz, time=Nt + 1)
 
     return nothing
 end
