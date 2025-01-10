@@ -167,12 +167,20 @@ function default_vertical_dimension_attributes(coordinate::StaticVerticalCoordin
     zᵃᵃᶠ_name = dim_name_generator("z", coordinate, nothing, nothing, f, Val(:z))
     zᵃᵃᶜ_name = dim_name_generator("z", coordinate, nothing, nothing, c, Val(:z))
 
+    Δzᵃᵃᶠ_name = dim_name_generator("dz", coordinate, nothing, nothing, f, Val(:z))
+    Δzᵃᵃᶜ_name = dim_name_generator("dz", coordinate, nothing, nothing, c, Val(:z))
+
     zᵃᵃᶠ_attrs = Dict("long_name" => "Locations of the cell faces in the z-direction.",   "units" => "m")
     zᵃᵃᶜ_attrs = Dict("long_name" => "Locations of the cell centers in the z-direction.", "units" => "m")
 
+    Δzᵃᵃᶠ_attrs = Dict("long_name" => "Spacings between the cell centers (located at the cell faces) in the z-direction.", "units" => "m")
+    Δzᵃᵃᶜ_attrs = Dict("long_name" => "Spacings between the cell faces (located at the cell centers) in the z-direction.", "units" => "m")
+
     return Dict(
         zᵃᵃᶠ_name => zᵃᵃᶠ_attrs,
-        zᵃᵃᶜ_name => zᵃᵃᶜ_attrs
+        zᵃᵃᶜ_name => zᵃᵃᶜ_attrs,
+        Δzᵃᵃᶠ_name => Δzᵃᵃᶠ_attrs,
+        Δzᵃᵃᶜ_name => Δzᵃᵃᶜ_attrs,
     )
 end
 
@@ -184,16 +192,30 @@ function default_dimension_attributes(grid::RectilinearGrid, dim_name_generator)
     yᵃᶠᵃ_name = dim_name_generator("y", grid, nothing, f, nothing, Val(:y))
     yᵃᶜᵃ_name = dim_name_generator("y", grid, nothing, c, nothing, Val(:y))
 
+    Δxᶠᵃᵃ_name = dim_name_generator("dx", grid, f, nothing, nothing, Val(:x))
+    Δxᶜᵃᵃ_name = dim_name_generator("dx", grid, c, nothing, nothing, Val(:x))
+    Δyᵃᶠᵃ_name = dim_name_generator("dy", grid, nothing, f, nothing, Val(:y))
+    Δyᵃᶜᵃ_name = dim_name_generator("dy", grid, nothing, c, nothing, Val(:y))
+
     xᶠᵃᵃ_attrs = Dict("long_name" => "Locations of the cell faces in the x-direction.",   "units" => "m")
     xᶜᵃᵃ_attrs = Dict("long_name" => "Locations of the cell centers in the x-direction.", "units" => "m")
     yᵃᶠᵃ_attrs = Dict("long_name" => "Locations of the cell faces in the y-direction.",   "units" => "m")
     yᵃᶜᵃ_attrs = Dict("long_name" => "Locations of the cell centers in the y-direction.", "units" => "m")
 
+    Δxᶠᵃᵃ_attrs = Dict("long_name" => "Spacings between the cell centers (located at the cell faces) in the x-direction.", "units" => "m")
+    Δxᶜᵃᵃ_attrs = Dict("long_name" => "Spacings between the cell faces (located at the cell centers) in the x-direction.", "units" => "m")
+    Δyᵃᶠᵃ_attrs = Dict("long_name" => "Spacings between the cell centers (located at the cell faces) in the y-direction.", "units" => "m")
+    Δyᵃᶜᵃ_attrs = Dict("long_name" => "Spacings between the cell faces (located at the cell centers) in the y-direction.", "units" => "m")
+
     horizontal_dimension_attributes = Dict(
         xᶠᵃᵃ_name => xᶠᵃᵃ_attrs,
         xᶜᵃᵃ_name => xᶜᵃᵃ_attrs,
         yᵃᶠᵃ_name => yᵃᶠᵃ_attrs,
-        yᵃᶜᵃ_name => yᵃᶜᵃ_attrs
+        yᵃᶜᵃ_name => yᵃᶜᵃ_attrs,
+        Δxᶠᵃᵃ_name => Δxᶠᵃᵃ_attrs,
+        Δxᶜᵃᵃ_name => Δxᶜᵃᵃ_attrs,
+        Δyᵃᶠᵃ_name => Δyᵃᶠᵃ_attrs,
+        Δyᵃᶜᵃ_name => Δyᵃᶜᵃ_attrs
     )
 
     return merge(
@@ -636,12 +658,9 @@ function initialize_nc_file!(filepath,
         if include_grid_metrics
             grid_metrics = gather_grid_metrics(grid, dimension_name_generator)
             for (name, output) in grid_metrics
-                attributes = try output_attributes[name]; catch; Dict(); end
+                attributes = try default_dim_attrs[name]; catch; Dict(); end
                 materialized = materialize_output(output, model)
                 time_dependent = false
-
-                @show name
-                @show output
 
                 define_output_variable!(
                     dataset,
