@@ -188,6 +188,7 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     ds_mh = NCDataset(filepath_metrics_halos)
 
     @test haskey(ds_mh, "time")
+    @test eltype(ds_mh["time"]) == Float64
 
     dims = ("x_f", "x_c", "y_f", "y_c", "z_f", "z_c")
     metrics = ("dx_f", "dx_c", "dy_f", "dy_c", "dz_f", "dz_c")
@@ -226,6 +227,7 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     ds_m = NCDataset(filepath_metrics_nohalos)
 
     @test haskey(ds_m, "time")
+    @test eltype(ds_mh["time"]) == Float64
 
     for var in (dims..., metrics..., vars...)
         @test haskey(ds_m, var)
@@ -258,6 +260,7 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     ds_h = NCDataset(filepath_nometrics)
 
     @test haskey(ds_h, "time")
+    @test eltype(ds_mh["time"]) == Float64
 
     for var in (dims..., vars...)
         @test haskey(ds_h, var)
@@ -289,6 +292,7 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     ds_s = NCDataset(filepath_sliced)
 
     @test haskey(ds_s, "time")
+    @test eltype(ds_mh["time"]) == Float64
 
     for var in (dims..., metrics..., vars...)
         @test haskey(ds_s, var)
@@ -405,7 +409,7 @@ function test_thermal_bubble_netcdf_output(arch, FT)
     @test ds3.attrib["interval"] == 10
     @test !isnothing(ds3.attrib["output iteration interval"])
 
-    @test eltype(ds3["time"]) == FT
+    @test eltype(ds3["time"]) == Float64
 
     @test eltype(ds3["x_c"]) == FT
     @test eltype(ds3["x_f"]) == FT
@@ -835,7 +839,7 @@ function test_netcdf_function_output(arch)
     @test !isnothing(ds.attrib["interval"])
     @test !isnothing(ds.attrib["output time interval"])
 
-    @test eltype(ds["time"]) == eltype(model.clock.time)
+    @test eltype(ds["time"]) == Float64
 
     @test eltype(ds["x_c"]) == Float64
     @test eltype(ds["x_f"]) == Float64

@@ -638,8 +638,10 @@ function initialize_nc_file!(filepath,
             Dict("long_name" => "Time", "units" => "seconds")
 
         # Create an unlimited dimension "time"
+        # Time should always be Float64 to be extra safe from rounding errors.
+        # See: https://github.com/CliMA/Oceananigans.jl/issues/3056
         defDim(dataset, "time", Inf)
-        defVar(dataset, "time", eltype(array_type), ("time",), attrib=time_attrib)
+        defVar(dataset, "time", Float64, ("time",), attrib=time_attrib)
 
         # Create spatial dimensions
         for (dim_name, dim_array) in dims
