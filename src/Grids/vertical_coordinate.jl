@@ -52,7 +52,7 @@ struct ZStarVerticalCoordinate{C, D, E, CC, FC, CF, FF} <: AbstractVerticalCoord
 end
 
 # Convenience constructors for Zstar vertical coordinate
-ZStarVerticalCoordinate(r_faces::Union{Tuple, AbstractVector}) = ZStarVerticalCoordinate(r_faces, r_faces, [nothing for i in 1:9]...)
+ZStarVerticalCoordinate(r_faces::Union{Function, Tuple, AbstractVector}) = ZStarVerticalCoordinate(r_faces, r_faces, [nothing for i in 1:9]...)
 ZStarVerticalCoordinate(r⁻::Number, r⁺::Number) = ZStarVerticalCoordinate((r⁻, r⁺), (r⁻, r⁺), [nothing for i in 1:9]...)
 
 ####
