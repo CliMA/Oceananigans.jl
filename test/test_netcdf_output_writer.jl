@@ -10,10 +10,6 @@ using NCDatasets
 using Oceananigans: Clock
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 
-#####
-##### NetCDFOutputWriter tests
-#####
-
 function test_datetime_netcdf_output(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
 
@@ -105,8 +101,171 @@ function test_timedate_netcdf_output(arch)
 end
 
 # TODO: test with and without halos (+ sliced output)
-# function test_netcdf_grid_metrics_rectilinear(arch, FT)
-# end
+function test_netcdf_grid_metrics_rectilinear(arch, FT)
+    Nx, Ny, Nz = 4, 6, 8
+    Hx, Hy, Hz = 1, 2, 3
+
+    grid = RectilinearGrid(arch,
+        topology = (Periodic, Bounded, Bounded),
+        size = (Nx, Ny, Nz),
+        halo = (Hx, Hy, Hz),
+        extent = (1, 2, 3)
+    )
+
+    model = NonhydrostaticModel(; grid,
+        closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    Nt = 10
+    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+
+    Arch = typeof(arch)
+    filepath_metrics_halos = "test_grid_metrics_rectilinear_halos_$(Arch)_$FT.nc"
+    isfile(filepath_metrics_halos) && rm(filepath_metrics_halos)
+
+    simulation.output_writers[:with_metrics_and_halos] =
+        NetCDFOutputWriter(model, fields(model),
+            filename = filepath_metrics_halos,
+            schedule = IterationInterval(1),
+            array_type = Array{FT},
+            with_halos = true,
+            include_grid_metrics = true,
+            verbose = true
+        )
+
+    filepath_metrics_nohalos = "test_grid_metrics_rectilinear_nohalos_$(Arch)_$FT.nc"
+    isfile(filepath_metrics_nohalos) && rm(filepath_metrics_nohalos)
+
+    simulation.output_writers[:with_metrics_no_halos] =
+        NetCDFOutputWriter(model, fields(model),
+            filename = filepath_metrics_nohalos,
+            schedule = IterationInterval(1),
+            array_type = Array{FT},
+            with_halos = false,
+            include_grid_metrics = true,
+            verbose = true
+        )
+
+    filepath_nometrics = "test_grid_metrics_rectilinear_nometrics_$(Arch)_$FT.nc"
+    isfile(filepath_nometrics) && rm(filepath_nometrics)
+
+    simulation.output_writers[:no_metrics] =
+        NetCDFOutputWriter(model, fields(model),
+            filename = filepath_nometrics,
+            schedule = IterationInterval(1),
+            array_type = Array{FT},
+            with_halos = true,
+            include_grid_metrics = false,
+            verbose = true
+        )
+
+    run!(simulation)
+
+    # Test NetCDF output with metrics and halos
+    ds_mh = NCDataset(filepath_metrics_halos)
+
+    @test haskey(ds_mh, "time")
+
+    dims = ("x_f", "x_c", "y_f", "y_c", "z_f", "z_c")
+    metrics = ("dx_f", "dx_c", "dy_f", "dy_c", "dz_f", "dz_c")
+    vars = ("u", "v", "w", "T", "S")
+
+    for var in (dims..., metrics..., vars...)
+        @test haskey(ds_mh, var)
+        @test haskey(ds_mh[var].attrib, "long_name")
+        @test haskey(ds_mh[var].attrib, "units")
+        @test eltype(ds_mh[var]) == FT
+    end
+
+    @test dimsize(ds_mh["time"]) == (time=Nt + 1,)
+
+    @test dimsize(ds_mh[:x_f]) == (x_f=Nx + 2Hx,)
+    @test dimsize(ds_mh[:x_c]) == (x_c=Nx + 2Hx,)
+    @test dimsize(ds_mh[:y_f]) == (y_f=Ny + 2Hy + 1,)
+    @test dimsize(ds_mh[:y_c]) == (y_c=Ny + 2Hy,)
+    @test dimsize(ds_mh[:z_f]) == (z_f=Nz + 2Hz + 1,)
+    @test dimsize(ds_mh[:z_c]) == (z_c=Nz + 2Hz,)
+
+    @test dimsize(ds_mh[:dx_f]) == (x_f=Nx + 2Hx,)
+    @test dimsize(ds_mh[:dx_c]) == (x_c=Nx + 2Hx,)
+    @test dimsize(ds_mh[:dy_f]) == (y_f=Ny + 2Hy + 1,)
+    @test dimsize(ds_mh[:dy_c]) == (y_c=Ny + 2Hy,)
+    @test dimsize(ds_mh[:dz_f]) == (z_f=Nz + 2Hz + 1,)
+    @test dimsize(ds_mh[:dz_c]) == (z_c=Nz + 2Hz,)
+
+    @test dimsize(ds_mh[:u]) == (x_f=Nx + 2Hx, y_c=Ny + 2Hy,     z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_mh[:v]) == (x_c=Nx + 2Hx, y_f=Ny + 2Hy + 1, z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_mh[:w]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_f=Nz + 2Hz + 1, time=Nt + 1)
+    @test dimsize(ds_mh[:T]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_mh[:S]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_c=Nz + 2Hz,     time=Nt + 1)
+
+    # Test NetCDF output with metrics but not halos
+    ds_m = NCDataset(filepath_metrics_nohalos)
+
+    @test haskey(ds_m, "time")
+
+    for var in (dims..., metrics..., vars...)
+        @test haskey(ds_m, var)
+        @test haskey(ds_m[var].attrib, "long_name")
+        @test haskey(ds_m[var].attrib, "units")
+        @test eltype(ds_m[var]) == FT
+    end
+
+    @test dimsize(ds_m[:x_f]) == (x_f=Nx,)
+    @test dimsize(ds_m[:x_c]) == (x_c=Nx,)
+    @test dimsize(ds_m[:y_f]) == (y_f=Ny + 1,)
+    @test dimsize(ds_m[:y_c]) == (y_c=Ny,)
+    @test dimsize(ds_m[:z_f]) == (z_f=Nz + 1,)
+    @test dimsize(ds_m[:z_c]) == (z_c=Nz,)
+
+    @test dimsize(ds_m[:dx_f]) == (x_f=Nx,)
+    @test dimsize(ds_m[:dx_c]) == (x_c=Nx,)
+    @test dimsize(ds_m[:dy_f]) == (y_f=Ny + 1,)
+    @test dimsize(ds_m[:dy_c]) == (y_c=Ny,)
+    @test dimsize(ds_m[:dz_f]) == (z_f=Nz + 1,)
+    @test dimsize(ds_m[:dz_c]) == (z_c=Nz,)
+
+    @test dimsize(ds_m[:u]) == (x_f=Nx, y_c=Ny,     z_c=Nz,     time=Nt + 1)
+    @test dimsize(ds_m[:v]) == (x_c=Nx, y_f=Ny + 1, z_c=Nz,     time=Nt + 1)
+    @test dimsize(ds_m[:w]) == (x_c=Nx, y_c=Ny,     z_f=Nz + 1, time=Nt + 1)
+    @test dimsize(ds_m[:T]) == (x_c=Nx, y_c=Ny,     z_c=Nz,     time=Nt + 1)
+    @test dimsize(ds_m[:S]) == (x_c=Nx, y_c=Ny,     z_c=Nz,     time=Nt + 1)
+
+    # Test NetCDF output with no metrics (with halos)
+    ds_h = NCDataset(filepath_nometrics)
+
+    @test haskey(ds_h, "time")
+
+    for var in (dims..., vars...)
+        @test haskey(ds_h, var)
+        @test haskey(ds_h[var].attrib, "long_name")
+        @test haskey(ds_h[var].attrib, "units")
+        @test eltype(ds_h[var]) == FT
+    end
+
+    for metric in metrics
+        @test !haskey(ds_h, metric)
+    end
+
+    @test dimsize(ds_h["time"]) == (time=Nt + 1,)
+
+    @test dimsize(ds_h[:x_f]) == (x_f=Nx + 2Hx,)
+    @test dimsize(ds_h[:x_c]) == (x_c=Nx + 2Hx,)
+    @test dimsize(ds_h[:y_f]) == (y_f=Ny + 2Hy + 1,)
+    @test dimsize(ds_h[:y_c]) == (y_c=Ny + 2Hy,)
+    @test dimsize(ds_h[:z_f]) == (z_f=Nz + 2Hz + 1,)
+    @test dimsize(ds_h[:z_c]) == (z_c=Nz + 2Hz,)
+
+    @test dimsize(ds_mh[:u]) == (x_f=Nx + 2Hx, y_c=Ny + 2Hy,     z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_mh[:v]) == (x_c=Nx + 2Hx, y_f=Ny + 2Hy + 1, z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_mh[:w]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_f=Nz + 2Hz + 1, time=Nt + 1)
+    @test dimsize(ds_mh[:T]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_mh[:S]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_c=Nz + 2Hz,     time=Nt + 1)
+
+    return nothing
+end
 
 function test_thermal_bubble_netcdf_output(arch, FT)
     Nx, Ny, Nz = 16, 16, 16
@@ -1269,8 +1428,8 @@ for arch in [CPU(), GPU()]
         test_datetime_netcdf_output(arch)
         test_timedate_netcdf_output(arch)
 
-        # test_netcdf_grid_metrics_rectilinear(arch, Float64)
-        # test_netcdf_grid_metrics_rectilinear(arch, Float32)
+        test_netcdf_grid_metrics_rectilinear(arch, Float64)
+        test_netcdf_grid_metrics_rectilinear(arch, Float32)
 
         test_thermal_bubble_netcdf_output(arch, Float64)
         test_thermal_bubble_netcdf_output(arch, Float32)
