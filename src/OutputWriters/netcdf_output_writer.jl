@@ -69,6 +69,13 @@ default_dim_name(var_name, grid, LX, LY, LZ, dim) = "$(var_name)_" * loc2letter(
 ##### Gathering of grid dimensions
 #####
 
+function maybe_add_particle_dims!(dims, outputs)
+    if "particles" in keys(outputs)  # TODO: Change this to look for ::LagrangianParticles in outputs?
+        dims["particle_id"] = collect(1:length(outputs["particles"]))
+    end
+    return dims
+end
+
 function gather_vertical_dimensions(coordinate::StaticVerticalCoordinate, TZ, Nz, Hz, z_indices, with_halos, dim_name_generator)
     zᵃᵃᶠ_name = dim_name_generator("z", coordinate, nothing, nothing, f, Val(:z))
     zᵃᵃᶜ_name = dim_name_generator("z", coordinate, nothing, nothing, c, Val(:z))
@@ -82,38 +89,34 @@ function gather_vertical_dimensions(coordinate::StaticVerticalCoordinate, TZ, Nz
     )
 end
 
-function maybe_add_particle_dims!(dims, outputs)
-    if "particles" in keys(outputs)
-        particle_dims = Dict(
-            "particle_id" => collect(1:length(outputs["particles"]))
-        )
-        return merge(dims, particle_dims)
-    else
-        return dims
-    end
-end
-
 function gather_dimensions(outputs, grid::RectilinearGrid, indices, with_halos, dim_name_generator)
     TX, TY, TZ = topology(grid)
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
 
-    xᶠᵃᵃ_name = dim_name_generator("x", grid, f, nothing, nothing, Val(:x))
-    xᶜᵃᵃ_name = dim_name_generator("x", grid, c, nothing, nothing, Val(:x))
-    yᵃᶠᵃ_name = dim_name_generator("y", grid, nothing, f, nothing, Val(:y))
-    yᵃᶜᵃ_name = dim_name_generator("y", grid, nothing, c, nothing, Val(:y))
+    dims = Dict()
 
-    xᶠᵃᵃ_data = collect_dim(grid.xᶠᵃᵃ, f, TX(), Nx, Hx, indices[1], with_halos)
-    xᶜᵃᵃ_data = collect_dim(grid.xᶜᵃᵃ, c, TX(), Nx, Hx, indices[1], with_halos)
-    yᵃᶠᵃ_data = collect_dim(grid.yᵃᶠᵃ, f, TY(), Ny, Hy, indices[2], with_halos)
-    yᵃᶜᵃ_data = collect_dim(grid.yᵃᶜᵃ, c, TY(), Ny, Hy, indices[2], with_halos)
+    if TX != Flat
+        xᶠᵃᵃ_name = dim_name_generator("x", grid, f, nothing, nothing, Val(:x))
+        xᶜᵃᵃ_name = dim_name_generator("x", grid, c, nothing, nothing, Val(:x))
 
-    dims = Dict(
-        xᶠᵃᵃ_name => xᶠᵃᵃ_data,
-        xᶜᵃᵃ_name => xᶜᵃᵃ_data,
-        yᵃᶠᵃ_name => yᵃᶠᵃ_data,
-        yᵃᶜᵃ_name => yᵃᶜᵃ_data
-    )
+        xᶠᵃᵃ_data = collect_dim(grid.xᶠᵃᵃ, f, TX(), Nx, Hx, indices[1], with_halos)
+        xᶜᵃᵃ_data = collect_dim(grid.xᶜᵃᵃ, c, TX(), Nx, Hx, indices[1], with_halos)
+
+        dims[xᶠᵃᵃ_name] = xᶠᵃᵃ_data
+        dims[xᶜᵃᵃ_name] = xᶜᵃᵃ_data
+    end
+
+    if TY != Flat
+        yᵃᶠᵃ_name = dim_name_generator("y", grid, nothing, f, nothing, Val(:y))
+        yᵃᶜᵃ_name = dim_name_generator("y", grid, nothing, c, nothing, Val(:y))
+
+        yᵃᶠᵃ_data = collect_dim(grid.yᵃᶠᵃ, f, TY(), Ny, Hy, indices[2], with_halos)
+        yᵃᶜᵃ_data = collect_dim(grid.yᵃᶜᵃ, c, TY(), Ny, Hy, indices[2], with_halos)
+
+        dims[yᵃᶠᵃ_name] = yᵃᶠᵃ_data
+        dims[yᵃᶜᵃ_name] = yᵃᶜᵃ_data
+    end
 
     if TZ != Flat
         vertical_dims = gather_vertical_dimensions(grid.z, TZ, Nz, Hz, indices[3], with_halos, dim_name_generator)
@@ -132,40 +135,40 @@ end
 function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator)
     TX, TY, TZ = topology(grid)
 
-    Δxᶠᵃᵃ_name = dim_name_generator("dx", grid, f, nothing, nothing, Val(:x))
-    Δxᶜᵃᵃ_name = dim_name_generator("dx", grid, c, nothing, nothing, Val(:x))
-    Δyᵃᶠᵃ_name = dim_name_generator("dy", grid, nothing, f, nothing, Val(:y))
-    Δyᵃᶜᵃ_name = dim_name_generator("dy", grid, nothing, c, nothing, Val(:y))
-    Δzᵃᵃᶠ_name = dim_name_generator("dz", grid, nothing, nothing, f, Val(:z))
-    Δzᵃᵃᶜ_name = dim_name_generator("dz", grid, nothing, nothing, c, Val(:z))
-
-    Δxᶠᵃᵃ_field = Field(xspacings(grid, f); indices)
-    Δxᶜᵃᵃ_field = Field(xspacings(grid, c); indices)
-    Δyᵃᶠᵃ_field = Field(yspacings(grid, f); indices)
-    Δyᵃᶜᵃ_field = Field(yspacings(grid, c); indices)
-    Δzᵃᵃᶠ_field = Field(zspacings(grid, f); indices)
-    Δzᵃᵃᶜ_field = Field(zspacings(grid, c); indices)
-
-    x_metrics = Dict(
-        Δxᶠᵃᵃ_name => Δxᶠᵃᵃ_field,
-        Δxᶜᵃᵃ_name => Δxᶜᵃᵃ_field
-    )
-
-    y_metrics = Dict(
-        Δyᵃᶠᵃ_name => Δyᵃᶠᵃ_field,
-        Δyᵃᶜᵃ_name => Δyᵃᶜᵃ_field
-    )
-
-    z_metrics = Dict(
-        Δzᵃᵃᶠ_name => Δzᵃᵃᶠ_field,
-        Δzᵃᵃᶜ_name => Δzᵃᵃᶜ_field
-    )
-
     metrics = Dict()
 
-    TX != Flat && merge!(metrics, x_metrics)
-    TY != Flat && merge!(metrics, y_metrics)
-    TZ != Flat && merge!(metrics, z_metrics)
+    if TX != Flat
+        Δxᶠᵃᵃ_name = dim_name_generator("dx", grid, f, nothing, nothing, Val(:x))
+        Δxᶜᵃᵃ_name = dim_name_generator("dx", grid, c, nothing, nothing, Val(:x))
+
+        Δxᶠᵃᵃ_field = Field(xspacings(grid, f); indices)
+        Δxᶜᵃᵃ_field = Field(xspacings(grid, c); indices)
+
+        metrics[Δxᶠᵃᵃ_name] = Δxᶠᵃᵃ_field
+        metrics[Δxᶜᵃᵃ_name] = Δxᶜᵃᵃ_field
+    end
+
+    if TY != Flat
+        Δyᵃᶠᵃ_name = dim_name_generator("dy", grid, nothing, f, nothing, Val(:y))
+        Δyᵃᶜᵃ_name = dim_name_generator("dy", grid, nothing, c, nothing, Val(:y))
+
+        Δyᵃᶠᵃ_field = Field(yspacings(grid, f); indices)
+        Δyᵃᶜᵃ_field = Field(yspacings(grid, c); indices)
+
+        metrics[Δyᵃᶠᵃ_name] = Δyᵃᶠᵃ_field
+        metrics[Δyᵃᶜᵃ_name] = Δyᵃᶜᵃ_field
+    end
+
+    if TZ != Flat
+        Δzᵃᵃᶠ_name = dim_name_generator("dz", grid, nothing, nothing, f, Val(:z))
+        Δzᵃᵃᶜ_name = dim_name_generator("dz", grid, nothing, nothing, c, Val(:z))
+
+        Δzᵃᵃᶠ_field = Field(zspacings(grid, f); indices)
+        Δzᵃᵃᶜ_field = Field(zspacings(grid, c); indices)
+
+        metrics[Δzᵃᵃᶠ_name] = Δzᵃᵃᶠ_field
+        metrics[Δzᵃᵃᶜ_name] = Δzᵃᵃᶜ_field
+    end
 
     return metrics
 end
