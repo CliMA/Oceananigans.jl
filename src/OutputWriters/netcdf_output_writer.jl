@@ -37,24 +37,33 @@ loc2letter(::Face) = "f"
 loc2letter(::Center) = "c"
 loc2letter(::Nothing) = ""
 
-default_dim_name(var_name, ::RectilinearGrid, LX, LY, LZ, ::Val{:x}) = "$(var_name)_" * loc2letter(LX)
-default_dim_name(var_name, ::RectilinearGrid, LX, LY, LZ, ::Val{:y}) = "$(var_name)_" * loc2letter(LY)
-default_dim_name(var_name, ::RectilinearGrid, LX, LY, LZ, ::Val{:z}) = "$(var_name)_" * loc2letter(LZ)
+function default_dim_name(var_name, ::RectilinearGrid{FT, TX}, LX, LY, LZ, ::Val{:x}) where {FT, TX}
+    if TX == Flat || isnothing(LX)
+        return ""
+    else
+        return "$(var_name)_" * loc2letter(LX)
+    end
+end
+
+function default_dim_name(var_name, ::RectilinearGrid{FT, TX, TY}, LX, LY, LZ, ::Val{:y}) where {FT, TX, TY}
+    if TY == Flat || isnothing(LY)
+        return ""
+    else
+        return "$(var_name)_" * loc2letter(LY)
+    end
+end
+
+function default_dim_name(var_name, ::RectilinearGrid{FT, TX, TY, TZ}, LX, LY, LZ, ::Val{:z}) where {FT, TX, TY, TZ}
+    if TZ == Flat || isnothing(LZ)
+        return ""
+    else
+        return "$(var_name)_" * loc2letter(LZ)
+    end
+end
 
 default_dim_name(var_name, ::StaticVerticalCoordinate, LX, LY, LZ, ::Val{:z}) = "$(var_name)_" * loc2letter(LZ)
 
 default_dim_name(var_name, grid, LX, LY, LZ, dim) = "$(var_name)_" * loc2letter(LX) * loc2letter(LY) * loc2letter(LZ)
-
-default_dim_name(var_name, grid, ::Nothing, ::Nothing, ::Nothing, dim) = ""
-
-default_dim_name(var_name, ::RectilinearGrid, ::Nothing, LY, LZ, ::Val{:x}) = ""
-default_dim_name(var_name, ::RectilinearGrid, LX, ::Nothing, LZ, ::Val{:y}) = ""
-default_dim_name(var_name, ::RectilinearGrid, LX, LY, ::Nothing, ::Val{:z}) = ""
-
-# disambiguate
-default_dim_name(var_name, ::RectilinearGrid, ::Nothing, ::Nothing, ::Nothing, ::Val{:x}) = ""
-default_dim_name(var_name, ::RectilinearGrid, ::Nothing, ::Nothing, ::Nothing, ::Val{:y}) = ""
-default_dim_name(var_name, ::RectilinearGrid, ::Nothing, ::Nothing, ::Nothing, ::Val{:z}) = ""
 
 #####
 ##### Gathering of grid dimensions
@@ -73,12 +82,21 @@ function gather_vertical_dimensions(coordinate::StaticVerticalCoordinate, TZ, Nz
     )
 end
 
+function maybe_add_particle_dims!(dims, outputs)
+    if "particles" in keys(outputs)
+        particle_dims = Dict(
+            "particle_id" => collect(1:length(outputs["particles"]))
+        )
+        return merge(dims, particle_dims)
+    else
+        return dims
+    end
+end
+
 function gather_dimensions(outputs, grid::RectilinearGrid, indices, with_halos, dim_name_generator)
     TX, TY, TZ = topology(grid)
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
-
-    vertical_dims = gather_vertical_dimensions(grid.z, TZ, Nz, Hz, indices[3], with_halos, dim_name_generator)
 
     xᶠᵃᵃ_name = dim_name_generator("x", grid, f, nothing, nothing, Val(:x))
     xᶜᵃᵃ_name = dim_name_generator("x", grid, c, nothing, nothing, Val(:x))
@@ -90,21 +108,19 @@ function gather_dimensions(outputs, grid::RectilinearGrid, indices, with_halos, 
     yᵃᶠᵃ_data = collect_dim(grid.yᵃᶠᵃ, f, TY(), Ny, Hy, indices[2], with_halos)
     yᵃᶜᵃ_data = collect_dim(grid.yᵃᶜᵃ, c, TY(), Ny, Hy, indices[2], with_halos)
 
-    horizontal_dims = Dict(
+    dims = Dict(
         xᶠᵃᵃ_name => xᶠᵃᵃ_data,
         xᶜᵃᵃ_name => xᶜᵃᵃ_data,
         yᵃᶠᵃ_name => yᵃᶠᵃ_data,
         yᵃᶜᵃ_name => yᵃᶜᵃ_data
     )
 
-    dims = merge(horizontal_dims, vertical_dims)
-
-    if "particles" in keys(outputs)
-        particle_dims = Dict(
-            "particle_id" => collect(1:length(outputs["particles"]))
-        )
-        dims = merge(dims, particle_dims)
+    if TZ != Flat
+        vertical_dims = gather_vertical_dimensions(grid.z, TZ, Nz, Hz, indices[3], with_halos, dim_name_generator)
+        dims = merge(dims, vertical_dims)
     end
+
+    maybe_add_particle_dims!(dims, outputs)
 
     return dims
 end
@@ -114,6 +130,8 @@ end
 #####
 
 function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator)
+    TX, TY, TZ = topology(grid)
+
     Δxᶠᵃᵃ_name = dim_name_generator("dx", grid, f, nothing, nothing, Val(:x))
     Δxᶜᵃᵃ_name = dim_name_generator("dx", grid, c, nothing, nothing, Val(:x))
     Δyᵃᶠᵃ_name = dim_name_generator("dy", grid, nothing, f, nothing, Val(:y))
@@ -128,14 +146,28 @@ function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator)
     Δzᵃᵃᶠ_field = Field(zspacings(grid, f); indices)
     Δzᵃᵃᶜ_field = Field(zspacings(grid, c); indices)
 
-    return Dict(
+    x_metrics = Dict(
         Δxᶠᵃᵃ_name => Δxᶠᵃᵃ_field,
-        Δxᶜᵃᵃ_name => Δxᶜᵃᵃ_field,
+        Δxᶜᵃᵃ_name => Δxᶜᵃᵃ_field
+    )
+
+    y_metrics = Dict(
         Δyᵃᶠᵃ_name => Δyᵃᶠᵃ_field,
-        Δyᵃᶜᵃ_name => Δyᵃᶜᵃ_field,
+        Δyᵃᶜᵃ_name => Δyᵃᶜᵃ_field
+    )
+
+    z_metrics = Dict(
         Δzᵃᵃᶠ_name => Δzᵃᵃᶠ_field,
         Δzᵃᵃᶜ_name => Δzᵃᵃᶜ_field
     )
+
+    metrics = Dict()
+
+    TX != Flat && merge!(metrics, x_metrics)
+    TY != Flat && merge!(metrics, y_metrics)
+    TZ != Flat && merge!(metrics, z_metrics)
+
+    return metrics
 end
 
 #####
@@ -877,8 +909,15 @@ function write_output!(ow::NetCDFOutputWriter, model)
 end
 
 drop_output_dims(output, data) = data # fallback
-drop_output_dims(output::Field, data) = dropdims(data, dims=reduced_dimensions(output))
-drop_output_dims(output::WindowedTimeAverage{<:Field}, data) = dropdims(data, dims=reduced_dimensions(output.operand))
+drop_output_dims(output::WindowedTimeAverage{<:Field}, data) = drop_output_dims(output.operand, data)
+
+function drop_output_dims(field::Field, data)
+    reduced_dims = reduced_dimensions(field)
+    flat_dims = Tuple(i for (i, T) in enumerate(topology(field.grid)) if T == Flat)
+    dims = (reduced_dims..., flat_dims...)
+    dims = Tuple(Set(dims)) # ensure dims are unique
+    return dropdims(data; dims)
+end
 
 #####
 ##### Show
