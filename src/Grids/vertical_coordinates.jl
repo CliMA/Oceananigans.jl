@@ -3,19 +3,25 @@
 ####
 
 # This file implements everything related to vertical coordinates in Oceananigans.
-# Vertical coordinates are independent of the underlying grid type as we support grids that are 
-# "unstructured" or "curvilinear" only in the horizontal direction. 
-# For this reason the vertical coodinate is _special_, and it can be implemented once for all grid types.
+# Vertical coordinates are independent of the underlying grid type since only grids that are 
+# "unstructured" or "curvilinear" in the horizontal directions are supported in Oceananigans. 
+# Thus the vertical coordinate is _special_, and it can be implemented once for all grid types.
 
 abstract type AbstractVerticalCoordinate end
 
-# Represents a static one-dimensional vertical coordinate.
-#
-# # Fields
-# - `cᶜ::C`: Cell-centered coordinate.
-# - `cᶠ::D`: Face-centered coordinate.
-# - `Δᶜ::E`: Cell-centered grid spacing.
-# - `Δᶠ::F`: Face-centered grid spacing.
+"""
+    struct StaticVerticalCoordinate{C, D, E, F} <: AbstractVerticalCoordinate
+
+Represent a static one-dimensional vertical coordinate.
+
+Fields
+======
+
+- `cᶜ::C`: Cell-centered coordinate.
+- `cᶠ::D`: Face-centered coordinate.
+- `Δᶜ::E`: Cell-centered grid spacing.
+- `Δᶠ::F`: Face-centered grid spacing.
+"""
 struct StaticVerticalCoordinate{C, D, E, F} <: AbstractVerticalCoordinate
     cᵃᵃᶠ :: C
     cᵃᵃᶜ :: D
@@ -35,16 +41,16 @@ const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any, <
 ####
 
 Adapt.adapt_structure(to, coord::StaticVerticalCoordinate) =
-   StaticVerticalCoordinate(Adapt.adapt(to, coord.cᵃᵃᶠ),
-                            Adapt.adapt(to, coord.cᵃᵃᶜ),
-                            Adapt.adapt(to, coord.Δᵃᵃᶠ),
-                            Adapt.adapt(to, coord.Δᵃᵃᶜ))
+    StaticVerticalCoordinate(Adapt.adapt(to, coord.cᵃᵃᶠ),
+                             Adapt.adapt(to, coord.cᵃᵃᶜ),
+                             Adapt.adapt(to, coord.Δᵃᵃᶠ),
+                             Adapt.adapt(to, coord.Δᵃᵃᶜ))
 
 on_architecture(arch, coord::StaticVerticalCoordinate) = 
-   StaticVerticalCoordinate(on_architecture(arch, coord.cᵃᵃᶠ),
-                            on_architecture(arch, coord.cᵃᵃᶜ),
-                            on_architecture(arch, coord.Δᵃᵃᶠ),
-                            on_architecture(arch, coord.Δᵃᵃᶜ))
+    StaticVerticalCoordinate(on_architecture(arch, coord.cᵃᵃᶠ),
+                             on_architecture(arch, coord.cᵃᵃᶜ),
+                             on_architecture(arch, coord.Δᵃᵃᶠ),
+                             on_architecture(arch, coord.Δᵃᵃᶜ))
 
 #####
 ##### Nodes and spacings (common to every grid)...
