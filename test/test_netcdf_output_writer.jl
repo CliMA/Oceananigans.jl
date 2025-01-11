@@ -337,7 +337,134 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
 end
 
 function test_netcdf_rectilinear_flat_xy(arch)
+    Nx, Ny = 8, 8
+    Hx, Hy = 2, 3
 
+    grid = RectilinearGrid(arch,
+        topology = (Periodic, Bounded, Flat),
+        size = (Nx, Ny),
+        halo = (Hx, Hy),
+        extent = (π, 7)
+    )
+
+    model = NonhydrostaticModel(; grid,
+        closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    Nt = 7
+    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+
+    Arch = typeof(arch)
+    filepath_with_halos = "test_netcdf_rectilinear_flat_xy_$Arch.nc"
+    isfile(filepath_with_halos) && rm(filepath_with_halos)
+
+    simulation.output_writers[:with_halos] =
+        NetCDFOutputWriter(model, fields(model),
+            filename = filepath_with_halos,
+            schedule = IterationInterval(1),
+            array_type = Array{Float64},
+            with_halos = true,
+            include_grid_metrics = true,
+            verbose = true
+        )
+
+    i_slice = 3:6
+    j_slice = Ny
+
+    nx = length(i_slice)
+    ny = 1
+
+    filepath_sliced = "test_netcdf_rectilinear_flat_xy_sliced_$(Arch).nc"
+    isfile(filepath_sliced) && rm(filepath_sliced)
+
+    simulation.output_writers[:sliced] =
+        NetCDFOutputWriter(model, fields(model),
+            filename = filepath_sliced,
+            indices = (i_slice, j_slice, :),
+            schedule = IterationInterval(1),
+            array_type = Array{Float64},
+            with_halos = false,
+            include_grid_metrics = true,
+            verbose = true
+        )
+
+    run!(simulation)
+
+    # Test NetCDF output with halos
+    ds_h = NCDataset(filepath_with_halos)
+
+    dims = ("x_f", "x_c", "y_f", "y_c")
+    not_dims = ("z_f", "z_c")
+
+    metrics = ("dx_f", "dx_c", "dy_f", "dy_c")
+    not_metrics = ("dz_f", "dz_c")
+
+    vars = ("u", "v", "w", "T", "S")
+
+    for var in (dims..., metrics..., vars...)
+        @test haskey(ds_h, var)
+        @test haskey(ds_h[var].attrib, "long_name")
+        @test haskey(ds_h[var].attrib, "units")
+        @test eltype(ds_h[var]) == Float64
+    end
+
+    for var in (not_dims..., not_metrics...)
+        @test !haskey(ds_h, var)
+    end
+
+    @test dimsize(ds_h[:x_f]) == (x_f=Nx + 2Hx,)
+    @test dimsize(ds_h[:x_c]) == (x_c=Nx + 2Hx,)
+    @test dimsize(ds_h[:y_f]) == (y_f=Ny + 2Hy + 1,)
+    @test dimsize(ds_h[:y_c]) == (y_c=Ny + 2Hy,)
+
+    @test dimsize(ds_h[:dx_f]) == (x_f=Nx + 2Hx,)
+    @test dimsize(ds_h[:dx_c]) == (x_c=Nx + 2Hx,)
+    @test dimsize(ds_h[:dy_f]) == (y_f=Ny + 2Hy + 1,)
+    @test dimsize(ds_h[:dy_c]) == (y_c=Ny + 2Hy,)
+
+    @test dimsize(ds_h[:u]) == (x_f=Nx + 2Hx, y_c=Ny + 2Hy,     time=Nt + 1)
+    @test dimsize(ds_h[:v]) == (x_c=Nx + 2Hx, y_f=Ny + 2Hy + 1, time=Nt + 1)
+    @test dimsize(ds_h[:w]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     time=Nt + 1)
+    @test dimsize(ds_h[:T]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     time=Nt + 1)
+    @test dimsize(ds_h[:S]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     time=Nt + 1)
+
+    close(ds_h)
+    rm(filepath_with_halos)
+
+    # Test NetCDF sliced output
+    ds_s = NCDataset(filepath_sliced)
+
+    for var in (dims..., metrics..., vars...)
+        @test haskey(ds_s, var)
+        @test haskey(ds_s[var].attrib, "long_name")
+        @test haskey(ds_s[var].attrib, "units")
+        @test eltype(ds_s[var]) == Float64
+    end
+
+    for var in (not_dims..., not_metrics...)
+        @test !haskey(ds_s, var)
+    end
+
+    @test dimsize(ds_s[:x_f]) == (x_f=nx,)
+    @test dimsize(ds_s[:x_c]) == (x_c=nx,)
+    @test dimsize(ds_s[:y_f]) == (y_f=ny,)
+    @test dimsize(ds_s[:y_c]) == (y_c=ny,)
+
+    @test dimsize(ds_s[:dx_f]) == (x_f=nx,)
+    @test dimsize(ds_s[:dx_c]) == (x_c=nx,)
+    @test dimsize(ds_s[:dy_f]) == (y_f=ny,)
+    @test dimsize(ds_s[:dy_c]) == (y_c=ny,)
+
+    @test dimsize(ds_s[:u]) == (x_f=nx, y_c=ny, time=Nt + 1)
+    @test dimsize(ds_s[:v]) == (x_c=nx, y_f=ny, time=Nt + 1)
+    @test dimsize(ds_s[:w]) == (x_c=nx, y_c=ny, time=Nt + 1)
+
+    close(ds_s)
+    rm(filepath_sliced)
+
+    return nothing
 end
 
 function test_thermal_bubble_netcdf_output(arch, FT)
@@ -1503,6 +1630,8 @@ for arch in [CPU(), GPU()]
 
         test_netcdf_grid_metrics_rectilinear(arch, Float64)
         test_netcdf_grid_metrics_rectilinear(arch, Float32)
+
+        test_netcdf_rectilinear_flat_xy(arch)
 
         test_thermal_bubble_netcdf_output(arch, Float64)
         test_thermal_bubble_netcdf_output(arch, Float32)
