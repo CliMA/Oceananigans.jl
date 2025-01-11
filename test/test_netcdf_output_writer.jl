@@ -223,6 +223,9 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     @test dimsize(ds_mh[:T]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_c=Nz + 2Hz,     time=Nt + 1)
     @test dimsize(ds_mh[:S]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_c=Nz + 2Hz,     time=Nt + 1)
 
+    close(ds_mh)
+    rm(filepath_metrics_halos)
+
     # Test NetCDF output with metrics but not halos
     ds_m = NCDataset(filepath_metrics_nohalos)
 
@@ -256,6 +259,9 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     @test dimsize(ds_m[:T]) == (x_c=Nx, y_c=Ny,     z_c=Nz,     time=Nt + 1)
     @test dimsize(ds_m[:S]) == (x_c=Nx, y_c=Ny,     z_c=Nz,     time=Nt + 1)
 
+    close(ds_m)
+    rm(filepath_metrics_nohalos)
+
     # Test NetCDF output with no metrics (with halos)
     ds_h = NCDataset(filepath_nometrics)
 
@@ -282,11 +288,14 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     @test dimsize(ds_h[:z_f]) == (z_f=Nz + 2Hz + 1,)
     @test dimsize(ds_h[:z_c]) == (z_c=Nz + 2Hz,)
 
-    @test dimsize(ds_mh[:u]) == (x_f=Nx + 2Hx, y_c=Ny + 2Hy,     z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_mh[:v]) == (x_c=Nx + 2Hx, y_f=Ny + 2Hy + 1, z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_mh[:w]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_f=Nz + 2Hz + 1, time=Nt + 1)
-    @test dimsize(ds_mh[:T]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_mh[:S]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:u]) == (x_f=Nx + 2Hx, y_c=Ny + 2Hy,     z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:v]) == (x_c=Nx + 2Hx, y_f=Ny + 2Hy + 1, z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:w]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_f=Nz + 2Hz + 1, time=Nt + 1)
+    @test dimsize(ds_h[:T]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:S]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_c=Nz + 2Hz,     time=Nt + 1)
+
+    close(ds_h)
+    rm(filepath_nometrics)
 
     # Test NetCDF sliced output with metrics
     ds_s = NCDataset(filepath_sliced)
@@ -321,7 +330,14 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     @test dimsize(ds_s[:T]) == (x_c=nx, y_c=ny, z_c=nz, time=Nt + 1)
     @test dimsize(ds_s[:S]) == (x_c=nx, y_c=ny, z_c=nz, time=Nt + 1)
 
+    close(ds_s)
+    rm(filepath_sliced)
+
     return nothing
+end
+
+function test_netcdf_rectilinear_flat_xy(arch)
+
 end
 
 function test_thermal_bubble_netcdf_output(arch, FT)
