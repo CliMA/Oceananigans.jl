@@ -53,9 +53,9 @@ function mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, val
     return nothing
 end
 
-@kernel function _mask_immersed_field!(field, (LX, LY, LZ), grid, value, mask)
+@kernel function _mask_immersed_field!(field, (ℓx, ℓy, ℓz), grid, value, mask)
     i, j, k = @index(Global, NTuple)
-    masked  = mask(i, j, k, grid, LX, LY, LZ)
+    masked  = mask(i, j, k, grid, ℓx, ℓy, ℓz)
     @inbounds field[i, j, k] = ifelse(masked, value, field[i, j, k])
 end
 
@@ -95,9 +95,9 @@ function mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, loc, 
     return launch!(arch, grid, :xy, _mask_immersed_field_xy!, field, loc, grid, value, k, mask)
 end
 
-@kernel function _mask_immersed_field_xy!(field, (LX, LY, LZ), grid, value, k, mask)
+@kernel function _mask_immersed_field_xy!(field, (ℓx, ℓy, ℓz), grid, value, k, mask)
     i, j = @index(Global, NTuple)
-    masked = mask(i, j, k, grid, LX, LY, LZ)
+    masked = mask(i, j, k, grid, ℓx, ℓy, ℓz)
     @inbounds field[i, j, k] = ifelse(masked, value, field[i, j, k])
 end
 
@@ -122,7 +122,7 @@ end
 
 @inline inactive_search_range(i, grid, dim, dims) = ifelse(dim ∈ dims, 1:size(grid, dim), i:i)
 
-@inline function inactive_dimensions(i₀, j₀, k₀, grid, dims, loc, mask)
+@inline function inactive_dimensions(i₀, j₀, k₀, grid, dims, (ℓx, ℓy, ℓz), mask)
     masked = true
     irange = inactive_search_range(i₀, grid, 1, dims)
     jrange = inactive_search_range(j₀, grid, 2, dims)
@@ -130,7 +130,7 @@ end
     
     # The loop activates over the whole direction only if reduced directions
     for i in irange, j in jrange, k in krange
-        masked = masked & mask(i, j, k, grid, loc...) 
+        masked = masked & mask(i, j, k, grid, ℓx, ℓy, ℓz) 
     end
 
     return masked
