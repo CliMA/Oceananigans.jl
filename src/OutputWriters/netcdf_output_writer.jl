@@ -5,8 +5,8 @@ using Dates: AbstractTime, UTC, now
 using Oceananigans.Fields
 
 using Oceananigans.Grids: AbstractCurvilinearGrid, RectilinearGrid, StaticVerticalCoordinate
-using Oceananigans.Grids: topology, halo_size, parent_index_range, ξnodes, ηnodes, rnodes, validate_index
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Grids: topology, halo_size, parent_index_range, ξnodes, ηnodes, rnodes, validate_index, peripheral_node
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GFBIBG
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location
@@ -64,6 +64,9 @@ end
 default_dim_name(var_name, ::StaticVerticalCoordinate, LX, LY, LZ, ::Val{:z}) = "$(var_name)_" * loc2letter(LZ)
 
 default_dim_name(var_name, grid, LX, LY, LZ, dim) = "$(var_name)_" * loc2letter(LX) * loc2letter(LY) * loc2letter(LZ)
+
+default_dim_name(var_name, grid::ImmersedBoundaryGrid, args...) =
+    default_dim_name(var_name, grid.underlying_grid, args...)
 
 #####
 ##### Gathering of grid dimensions
@@ -128,6 +131,9 @@ function gather_dimensions(outputs, grid::RectilinearGrid, indices, with_halos, 
     return dims
 end
 
+gather_dimensions(outputs, grid::ImmersedBoundaryGrid, args...) =
+    gather_dimensions(outputs, grid.underlying_grid, args...)
+
 #####
 ##### Gathering of grid metrics
 #####
@@ -171,6 +177,39 @@ function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator)
     end
 
     return metrics
+end
+
+gather_grid_metrics(grid::ImmersedBoundaryGrid, args...) =
+    gather_grid_metrics(grid.underlying_grid, args...)
+
+#####
+##### Gathering of immersed boundary fields
+#####
+
+flat_loc(T, L) = T == Flat ? nothing : L
+
+# For Immersed Boundary Grids (IBG) with a Grid Fitted Bottom (GFB)
+function gather_immersed_boundary(grid::GFBIBG, indices, dim_name_generator)
+    # TODO: Proper masks for 2D models
+    # TX, TY, TZ = topology(grid)
+
+    # mask_ccc_name = dim_name_generator("immersed_boundary_mask", grid.underlying_grid, Center(), Center(), Center())
+    # mask_fcc_name = dim_name_generator("immersed_boundary_mask", grid.underlying_grid, Face(), Center(), Center())
+    # mask_cfc_name = dim_name_generator("immersed_boundary_mask", grid.underlying_grid, Center(), Face(), Center())
+    # mask_ccf_name = dim_name_generator("immersed_boundary_mask", grid.underlying_grid, Center(), Center(), Face())
+
+    op_mask_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
+    op_mask_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
+    op_mask_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
+    op_mask_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
+
+    return Dict(
+        "bottom_height" => Field(grid.immersed_boundary.bottom_height; indices),
+        "immersed_boundary_mask_ccc" => Field(op_mask_ccc; indices),
+        "immersed_boundary_mask_fcc" => Field(op_mask_fcc; indices),
+        "immersed_boundary_mask_cfc" => Field(op_mask_cfc; indices),
+        "immersed_boundary_mask_ccf" => Field(op_mask_ccf; indices)
+    )
 end
 
 #####
@@ -310,7 +349,10 @@ function add_schedule_metadata!(global_attributes, schedule::WallTimeInterval)
 end
 
 function add_schedule_metadata!(global_attributes, schedule::AveragedTimeInterval)
-    add_schedule_metadata!(global_attributes, TimeInterval(schedule))
+    global_attributes["schedule"] = "AveragedTimeInterval"
+    global_attributes["interval"] = schedule.interval
+    global_attributes["output time interval"] =
+        "Output was time-averaged and saved every $(prettytime(schedule.interval))."
 
     global_attributes["time_averaging_window"] = schedule.window
     global_attributes["time averaging window"] =
@@ -692,9 +734,20 @@ function initialize_nc_file!(filepath,
             end
         end
 
+        time_independent_vars = Dict()
+
         if include_grid_metrics
             grid_metrics = gather_grid_metrics(grid, indices, dimension_name_generator)
-            for (name, output) in grid_metrics
+            merge!(time_independent_vars, grid_metrics)
+        end
+
+        if grid isa ImmersedBoundaryGrid
+            immersed_boundary_vars = gather_immersed_boundary(grid, indices, dimension_name_generator)
+            merge!(time_independent_vars, immersed_boundary_vars)
+        end
+
+        if !isempty(time_independent_vars)
+            for (name, output) in sort(collect(pairs(time_independent_vars)), by=first)
                 output = construct_output(output, grid, indices, with_halos)
                 attributes = try default_dim_attrs[name]; catch; Dict(); end
                 materialized = materialize_output(output, model)
@@ -710,17 +763,16 @@ function initialize_nc_file!(filepath,
                     dimensions,
                     filepath, # for better error messages
                     dimension_name_generator,
-                    time_dependent
+                    false # time_dependent = false
                 )
 
                 save_output!(dataset, output, model, name, array_type)
             end
         end
 
-        for (name, output) in outputs
+        for (name, output) in sort(collect(pairs(outputs)), by=first)
             attributes = try output_attributes[name]; catch; Dict(); end
             materialized = materialize_output(output, model)
-            time_dependent = true
 
             define_output_variable!(
                 dataset,
@@ -732,7 +784,7 @@ function initialize_nc_file!(filepath,
                 dimensions,
                 filepath, # for better error messages
                 dimension_name_generator,
-                time_dependent
+                true # time_dependent = true
             )
         end
 
