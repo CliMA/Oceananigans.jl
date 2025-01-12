@@ -7,39 +7,43 @@ using Oceananigans.Fields: ConstantField, OneField, ZeroField
 instantiate(T::Type) = T()
 instantiate(t) = t
 
-# No masking for constant fields
-mask_immersed_field!(::OneField, args...) = nothing
-mask_immersed_field!(::ZeroField, args...) = nothing
-mask_immersed_field!(::ConstantField, args...) = nothing
+# No masking for constant fields, numbers or nothing
+mask_immersed_field!(::OneField, args...; kw...) = nothing
+mask_immersed_field!(::ZeroField, args...; kw...) = nothing
+mask_immersed_field!(::ConstantField, args...; kw...) = nothing
+mask_immersed_field!(::Number, args...; kw...) = nothing
+mask_immersed_field!(::Nothing, args...; kw...) = nothing
 
-# No masking for constant fields
+# No masking for constant fields, numbers or nothing
 mask_immersed_field_xy!(::OneField, args...; kw...) = nothing
 mask_immersed_field_xy!(::ZeroField, args...; kw...) = nothing
 mask_immersed_field_xy!(::ConstantField, args...; kw...) = nothing
+mask_immersed_field_xy!(::Number, args...; kw...) = nothing
+mask_immersed_field_xy!(::Nothing, args...; kw...) = nothing
 
-mask_immersed_field!(field, grid, loc, value) = nothing
 mask_immersed_field!(field::Field, value=zero(eltype(field.grid)); mask=peripheral_node) =
     mask_immersed_field!(field, field.grid, location(field), value, mask)
 
-mask_immersed_field!(::Number, args...) = nothing
-
-function mask_immersed_field!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(+)}, value=zero(eltype(bop)))
+function mask_immersed_field!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(+)}, value=zero(eltype(bop)); mask=peripheral_node)
     a_value = ifelse(bop.b isa Number, -bop.b, value)
-    mask_immersed_field!(bop.a, a_value)
+    mask_immersed_field!(bop.a, a_value; mask)
 
     b_value = ifelse(bop.a isa Number, -bop.a, value)
-    mask_immersed_field!(bop.b, b_value)
+    mask_immersed_field!(bop.b, b_value; mask)
     return nothing
 end
 
-function mask_immersed_field!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(-)}, value=zero(eltype(bop)))
+function mask_immersed_field!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(-)}, value=zero(eltype(bop)); mask=peripheral_node)
     a_value = ifelse(bop.b isa Number, bop.b, value)
-    mask_immersed_field!(bop.a, a_value)
+    mask_immersed_field!(bop.a, a_value; mask)
 
     b_value = ifelse(bop.a isa Number, bop.a, value)
-    mask_immersed_field!(bop.b, b_value)
+    mask_immersed_field!(bop.b, b_value; mask)
     return nothing
 end
+
+# Fallback
+mask_immersed_field!(field, grid, loc, value, mask) = nothing
 
 """
     mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value)
@@ -59,30 +63,29 @@ end
     @inbounds field[i, j, k] = ifelse(masked, value, field[i, j, k])
 end
 
-mask_immersed_field_xy!(field,     args...; kw...) = nothing
-mask_immersed_field_xy!(::Nothing, args...; kw...) = nothing
 mask_immersed_field_xy!(field, value=zero(eltype(field.grid)); k, mask=peripheral_node) =
     mask_immersed_field_xy!(field, field.grid, location(field), value, k, mask)
 
-mask_immersed_field_xy!(::Number, args...) = nothing
-
-function mask_immersed_field_xy!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(+)}, value=zero(eltype(bop)))
+function mask_immersed_field_xy!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(+)}, value=zero(eltype(bop)); k, mask=peripheral_node)
     a_value = ifelse(bop.b isa Number, -bop.b, value)
-    mask_immersed_field_xy!(bop.a, a_value)
+    mask_immersed_field_xy!(bop.a, a_value; k, mask)
 
     b_value = ifelse(bop.a isa Number, -bop.a, value)
-    mask_immersed_field_xy!(bop.b, b_value)
+    mask_immersed_field_xy!(bop.b, b_value; k, mask)
     return nothing
 end
 
-function mask_immersed_field_xy!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(-)}, value=zero(eltype(bop)))
+function mask_immersed_field_xy!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(-)}, value=zero(eltype(bop)); k, mask=peripheral_node)
     a_value = ifelse(bop.b isa Number, bop.b, value)
-    mask_immersed_field_xy!(bop.a, a_value)
+    mask_immersed_field_xy!(bop.a, a_value; k, mask)
 
     b_value = ifelse(bop.a isa Number, bop.a, value)
-    mask_immersed_field_xy!(bop.b, b_value)
+    mask_immersed_field_xy!(bop.b, b_value; k, mask)
     return nothing
 end
+
+# Fallback
+mask_immersed_field_xy!(field, grid, loc, value, k, mask) = nothing
 
 """
     mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, loc, value; k, mask=peripheral_node)
@@ -91,7 +94,7 @@ Mask `field` on `grid` with a `value` on the slices `[:, :, k]` where `mask` is 
 """
 function mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, loc, value, k, mask)
     arch = architecture(field)
-    loc = instantiate.(loc)
+    loc  = instantiate.(loc)
     return launch!(arch, grid, :xy, _mask_immersed_field_xy!, field, loc, grid, value, k, mask)
 end
 
@@ -132,7 +135,7 @@ end
 @inline inactive_search_range(i, grid, dim, dims) = ifelse(dim ∈ dims, 1:size(grid, dim), i:i)
 
 ###
-### Efficient masking for `OnlyZReducedField` and an `AbstractGridFittedBoundary`
+### Efficient masking for `OnlyZReducedField` and an `AbstractGridFittedBottom`
 ###
 
 const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
