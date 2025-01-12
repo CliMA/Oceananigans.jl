@@ -59,13 +59,12 @@ end
 # Mask immersed fields
 function mask_immersed_model_fields!(model, grid)
     η = displacement(model.free_surface)
-    fields_to_mask = merge(model.auxiliary_fields, prognostic_fields(model))
+    fields_to_mask = merge(model.auxiliary_fields, model.velocities, model.tracers)
 
     foreach(fields_to_mask) do field
-        if field !== η
-            mask_immersed_field!(field)
-        end
+        mask_immersed_field!(field)
     end
+    
     mask_immersed_field_xy!(η, k=size(grid, 3)+1, mask=inactive_node)
 
     return nothing
