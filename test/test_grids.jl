@@ -196,34 +196,36 @@ function test_regular_rectilinear_xnode_ynode_znode_and_spacings(arch, FT)
         @info "        Testing grid utils on $grid_type grid...."
 
         CUDA.@allowscalar begin
-            @test xnode(2, grid, Center()) ≈ FT(π/2)
-            @test ynode(2, grid, Center()) ≈ FT(π/2)
-            @test znode(2, grid, Center()) ≈ FT(π/2)
+        
+        @test xnode(2, grid, Center()) ≈ FT(π/2)
+        @test ynode(2, grid, Center()) ≈ FT(π/2)
+        @test znode(2, grid, Center()) ≈ FT(π/2)
 
-            @test xnode(2, grid, Face()) ≈ FT(π/3)
-            @test ynode(2, grid, Face()) ≈ FT(π/3)
-            @test znode(2, grid, Face()) ≈ FT(π/3)
+        @test xnode(2, grid, Face()) ≈ FT(π/3)
+        @test ynode(2, grid, Face()) ≈ FT(π/3)
+        @test znode(2, grid, Face()) ≈ FT(π/3)
 
-            @test minimum_xspacing(grid) ≈ FT(π/3)
-            @test minimum_yspacing(grid) ≈ FT(π/3)
-            @test minimum_zspacing(grid) ≈ FT(π/3)
+        @test minimum_xspacing(grid) ≈ FT(π/3)
+        @test minimum_yspacing(grid) ≈ FT(π/3)
+        @test minimum_zspacing(grid) ≈ FT(π/3)
 
-            @test all(xspacings(grid, Center()) .≈ FT(π/N))
-            @test all(yspacings(grid, Center()) .≈ FT(π/N))
-            @test all(zspacings(grid, Center()) .≈ FT(π/N))
+        @test all(xspacings(grid, Center()) .≈ FT(π/N))
+        @test all(yspacings(grid, Center()) .≈ FT(π/N))
+        @test all(zspacings(grid, Center()) .≈ FT(π/N))
 
-            @test all(x ≈ FT(π/N) for x in xspacings(grid, Face()))
-            @test all(y ≈ FT(π/N) for y in yspacings(grid, Face()))
-            @test all(z ≈ FT(π/N) for z in zspacings(grid, Face()))
+        @test all(x ≈ FT(π/N) for x in xspacings(grid, Face()))
+        @test all(y ≈ FT(π/N) for y in yspacings(grid, Face()))
+        @test all(z ≈ FT(π/N) for z in zspacings(grid, Face()))
 
-            @test all(xspacings(grid, Face()) .== xspacings(grid, Face(), Center(), Center()))
-            @test all(yspacings(grid, Face()) .== yspacings(grid, Center(), Face(), Center()))
-            @test all(zspacings(grid, Face()) .== zspacings(grid, Center(), Center(), Face()))
+        @test all(xspacings(grid, Face()) .== xspacings(grid, Face(), Center(), Center()))
+        @test all(yspacings(grid, Face()) .== yspacings(grid, Center(), Face(), Center()))
+        @test all(zspacings(grid, Face()) .== zspacings(grid, Center(), Center(), Face()))
 
-            @test Δx(1, 1, 1, grid, Face(), Center(), Center()) ≈ FT(π/N)
-            @test Δy(1, 1, 1, grid, Center(), Face(), Center()) ≈ FT(π/N)
-            @test Δz(1, 1, 1, grid, Center(), Center(), Face()) ≈ FT(π/N)
-        end
+        @test Δx(1, 1, 1, grid, Face(), Center(), Center()) ≈ FT(π/N)
+        @test Δy(1, 1, 1, grid, Center(), Face(), Center()) ≈ FT(π/N)
+        @test Δz(1, 1, 1, grid, Center(), Center(), Face()) ≈ FT(π/N)
+
+        end # CUDA.@allowscalar
     end
 
     return nothing
