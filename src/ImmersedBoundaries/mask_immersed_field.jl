@@ -114,15 +114,8 @@ function mask_immersed_field!(field::ReducedField, grid::ImmersedBoundaryGrid, l
     return nothing
 end
 
-@kernel function _mask_immersed_reduced_field!(field, dims, loc, grid, value, mask)
-    i, j, k = @index(Global, NTuple)
-    masked  = inactive_dimensions(i, j, k, grid, dims, loc, mask)
-    @inbounds field[i, j, k] = ifelse(masked, value, field[i, j, k]) 
-end
-
-@inline inactive_search_range(i, grid, dim, dims) = ifelse(dim ∈ dims, 1:size(grid, dim), i:i)
-
-@inline function inactive_dimensions(i₀, j₀, k₀, grid, dims, (ℓx, ℓy, ℓz), mask)
+@kernel function _mask_immersed_reduced_field!(field, dims, (ℓx, ℓy, ℓz), grid, value, mask)
+    i₀, j₀, k₀ = @index(Global, NTuple)
     masked = true
     irange = inactive_search_range(i₀, grid, 1, dims)
     jrange = inactive_search_range(j₀, grid, 2, dims)
@@ -133,8 +126,10 @@ end
         masked = masked & mask(i, j, k, grid, ℓx, ℓy, ℓz) 
     end
 
-    return masked
+    @inbounds field[i₀, j₀, k₀] = ifelse(masked, value, field[i₀, j₀, k₀]) 
 end
+
+@inline inactive_search_range(i, grid, dim, dims) = ifelse(dim ∈ dims, 1:size(grid, dim), i:i)
 
 ###
 ### Efficient masking for `OnlyZReducedField` and an `AbstractGridFittedBoundary`
