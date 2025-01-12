@@ -186,18 +186,11 @@ gather_grid_metrics(grid::ImmersedBoundaryGrid, args...) =
 ##### Gathering of immersed boundary fields
 #####
 
+# TODO: Proper masks for 2D models?
 flat_loc(T, L) = T == Flat ? nothing : L
 
 # For Immersed Boundary Grids (IBG) with a Grid Fitted Bottom (GFB)
 function gather_immersed_boundary(grid::GFBIBG, indices, dim_name_generator)
-    # TODO: Proper masks for 2D models
-    # TX, TY, TZ = topology(grid)
-
-    # mask_ccc_name = dim_name_generator("immersed_boundary_mask", grid.underlying_grid, Center(), Center(), Center())
-    # mask_fcc_name = dim_name_generator("immersed_boundary_mask", grid.underlying_grid, Face(), Center(), Center())
-    # mask_cfc_name = dim_name_generator("immersed_boundary_mask", grid.underlying_grid, Center(), Face(), Center())
-    # mask_ccf_name = dim_name_generator("immersed_boundary_mask", grid.underlying_grid, Center(), Center(), Face())
-
     op_mask_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
     op_mask_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
     op_mask_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
