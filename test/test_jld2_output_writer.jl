@@ -386,8 +386,6 @@ for arch in archs
                                                                           filename = "sliced_func_fields_jld2_test",
                                                                           overwrite_existing = true)
 
-
-
         u₀ = CUDA.@allowscalar model.velocities.u[3, 3, 3]
         v₀ = CUDA.@allowscalar model.velocities.v[3, 3, 3]
         w₀ = CUDA.@allowscalar model.velocities.w[3, 3, 3]
