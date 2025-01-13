@@ -85,8 +85,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             compute_barotropic_mode!(U, V, grid, u, v, η̅)
             @test all(Array(interior(U)) .== 0.0)
 
-            set!(u, 1.0)
-            set!(U, 1.0)
+            set!(u, 1)
+            set!(U, 1)
             compute_barotropic_mode!(U, V, grid, u, v, η̅)
             @test all(Array(interior(U)) .≈ Lz)
 
