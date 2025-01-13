@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction
+using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction, FlatExtrapolationOpenBoundaryCondition, fill_halo_regions!
 using Oceananigans: prognostic_fields
 
 function test_boundary_condition(arch, FT, topo, side, field_name, boundary_condition)
@@ -9,7 +9,7 @@ function test_boundary_condition(arch, FT, topo, side, field_name, boundary_cond
     boundary_condition_kwarg = (; side => boundary_condition)
     field_boundary_conditions = FieldBoundaryConditions(; boundary_condition_kwarg...)
     bcs = (; field_name => field_boundary_conditions)
-    model = NonhydrostaticModel(grid=grid, boundary_conditions=bcs,
+    model = NonhydrostaticModel(; grid, boundary_conditions=bcs,
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     success = try
@@ -101,6 +101,63 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     # (flux * model.clock.time) / Lz = -3.141592653589793e-5
     
     return isapprox(mean(b) - mean_b₀, flux * model.clock.time / Lz, atol=1e-6)
+end
+
+left_febc(::Val{1}, grid, loc) = FieldBoundaryConditions(grid, loc, east = OpenBoundaryCondition(1),
+                                                                    west = FlatExtrapolationOpenBoundaryCondition())
+
+right_febc(::Val{1}, grid, loc) = FieldBoundaryConditions(grid, loc, west = OpenBoundaryCondition(1),
+                                                                     east = FlatExtrapolationOpenBoundaryCondition())
+
+left_febc(::Val{2}, grid, loc) = FieldBoundaryConditions(grid, loc, north = OpenBoundaryCondition(1),
+                                                                    south = FlatExtrapolationOpenBoundaryCondition())
+
+right_febc(::Val{2}, grid, loc) = FieldBoundaryConditions(grid, loc, south = OpenBoundaryCondition(1),
+                                                                     north = FlatExtrapolationOpenBoundaryCondition())
+
+left_febc(::Val{3}, grid, loc) = FieldBoundaryConditions(grid, loc, top = OpenBoundaryCondition(1),
+                                                                    bottom = FlatExtrapolationOpenBoundaryCondition())
+
+right_febc(::Val{3}, grid, loc) = FieldBoundaryConditions(grid, loc, bottom = OpenBoundaryCondition(1),
+                                                                     top = FlatExtrapolationOpenBoundaryCondition())
+
+end_position(::Val{1}, grid) = (grid.Nx+1, 1, 1)
+end_position(::Val{2}, grid) = (1, grid.Ny+1, 1)
+end_position(::Val{3}, grid) = (1, 1, grid.Nz+1)
+
+function test_flat_extrapolation_open_boundary_conditions(arch, FT)
+    clock = Clock(; time = zero(FT))
+
+    for orientation in 1:3
+        topology = tuple(map(n -> ifelse(n == orientation, Bounded, Flat), 1:3)...)
+
+        normal_location = tuple(map(n -> ifelse(n == orientation, Face, Center), 1:3)...)
+
+        grid = RectilinearGrid(arch, FT; topology, size = (16, ), x = (0, 1), y = (0, 1), z = (0, 1))
+
+        bcs1 = left_febc(Val(orientation), grid, normal_location)
+        bcs2 = right_febc(Val(orientation), grid, normal_location)
+
+        u1 = Field{normal_location...}(grid; boundary_conditions = bcs1)
+        u2 = Field{normal_location...}(grid; boundary_conditions = bcs2)
+
+        set!(u1, (X, ) -> 2-X)
+        set!(u2, (X, ) -> 1+X)
+
+        fill_halo_regions!(u1, clock, (); fill_boundary_normal_velocities = false)
+        fill_halo_regions!(u2, clock, (); fill_boundary_normal_velocities = false)
+
+        # we can stop the wall normal halos being filled after the pressure solve
+        @test interior(u1, 1, 1, 1) .== 2
+        @test interior(u2, end_position(Val(orientation), grid)...) .== 2
+
+        fill_halo_regions!(u1, clock, ())
+        fill_halo_regions!(u2, clock, ())
+
+        # now they should be filled
+        @test interior(u1, 1, 1, 1) .≈ 1.8125
+        @test interior(u2, end_position(Val(orientation), grid)...) .≈ 1.8125
+    end
 end
 
 test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
@@ -271,6 +328,14 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             A = typeof(arch)
             @info "  Testing flux budgets with diffusivity boundary conditions [$A, $FT]..."
             @test fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
+        end
+    end
+
+    @testset "Open boundary conditions" begin
+        for arch in archs, FT in (Float64,) #float_types
+            A = typeof(arch)
+            @info "  Testing open boundary conditions [$A, $FT]..."
+            test_flat_extrapolation_open_boundary_conditions(arch, FT)
         end
     end
 end

@@ -39,6 +39,8 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     filepath3d = "test_3d_output_with_halos.jld2"
     filepath2d = "test_2d_output_with_halos.jld2"
     filepath1d = "test_1d_output_with_halos.jld2"
+    split_filepath = "test_split_output.jld2"
+    unsplit_filepath = "test_unsplit_output.jld2"
 
     simulation.output_writers[:jld2_3d_with_halos] =
         JLD2OutputWriter(model, fields_to_output,
@@ -64,9 +66,24 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
                          schedule = TimeInterval(30seconds),
                          overwrite_existing = true)
 
+    simulation.output_writers[:unsplit_jld2] =
+        JLD2OutputWriter(model, profiles,
+                         filename = unsplit_filepath,
+                         with_halos = true,
+                         schedule = TimeInterval(10seconds),
+                         overwrite_existing = true)
+
+    simulation.output_writers[:split_jld2] =
+        JLD2OutputWriter(model, profiles,
+                         filename = split_filepath,
+                         with_halos = true,
+                         schedule = TimeInterval(10seconds),
+                         file_splitting = TimeInterval(30seconds),
+                         overwrite_existing = true)
+
     run!(simulation)
 
-    return filepath1d, filepath2d, filepath3d
+    return filepath1d, filepath2d, filepath3d, unsplit_filepath, split_filepath
 end
 
 @testset "OutputReaders" begin
@@ -74,7 +91,7 @@ end
 
     Nt = 5
     Nx, Ny, Nz = 16, 10, 5
-    filepath1d, filepath2d, filepath3d = generate_some_interesting_simulation_data(Nx, Ny, Nz)
+    filepath1d, filepath2d, filepath3d, unsplit_filepath, split_filepath = generate_some_interesting_simulation_data(Nx, Ny, Nz)
 
     for arch in archs
         @testset "FieldTimeSeries{InMemory} [$(typeof(arch))]" begin
@@ -220,6 +237,62 @@ end
                 @test u1[1] isa Field
                 @test v1[2] isa Field
             end
+
+            us = FieldTimeSeries(split_filepath, "u", architecture=arch)
+            vs = FieldTimeSeries(split_filepath, "v", architecture=arch)
+            ws = FieldTimeSeries(split_filepath, "w", architecture=arch)
+            Ts = FieldTimeSeries(split_filepath, "T", architecture=arch)
+            bs = FieldTimeSeries(split_filepath, "b", architecture=arch)
+            ζs = FieldTimeSeries(split_filepath, "ζ", architecture=arch)
+
+            uu = FieldTimeSeries(unsplit_filepath, "u", architecture=arch)
+            vu = FieldTimeSeries(unsplit_filepath, "v", architecture=arch)
+            wu = FieldTimeSeries(unsplit_filepath, "w", architecture=arch)
+            Tu = FieldTimeSeries(unsplit_filepath, "T", architecture=arch)
+            bu = FieldTimeSeries(unsplit_filepath, "b", architecture=arch)
+            ζu = FieldTimeSeries(unsplit_filepath, "ζ", architecture=arch)
+
+            split = (us, vs, ws, Ts, bs, ζs)                
+            unsplit = (uu, vu, wu, Tu, bu, ζu)                
+            for pair in zip(split, unsplit)    
+                s, u = pair
+                @test s.times == u.times
+                @test parent(s) == parent(u)
+            end
+        end
+
+        if arch isa GPU
+            @testset "FieldTimeSeries with CuArray boundary conditions [$(typeof(arch))]" begin
+                @info "  Testing FieldTimeSeries with CuArray boundary conditions..."
+
+                x = y = z = (0, 1)
+                grid = RectilinearGrid(GPU(); size=(1, 1, 1), x, y, z)
+                
+                τx = CuArray(zeros(size(grid)...))
+                τy = Field{Center, Face, Nothing}(grid)
+                u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
+                v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τy))
+                model = NonhydrostaticModel(; grid, boundary_conditions = (; u=u_bcs, v=v_bcs))
+                simulation = Simulation(model; Δt=1, stop_iteration=1)
+                
+                simulation.output_writers[:jld2] = JLD2OutputWriter(model, model.velocities,
+                                                                    filename = "test_cuarray_bc.jld2",
+                                                                    schedule=IterationInterval(1),
+                                                                    overwrite_existing = true)
+                
+                run!(simulation)
+                
+                ut = FieldTimeSeries("test_cuarray_bc.jld2", "u")
+                vt = FieldTimeSeries("test_cuarray_bc.jld2", "v")
+                @test ut.boundary_conditions.top.classification isa Flux
+                @test ut.boundary_conditions.top.condition isa Array
+
+                τy_ow = vt.boundary_conditions.top.condition
+                @test τy_ow isa Field{Center, Face, Nothing}
+                @test architecture(τy_ow) isa CPU
+                @test parent(τy_ow) isa Array
+                rm("test_cuarray_bc.jld2")
+            end
         end
     end
 
@@ -290,8 +363,8 @@ end
         @test t[1, 1, 1] == 3.8
     end
 
-    @testset "Test chunked abstraction" begin  
-        @info "  Testing Chunked abstraction..."      
+    @testset "Test chunked abstraction" begin
+        @info "  Testing Chunked abstraction..."
         filepath = "testfile.jld2"
         fts = FieldTimeSeries(filepath, "c")
         fts_chunked = FieldTimeSeries(filepath, "c"; backend = InMemory(2), time_indexing = Cyclical())
@@ -342,8 +415,8 @@ end
     end
 
     for Backend in [InMemory, OnDisk]
-        @testset "FieldDataset{$Backend}" begin
-            @info "  Testing FieldDataset{$Backend}..."
+        @testset "FieldDataset{$Backend} indexing" begin
+            @info "  Testing FieldDataset{$Backend} indexing..."
 
             ds = FieldDataset(filepath3d, backend=Backend())
 
@@ -354,7 +427,7 @@ end
                 @test ds[var_str] isa FieldTimeSeries
                 @test ds[var_str][1] isa Field
             end
-            
+
             for var_sym in (:u, :v, :w, :T, :S, :b, :ζ, :ke)
                 @test ds[var_sym] isa FieldTimeSeries
                 @test ds[var_sym][2] isa Field
@@ -368,6 +441,36 @@ end
             @test ds.b isa FieldTimeSeries
             @test ds.ζ isa FieldTimeSeries
             @test ds.ke isa FieldTimeSeries
+        end
+    end
+
+    for Backend in [InMemory, OnDisk]
+        @testset "FieldTimeSeries{$Backend} parallel reading" begin
+            @info "  Testing FieldTimeSeries{$Backend} parallel reading..."
+
+            reader_kw = Dict(:parallel_read => true)
+            u3 = FieldTimeSeries(filepath3d, "u"; backend=Backend(), reader_kw)
+            b3 = FieldTimeSeries(filepath3d, "b"; backend=Backend(), reader_kw)
+
+            @test u3 isa FieldTimeSeries
+            @test b3 isa FieldTimeSeries
+            @test u3[1] isa Field
+            @test b3[1] isa Field
+        end
+    end
+
+    for Backend in [InMemory, OnDisk]
+        @testset "FieldDataset{$Backend} parallel reading" begin
+            @info "  Testing FieldDataset{$Backend} parallel reading..."
+
+            reader_kw = (; parallel_read = true)
+            ds = FieldDataset(filepath3d; backend=Backend(), reader_kw)
+
+            @test ds isa FieldDataset
+            @test ds.u isa FieldTimeSeries
+            @test ds.b isa FieldTimeSeries
+            @test ds.u[1] isa Field
+            @test ds.b[1] isa Field
         end
     end
 

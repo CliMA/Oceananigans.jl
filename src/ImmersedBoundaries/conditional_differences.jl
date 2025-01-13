@@ -1,10 +1,14 @@
-import Oceananigans.Operators: 
+import Oceananigans.Operators:
     δxᶠᶜᶜ, δxᶠᶜᶠ, δxᶠᶠᶜ, δxᶠᶠᶠ,
     δxᶜᶜᶜ, δxᶜᶜᶠ, δxᶜᶠᶜ, δxᶜᶠᶠ,
     δyᶜᶠᶜ, δyᶜᶠᶠ, δyᶠᶠᶜ, δyᶠᶠᶠ,
     δyᶜᶜᶜ, δyᶜᶜᶠ, δyᶠᶜᶜ, δyᶠᶜᶠ,
     δzᶜᶜᶠ, δzᶜᶠᶠ, δzᶠᶜᶠ, δzᶠᶠᶠ,
     δzᶜᶜᶜ, δzᶜᶠᶜ, δzᶠᶜᶜ, δzᶠᶠᶜ
+
+import Oceananigans.Operators:
+    δxTᶜᵃᵃ, δyTᵃᶜᵃ,
+    ∂xTᶠᶜᶠ, ∂yTᶜᶠᶠ
 
 # Conditional differences that are "immersed boundary aware".
 # Here we return `zero(ibg)` rather than `δx` (for example) when _one_ of the
@@ -59,15 +63,30 @@ for (d, ξ) in enumerate((:x, :y, :z))
 
         # `other_locs` contains locations in the two "other" directions not being differenced
         other_locs = []
-        for l in 1:3 
+        for l in 1:3
             if l != d
                 push!(other_locs, loc[l])
             end
         end
-        
+
         @eval begin
             @inline $δξ(i, j, k, ibg::IBG, args...)              = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξ, args...)
             @inline $δξ(i, j, k, ibg::IBG, f::Function, args...) = $conditional_δξ($(other_locs[1]), $(other_locs[2]), i, j, k, ibg, $δξ, f::Function, args...)
        end
     end
 end
+
+# Topology-aware immersed boundary operators
+#   * Velocities are `0` on `peripheral_node`s and
+#   * Tracers should ensure no-flux on `inactive_node`s
+
+@inline conditional_U_fcc(i, j, k, grid, ibg::IBG, f::Function, args...) = ifelse(peripheral_node(i, j, k, ibg, f, c, c), zero(ibg), f(i, j, k, grid, args...))
+@inline conditional_V_cfc(i, j, k, grid, ibg::IBG, f::Function, args...) = ifelse(peripheral_node(i, j, k, ibg, c, f, c), zero(ibg), f(i, j, k, grid, args...))
+
+@inline conditional_∂xTᶠᶜᶠ(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i-1, j, k, ibg, c, c, f), zero(ibg), ∂xTᶠᶜᶠ(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_∂yTᶜᶠᶠ(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i, j-1, k, ibg, c, c, f), zero(ibg), ∂yTᶜᶠᶠ(i, j, k, ibg.underlying_grid, args...))
+
+@inline δxTᶜᵃᵃ(i, j, k, ibg::IBG, f::Function, args...) = δxTᶜᵃᵃ(i, j, k, ibg.underlying_grid, conditional_U_fcc, ibg, f, args...)
+@inline δyTᵃᶜᵃ(i, j, k, ibg::IBG, f::Function, args...) = δyTᵃᶜᵃ(i, j, k, ibg.underlying_grid, conditional_V_cfc, ibg, f, args...)
+@inline ∂xTᶠᶜᶠ(i, j, k, ibg::IBG, f::Function, args...) = conditional_∂xTᶠᶜᶠ(i, j, k, ibg, f, args...)
+@inline ∂yTᶜᶠᶠ(i, j, k, ibg::IBG, f::Function, args...) = conditional_∂yTᶜᶠᶠ(i, j, k, ibg, f, args...)
