@@ -16,10 +16,11 @@ Base.size(kf::KrylovField) = size(kf.field)
 Base.length(kf::KrylovField) = length(kf.field)
 Base.getindex(kf::KrylovField, i::Int) = getindex(kf.field, i)
 
-function Krylov.kdot(n::Int, x::KrylovField{T}, y::KrylovField{T}) where T <: FloatOrComplex
+function Krylov.kdot(n::Int, x::KrylovField, y::KrylovField)
     mx, nx, kx = size(x.field)
     _x = x.field
     _y = y.field
+    T = eltype(kf.field)
     res = zero(T)
     for i = 1:mx
         for j = 1:nx
@@ -31,9 +32,10 @@ function Krylov.kdot(n::Int, x::KrylovField{T}, y::KrylovField{T}) where T <: Fl
     return res
 end
 
-function Krylov.knorm(n::Int, x::KrylovField{T}) where T <: FloatOrComplex
+function Krylov.knorm(n::Int, x::KrylovField)
     mx, nx, kx = size(x.field)
     _x = x.field
+    T = eltype(kf.field)
     res = zero(T)
     for i = 1:mx
         for j = 1:nx
@@ -45,7 +47,7 @@ function Krylov.knorm(n::Int, x::KrylovField{T}) where T <: FloatOrComplex
     return sqrt(res)
 end
 
-function Krylov.kscal!(n::Int, s::T, x::KrylovField{T}) where T <: FloatOrComplex
+function Krylov.kscal!(n::Int, s, x::KrylovField)
     mx, nx, kx = size(x.field)
     _x = x.field
     for i = 1:mx
@@ -58,7 +60,7 @@ function Krylov.kscal!(n::Int, s::T, x::KrylovField{T}) where T <: FloatOrComple
     return x
 end
 
-function Krylov.kaxpy!(n::Int, s::T, x::KrylovField{T}, y::KrylovField{T}) where T <: FloatOrComplex
+function Krylov.kaxpy!(n::Int, s, x::KrylovField, y::KrylovField)
     mx, nx, kx = size(x.field)
     _x = x.field
     _y = y.field
@@ -72,7 +74,7 @@ function Krylov.kaxpy!(n::Int, s::T, x::KrylovField{T}, y::KrylovField{T}) where
     return y
 end
 
-function Krylov.kaxpby!(n::Int, s::T, x::KrylovField{T}, t::T, y::KrylovField{T}) where T <: FloatOrComplex
+function Krylov.kaxpby!(n::Int, s, x::KrylovField, t, y::KrylovField)
     mx, nx, kx = size(x.field)
     _x = x.field
     _y = y.field
@@ -86,34 +88,10 @@ function Krylov.kaxpby!(n::Int, s::T, x::KrylovField{T}, t::T, y::KrylovField{T}
     return y
 end
 
-function Krylov.kcopy!(n::Int, y::KrylovField{T}, x::KrylovField{T}) where T <: FloatOrComplex
-    mx, nx, kx = size(x.field)
-    _x = x.field
-    _y = y.field
-    for i = 1:mx
-        for j = 1:nx
-            for k = 1:kx
-                _y[i,j,k] = _x[i,j,k]
-            end
-        end
-    end
-    return y
-end
+Krylov.kcopy!(n::Int, y::KrylovField, x::KrylovField) = copyto!(y.field, x.field)
+Krylov.kfill!(x::KrylovField, val) = fill!(x.field, val)
 
-function Krylov.kfill!(x::KrylovField{T}, val::T) where T <: FloatOrComplex
-    mx, nx, kx = size(x.field)
-    _x = x.field
-    for i = 1:mx
-        for j = 1:nx
-            for k = 1:kx
-                _x[i,j,k] = val
-            end
-        end
-    end
-    return x
-end
-
-function Krylov.kref!(n::Integer, x::KrylovField{T}, y::KrylovField{T}, c::T, s::T) where T <: FloatOrComplex
+function Krylov.kref!(n::Integer, x::KrylovField, y::KrylovField, c, s)
     mx, nx, kx = size(x.field)
     _x = x.field
     _y = y.field
