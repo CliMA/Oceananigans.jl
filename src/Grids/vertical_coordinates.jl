@@ -29,20 +29,6 @@ struct StaticVerticalCoordinate{C, D, E, F} <: AbstractVerticalCoordinate
     Δᵃᵃᶜ :: F
 end
 
-# Represents a z-star three-dimensional vertical coordinate.
-#
-# # Fields
-# - `cᶠ::C`: Face-centered coordinate.
-# - `cᶜ::C`: Cell-centered coordinate.
-# - `Δᶠ::D`: Face-centered grid spacing.
-# - `Δᶜ::D`: Cell-centered grid spacing.
-# - `ηⁿ::E`: Surface elevation at the current time step.
-# - `σᶜᶜⁿ::CC`: Vertical grid scaling at center-center at the current time step.
-# - `σᶠᶜⁿ::FC`: Vertical grid scaling at face-center at the current time step.
-# - `σᶜᶠⁿ::CF`: Vertical grid scaling at center-face at the current time step.
-# - `σᶠᶠⁿ::FF`: Vertical grid scaling at face-face at the current time step.
-# - `σᶜᶜ⁻::CC`: Vertical grid scaling at center-center at the previous time step.
-# - `∂t_σ::CC`: Time derivative of the vertical grid scaling at cell centers.
 struct ZStarVerticalCoordinate{C, D, E, F, H, CC, FC, CF, FF} <: AbstractVerticalCoordinate
     cᵃᵃᶠ :: C
     cᵃᵃᶜ :: D
@@ -57,7 +43,13 @@ struct ZStarVerticalCoordinate{C, D, E, F, H, CC, FC, CF, FF} <: AbstractVertica
     ∂t_σ :: CC
 end
 
-# Convenience constructors for z-star vertical coordinate for use in grid constructors
+"""
+    ZStarVerticalCoordinate(r_faces)
+
+Construct a `ZStarVerticalCoordinate` from `r_faces` that can be a `Tuple`, a function of an index `k`,
+or an `AbstractArray`. A `ZStarVerticalCoordinate` is a vertical coordinate that evolves in time 
+following the surface.
+"""
 ZStarVerticalCoordinate(r_faces) = ZStarVerticalCoordinate(r_faces, r_faces, [nothing for i in 1:9]...)
 
 ####
