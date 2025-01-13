@@ -120,7 +120,7 @@ struct ZDirection <: AbstractDirection end
 struct NegativeZDirection <: AbstractDirection end
 
 include("abstract_grid.jl")
-include("vertical_coordinate.jl")
+include("vertical_coordinates.jl")
 include("grid_utils.jl")
 include("nodes_and_spacings.jl")
 include("zeros_and_ones.jl")

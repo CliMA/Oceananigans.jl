@@ -3,24 +3,30 @@
 ####
 
 # This file implements everything related to vertical coordinates in Oceananigans.
-# Vertical coordinates are independent of the underlying grid type as we support grids that are 
-# "unstructured" or "curvilinear" only in the horizontal direction. 
-# For this reason the vertical coodinate is _special_, and it can be implemented once for all grid types.
+# Vertical coordinates are independent of the underlying grid type since only grids that are 
+# "unstructured" or "curvilinear" in the horizontal directions are supported in Oceananigans. 
+# Thus the vertical coordinate is _special_, and it can be implemented once for all grid types.
 
 abstract type AbstractVerticalCoordinate end
 
-# Represents a static one-dimensional vertical coordinate.
-#
-# # Fields
-# - `cᶜ::C`: Cell-centered coordinate.
-# - `cᶠ::C`: Face-centered coordinate.
-# - `Δᶜ::D`: Cell-centered grid spacing.
-# - `Δᶠ::D`: Face-centered grid spacing.
-struct StaticVerticalCoordinate{C, D} <: AbstractVerticalCoordinate
+"""
+    struct StaticVerticalCoordinate{C, D, E, F} <: AbstractVerticalCoordinate
+
+Represent a static one-dimensional vertical coordinate.
+
+Fields
+======
+
+- `cᶜ::C`: Cell-centered coordinate.
+- `cᶠ::D`: Face-centered coordinate.
+- `Δᶜ::E`: Cell-centered grid spacing.
+- `Δᶠ::F`: Face-centered grid spacing.
+"""
+struct StaticVerticalCoordinate{C, D, E, F} <: AbstractVerticalCoordinate
     cᵃᵃᶠ :: C
-    cᵃᵃᶜ :: C
-    Δᵃᵃᶠ :: D
-    Δᵃᵃᶜ :: D
+    cᵃᵃᶜ :: D
+    Δᵃᵃᶠ :: E
+    Δᵃᵃᶜ :: F
 end
 
 # Represents a z-star three-dimensional vertical coordinate.
@@ -37,12 +43,12 @@ end
 # - `σᶠᶠⁿ::FF`: Vertical grid scaling at face-face at the current time step.
 # - `σᶜᶜ⁻::CC`: Vertical grid scaling at center-center at the previous time step.
 # - `∂t_σ::CC`: Time derivative of the vertical grid scaling at cell centers.
-struct ZStarVerticalCoordinate{C, D, E, CC, FC, CF, FF} <: AbstractVerticalCoordinate
+struct ZStarVerticalCoordinate{C, D, E, F, H, CC, FC, CF, FF} <: AbstractVerticalCoordinate
     cᵃᵃᶠ :: C
-    cᵃᵃᶜ :: C
-    Δᵃᵃᶠ :: D
-    Δᵃᵃᶜ :: D
-      ηⁿ :: E
+    cᵃᵃᶜ :: D
+    Δᵃᵃᶠ :: E
+    Δᵃᵃᶜ :: F
+      ηⁿ :: H
     σᶜᶜⁿ :: CC
     σᶠᶜⁿ :: FC
     σᶜᶠⁿ :: CF
@@ -55,11 +61,11 @@ end
 ZStarVerticalCoordinate(r_faces) = ZStarVerticalCoordinate(r_faces, r_faces, [nothing for i in 1:9]...)
 
 ####
-#### Some usefull aliases
+#### Some useful aliases
 ####
 
-const RegularStaticVerticalCoordinate = StaticVerticalCoordinate{<:Any, <:Number}
-const RegularZStarVerticalCoordinate  = ZStarVerticalCoordinate{<:Any,  <:Number}
+const RegularStaticVerticalCoordinate = StaticVerticalCoordinate{<:Any, <:Any, <:Number}
+const RegularZStarVerticalCoordinate  = ZStarVerticalCoordinate{<:Any,  <:Any, <:Number}
 
 const RegularVerticalCoordinate = Union{RegularStaticVerticalCoordinate, RegularZStarVerticalCoordinate}
 
@@ -71,17 +77,17 @@ const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,  
 #### Adapt and on_architecture
 ####
 
-Adapt.adapt_structure(to, coord::StaticVerticalCoordinate) = 
-   StaticVerticalCoordinate(Adapt.adapt(to, coord.cᵃᵃᶠ),
-                            Adapt.adapt(to, coord.cᵃᵃᶜ),
-                            Adapt.adapt(to, coord.Δᵃᵃᶠ),
-                            Adapt.adapt(to, coord.Δᵃᵃᶜ))
+Adapt.adapt_structure(to, coord::StaticVerticalCoordinate) =
+    StaticVerticalCoordinate(Adapt.adapt(to, coord.cᵃᵃᶠ),
+                             Adapt.adapt(to, coord.cᵃᵃᶜ),
+                             Adapt.adapt(to, coord.Δᵃᵃᶠ),
+                             Adapt.adapt(to, coord.Δᵃᵃᶜ))
 
 on_architecture(arch, coord::StaticVerticalCoordinate) = 
-   StaticVerticalCoordinate(on_architecture(arch, coord.cᵃᵃᶠ),
-                            on_architecture(arch, coord.cᵃᵃᶜ),
-                            on_architecture(arch, coord.Δᵃᵃᶠ),
-                            on_architecture(arch, coord.Δᵃᵃᶜ))
+    StaticVerticalCoordinate(on_architecture(arch, coord.cᵃᵃᶠ),
+                             on_architecture(arch, coord.cᵃᵃᶜ),
+                             on_architecture(arch, coord.Δᵃᵃᶠ),
+                             on_architecture(arch, coord.Δᵃᵃᶜ))
 
 Adapt.adapt_structure(to, coord::ZStarVerticalCoordinate) = 
     ZStarVerticalCoordinate(Adapt.adapt(to, coord.cᵃᵃᶠ),
