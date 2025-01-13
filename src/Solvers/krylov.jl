@@ -16,36 +16,9 @@ Base.size(kf::KrylovField) = size(kf.field)
 Base.length(kf::KrylovField) = length(kf.field)
 Base.getindex(kf::KrylovField, i::Int) = getindex(kf.field, i)
 
-function Krylov.kdot(n::Int, x::KrylovField, y::KrylovField)
-    mx, nx, kx = size(x.field)
-    _x = x.field
-    _y = y.field
-    T = eltype(kf.field)
-    res = zero(T)
-    for i = 1:mx
-        for j = 1:nx
-            for k = 1:kx
-                res += _x[i,j,k] * _y[i,j,k]
-            end
-        end
-    end
-    return res
-end
+Krylov.kdot(n::Int, x::KrylovField, y::KrylovField) = dot(x.field, y.field)
 
-function Krylov.knorm(n::Int, x::KrylovField)
-    mx, nx, kx = size(x.field)
-    _x = x.field
-    T = eltype(kf.field)
-    res = zero(T)
-    for i = 1:mx
-        for j = 1:nx
-            for k = 1:kx
-                res += _x[i,j,k]^2
-            end
-        end
-    end
-    return sqrt(res)
-end
+Krylov.knorm(n::Int, x::KrylovField) = norm(x.field)
 
 function Krylov.kscal!(n::Int, s, x::KrylovField)
     mx, nx, kx = size(x.field)
