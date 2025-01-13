@@ -61,7 +61,7 @@ Nz = 10
                                                 longitude = (-160, 160),
                                                 z = (-10, 0),
                                                 radius = 1,
-                                                topology=(Bounded, Bounded, Bounded))
+                                                topology = (Bounded, Bounded, Bounded))
 
         # Make sure the bottom is the same
         bottom_height = zeros(Nx, Ny)
