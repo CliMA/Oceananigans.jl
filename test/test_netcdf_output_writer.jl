@@ -481,6 +481,9 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch)
 
     @test all(ds_s[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height, i_slice, j_slice)))
 
+    close(ds_s)
+    rm(filepath_sliced)
+
     return nothing
 end
 
