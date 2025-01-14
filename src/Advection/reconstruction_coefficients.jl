@@ -132,7 +132,7 @@ julia> coeff4_symmetric
 julia> coeff5_left
 (-0.049999999999999926, 0.45000000000000007, 0.7833333333333333, -0.21666666666666667, 0.03333333333333333)
 """
-uniform_coefficients(FT, ::Val{:symmetric}, buffer) = buffer==1 ? (one(FT),) : stencil_coefficients(FT, 50, buffer - 1, collect(1:100), collect(1:100); order = 2buffer)
+uniform_coefficients(FT, ::Val{:symmetric}, buffer) = stencil_coefficients(FT, 50, buffer - 1, collect(1:100), collect(1:100); order = 2buffer)
 uniform_coefficients(FT, ::Val{:left}, buffer)      = buffer==1 ? (one(FT),) : stencil_coefficients(FT, 50, buffer - 2, collect(1:100), collect(1:100); order = 2buffer-1)
 uniform_coefficients(FT, ::Val{:right}, buffer)     = buffer==1 ? (one(FT),) : stencil_coefficients(FT, 50, buffer - 1, collect(1:100), collect(1:100); order = 2buffer-1)
 
