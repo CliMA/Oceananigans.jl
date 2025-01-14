@@ -44,7 +44,7 @@ end
 @inline extract_bc(bc, ::Val{:bottom_and_top})  = (extract_bottom_bc(bc), extract_top_bc(bc))
 
 # Finally, the true fill_halo!
-const MaybeTupledData = Union{OffsetArray, NTuple{<:Any, OffsetArray}}
+const MaybeTupledData = Union{OffsetArray, Tuple{Vararg{OffsetArray}}}
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
 function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, loc, grid, args...; 
@@ -145,9 +145,9 @@ split_halo_filling(::DCBC, bcs2)   = true
 ##### Halo filling order
 #####
 
-const PBCT  = Union{PBC,  NTuple{<:Any, <:PBC}}
-const MCBCT = Union{MCBC, NTuple{<:Any, <:MCBC}}
-const DCBCT = Union{DCBC, NTuple{<:Any, <:DCBC}}
+const PBCT  = Union{PBC,  Tuple{Vararg{PBC}}}
+const MCBCT = Union{MCBC, Tuple{Vararg{MCBC}}}
+const DCBCT = Union{DCBC, Tuple{Vararg{DCBC}}}
 
 # Distributed halos have to be filled last to allow the 
 # possibility of asynchronous communication: 
@@ -259,7 +259,7 @@ end
 # support tupled halo filling
 import Oceananigans.Utils: @constprop
 
-@kernel function _fill_west_and_east_halo!(c::NTuple, west_bc, east_bc, loc, grid, args)
+@kernel function _fill_west_and_east_halo!(c::Tuple, west_bc, east_bc, loc, grid, args)
     j, k = @index(Global, NTuple)
     ntuple(Val(length(west_bc))) do n
         Base.@_inline_meta
@@ -271,7 +271,7 @@ import Oceananigans.Utils: @constprop
     end
 end
 
-@kernel function _fill_south_and_north_halo!(c::NTuple, south_bc, north_bc, loc, grid, args) 
+@kernel function _fill_south_and_north_halo!(c::Tuple, south_bc, north_bc, loc, grid, args) 
     i, k = @index(Global, NTuple)
     ntuple(Val(length(south_bc))) do n
         Base.@_inline_meta
@@ -283,7 +283,7 @@ end
     end
 end
 
-@kernel function _fill_bottom_and_top_halo!(c::NTuple, bottom_bc, top_bc, loc, grid, args) 
+@kernel function _fill_bottom_and_top_halo!(c::Tuple, bottom_bc, top_bc, loc, grid, args) 
     i, j = @index(Global, NTuple)
     ntuple(Val(length(bottom_bc))) do n
         Base.@_inline_meta
