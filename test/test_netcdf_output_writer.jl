@@ -2564,7 +2564,7 @@ for arch in [CPU(), GPU()]
         test_netcdf_grid_metrics_latlon(arch, Float32)
 
         test_netcdf_rectilinear_grid_fitted_bottom(arch)
-        test_netcdf_grid_metrics_latlon(arch)
+        test_netcdf_latlon_grid_fitted_bottom(arch)
 
         test_netcdf_rectilinear_flat_xy(arch)
         test_netcdf_rectilinear_flat_xz(arch, immersed=false)
