@@ -97,7 +97,7 @@ Positional Arguments
 
 On a uniform `grid`, the coefficients are independent of the `xr` and `xi` values.
 """
-@inline function stencil_coefficients(i, r, xr, xi; shift = 0, op = Base.:(-), order = 3, der = nothing)
+@inline function stencil_coefficients(FT, i, r, xr, xi; shift = 0, op = Base.:(-), order = 3, der = nothing)
     coeffs = zeros(order)
     @inbounds begin
         for j in 0:order-1
@@ -109,7 +109,7 @@ On a uniform `grid`, the coefficients are independent of the `xr` and `xi` value
         end
     end
 
-    return tuple(coeffs...)
+    return FT.(tuple(coeffs...))
 end
 
 """
@@ -132,25 +132,9 @@ julia> coeff4_symmetric
 julia> coeff5_left
 (-0.049999999999999926, 0.45000000000000007, 0.7833333333333333, -0.21666666666666667, 0.03333333333333333)
 """
-const coeff1_left  = 1.0
-const coeff1_right = 1.0
-
-# buffer in [1:6] allows up to Centered(order = 12) and UpwindBiased(order = 11)
-for buffer in advection_buffers
-    order_bias = 2buffer - 1
-    order_symm = 2buffer
-
-    coeff_symm  = Symbol(:coeff, order_symm, :_symmetric)
-    coeff_left  = Symbol(:coeff, order_bias, :_left)
-    coeff_right = Symbol(:coeff, order_bias, :_right)
-    @eval begin
-        const $coeff_symm  = stencil_coefficients(50, $(buffer - 1), collect(1:100), collect(1:100); order = $order_symm)
-        if $order_bias > 1
-            const $coeff_left  = stencil_coefficients(50, $(buffer - 2), collect(1:100), collect(1:100); order = $order_bias)
-            const $coeff_right = stencil_coefficients(50, $(buffer - 1), collect(1:100), collect(1:100); order = $order_bias)
-        end
-    end
-end
+uniform_coefficients(FT, ::Val{:symmetric}, buffer) = buffer==1 ? (one(FT),) : stencil_coefficients(FT, 50, buffer - 1, collect(1:100), collect(1:100); order = 2buffer)
+uniform_coefficients(FT, ::Val{:left}, buffer)      = buffer==1 ? (one(FT),) : stencil_coefficients(FT, 50, buffer - 2, collect(1:100), collect(1:100); order = 2buffer-1)
+uniform_coefficients(FT, ::Val{:right}, buffer)     = buffer==1 ? (one(FT),) : stencil_coefficients(FT, 50, buffer - 1, collect(1:100), collect(1:100); order = 2buffer-1)
 
 """ 
     calc_reconstruction_stencil(buffer, shift, dir, func::Bool = false)
@@ -183,7 +167,7 @@ julia> calc_reconstruction_stencil(3, :left, :x)
 :(convert(FT, coeff5_left[5]) * ψ[i + -3, j, k] + convert(FT, coeff5_left[4]) * ψ[i + -2, j, k] + convert(FT, coeff5_left[3]) * ψ[i + -1, j, k] + convert(FT, coeff5_left[2]) * ψ[i + 0, j, k] + convert(FT, coeff5_left[1]) * ψ[i + 1, j, k])
 ```
 """
-@inline function calc_reconstruction_stencil(buffer, shift, dir, func::Bool = false)
+@inline function calc_reconstruction_stencil(FT, buffer, shift, dir, func::Bool = false)
     N = buffer * 2
     order = shift == :symmetric ? N : N - 1
     if shift != :symmetric
@@ -194,21 +178,21 @@ julia> calc_reconstruction_stencil(3, :left, :x)
         rng = rng .+ 1
     end
     stencil_full = Vector(undef, N)
-    coeff = Symbol(:coeff, order, :_, shift)
+    coeff = uniform_coefficients(FT, Val(shift), buffer)
     for (idx, n) in enumerate(rng)
         c = n - buffer - 1
         if func
             stencil_full[idx] = dir == :x ?
-                                :(convert(FT, $coeff[$(order - idx + 1)]) * ψ(i + $c, j, k, grid, args...)) :
+                                :($coeff[$(order - idx + 1)] * ψ(i + $c, j, k, grid, args...)) :
                                 dir == :y ?
-                                :(convert(FT, $coeff[$(order - idx + 1)]) * ψ(i, j + $c, k, grid, args...)) :
-                                :(convert(FT, $coeff[$(order - idx + 1)]) * ψ(i, j, k + $c, grid, args...))
+                                :($coeff[$(order - idx + 1)] * ψ(i, j + $c, k, grid, args...)) :
+                                :($coeff[$(order - idx + 1)] * ψ(i, j, k + $c, grid, args...))
         else
             stencil_full[idx] =  dir == :x ? 
-                                :(convert(FT, $coeff[$(order - idx + 1)]) * ψ[i + $c, j, k]) :
+                                :($coeff[$(order - idx + 1)] * ψ[i + $c, j, k]) :
                                 dir == :y ?
-                                :(convert(FT, $coeff[$(order - idx + 1)]) * ψ[i, j + $c, k]) :
-                                :(convert(FT, $coeff[$(order - idx + 1)]) * ψ[i, j, k + $c])
+                                :($coeff[$(order - idx + 1)] * ψ[i, j + $c, k]) :
+                                :($coeff[$(order - idx + 1)] * ψ[i, j, k + $c])
         end
     end
     return Expr(:call, :+, stencil_full...)

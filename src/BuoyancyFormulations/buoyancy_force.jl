@@ -5,6 +5,8 @@ using Oceananigans.Grids: NegativeZDirection, validate_unit_vector, architecture
 using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, active_linear_index_to_tuple
 using KernelAbstractions: @kernel, @index
 
+using Adapt
+
 struct BuoyancyForce{M, G, B}
     formulation :: M
     gravity_unit_vector :: G
@@ -60,6 +62,11 @@ function BuoyancyForce(grid; formulation, gravity_unit_vector=NegativeZDirection
 
     return BuoyancyForce(formulation, gravity_unit_vector, buoyancy_gradients)
 end
+
+Adapt.adapt_structure(to, buoyancy::BuoyancyForce) = 
+    BuoyancyForce(Adapt.adapt(to, buoyancy.formulation), 
+                  Adapt.adapt(to, buoyancy.gravity_unit_vector),
+                  Adapt.adapt(to, buoyancy.gradients))
 
 @inline ĝ_x(bf) = @inbounds - bf.gravity_unit_vector[1]
 @inline ĝ_y(bf) = @inbounds - bf.gravity_unit_vector[2]

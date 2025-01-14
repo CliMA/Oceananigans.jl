@@ -68,52 +68,61 @@ end
 Base.show(io::IO, a::FunctionStencil) =  print(io, "FunctionStencil f = $(a.func)")
 
 const ƞ = Int32(2) # WENO exponent
-const ε = 1e-8
+const ε = 1f-8
 
 # Optimal values for finite volume reconstruction of order `WENO{order}` and stencil `Val{stencil}` from
 # Balsara & Shu, "Monotonicity Preserving Weighted Essentially Non-oscillatory Schemes with Inceasingly High Order of Accuracy"
-@inline C★(::WENO{2}, ::Val{0}) = 2/3
-@inline C★(::WENO{2}, ::Val{1}) = 1/3
 
-@inline C★(::WENO{3}, ::Val{0}) = 3/10
-@inline C★(::WENO{3}, ::Val{1}) = 3/5
-@inline C★(::WENO{3}, ::Val{2}) = 1/10
+for FT in (Float64, Float32)
+    @eval begin
+        @inline C★(::WENO{2, $FT}, ::Val{0}) = $(FT(2//3))
+        @inline C★(::WENO{2, $FT}, ::Val{1}) = $(FT(1//3))
 
-@inline C★(::WENO{4}, ::Val{0}) = 4/35
-@inline C★(::WENO{4}, ::Val{1}) = 18/35
-@inline C★(::WENO{4}, ::Val{2}) = 12/35
-@inline C★(::WENO{4}, ::Val{3}) = 1/35
+        @inline C★(::WENO{3, $FT}, ::Val{0}) = $(FT(3//10))
+        @inline C★(::WENO{3, $FT}, ::Val{1}) = $(FT(3//5))
+        @inline C★(::WENO{3, $FT}, ::Val{2}) = $(FT(1//10))
 
-@inline C★(::WENO{5}, ::Val{0}) = 5/126
-@inline C★(::WENO{5}, ::Val{1}) = 20/63
-@inline C★(::WENO{5}, ::Val{2}) = 10/21
-@inline C★(::WENO{5}, ::Val{3}) = 10/63
-@inline C★(::WENO{5}, ::Val{4}) = 1/126
+        @inline C★(::WENO{4, $FT}, ::Val{0}) = $(FT(4//35))
+        @inline C★(::WENO{4, $FT}, ::Val{1}) = $(FT(18//35))
+        @inline C★(::WENO{4, $FT}, ::Val{2}) = $(FT(12//35))
+        @inline C★(::WENO{4, $FT}, ::Val{3}) = $(FT(1//35))
 
-@inline C★(::WENO{6}, ::Val{0}) = 1/77
-@inline C★(::WENO{6}, ::Val{1}) = 25/154
-@inline C★(::WENO{6}, ::Val{2}) = 100/231
-@inline C★(::WENO{6}, ::Val{3}) = 25/77
-@inline C★(::WENO{6}, ::Val{4}) = 5/77
-@inline C★(::WENO{6}, ::Val{5}) = 1/462
+        @inline C★(::WENO{5, $FT}, ::Val{0}) = $(FT(5//126))
+        @inline C★(::WENO{5, $FT}, ::Val{1}) = $(FT(20//63))
+        @inline C★(::WENO{5, $FT}, ::Val{2}) = $(FT(10//21))
+        @inline C★(::WENO{5, $FT}, ::Val{3}) = $(FT(10//63))
+        @inline C★(::WENO{5, $FT}, ::Val{4}) = $(FT(1//126))
+
+        @inline C★(::WENO{6, $FT}, ::Val{0}) = $(FT(1//77))
+        @inline C★(::WENO{6, $FT}, ::Val{1}) = $(FT(25//154))
+        @inline C★(::WENO{6, $FT}, ::Val{2}) = $(FT(100//231))
+        @inline C★(::WENO{6, $FT}, ::Val{3}) = $(FT(25//77))
+        @inline C★(::WENO{6, $FT}, ::Val{4}) = $(FT(5//77))
+        @inline C★(::WENO{6, $FT}, ::Val{5}) = $(FT(1//462))
+    end
+end
 
 # ENO reconstruction procedure per stencil 
 for buffer in [2, 3, 4, 5, 6]
     for stencil in collect(0:1:buffer-1)
+        for FT in (Float32, Float64)
 
-        # ENO coefficients for uniform direction (when T<:Nothing) and stretched directions (when T<:Any) 
+            # ENO coefficients for uniform direction (when T<:Nothing) and stretched directions (when T<:Any) 
+            @eval begin
+                """
+                    coeff_p(::WENO{buffer, FT}, bias, ::Val{stencil}, T, args...) 
+
+                Reconstruction coefficients for the stencil number `stencil` of a WENO reconstruction 
+                of order `buffer * 2 - 1`. Uniform coefficients (i.e. when `T == Nothing`) are independent on the
+                `bias` of the reconstruction (either `LeftBias` or `RightBias`), while stretched coeffiecients are
+                retrieved from the precomputed coefficients via the `retrieve_coeff` function
+                """
+                @inline coeff_p(::WENO{$buffer, $FT}, bias, ::Val{$stencil}, ::Type{Nothing}, args...) = 
+                    @inbounds $(stencil_coefficients(FT, 50, stencil, collect(1:100), collect(1:100); order = buffer))
+            end
+        end
+        
         @eval begin
-            """
-                coeff_p(::WENO{buffer, FT}, bias, ::Val{stencil}, T, args...) 
-
-            Reconstruction coefficients for the stencil number `stencil` of a WENO reconstruction 
-            of order `buffer * 2 - 1`. Uniform coefficients (i.e. when `T == Nothing`) are independent on the
-            `bias` of the reconstruction (either `LeftBias` or `RightBias`), while stretched coeffiecients are
-            retrieved from the precomputed coefficients via the `retrieve_coeff` function
-            """
-            @inline coeff_p(::WENO{$buffer, FT}, bias, ::Val{$stencil}, ::Type{Nothing}, args...) where FT = 
-                @inbounds map(FT, $(stencil_coefficients(50, stencil, collect(1:100), collect(1:100); order = buffer)))
-
             # stretched coefficients are retrieved from precalculated coefficients
             @inline coeff_p(scheme::WENO{$buffer}, bias, ::Val{$stencil}, T, dir, i, loc) = 
                 ifelse(bias isa LeftBias, retrieve_coeff(scheme, $stencil, dir, i, loc),
@@ -173,23 +182,23 @@ This last operation is metaprogrammed in the function `metaprogrammed_smoothness
 @inline smoothness_coefficients(::Val{3}, ::Val{1}) = :((4,  -13, 5,  13, -13,  4))
 @inline smoothness_coefficients(::Val{3}, ::Val{2}) = :((4,  -19, 11, 25, -31, 10))
 
-@inline smoothness_coefficients(::Val{4}, ::Val{0}) = :((2.107,  -9.402, 7.042, -1.854, 11.003,  -17.246,  4.642,  7.043,  -3.882, 0.547))
-@inline smoothness_coefficients(::Val{4}, ::Val{1}) = :((0.547,  -2.522, 1.922, -0.494,  3.443,  - 5.966,  1.602,  2.843,  -1.642, 0.267))
-@inline smoothness_coefficients(::Val{4}, ::Val{2}) = :((0.267,  -1.642, 1.602, -0.494,  2.843,  - 5.966,  1.922,  3.443,  -2.522, 0.547))
-@inline smoothness_coefficients(::Val{4}, ::Val{3}) = :((0.547,  -3.882, 4.642, -1.854,  7.043,  -17.246,  7.042, 11.003,  -9.402, 2.107))
+@inline smoothness_coefficients(::Val{4}, ::Val{0}) = :((2.107f0,  -9.402f0, 7.042f0, -1.854f0, 11.003f0,  -17.246f0,  4.642f0,  7.043f0,  -3.882f0, 0.547f0))
+@inline smoothness_coefficients(::Val{4}, ::Val{1}) = :((0.547f0,  -2.522f0, 1.922f0, -0.494f0,  3.443f0,  - 5.966f0,  1.602f0,  2.843f0,  -1.642f0, 0.267f0))
+@inline smoothness_coefficients(::Val{4}, ::Val{2}) = :((0.267f0,  -1.642f0, 1.602f0, -0.494f0,  2.843f0,  - 5.966f0,  1.922f0,  3.443f0,  -2.522f0, 0.547f0))
+@inline smoothness_coefficients(::Val{4}, ::Val{3}) = :((0.547f0,  -3.882f0, 4.642f0, -1.854f0,  7.043f0,  -17.246f0,  7.042f0, 11.003f0,  -9.402f0, 2.107f0))
 
-@inline smoothness_coefficients(::Val{5}, ::Val{0}) = :((1.07918,  -6.49501, 7.58823, -4.11487,  0.86329,  10.20563, -24.62076, 13.58458, -2.88007, 15.21393, -17.04396, 3.64863,  4.82963, -2.08501, 0.22658))
-@inline smoothness_coefficients(::Val{5}, ::Val{1}) = :((0.22658,  -1.40251, 1.65153, -0.88297,  0.18079,   2.42723,  -6.11976,  3.37018, -0.70237,  4.06293,  -4.64976, 0.99213,  1.38563, -0.60871, 0.06908))
-@inline smoothness_coefficients(::Val{5}, ::Val{2}) = :((0.06908,  -0.51001, 0.67923, -0.38947,  0.08209,   1.04963,  -2.99076,  1.79098, -0.38947,  2.31153,  -2.99076, 0.67923,  1.04963, -0.51001, 0.06908))
-@inline smoothness_coefficients(::Val{5}, ::Val{3}) = :((0.06908,  -0.60871, 0.99213, -0.70237,  0.18079,   1.38563,  -4.64976,  3.37018, -0.88297,  4.06293,  -6.11976, 1.65153,  2.42723, -1.40251, 0.22658))
-@inline smoothness_coefficients(::Val{5}, ::Val{4}) = :((0.22658,  -2.08501, 3.64863, -2.88007,  0.86329,   4.82963, -17.04396, 13.58458, -4.11487, 15.21393, -24.62076, 7.58823, 10.20563, -6.49501, 1.07918))
+@inline smoothness_coefficients(::Val{5}, ::Val{0}) = :((1.07918f0,  -6.49501f0, 7.58823f0, -4.11487f0,  0.86329f0,  10.20563f0, -24.62076f0, 13.58458f0, -2.88007f0, 15.21393f0, -17.04396f0, 3.64863f0,  4.82963f0, -2.08501f0, 0.22658f0))
+@inline smoothness_coefficients(::Val{5}, ::Val{1}) = :((0.22658f0,  -1.40251f0, 1.65153f0, -0.88297f0,  0.18079f0,   2.42723f0,  -6.11976f0,  3.37018f0, -0.70237f0,  4.06293f0,  -4.64976f0, 0.99213f0,  1.38563f0, -0.60871f0, 0.06908f0))
+@inline smoothness_coefficients(::Val{5}, ::Val{2}) = :((0.06908f0,  -0.51001f0, 0.67923f0, -0.38947f0,  0.08209f0,   1.04963f0,  -2.99076f0,  1.79098f0, -0.38947f0,  2.31153f0,  -2.99076f0, 0.67923f0,  1.04963f0, -0.51001f0, 0.06908f0))
+@inline smoothness_coefficients(::Val{5}, ::Val{3}) = :((0.06908f0,  -0.60871f0, 0.99213f0, -0.70237f0,  0.18079f0,   1.38563f0,  -4.64976f0,  3.37018f0, -0.88297f0,  4.06293f0,  -6.11976f0, 1.65153f0,  2.42723f0, -1.40251f0, 0.22658f0))
+@inline smoothness_coefficients(::Val{5}, ::Val{4}) = :((0.22658f0,  -2.08501f0, 3.64863f0, -2.88007f0,  0.86329f0,   4.82963f0, -17.04396f0, 13.58458f0, -4.11487f0, 15.21393f0, -24.62076f0, 7.58823f0, 10.20563f0, -6.49501f0, 1.07918f0))
 
-@inline smoothness_coefficients(::Val{6}, ::Val{0}) = :((0.6150211, -4.7460464, 7.6206736, -6.3394124, 2.7060170, -0.4712740,  9.4851237, -31.1771244, 26.2901672, -11.3206788,  1.9834350, 26.0445372, -44.4003904, 19.2596472, -3.3918804, 19.0757572, -16.6461044, 2.9442256, 3.6480687, -1.2950184, 0.1152561))
-@inline smoothness_coefficients(::Val{6}, ::Val{1}) = :((0.1152561, -0.9117992, 1.4742480, -1.2183636, 0.5134574, -0.0880548,  1.9365967,  -6.5224244,  5.5053752,  -2.3510468,  0.4067018,  5.6662212,  -9.7838784,  4.2405032, -0.7408908,  4.3093692,  -3.7913324, 0.6694608, 0.8449957, -0.3015728, 0.0271779))
-@inline smoothness_coefficients(::Val{6}, ::Val{2}) = :((0.0271779, -0.2380800, 0.4086352, -0.3462252, 0.1458762, -0.0245620,  0.5653317,  -2.0427884,  1.7905032,  -0.7727988,  0.1325006,  1.9510972,  -3.5817664,  1.5929912, -0.2792660,  1.7195652,  -1.5880404, 0.2863984, 0.3824847, -0.1429976, 0.0139633))
-@inline smoothness_coefficients(::Val{6}, ::Val{3}) = :((0.0139633, -0.1429976, 0.2863984, -0.2792660, 0.1325006, -0.0245620,  0.3824847,  -1.5880404,  1.5929912,  -0.7727988,  0.1458762,  1.7195652,  -3.5817664,  1.7905032, -0.3462252,  1.9510972,  -2.0427884, 0.4086352, 0.5653317, -0.2380800, 0.0271779))
-@inline smoothness_coefficients(::Val{6}, ::Val{4}) = :((0.0271779, -0.3015728, 0.6694608, -0.7408908, 0.4067018, -0.0880548,  0.8449957,  -3.7913324,  4.2405032,  -2.3510468,  0.5134574,  4.3093692,  -9.7838784,  5.5053752, -1.2183636,  5.6662212,  -6.5224244, 1.4742480, 1.9365967, -0.9117992, 0.1152561))
-@inline smoothness_coefficients(::Val{6}, ::Val{5}) = :((0.1152561, -1.2950184, 2.9442256, -3.3918804, 1.9834350, -0.4712740,  3.6480687, -16.6461044, 19.2596472, -11.3206788,  2.7060170, 19.0757572, -44.4003904, 26.2901672, -6.3394124, 26.0445372, -31.1771244, 7.6206736, 9.4851237, -4.7460464, 0.6150211))
+@inline smoothness_coefficients(::Val{6}, ::Val{0}) = :((0.6150211f0, -4.7460464f0, 7.6206736f0, -6.3394124f0, 2.7060170f0, -0.4712740f0,  9.4851237f0, -31.1771244f0, 26.2901672f0, -11.3206788f0,  1.9834350f0, 26.0445372f0, -44.4003904f0, 19.2596472f0, -3.3918804f0, 19.0757572f0, -16.6461044f0, 2.9442256f0, 3.6480687f0, -1.2950184f0, 0.1152561f0))
+@inline smoothness_coefficients(::Val{6}, ::Val{1}) = :((0.1152561f0, -0.9117992f0, 1.4742480f0, -1.2183636f0, 0.5134574f0, -0.0880548f0,  1.9365967f0,  -6.5224244f0,  5.5053752f0,  -2.3510468f0,  0.4067018f0,  5.6662212f0,  -9.7838784f0,  4.2405032f0, -0.7408908f0,  4.3093692f0,  -3.7913324f0, 0.6694608f0, 0.8449957f0, -0.3015728f0, 0.0271779f0))
+@inline smoothness_coefficients(::Val{6}, ::Val{2}) = :((0.0271779f0, -0.2380800f0, 0.4086352f0, -0.3462252f0, 0.1458762f0, -0.0245620f0,  0.5653317f0,  -2.0427884f0,  1.7905032f0,  -0.7727988f0,  0.1325006f0,  1.9510972f0,  -3.5817664f0,  1.5929912f0, -0.2792660f0,  1.7195652f0,  -1.5880404f0, 0.2863984f0, 0.3824847f0, -0.1429976f0, 0.0139633f0))
+@inline smoothness_coefficients(::Val{6}, ::Val{3}) = :((0.0139633f0, -0.1429976f0, 0.2863984f0, -0.2792660f0, 0.1325006f0, -0.0245620f0,  0.3824847f0,  -1.5880404f0,  1.5929912f0,  -0.7727988f0,  0.1458762f0,  1.7195652f0,  -3.5817664f0,  1.7905032f0, -0.3462252f0,  1.9510972f0,  -2.0427884f0, 0.4086352f0, 0.5653317f0, -0.2380800f0, 0.0271779f0))
+@inline smoothness_coefficients(::Val{6}, ::Val{4}) = :((0.0271779f0, -0.3015728f0, 0.6694608f0, -0.7408908f0, 0.4067018f0, -0.0880548f0,  0.8449957f0,  -3.7913324f0,  4.2405032f0,  -2.3510468f0,  0.5134574f0,  4.3093692f0,  -9.7838784f0,  5.5053752f0, -1.2183636f0,  5.6662212f0,  -6.5224244f0, 1.4742480f0, 1.9365967f0, -0.9117992f0, 0.1152561f0))
+@inline smoothness_coefficients(::Val{6}, ::Val{5}) = :((0.1152561f0, -1.2950184f0, 2.9442256f0, -3.3918804f0, 1.9834350f0, -0.4712740f0,  3.6480687f0, -16.6461044f0, 19.2596472f0, -11.3206788f0,  2.7060170f0, 19.0757572f0, -44.4003904f0, 26.2901672f0, -6.3394124f0, 26.0445372f0, -31.1771244f0, 7.6206736f0, 9.4851237f0, -4.7460464f0, 0.6150211f0))
 
 # The rule for calculating smoothness indicators is the following (example WENO{4} which is seventh order) 
 # ψ[1] (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3] + C[4] * ψ[4]) + 
@@ -288,7 +297,7 @@ end
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(convert(FT, C★(scheme, Val($(stencil-1)))) * (1 + (τ / (β[$stencil] + FT(ε)))^ƞ))
+        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (1 + (τ / (β[$stencil] + FT(ε)))^2))
     end
 
     return :($(elem...),)
