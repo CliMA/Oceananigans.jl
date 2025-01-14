@@ -49,7 +49,8 @@ for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ), LZ in (:ᶠ, :ᶜ)
     end
 end
 
-# znode for an AbstractZStarGrid grid is scaled by the free surface
+# znode for an AbstractZStarGrid grid is the reference node (`rnode`) scaled by the derivative with respect to the reference (σⁿ)
+# added to the surface value of `z` (which we here call ηⁿ)
 @inline znode(i, j, k, grid::ZSG, ::C, ::C, ℓz) = rnode(i, j, k, grid, C(), C(), ℓz) * σⁿ(i, j, k, grid, C(), C(), ℓz) + @inbounds grid.z.ηⁿ[i, j, 1]
 @inline znode(i, j, k, grid::ZSG, ::F, ::C, ℓz) = rnode(i, j, k, grid, F(), C(), ℓz) * σⁿ(i, j, k, grid, F(), C(), ℓz) +  ℑxᶠᵃᵃ(i, j, 1, grid, grid.z.ηⁿ)
 @inline znode(i, j, k, grid::ZSG, ::C, ::F, ℓz) = rnode(i, j, k, grid, C(), F(), ℓz) * σⁿ(i, j, k, grid, C(), F(), ℓz) +  ℑyᵃᶠᵃ(i, j, 1, grid, grid.z.ηⁿ)

@@ -16,9 +16,12 @@ end
     hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
     hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
 
-    Hᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, k_top, grid, η)
-    Hᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, k_top, grid, η)
+    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, k_top, grid, η)
+    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, k_top, grid, η)
 
+    # If the static depths are zero (i.e. the column is immersed), 
+    # we set the grid scaling factor to 1 because we do not really have a free 
+    # surface on an immersed column (η == 0)
     σᶠᶜ = ifelse(hᶠᶜ == 0, one(grid), Hᶠᶜ / hᶠᶜ)
     σᶜᶠ = ifelse(hᶜᶠ == 0, one(grid), Hᶜᶠ / hᶜᶠ)
 
@@ -44,8 +47,8 @@ end
     k_top = size(grid, 3) + 1
 
     @inbounds begin
-        Hᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, k_top, grid, η)
-        Hᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, k_top, grid, η)
+        Hᶠᶜ = column_depthᶠᶜᵃ(i, j, k_top, grid, η)
+        Hᶜᶠ = column_depthᶜᶠᵃ(i, j, k_top, grid, η)
         
         u[i, j, k] = u[i, j, k] + (U[i, j, 1] - U̅[i, j, 1]) / Hᶠᶜ
         v[i, j, k] = v[i, j, k] + (V[i, j, 1] - V̅[i, j, 1]) / Hᶜᶠ

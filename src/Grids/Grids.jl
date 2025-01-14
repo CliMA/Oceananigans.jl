@@ -20,7 +20,7 @@ export spacings
 export xspacings, yspacings, zspacings, λspacings, φspacings, rspacings
 export minimum_xspacing, minimum_yspacing, minimum_zspacing
 export static_column_depthᶜᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶠᵃ
-export dynamic_column_depthᶜᶜᵃ, dynamic_column_depthᶠᶜᵃ, dynamic_column_depthᶜᶠᵃ, dynamic_column_depthᶠᶠᵃ
+export column_depthᶜᶜᵃ, column_depthᶠᶜᵃ, column_depthᶜᶠᵃ, column_depthᶠᶠᵃ
 export offset_data, new_data
 export on_architecture
 

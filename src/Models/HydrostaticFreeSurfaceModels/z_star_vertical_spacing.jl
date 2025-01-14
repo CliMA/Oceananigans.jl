@@ -14,7 +14,7 @@ barotropic_velocities(free_surface) = nothing, nothing
 # Fallback 
 update_grid!(model, grid; parameters) = nothing
 
-function update_grid!(model, grid::ZStarGridOfSomeKind; parameters = :xy)
+function update_grid!(model::HydrostaticFreeSurfaceModel, grid::ZStarGridOfSomeKind; parameters = :xy)
 
     # Scalings and free surface
     σᶜᶜ⁻  = grid.z.σᶜᶜ⁻
@@ -50,10 +50,10 @@ end
     hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
     hᶠᶠ = static_column_depthᶠᶠᵃ(i, j, grid)
 
-    Hᶜᶜ = dynamic_column_depthᶜᶜᵃ(i, j, k_top, grid, η)
-    Hᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, k_top, grid, η)
-    Hᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, k_top, grid, η)
-    Hᶠᶠ = dynamic_column_depthᶠᶠᵃ(i, j, k_top, grid, η)
+    Hᶜᶜ = column_depthᶜᶜᵃ(i, j, k_top, grid, η)
+    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, k_top, grid, η)
+    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, k_top, grid, η)
+    Hᶠᶠ = column_depthᶠᶠᵃ(i, j, k_top, grid, η)
 
     @inbounds begin
         σᶜᶜ = ifelse(hᶜᶜ == 0, one(grid), Hᶜᶜ / hᶜᶜ)

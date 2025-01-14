@@ -60,7 +60,7 @@ const F = Face
     model = HydrostaticFreeSurfaceModel(; grid, free_surface = SplitExplicitFreeSurface(grid; substeps = 20))
 
     @test znode(1, 1, 21, grid, C(), C(), F()) == 0
-    @test dynamic_column_depthᶜᶜᵃ(1, 1, grid) == 10
+    @test column_depthᶜᶜᵃ(1, 1, grid) == 10
     @test  static_column_depthᶜᶜᵃ(1, 1, grid) == 10
 
     set!(model, η = [1 1; 2 2])
@@ -73,8 +73,8 @@ const F = Face
     @test znode(1, 1, 21, grid, C(), C(), F()) == 1
     @test znode(2, 1, 21, grid, C(), C(), F()) == 2
     @test rnode(1, 1, 21, grid, C(), C(), F()) == 0
-    @test dynamic_column_depthᶜᶜᵃ(1, 1, grid) == 11
-    @test dynamic_column_depthᶜᶜᵃ(2, 1, grid) == 12
+    @test column_depthᶜᶜᵃ(1, 1, grid) == 11
+    @test column_depthᶜᶜᵃ(2, 1, grid) == 12
     @test  static_column_depthᶜᶜᵃ(1, 1, grid) == 10
     @test  static_column_depthᶜᶜᵃ(2, 1, grid) == 10
 end
