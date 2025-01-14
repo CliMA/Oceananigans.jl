@@ -158,7 +158,9 @@ end
 generate_coordinate(FT, ::Periodic, N, H, ::ZStarVerticalCoordinate, coordinate_name, arch, args...) = 
     throw(ArgumentError("Periodic domains are not supported for ZStarVerticalCoordinate"))
 
-# Generate a moving coordinate with evolving scaling (`σ`) for spacings and znodes
+# Generate a vertical coordinate with a scaling (`σ`) with respect to a reference coordinate `r` with spacing `Δr`.
+# The grid might move with time, so the coordinate includes the time-derivative of the scaling `∂t_σ`.
+# The value of the vertical coordinate at `Nz+1` is saved in `ηⁿ`.
 function generate_coordinate(FT, topo, size, halo, coordinate::ZStarVerticalCoordinate, coordinate_name, dim::Int, arch)
 
     Nx, Ny, Nz = size
@@ -188,7 +190,7 @@ function generate_coordinate(FT, topo, size, halo, coordinate::ZStarVerticalCoor
     ηⁿ   = new_data(FT, arch, (Center, Center, Nothing), args...)
     ∂t_σ = new_data(FT, arch, (Center, Center, Nothing), args...)
 
-    # Fill all the scalings with one (at rest coordinate)
+    # Fill all the scalings with one for now (i.e. z == r)
     for σ in (σᶜᶜ⁻, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ)
         fill!(σ, 1)
     end
