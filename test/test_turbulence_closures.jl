@@ -88,6 +88,7 @@ function horizontal_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), ν
     interior(w)[:, 1, 4] .= [0,  1, 0]
 
     interior(T)[:, 1, 2] .= [0,  1, 0]
+
     interior(T)[:, 1, 3] .= [0, -4, 0]
     interior(T)[:, 1, 4] .= [0,  1, 0]
 
@@ -171,7 +172,7 @@ function run_catke_tke_substepping_tests(arch, closure)
     # with the explicit CATKE time-stepping necessary for this test
     grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(100, 200, 300))
 
-    model = HydrostaticFreeSurfaceModel(; grid, momentum_advection = nothing, tracer_advection = nothing, 
+    model = HydrostaticFreeSurfaceModel(; grid, momentum_advection = nothing, tracer_advection = nothing,
                                           closure, buoyancy=BuoyancyTracer(), tracers=(:b, :e))
 
     # set random velocities
@@ -182,7 +183,7 @@ function run_catke_tke_substepping_tests(arch, closure)
     time_step!(model, 1)
 
     # Check that eⁿ⁺¹ == Δt * Gⁿ.e with Δt = 1 (euler step)
-    @test model.tracers.e ≈ model.timestepper.G⁻.e
+    CUDA.@allowscalar @test model.tracers.e ≈ model.timestepper.G⁻.e
 
     eⁿ  = deepcopy(model.tracers.e)
     G⁻⁻ = deepcopy(model.timestepper.G⁻.e)
@@ -197,7 +198,7 @@ function run_catke_tke_substepping_tests(arch, closure)
     eⁿ⁺¹ = compute!(Field(eⁿ + C₁ * G⁻ - C₂ * G⁻⁻))
 
     # Check that eⁿ⁺¹ == eⁿ + Δt * (C₁ Gⁿ.e - C₂ G⁻.e) 
-    @test model.tracers.e ≈ eⁿ⁺¹
+    CUDA.@allowscalar @test model.tracers.e ≈ eⁿ⁺¹
 
     return model
 end
