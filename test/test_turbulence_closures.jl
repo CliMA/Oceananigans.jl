@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Random
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVerticalDiffusivity, DiscreteDiffusionFunction
 
-using Oceananigans.TurbulenceClosures: viscosity_location, diffusivity_location, 
+using Oceananigans.TurbulenceClosures: viscosity_location, diffusivity_location,
                                        required_halo_size_x, required_halo_size_y, required_halo_size_z
 
 using Oceananigans.TurbulenceClosures: diffusive_flux_x, diffusive_flux_y, diffusive_flux_z,
@@ -88,7 +88,6 @@ function horizontal_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), ν
     interior(w)[:, 1, 4] .= [0,  1, 0]
 
     interior(T)[:, 1, 2] .= [0,  1, 0]
-
     interior(T)[:, 1, 3] .= [0, -4, 0]
     interior(T)[:, 1, 4] .= [0,  1, 0]
 
