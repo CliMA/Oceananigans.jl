@@ -3,6 +3,7 @@ using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.BoundaryConditions: update_boundary_condition!
+using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.Fields: compute!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
@@ -55,15 +56,20 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
     return nothing
 end
 
-function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = tuple(p_kernel_parameters(model.grid)),
-                                                          κ_parameters = tuple(:xyz)) 
+function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = p_kernel_parameters(model.grid),
+                                                          κ_parameters = :xyz)
 
     closure = model.closure
     diffusivity = model.diffusivity_fields
 
-    for (ppar, κpar) in zip(p_parameters, κ_parameters)
-        compute_diffusivities!(diffusivity, closure, model; parameters = κpar)
-        update_hydrostatic_pressure!(model; parameters = ppar)
-    end
+    # Compute diffusivities
+    compute_diffusivities!(diffusivity, closure, model; parameters = κ_parameters)
+
+    # Maybe compute buoyancy gradients
+    compute_buoyancy_gradients!(buoyancy, grid, tracers; parameters = κ_parameters)
+
+    # Update hydrostatic pressure
+    update_hydrostatic_pressure!(model; parameters = p_parameters)
+
     return nothing
 end
