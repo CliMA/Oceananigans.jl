@@ -27,30 +27,16 @@ function Krylov.kscal!(n::Int, s, x::KrylovField)
 end
 
 function Krylov.kaxpy!(n::Int, s, x::KrylovField, y::KrylovField)
-    mx, nx, kx = size(x.field)
-    _x = x.field
-    _y = y.field
-    for i = 1:mx
-        for j = 1:nx
-            for k = 1:kx
-                _y[i,j,k] += s * _x[i,j,k]
-            end
-        end
-    end
+xp = parent(x.field)
+yp = parent(y.field)
+yp .+= s * xp
     return y
 end
 
 function Krylov.kaxpby!(n::Int, s, x::KrylovField, t, y::KrylovField)
-    mx, nx, kx = size(x.field)
-    _x = x.field
-    _y = y.field
-    for i = 1:mx
-        for j = 1:nx
-            for k = 1:kx
-                _y[i,j,k] = s * _x[i,j,k] + t * _y[i,j,k]
-            end
-        end
-    end
+xp = parent(x.field)
+yp = parent(y.field)
+yp .= s .* xp .+ t .* yp
     return y
 end
 
