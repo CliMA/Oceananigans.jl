@@ -195,7 +195,6 @@ gather_dimensions(outputs, grid::ImmersedBoundaryGrid, args...) =
 #####
 
 function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator)
-    @info "gather_grid_metrics(grid::RectilinearGrid)"
     TX, TY, TZ = topology(grid)
 
     metrics = Dict()
@@ -237,7 +236,6 @@ function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator)
 end
 
 function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_generator)
-    @info "gather_grid_metrics(grid::LatitudeLongitudeGrid)"
     TΛ, TΦ, TZ = topology(grid)
 
     metrics = Dict()

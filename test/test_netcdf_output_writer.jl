@@ -336,6 +336,279 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     return nothing
 end
 
+function test_netcdf_grid_metrics_latlon(arch, FT)
+    Nλ, Nφ, Nz = 10, 9, 8
+    Hλ, Hφ, Hz = 4, 3, 2
+
+    grid = LatitudeLongitudeGrid(arch,
+        topology = (Bounded, Bounded, Bounded),
+        size = (Nλ, Nφ, Nz),
+        halo = (Hλ, Hφ, Hz),
+        longitude = (-15, 15),
+        latitude = (-10, 10),
+        z = (-1000, 0)
+    )
+
+    model = HydrostaticFreeSurfaceModel(; grid,
+        momentum_advection = VectorInvariant(),
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    Nt = 5
+    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+
+    outputs = merge(model.velocities, model.tracers)
+
+    Arch = typeof(arch)
+    filepath_metrics_halos = "test_grid_metrics_latlon_halos_$(Arch)_$FT.nc"
+    isfile(filepath_metrics_halos) && rm(filepath_metrics_halos)
+
+    # Test with halos and metrics
+    simulation.output_writers[:with_metrics_and_halos] =
+        NetCDFOutputWriter(model, outputs,
+            filename = filepath_metrics_halos,
+            schedule = IterationInterval(1),
+            array_type = Array{FT},
+            with_halos = true,
+            include_grid_metrics = true,
+            verbose = true
+        )
+
+    # Test with halos but no metrics
+    filepath_nometrics = "test_grid_metrics_latlon_nometrics_$(Arch)_$FT.nc"
+    isfile(filepath_nometrics) && rm(filepath_nometrics)
+
+    simulation.output_writers[:no_metrics] =
+        NetCDFOutputWriter(model, outputs,
+            filename = filepath_nometrics,
+            schedule = IterationInterval(1),
+            array_type = Array{FT},
+            with_halos = true,
+            include_grid_metrics = false,
+            verbose = true
+        )
+
+    # Test without halos but with metrics
+    filepath_metrics_nohalos = "test_grid_metrics_latlon_nohalos_$(Arch)_$FT.nc"
+    isfile(filepath_metrics_nohalos) && rm(filepath_metrics_nohalos)
+
+    simulation.output_writers[:with_metrics_no_halos] =
+        NetCDFOutputWriter(model, outputs,
+            filename = filepath_metrics_nohalos,
+            schedule = IterationInterval(1),
+            array_type = Array{FT},
+            with_halos = false,
+            include_grid_metrics = true,
+            verbose = true
+        )
+
+    # Test a slice of the domain
+    i_slice = Colon()
+    j_slice = 3:7
+    k_slice = Nz
+
+    nx = Nλ
+    ny = length(j_slice)
+    nz = 1
+
+    filepath_sliced = "test_grid_metrics_latlon_sliced_$(Arch)_$FT.nc"
+    isfile(filepath_sliced) && rm(filepath_sliced)
+
+    simulation.output_writers[:sliced] =
+        NetCDFOutputWriter(model, outputs,
+            filename = filepath_sliced,
+            indices = (i_slice, j_slice, k_slice),
+            schedule = IterationInterval(1),
+            array_type = Array{FT},
+            with_halos = false,
+            include_grid_metrics = true,
+            verbose = true
+        )
+
+    run!(simulation)
+
+    # Test NetCDF output with metrics and halos
+    ds_mh = NCDataset(filepath_metrics_halos)
+
+    @test haskey(ds_mh, "time")
+    @test eltype(ds_mh["time"]) == Float64
+
+    dims = ("longitude_f", "longitude_c", "latitude_f", "latitude_c", "z_f", "z_c")
+    metrics = (
+        "dlongitude_f", "dlongitude_c", "dlatitude_f", "dlatitude_c", "dz_f", "dz_c",
+        "dx_ff", "dx_fc", "dx_cf", "dx_cc",
+        "dy_ff", "dy_fc", "dy_cf", "dy_cc"
+    )
+    vars = ("u", "v", "w", "T", "S")
+
+    for var in (dims..., metrics..., vars...)
+        @test haskey(ds_mh, var)
+        @test haskey(ds_mh[var].attrib, "long_name")
+        @test haskey(ds_mh[var].attrib, "units")
+        @test eltype(ds_mh[var]) == FT
+    end
+
+    @test dimsize(ds_mh["time"]) == (time=Nt + 1,)
+
+    @test dimsize(ds_mh[:longitude_f]) == (longitude_f=Nλ + 2Hλ + 1,)
+    @test dimsize(ds_mh[:longitude_c]) == (longitude_c=Nλ + 2Hλ,)
+    @test dimsize(ds_mh[:latitude_f]) == (latitude_f=Nφ + 2Hφ + 1,)
+    @test dimsize(ds_mh[:latitude_c]) == (latitude_c=Nφ + 2Hφ,)
+    @test dimsize(ds_mh[:z_f]) == (z_f=Nz + 2Hz + 1,)
+    @test dimsize(ds_mh[:z_c]) == (z_c=Nz + 2Hz,)
+
+    @test dimsize(ds_mh[:dlongitude_f]) == (longitude_f=Nλ + 2Hλ + 1,)
+    @test dimsize(ds_mh[:dlongitude_c]) == (longitude_c=Nλ + 2Hλ,)
+    @test dimsize(ds_mh[:dlatitude_f]) == (latitude_f=Nφ + 2Hφ + 1,)
+    @test dimsize(ds_mh[:dlatitude_c]) == (latitude_c=Nφ + 2Hφ,)
+    @test dimsize(ds_mh[:dz_f]) == (z_f=Nz + 2Hz + 1,)
+    @test dimsize(ds_mh[:dz_c]) == (z_c=Nz + 2Hz,)
+
+    @test dimsize(ds_mh[:dx_ff]) == (longitude_f=Nλ + 2Hλ + 1, latitude_f=Nφ + 2Hφ + 1)
+    @test dimsize(ds_mh[:dx_fc]) == (longitude_f=Nλ + 2Hλ + 1, latitude_c=Nφ + 2Hφ)
+    @test dimsize(ds_mh[:dx_cf]) == (longitude_c=Nλ + 2Hλ,     latitude_f=Nφ + 2Hφ + 1)
+    @test dimsize(ds_mh[:dx_cc]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ)
+
+    @test dimsize(ds_mh[:dy_ff]) == (longitude_f=Nλ + 2Hλ + 1, latitude_f=Nφ + 2Hφ + 1)
+    @test dimsize(ds_mh[:dy_fc]) == (longitude_f=Nλ + 2Hλ + 1, latitude_c=Nφ + 2Hφ)
+    @test dimsize(ds_mh[:dy_cf]) == (longitude_c=Nλ + 2Hλ,     latitude_f=Nφ + 2Hφ + 1)
+    @test dimsize(ds_mh[:dy_cc]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ)
+
+    @test dimsize(ds_mh[:u]) == (longitude_f=Nλ + 2Hλ + 1, latitude_c=Nφ + 2Hφ,     z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_mh[:v]) == (longitude_c=Nλ + 2Hλ,     latitude_f=Nφ + 2Hφ + 1, z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_mh[:w]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ,     z_f=Nz + 2Hz + 1, time=Nt + 1)
+    @test dimsize(ds_mh[:T]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ,     z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_mh[:S]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ,     z_c=Nz + 2Hz,     time=Nt + 1)
+
+    close(ds_mh)
+    rm(filepath_metrics_halos)
+
+    # Test NetCDF output with halos but no metrics
+    ds_h = NCDataset(filepath_nometrics)
+
+    @test haskey(ds_h, "time")
+    @test eltype(ds_h["time"]) == Float64
+
+    for var in (dims..., vars...)
+        @test haskey(ds_h, var)
+        @test haskey(ds_h[var].attrib, "long_name")
+        @test haskey(ds_h[var].attrib, "units")
+        @test eltype(ds_h[var]) == FT
+    end
+
+    # Verify that metrics are not present
+    for metric in metrics
+        @test !haskey(ds_h, metric)
+    end
+
+    @test dimsize(ds_h["time"]) == (time=Nt + 1,)
+
+    @test dimsize(ds_h[:longitude_f]) == (longitude_f=Nλ + 2Hλ + 1,)
+    @test dimsize(ds_h[:longitude_c]) == (longitude_c=Nλ + 2Hλ,)
+    @test dimsize(ds_h[:latitude_f]) == (latitude_f=Nφ + 2Hφ + 1,)
+    @test dimsize(ds_h[:latitude_c]) == (latitude_c=Nφ + 2Hφ,)
+    @test dimsize(ds_h[:z_f]) == (z_f=Nz + 2Hz + 1,)
+    @test dimsize(ds_h[:z_c]) == (z_c=Nz + 2Hz,)
+
+    @test dimsize(ds_h[:u]) == (longitude_f=Nλ + 2Hλ + 1, latitude_c=Nφ + 2Hφ,     z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:v]) == (longitude_c=Nλ + 2Hλ,     latitude_f=Nφ + 2Hφ + 1, z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:w]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ,     z_f=Nz + 2Hz + 1, time=Nt + 1)
+    @test dimsize(ds_h[:T]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ,     z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:S]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ,     z_c=Nz + 2Hz,     time=Nt + 1)
+
+    close(ds_h)
+    rm(filepath_nometrics)
+
+    # Test NetCDF output with metrics but no halos
+    ds_m = NCDataset(filepath_metrics_nohalos)
+
+    for var in (dims..., metrics..., vars...)
+        @test haskey(ds_m, var)
+        @test haskey(ds_m[var].attrib, "long_name")
+        @test haskey(ds_m[var].attrib, "units")
+        @test eltype(ds_m[var]) == FT
+    end
+
+    @test dimsize(ds_m[:longitude_f]) == (longitude_f=Nλ + 1,)
+    @test dimsize(ds_m[:longitude_c]) == (longitude_c=Nλ,)
+    @test dimsize(ds_m[:latitude_f]) == (latitude_f=Nφ + 1,)
+    @test dimsize(ds_m[:latitude_c]) == (latitude_c=Nφ,)
+    @test dimsize(ds_m[:z_f]) == (z_f=Nz + 1,)
+    @test dimsize(ds_m[:z_c]) == (z_c=Nz,)
+
+    @test dimsize(ds_m[:dlongitude_f]) == (longitude_f=Nλ + 1,)
+    @test dimsize(ds_m[:dlongitude_c]) == (longitude_c=Nλ,)
+    @test dimsize(ds_m[:dlatitude_f]) == (latitude_f=Nφ + 1,)
+    @test dimsize(ds_m[:dlatitude_c]) == (latitude_c=Nφ,)
+    @test dimsize(ds_m[:dz_f]) == (z_f=Nz + 1,)
+    @test dimsize(ds_m[:dz_c]) == (z_c=Nz,)
+
+    @test dimsize(ds_m[:dx_ff]) == (longitude_f=Nλ + 1, latitude_f=Nφ + 1)
+    @test dimsize(ds_m[:dx_fc]) == (longitude_f=Nλ + 1, latitude_c=Nφ)
+    @test dimsize(ds_m[:dx_cf]) == (longitude_c=Nλ,     latitude_f=Nφ + 1)
+    @test dimsize(ds_m[:dx_cc]) == (longitude_c=Nλ,     latitude_c=Nφ)
+
+    @test dimsize(ds_m[:dy_ff]) == (longitude_f=Nλ + 1, latitude_f=Nφ + 1)
+    @test dimsize(ds_m[:dy_fc]) == (longitude_f=Nλ + 1, latitude_c=Nφ)
+    @test dimsize(ds_m[:dy_cf]) == (longitude_c=Nλ,     latitude_f=Nφ + 1)
+    @test dimsize(ds_m[:dy_cc]) == (longitude_c=Nλ,     latitude_c=Nφ)
+
+    @test dimsize(ds_m[:u]) == (longitude_f=Nλ + 1, latitude_c=Nφ,     z_c=Nz,     time=Nt + 1)
+    @test dimsize(ds_m[:v]) == (longitude_c=Nλ,     latitude_f=Nφ + 1, z_c=Nz,     time=Nt + 1)
+    @test dimsize(ds_m[:w]) == (longitude_c=Nλ,     latitude_c=Nφ,     z_f=Nz + 1, time=Nt + 1)
+    @test dimsize(ds_m[:T]) == (longitude_c=Nλ,     latitude_c=Nφ,     z_c=Nz,     time=Nt + 1)
+    @test dimsize(ds_m[:S]) == (longitude_c=Nλ,     latitude_c=Nφ,     z_c=Nz,     time=Nt + 1)
+
+    close(ds_m)
+    rm(filepath_metrics_nohalos)
+
+    # Test NetCDF sliced output with metrics
+    ds_s = NCDataset(filepath_sliced)
+
+    for var in (dims..., metrics..., vars...)
+        @test haskey(ds_s, var)
+        @test haskey(ds_s[var].attrib, "long_name")
+        @test haskey(ds_s[var].attrib, "units")
+        @test eltype(ds_s[var]) == FT
+    end
+
+    @test dimsize(ds_s[:longitude_f]) == (longitude_f=nx + 1,)
+    @test dimsize(ds_s[:longitude_c]) == (longitude_c=nx,)
+    @test dimsize(ds_s[:latitude_f]) == (latitude_f=ny,)
+    @test dimsize(ds_s[:latitude_c]) == (latitude_c=ny,)
+    @test dimsize(ds_s[:z_f]) == (z_f=nz,)
+    @test dimsize(ds_s[:z_c]) == (z_c=nz,)
+
+    @test dimsize(ds_s[:dlongitude_f]) == (longitude_f=nx + 1,)
+    @test dimsize(ds_s[:dlongitude_c]) == (longitude_c=nx,)
+    @test dimsize(ds_s[:dlatitude_f]) == (latitude_f=ny,)
+    @test dimsize(ds_s[:dlatitude_c]) == (latitude_c=ny,)
+    @test dimsize(ds_s[:dz_f]) == (z_f=nz,)
+    @test dimsize(ds_s[:dz_c]) == (z_c=nz,)
+
+    @test dimsize(ds_s[:dx_ff]) == (longitude_f=nx + 1, latitude_f=ny)
+    @test dimsize(ds_s[:dx_fc]) == (longitude_f=nx + 1, latitude_c=ny)
+    @test dimsize(ds_s[:dx_cf]) == (longitude_c=nx,     latitude_f=ny)
+    @test dimsize(ds_s[:dx_cc]) == (longitude_c=nx,     latitude_c=ny)
+
+    @test dimsize(ds_s[:dy_ff]) == (longitude_f=nx + 1, latitude_f=ny)
+    @test dimsize(ds_s[:dy_fc]) == (longitude_f=nx + 1, latitude_c=ny)
+    @test dimsize(ds_s[:dy_cf]) == (longitude_c=nx,     latitude_f=ny)
+    @test dimsize(ds_s[:dy_cc]) == (longitude_c=nx,     latitude_c=ny)
+
+    @test dimsize(ds_s[:u]) == (longitude_f=nx + 1, latitude_c=ny, z_c=nz, time=Nt + 1)
+    @test dimsize(ds_s[:v]) == (longitude_c=nx,     latitude_f=ny, z_c=nz, time=Nt + 1)
+    @test dimsize(ds_s[:w]) == (longitude_c=nx,     latitude_c=ny, z_f=nz, time=Nt + 1)
+    @test dimsize(ds_s[:T]) == (longitude_c=nx,     latitude_c=ny, z_c=nz, time=Nt + 1)
+    @test dimsize(ds_s[:S]) == (longitude_c=nx,     latitude_c=ny, z_c=nz, time=Nt + 1)
+
+    close(ds_s)
+    rm(filepath_sliced)
+
+    return nothing
+end
+
 function test_netcdf_rectilinear_grid_fitted_bottom(arch)
     Nx, Ny, Nz = 16, 16, 16
     Hx, Hy, Hz = 2, 3, 4
@@ -2121,69 +2394,6 @@ function test_netcdf_vertically_stretched_grid_output(arch)
     return nothing
 end
 
-function test_netcdf_regular_lat_lon_grid_output(arch; immersed = false)
-    Nλ = Nφ = Nz = 16
-
-    grid = LatitudeLongitudeGrid(arch;
-        size = (Nλ, Nφ, Nz),
-        longitude = (-180, 180),
-        latitude = (-80, 80),
-        z = (-100, 0)
-    )
-
-    if immersed
-        grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> -50))
-    end
-
-    model = HydrostaticFreeSurfaceModel(; grid, momentum_advection = VectorInvariant())
-
-    simulation = Simulation(model, Δt=1.25, stop_iteration=3)
-
-    Arch = typeof(arch)
-    nc_filepath = "test_netcdf_regular_lat_lon_grid_output_$Arch.nc"
-
-    simulation.output_writers[:fields] =
-        NetCDFOutputWriter(model,
-            merge(model.velocities, model.tracers),
-            filename = nc_filepath,
-            schedule = IterationInterval(1),
-            array_type = Array{Float64},
-            verbose = true
-        )
-
-    run!(simulation)
-
-    grid = model.grid
-
-    ds = NCDataset(nc_filepath)
-
-    @test length(ds["x_c"]) == Nλ
-    @test length(ds["y_c"]) == Nφ
-    @test length(ds["z_c"]) == Nz
-    @test length(ds["x_f"]) == Nλ
-    @test length(ds["y_f"]) == Nφ+1  # y is Bounded
-    @test length(ds["z_f"]) == Nz+1  # z is Bounded
-
-    @test ds["x_c"][1] == grid.λᶜᵃᵃ[1]
-    @test ds["x_f"][1] == grid.λᶠᵃᵃ[1]
-    @test ds["y_c"][1] == grid.φᵃᶜᵃ[1]
-    @test ds["y_f"][1] == grid.φᵃᶠᵃ[1]
-    @test ds["z_c"][1] == grid.z.cᵃᵃᶜ[1]
-    @test ds["z_f"][1] == grid.z.cᵃᵃᶠ[1]
-
-    @test ds["x_c"][end] == grid.λᶜᵃᵃ[Nλ]
-    @test ds["x_f"][end] == grid.λᶠᵃᵃ[Nλ]
-    @test ds["y_c"][end] == grid.φᵃᶜᵃ[Nφ]
-    @test ds["y_f"][end] == grid.φᵃᶠᵃ[Nφ+1]  # y is Bounded
-    @test ds["z_c"][end] == grid.z.cᵃᵃᶜ[Nz]
-    @test ds["z_f"][end] == grid.z.cᵃᵃᶠ[Nz+1]  # z is Bounded
-
-    close(ds)
-    rm(nc_filepath)
-
-    return nothing
-end
-
 for arch in [CPU(), GPU()]
     @testset "NetCDF output writer [$(typeof(arch))]" begin
         @info "  Testing NetCDF output writer [$(typeof(arch))]..."
@@ -2193,6 +2403,8 @@ for arch in [CPU(), GPU()]
 
         test_netcdf_grid_metrics_rectilinear(arch, Float64)
         test_netcdf_grid_metrics_rectilinear(arch, Float32)
+        test_netcdf_grid_metrics_latlon(arch, Float64)
+        test_netcdf_grid_metrics_latlon(arch, Float32)
 
         test_netcdf_rectilinear_grid_fitted_bottom(arch)
 
@@ -2221,8 +2433,5 @@ for arch in [CPU(), GPU()]
         test_netcdf_output_particles_and_fields(arch)
 
         test_netcdf_vertically_stretched_grid_output(arch)
-
-        # test_netcdf_regular_lat_lon_grid_output(arch; immersed = false)
-        # test_netcdf_regular_lat_lon_grid_output(arch; immersed = true)
     end
 end
