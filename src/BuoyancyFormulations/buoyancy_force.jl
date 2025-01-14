@@ -46,7 +46,7 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 └── coriolis: Nothing
 ```
 """
-function BuoyancyForce(grid; formulation, gravity_unit_vector=NegativeZDirection(), precompute_gradients=false)
+function BuoyancyForce(grid; formulation, gravity_unit_vector=NegativeZDirection(), precompute_gradients=true)
     gravity_unit_vector = validate_unit_vector(gravity_unit_vector)
 
     if precompute_gradients
