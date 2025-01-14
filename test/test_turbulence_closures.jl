@@ -222,7 +222,7 @@ function run_time_step_with_catke_tests(arch, closure)
     time_step!(model, 1)
     @test true
 
-    # Once more for good measure 
+    # Once more for good measure
     time_step!(model, 1)
     @test true
 
@@ -273,8 +273,8 @@ end
                     κ_dx_c = κ * ∂x(c)
                     ν = viscosity(model.closure, model.diffusivity_fields)
                     ν_dx_u = ν * ∂x(u)
-                    @test ν_dx_u[1, 1, 1] == 0
-                    @test κ_dx_c[1, 1, 1] == 0
+                    @test CUDA.@allowscalar ν_dx_u[1, 1, 1] == 0
+                    @test CUDA.@allowscalar κ_dx_c[1, 1, 1] == 0
                 end
             end
         end
