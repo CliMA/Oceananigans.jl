@@ -760,6 +760,163 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch)
     return nothing
 end
 
+function test_netcdf_latlon_grid_fitted_bottom(arch)
+    Nλ, Nφ, Nz = 16, 16, 16
+    Hλ, Hφ, Hz = 2, 3, 4
+    Lλ, Lφ, H = 20, 10, 1000
+
+    underlying_grid = LatitudeLongitudeGrid(arch;
+        topology = (Bounded, Bounded, Bounded),
+        size = (Nλ, Nφ, Nz),
+        halo = (Hλ, Hφ, Hz),
+        longitude = (-Lλ, Lλ),
+        latitude = (-Lφ, Lφ),
+        z = (-H, 0)
+    )
+
+    # Create a Gaussian seamount
+    height = H / 2
+    λ_width = Lλ / 3
+    φ_width = Lφ / 3
+    seamount(λ, φ) = height * exp(-λ^2 / 2λ_width^2) * exp(-φ^2 / 2φ_width^2)
+    bottom(λ, φ) = -H + seamount(λ, φ)
+
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+
+    model = HydrostaticFreeSurfaceModel(; grid,
+        momentum_advection = VectorInvariant(),
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    Nt = 5
+    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+
+    outputs = merge(model.velocities, model.tracers)
+
+    Arch = typeof(arch)
+    filepath_with_halos = "test_immersed_grid_latlon_with_halos_$Arch.nc"
+    isfile(filepath_with_halos) && rm(filepath_with_halos)
+
+    # Test with halos with Float64 output
+    simulation.output_writers[:with_halos] =
+        NetCDFOutputWriter(model, outputs,
+            filename = filepath_with_halos,
+            schedule = IterationInterval(1),
+            array_type = Array{Float64},
+            with_halos = true,
+            include_grid_metrics = true,
+            verbose = true
+        )
+
+    # Test without halos with Float32 output
+    filepath_no_halos = "test_immersed_grid_latlon_no_halos_$Arch.nc"
+    isfile(filepath_no_halos) && rm(filepath_no_halos)
+
+    simulation.output_writers[:no_halos] =
+        NetCDFOutputWriter(model, outputs,
+            filename = filepath_no_halos,
+            schedule = IterationInterval(1),
+            array_type = Array{Float32},
+            with_halos = false,
+            include_grid_metrics = true,
+            verbose = true
+        )
+
+    # Test with slice
+    filepath_sliced = "test_immersed_grid_latlon_sliced_$Arch.nc"
+    isfile(filepath_sliced) && rm(filepath_sliced)
+
+    i_slice = 4:12
+    j_slice = 6:8
+    k_slice = Nz
+
+    nλ = length(i_slice)
+    nφ = length(j_slice)
+    nz = 1
+
+    simulation.output_writers[:sliced] =
+        NetCDFOutputWriter(model, outputs,
+            filename = filepath_sliced,
+            schedule = IterationInterval(1),
+            array_type = Array{Float32},
+            indices = (i_slice, j_slice, k_slice),
+            with_halos = false,
+            include_grid_metrics = true,
+            verbose = true
+        )
+
+    run!(simulation)
+
+    # Test NetCDF output with halos
+    ds_h = NCDataset(filepath_with_halos)
+
+    @test haskey(ds_h, "bottom_height")
+    @test eltype(ds_h[:bottom_height]) == Float64
+    @test dimsize(ds_h[:bottom_height]) == (longitude_c=Nλ + 2Hλ, latitude_c=Nφ + 2Hφ)
+
+    for loc in ("ccc", "fcc", "cfc", "ccf")
+        @test haskey(ds_h, "immersed_boundary_mask_$loc")
+        @test eltype(ds_h["immersed_boundary_mask_$loc"]) == Float64
+    end
+
+    @test dimsize(ds_h[:immersed_boundary_mask_ccc]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ,     z_c=Nz + 2Hz)
+    @test dimsize(ds_h[:immersed_boundary_mask_fcc]) == (longitude_f=Nλ + 2Hλ + 1, latitude_c=Nφ + 2Hφ,     z_c=Nz + 2Hz)
+    @test dimsize(ds_h[:immersed_boundary_mask_cfc]) == (longitude_c=Nλ + 2Hλ,     latitude_f=Nφ + 2Hφ + 1, z_c=Nz + 2Hz)
+    @test dimsize(ds_h[:immersed_boundary_mask_ccf]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ,     z_f=Nz + 2Hz + 1)
+
+    @test all(ds_h[:bottom_height][:, :] .≈ Array(parent(grid.immersed_boundary.bottom_height)))
+
+    close(ds_h)
+    rm(filepath_with_halos)
+
+    # Test NetCDF output without halos
+    ds_n = NCDataset(filepath_no_halos)
+
+    @test haskey(ds_n, "bottom_height")
+    @test eltype(ds_n[:bottom_height]) == Float32
+    @test dimsize(ds_n[:bottom_height]) == (longitude_c=Nλ, latitude_c=Nφ)
+
+    for loc in ("ccc", "fcc", "cfc", "ccf")
+        @test haskey(ds_n, "immersed_boundary_mask_$loc")
+        @test eltype(ds_n["immersed_boundary_mask_$loc"]) == Float32
+    end
+
+    @test dimsize(ds_n[:immersed_boundary_mask_ccc]) == (longitude_c=Nλ,     latitude_c=Nφ,     z_c=Nz)
+    @test dimsize(ds_n[:immersed_boundary_mask_fcc]) == (longitude_f=Nλ + 1, latitude_c=Nφ,     z_c=Nz)
+    @test dimsize(ds_n[:immersed_boundary_mask_cfc]) == (longitude_c=Nλ,     latitude_f=Nφ + 1, z_c=Nz)
+    @test dimsize(ds_n[:immersed_boundary_mask_ccf]) == (longitude_c=Nλ,     latitude_c=Nφ,     z_f=Nz + 1)
+
+    @test all(ds_n[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height)))
+
+    close(ds_n)
+    rm(filepath_no_halos)
+
+    # Test NetCDF sliced output
+    ds_s = NCDataset(filepath_sliced)
+
+    @test haskey(ds_s, "bottom_height")
+    @test eltype(ds_s[:bottom_height]) == Float32
+    @test dimsize(ds_s[:bottom_height]) == (longitude_c=nλ, latitude_c=nφ)
+
+    for loc in ("ccc", "fcc", "cfc", "ccf")
+        @test haskey(ds_s, "immersed_boundary_mask_$loc")
+        @test eltype(ds_s["immersed_boundary_mask_$loc"]) == Float32
+    end
+
+    @test dimsize(ds_s[:immersed_boundary_mask_ccc]) == (longitude_c=nλ, latitude_c=nφ, z_c=nz)
+    @test dimsize(ds_s[:immersed_boundary_mask_fcc]) == (longitude_f=nλ, latitude_c=nφ, z_c=nz)
+    @test dimsize(ds_s[:immersed_boundary_mask_cfc]) == (longitude_c=nλ, latitude_f=nφ, z_c=nz)
+    @test dimsize(ds_s[:immersed_boundary_mask_ccf]) == (longitude_c=nλ, latitude_c=nφ, z_f=nz)
+
+    @test all(ds_s[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height, i_slice, j_slice)))
+
+    close(ds_s)
+    rm(filepath_sliced)
+
+    return nothing
+end
+
 function test_netcdf_rectilinear_flat_xy(arch)
     Nx, Ny = 8, 8
     Hx, Hy = 2, 3
@@ -2407,6 +2564,7 @@ for arch in [CPU(), GPU()]
         test_netcdf_grid_metrics_latlon(arch, Float32)
 
         test_netcdf_rectilinear_grid_fitted_bottom(arch)
+        test_netcdf_grid_metrics_latlon(arch)
 
         test_netcdf_rectilinear_flat_xy(arch)
         test_netcdf_rectilinear_flat_xz(arch, immersed=false)
