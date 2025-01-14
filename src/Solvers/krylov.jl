@@ -21,15 +21,8 @@ Krylov.kdot(n::Int, x::KrylovField, y::KrylovField) = dot(x.field, y.field)
 Krylov.knorm(n::Int, x::KrylovField) = norm(x.field)
 
 function Krylov.kscal!(n::Int, s, x::KrylovField)
-    mx, nx, kx = size(x.field)
-    _x = x.field
-    for i = 1:mx
-        for j = 1:nx
-            for k = 1:kx
-                _x[i,j,k] = s * _x[i,j,k]
-            end
-        end
-    end
+    xp = parent(x.field)
+    xp .*= s
     return x
 end
 
