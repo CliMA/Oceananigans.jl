@@ -69,7 +69,7 @@ const MB = Union{MinimalDiscreteBiogeochemistry, MinimalContinuousBiogeochemistr
 
 @inline          required_biogeochemical_tracers(::MB) = tuple(:P)
 @inline required_biogeochemical_auxiliary_fields(::MB) = tuple(:Iᴾᴬᴿ)
-@inline      biogeochemical_auxiliary_fields(bgc::MB) = (; Iᴾᴬᴿ = bgc.photosynthetic_active_radiation)
+@inline       biogeochemical_auxiliary_fields(bgc::MB) = (; Iᴾᴬᴿ = bgc.photosynthetic_active_radiation)
 @inline   biogeochemical_drift_velocity(bgc::MB, ::Val{:P}) = bgc.sinking_velocity
 
 # Update state test (won't actually change between calls but here to check it gets called)
