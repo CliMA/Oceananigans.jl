@@ -693,7 +693,7 @@ function grid_reconstruction_attributes(ibg::ImmersedBoundaryGrid)
     return attrs, dims
 end
 
-function write_grid_reconstruction_metadata!(ds, grid, array_type, deflatelevel)
+function write_grid_reconstruction_metadata!(ds, grid, indices, array_type, deflatelevel)
     grid_attrs, grid_dims = grid_reconstruction_attributes(grid)
 
     ds_grid = defGroup(ds, "grid_reconstruction";
@@ -769,17 +769,17 @@ mutable struct NetCDFOutputWriter{G, D, O, T, A, FS, DN} <: AbstractOutputWriter
     schedule :: T
     array_type :: A
     indices :: Tuple
-    with_halos :: Bool
     global_attributes :: Dict
     output_attributes :: Dict
     dimensions :: Dict
+    with_halos :: Bool
+    include_grid_metrics :: Bool
     overwrite_existing :: Bool
+    verbose :: Bool
     deflatelevel :: Int
     part :: Int
     file_splitting :: FS
-    verbose :: Bool
     dimension_name_generator :: DN
-    include_grid_metrics :: Bool
 end
 
 """
@@ -975,13 +975,13 @@ function NetCDFOutputWriter(model, outputs;
                             dir = ".",
                             array_type = Array{Float64},
                             indices = (:, :, :),
+                            global_attributes = Dict(),
+                            output_attributes = Dict(),
+                            dimensions = Dict(),
                             with_halos = false,
                             include_grid_metrics = true,
                             overwrite_existing = nothing,
                             verbose = false,
-                            global_attributes = Dict(),
-                            output_attributes = Dict(),
-                            dimensions = Dict(),
                             deflatelevel = 0,
                             part = 1,
                             file_splitting = NoFileSplitting(),
@@ -1026,21 +1026,20 @@ function NetCDFOutputWriter(model, outputs;
     # Ensure we can add any kind of metadata to the attributes later by converting to Dict{Any, Any}.
     global_attributes = Dict{Any, Any}(global_attributes)
 
-    dataset, outputs, schedule = initialize_nc_file!(filepath,
-                                                     outputs,
-                                                     schedule,
-                                                     array_type,
-                                                     indices,
-                                                     with_halos,
-                                                     global_attributes,
-                                                     output_attributes,
-                                                     dimensions,
-                                                     overwrite_existing,
-                                                     deflatelevel,
-                                                     grid,
-                                                     model,
-                                                     dimension_name_generator,
-                                                     include_grid_metrics)
+    dataset, outputs, schedule = initialize_nc_file(model,
+                                                    filepath,
+                                                    outputs,
+                                                    schedule,
+                                                    array_type,
+                                                    indices,
+                                                    global_attributes,
+                                                    output_attributes,
+                                                    dimensions,
+                                                    with_halos,
+                                                    include_grid_metrics,
+                                                    overwrite_existing,
+                                                    deflatelevel,
+                                                    dimension_name_generator)
 
     return NetCDFOutputWriter(grid,
                               filepath,
@@ -1049,39 +1048,39 @@ function NetCDFOutputWriter(model, outputs;
                               schedule,
                               array_type,
                               indices,
-                              with_halos,
                               global_attributes,
                               output_attributes,
                               dimensions,
+                              with_halos,
+                              include_grid_metrics,
                               overwrite_existing,
+                              verbose,
                               deflatelevel,
                               part,
                               file_splitting,
-                              verbose,
-                              dimension_name_generator,
-                              include_grid_metrics)
+                              dimension_name_generator)
 end
 
 #####
 ##### NetCDF file initialization
 #####
 
-function initialize_nc_file!(filepath,
-                             outputs,
-                             schedule,
-                             array_type,
-                             indices,
-                             with_halos,
-                             global_attributes,
-                             output_attributes,
-                             dimensions,
-                             overwrite_existing,
-                             deflatelevel,
-                             grid,
-                             model,
-                             dimension_name_generator,
-                             include_grid_metrics)
+function initialize_nc_file(model,
+                            filepath,
+                            outputs,
+                            schedule,
+                            array_type,
+                            indices,
+                            global_attributes,
+                            output_attributes,
+                            dimensions,
+                            with_halos,
+                            include_grid_metrics,
+                            overwrite_existing,
+                            deflatelevel,
+                            dimension_name_generator)
 
+    grid = model.grid
     mode = overwrite_existing ? "c" : "a"
 
     # Add useful metadata
@@ -1120,7 +1119,7 @@ function initialize_nc_file!(filepath,
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
         # This metadata is to support `FieldTimeSeries`.
-        write_grid_reconstruction_metadata!(dataset, grid, array_type, deflatelevel)
+        write_grid_reconstruction_metadata!(dataset, grid, indices, array_type, deflatelevel)
 
         # DateTime and TimeDate are both <: AbstractTime
         time_attrib = model.clock.time isa AbstractTime ?
@@ -1201,22 +1200,21 @@ function initialize_nc_file!(filepath,
     return dataset, outputs, schedule
 end
 
-initialize_nc_file!(ow::NetCDFOutputWriter, model) =
-    initialize_nc_file!(ow.filepath,
-                        ow.outputs,
-                        ow.schedule,
-                        ow.array_type,
-                        ow.indices,
-                        ow.with_halos,
-                        ow.global_attributes,
-                        ow.output_attributes,
-                        ow.dimensions,
-                        ow.overwrite_existing,
-                        ow.deflatelevel,
-                        ow.grid,
-                        model,
-                        ow.dimension_name_generator,
-                        ow.include_grid_metrics)
+initialize_nc_file(ow::NetCDFOutputWriter, model) =
+    initialize_nc_file(model,
+                       ow.filepath,
+                       ow.outputs,
+                       ow.schedule,
+                       ow.array_type,
+                       ow.indices,
+                       ow.global_attributes,
+                       ow.output_attributes,
+                       ow.dimensions,
+                       ow.with_halos,
+                       ow.include_grid_metrics,
+                       ow.overwrite_existing,
+                       ow.deflatelevel,
+                       ow.dimension_name_generator)
 
 #####
 ##### Variable definition
@@ -1428,7 +1426,7 @@ function start_next_file(model, ow::NetCDFOutputWriter)
     ow.overwrite_existing && isfile(ow.filepath) && rm(ow.filepath, force=true)
     verbose && @info "Now writing to: $(ow.filepath)"
 
-    initialize_nc_file!(ow, model)
+    initialize_nc_file(ow, model)
 
     return nothing
 end
