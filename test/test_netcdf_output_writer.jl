@@ -2605,6 +2605,158 @@ function test_netcdf_overriding_attributes(arch)
     return nothing
 end
 
+function test_netcdf_free_surface_only_output(arch)
+    Nλ, Nφ, Nz = 8, 8, 4
+    Hλ, Hφ, Hz = 3, 4, 2
+
+    grid = LatitudeLongitudeGrid(arch;
+        topology = (Bounded, Bounded, Bounded),
+        size = (Nλ, Nφ, Nz),
+        halo = (Hλ, Hφ, Hz),
+        longitude = (-1, 1),
+        latitude = (-1, 1),
+        z = (-100, 0)
+    )
+
+    model = HydrostaticFreeSurfaceModel(; grid,
+        closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    Nt = 5
+    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+
+    # Kind of a hack because we want η to be a ReducedField.
+    outputs = (;
+        η = Average(model.free_surface.η, dims=3)
+    )
+
+    Arch = typeof(arch)
+    filepath_with_halos = "test_free_surface_with_halos_$Arch.nc"
+    isfile(filepath_with_halos) && rm(filepath_with_halos)
+
+    simulation.output_writers[:with_halos] =
+        NetCDFOutputWriter(model, outputs;
+            filename = filepath_with_halos,
+            schedule = IterationInterval(1),
+            with_halos = true
+        )
+
+    filepath_no_halos = "test_free_surface_no_halos_$Arch.nc"
+    isfile(filepath_no_halos) && rm(filepath_no_halos)
+
+    simulation.output_writers[:no_halos] =
+        NetCDFOutputWriter(model, outputs;
+            filename = filepath_no_halos,
+            schedule = IterationInterval(1),
+            with_halos = false
+        )
+
+    run!(simulation)
+
+    ds_h = NCDataset(filepath_with_halos)
+
+    @test haskey(ds_h, "η")
+    @test dimsize(ds_h["η"]) == (longitude_c=Nλ + 2Hλ, latitude_c=Nφ + 2Hφ, time=Nt + 1)
+
+    close(ds_h)
+    rm(filepath_with_halos)
+
+    ds_n = NCDataset(filepath_no_halos)
+
+    @test haskey(ds_n, "η")
+    @test dimsize(ds_n["η"]) == (longitude_c=Nλ, latitude_c=Nφ, time=Nt + 1)
+
+    close(ds_n)
+    rm(filepath_no_halos)
+
+    return nothing
+end
+
+function test_netcdf_free_surface_mixed_output(arch)
+    Nλ, Nφ, Nz = 8, 8, 4
+    Hλ, Hφ, Hz = 3, 4, 2
+
+    grid = LatitudeLongitudeGrid(arch;
+        topology = (Bounded, Bounded, Bounded),
+        size = (Nλ, Nφ, Nz),
+        halo = (Hλ, Hφ, Hz),
+        longitude = (-1, 1),
+        latitude = (-1, 1),
+        z = (-100, 0)
+    )
+
+    model = HydrostaticFreeSurfaceModel(; grid,
+        closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    Nt = 5
+    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+
+    # Kind of a hack because we want η to be a ReducedField.
+    free_surface_outputs = (;
+        η = Average(model.free_surface.η, dims=3)
+    )
+
+    outputs = merge(model.velocities, model.tracers, free_surface_outputs)
+
+    Arch = typeof(arch)
+    filepath_with_halos = "test_mixed_free_surface_with_halos_$Arch.nc"
+    isfile(filepath_with_halos) && rm(filepath_with_halos)
+
+    simulation.output_writers[:with_halos] =
+        NetCDFOutputWriter(model, outputs;
+            filename = filepath_with_halos,
+            schedule = IterationInterval(1),
+            with_halos = true
+        )
+
+    filepath_no_halos = "test_mixed_free_surface_no_halos_$Arch.nc"
+    isfile(filepath_no_halos) && rm(filepath_no_halos)
+
+    simulation.output_writers[:no_halos] =
+        NetCDFOutputWriter(model, outputs;
+            filename = filepath_no_halos,
+            schedule = IterationInterval(1),
+            with_halos = false
+        )
+
+    run!(simulation)
+
+    ds_h = NCDataset(filepath_with_halos)
+
+    @test haskey(ds_h, "η")
+    @test dimsize(ds_h["η"]) == (longitude_c=Nλ + 2Hλ, latitude_c=Nφ + 2Hφ, time=Nt + 1)
+
+    @test dimsize(ds_h[:u]) == (longitude_f=Nλ + 2Hλ + 1, latitude_c=Nφ + 2Hφ,     z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:v]) == (longitude_c=Nλ + 2Hλ,     latitude_f=Nφ + 2Hφ + 1, z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:w]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ,     z_f=Nz + 2Hz + 1, time=Nt + 1)
+    @test dimsize(ds_h[:T]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ,     z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:S]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ,     z_c=Nz + 2Hz,     time=Nt + 1)
+
+    close(ds_h)
+    rm(filepath_with_halos)
+
+    ds_n = NCDataset(filepath_no_halos)
+
+    @test haskey(ds_n, "η")
+    @test dimsize(ds_n["η"]) == (longitude_c=Nλ, latitude_c=Nφ, time=Nt + 1)
+
+    @test dimsize(ds_n[:u]) == (longitude_f=Nλ + 1, latitude_c=Nφ,     z_c=Nz,     time=Nt + 1)
+    @test dimsize(ds_n[:v]) == (longitude_c=Nλ,     latitude_f=Nφ + 1, z_c=Nz,     time=Nt + 1)
+    @test dimsize(ds_n[:w]) == (longitude_c=Nλ,     latitude_c=Nφ,     z_f=Nz + 1, time=Nt + 1)
+    @test dimsize(ds_n[:T]) == (longitude_c=Nλ,     latitude_c=Nφ,     z_c=Nz,     time=Nt + 1)
+    @test dimsize(ds_n[:S]) == (longitude_c=Nλ,     latitude_c=Nφ,     z_c=Nz,     time=Nt + 1)
+
+    close(ds_n)
+    rm(filepath_no_halos)
+
+    return nothing
+end
+
 for arch in [CPU(), GPU()]
     @testset "NetCDF output writer [$(typeof(arch))]" begin
         @info "  Testing NetCDF output writer [$(typeof(arch))]..."
@@ -2647,5 +2799,8 @@ for arch in [CPU(), GPU()]
         test_netcdf_vertically_stretched_grid_output(arch)
 
         test_netcdf_overriding_attributes(arch)
+
+        test_netcdf_free_surface_only_output(arch)
+        test_netcdf_free_surface_mixed_output(arch)
     end
 end
