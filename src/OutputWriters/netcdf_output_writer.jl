@@ -783,90 +783,109 @@ mutable struct NetCDFOutputWriter{G, D, O, T, A, FS, DN} <: AbstractOutputWriter
 end
 
 """
-    NetCDFOutputWriter(model, outputs; filename, schedule,
+    NetCDFOutputWriter(model, outputs;
+                       filename,
+                       schedule,
                        grid = model.grid,
                        dir = ".",
                        array_type = Array{Float64},
-                       indices = nothing,
-                       with_halos = false,
+                       indices = (:, :, :),
                        global_attributes = Dict(),
                        output_attributes = Dict(),
                        dimensions = Dict(),
-                       overwrite_existing = false,
+                       with_halos = false,
+                       include_grid_metrics = true,
+                       overwrite_existing = nothing,
+                       verbose = false,
                        deflatelevel = 0,
                        part = 1,
                        file_splitting = NoFileSplitting(),
-                       verbose = false)
+                       dimension_name_generator = default_dim_name)
 
 Construct a `NetCDFOutputWriter` that writes `(label, output)` pairs in `outputs` (which should
 be a `Dict`) to a NetCDF file, where `label` is a string that labels the output and `output` is
-either a `Field` (e.g. `model.velocities.u`) or a function `f(model)` that
-returns something to be written to disk.
+either a `Field` (e.g. `model.velocities.u`), a `Reduction` (e.g. `Average(model.tracers.T, dims=(2, 3))`)
+or a function `f(model)` that returns something to be written to disk.
 
-If any of `outputs` are not `AbstractField`, their spatial `dimensions` must be provided.
+If any of `outputs` are not `AbstractField` or `Reduction`, their spatial `dimensions` must be provided.
 
-To use `outputs` on a `grid` not equal to `model.grid`, provide the keyword argument `grid.`
+Required arguments
+==================
 
-Keyword arguments
-=================
+- `model`: The Oceananigans model instance.
 
-- `grid`: The grid associated with `outputs`. Defaults to `model.grid`.
+- `outputs`: A collection of outputs to write, specified as either:
+  * A `Dict` with string keys and Field/function values.
+  * A `NamedTuple` of `Field`s or functions.
 
-## Filenaming
+Required keyword arguments
+==========================
 
-- `filename` (required): Descriptive filename. `".nc"` is appended to `filename` if `filename` does
-                         not end in `".nc"`.
+- `filename`: Descriptive filename. `".nc"` is appended if not present.
 
-- `dir`: Directory to save output to.
+- `schedule`: An `AbstractSchedule` that determines when output is saved. Some options include:
+  * `TimeInterval(dt)`: Save every `dt` seconds.
+  * `IterationInterval(n)`: Save every `n`` iterations.
+  * `AveragedTimeInterval(dt; window, stride)`: Time-average over window before saving.
+  * `WallTimeInterval(dt)`: Save every `dt` seconds of wall clock time.
 
-## Output frequency and time-averaging
+Optional keyword arguments
+==========================
 
-- `schedule` (required): `AbstractSchedule` that determines when output is saved.
+- `grid`: The grid associated with `outputs`. Defaults to `model.grid`. To use `outputs` on a `grid`
+          not equal to `model.grid`, use this keyword argument to provide the proper `grid`.
 
-## Slicing and type conversion prior to output
+- `dir`: Directory to save output to. Default: `"."`.
+
+- `array_type`: Type to convert outputs to before saving. Default: `Array{Float64}`.
 
 - `indices`: Tuple of indices of the output variables to include. Default is `(:, :, :)`, which
              includes the full fields.
+
+- `global_attributes`: `Dict` of global attributes or metadata to save with every file. Default: `Dict()`.
+                       This is useful for saving information specific to the simulation. Some useful global
+                       attributes are included by default, but will be overwritten if included in this `Dict`.
+
+- `output_attributes`: Dict of attributes to be saved with each field variable. Default: `Dict()`.
+                       Reasonable defaults including a descriptive name and units are provided for
+                       velocities, buoyancy, temperature, and salinity. If provided here, they will overwrite
+                       the defaults.
+
+- `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs).
 
 - `with_halos`: Boolean defining whether or not to include halos in the outputs. Default: `false`.
                 Note, that to postprocess saved output (e.g., compute derivatives, etc)
                 information about the boundary conditions is often crucial. In that case
                 you might need to set `with_halos = true`.
 
-- `array_type`: The array type to which output arrays are converted to prior to saving.
-                Default: `Array{Float64}`.
-
-- `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs).
-
-## File management
+- `include_grid_metrics`: Include grid metrics such as grid spacings, areas, and volumes as
+                          additional variables. Default: `true`. Note that even with
+                          `include_grid_metrics = false`, core grid coordinates are still saved.
 
 - `overwrite_existing`: If `false`, `NetCDFOutputWriter` will be set to append to `filepath`. If `true`,
                         `NetCDFOutputWriter` will overwrite `filepath` if it exists or create it if not.
                         Default: `false`. See [NCDatasets.jl documentation](https://alexander-barth.github.io/NCDatasets.jl/stable/)
                         for more information about its `mode` option.
 
+- `verbose`: Log variable compute times, file write times, and file sizes. Default: `false`.
+
 - `deflatelevel`: Determines the NetCDF compression level of data (integer 0-9; 0 (default) means no compression
                   and 9 means maximum compression). See [NCDatasets.jl documentation](https://alexander-barth.github.io/NCDatasets.jl/stable/variables/#Creating-a-variable)
                   for more information.
 
-- `file_splitting`: Schedule for splitting the output file. The new files will be suffixed with
-          `_part1`, `_part2`, etc. For example `file_splitting = FileSizeLimit(sz)` will
-          split the output file when its size exceeds `sz`. Another example is
-          `file_splitting = TimeInterval(30days)`, which will split files every 30 days of
-          simulation time. The default incurs no splitting (`NoFileSplitting()`).
-
-## Miscellaneous keywords
-
-- `verbose`: Log what the output writer is doing with statistics on compute/write times and file sizes.
-             Default: `false`.
-
 - `part`: The starting part number used when file splitting.
 
-- `global_attributes`: Dict of model properties to save with every file. Default: `Dict()`.
+- `file_splitting`: Schedule for splitting the output file. The new files will be suffixed with
+                    `_part1`, `_part2`, etc. For example `file_splitting = FileSizeLimit(sz)` will
+                    split the output file when its size exceeds `sz`. Another example is
+                    `file_splitting = TimeInterval(30days)`, which will split files every 30 days of
+                    simulation time. Default: `NoFileSplitting()`.
 
-- `output_attributes`: Dict of attributes to be saved with each field variable (reasonable
-                       defaults are provided for velocities, buoyancy, temperature, and salinity;
-                       otherwise `output_attributes` *must* be user-provided).
+- `dimension_name_generator`: A function with signature `(var_name, grid, LX, LY, LZ, dim)` where `dim` is
+                              either `Val(:x)`, `Val(:y)`, or `Val(:z)` that returns a string corresponding
+                              to the name of the dimension `var_name` on `grid` with location `(LX, LY, LZ)`
+                              along `dim`. This advanced option can be used to rename dimensions and variables
+                              to satisfy certain naming conventions. Default: `default_dim_name`.
 
 Examples
 ========
