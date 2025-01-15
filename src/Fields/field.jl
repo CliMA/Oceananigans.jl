@@ -395,7 +395,7 @@ interior(f::Field, I...) = view(interior(f), I...)
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 
-@propagate_inbounds Base.getindex(f::Field, inds...) = getindex(f.data, inds...)
+@propagate_inbounds Base.getindex(f::Field, inds...) = CUDA.@allowscalar getindex(f.data, inds...)
 @propagate_inbounds Base.getindex(f::Field, i::Int)  = parent(f)[i]
 @propagate_inbounds Base.setindex!(f::Field, val, i, j, k) = setindex!(f.data, val, i, j, k)
 @propagate_inbounds Base.lastindex(f::Field) = lastindex(f.data)
