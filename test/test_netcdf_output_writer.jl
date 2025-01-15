@@ -1913,8 +1913,6 @@ function test_netcdf_function_output(arch)
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
 
-    grid = model.grid # TODO: Figure out why?
-
     # Define scalar, vector, and 2D slice outputs
     f(model) = model.clock.time^2
 
@@ -2517,8 +2515,6 @@ function test_netcdf_vertically_stretched_grid_output(arch)
         )
 
     run!(simulation)
-
-    grid = model.grid # TODO: Again, figure out why?
 
     ds = NCDataset(nc_filepath)
 
