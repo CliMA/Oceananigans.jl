@@ -564,6 +564,8 @@ default_velocity_attributes(::LatitudeLongitudeGrid) = Dict(
     "w" => Dict("long_name" => "Velocity in the vertical direction (+ = up).", "units" => "m/s")
 )
 
+default_velocity_attributes(ibg::ImmersedBoundaryGrid) = default_velocity_attributes(ibg.underlying_grid)
+
 default_tracer_attributes(::Nothing) = Dict()
 
 default_tracer_attributes(::BuoyancyForce{<:BuoyancyTracer}) = Dict(
@@ -605,30 +607,45 @@ function gather_grid_attributes(grid::RectilinearGrid)
         "grid_Nz" => grid.Nz,
         "grid_Hx" => grid.Hx,
         "grid_Hy" => grid.Hy,
-        "grid_Hz" => grid.Hz,
-        "grid_x_spacing" => grid.Δxᶠᵃᵃ isa Number ? "regular" : "irregular",
-        "grid_y_spacing" => grid.Δyᵃᶠᵃ isa Number ? "regular" : "irregular",
-        "grid_z_spacing" => grid.z.Δᵃᵃᶠ isa Number ? "regular" : "irregular"
+        "grid_Hz" => grid.Hz
     )
+
+    if TX == Flat
+        grid_attrs["grid_x_spacing"] = "flat"
+    else
+        grid_attrs["grid_x_spacing"] = grid.Δxᶠᵃᵃ isa Number ? "regular" : "irregular"
+    end
+
+    if TY == Flat
+        grid_attrs["grid_y_spacing"] = "flat"
+    else
+        grid_attrs["grid_y_spacing"] = grid.Δyᵃᶠᵃ isa Number ? "regular" : "irregular"
+    end
+
+    if TZ == Flat
+        grid_attrs["grid_z_spacing"] = "flat"
+    else
+        grid_attrs["grid_z_spacing"] = grid.z.Δᵃᵃᶠ isa Number ? "regular" : "irregular"
+    end
 
     if grid_attrs["grid_x_spacing"] == "regular"
         grid_attrs["grid_x_start"] = grid.xᶠᵃᵃ[1]
         grid_attrs["grid_x_end"] = grid.xᶠᵃᵃ[grid.Nx+1]
-    else
+    elseif grid_attrs["grid_x_spacing"] == "irregular"
         grid_attrs["grid_x"] = grid.xᶠᵃᵃ[1:grid.Nx+1]
     end
 
     if grid_attrs["grid_y_spacing"] == "regular"
         grid_attrs["grid_y_start"] = grid.yᵃᶠᵃ[1]
         grid_attrs["grid_y_end"] = grid.yᵃᶠᵃ[grid.Ny+1]
-    else
+    elseif grid_attrs["grid_y_spacing"] == "irregular"
         grid_attrs["grid_y"] = grid.yᵃᶠᵃ[1:grid.Ny+1]
     end
 
     if grid_attrs["grid_z_spacing"] == "regular"
         grid_attrs["grid_z_start"] = grid.z.cᵃᵃᶠ[1]
         grid_attrs["grid_z_end"] = grid.z.cᵃᵃᶠ[grid.Nz+1]
-    else
+    elseif grid_attrs["grid_z_spacing"] == "irregular"
         grid_attrs["grid_z"] = grid.z.cᵃᵃᶠ[1:grid.Nz+1]
     end
 
@@ -999,7 +1016,10 @@ function NetCDFOutputWriter(model, outputs;
         end
     end
 
-    outputs = Dict(string(name) => construct_output(outputs[name], grid, indices, with_halos) for name in keys(outputs))
+    outputs = Dict(
+        string(name) => construct_output(outputs[name], grid, indices, with_halos)
+        for name in keys(outputs)
+    )
 
     output_attributes = dictify(output_attributes)
     global_attributes = dictify(global_attributes)
@@ -1135,7 +1155,7 @@ function initialize_nc_file!(filepath,
         if !isempty(time_independent_vars)
             for (name, output) in sort(collect(pairs(time_independent_vars)), by=first)
                 output = construct_output(output, grid, indices, with_halos)
-                attributes = haskey(output_attributes, name) ? output_attributes[name] : nothing
+                attributes = haskey(output_attributes, name) ? output_attributes[name] : Dict()
                 materialized = materialize_output(output, model)
 
                 define_output_variable!(
@@ -1156,7 +1176,7 @@ function initialize_nc_file!(filepath,
         end
 
         for (name, output) in sort(collect(pairs(outputs)), by=first)
-            attributes = haskey(output_attributes, name) ? output_attributes[name] : nothing
+            attributes = haskey(output_attributes, name) ? output_attributes[name] : Dict()
             materialized = materialize_output(output, model)
 
             define_output_variable!(
@@ -1234,6 +1254,10 @@ function define_output_variable!(dataset, output::AbstractField, name, array_typ
     FT = eltype(array_type)
 
     all_dims = time_dependent ? (dims..., "time") : dims
+
+    @show name
+    @show all_dims
+    @show attrib
 
     defVar(dataset, name, FT, all_dims; deflatelevel, attrib)
 
