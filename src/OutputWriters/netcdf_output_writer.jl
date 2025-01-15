@@ -551,16 +551,40 @@ default_dimension_attributes(grid::ImmersedBoundaryGrid, dim_name_generator) =
 ##### Variable attributes
 #####
 
-# TODO: This should depend on the grid (xyz vs. zonal/meridional)
-#       and buoyancy (regular temperature vs. conservative)?
-const default_output_attributes = Dict(
-    "u" => Dict("long_name" => "Velocity in the x-direction", "units" => "m/s"),
-    "v" => Dict("long_name" => "Velocity in the y-direction", "units" => "m/s"),
-    "w" => Dict("long_name" => "Velocity in the z-direction", "units" => "m/s"),
-    "b" => Dict("long_name" => "Buoyancy",                    "units" => "m/s²"),
-    "T" => Dict("long_name" => "Conservative temperature",    "units" => "°C"),
-    "S" => Dict("long_name" => "Absolute salinity",           "units" => "g/kg")
+default_velocity_attributes(::RectilinearGrid) = Dict(
+    "u" => Dict("long_name" => "Velocity in the +x-direction.", "units" => "m/s"),
+    "v" => Dict("long_name" => "Velocity in the +y-direction.", "units" => "m/s"),
+    "w" => Dict("long_name" => "Velocity in the +z-direction.", "units" => "m/s")
 )
+
+default_velocity_attributes(::LatitudeLongitudeGrid) = Dict(
+    "u" => Dict("long_name" => "Velocity in the zonal direction (+ = east).", "units" => "m/s"),
+    "v" => Dict("long_name" => "Velocity in the meridional direction (+ = north).", "units" => "m/s"),
+    "w" => Dict("long_name" => "Velocity in the vertical direction (+ = up).", "units" => "m/s")
+)
+
+default_tracer_attributes(::Nothing) = Dict()
+
+default_tracer_attributes(::BuoyancyTracer) = Dict(
+    "b" => Dict("long_name" => "Buoyancy", "units" => "m/s²")
+)
+
+default_tracer_attributes(::SeawaterBuoyancy{FT, <:LinearEquationOfState}) where FT = Dict(
+    "T" => Dict("long_name" => "Temperature", "units" => "°C"),
+    "S" => Dict("long_name" => "Salinity",    "units" => "practical salinity unit (psu)")
+)
+
+# Assuming TEOS-10 I guess?
+default_tracer_attributes(::SeawaterBuoyancy) = Dict(
+    "T" => Dict("long_name" => "Conservative temperature", "units" => "°C"),
+    "S" => Dict("long_name" => "Absolute salinity",        "units" => "g/kg")
+)
+
+function default_output_attributes(model)
+    velocity_attrs = default_velocity_attributes(model.grid)
+    tracer_attrs = default_tracer_attributes(model.buoyancy)
+    return merge(velocity_attrs, tracer_attrs)
+end
 
 #####
 ##### Saving schedule metadata as global attributes
@@ -875,6 +899,12 @@ function NetCDFOutputWriter(model, outputs;
     global_attributes = dictify(global_attributes)
     dimensions = dictify(dimensions)
 
+    # TODO: Add attribute for indices?
+    global_attributes["output_includes_halos"] = with_halos ? "true" : "false"
+
+    grid_attributes = gather_grid_attributes(grid)
+    merge!(global_attributes, grid_attributes)
+
     # Ensure we can add any kind of metadata to the global attributes later by converting to Dict{Any, Any}.
     global_attributes = Dict{Any, Any}(global_attributes)
 
@@ -950,7 +980,7 @@ function initialize_nc_file!(filepath,
     dims = gather_dimensions(outputs, grid, indices, with_halos, dimension_name_generator)
 
     # Open the NetCDF dataset file
-    dataset = NCDataset(filepath, mode, attrib=global_attributes)
+    dataset = NCDataset(filepath, mode, attrib=sort(collect(pairs(global_attributes)), by=first))
 
     default_dim_attrs = default_dimension_attributes(grid, dimension_name_generator)
 
