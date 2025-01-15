@@ -592,123 +592,119 @@ function default_output_attributes(model)
 end
 
 #####
-##### Gather grid attributes (also used for FieldTimeSeries support)
+##### Gather grid reconstruction attributes (also used for FieldTimeSeries support)
 #####
 
-function gather_grid_attributes(grid::RectilinearGrid)
+function grid_reconstruction_attributes(grid::RectilinearGrid)
     TX, TY, TZ = topology(grid)
 
-    grid_attrs = Dict(
-        "grid_type" => string(nameof(typeof(grid))),
-        "grid_eltype" => string(eltype(grid)),
-        "grid_TX" => string(TX),
-        "grid_TY" => string(TY),
-        "grid_TZ" => string(TZ),
-        "grid_Nx" => grid.Nx,
-        "grid_Ny" => grid.Ny,
-        "grid_Nz" => grid.Nz,
-        "grid_Hx" => grid.Hx,
-        "grid_Hy" => grid.Hy,
-        "grid_Hz" => grid.Hz
+    dims = Dict()
+
+    attrs = Dict(
+        "type" => string(nameof(typeof(grid))),
+        "eltype" => string(eltype(grid)),
+        "TX" => string(TX),
+        "TY" => string(TY),
+        "TZ" => string(TZ),
+        "Nx" => grid.Nx,
+        "Ny" => grid.Ny,
+        "Nz" => grid.Nz,
+        "Hx" => grid.Hx,
+        "Hy" => grid.Hy,
+        "Hz" => grid.Hz
     )
 
     if TX == Flat
-        grid_attrs["grid_x_spacing"] = "flat"
+        attrs["x_spacing"] = "flat"
     else
-        grid_attrs["grid_x_spacing"] = grid.Δxᶠᵃᵃ isa Number ? "regular" : "irregular"
+        attrs["x_spacing"] = grid.Δxᶠᵃᵃ isa Number ? "regular" : "irregular"
+        dims["x_f"] = grid.xᶠᵃᵃ[1:grid.Nx+1]
     end
 
     if TY == Flat
-        grid_attrs["grid_y_spacing"] = "flat"
+        attrs["y_spacing"] = "flat"
     else
-        grid_attrs["grid_y_spacing"] = grid.Δyᵃᶠᵃ isa Number ? "regular" : "irregular"
+        attrs["y_spacing"] = grid.Δyᵃᶠᵃ isa Number ? "regular" : "irregular"
+        dims["y_f"] = grid.yᵃᶠᵃ[1:grid.Ny+1]
     end
 
     if TZ == Flat
-        grid_attrs["grid_z_spacing"] = "flat"
+        attrs["z_spacing"] = "flat"
     else
-        grid_attrs["grid_z_spacing"] = grid.z.Δᵃᵃᶠ isa Number ? "regular" : "irregular"
+        attrs["z_spacing"] = grid.z.Δᵃᵃᶠ isa Number ? "regular" : "irregular"
+        dims["z_f"] = grid.z.cᵃᵃᶠ[1:grid.Nz+1]
     end
 
-    if grid_attrs["grid_x_spacing"] == "regular"
-        grid_attrs["grid_x_start"] = grid.xᶠᵃᵃ[1]
-        grid_attrs["grid_x_end"] = grid.xᶠᵃᵃ[grid.Nx+1]
-    elseif grid_attrs["grid_x_spacing"] == "irregular"
-        grid_attrs["grid_x"] = grid.xᶠᵃᵃ[1:grid.Nx+1]
-    end
-
-    if grid_attrs["grid_y_spacing"] == "regular"
-        grid_attrs["grid_y_start"] = grid.yᵃᶠᵃ[1]
-        grid_attrs["grid_y_end"] = grid.yᵃᶠᵃ[grid.Ny+1]
-    elseif grid_attrs["grid_y_spacing"] == "irregular"
-        grid_attrs["grid_y"] = grid.yᵃᶠᵃ[1:grid.Ny+1]
-    end
-
-    if grid_attrs["grid_z_spacing"] == "regular"
-        grid_attrs["grid_z_start"] = grid.z.cᵃᵃᶠ[1]
-        grid_attrs["grid_z_end"] = grid.z.cᵃᵃᶠ[grid.Nz+1]
-    elseif grid_attrs["grid_z_spacing"] == "irregular"
-        grid_attrs["grid_z"] = grid.z.cᵃᵃᶠ[1:grid.Nz+1]
-    end
-
-    return grid_attrs
+    return attrs, dims
 end
 
-function gather_grid_attributes(grid::LatitudeLongitudeGrid)
+function grid_reconstruction_attributes(grid::LatitudeLongitudeGrid)
     TX, TY, TZ = topology(grid)
 
-    grid_attrs = Dict(
-        "grid_type" => string(nameof(typeof(grid))),
-        "grid_eltype" => string(eltype(grid)),
-        "grid_TX" => string(TX),
-        "grid_TY" => string(TY),
-        "grid_TZ" => string(TZ),
-        "grid_Nx" => grid.Nx,
-        "grid_Ny" => grid.Ny,
-        "grid_Nz" => grid.Nz,
-        "grid_Hx" => grid.Hx,
-        "grid_Hy" => grid.Hy,
-        "grid_Hz" => grid.Hz,
-        "grid_λ_spacing" => grid.Δλᶠᵃᵃ isa Number ? "regular" : "irregular",
-        "grid_φ_spacing" => grid.Δφᵃᶠᵃ isa Number ? "regular" : "irregular",
-        "grid_z_spacing" => grid.z.Δᵃᵃᶠ isa Number ? "regular" : "irregular"
+    dims = Dict()
+
+    attrs = Dict(
+        "type" => string(nameof(typeof(grid))),
+        "eltype" => string(eltype(grid)),
+        "TX" => string(TX),
+        "TY" => string(TY),
+        "TZ" => string(TZ),
+        "Nx" => grid.Nx,
+        "Ny" => grid.Ny,
+        "Nz" => grid.Nz,
+        "Hx" => grid.Hx,
+        "Hy" => grid.Hy,
+        "Hz" => grid.Hz
     )
 
-    if grid_attrs["grid_λ_spacing"] == "regular"
-        grid_attrs["grid_λ_start"] = grid.λᶠᵃᵃ[1]
-        grid_attrs["grid_λ_end"] = grid.λᶠᵃᵃ[grid.Nx+1]
+    if TX == Flat
+        attrs["λ_spacing"] = "flat"
     else
-        grid_attrs["grid_λ"] = grid.λᶠᵃᵃ[1:grid.Nx+1]
+        attrs["λ_spacing"] = grid.Δλᶠᵃᵃ isa Number ? "regular" : "irregular"
+        dims["λ_f"] = grid.λᶠᵃᵃ[1:grid.Nx+1]
     end
 
-    if grid_attrs["grid_φ_spacing"] == "regular"
-        grid_attrs["grid_φ_start"] = grid.φᵃᶠᵃ[1]
-        grid_attrs["grid_φ_end"] = grid.φᵃᶠᵃ[grid.Ny+1]
+    if TY == Flat
+        attrs["φ_spacing"] = "flat"
     else
-        grid_attrs["grid_φ"] = grid.φᵃᶠᵃ[1:grid.Ny+1]
+        attrs["φ_spacing"] = grid.Δφᵃᶠᵃ isa Number ? "regular" : "irregular"
+        dims["φ_f"] = grid.φᵃᶠᵃ[1:grid.Ny+1]
     end
 
-    if grid_attrs["grid_z_spacing"] == "regular"
-        grid_attrs["grid_z_start"] = grid.z.cᵃᵃᶠ[1]
-        grid_attrs["grid_z_end"] = grid.z.cᵃᵃᶠ[grid.Nz+1]
+    if TZ == Flat
+        attrs["z_spacing"] = "flat"
     else
-        grid_attrs["grid_z"] = grid.z.cᵃᵃᶠ[1:grid.Nz+1]
+        attrs["z_spacing"] = grid.z.Δᵃᵃᶠ isa Number ? "regular" : "irregular"
+        dims["z_f"] = grid.z.cᵃᵃᶠ[1:grid.Nz+1]
     end
 
-    return grid_attrs
+    return attrs, dims
 end
 
-function gather_grid_attributes(ibg::ImmersedBoundaryGrid)
-    underlying_grid_attrs = gather_grid_attributes(ibg.underlying_grid)
+function grid_reconstruction_attributes(ibg::ImmersedBoundaryGrid)
+    attrs, dims = grid_reconstruction_attributes(ibg.underlying_grid)
 
-    immersed_grid_attrs = Dict(
-        "grid_immersed_boundary_type" => string(nameof(typeof(ibg.immersed_boundary)))
+    immersed_attrs = Dict(
+        "immersed_boundary_type" => string(nameof(typeof(ibg.immersed_boundary)))
     )
 
-    return merge(
-        underlying_grid_attrs,
-        immersed_grid_attrs
+    attrs = merge(attrs, immersed_attrs)
+
+    return attrs, dims
+end
+
+function write_grid_reconstruction_metadata!(ds, grid, array_type, deflatelevel)
+    grid_attrs, grid_dims = grid_reconstruction_attributes(grid)
+
+    ds_grid = defGroup(ds, "grid_reconstruction";
+        attrib = sort(collect(pairs(grid_attrs)), by=first)
     )
+
+    for (dim_name, dim_array) in grid_dims
+        defVar(ds_grid, dim_name, array_type(dim_array), (dim_name,); deflatelevel)
+    end
+
+    return ds
 end
 
 #####
@@ -1030,12 +1026,6 @@ function NetCDFOutputWriter(model, outputs;
     # Ensure we can add any kind of metadata to the attributes later by converting to Dict{Any, Any}.
     global_attributes = Dict{Any, Any}(global_attributes)
 
-    # TODO: Add attribute for indices?
-    global_attributes["output_includes_halos"] = with_halos ? "true" : "false"
-
-    grid_attributes = gather_grid_attributes(grid)
-    global_attributes = merge(global_attributes, grid_attributes)
-
     dataset, outputs, schedule = initialize_nc_file!(filepath,
                                                      outputs,
                                                      schedule,
@@ -1101,6 +1091,11 @@ function initialize_nc_file!(filepath,
         "Oceananigans" => "This file was generated using " * oceananigans_versioninfo()
     )
 
+    if with_halos
+        useful_attributes["output_includes_halos"] =
+            "The outputs include data from the halo regions of the grid."
+    end
+
     global_attributes = merge(useful_attributes, global_attributes)
 
     add_schedule_metadata!(global_attributes, schedule)
@@ -1124,6 +1119,9 @@ function initialize_nc_file!(filepath,
 
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
+        # This metadata is to support `FieldTimeSeries`.
+        write_grid_reconstruction_metadata!(dataset, grid, array_type, deflatelevel)
+
         # DateTime and TimeDate are both <: AbstractTime
         time_attrib = model.clock.time isa AbstractTime ?
             Dict("long_name" => "Time", "units" => "seconds since 2000-01-01 00:00:00") :
