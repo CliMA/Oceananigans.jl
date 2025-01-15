@@ -6,10 +6,11 @@ using Oceananigans.Fields
 
 using Oceananigans.Grids: AbstractCurvilinearGrid, RectilinearGrid, StaticVerticalCoordinate
 using Oceananigans.Grids: topology, halo_size, parent_index_range, ξnodes, ηnodes, rnodes, validate_index, peripheral_node
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GFBIBG
-using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
-using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GFBIBG
+using Oceananigans.TimeSteppers: float_or_date_time
+using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
+using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 
 #####
 ##### Utils
@@ -565,11 +566,11 @@ default_velocity_attributes(::LatitudeLongitudeGrid) = Dict(
 
 default_tracer_attributes(::Nothing) = Dict()
 
-default_tracer_attributes(::BuoyancyTracer) = Dict(
+default_tracer_attributes(::BuoyancyForce{<:BuoyancyTracer}) = Dict(
     "b" => Dict("long_name" => "Buoyancy", "units" => "m/s²")
 )
 
-default_tracer_attributes(::SeawaterBuoyancy{FT, <:LinearEquationOfState}) where FT = Dict(
+default_tracer_attributes(::BuoyancyForce{<:SeawaterBuoyancy{FT, <:LinearEquationOfState}}) where FT = Dict(
     "T" => Dict("long_name" => "Temperature", "units" => "°C"),
     "S" => Dict("long_name" => "Salinity",    "units" => "practical salinity unit (psu)")
 )
@@ -584,6 +585,111 @@ function default_output_attributes(model)
     velocity_attrs = default_velocity_attributes(model.grid)
     tracer_attrs = default_tracer_attributes(model.buoyancy)
     return merge(velocity_attrs, tracer_attrs)
+end
+
+#####
+##### Gather grid attributes (also used for FieldTimeSeries support)
+#####
+
+function gather_grid_attributes(grid::RectilinearGrid)
+    TX, TY, TZ = topology(grid)
+
+    grid_attrs = Dict(
+        "grid_type" => string(nameof(typeof(grid))),
+        "grid_eltype" => string(eltype(grid)),
+        "grid_TX" => string(TX),
+        "grid_TY" => string(TY),
+        "grid_TZ" => string(TZ),
+        "grid_Nx" => grid.Nx,
+        "grid_Ny" => grid.Ny,
+        "grid_Nz" => grid.Nz,
+        "grid_Hx" => grid.Hx,
+        "grid_Hy" => grid.Hy,
+        "grid_Hz" => grid.Hz,
+        "grid_x_spacing" => grid.Δxᶠᵃᵃ isa Number ? "regular" : "irregular",
+        "grid_y_spacing" => grid.Δyᵃᶠᵃ isa Number ? "regular" : "irregular",
+        "grid_z_spacing" => grid.z.Δᵃᵃᶠ isa Number ? "regular" : "irregular"
+    )
+
+    if grid_attrs["grid_x_spacing"] == "regular"
+        grid_attrs["grid_x_start"] = grid.xᶠᵃᵃ[1]
+        grid_attrs["grid_x_end"] = grid.xᶠᵃᵃ[grid.Nx+1]
+    else
+        grid_attrs["grid_x"] = grid.xᶠᵃᵃ[1:grid.Nx+1]
+    end
+
+    if grid_attrs["grid_y_spacing"] == "regular"
+        grid_attrs["grid_y_start"] = grid.yᵃᶠᵃ[1]
+        grid_attrs["grid_y_end"] = grid.yᵃᶠᵃ[grid.Ny+1]
+    else
+        grid_attrs["grid_y"] = grid.yᵃᶠᵃ[1:grid.Ny+1]
+    end
+
+    if grid_attrs["grid_z_spacing"] == "regular"
+        grid_attrs["grid_z_start"] = grid.z.cᵃᵃᶠ[1]
+        grid_attrs["grid_z_end"] = grid.z.cᵃᵃᶠ[grid.Nz+1]
+    else
+        grid_attrs["grid_z"] = grid.z.cᵃᵃᶠ[1:grid.Nz+1]
+    end
+
+    return grid_attrs
+end
+
+function gather_grid_attributes(grid::LatitudeLongitudeGrid)
+    TX, TY, TZ = topology(grid)
+
+    grid_attrs = Dict(
+        "grid_type" => string(nameof(typeof(grid))),
+        "grid_eltype" => string(eltype(grid)),
+        "grid_TX" => string(TX),
+        "grid_TY" => string(TY),
+        "grid_TZ" => string(TZ),
+        "grid_Nx" => grid.Nx,
+        "grid_Ny" => grid.Ny,
+        "grid_Nz" => grid.Nz,
+        "grid_Hx" => grid.Hx,
+        "grid_Hy" => grid.Hy,
+        "grid_Hz" => grid.Hz,
+        "grid_λ_spacing" => grid.Δλᶠᵃᵃ isa Number ? "regular" : "irregular",
+        "grid_φ_spacing" => grid.Δφᵃᶠᵃ isa Number ? "regular" : "irregular",
+        "grid_z_spacing" => grid.z.Δᵃᵃᶠ isa Number ? "regular" : "irregular"
+    )
+
+    if grid_attrs["grid_λ_spacing"] == "regular"
+        grid_attrs["grid_λ_start"] = grid.λᶠᵃᵃ[1]
+        grid_attrs["grid_λ_end"] = grid.λᶠᵃᵃ[grid.Nx+1]
+    else
+        grid_attrs["grid_λ"] = grid.λᶠᵃᵃ[1:grid.Nx+1]
+    end
+
+    if grid_attrs["grid_φ_spacing"] == "regular"
+        grid_attrs["grid_φ_start"] = grid.φᵃᶠᵃ[1]
+        grid_attrs["grid_φ_end"] = grid.φᵃᶠᵃ[grid.Ny+1]
+    else
+        grid_attrs["grid_φ"] = grid.φᵃᶠᵃ[1:grid.Ny+1]
+    end
+
+    if grid_attrs["grid_z_spacing"] == "regular"
+        grid_attrs["grid_z_start"] = grid.z.cᵃᵃᶠ[1]
+        grid_attrs["grid_z_end"] = grid.z.cᵃᵃᶠ[grid.Nz+1]
+    else
+        grid_attrs["grid_z"] = grid.z.cᵃᵃᶠ[1:grid.Nz+1]
+    end
+
+    return grid_attrs
+end
+
+function gather_grid_attributes(ibg::ImmersedBoundaryGrid)
+    underlying_grid_attrs = gather_grid_attributes(ibg.underlying_grid)
+
+    immersed_grid_attrs = Dict(
+        "grid_immersed_boundary_type" => string(nameof(typeof(ibg.immersed_boundary)))
+    )
+
+    return merge(
+        underlying_grid_attrs,
+        immersed_grid_attrs
+    )
 end
 
 #####
@@ -899,14 +1005,14 @@ function NetCDFOutputWriter(model, outputs;
     global_attributes = dictify(global_attributes)
     dimensions = dictify(dimensions)
 
+    # Ensure we can add any kind of metadata to the attributes later by converting to Dict{Any, Any}.
+    global_attributes = Dict{Any, Any}(global_attributes)
+
     # TODO: Add attribute for indices?
     global_attributes["output_includes_halos"] = with_halos ? "true" : "false"
 
     grid_attributes = gather_grid_attributes(grid)
-    merge!(global_attributes, grid_attributes)
-
-    # Ensure we can add any kind of metadata to the global attributes later by converting to Dict{Any, Any}.
-    global_attributes = Dict{Any, Any}(global_attributes)
+    global_attributes = merge(global_attributes, grid_attributes)
 
     dataset, outputs, schedule = initialize_nc_file!(filepath,
                                                      outputs,
@@ -967,9 +1073,13 @@ function initialize_nc_file!(filepath,
     mode = overwrite_existing ? "c" : "a"
 
     # Add useful metadata
-    global_attributes["date"] = "This file was generated on $(now()) local time ($(now(UTC)) UTC)."
-    global_attributes["Julia"] = "This file was generated using " * versioninfo_with_gpu()
-    global_attributes["Oceananigans"] = "This file was generated using " * oceananigans_versioninfo()
+    useful_attributes = Dict(
+        "date" => "This file was generated on $(now()) local time ($(now(UTC)) UTC).",
+        "Julia" => "This file was generated using " * versioninfo_with_gpu(),
+        "Oceananigans" => "This file was generated using " * oceananigans_versioninfo()
+    )
+
+    global_attributes = merge(useful_attributes, global_attributes)
 
     add_schedule_metadata!(global_attributes, schedule)
 
@@ -982,7 +1092,13 @@ function initialize_nc_file!(filepath,
     # Open the NetCDF dataset file
     dataset = NCDataset(filepath, mode, attrib=sort(collect(pairs(global_attributes)), by=first))
 
-    default_dim_attrs = default_dimension_attributes(grid, dimension_name_generator)
+    # Merge the default with any user-supplied output attributes, ensuring the user-supplied ones
+    # can overwrite the defaults.
+    output_attributes = merge(
+        default_dimension_attributes(grid, dimension_name_generator),
+        default_output_attributes(model),
+        output_attributes
+    )
 
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
@@ -997,18 +1113,11 @@ function initialize_nc_file!(filepath,
         defDim(dataset, "time", Inf)
         defVar(dataset, "time", Float64, ("time",), attrib=time_attrib)
 
-        # Create spatial dimensions
+        # Create spatial dimensions as variables whose dimensions are themselves.
+        # Each should already have a default attribute.
         for (dim_name, dim_array) in dims
             defVar(dataset, dim_name, array_type(dim_array), (dim_name,),
-                   deflatelevel=deflatelevel, attrib=default_dim_attrs[dim_name])
-        end
-
-        # Use default output attributes for known outputs if the user has not specified any.
-        # Unknown outputs get an empty tuple (no output attributes).
-        for c in keys(outputs)
-            if !haskey(output_attributes, c)
-                output_attributes[c] = c in keys(default_output_attributes) ? default_output_attributes[c] : ()
-            end
+                   deflatelevel=deflatelevel, attrib=output_attributes[dim_name])
         end
 
         time_independent_vars = Dict()
@@ -1026,9 +1135,8 @@ function initialize_nc_file!(filepath,
         if !isempty(time_independent_vars)
             for (name, output) in sort(collect(pairs(time_independent_vars)), by=first)
                 output = construct_output(output, grid, indices, with_halos)
-                attributes = try default_dim_attrs[name]; catch; Dict(); end
+                attributes = haskey(output_attributes, name) ? output_attributes[name] : nothing
                 materialized = materialize_output(output, model)
-                time_dependent = false
 
                 define_output_variable!(
                     dataset,
@@ -1048,7 +1156,7 @@ function initialize_nc_file!(filepath,
         end
 
         for (name, output) in sort(collect(pairs(outputs)), by=first)
-            attributes = try output_attributes[name]; catch; Dict(); end
+            attributes = haskey(output_attributes, name) ? output_attributes[name] : nothing
             materialized = materialize_output(output, model)
 
             define_output_variable!(
