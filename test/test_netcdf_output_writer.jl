@@ -2551,6 +2551,60 @@ function test_netcdf_vertically_stretched_grid_output(arch)
     return nothing
 end
 
+function test_netcdf_overriding_attributes(arch)
+    arch = CPU()
+
+    grid = LatitudeLongitudeGrid(arch;
+        topology = (Bounded, Bounded, Bounded),
+        size = (4, 4, 4),
+        longitude = (-1, 1),
+        latitude = (-1, 1),
+        z = (-100, 0)
+    )
+
+    model = HydrostaticFreeSurfaceModel(; grid,
+        closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
+        buoyancy = SeawaterBuoyancy(),
+        tracers = (:T, :S)
+    )
+
+    outputs = merge(model.velocities, model.tracers)
+
+    Arch = typeof(arch)
+    nc_filepath = "test_attributes_$Arch.nc"
+    isfile(nc_filepath) && rm(nc_filepath)
+
+    global_attributes = Dict(
+        "date" => "yesterday", # This should override the default date attribute.
+        "fruit" => "papaya"    # This should show up in the NetCDF file.
+    )
+
+    output_attributes = Dict(
+        "latitude_f" => Dict("units" => "No units for you!"),
+        "u" => Dict("long_name" => "zonal velocity", "units" => "miles/fortnight")
+    )
+
+    nc_writer = NetCDFOutputWriter(model, outputs;
+        filename = nc_filepath,
+        schedule = IterationInterval(1),
+        global_attributes,
+        output_attributes
+    )
+
+    ds = NCDataset(nc_filepath)
+
+    @test ds.attrib["date"] == "yesterday"
+    @test ds.attrib["fruit"] == "papaya"
+
+    @test ds["latitude_f"].attrib["units"] == "No units for you!"
+    @test !haskey(ds["latitude_f"].attrib, "long_name")
+
+    @test ds["u"].attrib["long_name"] == "zonal velocity"
+    @test ds["u"].attrib["units"] == "miles/fortnight"
+
+    return nothing
+end
+
 for arch in [CPU(), GPU()]
     @testset "NetCDF output writer [$(typeof(arch))]" begin
         @info "  Testing NetCDF output writer [$(typeof(arch))]..."
@@ -2591,5 +2645,7 @@ for arch in [CPU(), GPU()]
         test_netcdf_output_particles_and_fields(arch)
 
         test_netcdf_vertically_stretched_grid_output(arch)
+
+        test_netcdf_overriding_attributes(arch)
     end
 end
