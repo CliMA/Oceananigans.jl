@@ -3,7 +3,7 @@ module HydrostaticFreeSurfaceModels
 export
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface, 
-    PrescribedVelocityFields
+    PrescribedVelocityFields, ZStar, ZCoordinate
 
 using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
@@ -57,13 +57,14 @@ include("SplitExplicitFreeSurfaces/SplitExplicitFreeSurfaces.jl")
 
 using .SplitExplicitFreeSurfaces
 
+# ZStar implementation
+include("z_star_vertical_spacing.jl")
+
+# Hydrostatic model implementation
 include("hydrostatic_free_surface_field_tuples.jl")
 include("hydrostatic_free_surface_model.jl")
 include("show_hydrostatic_free_surface_model.jl")
 include("set_hydrostatic_free_surface_model.jl")
-
-# ZStar implementation
-include("z_star_vertical_spacing.jl")
 
 #####
 ##### AbstractModel interface
