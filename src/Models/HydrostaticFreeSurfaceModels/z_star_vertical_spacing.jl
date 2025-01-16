@@ -140,9 +140,9 @@ end
 
 const EmptyTuples = Union{NamedTuple{(), Tuple{}}, Tuple{}}
 
-unscale_tracers!(::EmptyTuples, ::MutableGridOfSomeKind, ztype; kwargs...) = nothing
+unscale_tracers!(::EmptyTuples, ::MutableGridOfSomeKind; kwargs...) = nothing
 
-function unscale_tracers!(tracers, grid::MutableGridOfSomeKind, ztype; parameters = :xy) 
+function unscale_tracers!(tracers, grid::MutableGridOfSomeKind; parameters = :xy) 
 
     for tracer in tracers
         launch!(architecture(grid), grid, parameters, _unscale_tracer!, 
