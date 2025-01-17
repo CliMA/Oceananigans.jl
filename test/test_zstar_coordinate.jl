@@ -3,6 +3,8 @@ include("dependencies_for_runtests.jl")
 using Random
 using Oceananigans: initialize!
 using Oceananigans.ImmersedBoundaries: PartialCellBottom
+using Oceananigans.Grids: MutableVerticalDiscretization
+using Oceananigans.Models: ZStar
 
 function test_zstar_coordinate(model, Ni, Δt)
     
@@ -47,7 +49,7 @@ const F = Face
 @testset "ZStar coordinate scaling tests" begin
     @info "testing the ZStar coordinate scalings"
 
-    z = MutableVerticalCoordinate((-20, 0))
+    z = MutableVerticalDiscretization((-20, 0))
 
     grid = RectilinearGrid(size = (2, 2, 20), 
                               x = (0, 2), 
@@ -80,18 +82,48 @@ const F = Face
     @test  static_column_depthᶜᶜᵃ(1, 1, grid) == 10
     @test  static_column_depthᶜᶜᵃ(2, 1, grid) == 10
 
-    # Make sure a model with a MutableVerticalCoordinate but ZCoordinate still runs
-    model = HydrostaticFreeSurfaceModel(; grid, free_surface = SplitExplicitFreeSurface(grid; substeps = 20))
+    # Make sure a model with a MutableVerticalDiscretization but ZCoordinate still runs and 
+    # the results are the same as a model with a static vertical discretization.
+    model_mutable = HydrostaticFreeSurfaceModel(; grid, free_surface = SplitExplicitFreeSurface(grid; substeps=20))
+    um, vm, _ = model.velocities
 
-    @test begin
-        time_step!(model, 1.0)
-        true
+    u = [rand() for i in 1:size(um, 1), j in 1:size(um, 2), k in 1:size(um, 3)]
+    v = [rand() for i in 1:size(vm, 1), j in 1:size(vm, 2), k in 1:size(vm, 3)]
+
+    set!(model_mutable; u, v)
+    
+    for _ in 1:100
+        time_step!(model, 1e-3)
     end
+
+    # A static grid
+    grid = RectilinearGrid(size = (2, 2, 20), 
+                              x = (0, 2), 
+                              y = (0, 1), 
+                              z = (-20, 0), 
+                          topology = (Bounded, Periodic, Bounded))
+
+    grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> -10))
+
+    model_static = HydrostaticFreeSurfaceModel(; grid, free_surface=SplitExplicitFreeSurface(grid; substeps=20))
+    
+    for _ in 1:100
+        time_step!(model_static, 1e-3)
+    end
+    
+    # Check that fields are the same
+    um, vm, wm = model_mutable.velocities
+    us, vs, ws = model_static.velocities
+
+    @test all(um.data .≈ us.data)
+    @test all(vm.data .≈ vs.data)
+    @test all(wm.data .≈ ws.data)
+    @test all(um.data .≈ us.data)
 end
 
 @testset "ZStar coordinate simulation testset" begin
-    z_uniform   = MutableVerticalCoordinate((-20, 0))
-    z_stretched = MutableVerticalCoordinate(collect(-20:0))
+    z_uniform   = MutableVerticalDiscretization((-20, 0))
+    z_stretched = MutableVerticalDiscretization(collect(-20:0))
     topologies  = ((Periodic, Periodic, Bounded), 
                    (Periodic, Bounded, Bounded),
                    (Bounded, Periodic, Bounded),

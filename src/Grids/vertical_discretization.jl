@@ -10,7 +10,7 @@
 abstract type AbstractVerticalCoordinate end
 
 """
-    struct StaticVerticalCoordinate{C, D, E, F} <: AbstractVerticalCoordinate
+    struct StaticVerticalDiscretization{C, D, E, F} <: AbstractVerticalCoordinate
 
 Represent a static one-dimensional vertical coordinate.
 
@@ -22,14 +22,14 @@ Fields
 - `Δᶜ::E`: Cell-centered grid spacing.
 - `Δᶠ::F`: Face-centered grid spacing.
 """
-struct StaticVerticalCoordinate{C, D, E, F} <: AbstractVerticalCoordinate
+struct StaticVerticalDiscretization{C, D, E, F} <: AbstractVerticalCoordinate
     cᵃᵃᶠ :: C
     cᵃᵃᶜ :: D
     Δᵃᵃᶠ :: E
     Δᵃᵃᶜ :: F
 end
 
-struct MutableVerticalCoordinate{C, D, E, F, H, CC, FC, CF, FF} <: AbstractVerticalCoordinate
+struct MutableVerticalDiscretization{C, D, E, F, H, CC, FC, CF, FF} <: AbstractVerticalCoordinate
     cᵃᵃᶠ :: C
     cᵃᵃᶜ :: D
     Δᵃᵃᶠ :: E
@@ -44,46 +44,46 @@ struct MutableVerticalCoordinate{C, D, E, F, H, CC, FC, CF, FF} <: AbstractVerti
 end
 
 """
-    MutableVerticalCoordinate(r_faces)
+    MutableVerticalDiscretization(r_faces)
 
-Construct a `MutableVerticalCoordinate` from `r_faces` that can be a `Tuple`, a function of an index `k`,
-or an `AbstractArray`. A `MutableVerticalCoordinate` is a vertical coordinate that might evolve in time
-following certain rules. Examples of `MutableVerticalCoordinate`s are free-surface following coordinates, 
+Construct a `MutableVerticalDiscretization` from `r_faces` that can be a `Tuple`, a function of an index `k`,
+or an `AbstractArray`. A `MutableVerticalDiscretization` defines a vertical coordinate that might evolve in time
+following certain rules. Examples of `MutableVerticalDiscretization`s are free-surface following coordinates, 
 or sigma coordinates.
 """
-MutableVerticalCoordinate(r_faces) = MutableVerticalCoordinate(r_faces, r_faces, [nothing for i in 1:9]...)
+MutableVerticalDiscretization(r_faces) = MutableVerticalDiscretization(r_faces, r_faces, [nothing for i in 1:9]...)
 
 ####
 #### Some useful aliases
 ####
 
-const RegularStaticVerticalCoordinate  = StaticVerticalCoordinate{<:Any, <:Any, <:Number}
-const RegularMutableVerticalCoordinate = MutableVerticalCoordinate{<:Any,  <:Any, <:Number}
+const RegularStaticVerticalDiscretization  = StaticVerticalDiscretization{<:Any, <:Any, <:Number}
+const RegularMutableVerticalDiscretization = MutableVerticalDiscretization{<:Any,  <:Any, <:Number}
 
-const RegularVerticalCoordinate = Union{RegularStaticVerticalCoordinate, RegularMutableVerticalCoordinate}
+const RegularVerticalCoordinate = Union{RegularStaticVerticalDiscretization, RegularMutableVerticalDiscretization}
 
-const AbstractMutableGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Bounded, <:MutableVerticalCoordinate}
-const AbstractStaticGrid  = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,     <:StaticVerticalCoordinate}
+const AbstractMutableGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Bounded, <:MutableVerticalDiscretization}
+const AbstractStaticGrid  = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,     <:StaticVerticalDiscretization}
 const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,     <:RegularVerticalCoordinate}
 
 ####
 #### Adapt and on_architecture
 ####
 
-Adapt.adapt_structure(to, coord::StaticVerticalCoordinate) =
-    StaticVerticalCoordinate(Adapt.adapt(to, coord.cᵃᵃᶠ),
+Adapt.adapt_structure(to, coord::StaticVerticalDiscretization) =
+    StaticVerticalDiscretization(Adapt.adapt(to, coord.cᵃᵃᶠ),
                              Adapt.adapt(to, coord.cᵃᵃᶜ),
                              Adapt.adapt(to, coord.Δᵃᵃᶠ),
                              Adapt.adapt(to, coord.Δᵃᵃᶜ))
 
-on_architecture(arch, coord::StaticVerticalCoordinate) = 
-    StaticVerticalCoordinate(on_architecture(arch, coord.cᵃᵃᶠ),
+on_architecture(arch, coord::StaticVerticalDiscretization) = 
+    StaticVerticalDiscretization(on_architecture(arch, coord.cᵃᵃᶠ),
                              on_architecture(arch, coord.cᵃᵃᶜ),
                              on_architecture(arch, coord.Δᵃᵃᶠ),
                              on_architecture(arch, coord.Δᵃᵃᶜ))
 
-Adapt.adapt_structure(to, coord::MutableVerticalCoordinate) = 
-    MutableVerticalCoordinate(Adapt.adapt(to, coord.cᵃᵃᶠ),
+Adapt.adapt_structure(to, coord::MutableVerticalDiscretization) = 
+    MutableVerticalDiscretization(Adapt.adapt(to, coord.cᵃᵃᶠ),
                               Adapt.adapt(to, coord.cᵃᵃᶜ),
                               Adapt.adapt(to, coord.Δᵃᵃᶠ),
                               Adapt.adapt(to, coord.Δᵃᵃᶜ),
@@ -95,8 +95,8 @@ Adapt.adapt_structure(to, coord::MutableVerticalCoordinate) =
                               Adapt.adapt(to, coord.σᶜᶜ⁻),
                               Adapt.adapt(to, coord.∂t_σ))
 
-on_architecture(arch, coord::MutableVerticalCoordinate) = 
-    MutableVerticalCoordinate(on_architecture(arch, coord.cᵃᵃᶠ),
+on_architecture(arch, coord::MutableVerticalDiscretization) = 
+    MutableVerticalDiscretization(on_architecture(arch, coord.cᵃᵃᶠ),
                               on_architecture(arch, coord.cᵃᵃᶜ),
                               on_architecture(arch, coord.Δᵃᵃᶠ),
                               on_architecture(arch, coord.Δᵃᵃᶜ),
@@ -155,27 +155,27 @@ z_domain(grid) = domain(topology(grid, 3)(), grid.Nz, grid.z.cᵃᵃᶠ)
 end
 
 @inline cpu_face_constructor_z(grid) = cpu_face_constructor_r(grid)
-@inline cpu_face_constructor_z(grid::AbstractMutableGrid) = MutableVerticalCoordinate(cpu_face_constructor_r(grid))
+@inline cpu_face_constructor_z(grid::AbstractMutableGrid) = MutableVerticalDiscretization(cpu_face_constructor_r(grid))
 
 ####
 #### Utilities
 ####
 
-function validate_dimension_specification(T, ξ::MutableVerticalCoordinate, dir, N, FT)
+function validate_dimension_specification(T, ξ::MutableVerticalDiscretization, dir, N, FT)
     cᶠ = validate_dimension_specification(T, ξ.cᵃᵃᶠ, dir, N, FT)
     cᶜ = validate_dimension_specification(T, ξ.cᵃᵃᶜ, dir, N, FT)
     args = Tuple(getproperty(ξ, prop) for prop in propertynames(ξ))
 
-    return MutableVerticalCoordinate(cᶠ, cᶜ, args[3:end]...)
+    return MutableVerticalDiscretization(cᶠ, cᶜ, args[3:end]...)
 end
 
 # Summaries
-coordinate_summary(topo, z::StaticVerticalCoordinate, name) = coordinate_summary(topo, z.Δᵃᵃᶜ, name)
+coordinate_summary(topo, z::StaticVerticalDiscretization, name) = coordinate_summary(topo, z.Δᵃᵃᶜ, name)
 
-coordinate_summary(::Bounded, z::RegularMutableVerticalCoordinate, name) = 
+coordinate_summary(::Bounded, z::RegularMutableVerticalDiscretization, name) = 
     @sprintf("regularly spaced with Δr=%s (mutable)", prettysummary(z.Δᵃᵃᶜ))
 
-coordinate_summary(::Bounded, z::MutableVerticalCoordinate, name) = 
+coordinate_summary(::Bounded, z::MutableVerticalDiscretization, name) = 
     @sprintf("variably spaced with min(Δr)=%s, max(Δr)=%s (mutable)", 
              prettysummary(minimum(z.Δᵃᵃᶜ)), 
              prettysummary(maximum(z.Δᵃᵃᶜ)))
