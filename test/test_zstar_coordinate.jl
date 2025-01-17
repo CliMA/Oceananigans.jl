@@ -81,39 +81,41 @@ const F = Face
     @test column_depthᶜᶜᵃ(2, 1, grid) == 12
     @test  static_column_depthᶜᶜᵃ(1, 1, grid) == 10
     @test  static_column_depthᶜᶜᵃ(2, 1, grid) == 10
+end
+
+@testset "MutableVerticalDiscretization tests" begin
+    @info "testing the MutableVerticalDiscretization in ZCoordinate mode"
+
+    z = MutableVerticalDiscretization((-20, 0))
+
+    # A mutable immersed grid
+    mutable_grid = RectilinearGrid(size=(2, 2, 20), x=(0, 2), y=(0, 1), z=z)
+    mutable_grid = ImmersedBoundaryGrid(mutable_grid, GridFittedBottom((x, y) -> -10))
+
+    # A static immersed grid
+    static_grid = RectilinearGrid(size=(2, 2, 20), x=(0, 2), y=(0, 1), z=(-20, 0))
+    static_grid = ImmersedBoundaryGrid(static_grid, GridFittedBottom((x, y) -> -10))
 
     # Make sure a model with a MutableVerticalDiscretization but ZCoordinate still runs and 
     # the results are the same as a model with a static vertical discretization.
-    model_mutable = HydrostaticFreeSurfaceModel(; grid, free_surface = SplitExplicitFreeSurface(grid; substeps=20))
-    um, vm, _ = model.velocities
+    mutable_model = HydrostaticFreeSurfaceModel(; grid=mutable_grid, free_surface=ImplicitFreeSurface())
+    static_model  = HydrostaticFreeSurfaceModel(; grid=static_grid,  free_surface=ImplicitFreeSurface())
 
-    u = [rand() for i in 1:size(um, 1), j in 1:size(um, 2), k in 1:size(um, 3)]
-    v = [rand() for i in 1:size(vm, 1), j in 1:size(vm, 2), k in 1:size(vm, 3)]
+    uᵢ = rand(size(mutable_model.velocities.u)...)
+    vᵢ = rand(size(mutable_model.velocities.v)...)
 
-    set!(model_mutable; u, v)
+    set!(mutable_model; u=uᵢ, v=vᵢ)
+    set!(static_model;  u=uᵢ, v=vᵢ)
+
+    static_sim  = Simulation(static_model;  Δt=1e-3, stop_iteration=100)
+    mutable_sim = Simulation(mutable_model; Δt=1e-3, stop_iteration=100)         
     
-    for _ in 1:100
-        time_step!(model, 1e-3)
-    end
+    run!(mutable_sim)
+    run!(static_sim)
 
-    # A static grid
-    grid = RectilinearGrid(size = (2, 2, 20), 
-                              x = (0, 2), 
-                              y = (0, 1), 
-                              z = (-20, 0), 
-                          topology = (Bounded, Periodic, Bounded))
-
-    grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> -10))
-
-    model_static = HydrostaticFreeSurfaceModel(; grid, free_surface=SplitExplicitFreeSurface(grid; substeps=20))
-    
-    for _ in 1:100
-        time_step!(model_static, 1e-3)
-    end
-    
     # Check that fields are the same
-    um, vm, wm = model_mutable.velocities
-    us, vs, ws = model_static.velocities
+    um, vm, wm = mutable_model.velocities
+    us, vs, ws = static_model.velocities
 
     @test all(um.data .≈ us.data)
     @test all(vm.data .≈ vs.data)
