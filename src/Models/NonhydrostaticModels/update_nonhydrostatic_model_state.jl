@@ -62,6 +62,7 @@ function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = p_kerne
     grid = model.grid
     closure = model.closure
     diffusivity = model.diffusivity_fields
+    tracers = model.tracers
 
     # Compute diffusivities
     compute_diffusivities!(diffusivity, closure, model; parameters = κ_parameters)
