@@ -45,7 +45,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
           diffusivity_fields :: K        # Container for turbulent diffusivities
                  timestepper :: TS       # Object containing timestepper fields and parameters
             auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
-         vertical_coordinate :: Z        # Possible grid time-evolution, choices are `ZCoordinate` (static grid) or `ZStar`
+         vertical_coordinate :: Z        # Rulesets that define the time-evolution of the grid
 end
 
 default_free_surface(grid::XYRegularRG; gravitational_acceleration=g_Earth) =
@@ -105,6 +105,7 @@ Keyword arguments
   - `pressure`: Hydrostatic pressure field. Default: `nothing`.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
+  - `vertical_coordinate`: Rulesets that define the time-evolution of the grid (ZStar/ZCoordinate). Default: `ZCoordinate()`.
 """
 function HydrostaticFreeSurfaceModel(; grid,
                                      clock = Clock{eltype(grid)}(time = 0),
@@ -128,6 +129,10 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
+
+    if !(grid isa MutableGridOfSomeKind) && (vertical_coordinate isa ZStar)
+        error("The grid does not support ZStar vertical coordinates. Use a `MutableVerticalCoordinate` to allow the use of ZStar (see `MutableVerticalCoordinate`).")
+    end
 
     # Validate biogeochemistry (add biogeochemical tracers automagically)
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)

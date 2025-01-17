@@ -86,7 +86,7 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
 
     # Update the grid and unscale the tracers
     update_grid!(model, grid, model.vertical_coordinate; parameters = w_parameters)
-    unscale_tracers!(tracers, grid, model.vertical_coordinate; parameters = w_parameters)
+    unscale_tracers!(tracers, grid; parameters = w_parameters)
 
     # Advance diagnostic quantities
     compute_w_from_continuity!(model; parameters = w_parameters)

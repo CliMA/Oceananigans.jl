@@ -1,7 +1,7 @@
 import Oceananigans.Grids: znode, AbstractMutableGrid
 
 #####
-##### ZStar-specific vertical spacing functions
+##### MutableVerticalCoordinate-specific vertical spacing functions
 #####
 
 const C = Center

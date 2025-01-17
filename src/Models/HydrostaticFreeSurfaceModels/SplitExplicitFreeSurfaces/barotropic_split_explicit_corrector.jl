@@ -20,8 +20,8 @@ end
     Hᶜᶠ = column_depthᶜᶠᵃ(i, j, k_top, grid, η)
 
     # If the static depths are zero (i.e. the column is immersed), 
-    # we set the grid scaling factor to 1 because we do not really have a free 
-    # surface on an immersed column (η == 0)
+    # we set the grid scaling factor to 1 
+    # (There is no free surface on an immersed column (η == 0))
     σᶠᶜ = ifelse(hᶠᶜ == 0, one(grid), Hᶠᶜ / hᶠᶜ)
     σᶜᶠ = ifelse(hᶜᶠ == 0, one(grid), Hᶜᶠ / hᶜᶠ)
 

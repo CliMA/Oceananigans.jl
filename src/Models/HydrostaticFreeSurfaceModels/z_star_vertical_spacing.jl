@@ -5,9 +5,6 @@ using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
 ##### Mutable-specific vertical spacings update
 #####
 
-struct ZCoordinate end
-struct ZStar end
-
 # The easy case
 barotropic_velocities(free_surface::SplitExplicitFreeSurface) = free_surface.barotropic_velocities
 
@@ -115,7 +112,7 @@ end
 end
 
 #####
-##### Mutable-specific implementation of the additional terms to be included in the momentum equations
+##### ZStar-specific implementation of the additional terms to be included in the momentum equations
 #####
 
 # Fallbacks

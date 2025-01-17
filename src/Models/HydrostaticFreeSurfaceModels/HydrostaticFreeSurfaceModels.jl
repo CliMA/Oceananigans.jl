@@ -23,6 +23,9 @@ using Oceananigans.TimeSteppers: SplitRungeKutta3TimeStepper, QuasiAdamsBashfort
 
 abstract type AbstractFreeSurface{E, G} end
 
+struct ZCoordinate end
+struct ZStar end
+
 # This is only used by the cubed sphere for now.
 fill_horizontal_velocity_halos!(args...) = nothing
 

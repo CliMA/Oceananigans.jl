@@ -173,9 +173,9 @@ end
 coordinate_summary(topo, z::StaticVerticalCoordinate, name) = coordinate_summary(topo, z.Δᵃᵃᶜ, name)
 
 coordinate_summary(::Bounded, z::RegularMutableVerticalCoordinate, name) = 
-    @sprintf("mutable regularly spaced with Δr=%s", prettysummary(z.Δᵃᵃᶜ))
+    @sprintf("regularly spaced with Δr=%s (mutable)", prettysummary(z.Δᵃᵃᶜ))
 
 coordinate_summary(::Bounded, z::MutableVerticalCoordinate, name) = 
-    @sprintf("mutable with min(Δr)=%s, max(Δr)=%s", 
+    @sprintf("variably spaced with min(Δr)=%s, max(Δr)=%s (mutable)", 
              prettysummary(minimum(z.Δᵃᵃᶜ)), 
              prettysummary(maximum(z.Δᵃᵃᶜ)))
