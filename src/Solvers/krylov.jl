@@ -12,6 +12,16 @@ function KrylovField(field::F) where F <: AbstractField
     return KrylovField{T,F}(field)
 end
 
+function Base.similar(kf::KrylovField)
+    field = similar(kf.field)
+    KrylovField(field)
+end
+
+function Base.isempty(kf::KrylovField)
+    bool = isempty(kf.field)
+    return bool
+end
+
 Base.size(kf::KrylovField) = size(kf.field)
 Base.length(kf::KrylovField) = length(kf.field)
 Base.getindex(kf::KrylovField, i::Int) = getindex(kf.field, i)
@@ -53,7 +63,7 @@ function Krylov.kref!(n::Integer, x::KrylovField, y::KrylovField, c, s)
                 x_ijk = _x[i,j,k]
                 y_ijk = _y[i,j,k]
                 _x[i,j,k] = c       * x_ijk + s * y_ijk
-                _x[i,j,k] = conj(s) * x_ijk - c * y_ijk
+                _y[i,j,k] = conj(s) * x_ijk - c * y_ijk
             end
         end
     end
@@ -77,7 +87,6 @@ end
 
 # kdot(n::Integer, x::Field, dx::Integer, y::Field, dy::Integer) = dot(x, y)
 # knrm2(n::Integer, x::Field, dx::Integer) = norm(x)
-# kcopy!(n::Integer, x::Field, dx::Integer, y::Field, dy :: Integer) =
 
 # function kaxpy!(n::Integer, s::F, a::Field, dx::Integer, y::Field, dy::Integer) where F<:AbstractFloat
 #     grid = a.grid
