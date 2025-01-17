@@ -152,27 +152,27 @@ function generate_coordinate(FT, ::Flat, N, H, ::Nothing, coordinate_name, arch)
 end    
 
 #####
-##### ZStarVerticalCoordinate
+##### MutableVerticalCoordinate
 #####
 
-generate_coordinate(FT, ::Periodic, N, H, ::ZStarVerticalCoordinate, coordinate_name, arch, args...) = 
-    throw(ArgumentError("Periodic domains are not supported for ZStarVerticalCoordinate"))
+generate_coordinate(FT, ::Periodic, N, H, ::MutableVerticalCoordinate, coordinate_name, arch, args...) = 
+    throw(ArgumentError("Periodic domains are not supported for MutableVerticalCoordinate"))
 
 # Generate a vertical coordinate with a scaling (`σ`) with respect to a reference coordinate `r` with spacing `Δr`.
 # The grid might move with time, so the coordinate includes the time-derivative of the scaling `∂t_σ`.
 # The value of the vertical coordinate at `Nz+1` is saved in `ηⁿ`.
-function generate_coordinate(FT, topo, size, halo, coordinate::ZStarVerticalCoordinate, coordinate_name, dim::Int, arch)
+function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalCoordinate, coordinate_name, dim::Int, arch)
 
     Nx, Ny, Nz = size
     Hx, Hy, Hz = halo
 
     if dim != 3 
-        msg = "ZStarVerticalCoordinate is supported only in the third dimension (z)"
+        msg = "MutableVerticalCoordinate is supported only in the third dimension (z)"
         throw(ArgumentError(msg))
     end
 
     if coordinate_name != :z
-        msg = "ZStarVerticalCoordinate is supported only for the z-coordinate"
+        msg = "MutableVerticalCoordinate is supported only for the z-coordinate"
         throw(ArgumentError(msg))
     end
 
@@ -195,5 +195,5 @@ function generate_coordinate(FT, topo, size, halo, coordinate::ZStarVerticalCoor
         fill!(σ, 1)
     end
     
-    return Lr, ZStarVerticalCoordinate(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
+    return Lr, MutableVerticalCoordinate(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
 end

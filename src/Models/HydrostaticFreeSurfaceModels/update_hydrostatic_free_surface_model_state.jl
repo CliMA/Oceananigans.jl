@@ -86,7 +86,7 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
     arch = architecture(grid) 
 
     # Update the grid and unscale the tracers
-    update_grid!(model, grid; parameters = w_parameters)
+    update_grid!(model, grid, model.vertical_coordinate; parameters = w_parameters)
     unscale_tracers!(tracers, grid; parameters = w_parameters)
 
     # Maybe compute buoyancy gradients

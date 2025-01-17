@@ -47,7 +47,7 @@ const F = Face
 @testset "ZStar coordinate scaling tests" begin
     @info "testing the ZStar coordinate scalings"
 
-    z = ZStarVerticalCoordinate((-20, 0))
+    z = MutableVerticalCoordinate((-20, 0))
 
     grid = RectilinearGrid(size = (2, 2, 20), 
                               x = (0, 2), 
@@ -57,7 +57,9 @@ const F = Face
 
     grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> -10))
 
-    model = HydrostaticFreeSurfaceModel(; grid, free_surface = SplitExplicitFreeSurface(grid; substeps = 20))
+    model = HydrostaticFreeSurfaceModel(; grid, 
+                                          free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
+                                          vertical_coordinate = ZStar())
 
     @test znode(1, 1, 21, grid, C(), C(), F()) == 0
     @test column_depthᶜᶜᵃ(1, 1, grid) == 10
@@ -77,11 +79,19 @@ const F = Face
     @test column_depthᶜᶜᵃ(2, 1, grid) == 12
     @test  static_column_depthᶜᶜᵃ(1, 1, grid) == 10
     @test  static_column_depthᶜᶜᵃ(2, 1, grid) == 10
+
+    # Make sure a model with a MutableVerticalCoordinate but ZCoordinate still runs
+    model = HydrostaticFreeSurfaceModel(; grid, free_surface = SplitExplicitFreeSurface(grid; substeps = 20))
+
+    @test begin
+        time_step!(model, 1.0)
+        true
+    end
 end
 
 @testset "ZStar coordinate simulation testset" begin
-    z_uniform   = ZStarVerticalCoordinate((-20, 0))
-    z_stretched = ZStarVerticalCoordinate(collect(-20:0))
+    z_uniform   = MutableVerticalCoordinate((-20, 0))
+    z_stretched = MutableVerticalCoordinate(collect(-20:0))
     topologies  = ((Periodic, Periodic, Bounded), 
                    (Periodic, Bounded, Bounded),
                    (Bounded, Periodic, Bounded),
@@ -140,7 +150,8 @@ end
                         model = HydrostaticFreeSurfaceModel(; grid, 
                                                             free_surface, 
                                                             tracers = (:b, :c), 
-                                                            buoyancy = BuoyancyTracer())
+                                                            buoyancy = BuoyancyTracer(),
+                                                            vertical_coordinate = ZStar())
 
                         bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01 
 

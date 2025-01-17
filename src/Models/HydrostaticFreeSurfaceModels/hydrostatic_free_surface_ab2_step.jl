@@ -109,7 +109,7 @@ ab2_step_tracer_field!(tracer_field, grid, Δt, χ, Gⁿ, G⁻) =
     launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, Δt, χ, Gⁿ, G⁻)
 
 #####
-##### Tracer update in generalized vertical coordinates 
+##### Tracer update in mutable vertical coordinates 
 #####
 
 # σθ is the evolved quantity. Once σⁿ⁺¹ is known we can retrieve θⁿ⁺¹
@@ -127,11 +127,12 @@ ab2_step_tracer_field!(tracer_field, grid, Δt, χ, Gⁿ, G⁻) =
     @inbounds begin
         ∂t_σθ = α * σᶜᶜⁿ * Gⁿ[i, j, k] - β * σᶜᶜ⁻ * G⁻[i, j, k]
         
-        # We store temporarily sθ in θ. The unscaled θ will be retrieved with `unscale_tracers!`
+        # We store temporarily σθ in θ. 
+        # The unscaled θ will be retrieved with `unscale_tracers!`
         θ[i, j, k] = σᶜᶜⁿ * θ[i, j, k] + convert(FT, Δt) * ∂t_σθ
     end
 end
 
 # Fallback! We need to unscale the tracers only in case of 
-# a grid with a moving vertical coordinate, i.e. where σ is not constant
+# a grid with a mutable vertical coordinate, i.e. where `σ != 1`
 unscale_tracers!(tracers, grid; kwargs...) = nothing

@@ -1,8 +1,8 @@
 using Oceananigans.Grids
-using Oceananigans.ImmersedBoundaries: ZStarGridOfSomeKind
+using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
 
 #####
-##### ZStar-specific vertical spacings update
+##### Mutable-specific vertical spacings update
 #####
 
 # The easy case
@@ -12,9 +12,9 @@ barotropic_velocities(free_surface::SplitExplicitFreeSurface) = free_surface.bar
 barotropic_velocities(free_surface) = nothing, nothing
 
 # Fallback 
-update_grid!(model, grid; parameters) = nothing
+update_grid!(model, grid, ztype; parameters) = nothing
 
-function update_grid!(model::HydrostaticFreeSurfaceModel, grid::ZStarGridOfSomeKind; parameters = :xy)
+function update_grid!(model, grid::MutableGridOfSomeKind, ::ZStar; parameters = :xy)
 
     # Scalings and free surface
     σᶜᶜ⁻  = grid.z.σᶜᶜ⁻
@@ -116,19 +116,19 @@ end
 #####
 
 # Fallbacks
-@inline grid_slope_contribution_x(i, j, k, grid, buoyancy, model_fields) = zero(grid)
-@inline grid_slope_contribution_y(i, j, k, grid, buoyancy, model_fields) = zero(grid)
+@inline grid_slope_contribution_x(i, j, k, grid, buoyancy, ztype, model_fields) = zero(grid)
+@inline grid_slope_contribution_y(i, j, k, grid, buoyancy, ztype, model_fields) = zero(grid)
 
-@inline grid_slope_contribution_x(i, j, k, grid::ZStarGridOfSomeKind, ::Nothing, model_fields) = zero(grid)
-@inline grid_slope_contribution_y(i, j, k, grid::ZStarGridOfSomeKind, ::Nothing, model_fields) = zero(grid)
+@inline grid_slope_contribution_x(i, j, k, grid::MutableGridOfSomeKind, ::Nothing, ::ZStar, model_fields) = zero(grid)
+@inline grid_slope_contribution_y(i, j, k, grid::MutableGridOfSomeKind, ::Nothing, ::ZStar, model_fields) = zero(grid)
 
 @inline ∂x_z(i, j, k, grid) = @inbounds ∂xᶠᶜᶜ(i, j, k, grid, znode, Center(), Center(), Center())
 @inline ∂y_z(i, j, k, grid) = @inbounds ∂yᶜᶠᶜ(i, j, k, grid, znode, Center(), Center(), Center())
 
-@inline grid_slope_contribution_x(i, j, k, grid::ZStarGridOfSomeKind, buoyancy, model_fields) = 
+@inline grid_slope_contribution_x(i, j, k, grid::MutableGridOfSomeKind, buoyancy, ::ZStar, model_fields) = 
     ℑxᶠᵃᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, model_fields) * ∂x_z(i, j, k, grid)
 
-@inline grid_slope_contribution_y(i, j, k, grid::ZStarGridOfSomeKind, buoyancy, model_fields) = 
+@inline grid_slope_contribution_y(i, j, k, grid::MutableGridOfSomeKind, buoyancy, ::ZStar, model_fields) = 
     ℑyᵃᶠᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, model_fields) * ∂y_z(i, j, k, grid)
 
 ####
@@ -137,9 +137,9 @@ end
 
 const EmptyTuples = Union{NamedTuple{(), Tuple{}}, Tuple{}}
 
-unscale_tracers!(::EmptyTuples, ::ZStarGridOfSomeKind; kwargs...) = nothing
+unscale_tracers!(::EmptyTuples, ::MutableGridOfSomeKind; kwargs...) = nothing
 
-function unscale_tracers!(tracers, grid::ZStarGridOfSomeKind; parameters = :xy) 
+function unscale_tracers!(tracers, grid::MutableGridOfSomeKind; parameters = :xy) 
 
     for tracer in tracers
         launch!(architecture(grid), grid, parameters, _unscale_tracer!, 
