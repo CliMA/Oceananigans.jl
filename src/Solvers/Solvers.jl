@@ -19,6 +19,7 @@ using Oceananigans.Utils
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
+using Oceananigans.Fields: condition_operand
 
 using Oceananigans.Grids: unpack_grid, inactive_cell
 using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
