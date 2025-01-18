@@ -1,8 +1,8 @@
 using Oceananigans.Grids
-using Oceananigans.ImmersedBoundaries: ZStarGridOfSomeKind
+using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
 
 #####
-##### ZStar-specific vertical spacings update
+##### Mutable-specific vertical spacings update
 #####
 
 # The easy case
@@ -12,9 +12,9 @@ barotropic_velocities(free_surface::SplitExplicitFreeSurface) = free_surface.bar
 barotropic_velocities(free_surface) = nothing, nothing
 
 # Fallback 
-update_grid!(model, grid; parameters) = nothing
+update_grid!(model, grid, ztype; parameters) = nothing
 
-function update_grid!(model, grid::ZStarGridOfSomeKind; parameters = :xy)
+function update_grid!(model, grid::MutableGridOfSomeKind, ::ZStar; parameters = :xy)
 
     # Scalings and free surface
     σᶜᶜ⁻  = grid.z.σᶜᶜ⁻
@@ -50,10 +50,10 @@ end
     hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
     hᶠᶠ = static_column_depthᶠᶠᵃ(i, j, grid)
 
-    Hᶜᶜ = dynamic_column_depthᶜᶜᵃ(i, j, k_top, grid, η)
-    Hᶠᶜ = dynamic_column_depthᶠᶜᵃ(i, j, k_top, grid, η)
-    Hᶜᶠ = dynamic_column_depthᶜᶠᵃ(i, j, k_top, grid, η)
-    Hᶠᶠ = dynamic_column_depthᶠᶠᵃ(i, j, k_top, grid, η)
+    Hᶜᶜ = column_depthᶜᶜᵃ(i, j, k_top, grid, η)
+    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, k_top, grid, η)
+    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, k_top, grid, η)
+    Hᶠᶠ = column_depthᶠᶠᵃ(i, j, k_top, grid, η)
 
     @inbounds begin
         σᶜᶜ = ifelse(hᶜᶜ == 0, one(grid), Hᶜᶜ / hᶜᶜ)
@@ -116,19 +116,19 @@ end
 #####
 
 # Fallbacks
-@inline grid_slope_contribution_x(i, j, k, grid, buoyancy, model_fields) = zero(grid)
-@inline grid_slope_contribution_y(i, j, k, grid, buoyancy, model_fields) = zero(grid)
+@inline grid_slope_contribution_x(i, j, k, grid, buoyancy, ztype, model_fields) = zero(grid)
+@inline grid_slope_contribution_y(i, j, k, grid, buoyancy, ztype, model_fields) = zero(grid)
 
-@inline grid_slope_contribution_x(i, j, k, grid::ZStarGridOfSomeKind, ::Nothing, model_fields) = zero(grid)
-@inline grid_slope_contribution_y(i, j, k, grid::ZStarGridOfSomeKind, ::Nothing, model_fields) = zero(grid)
+@inline grid_slope_contribution_x(i, j, k, grid::MutableGridOfSomeKind, ::Nothing, ::ZStar, model_fields) = zero(grid)
+@inline grid_slope_contribution_y(i, j, k, grid::MutableGridOfSomeKind, ::Nothing, ::ZStar, model_fields) = zero(grid)
 
 @inline ∂x_z(i, j, k, grid) = @inbounds ∂xᶠᶜᶜ(i, j, k, grid, znode, Center(), Center(), Center())
 @inline ∂y_z(i, j, k, grid) = @inbounds ∂yᶜᶠᶜ(i, j, k, grid, znode, Center(), Center(), Center())
 
-@inline grid_slope_contribution_x(i, j, k, grid::ZStarGridOfSomeKind, buoyancy, model_fields) = 
+@inline grid_slope_contribution_x(i, j, k, grid::MutableGridOfSomeKind, buoyancy, ::ZStar, model_fields) = 
     ℑxᶠᵃᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, model_fields) * ∂x_z(i, j, k, grid)
 
-@inline grid_slope_contribution_y(i, j, k, grid::ZStarGridOfSomeKind, buoyancy, model_fields) = 
+@inline grid_slope_contribution_y(i, j, k, grid::MutableGridOfSomeKind, buoyancy, ::ZStar, model_fields) = 
     ℑyᵃᶠᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, model_fields) * ∂y_z(i, j, k, grid)
 
 ####
@@ -137,24 +137,22 @@ end
 
 const EmptyTuples = Union{NamedTuple{(), Tuple{}}, Tuple{}}
 
-unscale_tracers!(::EmptyTuples, ::ZStarGridOfSomeKind; kwargs...) = nothing
+unscale_tracers!(::EmptyTuples, ::MutableGridOfSomeKind; kwargs...) = nothing
 
-tracer_scaling_parameters(param::Symbol, tracers, grid) = KernelParameters((size(grid, 1), size(grid, 2), length(tracers)), (0, 0, 0))
-tracer_scaling_parameters(param::KernelParameters{S, O}, tracers, grid) where {S, O} = KernelParameters((S..., length(tracers)), (O..., 0))
+function unscale_tracers!(tracers, grid::MutableGridOfSomeKind; parameters = :xy) 
 
-function unscale_tracers!(tracers, grid::ZStarGridOfSomeKind; parameters = :xy) 
-    parameters = tracer_scaling_parameters(parameters, tracers, grid)
-    
-    launch!(architecture(grid), grid, parameters, _unscale_tracers!, tracers, grid, 
-            Val(grid.Hz), Val(grid.Nz))
+    for tracer in tracers
+        launch!(architecture(grid), grid, parameters, _unscale_tracer!, 
+                tracer, grid, Val(grid.Hz), Val(grid.Nz))
+    end
     
     return nothing
 end
     
-@kernel function _unscale_tracers!(tracers, grid, ::Val{Hz}, ::Val{Nz}) where {Hz, Nz}
-    i, j, n = @index(Global, NTuple)
+@kernel function _unscale_tracer!(tracer, grid, ::Val{Hz}, ::Val{Nz}) where {Hz, Nz}
+    i, j = @index(Global, NTuple)
 
     @unroll for k in -Hz+1:Nz+Hz
-        tracers[n][i, j, k] /= σⁿ(i, j, k, grid, Center(), Center(), Center())
+        tracer[i, j, k] /= σⁿ(i, j, k, grid, Center(), Center(), Center())
     end
 end

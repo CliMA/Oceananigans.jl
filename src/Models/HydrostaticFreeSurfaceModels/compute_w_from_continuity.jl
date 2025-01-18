@@ -19,8 +19,7 @@ compute_w_from_continuity!(model; kwargs...) =
 compute_w_from_continuity!(velocities, arch, grid; parameters = w_kernel_parameters(grid)) = 
     launch!(arch, grid, parameters, _compute_w_from_continuity!, velocities, grid)
 
-######################################################
-# The derivative of the moving grid is:
+# If the grid is following the free surface, then the derivative of the moving grid is:
 #
 #            δx(Δy U) + δy(Δx V)       ∇ ⋅ U
 # ∂t_σ = - --------------------- = - --------
@@ -38,14 +37,14 @@ compute_w_from_continuity!(velocities, arch, grid; parameters = w_kernel_paramet
 #  wᴺᶻ⁺¹ = w⁰ - ------- - ∂t_σ ≈ 0 (if w⁰ == 0)
 #                  H   
 # 
-######################################################
+# If the grid is static, then ∂t_σ = 0 and the moving grid contribution is equal to zero
 @kernel function _compute_w_from_continuity!(U, grid)
     i, j = @index(Global, NTuple)
 
     @inbounds U.w[i, j, 1] = 0
     for k in 2:grid.Nz+1
         δh_u = flux_div_xyᶜᶜᶜ(i, j, k-1, grid, U.u, U.v) / Azᶜᶜᶜ(i, j, k-1, grid) 
-        ∂tσ = Δrᶜᶜᶜ(i, j, k-1, grid) * ∂t_σ(i, j, k-1, grid)
+        ∂tσ  = Δrᶜᶜᶜ(i, j, k-1, grid) * ∂t_σ(i, j, k-1, grid)
 
         immersed = immersed_cell(i, j, k-1, grid)
         Δw       = δh_u + ifelse(immersed, zero(grid), ∂tσ) # We do not account for grid changes in immersed cells

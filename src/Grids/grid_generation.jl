@@ -88,7 +88,7 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
     C = OffsetArray(on_architecture(arch, C.parent), C.offsets...)
 
     if coordinate_name == :z
-        return L, StaticVerticalCoordinate(F, C, Δᶠ, Δᶜ)
+        return L, StaticVerticalDiscretization(F, C, Δᶠ, Δᶜ)
     else    
         return L, F, C, Δᶠ, Δᶜ
     end
@@ -128,7 +128,7 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
     C = OffsetArray(C, -H)
 
     if coordinate_name == :z
-        return FT(L), StaticVerticalCoordinate(F, C, FT(Δᶠ), FT(Δᶜ))
+        return FT(L), StaticVerticalDiscretization(F, C, FT(Δᶠ), FT(Δᶜ))
     else    
         return FT(L), F, C, FT(Δᶠ), FT(Δᶜ)
     end
@@ -137,7 +137,7 @@ end
 # Flat domains
 function generate_coordinate(FT, ::Flat, N, H, c::Number, coordinate_name, arch) 
     if coordinate_name == :z
-        return FT(1), StaticVerticalCoordinate(range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1))
+        return FT(1), StaticVerticalDiscretization(range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1))
     else    
         return FT(1), range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1)
     end
@@ -148,32 +148,34 @@ end
 #     FT(1), c, c, FT(1), FT(1)
 function generate_coordinate(FT, ::Flat, N, H, ::Nothing, coordinate_name, arch) 
     if coordinate_name == :z
-        return FT(1), StaticVerticalCoordinate(nothing, nothing, FT(1), FT(1))
+        return FT(1), StaticVerticalDiscretization(nothing, nothing, FT(1), FT(1))
     else    
         return FT(1), nothing, nothing, FT(1), FT(1)
     end
 end    
 
 #####
-##### ZStarVerticalCoordinate
+##### MutableVerticalDiscretization
 #####
 
-generate_coordinate(FT, ::Periodic, N, H, ::ZStarVerticalCoordinate, coordinate_name, arch, args...) = 
-    throw(ArgumentError("Periodic domains are not supported for ZStarVerticalCoordinate"))
+generate_coordinate(FT, ::Periodic, N, H, ::MutableVerticalDiscretization, coordinate_name, arch, args...) = 
+    throw(ArgumentError("Periodic domains are not supported for MutableVerticalDiscretization"))
 
-# Generate a moving coordinate with evolving scaling (`σ`) for spacings and znodes
-function generate_coordinate(FT, topo, size, halo, coordinate::ZStarVerticalCoordinate, coordinate_name, dim::Int, arch)
+# Generate a vertical coordinate with a scaling (`σ`) with respect to a reference coordinate `r` with spacing `Δr`.
+# The grid might move with time, so the coordinate includes the time-derivative of the scaling `∂t_σ`.
+# The value of the vertical coordinate at `Nz+1` is saved in `ηⁿ`.
+function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDiscretization, coordinate_name, dim::Int, arch)
 
     Nx, Ny, Nz = size
     Hx, Hy, Hz = halo
 
     if dim != 3 
-        msg = "ZStarVerticalCoordinate is supported only in the third dimension (z)"
+        msg = "MutableVerticalDiscretization is supported only in the third dimension (z)"
         throw(ArgumentError(msg))
     end
 
     if coordinate_name != :z
-        msg = "ZStarVerticalCoordinate is supported only for the z-coordinate"
+        msg = "MutableVerticalDiscretization is supported only for the z-coordinate"
         throw(ArgumentError(msg))
     end
 
@@ -191,10 +193,10 @@ function generate_coordinate(FT, topo, size, halo, coordinate::ZStarVerticalCoor
     ηⁿ   = new_data(FT, arch, (Center, Center, Nothing), args...)
     ∂t_σ = new_data(FT, arch, (Center, Center, Nothing), args...)
 
-    # Fill all the scalings with one (at rest coordinate)
+    # Fill all the scalings with one for now (i.e. z == r)
     for σ in (σᶜᶜ⁻, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ)
         fill!(σ, 1)
     end
     
-    return Lr, ZStarVerticalCoordinate(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
+    return Lr, MutableVerticalDiscretization(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
 end

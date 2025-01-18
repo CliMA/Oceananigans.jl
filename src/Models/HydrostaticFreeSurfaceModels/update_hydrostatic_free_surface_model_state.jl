@@ -59,7 +59,7 @@ end
 
 # Mask immersed fields
 function mask_immersed_model_fields!(model, grid)
-    η = displacement(model.free_surface)
+    η = displacement(model.free_surface)    
     fields_to_mask = merge(model.auxiliary_fields, prognostic_fields(model))
 
     foreach(fields_to_mask) do field
@@ -68,7 +68,7 @@ function mask_immersed_model_fields!(model, grid)
         end
     end
     mask_immersed_field_xy!(η, k=size(grid, 3)+1)
-
+    
     return nothing
 end
 
@@ -86,11 +86,8 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
     arch = architecture(grid) 
 
     # Update the grid and unscale the tracers
-    update_grid!(model, grid; parameters = w_parameters)
+    update_grid!(model, grid, model.vertical_coordinate; parameters = w_parameters)
     unscale_tracers!(tracers, grid; parameters = w_parameters)
-
-    # Compute buoyancy gradients if necessary
-    compute_buoyancy_gradients!(buoyancy, grid, tracers; parameters = κ_parameters)
 
     # Advance diagnostic quantities
     compute_w_from_continuity!(model; parameters = w_parameters)

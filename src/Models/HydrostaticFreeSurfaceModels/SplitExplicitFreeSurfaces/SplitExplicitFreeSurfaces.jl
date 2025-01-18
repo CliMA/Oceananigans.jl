@@ -22,10 +22,10 @@ using Base
 using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
-using Oceananigans.Grids: dynamic_column_depthᶜᶜᵃ, 
-                          dynamic_column_depthᶜᶠᵃ,
-                          dynamic_column_depthᶠᶜᵃ,
-                          dynamic_column_depthᶠᶠᵃ
+using Oceananigans.Grids: column_depthᶜᶜᵃ, 
+                          column_depthᶜᶠᵃ,
+                          column_depthᶠᶜᵃ,
+                          column_depthᶠᶠᵃ
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: initialize_free_surface!,
                                                          materialize_free_surface,

@@ -6,7 +6,7 @@ using Oceananigans.Advection: WENOVectorInvariant
 using Oceananigans.AbstractOperations: GridMetricOperation  
 using Printf
 
-z_faces = ZStarVerticalCoordinate(-20, 0)
+z_faces = MutableVerticalDiscretization((-20, 0))
 
 grid = RectilinearGrid(size = (128, 20), 
                           x = (0, 64kilometers), 
