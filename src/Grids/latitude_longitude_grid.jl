@@ -178,9 +178,9 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                precompute_metrics = true,
                                halo = nothing)
 
-    if architecture == GPU() && !has_cuda()
-        throw(ArgumentError("Cannot create a GPU grid. No CUDA-enabled GPU was detected!"))
-    end
+    # if architecture == GPU() && !has_cuda()
+    #     throw(ArgumentError("Cannot create a GPU grid. No CUDA-enabled GPU was detected!"))
+    # end
 
     topology, size, halo, latitude, longitude, z, precompute_metrics =
         validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
@@ -533,6 +533,8 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
         offsets     = (grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
         metric_size = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
     end
+
+    @show FT, metric_size, arch, offsets
 
     Δxᶠᶜ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
     Δxᶜᶠ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)

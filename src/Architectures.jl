@@ -42,7 +42,7 @@ struct GPU{D} <: AbstractSerialArchitecture
     device :: D
 end
 
-const CUDAGPU = GPU{<:CUDA.CUDABackend}
+const CUDAGPU  = GPU{<:CUDA.CUDABackend}
 const MetalGPU = GPU{<:Metal.MetalBackend}
 
 CUDAGPU()  = GPU(CUDA.CUDABackend(; always_inline=true))

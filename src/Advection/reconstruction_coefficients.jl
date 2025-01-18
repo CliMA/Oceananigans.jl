@@ -113,7 +113,7 @@ On a uniform `grid`, the coefficients are independent of the `xr` and `xi` value
 end
 
 """
-    Coefficients for uniform centered and upwind schemes 
+    uniform_coefficients(FT, Val(bias), buffer)
 
 symmetric coefficients are for centered reconstruction (dispersive, even order), 
 left and right are for upwind biased (diffusive, odd order)
@@ -313,7 +313,7 @@ end
     stencil = NTuple{order, FT}[]
     @inbounds begin
         for i = 0:N+1
-            push!(stencil, stencil_coefficients(i, r, cpu_coord, cpu_coord; order))     
+            push!(stencil, stencil_coefficients(FT, i, r, cpu_coord, cpu_coord; order))     
         end
     end
     return OffsetArray(on_architecture(arch, stencil), -1)
