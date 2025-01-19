@@ -6,7 +6,7 @@ export CenterField, XFaceField, YFaceField, ZFaceField
 export BackgroundField
 export interior, data, xnode, ynode, znode, location
 export set!, compute!, @compute, regrid!
-export VelocityFields, TracerFields, tracernames
+export VelocityFields, TracerFields, TendencyFields, tracernames
 export interpolate
 
 using Oceananigans.Architectures
@@ -21,7 +21,6 @@ include("constant_field.jl")
 include("function_field.jl")
 include("field_boundary_buffers.jl")
 include("field.jl")
-include("field_indices.jl")
 include("scans.jl")
 include("regridding_fields.jl")
 include("field_tuples.jl")

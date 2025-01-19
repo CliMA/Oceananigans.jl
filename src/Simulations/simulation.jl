@@ -9,19 +9,18 @@ import Oceananigans.TimeSteppers: reset!
 default_progress(simulation) = nothing
 
 mutable struct Simulation{ML, DT, ST, DI, OW, CB}
-    model :: ML
-    Δt :: DT
-    stop_iteration :: Float64
-    stop_time :: ST
+              model :: ML
+                 Δt :: DT
+     stop_iteration :: Float64
+          stop_time :: ST
     wall_time_limit :: Float64
-    diagnostics :: DI
-    output_writers :: OW
-    callbacks :: CB
-    run_wall_time :: Float64
-    running :: Bool
-    initialized :: Bool
-    verbose :: Bool
-    minimum_relative_step :: Float64
+        diagnostics :: DI
+     output_writers :: OW
+          callbacks :: CB
+      run_wall_time :: Float64
+            running :: Bool
+        initialized :: Bool
+            verbose :: Bool
 end
 
 """
@@ -29,8 +28,7 @@ end
                verbose = true,
                stop_iteration = Inf,
                stop_time = Inf,
-               wall_time_limit = Inf,
-               minimum_relative_step = 0)
+               wall_time_limit = Inf)
 
 Construct a `Simulation` for a `model` with time step `Δt`.
 
@@ -46,18 +44,14 @@ Keyword arguments
 
 - `wall_time_limit`: Stop the simulation if it's been running for longer than this many
                      seconds of wall clock time.
-- `minimum_relative_step`: time steps smaller than `Δt * minimum_relative_step` will be skipped.
-                           This avoids extremely high values when writing the pressure to disk.
-                           Default value is 0. See github.com/CliMA/Oceananigans.jl/issues/3593 for details.
 """
 function Simulation(model; Δt,
                     verbose = true,
                     stop_iteration = Inf,
                     stop_time = Inf,
-                    wall_time_limit = Inf,
-                    minimum_relative_step = 0)
+                    wall_time_limit = Inf)
 
-   if verbose && stop_iteration == Inf && stop_time == Inf && wall_time_limit == Inf
+   if stop_iteration == Inf && stop_time == Inf && wall_time_limit == Inf
        @warn "This simulation will run forever as stop iteration = stop time " *
              "= wall time limit = Inf."
    end
@@ -79,7 +73,7 @@ function Simulation(model; Δt,
 
    # Convert numbers to floating point; otherwise preserve type (eg for DateTime types)
    #    TODO: implement TT = timetype(model) and FT = eltype(model)
-   TT = eltype(model)
+   TT = eltype(model.grid)
    Δt = Δt isa Number ? TT(Δt) : Δt
    stop_time = stop_time isa Number ? TT(stop_time) : stop_time
 
@@ -94,8 +88,7 @@ function Simulation(model; Δt,
                      0.0,
                      false,
                      false,
-                     verbose,
-                     Float64(minimum_relative_step))
+                     verbose)
 end
 
 function Base.show(io::IO, s::Simulation)
@@ -107,7 +100,6 @@ function Base.show(io::IO, s::Simulation)
                      "├── Stop time: $(prettytime(s.stop_time))", "\n",
                      "├── Stop iteration : $(s.stop_iteration)", "\n",
                      "├── Wall time limit: $(s.wall_time_limit)", "\n",
-                     "├── Minimum relative step: ", prettysummary(s.minimum_relative_step), "\n",
                      "├── Callbacks: $(ordered_dict_show(s.callbacks, "│"))", "\n",
                      "├── Output writers: $(ordered_dict_show(s.output_writers, "│"))", "\n",
                      "└── Diagnostics: $(ordered_dict_show(s.diagnostics, "│"))")

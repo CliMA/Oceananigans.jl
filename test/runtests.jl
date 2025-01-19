@@ -41,7 +41,7 @@ CUDA.allowscalar() do
             CUDA.versioninfo()
         catch; end
     end
-    
+
     # Core Oceananigans
     if group == :unit || group == :all
         @testset "Unit tests" begin
@@ -117,7 +117,6 @@ CUDA.allowscalar() do
         @testset "Model and time stepping tests (part 1)" begin
             include("test_nonhydrostatic_models.jl")
             include("test_time_stepping.jl")
-            include("test_active_cells_map.jl")
         end
     end
 
@@ -206,12 +205,6 @@ CUDA.allowscalar() do
     if group == :scripts || group == :all
         @testset "Scripts" begin
             include("test_validation.jl")
-        end
-    end
-
-    if group == :vertical_coordinate || group == :all
-        @testset "Vertical coordinate tests" begin
-            include("test_zstar_coordinate.jl")
         end
     end
 

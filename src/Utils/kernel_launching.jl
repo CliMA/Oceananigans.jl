@@ -76,9 +76,6 @@ function KernelParameters(r1::UnitRange, r2::UnitRange, r3::UnitRange)
     return KernelParameters(size, offsets)
 end
 
-# Convenience `Tuple`d constructor
-KernelParameters(args::Tuple) = KernelParameters(args...)
-
 contiguousrange(range::NTuple{N, Int}, offset::NTuple{N, Int}) where N = Tuple(1+o:r+o for (r, o) in zip(range, offset))
 flatten_reduced_dimensions(worksize, dims) = Tuple(d ∈ dims ? 1 : worksize[d] for d = 1:3)
 

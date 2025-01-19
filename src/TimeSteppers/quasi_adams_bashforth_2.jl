@@ -9,14 +9,15 @@ mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeSteppe
 end
 
 """
-    QuasiAdamsBashforth2TimeStepper(grid, prognostic_fields, χ = 0.1;
+    QuasiAdamsBashforth2TimeStepper(grid, tracers,
+                                    χ = 0.1;
                                     implicit_solver = nothing,
-                                    Gⁿ = map(similar, prognostic_fields),
-                                    G⁻ = map(similar, prognostic_fields))
+                                    Gⁿ = TendencyFields(grid, tracers),
+                                    G⁻ = TendencyFields(grid, tracers))
 
 Return a 2nd-order quasi Adams-Bashforth (AB2) time stepper (`QuasiAdamsBashforth2TimeStepper`)
-on `grid`, with `tracers`, and AB2 parameter `χ`. The tendency fields `Gⁿ` and `G⁻`, usually equal to 
-the prognostic_fields passed as positional argument, can be specified via  optional `kwargs`.
+on `grid`, with `tracers`, and AB2 parameter `χ`. The tendency fields `Gⁿ` and `G⁻` can be
+specified via  optional `kwargs`.
 
 The 2nd-order quasi Adams-Bashforth timestepper steps forward the state `Uⁿ` by `Δt` via
 
@@ -36,10 +37,11 @@ timestep (`G⁻`).
     Uⁿ⁺¹ = Uⁿ + Δt * Gⁿ
     ```
 """
-function QuasiAdamsBashforth2TimeStepper(grid, prognostic_fields, χ = 0.1;
+function QuasiAdamsBashforth2TimeStepper(grid, tracers,
+                                         χ = 0.1;
                                          implicit_solver::IT = nothing,
-                                         Gⁿ = map(similar, prognostic_fields),
-                                         G⁻ = map(similar, prognostic_fields)) where IT
+                                         Gⁿ = TendencyFields(grid, tracers),
+                                         G⁻ = TendencyFields(grid, tracers)) where IT
 
     FT = eltype(grid)
     GT = typeof(Gⁿ)
@@ -77,27 +79,40 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Be paranoid and update state at iteration 0
-    model.clock.iteration == 0 && update_state!(model, callbacks; compute_tendencies=true)
+    model.clock.iteration == 0 && update_state!(model, callbacks)
 
-    # Take an euler step if:
+    ab2_timestepper = model.timestepper
+
+    # Change the default χ if necessary, which occurs if:
     #   * We detect that the time-step size has changed.
     #   * We detect that this is the "first" time-step, which means we
     #     need to take an euler step. Note that model.clock.last_Δt is
     #     initialized as Inf
     #   * The user has passed euler=true to time_step!
     euler = euler || (Δt != model.clock.last_Δt)
-    euler && @debug "Taking a forward Euler step."
-
+    
     # If euler, then set χ = -0.5
     minus_point_five = convert(eltype(model.grid), -0.5)
-    ab2_timestepper = model.timestepper
     χ = ifelse(euler, minus_point_five, ab2_timestepper.χ)
+
+    # Set time-stepper χ (this is used in ab2_step!, but may also be used elsewhere)
     χ₀ = ab2_timestepper.χ # Save initial value
     ab2_timestepper.χ = χ
 
-    # Full step for tracers, fractional step for velocities.
-    ab2_step!(model, Δt)
+    # Ensure zeroing out all previous tendency fields to avoid errors in
+    # case G⁻ includes NaNs. See https://github.com/CliMA/Oceananigans.jl/issues/2259
+    if euler
+        @debug "Taking a forward Euler step."
+        for field in ab2_timestepper.G⁻
+            !isnothing(field) && @apply_regionally fill!(field, 0)
+        end
+    end
 
+    # Be paranoid and update state at iteration 0
+    model.clock.iteration == 0 && update_state!(model, callbacks; compute_tendencies=true)
+    
+    ab2_step!(model, Δt) # full step for tracers, fractional step for velocities.
+    
     tick!(model.clock, Δt)
     model.clock.last_Δt = Δt
     model.clock.last_stage_Δt = Δt # just one stage
@@ -110,7 +125,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
 
     # Return χ to initial value
     ab2_timestepper.χ = χ₀
-
+    
     return nothing
 end
 
@@ -126,6 +141,7 @@ end
 
 """ Generic implementation. """
 function ab2_step!(model, Δt)
+
     grid = model.grid
     arch = architecture(grid)
     model_fields = prognostic_fields(model)
@@ -159,16 +175,11 @@ Time step velocity fields via the 2nd-order quasi Adams-Bashforth method
 @kernel function ab2_step_field!(u, Δt, χ, Gⁿ, G⁻)
     i, j, k = @index(Global, NTuple)
 
-    FT = typeof(χ)
-    Δt = convert(FT, Δt)
+    FT = eltype(χ)
     one_point_five = convert(FT, 1.5)
     oh_point_five  = convert(FT, 0.5)
-    not_euler = χ != convert(FT, -0.5) # use to prevent corruption by leftover NaNs in G⁻
 
-    @inbounds begin
-        Gu = (one_point_five + χ) * Gⁿ[i, j, k] - (oh_point_five + χ) * G⁻[i, j, k] * not_euler
-        u[i, j, k] += Δt * Gu
-    end
+    @inbounds u[i, j, k] += convert(FT, Δt) * ((one_point_five + χ) * Gⁿ[i, j, k] - (oh_point_five + χ) * G⁻[i, j, k])
 end
 
 @kernel ab2_step_field!(::FunctionField, Δt, χ, Gⁿ, G⁻) = nothing

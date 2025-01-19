@@ -85,4 +85,3 @@ function Base.show(io::IO, buoyancy::Buoyancy)
               "├── model: ", prettysummary(buoyancy.model), '\n',
               "└── gravity_unit_vector: ", summarize_vector(buoyancy.gravity_unit_vector))
 end
-

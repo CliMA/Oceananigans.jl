@@ -15,7 +15,7 @@ struct CubedSphereConformalMapping{FT, Rotation}
     rotation :: Rotation
 end
 
-struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, A, C, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, CZ, Arch}
+struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, A, R, FR, C, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
     Nx :: Int
     Ny :: Int
@@ -32,7 +32,8 @@ struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, A, C, Arch} <: AbstractH
     φᶠᶜᵃ :: A
     φᶜᶠᵃ :: A
     φᶠᶠᵃ :: A
-    z :: CZ
+    zᵃᵃᶜ :: R
+    zᵃᵃᶠ :: R
     Δxᶜᶜᵃ :: A
     Δxᶠᶜᵃ :: A
     Δxᶜᶠᵃ :: A
@@ -41,6 +42,8 @@ struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, A, C, Arch} <: AbstractH
     Δyᶜᶠᵃ :: A
     Δyᶠᶜᵃ :: A
     Δyᶠᶠᵃ :: A
+    Δzᵃᵃᶜ :: FR
+    Δzᵃᵃᶠ :: FR
     Azᶜᶜᵃ :: A
     Azᶠᶜᵃ :: A
     Azᶜᶠᵃ :: A
@@ -53,36 +56,36 @@ struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, A, C, Arch} <: AbstractH
                                              Hx, Hy, Hz,
                                                 Lz :: FT,
                                               λᶜᶜᵃ :: A,  λᶠᶜᵃ :: A,  λᶜᶠᵃ :: A,  λᶠᶠᵃ :: A,
-                                              φᶜᶜᵃ :: A,  φᶠᶜᵃ :: A,  φᶜᶠᵃ :: A,  φᶠᶠᵃ :: A, z :: CZ,
+                                              φᶜᶜᵃ :: A,  φᶠᶜᵃ :: A,  φᶜᶠᵃ :: A,  φᶠᶠᵃ :: A, zᵃᵃᶜ :: R, zᵃᵃᶠ :: R,
                                              Δxᶜᶜᵃ :: A, Δxᶠᶜᵃ :: A, Δxᶜᶠᵃ :: A, Δxᶠᶠᵃ :: A,
-                                             Δyᶜᶜᵃ :: A, Δyᶜᶠᵃ :: A, Δyᶠᶜᵃ :: A, Δyᶠᶠᵃ :: A, 
+                                             Δyᶜᶜᵃ :: A, Δyᶜᶠᵃ :: A, Δyᶠᶜᵃ :: A, Δyᶠᶠᵃ :: A, Δzᵃᵃᶜ :: FR, Δzᵃᵃᶠ :: FR,
                                              Azᶜᶜᵃ :: A, Azᶠᶜᵃ :: A, Azᶜᶠᵃ :: A, Azᶠᶠᵃ :: A,
                                              radius :: FT,
-                                             conformal_mapping :: C) where {TX, TY, TZ, FT, CZ, A, C, Arch} =
-        new{FT, TX, TY, TZ, CZ, A, C, Arch}(architecture,
+                                             conformal_mapping :: C) where {TX, TY, TZ, FT, A, R, FR, C, Arch} =
+        new{FT, TX, TY, TZ, A, R, FR, C, Arch}(architecture,
                                             Nx, Ny, Nz,
                                             Hx, Hy, Hz,
                                             Lz,
                                             λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
-                                            φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ, z,
+                                            φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
                                             Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
-                                            Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, 
+                                            Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                                             Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius, conformal_mapping)
 end
 
 const OSSG = OrthogonalSphericalShellGrid
-const ZRegOSSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate}
+const ZRegOSSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
 const ZRegOrthogonalSphericalShellGrid = ZRegOSSG
-const ConformalCubedSpherePanel = OrthogonalSphericalShellGrid{<:Any, FullyConnected, FullyConnected, <:Any, <:Any, <:Any, <:CubedSphereConformalMapping}
+const ConformalCubedSpherePanel = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:CubedSphereConformalMapping}
 
 # convenience constructor for OSSG without any conformal_mapping properties
 OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
-                             λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ, φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, z,
-                             Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, 
+                             λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ, φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
+                             Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                              Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius) =
     OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
-                                 λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ, φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, z,
-                                 Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, 
+                                 λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ, φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
+                                 Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                                  Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius, nothing)
 
 """
@@ -199,8 +202,11 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
     ηᵃᶜᵃ = ynodes(ξη_grid, Center())
 
     ## The vertical coordinates and metrics can come out of the regular rectilinear grid!
-    zc = ξη_grid.z
-    Lz = ξη_grid.Lz
+     zᵃᵃᶠ = ξη_grid.zᵃᵃᶠ
+     zᵃᵃᶜ = ξη_grid.zᵃᵃᶜ
+    Δzᵃᵃᶜ = ξη_grid.Δzᵃᵃᶜ
+    Δzᵃᵃᶠ = ξη_grid.Δzᵃᵃᶠ
+    Lz    = ξη_grid.Lz
 
 
     ## Compute staggered grid latitude-longitude (φ, λ) coordinates.
@@ -597,10 +603,11 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
 
     coordinate_arrays = (λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
                          φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ,
-                         zc)
+                         zᵃᵃᶜ, zᵃᵃᶠ)
 
     metric_arrays = (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                      Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
+                     Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                      Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
 
     conformal_mapping = CubedSphereConformalMapping(ξ, η, rotation)
@@ -617,10 +624,11 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
 
     coordinate_arrays = (grid.λᶜᶜᵃ, grid.λᶠᶜᵃ, grid.λᶜᶠᵃ, grid.λᶠᶠᵃ,
                          grid.φᶜᶜᵃ, grid.φᶠᶜᵃ, grid.φᶜᶠᵃ, grid.φᶠᶠᵃ,
-                         grid.z)
+                         grid.zᵃᵃᶜ, grid.zᵃᵃᶠ)
 
     metric_arrays = (grid.Δxᶜᶜᵃ, grid.Δxᶠᶜᵃ, grid.Δxᶜᶠᵃ, grid.Δxᶠᶠᵃ,
                      grid.Δyᶜᶜᵃ, grid.Δyᶜᶠᵃ, grid.Δyᶠᶜᵃ, grid.Δyᶠᶠᵃ,
+                     grid.Δzᵃᵃᶜ, grid.Δzᵃᵃᶠ,
                      grid.Azᶜᶜᵃ, grid.Azᶠᶜᵃ, grid.Azᶜᶠᵃ, grid.Azᶠᶠᵃ)
 
     coordinate_arrays = map(a -> on_architecture(architecture, a), coordinate_arrays)
@@ -816,7 +824,17 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
     TX, TY, TZ = topology
     Hx, Hy, Hz = halo
 
-    ## Read everything from the file except the z-coordinates
+    ## The vertical coordinates can come out of the regular rectilinear grid!
+
+    z_grid = RectilinearGrid(architecture, FT; size = Nz, z, topology=(Flat, Flat, topology[3]), halo=halo[3])
+
+     zᵃᵃᶠ = z_grid.zᵃᵃᶠ
+     zᵃᵃᶜ = z_grid.zᵃᵃᶜ
+    Δzᵃᵃᶜ = z_grid.Δzᵃᵃᶜ
+    Δzᵃᵃᶠ = z_grid.Δzᵃᵃᶠ
+    Lz    = z_grid.Lz
+
+    ## Read everything else from the file
 
     file = jldopen(filepath, "r")["panel$panel"]
 
@@ -865,18 +883,16 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
     φᶠᶜᵃ = offset_data(zeros(FT, architecture, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology[1:2], N[1:2], H[1:2])
     φᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology[1:2], N[1:2], H[1:2])
 
-    ## The vertical coordinates can come out of the regular rectilinear grid!
-    Lz, z  = generate_coordinate(FT, topology, (Nξ, Nη, Nz), halo, z,  :z, 3, architecture)
-
     ξ, η = (-1, 1), (-1, 1)
     conformal_mapping = CubedSphereConformalMapping(ξ, η, rotation)
 
     return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
                                                      λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
                                                      φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ,
-                                                     z,
+                                                     zᵃᵃᶜ,  zᵃᵃᶠ,
                                                     Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                                                     Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
+                                                    Δzᵃᵃᶜ, Δzᵃᵃᶠ,
                                                     Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
                                                     radius,
                                                     conformal_mapping)
@@ -892,7 +908,8 @@ function on_architecture(arch::AbstractSerialArchitecture, grid::OrthogonalSpher
                    :φᶠᶜᵃ,
                    :φᶜᶠᵃ,
                    :φᶠᶠᵃ,
-                   :z)
+                   :zᵃᵃᶜ,
+                   :zᵃᵃᶠ)
 
     grid_spacings = (:Δxᶜᶜᵃ,
                      :Δxᶠᶜᵃ,
@@ -901,7 +918,9 @@ function on_architecture(arch::AbstractSerialArchitecture, grid::OrthogonalSpher
                      :Δyᶜᶜᵃ,
                      :Δyᶜᶠᵃ,
                      :Δyᶠᶜᵃ,
-                     :Δyᶠᶠᵃ)
+                     :Δyᶠᶠᵃ,
+                     :Δzᵃᵃᶜ,
+                     :Δzᵃᵃᶜ)
 
     horizontal_areas = (:Azᶜᶜᵃ,
                         :Azᶠᶜᵃ,
@@ -942,7 +961,8 @@ function Adapt.adapt_structure(to, grid::OrthogonalSphericalShellGrid)
                                                     adapt(to, grid.φᶠᶜᵃ),
                                                     adapt(to, grid.φᶜᶠᵃ),
                                                     adapt(to, grid.φᶠᶠᵃ),
-                                                    adapt(to, grid.z),
+                                                    adapt(to, grid.zᵃᵃᶜ),
+                                                    adapt(to, grid.zᵃᵃᶠ),
                                                     adapt(to, grid.Δxᶜᶜᵃ),
                                                     adapt(to, grid.Δxᶠᶜᵃ),
                                                     adapt(to, grid.Δxᶜᶠᵃ),
@@ -951,6 +971,8 @@ function Adapt.adapt_structure(to, grid::OrthogonalSphericalShellGrid)
                                                     adapt(to, grid.Δyᶜᶠᵃ),
                                                     adapt(to, grid.Δyᶠᶜᵃ),
                                                     adapt(to, grid.Δyᶠᶠᵃ),
+                                                    adapt(to, grid.Δzᵃᵃᶜ),
+                                                    adapt(to, grid.Δzᵃᵃᶠ),
                                                     adapt(to, grid.Azᶜᶜᵃ),
                                                     adapt(to, grid.Azᶠᶜᵃ),
                                                     adapt(to, grid.Azᶜᶠᵃ),
@@ -1024,7 +1046,7 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
 
     λ₁, λ₂ = minimum(grid.λᶠᶠᵃ[1:Nx_face, 1:Ny_face]), maximum(grid.λᶠᶠᵃ[1:Nx_face, 1:Ny_face])
     φ₁, φ₂ = minimum(grid.φᶠᶠᵃ[1:Nx_face, 1:Ny_face]), maximum(grid.φᶠᶠᵃ[1:Nx_face, 1:Ny_face])
-    Ωz = domain(topology(grid, 3)(), Nz, grid.z.cᵃᵃᶠ)
+    Ωz = domain(topology(grid, 3)(), Nz, grid.zᵃᵃᶠ)
 
     (λ_center, φ_center), (extent_λ, extent_φ) = get_center_and_extents_of_shell(grid)
 
@@ -1059,7 +1081,7 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
     φ_summary = "latitude:  $(TY)  extent $(prettysummary(extent_φ)) degrees" * padding_φ * " " *
                 coordinate_summary(TY, rad2deg.(grid.Δyᶠᶠᵃ[1:Nx_face, 1:Ny_face] ./ grid.radius), "φ")
 
-    z_summary = "z:         " * dimension_summary(TZ(), "z", Ωz, grid.z, longest - length(z_summary))
+    z_summary = "z:         " * dimension_summary(TZ(), "z", Ωz, grid.Δzᵃᵃᶜ, longest - length(z_summary))
 
     if withsummary
         print(io, summary(grid), "\n")
@@ -1070,6 +1092,9 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
                      "├── ", φ_summary, "\n",
                      "└── ", z_summary)
 end
+
+@inline z_domain(grid::OrthogonalSphericalShellGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TZ, grid.Nz, grid.zᵃᵃᶠ)
+@inline cpu_face_constructor_z(grid::ZRegOrthogonalSphericalShellGrid) = z_domain(grid)
 
 function with_halo(new_halo, old_grid::OrthogonalSphericalShellGrid; rotation=nothing)
 
@@ -1128,9 +1153,15 @@ end
 @inline xnodes(grid::OSSG, ℓx, ℓy; with_halos=false) = grid.radius * deg2rad.(λnodes(grid, ℓx, ℓy; with_halos=with_halos)) .* hack_cosd.(φnodes(grid, ℓx, ℓy; with_halos=with_halos))
 @inline ynodes(grid::OSSG, ℓx, ℓy; with_halos=false) = grid.radius * deg2rad.(φnodes(grid, ℓx, ℓy; with_halos=with_halos))
 
+@inline znodes(grid::OSSG, ℓz::Face  ; with_halos=false) = with_halos ? grid.zᵃᵃᶠ :
+    view(grid.zᵃᵃᶠ, interior_indices(ℓz, topology(grid, 3)(), grid.Nz))
+@inline znodes(grid::OSSG, ℓz::Center; with_halos=false) = with_halos ? grid.zᵃᵃᶜ :
+    view(grid.zᵃᵃᶜ, interior_indices(ℓz, topology(grid, 3)(), grid.Nz))
+
 # convenience
 @inline λnodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = λnodes(grid, ℓx, ℓy; with_halos)
 @inline φnodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = φnodes(grid, ℓx, ℓy; with_halos)
+@inline znodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = znodes(grid, ℓz    ; with_halos)
 @inline xnodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx, ℓy; with_halos)
 @inline ynodes(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓx, ℓy; with_halos)
 
@@ -1147,15 +1178,20 @@ end
 @inline xnode(i, j, grid::OSSG, ℓx, ℓy) = grid.radius * deg2rad(λnode(i, j, grid, ℓx, ℓy)) * hack_cosd((φnode(i, j, grid, ℓx, ℓy)))
 @inline ynode(i, j, grid::OSSG, ℓx, ℓy) = grid.radius * deg2rad(φnode(i, j, grid, ℓx, ℓy))
 
+@inline znode(k, grid::OSSG, ::Center) = @inbounds grid.zᵃᵃᶜ[k]
+@inline znode(k, grid::OSSG, ::Face  ) = @inbounds grid.zᵃᵃᶠ[k]
+
 # convenience
 @inline λnode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = λnode(i, j, grid, ℓx, ℓy)
 @inline φnode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = φnode(i, j, grid, ℓx, ℓy)
+@inline znode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = znode(k, grid, ℓz)
 @inline xnode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = xnode(i, j, grid, ℓx, ℓy)
 @inline ynode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = ynode(i, j, grid, ℓx, ℓy)
 
 # Definitions for node
 @inline ξnode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = λnode(i, j, grid, ℓx, ℓy)
 @inline ηnode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = φnode(i, j, grid, ℓx, ℓy)
+@inline rnode(i, j, k, grid::OSSG, ℓx, ℓy, ℓz) = znode(k, grid, ℓz)
 
 ξname(::OSSG) = :λ
 ηname(::OSSG) = :φ
@@ -1165,8 +1201,31 @@ rname(::OSSG) = :z
 ##### Grid spacings in x, y, z (in meters)
 #####
 
-@inline xspacings(grid::OSSG, ℓx, ℓy) = xspacings(grid, ℓx, ℓy, nothing)
-@inline yspacings(grid::OSSG, ℓx, ℓy) = yspacings(grid, ℓx, ℓy, nothing)
+@inline xspacings(grid::OSSG, ℓx::Center, ℓy::Center; with_halos=false) =
+    with_halos ? grid.Δxᶜᶜᵃ : view(grid.Δxᶜᶜᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
+@inline xspacings(grid::OSSG, ℓx::Face  , ℓy::Center; with_halos=false) =
+    with_halos ? grid.Δxᶠᶜᵃ : view(grid.Δxᶠᶜᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
+@inline xspacings(grid::OSSG, ℓx::Center, ℓy::Face  ; with_halos=false) =
+    with_halos ? grid.Δxᶜᶠᵃ : view(grid.Δxᶜᶠᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
+@inline xspacings(grid::OSSG, ℓx::Face  , ℓy::Face  ; with_halos=false) =
+    with_halos ? grid.Δxᶠᶠᵃ : view(grid.Δxᶠᶠᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
 
-@inline λspacings(grid::OSSG, ℓx, ℓy) = λspacings(grid, ℓx, ℓy, nothing)
-@inline φspacings(grid::OSSG, ℓx, ℓy) = φspacings(grid, ℓx, ℓy, nothing)
+@inline yspacings(grid::OSSG, ℓx::Center, ℓy::Center; with_halos=false) =
+    with_halos ? grid.Δyᶜᶜᵃ : view(grid.Δyᶜᶜᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
+@inline yspacings(grid::OSSG, ℓx::Face  , ℓy::Center; with_halos=false) =
+    with_halos ? grid.Δyᶠᶜᵃ : view(grid.Δyᶠᶜᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
+@inline yspacings(grid::OSSG, ℓx::Center, ℓy::Face  ; with_halos=false) =
+    with_halos ? grid.Δyᶜᶠᵃ : view(grid.Δyᶜᶠᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
+@inline yspacings(grid::OSSG, ℓx::Face  , ℓy::Face  ; with_halos=false) =
+    with_halos ? grid.Δyᶠᶠᵃ : view(grid.Δyᶠᶠᵃ, interior_indices(ℓx, topology(grid, 1)(), grid.Nx), interior_indices(ℓy, topology(grid, 2)(), grid.Ny))
+
+@inline zspacings(grid::OSSG,     ℓz::Center; with_halos=false) = with_halos ? grid.Δzᵃᵃᶜ :
+    view(grid.Δzᵃᵃᶜ, interior_indices(ℓz, topology(grid, 3)(), grid.Nz))
+@inline zspacings(grid::ZRegOSSG, ℓz::Center; with_halos=false) = grid.Δzᵃᵃᶜ
+@inline zspacings(grid::OSSG,     ℓz::Face;   with_halos=false) = with_halos ? grid.Δzᵃᵃᶠ :
+    view(grid.Δzᵃᵃᶠ, interior_indices(ℓz, topology(grid, 3)(), grid.Nz))
+@inline zspacings(grid::ZRegOSSG, ℓz::Face;   with_halos=false) = grid.Δzᵃᵃᶠ
+
+@inline xspacings(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = xspacings(grid, ℓx, ℓy; with_halos)
+@inline yspacings(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = yspacings(grid, ℓx, ℓy; with_halos)
+@inline zspacings(grid::OSSG, ℓx, ℓy, ℓz; with_halos=false) = zspacings(grid, ℓz; with_halos)

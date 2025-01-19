@@ -1,10 +1,10 @@
 using KernelAbstractions: @kernel, @index
+using OffsetArrays: OffsetArray
 
 using Oceananigans.Fields: fill_send_buffers!,
                            recv_from_buffers!, 
                            reduced_dimensions, 
-                           instantiated_location,
-                           produce_ordinary_fields
+                           instantiated_location
 
 import Oceananigans.Fields: tupled_fill_halo_regions!
 
@@ -78,12 +78,9 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-function tupled_fill_halo_regions!(fields, grid::DistributedGrid, args...; kwargs...)
-    ordinary_fields = produce_ordinary_fields(fields, args...; kwargs)
-
-    for field in ordinary_fields
-        # Make sure we are filling a `Field` type.
-        field isa Field && fill_halo_regions!(field, args...; kwargs...)
+function tupled_fill_halo_regions!(full_fields, grid::DistributedGrid, args...; kwargs...)
+    for field in full_fields
+        fill_halo_regions!(field, args...; kwargs...)
     end
 end
 

@@ -40,7 +40,7 @@ Private = false
 ## Buoyancy models
 
 ```@autodocs
-Modules = [Oceananigans.BuoyancyFormulations]
+Modules = [Oceananigans.BuoyancyModels]
 Private = false
 ```
 

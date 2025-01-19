@@ -1,7 +1,7 @@
 env:
   JULIA_VERSION: "1.10.5"
   JULIA_MINOR_VERSION: "1.10"
-  SVERDRUP_HOME: "/home/users/glwagner"
+  SVERDRUP_HOME: "/data5/glwagner"
   TARTARUS_HOME: "/storage5/buildkite-agent"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
   JULIA_NUM_PRECOMPILE_TASKS: 8
@@ -319,13 +319,12 @@ steps:
 ##### Turbulence Closures
 #####
 
-            
   - label: "🎣 gpu turbulence closures"
     env:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "turbulence_closures"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: GPU
@@ -335,7 +334,21 @@ steps:
           limit: 1
     depends_on: "init_gpu"
 
-#  The CPU turbulence closures test used to be here, but was moved to Github Actions. See https://github.com/CliMA/Oceananigans.jl/pull/3926
+  - label: "🎏 cpu turbulence closures"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "turbulence_closures"
+      CUDA_VISIBLE_DEVICES: "-1"
+    commands:
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
+    depends_on: "init_cpu"
 
 #####
 ##### HydrostaticFreeSurfaceModel
@@ -636,41 +649,6 @@ steps:
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "scripts"
-    commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      queue: Oceananigans
-      architecture: CPU
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
-    depends_on: "init_cpu"
-
-#####
-##### Vertical Coordinates tests
-#####
-
-  - label: "🥑 gpu vertical coordinate"
-    env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "vertical_coordinate"
-      GPU_TEST: "true"
-    commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      queue: Oceananigans
-      architecture: GPU
-    retry:
-      automatic:
-        - exit_status: 1      
-          limit: 1
-    depends_on: "init_gpu"
-
-  - label: "🥒 cpu vertical coordinate"
-    env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "vertical_coordinate"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
