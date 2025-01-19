@@ -92,7 +92,9 @@ Adapt.adapt_structure(to, bf::BuoyancyForce) =
 regularize_buoyancy(bf, grid) = bf
 regularize_buoyancy(formulation::AbstractBuoyancyFormulation, grid) = BuoyancyForce(grid; formulation)
 
+# Fallback
 compute_buoyancy_gradients!(::BuoyancyForce{<:Any, <:Any, <:Nothing}, grid, tracers; kw...) = nothing
+compute_buoyancy_gradients!(::Nothing, grid, tracers; kw...) = nothing     
 
 Base.summary(bf::BuoyancyForce) = string(summary(bf.formulation),
                                          " with ĝ = ",
