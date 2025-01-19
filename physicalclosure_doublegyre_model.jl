@@ -27,17 +27,15 @@ using ColorSchemes
 using Glob
 
 #%%
-# filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_zC2O_CATKEVerticalDiffusivity"
-filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_zWENO5_CATKEVerticalDiffusivity"
+filename = "doublegyre_30Cwarmflushbottom10_relaxation_8days_zWENO5_CATKEVerticalDiffusivity_100years"
 FILE_DIR = "./Output/$(filename)"
 # FILE_DIR = "/storage6/xinkai/NN_Oceananigans/$(filename)"
+@info "$(FILE_DIR)"
 mkpath(FILE_DIR)
 
 # Architecture
 model_architecture = GPU()
 
-# vertical_base_closure = VerticalScalarDiffusivity(ν=1e-5, κ=1e-5)
-# convection_closure = XinKaiVerticalDiffusivity()
 function CATKE_ocean_closure()
   mixing_length = CATKEMixingLength(Cᵇ=0.01)
   turbulent_kinetic_energy_equation = CATKEEquation(Cᵂϵ=1.0)
@@ -45,7 +43,6 @@ function CATKE_ocean_closure()
 end
 convection_closure = CATKE_ocean_closure()
 closure = convection_closure
-# closure = vertical_base_closure
 
 advection_scheme = FluxFormAdvection(WENO(order=5), WENO(order=5), WENO(order=5))
 
@@ -84,7 +81,7 @@ const S_mid = (S_north + S_south) / 2
 const τ₀ = 1e-4
 
 const μ_drag = 1/30days
-const μ_T = 1/30days
+const μ_T = 1/8days
 
 #####
 ##### Forcing and initial condition
@@ -181,7 +178,7 @@ update_state!(model)
 ##### Simulation building
 #####
 Δt₀ = 5minutes
-stop_time = 10950days
+stop_time = 36000days
 
 simulation = Simulation(model, Δt = Δt₀, stop_time = stop_time)
 
@@ -319,17 +316,72 @@ simulation.output_writers[:yz_90] = JLD2OutputWriter(model, outputs,
                                                     indices = (90, :, :),
                                                     schedule = TimeInterval(10days))
 
+simulation.output_writers[:yz_100] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_yz_100",
+                                                    indices = (100, :, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:xz_5] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_5",
+                                                    indices = (:, 5, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:xz_15] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_15",
+                                                    indices = (:, 15, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:xz_25] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_25",
+                                                    indices = (:, 25, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:xz_35] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_35",
+                                                    indices = (:, 35, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:xz_45] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_45",
+                                                    indices = (:, 45, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:xz_55] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_55",
+                                                    indices = (:, 55, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:xz_65] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_65",
+                                                    indices = (:, 65, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:xz_75] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_75",
+                                                    indices = (:, 75, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:xz_85] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_85",
+                                                    indices = (:, 85, :),
+                                                    schedule = TimeInterval(10days))
+
+simulation.output_writers[:xz_95] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields_xz_95",
+                                                    indices = (:, 95, :),
+                                                    schedule = TimeInterval(10days))
+
 simulation.output_writers[:zonal_average] = JLD2OutputWriter(model, zonal_outputs,
                                                              filename = "$(FILE_DIR)/averaged_fields_zonal",
                                                              schedule = TimeInterval(10days))
 
 simulation.output_writers[:streamfunction] = JLD2OutputWriter(model, (; Ψ=Ψ,),
                                                     filename = "$(FILE_DIR)/averaged_fields_streamfunction",
-                                                    schedule = AveragedTimeInterval(1825days, window=1825days))
+                                                    schedule = AveragedTimeInterval(1800days, window=1800days))
 
-simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                    schedule = TimeInterval(730days),
-                                                    prefix = "$(FILE_DIR)/checkpointer")
+simulation.output_writers[:complete_fields] = JLD2OutputWriter(model, outputs,
+                                                    filename = "$(FILE_DIR)/instantaneous_fields",
+                                                    schedule = TimeInterval(1800days))
 
 @info "Running the simulation..."
 
