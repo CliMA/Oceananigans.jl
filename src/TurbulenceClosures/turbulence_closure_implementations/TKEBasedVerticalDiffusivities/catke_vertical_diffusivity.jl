@@ -209,7 +209,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
             diffusivities.Jᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
 
     launch!(arch, grid, parameters,
-            compute_CATKE_diffusivities!,
+            _compute_CATKE_diffusivities!,
             diffusivities, grid, active_cells_map, closure, velocities, tracers, buoyancy; 
             active_cells_map)
 
