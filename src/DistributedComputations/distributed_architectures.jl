@@ -311,6 +311,19 @@ array_type(arch::Distributed)         = array_type(child_architecture(arch))
 sync_device!(arch::Distributed)       = sync_device!(arch.child_architecture)
 convert_args(arch::Distributed, arg)  = convert_args(child_architecture(arch), arg)
 
+# Switch to a synchronized architecture
+synchronized(arch) = arch
+synchronized(arch::SynchronizedDistributed) = arch
+synchronized(arch::Distributed) = Distributed{true}(child_architecture(arch),
+                                                     arch.partition,
+                                                     arch.ranks,
+                                                     arch.local_rank,
+                                                     arch.local_index,
+                                                     arch.connectivity,
+                                                     arch.communicator,
+                                                     arch.mpi_requests,
+                                                     arch.mpi_tag)
+
 cpu_architecture(arch::DistributedCPU) = arch
 cpu_architecture(arch::Distributed{A, S}) where {A, S} = 
     Distributed{S}(CPU(),

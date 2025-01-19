@@ -11,7 +11,6 @@ using CUDA
 using KernelAbstractions
 using Oceananigans: AbstractModel, prognostic_fields
 using Oceananigans.Architectures: device
-using Oceananigans.Fields: TendencyFields
 using Oceananigans.Utils: work_layout
 
 """
