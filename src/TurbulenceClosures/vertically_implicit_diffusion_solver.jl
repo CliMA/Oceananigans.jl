@@ -46,7 +46,7 @@ const c = Center()
 const f = Face()
 
 # The vertical spacing used here is Δz for velocities and Δr for tracers, since the 
-# implicit solver operator is applied to the scaled tracer e₃θ instead of just θ
+# implicit solver operator is applied to the scaled tracer σθ instead of just θ
 
 @inline vertical_spacing(i, j, k, grid, ℓx, ℓy, ℓz) = Δz(i, j, k, grid, ℓx, ℓy, ℓz)
 @inline vertical_spacing(i, j, k, grid, ::Center, ::Center, ℓz) = Δr(i, j, k, grid, c, c, ℓz)
