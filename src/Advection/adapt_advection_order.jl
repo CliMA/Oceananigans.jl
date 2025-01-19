@@ -20,14 +20,9 @@ function adapt_advection_order(advection, grid::AbstractGrid)
     advection_y = y_advection(advection)
     advection_z = z_advection(advection)
 
-    tx = topology(grid, 1)()
-    ty = topology(grid, 2)()
-    tz = topology(grid, 3)()
-
-    # Note: no adaptation in Flat directions.
-    new_advection_x = adapt_advection_order(tx, advection_x, size(grid, 1), grid)
-    new_advection_y = adapt_advection_order(ty, advection_y, size(grid, 2), grid)
-    new_advection_z = adapt_advection_order(tz, advection_z, size(grid, 3), grid)
+    new_advection_x = adapt_advection_order(advection_x, size(grid, 1), grid)
+    new_advection_y = adapt_advection_order(advection_y, size(grid, 2), grid)
+    new_advection_z = adapt_advection_order(advection_z, size(grid, 3), grid)
 
     # Check that we indeed changed the advection operator
     changed_x = new_advection_x != advection_x
@@ -44,11 +39,12 @@ function adapt_advection_order(advection, grid::AbstractGrid)
         @info "Using the advection scheme $(summary(new_advection.y)) in the y-direction because size(grid, 2) = $(size(grid, 2))"
     end
     if changed_z
-        @info "Using the advection scheme $(summary(new_advection.z)) in the z-direction because size(grid, 3) = $(size(grid, 3))"
+        @info "Using the advection scheme $(summary(new_advection.z)) in the x-direction because size(grid, 3) = $(size(grid, 3))"
     end
 
     return ifelse(changed_advection, new_advection, advection)
 end
+
 
 x_advection(flux_form::FluxFormAdvection) = flux_form.x
 y_advection(flux_form::FluxFormAdvection) = flux_form.y
@@ -58,15 +54,10 @@ x_advection(advection) = advection
 y_advection(advection) = advection
 z_advection(advection) = advection
 
-# Don't adapt advection in Flat directions
-adapt_advection_order(topo, advection, N, grid) = adapt_advection_order(advection, N, grid)
-adapt_advection_order(::Flat, advection, N, grid) = advection
-
 # For the moment, we do not adapt the advection order for the VectorInvariant advection scheme
 adapt_advection_order(advection::VectorInvariant, grid::AbstractGrid) = advection
 adapt_advection_order(advection::Nothing, grid::AbstractGrid) = nothing
 adapt_advection_order(advection::Nothing, N::Int, grid::AbstractGrid) = nothing
-adapt_advection_order(advection, N, grid) = advection
 
 #####
 ##### Directional adapt advection order
@@ -76,7 +67,7 @@ function adapt_advection_order(advection::Centered{B}, N::Int, grid::AbstractGri
     if N >= B
         return advection
     else
-        return Centered(; order=2N)
+        return Centered(; order = 2N)
     end
 end
 
@@ -84,18 +75,15 @@ function adapt_advection_order(advection::UpwindBiased{B}, N::Int, grid::Abstrac
     if N >= B
         return advection
     else
-        return UpwindBiased(; order=2N-1)
+        return UpwindBiased(; order = 2N - 1)
     end
 end
 
 """
     new_weno_scheme(grid, order, bounds, XT, YT, ZT)
 
-Constructs a new WENO scheme based on the given parameters.
-`XT`, `YT`, and `ZT` is the type of the precomputed weno coefficients in the 
-x-direction, y-direction and z-direction.
-A _non-stretched_ WENO scheme has `T` equal to `Nothing` everywhere.
-In case of a non-stretched WENO scheme, 
+Constructs a new WENO scheme based on the given parameters. `XT`, `YT`, and `ZT` is the type of the precomputed weno coefficients in the 
+x-direction, y-direction and z-direction. A _non-stretched_ WENO scheme has `T` equal to `Nothing` everywhere. In case of a non-stretched WENO scheme, 
 we rebuild the advection without passing the grid information, otherwise we use the grid to account for stretched directions.
 """
 new_weno_scheme(::WENO, grid, order, bounds, ::Type{Nothing}, ::Type{Nothing}, ::Type{Nothing},) = WENO(; order, bounds)
@@ -105,6 +93,6 @@ function adapt_advection_order(advection::WENO{B, FT, XT, YT, ZT}, N::Int, grid:
     if N >= B
         return advection
     else
-        return new_weno_scheme(advection, grid, 2N-1, advection.bounds, XT, YT, ZT)
+        return new_weno_scheme(advection, grid, 2N - 1, advection.bounds, XT, YT, ZT)
     end
 end

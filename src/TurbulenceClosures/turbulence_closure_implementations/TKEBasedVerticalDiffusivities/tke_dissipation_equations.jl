@@ -10,8 +10,7 @@ using CUDA
 Base.@kwdef struct TKEDissipationEquations{FT}
     Cᵋϵ :: FT = 1.92
     Cᴾϵ :: FT = 1.44
-    Cᵇϵ⁺ :: FT = -0.65
-    Cᵇϵ⁻ :: FT = -0.65
+    Cᵇϵ :: FT = -0.65
     Cᵂu★ :: FT = 0.0
     CᵂwΔ :: FT = 0.0
     Cᵂα  :: FT = 0.11 # Charnock parameter
@@ -134,11 +133,7 @@ end
 
     # Patankar trick for ϵ-equation
     Cᵋϵ = closure_ij.tke_dissipation_equations.Cᵋϵ
-    Cᵇϵ⁺ = closure_ij.tke_dissipation_equations.Cᵇϵ⁺
-    Cᵇϵ⁻ = closure_ij.tke_dissipation_equations.Cᵇϵ⁻
-
-    N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    Cᵇϵ = ifelse(N² ≥ 0, Cᵇϵ⁺, Cᵇϵ⁻) 
+    Cᵇϵ = closure_ij.tke_dissipation_equations.Cᵇϵ
 
     Cᵇϵ_wb⁻ = min(Cᵇϵ * wb, zero(grid))
     Cᵇϵ_wb⁺ = max(Cᵇϵ * wb, zero(grid))

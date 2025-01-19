@@ -4,22 +4,14 @@ module Operators
 export Δxᶠᶠᶠ, Δxᶠᶠᶜ, Δxᶠᶜᶠ, Δxᶠᶜᶜ, Δxᶜᶠᶠ, Δxᶜᶠᶜ, Δxᶜᶜᶠ, Δxᶜᶜᶜ
 export Δyᶠᶠᶠ, Δyᶠᶠᶜ, Δyᶠᶜᶠ, Δyᶠᶜᶜ, Δyᶜᶠᶠ, Δyᶜᶠᶜ, Δyᶜᶜᶠ, Δyᶜᶜᶜ
 export Δzᶠᶠᶠ, Δzᶠᶠᶜ, Δzᶠᶜᶠ, Δzᶠᶜᶜ, Δzᶜᶠᶠ, Δzᶜᶠᶜ, Δzᶜᶜᶠ, Δzᶜᶜᶜ
-export Δrᶠᶠᶠ, Δrᶠᶠᶜ, Δrᶠᶜᶠ, Δrᶠᶜᶜ, Δrᶜᶠᶠ, Δrᶜᶠᶜ, Δrᶜᶜᶠ, Δrᶜᶜᶜ
 
 # Areas
 export Axᶠᶠᶠ, Axᶠᶠᶜ, Axᶠᶜᶠ, Axᶠᶜᶜ, Axᶜᶠᶠ, Axᶜᶠᶜ, Axᶜᶜᶠ, Axᶜᶜᶜ
 export Ayᶠᶠᶠ, Ayᶠᶠᶜ, Ayᶠᶜᶠ, Ayᶠᶜᶜ, Ayᶜᶠᶠ, Ayᶜᶠᶜ, Ayᶜᶜᶠ, Ayᶜᶜᶜ
 export Azᶠᶠᶠ, Azᶠᶠᶜ, Azᶠᶜᶠ, Azᶠᶜᶜ, Azᶜᶠᶠ, Azᶜᶠᶜ, Azᶜᶜᶠ, Azᶜᶜᶜ
 
-export Axᵃᶜᶜ, Axᵃᶠᶠ, Axᶜᵃᶜ, Axᶠᵃᶠ, Axᶜᶜᵃ, Axᶠᶠᵃ
-export Ayᵃᶜᶜ, Ayᵃᶠᶠ, Ayᶜᵃᶜ, Ayᶠᵃᶠ, Ayᶜᶜᵃ, Ayᶠᶠᵃ
-export Azᵃᶜᶜ, Azᵃᶠᶠ, Azᶜᵃᶜ, Azᶠᵃᶠ, Azᶜᶜᵃ, Azᶠᶠᵃ
-
 # Volumes
 export Vᶠᶠᶠ, Vᶠᶠᶜ, Vᶠᶜᶠ, Vᶠᶜᶜ, Vᶜᶠᶠ, Vᶜᶠᶜ, Vᶜᶜᶠ, Vᶜᶜᶜ
-
-# General metric operators
-export xspacing, yspacing, zspacing, λspacing, φspacing, xarea, yarea, zarea, volume
 
 # Product between spacings and fields
 export Δx_qᶠᶠᶠ, Δx_qᶠᶠᶜ, Δx_qᶠᶜᶠ, Δx_qᶠᶜᶜ, Δx_qᶜᶠᶠ, Δx_qᶜᶠᶜ, Δx_qᶜᶜᶠ, Δx_qᶜᶜᶜ
@@ -38,8 +30,6 @@ export δyᶠᶠᶠ, δyᶠᶠᶜ, δyᶠᶜᶠ, δyᶠᶜᶜ, δyᶜᶠᶠ, δy
 export δzᶠᶠᶠ, δzᶠᶠᶜ, δzᶠᶜᶠ, δzᶠᶜᶜ, δzᶜᶠᶠ, δzᶜᶠᶜ, δzᶜᶜᶠ, δzᶜᶜᶜ
 
 # Derivatives
-export ∂xᶜᵃᵃ, ∂xᶠᵃᵃ, ∂yᵃᶜᵃ, ∂yᵃᶠᵃ, ∂zᵃᵃᶜ, ∂zᵃᵃᶠ
-
 export ∂xᶠᶠᶠ, ∂xᶠᶠᶜ, ∂xᶠᶜᶠ, ∂xᶠᶜᶜ, ∂xᶜᶠᶠ, ∂xᶜᶠᶜ, ∂xᶜᶜᶠ, ∂xᶜᶜᶜ
 export ∂yᶠᶠᶠ, ∂yᶠᶠᶜ, ∂yᶠᶜᶠ, ∂yᶠᶜᶜ, ∂yᶜᶠᶠ, ∂yᶜᶠᶜ, ∂yᶜᶜᶠ, ∂yᶜᶜᶜ
 export ∂zᶠᶠᶠ, ∂zᶠᶠᶜ, ∂zᶠᶜᶠ, ∂zᶠᶜᶜ, ∂zᶜᶠᶠ, ∂zᶜᶠᶜ, ∂zᶜᶜᶠ, ∂zᶜᶜᶜ
@@ -70,44 +60,22 @@ export ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ
 export ℑxyᶜᶜᵃ, ℑxyᶠᶜᵃ, ℑxyᶠᶠᵃ, ℑxyᶜᶠᵃ, ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ, ℑyzᵃᶜᶠ
 export ℑxyzᶜᶜᶠ, ℑxyzᶜᶠᶜ, ℑxyzᶠᶜᶜ, ℑxyzᶜᶠᶠ, ℑxyzᶠᶜᶠ, ℑxyzᶠᶠᶜ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ
 
-# Topology-aware operators
-export δxTᶠᵃᵃ, δyTᵃᶠᵃ, δxTᶜᵃᵃ, δyTᵃᶜᵃ
-export ∂xTᶠᶜᶠ, ∂yTᶜᶠᶠ
-
 # Reference frame conversion
 export intrinsic_vector, extrinsic_vector
 
-# Variable grid operators
-export σⁿ, σ⁻, ∂t_σ
-
 using Oceananigans.Grids
+
+import Oceananigans.Grids: xspacing, yspacing, zspacing
 
 #####
 ##### Convenient aliases
 #####
 
-const AG = AbstractGrid
+const AG   = AbstractGrid
 
-const RG  = RectilinearGrid
-const RGX = XRegularRG
-const RGY = YRegularRG
-const RGZ = ZRegularRG
-
-const OSSG  = OrthogonalSphericalShellGrid
-const OSSGZ = ZRegOrthogonalSphericalShellGrid
-
-const LLG  = LatitudeLongitudeGrid
-const LLGX = XRegularLLG
-const LLGY = YRegularLLG
-const LLGZ = ZRegularLLG
-
-# Vertically regular grids
-const ZRG = Union{RGZ, OSSGZ, LLGZ}
-
-# On the fly calculations of metrics
-const LLGF  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing}
-const LLGFX = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Number}
-const LLGFY = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Any, <:Number}
+const Δx = xspacing
+const Δy = yspacing
+const Δz = zspacing
 
 include("difference_operators.jl")
 include("interpolation_operators.jl")
@@ -118,21 +86,9 @@ include("products_between_fields_and_grid_metrics.jl")
 
 include("derivative_operators.jl")
 include("divergence_operators.jl")
-include("topology_aware_operators.jl")
 include("vorticity_operators.jl")
 include("laplacian_operators.jl")
 
-include("time_variable_grid_operators.jl")
 include("vector_rotation_operators.jl")
-
-@inline xspacing(args...) = Δx(args...) 
-@inline yspacing(args...) = Δy(args...)
-@inline zspacing(args...) = Δz(args...)
-@inline λspacing(abs...)  = Δλ(abs...)
-@inline φspacing(abs...)  = Δφ(abs...)
-@inline rspacing(args...) = Δr(args...)
-@inline xarea(args...)    = Ax(args...)
-@inline yarea(args...)    = Ay(args...)
-@inline zarea(args...)    = Az(args...)
 
 end # module

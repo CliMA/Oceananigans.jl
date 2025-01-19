@@ -58,7 +58,7 @@ function Centered(FT::DataType = Float64; grid = nothing, order = 2)
     return Centered{N, FT}(coefficients..., buffer_scheme)
 end
 
-Base.summary(a::Centered{N}) where N = string("Centered(order=", 2N, ")")
+Base.summary(a::Centered{N}) where N = string("Centered reconstruction order ", N*2)
 
 Base.show(io::IO, a::Centered{N, FT, XT, YT, ZT}) where {N, FT, XT, YT, ZT} =
     print(io, summary(a), " \n",
@@ -84,6 +84,9 @@ on_architecture(to, scheme::Centered{N, FT}) where {N, FT} =
 
 # Useful aliases
 Centered(grid, FT::DataType=Float64; kwargs...) = Centered(FT; grid, kwargs...)
+
+CenteredSecondOrder(grid=nothing, FT::DataType=Float64) = Centered(grid, FT; order=2)
+CenteredFourthOrder(grid=nothing, FT::DataType=Float64) = Centered(grid, FT; order=4)
 
 const ACAS = AbstractCenteredAdvectionScheme
 

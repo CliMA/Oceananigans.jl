@@ -53,6 +53,6 @@ const GridWithFourierTridiagonalSolver = Union{XYRegularRG, XZRegularRG, YZRegul
 
 fft_poisson_solver(grid::XYZRegularRG) = FFTBasedPoissonSolver(grid)
 fft_poisson_solver(grid::GridWithFourierTridiagonalSolver) =
-    FourierTridiagonalPoissonSolver(grid)
+    FourierTridiagonalPoissonSolver(grid.underlying_grid)
 
 end # module

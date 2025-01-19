@@ -11,6 +11,7 @@ using CUDA
 using KernelAbstractions
 using Oceananigans: AbstractModel, prognostic_fields
 using Oceananigans.Architectures: device
+using Oceananigans.Fields: TendencyFields
 using Oceananigans.Utils: work_layout
 
 """
@@ -58,6 +59,5 @@ include("clock.jl")
 include("store_tendencies.jl")
 include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")
-include("split_hydrostatic_runge_kutta_3.jl")
 
 end # module

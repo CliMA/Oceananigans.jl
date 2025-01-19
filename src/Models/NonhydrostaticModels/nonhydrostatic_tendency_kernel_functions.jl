@@ -1,5 +1,5 @@
 using Oceananigans.Advection
-using Oceananigans.BuoyancyFormulations
+using Oceananigans.BuoyancyModels
 using Oceananigans.Coriolis
 using Oceananigans.Operators
 using Oceananigans.StokesDrifts
@@ -56,14 +56,17 @@ pressure anomaly.
                                      tracers,
                                      auxiliary_fields,
                                      diffusivities,
+                                     forcings,
                                      hydrostatic_pressure,
-                                     clock,
-                                     forcing)
+                                     clock)
 
     model_fields = merge(velocities, tracers, auxiliary_fields)
 
-    total_velocities = sum_of_velocities(velocities, background_fields.velocities)
-    total_velocities = with_advective_forcing(forcing, total_velocities)
+    total_velocities = (u = SumOfArrays{2}(velocities.u, background_fields.velocities.u),
+                        v = SumOfArrays{2}(velocities.v, background_fields.velocities.v),
+                        w = SumOfArrays{2}(velocities.w, background_fields.velocities.w))
+
+    total_velocities = with_advective_forcing(forcings.u, total_velocities)
 
     return ( - div_𝐯u(i, j, k, grid, advection, total_velocities, velocities.u)
              - div_𝐯u(i, j, k, grid, advection, velocities, background_fields.velocities.u)
@@ -74,7 +77,7 @@ pressure anomaly.
              - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, diffusivities, clock, model_fields)
              + x_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
              + ∂t_uˢ(i, j, k, grid, stokes_drift, clock.time)
-             + forcing(i, j, k, grid, clock, model_fields))
+             + forcings.u(i, j, k, grid, clock, model_fields))
 end
 
 """
@@ -116,14 +119,17 @@ pressure anomaly.
                                      tracers,
                                      auxiliary_fields,
                                      diffusivities,
+                                     forcings,
                                      hydrostatic_pressure,
-                                     clock,
-                                     forcing)
+                                     clock)
 
     model_fields = merge(velocities, tracers, auxiliary_fields)
 
-    total_velocities = sum_of_velocities(velocities, background_fields.velocities)
-    total_velocities = with_advective_forcing(forcing, total_velocities)
+    total_velocities = (u = SumOfArrays{2}(velocities.u, background_fields.velocities.u),
+                        v = SumOfArrays{2}(velocities.v, background_fields.velocities.v),
+                        w = SumOfArrays{2}(velocities.w, background_fields.velocities.w))
+
+    total_velocities = with_advective_forcing(forcings.v, total_velocities)
 
     return ( - div_𝐯v(i, j, k, grid, advection, total_velocities, velocities.v)
              - div_𝐯v(i, j, k, grid, advection, velocities, background_fields.velocities.v)
@@ -134,7 +140,7 @@ pressure anomaly.
              - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, diffusivities, clock, model_fields)
              + y_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
              + ∂t_vˢ(i, j, k, grid, stokes_drift, clock.time)
-             + forcing(i, j, k, grid, clock, model_fields))
+             + forcings.v(i, j, k, grid, clock, model_fields))
 end
 
 # Only add buoyancy if the hydrostatic pressure isa Nothing
@@ -179,14 +185,17 @@ velocity components, tracer fields, and precalculated diffusivities where applic
                                      tracers,
                                      auxiliary_fields,
                                      diffusivities,
+                                     forcings,
                                      hydrostatic_pressure,
-                                     clock,
-                                     forcing)
+                                     clock)
 
     model_fields = merge(velocities, tracers, auxiliary_fields)
 
-    total_velocities = sum_of_velocities(velocities, background_fields.velocities)
-    total_velocities = with_advective_forcing(forcing, total_velocities)
+    total_velocities = (u = SumOfArrays{2}(velocities.u, background_fields.velocities.u),
+                        v = SumOfArrays{2}(velocities.v, background_fields.velocities.v),
+                        w = SumOfArrays{2}(velocities.w, background_fields.velocities.w))
+
+    total_velocities = with_advective_forcing(forcings.w, total_velocities)
 
     return ( - div_𝐯w(i, j, k, grid, advection, total_velocities, velocities.w)
              - div_𝐯w(i, j, k, grid, advection, velocities, background_fields.velocities.w)
@@ -196,7 +205,7 @@ velocity components, tracer fields, and precalculated diffusivities where applic
              - immersed_∂ⱼ_τ₃ⱼ(i, j, k, grid, velocities, w_immersed_bc, closure, diffusivities, clock, model_fields)
              + z_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
              + ∂t_wˢ(i, j, k, grid, stokes_drift, clock.time)
-             + forcing(i, j, k, grid, clock, model_fields))
+             + forcings.w(i, j, k, grid, clock, model_fields))
 end
 
 """
@@ -238,8 +247,8 @@ velocity components, tracer fields, and precalculated diffusivities where applic
                                  tracers,
                                  auxiliary_fields,
                                  diffusivities,
-                                 clock,
-                                 forcing) where tracer_index
+                                 forcing,
+                                 clock) where tracer_index
 
     @inbounds c = tracers[tracer_index]
     @inbounds background_fields_c = background_fields.tracers[tracer_index]
@@ -247,7 +256,10 @@ velocity components, tracer fields, and precalculated diffusivities where applic
 
     biogeochemical_velocities = biogeochemical_drift_velocity(biogeochemistry, val_tracer_name)
 
-    total_velocities = sum_of_velocities(velocities, background_fields.velocities, biogeochemical_velocities)
+    total_velocities = (u = SumOfArrays{3}(velocities.u, background_fields.velocities.u, biogeochemical_velocities.u),
+                        v = SumOfArrays{3}(velocities.v, background_fields.velocities.v, biogeochemical_velocities.v),
+                        w = SumOfArrays{3}(velocities.w, background_fields.velocities.w, biogeochemical_velocities.w))
+
     total_velocities = with_advective_forcing(forcing, total_velocities)
 
     return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)

@@ -34,15 +34,15 @@ grid = RectilinearGrid(size = (Nx, Ny, Nz),
                        z = z,
                        topology=(Periodic, Bounded, Bounded))
 
-bottom_height(x, y) = - Lz * (1 - (2y / Ly)^2)
-grid = ImmersedBoundaryGrid(grid, PartialCellBottom(bottom_height, minimum_fractional_cell_height=0.1))
+z_bottom(x, y) = - Lz * (1 - (2y / Ly)^2)
+grid = ImmersedBoundaryGrid(grid, PartialCellBottom(z_bottom, minimum_fractional_cell_height=0.1))
 
 @show grid
-@inline Jᵇ(x, y, t) = 1e-7
-@inline τx(x, y, t) = -1e-3 * cos(π * y / Ly)
+@inline Qᵇ(x, y, t) = 1e-7
+@inline Qᵘ(x, y, t) = -1e-3 * cos(π * y / Ly)
 
-b_top_bc = FluxBoundaryCondition(Jᵇ)
-u_top_bc = FluxBoundaryCondition(τx)
+b_top_bc = FluxBoundaryCondition(Qᵇ)
+u_top_bc = FluxBoundaryCondition(Qᵘ)
 
 b_bcs = FieldBoundaryConditions(top=b_top_bc)
 u_bcs = FieldBoundaryConditions(top=u_top_bc)

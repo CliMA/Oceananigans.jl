@@ -8,10 +8,10 @@ Example
 =======
 
 ```jldoctest
-using Oceananigans.Advection: Centered(order=4)
+using Oceananigans.Advection: CenteredFourthOrder
 using Oceananigans.Grids: required_halo_size_x
 
-required_halo_size_x(Centered(order=4))
+required_halo_size_x(CenteredFourthOrder())
 
 # output
 2
@@ -28,10 +28,10 @@ Example
 =======
 
 ```jldoctest
-using Oceananigans.Advection: Centered(order=4)
+using Oceananigans.Advection: CenteredFourthOrder
 using Oceananigans.Grids: required_halo_size_y
 
-required_halo_size_y(Centered(order=4))
+required_halo_size_y(CenteredFourthOrder())
 
 # output
 2
@@ -48,10 +48,10 @@ Example
 =======
 
 ```jldoctest
-using Oceananigans.Advection: Centered(order=4)
+using Oceananigans.Advection: CenteredFourthOrder
 using Oceananigans.Grids: required_halo_size_z
 
-required_halo_size_z(Centered(order=4))
+required_halo_size_z(CenteredFourthOrder())
 
 # output
 2

@@ -3,9 +3,9 @@
 #####
 
 """
-    struct UpwindBiased <: AbstractUpwindBiasedAdvectionScheme{3}
+    struct UpwindBiasedFifthOrder <: AbstractUpwindBiasedAdvectionScheme{3}
 
-Upwind-biased reconstruction scheme.
+Upwind-biased fifth-order advection scheme.
 """
 struct UpwindBiased{N, FT, XT, YT, ZT, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT} 
     "Coefficient for Upwind reconstruction on stretched ``x``-faces" 
@@ -65,7 +65,7 @@ function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3)
     return UpwindBiased{N, FT}(coefficients..., buffer_scheme, advecting_velocity_scheme)
 end
 
-Base.summary(a::UpwindBiased{N}) where N = string("UpwindBiased(order=", 2N-1, ")")
+Base.summary(a::UpwindBiased{N}) where N = string("Upwind Biased reconstruction order ", N*2-1)
 
 Base.show(io::IO, a::UpwindBiased{N, FT, XT, YT, ZT}) where {N, FT, XT, YT, ZT} =
     print(io, summary(a), " \n",
@@ -94,6 +94,10 @@ on_architecture(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
 
 # Useful aliases
 UpwindBiased(grid, FT::DataType=Float64; kwargs...) = UpwindBiased(FT; grid, kwargs...)
+
+UpwindBiasedFirstOrder(grid=nothing, FT::DataType=Float64) = UpwindBiased(grid, FT; order = 1)
+UpwindBiasedThirdOrder(grid=nothing, FT::DataType=Float64) = UpwindBiased(grid, FT; order = 3)
+UpwindBiasedFifthOrder(grid=nothing, FT::DataType=Float64) = UpwindBiased(grid, FT; order = 5)
 
 const AUAS = AbstractUpwindBiasedAdvectionScheme
 
