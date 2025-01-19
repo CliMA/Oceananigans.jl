@@ -170,31 +170,36 @@ function twin_grid(grid::DistributedGrid; local_direction = :y)
     new_arch  = Distributed(child_arch; partition = Partition(ranks...))
     global_sz = global_size(new_arch, (nnx, nny, nnz))
     global_sz = deflate_tuple(TX, TY, TZ, global_sz)
+    global_hl = halo_size(grid)
+    global_hl = deflate_tuple(TX, TY, TZ, global_hl)
 
     return construct_grid(grid, new_arch, FT; 
                           size = global_sz, 
+                          halo = global_hl,
                           x = xG, y = yG, z = zG,
                           topology = (TX, TY, TZ))
 end
 
-function construct_grid(::RectilinearGrid, arch, FT; size, x, y, z, topology) 
+function construct_grid(::RectilinearGrid, arch, FT; size, halo, x, y, z, topology) 
     TX, TY, TZ = topology
     x = TX == Flat ? nothing : x
     y = TY == Flat ? nothing : y
     z = TZ == Flat ? nothing : z
 
     return RectilinearGrid(arch, FT; size, 
+                           halo,
                            x, y, z,
                            topology)
 end
 
-function construct_grid(::LatitudeLongitudeGrid, arch, FT; size, x, y, z, topology) 
+function construct_grid(::LatitudeLongitudeGrid, arch, FT; size, halo, x, y, z, topology) 
     TX, TY, TZ = topology
     longitude = TX == Flat ? nothing : x
     latitude  = TY == Flat ? nothing : y
     z         = TZ == Flat ? nothing : z
 
     return LatitudeLongitudeGrid(arch, FT; size, 
+                                 halo,
                                  longitude, latitude, z,
                                  topology)
 end

@@ -21,6 +21,8 @@ tuple_string(tup::Tuple{}) = ""
 ##### set!
 #####
 
+set!(obj, ::Nothing) = nothing
+
 function set!(Φ::NamedTuple; kwargs...)
     for (fldname, value) in kwargs
         ϕ = getproperty(Φ, fldname)
@@ -33,6 +35,11 @@ end
 set!(u::Field, f::Function) = set_to_function!(u, f)
 set!(u::Field, a::Union{Array, CuArray, OffsetArray}) = set_to_array!(u, a)
 set!(u::Field, v::Field) = set_to_field!(u, v)
+
+function set!(u::Field, a::Number)
+    fill!(interior(u), a) # note all other set! only change interior
+    return u # return u, not parent(u), for type-stability
+end
 
 function set!(u::Field, v)
     u .= v # fallback

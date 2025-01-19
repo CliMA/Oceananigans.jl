@@ -142,6 +142,9 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     u_immersed_bc = immersed_boundary_condition(velocities.u)
     v_immersed_bc = immersed_boundary_condition(velocities.v)
 
+    u_forcing = model.forcing.u
+    v_forcing = model.forcing.v
+
     start_momentum_kernel_args = (model.advection.momentum,
                                   model.coriolis,
                                   model.closure)
@@ -153,11 +156,11 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
                                 model.diffusivity_fields,
                                 model.pressure.pHY′,
                                 model.auxiliary_fields,
-                                model.forcing,
+                                model.vertical_coordinate,
                                 model.clock)
 
-    u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args...)
-    v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args...)
+    u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., u_forcing)
+    v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., v_forcing)
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, 

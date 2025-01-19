@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.Models
 
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.BuoyancyModels: Zᶜᶜᶜ
+using Oceananigans.BuoyancyFormulations: Zᶜᶜᶜ
 using Oceananigans.Models: model_temperature, model_salinity, model_geopotential_height, 
                            ConstantTemperatureSB, ConstantSalinitySB
 
@@ -87,7 +87,7 @@ function insitu_density(arch, FT, eos::BoussinesqEquationOfState;
     geopotential_height = model_geopotential_height(model)
     T_vec = grid_size_value(arch, grid, ST_testvals.T)
     S_vec = grid_size_value(arch, grid, ST_testvals.S)
-    eos_vec = grid_size_value(arch, grid, model.buoyancy.model.equation_of_state)
+    eos_vec = grid_size_value(arch, grid, model.buoyancy.formulation.equation_of_state)
     SWP_ρ = similar(interior(d_field))
     @. SWP_ρ = SeawaterPolynomials.ρ(T_vec, S_vec, geopotential_height, eos_vec)
 
@@ -115,7 +115,7 @@ function potential_density(arch, FT, eos::BoussinesqEquationOfState;
     geopotential_height = grid_size_value(arch, grid, 0)
     T_vec = grid_size_value(arch, grid, ST_testvals.T)
     S_vec = grid_size_value(arch, grid, ST_testvals.S)
-    eos_vec = grid_size_value(arch, grid, model.buoyancy.model.equation_of_state)
+    eos_vec = grid_size_value(arch, grid, model.buoyancy.formulation.equation_of_state)
     SWP_ρ = similar(interior(d_field))
     @. SWP_ρ = SeawaterPolynomials.ρ(T_vec, S_vec, geopotential_height, eos_vec)
 

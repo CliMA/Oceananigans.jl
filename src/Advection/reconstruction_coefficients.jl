@@ -1,3 +1,5 @@
+using Oceananigans.Grids: ξnodes, ηnodes, rnodes
+
 # Generic reconstruction methods valid for all reconstruction schemes
 # Unroll the functions to pass the coordinates in case of a stretched grid
 """
@@ -262,14 +264,21 @@ end
         arch       = architecture(grid)
         Hx, Hy, Hz = halo_size(grid)
         new_grid   = with_halo((Hx+1, Hy+1, Hz+1), grid)
-        metrics    = coordinates(grid)
-    
-        coeff_xᶠᵃᵃ = reconstruction_coefficients(FT, getproperty(new_grid, metrics[1]), arch, new_grid.Nx, Val(method); order)
-        coeff_xᶜᵃᵃ = reconstruction_coefficients(FT, getproperty(new_grid, metrics[2]), arch, new_grid.Nx, Val(method); order)
-        coeff_yᵃᶠᵃ = reconstruction_coefficients(FT, getproperty(new_grid, metrics[3]), arch, new_grid.Ny, Val(method); order)
-        coeff_yᵃᶜᵃ = reconstruction_coefficients(FT, getproperty(new_grid, metrics[4]), arch, new_grid.Ny, Val(method); order)
-        coeff_zᵃᵃᶠ = reconstruction_coefficients(FT, getproperty(new_grid, metrics[5]), arch, new_grid.Nz, Val(method); order)
-        coeff_zᵃᵃᶜ = reconstruction_coefficients(FT, getproperty(new_grid, metrics[6]), arch, new_grid.Nz, Val(method); order)
+        
+        ξᶠᵃᵃ = ξnodes(new_grid, Face(), with_halos=true)
+        ηᵃᶠᵃ = ηnodes(new_grid, Face(), with_halos=true)
+        rᵃᵃᶠ = rnodes(new_grid, Face(), with_halos=true)
+
+        ξᶜᵃᵃ = ξnodes(new_grid, Center(), with_halos=true)
+        ηᵃᶜᵃ = ηnodes(new_grid, Center(), with_halos=true)
+        rᵃᵃᶜ = rnodes(new_grid, Center(), with_halos=true)
+
+        coeff_xᶠᵃᵃ = reconstruction_coefficients(FT, ξᶠᵃᵃ, arch, new_grid.Nx, Val(method); order)
+        coeff_xᶜᵃᵃ = reconstruction_coefficients(FT, ξᶜᵃᵃ, arch, new_grid.Nx, Val(method); order)
+        coeff_yᵃᶠᵃ = reconstruction_coefficients(FT, ηᵃᶠᵃ, arch, new_grid.Ny, Val(method); order)
+        coeff_yᵃᶜᵃ = reconstruction_coefficients(FT, ηᵃᶜᵃ, arch, new_grid.Ny, Val(method); order)
+        coeff_zᵃᵃᶠ = reconstruction_coefficients(FT, rᵃᵃᶠ, arch, new_grid.Nz, Val(method); order)
+        coeff_zᵃᵃᶜ = reconstruction_coefficients(FT, rᵃᵃᶜ, arch, new_grid.Nz, Val(method); order)
     end
 
     return (coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ)

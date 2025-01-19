@@ -3,7 +3,7 @@ push!(LOAD_PATH, joinpath(@__DIR__, ".."))
 using BenchmarkTools
 using CUDA
 using Oceananigans
-using Oceananigans.BuoyancyModels
+using Oceananigans.BuoyancyFormulations
 using SeawaterPolynomials
 using Benchmarks
 
