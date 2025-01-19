@@ -58,7 +58,7 @@ function time_step_catke_equation!(model)
         # Compute the linear implicit component of the RHS (diffusivities, L)
         # and step forward
         launch!(arch, grid, :xyz,
-                substep_turbulent_kinetic_energy!,
+                _substep_turbulent_kinetic_energy!,
                 κe, Le, grid, active_cells_map, closure,
                 model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
                 model.tracers, model.buoyancy, diffusivity_fields,
