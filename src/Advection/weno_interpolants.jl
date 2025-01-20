@@ -269,9 +269,9 @@ while for `buffer == 4` unrolls into
 for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
     @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds $(metaprogrammed_smoothness_operation(buffer))
     
-    for stencil in 0:buffer-1
-        @eval @inline smoothness_indicator(ψ, scheme::WENO{$buffer, FT}, ::Val{$stencil}) where FT = 
-                      smoothness_operation(scheme, ψ, smoothness_coefficients(Val(FT), Val(buffer), Val(stencil)))
+    for stencil in 0:buffer-1, FT in WENO_supported_floating_types
+        @eval @inline smoothness_indicator(ψ, scheme::WENO{$buffer, $FT}, ::Val{$stencil}) = 
+                      smoothness_operation(scheme, ψ, $(smoothness_coefficients(Val(FT), Val(buffer), Val(stencil))))
     end
 end
 
