@@ -22,6 +22,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                    buoyancy = BuoyancyTracer(),
                                     closure = nothing, 
                                     tracers = :b,
+                        vertical_coordinate = Oceananigans.Models.ZStar(),
                                free_surface = SplitExplicitFreeSurface(grid; substeps = 10))
 
 g = model.free_surface.gravitational_acceleration
@@ -78,3 +79,5 @@ for t in 1:length(b.times)
   push!(drift, sum(dz[t] * b[t]) /  sum(dz[t]) - init) 
 end
 
+using CairoMakie
+lines(drift)
