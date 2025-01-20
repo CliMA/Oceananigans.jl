@@ -121,8 +121,11 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
     F = range(FT(F₋), FT(F₊), length = TF)
     C = range(FT(C₋), FT(C₊), length = TC)
 
-    F = StepRangeLen(FT(F.ref), FT(F.step), F.len, F.offset)
-    C = StepRangeLen(FT(C.ref), FT(C.step), C.len, C.offset)
+    # MetalGPU cannot use a Float64 as a step, so we need to convert to Float32
+    if arch isa MetalGPU 
+        F = StepRangeLen(FT(F.ref), FT(F.step), F.len, F.offset)
+        C = StepRangeLen(FT(C.ref), FT(C.step), C.len, C.offset)
+    end
 
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)
