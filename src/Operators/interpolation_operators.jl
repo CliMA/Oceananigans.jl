@@ -86,7 +86,7 @@ using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 @inline ℑxᶜᵃᵃ(i, j, k, ::XFlatGrid, u) = @inbounds u[i, j, k]
 @inline ℑxᶠᵃᵃ(i, j, k, ::XFlatGrid, c) = @inbounds c[i, j, k]
 
-@inline ℑyᵃᶜᵃ(i, j, k, ::YFlatGrid, w) = @inbounds w[i, j, k]
+@inline ℑyᵃᶜᵃ(i, j, k, ::YFlatGrid, v) = @inbounds v[i, j, k]
 @inline ℑyᵃᶠᵃ(i, j, k, ::YFlatGrid, c) = @inbounds c[i, j, k]
 
 @inline ℑzᵃᵃᶜ(i, j, k, ::ZFlatGrid, w) = @inbounds w[i, j, k]
