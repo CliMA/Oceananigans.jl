@@ -1,3 +1,5 @@
+using Oceananigans.Architectures: MetalGPU
+
 # Utilities to generate a grid with the following inputs
 get_domain_extent(::Nothing, N)             = (1, 1)
 get_domain_extent(coord, N)                 = (coord[1], coord[2])
