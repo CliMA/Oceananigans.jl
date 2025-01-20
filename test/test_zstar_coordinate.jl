@@ -3,6 +3,8 @@ include("dependencies_for_runtests.jl")
 using Random
 using Oceananigans: initialize!
 using Oceananigans.ImmersedBoundaries: PartialCellBottom
+using Oceananigans.Grids: MutableVerticalDiscretization
+using Oceananigans.Models: ZStar
 
 function test_zstar_coordinate(model, Ni, Δt)
     
@@ -47,7 +49,7 @@ const F = Face
 @testset "ZStar coordinate scaling tests" begin
     @info "testing the ZStar coordinate scalings"
 
-    z = MutableVerticalCoordinate((-20, 0))
+    z = MutableVerticalDiscretization((-20, 0))
 
     grid = RectilinearGrid(size = (2, 2, 20), 
                               x = (0, 2), 
@@ -79,19 +81,51 @@ const F = Face
     @test column_depthᶜᶜᵃ(2, 1, grid) == 12
     @test  static_column_depthᶜᶜᵃ(1, 1, grid) == 10
     @test  static_column_depthᶜᶜᵃ(2, 1, grid) == 10
+end
 
-    # Make sure a model with a MutableVerticalCoordinate but ZCoordinate still runs
-    model = HydrostaticFreeSurfaceModel(; grid, free_surface = SplitExplicitFreeSurface(grid; substeps = 20))
+@testset "MutableVerticalDiscretization tests" begin
+    @info "testing the MutableVerticalDiscretization in ZCoordinate mode"
 
-    @test begin
-        time_step!(model, 1.0)
-        true
-    end
+    z = MutableVerticalDiscretization((-20, 0))
+
+    # A mutable immersed grid
+    mutable_grid = RectilinearGrid(size=(2, 2, 20), x=(0, 2), y=(0, 1), z=z)
+    mutable_grid = ImmersedBoundaryGrid(mutable_grid, GridFittedBottom((x, y) -> -10))
+
+    # A static immersed grid
+    static_grid = RectilinearGrid(size=(2, 2, 20), x=(0, 2), y=(0, 1), z=(-20, 0))
+    static_grid = ImmersedBoundaryGrid(static_grid, GridFittedBottom((x, y) -> -10))
+
+    # Make sure a model with a MutableVerticalDiscretization but ZCoordinate still runs and 
+    # the results are the same as a model with a static vertical discretization.
+    mutable_model = HydrostaticFreeSurfaceModel(; grid=mutable_grid, free_surface=ImplicitFreeSurface())
+    static_model  = HydrostaticFreeSurfaceModel(; grid=static_grid,  free_surface=ImplicitFreeSurface())
+
+    uᵢ = rand(size(mutable_model.velocities.u)...)
+    vᵢ = rand(size(mutable_model.velocities.v)...)
+
+    set!(mutable_model; u=uᵢ, v=vᵢ)
+    set!(static_model;  u=uᵢ, v=vᵢ)
+
+    static_sim  = Simulation(static_model;  Δt=1e-3, stop_iteration=100)
+    mutable_sim = Simulation(mutable_model; Δt=1e-3, stop_iteration=100)         
+    
+    run!(mutable_sim)
+    run!(static_sim)
+
+    # Check that fields are the same
+    um, vm, wm = mutable_model.velocities
+    us, vs, ws = static_model.velocities
+
+    @test all(um.data .≈ us.data)
+    @test all(vm.data .≈ vs.data)
+    @test all(wm.data .≈ ws.data)
+    @test all(um.data .≈ us.data)
 end
 
 @testset "ZStar coordinate simulation testset" begin
-    z_uniform   = MutableVerticalCoordinate((-20, 0))
-    z_stretched = MutableVerticalCoordinate(collect(-20:0))
+    z_uniform   = MutableVerticalDiscretization((-20, 0))
+    z_stretched = MutableVerticalDiscretization(collect(-20:0))
     topologies  = ((Periodic, Periodic, Bounded), 
                    (Periodic, Bounded, Bounded),
                    (Bounded, Periodic, Bounded),

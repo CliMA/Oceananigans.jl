@@ -1,7 +1,7 @@
 import Oceananigans.Grids: znode, AbstractMutableGrid
 
 #####
-##### MutableVerticalCoordinate-specific vertical spacing functions
+##### MutableVerticalDiscretization-specific vertical spacing functions
 #####
 
 const C = Center
@@ -28,9 +28,9 @@ const AMG = AbstractMutableGrid
 #### Vertical spacing functions
 ####
 
-const MRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:MutableVerticalCoordinate}
-const MLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:MutableVerticalCoordinate}
-const MOSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:MutableVerticalCoordinate}
+const MRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:MutableVerticalDiscretization}
+const MLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:MutableVerticalDiscretization}
+const MOSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:MutableVerticalDiscretization}
 
 superscript_location(s::Symbol) = s == :ᶜ ? :Center : :Face
 

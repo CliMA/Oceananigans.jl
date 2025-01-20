@@ -6,7 +6,7 @@ using Oceananigans.Advection: WENOVectorInvariant
 using Oceananigans.AbstractOperations: GridMetricOperation  
 using Printf
 
-z_faces = MutableVerticalCoordinate(-20, 0)
+z_faces = MutableVerticalDiscretization((-20, 0))
 
 grid = RectilinearGrid(size = (128, 20), 
                           x = (0, 64kilometers), 
@@ -22,6 +22,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                    buoyancy = BuoyancyTracer(),
                                     closure = nothing, 
                                     tracers = :b,
+                        vertical_coordinate = Oceananigans.Models.ZStar(),
                                free_surface = SplitExplicitFreeSurface(grid; substeps = 10))
 
 g = model.free_surface.gravitational_acceleration
@@ -78,3 +79,5 @@ for t in 1:length(b.times)
   push!(drift, sum(dz[t] * b[t]) /  sum(dz[t]) - init) 
 end
 
+using CairoMakie
+lines(drift)

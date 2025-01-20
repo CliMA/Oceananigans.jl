@@ -131,7 +131,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
     if !(grid isa MutableGridOfSomeKind) && (vertical_coordinate isa ZStar)
-        error("The grid does not support ZStar vertical coordinates. Use a `MutableVerticalCoordinate` to allow the use of ZStar (see `MutableVerticalCoordinate`).")
+        error("The grid does not support ZStar vertical coordinates. Use a `MutableVerticalDiscretization` to allow the use of ZStar (see `MutableVerticalDiscretization`).")
     end
 
     # Validate biogeochemistry (add biogeochemical tracers automagically)
