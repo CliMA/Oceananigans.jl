@@ -27,9 +27,9 @@ end
     end
 end
 
-@inline function ab2_step_G(i, j, k, grid, ℓx, ℓy, ℓz, G⁻, Gⁿ, χ::FT) where FT 
-    C₁ = convert(FT, 3/2) + χ
-    C₂ = convert(FT, 1/2) + χ
+@inline function ab2_step_G(i, j, k, grid, ℓx, ℓy, ℓz, G⁻, Gⁿ, χ) 
+    C₁ = 3 * one(grid) / 2 + χ
+    C₂ =     one(grid) / 2 + χ
 
     # multiply G⁻ by false if C₂ is zero to 
     # prevent propagationg possible NaNs
@@ -104,8 +104,8 @@ end
     GUi = G_vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
     GVi = G_vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
 
-    @inbounds GUⁿ[i, j, 1] = convert(FT, 2/3) * GUi + GU⁻[i, j, 1]
-    @inbounds GVⁿ[i, j, 1] = convert(FT, 2/3) * GVi + GV⁻[i, j, 1]
+    @inbounds GUⁿ[i, j, 1] = 2 * GUi / 3 + GU⁻[i, j, 1]
+    @inbounds GVⁿ[i, j, 1] = 2 * GVi / 3 + GV⁻[i, j, 1]
 end
 
 @inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, 

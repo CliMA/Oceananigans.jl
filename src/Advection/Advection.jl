@@ -54,6 +54,9 @@ abstract type AbstractUpwindBiasedAdvectionScheme{B, FT} <: AbstractAdvectionSch
 # Note that it is not possible to compile schemes for `advection_buffer = 41` or higher.
 const advection_buffers = [1, 2, 3, 4, 5, 6]
 
+# To add support for new floating types add them here
+const supported_float_types = [Float32, Float64]
+
 @inline Base.eltype(::AbstractAdvectionScheme{<:Any, FT}) where FT = FT
 
 @inline required_halo_size_x(::AbstractAdvectionScheme{B}) where B = B
