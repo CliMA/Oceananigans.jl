@@ -28,7 +28,7 @@ using Glob
 
 #%%
 const Qᵀ_mode = 3.5e-4
-filename = "doublegyre_30Cwarmflushbottom10_relaxation_30days_modewater_zWENO5_CATKEVerticalDiffusivity_QT$(Qᵀ_mode)"
+filename = "doublegyre_30Cwarmflushbottom10_relaxation_8days_modewater_zWENO5_CATKEVerticalDiffusivity_QT$(Qᵀ_mode)"
 FILE_DIR = "./Output/$(filename)"
 # FILE_DIR = "/storage6/xinkai/NN_Oceananigans/$(filename)"
 @info "$(FILE_DIR)"
@@ -38,8 +38,8 @@ mkpath(FILE_DIR)
 model_architecture = GPU()
 
 function CATKE_ocean_closure()
-  mixing_length = CATKEMixingLength(Cᵇ=0.01)
-  turbulent_kinetic_energy_equation = CATKEEquation(Cᵂϵ=1.0)
+  mixing_length = CATKEMixingLength(Cᵇ=0.28)
+  turbulent_kinetic_energy_equation = CATKEEquation()
   return CATKEVerticalDiffusivity(; mixing_length, turbulent_kinetic_energy_equation)
 end
 convection_closure = CATKE_ocean_closure()
@@ -82,7 +82,7 @@ const S_mid = (S_north + S_south) / 2
 const τ₀ = 1e-4
 
 const μ_drag = 1/30days
-const μ_T = 1/30days
+const μ_T = 1/8days
 
 const X₀ = -Lx/2 + 800kilometers
 const Y₀ = -Ly/2 + 1500kilometers

@@ -37,8 +37,8 @@ mkpath(FILE_DIR)
 model_architecture = GPU()
 
 function CATKE_ocean_closure()
-  mixing_length = CATKEMixingLength(Cᵇ=0.01)
-  turbulent_kinetic_energy_equation = CATKEEquation(Cᵂϵ=1.0)
+  mixing_length = CATKEMixingLength(Cᵇ=0.28)
+  turbulent_kinetic_energy_equation = CATKEEquation()
   return CATKEVerticalDiffusivity(; mixing_length, turbulent_kinetic_energy_equation)
 end
 convection_closure = CATKE_ocean_closure()

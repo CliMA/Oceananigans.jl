@@ -38,7 +38,7 @@ model_architecture = GPU()
 # vertical_base_closure = VerticalScalarDiffusivity(ν=1e-5, κ=1e-5)
 # convection_closure = XinKaiVerticalDiffusivity()
 function CATKE_ocean_closure()
-  mixing_length = CATKEMixingLength(Cᵇ=0.01)
+  mixing_length = CATKEMixingLength(Cᵇ=0.28)
   turbulent_kinetic_energy_equation = CATKEEquation(Cᵂϵ=1.0)
   return CATKEVerticalDiffusivity(; mixing_length, turbulent_kinetic_energy_equation)
 end
