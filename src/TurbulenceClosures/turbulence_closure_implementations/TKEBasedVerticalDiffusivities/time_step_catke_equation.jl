@@ -3,6 +3,7 @@ using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Grids: retrieve_interior_active_cells_map
 using Oceananigans.BoundaryConditions: apply_x_bcs!, apply_y_bcs!, apply_z_bcs!
+using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, active_linear_index_to_tuple
 using Oceananigans.TimeSteppers: store_field_tendencies!, ab2_step_field!, implicit_step!
 using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
 using CUDA
@@ -45,6 +46,8 @@ function time_step_catke_equation!(model)
 
     FT = eltype(grid)
 
+    active_cells_map = retrieve_interior_active_cells_map(grid, Val(:interior))
+
     for m = 1:M # substep
         if m == 1 && M != 1
             χ = convert(FT, -0.5) # Euler step for the first substep
@@ -55,11 +58,11 @@ function time_step_catke_equation!(model)
         # Compute the linear implicit component of the RHS (diffusivities, L)
         # and step forward
         launch!(arch, grid, :xyz,
-                substep_turbulent_kinetic_energy!,
-                κe, Le, grid, closure,
+                _substep_turbulent_kinetic_energy!,
+                κe, Le, grid, active_cells_map, closure,
                 model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
                 model.tracers, model.buoyancy, diffusivity_fields,
-                Δτ, χ, Gⁿe, G⁻e)
+                Δτ, χ, Gⁿe, G⁻e; active_cells_map)
 
         # Good idea?
         # previous_time = model.clock.time - Δt
@@ -75,12 +78,39 @@ function time_step_catke_equation!(model)
     return nothing
 end
 
-@kernel function substep_turbulent_kinetic_energy!(κe, Le, grid, closure,
+@kernel function _substep_turbulent_kinetic_energy!(κe, Le, grid, map, closure,
+                                                    next_velocities, previous_velocities,
+                                                    tracers, buoyancy, diffusivities,
+                                                    Δτ, χ, slow_Gⁿe, G⁻e)
+
+    idx = @index(Global, Linear)
+    i, j, k = active_linear_index_to_tuple(idx, map)
+
+    substep_turbulent_kinetic_energy!(i, j, k, κe, Le, grid, closure,
+                                      next_velocities, previous_velocities,
+                                      tracers, buoyancy, diffusivities,
+                                      Δτ, χ, slow_Gⁿe, G⁻e)
+end
+    
+
+
+@kernel function _substep_turbulent_kinetic_energy!(κe, Le, grid, ::Nothing, closure,
+                                                    next_velocities, previous_velocities,
+                                                    tracers, buoyancy, diffusivities,
+                                                    Δτ, χ, slow_Gⁿe, G⁻e)
+
+    i, j, k = @index(Global, NTuple)
+
+    substep_turbulent_kinetic_energy!(i, j, k, κe, Le, grid, closure,
+                                      next_velocities, previous_velocities,
+                                      tracers, buoyancy, diffusivities,
+                                      Δτ, χ, slow_Gⁿe, G⁻e)
+end
+
+@inline function substep_turbulent_kinetic_energy!(i, j, k, κe, Le, grid, closure,
                                                    next_velocities, previous_velocities,
                                                    tracers, buoyancy, diffusivities,
                                                    Δτ, χ, slow_Gⁿe, G⁻e)
-
-    i, j, k = @index(Global, NTuple)
 
     Jᵇ = diffusivities.Jᵇ
     e = tracers.e

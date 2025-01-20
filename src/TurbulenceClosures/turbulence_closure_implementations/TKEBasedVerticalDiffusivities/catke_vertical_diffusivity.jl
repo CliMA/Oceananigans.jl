@@ -202,13 +202,16 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
     parent(u⁻) .= parent(u)
     parent(v⁻) .= parent(v)
 
+    active_cells_map = retrieve_interior_active_cells_map(grid, Val(:interior))
+
     launch!(arch, grid, :xy,
             compute_average_surface_buoyancy_flux!,
             diffusivities.Jᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
 
     launch!(arch, grid, parameters,
-            compute_CATKE_diffusivities!,
-            diffusivities, grid, closure, velocities, tracers, buoyancy)
+            _compute_CATKE_diffusivities!,
+            diffusivities, grid, active_cells_map, closure, velocities, tracers, buoyancy; 
+            active_cells_map)
 
     return nothing
 end
@@ -233,9 +236,18 @@ end
     @inbounds Jᵇ[i, j, 1] = (Jᵇᵢⱼ + ϵ * Jᵇ★) / (1 + ϵ)
 end
 
-@kernel function compute_CATKE_diffusivities!(diffusivities, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy)
+@kernel function _compute_CATKE_diffusivities!(diffusivities, grid, ::Nothing, closure::FlavorOfCATKE, velocities, tracers, buoyancy)
     i, j, k = @index(Global, NTuple)
+    compute_CATKE_diffusivities!(i, j, k, diffusivities, grid, closure, velocities, tracers, buoyancy)
+end
 
+@kernel function _compute_CATKE_diffusivities!(diffusivities, grid, map, closure::FlavorOfCATKE, velocities, tracers, buoyancy)
+    idx = @index(Global, Linear)
+    i, j, k = active_linear_index_to_tuple(idx, map)
+    compute_CATKE_diffusivities!(i, j, k, diffusivities, grid, closure, velocities, tracers, buoyancy)
+end
+
+@inline function compute_CATKE_diffusivities!(i, j, k, diffusivities, grid, closure, velocities, tracers, buoyancy)
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
     closure_ij = getclosure(i, j, closure)
     Jᵇ = diffusivities.Jᵇ
