@@ -109,7 +109,9 @@ On a uniform `grid`, the coefficients are independent of the `xr` and `xi` value
         end
     end
 
-    return FT.(tuple(coeffs...))
+    coeffs = FT.(coeffs)[1:end-1]
+
+    return tuple(coeffs..., 1-sum(coeffs)) # Coefficients should sum to 1!
 end
 
 """
