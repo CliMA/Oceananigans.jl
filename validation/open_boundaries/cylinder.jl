@@ -6,29 +6,26 @@ using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Printf
 using CUDA
 
-using Oceananigans.BoundaryConditions: PerturbationAdvectionOpenBoundaryCondition
+using Oceananigans.BoundaryConditions: FlatExtrapolationOpenBoundaryCondition
+                                       PerturbationAdvectionOpenBoundaryCondition
 
-u∞ = 1
-r = 1/2
-arch = GPU()
-stop_time = 200
-
-cylinder(x, y) = (x^2 + y^2) ≤ r^2
+# there is some problem using ConjugateGradientPoissonSolver with TimeInterval because the timestep can go really small
+# so while I identify the issue I'm using IterationInterval and a fixed timestep
 
 """
     drag(modell; bounding_box = (-1, 3, -2, 2), ν = 1e-3)
 
 Returns the drag within the `bounding_box` computed by:
 
-```math
-\\frac{\\partial \\vec{u}}{\\partial t} + (\\vec{u}\\cdot\\nabla)\\vec{u}=-\\nabla P + \\nabla\\cdot\\vec{\\tau} + \\vec{F},\\newline
-\\vec{F}_T=\\int_\\Omega\\vec{F}dV = \\int_\\Omega\\left(\\frac{\\partial \\vec{u}}{\\partial t} + (\\vec{u}\\cdot\\nabla)\\vec{u}+\\nabla P - \\nabla\\cdot\\vec{\\tau}\\right)dV,\\newline
-\\vec{F}_T=\\int_\\Omega\\left(\\frac{\\partial \\vec{u}}{\\partial t}\\right)dV + \\oint_{\\partial\\Omega}\\left(\\vec{u}(\\vec{u}\\cdot\\hat{n}) + P\\hat{n} - \\vec{\\tau}\\cdot\\hat{n}\\right)dS,\\newline
-\\F_u=\\int_\\Omega\\left(\\frac{\\partial u}{\\partial t}\\right)dV + \\oint_{\\partial\\Omega}\\left(u(\\vec{u}\\cdot\\hat{n}) - \\tau_{xx}\\right)dS + \\int_{\\partial\\Omega}P\\hat{x}\\cdot d\\vec{S},\\newline
-F_u=\\int_\\Omega\\left(\\frac{\\partial u}{\\partial t}\\right)dV - \\int_{\\partial\\Omega_1} \\left(u^2 - 2\\nu\\frac{\\partial u}{\\partial x} + P\\right)dS + \\int_{\\partial\\Omega_2}\\left(u^2 - 2\\nu\\frac{\\partial u}{\\partial x}+P\\right)dS -  \\int_{\\partial\\Omega_2} uvdS + \\int_{\\partial\\Omega_4} uvdS,
-```
-where the bounding box is ``\\Omega`` which is formed from the boundaries ``\\partial\\Omega_{1}``, ``\\partial\\Omega_{2}``, ``\\partial\\Omega_{3}``, and ``\\partial\\Omega_{4}`` 
-which have outward directed normals ``-\\hat{x}``, ``\\hat{x}``, ``-\\hat{y}``, and ``\\hat{y}``
+∂ₜu⃗ + (u⃗⋅∇)u⃗ = −∇P + ∇⋅τ⃗ + F⃗
+F⃗ₜ =∫ᵥF⃗dV = ∫ᵥ(∂ₜ u⃗ + (u⃗⋅∇)u⃗ + ∇P − ∇⋅τ⃗)dV
+F⃗ₜ=∫ᵥ(∂ₜu⃗)dV + ∮ₛ(u⃗(u⃗⋅n̂) + Pn̂ − τ⃗⋅n̂)dS
+Fᵤ=∫ᵥ ∂ₜu dV + ∮ₛ(u(u⃗⋅n̂) − τₓₓ)dS + ∮ₛPx̂⋅dS⃗
+Fᵤ=∫ᵥ ∂ₜ u dV − ∫ₛ₁(u² − 2ν∂ₓ u + P)dS + ∫ₛ₂(u² − 2ν∂ₓ u+P)dS − ∫ₛ₃uvdS + ∫ₛ₄ uvdS
+
+where the bounding box is ``V`` which is formed from the boundaries ``s1``, ``s2``, ``s3``, and ``s4`` 
+which have outward directed normals ``-x̂``, ``x̂``, ``-ŷ``, and ``ŷ``
+
 """
 function drag(model;
               bounding_box = (-1, 3, -2, 2),
@@ -75,140 +72,139 @@ function drag(model;
     return a_local + a_flux + a_pressure - a_viscous_stress
 end
 
-Re = 1000
-#=
-if Re <= 100
-    Ny = 512 
-    Nx = Ny
-elseif Re <= 1000
-    Ny = 2^11
-    Nx = Ny
-elseif Re == 10^4
-    Ny = 2^12
-    Nx = Ny
-elseif Re == 10^5
-    Ny = 2^13
-    Nx = Ny
-elseif Re == 10^6
-    Ny = 3/2 * 2^13 |> Int
-    Nx = Ny
-end
-=#
+cylinder(x, y) = (x^2 + y^2) ≤ r^2
 
-Ny = 2048 
-Nx = Ny
+function cylinder_model(open_boundaries; 
 
-prefix = "flow_around_cylinder_Re$(Re)_Ny$(Ny)"
+                        obc_name = "",
 
-ϵ = 0 # break up-down symmetry
-x = (-6, 12) # 18
-y = (-6 + ϵ, 6 + ϵ)  # 12
-# TODO: temporatily use an iteration interval thingy with a fixed timestep!!!
-kw = (; size=(Nx, Ny), x, y, halo=(6, 6), topology=(Bounded, Bounded, Flat))
-grid = RectilinearGrid(arch; kw...)
-reduced_precision_grid = RectilinearGrid(arch, Float32; kw...)
+                        u∞ = 1,
+                        r = 1/2,
 
-grid = ImmersedBoundaryGrid(grid, GridFittedBoundary(cylinder))
+                        stop_time = 200,
 
-advection = Centered(order=2)
-closure = ScalarDiffusivity(ν=1/Re)
+                        arch = GPU(),
 
-no_slip = ValueBoundaryCondition(0)
-u_bcs = FieldBoundaryConditions(immersed=no_slip, 
-                                east = PerturbationAdvectionOpenBoundaryCondition(u∞; inflow_timescale = 1/4, outflow_timescale = Inf),
-                                west = PerturbationAdvectionOpenBoundaryCondition(u∞; inflow_timescale = 0.1, outflow_timescale = Inf))
-v_bcs = FieldBoundaryConditions(immersed=no_slip,
-                                east = GradientBoundaryCondition(0),
-                                west = ValueBoundaryCondition(0))
-boundary_conditions = (u=u_bcs, v=v_bcs)
+                        Re = 1000,
+                        Ny = 2048,
+                        Nx = Ny,
 
-ddp = DiagonallyDominantPreconditioner()
-preconditioner = FFTBasedPoissonSolver(reduced_precision_grid)
-reltol = abstol = 1e-7
-pressure_solver = ConjugateGradientPoissonSolver(grid, maxiter=10;
-                                                 reltol, abstol, preconditioner)
+                        ϵ = 0, # break up-down symmetry
+                        x = (-6, 12), # 18
+                        y = (-6 + ϵ, 6 + ϵ),  # 12
 
-model = NonhydrostaticModel(; grid, pressure_solver, closure,
-                              advection, boundary_conditions)
+                        grid_kwargs = (; size=(Nx, Ny), x, y, halo=(6, 6), topology=(Bounded, Bounded, Flat))
 
-@show model
+                        prefix = "flow_around_cylinder_Re$(Re)_Ny$(Ny)_$(obc_name)")
 
-uᵢ(x, y) = 1e-2 * randn()
-vᵢ(x, y) = 1e-2 * randn()
-set!(model, u=uᵢ, v=vᵢ)
+    grid = RectilinearGrid(arch; grid_kwargs...)
+    reduced_precision_grid = RectilinearGrid(arch, Float32; grid_kwargs...)
 
-Δx = minimum_xspacing(grid)
-Δt = max_Δt = 0.002#0.2 * Δx^2 * Re
+    grid = ImmersedBoundaryGrid(grid, GridFittedBoundary(cylinder))
 
-simulation = Simulation(model; Δt, stop_time)
-#conjure_time_step_wizard!(simulation, cfl=1.0, IterationInterval(3); max_Δt)
+    advection = Centered(order=2)
+    closure = ScalarDiffusivity(ν=1/Re)
 
-u, v, w = model.velocities
-#d = ∂x(u) + ∂y(v)
+    no_slip = ValueBoundaryCondition(0)
 
-# Drag computation
-drag_force = drag(model; ν=1/Re)
-compute!(drag_force)
+    u_bcs = FieldBoundaryConditions(immersed=no_slip, east=obc, west=obc)
 
-wall_time = Ref(time_ns())
+    v_bcs = FieldBoundaryConditions(immersed=no_slip,
+                                    east=GradientBoundaryCondition(0),
+                                    west=ValueBoundaryCondition(0))
 
-function progress(sim)
-    if pressure_solver isa ConjugateGradientPoissonSolver
-        pressure_iters = iteration(pressure_solver)
-    else
-        pressure_iters = 0
+    boundary_conditions = (u=u_bcs, v=v_bcs)
+
+    preconditioner = FFTBasedPoissonSolver(reduced_precision_grid)
+    reltol = abstol = 1e-7
+    pressure_solver = ConjugateGradientPoissonSolver(grid, maxiter=10;
+                                                    reltol, abstol, preconditioner)
+
+    model = NonhydrostaticModel(; grid, pressure_solver, closure,
+                                advection, boundary_conditions)
+
+    @show model
+
+    uᵢ(x, y) = 1e-2 * randn()
+    vᵢ(x, y) = 1e-2 * randn()
+    set!(model, u=uᵢ, v=vᵢ)
+
+    #Δx = minimum_xspacing(grid)
+    Δt = max_Δt = 0.002#0.2 * Δx^2 * Re
+
+    simulation = Simulation(model; Δt, stop_time)
+    #conjure_time_step_wizard!(simulation, cfl=1.0, IterationInterval(3); max_Δt)
+
+    u, v, w = model.velocities
+
+    # Drag computation
+    drag_force = drag(model; ν=1/Re)
+    compute!(drag_force)
+
+    wall_time = Ref(time_ns())
+
+    function progress(sim)
+        if pressure_solver isa ConjugateGradientPoissonSolver
+            pressure_iters = iteration(pressure_solver)
+        else
+            pressure_iters = 0
+        end
+
+        compute!(drag_force)
+        D = CUDA.@allowscalar drag_force[1, 1, 1]
+        cᴰ = D / (u∞ * r) 
+        vmax = maximum(model.velocities.v)
+
+        msg = @sprintf("Iter: %d, time: %.2f, Δt: %.4f, Poisson iters: %d",
+                    iteration(sim), time(sim), sim.Δt, pressure_iters)
+
+        elapsed = 1e-9 * (time_ns() - wall_time[])
+
+        msg *= @sprintf(", max d: %.2e, max v: %.2e, Cd: %0.2f, wall time: %s",
+                        dmax, vmax, cᴰ, prettytime(elapsed))
+
+        @info msg
+        wall_time[] = time_ns()
+
+        return nothing
     end
 
-    #compute!(drag_force)
-    D = CUDA.@allowscalar drag_force[1, 1, 1]
-    cᴰ = D / (u∞ * r) 
-    vmax = maximum(model.velocities.v)
-    dmax = 0#maximum(abs, d)
+    add_callback!(simulation, progress, IterationInterval(100))
 
-    msg = @sprintf("Iter: %d, time: %.2f, Δt: %.4f, Poisson iters: %d",
-                   iteration(sim), time(sim), sim.Δt, pressure_iters)
+    ζ = ∂x(v) - ∂y(u)
 
-    elapsed = 1e-9 * (time_ns() - wall_time[])
+    p = model.pressures.pNHS
 
-    msg *= @sprintf(", max d: %.2e, max v: %.2e, Cd: %0.2f, wall time: %s",
-                    dmax, vmax, cᴰ, prettytime(elapsed))
+    outputs = (; u, v, p, ζ)
 
-    @info msg
-    wall_time[] = time_ns()
+    simulation.output_writers[:jld2] = JLD2OutputWriter(model, outputs,
+                                                        schedule = IterationInterval(Int(2/Δt)),#TimeInterval(0.1),
+                                                        filename = prefix * "_fields.jld2",
+                                                        overwrite_existing = true,
+                                                        with_halos = true)
 
-    return nothing
+    simulation.output_writers[:drag] = JLD2OutputWriter(model, (; drag_force),
+                                                        schedule = IterationInterval(Int(0.1/Δt)),#TimeInterval(0.1),
+                                                        filename = prefix * "_drag.jld2",
+                                                        overwrite_existing = true,
+                                                        with_halos = true,
+                                                        indices = (1, 1, 1))
+
+    run!(simulation)
+
+    return model, simulation
 end
 
-add_callback!(simulation, progress, IterationInterval(100))
+u∞ = 1
 
-ζ = ∂x(v) - ∂y(u)
+feobc = (east = FlatExtrapolationOpenBoundaryCondition(), west = OpenBoundaryCondition(u∞))
 
-p = model.pressures.pNHS
+paobcs = (east = PerturbationAdvectionOpenBoundaryCondition(u∞; inflow_timescale = 1/4, outflow_timescale = Inf),
+          west = PerturbationAdvectionOpenBoundaryCondition(u∞; inflow_timescale = 0.1, outflow_timescale = Inf))
 
-outputs = (; u, v, p, ζ)
+obcs = (flat_extrapolation = feobc, perturbation_advection = paobcs)
 
-simulation.output_writers[:jld2] = JLD2OutputWriter(model, outputs,
-                                                    schedule = IterationInterval(Int(2/Δt)),#TimeInterval(0.1),
-                                                    filename = prefix * "_fields.jld2",
-                                                    overwrite_existing = true,
-                                                    with_halos = true)
-
-simulation.output_writers[:drag] = JLD2OutputWriter(model, (; drag_force),
-                                                    schedule = IterationInterval(Int(0.1/Δt)),#TimeInterval(0.1),
-                                                    filename = prefix * "_drag.jld2",
-                                                    overwrite_existing = true,
-                                                    with_halos = true,
-                                                    indices = (1, 1, 1))
-
-run!(simulation)
-
-
-# Re = 100
-# with 12m ~0.33 Hz and Cd ~ 1.403
-# with 6m  ~0.33 Hz and Cd ~ (higher, don't seem to have computed it!)
-# with 18m ~0.32 Hz and Cd ~ 1.28
-# with 30m ~0.34 Hz and Cd ~ 1.37
-# the Strouhal number should be 0.16 to 0.18 which I think means we're pretty close as 1 drag osccilation cycle is 2 sheddings so we have 0.165 ish
-
-# Re = 1000
-# with 12m ~ HZ and Cd ~
+for (obc_name, obc) in pairs(obcs)
+    @info "Running $(obc_name)"
+    cylinder_model(obc; obc_name, u∞)
+end
