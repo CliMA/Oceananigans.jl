@@ -98,7 +98,7 @@ Positional Arguments
 On a uniform `grid`, the coefficients are independent of the `xr` and `xi` values.
 """
 @inline function stencil_coefficients(FT, i, r, xr, xi; shift = 0, op = Base.:(-), order = 3, der = nothing)
-    coeffs = zeros(order)
+    coeffs = zeros(BigFloat, order)
     @inbounds begin
         for j in 0:order-1
             for m in j+1:order
