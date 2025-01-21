@@ -202,6 +202,8 @@ function test_pertubation_advection_open_boundary_conditions(arch, FT)
 
         time_step!(model, 1)
         
+        # uⁿ⁺¹ = (uⁿ + Ūuⁿ⁺¹ᵢ₋₁) / (1 + Ū)
+        # Δx = Δt = U = 1 -> uⁿ⁺¹ = (uⁿ + uⁿ⁺¹ᵢ₋₁) / 2 = 1.5
         CUDA.@allowscalar @test all(interior(u, end_index...) .== 1.5)
 
         obc = PerturbationAdvectionOpenBoundaryCondition((t) -> 0.1*t, inflow_timescale = 0.01, outflow_timescale = 0.5)
