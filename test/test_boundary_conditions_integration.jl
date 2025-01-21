@@ -205,9 +205,7 @@ function test_pertubation_advection_open_boundary_conditions(arch, FT)
         CUDA.@allowscalar @test all(interior(u, end_index...) .== 1.5)
 
         obc = PerturbationAdvectionOpenBoundaryCondition((t) -> 0.1*t, inflow_timescale = 0.01, outflow_timescale = 0.5)
-
         forcing = velocity_forcing(Val(orientation), Forcing((x, t) -> 0.1))
-
         boundary_conditions = wall_normal_boundary_condition(Val(orientation), obc)
 
         model = NonhydrostaticModel(; grid, 
