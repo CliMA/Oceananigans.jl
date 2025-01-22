@@ -5,11 +5,31 @@ using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ, Ax_qᶠ�
 
 For cases where we assume that the internal flow is a small perturbation from 
 an external prescribed or coarser flow, we can split the velocity into background
-and perturbation components:
-...
-see latex document for now
+and perturbation components.
 
-TODO: check what the coriolis is doing, and check what happens if U is the mean velocity
+We begin with the equation governing the fluid in the interior:
+    ∂ₜu⃗ + u⃗⋅∇u⃗ = −∇P + F⃗,
+and note that on the boundary the pressure gradient is zero.
+We can then assume that the flow composes of mean (U⃗) and pertubation (u⃗′) components,
+and considering the x-component of velocity, we can rewrite the equation as
+    ∂ₜu₁ = -u₁∂₁u - u₂∂₂u₁ - u₃∂₃u₁ + F₁ ≈ - U₁∂₁u₁′ - U₂∂₂u₁′ - U₃∂₃u₁′ + F.
+
+Simplify by assuming that U⃗ = Ux̂, an then take a numerical step to find u₁.
+
+When the boundaries are filled the interior is at time tₙ₊₁ so we can take
+a backwards euler step (in the case that the mean flow is boundary normal) on a right boundary:
+    (Uⁿ⁺¹ - Uⁿ) / Δt + (u′ⁿ⁺¹ - u′ⁿ) / Δt = - Uⁿ⁺¹ (u′ⁿ⁺¹ᵢ - u′ⁿ⁺¹ᵢ₋₁) / Δx + Fᵤ.
+
+This can not be solved for general forcing, but if we assume the dominant forcing is
+relaxation to the mean velocity (i.e. u′→0) then Fᵤ = -u′ / τ then we can find u′ⁿ⁺¹:
+    u′ⁿ⁺¹ = (uⁿ + Ũu′ⁿ⁺¹ᵢ₋₁ - Uⁿ⁺¹) / (1 + Ũ + Δt/τ),
+
+where Ũ = U Δt / Δx, then uⁿ⁺¹ is:
+    uⁿ⁺¹ = (uᵢⁿ + Ũuᵢ₋₁ⁿ⁺¹ + Uⁿ⁺¹τ̃) / (1 + τ̃ + U)
+    
+where τ̃ = Δt/τ.
+
+The same operation can be repeated for left boundaries.
 """
 struct PerturbationAdvection{VT, FT}
        backward_step :: VT
