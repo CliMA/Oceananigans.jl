@@ -8,6 +8,7 @@ export interior, data, xnode, ynode, znode
 export set!, compute!, @compute, regrid!
 export VelocityFields, TracerFields, tracernames
 export interpolate
+export tupled_fill_halo_regions!
 
 using Oceananigans.Architectures
 using Oceananigans.Grids

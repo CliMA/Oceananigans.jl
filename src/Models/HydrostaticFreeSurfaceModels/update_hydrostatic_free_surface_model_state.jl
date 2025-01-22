@@ -31,27 +31,7 @@ update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendenci
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
 
-    @apply_regionally mask_immersed_model_fields!(model, grid)
-
-    # Update possible FieldTimeSeries used in the model
-    @apply_regionally update_model_field_time_series!(model, model.clock)
-
-    # Update the boundary conditions
-    @apply_regionally update_boundary_condition!(fields(model), model)
-
     tupled_fill_halo_regions!(prognostic_fields(model), grid, model.clock, fields(model), async=true)
-
-    @apply_regionally replace_horizontal_vector_halos!(model.velocities, model.grid)
-    @apply_regionally compute_auxiliaries!(model)
-
-    fill_halo_regions!(model.diffusivity_fields; only_local_halos = true)
-
-    [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
-
-    update_biogeochemical_state!(model.biogeochemistry, model)
-
-    compute_tendencies && 
-        @apply_regionally compute_tendencies!(model, callbacks)
 
     return nothing
 end

@@ -94,7 +94,7 @@ function tupled_fill_halo_regions!(fields, grid::AbstractGrid, args...; kwargs..
                            map(boundary_conditions, ordinary_fields),
                            default_indices(3),
                            map(instantiated_location, ordinary_fields),
-                           grid, args...; kwargs...)
+                           grid)
     end
 
     return nothing

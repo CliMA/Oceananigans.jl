@@ -8,7 +8,8 @@ export
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
     apply_x_bcs!, apply_y_bcs!, apply_z_bcs!,
-    fill_halo_regions!
+    fill_halo_regions!,
+    permute_boundary_conditions
 
 using CUDA, Adapt
 using KernelAbstractions: @index, @kernel
