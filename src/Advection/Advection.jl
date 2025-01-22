@@ -28,10 +28,10 @@ using DocStringExtensions
 using Base: @propagate_inbounds
 using Adapt 
 using OffsetArrays
-
 using Oceananigans.Grids
 using Oceananigans.Grids: with_halo
 using Oceananigans.Architectures: architecture, CPU
+using Oceananigans: supported_float_types
 
 using Oceananigans.Operators
 using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, Γᶠᶠᶜ, ∂t_σ
@@ -53,9 +53,6 @@ abstract type AbstractUpwindBiasedAdvectionScheme{B, FT} <: AbstractAdvectionSch
 # will compile schemes for `advection_buffer=8` and thus `Centered(order=16)` and `UpwindBiased(order=15)`.
 # Note that it is not possible to compile schemes for `advection_buffer = 41` or higher.
 const advection_buffers = [1, 2, 3, 4, 5, 6]
-
-# To add support for new floating types add them here
-const supported_float_types = [Float32, Float64]
 
 @inline Base.eltype(::AbstractAdvectionScheme{<:Any, FT}) where FT = FT
 
