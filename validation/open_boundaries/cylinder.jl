@@ -6,7 +6,7 @@ using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Printf
 using CUDA
 
-using Oceananigans.BoundaryConditions: FlatExtrapolationOpenBoundaryCondition
+using Oceananigans.BoundaryConditions: FlatExtrapolationOpenBoundaryCondition,
                                        PerturbationAdvectionOpenBoundaryCondition
 
 # there is some problem using ConjugateGradientPoissonSolver with TimeInterval because the timestep can go really small
@@ -72,8 +72,6 @@ function drag(model;
     return a_local + a_flux + a_pressure - a_viscous_stress
 end
 
-cylinder(x, y) = (x^2 + y^2) ≤ r^2
-
 function cylinder_model(open_boundaries; 
 
                         obc_name = "",
@@ -81,19 +79,21 @@ function cylinder_model(open_boundaries;
                         u∞ = 1,
                         r = 1/2,
 
+                        cylinder = (x, y) -> ((x^2 + y^2) ≤ r^2),
+
                         stop_time = 200,
 
                         arch = GPU(),
 
-                        Re = 1000,
-                        Ny = 2048,
+                        Re = 100,
+                        Ny = 512,
                         Nx = Ny,
 
                         ϵ = 0, # break up-down symmetry
                         x = (-6, 12), # 18
                         y = (-6 + ϵ, 6 + ϵ),  # 12
 
-                        grid_kwargs = (; size=(Nx, Ny), x, y, halo=(6, 6), topology=(Bounded, Bounded, Flat))
+                        grid_kwargs = (; size=(Nx, Ny), x, y, halo=(6, 6), topology=(Bounded, Bounded, Flat)),
 
                         prefix = "flow_around_cylinder_Re$(Re)_Ny$(Ny)_$(obc_name)")
 
@@ -107,7 +107,7 @@ function cylinder_model(open_boundaries;
 
     no_slip = ValueBoundaryCondition(0)
 
-    u_bcs = FieldBoundaryConditions(immersed=no_slip, east=obc, west=obc)
+    u_bcs = FieldBoundaryConditions(immersed=no_slip, east=open_boundaries.east, west=open_boundaries.west)
 
     v_bcs = FieldBoundaryConditions(immersed=no_slip,
                                     east=GradientBoundaryCondition(0),
@@ -121,7 +121,7 @@ function cylinder_model(open_boundaries;
                                                     reltol, abstol, preconditioner)
 
     model = NonhydrostaticModel(; grid, pressure_solver, closure,
-                                advection, boundary_conditions)
+                                 advection, boundary_conditions)
 
     @show model
 
@@ -129,11 +129,11 @@ function cylinder_model(open_boundaries;
     vᵢ(x, y) = 1e-2 * randn()
     set!(model, u=uᵢ, v=vᵢ)
 
-    #Δx = minimum_xspacing(grid)
-    Δt = max_Δt = 0.002#0.2 * Δx^2 * Re
+    Δx = minimum_xspacing(grid)
+    Δt = max_Δt = 0.2 * Δx^2 * Re
 
-    simulation = Simulation(model; Δt, stop_time)
-    #conjure_time_step_wizard!(simulation, cfl=1.0, IterationInterval(3); max_Δt)
+    simulation = Simulation(model; Δt, stop_time, minimum_relative_step = 1e-9)
+    conjure_time_step_wizard!(simulation, cfl=1.0, IterationInterval(3); max_Δt)
 
     u, v, w = model.velocities
 
@@ -160,8 +160,8 @@ function cylinder_model(open_boundaries;
 
         elapsed = 1e-9 * (time_ns() - wall_time[])
 
-        msg *= @sprintf(", max d: %.2e, max v: %.2e, Cd: %0.2f, wall time: %s",
-                        dmax, vmax, cᴰ, prettytime(elapsed))
+        msg *= @sprintf(", max v: %.2e, Cd: %0.2f, wall time: %s",
+                        vmax, cᴰ, prettytime(elapsed))
 
         @info msg
         wall_time[] = time_ns()
@@ -178,13 +178,13 @@ function cylinder_model(open_boundaries;
     outputs = (; u, v, p, ζ)
 
     simulation.output_writers[:jld2] = JLD2OutputWriter(model, outputs,
-                                                        schedule = IterationInterval(Int(2/Δt)),#TimeInterval(0.1),
+                                                        schedule = TimeInterval(0.1),
                                                         filename = prefix * "_fields.jld2",
                                                         overwrite_existing = true,
                                                         with_halos = true)
 
     simulation.output_writers[:drag] = JLD2OutputWriter(model, (; drag_force),
-                                                        schedule = IterationInterval(Int(0.1/Δt)),#TimeInterval(0.1),
+                                                        schedule = TimeInterval(0.1),
                                                         filename = prefix * "_drag.jld2",
                                                         overwrite_existing = true,
                                                         with_halos = true,
@@ -200,9 +200,10 @@ u∞ = 1
 feobc = (east = FlatExtrapolationOpenBoundaryCondition(), west = OpenBoundaryCondition(u∞))
 
 paobcs = (east = PerturbationAdvectionOpenBoundaryCondition(u∞; inflow_timescale = 1/4, outflow_timescale = Inf),
-          west = PerturbationAdvectionOpenBoundaryCondition(u∞; inflow_timescale = 0.1, outflow_timescale = Inf))
+          west = PerturbationAdvectionOpenBoundaryCondition(u∞; inflow_timescale = 0.1, outflow_timescale = 0.1))
 
-obcs = (flat_extrapolation = feobc, perturbation_advection = paobcs)
+obcs = (; flat_extrapolation=feobc, 
+          perturbation_advection=paobcs)
 
 for (obc_name, obc) in pairs(obcs)
     @info "Running $(obc_name)"
