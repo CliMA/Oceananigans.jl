@@ -1,4 +1,4 @@
-using Oceananigans, CairoMakie
+using Oceananigans, CairoMakie, Statistics
 using Oceananigans.Models.NonhydrostaticModels: ConjugateGradientPoissonSolver
 using Oceananigans.Solvers: DiagonallyDominantPreconditioner
 using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ
@@ -195,23 +195,31 @@ function cylinder_model(open_boundaries;
     run!(simulation)
 
     u = FieldTimeSeries(prefix * "_fields.jld2", "u")
+    ζ = FieldTimeSeries(prefix * "_fields.jld2", "ζ")
     d = FieldTimeSeries(prefix * "_drag.jld2", "drag_force")
 
     Cd = ones(length(d)) .* NaN
 
-    for n in drag_averaging_window+2:length(Cd)
-        Cd = - mean(d[1, 1, 1, n-29:n]) / r
+    for n in drag_averaging_window+1:length(Cd)
+        Cd[n] = - mean(d[1, 1, 1, n-29:n]) / r
     end
 
     n = Observable(1)
 
-    title = @lift "Re 100, t = $(round(u.times[$n], digits = 2)), Cᴰ = $(round(Cᴰ[$n], digits=2))"
+    title = @lift "Re 100, t = $(round(u.times[$n], digits = 2)), Cᴰ = $(round(Cd[$n], digits=2))"
     u_plt = @lift interior(u[$n], :, :, 1)
+    ζ_plt = @lift interior(ζ[$n], :, :, 1)
 
-    fig = Figure()
-    ax = Axis(fig[1, 1]; title, xlabel = "x (m)", ylabel = "y (m)", aspect = DataAspect())
-    hm = heatmap!(ax, xnodes(u), ynodes(u), u_plt, colorrange = (-1.5, 1.5), colormap = :vik)
+    fig = Figure(size = (1500, 600))
+    ax = Axis(fig[1, 1]; title = "x-velocity (m/s)", xlabel = "x (m)", ylabel = "y (m)", aspect = DataAspect())
+    hm = heatmap!(ax, xnodes(u), ynodes(u), u_plt, colorrange = (0, 1.5), colormap = :batlowW)
     Colorbar(fig[1, 2], hm, label = "x-velocity (m/s)")
+
+    ax2 = Axis(fig[1, 3]; title = "Vorticity (1/s)", xlabel = "x (m)", ylabel = "y (m)", aspect = DataAspect())
+    hm2 = heatmap!(ax2, xnodes(ζ), ynodes(ζ), ζ_plt, colorrange = (-4, 4), colormap = :vik)
+    Colorbar(fig[1, 4], hm2, label = "Vorticity (1/s)")
+
+    supertitle = Label(fig[0, :], title)
 
     CairoMakie.record(fig, prefix"*.mp4", 1:length(u.times), framerate=20) do i
         @info "$i"
