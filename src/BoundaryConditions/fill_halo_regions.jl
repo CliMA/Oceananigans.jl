@@ -50,7 +50,9 @@ const MaybeTupledData = Union{OffsetArray, Tuple{Vararg{OffsetArray}}}
 function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, loc, grid, args...; 
                             fill_boundary_normal_velocities = true, kwargs...)
 
-    permute_boundary_conditions(boundary_conditions)
+    sides = [:west_and_east, :south_and_north, :bottom_and_top]
+
+    boundary_conditions = Tuple(extract_bc(boundary_conditions, Val(side)) for side in sides)
 
     return nothing
 end
@@ -77,34 +79,7 @@ end
 # position [1] and the associated boundary conditions in position [2]
 function permute_boundary_conditions(boundary_conditions)
 
-    split_x_halo_filling = split_halo_filling(extract_west_bc(boundary_conditions),  extract_east_bc(boundary_conditions))
-    split_y_halo_filling = split_halo_filling(extract_south_bc(boundary_conditions), extract_north_bc(boundary_conditions))
-
-    west_bc  = extract_west_bc(boundary_conditions)
-    east_bc  = extract_east_bc(boundary_conditions)
-    south_bc = extract_south_bc(boundary_conditions)
-    north_bc = extract_north_bc(boundary_conditions)
-    
-    if split_x_halo_filling
-        if split_y_halo_filling
-            sides       = [:west, :east, :south, :north, :bottom_and_top]
-            bcs_array   = [west_bc, east_bc, south_bc, north_bc, extract_bottom_bc(boundary_conditions)]
-        else
-            sides       = [:west, :east, :south_and_north, :bottom_and_top]
-            bcs_array   = [west_bc, east_bc, south_bc, extract_bottom_bc(boundary_conditions)]
-        end
-    else
-        if split_y_halo_filling
-            sides       = [:west_and_east, :south, :north, :bottom_and_top]
-            bcs_array   = [west_bc, south_bc, north_bc, extract_bottom_bc(boundary_conditions)]
-        else
-            sides       = [:west_and_east, :south_and_north, :bottom_and_top]
-            bcs_array   = [west_bc, south_bc, extract_bottom_bc(boundary_conditions)]
-        end
-    end
-
-    perm = sortperm(bcs_array, lt=fill_first)
-    sides = sides[perm]
+    sides = [:west_and_east, :south_and_north, :bottom_and_top]
 
     boundary_conditions = Tuple(extract_bc(boundary_conditions, Val(side)) for side in sides)
 
