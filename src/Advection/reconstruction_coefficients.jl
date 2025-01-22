@@ -164,10 +164,10 @@ julia> calc_reconstruction_stencil(Float64, 1, :symmetric, :y)
 :(0.5 * ψ[i, j + -1, k] + 0.5 * ψ[i, j + 0, k])
 
 julia> calc_reconstruction_stencil(Float32, 2, :symmetric, :x)
-:(-0.083333336f0 * ψ[i + -2, j, k] + 0.5833333f0 * ψ[i + -1, j, k] + 0.5833333f0 * ψ[i + 0, j, k] + -0.083333336f0 * ψ[i + 1, j, k])
+:(-0.083333254f0 * ψ[i + -2, j, k] + 0.5833333f0 * ψ[i + -1, j, k] + 0.5833333f0 * ψ[i + 0, j, k] + -0.083333336f0 * ψ[i + 1, j, k])
 
 julia> calc_reconstruction_stencil(Float32, 3, :left, :x)
-:(0.033333335f0 * ψ[i + -3, j, k] + -0.21666667f0 * ψ[i + -2, j, k] + 0.78333336f0 * ψ[i + -1, j, k] + 0.45f0 * ψ[i + 0, j, k] + -0.05f0 * ψ[i + 1, j, k])
+:(0.0333333f0 * ψ[i + -3, j, k] + -0.21666667f0 * ψ[i + -2, j, k] + 0.78333336f0 * ψ[i + -1, j, k] + 0.45f0 * ψ[i + 0, j, k] + -0.05f0 * ψ[i + 1, j, k])
 ```
 """
 @inline function calc_reconstruction_stencil(FT, buffer, shift, dir, func::Bool = false)
