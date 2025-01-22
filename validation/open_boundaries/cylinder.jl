@@ -18,10 +18,10 @@ using Oceananigans.BoundaryConditions: FlatExtrapolationOpenBoundaryCondition,
 Returns the drag within the `bounding_box` computed by:
 
 ∂ₜu⃗ + (u⃗⋅∇)u⃗ = −∇P + ∇⋅τ⃗ + F⃗
-F⃗ₜ =∫ᵥF⃗dV = ∫ᵥ(∂ₜ u⃗ + (u⃗⋅∇)u⃗ + ∇P − ∇⋅τ⃗)dV
-F⃗ₜ=∫ᵥ(∂ₜu⃗)dV + ∮ₛ(u⃗(u⃗⋅n̂) + Pn̂ − τ⃗⋅n̂)dS
-Fᵤ=∫ᵥ ∂ₜu dV + ∮ₛ(u(u⃗⋅n̂) − τₓₓ)dS + ∮ₛPx̂⋅dS⃗
-Fᵤ=∫ᵥ ∂ₜ u dV − ∫ₛ₁(u² − 2ν∂ₓ u + P)dS + ∫ₛ₂(u² − 2ν∂ₓ u+P)dS − ∫ₛ₃uvdS + ∫ₛ₄ uvdS
+F⃗ₜ = ∫ᵥF⃗dV = ∫ᵥ(∂ₜ u⃗ + (u⃗⋅∇)u⃗ + ∇P − ∇⋅τ⃗)dV
+F⃗ₜ = ∫ᵥ(∂ₜu⃗)dV + ∮ₛ(u⃗(u⃗⋅n̂) + Pn̂ − τ⃗⋅n̂)dS
+Fᵤ = ∫ᵥ ∂ₜu dV + ∮ₛ(u(u⃗⋅n̂) − τₓₓ)dS + ∮ₛPx̂⋅dS⃗
+Fᵤ = ∫ᵥ ∂ₜ u dV − ∫ₛ₁(u² − 2ν∂ₓ u + P)dS + ∫ₛ₂(u² − 2ν∂ₓ u+P)dS − ∫ₛ₃uvdS + ∫ₛ₄ uvdS
 
 where the bounding box is ``V`` which is formed from the boundaries ``s1``, ``s2``, ``s3``, and ``s4`` 
 which have outward directed normals ``-x̂``, ``x̂``, ``-ŷ``, and ``ŷ``
