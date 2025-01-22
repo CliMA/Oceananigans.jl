@@ -1,4 +1,4 @@
-using Oceananigans
+using Oceananigans, CairoMakie
 using Oceananigans.Models.NonhydrostaticModels: ConjugateGradientPoissonSolver
 using Oceananigans.Solvers: DiagonallyDominantPreconditioner
 using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ
@@ -81,7 +81,7 @@ function cylinder_model(open_boundaries;
 
                         cylinder = (x, y) -> ((x^2 + y^2) ≤ r^2),
 
-                        stop_time = 200,
+                        stop_time = 100,
 
                         arch = GPU(),
 
@@ -95,7 +95,9 @@ function cylinder_model(open_boundaries;
 
                         grid_kwargs = (; size=(Nx, Ny), x, y, halo=(6, 6), topology=(Bounded, Bounded, Flat)),
 
-                        prefix = "flow_around_cylinder_Re$(Re)_Ny$(Ny)_$(obc_name)")
+                        prefix = "flow_around_cylinder_Re$(Re)_Ny$(Ny)_$(obc_name)",
+                        
+                        drag_averaging_window = 29)
 
     grid = RectilinearGrid(arch; grid_kwargs...)
     reduced_precision_grid = RectilinearGrid(arch, Float32; grid_kwargs...)
@@ -132,8 +134,8 @@ function cylinder_model(open_boundaries;
     Δx = minimum_xspacing(grid)
     Δt = max_Δt = 0.2 * Δx^2 * Re
 
-    simulation = Simulation(model; Δt, stop_time, minimum_relative_step = 1e-9)
-    conjure_time_step_wizard!(simulation, cfl=1.0, IterationInterval(3); max_Δt)
+    simulation = Simulation(model; Δt, stop_time, minimum_relative_step = 1e-8)
+    conjure_time_step_wizard!(simulation, cfl=0.7, IterationInterval(3); max_Δt)
 
     u, v, w = model.velocities
 
@@ -191,6 +193,30 @@ function cylinder_model(open_boundaries;
                                                         indices = (1, 1, 1))
 
     run!(simulation)
+
+    u = FieldTimeSeries(prefix * "_fields.jld2", "u")
+    d = FieldTimeSeries(prefix * "_drag.jld2", "drag_force")
+
+    Cd = ones(length(d)) .* NaN
+
+    for n in drag_averaging_window+2:length(Cd)
+        Cd = - mean(d[1, 1, 1, n-29:n]) / r
+    end
+
+    n = Observable(1)
+
+    title = @lift "Re 100, t = $(round(u.times[$n], digits = 2)), Cᴰ = $(round(Cᴰ[$n], digits=2))"
+    u_plt = @lift interior(u[$n], :, :, 1)
+
+    fig = Figure()
+    ax = Axis(fig[1, 1]; title, xlabel = "x (m)", ylabel = "y (m)", aspect = DataAspect())
+    hm = heatmap!(ax, xnodes(u), ynodes(u), u_plt, colorrange = (-1.5, 1.5), colormap = :vik)
+    Colorbar(fig[1, 2], hm, label = "x-velocity (m/s)")
+
+    CairoMakie.record(fig, prefix"*.mp4", 1:length(u.times), framerate=20) do i
+        @info "$i"
+        n[] = i
+    end
 
     return model, simulation
 end
