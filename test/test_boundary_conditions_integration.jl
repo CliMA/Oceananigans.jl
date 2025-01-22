@@ -190,21 +190,23 @@ function test_pertubation_advection_open_boundary_conditions(arch, FT)
 
         u = normal_velocity(Val(orientation), model)
         
-        CUDA.@allowscalar u.data .= 1
+        view(parent(u), :, :, :) .= 1
 
         time_step!(model, 1)
 
-        @test all(u .== 1)
+        @test all(view(parent(u), :, :, :) .== 1)
+
+        absolute_end_index = tuple(map(n -> ifelse(n == orientation, 8, 1), 1:3)...)
+        
+        view(parent(u), absolute_end_index...) .= 2
+
+        time_step!(model, 1)
 
         end_index = tuple(map(n -> ifelse(n == orientation, 5, 1), 1:3)...)
         
-        CUDA.@allowscalar u[end_index...] = 2
-
-        time_step!(model, 1)
-        
         # uⁿ⁺¹ = (uⁿ + Ūuⁿ⁺¹ᵢ₋₁) / (1 + Ū)
         # Δx = Δt = U = 1 -> uⁿ⁺¹ = (uⁿ + uⁿ⁺¹ᵢ₋₁) / 2 = 1.5
-        CUDA.@allowscalar @test all(interior(u, end_index...) .== 1.5)
+        @test all(interior(u, end_index...) .== 1.5)
 
         obc = PerturbationAdvectionOpenBoundaryCondition((t) -> 0.1*t, inflow_timescale = 0.01, outflow_timescale = 0.5)
         forcing = velocity_forcing(Val(orientation), Forcing((x, t) -> 0.1))
