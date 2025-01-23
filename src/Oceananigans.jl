@@ -132,6 +132,10 @@ function __init__()
     end
 end
 
+# Supported types for the Advection module. 
+# To support new floating point types, add them here
+const supported_float_types = [Float32, Float64]
+
 #####
 ##### Abstract types
 #####
