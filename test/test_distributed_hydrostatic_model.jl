@@ -153,8 +153,6 @@ for arch in archs
                                                 radius = 1,
                                                 topology=(Bounded, Bounded, Bounded))
 
-        bottom(λ, φ) = -30 < λ < 30 && -40 < φ < 20 ? 0 : - 1
-
         # "s" for "serial" computation, "p" for parallel
         ms = rotation_with_shear_test(global_underlying_grid, closure)
         mp = rotation_with_shear_test(underlying_grid, closure)

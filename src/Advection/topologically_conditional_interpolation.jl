@@ -14,19 +14,22 @@ using Oceananigans.Grids: AbstractUnderlyingGrid,
                           Bounded, 
                           RightConnected, 
                           LeftConnected, 
-                          BoundedTopology,
-                          topology
+                          topology,
+                          architecture
 
 const AUG = AbstractUnderlyingGrid
 
+# topologies bounded at least on one side
+const BT = Union{Bounded, RightConnected, LeftConnected}
+
 # Bounded underlying Grids
-const AUGX   = AUG{<:Any, <:BoundedTopology}
-const AUGY   = AUG{<:Any, <:Any, <:BoundedTopology}
-const AUGZ   = AUG{<:Any, <:Any, <:Any, <:BoundedTopology}
-const AUGXY  = AUG{<:Any, <:BoundedTopology, <:BoundedTopology}
-const AUGXZ  = AUG{<:Any, <:BoundedTopology, <:Any, <:BoundedTopology}
-const AUGYZ  = AUG{<:Any, <:Any, <:BoundedTopology, <:BoundedTopology}
-const AUGXYZ = AUG{<:Any, <:BoundedTopology, <:BoundedTopology, <:BoundedTopology}
+const AUGX   = AUG{<:Any, <:BT}
+const AUGY   = AUG{<:Any, <:Any, <:BT}
+const AUGZ   = AUG{<:Any, <:Any, <:Any, <:BT}
+const AUGXY  = AUG{<:Any, <:BT, <:BT}
+const AUGXZ  = AUG{<:Any, <:BT, <:Any, <:BT}
+const AUGYZ  = AUG{<:Any, <:Any, <:BT, <:BT}
+const AUGXYZ = AUG{<:Any, <:BT, <:BT, <:BT}
 
 # Left-biased buffers are smaller by one grid point on the right side; vice versa for right-biased buffers
 # Center interpolation stencil look at i + 1 (i.e., require one less point on the left)
@@ -100,10 +103,10 @@ for bias in (:symmetric, :biased)
             # Conditional high-order interpolation in Bounded directions
             if ξ == :x
                 @eval begin
-                    @inline $alt1_interp(i, j, k, grid::AUGX, scheme::HOADV, args...) =
-                        ifelse($outside_buffer(i, topology(grid, 1), grid.Nx, scheme),
-                               $interp(i, j, k, grid, scheme, args...),
-                               $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
+                    @inline $alt1_interp(i, j, k, grid::AUGX, scheme::HOADV, args...) = 
+                            ifelse($outside_buffer(i, topology(grid, 1), grid.Nx, scheme),
+                                   $interp(i, j, k, grid, scheme, args...),
+                                   $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
                 end
             elseif ξ == :y
                 @eval begin
