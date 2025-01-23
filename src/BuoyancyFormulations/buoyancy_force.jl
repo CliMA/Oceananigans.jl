@@ -89,8 +89,8 @@ Adapt.adapt_structure(to, bf::BuoyancyForce) =
 
 @inline top_buoyancy_flux(i, j, grid, b::BuoyancyForce, args...) = top_buoyancy_flux(i, j, grid, b.formulation, args...)
 
-regularize_buoyancy(bf, grid) = bf
-regularize_buoyancy(formulation::AbstractBuoyancyFormulation, grid) = BuoyancyForce(grid; formulation)
+regularize_buoyancy(bf, grid; kw...) = bf
+regularize_buoyancy(formulation::AbstractBuoyancyFormulation, grid; kw...) = BuoyancyForce(grid; formulation; kw...)
 
 # Fallback
 compute_buoyancy_gradients!(::BuoyancyForce{<:Any, <:Any, <:Nothing}, grid, tracers; kw...) = nothing
