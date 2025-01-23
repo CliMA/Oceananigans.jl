@@ -49,7 +49,7 @@ function rotation_with_shear_test(grid, closure=nothing)
     end
 
     model = HydrostaticFreeSurfaceModel(; grid,
-                                        momentum_advection = VectorInvariant(),
+                                        momentum_advection = WENOVectorInvariant(),
                                         free_surface = free_surface,
                                         coriolis = coriolis,
                                         closure,
@@ -81,13 +81,13 @@ function rotation_with_shear_test(grid, closure=nothing)
     return model
 end
 
-Nx = 32
-Ny = 32
+Nx = 48
+Ny = 48
 
 for arch in archs
     @testset "Testing distributed solid body rotation" begin
         underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 3),
-                                                halo = (4, 4, 4),
+                                                halo = (7, 7, 4),
                                                 latitude = (-80, 80),
                                                 longitude = (-160, 160),
                                                 z = (-1, 0),
@@ -141,51 +141,51 @@ for arch in archs
             @test all(isapprox(ηp, ηs; atol, rtol))
         end
 
-    #     # CATKE works only with synchronized communication at the moment
-    #     arch    = synchronized(arch)
-    #     closure = CATKEVerticalDiffusivity()
+        # CATKE works only with synchronized communication at the moment
+        arch    = synchronized(arch)
+        closure = CATKEVerticalDiffusivity()
 
-    #     underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 3),
-    #                                             halo = (4, 4, 4),
-    #                                             latitude = (-80, 80),
-    #                                             longitude = (-160, 160),
-    #                                             z = (-1, 0),
-    #                                             radius = 1,
-    #                                             topology=(Bounded, Bounded, Bounded))
+        underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 3),
+                                                halo = (7, 7, 5),
+                                                latitude = (-80, 80),
+                                                longitude = (-160, 160),
+                                                z = (-1, 0),
+                                                radius = 1,
+                                                topology=(Bounded, Bounded, Bounded))
 
-    #     bottom(λ, φ) = -30 < λ < 30 && -40 < φ < 20 ? 0 : - 1
+        bottom(λ, φ) = -30 < λ < 30 && -40 < φ < 20 ? 0 : - 1
 
-    #     # "s" for "serial" computation, "p" for parallel
-    #     ms = rotation_with_shear_test(global_underlying_grid, closure)
-    #     mp = rotation_with_shear_test(underlying_grid, closure)
+        # "s" for "serial" computation, "p" for parallel
+        ms = rotation_with_shear_test(global_underlying_grid, closure)
+        mp = rotation_with_shear_test(underlying_grid, closure)
 
-    #     us = interior(on_architecture(CPU(), ms.velocities.u))
-    #     vs = interior(on_architecture(CPU(), ms.velocities.v))
-    #     ws = interior(on_architecture(CPU(), ms.velocities.w))
-    #     cs = interior(on_architecture(CPU(), ms.tracers.c))
-    #     ηs = interior(on_architecture(CPU(), ms.free_surface.η))
+        us = interior(on_architecture(CPU(), ms.velocities.u))
+        vs = interior(on_architecture(CPU(), ms.velocities.v))
+        ws = interior(on_architecture(CPU(), ms.velocities.w))
+        cs = interior(on_architecture(CPU(), ms.tracers.c))
+        ηs = interior(on_architecture(CPU(), ms.free_surface.η))
 
-    #     cpu_arch = cpu_architecture(arch)
+        cpu_arch = cpu_architecture(arch)
 
-    #     up = interior(on_architecture(cpu_arch, mp.velocities.u))
-    #     vp = interior(on_architecture(cpu_arch, mp.velocities.v))
-    #     wp = interior(on_architecture(cpu_arch, mp.velocities.w))
-    #     cp = interior(on_architecture(cpu_arch, mp.tracers.c))
-    #     ηp = interior(on_architecture(cpu_arch, mp.free_surface.η))
+        up = interior(on_architecture(cpu_arch, mp.velocities.u))
+        vp = interior(on_architecture(cpu_arch, mp.velocities.v))
+        wp = interior(on_architecture(cpu_arch, mp.velocities.w))
+        cp = interior(on_architecture(cpu_arch, mp.tracers.c))
+        ηp = interior(on_architecture(cpu_arch, mp.free_surface.η))
 
-    #     us = partition(us, cpu_arch, size(up))
-    #     vs = partition(vs, cpu_arch, size(vp))
-    #     ws = partition(ws, cpu_arch, size(wp))
-    #     cs = partition(cs, cpu_arch, size(cp))
-    #     ηs = partition(ηs, cpu_arch, size(ηp))
+        us = partition(us, cpu_arch, size(up))
+        vs = partition(vs, cpu_arch, size(vp))
+        ws = partition(ws, cpu_arch, size(wp))
+        cs = partition(cs, cpu_arch, size(cp))
+        ηs = partition(ηs, cpu_arch, size(ηp))
 
-    #     atol = eps(eltype(immersed_active_grid))
-    #     rtol = sqrt(eps(eltype(immersed_active_grid)))
+        atol = eps(eltype(immersed_active_grid))
+        rtol = sqrt(eps(eltype(immersed_active_grid)))
 
-    #     @test all(isapprox(up, us; atol, rtol))
-    #     @test all(isapprox(vp, vs; atol, rtol))
-    #     @test all(isapprox(wp, ws; atol, rtol))
-    #     @test all(isapprox(cp, cs; atol, rtol))
-    #     @test all(isapprox(ηp, ηs; atol, rtol))
+        @test all(isapprox(up, us; atol, rtol))
+        @test all(isapprox(vp, vs; atol, rtol))
+        @test all(isapprox(wp, ws; atol, rtol))
+        @test all(isapprox(cp, cs; atol, rtol))
+        @test all(isapprox(ηp, ηs; atol, rtol))
     end
 end
