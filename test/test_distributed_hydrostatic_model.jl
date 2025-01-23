@@ -86,8 +86,9 @@ Ny = 48
 
 for arch in archs
     
-    # We do not test on `Fractional` partitions where we cannot easily ensure that H > N 
-    # (which would lead to different advection schemes for partitioned and non-partitioned grids)
+    # We do not test on `Fractional` partitions where we cannot easily ensure that H ≤ N 
+    # which would lead to different advection schemes for partitioned and non-partitioned grids.
+    # `Fractional` is, however, tested in regression tests where the horizontal dimensions are larger.
     valid_x_partition = !(arch.partition.x isa Fractional)
     valid_y_partition = !(arch.partition.y isa Fractional)
     valid_z_partition = !(arch.partition.z isa Fractional)
