@@ -49,7 +49,7 @@ function rotation_with_shear_test(grid, closure=nothing)
     end
 
     model = HydrostaticFreeSurfaceModel(; grid,
-                                        momentum_advection = WENOVectorInvariant(),
+                                        momentum_advection = WENOVectorInvariant(order=5),
                                         free_surface = free_surface,
                                         coriolis = coriolis,
                                         closure,
@@ -86,8 +86,8 @@ Ny = 48
 
 for arch in archs
     @testset "Testing distributed solid body rotation" begin
-        underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 3),
-                                                halo = (7, 7, 4),
+        underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 5),
+                                                halo = (5, 5, 4),
                                                 latitude = (-80, 80),
                                                 longitude = (-160, 160),
                                                 z = (-1, 0),
@@ -145,14 +145,6 @@ for arch in archs
         arch    = synchronized(arch)
         closure = CATKEVerticalDiffusivity()
 
-        underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 3),
-                                                halo = (7, 7, 5),
-                                                latitude = (-80, 80),
-                                                longitude = (-160, 160),
-                                                z = (-1, 0),
-                                                radius = 1,
-                                                topology=(Bounded, Bounded, Bounded))
-
         # "s" for "serial" computation, "p" for parallel
         ms = rotation_with_shear_test(global_underlying_grid, closure)
         mp = rotation_with_shear_test(underlying_grid, closure)
@@ -177,8 +169,8 @@ for arch in archs
         cs = partition(cs, cpu_arch, size(cp))
         ηs = partition(ηs, cpu_arch, size(ηp))
 
-        atol = eps(eltype(immersed_active_grid))
-        rtol = sqrt(eps(eltype(immersed_active_grid)))
+        atol = eps(eltype(global_underlying_grid))
+        rtol = sqrt(eps(eltype(global_underlying_grid)))
 
         @test all(isapprox(up, us; atol, rtol))
         @test all(isapprox(vp, vs; atol, rtol))

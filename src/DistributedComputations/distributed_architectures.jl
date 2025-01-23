@@ -439,13 +439,15 @@ function Base.show(io::IO, arch::Distributed)
     Nr = prod(arch.ranks)
     last_rank = Nr - 1
 
+    S = arch isa SynchronizedDistributed
+
     rank_info = if last_rank == 0
         "1 rank:"
     else
         "$Nr = $Rx×$Ry×$Rz ranks:"
     end
 
-    print(io, summary(arch), " across ", rank_info, '\n')
+    print(io, summary(arch), " across ", rank_info, (S ? " with synchronous communication" : ""), '\n')
     print(io, "├── local_rank: ", local_rank, " of 0-$last_rank", '\n')
 
     ix, iy, iz = arch.local_index
