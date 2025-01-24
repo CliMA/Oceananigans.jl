@@ -2,6 +2,7 @@ using CUDA: has_cuda
 using OrderedCollections: OrderedDict
 
 using Oceananigans.DistributedComputations
+using Oceananigans.DistributedComputations: DistributedGrid, XYRegularDistributedGrid
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, adapt_advection_order
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
@@ -53,6 +54,13 @@ default_free_surface(grid::XYRegularRG; gravitational_acceleration=g_Earth) =
 
 default_free_surface(grid; gravitational_acceleration=g_Earth) =
     SplitExplicitFreeSurface(grid; cfl = 0.7, gravitational_acceleration)
+
+# Kind of random, probably we should infer the time-step?
+default_free_surface(grid::DistributedGrid, gravitational_acceleration=g_Earth) = 
+    SplitExplicitFreeSurface(grid; substeps = 60, gravitational_acceleration)
+
+default_free_surface(grid::XYRegularDistributedGrid, gravitational_acceleration=g_Earth) = 
+    SplitExplicitFreeSurface(grid; substeps = 60, gravitational_acceleration)
 
 """
     HydrostaticFreeSurfaceModel(; grid,
