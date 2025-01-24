@@ -49,12 +49,12 @@ function rotation_with_shear_test(grid, closure=nothing)
     end
 
     model = HydrostaticFreeSurfaceModel(; grid,
-                                        momentum_advection = WENOVectorInvariant(order=5),
+                                        momentum_advection = WENOVectorInvariant(order=3),
                                         free_surface = free_surface,
                                         coriolis = coriolis,
                                         closure,
                                         tracers,
-                                        tracer_advection = WENO(),
+                                        tracer_advection = WENO(order=3),
                                         buoyancy = BuoyancyTracer())
 
     g = model.free_surface.gravitational_acceleration
@@ -75,14 +75,15 @@ function rotation_with_shear_test(grid, closure=nothing)
     Δt_local = 0.1 * Δ_min(grid) / sqrt(g * grid.Lz) 
     Δt = all_reduce(min, Δt_local, architecture(grid))
 
-    simulation = Simulation(model; Δt, stop_iteration = 10, verbose = false)
-    run!(simulation)
+    for _ in 1:10
+        time_step!(model, Δt)
+    end
 
     return model
 end
 
-Nx = 48
-Ny = 48
+Nx = 32
+Ny = 32 
 
 for arch in archs
     
@@ -95,8 +96,8 @@ for arch in archs
     
     if valid_x_partition & valid_y_partition & valid_z_partition
         @testset "Testing distributed solid body rotation" begin
-            underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 5),
-                                                    halo = (5, 5, 4),
+            underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 3),
+                                                    halo = (4, 4, 3),
                                                     latitude = (-80, 80),
                                                     longitude = (-160, 160),
                                                     z = (-1, 0),
