@@ -132,9 +132,10 @@ function __init__()
     end
 end
 
-# Supported types for the Advection module. 
-# To support new floating point types, add them here
-const supported_float_types = [Float32, Float64]
+# List of fully-supported floating point types where applicable.
+# Currently used only in the Advection module to specialize 
+# reconstruction schemes (WENO, UpwindBiased, and Centered).
+const supported_float_types = (Float32, Float64)
 
 #####
 ##### Abstract types
