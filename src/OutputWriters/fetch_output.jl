@@ -1,6 +1,6 @@
 using CUDA
 
-using Oceananigans.Fields: AbstractField, compute_at!, ZeroField
+using Oceananigans.Fields: AbstractField, compute_at!, ZeroField, FunctionField
 using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticles
 
 # TODO: figure out how to support this
@@ -18,6 +18,9 @@ function fetch_output(field::AbstractField, model)
     compute_at!(field, time(model))
     return parent(field)
 end
+
+# Make sure a function field is evaluated on the CPU
+fetch_output(field::FunctionField, model) = on_architecture(CPU(), field)
 
 function fetch_output(lagrangian_particles::LagrangianParticles, model)
     particle_properties = lagrangian_particles.properties
