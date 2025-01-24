@@ -39,9 +39,9 @@ function compute_buffer_tendency_contributions!(grid::DistributedActiveCellsIBG,
                  :east_halo_dependent_cells, 
                  :south_halo_dependent_cells, 
                  :north_halo_dependent_cells)
-        
+
         active_cells_map = @inbounds maps[name]
-        
+
         # If the map == nothing, we don't need to compute the buffer because 
         # the buffer is not adjacent to a processor boundary
         !isnothing(map) && compute_hydrostatic_free_surface_tendency_contributions!(model, :xyz; active_cells_map)
@@ -55,9 +55,6 @@ function buffer_w_kernel_parameters(grid, arch)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
-    Sx  = (Hx, Ny+2) 
-    Sy  = (Nx+2, Hy)
-             
     # Offsets in tangential direction are == -1 to
     # cover the required corners
     param_west  = (-Hx+2:1,    0:Ny+1)
