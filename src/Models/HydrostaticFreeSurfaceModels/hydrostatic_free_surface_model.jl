@@ -49,11 +49,8 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
          vertical_coordinate :: Z        # Rulesets that define the time-evolution of the grid
 end
 
-default_free_surface(grid::XYRegularRG; gravitational_acceleration=g_Earth, args...) =
-    ImplicitFreeSurface(; gravitational_acceleration)
-
 default_free_surface(grid; gravitational_acceleration=g_Earth, args...) =
-    SplitExplicitFreeSurface(grid; cfl = 0.7, gravitational_acceleration)
+    SplitExplicitFreeSurface(grid; cfl=0.7, gravitational_acceleration)
 
 # A heuristic computation of a possible maximum Δt for a HydrostaticFreeSurfaceModel, 
 # given the grid spacings, a hypothetical `maximum_speed` (assumed to be around 3 m/s)
@@ -67,9 +64,6 @@ function compute_maximum_Δt(grid; maximum_speed = 3)
 end
 
 default_free_surface(grid::DistributedGrid; gravitational_acceleration=g_Earth, cfl=0.7, Δt=compute_maximum_Δt(grid)) = 
-    SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=Δt, gravitational_acceleration)
-
-default_free_surface(grid::XYRegularDistributedGrid; gravitational_acceleration=g_Earth, cfl=0.7, Δt=compute_maximum_Δt(grid)) = 
     SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=Δt, gravitational_acceleration)
 
 """
