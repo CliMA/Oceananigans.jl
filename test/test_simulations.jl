@@ -19,7 +19,7 @@ function wall_time_step_wizard_tests(arch)
     CFL = 0.45
     u₀ = 7
     Δt = 2.5
-    model.velocities.u[1, 1, 1] = u₀
+    CUDA.@allowscalar model.velocities.u[1, 1, 1] = u₀
 
     wizard = TimeStepWizard(cfl=CFL, max_change=Inf, min_change=0)
     Δt = new_time_step(Δt, wizard, model)
@@ -33,7 +33,7 @@ function wall_time_step_wizard_tests(arch)
     Δt = new_time_step(Δt, wizard, model)
     @test Δt ≈ 1.99
 
-    model.velocities.u[1, 1, 1] = u₀/100
+    CUDA.@allowscalar model.velocities.u[1, 1, 1] = u₀/100
 
     wizard = TimeStepWizard(cfl=CFL, max_change=1.1, min_change=0)
     Δt = new_time_step(1.0, wizard, model)
@@ -192,7 +192,7 @@ function run_nan_checker_test(arch; erroring)
     grid = RectilinearGrid(arch, size=(4, 2, 1), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid=grid)
     simulation = Simulation(model, Δt=1, stop_iteration=1)
-    model.velocities.u[1, 1, 1] = NaN
+    CUDA.@allowscalar model.velocities.u[1, 1, 1] = NaN
     erroring && erroring_NaNChecker!(simulation)
 
     if erroring

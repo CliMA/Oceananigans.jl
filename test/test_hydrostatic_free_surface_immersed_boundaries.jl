@@ -37,16 +37,16 @@ using Oceananigans.TurbulenceClosures
                 set!(model, u = 1, b = (x, y, z) -> 4z)
 
                 # Inside the bump
-                @test b[4, 4, 2] == 0 
-                @test u[4, 4, 2] == 0
+                CUDA.@allowscalar @test b[4, 4, 2] == 0 
+                CUDA.@allowscalar @test u[4, 4, 2] == 0
 
                 simulation = Simulation(model, Δt = 1e-3, stop_iteration=2)
 
                 run!(simulation)
 
                 # Inside the bump
-                @test b[4, 4, 2] == 0
-                @test u[4, 4, 2] == 0
+                CUDA.@allowscalar @test b[4, 4, 2] == 0
+                CUDA.@allowscalar @test u[4, 4, 2] == 0
             end
         end
 
