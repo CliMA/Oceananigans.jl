@@ -17,9 +17,9 @@ using Oceananigans.BoundaryConditions: FlatExtrapolationOpenBoundaryCondition,
 
 Returns the drag within the `bounding_box` computed by:
 
-∂ₜu⃗ + (u⃗⋅∇)u⃗ = −∇P + ∇⋅τ⃗ + F⃗
-F⃗ₜ = ∫ᵥF⃗dV = ∫ᵥ(∂ₜ u⃗ + (u⃗⋅∇)u⃗ + ∇P − ∇⋅τ⃗)dV
-F⃗ₜ = ∫ᵥ(∂ₜu⃗)dV + ∮ₛ(u⃗(u⃗⋅n̂) + Pn̂ − τ⃗⋅n̂)dS
+∂ₜU + (U⋅∇)U = −∇P + ∇⋅τ + F⃗
+F = ∫ᵥFdV = ∫ᵥ(∂U/∂t + (U⋅∇)U + ∇P − ∇⋅τ)dV
+F = ∫ᵥ(∂ₜU)dV + ∮ₛ(U(U⋅n̂) + Pn̂ − τ⋅n̂)dS
 Fᵤ = ∫ᵥ ∂ₜu dV + ∮ₛ(u(u⃗⋅n̂) − τₓₓ)dS + ∮ₛPx̂⋅dS⃗
 Fᵤ = ∫ᵥ ∂ₜ u dV − ∫ₛ₁(u² − 2ν∂ₓ u + P)dS + ∫ₛ₂(u² − 2ν∂ₓ u+P)dS − ∫ₛ₃uvdS + ∫ₛ₄ uvdS
 
