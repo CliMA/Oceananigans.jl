@@ -8,6 +8,7 @@ using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity
 using Oceananigans.TurbulenceClosures: FluxTapering, DiffusiveFormulation, AdvectiveFormulation
 
 filename = "coarse_baroclinic_adjustment"
+wall_clock = Ref(time_ns())
 
 function progress(sim)
     @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, next Δt: %s\n",
@@ -84,7 +85,6 @@ function run_simulation(closure, grid)
     #####
 
     simulation = Simulation(model; Δt, stop_time)
-    wall_clock = Ref(time_ns())
     add_callback!(simulation, progress, IterationInterval(10))
     suffix = closure isa AdvectiveFormulation ? "advective" : "diffusive"
 
