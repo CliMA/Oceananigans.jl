@@ -12,7 +12,7 @@ using ..TurbulenceClosures:
 
 Contains mixing length parameters for CATKE vertical diffusivity.
 """
-Base.@kwdef struct CATKEMixingLength{FT}
+struct CATKEMixingLength{FT}
     Cˢ   :: FT = 1.131  # Surface distance coefficient for shear length scale
     Cᵇ   :: FT = 0.28   # Bottom distance coefficient for shear length scale
     Cˢᵖ  :: FT = 0.505  # Sheared convective plume coefficient
@@ -33,6 +33,32 @@ Base.@kwdef struct CATKEMixingLength{FT}
     Cᵘⁿe :: FT = 1.447  # Shear mixing length coefficient for TKE at negative Ri
     Cᶜe  :: FT = 3.642  # Convective mixing length coefficient for TKE
     Cᵉe  :: FT = 0.0    # Convective penetration mixing length coefficient for TKE
+end
+
+function CATKEMixingLength(FT=Float64;
+                           Cˢ   = convert(FT, 1.131),
+                           Cᵇ   = convert(FT, 0.28 ),
+                           Cˢᵖ  = convert(FT, 0.505),
+                           CRiᵟ = convert(FT, 1.02 ),
+                           CRi⁰ = convert(FT, 0.254),
+                           Cʰⁱu = convert(FT, 0.242),
+                           Cˡᵒu = convert(FT, 0.361),
+                           Cᵘⁿu = convert(FT, 0.370),
+                           Cᶜu  = convert(FT, 3.705),
+                           Cᵉu  = convert(FT, 0.0  ),
+                           Cʰⁱc = convert(FT, 0.098),
+                           Cˡᵒc = convert(FT, 0.369),
+                           Cᵘⁿc = convert(FT, 0.572),
+                           Cᶜc  = convert(FT, 4.793),
+                           Cᵉc  = convert(FT, 0.112),
+                           Cʰⁱe = convert(FT, 0.548),
+                           Cˡᵒe = convert(FT, 7.863),
+                           Cᵘⁿe = convert(FT, 1.447),
+                           Cᶜe  = convert(FT, 3.642),
+                           Cᵉe  = convert(FT, 0.0  ))
+
+    return CATKEMixingLength{FT}(Cˢ, Cᵇ, Cˢᵖ, CRiᵟ, CRi⁰, Cʰⁱu, Cˡᵒu, Cᵘⁿu, Cᶜu, Cᵉu,
+                                 Cʰⁱc, Cˡᵒc, Cᵘⁿc, Cᶜc, Cᵉc, Cʰⁱe, Cˡᵒe, Cᵘⁿe, Cᶜe, Cᵉe)
 end
 
 #####
