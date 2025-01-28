@@ -21,7 +21,7 @@ function run_simulation(nx, ny, arch; topology = (Periodic, Periodic, Bounded))
     grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom); active_cells_map = true)
 
     model = HydrostaticFreeSurfaceModel(; grid,
-                                        momentum_advection = VectorInvariant(vorticity_scheme=WENO(order=9)),
+                                        momentum_advection = WENOVectorInvariant(),
                                         free_surface = SplitExplicitFreeSurface(grid, substeps=10),
                                         tracer_advection = WENO(),
                                         buoyancy = nothing,
@@ -29,41 +29,35 @@ function run_simulation(nx, ny, arch; topology = (Periodic, Periodic, Bounded))
                                         tracers = :c)
 
     # Scale seed with rank to avoid symmetry
-    local_rank = MPI.Comm_rank(arch.communicator)
+    local_rank = arch.local_rank
+
     Random.seed!(1234 * (local_rank + 1))
 
-    set!(model, u = (x, y, z) -> 1-2rand(), v = (x, y, z) -> 1-2rand())
-    
-    mask(x, y, z) = x > 3π/2 && x < 5π/2 && y > 3π/2 && y < 5π/2
-    c = model.tracers.c
+    uᵢ(x, y, z) = 1 - 2rand()
+    cᵢ(x, y, z) = x > 3π/2 && x < 5π/2 && y > 3π/2 && y < 5π/2
 
-    set!(c, mask)
+    set!(model, u=uᵢ, v=uᵢ, c=cᵢ)
 
-    u, v, _ = model.velocities
-    # ζ = VerticalVorticityField(model)
-    η = model.free_surface.η
     outputs = merge(model.velocities, model.tracers)
 
     progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(sim.model.clock.time), Δt: $(sim.Δt)"
-    simulation = Simulation(model, Δt=0.02, stop_time=100.0)
 
-    wizard = TimeStepWizard(cfl = 0.2, max_change = 1.1)
+    simulation = Simulation(model, Δt=0.01, stop_time=100.0)
 
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
-    simulation.callbacks[:wizard]   = Callback(wizard,   IterationInterval(10))
 
     filepath = "mpi_hydrostatic_turbulence_rank$(local_rank)"
-    simulation.output_writers[:fields] =
-        JLD2OutputWriter(model, outputs, filename=filepath, schedule=TimeInterval(0.1),
-                         overwrite_existing=true)
+
+    simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs, 
+                                                          filename=filepath, 
+                                                          schedule=TimeInterval(0.1),
+                                                          overwrite_existing=true)
 
     run!(simulation)
-
-    MPI.Barrier(arch.communicator)
 end
 
-Nx = 32
-Ny = 32
+Nx = 128
+Ny = 128
 
 arch = Distributed(CPU(), partition = Partition(2, 2)) 
 
