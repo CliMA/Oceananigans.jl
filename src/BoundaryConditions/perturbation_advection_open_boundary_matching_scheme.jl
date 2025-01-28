@@ -8,7 +8,7 @@ an external prescribed or coarser flow, we can split the velocity into backgroun
 and perturbation components.
 
 We begin with the equation governing the fluid in the interior:
-    ∂ₜu⃗ + u⃗⋅∇u⃗ = −∇P + F⃗,
+    ∂ₜu + u⋅∇u = −∇P + F,
 and note that on the boundary the pressure gradient is zero.
 We can then assume that the flow composes of mean (U⃗) and pertubation (u⃗′) components,
 and considering the x-component of velocity, we can rewrite the equation as
