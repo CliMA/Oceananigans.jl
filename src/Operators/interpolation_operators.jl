@@ -101,15 +101,6 @@ using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 @inline ℑzᵃᵃᶜ(i, j, k, grid::ZFlatGrid, w::Number) = w
 @inline ℑzᵃᵃᶠ(i, j, k, grid::ZFlatGrid, c::Number) = c
 
-@inline ℑxᶜᵃᵃ(i, j, k, grid::XFlatGrid, u::Number) = u
-@inline ℑxᶠᵃᵃ(i, j, k, grid::XFlatGrid, c::Number) = c
-
-@inline ℑyᵃᶜᵃ(i, j, k, grid::YFlatGrid, v::Number) = v
-@inline ℑyᵃᶠᵃ(i, j, k, grid::YFlatGrid, c::Number) = c
-
-@inline ℑzᵃᵃᶜ(i, j, k, grid::ZFlatGrid, w::Number) = w
-@inline ℑzᵃᵃᶠ(i, j, k, grid::ZFlatGrid, c::Number) = c
-
 @inline ℑxᶜᵃᵃ(i, j, k, grid::XFlatGrid, f::F, args...) where {F<:Function} = f(i, j, k, grid, args...)
 @inline ℑxᶠᵃᵃ(i, j, k, grid::XFlatGrid, f::F, args...) where {F<:Function} = f(i, j, k, grid, args...)
 
