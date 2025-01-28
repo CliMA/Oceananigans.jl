@@ -5,7 +5,7 @@ using Oceananigans
 using Oceananigans.Units
 using GLMakie
 using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity
-using Oceananigans.TurbulenceClosures: FluxTapering, DiffusiveFormulation, AdvectiveSkewClosure
+using Oceananigans.TurbulenceClosures: FluxTapering, DiffusiveFormulation, AdvectiveFormulation
 
 filename = "coarse_baroclinic_adjustment"
 
@@ -86,7 +86,7 @@ function run_simulation(closure, grid)
     simulation = Simulation(model; Δt, stop_time)
     wall_clock = Ref(time_ns())
     add_callback!(simulation, progress, IterationInterval(10))
-    suffix = closure isa AdvectiveSkewClosure ? "advective" : "diffusive"
+    suffix = closure isa AdvectiveFormulation ? "advective" : "diffusive"
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers), 
                                                           schedule = TimeInterval(save_fields_interval),
