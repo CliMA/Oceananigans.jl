@@ -51,7 +51,7 @@ grid = ImmersedBoundaryGrid(grid, GridFittedBottom(y -> y > 0 ? -Lz : -Lz/2))
 slope_limiter = FluxTapering(1000) # Allow very steep slopes
 
 adv_closure = IsopycnalSkewSymmetricDiffusivity(; κ_skew, slope_limiter)
-dif_closure = IsopycnalSkewSymmetricDiffusivity(; κ_skew, slope_limiter, skew_fluxes_formulation = DiffusiveFormulation())
+dif_closure = IsopycnalSkewSymmetricDiffusivity(; κ_skew, slope_limiter, skew_flux_formulation = DiffusiveFormulation())
 
 function run_simulation(closure, grid)
     model = HydrostaticFreeSurfaceModel(; grid, closure,
@@ -85,7 +85,7 @@ function run_simulation(closure, grid)
     #####
 
     simulation = Simulation(model; Δt, stop_time)
-    add_callback!(simulation, progress, IterationInterval(10))
+    add_callback!(simulation, progress, IterationInterval(144))
     suffix = closure isa AdvectiveFormulation ? "advective" : "diffusive"
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers), 
@@ -141,10 +141,10 @@ cd = @lift ctd[$n]
 
 fig = Figure(size=(1800, 700))
 
-axua = Axis(fig[2, 1], xlabel="y (km)", ylabel="z (km)", title="Zonal velocity")
-axca = Axis(fig[3, 1], xlabel="y (km)", ylabel="z (km)", title="Tracer concentration")
-axud = Axis(fig[2, 2], xlabel="y (km)", ylabel="z (km)", title="Zonal velocity")
-axcd = Axis(fig[3, 2], xlabel="y (km)", ylabel="z (km)", title="Tracer concentration")
+axua = Axis(fig[2, 1], xlabel="y (km)", ylabel="z (km)", title="GM_Adv: Zonal velocity")
+axca = Axis(fig[3, 1], xlabel="y (km)", ylabel="z (km)", title="GM_Adv: Tracer concentration")
+axud = Axis(fig[2, 2], xlabel="y (km)", ylabel="z (km)", title="GM_Dif: Zonal velocity")
+axcd = Axis(fig[3, 2], xlabel="y (km)", ylabel="z (km)", title="GM_Dif: Tracer concentration")
 
 levels = [-0.0015 + 0.0005 * i for i in 0:19]
 
