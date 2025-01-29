@@ -5,7 +5,7 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans: fields, prognostic_fields
 using Oceananigans.Fields: offset_data
-using Oceananigans.TimeSteppers: RungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
 
 import Oceananigans.Fields: set! 
 
@@ -289,7 +289,9 @@ function set_time_stepper_tendencies!(timestepper, file, model_fields, addr)
     return nothing
 end
 
-set_time_stepper!(timestepper::RungeKutta3TimeStepper, args...) = nothing
+# For self-starting timesteppers like RK3 we do nothing 
+set_time_stepper!(timestepper, args...) = nothing
+
 set_time_stepper!(timestepper::QuasiAdamsBashforth2TimeStepper, args...) =
     set_time_stepper_tendencies!(timestepper, args...)
 
