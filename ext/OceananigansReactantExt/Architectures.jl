@@ -10,8 +10,6 @@ architecture(::Reactant.AnyTracedRArray) = ReactantState
 
 array_type(::ReactantState) = ConcreteRArray
 
-arch_array(::CPU, a::ReactantState) = Array(a)
-
 on_architecture(::ReactantState, a::Array) = ConcreteRArray(a)
 on_architecture(::ReactantState, a::ConcreteRArray) = a
 on_architecture(::ReactantState, a::TracedRArray) = a
