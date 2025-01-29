@@ -1,5 +1,6 @@
 using Oceananigans.Grids: xnode, znode
 using Oceananigans.TimeSteppers: update_state!
+using Oceananigans.DistributedComputations: cpu_architecture, partition, reconstruct_global_grid
 
 function run_rayleigh_benard_regression_test(arch, grid_type)
 
@@ -34,19 +35,26 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
 
     # Force salinity as a passive tracer (βS=0)
     c★(x, z) = exp(4z) * sin(2π/Lx * x)
-    Fc(i, j, k, grid, clock, model_fields) = 1/10 * (c★(xnode(i, grid, Center()), znode(k, grid, Center())) - model_fields.c[i, j, k])
 
-    bbcs = FieldBoundaryConditions(top = BoundaryCondition(Value, 0.0),
-                                   bottom = BoundaryCondition(Value, Δb))
+    function Fc(i, j, k, grid, clock, model_fields)
+        x = xnode(i, grid, Center())
+        z = znode(k, grid, Center())
+        return 1/10 * (c★(x, z) - model_fields.c[i, j, k])
+    end
 
-    model = NonhydrostaticModel(
-                       grid = grid,
-                    closure = ScalarDiffusivity(ν=ν, κ=κ),
-                    tracers = (:b, :c),
-                   buoyancy = Buoyancy(model=BuoyancyTracer()),
-        boundary_conditions = (b=bbcs,),
-                    forcing = (c=Forcing(Fc, discrete_form=true),)
-    )
+    cforcing = Forcing(Fc, discrete_form=true)
+
+    bbcs = FieldBoundaryConditions(top = BoundaryCondition(Value(), 0.0),
+                                   bottom = BoundaryCondition(Value(), Δb))
+
+    model = NonhydrostaticModel(; grid,
+                                timestepper = :QuasiAdamsBashforth2,
+                                closure = ScalarDiffusivity(ν=ν, κ=κ),
+                                tracers = (:b, :c),
+                                buoyancy = BuoyancyTracer(),
+                                boundary_conditions = (; b=bbcs),
+                                hydrostatic_pressure_anomaly = CenterField(grid),
+                                forcing = (; c=cforcing))
 
     # Lz/Nz will work for both the :regular and :vertically_unstretched grids.
     Δt = 0.01 * min(model.grid.Δxᶜᵃᵃ, model.grid.Δyᵃᶜᵃ, Lz/Nz)^2 / ν
@@ -64,6 +72,9 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
 
     checkpointer = Checkpointer(model, schedule=IterationInterval(test_steps), prefix=prefix,
                                 dir=joinpath(dirname(@__FILE__), "data"))
+
+    u, v, w = model.velocities
+    b, c = model.tracers
 
     #####
     ##### Initial condition and spinup steps for creating regression test data
@@ -94,23 +105,39 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
 
     solution₀, Gⁿ₀, G⁻₀ = get_fields_from_checkpoint(initial_filename)
 
-    model.velocities.u.data.parent .= ArrayType(solution₀.u)
-    model.velocities.v.data.parent .= ArrayType(solution₀.v)
-    model.velocities.w.data.parent .= ArrayType(solution₀.w)
-    model.tracers.b.data.parent    .= ArrayType(solution₀.b)
-    model.tracers.c.data.parent    .= ArrayType(solution₀.c)
+    cpu_arch = cpu_architecture(architecture(grid))
 
-    model.timestepper.Gⁿ.u.data.parent .= ArrayType(Gⁿ₀.u)
-    model.timestepper.Gⁿ.v.data.parent .= ArrayType(Gⁿ₀.v)
-    model.timestepper.Gⁿ.w.data.parent .= ArrayType(Gⁿ₀.w)
-    model.timestepper.Gⁿ.b.data.parent .= ArrayType(Gⁿ₀.b)
-    model.timestepper.Gⁿ.c.data.parent .= ArrayType(Gⁿ₀.c)
+    u₀ = partition(ArrayType(solution₀.u[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(u))
+    v₀ = partition(ArrayType(solution₀.v[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(v))
+    w₀ = partition(ArrayType(solution₀.w[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(w))
+    b₀ = partition(ArrayType(solution₀.b[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(b))
+    c₀ = partition(ArrayType(solution₀.c[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(c))
 
-    model.timestepper.G⁻.u.data.parent .= ArrayType(G⁻₀.u)
-    model.timestepper.G⁻.v.data.parent .= ArrayType(G⁻₀.v)
-    model.timestepper.G⁻.w.data.parent .= ArrayType(G⁻₀.w)
-    model.timestepper.G⁻.b.data.parent .= ArrayType(G⁻₀.b)
-    model.timestepper.G⁻.c.data.parent .= ArrayType(G⁻₀.c)
+    Gⁿu₀ = partition(ArrayType(Gⁿ₀.u[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(u))
+    Gⁿv₀ = partition(ArrayType(Gⁿ₀.v[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(v))
+    Gⁿw₀ = partition(ArrayType(Gⁿ₀.w[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(w))
+    Gⁿb₀ = partition(ArrayType(Gⁿ₀.b[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(b))
+    Gⁿc₀ = partition(ArrayType(Gⁿ₀.c[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(c))
+
+    G⁻u₀ = partition(ArrayType(G⁻₀.u[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(u))
+    G⁻v₀ = partition(ArrayType(G⁻₀.v[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(v))
+    G⁻w₀ = partition(ArrayType(G⁻₀.w[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(w))
+    G⁻b₀ = partition(ArrayType(G⁻₀.b[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(b))
+    G⁻c₀ = partition(ArrayType(G⁻₀.c[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(c))
+
+    set!(model, u = u₀, v = v₀, w = w₀, b = b₀, c = c₀)
+
+    set!(model.timestepper.Gⁿ.u, Gⁿu₀)
+    set!(model.timestepper.Gⁿ.v, Gⁿv₀)
+    set!(model.timestepper.Gⁿ.w, Gⁿw₀)
+    set!(model.timestepper.Gⁿ.b, Gⁿb₀)
+    set!(model.timestepper.Gⁿ.c, Gⁿc₀)
+
+    set!(model.timestepper.G⁻.u, G⁻u₀)
+    set!(model.timestepper.G⁻.v, G⁻v₀)
+    set!(model.timestepper.G⁻.w, G⁻w₀)
+    set!(model.timestepper.G⁻.b, G⁻b₀)
+    set!(model.timestepper.G⁻.c, G⁻c₀)
 
     model.clock.iteration = spinup_steps
     model.clock.time = spinup_steps * Δt
@@ -119,7 +146,7 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     # Step the model forward and perform the regression test
     update_state!(model)
 
-    model.timestepper.previous_Δt = Δt
+    model.clock.last_Δt = Δt
 
     for n in 1:test_steps
         time_step!(model, Δt, euler=false)
@@ -136,20 +163,28 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
                                       b = Array(interior(model.tracers.b)),
                                       c = Array(interior(model.tracers.c)))
 
-    correct_fields = (u = Array(interior(solution₁.u, model.grid)),
-                      v = Array(interior(solution₁.v, model.grid)),
-                      w = Array(interior(solution₁.w, model.grid)),
-                      b = Array(interior(solution₁.b, model.grid)),
-                      c = Array(interior(solution₁.c, model.grid)))
+    global_grid = reconstruct_global_grid(model.grid)
 
-    summarize_regression_test(test_fields, correct_fields)
+    u₁ = interior(solution₁.u, global_grid)
+    v₁ = interior(solution₁.v, global_grid)
+    w₁ = interior(solution₁.w, global_grid)
+    b₁ = interior(solution₁.b, global_grid)
+    c₁ = interior(solution₁.c, global_grid)
+
+    reference_fields = (u = partition(Array(u₁), cpu_arch, size(u)),
+                        v = partition(Array(v₁), cpu_arch, size(v)),
+                        w = partition(Array(w₁), cpu_arch, size(test_fields.w)),
+                        b = partition(Array(b₁), cpu_arch, size(b)),
+                        c = partition(Array(c₁), cpu_arch, size(c)))
+
+    summarize_regression_test(test_fields, reference_fields)
 
     CUDA.allowscalar(true)
-    @test all(test_fields.u .≈ correct_fields.u)
-    @test all(test_fields.v .≈ correct_fields.v)
-    @test all(test_fields.w .≈ correct_fields.w)
-    @test all(test_fields.b .≈ correct_fields.b)
-    @test all(test_fields.c .≈ correct_fields.c)
+    @test all(test_fields.u .≈ reference_fields.u)
+    @test all(test_fields.v .≈ reference_fields.v)
+    @test all(test_fields.w .≈ reference_fields.w)
+    @test all(test_fields.b .≈ reference_fields.b)
+    @test all(test_fields.c .≈ reference_fields.c)
     CUDA.allowscalar(false)
 
     return nothing

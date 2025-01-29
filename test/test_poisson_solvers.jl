@@ -1,6 +1,8 @@
 include("dependencies_for_runtests.jl")
 include("dependencies_for_poisson_solvers.jl")
 
+using Oceananigans.Solvers: fft_poisson_solver
+
 #####
 ##### Run pressure solver tests 1
 #####
@@ -31,7 +33,6 @@ two_dimensional_topologies = [(Flat,     Bounded,  Bounded),
                 grids_2d = [RectilinearGrid(arch, FT, size=(2, 2), extent=(1, 1), topology=topo)
                             for topo in two_dimensional_topologies]
 
-
                 grids = []
                 push!(grids, grids_3d..., grids_2d...)
 
@@ -39,6 +40,18 @@ two_dimensional_topologies = [(Flat,     Bounded,  Bounded),
                     @test poisson_solver_instantiates(grid, FFTW.ESTIMATE)
                     @test poisson_solver_instantiates(grid, FFTW.MEASURE)
                 end
+
+                # Test the generic fft_poisson_solver constructor
+                x = y = (0, 1)
+                z = (0, 1)
+                regular_grid = RectilinearGrid(arch, size=(2, 2, 2); x, y, z)
+                fft_based_solver = fft_poisson_solver(regular_grid)
+                @test fft_based_solver isa FFTBasedPoissonSolver
+
+                z = [0, 0.2, 1]
+                vertically_stretched_grid = RectilinearGrid(arch, size=(2, 2, 2); x, y, z)
+                fourier_tridiagonal_solver = fft_poisson_solver(vertically_stretched_grid)
+                @test fourier_tridiagonal_solver isa FourierTridiagonalPoissonSolver
             end
         end
 

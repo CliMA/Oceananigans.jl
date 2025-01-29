@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.BoundaryConditions: PBC, ZFBC, OBC, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
+using Oceananigans.BoundaryConditions: PBC, ZFBC, VBC, OBC, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
 using Oceananigans.Fields: Face, Center
 
 simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
@@ -21,7 +21,7 @@ end
     @testset "Boundary condition instantiation" begin
         @info "  Testing boundary condition instantiation..."
 
-        for C in (Value, Gradient, Flux)
+        for C in (Value, Gradient, Flux, Value(), Gradient(), Flux())
             @test can_instantiate_boundary_condition(integer_bc, C)
             @test can_instantiate_boundary_condition(irrational_bc, C)
             @test can_instantiate_boundary_condition(simple_function_bc, C)
@@ -235,7 +235,7 @@ end
         @test T_bcs.top.condition.func === simple_bc
         @test T_bcs.bottom.condition.func === simple_bc
 
-        one_bc = BoundaryCondition(Value, 1.0)
+        one_bc = BoundaryCondition(Value(), 1.0)
 
         T_bcs = FieldBoundaryConditions(   east = one_bc,
                                            west = one_bc,
@@ -252,5 +252,17 @@ end
         @test T_bcs.south  === one_bc
         @test T_bcs.top    === one_bc
         @test T_bcs.bottom === one_bc
+
+        grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-90, 90), longitude=(0, 360), z = (0, 1))
+        f = CenterField(grid)
+
+        @test f.boundary_conditions.north isa VBC
+        @test f.boundary_conditions.south isa VBC
+
+        set!(f, (x, y, z) -> x)
+        fill_halo_regions!(f)
+
+        @test all(f.data[1:10, 0,  1:10] .== 2 * mean(f.data[1:10, 1,  1:10]) .- f.data[1:10, 1,  1:10])
+        @test all(f.data[1:10, 11, 1:10] .== 2 * mean(f.data[1:10, 10, 1:10]) .- f.data[1:10, 10, 1:10])
     end
 end

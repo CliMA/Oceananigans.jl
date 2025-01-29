@@ -1,18 +1,16 @@
 # Utilities to generate a grid with the following inputs
-
-@inline adapt_if_vector(to, var) = var
-@inline adapt_if_vector(to, var::AbstractArray) = Adapt.adapt(to, var)
-
 get_domain_extent(::Nothing, N)             = (1, 1)
 get_domain_extent(coord, N)                 = (coord[1], coord[2])
 get_domain_extent(coord::Function, N)       = (coord(1), coord(N+1))
 get_domain_extent(coord::AbstractVector, N) = CUDA.@allowscalar (coord[1], coord[N+1])
+get_domain_extent(coord::Number, N)         = (coord, coord)
 
-get_coord_face(coord::Nothing, i) = 1
-get_coord_face(coord::Function, i) = coord(i)
-get_coord_face(coord::AbstractVector, i) = CUDA.@allowscalar coord[i]
+get_face_node(coord::Nothing, i) = 1
+get_face_node(coord::Function, i) = coord(i)
+get_face_node(coord::AbstractVector, i) = CUDA.@allowscalar coord[i]
 
 const AT = AbstractTopology
+
 lower_exterior_Δcoordᶠ(::AT,              Fi, Hcoord) = [Fi[end - Hcoord + i] - Fi[end - Hcoord + i - 1] for i = 1:Hcoord]
 lower_exterior_Δcoordᶠ(::BoundedTopology, Fi, Hcoord) = [Fi[2]  - Fi[1] for _ = 1:Hcoord]
 
@@ -25,28 +23,43 @@ upper_interior_F(::BoundedTopology, coord) = coord
 total_interior_length(::AT, N)              = N
 total_interior_length(::BoundedTopology, N) = N + 1
 
+bad_coordinate_message(ξ::Function, name) = "The values of $name(index) must increase as the index increases!"
+bad_coordinate_message(ξ::AbstractArray, name) = "The elements of $name must be increasing!"
+
+# General generate_coordinate
+generate_coordinate(FT, topology, size, halo, nodes, coordinate_name, dim::Int, arch) = 
+    generate_coordinate(FT, topology[dim](), size[dim], halo[dim], nodes, coordinate_name, arch)
+
 # generate a variably-spaced coordinate passing the explicit coord faces as vector or function
-function generate_coordinate(FT, topo::AT, N, H, coord, arch)
+function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name, arch)
 
     # Ensure correct type for F and derived quantities
-    interiorF = zeros(FT, N+1)
+    interior_face_nodes = zeros(FT, N+1)
 
-    for i = 1:N+1
-        interiorF[i] = get_coord_face(coord, i)
+    # Use the user-supplied "generator" to build the interior nodes
+    for idx = 1:N+1
+        interior_face_nodes[idx] = get_face_node(node_generator, idx)
     end
 
-    L = interiorF[N+1] - interiorF[1]
+    # Check that the interior nodes are increasing
+    if !issorted(interior_face_nodes)
+        msg = bad_coordinate_message(node_generator, coordinate_name)
+        throw(ArgumentError(msg))
+    end
 
-    # Build halo regions
-    Δᶠ₋ = lower_exterior_Δcoordᶠ(topo, interiorF, H)
-    Δᶠ₊ = reverse(upper_exterior_Δcoordᶠ(topo, interiorF, H))
+    # Get domain extent
+    L = interior_face_nodes[N+1] - interior_face_nodes[1]
 
-    c¹, cᴺ⁺¹ = interiorF[1], interiorF[N+1]
+    # Build halo regions: spacings first
+    Δᶠ₋ = lower_exterior_Δcoordᶠ(topo, interior_face_nodes, H)
+    Δᶠ₊ = reverse(upper_exterior_Δcoordᶠ(topo, interior_face_nodes, H))
+
+    c¹, cᴺ⁺¹ = interior_face_nodes[1], interior_face_nodes[N+1]
 
     F₋ =         [c¹   - sum(Δᶠ₋[i:H]) for i = 1:H]  # locations of faces in lower halo
     F₊ = reverse([cᴺ⁺¹ + sum(Δᶠ₊[i:H]) for i = 1:H]) # locations of faces in top halo
 
-    F = vcat(F₋, interiorF, F₊)
+    F = vcat(F₋, interior_face_nodes, F₊)
 
     # Build cell centers, cell center spacings, and cell interface spacings
     TC = total_length(Center(), topo, N, H)
@@ -64,25 +77,32 @@ function generate_coordinate(FT, topo::AT, N, H, coord, arch)
         Δᶠ[i] = Δᶠ[i-1]
     end
 
-    Δᶜ = OffsetArray(arch_array(arch, Δᶜ), -H)
-    Δᶠ = OffsetArray(arch_array(arch, Δᶠ), -H-1)
+    Δᶜ = OffsetArray(on_architecture(arch, Δᶜ), -H)
+    Δᶠ = OffsetArray(on_architecture(arch, Δᶠ), -H-1)
 
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)
 
     # Convert to appropriate array type for arch
-    F = OffsetArray(arch_array(arch, F.parent), F.offsets...)
-    C = OffsetArray(arch_array(arch, C.parent), C.offsets...)
+    F = OffsetArray(on_architecture(arch, F.parent), F.offsets...)
+    C = OffsetArray(on_architecture(arch, C.parent), C.offsets...)
 
-    return L, F, C, Δᶠ, Δᶜ
+    if coordinate_name == :z
+        return L, StaticVerticalDiscretization(F, C, Δᶠ, Δᶜ)
+    else    
+        return L, F, C, Δᶠ, Δᶜ
+    end
 end
 
-# generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points
-function generate_coordinate(FT, topo::AT, N, H, coord::Tuple{<:Number, <:Number}, arch)
+# Generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points
+function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, <:Number}, coordinate_name, arch)
 
-    @assert length(coord) == 2
+    if node_interval[2] < node_interval[1]
+        msg = "$coordinate_name must be an increasing interval!"
+        throw(ArgumentError(msg))
+    end
 
-    c₁, c₂ = @. BigFloat(coord)
+    c₁, c₂ = @. BigFloat(node_interval)
     @assert c₁ < c₂
     L = c₂ - c₁
 
@@ -104,9 +124,76 @@ function generate_coordinate(FT, topo::AT, N, H, coord::Tuple{<:Number, <:Number
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)
 
-    return FT(L), F, C, FT(Δᶠ), FT(Δᶜ)
+    if coordinate_name == :z
+        return FT(L), StaticVerticalDiscretization(F, C, FT(Δᶠ), FT(Δᶜ))
+    else    
+        return FT(L), F, C, FT(Δᶠ), FT(Δᶜ)
+    end
 end
 
 # Flat domains
-generate_coordinate(FT, ::Flat, N, H, coord::Tuple{<:Number, <:Number}, arch) =
-    FT(1), range(1, 1, length=N), range(1, 1, length=N), FT(1), FT(1)
+function generate_coordinate(FT, ::Flat, N, H, c::Number, coordinate_name, arch) 
+    if coordinate_name == :z
+        return FT(1), StaticVerticalDiscretization(range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1))
+    else    
+        return FT(1), range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1)
+    end
+end
+
+# What's the use case for this?
+# generate_coordinate(FT, ::Flat, N, H, c::Tuple{Number, Number}, coordinate_name, arch) =
+#     FT(1), c, c, FT(1), FT(1)
+function generate_coordinate(FT, ::Flat, N, H, ::Nothing, coordinate_name, arch) 
+    if coordinate_name == :z
+        return FT(1), StaticVerticalDiscretization(nothing, nothing, FT(1), FT(1))
+    else    
+        return FT(1), nothing, nothing, FT(1), FT(1)
+    end
+end    
+
+#####
+##### MutableVerticalDiscretization
+#####
+
+generate_coordinate(FT, ::Periodic, N, H, ::MutableVerticalDiscretization, coordinate_name, arch, args...) = 
+    throw(ArgumentError("Periodic domains are not supported for MutableVerticalDiscretization"))
+
+# Generate a vertical coordinate with a scaling (`σ`) with respect to a reference coordinate `r` with spacing `Δr`.
+# The grid might move with time, so the coordinate includes the time-derivative of the scaling `∂t_σ`.
+# The value of the vertical coordinate at `Nz+1` is saved in `ηⁿ`.
+function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDiscretization, coordinate_name, dim::Int, arch)
+
+    Nx, Ny, Nz = size
+    Hx, Hy, Hz = halo
+
+    if dim != 3 
+        msg = "MutableVerticalDiscretization is supported only in the third dimension (z)"
+        throw(ArgumentError(msg))
+    end
+
+    if coordinate_name != :z
+        msg = "MutableVerticalDiscretization is supported only for the z-coordinate"
+        throw(ArgumentError(msg))
+    end
+
+    r_faces = coordinate.cᵃᵃᶠ
+
+    Lr, rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ = generate_coordinate(FT, topo[3](), Nz, Hz, r_faces, :r, arch)
+
+    args = (topo, (Nx, Ny, Nz), (Hx, Hy, Hz))
+
+    σᶜᶜ⁻ = new_data(FT, arch, (Center, Center, Nothing), args...)
+    σᶜᶜⁿ = new_data(FT, arch, (Center, Center, Nothing), args...)
+    σᶠᶜⁿ = new_data(FT, arch, (Face,   Center, Nothing), args...)
+    σᶜᶠⁿ = new_data(FT, arch, (Center, Face,   Nothing), args...)
+    σᶠᶠⁿ = new_data(FT, arch, (Face,   Face,   Nothing), args...)
+    ηⁿ   = new_data(FT, arch, (Center, Center, Nothing), args...)
+    ∂t_σ = new_data(FT, arch, (Center, Center, Nothing), args...)
+
+    # Fill all the scalings with one for now (i.e. z == r)
+    for σ in (σᶜᶜ⁻, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ)
+        fill!(σ, 1)
+    end
+    
+    return Lr, MutableVerticalDiscretization(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
+end

@@ -1,23 +1,58 @@
+using Pkg
+
 include("dependencies_for_runtests.jl")
+
+group     = get(ENV, "TEST_GROUP", :all) |> Symbol
+test_file = get(ENV, "TEST_FILE", :none) |> Symbol
+
+# if we are testing just a single file then group = :none
+# to skip the full test suite
+if test_file != :none
+    group = :none
+end
+
+
+#####
+##### Run tests!
+#####
 
 CUDA.allowscalar() do
 
 @testset "Oceananigans" begin
+
     if test_file != :none
         @testset "Single file test" begin
             include(String(test_file))
         end
     end
+
+    # Initialization steps
+    if group == :init || group == :all
+        Pkg.instantiate(; verbose=true)
+        Pkg.precompile(; strict=true)
+        Pkg.status()
+
+        try
+            MPI.versioninfo()
+        catch; end
+
+        try
+            CUDA.precompile_runtime()
+            CUDA.versioninfo()
+        catch; end
+    end
     
-    # Core Oceananigans 
+    # Core Oceananigans
     if group == :unit || group == :all
         @testset "Unit tests" begin
             include("test_grids.jl")
+            include("test_immersed_boundary_grid.jl")
             include("test_operators.jl")
+            include("test_vector_rotation_operators.jl")
             include("test_boundary_conditions.jl")
             include("test_field.jl")
             include("test_regrid.jl")
-            include("test_field_reductions.jl")
+            include("test_field_scans.jl")
             include("test_halo_regions.jl")
             include("test_coriolis.jl")
             include("test_buoyancy.jl")
@@ -45,6 +80,7 @@ CUDA.allowscalar() do
     if group == :poisson_solvers_2 || group == :all
         @testset "Poisson Solvers 2" begin
             include("test_poisson_solvers_stretched_grids.jl")
+            include("test_conjugate_gradient_poisson_solver.jl")
         end
     end
 
@@ -84,6 +120,7 @@ CUDA.allowscalar() do
         @testset "Model and time stepping tests (part 1)" begin
             include("test_nonhydrostatic_models.jl")
             include("test_time_stepping.jl")
+            include("test_active_cells_map.jl")
         end
     end
 
@@ -99,6 +136,7 @@ CUDA.allowscalar() do
         @testset "Model and time stepping tests (part 3)" begin
             include("test_dynamics.jl")
             include("test_biogeochemistry.jl")
+            include("test_seawater_density.jl")
         end
     end
 
@@ -124,7 +162,7 @@ CUDA.allowscalar() do
             include("test_hydrostatic_free_surface_immersed_boundaries_implicit_solve.jl")
         end
     end
-    
+
     # Model enhancements: cubed sphere, distributed, etc
     if group == :multi_region || group == :all
         @testset "Multi Region tests" begin
@@ -137,12 +175,35 @@ CUDA.allowscalar() do
 
     if group == :distributed || group == :all
         MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
+        archs = test_architectures()
         include("test_distributed_models.jl")
     end
 
     if group == :distributed_solvers || group == :all
         MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
+        include("test_distributed_transpose.jl")
         include("test_distributed_poisson_solvers.jl")
+    end
+
+    if group == :distributed_hydrostatic_model || group == :all
+        MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
+        archs = test_architectures()
+        include("test_hydrostatic_regression.jl")
+        include("test_distributed_hydrostatic_model.jl")
+    end
+
+    if group == :distributed_nonhydrostatic_regression || group == :all
+        MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
+        archs = nonhydrostatic_regression_test_architectures()
+        include("test_nonhydrostatic_regression.jl")
     end
 
     if group == :nonhydrostatic_regression || group == :all
@@ -156,6 +217,19 @@ CUDA.allowscalar() do
     if group == :scripts || group == :all
         @testset "Scripts" begin
             include("test_validation.jl")
+        end
+    end
+
+    if group == :vertical_coordinate || group == :all
+        @testset "Vertical coordinate tests" begin
+            include("test_zstar_coordinate.jl")
+        end
+    end
+
+    # Tests for Enzyme extension
+    if group == :enzyme || group == :all
+        @testset "Enzyme extension tests" begin
+            include("test_enzyme.jl")
         end
     end
 

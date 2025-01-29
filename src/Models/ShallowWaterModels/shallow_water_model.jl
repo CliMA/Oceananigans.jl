@@ -3,24 +3,23 @@ using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 using Oceananigans.Architectures: AbstractArchitecture, CPU
 using Oceananigans.AbstractOperations: @at, KernelFunctionOperation
 using Oceananigans.DistributedComputations
-using Oceananigans.Advection: CenteredSecondOrder, VectorInvariant
+using Oceananigans.Advection: Centered, VectorInvariant
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField, compute!
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: with_halo, topology, inflate_halo_size, halo_size, Flat, architecture, RectilinearGrid, Face, Center
+using Oceananigans.Grids: topology, Flat, architecture, RectilinearGrid, Face, Center
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Models: validate_model_halo, NaNChecker, validate_tracer_advection
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
 using Oceananigans.Utils: tupleit
-using Oceananigans.Models: validate_model_halo
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_tracer_advection
-using Oceananigans.Models.NonhydrostaticModels: inflate_grid_halo_size
 
 import Oceananigans.Architectures: architecture
+import Oceananigans.Models: default_nan_checker, timestepper
 
 const RectilinearGrids = Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
 
-function ShallowWaterTendencyFields(grid, tracer_names, prognostic_names)
+function shallow_water_tendency_fields(grid, tracer_names, prognostic_names)
     u =  XFaceField(grid)
     v =  YFaceField(grid)
     h = CenterField(grid)
@@ -62,8 +61,8 @@ struct VectorInvariantFormulation end
 """
     ShallowWaterModel(; grid,
                         gravitational_acceleration,
-                              clock = Clock{eltype(grid)}(0, 0, 1),
-                 momentum_advection = UpwindBiasedFifthOrder(),
+                              clock = Clock{eltype(grid)}(time = 0),
+                 momentum_advection = UpwindBiased(order=5),
                    tracer_advection = WENO(),
                      mass_advection = WENO(),
                            coriolis = nothing,
@@ -87,7 +86,7 @@ Keyword arguments
   - `gravitational_acceleration`: (required) The gravitational acceleration constant.
   - `clock`: The `clock` for the model.
   - `momentum_advection`: The scheme that advects velocities. See `Oceananigans.Advection`.
-    Default: `UpwindBiasedFifthOrder()`.
+    Default: `UpwindBiased(order=5)`.
   - `tracer_advection`: The scheme that advects tracers. See `Oceananigans.Advection`. Default: `WENO()`.
   - `mass_advection`: The scheme that advects the mass equation. See `Oceananigans.Advection`. Default:
     `WENO()`.
@@ -113,8 +112,8 @@ Keyword arguments
 function ShallowWaterModel(;
                            grid,
                            gravitational_acceleration,
-                               clock = Clock{eltype(grid)}(0, 0, 1),
-                  momentum_advection = UpwindBiasedFifthOrder(),
+                               clock = Clock{eltype(grid)}(time=0),
+                  momentum_advection = UpwindBiased(order=5),
                     tracer_advection = WENO(),
                       mass_advection = WENO(),
                             coriolis = nothing,
@@ -145,7 +144,7 @@ function ShallowWaterModel(;
     # Check halos and throw an error if the grid's halo is too small
     validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
-    prognostic_field_names = formulation isa ConservativeFormulation ? (:uh, :vh, :h, tracers...) :  (:u, :v, :h, tracers...) 
+    prognostic_field_names = formulation isa ConservativeFormulation ? (:uh, :vh, :h, tracers...) :  (:u, :v, :h, tracers...)
     default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions()
                                                                            for name in prognostic_field_names))
 
@@ -182,8 +181,8 @@ function ShallowWaterModel(;
 
     # Instantiate timestepper if not already instantiated
     timestepper = TimeStepper(timestepper, grid, tracernames(tracers);
-                              Gⁿ = ShallowWaterTendencyFields(grid, tracernames(tracers), prognostic_field_names),
-                              G⁻ = ShallowWaterTendencyFields(grid, tracernames(tracers), prognostic_field_names))
+                              Gⁿ = shallow_water_tendency_fields(grid, tracernames(tracers), prognostic_field_names),
+                              G⁻ = shallow_water_tendency_fields(grid, tracernames(tracers), prognostic_field_names))
 
     # Regularize forcing and closure for model tracer and velocity fields.
     model_fields = merge(solution, tracers)
@@ -206,7 +205,7 @@ function ShallowWaterModel(;
                               timestepper,
                               formulation)
 
-    update_state!(model)
+    update_state!(model; compute_tendencies = false)
 
     return model
 end

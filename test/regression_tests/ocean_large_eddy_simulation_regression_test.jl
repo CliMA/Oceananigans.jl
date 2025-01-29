@@ -1,8 +1,16 @@
 using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation
 using Oceananigans.TimeSteppers: update_state!
+using Oceananigans.DistributedComputations: cpu_architecture, partition
 
 function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)
-    name = "ocean_large_eddy_simulation_" * string(typeof(first(closure)).name.wrapper)
+    if first(closure) isa SmagorinskyLilly
+        name = "ocean_large_eddy_simulation_SmagorinskyLilly"
+    else
+        firstclosure = first(closure)
+        closurename = typeof(firstclosure).name.wrapper
+        closurestr = string(closurename)
+        name = "ocean_large_eddy_simulation_$closurestr"
+    end
 
     spinup_steps = 10000
       test_steps = 10
@@ -23,22 +31,27 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     end
 
     # Boundary conditions
-    u_bcs = FieldBoundaryConditions(top = BoundaryCondition(Flux, Qᵘ))
-    T_bcs = FieldBoundaryConditions(top = BoundaryCondition(Flux, Qᵀ), bottom = BoundaryCondition(Gradient, ∂T∂z))
-    S_bcs = FieldBoundaryConditions(top = BoundaryCondition(Flux, 5e-8))
+    u_bcs = FieldBoundaryConditions(top = BoundaryCondition(Flux(), Qᵘ))
+    T_bcs = FieldBoundaryConditions(top = BoundaryCondition(Flux(), Qᵀ), bottom = BoundaryCondition(Gradient(), ∂T∂z))
+    S_bcs = FieldBoundaryConditions(top = BoundaryCondition(Flux(), 5e-8))
 
     equation_of_state = LinearEquationOfState(thermal_expansion=2e-4, haline_contraction=8e-4)
 
     # Model instantiation
-    model = NonhydrostaticModel(; grid, 
+    model = NonhydrostaticModel(; grid, closure,
+                                timestepper = :QuasiAdamsBashforth2,
                                 coriolis = FPlane(f=1e-4),
                                 buoyancy = SeawaterBuoyancy(; equation_of_state),
                                 tracers = (:T, :S),
-                                closure = closure,
+                                hydrostatic_pressure_anomaly = CenterField(grid),
                                 boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs))
 
     # The type of the underlying data, not the offset array.
-    ArrayType = typeof(model.velocities.u.data.parent)
+    ArrayType = typeof(parent(model.velocities.u))
+    nx, ny, nz = size(model.tracers.T)
+
+    u, v, w = model.velocities
+    T, S = model.tracers
 
     ####
     #### Uncomment the block below to generate regression data.
@@ -77,32 +90,49 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
 
     Nz = grid.Nz
 
-    solution_indices   = [2:N+3, 2:N+3, 2:N+3]
-    w_solution_indices = [2:N+3, 2:N+3, 2:N+4]
+    cpu_arch = cpu_architecture(architecture(grid))
 
-    parent(model.velocities.u)[solution_indices...]   .= ArrayType(solution₀.u)
-    parent(model.velocities.v)[solution_indices...]   .= ArrayType(solution₀.v)
-    parent(model.velocities.w)[w_solution_indices...] .= ArrayType(solution₀.w)
-    parent(model.tracers.T)[solution_indices...]      .= ArrayType(solution₀.T)
-    parent(model.tracers.S)[solution_indices...]      .= ArrayType(solution₀.S)
+    u₀ = partition(ArrayType(solution₀.u[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(u))
+    v₀ = partition(ArrayType(solution₀.v[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(v))
+    w₀ = partition(ArrayType(solution₀.w[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(w))
+    T₀ = partition(ArrayType(solution₀.T[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(T))
+    S₀ = partition(ArrayType(solution₀.S[2:end-1, 2:end-1, 2:end-1]), cpu_arch, size(S))
 
-    parent(model.timestepper.Gⁿ.u)[solution_indices...]   .= ArrayType(Gⁿ₀.u)
-    parent(model.timestepper.Gⁿ.v)[solution_indices...]   .= ArrayType(Gⁿ₀.v)
-    parent(model.timestepper.Gⁿ.w)[w_solution_indices...] .= ArrayType(Gⁿ₀.w)
-    parent(model.timestepper.Gⁿ.T)[solution_indices...]   .= ArrayType(Gⁿ₀.T)
-    parent(model.timestepper.Gⁿ.S)[solution_indices...]   .= ArrayType(Gⁿ₀.S)
+    Gⁿu₀ = partition(ArrayType(Gⁿ₀.u)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(u))
+    Gⁿv₀ = partition(ArrayType(Gⁿ₀.v)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(v))
+    Gⁿw₀ = partition(ArrayType(Gⁿ₀.w)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(w))
+    GⁿT₀ = partition(ArrayType(Gⁿ₀.T)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(T))
+    GⁿS₀ = partition(ArrayType(Gⁿ₀.S)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(S))
 
-    parent(model.timestepper.G⁻.u)[solution_indices...]   .= ArrayType(G⁻₀.u)
-    parent(model.timestepper.G⁻.v)[solution_indices...]   .= ArrayType(G⁻₀.v)
-    parent(model.timestepper.G⁻.w)[w_solution_indices...] .= ArrayType(G⁻₀.w)
-    parent(model.timestepper.G⁻.T)[solution_indices...]   .= ArrayType(G⁻₀.T)
-    parent(model.timestepper.G⁻.S)[solution_indices...]   .= ArrayType(G⁻₀.S)
+    G⁻u₀ = partition(ArrayType(G⁻₀.u)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(u))
+    G⁻v₀ = partition(ArrayType(G⁻₀.v)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(v))
+    G⁻w₀ = partition(ArrayType(G⁻₀.w)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(w))
+    G⁻T₀ = partition(ArrayType(G⁻₀.T)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(T))
+    G⁻S₀ = partition(ArrayType(G⁻₀.S)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(S))
+
+    interior(model.velocities.u) .= u₀
+    interior(model.velocities.v) .= v₀
+    interior(model.velocities.w) .= w₀
+    interior(model.tracers.T)    .= T₀
+    interior(model.tracers.S)    .= S₀
+
+    interior(model.timestepper.Gⁿ.u) .= Gⁿu₀
+    interior(model.timestepper.Gⁿ.v) .= Gⁿv₀
+    interior(model.timestepper.Gⁿ.w) .= Gⁿw₀
+    interior(model.timestepper.Gⁿ.T) .= GⁿT₀
+    interior(model.timestepper.Gⁿ.S) .= GⁿS₀
+
+    interior(model.timestepper.G⁻.u) .= G⁻u₀
+    interior(model.timestepper.G⁻.v) .= G⁻v₀
+    interior(model.timestepper.G⁻.w) .= G⁻w₀
+    interior(model.timestepper.G⁻.T) .= G⁻T₀
+    interior(model.timestepper.G⁻.S) .= G⁻S₀
 
     model.clock.time = spinup_steps * Δt
     model.clock.iteration = spinup_steps
 
     update_state!(model; compute_tendencies = true)
-    model.timestepper.previous_Δt = Δt
+    model.clock.last_Δt = Δt
 
     for n in 1:test_steps
         time_step!(model, Δt, euler=false)
@@ -115,15 +145,23 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
 
     test_fields = CUDA.@allowscalar (u = Array(interior(model.velocities.u)),
                                      v = Array(interior(model.velocities.v)),
-                                     w = Array(interior(model.velocities.w)[:, :, 1:N]),
+                                     w = Array(interior(model.velocities.w)[:, :, 1:nz]),
                                      T = Array(interior(model.tracers.T)),
                                      S = Array(interior(model.tracers.S)))
 
-    correct_fields = (u = Array(solution₁.u)[2:N+1, 2:N+1, 2:N+1],
-                      v = Array(solution₁.v)[2:N+1, 2:N+1, 2:N+1],
-                      w = Array(solution₁.w)[2:N+1, 2:N+1, 2:N+1],
-                      T = Array(solution₁.T)[2:N+1, 2:N+1, 2:N+1],
-                      S = Array(solution₁.S)[2:N+1, 2:N+1, 2:N+1])
+    u₁ = partition(Array(solution₁.u)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(u))
+    v₁ = partition(Array(solution₁.v)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(v))
+    w₁ = partition(Array(solution₁.w)[2:end-1, 2:end-1, 2:end-2], cpu_arch, size(test_fields.w))
+    T₁ = partition(Array(solution₁.T)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(T))
+    S₁ = partition(Array(solution₁.S)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(S))
+
+    @show size(test_fields.w), size(w₁)
+
+    correct_fields = (u = u₁,
+                      v = v₁,
+                      w = w₁,
+                      T = T₁,
+                      S = S₁)
 
     summarize_regression_test(test_fields, correct_fields)
 

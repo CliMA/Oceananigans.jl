@@ -1,5 +1,11 @@
 using OffsetArrays
 
+"""
+
+   GridFittedBoundary(mask)
+
+Return a immersed boundary with a three-dimensional `mask`.
+"""
 struct GridFittedBoundary{M} <: AbstractGridFittedBoundary
     mask :: M
 end
@@ -36,4 +42,3 @@ on_architecture(arch, ib::GridFittedBoundary{<:Field}) = GridFittedBoundary(comp
 on_architecture(arch, ib::GridFittedBoundary) = ib # need a workaround...
 
 Adapt.adapt_structure(to, ib::AbstractGridFittedBoundary) = GridFittedBoundary(adapt(to, ib.mask))
-

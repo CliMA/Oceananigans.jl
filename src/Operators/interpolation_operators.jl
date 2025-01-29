@@ -1,19 +1,6 @@
 using Oceananigans.Grids: Flat
 
 #####
-##### Base interpolation operators without grid
-#####
-
-@inline ℑxᶜᵃᵃ(i, j, k, u) = @inbounds (u[i,   j, k] + u[i+1, j, k]) / 2
-@inline ℑxᶠᵃᵃ(i, j, k, c) = @inbounds (c[i-1, j, k] + c[i,   j, k]) / 2
-
-@inline ℑyᵃᶜᵃ(i, j, k, v) = @inbounds (v[i, j,   k] + v[i,  j+1, k]) / 2
-@inline ℑyᵃᶠᵃ(i, j, k, c) = @inbounds (c[i, j-1, k] + c[i,  j,   k]) / 2
-
-@inline ℑzᵃᵃᶜ(i, j, k, w) = @inbounds (w[i, j,   k] + w[i, j, k+1]) / 2
-@inline ℑzᵃᵃᶠ(i, j, k, c) = @inbounds (c[i, j, k-1] + c[i, j,   k]) / 2
-
-#####
 ##### Base interpolation operators
 #####
 
@@ -99,11 +86,20 @@ using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 @inline ℑxᶜᵃᵃ(i, j, k, grid::XFlatGrid, u) = @inbounds u[i, j, k]
 @inline ℑxᶠᵃᵃ(i, j, k, grid::XFlatGrid, c) = @inbounds c[i, j, k]
 
-@inline ℑyᵃᶜᵃ(i, j, k, grid::YFlatGrid, w) = @inbounds w[i, j, k]
+@inline ℑyᵃᶜᵃ(i, j, k, grid::YFlatGrid, v) = @inbounds v[i, j, k]
 @inline ℑyᵃᶠᵃ(i, j, k, grid::YFlatGrid, c) = @inbounds c[i, j, k]
 
 @inline ℑzᵃᵃᶜ(i, j, k, grid::ZFlatGrid, w) = @inbounds w[i, j, k]
 @inline ℑzᵃᵃᶠ(i, j, k, grid::ZFlatGrid, c) = @inbounds c[i, j, k]
+
+@inline ℑxᶜᵃᵃ(i, j, k, grid::XFlatGrid, u::Number) = u
+@inline ℑxᶠᵃᵃ(i, j, k, grid::XFlatGrid, c::Number) = c
+
+@inline ℑyᵃᶜᵃ(i, j, k, grid::YFlatGrid, v::Number) = v
+@inline ℑyᵃᶠᵃ(i, j, k, grid::YFlatGrid, c::Number) = c
+
+@inline ℑzᵃᵃᶜ(i, j, k, grid::ZFlatGrid, w::Number) = w
+@inline ℑzᵃᵃᶠ(i, j, k, grid::ZFlatGrid, c::Number) = c
 
 @inline ℑxᶜᵃᵃ(i, j, k, grid::XFlatGrid, f::F, args...) where {F<:Function} = f(i, j, k, grid, args...)
 @inline ℑxᶠᵃᵃ(i, j, k, grid::XFlatGrid, f::F, args...) where {F<:Function} = f(i, j, k, grid, args...)

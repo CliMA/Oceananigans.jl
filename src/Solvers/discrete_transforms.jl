@@ -1,4 +1,4 @@
-import Oceananigans.Architectures: architecture
+import Oceananigans.Architectures: architecture, child_architecture
 
 abstract type AbstractTransformDirection end
 
@@ -16,7 +16,8 @@ struct DiscreteTransform{P, D, G, Δ, Ω, N, T, Σ}
      transpose_dims :: Σ
 end
 
-architecture(transform::DiscreteTransform) = architecture(transform.grid)
+# Includes support for distributed architectures
+architecture(transform::DiscreteTransform) = child_architecture(architecture(transform.grid))
 
 #####
 ##### Normalization factors
@@ -66,8 +67,8 @@ function twiddle_factors(arch::GPU, grid, dims)
     ω_4N⁻[1] *= 1/2
 
     twiddle_factors = (
-        forward = arch_array(arch, ω_4N⁺),
-        backward = arch_array(arch, ω_4N⁻)
+        forward = on_architecture(arch, ω_4N⁺),
+        backward = on_architecture(arch, ω_4N⁻)
     )
 
     return twiddle_factors
@@ -80,7 +81,7 @@ end
 NoTransform() = DiscreteTransform([nothing for _ in fieldnames(DiscreteTransform)]...)
 
 function DiscreteTransform(plan, direction, grid, dims)
-    arch = architecture(grid)
+    arch = child_architecture(grid) # In case we are doing it on a DistributedGrid
 
     isnothing(plan) && return NoTransform()
 
@@ -144,7 +145,7 @@ end
 
 function apply_transform!(A, B, plan, transpose_dims)
     old_size = size(A)
-    transposed_size = [old_size[d] for d in transpose_dims]
+    transposed_size = Tuple(old_size[d] for d in transpose_dims)
 
     if old_size == transposed_size
         permutedims!(B, A, transpose_dims)

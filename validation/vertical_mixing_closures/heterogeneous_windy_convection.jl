@@ -34,15 +34,15 @@ grid = RectilinearGrid(size = (Nx, Ny, Nz),
                        z = z,
                        topology=(Periodic, Bounded, Bounded))
 
-z_bottom(x, y) = - Lz * (1 - (2y / Ly)^2)
-grid = ImmersedBoundaryGrid(grid, PartialCellBottom(z_bottom, minimum_fractional_cell_height=0.1))
+bottom_height(x, y) = - Lz * (1 - (2y / Ly)^2)
+grid = ImmersedBoundaryGrid(grid, PartialCellBottom(bottom_height, minimum_fractional_cell_height=0.1))
 
 @show grid
-@inline Qᵇ(x, y, t) = 1e-7
-@inline Qᵘ(x, y, t) = -1e-3 * cos(π * y / Ly)
+@inline Jᵇ(x, y, t) = 1e-7
+@inline τx(x, y, t) = -1e-3 * cos(π * y / Ly)
 
-b_top_bc = FluxBoundaryCondition(Qᵇ)
-u_top_bc = FluxBoundaryCondition(Qᵘ)
+b_top_bc = FluxBoundaryCondition(Jᵇ)
+u_top_bc = FluxBoundaryCondition(τx)
 
 b_bcs = FieldBoundaryConditions(top=b_top_bc)
 u_bcs = FieldBoundaryConditions(top=u_top_bc)
@@ -126,7 +126,7 @@ for ψ in (b_ts, e_ts, u_ts, v_ts, w_ts, κ_ts) #, N_ts)
     ψp[ψp .== 0] .= NaN
 end
 
-fig = Figure(resolution=(1600, 800))
+fig = Figure(size=(1600, 800))
 
 ax_uyz = Axis(fig[1, 1], title="u(y, z) - <u(y, z)>")
 #ax_vyz = Axis(fig[1, 2], title="v(y, z)")

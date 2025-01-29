@@ -108,7 +108,7 @@ include("dependencies_for_runtests.jl")
         two_two_two_grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
 
         c = CenterField(two_two_two_grid)
-        random_column = arch_array(arch, reshape(rand(2), 1, 1, 2))
+        random_column = on_architecture(arch, reshape(rand(2), 1, 1, 2))
 
         c .= random_column # broadcast to every horizontal column in c
 

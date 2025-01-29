@@ -40,7 +40,7 @@ Private = false
 ## Buoyancy models
 
 ```@autodocs
-Modules = [Oceananigans.BuoyancyModels]
+Modules = [Oceananigans.BuoyancyFormulations]
 Private = false
 ```
 
@@ -122,6 +122,13 @@ Modules = [Oceananigans.Models.HydrostaticFreeSurfaceModels]
 Private = false
 ```
 
+### Split-explicit free-surface
+
+```@autodocs
+Modules = [Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces]
+Private = false
+```
+
 ### Shallow-water models
 
 ```@autodocs
@@ -181,7 +188,7 @@ Private = false
 ## Stokes drift
 
 ```@autodocs
-Modules = [Oceananigans.StokesDrift]
+Modules = [Oceananigans.StokesDrifts]
 Private = false
 ```
 

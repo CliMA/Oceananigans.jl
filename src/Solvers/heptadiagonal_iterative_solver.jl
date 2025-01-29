@@ -1,5 +1,5 @@
 using Oceananigans.Architectures
-using Oceananigans.Architectures: architecture, arch_array, unsafe_free!
+using Oceananigans.Architectures: architecture, on_architecture, unsafe_free!
 using Oceananigans.Grids: interior_parent_indices, topology
 using Oceananigans.Utils: heuristic_workgroup
 using KernelAbstractions: @kernel, @index
@@ -35,7 +35,7 @@ end
                                  placeholder_timestep = -1.0, 
                                  preconditioner_method = :Default, 
                                  preconditioner_settings = nothing,
-                                 template = arch_array(architecture(grid), zeros(prod(size(grid)))),
+                                 template = on_architecture(architecture(grid), zeros(prod(size(grid)))),
                                  verbose = false)
 
 Return a `HeptadiagonalIterativeSolver` to solve the problem `A * x = b`, provided
@@ -69,7 +69,7 @@ The matrix constructors are calculated based on the pentadiagonal coeffients pas
 to `matrix_from_coefficients` function.
 
 To allow for variable time step, the diagonal term `- Az / (g * Δt²)` is only added later on
-and it is updated only when the previous time step changes (`previous_Δt != Δt`).
+and it is updated only when the previous time step changes (`last_Δt != Δt`).
 
 Preconditioning is done through the various methods implemented in `Solvers/sparse_preconditioners.jl`.
     
@@ -88,7 +88,7 @@ function HeptadiagonalIterativeSolver(coeffs;
                                       reduced_dim = (false, false, false), 
                                       preconditioner_method = :Default, 
                                       preconditioner_settings = nothing,
-                                      template = arch_array(architecture(grid), zeros(prod(size(grid)))),
+                                      template = on_architecture(architecture(grid), zeros(prod(size(grid)))),
                                       verbose = false)
 
     arch = architecture(grid)
@@ -135,11 +135,11 @@ Return the sparse matrix constructors based on the pentadiagonal coeffients (`co
 function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     Ax, Ay, Az, C, D = coeffs
 
-    Ax = arch_array(CPU(), Ax)
-    Ay = arch_array(CPU(), Ay)
-    Az = arch_array(CPU(), Az)
-    C  = arch_array(CPU(), C)
-    D  = arch_array(arch,  D)
+    Ax = on_architecture(CPU(), Ax)
+    Ay = on_architecture(CPU(), Ay)
+    Az = on_architecture(CPU(), Az)
+    C  = on_architecture(CPU(), C)
+    D  = on_architecture(arch,  D)
 
     N = size(grid)
 
@@ -148,7 +148,7 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     dims = validate_laplacian_direction.(N, topo, reduced_dim)
     Nx, Ny, Nz = N = validate_laplacian_size.(N, dims)
     M    = prod(N)
-    diag = arch_array(arch, zeros(eltype(grid), M))
+    diag = on_architecture(arch, zeros(eltype(grid), M))
 
     # the following coefficients are the diagonals of the sparse matrix:
     #  - coeff_d is the main diagonal (coefficents of ηᵢⱼₖ)
@@ -290,7 +290,7 @@ function fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, ::Type{Periodic})
 end
 
 function solve!(x, solver::HeptadiagonalIterativeSolver, b)
-        
+
     solver.iterative_solver(x, solver.matrix, b, 
                             statevars = solver.state_vars,
                             maxiter = solver.maximum_iterations, 

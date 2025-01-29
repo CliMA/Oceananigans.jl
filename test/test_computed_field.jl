@@ -1,11 +1,5 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
-using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
-using Oceananigans.Fields: compute_at!
-using Oceananigans.BuoyancyModels: BuoyancyField
-
 function compute_derivative(model, ∂)
     T, S = model.tracers
     parent(S) .= π
@@ -17,7 +11,7 @@ end
 function compute_unary(unary, model)
     set!(model; S=π)
     T, S = model.tracers
-    @compute uS = Field(unary(S), data=model.pressures.pHY′.data)
+    @compute uS = Field(unary(S), data=model.pressures.pNHS.data)
     result = Array(interior(uS))
     return all(result .≈ unary(eltype(model.grid)(π)))
 end
@@ -25,7 +19,7 @@ end
 function compute_plus(model)
     set!(model; S=π, T=42)
     T, S = model.tracers
-    @compute ST = Field(S + T, data=model.pressures.pHY′.data)
+    @compute ST = Field(S + T, data=model.pressures.pNHS.data)
     result = Array(interior(ST))
     return all(result .≈ eltype(model.grid)(π + 42))
 end
@@ -42,7 +36,7 @@ end
 function compute_minus(model)
     set!(model; S=π, T=42)
     T, S = model.tracers
-    @compute ST = Field(S - T, data=model.pressures.pHY′.data)
+    @compute ST = Field(S - T, data=model.pressures.pNHS.data)
     result = Array(interior(ST))
     return all(result .≈ eltype(model.grid)(π - 42))
 end
@@ -50,7 +44,7 @@ end
 function compute_times(model)
     set!(model; S=π, T=42)
     T, S = model.tracers
-    @compute ST = Field(S * T, data=model.pressures.pHY′.data)
+    @compute ST = Field(S * T, data=model.pressures.pNHS.data)
     result = Array(interior(ST))
     return all(result .≈ eltype(model.grid)(π * 42))
 end
@@ -62,7 +56,7 @@ function compute_kinetic_energy(model)
     set!(w, 3)
 
     kinetic_energy_operation = @at (Center, Center, Center) (u^2 + v^2 + w^2) / 2
-    @compute kinetic_energy = Field(kinetic_energy_operation, data=model.pressures.pHY′.data)
+    @compute kinetic_energy = Field(kinetic_energy_operation, data=model.pressures.pNHS.data)
 
     return all(interior(kinetic_energy, 2:3, 2:3, 2:3) .≈ 7)
 end
@@ -307,6 +301,27 @@ function computations_with_computed_fields(model)
     return all(interior(tke, 2:3, 2:3, 2:3) .== 9/2)
 end
 
+function compute_tuples_and_namedtuples(model)
+    c = CenterField(model.grid)
+    set!(c, 1)
+
+    one_c = Field(1 * c)
+    two_c = tuple(Field(2 * c))
+    six_c = (; field = Field(6 * c))
+    ten_c = (; field = Field(10 * c))
+
+    compute!(one_c)
+    compute!(two_c)
+    compute!(six_c)
+
+    at_ijk(i, j, k, grid, nt::NamedTuple) = nt.field[i,j,k]
+    ten_c_op = KernelFunctionOperation{Center, Center, Center}(at_ijk, model.grid, ten_c)
+    ten_c_field = Field(ten_c_op)
+    compute!(ten_c_field)
+
+    return all(interior(one_c) .== 1) & all(interior(two_c[1]) .== 2) & all(interior(six_c.field) .== 6) & all(interior(ten_c.field) .== 10)
+end
+
 for arch in archs
     A = typeof(arch)
     @testset "Computed Fields [$A]" begin
@@ -319,8 +334,9 @@ for arch in archs
         underlying_grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1), topology=(Periodic, Periodic, Bounded))
         bottom(x, y) = -2 # below the grid!
         immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+        immersed_active_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
-        for grid in (underlying_grid, immersed_grid)
+        for grid in (underlying_grid, immersed_grid, immersed_active_grid)
             G = typeof(grid).name.wrapper
             model = NonhydrostaticModel(; grid, buoyancy, tracers = (:T, :S))
 
@@ -391,7 +407,8 @@ for arch in archs
 
                 @test begin
                     @inline auxiliary_fields_kernel_function(i, j, k, grid, auxiliary_fields) = 1.0
-                    op = KernelFunctionOperation{Center, Center, Center}(auxiliary_fields_kernel_function, grid, model.auxiliary_fields)
+                    op = KernelFunctionOperation{Center, Center, Center}(auxiliary_fields_kernel_function, grid,
+                                                                         model.auxiliary_fields)
                     f = Field(op)
                     compute!(f)
                     f isa Field && f.operand === op
@@ -450,7 +467,7 @@ for arch in archs
                 set!(model; S=π, T=42)
                 T, S = model.tracers
 
-                @compute ST = Field(S + T, data=model.pressures.pHY′.data)
+                @compute ST = Field(S + T, data=model.pressures.pNHS.data)
 
                 Nx, Ny, Nz = size(model.grid)
                 Hx, Hy, Hz = halo_size(model.grid)
@@ -588,6 +605,9 @@ for arch in archs
             @testset "Computations with Fields [$A, $G]" begin
                 @info "      Testing computations with Field [$A, $G]..."
                 @test computations_with_computed_fields(model)
+
+                @info "      Testing computations of Tuples and NamedTuples"
+                @test compute_tuples_and_namedtuples(model)
             end
 
             @testset "Conditional computation of Field and BuoyancyField [$A, $G]" begin
@@ -599,8 +619,8 @@ for arch in archs
 
                 uT = Field(u * T)
 
-                α = model.buoyancy.model.equation_of_state.thermal_expansion
-                g = model.buoyancy.model.gravitational_acceleration
+                α = model.buoyancy.formulation.equation_of_state.thermal_expansion
+                g = model.buoyancy.formulation.gravitational_acceleration
                 b = BuoyancyField(model)
 
                 compute_at!(uT, 1.0)

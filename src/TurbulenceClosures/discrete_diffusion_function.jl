@@ -81,13 +81,13 @@ const UnlocalizedDDF                 = DiscreteDiffusionFunction{<:Nothing, <:No
 const UnlocalizedUnparametrizedDDF   = DiscreteDiffusionFunction{<:Nothing, <:Nothing, <:Nothing, <:Nothing}
 
 @inline function getdiffusivity(dd::DiscreteDiffusionFunction{LX, LY, LZ},
-                              i, j, k, grid, location, clock, fields) where {LX, LY, LZ} 
+                                i, j, k, grid, location, clock, fields) where {LX, LY, LZ} 
     from = (LX(), LY(), LZ())
     return ℑxyz(i, j, k, grid, from, location, dd.func, clock, fields, dd.parameters)
 end
 
 @inline function getdiffusivity(dd::UnparameterizedDDF{LX, LY, LZ},
-                              i, j, k, grid, location, clock, fields) where {LX, LY, LZ}
+                                i, j, k, grid, location, clock, fields) where {LX, LY, LZ}
     from = (LX(), LY(), LZ())
     return ℑxyz(i, j, k, grid, from, location, dd.func, clock, fields)
 end
@@ -99,5 +99,9 @@ end
         dd.func(i, j, k, grid, location..., clock, fields)
 
 Adapt.adapt_structure(to, dd::DiscreteDiffusionFunction{LX, LY, LZ}) where {LX, LY, LZ} =
-     DiscreteBoundaryFunction{LX, LY, LZ}(Adapt.adapt(to, dd.func),
+    DiscreteDiffusionFunction{LX, LY, LZ}(Adapt.adapt(to, dd.func),
                                           Adapt.adapt(to, dd.parameters))
+
+on_architecture(to, dd::DiscreteDiffusionFunction{LX, LY, LZ}) where {LX, LY, LZ} =
+    DiscreteDiffusionFunction{LX, LY, LZ}(on_architecture(to, dd.func),
+                                          on_architecture(to, dd.parameters))

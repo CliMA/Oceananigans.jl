@@ -162,7 +162,7 @@ function replace_south_u_halos!(u, vbuff, N, H, ::East; signed)
 end
 
 function replace_south_v_halos!(v, ubuff, N, H, ::East; signed)
-    view(v, :, 1:H, :) .= + ubuff.south.recv
+    view(v, :, 1:H, :) .= ubuff.south.recv
     return nothing
 end
 
@@ -176,7 +176,7 @@ function replace_north_u_halos!(u, vbuff, N, H, ::West; signed)
 end
 
 function replace_north_v_halos!(v, ubuff, N, H, ::West; signed)
-    view(v, :, N+1+H:N+2H, :) .= + ubuff.north.recv
+    view(v, :, N+1+H:N+2H, :) .= ubuff.north.recv
     return nothing
 end
 

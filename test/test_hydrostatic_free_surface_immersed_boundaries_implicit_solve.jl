@@ -1,11 +1,11 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
-using Oceananigans.Architectures: arch_array
+using Oceananigans.Architectures: on_architecture
 using Oceananigans.TurbulenceClosures
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integrated_volume_flux!, 
                                                         compute_implicit_free_surface_right_hand_side!,
-                                                        implicit_free_surface_step!,
+                                                        step_free_surface!,
                                                         pressure_correct_velocities!
 
 @testset "Immersed boundaries test divergent flow solve with hydrostatic free surface models" begin
@@ -31,7 +31,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
         bottom = [-1. for j=1:Ny, i=1:Nx]
         bottom[imm1-1:imp1+1, jmm1-1:jmp1+1] .= 0
 
-        B = arch_array(arch, bottom)
+        B = on_architecture(arch, bottom)
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(B))
 
         free_surfaces = [ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, gravitational_acceleration=1.0),
@@ -55,7 +55,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
             v[imm1, jmm1, 1:Nz] .=  1
             v[imm1, jmp1, 1:Nz] .= -1
             
-            implicit_free_surface_step!(model.free_surface, model, 1.0, 1.5)
+            step_free_surface!(model.free_surface, model, model.timestepper, 1.0)
 
             sol = (sol..., model.free_surface.η)
             f  = (f..., model.free_surface)

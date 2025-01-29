@@ -22,7 +22,8 @@ cell_diffusion_timescale(model) = cell_diffusion_timescale(model.closure, model.
 cell_diffusion_timescale(::Nothing, diffusivities, grid) = Inf
 
 maximum_numeric_diffusivity(κ::Number) = κ
-maximum_numeric_diffusivity(κ::NamedTuple) = maximum(κ)
+maximum_numeric_diffusivity(κ::FunctionField) = maximum(κ)
+maximum_numeric_diffusivity(κ_tuple::NamedTuple) = maximum(maximum_numeric_diffusivity(κ) for κ in κ_tuple)
 maximum_numeric_diffusivity(κ::NamedTuple{()}) = 0 # tracers=nothing means empty diffusivity tuples
 maximum_numeric_diffusivity(::Nothing) = 0
 
@@ -43,7 +44,7 @@ function cell_diffusion_timescale(closure::ScalarBiharmonicDiffusivity{Dir}, dif
     return min(Δ^4/ max_ν, Δ^4 / max_κ)
 end
 
-function cell_diffusion_timescale(closure::SmagorinskyLilly, diffusivities, grid)
+function cell_diffusion_timescale(closure::Smagorinsky, diffusivities, grid)
     Δ = min_Δxyz(grid, formulation(closure))
     min_Pr = closure.Pr isa NamedTuple{()} ? 1 : minimum(closure.Pr) # Innocuous value is there's no tracers
     max_νκ = maximum(diffusivities.νₑ.data.parent) * max(1, 1/min_Pr)
