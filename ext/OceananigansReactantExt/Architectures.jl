@@ -3,7 +3,7 @@ module Architectures
 using Reactant
 using Oceananigans
 
-import Oceananigans.Architectures: device, architecture, array_type, on_architecture, unified_array, device_copy_to!
+import Oceananigans.Architectures: device, architecture, array_type, on_architecture, unified_array, ReactantState, device_copy_to!
 
 architecture(::Reactant.AnyConcreteRArray) = ReactantState
 architecture(::Reactant.AnyTracedRArray) = ReactantState
