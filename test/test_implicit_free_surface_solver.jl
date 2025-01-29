@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Statistics
-using Oceananigans.BuoyancyModels: g_Earth
+using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.Operators
 using Oceananigans.Grids: inactive_cell
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
@@ -10,7 +10,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     PCGImplicitFreeSurfaceSolver,
     MatrixImplicitFreeSurfaceSolver, 
     compute_vertically_integrated_lateral_areas!,
-    implicit_free_surface_step!,
+    step_free_surface!,
     implicit_free_surface_linear_operation!
 
 using Oceananigans.Grids: with_halo
@@ -52,7 +52,7 @@ function run_implicit_free_surface_solver_tests(arch, grid, free_surface)
                                         free_surface)
 
     set_simple_divergent_velocity!(model)
-    implicit_free_surface_step!(model.free_surface, model, Δt, 1.5)
+    step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
     acronym = free_surface.solver_method == :HeptadiagonalIterativeSolver ? "Matrix" : "PCG"
 
@@ -167,9 +167,9 @@ end
         
         for m in (mat_model, pcg_model, fft_model)
             set_simple_divergent_velocity!(m)
-            implicit_free_surface_step!(m.free_surface, m, Δt₁, 1.5)
-            implicit_free_surface_step!(m.free_surface, m, Δt₁, 1.5)
-            implicit_free_surface_step!(m.free_surface, m, Δt₂, 1.5)
+            step_free_surface!(m.free_surface, m, m.timestepper, Δt₁)
+            step_free_surface!(m.free_surface, m, m.timestepper, Δt₁)
+            step_free_surface!(m.free_surface, m, m.timestepper, Δt₂)
         end
 
         mat_η = mat_model.free_surface.η

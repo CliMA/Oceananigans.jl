@@ -10,29 +10,66 @@
 #####        close to the boundary, or a second-order interpolation if i is close to a boundary.
 #####
 
-using Oceananigans.Grids: AbstractUnderlyingGrid, Bounded
+using Oceananigans.Grids: AbstractUnderlyingGrid, 
+                          Bounded, 
+                          RightConnected, 
+                          LeftConnected, 
+                          topology,
+                          architecture
 
 const AUG = AbstractUnderlyingGrid
 
+# topologies bounded at least on one side
+const BT = Union{Bounded, RightConnected, LeftConnected}
+
 # Bounded underlying Grids
-const AUGX   = AUG{<:Any, <:Bounded}
-const AUGY   = AUG{<:Any, <:Any, <:Bounded}
-const AUGZ   = AUG{<:Any, <:Any, <:Any, <:Bounded}
-const AUGXY  = AUG{<:Any, <:Bounded, <:Bounded}
-const AUGXZ  = AUG{<:Any, <:Bounded, <:Any, <:Bounded}
-const AUGYZ  = AUG{<:Any, <:Any, <:Bounded, <:Bounded}
-const AUGXYZ = AUG{<:Any, <:Bounded, <:Bounded, <:Bounded}
+const AUGX   = AUG{<:Any, <:BT}
+const AUGY   = AUG{<:Any, <:Any, <:BT}
+const AUGZ   = AUG{<:Any, <:Any, <:Any, <:BT}
+const AUGXY  = AUG{<:Any, <:BT, <:BT}
+const AUGXZ  = AUG{<:Any, <:BT, <:Any, <:BT}
+const AUGYZ  = AUG{<:Any, <:Any, <:BT, <:BT}
+const AUGXYZ = AUG{<:Any, <:BT, <:BT, <:BT}
 
 # Left-biased buffers are smaller by one grid point on the right side; vice versa for right-biased buffers
 # Center interpolation stencil look at i + 1 (i.e., require one less point on the left)
 
-@inline outside_symmetric_haloᶠ(i, N, adv) = (i >= required_halo_size(adv) + 1) & (i <= N + 1 - required_halo_size(adv))
-@inline outside_symmetric_haloᶜ(i, N, adv) = (i >= required_halo_size(adv))     & (i <= N + 1 - required_halo_size(adv))
+for dir in (:x, :y, :z)
+    outside_symmetric_haloᶠ = Symbol(:outside_symmetric_halo_, dir, :ᶠ)
+    outside_symmetric_haloᶜ = Symbol(:outside_symmetric_halo_, dir, :ᶜ)
+    outside_biased_haloᶠ    = Symbol(:outside_biased_halo_, dir, :ᶠ)
+    outside_biased_haloᶜ    = Symbol(:outside_biased_halo_, dir, :ᶜ)
+    required_halo_size      = Symbol(:required_halo_size_, dir)
 
-@inline outside_biased_haloᶠ(i, N, adv) = (i >= required_halo_size(adv) + 1) & (i <= N + 1 - (required_halo_size(adv) - 1)) &  # Left bias
-                                          (i >= required_halo_size(adv))     & (i <= N + 1 - required_halo_size(adv))          # Right bias
-@inline outside_biased_haloᶜ(i, N, adv) = (i >= required_halo_size(adv))     & (i <= N + 1 - (required_halo_size(adv) - 1)) &  # Left bias
-                                          (i >= required_halo_size(adv) - 1) & (i <= N + 1 - required_halo_size(adv))          # Right bias
+    @eval begin
+        # Bounded topologies
+        @inline $outside_symmetric_haloᶠ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv) + 1) & (i <= N + 1 - $required_halo_size(adv))
+        @inline $outside_symmetric_haloᶜ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv))     & (i <= N + 1 - $required_halo_size(adv))
+
+        @inline $outside_biased_haloᶠ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv) + 1) & (i <= N + 1 - ($required_halo_size(adv) - 1)) &  # Left bias
+                                                                    (i >= $required_halo_size(adv))     & (i <= N + 1 - $required_halo_size(adv))          # Right bias
+        @inline $outside_biased_haloᶜ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv))     & (i <= N + 1 - ($required_halo_size(adv) - 1)) &  # Left bias
+                                                                    (i >= $required_halo_size(adv) - 1) & (i <= N + 1 - $required_halo_size(adv))          # Right bias
+
+        # Right connected topologies (only test the left side, i.e. the bounded side)
+        @inline $outside_symmetric_haloᶠ(i, ::Type{RightConnected}, N, adv) = i >= $required_halo_size(adv) + 1
+        @inline $outside_symmetric_haloᶜ(i, ::Type{RightConnected}, N, adv) = i >= $required_halo_size(adv)
+
+        @inline $outside_biased_haloᶠ(i, ::Type{RightConnected}, N, adv) = (i >= $required_halo_size(adv) + 1) &  # Left bias
+                                                                           (i >= $required_halo_size(adv))        # Right bias
+        @inline $outside_biased_haloᶜ(i, ::Type{RightConnected}, N, adv) = (i >= $required_halo_size(adv))     &  # Left bias
+                                                                           (i >= $required_halo_size(adv) - 1)    # Right bias
+
+        # Left bounded topologies (only test the right side, i.e. the bounded side)
+        @inline $outside_symmetric_haloᶠ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - $required_halo_size(adv))
+        @inline $outside_symmetric_haloᶜ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - $required_halo_size(adv))
+
+        @inline $outside_biased_haloᶠ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - ($required_halo_size(adv) - 1)) &  # Left bias
+                                                                          (i <= N + 1 - $required_halo_size(adv))          # Right bias
+        @inline $outside_biased_haloᶜ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - ($required_halo_size(adv) - 1)) &  # Left bias
+                                                                          (i <= N + 1 - $required_halo_size(adv))          # Right bias
+    end
+end
 
 # Separate High order advection from low order advection
 const HOADV = Union{WENO, 
@@ -61,27 +98,27 @@ for bias in (:symmetric, :biased)
                 @eval @inline $alt1_interp(i, j, k, grid::$GridType, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
             end
 
-            outside_buffer = Symbol(:outside_, bias, :_halo, loc)
+            outside_buffer = Symbol(:outside_, bias, :_halo_, ξ, loc)
 
             # Conditional high-order interpolation in Bounded directions
             if ξ == :x
                 @eval begin
-                    @inline $alt1_interp(i, j, k, grid::AUGX, scheme::HOADV, args...) =
-                        ifelse($outside_buffer(i, grid.Nx, scheme),
-                               $interp(i, j, k, grid, scheme, args...),
-                               $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
+                    @inline $alt1_interp(i, j, k, grid::AUGX, scheme::HOADV, args...) = 
+                            ifelse($outside_buffer(i, topology(grid, 1), grid.Nx, scheme),
+                                   $interp(i, j, k, grid, scheme, args...),
+                                   $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
                 end
             elseif ξ == :y
                 @eval begin
                     @inline $alt1_interp(i, j, k, grid::AUGY, scheme::HOADV, args...) =
-                        ifelse($outside_buffer(j, grid.Ny, scheme),
+                        ifelse($outside_buffer(j, topology(grid, 2), grid.Ny, scheme),
                                $interp(i, j, k, grid, scheme, args...),
                                $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
                 end
             elseif ξ == :z
                 @eval begin
                     @inline $alt1_interp(i, j, k, grid::AUGZ, scheme::HOADV, args...) =
-                        ifelse($outside_buffer(k, grid.Nz, scheme),
+                        ifelse($outside_buffer(k, topology(grid, 3), grid.Nz, scheme),
                                $interp(i, j, k, grid, scheme, args...),
                                $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
                 end
@@ -91,11 +128,11 @@ for bias in (:symmetric, :biased)
 end
 
 @inline _multi_dimensional_reconstruction_x(i, j, k, grid::AUGX, scheme, interp, args...) = 
-                    ifelse(outside_symmetric_bufferᶜ(i, grid.Nx, scheme), 
+                    ifelse(outside_symmetric_bufferᶜ(i, topology(grid, 1), grid.Nx, scheme), 
                            multi_dimensional_reconstruction_x(i, j, k, grid::AUGX, scheme, interp, args...),
                            interp(i, j, k, grid, scheme, args...))
 
 @inline _multi_dimensional_reconstruction_y(i, j, k, grid::AUGY, scheme, interp, args...) = 
-                    ifelse(outside_symmetric_bufferᶜ(j, grid.Ny, scheme), 
+                    ifelse(outside_symmetric_bufferᶜ(j, topology(grid, 2), grid.Ny, scheme), 
                             multi_dimensional_reconstruction_y(i, j, k, grid::AUGY, scheme, interp, args...),
                             interp(i, j, k, grid, scheme, args...))

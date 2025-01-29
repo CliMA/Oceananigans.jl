@@ -28,8 +28,8 @@ julia> grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1));
 julia> model = NonhydrostaticModel(; grid, buoyancy=nothing)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
-├── advection scheme: Centered reconstruction order 2
+├── timestepper: RungeKutta3TimeStepper
+├── advection scheme: Centered(order=2)
 ├── tracers: ()
 ├── closure: Nothing
 ├── buoyancy: Nothing
@@ -43,8 +43,8 @@ The option `buoyancy = nothing` is the default for [`NonhydrostaticModel`](@ref)
 julia> model = NonhydrostaticModel(; grid)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
-├── advection scheme: Centered reconstruction order 2
+├── timestepper: RungeKutta3TimeStepper
+├── advection scheme: Centered(order=2)
 ├── tracers: ()
 ├── closure: Nothing
 ├── buoyancy: Nothing
@@ -64,7 +64,7 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
 ├── advection scheme: 
-│   └── momentum: Centered reconstruction order 2
+│   └── momentum: Vector Invariant, Dimension-by-dimension reconstruction
 └── coriolis: Nothing
 ```
 
@@ -77,8 +77,8 @@ a buoyancy tracer by including `:b` in `tracers` and specifying  `buoyancy = Buo
 julia> model = NonhydrostaticModel(; grid, buoyancy=BuoyancyTracer(), tracers=:b)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
-├── advection scheme: Centered reconstruction order 2
+├── timestepper: RungeKutta3TimeStepper
+├── advection scheme: Centered(order=2)
 ├── tracers: b
 ├── closure: Nothing
 ├── buoyancy: BuoyancyTracer with ĝ = NegativeZDirection()
@@ -98,8 +98,8 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
 ├── advection scheme:
-│   ├── momentum: Centered reconstruction order 2
-│   └── b: Centered reconstruction order 2
+│   ├── momentum: Vector Invariant, Dimension-by-dimension reconstruction
+│   └── b: Centered(order=2)
 └── coriolis: Nothing
 ```
 
@@ -118,8 +118,8 @@ S.I. units ``\text{m}\,\text{s}^{-2}``) and requires to add `:T` and `:S` as tra
 julia> model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
-├── advection scheme: Centered reconstruction order 2
+├── timestepper: RungeKutta3TimeStepper
+├── advection scheme: Centered(order=2)
 ├── tracers: (T, S)
 ├── closure: Nothing
 ├── buoyancy: SeawaterBuoyancy with g=9.80665 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with ĝ = NegativeZDirection()
@@ -139,9 +139,9 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
 ├── advection scheme:
-│   ├── momentum: Centered reconstruction order 2
-│   ├── T: Centered reconstruction order 2
-│   └── S: Centered reconstruction order 2
+│   ├── momentum: Vector Invariant, Dimension-by-dimension reconstruction
+│   ├── T: Centered(order=2)
+│   └── S: Centered(order=2)
 └── coriolis: Nothing
 ```
 
@@ -157,8 +157,8 @@ SeawaterBuoyancy{Float64}:
 julia> model = NonhydrostaticModel(; grid, buoyancy, tracers=(:T, :S))
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
-├── advection scheme: Centered reconstruction order 2
+├── timestepper: RungeKutta3TimeStepper
+├── advection scheme: Centered(order=2)
 ├── tracers: (T, S)
 ├── closure: Nothing
 ├── buoyancy: SeawaterBuoyancy with g=1.3 and LinearEquationOfState(thermal_expansion=0.000167, haline_contraction=0.00078) with ĝ = NegativeZDirection()
@@ -220,8 +220,9 @@ BoussinesqEquationOfState{Float64}:
 ## The direction of gravitational acceleration
 
 To simulate gravitational accelerations that don't align with the vertical (`z`) coordinate,
-we wrap the buoyancy model in
-`Buoyancy()` function call, which takes the keyword arguments `model` and `gravity_unit_vector`,
+we use `BuoyancyForce(formulation; gravity_unit_vector)`, wherein the buoyancy `formulation`
+can be `BuoyancyTracer`, `SeawaterBuoyancy`, etc, in addition to the `gravity_unit_vector`.
+For example,
 
 ```jldoctest buoyancy
 julia> grid = RectilinearGrid(size=(8, 8, 8), extent=(1, 1, 1));
@@ -230,16 +231,16 @@ julia> θ = 45; # degrees
 
 julia> g̃ = (0, sind(θ), cosd(θ));
 
-julia> buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=g̃)
-Buoyancy:
-├── model: BuoyancyTracer
+julia> buoyancy = BuoyancyForce(BuoyancyTracer(), gravity_unit_vector=g̃)
+BuoyancyForce:
+├── formulation: BuoyancyTracer
 └── gravity_unit_vector: (0.0, 0.707107, 0.707107)
 
 julia> model = NonhydrostaticModel(; grid, buoyancy, tracers=:b)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── timestepper: QuasiAdamsBashforth2TimeStepper
-├── advection scheme: Centered reconstruction order 2
+├── timestepper: RungeKutta3TimeStepper
+├── advection scheme: Centered(order=2)
 ├── tracers: b
 ├── closure: Nothing
 ├── buoyancy: BuoyancyTracer with ĝ = (0.0, 0.707107, 0.707107)

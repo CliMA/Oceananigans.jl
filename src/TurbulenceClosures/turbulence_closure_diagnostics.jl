@@ -44,7 +44,7 @@ function cell_diffusion_timescale(closure::ScalarBiharmonicDiffusivity{Dir}, dif
     return min(Δ^4/ max_ν, Δ^4 / max_κ)
 end
 
-function cell_diffusion_timescale(closure::SmagorinskyLilly, diffusivities, grid)
+function cell_diffusion_timescale(closure::Smagorinsky, diffusivities, grid)
     Δ = min_Δxyz(grid, formulation(closure))
     min_Pr = closure.Pr isa NamedTuple{()} ? 1 : minimum(closure.Pr) # Innocuous value is there's no tracers
     max_νκ = maximum(diffusivities.νₑ.data.parent) * max(1, 1/min_Pr)
