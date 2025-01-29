@@ -42,7 +42,7 @@ MakieCore = "20f20a25-4f0e-4fdf-b5d1-57303727442b"
 
 [extensions]
 OceananigansEnzymeExt = "Enzyme"
-OceananigansReactantExt = "3c362404-f566-11ee-1572-e11a4b42c853"
+OceananigansReactantExt = "Reactant"
 OceananigansMakieExt = ["MakieCore", "Makie"]
 
 [compat]
