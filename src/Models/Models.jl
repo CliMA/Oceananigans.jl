@@ -3,7 +3,7 @@ module Models
 export
     NonhydrostaticModel,
     ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation,
-    HydrostaticFreeSurfaceModel,
+    HydrostaticFreeSurfaceModel, ZStar, ZCoordinate,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields, PressureField,
     LagrangianParticles,
@@ -105,7 +105,7 @@ using .NonhydrostaticModels: NonhydrostaticModel, PressureField
 using .HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    PrescribedVelocityFields
+    PrescribedVelocityFields, ZStar, ZCoordinate
 
 using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
 
