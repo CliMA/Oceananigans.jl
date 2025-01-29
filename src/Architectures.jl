@@ -1,7 +1,7 @@
 module Architectures
 
 export AbstractArchitecture, AbstractSerialArchitecture
-export CPU, GPU
+export CPU, GPU, ReactantState
 export device, architecture, unified_array, device_copy_to!
 export array_type, on_architecture, arch_array
 
