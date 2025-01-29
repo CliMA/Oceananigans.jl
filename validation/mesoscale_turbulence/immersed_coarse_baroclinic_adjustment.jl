@@ -4,7 +4,7 @@ using Random
 using Oceananigans
 using Oceananigans.Units
 using GLMakie
-using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity
+using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity, SkewAdvectionISSD
 using Oceananigans.TurbulenceClosures: FluxTapering, DiffusiveFormulation, AdvectiveFormulation
 
 filename = "coarse_baroclinic_adjustment"
@@ -22,7 +22,7 @@ function progress(sim)
             prettytime(sim.Δt))
 
     wall_clock[] = time_ns()
-    
+
     return nothing
 end
 
@@ -38,7 +38,7 @@ save_fields_interval = 2day
 stop_time = 300days
 
 grid = RectilinearGrid(topology = (Flat, Bounded, Bounded),
-                       size = (Ny, Nz), 
+                       size = (Ny, Nz),
                        y = (-Ly/2, Ly/2),
                        z = (-Lz, 0),
                        halo = (5, 5))
@@ -86,9 +86,9 @@ function run_simulation(closure, grid)
 
     simulation = Simulation(model; Δt, stop_time)
     add_callback!(simulation, progress, IterationInterval(144))
-    suffix = closure isa AdvectiveFormulation ? "advective" : "diffusive"
+    suffix = closure isa SkewAdvectionISSD ? "advective" : "diffusive"
 
-    simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers), 
+    simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                           schedule = TimeInterval(save_fields_interval),
                                                           filename = filename * "_fields_" * suffix,
                                                           overwrite_existing = true)
