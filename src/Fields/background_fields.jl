@@ -60,6 +60,8 @@ func(x, y, z, t, parameters)
 """
 BackgroundField(func; parameters=nothing) = BackgroundField(func, parameters)
 
+regularize_background_field(LX, LY, LZ, bf::BackgroundField{<:Number}, grid, clock) = ConstantField(bf.func)
+
 regularize_background_field(LX, LY, LZ, f::BackgroundField{<:Function}, grid, clock) =
     FunctionField{LX, LY, LZ}(f.func, grid; clock=clock, parameters=f.parameters)
 

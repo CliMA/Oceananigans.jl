@@ -16,7 +16,7 @@ using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver, Di
 using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver 
-using Oceananigans.Utils: SumOfArrays
+using Oceananigans.Utils: sum_of_velocities
 
 import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale
@@ -107,7 +107,7 @@ include("update_nonhydrostatic_model_state.jl")
 include("pressure_correction.jl")
 include("nonhydrostatic_tendency_kernel_functions.jl")
 include("compute_nonhydrostatic_tendencies.jl")
-include("compute_nonhydrostatic_boundary_tendencies.jl")
+include("compute_nonhydrostatic_buffer_tendencies.jl")
 
 end # module
 

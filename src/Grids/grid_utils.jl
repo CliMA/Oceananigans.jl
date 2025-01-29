@@ -1,5 +1,3 @@
-using CUDA
-using Printf
 using Base.Ryu: writeshortest
 using LinearAlgebra: dot, cross
 using OffsetArrays: IdOffsetRange
@@ -126,7 +124,6 @@ constant grid spacing `Δ`, and interior extent `L`.
 
 @inline x_domain(grid) = domain(topology(grid, 1)(), grid.Nx, grid.xᶠᵃᵃ)
 @inline y_domain(grid) = domain(topology(grid, 2)(), grid.Ny, grid.yᵃᶠᵃ)
-@inline z_domain(grid) = domain(topology(grid, 3)(), grid.Nz, grid.zᵃᵃᶠ)
 
 regular_dimensions(grid) = ()
 
@@ -234,7 +231,6 @@ const f = Face()
 # What's going on here?
 @inline cpu_face_constructor_x(grid) = Array(getindex(nodes(grid, f, c, c; with_halos=true), 1)[1:size(grid, 1)+1])
 @inline cpu_face_constructor_y(grid) = Array(getindex(nodes(grid, c, f, c; with_halos=true), 2)[1:size(grid, 2)+1])
-@inline cpu_face_constructor_z(grid) = Array(getindex(nodes(grid, c, c, f; with_halos=true), 3)[1:size(grid, 3)+1])
 
 #####
 ##### Convenience functions
@@ -300,6 +296,12 @@ function domain_summary(topo, name, (left, right))
                   prettysummary(right), interval)
 end
 
+function dimension_summary(topo, name, dom, z::AbstractVerticalCoordinate, pad_domain=0)
+    prefix = domain_summary(topo, name, dom)
+    padding = " "^(pad_domain+1) 
+    return string(prefix, padding, coordinate_summary(topo, z, name))
+end
+
 function dimension_summary(topo, name, dom, spacing, pad_domain=0)
     prefix = domain_summary(topo, name, dom)
     padding = " "^(pad_domain+1) 
@@ -313,6 +315,21 @@ coordinate_summary(topo, Δ::Union{AbstractVector, AbstractMatrix}, name) =
     @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
              name, prettysummary(minimum(parent(Δ))),
              name, prettysummary(maximum(parent(Δ))))
+
+#####
+##### Static and Dynamic column depths
+#####
+
+@inline static_column_depthᶜᶜᵃ(i, j, grid) = grid.Lz
+@inline static_column_depthᶜᶠᵃ(i, j, grid) = grid.Lz
+@inline static_column_depthᶠᶜᵃ(i, j, grid) = grid.Lz
+@inline static_column_depthᶠᶠᵃ(i, j, grid) = grid.Lz
+
+# Will be extended in the `ImmersedBoundaries` module for a ``mutable'' grid type
+@inline column_depthᶜᶜᵃ(i, j, k, grid, η) = static_column_depthᶜᶜᵃ(i, j, grid) 
+@inline column_depthᶠᶜᵃ(i, j, k, grid, η) = static_column_depthᶠᶜᵃ(i, j, grid) 
+@inline column_depthᶜᶠᵃ(i, j, k, grid, η) = static_column_depthᶜᶠᵃ(i, j, grid) 
+@inline column_depthᶠᶠᵃ(i, j, k, grid, η) = static_column_depthᶠᶠᵃ(i, j, grid) 
 
 #####
 ##### Spherical geometry
