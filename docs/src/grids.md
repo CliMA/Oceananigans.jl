@@ -720,7 +720,7 @@ rm("partition_example.jl", force=true)
 ```
 
 ```julia
-make_x_partition = """
+make_y_partition = """
 
 using Oceananigans
 using Oceananigans.DistributedComputations: Equal
