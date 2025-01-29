@@ -52,7 +52,17 @@ struct ReactantState <: AbstractSerialArchitecture end
 
 device(::CPU) = KernelAbstractions.CPU()
 device(::GPU) = CUDA.CUDABackend(; always_inline=true)
-# While there is no Reactant backend this worls
+# While there is no Reactant backend this works
+# KA assumes that an array type for storage corresponds one to
+# one with the device it executes on. for example, CuArrays must 
+# execute on a cuda kernel (and not host or AMD kernel), and only
+# cuarrays can be passed to a cuda kernel. Reactant has no such
+# restriction and a cpu array cuarray or reactant array can be
+# executed on any backend. currently Reactant does not define a backend
+# for execution and will import whatever host or kernel is called.
+# this says thay reactant will import the cuda kernel version of the code
+# which makes some optimizations easier. Reactant may still execute the
+# code on CPU GPU or TPU dependong on what its default client is.
 device(::ReactantState) = CUDA.CUDABackend(; always_inline=true)
 
 architecture() = nothing
