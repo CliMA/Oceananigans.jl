@@ -408,7 +408,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             # Cover three cases:
             stokes_drift = UniformStokesDrift(grid, ∂z_vˢ=nothing, ∂t_uˢ= (z, t) -> exp(z/20))
             model = NonhydrostaticModel(; grid, stokes_drift)
-            time_step!(model, 1, euler=true)
+            time_step!(model, 1)
             @test true
         end
     end
