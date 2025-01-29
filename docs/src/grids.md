@@ -735,7 +735,7 @@ if MPI.Comm_rank(MPI.COMM_WORLD) == 0
 end
 """
 
-write("partition_example.jl", make_x_partition)
+write("partition_example.jl", make_y_partition)
 
 mpiexec(cmd -> run(`$cmd -n 2 julia --project partition_example.jl`))
 ```
