@@ -743,8 +743,8 @@ mpiexec(cmd -> run(`$cmd -n 2 julia --project partition_example.jl`))
 gives
 
 ```julia
-partition = Partition across 2 = 2×1×1 ranks:
-└── x: 2
+partition = Partition across 2 = 1×2×1 ranks:
+└── y: 2
 ```
 
 #### Manually specifying ranks in ``x, y``
