@@ -39,12 +39,21 @@ Run Oceananigans on a single NVIDIA CUDA GPU.
 """
 struct GPU <: AbstractSerialArchitecture end
 
+"""
+    ReactantState <: AbstractArchitecture
+
+Run Oceananigans on Reactant.
+"""
+struct ReactantState <: AbstractSerialArchitecture end
+
 #####
 ##### These methods are extended in DistributedComputations.jl
 #####
 
 device(::CPU) = KernelAbstractions.CPU()
 device(::GPU) = CUDA.CUDABackend(; always_inline=true)
+# While there is no Reactant backend this worls
+device(::ReactantState) = CUDA.CUDABackend(; always_inline=true)
 
 architecture() = nothing
 architecture(::Number) = nothing
