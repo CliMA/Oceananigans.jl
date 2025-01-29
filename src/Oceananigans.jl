@@ -12,10 +12,13 @@ export
     Center, Face,
     Periodic, Bounded, Flat,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
-    nodes, xnodes, ynodes, znodes, λnodes, φnodes,
-    xspacings, yspacings, zspacings, λspacings, φspacings,
+    nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
+    xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
     minimum_xspacing, minimum_yspacing, minimum_zspacing,
 
+    # Pointwise spacing, area, and volume operators
+    xspacing, yspacing, zspacing, λspacing, φspacing, xarea, yarea, zarea, volume,
+    
     # Immersed boundaries
     ImmersedBoundaryGrid,
     GridFittedBoundary, GridFittedBottom, PartialCellBottom,
@@ -44,8 +47,8 @@ export
     # Coriolis forces
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
 
-    # BuoyancyModels and equations of state
-    Buoyancy, BuoyancyTracer, SeawaterBuoyancy,
+    # BuoyancyFormulations and equations of state
+    BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy,
     LinearEquationOfState, TEOS10,
     BuoyancyField,
 
@@ -129,6 +132,11 @@ function __init__()
     end
 end
 
+# List of fully-supported floating point types where applicable.
+# Currently used only in the Advection module to specialize 
+# reconstruction schemes (WENO, UpwindBiased, and Centered).
+const supported_float_types = (Float32, Float64)
+
 #####
 ##### Abstract types
 #####
@@ -201,7 +209,7 @@ include("DistributedComputations/DistributedComputations.jl")
 
 # Physics, time-stepping, and models
 include("Coriolis/Coriolis.jl")
-include("BuoyancyModels/BuoyancyModels.jl")
+include("BuoyancyFormulations/BuoyancyFormulations.jl")
 include("StokesDrifts.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Forcings/Forcings.jl")
@@ -230,7 +238,7 @@ using .Grids
 using .BoundaryConditions
 using .Fields
 using .Coriolis
-using .BuoyancyModels
+using .BuoyancyFormulations
 using .StokesDrifts
 using .TurbulenceClosures
 using .Solvers

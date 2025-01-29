@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Δz
+using Oceananigans.Operators: Δz, Δr
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, ImmersedBoundaryGrid
 using Oceananigans.Grids: ZDirection
@@ -45,12 +45,18 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
 const c = Center()
 const f = Face()
 
+# The vertical spacing used here is Δz for velocities and Δr for tracers, since the 
+# implicit solver operator is applied to the scaled tracer σθ instead of just θ
+
+@inline vertical_spacing(i, j, k, grid, ℓx, ℓy, ℓz) = Δz(i, j, k, grid, ℓx, ℓy, ℓz)
+@inline vertical_spacing(i, j, k, grid, ::Center, ::Center, ℓz) = Δr(i, j, k, grid, c, c, ℓz)
+
 # Tracers and horizontal velocities at cell centers in z
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Center, clock, Δt, κz)
     closure_ij = getclosure(i, j, closure)
     κᵏ⁺¹   = κz(i, j, k+1, grid, closure_ij, K, id, clock)
-    Δzᶜₖ   = Δz(i, j, k,   grid, ℓx, ℓy, c)
-    Δzᶠₖ₊₁ = Δz(i, j, k+1, grid, ℓx, ℓy, f)
+    Δzᶜₖ   = vertical_spacing(i, j, k,   grid, ℓx, ℓy, c)
+    Δzᶠₖ₊₁ = vertical_spacing(i, j, k+1, grid, ℓx, ℓy, f)
     du     = - Δt * κᵏ⁺¹ / (Δzᶜₖ * Δzᶠₖ₊₁)
 
     # This conditional ensures the diagonal is correct
@@ -61,8 +67,8 @@ end
     k = k′ + 1 # Shift index to match LinearAlgebra.Tridiagonal indexing convenction
     closure_ij = getclosure(i, j, closure)  
     κᵏ   = κz(i, j, k, grid, closure_ij, K, id, clock)
-    Δzᶜₖ = Δz(i, j, k, grid, ℓx, ℓy, c)
-    Δzᶠₖ = Δz(i, j, k, grid, ℓx, ℓy, f)
+    Δzᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
+    Δzᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
     dl   = - Δt * κᵏ / (Δzᶜₖ * Δzᶠₖ)
 
     # This conditional ensures the diagonal is correct: the lower diagonal does not
@@ -80,8 +86,8 @@ end
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Face, clock, Δt, νzᶜᶜᶜ) 
     closure_ij = getclosure(i, j, closure)  
     νᵏ = νzᶜᶜᶜ(i, j, k, grid, closure_ij, K, clock)
-    Δzᶜₖ = Δz(i, j, k, grid, ℓx, ℓy, c)
-    Δzᶠₖ = Δz(i, j, k, grid, ℓx, ℓy, f)
+    Δzᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
+    Δzᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
     du   = - Δt * νᵏ / (Δzᶜₖ * Δzᶠₖ)
     return ifelse(k < 1, zero(grid), du)
 end
@@ -90,8 +96,8 @@ end
     k′ = k + 2 # Shift to adjust for Tridiagonal indexing convention
     closure_ij = getclosure(i, j, closure)  
     νᵏ⁻¹   = νzᶜᶜᶜ(i, j, k′-1, grid, closure_ij, K, clock)
-    Δzᶜₖ   = Δz(i, j, k′,   grid, ℓx, ℓy, c)
-    Δzᶠₖ₋₁ = Δz(i, j, k′-1, grid, ℓx, ℓy, f)
+    Δzᶜₖ   = vertical_spacing(i, j, k′,   grid, ℓx, ℓy, c)
+    Δzᶠₖ₋₁ = vertical_spacing(i, j, k′-1, grid, ℓx, ℓy, f)
     dl     = - Δt * νᵏ⁻¹ / (Δzᶜₖ * Δzᶠₖ₋₁)
     return ifelse(k < 1, zero(grid), dl)
 end
