@@ -2,6 +2,7 @@
 ##### Utilities for launching kernels
 #####
 
+using Oceananigans: location
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Grids: AbstractGrid
@@ -75,6 +76,9 @@ function KernelParameters(r1::UnitRange, r2::UnitRange, r3::UnitRange)
     offsets = (first(r1) - 1, first(r2) - 1, first(r3) - 1)
     return KernelParameters(size, offsets)
 end
+
+# Convenience `Tuple`d constructor
+KernelParameters(args::Tuple) = KernelParameters(args...)
 
 contiguousrange(range::NTuple{N, Int}, offset::NTuple{N, Int}) where N = Tuple(1+o:r+o for (r, o) in zip(range, offset))
 flatten_reduced_dimensions(worksize, dims) = Tuple(d ∈ dims ? 1 : worksize[d] for d = 1:3)
@@ -271,12 +275,9 @@ end
 @inline function _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;
                           exclude_periphery = false,
                           reduced_dimensions = (),
-                          active_cells_map = nothing,
-                          # TODO: these two kwargs do nothing:
-                          only_local_halos = false,
-                          async = false)
+                          active_cells_map = nothing)
 
-    location = Oceananigans.Grids.location(first_kernel_arg)
+    location = Oceananigans.location(first_kernel_arg)
 
     loop!, worksize = configure_kernel(arch, grid, workspec, kernel!;
                                        location,

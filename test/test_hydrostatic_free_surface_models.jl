@@ -134,10 +134,10 @@ topos_3d = ((Periodic, Periodic, Bounded),
             grid = RectilinearGrid(topology=topo, size=(1, 1, 1), extent=(1, 2, 3), halo=(1, 1, 1))
             hcabd_closure = ScalarBiharmonicDiffusivity()
 
-            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=CenteredFourthOrder())
-            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=UpwindBiasedThirdOrder())
-            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=UpwindBiasedFifthOrder())
-            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, momentum_advection=UpwindBiasedFifthOrder())
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=Centered(order=4))
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=UpwindBiased(order=3))
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=UpwindBiased(order=5))
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, momentum_advection=UpwindBiased(order=5))
             @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, closure=hcabd_closure)
 
             # Big enough
@@ -146,13 +146,13 @@ topos_3d = ((Periodic, Periodic, Bounded),
             model = HydrostaticFreeSurfaceModel(grid=bigger_grid, closure=hcabd_closure)
             @test model isa HydrostaticFreeSurfaceModel
 
-            model = HydrostaticFreeSurfaceModel(grid=bigger_grid, momentum_advection=UpwindBiasedFifthOrder())
+            model = HydrostaticFreeSurfaceModel(grid=bigger_grid, momentum_advection=UpwindBiased(order=5))
             @test model isa HydrostaticFreeSurfaceModel
 
             model = HydrostaticFreeSurfaceModel(grid=bigger_grid, closure=hcabd_closure)
             @test model isa HydrostaticFreeSurfaceModel
 
-            model = HydrostaticFreeSurfaceModel(grid=bigger_grid, tracer_advection=UpwindBiasedFifthOrder())
+            model = HydrostaticFreeSurfaceModel(grid=bigger_grid, tracer_advection=UpwindBiased(order=5))
             @test model isa HydrostaticFreeSurfaceModel
         end
     end
@@ -229,6 +229,22 @@ topos_3d = ((Periodic, Periodic, Bounded),
             end
         end
 
+        for topo in [topos_3d..., topos_2d...]
+            size = Flat in topo ? (10, 10) : (10, 10, 10)
+            halo = Flat in topo ? (7,  7)  : (7, 7, 7)
+            x    = topo[1] == Flat ? nothing : (0, 1)
+            y    = topo[2] == Flat ? nothing : (0, 1)
+
+            grid = RectilinearGrid(arch; size, halo, x, y, z=(-1, 0), topology=topo)
+
+            for advection in [WENOVectorInvariant(), VectorInvariant(), WENO()]
+                @testset "Time-stepping HydrostaticFreeSurfaceModels with $advection [$arch, $topo]" begin
+                    @info "  Testing time-stepping HydrostaticFreeSurfaceModels with $advection [$arch, $topo]..."
+                    @test time_step_hydrostatic_model_works(grid; momentum_advection=advection)
+                end
+            end
+        end
+
         for coriolis in (nothing, FPlane(f=1), BetaPlane(f₀=1, β=0.1))
             @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(coriolis))]" begin
                 @info "  Testing time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(coriolis))]..."
@@ -246,7 +262,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             end
         end
 
-        for momentum_advection in (VectorInvariant(), WENOVectorInvariant(), CenteredSecondOrder(), WENO())
+        for momentum_advection in (VectorInvariant(), WENOVectorInvariant(), Centered(), WENO())
             @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(momentum_advection))]" begin
                 @info "  Testing time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(momentum_advection))]..."
                 @test time_step_hydrostatic_model_works(rectilinear_grid; momentum_advection)

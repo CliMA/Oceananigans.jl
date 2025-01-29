@@ -1,3 +1,5 @@
+using Oceananigans.Operators
+
 const binary_operators = Set()
 
 struct BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, T} <: AbstractOperation{LX, LY, LZ, G, T}

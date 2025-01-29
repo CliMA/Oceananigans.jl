@@ -1,4 +1,4 @@
-using Oceananigans.Grids: topology, node, _node,
+using Oceananigans.Grids: topology, node, _node, φnode, λnode,
                           xspacings, yspacings, zspacings, λspacings, φspacings,
                           XFlatGrid, YFlatGrid, ZFlatGrid,
                           XYFlatGrid, YZFlatGrid, XZFlatGrid,
@@ -6,6 +6,8 @@ using Oceananigans.Grids: topology, node, _node,
                           XRegularLLG, YRegularLLG, ZRegularLLG,
                           ZRegOrthogonalSphericalShellGrid,
                           RectilinearGrid, LatitudeLongitudeGrid
+
+using Oceananigans.Operators: Δx, Δy, Δz
 
 using Oceananigans.Architectures: child_architecture
 
@@ -66,16 +68,16 @@ end
 
 @inline function fractional_x_index(x, locs, grid::XRegularRG)
     x₀ = xnode(1, 1, 1, grid, locs...)
-    Δx = xspacings(grid, locs...)
+    dx = Δx(1, 1, 1, grid, locs...)
     FT = eltype(grid)
-    return convert(FT, (x - x₀) / Δx)
+    return convert(FT, (x - x₀) / dx) + 1 # 1 - based indexing 
 end
 
 @inline function fractional_x_index(λ, locs, grid::XRegularLLG)
     λ₀ = λnode(1, 1, 1, grid, locs...)
-    Δλ = λspacings(grid, locs...)
+    λ₁ = λnode(2, 1, 1, grid, locs...)
     FT = eltype(grid)
-    return convert(FT, (λ - λ₀) / Δλ)
+    return convert(FT, (λ - λ₀) / (λ₁ - λ₀)) + 1 # 1 - based indexing 
 end
 
 @inline function fractional_x_index(x, locs, grid::RectilinearGrid)
@@ -83,7 +85,7 @@ end
      Tx = topology(grid, 1)()
      Nx = length(loc, Tx, grid.Nx)
      xn = xnodes(grid, locs...)
-    return fractional_index(x, xn, Nx) - 1
+    return fractional_index(x, xn, Nx) 
 end
 
 @inline function fractional_x_index(x, locs, grid::LatitudeLongitudeGrid)
@@ -91,23 +93,23 @@ end
      Tx = topology(grid, 1)()
      Nx = length(loc, Tx, grid.Nx)
      xn = λnodes(grid, locs...)
-    return fractional_index(x, xn, Nx) - 1
+    return fractional_index(x, xn, Nx) 
 end
 
 @inline fractional_y_index(y, locs, grid::YFlatGrid) = zero(grid)
 
 @inline function fractional_y_index(y, locs, grid::YRegularRG)
     y₀ = ynode(1, 1, 1, grid, locs...)
-    Δy = yspacings(grid, locs...)
+    dy = Δy(1, 1, 1, grid, locs...)
     FT = eltype(grid)
-    return convert(FT, (y - y₀) / Δy)
+    return convert(FT, (y - y₀) / dy) + 1 # 1 - based indexing 
 end
 
 @inline function fractional_y_index(φ, locs, grid::YRegularLLG)
-    φ₀ = φnode(1, 1, 1, grid, locs...)
-    Δφ = φspacings(grid, locs...)
+    φ₀ = φnode(1, 1, 1, grid, locs...)    
+    φ₁ = φnode(1, 2, 1, grid, locs...)
     FT = eltype(grid)
-    return convert(FT, (φ - φ₀) / Δφ)
+    return convert(FT, (φ - φ₀) / (φ₁ - φ₀)) + 1 # 1 - based indexing 
 end
 
 @inline function fractional_y_index(y, locs, grid::RectilinearGrid)
@@ -115,7 +117,7 @@ end
      Ty = topology(grid, 2)()
      Ny = length(loc, Ty, grid.Ny)
      yn = ynodes(grid, locs...)
-    return fractional_index(y, yn, Ny) - 1
+    return fractional_index(y, yn, Ny) 
 end
 
 @inline function fractional_y_index(y, locs, grid::LatitudeLongitudeGrid)
@@ -123,7 +125,7 @@ end
      Ty = topology(grid, 2)()
      Ny = length(loc, Ty, grid.Ny)
      yn = φnodes(grid, locs...)
-    return fractional_index(y, yn, Ny) - 1
+    return fractional_index(y, yn, Ny)
 end
 
 @inline fractional_z_index(z, locs, grid::ZFlatGrid) = zero(grid)
@@ -132,8 +134,8 @@ ZRegGrid = Union{ZRegularRG, ZRegularLLG, ZRegOrthogonalSphericalShellGrid}
 
 @inline function fractional_z_index(z::FT, locs, grid::ZRegGrid) where FT
     z₀ = znode(1, 1, 1, grid, locs...)
-    Δz = zspacings(grid, locs...)
-    return convert(FT, (z - z₀) / Δz)
+    dz = Δz(1, 1, 1, grid, locs...)
+    return convert(FT, (z - z₀) / dz) + 1 # 1 - based indexing 
 end
 
 @inline function fractional_z_index(z, locs, grid)
@@ -141,7 +143,7 @@ end
      Tz = topology(grid, 3)()
      Nz = length(loc, Tz, grid.Nz)
      zn = znodes(grid, loc)
-    return fractional_index(z, zn, Nz) - 1
+    return fractional_index(z, zn, Nz) 
 end
 
 """
@@ -210,22 +212,7 @@ end
     return (ii, jj, kk)
 end
 
-"""
-    truncate_fractional_indices(fi, fj, fk)
-
-Truncate _fractional_ indices output from fractional indices `fi, fj, fk` to integer indices, dealing
-with `nothing` indices for `Flat` domains.
-"""
-@inline function truncate_fractional_indices(fi, fj, fk)
-    i = truncate_fractional_index(fi)
-    j = truncate_fractional_index(fj)
-    k = truncate_fractional_index(fk)
-    return (i, j, k)
-end
-
-@inline truncate_fractional_index(::Nothing) = 1
-@inline truncate_fractional_index(fi) = Base.unsafe_trunc(Int, fi)
-
+@inline _fractional_indices(at_node, grid, ::Nothing, ::Nothing, ::Nothing) = (nothing, nothing, nothing)
 
 """
     interpolate(at_node, from_field, from_loc, from_grid)
@@ -260,15 +247,12 @@ right of `i`, and `ξ` is the fractional distance between `i` and the
 left bound `i⁻`, such that `ξ ∈ [0, 1)`.
 """
 @inline function interpolator(fractional_idx)
-    # We use mod and trunc as CUDA.modf is not defined.
     # For why we use Base.unsafe_trunc instead of trunc see:
     # https://github.com/CliMA/Oceananigans.jl/issues/828
     # https://github.com/CliMA/Oceananigans.jl/pull/997
 
     i⁻ = Base.unsafe_trunc(Int, fractional_idx)
-    i⁻ = Int(i⁻ + 1) # convert to "proper" integer?
-    shift = Int(sign(fractional_idx))
-    i⁺ = i⁻ + shift
+    i⁺ = i⁻ + 1
     ξ = mod(fractional_idx, 1)
 
     return (i⁻, i⁺, ξ)
@@ -318,6 +302,12 @@ end
 @inline flatten_node(x, ::Nothing, z) = flatten_node(x, z)
 @inline flatten_node(x, y, ::Nothing) = flatten_node(x, y)
 
+@inline flatten_node(x, ::Nothing, ::Nothing) = tuple(x)
+@inline flatten_node(::Nothing, y, ::Nothing) = tuple(y)
+@inline flatten_node(::Nothing, ::Nothing, z) = tuple(z)
+
+@inline flatten_node(::Nothing, ::Nothing, ::Nothing) = tuple()
+
 @inline flatten_node(x, y) = (x, y)
 @inline flatten_node(::Nothing, y) = flatten_node(y)
 @inline flatten_node(x, ::Nothing) = flatten_node(x)
@@ -362,7 +352,9 @@ function interpolate!(to_field::Field, from_field::AbstractField)
     from_location = Tuple(L() for L in location(from_field))
     to_location   = Tuple(L() for L in location(to_field))
 
-    launch!(to_arch, to_grid, size(to_field),
+    params = KernelParameters(interior_indices(to_field))
+
+    launch!(to_arch, to_grid, params,
             _interpolate!, to_field, to_grid, to_location,
             from_field, from_grid, from_location)
 
