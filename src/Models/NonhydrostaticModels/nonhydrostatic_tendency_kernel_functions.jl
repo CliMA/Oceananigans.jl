@@ -9,7 +9,6 @@ using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_
 using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
 using Oceananigans.Forcings: with_advective_forcing
 using Oceananigans.Fields: ZeroField
-using Oceananigans.Utils: SumOfArrays
 
 "return the ``x``-gradient of hydrostatic pressure"
 hydrostatic_pressure_gradient_x(i, j, k, grid, hydrostatic_pressure) = ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure)
