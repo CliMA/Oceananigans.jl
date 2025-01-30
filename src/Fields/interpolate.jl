@@ -73,13 +73,6 @@ end
     return convert(FT, (x - x₀) / dx) + 1 # 1 - based indexing 
 end
 
-@inline function fractional_x_index(λ, locs, grid::XRegularLLG)
-    λ₀ = λnode(1, 1, 1, grid, locs...)
-    λ₁ = λnode(2, 1, 1, grid, locs...)
-    FT = eltype(grid)
-    return convert(FT, (λ - λ₀) / (λ₁ - λ₀)) + 1 # 1 - based indexing 
-end
-
 @inline function fractional_x_index(x, locs, grid::RectilinearGrid)
     loc = @inbounds locs[1]
      Tx = topology(grid, 1)()
@@ -88,12 +81,32 @@ end
     return fractional_index(x, xn, Nx) 
 end
 
-@inline function fractional_x_index(x, locs, grid::LatitudeLongitudeGrid)
+@inline convert_to_0_360(x) = ((x % 360) + 360) % 360
+@inline convert_to_minus_180_180(x) = ifelse(x > 180, x - 360, x)
+
+# When interpolating longitude values, we convert all longitudes to the 0-360 range
+# if the parent grid starts with a positive number (λ₀ > 0), and to a -180-180 range
+# if the parent grid starts with a negative number (λ₀ < 0).
+@inline function fractional_x_index(λ, locs, grid::XRegularLLG)
+    λ₀ = λnode(1, 1, 1, grid, locs...)
+    λ₁ = λnode(2, 1, 1, grid, locs...)
+    λc = convert_to_0_360(λ)
+    λc = ifelse(λ₀ < 0, convert_to_minus_180_180(λc), λc)
+    FT = eltype(grid)
+    return convert(FT, (λc - λ₀) / (λ₁ - λ₀)) + 1 # 1 - based indexing 
+end
+
+# When interpolating longitude values, we convert all longitudes to the 0-360 range
+# if the parent grid starts with a positive number (λ₀ > 0), and to a -180-180 range
+# if the parent grid starts with a negative number (λ₀ < 0).
+@inline function fractional_x_index(λ, locs, grid::LatitudeLongitudeGrid)
     loc = @inbounds locs[1]
-     Tx = topology(grid, 1)()
-     Nx = length(loc, Tx, grid.Nx)
-     xn = λnodes(grid, locs...)
-    return fractional_index(x, xn, Nx) 
+     Tλ = topology(grid, 1)()
+     Nλ = length(loc, Tλ, grid.Nx)
+     λc = convert_to_0_360(λ)
+     λn = λnodes(grid, locs...)
+     λc = ifelse(λn[1] < 0, convert_to_minus_180_180(λc), λc)
+    return fractional_index(λc, λn, Nλ) 
 end
 
 @inline fractional_y_index(y, locs, grid::YFlatGrid) = zero(grid)
