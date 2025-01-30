@@ -53,7 +53,7 @@ function visualize_spherical_field(filepath, variable, range = nothing)
     y = @. sind(λ_azimuthal) * sind(φ_azimuthal)
     z = @. cosd(φ_azimuthal)
 
-    fig = Figure(resolution = (2000, 2000))
+    fig = Figure(size=(2000, 2000))
     
     fontsize_theme = Theme(fontsize = 25)
     set_theme!(fontsize_theme)
@@ -106,7 +106,7 @@ function visualize_cartesian_field(filepath, variable, range = nothing)
 
     var = @lift file["timeseries/$(variable)/" * string($iter)][:, :, 1]
     
-    fig = Figure(resolution = (2000, 2000))
+    fig = Figure(size=(2000, 2000))
     
     fontsize_theme = Theme(fontsize = 25)
     set_theme!(fontsize_theme)
@@ -145,7 +145,7 @@ function visualize_cartesian_comparison(filepath1, filepath2, title1, title2, va
     var1 = @lift file1["timeseries/$(variable)/" * string(it1[$iter])][:, :, 1]
     var2 = @lift file2["timeseries/$(variable)/" * string(it2[$iter])][:, :, 1]
     
-    fig = Figure(resolution = (3500, 1000))
+    fig = Figure(size=(3500, 1000))
     
     ax = Axis(fig[1, 1], title = title1)
     hm = heatmap!(ax, var1, colormap=:balance, colorrange=(-10, 10))

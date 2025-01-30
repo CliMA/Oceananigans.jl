@@ -82,7 +82,7 @@ function visualize_bickley_jet(name)
     t = ζt.times
     Nt = length(t)
 
-    fig = Figure(resolution=(1400, 800))
+    fig = Figure(size=(1400, 800))
     slider = Slider(fig[2, 1:2], range=1:Nt, startvalue=1)
     n = slider.value
 

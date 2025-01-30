@@ -18,8 +18,8 @@ Example
 
 ```jldoctest
 using Oceananigans
-
-model = HydrostaticFreeSurfaceModel(grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)))
+grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
+model = HydrostaticFreeSurfaceModel(; grid, tracers=:T)
 
 # Set u to a parabolic function of z, v to random numbers damped
 # at top and bottom, and T to some silly array of half zeros,
@@ -45,7 +45,7 @@ model.velocities.u
     └── max=-0.0302734, min=-0.249023, mean=-0.166992
 ```
 """
-function set!(model::HydrostaticFreeSurfaceModel; kwargs...)
+@inline function set!(model::HydrostaticFreeSurfaceModel; kwargs...)
     for (fldname, value) in kwargs
         if fldname ∈ propertynames(model.velocities)
             ϕ = getproperty(model.velocities, fldname)
@@ -60,7 +60,9 @@ function set!(model::HydrostaticFreeSurfaceModel; kwargs...)
         @apply_regionally set!(ϕ, value)
     end
 
-    update_state!(model)
+    initialize!(model)
+    update_state!(model; compute_tendencies=false)
 
     return nothing
 end
+

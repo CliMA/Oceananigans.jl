@@ -1,16 +1,16 @@
-using Oceananigans.Operators: Vᶜᶜᶜ
-using Oceananigans.Fields: ZeroField
 
 @inline _advective_tracer_flux_x(args...) = advective_tracer_flux_x(args...)
 @inline _advective_tracer_flux_y(args...) = advective_tracer_flux_y(args...)
 @inline _advective_tracer_flux_z(args...) = advective_tracer_flux_z(args...)
 
-@inline div_Uc(i, j, k, grid, advection, ::ZeroU, c) = zero(grid)
-@inline div_Uc(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
+#####
+##### Fallback tracer fluxes!
+#####
 
-@inline div_Uc(i, j, k, grid, ::Nothing, U, c) = zero(grid)
-@inline div_Uc(i, j, k, grid, ::Nothing, ::ZeroU, c) = zero(grid)
-@inline div_Uc(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+# Fallback for `nothing` advection
+@inline _advective_tracer_flux_x(i, j, k, grid, ::Nothing, args...) = zero(grid)
+@inline _advective_tracer_flux_y(i, j, k, grid, ::Nothing, args...) = zero(grid)
+@inline _advective_tracer_flux_z(i, j, k, grid, ::Nothing, args...) = zero(grid)
 
 #####
 ##### Tracer advection operator
@@ -32,3 +32,13 @@ which ends up at the location `ccc`.
                                     δyᵃᶜᵃ(i, j, k, grid, _advective_tracer_flux_y, advection, U.v, c) +
                                     δzᵃᵃᶜ(i, j, k, grid, _advective_tracer_flux_z, advection, U.w, c))
 end
+
+# Fallbacks for zero velocities, zero tracer and `nothing` advection
+@inline div_Uc(i, j, k, grid, advection, ::ZeroU, c) = zero(grid)
+@inline div_Uc(i, j, k, grid, advection, U, ::ZeroField) = zero(grid)
+@inline div_Uc(i, j, k, grid, advection, ::ZeroU, ::ZeroField) = zero(grid)
+
+@inline div_Uc(i, j, k, grid, ::Nothing, U, c) = zero(grid)
+@inline div_Uc(i, j, k, grid, ::Nothing, ::ZeroU, c) = zero(grid)
+@inline div_Uc(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(grid)
+@inline div_Uc(i, j, k, grid, ::Nothing, ::ZeroU, ::ZeroField) = zero(grid)

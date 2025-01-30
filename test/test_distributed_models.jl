@@ -237,8 +237,8 @@ function test_triply_periodic_local_grid_with_411_ranks()
     @test local_grid.xᶠᵃᵃ[nx+1] == 0.25*(local_rank+1)
     @test local_grid.yᵃᶠᵃ[1] == 0
     @test local_grid.yᵃᶠᵃ[ny+1] == 2
-    @test local_grid.zᵃᵃᶠ[1] == -3
-    @test local_grid.zᵃᵃᶠ[nz+1] == 0
+    @test local_grid.z.cᵃᵃᶠ[1] == -3
+    @test local_grid.z.cᵃᵃᶠ[nz+1] == 0
 
     return nothing
 end
@@ -254,8 +254,8 @@ function test_triply_periodic_local_grid_with_141_ranks()
     @test local_grid.xᶠᵃᵃ[nx+1] == 1
     @test local_grid.yᵃᶠᵃ[1] == 0.5*local_rank
     @test local_grid.yᵃᶠᵃ[ny+1] == 0.5*(local_rank+1)
-    @test local_grid.zᵃᵃᶠ[1] == -3
-    @test local_grid.zᵃᵃᶠ[nz+1] == 0
+    @test local_grid.z.cᵃᵃᶠ[1] == -3
+    @test local_grid.z.cᵃᵃᶠ[nz+1] == 0
 
     return nothing
 end
@@ -271,8 +271,8 @@ function test_triply_periodic_local_grid_with_221_ranks()
     @test local_grid.xᶠᵃᵃ[nx+1] == 0.5*i
     @test local_grid.yᵃᶠᵃ[1] == j-1
     @test local_grid.yᵃᶠᵃ[ny+1] == j
-    @test local_grid.zᵃᵃᶠ[1] == -3
-    @test local_grid.zᵃᵃᶠ[nz+1] == 0
+    @test local_grid.z.cᵃᵃᶠ[1] == -3
+    @test local_grid.z.cᵃᵃᶠ[nz+1] == 0
 
     return nothing
 end
@@ -354,7 +354,6 @@ function test_triply_periodic_halo_communication_with_411_ranks(halo, child_arch
         @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
     end
 
-
     return nothing
 end
 
@@ -363,7 +362,7 @@ function test_triply_periodic_halo_communication_with_141_ranks(halo, child_arch
     grid  = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3), halo=halo)
     model = NonhydrostaticModel(grid=grid)
 
-    for field in merge(fields(model), model.pressures)
+    for field in (fields(model)..., model.pressures.pNHS)
         fill!(field, arch.local_rank)
         fill_halo_regions!(field)
 
@@ -376,12 +375,13 @@ function test_triply_periodic_halo_communication_with_141_ranks(halo, child_arch
         @test all(top_halo(field, include_corners=false) .== arch.local_rank)
         @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
     end
+
     return nothing
 end
 
 function test_triply_periodic_halo_communication_with_221_ranks(halo, child_arch)
     arch = Distributed(child_arch; partition=Partition(2, 2))
-    grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 3), extent=(1, 2, 3), halo=halo)
+    grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 4), extent=(1, 2, 3), halo=halo)
     model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model))
@@ -449,8 +449,6 @@ end
     # Only test on CPU because we do not have a GPU pressure solver yet
     @testset "Time stepping NonhydrostaticModel" begin
         if CPU() ∈ archs 
-            #for ranks in [(1, 4, 1), (2, 2, 1), (4, 1, 1)]
-                #@info "Time-stepping a distributed NonhydrostaticModel with ranks $ranks..."
             for partition in [Partition(1, 4), Partition(2, 2), Partition(4, 1)]
                 @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
                 arch = Distributed(; partition)
@@ -487,4 +485,3 @@ end
         end
     end
 end
-

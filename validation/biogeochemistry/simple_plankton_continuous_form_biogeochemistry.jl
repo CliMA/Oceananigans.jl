@@ -5,7 +5,7 @@ using Oceananigans.Grids: znode
 using Oceananigans.Forcings: maybe_constant_field
 using Oceananigans.Architectures: device, architecture
 using Oceananigans.Utils: launch!
-using Oceananigans.Advection: CenteredSecondOrder
+using Oceananigans.Advection: Centered
 using Oceananigans.Fields: Field, TracerFields, CenterField
 
 import Oceananigans.Biogeochemistry:
@@ -43,7 +43,7 @@ function SimplePlanktonGrowthDeath(FT=Float64; grid,
                                    advection_scheme = nothing)
 
     if sinking_velocity != 0
-        advection_scheme = CenteredSecondOrder()
+        advection_scheme = Centered()
     end
 
     u, v, w = maybe_constant_field.((0, 0, - sinking_velocity))
@@ -104,7 +104,7 @@ end
     ∫chl = @inbounds - (zᶜ[grid.Nz] - zᶠ[grid.Nz]) * P[i, j, grid.Nz] ^ e
     @inbounds PAR[i, j, grid.Nz] =  PAR⁰ * exp(kʷ * zᶜ[grid.Nz] - χ * ∫chl)
 
-    @unroll for k in grid.Nz-1:-1:1
+    for k in grid.Nz-1:-1:1
         @inbounds begin
             ∫chl += (zᶜ[k + 1] - zᶠ[k])*P[i, j, k + 1]^e + (zᶠ[k] - zᶜ[k])*P[i, j, k]^e
             PAR[i, j, k] =  PAR⁰*exp(kʷ * zᶜ[k] - χ * ∫chl)
@@ -115,13 +115,12 @@ end
 # Call the integration
 @inline function update_biogeochemical_state!(bgc::SimplePlanktonGrowthDeath, model)
     arch = architecture(model.grid)
-    event = launch!(arch, model.grid, :xy, update_PhotosyntheticallyActiveRatiation!, 
-                    bgc,
-                    model.tracers.P, 
-                    bgc.PAR,
-                    model.grid, 
-                    model.clock.time)
-    wait(event)
+    launch!(arch, model.grid, :xy, update_PhotosyntheticallyActiveRatiation!, 
+            bgc,
+            model.tracers.P, 
+            bgc.PAR,
+            model.grid, 
+            model.clock.time)
 end
 
 #####

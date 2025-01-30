@@ -89,7 +89,7 @@ c = @lift file["timeseries/c/" * string($iter)][:, :, 1]
 
 set_theme!(Theme(fontsize = 30))
 
-fig = Figure(resolution = (1920, 1080))
+fig = Figure(size=(1920, 1080))
 
 title = @lift "Tracer spot on a sphere, t = $(file["timeseries/t/" * string($iter)])"
 

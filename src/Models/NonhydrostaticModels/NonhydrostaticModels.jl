@@ -5,35 +5,61 @@ export NonhydrostaticModel
 using DocStringExtensions
 
 using KernelAbstractions: @index, @kernel
-using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils
 using Oceananigans.Grids
-using Oceananigans.Grids: XYRegRectilinearGrid, XZRegRectilinearGrid, YZRegRectilinearGrid
 using Oceananigans.Solvers
-using Oceananigans.DistributedComputations: Distributed, DistributedFFTBasedPoissonSolver, reconstruct_global_grid   
+
+using Oceananigans.DistributedComputations
+using Oceananigans.DistributedComputations: reconstruct_global_grid, Distributed
+using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver, DistributedFourierTridiagonalPoissonSolver
+using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Utils: SumOfArrays
+using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver 
+using Oceananigans.Utils: sum_of_velocities
 
 import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
 
-function PressureSolver(arch::Distributed, local_grid::RegRectilinearGrid)
+function nonhydrostatic_pressure_solver(::Distributed, local_grid::XYZRegularRG)
     global_grid = reconstruct_global_grid(local_grid)
     return DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 end
 
-PressureSolver(arch, grid::RegRectilinearGrid)   = FFTBasedPoissonSolver(grid)
-PressureSolver(arch, grid::XYRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
-PressureSolver(arch, grid::XZRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
-PressureSolver(arch, grid::YZRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
+function nonhydrostatic_pressure_solver(::Distributed, local_grid::GridWithFourierTridiagonalSolver)
+    global_grid = reconstruct_global_grid(local_grid)
+    return DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
+end
 
-# *Evil grin*
-PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.underlying_grid)
+nonhydrostatic_pressure_solver(arch, grid::XYZRegularRG) = FFTBasedPoissonSolver(grid)
+nonhydrostatic_pressure_solver(arch, grid::GridWithFourierTridiagonalSolver) =
+    FourierTridiagonalPoissonSolver(grid)
 
-# fall back
-PressureSolver(arch, grid) = error("None of the implemented pressure solvers for NonhydrostaticModel currently support more than one stretched direction.")
+const IBGWithFFTSolver = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:GridWithFFTSolver}
+
+function nonhydrostatic_pressure_solver(arch, ibg::IBGWithFFTSolver)
+    msg = """The FFT-based pressure_solver for NonhydrostaticModels on ImmersedBoundaryGrid
+          is approximate and will probably produce velocity fields that are divergent
+          adjacent to the immersed boundary. An experimental but improved pressure_solver
+          is available which may be used by writing
+
+              using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+              pressure_solver = ConjugateGradientPoissonSolver(grid)
+
+          Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.
+          """
+    @warn msg
+
+    return nonhydrostatic_pressure_solver(arch, ibg.underlying_grid)
+end
+
+# fallback
+nonhydrostatic_pressure_solver(arch, grid) =
+    error("None of the implemented pressure solvers for NonhydrostaticModel \
+          are supported on $(summary(grid)).")
+
+nonhydrostatic_pressure_solver(grid) = nonhydrostatic_pressure_solver(architecture(grid), grid)
 
 #####
 ##### NonhydrostaticModel definition
@@ -48,7 +74,11 @@ include("set_nonhydrostatic_model.jl")
 ##### AbstractModel interface
 #####
 
-cell_advection_timescale(model::NonhydrostaticModel) = cell_advection_timescale(model.grid, model.velocities)
+function cell_advection_timescale(model::NonhydrostaticModel)
+    grid = model.grid
+    velocities = total_velocities(model)
+    return cell_advection_timescale(grid, velocities)
+end
 
 """
     fields(model::NonhydrostaticModel)
@@ -56,7 +86,10 @@ cell_advection_timescale(model::NonhydrostaticModel) = cell_advection_timescale(
 Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.tracers`, and any
 auxiliary fields for a `NonhydrostaticModel` model.
 """
-fields(model::NonhydrostaticModel) = merge(model.velocities, model.tracers, model.auxiliary_fields, biogeochemical_auxiliary_fields(model.biogeochemistry))
+fields(model::NonhydrostaticModel) = merge(model.velocities,
+                                           model.tracers,
+                                           model.auxiliary_fields,
+                                           biogeochemical_auxiliary_fields(model.biogeochemistry))
 
 """
     prognostic_fields(model::HydrostaticFreeSurfaceModel)
@@ -74,6 +107,7 @@ include("update_nonhydrostatic_model_state.jl")
 include("pressure_correction.jl")
 include("nonhydrostatic_tendency_kernel_functions.jl")
 include("compute_nonhydrostatic_tendencies.jl")
-include("compute_nonhydrostatic_boundary_tendencies.jl")
+include("compute_nonhydrostatic_buffer_tendencies.jl")
 
 end # module
+

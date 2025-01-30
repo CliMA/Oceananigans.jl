@@ -1,49 +1,46 @@
-using CUDA
-using Printf
 using Base.Ryu: writeshortest
 using LinearAlgebra: dot, cross
 using OffsetArrays: IdOffsetRange
 
-# Define default indices
-default_indices(n) = Tuple(Colon() for i=1:n)
-
-const BoundedTopology = Union{Bounded, LeftConnected}
-
 """
-    topology(grid)
+    _property(ξ, T, ℓ, N, with_halos=false)
 
-Return a tuple with the topology of the `grid` for each dimension.
+Return the grid property `ξ`, either `with_halos` or without,
+for topology `T`, (instantiated) location `ℓ`, and dimension length `N`.
 """
-@inline topology(::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = (TX, TY, TZ)
-
-"""
-    topology(grid, dim)
-
-Return the topology of the `grid` for the `dim`-th dimension.
-"""
-@inline topology(grid, dim) = topology(grid)[dim]
-
-"""
-    architecture(grid::AbstractGrid)
-
-Return the architecture (CPU or GPU) that the `grid` lives on.
-"""
-@inline architecture(grid::AbstractGrid) = grid.architecture
-
-Base.eltype(::AbstractGrid{FT}) where FT = FT
-
-function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
-    #check if grids are of the same type
-    !isa(grid2, typeof(grid1).name.wrapper) && return false
-
-    topology(grid1) !== topology(grid2) && return false
-
-    x1, y1, z1 = nodes(grid1, (Face(), Face(), Face()))
-    x2, y2, z2 = nodes(grid2, (Face(), Face(), Face()))
-
-    CUDA.@allowscalar return x1 == x2 && y1 == y2 && z1 == z2
+@inline function _property(ξ, ℓ, T, N, with_halos)
+    if with_halos
+        return ξ
+    else
+        i = interior_indices(ℓ, T(), N)
+        return view(ξ, i)
+    end
 end
 
+@inline function _property(ξ, ℓx, ℓy, Tx, Ty, Nx, Ny, with_halos)
+    if with_halos
+        return ξ
+    else
+        i = interior_indices(ℓx, Tx(), Nx)
+        j = interior_indices(ℓy, Ty(), Ny)
+        return view(ξ, i, j)
+    end
+end
+
+@inline _property(ξ::Number, args...) = ξ
+@inline _property(::Nothing, args...) = nothing
+
+# Define default indices in a type-stable way
+@inline default_indices(N::Int) = default_indices(Val(N))
+
+@inline function default_indices(::Val{N}) where N
+    ntuple(Val(N)) do n
+        Base.@_inline_meta
+        Colon()
+    end
+end
+
+const BoundedTopology = Union{Bounded, LeftConnected}
 const AT = AbstractTopology
 
 Base.length(::Face,    ::BoundedTopology, N) = N + 1
@@ -57,35 +54,6 @@ Base.length(::Center,  ::Flat,            N) = N
 # "Indices-aware" length
 Base.length(loc, topo::AT, N, ::Colon) = length(loc, topo, N)
 Base.length(loc, topo::AT, N, ind::UnitRange) = min(length(loc, topo, N), length(ind))
-
-"""
-    size(grid)
-
-Return a 3-tuple of the number of "center" cells on a grid in (x, y, z).
-Center cells have the location (Center, Center, Center).
-"""
-Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
-
-"""
-    halo_size(grid)
-
-Return a 3-tuple with the number of halo cells on either side of the
-domain in (x, y, z).
-"""
-halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
-halo_size(grid, d) = halo_size(grid)[d]
-
-Base.size(grid::AbstractGrid, d::Int) = size(grid)[d]
-
-Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(length(loc))) =
-    size(loc, topology(grid), size(grid), indices)
-
-function Base.size(loc, topo, sz, indices=default_indices(length(loc)))
-    D = length(loc)
-    return Tuple(length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d]) for d = 1:D)
-end
-
-Base.size(grid::AbstractGrid, loc::Tuple, d::Int) = size(grid, loc)[d]
 
 """
     total_length(loc, topo, N, H=0, ind=Colon())
@@ -107,6 +75,21 @@ total_length(::Center,  ::Flat,            N, H=0) = N
 total_length(loc, topo, N, H, ::Colon) = total_length(loc, topo, N, H)
 total_length(loc, topo, N, H, ind::UnitRange) = min(total_length(loc, topo, N, H), length(ind))
 
+@inline Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc)))) =
+    size(loc, topology(grid), size(grid), indices)
+
+@inline function Base.size(loc, topo, sz, indices=default_indices(Val(length(loc))))
+    D = length(loc)
+
+    # (it's type stable?)
+    return ntuple(Val(D)) do d
+        Base.@_inline_meta
+        length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d])
+    end
+end
+
+Base.size(grid::AbstractGrid, loc::Tuple, d::Int) = size(grid, loc)[d]
+
 total_size(a) = size(a) # fallback
 
 """
@@ -115,12 +98,12 @@ total_size(a) = size(a) # fallback
 Return the "total" size of a `grid` at `loc`. This is a 3-tuple of integers
 corresponding to the number of grid points along `x, y, z`.
 """
-function total_size(loc, topo, sz, halo_sz, indices=default_indices(length(loc)))
+function total_size(loc, topo, sz, halo_sz, indices=default_indices(Val(length(loc))))
     D = length(loc)
     return Tuple(total_length(instantiate(loc[d]), instantiate(topo[d]), sz[d], halo_sz[d], indices[d]) for d = 1:D)
 end
 
-total_size(grid::AbstractGrid, loc, indices=default_indices(length(loc))) =
+total_size(grid::AbstractGrid, loc, indices=default_indices(Val(length(loc)))) =
     total_size(loc, topology(grid), size(grid), halo_size(grid), indices)
 
 """
@@ -135,11 +118,12 @@ constant grid spacing `Δ`, and interior extent `L`.
 
 # Grid domains
 @inline domain(topo, N, ξ) = CUDA.@allowscalar ξ[1], ξ[N+1]
-@inline domain(::Flat, N, ξ) = CUDA.@allowscalar ξ[1], ξ[1]
+@inline domain(::Flat, N, ξ::AbstractArray) = ξ[1]
+@inline domain(::Flat, N, ξ::Number) = ξ
+@inline domain(::Flat, N, ::Nothing) = nothing
 
 @inline x_domain(grid) = domain(topology(grid, 1)(), grid.Nx, grid.xᶠᵃᵃ)
 @inline y_domain(grid) = domain(topology(grid, 2)(), grid.Ny, grid.yᵃᶠᵃ)
-@inline z_domain(grid) = domain(topology(grid, 3)(), grid.Nz, grid.zᵃᵃᶠ)
 
 regular_dimensions(grid) = ()
 
@@ -209,263 +193,44 @@ regular_dimensions(grid) = ()
 @inline all_parent_y_indices(grid, loc) = all_parent_indices(loc[2](), topology(grid, 2)(), size(grid, 2), halo_size(grid, 2))
 @inline all_parent_z_indices(grid, loc) = all_parent_indices(loc[3](), topology(grid, 3)(), size(grid, 3), halo_size(grid, 3))
 
+# Return the index range of "full" parent arrays that span an entire dimension
 parent_index_range(::Colon,                       loc, topo, halo) = Colon()
 parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
-parent_index_range(index::UnitRange,              loc, topo, halo) = UnitRange(1, length(index))
+parent_index_range(view_indices::UnitRange, ::Nothing, ::Flat, halo) = view_indices
+parent_index_range(view_indices::UnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
+parent_index_range(view_indices::UnitRange, loc, topo, halo)         = UnitRange(1, length(index))
 
-parent_index_range(index::UnitRange, ::Nothing, ::Flat, halo) = index
-parent_index_range(index::UnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
+# Return the index range of parent arrays that are themselves windowed
+parent_index_range(::Colon, args...) = parent_index_range(args...)
+
+parent_index_range(parent_indices::UnitRange, ::Colon, args...) =
+    parent_index_range(parent_indices, parent_indices, args...)
+
+function parent_index_range(parent_indices::UnitRange, view_indices, args...)
+    start = first(view_indices) - first(parent_indices) + 1
+    stop = start + length(view_indices) - 1
+    return UnitRange(start, stop)
+end
+
+# intersect_index_range(::Colon, ::Colon) = Colon()
+index_range_contains(range,   subset::UnitRange) = (first(subset) ∈ range) & (last(subset) ∈ range)
+index_range_contains(::Colon, ::UnitRange)       = true
+index_range_contains(::Colon, ::Colon)           = true
+index_range_contains(::UnitRange, ::Colon)       = true
+
+# Return the index range of "full" parent arrays that span an entire dimension
+parent_windowed_indices(::Colon, loc, topo, halo)            = Colon()
+parent_windowed_indices(indices::UnitRange, loc, topo, halo) = UnitRange(1, length(indices))
 
 index_range_offset(index::UnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
 index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset(loc, topo, halo)
 
-@inline cpu_face_constructor_x(grid) = Array(getindex(nodes(grid, Face(), Center(), Center(); with_halos=true), 1)[1:size(grid, 1)+1])
-@inline cpu_face_constructor_y(grid) = Array(getindex(nodes(grid, Center(), Face(), Center(); with_halos=true), 2)[1:size(grid, 2)+1])
-@inline cpu_face_constructor_z(grid) = Array(getindex(nodes(grid, Center(), Center(), Face(); with_halos=true), 3)[1:size(grid, 3)+1])
+const c = Center()
+const f = Face()
 
-#####
-##### << Nodes >>
-#####
-
-xnodes(grid, ::Nothing; kwargs...) = 1:1
-ynodes(grid, ::Nothing; kwargs...) = 1:1
-znodes(grid, ::Nothing; kwargs...) = 1:1
-
-"""
-    xnodes(grid, ℓx, ℓy, ℓz, with_halos=false)
-
-Return the positions over the interior nodes on `grid` in the ``x``-direction for the location `ℓx`,
-`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-See [`znodes`](@ref) for examples.
-"""
-@inline xnodes(grid, ℓx, ℓy, ℓz; kwargs...) = xnodes(grid, ℓx; kwargs...)
-
-"""
-    ynodes(grid, ℓx, ℓy, ℓz, with_halos=false)
-
-Return the positions over the interior nodes on `grid` in the ``y``-direction for the location `ℓx`,
-`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-See [`znodes`](@ref) for examples.
-"""
-@inline ynodes(grid, ℓx, ℓy, ℓz; kwargs...) = ynodes(grid, ℓy; kwargs...)
-
-"""
-    znodes(grid, ℓx, ℓy, ℓz; with_halos=false)
-
-Return the positions over the interior nodes on `grid` in the ``z``-direction for the location `ℓx`,
-`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-```jldoctest znodes
-julia> using Oceananigans
-
-julia> horz_periodic_grid = RectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1), halo=(1, 1, 1),
-                                            topology=(Periodic, Periodic, Bounded));
-
-julia> zC = znodes(horz_periodic_grid, Center())
-3-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), 1:3) with eltype Float64:
- -0.8333333333333334
- -0.5
- -0.16666666666666666
-
-julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center())
-3-element view(OffsetArray(::StepRangeLen{Float64, Base.TwicePrecision{Float64}, Base.TwicePrecision{Float64}, Int64}, 0:4), 1:3) with eltype Float64:
- -0.8333333333333334
- -0.5
- -0.16666666666666666
-
-julia> zC = znodes(horz_periodic_grid, Center(), Center(), Center(), with_halos=true)
--1.1666666666666667:0.3333333333333333:0.16666666666666666 with indices 0:4
-```
-"""
-@inline znodes(grid, ℓx, ℓy, ℓz; kwargs...) = znodes(grid, ℓz; kwargs...)
-
-"""
-    λnodes(grid::AbstractCurvilinearGrid, ℓx, ℓy, ℓz, with_halos=false)
-
-Return the positions over the interior nodes on a curvilinear `grid` in the ``λ``-direction
-for the location `ℓλ`, `ℓφ`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-See [`znodes`](@ref) for examples.
-"""
-@inline λnodes(grid::AbstractCurvilinearGrid, ℓλ, ℓφ, ℓz; kwargs...) = λnodes(grid, ℓλ; kwargs...)
-
-"""
-    φnodes(grid::AbstractCurvilinearGrid, ℓx, ℓy, ℓz, with_halos=false)
-
-Return the positions over the interior nodes on a curvilinear `grid` in the ``φ``-direction
-for the location `ℓλ`, `ℓφ`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-See [`znodes`](@ref) for examples.
-"""
-@inline φnodes(grid::AbstractCurvilinearGrid, ℓλ, ℓφ, ℓz; kwargs...) = φnodes(grid, ℓφ; kwargs...)
-
-"""
-    nodes(grid, (ℓx, ℓy, ℓz); reshape=false, with_halos=false)
-    nodes(grid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
-
-Return a 3-tuple of views over the interior nodes of the `grid`'s
-native coordinates at the locations in `loc=(ℓx, ℓy, ℓz)` in `x, y, z`.
-
-If `reshape=true`, the views are reshaped to 3D arrays with non-singleton
-dimensions 1, 2, 3 for `x, y, z`, respectively. These reshaped arrays can then
-be used in broadcast operations with 3D fields or arrays.
-
-For `RectilinearGrid`s the native coordinates are `x, y, z`; for curvilinear grids,
-like `LatitudeLongitudeGrid` or `OrthogonalSphericalShellGrid` the native coordinates
-are `λ, φ, z`.
-
-See [`xnodes`](@ref), [`ynodes`](@ref), [`znodes`](@ref), [`λnodes`](@ref), and [`φnodes`](@ref).
-"""
-nodes(grid::AbstractGrid, (ℓx, ℓy, ℓz); reshape=false, with_halos=false) = nodes(grid, ℓx, ℓy, ℓz; reshape, with_halos)
-
-#####
-##### << Spacings >>
-#####
-
-# placeholders; see Oceananigans.Operators for x/y/zspacing definitions
-function xspacing end
-function yspacing end
-function zspacing end
-
-"""
-    xspacings(grid, ℓx, ℓy, ℓz; with_halos=true)
-
-Return the spacings over the interior nodes on `grid` in the ``x``-direction for the location `ℓx`,
-`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-```jldoctest xspacings
-julia> using Oceananigans
-
-julia> grid = LatitudeLongitudeGrid(size=(8, 15, 10), longitude=(-20, 60), latitude=(-10, 50), z=(-100, 0));
-
-julia> xspacings(grid, Center(), Face(), Center())
-16-element view(OffsetArray(::Vector{Float64}, -2:18), 1:16) with eltype Float64:
-      1.0950562585518518e6
-      1.1058578920188267e6
-      1.1112718969963323e6
-      1.1112718969963323e6
-      1.1058578920188267e6
-      1.0950562585518518e6
-      1.0789196210678827e6
-      1.0575265956426917e6
-      1.0309814069457315e6
- 999413.38046802
- 962976.3124613502
- 921847.720658409
- 876227.979424229
- 826339.3435524226
- 772424.8654621692
- 714747.2110712599
-```
-"""
-@inline xspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = xspacings(grid, ℓx; with_halos)
-
-
-"""
-    yspacings(grid, ℓx, ℓy, ℓz; with_halos=true)
-
-Return the spacings over the interior nodes on `grid` in the ``y``-direction for the location `ℓx`,
-`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-```jldoctest yspacings
-julia> using Oceananigans
-
-julia> grid = LatitudeLongitudeGrid(size=(20, 15, 10), longitude=(0, 20), latitude=(-15, 15), z=(-100, 0));
-
-julia> yspacings(grid, Center(), Center(), Center())
-222389.85328911748
-```
-"""
-@inline yspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = yspacings(grid, ℓy; with_halos)
-
-"""
-    zspacings(grid, ℓx, ℓy, ℓz; with_halos=true)
-
-Return the spacings over the interior nodes on `grid` in the ``z``-direction for the location `ℓx`,
-`ℓy`, `ℓz`. For `Bounded` directions, `Face` nodes include the boundary points.
-
-```jldoctest zspacings
-julia> using Oceananigans
-
-julia> grid = LatitudeLongitudeGrid(size=(20, 15, 10), longitude=(0, 20), latitude=(-15, 15), z=(-100, 0));
-
-julia> zspacings(grid, Center(), Center(), Center())
-10.0
-```
-"""
-@inline zspacings(grid, ℓx, ℓy, ℓz; with_halos=true) = zspacings(grid, ℓz; with_halos)
-
-destantiate(::Face)   = Face
-destantiate(::Center) = Center
-
-function minimum_spacing(dir, grid, ℓx, ℓy, ℓz)
-    spacing = eval(Symbol(dir, :spacing))
-    LX, LY, LZ = map(destantiate, (ℓx, ℓy, ℓz))
-    Δ = KernelFunctionOperation{LX, LY, LZ}(spacing, grid, ℓx, ℓy, ℓz)
-
-    return minimum(Δ)
-end
-
-"""
-    minimum_xspacing(grid, ℓx, ℓy, ℓz)
-    minimum_xspacing(grid) = minimum_xspacing(grid, Center(), Center(), Center())
-
-Return the minimum spacing for `grid` in ``x`` direction at location `ℓx, ℓy, ℓz`.
-
-Examples
-========
-```jldoctest
-julia> using Oceananigans
-
-julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
-
-julia> minimum_xspacing(grid, Center(), Center(), Center())
-0.5
-```
-"""
-minimum_xspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(:x, grid, ℓx, ℓy, ℓz)
-minimum_xspacing(grid) = minimum_spacing(:x, grid, Center(), Center(), Center())
-"""
-    minimum_yspacing(grid, ℓx, ℓy, ℓz)
-    minimum_yspacing(grid) = minimum_yspacing(grid, Center(), Center(), Center())
-
-Return the minimum spacing for `grid` in ``y`` direction at location `ℓx, ℓy, ℓz`.
-
-Examples
-========
-```jldoctest
-julia> using Oceananigans
-
-julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
-
-julia> minimum_yspacing(grid, Center(), Center(), Center())
-0.25
-```
-"""
-minimum_yspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(:y, grid, ℓx, ℓy, ℓz)
-minimum_yspacing(grid) = minimum_spacing(:y, grid, Center(), Center(), Center())
-
-"""
-    minimum_zspacing(grid, ℓx, ℓy, ℓz)
-    minimum_zspacing(grid) = minimum_zspacing(grid, Center(), Center(), Center())
-
-Return the minimum spacing for `grid` in ``z`` direction at location `ℓx, ℓy, ℓz`.
-
-Examples
-========
-```jldoctest
-julia> using Oceananigans
-
-julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
-
-julia> minimum_zspacing(grid, Center(), Center(), Center())
-0.125
-```
-"""
-minimum_zspacing(grid, ℓx, ℓy, ℓz) = minimum_spacing(:z, grid, ℓx, ℓy, ℓz)
-minimum_zspacing(grid) = minimum_spacing(:z, grid, Center(), Center(), Center())
+# What's going on here?
+@inline cpu_face_constructor_x(grid) = Array(getindex(nodes(grid, f, c, c; with_halos=true), 1)[1:size(grid, 1)+1])
+@inline cpu_face_constructor_y(grid) = Array(getindex(nodes(grid, c, f, c; with_halos=true), 2)[1:size(grid, 2)+1])
 
 #####
 ##### Convenience functions
@@ -511,9 +276,11 @@ Base.show(io::IO, dir::AbstractDirection) = print(io, summary(dir))
 
 size_summary(sz) = string(sz[1], "×", sz[2], "×", sz[3])
 prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
-dimension_summary(topo::Flat, name, args...) = "Flat $name"
 
-function domain_summary(topo, name, left, right)
+domain_summary(topo::Flat, name, ::Nothing) = "Flat $name"
+domain_summary(topo::Flat, name, coord::Number) = "Flat $name = $coord"
+
+function domain_summary(topo, name, (left, right))
     interval = (topo isa Bounded) ||
                (topo isa LeftConnected) ? "]" : ")"
 
@@ -521,25 +288,48 @@ function domain_summary(topo, name, left, right)
                   topo isa Bounded ? "Bounded  " :
                   topo isa FullyConnected ? "FullyConnected " :
                   topo isa LeftConnected ? "LeftConnected  " :
-                  "RightConnected "
+                  topo isa RightConnected ? "RightConnected  " :
+                  error("Unexpected topology $topo together with the domain end points ($left, $right)")
 
     return string(topo_string, name, " ∈ [",
                   prettysummary(left), ", ",
                   prettysummary(right), interval)
 end
 
-function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
-    prefix = domain_summary(topo, name, left, right)
+function dimension_summary(topo, name, dom, z::AbstractVerticalCoordinate, pad_domain=0)
+    prefix = domain_summary(topo, name, dom)
     padding = " "^(pad_domain+1) 
-    return string(prefix, padding, coordinate_summary(spacing, name))
+    return string(prefix, padding, coordinate_summary(topo, z, name))
 end
 
-coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, prettysummary(Δ))
+function dimension_summary(topo, name, dom, spacing, pad_domain=0)
+    prefix = domain_summary(topo, name, dom)
+    padding = " "^(pad_domain+1) 
+    return string(prefix, padding, coordinate_summary(topo, spacing, name))
+end
 
-coordinate_summary(Δ::Union{AbstractVector, AbstractMatrix}, name) =
+coordinate_summary(::Flat, Δ::Number, name) = ""
+coordinate_summary(topo, Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, prettysummary(Δ))
+
+coordinate_summary(topo, Δ::Union{AbstractVector, AbstractMatrix}, name) =
     @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
              name, prettysummary(minimum(parent(Δ))),
              name, prettysummary(maximum(parent(Δ))))
+
+#####
+##### Static and Dynamic column depths
+#####
+
+@inline static_column_depthᶜᶜᵃ(i, j, grid) = grid.Lz
+@inline static_column_depthᶜᶠᵃ(i, j, grid) = grid.Lz
+@inline static_column_depthᶠᶜᵃ(i, j, grid) = grid.Lz
+@inline static_column_depthᶠᶠᵃ(i, j, grid) = grid.Lz
+
+# Will be extended in the `ImmersedBoundaries` module for a ``mutable'' grid type
+@inline column_depthᶜᶜᵃ(i, j, k, grid, η) = static_column_depthᶜᶜᵃ(i, j, grid) 
+@inline column_depthᶠᶜᵃ(i, j, k, grid, η) = static_column_depthᶠᶜᵃ(i, j, grid) 
+@inline column_depthᶜᶠᵃ(i, j, k, grid, η) = static_column_depthᶜᶠᵃ(i, j, grid) 
+@inline column_depthᶠᶠᵃ(i, j, k, grid, η) = static_column_depthᶠᶠᵃ(i, j, grid) 
 
 #####
 ##### Spherical geometry
@@ -687,7 +477,7 @@ function add_halos(data, loc, topo, sz, halo_sz; warnings=true)
     arch = architecture(data)
 
     # bring to CPU
-    map(a -> arch_array(CPU(), a), data)
+    map(a -> on_architecture(CPU(), a), data)
 
     nx, ny, nz = total_length(loc[1](), topo[1](), sz[1], 0),
                  total_length(loc[2](), topo[2](), sz[2], 0),
@@ -712,7 +502,7 @@ function add_halos(data, loc, topo, sz, halo_sz; warnings=true)
     offset_array[1:nx, 1:ny, 1:nz] = data[1:nx, 1:ny, 1:nz]
 
     # return to data's original architecture 
-    map(a -> arch_array(arch, a), offset_array)
+    map(a -> on_architecture(arch, a), offset_array)
 
     return offset_array
 end
@@ -722,4 +512,3 @@ function add_halos(data::AbstractArray{FT, 2} where FT, loc, topo, sz, halo_sz; 
     return add_halos(reshape(data, (Nx, Ny, 1)), loc, topo, sz, halo_sz; warnings)
 end
 
-grid_name(grid::AbstractGrid) = typeof(grid).name.wrapper

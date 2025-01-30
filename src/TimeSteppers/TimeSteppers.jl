@@ -11,7 +11,6 @@ using CUDA
 using KernelAbstractions
 using Oceananigans: AbstractModel, prognostic_fields
 using Oceananigans.Architectures: device
-using Oceananigans.Fields: TendencyFields
 using Oceananigans.Utils: work_layout
 
 """
@@ -35,7 +34,8 @@ julia> stepper = TimeStepper(:QuasiAdamsBashforth2, CPU(), grid, tracernames)
 """
 function TimeStepper(name::Symbol, args...; kwargs...)
     fullname = Symbol(name, :TimeStepper)
-    return @eval $fullname($args...; $kwargs...)
+    TS = getglobal(@__MODULE__, fullname)
+    return TS(args...; kwargs...)
 end
 
 # Fallback
@@ -52,10 +52,12 @@ abstract type AbstractLagrangianParticles end
 step_lagrangian_particles!(model, Δt) = nothing
 
 reset!(timestepper) = nothing
+implicit_step!(field, ::Nothing, args...; kwargs...) = nothing
 
 include("clock.jl")
 include("store_tendencies.jl")
 include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")
+include("split_hydrostatic_runge_kutta_3.jl")
 
 end # module

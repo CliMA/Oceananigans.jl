@@ -9,7 +9,7 @@ end
 
 HaloCommunicationRanks(; from, to) = HaloCommunicationRanks(from, to)
 
-Base.summary(hcr::HaloCommunicationRanks) = "(from rank $(hcr.from) to rank $(hcr.to))"
+Base.summary(hcr::HaloCommunicationRanks) = "HaloCommunicationRanks from rank $(hcr.from) to rank $(hcr.to)"
 
 function inject_halo_communication_boundary_conditions(field_bcs, local_rank, connectivity, topology)
     rank_east   = connectivity.east
@@ -17,15 +17,15 @@ function inject_halo_communication_boundary_conditions(field_bcs, local_rank, co
     rank_north  = connectivity.north
     rank_south  = connectivity.south
 
-    east_comm_ranks   = HaloCommunicationRanks(from=local_rank, to=rank_east)
-    west_comm_ranks   = HaloCommunicationRanks(from=local_rank, to=rank_west)
-    north_comm_ranks  = HaloCommunicationRanks(from=local_rank, to=rank_north)
-    south_comm_ranks  = HaloCommunicationRanks(from=local_rank, to=rank_south)
+    east_comm_ranks  = HaloCommunicationRanks(from=local_rank, to=rank_east)
+    west_comm_ranks  = HaloCommunicationRanks(from=local_rank, to=rank_west)
+    north_comm_ranks = HaloCommunicationRanks(from=local_rank, to=rank_north)
+    south_comm_ranks = HaloCommunicationRanks(from=local_rank, to=rank_south)
 
-    east_comm_bc   = DistributedCommunicationBoundaryCondition(east_comm_ranks)
-    west_comm_bc   = DistributedCommunicationBoundaryCondition(west_comm_ranks)
-    north_comm_bc  = DistributedCommunicationBoundaryCondition(north_comm_ranks)
-    south_comm_bc  = DistributedCommunicationBoundaryCondition(south_comm_ranks)
+    east_comm_bc  = DistributedCommunicationBoundaryCondition(east_comm_ranks)
+    west_comm_bc  = DistributedCommunicationBoundaryCondition(west_comm_ranks)
+    north_comm_bc = DistributedCommunicationBoundaryCondition(north_comm_ranks)
+    south_comm_bc = DistributedCommunicationBoundaryCondition(south_comm_ranks)
 
     TX, TY, _ = topology
 

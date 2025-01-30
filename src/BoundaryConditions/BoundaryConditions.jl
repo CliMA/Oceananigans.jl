@@ -10,13 +10,15 @@ export
     apply_x_bcs!, apply_y_bcs!, apply_z_bcs!,
     fill_halo_regions!
 
-using CUDA
+using CUDA, Adapt
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans.Architectures: CPU, GPU, device
 using Oceananigans.Utils: work_layout, launch!
 using Oceananigans.Operators: Ax, Ay, Az, volume
 using Oceananigans.Grids
+
+import Adapt: adapt_structure
 
 include("boundary_condition_classifications.jl")
 include("boundary_condition.jl")
@@ -34,4 +36,8 @@ include("fill_halo_regions_nothing.jl")
 
 include("apply_flux_bcs.jl")
 
+include("update_boundary_conditions.jl")
+include("polar_boundary_condition.jl")
+
+include("flat_extrapolation_open_boundary_matching_scheme.jl")
 end # module

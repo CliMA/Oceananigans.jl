@@ -35,6 +35,16 @@ using Oceananigans.Fields: ZeroField, ConstantField
 /(a::ZeroField, b::Number) = a
 /(a::Number, b::ZeroField) = ConstantField(a / convert(eltype(a), 0))
 
+# for two ZeroField
+for op in (:-, :+, :*)
+    @eval begin
+        function $op(z1::ZeroField{T1, N1}, z2::ZeroField{T2, N2}) where {T1, T2, N1, N2}
+            T = Base.promote_type(T1, T2)
+            N = max(N1, N2)
+            return ZeroField{T, N}()
+        end
+    end
+end
+
 # Unary operations
 -(a::ZeroField) = a
-

@@ -1,9 +1,10 @@
 using Oceananigans.BoundaryConditions: MCBC, DCBC
-using Oceananigans.Architectures: arch_array
+using Oceananigans.Architectures: on_architecture
 using Oceananigans.Grids: halo_size, size
 using Oceananigans.Utils: launch!
 using KernelAbstractions: @kernel, @index
-using KernelAbstractions.Extras.LoopInfo: @unroll
+
+import Oceananigans.Architectures: on_architecture
 
 struct FieldBoundaryBuffers{W, E, S, N, SW, SE, NW, NE}
     west :: W
@@ -41,7 +42,7 @@ function FieldBoundaryBuffers(grid, data, boundary_conditions)
         sw = create_buffer_corner(arch, grid, data, Hx, Hy, west, south)
         se = create_buffer_corner(arch, grid, data, Hx, Hy, east, south)
         nw = create_buffer_corner(arch, grid, data, Hx, Hy, west, north)
-        ne = create_buffer_corner(arch, grid, data, Hx, Hy, east, south)
+        ne = create_buffer_corner(arch, grid, data, Hx, Hy, east, north)
     else
         sw = nothing
         se = nothing
@@ -62,31 +63,31 @@ create_buffer_corner(arch, grid, data, Hx, Hy, ::Nothing, edge2)     = nothing
 create_buffer_corner(arch, grid, data, Hx, Hy, ::Nothing, ::Nothing) = nothing
 
 function create_buffer_corner(arch, grid, data, Hx, Hy, edge1, edge2)
-    return (send = arch_array(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))), 
-            recv = arch_array(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))))    
+    return (send = on_architecture(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))), 
+            recv = on_architecture(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))))    
 end
 
 function create_buffer_x(arch, grid, data, H, ::DCBC) 
     # Either we pass corners or it is a 1D parallelization in x
     size_y = arch.ranks[2] == 1 ? size(parent(data), 2) : size(grid, 2)
-    return (send = arch_array(arch, zeros(eltype(data), H, size_y, size(parent(data), 3))), 
-            recv = arch_array(arch, zeros(eltype(data), H, size_y, size(parent(data), 3))))    
+    return (send = on_architecture(arch, zeros(eltype(data), H, size_y, size(parent(data), 3))), 
+            recv = on_architecture(arch, zeros(eltype(data), H, size_y, size(parent(data), 3))))    
 end
 
 function create_buffer_y(arch, grid, data, H, ::DCBC)
     # Either we pass corners or it is a 1D parallelization in y
     size_x = arch.ranks[1] == 1 ? size(parent(data), 1) : size(grid, 1)
-    return (send = arch_array(arch, zeros(eltype(data), size_x, H, size(parent(data), 3))), 
-            recv = arch_array(arch, zeros(eltype(data), size_x, H, size(parent(data), 3))))
+    return (send = on_architecture(arch, zeros(eltype(data), size_x, H, size(parent(data), 3))), 
+            recv = on_architecture(arch, zeros(eltype(data), size_x, H, size(parent(data), 3))))
 end
 
 create_buffer_x(arch, grid, data, H, ::MCBC) = 
-           (send = arch_array(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))), 
-            recv = arch_array(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))))    
+           (send = on_architecture(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))), 
+            recv = on_architecture(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))))    
 
 create_buffer_y(arch, grid, data, H, ::MCBC) = 
-           (send = arch_array(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))), 
-            recv = arch_array(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))))
+           (send = on_architecture(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))), 
+            recv = on_architecture(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))))
 
 Adapt.adapt_structure(to, buff::FieldBoundaryBuffers) =
     FieldBoundaryBuffers(Adapt.adapt(to, buff.west), 
@@ -97,6 +98,16 @@ Adapt.adapt_structure(to, buff::FieldBoundaryBuffers) =
                          Adapt.adapt(to, buff.southeast), 
                          Adapt.adapt(to, buff.northwest), 
                          Adapt.adapt(to, buff.northeast))
+
+on_architecture(arch, buff::FieldBoundaryBuffers) =
+    FieldBoundaryBuffers(on_architecture(arch, buff.west), 
+                         on_architecture(arch, buff.east),    
+                         on_architecture(arch, buff.north), 
+                         on_architecture(arch, buff.south), 
+                         on_architecture(arch, buff.southwest), 
+                         on_architecture(arch, buff.southeast), 
+                         on_architecture(arch, buff.northwest), 
+                         on_architecture(arch, buff.northeast))
 
 """
     fill_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
@@ -131,6 +142,25 @@ function fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::
 
     return nothing
 end
+
+#####
+##### Single sided fill_send_buffers!
+#####
+
+fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:west}) = 
+    _fill_west_send_buffer!(parent(c), buff, buff.west, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:east}) = 
+    _fill_east_send_buffer!(parent(c), buff, buff.east, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:south}) = 
+    _fill_south_send_buffer!(parent(c), buff, buff.south, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:north}) = 
+    _fill_north_send_buffer!(parent(c), buff, buff.north, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:bottom}) = nothing
+fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:top}) = nothing
+
+#####
+##### Double sided fill_send_buffers!
+#####
 
 function fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:west_and_east})
     Hx, Hy, _ = halo_size(grid)
@@ -183,6 +213,25 @@ function recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::
 
    return nothing
 end
+
+#####
+##### Single sided recv_from_buffers!
+#####
+
+recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:west}) = 
+    _recv_from_west_buffer!(parent(c), buff, buff.west, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:east}) = 
+    _recv_from_east_buffer!(parent(c), buff, buff.east, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:south}) = 
+    _recv_from_south_buffer!(parent(c), buff, buff.south, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:north}) = 
+    _recv_from_north_buffer!(parent(c), buff, buff.north, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
+recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:bottom}) = nothing
+recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:top}) = nothing
+
+#####
+##### Double sided recv_from_buffers!
+#####
 
 function recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:west_and_east})
     Hx, Hy, _ = halo_size(grid)
@@ -258,5 +307,5 @@ _recv_from_southeast_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2H
 _recv_from_northwest_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = view(c, 1:Hx,           1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 _recv_from_northeast_buffer!(c, b, buff, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 
-# Switch around halos for cubed sphere by exhanging buffer informations
+# Switch around halos for cubed sphere by exchanging buffer informations
 replace_horizontal_vector_halos!(vel, grid::AbstractGrid; signed=true) = nothing

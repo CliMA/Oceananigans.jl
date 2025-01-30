@@ -52,7 +52,7 @@ function visualize_barotropic_gyre(filepath)
     v = @lift file["timeseries/v/" * string($iter)][:, :, 1]
     η = @lift file["timeseries/η/" * string($iter)][:, :, 1]
 
-    fig = Figure(resolution = (2160, 1080))
+    fig = Figure(size=(2160, 1080))
 
     x = (xu, xv, xc)
     y = (yu, yv, yc)
