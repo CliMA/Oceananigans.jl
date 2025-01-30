@@ -207,17 +207,13 @@ function run_field_interpolation_tests(grid)
     fill_halo_regions!(f1)
     interpolate!(f2, f1)
 
-    for i in 1:10
-        @test f2[i, 1, 1] ≈ convert_to_0_360(λnode(i, grid2, Center()))
-    end
+    @test all(interior(f2) .≈ convert_to_0_360.(λnodes(grid2, Center())))
 
     # now interpolate back
     fill_halo_regions!(f2)
     interpolate!(f1, f2)
 
-    for i in 1:10
-        @test f1[i, 1, 1] ≈ λnode(i, grid1, Center())
-    end
+    @test all(interior(f1) .≈ λnodes(grid1, Center()))
 
     return nothing
 end
