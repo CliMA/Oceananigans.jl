@@ -1,13 +1,10 @@
-using CUDA
-using Oceananigans.Architectures: CPU, GPU, AbstractArchitecture
+using Oceananigans.Architectures: device, AbstractArchitecture
 
-import Base: zeros
+import KernelAbstractions: zeros
 
-zeros(FT, ::CPU, N...) = zeros(FT, N...)
-zeros(FT, ::GPU, N...) = CUDA.zeros(FT, N...)
+zeros(FT, arch::AbstractArchitecture, N...) = zeros(device(arch), FT, N...)
 
-zeros(arch::AbstractArchitecture, grid, N...) = zeros(eltype(grid), arch, N...)
 zeros(grid::AbstractGrid, N...) = zeros(eltype(grid), architecture(grid), N...)
 
 @inline Base.zero(grid::AbstractGrid) = zero(eltype(grid))
-@inline Base.one(grid::AbstractGrid) = one(eltype(grid))
+@inline Base.one(grid::AbstractGrid)  = one(eltype(grid))

@@ -62,7 +62,7 @@ device(::GPU) = CUDA.CUDABackend(; always_inline=true)
 # for execution and will import whatever host or kernel is called.
 # this says thay reactant will import the cuda kernel version of the code
 # which makes some optimizations easier. Reactant may still execute the
-# code on CPU GPU or TPU dependong on what its default client is.
+# code on CPU GPU or TPU depending on what its default client is.
 device(::ReactantState) = CUDA.CUDABackend(; always_inline=true)
 
 architecture() = nothing
@@ -134,9 +134,9 @@ end
 @inline unsafe_free!(a)          = nothing
 
 # Convert arguments to GPU-compatible types
-@inline convert_args(::CPU, args) = args
-@inline convert_args(::GPU, args) = CUDA.cudaconvert(args)
-@inline convert_args(::GPU, args::Tuple) = map(CUDA.cudaconvert, args)
+@inline convert_to_device(arch, args)  = args
+@inline convert_to_device(::GPU, args) = CUDA.cudaconvert(args)
+@inline convert_to_device(::GPU, args::Tuple) = map(CUDA.cudaconvert, args)
 
 # Deprecated functions
 function arch_array(arch, arr) 
