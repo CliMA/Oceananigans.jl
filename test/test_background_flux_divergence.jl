@@ -1,4 +1,4 @@
-include("depedencies_for_runtests.jl")
+include("dependencies_for_runtests.jl")
 
 """
     function run_with_background_fields(arch; with_background=true)
@@ -20,8 +20,7 @@ function run_with_background_fields(arch; with_background=true)
                                 boundary_conditions=(; b = B_bcs))
         b = model.tracers.b
         B̄ = model.background_fields.tracers.b
-        B = B̄ + b # total buoyancy field
-        filepath = "with_background.nc"
+        B = interior(compute!(Field(B̄ + b)))    # total buoyancy field
     else
         # again we want no flux bottom boundary (∂B∂z = 0) and infinite ocean at the top boundary
         B_bcs = FieldBoundaryConditions(
@@ -33,30 +32,22 @@ function run_with_background_fields(arch; with_background=true)
         Bᵢ(z) = constant_stratification(z, 0, (; N² = N^2))
         set!(model, b=Bᵢ)  # add background buoyancy as an initial condition
         b = model.tracers.b
-        B = b # total buoyancy field = perturbation buoyancy because there is no background buoyancy
-        filepath = "without_background.nc"
+        B = interior(b) # total buoyancy field = perturbation buoyancy because there is no background buoyancy
     end
-    # remove output file if existed
-    !isfile(filepath) ? nothing : rm(filepath) 
 
     # Run for a few iterations
     simulation = Simulation(model, Δt=0.1, stop_iteration=5)
-    simulation.output_writers[:profile] = NetCDFOutputWriter(model, (; B),
-                                                schedule = IterationInterval(1),
-                                                verbose=true,
-                                                filename = filepath,
-                                                overwrite_existing = true)
     run!(simulation)
-    ds = NCDataset(filepath)
-
-    
-    return ds["B"][1,1,:,:]
+  
+    return B
 end
 
 # Linear background stratification
 N = 1e-3
 @inline constant_stratification(z, t, p) = p.N² * z
 B̄_field = BackgroundField(constant_stratification, parameters=(; N² = N^2))
+
+test_archs = has_cuda() ? [CPU(), GPU()] : [CPU()]
 
 @testset "Background Fields Tests" begin
     for arch in test_archs
@@ -71,7 +62,7 @@ B̄_field = BackgroundField(constant_stratification, parameters=(; N² = N^2))
         b_with = run_with_background_fields(arch, with_background=true)
         b_without = run_with_background_fields(arch, with_background=false)
 
-        # Compare the computed values
+        # to pass the test, both total buoyancy should be the same even the method is not the same
         @test all(isapprox.(b_with, b_without, rtol=1e-10))
     end
 end
