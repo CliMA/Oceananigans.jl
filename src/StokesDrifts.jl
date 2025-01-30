@@ -141,20 +141,26 @@ const c = Center()
 const f = Face()
 
 # Some helpers for three cases: Nothing, AbstractArray, or fallback (function)
-@inline ∂z_Uᵃᵃᶜ(i, j, k, grid, sd::USDnoP, ∂z_Uˢ, time)             = ∂z_Uˢ(znode(k, grid, c), time)
-@inline ∂z_Uᵃᵃᶜ(i, j, k, grid, sd::USD, ∂z_Uˢ, time)                = ∂z_Uˢ(znode(k, grid, c), time, sd.parameters)
-@inline ∂z_Uᵃᵃᶜ(i, j, k, grid, sd::USD, ∂z_Uˢ::AbstractArray, time) = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_Uˢ)
-@inline ∂z_Uᵃᵃᶜ(i, j, k, grid, sd::USD, ::Nothing, time)            = zero(grid)
+@inline ∂z_Uᵃᵃᶜ(i, j, k, grid, sd::USDnoP, ∂z_Uˢ, time)                = ∂z_Uˢ(znode(k, grid, c), time)
+@inline ∂z_Uᵃᵃᶜ(i, j, k, grid, sd::USD, ∂z_Uˢ, time)                   = ∂z_Uˢ(znode(k, grid, c), time, sd.parameters)
+@inline ∂z_Uᵃᵃᶜ(i, j, k, grid, sd::USD, ∂z_Uˢ::AbstractArray, time)    = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_Uˢ)
+@inline ∂z_Uᵃᵃᶜ(i, j, k, grid, sd::USDnoP, ∂z_Uˢ::AbstractArray, time) = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_Uˢ)
+@inline ∂z_Uᵃᵃᶜ(i, j, k, grid, sd::USD, ::Nothing, time)               = zero(grid)
+@inline ∂z_Uᵃᵃᶜ(i, j, k, grid, sd::USDnoP, ::Nothing, time)            = zero(grid)
 
-@inline ∂z_Uᵃᵃᶠ(i, j, k, grid, sd::USDnoP, ∂z_Uˢ, time)             = ∂z_Uˢ(znode(k, grid, f), time)
-@inline ∂z_Uᵃᵃᶠ(i, j, k, grid, sd::USD, ∂z_Uˢ, time)                = ∂z_Uˢ(znode(k, grid, f), time, sd.parameters)
-@inline ∂z_Uᵃᵃᶠ(i, j, k, grid, sd::USD, ∂z_Uˢ::AbstractArray, time) = @inbounds ∂z_Uˢ[i, j, k]
-@inline ∂z_Uᵃᵃᶠ(i, j, k, grid, sd::USD, ::Nothing, time)            = zero(grid)
+@inline ∂z_Uᵃᵃᶠ(i, j, k, grid, sd::USDnoP, ∂z_Uˢ, time)                = ∂z_Uˢ(znode(k, grid, f), time)
+@inline ∂z_Uᵃᵃᶠ(i, j, k, grid, sd::USD, ∂z_Uˢ, time)                   = ∂z_Uˢ(znode(k, grid, f), time, sd.parameters)
+@inline ∂z_Uᵃᵃᶠ(i, j, k, grid, sd::USD, ∂z_Uˢ::AbstractArray, time)    = @inbounds ∂z_Uˢ[i, j, k]
+@inline ∂z_Uᵃᵃᶠ(i, j, k, grid, sd::USDnoP, ∂z_Uˢ::AbstractArray, time) = @inbounds ∂z_Uˢ[i, j, k]
+@inline ∂z_Uᵃᵃᶠ(i, j, k, grid, sd::USD, ::Nothing, time)               = zero(grid)
+@inline ∂z_Uᵃᵃᶠ(i, j, k, grid, sd::USDnoP, ::Nothing, time)            = zero(grid)
 
-@inline ∂t_U(i, j, k, grid, sd::USDnoP, ∂t_Uˢ, time)             = ∂t_Uˢ(znode(k, grid, c), time)
-@inline ∂t_U(i, j, k, grid, sd::USD, ∂t_Uˢ, time)                = ∂t_Uˢ(znode(k, grid, c), time, sd.parameters)
-@inline ∂t_U(i, j, k, grid, sd::USD, ∂t_Uˢ::AbstractArray, time) = @inbounds ∂t_Uˢ[i, j, k]
-@inline ∂t_U(i, j, k, grid, sd::USD, ::Nothing, time)            = zero(grid)
+@inline ∂t_U(i, j, k, grid, sd::USDnoP, ∂t_Uˢ, time)                = ∂t_Uˢ(znode(k, grid, c), time)
+@inline ∂t_U(i, j, k, grid, sd::USD, ∂t_Uˢ, time)                   = ∂t_Uˢ(znode(k, grid, c), time, sd.parameters)
+@inline ∂t_U(i, j, k, grid, sd::USD, ∂t_Uˢ::AbstractArray, time)    = @inbounds ∂t_Uˢ[i, j, k]
+@inline ∂t_U(i, j, k, grid, sd::USDnoP, ∂t_Uˢ::AbstractArray, time) = @inbounds ∂t_Uˢ[i, j, k]
+@inline ∂t_U(i, j, k, grid, sd::USD, ::Nothing, time)               = zero(grid)
+@inline ∂t_U(i, j, k, grid, sd::USDnoP, ::Nothing, time)            = zero(grid)
 
 # Kernel functions
 @inline ∂t_uˢ(i, j, k, grid, sd::USD, time) = ∂t_U(i, j, k, grid, sd, sd.∂t_uˢ, time)
