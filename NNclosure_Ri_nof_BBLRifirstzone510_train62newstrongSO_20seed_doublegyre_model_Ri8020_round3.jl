@@ -168,7 +168,7 @@ update_state!(model)
 ##### Simulation building
 #####
 Δt₀ = 5minutes
-stop_time = 36000days
+stop_time = 72000days
 # stop_time = 1080days
 
 simulation = Simulation(model, Δt = Δt₀, stop_time = stop_time)
@@ -449,6 +449,10 @@ simulation.output_writers[:streamfunction_10] = JLD2OutputWriter(model, (; Ψ=Ψ
 simulation.output_writers[:complete_fields] = JLD2OutputWriter(model, outputs,
                                                     filename = "$(FILE_DIR)/instantaneous_fields",
                                                     schedule = TimeInterval(1800days))
+
+simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                    schedule = TimeInterval(18000days),
+                                                    prefix = "$(FILE_DIR)/checkpointer")
 
 @info "Running the simulation..."
 
