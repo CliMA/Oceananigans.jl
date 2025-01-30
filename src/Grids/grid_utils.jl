@@ -198,7 +198,7 @@ parent_index_range(::Colon,                       loc, topo, halo) = Colon()
 parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
 parent_index_range(view_indices::UnitRange, ::Nothing, ::Flat, halo) = view_indices
 parent_index_range(view_indices::UnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
-parent_index_range(view_indices::UnitRange, loc, topo, halo)         = UnitRange(1, length(index))
+parent_index_range(view_indices::UnitRange, loc, topo, halo)         = UnitRange(1, length(view_indices))
 
 # Return the index range of parent arrays that are themselves windowed
 parent_index_range(::Colon, args...) = parent_index_range(args...)
