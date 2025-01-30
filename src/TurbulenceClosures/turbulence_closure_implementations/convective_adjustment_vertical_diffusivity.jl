@@ -59,7 +59,7 @@ julia> cavd = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1)
 ConvectiveAdjustmentVerticalDiffusivity{VerticallyImplicitTimeDiscretization}(background_κz=0.0 convective_κz=1 background_νz=0.0 convective_νz=0.0)
 ```
 """
-function ConvectiveAdjustmentVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(), FT = Float64;
+function ConvectiveAdjustmentVerticalDiffusivity(time_discretization=VerticallyImplicitTimeDiscretization(), FT=Oceananigans.defaults.float_type;
                                                  convective_κz = zero(FT),
                                                  convective_νz = zero(FT),
                                                  background_κz = zero(FT),

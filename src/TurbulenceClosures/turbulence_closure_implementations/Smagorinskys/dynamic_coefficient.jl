@@ -10,7 +10,7 @@ end
 
 const DynamicSmagorinsky = Smagorinsky{<:Any, <:DynamicCoefficient}
 
-function DynamicSmagorinsky(time_discretization=ExplicitTimeDiscretization(), FT=Float64; averaging,
+function DynamicSmagorinsky(time_discretization=ExplicitTimeDiscretization(), FT=Oceananigans.defaults.float_type; averaging,
                             Pr=1.0, schedule=IterationInterval(1), minimum_numerator=1e-32)
     coefficient = DynamicCoefficient(FT; averaging, schedule, minimum_numerator)
     TD = typeof(time_discretization)

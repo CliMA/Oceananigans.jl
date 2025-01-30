@@ -115,7 +115,7 @@ ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.Turbulence
 """
 function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
                            formulation=ThreeDimensionalFormulation(), 
-                           FT=Float64;
+                           FT=Oceananigans.defaults.float_type;
                            ν=0, κ=0,
                            discrete_form = false,
                            loc = (nothing, nothing, nothing),

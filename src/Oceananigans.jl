@@ -135,7 +135,20 @@ end
 # List of fully-supported floating point types where applicable.
 # Currently used only in the Advection module to specialize 
 # reconstruction schemes (WENO, UpwindBiased, and Centered).
-const supported_float_types = (Float32, Float64)
+const fully_supported_float_types = (Float32, Float64)
+
+#####
+##### Default settings for constructors
+#####
+
+mutable struct Defaults{DFT}
+    float_type :: DFT
+end
+
+Defaults(; float_type=Float64) = Default(float_type)
+const defaults = Defaults()
+
+
 
 #####
 ##### Abstract types

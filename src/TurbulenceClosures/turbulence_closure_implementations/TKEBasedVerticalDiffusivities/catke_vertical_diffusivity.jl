@@ -94,7 +94,7 @@ Note that for numerical stability, it is recommended to either have a relative s
 `minimum_tke`, or both.
 """
 function CATKEVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTimeDiscretization(),
-                                  FT = Float64;
+                                  FT = Oceananigans.defaults.float_type;
                                   mixing_length = CATKEMixingLength(),
                                   turbulent_kinetic_energy_equation = CATKEEquation(),
                                   maximum_tracer_diffusivity = Inf,

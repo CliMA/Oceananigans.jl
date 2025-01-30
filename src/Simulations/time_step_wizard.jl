@@ -61,7 +61,7 @@ Then when `run!(simulation)` is invoked, the time-step `simulation.Δt` will be 
 
 (Note that the name `:wizard` is unimportant.)
 """
-function TimeStepWizard(FT=Float64;
+function TimeStepWizard(FT=Oceananigans.defaults.float_type;
                         cfl = 0.2,
                         diffusive_cfl = Inf,
                         max_change = 1.1,

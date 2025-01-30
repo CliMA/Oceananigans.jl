@@ -115,7 +115,7 @@ Verstappen, R. (2018), "How much eddy dissipation is needed to counterbalance th
     production of small, unresolved scales in a large-eddy simulation of turbulence?",
     Computers & Fluids 176, pp. 276-284.
 """
-function AnisotropicMinimumDissipation(time_disc::TD = ExplicitTimeDiscretization(), FT = Float64;
+function AnisotropicMinimumDissipation(time_disc::TD = ExplicitTimeDiscretization(), FT = Oceananigans.defaults.float_type;
                                        C = FT(1/12), Cν = nothing, Cκ = nothing, Cb = nothing) where TD
 
     Cν = Cν === nothing ? C : Cν

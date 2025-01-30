@@ -100,7 +100,7 @@ Note that for numerical stability, it is recommended to either have a relative s
 `minimum_turbulent_kinetic_energy`, or both.
 """
 function TKEDissipationVerticalDiffusivity(time_discretization::TD = VerticallyImplicitTimeDiscretization(),
-                                           FT = Float64;
+                                           FT = Oceananigans.defaults.float_type;
                                            tke_dissipation_equations = TKEDissipationEquations(),
                                            stability_functions = VariableStabilityFunctions(),
                                            minimum_length_scale = StratifiedDisplacementScale(),
