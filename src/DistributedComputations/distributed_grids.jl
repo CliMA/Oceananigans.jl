@@ -57,7 +57,7 @@ global_size(arch, local_size) = map(sum, concatenate_local_sizes(local_size, arc
 Return the rank-local portion of `RectilinearGrid` on `arch`itecture.
 """
 function RectilinearGrid(arch::Distributed, 
-                         FT::DataType = Oceananigans.defaults.float_type;
+                         FT::DataType = Oceananigans.defaults.FloatType;
                          size,
                          x = nothing,
                          y = nothing,
@@ -106,7 +106,7 @@ end
 Return the rank-local portion of `LatitudeLongitudeGrid` on `arch`itecture.
 """
 function LatitudeLongitudeGrid(arch::Distributed,
-                               FT::DataType = Oceananigans.defaults.float_type; 
+                               FT::DataType = Oceananigans.defaults.FloatType; 
                                precompute_metrics = true,
                                size,
                                latitude,

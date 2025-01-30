@@ -72,7 +72,7 @@ number modification to the eddy viscosity.
 to the analysis by [Lilly66](@citet). For other options, see `LillyCoefficient`
 and `DynamicCoefficient`.
 """
-function Smagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=Oceananigans.defaults.float_type;
+function Smagorinsky(time_discretization::TD = ExplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType;
                      coefficient = 0.16, Pr = 1.0) where TD
     Pr = convert_diffusivity(FT, Pr; discrete_form=false)
     return Smagorinsky{TD}(coefficient, Pr)

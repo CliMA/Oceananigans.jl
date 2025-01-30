@@ -28,7 +28,7 @@ constant rotation can be specified in three different ways:
 - Specifying `latitude` (in degrees) and (optionally) a `rotation_rate` in radians per second
   (which defaults to Earth's rotation rate).
 """
-function ConstantCartesianCoriolis(FT=Oceananigans.defaults.float_type;
+function ConstantCartesianCoriolis(FT=Oceananigans.defaults.FloatType;
                                    fx=nothing, fy=nothing, fz=nothing,
                                    f=nothing, rotation_axis=ZDirection(), 
                                    rotation_rate=Ω_Earth, latitude=nothing)

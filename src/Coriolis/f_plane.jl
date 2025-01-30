@@ -22,7 +22,7 @@ By default, `rotation_rate` is assumed to be Earth's.
 Also called `FPlane`, after the "f-plane" approximation for the local effect of
 a planet's rotation in a planar coordinate system tangent to the planet's surface.
 """
-function FPlane(FT::DataType=Oceananigans.defaults.float_type; f=nothing, rotation_rate=Ω_Earth, latitude=nothing)
+function FPlane(FT::DataType=Oceananigans.defaults.FloatType; f=nothing, rotation_rate=Ω_Earth, latitude=nothing)
 
     use_f = !isnothing(f)
     use_planet_parameters = !isnothing(latitude)

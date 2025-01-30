@@ -187,7 +187,7 @@ is implemented for the WENO scheme (instead of a 1D stencil). This 2D horizontal
 stencil performs a centered 5th-order WENO reconstruction of vorticity,
 divergence and kinetic energy in the horizontal direction tangential to the upwind direction.
 """
-function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.float_type;
+function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
                              upwinding = nothing,
                              vorticity_stencil = VelocityStencil(),
                              order = nothing,

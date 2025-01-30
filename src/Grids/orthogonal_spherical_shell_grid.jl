@@ -163,7 +163,7 @@ julia> grid = conformal_cubed_sphere_panel(Float32, size=(36, 34, 25), z=(-1000,
 ```
 """
 function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU(),
-                                      FT::DataType = Oceananigans.defaults.float_type;
+                                      FT::DataType = Oceananigans.defaults.FloatType;
                                       size,
                                       z,
                                       topology = (Bounded, Bounded, Bounded),

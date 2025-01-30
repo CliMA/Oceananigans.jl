@@ -142,13 +142,11 @@ const fully_supported_float_types = (Float32, Float64)
 #####
 
 mutable struct Defaults{DFT}
-    float_type :: DFT
+    FloatType :: DFT
 end
 
-Defaults(; float_type=Float64) = Default(float_type)
+Defaults(; FloatType=Float64) = Defaults(FloatType)
 const defaults = Defaults()
-
-
 
 #####
 ##### Abstract types

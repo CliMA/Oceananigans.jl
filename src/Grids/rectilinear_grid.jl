@@ -248,7 +248,7 @@ julia> grid = RectilinearGrid(size = (Nx, Ny, Nz),
 ```
 """
 function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
-                         FT::DataType = Oceananigans.defaults.float_type;
+                         FT::DataType = Oceananigans.defaults.FloatType;
                          size,
                          x = nothing,
                          y = nothing,

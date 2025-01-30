@@ -93,7 +93,7 @@ WENO(order=7)
     └── Z stretched
 ```
 """
-function WENO(FT::DataType=Oceananigans.defaults.float_type; 
+function WENO(FT::DataType=Oceananigans.defaults.FloatType; 
               order = 5,
               grid = nothing, 
               bounds = nothing)
