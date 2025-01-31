@@ -91,8 +91,7 @@ end
 @inline function fractional_x_index(λ, locs, grid::XRegularLLG)
     λ₀ = λnode(1, 1, 1, grid, locs...)
     λ₁ = λnode(2, 1, 1, grid, locs...)
-    λc = convert_to_0_360(λ)
-    λc = ifelse(λ₀ < 0, convert_to_minus_180_180(λc), λc)
+    λc = ifelse(λ₀ < 0, convert_to_minus_180_180(λ), convert_to_0_360(λ))
     FT = eltype(grid)
     return convert(FT, (λc - λ₀) / (λ₁ - λ₀)) + 1 # 1 - based indexing 
 end
@@ -104,9 +103,9 @@ end
     loc = @inbounds locs[1]
      Tλ = topology(grid, 1)()
      Nλ = length(loc, Tλ, grid.Nx)
-     λc = convert_to_0_360(λ)
      λn = λnodes(grid, locs...)
-     λc = ifelse(λn[1] < 0, convert_to_minus_180_180(λc), λc)
+     λ₀ = @inbounds λn[1]     
+     λc = ifelse(λ₀ < 0, convert_to_minus_180_180(λ), convert_to_0_360(λ))
     return fractional_index(λc, λn, Nλ) 
 end
 
