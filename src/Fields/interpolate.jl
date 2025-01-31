@@ -82,7 +82,10 @@ end
 end
 
 @inline convert_to_0_360(x) = ((x % 360) + 360) % 360
-@inline convert_to_minus_180_180(x) = ifelse(x > 180, x - 360, x)
+@inline function convert_to_minus_180_180(x) = 
+    x = convert_to_0_360(x)
+    return ifelse(x > 180, x - 360, x)
+end
 
 # When interpolating longitude values, we convert all longitudes to the 0-360 range
 # if the parent grid starts with a positive number (λ₀ > 0), and to a -180-180 range
