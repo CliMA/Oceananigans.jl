@@ -534,14 +534,14 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
         metric_size = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
     end
 
-    Δxᶠᶜ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
-    Δxᶜᶠ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
-    Δxᶠᶠ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
-    Δxᶜᶜ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
-    Azᶠᶜ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
-    Azᶜᶠ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
-    Azᶠᶠ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
-    Azᶜᶜ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
+    Δxᶠᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Δxᶜᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Δxᶠᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Δxᶜᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Azᶠᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Azᶜᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Azᶠᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Azᶜᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
 
     if grid isa YRegularLLG
         Δyᶠᶜ = Δyᶠᶜᵃ(1, 1, 1, grid)

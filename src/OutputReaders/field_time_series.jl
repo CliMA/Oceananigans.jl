@@ -356,7 +356,7 @@ new_data(FT, grid, loc, indices, ::Nothing) = nothing
 # https://github.com/CliMA/ClimaOcean.jl/actions/runs/8804916198/job/24166354095)
 function new_data(FT, grid, loc, indices, Nt::Union{Int, Int64})
     space_size = total_size(grid, loc, indices)
-    underlying_data = zeros(FT, architecture(grid), space_size..., Nt)
+    underlying_data = zeros(architecture(grid), FT, space_size..., Nt)
     data = offset_data(underlying_data, grid, loc, indices)
     return data
 end
