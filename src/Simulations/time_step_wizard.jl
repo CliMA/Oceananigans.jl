@@ -1,5 +1,6 @@
 using Oceananigans: TurbulenceClosures
 using Oceananigans.Grids: prettysummary, architecture
+import Oceananigans
 
 mutable struct TimeStepWizard{FT, C, D}
                          cfl :: FT

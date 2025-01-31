@@ -1,3 +1,5 @@
+import Oceananigans
+
 #####
 ##### Weighted Essentially Non-Oscillatory (WENO) advection scheme
 #####
