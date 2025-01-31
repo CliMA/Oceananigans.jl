@@ -81,7 +81,7 @@ end
     return fractional_index(x, xn, Nx) 
 end
 
-@inline convert_to_0_360(x) = rem(x, 360, RoundToZero)
+@inline convert_to_0_360(x) = ((x % 360) + 360) % 360
 
 @inline convert_to_minus_180_180(x) = rem(x, 360, RoundNearest)
 
