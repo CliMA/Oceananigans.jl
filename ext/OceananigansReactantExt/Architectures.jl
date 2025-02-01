@@ -9,7 +9,7 @@ const ReactantKernelAbstractionsExt = Base.get_extension(
     Reactant, :ReactantKernelAbstractionsExt
 )
 const ReactantBackend = ReactantKernelAbstractionsExt.ReactantBackend
-device(::ReactantState) = ReactantBackend
+device(::ReactantState) = ReactantBackend()
 
 architecture(::Reactant.AnyConcreteRArray) = ReactantState
 architecture(::Reactant.AnyTracedRArray) = ReactantState
