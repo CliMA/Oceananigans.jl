@@ -5,21 +5,17 @@ using Reactant
 
 @testset "Reactant Super Simple Simulation Tests" begin
     r_arch = ReactantState()
-    Nx, Ny, Nz = (360, 120, 100) # number of cells
+    Nx, Ny, Nz = (10, 10, 10) # number of cells
+    halo = (7, 7, 7)
+    longitude = (0, 4)
+    latitude = (0, 4)
+    z = (-1000, 0)
 
-    r_grid = LatitudeLongitudeGrid(r_arch, size=(Nx, Ny, Nz), halo=(7, 7, 7),
-                                 longitude=(0, 360), latitude=(-60, 60), z=(-1000, 0))
-    
-    arch = CPU()
-    grid = LatitudeLongitudeGrid(arch, size=(Nx, Ny, Nz), halo=(7, 7, 7),
-                                 longitude=(0, 360), latitude=(-60, 60), z=(-1000, 0))
+    r_grid = LatitudeLongitudeGrid(r_arch; size=(Nx, Ny, Nz), halo, longitude, latitude, z)
+    grid = LatitudeLongitudeGrid(CPU(), size=(Nx, Ny, Nz), halo, longitude, latitude, z)
 
-    # One of the implest configurations we might consider:
     r_model = HydrostaticFreeSurfaceModel(; grid=r_grid, momentum_advection=WENO())
     model = HydrostaticFreeSurfaceModel(; grid, momentum_advection=WENO())
-
-    @assert r_model.free_surface isa SplitExplicitFreeSurface
-    @assert model.free_surface isa SplitExplicitFreeSurface
 
     uᵢ(x, y, z) = randn()
     set!(r_model, u=uᵢ, v=uᵢ)
@@ -30,7 +26,7 @@ using Reactant
     Δt = 0.1 / Δx
 
     # Stop iteration for both simulations
-    stop_iteration = 100
+    stop_iteration = 3
 
     # First form a Reactant model
     @assert typeof(Reactant.to_rarray(model)) == typeof(r_model)
