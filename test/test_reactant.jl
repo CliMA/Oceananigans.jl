@@ -15,7 +15,7 @@ using Reactant
                                  longitude=(0, 360), latitude=(-60, 60), z=(-1000, 0))
 
     # One of the implest configurations we might consider:
-    r_model = HydrostaticFreeSurfaceModel(; r_grid, momentum_advection=WENO())
+    r_model = HydrostaticFreeSurfaceModel(; grid=r_grid, momentum_advection=WENO())
     model = HydrostaticFreeSurfaceModel(; grid, momentum_advection=WENO())
 
     @assert r_model.free_surface isa SplitExplicitFreeSurface
