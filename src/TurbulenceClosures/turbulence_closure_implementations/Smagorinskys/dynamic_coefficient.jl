@@ -43,7 +43,7 @@ in the `x` and `y` directions).
 `DynamicCoefficient` is updated according to `schedule`, and `minimum_numerator` defines the minimum
 value that is acceptable in the denominator of the final calculation.
 """
-function DynamicCoefficient(FT=Float64; averaging, schedule=IterationInterval(1), minimum_numerator=1e-32)
+function DynamicCoefficient(FT=Oceananigans.defaults.FloatType; averaging, schedule=IterationInterval(1), minimum_numerator=1e-32)
     minimum_numerator = convert(FT, minimum_numerator)
     return DynamicCoefficient(averaging, minimum_numerator, schedule)
 end

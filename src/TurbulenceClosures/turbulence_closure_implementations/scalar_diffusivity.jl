@@ -141,7 +141,7 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
 end
 
 # Explicit default
-@inline ScalarDiffusivity(formulation::AbstractDiffusivityFormulation, FT=Float64; kw...) =
+@inline ScalarDiffusivity(formulation::AbstractDiffusivityFormulation, FT=Oceananigans.defaults.FloatType; kw...) =
     ScalarDiffusivity(ExplicitTimeDiscretization(), formulation, FT; kw...)
 
 const VerticalScalarDiffusivity{TD} = ScalarDiffusivity{TD, VerticalFormulation} where TD
