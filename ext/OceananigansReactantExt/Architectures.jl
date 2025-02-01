@@ -5,6 +5,12 @@ using Oceananigans
 
 import Oceananigans.Architectures: device, architecture, array_type, on_architecture, unified_array, ReactantState, device_copy_to!
 
+const ReactantKernelAbstractionsExt = Base.get_extension(
+    Reactant, :ReactantKernelAbstractionsExt
+)
+const ReactantBackend = ReactantKernelAbstractionsExt.ReactantBackend
+device(::ReactantState) = ReactantBackend
+
 architecture(::Reactant.AnyConcreteRArray) = ReactantState
 architecture(::Reactant.AnyTracedRArray) = ReactantState
 
