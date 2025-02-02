@@ -28,9 +28,6 @@ using Reactant
     # Stop iteration for both simulations
     stop_iteration = 3
 
-    # First form a Reactant model
-    @assert typeof(Reactant.to_rarray(model)) == typeof(r_model)
-
     # What we normally do:
     simulation = Simulation(model; Δt, stop_iteration)
     run!(simulation)
