@@ -42,6 +42,54 @@ in the `x` and `y` directions).
 
 `DynamicCoefficient` is updated according to `schedule`, and `minimum_numerator` defines the minimum
 value that is acceptable in the denominator of the final calculation.
+
+Examples
+========
+
+```jldoctest
+julia> using Oceananigans
+
+julia> dynamic_coeff = DynamicCoefficient(averaging=(1, 2))
+DynamicCoefficient with
+├── averaging = (1, 2)
+├── schedule = IterationInterval(1, 0)
+└── minimum_numerator = 1.0e-32
+
+julia> dynamic_smagorinsky = Smagorinsky(coefficient=dynamic_coeff)
+Smagorinsky closure with
+├── coefficient = DynamicCoefficient(averaging = (1, 2), schedule = IterationInterval(1, 0))
+└── Pr = 1.0
+```
+
+The dynamic Smagorinsky that was just created above has its dynamic coefficient recalculated at every time
+step. While this will provide the highest level of accuracy, it will almost certainly be very slow
+given the high cost of calculating `DynamicCoefficient`s. Because of that, it is common in the
+literature to recalculate the coefficient only every few time steps, with the assumption that the
+their values don't change much from one time-step to the other. Usually the update frequency chosen
+is every 5 steps, which considerably speeds up simulations and has been empirically shown to produce
+very similar results to having it be updated at every time step. We can achieve this by using the
+`schedule` keyword argument such as:
+
+```jldoctest
+julia> using Oceananigans
+
+julia> dynamic_coeff = DynamicCoefficient(averaging=(1, 2), schedule=IterationInterval(5))
+DynamicCoefficient with
+├── averaging = (1, 2)
+├── schedule = IterationInterval(5, 0)
+└── minimum_numerator = 1.0e-32
+
+julia> dynamic_smagorinsky = Smagorinsky(coefficient=dynamic_coeff)
+Smagorinsky closure with
+├── coefficient = DynamicCoefficient(averaging = (1, 2), schedule = IterationInterval(5, 0))
+└── Pr = 1.0
+```
+
+References
+==========
+
+Bou-Zeid, Elie, Charles Meneveau, and Marc Parlange. "A scale-dependent Lagrangian dynamic model for
+large eddy simulation of complex turbulent flows." Physics of fluids 17.2 (2005).
 """
 function DynamicCoefficient(FT=Float64; averaging, schedule=IterationInterval(1), minimum_numerator=1e-32)
     minimum_numerator = convert(FT, minimum_numerator)
