@@ -98,6 +98,7 @@ on_architecture(arch::AbstractSerialArchitecture, a::OffsetArray) = OffsetArray(
 
 cpu_architecture(::CPU) = CPU()
 cpu_architecture(::GPU) = CPU()
+cpu_architecture(::ReactantState) = CPU()
 
 unified_array(::CPU, a) = a
 unified_array(::GPU, a) = a
