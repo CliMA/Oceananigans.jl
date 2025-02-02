@@ -61,9 +61,9 @@ Smagorinsky closure with
 └── Pr = 1.0
 ```
 
-The dynamic Smagorinsky that was just created above has its dynamic coefficient recalculated at every time
-step. While this will provide the highest level of accuracy, it will almost certainly be very slow
-given the high cost of calculating `DynamicCoefficient`s. Because of that, it is common in the
+The dynamic Smagorinsky above has its dynamic coefficient recalculated at every time
+step. While this provides the highest level of accuracy, it will almost certainly be very slow
+given the high cost of calculating `DynamicCoefficient`s. Because of this slowdown, it is common in the
 literature to recalculate the coefficient only every few time steps, with the assumption that the
 their values don't change much from one time-step to the other. Usually the update frequency chosen
 is every 5 steps, which considerably speeds up simulations and has been empirically shown to produce
