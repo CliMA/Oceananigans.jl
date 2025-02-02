@@ -12,7 +12,7 @@ using Reactant
     z = (-1000, 0)
 
     r_grid = LatitudeLongitudeGrid(r_arch; size=(Nx, Ny, Nz), halo, longitude, latitude, z)
-    grid = LatitudeLongitudeGrid(CPU(), size=(Nx, Ny, Nz), halo, longitude, latitude, z)
+    grid = LatitudeLongitudeGrid(CPU(); size=(Nx, Ny, Nz), halo, longitude, latitude, z)
 
     r_model = HydrostaticFreeSurfaceModel(; grid=r_grid, momentum_advection=WENO())
     model = HydrostaticFreeSurfaceModel(; grid, momentum_advection=WENO())
