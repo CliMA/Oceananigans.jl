@@ -88,8 +88,8 @@ Smagorinsky closure with
 References
 ==========
 
-Bou-Zeid, Elie, Charles Meneveau, and Marc Parlange. "A scale-dependent Lagrangian dynamic model for
-large eddy simulation of complex turbulent flows." Physics of fluids 17.2 (2005).
+Bou-Zeid, Elie, Meneveau, Charles, and Parlange, Marc. (2005) A scale-dependent Lagrangian dynamic model for
+large eddy simulation of complex turbulent flows, **Physics of Fluids_, **17**, 025105.
 """
 function DynamicCoefficient(FT=Float64; averaging, schedule=IterationInterval(1), minimum_numerator=1e-32)
     minimum_numerator = convert(FT, minimum_numerator)
