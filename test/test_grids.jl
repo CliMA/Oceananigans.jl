@@ -195,6 +195,8 @@ function test_regular_rectilinear_xnode_ynode_znode_and_spacings(arch, FT)
     for (grid_type, grid) in zip(grids_types, grids)
         @info "        Testing grid utils on $grid_type grid...."
 
+        CUDA.@allowscalar begin
+        
         @test xnode(2, grid, Center()) ≈ FT(π/2)
         @test ynode(2, grid, Center()) ≈ FT(π/2)
         @test znode(2, grid, Center()) ≈ FT(π/2)
@@ -222,6 +224,8 @@ function test_regular_rectilinear_xnode_ynode_znode_and_spacings(arch, FT)
         @test Δx(1, 1, 1, grid, Face(), Center(), Center()) ≈ FT(π/N)
         @test Δy(1, 1, 1, grid, Center(), Face(), Center()) ≈ FT(π/N)
         @test Δz(1, 1, 1, grid, Center(), Center(), Face()) ≈ FT(π/N)
+
+        end # CUDA.@allowscalar
     end
 
     return nothing
@@ -336,7 +340,7 @@ function test_grid_equality(arch)
     grid2 = RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z=0:Nz)
     grid3 = RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z=0:Nz)
 
-    return grid1==grid1 && grid2 == grid3 && grid1 !== grid3
+    return grid1 == grid1 && grid2 == grid3 && grid1 !== grid3
 end
 
 function test_grid_equality_over_architectures()
@@ -695,7 +699,7 @@ function test_lat_lon_precomputed_metrics(FT, arch)
     longitude = (lonreg, lonstr, lonregB, lonstrB)
     zcoord    = (zreg,   zstr)
 
-    CUDA.allowscalar() do
+    CUDA.@allowscalar begin
 
     # grid with pre computed metrics vs metrics computed on the fly
     for lat in latitude
@@ -969,6 +973,9 @@ end
 
         for arch in archs
             for FT in float_types
+
+                CUDA.@allowscalar begin
+
                 ccc = (Center(), Center(), Center())
                 grid = RectilinearGrid(arch, FT, size=4, z=(-1, 0), topology=(Flat, Flat, Bounded))
                 x = xnodes(grid, ccc...)
@@ -1017,6 +1024,8 @@ end
                     gpu_grid = on_architecture(GPU(), grid)
                     @test gpu_grid == grid
                 end
+
+                end # CUDA.@allowscalar
             end
         end
     end
