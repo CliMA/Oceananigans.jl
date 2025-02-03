@@ -1,7 +1,8 @@
 using Reactant
-
+using Test
 using Oceananigans
-using Reactant
+using Oceananigans.Architectures
+GPUArrays.allowscalar(true)
 
 @testset "Reactant Super Simple Simulation Tests" begin
     r_arch = ReactantState()
@@ -18,7 +19,9 @@ using Reactant
     model = HydrostaticFreeSurfaceModel(; grid, momentum_advection=WENO())
 
     uᵢ(x, y, z) = randn()
+    Random.seed!(123)
     set!(r_model, u=uᵢ, v=uᵢ)
+    Random.seed!(123)
     set!(model, u=uᵢ, v=uᵢ)
 
     # Deduce a stable time-step
