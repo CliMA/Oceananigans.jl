@@ -2,6 +2,7 @@ using Reactant
 using Test
 using Oceananigans
 using Oceananigans.Architectures
+using GPUArrays
 GPUArrays.allowscalar(true)
 
 @testset "Reactant Super Simple Simulation Tests" begin
