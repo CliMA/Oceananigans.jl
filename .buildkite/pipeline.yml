@@ -6,6 +6,7 @@ env:
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
   JULIA_NUM_PRECOMPILE_TASKS: 8
   JULIA_NUM_THREADS: 8
+  XLA_REACTANT_GPU_PREALLOCATE: false
 
 steps:
   - label: "🎪 initialize gpu environment"
