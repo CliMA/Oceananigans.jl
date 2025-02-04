@@ -80,7 +80,7 @@ Pr = 1      # Prandtl number
 Ra = 1e8    # Rayleigh number
 
 ν = sqrt(Pr * b★ * Lx^3 / Ra)  # Laplacian viscosity
-κ = ν * Pr                     # Laplacian diffusivity
+κ = ν / Pr                     # Laplacian diffusivity
 nothing #hide
 
 # ## Model instantiation
