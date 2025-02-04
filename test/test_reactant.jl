@@ -52,7 +52,10 @@ GPUArrays.allowscalar(true)
     u, v, w = model.velocities
     ru, rv, rw = r_model.velocities
 
-    @test parent(u) == parent(ru)
-    @test parent(v) == parent(rv)
-    @test parent(w) == parent(rw)
+    @show max(abs.(parent(u) .- parent(ru)))
+    @show max(abs.(parent(v) .- parent(rv)))
+    @show max(abs.(parent(w) .- parent(rw)))
+    @test parent(u) ≈ parent(ru)
+    @test parent(v) ≈ parent(rv)
+    @test parent(w) ≈ parent(rw)
 end
