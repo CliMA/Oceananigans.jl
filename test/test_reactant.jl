@@ -1,4 +1,9 @@
 using Reactant
+if haskey(ENV, "GPU_TEST")
+    Reactant.set_default_backend("gpu")
+else
+    Reactant.set_default_backend("cpu")
+end
 using Test
 using Oceananigans
 using Oceananigans.Architectures
