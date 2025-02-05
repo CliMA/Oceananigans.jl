@@ -61,14 +61,15 @@ Smagorinsky closure with
 └── Pr = 1.0
 ```
 
-The dynamic Smagorinsky above has its dynamic coefficient recalculated at every time
-step. While this provides the highest level of accuracy, it will almost certainly be very slow
-given the high cost of calculating `DynamicCoefficient`s. Because of this slowdown, it is common in the
+The dynamic Smagorinsky above has its dynamic coefficient recalculated at every time step. While
+this provides the highest level of accuracy, it will almost certainly be very slow given the high
+cost of calculating `DynamicCoefficient`s. Because of this slowdown, it is standard practice in the
 literature to recalculate the coefficient only every few time steps, with the assumption that the
-their values don't change much from one time-step to the other. Usually the update frequency chosen
-is every 5 steps, which considerably speeds up simulations and has been empirically shown to produce
-very similar results to having it be updated at every time step. We can achieve this by using the
-`schedule` keyword argument such as:
+its values don't change much from one time-step to the other. While other frequencies are possible,
+the only update frequency we know to be used in the literature is every 5 steps (e.g. Bou-Zeid et
+al.  2005; Chen et al. 2016; Salesky et al. 2017; Chor et al 2021), which Bou-Zeid et al. (2005)
+found to considerably speed up simulations while still producing very similar results to an update
+frequency of every time step. We can achieve this by using the `schedule` keyword argument such as:
 
 ```jldoctest
 julia> using Oceananigans
@@ -89,7 +90,18 @@ References
 ==========
 
 Bou-Zeid, Elie, Meneveau, Charles, and Parlange, Marc. (2005) A scale-dependent Lagrangian dynamic model for
-large eddy simulation of complex turbulent flows, **Physics of Fluids_, **17**, 025105.
+large eddy simulation of complex turbulent flows, Physics of Fluids, **17**, 025105.
+
+Salesky, Scott T., Chamecki, Marcelo, and Bou-Zeid Elie. (2017) On the nature of the transition between
+roll and cellular organization in the convective boundary layer, Boundary-layer meteorology 163, 41-68.
+
+Chen, Bicheng, Yang, Di, Meneveau, Charles and Chamecki, Marcelo. (2016) Effects of swell on
+transport and dispersion of oil plumes within the ocean mixed layer, Journal of Geophysical
+Research: Oceans, 121(5), pp.3564-3578.
+
+Chor, Tomas, McWilliams, James C., Chamecki, Marcelo. (2021) Modifications to the K-Profile
+Parameterization with nondiffusive fluxes for Langmuir turbulence, Journal of Physical Oceanography,
+51(5), pp.1503-1521.
 """
 function DynamicCoefficient(FT=Float64; averaging, schedule=IterationInterval(1), minimum_numerator=1e-32)
     minimum_numerator = convert(FT, minimum_numerator)
