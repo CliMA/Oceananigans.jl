@@ -65,10 +65,10 @@ The dynamic Smagorinsky above has its dynamic coefficient recalculated at every 
 this provides the highest level of accuracy, it will almost certainly be very slow given the high
 cost of calculating `DynamicCoefficient`s. Because of this slowdown, it is standard practice in the
 literature to recalculate the coefficient only every few time steps, with the assumption that the
-its values don't change much from one time-step to the other. While other frequencies are possible,
-the only update frequency we know to be used in the literature is every 5 steps (e.g. Bou-Zeid et
-al.  2005; Chen et al. 2016; Salesky et al. 2017; Chor et al 2021), which Bou-Zeid et al. (2005)
-found to considerably speed up simulations while still producing very similar results to an update
+its values don't change much from one time-step to the other. While any frequency choice is possible,
+all studies seem to recalculate every 5 steps (e.g., Bou-Zeid et al. 2005; Chen et al. 2016; Salesky et al. 2017;
+Chor et al 2021). This choice seems to stemming from the results by Bou-Zeid et al. (2005) who
+found that considerably speed up simulations while still producing very similar results to an update
 frequency of every time step. We can achieve this by using the `schedule` keyword argument such as:
 
 ```jldoctest
