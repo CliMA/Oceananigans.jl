@@ -6,6 +6,7 @@ else
 end
 using Test
 using Oceananigans
+using Reactant
 using Oceananigans.Architectures
 using GPUArrays
 GPUArrays.allowscalar(true)
