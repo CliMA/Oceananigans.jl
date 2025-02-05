@@ -67,9 +67,10 @@ cost of calculating `DynamicCoefficient`s. Because of this slowdown, it is stand
 literature to recalculate the coefficient only every few time steps, with the assumption that the
 its values don't change much from one time-step to the other. While any frequency choice is possible,
 all studies seem to recalculate every 5 steps (e.g., Bou-Zeid et al. 2005; Chen et al. 2016; Salesky et al. 2017;
-Chor et al 2021). This choice seems to stem from the results by Bou-Zeid et al. (2005) who
+Chor et al 2021). This "tradition" seems to stem from the results by Bou-Zeid et al. (2005) who
 found that considerably speed up simulations while still producing very similar results to an update
-frequency of every time step. We can achieve this by using the `schedule` keyword argument such as:
+frequency of every time step. Users can change the update frequency using the `schedule` keyword argument.
+For example, a `DynamicCoefficient` that gets updated every 4 timesteps is obtained via:
 
 ```jldoctest
 julia> using Oceananigans
@@ -77,12 +78,12 @@ julia> using Oceananigans
 julia> dynamic_coeff = DynamicCoefficient(averaging=(1, 2), schedule=IterationInterval(5))
 DynamicCoefficient with
 ├── averaging = (1, 2)
-├── schedule = IterationInterval(5, 0)
+├── schedule = IterationInterval(4, 0)
 └── minimum_numerator = 1.0e-32
 
 julia> dynamic_smagorinsky = Smagorinsky(coefficient=dynamic_coeff)
 Smagorinsky closure with
-├── coefficient = DynamicCoefficient(averaging = (1, 2), schedule = IterationInterval(5, 0))
+├── coefficient = DynamicCoefficient(averaging = (1, 2), schedule = IterationInterval(4, 0))
 └── Pr = 1.0
 ```
 
