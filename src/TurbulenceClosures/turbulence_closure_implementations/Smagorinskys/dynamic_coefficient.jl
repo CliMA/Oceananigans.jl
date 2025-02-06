@@ -76,7 +76,7 @@ gets updated every 4 timesteps is obtained via:
 ```jldoctest
 julia> using Oceananigans
 
-julia> dynamic_coeff = DynamicCoefficient(averaging=(1, 2), schedule=IterationInterval(5))
+julia> dynamic_coeff = DynamicCoefficient(averaging=(1, 2), schedule=IterationInterval(4))
 DynamicCoefficient with
 ├── averaging = (1, 2)
 ├── schedule = IterationInterval(4, 0)
