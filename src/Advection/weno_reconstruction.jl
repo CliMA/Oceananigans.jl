@@ -1,3 +1,5 @@
+import Oceananigans
+
 #####
 ##### Weighted Essentially Non-Oscillatory (WENO) advection scheme
 #####
@@ -93,7 +95,7 @@ WENO(order=7)
     └── Z stretched
 ```
 """
-function WENO(FT::DataType=Float64; 
+function WENO(FT::DataType=Oceananigans.defaults.FloatType; 
               order = 5,
               grid = nothing, 
               bounds = nothing)

@@ -96,7 +96,7 @@ function SplitExplicitFreeSurface(grid = nothing;
         # in case no grid is provided; when afterwards the free surfade
         # is materialized via materialize_free_surface
         # FT becomes eltype(grid)
-        FT = Float64
+        FT = Oceananigans.defaults.FloatType
     end
 
     if isnothing(grid) && !isnothing(cfl) && !isnothing(fixed_Δt)

@@ -1,5 +1,6 @@
 using Oceananigans: TurbulenceClosures
 using Oceananigans.Grids: prettysummary, architecture
+import Oceananigans
 
 mutable struct TimeStepWizard{FT, C, D}
                          cfl :: FT
@@ -61,7 +62,7 @@ Then when `run!(simulation)` is invoked, the time-step `simulation.Δt` will be 
 
 (Note that the name `:wizard` is unimportant.)
 """
-function TimeStepWizard(FT=Float64;
+function TimeStepWizard(FT=Oceananigans.defaults.FloatType;
                         cfl = 0.2,
                         diffusive_cfl = Inf,
                         max_change = 1.1,

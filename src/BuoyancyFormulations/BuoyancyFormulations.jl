@@ -6,6 +6,8 @@ export
     top_buoyancy_flux, buoyancy, buoyancy_frequency, BuoyancyField
 
 using Printf
+
+using Oceananigans
 using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions: getbc

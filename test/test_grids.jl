@@ -149,21 +149,32 @@ function test_regular_rectilinear_no_roundoff_error_in_ranges(FT)
 end
 
 function test_regular_rectilinear_grid_properties_are_same_type(FT)
-    grid = RectilinearGrid(CPU(), FT, size=(10, 10, 10), extent=(1, 1//7, 2π))
+    # Do this test two ways, one with defaults and one with explicit FT
+    for method in (:explicit, :with_default)
 
-    @test grid.Lx isa FT
-    @test grid.Ly isa FT
-    @test grid.Lz isa FT
-    @test grid.Δxᶠᵃᵃ isa FT
-    @test grid.Δyᵃᶠᵃ isa FT
-    @test grid.z.Δᵃᵃᶠ isa FT
+        if method === :explicit    
+            grid = RectilinearGrid(CPU(), FT, size=(10, 10, 10), extent=(1, 1//7, 2π))
+        elseif method === :with_default
+            FT₀ = Oceananigans.defaults.FloatType
+            Oceananigans.defaults.FloatType = FT
+            grid = RectilinearGrid(CPU(), size=(10, 10, 10), extent=(1, 1//7, 2π))
+            Oceananigans.defaults.FloatType = FT₀
+        end
 
-    @test eltype(grid.xᶠᵃᵃ) == FT
-    @test eltype(grid.yᵃᶠᵃ) == FT
-    @test eltype(grid.z.cᵃᵃᶠ) == FT
-    @test eltype(grid.xᶜᵃᵃ) == FT
-    @test eltype(grid.yᵃᶜᵃ) == FT
-    @test eltype(grid.z.cᵃᵃᶜ) == FT
+        @test grid.Lx isa FT
+        @test grid.Ly isa FT
+        @test grid.Lz isa FT
+        @test grid.Δxᶠᵃᵃ isa FT
+        @test grid.Δyᵃᶠᵃ isa FT
+        @test grid.z.Δᵃᵃᶠ isa FT
+
+        @test eltype(grid.xᶠᵃᵃ) == FT
+        @test eltype(grid.yᵃᶠᵃ) == FT
+        @test eltype(grid.z.cᵃᵃᶠ) == FT
+        @test eltype(grid.xᶜᵃᵃ) == FT
+        @test eltype(grid.yᵃᶜᵃ) == FT
+        @test eltype(grid.z.cᵃᵃᶜ) == FT
+    end
 
     return nothing
 end
@@ -410,9 +421,9 @@ function test_rectilinear_grid_correct_spacings(FT, N)
     Δzᵃᵃᶜ(k) =  zᵃᵃᶠ(k+1) - zᵃᵃᶠ(k)
     Δzᵃᵃᶠ(k) =  zᵃᵃᶜ(k)   - zᵃᵃᶜ(k-1)
 
-    @test all(isapprox.(  grid.z.cᵃᵃᶠ[1:N+1],  zᵃᵃᶠ.(1:N+1) ))
-    @test all(isapprox.(  grid.z.cᵃᵃᶜ[1:N],    zᵃᵃᶜ.(1:N)   ))
-    @test all(isapprox.( grid.z.Δᵃᵃᶜ[1:N],   Δzᵃᵃᶜ.(1:N)   ))
+    @test all(isapprox.(grid.z.cᵃᵃᶠ[1:N+1],  zᵃᵃᶠ.(1:N+1) ))
+    @test all(isapprox.(grid.z.cᵃᵃᶜ[1:N],    zᵃᵃᶜ.(1:N)   ))
+    @test all(isapprox.(grid.z.Δᵃᵃᶜ[1:N],   Δzᵃᵃᶜ.(1:N)   ))
 
     @test all(isapprox.(zspacings(grid, Face()),   reshape(grid.z.Δᵃᵃᶠ[1:N+1], 1, 1, N+1)))
     @test all(isapprox.(zspacings(grid, Center()), reshape(grid.z.Δᵃᵃᶜ[1:N], 1, 1, N)))

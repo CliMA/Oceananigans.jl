@@ -168,7 +168,7 @@ julia> grid = LatitudeLongitudeGrid(size=(36, 34, Nz),
 ```
 """
 function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
-                               FT::DataType = Float64;
+                               FT::DataType = Oceananigans.defaults.FloatType;
                                size,
                                longitude = nothing,
                                latitude = nothing,

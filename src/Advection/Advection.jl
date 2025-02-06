@@ -28,12 +28,14 @@ using DocStringExtensions
 using Base: @propagate_inbounds
 using Adapt 
 using OffsetArrays
-using Oceananigans.Grids
-using Oceananigans.Grids: with_halo
-using Oceananigans.Architectures: architecture, CPU
-using Oceananigans: supported_float_types
 
+using Oceananigans
+using Oceananigans.Grids
 using Oceananigans.Operators
+
+using Oceananigans: fully_supported_float_types
+using Oceananigans.Architectures: architecture, CPU
+using Oceananigans.Grids: with_halo
 using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, Γᶠᶠᶜ, ∂t_σ
 
 import Base: show, summary
