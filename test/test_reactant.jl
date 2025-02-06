@@ -27,7 +27,7 @@ using GPUArrays
         @test c[1, 2, 3] == x[1] + y[2] * z[3]
     end
 
-    # fill_halo_regions!(c)
+    fill_halo_regions!(c)
 
     @allowscalar begin
         @test c[1, 1, 0] == c[1, 1, 1]
