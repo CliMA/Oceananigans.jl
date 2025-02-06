@@ -860,10 +860,10 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
     Tyᶠᶜ = total_length(loc_fc[2](), topology[2](), N[2], H[2])
     Tyᶜᶠ = total_length(loc_cf[2](), topology[2](), N[2], H[2])
 
-    λᶠᶜᵃ = offset_data(zeros(FT, architecture, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology[1:2], N[1:2], H[1:2])
-    λᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology[1:2], N[1:2], H[1:2])
-    φᶠᶜᵃ = offset_data(zeros(FT, architecture, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology[1:2], N[1:2], H[1:2])
-    φᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology[1:2], N[1:2], H[1:2])
+    λᶠᶜᵃ = offset_data(zeros(architecture, FT, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology[1:2], N[1:2], H[1:2])
+    λᶜᶠᵃ = offset_data(zeros(architecture, FT, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology[1:2], N[1:2], H[1:2])
+    φᶠᶜᵃ = offset_data(zeros(architecture, FT, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology[1:2], N[1:2], H[1:2])
+    φᶜᶠᵃ = offset_data(zeros(architecture, FT, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology[1:2], N[1:2], H[1:2])
 
     ## The vertical coordinates can come out of the regular rectilinear grid!
     Lz, z  = generate_coordinate(FT, topology, (Nξ, Nη, Nz), halo, z,  :z, 3, architecture)

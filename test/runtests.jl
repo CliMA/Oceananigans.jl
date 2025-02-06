@@ -233,6 +233,13 @@ CUDA.allowscalar() do
         end
     end
 
+    # Tests for Reactant extension
+    if group == :reactant || group == :all
+        @testset "Reactant extension tests" begin
+            include("test_reactant.jl")
+        end
+    end
+
     if group == :convergence
         include("test_convergence.jl")
     end
