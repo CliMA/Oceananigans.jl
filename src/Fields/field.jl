@@ -403,6 +403,7 @@ Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 
 @inline Base.fill!(f::Field, val) = fill!(parent(f), val)
 @inline Base.parent(f::Field) = parent(f.data)
+Adapt.parent_type(f::Field) = typeof(parent(f))
 Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
 
 total_size(f::Field) = total_size(f.grid, location(f), f.indices)
