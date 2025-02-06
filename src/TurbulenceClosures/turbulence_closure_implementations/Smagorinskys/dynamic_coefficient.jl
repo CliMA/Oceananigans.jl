@@ -61,16 +61,17 @@ Smagorinsky closure with
 └── Pr = 1.0
 ```
 
-The dynamic Smagorinsky above has its dynamic coefficient recalculated at every time step. While
-this provides the highest level of accuracy, it will almost certainly be very slow given the high
-cost of calculating `DynamicCoefficient`s. Because of this slowdown, it is standard practice in the
-literature to recalculate the coefficient only every few time steps, with the assumption that the
-its values don't change much from one time-step to the other. While any frequency choice is possible,
-all studies seem to recalculate every 5 steps (e.g., Bou-Zeid et al. 2005; Chen et al. 2016; Salesky et al. 2017;
-Chor et al 2021). This "tradition" seems to stem from the results by Bou-Zeid et al. (2005) who
-found that considerably speed up simulations while still producing very similar results to an update
-frequency of every time step. Users can change the update frequency using the `schedule` keyword argument.
-For example, a `DynamicCoefficient` that gets updated every 4 timesteps is obtained via:
+The dynamic Smagorinsky above has its coefficient recalculated at every time step, which will almost
+certainly be very slow. To alleviate the high computational cost of the `DynamicCoefficient`
+calculation, users may introduce an approximation wherein the dynamic coefficient is recomputed only
+every so often. This is standard practice in the literature and, while in principle any frequency
+choice is possible (as long as the coefficient changes relatively slowly compared to a single
+time-step), all published studies seem to recalculate it every 5 steps (e.g., Bou-Zeid et al. 2005;
+Chen et al. 2016; Salesky et al. 2017; Chor et al 2021). This choice seems to stem from the
+results by Bou-Zeid et al. (2005) who found that considerably speed up simulations while still
+producing very similar results to an update frequency of every time step. Users can change the
+update frequency using the `schedule` keyword argument. For example, a `DynamicCoefficient` that
+gets updated every 4 timesteps is obtained via:
 
 ```jldoctest
 julia> using Oceananigans
