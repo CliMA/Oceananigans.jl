@@ -124,7 +124,9 @@ where `c = C[tracer_index]`.
                                                           forcing) where tracer_index
 
     @inbounds c = tracers[tracer_index]
-    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
+    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), 
+                         auxiliary_fields,
+                         biogeochemical_auxiliary_fields(biogeochemistry))
 
     biogeochemical_velocities = biogeochemical_drift_velocity(biogeochemistry, val_tracer_name)
     closure_velocities = closure_turbulent_velocity(closure, diffusivities, val_tracer_name)
