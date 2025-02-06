@@ -1,15 +1,49 @@
 using Reactant
+
 if haskey(ENV, "GPU_TEST")
     Reactant.set_default_backend("gpu")
 else
     Reactant.set_default_backend("cpu")
 end
+
 using Test
 using Oceananigans
-using Reactant
 using Oceananigans.Architectures
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using GPUArrays
-GPUArrays.allowscalar(true)
+
+@testset "Reactanigans unit tests" begin
+    arch = ReactantState()
+    grid = RectilinearGrid(arch; size=(4, 4, 4), extent=(1, 1, 1))
+    c = CenterField(grid)
+    @test parent(c) isa Reactant.ConcreteRArray
+
+    set!(c, (x, y, z) -> x + y * z)
+    x, y, z = nodes(c)
+    @allowscalar begin
+        @test c[1, 1, 1] == x[1] + y[1] * z[1]
+        @test c[1, 2, 1] == x[1] + y[2] * z[1]
+        @test c[1, 2, 3] == x[1] + y[2] * z[3]
+    end
+
+    # fill_halo_regions!(c)
+
+    @allowscalar begin
+        @test c[1, 1, 0] == c[1, 1, 1]
+    end
+
+    d = CenterField(grid)
+    parent(d) .= 2
+
+    cd = Field(c * d)
+    compute!(cd)
+
+    @allowscalar begin
+        @test cd[1, 1, 1] == 2 * (x[1] + y[1] * z[1])
+        @test cd[1, 2, 1] == 2 * (x[1] + y[2] * z[1])
+        @test cd[1, 2, 3] == 2 * (x[1] + y[2] * z[3])
+    end
+end
 
 @testset "Reactant Super Simple Simulation Tests" begin
     r_arch = ReactantState()
@@ -61,7 +95,9 @@ GPUArrays.allowscalar(true)
     @show maximum(abs.(parent(u) .- parent(ru)))
     @show maximum(abs.(parent(v) .- parent(rv)))
     @show maximum(abs.(parent(w) .- parent(rw)))
+
     @test_broken parent(u) ≈ parent(ru)
     @test_broken parent(v) ≈ parent(rv)
     @test_broken parent(w) ≈ parent(rw)
 end
+
