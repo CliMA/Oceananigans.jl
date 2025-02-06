@@ -165,7 +165,7 @@ function latest_checkpoint(checkpointer, filepaths)
     filenames = basename.(filepaths)
     leading = length(checkpoint_superprefix(checkpointer.prefix))
     trailing = length(".jld2") # 5
-    iterations = map(name -> parse(Int, name[leading+1:end-trailing]), filenames)
+    iterations = map(name -> parse(Int, chop(name, head=leading, tail=trailing)), filenames)
     latest_iteration, idx = findmax(iterations)
     return filepaths[idx]
 end
