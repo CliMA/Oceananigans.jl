@@ -2,12 +2,14 @@ include("dependencies_for_runtests.jl")
 
 using Statistics
 
-using Oceananigans.Grids: total_length
 using Oceananigans.Fields: ReducedField, has_velocities
 using Oceananigans.Fields: VelocityFields, TracerFields, interpolate, interpolate!
 using Oceananigans.Fields: reduced_location
 using Oceananigans.Fields: fractional_indices, interpolator
+using Oceananigans.Fields: convert_to_0_360
 using Oceananigans.Grids: ξnode, ηnode, rnode
+using Oceananigans.Grids: total_length
+using Oceananigans.Grids: λnode
 
 using Random
 using CUDA: @allowscalar
@@ -193,7 +195,26 @@ function run_field_interpolation_tests(grid)
     CUDA.@allowscalar begin
         @test all(interior(wf) .≈ interior(If))
     end
+
+    # interpolation between fields on latitudelongitude grids with different longitudes
+    grid1 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=(   0, 360), latitude=(-90, 90), z=(0, 1))
+    grid2 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=(-180, 180), latitude=(-90, 90), z=(0, 1))
     
+    f1 = CenterField(grid1)
+    f2 = CenterField(grid2)
+
+    set!(f1, (λ, y, z) -> λ)
+    fill_halo_regions!(f1)
+    interpolate!(f2, f1)
+
+    @test all(interior(f2) .≈ convert_to_0_360.(λnodes(grid2, Center())))
+
+    # now interpolate back
+    fill_halo_regions!(f2)
+    interpolate!(f1, f2)
+
+    @test all(interior(f1) .≈ λnodes(grid1, Center()))
+
     return nothing
 end
 
