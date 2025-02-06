@@ -5,7 +5,7 @@ export FixedSubstepNumber, FixedTimeStepSize
 
 using Oceananigans
 using Oceananigans.Architectures
-using Oceananigans.Architectures: convert_args
+using Oceananigans.Architectures: convert_to_device
 using Oceananigans.Fields
 using Oceananigans.Utils
 using Oceananigans.Grids
