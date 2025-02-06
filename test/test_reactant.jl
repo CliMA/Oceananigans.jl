@@ -20,6 +20,7 @@ using GPUArrays
 
     set!(c, (x, y, z) -> x + y * z)
     x, y, z = nodes(c)
+
     @allowscalar begin
         @test c[1, 1, 1] == x[1] + y[1] * z[1]
         @test c[1, 2, 1] == x[1] + y[2] * z[1]
