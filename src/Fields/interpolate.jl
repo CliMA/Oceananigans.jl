@@ -83,7 +83,17 @@ end
 
 @inline convert_to_0_360(x) = ((x % 360) + 360) % 360
 
-@inline convert_to_minus_180_180(x) = rem(x, 360, RoundNearest)
+# Find n for which 360 * n ≤ λ ≤ 360 * (n + 1)
+@inline find_λ_range(λ) = ifelse(λ < 0, λ ÷ 360 - 1, λ ÷ 360)
+
+@inline function convert_to_λ₀_λ₀_plus360(x, λ₀)
+    x  = convert_to_0_360(x)
+    # Convert the interpolating range to a positive-always range
+    n  = find_λ_range(λ₀)
+    λ⁻ = convert_to_0_360(λ₀)
+    n  = ifelse(x > λ⁻, n, n+1)
+    return x + 360 * n
+end
 
 # When interpolating longitude values, we convert all longitudes to the 0-360 range
 # if the parent grid starts with a positive number (λ₀ > 0), and to a -180-180 range

@@ -197,22 +197,38 @@ function run_field_interpolation_tests(grid)
     end
 
     # interpolation between fields on latitudelongitude grids with different longitudes
-    grid1 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=(   0, 360), latitude=(-90, 90), z=(0, 1))
-    grid2 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=(-180, 180), latitude=(-90, 90), z=(0, 1))
-    
+    grid1 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=(    0,       360), latitude=(-90, 90), z=(0, 1))
+    grid2 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=( -180,       180), latitude=(-90, 90), z=(0, 1))
+    grid3 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=(  560,   560+360), latitude=(-90, 90), z=(0, 1))
+    grid4 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=(-1020, -1020+360), latitude=(-90, 90), z=(0, 1))
+
     f1 = CenterField(grid1)
     f2 = CenterField(grid2)
+    f3 = CenterField(grid2)
+    f4 = CenterField(grid2)
 
     set!(f1, (λ, y, z) -> λ)
     fill_halo_regions!(f1)
     interpolate!(f2, f1)
+    interpolate!(f3, f1)
+    interpolate!(f4, f1)
 
-    @test all(interior(f2) .≈ convert_to_0_360.(λnodes(grid2, Center())))
+    @test all(interior(f2) .≈ map(convert_to_0_360, λnodes(grid2, Center())))
+    @test all(interior(f3) .≈ map(convert_to_0_360, λnodes(grid3, Center())))
+    @test all(interior(f4) .≈ map(convert_to_0_360, λnodes(grid4, Center())))
 
     # now interpolate back
     fill_halo_regions!(f2)
+    fill_halo_regions!(f3)
+    fill_halo_regions!(f4)
+    
     interpolate!(f1, f2)
+    @test all(interior(f1) .≈ λnodes(grid1, Center()))
 
+    interpolate!(f1, f3)
+    @test all(interior(f1) .≈ λnodes(grid1, Center()))
+
+    interpolate!(f1, f4)
     @test all(interior(f1) .≈ λnodes(grid1, Center()))
 
     return nothing
