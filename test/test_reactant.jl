@@ -138,7 +138,7 @@ end
     =#
 end
 
-@testset "Reactant test traced clock" begin
+@testset "Reactanigans Clock{ConcreteRNumber} tests" begin
     @info "Testing ConcreteRNumber clock elements in a model with time stepping..."
     halo = (7, 7, 7)
 
@@ -155,7 +155,7 @@ end
     model = HydrostaticFreeSurfaceModel(; grid, clock)
 
     Δt = 0.02
-    simulatijn = Simulation(model; Δt, stop_iteration=3)
+    simulation = Simulation(model; Δt, stop_iteration=3, verbose=false)
     run!(simulation)
 
     @test iteration(simulation) == 3
