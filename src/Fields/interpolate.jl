@@ -86,9 +86,10 @@ end
 # Find n for which 360 * n ≤ λ ≤ 360 * (n + 1)
 @inline find_λ_range(λ) = ifelse(λ < 0, λ ÷ 360 - 1, λ ÷ 360)
 
+# Convert x to lie in the λ₀ : λ + 360 range by accounting for the cyclic
+# nature of the longitude coordinate. 
 @inline function convert_to_λ₀_λ₀_plus360(x, λ₀)
     x  = convert_to_0_360(x)
-    # Convert the interpolating range to a positive-always range
     n  = find_λ_range(λ₀)
     λ⁻ = convert_to_0_360(λ₀)
     n  = ifelse(x > λ⁻, n, n+1)
