@@ -86,7 +86,7 @@ end
 # Find n for which 360 * n ≤ λ ≤ 360 * (n + 1)
 @inline find_λ_range(λ) = ifelse((λ < 0) & (mod(λ, 360) != 0), λ ÷ 360 - 1, λ ÷ 360)
 
-# Convert x to lie in the λ₀ : λ + 360 range by accounting for the cyclic
+# Convert x to lie in the λ₀ : λ₀ + 360 range by accounting for the cyclic
 # nature of the longitude coordinate. 
 @inline function convert_to_λ₀_λ₀_plus360(x, λ₀)
     x  = convert_to_0_360(x)
@@ -96,9 +96,9 @@ end
     return x + 360 * n
 end
 
-# When interpolating longitude values, we convert all longitudes to the 0-360 range
-# if the parent grid starts with a positive number (λ₀ > 0), and to a -180-180 range
-# if the parent grid starts with a negative number (λ₀ < 0).
+# When interpolating longitude values, we convert the longitude to 
+# interpolate to lie in the λ₀ : λ₀ + 360 range, where λ₀ is the westernmost node
+# of the interpolating grid.
 @inline function fractional_x_index(λ, locs, grid::XRegularLLG)
     λ₀ = λnode(1, 1, 1, grid, locs...)
     λ₁ = λnode(2, 1, 1, grid, locs...)
@@ -108,9 +108,9 @@ end
     return convert(FT, (λc - λ₀) / (λ₁ - λ₀)) + 1 # 1 - based indexing 
 end
 
-# When interpolating longitude values, we convert all longitudes to the 0-360 range
-# if the parent grid starts with a positive number (λ₀ > 0), and to a -180-180 range
-# if the parent grid starts with a negative number (λ₀ < 0).
+# When interpolating longitude values, we convert the longitude to 
+# interpolate to lie in the λ₀ : λ₀ + 360 range, where λ₀ is the westernmost node
+# of the interpolating grid.
 @inline function fractional_x_index(λ, locs, grid::LatitudeLongitudeGrid)
     loc = @inbounds locs[1]
      Tλ = topology(grid, 1)()
