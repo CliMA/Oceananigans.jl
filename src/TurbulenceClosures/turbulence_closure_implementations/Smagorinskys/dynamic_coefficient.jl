@@ -10,7 +10,7 @@ end
 
 const DynamicSmagorinsky = Smagorinsky{<:Any, <:DynamicCoefficient}
 
-function DynamicSmagorinsky(time_discretization=ExplicitTimeDiscretization(), FT=Float64; averaging,
+function DynamicSmagorinsky(time_discretization=ExplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType; averaging,
                             Pr=1.0, schedule=IterationInterval(1), minimum_numerator=1e-32)
     coefficient = DynamicCoefficient(FT; averaging, schedule, minimum_numerator)
     TD = typeof(time_discretization)
@@ -105,7 +105,7 @@ Chor, Tomas, McWilliams, James C., Chamecki, Marcelo. (2021) Modifications to th
 Parameterization with nondiffusive fluxes for Langmuir turbulence, Journal of Physical Oceanography,
 51(5), pp.1503-1521.
 """
-function DynamicCoefficient(FT=Float64; averaging, schedule=IterationInterval(1), minimum_numerator=1e-32)
+function DynamicCoefficient(FT=Oceananigans.defaults.FloatType; averaging, schedule=IterationInterval(1), minimum_numerator=1e-32)
     minimum_numerator = convert(FT, minimum_numerator)
     return DynamicCoefficient(averaging, minimum_numerator, schedule)
 end
