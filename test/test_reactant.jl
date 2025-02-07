@@ -31,8 +31,11 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw)
     Random.seed!(123)
     set!(r_model, u=ui, v=ui)
 
+    u, v, w = model.velocities
+    ru, rv, rw = r_model.velocities
+
     # Test that fields were set correctly
-    @info "    After setting an initial condition:"
+    @info "  After setting an initial condition:"
     @show maximum(abs.(parent(u) .- parent(ru)))
     @show maximum(abs.(parent(v) .- parent(rv)))
     @show maximum(abs.(parent(w) .- parent(rw)))
@@ -43,7 +46,7 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw)
 
     # Deduce a stable time-step
     Δx = minimum_xspacing(grid)
-    Δt = 0.1 / Δx
+    Δt = 0.01 * Δx
 
     # Stop iteration for both simulations
     stop_iteration = 3
@@ -64,11 +67,10 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw)
     @test iteration(r_simulation) == iteration(simulation)
     @test time(r_simulation) == time(simulation)
 
-    # Data looks right:
-    u, v, w = model.velocities
-    ru, rv, rw = r_model.velocities
-
-    @info "    After running 3 time steps:"
+    @info "  After running 3 time steps:"
+    @show maximum(abs, parent(u))
+    @show maximum(abs, parent(v))
+    @show maximum(abs, parent(w))
     @show maximum(abs.(parent(u) .- parent(ru)))
     @show maximum(abs.(parent(v) .- parent(rv)))
     @show maximum(abs.(parent(w) .- parent(rw)))
@@ -150,20 +152,20 @@ end
 end
 
 @testset "Reactanigans Clock{ConcreteRNumber} tests" begin
-    @info "Testing ConcreteRNumber clock elements in a model with time stepping..."
-    halo = (7, 7, 7)
+    @info "Testing model time-stepping with Clock{ConcreteRNumber}..."
 
     # All of these may not need to be traced but this is paranoia.
     FT = Float64
-    time = ConcreteRNumber(zero(FT))
-    iteration = ConcreteRNumber(0)
+    t = ConcreteRNumber(zero(FT))
+    iter = ConcreteRNumber(0)
     stage = ConcreteRNumber(0)
     last_Δt = ConcreteRNumber(zero(FT))
     last_stage_Δt = ConcreteRNumber(zero(FT))
-    clock = Clock(; time, iteration, stage, last_Δt, last_stage_Δt)
+    clock = Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
 
-    grid = RectilinearGrid(ReactantState(), size=(4, 4, 4), halo, extent=(4, 4, 4))
-    model = HydrostaticFreeSurfaceModel(; grid, clock)
+    grid = RectilinearGrid(ReactantState(); size=(10, 10, 10), halo=(3, 3, 3), extent=(10, 10, 10))
+    free_surface = SplitExplicitFreeSurface(grid, substeps=10, gravitational_acceleration=1)
+    model = HydrostaticFreeSurfaceModel(; grid, clock, free_surface)
 
     Δt = 0.02
     simulation = Simulation(model; Δt, stop_iteration=3, verbose=false)
@@ -172,9 +174,9 @@ end
     @test iteration(simulation) == 3
     @test time(simulation) == 0.06
 
-    simulation.stop_iteration += 3
+    simulation.stop_iteration += 2
     run!(simulation)
-    @test iteration(simulation) == 6
-    @test time(simulation) == 0.12
+    @test iteration(simulation) == 5
+    @test time(simulation) == 0.10
 end
 
