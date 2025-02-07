@@ -70,6 +70,7 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw)
 end
 
 @testset "Reactanigans unit tests" begin
+    @info "Performing Reactanigans unit tests..."
     arch = ReactantState()
     grid = RectilinearGrid(arch; size=(4, 4, 4), extent=(1, 1, 1))
     c = CenterField(grid)
@@ -104,16 +105,15 @@ end
 end
 
 @testset "Reactant Super Simple Simulation Tests" begin
+    nonhydrostatic_model_kw = (; advection=WENO())
+    hydrostatic_model_kw = (; momentum_advection=WENO())
     Nx, Ny, Nz = (10, 10, 10) # number of cells
     halo = (7, 7, 7)
     longitude = (0, 4)
     latitude = (0, 4)
     z = (-1, 0)
-
-    nonhydrostatic_model_kw = (; advection=WENO())
-    hydrostatic_model_kw = (; momentum_advection=WENO())
-    rectilinear_kw = (; size=(Nx, Ny, Nz), halo, x=(0, 1), y=(0, 1), z=(0, 1))
     lat_lon_kw = (; size=(Nx, Ny, Nz), halo, longitude, latitude, z)
+    rectilinear_kw = (; size=(Nx, Ny, Nz), halo, x=(0, 1), y=(0, 1), z=(0, 1))
 
     # FFTs are not supported by Reactant so we don't run this test:
     # @info "Testing RectilinearGrid + NonhydrostaticModel Reactant correctness"
@@ -136,5 +136,34 @@ end
                             closure = CATKEVerticalDiffusivity())
     test_reactant_model_correctness(LatitudeLongitudeGrid, HydrostaticFreeSurfaceModel, lat_lon_kw, hydrostatic_model_kw)
     =#
+end
+
+@testset "Reactant test traced clock" begin
+    @info "Testing ConcreteRNumber clock elements in a model with time stepping..."
+    halo = (7, 7, 7)
+
+    # All of these may not need to be traced but this is paranoia.
+    FT = Float64
+    time = ConcreteRNumber(zero(FT))
+    iteration = ConcreteRNumber(0)
+    stage = ConcreteRNumber(0)
+    last_Δt = ConcreteRNumber(zero(FT))
+    last_stage_Δt = ConcreteRNumber(zero(FT))
+    clock = Clock{Float64}(; time, iteration, stage, last_Δt, last_stage_Δt)
+
+    grid = RectilinearGrid(ReactantState(), size=(4, 4, 4), halo, extent=(4, 4, 4))
+    model = HydrostaticFreeSurfaceModel(; grid, clock)
+
+    Δt = 0.02
+    simulatijn = Simulation(model; Δt, stop_iteration=3)
+    run!(simulation)
+
+    @test iteration(simulation) == 3
+    @test time(simulation) == 0.06
+
+    simulation.stop_iteration += 3
+    run!(simulation)
+    @test iteration(simulation) == 6
+    @test time(simulation) == 0.12
 end
 
