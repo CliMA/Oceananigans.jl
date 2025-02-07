@@ -199,13 +199,13 @@ function run_field_interpolation_tests(grid)
     # interpolation between fields on latitudelongitude grids with different longitudes
     grid1 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=(    0,       360), latitude=(-90, 90), z=(0, 1))
     grid2 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=( -180,       180), latitude=(-90, 90), z=(0, 1))
-    grid3 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=(  560,   560+360), latitude=(-90, 90), z=(0, 1))
-    grid4 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=(-1020, -1020+360), latitude=(-90, 90), z=(0, 1))
-
+    grid3 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=(-1080, -1080+360), latitude=(-90, 90), z=(0, 1))
+    grid4 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=(  180,       540), latitude=(-90, 90), z=(0, 1))
+    
     f1 = CenterField(grid1)
     f2 = CenterField(grid2)
-    f3 = CenterField(grid2)
-    f4 = CenterField(grid2)
+    f3 = CenterField(grid3)
+    f4 = CenterField(grid4)
 
     set!(f1, (λ, y, z) -> λ)
     fill_halo_regions!(f1)
