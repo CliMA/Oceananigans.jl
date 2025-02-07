@@ -19,6 +19,7 @@ using Oceananigans.Utils
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
+using Oceananigans.Fields: condition_operand
 
 using Oceananigans.Grids: unpack_grid, inactive_cell
 using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
@@ -43,6 +44,7 @@ include("plan_transforms.jl")
 include("fft_based_poisson_solver.jl")
 include("fourier_tridiagonal_poisson_solver.jl")
 include("conjugate_gradient_poisson_solver.jl")
+include("krylov.jl")
 include("sparse_approximate_inverse.jl")
 include("matrix_solver_utils.jl")
 include("sparse_preconditioners.jl")
