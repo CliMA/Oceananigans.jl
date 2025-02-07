@@ -43,7 +43,7 @@ and `γ = - 4 * rotation_rate * sind(latitude) / radius`.
 
 By default, the `rotation_rate` and planet `radius` is assumed to be Earth's.
 """
-function NonTraditionalBetaPlane(FT=Float64;
+function NonTraditionalBetaPlane(FT=Oceananigans.defaults.FloatType;
                                  fz=nothing, fy=nothing, β=nothing, γ=nothing,
                                  rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
 

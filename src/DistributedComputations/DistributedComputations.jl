@@ -8,6 +8,7 @@ export
 
 using MPI
 
+using Oceananigans
 using Oceananigans.Utils
 using Oceananigans.Grids
 using OffsetArrays
