@@ -149,7 +149,7 @@ end
     stage = ConcreteRNumber(0)
     last_Δt = ConcreteRNumber(zero(FT))
     last_stage_Δt = ConcreteRNumber(zero(FT))
-    clock = Clock{Float64}(; time, iteration, stage, last_Δt, last_stage_Δt)
+    clock = Clock(; time, iteration, stage, last_Δt, last_stage_Δt)
 
     grid = RectilinearGrid(ReactantState(), size=(4, 4, 4), halo, extent=(4, 4, 4))
     model = HydrostaticFreeSurfaceModel(; grid, clock)
