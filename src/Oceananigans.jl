@@ -141,8 +141,8 @@ const fully_supported_float_types = (Float32, Float64)
 ##### Default settings for constructors
 #####
 
-mutable struct Defaults{DFT}
-    FloatType :: DFT
+mutable struct Defaults
+    FloatType :: DataType
 end
 
 Defaults(; FloatType=Float64) = Defaults(FloatType)
