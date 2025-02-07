@@ -84,7 +84,7 @@ end
 @inline convert_to_0_360(x) = ((x % 360) + 360) % 360
 
 # Find n for which 360 * n ≤ λ ≤ 360 * (n + 1)
-@inline find_λ_range(λ) = ifelse(λ < 0, λ ÷ 360 - 1, λ ÷ 360)
+@inline find_λ_range(λ) = ifelse((λ < 0) & (mod(λ, 360) != 0), λ ÷ 360 - 1, λ ÷ 360)
 
 # Convert x to lie in the λ₀ : λ + 360 range by accounting for the cyclic
 # nature of the longitude coordinate. 
@@ -92,7 +92,7 @@ end
     x  = convert_to_0_360(x)
     n  = find_λ_range(λ₀)
     λ⁻ = convert_to_0_360(λ₀)
-    n  = ifelse(x > λ⁻, n, n+1)
+    n  = ifelse(x ≥ λ⁻, n, n+1)
     return x + 360 * n
 end
 
@@ -102,7 +102,8 @@ end
 @inline function fractional_x_index(λ, locs, grid::XRegularLLG)
     λ₀ = λnode(1, 1, 1, grid, locs...)
     λ₁ = λnode(2, 1, 1, grid, locs...)
-    λc =  convert_to_λ₀_λ₀_plus360(λ, λ₀)
+    Δλ = λ₁ - λ₀
+    λc = convert_to_λ₀_λ₀_plus360(λ, λ₀ - Δλ/2) # Making sure we have the right range
     FT = eltype(grid)
     return convert(FT, (λc - λ₀) / (λ₁ - λ₀)) + 1 # 1 - based indexing 
 end
@@ -116,7 +117,9 @@ end
      Nλ = length(loc, Tλ, grid.Nx)
      λn = λnodes(grid, locs...)
      λ₀ = @inbounds λn[1]     
-     λc = convert_to_λ₀_λ₀_plus360(λ, λ₀)
+     λ₁ = @inbounds λn[2]     
+     Δλ = λ₁ - λ₀
+     λc = convert_to_λ₀_λ₀_plus360(λ, λ₀ - Δλ/2)
     return fractional_index(λc, λn, Nλ) 
 end
 
