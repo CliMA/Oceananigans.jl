@@ -79,6 +79,7 @@ SeawaterPolynomials = "0.3.5"
 SparseArrays = "1.9"
 Statistics = "1.9"
 StructArrays = "0.4, 0.5, 0.6, 0.7"
+TimesDates = "0.3"
 julia = "1.9"
 
 [extras]
