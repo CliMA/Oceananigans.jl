@@ -31,6 +31,16 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw)
     Random.seed!(123)
     set!(r_model, u=ui, v=ui)
 
+    # Test that fields were set correctly
+    @info "    After setting an initial condition:"
+    @show maximum(abs.(parent(u) .- parent(ru)))
+    @show maximum(abs.(parent(v) .- parent(rv)))
+    @show maximum(abs.(parent(w) .- parent(rw)))
+
+    @test parent(u) ≈ parent(ru)
+    @test parent(v) ≈ parent(rv)
+    @test parent(w) ≈ parent(rw)
+
     # Deduce a stable time-step
     Δx = minimum_xspacing(grid)
     Δt = 0.1 / Δx
@@ -39,11 +49,11 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw)
     stop_iteration = 3
 
     # What we normally do:
-    simulation = Simulation(model; Δt, stop_iteration)
+    simulation = Simulation(model; Δt, stop_iteration, verbose=false)
     run!(simulation)
 
     # What we want to do with Reactant:
-    r_simulation = Simulation(r_model; Δt, stop_iteration)
+    r_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false)
     pop!(r_simulation.callbacks, :nan_checker)
 
     r_run! = @compile sync = true run!(r_simulation)
@@ -58,6 +68,7 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw)
     u, v, w = model.velocities
     ru, rv, rw = r_model.velocities
 
+    @info "    After running 3 time steps:"
     @show maximum(abs.(parent(u) .- parent(ru)))
     @show maximum(abs.(parent(v) .- parent(rv)))
     @show maximum(abs.(parent(w) .- parent(rw)))
