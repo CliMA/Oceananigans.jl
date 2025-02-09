@@ -188,7 +188,7 @@ end
     return ñ
 end
 
-@inline function time_index(backend::PartlyInMemory, ::Linear, Nt, m)
+@inline function time_index(backend::PartlyInMemory, ::Union{Clamp, Linear}, Nt, m)
     n = reverse_index(m, backend.start)
     ñ = ifelse(n > Nt, Nt, n)
     return ñ
