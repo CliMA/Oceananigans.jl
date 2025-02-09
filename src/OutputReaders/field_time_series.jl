@@ -375,7 +375,7 @@ function FieldTimeSeries(loc, grid, times=();
                          backend = InMemory(),
                          path = nothing,
                          name = nothing,
-                         time_indexing = Linear(),
+                         time_indexing = Clamp(),
                          boundary_conditions = nothing,
                          reader_kw = NamedTuple())
 
