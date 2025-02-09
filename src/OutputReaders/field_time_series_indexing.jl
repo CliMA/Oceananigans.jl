@@ -143,9 +143,10 @@ function Base.getindex(fts::FieldTimeSeries, time_index::Time)
     end
 
     # Otherwise, make a Field representing a linear interpolation in time
-    ψ₁ = fts[n₁]
+    # Make sure both n₁ and n₂ are in memory by first retrieving n₂ and then n₁
     ψ₂ = fts[n₂]
-    ψ̃ = Field(ψ₂ * ñ + ψ₁ * (1 - ñ))
+    ψ₁ = fts[n₁]
+    ψ̃  = Field(ψ₂ * ñ + ψ₁ * (1 - ñ))
 
     # Compute the field and return it
     return compute!(ψ̃)
@@ -276,7 +277,7 @@ function in_time_range(fts, time_indexing, n₁, n₂)
     return n₁ ∈ idxs && n₂ ∈ idxs
 end
 
-function in_time_range(fts, ::Union{Clamp,}, n₁, n₂)
+function in_time_range(fts, ::Union{Clamp, Linear}, n₁, n₂)
     Nt = length(fts.times)
     idxs = time_indices(fts)
     in_range_1 = n₁ ∈ idxs || n₁ > Nt
