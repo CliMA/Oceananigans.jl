@@ -123,9 +123,7 @@ struct Clamp end # clamp to nearest value
 @inline shift_index(n, n₀) = n - (n₀ - 1)
 @inline reverse_index(m, n₀) = m + n₀ - 1
 
-@inline memory_index(backend::PartlyInMemory, ::Linear, Nt, n) = shift_index(n, backend.start)
-
-@inline function memory_index(backend::PartlyInMemory, ::Clamp, Nt, n)
+@inline function memory_index(backend::PartlyInMemory, ::Union{Clamp, Linear}, Nt, n)
     n̂ = clamp(n, 1, Nt)
     m = shift_index(n̂, backend.start)
     return m
@@ -187,6 +185,12 @@ end
 @inline function time_index(backend::PartlyInMemory, ::Cyclical, Nt, m)
     n = reverse_index(m, backend.start)
     ñ = mod1(n, Nt) # wrap index
+    return ñ
+end
+
+@inline function time_index(backend::PartlyInMemory, ::Linear, Nt, m)
+    n = reverse_index(m, backend.start)
+    ñ = ifelse(n > Nt, Nt, n)
     return ñ
 end
 

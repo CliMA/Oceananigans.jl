@@ -22,6 +22,7 @@ function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name; wa
     # all of the data into a single array, and then transfer that
     # to parent(fts).
     for n in time_indices(fts)
+        @show time_indices(fts)
         t = fts.times[n]
         file_index = find_time_index(t, file_times)
 
@@ -40,7 +41,8 @@ function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name; wa
                             architecture = cpu_architecture(arch),
                             indices = fts.indices,
                             boundary_conditions = fts.boundary_conditions)
-
+            
+            @show file_index, n
             # Potentially transfer from CPU to GPU
             set!(fts[n], field_n)
         end

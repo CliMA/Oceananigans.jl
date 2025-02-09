@@ -258,8 +258,7 @@ function update_field_time_series!(fts::PartlyInMemoryFTS, time_index::Time)
 end
 
 function update_field_time_series!(fts::PartlyInMemoryFTS, n₁::Int, n₂=n₁)
-    idxs = time_indices(fts)
-    in_range = n₁ ∈ idxs && n₂ ∈ idxs
+    in_range = in_time_range(fts, fts.time_indexing, n₁, n₂)
 
     if !in_range
         # Update backend
@@ -270,6 +269,19 @@ function update_field_time_series!(fts::PartlyInMemoryFTS, n₁::Int, n₂=n₁)
     end
 
     return nothing
+end
+
+function in_time_range(fts, time_indexing, n₁, n₂)
+    idxs = time_indices(fts)
+    return n₁ ∈ idxs && n₂ ∈ idxs
+end
+
+function in_time_range(fts, ::Union{Clamp,}, n₁, n₂)
+    Nt = length(fts.times)
+    idxs = time_indices(fts)
+    in_range_1 = n₁ ∈ idxs || n₁ > Nt
+    in_range_2 = n₂ ∈ idxs || n₂ > Nt
+    return in_range_1 && in_range_2
 end
 
 # If `n` is not in memory, getindex automatically updates the data in memory
