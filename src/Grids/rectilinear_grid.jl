@@ -248,7 +248,7 @@ julia> grid = RectilinearGrid(size = (Nx, Ny, Nz),
 ```
 """
 function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
-                         FT::DataType = Float64;
+                         FT::DataType = Oceananigans.defaults.FloatType;
                          size,
                          x = nothing,
                          y = nothing,
@@ -279,6 +279,8 @@ function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
                                        Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
                                        z)
 end
+
+
 
 """ Validate user input arguments to the `RectilinearGrid` constructor. """
 function validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
@@ -339,6 +341,20 @@ function Base.show(io::IO, grid::RectilinearGrid, withsummary=true)
 end
 
 #####
+##### For "column ensemble models"
+#####
+
+struct ColumnEnsembleSize{C<:Tuple{Int, Int}}
+    ensemble :: C
+    Nz :: Int
+    Hz :: Int
+end
+
+ColumnEnsembleSize(; Nz, ensemble=(0, 0), Hz=1) = ColumnEnsembleSize(ensemble, Nz, Hz)
+validate_size(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(e.ensemble[1], e.ensemble[2], e.Nz)
+validate_halo(TX, TY, TZ, size, e::ColumnEnsembleSize) = tuple(0, 0, e.Hz)
+
+#####
 ##### Utilities
 #####
 
@@ -369,10 +385,16 @@ function constructor_arguments(grid::RectilinearGrid)
 
     # Kwargs
     topo = topology(grid)
-    size = (grid.Nx, grid.Ny, grid.Nz)
-    halo = (grid.Hx, grid.Hy, grid.Hz)
-    size = pop_flat_elements(size, topo)
-    halo = pop_flat_elements(halo, topo)
+
+    if (topo[1] == Flat && grid.Nx > 1) ||
+       (topo[2] == Flat && grid.Ny > 1)
+        size = halo = ColumnEnsembleSize(Nz=grid.Nz, Hz=grid.Hz, ensemble=(grid.Nx, grid.Ny))
+    else
+        size = (grid.Nx, grid.Ny, grid.Nz)
+        halo = (grid.Hx, grid.Hy, grid.Hz)
+        size = pop_flat_elements(size, topo)
+        halo = pop_flat_elements(halo, topo)
+    end
 
     kwargs = Dict(:size => size,
                   :halo => halo,

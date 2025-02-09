@@ -1,3 +1,5 @@
+using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
+
 # Evolution Kernels
 #
 # ∂t(η) = -∇⋅U
@@ -26,8 +28,8 @@ end
     store_previous_velocities!(timestepper, i, j, 1, U)
     store_previous_velocities!(timestepper, i, j, 1, V)
 
-    Hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
-    Hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
+    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, k_top, grid, η)
+    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, k_top, grid, η)
     
     @inbounds begin
         # ∂τ(U) = - ∇η + G
@@ -86,8 +88,8 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
         # launching ~100 very small kernels: we are limited by
         # latency of argument conversion to GPU-compatible values.
         # To alleviate this penalty we convert first and then we substep!
-        converted_η_args = convert_args(arch, η_args)
-        converted_U_args = convert_args(arch, U_args)
+        converted_η_args = convert_to_device(arch, η_args)
+        converted_U_args = convert_to_device(arch, U_args)
 
         @unroll for substep in 1:Nsubsteps
             Base.@_inline_meta
@@ -162,6 +164,12 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
         # Preparing velocities for the barotropic correction
         mask_immersed_field!(model.velocities.u)
         mask_immersed_field!(model.velocities.v)
+    end
+
+    # Needed for Mutable to compute the barotropic correction.
+    # TODO: Would it be possible to remove it in some way?
+    if model.grid isa MutableGridOfSomeKind
+        fill_halo_regions!(η)
     end
 
     return nothing
