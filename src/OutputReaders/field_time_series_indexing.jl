@@ -248,7 +248,7 @@ end
 
 # Fallbacks that do nothing
 update_field_time_series!(fts, time::Time) = nothing
-update_field_time_series!(fts, n::Int) = nothing
+update_field_time_series!(fts, n::Int, n₂=n₁) = nothing
 
 # Update the `fts` to contain the time `time_index.time`.
 # Linear extrapolation, simple version
