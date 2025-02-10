@@ -13,7 +13,7 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.Utils: launch!
 using SeawaterPolynomials: TEOS10EquationOfState
-using KernelAbstractions: @kernel, @index, Global
+using KernelAbstractions: @kernel, @index
 using GPUArrays
 using Random
 
