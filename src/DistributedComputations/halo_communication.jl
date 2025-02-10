@@ -124,10 +124,10 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     outstanding_requests = length(arch.mpi_requests)
 
     for task = 1:number_of_tasks
-        fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
+        fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, buffers, args...; kwargs...)
     end
 
-    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
+    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; kwargs...)
     
     # We increment the request counter only if we have actually initiated the MPI communication.
     # This is the case only if at least one of the boundary conditions is a distributed communication 
