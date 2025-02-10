@@ -11,7 +11,9 @@ using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
+using Oceananigans.Utils: launch!
 using SeawaterPolynomials: TEOS10EquationOfState
+using KernelAbstractions: @kernel, @index, Global
 using GPUArrays
 using Random
 
@@ -23,12 +25,10 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw)
     grid = GridType(CPU(); grid_kw...)
     model = ModelType(; grid=grid, model_kw...)
 
-    ui(x, y, z) = randn()
+    ui = randn(size(model.velocities.u)...)
+    vi = randn(size(model.velocities.v)...)
 
-    Random.seed!(123)
     set!(model, u=ui, v=ui)
-
-    Random.seed!(123)
     set!(r_model, u=ui, v=ui)
 
     u, v, w = model.velocities
@@ -71,6 +71,7 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw)
     @show maximum(abs, parent(u))
     @show maximum(abs, parent(v))
     @show maximum(abs, parent(w))
+
     @show maximum(abs.(parent(u) .- parent(ru)))
     @show maximum(abs.(parent(v) .- parent(rv)))
     @show maximum(abs.(parent(w) .- parent(rw)))
@@ -82,12 +83,31 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw)
     return nothing
 end
 
+function add_one!(f)
+    arch = architecture(f)
+    launch!(arch, f.grid, :xyz, _add_one!, f)
+    return f
+end
+
+@kernel function _add_one!(f)
+    i, j, k = @index(Global, NTuple)
+    @inbounds f[i, j, k] += 1
+end
+
 @testset "Reactanigans unit tests" begin
     @info "Performing Reactanigans unit tests..."
     arch = ReactantState()
     grid = RectilinearGrid(arch; size=(4, 4, 4), extent=(1, 1, 1))
     c = CenterField(grid)
     @test parent(c) isa Reactant.ConcreteRArray
+
+    @info "  Testing field set! with a number..."
+    set!(c, 1)
+    @test all(c .≈ 1)
+
+    @info "  Testing simple kernel launch!..."
+    add_one!(c)
+    @test all(c .≈ 2)
 
     set!(c, (x, y, z) -> x + y * z)
     x, y, z = nodes(c)
