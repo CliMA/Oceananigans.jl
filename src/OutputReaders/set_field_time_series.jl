@@ -40,7 +40,7 @@ function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name; wa
                             architecture = cpu_architecture(arch),
                             indices = fts.indices,
                             boundary_conditions = fts.boundary_conditions)
-            
+
             # Potentially transfer from CPU to GPU
             set!(fts[n], field_n)
         end
