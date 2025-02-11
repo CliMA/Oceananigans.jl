@@ -5,8 +5,10 @@ using Oceananigans.Utils: get_cartesian_nodes_and_vertices
 using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.BoundaryConditions: Zipper
 
-using Oceananigans.Utils: KernelParameters, contiguousrange
+using Oceananigans.Utils: KernelParameters
+import Oceananigans.Utils: contiguousrange
 
+contiguousrange(::KernelParameters{spec, offset}) where {spec, offset} = contiguousrange(spec, offset)
 
 @kernel function compute_nonorthogonality_angle!(angle, grid, xF, yF, zF)
     i, j = @index(Global, NTuple)
