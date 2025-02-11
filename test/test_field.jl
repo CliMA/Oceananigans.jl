@@ -657,11 +657,11 @@ end
             launch!(arch, grid, (2, ),  _reduced_indexing_1d!, fyz, fxz, fxy)
 
             @test all(interior(fx)  .== 5)
-            @test all(interior(fy)  .== 6)
-            @test all(interior(fz)  .== 7)
+            @test all(interior(fy)  .== 7)
+            @test all(interior(fz)  .== 9)
             @test all(interior(fyz) .== 5)
-            @test all(interior(fxz) .== 6)
-            @test all(interior(fxy) .== 7)
+            @test all(interior(fxz) .== 7)
+            @test all(interior(fxy) .== 9)
         end
     end
 end
