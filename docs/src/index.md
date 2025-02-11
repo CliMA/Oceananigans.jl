@@ -86,8 +86,6 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Abbott, K. and Mahadevan, A. (2024). [Why is the monsoon coastal upwelling signal subdued in the Bay of Bengal?](https://doi.org/10.1029/2024JC022023), _Journal of Geophysical Research: Oceans_, **129**, e2024JC022023. DOI: [10.1029/2024JC022023](https://doi.org/10.1029/2024JC022023)
 
-1. Abbott, K. and Mahadevan, A. (2024). [Why is the monsoon coastal upwelling signal subdued in the Bay of Bengal?](https://doi.org/10.1029/2024JC022023), _Journal of Geophysical Research: Oceans_, **129**, e2024JC022023. DOI: [10.1029/2024JC022023](https://doi.org/10.1029/2024JC022023)
-
 1. Bisits, J. I., Zika, J. D., and Evans, D. G. (2024) [Does cabbeling shape the thermohaline structure of high-latitude oceans?](https://doi.org/10.1175/JPO-D-24-0061.1), _Journal of Physical Oceanography_, in press. DOI: [10.1175/JPO-D-24-0061.1](https://doi.org/10.1175/JPO-D-24-0061.1)
 
 1. Strong-Wright J. and Taylor, J. R. (2024) [A model of tidal flow and tracer release in a giant kelp forest](https://doi.org/10.1017/flo.2024.13), _Flow_, **4**, E21. DOI: [10.1017/flo.2024.13](https://doi.org/10.1017/flo.2024.13)
