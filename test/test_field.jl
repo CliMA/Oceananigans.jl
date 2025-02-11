@@ -16,44 +16,50 @@ using CUDA: @allowscalar
 
 using KernelAbstractions: @kernel, @index
 
-@kernel function _reduced_indexing_3d!(fx, fy, fz, fxy, fxz, fyz)
-    i, j, k = @index(Global, NTuple)
+@kernel function _reduced_indexing_2d!(fx, fy, fz)
+    n₁, n₂ = @index(Global, NTuple)
 
-    # Check that `getindex` does not error
-    x = fx[i, j, k]
-    y = fy[i, j, k]
-    z = fz[i, j, k]
-    xy = fxy[i, j, k]
-    xz = fxz[i, j, k]
-    yz = fyz[i, j, k]
+    # Check that `getindex` does not error with 2d indexing
+    x = fx[n₁, n₂]
+    y = fy[n₁, n₂]
+    z = fz[n₁, n₂]
 
-    # Check that `setindex!` does not error
-    fx[i, j, k] = x + 1
-    fy[i, j, k] = y + 2
-    fz[i, j, k] = z + 3
-    fxy[i, j, k] = xy + 4
-    fxz[i, j, k] = xz + 5
-    fyz[i, j, k] = yz + 6
+    # Check that `setindex!` does not error with 2d indexing
+    fx[n₁, n₂] = x + 1
+    fy[n₁, n₂] = y + 2
+    fz[n₁, n₂] = z + 3
+
+    # Check that `getindex` does not error with 3d indexing
+    x = fx[1, n₁, n₂]
+    y = fy[n₁, 1, n₂]
+    z = fz[n₁, n₂, 1]
+
+    fx[1, n₁, n₂] = xy + 4
+    fy[n₁, 1, n₂] = xz + 5
+    fz[n₁, n₂, 1] = yz + 6
 end
     
-@kernel function _reduced_indexing_1_and_2d!(fx, fy, fz, fxy, fxz, fyz)
-    i, j, k = @index(Global, NTuple)
+@kernel function _reduced_indexing_1d!(fyz, fxz, fxy)
+    n₁ = @index(Global, NTuple)
 
-    # Check that `getindex` does not error
-    x  = fx[j, k]
-    y  = fy[i, k]
-    z  = fz[i, j]
-    xy = fxy[k]
-    xz = fxz[j]
-    yz = fyz[i]
+    # Check that `getindex` does not error with 1d indexing
+    x = fyz[n₁]
+    y = fxz[n₁]
+    z = fxy[n₁]
 
-    # Check that `setindex!` does not error
-    fx[i, j, k]  = x * 10
-    fy[i, j, k]  = y * 10
-    fz[i, j, k]  = z * 10
-    fxy[i, j, k] = xy * 10
-    fxz[i, j, k] = xz * 10
-    fyz[i, j, k] = yz * 10
+    # Check that `setindex!` does not error with 1d indexing
+    fyz[n₁] = x + 1
+    fxz[n₁] = y + 2
+    fxy[n₁] = z + 3
+
+    # Check that `getindex` does not error with 3d indexing
+    x = fyz[n₁, 1, 1]
+    y = fxz[1, n₁, 1]
+    z = fxy[1, 1, n₁]
+
+    fyz[n₁, 1, 1] = xy + 4
+    fxz[1, n₁, 1] = xz + 5
+    fxy[1, 1, n₁] = yz + 6
 end
     
 """
@@ -647,23 +653,15 @@ end
             fxz = Field{Nothing, Center, Nothing}(grid)
             fyz = Field{Nothing, Nothing, Center}(grid)
 
-            launch!(arch, grid, :xyz, _reduced_indexing_3d!, fx, fy, fz, fxy, fxz, fyz)
+            launch!(arch, grid, (2, 2), _reduced_indexing_2d!, fx,  fy,  fz)
+            launch!(arch, grid, (2, ),  _reduced_indexing_1d!, fyz, fxz, fxy)
 
-            @test all(interior(fx)  .== 1)
-            @test all(interior(fy)  .== 2)
-            @test all(interior(fz)  .== 3)
-            @test all(interior(fxy) .== 4)
-            @test all(interior(fxz) .== 5)
-            @test all(interior(fyz) .== 6)
-
-            launch!(arch, grid, :xyz, _reduced_indexing_1d_and_2d!, fx, fy, fz, fxy, fxz, fyz)
-
-            @test all(interior(fx)  .== 10)
-            @test all(interior(fy)  .== 20)
-            @test all(interior(fz)  .== 30)
-            @test all(interior(fxy) .== 40)
-            @test all(interior(fxz) .== 50)
-            @test all(interior(fyz) .== 60)
+            @test all(interior(fx)  .== 5)
+            @test all(interior(fy)  .== 6)
+            @test all(interior(fz)  .== 7)
+            @test all(interior(fyz) .== 5)
+            @test all(interior(fxz) .== 6)
+            @test all(interior(fxy) .== 7)
         end
     end
 end
