@@ -58,9 +58,9 @@ fieldify_function(L, a::Function, grid) = FunctionField(L, a, grid)
 
 Adapt.adapt_structure(to, f::FunctionField{LX, LY, LZ}) where {LX, LY, LZ} =
     FunctionField{LX, LY, LZ}(Adapt.adapt(to, f.func),
-                           Adapt.adapt(to, f.grid),
-                           clock = Adapt.adapt(to, f.clock),
-                           parameters = Adapt.adapt(to, f.parameters))
+                              Adapt.adapt(to, f.grid),
+                              clock = Adapt.adapt(to, f.clock),
+                              parameters = Adapt.adapt(to, f.parameters))
 
 
 on_architecture(to, f::FunctionField{LX, LY, LZ}) where {LX, LY, LZ} =

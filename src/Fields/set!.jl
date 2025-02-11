@@ -50,7 +50,7 @@ end
 ##### Setting to specific things
 #####
 
-function set_to_function!(u, f)
+function set_to_function!(u::Field, f)
     # Supports serial and distributed
     arch = architecture(u)
     child_arch = child_architecture(u)
@@ -60,7 +60,6 @@ function set_to_function!(u, f)
         cpu_arch = cpu_architecture(arch)
         cpu_grid = on_architecture(cpu_arch, u.grid)
         cpu_u    = Field(location(u), cpu_grid; indices = indices(u))
-    
     elseif child_arch isa CPU
         cpu_grid = u.grid
         cpu_u = u
@@ -97,7 +96,7 @@ function set_to_function!(u, f)
     return u
 end
 
-function set_to_array!(u, f)
+function set_to_array!(u::Field, f)
     f = on_architecture(architecture(u), f)
 
     try
@@ -119,7 +118,7 @@ function set_to_array!(u, f)
     return u
 end
 
-function set_to_field!(u, v)
+function set_to_field!(u::Field, v)
     # We implement some niceities in here that attempt to copy halo data,
     # and revert to copying just interior points if that fails.
     
