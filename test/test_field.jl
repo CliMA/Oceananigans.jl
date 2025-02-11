@@ -34,9 +34,9 @@ using KernelAbstractions: @kernel, @index
     y = fy[n₁, 1, n₂]
     z = fz[n₁, n₂, 1]
 
-    fx[1, n₁, n₂] = xy + 4
-    fy[n₁, 1, n₂] = xz + 5
-    fz[n₁, n₂, 1] = yz + 6
+    fx[1, n₁, n₂] = x + 4
+    fy[n₁, 1, n₂] = y + 5
+    fz[n₁, n₂, 1] = z + 6
 end
     
 @kernel function _reduced_indexing_1d!(fyz, fxz, fxy)
@@ -57,9 +57,9 @@ end
     y = fxz[1, n₁, 1]
     z = fxy[1, 1, n₁]
 
-    fyz[n₁, 1, 1] = xy + 4
-    fxz[1, n₁, 1] = xz + 5
-    fxy[1, 1, n₁] = yz + 6
+    fyz[n₁, 1, 1] = x + 4
+    fxz[1, n₁, 1] = y + 5
+    fxy[1, 1, n₁] = z + 6
 end
     
 """
