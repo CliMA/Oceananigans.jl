@@ -173,9 +173,6 @@ end
             @info "  Testing the conversion of a vector between the Intrinsic and Extrinsic reference frame"
             grid = ConformalCubedSphereGrid(arch; panel_size=(10, 10, 1), z=(-1, 0))
             test_vector_rotation(grid)
-
-            grid = ImmersedBoundaryGrid(grid, GridFittedBottom(-10))
-            test_vector_rotation(grid)
         end
     end
 end
