@@ -406,7 +406,7 @@ Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
 
 total_size(f::Field) = total_size(f.grid, location(f), f.indices)
-@inline Base.size(f::Field)  = size(f.grid, location(f), f.indices)
+@inline Base.size(f::Field) = size(f.grid, location(f), f.indices)
 
 ==(f::Field, a) = interior(f) == a
 ==(a, f::Field) = a == interior(f)
@@ -537,6 +537,22 @@ reduced_dimensions(::XYZReducedField) = (1, 2, 3)
 
 @propagate_inbounds Base.getindex(r::XYZReducedField, i, j, k) = getindex(r.data, 1, 1, 1)
 @propagate_inbounds Base.setindex!(r::XYZReducedField, v, i, j, k) = setindex!(r.data, v, 1, 1, 1)
+
+@propagate_inbounds Base.getindex(r::XReducedField, j, k) = getindex(r.data, 1, j, k)
+@propagate_inbounds Base.getindex(r::YReducedField, i, k) = getindex(r.data, i, 1, k)
+@propagate_inbounds Base.getindex(r::ZReducedField, i, j) = getindex(r.data, i, j, 1)
+
+@propagate_inbounds Base.setindex!(r::XReducedField, v, j, k) = setindex!(r.data, v, 1, j, k)
+@propagate_inbounds Base.setindex!(r::YReducedField, v, i, k) = setindex!(r.data, v, i, 1, k)
+@propagate_inbounds Base.setindex!(r::ZReducedField, v, i, j) = setindex!(r.data, v, i, j, 1)
+
+@propagate_inbounds Base.getindex(r::YZReducedField, i) = getindex(r.data, i, 1, 1)
+@propagate_inbounds Base.getindex(r::XZReducedField, j) = getindex(r.data, 1, j, 1)
+@propagate_inbounds Base.getindex(r::XYReducedField, k) = getindex(r.data, 1, 1, k)
+
+@propagate_inbounds Base.setindex!(r::YZReducedField, v, i) = setindex!(r.data, v, i, 1, 1)
+@propagate_inbounds Base.setindex!(r::XZReducedField, v, j) = setindex!(r.data, v, 1, j, 1)
+@propagate_inbounds Base.setindex!(r::XYReducedField, v, k) = setindex!(r.data, v, 1, 1, k)
 
 const XFieldBC = BoundaryCondition{<:Any, XReducedField}
 const YFieldBC = BoundaryCondition{<:Any, YReducedField}
