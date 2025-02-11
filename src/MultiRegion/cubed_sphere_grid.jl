@@ -179,7 +179,8 @@ CubedSphereRegionalConnectivity
 └── counter-clockwise rotation ↺
 ```
 """
-function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(), FT=Float64;
+function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
+                                  FT=Oceananigans.defaults.FloatType;
                                   panel_size,
                                   z,
                                   horizontal_direction_halo = 3,
@@ -366,7 +367,9 @@ end
 
 Load a `ConformalCubedSphereGrid` from `filepath`.
 """
-function ConformalCubedSphereGrid(filepath::AbstractString, arch::AbstractArchitecture=CPU(), FT=Float64;
+function ConformalCubedSphereGrid(filepath::AbstractString,
+                                  arch::AbstractArchitecture=CPU(),
+                                  FT=Oceananigans.defaults.FloatType;
                                   Nz,
                                   z,
                                   panel_halo = (4, 4, 4),

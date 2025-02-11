@@ -48,8 +48,10 @@ end
 @inline retrieve_open_bc(bc::OBC) = bc
 @inline retrieve_open_bc(bc) = nothing
 
+@inline retrieve_bc(bc::OBC) = nothing
+
 # for regular halo fills, return nothing if the BC is not an OBC
-@inline left_open_boundary_condition(boundary_condition, loc) = nothing
+@inline left_open_boundary_condition(boundary_conditions, loc) = nothing
 @inline left_open_boundary_condition(boundary_conditions, ::Tuple{Face, Center, Center}) = retrieve_open_bc(boundary_conditions.west)
 @inline left_open_boundary_condition(boundary_conditions, ::Tuple{Center, Face, Center}) = retrieve_open_bc(boundary_conditions.south)
 @inline left_open_boundary_condition(boundary_conditions, ::Tuple{Center, Center, Face}) = retrieve_open_bc(boundary_conditions.bottom)
@@ -59,7 +61,7 @@ end
 @inline right_open_boundary_condition(boundary_conditions, ::Tuple{Center, Face, Center}) = retrieve_open_bc(boundary_conditions.north)
 @inline right_open_boundary_condition(boundary_conditions, ::Tuple{Center, Center, Face}) = retrieve_open_bc(boundary_conditions.top)
 
-# Opern boundary fill 
+# Open boundary fill 
 @inline   _fill_west_halo!(j, k, grid, c, bc::OBC, loc, args...) = @inbounds c[1, j, k]           = getbc(bc, j, k, grid, args...)
 @inline   _fill_east_halo!(j, k, grid, c, bc::OBC, loc, args...) = @inbounds c[grid.Nx + 1, j, k] = getbc(bc, j, k, grid, args...)
 @inline  _fill_south_halo!(i, k, grid, c, bc::OBC, loc, args...) = @inbounds c[i, 1, k]           = getbc(bc, i, k, grid, args...)

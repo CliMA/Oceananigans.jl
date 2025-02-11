@@ -168,7 +168,7 @@ julia> grid = LatitudeLongitudeGrid(size=(36, 34, Nz),
 ```
 """
 function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
-                               FT::DataType = Float64;
+                               FT::DataType = Oceananigans.defaults.FloatType;
                                size,
                                longitude = nothing,
                                latitude = nothing,
@@ -534,23 +534,23 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
         metric_size = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
     end
 
-    Δxᶠᶜ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
-    Δxᶜᶠ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
-    Δxᶠᶠ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
-    Δxᶜᶜ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
-    Azᶠᶜ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
-    Azᶜᶠ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
-    Azᶠᶠ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
-    Azᶜᶜ = OffsetArray(zeros(FT, arch, metric_size...), offsets...)
+    Δxᶠᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Δxᶜᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Δxᶠᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Δxᶜᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Azᶠᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Azᶜᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Azᶠᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Azᶜᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
 
     if grid isa YRegularLLG
         Δyᶠᶜ = Δyᶠᶜᵃ(1, 1, 1, grid)
         Δyᶜᶠ = Δyᶜᶠᵃ(1, 1, 1, grid)
     else
-        parentC = zeros(FT, length(grid.Δφᵃᶜᵃ))
-        parentF = zeros(FT, length(grid.Δφᵃᶜᵃ))
-        Δyᶠᶜ    = OffsetArray(on_architecture(arch, parentC), grid.Δφᵃᶜᵃ.offsets[1])
-        Δyᶜᶠ    = OffsetArray(on_architecture(arch, parentF), grid.Δφᵃᶜᵃ.offsets[1])
+        parentC = zeros(arch, FT, length(grid.Δφᵃᶜᵃ))
+        parentF = zeros(arch, FT, length(grid.Δφᵃᶜᵃ))
+        Δyᶠᶜ    = OffsetArray(parentC, grid.Δφᵃᶜᵃ.offsets[1])
+        Δyᶜᶠ    = OffsetArray(parentF, grid.Δφᵃᶜᵃ.offsets[1])
     end
 
     return Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ

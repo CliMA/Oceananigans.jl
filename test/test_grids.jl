@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
-using Oceananigans.Grids: total_extent,
+using Oceananigans.Grids: total_extent, ColumnEnsembleSize,
                           xspacings, yspacings, zspacings,
                           xnode, ynode, znode, λnode, φnode,
                           λspacings, φspacings
@@ -149,21 +149,32 @@ function test_regular_rectilinear_no_roundoff_error_in_ranges(FT)
 end
 
 function test_regular_rectilinear_grid_properties_are_same_type(FT)
-    grid = RectilinearGrid(CPU(), FT, size=(10, 10, 10), extent=(1, 1//7, 2π))
+    # Do this test two ways, one with defaults and one with explicit FT
+    for method in (:explicit, :with_default)
 
-    @test grid.Lx isa FT
-    @test grid.Ly isa FT
-    @test grid.Lz isa FT
-    @test grid.Δxᶠᵃᵃ isa FT
-    @test grid.Δyᵃᶠᵃ isa FT
-    @test grid.z.Δᵃᵃᶠ isa FT
+        if method === :explicit    
+            grid = RectilinearGrid(CPU(), FT, size=(10, 10, 10), extent=(1, 1//7, 2π))
+        elseif method === :with_default
+            FT₀ = Oceananigans.defaults.FloatType
+            Oceananigans.defaults.FloatType = FT
+            grid = RectilinearGrid(CPU(), size=(10, 10, 10), extent=(1, 1//7, 2π))
+            Oceananigans.defaults.FloatType = FT₀
+        end
 
-    @test eltype(grid.xᶠᵃᵃ) == FT
-    @test eltype(grid.yᵃᶠᵃ) == FT
-    @test eltype(grid.z.cᵃᵃᶠ) == FT
-    @test eltype(grid.xᶜᵃᵃ) == FT
-    @test eltype(grid.yᵃᶜᵃ) == FT
-    @test eltype(grid.z.cᵃᵃᶜ) == FT
+        @test grid.Lx isa FT
+        @test grid.Ly isa FT
+        @test grid.Lz isa FT
+        @test grid.Δxᶠᵃᵃ isa FT
+        @test grid.Δyᵃᶠᵃ isa FT
+        @test grid.z.Δᵃᵃᶠ isa FT
+
+        @test eltype(grid.xᶠᵃᵃ) == FT
+        @test eltype(grid.yᵃᶠᵃ) == FT
+        @test eltype(grid.z.cᵃᵃᶠ) == FT
+        @test eltype(grid.xᶜᵃᵃ) == FT
+        @test eltype(grid.yᵃᶜᵃ) == FT
+        @test eltype(grid.z.cᵃᵃᶜ) == FT
+    end
 
     return nothing
 end
@@ -410,9 +421,9 @@ function test_rectilinear_grid_correct_spacings(FT, N)
     Δzᵃᵃᶜ(k) =  zᵃᵃᶠ(k+1) - zᵃᵃᶠ(k)
     Δzᵃᵃᶠ(k) =  zᵃᵃᶜ(k)   - zᵃᵃᶜ(k-1)
 
-    @test all(isapprox.(  grid.z.cᵃᵃᶠ[1:N+1],  zᵃᵃᶠ.(1:N+1) ))
-    @test all(isapprox.(  grid.z.cᵃᵃᶜ[1:N],    zᵃᵃᶜ.(1:N)   ))
-    @test all(isapprox.( grid.z.Δᵃᵃᶜ[1:N],   Δzᵃᵃᶜ.(1:N)   ))
+    @test all(isapprox.(grid.z.cᵃᵃᶠ[1:N+1],  zᵃᵃᶠ.(1:N+1) ))
+    @test all(isapprox.(grid.z.cᵃᵃᶜ[1:N],    zᵃᵃᶜ.(1:N)   ))
+    @test all(isapprox.(grid.z.Δᵃᵃᶜ[1:N],   Δzᵃᵃᶜ.(1:N)   ))
 
     @test all(isapprox.(zspacings(grid, Face()),   reshape(grid.z.Δᵃᵃᶠ[1:N+1], 1, 1, N+1)))
     @test all(isapprox.(zspacings(grid, Center()), reshape(grid.z.Δᵃᵃᶜ[1:N], 1, 1, N)))
@@ -649,6 +660,7 @@ function test_lat_lon_xyzλφ_node_nodes(FT, arch)
     zᵣ  = (-10,    0)
 
     grid = LatitudeLongitudeGrid(CPU(), FT, size=grid_size, halo=halo, latitude=lat, longitude=lon, z=zᵣ)
+    ibg  = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> y < 20 && y > -20 ? -50 : -0))
 
     @info "        Testing grid utils on LatitudeLongitude grid...."
 
@@ -658,15 +670,19 @@ function test_lat_lon_xyzλφ_node_nodes(FT, arch)
     @test ynode(2, 1, 2, grid, Face(), Face(), Face()) / grid.radius ≈ -FT(π/3)
     @test znode(2, 1, 2, grid, Face(), Face(), Face()) ≈ -5
 
+    @test λnode(3, 1, 2, ibg, Face(), Face(), Face()) ≈ -120
+    @test φnode(3, 2, 2, ibg, Face(), Face(), Face()) ≈ -30
+    @test xnode(5, 1, 2, ibg, Face(), Face(), Face()) / ibg.radius ≈ -FT(π/6)
+    @test ynode(2, 1, 2, ibg, Face(), Face(), Face()) / ibg.radius ≈ -FT(π/3)
+    @test znode(2, 1, 2, ibg, Face(), Face(), Face()) ≈ -5
+
     @test minimum_xspacing(grid, Face(), Face(), Face()) / grid.radius ≈ FT(π/6) * cosd(60)
     @test minimum_xspacing(grid) / grid.radius ≈ FT(π/6) * cosd(45)
     @test minimum_yspacing(grid) / grid.radius ≈ FT(π/6)
     @test minimum_zspacing(grid) ≈ 5
 
-    grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> y < 20 && y > -20 ? -50 : -0))
-
-    @test minimum_xspacing(grid, Face(), Face(), Face()) / grid.radius ≈ FT(π/6) * cosd(30)
-    @test minimum_xspacing(grid) / grid.radius ≈ FT(π/6) * cosd(15)
+    @test minimum_xspacing(ibg, Face(), Face(), Face()) / ibg.radius ≈ FT(π/6) * cosd(30)
+    @test minimum_xspacing(ibg) / ibg.radius ≈ FT(π/6) * cosd(15)
 
     return nothing
 end
@@ -997,6 +1013,21 @@ end
                 @test φ[1] isa FT
                 @test λ[1] == λ₀
                 @test φ[1] == convert(FT, φ₀)
+
+                halo_sz = ColumnEnsembleSize(; Nz=4, ensemble=(2, 3), Hz=5)
+                grid = RectilinearGrid(arch, FT; size=halo_sz, halo=halo_sz,
+                                       z=(-10, 0), topology=(Flat, Flat, Bounded))
+                @test size(grid) == (2, 3, 4)
+                @test halo_size(grid) == (0, 0, 5)
+
+                if arch isa GPU
+                    cpu_grid = on_architecture(CPU(), grid)
+                    @test size(cpu_grid) == (2, 3, 4)
+                    @test halo_size(cpu_grid) == (0, 0, 5)
+
+                    gpu_grid = on_architecture(GPU(), grid)
+                    @test gpu_grid == grid
+                end
             end
         end
     end

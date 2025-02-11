@@ -368,17 +368,13 @@ boundary_conditions(not_field) = nothing
 
 immersed_boundary_condition(f::Field) = f.boundary_conditions.immersed
 data(field::Field) = field.data
-indices(obj, i=default_indices(3)) = i
-indices(f::Field, i=default_indices(3)) = f.indices
-indices(a::SubArray, i=default_indices(ndims(a))) = a.indices
-indices(a::OffsetArray, i=default_indices(ndims(a))) = indices(parent(a), i)
-
-"""Return indices that create a `view` over the interior of a Field."""
-interior_view_indices(field_indices, interior_indices) = Colon()
-interior_view_indices(::Colon,       interior_indices) = interior_indices
 
 instantiate(T::Type) = T()
 instantiate(t) = t
+
+"""Return indices that create a `view` over the interior of a Field."""
+interior_view_indices(field_indices, interior_indices)   = Colon()
+interior_view_indices(::Colon,       interior_indices)   = interior_indices
 
 function interior(a::OffsetArray,
                   Loc::Tuple,
@@ -391,6 +387,7 @@ function interior(a::OffsetArray,
     topo = map(instantiate, Topo)
     i_interior = map(interior_parent_indices, loc, topo, sz, halo_sz)
     i_view = map(interior_view_indices, ind, i_interior)
+
     return view(parent(a), i_view...)
 end
 

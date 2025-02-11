@@ -7,6 +7,7 @@ export
 
 using Printf
 using Adapt
+using Oceananigans
 using Oceananigans.Grids
 using Oceananigans.Operators
 
