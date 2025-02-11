@@ -555,7 +555,7 @@ reduced_dimensions(::XYZReducedField) = (1, 2, 3)
 @propagate_inbounds Base.setindex!(r::XZReducedField, v, j)       = setindex!(r.data, v, 1, j, 1)
 @propagate_inbounds Base.setindex!(r::XYReducedField, v, k)       = setindex!(r.data, v, 1, 1, k)
 
-# 0D Fields (3D, 2D, 1D and 0D indexing)
+# 0D Fields (AnyD indexing)
 @propagate_inbounds Base.getindex(r::XYZReducedField, args...)     = getindex(r.data, 1, 1, 1)
 @propagate_inbounds Base.setindex!(r::XYZReducedField, v, args...) = setindex!(r.data, v, 1, 1, 1)
 
