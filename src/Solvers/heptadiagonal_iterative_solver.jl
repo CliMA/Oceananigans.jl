@@ -9,7 +9,7 @@ using IterativeSolvers: CGStateVariables
 
 import Oceananigans.Grids: architecture
 
-mutable struct HeptadiagonalIterativeSolver{G, R, L, D, M, P, PM, PS, I, ST, T, F} 
+mutable struct HeptadiagonalIterativeSolver{G, R, L, D, M, P, PM, PS, I, ST, T}
                        grid :: G
                problem_size :: R
         matrix_constructors :: L
@@ -21,7 +21,6 @@ mutable struct HeptadiagonalIterativeSolver{G, R, L, D, M, P, PM, PS, I, ST, T, 
            iterative_solver :: I
                  state_vars :: ST
                   tolerance :: T
-                    last_Δt :: F
          maximum_iterations :: Int
                     verbose :: Bool
 end
@@ -49,7 +48,7 @@ In particular, given coefficients `Ax`, `Ay`, `Az`, `C`, `D`, the solved problem
 ```julia
     Axᵢ₊₁ ηᵢ₊₁ + Axᵢ ηᵢ₋₁ + Ayⱼ₊₁ ηⱼ₊₁ + Ayⱼ ηⱼ₋₁ + Azₖ₊₁ ηₖ₊₁ + Azₖ ηₖ₋₁ 
     - 2 ( Axᵢ₊₁ + Axᵢ + Ayⱼ₊₁ + Ayⱼ + Azₖ₊₁ + Azₖ ) ηᵢⱼₖ 
-    +   ( Cᵢⱼₖ + Dᵢⱼₖ/Δt^2 ) ηᵢⱼₖ  = b
+    +   ( Cᵢⱼₖ + Dᵢⱼₖ ) ηᵢⱼₖ  = b
 ```
 
 To have the equation solved at location `{Center, Center, Center}`, the coefficients must be
@@ -87,7 +86,6 @@ function HeptadiagonalIterativeSolver(coeffs;
                                       maximum_iterations = prod(size(grid)),
                                       tolerance = 1e-13,
                                       reduced_dim = (false, false, false), 
-                                      placeholder_timestep = -1.0, 
                                       preconditioner_method = :Default, 
                                       preconditioner_settings = nothing,
                                       template = on_architecture(architecture(grid), zeros(prod(size(grid)))),
@@ -123,7 +121,6 @@ function HeptadiagonalIterativeSolver(coeffs;
                                         iterative_solver, 
                                         state_vars,
                                         tolerance,
-                                        placeholder_timestep,
                                         maximum_iterations,
                                         verbose)
 end
@@ -292,25 +289,8 @@ function fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, ::Type{Periodic})
     end
 end
 
-function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
-    arch = architecture(solver.matrix)
-    
-    # update matrix and preconditioner if time step changes
-    if Δt != solver.last_Δt
-        constructors = deepcopy(solver.matrix_constructors)
-        M = prod(solver.problem_size)
-        update_diag!(constructors, arch, M, M, solver.diagonal, Δt, 0)
-        solver.matrix = arch_sparse_matrix(arch, constructors) 
+function solve!(x, solver::HeptadiagonalIterativeSolver, b)
 
-        unsafe_free!(constructors)
-
-        solver.preconditioner = build_preconditioner(Val(solver.preconditioner_method),
-                                                         solver.matrix,
-                                                         solver.preconditioner_settings)
-
-        solver.last_Δt = Δt
-    end
-    
     solver.iterative_solver(x, solver.matrix, b, 
                             statevars = solver.state_vars,
                             maxiter = solver.maximum_iterations, 
