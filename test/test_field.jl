@@ -14,6 +14,48 @@ using Oceananigans.Grids: λnode
 using Random
 using CUDA: @allowscalar
 
+using KernelAbstractions: @kernel, @index
+
+@kernel function _reduced_indexing_3d!(fx, fy, fz, fxy, fxz, fyz)
+    i, j, k = @index(Global, NTuple)
+
+    # Check that `getindex` does not error
+    x = fx[i, j, k]
+    y = fy[i, j, k]
+    z = fz[i, j, k]
+    xy = fxy[i, j, k]
+    xz = fxz[i, j, k]
+    yz = fyz[i, j, k]
+
+    # Check that `setindex!` does not error
+    fx[i, j, k] = x + 1
+    fy[i, j, k] = y + 2
+    fz[i, j, k] = z + 3
+    fxy[i, j, k] = xy + 4
+    fxz[i, j, k] = xz + 5
+    fyz[i, j, k] = yz + 6
+end
+    
+@kernel function _reduced_indexing_1_and_2d!(fx, fy, fz, fxy, fxz, fyz)
+    i, j, k = @index(Global, NTuple)
+
+    # Check that `getindex` does not error
+    x  = fx[j, k]
+    y  = fy[i, k]
+    z  = fz[i, j]
+    xy = fxy[k]
+    xz = fxz[j]
+    yz = fyz[i]
+
+    # Check that `setindex!` does not error
+    fx[i, j, k]  = x * 10
+    fy[i, j, k]  = y * 10
+    fz[i, j, k]  = z * 10
+    fxy[i, j, k] = xy * 10
+    fxz[i, j, k] = xz * 10
+    fyz[i, j, k] = yz * 10
+end
+    
 """
     correct_field_size(grid, FieldType, Tx, Ty, Tz)
 
@@ -591,6 +633,37 @@ end
             @test_throws BoundsError cvv[:, :, k_top-1:k_top]
             @test_throws BoundsError cvvv[:, :, 1:1+2]
             @test_throws BoundsError cvvv[:, :, k_top-2:k_top]
+        end
+    end
+    
+    @testset "Reduced field indexing" begin
+        @info "  Testing indexing into reduced fields..."
+        for arch in archs
+            grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+            fx  = Field{Center, Center, Nothing}(grid)
+            fy  = Field{Center, Nothing, Center}(grid)
+            fz  = Field{Nothing, Center, Center}(grid)
+            fxy = Field{Center, Nothing, Nothing}(grid)
+            fxz = Field{Nothing, Center, Nothing}(grid)
+            fyz = Field{Nothing, Nothing, Center}(grid)
+
+            launch!(arch, grid, :xyz, _reduced_indexing_3d!, fx, fy, fz, fxy, fxz, fyz)
+
+            @test all(interior(fx)  .== 1)
+            @test all(interior(fy)  .== 2)
+            @test all(interior(fz)  .== 3)
+            @test all(interior(fxy) .== 4)
+            @test all(interior(fxz) .== 5)
+            @test all(interior(fyz) .== 6)
+
+            launch!(arch, grid, :xyz, _reduced_indexing_1d_and_2d!, fx, fy, fz, fxy, fxz, fyz)
+
+            @test all(interior(fx)  .== 10)
+            @test all(interior(fy)  .== 20)
+            @test all(interior(fz)  .== 30)
+            @test all(interior(fxy) .== 40)
+            @test all(interior(fxz) .== 50)
+            @test all(interior(fyz) .== 60)
         end
     end
 end
