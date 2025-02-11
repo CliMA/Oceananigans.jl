@@ -41,6 +41,7 @@ c₂ == c₃
 
 This is not the case for the v-velocity (or any field on the j-faces) where the last grid point is not repeated.
 """
+
 #####
 ##### Outer functions for filling halo regions for Zipper boundary conditions.
 #####
@@ -49,13 +50,13 @@ This is not the case for the v-velocity (or any field on the j-faces) where the 
     Nx, Ny, _ = size(grid)
     
     i′ = Nx - i + 2 # Remember! element Nx + 1 does not exist!
-    s  = ifelse(i′ > Nx , abs(sign), sign) # for periodic elements we change the sign
+    sign = ifelse(i′ > Nx , abs(sign), sign) # for periodic elements we change the sign
     i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
     Hy = grid.Hy
     
     for j = 1 : Hy
         @inbounds begin
-            c[i, Ny + j, k] = s * c[i′, Ny - j + 1, k] 
+            c[i, Ny + j, k] = sign * c[i′, Ny - j + 1, k] 
         end
     end
 
@@ -66,15 +67,18 @@ end
     Nx, Ny, _ = size(grid)
     
     i′ = Nx - i + 2 # Remember! element Nx + 1 does not exist!
-    s  = ifelse(i′ > Nx , abs(sign), sign) # for periodic elements we change the sign
+    sign  = ifelse(i′ > Nx , abs(sign), sign) # for periodic elements we change the sign
     i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
     Hy = grid.Hy
     
     for j = 1 : Hy
         @inbounds begin
-            c[i, Ny + j, k] = s * c[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
+            c[i, Ny + j, k] = sign * c[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
         end
     end
+
+    # We substitute the redundant part of the last row to ensure consistency
+    @inbounds c[i, Ny, k] = ifelse(i > Nx ÷ 2, sign * c[i′, Ny, k], c[i, Ny, k])
 
     return nothing
 end
@@ -105,6 +109,9 @@ end
             c[i, Ny + j, k] = sign * c[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
         end
     end
+
+    # We substitute the redundant part of the last row to ensure consistency
+    @inbounds c[i, Ny, k] = ifelse(i > Nx ÷ 2, sign * c[i′, Ny, k], c[i, Ny, k])
 
     return nothing
 end
