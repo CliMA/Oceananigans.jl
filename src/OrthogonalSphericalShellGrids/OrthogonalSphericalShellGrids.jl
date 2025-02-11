@@ -1,7 +1,7 @@
 module OrthogonalSphericalShellGrids
 
-# The only things we need!
-export TripolarGrid, ZipperBoundaryCondition
+# The only thing we need!
+export TripolarGrid
 
 using Oceananigans
 using Oceananigans.Grids
@@ -21,7 +21,6 @@ using KernelAbstractions: @kernel, @index
 using KernelAbstractions.Extras.LoopInfo: @unroll
 using OffsetArrays
 
-@inline convert_to_0_360(x) = ((x % 360) + 360) % 360
 
 include("generate_tripolar_coordinates.jl")
 include("tripolar_grid.jl")
