@@ -252,3 +252,4 @@ CUDA.allowscalar() do
 end
 
 end #CUDA.allowscalar()
+
