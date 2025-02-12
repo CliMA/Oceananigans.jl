@@ -237,8 +237,6 @@ include("Simulations/Simulations.jl")
 # Abstractions for distributed and multi-region models
 include("MultiRegion/MultiRegion.jl")
 
-include("boundary_mean.jl")
-
 #####
 ##### Needed so we can export names from sub-modules at the top-level
 #####
