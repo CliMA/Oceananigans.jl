@@ -13,10 +13,10 @@ struct ScalarBiharmonicDiffusivity{F, N, V, K} <: AbstractScalarBiharmonicDiffus
 end
 
 # Aliases that allow specify the floating type, assuming that the discretization is Explicit in time
-                    ScalarBiharmonicDiffusivity(FT::DataType;         kwargs...) = ScalarBiharmonicDiffusivity(ThreeDimensionalFormulation(), FT; kwargs...)
-            VerticalScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...) = ScalarBiharmonicDiffusivity(VerticalFormulation(), FT; kwargs...)
-          HorizontalScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...) = ScalarBiharmonicDiffusivity(HorizontalFormulation(), FT; kwargs...)
-HorizontalDivergenceScalarBiharmonicDiffusivity(FT::DataType=Float64; kwargs...) = ScalarBiharmonicDiffusivity(HorizontalDivergenceFormulation(), FT; kwargs...)
+ScalarBiharmonicDiffusivity(FT::DataType; kwargs...) = ScalarBiharmonicDiffusivity(ThreeDimensionalFormulation(), FT; kwargs...)
+VerticalScalarBiharmonicDiffusivity(FT::DataType=Oceananigans.defaults.FloatType; kwargs...) = ScalarBiharmonicDiffusivity(VerticalFormulation(), FT; kwargs...)
+HorizontalScalarBiharmonicDiffusivity(FT::DataType=Oceananigans.defaults.FloatType; kwargs...) = ScalarBiharmonicDiffusivity(HorizontalFormulation(), FT; kwargs...)
+HorizontalDivergenceScalarBiharmonicDiffusivity(FT::DataType=Oceananigans.defaults.FloatType; kwargs...) = ScalarBiharmonicDiffusivity(HorizontalDivergenceFormulation(), FT; kwargs...)
 
 """
     ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation(), FT = Float64;
@@ -72,7 +72,8 @@ value of keyword argument `discrete_form`, the constructor expects:
 
 For examples see [`ScalarDiffusivity`](@ref).
 """
-function ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation(), FT = Float64;
+function ScalarBiharmonicDiffusivity(formulation = ThreeDimensionalFormulation(),
+                                     FT = Oceananigans.defaults.FloatType;
                                      ν = 0,
                                      κ = 0,
                                      discrete_form = false,

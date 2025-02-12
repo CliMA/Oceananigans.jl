@@ -88,8 +88,8 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
         # launching ~100 very small kernels: we are limited by
         # latency of argument conversion to GPU-compatible values.
         # To alleviate this penalty we convert first and then we substep!
-        converted_η_args = convert_args(arch, η_args)
-        converted_U_args = convert_args(arch, U_args)
+        converted_η_args = convert_to_device(arch, η_args)
+        converted_U_args = convert_to_device(arch, U_args)
 
         @unroll for substep in 1:Nsubsteps
             Base.@_inline_meta
