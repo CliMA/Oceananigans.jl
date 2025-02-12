@@ -47,10 +47,13 @@ function update_boundary_condition!(bc::MOPABC, val_side, u, model)
     loc = instantiated_location(u)
 
     An = boundary_normal_area(val_side, grid)
-    (i, j, k), dims = boundary_adjacent_indices(val_side, grid, loc)
-    total_area = CUDA.@allowscalar sum(An; dims)[i, j, k]
+    
+    (iB, jB, kB), dims = boundary_adjacent_indices(val_side, grid, loc)
+
+    total_area = CUDA.@allowscalar sum(An; dims)[iB, jB, kB]
+
     Ū = sum(u * An; dims) / total_area
 
-    bc.condition.value[] = CUDA.@allowscalar Ū[i, j, k]
+    bc.condition.value[] = CUDA.@allowscalar Ū[iB, jB, kB]
     return nothing
 end
