@@ -1,6 +1,7 @@
 using Adapt
 using Dates: AbstractTime, DateTime, Nanosecond, Millisecond
 using Oceananigans.Utils: prettytime
+using Oceananigans.Grids: AbstractGrid
 
 import Base: show
 import Oceananigans.Units: Time
@@ -53,6 +54,9 @@ function Clock{TT}(; time,
 
     return Clock{TT, DT}(time, last_Δt, last_stage_Δt, iteration, stage)
 end
+
+# helpful default
+Clock(grid::AbstractGrid) = Clock{Float64}(time=0)
 
 function Base.summary(clock::Clock)
     TT = typeof(clock.time)
