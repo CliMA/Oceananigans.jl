@@ -34,3 +34,7 @@ jobs:
       - uses: julia-actions/julia-runtest@v1
         env:
           TEST_GROUP: "turbulence_closures"
+      - uses: julia-actions/julia-runtest@v1
+        env:
+          TEST_GROUP: "reactant"
+
