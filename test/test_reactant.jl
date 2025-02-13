@@ -23,7 +23,10 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw)
     r_model = ModelType(; grid=r_grid, model_kw...)
 
     grid = GridType(CPU(); grid_kw...)
-    model = ModelType(; grid=grid, model_kw...)
+    model = ModelType(; grid, model_kw...)
+    
+    @test model.clock.time isa ConcreteRNumber
+    @test model.clock.iteration isa ConcreteRNumber
 
     ui = randn(size(model.velocities.u)...)
     vi = randn(size(model.velocities.v)...)
