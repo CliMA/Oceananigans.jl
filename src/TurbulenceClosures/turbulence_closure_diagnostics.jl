@@ -41,7 +41,8 @@ end
 function cell_diffusion_timescale(closure::ScalarDiffusivity{TD, Dir}, diffusivities, grid, clock, fields) where {TD, Dir}
     Δ = min_Δxyz(grid, formulation(closure))
     max_κ = maximum_numeric_diffusivity(closure.κ, grid, clock, fields)
-    max_ν = maximum_numeric_diffusivity(closure.ν, grid, clock, fields, ν = true)
+    max_ν = closure.ν isa DiscreteDiffusionFunction ? maximum_numeric_diffusivity(closure.ν, grid, clock, fields, ν = true) :
+                                                      maximum_numeric_diffusivity(closure.ν, grid, clock, fields)
     return min(Δ^2 / max_ν, Δ^2 / max_κ)
 end
 
