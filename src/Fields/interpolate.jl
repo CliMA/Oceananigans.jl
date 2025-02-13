@@ -85,7 +85,7 @@ end
 # we need to make sure we are in the correct range.
 @inline function convert_to_0_360(x) 
     x₀ = ((x % 360) + 360) % 360
-    return ifelse(- 100sqrt(eps(x)) ≤ x ≤ 0, 360 + x, x₀)
+    return ifelse(- 100sqrt(eps(x)) ≤ x < 0, 360 + x, x₀)
 end
 
 # Find n for which 360 * n ≤ λ ≤ 360 * (n + 1)
