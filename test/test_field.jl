@@ -186,6 +186,13 @@ function run_field_interpolation_tests(grid)
         end
     end
 
+    @info "Testing the convert function"
+    @test convert_to_0_360(0.0)   == 0
+    for n in 1:30
+        @test convert_to_0_360(- 10.e0^(-n)) > 359
+        @test convert_to_0_360(- 10.f0^(-n)) > 359
+    end
+
     # Check interpolation on Windowed fields
     wf = ZFaceField(grid; indices=(:, :, grid.Nz+1))
     If = Field{Center, Center, Nothing}(grid)

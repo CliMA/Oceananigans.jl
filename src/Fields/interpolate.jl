@@ -88,6 +88,9 @@ end
     return ifelse(- 100sqrt(eps(x)) ≤ x < 0, 360 + x, x₀)
 end
 
+# No need to check precision for integers
+@inline convert_to_0_360(x::Integer) = ((x % 360) + 360) % 360
+
 # Find n for which 360 * n ≤ λ ≤ 360 * (n + 1)
 @inline find_λ_range(λ) = ifelse((λ < 0) & (mod(λ, 360) != 0), λ ÷ 360 - 1, λ ÷ 360)
 
