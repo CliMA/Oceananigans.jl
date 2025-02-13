@@ -8,8 +8,8 @@ import Adapt: adapt_structure
 import Oceananigans.BoundaryConditions: update_boundary_condition!
 
 struct BoundaryAdjacentMean{FF, BV}
-   flux_field :: FF
-        value :: BV
+    flux_field :: FF
+         value :: BV
 
    BoundaryAdjacentMean(grid, side; 
                         flux_field::FF = boundary_reduced_field(Val(side), grid),
