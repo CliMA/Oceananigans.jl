@@ -113,7 +113,6 @@ end
     Δλ = λ₁ - λ₀
     λc = convert_to_λ₀_λ₀_plus360(λ, λ₀ - Δλ/2) # Making sure we have the right range
     FT = eltype(grid)
-    @show λ, λc, λ₀, λ₁, Δλ
     return convert(FT, (λc - λ₀) / (λ₁ - λ₀)) + 1 # 1 - based indexing 
 end
 
