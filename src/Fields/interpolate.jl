@@ -82,7 +82,7 @@ end
 end
 
 # Because of precision problems with numbers close to 0, 
-# we need to make sure we are in the correct range.
+# we need to make sure we approach the correct limit from the right.
 @inline function convert_to_0_360(x) 
     x₀ = ((x % 360) + 360) % 360
     return ifelse(- 100sqrt(eps(x)) ≤ x < 0, 360 + x, x₀)
