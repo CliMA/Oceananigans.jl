@@ -6,7 +6,7 @@ using Oceananigans.Fields: ReducedField, has_velocities
 using Oceananigans.Fields: VelocityFields, TracerFields, interpolate, interpolate!
 using Oceananigans.Fields: reduced_location
 using Oceananigans.Fields: fractional_indices, interpolator
-using Oceananigans.Fields: convert_to_0_360
+using Oceananigans.Fields: convert_to_0_360, convert_to_λ₀_λ₀_plus360
 using Oceananigans.Grids: ξnode, ηnode, rnode
 using Oceananigans.Grids: total_length
 using Oceananigans.Grids: λnode
@@ -184,6 +184,24 @@ function run_field_interpolation_tests(grid)
 
             @test all(interior(f_copy) .≈ interior(f))
         end
+    end
+
+    @info "Testing the convert functions"
+    for n in 1:30
+        @test convert_to_0_360(- 10.e0^(-n)) > 359
+        @test convert_to_0_360(- 10.f0^(-n)) > 359
+        @test convert_to_0_360(10.e0^(-n))   < 1
+        @test convert_to_0_360(10.f0^(-n))   < 1
+    end
+
+    # Generating a random longitude left bound between -1000 and 1000
+    λs₀ = rand(1000) .* 2000 .- 1000
+
+    # Generating a random interpolation longitude
+    λsᵢ = rand(1000) .* 2000 .- 1000
+
+    for λ₀ in λs₀, λᵢ in λsᵢ
+        @test λ₀ ≤ convert_to_λ₀_λ₀_plus360(λᵢ, λ₀) ≤ λ₀ + 360
     end
 
     # Check interpolation on Windowed fields
