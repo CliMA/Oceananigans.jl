@@ -255,6 +255,29 @@ function compute_closure_specific_diffusive_cfl(closure)
     return nothing
 end
 
+function test_discrete_function_scalar_diffusivity()
+
+    @inline function ν(i, j, k, grid, clock, fields, p)
+        z = znode(i, j, k, grid, Center(), Center(), Center())
+        return 2000 * exp(z / p.depth_scale_ν)
+    end
+    @inline function κ(i, j, k, grid, clock, fields, p)
+        z = znode(i, j, k, grid, Center(), Center(), Center())
+        return 2000 * exp(z / p.depth_scale_κ)
+    end
+
+    closure = ScalarDiffusivity(; ν, κ, discrete_form=true,
+                                  loc=(Center, Center, Center),
+                                  parameters = (;depth_scale_ν = 100, depth_scale_κ = 100))
+
+    grid = RectilinearGrid(CPU(), size=(2, 2, 2), extent=(1, 2, 3))
+    model = NonhydrostaticModel(; grid, closure, tracers=:b, buoyancy=BuoyancyTracer())
+    max_diffusivity = maximum(2000 * exp.(znodes(model.grid, Center()) / 100))
+    Δ = min_Δxyz(model.grid, formulation(model.closure))
+
+    return min(Δ^2 / max_diffusivity, Δ^2 / max_diffusivity) == cell_diffusion_timescale(model)
+end
+
 @testset "Turbulence closures" begin
     @info "Testing turbulence closures..."
 
@@ -323,22 +346,8 @@ end
         @test required_halo_size_z(closure) == 2
 
         @info "   Testing cell_diffusion_timescale with ScalarDiffusivity and DiscreteDiffusionFunction"
-        grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
-        @inline function ν(i, j, k, grid, clock, fields, p)
-            z = znode(i, j, k, grid, Center(), Center(), Center())
-            return 2000 * exp(z / p.depth_scale_ν)
-        end
-        @inline function κ(i, j, k, grid, clock, fields, p)
-            z = znode(i, j, k, grid, Center(), Center(), Center())
-            return 2000 * exp(z / p.depth_scale_κ)
-        end
-        closure = ScalarDiffusivity(; ν, κ, discrete_form=true,
-                                      loc=(Center, Center, Center),
-                                      parameters = (;depth_scale_ν = 100, depth_scale_κ = 100))
-        model = NonhydrostaticModel(; grid, closure, tracers=:b, buoyancy=BuoyancyTracer())
-        max_diffusivity = maximum(2000 * exp.(znodes(model.grid, Center()) / 100))
-        Δ = min_Δxyz(model.grid, formulation(model.closure))
-        @test min(Δ^2 / max_diffusivity, Δ^2 / max_diffusivity) == cell_diffusion_timescale(model)
+        @test test_discrete_function_scalar_diffusivity()
+
     end
 
     @testset "HorizontalScalarDiffusivity" begin
