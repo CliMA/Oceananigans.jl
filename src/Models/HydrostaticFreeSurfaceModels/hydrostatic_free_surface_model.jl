@@ -108,7 +108,7 @@ Keyword arguments
   - `vertical_coordinate`: Rulesets that define the time-evolution of the grid (ZStar/ZCoordinate). Default: `ZCoordinate()`.
 """
 function HydrostaticFreeSurfaceModel(; grid,
-                                     clock = Clock{Float64}(time = 0),
+                                     clock = Clock(grid),
                                      momentum_advection = VectorInvariant(),
                                      tracer_advection = Centered(),
                                      buoyancy = nothing,
