@@ -187,10 +187,11 @@ function run_field_interpolation_tests(grid)
     end
 
     @info "Testing the convert function"
-    @test convert_to_0_360(0.0)   == 0
     for n in 1:30
         @test convert_to_0_360(- 10.e0^(-n)) > 359
         @test convert_to_0_360(- 10.f0^(-n)) > 359
+        @test convert_to_0_360(10.e0^(-n))   < 1
+        @test convert_to_0_360(10.f0^(-n))   < 1
     end
 
     # Check interpolation on Windowed fields
