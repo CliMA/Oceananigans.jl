@@ -13,7 +13,7 @@ struct BoundaryAdjacentMean{FF, BV}
 
    BoundaryAdjacentMean(grid, side; 
                         flux_field::FF = boundary_reduced_field(Val(side), grid),
-                        value::BV = Ref(0.0)) where {FF, BV} = new{FF, BV}(value)
+                        value::BV = Ref(zero(grid))) where {FF, BV} = new{FF, BV}(value)
 end
 
 @inline (bam::BoundaryAdjacentMean)(args...) = bam.value[]
