@@ -20,7 +20,7 @@ min_Δxyz(grid, ::VerticalFormulation) = minimum_zspacing(grid, Center(), Center
 
 cell_diffusion_timescale(model) = cell_diffusion_timescale(model.closure, model.diffusivity_fields,
                                                            model.grid, model.clock, fields(model))
-cell_diffusion_timescale(::Nothing, diffusivities, grid) = Inf
+cell_diffusion_timescale(::Nothing, diffusivities, grid, clock, fields) = Inf
 
 maximum_numeric_diffusivity(κ::Number, grid, clock, fields) = κ
 maximum_numeric_diffusivity(κ::FunctionField, grid, clock, fields) = maximum(κ)
@@ -78,4 +78,4 @@ cell_diffusion_timescale(::ConvectiveAdjustmentVerticalDiffusivity{<:VerticallyI
                          diffusivities, grid, clock, fields) = Inf
 
 cell_diffusion_timescale(closure::Tuple, diffusivity_fields, grid, clock, fields) =
-    minimum(cell_diffusion_timescale(c, diffusivities, grid) for (c, diffusivities) in zip(closure, diffusivity_fields))
+    minimum(cell_diffusion_timescale(c, diffusivities, grid, clock, fields) for (c, diffusivities) in zip(closure, diffusivity_fields))
