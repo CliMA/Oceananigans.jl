@@ -83,9 +83,10 @@ end
 
 # Because of precision errors with numbers close to 0, 
 # we need to make sure we approach the correct limit also from the left.
-@inline function convert_to_0_360(x) 
+@inline function convert_to_0_360(x::FT) where FT 
     x₀ = ((x % 360) + 360) % 360
-    return ifelse(- 100sqrt(eps(x)) ≤ x < 0, 360 + x, x₀)
+    x⁻ = - eps(convert(FT, 360))
+    return ifelse(x⁻ ≤ x < 0, 360 + x, x₀)
 end
 
 # No need to check precision for integers
