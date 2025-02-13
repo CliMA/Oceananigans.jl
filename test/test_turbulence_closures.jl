@@ -5,7 +5,7 @@ using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVertical
 
 using Oceananigans.TurbulenceClosures: viscosity_location, diffusivity_location,
                                        required_halo_size_x, required_halo_size_y, required_halo_size_z,
-                                       cell_diffusion_timescale
+                                       cell_diffusion_timescale, formulation, min_Δxyz
 
 using Oceananigans.TurbulenceClosures: diffusive_flux_x, diffusive_flux_y, diffusive_flux_z,
                                        viscous_flux_ux, viscous_flux_uy, viscous_flux_uz,
