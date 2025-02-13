@@ -30,18 +30,18 @@ maximum_numeric_diffusivity(::Nothing, grid, clock, fields) = 0
 
 # As the name suggests, we give up in the case of a function diffusivity
 maximum_numeric_diffusivity(κ::Function, grid, clock, fields) = 0
-function maximum_numeric_diffusivity(κ::DiscreteDiffusionFunction, grid, clock, fields)
+function maximum_numeric_diffusivity(κ::DiscreteDiffusionFunction, grid, clock, fields; ν = false)
 
-    location = (Face(), Center(), Center()) # how to extract this and use to determine which kfo is needed?
-    kfo = KernelFunctionOperation{Face(), Center(), Center()}(κᶠᶜᶜ, grid, location, κ, clock, fields)
-
-    return maximum(kfo)
+    location = (Center(), Center(), Center())
+    diffusivity = ν ?  νᶜᶜᶜ : κᶜᶜᶜ
+    diffusivity_kfo = KernelFunctionOperation{Center(), Center(), Center()}(diffusivity, grid, location, κ, clock, fields)
+    return maximum(diffusivity_kfo)
 end
 
 function cell_diffusion_timescale(closure::ScalarDiffusivity{TD, Dir}, diffusivities, grid, clock, fields) where {TD, Dir}
     Δ = min_Δxyz(grid, formulation(closure))
     max_κ = maximum_numeric_diffusivity(closure.κ, grid, clock, fields)
-    max_ν = maximum_numeric_diffusivity(closure.ν, grid, clock, fields)
+    max_ν = maximum_numeric_diffusivity(closure.ν, grid, clock, fields, ν = true)
     return min(Δ^2 / max_ν, Δ^2 / max_κ)
 end
 
