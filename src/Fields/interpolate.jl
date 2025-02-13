@@ -81,7 +81,7 @@ end
     return fractional_index(x, xn, Nx) 
 end
 
-# Because of precision problems with numbers close to 0, 
+# Because of precision errors with numbers close to 0, 
 # we need to make sure we approach the correct limit from the right.
 @inline function convert_to_0_360(x) 
     x₀ = ((x % 360) + 360) % 360
