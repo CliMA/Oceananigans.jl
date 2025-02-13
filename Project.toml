@@ -44,7 +44,7 @@ Reactant = "3c362404-f566-11ee-1572-e11a4b42c853"
 [extensions]
 OceananigansEnzymeExt = "Enzyme"
 OceananigansMakieExt = ["MakieCore", "Makie"]
-OceananigansReactantExt = "Reactant"
+OceananigansReactantExt = ["Reactant", "KernelAbstractions"]
 
 [compat]
 Adapt = "4.1.1"
