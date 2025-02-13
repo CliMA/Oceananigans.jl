@@ -81,7 +81,12 @@ end
     return fractional_index(x, xn, Nx) 
 end
 
-@inline convert_to_0_360(x) = ((x % 360) + 360) % 360
+# Because of precision problems with numbers close to 0, 
+# we need to make sure we are in the correct range.
+@inline function convert_to_0_360(x) 
+    x₀ = ((x % 360) + 360) % 360
+    return ifelse(- 100sqrt(eps(x)) ≤ x ≤ 0, 360 + x, x₀)
+end
 
 # Find n for which 360 * n ≤ λ ≤ 360 * (n + 1)
 @inline find_λ_range(λ) = ifelse((λ < 0) & (mod(λ, 360) != 0), λ ÷ 360 - 1, λ ÷ 360)
@@ -105,6 +110,7 @@ end
     Δλ = λ₁ - λ₀
     λc = convert_to_λ₀_λ₀_plus360(λ, λ₀ - Δλ/2) # Making sure we have the right range
     FT = eltype(grid)
+    @show λ, λc, λ₀, λ₁, Δλ
     return convert(FT, (λc - λ₀) / (λ₁ - λ₀)) + 1 # 1 - based indexing 
 end
 
