@@ -219,6 +219,9 @@ end
 
 const c = Center()
 
+@inline displace_node(node, δ) = node - δ
+@inline displace_node(::Nothing, δ) = zero(δ)
+
 @kernel function _lagrangian_average_LM_MM!(𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, 𝒥ᴸᴹ_min, Σ, Σ̄, grid, Δt, u, v, w)
     i, j, k = @index(Global, NTuple)
     LM, MM = LM_and_MM(i, j, k, grid, Σ, Σ̄, u, v, w)
@@ -244,7 +247,7 @@ const c = Center()
         δx = u[i, j, k] * Δt
         δy = v[i, j, k] * Δt
         δz = w[i, j, k] * Δt
-
+        
         # Prevent displacements from getting too big?
         Δx = Δxᶜᶜᶜ(i, j, k, grid)
         Δy = Δyᶜᶜᶜ(i, j, k, grid)
@@ -255,9 +258,9 @@ const c = Center()
         δz = clamp(δz, -Δz, Δz)
 
         # Previous locations
-        x⁻ = x - δx
-        y⁻ = y - δy
-        z⁻ = z - δz
+        x⁻ = displace_node(x, δx)
+        y⁻ = displace_node(y, δy)
+        z⁻ = displace_node(z, δz)
         X⁻ = (x⁻, y⁻, z⁻)
 
         itp_𝒥ᴹᴹ⁻ = interpolate(X⁻, 𝒥ᴹᴹ⁻, (c, c, c), grid)
