@@ -255,6 +255,22 @@ function compute_closure_specific_diffusive_cfl(closure)
     return nothing
 end
 
+function test_function_scalar_diffusivity()
+
+    depth_scale = 120
+    @inline ν(x, y, z, t) = 2000 * exp(z / depth_scale)
+    @inline κ(x, y, z, t) = 2000 * exp(z / depth_scale)
+
+    closure = ScalarDiffusivity(; ν, κ)
+
+    grid = RectilinearGrid(CPU(), size=(2, 2, 2), extent=(1, 2, 3))
+    model = NonhydrostaticModel(; grid, closure, tracers=:b, buoyancy=BuoyancyTracer())
+    max_diffusivity = maximum(2000 * exp.(znodes(model.grid, Center()) / depth_scale))
+    Δ = min_Δxyz(model.grid, formulation(model.closure))
+
+    return min(Δ^2 / max_diffusivity, Δ^2 / max_diffusivity) == cell_diffusion_timescale(model)
+end
+
 function test_discrete_function_scalar_diffusivity()
 
     @inline function ν(i, j, k, grid, clock, fields, p)
@@ -345,7 +361,8 @@ end
         @test required_halo_size_y(closure) == 2
         @test required_halo_size_z(closure) == 2
 
-        @info "   Testing cell_diffusion_timescale with ScalarDiffusivity and DiscreteDiffusionFunction"
+        @info "   Testing cell_diffusion_timescale for ScalarDiffusivity with FunctionDiffusion"
+        @test test_function_scalar_diffusivity()
         @test test_discrete_function_scalar_diffusivity()
 
     end

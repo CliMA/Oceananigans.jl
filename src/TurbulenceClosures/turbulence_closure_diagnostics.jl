@@ -28,9 +28,9 @@ maximum_numeric_diffusivity(κ_tuple::NamedTuple, grid, clock, fields) = maximum
 maximum_numeric_diffusivity(κ::NamedTuple{()}, grid, clock, fields) = 0 # tracers=nothing means empty diffusivity tuples
 maximum_numeric_diffusivity(::Nothing, grid, clock, fields) = 0
 
-# As the name suggests, we give up in the case of a function diffusivity
-maximum_numeric_diffusivity(κ::Function, grid, clock, fields) = 0
-function maximum_numeric_diffusivity(κ::DiscreteDiffusionFunction, grid, clock, fields; ν = false)
+const FunctionDiffusivity = Union{<:DiscreteDiffusionFunction, <:Function}
+
+function maximum_numeric_diffusivity(κ::FunctionDiffusivity, grid, clock, fields; ν = false)
 
     location = (Center(), Center(), Center())
     diffusivity = ν ?  νᶜᶜᶜ : κᶜᶜᶜ
@@ -41,8 +41,8 @@ end
 function cell_diffusion_timescale(closure::ScalarDiffusivity{TD, Dir}, diffusivities, grid, clock, fields) where {TD, Dir}
     Δ = min_Δxyz(grid, formulation(closure))
     max_κ = maximum_numeric_diffusivity(closure.κ, grid, clock, fields)
-    max_ν = closure.ν isa DiscreteDiffusionFunction ? maximum_numeric_diffusivity(closure.ν, grid, clock, fields, ν = true) :
-                                                      maximum_numeric_diffusivity(closure.ν, grid, clock, fields)
+    max_ν = closure.ν isa FunctionDiffusivity ? maximum_numeric_diffusivity(closure.ν, grid, clock, fields, ν = true) :
+                                                maximum_numeric_diffusivity(closure.ν, grid, clock, fields)
     return min(Δ^2 / max_ν, Δ^2 / max_κ)
 end
 
