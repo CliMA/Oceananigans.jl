@@ -5,6 +5,8 @@ using Reactant
 include("Architectures.jl")
 using .Architectures
 
+include("TimeSteppers.jl")
+using .TimeSteppers
 
 # These are additional modules that may need to be Reactantified in the future:
 #

@@ -3,10 +3,10 @@ module TimeSteppers
 using Reactant
 using Oceananigans
 
-import Oceananigans.Grids: AbstractGrid
-import Oceananigans.TimeSteppers: Clock
+using Oceananigans.Grids: AbstractGrid
+using ..Architectures: ReactantState
 
-using OceananigansReactantExt: ReactantState
+import Oceananigans.TimeSteppers: Clock
 
 const ReactantGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:ReactantState} where {FT, TX, TY, TZ}
 
