@@ -68,7 +68,7 @@ default_free_surface(grid::DistributedGrid; gravitational_acceleration=g_Earth, 
 
 """
     HydrostaticFreeSurfaceModel(; grid,
-                                clock = Clock{eltype(grid)}(time = 0),
+                                clock = Clock{Float64}(time = 0),
                                 momentum_advection = VectorInvariant(),
                                 tracer_advection = Centered(),
                                 buoyancy = SeawaterBuoyancy(eltype(grid)),
@@ -124,7 +124,7 @@ Keyword arguments
   - `vertical_coordinate`: Rulesets that define the time-evolution of the grid (ZStar/ZCoordinate). Default: `ZCoordinate()`.
 """
 function HydrostaticFreeSurfaceModel(; grid,
-                                     clock = Clock{eltype(grid)}(time = 0),
+                                     clock = Clock{Float64}(time = 0),
                                      momentum_advection = VectorInvariant(),
                                      tracer_advection = Centered(),
                                      buoyancy = nothing,
