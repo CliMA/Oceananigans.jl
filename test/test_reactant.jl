@@ -64,7 +64,6 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw)
     
     # Reactant time now:
     r_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false)
-    pop!(r_simulation.callbacks, :nan_checker)
 
     r_run! = @compile sync = true run!(r_simulation)
     r_run!(r_simulation)

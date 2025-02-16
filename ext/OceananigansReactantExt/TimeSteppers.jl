@@ -6,7 +6,7 @@ using Oceananigans
 using Oceananigans.Grids: AbstractGrid
 using ..Architectures: ReactantState
 
-import Oceananigans.TimeSteppers: Clock
+import Oceananigans.TimeSteppers: Clock, unit_time
 
 const ReactantGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:ReactantState} where {FT, TX, TY, TZ}
 
@@ -15,8 +15,8 @@ function Clock(grid::ReactantGrid)
     t = ConcreteRNumber(zero(FT))
     iter = ConcreteRNumber(0)
     stage = ConcreteRNumber(0)
-    last_Δt = ConcreteRNumber(zero(FT))
-    last_stage_Δt = ConcreteRNumber(zero(FT))
+    last_Δt = zero(FT)
+    last_stage_Δt = zero(FT)
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
 end
 

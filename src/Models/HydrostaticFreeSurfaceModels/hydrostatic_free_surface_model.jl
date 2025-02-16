@@ -26,7 +26,7 @@ const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
-                                           G, T, V, B, R, F, P, BGC, U, C, Φ, K, AF, Z} <: AbstractModel{TS}
+                                           G, T, V, B, R, F, P, BGC, U, C, Φ, K, AF, Z} <: AbstractModel{TS, A}
 
                 architecture :: A        # Computer `Architecture` on which `Model` is run
                         grid :: G        # Grid of physical points on which `Model` is solved
