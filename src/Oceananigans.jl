@@ -11,7 +11,7 @@ export
     # Grids
     Center, Face,
     Periodic, Bounded, Flat,
-    RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
+    RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, TripolarGrid,
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
     xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
     minimum_xspacing, minimum_yspacing, minimum_zspacing,
@@ -208,12 +208,13 @@ include("Operators/Operators.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
-include("TimeSteppers/TimeSteppers.jl")
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
+include("TimeSteppers/TimeSteppers.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
 include("OutputReaders/OutputReaders.jl")
 include("DistributedComputations/DistributedComputations.jl")
+include("OrthogonalSphericalShellGrids/OrthogonalSphericalShellGrids.jl")
 
 # TODO: move here
 #include("MultiRegion/MultiRegion.jl")
@@ -257,6 +258,7 @@ using .OutputReaders
 using .Forcings
 using .ImmersedBoundaries
 using .DistributedComputations
+using .OrthogonalSphericalShellGrids
 using .Models
 using .TimeSteppers
 using .Diagnostics
