@@ -26,7 +26,7 @@ const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
-                                           G, T, V, B, R, F, P, BGC, U, C, Φ, K, AF, Z} <: AbstractModel{TS}
+                                           G, T, V, B, R, F, P, BGC, U, C, Φ, K, AF, Z} <: AbstractModel{TS, A}
 
                 architecture :: A        # Computer `Architecture` on which `Model` is run
                         grid :: G        # Grid of physical points on which `Model` is solved
@@ -108,7 +108,7 @@ Keyword arguments
   - `vertical_coordinate`: Rulesets that define the time-evolution of the grid (ZStar/ZCoordinate). Default: `ZCoordinate()`.
 """
 function HydrostaticFreeSurfaceModel(; grid,
-                                     clock = Clock{Float64}(time = 0),
+                                     clock = Clock(grid),
                                      momentum_advection = VectorInvariant(),
                                      tracer_advection = Centered(),
                                      buoyancy = nothing,

@@ -47,7 +47,8 @@ function aligned_time_step(sim::Simulation, Δt)
     aligned_Δt = schedule_aligned_time_step(sim, aligned_Δt)
     
     # Align time step with simulation stop time
-    aligned_Δt = min(aligned_Δt, unit_time(sim.stop_time - clock.time))
+    time_left = unit_time(sim.stop_time - clock.time)
+    aligned_Δt = min(aligned_Δt, time_left)
 
     # Temporary fix for https://github.com/CliMA/Oceananigans.jl/issues/1280
     aligned_Δt = aligned_Δt <= 0 ? Δt : aligned_Δt
