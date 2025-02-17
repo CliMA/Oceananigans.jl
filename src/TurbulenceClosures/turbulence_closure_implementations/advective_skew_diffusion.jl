@@ -1,11 +1,12 @@
 using Oceananigans.Fields: VelocityFields, ZeroField
 using Oceananigans.Grids: inactive_node, peripheral_node
-using Oceananigans.BuoyancyModels: ∂x_b, ∂y_b, ∂z_b
+using Oceananigans.BuoyancyFormulations: ∂x_b, ∂y_b, ∂z_b
 
 # Fallback
 compute_eddy_velocities!(diffusivities, closure, model; parameters = :xyz) = nothing
+compute_eddy_velocities!(diffusivities, ::NoSkewAdvectionISSD, model; parameters = :xyz) = nothing
 
-function compute_eddy_velocities!(diffusivities, closure::AdvectiveSkewClosure, model; parameters = :xyz)
+function compute_eddy_velocities!(diffusivities, closure::SkewAdvectionISSD, model; parameters = :xyz)
     uₑ = diffusivities.u
     vₑ = diffusivities.v
     wₑ = diffusivities.w
@@ -76,7 +77,8 @@ end
 
 # Single closure version
 @inline closure_turbulent_velocity(clo, K, val_tracer_name) = nothing
-@inline closure_turbulent_velocity(::AdvectiveSkewClosure, K, val_tracer_name) = (u = K.u, v = K.v, w = K.w)
+@inline closure_turbulent_velocity(::NoSkewAdvectionISSD, K, val_tracer_name) = nothing
+@inline closure_turbulent_velocity(::SkewAdvectionISSD, K, val_tracer_name) = (u = K.u, v = K.v, w = K.w)
 
 # 2-tuple closure
 @inline select_velocities(::Nothing, U) = U

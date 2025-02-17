@@ -1,5 +1,3 @@
-using CUDA: CuArray
-using OffsetArrays: OffsetArray
 using Oceananigans.Grids: topology
 using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions
 using Oceananigans.Fields: validate_indices, recv_from_buffers!, set_to_array!, set_to_field!
