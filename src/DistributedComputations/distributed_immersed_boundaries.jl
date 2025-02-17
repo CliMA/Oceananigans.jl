@@ -140,7 +140,7 @@ function map_interior_active_cells(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any
     east_halo_dependent_cells  = ifelse(include_east,  east_halo_dependent_cells,  nothing)
     south_halo_dependent_cells = ifelse(include_south, south_halo_dependent_cells, nothing)
     north_halo_dependent_cells = ifelse(include_north, north_halo_dependent_cells, nothing)
-    
+
     nx = Rx == 1 ? Nx : (Tx == RightConnected || Tx == LeftConnected ? Nx - Hx : Nx - 2Hx)
     ny = Ry == 1 ? Ny : (Ty == RightConnected || Ty == LeftConnected ? Ny - Hy : Ny - 2Hy)
 
