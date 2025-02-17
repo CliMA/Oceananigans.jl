@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: architecture
-using Oceananigans.BuoyancyModels: ∂z_b
+using Oceananigans.BuoyancyFormulations: ∂z_b
 using Oceananigans.Operators
 using Oceananigans.Grids: inactive_node
 using Oceananigans.Operators: ℑzᵃᵃᶜ
@@ -123,7 +123,7 @@ Keyword arguments
                           option is `horizontal_Ri_filter = FivePointHorizontalFilter()`.
 """
 function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
-                                    FT = Float64;
+                                    FT = Oceananigans.defaults.FloatType;
                                     Ri_dependent_tapering = HyperbolicTangentRiDependentTapering(),
                                     horizontal_Ri_filter = nothing,
                                     minimum_entrainment_buoyancy_gradient = 1e-10,

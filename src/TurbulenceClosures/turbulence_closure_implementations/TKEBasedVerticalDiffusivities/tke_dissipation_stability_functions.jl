@@ -55,7 +55,7 @@ struct VariableStabilityFunctions{FT} <: AbstractConstantSchmidtStabilityFunctio
     𝕊u₀ :: FT
 end
 
-function VariableStabilityFunctions(FT=Float64; 
+function VariableStabilityFunctions(FT=Oceananigans.defaults.FloatType; 
                                     Cσe = 1.0,
                                     Cσϵ = 1.2,
                                     Cu₀ = 0.1067,

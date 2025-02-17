@@ -4,7 +4,7 @@ using OrderedCollections: OrderedDict
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Advection: Centered, adapt_advection_order
-using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
+using Oceananigans.BuoyancyFormulations: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, CenterField
@@ -86,7 +86,7 @@ Keyword arguments
             of the `grid`. Note that the grid needs to be regularly spaced in the horizontal
             dimensions, ``x`` and ``y``.
   - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
-  - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
+  - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyFormulations`.
   - `coriolis`: Parameters for the background rotation rate of the model.
   - `stokes_drift`: Parameters for Stokes drift fields associated with surface waves. Default: `nothing`.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
@@ -112,7 +112,7 @@ Keyword arguments
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`         
 """
 function NonhydrostaticModel(; grid,
-                             clock = Clock{eltype(grid)}(time = 0),
+                             clock = Clock{Float64}(time = 0),
                              advection = Centered(),
                              buoyancy = nothing,
                              coriolis = nothing,

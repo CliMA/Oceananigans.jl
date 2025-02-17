@@ -28,17 +28,17 @@ ext(::Type{JLD2OutputWriter}) = ".jld2"
 
 """
     JLD2OutputWriter(model, outputs; filename, schedule,
-                              dir = ".",
-                          indices = (:, :, :),
-                       with_halos = true,
-                       array_type = Array{Float64},
-                   file_splitting = NoFileSplitting(),
-               overwrite_existing = false,
-                             init = noinit,
-                        including = [:grid, :coriolis, :buoyancy, :closure],
-                          verbose = false,
-                             part = 1,
-                          jld2_kw = Dict{Symbol, Any}())
+                     dir = ".",
+                     indices = (:, :, :),
+                     with_halos = true,
+                     array_type = Array{Float32},
+                     file_splitting = NoFileSplitting(),
+                     overwrite_existing = false,
+                     init = noinit,
+                     including = [:grid, :coriolis, :buoyancy, :closure],
+                     verbose = false,
+                     part = 1,
+                     jld2_kw = Dict{Symbol, Any}())
 
 Construct a `JLD2OutputWriter` for an Oceananigans `model` that writes `label, output` pairs
 in `outputs` to a JLD2 file.
@@ -74,7 +74,7 @@ Keyword arguments
                        Preserving halo region data can be useful for postprocessing. Default: true.
 
 - `array_type`: The array type to which output arrays are converted to prior to saving.
-                Default: `Array{Float64}`.
+                Default: `Array{Float32}`.
 
 ## File management
 
@@ -143,17 +143,17 @@ simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (; c=c_avg),
 ```
 """
 function JLD2OutputWriter(model, outputs; filename, schedule,
-                                   dir = ".",
-                               indices = (:, :, :),
-                            with_halos = true,
-                            array_type = Array{Float64},
-                        file_splitting = NoFileSplitting(),
-                    overwrite_existing = false,
-                                  init = noinit,
-                             including = default_included_properties(model),
-                               verbose = false,
-                                  part = 1,
-                               jld2_kw = Dict{Symbol, Any}())
+                          dir = ".",
+                          indices = (:, :, :),
+                          with_halos = true,
+                          array_type = Array{Float32},
+                          file_splitting = NoFileSplitting(),
+                          overwrite_existing = false,
+                          init = noinit,
+                          including = default_included_properties(model),
+                          verbose = false,
+                          part = 1,
+                          jld2_kw = Dict{Symbol, Any}())
 
     mkpath(dir)
     filename = auto_extension(filename, ".jld2")
