@@ -8,7 +8,7 @@ using .Architectures
 include("TimeSteppers.jl")
 using .TimeSteppers
 
-include("Simulations.jl")
+include("Simulations/Simulations.jl")
 using .Simulations
 
 # These are additional modules that may need to be Reactantified in the future:

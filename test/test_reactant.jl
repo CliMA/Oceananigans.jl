@@ -59,14 +59,21 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw)
     simulation = Simulation(model; Δt, stop_iteration, verbose=false)
     run!(simulation)
 
+    @info "  After running 3 time steps, the non-reactant model:"
     @test iteration(simulation) == stop_iteration
     @test time(simulation) == 3Δt
     
     # Reactant time now:
     r_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false)
 
-    r_run! = @compile sync = true run!(r_simulation)
+    @info "  Compiling r_run!:"
+    r_run! = @compile sync=true run!(r_simulation)
+    # r_run! = @compile run!(r_simulation)
+
+    @info "  Executing r_run!:"
     r_run!(r_simulation)
+
+    @info "  After running 3 time steps, the reactant model:"
     @test iteration(r_simulation) == stop_iteration
     @test time(r_simulation) == 3Δt
 
@@ -75,7 +82,6 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw)
     @test iteration(r_simulation) == iteration(simulation)
     @test time(r_simulation) == time(simulation)
 
-    @info "  After running 3 time steps:"
     @show maximum(abs, parent(u))
     @show maximum(abs, parent(v))
     @show maximum(abs, parent(w))
@@ -152,7 +158,7 @@ end
 end
 
 @testset "Reactant Super Simple Simulation Tests" begin
-    nonhydrostatic_model_kw = (; advection=WENO())
+    # nonhydrostatic_model_kw = (; advection=WENO())
     hydrostatic_model_kw = (; momentum_advection=WENO())
     Nx, Ny, Nz = (10, 10, 10) # number of cells
     halo = (7, 7, 7)
@@ -162,7 +168,7 @@ end
     lat_lon_kw = (; size=(Nx, Ny, Nz), halo, longitude, latitude, z)
     rectilinear_kw = (; size=(Nx, Ny, Nz), halo, x=(0, 1), y=(0, 1), z=(0, 1))
 
-    # FFTs are not supported by Reactant so we don't run this test:
+    # We don't yet support NonhydrostaticModel:
     # @info "Testing RectilinearGrid + NonhydrostaticModel Reactant correctness"
     # test_reactant_model_correctness(RectilinearGrid, NonhydrostaticModel, rectilinear_kw, nonhydrostatic_model_kw)
 
