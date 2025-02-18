@@ -17,14 +17,13 @@ function jld2_sliced_field_output(model, outputs=model.velocities)
 
     simulation = Simulation(model, Δt=1.0, stop_iteration=1)
 
-    simulation.output_writers[:velocities] =
-        JLD2OutputWriter(model, outputs,
-                         schedule = TimeInterval(1),
-                         indices = (1:2, 1:4, :),
-                         with_halos = false,
-                         dir = ".",
-                         filename = "test.jld2",
-                         overwrite_existing = true)
+    simulation.output_writers[:velocities] = JLD2OutputWriter(model, outputs,
+                                                              schedule = TimeInterval(1),
+                                                              indices = (1:2, 1:4, :),
+                                                              with_halos = false,
+                                                              dir = ".",
+                                                              filename = "test.jld2",
+                                                              overwrite_existing = true)
 
     run!(simulation)
 
@@ -227,14 +226,13 @@ function test_jld2_time_averaging(arch)
             jld2_outputs = Dict("c1" => ∫c1_dxdy, "c2" => ∫c2_dxdy)
             horizontal_average_jld2_filepath = "decay_averaged_field_test.jld2"
 
-            simulation.output_writers[:horizontal_average] = JLD2OutputWriter(
-                                model,
-                                jld2_outputs,
-                                schedule = TimeInterval(10Δt),
-                                dir = ".",
-                                with_halos = false,
-                                filename = horizontal_average_jld2_filepath,
-                                overwrite_existing = true)
+            simulation.output_writers[:horizontal_average] = JLD2OutputWriter(model,
+                                                                              jld2_outputs,
+                                                                              schedule = TimeInterval(10Δt),
+                                                                              dir = ".",
+                                                                              with_halos = false,
+                                                                              filename = horizontal_average_jld2_filepath,
+                                                                              overwrite_existing = true)
 
             multiple_time_average_jld2_filepath = "decay_windowed_time_average_test.jld2"
             single_time_average_jld2_filepath = "single_decay_windowed_time_average_test.jld2"
@@ -242,23 +240,21 @@ function test_jld2_time_averaging(arch)
 
             single_jld2_output = Dict("c1" => ∫c1_dxdy)
 
-            simulation.output_writers[:single_output_time_average] = JLD2OutputWriter(
-                                model,
-                                single_jld2_output,
-                                schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
-                                dir = ".",
-                                with_halos = false,
-                                filename = single_time_average_jld2_filepath,
-                                overwrite_existing = true)
+            simulation.output_writers[:single_output_time_average] = JLD2OutputWriter(model,
+                                                                                      single_jld2_output,
+                                                                                      schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
+                                                                                      dir = ".",
+                                                                                      with_halos = false,
+                                                                                      filename = single_time_average_jld2_filepath,
+                                                                                      overwrite_existing = true)
 
-            simulation.output_writers[:multiple_output_time_average] = JLD2OutputWriter(
-                                model,
-                                jld2_outputs,
-                                schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
-                                dir = ".",
-                                with_halos = false,
-                                filename = multiple_time_average_jld2_filepath,
-                                overwrite_existing = true)
+            simulation.output_writers[:multiple_output_time_average] = JLD2OutputWriter(model,
+                                                                                        jld2_outputs,
+                                                                                        schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
+                                                                                        dir = ".",
+                                                                                        with_halos = false,
+                                                                                        filename = multiple_time_average_jld2_filepath,
+                                                                                        overwrite_existing = true)
 
             run!(simulation)
 
@@ -430,8 +426,8 @@ for arch in archs
         @test FT(v₀) == v₁_op
         @test FT(w₀) == w₁_op
 
-        @test FT(αt₀) == α * t₀
-        @test FT(αt₁) == α * t₁
+        @test FT(αt₀) == FT(α * t₀)
+        @test FT(αt₁) == FT(α * t₁)
 
         #####
         ##### Field slicing

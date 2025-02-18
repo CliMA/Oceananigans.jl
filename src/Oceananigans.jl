@@ -132,6 +132,22 @@ function __init__()
     end
 end
 
+# List of fully-supported floating point types where applicable.
+# Currently used only in the Advection module to specialize 
+# reconstruction schemes (WENO, UpwindBiased, and Centered).
+const fully_supported_float_types = (Float32, Float64)
+
+#####
+##### Default settings for constructors
+#####
+
+mutable struct Defaults
+    FloatType :: DataType
+end
+
+Defaults(; FloatType=Float64) = Defaults(FloatType)
+const defaults = Defaults()
+
 #####
 ##### Abstract types
 #####

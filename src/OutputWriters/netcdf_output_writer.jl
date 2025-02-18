@@ -837,7 +837,7 @@ Optional keyword arguments
 
 - `dir`: Directory to save output to. Default: `"."`.
 
-- `array_type`: Type to convert outputs to before saving. Default: `Array{Float64}`.
+- `array_type`: Type to convert outputs to before saving. Default: `Array{Float32}`.
 
 - `indices`: Tuple of indices of the output variables to include. Default is `(:, :, :)`, which
              includes the full fields.
@@ -992,7 +992,7 @@ function NetCDFOutputWriter(model, outputs;
                             schedule,
                             grid = model.grid,
                             dir = ".",
-                            array_type = Array{Float64},
+                            array_type = Array{Float32},
                             indices = (:, :, :),
                             global_attributes = Dict(),
                             output_attributes = Dict(),

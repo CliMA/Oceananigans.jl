@@ -26,25 +26,26 @@ const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
-                                           G, T, V, B, R, F, P, BGC, U, C, Φ, K, AF} <: AbstractModel{TS}
+                                           G, T, V, B, R, F, P, BGC, U, C, Φ, K, AF, Z} <: AbstractModel{TS}
 
-          architecture :: A        # Computer `Architecture` on which `Model` is run
-                  grid :: G        # Grid of physical points on which `Model` is solved
-                 clock :: Clock{T} # Tracks iteration number and simulation time of `Model`
-             advection :: V        # Advection scheme for tracers
-              buoyancy :: B        # Set of parameters for buoyancy model
-              coriolis :: R        # Set of parameters for the background rotation rate of `Model`
-          free_surface :: S        # Free surface parameters and fields
-               forcing :: F        # Container for forcing functions defined by the user
-               closure :: E        # Diffusive 'turbulence closure' for all model fields
-             particles :: P        # Particle set for Lagrangian tracking
-       biogeochemistry :: BGC      # Biogeochemistry for Oceananigans tracers
-            velocities :: U        # Container for velocity fields `u`, `v`, and `w`
-               tracers :: C        # Container for tracer fields
-              pressure :: Φ        # Container for hydrostatic pressure
-    diffusivity_fields :: K        # Container for turbulent diffusivities
-           timestepper :: TS       # Object containing timestepper fields and parameters
-      auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
+                architecture :: A        # Computer `Architecture` on which `Model` is run
+                        grid :: G        # Grid of physical points on which `Model` is solved
+                       clock :: Clock{T} # Tracks iteration number and simulation time of `Model`
+                   advection :: V        # Advection scheme for tracers
+                    buoyancy :: B        # Set of parameters for buoyancy model
+                    coriolis :: R        # Set of parameters for the background rotation rate of `Model`
+                free_surface :: S        # Free surface parameters and fields
+                     forcing :: F        # Container for forcing functions defined by the user
+                     closure :: E        # Diffusive 'turbulence closure' for all model fields
+                   particles :: P        # Particle set for Lagrangian tracking
+             biogeochemistry :: BGC      # Biogeochemistry for Oceananigans tracers
+                  velocities :: U        # Container for velocity fields `u`, `v`, and `w`
+                     tracers :: C        # Container for tracer fields
+                    pressure :: Φ        # Container for hydrostatic pressure
+          diffusivity_fields :: K        # Container for turbulent diffusivities
+                 timestepper :: TS       # Object containing timestepper fields and parameters
+            auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
+         vertical_coordinate :: Z        # Rulesets that define the time-evolution of the grid
 end
 
 default_free_surface(grid::XYRegularRG; gravitational_acceleration=g_Earth) =
@@ -55,7 +56,7 @@ default_free_surface(grid; gravitational_acceleration=g_Earth) =
 
 """
     HydrostaticFreeSurfaceModel(; grid,
-                                clock = Clock{eltype(grid)}(time = 0),
+                                clock = Clock{Float64}(time = 0),
                                 momentum_advection = VectorInvariant(),
                                 tracer_advection = Centered(),
                                 buoyancy = SeawaterBuoyancy(eltype(grid)),
@@ -71,7 +72,8 @@ default_free_surface(grid; gravitational_acceleration=g_Earth) =
                                 velocities = nothing,
                                 pressure = nothing,
                                 diffusivity_fields = nothing,
-                                auxiliary_fields = NamedTuple())
+                                auxiliary_fields = NamedTuple(),
+                                vertical_coordinate = ZCoordinate())
 
 Construct a hydrostatic model with a free surface on `grid`.
 
@@ -103,9 +105,10 @@ Keyword arguments
   - `pressure`: Hydrostatic pressure field. Default: `nothing`.
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
+  - `vertical_coordinate`: Rulesets that define the time-evolution of the grid (ZStar/ZCoordinate). Default: `ZCoordinate()`.
 """
 function HydrostaticFreeSurfaceModel(; grid,
-                                     clock = Clock{eltype(grid)}(time = 0),
+                                     clock = Clock{Float64}(time = 0),
                                      momentum_advection = VectorInvariant(),
                                      tracer_advection = Centered(),
                                      buoyancy = nothing,
@@ -121,10 +124,15 @@ function HydrostaticFreeSurfaceModel(; grid,
                                      velocities = nothing,
                                      pressure = nothing,
                                      diffusivity_fields = nothing,
-                                     auxiliary_fields = NamedTuple())
+                                     auxiliary_fields = NamedTuple(),
+                                     vertical_coordinate = ZCoordinate())
 
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
+
+    if !(grid isa MutableGridOfSomeKind) && (vertical_coordinate isa ZStar)
+        error("The grid does not support ZStar vertical coordinates. Use a `MutableVerticalDiscretization` to allow the use of ZStar (see `MutableVerticalDiscretization`).")
+    end
 
     # Validate biogeochemistry (add biogeochemical tracers automagically)
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
@@ -208,7 +216,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, tracers,
-                                        pressure, diffusivity_fields, timestepper, auxiliary_fields)
+                                        pressure, diffusivity_fields, timestepper, auxiliary_fields, vertical_coordinate)
 
     update_state!(model; compute_tendencies = false)
 
