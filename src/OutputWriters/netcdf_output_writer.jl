@@ -4,7 +4,7 @@ using Dates: AbstractTime, UTC, now
 
 using Oceananigans.Fields
 
-using Oceananigans.Grids: AbstractCurvilinearGrid, RectilinearGrid, StaticVerticalCoordinate
+using Oceananigans.Grids: AbstractCurvilinearGrid, RectilinearGrid, StaticVerticalDiscretization
 using Oceananigans.Grids: topology, halo_size, parent_index_range, ξnodes, ηnodes, rnodes, validate_index, peripheral_node
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GFBIBG
@@ -79,7 +79,7 @@ function default_dim_name(var_name, ::LatitudeLongitudeGrid{FT, TX, TY}, LX, LY,
     end
 end
 
-default_dim_name(var_name, ::StaticVerticalCoordinate, LX, LY, LZ, ::Val{:z}) = "$(var_name)_" * loc2letter(LZ)
+default_dim_name(var_name, ::StaticVerticalDiscretization, LX, LY, LZ, ::Val{:z}) = "$(var_name)_" * loc2letter(LZ)
 
 default_dim_name(var_name, grid, LX, LY, LZ, dim) = "$(var_name)_" * loc2letter(LX) * loc2letter(LY) * loc2letter(LZ)
 
@@ -97,7 +97,7 @@ function maybe_add_particle_dims!(dims, outputs)
     return dims
 end
 
-function gather_vertical_dimensions(coordinate::StaticVerticalCoordinate, TZ, Nz, Hz, z_indices, with_halos, dim_name_generator)
+function gather_vertical_dimensions(coordinate::StaticVerticalDiscretization, TZ, Nz, Hz, z_indices, with_halos, dim_name_generator)
     zᵃᵃᶠ_name = dim_name_generator("z", coordinate, nothing, nothing, f, Val(:z))
     zᵃᵃᶜ_name = dim_name_generator("z", coordinate, nothing, nothing, c, Val(:z))
 
@@ -380,7 +380,7 @@ const base_dimension_attributes = Dict(
     "particle_id" => Dict("long_name" => "Particle ID")
 )
 
-function default_vertical_dimension_attributes(coordinate::StaticVerticalCoordinate, dim_name_generator)
+function default_vertical_dimension_attributes(coordinate::StaticVerticalDiscretization, dim_name_generator)
     zᵃᵃᶠ_name = dim_name_generator("z", coordinate, nothing, nothing, f, Val(:z))
     zᵃᵃᶜ_name = dim_name_generator("z", coordinate, nothing, nothing, c, Val(:z))
 
