@@ -37,7 +37,7 @@ Keyword arguments
 - `rotation_rate`: Sphere's rotation rate; default: [`Ω_Earth`](@ref).
 - `scheme`: Either `EnergyConserving()`, `EnstrophyConserving()`, or `ActiveCellEnstrophyConserving()` (default).
 """
-function HydrostaticSphericalCoriolis(FT::DataType=Oceananigans.defaults.FloatType;
+function HydrostaticSphericalCoriolis(FT::DataType=Float64;
                                       rotation_rate = Ω_Earth,
                                       scheme :: S = ActiveCellEnstrophyConserving()) where S
 
@@ -66,20 +66,6 @@ Adapt.adapt_structure(to, coriolis::HydrostaticSphericalCoriolis) =
 # In that case the Coriolis force is equal to zero
 
 const CoriolisActiveCellEnstrophyConserving = HydrostaticSphericalCoriolis{<:ActiveCellEnstrophyConserving}
-
-@inline not_peripheral_node(args...) = !peripheral_node(args...)
-
-@inline function mask_inactive_points_ℑxyᶠᶜᵃ(i, j, k, grid, f::Function, args...) 
-    neighboring_active_nodes = ℑxyᶠᶜᵃ(i, j, k, grid, not_peripheral_node, Center(), Face(), Center())
-    return ifelse(neighboring_active_nodes == 0, zero(grid),
-                  ℑxyᶠᶜᵃ(i, j, k, grid, f, args...) / neighboring_active_nodes)
-end
-
-@inline function mask_inactive_points_ℑxyᶜᶠᵃ(i, j, k, grid, f::Function, args...) 
-    neighboring_active_nodes = @inbounds ℑxyᶜᶠᵃ(i, j, k, grid, not_peripheral_node, Face(), Center(), Center())
-    return ifelse(neighboring_active_nodes == 0, zero(grid),
-                  ℑxyᶜᶠᵃ(i, j, k, grid, f, args...) / neighboring_active_nodes)
-end
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::CoriolisActiveCellEnstrophyConserving, U) =
     @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) *
