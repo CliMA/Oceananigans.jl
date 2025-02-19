@@ -426,8 +426,8 @@ for arch in archs
         @test FT(v₀) == v₁_op
         @test FT(w₀) == w₁_op
 
-        @test FT(αt₀) == α * t₀
-        @test FT(αt₁) == α * t₁
+        @test FT(αt₀) == FT(α * t₀)
+        @test FT(αt₁) == FT(α * t₁)
 
         #####
         ##### Field slicing

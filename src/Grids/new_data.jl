@@ -64,7 +64,7 @@ with indices corresponding to a field on a `grid` of `size(grid)` and located at
 """
 function new_data(FT::DataType, arch, loc, topo, sz, halo_sz, indices=default_indices(length(loc)))
     Tx, Ty, Tz = total_size(loc, topo, sz, halo_sz, indices)
-    underlying_data = zeros(FT, arch, Tx, Ty, Tz)
+    underlying_data = zeros(arch, FT, Tx, Ty, Tz)
     indices = validate_indices(indices, loc, topo, sz, halo_sz)
     return offset_data(underlying_data, loc, topo, sz, halo_sz, indices)
 end
