@@ -14,6 +14,54 @@ using Oceananigans.Grids: λnode
 using Random
 using CUDA: @allowscalar
 
+using KernelAbstractions: @kernel, @index
+
+@kernel function _reduced_indexing_2d!(fx, fy, fz)
+    n₁, n₂ = @index(Global, NTuple)
+
+    # Check that `getindex` does not error with 2d indexing
+    x = fx[n₁, n₂]
+    y = fy[n₁, n₂]
+    z = fz[n₁, n₂]
+
+    # Check that `setindex!` does not error with 2d indexing
+    fx[n₁, n₂] = x + 1
+    fy[n₁, n₂] = y + 2
+    fz[n₁, n₂] = z + 3
+
+    # Check that `getindex` does not error with 3d indexing
+    x = fx[1, n₁, n₂]
+    y = fy[n₁, 1, n₂]
+    z = fz[n₁, n₂, 1]
+
+    fx[1, n₁, n₂] = x + 4
+    fy[n₁, 1, n₂] = y + 5
+    fz[n₁, n₂, 1] = z + 6
+end
+    
+@kernel function _reduced_indexing_1d!(fyz, fxz, fxy)
+    n₁ = @index(Global, NTuple)
+
+    # Check that `getindex` does not error with 1d indexing
+    x = fyz[n₁]
+    y = fxz[n₁]
+    z = fxy[n₁]
+
+    # Check that `setindex!` does not error with 1d indexing
+    fyz[n₁] = x + 1
+    fxz[n₁] = y + 2
+    fxy[n₁] = z + 3
+
+    # Check that `getindex` does not error with 3d indexing
+    x = fyz[n₁, 1, 1]
+    y = fxz[1, n₁, 1]
+    z = fxy[1, 1, n₁]
+
+    fyz[n₁, 1, 1] = x + 4
+    fxz[1, n₁, 1] = y + 5
+    fxy[1, 1, n₁] = z + 6
+end
+    
 """
     correct_field_size(grid, FieldType, Tx, Ty, Tz)
 
@@ -609,6 +657,29 @@ end
             @test_throws BoundsError cvv[:, :, k_top-1:k_top]
             @test_throws BoundsError cvvv[:, :, 1:1+2]
             @test_throws BoundsError cvvv[:, :, k_top-2:k_top]
+        end
+    end
+    
+    @testset "Reduced field indexing" begin
+        @info "  Testing indexing into reduced fields..."
+        for arch in archs
+            grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+            fx  = Field{Center, Center, Nothing}(grid)
+            fy  = Field{Center, Nothing, Center}(grid)
+            fz  = Field{Nothing, Center, Center}(grid)
+            fxy = Field{Center, Nothing, Nothing}(grid)
+            fxz = Field{Nothing, Center, Nothing}(grid)
+            fyz = Field{Nothing, Nothing, Center}(grid)
+
+            launch!(arch, grid, (2, 2), _reduced_indexing_2d!, fx,  fy,  fz)
+            launch!(arch, grid, (2, ),  _reduced_indexing_1d!, fyz, fxz, fxy)
+
+            @test all(interior(fx)  .== 5)
+            @test all(interior(fy)  .== 7)
+            @test all(interior(fz)  .== 9)
+            @test all(interior(fyz) .== 5)
+            @test all(interior(fxz) .== 7)
+            @test all(interior(fxy) .== 9)
         end
     end
 end
