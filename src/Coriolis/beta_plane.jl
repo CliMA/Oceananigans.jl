@@ -41,10 +41,10 @@ end
 @inline fᶠᶠᵃ(i, j, k, grid, coriolis::BetaPlane) = coriolis.f₀ + coriolis.β * ynode(i, j, k, grid, Face(), Face(), Center())
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) =
-    @inbounds - (coriolis.f₀ + coriolis.β * ynode(i, j, k, grid, Face(), Center(), Center())) * ℑxyᶠᶜᵃ(i, j, k, grid, U[2])
+    @inbounds - (coriolis.f₀ + coriolis.β * ynode(i, j, k, grid, Face(), Center(), Center())) * mask_inactive_points_ℑxyᶠᶜᵃ(i, j, k, grid, U[2])
 
 @inline y_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) =
-    @inbounds   (coriolis.f₀ + coriolis.β * ynode(i, j, k, grid, Center(), Face(), Center())) * ℑxyᶜᶠᵃ(i, j, k, grid, U[1])
+    @inbounds   (coriolis.f₀ + coriolis.β * ynode(i, j, k, grid, Center(), Face(), Center())) * mask_inactive_points_ℑxyᶜᶠᵃ(i, j, k, grid, U[1])
 
 @inline z_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) = zero(grid)
 
