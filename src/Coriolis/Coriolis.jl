@@ -25,8 +25,8 @@ Abstract supertype for parameters related to background rotation rates.
 """
 abstract type AbstractRotation end
 
-@inline active_weighted_ℑxyᶜᶠᵃ(i, j, k, grid, q, args...) = zero(grid)
-@inline active_weighted_ℑxyᶠᶜᵃ(i, j, k, grid, q, args...) = zero(grid)
+@inline active_weighted_ℑxyᶜᶠᵃ(i, j, k, grid, q, args...) = ℑxyᶜᶠᵃ(i, j, k, grid, q, args...)
+@inline active_weighted_ℑxyᶠᶜᵃ(i, j, k, grid, q, args...) = ℑxyᶜᶠᵃ(i, j, k, grid, q, args...)
 
 @inline not_peripheral_node(args...) = !peripheral_node(args...)
 
