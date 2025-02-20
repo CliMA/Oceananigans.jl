@@ -109,3 +109,23 @@ using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 
 @inline ℑzᵃᵃᶜ(i, j, k, grid::ZFlatGrid, f::F, args...) where {F<:Function} = f(i, j, k, grid, args...)
 @inline ℑzᵃᵃᶠ(i, j, k, grid::ZFlatGrid, f::F, args...) where {F<:Function} = f(i, j, k, grid, args...)
+
+
+#####
+##### Active-weighted interpolation
+#####
+
+@inline not_peripheral_node(args...) = !peripheral_node(args...)
+
+@inline function active_weighted_ℑxyᶜᶠᵃ(i, j, k, grid, q, args...)
+    actives = ℑxyᶜᶠᵃ(i, j, k, grid, not_peripheral_node, face, center, center)
+    mask = actives == 0
+    return ifelse(mask, zero(grid), ℑxyᶜᶠᵃ(i, j, k, grid, q, args...) / actives)
+end
+
+@inline function active_weighted_ℑxyᶠᶜᵃ(i, j, k, grid, q, args...)
+    actives = ℑxyᶜᶠᵃ(i, j, k, grid, not_peripheral_node, face, center, center)
+    mask = actives == 0
+    return ifelse(mask, zero(grid), ℑxyᶠᶜᵃ(i, j, k, grid, q, args...) / actives)
+end
+

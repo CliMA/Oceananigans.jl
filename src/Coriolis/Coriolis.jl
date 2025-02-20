@@ -25,23 +25,8 @@ Abstract supertype for parameters related to background rotation rates.
 """
 abstract type AbstractRotation end
 
-@inline not_peripheral_node(args...) = !peripheral_node(args...)
-
 const face = Face()
 const center = Center()
-
-@inline function active_weighted_ℑxyᶜᶠᵃ(i, j, k, grid, q, args...)
-    actives = ℑxyᶜᶠᵃ(i, j, k, grid, not_peripheral_node, face, center, center)
-    mask = actives == 0
-    return ifelse(mask, zero(grid), ℑxyᶜᶠᵃ(i, j, k, grid, q, args...) / actives)
-end
-
-@inline function active_weighted_ℑxyᶠᶜᵃ(i, j, k, grid, q, args...)
-    actives = ℑxyᶜᶠᵃ(i, j, k, grid, not_peripheral_node, face, center, center)
-    mask = actives == 0
-    return ifelse(mask, zero(grid), ℑxyᶠᶜᵃ(i, j, k, grid, q, args...) / actives)
-end
-
 
 include("no_rotation.jl")
 include("f_plane.jl")
