@@ -114,6 +114,13 @@ using DocStringExtensions
 using FFTW
 
 function __init__()
+    if VERSION >= v"1.11.0"
+        @info "Warning: You are using Julia v1.11 or later!"
+        @info "         Oceananigans is currently tested on Julia v1.10."
+        @info "         If you find issues with Julia v1.11 or later,"
+        @info "         please report at https://github.com/CliMA/Oceananigans.jl/issues/new"
+    end
+
     threads = Threads.nthreads()
     if threads > 1
         @info "Oceananigans will use $threads threads"
