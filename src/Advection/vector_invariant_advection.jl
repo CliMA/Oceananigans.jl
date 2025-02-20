@@ -310,7 +310,7 @@ _advective_momentum_flux_Wu(i, j, k, grid, scheme::VectorInvariantVerticalEnergy
 _advective_momentum_flux_Wv(i, j, k, grid, scheme::VectorInvariantVerticalEnergyConserving, W, v) = zero(grid)
 
 _advective_momentum_flux_Wu(i, j, k, grid::ImmersedBoundaryGrid, scheme::VectorInvariant, W, u) = _advective_momentum_flux_Wu(i, j, k, grid, scheme.vertical_scheme, W, u) 
-_advective_momentum_flux_Wu(i, j, k, grid::ImmersedBoundaryGrid, scheme::VectorInvariant, W, u) = _advective_momentum_flux_Wu(i, j, k, grid, scheme.vertical_scheme, W, u) 
+_advective_momentum_flux_Wv(i, j, k, grid::ImmersedBoundaryGrid, scheme::VectorInvariant, W, u) = _advective_momentum_flux_Wv(i, j, k, grid, scheme.vertical_scheme, W, v) 
 
 _advective_momentum_flux_Wu(i, j, k, grid, scheme::VectorInvariant, W, u) = _advective_momentum_flux_Wu(i, j, k, grid, scheme.vertical_scheme, W, u) 
 _advective_momentum_flux_Wv(i, j, k, grid, scheme::VectorInvariant, W, v) = _advective_momentum_flux_Wv(i, j, k, grid, scheme.vertical_scheme, W, v) 
