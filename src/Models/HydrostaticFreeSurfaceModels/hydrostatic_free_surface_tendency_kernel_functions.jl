@@ -52,7 +52,7 @@ implicitly during time-stepping.
     𝒱z₀ = Azᶠᶜᶜ(i, j, 1, grid) * _viscous_flux_uz(i, j, 1, grid, closure, diffusivities, clock, model_fields, buoyancy)
 
     for k in 1:size(grid, 3)
-        𝒜z = _advective_momentum_flux_Wv(i, j, k+1, grid, advection, velocities.w, velocities.u)
+        𝒜z = _advective_momentum_flux_Wu(i, j, k+1, grid, advection, velocities.w, velocities.u)
         𝒱z = Azᶜᶠᶜ(i, j, 1, grid) * _viscous_flux_uz(i, j, k+1, grid, closure, diffusivities, clock, model_fields, buoyancy)
 
         @inbounds Gu[i, j, k] =  ( - horizontal_U_dot_∇u(i, j, k, grid, advection, velocities)
