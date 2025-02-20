@@ -184,26 +184,26 @@ end
 
 """ Calculate the right-hand-side of the u-velocity equation. """
 @kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, ::Nothing, args)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
+    i, j = @index(Global, NTuple)
+    hydrostatic_free_surface_u_velocity_tendency!(i, j, grid, Gu, args...)
 end
 
 @kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, active_cells_map, args)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, active_cells_map)
-    @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
+    i, j = active_linear_index_to_tuple(idx, active_cells_map)
+    hydrostatic_free_surface_u_velocity_tendency!(i, j, grid, Gu, args...)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
 @kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, ::Nothing, args)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
+    i, j = @index(Global, NTuple)
+    hydrostatic_free_surface_v_velocity_tendency!(i, j, grid, Gv, args...)
 end
 
 @kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, active_cells_map, args)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, active_cells_map)
-    @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
+    i, j = active_linear_index_to_tuple(idx, active_cells_map)
+    hydrostatic_free_surface_v_velocity_tendency!(i, j, grid, Gv, args...)
 end
 
 #####
@@ -212,8 +212,8 @@ end
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
 @kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid, ::Nothing, args)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
+    i, j = @index(Global, NTuple)
+    hydrostatic_free_surface_tracer_tendency!(i, j, grid, Gc, args...)
 end
 
 @kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid, active_cells_map, args)

@@ -11,6 +11,9 @@ using Oceananigans.TurbulenceClosures: shear_production, buoyancy_flux, dissipat
 using Oceananigans.Utils: sum_of_velocities
 using KernelAbstractions: @private
 
+using Oceananigans.Advection: horizontal_U_dot_∇u, horizontal_U_dot_∇v, horizontal_div_Uc, _advective_momentum_flux_Wu, _advective_momentum_flux_Wv, _advective_tracer_flux_z
+using Oceananigans.TurbulenceClosures: horizontal_∂ⱼ_τ₁ⱼ, horizontal_∂ⱼ_τ₂ⱼ, horizontal_∇_dot_qᶜ, _viscous_flux_uz, _viscous_flux_vz, _diffusive_flux_z
+
 import Oceananigans.TurbulenceClosures: hydrostatic_turbulent_kinetic_energy_tendency
 
 """
@@ -50,7 +53,7 @@ implicitly during time-stepping.
 
     for k in 1:size(grid, 3)
         𝒜z = _advective_momentum_flux_Wv(i, j, k+1, grid, advection, velocities.w, velocities.u)
-        𝒱z = Azᶜᶠᶜ(i, j, 1, grid) * _viscous_flux_z(i, j, k+1, grid, closure, diffusivities, clock, model_fields, buoyancy)
+        𝒱z = Azᶜᶠᶜ(i, j, 1, grid) * _viscous_flux_uz(i, j, k+1, grid, closure, diffusivities, clock, model_fields, buoyancy)
 
         @inbounds Gu[i, j, k] =  ( - horizontal_U_dot_∇u(i, j, k, grid, advection, velocities)
                                    - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
@@ -104,7 +107,7 @@ implicitly during time-stepping.
     
     for k in 1:size(grid, 3)
         𝒜z = _advective_momentum_flux_Wv(i, j, k+1, grid, advection, velocities.w, velocities.v)
-        𝒱z = Azᶜᶠᶜ(i, j, 1, grid) * _viscous_flux_z(i, j, k+1, grid, closure, diffusivities, clock, model_fields, buoyancy)
+        𝒱z = Azᶜᶠᶜ(i, j, 1, grid) * _viscous_flux_vz(i, j, k+1, grid, closure, diffusivities, clock, model_fields, buoyancy)
     
         @inbounds Gv[i, j, k] =  ( - horizontal_U_dot_∇v(i, j, k, grid, advection, velocities) 
                                    - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
@@ -166,7 +169,7 @@ where `c = C[tracer_index]`.
         𝒜z = _advective_tracer_flux_z(i, j, k+1, grid, advection, total_velocities.w, c)
         𝒟z = _diffusive_flux_z(i, j, k+1, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
     
-        @inbounds Gu[i, j, k] =  ( - horizontal_div_Uc(i, j, k, grid, advection, total_velocities, c)
+        @inbounds Gc[i, j, k] =  ( - horizontal_div_Uc(i, j, k, grid, advection, total_velocities, c)
                                    - horizontal_∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
                                    - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)        
                                    + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
