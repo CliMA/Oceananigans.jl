@@ -87,12 +87,12 @@ end
                                     δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vu, advection, U[2], u))
 end
 
-@inline function horizontal_div_𝐯u(i, j, k, grid, advection, U, v)
+@inline function horizontal_div_𝐯v(i, j, k, grid, advection, U, v)
     return 1/Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uv, advection, U[1], v) +
                                     δyᵃᶠᵃ(i, j, k, grid, _advective_momentum_flux_Vv, advection, U[2], v))
 end
 
-@inline function horizontal_div_𝐯u(i, j, k, grid, advection, U, w)
+@inline function horizontal_div_𝐯w(i, j, k, grid, advection, U, w)
     return 1/Vᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uw, advection, U[1], w) +
                                     δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vw, advection, U[2], w))
 end
