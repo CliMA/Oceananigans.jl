@@ -27,7 +27,7 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain. The active cells map restricts the computation to the active cells in the
     # interior if the grid is _immersed_ and the `active_cells_map` kwarg is active
-    active_cells_map = retrieve_interior_active_cells_map(model.grid, Val(:interior))
+    active_cells_map = retrieve_surface_active_cells_map(model.grid)
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
 
     compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; active_cells_map)
@@ -218,6 +218,6 @@ end
 
 @kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid, active_cells_map, args)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, active_cells_map)
-    @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
+    i, j = active_linear_index_to_tuple(idx, active_cells_map)
+    hydrostatic_free_surface_tracer_tendency!(i, j, grid, Gc, args...)
 end
