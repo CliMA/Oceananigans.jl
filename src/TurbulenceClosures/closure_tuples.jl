@@ -21,6 +21,9 @@ end
 outer_tendency_functions = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ]
 inner_tendency_functions = [:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ, :∇_dot_qᶜ]
 
+horizontal_outer_tendency_functions = [:horizontal_∂ⱼ_τ₁ⱼ, :horizontal_∂ⱼ_τ₂ⱼ, :horizontal_∂ⱼ_τ₃ⱼ, :horizontal_∇_dot_qᶜ]
+horizontal_inner_tendency_functions = [:horizontal_∂ⱼ_τ₁ⱼ, :horizontal_∂ⱼ_τ₂ⱼ, :horizontal_∂ⱼ_τ₃ⱼ, :horizontal_∇_dot_qᶜ]
+
 diffusive_fluxes = [:diffusive_flux_x, :diffusive_flux_y, :diffusive_flux_z]
 
 viscous_fluxes   = [:viscous_flux_ux, :viscous_flux_uy, :viscous_flux_uz,

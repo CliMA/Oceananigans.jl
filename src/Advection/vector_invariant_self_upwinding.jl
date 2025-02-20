@@ -17,7 +17,7 @@
 # Divergence smoothness for divergence upwinding
 @inline divergence_smoothness(i, j, k, grid, u, v) = δx_U(i, j, k, grid, u, v) + δy_V(i, j, k, grid, u, v) 
 
-@inline function upwinded_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
+@inline function upwinded_divergence_flux_U(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
 
     δU_stencil   = scheme.upwinding.δU_stencil    
     cross_scheme = scheme.upwinding.cross_scheme
@@ -29,7 +29,7 @@
     return û * (δvˢ + δuᴿ)
 end
 
-@inline function upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
+@inline function upwinded_divergence_flux_V(i, j, k, grid, scheme::VectorInvariantSelfVerticalUpwinding, u, v)
     
     δV_stencil   = scheme.upwinding.δV_stencil
     cross_scheme = scheme.upwinding.cross_scheme

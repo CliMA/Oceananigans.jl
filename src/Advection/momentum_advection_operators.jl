@@ -82,6 +82,21 @@ which ends up at the location `ccf`.
                                     δzᵃᵃᶠ(i, j, k, grid, _advective_momentum_flux_Ww, advection, U[3], w))
 end
 
+@inline function horizontal_div_𝐯u(i, j, k, grid, advection, U, u)
+    return 1/Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uu, advection, U[1], u) +
+                                    δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vu, advection, U[2], u))
+end
+
+@inline function horizontal_div_𝐯u(i, j, k, grid, advection, U, v)
+    return 1/Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uv, advection, U[1], v) +
+                                    δyᵃᶠᵃ(i, j, k, grid, _advective_momentum_flux_Vv, advection, U[2], v))
+end
+
+@inline function horizontal_div_𝐯u(i, j, k, grid, advection, U, w)
+    return 1/Vᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uw, advection, U[1], w) +
+                                    δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vw, advection, U[2], w))
+end
+
 #####
 ##### Fallback advection fluxes!
 #####

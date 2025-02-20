@@ -34,6 +34,11 @@ export
     ∂ⱼ_τ₂ⱼ,
     ∂ⱼ_τ₃ⱼ,
 
+    horizontal_∇_dot_qᶜ,
+    horizontal_∂ⱼ_τ₁ⱼ,
+    horizontal_∂ⱼ_τ₂ⱼ,
+    horizontal_∂ⱼ_τ₃ⱼ,
+
     cell_diffusion_timescale
 
 using CUDA

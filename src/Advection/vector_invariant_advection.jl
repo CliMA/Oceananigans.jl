@@ -274,6 +274,17 @@ on_architecture(to, scheme::VectorInvariant{N, FT, M}) where {N, FT, M} =
                                                                 vertical_advection_V(i, j, k, grid, scheme, U) +
                                                                     bernoulli_head_V(i, j, k, grid, scheme, U.u, U.v)
 
+@inline horizontal_U_dot_∇u(i, j, k, grid, scheme::VectorInvariantVerticalEnergyConserving, U) = U_dot_∇u(i, j, k, grid, scheme::VectorInvariant, U)
+@inline horizontal_U_dot_∇v(i, j, k, grid, scheme::VectorInvariantVerticalEnergyConserving, U) = U_dot_∇v(i, j, k, grid, scheme::VectorInvariant, U)
+
+@inline horizontal_U_dot_∇u(i, j, k, grid, scheme::VectorInvariant, U) = horizontal_advection_U(i, j, k, grid, scheme, U.u, U.v) +
+                                                                               bernoulli_head_U(i, j, k, grid, scheme, U.u, U.v) +
+                                                                     upwinded_divergence_flux_U(i, j, k, grid, scheme, U.u, U.v) / Vᶠᶜᶜ(i, j, k, grid)
+
+@inline horizontal_U_dot_∇v(i, j, k, grid, scheme::VectorInvariant, U) = horizontal_advection_V(i, j, k, grid, scheme, U.u, U.v) +
+                                                                               bernoulli_head_V(i, j, k, grid, scheme, U.u, U.v) +
+                                                                     upwinded_divergence_flux_V(i, j, k, grid, scheme, U.u, U.v) / Vᶜᶠᶜ(i, j, k, grid)
+
 # Extend interpolate functions for VectorInvariant to allow MultiDimensional reconstruction
 for bias in (:_biased, :_symmetric)
     for (dir1, dir2) in zip((:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ), (:y, :y, :x, :x))
@@ -289,6 +300,13 @@ for bias in (:_biased, :_symmetric)
         end
     end
 end
+
+_advective_momentum_flux_Wu(i, j, k, grid, scheme::VectorInvariant, W, u) = 
+    _advective_momentum_flux_Wu(i, j, k, grid, scheme.vertical_scheme, W, u) 
+
+
+_advective_momentum_flux_Wv(i, j, k, grid, scheme::VectorInvariant, W, v) = 
+    _advective_momentum_flux_Wv(i, j, k, grid, scheme.vertical_scheme, W, v) 
 
 #####
 #####  Vertical advection + Kinetic Energy gradient. 3 Formulations:
@@ -324,7 +342,7 @@ end
 
 @inline function vertical_advection_U(i, j, k, grid, scheme::VectorInvariant, U) 
 
-    Φᵟ = upwinded_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme, U.u, U.v)
+    Φᵟ = upwinded_divergence_flux_U(i, j, k, grid, scheme, U.u, U.v)
     𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, scheme.vertical_scheme, U.w, U.u)
 
     return 1/Vᶠᶜᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
@@ -332,7 +350,7 @@ end
 
 @inline function vertical_advection_V(i, j, k, grid, scheme::VectorInvariant, U) 
 
-    Φᵟ = upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme, U.u, U.v)
+    Φᵟ = upwinded_divergence_flux_V(i, j, k, grid, scheme, U.u, U.v)
     𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, scheme.vertical_scheme, U.w, U.v)
 
     return 1/Vᶜᶠᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
@@ -408,6 +426,27 @@ end
            û * û * δyᵃᶠᵃ(i, j, k, grid, Δxᶜᶜᶜ) / Azᶜᶠᶜ(i, j, k, grid)
 end
 
+
+@inline function horizontal_U_dot_∇u(i, j, k, grid, advection::AbstractAdvectionScheme, U)
+
+    v̂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, U.v) / Δxᶠᶜᶜ(i, j, k, grid)
+    û = @inbounds U.u[i, j, k]
+
+    return horizontal_div_𝐯u(i, j, k, grid, advection, U, U.u) - 
+           v̂ * v̂ * δxᶠᵃᵃ(i, j, k, grid, Δyᶜᶜᶜ) / Azᶠᶜᶜ(i, j, k, grid) + 
+           v̂ * û * δyᵃᶜᵃ(i, j, k, grid, Δxᶠᶠᶜ) / Azᶠᶜᶜ(i, j, k, grid)
+end
+
+@inline function horizontal_U_dot_∇v(i, j, k, grid, advection::AbstractAdvectionScheme, U) 
+
+    û = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, U.u) / Δyᶜᶠᶜ(i, j, k, grid)
+    v̂ = @inbounds U.v[i, j, k]
+
+    return horizontal_div_𝐯v(i, j, k, grid, advection, U, U.v) + 
+           û * v̂ * δxᶜᵃᵃ(i, j, k, grid, Δyᶠᶠᶜ) / Azᶜᶠᶜ(i, j, k, grid) -
+           û * û * δyᵃᶠᵃ(i, j, k, grid, Δxᶜᶜᶜ) / Azᶜᶠᶜ(i, j, k, grid)
+end
+
 #####
 ##### Fallback for `RectilinearGrid` with 
 ##### ACAS == `AbstractCenteredAdvectionScheme`
@@ -419,12 +458,18 @@ end
 @inline U_dot_∇u(i, j, k, grid::RectilinearGrid, advection::AUAS, U) = div_𝐯u(i, j, k, grid, advection, U, U.u)
 @inline U_dot_∇v(i, j, k, grid::RectilinearGrid, advection::AUAS, U) = div_𝐯v(i, j, k, grid, advection, U, U.v)
 
+
+@inline horizontal_U_dot_∇u(i, j, k, grid::RectilinearGrid, advection::ACAS, U) = horizontal_div_𝐯u(i, j, k, grid, advection, U, U.u)
+@inline horizontal_U_dot_∇v(i, j, k, grid::RectilinearGrid, advection::ACAS, U) = horizontal_div_𝐯v(i, j, k, grid, advection, U, U.v)
+@inline horizontal_U_dot_∇u(i, j, k, grid::RectilinearGrid, advection::AUAS, U) = horizontal_div_𝐯u(i, j, k, grid, advection, U, U.u)
+@inline horizontal_U_dot_∇v(i, j, k, grid::RectilinearGrid, advection::AUAS, U) = horizontal_div_𝐯v(i, j, k, grid, advection, U, U.v)
+
 #####
 ##### No advection
 #####
 
-@inline U_dot_∇u(i, j, k, grid::AbstractGrid{FT}, scheme::Nothing, U) where FT = zero(FT)
-@inline U_dot_∇v(i, j, k, grid::AbstractGrid{FT}, scheme::Nothing, U) where FT = zero(FT)
+@inline horizontal_U_dot_∇u(i, j, k, grid::AbstractGrid{FT}, scheme::Nothing, U) where FT = zero(FT)
+@inline horizontal_U_dot_∇v(i, j, k, grid::AbstractGrid{FT}, scheme::Nothing, U) where FT = zero(FT)
 
 const UB{N, FT}  = UpwindBiased{N, FT}
 const UBX{N, FT} = UpwindBiased{N, FT, <:Nothing} 
