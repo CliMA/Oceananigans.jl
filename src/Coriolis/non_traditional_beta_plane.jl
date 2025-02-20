@@ -6,7 +6,7 @@ using Oceananigans.Grids: ynode, znode
 A Coriolis implementation that accounts for the latitudinal variation of both
 the locally vertical and the locally horizontal components of the rotation vector.
 The "traditional" approximation in ocean models accounts for only the locally
-vertical component of the rotation vector (see [`BetaPlane`](@ref)).
+vertical component of the rotation vector (see [`BetaPlane`](@reface)).
 
 This implementation is based off of section 5 of [Dellar2011](@citet) and it conserves
 energy, angular momentum, and potential vorticity.
@@ -52,7 +52,7 @@ function NonTraditionalBetaPlane(FT=Oceananigans.defaults.FloatType;
     use_f = !all(isnothing.((fz, fy, β, γ))) && isnothing(latitude)
     use_planet_parameters = !isnothing(latitude) && all(isnothing.((fz, fy, β, γ)))
 
-    if !xor(use_f, use_planet_parameters)
+    if !xor(use_face, use_planet_parameters)
         throw(ArgumentError("Either the keywords fz, fy, β, γ, and radius must be specified, " *
                             "*or* all of rotation_rate, latitude, and radius."))
     end
@@ -72,17 +72,17 @@ end
 
 # This function is eventually interpolated to fcc to contribute to x_f_cross_U.
 @inline two_Ωʸw_minus_two_Ωᶻv(i, j, k, grid, coriolis, U) =
-    (  two_Ωʸ(coriolis, ynode(i, j, k, grid, c, c, c), znode(i, j, k, grid, c, c, c)) * ℑzᵃᵃᶜ(i, j, k, grid, U.w)
-     - two_Ωᶻ(coriolis, ynode(i, j, k, grid, c, c, c), znode(i, j, k, grid, c, c, c)) * ℑyᵃᶜᵃ(i, j, k, grid, U.v))
+    (  two_Ωʸ(coriolis, ynode(i, j, k, grid, center, center, center), znode(i, j, k, grid, center, center, center)) * ℑzᵃᵃᶜ(i, j, k, grid, U.w)
+     - two_Ωᶻ(coriolis, ynode(i, j, k, grid, center, center, center), znode(i, j, k, grid, center, center, center)) * ℑyᵃᶜᵃ(i, j, k, grid, U.v))
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::NonTraditionalBetaPlane, U) =
     ℑxᶠᵃᵃ(i, j, k, grid, two_Ωʸw_minus_two_Ωᶻv, coriolis, U)
 
 @inline y_f_cross_U(i, j, k, grid, coriolis::NonTraditionalBetaPlane, U) =
-      two_Ωᶻ(coriolis, ynode(i, j, k, grid, c, f, c), znode(i, j, k, grid, c, f, c)) * ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
+      two_Ωᶻ(coriolis, ynode(i, j, k, grid, center, face, center), znode(i, j, k, grid, center, face, center)) * ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
 
 @inline z_f_cross_U(i, j, k, grid, coriolis::NonTraditionalBetaPlane, U) =
-    - two_Ωʸ(coriolis, ynode(i, j, k, grid, c, c, f), znode(i, j, k, grid, c, c, f)) * ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
+    - two_Ωʸ(coriolis, ynode(i, j, k, grid, center, center, face), znode(i, j, k, grid, center, center, face)) * ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
 
 Base.summary(β_plane::NonTraditionalBetaPlane{FT}) where FT =
     string("NonTraditionalBetaPlane{$FT}",
