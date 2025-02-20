@@ -114,7 +114,7 @@ implicitly during time-stepping.
                                    - y_f_cross_U(i, j, k, grid, coriolis, velocities)
                                    - ∂yᶜᶠᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
                                    - grid_slope_contribution_y(i, j, k, grid, buoyancy, ztype, model_fields)
-                                   - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
+                                   - horizontal_∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
                                    - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, diffusivities, clock, model_fields)
                                    + forcing(i, j, k, grid, clock, model_fields)
                                    - ((𝒜z - 𝒜z₀) + (𝒱z - 𝒱z₀)) / Vᶜᶠᶜ(i, j, k, grid))

@@ -33,8 +33,8 @@ viscous_fluxes   = [:viscous_flux_ux, :viscous_flux_uy, :viscous_flux_uz,
 outer_ivd_functions = [:_ivd_upper_diagonal, :_ivd_lower_diagonal, :_implicit_linear_coefficient]
 inner_ivd_functions = [:ivd_upper_diagonal,  :ivd_lower_diagonal,   :implicit_linear_coefficient]
 
-outer_funcs = vcat(outer_tendency_functions, outer_ivd_functions, diffusive_fluxes, viscous_fluxes)
-inner_funcs = vcat(inner_tendency_functions, inner_ivd_functions, diffusive_fluxes, viscous_fluxes)
+outer_funcs = vcat(horizontal_outer_tendency_functions, outer_tendency_functions, outer_ivd_functions, diffusive_fluxes, viscous_fluxes)
+inner_funcs = vcat(horizontal_inner_tendency_functions, inner_tendency_functions, inner_ivd_functions, diffusive_fluxes, viscous_fluxes)
 
 for (outer_f, inner_f) in zip(outer_funcs, inner_funcs)
     @eval begin
