@@ -7,14 +7,6 @@ using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.ImmersedBoundaries
 
 """
-    struct EnstrophyConserving
-
-A parameter object for an enstrophy-conserving Coriolis scheme that excludes inactive (dry/land) edges
-(indices for which `peripheral_node == true`) from the velocity interpolation.
-"""
-struct EnstrophyConserving end
-
-"""
     struct HydrostaticSphericalCoriolis{S, FT} <: AbstractRotation
 
 A parameter object for constant rotation around a vertical axis on the sphere.
