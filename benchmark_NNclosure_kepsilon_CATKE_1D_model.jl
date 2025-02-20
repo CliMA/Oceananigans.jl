@@ -14,16 +14,12 @@ using SeawaterPolynomials
 using SeawaterPolynomials:TEOS10
 using NVTX
 
-nn_closure = (XinKaiLocalVerticalDiffusivity(), NNFluxClosure(GPU()))
 
 function CATKE_ocean_closure()
     mixing_length = CATKEMixingLength(Cᵇ=0.28)
     turbulent_kinetic_energy_equation = CATKEEquation()
     return CATKEVerticalDiffusivity(; mixing_length, turbulent_kinetic_energy_equation)
 end
-CATKE_closure = CATKE_ocean_closure()
-
-kϵ_closure = TKEDissipationVerticalDiffusivity()
 
 # number of grid points
 function setup_model(Nz, closure)
@@ -92,7 +88,7 @@ function setup_model(Nz, closure)
         closure = closure,
         tracers = tracers,
         boundary_conditions = (; T = T_bcs, S = S_bcs, u = u_bcs),
-    )
+    );
 
     @info "Built $model."
 
@@ -111,17 +107,18 @@ function setup_model(Nz, closure)
     return model
 end
 
-function benchmark_timestep(N, closure)
-    model = setup_model(N, closure);
+function benchmark_timestep(N, closure_str)
     Δt = 5minutes
 
-    if closure isa CATKEVerticalDiffusivity
-        closure_str = "CATKE"
-    elseif closure isa TKEDissipationVerticalDiffusivity
-        closure_str = "k_epsilon"
+    if closure_str == "CATKE"
+        closure = CATKE_ocean_closure()
+    elseif closure_str == "k_epsilon"
+        closure = TKEDissipationVerticalDiffusivity()
     else
-        closure_str = "NN"
+        closure = (XinKaiLocalVerticalDiffusivity(), NNFluxClosure(GPU()))
     end
+
+    model = setup_model(N, closure);
 
     @info "Benchmarking $closure_str closure with $N grid points"
 
@@ -138,6 +135,6 @@ end
 
 Ns = [32, 48, 64, 96, 128]
 
-for closure in [nn_closure, CATKE_closure, kϵ_closure], N in Ns
-    benchmark_timestep(N, closure)
+for closure_str in ["NN", "CATKE", "k_epsilon"], N in Ns
+    benchmark_timestep(N, closure_str)
 end
