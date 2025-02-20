@@ -44,14 +44,14 @@ end
     f₀ = coriolis.f₀
     β = coriolis.β
     y = ynode(i, j, k, grid, face, center, center)
-    return - (f₀ + β*y) * active_weighted_ℑxyᶠᶜᵃ(i, j, k, grid, U[2])
+    return - (f₀ + β*y) * active_weighted_ℑxyᶠᶜᶜ(i, j, k, grid, U[2])
 end
 
 @inline function y_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U)
     f₀ = coriolis.f₀
     β = coriolis.β
     y = ynode(i, j, k, grid, center, face, center)
-    return (f₀ + β*y) * active_weighted_ℑxyᶜᶠᵃ(i, j, k, grid, U[1])
+    return (f₀ + β*y) * active_weighted_ℑxyᶜᶠᶜ(i, j, k, grid, U[1])
 end
 
 @inline z_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) = zero(grid)
