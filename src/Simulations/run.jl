@@ -103,6 +103,10 @@ function run!(sim; pickup=false)
         time_step!(sim)
     end
 
+    for callback in values(sim.callbacks) 
+        finalize!(callback, sim)
+    end
+
     return nothing
 end
 
@@ -152,6 +156,7 @@ function time_step!(sim::Simulation)
     end
 
     for callback in values(sim.callbacks)
+        initialize!(callback, sim)
         callback.callsite isa TimeStepCallsite && callback.schedule(sim.model) && callback(sim)
     end
 
