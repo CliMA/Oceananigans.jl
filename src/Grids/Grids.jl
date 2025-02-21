@@ -132,7 +132,6 @@ include("grid_generation.jl")
 include("rectilinear_grid.jl")
 include("orthogonal_spherical_shell_grid.jl")
 include("conformal_cubed_sphere_panel.jl")
-include("displaced_latitude_longitude_grid.jl")
 include("latitude_longitude_grid.jl")
 
 end # module
