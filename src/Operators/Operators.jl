@@ -110,6 +110,11 @@ const LLGF  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing
 const LLGFX = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Number}
 const LLGFY = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Any, <:Number}
 
+const F = Face
+const f = Face()
+const C = Center
+const c = Center()
+
 include("difference_operators.jl")
 include("interpolation_operators.jl")
 include("interpolation_utils.jl")
