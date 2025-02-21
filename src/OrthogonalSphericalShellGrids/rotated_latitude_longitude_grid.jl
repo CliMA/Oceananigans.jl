@@ -60,7 +60,7 @@ function rotate_metrics!(grid, shifted_lat_lon_grid)
     arch = architecture(grid)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
-    parameters = KernelParameters(-Hx-1:Nx+Hx+2, -Hy-1:Ny+Hy+2)
+    parameters = KernelParameters(-Hx:Nx+Hx+1, -Hy:Ny+Hy+1)
     launch!(arch, grid, parameters, _rotate_metrics!, grid, shifted_lat_lon_grid)
     return nothing
 end
