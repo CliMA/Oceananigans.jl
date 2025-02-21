@@ -30,7 +30,7 @@ const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 struct DefaultHydrostaticPressureAnomaly end
 
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
-                                   V, S, K, BG, P, BGC, AF} <: AbstractModel{TS}
+                                   V, S, K, BG, P, BGC, AF} <: AbstractModel{TS, A}
 
          architecture :: A        # Computer `Architecture` on which `Model` is run
                  grid :: G        # Grid of physical points on which `Model` is solved
@@ -112,7 +112,7 @@ Keyword arguments
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`         
 """
 function NonhydrostaticModel(; grid,
-                             clock = Clock{Float64}(time = 0),
+                             clock = Clock(grid),
                              advection = Centered(),
                              buoyancy = nothing,
                              coriolis = nothing,
