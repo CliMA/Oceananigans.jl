@@ -38,13 +38,21 @@ function BetaPlane(FT=Oceananigans.defaults.FloatType; f₀=nothing, β=nothing,
     return BetaPlane{FT}(f₀, β)
 end
 
-@inline fᶠᶠᵃ(i, j, k, grid, coriolis::BetaPlane) = coriolis.f₀ + coriolis.β * ynode(i, j, k, grid, Face(), Face(), Center())
+@inline fᶠᶠᵃ(i, j, k, grid, coriolis::BetaPlane) = coriolis.f₀ + coriolis.β * ynode(i, j, k, grid, face, face, center)
 
-@inline x_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) =
-    @inbounds - (coriolis.f₀ + coriolis.β * ynode(i, j, k, grid, Face(), Center(), Center())) * ℑxyᶠᶜᵃ(i, j, k, grid, U[2])
+@inline function x_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U)
+    f₀ = coriolis.f₀
+    β = coriolis.β
+    y = ynode(i, j, k, grid, face, center, center)
+    return - (f₀ + β*y) * active_weighted_ℑxyᶠᶜᶜ(i, j, k, grid, U[2])
+end
 
-@inline y_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) =
-    @inbounds   (coriolis.f₀ + coriolis.β * ynode(i, j, k, grid, Center(), Face(), Center())) * ℑxyᶜᶠᵃ(i, j, k, grid, U[1])
+@inline function y_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U)
+    f₀ = coriolis.f₀
+    β = coriolis.β
+    y = ynode(i, j, k, grid, center, face, center)
+    return (f₀ + β*y) * active_weighted_ℑxyᶜᶠᶜ(i, j, k, grid, U[1])
+end
 
 @inline z_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) = zero(grid)
 

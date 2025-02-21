@@ -41,9 +41,9 @@ end
 
 @inline fᶠᶠᵃ(i, j, k, grid, coriolis::FPlane) = coriolis.f
 
-@inline x_f_cross_U(i, j, k, grid, coriolis::FPlane, U) = - coriolis.f * ℑxyᶠᶜᵃ(i, j, k, grid, U[2])
-@inline y_f_cross_U(i, j, k, grid, coriolis::FPlane, U) =   coriolis.f * ℑxyᶜᶠᵃ(i, j, k, grid, U[1])
-@inline z_f_cross_U(i, j, k, grid, coriolis::FPlane, U) =   zero(grid)
+@inline x_f_cross_U(i, j, k, grid, c::FPlane, U) = - c.f * active_weighted_ℑxyᶠᶜᶜ(i, j, k, grid, U[2])
+@inline y_f_cross_U(i, j, k, grid, c::FPlane, U) =   c.f * active_weighted_ℑxyᶜᶠᶜ(i, j, k, grid, U[1])
+@inline z_f_cross_U(i, j, k, grid, c::FPlane, U) =   zero(grid)
 
 function Base.summary(fplane::FPlane{FT}) where FT 
     fstr = prettysummary(fplane.f)
@@ -51,3 +51,4 @@ function Base.summary(fplane::FPlane{FT}) where FT
 end
 
 Base.show(io::IO, fplane::FPlane) = print(io, summary(fplane))
+
