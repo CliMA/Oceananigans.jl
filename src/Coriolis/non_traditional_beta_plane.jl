@@ -52,7 +52,7 @@ function NonTraditionalBetaPlane(FT=Oceananigans.defaults.FloatType;
     use_f = !all(isnothing.((fz, fy, β, γ))) && isnothing(latitude)
     use_planet_parameters = !isnothing(latitude) && all(isnothing.((fz, fy, β, γ)))
 
-    if !xor(use_face, use_planet_parameters)
+    if !xor(use_f, use_planet_parameters)
         throw(ArgumentError("Either the keywords fz, fy, β, γ, and radius must be specified, " *
                             "*or* all of rotation_rate, latitude, and radius."))
     end
