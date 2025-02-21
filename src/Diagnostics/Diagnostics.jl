@@ -1,6 +1,6 @@
 module Diagnostics
 
-export StateChecker, CFL, AdvectiveCFL, DiffusiveCFL
+export StateChecker, CFL, AdvectiveCFL, DiffusiveCFL, MovieMaker
 
 using CUDA
 using Oceananigans
@@ -14,5 +14,6 @@ import Oceananigans: run_diagnostic!
 
 include("state_checker.jl")
 include("cfl.jl")
+include("plotter.jl")
 
 end # module
