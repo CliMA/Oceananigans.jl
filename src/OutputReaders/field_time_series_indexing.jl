@@ -143,9 +143,12 @@ function Base.getindex(fts::FieldTimeSeries, time_index::Time)
     end
 
     # Otherwise, make a Field representing a linear interpolation in time
-    ψ₁ = fts[n₁]
+    # Make sure both n₁ and n₂ are in memory by first retrieving n₂ and then n₁
+    update_field_time_series!(fts, n₁, n₂)
+    
     ψ₂ = fts[n₂]
-    ψ̃ = Field(ψ₂ * ñ + ψ₁ * (1 - ñ))
+    ψ₁ = fts[n₁]
+    ψ̃  = Field(ψ₂ * ñ + ψ₁ * (1 - ñ))
 
     # Compute the field and return it
     return compute!(ψ̃)
@@ -247,7 +250,7 @@ end
 
 # Fallbacks that do nothing
 update_field_time_series!(fts, time::Time) = nothing
-update_field_time_series!(fts, n::Int) = nothing
+update_field_time_series!(fts, n₁::Int, n₂=n₁) = nothing
 
 # Update the `fts` to contain the time `time_index.time`.
 # Linear extrapolation, simple version
@@ -258,8 +261,7 @@ function update_field_time_series!(fts::PartlyInMemoryFTS, time_index::Time)
 end
 
 function update_field_time_series!(fts::PartlyInMemoryFTS, n₁::Int, n₂=n₁)
-    idxs = time_indices(fts)
-    in_range = n₁ ∈ idxs && n₂ ∈ idxs
+    in_range = in_time_range(fts, fts.time_indexing, n₁, n₂)
 
     if !in_range
         # Update backend
@@ -270,6 +272,19 @@ function update_field_time_series!(fts::PartlyInMemoryFTS, n₁::Int, n₂=n₁)
     end
 
     return nothing
+end
+
+function in_time_range(fts, time_indexing, n₁, n₂)
+    idxs = time_indices(fts)
+    return n₁ ∈ idxs && n₂ ∈ idxs
+end
+
+function in_time_range(fts, ::Union{Clamp, Linear}, n₁, n₂)
+    Nt = length(fts.times)
+    idxs = time_indices(fts)
+    in_range_1 = n₁ ∈ idxs || n₁ > Nt
+    in_range_2 = n₂ ∈ idxs || n₂ > Nt
+    return in_range_1 && in_range_2
 end
 
 # If `n` is not in memory, getindex automatically updates the data in memory
