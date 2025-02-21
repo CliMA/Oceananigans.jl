@@ -21,6 +21,7 @@ Initialize `callback`. By default, this does nothing, but
 can be optionally specialized on the type parameters of `Callback`.
 """
 initialize!(callback::Callback, sim) = nothing
+finalize!(callback::Callback, sim) = nothing
 
 """
     Callback(func, schedule=IterationInterval(1);
