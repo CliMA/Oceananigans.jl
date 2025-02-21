@@ -19,6 +19,7 @@ const RotatedLatitudeLongitudeGrid = OrthogonalSphericalShellGrid{<:Any,
 @inline lat_lon_metric(m, i, j) = @inbounds m[i, j]
 @inline lat_lon_metric(m::AbstractVector, i, j) = @inbounds m[j]
 @inline lat_lon_metric(m::Number, j) = m
+@inline lat_lon_metric(m::Number, i, j) = m
 
 function latitude_longitude_shift((λ₀, φ₀))
     Δλ = - λ₀
