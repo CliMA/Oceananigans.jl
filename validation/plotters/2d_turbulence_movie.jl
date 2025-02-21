@@ -45,17 +45,12 @@ function update_plot(sim, fig, io)
     recordframe!(io)
 end
 
-maker = MovieMaker(update_plot; fig, filename="2d_turbulence.mp4", io)
+filename = "2d_turbulence.mp4"
+maker = MovieMaker(update_plot; fig, filename, io)
+add_callback!(simulation, maker, TimeInterval(0.6))
 
 # Write animation to disk after simulation is complete
 import Oceananigans.Simulations: finalize!
 finalize!(maker::MovieMaker, simulation) = save(maker.filename, maker.io)
 
-add_callback!(simulation, maker, TimeInterval(0.6))
-
-filename = "two_dimensional_turbulence"
-simulation.output_writers[:fields] = JLD2OutputWriter(model, (; ω, s),
-                                                      schedule = TimeInterval(0.6),
-                                                      filename = filename * ".jld2",
-                                                      overwrite_existing = true)
 run!(simulation)
