@@ -1,0 +1,5 @@
+[deps]
+GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
+Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
+OrthogonalSphericalShellGrids = "c2be9673-fb75-4747-82dc-aa2bb9f4aed0"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"

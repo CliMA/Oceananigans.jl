@@ -5,6 +5,8 @@ using Oceananigans.Grids: total_extent, ColumnEnsembleSize,
                           xspacings, yspacings, zspacings,
                           xnode, ynode, znode, λnode, φnode,
                           λspacings, φspacings
+                          
+using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
 
 using Oceananigans.Operators: Δx, Δy, Δz, Δλ, Δφ, Ax, Ay, Az, volume
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
@@ -1052,6 +1054,18 @@ end
         end
 
         @test grid isa OrthogonalSphericalShellGrid
+
+        grid = RotatedLatitudeLongitudeGrid(size = (10, 10, 1),
+                                            latitude = (-60, 60),
+                                            longitude = (-60, 60),
+                                            z = (-1000, 0),
+                                            north_pole = (0, 0),
+                                            topology = (Bounded, Bounded, Bounded))
+
+        @test grid isa OrthogonalSphericalShellGrid
+        @test grid isa RotatedLatitudeLongitudeGrid
+        @test grid.Lz == 1000
+        @test size(grid) == (10, 10, 1)
 
         for arch in archs
             for FT in float_types
