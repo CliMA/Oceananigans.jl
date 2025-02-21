@@ -16,13 +16,12 @@ lat_lon_grid =
                           z = (-1000, 0),
                           topology = (Bounded, Bounded, Bounded))
 
-rotated_lat_lon_grid =
-    RotatedLatitudeLongitudeGrid(size = (Nx, Ny, Nz),
-                                 latitude = (-60, 60),
-                                 longitude = (-60, 60),
-                                 north_pole = (0, 0),
-                                 z = (-1000, 0),
-                                 topology = (Bounded, Bounded, Bounded))
+rotated_lat_lon_grid = RotatedLatitudeLongitudeGrid(size = (Nx, Ny, Nz),
+                                                    latitude = (-60, 60),
+                                                    longitude = (-60, 60),
+                                                    north_pole = (0, 0),
+                                                    z = (-1000, 0),
+                                                    topology = (Bounded, Bounded, Bounded))
 
 λ = λnodes(rotated_lat_lon_grid, Center(), Center(), Center())
 φ = φnodes(rotated_lat_lon_grid, Center(), Center(), Center())
@@ -143,6 +142,7 @@ heatmap!(axy4, rotated_lat_lon_grid.Δyᶠᶠᵃ)
 
 display(fig)
 
+#=
 model = rotated_model
 Δt = 3minutes
 simulation = Simulation(model, Δt=Δt, stop_time = 2days)
@@ -226,4 +226,5 @@ frames = 1:length(times)
 record(fig, "splash.mp4", frames, framerate = 12) do i
     n[] = i
 end
+=#
 

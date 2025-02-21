@@ -82,15 +82,20 @@ function cartesian_to_spherical(X)
     return λ, φ
 end
 
-# Rotation about z-axis by dλ (Change in Longitude)
-z_rotation(dλ) = @SMatrix [cos(dλ) -sin(dλ) 0
-                           sin(dλ)  cos(dλ) 0
-                           0        0       1]
+# Rotation about x-axis by dλ (Change in Longitude)
+x_rotation(dλ) = @SMatrix [1        0       0
+                           0  cos(dλ) -sin(dλ)
+                           0  sin(dλ)  cos(dλ)]
 
 # Rotation about y-axis by dφ (Change in Latitude)
 y_rotation(dφ) = @SMatrix [ cos(dφ)  0  sin(dφ)
                             0        1  0
                            -sin(dφ)  0  cos(dφ)]
+
+# Rotation about z-axis by dλ (Change in Longitude)
+z_rotation(dλ) = @SMatrix [cos(dλ) -sin(dλ) 0
+                           sin(dλ)  cos(dλ) 0
+                           0        0       1]
 
 # Perform the rotation
 function rotate_coordinates(λ′, φ′, λ₀, φ₀)
@@ -106,9 +111,11 @@ function rotate_coordinates(λ′, φ′, λ₀, φ₀)
     X′ = spherical_to_cartesian(λ′, φ′)
 
     # Rotate Cartesian coordinates
-    Rz = z_rotation(dλ)
+    Rx = x_rotation(dλ)
     Ry = y_rotation(dφ)
-    X = Rz * (Ry * X′)
+    Rz = z_rotation(dλ)
+    #X = Rz * Ry * X′
+    X = Rx * Ry * X′
 
     # Convert back to Spherical
     λ, φ = cartesian_to_spherical(X)
