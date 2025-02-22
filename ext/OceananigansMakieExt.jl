@@ -6,8 +6,9 @@ using Oceananigans.Fields: AbstractField
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+import Oceananigans.Simulations: finalize!
 
-using Makie: Observable
+using Makie: Observable, save
 using MakieCore: AbstractPlot
 import MakieCore: convert_arguments, _create_plot
 import Makie: args_preferred_axis
@@ -193,5 +194,8 @@ function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, ξ2::Ab
     fi_cpu = make_plottable_array(f)
     return convert_arguments(pl, ξ1, ξ2, fi_cpu)
 end
+
+# Write animation to disk after simulation is complete
+finalize!(maker::MovieMaker, simulation) = save(maker.filename, maker.io)
 
 end # module

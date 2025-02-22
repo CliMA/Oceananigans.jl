@@ -49,8 +49,4 @@ filename = "2d_turbulence.mp4"
 maker = MovieMaker(update_plot; fig, filename, io)
 add_callback!(simulation, maker, TimeInterval(0.6))
 
-# Write animation to disk after simulation is complete
-import Oceananigans.Simulations: finalize!
-finalize!(maker::MovieMaker, simulation) = save(maker.filename, maker.io)
-
 run!(simulation)
