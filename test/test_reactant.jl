@@ -22,8 +22,12 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw)
     r_grid = GridType(r_arch; grid_kw...)
     r_model = ModelType(; grid=r_grid, model_kw...)
 
+    # Basic test for the default Clock{ConcreteRNumber}
+    @test r_model.clock.time isa ConcreteRNumber
+    @test r_model.clock.iteration isa ConcreteRNumber
+
     grid = GridType(CPU(); grid_kw...)
-    model = ModelType(; grid=grid, model_kw...)
+    model = ModelType(; grid, model_kw...)
 
     ui = randn(size(model.velocities.u)...)
     vi = randn(size(model.velocities.v)...)
@@ -55,19 +59,29 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw)
     simulation = Simulation(model; Δt, stop_iteration, verbose=false)
     run!(simulation)
 
-    # What we want to do with Reactant:
+    @info "  After running 3 time steps, the non-reactant model:"
+    @test iteration(simulation) == stop_iteration
+    @test time(simulation) == 3Δt
+    
+    # Reactant time now:
     r_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false)
-    pop!(r_simulation.callbacks, :nan_checker)
 
-    r_run! = @compile sync = true run!(r_simulation)
+    @info "  Compiling r_run!:"
+    r_run! = @compile sync=true run!(r_simulation)
+    # r_run! = @compile run!(r_simulation)
+
+    @info "  Executing r_run!:"
     r_run!(r_simulation)
+
+    @info "  After running 3 time steps, the reactant model:"
+    @test iteration(r_simulation) == stop_iteration
+    @test time(r_simulation) == 3Δt
 
     # Some tests
     # Things ran normally:
     @test iteration(r_simulation) == iteration(simulation)
     @test time(r_simulation) == time(simulation)
 
-    @info "  After running 3 time steps:"
     @show maximum(abs, parent(u))
     @show maximum(abs, parent(v))
     @show maximum(abs, parent(w))
@@ -79,6 +93,12 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw)
     @test parent(u) ≈ parent(ru)
     @test parent(v) ≈ parent(rv)
     @test parent(w) ≈ parent(rw)
+
+    # Running a few more time-steps works too:
+    r_simulation.stop_iteration += 2
+    r_run!(r_simulation)
+    @test iteration(r_simulation) == 5
+    @test time(r_simulation) == 5Δt
 
     return nothing
 end
@@ -138,7 +158,7 @@ end
 end
 
 @testset "Reactant Super Simple Simulation Tests" begin
-    nonhydrostatic_model_kw = (; advection=WENO())
+    # nonhydrostatic_model_kw = (; advection=WENO())
     hydrostatic_model_kw = (; momentum_advection=WENO())
     Nx, Ny, Nz = (10, 10, 10) # number of cells
     halo = (7, 7, 7)
@@ -148,7 +168,7 @@ end
     lat_lon_kw = (; size=(Nx, Ny, Nz), halo, longitude, latitude, z)
     rectilinear_kw = (; size=(Nx, Ny, Nz), halo, x=(0, 1), y=(0, 1), z=(0, 1))
 
-    # FFTs are not supported by Reactant so we don't run this test:
+    # We don't yet support NonhydrostaticModel:
     # @info "Testing RectilinearGrid + NonhydrostaticModel Reactant correctness"
     # test_reactant_model_correctness(RectilinearGrid, NonhydrostaticModel, rectilinear_kw, nonhydrostatic_model_kw)
 
@@ -169,34 +189,5 @@ end
                             closure = CATKEVerticalDiffusivity())
     test_reactant_model_correctness(LatitudeLongitudeGrid, HydrostaticFreeSurfaceModel, lat_lon_kw, hydrostatic_model_kw)
     =#
-end
-
-@testset "Reactanigans Clock{ConcreteRNumber} tests" begin
-    @info "Testing model time-stepping with Clock{ConcreteRNumber}..."
-
-    # All of these may not need to be traced but this is paranoia.
-    FT = Float64
-    t = ConcreteRNumber(zero(FT))
-    iter = ConcreteRNumber(0)
-    stage = ConcreteRNumber(0)
-    last_Δt = ConcreteRNumber(zero(FT))
-    last_stage_Δt = ConcreteRNumber(zero(FT))
-    clock = Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
-
-    grid = RectilinearGrid(ReactantState(); size=(10, 10, 10), halo=(3, 3, 3), extent=(10, 10, 10))
-    free_surface = SplitExplicitFreeSurface(grid, substeps=10, gravitational_acceleration=1)
-    model = HydrostaticFreeSurfaceModel(; grid, clock, free_surface)
-
-    Δt = 0.02
-    simulation = Simulation(model; Δt, stop_iteration=3, verbose=false)
-    run!(simulation)
-
-    @test iteration(simulation) == 3
-    @test time(simulation) == 0.06
-
-    simulation.stop_iteration += 2
-    run!(simulation)
-    @test iteration(simulation) == 5
-    @test time(simulation) == 0.10
 end
 
