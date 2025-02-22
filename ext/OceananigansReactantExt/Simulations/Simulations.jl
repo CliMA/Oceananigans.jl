@@ -21,7 +21,11 @@ using Oceananigans.Simulations:
     AbstractDiagnostic,
     AbstractOutputWriter
 
-import Oceananigans.Simulations: Simulation, aligned_time_step, initialize!
+import Oceananigans.Simulations:
+    Simulation,
+    aligned_time_step,
+    initialize!,
+    stop_iteration_exceeded
 
 include("simulation.jl")
 include("run.jl")

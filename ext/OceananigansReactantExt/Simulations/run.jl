@@ -93,6 +93,8 @@ function time_step!(sim::ReactantSimulation)
         end
 
     else # business as usual...
+        time_step!(sim.model, Δt, callbacks=model_callbacks)
+        #=
         if Δt < sim.minimum_relative_step * sim.Δt
             next_time = sim.model.clock.time + Δt
             @warn "Resetting clock to $next_time and skipping time step of size Δt = $Δt"
@@ -100,6 +102,7 @@ function time_step!(sim::ReactantSimulation)
         else
             time_step!(sim.model, Δt, callbacks=model_callbacks)
         end
+        =#
     end
 
     for callback in values(sim.callbacks)
@@ -120,6 +123,7 @@ function time_step!(sim::ReactantSimulation)
         end
         =#
     end
+    =#
 
     #=
     # Callbacks and callback-like things
