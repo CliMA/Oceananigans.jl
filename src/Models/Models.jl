@@ -189,4 +189,6 @@ default_nan_checker(::OnlyParticleTrackingModel) = nothing
 # applicable to both `NonhydrostaticModel` and  `HydrostaticFreeSurfaceModel`
 include("seawater_density.jl")
 
+include("boundary_mean.jl")
+
 end # module
