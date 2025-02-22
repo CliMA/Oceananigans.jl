@@ -63,7 +63,6 @@ function ConstantCartesianCoriolis(FT=Oceananigans.defaults.FloatType;
     return ConstantCartesianCoriolis{FT}(fx, fy, fz)
 end
 
-
 # This function is eventually interpolated to fcc to contribute to x_f_cross_U.
 # Similarly with fᶻu_minus_fˣw to y_f_cross_U, etc.
 @inline fʸw_minus_fᶻv(i, j, k, grid, coriolis, U) =
