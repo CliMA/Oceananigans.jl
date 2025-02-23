@@ -6,9 +6,10 @@ using Oceananigans.Fields: AbstractField
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+import Oceananigans.Diagnostics: MovieMaker
 import Oceananigans.Simulations: finalize!
 
-using Makie: Observable, save
+using Makie: Observable, save, VideoStream
 using MakieCore: AbstractPlot
 import MakieCore: convert_arguments, _create_plot
 import Makie: args_preferred_axis
@@ -193,6 +194,25 @@ end
 function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, ξ2::AbstractArray, f::Field)
     fi_cpu = make_plottable_array(f)
     return convert_arguments(pl, ξ1, ξ2, fi_cpu)
+end
+
+#####
+##### Diagnostics.MovieMaker methods
+#####
+
+"""
+    MovieMaker(fig, func; io=VideoStream, filename="movie.mp4")
+
+Create a `MovieMaker`, which makes a movie.
+"""
+function MovieMaker(fig, func; io::VideoStream, filename="movie.mp4")
+    return MovieMaker(fig, func, io, filename)
+end
+
+function MovieMaker(fig, func; filename="movie.mp4", kwargs...)
+    @show kwargs
+    io = VideoStream(fig; kwargs...)
+    return MovieMaker(fig, func, io, filename)
 end
 
 # Write animation to disk after simulation is complete
