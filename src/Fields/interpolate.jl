@@ -77,7 +77,7 @@ end
     loc = @inbounds locs[1]
      Tx = topology(grid, 1)()
      Nx = length(loc, Tx, grid.Nx)
-     xn = xnodes(grid, locs...)
+     xn = xnodes(grid, locs..., with_halos=true)
     return fractional_index(x, xn, Nx) 
 end
 
@@ -124,7 +124,7 @@ end
     loc = @inbounds locs[1]
      Tλ = topology(grid, 1)()
      Nλ = length(loc, Tλ, grid.Nx)
-     λn = λnodes(grid, locs...)
+     λn = λnodes(grid, locs..., with_halos=true)
      λ₀ = @inbounds λn[1]     
      λ₁ = @inbounds λn[2]     
      Δλ = λ₁ - λ₀
@@ -152,7 +152,7 @@ end
     loc = @inbounds locs[2]
      Ty = topology(grid, 2)()
      Ny = length(loc, Ty, grid.Ny)
-     yn = ynodes(grid, locs...)
+     yn = ynodes(grid, locs..., with_halos=true)
     return fractional_index(y, yn, Ny) 
 end
 
@@ -160,7 +160,7 @@ end
     loc = @inbounds locs[2]
      Ty = topology(grid, 2)()
      Ny = length(loc, Ty, grid.Ny)
-     yn = φnodes(grid, locs...)
+     yn = φnodes(grid, locs..., with_halos=true)
     return fractional_index(y, yn, Ny)
 end
 
@@ -178,7 +178,7 @@ end
     loc = @inbounds locs[3]
      Tz = topology(grid, 3)()
      Nz = length(loc, Tz, grid.Nz)
-     zn = znodes(grid, loc)
+     zn = znodes(grid, loc, with_halos=true)
     return fractional_index(z, zn, Nz) 
 end
 
