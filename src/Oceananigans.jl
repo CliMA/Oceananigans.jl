@@ -93,7 +93,7 @@ export
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
     # Diagnostics
-    CFL, AdvectiveCFL, DiffusiveCFL,
+    CFL, AdvectiveCFL, DiffusiveCFL, MovieMaker,
 
     # Output writers
     NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
