@@ -210,7 +210,6 @@ function MovieMaker(fig, func; io::VideoStream, filename="movie.mp4")
 end
 
 function MovieMaker(fig, func; filename="movie.mp4", kwargs...)
-    @show kwargs
     io = VideoStream(fig; kwargs...)
     return MovieMaker(fig, func, io, filename)
 end
