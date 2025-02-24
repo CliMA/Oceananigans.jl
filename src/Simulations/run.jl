@@ -116,7 +116,10 @@ function time_step!(sim::Simulation)
 
     start_time_step = time_ns()
     model_callbacks = Tuple(cb for cb in values(sim.callbacks) if cb.callsite isa ModelCallsite)
-    Δt = aligned_time_step(sim, sim.Δt)
+
+    if sim.align_time_step
+        Δt = aligned_time_step(sim, sim.Δt)
+    end
 
     if !(sim.initialized) # execute initialization step
         initialize!(sim)
