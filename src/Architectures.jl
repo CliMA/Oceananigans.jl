@@ -7,7 +7,6 @@ export array_type, on_architecture, arch_array
 
 using CUDA
 using KernelAbstractions
-using Metal
 using Adapt
 using OffsetArrays
 
@@ -43,18 +42,13 @@ struct GPU{D} <: AbstractSerialArchitecture
 end
 
 const CUDAGPU  = GPU{<:CUDA.CUDABackend}
-const MetalGPU = GPU{<:Metal.MetalBackend}
-
-CUDAGPU()  = GPU(CUDA.CUDABackend(; always_inline=true))
-MetalGPU() = GPU(Metal.MetalBackend())
+CUDAGPU() = GPU(CUDA.CUDABackend(; always_inline=true))
 
 function GPU() 
     if CUDA.has_cuda_gpu()
         return CUDAGPU()
-    elseif Sys.isapple() # Assumption!
-        return MetalGPU()
     else
-        error("No GPU found.")
+        error("CUDA GPU not found.")
     end
 end
 
@@ -76,7 +70,6 @@ architecture() = nothing
 architecture(::Number) = nothing
 architecture(::Array) = CPU()
 architecture(::CuArray) = CUDAGPU()
-architecture(::MtlArray) = MetalGPU()
 architecture(a::SubArray) = architecture(parent(a))
 architecture(a::OffsetArray) = architecture(parent(a))
 
@@ -100,28 +93,16 @@ on_architecture(arch::AbstractSerialArchitecture, nt::NamedTuple) = NamedTuple{k
 
 # On architecture for array types
 on_architecture(::CPU, a::Array) = a
-on_architecture(::CUDAGPU, a::Array) = CuArray(a)
-on_architecture(::MetalGPU, a::Array) = MtlArray(a)
-
-on_architecture(::CPU, a::MtlArray) = Array(a)
-on_architecture(::GPU, a::MtlArray) = a
-
-on_architecture(::CPU, a::CuArray) = Array(a)
-on_architecture(::GPU, a::CuArray) = a
-
 on_architecture(::CPU, a::BitArray) = a
-on_architecture(::CUDAGPU, a::BitArray) = CuArray(a)
-on_architecture(::MetalGPU, a::BitArray) = MtlArray(a)
-
-on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:MtlArray}) = Array(a)
-on_architecture(::GPU, a::SubArray{<:Any, <:Any, <:MtlArray}) = a
-
+on_architecture(::CPU, a::CuArray) = Array(a)
 on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
-on_architecture(::GPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
-
 on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
+
+on_architecture(::CUDAGPU, a::Array) = CuArray(a)
+on_architecture(::CUDAGPU, a::CuArray) = a
+on_architecture(::CUDAGPU, a::BitArray) = CuArray(a)
+on_architecture(::CUDAGPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
 on_architecture(::CUDAGPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
-on_architecture(::MetalGPU, a::SubArray{<:Any, <:Any, <:Array}) = MtlArray(a)
 
 on_architecture(arch::AbstractSerialArchitecture, a::OffsetArray) = OffsetArray(on_architecture(arch, a.parent), a.offsets...)
 
@@ -154,10 +135,8 @@ end
 # Convert arguments to GPU-compatible types
 @inline convert_to_device(arch, args)  = args
 @inline convert_to_device(::CPU, args) = args
-@inline convert_to_device(::GPU,  args) = CUDA.cudaconvert(args)
-@inline convert_to_device(::MetalGPU, args) = Metal.mtlconvert(args)
-@inline convert_to_device(::CUDAGPU,  args::Tuple) = map(CUDA.cudaconvert, args)
-@inline convert_to_device(::MetalGPU, args::Tuple) = map(Metal.mtlconvert, args)
+@inline convert_to_device(::CUDAGPU, args) = CUDA.cudaconvert(args)
+@inline convert_to_device(::CUDAGPU, args::Tuple) = map(CUDA.cudaconvert, args)
 
 # Deprecated functions
 function arch_array(arch, arr) 
