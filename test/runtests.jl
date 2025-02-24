@@ -11,7 +11,6 @@ if test_file != :none
     group = :none
 end
 
-
 #####
 ##### Run tests!
 #####
@@ -28,6 +27,9 @@ CUDA.allowscalar() do
 
     # Initialization steps
     if group == :init || group == :all
+        using Reactant
+        using Enzyme
+
         Pkg.instantiate(; verbose=true)
         Pkg.precompile(; strict=true)
         Pkg.status()
