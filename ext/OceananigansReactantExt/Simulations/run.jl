@@ -14,7 +14,6 @@ function initialize!(sim::ReactantSimulation)
 
     model = sim.model
     clock = model.clock
-
     update_state!(model)
 
     #=
@@ -67,7 +66,7 @@ end
 """ Step `sim`ulation forward by one time step. """
 function time_step!(sim::ReactantSimulation)
 
-    start_time_step = time_ns()
+    #start_time_step = time_ns()
     model_callbacks = Tuple(cb for cb in values(sim.callbacks) if cb.callsite isa ModelCallsite)
     Δt = aligned_time_step(sim, sim.Δt)
 
@@ -77,16 +76,16 @@ function time_step!(sim::ReactantSimulation)
 
         if sim.running # check that initialization didn't stop time-stepping
             if sim.verbose
-                @info "Executing initial time step..."
-                start_time = time_ns()
+                # @info "Executing initial time step..."
+                #start_time = time_ns()
             end
 
             # Take first time-step
             time_step!(sim.model, Δt, callbacks=model_callbacks)
 
             if sim.verbose
-                elapsed_initial_step_time = prettytime(1e-9 * (time_ns() - start_time))
-                @info "    ... initial time step complete ($elapsed_initial_step_time)."
+                #elapsed_initial_step_time = prettytime(1e-9 * (time_ns() - start_time))
+                # @info "    ... initial time step complete ($elapsed_initial_step_time)."
             end
         else
             @warn "Simulation stopped during initialization."
@@ -105,6 +104,14 @@ function time_step!(sim::ReactantSimulation)
         =#
     end
 
+    stop_sim = iteration(sim) >= sim.stop_iteration
+    @trace if stop_sim
+        sim.running = false
+    else
+        nothing
+    end
+
+    #=
     for callback in values(sim.callbacks)
         need_to_call = callback.schedule(sim.model)
         @trace if need_to_call

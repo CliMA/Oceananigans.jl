@@ -17,7 +17,8 @@ function Simulation(model::ReactantModel; Δt,
    TT = eltype(model)
    Δt = Δt isa Number ? TT(Δt) : Δt
 
-   stop_iteration = ConcreteRNumber(Float64(stop_iteration))
+   #stop_iteration = ConcreteRNumber(Float64(stop_iteration))
+   stop_iteration = Float64(stop_iteration)
 
    return Simulation(model,
                      Δt,

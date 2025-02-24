@@ -3,6 +3,8 @@ module Architectures
 using Reactant
 using Oceananigans
 
+using Reactant: AnyConcreteRArray
+
 import Oceananigans.Architectures: device, architecture, array_type, on_architecture
 import Oceananigans.Architectures: unified_array, ReactantState, device_copy_to!
 
