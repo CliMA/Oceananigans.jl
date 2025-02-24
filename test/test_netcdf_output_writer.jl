@@ -107,10 +107,18 @@ function test_netcdf_time_file_splitting(arch)
                             global_attributes = fake_attributes,
                             file_splitting = TimeInterval(4seconds),
                             overwrite_existing = true)
+    
+    cp = Checkpointer(model;
+                        dir = ".",
+                        schedule=IterationInterval(12),
+                        prefix="model_checkpoint",
+                        overwrite_existing = false,
+                        verbose = true
+                        )
 
-    push!(simulation.output_writers, ow)
+    push!(simulation.output_writers, ow, cp)
 
-    run!(simulation)
+    run!(simulation, pickup=false)
 
     for n in string.(1:3)
         filename = "test_part$n.nc"
@@ -123,9 +131,56 @@ function test_netcdf_time_file_splitting(arch)
 
         # Leave test directory clean.
         close(ds)
+        # rm(filename)
+    end
+    # rm("test_part4.nc")
+
+    return nothing
+end
+
+function test_netcdf_pickup_from_time_file_splitting(arch)
+    grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1), halo=(1, 1, 1))
+    model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    simulation = Simulation(model, Δt=1, stop_iteration=24seconds)
+
+    fake_attributes = Dict("fake_attribute"=>"fake_attribute")
+
+    ow = NetCDFOutputWriter(model, (; u=model.velocities.u);
+                            dir = ".",
+                            filename = "test.nc",
+                            schedule = IterationInterval(2),
+                            array_type = Array{Float64},
+                            with_halos = true,
+                            global_attributes = fake_attributes,
+                            file_splitting = TimeInterval(4seconds),
+                            overwrite_existing = true)
+    
+    cp = Checkpointer(model;
+                            dir = ".",
+                            schedule=IterationInterval(12),
+                            prefix="model_checkpoint",
+                            overwrite_existing = false,
+                            verbose = true
+                            )
+    
+    push!(simulation.output_writers, ow, cp)
+
+    run!(simulation, pickup=true)
+
+    for n in string.(1:6)
+        filename = "test_part$n.nc"
+        ds = NCDataset(filename,"r")
+        dimlength = length(ds["time"])
+        # Test that all files contain the same dimensions.
+        @test dimlength == 2
+        # Test that all files contain the user defined attributes.
+        @test ds.attrib["fake_attribute"] == "fake_attribute"
+
+        # Leave test directory clean.
+        close(ds)
         rm(filename)
     end
-    rm("test_part4.nc")
+    rm("test_part7.nc")
 
     return nothing
 end
@@ -940,6 +995,7 @@ for arch in archs
         test_DateTime_netcdf_output(arch)
         test_netcdf_size_file_splitting(arch)
         test_netcdf_time_file_splitting(arch)
+        test_netcdf_pickup_from_time_file_splitting(arch)
         test_TimeDate_netcdf_output(arch)
         test_thermal_bubble_netcdf_output(arch)
         test_thermal_bubble_netcdf_output_with_halos(arch)

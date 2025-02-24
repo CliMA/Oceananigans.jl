@@ -372,16 +372,21 @@ function NetCDFOutputWriter(model, outputs;
                             dimensions = Dict(),
                             overwrite_existing = nothing,
                             deflatelevel = 0,
-                            part = 1,
+                            part = nothing, 
                             file_splitting = NoFileSplitting(),
                             verbose = false)
     mkpath(dir)
+
+    part = number_of_split_files!(file_splitting, dir, filename, overwrite_existing)
+    filename = current_split_filename(dir, filename)
+
     filename = auto_extension(filename, ".nc")
+
     filepath = abspath(joinpath(dir, filename))
 
     initialize!(file_splitting, model)
     update_file_splitting_schedule!(file_splitting, filepath)
-
+    
     if isnothing(overwrite_existing)
         if isfile(filepath)
             overwrite_existing = false
@@ -666,7 +671,7 @@ function initialize_nc_file!(filepath,
                              grid,
                              model)
 
-    mode = overwrite_existing ? "c" : "a"
+    mode = overwrite_existing || !isfile(filepath) ? "c" : "a"
 
     # Add useful metadata
     global_attributes["date"] = "This file was generated on $(now())."

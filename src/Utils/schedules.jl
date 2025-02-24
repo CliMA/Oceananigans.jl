@@ -69,7 +69,6 @@ end
 function (schedule::TimeInterval)(model)
     t = model.clock.time
     t★ = next_actuation_time(schedule)
-
     if t >= t★
         if schedule.actuations < typemax(Int)
             schedule.actuations += 1
