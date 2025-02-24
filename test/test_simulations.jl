@@ -4,6 +4,8 @@ using TimesDates: TimeDate
 
 using Oceananigans.Models: erroring_NaNChecker!
 
+import Oceananigans.Simulations: finalize!, initialize!
+
 using Oceananigans.Simulations:
     stop_iteration_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
     TimeStepWizard, new_time_step, reset!
@@ -212,6 +214,21 @@ end
     end
 end
 
+mutable struct InitializedFinalized
+    initialized :: Bool
+    finalized :: Bool
+end
+(::InitializedFinalized)(sim) = nothing
+function initialize!(infi::InitializedFinalized, sim)
+    infi.initialized = true
+    return nothing
+end
+
+function finalize!(infi::InitializedFinalized, sim)
+    infi.finalized = true
+    return nothing
+end
+
 @testset "Simulations" begin
     for arch in archs
         @info "Testing simulations [$(typeof(arch))]..."
@@ -229,6 +246,20 @@ end
         model.clock.iteration = 1 # we want to start here for some reason
         run!(simulation)
         @test progress_cb.schedule.actuations == 3
+
+        # Test initialize! and finalize!
+        model = NonhydrostaticModel(; grid)
+        simulation = Simulation(model; Δt=1, stop_time=6)
+        infi = InitializedFinalized(false, false)
+        add_callback!(simulation, infi, IterationInterval(1))
+        @test !(infi.initialized)
+        @test !(infi.finalized)
+        time_step!(simulation) # should initialize
+        @test infi.initialized
+        @test !(infi.finalized)
+        run!(simulation) # should finalize
+        @test infi.initialized
+        @test infi.finalized
 
         @testset "NaN Checker [$(typeof(arch))]" begin
             @info "  Testing NaN Checker [$(typeof(arch))]..."

@@ -1,5 +1,6 @@
 module Smagorinskys
 
+using Oceananigans
 using Oceananigans.Operators
 using Oceananigans.Fields
 

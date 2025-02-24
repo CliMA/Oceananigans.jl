@@ -5,6 +5,7 @@ using Adapt
 using CUDA
 using KernelAbstractions: @kernel, @index
 
+using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Utils

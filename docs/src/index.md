@@ -82,6 +82,10 @@ cite our work and mention Oceananigans by name.
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
+1. Bhadouriya, A., Gayen, B., Naveira Garabato, A., and Silvano, A. (2025) [Overshooting convection drives winter mixed layer under Antarctic sea ice](https://doi.org/10.21203/rs.3.rs-5932119/v1), preprint (Version 1), available at Research Square. DOI: [10.21203/rs.3.rs-5932119/v1](https://doi.org/10.21203/rs.3.rs-5932119/v1)
+
+1. Fan, X., Fox-Kemper, B., Suzuki, N., Li, Q., Marchesiello, P., Sullivan, P. P., and Hall, P. S. (2024) [Comparison of the Coastal and Regional Ocean COmmunity model (CROCO) and NCAR-LES in non-hydrostatic simulations](https://doi.org/10.5194/gmd-17-4095-2024), _Geoscientific Model Development_, **17**, 4095-4113. DOI: [10.5194/gmd-17-4095-2024](https://doi.org/10.5194/gmd-17-4095-2024)
+
 1. Abbott, K. and Mahadevan, A. (2024). [Why is the monsoon coastal upwelling signal subdued in the Bay of Bengal?](https://doi.org/10.1029/2024JC022023), _Journal of Geophysical Research: Oceans_, **129**, e2024JC022023. DOI: [10.1029/2024JC022023](https://doi.org/10.1029/2024JC022023)
 
 1. Bisits, J. I., Zika, J. D., and Evans, D. G. (2024) [Does cabbeling shape the thermohaline structure of high-latitude oceans?](https://doi.org/10.1175/JPO-D-24-0061.1), _Journal of Physical Oceanography_, in press. DOI: [10.1175/JPO-D-24-0061.1](https://doi.org/10.1175/JPO-D-24-0061.1)

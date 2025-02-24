@@ -123,22 +123,23 @@ struct Clamp end # clamp to nearest value
 @inline shift_index(n, n₀) = n - (n₀ - 1)
 @inline reverse_index(m, n₀) = m + n₀ - 1
 
-@inline memory_index(backend::PartlyInMemory, ::Linear, Nt, n) = shift_index(n, backend.start)
-
-@inline function memory_index(backend::PartlyInMemory, ::Clamp, Nt, n)
-    n̂ = clamp(n, 1, Nt)
-    m = shift_index(n̂, backend.start)
-    return m
-end
-
 """
     time_index(backend::PartlyInMemory, time_indexing, Nt, m)
 
 Compute the time index of a snapshot currently stored at the memory index `m`,
 given `backend`, `time_indexing`, and number of times `Nt`.
 """
-@inline time_index(backend::PartlyInMemory, ::Union{Clamp, Linear}, Nt, m) =
-    reverse_index(m, backend.start)
+@inline function time_index(backend::PartlyInMemory, ::Cyclical, Nt, m)
+    n = reverse_index(m, backend.start)
+    ñ = mod1(n, Nt) # wrap index
+    return ñ
+end
+
+@inline function time_index(backend::PartlyInMemory, ::Union{Clamp, Linear}, Nt, m)
+    n = reverse_index(m, backend.start)
+    ñ = ifelse(n > Nt, Nt, n)
+    return ñ
+end
 
 """
     memory_index(backend::PartlyInMemory, time_indexing, Nt, n)
@@ -184,10 +185,10 @@ m̃ = mod1(7, 5)  # = 2 ✓
     return m̃
 end
 
-@inline function time_index(backend::PartlyInMemory, ::Cyclical, Nt, m)
-    n = reverse_index(m, backend.start)
-    ñ = mod1(n, Nt) # wrap index
-    return ñ
+@inline function memory_index(backend::PartlyInMemory, ::Union{Clamp, Linear}, Nt, n)
+    n̂ = clamp(n, 1, Nt)
+    m = shift_index(n̂, backend.start)
+    return m
 end
 
 """
@@ -356,7 +357,7 @@ new_data(FT, grid, loc, indices, ::Nothing) = nothing
 # https://github.com/CliMA/ClimaOcean.jl/actions/runs/8804916198/job/24166354095)
 function new_data(FT, grid, loc, indices, Nt::Union{Int, Int64})
     space_size = total_size(grid, loc, indices)
-    underlying_data = zeros(FT, architecture(grid), space_size..., Nt)
+    underlying_data = zeros(architecture(grid), FT, space_size..., Nt)
     data = offset_data(underlying_data, grid, loc, indices)
     return data
 end
@@ -371,7 +372,7 @@ function FieldTimeSeries(loc, grid, times=();
                          backend = InMemory(),
                          path = nothing,
                          name = nothing,
-                         time_indexing = Linear(),
+                         time_indexing = Clamp(),
                          boundary_conditions = nothing,
                          reader_kw = NamedTuple())
 
