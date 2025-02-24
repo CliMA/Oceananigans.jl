@@ -1,5 +1,3 @@
-using CUDA
-using Metal
 using Oceananigans.Architectures: CPU, GPU, AbstractArchitecture
 using Oceananigans.Architectures: device, AbstractArchitecture
 
