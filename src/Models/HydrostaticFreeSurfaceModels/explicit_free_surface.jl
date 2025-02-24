@@ -4,20 +4,17 @@ using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
 using Adapt
 
-"""
-    struct ExplicitFreeSurface{E, T}
-
-The explicit free surface solver.
-
-$(TYPEDFIELDS)
-"""
 struct ExplicitFreeSurface{E, G} <: AbstractFreeSurface{E, G}
-    "free surface elevation"
     η :: E
-    "gravitational accelerations"
     gravitational_acceleration :: G
 end
 
+"""
+    ExplicitFreeSurface(; gravitational_acceleration=g_Earth)
+
+Represents a free surface displacement stepped forward explicitly with
+`gravitational_acceleration`.
+"""
 ExplicitFreeSurface(; gravitational_acceleration=g_Earth) =
     ExplicitFreeSurface(nothing, gravitational_acceleration)
 
@@ -166,3 +163,4 @@ function compute_explicit_free_surface_tendency!(grid, model)
 
     return nothing
 end
+
