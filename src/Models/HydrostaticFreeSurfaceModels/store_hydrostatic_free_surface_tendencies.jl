@@ -4,7 +4,6 @@ using Oceananigans.TimeSteppers: store_field_tendencies!
 
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids: AbstractGrid
-using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map
 
 using Oceananigans.Utils: launch!
 
