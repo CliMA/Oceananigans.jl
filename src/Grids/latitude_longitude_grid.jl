@@ -178,10 +178,6 @@ function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                precompute_metrics = true,
                                halo = nothing)
 
-    # if architecture == GPU() && !has_cuda()
-    #     throw(ArgumentError("Cannot create a GPU grid. No CUDA-enabled GPU was detected!"))
-    # end
-
     topology, size, halo, latitude, longitude, z, precompute_metrics =
         validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
 
