@@ -1,7 +1,7 @@
 module Architectures
 
 export AbstractArchitecture, AbstractSerialArchitecture
-export CPU, GPU
+export CPU, GPU, ReactantState
 export device, architecture, unified_array, device_copy_to!
 export array_type, on_architecture, arch_array
 
@@ -57,6 +57,13 @@ function GPU()
         error("No GPU found.")
     end
 end
+
+"""
+    ReactantState <: AbstractArchitecture
+
+Run Oceananigans on Reactant.
+"""
+struct ReactantState <: AbstractSerialArchitecture end
 
 #####
 ##### These methods are extended in DistributedComputations.jl
@@ -120,6 +127,7 @@ on_architecture(arch::AbstractSerialArchitecture, a::OffsetArray) = OffsetArray(
 
 cpu_architecture(::CPU) = CPU()
 cpu_architecture(::GPU) = CPU()
+cpu_architecture(::ReactantState) = CPU()
 
 unified_array(::CPU, a) = a
 unified_array(::GPU, a) = a
@@ -144,11 +152,12 @@ end
 @inline unsafe_free!(a)          = nothing
 
 # Convert arguments to GPU-compatible types
-@inline convert_args(::CPU, args) = args
-@inline convert_args(::GPU,  args) = CUDA.cudaconvert(args)
-@inline convert_args(::MetalGPU, args) = Metal.mtlconvert(args)
-@inline convert_args(::CUDAGPU,  args::Tuple) = map(CUDA.cudaconvert, args)
-@inline convert_args(::MetalGPU, args::Tuple) = map(Metal.mtlconvert, args)
+@inline convert_to_device(arch, args)  = args
+@inline convert_to_device(::CPU, args) = args
+@inline convert_to_device(::GPU,  args) = CUDA.cudaconvert(args)
+@inline convert_to_device(::MetalGPU, args) = Metal.mtlconvert(args)
+@inline convert_to_device(::CUDAGPU,  args::Tuple) = map(CUDA.cudaconvert, args)
+@inline convert_to_device(::MetalGPU, args::Tuple) = map(Metal.mtlconvert, args)
 
 # Deprecated functions
 function arch_array(arch, arr) 

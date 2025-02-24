@@ -168,7 +168,7 @@ julia> grid = LatitudeLongitudeGrid(size=(36, 34, Nz),
 ```
 """
 function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
-                               FT::DataType = Float64;
+                               FT::DataType = Oceananigans.defaults.FloatType;
                                size,
                                longitude = nothing,
                                latitude = nothing,
@@ -549,10 +549,10 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
         Δyᶠᶜ = Δyᶠᶜᵃ(1, 1, 1, grid)
         Δyᶜᶠ = Δyᶜᶠᵃ(1, 1, 1, grid)
     else
-        parentC = zeros(FT, length(grid.Δφᵃᶜᵃ))
-        parentF = zeros(FT, length(grid.Δφᵃᶜᵃ))
-        Δyᶠᶜ    = OffsetArray(on_architecture(arch, parentC), grid.Δφᵃᶜᵃ.offsets[1])
-        Δyᶜᶠ    = OffsetArray(on_architecture(arch, parentF), grid.Δφᵃᶜᵃ.offsets[1])
+        parentC = zeros(arch, FT, length(grid.Δφᵃᶜᵃ))
+        parentF = zeros(arch, FT, length(grid.Δφᵃᶜᵃ))
+        Δyᶠᶜ    = OffsetArray(parentC, grid.Δφᵃᶜᵃ.offsets[1])
+        Δyᶜᶠ    = OffsetArray(parentF, grid.Δφᵃᶜᵃ.offsets[1])
     end
 
     return Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ
