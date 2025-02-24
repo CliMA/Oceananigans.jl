@@ -298,3 +298,4 @@ function getindex(fts::InMemoryFTS, n::Int)
 
     return Field(location(fts), fts.grid; data, fts.boundary_conditions, fts.indices)
 end
+
