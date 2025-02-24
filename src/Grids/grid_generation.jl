@@ -1,5 +1,3 @@
-using Oceananigans.Architectures: MetalGPU
-
 # Utilities to generate a grid with the following inputs
 get_domain_extent(::Nothing, N)             = (1, 1)
 get_domain_extent(coord, N)                 = (coord[1], coord[2])
@@ -123,12 +121,9 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
     F = range(FT(F₋), FT(F₊), length = TF)
     C = range(FT(C₋), FT(C₊), length = TC)
 
-    # MetalGPU cannot use a Float64 as a step, so we need to convert to Float32
-    if arch isa MetalGPU 
-        F = StepRangeLen(FT(F.ref), FT(F.step), F.len, F.offset)
-        C = StepRangeLen(FT(C.ref), FT(C.step), C.len, C.offset)
-    end
-
+    F = on_architecture(arch, F)
+    C = on_architecture(arch, C)
+    
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)
 
