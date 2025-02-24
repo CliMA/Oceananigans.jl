@@ -189,19 +189,13 @@ function test_pertubation_advection_open_boundary_conditions(arch, FT)
         model = NonhydrostaticModel(; grid, boundary_conditions, timestepper = :QuasiAdamsBashforth2)
 
         u = normal_velocity(Val(orientation), model)
-        
         view(parent(u), :, :, :) .= 1
-
         time_step!(model, 1)
-
         @test all(view(parent(u), :, :, :) .== 1)
 
         absolute_end_index = tuple(map(n -> ifelse(n == orientation, 8, 1), 1:3)...)
-        
         view(parent(u), absolute_end_index...) .= 2
-
         time_step!(model, 1)
-
         end_index = tuple(map(n -> ifelse(n == orientation, 5, 1), 1:3)...)
         
         # uⁿ⁺¹ = (uⁿ + Ūuⁿ⁺¹ᵢ₋₁) / (1 + Ū)
@@ -212,17 +206,15 @@ function test_pertubation_advection_open_boundary_conditions(arch, FT)
         forcing = velocity_forcing(Val(orientation), Forcing((x, t) -> 0.1))
         boundary_conditions = wall_normal_boundary_condition(Val(orientation), obc)
 
-        model = NonhydrostaticModel(; grid, 
-                              boundary_conditions, 
-                              timestepper = :QuasiAdamsBashforth2,
-                              forcing)
-        
-        u = normal_velocity(Val(orientation), model)
-        
+        model = NonhydrostaticModel(; grid,
+                                      boundary_conditions,
+                                      timestepper = :QuasiAdamsBashforth2,
+                                      forcing)
+
+        u = normal_velocity(Val(orientation), model)        
         for _ in 1:100
             time_step!(model, 0.1)
         end
-
         @test all(isapprox.(interior(u), 1, atol = 0.1))
     end
 end

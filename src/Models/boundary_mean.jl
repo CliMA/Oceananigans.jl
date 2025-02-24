@@ -11,7 +11,7 @@ import Oceananigans.BoundaryConditions: update_boundary_condition!
 """
     BoundaryAdjacentMean
 
-Stores the bounary mean `value` of a field. Updated by calling 
+Stores the boundary mean `value` of a `Field`. Updated by calling 
 ```jldoctest
 julia> using Oceananigans
 
