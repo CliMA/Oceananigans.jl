@@ -12,7 +12,7 @@ if test_file != :none
 end
 
 #####
-##### Run tests!
+##### Run tests
 #####
 
 CUDA.allowscalar() do
@@ -27,21 +27,7 @@ CUDA.allowscalar() do
 
     # Initialization steps
     if group == :init || group == :all
-        using Reactant
-        using Enzyme
-
-        Pkg.instantiate(; verbose=true)
-        Pkg.precompile(; strict=true)
-        Pkg.status()
-
-        try
-            MPI.versioninfo()
-        catch; end
-
-        try
-            CUDA.precompile_runtime()
-            CUDA.versioninfo()
-        catch; end
+        include("test_init.jl")
     end
     
     # Core Oceananigans
