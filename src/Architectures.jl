@@ -97,12 +97,14 @@ on_architecture(::CPU, a::BitArray) = a
 on_architecture(::CPU, a::CuArray) = Array(a)
 on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
 on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
+on_architecture(::CPU, a::StepRangeLen) = a
 
 on_architecture(::CUDAGPU, a::Array) = CuArray(a)
 on_architecture(::CUDAGPU, a::CuArray) = a
 on_architecture(::CUDAGPU, a::BitArray) = CuArray(a)
 on_architecture(::CUDAGPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
 on_architecture(::CUDAGPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
+on_architecture(::CUDACPU, a::StepRangeLen) = a
 
 on_architecture(arch::AbstractSerialArchitecture, a::OffsetArray) = OffsetArray(on_architecture(arch, a.parent), a.offsets...)
 
