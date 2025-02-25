@@ -241,6 +241,13 @@ CUDA.allowscalar() do
         end
     end
 
+    # Tests for Metal extension
+    if group == :metal|| group == :all
+        @testset "Metal extension tests" begin
+            include("test_metal.jl")
+        end
+    end
+
     if group == :convergence
         include("test_convergence.jl")
     end
