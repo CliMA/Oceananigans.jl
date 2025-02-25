@@ -33,22 +33,25 @@ variable `JULIA_NUM_THREADS` is set.
 struct CPU <: AbstractSerialArchitecture end
 
 """
-    GPU <: AbstractArchitecture
+    GPU(device)
 
-Run Oceananigans on a single NVIDIA CUDA GPU.
+Return a GPU architecture using `device`.
+`device` defauls to CUDA.CUDABackend(always_inline=true)
 """
 struct GPU{D} <: AbstractSerialArchitecture 
     device :: D
 end
 
-const CUDAGPU  = GPU{<:CUDA.CUDABackend}
-CUDAGPU() = GPU(CUDA.CUDABackend(; always_inline=true))
+const CUDAGPU = GPU{<:CUDA.CUDABackend}
+CUDAGPU() = GPU(CUDA.CUDABackend(always_inline=true))
 
-function GPU() 
+function GPU()
     if CUDA.has_cuda_gpu()
         return CUDAGPU()
     else
-        error("CUDA GPU not found.")
+        msg = """We cannot make a GPU with the CUDA backend:
+                 a CUDA GPU was not found!"""
+        throw(ArgumentError(msg))
     end
 end
 

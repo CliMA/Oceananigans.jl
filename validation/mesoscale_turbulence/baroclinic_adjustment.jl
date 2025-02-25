@@ -8,30 +8,31 @@ using JLD2
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: Fields
-using Oceananigans.Architectures: MetalGPU
 
+Oceananigans.defaults.FloatType = Float32
 filename = "baroclinic_adjustment"
 
 # Architecture
-architecture  = MetalGPU()
+using Metal
+metal = Metal.MetalBackend()
+# arch = GPU(metal)
+arch = CPU()
 
 # Domain
-Lx = 4000kilometers  # east-west extent [m]
+Lx = 2000kilometers  # east-west extent [m]
 Ly = 1000kilometers  # north-south extent [m]
 Lz = 1kilometers     # depth [m]
 
-Nx = 512
+Nx = 256
 Ny = 128
-Nz = 40
+Nz = 32
 
 save_fields_interval = 1day
 stop_time = 80days
-Δt₀ = 5minutes
-FT  = Float32
+Δt = 10minutes
 
 # We choose a regular grid though because of numerical issues that yet need to be resolved
-grid = RectilinearGrid(architecture, FT;
+grid = RectilinearGrid(arch,
                        topology = (Periodic, Bounded, Bounded), 
                        size = (Nx, Ny, Nz), 
                        x = (0, Lx),
@@ -39,37 +40,16 @@ grid = RectilinearGrid(architecture, FT;
                        z = (-Lz, 0),
                        halo = (3, 3, 3))
 
-coriolis = BetaPlane(FT, latitude = -45)
-
-Δx, Δy, Δz = Lx/Nx, Ly/Ny, Lz/Nz
-
-𝒜 = Δz/Δy   # Grid cell aspect ratio.
-
-κh = 0.1    # [m² s⁻¹] horizontal diffusivity
-νh = 0.1    # [m² s⁻¹] horizontal viscosity
-κz = 𝒜 * κh # [m² s⁻¹] vertical diffusivity
-νz = 𝒜 * νh # [m² s⁻¹] vertical viscosity
-
-diffusive_closure = VerticalScalarDiffusivity(FT, ν = νz, κ = κz)
-horizontal_closure = HorizontalScalarDiffusivity(FT, ν = νh, κ = κh)
-convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(FT, convective_κz = FT.(1.0))
-
-#####
-##### Model building
-#####
+coriolis = BetaPlane(latitude = -45)
 
 @info "Building a model..."
 
-closures = (diffusive_closure, horizontal_closure, convective_adjustment)
-
-model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    coriolis = coriolis,
+model = HydrostaticFreeSurfaceModel(; grid, coriolis,
                                     buoyancy = BuoyancyTracer(),
-                                    closure = closures,
                                     tracers = (:b, :c),
-                                    momentum_advection = WENO(FT; order=5),
-                                    tracer_advection = WENO(FT; order=5),
-                                    free_surface = nothing) #SplitExplicitFreeSurface(grid; substeps=60))
+                                    momentum_advection = WENO(order=5),
+                                    tracer_advection = WENO(order=5),
+                                    free_surface = SplitExplicitFreeSurface(grid; substeps=60))
 
 @info "Built $model."
 
@@ -108,34 +88,34 @@ set!(model, b=bᵢ, c=cᵢ)
 ##### Simulation building
 #####
 
-simulation = Simulation(model, Δt=Δt₀, stop_time=stop_time)
+simulation = Simulation(model; Δt, stop_time)
 
 # add timestep wizard callback
-wizard = TimeStepWizard(cfl=0.2, max_change=1.1, max_Δt=20minutes)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
+# wizard = TimeStepWizard(cfl=0.2, max_change=1.1, max_Δt=20minutes)
+# simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
 # add progress callback
-wall_clock = [time_ns()]
+wall_clock = Ref(time_ns())
 
 function print_progress(sim)
     @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, next Δt: %s\n",
             100 * (sim.model.clock.time / sim.stop_time),
             sim.model.clock.iteration,
             prettytime(sim.model.clock.time),
-            prettytime(1e-9 * (time_ns() - wall_clock[1])),
+            prettytime(1e-9 * (time_ns() - wall_clock[])),
             maximum(abs, sim.model.velocities.u),
             maximum(abs, sim.model.velocities.v),
             maximum(abs, sim.model.velocities.w),
             prettytime(sim.Δt))
 
-    wall_clock[1] = time_ns()
+    wall_clock[] = time_ns()
     
     return nothing
 end
 
-simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
+add_callback!(simulation, print_progress, IterationInterval(100))
 
-
+#=
 slicers = (west = (1, :, :),
            east = (grid.Nx, :, :),
            south = (:, 1, :),
@@ -146,17 +126,17 @@ slicers = (west = (1, :, :),
 for side in keys(slicers)
     indices = slicers[side]
 
-    # simulation.output_writers[side] = JLD2OutputWriter(model, fields(model),
-    #                                                    schedule = TimeInterval(save_fields_interval),
-    #                                                    indices,
-    #                                                    filename = filename * "_$(side)_slice",
-    #                                                    overwrite_existing = true)
+    simulation.output_writers[side] = JLD2OutputWriter(model, fields(model),
+                                                       schedule = TimeInterval(save_fields_interval),
+                                                       indices,
+                                                       filename = filename * "_$(side)_slice",
+                                                       overwrite_existing = true)
 end
 
-# simulation.output_writers[:fields] = JLD2OutputWriter(model, fields(model),
-#                                                       schedule = TimeInterval(save_fields_interval),
-#                                                       filename = filename * "_fields",
-#                                                       overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2OutputWriter(model, fields(model),
+                                                      schedule = TimeInterval(save_fields_interval),
+                                                      filename = filename * "_fields",
+                                                      overwrite_existing = true)
 
 B = Field(Average(model.tracers.b, dims=1))
 C = Field(Average(model.tracers.c, dims=1))
@@ -164,19 +144,15 @@ U = Field(Average(model.velocities.u, dims=1))
 V = Field(Average(model.velocities.v, dims=1))
 W = Field(Average(model.velocities.w, dims=1))
 
-# simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, c=C, u=U, v=V, w=W),
-#                                                      schedule = TimeInterval(save_fields_interval),
-#                                                      filename = filename * "_zonal_average",
-#                                                      overwrite_existing = true)
+simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, c=C, u=U, v=V, w=W),
+                                                     schedule = TimeInterval(save_fields_interval),
+                                                     filename = filename * "_zonal_average",
+                                                     overwrite_existing = true)
+=#
 
 @info "Running the simulation..."
 
-try
-    run!(simulation, pickup=false)
-catch err
-    @info "run! threw an error! The error message is"
-    showerror(stdout, err)
-end
+run!(simulation)
 
 @info "Simulation completed in " * prettytime(simulation.run_wall_time)
 

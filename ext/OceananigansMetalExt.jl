@@ -1,8 +1,8 @@
 module OceananigansMetalExt
 
 using Metal
-
 using Oceananigans
+
 import Oceananigans.Architectures:
     architecture,
     convert_to_device,
@@ -11,13 +11,8 @@ import Oceananigans.Architectures:
 const MetalGPU = GPU{<:Metal.MetalBackend}
 MetalGPU() = GPU(Metal.MetalBackend())
 
-# elseif Sys.isapple() # Assumption!
-#     return MetalGPU()
-# end
-
 architecture(::MtlArray) = MetalGPU()
 
-on_architecture(::MetalGPU, a::Number) = a
 on_architecture(::MetalGPU, a::Number) = a
 on_architecture(::MetalGPU, a::Array) = MtlArray(a)
 on_architecture(::MetalGPU, a::BitArray) = MtlArray(a)
@@ -40,3 +35,4 @@ end
 @inline convert_to_device(::MetalGPU, args::Tuple) = map(Metal.mtlconvert, args)
 
 end # module
+
