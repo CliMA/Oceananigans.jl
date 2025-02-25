@@ -9,7 +9,7 @@ using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 import Oceananigans.Diagnostics: MovieMaker
 import Oceananigans.Simulations: finalize!
 
-using Makie: Observable, save, VideoStream
+using Makie: Observable, save, recordframe!, VideoStream
 using MakieCore: AbstractPlot
 import MakieCore: convert_arguments, _create_plot
 import Makie: args_preferred_axis
@@ -199,6 +199,11 @@ end
 #####
 ##### Diagnostics.MovieMaker methods
 #####
+
+function (maker::MovieMaker)(simulation)
+    maker.func(simulation, maker.fig)
+    recordframe!(maker.io)
+end
 
 """
     MovieMaker(fig, func; io, filename="movie.mp4")

@@ -9,4 +9,3 @@ end
 
 function MovieMaker end
 
-(maker::MovieMaker)(simulation) = maker.func(simulation, maker.fig, maker.io)

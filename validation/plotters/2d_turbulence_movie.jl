@@ -37,10 +37,9 @@ fig = Figure()
 ax1 = Axis(fig[1, 1])
 ax2 = Axis(fig[1, 2])
 
-function update_plot(sim, fig, io)
+function update_plot(sim, fig)
     heatmap!(fig[1, 1], ω; colormap = :balance, colorrange = (-2, 2))
     heatmap!(fig[1, 2], s; colormap = :balance, colorrange = (-2, 2))
-    recordframe!(io)
 end
 
 filename = "2d_turbulence.mp4"
