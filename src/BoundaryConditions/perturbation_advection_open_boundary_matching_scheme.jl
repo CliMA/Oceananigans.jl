@@ -206,11 +206,11 @@ end
 
 @inline function _fill_south_halo!(i, k, grid, u, bc::PAOBC, ::Tuple{Any, Face, Any}, clock, model_fields)
     boundary_indices = (i, 1, k)
-    boundary_adjacent_indices = (i, 1, k)
+    boundary_adjacent_indices = (i, 2, k)
     boundary_secret_storage_indices = (i, 0, k)
 
     Δy = Δyᶜᶠᶜ(i, 1, k, grid)
-
+    
     step_left_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices, grid, u, clock, model_fields, Δy)
 
     return nothing
@@ -231,7 +231,7 @@ end
 
 @inline function _fill_bottom_halo!(i, j, grid, u, bc::PAOBC, ::Tuple{Any, Any, Face}, clock, model_fields)
     boundary_indices = (i, j, 1)
-    boundary_adjacent_indices = (i, j, 1)
+    boundary_adjacent_indices = (i, j, 2)
     boundary_secret_storage_indices = (i, j, 0)
 
     Δz = Δzᶜᶜᶠ(i, j, 1, grid)
