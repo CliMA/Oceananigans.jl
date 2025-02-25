@@ -174,7 +174,7 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 * **Silvestri et al., ["A GPU-based ocean dynamic core for routine mesoscale-resolving climate simulations"](https://essopenarchive.org/users/703084/articles/970871-a-gpu-based-ocean-dynamical-core-for-routine-mesoscale-resolving-climate-simulations?commit=646ed2673ca9c9a0528f58ebc016d8daa822558f).**
 
-  *This paper describes the optimization of the `HydrostaticFreeSurfaceModel` algorithm (including the implementation
+  *This paper describes the optimization of the `HydrostaticFreeSurfaceModel` algorithm, including the implementation
   of a new `SplitExplicitFreeSurface` algorithm for `Distributed` architectures for multiple GPUs. As a result of this work,
   global simulations with O(10 km) grid spacing can be run on 16-20 nodes, achieving 10 simulated years per day (SYPD).
   ([bibtex](https://scholar.googleusercontent.com/scholar.bib?q=info:DMUXiNF0I44J:scholar.google.com/&output=citation&scisdr=ClH7x5ymEN6sswAuDLw:AFWwaeYAAAAAZ70oFLzFT71gHhZ0Pzgz-ehU_jE&scisig=AFWwaeYAAAAAZ70oFL1DLD1WTkQCwbU68afW0dY&scisf=4&ct=citation&cd=-1&hl=en)).*
