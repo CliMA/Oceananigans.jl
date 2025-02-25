@@ -12,7 +12,7 @@ Oceananigans.defaults.FloatType = Float32
     @test eltype(grid) = Float32
     @test architecture(grid) isa GPU
 
-    model = HydrostaticFreeSurfaceModel(; grid
+    model = HydrostaticFreeSurfaceModel(; grid,
                                         coriolis = FPlane(latitude=45),
                                         buoyancy = BuoyancyTracer(),
                                         tracers = :b,
