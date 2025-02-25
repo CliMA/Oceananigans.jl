@@ -7,6 +7,6 @@ struct MovieMaker{F, FN, IO, NM} <: AbstractPlotter
     filename :: NM
 end
 
-MovieMaker() = throw(MethodError("Makie is needed."))
+function MovieMaker end
 
 (maker::MovieMaker)(simulation) = maker.func(simulation, maker.fig, maker.io)

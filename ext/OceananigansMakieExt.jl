@@ -201,17 +201,17 @@ end
 #####
 
 """
-    MovieMaker(fig, func; io=VideoStream, filename="movie.mp4")
+    MovieMaker(fig, func; io, filename="movie.mp4")
 
 Create a `MovieMaker`, which makes a movie.
 """
-function MovieMaker(fig, func; io::VideoStream, filename="movie.mp4")
+function MovieMaker(fig, func, io::VideoStream; filename="movie.mp4")
     return MovieMaker(fig, func, io, filename)
 end
 
 function MovieMaker(fig, func; filename="movie.mp4", kwargs...)
     io = VideoStream(fig; kwargs...)
-    return MovieMaker(fig, func, io, filename)
+    return MovieMaker(fig, func, io; filename)
 end
 
 # Write animation to disk after simulation is complete
