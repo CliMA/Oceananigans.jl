@@ -14,7 +14,6 @@ using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.Utils: launch!
 using SeawaterPolynomials: TEOS10EquationOfState
 using KernelAbstractions: @kernel, @index
-using GPUArrays
 using Random
 
 function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw)

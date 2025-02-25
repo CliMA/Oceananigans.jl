@@ -139,9 +139,7 @@ function run_basic_simulation_tests(arch)
   
     wizard = TimeStepWizard(cfl=0.1)
     simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(1))
-
     run!(simulation)
-
     @test simulation.callbacks[:wizard].func isa TimeStepWizard
 
     # Test time-step alignment with callbacks
@@ -154,20 +152,42 @@ function run_basic_simulation_tests(arch)
     capture_call_time(sim, data) = push!(data, sim.model.clock.time)
     simulation.callbacks[:tester] = Callback(capture_call_time, schedule, parameters=called_at)
     run!(simulation)
-
-    @show called_at
     @test all(called_at .≈ 0.0:schedule.interval:simulation.stop_time)
 
-
     # Test that minimum_relative_step is running correctly
-    final_time = 1.0 + 1e-11
+    final_time = 1 + 1e-11
     model.clock.time = 0
     model.clock.iteration = 0
     simulation = Simulation(model, Δt=1, stop_time=final_time, minimum_relative_step=1e-10)
     run!(simulation)
 
-    @test simulation.model.clock.time == final_time
-    @test simulation.model.clock.iteration == 1
+    @test time(simulation) == final_time
+    @test iteration(simulation) == 1
+
+    model.clock.time = 0
+    model.clock.iteration = 0
+    simulation = Simulation(model, Δt=1, stop_time=3, align_time_step=true)
+    simulation.callbacks[:tester] = Callback(sim -> nothing, TimeInterval(0.1))
+
+    time_step!(simulation)
+    @test time(simulation) == 0.1
+    @test iteration(simulation) == 1
+
+    time_step!(simulation)
+    @test time(simulation) == 0.2
+    @test iteration(simulation) == 2
+    @test simulation.Δt == 1
+
+    simulation.align_time_step = false
+    time_step!(simulation)
+    @test time(simulation) == 1.2
+    @test iteration(simulation) == 3
+    @test simulation.Δt == 1
+
+    time_step!(simulation)
+    @test time(simulation) == 2.2
+    @test iteration(simulation) == 4
+    @test simulation.Δt == 1
 
     return nothing
 end
@@ -193,7 +213,7 @@ end
 function run_nan_checker_test(arch; erroring)
     grid = RectilinearGrid(arch, size=(4, 2, 1), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid=grid)
-    simulation = Simulation(model, Δt=1, stop_iteration=1)
+    simulation = Simulation(model, Δt=1, stop_iteration=2)
     model.velocities.u[1, 1, 1] = NaN
     erroring && erroring_NaNChecker!(simulation)
 
@@ -201,7 +221,7 @@ function run_nan_checker_test(arch; erroring)
         @test_throws ErrorException run!(simulation)
     else
         run!(simulation)
-        @test model.clock.iteration == 0 # simulation did not run
+        @test model.clock.iteration == 1 # simulation stopped after one iteration
     end
 
     return nothing
