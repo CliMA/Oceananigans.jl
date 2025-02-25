@@ -43,7 +43,8 @@ function update_plot(sim, fig)
 end
 
 filename = "2d_turbulence.mp4"
-maker = MovieMaker(fig, update_plot; filename, format="mp4", framerate=12, compression=20)
-add_callback!(simulation, maker, TimeInterval(0.6))
+add_movie_maker!(simulation, TimeInterval(0.6), fig, update_plot; filename, format="mp4", framerate=12, compression=20)
+#maker = MovieMaker(fig, update_plot; filename, format="mp4", framerate=12, compression=20)
+#add_callback!(simulation, maker, TimeInterval(0.6))
 
 run!(simulation)

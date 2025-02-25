@@ -1,6 +1,7 @@
 module Diagnostics
 
-export StateChecker, CFL, AdvectiveCFL, DiffusiveCFL, MovieMaker
+export StateChecker, CFL, AdvectiveCFL, DiffusiveCFL,
+       MovieMaker, add_movie_maker!
 
 using CUDA
 using Oceananigans
