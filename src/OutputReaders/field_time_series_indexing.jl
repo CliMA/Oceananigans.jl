@@ -4,11 +4,11 @@ using Oceananigans.Architectures: architecture
 
 import Oceananigans.Fields: interpolate
 
-struct InterpolationIndices{T}
+struct InterpolationIndices{T, N1, N2, N3}
     fractional_index :: T
-    first_index  :: Int
-    second_index :: Int
-    length       :: Int
+    first_index  :: N1
+    second_index :: N2
+    length       :: N3
 end
 
 #####
