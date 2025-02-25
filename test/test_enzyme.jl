@@ -1,5 +1,7 @@
 include("dependencies_for_runtests.jl")
 
+using Enzyme
+
 # Required presently
 Enzyme.API.looseTypeAnalysis!(true)
 Enzyme.API.maxtypeoffset!(2032)
