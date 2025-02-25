@@ -30,19 +30,17 @@ maximum_numeric_diffusivity(::Nothing, grid, clock, fields) = 0
 
 const FunctionDiffusivity = Union{<:DiscreteDiffusionFunction, <:Function}
 
-function maximum_numeric_diffusivity(κ::FunctionDiffusivity, grid, clock, fields; ν = false)
+function maximum_numeric_diffusivity(κ::FunctionDiffusivity, grid, clock, fields)
 
     location = (Center(), Center(), Center())
-    diffusivity = ν ?  νᶜᶜᶜ : κᶜᶜᶜ
-    diffusivity_kfo = KernelFunctionOperation{Center(), Center(), Center()}(diffusivity, grid, location, κ, clock, fields)
+    diffusivity_kfo = KernelFunctionOperation{Center(), Center(), Center()}(κᶜᶜᶜ, grid, location, κ, clock, fields)
     return maximum(diffusivity_kfo)
 end
 
 function cell_diffusion_timescale(closure::ScalarDiffusivity{TD, Dir}, diffusivities, grid, clock, fields) where {TD, Dir}
     Δ = min_Δxyz(grid, formulation(closure))
     max_κ = maximum_numeric_diffusivity(closure.κ, grid, clock, fields)
-    max_ν = closure.ν isa FunctionDiffusivity ? maximum_numeric_diffusivity(closure.ν, grid, clock, fields, ν = true) :
-                                                maximum_numeric_diffusivity(closure.ν, grid, clock, fields)
+    max_ν = maximum_numeric_diffusivity(closure.ν, grid, clock, fields)
     return min(Δ^2 / max_ν, Δ^2 / max_κ)
 end
 

@@ -86,6 +86,7 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 @inline νᶠᶜᶠ(i, j, k, grid, closure::ASD, K, args...)     = νᶠᶜᶠ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), args...)
 @inline νᶜᶠᶠ(i, j, k, grid, closure::ASD, K, args...)     = νᶜᶠᶠ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), args...)
 
+@inline κᶜᶜᶜ(i, j, k, grid, closure::ASD, K, id, args...) = κᶜᶜᶜ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), args...)
 @inline κᶠᶜᶜ(i, j, k, grid, closure::ASD, K, id, args...) = κᶠᶜᶜ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), args...)
 @inline κᶜᶠᶜ(i, j, k, grid, closure::ASD, K, id, args...) = κᶜᶠᶜ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), args...)
 @inline κᶜᶜᶠ(i, j, k, grid, closure::ASD, K, id, args...) = κᶜᶜᶠ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), args...)

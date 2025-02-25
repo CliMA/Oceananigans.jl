@@ -268,7 +268,8 @@ function test_function_scalar_diffusivity()
     max_diffusivity = maximum(2000 * exp.(znodes(model.grid, Center()) / depth_scale))
     Δ = min_Δxyz(model.grid, formulation(model.closure))
 
-    return min(Δ^2 / max_diffusivity, Δ^2 / max_diffusivity) == cell_diffusion_timescale(model)
+    τκ = Δ^2 / max_diffusivity
+    return cell_diffusion_timescale(model) == τκ
 end
 
 function test_discrete_function_scalar_diffusivity()
@@ -290,8 +291,8 @@ function test_discrete_function_scalar_diffusivity()
     model = NonhydrostaticModel(; grid, closure, tracers=:b, buoyancy=BuoyancyTracer())
     max_diffusivity = maximum(2000 * exp.(znodes(model.grid, Center()) / 100))
     Δ = min_Δxyz(model.grid, formulation(model.closure))
-
-    return min(Δ^2 / max_diffusivity, Δ^2 / max_diffusivity) == cell_diffusion_timescale(model)
+    τκ = Δ^2 / max_diffusivity
+    return cell_diffusion_timescale(model) == τκ
 end
 
 @testset "Turbulence closures" begin
