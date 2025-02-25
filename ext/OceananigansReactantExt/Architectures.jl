@@ -16,11 +16,23 @@ architecture(::Reactant.AnyTracedRArray) = ReactantState
 
 array_type(::ReactantState) = ConcreteRArray
 
-on_architecture(::ReactantState, a::Array) = ConcreteRArray(a)
-on_architecture(::ReactantState, a::Reactant.AnyConcreteRArray) = a
+to_reactant_sharding(::Missing) = Sharding.NoSharding()
+to_reactant_sharding(s::Sharding.AbstractSharding) = s
+to_reactant_sharding(::T) where {T} = error("Unsupported sharding type $T")
+
 on_architecture(::ReactantState, a::Reactant.AnyTracedRArray) = a
-on_architecture(::ReactantState, a::BitArray) = ConcreteRArray(a)
-on_architecture(::ReactantState, a::SubArray{<:Any, <:Any, <:Array}) = ConcreteRArray(a)
+function on_architecture(r::ReactantState, a::Array)
+    return ConcreteRArray(a; sharding=to_reactant_sharding(r.sharding))
+end
+function on_architecture(r::ReactantState, a::Reactant.AnyConcreteRArray)
+    return ConcreteRArray(a; sharding=to_reactant_sharding(r.sharding))
+end
+function on_architecture(r::ReactantState, a::BitArray)
+    return ConcreteRArray(a; sharding=to_reactant_sharding(r.sharding))
+end
+function on_architecture(r::ReactantState, a::SubArray{<:Any,<:Any,<:Array})
+    return ConcreteRArray(a; sharding=to_reactant_sharding(r.sharding))
+end
 
 unified_array(::ReactantState, a) = a
 
