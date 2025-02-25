@@ -9,7 +9,7 @@ Oceananigans.defaults.FloatType = Float32
     arch = GPU(metal)
     grid = RectilinearGrid(arch, size=(16, 8, 4), extent=(1, 1, 1))
 
-    @test eltype(grid) = Float32
+    @test eltype(grid) == Float32
     @test architecture(grid) isa GPU
 
     model = HydrostaticFreeSurfaceModel(; grid,
