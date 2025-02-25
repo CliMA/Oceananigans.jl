@@ -16,11 +16,37 @@ architecture(::Reactant.AnyTracedRArray) = ReactantState
 
 array_type(::ReactantState) = ConcreteRArray
 
-on_architecture(::ReactantState, a::Array) = ConcreteRArray(a)
-on_architecture(::ReactantState, a::Reactant.AnyConcreteRArray) = a
+to_reactant_sharding(::Missing) = Sharding.NoSharding()
+to_reactant_sharding(s::Sharding.AbstractSharding) = s
+to_reactant_sharding(::T) where {T} = error("Unsupported sharding type $T")
+
 on_architecture(::ReactantState, a::Reactant.AnyTracedRArray) = a
-on_architecture(::ReactantState, a::BitArray) = ConcreteRArray(a)
-on_architecture(::ReactantState, a::SubArray{<:Any, <:Any, <:Array}) = ConcreteRArray(a)
+function on_architecture(r::ReactantState, a::Array)
+    # XXX: Only for testing purposes
+    sharding = ndims(a) == 2 ? to_reactant_sharding(r.sharding) : Sharding.NoSharding()
+    return ConcreteRArray(a; sharding)
+end
+function on_architecture(r::ReactantState, a::Reactant.AnyConcreteRArray)
+    # XXX: Only for testing purposes
+    sharding = ndims(a) == 2 ? to_reactant_sharding(r.sharding) : Sharding.NoSharding()
+    return ConcreteRArray(a; sharding)
+end
+function on_architecture(r::ReactantState, a::BitArray)
+    # XXX: Only for testing purposes
+    sharding = ndims(a) == 2 ? to_reactant_sharding(r.sharding) : Sharding.NoSharding()
+    return ConcreteRArray(a; sharding)
+end
+function on_architecture(r::ReactantState, a::SubArray{<:Any,<:Any,<:Array})
+    # XXX: Only for testing purposes
+    sharding = ndims(a) == 2 ? to_reactant_sharding(r.sharding) : Sharding.NoSharding()
+    return ConcreteRArray(a; sharding)
+end
+
+function Base.zeros(arch::ReactantState, FT, N...)
+    # XXX: Only for testing purposes
+    N == 2 && return on_architecture(arch, zeros(FT, N...))
+    return ConcreteRArray(zeros(FT, N...))
+end
 
 unified_array(::ReactantState, a) = a
 
