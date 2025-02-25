@@ -530,8 +530,6 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
         metric_size = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
     end
 
-    @show FT, metric_size, arch, offsets
-
     Δxᶠᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
     Δxᶜᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
     Δxᶠᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
