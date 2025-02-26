@@ -3,7 +3,7 @@ module Grids
 using Reactant
 using Oceananigans
 using Oceananigans.Architectures: ReactantState, CPU
-using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization
+using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, MutableVerticalDiscretization
 using Oceananigans.Fields: Field
 using Oceananigans.ImmersedBoundaries: GridFittedBottom
 
@@ -21,6 +21,7 @@ deconcretize(z::StaticVerticalDiscretization) =
         deconcretize(z.Δᵃᵃᶜ)
     )
 
+# TODO: handle MutableVerticalDiscretization in grid constructors
 deconcretize(z::MutableVerticalDiscretization) = z
     
 function LatitudeLongitudeGrid(arch::ReactantState, FT::DataType; kw...)
