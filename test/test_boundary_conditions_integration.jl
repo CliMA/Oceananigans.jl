@@ -252,7 +252,7 @@ function test_pertubation_advection_open_boundary_conditions(arch, FT)
             time_step!(model, 0.1)
         end
 
-        @test all(isapprox.(interior(u), 1, atol = 0.1))
+        @test all(map(u->isapprox(u, 1, atol=0.1), interior(u)))
     end
 end
 
