@@ -51,7 +51,7 @@ or an `AbstractArray`. A `MutableVerticalDiscretization` defines a vertical coor
 following certain rules. Examples of `MutableVerticalDiscretization`s are free-surface following coordinates, 
 or sigma coordinates.
 """
-MutableVerticalDiscretization(r_faces) = MutableVerticalDiscretization(r_faces, r_faces, [nothing for i in 1:9]...)
+MutableVerticalDiscretization(r_faces) = MutableVerticalDiscretization(r_faces, r_faces, (nothing for i in 1:9)...)
 
 ####
 #### Some useful aliases
