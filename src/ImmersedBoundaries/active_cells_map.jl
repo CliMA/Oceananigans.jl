@@ -52,25 +52,6 @@ A tuple of indices corresponding to the linear index.
 """
 @inline active_linear_index_to_tuple(idx, active_cells_map) = @inbounds Base.map(Int, active_cells_map[idx])
 
-function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool=true) 
-    ibg = ImmersedBoundaryGrid(grid, ib)
-    TX, TY, TZ = topology(ibg)
-    
-    # Create the cells map on the CPU, then switch it to the GPU
-    if active_cells_map 
-        interior_active_cells = map_interior_active_cells(ibg)
-        active_z_columns = map_active_z_columns(ibg)
-    else
-        interior_active_cells = nothing
-        active_z_columns = nothing
-    end
-
-    return ImmersedBoundaryGrid{TX, TY, TZ}(ibg.underlying_grid, 
-                                            ibg.immersed_boundary, 
-                                            interior_active_cells,
-                                            active_z_columns)
-end
-
 with_halo(halo, ibg::ActiveCellsIBG) =
     ImmersedBoundaryGrid(with_halo(halo, ibg.underlying_grid), ibg.immersed_boundary; active_cells_map = true)
 
