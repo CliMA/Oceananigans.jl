@@ -42,7 +42,7 @@ function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersed
     
     TX, TY, TZ = topology(grid)
     
-    return ImmersedBoundaryGrid{TX, TY, TZ}(underlying_grid, 
+    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, 
                                             new_ib, 
                                             interior_active_cells,
                                             active_z_columns)
