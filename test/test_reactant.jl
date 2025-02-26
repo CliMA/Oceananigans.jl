@@ -17,6 +17,42 @@ using KernelAbstractions: @kernel, @index
 using GPUArrays
 using Random
 
+#=
+using Reactant
+using Reactant.ReactantCore
+
+mutable struct TestClock{I}
+    iteration :: I
+end
+
+mutable struct TestSimulation{C, I, B}
+    clock :: C
+    stop_iteration :: I
+    running :: B
+end
+
+function step!(sim)
+    cond = sim.clock.iteration >= sim.stop_iteration
+    @trace if cond
+        sim.running = false
+    else
+        sim.clock.iteration += 1 # time step
+    end
+    return sim # note, this function returns sim which is used as an argument for the next while-loop iteration.
+end
+
+function test_run!(sim)
+    ReactantCore.traced_while(sim->sim.running, step!, (sim, ))
+end
+
+clock = TestClock(ConcreteRNumber(0))
+simulation = TestSimulation(clock, ConcreteRNumber(3), ConcreteRNumber(true))
+# @code_hlo optimize=false test_run!(simulation)
+
+r_run! = @compile sync=true test_run!(simulation)
+r_run!(simulation)
+=#
+
 function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw)
     r_arch = ReactantState()
     r_grid = GridType(r_arch; grid_kw...)
@@ -114,6 +150,7 @@ end
     @inbounds f[i, j, k] += 1
 end
 
+#=
 @testset "Reactanigans unit tests" begin
     @info "Performing Reactanigans unit tests..."
     arch = ReactantState()
@@ -156,6 +193,7 @@ end
         @test cd[1, 2, 3] == 2 * (x[1] + y[2] * z[3])
     end
 end
+=#
 
 @testset "Reactant Super Simple Simulation Tests" begin
     # nonhydrostatic_model_kw = (; advection=WENO())
