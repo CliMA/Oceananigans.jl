@@ -12,6 +12,7 @@ import Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid
 import Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 const ReactantGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:ReactantState}
+const ReactantUnderlyingGrid{FT, TX, TY, TZ} = AbstractUnderlyingGrid{FT, TX, TY, TZ, <:ReactantState}
 
 deconcretize(z::StaticVerticalDiscretization) =
     StaticVerticalDiscretization(
@@ -84,13 +85,11 @@ function reactant_immersed_boundary_grid(grid, ib; active_cells_map)
                                             ibg.interior_active_cells, ibg.active_z_columns)
 end
 
-ImmersedBoundaryGrid(grid::ReactantGrid, ib::GridFittedBottom; active_cells_map::Bool=true) =
+ImmersedBoundaryGrid(grid::ReactantUnderlyingGrid, ib::GridFittedBottom; active_cells_map::Bool=true) =
     reactant_immersed_boundary_grid(grid, ib; active_cells_map)
 
-ImmersedBoundaryGrid(grid::ReactantGrid, ib; active_cells_map::Bool=true) =
+ImmersedBoundaryGrid(grid::ReactantUnderlyingGrid, ib; active_cells_map::Bool=true) =
     reactant_immersed_boundary_grid(grid, ib; active_cells_map)
-    
-
 
 end # module
 
