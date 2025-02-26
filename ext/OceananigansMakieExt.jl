@@ -6,6 +6,7 @@ using Oceananigans.Fields: AbstractField
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.OutputReaders: auto_extension
 import Oceananigans.Diagnostics: MovieMaker
 import Oceananigans.Simulations: finalize!
 
@@ -201,25 +202,31 @@ end
 #####
 
 function (maker::MovieMaker)(simulation)
-    maker.func(simulation, maker.fig)
+    maker.func(simulation, maker.figure)
     recordframe!(maker.io)
 end
 
 """
-    MovieMaker(fig, func; io, filename="movie.mp4")
+    MovieMaker(figure, func; io, filename="movie.mp4")
 
 Create a `MovieMaker`, which makes a movie.
 """
-function MovieMaker(fig, func, io::VideoStream; filename="movie.mp4")
-    return MovieMaker(fig, func, io, filename)
+function MovieMaker(figure, func, io::VideoStream; dir = ".", filename="movie.mp4")
+    mkpath(dir)
+    filename = auto_extension(filename, ".mp4")
+    filepath = abspath(joinpath(dir, filename))
+    return MovieMaker(figure, func, io, filepath)
 end
 
-function MovieMaker(fig, func; filename="movie.mp4", kwargs...)
-    io = VideoStream(fig; kwargs...)
-    return MovieMaker(fig, func, io; filename)
+function MovieMaker(figure, func; dir=".", filename="movie.mp4", kwargs...)
+    io = VideoStream(figure; kwargs...)
+    return MovieMaker(figure, func, io; dir, filename)
 end
+
+#function MovieMaker(variables::Tuple; indices, col_wrap=Inf, colorranges=nothing, colormaps=nothing, kwargs...)
+#end
 
 # Write animation to disk after simulation is complete
-finalize!(maker::MovieMaker, simulation) = save(maker.filename, maker.io)
+finalize!(maker::MovieMaker, simulation) = save(maker.filepath, maker.io)
 
 end # module
