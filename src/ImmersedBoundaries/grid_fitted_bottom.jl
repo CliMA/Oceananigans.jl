@@ -91,10 +91,10 @@ Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.
 """
     numerical_immersed_boundary(grid, ib)
 
-Returns a computed `bottom_height` wrapped in a Field. 
-If `ib` is an `AbstractGridFittedBottom`, `bottom_height` is the z-coordinate of 
+Returns a new `ib` wrapped around a Field that holds the numerical `immersed_boundary`. 
+If `ib` is an `AbstractGridFittedBottom`, `ib.bottom_height` is the z-coordinate of 
 top-most interface of the last ``immersed`` cell in the column. If `ib` is a `GridFittedBoundary`,
-`bottom_height` is the z-coordinate of the bottom of the last cell in the column.
+`ib.mask` is a field of booleans that indicates whether a cell is immersed or not.
 """
 function numerical_immersed_boundary(grid, ib::GridFittedBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
