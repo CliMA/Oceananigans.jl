@@ -266,7 +266,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                                               parameterized_field_dependent_function_bc(C, FT, ArrayType),
                                               discrete_function_bc(C, FT, ArrayType),
                                               parameterized_discrete_function_bc(C, FT, ArrayType))
-#=
+
 @testset "Boundary condition integration tests" begin
     @info "Testing boundary condition integration into NonhydrostaticModel..."
 
@@ -436,4 +436,3 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         end
     end
 end
-=#
