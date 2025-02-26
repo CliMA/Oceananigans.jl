@@ -4,6 +4,13 @@ using Oceananigans.Architectures: architecture
 
 import Oceananigans.Fields: interpolate
 
+struct InterpolationIndices{T, N1, N2, N3}
+    fractional_index :: T
+    first_index  :: N1
+    second_index :: N2
+    length       :: N3
+end
+
 #####
 ##### Computation of time indices for interpolation
 #####
@@ -170,6 +177,18 @@ end
                              from_loc, from_grid, times, backend, time_indexing)
 
     to_time = to_time_index.time
+    ñ, n₁, n₂ = interpolating_time_indices(time_indexing, times, to_time)
+    interp = InterpolationIndices(ñ, n₁, n₂, length(times))
+    return interpolate(to_node, interp, data, from_loc, from_grid, backend, time_indexing)
+end
+
+@inline function interpolate(to_node, time_indices::InterpolationIndices, data::OffsetArray,
+                             from_loc, from_grid, backend, time_indexing)
+
+    ñ  = time_indices.fractional_index
+    n₁ = time_indices.first_index
+    n₂ = time_indices.second_index
+    Nt = time_indices.length
 
     if topology(from_grid) === (Flat, Flat, Flat)
         ix = iy = iz = (1, 1, 0)
@@ -183,9 +202,6 @@ end
         iz = interpolator(kk)
     end
 
-    ñ, n₁, n₂ = interpolating_time_indices(time_indexing, times, to_time)
-
-    Nt = length(times)
     m₁ = memory_index(backend, time_indexing, Nt, n₁)
     m₂ = memory_index(backend, time_indexing, Nt, n₂)
 
