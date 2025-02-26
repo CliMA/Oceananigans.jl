@@ -44,6 +44,7 @@ end
 
 const CUDAGPU = GPU{<:CUDA.CUDABackend}
 CUDAGPU() = GPU(CUDA.CUDABackend(always_inline=true))
+Base.summary(::CUDAGPU) = "CUDAGPU"
 
 function GPU()
     if CUDA.has_cuda_gpu()
