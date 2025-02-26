@@ -69,7 +69,7 @@ function compute_interior_active_cells(grid, ib; parameters = :xyz)
     return active_cells_field
 end
 
-@kernel function _set_active_column!(active_z_columns, grid, ib)
+@kernel function _set_active_columns!(active_z_columns, grid, ib)
     i, j = @index(Global, NTuple)
     active_column = true
     for k in 1:size(grid, 3)
@@ -83,7 +83,7 @@ function compute_active_z_columns(grid, ib)
     fill!(active_z_columns, true)
 
     # Compute the active cells in the column
-    launch!(architecture(grid), grid, :xy, _set_active_column!, active_z_columns, grid, ib)
+    launch!(architecture(grid), grid, :xy, _set_active_columns!, active_z_columns, grid, ib)
 
     return active_z_columns
 end
