@@ -29,12 +29,12 @@ the grid will also populate an `interior_active_cells` and `active_z_columns` fi
 interior and on a reduced x-y plane, respectively.
 """
 function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersedBoundary; active_cells_map::Bool=true) 
-    immersed_boundary = numerical_immersed_boundary(grid, ib)
+    new_ib = numerical_immersed_boundary(grid, ib)
     
     # Create the cells map on the CPU, then switch it to the GPU
     if active_cells_map 
-        interior_active_cells = map_interior_active_cells(grid, ib)
-        active_z_columns = map_active_z_columns(grid, ib)
+        interior_active_cells = map_interior_active_cells(grid, new_ib)
+        active_z_columns = map_active_z_columns(grid, new_ib)
     else
         interior_active_cells = nothing
         active_z_columns = nothing
@@ -43,7 +43,7 @@ function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersed
     TX, TY, TZ = topology(grid)
     
     return ImmersedBoundaryGrid{TX, TY, TZ}(underlying_grid, 
-                                            immersed_boundary, 
+                                            new_ib, 
                                             interior_active_cells,
                                             active_z_columns)
 end
