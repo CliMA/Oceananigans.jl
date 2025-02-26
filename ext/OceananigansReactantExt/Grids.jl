@@ -3,7 +3,7 @@ module Grids
 using Reactant
 using Oceananigans
 using Oceananigans.Architectures: ReactantState, CPU
-using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, MutableVerticalDiscretization
+using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, StaticVerticalDiscretization, MutableVerticalDiscretization
 using Oceananigans.Fields: Field
 using Oceananigans.ImmersedBoundaries: GridFittedBottom
 
