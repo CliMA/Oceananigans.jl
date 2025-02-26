@@ -55,34 +55,35 @@ A tuple of indices corresponding to the linear index.
 with_halo(halo, ibg::ActiveCellsIBG) =
     ImmersedBoundaryGrid(with_halo(halo, ibg.underlying_grid), ibg.immersed_boundary; active_cells_map = true)
 
-@inline active_cell(i, j, k, ibg) = !immersed_cell(i, j, k, ibg)
-@inline active_column(i, j, k, grid, column) = column[i, j, k] != 0
+@inline active_cell(i, j, k, grid, ib) = !immersed_cell(i, j, k, grid, ib)
 
-@kernel function _set_active_indices!(active_cells_field, grid)
+@kernel function _set_active_indices!(active_cells_field, grid, ib)
     i, j, k = @index(Global, NTuple)
-    @inbounds active_cells_field[i, j, k] = active_cell(i, j, k, grid)
+    @inbounds active_cells_field[i, j, k] = active_cell(i, j, k, grid, ib)
 end
 
-function compute_interior_active_cells(ibg; parameters = :xyz)
-    active_cells_field = Field{Center, Center, Center}(ibg, Bool)
+function compute_interior_active_cells(grid, ib; parameters = :xyz)
+    active_cells_field = Field{Center, Center, Center}(grid, Bool)
     fill!(active_cells_field, false)
-    launch!(architecture(ibg), ibg, parameters, _set_active_indices!, active_cells_field, ibg)
+    launch!(architecture(grid), grid, parameters, _set_active_indices!, active_cells_field, grid, ib)
     return active_cells_field
 end
 
-function compute_active_z_columns(ibg)
-    one_field = OneField(Int)
-    condition = NotImmersed(truefunc)
-    mask = 0
+@kernel function _set_active_column!(active_z_columns, grid, ib)
+    i, j = @index(Global, NTuple)
+    active_column = true
+    for k in 1:size(grid, 3)
+        active_column = active_column & active_cell(i, j, k, grid, ib)
+    end
+    @inbounds active_z_columns[i, j, 1] = active_column
+end
 
-    # Compute all the active cells in a z-column using a ConditionalOperation
-    conditional_active_cells = ConditionalOperation{Center, Center, Center}(one_field, identity, ibg, condition, mask)
-    active_cells_in_column   = sum(conditional_active_cells, dims = 3)
+function compute_active_z_columns(grid, ib)
+    active_z_columns = Field{Center, Center, Nothing}(grid, Bool)
+    fill!(active_z_columns, true)
 
-    # Check whether the column ``i, j`` is immersed, which would correspond to `active_cells_in_column[i, j, 1] == 0`
-    is_immersed_column = KernelFunctionOperation{Center, Center, Nothing}(active_column, ibg, active_cells_in_column)
-    active_z_columns = Field{Center, Center, Nothing}(ibg, Bool)
-    set!(active_z_columns, is_immersed_column)
+    # Compute the active cells in the column
+    launch!(architecture(grid), grid, :xy, _set_active_column!, active_z_columns, grid, ib)
 
     return active_z_columns
 end
@@ -94,22 +95,23 @@ const MAXUInt16 = 2^16 - 1
 const MAXUInt32 = 2^32 - 1
 
 """
-    interior_active_indices(ibg; parameters = :xyz)
+    interior_active_indices(grid, ib; parameters = :xyz)
 
 Compute the indices of the active interior cells in the given immersed boundary grid within the indices
 specified by the `parameters` keyword argument
 
 # Arguments
-- `ibg`: The immersed boundary grid.
+- `grid`: The underlying grid.
+- `ib`: The immersed boundary.
 - `parameters`: (optional) The parameters to be used for computing the active cells. Default is `:xyz`.
 
 # Returns
 An array of tuples representing the indices of the active interior cells.
 """
-function interior_active_indices(ibg; parameters = :xyz)
-    active_cells_field = compute_interior_active_cells(ibg; parameters)
+function interior_active_indices(grid, ib; parameters = :xyz)
+    active_cells_field = compute_interior_active_cells(grid, ib; parameters)
     
-    N = maximum(size(ibg))
+    N = maximum(size(grid))
     IntType = N > MAXUInt8 ? (N > MAXUInt16 ? (N > MAXUInt32 ? UInt64 : UInt32) : UInt16) : UInt8
    
     IndicesType = Tuple{IntType, IntType, IntType}
@@ -118,8 +120,8 @@ function interior_active_indices(ibg; parameters = :xyz)
     # For this reason, we split the computation in vertical levels and `findall` the active indices in 
     # subsequent xy planes, then stitch them back together
     active_indices = IndicesType[]
-    active_indices = findall_active_indices!(active_indices, active_cells_field, ibg, IndicesType)
-    active_indices = on_architecture(architecture(ibg), active_indices)
+    active_indices = findall_active_indices!(active_indices, active_cells_field, grid, IndicesType)
+    active_indices = on_architecture(architecture(grid), active_indices)
 
     return active_indices
 end
@@ -127,9 +129,9 @@ end
 # Cannot `findall` on very large grids, so we split the computation in levels.
 # This makes the computation a little heavier but avoids OOM errors (this computation
 # is performed only once on setup)
-function findall_active_indices!(active_indices, active_cells_field, ibg, IndicesType)
+function findall_active_indices!(active_indices, active_cells_field, grid, IndicesType)
     
-    for k in 1:size(ibg, 3)
+    for k in 1:size(grid, 3)
         interior_indices = findall(on_architecture(CPU(), interior(active_cells_field, :, :, k:k)))
         interior_indices = convert_interior_indices(interior_indices, k, IndicesType)
         active_indices = vcat(active_indices, interior_indices)
@@ -150,22 +152,22 @@ end
 # In case of a serial grid, the interior computations are performed over the whole three-dimensional
 # domain. Therefore, the `interior_active_cells` field contains the indices of all the active cells in 
 # the range 1:Nx, 1:Ny and 1:Nz (i.e., we construct the map with parameters :xyz)
-map_interior_active_cells(ibg) = interior_active_indices(ibg; parameters = :xyz)
+map_interior_active_cells(grid, ib) = interior_active_indices(grid, ib; parameters = :xyz)
 
 # If we eventually want to perform also barotropic step, `w` computation and `p` 
 # computation only on active `columns`
-function map_active_z_columns(ibg)
-    active_cells_field = compute_active_z_columns(ibg)
+function map_active_z_columns(grid, ib)
+    active_cells_field = compute_active_z_columns(grid, ib)
     interior_cells     = on_architecture(CPU(), interior(active_cells_field, :, :, 1))
   
     full_indices = findall(interior_cells)
 
-    Nx, Ny, _ = size(ibg)
+    Nx, Ny, _ = size(grid)
     # Reduce the size of the active_cells_map (originally a tuple of Int64)
     N = max(Nx, Ny)
     IntType = N > MAXUInt8 ? (N > MAXUInt16 ? (N > MAXUInt32 ? UInt64 : UInt32) : UInt16) : UInt8
     surface_map = getproperty.(full_indices, Ref(:I)) .|> Tuple{IntType, IntType}
-    surface_map = on_architecture(architecture(ibg), surface_map)
+    surface_map = on_architecture(architecture(grid), surface_map)
 
     return surface_map
 end
