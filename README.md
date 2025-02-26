@@ -160,9 +160,7 @@ including a recent [preprint submitted to the Journal of Advances in Modeling Ea
 >
 > submitted to the Journal of Advances in Modeling Earth Systems, arXiv 2502.14148
 
-Please
-[cite](https://scholar.googleusercontent.com/scholar.bib?q=info:aebARX_Qi78J:scholar.google.com/&output=citation&scisdr=ClH7x5ymEN6sswAg14I:AFWwaeYAAAAAZ70mz4IdRSYKi5EeLm60jdiBu88&scisig=AFWwaeYAAAAAZ70mz7wuMMXYImvII0hZTxdfhkQ&scisf=4&ct=citation&cd=-1&hl=en)
-this overview paper if you use Oceananigans in published work.
+Please cite this overview paper if you use Oceananigans in published work.
 
 We've also submitted a number of model development papers. Please cite these if you use
 the features they describe! Also, if you have developed a new feature in Oceananigans and describe it in a paper, make sure to open a pull request to add it to this list:
@@ -170,25 +168,22 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 * **Silvestri et al., ["A New WENO-Based Momentum Advection Scheme for Simulations of Ocean Mesoscale Turbulence"](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2023MS004130).**
 
   *This paper describes the development of `WENOVectorInvariant()` advection scheme, which can be used as the
-  `momentum_advection` scheme for `HydrostaticFreeSurfaceModel` ([bibtex](https://scholar.googleusercontent.com/scholar.bib?q=info:L78FCzYyvpEJ:scholar.google.com/&output=citation&scisdr=ClH7x5ymEN6sswAh05o:AFWwaeYAAAAAZ70ny5ralG0X7XWAYqmGDAq8_aM&scisig=AFWwaeYAAAAAZ70ny-JU-cZFPcIOklAfQf2JXMg&scisf=4&ct=citation&cd=-1&hl=en)).*
+  `momentum_advection` scheme for `HydrostaticFreeSurfaceModel`.*
 
 * **Silvestri et al., ["A GPU-based ocean dynamic core for routine mesoscale-resolving climate simulations"](https://essopenarchive.org/users/703084/articles/970871-a-gpu-based-ocean-dynamical-core-for-routine-mesoscale-resolving-climate-simulations?commit=646ed2673ca9c9a0528f58ebc016d8daa822558f).**
 
   *This paper describes the optimization of the `HydrostaticFreeSurfaceModel` algorithm, including the implementation
   of a new `SplitExplicitFreeSurface` algorithm for `Distributed` architectures for multiple GPUs. As a result of this work,
-  global simulations with O(10 km) grid spacing can be run on 16-20 nodes, achieving 10 simulated years per day (SYPD).
-  ([bibtex](https://scholar.googleusercontent.com/scholar.bib?q=info:DMUXiNF0I44J:scholar.google.com/&output=citation&scisdr=ClH7x5ymEN6sswAuDLw:AFWwaeYAAAAAZ70oFLzFT71gHhZ0Pzgz-ehU_jE&scisig=AFWwaeYAAAAAZ70oFL1DLD1WTkQCwbU68afW0dY&scisf=4&ct=citation&cd=-1&hl=en)).*
+  global simulations with O(10 km) grid spacing can be run on 16-20 nodes, achieving 10 simulated years per day (SYPD).*
 
-* **Wagner et al., ["CATKE: a turbulent-kinetic-energy-based parameterization for ocean microturbulence with dynamic convective adjustment"](https://essopenarchive.org/doi/full/10.22541/essoar.168748454.49694722)**
+* **Wagner et al., ["CATKE: a turbulent-kinetic-energy-based parameterization for ocean microturbulence with dynamic convective adjustment"](https://essopenarchive.org/doi/full/10.22541/essoar.168748454.49694722).**
 
   *This paper describes the development of `CATKEVerticalDiffusivity()`, including how it was calibrated automatically to
-  a suite of 35 large eddy simulations (also run with Oceananigans). It additionally features solutions from `TKEDissipationVerticalDiffusivity` (also known as "k-epsilon").
-  ([bibtex](https://scholar.googleusercontent.com/scholar.bib?q=info:YXwEYgnqtvgJ:scholar.google.com/&output=citation&scisdr=ClH7x5ymEN6sswAvVAo:AFWwaeYAAAAAZ70pTArI2mV4rgdnqdc16eiaHWY&scisig=AFWwaeYAAAAAZ70pTNVwdR88V2FPDqVK-t9NQEY&scisf=4&ct=citation&cd=-1&hl=en)).*
+  a suite of 35 large eddy simulations (also run with Oceananigans). It additionally features solutions from `TKEDissipationVerticalDiffusivity` (also known as "k-epsilon").*
 
-* **Ramadhan et al., ["Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs"](https://par.nsf.gov/servlets/purl/10200806)**
+* **Ramadhan et al., ["Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs"](https://par.nsf.gov/servlets/purl/10200806).**
 
-  *This Journal of Open Source Software article describes an early version of Oceananigans' `NonhydrostaticModel`.
-  ([bibtex](https://scholar.googleusercontent.com/scholar.bib?q=info:FblEQGeEElAJ:scholar.google.com/&output=citation&scisdr=ClH7x5ymEN6sswAvweA:AFWwaeYAAAAAZ70p2eCGCNaFYZVOJKHM3YpFbRw&scisig=AFWwaeYAAAAAZ70p2YxzZjHaGUtBZxtk9rcICgs&scisf=4&ct=citation&cd=-1&hl=en)).*
+  *This Journal of Open Source Software article describes an early version of Oceananigans' `NonhydrostaticModel`.*
   
 We also maintain a [list of publications using Oceananigans.jl](https://clima.github.io/OceananigansDocumentation/stable/#Papers-and-preprints-using-Oceananigans).
 If you have work using Oceananigans that you would like to have listed there, please open a pull request to add it or let us know!
