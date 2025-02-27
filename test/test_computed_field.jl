@@ -366,7 +366,8 @@ for arch in archs
                 @info "      Testing correctness of compute! unary operations..."
                 dont_test = tuple(:interpolate_identity)
                 operators_to_test = filter(op -> !(op ∈ dont_test), Oceananigans.AbstractOperations.unary_operators)
-                for unary in operators_to_test
+                for unary_symbol in operators_to_test
+                    unary = eval(unary_symbol)
                     @test compute_unary(unary, model)
                 end
             end
