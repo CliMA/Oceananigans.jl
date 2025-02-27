@@ -364,7 +364,9 @@ for arch in archs
 
             @testset "Unary computations [$A, $G]" begin
                 @info "      Testing correctness of compute! unary operations..."
-                for unary in (sqrt, sin, cos, exp, tanh)
+                dont_test = tuple(:interpolate_identity)
+                operators_to_test = filter(op -> !(op ∈ dont_test), Oceananigans.AbstractOperations.unary_operators)
+                for unary in operators_to_test
                     @test compute_unary(unary, model)
                 end
             end
