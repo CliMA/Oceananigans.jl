@@ -31,6 +31,7 @@ function Simulation(model::ReactantModel; Δt,
                      0.0,
                      false,
                      false,
+                     false,
                      verbose,
                      0.0)
 end
