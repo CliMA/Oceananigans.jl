@@ -67,7 +67,9 @@ include("show_abstract_operations.jl")
 # Make some operators!
 
 # Some operators:
-import Base: sqrt, sin, cos, exp, tanh, abs, -, +, /, ^, *
+import Base: -, +, /, ^, *
+import Base: sqrt, sin, cos, exp, tanh, abs, 
+import Base: log10 log tan sinh cosh
 import Base: abs
 
 @unary sqrt sin cos exp tanh abs log10 log tan sinh cosh
