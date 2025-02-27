@@ -7,6 +7,7 @@ else
 end
 
 using Test
+using OffsetArrays
 using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -14,8 +15,9 @@ using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.Utils: launch!
 using SeawaterPolynomials: TEOS10EquationOfState
 using KernelAbstractions: @kernel, @index
-using GPUArrays
 using Random
+
+OceananigansReactantExt = Base.get_extension(Oceananigans, :OceananigansReactantExt)
 
 #=
 using Reactant
@@ -158,6 +160,7 @@ end
     c = CenterField(grid)
     @test parent(c) isa Reactant.ConcreteRArray
 
+
     @info "  Testing field set! with a number..."
     set!(c, 1)
     @test all(c .≈ 1)
@@ -191,6 +194,37 @@ end
         @test cd[1, 1, 1] == 2 * (x[1] + y[1] * z[1])
         @test cd[1, 2, 1] == 2 * (x[1] + y[2] * z[1])
         @test cd[1, 2, 3] == 2 * (x[1] + y[2] * z[3])
+    end
+
+    # Deconcretization
+    c′ = OceananigansReactantExt.deconcretize(c)
+    @test parent(c′) isa Array
+    @test architecture(c′) isa ReactantState
+
+    for FT in (Float64, Float32)
+        sgrid = RectilinearGrid(arch, FT; size=(4, 4, 4), x=[0, 1, 2, 3, 4], y=(0, 1), z=(0, 1))
+        @test architecture(sgrid) isa ReactantState
+        @test architecture(sgrid.xᶠᵃᵃ) isa CPU
+        @test architecture(sgrid.xᶜᵃᵃ) isa CPU
+
+        llg = LatitudeLongitudeGrid(arch, FT; size = (4, 4, 4),
+                                    longitude = [0, 1, 2, 3, 4],
+                                    latitude = [0, 1, 2, 3, 4],
+                                    z = (0, 1))
+
+        @test architecture(llg) isa ReactantState
+
+        for name in propertynames(llg)
+            p = getproperty(llg, name)
+            if !(name ∈ (:architecture, :z))
+                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Array})
+            end
+        end
+
+        ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
+        ibg = ImmersedBoundaryGrid(llg, GridFittedBottom(ridge))
+        @test architecture(ibg) isa ReactantState
+        @test architecture(ibg.immersed_boundary.bottom_height) isa CPU
     end
 end
 =#

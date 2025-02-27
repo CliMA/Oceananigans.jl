@@ -129,9 +129,12 @@ end
 """ Generic implementation. """
 function ab2_step!(model, Δt)
     grid = model.grid
+    FT = eltype(grid)
     arch = architecture(grid)
     model_fields = prognostic_fields(model)
     χ = model.timestepper.χ
+    Δt = convert(FT, Δt)
+    χ = convert(FT, χ)
 
     for (i, field) in enumerate(model_fields)
         kernel_args = (field, Δt, χ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])

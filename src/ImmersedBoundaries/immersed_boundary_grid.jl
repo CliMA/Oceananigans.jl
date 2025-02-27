@@ -11,22 +11,23 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch} <: AbstractGrid{FT
     immersed_boundary :: I
     interior_active_cells :: M
     active_z_columns :: S
+end
 
-    # Internal interface
-    function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I, mi::M, ms::S) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I, M, S}
-        FT = eltype(grid)
-        arch = architecture(grid)
-        Arch = typeof(arch)
-        return new{FT, TX, TY, TZ, G, I, M, S, Arch}(arch, grid, ib, mi, ms)
-    end
+# Internal interface
+function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I, mi::M,
+                                          ms::S) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I, M, S}
+    FT = eltype(grid)
+    arch = architecture(grid)
+    Arch = typeof(arch)
+    return ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch}(arch, grid, ib, mi, ms)
+end
 
-    # Constructor with no active map
-    function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I}
-        FT = eltype(grid)
-        arch = architecture(grid)
-        Arch = typeof(arch)
-        return new{FT, TX, TY, TZ, G, I, Nothing, Nothing, Arch}(arch, grid, ib, nothing, nothing)
-    end
+# Constructor with no active map
+function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I}
+    FT = eltype(grid)
+    arch = architecture(grid)
+    Arch = typeof(arch)
+    return ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, Nothing, Nothing, Arch}(arch, grid, ib, nothing, nothing)
 end
 
 const IBG = ImmersedBoundaryGrid

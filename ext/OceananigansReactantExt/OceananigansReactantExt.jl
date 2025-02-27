@@ -2,9 +2,19 @@ module OceananigansReactantExt
 
 using Reactant
 using Oceananigans
+using OffsetArrays
+
+deconcretize(obj) = obj # fallback
+deconcretize(a::OffsetArray) = OffsetArray(Array(a.parent), a.offsets...)
 
 include("Architectures.jl")
 using .Architectures
+
+include("Grids.jl")
+using .Grids
+
+include("Fields.jl")
+using .Fields
 
 include("TimeSteppers.jl")
 using .TimeSteppers

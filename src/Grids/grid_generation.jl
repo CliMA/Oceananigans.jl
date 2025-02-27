@@ -121,6 +121,9 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
     F = range(FT(F₋), FT(F₊), length = TF)
     C = range(FT(C₋), FT(C₊), length = TC)
 
+    F = on_architecture(arch, F)
+    C = on_architecture(arch, C)
+    
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)
 
