@@ -67,44 +67,20 @@ end
 function time_step!(sim::ReactantSimulation)
 
     #start_time_step = time_ns()
-    model_callbacks = Tuple(cb for cb in values(sim.callbacks) if cb.callsite isa ModelCallsite)
-    Δt = aligned_time_step(sim, sim.Δt)
+    # Δt = aligned_time_step(sim, sim.Δt)
+    Δt = sim.Δt
 
     if !(sim.initialized) # execute initialization step
         initialize!(sim)
         initialize!(sim.model)
-
-        if sim.running # check that initialization didn't stop time-stepping
-            if sim.verbose
-                # @info "Executing initial time step..."
-                #start_time = time_ns()
-            end
-
-            # Take first time-step
-            time_step!(sim.model, Δt, callbacks=model_callbacks)
-
-            if sim.verbose
-                #elapsed_initial_step_time = prettytime(1e-9 * (time_ns() - start_time))
-                # @info "    ... initial time step complete ($elapsed_initial_step_time)."
-            end
-        else
-            @warn "Simulation stopped during initialization."
-        end
-
-    else # business as usual...
-        time_step!(sim.model, Δt, callbacks=model_callbacks)
-        #=
-        if Δt < sim.minimum_relative_step * sim.Δt
-            next_time = sim.model.clock.time + Δt
-            @warn "Resetting clock to $next_time and skipping time step of size Δt = $Δt"
-            sim.model.clock.time = next_time
-        else
-            time_step!(sim.model, Δt, callbacks=model_callbacks)
-        end
-        =#
     end
 
+    # model_callbacks = Tuple(cb for cb in values(sim.callbacks) if cb.callsite isa ModelCallsite)
+    model_callbacks = tuple()
+    time_step!(sim.model, Δt, callbacks=model_callbacks)
+
     stop_sim = iteration(sim) >= sim.stop_iteration
+
     @trace if stop_sim
         sim.running = false
     else
@@ -147,6 +123,37 @@ function time_step!(sim::ReactantSimulation)
 
     # Increment the wall clock
     sim.run_wall_time += 1e-9 * (end_time_step - start_time_step)
+    =#
+
+    return nothing
+end
+
+function run!(sim::ReactantSimulation; pickup=false)
+
+    #=
+    start_run = time_ns()
+
+    if we_want_to_pickup(pickup)
+        set!(sim, pickup)
+    end
+    =#
+
+    sim.initialized = false
+    sim.running = true
+    sim.run_wall_time = 0.0
+
+    while sim.running
+        time_step!(sim)
+    end
+
+    #=
+    for callback in values(sim.callbacks)
+        finalize!(callback, sim)
+    end
+
+    # Increment the wall clock
+    end_run = time_ns()
+    sim.run_wall_time += 1e-9 * (end_run - start_run)
     =#
 
     return nothing

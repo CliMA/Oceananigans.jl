@@ -215,17 +215,17 @@ end
     test_reactant_model_correctness(RectilinearGrid, HydrostaticFreeSurfaceModel, rectilinear_kw, hydrostatic_model_kw)
 
     @info "Testing LatitudeLongitudeGrid + HydrostaticFreeSurfaceModel Reactant correctness"
-    hydrostatic_model_kw = (; momentum_advection=WENO())
+    hydrostatic_model_kw = (; momentum_advection = WENO())
     test_reactant_model_correctness(LatitudeLongitudeGrid, HydrostaticFreeSurfaceModel, lat_lon_kw, hydrostatic_model_kw)
 
-    #=
+    @info "Testing LatitudeLongitudeGrid + 'complicated HydrostaticFreeSurfaceModel' Reactant correctness"
     equation_of_state = TEOS10EquationOfState()
     hydrostatic_model_kw = (momentum_advection = WENOVectorInvariant(),
                             tracer_advection = WENO(),
                             tracers = (:T, :S, :e),
                             buoyancy = SeawaterBuoyancy(; equation_of_state),
                             closure = CATKEVerticalDiffusivity())
+
     test_reactant_model_correctness(LatitudeLongitudeGrid, HydrostaticFreeSurfaceModel, lat_lon_kw, hydrostatic_model_kw)
-    =#
 end
 
