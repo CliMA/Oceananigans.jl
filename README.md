@@ -160,9 +160,22 @@ including a recent [preprint submitted to the Journal of Advances in Modeling Ea
 >
 > submitted to the Journal of Advances in Modeling Earth Systems, arXiv 2502.14148
 
-Please cite this overview paper if you use Oceananigans in published work.
+<details><summary>bibtex</summary>
+  <pre><code>@article{Oceananigans-overview-paper-2025,
+  title = {{High-level, high-resolution ocean modeling at all scales with Oceananigans}},
+  author = {G. L. Wagner and S. Silvestri and N. C. Constantinou and A. Ramadhan and J.-M. Campin and C. Hill and T. Chor and J. Strong-Wright and X. K. Lee and F. Poulin and A. Souza and K. J. Burns and J. Marshall and R. Ferrari},
+  journal = {arXiv preprint},
+  year = {2025},
+  archivePrefix = {arXiv},
+  eprint = {2502.14148},
+  doi = {10.48550/arXiv.2502.14148},
+  notes = {submitted to the Journal of Advances in Modeling Earth Systems},
+}</code></pre>
+</details>
 
-We've also submitted a number of model development papers. Please cite these if you use
+Please cite this 👆 overview paper if you use Oceananigans in published work.
+
+We've also published/submitted several model development papers. Please cite these below 👇 if you use
 the features they describe! Also, if you have developed a new feature in Oceananigans and describe it in a paper, make sure to open a pull request to add it to this list:
 
 * **Silvestri et al., ["A New WENO-Based Momentum Advection Scheme for Simulations of Ocean Mesoscale Turbulence"](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2023MS004130).**
@@ -176,14 +189,14 @@ the features they describe! Also, if you have developed a new feature in Oceanan
   of a new `SplitExplicitFreeSurface` algorithm for `Distributed` architectures for multiple GPUs. As a result of this work,
   global simulations with O(10 km) grid spacing can be run on 16-20 nodes, achieving 10 simulated years per day (SYPD).*
 
-* **Wagner et al., ["CATKE: a turbulent-kinetic-energy-based parameterization for ocean microturbulence with dynamic convective adjustment"](https://essopenarchive.org/doi/full/10.22541/essoar.168748454.49694722).**
+* **Wagner et al., ["Formulation and calibration of CATKE, a one-equation parameterization for microscale ocean mixing"](https://essopenarchive.org/doi/full/10.22541/essoar.168748454.49694722).**
 
   *This paper describes the development of `CATKEVerticalDiffusivity()`, including how it was calibrated automatically to
   a suite of 35 large eddy simulations (also run with Oceananigans). It additionally features solutions from `TKEDissipationVerticalDiffusivity` (also known as "k-epsilon").*
 
-* **Ramadhan et al., ["Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs"](https://par.nsf.gov/servlets/purl/10200806).**
+* **Ramadhan et al., ["Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs"](https://doi.org/10.21105/joss.02018).**
 
-  *This Journal of Open Source Software article describes an early version of Oceananigans' `NonhydrostaticModel`.*
+  *This article in the Journal of Open Source Software describes an early version of Oceananigans' `NonhydrostaticModel`.*
   
 We also maintain a [list of publications using Oceananigans.jl](https://clima.github.io/OceananigansDocumentation/stable/#Papers-and-preprints-using-Oceananigans).
 If you have work using Oceananigans that you would like to have listed there, please open a pull request to add it or let us know!
