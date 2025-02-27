@@ -76,7 +76,7 @@ Oceananigans.jl is developed by the [Climate Modeling Alliance](https://clima.ca
 - [Installation instructions](#installation-instructions)
 - [Running your first model](#running-your-first-model)
 - [The Oceananigans knowledge base](#the-oceananigans-knowledge-base)
-- [Citing](#citing)
+- [Citing and otherwise spreading the word](#citing-and-otherwise-spreading-the-word)
 - [Contributing](#contributing)
 - [Movies](#movies)
   - [Deep convection](#deep-convection)
