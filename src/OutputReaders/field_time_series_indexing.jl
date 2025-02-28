@@ -16,7 +16,7 @@ end
 #####
 
 # Simplest implementation, linear extrapolation if out-of-bounds
-@inline interpolating_time_indices(::Linear, times, t) = time_index_binary_search(times, t)
+@inline interpolating_time_indices(::Linear, times, t) = find_time_index(times, t)
 
 # Cyclical implementation if out-of-bounds (wrap around the time-series)
 @inline function interpolating_time_indices(ti::Cyclical, times, t)
@@ -32,7 +32,7 @@ end
     mod_τ = mod(τ, T)
     mod_t = mod_τ + t¹
 
-    ñ, n₁, n₂ = time_index_binary_search(times, mod_t)
+    ñ, n₁, n₂ = find_time_index(times, mod_t)
 
     cycling = ñ > 1 # we are _between_ tᴺ and t¹ + T
     cycled_indices   = (ñ - 1, Nt, 1)
@@ -43,21 +43,38 @@ end
 
 # Clamp mode if out-of-bounds, i.e get the neareast neighbor
 @inline function interpolating_time_indices(::Clamp, times, t)
-    n, n₁, n₂ = time_index_binary_search(times, t)
+    ñ, n₁, n₂ = find_time_index(times, t)
 
     beyond_indices    = (0, n₂, n₂) # Beyond the last time:  return n₂
     before_indices    = (0, n₁, n₁) # Before the first time: return n₁
-    unclamped_indices = (n, n₁, n₂) # Business as usual
+    unclamped_indices = (ñ, n₁, n₂) # Business as usual
 
     Nt = length(times)
 
-    indices = ifelse(n + n₁ > Nt, beyond_indices,
-              ifelse(n + n₁ < 1,  before_indices, unclamped_indices))
+    indices = ifelse(ñ + n₁ > Nt, beyond_indices,
+              ifelse(ñ + n₁ < 1,  before_indices, unclamped_indices))
 
     return indices
 end
 
-@inline function time_index_binary_search(times, t)
+@inline function find_time_index(times::StepRangeLen, t)
+    n₂ = searchsortedfirst(times, t)
+    n₁ = max(1, n₂ - 1)
+
+    Nt = length(times)
+    n₂ = min(Nt, n₂) # cap
+
+    @inbounds begin
+        t₁ = times[n₁]
+        t₂ = times[n₂]
+    end
+
+    ñ = (t - t₁) / (t₂ - t₁)
+
+    return ñ, n₁, n₂
+end
+
+@inline function find_time_index(times, t)
     Nt = length(times)
 
     # n₁ and n₂ are the index to interpolate inbetween and
@@ -71,7 +88,6 @@ end
 
     # "Fractional index" ñ ∈ (0, 1)
     ñ = (n₂ - n₁) / (t₂ - t₁) * (t - t₁)
-
     ñ = ifelse(n₂ == n₁, zero(ñ), ñ)
 
     return ñ, n₁, n₂
