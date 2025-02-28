@@ -117,6 +117,13 @@ end
 
 const ModelCallsite = Union{TendencyCallsite, UpdateStateCallsite}
 
+""" Step `sim`ulation forward by Δt. """
+function time_step!(sim::Simulation, Δt)
+    sim.Δt = Δt
+    sim.align_time_step = false # ensure time step
+    return time_step!(sim)
+end
+
 """ Step `sim`ulation forward by one time step. """
 function time_step!(sim::Simulation)
 
