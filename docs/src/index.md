@@ -90,7 +90,7 @@ the features they describe! Also, if you have developed a new feature in Oceanan
   of a new `SplitExplicitFreeSurface` algorithm for `Distributed` architectures for multiple GPUs. As a result of this work,
   global simulations with O(10 km) grid spacing can be run on 16-20 nodes, achieving 10 simulated years per day (SYPD).*
 
-* **Wagner et al., ["CATKE: a turbulent-kinetic-energy-based parameterization for ocean microturbulence with dynamic convective adjustment"](https://essopenarchive.org/doi/full/10.22541/essoar.168748454.49694722).**
+* **Wagner et al., ["Formulation and calibration of CATKE, a one-equation parameterization for microscale ocean mixing"](https://essopenarchive.org/doi/full/10.22541/essoar.168748454.49694722).**
 
   *This paper describes the development of `CATKEVerticalDiffusivity()`, including how it was calibrated automatically to
   a suite of 35 large eddy simulations (also run with Oceananigans). It additionally features solutions from `TKEDissipationVerticalDiffusivity` (also known as "k-epsilon").*
