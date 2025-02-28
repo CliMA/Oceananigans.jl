@@ -11,7 +11,7 @@ struct InterpolatingTimeIndices{T, N1, N2, N3}
     length       :: N3
 end
 
-InterpolatingTimeIndices(fts::FieldTimeSeries, t) =
+@inline InterpolatingTimeIndices(fts::FieldTimeSeries, t) =
     InterpolatingTimeIndices(fts.time_indexing, fts.times, t)
 
 #####
@@ -44,9 +44,9 @@ end
     cycled_indices   = (ñ - 1, Nt, 1)
     uncycled_indices = (ñ, n₁, n₂)
 
-    indices = ifelse(cycling, cycled_indices, uncycled_indices)
+    ñ, n₁, n₂ = ifelse(cycling, cycled_indices, uncycled_indices)
 
-    return InterpolatingTimeIndices(indices..., length(times))
+    return InterpolatingTimeIndices(ñ, n₁, n₂, length(times))
 end
 
 # Clamp mode if out-of-bounds, i.e get the neareast neighbor
@@ -59,11 +59,15 @@ end
 
     Nt = length(times)
 
-    indices = ifelse(ñ + n₁ > Nt, beyond_indices,
-              ifelse(ñ + n₁ < 1,  before_indices, unclamped_indices))
+    ñ, n₁, n₂ = ifelse(ñ + n₁ > Nt, beyond_indices,
+                ifelse(ñ + n₁ < 1,  before_indices, unclamped_indices))
 
-    return InterpolatingTimeIndices(indices..., length(times))
+    return InterpolatingTimeIndices(ñ, n₁, n₂, length(times))
 end
+
+#####
+##### fine_time_index
+#####
 
 #=
 @inline function find_time_index(times::StepRangeLen, t)
