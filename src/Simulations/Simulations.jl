@@ -5,8 +5,8 @@ export Simulation
 export run!
 export Callback, add_callback!
 export iteration
-export stopwatch
 
+using Oceananigans
 using Oceananigans.Models
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters

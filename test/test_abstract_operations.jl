@@ -77,9 +77,8 @@ function x_derivative_cell(arch)
 end
 
 function times_x_derivative(a, b, location, i, j, k, answer)
-    a∇b = @at location b * ∂x(a)
-    
-    return CUDA.@allowscalar a∇b[i, j, k] == answer
+    b∇a = @at location b * ∂x(a)
+    return CUDA.@allowscalar b∇a[i, j, k] == answer
 end
 
 for arch in archs
