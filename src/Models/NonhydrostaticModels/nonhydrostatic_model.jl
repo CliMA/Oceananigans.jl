@@ -112,7 +112,7 @@ Keyword arguments
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`         
 """
 function NonhydrostaticModel(; grid,
-                             clock = Clock{eltype(grid)}(time = 0),
+                             clock = Clock{Float64}(time = 0),
                              advection = Centered(),
                              buoyancy = nothing,
                              coriolis = nothing,

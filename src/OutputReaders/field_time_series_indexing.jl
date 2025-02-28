@@ -4,6 +4,13 @@ using Oceananigans.Architectures: architecture
 
 import Oceananigans.Fields: interpolate
 
+struct InterpolationIndices{T, N1, N2, N3}
+    fractional_index :: T
+    first_index  :: N1
+    second_index :: N2
+    length       :: N3
+end
+
 #####
 ##### Computation of time indices for interpolation
 #####
@@ -143,9 +150,12 @@ function Base.getindex(fts::FieldTimeSeries, time_index::Time)
     end
 
     # Otherwise, make a Field representing a linear interpolation in time
-    ψ₁ = fts[n₁]
+    # Make sure both n₁ and n₂ are in memory by first retrieving n₂ and then n₁
+    update_field_time_series!(fts, n₁, n₂)
+    
     ψ₂ = fts[n₂]
-    ψ̃ = Field(ψ₂ * ñ + ψ₁ * (1 - ñ))
+    ψ₁ = fts[n₁]
+    ψ̃  = Field(ψ₂ * ñ + ψ₁ * (1 - ñ))
 
     # Compute the field and return it
     return compute!(ψ̃)
@@ -167,6 +177,18 @@ end
                              from_loc, from_grid, times, backend, time_indexing)
 
     to_time = to_time_index.time
+    ñ, n₁, n₂ = interpolating_time_indices(time_indexing, times, to_time)
+    interp = InterpolationIndices(ñ, n₁, n₂, length(times))
+    return interpolate(to_node, interp, data, from_loc, from_grid, backend, time_indexing)
+end
+
+@inline function interpolate(to_node, time_indices::InterpolationIndices, data::OffsetArray,
+                             from_loc, from_grid, backend, time_indexing)
+
+    ñ  = time_indices.fractional_index
+    n₁ = time_indices.first_index
+    n₂ = time_indices.second_index
+    Nt = time_indices.length
 
     if topology(from_grid) === (Flat, Flat, Flat)
         ix = iy = iz = (1, 1, 0)
@@ -180,9 +202,6 @@ end
         iz = interpolator(kk)
     end
 
-    ñ, n₁, n₂ = interpolating_time_indices(time_indexing, times, to_time)
-
-    Nt = length(times)
     m₁ = memory_index(backend, time_indexing, Nt, n₁)
     m₂ = memory_index(backend, time_indexing, Nt, n₂)
 
@@ -247,7 +266,7 @@ end
 
 # Fallbacks that do nothing
 update_field_time_series!(fts, time::Time) = nothing
-update_field_time_series!(fts, n::Int) = nothing
+update_field_time_series!(fts, n₁::Int, n₂=n₁) = nothing
 
 # Update the `fts` to contain the time `time_index.time`.
 # Linear extrapolation, simple version
@@ -258,8 +277,7 @@ function update_field_time_series!(fts::PartlyInMemoryFTS, time_index::Time)
 end
 
 function update_field_time_series!(fts::PartlyInMemoryFTS, n₁::Int, n₂=n₁)
-    idxs = time_indices(fts)
-    in_range = n₁ ∈ idxs && n₂ ∈ idxs
+    in_range = in_time_range(fts, fts.time_indexing, n₁, n₂)
 
     if !in_range
         # Update backend
@@ -270,6 +288,19 @@ function update_field_time_series!(fts::PartlyInMemoryFTS, n₁::Int, n₂=n₁)
     end
 
     return nothing
+end
+
+function in_time_range(fts, time_indexing, n₁, n₂)
+    idxs = time_indices(fts)
+    return n₁ ∈ idxs && n₂ ∈ idxs
+end
+
+function in_time_range(fts, ::Union{Clamp, Linear}, n₁, n₂)
+    Nt = length(fts.times)
+    idxs = time_indices(fts)
+    in_range_1 = n₁ ∈ idxs || n₁ > Nt
+    in_range_2 = n₂ ∈ idxs || n₂ > Nt
+    return in_range_1 && in_range_2
 end
 
 # If `n` is not in memory, getindex automatically updates the data in memory
