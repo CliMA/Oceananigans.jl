@@ -65,7 +65,7 @@ struct ReactantState{S} <: AbstractSerialArchitecture
     sharding::S
 end
 
-ReactantState() = ReactantState(missing)
+ReactantState() = ReactantState(nothing)
 
 #####
 ##### These methods are extended in DistributedComputations.jl

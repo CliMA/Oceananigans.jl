@@ -16,7 +16,7 @@ architecture(::Reactant.AnyTracedRArray) = ReactantState
 
 array_type(::ReactantState) = ConcretePJRTArray
 
-to_reactant_sharding(::Missing) = Sharding.NoSharding()
+to_reactant_sharding(::Nothing) = Sharding.NoSharding()
 to_reactant_sharding(s::Sharding.AbstractSharding) = s
 to_reactant_sharding(::T) where {T} = error("Unsupported sharding type $T")
 
