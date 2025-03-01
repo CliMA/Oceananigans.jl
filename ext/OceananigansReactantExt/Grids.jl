@@ -3,13 +3,16 @@ module Grids
 using Reactant
 using Oceananigans
 using Oceananigans.Architectures: ReactantState, CPU
-using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, MutableVerticalDiscretization
+using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, MutableVerticalDiscretization, BoundedTopology, Center
 using Oceananigans.Fields: Field
 using Oceananigans.ImmersedBoundaries: GridFittedBottom
 
 import ..OceananigansReactantExt: deconcretize
-import Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid
+import Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid, total_length, offset_indices
 import Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+
+total_length(::Center, ::BoundedTopology, N, H=0) = N + 1 + 2H
+offset_indices(::Center, ::BoundedTopology,  N, H=0) = 1 - H : N + H + 1
 
 const ReactantGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:ReactantState}
 
@@ -90,7 +93,5 @@ ImmersedBoundaryGrid(grid::ReactantGrid, ib::GridFittedBottom; active_cells_map:
 ImmersedBoundaryGrid(grid::ReactantGrid, ib; active_cells_map::Bool=true) =
     reactant_immersed_boundary_grid(grid, ib; active_cells_map)
     
-
-
 end # module
 
