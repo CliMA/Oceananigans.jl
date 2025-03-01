@@ -52,18 +52,23 @@ function OrthogonalSphericalShellGrid{TX, TY, TZ}(arch::ReactantState,
                                                   radius :: FT,
                                                   conformal_mapping :: C) where {TX, TY, TZ, FT, Z, A, C}
 
-    args = (λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
-            φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ,
-            z,
-            Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
-            Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
-            Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
+    args1 = (λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
+             φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ)
 
-    dargs = Tuple(deconcretize(a) for a in args)
+    args2 = (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+             Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
+             Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
+
+    dargs1 = Tuple(deconcretize(a) for a in args1)
+    dz = deconcretize(z)
+    dargs2 = Tuple(deconcretize(a) for a in args2)
+
     Arch = typeof(arch)
+    DA = typeof(first(dargs1)) # deconcretized
+    DZ = typeof(dz) # deconcretized
 
-    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, A, C, Arch}(arch, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
-                                                                       dargs..., radius, conformal_mapping)
+    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, DZ, DA, C, Arch}(arch, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
+                                                                         dargs1..., dz, dargs2..., radius, conformal_mapping)
 end
 
 deconcretize(gfb::GridFittedBottom) = GridFittedBottom(deconcretize(gfb.bottom_height),
