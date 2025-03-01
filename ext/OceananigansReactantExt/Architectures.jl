@@ -8,7 +8,9 @@ import Oceananigans.Architectures: device, architecture, array_type, on_architec
 const ReactantKernelAbstractionsExt = Base.get_extension(
     Reactant, :ReactantKernelAbstractionsExt
 )
+
 const ReactantBackend = ReactantKernelAbstractionsExt.ReactantBackend
+
 device(::ReactantState) = ReactantBackend()
 
 architecture(::Reactant.AnyConcretePJRTArray) = ReactantState
@@ -21,18 +23,14 @@ to_reactant_sharding(s::Sharding.AbstractSharding) = s
 to_reactant_sharding(::T) where {T} = error("Unsupported sharding type $T")
 
 on_architecture(::ReactantState, a::Reactant.AnyTracedRArray) = a
-function on_architecture(r::ReactantState, a::Array)
-    return Reactant.to_rarray(a; sharding=to_reactant_sharding(r.sharding))
-end
-function on_architecture(r::ReactantState, a::Reactant.AnyConcretePJRTArray)
-    return Reactant.to_rarray(a; sharding=to_reactant_sharding(r.sharding))
-end
-function on_architecture(r::ReactantState, a::BitArray)
-    return Reactant.to_rarray(a; sharding=to_reactant_sharding(r.sharding))
-end
-function on_architecture(r::ReactantState, a::SubArray{<:Any,<:Any,<:Array})
-    return Reactant.to_rarray(a; sharding=to_reactant_sharding(r.sharding))
-end
+
+const ArraysToRArray = Union{Array,
+                             Reactant.AnyConcretePJRTArray,
+                             BitArray,
+                             SubArray{<:Any, <:Any, <:Array}}
+
+on_architecture(r::ReactantState, a::ArraysToRArray) =
+    Reactant.to_rarray(a; sharding=to_reactant_sharding(r.sharding))
 
 unified_array(::ReactantState, a) = a
 
