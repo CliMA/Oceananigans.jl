@@ -12,6 +12,7 @@ using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
+using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
 using Oceananigans.Utils: launch!
 using SeawaterPolynomials: TEOS10EquationOfState
 using KernelAbstractions: @kernel, @index
@@ -168,6 +169,16 @@ end
         ibg = ImmersedBoundaryGrid(llg, GridFittedBottom(ridge))
         @test architecture(ibg) isa ReactantState
         @test architecture(ibg.immersed_boundary.bottom_height) isa CPU
+
+        llg = RotatedLatitudeLongitudeGrid(arch, FT; size = (4, 4, 4),
+                                           north_pole = (0, 0),
+                                           longitude = [0, 1, 2, 3, 4],
+                                           latitude = [0, 1, 2, 3, 4],
+                                           z = (0, 1))
+
+        @test architecture(llg) isa ReactantState
+
+
     end
 end
 

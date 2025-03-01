@@ -60,9 +60,10 @@ function OrthogonalSphericalShellGrid{TX, TY, TZ}(arch::ReactantState,
             Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
 
     dargs = Tuple(deconcretize(a) for a in args)
+    Arch = typeof(arch)
 
-    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, A, C, Arch}(arch, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
-                                                                        dargs..., radius, conformal_mapping)
+    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, A, C, Arch}(arch, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
+                                                                       dargs..., radius, conformal_mapping)
 end
 
 deconcretize(gfb::GridFittedBottom) = GridFittedBottom(deconcretize(gfb.bottom_height),
