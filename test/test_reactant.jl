@@ -170,15 +170,20 @@ end
         @test architecture(ibg) isa ReactantState
         @test architecture(ibg.immersed_boundary.bottom_height) isa CPU
 
-        llg = RotatedLatitudeLongitudeGrid(arch, FT; size = (4, 4, 4),
-                                           north_pole = (0, 0),
-                                           longitude = [0, 1, 2, 3, 4],
-                                           latitude = [0, 1, 2, 3, 4],
-                                           z = (0, 1))
+        rllg = RotatedLatitudeLongitudeGrid(arch, FT; size = (4, 4, 4),
+                                            north_pole = (0, 0),
+                                            longitude = [0, 1, 2, 3, 4],
+                                            latitude = [0, 1, 2, 3, 4],
+                                            z = (0, 1))
 
-        @test architecture(llg) isa ReactantState
+        @test architecture(rllg) isa ReactantState
 
-
+        for name in propertynames(rllg)
+            p = getproperty(rllg, name)
+            if !(name ∈ (:architecture, :z, :conformal_mapping))
+                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Array})
+            end
+        end
     end
 end
 
