@@ -38,6 +38,13 @@ function RectilinearGrid{TX, TY, TZ}(arch::Arch, Nx, Ny, Nz, Hx, Hy, Hz,
                                                      Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, z)
 end
 
+# XXX: move to extension
+using ConstructionBase: ConstructionBase
+
+function ConstructionBase.constructorof(::Type{<:RectilinearGrid{FT, TX, TY, TZ}}) where {FT, TX, TY, TZ}
+    return RectilinearGrid{TX, TY, TZ}
+end
+
 const RG = RectilinearGrid
 
 const XRegularRG   = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Number}

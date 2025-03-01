@@ -32,6 +32,13 @@ struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G,
     end
 end
 
+# XXX: move to extension
+using ConstructionBase: ConstructionBase
+
+function ConstructionBase.constructorof(::Type{<:Field{LX, LY, LZ}}) where {LX, LY, LZ}
+    return Field{LX, LY, LZ}
+end
+
 #####
 ##### Constructor utilities
 #####

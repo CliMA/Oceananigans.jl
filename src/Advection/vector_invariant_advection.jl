@@ -29,6 +29,13 @@ struct VectorInvariant{N, FT, M, Z, ZS, V, K, D, U} <: AbstractAdvectionScheme{N
     end
 end
 
+# XXX: move to extension
+using ConstructionBase: ConstructionBase
+
+function ConstructionBase.constructorof(::Type{<:VectorInvariant{N, FT, M}}) where {N, FT, M}
+    return VectorInvariant{N, FT, M}
+end
+
 """
     VectorInvariant(; vorticity_scheme = EnstrophyConserving(),
                       vorticity_stencil = VelocityStencil(),

@@ -36,6 +36,13 @@ struct Centered{N, FT, XT, YT, ZT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
     end
 end
 
+# XXX: move to extension
+using ConstructionBase: ConstructionBase
+
+function ConstructionBase.constructorof(::Type{<:Centered{N, FT}}) where {N, FT}
+    return Centered{N, FT}
+end
+
 function Centered(FT::DataType = Float64; grid = nothing, order = 2) 
 
     if !(grid isa Nothing) 
