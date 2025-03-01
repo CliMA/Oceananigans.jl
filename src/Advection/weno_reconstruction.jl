@@ -40,6 +40,13 @@ struct WENO{N, FT, XT, YT, ZT, PP, CA, SI} <: AbstractUpwindBiasedAdvectionSchem
     end
 end
 
+# XXX: move to extension
+using ConstructionBase: ConstructionBase
+
+function ConstructionBase.constructorof(::Type{<:WENO{N, FT}}) where {N, FT}
+    return WENO{N, FT}
+end
+
 """
     WENO([FT=Float64;] 
          order = 5,

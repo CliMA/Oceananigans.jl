@@ -65,6 +65,13 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, CZ, M, MY, FX, FY, VX, VY, Arch} <:
                                                          Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, radius)
 end
 
+# XXX: move to extension
+using ConstructionBase: ConstructionBase
+
+function ConstructionBase.constructorof(::Type{<:LatitudeLongitudeGrid{FT, TX, TY, TZ}}) where {FT, TX, TY, TZ}
+    return LatitudeLongitudeGrid{TX, TY, TZ}
+end
+
 const LLG = LatitudeLongitudeGrid
 const XRegularLLG    = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
 const YRegularLLG    = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}

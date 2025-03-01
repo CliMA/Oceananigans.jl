@@ -38,6 +38,13 @@ struct UpwindBiased{N, FT, XT, YT, ZT, CA, SI} <: AbstractUpwindBiasedAdvectionS
     end
 end
 
+# XXX: move to extension
+using ConstructionBase: ConstructionBase
+
+function ConstructionBase.constructorof(::Type{<:UpwindBiased{N, FT}}) where {N, FT}
+    return UpwindBiased{N, FT}
+end
+
 function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3) 
 
     if !(grid isa Nothing) 

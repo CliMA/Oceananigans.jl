@@ -6,6 +6,7 @@ version = "0.95.14"
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+ConstructionBase = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
 Crayons = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
 CubedSphere = "7445602f-e544-4518-8976-18f8e8ae6cdb"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
@@ -52,6 +53,7 @@ OceananigansReactantExt = ["Reactant", "KernelAbstractions"]
 [compat]
 Adapt = "4.1.1"
 CUDA = "5"
+ConstructionBase = "1.5.8"
 Crayons = "4"
 CubedSphere = "0.2, 0.3"
 Dates = "1.9"
