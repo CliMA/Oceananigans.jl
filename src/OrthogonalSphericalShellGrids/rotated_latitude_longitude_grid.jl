@@ -1,4 +1,4 @@
-using Oceananigans.Grids: LatitudeLongitudeGrid
+using Oceananigans.Grids: LatitudeLongitudeGrid, Bounded
 using Oceananigans.Utils: KernelParameters
 using StaticArrays
 using LinearAlgebra
