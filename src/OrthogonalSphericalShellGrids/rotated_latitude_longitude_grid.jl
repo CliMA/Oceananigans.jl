@@ -28,24 +28,20 @@ function latitude_longitude_shift((λ₀, φ₀))
 end
 
 function RotatedLatitudeLongitudeGrid(arch::AbstractArchitecture = CPU(),
-                                        FT::DataType = Oceananigans.defaults.FloatType;
-                                        size,
-                                        north_pole,
-                                        longitude,
-                                        latitude,
-                                        z,
-                                        halo = (3, 3, 3),
-                                        radius = R_Earth,
-                                        topology = (Bounded, Bounded, Bounded))
+                                      FT::DataType = Oceananigans.defaults.FloatType;
+                                      size,
+                                      north_pole,
+                                      longitude,
+                                      latitude,
+                                      z,
+                                      halo = (3, 3, 3),
+                                      radius = R_Earth,
+                                      topology = (Bounded, Bounded, Bounded))
 
-    Δλ, Δφ = latitude_longitude_shift(north_pole)
-    shifted_longitude = longitude # .+ Δλ
-    shifted_latitude = latitude #.+ Δφ
     shifted_halo = halo .+ 1
     source_grid = LatitudeLongitudeGrid(arch, FT; size, z, topology, radius,
-                                        halo = shifted_halo,
-                                        latitude = shifted_latitude,
-                                        longitude = shifted_longitude)
+                                        latitude, longitude, halo = shifted_halo)
+
     Nx, Ny, Nz = size
     Hx, Hy, Hz = halo_size(source_grid)
     Lz = source_grid.Lz

@@ -8,7 +8,8 @@ using Oceananigans.Fields: Field
 using Oceananigans.ImmersedBoundaries: GridFittedBottom
 
 import ..OceananigansReactantExt: deconcretize
-import Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid
+import Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSphericalShellGrid
+import Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
 import Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 const ReactantGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:ReactantState}
@@ -40,6 +41,24 @@ function RectilinearGrid(arch::ReactantState, FT::DataType; kw...)
     return RectilinearGrid{TX, TY, TZ}(arch, other_properties...)
 end
 
+function OrthogonalSphericalShellGrid(arch::ReactantState, FT::DataType; kw...)
+    cpu_grid = OrthogonalSphericalShellGrid(CPU(), FT; kw...)
+    other_names = propertynames(cpu_grid)[2:end] # exclude architecture
+    other_properties = Tuple(getproperty(cpu_grid, name) for name in other_names)
+    TX, TY, TZ = Oceananigans.Grids.topology(cpu_grid)
+    return OrthogonalSphericalShellGrid{TX, TY, TZ}(arch, other_properties...)
+end
+
+# This is a kind of OrthogonalSphericalShellGrid
+function RotatedLatitudeLongitudeGrid(arch::ReactantState, FT::DataType, kw...)
+    cpu_grid = RotatedLatitudeLongitudeGrid(CPU(), FT; kw...)
+    other_names = propertynames(cpu_grid)[2:end] # exclude architecture
+    other_properties = Tuple(getproperty(cpu_grid, name) for name in other_names)
+    TX, TY, TZ = Oceananigans.Grids.topology(cpu_grid)
+    return OrthogonalSphericalShellGrid{TX, TY, TZ}(arch, other_properties...)
+end
+
+# This low-level constructor supports the external package OrthogonalSphericalShellGrids.jl.
 function OrthogonalSphericalShellGrid{TX, TY, TZ}(arch::ReactantState,
                                                   Nx, Ny, Nz, Hx, Hy, Hz,
                                                   Lz :: FT,
@@ -66,6 +85,7 @@ function OrthogonalSphericalShellGrid{TX, TY, TZ}(arch::ReactantState,
     Arch = typeof(arch)
     DA = typeof(first(dargs1)) # deconcretized
     DZ = typeof(dz) # deconcretized
+    @show DA
 
     return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, DZ, DA, C, Arch}(arch, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
                                                                          dargs1..., dz, dargs2..., radius, conformal_mapping)
