@@ -59,10 +59,8 @@ end
 
     Nt = length(times)
 
-    ñ, n₁, n₂ = ifelse(ñ + n₁ > Nt, beyond_indices,
-                ifelse(ñ + n₁ < 1,  before_indices, unclamped_indices))
-
-    return ñ, n₁, n₂
+    return ifelse(ñ + n₁ > Nt, beyond_indices,
+           ifelse(ñ + n₁ < 1,  before_indices, unclamped_indices))
 end
 
 #####
@@ -219,11 +217,12 @@ end
 
     # Build space interpolators
     to_node = flatten_node(to_node...)
-    fi = FractionalIndices(to_node, from_grid, from_loc...)
 
-    # if topology(from_grid) === (Flat, Flat, Flat)
-    #     ix = iy = iz = (1, 1, 0)
-    # end
+    if topology(from_grid) === (Flat, Flat, Flat)
+        fi = FractionalIndices(1, 1, 0)
+    else
+        fi = FractionalIndices(to_node, from_grid, from_loc...)
+    end
 
     return interpolate(fi, time_indices, data, backend, time_indexing)
 end
