@@ -4,6 +4,12 @@ using Metal
 
 Oceananigans.defaults.FloatType = Float32
 
+# Note that these tests are run on a virtualization framework
+# via github actions runners and may break in the future.
+# More about that:
+# * https://github.com/CliMA/Oceananigans.jl/pull/4124#discussion_r1976449272
+# * https://github.com/CliMA/Oceananigans.jl/pull/4152
+
 @testset "MetalGPU extension" begin
     metal = Metal.MetalBackend()
     arch = GPU(metal)
