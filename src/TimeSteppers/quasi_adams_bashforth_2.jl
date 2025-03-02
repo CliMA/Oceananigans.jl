@@ -1,7 +1,5 @@
 using Oceananigans.Fields: FunctionField, location
 using Oceananigans.Utils: @apply_regionally, apply_regionally!
-using Oceananigans.ImmersedBoundaries: ActiveCellsIBG, active_linear_index_to_tuple
-using Oceananigans.Advection: correct_advection!
 
 mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
                   χ :: FT
@@ -179,3 +177,29 @@ end
 
 @kernel ab2_step_field!(::FunctionField, Δt, χ, Gⁿ, G⁻) = nothing
 
+# second to Nth correction pass, applied after the tracer/momentum update
+# This should probably go in the Models module since it is different for 
+# hydrostatic and nonhydrostatic and should be part of `update_state!`
+function correct_advection!(model, Δt)
+    grid = model.grid
+    velocities = model.velocities
+    
+    for tracer_name in propertynames(model.tracers)
+        @inbounds tracer = model.tracers[tracer_name]
+        
+        scheme = if model.advection isa NamedTuple
+            @inbounds model.advection[tracer_name]
+        else
+            model.advection
+        end
+        
+        correct_mpdata_tracer!(tracer, grid, Δt, velocities, scheme)
+    end
+
+    correct_mpdata_momentum!(model, Δt)
+
+    return nothing
+end
+
+correct_mpdata_momentum!(velocities, grid, Δt, scheme, dims) = nothing
+correct_mpdata_tracer!(tracer, grid, Δt, velocities, scheme) = nothing

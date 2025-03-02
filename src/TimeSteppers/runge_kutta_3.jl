@@ -1,6 +1,5 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans: fields
-using Oceananigans.Advection: correct_advection!
 
 """
     RungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper

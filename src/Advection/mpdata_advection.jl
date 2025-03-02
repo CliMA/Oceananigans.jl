@@ -5,6 +5,8 @@ using KernelAbstractions: @kernel, @index
 using Oceananigans.Utils
 using Adapt 
 
+import Oceananigans.TimeSteppers: correct_mpdata_tracer!, correct_mpdata_momentum!
+
 struct MPData{FT, I, A, V} <: AbstractUpwindBiasedAdvectionScheme{1, FT} 
            velocities :: A # MPData antidiffusive pseudo-velocities 
   previous_velocities :: A # Non corrected velocities
@@ -51,26 +53,6 @@ const PartialMPData = MPData{<:Any, <:Any, <:AbstractAdvectionScheme}
 @inline inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::MPData, bias, ψ::Function, idx, loc, args...) = ifelse(bias isa LeftBias, ψ(i, j-1, k, grid, args...), ψ(i, j, k, grid, args...))
 @inline inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::MPData, bias, ψ::Function, idx, loc, args...) = ifelse(bias isa LeftBias, ψ(i, j, k-1, grid, args...), ψ(i, j, k, grid, args...))
 
-# second to Nth correction pass, applied after the tracer/momentum update
-# This should probably go in the Models module since it is different for 
-# hydrostatic and nonhydrostatic and should be part of `update_state!`
-function correct_advection!(model, Δt)
-    grid = model.grid
-    velocities = model.velocities
-    
-    for tracer_name in propertynames(model.tracers)
-        @inbounds tracer = model.tracers[tracer_name]
-        @inbounds scheme = model.advection[tracer_name]
-        correct_mpdata_tracer!(tracer, grid, Δt, velocities, scheme)
-    end
-
-    correct_mpdata_momentum!(model, Δt)
-
-    return nothing
-end
-
-correct_mpdata_momentum!(velocities, grid, Δt, scheme, dims) = nothing
-
 # we need to save the previous velocities to ensure a correct mpdata pass
 function correct_mpdata_momentum!(velocities, grid, Δt, scheme::MPData, dims)
     pseudo_velocities = scheme.velocities
@@ -102,8 +84,6 @@ function correct_mpdata_momentum!(velocities, grid, Δt, scheme::MPData, dims)
 
     return nothing
 end
-
-correct_mpdata_tracer!(field, grid, Δt, velocities, scheme) = nothing 
 
 function correct_mpdata_tracer!(field, grid, Δt, velocities, scheme::MPData) 
     pseudo_velocities = scheme.velocities

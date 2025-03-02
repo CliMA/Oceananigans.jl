@@ -3,8 +3,6 @@ using Oceananigans.TimeSteppers: ab2_step_field!
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, retrieve_surface_active_cells_map
 
-using Oceananigans.ImmersedBoundaries: use_only_active_interior_cells, use_only_active_surface_cells
-
 import Oceananigans.TimeSteppers: ab2_step!
 
 #####
