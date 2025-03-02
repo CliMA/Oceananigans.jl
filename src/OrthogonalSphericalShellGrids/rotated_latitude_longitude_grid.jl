@@ -7,14 +7,10 @@ struct LatitudeLongitudeRotation{FT}
     north_pole :: FT
 end
 
-const RotatedLatitudeLongitudeGrid = OrthogonalSphericalShellGrid{<:Any,
-                                                                  <:Any,
-                                                                  <:Any,
-                                                                  <:Any,
-                                                                  <:Any,
-                                                                  <:Any,
-                                                                  <:LatitudeLongitudeRotation}
-
+const RotatedLatitudeLongitudeGrid{FT, TX, TY, TZ, Z} =
+    OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z,
+                                 <:LatitudeLongitudeRotation} where {FT, TX, TY, TZ, Z}
+                                                                                     
 # Helper function (TODO: define Operators before grids...)
 @inline lat_lon_metric(m, i, j) = @inbounds m[i, j]
 @inline lat_lon_metric(m::AbstractVector, i, j) = @inbounds m[j]

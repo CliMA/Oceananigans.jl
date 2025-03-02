@@ -68,7 +68,8 @@ function OrthogonalSphericalShellGrid{TX, TY, TZ}(arch::ReactantState,
                                                   Δyᶜᶜᵃ :: CC, Δyᶠᶜᵃ :: FC, Δyᶜᶠᵃ :: CF, Δyᶠᶠᵃ :: FF, 
                                                   Azᶜᶜᵃ :: CC, Azᶠᶜᵃ :: FC, Azᶜᶠᵃ :: CF, Azᶠᶠᵃ :: FF,
                                                   radius :: FT,
-                                                  conformal_mapping :: C) where {TX, TY, TZ, FT, Z, CC, FC, CF, FF, C}
+                                                  conformal_mapping :: Map) where {TX, TY, TZ, FT, Z, Map,
+                                                                                   CC, FC, CF, FF, C}
 
     args1 = (λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
              φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ)
@@ -88,9 +89,9 @@ function OrthogonalSphericalShellGrid{TX, TY, TZ}(arch::ReactantState,
     DFF = typeof(dargs1[4]) # deconcretized
     DZ = typeof(dz) # deconcretized
 
-    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, DZ, DCC,
-                                        DFC, DCF, DFF, C, Arch}(arch, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
-                                                                dargs1..., dz, dargs2..., radius, conformal_mapping)
+    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, DZ, Map,
+                                        DCC, DFC, DCF, DFF, Arch}(arch, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
+                                                                  dargs1..., dz, dargs2..., radius, conformal_mapping)
 end
 
 deconcretize(gfb::GridFittedBottom) = GridFittedBottom(deconcretize(gfb.bottom_height),

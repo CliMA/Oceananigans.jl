@@ -11,7 +11,7 @@ using Oceananigans.Grids: prettysummary, coordinate_summary, BoundedTopology, le
 
 const AHCG = AbstractHorizontallyCurvilinearGrid
 
-struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, CC, FC, CF, FF, C, Arch} <: AHCG{FT, TX, TY, TZ, Z, Arch}
+struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch} <: AHCG{FT, TX, TY, TZ, Z, Arch}
     architecture :: Arch
        Nx :: Int
        Ny :: Int
@@ -42,7 +42,7 @@ struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, CC, FC, CF, FF, C, Arch} 
     Azᶜᶠᵃ :: CF
     Azᶠᶠᵃ :: FF
     radius :: FT
-    conformal_mapping :: C
+    conformal_mapping :: Map
 end
 
 function OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture::Arch,
@@ -55,19 +55,20 @@ function OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture::Arch,
                                                   Δyᶜᶜᵃ :: CC, Δyᶠᶜᵃ :: FC, Δyᶜᶠᵃ :: CF, Δyᶠᶠᵃ :: FF, 
                                                   Azᶜᶜᵃ :: CC, Azᶠᶜᵃ :: FC, Azᶜᶠᵃ :: CF, Azᶠᶠᵃ :: FF,
                                                   radius :: FT,
-                                                  conformal_mapping :: C) where {TX, TY, TZ, FT, Z, CC, FC, CF, FF, C, Arch}
+                                                  conformal_mapping :: Map) where {TX, TY, TZ, FT, Z, Map,
+                                                                                   CC, FC, CF, FF, Arch}
 
-    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, CC,
-                                        FC, CF, FF, C, Arch}(architecture,
-                                                             Nx, Ny, Nz,
-                                                             Hx, Hy, Hz,
-                                                             Lz,
-                                                              λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
-                                                              φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, z,
-                                                             Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
-                                                             Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ, 
-                                                             Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
-                                                             radius, conformal_mapping)
+    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map,
+                                        CC, FC, CF, FF, Arch}(architecture,
+                                                              Nx, Ny, Nz,
+                                                              Hx, Hy, Hz,
+                                                              Lz,
+                                                               λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
+                                                               φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, z,
+                                                              Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+                                                              Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ, 
+                                                              Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
+                                                              radius, conformal_mapping)
 end
 
 const OSSG = OrthogonalSphericalShellGrid
