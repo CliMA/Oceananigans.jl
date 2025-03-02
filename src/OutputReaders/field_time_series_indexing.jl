@@ -4,19 +4,19 @@ using Oceananigans.Architectures: architecture
 
 import Oceananigans.Fields: interpolate
 
-struct InterpolatingTimeIndices{T, N1, N2, N3}
+struct TimeInterpolator{T, N1, N2, N3}
     fractional_index :: T
     first_index  :: N1
     second_index :: N2
     length       :: N3
 end
 
-@inline InterpolatingTimeIndices(fts::FieldTimeSeries, t) =
-    InterpolatingTimeIndices(fts.time_indexing, fts.times, t)
+@inline TimeInterpolator(fts::FieldTimeSeries, t) =
+    TimeInterpolator(fts.time_indexing, fts.times, t)
 
-@inline function InterpolatingTimeIndices(time_indexing, times, t)
+@inline function TimeInterpolator(time_indexing, times, t)
     ñ, n₁, n₂ = interpolating_time_indices(time_indexing, times, t)
-    return InterpolatingTimeIndices(ñ, n₁, n₂, length(times))
+    return TimeInterpolator(ñ, n₁, n₂, length(times))
 end
 
 #####
@@ -210,11 +210,11 @@ end
                              from_loc, from_grid, times, backend, time_indexing)
 
     to_time = to_time_index.time
-    interp = InterpolatingTimeIndices(time_indexing, times, to_time)
+    interp = TimeInterpolator(time_indexing, times, to_time)
     return interpolate(to_node, interp, data, from_loc, from_grid, backend, time_indexing)
 end
 
-@inline function interpolate(to_node, time_indices::InterpolatingTimeIndices, data::OffsetArray,
+@inline function interpolate(to_node, time_indices::TimeInterpolator, data::OffsetArray,
                              from_loc, from_grid, backend, time_indexing)
 
     # Build space interpolators
@@ -228,7 +228,7 @@ end
     return interpolate(fi, time_indices, data, backend, time_indexing)
 end
 
-@inline function interpolate(fi::FractionalIndices, time_indices::InterpolatingTimeIndices,
+@inline function interpolate(fi::FractionalIndices, time_indices::TimeInterpolator,
                              data::OffsetArray, backend, time_indexing)
 
     ñ  = time_indices.fractional_index
@@ -294,12 +294,12 @@ end
 # for ranges. if `times` is a vector that resides on the GPU, it has to be moved to the CPU for safe indexing.
 # TODO: Copying the whole array is a bit unclean, maybe find a way that avoids the penalty of allocating and copying memory.
 # This would require refactoring `FieldTimeSeries` to include a cpu-allocated times array
-cpu_interpolating_time_indices(::CPU, times, time_indexing, t, arch) = InterpolatingTimeIndices(time_indexing, times, t)
-cpu_interpolating_time_indices(::CPU, times::AbstractVector, time_indexing, t) = InterpolatingTimeIndices(time_indexing, times, t)
+cpu_interpolating_time_indices(::CPU, times, time_indexing, t, arch) = TimeInterpolator(time_indexing, times, t)
+cpu_interpolating_time_indices(::CPU, times::AbstractVector, time_indexing, t) = TimeInterpolator(time_indexing, times, t)
 
 function cpu_interpolating_time_indices(::GPU, times::AbstractVector, time_indexing, t)
     cpu_times = on_architecture(CPU(), times)
-    return InterpolatingTimeIndices(time_indexing, cpu_times, t)
+    return TimeInterpolator(time_indexing, cpu_times, t)
 end
 
 # Fallbacks that do nothing
