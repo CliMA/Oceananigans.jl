@@ -15,7 +15,7 @@ end
     InterpolatingTimeIndices(fts.time_indexing, fts.times, t)
 
 @inline function InterpolatingTimeIndices(time_indexing, times, t)
-    ñ, n₁, n₂ = interpolating_time_indices(fts.time_indexing, fts.times, time_index.time)
+    ñ, n₁, n₂ = interpolating_time_indices(time_indexing, times, t)
     return InterpolatingTimeIndices(ñ, n₁, n₂, length(times))
 end
 
