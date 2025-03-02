@@ -138,16 +138,8 @@ function ab2_step!(model, Δt)
     χ = convert(FT, χ)
 
     for (i, field) in enumerate(model_fields)
-<<<<<<< HEAD
-
-        step_field_kernel!(field, Δt, χ,
-                           model.timestepper.Gⁿ[i],
-                           model.timestepper.G⁻[i],
-                           model.grid)
-=======
         kernel_args = (field, Δt, χ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
         launch!(arch, grid, :xyz, ab2_step_field!, kernel_args...; exclude_periphery=true)
->>>>>>> origin/main
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
         tracer_index = Val(i - 3) # assumption
@@ -185,9 +177,5 @@ Time step velocity fields via the 2nd-order quasi Adams-Bashforth method
     end
 end
 
-<<<<<<< HEAD
-@kernel ab2_step_field!(::FunctionField, Δt, χ, Gⁿ, G⁻, grid) = nothing
-=======
 @kernel ab2_step_field!(::FunctionField, Δt, χ, Gⁿ, G⁻) = nothing
 
->>>>>>> origin/main
