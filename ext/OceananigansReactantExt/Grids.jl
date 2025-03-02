@@ -50,7 +50,7 @@ function OrthogonalSphericalShellGrid(arch::ReactantState, FT::DataType; kw...)
 end
 
 # This is a kind of OrthogonalSphericalShellGrid
-function RotatedLatitudeLongitudeGrid(arch::ReactantState, FT::DataType, kw...)
+function RotatedLatitudeLongitudeGrid(arch::ReactantState, FT::DataType; kw...)
     cpu_grid = RotatedLatitudeLongitudeGrid(CPU(), FT; kw...)
     other_names = propertynames(cpu_grid)[2:end] # exclude architecture
     other_properties = Tuple(getproperty(cpu_grid, name) for name in other_names)
@@ -62,20 +62,19 @@ end
 function OrthogonalSphericalShellGrid{TX, TY, TZ}(arch::ReactantState,
                                                   Nx, Ny, Nz, Hx, Hy, Hz,
                                                   Lz :: FT,
-                                                  λᶜᶜᵃ :: A, λᶠᶜᵃ :: A, λᶜᶠᵃ :: A, λᶠᶠᵃ :: A,
-                                                  φᶜᶜᵃ :: A, φᶠᶜᵃ :: A, φᶜᶠᵃ :: A, φᶠᶠᵃ :: A,
-                                                  z :: Z,
-                                                  Δxᶜᶜᵃ :: A, Δxᶠᶜᵃ :: A, Δxᶜᶠᵃ :: A, Δxᶠᶠᵃ :: A,
-                                                  Δyᶜᶜᵃ :: A, Δyᶜᶠᵃ :: A, Δyᶠᶜᵃ :: A, Δyᶠᶠᵃ :: A, 
-                                                  Azᶜᶜᵃ :: A, Azᶠᶜᵃ :: A, Azᶜᶠᵃ :: A, Azᶠᶠᵃ :: A,
+                                                   λᶜᶜᵃ :: CC,  λᶠᶜᵃ :: FC,  λᶜᶠᵃ :: CF,  λᶠᶠᵃ :: FF,
+                                                   φᶜᶜᵃ :: CC,  φᶠᶜᵃ :: FC,  φᶜᶠᵃ :: CF,  φᶠᶠᵃ :: FF, z :: Z,
+                                                  Δxᶜᶜᵃ :: CC, Δxᶠᶜᵃ :: FC, Δxᶜᶠᵃ :: CF, Δxᶠᶠᵃ :: FF,
+                                                  Δyᶜᶜᵃ :: CC, Δyᶠᶜᵃ :: FC, Δyᶜᶠᵃ :: CF, Δyᶠᶠᵃ :: FF, 
+                                                  Azᶜᶜᵃ :: CC, Azᶠᶜᵃ :: FC, Azᶜᶠᵃ :: CF, Azᶠᶠᵃ :: FF,
                                                   radius :: FT,
-                                                  conformal_mapping :: C) where {TX, TY, TZ, FT, Z, A, C}
+                                                  conformal_mapping :: C) where {TX, TY, TZ, FT, Z, CC, FC, CF, FF, C}
 
     args1 = (λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
              φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ)
 
     args2 = (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
-             Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
+             Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
              Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
 
     dargs1 = Tuple(deconcretize(a) for a in args1)
@@ -83,12 +82,15 @@ function OrthogonalSphericalShellGrid{TX, TY, TZ}(arch::ReactantState,
     dargs2 = Tuple(deconcretize(a) for a in args2)
 
     Arch = typeof(arch)
-    DA = typeof(first(dargs1)) # deconcretized
+    DCC = typeof(dargs1[1]) # deconcretized
+    DFC = typeof(dargs1[2]) # deconcretized
+    DCF = typeof(dargs1[3]) # deconcretized
+    DFF = typeof(dargs1[4]) # deconcretized
     DZ = typeof(dz) # deconcretized
-    @show DA
 
-    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, DZ, DA, C, Arch}(arch, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
-                                                                         dargs1..., dz, dargs2..., radius, conformal_mapping)
+    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, DZ, DCC,
+                                        DFC, DCF, DFF, C, Arch}(arch, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
+                                                                dargs1..., dz, dargs2..., radius, conformal_mapping)
 end
 
 deconcretize(gfb::GridFittedBottom) = GridFittedBottom(deconcretize(gfb.bottom_height),
@@ -115,8 +117,6 @@ ImmersedBoundaryGrid(grid::ReactantGrid, ib::GridFittedBottom; active_cells_map:
 
 ImmersedBoundaryGrid(grid::ReactantGrid, ib; active_cells_map::Bool=true) =
     reactant_immersed_boundary_grid(grid, ib; active_cells_map)
-    
-
 
 end # module
 
