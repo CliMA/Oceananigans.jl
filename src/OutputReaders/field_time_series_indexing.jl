@@ -14,18 +14,20 @@ end
 @inline InterpolatingTimeIndices(fts::FieldTimeSeries, t) =
     InterpolatingTimeIndices(fts.time_indexing, fts.times, t)
 
+@inline function InterpolatingTimeIndices(time_indexing, times, t)
+    ñ, n₁, n₂ = interpolating_time_indices(fts.time_indexing, fts.times, time_index.time)
+    return InterpolatingTimeIndices(ñ, n₁, n₂, length(times))
+end
+
 #####
 ##### Computation of time indices for interpolation
 #####
 
 # Simplest implementation, linear extrapolation if out-of-bounds
-@inline function InterpolatingTimeIndices(::Linear, times, t)
-    ñ, n₁, n₂ = find_time_index(times, t)
-    return InterpolatingTimeIndices(ñ, n₁, n₂, length(times))
-end
+@inline interpolating_time_indices(::Linear, times, t) = find_time_index(times, t)
 
 # Cyclical implementation if out-of-bounds (wrap around the time-series)
-@inline function InterpolatingTimeIndices(ti::Cyclical, times, t)
+@inline function interpolating_time_indices(ti::Cyclical, times, t)
     Nt = length(times)
     t¹ = first(times)
     tᴺ = last(times)
@@ -44,13 +46,11 @@ end
     cycled_indices   = (ñ - 1, Nt, 1)
     uncycled_indices = (ñ, n₁, n₂)
 
-    ñ, n₁, n₂ = ifelse(cycling, cycled_indices, uncycled_indices)
-
-    return InterpolatingTimeIndices(ñ, n₁, n₂, length(times))
+    return ifelse(cycling, cycled_indices, uncycled_indices)
 end
 
 # Clamp mode if out-of-bounds, i.e get the neareast neighbor
-@inline function InterpolatingTimeIndices(::Clamp, times, t)
+@inline function interpolating_time_indices(::Clamp, times, t)
     ñ, n₁, n₂ = find_time_index(times, t)
 
     beyond_indices    = (0, n₂, n₂) # Beyond the last time:  return n₂
@@ -62,7 +62,7 @@ end
     ñ, n₁, n₂ = ifelse(ñ + n₁ > Nt, beyond_indices,
                 ifelse(ñ + n₁ < 1,  before_indices, unclamped_indices))
 
-    return InterpolatingTimeIndices(ñ, n₁, n₂, length(times))
+    return ñ, n₁, n₂
 end
 
 #####
@@ -153,10 +153,7 @@ const YZFTS = FlavorOfFTS{Nothing, <:Any, <:Any, <:Any, <:Any}
     interpolating_getindex(fts, i, j, k, time_index)
 
 @inline function interpolating_getindex(fts, i, j, k, time_index)
-    indices = InterpolatingTimeIndices(fts, time_index.time)
-    ñ = indices.fractional_index
-    n₁ = indices.first_index
-    n₂ = indices.second_index
+    ñ, n₁, n₂ = interpolating_time_indices(fts.time_indexing, fts.times, time_index.time)
 
     @inbounds begin
         ψ₁ = getindex(fts, i, j, k, n₁)
