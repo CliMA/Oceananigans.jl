@@ -73,15 +73,31 @@ function LatitudeLongitudeGrid{TX, TY, TZ}(architecture::Arch,
 end
 
 const LLG = LatitudeLongitudeGrid
-#                                            FT     TX     TY     TZ     Z      DXF       DXC       XF     XC     DYF       DYC
-const HRegularLLG    = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Any, <:Any, <:Number, <:Number}
-const XRegularLLG    = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
-const YRegularLLG    = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any,    <:Any,    <:Any, <:Any, <:Number, <:Number}
-const ZRegularLLG    = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate}
-const HNonRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray, <:AbstractArray, 
-                                                                  <:Any, <:Any, <:AbstractArray, <:AbstractArray}
-const YNonRegularLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any,           <:Any,
-                                                                  <:Any, <:Any, <:AbstractArray, <:AbstractArray}
+
+# Metrics computed on the fly (OTF), arbitrary xy spacing
+#                                   ↓↓ FT     TX     TY     TZ     Z      DXF  DXC  XF     XC     DYF  DYC, YF,    YC,
+const LLGOTF{DXF, DXC, DYF, DYC} = LLG{<:Any, <:Any, <:Any, <:Any, <:Any, DXF, DXC, <:Any, <:Any, DYF, DYC, <:Any, <:Any,
+                                       Nothing, Nothing, Nothing, Nothing, Nothing, Nothing} where {DXF, DXC, DYF, DYC}
+#                                   ↑↑ DXFC,    DXCF,    DXFF,    DXCC,    DYFC,    DYCF
+
+# Metrics computed on the fly, constant x-spacing
+const XRegLLGOTF     =  LLGOTF{<:Number, <:Number}
+# Metrics computed on the fly, constant y-spacing
+const YRegLLGOTF     =  LLGOTF{<:Any, <:Any, <:Number, <:Number}
+
+# Identifying grids with various spacing patterns
+#                                          ↓↓ FT     TX     TY     TZ     Z  DXF  DXC  XF     XC     DYF  DYC
+const LLGSpacing{Z, DXF, DXC, DYF, DYC} = LLG{<:Any, <:Any, <:Any, <:Any, Z, DXF, DXC, <:Any, <:Any, DYF, DYC} where {Z, DXF, DXC, DYF, DYC}
+
+const XRegularLLG    = LLGSpacing{<:Any, <:Number, <:Number}
+const YRegularLLG    = LLGSpacing{<:Any, <:Any, <:Any, <:Number, <:Number}
+const HRegularLLG    = LLGSpacing{<:Any, <:Number, <:Number, <:Number, <:Number}
+const ZRegularLLG    = LLGSpacing{<:RegularVerticalCoordinate}
+const HNonRegularLLG = LLGSpacing{<:Any, <:AbstractArray, <:AbstractArray, <:AbstractArray, <:AbstractArray}
+const YNonRegularLLG = LLGSpacing{<:Any, <:Any, <:Any, <:AbstractArray, <:AbstractArray}
+
+@inline metrics_precomputed(::LLGOTF) = false
+@inline metrics_precomputed(::LLG) = true
 
 regular_dimensions(::ZRegularLLG) = tuple(3)
 
@@ -431,16 +447,16 @@ end
 @inline hack_cosd(φ) = cos(π * φ / 180)
 @inline hack_sind(φ) = sin(π * φ / 180)
 
-@inline Δxᶠᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ[i])
-@inline Δxᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ[i])
-@inline Δxᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ[i])
-@inline Δxᶜᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ[i])
-@inline Δyᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.radius * deg2rad(grid.Δφᵃᶠᵃ[j])
-@inline Δyᶠᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.radius * deg2rad(grid.Δφᵃᶜᵃ[j])
-@inline Azᶠᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
-@inline Azᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
-@inline Azᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
-@inline Azᶜᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
+@inline Δxᶠᶜᵃ(i, j, k, grid::LLG) = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ[i])
+@inline Δxᶜᶠᵃ(i, j, k, grid::LLG) = @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ[i])
+@inline Δxᶠᶠᵃ(i, j, k, grid::LLG) = @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ[i])
+@inline Δxᶜᶜᵃ(i, j, k, grid::LLG) = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ[i])
+@inline Δyᶜᶠᵃ(i, j, k, grid::LLG) = @inbounds grid.radius * deg2rad(grid.Δφᵃᶠᵃ[j])
+@inline Δyᶠᶜᵃ(i, j, k, grid::LLG) = @inbounds grid.radius * deg2rad(grid.Δφᵃᶜᵃ[j])
+@inline Azᶠᶜᵃ(i, j, k, grid::LLG) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
+@inline Azᶜᶠᵃ(i, j, k, grid::LLG) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
+@inline Azᶠᶠᵃ(i, j, k, grid::LLG) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
+@inline Azᶜᶜᵃ(i, j, k, grid::LLG) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
 
 @inline Δxᶠᶜᵃ(i, j, k, grid::XRegularLLG) = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ)
 @inline Δxᶜᶠᵃ(i, j, k, grid::XRegularLLG) = @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ)
@@ -456,9 +472,6 @@ end
 #####
 ##### Utilities to precompute metrics
 #####
-
-@inline metrics_precomputed(::LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, Nothing}) = false
-@inline metrics_precomputed(::LatitudeLongitudeGrid) = true
 
 #####
 ##### Kernels that precompute the z- and x-metric
