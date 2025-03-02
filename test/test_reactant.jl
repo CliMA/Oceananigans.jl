@@ -101,7 +101,7 @@ end
     arch = ReactantState()
     grid = RectilinearGrid(arch; size=(4, 4, 4), extent=(1, 1, 1))
     c = CenterField(grid)
-    @test parent(c) isa Reactant.ConcreteRArray
+    @test parent(c) isa Reactant.ConcretePJRTArray
 
 
     @info "  Testing field set! with a number..."
