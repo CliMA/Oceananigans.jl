@@ -17,9 +17,7 @@ export
     advective_tracer_flux_z,
 
     AdvectionScheme,
-    Centered, CenteredSecondOrder, CenteredFourthOrder,
-    UpwindBiased, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder,
-    WENO, WENOThirdOrder, WENOFifthOrder, MPData,
+    Centered, UpwindBiased, WENO, MPData,
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     EnergyConserving,
@@ -31,11 +29,14 @@ using Base: @propagate_inbounds
 using Adapt 
 using OffsetArrays
 
+using Oceananigans
 using Oceananigans.Grids
-using Oceananigans.Grids: with_halo, coordinates
-using Oceananigans.Architectures: architecture, CPU
-
 using Oceananigans.Operators
+
+using Oceananigans: fully_supported_float_types
+using Oceananigans.Architectures: architecture, CPU
+using Oceananigans.Grids: with_halo
+using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, Γᶠᶠᶜ, ∂t_σ
 
 import Base: show, summary
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
@@ -81,6 +82,7 @@ include("flux_form_advection.jl")
 
 include("flat_advective_fluxes.jl")
 include("topologically_conditional_interpolation.jl")
+include("immersed_advective_fluxes.jl")
 include("momentum_advection_operators.jl")
 include("tracer_advection_operators.jl")
 include("positivity_preserving_tracer_advection_operators.jl")

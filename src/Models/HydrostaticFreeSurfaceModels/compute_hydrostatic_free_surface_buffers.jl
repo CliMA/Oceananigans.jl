@@ -1,7 +1,8 @@
 import Oceananigans.Models: compute_buffer_tendencies!
 
 using Oceananigans.Grids: halo_size
-using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, DistributedActiveCellsIBG
+using Oceananigans.DistributedComputations: DistributedActiveCellsIBG
+using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map
 using Oceananigans.Models.NonhydrostaticModels: buffer_tendency_kernel_parameters,
                                                 buffer_p_kernel_parameters, 
                                                 buffer_κ_kernel_parameters,
@@ -34,17 +35,16 @@ end
 function compute_buffer_tendency_contributions!(grid::DistributedActiveCellsIBG, arch, model)
     maps = grid.interior_active_cells
     
-    for (name, map) in zip(keys(maps), maps)
-        
-        # If there exists a buffer map, then we compute the buffer contributions. If not, the 
-        # buffer contributions have already been calculated. We exclude the interior because it has
-        # already been calculated
-        compute_buffer = (name != :interior) && !isnothing(map) 
+    for name in (:west_halo_dependent_cells, 
+                 :east_halo_dependent_cells, 
+                 :south_halo_dependent_cells, 
+                 :north_halo_dependent_cells)
 
-        if compute_buffer
-            active_cells_map = retrieve_interior_active_cells_map(grid, Val(name))
-            compute_hydrostatic_free_surface_tendency_contributions!(model, :xyz; active_cells_map)
-        end
+        active_cells_map = @inbounds maps[name]
+
+        # If the map == nothing, we don't need to compute the buffer because 
+        # the buffer is not adjacent to a processor boundary
+        !isnothing(map) && compute_hydrostatic_free_surface_tendency_contributions!(model, :xyz; active_cells_map)
     end
 
     return nothing
@@ -55,9 +55,6 @@ function buffer_w_kernel_parameters(grid, arch)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
-    Sx  = (Hx, Ny+2) 
-    Sy  = (Nx+2, Hy)
-             
     # Offsets in tangential direction are == -1 to
     # cover the required corners
     param_west  = (-Hx+2:1,    0:Ny+1)

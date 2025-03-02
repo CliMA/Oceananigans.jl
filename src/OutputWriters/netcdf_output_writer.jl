@@ -225,7 +225,7 @@ Keyword arguments
                 you might need to set `with_halos = true`.
 
 - `array_type`: The array type to which output arrays are converted to prior to saving.
-                Default: `Array{Float64}`.
+                Default: `Array{Float32}`.
 
 - `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs).
 
@@ -265,7 +265,7 @@ Examples
 Saving the ``u`` velocity field and temperature fields, the full 3D fields and surface 2D slices
 to separate NetCDF files:
 
-```jldoctest netcdf1
+```@example netcdf1
 using Oceananigans
 
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
@@ -278,53 +278,26 @@ fields = Dict("u" => model.velocities.u, "c" => model.tracers.c)
 
 simulation.output_writers[:field_writer] =
     NetCDFOutputWriter(model, fields, filename="fields.nc", schedule=TimeInterval(60))
-
-# output
-NetCDFOutputWriter scheduled on TimeInterval(1 minute):
-├── filepath: ./fields.nc
-├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 2 outputs: (c, u)
-└── array type: Array{Float64}
-├── file_splitting: NoFileSplitting
-└── file size: 14.9 KiB
 ```
 
-```jldoctest netcdf1
+```@example netcdf1
 simulation.output_writers[:surface_slice_writer] =
     NetCDFOutputWriter(model, fields, filename="surface_xy_slice.nc",
                        schedule=TimeInterval(60), indices=(:, :, grid.Nz))
-
-# output
-NetCDFOutputWriter scheduled on TimeInterval(1 minute):
-├── filepath: ./surface_xy_slice.nc
-├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 2 outputs: (c, u)
-└── array type: Array{Float64}
-├── file_splitting: NoFileSplitting
-└── file size: 14.9 KiB
 ```
 
-```jldoctest netcdf1
+```@example netcdf1
 simulation.output_writers[:averaged_profile_writer] =
     NetCDFOutputWriter(model, fields,
                        filename = "averaged_z_profile.nc",
                        schedule = AveragedTimeInterval(60, window=20),
                        indices = (1, 1, :))
-
-# output
-NetCDFOutputWriter scheduled on TimeInterval(1 minute):
-├── filepath: ./averaged_z_profile.nc
-├── dimensions: zC(16), zF(17), xC(1), yF(1), xF(1), yC(1), time(0)
-├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
-└── array type: Array{Float64}
-├── file_splitting: NoFileSplitting
-└── file size: 17.6 KiB
 ```
 
 `NetCDFOutputWriter` also accepts output functions that write scalars and arrays to disk,
 provided that their `dimensions` are provided:
 
-```jldoctest
+```@example
 using Oceananigans
 
 Nx, Ny, Nz = 16, 16, 16
@@ -361,22 +334,13 @@ simulation.output_writers[:things] =
     NetCDFOutputWriter(model, outputs,
                        schedule=IterationInterval(1), filename="things.nc", dimensions=dims, verbose=true,
                        global_attributes=global_attributes, output_attributes=output_attributes)
-
-# output
-NetCDFOutputWriter scheduled on IterationInterval(1):
-├── filepath: ./things.nc
-├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 3 outputs: (profile, slice, scalar)
-└── array type: Array{Float64}
-├── file_splitting: NoFileSplitting
-└── file size: 17.8 KiB
 ```
 
 `NetCDFOutputWriter` can also be configured for `outputs` that are interpolated or regridded
 to a different grid than `model.grid`. To use this functionality, include the keyword argument
 `grid = output_grid`.
 
-```jldoctest
+```@example
 using Oceananigans
 using Oceananigans.Fields: interpolate!
 
@@ -393,15 +357,6 @@ output_writer = NetCDFOutputWriter(model, outputs;
                                    grid = coarse_grid,
                                    filename = "coarse_u.nc",
                                    schedule = IterationInterval(1))
-
-# output
-NetCDFOutputWriter scheduled on IterationInterval(1):
-├── filepath: ./coarse_u.nc
-├── dimensions: zC(4), zF(5), xC(1), yF(1), xF(1), yC(1), time(0)
-├── 1 outputs: u
-└── array type: Array{Float64}
-├── file_splitting: NoFileSplitting
-└── file size: 14.6 KiB
 ```
 """
 function NetCDFOutputWriter(model, outputs;
@@ -409,7 +364,7 @@ function NetCDFOutputWriter(model, outputs;
                             schedule,
                             grid = model.grid,
                             dir = ".",
-                            array_type = Array{Float64},
+                            array_type = Array{Float32},
                             indices = (:, :, :),
                             with_halos = false,
                             global_attributes = Dict(),
@@ -422,7 +377,7 @@ function NetCDFOutputWriter(model, outputs;
                             verbose = false)
     mkpath(dir)
     filename = auto_extension(filename, ".nc")
-    filepath = joinpath(dir, filename)
+    filepath = abspath(joinpath(dir, filename))
 
     initialize!(file_splitting, model)
     update_file_splitting_schedule!(file_splitting, filepath)
@@ -434,7 +389,6 @@ function NetCDFOutputWriter(model, outputs;
             overwrite_existing = true
         end
     else
-
         if isfile(filepath) && !overwrite_existing
             @warn "$filepath already exists and `overwrite_existing = false`. Mode will be set to append to existing file. " *
                   "You might experience errors when writing output if the existing file belonged to a different simulation!"
@@ -638,7 +592,7 @@ function Base.show(io::IO, ow::NetCDFOutputWriter)
     Noutputs = length(ow.outputs)
 
     print(io, "NetCDFOutputWriter scheduled on $(summary(ow.schedule)):", "\n",
-              "├── filepath: ", ow.filepath, "\n",
+              "├── filepath: ", relpath(ow.filepath), "\n",
               "├── dimensions: $dims", "\n",
               "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
               "└── array type: ", show_array_type(ow.array_type), "\n",

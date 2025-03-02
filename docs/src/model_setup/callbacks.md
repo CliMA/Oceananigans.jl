@@ -51,6 +51,7 @@ the `:u` field using parameters:
 
 ```@example checkpointing
 using Oceananigans
+using Oceananigans: TendencyCallsite
 
 model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 

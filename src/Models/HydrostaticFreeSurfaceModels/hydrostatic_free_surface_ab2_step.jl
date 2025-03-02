@@ -11,18 +11,19 @@ import Oceananigans.TimeSteppers: ab2_step!
 ##### Step everything
 #####
 
-setup_free_surface!(model, free_surface, χ) = nothing
-
 function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
 
-    χ = model.timestepper.χ
-    setup_free_surface!(model, model.free_surface, χ)
+    grid = model.grid
+    compute_free_surface_tendency!(grid, model, model.free_surface)
+
+    FT = eltype(grid)
+    χ = convert(FT, model.timestepper.χ)
+    Δt = convert(FT, Δt)
 
     # Step locally velocity and tracers
     @apply_regionally local_ab2_step!(model, Δt, χ)
 
-    # blocking step for implicit free surface, non blocking for explicit
-    ab2_step_free_surface!(model.free_surface, model, Δt, χ)
+    step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
     return nothing
 end
@@ -30,7 +31,7 @@ end
 function local_ab2_step!(model, Δt, χ)
     ab2_step_velocities!(model.velocities, model, Δt, χ)
     ab2_step_tracers!(model.tracers, model, Δt, χ)
-    return nothing    
+    return nothing
 end
 
 #####
@@ -47,9 +48,6 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
         launch!(model.architecture, model.grid, :xyz,
                 ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻, model.grid)
 
-        # TODO: let next implicit solve depend on previous solve + explicit velocity step
-        # Need to distinguish between solver events and tendency calculation events.
-        # Note that BatchedTridiagonalSolver has a hard `wait`; this must be solved first.
         implicit_step!(velocity_field,
                        model.timestepper.implicit_solver,
                        model.closure,
@@ -63,26 +61,30 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
 end
 
 #####
-##### Step velocities
+##### Step Tracers
 #####
 
 const EmptyNamedTuple = NamedTuple{(),Tuple{}}
+
+hasclosure(closure, ClosureType) = closure isa ClosureType
+hasclosure(closure_tuple::Tuple, ClosureType) = any(hasclosure(c, ClosureType) for c in closure_tuple)
 
 ab2_step_tracers!(::EmptyNamedTuple, model, Δt, χ) = nothing
 
 function ab2_step_tracers!(tracers, model, Δt, χ)
 
     closure = model.closure
+    catke_in_closures = hasclosure(closure, FlavorOfCATKE)
+    td_in_closures    = hasclosure(closure, FlavorOfTD)
 
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         
-        # TODO: do better than this silly criteria, also need to check closure tuples
-        if closure isa FlavorOfCATKE && tracer_name == :e
+        if catke_in_closures && tracer_name == :e
             @debug "Skipping AB2 step for e"
-        elseif closure isa FlavorOfTD && tracer_name == :ϵ
+        elseif td_in_closures && tracer_name == :ϵ
             @debug "Skipping AB2 step for ϵ"
-        elseif closure isa FlavorOfTD && tracer_name == :e
+        elseif td_in_closures && tracer_name == :e
             @debug "Skipping AB2 step for e"
         else
             Gⁿ = model.timestepper.Gⁿ[tracer_name]
@@ -90,8 +92,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
             tracer_field = tracers[tracer_name]
             closure = model.closure
 
-            launch!(model.architecture, model.grid, :xyz,
-                    ab2_step_field!, tracer_field, Δt, χ, Gⁿ, G⁻)
+            ab2_step_tracer_field!(tracer_field, model.grid, Δt, χ, Gⁿ, G⁻)
 
             implicit_step!(tracer_field,
                            model.timestepper.implicit_solver,
@@ -106,3 +107,34 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
     return nothing
 end
 
+ab2_step_tracer_field!(tracer_field, grid, Δt, χ, Gⁿ, G⁻) =
+    launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, Δt, χ, Gⁿ, G⁻)
+
+#####
+##### Tracer update in mutable vertical coordinates 
+#####
+
+# σθ is the evolved quantity. Once σⁿ⁺¹ is known we can retrieve θⁿ⁺¹
+# with the `unscale_tracers!` function
+@kernel function _ab2_step_tracer_field!(θ, grid, Δt, χ, Gⁿ, G⁻)
+    i, j, k = @index(Global, NTuple)
+
+    FT = eltype(χ)
+    α = convert(FT, 1.5) + χ
+    β = convert(FT, 0.5) + χ
+
+    σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
+    σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
+
+    @inbounds begin
+        ∂t_σθ = α * σᶜᶜⁿ * Gⁿ[i, j, k] - β * σᶜᶜ⁻ * G⁻[i, j, k]
+        
+        # We store temporarily σθ in θ. 
+        # The unscaled θ will be retrieved with `unscale_tracers!`
+        θ[i, j, k] = σᶜᶜⁿ * θ[i, j, k] + convert(FT, Δt) * ∂t_σθ
+    end
+end
+
+# Fallback! We need to unscale the tracers only in case of 
+# a grid with a mutable vertical coordinate, i.e. where `σ != 1`
+unscale_tracers!(tracers, grid; kwargs...) = nothing

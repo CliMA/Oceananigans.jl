@@ -1,3 +1,5 @@
+import Oceananigans
+
 #####
 ##### Weighted Essentially Non-Oscillatory (WENO) advection scheme
 #####
@@ -58,14 +60,14 @@ Examples
 julia> using Oceananigans
 
 julia> WENO()
-WENO reconstruction order 5
- Boundary scheme: 
-    └── WENO reconstruction order 3
- Symmetric scheme: 
-    └── Centered reconstruction order 4
+WENO(order=5)
+ Boundary scheme:
+    └── WENO(order=3)
+ Symmetric scheme:
+    └── Centered(order=4)
  Directions:
-    ├── X regular 
-    ├── Y regular 
+    ├── X regular
+    ├── Y regular
     └── Z regular
 ```
 
@@ -82,18 +84,18 @@ julia> grid = RectilinearGrid(size = (Nx, Nz), halo = (4, 4), topology=(Periodic
                               x = (0, Lx), z = chebychev_spaced_z_faces);
 
 julia> WENO(grid; order=7)
-WENO reconstruction order 7
- Boundary scheme: 
-    └── WENO reconstruction order 5
- Symmetric scheme: 
-    └── Centered reconstruction order 6
+WENO(order=7)
+ Boundary scheme:
+    └── WENO(order=5)
+ Symmetric scheme:
+    └── Centered(order=6)
  Directions:
-    ├── X regular 
-    ├── Y regular 
+    ├── X regular
+    ├── Y regular
     └── Z stretched
 ```
 """
-function WENO(FT::DataType=Float64; 
+function WENO(FT::DataType=Oceananigans.defaults.FloatType; 
               order = 5,
               grid = nothing, 
               bounds = nothing)
@@ -104,15 +106,18 @@ function WENO(FT::DataType=Float64;
 
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
 
-    if order < 3
-        # WENO(order = 1) is equivalent to UpwindBiased(order = 1)
-        return UpwindBiased(FT; order = 1)
-    else
-        N  = Int((order + 1) ÷ 2)
+    if !isnothing(bounds)
+        @warn "Bounds preserving WENO is experimental."
+    end
 
+    if order < 3
+        # WENO(order=1) is equivalent to UpwindBiased(order=1)
+        return UpwindBiased(FT; order=1)
+    else
+        N = Int((order + 1) ÷ 2)
         weno_coefficients = compute_reconstruction_coefficients(grid, FT, :WENO; order = N)
         advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
-        buffer_scheme = WENO(FT; grid, order = order - 2, bounds) 
+        buffer_scheme = WENO(FT; grid, order=order-2, bounds) 
     end
 
     return WENO{N, FT}(weno_coefficients..., bounds, buffer_scheme, advecting_velocity_scheme)
@@ -120,14 +125,10 @@ end
 
 WENO(grid, FT::DataType=Float64; kwargs...) = WENO(FT; grid, kwargs...)
 
-# Some usefull aliases
-WENOThirdOrder(grid=nothing, FT::DataType=Float64;  kwargs...) = WENO(grid, FT; order=3, kwargs...)
-WENOFifthOrder(grid=nothing, FT::DataType=Float64;  kwargs...) = WENO(grid, FT; order=5, kwargs...)
-
 # Flavours of WENO
 const PositiveWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple}
 
-Base.summary(a::WENO{N}) where N = string("WENO reconstruction order ", N*2-1)
+Base.summary(a::WENO{N}) where N = string("WENO(order=", N*2-1, ")")
 
 Base.show(io::IO, a::WENO{N, FT, RX, RY, RZ, PP}) where {N, FT, RX, RY, RZ, PP} =
     print(io, summary(a), " \n",

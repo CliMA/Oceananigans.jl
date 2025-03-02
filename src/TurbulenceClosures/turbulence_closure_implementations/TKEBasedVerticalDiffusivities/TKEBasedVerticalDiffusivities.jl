@@ -4,6 +4,7 @@ using Adapt
 using CUDA
 using KernelAbstractions: @kernel, @index
 
+using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Utils
@@ -17,7 +18,7 @@ using Oceananigans.Fields: ZeroField
 using Oceananigans.BoundaryConditions: default_prognostic_bc, DefaultBoundaryCondition
 using Oceananigans.BoundaryConditions: BoundaryCondition, FieldBoundaryConditions
 using Oceananigans.BoundaryConditions: DiscreteBoundaryFunction, FluxBoundaryCondition
-using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
+using Oceananigans.BuoyancyFormulations: ∂z_b, top_buoyancy_flux
 using Oceananigans.Grids: inactive_cell
 
 using Oceananigans.TurbulenceClosures:
