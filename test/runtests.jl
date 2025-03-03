@@ -96,6 +96,13 @@ CUDA.allowscalar() do
         end
     end
 
+    if group == :orthogonalsphericalshellgrids || group == :all
+        @testset "OrthogonalSphericalShellGrids tests" begin
+            include("test_tripolar_grid.jl")
+            include("test_zipper_boundary_conditions.jl")
+        end
+    end
+
     # Lagrangian particle tracking
     if group == :lagrangian || group == :all
         @testset "Lagrangian particle tracking tests" begin
