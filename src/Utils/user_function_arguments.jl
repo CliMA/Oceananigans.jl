@@ -11,7 +11,7 @@
                ℑ[3](i, j, k, grid, model_fields[idx[3]]))
 
 @inline function field_arguments(i, j, k, grid, model_fields, ℑ, idx::NTuple{N}) where N 
-    f = ntuple(Val(N)) do 
+    f = ntuple(Val(N)) do n
         Base.@_inline_meta
         @inbounds ℑ[n](i, j, k, grid, model_fields[idx[n]])
     end
