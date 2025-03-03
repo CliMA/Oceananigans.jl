@@ -32,7 +32,11 @@ function particle_tracking_simulation(; grid, particles, timestepper=:RungeKutta
 
     nc_filepath = "test_particles.nc"
     sim.output_writers[:particles_nc] =
-        NetCDFOutputWriter(model, model.particles, filename=nc_filepath, schedule=IterationInterval(1))
+        NetCDFOutputWriter(model,
+            (; particles = model.particles),
+            filename = nc_filepath,
+            schedule = IterationInterval(1)
+        )
 
     sim.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1),
                                                      dir=".", prefix="particles_checkpoint")
@@ -139,7 +143,11 @@ function run_simple_particle_tracking_tests(grid, timestepper=:QuasiAdamsBashfor
 
         nc_filepath = "test_particles.nc"
         sim.output_writers[:particles_nc] =
-            NetCDFOutputWriter(model, model.particles, filename=nc_filepath, schedule=IterationInterval(1))
+            NetCDFOutputWriter(model,
+                (; particles = model.particles),
+                filename = nc_filepath,
+                schedule = IterationInterval(1)
+            )
 
         sim.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1),
                                                          dir=".", prefix="particles_checkpoint")
@@ -334,7 +342,7 @@ lagrangian_particle_test_curvilinear_grid(arch, z) =
         xp = on_architecture(arch, xp)
         yp = on_architecture(arch, yp)
         zp = on_architecture(arch, zp)
-        
+
         grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
         particles = LagrangianParticles(x=xp, y=yp, z=zp)
         model = NonhydrostaticModel(; grid, particles)
@@ -342,4 +350,3 @@ lagrangian_particle_test_curvilinear_grid(arch, z) =
         @test model.particles isa LagrangianParticles
     end
 end
-

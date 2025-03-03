@@ -7,7 +7,7 @@ using Oceananigans.Fields
 using Oceananigans.Grids: AbstractCurvilinearGrid, RectilinearGrid, StaticVerticalDiscretization
 using Oceananigans.Grids: topology, halo_size, parent_index_range, ξnodes, ηnodes, rnodes, validate_index, peripheral_node
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GFBIBG
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
@@ -326,6 +326,24 @@ function gather_immersed_boundary(grid::GFBIBG, indices, dim_name_generator)
 
     return Dict(
         "bottom_height" => Field(grid.immersed_boundary.bottom_height; indices),
+        "immersed_boundary_mask_ccc" => Field(op_mask_ccc; indices),
+        "immersed_boundary_mask_fcc" => Field(op_mask_fcc; indices),
+        "immersed_boundary_mask_cfc" => Field(op_mask_cfc; indices),
+        "immersed_boundary_mask_ccf" => Field(op_mask_ccf; indices)
+    )
+end
+
+const GFBoundaryIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBoundary}
+
+# For Immersed Boundary Grids (IBG) with a Grid Fitted Boundary (also GFB!)
+function gather_immersed_boundary(grid::GFBoundaryIBG, indices, dim_name_generator)
+    op_mask_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
+    op_mask_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
+    op_mask_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
+    op_mask_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
+
+    return Dict(
+        "immersed_boundary_mask" => Field(grid.immersed_boundary.mask; indices),
         "immersed_boundary_mask_ccc" => Field(op_mask_ccc; indices),
         "immersed_boundary_mask_fcc" => Field(op_mask_fcc; indices),
         "immersed_boundary_mask_cfc" => Field(op_mask_cfc; indices),

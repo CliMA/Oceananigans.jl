@@ -2753,7 +2753,7 @@ function test_netcdf_free_surface_mixed_output(arch)
     return nothing
 end
 
-for arch in [CPU(), GPU()]
+for arch in archs
     @testset "NetCDF output writer [$(typeof(arch))]" begin
         @info "  Testing NetCDF output writer [$(typeof(arch))]..."
 
