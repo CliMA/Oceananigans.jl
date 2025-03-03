@@ -1,8 +1,8 @@
-using Oceananigans.Fields: location
+using Oceananigans.Fields: location, instantiated_location
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, retrieve_surface_active_cells_map
 
-import Oceananigans.TimeSteppers: split_rk3_substep!, _split_rk3_substep_field!
+import Oceananigans.TimeSteppers: split_rk3_substep!, _split_rk3_substep_field!, store_fields!
 
 function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζⁿ)
     
@@ -100,6 +100,7 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
 
     closure = model.closure
     grid = model.grid
+    FT = eltype(grid)
 
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
@@ -110,7 +111,7 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
         closure = model.closure
 
         launch!(architecture(grid), grid, :xyz,
-                _split_rk3_substep_tracer_field!, tracer_field, grid, Δt, γⁿ, ζⁿ, Gⁿ, Ψ⁻)
+                _split_rk3_substep_tracer_field!, tracer_field, grid, convert(FT, Δt), γⁿ, ζⁿ, Gⁿ, Ψ⁻)
 
         implicit_step!(tracer_field,
                        model.timestepper.implicit_solver,
@@ -129,33 +130,52 @@ end
 #####
 
 # σθ is the evolved quantity. Once σⁿ⁺¹ is known we can retrieve θⁿ⁺¹
-# with the `unscale_tracers!` function
+# with the `unscale_tracers!` function. Ψ⁻ is the previous tracer already scaled
+# by the vertical coordinate scaling factor: ψ⁻ = σ * θ
 @kernel function _split_rk3_substep_tracer_field!(θ, grid, Δt, γⁿ, ζⁿ, Gⁿ, Ψ⁻) 
     i, j, k = @index(Global, NTuple)
 
-    FT = eltype(grid)
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
 
-    @inbounds begin
-        ∂t_σθ = σᶜᶜⁿ * Gⁿ[i, j, k]
-        
-        # We store temporarily σθ in θ. 
-        # The unscaled θ will be retrieved with `unscale_tracers!`
-        θ[i, j, k] =  ζⁿ * σᶜᶜⁿ * Ψ⁻[i, j, k] + γⁿ * (σᶜᶜⁿ * θ[i, j, k] + convert(FT, Δt) * ∂t_σθ)
-    end
+    # We store temporarily σθ in θ. 
+    # The unscaled θ will be retrieved with `unscale_tracers!`
+    @inbounds θ[i, j, k] = ζⁿ * Ψ⁻[i, j, k] + γⁿ * σᶜᶜⁿ * (θ[i, j, k] + Δt * Gⁿ[i, j, k])
 end
 
+# We store temporarily σθ in θ. 
+# The unscaled θ will be retrieved with `unscale_tracers!`
 @kernel function _split_rk3_substep_tracer_field!(θ, grid, Δt, ::Nothing, ::Nothing, Gⁿ, Ψ⁻) 
     i, j, k = @index(Global, NTuple)
-
-    FT = eltype(grid)
-    σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
-
-    @inbounds begin
-        ∂t_σθ = σᶜᶜⁿ * Gⁿ[i, j, k]
-
-        # We store temporarily σθ in θ. 
-        # The unscaled θ will be retrieved with `unscale_tracers!`
-        θ[i, j, k] =  σᶜᶜⁿ * θ[i, j, k] + convert(FT, Δt) * ∂t_σθ
-    end
+    @inbounds θ[i, j, k] = Ψ⁻[i, j, k] + Δt * Gⁿ[i, j, k] * σⁿ(i, j, k, grid, Center(), Center(), Center())
 end
+
+##### 
+##### Storing previous fields for the RK3 update
+##### 
+
+# Tracers are multiplied by the vertical coordinate scaling factor
+@kernel function _store_tracer_fields!(Ψ⁻, grid, Ψⁿ) 
+    i, j, k = @index(Global, NTuple)
+    @inbounds Ψ⁻[i, j, k] = Ψⁿ[i, j, k] * σⁿ(i, j, k, grid, Center(), Center(), Center())
+end
+
+function store_fields!(model::HydrostaticFreeSurfaceModel)
+    
+    previous_fields = model.timestepper.Ψ⁻
+    model_fields = prognostic_fields(model)
+    grid = model.grid
+    arch = architecture(grid)
+
+    for name in keys(model_fields)
+        Ψ⁻ = previous_fields[name]
+        Ψⁿ = model_fields[name]
+        if name ∈ keys(model.tracers) # Tracers are stored with the grid scaling
+            launch!(arch, grid, :xyz, _store_tracer_fields!, Ψ⁻, grid, Ψⁿ)
+        else # Velocities and free surface are stored without the grid scaling
+            parent(Ψ⁻) .= parent(Ψⁿ) 
+        end
+    end
+
+    return nothing
+end
+
