@@ -233,6 +233,7 @@ end
 
 validate_free_surface(::Distributed, free_surface::SplitExplicitFreeSurface) = free_surface
 validate_free_surface(::Distributed, free_surface::ExplicitFreeSurface)      = free_surface
+validate_free_surface(::Distributed, free_surface::Nothing)                  = free_surface
 validate_free_surface(arch::Distributed, free_surface) = error("$(typeof(free_surface)) is not supported with $(typeof(arch))")
 validate_free_surface(arch, free_surface) = free_surface
 
