@@ -173,7 +173,7 @@ end
 
 #####
 #####
-##### Two - Dimensional Horizontal Spacings
+##### Two-dimensional horizontal spacings
 #####
 #####
 
@@ -265,7 +265,7 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
         @inline $Azˡˡᵃ(i, j, k, grid) = $Δxˡˡᵃ(i, j, k, grid) * $Δyˡˡᵃ(i, j, k, grid)
     end
 
-    for  L3 in (:ᶜ, :ᶠ)
+    for L3 in (:ᶜ, :ᶠ)
         # 3D spacings
         Δxˡˡˡ = Symbol(:Δx, L1, L2, L3)
         Δyˡˡˡ = Symbol(:Δy, L1, L2, L3)

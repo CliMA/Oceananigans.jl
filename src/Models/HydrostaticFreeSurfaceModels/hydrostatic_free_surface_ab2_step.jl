@@ -11,9 +11,12 @@ import Oceananigans.TimeSteppers: ab2_step!
 
 function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
 
-    compute_free_surface_tendency!(model.grid, model, model.free_surface)
+    grid = model.grid
+    compute_free_surface_tendency!(grid, model, model.free_surface)
 
-    χ = model.timestepper.χ
+    FT = eltype(grid)
+    χ = convert(FT, model.timestepper.χ)
+    Δt = convert(FT, Δt)
 
     # Step locally velocity and tracers
     @apply_regionally local_ab2_step!(model, Δt, χ)
@@ -26,10 +29,8 @@ end
 function local_ab2_step!(model, Δt, χ)
     ab2_step_velocities!(model.velocities, model, Δt, χ)
     ab2_step_tracers!(model.tracers, model, Δt, χ)
-
     return nothing
 end
-
 
 #####
 ##### Step velocities
@@ -71,7 +72,6 @@ ab2_step_tracers!(::EmptyNamedTuple, model, Δt, χ) = nothing
 function ab2_step_tracers!(tracers, model, Δt, χ)
 
     closure = model.closure
-
     catke_in_closures = hasclosure(closure, FlavorOfCATKE)
     td_in_closures    = hasclosure(closure, FlavorOfTD)
 

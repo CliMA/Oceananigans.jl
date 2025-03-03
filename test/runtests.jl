@@ -11,9 +11,8 @@ if test_file != :none
     group = :none
 end
 
-
 #####
-##### Run tests!
+##### Run tests
 #####
 
 CUDA.allowscalar() do
@@ -28,18 +27,7 @@ CUDA.allowscalar() do
 
     # Initialization steps
     if group == :init || group == :all
-        Pkg.instantiate(; verbose=true)
-        Pkg.precompile(; strict=true)
-        Pkg.status()
-
-        try
-            MPI.versioninfo()
-        catch; end
-
-        try
-            CUDA.precompile_runtime()
-            CUDA.versioninfo()
-        catch; end
+        include("test_init.jl")
     end
     
     # Core Oceananigans
@@ -137,6 +125,7 @@ CUDA.allowscalar() do
             include("test_dynamics.jl")
             include("test_biogeochemistry.jl")
             include("test_seawater_density.jl")
+            include("test_orthogonal_spherical_shell_time_stepping.jl")
         end
     end
 
@@ -233,9 +222,24 @@ CUDA.allowscalar() do
         end
     end
 
+    # Tests for Reactant extension
+    if group == :reactant || group == :all
+        @testset "Reactant extension tests" begin
+            include("test_reactant.jl")
+        end
+    end
+
+    # Tests for Metal extension
+    if group == :metal|| group == :all
+        @testset "Metal extension tests" begin
+            include("test_metal.jl")
+        end
+    end
+
     if group == :convergence
         include("test_convergence.jl")
     end
 end
 
 end #CUDA.allowscalar()
+
