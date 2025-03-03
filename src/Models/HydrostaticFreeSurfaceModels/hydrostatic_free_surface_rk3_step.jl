@@ -137,7 +137,7 @@ end
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
 
     @inbounds begin
-        ∂t_σθ = α * σᶜᶜⁿ * Gⁿ[i, j, k]
+        ∂t_σθ = σᶜᶜⁿ * Gⁿ[i, j, k]
         
         # We store temporarily σθ in θ. 
         # The unscaled θ will be retrieved with `unscale_tracers!`
@@ -152,7 +152,7 @@ end
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
 
     @inbounds begin
-        ∂t_σθ = α * σᶜᶜⁿ * Gⁿ[i, j, k]
+        ∂t_σθ = σᶜᶜⁿ * Gⁿ[i, j, k]
 
         # We store temporarily σθ in θ. 
         # The unscaled θ will be retrieved with `unscale_tracers!`
