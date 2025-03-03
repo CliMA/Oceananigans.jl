@@ -22,6 +22,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                    buoyancy = BuoyancyTracer(),
                                     closure = nothing, 
                                     tracers = :b,
+                                timestepper = :SplitRungeKutta3,
                         vertical_coordinate = Oceananigans.Models.ZStar(),
                                free_surface = SplitExplicitFreeSurface(grid; substeps = 10))
 
