@@ -89,9 +89,10 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
             G⁻ = model.timestepper.G⁻[tracer_name]
             tracer_field = tracers[tracer_name]
             closure = model.closure
+            grid = model.grid
 
             FT = eltype(grid)
-            launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, model.grid, convert(FT, Δt), χ, Gⁿ, G⁻)
+            launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, convert(FT, Δt), χ, Gⁿ, G⁻)
 
             implicit_step!(tracer_field,
                            model.timestepper.implicit_solver,
