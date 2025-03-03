@@ -1,4 +1,4 @@
-using Oceananigans.Grids: LatitudeLongitudeGrid
+using Oceananigans.Grids: LatitudeLongitudeGrid, Bounded
 using Oceananigans.Utils: KernelParameters
 using StaticArrays
 using LinearAlgebra
@@ -7,14 +7,10 @@ struct LatitudeLongitudeRotation{FT}
     north_pole :: FT
 end
 
-const RotatedLatitudeLongitudeGrid = OrthogonalSphericalShellGrid{<:Any,
-                                                                  <:Any,
-                                                                  <:Any,
-                                                                  <:Any,
-                                                                  <:Any,
-                                                                  <:Any,
-                                                                  <:LatitudeLongitudeRotation}
-
+const RotatedLatitudeLongitudeGrid{FT, TX, TY, TZ, Z} =
+    OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z,
+                                 <:LatitudeLongitudeRotation} where {FT, TX, TY, TZ, Z}
+                                                                                     
 # Helper function (TODO: define Operators before grids...)
 @inline lat_lon_metric(m, i, j) = @inbounds m[i, j]
 @inline lat_lon_metric(m::AbstractVector, i, j) = @inbounds m[j]
@@ -28,24 +24,20 @@ function latitude_longitude_shift((λ₀, φ₀))
 end
 
 function RotatedLatitudeLongitudeGrid(arch::AbstractArchitecture = CPU(),
-                                        FT::DataType = Oceananigans.defaults.FloatType;
-                                        size,
-                                        north_pole,
-                                        longitude,
-                                        latitude,
-                                        z,
-                                        halo = (3, 3, 3),
-                                        radius = R_Earth,
-                                        topology = (Bounded, Bounded, Bounded))
+                                      FT::DataType = Oceananigans.defaults.FloatType;
+                                      size,
+                                      north_pole,
+                                      longitude,
+                                      latitude,
+                                      z,
+                                      halo = (3, 3, 3),
+                                      radius = R_Earth,
+                                      topology = (Bounded, Bounded, Bounded))
 
-    Δλ, Δφ = latitude_longitude_shift(north_pole)
-    shifted_longitude = longitude # .+ Δλ
-    shifted_latitude = latitude #.+ Δφ
     shifted_halo = halo .+ 1
     source_grid = LatitudeLongitudeGrid(arch, FT; size, z, topology, radius,
-                                        halo = shifted_halo,
-                                        latitude = shifted_latitude,
-                                        longitude = shifted_longitude)
+                                        latitude, longitude, halo = shifted_halo)
+
     Nx, Ny, Nz = size
     Hx, Hy, Hz = halo_size(source_grid)
     Lz = source_grid.Lz
