@@ -16,8 +16,21 @@ const DistributedGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:Distribut
 const DistributedRectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY} =
     RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, <:Distributed} where {FT, TX, TY, TZ, CZ, FX, FY, VX, VY}
 
-const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, CZ, M, MY, FX, FY, VX, VY} = 
-    LatitudeLongitudeGrid{FT, TX, TY, TZ, CZ, M, MY, FX, FY, VX, VY, <:Distributed} where {FT, TX, TY, TZ, CZ, M, MY, FX, FY, VX, VY}
+const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, Z,
+                                       DXF, DXC, XF, XC,
+                                       DYF, DYC, YF, YC,
+                                       DXFC, DXCF, DXFF,
+                                       DXCC, DYFC, DYCF} =
+    LatitudeLongitudeGrid{FT, TX, TY, TZ, Z,
+                          DXF, DXC, XF, XC,
+                          DYF, DYC, YF, YC,
+                          DXFC, DXCF, DXFF,
+                          DXCC, DYFC, DYCF,
+                          <:Distributed} where {FT, TX, TY, TZ, Z,
+                                                DXF, DXC, XF, XC,
+                                                DYF, DYC, YF, YC,
+                                                DXFC, DXCF, DXFF,
+                                                DXCC, DYFC, DYCF}
 
 # Local size from global size and architecture
 local_size(arch::Distributed, global_sz) = (local_size(global_sz[1], arch.partition.x, arch.local_index[1]),
