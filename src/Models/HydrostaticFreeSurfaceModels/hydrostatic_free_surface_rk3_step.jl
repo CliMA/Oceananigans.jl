@@ -110,7 +110,7 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
         closure = model.closure
 
         launch!(architecture(grid), grid, :xyz,
-                _split_rk3_substep_field!, tracer_field, Δt, γⁿ, ζⁿ, Gⁿ, Ψ⁻)
+                _split_rk3_substep_tracer_field!, tracer_field, grid, Δt, γⁿ, ζⁿ, Gⁿ, Ψ⁻)
 
         implicit_step!(tracer_field,
                        model.timestepper.implicit_solver,
@@ -122,4 +122,40 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
     end
 
     return nothing
+end
+
+#####
+##### Tracer update in mutable vertical coordinates 
+#####
+
+# σθ is the evolved quantity. Once σⁿ⁺¹ is known we can retrieve θⁿ⁺¹
+# with the `unscale_tracers!` function
+@kernel function _split_rk3_substep_tracer_field!(θ, grid, Δt, γⁿ, ζⁿ, Gⁿ, Ψ⁻) 
+    i, j, k = @index(Global, NTuple)
+
+    FT = eltype(grid)
+    σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
+
+    @inbounds begin
+        ∂t_σθ = α * σᶜᶜⁿ * Gⁿ[i, j, k]
+        
+        # We store temporarily σθ in θ. 
+        # The unscaled θ will be retrieved with `unscale_tracers!`
+        θ[i, j, k] =  ζⁿ * σᶜᶜⁿ * Ψ⁻[i, j, k] + γⁿ * (σᶜᶜⁿ * θ[i, j, k] + convert(FT, Δt) * ∂t_σθ)
+    end
+end
+
+@kernel function _split_rk3_substep_tracer_field!(θ, grid, Δt, ::Nothing, ::Nothing, Gⁿ, Ψ⁻) 
+    i, j, k = @index(Global, NTuple)
+
+    FT = eltype(grid)
+    σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
+
+    @inbounds begin
+        ∂t_σθ = α * σᶜᶜⁿ * Gⁿ[i, j, k]
+
+        # We store temporarily σθ in θ. 
+        # The unscaled θ will be retrieved with `unscale_tracers!`
+        θ[i, j, k] =  σᶜᶜⁿ * θ[i, j, k] + convert(FT, Δt) * ∂t_σθ
+    end
 end

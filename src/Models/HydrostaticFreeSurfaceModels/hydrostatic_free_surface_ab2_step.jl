@@ -90,7 +90,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
             tracer_field = tracers[tracer_name]
             closure = model.closure
 
-            ab2_step_tracer_field!(tracer_field, model.grid, Δt, χ, Gⁿ, G⁻)
+            launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, model.grid, Δt, χ, Gⁿ, G⁻)
 
             implicit_step!(tracer_field,
                            model.timestepper.implicit_solver,
@@ -104,9 +104,6 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
 
     return nothing
 end
-
-ab2_step_tracer_field!(tracer_field, grid, Δt, χ, Gⁿ, G⁻) =
-    launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, Δt, χ, Gⁿ, G⁻)
 
 #####
 ##### Tracer update in mutable vertical coordinates 
