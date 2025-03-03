@@ -412,4 +412,3 @@ function partition(kernel::OffsetKernel, inrange, ingroupsize)
 
     return iterspace, dynamic
 end
-

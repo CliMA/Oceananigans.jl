@@ -104,6 +104,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     
     calculate_pressure_correction!(model, Δt)
     @apply_regionally correct_velocities_and_store_tendencies!(model, Δt)
+    correct_advection!(model, Δt)
 
     update_state!(model, callbacks; compute_tendencies=true)
     step_lagrangian_particles!(model, Δt)
@@ -159,7 +160,7 @@ Time step velocity fields via the 2nd-order quasi Adams-Bashforth method
     `U^{n+1} = U^n + Δt ((3/2 + χ) * G^{n} - (1/2 + χ) G^{n-1})`
 
 """
-@kernel function ab2_step_field!(u, Δt, χ, Gⁿ, G⁻)
+@kernel function ab2_step_field!(u, Δt, χ, Gⁿ, G⁻, grid)
     i, j, k = @index(Global, NTuple)
 
     FT = typeof(χ)
@@ -176,3 +177,29 @@ end
 
 @kernel ab2_step_field!(::FunctionField, Δt, χ, Gⁿ, G⁻) = nothing
 
+# second to Nth correction pass, applied after the tracer/momentum update
+# This should probably go in the Models module since it is different for 
+# hydrostatic and nonhydrostatic and should be part of `update_state!`
+function correct_advection!(model, Δt)
+    grid = model.grid
+    velocities = model.velocities
+    
+    for tracer_name in propertynames(model.tracers)
+        @inbounds tracer = model.tracers[tracer_name]
+        
+        scheme = if model.advection isa NamedTuple
+            @inbounds model.advection[tracer_name]
+        else
+            model.advection
+        end
+        
+        correct_mpdata_tracer!(tracer, grid, Δt, velocities, scheme)
+    end
+
+    correct_mpdata_momentum!(model, Δt)
+
+    return nothing
+end
+
+correct_mpdata_momentum!(velocities, grid, Δt, scheme, dims) = nothing
+correct_mpdata_tracer!(tracer, grid, Δt, velocities, scheme) = nothing
