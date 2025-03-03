@@ -42,7 +42,7 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
@@ -77,7 +77,7 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
@@ -108,7 +108,7 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
@@ -139,7 +139,7 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
@@ -170,7 +170,7 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
@@ -205,7 +205,7 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
@@ -240,7 +240,7 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
@@ -275,7 +275,7 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
@@ -311,7 +311,7 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
@@ -333,7 +333,7 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
@@ -368,7 +368,7 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
@@ -403,7 +403,7 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
@@ -438,7 +438,7 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
@@ -473,7 +473,7 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
@@ -508,7 +508,7 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
@@ -543,7 +543,7 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
@@ -574,7 +574,7 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
@@ -609,7 +609,7 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
@@ -644,7 +644,7 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1      
@@ -680,7 +680,7 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
@@ -715,7 +715,7 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
@@ -762,13 +762,7 @@ steps:
 ##### Clean up
 #####
 
-  - label: "🧽 clean up gpu environment"
-    command: "rm -rf $TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-    agents:
-      queue: Oceananigans
-      architecture: GPU
-
-  - label: "🧹 clean up cpu environment"
+  - label: "🧹 clean up environment"
     command: "rm -rf $TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
     agents:
       queue: Oceananigans
