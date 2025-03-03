@@ -90,7 +90,8 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
             tracer_field = tracers[tracer_name]
             closure = model.closure
 
-            launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, model.grid, Δt, χ, Gⁿ, G⁻)
+            FT = eltype(grid)
+            launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, model.grid, convert(FT, Δt), χ, Gⁿ, G⁻)
 
             implicit_step!(tracer_field,
                            model.timestepper.implicit_solver,
@@ -126,7 +127,7 @@ end
         
         # We store temporarily σθ in θ. 
         # The unscaled θ will be retrieved with `unscale_tracers!`
-        θ[i, j, k] = σᶜᶜⁿ * θ[i, j, k] + convert(FT, Δt) * ∂t_σθ
+        θ[i, j, k] = σᶜᶜⁿ * θ[i, j, k] + Δt * ∂t_σθ
     end
 end
 
