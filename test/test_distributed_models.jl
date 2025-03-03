@@ -446,30 +446,73 @@ end
         end
     end
 
-    # Only test on CPU because we do not have a GPU pressure solver yet
-    @testset "Time stepping NonhydrostaticModel" begin
-        if CPU() ∈ archs 
-            for partition in [Partition(1, 4), Partition(2, 2), Partition(4, 1)]
-                @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
-                arch = Distributed(; partition)
-                grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
-                model = NonhydrostaticModel(; grid)
+    @testset "Distributed Grid partitioning" begin
+        @info "  Testing distributed grid partitioning..."
+        
+        topologies = ((Periodic, Periodic, Bounded), 
+                      (Periodic, Bounded, Bounded), 
+                      (Bounded, Periodic, Bounded),
+                      (Bounded, Bounded, Bounded))
 
-                time_step!(model, 1)
-                @test model isa NonhydrostaticModel
-                @test model.clock.time ≈ 1
+        for arch in archs
+            child_arch = child_architecture(arch)
 
-                simulation = Simulation(model, Δt=1, stop_iteration=2)
-                run!(simulation)
-                @test model isa NonhydrostaticModel
-                @test model.clock.time ≈ 2
+            for topology in topologies
+                local_grid = RectilinearGrid(arch; size=(100, 100, 100), extent=(1, 2, 3), topology)
+                global_grid = RectilinearGrid(child_arch; size=(100, 100, 100), extent=(1, 2, 3), topology)
+        
+                reconstructed_grid = reconstruct_global_grid(local_grid)
+                @test reconstructed_grid == global_grid
+            
+                if topology[2] == Bounded
+                    local_grid = LatitudeLongitudeGrid(arch; size=(100, 100, 100), z=(-1000, 0), latitude=(-10, 10), longitude=(-20, 20), topology)
+                    global_grid = LatitudeLongitudeGrid(child_arch; size=(100, 100, 100), z=(-1000, 0), latitude=(-10, 10), longitude=(-20, 20), topology)
+
+                    reconstructed_grid = reconstruct_global_grid(local_grid)
+                    @test reconstructed_grid == global_grid
+                end
             end
         end
     end
 
+    # Only test grids with uniform partitioning because that is what works with 
+    # nonhydrostatic models right now.
+    @testset "Time stepping NonhydrostaticModel" begin
+        for arch in nonhydrostatic_regression_test_architectures() 
+            @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
+            grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
+            model = NonhydrostaticModel(; grid)
+
+            time_step!(model, 1)
+            @test model isa NonhydrostaticModel
+            @test model.clock.time ≈ 1
+
+            simulation = Simulation(model, Δt=1, stop_iteration=2)
+            run!(simulation)
+            @test model isa NonhydrostaticModel
+            @test model.clock.time ≈ 2
+        end
+    end
+
+    @testset "Time stepping HydrostaticFreeSurfaceModel" begin
+        for arch in archs 
+            @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
+            grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
+            model = HydrostaticFreeSurfaceModel(; grid)
+
+            time_step!(model, 1)
+            @test model isa HydrostaticFreeSurfaceModel
+            @test model.clock.time ≈ 1
+
+            simulation = Simulation(model, Δt=1, stop_iteration=2)
+            run!(simulation)
+            @test model isa HydrostaticFreeSurfaceModel
+            @test model.clock.time ≈ 2
+        end
+    end
+
     @testset "Time stepping ShallowWaterModel" begin
-        for child_arch in archs
-            arch = Distributed(child_arch; partition=Partition(1, 4))
+        for arch in archs
             grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Flat), size=(8, 8), extent=(1, 2), halo=(3, 3))
             model = ShallowWaterModel(; momentum_advection=nothing, mass_advection=nothing, tracer_advection=nothing, grid, gravitational_acceleration=1)
 
