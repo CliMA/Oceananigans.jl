@@ -403,6 +403,7 @@ Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 
 @inline Base.fill!(f::Field, val) = fill!(parent(f), val)
 @inline Base.parent(f::Field) = parent(f.data)
+Adapt.parent_type(f::Field) = typeof(parent(f))
 Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
 
 total_size(f::Field) = total_size(f.grid, location(f), f.indices)
@@ -416,7 +417,7 @@ total_size(f::Field) = total_size(f.grid, location(f), f.indices)
 ##### Move Fields between architectures
 #####
 
-on_architecture(arch, field::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
+on_architecture(arch, field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
     Field{LX, LY, LZ}(on_architecture(arch, field.grid),
                       on_architecture(arch, field.data),
                       on_architecture(arch, field.boundary_conditions),

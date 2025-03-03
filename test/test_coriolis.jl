@@ -1,7 +1,20 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Coriolis: Ω_Earth, ActiveCellEnstrophyConserving
+using Oceananigans.Coriolis: Ω_Earth
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
+
+test_fplane(::Nothing) = FPlane(f=π)
+test_fplane(FT)        = FPlane(FT, f=π)
+test_bplane(::Nothing) = BetaPlane(f₀=π, β=2π)
+test_bplane(FT)        = BetaPlane(FT, f₀=π, β=2π)
+test_ccc(::Nothing)    = ConstantCartesianCoriolis(f=1, rotation_axis=[0, cosd(45), sind(45)])
+test_ccc(FT)           = ConstantCartesianCoriolis(FT, f=1, rotation_axis=[0, cosd(45), sind(45)])
+test_hsc(::Nothing)    = HydrostaticSphericalCoriolis(scheme=EnergyConserving())
+test_hsc(FT)           = HydrostaticSphericalCoriolis(FT, scheme=EnergyConserving())
+test_hsc2(::Nothing)   = HydrostaticSphericalCoriolis(rotation_rate=π)
+test_hsc2(FT)          = HydrostaticSphericalCoriolis(FT, rotation_rate=π)
+test_ntbp(::Nothing)   = NonTraditionalBetaPlane(rotation_rate=π, latitude=17, radius=ℯ)
+test_ntbp(FT)          = NonTraditionalBetaPlane(FT, rotation_rate=π, latitude=17, radius=ℯ)
 
 function instantiate_fplane_1(FT)
     coriolis = FPlane(FT, f=π)
@@ -68,7 +81,7 @@ end
 function instantiate_hydrostatic_spherical_coriolis2(FT)
     coriolis = HydrostaticSphericalCoriolis(FT, rotation_rate=π)
     @test coriolis.rotation_rate == FT(π)
-    @test coriolis.scheme isa ActiveCellEnstrophyConserving # default
+    @test coriolis.scheme isa EnstrophyConserving # default
 end
 
 @testset "Coriolis" begin
@@ -134,6 +147,22 @@ end
             ✈ = NonTraditionalBetaPlane(FT, latitude=45)
             show(✈); println()
             @test ✈ isa NonTraditionalBetaPlane{FT}
+
+            for make_test_coriolis in (test_fplane,
+                                       test_bplane,
+                                       test_ccc,
+                                       test_hsc,
+                                       test_hsc2,
+                                       test_ntbp)
+
+                FT₀ = Oceananigans.defaults.FloatType
+                Oceananigans.defaults.FloatType = FT
+                c_with_default = make_test_coriolis(nothing)
+                Oceananigans.defaults.FloatType = FT₀
+
+                c_explicitly = make_test_coriolis(FT)
+                @test c_with_default === c_explicitly
+            end
         end
     end
 end

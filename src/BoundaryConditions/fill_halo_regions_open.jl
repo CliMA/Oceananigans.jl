@@ -51,7 +51,7 @@ end
 @inline retrieve_bc(bc::OBC) = nothing
 
 # for regular halo fills, return nothing if the BC is not an OBC
-@inline left_open_boundary_condition(boundary_condition, loc) = nothing
+@inline left_open_boundary_condition(boundary_conditions, loc) = nothing
 @inline left_open_boundary_condition(boundary_conditions, ::Tuple{Face, Center, Center}) = retrieve_open_bc(boundary_conditions.west)
 @inline left_open_boundary_condition(boundary_conditions, ::Tuple{Center, Face, Center}) = retrieve_open_bc(boundary_conditions.south)
 @inline left_open_boundary_condition(boundary_conditions, ::Tuple{Center, Center, Face}) = retrieve_open_bc(boundary_conditions.bottom)
