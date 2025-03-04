@@ -43,7 +43,7 @@ isrectilinear(grid) = false
 
 # Fallback
 @inline  retrieve_surface_active_cells_map(::AbstractGrid) = nothing
-@inline retrieve_interior_active_cells_map(::AbstractGrid, any_map_type) = nothing
+@inline get_active_cells_map(::AbstractGrid, any_map_type) = nothing
 
 """
     topology(grid)

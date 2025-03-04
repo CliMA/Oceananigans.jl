@@ -10,7 +10,7 @@ end
 
 @kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     idx = @index(Global, Linear)
-    i, j = active_linear_index_to_tuple(idx, active_cells_map)
+    i, j = linear_index_to_tuple(idx, active_cells_map)
     ab2_integrate_tendencies!(Gᵁ, Gⱽ, i, j, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
 end
 
@@ -73,7 +73,7 @@ end
 
 @kernel function _compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, active_cells_map, Guⁿ, Gvⁿ, stage)
     idx = @index(Global, Linear)
-    i, j = active_linear_index_to_tuple(idx, active_cells_map)
+    i, j = linear_index_to_tuple(idx, active_cells_map)
     compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, stage)
 end
 

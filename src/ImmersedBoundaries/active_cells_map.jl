@@ -4,7 +4,7 @@ using Oceananigans.Grids: AbstractGrid
 
 using KernelAbstractions: @kernel, @index
 
-import Oceananigans.Grids: retrieve_surface_active_cells_map, retrieve_interior_active_cells_map
+import Oceananigans.Grids: retrieve_surface_active_cells_map, get_active_cells_map
 
 # REMEMBER: since the active map is stripped out of the grid when `Adapt`ing to the GPU, 
 # The following types cannot be used to dispatch in kernels!!!
@@ -30,16 +30,16 @@ const ActiveZColumnsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any
 
 @inline retrieve_surface_active_cells_map(grid::ActiveZColumnsIBG) = grid.active_z_columns
 
-@inline retrieve_interior_active_cells_map(grid::WholeActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells
-@inline retrieve_interior_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells.halo_independent_cells
-@inline retrieve_interior_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:west})     = grid.interior_active_cells.west_halo_dependent_cells
-@inline retrieve_interior_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:east})     = grid.interior_active_cells.east_halo_dependent_cells
-@inline retrieve_interior_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:south})    = grid.interior_active_cells.south_halo_dependent_cells
-@inline retrieve_interior_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:north})    = grid.interior_active_cells.north_halo_dependent_cells
-@inline retrieve_interior_active_cells_map(grid::ActiveZColumnsIBG,      ::Val{:surface})  = grid.active_z_columns
+@inline get_active_cells_map(grid::WholeActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells
+@inline get_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells.halo_independent_cells
+@inline get_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:west})     = grid.interior_active_cells.west_halo_dependent_cells
+@inline get_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:east})     = grid.interior_active_cells.east_halo_dependent_cells
+@inline get_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:south})    = grid.interior_active_cells.south_halo_dependent_cells
+@inline get_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:north})    = grid.interior_active_cells.north_halo_dependent_cells
+@inline get_active_cells_map(grid::ActiveZColumnsIBG,      ::Val{:surface})  = grid.active_z_columns
 
 """
-    active_linear_index_to_tuple(idx, map, grid)
+    linear_index_to_tuple(idx, map, grid)
 
 Converts a linear index to a tuple of indices based on the given map and grid.
 
@@ -50,7 +50,7 @@ Converts a linear index to a tuple of indices based on the given map and grid.
 # Returns
 A tuple of indices corresponding to the linear index.
 """
-@inline active_linear_index_to_tuple(idx, active_cells_map) = @inbounds Base.map(Int, active_cells_map[idx])
+@inline linear_index_to_tuple(idx, active_cells_map) = @inbounds Base.map(Int, active_cells_map[idx])
 
 function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool=true) 
     ibg = ImmersedBoundaryGrid(grid, ib)
@@ -72,10 +72,10 @@ function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool=true)
 end
 
 with_halo(halo, ibg::ActiveCellsIBG) =
-    ImmersedBoundaryGrid(with_halo(halo, ibg.underlying_grid), ibg.immersed_boundary; active_cells_map = true)
+    ImmersedBoundaryGrid(with_halo(halo, ibg.underlying_grid), ibg.immersed_boundary; active_cells_map=true)
 
 @inline active_cell(i, j, k, ibg) = !immersed_cell(i, j, k, ibg)
-@inline active_column(i, j, k, grid, column) = column[i, j, k] != 0
+@inline active_column(i, j, k, grid, column) = @inbounds column[i, j, k] != 0
 
 @kernel function _set_active_indices!(active_cells_field, grid)
     i, j, k = @index(Global, NTuple)
