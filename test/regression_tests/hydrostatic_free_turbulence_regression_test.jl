@@ -22,6 +22,8 @@ function global_topology(grid::DistributedGrid, i)
     return string(T)
 end
 
+using Oceananigans.Grids: YRegLLGOTF
+
 function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; regenerate_data=false)
 
     #####
