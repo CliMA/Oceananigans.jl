@@ -28,7 +28,7 @@ Return a grid with an `AbstractImmersedBoundary` immersed boundary (`ib`). If `a
 the grid will also populate an `interior_active_cells` and `active_z_columns` fields that are a list of active indices in the 
 interior and on a reduced x-y plane, respectively.
 """
-function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersedBoundary; active_cells_map::Bool=true) 
+function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersedBoundary; active_cells_map::Bool=false) 
     new_ib = materialize_immersed_boundary(grid, ib)
     
     # Create the cells map on the CPU, then switch it to the GPU

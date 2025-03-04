@@ -62,13 +62,13 @@ end
 # This low-level constructor supports the external package OrthogonalSphericalShellGrids.jl.
 function OrthogonalSphericalShellGrid{TX, TY, TZ}(arch::ReactantState,
                                                   Nx, Ny, Nz, Hx, Hy, Hz,
-                                                  Lz :: FT,
+                                                     Lz :: FT,
                                                    λᶜᶜᵃ :: CC,  λᶠᶜᵃ :: FC,  λᶜᶠᵃ :: CF,  λᶠᶠᵃ :: FF,
                                                    φᶜᶜᵃ :: CC,  φᶠᶜᵃ :: FC,  φᶜᶠᵃ :: CF,  φᶠᶠᵃ :: FF, z :: Z,
                                                   Δxᶜᶜᵃ :: CC, Δxᶠᶜᵃ :: FC, Δxᶜᶠᵃ :: CF, Δxᶠᶠᵃ :: FF,
                                                   Δyᶜᶜᵃ :: CC, Δyᶠᶜᵃ :: FC, Δyᶜᶠᵃ :: CF, Δyᶠᶠᵃ :: FF, 
                                                   Azᶜᶜᵃ :: CC, Azᶠᶜᵃ :: FC, Azᶜᶠᵃ :: CF, Azᶠᶠᵃ :: FF,
-                                                  radius :: FT,
+                                                 radius :: FT,
                                                   conformal_mapping :: Map) where {TX, TY, TZ, FT, Z, Map,
                                                                                    CC, FC, CF, FF, C}
 

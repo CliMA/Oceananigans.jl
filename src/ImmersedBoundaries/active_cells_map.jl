@@ -71,16 +71,16 @@ end
 
 @kernel function _set_active_columns!(active_z_columns, grid, ib)
     i, j = @index(Global, NTuple)
-    active_column = true
+    active_column = false
     for k in 1:size(grid, 3)
-        active_column = active_column & active_cell(i, j, k, grid, ib)
+        active_column = active_column | active_cell(i, j, k, grid, ib)
     end
     @inbounds active_z_columns[i, j, 1] = active_column
 end
 
 function compute_active_z_columns(grid, ib)
     active_z_columns = Field{Center, Center, Nothing}(grid, Bool)
-    fill!(active_z_columns, true)
+    fill!(active_z_columns, false)
 
     # Compute the active cells in the column
     launch!(architecture(grid), grid, :xy, _set_active_columns!, active_z_columns, grid, ib)
