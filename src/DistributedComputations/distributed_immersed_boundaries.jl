@@ -4,7 +4,7 @@ using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom,
                                        GridFittedBottom, 
                                        GridFittedBoundary, 
                                        compute_mask,
-                                       interior_active_indices
+                                       compute_interior_active_cells
 
 import Oceananigans.ImmersedBoundaries: map_interior_active_cells
 
@@ -113,7 +113,7 @@ function map_interior_active_cells(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any
     # If we using a synchronized architecture, nothing
     # changes with serial execution.
     if arch isa SynchronizedDistributed
-        return interior_active_indices(ibg; parameters = :xyz)
+        return compute_interior_active_cells(ibg; parameters = :xyz)
     end
 
     Rx, Ry, _  = arch.ranks
@@ -131,10 +131,10 @@ function map_interior_active_cells(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any
     include_south = !isa(ibg, YFlatGrid) && (Ry != 1) && !(Ty == RightConnected)
     include_north = !isa(ibg, YFlatGrid) && (Ry != 1) && !(Ty == LeftConnected)
 
-    west_halo_dependent_cells  = interior_active_indices(ibg; parameters = KernelParameters(west_boundary...))
-    east_halo_dependent_cells  = interior_active_indices(ibg; parameters = KernelParameters(east_boundary...))
-    south_halo_dependent_cells = interior_active_indices(ibg; parameters = KernelParameters(south_boundary...))
-    north_halo_dependent_cells = interior_active_indices(ibg; parameters = KernelParameters(north_boundary...))
+    west_halo_dependent_cells  = compute_interior_active_cells(ibg; parameters = KernelParameters(west_boundary...))
+    east_halo_dependent_cells  = compute_interior_active_cells(ibg; parameters = KernelParameters(east_boundary...))
+    south_halo_dependent_cells = compute_interior_active_cells(ibg; parameters = KernelParameters(south_boundary...))
+    north_halo_dependent_cells = compute_interior_active_cells(ibg; parameters = KernelParameters(north_boundary...))
 
     west_halo_dependent_cells  = ifelse(include_west,  west_halo_dependent_cells,  nothing)
     east_halo_dependent_cells  = ifelse(include_east,  east_halo_dependent_cells,  nothing)
@@ -147,7 +147,7 @@ function map_interior_active_cells(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any
     ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
     oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
      
-    halo_independent_cells = interior_active_indices(ibg; parameters = KernelParameters((nx, ny, Nz), (ox, oy, 0)))
+    halo_independent_cells = compute_interior_active_cells(ibg; parameters = KernelParameters((nx, ny, Nz), (ox, oy, 0)))
 
     return (; halo_independent_cells, 
               west_halo_dependent_cells, 
