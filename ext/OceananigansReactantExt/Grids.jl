@@ -3,9 +3,9 @@ module Grids
 using Reactant
 using Oceananigans
 using Oceananigans.Architectures: ReactantState, CPU
-using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, MutableVerticalDiscretization
+using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, StaticVerticalDiscretization, MutableVerticalDiscretization
 using Oceananigans.Fields: Field
-using Oceananigans.ImmersedBoundaries: GridFittedBottom
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, AbstractImmersedBoundary
 
 import ..OceananigansReactantExt: deconcretize
 import Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSphericalShellGrid
@@ -13,6 +13,7 @@ import Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
 import Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 const ReactantGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:ReactantState}
+const ReactantUnderlyingGrid{FT, TX, TY, TZ, CZ} = AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, <:ReactantState}
 
 deconcretize(z::StaticVerticalDiscretization) =
     StaticVerticalDiscretization(
@@ -61,13 +62,13 @@ end
 # This low-level constructor supports the external package OrthogonalSphericalShellGrids.jl.
 function OrthogonalSphericalShellGrid{TX, TY, TZ}(arch::ReactantState,
                                                   Nx, Ny, Nz, Hx, Hy, Hz,
-                                                  Lz :: FT,
+                                                     Lz :: FT,
                                                    λᶜᶜᵃ :: CC,  λᶠᶜᵃ :: FC,  λᶜᶠᵃ :: CF,  λᶠᶠᵃ :: FF,
                                                    φᶜᶜᵃ :: CC,  φᶠᶜᵃ :: FC,  φᶜᶠᵃ :: CF,  φᶠᶠᵃ :: FF, z :: Z,
                                                   Δxᶜᶜᵃ :: CC, Δxᶠᶜᵃ :: FC, Δxᶜᶠᵃ :: CF, Δxᶠᶠᵃ :: FF,
                                                   Δyᶜᶜᵃ :: CC, Δyᶠᶜᵃ :: FC, Δyᶜᶠᵃ :: CF, Δyᶠᶠᵃ :: FF, 
                                                   Azᶜᶜᵃ :: CC, Azᶠᶜᵃ :: FC, Azᶜᶠᵃ :: CF, Azᶠᶠᵃ :: FF,
-                                                  radius :: FT,
+                                                 radius :: FT,
                                                   conformal_mapping :: Map) where {TX, TY, TZ, FT, Z, Map,
                                                                                    CC, FC, CF, FF}
 
@@ -113,10 +114,7 @@ function reactant_immersed_boundary_grid(grid, ib; active_cells_map)
                                             ibg.interior_active_cells, ibg.active_z_columns)
 end
 
-ImmersedBoundaryGrid(grid::ReactantGrid, ib::GridFittedBottom; active_cells_map::Bool=true) =
-    reactant_immersed_boundary_grid(grid, ib; active_cells_map)
-
-ImmersedBoundaryGrid(grid::ReactantGrid, ib; active_cells_map::Bool=true) =
+ImmersedBoundaryGrid(grid::ReactantUnderlyingGrid, ib::AbstractImmersedBoundary; active_cells_map::Bool=true) =
     reactant_immersed_boundary_grid(grid, ib; active_cells_map)
 
 end # module

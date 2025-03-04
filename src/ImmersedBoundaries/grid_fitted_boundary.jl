@@ -24,18 +24,9 @@ function compute_mask(grid, ib)
     return mask_field
 end
 
-function ImmersedBoundaryGrid(grid, ib::GridFittedBoundary; precompute_mask=true)
-    TX, TY, TZ = topology(grid)
-
-    # TODO: validate ib
-
-    if precompute_mask
-        mask_field = compute_mask(grid, ib)
-        new_ib = GridFittedBoundary(mask_field)
-        return ImmersedBoundaryGrid{TX, TY, TZ}(grid, new_ib)
-    else
-        return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
-    end
+function materialize_immersed_boundary(grid, ib::GridFittedBoundary)
+    mask_field = compute_mask(grid, ib)
+    return GridFittedBoundary(mask_field)
 end
 
 on_architecture(arch, ib::GridFittedBoundary{<:Field}) = GridFittedBoundary(compute_mask(on_architecture(arch, ib.mask.grid), ib))
