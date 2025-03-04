@@ -106,16 +106,20 @@ function with_cpu_architecture(::CPU, grid::ReactantGrid)
     return GridType{TX, TY, TZ}(CPU(), other_properties...)
 end
 
-function reactant_immersed_boundary_grid(grid, ib; active_cells_map)
+function reactant_immersed_boundary_grid(grid, ib; active_cells_map, active_z_columns)
     cpu_grid = with_cpu_architecture(CPU(), grid)
-    ibg = ImmersedBoundaryGrid(cpu_grid, ib; active_cells_map)
+    ibg = ImmersedBoundaryGrid(cpu_grid, ib; active_cells_map, active_z_columns)
     TX, TY, TZ = Oceananigans.Grids.topology(grid)
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ibg.immersed_boundary,
                                             ibg.interior_active_cells, ibg.active_z_columns)
 end
 
-ImmersedBoundaryGrid(grid::ReactantUnderlyingGrid, ib::AbstractImmersedBoundary; active_cells_map::Bool=true) =
-    reactant_immersed_boundary_grid(grid, ib; active_cells_map)
+function ImmersedBoundaryGrid(grid::ReactantUnderlyingGrid, ib::AbstractImmersedBoundary;
+                              active_cells_map::Bool=true,
+                              active_z_columns::Bool=active_cells_map)
+
+    return reactant_immersed_boundary_grid(grid, ib; active_cells_map, active_z_columns)
+end
 
 end # module
 

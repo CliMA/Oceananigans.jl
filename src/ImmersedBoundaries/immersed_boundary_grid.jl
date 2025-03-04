@@ -47,19 +47,18 @@ function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersed
     
     # Create the cells map on the CPU, then switch it to the GPU
     interior_active_cells = if active_cells_map
-        compute_active_cells(grid, new_ib)
+        compute_active_cells(grid, materialized_ib)
     else
         nothing
     end
 
     active_z_columns = if active_z_columns
-        compute_active_z_columns(grid, new_ib) 
+        compute_active_z_columns(grid, materialized_ib) 
     else
         nothing
     end
     
     TX, TY, TZ = topology(grid)
-    
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, 
                                             materialized_ib, 
                                             interior_active_cells,
