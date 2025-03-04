@@ -12,6 +12,7 @@ using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
+using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
 using Oceananigans.Utils: launch!
 using SeawaterPolynomials: TEOS10EquationOfState
 using KernelAbstractions: @kernel, @index
@@ -101,7 +102,7 @@ end
     arch = ReactantState()
     grid = RectilinearGrid(arch; size=(4, 4, 4), extent=(1, 1, 1))
     c = CenterField(grid)
-    @test parent(c) isa Reactant.ConcreteRArray
+    @test parent(c) isa Reactant.ConcretePJRTArray
 
 
     @info "  Testing field set! with a number..."
@@ -168,6 +169,21 @@ end
         ibg = ImmersedBoundaryGrid(llg, GridFittedBottom(ridge))
         @test architecture(ibg) isa ReactantState
         @test architecture(ibg.immersed_boundary.bottom_height) isa CPU
+
+        rllg = RotatedLatitudeLongitudeGrid(arch, FT; size = (4, 4, 4),
+                                            north_pole = (0, 0),
+                                            longitude = [0, 1, 2, 3, 4],
+                                            latitude = [0, 1, 2, 3, 4],
+                                            z = (0, 1))
+
+        @test architecture(rllg) isa ReactantState
+
+        for name in propertynames(rllg)
+            p = getproperty(rllg, name)
+            if !(name ∈ (:architecture, :z, :conformal_mapping))
+                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Array})
+            end
+        end
     end
 end
 
