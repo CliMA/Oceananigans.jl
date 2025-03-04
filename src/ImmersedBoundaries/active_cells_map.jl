@@ -56,8 +56,10 @@ A tuple of indices corresponding to the linear index.
     @inbounds begin
         i = active_cells_map[1][idx]
         j = active_cells_map[2][idx]
+        k = active_cells_map[3][idx]
     end
-    return i, j
+
+    return i, j, k
 end
 
 with_halo(halo, ibg::ActiveCellsIBG) =
