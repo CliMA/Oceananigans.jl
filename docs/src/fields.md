@@ -348,8 +348,9 @@ set!(one_d_c, still_pretty_fun)
 ```
 
 !!! note
-    Despite the particularity for `set`ting `Field`s, a `Field` is intrinsically a 
-    three-dimensional object and must be indexed by always providing all three `i, j, k` indices.
+    Despite we `set` a `Field` providing reduced arguments in the `Flat` directions, a `Field` is intrinsically a 
+    three-dimensional object as it maps to a three-dimensional data structure. 
+    For this reason a `Field` must be always indexed by providing all three indices `i, j, k`.
 
 ### A bit more about setting with functions
 
