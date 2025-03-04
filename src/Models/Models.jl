@@ -3,7 +3,7 @@ module Models
 export
     NonhydrostaticModel,
     ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation,
-    HydrostaticFreeSurfaceModel,
+    HydrostaticFreeSurfaceModel, ZStar, ZCoordinate,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields, PressureField,
     LagrangianParticles,
@@ -105,7 +105,7 @@ using .NonhydrostaticModels: NonhydrostaticModel, PressureField
 using .HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    PrescribedVelocityFields
+    PrescribedVelocityFields, ZStar, ZCoordinate
 
 using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
 
@@ -188,5 +188,7 @@ default_nan_checker(::OnlyParticleTrackingModel) = nothing
 # Implementation of a `seawater_density` `KernelFunctionOperation
 # applicable to both `NonhydrostaticModel` and  `HydrostaticFreeSurfaceModel`
 include("seawater_density.jl")
+
+include("boundary_mean.jl")
 
 end # module

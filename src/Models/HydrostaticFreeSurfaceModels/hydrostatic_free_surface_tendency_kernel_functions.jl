@@ -38,7 +38,8 @@ implicitly during time-stepping.
                                                               diffusivities,
                                                               hydrostatic_pressure_anomaly,
                                                               auxiliary_fields,
-                                                              clock, 
+                                                              ztype,
+                                                              clock,
                                                               forcing)
  
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
@@ -47,9 +48,10 @@ implicitly during time-stepping.
              - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
+             - grid_slope_contribution_x(i, j, k, grid, buoyancy, ztype, model_fields)
              - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, diffusivities, clock, model_fields)
-             + forcing(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
+             + forcing(i, j, k, grid, clock, model_fields))
 end
 
 """
@@ -77,15 +79,17 @@ implicitly during time-stepping.
                                                               diffusivities,
                                                               hydrostatic_pressure_anomaly,
                                                               auxiliary_fields,
+                                                              ztype,
                                                               clock,
                                                               forcing)
     
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
-    return ( - U_dot_∇v(i, j, k, grid, advection, velocities)
+    return ( - U_dot_∇v(i, j, k, grid, advection, velocities) 
              - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂yᶜᶠᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
+             - grid_slope_contribution_y(i, j, k, grid, buoyancy, ztype, model_fields)
              - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, diffusivities, clock, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))

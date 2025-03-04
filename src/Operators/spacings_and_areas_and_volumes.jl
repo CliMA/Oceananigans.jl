@@ -35,17 +35,6 @@ The operators in this file fall into three categories:
 #####
 #####
 
-const ZRG = Union{LLGZ, RGZ, OSSGZ}
-
-@inline getspacing(k, Δz::AbstractVector) = @inbounds Δz[k]
-@inline getspacing(k, Δz::Number)         = @inbounds Δz
-
-@inline Δrᵃᵃᶜ(i, j, k, grid::AbstractGrid) = getspacing(k, grid.z.Δᵃᵃᶜ)
-@inline Δrᵃᵃᶠ(i, j, k, grid::AbstractGrid) = getspacing(k, grid.z.Δᵃᵃᶠ)
-
-@inline Δzᵃᵃᶜ(i, j, k, grid::AbstractGrid) = Δrᵃᵃᶜ(i, j, k, grid)
-@inline Δzᵃᵃᶠ(i, j, k, grid::AbstractGrid) = Δrᵃᵃᶠ(i, j, k, grid)
-
 # This metaprogramming loop defines all possible combinations of locations for spacings.
 # The general 2D and 3D spacings are reconducted to their one - dimensional counterparts.
 # Grids that do not have a specific one - dimensional spacing for a given location need to 
@@ -114,11 +103,14 @@ end
 ##### One - dimensional Vertical spacing (same for all grids)
 #####
 
-@inline Δzᵃᵃᶜ(i, j, k, grid) = @inbounds grid.z.Δᵃᵃᶜ[k]
-@inline Δzᵃᵃᶠ(i, j, k, grid) = @inbounds grid.z.Δᵃᵃᶠ[k]
+@inline getspacing(k, Δz::Number) = Δz
+@inline getspacing(k, Δz::AbstractVector) = @inbounds Δz[k]
 
-@inline Δzᵃᵃᶜ(i, j, k, grid::ZRG) = grid.z.Δᵃᵃᶜ
-@inline Δzᵃᵃᶠ(i, j, k, grid::ZRG) = grid.z.Δᵃᵃᶠ
+@inline Δrᵃᵃᶜ(i, j, k, grid) = getspacing(k, grid.z.Δᵃᵃᶜ)
+@inline Δrᵃᵃᶠ(i, j, k, grid) = getspacing(k, grid.z.Δᵃᵃᶠ)
+
+@inline Δzᵃᵃᶜ(i, j, k, grid) = getspacing(k, grid.z.Δᵃᵃᶜ)
+@inline Δzᵃᵃᶠ(i, j, k, grid) = getspacing(k, grid.z.Δᵃᵃᶠ)
 
 #####
 #####
@@ -181,7 +173,7 @@ end
 
 #####
 #####
-##### Two - Dimensional Horizontal Spacings
+##### Two-dimensional horizontal spacings
 #####
 #####
 
@@ -273,7 +265,7 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
         @inline $Azˡˡᵃ(i, j, k, grid) = $Δxˡˡᵃ(i, j, k, grid) * $Δyˡˡᵃ(i, j, k, grid)
     end
 
-    for  L3 in (:ᶜ, :ᶠ)
+    for L3 in (:ᶜ, :ᶠ)
         # 3D spacings
         Δxˡˡˡ = Symbol(:Δx, L1, L2, L3)
         Δyˡˡˡ = Symbol(:Δy, L1, L2, L3)

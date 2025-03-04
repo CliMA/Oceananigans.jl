@@ -5,6 +5,8 @@ using Oceananigans.Grids: total_extent, ColumnEnsembleSize,
                           xspacings, yspacings, zspacings,
                           xnode, ynode, znode, λnode, φnode,
                           λspacings, φspacings
+                          
+using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
 
 using Oceananigans.Operators: Δx, Δy, Δz, Δλ, Δφ, Ax, Ay, Az, volume
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
@@ -149,21 +151,32 @@ function test_regular_rectilinear_no_roundoff_error_in_ranges(FT)
 end
 
 function test_regular_rectilinear_grid_properties_are_same_type(FT)
-    grid = RectilinearGrid(CPU(), FT, size=(10, 10, 10), extent=(1, 1//7, 2π))
+    # Do this test two ways, one with defaults and one with explicit FT
+    for method in (:explicit, :with_default)
 
-    @test grid.Lx isa FT
-    @test grid.Ly isa FT
-    @test grid.Lz isa FT
-    @test grid.Δxᶠᵃᵃ isa FT
-    @test grid.Δyᵃᶠᵃ isa FT
-    @test grid.z.Δᵃᵃᶠ isa FT
+        if method === :explicit    
+            grid = RectilinearGrid(CPU(), FT, size=(10, 10, 10), extent=(1, 1//7, 2π))
+        elseif method === :with_default
+            FT₀ = Oceananigans.defaults.FloatType
+            Oceananigans.defaults.FloatType = FT
+            grid = RectilinearGrid(CPU(), size=(10, 10, 10), extent=(1, 1//7, 2π))
+            Oceananigans.defaults.FloatType = FT₀
+        end
 
-    @test eltype(grid.xᶠᵃᵃ) == FT
-    @test eltype(grid.yᵃᶠᵃ) == FT
-    @test eltype(grid.z.cᵃᵃᶠ) == FT
-    @test eltype(grid.xᶜᵃᵃ) == FT
-    @test eltype(grid.yᵃᶜᵃ) == FT
-    @test eltype(grid.z.cᵃᵃᶜ) == FT
+        @test grid.Lx isa FT
+        @test grid.Ly isa FT
+        @test grid.Lz isa FT
+        @test grid.Δxᶠᵃᵃ isa FT
+        @test grid.Δyᵃᶠᵃ isa FT
+        @test grid.z.Δᵃᵃᶠ isa FT
+
+        @test eltype(grid.xᶠᵃᵃ) == FT
+        @test eltype(grid.yᵃᶠᵃ) == FT
+        @test eltype(grid.z.cᵃᵃᶠ) == FT
+        @test eltype(grid.xᶜᵃᵃ) == FT
+        @test eltype(grid.yᵃᶜᵃ) == FT
+        @test eltype(grid.z.cᵃᵃᶜ) == FT
+    end
 
     return nothing
 end
@@ -410,9 +423,9 @@ function test_rectilinear_grid_correct_spacings(FT, N)
     Δzᵃᵃᶜ(k) =  zᵃᵃᶠ(k+1) - zᵃᵃᶠ(k)
     Δzᵃᵃᶠ(k) =  zᵃᵃᶜ(k)   - zᵃᵃᶜ(k-1)
 
-    @test all(isapprox.(  grid.z.cᵃᵃᶠ[1:N+1],  zᵃᵃᶠ.(1:N+1) ))
-    @test all(isapprox.(  grid.z.cᵃᵃᶜ[1:N],    zᵃᵃᶜ.(1:N)   ))
-    @test all(isapprox.( grid.z.Δᵃᵃᶜ[1:N],   Δzᵃᵃᶜ.(1:N)   ))
+    @test all(isapprox.(grid.z.cᵃᵃᶠ[1:N+1],  zᵃᵃᶠ.(1:N+1) ))
+    @test all(isapprox.(grid.z.cᵃᵃᶜ[1:N],    zᵃᵃᶜ.(1:N)   ))
+    @test all(isapprox.(grid.z.Δᵃᵃᶜ[1:N],   Δzᵃᵃᶜ.(1:N)   ))
 
     @test all(isapprox.(zspacings(grid, Face()),   reshape(grid.z.Δᵃᵃᶠ[1:N+1], 1, 1, N+1)))
     @test all(isapprox.(zspacings(grid, Center()), reshape(grid.z.Δᵃᵃᶜ[1:N], 1, 1, N)))
@@ -649,6 +662,7 @@ function test_lat_lon_xyzλφ_node_nodes(FT, arch)
     zᵣ  = (-10,    0)
 
     grid = LatitudeLongitudeGrid(CPU(), FT, size=grid_size, halo=halo, latitude=lat, longitude=lon, z=zᵣ)
+    ibg  = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> y < 20 && y > -20 ? -50 : -0))
 
     @info "        Testing grid utils on LatitudeLongitude grid...."
 
@@ -658,15 +672,19 @@ function test_lat_lon_xyzλφ_node_nodes(FT, arch)
     @test ynode(2, 1, 2, grid, Face(), Face(), Face()) / grid.radius ≈ -FT(π/3)
     @test znode(2, 1, 2, grid, Face(), Face(), Face()) ≈ -5
 
+    @test λnode(3, 1, 2, ibg, Face(), Face(), Face()) ≈ -120
+    @test φnode(3, 2, 2, ibg, Face(), Face(), Face()) ≈ -30
+    @test xnode(5, 1, 2, ibg, Face(), Face(), Face()) / ibg.radius ≈ -FT(π/6)
+    @test ynode(2, 1, 2, ibg, Face(), Face(), Face()) / ibg.radius ≈ -FT(π/3)
+    @test znode(2, 1, 2, ibg, Face(), Face(), Face()) ≈ -5
+
     @test minimum_xspacing(grid, Face(), Face(), Face()) / grid.radius ≈ FT(π/6) * cosd(60)
     @test minimum_xspacing(grid) / grid.radius ≈ FT(π/6) * cosd(45)
     @test minimum_yspacing(grid) / grid.radius ≈ FT(π/6)
     @test minimum_zspacing(grid) ≈ 5
 
-    grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> y < 20 && y > -20 ? -50 : -0))
-
-    @test minimum_xspacing(grid, Face(), Face(), Face()) / grid.radius ≈ FT(π/6) * cosd(30)
-    @test minimum_xspacing(grid) / grid.radius ≈ FT(π/6) * cosd(15)
+    @test minimum_xspacing(ibg, Face(), Face(), Face()) / ibg.radius ≈ FT(π/6) * cosd(30)
+    @test minimum_xspacing(ibg) / ibg.radius ≈ FT(π/6) * cosd(15)
 
     return nothing
 end
@@ -696,7 +714,7 @@ function test_lat_lon_precomputed_metrics(FT, arch)
     for lat in latitude
         for lon in longitude
             for z in zcoord
-                println("$lat, $lon, $z")
+                # println("$lat, $lon, $z")
                 grid_pre = LatitudeLongitudeGrid(arch, FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, precompute_metrics=true)
                 grid_fly = LatitudeLongitudeGrid(arch, FT, size=N, halo=H, latitude=lat, longitude=lon, z=z)
 
@@ -871,7 +889,7 @@ end
             grid = RectilinearGrid(arch, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=collect(0:Nz).^2)
 
             @test try
-            show(grid); println()
+                show(grid); println()
                 true
             catch err
                 println("error in show(::RectilinearGrid)")
@@ -1036,6 +1054,20 @@ end
         end
 
         @test grid isa OrthogonalSphericalShellGrid
+
+        grid = RotatedLatitudeLongitudeGrid(size = (10, 10, 1),
+                                            latitude = (-60, 60),
+                                            longitude = (-60, 60),
+                                            z = (-1000, 0),
+                                            north_pole = (0, 0),
+                                            topology = (Bounded, Bounded, Bounded))
+
+        @show grid.conformal_mapping
+
+        @test grid isa OrthogonalSphericalShellGrid
+        @test grid isa RotatedLatitudeLongitudeGrid
+        @test grid.Lz == 1000
+        @test size(grid) == (10, 10, 1)
 
         for arch in archs
             for FT in float_types

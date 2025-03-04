@@ -1,4 +1,4 @@
-# # Internal tide by a seamount
+# # Internal tide over a seamount
 #
 # In this example, we show how internal tide is generated from a barotropic tidal flow
 # sloshing back and forth over a sea mount.

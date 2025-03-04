@@ -360,17 +360,13 @@ boundary_conditions(not_field) = nothing
 
 immersed_boundary_condition(f::Field) = f.boundary_conditions.immersed
 data(field::Field) = field.data
-indices(obj, i=default_indices(3)) = i
-indices(f::Field, i=default_indices(3)) = f.indices
-indices(a::SubArray, i=default_indices(ndims(a))) = a.indices
-indices(a::OffsetArray, i=default_indices(ndims(a))) = indices(parent(a), i)
-
-"""Return indices that create a `view` over the interior of a Field."""
-interior_view_indices(field_indices, interior_indices) = Colon()
-interior_view_indices(::Colon,       interior_indices) = interior_indices
 
 instantiate(T::Type) = T()
 instantiate(t) = t
+
+"""Return indices that create a `view` over the interior of a Field."""
+interior_view_indices(field_indices, interior_indices)   = Colon()
+interior_view_indices(::Colon,       interior_indices)   = interior_indices
 
 function interior(a::OffsetArray,
                   Loc::Tuple,
@@ -383,6 +379,7 @@ function interior(a::OffsetArray,
     topo = map(instantiate, Topo)
     i_interior = map(interior_parent_indices, loc, topo, sz, halo_sz)
     i_view = map(interior_view_indices, ind, i_interior)
+
     return view(parent(a), i_view...)
 end
 
@@ -406,6 +403,7 @@ Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 
 @inline Base.fill!(f::Field, val) = fill!(parent(f), val)
 @inline Base.parent(f::Field) = parent(f.data)
+Adapt.parent_type(f::Field) = typeof(parent(f))
 Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
 
 total_size(f::Field) = total_size(f.grid, location(f), f.indices)
@@ -419,7 +417,7 @@ total_size(f::Field) = total_size(f.grid, location(f), f.indices)
 ##### Move Fields between architectures
 #####
 
-on_architecture(arch, field::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
+on_architecture(arch, field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
     Field{LX, LY, LZ}(on_architecture(arch, field.grid),
                       on_architecture(arch, field.data),
                       on_architecture(arch, field.boundary_conditions),
