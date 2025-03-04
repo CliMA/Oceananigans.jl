@@ -1,7 +1,7 @@
 # Fields basics
 
 `Field`s and its relatives are core Oceananigans data structures.
-`Field`s are more or less arrays of `data` located on a `grid`, whose entries
+`Field`s are more or less arrays of _three dimensional_ `data` located on a `grid`, whose entries
 correspond to the average value of some quantity over some finite-sized volume.
 `Field`s also may contain `boundary_conditions`, may be computed from an `operand`
 or expression involving other fields, and may cover only a portion of the total
@@ -326,7 +326,8 @@ heatmap(view(c, :, :, 1))
 For `Field`s on three-dimensional grids, `set!` functions must have arguments `x, y, z` for
 `RectilinearGrid`, or `λ, φ, z` for `LatitudeLongitudeGrid` and `OrthogonalSphericalShellGrid`.
 But for `Field`s on one- and two-dimensional grids, only the arguments that correspond to the
-non-`Flat` directions must be included. For example, to `set!` on a one-dimensional grid we write
+non-`Flat` directions must be included. 
+For example, to `set!` on a one-dimensional grid we write
 
 ```jldoctest fields
 # Make a field on a one-dimensional grid
@@ -345,6 +346,10 @@ set!(one_d_c, still_pretty_fun)
 └── data: 13×1×1 OffsetArray(::Array{Float64, 3}, -2:10, 1:1, 1:1) with eltype Float64 with indices -2:10×1:1×1:1
     └── max=19.5, min=1.5, mean=10.5
 ```
+
+!!! note
+    Despite the particularity for `set`ting `Field`s, a `Field` is intrinsically a 
+    three-dimensional object and must be indexed by always providing all three `i, j, k` indices.
 
 ### A bit more about setting with functions
 
