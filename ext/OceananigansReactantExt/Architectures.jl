@@ -3,7 +3,10 @@ module Architectures
 using Reactant
 using Oceananigans
 
-import Oceananigans.Architectures: device, architecture, array_type, on_architecture, unified_array, ReactantState, device_copy_to!
+using Reactant: AnyConcreteRArray
+
+import Oceananigans.Architectures: device, architecture, array_type, on_architecture
+import Oceananigans.Architectures: unified_array, ReactantState, device_copy_to!
 
 const ReactantKernelAbstractionsExt = Base.get_extension(
     Reactant, :ReactantKernelAbstractionsExt
@@ -35,5 +38,6 @@ on_architecture(r::ReactantState, a::ArraysToRArray) =
 unified_array(::ReactantState, a) = a
 
 @inline device_copy_to!(dst::Reactant.AnyConcretePJRTArray, src::Reactant.AnyConcretePJRTArray; kw...) = Base.copyto!(dst, src)
+
 
 end # module
