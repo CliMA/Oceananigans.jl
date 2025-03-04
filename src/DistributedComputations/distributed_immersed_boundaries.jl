@@ -95,7 +95,7 @@ function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, g
 end
 
 # A distributed grid with split interior map
-const DistributedActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid, <:Any, <:NamedTuple} 
+const DistributedActiveInteriorIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid, <:Any, <:NamedTuple} 
 
 # In case of a `DistributedGrid` we want to have different maps depending on the partitioning of the domain:
 #

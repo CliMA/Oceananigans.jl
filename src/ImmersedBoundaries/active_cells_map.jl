@@ -18,16 +18,6 @@ const WholeActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, 
 # (; halo_independent_cells), and the "halo-dependent" regions in the west, east, north, and south, respectively
 const SplitActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NamedTuple}
 
-"""
-A constant representing an immersed boundary grid, where interior active cells are mapped to linear indices in grid.interior_active_cells
-"""
-const ActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Union{AbstractArray, NamedTuple}}
-
-"""
-A constant representing an immersed boundary grid, where active columns in the Z-direction are mapped to linear indices in grid.active_z_columns
-"""
-const ActiveZColumnsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
-
 @inline get_active_column_map(grid::ActiveZColumnsIBG) = grid.active_z_columns
 
 @inline get_active_cells_map(grid::WholeActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells
@@ -68,9 +58,6 @@ end
     end
     return i, j
 end
-
-with_halo(halo, ibg::ActiveCellsIBG) =
-    ImmersedBoundaryGrid(with_halo(halo, ibg.underlying_grid), ibg.immersed_boundary; active_cells_map=true)
 
 @inline active_cell(i, j, k, grid, ib) = !immersed_cell(i, j, k, grid, ib)
 
@@ -184,7 +171,8 @@ function compute_active_z_columns(grid, ib)
     N = max(Nx, Ny)
     IntType = N > MAXUInt8 ? (N > MAXUInt16 ? (N > MAXUInt32 ? UInt64 : UInt32) : UInt16) : UInt8
     columns_map = getproperty.(full_indices, Ref(:I)) .|> Tuple{IntType, IntType}
-    columns_map = on_architecture(architecture(ibg), columns_map)
+    columns_map = on_architecture(architecture(grid), columns_map)
 
     return columns_map
 end
+

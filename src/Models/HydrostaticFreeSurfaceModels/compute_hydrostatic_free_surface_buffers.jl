@@ -1,7 +1,7 @@
 import Oceananigans.Models: compute_buffer_tendencies!
 
 using Oceananigans.Grids: halo_size
-using Oceananigans.DistributedComputations: DistributedActiveCellsIBG
+using Oceananigans.DistributedComputations: DistributedActiveInteriorIBG
 using Oceananigans.ImmersedBoundaries: get_active_cells_map
 using Oceananigans.Models.NonhydrostaticModels: buffer_tendency_kernel_parameters,
                                                 buffer_p_kernel_parameters, 
@@ -32,7 +32,7 @@ function compute_buffer_tendency_contributions!(grid, arch, model)
     return nothing
 end
 
-function compute_buffer_tendency_contributions!(grid::DistributedActiveCellsIBG, arch, model)
+function compute_buffer_tendency_contributions!(grid::DistributedActiveInteriorIBG, arch, model)
     maps = grid.interior_active_cells
     
     for name in (:west_halo_dependent_cells, 
