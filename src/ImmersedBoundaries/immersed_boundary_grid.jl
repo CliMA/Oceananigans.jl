@@ -29,7 +29,7 @@ the grid will also populate an `interior_active_cells` and `active_z_columns` fi
 interior and on a reduced x-y plane, respectively.
 """
 function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersedBoundary; active_cells_map::Bool=true) 
-    new_ib = numerical_immersed_boundary(grid, ib)
+    new_ib = materialize_immersed_boundary(grid, ib)
     
     # Create the cells map on the CPU, then switch it to the GPU
     if active_cells_map 

@@ -24,7 +24,7 @@ function compute_mask(grid, ib)
     return mask_field
 end
 
-function numerical_immersed_boundary(grid, ib::GridFittedBoundary)
+function materialize_immersed_boundary(grid, ib::GridFittedBoundary)
     mask_field = compute_mask(grid, ib)
     return GridFittedBoundary(mask_field)
 end

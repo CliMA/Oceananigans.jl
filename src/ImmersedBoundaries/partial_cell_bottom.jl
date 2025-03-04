@@ -62,7 +62,7 @@ function PartialCellBottom(bottom_height; minimum_fractional_cell_height=0.2)
     return PartialCellBottom(bottom_height, minimum_fractional_cell_height)
 end
 
-function numerical_immersed_boundary(grid, ib::PartialCellBottom)
+function materialize_immersed_boundary(grid, ib::PartialCellBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set!(bottom_field, ib.bottom_height)
     @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, ib)
