@@ -99,7 +99,7 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
                                                      φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ,
                                                      z,
                                                     Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
-                                                    Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
+                                                    Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
                                                     Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
                                                     radius,
                                                     conformal_mapping)
@@ -213,23 +213,17 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
                                       halo = (1, 1, 1),
                                       rotation = nothing)
 
-    if architecture == GPU() && !has_cuda()
-        throw(ArgumentError("Cannot create a GPU grid. No CUDA-enabled GPU was detected!"))
-    end
-
     radius = FT(radius)
-
     TX, TY, TZ = topology
     Nξ, Nη, Nz = size
     Hx, Hy, Hz = halo
 
-    ## Use a regular rectilinear grid for the face of the cube
-
+    # Use a regular rectilinear grid for the face of the cube
     ξη_grid_topology = (Bounded, Bounded, topology[3])
 
     # construct the grid on CPU and convert to architecture later...
     ξη_grid = RectilinearGrid(CPU(), FT;
-                              size=(Nξ, Nη, Nz),
+                              size = (Nξ, Nη, Nz),
                               topology = ξη_grid_topology,
                               x=ξ, y=η, z, halo)
 
@@ -511,7 +505,6 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
             Azᶜᶠᵃ[i, j] = 2 * spherical_area_quadrilateral(a, b, c, d) * radius^2
         end
 
-
         # Azᶠᶠᵃ
 
         for j in 2:Nη, i in 2:Nξ
@@ -640,7 +633,7 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
                          zc)
 
     metric_arrays = (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
-                     Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ,
+                     Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
                      Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
 
     conformal_mapping = CubedSphereConformalMapping(ξ, η, rotation)
@@ -660,7 +653,7 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
                          grid.z)
 
     metric_arrays = (grid.Δxᶜᶜᵃ, grid.Δxᶠᶜᵃ, grid.Δxᶜᶠᵃ, grid.Δxᶠᶠᵃ,
-                     grid.Δyᶜᶜᵃ, grid.Δyᶜᶠᵃ, grid.Δyᶠᶜᵃ, grid.Δyᶠᶠᵃ,
+                     grid.Δyᶜᶜᵃ, grid.Δyᶠᶜᵃ, grid.Δyᶜᶠᵃ, grid.Δyᶠᶠᵃ,
                      grid.Azᶜᶜᵃ, grid.Azᶠᶜᵃ, grid.Azᶜᶠᵃ, grid.Azᶠᶠᵃ)
 
     coordinate_arrays = map(a -> on_architecture(architecture, a), coordinate_arrays)
