@@ -247,7 +247,6 @@ const c = Center()
         δx = u[i, j, k] * Δt
         δy = v[i, j, k] * Δt
         δz = w[i, j, k] * Δt
-        
         # Prevent displacements from getting too big?
         Δx = Δxᶜᶜᶜ(i, j, k, grid)
         Δy = Δyᶜᶜᶜ(i, j, k, grid)
