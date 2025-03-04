@@ -4,7 +4,7 @@ using Oceananigans.Grids: AbstractGrid
 
 using KernelAbstractions: @kernel, @index
 
-import Oceananigans.Grids: retrieve_surface_active_cells_map, get_active_cells_map
+import Oceananigans.Grids: get_active_column_map, get_active_cells_map
 
 # REMEMBER: since the active map is stripped out of the grid when `Adapt`ing to the GPU, 
 # The following types cannot be used to dispatch in kernels!!!
@@ -28,7 +28,7 @@ A constant representing an immersed boundary grid, where active columns in the Z
 """
 const ActiveZColumnsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractArray}
 
-@inline retrieve_surface_active_cells_map(grid::ActiveZColumnsIBG) = grid.active_z_columns
+@inline get_active_column_map(grid::ActiveZColumnsIBG) = grid.active_z_columns
 
 @inline get_active_cells_map(grid::WholeActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells
 @inline get_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells.halo_independent_cells
@@ -52,14 +52,22 @@ A tuple of indices corresponding to the linear index.
 """
 @inline linear_index_to_tuple(idx, active_cells_map) = @inbounds Base.map(Int, active_cells_map[idx])
 
+@inline function linear_index_to_tuple(idx, active_cells_map::Tuple)
+    @inbounds begin
+        i = active_cells_map[1][idx]
+        j = active_cells_map[2][idx]
+    end
+    return i, j
+end
+
 function ImmersedBoundaryGrid(grid, ib; active_cells_map::Bool=true) 
     ibg = ImmersedBoundaryGrid(grid, ib)
     TX, TY, TZ = topology(ibg)
     
     # Create the cells map on the CPU, then switch it to the GPU
     if active_cells_map 
-        interior_active_cells = map_interior_active_cells(ibg)
-        active_z_columns = map_active_z_columns(ibg)
+        interior_active_cells = compute_active_cells(ibg)
+        active_z_columns = compute_active_z_columns(ibg)
     else
         interior_active_cells = nothing
         active_z_columns = nothing
@@ -89,7 +97,7 @@ function compute_interior_active_cells(ibg; parameters = :xyz)
     return active_cells_field
 end
 
-function compute_active_z_columns(ibg)
+function active_z_columns_field(ibg)
     one_field = OneField(Int)
     condition = NotImmersed(truefunc)
     mask = 0
@@ -113,7 +121,7 @@ const MAXUInt16 = 2^16 - 1
 const MAXUInt32 = 2^32 - 1
 
 """
-    interior_active_indices(ibg; parameters = :xyz)
+    serially_compute_active_cells(ibg; parameters = :xyz)
 
 Compute the indices of the active interior cells in the given immersed boundary grid within the indices
 specified by the `parameters` keyword argument
@@ -125,7 +133,7 @@ specified by the `parameters` keyword argument
 # Returns
 An array of tuples representing the indices of the active interior cells.
 """
-function interior_active_indices(ibg; parameters = :xyz)
+function serially_compute_active_cells(ibg; parameters = :xyz)
     active_cells_field = compute_interior_active_cells(ibg; parameters)
     
     N = maximum(size(ibg))
@@ -169,22 +177,22 @@ end
 # In case of a serial grid, the interior computations are performed over the whole three-dimensional
 # domain. Therefore, the `interior_active_cells` field contains the indices of all the active cells in 
 # the range 1:Nx, 1:Ny and 1:Nz (i.e., we construct the map with parameters :xyz)
-map_interior_active_cells(ibg) = interior_active_indices(ibg; parameters = :xyz)
+compute_active_cells(ibg) = serially_compute_active_cells(ibg; parameters = :xyz)
 
 # If we eventually want to perform also barotropic step, `w` computation and `p` 
 # computation only on active `columns`
-function map_active_z_columns(ibg)
-    active_cells_field = compute_active_z_columns(ibg)
-    interior_cells     = on_architecture(CPU(), interior(active_cells_field, :, :, 1))
+function compute_active_z_columns(ibg)
+    field = active_z_columns_field(ibg)
+    field_interior = on_architecture(CPU(), interior(field, :, :, 1))
   
-    full_indices = findall(interior_cells)
+    full_indices = findall(field_interior)
 
     Nx, Ny, _ = size(ibg)
     # Reduce the size of the active_cells_map (originally a tuple of Int64)
     N = max(Nx, Ny)
     IntType = N > MAXUInt8 ? (N > MAXUInt16 ? (N > MAXUInt32 ? UInt64 : UInt32) : UInt16) : UInt8
-    surface_map = getproperty.(full_indices, Ref(:I)) .|> Tuple{IntType, IntType}
-    surface_map = on_architecture(architecture(ibg), surface_map)
+    columns_map = getproperty.(full_indices, Ref(:I)) .|> Tuple{IntType, IntType}
+    columns_map = on_architecture(architecture(ibg), columns_map)
 
-    return surface_map
+    return columns_map
 end

@@ -43,7 +43,7 @@ end
 
 @inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, 
                                                  timestepper::QuasiAdamsBashforth2TimeStepper, stage)
-    active_cells_map = retrieve_surface_active_cells_map(grid)
+    active_cells_map = get_active_column_map(grid)
 
     Gu⁻ = timestepper.G⁻.u
     Gv⁻ = timestepper.G⁻.v
@@ -114,7 +114,7 @@ end
     GU⁻ = timestepper.G⁻.U
     GV⁻ = timestepper.G⁻.V
 
-    active_cells_map = retrieve_surface_active_cells_map(grid)    
+    active_cells_map = get_active_column_map(grid)    
     launch!(architecture(grid), grid, :xy, _compute_integrated_rk3_tendencies!, 
             GUⁿ, GVⁿ, GU⁻, GV⁻, grid, active_cells_map, Guⁿ, Gvⁿ, stage; active_cells_map)
 
