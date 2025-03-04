@@ -299,7 +299,7 @@ end
 function dimension_summary(topo, name, dom, z::AbstractVerticalCoordinate, pad_domain=0)
     prefix = domain_summary(topo, name, dom)
     padding = " "^(pad_domain+1) 
-    return string(prefix, padding, coordinate_summary(topo, z.Δᵃᵃᶜ, name))
+    return string(prefix, padding, coordinate_summary(topo, z, name))
 end
 
 function dimension_summary(topo, name, dom, spacing, pad_domain=0)
@@ -317,13 +317,19 @@ coordinate_summary(topo, Δ::Union{AbstractVector, AbstractMatrix}, name) =
              name, prettysummary(maximum(parent(Δ))))
 
 #####
-##### Static column depths
+##### Static and Dynamic column depths
 #####
 
 @inline static_column_depthᶜᶜᵃ(i, j, grid) = grid.Lz
 @inline static_column_depthᶜᶠᵃ(i, j, grid) = grid.Lz
 @inline static_column_depthᶠᶜᵃ(i, j, grid) = grid.Lz
 @inline static_column_depthᶠᶠᵃ(i, j, grid) = grid.Lz
+
+# Will be extended in the `ImmersedBoundaries` module for a ``mutable'' grid type
+@inline column_depthᶜᶜᵃ(i, j, k, grid, η) = static_column_depthᶜᶜᵃ(i, j, grid) 
+@inline column_depthᶠᶜᵃ(i, j, k, grid, η) = static_column_depthᶠᶜᵃ(i, j, grid) 
+@inline column_depthᶜᶠᵃ(i, j, k, grid, η) = static_column_depthᶜᶠᵃ(i, j, grid) 
+@inline column_depthᶠᶠᵃ(i, j, k, grid, η) = static_column_depthᶠᶠᵃ(i, j, grid) 
 
 #####
 ##### Spherical geometry
@@ -465,13 +471,9 @@ julia> add_halos(data, loc, topo, (Nx, Ny, Nz), (1, 2, 0))
 ```
 """
 function add_halos(data, loc, topo, sz, halo_sz; warnings=true)
-
     Nx, Ny, Nz = size(data)
-
     arch = architecture(data)
-
-    # bring to CPU
-    map(a -> on_architecture(CPU(), a), data)
+    map(a -> on_architecture(CPU(), a), data) # bring to CPU
 
     nx, ny, nz = total_length(loc[1](), topo[1](), sz[1], 0),
                  total_length(loc[2](), topo[2](), sz[2], 0),

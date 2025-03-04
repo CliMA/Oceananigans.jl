@@ -11,9 +11,8 @@ if test_file != :none
     group = :none
 end
 
-
 #####
-##### Run tests!
+##### Run tests
 #####
 
 CUDA.allowscalar() do
@@ -28,20 +27,9 @@ CUDA.allowscalar() do
 
     # Initialization steps
     if group == :init || group == :all
-        Pkg.instantiate(; verbose=true)
-        Pkg.precompile(; strict=true)
-        Pkg.status()
-
-        try
-            MPI.versioninfo()
-        catch; end
-
-        try
-            CUDA.precompile_runtime()
-            CUDA.versioninfo()
-        catch; end
+        include("test_init.jl")
     end
-
+    
     # Core Oceananigans
     if group == :unit || group == :all
         @testset "Unit tests" begin
@@ -120,6 +108,7 @@ CUDA.allowscalar() do
         @testset "Model and time stepping tests (part 1)" begin
             include("test_nonhydrostatic_models.jl")
             include("test_time_stepping.jl")
+            include("test_active_cells_map.jl")
         end
     end
 
@@ -136,6 +125,7 @@ CUDA.allowscalar() do
             include("test_dynamics.jl")
             include("test_biogeochemistry.jl")
             include("test_seawater_density.jl")
+            include("test_orthogonal_spherical_shell_time_stepping.jl")
         end
     end
 
@@ -219,10 +209,30 @@ CUDA.allowscalar() do
         end
     end
 
+    if group == :vertical_coordinate || group == :all
+        @testset "Vertical coordinate tests" begin
+            include("test_zstar_coordinate.jl")
+        end
+    end
+
     # Tests for Enzyme extension
     if group == :enzyme || group == :all
         @testset "Enzyme extension tests" begin
             include("test_enzyme.jl")
+        end
+    end
+
+    # Tests for Reactant extension
+    if group == :reactant || group == :all
+        @testset "Reactant extension tests" begin
+            include("test_reactant.jl")
+        end
+    end
+
+    # Tests for Metal extension
+    if group == :metal|| group == :all
+        @testset "Metal extension tests" begin
+            include("test_metal.jl")
         end
     end
 
@@ -232,3 +242,4 @@ CUDA.allowscalar() do
 end
 
 end #CUDA.allowscalar()
+

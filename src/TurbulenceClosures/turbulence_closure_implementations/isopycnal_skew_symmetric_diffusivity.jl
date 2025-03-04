@@ -47,7 +47,7 @@ or the `DiffusiveFormulation`.
     
 Both `κ_skew` and `κ_symmetric` may be constants, arrays, fields, or functions of `(x, y, z, t)`.
 """
-function IsopycnalSkewSymmetricDiffusivity(time_disc::TD = VerticallyImplicitTimeDiscretization(), FT = Float64;
+function IsopycnalSkewSymmetricDiffusivity(time_disc::TD=VerticallyImplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType;
                                            κ_skew = nothing,
                                            κ_symmetric = nothing,
                                            skew_flux_formulation::A = AdvectiveFormulation(),
@@ -212,9 +212,9 @@ end
 end
 
 # Make sure we do not need to perform heavy calculations if we really do not need to
-@inline diffusive_flux_x(i, j, k, grid, ::NoDiffusionISSD, args...) = zero(grid)
-@inline diffusive_flux_y(i, j, k, grid, ::NoDiffusionISSD, args...) = zero(grid)
-@inline diffusive_flux_z(i, j, k, grid, ::NoDiffusionISSD, args...) = zero(grid)
+@inline diffusive_flux_x(i, j, k, grid, ::NoDiffusionISSD, K, ::Val{tracer_index}, args...) where tracer_index = zero(grid)
+@inline diffusive_flux_y(i, j, k, grid, ::NoDiffusionISSD, K, ::Val{tracer_index}, args...) where tracer_index = zero(grid)
+@inline diffusive_flux_z(i, j, k, grid, ::NoDiffusionISSD, K, ::Val{tracer_index}, args...) where tracer_index = zero(grid)
 
 # Diffusive fluxes
 @inline get_tracer_κ(κ::NamedTuple, grid, tracer_index) = @inbounds κ[tracer_index]

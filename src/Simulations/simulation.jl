@@ -9,18 +9,19 @@ import Oceananigans.TimeSteppers: reset!
 default_progress(simulation) = nothing
 
 mutable struct Simulation{ML, DT, ST, DI, OW, CB}
-                    model :: ML
-                       Δt :: DT
-           stop_iteration :: Float64
-                stop_time :: ST
-          wall_time_limit :: Float64
-              diagnostics :: DI
-           output_writers :: OW
-                callbacks :: CB
-            run_wall_time :: Float64
-                  running :: Bool
-              initialized :: Bool
-                  verbose :: Bool
+    model :: ML
+    Δt :: DT
+    stop_iteration :: Float64
+    stop_time :: ST
+    wall_time_limit :: Float64
+    diagnostics :: DI
+    output_writers :: OW
+    callbacks :: CB
+    run_wall_time :: Float64
+    align_time_step :: Bool
+    running :: Bool
+    initialized :: Bool
+    verbose :: Bool
     minimum_relative_step :: Float64
 end
 
@@ -55,9 +56,10 @@ function Simulation(model; Δt,
                     stop_iteration = Inf,
                     stop_time = Inf,
                     wall_time_limit = Inf,
+                    align_time_step = true,
                     minimum_relative_step = 0)
 
-   if stop_iteration == Inf && stop_time == Inf && wall_time_limit == Inf
+   if verbose && stop_iteration == Inf && stop_time == Inf && wall_time_limit == Inf
        @warn "This simulation will run forever as stop iteration = stop time " *
              "= wall time limit = Inf."
    end
@@ -92,6 +94,7 @@ function Simulation(model; Δt,
                      output_writers,
                      callbacks,
                      0.0,
+                     align_time_step,
                      false,
                      false,
                      verbose,

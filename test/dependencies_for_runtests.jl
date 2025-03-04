@@ -5,7 +5,6 @@ using Random
 using Statistics
 using LinearAlgebra
 using Logging
-using Enzyme
 using SparseArrays
 using JLD2
 using FFTW

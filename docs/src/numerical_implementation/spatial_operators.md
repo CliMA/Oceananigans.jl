@@ -39,6 +39,11 @@ cell centers
 \end{align}
 ```
 
+The three superscript characters indicate the cell location of the output in the $x$, $y$, and $z$ dimensions.
+"f" stands for "face", "c" for "center", and "a" for "any".
+For example, "faa" in $\delta_x^{faa}$ indicates that the output lies on the cell face in
+the $x$ dimension but remains at their original positions ("any") in the $y$ and $z$ dimensions.
+
 ## Interpolation
 
 In order to add or multiply variables that are defined at different points they are interpolated. 
