@@ -14,21 +14,40 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch} <: AbstractGrid{FT
 end
 
 # Internal interface
-function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I, mi::M,
-                                          ms::S) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I, M, S}
+function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I, mi::M, ms::S) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I, M, S}
     FT = eltype(grid)
     arch = architecture(grid)
     Arch = typeof(arch)
     return ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch}(arch, grid, ib, mi, ms)
 end
 
-# Constructor with no active map
-function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I}
-    FT = eltype(grid)
-    arch = architecture(grid)
-    Arch = typeof(arch)
-    return ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, Nothing, Nothing, Arch}(arch, grid, ib, nothing, nothing)
+"""
+    ImmersedBoundaryGrid(grid, ib::AbstractImmersedBoundary; active_cells_map::Bool=true)
+
+Return a grid with an `AbstractImmersedBoundary` immersed boundary (`ib`). If `active_cells_map` is `true`,
+the grid will also populate an `interior_active_cells` and `active_z_columns` fields that are a list of active indices in the 
+interior and on a reduced x-y plane, respectively.
+"""
+function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersedBoundary; active_cells_map::Bool=false) 
+    new_ib = materialize_immersed_boundary(grid, ib)
+    
+    # Create the cells map on the CPU, then switch it to the GPU
+    if active_cells_map 
+        interior_active_cells = map_interior_active_cells(grid, new_ib)
+        active_z_columns = map_active_z_columns(grid, new_ib)
+    else
+        interior_active_cells = nothing
+        active_z_columns = nothing
+    end
+    
+    TX, TY, TZ = topology(grid)
+    
+    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, 
+                                            new_ib, 
+                                            interior_active_cells,
+                                            active_z_columns)
 end
+
 
 const IBG = ImmersedBoundaryGrid
 

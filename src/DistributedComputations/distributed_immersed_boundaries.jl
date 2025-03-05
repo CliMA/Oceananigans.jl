@@ -106,35 +106,35 @@ const DistributedActiveCellsIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:An
 # For the same reason we need to construct `south` and `north` maps if we partition the domain in the y-direction.
 # Therefore, the `interior_active_cells` in this case is a `NamedTuple` containing 5 elements.
 # Note that boundary-adjacent maps corresponding to non-partitioned directions are set to `nothing`
-function map_interior_active_cells(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid})
+function map_interior_active_cells(grid::DistributedGrid, ib)
 
-    arch = architecture(ibg)
+    arch = architecture(grid)
 
     # If we using a synchronized architecture, nothing
     # changes with serial execution.
     if arch isa SynchronizedDistributed
-        return interior_active_indices(ibg; parameters = :xyz)
+        return interior_active_indices(grid, ib; parameters = :xyz)
     end
 
     Rx, Ry, _  = arch.ranks
-    Tx, Ty, _  = topology(ibg)
-    Nx, Ny, Nz = size(ibg)
-    Hx, Hy, _  = halo_size(ibg)
+    Tx, Ty, _  = topology(grid)
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, _  = halo_size(grid)
     
     west_boundary  = (1:Hx,       1:Ny, 1:Nz)
     east_boundary  = (Nx-Hx+1:Nx, 1:Ny, 1:Nz)
     south_boundary = (1:Nx, 1:Hy,       1:Nz)
     north_boundary = (1:Nx, Ny-Hy+1:Ny, 1:Nz)
 
-    include_west  = !isa(ibg, XFlatGrid) && (Rx != 1) && !(Tx == RightConnected)
-    include_east  = !isa(ibg, XFlatGrid) && (Rx != 1) && !(Tx == LeftConnected)
-    include_south = !isa(ibg, YFlatGrid) && (Ry != 1) && !(Ty == RightConnected)
-    include_north = !isa(ibg, YFlatGrid) && (Ry != 1) && !(Ty == LeftConnected)
+    include_west  = !isa(grid, XFlatGrid) && (Rx != 1) && !(Tx == RightConnected)
+    include_east  = !isa(grid, XFlatGrid) && (Rx != 1) && !(Tx == LeftConnected)
+    include_south = !isa(grid, YFlatGrid) && (Ry != 1) && !(Ty == RightConnected)
+    include_north = !isa(grid, YFlatGrid) && (Ry != 1) && !(Ty == LeftConnected)
 
-    west_halo_dependent_cells  = interior_active_indices(ibg; parameters = KernelParameters(west_boundary...))
-    east_halo_dependent_cells  = interior_active_indices(ibg; parameters = KernelParameters(east_boundary...))
-    south_halo_dependent_cells = interior_active_indices(ibg; parameters = KernelParameters(south_boundary...))
-    north_halo_dependent_cells = interior_active_indices(ibg; parameters = KernelParameters(north_boundary...))
+    west_halo_dependent_cells  = interior_active_indices(grid, ib; parameters = KernelParameters(west_boundary...))
+    east_halo_dependent_cells  = interior_active_indices(grid, ib; parameters = KernelParameters(east_boundary...))
+    south_halo_dependent_cells = interior_active_indices(grid, ib; parameters = KernelParameters(south_boundary...))
+    north_halo_dependent_cells = interior_active_indices(grid, ib; parameters = KernelParameters(north_boundary...))
 
     west_halo_dependent_cells  = ifelse(include_west,  west_halo_dependent_cells,  nothing)
     east_halo_dependent_cells  = ifelse(include_east,  east_halo_dependent_cells,  nothing)
@@ -147,7 +147,7 @@ function map_interior_active_cells(ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any
     ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
     oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
      
-    halo_independent_cells = interior_active_indices(ibg; parameters = KernelParameters((nx, ny, Nz), (ox, oy, 0)))
+    halo_independent_cells = interior_active_indices(grid, ib; parameters = KernelParameters((nx, ny, Nz), (ox, oy, 0)))
 
     return (; halo_independent_cells, 
               west_halo_dependent_cells, 
