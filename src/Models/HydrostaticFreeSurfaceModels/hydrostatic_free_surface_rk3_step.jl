@@ -2,7 +2,7 @@ using Oceananigans.Fields: location, instantiated_location
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.ImmersedBoundaries: get_active_cells_map, get_active_column_map
 
-import Oceananigans.TimeSteppers: split_rk3_substep!, _split_rk3_substep_field!, store_fields!
+import Oceananigans.TimeSteppers: split_rk3_substep!, _split_rk3_substep_field!, cache_previous_fields!
 
 function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζⁿ)
     
@@ -159,7 +159,7 @@ end
     @inbounds Ψ⁻[i, j, k] = Ψⁿ[i, j, k] * σⁿ(i, j, k, grid, Center(), Center(), Center())
 end
 
-function store_fields!(model::HydrostaticFreeSurfaceModel)
+function cache_previous_fields!(model::HydrostaticFreeSurfaceModel)
     
     previous_fields = model.timestepper.Ψ⁻
     model_fields = prognostic_fields(model)

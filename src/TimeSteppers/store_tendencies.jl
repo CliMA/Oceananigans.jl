@@ -9,7 +9,7 @@ using Oceananigans.Utils: launch!
 end
 
 """ Store previous source terms before updating them. """
-function store_tendencies!(model)
+function cache_previous_tendencies!(model)
     model_fields = prognostic_fields(model)
 
     for field_name in keys(model_fields)
