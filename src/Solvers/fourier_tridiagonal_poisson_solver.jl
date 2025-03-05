@@ -54,20 +54,33 @@ stretched_direction(::YZRegularRG) = XDirection()
 stretched_direction(::XZRegularRG) = YDirection()
 stretched_direction(::XYRegularRG) = ZDirection()
 
+dimension(::XDirection) = 1
+dimension(::YDirection) = 2
+dimension(::ZDirection) = 3
+
+infer_launch_configuration(::XDirection) = :yz
+infer_launch_configuration(::YDirection) = :xz
+infer_launch_configuration(::ZDirection) = :xy
+
 Δξᶠ(i, grid::YZRegularRG) = Δxᶠᵃᵃ(i, 1, 1, grid)
 Δξᶠ(j, grid::XZRegularRG) = Δyᵃᶠᵃ(1, j, 1, grid)
 Δξᶠ(k, grid::XYRegularRG) = Δzᵃᵃᶠ(1, 1, k, grid)
 
 extent(grid) = (grid.Lx, grid.Ly, grid.Lz)
 
-function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
-    irreg_dim = stretched_dimensions(grid)[1]
+function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT;
+                                         tridiagonal_direction = stretched_direction(grid))
 
     regular_top1, regular_top2 = Tuple(el for (i, el) in enumerate(topology(grid)) if i ≠ irreg_dim)
     regular_siz1, regular_siz2 = Tuple(el for (i, el) in enumerate(size(grid))     if i ≠ irreg_dim)
     regular_ext1, regular_ext2 = Tuple(el for (i, el) in enumerate(extent(grid))   if i ≠ irreg_dim)
 
-    topology(grid, irreg_dim) != Bounded && error("`FourierTridiagonalPoissonSolver` can only be used when the stretched direction's topology is `Bounded`.")
+    tridiagonal_dim = dimension(tridiagonal_direction)
+    if topology(grid, tridiagonal_dim) != Bounded
+        msg = "`FourierTridiagonalPoissonSolver` can only be used \
+                when the stretched direction's topology is `Bounded`."
+        throw(ArgumentError(msg))
+    end
 
     # Compute discrete Poisson eigenvalues
     λ1 = poisson_eigenvalues(regular_siz1, regular_ext1, 1, regular_top1())
@@ -88,15 +101,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT)
 
     # Compute diagonal coefficients for each grid point
     diagonal = on_architecture(arch, zeros(size(grid)...))
-    launch_config = if grid isa YZRegularRG
-                        :yz
-                    elseif grid isa XZRegularRG
-                        :xz
-                    elseif grid isa XYRegularRG
-                        :xy
-                    end
-
-    tridiagonal_direction = stretched_direction(grid)
+    launch_config = infer_launch_configuration(tridiagonal_direction)
     launch!(arch, grid, launch_config, compute_main_diagonal!, diagonal, grid, λ1, λ2, tridiagonal_direction)
 
     # Set up batched tridiagonal solver
