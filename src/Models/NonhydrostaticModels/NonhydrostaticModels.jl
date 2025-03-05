@@ -34,7 +34,9 @@ function nonhydrostatic_pressure_solver(::Distributed, local_grid::GridWithFouri
     return DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
 end
 
-nonhydrostatic_pressure_solver(arch, grid::XYZRegularRG) = FFTBasedPoissonSolver(grid)
+#nonhydrostatic_pressure_solver(arch, grid::XYZRegularRG) = FFTBasedPoissonSolver(grid)
+nonhydrostatic_pressure_solver(arch, grid::XYZRegularRG) =
+    FourierTridiagonalPoissonSolver(grid)
 nonhydrostatic_pressure_solver(arch, grid::GridWithFourierTridiagonalSolver) =
     FourierTridiagonalPoissonSolver(grid)
 
