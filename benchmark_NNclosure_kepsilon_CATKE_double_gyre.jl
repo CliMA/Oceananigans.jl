@@ -164,12 +164,12 @@ function benchmark_timestep(Nxy, Nz, closure_str)
     end
 end
 
-Nxys = [32, 48, 64, 96, 128]
-Nz = 192
+# Nxys = [32, 48, 64, 96, 128]
+# Nz = 192
 
-for closure_str in ["NN", "CATKE", "k_epsilon"], Nxy in Nxys
-    benchmark_timestep(Nxy, Nz, closure_str)
-end
+# for closure_str in ["NN", "CATKE", "k_epsilon"], Nxy in Nxys
+#     benchmark_timestep(Nxy, Nz, closure_str)
+# end
 
 Nxy = 128
 Nzs = [32, 48, 64, 96, 128, 192, 256]

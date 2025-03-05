@@ -33,7 +33,7 @@ function setup_model(Nz, closure)
                            z = (-Lz, 0))
 
     @info "Built a grid: $grid."
-
+    
     dTdz = 0.014
     dSdz = 0.0021
 
@@ -89,8 +89,6 @@ function setup_model(Nz, closure)
         tracers = tracers,
         boundary_conditions = (; T = T_bcs, S = S_bcs, u = u_bcs),
     );
-
-    @info "Built $model."
 
     #####
     ##### Initial conditions
