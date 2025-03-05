@@ -65,7 +65,7 @@ compute_free_surface_tendency!(grid, model, free_surface) = nothing
 end
 
 """ Store previous value of the source term and compute current source term. """
-function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; active_cells_map = nothing)
+function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; active_cells_map=nothing)
 
     arch = model.architecture
     grid = model.grid
@@ -118,7 +118,7 @@ function apply_flux_bcs!(Gcⁿ, c, arch, args)
 end
 
 """ Calculate momentum tendencies if momentum is not prescribed."""
-function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map = nothing)
+function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map=nothing)
 
     grid = model.grid
     arch = architecture(grid)

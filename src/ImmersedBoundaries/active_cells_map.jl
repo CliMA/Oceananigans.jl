@@ -42,6 +42,7 @@ A tuple of indices corresponding to the linear index.
 """
 @inline linear_index_to_tuple(idx, active_cells_map) = @inbounds Base.map(Int, active_cells_map[idx])
 
+#=
 @inline function linear_index_to_tuple(idx, active_cells_map::Tuple{<:Any, <:Any, <:Any})
     @inbounds begin
         i = active_cells_map[1][idx]
@@ -58,22 +59,23 @@ end
     end
     return i, j
 end
+=#
 
 @inline active_cell(i, j, k, grid, ib) = !immersed_cell(i, j, k, grid, ib)
 
-@kernel function _set_active_indices!(active_cells_field, grid, ib)
+@kernel function _compute_active_cells!(active_cells_field, grid, ib)
     i, j, k = @index(Global, NTuple)
     @inbounds active_cells_field[i, j, k] = active_cell(i, j, k, grid, ib)
 end
 
-function compute_interior_active_cells(grid, ib; parameters = :xyz)
+function compute_active_cells(grid, ib; parameters = :xyz)
     active_cells_field = Field{Center, Center, Center}(grid, Bool)
     fill!(active_cells_field, false)
-    launch!(architecture(grid), grid, parameters, _set_active_indices!, active_cells_field, grid, ib)
+    launch!(architecture(grid), grid, parameters, _compute_active_cells!, active_cells_field, grid, ib)
     return active_cells_field
 end
 
-@kernel function _set_active_columns!(active_z_columns, grid, ib)
+@kernel function _compute_active_z_columns!(active_z_columns, grid, ib)
     i, j = @index(Global, NTuple)
     active_column = false
     for k in 1:size(grid, 3)
@@ -82,12 +84,12 @@ end
     @inbounds active_z_columns[i, j, 1] = active_column
 end
 
-function active_z_columns_field(grid, ib)
+function compute_active_z_columns(grid, ib)
     active_z_columns = Field{Center, Center, Nothing}(grid, Bool)
     fill!(active_z_columns, false)
 
     # Compute the active cells in the column
-    launch!(architecture(grid), grid, :xy, _set_active_columns!, active_z_columns, grid, ib)
+    launch!(architecture(grid), grid, :xy, _compute_active_z_columns!, active_z_columns, grid, ib)
 
     return active_z_columns
 end
@@ -99,7 +101,7 @@ const MAXUInt16 = 2^16 - 1
 const MAXUInt32 = 2^32 - 1
 
 """
-    serially_compute_active_cells(grid, ib; parameters = :xyz)
+    serially_build_active_cells_map(grid, ib; parameters = :xyz)
 
 Compute the indices of the active interior cells in the given immersed boundary grid within the indices
 specified by the `parameters` keyword argument
@@ -112,8 +114,8 @@ specified by the `parameters` keyword argument
 # Returns
 An array of tuples representing the indices of the active interior cells.
 """
-function serially_compute_active_cells(grid, ib; parameters = :xyz)
-    active_cells_field = compute_interior_active_cells(grid, ib; parameters)
+function serially_build_active_cells_map(grid, ib; parameters = :xyz)
+    active_cells_field = compute_active_cells(grid, ib; parameters)
     
     N = maximum(size(grid))
     IntType = N > MAXUInt8 ? (N > MAXUInt16 ? (N > MAXUInt32 ? UInt64 : UInt32) : UInt16) : UInt8
@@ -156,12 +158,12 @@ end
 # In case of a serial grid, the interior computations are performed over the whole three-dimensional
 # domain. Therefore, the `interior_active_cells` field contains the indices of all the active cells in 
 # the range 1:Nx, 1:Ny and 1:Nz (i.e., we construct the map with parameters :xyz)
-compute_active_cells(grid, ib) = serially_compute_active_cells(grid, ib; parameters = :xyz)
+build_active_cells_map(grid, ib) = serially_build_active_cells_map(grid, ib; parameters = :xyz)
 
 # If we eventually want to perform also barotropic step, `w` computation and `p` 
 # computation only on active `columns`
-function compute_active_z_columns(grid, ib)
-    field = active_z_columns_field(grid, ib)
+function build_active_z_columns(grid, ib)
+    field = compute_active_z_columns(grid, ib)
     field_interior = on_architecture(CPU(), interior(field, :, :, 1))
   
     full_indices = findall(field_interior)

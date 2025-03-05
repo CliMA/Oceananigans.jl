@@ -14,7 +14,7 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch} <: AbstractGrid{FT
 end
 
 # Internal interface
-function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I, mi::M, ms::S) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I, M, S}
+function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I, mi::M, ms::S) where {TX, TY, TZ, G<:AbstractUnderlyingGrid, I, M, S}
     FT = eltype(grid)
     arch = architecture(grid)
     Arch = typeof(arch)
@@ -47,13 +47,13 @@ function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersed
     
     # Create the cells map on the CPU, then switch it to the GPU
     interior_active_cells = if active_cells_map
-        compute_active_cells(grid, materialized_ib)
+        build_active_cells_map(grid, materialized_ib)
     else
         nothing
     end
 
     active_z_columns = if active_z_columns
-        compute_active_z_columns(grid, materialized_ib) 
+        build_active_z_columns(grid, materialized_ib) 
     else
         nothing
     end
