@@ -36,7 +36,7 @@ set!(model, b = bᵢ)
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_time = 100hours) 
+simulation = Simulation(model; Δt, stop_time = 17hours) 
 
 Δz = zspacings(grid, Center(), Center(), Center())
 ∫b_init = sum(model.tracers.b * Δz) / sum(Δz)
