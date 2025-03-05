@@ -10,7 +10,7 @@ end
 
 @kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     idx = @index(Global, Linear)
-    i, j = active_linear_index_to_tuple(idx, active_cells_map)
+    i, j = linear_index_to_tuple(idx, active_cells_map)
     ab2_integrate_tendencies!(Gᵁ, Gⱽ, i, j, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
 end
 
@@ -27,9 +27,9 @@ end
     end
 end
 
-@inline function ab2_step_G(i, j, k, grid, ℓx, ℓy, ℓz, G⁻, Gⁿ, χ::FT) where FT 
-    C₁ = convert(FT, 3/2) + χ
-    C₂ = convert(FT, 1/2) + χ
+@inline function ab2_step_G(i, j, k, grid, ℓx, ℓy, ℓz, G⁻, Gⁿ, χ) 
+    C₁ = 3 * one(grid) / 2 + χ
+    C₂ =     one(grid) / 2 + χ
 
     # multiply G⁻ by false if C₂ is zero to 
     # prevent propagationg possible NaNs
@@ -43,7 +43,7 @@ end
 
 @inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, 
                                                  timestepper::QuasiAdamsBashforth2TimeStepper, stage)
-    active_cells_map = retrieve_surface_active_cells_map(grid)
+    active_cells_map = get_active_column_map(grid)
 
     Gu⁻ = timestepper.G⁻.u
     Gv⁻ = timestepper.G⁻.v
@@ -73,7 +73,7 @@ end
 
 @kernel function _compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, active_cells_map, Guⁿ, Gvⁿ, stage)
     idx = @index(Global, Linear)
-    i, j = active_linear_index_to_tuple(idx, active_cells_map)
+    i, j = linear_index_to_tuple(idx, active_cells_map)
     compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, stage)
 end
 
@@ -91,8 +91,6 @@ end
 end
 
 @inline function compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, ::Val{2})
-    FT = eltype(GUⁿ)
-
     @inbounds GUⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
     @inbounds GVⁿ[i, j, 1] = G_vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
 
@@ -106,8 +104,8 @@ end
     GUi = G_vertical_integral(i, j, grid, Guⁿ, Face(), Center(), Center())
     GVi = G_vertical_integral(i, j, grid, Gvⁿ, Center(), Face(), Center())
 
-    @inbounds GUⁿ[i, j, 1] = convert(FT, 2/3) * GUi + GU⁻[i, j, 1]
-    @inbounds GVⁿ[i, j, 1] = convert(FT, 2/3) * GVi + GV⁻[i, j, 1]
+    @inbounds GUⁿ[i, j, 1] = 2 * GUi / 3 + GU⁻[i, j, 1]
+    @inbounds GVⁿ[i, j, 1] = 2 * GVi / 3 + GV⁻[i, j, 1]
 end
 
 @inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, 
@@ -116,7 +114,7 @@ end
     GU⁻ = timestepper.G⁻.U
     GV⁻ = timestepper.G⁻.V
 
-    active_cells_map = retrieve_surface_active_cells_map(grid)    
+    active_cells_map = get_active_column_map(grid)    
     launch!(architecture(grid), grid, :xy, _compute_integrated_rk3_tendencies!, 
             GUⁿ, GVⁿ, GU⁻, GV⁻, grid, active_cells_map, Guⁿ, Gvⁿ, stage; active_cells_map)
 

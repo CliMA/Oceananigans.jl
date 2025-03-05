@@ -36,15 +36,15 @@ function time_stepping_works_with_coriolis(arch, FT, Coriolis)
     return true # Test that no errors/crashes happen when time stepping.
 end
 
-function time_stepping_works_with_closure(arch, FT, Closure; buoyancy=Buoyancy(model=SeawaterBuoyancy(FT)))
+function time_stepping_works_with_closure(arch, FT, Closure; Model=NonhydrostaticModel, buoyancy=BuoyancyForce(SeawaterBuoyancy(FT)))
     # Add TKE tracer "e" to tracers when using CATKEVerticalDiffusivity
     tracers = [:T, :S]
     Closure === CATKEVerticalDiffusivity && push!(tracers, :e)
-
+    
     # Use halos of size 3 to be conservative
     grid = RectilinearGrid(arch, FT; size=(3, 3, 3), halo=(3, 3, 3), extent=(1, 2, 3))
-    closure = Closure(FT)
-    model = NonhydrostaticModel(; grid, closure, tracers, buoyancy)
+    closure = Closure === IsopycnalSkewSymmetricDiffusivity ? Closure(FT, κ_skew=1, κ_symmetric=1) : Closure(FT)
+    model = Model(; grid, closure, tracers, buoyancy)
     time_step!(model, 1)
 
     return true  # Test that no errors/crashes happen when time stepping.
@@ -387,11 +387,9 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
             for Closure in Closures
                 @info "  Testing that time stepping works [$(typeof(arch)), $FT, $Closure]..."
-                if Closure === TwoDimensionalLeith
-                    @test time_stepping_works_with_closure(arch, FT, Closure)
-                elseif Closure === CATKEVerticalDiffusivity
+                if Closure === CATKEVerticalDiffusivity || Closure === IsopycnalSkewSymmetricDiffusivity
                     # CATKE isn't supported with NonhydrostaticModel yet
-                    @test_skip time_stepping_works_with_closure(arch, FT, Closure)
+                    @test time_stepping_works_with_closure(arch, FT, Closure; Model=HydrostaticFreeSurfaceModel)
                 elseif Closure() isa DynamicSmagorinsky
                     @test_skip time_stepping_works_with_closure(arch, FT, Closure)
                 else
@@ -401,6 +399,17 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
             # AnisotropicMinimumDissipation can depend on buoyancy...
             @test time_stepping_works_with_closure(arch, FT, AnisotropicMinimumDissipation; buoyancy=nothing)
+        end
+    end
+
+    @testset "UniformStokesDrift" begin
+        for arch in archs
+            grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+            # Cover three cases:
+            stokes_drift = UniformStokesDrift(grid, ∂z_vˢ=nothing, ∂t_uˢ= (z, t) -> exp(z/20))
+            model = NonhydrostaticModel(; grid, stokes_drift)
+            time_step!(model, 1)
+            @test true
         end
     end
 

@@ -39,6 +39,8 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     filepath3d = "test_3d_output_with_halos.jld2"
     filepath2d = "test_2d_output_with_halos.jld2"
     filepath1d = "test_1d_output_with_halos.jld2"
+    split_filepath = "test_split_output.jld2"
+    unsplit_filepath = "test_unsplit_output.jld2"
 
     simulation.output_writers[:jld2_3d_with_halos] =
         JLD2OutputWriter(model, fields_to_output,
@@ -64,9 +66,24 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
                          schedule = TimeInterval(30seconds),
                          overwrite_existing = true)
 
+    simulation.output_writers[:unsplit_jld2] =
+        JLD2OutputWriter(model, profiles,
+                         filename = unsplit_filepath,
+                         with_halos = true,
+                         schedule = TimeInterval(10seconds),
+                         overwrite_existing = true)
+
+    simulation.output_writers[:split_jld2] =
+        JLD2OutputWriter(model, profiles,
+                         filename = split_filepath,
+                         with_halos = true,
+                         schedule = TimeInterval(10seconds),
+                         file_splitting = TimeInterval(30seconds),
+                         overwrite_existing = true)
+
     run!(simulation)
 
-    return filepath1d, filepath2d, filepath3d
+    return filepath1d, filepath2d, filepath3d, unsplit_filepath, split_filepath
 end
 
 @testset "OutputReaders" begin
@@ -74,7 +91,7 @@ end
 
     Nt = 5
     Nx, Ny, Nz = 16, 10, 5
-    filepath1d, filepath2d, filepath3d = generate_some_interesting_simulation_data(Nx, Ny, Nz)
+    filepath1d, filepath2d, filepath3d, unsplit_filepath, split_filepath = generate_some_interesting_simulation_data(Nx, Ny, Nz)
 
     for arch in archs
         @testset "FieldTimeSeries{InMemory} [$(typeof(arch))]" begin
@@ -220,6 +237,28 @@ end
                 @test u1[1] isa Field
                 @test v1[2] isa Field
             end
+
+            us = FieldTimeSeries(split_filepath, "u", architecture=arch)
+            vs = FieldTimeSeries(split_filepath, "v", architecture=arch)
+            ws = FieldTimeSeries(split_filepath, "w", architecture=arch)
+            Ts = FieldTimeSeries(split_filepath, "T", architecture=arch)
+            bs = FieldTimeSeries(split_filepath, "b", architecture=arch)
+            ζs = FieldTimeSeries(split_filepath, "ζ", architecture=arch)
+
+            uu = FieldTimeSeries(unsplit_filepath, "u", architecture=arch)
+            vu = FieldTimeSeries(unsplit_filepath, "v", architecture=arch)
+            wu = FieldTimeSeries(unsplit_filepath, "w", architecture=arch)
+            Tu = FieldTimeSeries(unsplit_filepath, "T", architecture=arch)
+            bu = FieldTimeSeries(unsplit_filepath, "b", architecture=arch)
+            ζu = FieldTimeSeries(unsplit_filepath, "ζ", architecture=arch)
+
+            split = (us, vs, ws, Ts, bs, ζs)                
+            unsplit = (uu, vu, wu, Tu, bu, ζu)                
+            for pair in zip(split, unsplit)    
+                s, u = pair
+                @test s.times == u.times
+                @test parent(s) == parent(u)
+            end
         end
 
         if arch isa GPU
@@ -328,7 +367,7 @@ end
         @info "  Testing Chunked abstraction..."
         filepath = "testfile.jld2"
         fts = FieldTimeSeries(filepath, "c")
-        fts_chunked = FieldTimeSeries(filepath, "c"; backend = InMemory(2), time_indexing = Cyclical())
+        fts_chunked = FieldTimeSeries(filepath, "c"; backend=InMemory(2), time_indexing=Cyclical())
 
         for t in eachindex(fts.times)
             fts_chunked[t] == fts[t]
@@ -435,7 +474,56 @@ end
         end
     end
 
+    filepath_sine = "one_dimensional_sine.jld2"
+
+    @testset "Test interpolation using `InMemory` backends" begin
+        grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+        times = 0:0.1:3
+
+        sinf(t) = sin(2π * t / 3)
+
+        f   = CenterField(grid) 
+        fts = FieldTimeSeries{Center, Center, Center}(grid, times; backend=OnDisk(), path=filepath_sine, name="f")
+        
+        for (i, time) in enumerate(fts.times)
+            set!(f, (x, y, z) -> sinf(time))
+            set!(fts, f, i)
+        end
+        
+        # Now we load the FTS partly in memory
+        # using different time indexing strategies
+        M = 5
+        fts1 = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M))
+        fts2 = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M), time_indexing = Cyclical())
+        fts3 = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M), time_indexing = Clamp())
+        
+        # Test that linear interpolation is correct within the time domain
+        for time in 0:0.01:last(fts.times)
+            tidx = findfirst(fts.times .> time)
+            if !isnothing(tidx)
+                t⁻ = fts.times[tidx - 1]
+                t⁺ = fts.times[tidx]
+
+                Δt⁺ = (time - t⁻) / (t⁺ - t⁻)
+            
+                @test fts1[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺) 
+                @test fts2[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺) 
+                @test fts3[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺) 
+            end
+        end
+
+        Δt = fts.times[end] - fts.times[end - 1]        
+
+        # Test that the time interpolation is correct outside the time domain
+        for time in last(fts.times) + 1 : 0.01 :  last(fts.times) * 2
+            @test fts1[Time(time)][1, 1, 1] ≈ (fts1[end][1, 1, 1] - fts1[end-1][1, 1, 1]) / Δt * (time - last(fts.times))
+            @test fts3[Time(time)][1, 1, 1] ≈ fts3[end][1, 1, 1]
+        end
+
+    end
+
     rm(filepath1d)
     rm(filepath2d)
     rm(filepath3d)
+    rm(filepath_sine)
 end

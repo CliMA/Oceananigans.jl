@@ -4,6 +4,7 @@ module Operators
 export Δxᶠᶠᶠ, Δxᶠᶠᶜ, Δxᶠᶜᶠ, Δxᶠᶜᶜ, Δxᶜᶠᶠ, Δxᶜᶠᶜ, Δxᶜᶜᶠ, Δxᶜᶜᶜ
 export Δyᶠᶠᶠ, Δyᶠᶠᶜ, Δyᶠᶜᶠ, Δyᶠᶜᶜ, Δyᶜᶠᶠ, Δyᶜᶠᶜ, Δyᶜᶜᶠ, Δyᶜᶜᶜ
 export Δzᶠᶠᶠ, Δzᶠᶠᶜ, Δzᶠᶜᶠ, Δzᶠᶜᶜ, Δzᶜᶠᶠ, Δzᶜᶠᶜ, Δzᶜᶜᶠ, Δzᶜᶜᶜ
+export Δrᶠᶠᶠ, Δrᶠᶠᶜ, Δrᶠᶜᶠ, Δrᶠᶜᶜ, Δrᶜᶠᶠ, Δrᶜᶠᶜ, Δrᶜᶜᶠ, Δrᶜᶜᶜ
 
 # Areas
 export Axᶠᶠᶠ, Axᶠᶠᶜ, Axᶠᶜᶠ, Axᶠᶜᶜ, Axᶜᶠᶠ, Axᶜᶠᶜ, Axᶜᶜᶠ, Axᶜᶜᶜ
@@ -16,6 +17,9 @@ export Azᵃᶜᶜ, Azᵃᶠᶠ, Azᶜᵃᶜ, Azᶠᵃᶠ, Azᶜᶜᵃ, Azᶠᶠ
 
 # Volumes
 export Vᶠᶠᶠ, Vᶠᶠᶜ, Vᶠᶜᶠ, Vᶠᶜᶜ, Vᶜᶠᶠ, Vᶜᶠᶜ, Vᶜᶜᶠ, Vᶜᶜᶜ
+
+# General metric operators
+export xspacing, yspacing, zspacing, λspacing, φspacing, xarea, yarea, zarea, volume
 
 # Product between spacings and fields
 export Δx_qᶠᶠᶠ, Δx_qᶠᶠᶜ, Δx_qᶠᶜᶠ, Δx_qᶠᶜᶜ, Δx_qᶜᶠᶠ, Δx_qᶜᶠᶜ, Δx_qᶜᶜᶠ, Δx_qᶜᶜᶜ
@@ -65,6 +69,7 @@ export ∇²ᶜᶜᶜ, ∇²ᶠᶜᶜ, ∇²ᶜᶠᶜ, ∇²ᶜᶜᶠ, ∇²hᶜ
 export ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ
 export ℑxyᶜᶜᵃ, ℑxyᶠᶜᵃ, ℑxyᶠᶠᵃ, ℑxyᶜᶠᵃ, ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ, ℑyzᵃᶜᶠ
 export ℑxyzᶜᶜᶠ, ℑxyzᶜᶠᶜ, ℑxyzᶠᶜᶜ, ℑxyzᶜᶠᶠ, ℑxyzᶠᶜᶠ, ℑxyzᶠᶠᶜ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ
+export active_weighted_ℑxyᶠᶜᶜ, active_weighted_ℑxyᶜᶠᶜ
 
 # Topology-aware operators
 export δxTᶠᵃᵃ, δyTᵃᶠᵃ, δxTᶜᵃᵃ, δyTᵃᶜᵃ
@@ -73,19 +78,17 @@ export ∂xTᶠᶜᶠ, ∂yTᶜᶠᶠ
 # Reference frame conversion
 export intrinsic_vector, extrinsic_vector
 
-using Oceananigans.Grids
+# Variable grid operators
+export σⁿ, σ⁻, ∂t_σ
 
-import Oceananigans.Grids: xspacing, yspacing, zspacing
+using Oceananigans.Grids
+using Oceananigans.Grids: LLGOTF, XRegLLGOTF, YRegLLGOTF
 
 #####
 ##### Convenient aliases
 #####
 
 const AG = AbstractGrid
-
-const Δx = xspacing
-const Δy = yspacing
-const Δz = zspacing
 
 const RG  = RectilinearGrid
 const RGX = XRegularRG
@@ -100,10 +103,17 @@ const LLGX = XRegularLLG
 const LLGY = YRegularLLG
 const LLGZ = ZRegularLLG
 
-# On the fly calculations of metrics
-const LLGF  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing}
-const LLGFX = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Number}
-const LLGFY = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Any, <:Number}
+# Vertically regular grids
+const ZRG = Union{RGZ, OSSGZ, LLGZ}
+
+const LLGF  = LLGOTF
+const LLGFX = XRegLLGOTF
+const LLGFY = YRegLLGOTF
+
+const F = Face
+const f = Face()
+const C = Center
+const c = Center()
 
 include("difference_operators.jl")
 include("interpolation_operators.jl")
@@ -118,6 +128,17 @@ include("topology_aware_operators.jl")
 include("vorticity_operators.jl")
 include("laplacian_operators.jl")
 
+include("time_variable_grid_operators.jl")
 include("vector_rotation_operators.jl")
+
+@inline xspacing(args...) = Δx(args...) 
+@inline yspacing(args...) = Δy(args...)
+@inline zspacing(args...) = Δz(args...)
+@inline λspacing(abs...)  = Δλ(abs...)
+@inline φspacing(abs...)  = Δφ(abs...)
+@inline rspacing(args...) = Δr(args...)
+@inline xarea(args...)    = Ax(args...)
+@inline yarea(args...)    = Ay(args...)
+@inline zarea(args...)    = Az(args...)
 
 end # module

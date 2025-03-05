@@ -13,24 +13,24 @@ struct SplitRungeKutta3TimeStepper{FT, TG, TE, PF, TI} <: AbstractTimeStepper
     ζ² :: FT
     ζ³ :: FT
     Gⁿ :: TG
-    G⁻ :: TE # only used as storage when needed
+    G⁻ :: TE # only needed for barotropic velocities in the barotropic step
     Ψ⁻ :: PF # prognostic state at the previous timestep
     implicit_solver :: TI
 end
 
 """
-    SplitRungeKutta3TimeStepper(grid, tracers;
-                                implicit_solver = nothing,
-                                Gⁿ = TendencyFields(grid, tracers),
-                                G⁻ = TendencyFields(grid, tracers),
-                                Ψ⁻ = TendencyFields(grid, tracers))
+    SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
+                                implicit_solver::TI = nothing,
+                                Gⁿ::TG = map(similar, prognostic_fields),
+                                Ψ⁻::PF = map(similar, prognostic_fields)
+                                G⁻::TE = nothing) where {TI, TG, PF, TE}
 
 Return a 3rd-order `SplitRungeKutta3TimeStepper` on `grid` and with `tracers`.
-The tendency fields `Gⁿ` and `G⁻`, as well as the previous prognostic state Ψ⁻ can be specified via optional `kwargs`.
+The tendency fields `Gⁿ` and `G⁻`, and the previous state ` Ψ⁻` can be modified via optional `kwargs`.
 
-The scheme described by [Lan2022](@citet). In a nutshel, the 3rd-order
-Runge Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps. A baroptropic velocity correction
-step is applied after at each substep.
+The scheme described by [Lan2022](@citet). In a nutshell, the 3rd-order Runge Kutta timestepper 
+steps forward the state `Uⁿ` by `Δt` via 3 substeps. A barotropic velocity correction step is applied 
+after at each substep.
 
 The state `U` after each substep `m` is
 
@@ -45,11 +45,11 @@ at the ``m``-th substep, and constants ``γ¹ = 1`, ``γ² = 1/4``, ``γ³ = 1/3
 The state at the first substep is taken to be the one that corresponds to the ``n``-th timestep,
 `U¹ = Uⁿ`, and the state after the third substep is then the state at the `Uⁿ⁺¹ = U³`.
 """
-function SplitRungeKutta3TimeStepper(grid, tracers;
+function SplitRungeKutta3TimeStepper(grid, prognostic_fields, args...;
                                      implicit_solver::TI = nothing,
-                                     Gⁿ::TG = TendencyFields(grid, tracers),
-                                     G⁻::TE = TendencyFields(grid, tracers),
-                                     Ψ⁻::PF = TendencyFields(grid, tracers)) where {TI, TG, TE, PF}
+                                     Gⁿ::TG = map(similar, prognostic_fields),
+                                     Ψ⁻::PF = map(similar, prognostic_fields),
+                                     G⁻::TE = nothing) where {TI, TG, PF, TE}
 
 
     @warn("Split barotropic-baroclinic time stepping with SplitRungeKutta3TimeStepper is not tested and experimental.\n" *

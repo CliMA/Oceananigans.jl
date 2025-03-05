@@ -3,7 +3,7 @@ module Models
 export
     NonhydrostaticModel,
     ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation,
-    HydrostaticFreeSurfaceModel,
+    HydrostaticFreeSurfaceModel, ZStar, ZCoordinate,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields, PressureField,
     LagrangianParticles,
@@ -34,6 +34,7 @@ import Oceananigans.Solvers: iteration
 
 iteration(model::AbstractModel) = model.clock.iteration
 Base.time(model::AbstractModel) = model.clock.time
+Base.eltype(model::AbstractModel) = eltype(model.grid)
 architecture(model::AbstractModel) = model.grid.architecture
 initialize!(model::AbstractModel) = nothing
 total_velocities(model::AbstractModel) = nothing
@@ -108,7 +109,7 @@ using .NonhydrostaticModels: NonhydrostaticModel, PressureField
 using .HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    PrescribedVelocityFields
+    PrescribedVelocityFields, ZStar, ZCoordinate
 
 using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
 
@@ -191,5 +192,7 @@ default_nan_checker(::OnlyParticleTrackingModel) = nothing
 # Implementation of a `seawater_density` `KernelFunctionOperation
 # applicable to both `NonhydrostaticModel` and  `HydrostaticFreeSurfaceModel`
 include("seawater_density.jl")
+
+include("boundary_mean.jl")
 
 end # module

@@ -364,7 +364,10 @@ for arch in archs
 
             @testset "Unary computations [$A, $G]" begin
                 @info "      Testing correctness of compute! unary operations..."
-                for unary in (sqrt, sin, cos, exp, tanh)
+                dont_test = tuple(:interpolate_identity)
+                operators_to_test = filter(op -> !(op ∈ dont_test), Oceananigans.AbstractOperations.unary_operators)
+                for unary_symbol in operators_to_test
+                    unary = eval(unary_symbol)
                     @test compute_unary(unary, model)
                 end
             end
@@ -619,8 +622,8 @@ for arch in archs
 
                 uT = Field(u * T)
 
-                α = model.buoyancy.model.equation_of_state.thermal_expansion
-                g = model.buoyancy.model.gravitational_acceleration
+                α = model.buoyancy.formulation.equation_of_state.thermal_expansion
+                g = model.buoyancy.formulation.gravitational_acceleration
                 b = BuoyancyField(model)
 
                 compute_at!(uT, 1.0)

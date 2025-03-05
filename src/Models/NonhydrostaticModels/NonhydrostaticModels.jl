@@ -18,7 +18,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: p_kernel_parameters
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: update_hydrostatic_pressure!
 using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver 
-using Oceananigans.Utils: SumOfArrays
+using Oceananigans.Utils: sum_of_velocities
 
 import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale

@@ -1,11 +1,12 @@
 env:
-  JULIA_VERSION: "1.10.6"
+  JULIA_VERSION: "1.10.8"
   JULIA_MINOR_VERSION: "1.10"
-  SVERDRUP_HOME: "/data5/glwagner"
+  SVERDRUP_HOME: "/home/users/glwagner"
   TARTARUS_HOME: "/storage5/buildkite-agent"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
-  JULIA_NUM_PRECOMPILE_TASKS: 8
+  JULIA_NUM_PRECOMPILE_TASKS: 24
   JULIA_NUM_THREADS: 8
+  XLA_REACTANT_GPU_PREALLOCATE: false
 
 steps:
   - label: "🎪 initialize gpu environment"
@@ -319,13 +320,14 @@ steps:
 ##### Turbulence Closures
 #####
 
+            
   - label: "🎣 gpu turbulence closures"
     env:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "turbulence_closures"
       GPU_TEST: "true"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: GPU
@@ -335,20 +337,7 @@ steps:
           limit: 1
     depends_on: "init_gpu"
 
-  - label: "🎏 cpu turbulence closures"
-    env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "turbulence_closures"
-    commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      queue: Oceananigans
-      architecture: CPU
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
-    depends_on: "init_cpu"
+#  The CPU turbulence closures test used to be here, but was moved to Github Actions. See https://github.com/CliMA/Oceananigans.jl/pull/3926
 
 #####
 ##### HydrostaticFreeSurfaceModel
@@ -662,6 +651,42 @@ steps:
     depends_on: "init_cpu"
 
 #####
+##### Vertical Coordinates tests
+#####
+
+  - label: "🥑 gpu vertical coordinate"
+    env:
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "vertical_coordinate"
+      GPU_TEST: "true"
+    commands:
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
+    depends_on: "init_gpu"
+
+  - label: "🥒 cpu vertical coordinate"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "vertical_coordinate"
+      CUDA_VISIBLE_DEVICES: "-1"
+    commands:
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
+    depends_on: "init_cpu"
+
+#####
 ##### Enzyme extension tests
 #####
 
@@ -685,6 +710,41 @@ steps:
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "enzyme"
+    commands:
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
+    depends_on: "init_cpu"
+
+#####
+##### Reactant extension tests
+#####
+
+  - label: "👺 gpu Reactant extension tests"
+    env:
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "reactant"
+      GPU_TEST: "true"
+    commands:
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: GPU
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
+    depends_on: "init_gpu"
+
+  - label: "👹 cpu Reactant extension tests"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "reactant"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
