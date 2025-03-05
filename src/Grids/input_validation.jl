@@ -84,7 +84,11 @@ function validate_halo(TX, TY, TZ, size, halo)
     halo = inflate_tuple(TX, TY, TZ, halo, default=0)
 
     for i in 1:2
-        !(halo[i] ≤ size[i]) && throw(ArgumentError("halo must be ≤ size for coordinate $(coordinate_name(i))"))
+        H = halo[i]
+        N = size[i]
+        if !(H ≤ N)
+            throw(ArgumentError("halo=$H must be ≤ size=$N for coordinate $(coordinate_name(i))"))
+        end
     end
 
     return halo
