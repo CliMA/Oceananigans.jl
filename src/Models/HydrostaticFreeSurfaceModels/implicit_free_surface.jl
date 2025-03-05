@@ -124,12 +124,12 @@ build_implicit_step_solver(::Val{:Default}, grid, settings, gravitational_accele
 Implicitly step forward η.
 """
 function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper, Δt)
-    η      = free_surface.η
-    g      = free_surface.gravitational_acceleration
-    rhs    = free_surface.implicit_step_solver.right_hand_side
-    ∫ᶻQ    = free_surface.barotropic_volume_flux
+    η = free_surface.η
+    g = free_surface.gravitational_acceleration
+    rhs = free_surface.implicit_step_solver.right_hand_side
+    ∫ᶻQ = free_surface.barotropic_volume_flux
     solver = free_surface.implicit_step_solver
-    arch   = model.architecture
+    arch = model.architecture
 
     fill_halo_regions!(model.velocities, model.clock, fields(model))
 
@@ -160,3 +160,4 @@ function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch)
 
     return nothing
 end
+
