@@ -8,7 +8,7 @@ using Oceananigans.ImmersedBoundaries: get_active_cells_map
 
 using Oceananigans.Utils: launch!
 
-import Oceananigans.TimeSteppers: store_tendencies!
+import Oceananigans.TimeSteppers: cache_previous_tendencies!
 
 """ Store source terms for `η`. """
 @kernel function _store_free_surface_tendency!(Gη⁻, grid, Gη⁰)
@@ -27,7 +27,7 @@ function store_free_surface_tendency!(::ExplicitFreeSurface, model)
 end
 
 """ Store previous source terms before updating them. """
-function store_tendencies!(model::HydrostaticFreeSurfaceModel)
+function cache_previous_tendencies!(model::HydrostaticFreeSurfaceModel)
     prognostic_field_names = keys(prognostic_fields(model))
     three_dimensional_prognostic_field_names = filter(name -> name != :η, prognostic_field_names)
 

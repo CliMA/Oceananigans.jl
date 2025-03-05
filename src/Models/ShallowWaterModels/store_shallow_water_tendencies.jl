@@ -4,7 +4,7 @@ using Oceananigans.TimeSteppers: store_tracer_tendency!
 
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
-import Oceananigans.TimeSteppers: store_tendencies!
+import Oceananigans.TimeSteppers: cache_previous_tendencies!
 
 """ Store source terms for `uh`, `vh`, and `h`. """
 @kernel function store_solution_tendencies!(G⁻, grid, G⁰)
@@ -15,7 +15,7 @@ import Oceananigans.TimeSteppers: store_tendencies!
 end
 
 """ Store previous source terms before updating them. """
-function store_tendencies!(model::ShallowWaterModel)
+function cache_previous_tendencies!(model::ShallowWaterModel)
     workgroup, worksize = work_layout(model.grid, :xyz)
 
     store_solution_tendencies_kernel! = store_solution_tendencies!(device(model.architecture), workgroup, worksize)
