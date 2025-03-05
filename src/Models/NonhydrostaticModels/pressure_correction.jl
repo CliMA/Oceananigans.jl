@@ -9,11 +9,11 @@ Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `vel
 """
 function calculate_pressure_correction!(model::NonhydrostaticModel, Δt)
 
-    if !isnothing(model.free_surface)
-        step_free_surface!(model.free_surface, model, model.timestepper, Δt)
-        # "First" barotropic pressure correction
-        pressure_correct_velocities!(model, model.free_surface, Δt)
-    end
+    # if !isnothing(model.free_surface)
+    #     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
+    #     # "First" barotropic pressure correction
+    #     pressure_correct_velocities!(model, model.free_surface, Δt)
+    # end
 
     # Mask immersed velocities
     foreach(mask_immersed_field!, model.velocities)
