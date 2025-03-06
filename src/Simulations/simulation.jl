@@ -57,6 +57,9 @@ function Simulation(model; Δt,
                     stop_time = Inf,
                     wall_time_limit = Inf,
                     align_time_step = true,
+                    diagnostics = OrderedDict{Symbol, AbstractDiagnostic}(),
+                    output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),
+                    callbacks = OrderedDict{Symbol, Callback}(),
                     minimum_relative_step = 0)
 
    if verbose && stop_iteration == Inf && stop_time == Inf && wall_time_limit == Inf
@@ -65,10 +68,6 @@ function Simulation(model; Δt,
    end
 
    Δt = validate_Δt(Δt, architecture(model))
-
-   diagnostics = OrderedDict{Symbol, AbstractDiagnostic}()
-   output_writers = OrderedDict{Symbol, AbstractOutputWriter}()
-   callbacks = OrderedDict{Symbol, Callback}()
 
    callbacks[:stop_time_exceeded] = Callback(stop_time_exceeded)
    callbacks[:stop_iteration_exceeded] = Callback(stop_iteration_exceeded)
