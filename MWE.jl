@@ -63,7 +63,7 @@ default_boundary_conditions = (u = FieldBoundaryConditions(top=u_top_bc, bottom=
 # conditions even when a user-bc is supplied).
 buoyancy = SeawaterBuoyancy(; equation_of_state)
 tracer_advection = (T=WENO(), S=WENO(), e=nothing)
-timestepper = QuasiAdamsBashforth2TimeStepper(grid, ([], []))
+# timestepper = QuasiAdamsBashforth2TimeStepper(grid, ([], []))
 
 @info "constructing model"
 

@@ -35,13 +35,15 @@ const FullField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple{<:Colon, <:Co
 @inline inner_flatten_tuple(a::Tuple) = flatten_tuple(a)
 @inline inner_flatten_tuple(a::Tuple{}) = ()
 
-function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, clock, model_fields; kwargs...)
+function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, clock, model_fields; async=false, only_local_halos=false)
     for f in fields
-        fill_halo_regions!(f, clock, model_fields; kwargs...)
+        if f isa Field
+            fill_halo_regions!(f, clock, model_fields; async, only_local_halos)
+        end
     end
 end
 
-fill_halo_regions!(fields::Union{Tuple, NamedTuple}; kwargs...) = fill_halo_regions!(fields, nothing, nothing; kwargs...)
+fill_halo_regions!(fields::Union{Tuple, NamedTuple}; async=false, only_local_halos=false) = fill_halo_regions!(fields, nothing, nothing; async, only_local_halos)
 
 # """
 #     fill_halo_regions!(fields::NamedTuple, args...; kwargs...) 

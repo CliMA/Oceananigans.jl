@@ -760,9 +760,9 @@ end
 ##### fill_halo_regions!
 #####
 
-fill_halo_regions!(field::Field; kwargs...) = fill_halo_regions!(field, nothing, nothing; kwargs...)
+fill_halo_regions!(field::Field; async=false, only_local_halos=false) = fill_halo_regions!(field, nothing, nothing; async, only_local_halos)
 
-function fill_halo_regions!(field::Field, clock, fields; kwargs...)
+function fill_halo_regions!(field::Field, clock, fields; async=false, only_local_halos=false)
     reduced_dims = reduced_dimensions(field)
 
     fill_halo_regions!(field.data,
@@ -772,8 +772,9 @@ function fill_halo_regions!(field::Field, clock, fields; kwargs...)
                        field.grid,
                        clock, 
                        fields;
-                       reduced_dimensions = reduced_dims,
-                       kwargs...)
+                       reduced_dimensions=reduced_dims,
+                       async, 
+                       only_local_halos)
 
     return nothing
 end
