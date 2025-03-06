@@ -71,10 +71,6 @@ extent(grid) = (grid.Lx, grid.Ly, grid.Lz)
 function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT;
                                          tridiagonal_direction = stretched_direction(grid))
 
-    regular_top1, regular_top2 = Tuple(el for (i, el) in enumerate(topology(grid)) if i ≠ irreg_dim)
-    regular_siz1, regular_siz2 = Tuple(el for (i, el) in enumerate(size(grid))     if i ≠ irreg_dim)
-    regular_ext1, regular_ext2 = Tuple(el for (i, el) in enumerate(extent(grid))   if i ≠ irreg_dim)
-
     tridiagonal_dim = dimension(tridiagonal_direction)
     if topology(grid, tridiagonal_dim) != Bounded
         msg = "`FourierTridiagonalPoissonSolver` can only be used \
@@ -108,7 +104,8 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT;
     btsolver = BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal, tridiagonal_direction)
 
     # Need buffer for index permutations and transposes.
-    buffer_needed = arch isa GPU && Bounded in (regular_top1, regular_top2)
+    T1, T2 = Tuple(el for (i, el) in enumerate(topology(grid)) if i ≠ tridiagonal_dim)
+    buffer_needed = arch isa GPU && Bounded in (T1, T2)
     buffer = buffer_needed ? similar(sol_storage) : nothing
 
     # Storage space for right hand side of Poisson equation
