@@ -20,12 +20,23 @@ using Random
 
 OceananigansReactantExt = Base.get_extension(Oceananigans, :OceananigansReactantExt)
 
-function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw)
+bottom_height(x, y) = - 0.5
+
+function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw; immersed_boundary_grid=true)
     r_arch = ReactantState()
     r_grid = GridType(r_arch; grid_kw...)
-    r_model = ModelType(; grid=r_grid, model_kw...)
-
     grid = GridType(CPU(); grid_kw...)
+
+    if immersed_boundary_grid
+        grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
+        r_grid = ImmersedBoundaryGrid(r_grid, GridFittedBottom(bottom_height))
+        @test isnothing(r_grid.interior_active_cells)
+        @test isnothing(r_grid.active_z_columns)
+        @test isnothing(grid.interior_active_cells)
+        @test isnothing(grid.active_z_columns)
+    end
+
+    r_model = ModelType(; grid=r_grid, model_kw...)
     model = ModelType(; grid=grid, model_kw...)
 
     ui = randn(size(model.velocities.u)...)
@@ -205,10 +216,12 @@ end
     @info "Testing RectilinearGrid + HydrostaticFreeSurfaceModel Reactant correctness"
     hydrostatic_model_kw = (; free_surface=ExplicitFreeSurface(gravitational_acceleration=1))
     test_reactant_model_correctness(RectilinearGrid, HydrostaticFreeSurfaceModel, rectilinear_kw, hydrostatic_model_kw)
+    test_reactant_model_correctness(RectilinearGrid, HydrostaticFreeSurfaceModel, rectilinear_kw, hydrostatic_model_kw, immersed_boundary_grid=true)
 
     @info "Testing LatitudeLongitudeGrid + HydrostaticFreeSurfaceModel Reactant correctness"
     hydrostatic_model_kw = (; momentum_advection=WENO())
     test_reactant_model_correctness(LatitudeLongitudeGrid, HydrostaticFreeSurfaceModel, lat_lon_kw, hydrostatic_model_kw)
+    test_reactant_model_correctness(LatitudeLongitudeGrid, HydrostaticFreeSurfaceModel, lat_lon_kw, hydrostatic_model_kw, immersed_boundary_grid=true)
 
     #=
     equation_of_state = TEOS10EquationOfState()
