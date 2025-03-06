@@ -5,6 +5,7 @@ using Enzyme
 # Required presently
 Enzyme.API.looseTypeAnalysis!(true)
 Enzyme.API.maxtypeoffset!(2032)
+Enzyme.Compiler.VERBOSE_ERRORS[] = true
 
 # OceananigansLogger doesn't work here -- not sure why
 Logging.global_logger(TestLogger())
