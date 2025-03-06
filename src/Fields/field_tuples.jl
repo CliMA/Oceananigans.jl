@@ -35,70 +35,78 @@ const FullField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple{<:Colon, <:Co
 @inline inner_flatten_tuple(a::Tuple) = flatten_tuple(a)
 @inline inner_flatten_tuple(a::Tuple{}) = ()
 
-"""
-    fill_halo_regions!(fields::NamedTuple, args...; kwargs...) 
-
-Fill halo regions for all `fields`. The algorithm:
-
-  1. Flattens fields, extracting `values` if the field is `NamedTuple`, and removing
-     duplicate entries to avoid "repeated" halo filling.
-    
-  2. Filters fields into three categories:
-     i. ReducedFields with non-trivial boundary conditions;
-     ii. Fields with non-trivial indices and boundary conditions;
-     iii. Fields spanning the whole grid with non-trivial boundary conditions.
-    
-  3. Halo regions for every `ReducedField` and windowed fields are filled independently.
-    
-  4. In every direction, the halo regions in each of the remaining `Field` tuple
-     are filled simultaneously.
-"""
-function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args...; kwargs...)
-    flattened = flattened_unique_values(maybe_nested_tuple)
-
-    # Look for grid within the flattened field tuple:
-    for f in flattened
-        if isdefined(f, :grid)
-            grid = f.grid
-            return tupled_fill_halo_regions!(flattened, grid, args...; kwargs...)
-        end
+function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, clock, model_fields; kwargs...)
+    for f in fields
+        fill_halo_regions!(f, clock, model_fields; kwargs...)
     end
-
-    return tupled_fill_halo_regions!(flattened, args...; kwargs...)
 end
 
-# Version where we find grid amongst ordinary fields:
-function tupled_fill_halo_regions!(fields, args...; kwargs...)
+fill_halo_regions!(fields::Union{Tuple, NamedTuple}; kwargs...) = fill_halo_regions!(fields, nothing, nothing; kwargs...)
 
-    ordinary_fields = produce_ordinary_fields(fields, args...; kwargs)
+# """
+#     fill_halo_regions!(fields::NamedTuple, args...; kwargs...) 
 
-    if !isempty(ordinary_fields) # ie not reduced, and with default_indices
-        grid = first(ordinary_fields).grid
-        fill_halo_regions!(map(data, ordinary_fields),
-                           map(boundary_conditions, ordinary_fields),
-                           default_indices(3),
-                           map(instantiated_location, ordinary_fields),
-                           grid, args...; kwargs...)
-    end
+# Fill halo regions for all `fields`. The algorithm:
 
-    return nothing
-end
+#   1. Flattens fields, extracting `values` if the field is `NamedTuple`, and removing
+#      duplicate entries to avoid "repeated" halo filling.
     
-# Version where grid is provided:
-function tupled_fill_halo_regions!(fields, grid::AbstractGrid, args...; kwargs...)
+#   2. Filters fields into three categories:
+#      i. ReducedFields with non-trivial boundary conditions;
+#      ii. Fields with non-trivial indices and boundary conditions;
+#      iii. Fields spanning the whole grid with non-trivial boundary conditions.
+    
+#   3. Halo regions for every `ReducedField` and windowed fields are filled independently.
+    
+#   4. In every direction, the halo regions in each of the remaining `Field` tuple
+#      are filled simultaneously.
+# """
+# function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args...; kwargs...)
+#     flattened = flattened_unique_values(maybe_nested_tuple)
 
-    ordinary_fields = produce_ordinary_fields(fields, args...; kwargs)
+#     # Look for grid within the flattened field tuple:
+#     for f in flattened
+#         if isdefined(f, :grid)
+#             grid = f.grid
+#             return tupled_fill_halo_regions!(flattened, grid, args...; kwargs...)
+#         end
+#     end
 
-    if !isempty(ordinary_fields) # ie not reduced, and with default_indices
-        fill_halo_regions!(map(data, ordinary_fields),
-                           map(boundary_conditions, ordinary_fields),
-                           default_indices(3),
-                           map(instantiated_location, ordinary_fields),
-                           grid, args...; kwargs...)
-    end
+#     return tupled_fill_halo_regions!(flattened, args...; kwargs...)
+# end
 
-    return nothing
-end
+# # Version where we find grid amongst ordinary fields:
+# function tupled_fill_halo_regions!(fields, args...; kwargs...)
+
+#     ordinary_fields = produce_ordinary_fields(fields, args...; kwargs)
+
+#     if !isempty(ordinary_fields) # ie not reduced, and with default_indices
+#         grid = first(ordinary_fields).grid
+#         fill_halo_regions!(map(data, ordinary_fields),
+#                            map(boundary_conditions, ordinary_fields),
+#                            default_indices(3),
+#                            map(instantiated_location, ordinary_fields),
+#                            grid, args...; kwargs...)
+#     end
+
+#     return nothing
+# end
+    
+# # Version where grid is provided:
+# function tupled_fill_halo_regions!(fields, grid::AbstractGrid, args...; kwargs...)
+
+#     ordinary_fields = produce_ordinary_fields(fields, args...; kwargs)
+
+#     if !isempty(ordinary_fields) # ie not reduced, and with default_indices
+#         fill_halo_regions!(map(data, ordinary_fields),
+#                            map(boundary_conditions, ordinary_fields),
+#                            default_indices(3),
+#                            map(instantiated_location, ordinary_fields),
+#                            grid, args...; kwargs...)
+#     end
+
+#     return nothing
+# end
 
 # Helper function to create the tuple of ordinary fields:
 @inline function produce_ordinary_fields(fields, args...; kwargs)

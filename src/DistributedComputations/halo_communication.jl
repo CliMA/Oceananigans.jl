@@ -6,8 +6,6 @@ using Oceananigans.Fields: fill_send_buffers!,
                            instantiated_location,
                            produce_ordinary_fields
 
-import Oceananigans.Fields: tupled_fill_halo_regions!
-
 using Oceananigans.BoundaryConditions:
     fill_halo_size,
     fill_halo_offset,
@@ -78,16 +76,16 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-function tupled_fill_halo_regions!(fields, grid::DistributedGrid, args...; kwargs...)
-    ordinary_fields = produce_ordinary_fields(fields, args...; kwargs)
+# function tupled_fill_halo_regions!(fields, grid::DistributedGrid, args...; kwargs...)
+#     ordinary_fields = produce_ordinary_fields(fields, args...; kwargs)
 
-    for field in ordinary_fields
-        # Make sure we are filling a `Field` type.
-        field isa Field && fill_halo_regions!(field, args...; kwargs...)
-    end
-end
+#     for field in ordinary_fields
+#         # Make sure we are filling a `Field` type.
+#         field isa Field && fill_halo_regions!(field, args...; kwargs...)
+#     end
+# end
 
-function fill_halo_regions!(field::DistributedField, args...; kwargs...)
+function fill_halo_regions!(field::DistributedField, clock, fields; kwargs...)
     reduced_dims = reduced_dimensions(field)
 
     return fill_halo_regions!(field.data,
@@ -96,16 +94,17 @@ function fill_halo_regions!(field::DistributedField, args...; kwargs...)
                               instantiated_location(field),
                               field.grid,
                               field.boundary_buffers,
-                              args...;
+                              clock, 
+                              fields;
                               reduced_dimensions = reduced_dims,
                               kwargs...)
 end
 
-function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, args...;
+function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, clock, fields;
                             fill_boundary_normal_velocities=true, kwargs...)
 
     if fill_boundary_normal_velocities
-        fill_open_boundary_regions!(c, bcs, indices, loc, grid, buffers, args...; kwargs...)
+        fill_open_boundary_regions!(c, bcs, indices, loc, grid, buffers, clock, fields; kwargs...)
     end
     
     arch = architecture(grid)
@@ -114,10 +113,10 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     number_of_tasks = length(fill_halos!)
 
     for task = 1:number_of_tasks
-        fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, buffers, args...; kwargs...)
+        fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, buffers, clock, fields; kwargs...)
     end
 
-    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; kwargs...)
+    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, clock, fields; kwargs...)
     
     # Switch to the next field to send
     arch.mpi_tag[] += 1
@@ -193,7 +192,7 @@ cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 # There are two additional keyword arguments (with respect to serial `fill_halo_event!`s) that take an effect on `DistributedGrids`: 
 # - only_local_halos: if true, only the local halos are filled, i.e. corresponding to non-communicating boundary conditions
 # - async: if true, ansynchronous MPI communication is enabled
-function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid::DistributedGrid, buffers, args...;
+function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid::DistributedGrid, buffers, clock, fields;
                           async = false, only_local_halos = false, kwargs...)
 
     buffer_side = communication_side(Val(fill_halos!))

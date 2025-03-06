@@ -47,12 +47,16 @@ end
 const MaybeTupledData = Union{OffsetArray, Tuple{Vararg{OffsetArray}}}
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
-function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, loc, grid, args...; 
-                            fill_boundary_normal_velocities = true, kwargs...)
+function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, loc, grid, clock, fields; 
+                            fill_boundary_normal_velocities=true, 
+                            async=false,
+                            only_local_halos=false,
+                            reduced_dimensions=())
+
     arch = architecture(grid)
 
     if fill_boundary_normal_velocities
-        fill_open_boundary_regions!(c, boundary_conditions, indices, loc, grid, args...; kwargs...)
+        fill_open_boundary_regions!(c, boundary_conditions, indices, loc, grid, clock, fields; async, only_local_halos, reduced_dimensions)
     end
 
     fill_halos!, bcs = permute_boundary_conditions(boundary_conditions)
@@ -60,15 +64,16 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
 
     # Fill halo in the three permuted directions (1, 2, and 3), making sure dependencies are fulfilled
     for task = 1:number_of_tasks
-        fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, args...; kwargs...)
+        fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, clock, fields; async, only_local_halos, reduced_dimensions)
     end
 
     return nothing
 end
 
-function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid, args...; 
-                          async = false, # This kwargs is specific to DistributedGrids, here is does nothing
-                          kwargs...)
+function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid, clock, fields; 
+                          async=false,  # This kwargs is specific to DistributedGrids, here is does nothing
+                          only_local_halos=false, # This kwargs is specific to DistributedGrids, here is does nothing
+                          reduced_dimensions=())  
 
     # Calculate size and offset of the fill_halo kernel
     # We assume that the kernel size is the same for west and east boundaries, 
@@ -76,7 +81,7 @@ function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid, args...
     size   = fill_halo_size(c, fill_halos!, indices, bcs[1], loc, grid)
     offset = fill_halo_offset(size, fill_halos!, indices)
 
-    fill_halos!(c, bcs..., size, offset, loc, arch, grid, args...; kwargs...)
+    fill_halos!(c, bcs..., size, offset, loc, arch, grid, clock, fields; reduced_dimensions)
 
     return nothing
 end
@@ -199,56 +204,56 @@ fill_first(bc1, bc2)               = true
 ##### Double-sided fill_halo! kernels
 #####
 
-@kernel function _fill_west_and_east_halo!(c, west_bc, east_bc, loc, grid, args) 
+@kernel function _fill_west_and_east_halo!(c, west_bc, east_bc, loc, grid, clock, fields)
     j, k = @index(Global, NTuple)
-    _fill_west_halo!(j, k, grid, c, west_bc, loc, args...)
-    _fill_east_halo!(j, k, grid, c, east_bc, loc, args...)
+    _fill_west_halo!(j, k, grid, c, west_bc, loc, clock, fields)
+    _fill_east_halo!(j, k, grid, c, east_bc, loc, clock, fields)
 end
 
-@kernel function _fill_south_and_north_halo!(c, south_bc, north_bc, loc, grid, args)
+@kernel function _fill_south_and_north_halo!(c, south_bc, north_bc, loc, grid, clock, fields)
     i, k = @index(Global, NTuple)
-    _fill_south_halo!(i, k, grid, c, south_bc, loc, args...)
-    _fill_north_halo!(i, k, grid, c, north_bc, loc, args...)
+    _fill_south_halo!(i, k, grid, c, south_bc, loc, clock, fields)
+    _fill_north_halo!(i, k, grid, c, north_bc, loc, clock, fields)
 end
 
-@kernel function _fill_bottom_and_top_halo!(c, bottom_bc, top_bc, loc, grid, args)
+@kernel function _fill_bottom_and_top_halo!(c, bottom_bc, top_bc, loc, grid, clock, fields)
     i, j = @index(Global, NTuple)
-    _fill_bottom_halo!(i, j, grid, c, bottom_bc, loc, args...)
-       _fill_top_halo!(i, j, grid, c, top_bc,    loc, args...)
+    _fill_bottom_halo!(i, j, grid, c, bottom_bc, loc, clock, fields)
+       _fill_top_halo!(i, j, grid, c, top_bc,    loc, clock, fields)
 end
 
 #####
 ##### Single-sided fill_halo! kernels
 #####
 
-@kernel function _fill_only_west_halo!(c, bc, loc, grid, args)
+@kernel function _fill_only_west_halo!(c, bc, loc, grid, clock, fields)
     j, k = @index(Global, NTuple)
-    _fill_west_halo!(j, k, grid, c, bc, loc, args...)
+    _fill_west_halo!(j, k, grid, c, bc, loc, clock, fields)
 end
 
-@kernel function _fill_only_south_halo!(c, bc, loc, grid, args)
+@kernel function _fill_only_south_halo!(c, bc, loc, grid, clock, fields)
     i, k = @index(Global, NTuple)
-    _fill_south_halo!(i, k, grid, c, bc, loc, args...)
+    _fill_south_halo!(i, k, grid, c, bc, loc, clock, fields)
 end
 
-@kernel function _fill_only_bottom_halo!(c, bc, loc, grid, args)
+@kernel function _fill_only_bottom_halo!(c, bc, loc, grid, clock, fields)
     i, j = @index(Global, NTuple)
-    _fill_bottom_halo!(i, j, grid, c, bc, loc, args...)
+    _fill_bottom_halo!(i, j, grid, c, bc, loc, clock, fields)
 end
 
-@kernel function _fill_only_east_halo!(c, bc, loc, grid, args)
+@kernel function _fill_only_east_halo!(c, bc, loc, grid, clock, fields)
     j, k = @index(Global, NTuple)
-    _fill_east_halo!(j, k, grid, c, bc, loc, args...)
+    _fill_east_halo!(j, k, grid, c, bc, loc, clock, fields)
 end
 
-@kernel function _fill_only_north_halo!(c, bc, loc, grid, args)
+@kernel function _fill_only_north_halo!(c, bc, loc, grid, clock, fields)
     i, k = @index(Global, NTuple)
-    _fill_north_halo!(i, k, grid, c, bc, loc, args...)
+    _fill_north_halo!(i, k, grid, c, bc, loc, clock, fields)
 end
 
-@kernel function _fill_only_top_halo!(c, bc, loc, grid, args)
+@kernel function _fill_only_top_halo!(c, bc, loc, grid, clock, fields)
     i, j = @index(Global, NTuple)
-    _fill_top_halo!(i, j, grid, c, bc, loc, args...)
+    _fill_top_halo!(i, j, grid, c, bc, loc, clock, fields)
 end
 
 #####
@@ -259,38 +264,38 @@ end
 # support tupled halo filling
 import Oceananigans.Utils: @constprop
 
-@kernel function _fill_west_and_east_halo!(c::Tuple, west_bc, east_bc, loc, grid, args)
+@kernel function _fill_west_and_east_halo!(c::Tuple, west_bc, east_bc, loc, grid, clock, fields)
     j, k = @index(Global, NTuple)
     ntuple(Val(length(west_bc))) do n
         Base.@_inline_meta
         @constprop(:aggressive) # TODO constprop failure on `loc[n]`
         @inbounds begin
-            _fill_west_halo!(j, k, grid, c[n], west_bc[n], loc[n], args...)
-            _fill_east_halo!(j, k, grid, c[n], east_bc[n], loc[n], args...)
+            _fill_west_halo!(j, k, grid, c[n], west_bc[n], loc[n], clock, fields)
+            _fill_east_halo!(j, k, grid, c[n], east_bc[n], loc[n], clock, fields)
         end
     end
 end
 
-@kernel function _fill_south_and_north_halo!(c::Tuple, south_bc, north_bc, loc, grid, args) 
+@kernel function _fill_south_and_north_halo!(c::Tuple, south_bc, north_bc, loc, grid, clock, fields)
     i, k = @index(Global, NTuple)
     ntuple(Val(length(south_bc))) do n
         Base.@_inline_meta
         @constprop(:aggressive) # TODO constprop failure on `loc[n]`
         @inbounds begin
-            _fill_south_halo!(i, k, grid, c[n], south_bc[n], loc[n], args...)
-            _fill_north_halo!(i, k, grid, c[n], north_bc[n], loc[n], args...)
+            _fill_south_halo!(i, k, grid, c[n], south_bc[n], loc[n], clock, fields)
+            _fill_north_halo!(i, k, grid, c[n], north_bc[n], loc[n], clock, fields)
         end
     end
 end
 
-@kernel function _fill_bottom_and_top_halo!(c::Tuple, bottom_bc, top_bc, loc, grid, args) 
+@kernel function _fill_bottom_and_top_halo!(c::Tuple, bottom_bc, top_bc, loc, grid, clock, fields)
     i, j = @index(Global, NTuple)
     ntuple(Val(length(bottom_bc))) do n
         Base.@_inline_meta
         @constprop(:aggressive) # TODO constprop failure on `loc[n]`
         @inbounds begin
-            _fill_bottom_halo!(i, j, grid, c[n], bottom_bc[n], loc[n], args...)
-               _fill_top_halo!(i, j, grid, c[n], top_bc[n],    loc[n], args...)
+            _fill_bottom_halo!(i, j, grid, c[n], bottom_bc[n], loc[n], clock, fields)
+               _fill_top_halo!(i, j, grid, c[n], top_bc[n],    loc[n], clock, fields)
         end
     end
 end
@@ -299,47 +304,47 @@ end
 ##### Kernel launchers for single-sided fill_halos
 #####
 
-fill_west_halo!(c, bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) = 
+fill_west_halo!(c, bc, size, offset, loc, arch, grid, clock, fields; reduced_dimensions) = 
     launch!(arch, grid, KernelParameters(size, offset),
-            _fill_only_west_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
+            _fill_only_west_halo!, c, bc, loc, grid, clock, fields; reduced_dimensions)
 
-fill_east_halo!(c, bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) = 
+fill_east_halo!(c, bc, size, offset, loc, arch, grid, clock, fields; reduced_dimensions) = 
     launch!(arch, grid, KernelParameters(size, offset),
-            _fill_only_east_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
+            _fill_only_east_halo!, c, bc, loc, grid, clock, fields; reduced_dimensions)
 
-fill_south_halo!(c, bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) = 
+fill_south_halo!(c, bc, size, offset, loc, arch, grid, clock, fields; reduced_dimensions) = 
     launch!(arch, grid, KernelParameters(size, offset),
-            _fill_only_south_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
+            _fill_only_south_halo!, c, bc, loc, grid, clock, fields; reduced_dimensions)
 
-fill_north_halo!(c, bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) = 
+fill_north_halo!(c, bc, size, offset, loc, arch, grid, clock, fields; reduced_dimensions) = 
     launch!(arch, grid, KernelParameters(size, offset),
-            _fill_only_north_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
+            _fill_only_north_halo!, c, bc, loc, grid, clock, fields; reduced_dimensions)
 
-fill_bottom_halo!(c, bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) = 
+fill_bottom_halo!(c, bc, size, offset, loc, arch, grid, clock, fields; reduced_dimensions) = 
     launch!(arch, grid, KernelParameters(size, offset),
-            _fill_only_bottom_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
+            _fill_only_bottom_halo!, c, bc, loc, grid, clock, fields; reduced_dimensions)
 
-fill_top_halo!(c, bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) = 
+fill_top_halo!(c, bc, size, offset, loc, arch, grid, clock, fields; reduced_dimensions) = 
     launch!(arch, grid, KernelParameters(size, offset),
-            _fill_only_top_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
+            _fill_only_top_halo!, c, bc, loc, grid, clock, fields; reduced_dimensions)
 
 #####
 ##### Kernel launchers for double-sided fill_halos
 #####
 
-function fill_west_and_east_halo!(c, west_bc, east_bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...)
+function fill_west_and_east_halo!(c, west_bc, east_bc, size, offset, loc, arch, grid, clock, fields; reduced_dimensions)
     return launch!(arch, grid, KernelParameters(size, offset),
-                   _fill_west_and_east_halo!, c, west_bc, east_bc, loc, grid, Tuple(args); kwargs...)
+                   _fill_west_and_east_halo!, c, west_bc, east_bc, loc, grid, clock, fields; reduced_dimensions)
 end
 
-function fill_south_and_north_halo!(c, south_bc, north_bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...)
+function fill_south_and_north_halo!(c, south_bc, north_bc, size, offset, loc, arch, grid, clock, fields; reduced_dimensions)
     return launch!(arch, grid, KernelParameters(size, offset),
-                   _fill_south_and_north_halo!, c, south_bc, north_bc, loc, grid, Tuple(args); kwargs...)
+                   _fill_south_and_north_halo!, c, south_bc, north_bc, loc, grid, clock, fields; reduced_dimensions)
 end
 
-function fill_bottom_and_top_halo!(c, bottom_bc, top_bc, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...)
+function fill_bottom_and_top_halo!(c, bottom_bc, top_bc, size, offset, loc, arch, grid, clock, fields; reduced_dimensions)
     return launch!(arch, grid, KernelParameters(size, offset),
-                   _fill_bottom_and_top_halo!, c, bottom_bc, top_bc, loc, grid, Tuple(args); kwargs...)
+                   _fill_bottom_and_top_halo!, c, bottom_bc, top_bc, loc, grid, clock, fields; reduced_dimensions)
 end
 
 #####
