@@ -156,7 +156,7 @@ end
             # the algorithm is unstable and we elide the forward pass update of ϕ.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
             ϕ★ = (fᵏ - aᵏ⁻¹ * ϕ[i-1, j, k]) / β
-            ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ[i, j, k], ϕ★)
+            ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, ϕ[i, j, k])
         end
 
         for i = Nx-1:-1:1
@@ -191,7 +191,7 @@ end
             # the algorithm is unstable and we elide the forward pass update of ϕ.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
             ϕ★ = (fᵏ - aᵏ⁻¹ * ϕ[i, j-1, k]) / β
-            ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ[i, j, k], ϕ★)
+            ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, ϕ[i, j, k])
         end
 
         for j = Ny-1:-1:1
@@ -225,7 +225,7 @@ end
             # the algorithm is unstable and we elide the forward pass update of `ϕ`.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
             ϕ★ = (fᵏ - aᵏ⁻¹ * ϕ[i, j, k-1]) / β
-            ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ[i, j, k], ϕ★)
+            ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, ϕ[i, j, k])
         end
 
         for k = Nz-1:-1:1
