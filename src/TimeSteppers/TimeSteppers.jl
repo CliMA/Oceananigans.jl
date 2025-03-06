@@ -60,4 +60,14 @@ include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")
 include("split_hydrostatic_runge_kutta_3.jl")
 
+# Tricks to avoid using a global @eval
+TimeStepper(::Val{:QuasiAdamsBashforth2}, args...; kwargs...) = 
+    QuasiAdamsBashforth2TimeStepper(args...; kwargs...)
+
+TimeStepper(::Val{:RungeKutta3}, args...; kwargs...) = 
+    RungeKutta3TimeStepper(args...; kwargs...)
+
+TimeStepper(::Val{:SplitRungeKutta3}, args...; kwargs...) = 
+    SplitRungeKutta3TimeStepper(args...; kwargs...)
+
 end # module
