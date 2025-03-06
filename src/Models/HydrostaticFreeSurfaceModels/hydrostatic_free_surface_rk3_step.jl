@@ -154,7 +154,7 @@ end
 ##### 
 
 # Tracers are multiplied by the vertical coordinate scaling factor
-@kernel function _store_tracer_fields!(Ψ⁻, grid, Ψⁿ) 
+@kernel function _cache_tracer_fields!(Ψ⁻, grid, Ψⁿ) 
     i, j, k = @index(Global, NTuple)
     @inbounds Ψ⁻[i, j, k] = Ψⁿ[i, j, k] * σⁿ(i, j, k, grid, Center(), Center(), Center())
 end
@@ -170,7 +170,7 @@ function cache_previous_fields!(model::HydrostaticFreeSurfaceModel)
         Ψ⁻ = previous_fields[name]
         Ψⁿ = model_fields[name]
         if name ∈ keys(model.tracers) # Tracers are stored with the grid scaling
-            launch!(arch, grid, :xyz, _store_tracer_fields!, Ψ⁻, grid, Ψⁿ)
+            launch!(arch, grid, :xyz, _cache_tracer_fields!, Ψ⁻, grid, Ψⁿ)
         else # Velocities and free surface are stored without the grid scaling
             parent(Ψ⁻) .= parent(Ψⁿ) 
         end
