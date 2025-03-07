@@ -1,5 +1,7 @@
 using Reactant
 using Enzyme
+using Metal
+
 Pkg.instantiate(; verbose=true)
 Pkg.precompile(; strict=true)
 Pkg.status()
