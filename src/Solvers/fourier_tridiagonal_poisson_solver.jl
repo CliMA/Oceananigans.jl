@@ -94,7 +94,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT;
     transforms = plan_transforms(grid, sol_storage, planner_flag)
 
     # Lower and upper diagonals are the same
-    lower_diagonal = CUDA.@allowscalar [ 1 / Δξᶠ(q, grid) for q in 2:size(grid, irreg_dim) ]
+    lower_diagonal = CUDA.@allowscalar [1 / Δξᶠ(q, grid) for q in 2:size(grid, tridiagonal_dim)]
     lower_diagonal = on_architecture(arch, lower_diagonal)
     upper_diagonal = lower_diagonal
 
