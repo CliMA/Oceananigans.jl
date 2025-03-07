@@ -1,4 +1,5 @@
 using Oceananigans
+using Test
 
 grid = RectilinearGrid(size=(32, 32), extent=(2π, 2π), topology=(Periodic, Periodic, Flat))
 
@@ -33,7 +34,7 @@ u, v, w = model.velocities
 s = sqrt(u^2 + v^2)
 
 using CairoMakie
-fig = Figure()
+fig = Figure(size = (800, 400))
 ax1 = Axis(fig[1, 1])
 ax2 = Axis(fig[1, 2])
 
@@ -42,9 +43,6 @@ function update_plot(sim, fig)
     heatmap!(fig[1, 2], s; colormap = :balance, colorrange = (-2, 2))
 end
 
-filename = "2d_turbulence.mp4"
-add_movie_maker!(simulation, TimeInterval(0.6), fig, update_plot; filename, format="mp4", framerate=12, compression=20)
-#maker = MovieMaker(fig, update_plot; filename, format="mp4", framerate=12, compression=20)
-#add_callback!(simulation, maker, TimeInterval(0.6))
+add_movie_maker!(simulation, TimeInterval(0.6), fig, update_plot; filename="2d_turbulence.mp4", format="mp4", framerate=12, compression=20)
 
 run!(simulation)

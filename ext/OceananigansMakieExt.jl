@@ -223,9 +223,6 @@ function MovieMaker(figure, func; dir=".", filename="movie.mp4", kwargs...)
     return MovieMaker(figure, func, io; dir, filename)
 end
 
-#function MovieMaker(variables::Tuple; indices, col_wrap=Inf, colorranges=nothing, colormaps=nothing, kwargs...)
-#end
-
 # Write animation to disk after simulation is complete
 finalize!(maker::MovieMaker, simulation) = save(maker.filepath, maker.io)
 

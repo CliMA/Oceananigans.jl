@@ -22,8 +22,7 @@ function Base.show(io::IO, maker::MovieMaker)
     return print(io, "├── figure   = ", summary(maker.figure), "\n",
                      "├── func     = ", summary(maker.func), "\n",
                      "├── io       = ", summary(maker.io), "\n",
-                     "└── filepath = ", summary(maker.filepath))
-    print(io, "MovieMaker$(maker.filepath), calculated with\n")
+                     "└── filepath = ", maker.filepath)
 end
 
 function Adapt.adapt_structure(to, maker::MovieMaker)
