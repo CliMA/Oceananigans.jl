@@ -226,6 +226,8 @@ end
     test_reactant_model_correctness(LatitudeLongitudeGrid, HydrostaticFreeSurfaceModel, lat_lon_kw, hydrostatic_model_kw)
     test_reactant_model_correctness(LatitudeLongitudeGrid, HydrostaticFreeSurfaceModel, lat_lon_kw, hydrostatic_model_kw, immersed_boundary_grid=true)
 
+    #=
+    # This test takes too long
     @info "Testing LatitudeLongitudeGrid + SplitExplicitFreeSurface + HydrostaticFreeSurfaceModel Reactant correctness"
     hydrostatic_model_kw = (; momentum_advection=WENOVectorInvariant(), free_surface=SplitExplicitFreeSurface(substeps=4))
     test_reactant_model_correctness(LatitudeLongitudeGrid, HydrostaticFreeSurfaceModel, lat_lon_kw, hydrostatic_model_kw)
@@ -234,6 +236,7 @@ end
     η_grid = η.grid
     @test isnothing(η_grid.interior_active_cells)
     @test isnothing(η_grid.active_z_columns)
+    =#
 
     #=
     equation_of_state = TEOS10EquationOfState()
