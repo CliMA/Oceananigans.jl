@@ -190,7 +190,12 @@ function test_thermal_bubble_netcdf_output(arch)
 
     nc_filepath = "test_dump_$(typeof(arch)).nc"
     isfile(nc_filepath) && rm(nc_filepath)
-    nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filepath, schedule=IterationInterval(10), verbose=true)
+    nc_writer = NetCDFOutputWriter(model, outputs,
+                                   filename = nc_filepath,
+                                   schedule = IterationInterval(10),
+                                   array_type = Array{Float64},
+                                   verbose = true)
+
     push!(simulation.output_writers, nc_writer)
 
     i_slice = 1:10
@@ -357,6 +362,7 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
 
     nc_writer = NetCDFOutputWriter(model, merge(model.velocities, model.tracers),
                                    filename = nc_filepath,
+                                   array_type = Array{Float64},
                                    schedule = IterationInterval(10),
                                    with_halos = true)
 

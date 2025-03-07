@@ -103,7 +103,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     model.clock.last_stage_Δt = Δt # just one stage
     
     calculate_pressure_correction!(model, Δt)
-    @apply_regionally correct_velocities_and_store_tendencies!(model, Δt)
+    @apply_regionally correct_velocities_and_cache_previous_tendencies!(model, Δt)
 
     update_state!(model, callbacks; compute_tendencies=true)
     step_lagrangian_particles!(model, Δt)
@@ -114,9 +114,9 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     return nothing
 end
 
-function correct_velocities_and_store_tendencies!(model, Δt)
+function correct_velocities_and_cache_previous_tendencies!(model, Δt)
     pressure_correct_velocities!(model, Δt)
-    store_tendencies!(model)
+    cache_previous_tendencies!(model)
     return nothing
 end
 
@@ -127,9 +127,12 @@ end
 """ Generic implementation. """
 function ab2_step!(model, Δt)
     grid = model.grid
+    FT = eltype(grid)
     arch = architecture(grid)
     model_fields = prognostic_fields(model)
     χ = model.timestepper.χ
+    Δt = convert(FT, Δt)
+    χ = convert(FT, χ)
 
     for (i, field) in enumerate(model_fields)
         kernel_args = (field, Δt, χ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])

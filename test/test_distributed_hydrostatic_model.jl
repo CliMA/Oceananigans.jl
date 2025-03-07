@@ -7,7 +7,7 @@ using MPI
 # These tests are meant to be run on 4 ranks. This script may be run
 # stand-alone (outside the test environment) via
 #
-# mpiexec -n 4 julia --project test_distributed_models.jl
+# $ MPI_TEST=true mpiexec -n 4 julia --project test_distributed_hydrostatic_model.jl
 #
 # provided that a few packages (like TimesDates.jl) are in your global environment.
 #
@@ -17,13 +17,9 @@ using MPI
 #
 # then later:
 # 
-# julia> include("test_distributed_models.jl")
-#
-# When running the tests this way, uncomment the following line
+# julia> include("test_distributed_hydrostatic_model.jl")
 
 MPI.Initialized() || MPI.Init()
-
-# to initialize MPI.
 
 using Oceananigans.Operators: hack_cosd
 using Oceananigans.DistributedComputations: ranks, partition, all_reduce, cpu_architecture, reconstruct_global_grid, synchronized
@@ -116,23 +112,25 @@ for arch in archs
     
     if valid_x_partition & valid_y_partition & valid_z_partition
         @testset "Testing distributed solid body rotation" begin
-            underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 3),
+            underlying_grid = LatitudeLongitudeGrid(arch,
+                                                    size = (Nx, Ny, 3),
                                                     halo = (4, 4, 3),
                                                     latitude = (-80, 80),
                                                     longitude = (-160, 160),
                                                     z = (-1, 0),
                                                     radius = 1,
-                                                    topology=(Bounded, Bounded, Bounded))
+                                                    topology = (Bounded, Bounded, Bounded))
 
             bottom(λ, φ) = -30 < λ < 30 && -40 < φ < 20 ? 0 : - 1
 
-            immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+            immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = false)
             immersed_active_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
 
             global_underlying_grid = reconstruct_global_grid(underlying_grid)
             global_immersed_grid   = ImmersedBoundaryGrid(global_underlying_grid, GridFittedBottom(bottom))
 
-            for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid), (global_underlying_grid, global_immersed_grid, global_immersed_grid))
+            for (grid, global_grid) in zip((underlying_grid, immersed_grid, immersed_active_grid),
+                                           (global_underlying_grid, global_immersed_grid, global_immersed_grid))
                 if arch.local_rank == 0
                     @info "  Testing distributed solid body rotation with $(ranks(arch)) ranks on $(typeof(grid).name.wrapper)"
                 end
@@ -301,3 +299,4 @@ for arch in archs
         rm("checkpoint_$(rank)_iteration5.jld2", force=true)
     end
 end
+

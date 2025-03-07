@@ -62,14 +62,12 @@ function PartialCellBottom(bottom_height; minimum_fractional_cell_height=0.2)
     return PartialCellBottom(bottom_height, minimum_fractional_cell_height)
 end
 
-function ImmersedBoundaryGrid(grid, ib::PartialCellBottom)
+function materialize_immersed_boundary(grid, ib::PartialCellBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set!(bottom_field, ib.bottom_height)
     @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, ib)
     fill_halo_regions!(bottom_field)
-    new_ib = PartialCellBottom(bottom_field, ib.minimum_fractional_cell_height)
-    TX, TY, TZ = topology(grid)
-    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, new_ib)
+    return PartialCellBottom(bottom_field, ib.minimum_fractional_cell_height)
 end
 
 @kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::PartialCellBottom)
