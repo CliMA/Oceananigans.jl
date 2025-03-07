@@ -56,7 +56,7 @@ function fill_halo_regions!(c::MaybeTupledData, boundary_conditions, indices, lo
     arch = architecture(grid)
 
     if fill_boundary_normal_velocities
-        fill_open_boundary_regions!(c, boundary_conditions, indices, loc, grid, clock, fields; async, only_local_halos, reduced_dimensions)
+        fill_open_boundary_regions!(c, boundary_conditions, indices, loc, grid, clock, fields; reduced_dimensions)
     end
 
     fill_halos!, bcs = permute_boundary_conditions(boundary_conditions)

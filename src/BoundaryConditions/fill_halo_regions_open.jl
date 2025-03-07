@@ -1,12 +1,19 @@
-@inline fill_open_boundary_regions!(field, args...) = 
-    fill_open_boundary_regions!(field, field.boundary_conditions, field.indices, instantiated_location(field), field.grid)
+@inline fill_open_boundary_regions!(field; reduced_dimensions=()) = 
+    fill_open_boundary_regions!(field, 
+                                field.boundary_conditions, 
+                                field.indices, 
+                                instantiated_location(field), 
+                                field.grid, 
+                                nothing, 
+                                nothing;
+                                reduced_dimensions)
 
 """
     fill_open_boundary_regions!(fields, boundary_conditions, indices, loc, grid, args...; kwargs...)
 
 Fill open boundary halo regions by filling boundary conditions on field faces with `open_fill`. 
 """
-function fill_open_boundary_regions!(field, boundary_conditions, indices, loc, grid, args...; only_local_halos = false, kwargs...)
+function fill_open_boundary_regions!(field, boundary_conditions, indices, loc, grid, clock, model_fields; reduced_dimensions=())
     arch = architecture(grid)
 
     # gets `fill_halo!`, the function which fills open boundaries at `loc`
@@ -22,12 +29,7 @@ function fill_open_boundary_regions!(field, boundary_conditions, indices, loc, g
     bcs_tuple = (left_bc, right_bc)
 
     if !isnothing(fill_halo!) && any(!isnothing, bcs_tuple)
-
-        # Overwrite the `only_local_halos` keyword argument, because open boundaries 
-        # are always local boundaries that do not require communication
-        only_local_halos = true
-
-        fill_halo_event!(field, fill_halo!, bcs_tuple, indices, loc, arch, grid, args...; only_local_halos, kwargs...)
+        fill_halo_event!(field, fill_halo!, bcs_tuple, indices, loc, arch, grid, clock, model_fields; reduced_dimensions)
     end
 
     return nothing
@@ -38,9 +40,9 @@ end
 @inline get_open_halo_filling_functions(::Tuple{Center, Face, Center}) = fill_south_and_north_halo!
 @inline get_open_halo_filling_functions(::Tuple{Center, Center, Face}) = fill_bottom_and_top_halo!
 
-function fill_open_boundary_regions!(fields::Tuple, boundary_conditions, indices, loc, grid, args...; kwargs...) 
+function fill_open_boundary_regions!(fields::Tuple, boundary_conditions, indices, loc, grid, clock, model_fields; reduced_dimensions=()) 
     for n in eachindex(fields)
-        fill_open_boundary_regions!(fields[n], boundary_conditions[n], indices, loc[n], grid, args...; kwargs...)
+        fill_open_boundary_regions!(fields[n], boundary_conditions[n], indices, loc[n], grid, clock, model_fields; reduced_dimensions)
     end
     return nothing
 end

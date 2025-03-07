@@ -19,26 +19,26 @@ end
 function hydrostatic_tendency_fields(velocities, free_surface::ExplicitFreeSurface, grid, tracer_names)
     u = XFaceField(grid)
     v = YFaceField(grid)
-    η = free_surface_displacement_field(velocities, free_surface, grid)
+    η = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
     tracers = TracerFields(tracer_names, grid)
     return merge((u=u, v=v, η=η), tracers)
 end
 
-function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFreeSurface, grid, tracer_names)
+function hydrostatic_tendency_fields(velocities, ::SplitExplicitFreeSurface, grid, tracer_names)
     u = XFaceField(grid)
     v = YFaceField(grid)
-    U = similar(free_surface.barotropic_velocities.U)
-    V = similar(free_surface.barotropic_velocities.V)
+    U = Field{Face, Center, Nothing}(grid)
+    V = Field{Center, Face, Nothing}(grid)
     tracers = TracerFields(tracer_names, grid)
     return merge((u=u, v=v, U=U, V=V), tracers)
 end
 
-previous_hydrostatic_tendency_fields(::Val{:QuasiAdamsBashforth2}, args...) = hydrostatic_tendency_fields(args...)
-previous_hydrostatic_tendency_fields(::Val{:SplitRungeKutta3}, args...) = nothing
+previous_hydrostatic_tendency_fields(::Val{:QuasiAdamsBashforth2}, velocities, free_surface, grid, tracernames) = hydrostatic_tendency_fields(velocities, free_surface, grid, tracernames)
+previous_hydrostatic_tendency_fields(::Val{:SplitRungeKutta3}, velocities, free_surface, grid, tracernames) = nothing
 
-function previous_hydrostatic_tendency_fields(::Val{:SplitRungeKutta3}, velocities, free_surface::SplitExplicitFreeSurface, args...)
-    U = similar(free_surface.barotropic_velocities.U)
-    V = similar(free_surface.barotropic_velocities.V)
-    η = similar(free_surface.η)
+function previous_hydrostatic_tendency_fields(::Val{:SplitRungeKutta3}, velocities, free_surface::SplitExplicitFreeSurface, grid, tracernames)
+    U = Field{Face, Center, Nothing}(grid)
+    V = Field{Center, Face, Nothing}(grid)
+    η = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
     return (; U=U, V=V, η=η)
 end

@@ -35,80 +35,59 @@ const FullField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple{<:Colon, <:Co
 @inline inner_flatten_tuple(a::Tuple) = flatten_tuple(a)
 @inline inner_flatten_tuple(a::Tuple{}) = ()
 
-function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, clock, model_fields; async=false, only_local_halos=false)
-    for f in fields
-        if f isa Field
-            fill_halo_regions!(f, clock, model_fields; async, only_local_halos)
-        end
+fill_halo_regions!(field; async=false, only_local_halos=false) = fill_halo_regions!(field, nothing, nothing; async, only_local_halos)
+
+"""
+    fill_halo_regions!(fields::NamedTuple, args...; kwargs...) 
+
+Fill halo regions for all `fields`. The algorithm:
+
+  1. Flattens fields, extracting `values` if the field is `NamedTuple`, and removing
+     duplicate entries to avoid "repeated" halo filling.
+    
+  2. Filters fields into three categories:
+     i. ReducedFields with non-trivial boundary conditions;
+     ii. Fields with non-trivial indices and boundary conditions;
+     iii. Fields spanning the whole grid with non-trivial boundary conditions.
+    
+  3. Halo regions for every `ReducedField` and windowed fields are filled independently.
+    
+  4. In every direction, the halo regions in each of the remaining `Field` tuple
+     are filled simultaneously.
+"""
+function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, clock, model_fields; async=false, only_local_halos=false)
+    flattened = flattened_unique_values(maybe_nested_tuple)
+
+    # Sort fields into ReducedField and Field with non-nothing boundary conditions
+    fields_with_bcs = filter(f -> !isnothing(boundary_conditions(f)), flattened)
+    reduced_fields  = filter(f -> f isa ReducedField, fields_with_bcs)
+    ordinary_fields = filter(f -> f isa Field && !(f isa ReducedField), fields_with_bcs)
+
+    # Fill halo regions for reduced fields
+    for field in reduced_fields
+        fill_halo_regions!(field, clock, model_fields; async, only_local_halos)
     end
+
+    # Fill the rest
+    if !isempty(ordinary_fields)
+        grid = first(ordinary_fields).grid
+        tupled_fill_halo_regions!(ordinary_fields, grid, clock, model_fields; async, only_local_halos)
+    end
+
+    return nothing
 end
 
-fill_halo_regions!(fields::Union{Tuple, NamedTuple}; async=false, only_local_halos=false) = fill_halo_regions!(fields, nothing, nothing; async, only_local_halos)
+tupled_fill_halo_regions!(fields, grid, clock, model_fields; async, only_local_halos) = 
+    fill_halo_regions!(map(data, fields),
+                       map(boundary_conditions, fields),
+                       default_indices(3),
+                       map(instantiated_location, fields),
+                       grid, 
+                       clock, 
+                       model_fields; 
+                       async, 
+                       only_local_halos)
 
-# """
-#     fill_halo_regions!(fields::NamedTuple, args...; kwargs...) 
-
-# Fill halo regions for all `fields`. The algorithm:
-
-#   1. Flattens fields, extracting `values` if the field is `NamedTuple`, and removing
-#      duplicate entries to avoid "repeated" halo filling.
-    
-#   2. Filters fields into three categories:
-#      i. ReducedFields with non-trivial boundary conditions;
-#      ii. Fields with non-trivial indices and boundary conditions;
-#      iii. Fields spanning the whole grid with non-trivial boundary conditions.
-    
-#   3. Halo regions for every `ReducedField` and windowed fields are filled independently.
-    
-#   4. In every direction, the halo regions in each of the remaining `Field` tuple
-#      are filled simultaneously.
-# """
-# function fill_halo_regions!(maybe_nested_tuple::Union{NamedTuple, Tuple}, args...; kwargs...)
-#     flattened = flattened_unique_values(maybe_nested_tuple)
-
-#     # Look for grid within the flattened field tuple:
-#     for f in flattened
-#         if isdefined(f, :grid)
-#             grid = f.grid
-#             return tupled_fill_halo_regions!(flattened, grid, args...; kwargs...)
-#         end
-#     end
-
-#     return tupled_fill_halo_regions!(flattened, args...; kwargs...)
-# end
-
-# # Version where we find grid amongst ordinary fields:
-# function tupled_fill_halo_regions!(fields, args...; kwargs...)
-
-#     ordinary_fields = produce_ordinary_fields(fields, args...; kwargs)
-
-#     if !isempty(ordinary_fields) # ie not reduced, and with default_indices
-#         grid = first(ordinary_fields).grid
-#         fill_halo_regions!(map(data, ordinary_fields),
-#                            map(boundary_conditions, ordinary_fields),
-#                            default_indices(3),
-#                            map(instantiated_location, ordinary_fields),
-#                            grid, args...; kwargs...)
-#     end
-
-#     return nothing
-# end
-    
-# # Version where grid is provided:
-# function tupled_fill_halo_regions!(fields, grid::AbstractGrid, args...; kwargs...)
-
-#     ordinary_fields = produce_ordinary_fields(fields, args...; kwargs)
-
-#     if !isempty(ordinary_fields) # ie not reduced, and with default_indices
-#         fill_halo_regions!(map(data, ordinary_fields),
-#                            map(boundary_conditions, ordinary_fields),
-#                            default_indices(3),
-#                            map(instantiated_location, ordinary_fields),
-#                            grid, args...; kwargs...)
-#     end
-
-#     return nothing
-# end
 
 # Helper function to create the tuple of ordinary fields:
 @inline function produce_ordinary_fields(fields, args...; kwargs)
