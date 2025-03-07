@@ -219,7 +219,7 @@ end
     to_node = flatten_node(to_node...)
 
     if topology(from_grid) === (Flat, Flat, Flat)
-        fi = FractionalIndices(1, 1, 0)
+        fi = FractionalIndices(nothing, nothing, nothing)
     else
         fi = FractionalIndices(to_node, from_grid, from_loc...)
     end
