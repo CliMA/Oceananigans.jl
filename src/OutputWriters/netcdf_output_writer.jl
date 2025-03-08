@@ -398,11 +398,11 @@ function default_vertical_dimension_attributes(coordinate::StaticVerticalDiscret
     Δzᵃᵃᶠ_name = dim_name_generator("dz", coordinate, nothing, nothing, f, Val(:z))
     Δzᵃᵃᶜ_name = dim_name_generator("dz", coordinate, nothing, nothing, c, Val(:z))
 
-    zᵃᵃᶠ_attrs = Dict("long_name" => "Locations of the cell faces in the z-direction.",   "units" => "m")
-    zᵃᵃᶜ_attrs = Dict("long_name" => "Locations of the cell centers in the z-direction.", "units" => "m")
+    zᵃᵃᶠ_attrs = Dict("long_name" => "Cell face locations in the z-direction.",   "units" => "m")
+    zᵃᵃᶜ_attrs = Dict("long_name" => "Cell center locations in the z-direction.", "units" => "m")
 
-    Δzᵃᵃᶠ_attrs = Dict("long_name" => "Spacings between the cell centers (located at the cell faces) in the z-direction.", "units" => "m")
-    Δzᵃᵃᶜ_attrs = Dict("long_name" => "Spacings between the cell faces (located at the cell centers) in the z-direction.", "units" => "m")
+    Δzᵃᵃᶠ_attrs = Dict("long_name" => "Spacings between cell centers (located at cell faces) in the z-direction.", "units" => "m")
+    Δzᵃᵃᶜ_attrs = Dict("long_name" => "Spacings between cell faces (located at cell centers) in the z-direction.", "units" => "m")
 
     return Dict(zᵃᵃᶠ_name => zᵃᵃᶠ_attrs,
                 zᵃᵃᶜ_name => zᵃᵃᶜ_attrs,
@@ -421,15 +421,13 @@ function default_dimension_attributes(grid::RectilinearGrid, dim_name_generator)
     Δyᵃᶠᵃ_name = dim_name_generator("dy", grid, nothing, f, nothing, Val(:y))
     Δyᵃᶜᵃ_name = dim_name_generator("dy", grid, nothing, c, nothing, Val(:y))
 
-    xᶠᵃᵃ_attrs = Dict("long_name" => "Locations of the cell faces in the x-direction.",   "units" => "m")
-    xᶜᵃᵃ_attrs = Dict("long_name" => "Locations of the cell centers in the x-direction.", "units" => "m")
-    yᵃᶠᵃ_attrs = Dict("long_name" => "Locations of the cell faces in the y-direction.",   "units" => "m")
-    yᵃᶜᵃ_attrs = Dict("long_name" => "Locations of the cell centers in the y-direction.", "units" => "m")
+    xᶠᵃᵃ_attrs = Dict("long_name" => "Cell face locations in the x-direction.",   "units" => "m")
+    xᶜᵃᵃ_attrs = Dict("long_name" => "Cell center locations in the x-direction.", "units" => "m")
+    yᵃᶠᵃ_attrs = Dict("long_name" => "Cell face locations in the y-direction.",   "units" => "m")
+    yᵃᶜᵃ_attrs = Dict("long_name" => "Cell center locations in the y-direction.", "units" => "m")
 
-    Δxᶠᵃᵃ_attrs = Dict("long_name" => "Spacings between the cell centers (located at the cell faces) in the x-direction.", "units" => "m")
-    Δxᶜᵃᵃ_attrs = Dict("long_name" => "Spacings between the cell faces (located at the cell centers) in the x-direction.", "units" => "m")
-    Δyᵃᶠᵃ_attrs = Dict("long_name" => "Spacings between the cell centers (located at the cell faces) in the y-direction.", "units" => "m")
-    Δyᵃᶜᵃ_attrs = Dict("long_name" => "Spacings between the cell faces (located at the cell centers) in the y-direction.", "units" => "m")
+    Δyᵃᶠᵃ_attrs = Dict("long_name" => "Spacings between cell centers (located at cell faces) in the y-direction.", "units" => "m")
+    Δyᵃᶜᵃ_attrs = Dict("long_name" => "Spacings between cell faces (located at cell centers) in the y-direction.", "units" => "m")
 
     horizontal_dimension_attributes = Dict(xᶠᵃᵃ_name  => xᶠᵃᵃ_attrs,
                                            xᶜᵃᵃ_name  => xᶜᵃᵃ_attrs,
@@ -451,26 +449,26 @@ function default_dimension_attributes(grid::LatitudeLongitudeGrid, dim_name_gene
     λᶠᵃᵃ_name = dim_name_generator("longitude", grid, f, nothing, nothing, Val(:x))
     λᶜᵃᵃ_name = dim_name_generator("longitude", grid, c, nothing, nothing, Val(:x))
 
-    λᶠᵃᵃ_attrs = Dict("long_name" => "Locations of the cell faces in the zonal direction.",   "units" => "degrees east")
-    λᶜᵃᵃ_attrs = Dict("long_name" => "Locations of the cell centers in the zonal direction.", "units" => "degrees east")
+    λᶠᵃᵃ_attrs = Dict("long_name" => "Cell face locations in the zonal direction.",   "units" => "degrees east")
+    λᶜᵃᵃ_attrs = Dict("long_name" => "Cell center locations in the zonal direction.", "units" => "degrees east")
 
     φᵃᶠᵃ_name = dim_name_generator("latitude", grid, nothing, f, nothing, Val(:y))
     φᵃᶜᵃ_name = dim_name_generator("latitude", grid, nothing, c, nothing, Val(:y))
 
-    φᵃᶠᵃ_attrs = Dict("long_name" => "Locations of the cell faces in the meridional direction.",   "units" => "degrees north")
-    φᵃᶜᵃ_attrs = Dict("long_name" => "Locations of the cell centers in the meridional direction.", "units" => "degrees north")
+    φᵃᶠᵃ_attrs = Dict("long_name" => "Cell face locations in the meridional direction.",   "units" => "degrees north")
+    φᵃᶜᵃ_attrs = Dict("long_name" => "Cell center locations in the meridional direction.", "units" => "degrees north")
 
     Δλᶠᵃᵃ_name = dim_name_generator("dlongitude", grid, f, nothing, nothing, Val(:x))
     Δλᶜᵃᵃ_name = dim_name_generator("dlongitude", grid, c, nothing, nothing, Val(:x))
 
-    Δλᶠᵃᵃ_attrs = Dict("long_name" => "Angular spacings between the cell faces in the zonal direction.",   "units" => "degrees")
-    Δλᶜᵃᵃ_attrs = Dict("long_name" => "Angular spacings between the cell centers in the zonal direction.", "units" => "degrees")
+    Δλᶠᵃᵃ_attrs = Dict("long_name" => "Angular spacings between cell faces in the zonal direction.",   "units" => "degrees")
+    Δλᶜᵃᵃ_attrs = Dict("long_name" => "Angular spacings between cell centers in the zonal direction.", "units" => "degrees")
 
     Δφᵃᶠᵃ_name = dim_name_generator("dlatitude", grid, nothing, f, nothing, Val(:y))
     Δφᵃᶜᵃ_name = dim_name_generator("dlatitude", grid, nothing, c, nothing, Val(:y))
 
-    Δφᵃᶠᵃ_attrs = Dict("long_name" => "Angular spacings between the cell faces in the meridional direction.",   "units" => "degrees")
-    Δφᵃᶜᵃ_attrs = Dict("long_name" => "Angular spacings between the cell centers in the meridional direction.", "units" => "degrees")
+    Δφᵃᶠᵃ_attrs = Dict("long_name" => "Angular spacings between cell faces in the meridional direction.",   "units" => "degrees")
+    Δφᵃᶜᵃ_attrs = Dict("long_name" => "Angular spacings between cell centers in the meridional direction.", "units" => "degrees")
 
     Δxᶠᶠᵃ_name = dim_name_generator("dx", grid, f, f, nothing, Val(:x))
     Δxᶠᶜᵃ_name = dim_name_generator("dx", grid, f, c, nothing, Val(:x))
