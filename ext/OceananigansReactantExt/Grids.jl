@@ -70,7 +70,7 @@ function OrthogonalSphericalShellGrid{TX, TY, TZ}(arch::ReactantState,
                                                   Azᶜᶜᵃ :: CC, Azᶠᶜᵃ :: FC, Azᶜᶠᵃ :: CF, Azᶠᶠᵃ :: FF,
                                                  radius :: FT,
                                                   conformal_mapping :: Map) where {TX, TY, TZ, FT, Z, Map,
-                                                                                   CC, FC, CF, FF, C}
+                                                                                   CC, FC, CF, FF}
 
     args1 = (λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
              φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ)
@@ -106,16 +106,20 @@ function with_cpu_architecture(::CPU, grid::ReactantGrid)
     return GridType{TX, TY, TZ}(CPU(), other_properties...)
 end
 
-function reactant_immersed_boundary_grid(grid, ib; active_cells_map)
+function reactant_immersed_boundary_grid(grid, ib; active_cells_map, active_z_columns)
     cpu_grid = with_cpu_architecture(CPU(), grid)
-    ibg = ImmersedBoundaryGrid(cpu_grid, ib; active_cells_map)
+    ibg = ImmersedBoundaryGrid(cpu_grid, ib; active_cells_map, active_z_columns)
     TX, TY, TZ = Oceananigans.Grids.topology(grid)
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ibg.immersed_boundary,
                                             ibg.interior_active_cells, ibg.active_z_columns)
 end
 
-ImmersedBoundaryGrid(grid::ReactantUnderlyingGrid, ib::AbstractImmersedBoundary; active_cells_map::Bool=true) =
-    reactant_immersed_boundary_grid(grid, ib; active_cells_map)
+function ImmersedBoundaryGrid(grid::ReactantUnderlyingGrid, ib::AbstractImmersedBoundary;
+                              active_cells_map::Bool=false,
+                              active_z_columns::Bool=active_cells_map)
+
+    return reactant_immersed_boundary_grid(grid, ib; active_cells_map, active_z_columns)
+end
 
 end # module
 
