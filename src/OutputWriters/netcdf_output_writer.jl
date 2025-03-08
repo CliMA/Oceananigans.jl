@@ -105,10 +105,8 @@ function gather_vertical_dimensions(coordinate::StaticVerticalDiscretization, TZ
     zᵃᵃᶠ_data = collect_dim(coordinate.cᵃᵃᶠ, f, TZ(), Nz, Hz, z_indices, with_halos)
     zᵃᵃᶜ_data = collect_dim(coordinate.cᵃᵃᶜ, c, TZ(), Nz, Hz, z_indices, with_halos)
 
-    return Dict(
-        zᵃᵃᶠ_name => zᵃᵃᶠ_data,
-        zᵃᵃᶜ_name => zᵃᵃᶜ_data
-    )
+    return Dict(zᵃᵃᶠ_name => zᵃᵃᶠ_data,
+                zᵃᵃᶜ_name => zᵃᵃᶜ_data)
 end
 
 function gather_dimensions(outputs, grid::RectilinearGrid, indices, with_halos, dim_name_generator)
@@ -325,13 +323,11 @@ function gather_immersed_boundary(grid::GFBIBG, indices, dim_name_generator)
     op_mask_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
     op_mask_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
 
-    return Dict(
-        "bottom_height" => Field(grid.immersed_boundary.bottom_height; indices),
-        "immersed_boundary_mask_ccc" => Field(op_mask_ccc; indices),
-        "immersed_boundary_mask_fcc" => Field(op_mask_fcc; indices),
-        "immersed_boundary_mask_cfc" => Field(op_mask_cfc; indices),
-        "immersed_boundary_mask_ccf" => Field(op_mask_ccf; indices)
-    )
+    return Dict("bottom_height" => Field(grid.immersed_boundary.bottom_height; indices),
+                "immersed_boundary_mask_ccc" => Field(op_mask_ccc; indices),
+                "immersed_boundary_mask_fcc" => Field(op_mask_fcc; indices),
+                "immersed_boundary_mask_cfc" => Field(op_mask_cfc; indices),
+                "immersed_boundary_mask_ccf" => Field(op_mask_ccf; indices))
 end
 
 const GFBoundaryIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBoundary}
@@ -343,13 +339,11 @@ function gather_immersed_boundary(grid::GFBoundaryIBG, indices, dim_name_generat
     op_mask_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
     op_mask_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
 
-    return Dict(
-        "immersed_boundary_mask" => Field(grid.immersed_boundary.mask; indices),
-        "immersed_boundary_mask_ccc" => Field(op_mask_ccc; indices),
-        "immersed_boundary_mask_fcc" => Field(op_mask_fcc; indices),
-        "immersed_boundary_mask_cfc" => Field(op_mask_cfc; indices),
-        "immersed_boundary_mask_ccf" => Field(op_mask_ccf; indices)
-    )
+    return Dict("immersed_boundary_mask" => Field(grid.immersed_boundary.mask; indices),
+                "immersed_boundary_mask_ccc" => Field(op_mask_ccc; indices),
+                "immersed_boundary_mask_fcc" => Field(op_mask_fcc; indices),
+                "immersed_boundary_mask_cfc" => Field(op_mask_cfc; indices),
+                "immersed_boundary_mask_ccf" => Field(op_mask_ccf; indices))
 end
 
 #####
@@ -394,10 +388,8 @@ field_dimensions(field::AbstractField, dim_name_generator) =
 ##### Dimension attributes
 #####
 
-const base_dimension_attributes = Dict(
-    "time"        => Dict("long_name" => "Time", "units" => "s"),
-    "particle_id" => Dict("long_name" => "Particle ID")
-)
+const base_dimension_attributes = Dict("time"        => Dict("long_name" => "Time", "units" => "s"),
+                                       "particle_id" => Dict("long_name" => "Particle ID"))
 
 function default_vertical_dimension_attributes(coordinate::StaticVerticalDiscretization, dim_name_generator)
     zᵃᵃᶠ_name = dim_name_generator("z", coordinate, nothing, nothing, f, Val(:z))
@@ -412,12 +404,10 @@ function default_vertical_dimension_attributes(coordinate::StaticVerticalDiscret
     Δzᵃᵃᶠ_attrs = Dict("long_name" => "Spacings between the cell centers (located at the cell faces) in the z-direction.", "units" => "m")
     Δzᵃᵃᶜ_attrs = Dict("long_name" => "Spacings between the cell faces (located at the cell centers) in the z-direction.", "units" => "m")
 
-    return Dict(
-        zᵃᵃᶠ_name => zᵃᵃᶠ_attrs,
-        zᵃᵃᶜ_name => zᵃᵃᶜ_attrs,
-        Δzᵃᵃᶠ_name => Δzᵃᵃᶠ_attrs,
-        Δzᵃᵃᶜ_name => Δzᵃᵃᶜ_attrs,
-    )
+    return Dict(zᵃᵃᶠ_name => zᵃᵃᶠ_attrs,
+                zᵃᵃᶜ_name => zᵃᵃᶜ_attrs,
+                Δzᵃᵃᶠ_name => Δzᵃᵃᶠ_attrs,
+                Δzᵃᵃᶜ_name => Δzᵃᵃᶜ_attrs)
 end
 
 function default_dimension_attributes(grid::RectilinearGrid, dim_name_generator)
@@ -441,24 +431,20 @@ function default_dimension_attributes(grid::RectilinearGrid, dim_name_generator)
     Δyᵃᶠᵃ_attrs = Dict("long_name" => "Spacings between the cell centers (located at the cell faces) in the y-direction.", "units" => "m")
     Δyᵃᶜᵃ_attrs = Dict("long_name" => "Spacings between the cell faces (located at the cell centers) in the y-direction.", "units" => "m")
 
-    horizontal_dimension_attributes = Dict(
-         xᶠᵃᵃ_name =>  xᶠᵃᵃ_attrs,
-         xᶜᵃᵃ_name =>  xᶜᵃᵃ_attrs,
-         yᵃᶠᵃ_name =>  yᵃᶠᵃ_attrs,
-         yᵃᶜᵃ_name =>  yᵃᶜᵃ_attrs,
-        Δxᶠᵃᵃ_name => Δxᶠᵃᵃ_attrs,
-        Δxᶜᵃᵃ_name => Δxᶜᵃᵃ_attrs,
-        Δyᵃᶠᵃ_name => Δyᵃᶠᵃ_attrs,
-        Δyᵃᶜᵃ_name => Δyᵃᶜᵃ_attrs
-    )
+    horizontal_dimension_attributes = Dict(xᶠᵃᵃ_name  => xᶠᵃᵃ_attrs,
+                                           xᶜᵃᵃ_name  => xᶜᵃᵃ_attrs,
+                                           yᵃᶠᵃ_name  => yᵃᶠᵃ_attrs,
+                                           yᵃᶜᵃ_name  => yᵃᶜᵃ_attrs,
+                                           Δxᶠᵃᵃ_name => Δxᶠᵃᵃ_attrs,
+                                           Δxᶜᵃᵃ_name => Δxᶜᵃᵃ_attrs,
+                                           Δyᵃᶠᵃ_name => Δyᵃᶠᵃ_attrs,
+                                           Δyᵃᶜᵃ_name => Δyᵃᶜᵃ_attrs)
 
     vertical_dimension_attributes = default_vertical_dimension_attributes(grid.z, dim_name_generator)
 
-    return merge(
-        base_dimension_attributes,
-        horizontal_dimension_attributes,
-        vertical_dimension_attributes
-    )
+    return merge(base_dimension_attributes,
+                 horizontal_dimension_attributes,
+                 vertical_dimension_attributes)
 end
 
 function default_dimension_attributes(grid::LatitudeLongitudeGrid, dim_name_generator)
@@ -491,77 +477,57 @@ function default_dimension_attributes(grid::LatitudeLongitudeGrid, dim_name_gene
     Δxᶜᶠᵃ_name = dim_name_generator("dx", grid, c, f, nothing, Val(:x))
     Δxᶜᶜᵃ_name = dim_name_generator("dx", grid, c, c, nothing, Val(:x))
 
-    Δxᶠᶠᵃ_attrs = Dict(
-        "long_name" => "Geodesic spacings in the zonal direction between the cell located at (Face, Face).",
-        "units" => "m"
-    )
+    Δxᶠᶠᵃ_attrs = Dict("long_name" => "Geodesic spacings in the zonal direction between the cell located at (Face, Face).",
+                       "units" => "m")
 
-    Δxᶠᶜᵃ_attrs = Dict(
-        "long_name" => "Geodesic spacings in the zonal direction between the cell located at (Face, Center).",
-        "units" => "m"
-    )
+    Δxᶠᶜᵃ_attrs = Dict("long_name" => "Geodesic spacings in the zonal direction between the cell located at (Face, Center).",
+                       "units" => "m")
 
-    Δxᶜᶠᵃ_attrs = Dict(
-        "long_name" => "Geodesic spacings in the zonal direction between the cell located at (Center, Face).",
-        "units" => "m"
-    )
+    Δxᶜᶠᵃ_attrs = Dict("long_name" => "Geodesic spacings in the zonal direction between the cell located at (Center, Face).",
+                       "units" => "m")
 
-    Δxᶜᶜᵃ_attrs = Dict(
-        "long_name" => "Geodesic spacings in the zonal direction between the cell located at (Center, Center).",
-        "units" => "m"
-    )
+    Δxᶜᶜᵃ_attrs = Dict("long_name" => "Geodesic spacings in the zonal direction between the cell located at (Center, Center).",
+                       "units" => "m")
 
     Δyᶠᶠᵃ_name = dim_name_generator("dy", grid, f, f, nothing, Val(:y))
     Δyᶠᶜᵃ_name = dim_name_generator("dy", grid, f, c, nothing, Val(:y))
     Δyᶜᶠᵃ_name = dim_name_generator("dy", grid, c, f, nothing, Val(:y))
     Δyᶜᶜᵃ_name = dim_name_generator("dy", grid, c, c, nothing, Val(:y))
 
-    Δyᶠᶠᵃ_attrs = Dict(
-        "long_name" => "Geodesic spacings in the meridional direction between the cell located at (Face, Face).",
-        "units" => "m"
-    )
+    Δyᶠᶠᵃ_attrs = Dict("long_name" => "Geodesic spacings in the meridional direction between the cell located at (Face, Face).",
+                       "units" => "m")
 
-    Δyᶠᶜᵃ_attrs = Dict(
-        "long_name" => "Geodesic spacings in the meridional direction between the cell located at (Face, Center).",
-        "units" => "m"
-    )
+    Δyᶠᶜᵃ_attrs = Dict("long_name" => "Geodesic spacings in the meridional direction between the cell located at (Face, Center).",
+                       "units" => "m")
 
-    Δyᶜᶠᵃ_attrs = Dict(
-        "long_name" => "Geodesic spacings in the meridional direction between the cell located at (Center, Face).",
-        "units" => "m"
-    )
+    Δyᶜᶠᵃ_attrs = Dict("long_name" => "Geodesic spacings in the meridional direction between the cell located at (Center, Face).",
+                       "units" => "m")
 
-    Δyᶜᶜᵃ_attrs = Dict(
-        "long_name" => "Geodesic spacings in the meridional direction between the cell located at (Center, Center).",
-        "units" => "m"
-    )
+    Δyᶜᶜᵃ_attrs = Dict("long_name" => "Geodesic spacings in the meridional direction between the cell located at (Center, Center).",
+                       "units" => "m")
 
-    horizontal_dimension_attributes = Dict(
-         λᶠᵃᵃ_name =>  λᶠᵃᵃ_attrs,
-         λᶜᵃᵃ_name =>  λᶜᵃᵃ_attrs,
-         φᵃᶠᵃ_name =>  φᵃᶠᵃ_attrs,
-         φᵃᶜᵃ_name =>  φᵃᶜᵃ_attrs,
-        Δλᶠᵃᵃ_name => Δλᶠᵃᵃ_attrs,
-        Δλᶜᵃᵃ_name => Δλᶜᵃᵃ_attrs,
-        Δφᵃᶠᵃ_name => Δφᵃᶠᵃ_attrs,
-        Δφᵃᶜᵃ_name => Δφᵃᶜᵃ_attrs,
-        Δxᶠᶠᵃ_name => Δxᶠᶠᵃ_attrs,
-        Δxᶠᶜᵃ_name => Δxᶠᶜᵃ_attrs,
-        Δxᶜᶠᵃ_name => Δxᶜᶠᵃ_attrs,
-        Δxᶜᶜᵃ_name => Δxᶜᶜᵃ_attrs,
-        Δyᶠᶠᵃ_name => Δyᶠᶠᵃ_attrs,
-        Δyᶠᶜᵃ_name => Δyᶠᶜᵃ_attrs,
-        Δyᶜᶠᵃ_name => Δyᶜᶠᵃ_attrs,
-        Δyᶜᶜᵃ_name => Δyᶜᶜᵃ_attrs
-   )
+    horizontal_dimension_attributes = Dict(λᶠᵃᵃ_name  => λᶠᵃᵃ_attrs,
+                                           λᶜᵃᵃ_name  => λᶜᵃᵃ_attrs,
+                                           φᵃᶠᵃ_name  => φᵃᶠᵃ_attrs,
+                                           φᵃᶜᵃ_name  => φᵃᶜᵃ_attrs,
+                                           Δλᶠᵃᵃ_name => Δλᶠᵃᵃ_attrs,
+                                           Δλᶜᵃᵃ_name => Δλᶜᵃᵃ_attrs,
+                                           Δφᵃᶠᵃ_name => Δφᵃᶠᵃ_attrs,
+                                           Δφᵃᶜᵃ_name => Δφᵃᶜᵃ_attrs,
+                                           Δxᶠᶠᵃ_name => Δxᶠᶠᵃ_attrs,
+                                           Δxᶠᶜᵃ_name => Δxᶠᶜᵃ_attrs,
+                                           Δxᶜᶠᵃ_name => Δxᶜᶠᵃ_attrs,
+                                           Δxᶜᶜᵃ_name => Δxᶜᶜᵃ_attrs,
+                                           Δyᶠᶠᵃ_name => Δyᶠᶠᵃ_attrs,
+                                           Δyᶠᶜᵃ_name => Δyᶠᶜᵃ_attrs,
+                                           Δyᶜᶠᵃ_name => Δyᶜᶠᵃ_attrs,
+                                           Δyᶜᶜᵃ_name => Δyᶜᶜᵃ_attrs)
 
     vertical_dimension_attributes = default_vertical_dimension_attributes(grid.z, dim_name_generator)
 
-    return merge(
-        base_dimension_attributes,
-        horizontal_dimension_attributes,
-        vertical_dimension_attributes
-    )
+    return merge(base_dimension_attributes,
+                 horizontal_dimension_attributes,
+                 vertical_dimension_attributes)
 end
 
 default_dimension_attributes(grid::ImmersedBoundaryGrid, dim_name_generator) =
@@ -574,35 +540,28 @@ default_dimension_attributes(grid::ImmersedBoundaryGrid, dim_name_generator) =
 default_velocity_attributes(::RectilinearGrid) = Dict(
     "u" => Dict("long_name" => "Velocity in the +x-direction.", "units" => "m/s"),
     "v" => Dict("long_name" => "Velocity in the +y-direction.", "units" => "m/s"),
-    "w" => Dict("long_name" => "Velocity in the +z-direction.", "units" => "m/s")
-)
+    "w" => Dict("long_name" => "Velocity in the +z-direction.", "units" => "m/s"))
 
 default_velocity_attributes(::LatitudeLongitudeGrid) = Dict(
     "u" => Dict("long_name" => "Velocity in the zonal direction (+ = east).", "units" => "m/s"),
     "v" => Dict("long_name" => "Velocity in the meridional direction (+ = north).", "units" => "m/s"),
     "w" => Dict("long_name" => "Velocity in the vertical direction (+ = up).", "units" => "m/s"),
     "η" => Dict("long_name" => "Sea surface height", "units" => "m/s"),
-    "eta" => Dict("long_name" => "Sea surface height", "units" => "m/s") # non-unicode default
-)
+    "eta" => Dict("long_name" => "Sea surface height", "units" => "m/s")) # non-unicode default
 
 default_velocity_attributes(ibg::ImmersedBoundaryGrid) = default_velocity_attributes(ibg.underlying_grid)
 
 default_tracer_attributes(::Nothing) = Dict()
 
-default_tracer_attributes(::BuoyancyForce{<:BuoyancyTracer}) = Dict(
-    "b" => Dict("long_name" => "Buoyancy", "units" => "m/s²")
-)
+default_tracer_attributes(::BuoyancyForce{<:BuoyancyTracer}) = Dict("b" => Dict("long_name" => "Buoyancy", "units" => "m/s²"))
 
 default_tracer_attributes(::BuoyancyForce{<:SeawaterBuoyancy{FT, <:LinearEquationOfState}}) where FT = Dict(
     "T" => Dict("long_name" => "Temperature", "units" => "°C"),
-    "S" => Dict("long_name" => "Salinity",    "units" => "practical salinity unit (psu)")
-)
+    "S" => Dict("long_name" => "Salinity",    "units" => "practical salinity unit (psu)"))
 
 # Assuming TEOS-10 I guess?
-default_tracer_attributes(::SeawaterBuoyancy) = Dict(
-    "T" => Dict("long_name" => "Conservative temperature", "units" => "°C"),
-    "S" => Dict("long_name" => "Absolute salinity",        "units" => "g/kg")
-)
+default_tracer_attributes(::SeawaterBuoyancy) = Dict("T" => Dict("long_name" => "Conservative temperature", "units" => "°C"),
+                                                     "S" => Dict("long_name" => "Absolute salinity",        "units" => "g/kg"))
 
 function default_output_attributes(model)
     velocity_attrs = default_velocity_attributes(model.grid)
@@ -620,19 +579,17 @@ function grid_reconstruction_attributes(grid::RectilinearGrid)
 
     dims = Dict()
 
-    attrs = Dict(
-        "type" => string(nameof(typeof(grid))),
-        "eltype" => string(eltype(grid)),
-        "TX" => string(TX),
-        "TY" => string(TY),
-        "TZ" => string(TZ),
-        "Nx" => grid.Nx,
-        "Ny" => grid.Ny,
-        "Nz" => grid.Nz,
-        "Hx" => grid.Hx,
-        "Hy" => grid.Hy,
-        "Hz" => grid.Hz
-    )
+    attrs = Dict("type" => string(nameof(typeof(grid))),
+                 "eltype" => string(eltype(grid)),
+                 "TX" => string(TX),
+                 "TY" => string(TY),
+                 "TZ" => string(TZ),
+                 "Nx" => grid.Nx,
+                 "Ny" => grid.Ny,
+                 "Nz" => grid.Nz,
+                 "Hx" => grid.Hx,
+                 "Hy" => grid.Hy,
+                 "Hz" => grid.Hz)
 
     if TX == Flat
         attrs["x_spacing"] = "flat"
@@ -663,19 +620,17 @@ function grid_reconstruction_attributes(grid::LatitudeLongitudeGrid)
 
     dims = Dict()
 
-    attrs = Dict(
-        "type" => string(nameof(typeof(grid))),
-        "eltype" => string(eltype(grid)),
-        "TX" => string(TX),
-        "TY" => string(TY),
-        "TZ" => string(TZ),
-        "Nx" => grid.Nx,
-        "Ny" => grid.Ny,
-        "Nz" => grid.Nz,
-        "Hx" => grid.Hx,
-        "Hy" => grid.Hy,
-        "Hz" => grid.Hz
-    )
+    attrs = Dict("type" => string(nameof(typeof(grid))),
+                 "eltype" => string(eltype(grid)),
+                 "TX" => string(TX),
+                 "TY" => string(TY),
+                 "TZ" => string(TZ),
+                 "Nx" => grid.Nx,
+                 "Ny" => grid.Ny,
+                 "Nz" => grid.Nz,
+                 "Hx" => grid.Hx,
+                 "Hy" => grid.Hy,
+                 "Hz" => grid.Hz)
 
     if TX == Flat
         attrs["λ_spacing"] = "flat"
@@ -704,9 +659,7 @@ end
 function grid_reconstruction_attributes(ibg::ImmersedBoundaryGrid)
     attrs, dims = grid_reconstruction_attributes(ibg.underlying_grid)
 
-    immersed_attrs = Dict(
-        "immersed_boundary_type" => string(nameof(typeof(ibg.immersed_boundary)))
-    )
+    immersed_attrs = Dict("immersed_boundary_type" => string(nameof(typeof(ibg.immersed_boundary))))
 
     attrs = merge(attrs, immersed_attrs)
 
@@ -716,9 +669,7 @@ end
 function write_grid_reconstruction_metadata!(ds, grid, indices, array_type, deflatelevel)
     grid_attrs, grid_dims = grid_reconstruction_attributes(grid)
 
-    ds_grid = defGroup(ds, "grid_reconstruction";
-        attrib = sort(collect(pairs(grid_attrs)), by=first)
-    )
+    ds_grid = defGroup(ds, "grid_reconstruction"; attrib = sort(collect(pairs(grid_attrs)), by=first))
 
     for (dim_name, dim_array) in grid_dims
         defVar(ds_grid, dim_name, array_type(dim_array), (dim_name,); deflatelevel)
@@ -973,8 +924,7 @@ dims = Dict("scalar" => (), "profile" => ("zC",), "slice" => ("xC", "yC"))
 output_attributes = Dict(
     "scalar"  => Dict("long_name" => "Some scalar", "units" => "bananas"),
     "profile" => Dict("long_name" => "Some vertical profile", "units" => "watermelons"),
-    "slice"   => Dict("long_name" => "Some slice", "units" => "mushrooms")
-)
+    "slice"   => Dict("long_name" => "Some slice", "units" => "mushrooms"))
 
 global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
 
@@ -1053,10 +1003,7 @@ function NetCDFOutputWriter(model, outputs;
         end
     end
 
-    outputs = Dict(
-        string(name) => construct_output(outputs[name], grid, indices, with_halos)
-        for name in keys(outputs)
-    )
+    outputs = Dict(string(name) => construct_output(outputs[name], grid, indices, with_halos) for name in keys(outputs))
 
     output_attributes = dictify(output_attributes)
     global_attributes = dictify(global_attributes)
@@ -1123,11 +1070,9 @@ function initialize_nc_file(model,
     mode = overwrite_existing ? "c" : "a"
 
     # Add useful metadata
-    useful_attributes = Dict(
-        "date" => "This file was generated on $(now()) local time ($(now(UTC)) UTC).",
-        "Julia" => "This file was generated using " * versioninfo_with_gpu(),
-        "Oceananigans" => "This file was generated using " * oceananigans_versioninfo()
-    )
+    useful_attributes = Dict("date" => "This file was generated on $(now()) local time ($(now(UTC)) UTC).",
+                             "Julia" => "This file was generated using " * versioninfo_with_gpu(),
+                             "Oceananigans" => "This file was generated using " * oceananigans_versioninfo())
 
     if with_halos
         useful_attributes["output_includes_halos"] =
@@ -1149,11 +1094,9 @@ function initialize_nc_file(model,
 
     # Merge the default with any user-supplied output attributes, ensuring the user-supplied ones
     # can overwrite the defaults.
-    output_attributes = merge(
-        default_dimension_attributes(grid, dimension_name_generator),
-        default_output_attributes(model),
-        output_attributes
-    )
+    output_attributes = merge(default_dimension_attributes(grid, dimension_name_generator),
+                              default_output_attributes(model),
+                              output_attributes)
 
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
@@ -1196,18 +1139,16 @@ function initialize_nc_file(model,
                 attributes = haskey(output_attributes, name) ? output_attributes[name] : Dict()
                 materialized = materialize_output(output, model)
 
-                define_output_variable!(
-                    dataset,
-                    materialized,
-                    name,
-                    array_type,
-                    deflatelevel,
-                    attributes,
-                    dimensions,
-                    filepath, # for better error messages
-                    dimension_name_generator,
-                    false # time_dependent = false
-                )
+                define_output_variable!(dataset,
+                                        materialized,
+                                        name,
+                                        array_type,
+                                        deflatelevel,
+                                        attributes,
+                                        dimensions,
+                                        filepath, # for better error messages
+                                        dimension_name_generator,
+                                        false) # time_dependent = false
 
                 save_output!(dataset, output, model, name, array_type)
             end
@@ -1217,18 +1158,16 @@ function initialize_nc_file(model,
             attributes = haskey(output_attributes, name) ? output_attributes[name] : Dict()
             materialized = materialize_output(output, model)
 
-            define_output_variable!(
-                dataset,
-                materialized,
-                name,
-                array_type,
-                deflatelevel,
-                attributes,
-                dimensions,
-                filepath, # for better error messages
-                dimension_name_generator,
-                true # time_dependent = true
-            )
+            define_output_variable!(dataset,
+                                    materialized,
+                                    name,
+                                    array_type,
+                                    deflatelevel,
+                                    attributes,
+                                    dimensions,
+                                    filepath, # for better error messages
+                                    dimension_name_generator,
+                                    true) # time_dependent = true)
         end
 
         sync(dataset)
