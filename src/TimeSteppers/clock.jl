@@ -13,12 +13,12 @@ Keeps track of the current `time`, `last_Δt`, `iteration` number, and time-step
 The `stage` is updated only for multi-stage time-stepping methods. The `time::T` is
 either a number or a `DateTime` object.
 """
-mutable struct Clock{TT, DT, IT}
+mutable struct Clock{TT, DT, IT, ST}
     time :: TT
     last_Δt :: DT
     last_stage_Δt :: DT
     iteration :: IT
-    stage :: IT
+    stage :: ST
 end
 
 """
@@ -36,8 +36,9 @@ function Clock(; time,
     TT = typeof(time)
     DT = typeof(last_Δt)
     IT = typeof(iteration)
+    ST = typeof(stage)
     last_stage_Δt = convert(DT, last_Δt)
-    return Clock{TT, DT, IT}(time, last_Δt, last_stage_Δt, iteration, stage)
+    return Clock{TT, DT, IT, ST}(time, last_Δt, last_stage_Δt, iteration, stage)
 end
 
 # TODO: when supporting DateTime, this function will have to be extended

@@ -1,5 +1,0 @@
-module Models
-
-
-
-end # module

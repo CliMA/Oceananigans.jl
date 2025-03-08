@@ -7,6 +7,9 @@ using OffsetArrays
 deconcretize(obj) = obj # fallback
 deconcretize(a::OffsetArray) = OffsetArray(Array(a.parent), a.offsets...)
 
+include("Utils.jl")
+using .Utils
+
 include("Architectures.jl")
 using .Architectures
 
@@ -46,3 +49,4 @@ constructorof(::Type{<:VectorInvariant{N, FT, M}}) where {N, FT, M} = VectorInva
 # using .Solvers
 
 end # module
+

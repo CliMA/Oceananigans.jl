@@ -12,12 +12,16 @@ using Oceananigans.TimeSteppers:
     update_state!,
     tick!,
     calculate_pressure_correction!,
-    correct_velocities_and_store_tendencies!,
+    correct_velocities_and_cache_previous_tendencies!,
     step_lagrangian_particles!,
-    QuasiAdamsBashforth2TimeStepper,
-    ab2_step!
+    QuasiAdamsBashforth2TimeStepper
 
-import Oceananigans.TimeSteppers: Clock, unit_time, time_step!
+using Oceananigans.Models.HydrostaticFreeSurfaceModels:
+    step_free_surface!,
+    local_ab2_step!,
+    compute_free_surface_tendency!
+
+import Oceananigans.TimeSteppers: Clock, unit_time, time_step!, ab2_step!
 
 const ReactantGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:ReactantState} where {FT, TX, TY, TZ}
 const ReactantModel{TS} = AbstractModel{TS, <:ReactantState} where TS
@@ -26,11 +30,14 @@ function Clock(grid::ReactantGrid)
     FT = Float64 # may change in the future
     t = ConcreteRNumber(zero(FT))
     iter = ConcreteRNumber(0)
-    stage = ConcreteRNumber(0)
+    stage = 0 #ConcreteRNumber(0)
     last_Δt = zero(FT)
     last_stage_Δt = zero(FT)
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
 end
+
+first_time_step!(model::ReactantModel, Δt) = time_step!(model, Δt)
+first_time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt) = time_step!(model, Δt, euler=true)
 
 function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt;
                     callbacks=[], euler=false)
@@ -40,7 +47,6 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     @trace if model.clock.iteration == 0
         update_state!(model, callbacks; compute_tendencies=true)
     end
-    =#
 
     # Take an euler step if:
     #   * We detect that the time-step size has changed.
@@ -51,6 +57,7 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     @trace if Δt != model.clock.last_Δt
         euler = true
     end
+    =#
 
     # If euler, then set χ = -0.5
     minus_point_five = convert(eltype(model.grid), -0.5)
@@ -67,7 +74,7 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     model.clock.last_stage_Δt = Δt # just one stage
 
     calculate_pressure_correction!(model, Δt)
-    @apply_regionally correct_velocities_and_store_tendencies!(model, Δt)
+    correct_velocities_and_cache_previous_tendencies!(model, Δt)
 
     update_state!(model, callbacks; compute_tendencies=true)
     step_lagrangian_particles!(model, Δt)

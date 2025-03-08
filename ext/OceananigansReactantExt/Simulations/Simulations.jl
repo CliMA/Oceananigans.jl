@@ -22,10 +22,14 @@ using Oceananigans.Simulations:
     AbstractOutputWriter
 
 import Oceananigans.Simulations:
+    iteration,
+    add_callback!,
     Simulation,
     aligned_time_step,
     initialize!,
     stop_iteration_exceeded
+
+import Oceananigans.TimeSteppers: time_step!
 
 include("simulation.jl")
 include("run.jl")
