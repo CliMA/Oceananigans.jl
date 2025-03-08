@@ -203,7 +203,7 @@ macro apply_regionally(expr)
         func = expr.args[1]
         args = expr.args[2:end]
         multi_region = quote
-            apply_regionally!($func, $(args...))
+            $(apply_regionally!)($func, $(args...))
         end
         return quote
             $(esc(multi_region))
@@ -218,7 +218,7 @@ macro apply_regionally(expr)
         func = exp.args[1]
         args = exp.args[2:end]
         multi_region = quote
-            $ret = construct_regionally($Nret, $func, $(args...))
+            $ret = $(construct_regionally)($Nret, $func, $(args...))
         end
         return quote
             $(esc(multi_region))
@@ -230,7 +230,7 @@ macro apply_regionally(expr)
                 func = arg.args[1]
                 args = arg.args[2:end]
                 new_expr.args[idx] = quote
-                    apply_regionally!($func, $(args...))
+                    $(apply_regionally!)($func, $(args...))
                 end
             elseif arg isa Expr && arg.head == :(=)
                 ret = arg.args[1]
@@ -242,7 +242,7 @@ macro apply_regionally(expr)
                 func = exp.args[1]
                 args = exp.args[2:end]
                 new_expr.args[idx] = quote
-                    $ret = construct_regionally($Nret, $func, $(args...))
+                    $ret = $(construct_regionally)($Nret, $func, $(args...))
                 end
             end
         end
