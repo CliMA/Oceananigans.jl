@@ -58,6 +58,19 @@ r_run!(simulation)
 
 bottom_height(x, y) = - 0.5
 
+function r_run!(sim, r_time_step!, r_first_time_step!)
+    stop_iteration = sim.stop_iteration
+    start_iteration = iteration(sim)
+    for n = start_iteration:stop_iteration
+        if n == 1
+            r_first_time_step!(sim.model, sim.Δt)
+        else
+            r_time_step!(sim.model, sim.Δt)
+        end
+    end
+    return nothing
+end
+
 function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw; immersed_boundary_grid=true)
     r_arch = ReactantState()
     r_grid = GridType(r_arch; grid_kw...)
@@ -113,11 +126,11 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     r_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false)
 
     @info "  Compiling r_run!:"
-    r_run! = @compile sync=true run!(r_simulation)
-    # r_run! = @compile run!(r_simulation)
+    r_first_time_step! = @compile sync=true time_step!(r_model, Δt, euler=true)
+    r_time_step! = @compile sync=true time_step!(r_model, Δt)
 
     @info "  Executing r_run!:"
-    r_run!(r_simulation)
+    r_run!(r_simulation, r_time_step!, r_first_time_step!)
 
     @info "  After running 3 time steps, the reactant model:"
     @test iteration(r_simulation) == stop_iteration
@@ -142,7 +155,7 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
 
     # Running a few more time-steps works too:
     r_simulation.stop_iteration += 2
-    r_run!(r_simulation)
+    r_run!(r_simulation, r_time_step!, r_first_time_step!)
     @test iteration(r_simulation) == 5
     @test time(r_simulation) == 5Δt
 
@@ -160,7 +173,6 @@ end
     @inbounds f[i, j, k] += 1
 end
 
-#=
 @testset "Reactanigans unit tests" begin
     @info "Performing Reactanigans unit tests..."
     arch = ReactantState()
@@ -250,7 +262,6 @@ end
         end
     end
 end
-=#
 
 @testset "Reactant Super Simple Simulation Tests" begin
     @info "Performing Reactanigans super simple simulation tests..."
