@@ -1,12 +1,14 @@
 import Oceananigans.Models: compute_buffer_tendencies!
 
 using Oceananigans.Grids: halo_size
-using Oceananigans.DistributedComputations: Distributed, DistributedGrid
+
 using Oceananigans.ImmersedBoundaries: get_active_cells_map, CellMaps
-using Oceananigans.Models.NonhydrostaticModels: buffer_tendency_kernel_parameters,
-                                                buffer_p_kernel_parameters, 
-                                                buffer_κ_kernel_parameters,
-                                                buffer_parameters
+using Oceananigans.DistributedComputations: Distributed, DistributedGrid
+using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map
+using Oceananigans.Models: buffer_tendency_kernel_parameters,
+                           buffer_p_kernel_parameters, 
+                           buffer_κ_kernel_parameters,
+                           buffer_parameters
 
 const DistributedActiveInteriorIBG = ImmersedBoundaryGrid{FT, TX, TY, TZ,
                                                           <:DistributedGrid, I, <:CellMaps, S,
