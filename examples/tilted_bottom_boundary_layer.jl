@@ -236,14 +236,14 @@ ax_v = Axis(fig[3, 1]; title = "Along-slope velocity (v)", axis_kwargs...)
 
 n = Observable(1)
 
-ωy = @lift ds["ωy"][:, 1, :, $n]
-B = @lift ds["B"][:, 1, :, $n]
+ωy = @lift ds["ωy"][:, :, $n]
+B = @lift ds["B"][:, :, $n]
 hm_ω = heatmap!(ax_ω, xω, zω, ωy, colorrange = (-0.015, +0.015), colormap = :balance)
 Colorbar(fig[2, 2], hm_ω; label = "s⁻¹")
 ct_b = contour!(ax_ω, xb, zb, B, levels=-1e-3:0.5e-4:1e-3, color=:black)
 
-V = @lift ds["V"][:, 1, :, $n]
-V_max = @lift maximum(abs, ds["V"][:, 1, :, $n])
+V = @lift ds["V"][:, :, $n]
+V_max = @lift maximum(abs, ds["V"][:, :, $n])
 
 hm_v = heatmap!(ax_v, xv, zv, V, colorrange = (-V∞, +V∞), colormap = :balance)
 Colorbar(fig[3, 2], hm_v; label = "m s⁻¹")
