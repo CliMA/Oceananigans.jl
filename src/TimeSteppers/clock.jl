@@ -54,8 +54,9 @@ function Clock{TT}(; time,
     last_Δt = convert(DT, last_Δt)
     last_stage_Δt = convert(DT, last_stage_Δt)
     IT = typeof(iteration)
+    ST = typeof(stage)
 
-    return Clock{TT, DT, IT}(time, last_Δt, last_stage_Δt, iteration, stage)
+    return Clock{TT, DT, IT, ST}(time, last_Δt, last_stage_Δt, iteration, stage)
 end
 
 # helpful default
