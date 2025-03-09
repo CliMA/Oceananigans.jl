@@ -58,13 +58,6 @@ r_run!(simulation)
 
 bottom_height(x, y) = - 0.5
 
-function first_time_step!(model, Δt)
-    Oceananigans.initialize!(model)
-    Oceananigans.TimeSteppers.update_state!(model, compute_tendencies=true)
-    Oceananigans.TimeSteppers.time_step!(model, Δt, euler=true)
-    return nothing
-end
-
 function r_run!(sim, r_time_step!, r_first_time_step!)
     stop_iteration = sim.stop_iteration
     start_iteration = iteration(sim) + 1
@@ -134,7 +127,7 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
 
     Nsteps = ConcretePJRTNumber(3)
     @time "  Compiling r_run!:" begin
-        r_first_time_step! = @compile sync=true OceananigansReactantExt.first_time_step!(r_model, Δt)
+        r_first_time_step! = @compile sync=true Oceananigans.TimeSteppers.first_time_step!(r_model, Δt)
         r_time_step! = @compile sync=true Oceananigans.TimeSteppers.time_step!(r_model, Δt)
         #r_time_step_for! = @compile sync=true  OceananigansReactantExt.time_step_for!(r_simulation, Nsteps)
     end

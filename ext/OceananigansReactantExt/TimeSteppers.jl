@@ -37,20 +37,6 @@ function Clock(grid::ReactantGrid)
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
 end
 
-function first_time_step!(model::ReactantModel, Δt)
-    initialize!(model)
-    update_state!(model)
-    time_step!(model, Δt)
-    return nothing
-end
-
-function first_time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt)
-    initialize!(model)
-    update_state!(model)
-    time_step!(model, Δt, euler=true)
-    return nothing
-end
-
 function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt;
                     callbacks=[], euler=false)
 
