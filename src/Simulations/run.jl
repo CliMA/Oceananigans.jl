@@ -135,10 +135,7 @@ function time_step!(sim::Simulation)
     end
 
     initial_time_step = !(sim.initialized)
-    if initial_time_step # execute initialization step
-        initialize!(sim)
-        initialize!(sim.model)
-    end
+    initial_time_step && initialize!(sim)
 
     if initial_time_step && sim.verbose 
         @info "Executing initial time step..."
@@ -207,7 +204,7 @@ function initialize!(sim::Simulation)
     end
 
     model = sim.model
-    clock = model.clock
+    initialize!(model)
     update_state!(model)
 
     # Output and diagnostics initialization
@@ -223,8 +220,8 @@ function initialize!(sim::Simulation)
     end
 
     # Reset! the model time-stepper, evaluate all diagnostics, and write all output at first iteration
-    if clock.iteration == 0
-        reset!(timestepper(sim.model))
+    if model.clock.iteration == 0
+        reset!(timestepper(model))
 
         # Initialize schedules and run diagnostics, callbacks, and output writers
         for diag in values(sim.diagnostics)
@@ -236,7 +233,7 @@ function initialize!(sim::Simulation)
         end
 
         for writer in values(sim.output_writers)
-            writer.schedule(sim.model)
+            writer.schedule(model)
             write_output!(writer, model)
         end
     end

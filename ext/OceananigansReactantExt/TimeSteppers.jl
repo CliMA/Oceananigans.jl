@@ -22,6 +22,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     compute_free_surface_tendency!
 
 import Oceananigans.TimeSteppers: Clock, unit_time, time_step!, ab2_step!
+import Oceananigans: initialize!
 
 const ReactantGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:ReactantState} where {FT, TX, TY, TZ}
 const ReactantModel{TS} = AbstractModel{TS, <:ReactantState} where TS
@@ -36,8 +37,19 @@ function Clock(grid::ReactantGrid)
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
 end
 
-first_time_step!(model::ReactantModel, Δt) = time_step!(model, Δt)
-first_time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt) = time_step!(model, Δt, euler=true)
+function first_time_step!(model::ReactantModel, Δt)
+    initialize!(model)
+    update_state!(model)
+    time_step!(model, Δt)
+    return nothing
+end
+
+function first_time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt)
+    initialize!(model)
+    update_state!(model)
+    time_step!(model, Δt, euler=true)
+    return nothing
+end
 
 function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt;
                     callbacks=[], euler=false)

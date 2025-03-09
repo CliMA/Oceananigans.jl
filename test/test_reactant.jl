@@ -132,13 +132,17 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     # Reactant time now:
     r_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false)
 
+    Nsteps = ConcretePJRTNumber(3)
     @time "  Compiling r_run!:" begin
-        r_first_time_step! = @compile sync=true first_time_step!(r_model, Δt)
-        r_time_step! = @compile sync=true time_step!(r_model, Δt)
+        r_first_time_step! = @compile sync=true OceananigansReactantExt.first_time_step!(r_model, Δt)
+        r_time_step! = @compile sync=true Oceananigans.TimeSteppers.time_step!(r_model, Δt)
+        #r_time_step_for! = @compile sync=true  OceananigansReactantExt.time_step_for!(r_simulation, Nsteps)
     end
 
     @time "  Executing r_run!:" begin
         r_run!(r_simulation, r_time_step!, r_first_time_step!)
+        #r_first_time_step!(r_simulation)
+        #r_time_step_for!(r_simulation, 2)
     end
 
     @info "  After running 3 time steps, the reactant model:"
@@ -165,6 +169,7 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     # Running a few more time-steps works too:
     r_simulation.stop_iteration += 2
     r_run!(r_simulation, r_time_step!, r_first_time_step!)
+    #r_time_step_for!(r_simulation, 2)
     @test iteration(r_simulation) == 5
     @test time(r_simulation) == 5Δt
 
