@@ -1,5 +1,6 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: interpolate
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Statistics
 
 struct DynamicCoefficient{A, FT, S}
@@ -303,6 +304,8 @@ function compute_coefficient_fields!(diffusivity_fields, closure::LagrangianAver
             parent(𝒥ᴸᴹ) .= max(mean(𝒥ᴸᴹ), 𝒥ᴸᴹ_min)
             parent(𝒥ᴹᴹ) .= mean(𝒥ᴹᴹ)
         else
+            fill_halo_regions!(𝒥ᴹᴹ⁻)
+            fill_halo_regions!(𝒥ᴸᴹ⁻)
             launch!(arch, grid, :xyz,
                     _lagrangian_average_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, 𝒥ᴸᴹ_min, Σ, Σ̄, grid, Δt, u, v, w)
 
