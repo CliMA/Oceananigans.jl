@@ -84,8 +84,7 @@ default_dim_name(var_name, ::StaticVerticalDiscretization, LX, LY, LZ, ::Val{:z}
 
 default_dim_name(var_name, grid, LX, LY, LZ, dim) = "$(var_name)_" * loc2letter(LX) * loc2letter(LY) * loc2letter(LZ)
 
-default_dim_name(var_name, grid::ImmersedBoundaryGrid, args...) =
-    default_dim_name(var_name, grid.underlying_grid, args...)
+default_dim_name(var_name, grid::ImmersedBoundaryGrid, args...) = default_dim_name(var_name, grid.underlying_grid, args...)
 
 #####
 ##### Gathering of grid dimensions
