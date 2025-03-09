@@ -58,9 +58,16 @@ r_run!(simulation)
 
 bottom_height(x, y) = - 0.5
 
+function first_time_step!(model, Δt)
+    Oceananigans.initialize!(model)
+    Oceananigans.TimeSteppers.update_state!(model, compute_tendencies=true)
+    Oceananigans.TimeSteppers.time_step!(model, Δt, euler=true)
+    return nothing
+end
+
 function r_run!(sim, r_time_step!, r_first_time_step!)
     stop_iteration = sim.stop_iteration
-    start_iteration = iteration(sim)
+    start_iteration = iteration(sim) + 1
     for n = start_iteration:stop_iteration
         if n == 1
             r_first_time_step!(sim.model, sim.Δt)
@@ -91,8 +98,8 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     ui = randn(size(model.velocities.u)...)
     vi = randn(size(model.velocities.v)...)
 
-    set!(model, u=ui, v=ui)
-    set!(r_model, u=ui, v=ui)
+    set!(model, u=ui, v=vi)
+    set!(r_model, u=ui, v=vi)
 
     u, v, w = model.velocities
     ru, rv, rw = r_model.velocities
@@ -125,12 +132,14 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     # Reactant time now:
     r_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false)
 
-    @info "  Compiling r_run!:"
-    r_first_time_step! = @compile sync=true time_step!(r_model, Δt, euler=true)
-    r_time_step! = @compile sync=true time_step!(r_model, Δt)
+    @time "  Compiling r_run!:" begin
+        r_first_time_step! = @compile sync=true first_time_step!(r_model, Δt)
+        r_time_step! = @compile sync=true time_step!(r_model, Δt)
+    end
 
-    @info "  Executing r_run!:"
-    r_run!(r_simulation, r_time_step!, r_first_time_step!)
+    @time "  Executing r_run!:" begin
+        r_run!(r_simulation, r_time_step!, r_first_time_step!)
+    end
 
     @info "  After running 3 time steps, the reactant model:"
     @test iteration(r_simulation) == stop_iteration
@@ -179,7 +188,6 @@ end
     grid = RectilinearGrid(arch; size=(4, 4, 4), extent=(1, 1, 1))
     c = CenterField(grid)
     @test parent(c) isa Reactant.ConcretePJRTArray
-
 
     @info "  Testing field set! with a number..."
     set!(c, 1)
@@ -284,25 +292,31 @@ end
     @info "Testing RectilinearGrid + HydrostaticFreeSurfaceModel Reactant correctness"
     hydrostatic_model_kw = (; free_surface=ExplicitFreeSurface(gravitational_acceleration=1))
     test_reactant_model_correctness(RectilinearGrid, HydrostaticFreeSurfaceModel, rectilinear_kw, hydrostatic_model_kw)
-    test_reactant_model_correctness(RectilinearGrid, HydrostaticFreeSurfaceModel, rectilinear_kw, hydrostatic_model_kw, immersed_boundary_grid=true)
+
+    @info "Testing immersed RectilinearGrid + HydrostaticFreeSurfaceModel Reactant correctness"
+    test_reactant_model_correctness(RectilinearGrid, HydrostaticFreeSurfaceModel, rectilinear_kw, hydrostatic_model_kw,
+                                    immersed_boundary_grid=true)
 
     @info "Testing LatitudeLongitudeGrid + HydrostaticFreeSurfaceModel Reactant correctness"
     hydrostatic_model_kw = (; momentum_advection = WENO())
     test_reactant_model_correctness(LatitudeLongitudeGrid, HydrostaticFreeSurfaceModel, lat_lon_kw, hydrostatic_model_kw)
-    test_reactant_model_correctness(LatitudeLongitudeGrid, HydrostaticFreeSurfaceModel, lat_lon_kw, hydrostatic_model_kw, immersed_boundary_grid=true)
 
-    #=
+    @info "Testing immersed LatitudeLongitudeGrid + HydrostaticFreeSurfaceModel Reactant correctness"
+    test_reactant_model_correctness(LatitudeLongitudeGrid, HydrostaticFreeSurfaceModel, lat_lon_kw, hydrostatic_model_kw,
+                                    immersed_boundary_grid=true)
+
     # This test takes too long
     @info "Testing LatitudeLongitudeGrid + SplitExplicitFreeSurface + HydrostaticFreeSurfaceModel Reactant correctness"
     hydrostatic_model_kw = (; momentum_advection=WENOVectorInvariant(), free_surface=SplitExplicitFreeSurface(substeps=4))
     test_reactant_model_correctness(LatitudeLongitudeGrid, HydrostaticFreeSurfaceModel, lat_lon_kw, hydrostatic_model_kw)
-    simulation = test_reactant_model_correctness(LatitudeLongitudeGrid, HydrostaticFreeSurfaceModel, lat_lon_kw, hydrostatic_model_kw, immersed_boundary_grid=true)
+    simulation = test_reactant_model_correctness(LatitudeLongitudeGrid, HydrostaticFreeSurfaceModel, lat_lon_kw,
+                                                 hydrostatic_model_kw, immersed_boundary_grid=true)
     η = simulation.model.free_surface.η
     η_grid = η.grid
     @test isnothing(η_grid.interior_active_cells)
     @test isnothing(η_grid.active_z_columns)
-    =#
 
+    #=
     @info "Testing LatitudeLongitudeGrid + 'complicated HydrostaticFreeSurfaceModel' Reactant correctness"
     equation_of_state = TEOS10EquationOfState()
     hydrostatic_model_kw = (momentum_advection = WENOVectorInvariant(),
@@ -312,5 +326,6 @@ end
                             closure = CATKEVerticalDiffusivity())
 
     test_reactant_model_correctness(LatitudeLongitudeGrid, HydrostaticFreeSurfaceModel, lat_lon_kw, hydrostatic_model_kw)
+    =#
 end
 

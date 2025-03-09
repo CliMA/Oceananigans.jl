@@ -208,7 +208,6 @@ function initialize!(sim::Simulation)
 
     model = sim.model
     clock = model.clock
-
     update_state!(model)
 
     # Output and diagnostics initialization
