@@ -33,10 +33,11 @@ has_active_cells_map(::NoActiveInteriorIBG) = false
 has_active_z_columns(::NoActiveZColumnsIBG) = false
 
 """
-    ImmersedBoundaryGrid(grid, ib::AbstractImmersedBoundary; active_cells_map::Bool=true)
+    ImmersedBoundaryGrid(grid, ib::AbstractImmersedBoundary;
+                         active_cells_map=false, active_z_columns=active_cells_map)
 
-Return a grid with an `AbstractImmersedBoundary` immersed boundary (`ib`). If `active_cells_map` is `true`,
-the grid will also populate an `interior_active_cells` and `active_z_columns` fields that are a list of active indices in the 
+Return a grid with an `AbstractImmersedBoundary` immersed boundary (`ib`). If `active_cells_map` or `active_z_columns` are `true`,
+the grid will populate `interior_active_cells` and `active_z_columns` fields -- a list of active indices in the 
 interior and on a reduced x-y plane, respectively.
 """
 function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersedBoundary;
