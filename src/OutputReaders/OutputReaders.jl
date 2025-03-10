@@ -4,6 +4,7 @@ export FieldDataset
 export FieldTimeSeries
 export InMemory, OnDisk
 export Cyclical, Linear, Clamp
+export save_field_time_series!
 
 """
     auto_extension(filename, ext)                                                             
