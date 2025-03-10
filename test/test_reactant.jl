@@ -315,8 +315,7 @@ end
     @test isnothing(η_grid.active_z_columns)
 
 
-    @info "Test we can time step the simulation"
-    
+    @info "Testing simulation time step"
     @test begin 
         time_step!(simulation) 
         true
