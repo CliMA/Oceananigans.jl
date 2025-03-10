@@ -19,6 +19,7 @@ using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, pretty
 
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
+dictify(outputs::LagrangianParticles) = Dict("particles" => outputs)
 
 # We collect to ensure we return an array which NCDatasets.jl needs
 # instead of a range or offset array.
@@ -1002,6 +1003,7 @@ function NetCDFOutputWriter(model, outputs;
         end
     end
 
+    outputs = dictify(outputs)
     outputs = Dict(string(name) => construct_output(outputs[name], grid, indices, with_halos) for name in keys(outputs))
 
     output_attributes = dictify(output_attributes)
