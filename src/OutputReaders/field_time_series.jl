@@ -373,7 +373,7 @@ function FieldTimeSeries(loc, grid, times=();
                          path = nothing,
                          name = nothing,
                          time_indexing = Clamp(),
-                         boundary_conditions = nothing,
+                         boundary_conditions = FieldBoundaryConditions(grid, loc),
                          reader_kw = NamedTuple())
 
     LX, LY, LZ = loc
