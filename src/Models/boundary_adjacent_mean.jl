@@ -88,19 +88,19 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ```
 """
 struct BoundaryAdjacentMean{NI, BV}
-    boundary_normal_integral :: NI
+  boundary_parallel_integral :: NI
                        value :: BV
 
    BoundaryAdjacentMean(grid, side; 
-                        boundary_normal_integral::NI = boundary_reduced_field(Val(side), grid),
+                        boundary_parallel_integral::NI = boundary_reduced_field(Val(side), grid),
                         value::BV = Ref(zero(grid))) where {NI, BV} = 
-        new{NI, BV}(boundary_normal_integral, value)
+        new{NI, BV}(boundary_parallel_integral, value)
 end
 
 @inline (bam::BoundaryAdjacentMean)(args...) = bam.value[]
 
 Adapt.adapt_structure(to, mo::BoundaryAdjacentMean) = 
-    BoundaryAdjacentMean(; boundary_normal_integral = nothing, value = adapt(to, mo.value[]))
+    BoundaryAdjacentMean(; boundary_parallel_integral = nothing, value = adapt(to, mo.value[]))
 
 Base.show(io::IO, bam::BoundaryAdjacentMean) = print(io, summary(bam)*"\n")
 Base.summary(bam::BoundaryAdjacentMean) = "BoundaryAdjacentMean: ($(bam.value[]))"
@@ -133,14 +133,14 @@ function (bam::BoundaryAdjacentMean)(val_side::Val, u)
     An = boundary_normal_area(val_side, grid)
 
     # get the total flux
-    sum!(bam.boundary_normal_integral, (@at (Face, Center, Center) u) * An)
+    sum!(bam.boundary_parallel_integral, (@at (Face, Center, Center) u) * An)
 
-    bam.value[] = CUDA.@allowscalar bam.boundary_normal_integral[iB, jB, kB]
+    bam.value[] = CUDA.@allowscalar bam.boundary_parallel_integral[iB, jB, kB]
 
     # get the normalizing area
-    sum!(bam.boundary_normal_integral, An)
+    sum!(bam.boundary_parallel_integral, An)
 
-    bam.value[] /= CUDA.@allowscalar bam.boundary_normal_integral[iB, jB, kB]
+    bam.value[] /= CUDA.@allowscalar bam.boundary_parallel_integral[iB, jB, kB]
 
     return bam.value[]
 end
