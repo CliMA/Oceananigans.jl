@@ -2,6 +2,7 @@ using CUDA: has_cuda
 using OrderedCollections: OrderedDict
 
 using Oceananigans.DistributedComputations
+using Oceananigans.DistributedComputations: DistributedGrid, XYRegularDistributedGrid
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, adapt_advection_order
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
@@ -48,11 +49,22 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
          vertical_coordinate :: Z        # Rulesets that define the time-evolution of the grid
 end
 
-default_free_surface(grid::XYRegularRG; gravitational_acceleration=g_Earth) =
-    ImplicitFreeSurface(; gravitational_acceleration)
+default_free_surface(grid; gravitational_acceleration=g_Earth, args...) =
+    SplitExplicitFreeSurface(grid; cfl=0.7, gravitational_acceleration)
 
-default_free_surface(grid; gravitational_acceleration=g_Earth) =
-    SplitExplicitFreeSurface(grid; cfl = 0.7, gravitational_acceleration)
+# A heuristic computation of a possible maximum Δt for a HydrostaticFreeSurfaceModel, 
+# given the grid spacings, a hypothetical `maximum_speed` (assumed to be around 3 m/s)
+# and a conservative CFL of 0.3. Note that this computation only considers the ``advective''
+# CFL, as we assume that at a high enough resolution advective processes are the bottleneck.
+function compute_maximum_Δt(grid; maximum_speed = 3)
+    Δx  = minimum_xspacing(grid)
+    Δy  = minimum_yspacing(grid)
+    Δs  = sqrt(2 / (Δx^2 + Δy^2))^(-1)
+    return Δs * 0.3 / maximum_speed
+end
+
+default_free_surface(grid::DistributedGrid; gravitational_acceleration=g_Earth, cfl=0.7, Δt=compute_maximum_Δt(grid)) = 
+    SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=Δt, gravitational_acceleration)
 
 """
     HydrostaticFreeSurfaceModel(; grid,
@@ -61,7 +73,10 @@ default_free_surface(grid; gravitational_acceleration=g_Earth) =
                                 tracer_advection = Centered(),
                                 buoyancy = SeawaterBuoyancy(eltype(grid)),
                                 coriolis = nothing,
-                                free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
+                                free_surface = default_free_surface(grid, 
+                                                                    gravitational_acceleration=g_Earth, 
+                                                                    cfl=0.7, 
+                                                                    Δt=compute_maximum_Δt(grid)),
                                 forcing::NamedTuple = NamedTuple(),
                                 closure = nothing,
                                 timestepper = :QuasiAdamsBashforth2,
@@ -91,7 +106,8 @@ Keyword arguments
                     geometry of the `grid`. If the `grid` is a `RectilinearGrid` that is
                     regularly spaced in the horizontal the default is an `ImplicitFreeSurface`
                     solver with `solver_method = :FFTBasedPoissonSolver`. In all other cases,
-                    the default is a `SplitExplicitFreeSurface`.
+                    the default is a `SplitExplicitFreeSurface` with a number of substeps corresponding to
+                    a barotropic CFL of 0.7.
   - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
                preallocated `CenterField`s.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
@@ -113,7 +129,10 @@ function HydrostaticFreeSurfaceModel(; grid,
                                      tracer_advection = Centered(),
                                      buoyancy = nothing,
                                      coriolis = nothing,
-                                     free_surface = default_free_surface(grid, gravitational_acceleration=g_Earth),
+                                     free_surface = default_free_surface(grid, 
+                                                                         gravitational_acceleration=g_Earth, 
+                                                                         cfl=0.7, 
+                                                                         Δt=compute_maximum_Δt(grid)),
                                      tracers = nothing,
                                      forcing::NamedTuple = NamedTuple(),
                                      closure = nothing,

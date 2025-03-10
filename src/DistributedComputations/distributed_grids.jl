@@ -13,8 +13,9 @@ import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, with_halo
 
 const DistributedGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:Distributed}
 
-const DistributedRectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY} =
-    RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, <:Distributed} where {FT, TX, TY, TZ, CZ, FX, FY, VX, VY}
+const DistributedRectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY} = RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, <:Distributed} 
+
+const XYRegularDistributedGrid{FT, TX, TY, TZ, CZ, FX, FY} = DistributedRectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, <:Number, <:Number}
 
 const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, Z,
                                        DXF, DXC, XF, XC,
