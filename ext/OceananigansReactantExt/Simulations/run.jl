@@ -1,7 +1,16 @@
 import ..TimeSteppers: first_time_step!
 
 """ Step `sim`ulation forward by one time step. """
-time_step!(sim::ReactantSimulation) = time_step!(sim.model, Δt; euler)
+function time_step!(sim::ReactantSimulation) 
+    n = iteration(sim) + 1
+    if n == 1 
+        first_time_step!(sim) # This automatically performs an Euler step if needed
+    else
+        time_step!(sim.model, sim.Δt)
+    end
+    return nothing
+end
+
 run!(sim::ReactantSimulation) = error("run! is not supported with ReactantState architecture.")
 
 function first_time_step!(sim::ReactantSimulation)
