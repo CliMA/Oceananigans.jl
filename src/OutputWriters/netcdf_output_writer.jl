@@ -759,7 +759,7 @@ end
                        schedule,
                        grid = model.grid,
                        dir = ".",
-                       array_type = Array{Float64},
+                       array_type = Array{Float32},
                        indices = (:, :, :),
                        global_attributes = Dict(),
                        output_attributes = Dict(),
@@ -773,12 +773,17 @@ end
                        file_splitting = NoFileSplitting(),
                        dimension_name_generator = default_dim_name)
 
-Construct a `NetCDFOutputWriter` that writes `(label, output)` pairs in `outputs` (which should
-be a `Dict`) to a NetCDF file, where `label` is a string that labels the output and `output` is
-either a `Field` (e.g. `model.velocities.u`), a `Reduction` (e.g. `Average(model.tracers.T, dims=(2, 3))`)
-or a function `f(model)` that returns something to be written to disk.
+Construct a `NetCDFOutputWriter` that writes `(label, output)` pairs in `outputs` to a NetCDF file.
+The `outputs` can be a `Dict` or `NamedTuple` where each `label` is a string and each `output` is
+one of:
 
-If any of `outputs` are not `AbstractField` or `Reduction`, their spatial `dimensions` must be provided.
+- A `Field` (e.g., `model.velocities.u`)
+- A `Reduction` (e.g., `Average(model.tracers.T, dims=(1, 2))`)
+- `LagrangianParticles` for particle tracking data
+- A function `f(model)` that returns something to be written to disk
+
+If any of `outputs` are not `AbstractField`, `Reduction`, or `LagrangianParticles`, their spatial
+`dimensions` must be provided.
 
 Required arguments
 ==================
@@ -794,49 +799,50 @@ Required keyword arguments
 
 - `filename`: Descriptive filename. `".nc"` is appended if not present.
 
-- `schedule`: An `AbstractSchedule` that determines when output is saved. Some options include:
-  * `TimeInterval(dt)`: Save every `dt` seconds.
-  * `IterationInterval(n)`: Save every `n`` iterations.
-  * `AveragedTimeInterval(dt; window, stride)`: Time-average over window before saving.
+- `schedule`: An `AbstractSchedule` that determines when output is saved. Options include:
+  * `TimeInterval(dt)`: Save every `dt` seconds of simulation time.
+  * `IterationInterval(n)`: Save every `n` iterations.
+  * `AveragedTimeInterval(dt; window, stride)`: Time-average output over a window before saving.
   * `WallTimeInterval(dt)`: Save every `dt` seconds of wall clock time.
 
 Optional keyword arguments
 ==========================
 
-- `grid`: The grid associated with `outputs`. Defaults to `model.grid`. To use `outputs` on a `grid`
-          not equal to `model.grid`, use this keyword argument to provide the proper `grid`.
+- `grid`: The grid associated with `outputs`. Defaults to `model.grid`. To use `outputs` on a different
+          grid than `model.grid`, provide the proper `grid` here.
 
 - `dir`: Directory to save output to. Default: `"."`.
 
 - `array_type`: Type to convert outputs to before saving. Default: `Array{Float32}`.
 
 - `indices`: Tuple of indices of the output variables to include. Default is `(:, :, :)`, which
-             includes the full fields.
+             includes the full fields. This allows saving specific slices of the domain.
 
-- `global_attributes`: `Dict` of global attributes or metadata to save with every file. Default: `Dict()`.
-                       This is useful for saving information specific to the simulation. Some useful global
-                       attributes are included by default, but will be overwritten if included in this `Dict`.
+- `global_attributes`: `Dict` or `NamedTuple` of global attributes or metadata to save with every file.
+                       Default: `Dict()`. This is useful for saving information specific to the simulation.
+                       Some useful global attributes are included by default but will be overwritten if
+                       included in this `Dict`.
 
-- `output_attributes`: Dict of attributes to be saved with each field variable. Default: `Dict()`.
-                       Reasonable defaults including a descriptive name and units are provided for
-                       velocities, buoyancy, temperature, and salinity. If provided here, they will overwrite
-                       the defaults.
+- `output_attributes`: `Dict` or `NamedTuple` of attributes to be saved with each field variable.
+                       Default: `Dict()`. Reasonable defaults including descriptive names and units are
+                       provided for velocities, buoyancy, temperature, and salinity. Attributes provided
+                       here will overwrite the defaults.
 
-- `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs).
+- `dimensions`: A `Dict` or `NamedTuple` of dimension tuples to apply to outputs (required for function
+                outputs that return custom data).
 
-- `with_halos`: Boolean defining whether or not to include halos in the outputs. Default: `false`.
-                Note, that to postprocess saved output (e.g., compute derivatives, etc)
-                information about the boundary conditions is often crucial. In that case
-                you might need to set `with_halos = true`.
+- `with_halos`: Boolean defining whether to include halos in the outputs. Default: `false`.
+                Note that to postprocess saved output (e.g., compute derivatives, etc.),
+                information about the boundary conditions is often crucial. In those cases,
+                you might need to set `with_halos = true`. Cannot be used with custom `indices`.
 
 - `include_grid_metrics`: Include grid metrics such as grid spacings, areas, and volumes as
                           additional variables. Default: `true`. Note that even with
                           `include_grid_metrics = false`, core grid coordinates are still saved.
 
-- `overwrite_existing`: If `false`, `NetCDFOutputWriter` will be set to append to `filepath`. If `true`,
-                        `NetCDFOutputWriter` will overwrite `filepath` if it exists or create it if not.
-                        Default: `false`. See [NCDatasets.jl documentation](https://alexander-barth.github.io/NCDatasets.jl/stable/)
-                        for more information about its `mode` option.
+- `overwrite_existing`: If `false`, `NetCDFOutputWriter` will append to existing files. If `true`,
+                        it will overwrite existing files or create new ones. Default: `true` if the
+                        file does not exist, `false` if it does.
 
 - `verbose`: Log variable compute times, file write times, and file sizes. Default: `false`.
 
@@ -844,13 +850,13 @@ Optional keyword arguments
                   and 9 means maximum compression). See [NCDatasets.jl documentation](https://alexander-barth.github.io/NCDatasets.jl/stable/variables/#Creating-a-variable)
                   for more information.
 
-- `part`: The starting part number used when file splitting.
+- `part`: The starting part number used when file splitting. Default: `1`.
 
 - `file_splitting`: Schedule for splitting the output file. The new files will be suffixed with
-                    `_part1`, `_part2`, etc. For example `file_splitting = FileSizeLimit(sz)` will
-                    split the output file when its size exceeds `sz`. Another example is
-                    `file_splitting = TimeInterval(30days)`, which will split files every 30 days of
-                    simulation time. Default: `NoFileSplitting()`.
+                    `_part1`, `_part2`, etc. Options include:
+                    * `FileSizeLimit(sz)`: Split when file size exceeds `sz` (e.g., `200KiB`).
+                    * `TimeInterval(interval)`: Split every `interval` of simulation time.
+                    * `NoFileSplitting()` (default): Don't split files.
 
 - `dimension_name_generator`: A function with signature `(var_name, grid, LX, LY, LZ, dim)` where `dim` is
                               either `Val(:x)`, `Val(:y)`, or `Val(:z)` that returns a string corresponding
