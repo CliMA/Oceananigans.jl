@@ -129,6 +129,7 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     @time "  Compiling r_run!:" begin
         r_first_time_step! = @compile sync=true Oceananigans.TimeSteppers.first_time_step!(r_model, Δt)
         r_time_step! = @compile sync=true Oceananigans.TimeSteppers.time_step!(r_model, Δt)
+        r_time_step_sim! = @compile sync=true Oceananigans.TimeSteppers.time_step!(r_simulation)
         #r_time_step_for! = @compile sync=true  OceananigansReactantExt.time_step_for!(r_simulation, Nsteps)
     end
 
@@ -165,6 +166,14 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     #r_time_step_for!(r_simulation, 2)
     @test iteration(r_simulation) == 5
     @test time(r_simulation) == 5Δt
+
+    @test try
+        r_time_step_sim!(r_simulation)
+        true
+    catch err
+        false
+        throw(err)
+    end
 
     return r_simulation
 end
