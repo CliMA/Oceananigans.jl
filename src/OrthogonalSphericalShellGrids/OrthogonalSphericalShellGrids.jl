@@ -1,7 +1,9 @@
 module OrthogonalSphericalShellGrids
 
 # The only thing we need!
-export TripolarGrid
+export TripolarGrid, RotatedLatitudeLongitudeGrid
+
+import Oceananigans
 
 using Oceananigans
 using Oceananigans.Grids
@@ -25,5 +27,6 @@ using OffsetArrays
 include("generate_tripolar_coordinates.jl")
 include("tripolar_grid.jl")
 include("tripolar_field_extensions.jl")
+include("rotated_latitude_longitude_grid.jl")
 
-end
+end # module
