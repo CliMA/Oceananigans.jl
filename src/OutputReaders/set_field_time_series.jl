@@ -43,7 +43,6 @@ function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name; wa
 
             # Potentially transfer from CPU to GPU
             set!(fts[n], field_n)
-            fill_halo_regions!(fts[n])
         end
     end
 
