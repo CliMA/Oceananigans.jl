@@ -486,7 +486,7 @@ end
         fts = FieldTimeSeries{Center, Center, Center}(grid, times; backend=OnDisk(), path=filepath_sine, name="f")
         
         for (i, time) in enumerate(fts.times)
-            set!(fts, (x, y, z) -> sinf(time), i)
+            set!(fts[i], (x, y, z) -> sinf(time))
         end
 
         save_field_time_series!(fts; path=filepath_sine, name="f", overwrite_existing=true) 
