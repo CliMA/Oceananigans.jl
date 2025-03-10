@@ -22,18 +22,15 @@ import Oceananigans.Grids: x_domain, y_domain
 import Oceananigans.Fields: Field
 import Oceananigans.Fields: tupled_fill_halo_regions!
 
-# Some aliases
-const TRG = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
-
 # A tripolar grid is always between 0 and 360 in longitude
 # and always caps at the north pole (90°N)
-x_domain(grid::TRG) = 0, 360
-y_domain(grid::TRG) = minimum(parent(grid.φᶠᶠᵃ)), 90
+x_domain(grid::TripolarGridOfSomeKind) = 0, 360
+y_domain(grid::TripolarGridOfSomeKind) = minimum(parent(grid.φᶠᶠᵃ)), 90
 
 # a `TripolarGrid` needs a `ZipperBoundaryCondition` for the north boundary
 # The `sign` 1 for regular tracers and -1 for velocities and signed vectors
 function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
-                                              grid::TRG,
+                                              grid::TripolarGridOfSomeKind,
                                               field_name::Symbol,
                                               prognostic_names=nothing)
 
@@ -63,9 +60,9 @@ sign(::Type{Face},   ::Type{Center}) = - 1 # u-velocity type
 sign(::Type{Center}, ::Type{Face})   = - 1 # v-velocity type
 sign(::Type{Center}, ::Type{Center}) = 1
 
-# Extension of the constructor for a `Field` on a `TRG` grid. We assumes that the north boundary is a zipper
+# Extension of the constructor for a `Field` on a `TripolarGridOfSomeKind` grid. We assumes that the north boundary is a zipper
 # with a sign that depends on the location of the field (revert the value of the halos if on edges, keep it if on nodes or centers)
-function Field((LX, LY, LZ)::Tuple, grid::TRG, data, old_bcs, indices::Tuple, op, status)
+function Field((LX, LY, LZ)::Tuple, grid::TripolarGridOfSomeKind, data, old_bcs, indices::Tuple, op, status)
     indices = validate_indices(indices, (LX, LY, LZ), grid)
     validate_field_data((LX, LY, LZ), data, grid, indices)
     validate_boundary_conditions((LX, LY, LZ), grid, old_bcs)
@@ -91,7 +88,7 @@ function Field((LX, LY, LZ)::Tuple, grid::TRG, data, old_bcs, indices::Tuple, op
 end
 
 # Not sure this is needed, but it is here for now
-function tupled_fill_halo_regions!(full_fields, grid::TRG, args...; kwargs...)
+function tupled_fill_halo_regions!(full_fields, grid::TripolarGridOfSomeKind, args...; kwargs...)
     for field in full_fields
         fill_halo_regions!(field, args...; kwargs...)
     end

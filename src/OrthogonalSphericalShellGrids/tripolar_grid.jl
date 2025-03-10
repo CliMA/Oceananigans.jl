@@ -19,7 +19,8 @@ Adapt.adapt_structure(to, t::Tripolar) =
              Adapt.adapt(to, t.first_pole_longitude),
              Adapt.adapt(to, t.southernmost_latitude))
 
-const TripolarGrid{FT, TX, TY, TZ, CZ, A, Arch} = OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, A, <:Tripolar, Arch}
+const TripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, Arch}
+const TripolarGridOfSomeKind = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
 
 """
     TripolarGrid(arch = CPU(), FT::DataType = Float64;
