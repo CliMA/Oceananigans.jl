@@ -140,8 +140,11 @@ end
                 @test v3[2] isa Field
             end
 
-            # Tests that we can interpolate
+            # Tests construction + that we can interpolate
             u3i = FieldTimeSeries{Face, Center, Center}(u3.grid, u3.times)
+            @test !isnothing(u3i.boundary_conditions)
+            @test u3i.boundary_conditions isa FieldBoundaryConditions
+            
             interpolate!(u3i, u3)
             @test all(interior(u3i) .≈ interior(u3))
 
