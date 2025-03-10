@@ -47,7 +47,7 @@ julia> set!(cf, (x, y, z) -> sin(2π * y / 4))
     └── max=0.980785, min=-0.980785, mean=1.11077e-16
 
 julia> bam(:east, cf)
--1.5612511283791264e-18
+-7.806255641895632e-19
 
 julia> ff = Field{Face, Center, Center}(grid)
 17×16×16 Field{Face, Center, Center} on RectilinearGrid on CPU
