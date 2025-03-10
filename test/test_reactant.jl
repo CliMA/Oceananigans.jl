@@ -135,7 +135,6 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
 
     @time "  Executing r_run!:" begin
         r_run!(r_simulation, r_time_step!, r_first_time_step!)
-        r_time_step_sim!(r_simulation)
         #r_first_time_step!(r_simulation)
         #r_time_step_for!(r_simulation, 2)
     end
@@ -167,6 +166,14 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     #r_time_step_for!(r_simulation, 2)
     @test iteration(r_simulation) == 5
     @test time(r_simulation) == 5Δt
+
+    @test try
+        r_time_step_sim!(r_simulation)
+        true
+    catch err
+        false
+        throw(err)
+    end
 
     return r_simulation
 end
