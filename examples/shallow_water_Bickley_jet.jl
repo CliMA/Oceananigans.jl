@@ -178,11 +178,11 @@ ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 
 times = ds["time"][:]
 
-ω = @lift ds["ω"][:, :, 1, $n]
+ω = @lift ds["ω"][:, :, $n]
 hm_ω = heatmap!(ax_ω, x, y, ω, colorrange = (-1, 1), colormap = :balance)
 Colorbar(fig[2, 2], hm_ω)
 
-ω′ = @lift ds["ω′"][:, :, 1, $n]
+ω′ = @lift ds["ω′"][:, :, $n]
 hm_ω′ = heatmap!(ax_ω′, x, y, ω′, colormap = :balance)
 Colorbar(fig[2, 4], hm_ω′)
 
