@@ -354,7 +354,7 @@ end
 ##### Rank connectivity graph
 #####
 
-struct RankConnectivity{E, W, N, S, SW, SE, NW, NE}
+mutable struct RankConnectivity{E, W, N, S, SW, SE, NW, NE}
          east :: E
          west :: W
         north :: N
