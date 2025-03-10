@@ -90,7 +90,7 @@ const ZBC  = BoundaryCondition{<:Zipper}
             ImpenetrableBoundaryCondition() = BoundaryCondition(Open(), nothing)
 MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommunication(), nothing)
 DistributedCommunicationBoundaryCondition() = BoundaryCondition(DistributedCommunication(), nothing)
-            ZipperBoundaryCondition(sign=1) = BoundaryCondition(Zipper(), sign)
+                  ZipperBoundaryCondition() = BoundaryCondition(Zipper(), 1) # 1 means that the sign will not be switched
 
                     FluxBoundaryCondition(val; kwargs...) = BoundaryCondition(Flux(), val; kwargs...)
                    ValueBoundaryCondition(val; kwargs...) = BoundaryCondition(Value(), val; kwargs...)
