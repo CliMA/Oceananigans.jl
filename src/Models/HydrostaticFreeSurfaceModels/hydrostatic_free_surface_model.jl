@@ -136,8 +136,8 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     # Validate biogeochemistry (add biogeochemical tracers automagically)
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
-    biogeochemical_fields = merge(auxiliary_fields, biogeochemical_auxiliary_fields(biogeochemistry))
-    tracers, auxiliary_fields = validate_biogeochemistry(tracers, biogeochemical_fields, biogeochemistry, grid, clock)
+    biogeochemical_fields = biogeochemical_auxiliary_fields(biogeochemistry)
+    tracers, biogeochemical_fields = validate_biogeochemistry(tracers, biogeochemical_fields, biogeochemistry, grid, clock)
 
     # Reduce the advection order in directions that do not have enough grid points
     @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)
@@ -166,14 +166,17 @@ function HydrostaticFreeSurfaceModel(; grid,
                                          extract_boundary_conditions(diffusivity_fields))
 
     # Next, we form a list of default boundary conditions:
-    prognostic_field_names = (:u, :v, :w, tracernames(tracers)..., :η, keys(auxiliary_fields)...)
-    default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions()
-                                                                           for name in prognostic_field_names))
+    field_names = (:u, :v, :w, tracernames(tracers)..., :η, :U, :V, 
+                   keys(auxiliary_fields)..., 
+                   keys(biogeochemical_auxiliary_fields(biogeochemistry))...)
+                   
+    default_boundary_conditions = NamedTuple{field_names}(Tuple(FieldBoundaryConditions()
+                                                          for name in field_names))
 
     # Then we merge specified, embedded, and default boundary conditions. Specified boundary conditions
     # have precedence, followed by embedded, followed by default.
     boundary_conditions = merge(default_boundary_conditions, embedded_boundary_conditions, boundary_conditions)
-    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)
+    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, field_names)
 
     # Finally, we ensure that closure-specific boundary conditions, such as
     # those required by CATKEVerticalDiffusivity, are enforced:
