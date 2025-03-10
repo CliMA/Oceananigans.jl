@@ -5,7 +5,8 @@ function Base.summary(model::HydrostaticFreeSurfaceModel)
     A = nameof(typeof(architecture(model.grid)))
     G = nameof(typeof(model.grid))
     return string("HydrostaticFreeSurfaceModel{$A, $G}",
-                  "(time = ", prettytime(model.clock.time), ", iteration = ", model.clock.iteration, ")")
+                  "(time = ", prettytime(model.clock.time),
+                  ", iteration = ", prettysummary(model.clock.iteration), ")")
 end
 
 function Base.show(io::IO, model::HydrostaticFreeSurfaceModel)

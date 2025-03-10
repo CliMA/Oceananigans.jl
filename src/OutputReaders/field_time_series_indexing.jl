@@ -324,7 +324,6 @@ function update_field_time_series!(fts::PartlyInMemoryFTS, n₁::Int, n₂=n₁)
         start = n₁
         fts.backend = new_backend(fts.backend, start, Nm)
         set!(fts)
-        fill_halo_regions!(fts)
     end
 
     return nothing

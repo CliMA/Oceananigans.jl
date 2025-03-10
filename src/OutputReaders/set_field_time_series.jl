@@ -103,29 +103,3 @@ function initialize_file!(file, name, fts)
 end
 
 set!(fts::OnDiskFTS, path::String, name::String) = nothing
-
-"""
-    save_field_time_series!(fts; path=fts.path, name=fts.name, overwrite_existing=false)
-
-Save a field time series to disk. The field time series `fts` is saved to the file at `path`,
-under the name `name`. If `overwrite_existing` is `true`, the file at `path` is deleted before
-saving the field time series.
-"""
-function save_field_time_series!(fts; path=fts.path, name=fts.name, overwrite_existing=false)
-    overwrite_existing && rm(path; force=true)
-
-    times = on_architecture(CPU(), fts.times)
-    grid  = on_architecture(CPU(), fts.grid)
-    
-    LX, LY, LZ = location(fts)
-    ondisk_fts = FieldTimeSeries{LX, LY, LZ}(grid, times;
-                                             backend = OnDisk(), path, name)
-
-    Nt = length(times)
-    for n = 1:Nt
-        fill_halo_regions!(fts[n])
-        set!(ondisk_fts, fts[n], n) 
-    end
-
-    return nothing
-end

@@ -476,31 +476,20 @@ end
 
     filepath_sine = "one_dimensional_sine.jld2"
 
-    @testset "Test saving an fts to disk" begin
+    @testset "Test interpolation using `InMemory` backends" begin
         grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
         times = 0:0.1:3
 
-        fts = FieldTimeSeries{Center, Center, Center}(grid, times; backend=OnDisk(), path=filepath_sine, name="f")
-
         sinf(t) = sin(2π * t / 3)
+
+        f   = CenterField(grid) 
         fts = FieldTimeSeries{Center, Center, Center}(grid, times; backend=OnDisk(), path=filepath_sine, name="f")
         
         for (i, time) in enumerate(fts.times)
-            set!(fts, (x, y, z) -> sinf(time), i)
-        end
-
-        save_field_time_series!(fts; path=filepath_sine, name="f", overwrite_existing=true) 
-
-        fts = FieldTimeSeries(filepath_sine, "f")
-        f   = CenterField(grid) 
-
-        for (i, time) in enumerate(fts.times)
             set!(f, (x, y, z) -> sinf(time))
-            @test f == fts[i]
+            set!(fts, f, i)
         end
-    end
-
-    @testset "Test interpolation using `InMemory` backends" begin
+        
         # Now we load the FTS partly in memory
         # using different time indexing strategies
         M = 5
