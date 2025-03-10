@@ -129,11 +129,13 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     @time "  Compiling r_run!:" begin
         r_first_time_step! = @compile sync=true Oceananigans.TimeSteppers.first_time_step!(r_model, Δt)
         r_time_step! = @compile sync=true Oceananigans.TimeSteppers.time_step!(r_model, Δt)
+        r_time_step_sim! = @compile sync=true Oceananigans.TimeSteppers.time_step!(r_simulation)
         #r_time_step_for! = @compile sync=true  OceananigansReactantExt.time_step_for!(r_simulation, Nsteps)
     end
 
     @time "  Executing r_run!:" begin
         r_run!(r_simulation, r_time_step!, r_first_time_step!)
+        r_time_step_sim!(r_simulation)
         #r_first_time_step!(r_simulation)
         #r_time_step_for!(r_simulation, 2)
     end
@@ -313,14 +315,6 @@ end
     η_grid = η.grid
     @test isnothing(η_grid.interior_active_cells)
     @test isnothing(η_grid.active_z_columns)
-
-
-    @info "Testing simulation time step"
-    @test begin 
-        time_step!(simulation) 
-        true
-    end
-    
 
     #=
     @info "Testing LatitudeLongitudeGrid + 'complicated HydrostaticFreeSurfaceModel' Reactant correctness"
