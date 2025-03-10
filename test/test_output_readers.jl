@@ -507,11 +507,11 @@ end
         fts3 = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M), time_indexing = Clamp())
         
         # Test that linear interpolation is correct within the time domain
-        for time in 0:0.01:last(fts.times)
-            tidx = findfirst(fts.times .> time)
+        for time in 0:0.01:last(fts1.times)
+            tidx = findfirst(fts1.times .> time)
             if !isnothing(tidx)
-                t⁻ = fts.times[tidx - 1]
-                t⁺ = fts.times[tidx]
+                t⁻ = fts1.times[tidx - 1]
+                t⁺ = fts1.times[tidx]
 
                 Δt⁺ = (time - t⁻) / (t⁺ - t⁻)
             
