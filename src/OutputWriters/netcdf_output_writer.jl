@@ -19,7 +19,6 @@ using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, pretty
 
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
-dictify(outputs::LagrangianParticles) = Dict("particles" => outputs)
 
 # We collect to ensure we return an array which NCDatasets.jl needs
 # instead of a range or offset array.
