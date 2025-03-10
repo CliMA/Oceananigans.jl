@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Utils: Time
 using Oceananigans.Fields: indices, interpolate!
-using Oceananigans.OutputReaders: Cyclical, Clamp
+using Oceananigans.OutputReaders: Cyclical, Clamp, save_field_time_series
 
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
     grid = RectilinearGrid(architecture, size=(Nx, Ny, Nz), extent=(64, 64, 32))
@@ -487,7 +487,7 @@ end
             set!(fts[i], (x, y, z) -> sinf(time))
         end
 
-        save_field_time_series!(fts; path=filepath_sine, name="f", overwrite_existing=true) 
+        save_field_time_series(fts; path=filepath_sine, name="f", overwrite_existing=true) 
 
         fts = FieldTimeSeries(filepath_sine, "f")
         f   = CenterField(grid) 
