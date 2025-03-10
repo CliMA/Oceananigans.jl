@@ -115,7 +115,7 @@ function reactant_immersed_boundary_grid(grid, ib; active_cells_map, active_z_co
 end
 
 function ImmersedBoundaryGrid(grid::ReactantUnderlyingGrid, ib::AbstractImmersedBoundary;
-                              active_cells_map::Bool=true,
+                              active_cells_map::Bool=false,
                               active_z_columns::Bool=active_cells_map)
 
     return reactant_immersed_boundary_grid(grid, ib; active_cells_map, active_z_columns)

@@ -2,6 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Enzyme
+using Oceananigans.TimeSteppers: reset!
 
 # Required presently
 Enzyme.API.looseTypeAnalysis!(true)
@@ -37,6 +38,7 @@ function set_initial_condition!(model, amplitude)
 end
 
 function stable_diffusion!(model, amplitude, diffusivity)
+    reset!(model.clock)
     set_diffusivity!(model, diffusivity)
     set_initial_condition!(model, amplitude)
     
@@ -45,9 +47,6 @@ function stable_diffusion!(model, amplitude, diffusivity)
     κ_max = maximum_diffusivity
     Δz = 1 / Nz
     Δt = 1e-1 * Δz^2 / κ_max
-
-    model.clock.time = 0
-    model.clock.iteration = 0
 
     for _ = 1:10
         time_step!(model, Δt; euler=true)
@@ -353,9 +352,7 @@ end
 
 function viscous_hydrostatic_turbulence(ν, model, u_init, v_init, Δt, u_truth, v_truth)
     # Initialize the model
-    model.clock.iteration = 0
-    model.clock.time = 0
-    model.clock.last_Δt = Inf
+    reset!(model.clock)
     set_viscosity!(model, ν)
     set!(model, u=u_init, v=v_init, η=0)
 
