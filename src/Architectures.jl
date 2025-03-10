@@ -61,7 +61,11 @@ end
 
 Run Oceananigans on Reactant.
 """
-struct ReactantState <: AbstractSerialArchitecture end
+struct ReactantState{S} <: AbstractSerialArchitecture
+    sharding::S
+end
+
+ReactantState() = ReactantState(nothing)
 
 #####
 ##### These methods are extended in DistributedComputations.jl

@@ -82,6 +82,7 @@ export intrinsic_vector, extrinsic_vector
 export σⁿ, σ⁻, ∂t_σ
 
 using Oceananigans.Grids
+using Oceananigans.Grids: LLGOTF, XRegLLGOTF, YRegLLGOTF
 
 #####
 ##### Convenient aliases
@@ -105,10 +106,9 @@ const LLGZ = ZRegularLLG
 # Vertically regular grids
 const ZRG = Union{RGZ, OSSGZ, LLGZ}
 
-# On the fly calculations of metrics
-const LLGF  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing}
-const LLGFX = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Number}
-const LLGFY = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Any, <:Number}
+const LLGF  = LLGOTF
+const LLGFX = XRegLLGOTF
+const LLGFY = YRegLLGOTF
 
 const F = Face
 const f = Face()
