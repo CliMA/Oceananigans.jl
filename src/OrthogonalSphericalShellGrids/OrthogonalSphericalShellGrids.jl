@@ -10,6 +10,7 @@ using Oceananigans.Grids
 using Oceananigans.Architectures: device, on_architecture, AbstractArchitecture
 using Oceananigans.BoundaryConditions
 using Oceananigans.ImmersedBoundaries
+using Oceananigans.Utils
 using Oceananigans.Fields: index_binary_search, convert_to_0_360
 using Oceananigans.Grids: RightConnected
 using Oceananigans.Grids: R_Earth, 
