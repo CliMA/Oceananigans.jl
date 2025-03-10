@@ -19,7 +19,7 @@ import ..TurbulenceClosures:
     κᶜᶠᶜ,
     κᶜᶜᶠ,
     compute_diffusivities!,
-    build_diffusivity_fields,
+    DiffusivityFields,
     tracer_diffusivities
 
 #####
@@ -122,7 +122,7 @@ end
 
 allocate_coefficient_fields(closure, grid) = NamedTuple()
 
-function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::Smagorinsky)
+function DiffusivityFields(grid, tracer_names, bcs, closure::Smagorinsky)
     coefficient_fields = allocate_coefficient_fields(closure, grid)
 
     default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))
