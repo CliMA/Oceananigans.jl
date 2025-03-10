@@ -314,6 +314,15 @@ end
     @test isnothing(η_grid.interior_active_cells)
     @test isnothing(η_grid.active_z_columns)
 
+
+    @info "Test we can time step the simulation"
+    
+    @test begin 
+        time_step!(simulation) 
+        true
+    end
+    
+
     #=
     @info "Testing LatitudeLongitudeGrid + 'complicated HydrostaticFreeSurfaceModel' Reactant correctness"
     equation_of_state = TEOS10EquationOfState()
