@@ -218,12 +218,12 @@ include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
-include("OrthogonalSphericalShellGrids/OrthogonalSphericalShellGrids.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
 include("OutputReaders/OutputReaders.jl")
 include("DistributedComputations/DistributedComputations.jl")
+include("OrthogonalSphericalShellGrids/OrthogonalSphericalShellGrids.jl")
 
 # TODO: move here
 #include("MultiRegion/MultiRegion.jl")
@@ -259,7 +259,6 @@ using .Grids
 using .OrthogonalSphericalShellGrids
 using .BoundaryConditions
 using .Fields
-using .OrthogonalSphericalShellGrids
 using .Coriolis
 using .BuoyancyFormulations
 using .StokesDrifts
@@ -269,6 +268,7 @@ using .OutputReaders
 using .Forcings
 using .ImmersedBoundaries
 using .DistributedComputations
+using .OrthogonalSphericalShellGrids
 using .Models
 using .TimeSteppers
 using .Diagnostics
