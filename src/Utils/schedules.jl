@@ -109,7 +109,6 @@ For example,
 * `IterationInterval(100, offset=-1)` actuates at iterations `[99, 199, 299, ...]`.
 """
 IterationInterval(interval; offset=0) = IterationInterval(interval, offset)
-
 (schedule::IterationInterval)(model) = (model.clock.iteration - schedule.offset) % schedule.interval == 0
 
 next_actuation_time(schedule::IterationInterval) = Inf
