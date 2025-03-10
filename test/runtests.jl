@@ -59,6 +59,12 @@ CUDA.allowscalar() do
         end
     end
 
+    if group == :tripolar_grid || group == :all
+        @testset "TripolarGrid tests" begin
+            include("test_tripolar_grid.jl")
+        end
+    end
+
     if group == :poisson_solvers_1 || group == :all
         @testset "Poisson Solvers 1" begin
             include("test_poisson_solvers.jl")

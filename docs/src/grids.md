@@ -87,7 +87,7 @@ The shape of the physical domain determines what grid type should be used:
 3. [`OrthogonalSphericalShellGrid`](@ref Oceananigans.Grids.OrthogonalSphericalShellGrid) represents sectors of thin spherical shells divided with mesh lines that intersect at right angles (thus, orthogonal) but are otherwise arbitrary.
 
 !!! note "OrthogonalSphericalShellGrids.jl"
-    See the auxiliary package [`OrthogonalSphericalShellGrids.jl`](https://github.com/CliMA/OrthogonalSphericalShellGrids.jl)
+    See the auxiliary module [`OrthogonalSphericalShellGrids.jl`](@ref Oceananigans.OrthogonalSphericalShellGrids)
     for recipes that implement some useful `OrthogonalSphericalShellGrid`, including the
     ["tripolar" grid](https://www.sciencedirect.com/science/article/abs/pii/S0021999196901369).
 
