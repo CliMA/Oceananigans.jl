@@ -1,16 +1,16 @@
 # Kernels to compute the vertical integral of the velocities
-@kernel function _barotropic_mode_kernel!(U̅, V̅, grid, ::Nothing, u, v, η)
+@kernel function _compute_barotropic_mode!(U̅, V̅, grid, ::Nothing, u, v, η)
     i, j  = @index(Global, NTuple)
-    barotropic_mode_kernel!(U̅, V̅, i, j, grid, u, v, η)
+    integrate_barotropic_mode!(U̅, V̅, i, j, grid, u, v, η)
 end
 
-@kernel function _barotropic_mode_kernel!(U̅, V̅, grid, active_cells_map, u, v, η)
+@kernel function _compute_barotropic_mode!(U̅, V̅, grid, active_cells_map, u, v, η)
     idx = @index(Global, Linear)
-    i, j = active_linear_index_to_tuple(idx, active_cells_map)
-    barotropic_mode_kernel!(U̅, V̅, i, j, grid, u, v, η)
+    i, j = linear_index_to_tuple(idx, active_cells_map)
+    integrate_barotropic_mode!(U̅, V̅, i, j, grid, u, v, η)
 end
 
-@inline function barotropic_mode_kernel!(U̅, V̅, i, j, grid, u, v, η)
+@inline function integrate_barotropic_mode!(U̅, V̅, i, j, grid, u, v, η)
     k_top  = size(grid, 3) + 1
 
     hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
@@ -36,9 +36,34 @@ end
     return nothing
 end
 
-@inline function compute_barotropic_mode!(U̅, V̅, grid, u, v, η)
-    active_cells_map = retrieve_surface_active_cells_map(grid)
-    launch!(architecture(grid), grid, :xy, _barotropic_mode_kernel!, U̅, V̅, grid, active_cells_map, u, v, η; active_cells_map)
+# Note: this function is also used during initialization
+function compute_barotropic_mode!(U̅, V̅, grid, u, v, η)
+    active_columns = get_active_column_map(grid) # may be nothing
+
+    launch!(architecture(grid), grid, :xy,
+            _compute_barotropic_mode!,
+            U̅, V̅, grid, active_columns, u, v, η; active_cells_map=active_columns)
+
+    return nothing
+end
+
+# Correcting `u` and `v` with the barotropic mode computed in `free_surface`
+function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
+    state = free_surface.filtered_state
+    η     = free_surface.η
+    U, V  = free_surface.barotropic_velocities
+    U̅, V̅  = state.U, state.V
+    arch  = architecture(grid)
+
+    # NOTE: the filtered `U̅` and `V̅` have been copied in the instantaneous `U` and `V`,
+    # so we use the filtered velocities as "work arrays" to store the vertical integrals
+    # of the instantaneous velocities `u` and `v`.
+    compute_barotropic_mode!(U̅, V̅, grid, u, v, η)
+    
+    # add in "good" barotropic mode
+    launch!(arch, grid, :xyz, _barotropic_split_explicit_corrector!,
+            u, v, U, V, U̅, V̅, η, grid)
+
     return nothing
 end
 
@@ -55,22 +80,4 @@ end
     end
 end
 
-# Correcting `u` and `v` with the barotropic mode computed in `free_surface`
-function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
-    state = free_surface.filtered_state
-    η     = free_surface.η
-    U, V  = free_surface.barotropic_velocities
-    U̅, V̅  = state.U, state.V
-    arch  = architecture(grid)
 
-    # NOTE: the filtered `U̅` and `V̅` have been copied in the instantaneous `U` and `V`,
-    # so we use the filtered velocities as "work arrays" to store the vertical integrals
-    # of the instantaneous velocities `u` and `v`.
-    compute_barotropic_mode!(U̅, V̅, grid, u, v, η)
-
-    # add in "good" barotropic mode
-    launch!(arch, grid, :xyz, _barotropic_split_explicit_corrector!,
-            u, v, U, V, U̅, V̅, η, grid)
-
-    return nothing
-end
