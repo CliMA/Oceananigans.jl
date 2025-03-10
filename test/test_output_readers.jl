@@ -481,13 +481,13 @@ end
         times = 0:0.1:3
 
         sinf(t) = sin(2π * t / 3)
-        fts = FieldTimeSeries{Center, Center, Center}(grid, times; path=filepath_sine, name="f")
+        fts = FieldTimeSeries{Center, Center, Center}(grid, times)
         
         for (i, time) in enumerate(fts.times)
             set!(fts[i], (x, y, z) -> sinf(time))
         end
 
-        save_field_time_series!(fts; overwrite_existing=true) 
+        save_field_time_series!(fts; path=filepath_sine, name="f" overwrite_existing=true) 
 
         fts = FieldTimeSeries(filepath_sine, "f")
         f   = CenterField(grid) 
