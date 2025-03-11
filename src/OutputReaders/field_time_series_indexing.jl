@@ -1,5 +1,5 @@
 using Oceananigans.Grids: _node
-using Oceananigans.Fields: interpolator, _interpolate, FractionalIndices, flatten_node, FieldStatus
+using Oceananigans.Fields: interpolator, _interpolate, FractionalIndices, flatten_node, FixedTime
 using Oceananigans.Architectures: architecture
 
 import Oceananigans.Fields: interpolate
@@ -126,7 +126,7 @@ function getindex(fts::OnDiskFTS, n::Int)
     return Field(loc, fts.grid;
                  indices = fts.indices,
                  boundary_conditions = fts.boundary_conditions,
-                 status = FieldStatus(fts.times[n]),
+                 status = FixedTime(fts.times[n]),
                  data = field_data)
 end
 
@@ -188,7 +188,7 @@ function Base.getindex(fts::FieldTimeSeries, time_index::Time)
     t₂ = fts.times[n₂]
     t₁ = fts.times[n₁]
     t = t₂ * ñ + t₁ * (1 - ñ)
-    status = FieldStatus(t)
+    status = FixedTime(t)
     
     ψ₂ = fts[n₂]
     ψ₁ = fts[n₁]
