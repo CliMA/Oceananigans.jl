@@ -3,8 +3,8 @@ using OrderedCollections: OrderedDict
 
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.DistributedComputations: Distributed
-using Oceananigans.Advection: CenteredSecondOrder
-using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
+using Oceananigans.Advection: Centered, adapt_advection_order
+using Oceananigans.BuoyancyFormulations: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, CenterField
@@ -14,7 +14,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, NaNChecker, extract_boundary_conditions
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles
-using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
+using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_diffusivity_fields, time_discretization, implicit_diffusion_solver
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
@@ -30,7 +30,7 @@ const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 struct DefaultHydrostaticPressureAnomaly end
 
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
-                                   V, S, K, BG, P, BGC, I, AF} <: AbstractModel{TS}
+                                   V, S, K, BG, P, BGC, AF} <: AbstractModel{TS, A}
 
          architecture :: A        # Computer `Architecture` on which `Model` is run
                  grid :: G        # Grid of physical points on which `Model` is solved
@@ -50,14 +50,13 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
    diffusivity_fields :: K        # Container for turbulent diffusivities
           timestepper :: TS       # Object containing timestepper fields and parameters
       pressure_solver :: S        # Pressure/Poisson solver
-    immersed_boundary :: I        # Models the physics of immersed boundaries within the grid
      auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
 end
 
 """
     NonhydrostaticModel(;           grid,
                                     clock = Clock{eltype(grid)}(time = 0),
-                                advection = CenteredSecondOrder(),
+                                advection = Centered(),
                                  buoyancy = nothing,
                                  coriolis = nothing,
                              stokes_drift = nothing,
@@ -65,16 +64,15 @@ end
                                   closure = nothing,
           boundary_conditions::NamedTuple = NamedTuple(),
                                   tracers = (),
-                              timestepper = :QuasiAdamsBashforth2,
+                              timestepper = :RungeKutta3,
             background_fields::NamedTuple = NamedTuple(),
             particles::ParticlesOrNothing = nothing,
     biogeochemistry::AbstractBGCOrNothing = nothing,
                                velocities = nothing,
                   nonhydrostatic_pressure = CenterField(grid),
-             hydrostatic_pressure_anomaly = nothing,
+             hydrostatic_pressure_anomaly = DefaultHydrostaticPressureAnomaly(),
                        diffusivity_fields = nothing,
                           pressure_solver = nothing,
-                        immersed_boundary = nothing,
                          auxiliary_fields = NamedTuple())
 
 Construct a model for a non-hydrostatic, incompressible fluid on `grid`, using the Boussinesq
@@ -88,7 +86,7 @@ Keyword arguments
             of the `grid`. Note that the grid needs to be regularly spaced in the horizontal
             dimensions, ``x`` and ``y``.
   - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
-  - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
+  - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyFormulations`.
   - `coriolis`: Parameters for the background rotation rate of the model.
   - `stokes_drift`: Parameters for Stokes drift fields associated with surface waves. Default: `nothing`.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
@@ -97,44 +95,42 @@ Keyword arguments
   - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
                preallocated `CenterField`s.
   - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
-                   `:RungeKutta3`.
+                   `:RungeKutta3` (default).
   - `background_fields`: `NamedTuple` with background fields (e.g., background flow). Default: `nothing`.
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
   - `biogeochemistry`: Biogeochemical model for `tracers`.
   - `velocities`: The model velocities. Default: `nothing`.
   - `nonhydrostatic_pressure`: The nonhydrostatic pressure field. Default: `CenterField(grid)`.
   - `hydrostatic_pressure_anomaly`: An optional field that stores the part of the nonhydrostatic pressure
-                                    in hydrostatic balance with the buoyancy field. If `nothing` (default), the anomaly
-                                    is not computed. If `CenterField(grid)`, the anomaly is precomputed by
+                                    in hydrostatic balance with the buoyancy field. If `CenterField(grid)` (default), the anomaly is precomputed by
                                     vertically integrating the buoyancy field. In this case, the `nonhydrostatic_pressure` represents
-                                    only the part of pressure that deviates from the hydrostatic anomaly.
+                                    only the part of pressure that deviates from the hydrostatic anomaly. If `nothing`, the anomaly
+                                    is not computed. 
   - `diffusivity_fields`: Diffusivity fields. Default: `nothing`.
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
-  - `immersed_boundary`: The immersed boundary. Default: `nothing`.
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`         
 """
 function NonhydrostaticModel(; grid,
-                                    clock = Clock{eltype(grid)}(time = 0),
-                                advection = CenteredSecondOrder(),
-                                 buoyancy = nothing,
-                                 coriolis = nothing,
+                             clock = Clock(grid),
+                             advection = Centered(),
+                             buoyancy = nothing,
+                             coriolis = nothing,
                              stokes_drift = nothing,
-                      forcing::NamedTuple = NamedTuple(),
-                                  closure = nothing,
-          boundary_conditions::NamedTuple = NamedTuple(),
-                                  tracers = (),
-                              timestepper = :QuasiAdamsBashforth2,
-            background_fields::NamedTuple = NamedTuple(),
-            particles::ParticlesOrNothing = nothing,
-    biogeochemistry::AbstractBGCOrNothing = nothing,
-                               velocities = nothing,
-             hydrostatic_pressure_anomaly = DefaultHydrostaticPressureAnomaly(),
-                  nonhydrostatic_pressure = CenterField(grid),
-                       diffusivity_fields = nothing,
-                          pressure_solver = nothing,
-                        immersed_boundary = nothing,
-                         auxiliary_fields = NamedTuple())
+                             forcing::NamedTuple = NamedTuple(),
+                             closure = nothing,
+                             boundary_conditions::NamedTuple = NamedTuple(),
+                             tracers = (),
+                             timestepper = :RungeKutta3,
+                             background_fields::NamedTuple = NamedTuple(),
+                             particles::ParticlesOrNothing = nothing,
+                             biogeochemistry::AbstractBGCOrNothing = nothing,
+                             velocities = nothing,
+                             hydrostatic_pressure_anomaly = DefaultHydrostaticPressureAnomaly(),
+                             nonhydrostatic_pressure = CenterField(grid),
+                             diffusivity_fields = nothing,
+                             pressure_solver = nothing,
+                             auxiliary_fields = NamedTuple())
 
     arch = architecture(grid)
 
@@ -146,16 +142,17 @@ function NonhydrostaticModel(; grid,
 
     if hydrostatic_pressure_anomaly isa DefaultHydrostaticPressureAnomaly
         # Manage treatment of the hydrostatic pressure anomaly:
-        
-        if grid isa ImmersedBoundaryGrid
+
+        if !isnothing(buoyancy)
             # Separate the hydrostatic pressure anomaly
             # from the nonhydrostatic pressure contribution.
-            # See https://github.com/CliMA/Oceananigans.jl/issues/3677.
-            
+            # See https://github.com/CliMA/Oceananigans.jl/issues/3677
+            # and https://github.com/CliMA/Oceananigans.jl/issues/3795.
+
             hydrostatic_pressure_anomaly = CenterField(grid)
         else
             # Use a single combined pressure, saving memory and computation.
-            
+
             hydrostatic_pressure_anomaly = nothing
         end
     end
@@ -174,6 +171,11 @@ function NonhydrostaticModel(; grid,
     tracers, auxiliary_fields = validate_biogeochemistry(tracers, all_auxiliary_fields, biogeochemistry, grid, clock)
     validate_buoyancy(buoyancy, tracernames(tracers))
     buoyancy = regularize_buoyancy(buoyancy)
+
+    # Adjust advection scheme to be valid on a particular grid size. i.e. if the grid size
+    # is smaller than the advection order, reduce the order of the advection in that particular
+    # direction
+    advection = adapt_advection_order(advection, grid)
 
     # Adjust halos when the advection scheme or turbulence closure requires it.
     # Note that halos are isotropic by default; however we respect user-input here
@@ -208,27 +210,28 @@ function NonhydrostaticModel(; grid,
     velocities         = VelocityFields(velocities, grid, boundary_conditions)
     tracers            = TracerFields(tracers,      grid, boundary_conditions)
     pressures          = (pNHS=nonhydrostatic_pressure, pHY′=hydrostatic_pressure_anomaly)
-    diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
+    diffusivity_fields = build_diffusivity_fields(diffusivity_fields, grid, clock, tracernames(tracers), boundary_conditions, closure)
 
     if isnothing(pressure_solver)
-        pressure_solver = PressureSolver(arch, grid)
+        pressure_solver = nonhydrostatic_pressure_solver(grid)
     end
 
     # Materialize background fields
     background_fields = BackgroundFields(background_fields, tracernames(tracers), grid, clock)
+    model_fields = merge(velocities, tracers, auxiliary_fields)
+    prognostic_fields = merge(velocities, tracers)
+
 
     # Instantiate timestepper if not already instantiated
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
-    timestepper = TimeStepper(timestepper, grid, tracernames(tracers), implicit_solver=implicit_solver)
+    timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver=implicit_solver)
 
     # Regularize forcing for model tracer and velocity fields.
-    model_fields = merge(velocities, tracers, auxiliary_fields)
     forcing = model_forcing(model_fields; forcing...)
 
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                 forcing, closure, background_fields, particles, biogeochemistry, velocities, tracers,
-                                pressures, diffusivity_fields, timestepper, pressure_solver, immersed_boundary,
-                                auxiliary_fields)
+                                pressures, diffusivity_fields, timestepper, pressure_solver, auxiliary_fields)
 
     update_state!(model; compute_tendencies = false)
     
@@ -255,7 +258,5 @@ end
 
 # return the total advective velocities
 @inline total_velocities(m::NonhydrostaticModel) =
-    (u = SumOfArrays{2}(m.velocities.u, m.background_fields.velocities.u),
-     v = SumOfArrays{2}(m.velocities.v, m.background_fields.velocities.v),
-     w = SumOfArrays{2}(m.velocities.w, m.background_fields.velocities.w))
+    sum_of_velocities(m.velocities, m.background_fields.velocities) 
 

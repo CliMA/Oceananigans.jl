@@ -1,7 +1,8 @@
-struct FieldDataset{F, M, P}
-    fields :: F
-    metadata :: M
-    filepath :: P
+struct FieldDataset{F, M, P, KW}
+        fields :: F
+      metadata :: M
+      filepath :: P
+    reader_kw :: KW
 end
 
 """
@@ -22,17 +23,24 @@ linearly.
   `file["metadata"]`.
 
 - `grid`: May be specified to override the grid used in the JLD2 file.
+
+- `reader_kw`: A named tuple or dictionary of keyword arguments to pass to the reader
+               (currently only JLD2) to be used when opening files.
 """
 function FieldDataset(filepath;
-                      architecture=CPU(), grid=nothing, backend=InMemory(), metadata_paths=["metadata"])
+                      architecture = CPU(),
+                      grid = nothing,
+                      backend = InMemory(),
+                      metadata_paths = ["metadata"],
+                      reader_kw = NamedTuple())
 
-  file = jldopen(filepath)
+  file = jldopen(filepath; reader_kw...)
 
   field_names = keys(file["timeseries"])
   filter!(k -> k != "t", field_names)  # Time is not a field.
 
   ds = Dict{String, FieldTimeSeries}(
-      name => FieldTimeSeries(filepath, name; architecture, backend, grid)
+      name => FieldTimeSeries(filepath, name; architecture, backend, grid, reader_kw)
       for name in field_names
   )
 
@@ -44,10 +52,29 @@ function FieldDataset(filepath;
 
   close(file)
 
-  return FieldDataset(ds, metadata, abspath(filepath))
+  return FieldDataset(ds, metadata, abspath(filepath), reader_kw)
 end
 
 Base.getindex(fds::FieldDataset, inds...) = Base.getindex(fds.fields, inds...)
+Base.getindex(fds::FieldDataset, i::Symbol) = Base.getindex(fds, string(i))
 
-Base.show(io::IO, fds::FieldDataset) =
-  print(io, "FieldDataset with $(length(fds.fields)) fields and $(length(fds.metadata)) metadata entries.")
+function Base.getproperty(fds::FieldDataset, name::Symbol)
+    if name in propertynames(fds)
+        return getfield(fds, name)
+    else
+        return getindex(fds, name)
+    end
+end
+
+function Base.show(io::IO, fds::FieldDataset)
+    s = "FieldDataset with $(length(fds.fields)) fields and $(length(fds.metadata)) metadata entries:\n"
+
+    n_fields = length(fds.fields)
+
+    for (i, (name, fts)) in enumerate(pairs(fds.fields))
+        prefix = i == n_fields ? "└── " : "├── "
+        s *= prefix * "$name: " * summary(fts) * '\n'
+    end
+
+    return print(io, s)
+end

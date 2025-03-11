@@ -138,14 +138,12 @@ fig
 
 # # The model
 
-model = NonhydrostaticModel(timestepper = :RungeKutta3,
-                              advection = UpwindBiasedFifthOrder(),
-                                   grid = grid,
-                               coriolis = nothing,
-                      background_fields = (u=U, b=B),
-                                closure = ScalarDiffusivity(ν=2e-4, κ=2e-4),
-                               buoyancy = BuoyancyTracer(),
-                                tracers = :b)
+model = NonhydrostaticModel(; grid,
+                            advection = UpwindBiased(order=5),
+                            background_fields = (u=U, b=B),
+                            closure = ScalarDiffusivity(ν=2e-4, κ=2e-4),
+                            buoyancy = BuoyancyTracer(),
+                            tracers = :b)
 
 # We have included a "pinch" of viscosity and diffusivity in anticipation of what will follow furtherdown:
 # viscosity and diffusivity will ensure numerical stability when we evolve the unstable mode to the point

@@ -19,7 +19,7 @@ grid = RectilinearGrid(size=(64, 32, 32), extent=(256, 128, 64))
 #
 # We utilize the same monochromatic wave parameters as Wagner et al. (2021),
 
-using Oceananigans.BuoyancyModels: g_Earth
+using Oceananigans.BuoyancyFormulations: g_Earth
 
  amplitude = 0.8 # m
 wavelength = 60  # m

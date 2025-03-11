@@ -1,9 +1,7 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.Solvers: solve!, HeptadiagonalIterativeSolver, sparse_approximate_inverse
 using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ, Δyᵃᶜᵃ, Δxᶜᵃᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, ∇²ᶜᶜᶜ
-using Oceananigans.Architectures: on_architecture
-using Oceananigans.Grids: architecture
-using KernelAbstractions: @kernel, @index
-using Statistics, LinearAlgebra, SparseArrays
 
 function identity_operator!(b, x)
     parent(b) .= parent(x)

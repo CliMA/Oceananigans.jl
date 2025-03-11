@@ -1,9 +1,5 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
-using Oceananigans.Fields: ZeroField, ConstantField, compute_at!, indices
-using Oceananigans.BuoyancyModels: BuoyancyField
-
 function simple_binary_operation(op, a, b, num1, num2)
     a_b = op(a, b)
     interior(a) .= num1
@@ -81,9 +77,8 @@ function x_derivative_cell(arch)
 end
 
 function times_x_derivative(a, b, location, i, j, k, answer)
-    a∇b = @at location b * ∂x(a)
-    
-    return CUDA.@allowscalar a∇b[i, j, k] == answer
+    b∇a = @at location b * ∂x(a)
+    return CUDA.@allowscalar b∇a[i, j, k] == answer
 end
 
 for arch in archs
@@ -371,3 +366,4 @@ for arch in archs
         end
     end
 end
+

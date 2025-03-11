@@ -1,10 +1,10 @@
 using KernelAbstractions: @kernel, @index
-using OffsetArrays: OffsetArray
 
 using Oceananigans.Fields: fill_send_buffers!,
                            recv_from_buffers!, 
                            reduced_dimensions, 
-                           instantiated_location
+                           instantiated_location,
+                           produce_ordinary_fields
 
 import Oceananigans.Fields: tupled_fill_halo_regions!
 
@@ -41,33 +41,43 @@ opposite_side = Dict(
     :northeast => :southwest, 
 )
 
-# Define functions that return unique send and recv MPI tags for each side.
-# It's an integer where
-#   digit 1-2: an identifier for the field that is reset each timestep
-#   digit 3: an identifier for the field's Z-location
-#   digit 4: the side we send to/recieve from
 ID_DIGITS   = 2
 
-@inline loc_id(::Face)    = 0
-@inline loc_id(::Center)  = 1
-@inline loc_id(::Nothing) = 2
-@inline loc_id(LX, LY, LZ) = loc_id(LZ)
+# A Hashing function which returns a unique
+# integer between 0 and 26 for a combination of
+# 3 locations wither Center, Face, or Nothing
+location_counter = 0
+for LX in (:Face, :Center, :Nothing)
+    for LY in (:Face, :Center, :Nothing)
+        for LZ in (:Face, :Center, :Nothing)
+            @eval loc_id(::$LX, ::$LY, ::$LZ) = $location_counter
+            global location_counter += 1
+        end
+    end
+end
+
+# Functions that return unique send and recv MPI tags for each side, field location 
+# keeping into account the possibility of asynchronous communication.
+# the MPI tag is an integer with:
+#   digit 1-2: an counter which keeps track of how many communications are live. The counter is stored in `arch.mpi_tag`
+#   digit 3-4: a unique identifier for the field's location that goes from 0 - 26 (see `loc_id`)
+#   digit 5: the side we send / recieve from
 
 for side in sides
     side_str = string(side)
     send_tag_fn_name = Symbol("$(side)_send_tag")
     recv_tag_fn_name = Symbol("$(side)_recv_tag")
     @eval begin
-        function $send_tag_fn_name(arch, location)
+        function $send_tag_fn_name(arch, grid, location)
             field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
-            loc_digit  = string(loc_id(location...)) 
+            loc_digit  = string(loc_id(location...), pad=ID_DIGITS)
             side_digit = string(side_id[Symbol($side_str)])
             return parse(Int, field_id * loc_digit * side_digit)
         end
 
-        function $recv_tag_fn_name(arch, location)
+        function $recv_tag_fn_name(arch, grid, location)
             field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
-            loc_digit  = string(loc_id(location...)) 
+            loc_digit  = string(loc_id(location...), pad=ID_DIGITS)
             side_digit = string(side_id[opposite_side[Symbol($side_str)]])
             return parse(Int, field_id * loc_digit * side_digit)
         end
@@ -78,9 +88,12 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-function tupled_fill_halo_regions!(full_fields, grid::DistributedGrid, args...; kwargs...)
-    for field in full_fields
-        fill_halo_regions!(field, args...; kwargs...)
+function tupled_fill_halo_regions!(fields, grid::DistributedGrid, args...; kwargs...)
+    ordinary_fields = produce_ordinary_fields(fields, args...; kwargs)
+
+    for field in ordinary_fields
+        # Make sure we are filling a `Field` type.
+        field isa Field && fill_halo_regions!(field, args...; kwargs...)
     end
 end
 
@@ -98,15 +111,17 @@ function fill_halo_regions!(field::DistributedField, args...; kwargs...)
                               kwargs...)
 end
 
-function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, args...; fill_boundary_normal_velocities = true, kwargs...)
+function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedGrid, buffers, args...;
+                            fill_boundary_normal_velocities=true, kwargs...)
+
     if fill_boundary_normal_velocities
-        fill_open_boundary_regions!(c, bcs, indices, loc, grid, args...; kwargs...)
+        fill_open_boundary_regions!(c, bcs, indices, loc, grid, buffers, args...; kwargs...)
     end
     
-    arch             = architecture(grid)
+    arch = architecture(grid)
     fill_halos!, bcs = permute_boundary_conditions(bcs) 
-
-    number_of_tasks = length(fill_halos!)
+    number_of_tasks  = length(fill_halos!)
+    outstanding_requests = length(arch.mpi_requests)
 
     for task = 1:number_of_tasks
         fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, buffers, args...; kwargs...)
@@ -114,9 +129,13 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
 
     fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; kwargs...)
     
-    # Switch to the next field to send
-    arch.mpi_tag[] += 1
-
+    # We increment the request counter only if we have actually initiated the MPI communication.
+    # This is the case only if at least one of the boundary conditions is a distributed communication 
+    # boundary condition (DCBCT) _and_ the `only_local_halos` keyword argument is false.
+    if length(arch.mpi_requests) > outstanding_requests
+        arch.mpi_tag[] += 1
+    end
+    
     return nothing
 end
 
@@ -136,16 +155,17 @@ end
 
     # Syncronous MPI fill_halo_event!
     cooperative_waitall!(requests)
+
     # Reset MPI tag
     arch.mpi_tag[] -= arch.mpi_tag[]
-
     recv_from_buffers!(c, buffers, grid, Val(side))    
 
     return nothing
 end
 
 # corner passing routine
-function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args...; async = false, only_local_halos = false, kwargs...)
+function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args...;
+                       async=false, only_local_halos=false, kw...)
     
     # No corner filling needed!
     only_local_halos && return nothing
@@ -156,10 +176,10 @@ function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args.
 
     requests = MPI.Request[]
 
-    reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest, args...; kwargs...)
-    reqse = fill_southeast_halo!(c, connectivity.southeast, indices, loc, arch, grid, buffers, buffers.southeast, args...; kwargs...)
-    reqnw = fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest, args...; kwargs...)
-    reqne = fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast, args...; kwargs...)
+    reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest, args...; kw...)
+    reqse = fill_southeast_halo!(c, connectivity.southeast, indices, loc, arch, grid, buffers, buffers.southeast, args...; kw...)
+    reqnw = fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest, args...; kw...)
+    reqne = fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast, args...; kw...)
 
     !isnothing(reqsw) && push!(requests, reqsw...)
     !isnothing(reqse) && push!(requests, reqse...)
@@ -187,7 +207,8 @@ cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 # There are two additional keyword arguments (with respect to serial `fill_halo_event!`s) that take an effect on `DistributedGrids`: 
 # - only_local_halos: if true, only the local halos are filled, i.e. corresponding to non-communicating boundary conditions
 # - async: if true, ansynchronous MPI communication is enabled
-function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid::DistributedGrid, buffers, args...; async = false, only_local_halos = false, kwargs...)
+function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid::DistributedGrid, buffers, args...;
+                          async = false, only_local_halos = false, kwargs...)
 
     buffer_side = communication_side(Val(fill_halos!))
 
@@ -202,7 +223,6 @@ function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid::Distrib
     offset = fill_halo_offset(size, fill_halos!, indices)
 
     requests = fill_halos!(c, bcs..., size, offset, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
-
     pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, buffer_side)
     
     return nothing
@@ -307,10 +327,9 @@ for side in sides
     @eval begin
         function $send_side_halo(c, grid, arch, location, local_rank, rank_to_send_to, buffers)
             send_buffer = $get_side_send_buffer(c, grid, buffers, arch)
-            send_tag = $side_send_tag(arch, location)
+            send_tag = $side_send_tag(arch, grid, location)
 
             @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
-            
             send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, arch.communicator)
 
             return send_req
@@ -334,7 +353,7 @@ for side in sides
     @eval begin
         function $recv_and_fill_side_halo!(c, grid, arch, location, local_rank, rank_to_recv_from, buffers)
             recv_buffer = $get_side_recv_buffer(c, grid, buffers, arch)
-            recv_tag = $side_recv_tag(arch, location)
+            recv_tag = $side_recv_tag(arch, grid, location)
 
             @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
             recv_req = MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, arch.communicator)

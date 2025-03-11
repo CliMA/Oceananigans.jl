@@ -9,7 +9,7 @@ using Oceananigans.Utils: prettytime
 using Oceananigans.DistributedComputations
 using Oceananigans.Grids: node
 using Oceananigans.Advection: cell_advection_timescale
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity
 using Oceananigans.Units
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 

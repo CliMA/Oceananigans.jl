@@ -14,7 +14,8 @@ const PossibleDiffusivity = Union{Number, Function, DiscreteDiffusionFunction, A
     return κ
 end
 
-@inline convert_diffusivity(FT, κ::Number; kw...) = convert(FT, κ)
+@inline convert_diffusivity(FT, κ::Nothing; kw...) = nothing
+@inline convert_diffusivity(FT, κ::Number; kw...)  = convert(FT, κ)
 
 @inline function convert_diffusivity(FT, κ; discrete_form=false, loc=(nothing, nothing, nothing), parameters=nothing)
     discrete_form && return DiscreteDiffusionFunction(κ; loc, parameters)

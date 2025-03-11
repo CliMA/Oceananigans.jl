@@ -1,36 +1,29 @@
 agents:
   queue: new-central
-  slurm_mem: 8G
-  modules: climacommon/2024_05_27
-
+  slurm_mem: 8G # Note that the tests run on shared nodes, so limiting the memory usage might help in avoiding long queues 
+  modules: climacommon/2024_10_10
 
 env:
   JULIA_LOAD_PATH: "${JULIA_LOAD_PATH}:${BUILDKITE_BUILD_CHECKOUT_PATH}/.buildkite/distributed"
   OPENBLAS_NUM_THREADS: 1
+  JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
+  JULIA_NUM_PRECOMPILE_TASKS: 8
+  JULIA_NUM_THREADS: 8
   OMPI_MCA_opal_warn_on_missing_libcuda: 0
 
 steps:
   - label: "initialize"
     key: "init_central"
-    command:
-      - echo "--- Instantiate project"
-      - "julia --project -e 'using Pkg; Pkg.instantiate(;verbose=true); Pkg.precompile(;strict=true)'"
-      # force the initialization of the CUDA runtime as it is lazily loaded by default
-      - "julia --project -e 'using CUDA; CUDA.precompile_runtime(); CUDA.versioninfo()'"
-      - "julia --project -e 'using MPI; MPI.versioninfo()'"
-      # Download artifacts by running an empty testgroup and thereby executing /test/runtests.jl
-      - "julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-
-      - echo "--- Instantiate status"
-      - "julia --project -e 'using Pkg; Pkg.status()'"
-
-    agents:
-      slurm_mem: 120G
-      slurm_gpus: 1
-      slurm_cpus_per_task: 8
     env:
-      JULIA_NUM_PRECOMPILE_TASKS: 8
       TEST_GROUP: "init"
+      GPU_TEST: "true"
+    command:
+      - echo "--- Initialize tests"
+      - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      slurm_mem: 8G
+      slurm_ntasks: 1
+      slurm_gpus_per_task: 1
 
   - wait
 
@@ -38,85 +31,129 @@ steps:
     key: "distributed_cpu"
     env:
       TEST_GROUP: "distributed"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 8G
       slurm_ntasks: 4
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
   - label: "🐲 gpu distributed unit tests"
     key: "distributed_gpu"
     env:
       TEST_GROUP: "distributed"
+      GPU_TEST: "true"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 8G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
   - label: "🦾 cpu distributed solvers tests"
     key: "distributed_solvers_cpu"
     env:
       TEST_GROUP: "distributed_solvers"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 50G
       slurm_ntasks: 4
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
   - label: "🛸 gpu distributed solvers tests"
     key: "distributed_solvers_gpu"
     env:
       TEST_GROUP: "distributed_solvers"
+      GPU_TEST: "true"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 50G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
   - label: "🤺 cpu distributed hydrostatic model tests"
     key: "distributed_hydrostatic_model_cpu"
     env:
       TEST_GROUP: "distributed_hydrostatic_model"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 50G
       slurm_ntasks: 4
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
   - label: "🦏 gpu distributed hydrostatic model tests"
     key: "distributed_hydrostatic_model_gpu"
     env:
       TEST_GROUP: "distributed_hydrostatic_model"
+      GPU_TEST: "true"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 80G # Apparently the GPU tests require more memory
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
   - label: "🦍 cpu distributed nonhydrostatic regression"
     key: "distributed_nonhydrostatic_regression_cpu"
     env:
       TEST_GROUP: "distributed_nonhydrostatic_regression"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 50G
       slurm_ntasks: 4
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
   - label: "🕺 gpu distributed nonhydrostatic regression"
     key: "distributed_nonhydrostatic_regression_gpu"
     env:
       TEST_GROUP: "distributed_nonhydrostatic_regression"
+      GPU_TEST: "true"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 50G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
   - wait
 
@@ -125,3 +162,4 @@ steps:
       - "build_history staging"
     artifact_paths:
       - "build_history.html"
+

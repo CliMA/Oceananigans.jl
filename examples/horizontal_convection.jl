@@ -80,7 +80,7 @@ Pr = 1      # Prandtl number
 Ra = 1e8    # Rayleigh number
 
 ν = sqrt(Pr * b★ * Lx^3 / Ra)  # Laplacian viscosity
-κ = ν * Pr                     # Laplacian diffusivity
+κ = ν / Pr                     # Laplacian diffusivity
 nothing #hide
 
 # ## Model instantiation
@@ -160,7 +160,7 @@ run!(simulation)
 # ## Load saved output, process, visualize
 #
 # We animate the results by loading the saved output, extracting data for the iterations we ended
-# up saving at, and ploting the saved fields. From the saved buoyancy field we compute the 
+# up saving at, and plotting the saved fields. From the saved buoyancy field we compute the 
 # buoyancy dissipation, ``\chi = \kappa |\boldsymbol{\nabla} b|^2``, and plot that also.
 #
 # To start we load the saved fields are `FieldTimeSeries` and prepare for animating the flow by
@@ -179,10 +179,6 @@ b_timeseries = FieldTimeSeries(saved_output_filename, "b")
 ζ_timeseries = FieldTimeSeries(saved_output_filename, "ζ")
 
 times = b_timeseries.times
-
-## Coordinate arrays
-xc, yc, zc = nodes(b_timeseries[1])
-xζ, yζ, zζ = nodes(ζ_timeseries[1])
 nothing #hide
 
 χ_timeseries = deepcopy(b_timeseries)
@@ -329,4 +325,3 @@ lines!(ax_Nu, t, Nu; linewidth = 3)
 
 current_figure() #hide
 fig
-

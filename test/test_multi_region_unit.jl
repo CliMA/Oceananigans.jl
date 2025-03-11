@@ -1,9 +1,5 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.MultiRegion
-using Oceananigans.MultiRegion: reconstruct_global_grid, reconstruct_global_field, getnamewrapper
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GridFittedBoundary
-
 devices(::CPU, num) = nothing
 devices(::GPU, num) = Tuple(0 for i in 1:num)
 

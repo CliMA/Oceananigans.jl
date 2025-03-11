@@ -1,4 +1,4 @@
-# # Internal tide by a seamount
+# # Internal tide over a seamount
 #
 # In this example, we show how internal tide is generated from a barotropic tidal flow
 # sloshing back and forth over a sea mount.
@@ -46,7 +46,7 @@ width = 20kilometers
 hill(x) = h₀ * exp(-x^2 / 2width^2)
 bottom(x) = - H + hill(x)
 
-grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
 
 # Let's see how the domain with the bathymetry is.
 
@@ -132,7 +132,7 @@ bᵢ(x, z) = Nᵢ² * z
 
 set!(model, u=uᵢ, b=bᵢ)
 
-# Now let's built a `Simulation`.
+# Now let's build a `Simulation`.
 
 Δt = 5minutes
 stop_time = 4days
@@ -205,20 +205,6 @@ wmax = maximum(abs, w_t[end])
 times = u′_t.times
 nothing #hide
 
-# We retrieve each field's coordinates and convert from meters to kilometers.
-
-xu,  _, zu  = nodes(u′_t[1])
-xw,  _, zw  = nodes(w_t[1])
-xN², _, zN² = nodes(N²_t[1])
-
-xu  = xu  ./ 1e3
-xw  = xw  ./ 1e3
-xN² = xN² ./ 1e3
-zu  = zu  ./ 1e3
-zw  = zw  ./ 1e3
-zN² = zN² ./ 1e3
-nothing #hide
-
 # ## Visualize
 
 # Now we can visualize our resutls! We use `CairoMakie` here. On a system with OpenGL
@@ -238,9 +224,9 @@ u′ₙ = @lift u′_t[$n]
  wₙ = @lift  w_t[$n]
 N²ₙ = @lift N²_t[$n]
 
-axis_kwargs = (xlabel = "x [km]",
-               ylabel = "z [km]",
-               limits = ((-grid.Lx/2e3, grid.Lx/2e3), (-grid.Lz/1e3, 0)), # note conversion to kilometers
+axis_kwargs = (xlabel = "x [m]",
+               ylabel = "z [m]",
+               limits = ((-grid.Lx/2, grid.Lx/2), (-grid.Lz, 0)),
                titlesize = 20)
 
 fig = Figure(size = (700, 900))
@@ -248,15 +234,15 @@ fig = Figure(size = (700, 900))
 fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 
 ax_u = Axis(fig[2, 1]; title = "u'-velocity", axis_kwargs...)
-hm_u = heatmap!(ax_u, xu, zu, u′ₙ; colorrange = (-umax, umax), colormap = :balance)
+hm_u = heatmap!(ax_u, u′ₙ; nan_color=:gray, colorrange=(-umax, umax), colormap=:balance)
 Colorbar(fig[2, 2], hm_u, label = "m s⁻¹")
 
 ax_w = Axis(fig[3, 1]; title = "w-velocity", axis_kwargs...)
-hm_w = heatmap!(ax_w, xw, zw, wₙ; colorrange = (-wmax, wmax), colormap = :balance)
+hm_w = heatmap!(ax_w, wₙ; nan_color=:gray, colorrange=(-wmax, wmax), colormap=:balance)
 Colorbar(fig[3, 2], hm_w, label = "m s⁻¹")
 
 ax_N² = Axis(fig[4, 1]; title = "stratification N²", axis_kwargs...)
-hm_N² = heatmap!(ax_N², xN², zN², N²ₙ; colorrange = (0.9Nᵢ², 1.1Nᵢ²), colormap = :thermal)
+hm_N² = heatmap!(ax_N², N²ₙ; nan_color=:gray, colorrange=(0.9Nᵢ², 1.1Nᵢ²), colormap=:magma)
 Colorbar(fig[4, 2], hm_N², label = "s⁻²")
 
 fig

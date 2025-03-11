@@ -2,7 +2,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: topology, validate_tupled_argument
 using CUDA: ndevices, device!
 
-import Oceananigans.Architectures: device, cpu_architecture, on_architecture, array_type, child_architecture, convert_args
+import Oceananigans.Architectures: device, cpu_architecture, on_architecture, array_type, child_architecture, convert_to_device
 import Oceananigans.Grids: zeros
 import Oceananigans.Utils: sync_device!, tupleit
 
@@ -306,10 +306,23 @@ ranks(arch::Distributed) = ranks(arch.partition)
 child_architecture(arch::Distributed) = arch.child_architecture
 device(arch::Distributed)             = device(child_architecture(arch))
 
-zeros(FT, arch::Distributed, N...)    = zeros(FT, child_architecture(arch), N...)
-array_type(arch::Distributed)         = array_type(child_architecture(arch))
-sync_device!(arch::Distributed)       = sync_device!(arch.child_architecture)
-convert_args(arch::Distributed, arg)  = convert_args(child_architecture(arch), arg)
+zeros(arch::Distributed, FT, N...)             = zeros(child_architecture(arch), FT, N...)
+array_type(arch::Distributed)              = array_type(child_architecture(arch))
+sync_device!(arch::Distributed)            = sync_device!(arch.child_architecture)
+convert_to_device(arch::Distributed, arg)  = convert_to_device(child_architecture(arch), arg)
+
+# Switch to a synchronized architecture
+synchronized(arch) = arch
+synchronized(arch::SynchronizedDistributed) = arch
+synchronized(arch::Distributed) = Distributed{true}(child_architecture(arch),
+                                                     arch.partition,
+                                                     arch.ranks,
+                                                     arch.local_rank,
+                                                     arch.local_index,
+                                                     arch.connectivity,
+                                                     arch.communicator,
+                                                     arch.mpi_requests,
+                                                     arch.mpi_tag)
 
 cpu_architecture(arch::DistributedCPU) = arch
 cpu_architecture(arch::Distributed{A, S}) where {A, S} = 
@@ -341,7 +354,7 @@ end
 ##### Rank connectivity graph
 #####
 
-struct RankConnectivity{E, W, N, S, SW, SE, NW, NE}
+mutable struct RankConnectivity{E, W, N, S, SW, SE, NW, NE}
          east :: E
          west :: W
         north :: N

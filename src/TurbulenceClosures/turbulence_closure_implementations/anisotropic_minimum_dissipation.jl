@@ -115,7 +115,7 @@ Verstappen, R. (2018), "How much eddy dissipation is needed to counterbalance th
     production of small, unresolved scales in a large-eddy simulation of turbulence?",
     Computers & Fluids 176, pp. 276-284.
 """
-function AnisotropicMinimumDissipation(time_disc::TD = ExplicitTimeDiscretization(), FT = Float64;
+function AnisotropicMinimumDissipation(time_disc::TD = ExplicitTimeDiscretization(), FT = Oceananigans.defaults.FloatType;
                                        C = FT(1/12), Cν = nothing, Cκ = nothing, Cb = nothing) where TD
 
     Cν = Cν === nothing ? C : Cν
@@ -303,13 +303,13 @@ end
     ijk = (i, j, k, grid)
 
     wx_bx = (ℑxzᶜᵃᶜ(ijk..., norm_∂x_w, w)
-             * Δᶠxᶜᶜᶜ(ijk...) * ℑxᶜᵃᵃ(ijk..., ∂xᶠᶜᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, tracers))
+             * Δᶠxᶜᶜᶜ(ijk...) * ℑxᶜᵃᵃ(ijk..., ∂xᶠᶜᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
 
     wy_by = (ℑyzᵃᶜᶜ(ijk..., norm_∂y_w, w)
-             * Δᶠyᶜᶜᶜ(ijk...) * ℑyᵃᶜᵃ(ijk..., ∂yᶜᶠᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, tracers))
+             * Δᶠyᶜᶜᶜ(ijk...) * ℑyᵃᶜᵃ(ijk..., ∂yᶜᶠᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
 
     wz_bz = (norm_∂z_w(ijk..., w)
-             * Δᶠzᶜᶜᶜ(ijk...) * ℑzᵃᵃᶜ(ijk..., ∂zᶜᶜᶠ, buoyancy_perturbationᶜᶜᶜ, buoyancy.model, tracers))
+             * Δᶠzᶜᶜᶜ(ijk...) * ℑzᵃᵃᶜ(ijk..., ∂zᶜᶜᶠ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
 
     return Cb * (wx_bx + wy_by + wz_bz)
 end
@@ -343,10 +343,10 @@ end
                                         ℑzᵃᵃᶜ(i, j, k, grid, norm_∂z_c², c)
 
 #####
-##### DiffusivityFields
+##### build_diffusivity_fields
 #####
 
-function DiffusivityFields(grid, tracer_names, user_bcs, ::AMD)
+function build_diffusivity_fields(grid, clock, tracer_names, user_bcs, ::AMD)
 
     default_diffusivity_bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
     default_κₑ_bcs = NamedTuple(c => default_diffusivity_bcs for c in tracer_names)

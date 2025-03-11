@@ -23,16 +23,22 @@ end
 
 Grids = [:XFlatGrid, :YFlatGrid, :ZFlatGrid, :XFlatGrid, :YFlatGrid, :ZFlatGrid]
 
-for side in (:left_biased, :right_biased, :symmetric)
-    for (dir, Grid) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ, :xᶜᵃᵃ, :yᵃᶜᵃ, :zᵃᵃᶜ], Grids)
-        interp_function = Symbol(side, :_interpolate_, dir)
-        @eval begin
-            @inline $interp_function(i, j, k, grid::$Grid, scheme, ψ, args...)           = @inbounds ψ[i, j, k]
-            @inline $interp_function(i, j, k, grid::$Grid, scheme, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
+for (dir, Grid) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ, :xᶜᵃᵃ, :yᵃᶜᵃ, :zᵃᵃᶜ], Grids)
+    bias_interp = Symbol(:biased_interpolate_, dir)
+    symm_interp = Symbol(:symmetric_interpolate_, dir)
+    @eval begin
+        @inline $symm_interp(i, j, k, grid::$Grid, scheme, ψ, args...)           = @inbounds ψ[i, j, k]
+        @inline $symm_interp(i, j, k, grid::$Grid, scheme, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
 
-            @inline $interp_function(i, j, k, grid::$Grid, scheme::AbstractUpwindBiasedAdvectionScheme, ψ, args...)           = @inbounds ψ[i, j, k]
-            @inline $interp_function(i, j, k, grid::$Grid, scheme::AbstractUpwindBiasedAdvectionScheme, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
-            @inline $interp_function(i, j, k, grid::$Grid, scheme::AbstractUpwindBiasedAdvectionScheme, ψ::Function, S::AbstractSmoothnessStencil, args...) = @inbounds ψ(i, j, k, grid, args...)
-        end
+        @inline $symm_interp(i, j, k, grid::$Grid, scheme::AbstractUpwindBiasedAdvectionScheme, ψ, args...)           = @inbounds ψ[i, j, k]
+        @inline $symm_interp(i, j, k, grid::$Grid, scheme::AbstractUpwindBiasedAdvectionScheme, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
+        @inline $symm_interp(i, j, k, grid::$Grid, scheme::AbstractUpwindBiasedAdvectionScheme, ψ::Function, S::AbstractSmoothnessStencil, args...) = @inbounds ψ(i, j, k, grid, args...)
+    
+        @inline $bias_interp(i, j, k, grid::$Grid, scheme, bias, ψ, args...)           = @inbounds ψ[i, j, k]
+        @inline $bias_interp(i, j, k, grid::$Grid, scheme, bias, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
+
+        @inline $bias_interp(i, j, k, grid::$Grid, scheme::AbstractUpwindBiasedAdvectionScheme, bias, ψ, args...)           = @inbounds ψ[i, j, k]
+        @inline $bias_interp(i, j, k, grid::$Grid, scheme::AbstractUpwindBiasedAdvectionScheme, bias, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
+        @inline $bias_interp(i, j, k, grid::$Grid, scheme::AbstractUpwindBiasedAdvectionScheme, bias, ψ::Function, S::AbstractSmoothnessStencil, args...) = @inbounds ψ(i, j, k, grid, args...)
     end
 end

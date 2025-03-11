@@ -1,12 +1,11 @@
-# This validation script shows open boundaries working in a simple case where the
-# oscillates sinusoidally so changes sign across two open boundaries. This is similar
-# to a more realistic case where we know some arbitary external conditions. 
-# This necessitates using a combination allowing information to exit the domain, in 
-# this case by setting the wall normal velocity gradient to zero, as well as forcing
-# to the external value in this example by relaxing to it.
-
-# This case also has a stretched grid to validate the zero wall normal velocity 
-# gradient matching scheme on a stretched grid.
+# This validation script shows open boundaries working in a simple case where a flow past a 2D
+# cylinder oscillates in two directions. All boundaries have the same
+# `FlatExtrapolationOpenBoundaryCondition`s. This is similar to a more realistic case where we know
+# some arbitary external conditions. First we test an xy flow and then we test an xz flow (the
+# forcings and boundary conditions originally designed for `v` aere then used for `w` without
+# modification).
+#
+# This case also has a stretched grid to validate the matching scheme on a stretched grid.
 
 using Oceananigans, CairoMakie
 using Oceananigans.BoundaryConditions: FlatExtrapolationOpenBoundaryCondition
@@ -22,133 +21,125 @@ end
 architecture = CPU()
 
 # model parameters
-Re = 200
 U = 1
-D = 1.
-resolution = D / 10
-
-# add extra downstream distance to see if the solution near the cylinder changes
-extra_downstream = 0
+D = 1.0
+T = 50
 
 cylinder = Cylinder(; D)
 
-x = (-5, 5 + extra_downstream) .* D
+L = 10
+Nx = Ny = 40
 
-Ny = Int(10 / resolution)
+β = 0.2
+x_faces(i) = L/2 * (β * ((2 * (i - 1)) / Nx - 1)^3 + (2 * (i - 1)) / Nx - 1) / (β + 1)
+y = (-L/2, +L/2) .* D
 
-Nx = Int((10 + extra_downstream) / resolution)
+xygrid = RectilinearGrid(architecture; topology = (Bounded, Bounded, Flat), size = (Nx, Ny), x = x_faces, y)
+xzgrid = RectilinearGrid(architecture; topology = (Bounded, Flat, Bounded), size = (Nx, Ny), x = x_faces, z = y)
 
-function Δy(j)
-    if Ny/2 - 2/resolution < j < Ny/2 + 2/resolution
-        return resolution
-    elseif j <= Ny/2 - 2/resolution 
-        return resolution * (1 + (Ny/2 - 2/resolution - j) / (Ny/2 - 2/resolution))
-    elseif j >= Ny/2 + 2/resolution
-        return resolution * (1 + (j - Ny/2 - 2/resolution) / (Ny/2 - 2/resolution))
-    else
-        Throw(ArgumentError("$j not in range"))
+Δt = .5 * minimum_xspacing(xygrid) / abs(U)
+
+@inline u∞(y, t, p) = p.U * cos(t * 2π / p.T) * (1 + 0.01 * randn())
+@inline v∞(x, t, p) = p.U * sin(t * 2π / p.T) * (1 + 0.01 * randn())
+
+function run_cylinder(grid, boundary_conditions; plot=true, stop_time = 50, simname = "")
+    @info "Testing $simname with grid" grid
+
+    cylinder_forcing = Relaxation(; rate = 1 / (2 * Δt), mask = cylinder)
+
+    global model = NonhydrostaticModel(; grid,
+                                       advection = UpwindBiased(order=5),
+                                       forcing = (u = cylinder_forcing, v = cylinder_forcing, w = cylinder_forcing),
+                                       boundary_conditions)
+
+    @info "Constructed model"
+
+    # initial noise to induce turbulance faster
+    set!(model, u = U)
+
+    @info "Set initial conditions"
+    simulation = Simulation(model; Δt = Δt, stop_time = stop_time)
+
+    # Callbacks
+    wizard = TimeStepWizard(cfl = 0.1)
+    simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(100))
+
+    progress(sim) = @info "$(time(sim)) with Δt = $(prettytime(sim.Δt)) in $(prettytime(sim.run_wall_time))"
+    simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
+
+    u, v, w = model.velocities
+    filename = "cylinder_$(simname)_Nx_$Nx.jld2"
+
+    if grid isa Oceananigans.Grids.ZFlatGrid
+        outputs = (; model.velocities..., ζ = (@at (Center, Center, Center) ∂x(v) - ∂y(u)))
+    elseif grid isa Oceananigans.Grids.YFlatGrid
+        outputs = (; model.velocities..., ζ = (@at (Center, Center, Center) ∂x(w) - ∂z(u)))
+    end
+    simulation.output_writers[:velocity] = JLD2OutputWriter(model, outputs,
+                                                            overwrite_existing = true,
+                                                            filename = filename,
+                                                            schedule = TimeInterval(0.5),
+                                                            with_halos = true)
+    run!(simulation)
+
+    if plot
+        # load the results
+        ζ_ts = FieldTimeSeries(filename, "ζ")
+        u_ts = FieldTimeSeries(filename, "u")
+        @info "Loaded results"
+
+        xζ, yζ, zζ = nodes(ζ_ts, with_halos=true)
+        xu, yu, zu = nodes(u_ts, with_halos=true)
+
+        # plot the results
+        fig = Figure(size = (600, 600))
+        n = Observable(1)
+
+        if grid isa Oceananigans.Grids.ZFlatGrid
+            ζ_plt = @lift ζ_ts[:, :, 1, $n].parent
+            ax = Axis(fig[1, 1], aspect = DataAspect(), xlabel = "x", ylabel = "y", width = 400, height = 400, title = "ζ")
+            heatmap!(ax, collect(xζ), collect(yζ), ζ_plt, colorrange = (-2, 2), colormap = :curl)
+
+            u_plt = @lift u_ts[:, :, 1, $n].parent
+            ax = Axis(fig[1, 2], aspect = DataAspect(), xlabel = "x", ylabel = "y", width = 400, height = 400, title = "u")
+            heatmap!(ax, collect(xu), collect(yu), u_plt, colorrange = (-2, 2), colormap = :curl)
+
+        elseif grid isa Oceananigans.Grids.YFlatGrid
+            ζ_plt = @lift ζ_ts[:, 1, :, $n].parent
+            ax = Axis(fig[1, 1], aspect = DataAspect(), xlabel = "x", ylabel = "z", width = 400, height = 400, title = "ζ")
+            heatmap!(ax, collect(xζ), collect(zζ), ζ_plt, colorrange = (-2, 2), colormap = :curl)
+
+            u_plt = @lift u_ts[:, 1, :, $n].parent
+            ax = Axis(fig[1, 2], aspect = DataAspect(), xlabel = "x", ylabel = "z", width = 400, height = 400, title = "u")
+            heatmap!(ax, collect(xu), collect(zu), u_plt, colorrange = (-2, 2), colormap = :curl)
+
+        end
+        resize_to_layout!(fig)
+        record(fig, "ζ_$filename.mp4", 1:length(ζ_ts.times), framerate = 16) do i;
+            n[] = i
+            i % 10 == 0 && @info "$(n.val) of $(length(ζ_ts.times))"
+        end
     end
 end
 
-y(j) = sum(Δy.([1:j;])) - sum(Δy.([1:Ny;]))/2
+matching_scheme_name(obc) = string(nameof(typeof(obc.classification.matching_scheme)))
+for grid in (xygrid, xzgrid)
 
-ν = U * D / Re
+    u_fe = FlatExtrapolationOpenBoundaryCondition(u∞, parameters = (; U, T), relaxation_timescale = 1)
+    v_fe = FlatExtrapolationOpenBoundaryCondition(v∞, parameters = (; U, T), relaxation_timescale = 1)
+    w_fe = FlatExtrapolationOpenBoundaryCondition(v∞, parameters = (; U, T), relaxation_timescale = 1)
 
-closure = ScalarDiffusivity(;ν, κ = ν)
+    u_boundaries_fe = FieldBoundaryConditions(west = u_fe, east = u_fe)
+    v_boundaries_fe = FieldBoundaryConditions(south = v_fe, north = v_fe)
+    w_boundaries_fe = FieldBoundaryConditions(bottom = w_fe, top = w_fe)
 
-grid = RectilinearGrid(architecture; topology = (Bounded, Bounded, Flat), size = (Nx, Ny), x = y, y = x)
-
-T = 20 / U
-
-@inline u(t, p)      = p.U * sin(t * 2π / p.T)
-@inline u(y, t, p)   = u(t, p)
-
-relaxation_timescale = 0.15
-
-u_boundaries = FieldBoundaryConditions(east = FlatExtrapolationOpenBoundaryCondition(u; relaxation_timescale, parameters = (; U, T)),
-                                       west = FlatExtrapolationOpenBoundaryCondition(u; relaxation_timescale, parameters = (; U, T)),
-                                       south = GradientBoundaryCondition(0),
-                                       north = GradientBoundaryCondition(0))
-
-v_boundaries = FieldBoundaryConditions(east = GradientBoundaryCondition(0),
-                                       west = GradientBoundaryCondition(0),
-                                       south = FlatExtrapolationOpenBoundaryCondition(0; relaxation_timescale),
-                                       north = FlatExtrapolationOpenBoundaryCondition(0; relaxation_timescale))
-
-Δt = .3 * resolution / U
-
-@show Δt
-
-u_forcing = Relaxation(; rate = 1 / (2 * Δt), mask = cylinder)
-v_forcing = Relaxation(; rate = 1 / (2 * Δt), mask = cylinder) 
-
-model = NonhydrostaticModel(; grid, 
-                              closure, 
-                              forcing = (u = u_forcing, v = v_forcing),
-                              boundary_conditions = (u = u_boundaries, v = v_boundaries))
-
-@info "Constructed model"
-
-# initial noise to induce turbulance faster
-set!(model, u = (x, y) -> randn() * U * 0.01, v = (x, y) -> randn() * U * 0.01)
-
-@info "Set initial conditions"
-
-simulation = Simulation(model; Δt = Δt, stop_time = 300)
-
-wizard = TimeStepWizard(cfl = 0.3, max_Δt = Δt)
-
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(100))
-
-progress(sim) = @info "$(time(sim)) with Δt = $(prettytime(sim.Δt)) in $(prettytime(sim.run_wall_time))"
-
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
-
-simulation.output_writers[:velocity] = JLD2OutputWriter(model, model.velocities,
-                                                        overwrite_existing = true, 
-                                                        filename = "oscillating_cylinder_$(extra_downstream)_Re_$Re.jld2", 
-                                                        schedule = TimeInterval(1),
-                                                        with_halos = true)
-
-run!(simulation)
-
-# load the results 
-
-u_ts = FieldTimeSeries("oscillating_cylinder_$(extra_downstream)_Re_$Re.jld2", "u")
-v_ts = FieldTimeSeries("oscillating_cylinder_$(extra_downstream)_Re_$Re.jld2", "v")
-
-u′, v′, w′ = Oceananigans.Fields.VelocityFields(u_ts.grid)
-
-ζ = Field((@at (Center, Center, Center) ∂x(v′)) - (@at (Center, Center, Center) ∂y(u′)))
-
-# there is probably a more memory efficient way todo this
-
-ζ_ts = zeros(size(grid, 1), size(grid, 2), length(u_ts.times)) # u_ts.grid so its always on cpu
-
-for n in 1:length(u_ts.times)
-    set!(u′, u_ts[n])
-    set!(v′, v_ts[n])
-    compute!(ζ)
-    ζ_ts[:, :, n] = interior(ζ, :, :, 1)
+    if grid isa Oceananigans.Grids.ZFlatGrid
+        boundary_conditions = (u = u_boundaries_fe, v = v_boundaries_fe)
+        simname = "xy_" * matching_scheme_name(u_boundaries_fe.east)
+    elseif grid isa Oceananigans.Grids.YFlatGrid
+        boundary_conditions = (u = u_boundaries_fe, w = w_boundaries_fe)
+        simname = "xz_" * matching_scheme_name(u_boundaries_fe.east)
+    end
+    run_cylinder(grid, boundary_conditions, simname = simname, stop_time = T)
 end
 
-@info "Loaded results"
-
-# plot the results
-
-fig = Figure(size = (600, 600))
-
-xc, yc, zc = nodes(ζ)
-
-ax = Axis(fig[1, 1], aspect = DataAspect(), limits = (minimum(xc), maximum(xc), minimum(yc), maximum(yc)))
-
-n = Observable(1)
-
-ζ_plt = @lift ζ_ts[:, :, $n]
-
-contour!(ax, xc, yc, ζ_plt, levels = [-1, 1], colorrange = (-1, 1), colormap = :roma)
-
-record(fig, "oscillating_ζ_Re_$(Re)_no_exterior.mp4", 1:length(u_ts.times), framerate = 5) do i;
-    n[] = i
-    i % 10 == 0 && @info "$(n.val) of $(length(u_ts.times))"
-end

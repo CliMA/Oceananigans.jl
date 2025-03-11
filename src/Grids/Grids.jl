@@ -11,13 +11,16 @@ export XRegularRG, YRegularRG, ZRegularRG, XYRegularRG, XYZRegularRG
 export LatitudeLongitudeGrid, XRegularLLG, YRegularLLG, ZRegularLLG
 export OrthogonalSphericalShellGrid, ConformalCubedSphereGrid, ZRegOrthogonalSphericalShellGrid
 export conformal_cubed_sphere_panel
+export MutableVerticalDiscretization
 export node, nodes
 export ξnode, ηnode, rnode
 export xnode, ynode, znode, λnode, φnode
-export xnodes, ynodes, znodes, λnodes, φnodes
+export xnodes, ynodes, znodes, λnodes, φnodes, rnodes
 export spacings
-export xspacings, yspacings, zspacings, xspacing, yspacing, zspacing
+export xspacings, yspacings, zspacings, λspacings, φspacings, rspacings
 export minimum_xspacing, minimum_yspacing, minimum_zspacing
+export static_column_depthᶜᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶠᵃ
+export column_depthᶜᶜᵃ, column_depthᶠᶜᵃ, column_depthᶜᶠᵃ, column_depthᶠᶠᵃ
 export offset_data, new_data
 export on_architecture
 
@@ -25,6 +28,7 @@ using CUDA
 using CUDA: has_cuda
 using Adapt
 using OffsetArrays
+using Printf
 
 using Oceananigans
 using Oceananigans.Architectures
@@ -103,35 +107,6 @@ Grid topology for dimensions that are connected to other models or domains only 
 """
 struct RightConnected <: AbstractTopology end
 
-"""
-    AbstractGrid{FT, TX, TY, TZ}
-
-Abstract supertype for grids with elements of type `FT` and topology `{TX, TY, TZ}`.
-"""
-abstract type AbstractGrid{FT, TX, TY, TZ, Arch} end
-
-"""
-    AbstractUnderlyingGrid{FT, TX, TY, TZ}
-
-Abstract supertype for "primary" grids (as opposed to grids with immersed boundaries)
-with elements of type `FT` and topology `{TX, TY, TZ}`.
-"""
-abstract type AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch} end
-
-"""
-    AbstractCurvilinearGrid{FT, TX, TY, TZ}
-
-Abstract supertype for curvilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
-"""
-abstract type AbstractCurvilinearGrid{FT, TX, TY, TZ, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch} end
-
-"""
-    AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ}
-
-Abstract supertype for horizontally-curvilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
-"""
-abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch} <: AbstractCurvilinearGrid{FT, TX, TY, TZ, Arch} end
-
 #####
 ##### Directions (for tilted domains)
 #####
@@ -144,20 +119,8 @@ struct ZDirection <: AbstractDirection end
 
 struct NegativeZDirection <: AbstractDirection end
 
-const XFlatGrid = AbstractGrid{<:Any, Flat}
-const YFlatGrid = AbstractGrid{<:Any, <:Any, Flat}
-const ZFlatGrid = AbstractGrid{<:Any, <:Any, <:Any, Flat}
-
-const XYFlatGrid = AbstractGrid{<:Any, Flat, Flat}
-const XZFlatGrid = AbstractGrid{<:Any, Flat, <:Any, Flat}
-const YZFlatGrid = AbstractGrid{<:Any, <:Any, Flat, Flat}
-
-const XYZFlatGrid = AbstractGrid{<:Any, Flat, Flat, Flat}
-
-isrectilinear(grid) = false
-@inline active_surface_map(::AbstractGrid) = nothing
-@inline active_interior_map(::AbstractGrid) = nothing
-
+include("abstract_grid.jl")
+include("vertical_discretization.jl")
 include("grid_utils.jl")
 include("nodes_and_spacings.jl")
 include("zeros_and_ones.jl")
@@ -168,6 +131,7 @@ include("input_validation.jl")
 include("grid_generation.jl")
 include("rectilinear_grid.jl")
 include("orthogonal_spherical_shell_grid.jl")
+include("conformal_cubed_sphere_panel.jl")
 include("latitude_longitude_grid.jl")
 
 end # module

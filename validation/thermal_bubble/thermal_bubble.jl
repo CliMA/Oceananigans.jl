@@ -69,7 +69,7 @@ function print_progress(simulation)
                    progress, i, t, u_max, w_max, T_min, T_max, CFL)
 end
 
-schemes = (WENO(), CenteredFourthOrder())
+schemes = (WENO(), Centered(order=4))
 Ns = (32, 128)
 
 for scheme in schemes, N in Ns

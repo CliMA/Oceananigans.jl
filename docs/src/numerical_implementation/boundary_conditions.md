@@ -211,13 +211,11 @@ point to
 ```
 but we then pressure correct the interior so a new ``\mathcal{O}(\Delta t)`` error is introduced as
 ```math
-    \begin{equation}
     \begin{align}
     u^{n+1}_{1jk} &\approx u^{n+1}_{3jk} + (u^{n+1}_{2jk} - u^{n+1}_{jk4}) / 2 + \mathcal{O}(\Delta x^2),\\
     &= u^\star_{1jk} - \Delta t \left(\boldsymbol{\nabla}p^{n+1}_{3jk} + (\boldsymbol{\nabla}p^{n+1}_{2jk} - \boldsymbol{\nabla}p^{n+1}_{4jk}) / 2\right) + \mathcal{O}(\Delta x^2),\\
     &\approx u^\star_{1jk} + \mathcal{O}(\Delta x^2) + \mathcal{O}(\Delta t).
     \end{align}
-    \end{equation}
 ```
 This is prefered to a divergent interior solution as open boundary conditions (except no penetration)
 are typlically already unphysical and only used in an attempt to allow information to enter or exit

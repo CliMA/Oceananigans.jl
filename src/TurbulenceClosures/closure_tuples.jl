@@ -89,7 +89,9 @@ function add_closure_specific_boundary_conditions(closure_tuple::Tuple, bcs, arg
     return bcs
 end
 
-required_halo_size(closure_tuple::Tuple) = maximum(map(required_halo_size, closure_tuple))
+required_halo_size_x(closure_tuple::Tuple) = maximum(map(required_halo_size_x, closure_tuple))
+required_halo_size_y(closure_tuple::Tuple) = maximum(map(required_halo_size_y, closure_tuple))
+required_halo_size_z(closure_tuple::Tuple) = maximum(map(required_halo_size_z, closure_tuple))
 
 #####
 ##### Compiler-inferrable time_discretization for tuples

@@ -7,6 +7,7 @@ using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, Continuo
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
 using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: AbstractSchedule
+using Oceananigans.OutputReaders: auto_extension
 
 #####
 ##### Output writer utilities
@@ -98,7 +99,7 @@ function saveproperty!(file, address, bcs::FieldBoundaryConditions)
         if bc.condition isa Function || bc.condition isa ContinuousBoundaryFunction
             file[address * "/$boundary/condition"] = missing
         else
-            file[address * "/$boundary/condition"] = bc.condition
+            file[address * "/$boundary/condition"] = on_architecture(CPU(), bc.condition)
         end
     end
 end
@@ -130,13 +131,13 @@ function serializeproperty!(file, address, grid::DistributedGrid)
     file[address] = on_architecture(cpu_arch, grid)
 end
 
-function serializeproperty!(file, address, p::FieldBoundaryConditions)
+function serializeproperty!(file, address, fbcs::FieldBoundaryConditions)
     # TODO: it'd be better to "filter" `FieldBoundaryCondition` and then serialize
     # rather than punting with `missing` instead.
-    if has_reference(Function, p)
+    if has_reference(Function, fbcs)
         file[address] = missing
     else
-        file[address] = p
+        file[address] = on_architecture(CPU(), fbcs)
     end
 end
 
@@ -169,6 +170,7 @@ serializeproperty!(file, address, p::LagrangianParticles) = serializeproperty!(f
 
 saveproperties!(file, structure, ps) = [saveproperty!(file, "$p", getproperty(structure, p)) for p in ps]
 serializeproperties!(file, structure, ps) = [serializeproperty!(file, "$p", getproperty(structure, p)) for p in ps]
+serializeproperties!(file, structure, ps, addr) = [serializeproperty!(file, "$addr/$p", getproperty(structure, p)) for p in ps]
 
 # Don't check arrays because we don't need that noise.
 has_reference(T, ::AbstractArray{<:Number}) = false
@@ -209,15 +211,17 @@ output_averaging_schedule(output) = nothing # fallback
 
 show_array_type(a::Type{Array{T}}) where T = "Array{$T}"
 
-"""
-    auto_extension(filename, ext)                                                             
+#####
+##### Architecture suffix
+#####
 
-If `filename` ends in `ext`, return `filename`. Otherwise return `filename * ext`.
-"""
-function auto_extension(filename, ext) 
-    if endswith(filename, ext)
-        return filename
-    else
-        return filename * ext
-    end
+with_architecture_suffix(arch, filename, ext) = filename
+
+function with_architecture_suffix(arch::Distributed, filename, ext)
+    Ne = length(ext)
+    prefix = filename[1:end-Ne]
+    rank = arch.local_rank
+    prefix *= "_rank$rank"
+    return prefix * ext
 end
+

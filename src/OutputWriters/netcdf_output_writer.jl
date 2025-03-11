@@ -4,7 +4,7 @@ using Dates: AbstractTime, now
 
 using Oceananigans.Fields
 
-using Oceananigans.Grids: AbstractCurvilinearGrid, RectilinearGrid, topology, halo_size, parent_index_range
+using Oceananigans.Grids: AbstractCurvilinearGrid, RectilinearGrid, topology, halo_size, parent_index_range, ξnodes, ηnodes, rnodes
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
 using Oceananigans.TimeSteppers: float_or_date_time
@@ -52,46 +52,19 @@ netcdf_spatial_dimensions(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
 function native_dimensions_for_netcdf_output(grid, indices, TX, TY, TZ, Hx, Hy, Hz)
     with_halos = true
 
-    xC = xnodes(grid, c; with_halos)
-    xF = xnodes(grid, f; with_halos)
-    yC = ynodes(grid, c; with_halos)
-    yF = ynodes(grid, f; with_halos)
-    zC = znodes(grid, c; with_halos)
-    zF = znodes(grid, f; with_halos)
+    xC = ξnodes(grid, c; with_halos)
+    xF = ξnodes(grid, f; with_halos)
+    yC = ηnodes(grid, c; with_halos)
+    yF = ηnodes(grid, f; with_halos)
+    zC = rnodes(grid, c; with_halos)
+    zF = rnodes(grid, f; with_halos)
 
-    xC = isnothing(xC) ? [0.0] : parent(xC)  
-    xF = isnothing(xF) ? [0.0] : parent(xF) 
-    yC = isnothing(yC) ? [0.0] : parent(yC) 
-    yF = isnothing(yF) ? [0.0] : parent(yF) 
-    zC = isnothing(zC) ? [0.0] : parent(zC) 
-    zF = isnothing(zF) ? [0.0] : parent(zF) 
-
-    dims = Dict("xC" => xC[parent_index_range(indices["xC"][1], c, TX(), Hx)],
-                "xF" => xF[parent_index_range(indices["xF"][1], f, TX(), Hx)],
-                "yC" => yC[parent_index_range(indices["yC"][2], c, TY(), Hy)],
-                "yF" => yF[parent_index_range(indices["yF"][2], f, TY(), Hy)],
-                "zC" => zC[parent_index_range(indices["zC"][3], c, TZ(), Hz)],
-                "zF" => zF[parent_index_range(indices["zF"][3], f, TZ(), Hz)])
-
-    return dims
-end
-
-function native_dimensions_for_netcdf_output(grid::AbstractCurvilinearGrid, indices, TX, TY, TZ, Hx, Hy, Hz)
-    with_halos = true
-
-    xC = λnodes(grid, c; with_halos)
-    xF = λnodes(grid, f; with_halos)
-    yC = φnodes(grid, c; with_halos)
-    yF = φnodes(grid, f; with_halos)
-    zC = znodes(grid, c; with_halos)
-    zF = znodes(grid, f; with_halos)
-
-    xC = isnothing(xC) ? [0.0] : parent(xC)  
-    xF = isnothing(xF) ? [0.0] : parent(xF) 
-    yC = isnothing(yC) ? [0.0] : parent(yC) 
-    yF = isnothing(yF) ? [0.0] : parent(yF) 
-    zC = isnothing(zC) ? [0.0] : parent(zC) 
-    zF = isnothing(zF) ? [0.0] : parent(zF) 
+    xC = isnothing(xC) ? [0.0] : parent(xC)
+    xF = isnothing(xF) ? [0.0] : parent(xF)
+    yC = isnothing(yC) ? [0.0] : parent(yC)
+    yF = isnothing(yF) ? [0.0] : parent(yF)
+    zC = isnothing(zC) ? [0.0] : parent(zC)
+    zF = isnothing(zF) ? [0.0] : parent(zF)
 
     dims = Dict("xC" => xC[parent_index_range(indices["xC"][1], c, TX(), Hx)],
                 "xF" => xF[parent_index_range(indices["xF"][1], f, TX(), Hx)],
@@ -252,7 +225,7 @@ Keyword arguments
                 you might need to set `with_halos = true`.
 
 - `array_type`: The array type to which output arrays are converted to prior to saving.
-                Default: `Array{Float64}`.
+                Default: `Array{Float32}`.
 
 - `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs).
 
@@ -269,7 +242,7 @@ Keyword arguments
 
 - `file_splitting`: Schedule for splitting the output file. The new files will be suffixed with
           `_part1`, `_part2`, etc. For example `file_splitting = FileSizeLimit(sz)` will
-          split the output file when its size exceeds `sz`. Another example is 
+          split the output file when its size exceeds `sz`. Another example is
           `file_splitting = TimeInterval(30days)`, which will split files every 30 days of
           simulation time. The default incurs no splitting (`NoFileSplitting()`).
 
@@ -292,7 +265,7 @@ Examples
 Saving the ``u`` velocity field and temperature fields, the full 3D fields and surface 2D slices
 to separate NetCDF files:
 
-```jldoctest netcdf1
+```@example netcdf1
 using Oceananigans
 
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
@@ -305,53 +278,26 @@ fields = Dict("u" => model.velocities.u, "c" => model.tracers.c)
 
 simulation.output_writers[:field_writer] =
     NetCDFOutputWriter(model, fields, filename="fields.nc", schedule=TimeInterval(60))
-
-# output
-NetCDFOutputWriter scheduled on TimeInterval(1 minute):
-├── filepath: ./fields.nc
-├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 2 outputs: (c, u)
-└── array type: Array{Float64}
-├── file_splitting: NoFileSplitting
-└── file size: 14.9 KiB
 ```
 
-```jldoctest netcdf1
+```@example netcdf1
 simulation.output_writers[:surface_slice_writer] =
     NetCDFOutputWriter(model, fields, filename="surface_xy_slice.nc",
                        schedule=TimeInterval(60), indices=(:, :, grid.Nz))
-
-# output
-NetCDFOutputWriter scheduled on TimeInterval(1 minute):
-├── filepath: ./surface_xy_slice.nc
-├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 2 outputs: (c, u)
-└── array type: Array{Float64}
-├── file_splitting: NoFileSplitting
-└── file size: 14.9 KiB
 ```
 
-```jldoctest netcdf1
+```@example netcdf1
 simulation.output_writers[:averaged_profile_writer] =
     NetCDFOutputWriter(model, fields,
                        filename = "averaged_z_profile.nc",
                        schedule = AveragedTimeInterval(60, window=20),
                        indices = (1, 1, :))
-
-# output
-NetCDFOutputWriter scheduled on TimeInterval(1 minute):
-├── filepath: ./averaged_z_profile.nc
-├── dimensions: zC(16), zF(17), xC(1), yF(1), xF(1), yC(1), time(0)
-├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
-└── array type: Array{Float64}
-├── file_splitting: NoFileSplitting
-└── file size: 17.6 KiB
 ```
 
 `NetCDFOutputWriter` also accepts output functions that write scalars and arrays to disk,
 provided that their `dimensions` are provided:
 
-```jldoctest
+```@example
 using Oceananigans
 
 Nx, Ny, Nz = 16, 16, 16
@@ -388,22 +334,13 @@ simulation.output_writers[:things] =
     NetCDFOutputWriter(model, outputs,
                        schedule=IterationInterval(1), filename="things.nc", dimensions=dims, verbose=true,
                        global_attributes=global_attributes, output_attributes=output_attributes)
-
-# output
-NetCDFOutputWriter scheduled on IterationInterval(1):
-├── filepath: ./things.nc
-├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 3 outputs: (profile, slice, scalar)
-└── array type: Array{Float64}
-├── file_splitting: NoFileSplitting
-└── file size: 17.8 KiB
 ```
 
 `NetCDFOutputWriter` can also be configured for `outputs` that are interpolated or regridded
 to a different grid than `model.grid`. To use this functionality, include the keyword argument
 `grid = output_grid`.
 
-```jldoctest
+```@example
 using Oceananigans
 using Oceananigans.Fields: interpolate!
 
@@ -420,15 +357,6 @@ output_writer = NetCDFOutputWriter(model, outputs;
                                    grid = coarse_grid,
                                    filename = "coarse_u.nc",
                                    schedule = IterationInterval(1))
-
-# output
-NetCDFOutputWriter scheduled on IterationInterval(1):
-├── filepath: ./coarse_u.nc
-├── dimensions: zC(4), zF(5), xC(1), yF(1), xF(1), yC(1), time(0)
-├── 1 outputs: u
-└── array type: Array{Float64}
-├── file_splitting: NoFileSplitting
-└── file size: 14.6 KiB
 ```
 """
 function NetCDFOutputWriter(model, outputs;
@@ -436,7 +364,7 @@ function NetCDFOutputWriter(model, outputs;
                             schedule,
                             grid = model.grid,
                             dir = ".",
-                            array_type = Array{Float64},
+                            array_type = Array{Float32},
                             indices = (:, :, :),
                             with_halos = false,
                             global_attributes = Dict(),
@@ -449,7 +377,7 @@ function NetCDFOutputWriter(model, outputs;
                             verbose = false)
     mkpath(dir)
     filename = auto_extension(filename, ".nc")
-    filepath = joinpath(dir, filename)
+    filepath = abspath(joinpath(dir, filename))
 
     initialize!(file_splitting, model)
     update_file_splitting_schedule!(file_splitting, filepath)
@@ -461,7 +389,6 @@ function NetCDFOutputWriter(model, outputs;
             overwrite_existing = true
         end
     else
-
         if isfile(filepath) && !overwrite_existing
             @warn "$filepath already exists and `overwrite_existing = false`. Mode will be set to append to existing file. " *
                   "You might experience errors when writing output if the existing file belonged to a different simulation!"
@@ -665,7 +592,7 @@ function Base.show(io::IO, ow::NetCDFOutputWriter)
     Noutputs = length(ow.outputs)
 
     print(io, "NetCDFOutputWriter scheduled on $(summary(ow.schedule)):", "\n",
-              "├── filepath: ", ow.filepath, "\n",
+              "├── filepath: ", relpath(ow.filepath), "\n",
               "├── dimensions: $dims", "\n",
               "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
               "└── array type: ", show_array_type(ow.array_type), "\n",
@@ -721,7 +648,7 @@ function start_next_file(model, ow::NetCDFOutputWriter)
     verbose && @info "Now writing to: $(ow.filepath)"
 
     initialize_nc_file!(ow, model)
-    
+
     return nothing
 end
 
@@ -785,7 +712,7 @@ function initialize_nc_file!(filepath,
 
         for (name, output) in outputs
             attributes = try output_attributes[name]; catch; Dict(); end
-            materialized = materialize_output(output, model) 
+            materialized = materialize_output(output, model)
             define_output_variable!(dataset,
                                     materialized,
                                     name,

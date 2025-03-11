@@ -39,12 +39,12 @@ default_auxiliary_bc(::LeftConnected,  ::Face) = nothing
 #####
 
 mutable struct FieldBoundaryConditions{W, E, S, N, B, T, I}
-        west :: W
-        east :: E
-       south :: S
-       north :: N
-      bottom :: B
-         top :: T
+    west :: W
+    east :: E
+    south :: S
+    north :: N
+    bottom :: B
+    top :: T
     immersed :: I
 end
 
@@ -59,11 +59,19 @@ end
 FieldBoundaryConditions(indices::Tuple, bcs::FieldBoundaryConditions) =
     FieldBoundaryConditions(indices, (getproperty(bcs, side) for side in propertynames(bcs))...)
 
-
 FieldBoundaryConditions(indices::Tuple, ::Nothing) = nothing
 
 window_boundary_conditions(::Colon,     left, right) = left, right
 window_boundary_conditions(::UnitRange, left, right) = nothing, nothing
+
+on_architecture(arch, fbcs::FieldBoundaryConditions) =
+    FieldBoundaryConditions(on_architecture(arch, fbcs.west),
+                            on_architecture(arch, fbcs.east),
+                            on_architecture(arch, fbcs.south),
+                            on_architecture(arch, fbcs.north),
+                            on_architecture(arch, fbcs.bottom),
+                            on_architecture(arch, fbcs.top),
+                            on_architecture(arch, fbcs.immersed))
 
 """
     FieldBoundaryConditions(; kwargs...)
@@ -156,17 +164,25 @@ end
 # Friendly warning?
 function regularize_immersed_boundary_condition(ibc, grid, loc, field_name, args...)
     if !(ibc isa DefaultBoundaryCondition)
-        msg = """
-              $field_name was assigned an immersed $ibc, but this is not supported on
-              $(summary(grid))
+        msg = """$field_name was assigned an immersed boundary condition
+              $ibc,
+              but this is not supported on
+              $(summary(grid)).
               The immersed boundary condition on $field_name will have no effect.
-          """
+              """
 
         @warn msg
     end
 
     return NoFluxBoundaryCondition()
 end
+
+  regularize_west_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)    
+  regularize_east_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)    
+ regularize_south_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)   
+ regularize_north_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)  
+regularize_bottom_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
+   regularize_top_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
 
 # regularize default boundary conditions
 function regularize_boundary_condition(default::DefaultBoundaryCondition, grid, loc, dim, args...)
@@ -202,12 +218,12 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
 
     loc = assumed_field_location(field_name)
     
-    west   = regularize_boundary_condition(bcs.west,   grid, loc, 1, LeftBoundary,  prognostic_names)
-    east   = regularize_boundary_condition(bcs.east,   grid, loc, 1, RightBoundary, prognostic_names)
-    south  = regularize_boundary_condition(bcs.south,  grid, loc, 2, LeftBoundary,  prognostic_names)
-    north  = regularize_boundary_condition(bcs.north,  grid, loc, 2, RightBoundary, prognostic_names)
-    bottom = regularize_boundary_condition(bcs.bottom, grid, loc, 3, LeftBoundary,  prognostic_names)
-    top    = regularize_boundary_condition(bcs.top,    grid, loc, 3, RightBoundary, prognostic_names)
+    west   = regularize_west_boundary_condition(bcs.west,     grid, loc, 1, LeftBoundary,  prognostic_names)
+    east   = regularize_east_boundary_condition(bcs.east,     grid, loc, 1, RightBoundary, prognostic_names)
+    south  = regularize_south_boundary_condition(bcs.south,   grid, loc, 2, LeftBoundary,  prognostic_names)
+    north  = regularize_north_boundary_condition(bcs.north,   grid, loc, 2, RightBoundary, prognostic_names)
+    bottom = regularize_bottom_boundary_condition(bcs.bottom, grid, loc, 3, LeftBoundary,  prognostic_names)
+    top    = regularize_top_boundary_condition(bcs.top,       grid, loc, 3, RightBoundary, prognostic_names)
 
     immersed = regularize_immersed_boundary_condition(bcs.immersed, grid, loc, field_name, prognostic_names)
 

@@ -52,14 +52,14 @@ function test_ScalarDiffusivity_budget(fieldname, model)
     set!(model; Dict(fieldname => (x, y, z) -> rand())...)
     field = fields(model)[fieldname]
     ν = viscosity(model.closure, nothing)
-    return test_diffusion_budget(fieldname, field, model, ν, model.grid.Δzᵃᵃᶜ)
+    return test_diffusion_budget(fieldname, field, model, ν, model.grid.z.Δᵃᵃᶜ)
 end
 
 function test_ScalarBiharmonicDiffusivity_budget(fieldname, model)
     set!(model; u=0, v=0, w=0, c=0)
     set!(model; Dict(fieldname => (x, y, z) -> rand())...)
     field = fields(model)[fieldname]
-    return test_diffusion_budget(fieldname, field, model, model.closure.ν, model.grid.Δzᵃᵃᶜ, 4)
+    return test_diffusion_budget(fieldname, field, model, model.closure.ν, model.grid.z.Δᵃᵃᶜ, 4)
 end
 
 function test_diffusion_cosine(fieldname, grid, closure, ξ, tracers=:c) 
@@ -88,9 +88,9 @@ end
 function test_immersed_diffusion(Nz, z, time_discretization)
     closure         = ScalarDiffusivity(time_discretization, κ = 1)
     underlying_grid = RectilinearGrid(size=Nz, z=z, topology=(Flat, Flat, Bounded))
-    grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(() -> 0))
+    grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(() -> 0); active_cells_map = true)
 
-    Δz_min = minimum(underlying_grid.Δzᵃᵃᶜ)
+    Δz_min = minimum(underlying_grid.z.Δᵃᵃᶜ)
     model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
 
     full_model     = HydrostaticFreeSurfaceModel(; grid=underlying_grid, closure, model_kwargs...)
@@ -131,9 +131,9 @@ function test_3D_immersed_diffusion(Nz, z, time_discretization)
                   b b b b b b b b b]
 
     underlying_grid = RectilinearGrid(size=(9, 9, Nz), x=(0, 1), y=(0, 1), z=z, topology=(Periodic, Periodic, Bounded))
-    grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
+    grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry); active_cells_map = true)
     
-    Δz_min = minimum(grid.underlying_grid.Δzᵃᵃᶜ)
+    Δz_min = minimum(grid.underlying_grid.z.Δᵃᵃᶜ)
     model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
 
     full_model     = HydrostaticFreeSurfaceModel(; grid=underlying_grid, closure, model_kwargs...)
@@ -225,12 +225,9 @@ function taylor_green_vortex_test(arch, timestepper, time_discretization; FT=Flo
     @inline u(x, y, z, t) = -sin(2π * y) * exp(-4π^2 * ν * t)
     @inline v(x, y, z, t) =  sin(2π * x) * exp(-4π^2 * ν * t)
 
-    model = NonhydrostaticModel(
-         timestepper = timestepper,
-                grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
-             closure = ScalarDiffusivity(time_discretization, ThreeDimensionalFormulation(), FT, ν=1),
-             tracers = nothing,
-            buoyancy = nothing)
+    grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    closure = ScalarDiffusivity(time_discretization, ThreeDimensionalFormulation(), FT, ν=1)
+    model = NonhydrostaticModel(; timestepper, grid, closure)
 
     u₀(x, y, z) = u(x, y, z, 0)
     v₀(x, y, z) = v(x, y, z, 0)
@@ -267,7 +264,7 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(ar
     grid = RectilinearGrid(arch, FT, topology=topo, size=(1, N, N), extent=(L, L, L))
 
     g̃ = [0, sind(θ), cosd(θ)]
-    buoyancy = Buoyancy(model=BuoyancyTracer(), gravity_unit_vector=-g̃)
+    buoyancy = BuoyancyForce(BuoyancyTracer(), gravity_unit_vector=-g̃)
 
     y_bc = GradientBoundaryCondition(N² * g̃[2])
     z_bc = GradientBoundaryCondition(N² * g̃[3])
@@ -312,7 +309,7 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
     grid = RectilinearGrid(arch, FT, topology=topo, size=(1, N, N), extent=(L, L, L))
 
     g̃ = (0, sind(θ), cosd(θ))
-    buoyancy = Buoyancy(model=SeawaterBuoyancy(), gravity_unit_vector=g̃)
+    buoyancy = BuoyancyForce(SeawaterBuoyancy(), gravity_unit_vector=g̃)
 
     α  = buoyancy.model.equation_of_state.thermal_expansion
     g₀ = buoyancy.model.gravitational_acceleration

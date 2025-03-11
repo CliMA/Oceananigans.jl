@@ -14,14 +14,15 @@ using Oceananigans: Clock
 function test_DateTime_netcdf_output(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=DateTime(2021, 1, 1))
-    model = NonhydrostaticModel(; grid, clock, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = NonhydrostaticModel(; grid, clock, timestepper=:QuasiAdamsBashforth2,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Δt = 5days + 3hours + 44.123seconds
     simulation = Simulation(model; Δt, stop_time=DateTime(2021, 2, 1))
 
     filepath = "test_DateTime.nc"
     isfile(filepath) && rm(filepath)
-    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model); 
+    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model);
                                                          filename = filepath,
                                                          schedule = IterationInterval(1))
 
@@ -132,14 +133,15 @@ end
 function test_TimeDate_netcdf_output(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=TimeDate(2021, 1, 1))
-    model = NonhydrostaticModel(; grid, clock, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = NonhydrostaticModel(; grid, clock, timestepper=:QuasiAdamsBashforth2,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Δt = 5days + 3hours + 44.123seconds
     simulation = Simulation(model, Δt=Δt, stop_time=TimeDate(2021, 2, 1))
 
     filepath = "test_TimeDate.nc"
     isfile(filepath) && rm(filepath)
-    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model); 
+    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model);
                                                          filename = filepath,
                                                          schedule = IterationInterval(1))
 
@@ -188,7 +190,12 @@ function test_thermal_bubble_netcdf_output(arch)
 
     nc_filepath = "test_dump_$(typeof(arch)).nc"
     isfile(nc_filepath) && rm(nc_filepath)
-    nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filepath, schedule=IterationInterval(10), verbose=true)
+    nc_writer = NetCDFOutputWriter(model, outputs,
+                                   filename = nc_filepath,
+                                   schedule = IterationInterval(10),
+                                   array_type = Array{Float64},
+                                   verbose = true)
+
     push!(simulation.output_writers, nc_writer)
 
     i_slice = 1:10
@@ -239,15 +246,15 @@ function test_thermal_bubble_netcdf_output(arch)
     @test ds3["xF"][1] == grid.xᶠᵃᵃ[1]
     @test ds3["yC"][1] == grid.yᵃᶜᵃ[1]
     @test ds3["yF"][1] == grid.yᵃᶠᵃ[1]
-    @test ds3["zC"][1] == grid.zᵃᵃᶜ[1]
-    @test ds3["zF"][1] == grid.zᵃᵃᶠ[1]
+    @test ds3["zC"][1] == grid.z.cᵃᵃᶜ[1]
+    @test ds3["zF"][1] == grid.z.cᵃᵃᶠ[1]
 
     @test ds3["xC"][end] == grid.xᶜᵃᵃ[Nx]
     @test ds3["xF"][end] == grid.xᶠᵃᵃ[Nx]
     @test ds3["yC"][end] == grid.yᵃᶜᵃ[Ny]
     @test ds3["yF"][end] == grid.yᵃᶠᵃ[Ny]
-    @test ds3["zC"][end] == grid.zᵃᵃᶜ[Nz]
-    @test ds3["zF"][end] == grid.zᵃᵃᶠ[Nz+1]  # z is Bounded
+    @test ds3["zC"][end] == grid.z.cᵃᵃᶜ[Nz]
+    @test ds3["zF"][end] == grid.z.cᵃᵃᶠ[Nz+1]  # z is Bounded
 
     @test eltype(ds3["u"]) == Float64
     @test eltype(ds3["v"]) == Float64
@@ -298,15 +305,15 @@ function test_thermal_bubble_netcdf_output(arch)
     @test ds2["xF"][1] == grid.xᶠᵃᵃ[i_slice[1]]
     @test ds2["yC"][1] == grid.yᵃᶜᵃ[j_slice[1]]
     @test ds2["yF"][1] == grid.yᵃᶠᵃ[j_slice[1]]
-    @test ds2["zC"][1] == grid.zᵃᵃᶜ[k_slice[1]]
-    @test ds2["zF"][1] == grid.zᵃᵃᶠ[k_slice[1]]
+    @test ds2["zC"][1] == grid.z.cᵃᵃᶜ[k_slice[1]]
+    @test ds2["zF"][1] == grid.z.cᵃᵃᶠ[k_slice[1]]
 
     @test ds2["xC"][end] == grid.xᶜᵃᵃ[i_slice[end]]
     @test ds2["xF"][end] == grid.xᶠᵃᵃ[i_slice[end]]
     @test ds2["yC"][end] == grid.yᵃᶜᵃ[j_slice[end]]
     @test ds2["yF"][end] == grid.yᵃᶠᵃ[j_slice[end]]
-    @test ds2["zC"][end] == grid.zᵃᵃᶜ[k_slice[end]]
-    @test ds2["zF"][end] == grid.zᵃᵃᶠ[k_slice[end]]
+    @test ds2["zC"][end] == grid.z.cᵃᵃᶜ[k_slice[end]]
+    @test ds2["zF"][end] == grid.z.cᵃᵃᶠ[k_slice[end]]
 
     @test eltype(ds2["u"]) == Float32
     @test eltype(ds2["v"]) == Float32
@@ -352,9 +359,10 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
     view(model.tracers.T, i1:i2, j1:j2, k1:k2) .+= 0.01
 
     nc_filepath = "test_dump_with_halos_$(typeof(arch)).nc"
-    
+
     nc_writer = NetCDFOutputWriter(model, merge(model.velocities, model.tracers),
                                    filename = nc_filepath,
+                                   array_type = Array{Float64},
                                    schedule = IterationInterval(10),
                                    with_halos = true)
 
@@ -393,15 +401,15 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
     @test ds["xF"][1] == grid.xᶠᵃᵃ[1-Hx]
     @test ds["yC"][1] == grid.yᵃᶜᵃ[1-Hy]
     @test ds["yF"][1] == grid.yᵃᶠᵃ[1-Hy]
-    @test ds["zC"][1] == grid.zᵃᵃᶜ[1-Hz]
-    @test ds["zF"][1] == grid.zᵃᵃᶠ[1-Hz]
+    @test ds["zC"][1] == grid.z.cᵃᵃᶜ[1-Hz]
+    @test ds["zF"][1] == grid.z.cᵃᵃᶠ[1-Hz]
 
     @test ds["xC"][end] == grid.xᶜᵃᵃ[Nx+Hx]
     @test ds["xF"][end] == grid.xᶠᵃᵃ[Nx+Hx]
     @test ds["yC"][end] == grid.yᵃᶜᵃ[Ny+Hy]
     @test ds["yF"][end] == grid.yᵃᶠᵃ[Ny+Hy]
-    @test ds["zC"][end] == grid.zᵃᵃᶜ[Nz+Hz]
-    @test ds["zF"][end] == grid.zᵃᵃᶠ[Nz+Hz+1]  # z is Bounded
+    @test ds["zC"][end] == grid.z.cᵃᵃᶜ[Nz+Hz]
+    @test ds["zF"][end] == grid.z.cᵃᵃᶠ[Nz+Hz+1]  # z is Bounded
 
     @test eltype(ds["u"]) == Float64
     @test eltype(ds["v"]) == Float64
@@ -435,7 +443,8 @@ function test_netcdf_function_output(arch)
     iters = 3
 
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(L, 2L, 3L))
-    model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = NonhydrostaticModel(; grid, timestepper=:QuasiAdamsBashforth2,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
     grid = model.grid
@@ -465,13 +474,12 @@ function test_netcdf_function_output(arch)
 
     nc_filepath = "test_function_outputs_$(typeof(arch)).nc"
 
-    simulation.output_writers[:food] =
-        NetCDFOutputWriter(model, outputs; global_attributes, output_attributes,
-                           filename = nc_filepath,
-                           schedule = TimeInterval(Δt),
-                           dimensions = dims,
-                           array_type = Array{Float64},
-                           verbose=true)
+    simulation.output_writers[:food] = NetCDFOutputWriter(model, outputs; global_attributes, output_attributes,
+                                                          filename = nc_filepath,
+                                                          schedule = TimeInterval(Δt),
+                                                          dimensions = dims,
+                                                          array_type = Array{Float64},
+                                                          verbose=true)
 
     run!(simulation)
 
@@ -504,15 +512,15 @@ function test_netcdf_function_output(arch)
     @test ds["xF"][1] == grid.xᶠᵃᵃ[1]
     @test ds["yC"][1] == grid.yᵃᶜᵃ[1]
     @test ds["yF"][1] == grid.yᵃᶠᵃ[1]
-    @test ds["zC"][1] == grid.zᵃᵃᶜ[1]
-    @test ds["zF"][1] == grid.zᵃᵃᶠ[1]
+    @test ds["zC"][1] == grid.z.cᵃᵃᶜ[1]
+    @test ds["zF"][1] == grid.z.cᵃᵃᶠ[1]
 
     @test ds["xC"][end] == grid.xᶜᵃᵃ[N]
     @test ds["yC"][end] == grid.yᵃᶜᵃ[N]
-    @test ds["zC"][end] == grid.zᵃᵃᶜ[N]
     @test ds["xF"][end] == grid.xᶠᵃᵃ[N]
     @test ds["yF"][end] == grid.yᵃᶠᵃ[N]
-    @test ds["zF"][end] == grid.zᵃᵃᶠ[N+1]  # z is Bounded
+    @test ds["zC"][end] == grid.z.cᵃᵃᶜ[N]
+    @test ds["zF"][end] == grid.z.cᵃᵃᶠ[N+1]  # z is Bounded
 
     @test ds.attrib["location"] == "Bay of Fundy"
     @test ds.attrib["onions"] == 7
@@ -597,13 +605,13 @@ function test_netcdf_spatial_average(arch)
 
     model = NonhydrostaticModel(grid = grid,
                                 timestepper = :RungeKutta3,
-                                tracers = (:c,), 
-                                coriolis = nothing, 
-                                buoyancy = nothing, 
+                                tracers = (:c,),
+                                coriolis = nothing,
+                                buoyancy = nothing,
                                 closure = nothing)
     set!(model, c=1)
 
-    Δt = 1/64 # Nice floating-point number
+    Δt = 0.01 # Floating point number chosen conservatively to flag rounding errors
     simulation = Simulation(model, Δt=Δt, stop_iteration=10)
 
     ∫c_dx = Field(Average(model.tracers.c, dims=(1)))
@@ -634,162 +642,170 @@ end
 
 
 function test_netcdf_time_averaging(arch)
-    topo = (Periodic, Periodic, Periodic)
-    domain = (x=(0, 1), y=(0, 1), z=(0, 1))
-    grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4); domain...)
+    # Test for both "nice" floating point number and one that is more susceptible
+    # to rounding errors
+    for Δt in (1/64, 0.01)
+        # Results should be very close (rtol < 1e-5) for stride = 1.
+        # stride > 2 is currently not robust and can give inconsistent
+        # results due to floating number errors that can result in vanishingly 
+        # small timesteps, which essentially decouples the clock time from
+        # the iteration number.
+        # Can add stride > 1 cases to the following line to test them.
+        for (stride, rtol) in zip((1), (1.e-5))
+            @info "  Testing time-averaging of NetCDF outputs [$(typeof(arch))] with timestep of $(Δt), stride of $(stride), and relative tolerance of $(rtol)."
+            topo = (Periodic, Periodic, Periodic)
+            domain = (x=(0, 1), y=(0, 1), z=(0, 1))
+            grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4); domain...)
 
-    λ1(x, y, z) = x + (1 - y)^2 + tanh(z)
-    λ2(x, y, z) = x + (1 - y)^2 + tanh(4z)
+            λ1(x, y, z) = x + (1 - y)^2 + tanh(z)
+            λ2(x, y, z) = x + (1 - y)^2 + tanh(4z)
 
-    Fc1(x, y, z, t, c1) = - λ1(x, y, z) * c1
-    Fc2(x, y, z, t, c2) = - λ2(x, y, z) * c2
-    
-    c1_forcing = Forcing(Fc1, field_dependencies=:c1)
-    c2_forcing = Forcing(Fc2, field_dependencies=:c2)
+            Fc1(x, y, z, t, c1) = - λ1(x, y, z) * c1
+            Fc2(x, y, z, t, c2) = - λ2(x, y, z) * c2
 
-    model = NonhydrostaticModel(; grid,
-                                timestepper = :RungeKutta3,
-                                tracers = (:c1, :c2),
-                                forcing = (c1=c1_forcing, c2=c2_forcing))
+            c1_forcing = Forcing(Fc1, field_dependencies=:c1)
+            c2_forcing = Forcing(Fc2, field_dependencies=:c2)
 
-    set!(model, c1=1, c2=1)
+            model = NonhydrostaticModel(; grid,
+                                        timestepper = :RungeKutta3,
+                                        tracers = (:c1, :c2),
+                                        forcing = (c1=c1_forcing, c2=c2_forcing))
 
-    Δt = 1/64 # Nice floating-point number
-    simulation = Simulation(model, Δt=Δt, stop_time=50Δt)
+            set!(model, c1=1, c2=1)
 
-    ∫c1_dxdy = Field(Average(model.tracers.c1, dims=(1, 2)))
-    ∫c2_dxdy = Field(Average(model.tracers.c2, dims=(1, 2)))
-        
-    nc_outputs = Dict("c1" => ∫c1_dxdy, "c2" => ∫c2_dxdy)
-    nc_dimensions = Dict("c1" => ("zC",), "c2" => ("zC",))
+            # Floating point number chosen conservatively to flag rounding errors
+            simulation = Simulation(model, Δt=Δt, stop_time=50Δt)
 
-    horizontal_average_nc_filepath = "decay_averaged_field_test.nc"
+            ∫c1_dxdy = Field(Average(model.tracers.c1, dims=(1, 2)))
+            ∫c2_dxdy = Field(Average(model.tracers.c2, dims=(1, 2)))
 
-    simulation.output_writers[:horizontal_average] =
-        NetCDFOutputWriter(model, nc_outputs,
-                           array_type = Array{Float64},
-                           verbose = true,
-                           filename = horizontal_average_nc_filepath,
-                           schedule = TimeInterval(10Δt),
-                           dimensions = nc_dimensions)
+            nc_outputs = Dict("c1" => ∫c1_dxdy, "c2" => ∫c2_dxdy)
+            nc_dimensions = Dict("c1" => ("zC",), "c2" => ("zC",))
 
-    multiple_time_average_nc_filepath = "decay_windowed_time_average_test.nc"
-    single_time_average_nc_filepath = "single_decay_windowed_time_average_test.nc"
-    window = 6Δt
-    stride = 2
+            horizontal_average_nc_filepath = "decay_averaged_field_test.nc"
 
-    single_nc_output = Dict("c1" => ∫c1_dxdy)
-    single_nc_dimension = Dict("c1" => ("zC",))
+            simulation.output_writers[:horizontal_average] = NetCDFOutputWriter(model,
+                                                                                nc_outputs,
+                                                                                array_type = Array{Float64},
+                                                                                verbose = true,
+                                                                                filename = horizontal_average_nc_filepath,
+                                                                                schedule = TimeInterval(10Δt),
+                                                                                dimensions = nc_dimensions)
 
-    simulation.output_writers[:single_output_time_average] =
-        NetCDFOutputWriter(model, single_nc_output,
-                           array_type = Array{Float64},
-                           verbose = true,
-                           filename = single_time_average_nc_filepath,
-                           schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
-                           dimensions = single_nc_dimension)
+            multiple_time_average_nc_filepath = "decay_windowed_time_average_test.nc"
+            single_time_average_nc_filepath = "single_decay_windowed_time_average_test.nc"
+            window = 6Δt
 
-    simulation.output_writers[:multiple_output_time_average] =
-        NetCDFOutputWriter(model, nc_outputs,
-                           array_type = Array{Float64},
-                           verbose = true,
-                           filename = multiple_time_average_nc_filepath,
-                           schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
-                           dimensions = nc_dimensions)
+            single_nc_output = Dict("c1" => ∫c1_dxdy)
+            single_nc_dimension = Dict("c1" => ("zC",))
 
-    run!(simulation)
+            simulation.output_writers[:single_output_time_average] = NetCDFOutputWriter(model,
+                                                                                        single_nc_output,
+                                                                                        array_type = Array{Float64},
+                                                                                        verbose = true,
+                                                                                        filename = single_time_average_nc_filepath,
+                                                                                        schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
+                                                                                        dimensions = single_nc_dimension)
 
-    ##### For each λ, horizontal average should evaluate to
-    #####
-    #####     c̄(z, t) = ∫₀¹ ∫₀¹ exp{- λ(x, y, z) * t} dx dy
-    #####             = 1 / (Nx*Ny) * Σᵢ₌₁ᴺˣ Σⱼ₌₁ᴺʸ exp{- λ(i, j, k) * t}
-    #####
-    ##### which we can compute analytically.
+            simulation.output_writers[:multiple_output_time_average] = NetCDFOutputWriter(model,
+                                                                                          nc_outputs,
+                                                                                          array_type = Array{Float64},
+                                                                                          verbose = true,
+                                                                                          filename = multiple_time_average_nc_filepath,
+                                                                                          schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
+                                                                                          dimensions = nc_dimensions)
 
-    ds = NCDataset(horizontal_average_nc_filepath)
+            run!(simulation)
 
-    Nx, Ny, Nz = size(grid)
-    xs, ys, zs = nodes(model.tracers.c1)
+            ##### For each λ, horizontal average should evaluate to
+            #####
+            #####     c̄(z, t) = ∫₀¹ ∫₀¹ exp{- λ(x, y, z) * t} dx dy
+            #####             = 1 / (Nx*Ny) * Σᵢ₌₁ᴺˣ Σⱼ₌₁ᴺʸ exp{- λ(i, j, k) * t}
+            #####
+            ##### which we can compute analytically.
 
-    c̄1(z, t) = 1 / (Nx * Ny) * sum(exp(-λ1(x, y, z) * t) for x in xs for y in ys)
-    c̄2(z, t) = 1 / (Nx * Ny) * sum(exp(-λ2(x, y, z) * t) for x in xs for y in ys)
+            ds = NCDataset(horizontal_average_nc_filepath)
 
-    rtol = 1e-5 # need custom rtol for isapprox because roundoff errors accumulate (?)
+            Nx, Ny, Nz = size(grid)
+            xs, ys, zs = nodes(model.tracers.c1)
 
-    for (n, t) in enumerate(ds["time"])
-        @test all(isapprox.(ds["c1"][:, n], c̄1.(zs, t), rtol=rtol))
-        @test all(isapprox.(ds["c2"][:, n], c̄2.(zs, t), rtol=rtol))
+            c̄1(z, t) = 1 / (Nx * Ny) * sum(exp(-λ1(x, y, z) * t) for x in xs for y in ys)
+            c̄2(z, t) = 1 / (Nx * Ny) * sum(exp(-λ2(x, y, z) * t) for x in xs for y in ys)
+
+            for (n, t) in enumerate(ds["time"])
+                @test all(isapprox.(ds["c1"][:, n], c̄1.(zs, t), rtol=rtol))
+                @test all(isapprox.(ds["c2"][:, n], c̄2.(zs, t), rtol=rtol))
+            end
+
+            close(ds)
+
+            # Compute time averages...
+            c̄1(ts) = 1/length(ts) * sum(c̄1.(zs, t) for t in ts)
+            c̄2(ts) = 1/length(ts) * sum(c̄2.(zs, t) for t in ts)
+
+            #####
+            ##### Test strided windowed time average against analytic solution
+            ##### for *single* NetCDF output
+            #####
+
+            single_ds = NCDataset(single_time_average_nc_filepath)
+
+            attribute_names = ("schedule", "interval", "output time interval",
+                               "time_averaging_window", "time averaging window",
+                               "time_averaging_stride", "time averaging stride")
+
+            for name in attribute_names
+                @test haskey(single_ds.attrib, name) && !isnothing(single_ds.attrib[name])
+            end
+
+            window_size = Int(window/Δt)
+
+            @info "    Testing time-averaging of a single NetCDF output [$(typeof(arch))]..."
+
+            for (n, t) in enumerate(single_ds["time"][2:end])
+                averaging_times = [t - n*Δt for n in 0:stride:window_size-1 if t - n*Δt >= 0]
+                @test all(isapprox.(single_ds["c1"][:, n+1], c̄1(averaging_times), rtol=rtol, atol=rtol))
+            end
+
+            close(single_ds)
+
+            #####
+            ##### Test strided windowed time average against analytic solution
+            ##### for *multiple* NetCDF outputs
+            #####
+
+            ds = NCDataset(multiple_time_average_nc_filepath)
+
+            @info "    Testing time-averaging of multiple NetCDF outputs [$(typeof(arch))]..."
+
+            for (n, t) in enumerate(ds["time"][2:end])
+                averaging_times = [t - n*Δt for n in 0:stride:window_size-1 if t - n*Δt >= 0]
+                @test all(isapprox.(ds["c2"][:, n+1], c̄2(averaging_times), rtol=rtol))
+            end
+
+            close(ds)
+
+            rm(horizontal_average_nc_filepath)
+            rm(single_time_average_nc_filepath)
+            rm(multiple_time_average_nc_filepath)
+        end
     end
-
-    close(ds)
-
-    # Compute time averages...
-    c̄1(ts) = 1/length(ts) * sum(c̄1.(zs, t) for t in ts)
-    c̄2(ts) = 1/length(ts) * sum(c̄2.(zs, t) for t in ts)
-
-    #####
-    ##### Test strided windowed time average against analytic solution
-    ##### for *single* NetCDF output
-    #####
-    
-    single_ds = NCDataset(single_time_average_nc_filepath)
-
-    attribute_names = ("schedule", "interval", "output time interval",
-                       "time_averaging_window", "time averaging window",
-                       "time_averaging_stride", "time averaging stride")
-
-    for name in attribute_names
-        @test haskey(single_ds.attrib, name) && !isnothing(single_ds.attrib[name])
-    end
-
-    window_size = Int(window/Δt)
-
-    @info "    Testing time-averaging of a single NetCDF output [$(typeof(arch))]..."
-
-    for (n, t) in enumerate(single_ds["time"][2:end])
-        averaging_times = [t - n*Δt for n in 0:stride:window_size-1 if t - n*Δt >= 0]
-        @test all(isapprox.(single_ds["c1"][:, n+1], c̄1(averaging_times), rtol=rtol, atol=rtol))
-    end
-
-    close(single_ds)
-
-    #####
-    ##### Test strided windowed time average against analytic solution
-    ##### for *multiple* NetCDF outputs
-    #####
-
-    ds = NCDataset(multiple_time_average_nc_filepath)
-
-    @info "    Testing time-averaging of multiple NetCDF outputs [$(typeof(arch))]..."
-
-    for (n, t) in enumerate(ds["time"][2:end])
-        averaging_times = [t - n*Δt for n in 0:stride:window_size-1 if t - n*Δt >= 0]
-        @test all(isapprox.(ds["c2"][:, n+1], c̄2(averaging_times), rtol=rtol))
-    end
-
-    close(ds)
-
-    rm(horizontal_average_nc_filepath)
-    rm(multiple_time_average_nc_filepath)
-
     return nothing
 end
 
 function test_netcdf_output_alignment(arch)
     grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid,
+    model = NonhydrostaticModel(; grid, timestepper=:QuasiAdamsBashforth2,
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=0.2, stop_time=40)
 
     test_filename1 = "test_output_alignment1.nc"
-    simulation.output_writers[:stuff] =
-        NetCDFOutputWriter(model, model.velocities, filename=test_filename1,
-                           schedule=TimeInterval(7.3))
+    simulation.output_writers[:stuff] = NetCDFOutputWriter(model, model.velocities,
+                                                           filename=test_filename1, schedule=TimeInterval(7.3))
 
     test_filename2 = "test_output_alignment2.nc"
-    simulation.output_writers[:something] =
-        NetCDFOutputWriter(model, model.tracers, filename=test_filename2,
-                           schedule=TimeInterval(3.0))
+    simulation.output_writers[:something] = NetCDFOutputWriter(model, model.tracers,
+                                                               filename=test_filename2, schedule=TimeInterval(3.0))
 
     run!(simulation)
 
@@ -813,7 +829,7 @@ function test_netcdf_vertically_stretched_grid_output(arch)
     zF = [k^2 for k in 0:Nz]
     grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), x=(0, 1), y=(-π, π), z=zF)
 
-    model = NonhydrostaticModel(grid=grid,
+    model = NonhydrostaticModel(; grid,
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Δt = 1.25
@@ -822,13 +838,11 @@ function test_netcdf_vertically_stretched_grid_output(arch)
 
     nc_filepath = "test_netcdf_vertically_stretched_grid_output_$(typeof(arch)).nc"
 
-    simulation.output_writers[:fields] =
-        NetCDFOutputWriter(model, merge(model.velocities, model.tracers),
-                             filename = nc_filepath,
-                             schedule = IterationInterval(1),
-                           array_type = Array{Float64},
-                              verbose = true)
-
+    simulation.output_writers[:fields] = NetCDFOutputWriter(model, merge(model.velocities, model.tracers),
+                                                            filename = nc_filepath,
+                                                            schedule = IterationInterval(1),
+                                                            array_type = Array{Float64},
+                                                            verbose = true)
     run!(simulation)
 
     grid = model.grid
@@ -846,16 +860,16 @@ function test_netcdf_vertically_stretched_grid_output(arch)
     @test ds["yC"][1] == grid.yᵃᶜᵃ[1]
     @test ds["yF"][1] == grid.yᵃᶠᵃ[1]
 
-    @test CUDA.@allowscalar ds["zC"][1] == grid.zᵃᵃᶜ[1]
-    @test CUDA.@allowscalar ds["zF"][1] == grid.zᵃᵃᶠ[1]
+    @test CUDA.@allowscalar ds["zC"][1] == grid.z.cᵃᵃᶜ[1]
+    @test CUDA.@allowscalar ds["zF"][1] == grid.z.cᵃᵃᶠ[1]
 
     @test ds["xC"][end] == grid.xᶜᵃᵃ[Nx]
     @test ds["xF"][end] == grid.xᶠᵃᵃ[Nx]
     @test ds["yC"][end] == grid.yᵃᶜᵃ[Ny]
     @test ds["yF"][end] == grid.yᵃᶠᵃ[Ny]
 
-    @test CUDA.@allowscalar  ds["zC"][end] == grid.zᵃᵃᶜ[Nz]
-    @test CUDA.@allowscalar  ds["zF"][end] == grid.zᵃᵃᶠ[Nz+1]  # z is Bounded
+    @test CUDA.@allowscalar ds["zC"][end] == grid.z.cᵃᵃᶜ[Nz]
+    @test CUDA.@allowscalar ds["zF"][end] == grid.z.cᵃᵃᶠ[Nz+1]  # z is Bounded
 
     close(ds)
     rm(nc_filepath)
@@ -865,9 +879,14 @@ end
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 
-function test_netcdf_regular_lat_lon_grid_output(arch)
+function test_netcdf_regular_lat_lon_grid_output(arch; immersed = false)
     Nx = Ny = Nz = 16
     grid = LatitudeLongitudeGrid(arch; size=(Nx, Ny, Nz), longitude=(-180, 180), latitude=(-80, 80), z=(-100, 0))
+
+    if immersed
+        grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> -50))
+    end
+
     model = HydrostaticFreeSurfaceModel(momentum_advection = VectorInvariant(), grid=grid)
 
     Δt = 1.25
@@ -899,15 +918,15 @@ function test_netcdf_regular_lat_lon_grid_output(arch)
     @test ds["xF"][1] == grid.λᶠᵃᵃ[1]
     @test ds["yC"][1] == grid.φᵃᶜᵃ[1]
     @test ds["yF"][1] == grid.φᵃᶠᵃ[1]
-    @test ds["zC"][1] == grid.zᵃᵃᶜ[1]
-    @test ds["zF"][1] == grid.zᵃᵃᶠ[1]
+    @test ds["zC"][1] == grid.z.cᵃᵃᶜ[1]
+    @test ds["zF"][1] == grid.z.cᵃᵃᶠ[1]
 
     @test ds["xC"][end] == grid.λᶜᵃᵃ[Nx]
     @test ds["xF"][end] == grid.λᶠᵃᵃ[Nx]
     @test ds["yC"][end] == grid.φᵃᶜᵃ[Ny]
     @test ds["yF"][end] == grid.φᵃᶠᵃ[Ny+1]  # y is Bounded
-    @test ds["zC"][end] == grid.zᵃᵃᶜ[Nz]
-    @test ds["zF"][end] == grid.zᵃᵃᶠ[Nz+1]  # z is Bounded
+    @test ds["zC"][end] == grid.z.cᵃᵃᶜ[Nz]
+    @test ds["zF"][end] == grid.z.cᵃᵃᶠ[Nz+1]  # z is Bounded
 
     close(ds)
     rm(nc_filepath)
@@ -929,7 +948,7 @@ for arch in archs
         test_netcdf_spatial_average(arch)
         test_netcdf_time_averaging(arch)
         test_netcdf_vertically_stretched_grid_output(arch)
-        test_netcdf_regular_lat_lon_grid_output(arch)
+        test_netcdf_regular_lat_lon_grid_output(arch; immersed = false)
+        test_netcdf_regular_lat_lon_grid_output(arch; immersed = true)
     end
 end
-

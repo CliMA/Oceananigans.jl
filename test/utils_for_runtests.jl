@@ -1,31 +1,57 @@
-using Test
-using Statistics
-using CUDA
-using Printf
-using MPI
-using KernelAbstractions: @kernel, @index
-
-using Oceananigans
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
 using Oceananigans.DistributedComputations: Distributed, Partition, child_architecture, Fractional, Equal
 
 import Oceananigans.Fields: interior
 
-test_child_arch() = CUDA.has_cuda() ? GPU() : CPU()
+# Are the test running on the GPUs?
+# Are the test running in parallel?
+child_arch = get(ENV, "GPU_TEST", nothing) == "true" ? GPU() : CPU()
+mpi_test   = get(ENV, "MPI_TEST", nothing) == "true"
 
-function test_architectures() 
-    child_arch =  test_child_arch()
+# Sometimes when running tests in parallel, the CUDA.jl package is not loaded correctly.
+# This function is a failsafe to re-load CUDA.jl using the suggested cach compilation from
+# https://github.com/JuliaGPU/CUDA.jl/blob/a085bbb3d7856dfa929e6cdae04a146a259a2044/src/initialization.jl#L105
+# To make sure Julia restarts, an error is thrown.
+function reset_cuda_if_necessary()
 
+    # Do nothing if we are on the CPU
+    if child_arch isa CPU
+        return
+    end
+
+    try
+        c = CUDA.zeros(10) # This will fail if CUDA is not available
+    catch err
+
+        # Avoid race conditions and precompile on rank 0 only
+        if MPI.Comm_rank(MPI.COMM_WORLD) == 0
+            pkg = Base.PkgId(Base.UUID("76a88914-d11a-5bdc-97e0-2f5a05c973a2"), "CUDA_Runtime_jll")
+            Base.compilecache(pkg)
+            @info "CUDA.jl was not correctly loaded. Re-loading CUDA.jl and re-starting Julia."
+        end
+
+        MPI.Barrier(MPI.COMM_WORLD)
+
+        # re-start Julia and re-load CUDA.jl
+        throw(err)
+    end
+end
+
+function test_architectures()
     # If MPI is initialized with MPI.Comm_size > 0, we are running in parallel.
-    # We test several different configurations: `Partition(x = 4)`, `Partition(y = 4)`, 
+    # We test several different configurations: `Partition(x = 4)`, `Partition(y = 4)`,
     # `Partition(x = 2, y = 2)`, and different fractional subdivisions in x, y and xy
-    if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
-        return (Distributed(child_arch; partition = Partition(4)),
-                Distributed(child_arch; partition = Partition(1, 4)),
-                Distributed(child_arch; partition = Partition(2, 2)),
-                Distributed(child_arch; partition = Partition(x = Fractional(1, 2, 3, 4))),
-                Distributed(child_arch; partition = Partition(y = Fractional(1, 2, 3, 4))),
-                Distributed(child_arch; partition = Partition(x = Fractional(1, 2), y = Equal()))) 
+    if mpi_test
+        if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
+            return (Distributed(child_arch; partition=Partition(4)),
+                    Distributed(child_arch; partition=Partition(1, 4)),
+                    Distributed(child_arch; partition=Partition(2, 2)),
+                    Distributed(child_arch; partition=Partition(x = Fractional(1, 2, 3, 4))),
+                    Distributed(child_arch; partition=Partition(y = Fractional(1, 2, 3, 4))),
+                    Distributed(child_arch; partition=Partition(x = Fractional(1, 2), y = Equal())))
+        else
+            return throw("The MPI partitioning is not correctly configured.")
+        end
     else
         return tuple(child_arch)
     end
@@ -33,16 +59,18 @@ end
 
 # For nonhydrostatic simulations we cannot use `Fractional` at the moment (requirements
 # for the tranpose are more stringent than for hydrostatic simulations).
-function nonhydrostatic_regression_test_architectures() 
-    child_arch =  test_child_arch()
-
+function nonhydrostatic_regression_test_architectures()
     # If MPI is initialized with MPI.Comm_size > 0, we are running in parallel.
-    # We test 3 different configurations: `Partition(x = 4)`, `Partition(y = 4)` 
+    # We test 3 different configurations: `Partition(x = 4)`, `Partition(y = 4)`
     # and `Partition(x = 2, y = 2)`
-    if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
-        return (Distributed(child_arch; partition = Partition(4)),
-                Distributed(child_arch; partition = Partition(1, 4)),
-                Distributed(child_arch; partition = Partition(2, 2)))
+    if mpi_test
+        if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
+            return (Distributed(child_arch; partition = Partition(4)),
+                    Distributed(child_arch; partition = Partition(1, 4)),
+                    Distributed(child_arch; partition = Partition(2, 2)))
+        else
+            return throw("The MPI partitioning is not correctly configured.")
+        end
     else
         return tuple(child_arch)
     end
@@ -70,8 +98,8 @@ end
 
 # TODO: docstring?
 function center_clustered_coord(N, L, x₀)
-    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1 
-    z_faces = zeros(N+1) 
+    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1
+    z_faces = zeros(N+1)
     for k = 2:N+1
         z_faces[k] = z_faces[k-1] + 3 - Δz(k-1)
     end
@@ -81,12 +109,12 @@ end
 
 # TODO: docstring?
 function boundary_clustered_coord(N, L, x₀)
-    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1 
-    z_faces = zeros(N+1) 
+    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1
+    z_faces = zeros(N+1)
     for k = 2:N+1
         z_faces[k] = z_faces[k-1] + Δz(k-1)
     end
-    z_faces = z_faces ./ z_faces[end] .* L .+ x₀ 
+    z_faces = z_faces ./ z_faces[end] .* L .+ x₀
     return z_faces
 end
 

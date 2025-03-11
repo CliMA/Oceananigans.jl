@@ -1,10 +1,12 @@
-using Oceananigans.Operators: Δz
-using Oceananigans.AbstractOperations: flip
+using Oceananigans.Operators: Δz, Δr
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, ImmersedBoundaryGrid
 using Oceananigans.Grids: ZDirection
 
 import Oceananigans.Solvers: get_coefficient
 import Oceananigans.TimeSteppers: implicit_step!
+
+const IBG = ImmersedBoundaryGrid
 
 #####
 ##### implicit_step! interface
@@ -43,12 +45,18 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
 const c = Center()
 const f = Face()
 
+# The vertical spacing used here is Δz for velocities and Δr for tracers, since the 
+# implicit solver operator is applied to the scaled tracer σθ instead of just θ
+
+@inline vertical_spacing(i, j, k, grid, ℓx, ℓy, ℓz) = Δz(i, j, k, grid, ℓx, ℓy, ℓz)
+@inline vertical_spacing(i, j, k, grid, ::Center, ::Center, ℓz) = Δr(i, j, k, grid, c, c, ℓz)
+
 # Tracers and horizontal velocities at cell centers in z
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Center, clock, Δt, κz)
     closure_ij = getclosure(i, j, closure)
     κᵏ⁺¹   = κz(i, j, k+1, grid, closure_ij, K, id, clock)
-    Δzᶜₖ   = Δz(i, j, k,   grid, ℓx, ℓy, c)
-    Δzᶠₖ₊₁ = Δz(i, j, k+1, grid, ℓx, ℓy, f)
+    Δzᶜₖ   = vertical_spacing(i, j, k,   grid, ℓx, ℓy, c)
+    Δzᶠₖ₊₁ = vertical_spacing(i, j, k+1, grid, ℓx, ℓy, f)
     du     = - Δt * κᵏ⁺¹ / (Δzᶜₖ * Δzᶠₖ₊₁)
 
     # This conditional ensures the diagonal is correct
@@ -59,8 +67,8 @@ end
     k = k′ + 1 # Shift index to match LinearAlgebra.Tridiagonal indexing convenction
     closure_ij = getclosure(i, j, closure)  
     κᵏ   = κz(i, j, k, grid, closure_ij, K, id, clock)
-    Δzᶜₖ = Δz(i, j, k, grid, ℓx, ℓy, c)
-    Δzᶠₖ = Δz(i, j, k, grid, ℓx, ℓy, f)
+    Δzᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
+    Δzᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
     dl   = - Δt * κᵏ / (Δzᶜₖ * Δzᶠₖ)
 
     # This conditional ensures the diagonal is correct: the lower diagonal does not
@@ -78,8 +86,8 @@ end
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Face, clock, Δt, νzᶜᶜᶜ) 
     closure_ij = getclosure(i, j, closure)  
     νᵏ = νzᶜᶜᶜ(i, j, k, grid, closure_ij, K, clock)
-    Δzᶜₖ = Δz(i, j, k, grid, ℓx, ℓy, c)
-    Δzᶠₖ = Δz(i, j, k, grid, ℓx, ℓy, f)
+    Δzᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
+    Δzᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
     du   = - Δt * νᵏ / (Δzᶜₖ * Δzᶠₖ)
     return ifelse(k < 1, zero(grid), du)
 end
@@ -88,8 +96,8 @@ end
     k′ = k + 2 # Shift to adjust for Tridiagonal indexing convention
     closure_ij = getclosure(i, j, closure)  
     νᵏ⁻¹   = νzᶜᶜᶜ(i, j, k′-1, grid, closure_ij, K, clock)
-    Δzᶜₖ   = Δz(i, j, k′,   grid, ℓx, ℓy, c)
-    Δzᶠₖ₋₁ = Δz(i, j, k′-1, grid, ℓx, ℓy, f)
+    Δzᶜₖ   = vertical_spacing(i, j, k′,   grid, ℓx, ℓy, c)
+    Δzᶠₖ₋₁ = vertical_spacing(i, j, k′-1, grid, ℓx, ℓy, f)
     dl     = - Δt * νᵏ⁻¹ / (Δzᶜₖ * Δzᶠₖ₋₁)
     return ifelse(k < 1, zero(grid), dl)
 end
@@ -104,6 +112,57 @@ end
 @inline _implicit_linear_coefficient(args...) = implicit_linear_coefficient(args...)
 @inline _ivd_upper_diagonal(args...) = ivd_upper_diagonal(args...)
 @inline _ivd_lower_diagonal(args...) = ivd_lower_diagonal(args...)
+
+#####
+##### Implicit vertical diffusion
+#####
+##### For a center solver we have to check the interface "solidity" at faces k+1 in both the
+##### Upper diagonal and the Lower diagonal 
+##### (because of tridiagonal convention where lower_diagonal on row k is found at k-1)
+##### Same goes for the face solver, where we check at centers k in both Upper and lower diagonal
+#####
+
+#####
+##### Diffusivities (for VerticallyImplicit)
+##### (the diffusivities on the immersed boundaries are kept)
+#####
+
+for (locate_coeff, loc) in ((:κᶠᶜᶜ, (f, c, c)),
+                            (:κᶜᶠᶜ, (c, f, c)),
+                            (:κᶜᶜᶠ, (c, c, f)),
+                            (:νᶜᶜᶜ, (c, c, c)),
+                            (:νᶠᶠᶜ, (f, f, c)),
+                            (:νᶠᶜᶠ, (f, c, f)),
+                            (:νᶜᶠᶠ, (c, f, f)))
+
+    @eval begin
+        @inline $locate_coeff(i, j, k, ibg::IBG{FT}, coeff) where FT =
+            ifelse(inactive_node(i, j, k, ibg, loc...), $locate_coeff(i, j, k, ibg.underlying_grid, coeff), zero(FT))
+    end
+end
+
+@inline immersed_ivd_peripheral_node(i, j, k, ibg, ℓx, ℓy, ::Center) = immersed_peripheral_node(i, j, k+1, ibg, ℓx, ℓy, Face())
+@inline immersed_ivd_peripheral_node(i, j, k, ibg, ℓx, ℓy, ::Face)   = immersed_peripheral_node(i, j, k,   ibg, ℓx, ℓy, Center())
+
+# Extend the upper and lower diagonal functions of the batched tridiagonal solver
+
+for location in (:upper_, :lower_)
+    ordinary_func = Symbol(:ivd_ ,         location, :diagonal)
+    immersed_func = Symbol(:immersed_ivd_, location, :diagonal)
+    @eval begin
+        # Disambiguation
+        @inline $ordinary_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz::Face, clock, Δt, κz) =
+                $immersed_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz)
+
+        @inline $ordinary_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz::Center, clock, Δt, κz) =
+                $immersed_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz)
+
+        @inline $immersed_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz) =
+            ifelse(immersed_ivd_peripheral_node(i, j, k, ibg, ℓx, ℓy, ℓz),
+                   zero(ibg),
+                   $ordinary_func(i, j, k, ibg.underlying_grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz))
+    end
+end
 
 #####
 ##### Solver constructor

@@ -1,5 +1,3 @@
-using CUDA
-using Printf
 using Base.Ryu: writeshortest
 using LinearAlgebra: dot, cross
 using OffsetArrays: IdOffsetRange
@@ -43,42 +41,6 @@ end
 end
 
 const BoundedTopology = Union{Bounded, LeftConnected}
-
-"""
-    topology(grid)
-
-Return a tuple with the topology of the `grid` for each dimension.
-"""
-@inline topology(::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = (TX, TY, TZ)
-
-"""
-    topology(grid, dim)
-
-Return the topology of the `grid` for the `dim`-th dimension.
-"""
-@inline topology(grid, dim) = topology(grid)[dim]
-
-"""
-    architecture(grid::AbstractGrid)
-
-Return the architecture (CPU or GPU) that the `grid` lives on.
-"""
-@inline architecture(grid::AbstractGrid) = grid.architecture
-
-Base.eltype(::AbstractGrid{FT}) where FT = FT
-
-function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
-    #check if grids are of the same type
-    !isa(grid2, typeof(grid1).name.wrapper) && return false
-
-    topology(grid1) !== topology(grid2) && return false
-
-    x1, y1, z1 = nodes(grid1, (Face(), Face(), Face()))
-    x2, y2, z2 = nodes(grid2, (Face(), Face(), Face()))
-
-    CUDA.@allowscalar return x1 == x2 && y1 == y2 && z1 == z2
-end
-
 const AT = AbstractTopology
 
 Base.length(::Face,    ::BoundedTopology, N) = N + 1
@@ -92,40 +54,6 @@ Base.length(::Center,  ::Flat,            N) = N
 # "Indices-aware" length
 Base.length(loc, topo::AT, N, ::Colon) = length(loc, topo, N)
 Base.length(loc, topo::AT, N, ind::UnitRange) = min(length(loc, topo, N), length(ind))
-
-"""
-    size(grid)
-
-Return a 3-tuple of the number of "center" cells on a grid in (x, y, z).
-Center cells have the location (Center, Center, Center).
-"""
-@inline Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
-
-"""
-    halo_size(grid)
-
-Return a 3-tuple with the number of halo cells on either side of the
-domain in (x, y, z).
-"""
-halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
-halo_size(grid, d) = halo_size(grid)[d]
-
-@inline Base.size(grid::AbstractGrid, d::Int) = size(grid)[d]
-
-@inline Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc)))) =
-    size(loc, topology(grid), size(grid), indices)
-
-@inline function Base.size(loc, topo, sz, indices=default_indices(Val(length(loc))))
-    D = length(loc)
-
-    # (it's type stable?)
-    return ntuple(Val(D)) do d
-        Base.@_inline_meta
-        length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d])
-    end
-end
-
-Base.size(grid::AbstractGrid, loc::Tuple, d::Int) = size(grid, loc)[d]
 
 """
     total_length(loc, topo, N, H=0, ind=Colon())
@@ -146,6 +74,21 @@ total_length(::Center,  ::Flat,            N, H=0) = N
 # "Indices-aware" total length
 total_length(loc, topo, N, H, ::Colon) = total_length(loc, topo, N, H)
 total_length(loc, topo, N, H, ind::UnitRange) = min(total_length(loc, topo, N, H), length(ind))
+
+@inline Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc)))) =
+    size(loc, topology(grid), size(grid), indices)
+
+@inline function Base.size(loc, topo, sz, indices=default_indices(Val(length(loc))))
+    D = length(loc)
+
+    # (it's type stable?)
+    return ntuple(Val(D)) do d
+        Base.@_inline_meta
+        length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d])
+    end
+end
+
+Base.size(grid::AbstractGrid, loc::Tuple, d::Int) = size(grid, loc)[d]
 
 total_size(a) = size(a) # fallback
 
@@ -175,13 +118,12 @@ constant grid spacing `Δ`, and interior extent `L`.
 
 # Grid domains
 @inline domain(topo, N, ξ) = CUDA.@allowscalar ξ[1], ξ[N+1]
-@inline domain(::Flat, N, ξ::AbstractArray) = CUDA.@allowscalar ξ[1], ξ[1]
+@inline domain(::Flat, N, ξ::AbstractArray) = ξ[1]
 @inline domain(::Flat, N, ξ::Number) = ξ
 @inline domain(::Flat, N, ::Nothing) = nothing
 
 @inline x_domain(grid) = domain(topology(grid, 1)(), grid.Nx, grid.xᶠᵃᵃ)
 @inline y_domain(grid) = domain(topology(grid, 2)(), grid.Ny, grid.yᵃᶠᵃ)
-@inline z_domain(grid) = domain(topology(grid, 3)(), grid.Nz, grid.zᵃᵃᶠ)
 
 regular_dimensions(grid) = ()
 
@@ -289,7 +231,6 @@ const f = Face()
 # What's going on here?
 @inline cpu_face_constructor_x(grid) = Array(getindex(nodes(grid, f, c, c; with_halos=true), 1)[1:size(grid, 1)+1])
 @inline cpu_face_constructor_y(grid) = Array(getindex(nodes(grid, c, f, c; with_halos=true), 2)[1:size(grid, 2)+1])
-@inline cpu_face_constructor_z(grid) = Array(getindex(nodes(grid, c, c, f; with_halos=true), 3)[1:size(grid, 3)+1])
 
 #####
 ##### Convenience functions
@@ -347,11 +288,18 @@ function domain_summary(topo, name, (left, right))
                   topo isa Bounded ? "Bounded  " :
                   topo isa FullyConnected ? "FullyConnected " :
                   topo isa LeftConnected ? "LeftConnected  " :
-                  "RightConnected "
+                  topo isa RightConnected ? "RightConnected  " :
+                  error("Unexpected topology $topo together with the domain end points ($left, $right)")
 
     return string(topo_string, name, " ∈ [",
                   prettysummary(left), ", ",
                   prettysummary(right), interval)
+end
+
+function dimension_summary(topo, name, dom, z::AbstractVerticalCoordinate, pad_domain=0)
+    prefix = domain_summary(topo, name, dom)
+    padding = " "^(pad_domain+1) 
+    return string(prefix, padding, coordinate_summary(topo, z, name))
 end
 
 function dimension_summary(topo, name, dom, spacing, pad_domain=0)
@@ -367,6 +315,21 @@ coordinate_summary(topo, Δ::Union{AbstractVector, AbstractMatrix}, name) =
     @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
              name, prettysummary(minimum(parent(Δ))),
              name, prettysummary(maximum(parent(Δ))))
+
+#####
+##### Static and Dynamic column depths
+#####
+
+@inline static_column_depthᶜᶜᵃ(i, j, grid) = grid.Lz
+@inline static_column_depthᶜᶠᵃ(i, j, grid) = grid.Lz
+@inline static_column_depthᶠᶜᵃ(i, j, grid) = grid.Lz
+@inline static_column_depthᶠᶠᵃ(i, j, grid) = grid.Lz
+
+# Will be extended in the `ImmersedBoundaries` module for a ``mutable'' grid type
+@inline column_depthᶜᶜᵃ(i, j, k, grid, η) = static_column_depthᶜᶜᵃ(i, j, grid) 
+@inline column_depthᶠᶜᵃ(i, j, k, grid, η) = static_column_depthᶠᶜᵃ(i, j, grid) 
+@inline column_depthᶜᶠᵃ(i, j, k, grid, η) = static_column_depthᶜᶠᵃ(i, j, grid) 
+@inline column_depthᶠᶠᵃ(i, j, k, grid, η) = static_column_depthᶠᶠᵃ(i, j, grid) 
 
 #####
 ##### Spherical geometry
@@ -508,13 +471,9 @@ julia> add_halos(data, loc, topo, (Nx, Ny, Nz), (1, 2, 0))
 ```
 """
 function add_halos(data, loc, topo, sz, halo_sz; warnings=true)
-
     Nx, Ny, Nz = size(data)
-
     arch = architecture(data)
-
-    # bring to CPU
-    map(a -> on_architecture(CPU(), a), data)
+    map(a -> on_architecture(CPU(), a), data) # bring to CPU
 
     nx, ny, nz = total_length(loc[1](), topo[1](), sz[1], 0),
                  total_length(loc[2](), topo[2](), sz[2], 0),
@@ -548,6 +507,4 @@ function add_halos(data::AbstractArray{FT, 2} where FT, loc, topo, sz, halo_sz; 
     Nx, Ny = size(data)
     return add_halos(reshape(data, (Nx, Ny, 1)), loc, topo, sz, halo_sz; warnings)
 end
-
-grid_name(grid::AbstractGrid) = typeof(grid).name.wrapper
 

@@ -50,15 +50,15 @@ function divide_direction(x::AbstractArray, p::EqualYPartition)
     return Tuple(x[1+(i-1)*nelem:1+i*nelem] for i in 1:length(p))
 end
 
-partition_global_array(a::Field, p::EqualYPartition, args...) = partition_global_array(a.data, p, args...)
+partition(a::Field, p::EqualYPartition, args...) = partition(a.data, p, args...)
 
-function partition_global_array(a::AbstractArray, ::EqualYPartition, local_size, region, arch) 
+function partition(a::AbstractArray, ::EqualYPartition, local_size, region, arch) 
     idxs = default_indices(length(size(a)))
     offsets = (a.offsets[1], Tuple(0 for i in 1:length(idxs)-1)...)
     return on_architecture(arch, OffsetArray(a[local_size[1]*(region-1)+1+offsets[1]:local_size[1]*region-offsets[1], idxs[2:end]...], offsets...))
 end
 
-function partition_global_array(a::OffsetArray, ::EqualYPartition, local_size, region, arch) 
+function partition(a::OffsetArray, ::EqualYPartition, local_size, region, arch) 
     idxs    = default_indices(length(size(a)))
     offsets = (0, a.offsets[2], Tuple(0 for i in 1:length(idxs)-2)...)
     return on_architecture(arch, OffsetArray(a[idxs[1], local_size[2]*(region-1)+1+offsets[2]:local_size[2]*region-offsets[2], idxs[3:end]...], offsets...))

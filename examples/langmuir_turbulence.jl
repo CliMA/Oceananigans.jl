@@ -44,7 +44,7 @@ grid = RectilinearGrid(size=(32, 32, 32), extent=(128, 128, 64))
 # (half the distance from wave crest to wave trough), which determine the wave
 # frequency and the vertical scale of the Stokes drift profile.
 
-using Oceananigans.BuoyancyModels: g_Earth
+using Oceananigans.BuoyancyFormulations: g_Earth
 
  amplitude = 0.8 # m
 wavelength = 60  # m
@@ -90,18 +90,18 @@ uˢ(z) = Uˢ * exp(z / vertical_scale)
 #
 # At the surface ``z = 0``, Wagner et al. (2021) impose
 
-Qᵘ = -3.72e-5 # m² s⁻², surface kinematic momentum flux
+τx = -3.72e-5 # m² s⁻², surface kinematic momentum flux
 
-u_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
+u_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 
 # Wagner et al. (2021) impose a linear buoyancy gradient `N²` at the bottom
 # along with a weak, destabilizing flux of buoyancy at the surface to faciliate
 # spin-up from rest.
 
-Qᵇ = 2.307e-8 # m² s⁻³, surface buoyancy flux
+Jᵇ = 2.307e-8 # m² s⁻³, surface buoyancy flux
 N² = 1.936e-5 # s⁻², initial and bottom buoyancy gradient
 
-b_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ),
+b_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ),
                                                 bottom = GradientBoundaryCondition(N²))
 
 # !!! info "The flux convention in Oceananigans"
@@ -153,7 +153,7 @@ bᵢ(x, y, z) = stratification(z) + 1e-1 * Ξ(z) * N² * model.grid.Lz
 # This initial condition is consistent with a wavy, quiescent ocean suddenly impacted
 # by winds. To this quiescent state we add noise scaled by the friction velocity to ``u`` and ``w``.
 
-u★ = sqrt(abs(Qᵘ))
+u★ = sqrt(abs(τx))
 uᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 wᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 
@@ -254,8 +254,6 @@ time_series = (;
     wv = FieldTimeSeries("langmuir_turbulence_averages.jld2", "wv"))
 
 times = time_series.w.times
-xw, yw, zw = nodes(time_series.w)
-xu, yu, zu = nodes(time_series.u)
 nothing #hide
 
 # We are now ready to animate using Makie. We use Makie's `Observable` to animate
@@ -309,43 +307,43 @@ nothing #hide
 
 wₙ = @lift time_series.w[$n]
 uₙ = @lift time_series.u[$n]
-Bₙ = @lift time_series.B[$n][1, 1, :]
-Uₙ = @lift time_series.U[$n][1, 1, :]
-Vₙ = @lift time_series.V[$n][1, 1, :]
-wuₙ = @lift time_series.wu[$n][1, 1, :]
-wvₙ = @lift time_series.wv[$n][1, 1, :]
+Bₙ = @lift view(time_series.B[$n], 1, 1, :)
+Uₙ = @lift view(time_series.U[$n], 1, 1, :)
+Vₙ = @lift view(time_series.V[$n], 1, 1, :)
+wuₙ = @lift view(time_series.wu[$n], 1, 1, :)
+wvₙ = @lift view(time_series.wv[$n], 1, 1, :)
 
-k = searchsortedfirst(grid.zᵃᵃᶠ[:], -8)
-wxyₙ = @lift interior(time_series.w[$n], :, :, k)
-wxzₙ = @lift interior(time_series.w[$n], :, 1, :)
-uxzₙ = @lift interior(time_series.u[$n], :, 1, :)
+k = searchsortedfirst(znodes(grid, Face(); with_halos=true), -8)
+wxyₙ = @lift view(time_series.w[$n], :, :, k)
+wxzₙ = @lift view(time_series.w[$n], :, 1, :)
+uxzₙ = @lift view(time_series.u[$n], :, 1, :)
 
 wlims = (-0.03, 0.03)
 ulims = (-0.05, 0.05)
 
-lines!(ax_B, Bₙ, zu)
+lines!(ax_B, Bₙ)
 
-lines!(ax_U, Uₙ, zu; label = L"\bar{u}")
-lines!(ax_U, Vₙ, zu; label = L"\bar{v}")
+lines!(ax_U, Uₙ; label = L"\bar{u}")
+lines!(ax_U, Vₙ; label = L"\bar{v}")
 axislegend(ax_U; position = :rb)
 
-lines!(ax_fluxes, wuₙ, zw; label = L"mean $wu$")
-lines!(ax_fluxes, wvₙ, zw; label = L"mean $wv$")
+lines!(ax_fluxes, wuₙ; label = L"mean $wu$")
+lines!(ax_fluxes, wvₙ; label = L"mean $wv$")
 axislegend(ax_fluxes; position = :rb)
 
-hm_wxy = heatmap!(ax_wxy, xw, yw, wxyₙ;
+hm_wxy = heatmap!(ax_wxy, wxyₙ;
                   colorrange = wlims,
                   colormap = :balance)
 
 Colorbar(fig[1, 3], hm_wxy; label = "m s⁻¹")
 
-hm_wxz = heatmap!(ax_wxz, xw, zw, wxzₙ;
+hm_wxz = heatmap!(ax_wxz, wxzₙ;
                   colorrange = wlims,
                   colormap = :balance)
 
 Colorbar(fig[2, 3], hm_wxz; label = "m s⁻¹")
 
-ax_uxz = heatmap!(ax_uxz, xu, zu, uxzₙ;
+ax_uxz = heatmap!(ax_uxz, uxzₙ;
                   colorrange = ulims,
                   colormap = :balance)
 

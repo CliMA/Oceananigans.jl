@@ -2,18 +2,22 @@ module DistributedComputations
 
 export
     Distributed, Partition, Equal, Fractional, 
-    child_architecture, reconstruct_global_grid, 
+    child_architecture, reconstruct_global_grid, partition,
     inject_halo_communication_boundary_conditions,
     DistributedFFTBasedPoissonSolver
 
 using MPI
 
+using Oceananigans
 using Oceananigans.Utils
 using Oceananigans.Grids
+using OffsetArrays
+using CUDA: CuArray
 
 include("distributed_architectures.jl")
 include("partition_assemble.jl")
 include("distributed_grids.jl")
+include("distributed_immersed_boundaries.jl")
 include("distributed_on_architecture.jl")
 include("distributed_kernel_launching.jl")
 include("halo_communication_bcs.jl")
