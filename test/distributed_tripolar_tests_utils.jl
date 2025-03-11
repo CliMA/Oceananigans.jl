@@ -48,6 +48,23 @@ end
     return nothing
 end
 
+# Mask the singularity of the grid in a region of `radius` degrees around the singularities
+function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius = 5) # degrees
+    λp = underlying_grid.conformal_mapping.first_pole_longitude
+    φp = underlying_grid.conformal_mapping.north_poles_latitude
+    φm = underlying_grid.conformal_mapping.southernmost_latitude
+
+    Lz = underlying_grid.Lz
+
+    # We need a bottom height field that ``masks'' the singularities
+    bottom_height(λ, φ) = ((abs(λ - λp) < radius)       & (abs(φp - φ) < radius)) |
+                          ((abs(λ - λp - 180) < radius) & (abs(φp - φ) < radius)) | (φ < φm) ? 0 : - Lz
+
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
+
+    return grid
+end
+
 # Run the distributed grid simulation and save down reconstructed results
 function run_distributed_tripolar_grid(arch, filename)
     distributed_grid = TripolarGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))

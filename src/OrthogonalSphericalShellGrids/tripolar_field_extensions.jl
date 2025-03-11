@@ -93,20 +93,3 @@ function tupled_fill_halo_regions!(full_fields, grid::TripolarGridOfSomeKind, ar
         fill_halo_regions!(field, args...; kwargs...)
     end
 end
-
-# Mask the singularity of the grid in a region of `radius` degrees around the singularities
-function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius = 5) # degrees
-    λp = underlying_grid.conformal_mapping.first_pole_longitude
-    φp = underlying_grid.conformal_mapping.north_poles_latitude
-    φm = underlying_grid.conformal_mapping.southernmost_latitude
-
-    Lz = underlying_grid.Lz
-
-    # We need a bottom height field that ``masks'' the singularities
-    bottom_height(λ, φ) = ((abs(λ - λp) < radius)       & (abs(φp - φ) < radius)) |
-                          ((abs(λ - λp - 180) < radius) & (abs(φp - φ) < radius)) | (φ < φm) ? 0 : - Lz
-
-    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
-
-    return grid
-end
