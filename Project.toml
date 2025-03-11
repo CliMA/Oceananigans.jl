@@ -1,7 +1,7 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 authors = ["Climate Modeling Alliance and contributors"]
-version = "0.95.25"
+version = "0.95.26"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -52,7 +52,7 @@ OceananigansReactantExt = ["Reactant", "KernelAbstractions", "ConstructionBase"]
 
 [compat]
 Adapt = "4.1.1"
-CUDA = "5"
+CUDA = "5.7"
 Crayons = "4"
 CubedSphere = "0.2, 0.3"
 Dates = "1.9"
