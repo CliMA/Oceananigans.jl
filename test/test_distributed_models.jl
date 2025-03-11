@@ -18,12 +18,8 @@ using MPI
 # then later:
 # 
 # julia> include("test_distributed_models.jl")
-#
-# When running the tests this way, uncomment the following line
 
 MPI.Init()
-
-# to initialize MPI.
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!, DCBC
 using Oceananigans.DistributedComputations: Distributed, index2rank

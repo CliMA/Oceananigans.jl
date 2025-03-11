@@ -11,9 +11,8 @@ if test_file != :none
     group = :none
 end
 
-
 #####
-##### Run tests!
+##### Run tests
 #####
 
 @testset "Oceananigans" begin
@@ -26,18 +25,7 @@ end
 
     # Initialization steps
     if group == :init || group == :all
-        Pkg.instantiate(; verbose=true)
-        Pkg.precompile(; strict=true)
-        Pkg.status()
-
-        try
-            MPI.versioninfo()
-        catch; end
-
-        try
-            CUDA.precompile_runtime()
-            CUDA.versioninfo()
-        catch; end
+        include("test_init.jl")
     end
     
     # Core Oceananigans
@@ -66,6 +54,12 @@ end
             include("test_conditional_reductions.jl")
             include("test_computed_field.jl")
             include("test_broadcasting.jl")
+        end
+    end
+
+    if group == :tripolar_grid || group == :all
+        @testset "TripolarGrid tests" begin
+            include("test_tripolar_grid.jl")
         end
     end
 
@@ -135,6 +129,7 @@ end
             include("test_dynamics.jl")
             include("test_biogeochemistry.jl")
             include("test_seawater_density.jl")
+            include("test_orthogonal_spherical_shell_time_stepping.jl")
         end
     end
 
@@ -228,6 +223,20 @@ end
     if group == :enzyme || group == :all
         @testset "Enzyme extension tests" begin
             include("test_enzyme.jl")
+        end
+    end
+
+    # Tests for Reactant extension
+    if group == :reactant || group == :all
+        @testset "Reactant extension tests" begin
+            include("test_reactant.jl")
+        end
+    end
+
+    # Tests for Metal extension
+    if group == :metal|| group == :all
+        @testset "Metal extension tests" begin
+            include("test_metal.jl")
         end
     end
 

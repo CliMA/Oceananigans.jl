@@ -31,7 +31,7 @@ ext(::Type{JLD2OutputWriter}) = ".jld2"
                      dir = ".",
                      indices = (:, :, :),
                      with_halos = true,
-                     array_type = Array{Float64},
+                     array_type = Array{Float32},
                      file_splitting = NoFileSplitting(),
                      overwrite_existing = false,
                      init = noinit,
@@ -74,7 +74,7 @@ Keyword arguments
                        Preserving halo region data can be useful for postprocessing. Default: true.
 
 - `array_type`: The array type to which output arrays are converted to prior to saving.
-                Default: `Array{Float64}`.
+                Default: `Array{Float32}`.
 
 ## File management
 
@@ -146,7 +146,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
                           dir = ".",
                           indices = (:, :, :),
                           with_halos = true,
-                          array_type = Array{Float64},
+                          array_type = Array{Float32},
                           file_splitting = NoFileSplitting(),
                           overwrite_existing = false,
                           init = noinit,
@@ -157,6 +157,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
 
     mkpath(dir)
     filename = auto_extension(filename, ".jld2")
+    filename = with_architecture_suffix(architecture(model), filename, ".jld2")
     filepath = abspath(joinpath(dir, filename))
 
     initialize!(file_splitting, model)

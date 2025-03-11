@@ -16,8 +16,21 @@ const DistributedGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:Distribut
 const DistributedRectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY} =
     RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, <:Distributed} where {FT, TX, TY, TZ, CZ, FX, FY, VX, VY}
 
-const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, CZ, M, MY, FX, FY, VX, VY} = 
-    LatitudeLongitudeGrid{FT, TX, TY, TZ, CZ, M, MY, FX, FY, VX, VY, <:Distributed} where {FT, TX, TY, TZ, CZ, M, MY, FX, FY, VX, VY}
+const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, Z,
+                                       DXF, DXC, XF, XC,
+                                       DYF, DYC, YF, YC,
+                                       DXFC, DXCF, DXFF,
+                                       DXCC, DYFC, DYCF} =
+    LatitudeLongitudeGrid{FT, TX, TY, TZ, Z,
+                          DXF, DXC, XF, XC,
+                          DYF, DYC, YF, YC,
+                          DXFC, DXCF, DXFF,
+                          DXCC, DYFC, DYCF,
+                          <:Distributed} where {FT, TX, TY, TZ, Z,
+                                                DXF, DXC, XF, XC,
+                                                DYF, DYC, YF, YC,
+                                                DXFC, DXCF, DXFF,
+                                                DXCC, DYFC, DYCF}
 
 # Local size from global size and architecture
 local_size(arch::Distributed, global_sz) = (local_size(global_sz[1], arch.partition.x, arch.local_index[1]),
@@ -57,7 +70,7 @@ global_size(arch, local_size) = map(sum, concatenate_local_sizes(local_size, arc
 Return the rank-local portion of `RectilinearGrid` on `arch`itecture.
 """
 function RectilinearGrid(arch::Distributed, 
-                         FT::DataType = Float64;
+                         FT::DataType = Oceananigans.defaults.FloatType;
                          size,
                          x = nothing,
                          y = nothing,
@@ -106,7 +119,7 @@ end
 Return the rank-local portion of `LatitudeLongitudeGrid` on `arch`itecture.
 """
 function LatitudeLongitudeGrid(arch::Distributed,
-                               FT::DataType = Float64; 
+                               FT::DataType = Oceananigans.defaults.FloatType; 
                                precompute_metrics = true,
                                size,
                                latitude,
@@ -117,7 +130,7 @@ function LatitudeLongitudeGrid(arch::Distributed,
                                halo = (1, 1, 1))
     
     topology, global_sz, halo, latitude, longitude, z, precompute_metrics =
-                validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
+        validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
                        
     local_sz = local_size(arch, global_sz)
 
