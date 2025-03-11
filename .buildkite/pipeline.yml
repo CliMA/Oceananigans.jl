@@ -7,6 +7,8 @@ env:
   JULIA_NUM_THREADS: 8
   XLA_REACTANT_GPU_PREALLOCATE: false
   CUDA_VISIBLE_DEVICES: "3" # General device used for GPU testing
+  CUDA_COMMIT: "6fdca8670526456cc9eb94a4a370ba7e096f01e5"
+  CUDA_URL: "https://github.com/JuliaGPU/CUDA.jl"
 
 steps:
   - label: "🏕️ initialize tartarus environment"
@@ -22,7 +24,7 @@ steps:
       - "wget -N -P $TARTARUS_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz"
       - "tar xf $TARTARUS_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $TARTARUS_HOME"
       # Temporary fix for CUDA.jl remove when a version > 5.6.1 is released
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.add(url="https://github.com/JuliaGPU/CUDA.jl", rev="6fdca8670526456cc9eb94a4a370ba7e096f01e5")'" 
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.add(url=$CUDA_URL, rev=$CUDA_COMMIT)'" 
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
