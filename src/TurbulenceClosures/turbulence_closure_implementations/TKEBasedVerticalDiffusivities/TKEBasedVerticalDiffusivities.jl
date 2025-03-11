@@ -40,7 +40,7 @@ import Oceananigans.TurbulenceClosures:
     dissipation,
     add_closure_specific_boundary_conditions,
     compute_diffusivities!,
-    DiffusivityFields,
+    build_diffusivity_fields,
     implicit_linear_coefficient,
     viscosity,
     diffusivity,

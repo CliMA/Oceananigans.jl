@@ -9,7 +9,7 @@ export
 
 using CUDA
 using KernelAbstractions
-using Oceananigans: AbstractModel, prognostic_fields
+using Oceananigans: AbstractModel, initialize!, prognostic_fields
 using Oceananigans.Architectures: device
 using Oceananigans.Utils: work_layout
 
@@ -65,5 +65,19 @@ TimeStepper(::Val{:RungeKutta3}, args...; kwargs...) =
 
 TimeStepper(::Val{:SplitRungeKutta3}, args...; kwargs...) = 
     SplitRungeKutta3TimeStepper(args...; kwargs...)
+
+function first_time_step!(model::AbstractModel, Δt)
+    initialize!(model)
+    update_state!(model)
+    time_step!(model, Δt)
+    return nothing
+end
+
+function first_time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt)
+    initialize!(model)
+    update_state!(model)
+    time_step!(model, Δt, euler=true)
+    return nothing
+end
 
 end # module

@@ -107,7 +107,7 @@ end
 "Return the filter width for a Leith Diffusivity on a general grid."
 @inline Δᶠ(i, j, k, grid, ::TwoDimensionalLeith) = sqrt(Δxᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid)) 
 
-function DiffusivityFields(grid, tracer_names, bcs, ::TwoDimensionalLeith)
+function build_diffusivity_fields(grid, clock, tracer_names, bcs, ::TwoDimensionalLeith)
     default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))
     bcs = merge(default_eddy_viscosity_bcs, bcs)
     return (; νₑ=CenterField(grid, boundary_conditions=bcs.νₑ))

@@ -65,6 +65,9 @@ const c = Center()
 viscosity(closure::Tuple, K) = Tuple(viscosity(closure[n], K[n]) for n = 1:length(closure))
 diffusivity(closure::Tuple, K, id) = Tuple(diffusivity(closure[n], K[n], id) for n = 1:length(closure))
 
+viscosity(model) = viscosity(model.closure, model.diffusivity_fields)
+diffusivity(model, id) = diffusivity(model.closure, model.diffusivity_fields, id)
+
 @inline formulation(::AbstractScalarDiffusivity{TD, F}) where {TD, F} = F()
 
 Base.summary(::VerticalFormulation) = "VerticalFormulation"
