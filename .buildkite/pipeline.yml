@@ -214,7 +214,7 @@ steps:
       automatic:
         - exit_status: 1      
           limit: 1
-    depends_on: "init_cpu"
+    depends_on: "init"
 
 #####
 ##### NonhydrostaticModel and time stepping (part 1)
