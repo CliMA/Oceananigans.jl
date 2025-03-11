@@ -1,38 +1,20 @@
 env:
   JULIA_VERSION: "1.10.8"
   JULIA_MINOR_VERSION: "1.10"
-  SVERDRUP_HOME: "/home/users/glwagner"
   TARTARUS_HOME: "/storage5/buildkite-agent"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
   JULIA_NUM_PRECOMPILE_TASKS: 24
   JULIA_NUM_THREADS: 8
   XLA_REACTANT_GPU_PREALLOCATE: false
+  CUDA_VISIBLE_DEVICES: "3" # General device used for GPU testing
 
 steps:
-  - label: "🎪 initialize gpu environment"
-    key: "init_gpu"
-    env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "init"
-    commands:
-      # Download julia binaries
-      - "wget -N -P $SVERDRUP_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz"
-      - "tar xf $SVERDRUP_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $SVERDRUP_HOME"
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      queue: Oceananigans
-      architecture: GPU
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
-
-  - label: "🏕️ initialize cpu environment"
-    key: "init_cpu"
+  - label: "🏕️ initialize tartarus environment"
+    key: "init"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "init"
-      CUDA_VISIBLE_DEVICES: "0"
+      CUDA_VISIBLE_DEVICES: "3"
       JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
       TMPDIR: "$TARTARUS_HOME/tmp"
     commands:
@@ -54,19 +36,19 @@ steps:
 
   - label: "🐿️ gpu unit tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "unit"
       GPU_TEST: "true"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_gpu"
+    depends_on: "init"
 
   - label: "🐇 cpu unit tests"
     env:
@@ -81,7 +63,7 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_cpu"
+    depends_on: "init"
 
 #####
 ##### Solver tests
@@ -89,19 +71,19 @@ steps:
 
   - label: "🦅 gpu poisson solver tests 1"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "poisson_solvers_1"
       GPU_TEST: "true"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_gpu"
+    depends_on: "init"
 
   - label: "🕊️ cpu poisson solver tests 1"
     env:
@@ -116,23 +98,23 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_cpu"
+    depends_on: "init"
 
   - label: "🦖 gpu poisson solver tests 2"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "poisson_solvers_2"
       GPU_TEST: "true"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_gpu"
+    depends_on: "init"
 
   - label: "🦕 cpu poisson solver tests 2"
     env:
@@ -147,23 +129,23 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_cpu"
+    depends_on: "init"
 
   - label: "🌷 gpu matrix poisson solver tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "matrix_poisson_solvers"
       GPU_TEST: "true"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_gpu"
+    depends_on: "init"
 
   - label: "🌹 cpu matrix poisson solver tests"
     env:
@@ -178,23 +160,23 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_cpu"
+    depends_on: "init"
 
   - label: "🦤 gpu general solver tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "general_solvers"
       GPU_TEST: "true"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_gpu"
+    depends_on: "init"
 
   - label: "🦃 cpu general solver tests"
     env:
@@ -209,7 +191,7 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_cpu"
+    depends_on: "init"
 
 #####
 ##### Tripolar Grid tests
@@ -228,7 +210,7 @@ steps:
       automatic:
         - exit_status: 1      
           limit: 1
-    depends_on: "init_cpu"
+    depends_on: "init"
 
 #####
 ##### NonhydrostaticModel and time stepping (part 1)
@@ -236,19 +218,19 @@ steps:
 
   - label: "🦀 gpu time stepping tests 1"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "time_stepping_1"
       GPU_TEST: "true"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_gpu"
+    depends_on: "init"
 
   - label: "🦞 cpu time stepping tests 1"
     env:
@@ -263,7 +245,7 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_cpu"
+    depends_on: "init"
 
 #####
 ##### NonhydrostaticModel and time stepping (part 2)
@@ -271,19 +253,19 @@ steps:
 
   - label: "🦈 gpu time stepping tests 2"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "time_stepping_2"
       GPU_TEST: "true"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_gpu"
+    depends_on: "init"
 
   - label: "🐬 cpu time stepping tests 2"
     env:
@@ -298,7 +280,7 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_cpu"
+    depends_on: "init"
 
 #####
 ##### NonhydrostaticModel and time stepping (part 3)
@@ -306,19 +288,19 @@ steps:
 
   - label: "🦟 gpu time stepping tests 3"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "time_stepping_3"
       GPU_TEST: "true"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_gpu"
+    depends_on: "init"
 
   - label: "🦗 cpu time stepping tests 3"
     env:
@@ -333,7 +315,7 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_cpu"
+    depends_on: "init"
 
 #####
 ##### Turbulence Closures
@@ -342,19 +324,19 @@ steps:
             
   - label: "🎣 gpu turbulence closures"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "turbulence_closures"
       GPU_TEST: "true"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_gpu"
+    depends_on: "init"
 
 #  The CPU turbulence closures test used to be here, but was moved to Github Actions. See https://github.com/CliMA/Oceananigans.jl/pull/3926
 
@@ -364,19 +346,19 @@ steps:
 
   - label: "🐙 gpu hydrostatic free surface model tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "hydrostatic_free_surface"
       GPU_TEST: "true"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_gpu"
+    depends_on: "init"
 
   - label: "🦑 cpu hydrostatic free surface model tests"
     env:
@@ -391,7 +373,7 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_cpu"
+    depends_on: "init"
 
 #####
 ##### ShallowWaterModel
@@ -399,19 +381,19 @@ steps:
 
   - label: "🦢 gpu shallow water model tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "shallow_water"
       GPU_TEST: "true"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_gpu"
+    depends_on: "init"
 
   - label: "🦆 cpu shallow water model tests"
     env:
@@ -426,7 +408,7 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_cpu"
+    depends_on: "init"
 
 #####
 ##### Simulation
@@ -434,19 +416,19 @@ steps:
 
   - label: "🐳 gpu simulation tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "simulation"
       GPU_TEST: "true"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_gpu"
+    depends_on: "init"
 
   - label: "🐋 cpu simulation tests"
     env:
@@ -461,7 +443,7 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_cpu"
+    depends_on: "init"
 
 #####
 ##### Lagrangian particles tracking
@@ -469,19 +451,19 @@ steps:
 
   - label: "🍂 gpu lagrangian particles tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "lagrangian"
       GPU_TEST: "true"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_gpu"
+    depends_on: "init"
 
   - label: "🍃 cpu lagrangian particles tests"
     env:
@@ -496,7 +478,7 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_cpu"
+    depends_on: "init"
 
 #####
 ##### AbstractOperations
@@ -504,19 +486,19 @@ steps:
 
   - label: "👻 gpu abstract operations tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "abstract_operations"
       GPU_TEST: "true"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_gpu"
+    depends_on: "init"
 
   - label: "🤖 cpu abstract operations tests"
     env:
@@ -531,7 +513,7 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_cpu"
+    depends_on: "init"
 
 #####
 ##### Multi-Region
@@ -539,19 +521,19 @@ steps:
 
   - label: "🧅 gpu multi region tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "multi_region"
       GPU_TEST: "true"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_gpu"
+    depends_on: "init"
 
   - label: "🧄 cpu multi region tests"
     env:
@@ -566,7 +548,7 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_cpu"
+    depends_on: "init"
 
 #####
 ##### Regression
@@ -574,19 +556,19 @@ steps:
 
   - label: "🐫 gpu nonhydrostatic regression tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "nonhydrostatic_regression"
       GPU_TEST: "true"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_gpu"
+    depends_on: "init"
 
   - label: "🐪 cpu nonhydrostatic regression tests"
     env:
@@ -601,23 +583,23 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_cpu"
+    depends_on: "init"
 
   - label: "🙈 gpu hydrostatic regression tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "hydrostatic_regression"
       GPU_TEST: "true"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_gpu"
+    depends_on: "init"
 
   - label: "🙉 cpu hydrostatic regression tests"
     env:
@@ -632,7 +614,7 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_cpu"
+    depends_on: "init"
 
 #####
 ##### Scripts
@@ -640,19 +622,19 @@ steps:
 
   - label: "🦧 gpu scripts"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "scripts"
       GPU_TEST: "true"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_gpu"
+    depends_on: "init"
 
   - label: "🦍 cpu scripts"
     env:
@@ -667,7 +649,7 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_cpu"
+    depends_on: "init"
 
 #####
 ##### Vertical Coordinates tests
@@ -675,19 +657,19 @@ steps:
 
   - label: "🥑 gpu vertical coordinate"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "vertical_coordinate"
       GPU_TEST: "true"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1      
           limit: 1
-    depends_on: "init_gpu"
+    depends_on: "init"
 
   - label: "🥒 cpu vertical coordinate"
     env:
@@ -703,7 +685,7 @@ steps:
       automatic:
         - exit_status: 1      
           limit: 1
-    depends_on: "init_cpu"
+    depends_on: "init"
 
 #####
 ##### Enzyme extension tests
@@ -711,19 +693,19 @@ steps:
 
   - label: "👺 gpu Enzyme extension tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "enzyme"
       GPU_TEST: "true"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_gpu"
+    depends_on: "init"
 
   - label: "👹 cpu Enzyme extension tests"
     env:
@@ -738,7 +720,7 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_cpu"
+    depends_on: "init"
 
 #####
 ##### Reactant extension tests
@@ -746,19 +728,19 @@ steps:
 
   - label: "👺 gpu Reactant extension tests"
     env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "reactant"
       GPU_TEST: "true"
     commands:
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     retry:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_gpu"
+    depends_on: "init"
 
   - label: "👹 cpu Reactant extension tests"
     env:
@@ -773,7 +755,7 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
-    depends_on: "init_cpu"
+    depends_on: "init"
 
 #####
 ##### Documentation
@@ -791,7 +773,7 @@ steps:
     agents:
       queue: Oceananigans
       architecture: CPU
-    depends_on: "init_cpu"
+    depends_on: "init"
 
   - wait: ~
     continue_on_failure: true
@@ -800,13 +782,7 @@ steps:
 ##### Clean up
 #####
 
-  - label: "🧽 clean up gpu environment"
-    command: "rm -rf $SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-    agents:
-      queue: Oceananigans
-      architecture: GPU
-
-  - label: "🧹 clean up cpu environment"
+  - label: "🧹 clean up environment"
     command: "rm -rf $TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
     agents:
       queue: Oceananigans
