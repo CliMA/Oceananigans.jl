@@ -43,8 +43,8 @@ simulation = Simulation(model; Δt, stop_time = 17hours)
 
 field_outputs = merge(model.velocities, model.tracers, (; Δz))
 
-simulation.output_writers[:other_variables] = JLD2OutputWriter(model, field_outputs, 
-                                                               overwrite_existing = true,
+simulation.output_writers[:other_variables] = JLD2Writer(model, field_outputs,
+                                                         overwrite_existing = true,
                                                                schedule = IterationInterval(100),
                                                                filename = "zstar_model") 
 
