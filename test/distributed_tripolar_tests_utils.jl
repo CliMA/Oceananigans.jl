@@ -4,6 +4,9 @@ using Oceananigans.DistributedComputations: reconstruct_global_field, reconstruc
 using Oceananigans.Units
 using Oceananigans.OrthogonalSphericalShellGrids: analytical_immersed_tripolar_grid
 
+import Oceananigans.BoundaryConditions: _fill_north_halo!
+using Oceananigans.BoundaryConditions: ZBC, CCLocation, FCLocation
+
 include("dependencies_for_runtests.jl")
 
 # The serial version of the TripolarGrid substitutes the second half of the last row of the grid
@@ -11,8 +14,22 @@ include("dependencies_for_runtests.jl")
 # compare the results. Otherwise very tiny differences caused by finite precision compuations
 # will appear in the last row of the grid.
 
-import Oceananigans.BoundaryConditions: _fill_north_halo!
-using Oceananigans.BoundaryConditions: ZBC, CCLocation, FCLocation
+# Mask the singularity of the grid in a region of `radius` degrees around the singularities
+function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius = 5) # degrees
+    λp = underlying_grid.conformal_mapping.first_pole_longitude
+    φp = underlying_grid.conformal_mapping.north_poles_latitude
+    φm = underlying_grid.conformal_mapping.southernmost_latitude
+
+    Lz = underlying_grid.Lz
+
+    # We need a bottom height field that ``masks'' the singularities
+    bottom_height(λ, φ) = ((abs(λ - λp) < radius)       & (abs(φp - φ) < radius)) |
+                          ((abs(λ - λp - 180) < radius) & (abs(φp - φ) < radius)) | (φ < φm) ? 0 : - Lz
+
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
+
+    return grid
+end
 
 # tracers or similar fields
 @inline _fill_north_halo!(i, k, grid, c, bc::ZBC, ::CCLocation, args...) = my_fold_north_center_center!(i, k, grid, bc.condition, c)
@@ -46,23 +63,6 @@ end
     end
 
     return nothing
-end
-
-# Mask the singularity of the grid in a region of `radius` degrees around the singularities
-function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius = 5) # degrees
-    λp = underlying_grid.conformal_mapping.first_pole_longitude
-    φp = underlying_grid.conformal_mapping.north_poles_latitude
-    φm = underlying_grid.conformal_mapping.southernmost_latitude
-
-    Lz = underlying_grid.Lz
-
-    # We need a bottom height field that ``masks'' the singularities
-    bottom_height(λ, φ) = ((abs(λ - λp) < radius)       & (abs(φp - φ) < radius)) |
-                          ((abs(λ - λp - 180) < radius) & (abs(φp - φ) < radius)) | (φ < φm) ? 0 : - Lz
-
-    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
-
-    return grid
 end
 
 # Run the distributed grid simulation and save down reconstructed results
