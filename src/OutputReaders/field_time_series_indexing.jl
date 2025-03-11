@@ -293,13 +293,15 @@ end
 # for ranges. if `times` is a vector that resides on the GPU, it has to be moved to the CPU for safe indexing.
 # TODO: Copying the whole array is a bit unclean, maybe find a way that avoids the penalty of allocating and copying memory.
 # This would require refactoring `FieldTimeSeries` to include a cpu-allocated times array
-cpu_interpolating_time_indices(::CPU, times, time_indexing, t, arch) = TimeInterpolator(time_indexing, times, t)
+cpu_interpolating_time_indices(::CPU, times, time_indexing, t) = TimeInterpolator(time_indexing, times, t)
 cpu_interpolating_time_indices(::CPU, times::AbstractVector, time_indexing, t) = TimeInterpolator(time_indexing, times, t)
 
 function cpu_interpolating_time_indices(::GPU, times::AbstractVector, time_indexing, t)
     cpu_times = on_architecture(CPU(), times)
     return TimeInterpolator(time_indexing, cpu_times, t)
 end
+
+cpu_interpolating_time_indices(arch::Distributed, args...) = cpu_interpolating_time_indices(child_architecture(arch), args...)
 
 # Fallbacks that do nothing
 update_field_time_series!(fts, time::Time) = nothing
