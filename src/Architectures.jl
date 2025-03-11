@@ -61,7 +61,11 @@ end
 
 Run Oceananigans on Reactant.
 """
-struct ReactantState <: AbstractSerialArchitecture end
+struct ReactantState{S} <: AbstractSerialArchitecture
+    sharding::S
+end
+
+ReactantState() = ReactantState(nothing)
 
 #####
 ##### These methods are extended in DistributedComputations.jl
@@ -110,7 +114,8 @@ on_architecture(::CUDAGPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
 on_architecture(::CUDAGPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
 on_architecture(::CUDAGPU, a::StepRangeLen) = a
 
-on_architecture(arch::AbstractSerialArchitecture, a::OffsetArray) = OffsetArray(on_architecture(arch, a.parent), a.offsets...)
+on_architecture(arch::AbstractSerialArchitecture, a::OffsetArray) =
+    OffsetArray(on_architecture(arch, a.parent), a.offsets...)
 
 cpu_architecture(::CPU) = CPU()
 cpu_architecture(::GPU) = CPU()

@@ -36,7 +36,7 @@ struct Centered{N, FT, XT, YT, ZT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
     end
 end
 
-function Centered(FT::DataType = Float64; grid = nothing, order = 2) 
+function Centered(FT::DataType=Oceananigans.defaults.FloatType; grid = nothing, order = 2) 
 
     if !(grid isa Nothing) 
         FT = eltype(grid)

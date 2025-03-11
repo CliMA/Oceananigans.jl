@@ -10,7 +10,7 @@ end
 
 @kernel function _compute_integrated_ab2_tendencies!(Gᵁ, Gⱽ, grid, active_cells_map, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
     idx = @index(Global, Linear)
-    i, j = active_linear_index_to_tuple(idx, active_cells_map)
+    i, j = linear_index_to_tuple(idx, active_cells_map)
     ab2_integrate_tendencies!(Gᵁ, Gⱽ, i, j, grid, Gu⁻, Gv⁻, Guⁿ, Gvⁿ, χ)
 end
 
@@ -43,7 +43,7 @@ end
 
 @inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, 
                                                  timestepper::QuasiAdamsBashforth2TimeStepper, stage)
-    active_cells_map = retrieve_surface_active_cells_map(grid)
+    active_cells_map = get_active_column_map(grid)
 
     Gu⁻ = timestepper.G⁻.u
     Gv⁻ = timestepper.G⁻.v
@@ -73,7 +73,7 @@ end
 
 @kernel function _compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, grid, active_cells_map, Guⁿ, Gvⁿ, stage)
     idx = @index(Global, Linear)
-    i, j = active_linear_index_to_tuple(idx, active_cells_map)
+    i, j = linear_index_to_tuple(idx, active_cells_map)
     compute_integrated_rk3_tendencies!(GUⁿ, GVⁿ, GU⁻, GV⁻, i, j, grid, Guⁿ, Gvⁿ, stage)
 end
 
@@ -114,7 +114,7 @@ end
     GU⁻ = timestepper.G⁻.U
     GV⁻ = timestepper.G⁻.V
 
-    active_cells_map = retrieve_surface_active_cells_map(grid)    
+    active_cells_map = get_active_column_map(grid)    
     launch!(architecture(grid), grid, :xy, _compute_integrated_rk3_tendencies!, 
             GUⁿ, GVⁿ, GU⁻, GV⁻, grid, active_cells_map, Guⁿ, Gvⁿ, stage; active_cells_map)
 
