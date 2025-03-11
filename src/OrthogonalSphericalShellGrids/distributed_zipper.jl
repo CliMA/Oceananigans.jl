@@ -70,8 +70,8 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
 
     arch = architecture(grid)
     fill_halos!, bcs = permute_boundary_conditions(bcs) 
-
     number_of_tasks = length(fill_halos!)
+    outstanding_requests = length(arch.mpi_requests)
 
     for task = 1:number_of_tasks
         fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
