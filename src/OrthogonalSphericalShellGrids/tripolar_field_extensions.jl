@@ -95,7 +95,7 @@ function tupled_fill_halo_regions!(full_fields, grid::TripolarGridOfSomeKind, ar
 end
 
 # Mask the singularity of the grid in a region of `radius` degrees around the singularities
-function mask_tripolar_singularities(underlying_grid::TripolarGrid; radius = 5) # degrees
+function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius = 5) # degrees
     λp = underlying_grid.conformal_mapping.first_pole_longitude
     φp = underlying_grid.conformal_mapping.north_poles_latitude
     φm = underlying_grid.conformal_mapping.southernmost_latitude
