@@ -99,7 +99,7 @@ function with_tracers(tracers, closure_vector::ISSDVector)
     return on_architecture(arch, closure_vector)
 end
 
-function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfISSD{TD, A}) where {TD, A}
+function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::FlavorOfISSD{TD, A}) where {TD, A}
     if TD() isa VerticallyImplicitTimeDiscretization
         # Precompute the _tapered_ 33 component of the isopycnal rotation tensor
         diffusivities = (; ϵ_R₃₃ = Field((Center, Center, Face), grid))

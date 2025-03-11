@@ -13,7 +13,7 @@ using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurviline
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, validate_model_halo, NaNChecker, validate_tracer_advection, extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles, SplitRungeKutta3TimeStepper
-using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
+using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_diffusivity_fields, add_closure_specific_boundary_conditions
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
 using Oceananigans.Utils: tupleit
 
@@ -193,7 +193,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     velocities         = hydrostatic_velocity_fields(velocities, grid, clock, boundary_conditions)
     tracers            = TracerFields(tracers, grid, boundary_conditions)
     pressure           = PressureField(grid)
-    diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
+    diffusivity_fields = build_diffusivity_fields(diffusivity_fields, grid, clock, tracernames(tracers), boundary_conditions, closure)
 
     @apply_regionally validate_velocity_boundary_conditions(grid, velocities)
 

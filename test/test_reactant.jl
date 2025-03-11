@@ -196,8 +196,19 @@ end
     c = CenterField(grid)
     @test parent(c) isa Reactant.ConcretePJRTArray
 
+    cpu_grid = on_architecture(CPU(), grid)
+    @test architecture(cpu_grid) isa CPU
+
+    cpu_c = on_architecture(CPU(), c)
+    @test parent(cpu_c) isa Array
+    @test architecture(cpu_c.grid) isa CPU
+
     @info "  Testing field set! with a number..."
     set!(c, 1)
+    @test all(c .≈ 1)
+
+    @info "  Testing field set! with a function..."
+    set!(c, (x, y, z) -> 1)
     @test all(c .≈ 1)
 
     @info "  Testing simple kernel launch!..."

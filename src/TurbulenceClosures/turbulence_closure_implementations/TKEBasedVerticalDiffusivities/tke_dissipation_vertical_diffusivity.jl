@@ -181,7 +181,7 @@ function fill_halo_regions!(catke_diffusivity_fields::TKEDissipationDiffusivityF
     return fill_halo_regions!(fields_with_halos_to_fill, args...; kw...)
 end
 
-function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfTD)
+function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::FlavorOfTD)
 
     default_diffusivity_bcs = (κu = FieldBoundaryConditions(grid, (Center, Center, Face)),
                                κc = FieldBoundaryConditions(grid, (Center, Center, Face)),
