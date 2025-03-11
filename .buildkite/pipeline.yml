@@ -215,7 +215,7 @@ steps:
 ##### Tripolar Grid tests
 #####
 
-  - label: "🦃 gpu tripolar grid tests"
+  - label: "🫐 gpu tripolar grid tests"
     env:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "tripolar_grid"
@@ -231,7 +231,7 @@ steps:
           limit: 1
     depends_on: "init_gpu"
 
-  - label: "🦃 cpu tripolar grid tests"
+  - label: "🍓 cpu tripolar grid tests"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "tripolar_grid"
@@ -245,7 +245,7 @@ steps:
         - exit_status: 1      
           limit: 1
     depends_on: "init_cpu"
-    
+
 #####
 ##### NonhydrostaticModel and time stepping (part 1)
 #####
