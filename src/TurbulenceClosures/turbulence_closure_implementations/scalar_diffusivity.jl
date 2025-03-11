@@ -82,7 +82,7 @@ ScalarDiffusivity{ExplicitTimeDiscretization}(ν=1000.0, κ=2000.0)
 ```jldoctest ScalarDiffusivity
 julia> const depth_scale = 100;
 
-julia> @inline ν(x, y, z) = 1000 * exp(z / depth_scale)
+julia> @inline ν(x, y, z, t) = 1000 * exp(z / depth_scale)
 ν (generic function with 1 method)
 
 julia> ScalarDiffusivity(ν=ν)
@@ -114,13 +114,13 @@ ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.Turbulence
 ```
 """
 function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
-                           formulation=ThreeDimensionalFormulation(), 
-                           FT=Float64;
+                           formulation=ThreeDimensionalFormulation(),
+                           FT=Oceananigans.defaults.FloatType;
                            ν=0, κ=0,
                            discrete_form = false,
                            loc = (nothing, nothing, nothing),
                            parameters = nothing,
-                           required_halo_size::Int = 1) 
+                           required_halo_size::Int = 1)
 
     if formulation == HorizontalFormulation() && time_discretization == VerticallyImplicitTimeDiscretization()
       throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for \
@@ -141,7 +141,7 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
 end
 
 # Explicit default
-@inline ScalarDiffusivity(formulation::AbstractDiffusivityFormulation, FT=Float64; kw...) =
+@inline ScalarDiffusivity(formulation::AbstractDiffusivityFormulation, FT=Oceananigans.defaults.FloatType; kw...) =
     ScalarDiffusivity(ExplicitTimeDiscretization(), formulation, FT; kw...)
 
 const VerticalScalarDiffusivity{TD} = ScalarDiffusivity{TD, VerticalFormulation} where TD
@@ -167,7 +167,7 @@ Shorthand for a `ScalarDiffusivity` with `HorizontalFormulation()`. See [`Scalar
 """
 @inline HorizontalScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(), FT::DataType=Float64; kwargs...) =
     ScalarDiffusivity(time_discretization, HorizontalFormulation(), FT; kwargs...)
-    
+
 """
     HorizontalDivergenceScalarDiffusivity([time_discretization=ExplicitTimeDiscretization(),
                                           FT::DataType=Float64;]

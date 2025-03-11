@@ -3,7 +3,7 @@ module HydrostaticFreeSurfaceModels
 export
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface, 
-    PrescribedVelocityFields
+    PrescribedVelocityFields, ZStar, ZCoordinate
 
 using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
@@ -22,6 +22,9 @@ import Oceananigans.Architectures: on_architecture
 using Oceananigans.TimeSteppers: SplitRungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
 
 abstract type AbstractFreeSurface{E, G} end
+
+struct ZCoordinate end
+struct ZStar end
 
 # This is only used by the cubed sphere for now.
 fill_horizontal_velocity_halos!(args...) = nothing
@@ -57,6 +60,10 @@ include("SplitExplicitFreeSurfaces/SplitExplicitFreeSurfaces.jl")
 
 using .SplitExplicitFreeSurfaces
 
+# ZStar implementation
+include("z_star_vertical_spacing.jl")
+
+# Hydrostatic model implementation
 include("hydrostatic_free_surface_field_tuples.jl")
 include("hydrostatic_free_surface_model.jl")
 include("show_hydrostatic_free_surface_model.jl")
@@ -135,7 +142,7 @@ include("compute_hydrostatic_free_surface_buffers.jl")
 include("update_hydrostatic_free_surface_model_state.jl")
 include("hydrostatic_free_surface_ab2_step.jl")
 include("hydrostatic_free_surface_rk3_step.jl")
-include("store_hydrostatic_free_surface_tendencies.jl")
+include("cache_hydrostatic_free_surface_tendencies.jl")
 include("prescribed_hydrostatic_velocity_fields.jl")
 include("single_column_model_mode.jl")
 include("slice_ensemble_model_mode.jl")

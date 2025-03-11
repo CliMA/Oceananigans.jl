@@ -1,6 +1,6 @@
 using Oceananigans.Utils: instantiate, KernelParameters
 using Oceananigans.Models: total_velocities
-using Oceananigans.Fields: interpolator
+using Oceananigans.Fields: interpolator, FractionalIndices
 
 #####
 ##### Boundary conditions for Lagrangian particles
@@ -56,11 +56,11 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
     X = flattened_node((x, y, z), ibg)
 
     # Determine current particle cell from the interfaces
-    fi, fj, fk = fractional_indices(X, ibg.underlying_grid, f, f, f)
+    fi = FractionalIndices(X, ibg.underlying_grid, f, f, f)
     
-    i, i⁺, _ = interpolator(fi)
-    j, j⁺, _ = interpolator(fj)
-    k, k⁺, _ = interpolator(fk)
+    i, i⁺, _ = interpolator(fi.i)
+    j, j⁺, _ = interpolator(fi.j)
+    k, k⁺, _ = interpolator(fi.k)
 
     # Determine whether particle was _previously_ in a non-immersed cell
     i⁻, j⁻, k⁻ = previous_particle_indices
@@ -110,11 +110,11 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     X = flattened_node((x, y, z), grid)
 
     # Obtain current particle indices, looking at the interfaces
-    fi, fj, fk = fractional_indices(X, grid, f, f, f)
+    fi = FractionalIndices(X, grid, f, f, f)
     
-    i, i⁺, _ = interpolator(fi)
-    j, j⁺, _ = interpolator(fj)
-    k, k⁺, _ = interpolator(fk)
+    i, i⁺, _ = interpolator(fi.i)
+    j, j⁺, _ = interpolator(fi.j)
+    k, k⁺, _ = interpolator(fi.k)
 
     current_particle_indices = (i, j, k)
 

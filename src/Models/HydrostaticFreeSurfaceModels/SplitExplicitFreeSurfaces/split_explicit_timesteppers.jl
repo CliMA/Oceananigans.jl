@@ -135,23 +135,23 @@ function initialize_free_surface_timestepper!(timestepper::AdamsBashforth3Scheme
 end
 
 # The functions `η★` `U★` and `V★` represent the value of free surface, barotropic zonal and meridional velocity at time step m+1/2
-@inline U★(i, j, k, grid, t::ForwardBackwardScheme, Uᵐ) = @inbounds Uᵐ[i, j, k]
+@inline U★(i, j, k, grid,  ::ForwardBackwardScheme, Uᵐ) = @inbounds Uᵐ[i, j, k]
 @inline U★(i, j, k, grid, t::AdamsBashforth3Scheme, Uᵐ) = @inbounds t.α * Uᵐ[i, j, k] + t.θ * t.Uᵐ⁻¹[i, j, k] + t.β * t.Uᵐ⁻²[i, j, k]
 
-@inline η★(i, j, k, grid, t::ForwardBackwardScheme, ηᵐ⁺¹) = @inbounds ηᵐ⁺¹[i, j, k]
+@inline η★(i, j, k, grid,  ::ForwardBackwardScheme, ηᵐ⁺¹) = @inbounds ηᵐ⁺¹[i, j, k]
 @inline η★(i, j, k, grid, t::AdamsBashforth3Scheme, ηᵐ⁺¹) = @inbounds t.δ * ηᵐ⁺¹[i, j, k] + t.μ * t.ηᵐ[i, j, k] + t.γ * t.ηᵐ⁻¹[i, j, k] + t.ϵ * t.ηᵐ⁻²[i, j, k]
 
-@inline store_previous_velocities!(::ForwardBackwardScheme,   i, j, k, U) = nothing
-@inline store_previous_free_surface!(::ForwardBackwardScheme, i, j, k, η) = nothing
+@inline cache_previous_velocities!(::ForwardBackwardScheme,   i, j, k, U) = nothing
+@inline cache_previous_free_surface!(::ForwardBackwardScheme, i, j, k, η) = nothing
 
-@inline function store_previous_velocities!(t::AdamsBashforth3Scheme, i, j, k, U)
+@inline function cache_previous_velocities!(t::AdamsBashforth3Scheme, i, j, k, U)
     @inbounds t.Uᵐ⁻²[i, j, k] = t.Uᵐ⁻¹[i, j, k]
     @inbounds t.Uᵐ⁻¹[i, j, k] =      U[i, j, k]
 
     return nothing
 end
 
-@inline function store_previous_free_surface!(t::AdamsBashforth3Scheme, i, j, k, η)
+@inline function cache_previous_free_surface!(t::AdamsBashforth3Scheme, i, j, k, η)
     @inbounds t.ηᵐ⁻²[i, j, k] = t.ηᵐ⁻¹[i, j, k]
     @inbounds t.ηᵐ⁻¹[i, j, k] =   t.ηᵐ[i, j, k]
     @inbounds   t.ηᵐ[i, j, k] =      η[i, j, k]

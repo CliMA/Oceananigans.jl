@@ -1,4 +1,5 @@
 using Oceananigans.Grids: Flat
+using Oceananigans.Grids: peripheral_node
 
 #####
 ##### Base interpolation operators
@@ -86,11 +87,20 @@ using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 @inline ℑxᶜᵃᵃ(i, j, k, grid::XFlatGrid, u) = @inbounds u[i, j, k]
 @inline ℑxᶠᵃᵃ(i, j, k, grid::XFlatGrid, c) = @inbounds c[i, j, k]
 
-@inline ℑyᵃᶜᵃ(i, j, k, grid::YFlatGrid, w) = @inbounds w[i, j, k]
+@inline ℑyᵃᶜᵃ(i, j, k, grid::YFlatGrid, v) = @inbounds v[i, j, k]
 @inline ℑyᵃᶠᵃ(i, j, k, grid::YFlatGrid, c) = @inbounds c[i, j, k]
 
 @inline ℑzᵃᵃᶜ(i, j, k, grid::ZFlatGrid, w) = @inbounds w[i, j, k]
 @inline ℑzᵃᵃᶠ(i, j, k, grid::ZFlatGrid, c) = @inbounds c[i, j, k]
+
+@inline ℑxᶜᵃᵃ(i, j, k, grid::XFlatGrid, u::Number) = u
+@inline ℑxᶠᵃᵃ(i, j, k, grid::XFlatGrid, c::Number) = c
+
+@inline ℑyᵃᶜᵃ(i, j, k, grid::YFlatGrid, v::Number) = v
+@inline ℑyᵃᶠᵃ(i, j, k, grid::YFlatGrid, c::Number) = c
+
+@inline ℑzᵃᵃᶜ(i, j, k, grid::ZFlatGrid, w::Number) = w
+@inline ℑzᵃᵃᶠ(i, j, k, grid::ZFlatGrid, c::Number) = c
 
 @inline ℑxᶜᵃᵃ(i, j, k, grid::XFlatGrid, f::F, args...) where {F<:Function} = f(i, j, k, grid, args...)
 @inline ℑxᶠᵃᵃ(i, j, k, grid::XFlatGrid, f::F, args...) where {F<:Function} = f(i, j, k, grid, args...)
@@ -100,3 +110,35 @@ using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 
 @inline ℑzᵃᵃᶜ(i, j, k, grid::ZFlatGrid, f::F, args...) where {F<:Function} = f(i, j, k, grid, args...)
 @inline ℑzᵃᵃᶠ(i, j, k, grid::ZFlatGrid, f::F, args...) where {F<:Function} = f(i, j, k, grid, args...)
+
+
+#####
+##### Active-weighted interpolation
+#####
+
+@inline not_peripheral_node(args...) = !peripheral_node(args...)
+
+@inline function active_weighted_ℑxyᶜᶠᶜ(i, j, k, grid, q, args...)
+    active_nodes = ℑxyᶜᶠᵃ(i, j, k, grid, not_peripheral_node, f, c, c)
+    mask = active_nodes == 0
+    return ifelse(mask, zero(grid), ℑxyᶜᶠᵃ(i, j, k, grid, q, args...) / active_nodes)
+end
+
+@inline function active_weighted_ℑxyᶠᶜᶜ(i, j, k, grid, q, args...)
+    active_nodes = ℑxyᶠᶜᵃ(i, j, k, grid, not_peripheral_node, c, f, c)
+    mask = active_nodes == 0
+    return ifelse(mask, zero(grid), ℑxyᶠᶜᵃ(i, j, k, grid, q, args...) / active_nodes)
+end
+
+@inline function active_weighted_ℑxyᶠᶠᶜ(i, j, k, grid, q, args...)
+    active_nodes = ℑxyᶠᶠᵃ(i, j, k, grid, not_peripheral_node, c, c, c)
+    mask = active_nodes == 0
+    return ifelse(mask, zero(grid), ℑxyᶠᶠᵃ(i, j, k, grid, q, args...) / active_nodes)
+end
+
+@inline function active_weighted_ℑxyᶜᶜᶜ(i, j, k, grid, q, args...)
+    active_nodes = ℑxyᶜᶜᵃ(i, j, k, grid, not_peripheral_node, f, f, c)
+    mask = active_nodes == 0
+    return ifelse(mask, zero(grid), ℑxyᶜᶜᵃ(i, j, k, grid, q, args...) / active_nodes)
+end
+

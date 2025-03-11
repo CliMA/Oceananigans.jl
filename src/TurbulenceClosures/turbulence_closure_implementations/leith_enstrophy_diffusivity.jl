@@ -55,7 +55,7 @@ Fox‐Kemper, B., & D. Menemenlis (2008), "Can large eddy simulation techniques 
     ocean models?", in Ocean Modeling in an Eddying Regime, Geophys. Monogr. Ser., 177, pp. 319–337.
     doi: 10.1029/177GM19
 """
-TwoDimensionalLeith(FT=Float64; C=0.3, C_Redi=1, C_GM=1, isopycnal_model=SmallSlopeIsopycnalTensor()) =
+TwoDimensionalLeith(FT=Oceananigans.defaults.FloatType; C=0.3, C_Redi=1, C_GM=1, isopycnal_model=SmallSlopeIsopycnalTensor()) =
     TwoDimensionalLeith{FT}(C, C_Redi, C_GM, isopycnal_model)
 
 function with_tracers(tracers, closure::TwoDimensionalLeith{FT}) where FT
@@ -107,7 +107,7 @@ end
 "Return the filter width for a Leith Diffusivity on a general grid."
 @inline Δᶠ(i, j, k, grid, ::TwoDimensionalLeith) = sqrt(Δxᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid)) 
 
-function DiffusivityFields(grid, tracer_names, bcs, ::TwoDimensionalLeith)
+function build_diffusivity_fields(grid, clock, tracer_names, bcs, ::TwoDimensionalLeith)
     default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))
     bcs = merge(default_eddy_viscosity_bcs, bcs)
     return (; νₑ=CenterField(grid, boundary_conditions=bcs.νₑ))
