@@ -2,7 +2,6 @@ using JLD2
 using MPI
 using Oceananigans.DistributedComputations: reconstruct_global_field, reconstruct_global_grid
 using Oceananigans.Units
-using Oceananigans.OrthogonalSphericalShellGrids: analytical_immersed_tripolar_grid
 
 import Oceananigans.BoundaryConditions: _fill_north_halo!
 using Oceananigans.BoundaryConditions: ZBC, CCLocation, FCLocation
