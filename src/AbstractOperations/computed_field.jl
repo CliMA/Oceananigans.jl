@@ -39,6 +39,7 @@ function Field(operand::OperationOrFunctionField;
                data = nothing,
                indices = indices(operand),
                boundary_conditions = FieldBoundaryConditions(operand.grid, location(operand)),
+               status = nothing,
                recompute_safely = true)
 
     grid = operand.grid
@@ -52,7 +53,9 @@ function Field(operand::OperationOrFunctionField;
         recompute_safely = false
     end
 
-    status = recompute_safely ? nothing : FieldStatus()
+    if isnothing(status)
+        status = recompute_safely ? nothing : FieldStatus()
+    end
 
     return Field(loc, grid, data, boundary_conditions, indices, operand, status)
 end
