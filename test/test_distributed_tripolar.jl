@@ -14,11 +14,8 @@ tripolar_reconstructed_grid = """
              Distributed(CPU(), partition=Partition(2, 2))]
 
     for arch in archs
-        local_grid = TripolarGrid(arch; size = (12, 20, 1), z = (-1000, 0), halo = (2, 2, 2))
-        local_grid = analytical_immersed_tripolar_grid(local_grid)
-
+        local_grid  = TripolarGrid(arch; size = (12, 20, 1), z = (-1000, 0), halo = (2, 2, 2))
         global_grid = TripolarGrid(size = (12, 20, 1), z = (-1000, 0), halo = (2, 2, 2))
-        global_grid = analytical_immersed_tripolar_grid(global_grid)
         
         reconstruct_grid = reconstruct_global_grid(local_grid)
 
@@ -57,7 +54,6 @@ tripolar_reconstructed_field = """
 
     for arch in archs
         local_grid = TripolarGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
-        local_grid = analytical_immersed_tripolar_grid(local_grid)
 
         up = XFaceField(local_grid)
         vp = YFaceField(local_grid)
@@ -68,7 +64,6 @@ tripolar_reconstructed_field = """
         set!(cp, c)
 
         global_grid = TripolarGrid(size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
-        global_grid = analytical_immersed_tripolar_grid(global_grid)
         
         us = XFaceField(global_grid)
         vs = YFaceField(global_grid)
