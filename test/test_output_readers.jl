@@ -476,7 +476,8 @@ end
 
     filepath_sine = "one_dimensional_sine.jld2"
 
-    @testset "Test saving an fts to disk" begin
+    @testset "Test backends" begin
+        @info "   Testing saving a FieldTimeSeries to disk..."
         grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
         times = 0:0.1:3
 
@@ -496,9 +497,8 @@ end
             set!(f, (x, y, z) -> sinf(time))
             @test f == fts[i]
         end
-    end
 
-    @testset "Test interpolation using `InMemory` backends" begin
+        @info "   Testing interpolating an InMemory FieldTimeSeries..."
         # Now we load the FTS partly in memory
         # using different time indexing strategies
         M = 5
