@@ -140,8 +140,11 @@ end
                 @test v3[2] isa Field
             end
 
-            # Tests that we can interpolate
+            # Tests construction + that we can interpolate
             u3i = FieldTimeSeries{Face, Center, Center}(u3.grid, u3.times)
+            @test !isnothing(u3i.boundary_conditions)
+            @test u3i.boundary_conditions isa FieldBoundaryConditions
+            
             interpolate!(u3i, u3)
             @test all(interior(u3i) .≈ interior(u3))
 
@@ -367,7 +370,7 @@ end
         @info "  Testing Chunked abstraction..."
         filepath = "testfile.jld2"
         fts = FieldTimeSeries(filepath, "c")
-        fts_chunked = FieldTimeSeries(filepath, "c"; backend = InMemory(2), time_indexing = Cyclical())
+        fts_chunked = FieldTimeSeries(filepath, "c"; backend=InMemory(2), time_indexing=Cyclical())
 
         for t in eachindex(fts.times)
             fts_chunked[t] == fts[t]
@@ -474,7 +477,56 @@ end
         end
     end
 
+    filepath_sine = "one_dimensional_sine.jld2"
+
+    @testset "Test interpolation using `InMemory` backends" begin
+        grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+        times = 0:0.1:3
+
+        sinf(t) = sin(2π * t / 3)
+
+        f   = CenterField(grid) 
+        fts = FieldTimeSeries{Center, Center, Center}(grid, times; backend=OnDisk(), path=filepath_sine, name="f")
+        
+        for (i, time) in enumerate(fts.times)
+            set!(f, (x, y, z) -> sinf(time))
+            set!(fts, f, i)
+        end
+        
+        # Now we load the FTS partly in memory
+        # using different time indexing strategies
+        M = 5
+        fts1 = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M))
+        fts2 = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M), time_indexing = Cyclical())
+        fts3 = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M), time_indexing = Clamp())
+        
+        # Test that linear interpolation is correct within the time domain
+        for time in 0:0.01:last(fts.times)
+            tidx = findfirst(fts.times .> time)
+            if !isnothing(tidx)
+                t⁻ = fts.times[tidx - 1]
+                t⁺ = fts.times[tidx]
+
+                Δt⁺ = (time - t⁻) / (t⁺ - t⁻)
+            
+                @test fts1[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺) 
+                @test fts2[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺) 
+                @test fts3[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺) 
+            end
+        end
+
+        Δt = fts.times[end] - fts.times[end - 1]        
+
+        # Test that the time interpolation is correct outside the time domain
+        for time in last(fts.times) + 1 : 0.01 :  last(fts.times) * 2
+            @test fts1[Time(time)][1, 1, 1] ≈ (fts1[end][1, 1, 1] - fts1[end-1][1, 1, 1]) / Δt * (time - last(fts.times))
+            @test fts3[Time(time)][1, 1, 1] ≈ fts3[end][1, 1, 1]
+        end
+
+    end
+
     rm(filepath1d)
     rm(filepath2d)
     rm(filepath3d)
+    rm(filepath_sine)
 end

@@ -1,6 +1,7 @@
 using Adapt
 using Dates: AbstractTime, DateTime, Nanosecond, Millisecond
 using Oceananigans.Utils: prettytime
+using Oceananigans.Grids: AbstractGrid
 
 import Base: show
 import Oceananigans.Units: Time
@@ -12,12 +13,21 @@ Keeps track of the current `time`, `last_Δt`, `iteration` number, and time-step
 The `stage` is updated only for multi-stage time-stepping methods. The `time::T` is
 either a number or a `DateTime` object.
 """
-mutable struct Clock{TT, DT}
+mutable struct Clock{TT, DT, IT}
     time :: TT
     last_Δt :: DT
     last_stage_Δt :: DT
-    iteration :: Int
+    iteration :: IT
     stage :: Int
+end
+
+function reset!(clock::Clock{TT, DT, IT}) where {TT, DT, IT}
+    clock.time = zero(TT)
+    clock.iteration = zero(IT)
+    clock.stage = 0
+    clock.last_Δt = Inf
+    clock.last_stage_Δt = Inf
+    return nothing
 end
 
 """
@@ -34,8 +44,9 @@ function Clock(; time,
 
     TT = typeof(time)
     DT = typeof(last_Δt)
+    IT = typeof(iteration)
     last_stage_Δt = convert(DT, last_Δt)
-    return Clock{TT, DT}(time, last_Δt, last_stage_Δt, iteration, stage)
+    return Clock{TT, DT, IT}(time, last_Δt, last_stage_Δt, iteration, stage)
 end
 
 # TODO: when supporting DateTime, this function will have to be extended
@@ -50,9 +61,13 @@ function Clock{TT}(; time,
     DT = time_step_type(TT)
     last_Δt = convert(DT, last_Δt)
     last_stage_Δt = convert(DT, last_stage_Δt)
+    IT = typeof(iteration)
 
-    return Clock{TT, DT}(time, last_Δt, last_stage_Δt, iteration, stage)
+    return Clock{TT, DT, IT}(time, last_Δt, last_stage_Δt, iteration, stage)
 end
+
+# helpful default
+Clock(grid::AbstractGrid) = Clock{Float64}(time=0)
 
 function Base.summary(clock::Clock)
     TT = typeof(clock.time)

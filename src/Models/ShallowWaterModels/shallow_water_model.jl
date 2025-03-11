@@ -36,7 +36,7 @@ function ShallowWaterSolutionFields(grid, bcs, prognostic_names)
     return NamedTuple{prognostic_names[1:3]}((u, v, h))
 end
 
-mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, GR, V, U, R, F, E, B, Q, C, K, TS, FR} <: AbstractModel{TS}
+mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, GR, V, U, R, F, E, B, Q, C, K, TS, FR} <: AbstractModel{TS, A}
                           grid :: G         # Grid of physical points on which `Model` is solved
                   architecture :: A         # Computer `Architecture` on which `Model` is run
                          clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
@@ -112,7 +112,7 @@ Keyword arguments
 function ShallowWaterModel(;
                            grid,
                            gravitational_acceleration,
-                               clock = Clock{eltype(grid)}(time=0),
+                               clock = Clock(grid),
                   momentum_advection = UpwindBiased(order=5),
                     tracer_advection = WENO(),
                       mass_advection = WENO(),

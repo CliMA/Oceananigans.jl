@@ -114,6 +114,14 @@ using DocStringExtensions
 using FFTW
 
 function __init__()
+    if VERSION >= v"1.11.0"
+        @warn """You are using Julia v1.11 or later!"
+                 Oceananigans is currently tested on Julia v1.10."
+                 If you find issues with Julia v1.11 or later,"
+                 please report at https://github.com/CliMA/Oceananigans.jl/issues/new"""
+
+    end
+
     threads = Threads.nthreads()
     if threads > 1
         @info "Oceananigans will use $threads threads"
@@ -157,7 +165,7 @@ const defaults = Defaults()
 
 Abstract supertype for models.
 """
-abstract type AbstractModel{TS} end
+abstract type AbstractModel{TS, A} end
 
 """
     AbstractDiagnostic
@@ -205,6 +213,7 @@ include("Grids/Grids.jl")
 include("Utils/Utils.jl")
 include("Logger.jl")
 include("Operators/Operators.jl")
+include("OrthogonalSphericalShellGrids/OrthogonalSphericalShellGrids.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
@@ -246,6 +255,7 @@ using .Architectures
 using .Utils
 using .Advection
 using .Grids
+using .OrthogonalSphericalShellGrids
 using .BoundaryConditions
 using .Fields
 using .Coriolis
