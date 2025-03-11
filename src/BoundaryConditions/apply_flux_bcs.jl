@@ -90,6 +90,9 @@ end
 @inline    apply_z_top_bc!(Gc, loc, ::NotFluxBC, args...) = nothing
 @inline apply_z_bottom_bc!(Gc, loc, ::NotFluxBC, args...) = nothing
 
+# shortcut for the zipper BC
+@inline apply_y_north_bc!(Gc, loc, ::ZBC, args...) = nothing
+
 @inline flip(::Center) = Face()
 @inline flip(::Face) = Center()
 

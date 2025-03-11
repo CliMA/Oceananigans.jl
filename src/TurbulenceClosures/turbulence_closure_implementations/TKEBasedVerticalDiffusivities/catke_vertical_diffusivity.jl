@@ -177,7 +177,7 @@ function fill_halo_regions!(catke_diffusivity_fields::CATKEDiffusivityFields, ar
     return fill_halo_regions!(κ, grid, args...; kw...)
 end
 
-function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
+function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::FlavorOfCATKE)
 
     default_diffusivity_bcs = (κu = FieldBoundaryConditions(grid, (Center, Center, Face)),
                                κc = FieldBoundaryConditions(grid, (Center, Center, Face)),
@@ -190,7 +190,7 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
     κe = ZFaceField(grid, boundary_conditions=bcs.κe)
     Le = CenterField(grid)
     Jᵇ = Field{Center, Center, Nothing}(grid)
-    previous_compute_time = Ref(zero(grid))
+    previous_compute_time = Ref(clock.time)
 
     # Note: we may be able to avoid using the "previous velocities" in favor of a "fully implicit"
     # discretization of shear production
