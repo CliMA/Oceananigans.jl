@@ -1,7 +1,7 @@
 using Oceananigans.Grids: _node
 using Oceananigans.Fields: interpolator, _interpolate, FractionalIndices, flatten_node
 using Oceananigans.Architectures: architecture
-using Oceananigans.DistributedComputations: child_architecture
+using Oceananigans.DistributedComputations: child_architecture, Distributed
 
 import Oceananigans.Fields: interpolate
 
