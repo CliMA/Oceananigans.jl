@@ -2,6 +2,7 @@ include("dependencies_for_runtests.jl")
 include("distributed_tests_utils.jl")
 
 using MPI
+using Oceananigans.OrthogonalSphericalShellGrids: mask_tripolar_singularities
 
 tripolar_reconstructed_grid = """
     using MPI
