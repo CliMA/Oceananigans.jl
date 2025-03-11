@@ -230,9 +230,7 @@ For more information check out our [contributor's guide](https://clima.github.io
 
 ## Performance benchmarks
 
-We've performed some preliminary performance benchmarks (see the [performance benchmarks](https://clima.github.io/OceananigansDocumentation/stable/appendix/benchmarks/) section of the documentation) by initializing models of various sizes and measuring the wall clock time taken per model iteration (or time step).
-
-This is not really a fair comparison as we haven't parallelized across all the CPU's cores so we will revisit these benchmarks once Oceananigans.jl can run on multiple CPUs and GPUs.
+We perform some performance benchmarks (see the [performance benchmarks](https://clima.github.io/OceananigansDocumentation/stable/appendix/benchmarks/) section of the documentation) by initializing models of various sizes and measuring the wall clock time taken per model iteration (or time step).
 
 To make full use of or fully saturate the computing power of a GPU such as an Nvidia Tesla V100 or
 a Titan V, the model should have around ~10 million grid points or more.

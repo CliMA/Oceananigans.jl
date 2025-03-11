@@ -125,7 +125,7 @@ using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 end
 
 @inline function active_weighted_ℑxyᶠᶜᶜ(i, j, k, grid, q, args...)
-    active_nodes = ℑxyᶜᶠᵃ(i, j, k, grid, not_peripheral_node, c, f, c)
+    active_nodes = ℑxyᶠᶜᵃ(i, j, k, grid, not_peripheral_node, c, f, c)
     mask = active_nodes == 0
     return ifelse(mask, zero(grid), ℑxyᶠᶜᵃ(i, j, k, grid, q, args...) / active_nodes)
 end

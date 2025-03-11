@@ -140,8 +140,11 @@ end
                 @test v3[2] isa Field
             end
 
-            # Tests that we can interpolate
+            # Tests construction + that we can interpolate
             u3i = FieldTimeSeries{Face, Center, Center}(u3.grid, u3.times)
+            @test !isnothing(u3i.boundary_conditions)
+            @test u3i.boundary_conditions isa FieldBoundaryConditions
+            
             interpolate!(u3i, u3)
             @test all(interior(u3i) .≈ interior(u3))
 
@@ -367,7 +370,7 @@ end
         @info "  Testing Chunked abstraction..."
         filepath = "testfile.jld2"
         fts = FieldTimeSeries(filepath, "c")
-        fts_chunked = FieldTimeSeries(filepath, "c"; backend = InMemory(2), time_indexing = Cyclical())
+        fts_chunked = FieldTimeSeries(filepath, "c"; backend=InMemory(2), time_indexing=Cyclical())
 
         for t in eachindex(fts.times)
             fts_chunked[t] == fts[t]
@@ -492,10 +495,10 @@ end
         
         # Now we load the FTS partly in memory
         # using different time indexing strategies
-        N_in_mem = 5
-        fts1 = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(N_in_mem))
-        fts2 = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(N_in_mem), time_indexing = Cyclical())
-        fts3 = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(N_in_mem), time_indexing = Clamp())
+        M = 5
+        fts1 = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M))
+        fts2 = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M), time_indexing = Cyclical())
+        fts3 = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M), time_indexing = Clamp())
         
         # Test that linear interpolation is correct within the time domain
         for time in 0:0.01:last(fts.times)
