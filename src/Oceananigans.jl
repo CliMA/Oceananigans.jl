@@ -220,14 +220,18 @@ include("ImmersedBoundaries/ImmersedBoundaries.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
-include("OutputReaders/OutputReaders.jl")
 include("DistributedComputations/DistributedComputations.jl")
+include("OutputReaders/OutputReaders.jl")
 include("OrthogonalSphericalShellGrids/OrthogonalSphericalShellGrids.jl")
 
 # TODO: move here
 #include("MultiRegion/MultiRegion.jl")
 
 # Physics, time-stepping, and models
+# TODO: move here
+# include("Advection/Advection.jl")
+# include("TimeSteppers/TimeSteppers.jl")
+# include("Solvers/Solvers.jl")
 include("Coriolis/Coriolis.jl")
 include("BuoyancyFormulations/BuoyancyFormulations.jl")
 include("StokesDrifts.jl")
