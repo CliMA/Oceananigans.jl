@@ -113,9 +113,9 @@ end
         cubed_sphere_grid = ConformalCubedSphereGrid(arch, panel_size = (90, 90, 1), z = (0, 1))
         cubed_sphere_panel = getregion(cubed_sphere_grid, 1)
 
-        angle_cubed_sphere = zeros(size(cubed_sphere_panel)...)
+        angle_cubed_sphere = on_architecture(arch, zeros(size(cubed_sphere_panel)...))
         cartesian_nodes, _ = get_cartesian_nodes_and_vertices(cubed_sphere_panel, Face(), Face(), Center())
-        xF, yF, zF = cartesian_nodes
+        xF, yF, zF = on_architecture.(arch, cartesian_nodes)
         Nx, Ny, _  = size(cubed_sphere_panel)
 
         # Exclude the corners from the computation! (They are definitely not orthogonal)
@@ -137,9 +137,9 @@ end
 
         # Exclude the singularities from the computation! (They are definitely not orthogonal)
         tripolar_grid      = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
-        angle_tripolar     = zeros(size(tripolar_grid)...)
+        angle_tripolar     = on_architecture.(arch, zeros(size(tripolar_grid)...))
         cartesian_nodes, _ = get_cartesian_nodes_and_vertices(tripolar_grid.underlying_grid, Face(), Face(), Center())
-        xF, yF, zF = cartesian_nodes
+        xF, yF, zF = on_architecture.(arch, cartesian_nodes)
         Nx, Ny, _  = size(tripolar_grid)
 
         launch!(arch, tripolar_grid, (Nx-1, Ny-1), compute_nonorthogonality_angle!, angle_tripolar, tripolar_grid, xF, yF, zF)
