@@ -15,8 +15,6 @@ end
 ##### Run tests
 #####
 
-CUDA.allowscalar() do
-
 @testset "Oceananigans" begin
 
     if test_file != :none
@@ -246,6 +244,3 @@ CUDA.allowscalar() do
         include("test_convergence.jl")
     end
 end
-
-end #CUDA.allowscalar()
-

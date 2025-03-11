@@ -20,7 +20,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField, 
 
             compute!(ζ)
 
-            @test all(isfinite.(ζ.data))
+            CUDA.@allowscalar @test all(isfinite.(ζ.data))
         end
     end
 end
