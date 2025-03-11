@@ -12,6 +12,6 @@ for curvilinear grids.
 """
 function vertical_vorticity(model::HydrostaticFreeSurfaceModel)
     u, v, w = model.velocities
-    return KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, u, v)
+    return KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, model.grid, u, v)
 end
 
