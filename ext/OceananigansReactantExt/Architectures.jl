@@ -26,6 +26,8 @@ to_reactant_sharding(s::Sharding.AbstractSharding) = s
 to_reactant_sharding(::T) where {T} = error("Unsupported sharding type $T")
 
 on_architecture(::ReactantState, a::Reactant.AnyTracedRArray) = a
+on_architecture(::CPU, a::Reactant.AnyConcretePJRTArray) = Array(a)
+on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:Reactant.AnyConcretePJRTArray}) = Array(a)
 
 const ArraysToRArray = Union{Array,
                              Reactant.AnyConcretePJRTArray,
@@ -38,6 +40,5 @@ on_architecture(r::ReactantState, a::ArraysToRArray) =
 unified_array(::ReactantState, a) = a
 
 @inline device_copy_to!(dst::Reactant.AnyConcretePJRTArray, src::Reactant.AnyConcretePJRTArray; kw...) = Base.copyto!(dst, src)
-
 
 end # module
