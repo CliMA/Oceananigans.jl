@@ -2,7 +2,6 @@ include("dependencies_for_runtests.jl")
 include("distributed_tests_utils.jl")
 
 using MPI
-using Oceananigans.OrthogonalSphericalShellGrids: mask_tripolar_singularities
 
 tripolar_reconstructed_grid = """
     using MPI
@@ -16,10 +15,10 @@ tripolar_reconstructed_grid = """
 
     for arch in archs
         local_grid = TripolarGrid(arch; size = (12, 20, 1), z = (-1000, 0), halo = (2, 2, 2))
-        local_grid = mask_singularities(local_grid)
+        local_grid = mask_tripolar_singularities(local_grid)
 
         global_grid = TripolarGrid(size = (12, 20, 1), z = (-1000, 0), halo = (2, 2, 2))
-        global_grid = mask_singularities(global_grid)
+        global_grid = mask_tripolar_singularities(global_grid)
         
         reconstruct_grid = reconstruct_global_grid(local_grid)
 
@@ -58,7 +57,7 @@ tripolar_reconstructed_field = """
 
     for arch in archs
         local_grid = TripolarGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
-        local_grid = mask_singularities(local_grid)
+        local_grid = mask_tripolar_singularities(local_grid)
 
         up = XFaceField(local_grid)
         vp = YFaceField(local_grid)
@@ -69,7 +68,7 @@ tripolar_reconstructed_field = """
         set!(cp, c)
 
         global_grid = TripolarGrid(size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
-        global_grid = mask_singularities(global_grid)
+        global_grid = mask_tripolar_singularities(global_grid)
         
         us = XFaceField(global_grid)
         vs = YFaceField(global_grid)
@@ -197,7 +196,7 @@ run_large_pencil_distributed_grid = """
 @testset "Test distributed TripolarGrid simulations..." begin
     # Run the serial computation    
     grid = TripolarGrid(size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
-    grid = mask_singularities(grid)
+    grid = mask_tripolar_singularities(grid)
 
     simulation = run_tripolar_simulation(grid)
 

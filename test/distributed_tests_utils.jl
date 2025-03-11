@@ -2,6 +2,7 @@ using JLD2
 using MPI
 using Oceananigans.DistributedComputations: reconstruct_global_field, reconstruct_global_grid
 using Oceananigans.Units
+using Oceananigans.OrthogonalSphericalShellGrids: mask_tripolar_singularities
 
 include("dependencies_for_runtests.jl")
 
@@ -50,7 +51,7 @@ end
 # Run the distributed grid simulation and save down reconstructed results
 function run_distributed_tripolar_grid(arch, filename)
     distributed_grid = TripolarGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
-    distributed_grid = mask_singularities(distributed_grid)
+    distributed_grid = mask_tripolar_singularities(distributed_grid)
     simulation       = run_tripolar_simulation(distributed_grid)
 
     η = reconstruct_global_field(simulation.model.free_surface.η)
