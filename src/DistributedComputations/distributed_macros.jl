@@ -13,9 +13,9 @@ global_barrier(comm)  = MPI.Barrier(comm)
 global_communicator() = MPI.COMM_WORLD
 
 """
-    @root communicator exs...
+    @root communicator exp...
 
-Perform `exs` only on rank 0 in communicator, otherwise known as the "root" rank.
+Perform `exp` only on rank 0 in communicator, otherwise known as the "root" rank.
 Other ranks will wait for the root rank to finish before continuing.
 If `communicator` is not provided, `MPI.COMM_WORLD` is used.
 """
@@ -42,7 +42,7 @@ macro root(exp)
 end
 
 """
-    @onrank communicator rank exs...
+    @onrank communicator rank exp...
 
 Perform `exp` only on rank `rank` (0-based index) in `communicator`.
 Other ranks will wait for rank `rank` to finish before continuing.
@@ -123,10 +123,10 @@ macro distribute(exp)
 end
 
 """
-    @handshake communicator exs...
+    @handshake communicator exp...
 
-perform `exs` on all ranks in `communicator`, but only one rank at a time, where
-ranks `r2 > r1` wait for rank `r1` to finish before executing `exs`.
+perform `exp` on all ranks in `communicator`, but only one rank at a time, where
+ranks `r2 > r1` wait for rank `r1` to finish before executing `exp`.
 If `communicator` is not provided, `MPI.COMM_WORLD` is used.
 """
 macro handshake(communicator, exp)
