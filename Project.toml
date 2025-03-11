@@ -52,7 +52,7 @@ OceananigansReactantExt = ["Reactant", "KernelAbstractions", "ConstructionBase"]
 
 [compat]
 Adapt = "4.1.1"
-CUDA = "5"
+CUDA = "5.7"
 Crayons = "4"
 CubedSphere = "0.2, 0.3"
 Dates = "1.9"
