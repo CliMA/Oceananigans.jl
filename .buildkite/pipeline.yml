@@ -8,7 +8,7 @@ env:
   XLA_REACTANT_GPU_PREALLOCATE: false
   CUDA_VISIBLE_DEVICES: "3" # General device used for GPU testing
   CUDA_COMMIT: "6fdca8670526456cc9eb94a4a370ba7e096f01e5"
-  CUDA_URL: "https://github.com/JuliaGPU/CUDA.jl"
+  CUDA_URL: string("https://github.com/JuliaGPU/CUDA.jl")
 
 steps:
   - label: "🏕️ initialize tartarus environment"
