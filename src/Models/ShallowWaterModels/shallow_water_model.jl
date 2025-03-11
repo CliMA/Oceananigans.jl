@@ -11,7 +11,7 @@ using Oceananigans.Grids: topology, Flat, architecture, RectilinearGrid, Face, C
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: validate_model_halo, NaNChecker, validate_tracer_advection
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
-using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
+using Oceananigans.TurbulenceClosures: with_tracers, build_diffusivity_fields
 using Oceananigans.Utils: tupleit
 
 import Oceananigans.Architectures: architecture
@@ -177,7 +177,7 @@ function ShallowWaterModel(;
 
     solution           = ShallowWaterSolutionFields(grid, boundary_conditions, prognostic_field_names)
     tracers            = TracerFields(tracers, grid, boundary_conditions)
-    diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
+    diffusivity_fields = build_diffusivity_fields(diffusivity_fields, grid, clock, tracernames(tracers), boundary_conditions, closure)
 
     # Instantiate timestepper if not already instantiated
     timestepper = TimeStepper(timestepper, grid, tracernames(tracers);
