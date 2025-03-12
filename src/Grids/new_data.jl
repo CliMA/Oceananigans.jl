@@ -32,6 +32,22 @@ offset_indices(::Nothing, topo, N, H, ::UnitRange) = 1:1
 instantiate(T::Type) = T()
 instantiate(t) = t
 
+function reduce_precision(ii::Union{Tuple, AbstractRange, AbstractVector}) 
+    IntTypes = [find_minimum_precision(i) for i in ii]
+    IntType = Int64 ∈ IntTypes ? Int64 : (Int32 ∈ IntTypes ? Int32 : (Int16 ∈ IntTypes ? Int16 : Int8))
+    return map(i -> convert(IntType, i), ii)
+end
+
+reduce_precision(ii::Integer) = convert(find_minimum_precision(ii), ii)
+
+function find_minimum_precision(ii::Integer)
+    maxInt8  = typemax(Int8)
+    maxInt16 = typemax(Int16)
+    maxInt32 = typemax(Int32)
+    IntType = ii > maxInt8 ? (ii > maxInt16 ? (ii > maxInt32 ? Int64 : Int32) : Int16) : Int8
+    return IntType
+end
+
 # The type parameter for indices helps / encourages the compiler to fully type infer `offset_data`
 function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_indices(length(loc))) where {A<:AbstractArray, T}
     loc = map(instantiate, loc)
@@ -43,6 +59,9 @@ function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_ind
         Base.@_inline_meta
         axes(underlying_data, i+length(ii))
     end
+
+    ii = reduce_precision(ii)
+    extra_ii = reduce_precision(extra_ii)
 
     return OffsetArray(underlying_data, ii..., extra_ii...)
 end
