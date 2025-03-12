@@ -31,4 +31,9 @@ include("tripolar_grid.jl")
 include("tripolar_field_extensions.jl")
 include("rotated_latitude_longitude_grid.jl")
 
+# Distributed computations on a tripolar grid
+include("distributed_tripolar_grid.jl")
+include("distributed_zipper.jl")
+include("distributed_zipper_north_tags.jl")
+
 end # module
