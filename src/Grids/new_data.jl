@@ -32,10 +32,10 @@ offset_indices(::Nothing, topo, N, H, ::UnitRange) = 1:1
 instantiate(T::Type) = T()
 instantiate(t) = t
 
-function reduce_precision(ii::Union{Tuple, AbstractRange, AbstractVector}) 
+function reduce_precision(ii::AbstractRange) 
     IntTypes = [find_minimum_precision(i) for i in ii]
     IntType = Int64 ∈ IntTypes ? Int64 : (Int32 ∈ IntTypes ? Int32 : (Int16 ∈ IntTypes ? Int16 : Int8))
-    return map(i -> convert(IntType, i), ii)
+    return convert(IntType, ii[1] - 1)
 end
 
 reduce_precision(ii::Integer) = convert(find_minimum_precision(ii), ii)
@@ -50,9 +50,9 @@ end
 
 # The type parameter for indices helps / encourages the compiler to fully type infer `offset_data`
 function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_indices(length(loc))) where {A<:AbstractArray, T}
-    loc = map(instantiate, loc)
+    loc  = map(instantiate, loc)
     topo = map(instantiate, topo)
-    ii = map(offset_indices, loc, topo, N, H, indices)
+    ii   = map(offset_indices, loc, topo, N, H, indices)
     # Add extra indices for arrays of higher dimension than loc, topo, etc.
     # Use the "`ntuple` trick" so the compiler can infer the type of `extra_ii`
     extra_ii = ntuple(Val(ndims(underlying_data)-length(ii))) do i
@@ -60,10 +60,10 @@ function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_ind
         axes(underlying_data, i+length(ii))
     end
 
-    ii = reduce_precision(ii)
-    extra_ii = reduce_precision(extra_ii)
+    ii = (ii..., extra_ii...)
+    ii = Tuple(reduce_precision(i) for i in ii)
 
-    return OffsetArray(underlying_data, ii..., extra_ii...)
+    return OffsetArray(underlying_data, ii...)
 end
 
 """
