@@ -62,23 +62,23 @@ end
 
 suffixed_dim_name_generator(var_name, ::StaticVerticalDiscretization, LX, LY, LZ, dim::Val{:z}; connector="_", location_letters) = var_name * connector * location_letters
 
-loc2letter(::Face) = "f"
-loc2letter(::Center) = "c"
-loc2letter(::Nothing) = ""
+loc2letter(::Face, ascii=true) = ascii ? "f" : "ᶠ"
+loc2letter(::Center, ascii=true) = ascii ? "c" : "ᶜ"
+loc2letter(::Nothing, ascii=true) = ""
 
-minimal_location_string(::AbstractGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(LX)
-minimal_location_string(::AbstractGrid, LX, LY, LZ, ::Val{:y}) = loc2letter(LY)
-minimal_location_string(::AbstractGrid, LX, LY, LZ, ::Val{:z}) = loc2letter(LZ)
+minimal_location_string(::RectilinearGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(LX)
+minimal_location_string(::RectilinearGrid, LX, LY, LZ, ::Val{:y}) = loc2letter(LY)
 
 minimal_location_string(::LatitudeLongitudeGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(LX) * loc2letter(LY)
 minimal_location_string(::LatitudeLongitudeGrid, LX, LY, LZ, ::Val{:y}) = loc2letter(LX) * loc2letter(LY)
 
-minimal_location_string(grid, LX, LY, LZ, dim) = loc2letter(LX) * loc2letter(LY) * loc2letter(LZ)
+minimal_location_string(grid::AbstractGrid,             LX, LY, LZ, dim::Val{:z}) = minimal_location_string(grid.z, LX, LY, LZ, dim)
 minimal_location_string(::StaticVerticalDiscretization, LX, LY, LZ, dim::Val{:z}) = loc2letter(LZ)
+minimal_location_string(grid,                           LX, LY, LZ, dim)          = loc2letter(LX) * loc2letter(LY) * loc2letter(LZ)
 
 
-minimal_dim_name(var_name, grid, LX, LY, LZ, dim) = suffixed_dim_name_generator(var_name, grid, LX, LY, LZ, dim,
-                                                                                connector="_", location_letters=minimal_location_string(grid, LX, LY, LZ, dim))
+minimal_dim_name(var_name, grid, LX, LY, LZ, dim) =
+    suffixed_dim_name_generator(var_name, grid, LX, LY, LZ, dim, connector="_", location_letters=minimal_location_string(grid, LX, LY, LZ, dim))
 
 minimal_dim_name(var_name, grid::ImmersedBoundaryGrid, args...) = minimal_dim_name(var_name, grid.underlying_grid, args...)
 
