@@ -33,58 +33,54 @@ function collect_dim(ξ, ℓ, T, N, H, inds, with_halos)
 end
 
 #####
-##### Dimension name generator (the default one)
+##### Dimension name generators
 #####
+
+function suffixed_dim_name_generator(var_name, grid::AbstractGrid{FT, TX}, LX, LY, LZ, dim::Val{:x}; connector="_", location_letters) where {FT, TX}
+    if TX == Flat || isnothing(LX)
+        return ""
+    else
+        return "$(var_name)" * connector * location_letters
+    end
+end
+
+function suffixed_dim_name_generator(var_name, grid::AbstractGrid{FT, TX, TY}, LX, LY, LZ, dim::Val{:y}; connector="_", location_letters) where {FT, TX, TY}
+    if TY == Flat || isnothing(LY)
+        return ""
+    else
+        return "$(var_name)" * connector * location_letters
+    end
+end
+
+function suffixed_dim_name_generator(var_name, grid::AbstractGrid{FT, TX, TY, TZ}, LX, LY, LZ, dim::Val{:z}; connector="_", location_letters) where {FT, TX, TY, TZ}
+    if TZ == Flat || isnothing(LZ)
+        return ""
+    else
+        return "$(var_name)" * connector * location_letters
+    end
+end
+
+suffixed_dim_name_generator(var_name, ::StaticVerticalDiscretization, LX, LY, LZ, dim::Val{:z}; connector="_", location_letters) = var_name * connector * location_letters
 
 loc2letter(::Face) = "f"
 loc2letter(::Center) = "c"
 loc2letter(::Nothing) = ""
 
-function default_dim_name(var_name, ::AbstractGrid{FT, TX}, LX, LY, LZ, ::Val{:x}) where {FT, TX}
-    if TX == Flat || isnothing(LX)
-        return ""
-    else
-        return "$(var_name)_" * loc2letter(LX)
-    end
-end
+minimal_location_string(::AbstractGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(LX)
+minimal_location_string(::AbstractGrid, LX, LY, LZ, ::Val{:y}) = loc2letter(LY)
+minimal_location_string(::AbstractGrid, LX, LY, LZ, ::Val{:z}) = loc2letter(LZ)
 
-function default_dim_name(var_name, ::AbstractGrid{FT, TX, TY}, LX, LY, LZ, ::Val{:y}) where {FT, TX, TY}
-    if TY == Flat || isnothing(LY)
-        return ""
-    else
-        return "$(var_name)_" * loc2letter(LY)
-    end
-end
+minimal_location_string(::LatitudeLongitudeGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(LX) * loc2letter(LY)
+minimal_location_string(::LatitudeLongitudeGrid, LX, LY, LZ, ::Val{:y}) = loc2letter(LX) * loc2letter(LY)
 
-function default_dim_name(var_name, ::AbstractGrid{FT, TX, TY, TZ}, LX, LY, LZ, ::Val{:z}) where {FT, TX, TY, TZ}
-    if TZ == Flat || isnothing(LZ)
-        return ""
-    else
-        return "$(var_name)_" * loc2letter(LZ)
-    end
-end
+minimal_location_string(grid, LX, LY, LZ, dim) = loc2letter(LX) * loc2letter(LY) * loc2letter(LZ)
+minimal_location_string(::StaticVerticalDiscretization, LX, LY, LZ, dim::Val{:z}) = loc2letter(LZ)
 
-function default_dim_name(var_name, ::LatitudeLongitudeGrid{FT, TX}, LX, LY, LZ, ::Val{:x}) where {FT, TX}
-    if TX == Flat || isnothing(LX)
-        return ""
-    else
-        return "$(var_name)_" * loc2letter(LX) * loc2letter(LY)
-    end
-end
 
-function default_dim_name(var_name, ::LatitudeLongitudeGrid{FT, TX, TY}, LX, LY, LZ, ::Val{:y}) where {FT, TX, TY}
-    if TY == Flat || isnothing(LY)
-        return ""
-    else
-        return "$(var_name)_" * loc2letter(LX) * loc2letter(LY)
-    end
-end
+minimal_dim_name(var_name, grid, LX, LY, LZ, dim) = suffixed_dim_name_generator(var_name, grid, LX, LY, LZ, dim,
+                                                                                connector="_", location_letters=minimal_location_string(grid, LX, LY, LZ, dim))
 
-default_dim_name(var_name, ::StaticVerticalDiscretization, LX, LY, LZ, ::Val{:z}) = "$(var_name)_" * loc2letter(LZ)
-
-default_dim_name(var_name, grid, LX, LY, LZ, dim) = "$(var_name)_" * loc2letter(LX) * loc2letter(LY) * loc2letter(LZ)
-
-default_dim_name(var_name, grid::ImmersedBoundaryGrid, args...) = default_dim_name(var_name, grid.underlying_grid, args...)
+minimal_dim_name(var_name, grid::ImmersedBoundaryGrid, args...) = minimal_dim_name(var_name, grid.underlying_grid, args...)
 
 #####
 ##### Gathering of grid dimensions
@@ -770,7 +766,7 @@ end
                        deflatelevel = 0,
                        part = 1,
                        file_splitting = NoFileSplitting(),
-                       dimension_name_generator = default_dim_name)
+                       dimension_name_generator = minimal_dim_name)
 
 Construct a `NetCDFOutputWriter` that writes `(label, output)` pairs in `outputs` to a NetCDF file.
 The `outputs` can be a `Dict` or `NamedTuple` where each `label` is a string and each `output` is
@@ -861,7 +857,7 @@ Optional keyword arguments
                               either `Val(:x)`, `Val(:y)`, or `Val(:z)` that returns a string corresponding
                               to the name of the dimension `var_name` on `grid` with location `(LX, LY, LZ)`
                               along `dim`. This advanced option can be used to rename dimensions and variables
-                              to satisfy certain naming conventions. Default: `default_dim_name`.
+                              to satisfy certain naming conventions. Default: `minimal_dim_name`.
 
 Examples
 ========
@@ -979,7 +975,7 @@ function NetCDFOutputWriter(model, outputs;
                             deflatelevel = 0,
                             part = 1,
                             file_splitting = NoFileSplitting(),
-                            dimension_name_generator = default_dim_name)
+                            dimension_name_generator = minimal_dim_name)
 
     if with_halos && indices != (:, :, :)
         throw(ArgumentError("If with_halos=true then you cannot pass indices: $indices"))
