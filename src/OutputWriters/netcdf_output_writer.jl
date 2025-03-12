@@ -1021,7 +1021,6 @@ function NetCDFOutputWriter(model, outputs;
         end
     end
 
-    outputs = dictify(outputs)
     outputs = Dict(string(name) => construct_output(outputs[name], grid, indices, with_halos) for name in keys(outputs))
 
     output_attributes = dictify(output_attributes)
