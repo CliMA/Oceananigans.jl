@@ -140,7 +140,7 @@ end
 
         # Exclude the singularities from the computation! (They are definitely not orthogonal)
         tripolar_grid      = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
-        angle_tripolar     = on_architecture.(arch, zeros(size(tripolar_grid)...))
+        angle_tripolar     = on_architecture(arch, zeros(size(tripolar_grid)...))
         cartesian_nodes, _ = get_cartesian_nodes_and_vertices(tripolar_grid.underlying_grid, Face(), Face(), Center())
         xF, yF, zF = cartesian_nodes
         xF = on_architecture(arch, xF)
