@@ -115,7 +115,10 @@ end
 
         angle_cubed_sphere = on_architecture(arch, zeros(size(cubed_sphere_panel)...))
         cartesian_nodes, _ = get_cartesian_nodes_and_vertices(cubed_sphere_panel, Face(), Face(), Center())
-        xF, yF, zF = on_architecture.(arch, cartesian_nodes)
+        xF, yF, zF = cartesian_nodes
+        xF = on_architecture(arch, xF)
+        yF = on_architecture(arch, yF)
+        zF = on_architecture(arch, zF)
         Nx, Ny, _  = size(cubed_sphere_panel)
 
         # Exclude the corners from the computation! (They are definitely not orthogonal)
@@ -139,7 +142,10 @@ end
         tripolar_grid      = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
         angle_tripolar     = on_architecture.(arch, zeros(size(tripolar_grid)...))
         cartesian_nodes, _ = get_cartesian_nodes_and_vertices(tripolar_grid.underlying_grid, Face(), Face(), Center())
-        xF, yF, zF = on_architecture.(arch, cartesian_nodes)
+        xF, yF, zF = cartesian_nodes
+        xF = on_architecture(arch, xF)
+        yF = on_architecture(arch, yF)
+        zF = on_architecture(arch, zF)
         Nx, Ny, _  = size(tripolar_grid)
 
         launch!(arch, tripolar_grid, (Nx-1, Ny-1), compute_nonorthogonality_angle!, angle_tripolar, tripolar_grid, xF, yF, zF)
