@@ -7,6 +7,7 @@ env:
   JULIA_NUM_THREADS: 8
   XLA_REACTANT_GPU_PREALLOCATE: false
   CUDA_VISIBLE_DEVICES: "3" # General device used for GPU testing
+  OFFSETARRAYS: string("https://github.com/simone-silvestri/OffsetArrays.jl")
 
 steps:
   - label: "🏕️ initialize tartarus environment"
@@ -21,6 +22,7 @@ steps:
       # Download julia binaries
       - "wget -N -P $TARTARUS_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz"
       - "tar xf $TARTARUS_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $TARTARUS_HOME"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.add($OFFSETARRAYS)'"
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
