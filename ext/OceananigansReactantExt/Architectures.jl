@@ -3,7 +3,10 @@ module Architectures
 using Reactant
 using Oceananigans
 
-import Oceananigans.Architectures: device, architecture, array_type, on_architecture, unified_array, ReactantState, device_copy_to!
+using Reactant: AnyConcreteRArray
+
+import Oceananigans.Architectures: device, architecture, array_type, on_architecture
+import Oceananigans.Architectures: unified_array, ReactantState, device_copy_to!
 
 const ReactantKernelAbstractionsExt = Base.get_extension(
     Reactant, :ReactantKernelAbstractionsExt
@@ -23,6 +26,8 @@ to_reactant_sharding(s::Sharding.AbstractSharding) = s
 to_reactant_sharding(::T) where {T} = error("Unsupported sharding type $T")
 
 on_architecture(::ReactantState, a::Reactant.AnyTracedRArray) = a
+on_architecture(::CPU, a::Reactant.AnyConcretePJRTArray) = Array(a)
+on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:Reactant.AnyConcretePJRTArray}) = Array(a)
 
 const ArraysToRArray = Union{Array,
                              Reactant.AnyConcretePJRTArray,
