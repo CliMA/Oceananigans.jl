@@ -356,6 +356,8 @@ function getindex(fts::InMemoryFTS, n::Int)
     m = memory_index(fts, n)
     underlying_data = view(parent(fts), :, :, :, m)
     data = offset_data(underlying_data, fts.grid, location(fts), fts.indices)
+    status = FixedTime(fts.times[n])
 
-    return Field(location(fts), fts.grid; data, fts.boundary_conditions, fts.indices)
+    return Field(location(fts), fts.grid; data, fts.boundary_conditions, fts.indices, nothing, status)
 end
+
