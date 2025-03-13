@@ -218,7 +218,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
     buoyancy = model.buoyancy
     clock = model.clock
     top_tracer_bcs = get_top_tracer_bcs(model.buoyancy.formulation, tracers)
-    Δt = model.clock.time - diffusivities.previous_compute_time[]
+    Δt = 60 # temporary hack # model.clock.time - diffusivities.previous_compute_time[]
     diffusivities.previous_compute_time[] = model.clock.time
 
     if isfinite(model.clock.last_Δt) # Check that we have taken a valid time-step first.
