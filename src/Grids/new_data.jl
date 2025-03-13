@@ -73,7 +73,7 @@ function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_ind
     end
 
     ii = (ii..., extra_ii...)
-    ii = Tuple(reduce_precision(i) for i in ii)
+    ii = reduce_precision(ii)
 
     return OffsetArray(underlying_data, ii...)
 end
