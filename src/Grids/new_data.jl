@@ -32,13 +32,15 @@ offset_indices(::Nothing, topo, N, H, ::UnitRange) = 1:1
 instantiate(T::Type) = T()
 instantiate(t) = t
 
-function reduce_precision(ii::AbstractRange) 
-    IntTypes = [find_minimum_precision(i) for i in ii]
-    IntType = Int64 ∈ IntTypes ? Int64 : (Int32 ∈ IntTypes ? Int32 : (Int16 ∈ IntTypes ? Int16 : Int8))
-    return convert(IntType, ii[1] - 1)
+convert_precision(IntType, i) = convert(IntType, i)
+
+function convert_precision(IntType, r::UnitRange) 
+    i_start = convert(IntType, r[1])
+    i_end   = convert(IntType, r[end])
+    return UnitRange(i_start, i_end)
 end
 
-reduce_precision(ii::Integer) = convert(find_minimum_precision(ii), ii)
+convert_precision(IntType, t::Tuple) = Tuple(convert_precision(IntType, i) for i in t)
 
 function find_minimum_precision(ii::Integer)
     maxInt8  = typemax(Int8)
@@ -47,6 +49,16 @@ function find_minimum_precision(ii::Integer)
     IntType = ii > maxInt8 ? (ii > maxInt16 ? (ii > maxInt32 ? Int64 : Int32) : Int16) : Int8
     return IntType
 end
+
+find_minimum_precision(ii::UnitRange) = find_minimum_precision(first(ii))
+    
+function find_minimum_precision(ii::Union{AbstractArray, Tuple, AbstractRange})
+    IntTypes = [find_minimum_precision(i) for i in ii]
+    IntType = Int64 ∈ IntTypes ? Int64 : (Int32 ∈ IntTypes ? Int32 : (Int16 ∈ IntTypes ? Int16 : Int8))
+    return IntType
+end
+
+reduce_precision(ii) = convert_precision(find_minimum_precision(ii), ii)
 
 # The type parameter for indices helps / encourages the compiler to fully type infer `offset_data`
 function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_indices(length(loc))) where {A<:AbstractArray, T}
