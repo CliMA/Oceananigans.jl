@@ -34,10 +34,11 @@ instantiate(t) = t
 
 converted_offset(IntType, i) = convert(IntType, i)
 
+# A unit range is converted to an integer offset corresponding
+# to the first index of the range minus one.
 function converted_offset(IntType, r::UnitRange) 
     i_start = convert(IntType, r[1])
-    i_end   = convert(IntType, r[end])
-    return i_start - 1
+    return i_start - IntType(1)
 end
 
 converted_offset(IntType, t::Tuple) = Tuple(converted_offset(IntType, i) for i in t)
