@@ -121,14 +121,15 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     @info "  After running 3 time steps, the non-reactant model:"
     @test iteration(simulation) == stop_iteration
     @test time(simulation) == 3Δt
-    
+
     # Reactant time now:
     r_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false)
 
-    Nsteps = ConcretePJRTNumber(3)
+    Nsteps = ConcreteRNumber(3)
     @time "  Compiling r_run!:" begin
         r_first_time_step! = @compile sync=true Oceananigans.TimeSteppers.first_time_step!(r_model, Δt)
         r_time_step! = @compile sync=true Oceananigans.TimeSteppers.time_step!(r_model, Δt)
+        r_time_step_sim! = @compile sync=true Oceananigans.TimeSteppers.time_step!(r_simulation)
         #r_time_step_for! = @compile sync=true  OceananigansReactantExt.time_step_for!(r_simulation, Nsteps)
     end
 
@@ -166,6 +167,14 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     @test iteration(r_simulation) == 5
     @test time(r_simulation) == 5Δt
 
+    @test try
+        r_time_step_sim!(r_simulation)
+        true
+    catch err
+        false
+        throw(err)
+    end
+
     return r_simulation
 end
 
@@ -185,10 +194,21 @@ end
     arch = ReactantState()
     grid = RectilinearGrid(arch; size=(4, 4, 4), extent=(1, 1, 1))
     c = CenterField(grid)
-    @test parent(c) isa Reactant.ConcretePJRTArray
+    @test parent(c) isa Reactant.ConcreteRArray
+
+    cpu_grid = on_architecture(CPU(), grid)
+    @test architecture(cpu_grid) isa CPU
+
+    cpu_c = on_architecture(CPU(), c)
+    @test parent(cpu_c) isa Array
+    @test architecture(cpu_c.grid) isa CPU
 
     @info "  Testing field set! with a number..."
     set!(c, 1)
+    @test all(c .≈ 1)
+
+    @info "  Testing field set! with a function..."
+    set!(c, (x, y, z) -> 1)
     @test all(c .≈ 1)
 
     @info "  Testing simple kernel launch!..."
