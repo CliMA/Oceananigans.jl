@@ -182,6 +182,7 @@ CUDA.allowscalar() do
         reset_cuda_if_necessary()
         include("test_distributed_transpose.jl")
         include("test_distributed_poisson_solvers.jl")
+        include("test_distributed_macros.jl")
     end
 
     if group == :distributed_hydrostatic_model || group == :all
@@ -218,6 +219,13 @@ CUDA.allowscalar() do
     if group == :vertical_coordinate || group == :all
         @testset "Vertical coordinate tests" begin
             include("test_zstar_coordinate.jl")
+        end
+    end
+
+    # Tests for Metal extension
+    if group == :distributed_tripolar || group == :all
+        @testset "Distributed tripolar tests" begin
+            include("test_distributed_tripolar.jl")
         end
     end
 
