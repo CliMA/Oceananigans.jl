@@ -40,6 +40,9 @@ end
 function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt;
                     callbacks=[], euler=false)
 
+    # Note: Δt cannot change
+    model.clock.last_Δt = Δt
+
     #=
     # Be paranoid and update state at iteration 0
     @trace if model.clock.iteration == 0
