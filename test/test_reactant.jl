@@ -121,11 +121,11 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     @info "  After running 3 time steps, the non-reactant model:"
     @test iteration(simulation) == stop_iteration
     @test time(simulation) == 3Δt
-    
+
     # Reactant time now:
     r_simulation = Simulation(r_model; Δt, stop_iteration, verbose=false)
 
-    Nsteps = ConcretePJRTNumber(3)
+    Nsteps = ConcreteRNumber(3)
     @time "  Compiling r_run!:" begin
         r_first_time_step! = @compile sync=true Oceananigans.TimeSteppers.first_time_step!(r_model, Δt)
         r_time_step! = @compile sync=true Oceananigans.TimeSteppers.time_step!(r_model, Δt)
@@ -194,7 +194,7 @@ end
     arch = ReactantState()
     grid = RectilinearGrid(arch; size=(4, 4, 4), extent=(1, 1, 1))
     c = CenterField(grid)
-    @test parent(c) isa Reactant.ConcretePJRTArray
+    @test parent(c) isa Reactant.ConcreteRArray
 
     cpu_grid = on_architecture(CPU(), grid)
     @test architecture(cpu_grid) isa CPU
