@@ -1,7 +1,7 @@
 module TurbulenceClosures
 
 using Reactant
-using .Models: ReactantModel
+using ..TimeSteppers: ReactantModel
 
 import Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: update_previous_compute_time!
 
