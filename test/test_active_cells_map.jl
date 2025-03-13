@@ -1,8 +1,8 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Operators: hack_cosd
-using Oceananigans.ImmersedBoundaries: retrieve_surface_active_cells_map, 
-                                       retrieve_interior_active_cells_map,
+using Oceananigans.ImmersedBoundaries: get_active_column_map, 
+                                       get_active_cells_map,
                                        immersed_cell
 
 function Δ_min(grid) 
@@ -70,12 +70,12 @@ Nz = 10
         end
 
         bottom_height = on_architecture(arch, bottom_height)
-        immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
+        immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map = false)
         immersed_active_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height); active_cells_map = true)
 
         @testset "Active cells map construction" begin
-            surface_active_cells_map  = retrieve_surface_active_cells_map(immersed_active_grid)
-            interior_active_cells_map = retrieve_interior_active_cells_map(immersed_active_grid, Val(:interior))
+            surface_active_cells_map  = get_active_column_map(immersed_active_grid)
+            interior_active_cells_map = get_active_cells_map(immersed_active_grid, Val(:interior))
 
             surface_active_cells_map  = on_architecture(CPU(), surface_active_cells_map) 
             interior_active_cells_map = on_architecture(CPU(), interior_active_cells_map) 

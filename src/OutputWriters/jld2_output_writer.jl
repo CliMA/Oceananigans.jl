@@ -157,6 +157,7 @@ function JLD2OutputWriter(model, outputs; filename, schedule,
 
     mkpath(dir)
     filename = auto_extension(filename, ".jld2")
+    filename = with_architecture_suffix(architecture(model), filename, ".jld2")
     filepath = abspath(joinpath(dir, filename))
 
     initialize!(file_splitting, model)

@@ -1,7 +1,7 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 authors = ["Climate Modeling Alliance and contributors"]
-version = "0.95.17"
+version = "0.95.26"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -42,16 +42,17 @@ Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 MakieCore = "20f20a25-4f0e-4fdf-b5d1-57303727442b"
 Reactant = "3c362404-f566-11ee-1572-e11a4b42c853"
+ConstructionBase = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
 
 [extensions]
 OceananigansEnzymeExt = "Enzyme"
 OceananigansMakieExt = ["MakieCore", "Makie"]
 OceananigansMetalExt = "Metal"
-OceananigansReactantExt = ["Reactant", "KernelAbstractions"]
+OceananigansReactantExt = ["Reactant", "KernelAbstractions", "ConstructionBase"]
 
 [compat]
 Adapt = "4.1.1"
-CUDA = "5"
+CUDA = "5.7"
 Crayons = "4"
 CubedSphere = "0.2, 0.3"
 Dates = "1.9"

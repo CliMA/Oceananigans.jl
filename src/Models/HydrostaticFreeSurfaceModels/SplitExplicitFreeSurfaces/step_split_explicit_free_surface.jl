@@ -12,7 +12,7 @@ using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
     
-    store_previous_free_surface!(timestepper, i, j, k_top, η)
+    cache_previous_free_surface!(timestepper, i, j, k_top, η)
     @inbounds  η[i, j, k_top] -= Δτ * (δxTᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
                                        δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) / Azᶜᶜᶠ(i, j, k_top, grid)
 end
@@ -25,8 +25,8 @@ end
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
-    store_previous_velocities!(timestepper, i, j, 1, U)
-    store_previous_velocities!(timestepper, i, j, 1, V)
+    cache_previous_velocities!(timestepper, i, j, 1, U)
+    cache_previous_velocities!(timestepper, i, j, 1, V)
 
     Hᶠᶜ = column_depthᶠᶜᵃ(i, j, k_top, grid, η)
     Hᶜᶠ = column_depthᶜᶠᵃ(i, j, k_top, grid, η)

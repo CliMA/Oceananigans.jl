@@ -22,6 +22,7 @@ model = HydrostaticFreeSurfaceModel(; grid,
                                    buoyancy = BuoyancyTracer(),
                                     closure = nothing, 
                                     tracers = :b,
+                                timestepper = :SplitRungeKutta3,
                         vertical_coordinate = Oceananigans.Models.ZStar(),
                                free_surface = SplitExplicitFreeSurface(grid; substeps = 10))
 
@@ -35,7 +36,7 @@ set!(model, b = bᵢ)
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_iteration = 10000, stop_time = 17hours) 
+simulation = Simulation(model; Δt, stop_time = 17hours) 
 
 Δz = zspacings(grid, Center(), Center(), Center())
 ∫b_init = sum(model.tracers.b * Δz) / sum(Δz)
