@@ -493,7 +493,7 @@ end
     @testset "Time stepping HydrostaticFreeSurfaceModel" begin
         for arch in archs 
             @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
-            grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
+            grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Bounded), size=(8, 8, 8), extent=(1, 2, 3))
             model = HydrostaticFreeSurfaceModel(; grid)
 
             time_step!(model, 1)
