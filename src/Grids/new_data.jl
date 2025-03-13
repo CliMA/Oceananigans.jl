@@ -41,6 +41,8 @@ function converted_offset(IntType, r::UnitRange)
     return i_start - IntType(1)
 end
 
+# Do not convert a `OneTo` range
+converted_offset(IntType, b::Base.OneTo) = b
 converted_offset(IntType, t::Tuple) = Tuple(converted_offset(IntType, i) for i in t)
 
 function find_minimum_precision(ii::Integer)
