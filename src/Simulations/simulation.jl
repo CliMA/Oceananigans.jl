@@ -25,6 +25,21 @@ mutable struct Simulation{ML, DT, ST, DI, OW, CB}
     minimum_relative_step :: Float64
 end
 
+add_default_callbacks!(::Nothing, model) = nothing
+
+function add_default_callbacks!(callbacks, model)
+   callbacks[:stop_time_exceeded] = Callback(stop_time_exceeded)
+   callbacks[:stop_iteration_exceeded] = Callback(stop_iteration_exceeded)
+   callbacks[:wall_time_limit_exceeded] = Callback(wall_time_limit_exceeded)
+
+   nan_checker = default_nan_checker(model)
+   if !isnothing(nan_checker) # otherwise don't bother
+       callbacks[:nan_checker] = Callback(nan_checker, IterationInterval(100))
+   end
+
+   return nothing
+end
+
 """
     Simulation(model; Δt,
                verbose = true,
@@ -57,6 +72,9 @@ function Simulation(model; Δt,
                     stop_time = Inf,
                     wall_time_limit = Inf,
                     align_time_step = true,
+                    diagnostics = OrderedDict{Symbol, AbstractDiagnostic}(),
+                    output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),
+                    callbacks = OrderedDict{Symbol, Callback}(),
                     minimum_relative_step = 0)
 
    if verbose && stop_iteration == Inf && stop_time == Inf && wall_time_limit == Inf
@@ -65,19 +83,6 @@ function Simulation(model; Δt,
    end
 
    Δt = validate_Δt(Δt, architecture(model))
-
-   diagnostics = OrderedDict{Symbol, AbstractDiagnostic}()
-   output_writers = OrderedDict{Symbol, AbstractOutputWriter}()
-   callbacks = OrderedDict{Symbol, Callback}()
-
-   callbacks[:stop_time_exceeded] = Callback(stop_time_exceeded)
-   callbacks[:stop_iteration_exceeded] = Callback(stop_iteration_exceeded)
-   callbacks[:wall_time_limit_exceeded] = Callback(wall_time_limit_exceeded)
-
-   nan_checker = default_nan_checker(model)
-   if !isnothing(nan_checker) # otherwise don't bother
-       callbacks[:nan_checker] = Callback(nan_checker, IterationInterval(100))
-   end
 
    # Convert numbers to floating point; otherwise preserve type (eg for DateTime types)
    #    TODO: implement TT = timetype(model) and FT = eltype(model)
