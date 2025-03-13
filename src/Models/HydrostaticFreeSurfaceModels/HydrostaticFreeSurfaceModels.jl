@@ -151,6 +151,6 @@ include("slice_ensemble_model_mode.jl")
 ##### Some diagnostics
 #####
 
-include("vertical_vorticity_field.jl")
+include("vertical_vorticity.jl")
 
 end # module
