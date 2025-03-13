@@ -119,7 +119,11 @@ function save_field_time_series(fts; path=fts.path, name=fts.name, overwrite_exi
     
     LX, LY, LZ = location(fts)
     ondisk_fts = FieldTimeSeries{LX, LY, LZ}(grid, times;
-                                             backend = OnDisk(), path, name)
+                                             backend = OnDisk(), 
+                                             path, 
+                                             name,
+                                             indices = fts.indices,
+                                             boundary_conditions = fts.boundary_conditions)
 
     Nt = length(times)
     for n = 1:Nt
