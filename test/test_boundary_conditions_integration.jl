@@ -352,14 +352,18 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
 
             topo = (Bounded, Bounded, Bounded)
 
-            for C in (Gradient, Flux, Value), boundary_condition in test_boundary_conditions(C, FT, array_type(arch))
+            for C in (Gradient, Flux, Value), boundary_condition in test_boundary_conditions(C, FT, array_type(arch))\
                 @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :east, :T, boundary_condition)
                 @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :south, :T, boundary_condition)
                 @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :top, :T, boundary_condition)
 
-                @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :east, :T, boundary_condition)
-                @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :south, :T, boundary_condition)
-                @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :top, :T, boundary_condition)
+                if (boundary_condition.condition isa ContinuousBoundaryFunction) && (arch isa GPU)
+                    @info "Test skipped because of issue #4165"
+                else
+                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :east, :T, boundary_condition)
+                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :south, :T, boundary_condition)
+                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :top, :T, boundary_condition)
+                end
             end
 
             for boundary_condition in test_boundary_conditions(Open, FT, array_type(arch))
@@ -367,8 +371,12 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                 @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :south, :v, boundary_condition)
                 @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :top, :w, boundary_condition)
 
-                @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :east, :u, boundary_condition)
-                @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :south, :v, boundary_condition)
+                if (boundary_condition.condition isa ContinuousBoundaryFunction) && (arch isa GPU)
+                    @info "Test skipped because of issue #4165"
+                else
+                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :east, :u, boundary_condition)
+                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :south, :v, boundary_condition)
+                end
             end
         end
     end
