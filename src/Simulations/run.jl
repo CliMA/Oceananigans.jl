@@ -218,6 +218,10 @@ function initialize!(sim::Simulation)
         initialize!(activity.schedule, sim.model)
     end
 
+    for callback in sim.callbacks
+        initialize!(callback, sim)
+    end
+
     # Reset! the model time-stepper, evaluate all diagnostics, and write all output at first iteration
     if model.clock.iteration == 0
         reset!(timestepper(model))
