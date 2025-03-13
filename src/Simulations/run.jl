@@ -119,8 +119,8 @@ end
 const ModelCallsite = Union{TendencyCallsite, UpdateStateCallsite}
 
 get_model_callbacks(::Nothing) = []
-get_model_callbacks(callbacks) =
-    Tuple(cb for cb in values(callbacks) if cb.callsite isa ModelCallsite)
+get_model_callbacks(callbacks) = Tuple(cb for cb in values(callbacks) if cb.callsite isa ModelCallsite)
+    
 
 """ Step `sim`ulation forward by Δt. """
 function time_step!(sim::Simulation, Δt)
@@ -130,8 +130,9 @@ function time_step!(sim::Simulation, Δt)
 end
 
 get_scheduled_activities(::Nothing) = NamedTuple()
+get_scheduled_activities(d::AbstractDict) = values(d)
 
-function get_scheduled_activities(sim)
+function get_scheduled_activities(sim::Simulation)
     unflattened = tuple(get_scheduled_activities(sim.diagnostics),
                         get_scheduled_activities(sim.callbacks),
                         get_scheduled_activities(sim.output_writers))
