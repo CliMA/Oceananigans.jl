@@ -77,10 +77,25 @@ end
 
 function run_basic_simulation_tests(arch)
     grid  = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid)
-    simulation = Simulation(model, Δt=3, stop_iteration=1)
+    model = NonhydrostaticModel(; grid)
+    simulation = Simulation(model, Δt=3, stop_iteration=2,
+                            output_writers = nothing,
+                            diagnostics = nothing,
+                            callbacks = nothing)
+
+    @test simulation isa Simulation
+    @test isnothing(simulation.callbacks)
+    @test isnothing(simulation.diagnostics)
+    @test isnothing(simulation.output_writers)
+
+    run!(simulation)
+    @test simulation isa Simulation
+    @test iteration(simulation) == 2
+    @test time(simulation) == 6
 
     # Just make sure we can construct a simulation without any errors.
+    model = NonhydrostaticModel(; grid)
+    simulation = Simulation(model, Δt=3, stop_iteration=2)
     @test simulation isa Simulation
 
     simulation.running = true
