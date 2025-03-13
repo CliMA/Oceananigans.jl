@@ -222,6 +222,13 @@ CUDA.allowscalar() do
         end
     end
 
+    # Tests for Metal extension
+    if group == :distributed_tripolar || group == :all
+        @testset "Distributed tripolar tests" begin
+            include("test_distributed_tripolar.jl")
+        end
+    end
+
     # Tests for Enzyme extension
     if group == :enzyme || group == :all
         @testset "Enzyme extension tests" begin
