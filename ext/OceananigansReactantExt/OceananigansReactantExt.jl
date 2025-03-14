@@ -22,6 +22,9 @@ using .Fields
 include("TimeSteppers.jl")
 using .TimeSteppers
 
+include("Models.jl")
+using .Models
+
 include("Simulations/Simulations.jl")
 using .Simulations
 
