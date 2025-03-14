@@ -33,7 +33,7 @@ update_biogeochemical_state!(bgc, model) = nothing
 """
     AbstractBiogeochemistry
 
-Abstract type for biogeochemical models. To define a biogeochemcial relaionship
+Abstract type for biogeochemical models. To define a biogeochemcial relationship
 the following functions must have methods defined where `BiogeochemicalModel`
 is a subtype of `AbstractBioeochemistry`:
 
