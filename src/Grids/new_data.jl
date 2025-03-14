@@ -56,7 +56,7 @@ end
 find_minimum_precision(ii::UnitRange) = find_minimum_precision(first(ii))
     
 function find_minimum_precision(ii::Union{AbstractArray, Tuple, AbstractRange})
-    IntTypes = [find_minimum_precision(i) for i in ii]
+    IntTypes = Tuple(find_minimum_precision(i) for i in ii)
     IntType = Int64 ∈ IntTypes ? Int64 : (Int32 ∈ IntTypes ? Int32 : (Int16 ∈ IntTypes ? Int16 : Int8))
     return IntType
 end
