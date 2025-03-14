@@ -2,11 +2,7 @@ using Oceananigans.Fields: location, instantiated_location
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.ImmersedBoundaries: get_active_cells_map, get_active_column_map
 
-<<<<<<< HEAD
-import Oceananigans.TimeSteppers: split_rk3_substep!, _split_rk3_substep_field!, store_fields!
-=======
 import Oceananigans.TimeSteppers: split_rk3_substep!, _split_rk3_substep_field!, cache_previous_fields!
->>>>>>> origin/main
 
 function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζⁿ)
     
