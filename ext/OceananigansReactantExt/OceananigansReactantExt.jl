@@ -28,6 +28,9 @@ using .Models
 include("Simulations/Simulations.jl")
 using .Simulations
 
+include("TurbulenceClosures.jl")
+using .TurbulenceClosures
+
 #####
 ##### Telling Reactant how to construct types
 #####
