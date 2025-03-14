@@ -94,6 +94,14 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     set!(model, u=ui, v=vi)
     set!(r_model, u=ui, v=vi)
 
+    # They will not be equal because r_model halos are not
+    # filled during set!
+    @test !(parent(u) ≈ parent(ru))
+    @test !(parent(v) ≈ parent(rv))
+    @test !(parent(w) ≈ parent(rw))
+
+    Oceananigans.TimeSteppers.update_state!(r_model)
+
     u, v, w = model.velocities
     ru, rv, rw = r_model.velocities
 
