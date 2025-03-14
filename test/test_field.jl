@@ -2,12 +2,14 @@ include("dependencies_for_runtests.jl")
 
 using Statistics
 
-using Oceananigans.Grids: total_length
 using Oceananigans.Fields: ReducedField, has_velocities
 using Oceananigans.Fields: VelocityFields, TracerFields, interpolate, interpolate!
 using Oceananigans.Fields: reduced_location
-using Oceananigans.Fields: fractional_indices, interpolator
+using Oceananigans.Fields: FractionalIndices, interpolator
+using Oceananigans.Fields: convert_to_0_360, convert_to_λ₀_λ₀_plus360
 using Oceananigans.Grids: ξnode, ηnode, rnode
+using Oceananigans.Grids: total_length
+using Oceananigans.Grids: λnode
 
 using Random
 using CUDA: @allowscalar
@@ -184,6 +186,24 @@ function run_field_interpolation_tests(grid)
         end
     end
 
+    @info "Testing the convert functions"
+    for n in 1:30
+        @test convert_to_0_360(- 10.e0^(-n)) > 359
+        @test convert_to_0_360(- 10.f0^(-n)) > 359
+        @test convert_to_0_360(10.e0^(-n))   < 1
+        @test convert_to_0_360(10.f0^(-n))   < 1
+    end
+
+    # Generating a random longitude left bound between -1000 and 1000
+    λs₀ = rand(1000) .* 2000 .- 1000
+
+    # Generating a random interpolation longitude
+    λsᵢ = rand(1000) .* 2000 .- 1000
+
+    for λ₀ in λs₀, λᵢ in λsᵢ
+        @test λ₀ ≤ convert_to_λ₀_λ₀_plus360(λᵢ, λ₀) ≤ λ₀ + 360
+    end
+
     # Check interpolation on Windowed fields
     wf = ZFaceField(grid; indices=(:, :, grid.Nz+1))
     If = Field{Center, Center, Nothing}(grid)
@@ -193,7 +213,42 @@ function run_field_interpolation_tests(grid)
     CUDA.@allowscalar begin
         @test all(interior(wf) .≈ interior(If))
     end
+
+    # interpolation between fields on latitudelongitude grids with different longitudes
+    grid1 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=(    0,       360), latitude=(-90, 90), z=(0, 1))
+    grid2 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=( -180,       180), latitude=(-90, 90), z=(0, 1))
+    grid3 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=(-1080, -1080+360), latitude=(-90, 90), z=(0, 1))
+    grid4 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=(  180,       540), latitude=(-90, 90), z=(0, 1))
     
+    f1 = CenterField(grid1)
+    f2 = CenterField(grid2)
+    f3 = CenterField(grid3)
+    f4 = CenterField(grid4)
+
+    set!(f1, (λ, y, z) -> λ)
+    fill_halo_regions!(f1)
+    interpolate!(f2, f1)
+    interpolate!(f3, f1)
+    interpolate!(f4, f1)
+
+    @test all(interior(f2) .≈ map(convert_to_0_360, λnodes(grid2, Center())))
+    @test all(interior(f3) .≈ map(convert_to_0_360, λnodes(grid3, Center())))
+    @test all(interior(f4) .≈ map(convert_to_0_360, λnodes(grid4, Center())))
+
+    # now interpolate back
+    fill_halo_regions!(f2)
+    fill_halo_regions!(f3)
+    fill_halo_regions!(f4)
+    
+    interpolate!(f1, f2)
+    @test all(interior(f1) .≈ λnodes(grid1, Center()))
+
+    interpolate!(f1, f3)
+    @test all(interior(f1) .≈ λnodes(grid1, Center()))
+
+    interpolate!(f1, f4)
+    @test all(interior(f1) .≈ λnodes(grid1, Center()))
+
     return nothing
 end
 
@@ -437,11 +492,11 @@ end
 
                 for X in Xs
                     (x, y, z)  = X 
-                    fi, fj, fk = @allowscalar fractional_indices(X, grid, loc, loc, loc)
+                    fi = @allowscalar FractionalIndices(X, grid, loc, loc, loc)
 
-                    i⁻, i⁺, _ = interpolator(fi)
-                    j⁻, j⁺, _ = interpolator(fj)
-                    k⁻, k⁺, _ = interpolator(fk)
+                    i⁻, i⁺, _ = interpolator(fi.i)
+                    j⁻, j⁺, _ = interpolator(fi.j)
+                    k⁻, k⁺, _ = interpolator(fi.k)
 
                     x⁻ = @allowscalar ξnode(i⁻, j⁻, k⁻, grid, loc, loc, loc)
                     y⁻ = @allowscalar ηnode(i⁻, j⁻, k⁻, grid, loc, loc, loc)

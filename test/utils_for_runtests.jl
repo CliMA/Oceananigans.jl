@@ -43,12 +43,12 @@ function test_architectures()
     # `Partition(x = 2, y = 2)`, and different fractional subdivisions in x, y and xy
     if mpi_test
         if MPI.Initialized() && MPI.Comm_size(MPI.COMM_WORLD) == 4
-            return (Distributed(child_arch; partition = Partition(4)),
-                    Distributed(child_arch; partition = Partition(1, 4)),
-                    Distributed(child_arch; partition = Partition(2, 2)),
-                    Distributed(child_arch; partition = Partition(x = Fractional(1, 2, 3, 4))),
-                    Distributed(child_arch; partition = Partition(y = Fractional(1, 2, 3, 4))),
-                    Distributed(child_arch; partition = Partition(x = Fractional(1, 2), y = Equal())))
+            return (Distributed(child_arch; partition=Partition(4)),
+                    Distributed(child_arch; partition=Partition(1, 4)),
+                    Distributed(child_arch; partition=Partition(2, 2)),
+                    Distributed(child_arch; partition=Partition(x = Fractional(1, 2, 3, 4))),
+                    Distributed(child_arch; partition=Partition(y = Fractional(1, 2, 3, 4))),
+                    Distributed(child_arch; partition=Partition(x = Fractional(1, 2), y = Equal())))
         else
             return throw("The MPI partitioning is not correctly configured.")
         end

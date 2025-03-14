@@ -103,7 +103,7 @@ SeawaterBuoyancy{Float64}:
 └── equation_of_state: BoussinesqEquationOfState{Float64}
 ```
 """
-function SeawaterBuoyancy(FT = Float64;
+function SeawaterBuoyancy(FT = Oceananigans.defaults.FloatType;
                           gravitational_acceleration = g_Earth,
                           equation_of_state = LinearEquationOfState(FT),
                           constant_temperature = nothing,

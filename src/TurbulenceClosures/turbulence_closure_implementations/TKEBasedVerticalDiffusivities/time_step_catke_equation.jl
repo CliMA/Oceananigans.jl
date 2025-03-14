@@ -1,9 +1,9 @@
 using Oceananigans: fields
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Fields: immersed_boundary_condition
-using Oceananigans.Grids: retrieve_interior_active_cells_map
+using Oceananigans.Grids: get_active_cells_map
 using Oceananigans.BoundaryConditions: apply_x_bcs!, apply_y_bcs!, apply_z_bcs!
-using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, active_linear_index_to_tuple
+using Oceananigans.ImmersedBoundaries: get_active_cells_map, linear_index_to_tuple
 using Oceananigans.TimeSteppers: store_field_tendencies!, ab2_step_field!, implicit_step!
 using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
 using CUDA
@@ -46,7 +46,7 @@ function time_step_catke_equation!(model)
 
     FT = eltype(grid)
 
-    active_cells_map = retrieve_interior_active_cells_map(grid, Val(:interior))
+    active_cells_map = get_active_cells_map(grid, Val(:interior))
 
     for m = 1:M # substep
         if m == 1 && M != 1
@@ -84,7 +84,7 @@ end
                                                     Δτ, χ, slow_Gⁿe, G⁻e)
 
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, map)
+    i, j, k = linear_index_to_tuple(idx, map)
 
     substep_turbulent_kinetic_energy!(i, j, k, κe, Le, grid, closure,
                                       next_velocities, previous_velocities,

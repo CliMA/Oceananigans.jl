@@ -1,8 +1,12 @@
 using Oceananigans.Fields: location, instantiated_location
 using Oceananigans.TurbulenceClosures: implicit_step!
-using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, retrieve_surface_active_cells_map
+using Oceananigans.ImmersedBoundaries: get_active_cells_map, get_active_column_map
 
+<<<<<<< HEAD
 import Oceananigans.TimeSteppers: split_rk3_substep!, _split_rk3_substep_field!, store_fields!
+=======
+import Oceananigans.TimeSteppers: split_rk3_substep!, _split_rk3_substep_field!, cache_previous_fields!
+>>>>>>> origin/main
 
 function split_rk3_substep!(model::HydrostaticFreeSurfaceModel, Δt, γⁿ, ζⁿ)
     
@@ -154,12 +158,12 @@ end
 ##### 
 
 # Tracers are multiplied by the vertical coordinate scaling factor
-@kernel function _store_tracer_fields!(Ψ⁻, grid, Ψⁿ) 
+@kernel function _cache_tracer_fields!(Ψ⁻, grid, Ψⁿ) 
     i, j, k = @index(Global, NTuple)
     @inbounds Ψ⁻[i, j, k] = Ψⁿ[i, j, k] * σⁿ(i, j, k, grid, Center(), Center(), Center())
 end
 
-function store_fields!(model::HydrostaticFreeSurfaceModel)
+function cache_previous_fields!(model::HydrostaticFreeSurfaceModel)
     
     previous_fields = model.timestepper.Ψ⁻
     model_fields = prognostic_fields(model)
@@ -170,7 +174,7 @@ function store_fields!(model::HydrostaticFreeSurfaceModel)
         Ψ⁻ = previous_fields[name]
         Ψⁿ = model_fields[name]
         if name ∈ keys(model.tracers) # Tracers are stored with the grid scaling
-            launch!(arch, grid, :xyz, _store_tracer_fields!, Ψ⁻, grid, Ψⁿ)
+            launch!(arch, grid, :xyz, _cache_tracer_fields!, Ψ⁻, grid, Ψⁿ)
         else # Velocities and free surface are stored without the grid scaling
             parent(Ψ⁻) .= parent(Ψⁿ) 
         end

@@ -56,7 +56,7 @@ function set_to_function!(u, f)
     child_arch = child_architecture(u)
 
     # Determine cpu_grid and cpu_u
-    if child_arch isa GPU
+    if child_arch isa GPU || child_arch isa ReactantState
         cpu_arch = cpu_architecture(arch)
         cpu_grid = on_architecture(cpu_arch, u.grid)
         cpu_u    = Field(location(u), cpu_grid; indices = indices(u))
@@ -91,8 +91,9 @@ function set_to_function!(u, f)
     end
 
     # Transfer data to GPU if u is on the GPU
-    child_arch isa GPU && set!(u, cpu_u)
-    
+    if child_arch isa GPU || child_arch isa ReactantState
+    	set!(u, cpu_u)
+    end
     return u
 end
 

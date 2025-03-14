@@ -190,7 +190,12 @@ function test_thermal_bubble_netcdf_output(arch)
 
     nc_filepath = "test_dump_$(typeof(arch)).nc"
     isfile(nc_filepath) && rm(nc_filepath)
-    nc_writer = NetCDFOutputWriter(model, outputs, filename=nc_filepath, schedule=IterationInterval(10), verbose=true)
+    nc_writer = NetCDFOutputWriter(model, outputs,
+                                   filename = nc_filepath,
+                                   schedule = IterationInterval(10),
+                                   array_type = Array{Float64},
+                                   verbose = true)
+
     push!(simulation.output_writers, nc_writer)
 
     i_slice = 1:10
@@ -357,6 +362,7 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
 
     nc_writer = NetCDFOutputWriter(model, merge(model.velocities, model.tracers),
                                    filename = nc_filepath,
+                                   array_type = Array{Float64},
                                    schedule = IterationInterval(10),
                                    with_halos = true)
 
@@ -468,13 +474,12 @@ function test_netcdf_function_output(arch)
 
     nc_filepath = "test_function_outputs_$(typeof(arch)).nc"
 
-    simulation.output_writers[:food] =
-        NetCDFOutputWriter(model, outputs; global_attributes, output_attributes,
-                           filename = nc_filepath,
-                           schedule = TimeInterval(Δt),
-                           dimensions = dims,
-                           array_type = Array{Float64},
-                           verbose=true)
+    simulation.output_writers[:food] = NetCDFOutputWriter(model, outputs; global_attributes, output_attributes,
+                                                          filename = nc_filepath,
+                                                          schedule = TimeInterval(Δt),
+                                                          dimensions = dims,
+                                                          array_type = Array{Float64},
+                                                          verbose=true)
 
     run!(simulation)
 
@@ -679,14 +684,13 @@ function test_netcdf_time_averaging(arch)
 
             horizontal_average_nc_filepath = "decay_averaged_field_test.nc"
 
-            simulation.output_writers[:horizontal_average] = NetCDFOutputWriter(
-                                model,
-                                nc_outputs,
-                                array_type = Array{Float64},
-                                verbose = true,
-                                filename = horizontal_average_nc_filepath,
-                                schedule = TimeInterval(10Δt),
-                                dimensions = nc_dimensions)
+            simulation.output_writers[:horizontal_average] = NetCDFOutputWriter(model,
+                                                                                nc_outputs,
+                                                                                array_type = Array{Float64},
+                                                                                verbose = true,
+                                                                                filename = horizontal_average_nc_filepath,
+                                                                                schedule = TimeInterval(10Δt),
+                                                                                dimensions = nc_dimensions)
 
             multiple_time_average_nc_filepath = "decay_windowed_time_average_test.nc"
             single_time_average_nc_filepath = "single_decay_windowed_time_average_test.nc"
@@ -695,23 +699,21 @@ function test_netcdf_time_averaging(arch)
             single_nc_output = Dict("c1" => ∫c1_dxdy)
             single_nc_dimension = Dict("c1" => ("zC",))
 
-            simulation.output_writers[:single_output_time_average] = NetCDFOutputWriter(
-                                model,
-                                single_nc_output,
-                                array_type = Array{Float64},
-                                verbose = true,
-                                filename = single_time_average_nc_filepath,
-                                schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
-                                dimensions = single_nc_dimension)
+            simulation.output_writers[:single_output_time_average] = NetCDFOutputWriter(model,
+                                                                                        single_nc_output,
+                                                                                        array_type = Array{Float64},
+                                                                                        verbose = true,
+                                                                                        filename = single_time_average_nc_filepath,
+                                                                                        schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
+                                                                                        dimensions = single_nc_dimension)
 
-            simulation.output_writers[:multiple_output_time_average] = NetCDFOutputWriter(
-                                model,
-                                nc_outputs,
-                                array_type = Array{Float64},
-                                verbose = true,
-                                filename = multiple_time_average_nc_filepath,
-                                schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
-                                dimensions = nc_dimensions)
+            simulation.output_writers[:multiple_output_time_average] = NetCDFOutputWriter(model,
+                                                                                          nc_outputs,
+                                                                                          array_type = Array{Float64},
+                                                                                          verbose = true,
+                                                                                          filename = multiple_time_average_nc_filepath,
+                                                                                          schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
+                                                                                          dimensions = nc_dimensions)
 
             run!(simulation)
 
@@ -749,8 +751,8 @@ function test_netcdf_time_averaging(arch)
             single_ds = NCDataset(single_time_average_nc_filepath)
 
             attribute_names = ("schedule", "interval", "output time interval",
-                            "time_averaging_window", "time averaging window",
-                            "time_averaging_stride", "time averaging stride")
+                               "time_averaging_window", "time averaging window",
+                               "time_averaging_stride", "time averaging stride")
 
             for name in attribute_names
                 @test haskey(single_ds.attrib, name) && !isnothing(single_ds.attrib[name])
@@ -798,14 +800,12 @@ function test_netcdf_output_alignment(arch)
     simulation = Simulation(model, Δt=0.2, stop_time=40)
 
     test_filename1 = "test_output_alignment1.nc"
-    simulation.output_writers[:stuff] =
-        NetCDFOutputWriter(model, model.velocities, filename=test_filename1,
-                           schedule=TimeInterval(7.3))
+    simulation.output_writers[:stuff] = NetCDFOutputWriter(model, model.velocities,
+                                                           filename=test_filename1, schedule=TimeInterval(7.3))
 
     test_filename2 = "test_output_alignment2.nc"
-    simulation.output_writers[:something] =
-        NetCDFOutputWriter(model, model.tracers, filename=test_filename2,
-                           schedule=TimeInterval(3.0))
+    simulation.output_writers[:something] = NetCDFOutputWriter(model, model.tracers,
+                                                               filename=test_filename2, schedule=TimeInterval(3.0))
 
     run!(simulation)
 
@@ -838,13 +838,11 @@ function test_netcdf_vertically_stretched_grid_output(arch)
 
     nc_filepath = "test_netcdf_vertically_stretched_grid_output_$(typeof(arch)).nc"
 
-    simulation.output_writers[:fields] =
-        NetCDFOutputWriter(model, merge(model.velocities, model.tracers),
-                             filename = nc_filepath,
-                             schedule = IterationInterval(1),
-                           array_type = Array{Float64},
-                              verbose = true)
-
+    simulation.output_writers[:fields] = NetCDFOutputWriter(model, merge(model.velocities, model.tracers),
+                                                            filename = nc_filepath,
+                                                            schedule = IterationInterval(1),
+                                                            array_type = Array{Float64},
+                                                            verbose = true)
     run!(simulation)
 
     grid = model.grid

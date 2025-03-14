@@ -471,13 +471,9 @@ julia> add_halos(data, loc, topo, (Nx, Ny, Nz), (1, 2, 0))
 ```
 """
 function add_halos(data, loc, topo, sz, halo_sz; warnings=true)
-
     Nx, Ny, Nz = size(data)
-
     arch = architecture(data)
-
-    # bring to CPU
-    map(a -> on_architecture(CPU(), a), data)
+    map(a -> on_architecture(CPU(), a), data) # bring to CPU
 
     nx, ny, nz = total_length(loc[1](), topo[1](), sz[1], 0),
                  total_length(loc[2](), topo[2](), sz[2], 0),

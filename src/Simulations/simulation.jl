@@ -18,6 +18,7 @@ mutable struct Simulation{ML, DT, ST, DI, OW, CB}
     output_writers :: OW
     callbacks :: CB
     run_wall_time :: Float64
+    align_time_step :: Bool
     running :: Bool
     initialized :: Bool
     verbose :: Bool
@@ -55,6 +56,7 @@ function Simulation(model; Δt,
                     stop_iteration = Inf,
                     stop_time = Inf,
                     wall_time_limit = Inf,
+                    align_time_step = true,
                     minimum_relative_step = 0)
 
    if verbose && stop_iteration == Inf && stop_time == Inf && wall_time_limit == Inf
@@ -92,6 +94,7 @@ function Simulation(model; Δt,
                      output_writers,
                      callbacks,
                      0.0,
+                     align_time_step,
                      false,
                      false,
                      verbose,

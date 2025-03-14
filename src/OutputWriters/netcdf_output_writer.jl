@@ -225,7 +225,7 @@ Keyword arguments
                 you might need to set `with_halos = true`.
 
 - `array_type`: The array type to which output arrays are converted to prior to saving.
-                Default: `Array{Float64}`.
+                Default: `Array{Float32}`.
 
 - `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs).
 
@@ -364,7 +364,7 @@ function NetCDFOutputWriter(model, outputs;
                             schedule,
                             grid = model.grid,
                             dir = ".",
-                            array_type = Array{Float64},
+                            array_type = Array{Float32},
                             indices = (:, :, :),
                             with_halos = false,
                             global_attributes = Dict(),
