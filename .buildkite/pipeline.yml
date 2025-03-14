@@ -34,6 +34,53 @@ steps:
 ##### Unit tests
 #####
 
+  - label: "Nvidia GPUs"
+    plugins:
+      - JuliaCI/julia#v1:
+          version: "1.10"
+    agents:
+      queue: "juliagpu"
+      cuda: "*"
+    command: |
+      julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+
+  - label: "AMD GPUs"
+    plugins:
+      - JuliaCI/julia#v1:
+          version: "1.10"
+    agents:
+      queue: "juliagpu"
+      rocm: "*"
+      rocmgpu: "*"
+    env:
+      JULIA_NUM_THREADS: 4
+      JULIA_AMDGPU_CORE_MUST_LOAD: "1"
+      JULIA_AMDGPU_HIP_MUST_LOAD: "1"
+      JULIA_AMDGPU_DISABLE_ARTIFACTS: "1"
+    command: |
+      julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+
+  - label: "Intel GPUs -- oneAPI.jl"
+    plugins:
+      - JuliaCI/julia#v1:
+          version: "1.10"
+    agents:
+      queue: "juliagpu"
+      intel: "*"
+    command: |
+      julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+
+  - label: "Apple GPUs"
+    plugins:
+      - JuliaCI/julia#v1:
+          version: "1.10"
+    agents:
+      queue: "juliaecosystem"
+      os: "macos"
+      arch: "aarch64"
+    command: |
+      julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+
   - label: "🐿️ gpu unit tests"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
