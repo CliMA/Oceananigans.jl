@@ -144,7 +144,7 @@ catke_first(catke1::FlavorOfCATKE, catke2::FlavorOfCATKE) = error("Can't have tw
 ##### Diffusivities and diffusivity fields utilities
 #####
 
-mutable struct CATKEDiffusivityFields{K, L, J, T, U, KC, LC}
+struct CATKEDiffusivityFields{K, L, J, T, U, KC, LC}
     κu :: K
     κc :: K
     κe :: K
