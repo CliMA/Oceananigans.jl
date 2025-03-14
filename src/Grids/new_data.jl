@@ -32,11 +32,42 @@ offset_indices(::Nothing, topo, N, H, ::UnitRange) = 1:1
 instantiate(T::Type) = T()
 instantiate(t) = t
 
+converted_offset(IntType, i) = convert(IntType, i)
+
+# A unit range is converted to an integer offset corresponding
+# to the first index of the range minus one.
+function converted_offset(IntType, r::UnitRange) 
+    i_start = convert(IntType, r[1])
+    return i_start - IntType(1)
+end
+
+# OneTo ranges have offset 0!
+converted_offset(IntType, ::Base.OneTo) = IntType(0)
+converted_offset(IntType, t::Tuple) = Tuple(converted_offset(IntType, i) for i in t)
+
+function find_minimum_precision(ii::Integer)
+    maxInt8  = typemax(Int8)
+    maxInt16 = typemax(Int16)
+    maxInt32 = typemax(Int32)
+    IntType = ii > maxInt8 ? (ii > maxInt16 ? (ii > maxInt32 ? Int64 : Int32) : Int16) : Int8
+    return IntType
+end
+
+find_minimum_precision(ii::UnitRange) = find_minimum_precision(first(ii))
+    
+function find_minimum_precision(ii::Union{AbstractArray, Tuple, AbstractRange})
+    IntTypes = Tuple(find_minimum_precision(i) for i in ii)
+    IntType = Int64 ∈ IntTypes ? Int64 : (Int32 ∈ IntTypes ? Int32 : (Int16 ∈ IntTypes ? Int16 : Int8))
+    return IntType
+end
+
+convert_offsets(ii) = converted_offset(find_minimum_precision(ii), ii)
+
 # The type parameter for indices helps / encourages the compiler to fully type infer `offset_data`
 function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_indices(length(loc))) where {A<:AbstractArray, T}
-    loc = map(instantiate, loc)
+    loc  = map(instantiate, loc)
     topo = map(instantiate, topo)
-    ii = map(offset_indices, loc, topo, N, H, indices)
+    ii   = map(offset_indices, loc, topo, N, H, indices)
     # Add extra indices for arrays of higher dimension than loc, topo, etc.
     # Use the "`ntuple` trick" so the compiler can infer the type of `extra_ii`
     extra_ii = ntuple(Val(ndims(underlying_data)-length(ii))) do i
@@ -44,7 +75,10 @@ function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_ind
         axes(underlying_data, i+length(ii))
     end
 
-    return OffsetArray(underlying_data, ii..., extra_ii...)
+    ii = (ii..., extra_ii...)
+    ii = convert_offsets(ii)
+
+    return OffsetArray(underlying_data, ii...)
 end
 
 """
