@@ -68,6 +68,7 @@ end
 ##### fine_time_index
 #####
 
+#=
 @inline function find_time_index(times::StepRangeLen, t)
     n₂ = searchsortedfirst(times, t)
     n₁ = max(1, n₂ - 1)
@@ -84,6 +85,7 @@ end
 
     return ñ, n₁, n₂
 end
+=#
 
 @inline function find_time_index(times, t)
     Nt = length(times)
