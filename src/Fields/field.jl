@@ -17,13 +17,13 @@ import Base: ==
 #####
 
 mutable struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G, T, 3}
-    grid :: G
-    data :: D
-    boundary_conditions :: B
-    indices :: I
-    operand :: O
-    status :: S
-    boundary_buffers :: F
+    const grid :: G
+    const data :: D
+    const boundary_conditions :: B
+    const indices :: I
+    const operand :: O
+    const status :: S
+    const boundary_buffers :: F
 
     # Inner constructor that does not validate _anything_!
     function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
