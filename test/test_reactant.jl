@@ -100,9 +100,9 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     Δx = minimum_xspacing(grid)
     Δt = 0.01 * Δx
 
-    @time "  Generating HLO:" begin
-        @show @code_hlo optimize=false Oceananigans.TimeSteppers.first_time_step!(r_model, Δt)
-    end
+    # @time "  Generating HLO:" begin
+    #    @show @code_hlo optimize=false Oceananigans.TimeSteppers.first_time_step!(r_model, Δt)
+    # end
 
     # They will not be equal because r_model halos are not
     # filled during set!
