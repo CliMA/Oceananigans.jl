@@ -52,7 +52,7 @@ clock = TestClock(ConcreteRNumber(0))
 simulation = TestSimulation(clock, ConcreteRNumber(3), ConcreteRNumber(true))
 # @code_hlo optimize=false test_run!(simulation)
 
-r_run! = @compile sync=true test_run!(simulation)
+r_run! = @compile sync=true optimize=false test_run!(simulation)
 r_run!(simulation)
 =#
 
@@ -97,13 +97,21 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     u, v, w = model.velocities
     ru, rv, rw = r_model.velocities
 
+    Δx = minimum_xspacing(grid)
+    Δt = 0.01 * Δx
+
+    @time "  Generating HLO:" begin
+        @show @code_hlo optimize=false Oceananigans.TimeSteppers.first_time_step!(r_model, Δt)
+    end
+
     # They will not be equal because r_model halos are not
     # filled during set!
     @test !(parent(u) ≈ parent(ru))
     @test !(parent(v) ≈ parent(rv))
     @test !(parent(w) ≈ parent(rw))
 
-    Oceananigans.TimeSteppers.update_state!(r_model)
+    r_update_state = @compile sync=true Oceananigans.TimeSteppers.update_state!(r_model)
+    r_update_state!(r_model)
 
     # Test that fields were set correctly
     @info "  After setting an initial condition:"
@@ -135,10 +143,10 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
 
     Nsteps = ConcreteRNumber(3)
     @time "  Compiling r_run!:" begin
+        #@show @code_hlo optimize=false Oceananigans.TimeSteppers.time_step!(r_model, Δt)
         r_first_time_step! = @compile sync=true Oceananigans.TimeSteppers.first_time_step!(r_model, Δt)
-        r_time_step! = @compile sync=true Oceananigans.TimeSteppers.time_step!(r_model, Δt)
-        r_time_step_sim! = @compile sync=true Oceananigans.TimeSteppers.time_step!(r_simulation)
-        #r_time_step_for! = @compile sync=true  OceananigansReactantExt.time_step_for!(r_simulation, Nsteps)
+        r_time_step!       = @compile sync=true Oceananigans.TimeSteppers.time_step!(r_model, Δt)
+        r_time_step_sim!   = @compile sync=true Oceananigans.TimeSteppers.time_step!(r_simulation)
     end
 
     @time "  Executing r_run!:" begin
