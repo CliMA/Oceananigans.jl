@@ -4,7 +4,7 @@ using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Grids: get_active_cells_map
 using Oceananigans.BoundaryConditions: apply_x_bcs!, apply_y_bcs!, apply_z_bcs!
 using Oceananigans.ImmersedBoundaries: get_active_cells_map, linear_index_to_tuple
-using Oceananigans.TimeSteppers: store_field_tendencies!, ab2_step_field!, implicit_step!
+using Oceananigans.TimeSteppers: implicit_step!
 using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
 using CUDA
 
