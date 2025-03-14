@@ -234,7 +234,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
     parent(u⁻) .= parent(u)
     parent(v⁻) .= parent(v)
 
-    active_cells_map = retrieve_interior_active_cells_map(grid, Val(:interior))
+    active_cells_map = get_active_cells_map(grid, Val(:interior))
 
     launch!(arch, grid, :xy,
             compute_average_surface_buoyancy_flux!,
@@ -275,7 +275,7 @@ end
 
 @kernel function _compute_CATKE_diffusivities!(diffusivities, grid, map, closure::FlavorOfCATKE, velocities, tracers, buoyancy)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, map)
+    i, j, k = linear_index_to_tuple(idx, map)
     compute_CATKE_diffusivities!(i, j, k, diffusivities, grid, closure, velocities, tracers, buoyancy)
 end
 
