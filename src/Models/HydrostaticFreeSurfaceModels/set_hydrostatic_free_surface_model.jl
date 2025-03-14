@@ -60,9 +60,21 @@ model.velocities.u
         @apply_regionally set!(ϕ, value)
     end
 
-    # initialize!(model)
-    initialization_update_state!(model; compute_tendencies=false)
+    # TODO: allow barotropic velocities to be set independently
+    set_barotropic_velocities!(model.free_surface, model.grid, model.velocities) 
+    setup_update_state!(model; compute_tendencies=false)
 
     return nothing
+end
+
+# Utility for calling compute_barotropic_velocities
+set_barotropic_velocities!(free_surface, grid, velocities) = nothing
+
+function set_barotropic_velocities!(sefs::SplitExplicitFreeSurface, grid, velocities)
+    U = sefs.barotropic_velocities.U
+    V = sefs.barotropic_velocities.V
+    η = sefs.η
+    u, v, w = velocities
+    return compute_barotropic_velocities!(U, V, grid, u, v, η)
 end
 

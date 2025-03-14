@@ -15,7 +15,7 @@ using Oceananigans.Operators: Δz
 function initialize_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocities)
     barotropic_velocities = sefs.barotropic_velocities
     u, v, w = velocities
-    @apply_regionally compute_barotropic_mode!(barotropic_velocities.U,
+    @apply_regionally compute_barotropic_velocities!(barotropic_velocities.U,
                                                barotropic_velocities.V,
                                                grid, u, v, sefs.η)
 
@@ -31,7 +31,7 @@ function initialize_free_surface_state!(free_surface, baroclinic_timestepper, ti
     η = free_surface.η
     U, V = free_surface.barotropic_velocities
 
-    initialize_free_surface_timestepper!(timestepper, η, U, V)
+    setup_free_surface_timestepper!(timestepper, η, U, V)
 
     fill!(free_surface.filtered_state.η, 0)
     fill!(free_surface.filtered_state.U, 0)
@@ -55,7 +55,7 @@ function initialize_free_surface_state!(free_surface, baroclinic_ts::SplitRungeK
     parent(V) .= parent(Vⁿ⁻¹)
     parent(η) .= parent(ηⁿ⁻¹)
 
-    initialize_free_surface_timestepper!(barotropic_ts, η, U, V)
+    setup_free_surface_timestepper!(barotropic_ts, η, U, V)
 
     fill!(free_surface.filtered_state.η, 0)
     fill!(free_surface.filtered_state.U, 0)
