@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Utils: Time
 using Oceananigans.Fields: indices, interpolate!
-using Oceananigans.OutputReaders: Cyclical, Clamp
+using Oceananigans.OutputReaders: Cyclical, Clamp, save_field_time_series
 
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
     grid = RectilinearGrid(architecture, size=(Nx, Ny, Nz), extent=(64, 64, 32))
@@ -479,20 +479,29 @@ end
 
     filepath_sine = "one_dimensional_sine.jld2"
 
-    @testset "Test interpolation using `InMemory` backends" begin
+    @testset "Test backends" begin
+        @info "   Testing saving a FieldTimeSeries to disk..."
         grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
         times = 0:0.1:3
 
         sinf(t) = sin(2π * t / 3)
-
-        f   = CenterField(grid) 
-        fts = FieldTimeSeries{Center, Center, Center}(grid, times; backend=OnDisk(), path=filepath_sine, name="f")
+        fts = FieldTimeSeries{Center, Center, Center}(grid, times)
         
         for (i, time) in enumerate(fts.times)
-            set!(f, (x, y, z) -> sinf(time))
-            set!(fts, f, i)
+            set!(fts[i], (x, y, z) -> sinf(time))
         end
-        
+
+        save_field_time_series(fts; path=filepath_sine, name="f", overwrite_existing=true) 
+
+        fts = FieldTimeSeries(filepath_sine, "f")
+        f   = CenterField(grid) 
+
+        for (i, time) in enumerate(fts.times)
+            set!(f, (x, y, z) -> sinf(time))
+            @test f == fts[i]
+        end
+
+        @info "   Testing interpolating an InMemory FieldTimeSeries..."
         # Now we load the FTS partly in memory
         # using different time indexing strategies
         M = 5
@@ -501,11 +510,11 @@ end
         fts3 = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M), time_indexing = Clamp())
         
         # Test that linear interpolation is correct within the time domain
-        for time in 0:0.01:last(fts.times)
-            tidx = findfirst(fts.times .> time)
+        for time in 0:0.01:last(fts1.times)
+            tidx = findfirst(fts1.times .> time)
             if !isnothing(tidx)
-                t⁻ = fts.times[tidx - 1]
-                t⁺ = fts.times[tidx]
+                t⁻ = fts1.times[tidx - 1]
+                t⁺ = fts1.times[tidx]
 
                 Δt⁺ = (time - t⁻) / (t⁺ - t⁻)
             
