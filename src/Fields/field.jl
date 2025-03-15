@@ -16,7 +16,7 @@ import Base: ==
 ##### The bees knees
 #####
 
-mutable struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G, T, 3}
+struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G, T, 3}
     grid :: G
     data :: D
     boundary_conditions :: B
