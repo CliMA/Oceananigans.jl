@@ -253,8 +253,8 @@ function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_gene
     metrics = Dict()
 
     if TΛ != Flat
-        Δλᶠᵃᵃ_name = dim_name_generator("dλ", grid, f, nothing, nothing, Val(:x))
-        Δλᶜᵃᵃ_name = dim_name_generator("dλ", grid, c, nothing, nothing, Val(:x))
+        Δλᶠᵃᵃ_name = dim_name_generator("Δλ", grid, f, nothing, nothing, Val(:x))
+        Δλᶜᵃᵃ_name = dim_name_generator("Δλ", grid, c, nothing, nothing, Val(:x))
 
         Δλᶠᵃᵃ_field = Field(λspacings(grid, f); indices)
         Δλᶜᵃᵃ_field = Field(λspacings(grid, c); indices)
@@ -279,8 +279,8 @@ function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_gene
     end
 
     if TΦ != Flat
-        Δφᵃᶠᵃ_name = dim_name_generator("dφ", grid, nothing, f, nothing, Val(:y))
-        Δφᵃᶜᵃ_name = dim_name_generator("dφ", grid, nothing, c, nothing, Val(:y))
+        Δφᵃᶠᵃ_name = dim_name_generator("Δλ", grid, nothing, f, nothing, Val(:y))
+        Δφᵃᶜᵃ_name = dim_name_generator("Δλ", grid, nothing, c, nothing, Val(:y))
 
         Δφᵃᶠᵃ_field = Field(φspacings(grid, f); indices)
         Δφᵃᶜᵃ_field = Field(φspacings(grid, c); indices)
@@ -472,14 +472,14 @@ function default_dimension_attributes(grid::LatitudeLongitudeGrid, dim_name_gene
     φᵃᶠᵃ_attrs = Dict("long_name" => "Cell face locations in the meridional direction.",   "units" => "degrees north")
     φᵃᶜᵃ_attrs = Dict("long_name" => "Cell center locations in the meridional direction.", "units" => "degrees north")
 
-    Δλᶠᵃᵃ_name = dim_name_generator("dλ", grid, f, nothing, nothing, Val(:x))
-    Δλᶜᵃᵃ_name = dim_name_generator("dλ", grid, c, nothing, nothing, Val(:x))
+    Δλᶠᵃᵃ_name = dim_name_generator("Δλ", grid, f, nothing, nothing, Val(:x))
+    Δλᶜᵃᵃ_name = dim_name_generator("Δλ", grid, c, nothing, nothing, Val(:x))
 
     Δλᶠᵃᵃ_attrs = Dict("long_name" => "Angular spacings between cell faces in the zonal direction.",   "units" => "degrees")
     Δλᶜᵃᵃ_attrs = Dict("long_name" => "Angular spacings between cell centers in the zonal direction.", "units" => "degrees")
 
-    Δφᵃᶠᵃ_name = dim_name_generator("dφ", grid, nothing, f, nothing, Val(:y))
-    Δφᵃᶜᵃ_name = dim_name_generator("dφ", grid, nothing, c, nothing, Val(:y))
+    Δφᵃᶠᵃ_name = dim_name_generator("Δλ", grid, nothing, f, nothing, Val(:y))
+    Δφᵃᶜᵃ_name = dim_name_generator("Δλ", grid, nothing, c, nothing, Val(:y))
 
     Δφᵃᶠᵃ_attrs = Dict("long_name" => "Angular spacings between cell faces in the meridional direction.",   "units" => "degrees")
     Δφᵃᶜᵃ_attrs = Dict("long_name" => "Angular spacings between cell centers in the meridional direction.", "units" => "degrees")
@@ -699,8 +699,7 @@ add_schedule_metadata!(attributes, schedule) = nothing
 function add_schedule_metadata!(global_attributes, schedule::IterationInterval)
     global_attributes["schedule"] = "IterationInterval"
     global_attributes["interval"] = schedule.interval
-    global_attributes["output iteration interval"] =
-        "Output was saved every $(schedule.interval) iteration(s)."
+    global_attributes["output iteration interval"] = "Output was saved every $(schedule.interval) iteration(s)."
 
     return nothing
 end
@@ -708,8 +707,7 @@ end
 function add_schedule_metadata!(global_attributes, schedule::TimeInterval)
     global_attributes["schedule"] = "TimeInterval"
     global_attributes["interval"] = schedule.interval
-    global_attributes["output time interval"] =
-        "Output was saved every $(prettytime(schedule.interval))."
+    global_attributes["output time interval"] = "Output was saved every $(prettytime(schedule.interval))."
 
     return nothing
 end
@@ -726,16 +724,13 @@ end
 function add_schedule_metadata!(global_attributes, schedule::AveragedTimeInterval)
     global_attributes["schedule"] = "AveragedTimeInterval"
     global_attributes["interval"] = schedule.interval
-    global_attributes["output time interval"] =
-        "Output was time-averaged and saved every $(prettytime(schedule.interval))."
+    global_attributes["output time interval"] = "Output was time-averaged and saved every $(prettytime(schedule.interval))."
 
     global_attributes["time_averaging_window"] = schedule.window
-    global_attributes["time averaging window"] =
-        "Output was time averaged with a window size of $(prettytime(schedule.window))"
+    global_attributes["time averaging window"] = "Output was time averaged with a window size of $(prettytime(schedule.window))"
 
     global_attributes["time_averaging_stride"] = schedule.stride
-    global_attributes["time averaging stride"] =
-        "Output was time averaged with a stride of $(schedule.stride) iteration(s) within the time averaging window."
+    global_attributes["time averaging stride"] = "Output was time averaged with a stride of $(schedule.stride) iteration(s) within the time averaging window."
 
     return nothing
 end
@@ -1196,21 +1191,20 @@ function initialize_nc_file(model,
     return dataset, outputs, schedule
 end
 
-initialize_nc_file(ow::NetCDFOutputWriter, model) =
-    initialize_nc_file(model,
-                       ow.filepath,
-                       ow.outputs,
-                       ow.schedule,
-                       ow.array_type,
-                       ow.indices,
-                       ow.global_attributes,
-                       ow.output_attributes,
-                       ow.dimensions,
-                       ow.with_halos,
-                       ow.include_grid_metrics,
-                       ow.overwrite_existing,
-                       ow.deflatelevel,
-                       ow.dimension_name_generator)
+initialize_nc_file(ow::NetCDFOutputWriter, model) = initialize_nc_file(model,
+                                                                       ow.filepath,
+                                                                       ow.outputs,
+                                                                       ow.schedule,
+                                                                       ow.array_type,
+                                                                       ow.indices,
+                                                                       ow.global_attributes,
+                                                                       ow.output_attributes,
+                                                                       ow.dimensions,
+                                                                       ow.with_halos,
+                                                                       ow.include_grid_metrics,
+                                                                       ow.overwrite_existing,
+                                                                       ow.deflatelevel,
+                                                                       ow.dimension_name_generator)
 
 #####
 ##### Variable definition
