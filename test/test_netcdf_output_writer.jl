@@ -434,9 +434,9 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
     @test haskey(ds_mh, "time")
     @test eltype(ds_mh["time"]) == Float64
 
-    dims = ("longitude_faa", "longitude_caa", "latitude_afa", "latitude_aca", "z_aaf", "z_aac")
+    dims = ("λ_faa", "λ_caa", "φ_afa", "φ_aca", "z_aaf", "z_aac")
     metrics = (
-        "dlongitude_faa", "dlongitude_caa", "dlatitude_afa", "dlatitude_aca", "Δz_aaf", "Δz_aac",
+        "dλ_faa", "dλ_caa", "dφ_afa", "dφ_aca", "Δz_aaf", "Δz_aac",
         "Δx_ffa", "Δx_fca", "Δx_cfa", "Δx_cca",
         "Δy_ffa", "Δy_fca", "Δy_cfa", "Δy_cca"
     )
@@ -451,35 +451,35 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
 
     @test dimsize(ds_mh["time"]) == (time=Nt + 1,)
 
-    @test dimsize(ds_mh[:longitude_faa]) == (longitude_faa=Nλ + 2Hλ + 1,)
-    @test dimsize(ds_mh[:longitude_caa]) == (longitude_caa=Nλ + 2Hλ,)
-    @test dimsize(ds_mh[:latitude_afa]) == (latitude_afa=Nφ + 2Hφ + 1,)
-    @test dimsize(ds_mh[:latitude_aca]) == (latitude_aca=Nφ + 2Hφ,)
+    @test dimsize(ds_mh[:λ_faa]) == (λ_faa=Nλ + 2Hλ + 1,)
+    @test dimsize(ds_mh[:λ_caa]) == (λ_caa=Nλ + 2Hλ,)
+    @test dimsize(ds_mh[:φ_afa]) == (φ_afa=Nφ + 2Hφ + 1,)
+    @test dimsize(ds_mh[:φ_aca]) == (φ_aca=Nφ + 2Hφ,)
     @test dimsize(ds_mh[:z_aaf]) == (z_aaf=Nz + 2Hz + 1,)
     @test dimsize(ds_mh[:z_aac]) == (z_aac=Nz + 2Hz,)
 
-    @test dimsize(ds_mh[:dlongitude_faa]) == (longitude_faa=Nλ + 2Hλ + 1,)
-    @test dimsize(ds_mh[:dlongitude_caa]) == (longitude_caa=Nλ + 2Hλ,)
-    @test dimsize(ds_mh[:dlatitude_afa]) == (latitude_afa=Nφ + 2Hφ + 1,)
-    @test dimsize(ds_mh[:dlatitude_aca]) == (latitude_aca=Nφ + 2Hφ,)
+    @test dimsize(ds_mh[:dλ_faa]) == (λ_faa=Nλ + 2Hλ + 1,)
+    @test dimsize(ds_mh[:dλ_caa]) == (λ_caa=Nλ + 2Hλ,)
+    @test dimsize(ds_mh[:dφ_afa]) == (φ_afa=Nφ + 2Hφ + 1,)
+    @test dimsize(ds_mh[:dφ_aca]) == (φ_aca=Nφ + 2Hφ,)
     @test dimsize(ds_mh[:Δz_aaf]) == (z_aaf=Nz + 2Hz + 1,)
     @test dimsize(ds_mh[:Δz_aac]) == (z_aac=Nz + 2Hz,)
 
-    @test dimsize(ds_mh[:Δx_ffa]) == (longitude_faa=Nλ + 2Hλ + 1, latitude_afa=Nφ + 2Hφ + 1)
-    @test dimsize(ds_mh[:Δx_fca]) == (longitude_faa=Nλ + 2Hλ + 1, latitude_aca=Nφ + 2Hφ)
-    @test dimsize(ds_mh[:Δx_cfa]) == (longitude_caa=Nλ + 2Hλ,     latitude_afa=Nφ + 2Hφ + 1)
-    @test dimsize(ds_mh[:Δx_cca]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ)
+    @test dimsize(ds_mh[:Δx_ffa]) == (λ_faa=Nλ + 2Hλ + 1, φ_afa=Nφ + 2Hφ + 1)
+    @test dimsize(ds_mh[:Δx_fca]) == (λ_faa=Nλ + 2Hλ + 1, φ_aca=Nφ + 2Hφ)
+    @test dimsize(ds_mh[:Δx_cfa]) == (λ_caa=Nλ + 2Hλ,     φ_afa=Nφ + 2Hφ + 1)
+    @test dimsize(ds_mh[:Δx_cca]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ)
 
-    @test dimsize(ds_mh[:Δy_ffa]) == (longitude_faa=Nλ + 2Hλ + 1, latitude_afa=Nφ + 2Hφ + 1)
-    @test dimsize(ds_mh[:Δy_fca]) == (longitude_faa=Nλ + 2Hλ + 1, latitude_aca=Nφ + 2Hφ)
-    @test dimsize(ds_mh[:Δy_cfa]) == (longitude_caa=Nλ + 2Hλ,     latitude_afa=Nφ + 2Hφ + 1)
-    @test dimsize(ds_mh[:Δy_cca]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ)
+    @test dimsize(ds_mh[:Δy_ffa]) == (λ_faa=Nλ + 2Hλ + 1, φ_afa=Nφ + 2Hφ + 1)
+    @test dimsize(ds_mh[:Δy_fca]) == (λ_faa=Nλ + 2Hλ + 1, φ_aca=Nφ + 2Hφ)
+    @test dimsize(ds_mh[:Δy_cfa]) == (λ_caa=Nλ + 2Hλ,     φ_afa=Nφ + 2Hφ + 1)
+    @test dimsize(ds_mh[:Δy_cca]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ)
 
-    @test dimsize(ds_mh[:u]) == (longitude_faa=Nλ + 2Hλ + 1, latitude_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_mh[:v]) == (longitude_caa=Nλ + 2Hλ,     latitude_afa=Nφ + 2Hφ + 1, z_aac=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_mh[:w]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ,     z_aaf=Nz + 2Hz + 1, time=Nt + 1)
-    @test dimsize(ds_mh[:T]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_mh[:S]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_mh[:u]) == (λ_faa=Nλ + 2Hλ + 1, φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_mh[:v]) == (λ_caa=Nλ + 2Hλ,     φ_afa=Nφ + 2Hφ + 1, z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_mh[:w]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aaf=Nz + 2Hz + 1, time=Nt + 1)
+    @test dimsize(ds_mh[:T]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_mh[:S]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
 
     close(ds_mh)
     rm(filepath_metrics_halos)
@@ -504,18 +504,18 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
 
     @test dimsize(ds_h["time"]) == (time=Nt + 1,)
 
-    @test dimsize(ds_h[:longitude_faa]) == (longitude_faa=Nλ + 2Hλ + 1,)
-    @test dimsize(ds_h[:longitude_caa]) == (longitude_caa=Nλ + 2Hλ,)
-    @test dimsize(ds_h[:latitude_afa]) == (latitude_afa=Nφ + 2Hφ + 1,)
-    @test dimsize(ds_h[:latitude_aca]) == (latitude_aca=Nφ + 2Hφ,)
+    @test dimsize(ds_h[:λ_faa]) == (λ_faa=Nλ + 2Hλ + 1,)
+    @test dimsize(ds_h[:λ_caa]) == (λ_caa=Nλ + 2Hλ,)
+    @test dimsize(ds_h[:φ_afa]) == (φ_afa=Nφ + 2Hφ + 1,)
+    @test dimsize(ds_h[:φ_aca]) == (φ_aca=Nφ + 2Hφ,)
     @test dimsize(ds_h[:z_aaf]) == (z_aaf=Nz + 2Hz + 1,)
     @test dimsize(ds_h[:z_aac]) == (z_aac=Nz + 2Hz,)
 
-    @test dimsize(ds_h[:u]) == (longitude_faa=Nλ + 2Hλ + 1, latitude_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:v]) == (longitude_caa=Nλ + 2Hλ,     latitude_afa=Nφ + 2Hφ + 1, z_aac=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:w]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ,     z_aaf=Nz + 2Hz + 1, time=Nt + 1)
-    @test dimsize(ds_h[:T]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:S]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:u]) == (λ_faa=Nλ + 2Hλ + 1, φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:v]) == (λ_caa=Nλ + 2Hλ,     φ_afa=Nφ + 2Hφ + 1, z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:w]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aaf=Nz + 2Hz + 1, time=Nt + 1)
+    @test dimsize(ds_h[:T]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:S]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
 
     close(ds_h)
     rm(filepath_nometrics)
@@ -530,35 +530,35 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
         @test eltype(ds_m[var]) == FT
     end
 
-    @test dimsize(ds_m[:longitude_faa]) == (longitude_faa=Nλ + 1,)
-    @test dimsize(ds_m[:longitude_caa]) == (longitude_caa=Nλ,)
-    @test dimsize(ds_m[:latitude_afa]) == (latitude_afa=Nφ + 1,)
-    @test dimsize(ds_m[:latitude_aca]) == (latitude_aca=Nφ,)
+    @test dimsize(ds_m[:λ_faa]) == (λ_faa=Nλ + 1,)
+    @test dimsize(ds_m[:λ_caa]) == (λ_caa=Nλ,)
+    @test dimsize(ds_m[:φ_afa]) == (φ_afa=Nφ + 1,)
+    @test dimsize(ds_m[:φ_aca]) == (φ_aca=Nφ,)
     @test dimsize(ds_m[:z_aaf]) == (z_aaf=Nz + 1,)
     @test dimsize(ds_m[:z_aac]) == (z_aac=Nz,)
 
-    @test dimsize(ds_m[:dlongitude_faa]) == (longitude_faa=Nλ + 1,)
-    @test dimsize(ds_m[:dlongitude_caa]) == (longitude_caa=Nλ,)
-    @test dimsize(ds_m[:dlatitude_afa]) == (latitude_afa=Nφ + 1,)
-    @test dimsize(ds_m[:dlatitude_aca]) == (latitude_aca=Nφ,)
+    @test dimsize(ds_m[:dλ_faa]) == (λ_faa=Nλ + 1,)
+    @test dimsize(ds_m[:dλ_caa]) == (λ_caa=Nλ,)
+    @test dimsize(ds_m[:dφ_afa]) == (φ_afa=Nφ + 1,)
+    @test dimsize(ds_m[:dφ_aca]) == (φ_aca=Nφ,)
     @test dimsize(ds_m[:Δz_aaf]) == (z_aaf=Nz + 1,)
     @test dimsize(ds_m[:Δz_aac]) == (z_aac=Nz,)
 
-    @test dimsize(ds_m[:Δx_ffa]) == (longitude_faa=Nλ + 1, latitude_afa=Nφ + 1)
-    @test dimsize(ds_m[:Δx_fca]) == (longitude_faa=Nλ + 1, latitude_aca=Nφ)
-    @test dimsize(ds_m[:Δx_cfa]) == (longitude_caa=Nλ,     latitude_afa=Nφ + 1)
-    @test dimsize(ds_m[:Δx_cca]) == (longitude_caa=Nλ,     latitude_aca=Nφ)
+    @test dimsize(ds_m[:Δx_ffa]) == (λ_faa=Nλ + 1, φ_afa=Nφ + 1)
+    @test dimsize(ds_m[:Δx_fca]) == (λ_faa=Nλ + 1, φ_aca=Nφ)
+    @test dimsize(ds_m[:Δx_cfa]) == (λ_caa=Nλ,     φ_afa=Nφ + 1)
+    @test dimsize(ds_m[:Δx_cca]) == (λ_caa=Nλ,     φ_aca=Nφ)
 
-    @test dimsize(ds_m[:Δy_ffa]) == (longitude_faa=Nλ + 1, latitude_afa=Nφ + 1)
-    @test dimsize(ds_m[:Δy_fca]) == (longitude_faa=Nλ + 1, latitude_aca=Nφ)
-    @test dimsize(ds_m[:Δy_cfa]) == (longitude_caa=Nλ,     latitude_afa=Nφ + 1)
-    @test dimsize(ds_m[:Δy_cca]) == (longitude_caa=Nλ,     latitude_aca=Nφ)
+    @test dimsize(ds_m[:Δy_ffa]) == (λ_faa=Nλ + 1, φ_afa=Nφ + 1)
+    @test dimsize(ds_m[:Δy_fca]) == (λ_faa=Nλ + 1, φ_aca=Nφ)
+    @test dimsize(ds_m[:Δy_cfa]) == (λ_caa=Nλ,     φ_afa=Nφ + 1)
+    @test dimsize(ds_m[:Δy_cca]) == (λ_caa=Nλ,     φ_aca=Nφ)
 
-    @test dimsize(ds_m[:u]) == (longitude_faa=Nλ + 1, latitude_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
-    @test dimsize(ds_m[:v]) == (longitude_caa=Nλ,     latitude_afa=Nφ + 1, z_aac=Nz,     time=Nt + 1)
-    @test dimsize(ds_m[:w]) == (longitude_caa=Nλ,     latitude_aca=Nφ,     z_aaf=Nz + 1, time=Nt + 1)
-    @test dimsize(ds_m[:T]) == (longitude_caa=Nλ,     latitude_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
-    @test dimsize(ds_m[:S]) == (longitude_caa=Nλ,     latitude_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_m[:u]) == (λ_faa=Nλ + 1, φ_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_m[:v]) == (λ_caa=Nλ,     φ_afa=Nφ + 1, z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_m[:w]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aaf=Nz + 1, time=Nt + 1)
+    @test dimsize(ds_m[:T]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_m[:S]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
 
     close(ds_m)
     rm(filepath_metrics_nohalos)
@@ -573,35 +573,35 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
         @test eltype(ds_s[var]) == FT
     end
 
-    @test dimsize(ds_s[:longitude_faa]) == (longitude_faa=nx + 1,)
-    @test dimsize(ds_s[:longitude_caa]) == (longitude_caa=nx,)
-    @test dimsize(ds_s[:latitude_afa]) == (latitude_afa=ny,)
-    @test dimsize(ds_s[:latitude_aca]) == (latitude_aca=ny,)
+    @test dimsize(ds_s[:λ_faa]) == (λ_faa=nx + 1,)
+    @test dimsize(ds_s[:λ_caa]) == (λ_caa=nx,)
+    @test dimsize(ds_s[:φ_afa]) == (φ_afa=ny,)
+    @test dimsize(ds_s[:φ_aca]) == (φ_aca=ny,)
     @test dimsize(ds_s[:z_aaf]) == (z_aaf=nz,)
     @test dimsize(ds_s[:z_aac]) == (z_aac=nz,)
 
-    @test dimsize(ds_s[:dlongitude_faa]) == (longitude_faa=nx + 1,)
-    @test dimsize(ds_s[:dlongitude_caa]) == (longitude_caa=nx,)
-    @test dimsize(ds_s[:dlatitude_afa]) == (latitude_afa=ny,)
-    @test dimsize(ds_s[:dlatitude_aca]) == (latitude_aca=ny,)
+    @test dimsize(ds_s[:dλ_faa]) == (λ_faa=nx + 1,)
+    @test dimsize(ds_s[:dλ_caa]) == (λ_caa=nx,)
+    @test dimsize(ds_s[:dφ_afa]) == (φ_afa=ny,)
+    @test dimsize(ds_s[:dφ_aca]) == (φ_aca=ny,)
     @test dimsize(ds_s[:Δz_aaf]) == (z_aaf=nz,)
     @test dimsize(ds_s[:Δz_aac]) == (z_aac=nz,)
 
-    @test dimsize(ds_s[:Δx_ffa]) == (longitude_faa=nx + 1, latitude_afa=ny)
-    @test dimsize(ds_s[:Δx_fca]) == (longitude_faa=nx + 1, latitude_aca=ny)
-    @test dimsize(ds_s[:Δx_cfa]) == (longitude_caa=nx,     latitude_afa=ny)
-    @test dimsize(ds_s[:Δx_cca]) == (longitude_caa=nx,     latitude_aca=ny)
+    @test dimsize(ds_s[:Δx_ffa]) == (λ_faa=nx + 1, φ_afa=ny)
+    @test dimsize(ds_s[:Δx_fca]) == (λ_faa=nx + 1, φ_aca=ny)
+    @test dimsize(ds_s[:Δx_cfa]) == (λ_caa=nx,     φ_afa=ny)
+    @test dimsize(ds_s[:Δx_cca]) == (λ_caa=nx,     φ_aca=ny)
 
-    @test dimsize(ds_s[:Δy_ffa]) == (longitude_faa=nx + 1, latitude_afa=ny)
-    @test dimsize(ds_s[:Δy_fca]) == (longitude_faa=nx + 1, latitude_aca=ny)
-    @test dimsize(ds_s[:Δy_cfa]) == (longitude_caa=nx,     latitude_afa=ny)
-    @test dimsize(ds_s[:Δy_cca]) == (longitude_caa=nx,     latitude_aca=ny)
+    @test dimsize(ds_s[:Δy_ffa]) == (λ_faa=nx + 1, φ_afa=ny)
+    @test dimsize(ds_s[:Δy_fca]) == (λ_faa=nx + 1, φ_aca=ny)
+    @test dimsize(ds_s[:Δy_cfa]) == (λ_caa=nx,     φ_afa=ny)
+    @test dimsize(ds_s[:Δy_cca]) == (λ_caa=nx,     φ_aca=ny)
 
-    @test dimsize(ds_s[:u]) == (longitude_faa=nx + 1, latitude_aca=ny, z_aac=nz, time=Nt + 1)
-    @test dimsize(ds_s[:v]) == (longitude_caa=nx,     latitude_afa=ny, z_aac=nz, time=Nt + 1)
-    @test dimsize(ds_s[:w]) == (longitude_caa=nx,     latitude_aca=ny, z_aaf=nz, time=Nt + 1)
-    @test dimsize(ds_s[:T]) == (longitude_caa=nx,     latitude_aca=ny, z_aac=nz, time=Nt + 1)
-    @test dimsize(ds_s[:S]) == (longitude_caa=nx,     latitude_aca=ny, z_aac=nz, time=Nt + 1)
+    @test dimsize(ds_s[:u]) == (λ_faa=nx + 1, φ_aca=ny, z_aac=nz, time=Nt + 1)
+    @test dimsize(ds_s[:v]) == (λ_caa=nx,     φ_afa=ny, z_aac=nz, time=Nt + 1)
+    @test dimsize(ds_s[:w]) == (λ_caa=nx,     φ_aca=ny, z_aaf=nz, time=Nt + 1)
+    @test dimsize(ds_s[:T]) == (λ_caa=nx,     φ_aca=ny, z_aac=nz, time=Nt + 1)
+    @test dimsize(ds_s[:S]) == (λ_caa=nx,     φ_aca=ny, z_aac=nz, time=Nt + 1)
 
     close(ds_s)
     rm(filepath_sliced)
@@ -853,17 +853,17 @@ function test_netcdf_latlon_grid_fitted_bottom(arch)
 
     @test haskey(ds_h, "bottom_height")
     @test eltype(ds_h[:bottom_height]) == Float64
-    @test dimsize(ds_h[:bottom_height]) == (longitude_caa=Nλ + 2Hλ, latitude_aca=Nφ + 2Hφ)
+    @test dimsize(ds_h[:bottom_height]) == (λ_caa=Nλ + 2Hλ, φ_aca=Nφ + 2Hφ)
 
     for loc in ("ccc", "fcc", "cfc", "ccf")
         @test haskey(ds_h, "immersed_boundary_mask_$loc")
         @test eltype(ds_h["immersed_boundary_mask_$loc"]) == Float64
     end
 
-    @test dimsize(ds_h[:immersed_boundary_mask_ccc]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz)
-    @test dimsize(ds_h[:immersed_boundary_mask_fcc]) == (longitude_faa=Nλ + 2Hλ + 1, latitude_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz)
-    @test dimsize(ds_h[:immersed_boundary_mask_cfc]) == (longitude_caa=Nλ + 2Hλ,     latitude_afa=Nφ + 2Hφ + 1, z_aac=Nz + 2Hz)
-    @test dimsize(ds_h[:immersed_boundary_mask_ccf]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ,     z_aaf=Nz + 2Hz + 1)
+    @test dimsize(ds_h[:immersed_boundary_mask_ccc]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:immersed_boundary_mask_fcc]) == (λ_faa=Nλ + 2Hλ + 1, φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:immersed_boundary_mask_cfc]) == (λ_caa=Nλ + 2Hλ,     φ_afa=Nφ + 2Hφ + 1, z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:immersed_boundary_mask_ccf]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aaf=Nz + 2Hz + 1)
 
     @test all(ds_h[:bottom_height][:, :] .≈ Array(parent(grid.immersed_boundary.bottom_height)))
 
@@ -875,17 +875,17 @@ function test_netcdf_latlon_grid_fitted_bottom(arch)
 
     @test haskey(ds_n, "bottom_height")
     @test eltype(ds_n[:bottom_height]) == Float32
-    @test dimsize(ds_n[:bottom_height]) == (longitude_caa=Nλ, latitude_aca=Nφ)
+    @test dimsize(ds_n[:bottom_height]) == (λ_caa=Nλ, φ_aca=Nφ)
 
     for loc in ("ccc", "fcc", "cfc", "ccf")
         @test haskey(ds_n, "immersed_boundary_mask_$loc")
         @test eltype(ds_n["immersed_boundary_mask_$loc"]) == Float32
     end
 
-    @test dimsize(ds_n[:immersed_boundary_mask_ccc]) == (longitude_caa=Nλ,     latitude_aca=Nφ,     z_aac=Nz)
-    @test dimsize(ds_n[:immersed_boundary_mask_fcc]) == (longitude_faa=Nλ + 1, latitude_aca=Nφ,     z_aac=Nz)
-    @test dimsize(ds_n[:immersed_boundary_mask_cfc]) == (longitude_caa=Nλ,     latitude_afa=Nφ + 1, z_aac=Nz)
-    @test dimsize(ds_n[:immersed_boundary_mask_ccf]) == (longitude_caa=Nλ,     latitude_aca=Nφ,     z_aaf=Nz + 1)
+    @test dimsize(ds_n[:immersed_boundary_mask_ccc]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aac=Nz)
+    @test dimsize(ds_n[:immersed_boundary_mask_fcc]) == (λ_faa=Nλ + 1, φ_aca=Nφ,     z_aac=Nz)
+    @test dimsize(ds_n[:immersed_boundary_mask_cfc]) == (λ_caa=Nλ,     φ_afa=Nφ + 1, z_aac=Nz)
+    @test dimsize(ds_n[:immersed_boundary_mask_ccf]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aaf=Nz + 1)
 
     @test all(ds_n[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height)))
 
@@ -897,17 +897,17 @@ function test_netcdf_latlon_grid_fitted_bottom(arch)
 
     @test haskey(ds_s, "bottom_height")
     @test eltype(ds_s[:bottom_height]) == Float32
-    @test dimsize(ds_s[:bottom_height]) == (longitude_caa=nλ, latitude_aca=nφ)
+    @test dimsize(ds_s[:bottom_height]) == (λ_caa=nλ, φ_aca=nφ)
 
     for loc in ("ccc", "fcc", "cfc", "ccf")
         @test haskey(ds_s, "immersed_boundary_mask_$loc")
         @test eltype(ds_s["immersed_boundary_mask_$loc"]) == Float32
     end
 
-    @test dimsize(ds_s[:immersed_boundary_mask_ccc]) == (longitude_caa=nλ, latitude_aca=nφ, z_aac=nz)
-    @test dimsize(ds_s[:immersed_boundary_mask_fcc]) == (longitude_faa=nλ, latitude_aca=nφ, z_aac=nz)
-    @test dimsize(ds_s[:immersed_boundary_mask_cfc]) == (longitude_caa=nλ, latitude_afa=nφ, z_aac=nz)
-    @test dimsize(ds_s[:immersed_boundary_mask_ccf]) == (longitude_caa=nλ, latitude_aca=nφ, z_aaf=nz)
+    @test dimsize(ds_s[:immersed_boundary_mask_ccc]) == (λ_caa=nλ, φ_aca=nφ, z_aac=nz)
+    @test dimsize(ds_s[:immersed_boundary_mask_fcc]) == (λ_faa=nλ, φ_aca=nφ, z_aac=nz)
+    @test dimsize(ds_s[:immersed_boundary_mask_cfc]) == (λ_caa=nλ, φ_afa=nφ, z_aac=nz)
+    @test dimsize(ds_s[:immersed_boundary_mask_ccf]) == (λ_caa=nλ, φ_aca=nφ, z_aaf=nz)
 
     @test all(ds_s[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height, i_slice, j_slice)))
 
@@ -2576,7 +2576,7 @@ function test_netcdf_overriding_attributes(arch)
     )
 
     output_attributes = Dict(
-        "latitude_afa" => Dict("units" => "No units for you!"),
+        "φ_afa" => Dict("units" => "No units for you!"),
         "u" => Dict("long_name" => "zonal velocity", "units" => "miles/fortnight")
     )
 
@@ -2592,8 +2592,8 @@ function test_netcdf_overriding_attributes(arch)
     @test ds.attrib["date"] == "yesterday"
     @test ds.attrib["fruit"] == "papaya"
 
-    @test ds["latitude_afa"].attrib["units"] == "No units for you!"
-    @test !haskey(ds["latitude_afa"].attrib, "long_name")
+    @test ds["φ_afa"].attrib["units"] == "No units for you!"
+    @test !haskey(ds["φ_afa"].attrib, "long_name")
 
     @test ds["u"].attrib["long_name"] == "zonal velocity"
     @test ds["u"].attrib["units"] == "miles/fortnight"
@@ -2654,7 +2654,7 @@ function test_netcdf_free_surface_only_output(arch)
     ds_h = NCDataset(filepath_with_halos)
 
     @test haskey(ds_h, "η")
-    @test dimsize(ds_h["η"]) == (longitude_caa=Nλ + 2Hλ, latitude_aca=Nφ + 2Hφ, time=Nt + 1)
+    @test dimsize(ds_h["η"]) == (λ_caa=Nλ + 2Hλ, φ_aca=Nφ + 2Hφ, time=Nt + 1)
 
     close(ds_h)
     rm(filepath_with_halos)
@@ -2662,7 +2662,7 @@ function test_netcdf_free_surface_only_output(arch)
     ds_n = NCDataset(filepath_no_halos)
 
     @test haskey(ds_n, "η")
-    @test dimsize(ds_n["η"]) == (longitude_caa=Nλ, latitude_aca=Nφ, time=Nt + 1)
+    @test dimsize(ds_n["η"]) == (λ_caa=Nλ, φ_aca=Nφ, time=Nt + 1)
 
     close(ds_n)
     rm(filepath_no_halos)
@@ -2725,13 +2725,13 @@ function test_netcdf_free_surface_mixed_output(arch)
     ds_h = NCDataset(filepath_with_halos)
 
     @test haskey(ds_h, "η")
-    @test dimsize(ds_h["η"]) == (longitude_caa=Nλ + 2Hλ, latitude_aca=Nφ + 2Hφ, time=Nt + 1)
+    @test dimsize(ds_h["η"]) == (λ_caa=Nλ + 2Hλ, φ_aca=Nφ + 2Hφ, time=Nt + 1)
 
-    @test dimsize(ds_h[:u]) == (longitude_faa=Nλ + 2Hλ + 1, latitude_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:v]) == (longitude_caa=Nλ + 2Hλ,     latitude_afa=Nφ + 2Hφ + 1, z_aac=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:w]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ,     z_aaf=Nz + 2Hz + 1, time=Nt + 1)
-    @test dimsize(ds_h[:T]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:S]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:u]) == (λ_faa=Nλ + 2Hλ + 1, φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:v]) == (λ_caa=Nλ + 2Hλ,     φ_afa=Nφ + 2Hφ + 1, z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:w]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aaf=Nz + 2Hz + 1, time=Nt + 1)
+    @test dimsize(ds_h[:T]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:S]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
 
     close(ds_h)
     rm(filepath_with_halos)
@@ -2739,13 +2739,13 @@ function test_netcdf_free_surface_mixed_output(arch)
     ds_n = NCDataset(filepath_no_halos)
 
     @test haskey(ds_n, "η")
-    @test dimsize(ds_n["η"]) == (longitude_caa=Nλ, latitude_aca=Nφ, time=Nt + 1)
+    @test dimsize(ds_n["η"]) == (λ_caa=Nλ, φ_aca=Nφ, time=Nt + 1)
 
-    @test dimsize(ds_n[:u]) == (longitude_faa=Nλ + 1, latitude_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
-    @test dimsize(ds_n[:v]) == (longitude_caa=Nλ,     latitude_afa=Nφ + 1, z_aac=Nz,     time=Nt + 1)
-    @test dimsize(ds_n[:w]) == (longitude_caa=Nλ,     latitude_aca=Nφ,     z_aaf=Nz + 1, time=Nt + 1)
-    @test dimsize(ds_n[:T]) == (longitude_caa=Nλ,     latitude_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
-    @test dimsize(ds_n[:S]) == (longitude_caa=Nλ,     latitude_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_n[:u]) == (λ_faa=Nλ + 1, φ_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_n[:v]) == (λ_caa=Nλ,     φ_afa=Nφ + 1, z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_n[:w]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aaf=Nz + 1, time=Nt + 1)
+    @test dimsize(ds_n[:T]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_n[:S]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
 
     close(ds_n)
     rm(filepath_no_halos)
