@@ -42,7 +42,7 @@ end
 end
 
 @inline function compute_split_explicit_slow_tendency!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, 
-                                                 timestepper::QuasiAdamsBashforth2TimeStepper, stage)
+                                                       timestepper::QuasiAdamsBashforth2TimeStepper, stage)
     active_cells_map = get_active_column_map(grid)
 
     Gu⁻ = timestepper.G⁻.u
@@ -109,7 +109,7 @@ end
 end
 
 @inline function compute_split_explicit_slow_tendency!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, 
-                                                 timestepper::SplitRungeKutta3TimeStepper, stage)
+                                                       timestepper::SplitRungeKutta3TimeStepper, stage)
 
     GU⁻ = timestepper.G⁻.U
     GV⁻ = timestepper.G⁻.V
@@ -146,7 +146,7 @@ function compute_free_surface_tendency!(grid, model, free_surface::SplitExplicit
     end
 
     fields_to_fill = (GUⁿ, GVⁿ)
-    fill_halo_regions!(fields_to_fill; async = true)
+    fill_halo_regions!(fields_to_fill; async=true)
 
     return nothing
 end

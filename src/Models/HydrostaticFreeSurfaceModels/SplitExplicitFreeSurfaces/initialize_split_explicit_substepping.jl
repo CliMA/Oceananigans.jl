@@ -1,6 +1,4 @@
 using Oceananigans.ImmersedBoundaries: get_active_column_map, peripheral_node
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKutta3TimeStepper
-using Oceananigans.Operators: Δz
 
 # This file contains two different initializations methods performed at different stages of the simulation.
 #
