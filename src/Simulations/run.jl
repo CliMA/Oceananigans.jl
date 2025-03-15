@@ -11,8 +11,6 @@ import Oceananigans.Utils: schedule_aligned_time_step
 
 # Simulations are for running
 
-const SimpleSimulation = Simulation{<:Any, <:Any, <:Any, Nothing, Nothing, Nothing}
-
 #####
 ##### Time-step "alignment" with output and callbacks scheduled on TimeInterval
 #####
@@ -22,7 +20,6 @@ function collect_scheduled_activities(sim)
     callbacks = values(sim.callbacks)
     return tuple(writers..., callbacks...)
 end
-
 
 function schedule_aligned_time_step(sim, aligned_Δt)
     clock = sim.model.clock
@@ -35,8 +32,6 @@ function schedule_aligned_time_step(sim, aligned_Δt)
     return aligned_Δt
 end
 
-schedule_aligned_time_step(sim::SimpleSimulation, Δt) = Δt
- 
 """
     aligned_time_step(sim, Δt)
 
@@ -123,29 +118,11 @@ end
 
 const ModelCallsite = Union{TendencyCallsite, UpdateStateCallsite}
 
-model_callbacks(::Nothing) = []
-model_callbacks(callbacks) = Tuple(cb for cb in values(callbacks) if cb.callsite isa ModelCallsite)
-    
-
 """ Step `sim`ulation forward by Δt. """
 function time_step!(sim::Simulation, Δt)
     sim.Δt = Δt
     sim.align_time_step = false # ensure Δt
     return time_step!(sim)
-end
-
-initialize_schedules!(::SimpleSimulation) = nothing
-
-function initialize_schedules!(sim)
-    scheduled_activities = Iterators.flatten(values(sim.diagnostics),
-                                             values(sim.callbacks),
-                                             values(sim.output_writers))
-
-    for activity in scheduled_activities
-        initialize!(activity.schedule, sim.model)
-    end
-
-    return nothing
 end
 
 """ Step `sim`ulation forward by one time step. """
@@ -170,12 +147,24 @@ function time_step!(sim::Simulation)
         @warn "Resetting clock to $next_time and skipping time step of size Δt = $Δt"
         sim.model.clock.time = next_time
     else
-        model_cb = model_callbacks(sim.callbacks)
-        time_step!(sim.model, Δt, callbacks=model_cb)
+        model_callbacks = Tuple(cb for cb in values(sim.callbacks) if cb.callsite isa ModelCallsite)
+        time_step!(sim.model, Δt, callbacks=model_callbacks)
     end
 
-    diagnostics_callbacks_output!(sim)
-    
+    # Callbacks and callback-like things
+    for diag in values(sim.diagnostics)
+        diag.schedule(sim.model) && run_diagnostic!(diag, sim.model) 
+    end
+
+    for callback in values(sim.callbacks)
+        initialize!(callback, sim)
+        callback.callsite isa TimeStepCallsite && callback.schedule(sim.model) && callback(sim)
+    end
+
+    for writer in values(sim.output_writers)
+        writer.schedule(sim.model) && write_output!(writer, sim.model) 
+    end
+
     if initial_time_step && sim.verbose
         elapsed_initial_step_time = prettytime(1e-9 * (time_ns() - start_time))
         @info "    ... initial time step complete ($elapsed_initial_step_time)."
@@ -191,22 +180,8 @@ end
 add_dependency!(diagnostics, output) = nothing # fallback
 add_dependency!(diags, wta::WindowedTimeAverage) = wta ∈ values(diags) || push!(diags, wta)
 
-add_dependencies!(diagnostics, ::Nothing) = nothing
+add_dependencies!(diags, writer) = [add_dependency!(diags, out) for out in values(writer.outputs)]
 add_dependencies!(sim, ::Checkpointer) = nothing # Checkpointer does not have "outputs"
-
-function add_dependencies!(diagnostics, output_writers::AbstractDict)
-    for writer in output_writers
-        add_dependencies!(diagnostics, writer)
-    end
-    return nothing
-end
-
-function add_dependencies!(diags, writer)
-    for out in values(writer.outputs)
-        add_dependency!(diags, out) 
-    end
-    return nothing
-end
 
 we_want_to_pickup(pickup::Bool) = pickup
 we_want_to_pickup(pickup::Integer) = true
@@ -233,15 +208,34 @@ function initialize!(sim::Simulation)
     update_state!(model)
 
     # Output and diagnostics initialization
-    add_dependencies!(sim.diagnostics, sim.output_writers)
+    [add_dependencies!(sim.diagnostics, writer) for writer in values(sim.output_writers)]
 
     # Initialize schedules
-    initialize_schedules!(sim)
-    
+    scheduled_activities = Iterators.flatten((values(sim.diagnostics),
+                                              values(sim.callbacks),
+                                              values(sim.output_writers)))
+
+    for activity in scheduled_activities
+        initialize!(activity.schedule, sim.model)
+    end
+
     # Reset! the model time-stepper, evaluate all diagnostics, and write all output at first iteration
     if model.clock.iteration == 0
         reset!(timestepper(model))
-        init_diagnostics_callbacks_output!(sim)
+
+        # Initialize schedules and run diagnostics, callbacks, and output writers
+        for diag in values(sim.diagnostics)
+            run_diagnostic!(diag, model)
+        end
+
+        for callback in values(sim.callbacks) 
+            callback.callsite isa TimeStepCallsite && callback(sim)
+        end
+
+        for writer in values(sim.output_writers)
+            writer.schedule(model)
+            write_output!(writer, model)
+        end
     end
 
     sim.initialized = true
@@ -249,44 +243,6 @@ function initialize!(sim::Simulation)
     if sim.verbose
         initialization_time = prettytime(1e-9 * (time_ns() - start_time))
         @info "    ... simulation initialization complete ($initialization_time)"
-    end
-
-    return nothing
-end
-
-init_diagnostics_callbacks_output!(::SimpleSimulation) = nothing
-diagnostics_callbacks_output!(::SimpleSimulation) = nothing
-
-function init_diagnostics_callbacks_output!(sim)
-    # Initialize schedules and run diagnostics, callbacks, and output writers
-    for diag in values(sim.diagnostics)
-        run_diagnostic!(diag, sim.model)
-    end
-
-    for callback in values(sim.callbacks) 
-        callback.callsite isa TimeStepCallsite && callback(sim)
-    end
-
-    for writer in values(sim.output_writers)
-        writer.schedule(sim.model)
-        write_output!(writer, sim.model)
-    end
-
-    return nothing
-end
-
-function diagnostics_callbacks_output!(sim)
-    for diag in values(sim.diagnostics)
-        diag.schedule(sim.model) && run_diagnostic!(diag, sim.model) 
-    end
-
-    for callback in values(sim.callbacks)
-        initialize!(callback, sim)
-        callback.callsite isa TimeStepCallsite && callback.schedule(sim.model) && callback(sim)
-    end
-
-    for writer in values(sim.output_writers)
-        writer.schedule(sim.model) && write_output!(writer, sim.model) 
     end
 
     return nothing
