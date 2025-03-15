@@ -212,8 +212,8 @@ function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator)
     metrics = Dict()
 
     if TX != Flat
-        Δxᶠᵃᵃ_name = dim_name_generator("dx", grid, f, nothing, nothing, Val(:x))
-        Δxᶜᵃᵃ_name = dim_name_generator("dx", grid, c, nothing, nothing, Val(:x))
+        Δxᶠᵃᵃ_name = dim_name_generator("Δx", grid, f, nothing, nothing, Val(:x))
+        Δxᶜᵃᵃ_name = dim_name_generator("Δx", grid, c, nothing, nothing, Val(:x))
 
         Δxᶠᵃᵃ_field = Field(xspacings(grid, f); indices)
         Δxᶜᵃᵃ_field = Field(xspacings(grid, c); indices)
@@ -223,8 +223,8 @@ function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator)
     end
 
     if TY != Flat
-        Δyᵃᶠᵃ_name = dim_name_generator("dy", grid, nothing, f, nothing, Val(:y))
-        Δyᵃᶜᵃ_name = dim_name_generator("dy", grid, nothing, c, nothing, Val(:y))
+        Δyᵃᶠᵃ_name = dim_name_generator("Δy", grid, nothing, f, nothing, Val(:y))
+        Δyᵃᶜᵃ_name = dim_name_generator("Δy", grid, nothing, c, nothing, Val(:y))
 
         Δyᵃᶠᵃ_field = Field(yspacings(grid, f); indices)
         Δyᵃᶜᵃ_field = Field(yspacings(grid, c); indices)
@@ -234,8 +234,8 @@ function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator)
     end
 
     if TZ != Flat
-        Δzᵃᵃᶠ_name = dim_name_generator("dz", grid, nothing, nothing, f, Val(:z))
-        Δzᵃᵃᶜ_name = dim_name_generator("dz", grid, nothing, nothing, c, Val(:z))
+        Δzᵃᵃᶠ_name = dim_name_generator("Δz", grid, nothing, nothing, f, Val(:z))
+        Δzᵃᵃᶜ_name = dim_name_generator("Δz", grid, nothing, nothing, c, Val(:z))
 
         Δzᵃᵃᶠ_field = Field(zspacings(grid, f); indices)
         Δzᵃᵃᶜ_field = Field(zspacings(grid, c); indices)
@@ -262,10 +262,10 @@ function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_gene
         metrics[Δλᶠᵃᵃ_name] = Δλᶠᵃᵃ_field
         metrics[Δλᶜᵃᵃ_name] = Δλᶜᵃᵃ_field
 
-        Δxᶠᶠᵃ_name = dim_name_generator("dx", grid, f, f, nothing, Val(:x))
-        Δxᶠᶜᵃ_name = dim_name_generator("dx", grid, f, c, nothing, Val(:x))
-        Δxᶜᶠᵃ_name = dim_name_generator("dx", grid, c, f, nothing, Val(:x))
-        Δxᶜᶜᵃ_name = dim_name_generator("dx", grid, c, c, nothing, Val(:x))
+        Δxᶠᶠᵃ_name = dim_name_generator("Δx", grid, f, f, nothing, Val(:x))
+        Δxᶠᶜᵃ_name = dim_name_generator("Δx", grid, f, c, nothing, Val(:x))
+        Δxᶜᶠᵃ_name = dim_name_generator("Δx", grid, c, f, nothing, Val(:x))
+        Δxᶜᶜᵃ_name = dim_name_generator("Δx", grid, c, c, nothing, Val(:x))
 
         Δxᶠᶠᵃ_field = Field(xspacings(grid, f, f); indices)
         Δxᶠᶜᵃ_field = Field(xspacings(grid, f, c); indices)
@@ -288,10 +288,10 @@ function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_gene
         metrics[Δφᵃᶠᵃ_name] = Δφᵃᶠᵃ_field
         metrics[Δφᵃᶜᵃ_name] = Δφᵃᶜᵃ_field
 
-        Δyᶠᶠᵃ_name = dim_name_generator("dy", grid, f, f, nothing, Val(:y))
-        Δyᶠᶜᵃ_name = dim_name_generator("dy", grid, f, c, nothing, Val(:y))
-        Δyᶜᶠᵃ_name = dim_name_generator("dy", grid, c, f, nothing, Val(:y))
-        Δyᶜᶜᵃ_name = dim_name_generator("dy", grid, c, c, nothing, Val(:y))
+        Δyᶠᶠᵃ_name = dim_name_generator("Δy", grid, f, f, nothing, Val(:y))
+        Δyᶠᶜᵃ_name = dim_name_generator("Δy", grid, f, c, nothing, Val(:y))
+        Δyᶜᶠᵃ_name = dim_name_generator("Δy", grid, c, f, nothing, Val(:y))
+        Δyᶜᶜᵃ_name = dim_name_generator("Δy", grid, c, c, nothing, Val(:y))
 
         Δyᶠᶠᵃ_field = Field(yspacings(grid, f, f); indices)
         Δyᶠᶜᵃ_field = Field(yspacings(grid, f, c); indices)
@@ -305,8 +305,8 @@ function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_gene
     end
 
     if TZ != Flat
-        Δzᵃᵃᶠ_name = dim_name_generator("dz", grid, nothing, nothing, f, Val(:z))
-        Δzᵃᵃᶜ_name = dim_name_generator("dz", grid, nothing, nothing, c, Val(:z))
+        Δzᵃᵃᶠ_name = dim_name_generator("Δz", grid, nothing, nothing, f, Val(:z))
+        Δzᵃᵃᶜ_name = dim_name_generator("Δz", grid, nothing, nothing, c, Val(:z))
 
         Δzᵃᵃᶠ_field = Field(zspacings(grid, f); indices)
         Δzᵃᵃᶜ_field = Field(zspacings(grid, c); indices)
@@ -407,8 +407,8 @@ function default_vertical_dimension_attributes(coordinate::StaticVerticalDiscret
     zᵃᵃᶠ_name = dim_name_generator("z", coordinate, nothing, nothing, f, Val(:z))
     zᵃᵃᶜ_name = dim_name_generator("z", coordinate, nothing, nothing, c, Val(:z))
 
-    Δzᵃᵃᶠ_name = dim_name_generator("dz", coordinate, nothing, nothing, f, Val(:z))
-    Δzᵃᵃᶜ_name = dim_name_generator("dz", coordinate, nothing, nothing, c, Val(:z))
+    Δzᵃᵃᶠ_name = dim_name_generator("Δz", coordinate, nothing, nothing, f, Val(:z))
+    Δzᵃᵃᶜ_name = dim_name_generator("Δz", coordinate, nothing, nothing, c, Val(:z))
 
     zᵃᵃᶠ_attrs = Dict("long_name" => "Cell face locations in the z-direction.",   "units" => "m")
     zᵃᵃᶜ_attrs = Dict("long_name" => "Cell center locations in the z-direction.", "units" => "m")
@@ -428,10 +428,10 @@ function default_dimension_attributes(grid::RectilinearGrid, dim_name_generator)
     yᵃᶠᵃ_name = dim_name_generator("y", grid, nothing, f, nothing, Val(:y))
     yᵃᶜᵃ_name = dim_name_generator("y", grid, nothing, c, nothing, Val(:y))
 
-    Δxᶠᵃᵃ_name = dim_name_generator("dx", grid, f, nothing, nothing, Val(:x))
-    Δxᶜᵃᵃ_name = dim_name_generator("dx", grid, c, nothing, nothing, Val(:x))
-    Δyᵃᶠᵃ_name = dim_name_generator("dy", grid, nothing, f, nothing, Val(:y))
-    Δyᵃᶜᵃ_name = dim_name_generator("dy", grid, nothing, c, nothing, Val(:y))
+    Δxᶠᵃᵃ_name = dim_name_generator("Δx", grid, f, nothing, nothing, Val(:x))
+    Δxᶜᵃᵃ_name = dim_name_generator("Δx", grid, c, nothing, nothing, Val(:x))
+    Δyᵃᶠᵃ_name = dim_name_generator("Δy", grid, nothing, f, nothing, Val(:y))
+    Δyᵃᶜᵃ_name = dim_name_generator("Δy", grid, nothing, c, nothing, Val(:y))
 
     xᶠᵃᵃ_attrs = Dict("long_name" => "Cell face locations in the x-direction.",   "units" => "m")
     xᶜᵃᵃ_attrs = Dict("long_name" => "Cell center locations in the x-direction.", "units" => "m")
@@ -484,10 +484,10 @@ function default_dimension_attributes(grid::LatitudeLongitudeGrid, dim_name_gene
     Δφᵃᶠᵃ_attrs = Dict("long_name" => "Angular spacings between cell faces in the meridional direction.",   "units" => "degrees")
     Δφᵃᶜᵃ_attrs = Dict("long_name" => "Angular spacings between cell centers in the meridional direction.", "units" => "degrees")
 
-    Δxᶠᶠᵃ_name = dim_name_generator("dx", grid, f, f, nothing, Val(:x))
-    Δxᶠᶜᵃ_name = dim_name_generator("dx", grid, f, c, nothing, Val(:x))
-    Δxᶜᶠᵃ_name = dim_name_generator("dx", grid, c, f, nothing, Val(:x))
-    Δxᶜᶜᵃ_name = dim_name_generator("dx", grid, c, c, nothing, Val(:x))
+    Δxᶠᶠᵃ_name = dim_name_generator("Δx", grid, f, f, nothing, Val(:x))
+    Δxᶠᶜᵃ_name = dim_name_generator("Δx", grid, f, c, nothing, Val(:x))
+    Δxᶜᶠᵃ_name = dim_name_generator("Δx", grid, c, f, nothing, Val(:x))
+    Δxᶜᶜᵃ_name = dim_name_generator("Δx", grid, c, c, nothing, Val(:x))
 
     Δxᶠᶠᵃ_attrs = Dict("long_name" => "Geodesic spacings in the zonal direction between the cell located at (Face, Face).",
                        "units" => "m")
@@ -501,10 +501,10 @@ function default_dimension_attributes(grid::LatitudeLongitudeGrid, dim_name_gene
     Δxᶜᶜᵃ_attrs = Dict("long_name" => "Geodesic spacings in the zonal direction between the cell located at (Center, Center).",
                        "units" => "m")
 
-    Δyᶠᶠᵃ_name = dim_name_generator("dy", grid, f, f, nothing, Val(:y))
-    Δyᶠᶜᵃ_name = dim_name_generator("dy", grid, f, c, nothing, Val(:y))
-    Δyᶜᶠᵃ_name = dim_name_generator("dy", grid, c, f, nothing, Val(:y))
-    Δyᶜᶜᵃ_name = dim_name_generator("dy", grid, c, c, nothing, Val(:y))
+    Δyᶠᶠᵃ_name = dim_name_generator("Δy", grid, f, f, nothing, Val(:y))
+    Δyᶠᶜᵃ_name = dim_name_generator("Δy", grid, f, c, nothing, Val(:y))
+    Δyᶜᶠᵃ_name = dim_name_generator("Δy", grid, c, f, nothing, Val(:y))
+    Δyᶜᶜᵃ_name = dim_name_generator("Δy", grid, c, c, nothing, Val(:y))
 
     Δyᶠᶠᵃ_attrs = Dict("long_name" => "Geodesic spacings in the meridional direction between the cell located at (Face, Face).",
                        "units" => "m")

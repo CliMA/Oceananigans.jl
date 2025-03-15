@@ -106,7 +106,7 @@ h(model) = @. model.clock.time * sin(XC) * cos(YF) # x-y slice output (2D array)
 
 outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
 
-dims = Dict("scalar" => (), "profile" => ("z_c",), "slice" => ("x_c", "y_c"))
+dims = Dict("scalar" => (), "profile" => ("z_aac",), "slice" => ("x_caa", "y_aca"))
 
 output_attributes = Dict(
     "scalar"  => Dict("longname" => "Some scalar", "units" => "bananas"),
