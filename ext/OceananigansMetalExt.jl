@@ -8,8 +8,13 @@ import Oceananigans.Architectures:
     convert_to_device,
     on_architecture
 
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: default_free_surface
+
 const MetalGPU = GPU{<:Metal.MetalBackend}
 MetalGPU() = GPU(Metal.MetalBackend())
+
+# Metal does not run with Float64!
+Oceananigans.defaults.FloatType = Float32
 
 architecture(::MtlArray) = MetalGPU()
 
@@ -33,6 +38,16 @@ end
 
 @inline convert_to_device(::MetalGPU, args) = Metal.mtlconvert(args)
 @inline convert_to_device(::MetalGPU, args::Tuple) = map(Metal.mtlconvert, args)
+
+const MetalRectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY} = 
+    RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, <:MetalGPU}
+
+const XYRegularMetalRG = MetalRectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
+
+# TODO: remove this when we support NonhydrostaticModels with Metal.
+# Oceananigans does not support and `ImplicitFreeSurface` with Metal at the moment
+default_free_surface(grid::XYRegularMetalRG; gravitational_acceleration=g_Earth) =
+    SplitExplicitFreeSurface(grid; cfl = 0.7, gravitational_acceleration)
 
 end # module
 
