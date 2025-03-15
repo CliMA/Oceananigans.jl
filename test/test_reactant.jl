@@ -110,7 +110,7 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     @test !(parent(v) ≈ parent(rv))
     @test !(parent(w) ≈ parent(rw))
 
-    r_update_state = @compile sync=true Oceananigans.TimeSteppers.update_state!(r_model)
+    r_update_state! = @compile sync=true Oceananigans.TimeSteppers.update_state!(r_model)
     r_update_state!(r_model)
 
     # Test that fields were set correctly
