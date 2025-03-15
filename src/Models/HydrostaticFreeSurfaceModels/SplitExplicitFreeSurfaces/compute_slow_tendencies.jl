@@ -142,7 +142,6 @@ function compute_free_surface_tendency!(grid, model, free_surface::SplitExplicit
 
     @apply_regionally begin
         compute_split_explicit_slow_tendency!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, baroclinic_timestepper, Val(stage))
-        initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper, Val(stage))
     end
 
     fields_to_fill = (GUⁿ, GVⁿ)
