@@ -1,3 +1,4 @@
+import Oceananigans: initialize!
 import ..TimeSteppers: first_time_step!
 
 """ Step `sim`ulation forward by one time step. """
@@ -15,6 +16,14 @@ function time_step_for!(sim::ReactantSimulation, Nsteps)
     @trace for _ = 1:Nsteps
         time_step!(sim)
     end
+    return nothing
+end
+
+function initialize!(sim::ReactantSimulation)
+    model = sim.model
+    initialize!(model)
+    update_state!(model)
+    sim.initialized = true
     return nothing
 end
 
