@@ -97,6 +97,14 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     u, v, w = model.velocities
     ru, rv, rw = r_model.velocities
 
+    # They will not be equal because r_model halos are not
+    # filled during set!
+    @test !(parent(u) ≈ parent(ru))
+    @test !(parent(v) ≈ parent(rv))
+    @test !(parent(w) ≈ parent(rw))
+
+    Oceananigans.TimeSteppers.update_state!(r_model)
+
     # Test that fields were set correctly
     @info "  After setting an initial condition:"
     @show maximum(abs.(parent(u) .- parent(ru)))
