@@ -117,7 +117,52 @@ end
 ##### SplitExplicitFreeSurface barotropic subcylicing
 #####
 
+# `initialize_free_surface_state!` is called at the beginning of the substepping to 
+# reset the filtered state to zero and reinitialize the state from the filtered state.
+function setup_free_surface_substepping!(free_surface, baroclinic_timestepper, timestepper, stage)
+
+    η = free_surface.η
+    U, V = free_surface.barotropic_velocities
+
+    setup_free_surface_timestepper!(timestepper, η, U, V)
+
+    fill!(free_surface.filtered_state.η, 0)
+    fill!(free_surface.filtered_state.U, 0)
+    fill!(free_surface.filtered_state.V, 0)
+
+    return nothing
+end
+
+# At the last stage we reset the velocities and perform the complete substepping from n to n+1
+function setup_free_surface_substepping!(free_surface, baroclinic_ts::SplitRungeKutta3TimeStepper, barotropic_ts, ::Val{3})
+
+    η = free_surface.η
+    U, V = free_surface.barotropic_velocities
+
+    Uⁿ⁻¹ = baroclinic_ts.Ψ⁻.U
+    Vⁿ⁻¹ = baroclinic_ts.Ψ⁻.V
+    ηⁿ⁻¹ = baroclinic_ts.Ψ⁻.η
+
+    # Restart from the state at baroclinic step n
+    parent(U) .= parent(Uⁿ⁻¹)
+    parent(V) .= parent(Vⁿ⁻¹)
+    parent(η) .= parent(ηⁿ⁻¹)
+
+    setup_free_surface_timestepper!(barotropic_ts, η, U, V)
+
+    fill!(free_surface.filtered_state.η, 0)
+    fill!(free_surface.filtered_state.U, 0)
+    fill!(free_surface.filtered_state.V, 0)
+
+    return nothing
+end
+
 function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroclinic_timestepper, Δt)
+
+    stage = model.clock.stage
+    baroclinic_ts = model.timestepper
+    free_surface_ts = free_surface.timestepper
+    @apply_regionally setup_free_surface_substepping!(free_surface, baroclinic_ts, free_surface_ts, Val(stage))
 
     # Note: free_surface.η.grid != model.grid for DistributedSplitExplicitFreeSurface
     # since halo_size(free_surface.η.grid) != halo_size(model.grid)
@@ -144,9 +189,6 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     GVⁿ = model.timestepper.Gⁿ.V
 
     #free surface state
-    η = free_surface.η
-    U = barotropic_velocities.U
-    V = barotropic_velocities.V
     η̅ = filtered_state.η
     U̅ = filtered_state.U
     V̅ = filtered_state.V

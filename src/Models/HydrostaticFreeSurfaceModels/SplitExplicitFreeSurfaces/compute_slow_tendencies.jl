@@ -41,8 +41,8 @@ end
     return ifelse(immersed, zero(grid), Gⁿ⁺¹)
 end
 
-@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, 
-                                                 timestepper::QuasiAdamsBashforth2TimeStepper, stage)
+@inline function compute_split_explicit_slow_tendency!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, 
+                                                       timestepper::QuasiAdamsBashforth2TimeStepper, stage)
     active_cells_map = get_active_column_map(grid)
 
     Gu⁻ = timestepper.G⁻.u
@@ -108,8 +108,8 @@ end
     @inbounds GVⁿ[i, j, 1] = 2 * GVi / 3 + GV⁻[i, j, 1]
 end
 
-@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, 
-                                                 timestepper::SplitRungeKutta3TimeStepper, stage)
+@inline function compute_split_explicit_slow_tendency!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, 
+                                                       timestepper::SplitRungeKutta3TimeStepper, stage)
 
     GU⁻ = timestepper.G⁻.U
     GV⁻ = timestepper.G⁻.V
@@ -141,12 +141,11 @@ function compute_free_surface_tendency!(grid, model, free_surface::SplitExplicit
     stage = model.clock.stage
 
     @apply_regionally begin
-        compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, baroclinic_timestepper, Val(stage))
-        initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper, Val(stage))
+        compute_split_explicit_slow_tendency!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, baroclinic_timestepper, Val(stage))
     end
 
     fields_to_fill = (GUⁿ, GVⁿ)
-    fill_halo_regions!(fields_to_fill; async = true)
+    fill_halo_regions!(fields_to_fill; async=true)
 
     return nothing
 end

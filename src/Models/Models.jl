@@ -39,7 +39,7 @@ architecture(model::AbstractModel) = model.grid.architecture
 initialize!(model::AbstractModel) = nothing
 total_velocities(model::AbstractModel) = nothing
 timestepper(model::AbstractModel) = model.timestepper
-initialization_update_state!(model::AbstractModel; kw...) = update_state!(model; kw...) # fallback
+setup_update_state!(model::AbstractModel; kw...) = update_state!(model; kw...) # fallback
 
 # Fallback for any abstract model that does not contain `FieldTimeSeries`es
 update_model_field_time_series!(model::AbstractModel, clock::Clock) = nothing
