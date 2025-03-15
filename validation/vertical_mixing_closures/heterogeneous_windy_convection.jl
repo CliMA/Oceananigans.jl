@@ -86,10 +86,10 @@ b = model.tracers.b
 N² = ∂z(b)
 outputs = (; model.velocities..., model.tracers..., κᶜ=κᶜ, N²=N²)
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs;
-                                                      filename,
-                                                      schedule = TimeInterval(1hour),
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, outputs;
+                                                filename,
+                                                schedule = TimeInterval(1hour),
+                                                overwrite_existing = true)
 
 function progress(sim)
     u, v, w = sim.model.velocities

@@ -50,10 +50,10 @@ function run_bickley_jet(;
     @show output_name = "bickley_jet_Nh_$(Nh)_" * experiment_name * "_$(boundary_buffer(momentum_advection))"
 
     simulation.output_writers[:fields] =
-        JLD2OutputWriter(model, outputs,
-                                schedule = TimeInterval(output_time_interval),
-                                filename = output_name,
-                                overwrite_existing = true)
+        JLD2Writer(model, outputs,
+                   schedule = TimeInterval(output_time_interval),
+                   filename = output_name,
+                   overwrite_existing = true)
 
     @info "Running a simulation of an unstable Bickley jet with $(Nh)² degrees of freedom..."
 

@@ -105,17 +105,17 @@ u, v, w = model.velocities
 ζ = Field(∂x(v) - ∂y(u))
 
 
-simulation.output_writers[:surface] = JLD2OutputWriter(model, (; ζ, b, c),
-                                                       schedule = TimeInterval(1hour),
-                                                       indices = (:, :, grid.Nz),
-                                                       filename =name * "_slices",
-                                                       overwrite_existing = true)
+simulation.output_writers[:surface] = JLD2Writer(model, (; ζ, b, c),
+                                                 schedule = TimeInterval(1hour),
+                                                 indices = (:, :, grid.Nz),
+                                                 filename =name * "_slices",
+                                                 overwrite_existing = true)
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
-                                                      schedule = TimeInterval(10days),
-                                                      with_halos = false,
-                                                      filename = name * "_fields",
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, model.tracers),
+                                                schedule = TimeInterval(10days),
+                                                with_halos = false,
+                                                filename = name * "_fields",
+                                                overwrite_existing = true)
 
 run!(simulation)
 

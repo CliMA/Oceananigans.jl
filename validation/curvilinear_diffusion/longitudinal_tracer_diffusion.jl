@@ -60,10 +60,10 @@ output_fields = model.tracers
 
 output_prefix = "longitudinal_tracer_diffusion_Nx$(grid.Nx)"
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                      schedule = TimeInterval(cell_diffusion_time_scale),
-                                                      filename = output_prefix,
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, output_fields,
+                                                schedule = TimeInterval(cell_diffusion_time_scale),
+                                                filename = output_prefix,
+                                                overwrite_existing = true)
 
 run!(simulation)
 

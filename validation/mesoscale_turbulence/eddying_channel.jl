@@ -280,24 +280,24 @@ slicers = (west = (1, :, :),
 for side in keys(slicers)
     indices = slicers[side]
 
-    simulation.output_writers[side] = JLD2OutputWriter(model, outputs;
-                                                       schedule = TimeInterval(save_fields_interval),
-                                                       field_slicer = field_slicer,
-                                                       filename = filename * "_$(side)_slice",
-                                                       overwrite_existing = true,
-                                                       indices)
+    simulation.output_writers[side] = JLD2Writer(model, outputs;
+                                                 schedule = TimeInterval(save_fields_interval),
+                                                 field_slicer = field_slicer,
+                                                 filename = filename * "_$(side)_slice",
+                                                 overwrite_existing = true,
+                                                 indices)
 end
 
-simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, u=U);#, v=V, w=W, vb=v′b′, wb=w′b′),
-                                                     schedule = TimeInterval(save_fields_interval),
-                                                     filename = filename * "_zonal_average",
-                                                     overwrite_existing = true)
+simulation.output_writers[:zonal] = JLD2Writer(model, (b=B, u=U);#, v=V, w=W, vb=v′b′, wb=w′b′),
+                                               schedule = TimeInterval(save_fields_interval),
+                                               filename = filename * "_zonal_average",
+                                               overwrite_existing = true)
 #=
-simulation.output_writers[:averages] = JLD2OutputWriter(model, averaged_outputs,
-                                                        schedule = AveragedTimeInterval(1days, window=1days, stride=1),
-                                                        filename = filename * "_averages",
-                                                        verbose = true,
-                                                        overwrite_existing = true)
+simulation.output_writers[:averages] = JLD2Writer(model, averaged_outputs,
+                                                  schedule = AveragedTimeInterval(1days, window=1days, stride=1),
+                                                  filename = filename * "_averages",
+                                                  verbose = true,
+                                                  overwrite_existing = true)
 =#
 
 @info "Running the simulation..."

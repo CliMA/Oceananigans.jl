@@ -146,17 +146,17 @@ slicers = (east = (grid.Nx, :, :),
 for side in keys(slicers)
     indices = slicers[side]
 
-    simulation.output_writers[side] = JLD2OutputWriter(model, (; b, ζ);
-                                                       filename = filename * "_$(side)_slice",
-                                                       schedule = TimeInterval(save_fields_interval),
-                                                       overwrite_existing = true,
-                                                       indices)
+    simulation.output_writers[side] = JLD2Writer(model, (; b, ζ);
+                                                 filename = filename * "_$(side)_slice",
+                                                 schedule = TimeInterval(save_fields_interval),
+                                                 overwrite_existing = true,
+                                                 indices)
 end
 
-simulation.output_writers[:zonal] = JLD2OutputWriter(model, (; b=B, u=U, v=V);
-                                                     filename = filename * "_zonal_average",
-                                                     schedule = TimeInterval(save_fields_interval),
-                                                     overwrite_existing = true)
+simulation.output_writers[:zonal] = JLD2Writer(model, (; b=B, u=U, v=V);
+                                               filename = filename * "_zonal_average",
+                                               schedule = TimeInterval(save_fields_interval),
+                                               overwrite_existing = true)
 
 # Now we're ready to _run_.
 

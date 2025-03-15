@@ -26,9 +26,8 @@ function particle_tracking_simulation(; grid, particles, timestepper=:RungeKutta
     sim = Simulation(model, Δt=1e-2, stop_iteration=1)
 
     jld2_filepath = "test_particles.jld2"
-    sim.output_writers[:particles_jld2] =
-        JLD2OutputWriter(model, (; particles=model.particles),
-            filename="test_particles", schedule=IterationInterval(1))
+    sim.output_writers[:particles_jld2] = JLD2Writer(model, (; particles=model.particles),
+                                                     filename="test_particles", schedule=IterationInterval(1))
 
     nc_filepath = "test_particles.nc"
     sim.output_writers[:particles_nc] =
@@ -133,9 +132,8 @@ function run_simple_particle_tracking_tests(grid, timestepper=:QuasiAdamsBashfor
         sim = Simulation(model, Δt=1e-2, stop_iteration=1)
 
         jld2_filepath = "test_particles.jld2"
-        sim.output_writers[:particles_jld2] =
-            JLD2OutputWriter(model, (; particles=model.particles),
-                             filename=jld2_filepath, schedule=IterationInterval(1))
+        sim.output_writers[:particles_jld2] = JLD2Writer(model, (; particles=model.particles),
+                                                         filename=jld2_filepath, schedule=IterationInterval(1))
 
         nc_filepath = "test_particles.nc"
         sim.output_writers[:particles_nc] =

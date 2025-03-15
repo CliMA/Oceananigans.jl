@@ -42,44 +42,39 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     split_filepath = "test_split_output.jld2"
     unsplit_filepath = "test_unsplit_output.jld2"
 
-    simulation.output_writers[:jld2_3d_with_halos] =
-        JLD2OutputWriter(model, fields_to_output,
-                         filename = filepath3d,
-                         with_halos = true,
-                         schedule = TimeInterval(30seconds),
-                         overwrite_existing = true)
+    simulation.output_writers[:jld2_3d_with_halos] = JLD2Writer(model, fields_to_output,
+                                                                filename = filepath3d,
+                                                                with_halos = true,
+                                                                schedule = TimeInterval(30seconds),
+                                                                overwrite_existing = true)
 
-    simulation.output_writers[:jld2_2d_with_halos] =
-        JLD2OutputWriter(model, fields_to_output,
-                         filename = filepath2d,
-                         indices = (:, :, grid.Nz),
-                         with_halos = true,
-                         schedule = TimeInterval(30seconds),
-                         overwrite_existing = true)
+    simulation.output_writers[:jld2_2d_with_halos] = JLD2Writer(model, fields_to_output,
+                                                                filename = filepath2d,
+                                                                indices = (:, :, grid.Nz),
+                                                                with_halos = true,
+                                                                schedule = TimeInterval(30seconds),
+                                                                overwrite_existing = true)
 
     profiles = NamedTuple{keys(fields_to_output)}(Field(Average(f, dims=(1, 2))) for f in fields_to_output)
 
-    simulation.output_writers[:jld2_1d_with_halos] =
-        JLD2OutputWriter(model, profiles,
-                         filename = filepath1d,
-                         with_halos = true,
-                         schedule = TimeInterval(30seconds),
-                         overwrite_existing = true)
+    simulation.output_writers[:jld2_1d_with_halos] = JLD2Writer(model, profiles,
+                                                                filename = filepath1d,
+                                                                with_halos = true,
+                                                                schedule = TimeInterval(30seconds),
+                                                                overwrite_existing = true)
 
-    simulation.output_writers[:unsplit_jld2] =
-        JLD2OutputWriter(model, profiles,
-                         filename = unsplit_filepath,
-                         with_halos = true,
-                         schedule = TimeInterval(10seconds),
-                         overwrite_existing = true)
+    simulation.output_writers[:unsplit_jld2] = JLD2Writer(model, profiles,
+                                                          filename = unsplit_filepath,
+                                                          with_halos = true,
+                                                          schedule = TimeInterval(10seconds),
+                                                          overwrite_existing = true)
 
-    simulation.output_writers[:split_jld2] =
-        JLD2OutputWriter(model, profiles,
-                         filename = split_filepath,
-                         with_halos = true,
-                         schedule = TimeInterval(10seconds),
-                         file_splitting = TimeInterval(30seconds),
-                         overwrite_existing = true)
+    simulation.output_writers[:split_jld2] = JLD2Writer(model, profiles,
+                                                        filename = split_filepath,
+                                                        with_halos = true,
+                                                        schedule = TimeInterval(10seconds),
+                                                        file_splitting = TimeInterval(30seconds),
+                                                        overwrite_existing = true)
 
     run!(simulation)
 
@@ -278,10 +273,10 @@ end
                 model = NonhydrostaticModel(; grid, boundary_conditions = (; u=u_bcs, v=v_bcs))
                 simulation = Simulation(model; Δt=1, stop_iteration=1)
                 
-                simulation.output_writers[:jld2] = JLD2OutputWriter(model, model.velocities,
-                                                                    filename = "test_cuarray_bc.jld2",
-                                                                    schedule=IterationInterval(1),
-                                                                    overwrite_existing = true)
+                simulation.output_writers[:jld2] = JLD2Writer(model, model.velocities,
+                                                              filename = "test_cuarray_bc.jld2",
+                                                              schedule=IterationInterval(1),
+                                                              overwrite_existing = true)
                 
                 run!(simulation)
                 

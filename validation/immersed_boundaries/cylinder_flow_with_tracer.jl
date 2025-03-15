@@ -101,11 +101,11 @@ function run_cylinder_steadystate(; output_time_interval = 1, stop_time = 100, a
     data_path = experiment_name
  
     simulation.output_writers[:fields] =
-            JLD2OutputWriter(immersed_model, outputs,
-                             schedule = TimeInterval(output_time_interval),
-                             prefix = data_path,
-                             field_slicer = nothing,
-                             overwrite_existing = true)
+            JLD2Writer(immersed_model, outputs,
+                       schedule = TimeInterval(output_time_interval),
+                       prefix = data_path,
+                       field_slicer = nothing,
+                       overwrite_existing = true)
 
     @info "Running a simulation of an steady state cylinder..."
 

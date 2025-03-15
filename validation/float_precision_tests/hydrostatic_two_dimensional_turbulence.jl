@@ -54,8 +54,8 @@ function run_simulation(nx, ny, arch; topology = (Periodic, Periodic, Bounded))
 
     filepath = "mpi_hydrostatic_turbulence_rank$(local_rank)"
     simulation.output_writers[:fields] =
-        JLD2OutputWriter(model, outputs, filename=filepath, schedule=TimeInterval(0.1),
-                         overwrite_existing=true)
+        JLD2Writer(model, outputs, filename=filepath, schedule=TimeInterval(0.1),
+                   overwrite_existing=true)
 
     run!(simulation)
 

@@ -125,10 +125,10 @@ end
 
 simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
-    schedule=TimeInterval(save_fields_interval),
-    filename=filename * "_fields",
-    overwrite_existing=true)
+simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, model.tracers),
+                                                schedule=TimeInterval(save_fields_interval),
+                                                filename=filename * "_fields",
+                                                overwrite_existing=true)
 
 @info "Running the simulation..."
 

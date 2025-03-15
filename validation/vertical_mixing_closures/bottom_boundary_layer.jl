@@ -51,10 +51,10 @@ diffusivities = (κᵘ = model.diffusivity_fields.κᵘ,
 
 outputs = merge(model.velocities, model.tracers, diffusivities)
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(20minutes),
-                                                      filename = "bottom_boundary_layer.jld2",
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, outputs,
+                                                schedule = TimeInterval(20minutes),
+                                                filename = "bottom_boundary_layer.jld2",
+                                                overwrite_existing = true)
 
 function progress(sim)
     msg = @sprintf("Iter: %d, time: %s, max(u): %.2f",

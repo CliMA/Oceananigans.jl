@@ -68,9 +68,9 @@ model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1
 
 simulation = Simulation(model, Δt=10minutes, stop_time=30days)
 
-simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
-                                                          filename= "averaged_velocity_data.jld2",
-                                                          schedule = AveragedTimeInterval(4days, window=2days, stride=2))
+simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities,
+                                                    filename= "averaged_velocity_data.jld2",
+                                                    schedule = AveragedTimeInterval(4days, window=2days, stride=2))
 ```
 """
 function AveragedTimeInterval(interval; window=interval, stride=1)

@@ -231,11 +231,10 @@ function cubed_sphere_rossby_haurwitz(grid_filepath; check_fields=false, nsteps=
 
     output_fields = merge(model.velocities, (η=model.free_surface.η,))
 
-    simulation.output_writers[:fields] =
-    JLD2OutputWriter(model, output_fields,
-        schedule = TimeInterval(1hour),
-        filename = "cubed_sphere_rossby_haurwitz",
-        overwrite_existing = true)
+    simulation.output_writers[:fields] = JLD2Writer(model, output_fields,
+                                                    schedule = TimeInterval(1hour),
+                                                    filename = "cubed_sphere_rossby_haurwitz",
+                                                    overwrite_existing = true)
 
     run!(simulation)
 

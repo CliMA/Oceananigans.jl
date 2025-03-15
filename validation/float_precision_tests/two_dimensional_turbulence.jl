@@ -40,10 +40,10 @@ add_callback!(simulation, progress, IterationInterval(10))
 
 FT = Oceananigans.defaults.FloatType
 outputs = merge(model.velocities, (; e))
-ow = JLD2OutputWriter(model, outputs;
-                      filename = "float_point_test_$(Nx)_$FT.jld2",
-                      schedule = TimeInterval(0.1),
-                      overwrite_existing = true)
+ow = JLD2Writer(model, outputs;
+                filename = "float_point_test_$(Nx)_$FT.jld2",
+                schedule = TimeInterval(0.1),
+                overwrite_existing = true)
 
 simulation.output_writers[:jld2] = ow
 

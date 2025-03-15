@@ -51,10 +51,10 @@ for name in keys(models)
     η = model.free_surface.η
     s = @at (Center, Center, Center) sqrt(u^2 + v^2)
 
-    simulation.output_writers[:splash] = JLD2OutputWriter(model, (; u, v, s, η),
-                                                          schedule = IterationInterval(6),
-                                                          filename = "splash_$name",
-                                                          overwrite_existing = true)
+    simulation.output_writers[:splash] = JLD2Writer(model, (; u, v, s, η),
+                                                    schedule = IterationInterval(6),
+                                                    filename = "splash_$name",
+                                                    overwrite_existing = true)
 
     @info "Run simulation..."
     run!(simulation)

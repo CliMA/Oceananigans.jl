@@ -96,7 +96,7 @@ export
     CFL, AdvectiveCFL, DiffusiveCFL,
 
     # Output writers
-    NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
+    NetCDFOutputWriter, JLD2Writer, Checkpointer,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval,
     SpecifiedTimes, FileSizeLimit, AndSchedule, OrSchedule, written_names,
 

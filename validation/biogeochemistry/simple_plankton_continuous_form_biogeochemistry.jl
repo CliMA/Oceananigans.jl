@@ -173,9 +173,9 @@ outputs = (w = model.velocities.w,
 
 filename = "simple_plankton_continuous_form_biogeochemistry"
 
-simulation.output_writers[:simple_output] = JLD2OutputWriter(model, outputs; filename,
-                                                             schedule = TimeInterval(20minutes),
-                                                             overwrite_existing = true)
+simulation.output_writers[:simple_output] = JLD2Writer(model, outputs; filename,
+                                                       schedule = TimeInterval(20minutes),
+                                                       overwrite_existing = true)
 
 run!(simulation)
 

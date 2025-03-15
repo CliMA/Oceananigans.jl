@@ -68,11 +68,11 @@ function test_dependency_adding(model)
     dimensions = Dict("time_average" => ("xF", "yC", "zC"))
 
     # JLD2 dependencies test
-    jld2_output_writer = JLD2OutputWriter(model, output,
-                                          schedule = TimeInterval(4),
-                                          dir = ".",
-                                          filename = "test.jld2",
-                                          overwrite_existing = true)
+    jld2_output_writer = JLD2Writer(model, output,
+                                    schedule = TimeInterval(4),
+                                    dir = ".",
+                                    filename = "test.jld2",
+                                    overwrite_existing = true)
 
     windowed_time_average = jld2_output_writer.outputs.time_average
     @test dependencies_added_correctly!(model, windowed_time_average, jld2_output_writer)
@@ -120,7 +120,7 @@ function test_creating_and_appending(model, output_writer)
     if output_writer === NetCDFOutputWriter
         ds = NCDataset(filepath)
         time_length = length(ds["time"])
-    elseif output_writer === JLD2OutputWriter
+    elseif output_writer === JLD2Writer
         ds = jldopen(filepath)
         time_length = length(keys(ds["timeseries/t"]))
     end
@@ -144,10 +144,10 @@ function test_windowed_time_averaging_simulation(model)
     model.clock.iteration = model.clock.time = 0
     simulation = Simulation(model, Δt=1.0, stop_iteration=0)
 
-    jld2_output_writer = JLD2OutputWriter(model, model.velocities,
-                                          schedule = AveragedTimeInterval(π, window=1),
-                                          filename = jld_filename1,
-                                          overwrite_existing = true)
+    jld2_output_writer = JLD2Writer(model, model.velocities,
+                                    schedule = AveragedTimeInterval(π, window=1),
+                                    filename = jld_filename1,
+                                    overwrite_existing = true)
 
     # https://github.com/Alexander-Barth/NCDatasets.jl/issues/105
     nc_filepath1 = "windowed_time_average_test1.nc"
@@ -194,10 +194,10 @@ function test_windowed_time_averaging_simulation(model)
     # time_interval == time_averaging_window
     model.clock.iteration = model.clock.time = 0
 
-    simulation.output_writers[:jld2] = JLD2OutputWriter(model, model.velocities,
-                                                        schedule = AveragedTimeInterval(π, window=π),
-                                                        filename = jld_filename2,
-                                                        overwrite_existing = true)
+    simulation.output_writers[:jld2] = JLD2Writer(model, model.velocities,
+                                                  schedule = AveragedTimeInterval(π, window=π),
+                                                  filename = jld_filename2,
+                                                  overwrite_existing = true)
 
     nc_filepath2 = "windowed_time_average_test2.nc"
     nc_outputs = Dict(string(name) => field for (name, field) in pairs(model.velocities))
@@ -229,7 +229,7 @@ end
     for arch in archs
 
         @info "Testing that writers create file and append to it properly"
-        for output_writer in (NetCDFOutputWriter, JLD2OutputWriter)
+        for output_writer in (NetCDFOutputWriter, JLD2Writer)
             grid = RectilinearGrid(arch, topology=topo, size=(1, 1, 1), extent=(1, 1, 1))
             model = NonhydrostaticModel(; grid)
             test_creating_and_appending(model, output_writer)

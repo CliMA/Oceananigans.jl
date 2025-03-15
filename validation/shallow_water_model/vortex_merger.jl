@@ -87,10 +87,10 @@ for Nh in [100, 200, 400, 800, 1600], stencil in [VorticityStencil, VelocitySten
 
     save_interval = 0.1
 
-    simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, h, ζ, KE, PE, PV),
-                                                                schedule = TimeInterval(save_interval),
-                                                                filename = "vortex_merger_$(Nh)_WENO",
-                                                                overwrite_existing = true)
+    simulation.output_writers[:surface_fields] = JLD2Writer(model, (; u, v, h, ζ, KE, PE, PV),
+                                                            schedule = TimeInterval(save_interval),
+                                                            filename = "vortex_merger_$(Nh)_WENO",
+                                                            overwrite_existing = true)
 
     run!(simulation)
 

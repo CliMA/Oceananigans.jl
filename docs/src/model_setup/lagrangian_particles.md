@@ -120,7 +120,7 @@ model = NonhydrostaticModel(; grid, particles=lagrangian_particles)
 ```
 
 ```@example particles
-JLD2OutputWriter(model, (; particles=model.particles), filename="particles", schedule=TimeInterval(15))
+JLD2Writer(model, (; particles=model.particles), filename="particles", schedule=TimeInterval(15))
 ```
 
 When writing to NetCDF you should write particles to a separate file as the NetCDF dimensions differ for

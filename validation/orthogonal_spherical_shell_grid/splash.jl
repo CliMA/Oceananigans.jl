@@ -44,11 +44,11 @@ save_fields_interval = 18minutes
 
 s = @at (Center, Center, Center) sqrt(u^2 + v^2)
 
-simulation.output_writers[:splash] = JLD2OutputWriter(model, (; u, v, s, η),
-                                                      schedule = TimeInterval(save_fields_interval),
-                                                      filename = "ossg_splash",
-                                                      with_halos = true,
-                                                      overwrite_existing = true)
+simulation.output_writers[:splash] = JLD2Writer(model, (; u, v, s, η),
+                                                schedule = TimeInterval(save_fields_interval),
+                                                filename = "ossg_splash",
+                                                with_halos = true,
+                                                overwrite_existing = true)
 
 @info "Run simulation..."
 

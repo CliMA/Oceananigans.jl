@@ -20,11 +20,11 @@ u, v, w = model.velocities
 simulation = Simulation(model, Δt=0.01, stop_iteration=3)
 
 rank = MPI.Comm_rank(comm)
-simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, (; ζ)),
-                                                      schedule = IterationInterval(1),
-                                                      with_halos = true,
-                                                      filename = "test_output_writing_rank$rank",
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, (; ζ)),
+                                                schedule = IterationInterval(1),
+                                                with_halos = true,
+                                                filename = "test_output_writing_rank$rank",
+                                                overwrite_existing = true)
 
 run!(simulation)
 
