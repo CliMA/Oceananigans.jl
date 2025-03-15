@@ -190,8 +190,8 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     @test haskey(ds_mh, "time")
     @test eltype(ds_mh["time"]) == Float64
 
-    dims = ("x_f", "x_c", "y_f", "y_c", "z_f", "z_c")
-    metrics = ("dx_f", "dx_c", "dy_f", "dy_c", "dz_f", "dz_c")
+    dims = ("x_faa", "x_caa", "y_afa", "y_aca", "z_aaf", "z_aac")
+    metrics = ("dx_faa", "dx_caa", "dy_afa", "dy_aca", "dy_afa", "dy_aca")
     vars = ("u", "v", "w", "T", "S")
 
     for var in (dims..., metrics..., vars...)
@@ -203,25 +203,25 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
 
     @test dimsize(ds_mh["time"]) == (time=Nt + 1,)
 
-    @test dimsize(ds_mh[:x_f]) == (x_f=Nx + 2Hx,)
-    @test dimsize(ds_mh[:x_c]) == (x_c=Nx + 2Hx,)
-    @test dimsize(ds_mh[:y_f]) == (y_f=Ny + 2Hy + 1,)
-    @test dimsize(ds_mh[:y_c]) == (y_c=Ny + 2Hy,)
-    @test dimsize(ds_mh[:z_f]) == (z_f=Nz + 2Hz + 1,)
-    @test dimsize(ds_mh[:z_c]) == (z_c=Nz + 2Hz,)
+    @test dimsize(ds_mh[:x_faa]) == (x_faa=Nx + 2Hx,)
+    @test dimsize(ds_mh[:x_caa]) == (x_caa=Nx + 2Hx,)
+    @test dimsize(ds_mh[:y_afa]) == (y_afa=Ny + 2Hy + 1,)
+    @test dimsize(ds_mh[:y_aca]) == (y_aca=Ny + 2Hy,)
+    @test dimsize(ds_mh[:z_aaf]) == (z_aaf=Nz + 2Hz + 1,)
+    @test dimsize(ds_mh[:z_aac]) == (z_aac=Nz + 2Hz,)
 
-    @test dimsize(ds_mh[:dx_f]) == (x_f=Nx + 2Hx,)
-    @test dimsize(ds_mh[:dx_c]) == (x_c=Nx + 2Hx,)
-    @test dimsize(ds_mh[:dy_f]) == (y_f=Ny + 2Hy + 1,)
-    @test dimsize(ds_mh[:dy_c]) == (y_c=Ny + 2Hy,)
-    @test dimsize(ds_mh[:dz_f]) == (z_f=Nz + 2Hz + 1,)
-    @test dimsize(ds_mh[:dz_c]) == (z_c=Nz + 2Hz,)
+    @test dimsize(ds_mh[:dx_faa]) == (x_faa=Nx + 2Hx,)
+    @test dimsize(ds_mh[:dx_caa]) == (x_caa=Nx + 2Hx,)
+    @test dimsize(ds_mh[:dy_afa]) == (y_afa=Ny + 2Hy + 1,)
+    @test dimsize(ds_mh[:dy_aca]) == (y_aca=Ny + 2Hy,)
+    @test dimsize(ds_mh[:dz_aaf]) == (z_aaf=Nz + 2Hz + 1,)
+    @test dimsize(ds_mh[:dz_aac]) == (z_aac=Nz + 2Hz,)
 
-    @test dimsize(ds_mh[:u]) == (x_f=Nx + 2Hx, y_c=Ny + 2Hy,     z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_mh[:v]) == (x_c=Nx + 2Hx, y_f=Ny + 2Hy + 1, z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_mh[:w]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_f=Nz + 2Hz + 1, time=Nt + 1)
-    @test dimsize(ds_mh[:T]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_mh[:S]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_mh[:u]) == (x_faa=Nx + 2Hx, y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_mh[:v]) == (x_caa=Nx + 2Hx, y_afa=Ny + 2Hy + 1, z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_mh[:w]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy,     z_aaf=Nz + 2Hz + 1, time=Nt + 1)
+    @test dimsize(ds_mh[:T]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_mh[:S]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz,     time=Nt + 1)
 
     close(ds_mh)
     rm(filepath_metrics_halos)
@@ -239,25 +239,25 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
         @test eltype(ds_m[var]) == FT
     end
 
-    @test dimsize(ds_m[:x_f]) == (x_f=Nx,)
-    @test dimsize(ds_m[:x_c]) == (x_c=Nx,)
-    @test dimsize(ds_m[:y_f]) == (y_f=Ny + 1,)
-    @test dimsize(ds_m[:y_c]) == (y_c=Ny,)
-    @test dimsize(ds_m[:z_f]) == (z_f=Nz + 1,)
-    @test dimsize(ds_m[:z_c]) == (z_c=Nz,)
+    @test dimsize(ds_m[:x_faa]) == (x_faa=Nx,)
+    @test dimsize(ds_m[:x_caa]) == (x_caa=Nx,)
+    @test dimsize(ds_m[:y_afa]) == (y_afa=Ny + 1,)
+    @test dimsize(ds_m[:y_aca]) == (y_aca=Ny,)
+    @test dimsize(ds_m[:z_aaf]) == (z_aaf=Nz + 1,)
+    @test dimsize(ds_m[:z_aac]) == (z_aac=Nz,)
 
-    @test dimsize(ds_m[:dx_f]) == (x_f=Nx,)
-    @test dimsize(ds_m[:dx_c]) == (x_c=Nx,)
-    @test dimsize(ds_m[:dy_f]) == (y_f=Ny + 1,)
-    @test dimsize(ds_m[:dy_c]) == (y_c=Ny,)
-    @test dimsize(ds_m[:dz_f]) == (z_f=Nz + 1,)
-    @test dimsize(ds_m[:dz_c]) == (z_c=Nz,)
+    @test dimsize(ds_m[:dx_faa]) == (x_faa=Nx,)
+    @test dimsize(ds_m[:dx_caa]) == (x_caa=Nx,)
+    @test dimsize(ds_m[:dy_afa]) == (y_afa=Ny + 1,)
+    @test dimsize(ds_m[:dy_aca]) == (y_aca=Ny,)
+    @test dimsize(ds_m[:dz_aaf]) == (z_aaf=Nz + 1,)
+    @test dimsize(ds_m[:dz_aac]) == (z_aac=Nz,)
 
-    @test dimsize(ds_m[:u]) == (x_f=Nx, y_c=Ny,     z_c=Nz,     time=Nt + 1)
-    @test dimsize(ds_m[:v]) == (x_c=Nx, y_f=Ny + 1, z_c=Nz,     time=Nt + 1)
-    @test dimsize(ds_m[:w]) == (x_c=Nx, y_c=Ny,     z_f=Nz + 1, time=Nt + 1)
-    @test dimsize(ds_m[:T]) == (x_c=Nx, y_c=Ny,     z_c=Nz,     time=Nt + 1)
-    @test dimsize(ds_m[:S]) == (x_c=Nx, y_c=Ny,     z_c=Nz,     time=Nt + 1)
+    @test dimsize(ds_m[:u]) == (x_faa=Nx, y_aca=Ny,     z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_m[:v]) == (x_caa=Nx, y_afa=Ny + 1, z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_m[:w]) == (x_caa=Nx, y_aca=Ny,     z_aaf=Nz + 1, time=Nt + 1)
+    @test dimsize(ds_m[:T]) == (x_caa=Nx, y_aca=Ny,     z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_m[:S]) == (x_caa=Nx, y_aca=Ny,     z_aac=Nz,     time=Nt + 1)
 
     close(ds_m)
     rm(filepath_metrics_nohalos)
@@ -281,18 +281,18 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
 
     @test dimsize(ds_h["time"]) == (time=Nt + 1,)
 
-    @test dimsize(ds_h[:x_f]) == (x_f=Nx + 2Hx,)
-    @test dimsize(ds_h[:x_c]) == (x_c=Nx + 2Hx,)
-    @test dimsize(ds_h[:y_f]) == (y_f=Ny + 2Hy + 1,)
-    @test dimsize(ds_h[:y_c]) == (y_c=Ny + 2Hy,)
-    @test dimsize(ds_h[:z_f]) == (z_f=Nz + 2Hz + 1,)
-    @test dimsize(ds_h[:z_c]) == (z_c=Nz + 2Hz,)
+    @test dimsize(ds_h[:x_faa]) == (x_faa=Nx + 2Hx,)
+    @test dimsize(ds_h[:x_caa]) == (x_caa=Nx + 2Hx,)
+    @test dimsize(ds_h[:y_afa]) == (y_afa=Ny + 2Hy + 1,)
+    @test dimsize(ds_h[:y_aca]) == (y_aca=Ny + 2Hy,)
+    @test dimsize(ds_h[:z_aaf]) == (z_aaf=Nz + 2Hz + 1,)
+    @test dimsize(ds_h[:z_aac]) == (z_aac=Nz + 2Hz,)
 
-    @test dimsize(ds_h[:u]) == (x_f=Nx + 2Hx, y_c=Ny + 2Hy,     z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:v]) == (x_c=Nx + 2Hx, y_f=Ny + 2Hy + 1, z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:w]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_f=Nz + 2Hz + 1, time=Nt + 1)
-    @test dimsize(ds_h[:T]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:S]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:u]) == (x_faa=Nx + 2Hx, y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:v]) == (x_caa=Nx + 2Hx, y_afa=Ny + 2Hy + 1, z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:w]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy,     z_aaf=Nz + 2Hz + 1, time=Nt + 1)
+    @test dimsize(ds_h[:T]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:S]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz,     time=Nt + 1)
 
     close(ds_h)
     rm(filepath_nometrics)
@@ -310,25 +310,25 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
         @test eltype(ds_s[var]) == FT
     end
 
-    @test dimsize(ds_s[:x_f]) == (x_f=nx,)
-    @test dimsize(ds_s[:x_c]) == (x_c=nx,)
-    @test dimsize(ds_s[:y_f]) == (y_f=ny,)
-    @test dimsize(ds_s[:y_c]) == (y_c=ny,)
-    @test dimsize(ds_s[:z_f]) == (z_f=nz,)
-    @test dimsize(ds_s[:z_c]) == (z_c=nz,)
+    @test dimsize(ds_s[:x_faa]) == (x_faa=nx,)
+    @test dimsize(ds_s[:x_caa]) == (x_caa=nx,)
+    @test dimsize(ds_s[:y_afa]) == (y_afa=ny,)
+    @test dimsize(ds_s[:y_aca]) == (y_aca=ny,)
+    @test dimsize(ds_s[:z_aaf]) == (z_aaf=nz,)
+    @test dimsize(ds_s[:z_aac]) == (z_aac=nz,)
 
-    @test dimsize(ds_s[:dx_f]) == (x_f=nx,)
-    @test dimsize(ds_s[:dx_c]) == (x_c=nx,)
-    @test dimsize(ds_s[:dy_f]) == (y_f=ny,)
-    @test dimsize(ds_s[:dy_c]) == (y_c=ny,)
-    @test dimsize(ds_s[:dz_f]) == (z_f=nz,)
-    @test dimsize(ds_s[:dz_c]) == (z_c=nz,)
+    @test dimsize(ds_s[:dx_faa]) == (x_faa=nx,)
+    @test dimsize(ds_s[:dx_caa]) == (x_caa=nx,)
+    @test dimsize(ds_s[:dy_afa]) == (y_afa=ny,)
+    @test dimsize(ds_s[:dy_aca]) == (y_aca=ny,)
+    @test dimsize(ds_s[:dz_aaf]) == (z_aaf=nz,)
+    @test dimsize(ds_s[:dz_aac]) == (z_aac=nz,)
 
-    @test dimsize(ds_s[:u]) == (x_f=nx, y_c=ny, z_c=nz, time=Nt + 1)
-    @test dimsize(ds_s[:v]) == (x_c=nx, y_f=ny, z_c=nz, time=Nt + 1)
-    @test dimsize(ds_s[:w]) == (x_c=nx, y_c=ny, z_f=nz, time=Nt + 1)
-    @test dimsize(ds_s[:T]) == (x_c=nx, y_c=ny, z_c=nz, time=Nt + 1)
-    @test dimsize(ds_s[:S]) == (x_c=nx, y_c=ny, z_c=nz, time=Nt + 1)
+    @test dimsize(ds_s[:u]) == (x_faa=nx, y_aca=ny, z_aac=nz, time=Nt + 1)
+    @test dimsize(ds_s[:v]) == (x_caa=nx, y_afa=ny, z_aac=nz, time=Nt + 1)
+    @test dimsize(ds_s[:w]) == (x_caa=nx, y_aca=ny, z_aaf=nz, time=Nt + 1)
+    @test dimsize(ds_s[:T]) == (x_caa=nx, y_aca=ny, z_aac=nz, time=Nt + 1)
+    @test dimsize(ds_s[:S]) == (x_caa=nx, y_aca=ny, z_aac=nz, time=Nt + 1)
 
     close(ds_s)
     rm(filepath_sliced)
@@ -434,11 +434,11 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
     @test haskey(ds_mh, "time")
     @test eltype(ds_mh["time"]) == Float64
 
-    dims = ("longitude_f", "longitude_c", "latitude_f", "latitude_c", "z_f", "z_c")
+    dims = ("longitude_faa", "longitude_caa", "latitude_afa", "latitude_aca", "z_aaf", "z_aac")
     metrics = (
-        "dlongitude_f", "dlongitude_c", "dlatitude_f", "dlatitude_c", "dz_f", "dz_c",
-        "dx_ff", "dx_fc", "dx_cf", "dx_cc",
-        "dy_ff", "dy_fc", "dy_cf", "dy_cc"
+        "dlongitude_faa", "dlongitude_caa", "dlatitude_afa", "dlatitude_aca", "dz_aaf", "dz_aac",
+        "dx_ffa", "dx_fca", "dx_cfa", "dx_cca",
+        "dy_ffa", "dy_fca", "dy_cfa", "dy_cca"
     )
     vars = ("u", "v", "w", "T", "S")
 
@@ -451,35 +451,35 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
 
     @test dimsize(ds_mh["time"]) == (time=Nt + 1,)
 
-    @test dimsize(ds_mh[:longitude_f]) == (longitude_f=Nλ + 2Hλ + 1,)
-    @test dimsize(ds_mh[:longitude_c]) == (longitude_c=Nλ + 2Hλ,)
-    @test dimsize(ds_mh[:latitude_f]) == (latitude_f=Nφ + 2Hφ + 1,)
-    @test dimsize(ds_mh[:latitude_c]) == (latitude_c=Nφ + 2Hφ,)
-    @test dimsize(ds_mh[:z_f]) == (z_f=Nz + 2Hz + 1,)
-    @test dimsize(ds_mh[:z_c]) == (z_c=Nz + 2Hz,)
+    @test dimsize(ds_mh[:longitude_faa]) == (longitude_faa=Nλ + 2Hλ + 1,)
+    @test dimsize(ds_mh[:longitude_caa]) == (longitude_caa=Nλ + 2Hλ,)
+    @test dimsize(ds_mh[:latitude_afa]) == (latitude_afa=Nφ + 2Hφ + 1,)
+    @test dimsize(ds_mh[:latitude_aca]) == (latitude_aca=Nφ + 2Hφ,)
+    @test dimsize(ds_mh[:z_aaf]) == (z_aaf=Nz + 2Hz + 1,)
+    @test dimsize(ds_mh[:z_aac]) == (z_aac=Nz + 2Hz,)
 
-    @test dimsize(ds_mh[:dlongitude_f]) == (longitude_f=Nλ + 2Hλ + 1,)
-    @test dimsize(ds_mh[:dlongitude_c]) == (longitude_c=Nλ + 2Hλ,)
-    @test dimsize(ds_mh[:dlatitude_f]) == (latitude_f=Nφ + 2Hφ + 1,)
-    @test dimsize(ds_mh[:dlatitude_c]) == (latitude_c=Nφ + 2Hφ,)
-    @test dimsize(ds_mh[:dz_f]) == (z_f=Nz + 2Hz + 1,)
-    @test dimsize(ds_mh[:dz_c]) == (z_c=Nz + 2Hz,)
+    @test dimsize(ds_mh[:dlongitude_faa]) == (longitude_faa=Nλ + 2Hλ + 1,)
+    @test dimsize(ds_mh[:dlongitude_caa]) == (longitude_caa=Nλ + 2Hλ,)
+    @test dimsize(ds_mh[:dlatitude_afa]) == (latitude_afa=Nφ + 2Hφ + 1,)
+    @test dimsize(ds_mh[:dlatitude_aca]) == (latitude_aca=Nφ + 2Hφ,)
+    @test dimsize(ds_mh[:dz_aaf]) == (z_aaf=Nz + 2Hz + 1,)
+    @test dimsize(ds_mh[:dz_aac]) == (z_aac=Nz + 2Hz,)
 
-    @test dimsize(ds_mh[:dx_ff]) == (longitude_f=Nλ + 2Hλ + 1, latitude_f=Nφ + 2Hφ + 1)
-    @test dimsize(ds_mh[:dx_fc]) == (longitude_f=Nλ + 2Hλ + 1, latitude_c=Nφ + 2Hφ)
-    @test dimsize(ds_mh[:dx_cf]) == (longitude_c=Nλ + 2Hλ,     latitude_f=Nφ + 2Hφ + 1)
-    @test dimsize(ds_mh[:dx_cc]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ)
+    @test dimsize(ds_mh[:dx_ffa]) == (longitude_faa=Nλ + 2Hλ + 1, latitude_afa=Nφ + 2Hφ + 1)
+    @test dimsize(ds_mh[:dx_fca]) == (longitude_faa=Nλ + 2Hλ + 1, latitude_aca=Nφ + 2Hφ)
+    @test dimsize(ds_mh[:dx_cfa]) == (longitude_caa=Nλ + 2Hλ,     latitude_afa=Nφ + 2Hφ + 1)
+    @test dimsize(ds_mh[:dx_cca]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ)
 
-    @test dimsize(ds_mh[:dy_ff]) == (longitude_f=Nλ + 2Hλ + 1, latitude_f=Nφ + 2Hφ + 1)
-    @test dimsize(ds_mh[:dy_fc]) == (longitude_f=Nλ + 2Hλ + 1, latitude_c=Nφ + 2Hφ)
-    @test dimsize(ds_mh[:dy_cf]) == (longitude_c=Nλ + 2Hλ,     latitude_f=Nφ + 2Hφ + 1)
-    @test dimsize(ds_mh[:dy_cc]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ)
+    @test dimsize(ds_mh[:dy_ffa]) == (longitude_faa=Nλ + 2Hλ + 1, latitude_afa=Nφ + 2Hφ + 1)
+    @test dimsize(ds_mh[:dy_fca]) == (longitude_faa=Nλ + 2Hλ + 1, latitude_aca=Nφ + 2Hφ)
+    @test dimsize(ds_mh[:dy_cfa]) == (longitude_caa=Nλ + 2Hλ,     latitude_afa=Nφ + 2Hφ + 1)
+    @test dimsize(ds_mh[:dy_cca]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ)
 
-    @test dimsize(ds_mh[:u]) == (longitude_f=Nλ + 2Hλ + 1, latitude_c=Nφ + 2Hφ,     z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_mh[:v]) == (longitude_c=Nλ + 2Hλ,     latitude_f=Nφ + 2Hφ + 1, z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_mh[:w]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ,     z_f=Nz + 2Hz + 1, time=Nt + 1)
-    @test dimsize(ds_mh[:T]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ,     z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_mh[:S]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ,     z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_mh[:u]) == (longitude_faa=Nλ + 2Hλ + 1, latitude_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_mh[:v]) == (longitude_caa=Nλ + 2Hλ,     latitude_afa=Nφ + 2Hφ + 1, z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_mh[:w]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ,     z_aaf=Nz + 2Hz + 1, time=Nt + 1)
+    @test dimsize(ds_mh[:T]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_mh[:S]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
 
     close(ds_mh)
     rm(filepath_metrics_halos)
@@ -504,18 +504,18 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
 
     @test dimsize(ds_h["time"]) == (time=Nt + 1,)
 
-    @test dimsize(ds_h[:longitude_f]) == (longitude_f=Nλ + 2Hλ + 1,)
-    @test dimsize(ds_h[:longitude_c]) == (longitude_c=Nλ + 2Hλ,)
-    @test dimsize(ds_h[:latitude_f]) == (latitude_f=Nφ + 2Hφ + 1,)
-    @test dimsize(ds_h[:latitude_c]) == (latitude_c=Nφ + 2Hφ,)
-    @test dimsize(ds_h[:z_f]) == (z_f=Nz + 2Hz + 1,)
-    @test dimsize(ds_h[:z_c]) == (z_c=Nz + 2Hz,)
+    @test dimsize(ds_h[:longitude_faa]) == (longitude_faa=Nλ + 2Hλ + 1,)
+    @test dimsize(ds_h[:longitude_caa]) == (longitude_caa=Nλ + 2Hλ,)
+    @test dimsize(ds_h[:latitude_afa]) == (latitude_afa=Nφ + 2Hφ + 1,)
+    @test dimsize(ds_h[:latitude_aca]) == (latitude_aca=Nφ + 2Hφ,)
+    @test dimsize(ds_h[:z_aaf]) == (z_aaf=Nz + 2Hz + 1,)
+    @test dimsize(ds_h[:z_aac]) == (z_aac=Nz + 2Hz,)
 
-    @test dimsize(ds_h[:u]) == (longitude_f=Nλ + 2Hλ + 1, latitude_c=Nφ + 2Hφ,     z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:v]) == (longitude_c=Nλ + 2Hλ,     latitude_f=Nφ + 2Hφ + 1, z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:w]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ,     z_f=Nz + 2Hz + 1, time=Nt + 1)
-    @test dimsize(ds_h[:T]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ,     z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:S]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ,     z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:u]) == (longitude_faa=Nλ + 2Hλ + 1, latitude_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:v]) == (longitude_caa=Nλ + 2Hλ,     latitude_afa=Nφ + 2Hφ + 1, z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:w]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ,     z_aaf=Nz + 2Hz + 1, time=Nt + 1)
+    @test dimsize(ds_h[:T]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:S]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
 
     close(ds_h)
     rm(filepath_nometrics)
@@ -530,35 +530,35 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
         @test eltype(ds_m[var]) == FT
     end
 
-    @test dimsize(ds_m[:longitude_f]) == (longitude_f=Nλ + 1,)
-    @test dimsize(ds_m[:longitude_c]) == (longitude_c=Nλ,)
-    @test dimsize(ds_m[:latitude_f]) == (latitude_f=Nφ + 1,)
-    @test dimsize(ds_m[:latitude_c]) == (latitude_c=Nφ,)
-    @test dimsize(ds_m[:z_f]) == (z_f=Nz + 1,)
-    @test dimsize(ds_m[:z_c]) == (z_c=Nz,)
+    @test dimsize(ds_m[:longitude_faa]) == (longitude_faa=Nλ + 1,)
+    @test dimsize(ds_m[:longitude_caa]) == (longitude_caa=Nλ,)
+    @test dimsize(ds_m[:latitude_afa]) == (latitude_afa=Nφ + 1,)
+    @test dimsize(ds_m[:latitude_aca]) == (latitude_aca=Nφ,)
+    @test dimsize(ds_m[:z_aaf]) == (z_aaf=Nz + 1,)
+    @test dimsize(ds_m[:z_aac]) == (z_aac=Nz,)
 
-    @test dimsize(ds_m[:dlongitude_f]) == (longitude_f=Nλ + 1,)
-    @test dimsize(ds_m[:dlongitude_c]) == (longitude_c=Nλ,)
-    @test dimsize(ds_m[:dlatitude_f]) == (latitude_f=Nφ + 1,)
-    @test dimsize(ds_m[:dlatitude_c]) == (latitude_c=Nφ,)
-    @test dimsize(ds_m[:dz_f]) == (z_f=Nz + 1,)
-    @test dimsize(ds_m[:dz_c]) == (z_c=Nz,)
+    @test dimsize(ds_m[:dlongitude_faa]) == (longitude_faa=Nλ + 1,)
+    @test dimsize(ds_m[:dlongitude_caa]) == (longitude_caa=Nλ,)
+    @test dimsize(ds_m[:dlatitude_afa]) == (latitude_afa=Nφ + 1,)
+    @test dimsize(ds_m[:dlatitude_aca]) == (latitude_aca=Nφ,)
+    @test dimsize(ds_m[:dz_aaf]) == (z_aaf=Nz + 1,)
+    @test dimsize(ds_m[:dz_aac]) == (z_aac=Nz,)
 
-    @test dimsize(ds_m[:dx_ff]) == (longitude_f=Nλ + 1, latitude_f=Nφ + 1)
-    @test dimsize(ds_m[:dx_fc]) == (longitude_f=Nλ + 1, latitude_c=Nφ)
-    @test dimsize(ds_m[:dx_cf]) == (longitude_c=Nλ,     latitude_f=Nφ + 1)
-    @test dimsize(ds_m[:dx_cc]) == (longitude_c=Nλ,     latitude_c=Nφ)
+    @test dimsize(ds_m[:dx_ffa]) == (longitude_faa=Nλ + 1, latitude_afa=Nφ + 1)
+    @test dimsize(ds_m[:dx_fca]) == (longitude_faa=Nλ + 1, latitude_aca=Nφ)
+    @test dimsize(ds_m[:dx_cfa]) == (longitude_caa=Nλ,     latitude_afa=Nφ + 1)
+    @test dimsize(ds_m[:dx_cca]) == (longitude_caa=Nλ,     latitude_aca=Nφ)
 
-    @test dimsize(ds_m[:dy_ff]) == (longitude_f=Nλ + 1, latitude_f=Nφ + 1)
-    @test dimsize(ds_m[:dy_fc]) == (longitude_f=Nλ + 1, latitude_c=Nφ)
-    @test dimsize(ds_m[:dy_cf]) == (longitude_c=Nλ,     latitude_f=Nφ + 1)
-    @test dimsize(ds_m[:dy_cc]) == (longitude_c=Nλ,     latitude_c=Nφ)
+    @test dimsize(ds_m[:dy_ffa]) == (longitude_faa=Nλ + 1, latitude_afa=Nφ + 1)
+    @test dimsize(ds_m[:dy_fca]) == (longitude_faa=Nλ + 1, latitude_aca=Nφ)
+    @test dimsize(ds_m[:dy_cfa]) == (longitude_caa=Nλ,     latitude_afa=Nφ + 1)
+    @test dimsize(ds_m[:dy_cca]) == (longitude_caa=Nλ,     latitude_aca=Nφ)
 
-    @test dimsize(ds_m[:u]) == (longitude_f=Nλ + 1, latitude_c=Nφ,     z_c=Nz,     time=Nt + 1)
-    @test dimsize(ds_m[:v]) == (longitude_c=Nλ,     latitude_f=Nφ + 1, z_c=Nz,     time=Nt + 1)
-    @test dimsize(ds_m[:w]) == (longitude_c=Nλ,     latitude_c=Nφ,     z_f=Nz + 1, time=Nt + 1)
-    @test dimsize(ds_m[:T]) == (longitude_c=Nλ,     latitude_c=Nφ,     z_c=Nz,     time=Nt + 1)
-    @test dimsize(ds_m[:S]) == (longitude_c=Nλ,     latitude_c=Nφ,     z_c=Nz,     time=Nt + 1)
+    @test dimsize(ds_m[:u]) == (longitude_faa=Nλ + 1, latitude_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_m[:v]) == (longitude_caa=Nλ,     latitude_afa=Nφ + 1, z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_m[:w]) == (longitude_caa=Nλ,     latitude_aca=Nφ,     z_aaf=Nz + 1, time=Nt + 1)
+    @test dimsize(ds_m[:T]) == (longitude_caa=Nλ,     latitude_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_m[:S]) == (longitude_caa=Nλ,     latitude_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
 
     close(ds_m)
     rm(filepath_metrics_nohalos)
@@ -573,35 +573,35 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
         @test eltype(ds_s[var]) == FT
     end
 
-    @test dimsize(ds_s[:longitude_f]) == (longitude_f=nx + 1,)
-    @test dimsize(ds_s[:longitude_c]) == (longitude_c=nx,)
-    @test dimsize(ds_s[:latitude_f]) == (latitude_f=ny,)
-    @test dimsize(ds_s[:latitude_c]) == (latitude_c=ny,)
-    @test dimsize(ds_s[:z_f]) == (z_f=nz,)
-    @test dimsize(ds_s[:z_c]) == (z_c=nz,)
+    @test dimsize(ds_s[:longitude_faa]) == (longitude_faa=nx + 1,)
+    @test dimsize(ds_s[:longitude_caa]) == (longitude_caa=nx,)
+    @test dimsize(ds_s[:latitude_afa]) == (latitude_afa=ny,)
+    @test dimsize(ds_s[:latitude_aca]) == (latitude_aca=ny,)
+    @test dimsize(ds_s[:z_aaf]) == (z_aaf=nz,)
+    @test dimsize(ds_s[:z_aac]) == (z_aac=nz,)
 
-    @test dimsize(ds_s[:dlongitude_f]) == (longitude_f=nx + 1,)
-    @test dimsize(ds_s[:dlongitude_c]) == (longitude_c=nx,)
-    @test dimsize(ds_s[:dlatitude_f]) == (latitude_f=ny,)
-    @test dimsize(ds_s[:dlatitude_c]) == (latitude_c=ny,)
-    @test dimsize(ds_s[:dz_f]) == (z_f=nz,)
-    @test dimsize(ds_s[:dz_c]) == (z_c=nz,)
+    @test dimsize(ds_s[:dlongitude_faa]) == (longitude_faa=nx + 1,)
+    @test dimsize(ds_s[:dlongitude_caa]) == (longitude_caa=nx,)
+    @test dimsize(ds_s[:dlatitude_afa]) == (latitude_afa=ny,)
+    @test dimsize(ds_s[:dlatitude_aca]) == (latitude_aca=ny,)
+    @test dimsize(ds_s[:dz_aaf]) == (z_aaf=nz,)
+    @test dimsize(ds_s[:dz_aac]) == (z_aac=nz,)
 
-    @test dimsize(ds_s[:dx_ff]) == (longitude_f=nx + 1, latitude_f=ny)
-    @test dimsize(ds_s[:dx_fc]) == (longitude_f=nx + 1, latitude_c=ny)
-    @test dimsize(ds_s[:dx_cf]) == (longitude_c=nx,     latitude_f=ny)
-    @test dimsize(ds_s[:dx_cc]) == (longitude_c=nx,     latitude_c=ny)
+    @test dimsize(ds_s[:dx_ffa]) == (longitude_faa=nx + 1, latitude_afa=ny)
+    @test dimsize(ds_s[:dx_fca]) == (longitude_faa=nx + 1, latitude_aca=ny)
+    @test dimsize(ds_s[:dx_cfa]) == (longitude_caa=nx,     latitude_afa=ny)
+    @test dimsize(ds_s[:dx_cca]) == (longitude_caa=nx,     latitude_aca=ny)
 
-    @test dimsize(ds_s[:dy_ff]) == (longitude_f=nx + 1, latitude_f=ny)
-    @test dimsize(ds_s[:dy_fc]) == (longitude_f=nx + 1, latitude_c=ny)
-    @test dimsize(ds_s[:dy_cf]) == (longitude_c=nx,     latitude_f=ny)
-    @test dimsize(ds_s[:dy_cc]) == (longitude_c=nx,     latitude_c=ny)
+    @test dimsize(ds_s[:dy_ffa]) == (longitude_faa=nx + 1, latitude_afa=ny)
+    @test dimsize(ds_s[:dy_fca]) == (longitude_faa=nx + 1, latitude_aca=ny)
+    @test dimsize(ds_s[:dy_cfa]) == (longitude_caa=nx,     latitude_afa=ny)
+    @test dimsize(ds_s[:dy_cca]) == (longitude_caa=nx,     latitude_aca=ny)
 
-    @test dimsize(ds_s[:u]) == (longitude_f=nx + 1, latitude_c=ny, z_c=nz, time=Nt + 1)
-    @test dimsize(ds_s[:v]) == (longitude_c=nx,     latitude_f=ny, z_c=nz, time=Nt + 1)
-    @test dimsize(ds_s[:w]) == (longitude_c=nx,     latitude_c=ny, z_f=nz, time=Nt + 1)
-    @test dimsize(ds_s[:T]) == (longitude_c=nx,     latitude_c=ny, z_c=nz, time=Nt + 1)
-    @test dimsize(ds_s[:S]) == (longitude_c=nx,     latitude_c=ny, z_c=nz, time=Nt + 1)
+    @test dimsize(ds_s[:u]) == (longitude_faa=nx + 1, latitude_aca=ny, z_aac=nz, time=Nt + 1)
+    @test dimsize(ds_s[:v]) == (longitude_caa=nx,     latitude_afa=ny, z_aac=nz, time=Nt + 1)
+    @test dimsize(ds_s[:w]) == (longitude_caa=nx,     latitude_aca=ny, z_aaf=nz, time=Nt + 1)
+    @test dimsize(ds_s[:T]) == (longitude_caa=nx,     latitude_aca=ny, z_aac=nz, time=Nt + 1)
+    @test dimsize(ds_s[:S]) == (longitude_caa=nx,     latitude_aca=ny, z_aac=nz, time=Nt + 1)
 
     close(ds_s)
     rm(filepath_sliced)
@@ -696,17 +696,17 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch)
 
     @test haskey(ds_h, "bottom_height")
     @test eltype(ds_h[:bottom_height]) == Float64
-    @test dimsize(ds_h[:bottom_height]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy)
+    @test dimsize(ds_h[:bottom_height]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy)
 
     for loc in ("ccc", "fcc", "cfc", "ccf")
         @test haskey(ds_h, "immersed_boundary_mask_$loc")
         @test eltype(ds_h["immersed_boundary_mask_$loc"]) == Float64
     end
 
-    @test dimsize(ds_h[:immersed_boundary_mask_ccc]) == (x_c=Nx + 2Hx,     y_c=Ny + 2Hy,     z_c=Nz + 2Hz)
-    @test dimsize(ds_h[:immersed_boundary_mask_fcc]) == (x_f=Nx + 2Hx + 1, y_c=Ny + 2Hy,     z_c=Nz + 2Hz)
-    @test dimsize(ds_h[:immersed_boundary_mask_cfc]) == (x_c=Nx + 2Hx,     y_f=Ny + 2Hy + 1, z_c=Nz + 2Hz)
-    @test dimsize(ds_h[:immersed_boundary_mask_ccf]) == (x_c=Nx + 2Hx,     y_c=Ny + 2Hy,     z_f=Nz + 2Hz + 1)
+    @test dimsize(ds_h[:immersed_boundary_mask_ccc]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:immersed_boundary_mask_fcc]) == (x_faa=Nx + 2Hx + 1, y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:immersed_boundary_mask_cfc]) == (x_caa=Nx + 2Hx,     y_afa=Ny + 2Hy + 1, z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:immersed_boundary_mask_ccf]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aaf=Nz + 2Hz + 1)
 
     @test all(ds_h[:bottom_height][:, :] .≈ Array(parent(grid.immersed_boundary.bottom_height)))
 
@@ -718,17 +718,17 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch)
 
     @test haskey(ds_n, "bottom_height")
     @test eltype(ds_n[:bottom_height]) == Float32
-    @test dimsize(ds_n[:bottom_height]) == (x_c=Nx, y_c=Ny)
+    @test dimsize(ds_n[:bottom_height]) == (x_caa=Nx, y_aca=Ny)
 
     for loc in ("ccc", "fcc", "cfc", "ccf")
         @test haskey(ds_n, "immersed_boundary_mask_$loc")
         @test eltype(ds_n["immersed_boundary_mask_$loc"]) == Float32
     end
 
-    @test dimsize(ds_n[:immersed_boundary_mask_ccc]) == (x_c=Nx,     y_c=Ny,     z_c=Nz)
-    @test dimsize(ds_n[:immersed_boundary_mask_fcc]) == (x_f=Nx + 1, y_c=Ny,     z_c=Nz)
-    @test dimsize(ds_n[:immersed_boundary_mask_cfc]) == (x_c=Nx,     y_f=Ny + 1, z_c=Nz)
-    @test dimsize(ds_n[:immersed_boundary_mask_ccf]) == (x_c=Nx,     y_c=Ny,     z_f=Nz + 1)
+    @test dimsize(ds_n[:immersed_boundary_mask_ccc]) == (x_caa=Nx,     y_aca=Ny,     z_aac=Nz)
+    @test dimsize(ds_n[:immersed_boundary_mask_fcc]) == (x_faa=Nx + 1, y_aca=Ny,     z_aac=Nz)
+    @test dimsize(ds_n[:immersed_boundary_mask_cfc]) == (x_caa=Nx,     y_afa=Ny + 1, z_aac=Nz)
+    @test dimsize(ds_n[:immersed_boundary_mask_ccf]) == (x_caa=Nx,     y_aca=Ny,     z_aaf=Nz + 1)
 
     @test all(ds_n[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height)))
 
@@ -740,17 +740,17 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch)
 
     @test haskey(ds_s, "bottom_height")
     @test eltype(ds_s[:bottom_height]) == Float32
-    @test dimsize(ds_s[:bottom_height]) == (x_c=nx, y_c=ny)
+    @test dimsize(ds_s[:bottom_height]) == (x_caa=nx, y_aca=ny)
 
     for loc in ("ccc", "fcc", "cfc", "ccf")
         @test haskey(ds_s, "immersed_boundary_mask_$loc")
         @test eltype(ds_s["immersed_boundary_mask_$loc"]) == Float32
     end
 
-    @test dimsize(ds_s[:immersed_boundary_mask_ccc]) == (x_c=nx, y_c=ny, z_c=nz)
-    @test dimsize(ds_s[:immersed_boundary_mask_fcc]) == (x_f=nx, y_c=ny, z_c=nz)
-    @test dimsize(ds_s[:immersed_boundary_mask_cfc]) == (x_c=nx, y_f=ny, z_c=nz)
-    @test dimsize(ds_s[:immersed_boundary_mask_ccf]) == (x_c=nx, y_c=ny, z_f=nz)
+    @test dimsize(ds_s[:immersed_boundary_mask_ccc]) == (x_caa=nx, y_aca=ny, z_aac=nz)
+    @test dimsize(ds_s[:immersed_boundary_mask_fcc]) == (x_faa=nx, y_aca=ny, z_aac=nz)
+    @test dimsize(ds_s[:immersed_boundary_mask_cfc]) == (x_caa=nx, y_afa=ny, z_aac=nz)
+    @test dimsize(ds_s[:immersed_boundary_mask_ccf]) == (x_caa=nx, y_aca=ny, z_aaf=nz)
 
     @test all(ds_s[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height, i_slice, j_slice)))
 
@@ -853,17 +853,17 @@ function test_netcdf_latlon_grid_fitted_bottom(arch)
 
     @test haskey(ds_h, "bottom_height")
     @test eltype(ds_h[:bottom_height]) == Float64
-    @test dimsize(ds_h[:bottom_height]) == (longitude_c=Nλ + 2Hλ, latitude_c=Nφ + 2Hφ)
+    @test dimsize(ds_h[:bottom_height]) == (longitude_caa=Nλ + 2Hλ, latitude_aca=Nφ + 2Hφ)
 
     for loc in ("ccc", "fcc", "cfc", "ccf")
         @test haskey(ds_h, "immersed_boundary_mask_$loc")
         @test eltype(ds_h["immersed_boundary_mask_$loc"]) == Float64
     end
 
-    @test dimsize(ds_h[:immersed_boundary_mask_ccc]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ,     z_c=Nz + 2Hz)
-    @test dimsize(ds_h[:immersed_boundary_mask_fcc]) == (longitude_f=Nλ + 2Hλ + 1, latitude_c=Nφ + 2Hφ,     z_c=Nz + 2Hz)
-    @test dimsize(ds_h[:immersed_boundary_mask_cfc]) == (longitude_c=Nλ + 2Hλ,     latitude_f=Nφ + 2Hφ + 1, z_c=Nz + 2Hz)
-    @test dimsize(ds_h[:immersed_boundary_mask_ccf]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ,     z_f=Nz + 2Hz + 1)
+    @test dimsize(ds_h[:immersed_boundary_mask_ccc]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:immersed_boundary_mask_fcc]) == (longitude_faa=Nλ + 2Hλ + 1, latitude_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:immersed_boundary_mask_cfc]) == (longitude_caa=Nλ + 2Hλ,     latitude_afa=Nφ + 2Hφ + 1, z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:immersed_boundary_mask_ccf]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ,     z_aaf=Nz + 2Hz + 1)
 
     @test all(ds_h[:bottom_height][:, :] .≈ Array(parent(grid.immersed_boundary.bottom_height)))
 
@@ -875,17 +875,17 @@ function test_netcdf_latlon_grid_fitted_bottom(arch)
 
     @test haskey(ds_n, "bottom_height")
     @test eltype(ds_n[:bottom_height]) == Float32
-    @test dimsize(ds_n[:bottom_height]) == (longitude_c=Nλ, latitude_c=Nφ)
+    @test dimsize(ds_n[:bottom_height]) == (longitude_caa=Nλ, latitude_aca=Nφ)
 
     for loc in ("ccc", "fcc", "cfc", "ccf")
         @test haskey(ds_n, "immersed_boundary_mask_$loc")
         @test eltype(ds_n["immersed_boundary_mask_$loc"]) == Float32
     end
 
-    @test dimsize(ds_n[:immersed_boundary_mask_ccc]) == (longitude_c=Nλ,     latitude_c=Nφ,     z_c=Nz)
-    @test dimsize(ds_n[:immersed_boundary_mask_fcc]) == (longitude_f=Nλ + 1, latitude_c=Nφ,     z_c=Nz)
-    @test dimsize(ds_n[:immersed_boundary_mask_cfc]) == (longitude_c=Nλ,     latitude_f=Nφ + 1, z_c=Nz)
-    @test dimsize(ds_n[:immersed_boundary_mask_ccf]) == (longitude_c=Nλ,     latitude_c=Nφ,     z_f=Nz + 1)
+    @test dimsize(ds_n[:immersed_boundary_mask_ccc]) == (longitude_caa=Nλ,     latitude_aca=Nφ,     z_aac=Nz)
+    @test dimsize(ds_n[:immersed_boundary_mask_fcc]) == (longitude_faa=Nλ + 1, latitude_aca=Nφ,     z_aac=Nz)
+    @test dimsize(ds_n[:immersed_boundary_mask_cfc]) == (longitude_caa=Nλ,     latitude_afa=Nφ + 1, z_aac=Nz)
+    @test dimsize(ds_n[:immersed_boundary_mask_ccf]) == (longitude_caa=Nλ,     latitude_aca=Nφ,     z_aaf=Nz + 1)
 
     @test all(ds_n[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height)))
 
@@ -897,17 +897,17 @@ function test_netcdf_latlon_grid_fitted_bottom(arch)
 
     @test haskey(ds_s, "bottom_height")
     @test eltype(ds_s[:bottom_height]) == Float32
-    @test dimsize(ds_s[:bottom_height]) == (longitude_c=nλ, latitude_c=nφ)
+    @test dimsize(ds_s[:bottom_height]) == (longitude_caa=nλ, latitude_aca=nφ)
 
     for loc in ("ccc", "fcc", "cfc", "ccf")
         @test haskey(ds_s, "immersed_boundary_mask_$loc")
         @test eltype(ds_s["immersed_boundary_mask_$loc"]) == Float32
     end
 
-    @test dimsize(ds_s[:immersed_boundary_mask_ccc]) == (longitude_c=nλ, latitude_c=nφ, z_c=nz)
-    @test dimsize(ds_s[:immersed_boundary_mask_fcc]) == (longitude_f=nλ, latitude_c=nφ, z_c=nz)
-    @test dimsize(ds_s[:immersed_boundary_mask_cfc]) == (longitude_c=nλ, latitude_f=nφ, z_c=nz)
-    @test dimsize(ds_s[:immersed_boundary_mask_ccf]) == (longitude_c=nλ, latitude_c=nφ, z_f=nz)
+    @test dimsize(ds_s[:immersed_boundary_mask_ccc]) == (longitude_caa=nλ, latitude_aca=nφ, z_aac=nz)
+    @test dimsize(ds_s[:immersed_boundary_mask_fcc]) == (longitude_faa=nλ, latitude_aca=nφ, z_aac=nz)
+    @test dimsize(ds_s[:immersed_boundary_mask_cfc]) == (longitude_caa=nλ, latitude_afa=nφ, z_aac=nz)
+    @test dimsize(ds_s[:immersed_boundary_mask_ccf]) == (longitude_caa=nλ, latitude_aca=nφ, z_aaf=nz)
 
     @test all(ds_s[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height, i_slice, j_slice)))
 
@@ -976,11 +976,11 @@ function test_netcdf_rectilinear_flat_xy(arch)
     # Test NetCDF output with halos
     ds_h = NCDataset(filepath_with_halos)
 
-    dims = ("x_f", "x_c", "y_f", "y_c")
-    not_dims = ("z_f", "z_c")
+    dims = ("x_faa", "x_caa", "y_afa", "y_aca")
+    not_dims = ("z_aaf", "z_aac")
 
-    metrics = ("dx_f", "dx_c", "dy_f", "dy_c")
-    not_metrics = ("dz_f", "dz_c")
+    metrics = ("dx_faa", "dx_caa", "dy_afa", "dy_aca")
+    not_metrics = ("dz_aaf", "dz_aac")
 
     vars = ("u", "v", "w", "T", "S")
 
@@ -995,21 +995,21 @@ function test_netcdf_rectilinear_flat_xy(arch)
         @test !haskey(ds_h, var)
     end
 
-    @test dimsize(ds_h[:x_f]) == (x_f=Nx + 2Hx,)
-    @test dimsize(ds_h[:x_c]) == (x_c=Nx + 2Hx,)
-    @test dimsize(ds_h[:y_f]) == (y_f=Ny + 2Hy + 1,)
-    @test dimsize(ds_h[:y_c]) == (y_c=Ny + 2Hy,)
+    @test dimsize(ds_h[:x_faa]) == (x_faa=Nx + 2Hx,)
+    @test dimsize(ds_h[:x_caa]) == (x_caa=Nx + 2Hx,)
+    @test dimsize(ds_h[:y_afa]) == (y_afa=Ny + 2Hy + 1,)
+    @test dimsize(ds_h[:y_aca]) == (y_aca=Ny + 2Hy,)
 
-    @test dimsize(ds_h[:dx_f]) == (x_f=Nx + 2Hx,)
-    @test dimsize(ds_h[:dx_c]) == (x_c=Nx + 2Hx,)
-    @test dimsize(ds_h[:dy_f]) == (y_f=Ny + 2Hy + 1,)
-    @test dimsize(ds_h[:dy_c]) == (y_c=Ny + 2Hy,)
+    @test dimsize(ds_h[:dx_faa]) == (x_faa=Nx + 2Hx,)
+    @test dimsize(ds_h[:dx_caa]) == (x_caa=Nx + 2Hx,)
+    @test dimsize(ds_h[:dy_afa]) == (y_afa=Ny + 2Hy + 1,)
+    @test dimsize(ds_h[:dy_aca]) == (y_aca=Ny + 2Hy,)
 
-    @test dimsize(ds_h[:u]) == (x_f=Nx + 2Hx, y_c=Ny + 2Hy,     time=Nt + 1)
-    @test dimsize(ds_h[:v]) == (x_c=Nx + 2Hx, y_f=Ny + 2Hy + 1, time=Nt + 1)
-    @test dimsize(ds_h[:w]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     time=Nt + 1)
-    @test dimsize(ds_h[:T]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     time=Nt + 1)
-    @test dimsize(ds_h[:S]) == (x_c=Nx + 2Hx, y_c=Ny + 2Hy,     time=Nt + 1)
+    @test dimsize(ds_h[:u]) == (x_faa=Nx + 2Hx, y_aca=Ny + 2Hy,     time=Nt + 1)
+    @test dimsize(ds_h[:v]) == (x_caa=Nx + 2Hx, y_afa=Ny + 2Hy + 1, time=Nt + 1)
+    @test dimsize(ds_h[:w]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy,     time=Nt + 1)
+    @test dimsize(ds_h[:T]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy,     time=Nt + 1)
+    @test dimsize(ds_h[:S]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy,     time=Nt + 1)
 
     close(ds_h)
     rm(filepath_with_halos)
@@ -1028,21 +1028,21 @@ function test_netcdf_rectilinear_flat_xy(arch)
         @test !haskey(ds_s, var)
     end
 
-    @test dimsize(ds_s[:x_f]) == (x_f=nx,)
-    @test dimsize(ds_s[:x_c]) == (x_c=nx,)
-    @test dimsize(ds_s[:y_f]) == (y_f=ny,)
-    @test dimsize(ds_s[:y_c]) == (y_c=ny,)
+    @test dimsize(ds_s[:x_faa]) == (x_faa=nx,)
+    @test dimsize(ds_s[:x_caa]) == (x_caa=nx,)
+    @test dimsize(ds_s[:y_afa]) == (y_afa=ny,)
+    @test dimsize(ds_s[:y_aca]) == (y_aca=ny,)
 
-    @test dimsize(ds_s[:dx_f]) == (x_f=nx,)
-    @test dimsize(ds_s[:dx_c]) == (x_c=nx,)
-    @test dimsize(ds_s[:dy_f]) == (y_f=ny,)
-    @test dimsize(ds_s[:dy_c]) == (y_c=ny,)
+    @test dimsize(ds_s[:dx_faa]) == (x_faa=nx,)
+    @test dimsize(ds_s[:dx_caa]) == (x_caa=nx,)
+    @test dimsize(ds_s[:dy_afa]) == (y_afa=ny,)
+    @test dimsize(ds_s[:dy_aca]) == (y_aca=ny,)
 
-    @test dimsize(ds_s[:u]) == (x_f=nx, y_c=ny, time=Nt + 1)
-    @test dimsize(ds_s[:v]) == (x_c=nx, y_f=ny, time=Nt + 1)
-    @test dimsize(ds_s[:w]) == (x_c=nx, y_c=ny, time=Nt + 1)
-    @test dimsize(ds_s[:T]) == (x_c=nx, y_c=ny, time=Nt + 1)
-    @test dimsize(ds_s[:S]) == (x_c=nx, y_c=ny, time=Nt + 1)
+    @test dimsize(ds_s[:u]) == (x_faa=nx, y_aca=ny, time=Nt + 1)
+    @test dimsize(ds_s[:v]) == (x_caa=nx, y_afa=ny, time=Nt + 1)
+    @test dimsize(ds_s[:w]) == (x_caa=nx, y_aca=ny, time=Nt + 1)
+    @test dimsize(ds_s[:T]) == (x_caa=nx, y_aca=ny, time=Nt + 1)
+    @test dimsize(ds_s[:S]) == (x_caa=nx, y_aca=ny, time=Nt + 1)
 
     close(ds_s)
     rm(filepath_sliced)
@@ -1120,11 +1120,11 @@ function test_netcdf_rectilinear_flat_xz(arch; immersed)
     # Test NetCDF output with halos
     ds_h = NCDataset(filepath_with_halos)
 
-    dims = ("x_f", "x_c", "z_f", "z_c")
-    not_dims = ("y_f", "y_c")
+    dims = ("x_faa", "x_caa", "z_aaf", "z_aac")
+    not_dims = ("y_afa", "y_aca")
 
-    metrics = ("dx_f", "dx_c", "dz_f", "dz_c")
-    not_metrics = ("dy_f", "dy_c")
+    metrics = ("dx_faa", "dx_caa", "dz_aaf", "dz_aac")
+    not_metrics = ("dy_afa", "dy_aca")
 
     vars = ("u", "v", "w", "T", "S")
 
@@ -1139,21 +1139,21 @@ function test_netcdf_rectilinear_flat_xz(arch; immersed)
         @test !haskey(ds_h, var)
     end
 
-    @test dimsize(ds_h[:x_f]) == (x_f=Nx + 2Hx,)
-    @test dimsize(ds_h[:x_c]) == (x_c=Nx + 2Hx,)
-    @test dimsize(ds_h[:z_f]) == (z_f=Nz + 2Hz + 1,)
-    @test dimsize(ds_h[:z_c]) == (z_c=Nz + 2Hz,)
+    @test dimsize(ds_h[:x_faa]) == (x_faa=Nx + 2Hx,)
+    @test dimsize(ds_h[:x_caa]) == (x_caa=Nx + 2Hx,)
+    @test dimsize(ds_h[:z_aaf]) == (z_aaf=Nz + 2Hz + 1,)
+    @test dimsize(ds_h[:z_aac]) == (z_aac=Nz + 2Hz,)
 
-    @test dimsize(ds_h[:dx_f]) == (x_f=Nx + 2Hx,)
-    @test dimsize(ds_h[:dx_c]) == (x_c=Nx + 2Hx,)
-    @test dimsize(ds_h[:dz_f]) == (z_f=Nz + 2Hz + 1,)
-    @test dimsize(ds_h[:dz_c]) == (z_c=Nz + 2Hz,)
+    @test dimsize(ds_h[:dx_faa]) == (x_faa=Nx + 2Hx,)
+    @test dimsize(ds_h[:dx_caa]) == (x_caa=Nx + 2Hx,)
+    @test dimsize(ds_h[:dz_aaf]) == (z_aaf=Nz + 2Hz + 1,)
+    @test dimsize(ds_h[:dz_aac]) == (z_aac=Nz + 2Hz,)
 
-    @test dimsize(ds_h[:u]) == (x_f=Nx + 2Hx, z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:v]) == (x_c=Nx + 2Hx, z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:w]) == (x_c=Nx + 2Hx, z_f=Nz + 2Hz + 1, time=Nt + 1)
-    @test dimsize(ds_h[:T]) == (x_c=Nx + 2Hx, z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:S]) == (x_c=Nx + 2Hx, z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:u]) == (x_faa=Nx + 2Hx, z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:v]) == (x_caa=Nx + 2Hx, z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:w]) == (x_caa=Nx + 2Hx, z_aaf=Nz + 2Hz + 1, time=Nt + 1)
+    @test dimsize(ds_h[:T]) == (x_caa=Nx + 2Hx, z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:S]) == (x_caa=Nx + 2Hx, z_aac=Nz + 2Hz,     time=Nt + 1)
 
     close(ds_h)
     rm(filepath_with_halos)
@@ -1172,21 +1172,21 @@ function test_netcdf_rectilinear_flat_xz(arch; immersed)
         @test !haskey(ds_s, var)
     end
 
-    @test dimsize(ds_s[:x_f]) == (x_f=nx,)
-    @test dimsize(ds_s[:x_c]) == (x_c=nx,)
-    @test dimsize(ds_s[:z_f]) == (z_f=nz,)
-    @test dimsize(ds_s[:z_c]) == (z_c=nz,)
+    @test dimsize(ds_s[:x_faa]) == (x_faa=nx,)
+    @test dimsize(ds_s[:x_caa]) == (x_caa=nx,)
+    @test dimsize(ds_s[:z_aaf]) == (z_aaf=nz,)
+    @test dimsize(ds_s[:z_aac]) == (z_aac=nz,)
 
-    @test dimsize(ds_s[:dx_f]) == (x_f=nx,)
-    @test dimsize(ds_s[:dx_c]) == (x_c=nx,)
-    @test dimsize(ds_s[:dz_f]) == (z_f=nz,)
-    @test dimsize(ds_s[:dz_c]) == (z_c=nz,)
+    @test dimsize(ds_s[:dx_faa]) == (x_faa=nx,)
+    @test dimsize(ds_s[:dx_caa]) == (x_caa=nx,)
+    @test dimsize(ds_s[:dz_aaf]) == (z_aaf=nz,)
+    @test dimsize(ds_s[:dz_aac]) == (z_aac=nz,)
 
-    @test dimsize(ds_s[:u]) == (x_f=nx, z_c=nz, time=Nt + 1)
-    @test dimsize(ds_s[:v]) == (x_c=nx, z_c=nz, time=Nt + 1)
-    @test dimsize(ds_s[:w]) == (x_c=nx, z_f=nz, time=Nt + 1)
-    @test dimsize(ds_s[:T]) == (x_c=nx, z_c=nz, time=Nt + 1)
-    @test dimsize(ds_s[:S]) == (x_c=nx, z_c=nz, time=Nt + 1)
+    @test dimsize(ds_s[:u]) == (x_faa=nx, z_aac=nz, time=Nt + 1)
+    @test dimsize(ds_s[:v]) == (x_caa=nx, z_aac=nz, time=Nt + 1)
+    @test dimsize(ds_s[:w]) == (x_caa=nx, z_aaf=nz, time=Nt + 1)
+    @test dimsize(ds_s[:T]) == (x_caa=nx, z_aac=nz, time=Nt + 1)
+    @test dimsize(ds_s[:S]) == (x_caa=nx, z_aac=nz, time=Nt + 1)
 
     close(ds_s)
     rm(filepath_sliced)
@@ -1264,11 +1264,11 @@ function test_netcdf_rectilinear_flat_yz(arch; immersed)
     # Test NetCDF output with halos
     ds_h = NCDataset(filepath_with_halos)
 
-    dims = ("y_f", "y_c", "z_f", "z_c")
-    not_dims = ("x_f", "x_c")
+    dims = ("y_afa", "y_aca", "z_aaf", "z_aac")
+    not_dims = ("x_faa", "x_caa")
 
-    metrics = ("dy_f", "dy_c", "dz_f", "dz_c")
-    not_metrics = ("dx_f", "dx_c")
+    metrics = ("dy_afa", "dy_aca", "dz_aaf", "dz_aac")
+    not_metrics = ("dx_faa", "dx_caa")
 
     vars = ("u", "v", "w", "T", "S")
 
@@ -1283,21 +1283,21 @@ function test_netcdf_rectilinear_flat_yz(arch; immersed)
         @test !haskey(ds_h, var)
     end
 
-    @test dimsize(ds_h[:y_f]) == (y_f=Ny + 2Hy,)
-    @test dimsize(ds_h[:y_c]) == (y_c=Ny + 2Hy,)
-    @test dimsize(ds_h[:z_f]) == (z_f=Nz + 2Hz + 1,)
-    @test dimsize(ds_h[:z_c]) == (z_c=Nz + 2Hz,)
+    @test dimsize(ds_h[:y_afa]) == (y_afa=Ny + 2Hy,)
+    @test dimsize(ds_h[:y_aca]) == (y_aca=Ny + 2Hy,)
+    @test dimsize(ds_h[:z_aaf]) == (z_aaf=Nz + 2Hz + 1,)
+    @test dimsize(ds_h[:z_aac]) == (z_aac=Nz + 2Hz,)
 
-    @test dimsize(ds_h[:dy_f]) == (y_f=Ny + 2Hy,)
-    @test dimsize(ds_h[:dy_c]) == (y_c=Ny + 2Hy,)
-    @test dimsize(ds_h[:dz_f]) == (z_f=Nz + 2Hz + 1,)
-    @test dimsize(ds_h[:dz_c]) == (z_c=Nz + 2Hz,)
+    @test dimsize(ds_h[:dy_afa]) == (y_afa=Ny + 2Hy,)
+    @test dimsize(ds_h[:dy_aca]) == (y_aca=Ny + 2Hy,)
+    @test dimsize(ds_h[:dz_aaf]) == (z_aaf=Nz + 2Hz + 1,)
+    @test dimsize(ds_h[:dz_aac]) == (z_aac=Nz + 2Hz,)
 
-    @test dimsize(ds_h[:u]) == (y_c=Ny + 2Hy, z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:v]) == (y_f=Ny + 2Hy, z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:w]) == (y_c=Ny + 2Hy, z_f=Nz + 2Hz + 1, time=Nt + 1)
-    @test dimsize(ds_h[:T]) == (y_c=Ny + 2Hy, z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:S]) == (y_c=Ny + 2Hy, z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:u]) == (y_aca=Ny + 2Hy, z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:v]) == (y_afa=Ny + 2Hy, z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:w]) == (y_aca=Ny + 2Hy, z_aaf=Nz + 2Hz + 1, time=Nt + 1)
+    @test dimsize(ds_h[:T]) == (y_aca=Ny + 2Hy, z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:S]) == (y_aca=Ny + 2Hy, z_aac=Nz + 2Hz,     time=Nt + 1)
 
     close(ds_h)
     rm(filepath_with_halos)
@@ -1316,21 +1316,21 @@ function test_netcdf_rectilinear_flat_yz(arch; immersed)
         @test !haskey(ds_s, var)
     end
 
-    @test dimsize(ds_s[:y_f]) == (y_f=ny,)
-    @test dimsize(ds_s[:y_c]) == (y_c=ny,)
-    @test dimsize(ds_s[:z_f]) == (z_f=nz,)
-    @test dimsize(ds_s[:z_c]) == (z_c=nz,)
+    @test dimsize(ds_s[:y_afa]) == (y_afa=ny,)
+    @test dimsize(ds_s[:y_aca]) == (y_aca=ny,)
+    @test dimsize(ds_s[:z_aaf]) == (z_aaf=nz,)
+    @test dimsize(ds_s[:z_aac]) == (z_aac=nz,)
 
-    @test dimsize(ds_s[:dy_f]) == (y_f=ny,)
-    @test dimsize(ds_s[:dy_c]) == (y_c=ny,)
-    @test dimsize(ds_s[:dz_f]) == (z_f=nz,)
-    @test dimsize(ds_s[:dz_c]) == (z_c=nz,)
+    @test dimsize(ds_s[:dy_afa]) == (y_afa=ny,)
+    @test dimsize(ds_s[:dy_aca]) == (y_aca=ny,)
+    @test dimsize(ds_s[:dz_aaf]) == (z_aaf=nz,)
+    @test dimsize(ds_s[:dz_aac]) == (z_aac=nz,)
 
-    @test dimsize(ds_s[:u]) == (y_c=ny, z_c=nz, time=Nt + 1)
-    @test dimsize(ds_s[:v]) == (y_f=ny, z_c=nz, time=Nt + 1)
-    @test dimsize(ds_s[:w]) == (y_c=ny, z_f=nz, time=Nt + 1)
-    @test dimsize(ds_s[:T]) == (y_c=ny, z_c=nz, time=Nt + 1)
-    @test dimsize(ds_s[:S]) == (y_c=ny, z_c=nz, time=Nt + 1)
+    @test dimsize(ds_s[:u]) == (y_aca=ny, z_aac=nz, time=Nt + 1)
+    @test dimsize(ds_s[:v]) == (y_afa=ny, z_aac=nz, time=Nt + 1)
+    @test dimsize(ds_s[:w]) == (y_aca=ny, z_aaf=nz, time=Nt + 1)
+    @test dimsize(ds_s[:T]) == (y_aca=ny, z_aac=nz, time=Nt + 1)
+    @test dimsize(ds_s[:S]) == (y_aca=ny, z_aac=nz, time=Nt + 1)
 
     close(ds_s)
     rm(filepath_sliced)
@@ -1394,11 +1394,11 @@ function test_netcdf_rectilinear_column(arch)
     # Test NetCDF output with halos
     ds_h = NCDataset(filepath_with_halos)
 
-    dims = ("z_f", "z_c")
-    not_dims = ("x_f", "x_c", "y_f", "y_c")
+    dims = ("z_aaf", "z_aac")
+    not_dims = ("x_faa", "x_caa", "y_afa", "y_aca")
 
-    metrics = ("dz_f", "dz_c")
-    not_metrics = ("dx_f", "dx_c", "dy_f", "dy_c")
+    metrics = ("dz_aaf", "dz_aac")
+    not_metrics = ("dx_faa", "dx_caa", "dy_afa", "dy_aca")
 
     vars = ("u", "v", "w", "T", "S")
 
@@ -1413,17 +1413,17 @@ function test_netcdf_rectilinear_column(arch)
         @test !haskey(ds_h, var)
     end
 
-    @test dimsize(ds_h[:z_f]) == (z_f=N + 2H + 1,)
-    @test dimsize(ds_h[:z_c]) == (z_c=N + 2H,)
+    @test dimsize(ds_h[:z_aaf]) == (z_aaf=N + 2H + 1,)
+    @test dimsize(ds_h[:z_aac]) == (z_aac=N + 2H,)
 
-    @test dimsize(ds_h[:dz_f]) == (z_f=N + 2H + 1,)
-    @test dimsize(ds_h[:dz_c]) == (z_c=N + 2H,)
+    @test dimsize(ds_h[:dz_aaf]) == (z_aaf=N + 2H + 1,)
+    @test dimsize(ds_h[:dz_aac]) == (z_aac=N + 2H,)
 
-    @test dimsize(ds_h[:u]) == (z_c=N + 2H,     time=Nt + 1)
-    @test dimsize(ds_h[:v]) == (z_c=N + 2H,     time=Nt + 1)
-    @test dimsize(ds_h[:w]) == (z_f=N + 2H + 1, time=Nt + 1)
-    @test dimsize(ds_h[:T]) == (z_c=N + 2H,     time=Nt + 1)
-    @test dimsize(ds_h[:S]) == (z_c=N + 2H,     time=Nt + 1)
+    @test dimsize(ds_h[:u]) == (z_aac=N + 2H,     time=Nt + 1)
+    @test dimsize(ds_h[:v]) == (z_aac=N + 2H,     time=Nt + 1)
+    @test dimsize(ds_h[:w]) == (z_aaf=N + 2H + 1, time=Nt + 1)
+    @test dimsize(ds_h[:T]) == (z_aac=N + 2H,     time=Nt + 1)
+    @test dimsize(ds_h[:S]) == (z_aac=N + 2H,     time=Nt + 1)
 
     close(ds_h)
     rm(filepath_with_halos)
@@ -1442,17 +1442,17 @@ function test_netcdf_rectilinear_column(arch)
         @test !haskey(ds_s, var)
     end
 
-    @test dimsize(ds_s[:z_f]) == (z_f=n,)
-    @test dimsize(ds_s[:z_c]) == (z_c=n,)
+    @test dimsize(ds_s[:z_aaf]) == (z_aaf=n,)
+    @test dimsize(ds_s[:z_aac]) == (z_aac=n,)
 
-    @test dimsize(ds_s[:dz_f]) == (z_f=n,)
-    @test dimsize(ds_s[:dz_c]) == (z_c=n,)
+    @test dimsize(ds_s[:dz_aaf]) == (z_aaf=n,)
+    @test dimsize(ds_s[:dz_aac]) == (z_aac=n,)
 
-    @test dimsize(ds_s[:u]) == (z_c=n, time=Nt + 1)
-    @test dimsize(ds_s[:v]) == (z_c=n, time=Nt + 1)
-    @test dimsize(ds_s[:w]) == (z_f=n, time=Nt + 1)
-    @test dimsize(ds_s[:T]) == (z_c=n, time=Nt + 1)
-    @test dimsize(ds_s[:S]) == (z_c=n, time=Nt + 1)
+    @test dimsize(ds_s[:u]) == (z_aac=n, time=Nt + 1)
+    @test dimsize(ds_s[:v]) == (z_aac=n, time=Nt + 1)
+    @test dimsize(ds_s[:w]) == (z_aaf=n, time=Nt + 1)
+    @test dimsize(ds_s[:T]) == (z_aac=n, time=Nt + 1)
+    @test dimsize(ds_s[:S]) == (z_aac=n, time=Nt + 1)
 
     close(ds_s)
     rm(filepath_sliced)
@@ -1547,33 +1547,33 @@ function test_thermal_bubble_netcdf_output(arch, FT)
 
     @test eltype(ds3["time"]) == Float64
 
-    @test eltype(ds3["x_c"]) == FT
-    @test eltype(ds3["x_f"]) == FT
-    @test eltype(ds3["y_c"]) == FT
-    @test eltype(ds3["y_f"]) == FT
-    @test eltype(ds3["z_c"]) == FT
-    @test eltype(ds3["z_f"]) == FT
+    @test eltype(ds3["x_caa"]) == FT
+    @test eltype(ds3["x_faa"]) == FT
+    @test eltype(ds3["y_aca"]) == FT
+    @test eltype(ds3["y_afa"]) == FT
+    @test eltype(ds3["z_aac"]) == FT
+    @test eltype(ds3["z_aaf"]) == FT
 
-    @test length(ds3["x_c"]) == Nx
-    @test length(ds3["y_c"]) == Ny
-    @test length(ds3["z_c"]) == Nz
-    @test length(ds3["x_f"]) == Nx
-    @test length(ds3["y_f"]) == Ny
-    @test length(ds3["z_f"]) == Nz+1  # z is Bounded
+    @test length(ds3["x_caa"]) == Nx
+    @test length(ds3["y_aca"]) == Ny
+    @test length(ds3["z_aac"]) == Nz
+    @test length(ds3["x_faa"]) == Nx
+    @test length(ds3["y_afa"]) == Ny
+    @test length(ds3["z_aaf"]) == Nz+1  # z is Bounded
 
-    @test ds3["x_c"][1] == grid.xᶜᵃᵃ[1]
-    @test ds3["x_f"][1] == grid.xᶠᵃᵃ[1]
-    @test ds3["y_c"][1] == grid.yᵃᶜᵃ[1]
-    @test ds3["y_f"][1] == grid.yᵃᶠᵃ[1]
-    @test ds3["z_c"][1] == grid.z.cᵃᵃᶜ[1]
-    @test ds3["z_f"][1] == grid.z.cᵃᵃᶠ[1]
+    @test ds3["x_caa"][1] == grid.xᶜᵃᵃ[1]
+    @test ds3["x_faa"][1] == grid.xᶠᵃᵃ[1]
+    @test ds3["y_aca"][1] == grid.yᵃᶜᵃ[1]
+    @test ds3["y_afa"][1] == grid.yᵃᶠᵃ[1]
+    @test ds3["z_aac"][1] == grid.z.cᵃᵃᶜ[1]
+    @test ds3["z_aaf"][1] == grid.z.cᵃᵃᶠ[1]
 
-    @test ds3["x_c"][end] == grid.xᶜᵃᵃ[Nx]
-    @test ds3["x_f"][end] == grid.xᶠᵃᵃ[Nx]
-    @test ds3["y_c"][end] == grid.yᵃᶜᵃ[Ny]
-    @test ds3["y_f"][end] == grid.yᵃᶠᵃ[Ny]
-    @test ds3["z_c"][end] == grid.z.cᵃᵃᶜ[Nz]
-    @test ds3["z_f"][end] == grid.z.cᵃᵃᶠ[Nz+1]  # z is Bounded
+    @test ds3["x_caa"][end] == grid.xᶜᵃᵃ[Nx]
+    @test ds3["x_faa"][end] == grid.xᶠᵃᵃ[Nx]
+    @test ds3["y_aca"][end] == grid.yᵃᶜᵃ[Ny]
+    @test ds3["y_afa"][end] == grid.yᵃᶠᵃ[Ny]
+    @test ds3["z_aac"][end] == grid.z.cᵃᵃᶜ[Nz]
+    @test ds3["z_aaf"][end] == grid.z.cᵃᵃᶠ[Nz+1]  # z is Bounded
 
     @test eltype(ds3["u"]) == FT
     @test eltype(ds3["v"]) == FT
@@ -1613,33 +1613,33 @@ function test_thermal_bubble_netcdf_output(arch, FT)
 
     @test eltype(ds2["time"]) == Float64
 
-    @test eltype(ds2["x_c"]) == FT
-    @test eltype(ds2["x_f"]) == FT
-    @test eltype(ds2["y_c"]) == FT
-    @test eltype(ds2["y_f"]) == FT
-    @test eltype(ds2["z_c"]) == FT
-    @test eltype(ds2["z_f"]) == FT
+    @test eltype(ds2["x_caa"]) == FT
+    @test eltype(ds2["x_faa"]) == FT
+    @test eltype(ds2["y_aca"]) == FT
+    @test eltype(ds2["y_afa"]) == FT
+    @test eltype(ds2["z_aac"]) == FT
+    @test eltype(ds2["z_aaf"]) == FT
 
-    @test length(ds2["x_c"]) == length(i_slice)
-    @test length(ds2["x_f"]) == length(i_slice)
-    @test length(ds2["y_c"]) == length(j_slice)
-    @test length(ds2["y_f"]) == length(j_slice)
-    @test length(ds2["z_c"]) == length(k_slice)
-    @test length(ds2["z_f"]) == length(k_slice)
+    @test length(ds2["x_caa"]) == length(i_slice)
+    @test length(ds2["x_faa"]) == length(i_slice)
+    @test length(ds2["y_aca"]) == length(j_slice)
+    @test length(ds2["y_afa"]) == length(j_slice)
+    @test length(ds2["z_aac"]) == length(k_slice)
+    @test length(ds2["z_aaf"]) == length(k_slice)
 
-    @test ds2["x_c"][1] == grid.xᶜᵃᵃ[i_slice[1]]
-    @test ds2["x_f"][1] == grid.xᶠᵃᵃ[i_slice[1]]
-    @test ds2["y_c"][1] == grid.yᵃᶜᵃ[j_slice[1]]
-    @test ds2["y_f"][1] == grid.yᵃᶠᵃ[j_slice[1]]
-    @test ds2["z_c"][1] == grid.z.cᵃᵃᶜ[k_slice[1]]
-    @test ds2["z_f"][1] == grid.z.cᵃᵃᶠ[k_slice[1]]
+    @test ds2["x_caa"][1] == grid.xᶜᵃᵃ[i_slice[1]]
+    @test ds2["x_faa"][1] == grid.xᶠᵃᵃ[i_slice[1]]
+    @test ds2["y_aca"][1] == grid.yᵃᶜᵃ[j_slice[1]]
+    @test ds2["y_afa"][1] == grid.yᵃᶠᵃ[j_slice[1]]
+    @test ds2["z_aac"][1] == grid.z.cᵃᵃᶜ[k_slice[1]]
+    @test ds2["z_aaf"][1] == grid.z.cᵃᵃᶠ[k_slice[1]]
 
-    @test ds2["x_c"][end] == grid.xᶜᵃᵃ[i_slice[end]]
-    @test ds2["x_f"][end] == grid.xᶠᵃᵃ[i_slice[end]]
-    @test ds2["y_c"][end] == grid.yᵃᶜᵃ[j_slice[end]]
-    @test ds2["y_f"][end] == grid.yᵃᶠᵃ[j_slice[end]]
-    @test ds2["z_c"][end] == grid.z.cᵃᵃᶜ[k_slice[end]]
-    @test ds2["z_f"][end] == grid.z.cᵃᵃᶠ[k_slice[end]]
+    @test ds2["x_caa"][end] == grid.xᶜᵃᵃ[i_slice[end]]
+    @test ds2["x_faa"][end] == grid.xᶠᵃᵃ[i_slice[end]]
+    @test ds2["y_aca"][end] == grid.yᵃᶜᵃ[j_slice[end]]
+    @test ds2["y_afa"][end] == grid.yᵃᶠᵃ[j_slice[end]]
+    @test ds2["z_aac"][end] == grid.z.cᵃᵃᶜ[k_slice[end]]
+    @test ds2["z_aaf"][end] == grid.z.cᵃᵃᶠ[k_slice[end]]
 
     @test eltype(ds2["u"]) == FT
     @test eltype(ds2["v"]) == FT
@@ -1727,33 +1727,33 @@ function test_thermal_bubble_netcdf_output_with_halos(arch, FT)
 
     @test eltype(ds["time"]) == Float64
 
-    @test eltype(ds["x_c"]) == FT
-    @test eltype(ds["x_f"]) == FT
-    @test eltype(ds["y_c"]) == FT
-    @test eltype(ds["y_f"]) == FT
-    @test eltype(ds["z_c"]) == FT
-    @test eltype(ds["z_f"]) == FT
+    @test eltype(ds["x_caa"]) == FT
+    @test eltype(ds["x_faa"]) == FT
+    @test eltype(ds["y_aca"]) == FT
+    @test eltype(ds["y_afa"]) == FT
+    @test eltype(ds["z_aac"]) == FT
+    @test eltype(ds["z_aaf"]) == FT
 
-    @test length(ds["x_c"]) == Nx+2Hx
-    @test length(ds["y_c"]) == Ny+2Hy
-    @test length(ds["z_c"]) == Nz+2Hz
-    @test length(ds["x_f"]) == Nx+2Hx
-    @test length(ds["y_f"]) == Ny+2Hy
-    @test length(ds["z_f"]) == Nz+2Hz+1  # z is Bounded
+    @test length(ds["x_caa"]) == Nx+2Hx
+    @test length(ds["y_aca"]) == Ny+2Hy
+    @test length(ds["z_aac"]) == Nz+2Hz
+    @test length(ds["x_faa"]) == Nx+2Hx
+    @test length(ds["y_afa"]) == Ny+2Hy
+    @test length(ds["z_aaf"]) == Nz+2Hz+1  # z is Bounded
 
-    @test ds["x_c"][1] == grid.xᶜᵃᵃ[1-Hx]
-    @test ds["x_f"][1] == grid.xᶠᵃᵃ[1-Hx]
-    @test ds["y_c"][1] == grid.yᵃᶜᵃ[1-Hy]
-    @test ds["y_f"][1] == grid.yᵃᶠᵃ[1-Hy]
-    @test ds["z_c"][1] == grid.z.cᵃᵃᶜ[1-Hz]
-    @test ds["z_f"][1] == grid.z.cᵃᵃᶠ[1-Hz]
+    @test ds["x_caa"][1] == grid.xᶜᵃᵃ[1-Hx]
+    @test ds["x_faa"][1] == grid.xᶠᵃᵃ[1-Hx]
+    @test ds["y_aca"][1] == grid.yᵃᶜᵃ[1-Hy]
+    @test ds["y_afa"][1] == grid.yᵃᶠᵃ[1-Hy]
+    @test ds["z_aac"][1] == grid.z.cᵃᵃᶜ[1-Hz]
+    @test ds["z_aaf"][1] == grid.z.cᵃᵃᶠ[1-Hz]
 
-    @test ds["x_c"][end] == grid.xᶜᵃᵃ[Nx+Hx]
-    @test ds["x_f"][end] == grid.xᶠᵃᵃ[Nx+Hx]
-    @test ds["y_c"][end] == grid.yᵃᶜᵃ[Ny+Hy]
-    @test ds["y_f"][end] == grid.yᵃᶠᵃ[Ny+Hy]
-    @test ds["z_c"][end] == grid.z.cᵃᵃᶜ[Nz+Hz]
-    @test ds["z_f"][end] == grid.z.cᵃᵃᶠ[Nz+Hz+1]  # z is Bounded
+    @test ds["x_caa"][end] == grid.xᶜᵃᵃ[Nx+Hx]
+    @test ds["x_faa"][end] == grid.xᶠᵃᵃ[Nx+Hx]
+    @test ds["y_aca"][end] == grid.yᵃᶜᵃ[Ny+Hy]
+    @test ds["y_afa"][end] == grid.yᵃᶠᵃ[Ny+Hy]
+    @test ds["z_aac"][end] == grid.z.cᵃᵃᶜ[Nz+Hz]
+    @test ds["z_aaf"][end] == grid.z.cᵃᵃᶠ[Nz+Hz+1]  # z is Bounded
 
     @test eltype(ds["u"]) == FT
     @test eltype(ds["v"]) == FT
@@ -1927,7 +1927,7 @@ function test_netcdf_function_output(arch)
     h(model) = @. model.clock.time * sin(XC) * cos(YF) # xy slice output
 
     outputs = (scalar=f, profile=g, slice=h)
-    dims = (scalar=(), profile=("z_c",), slice=("x_c", "y_c"))
+    dims = (scalar=(), profile=("z_aac",), slice=("x_caa", "y_aca"))
 
     output_attributes = (
         scalar = (long_name="Some scalar", units="bananas"),
@@ -1975,33 +1975,33 @@ function test_netcdf_function_output(arch)
 
     @test eltype(ds["time"]) == Float64
 
-    @test eltype(ds["x_c"]) == Float64
-    @test eltype(ds["x_f"]) == Float64
-    @test eltype(ds["y_c"]) == Float64
-    @test eltype(ds["y_f"]) == Float64
-    @test eltype(ds["z_c"]) == Float64
-    @test eltype(ds["z_f"]) == Float64
+    @test eltype(ds["x_caa"]) == Float64
+    @test eltype(ds["x_faa"]) == Float64
+    @test eltype(ds["y_aca"]) == Float64
+    @test eltype(ds["y_afa"]) == Float64
+    @test eltype(ds["z_aac"]) == Float64
+    @test eltype(ds["z_aaf"]) == Float64
 
-    @test length(ds["x_c"]) == N
-    @test length(ds["y_c"]) == N
-    @test length(ds["z_c"]) == N
-    @test length(ds["x_f"]) == N
-    @test length(ds["y_f"]) == N
-    @test length(ds["z_f"]) == N+1  # z is Bounded
+    @test length(ds["x_caa"]) == N
+    @test length(ds["y_aca"]) == N
+    @test length(ds["z_aac"]) == N
+    @test length(ds["x_faa"]) == N
+    @test length(ds["y_afa"]) == N
+    @test length(ds["z_aaf"]) == N+1  # z is Bounded
 
-    @test ds["x_c"][1] == grid.xᶜᵃᵃ[1]
-    @test ds["x_f"][1] == grid.xᶠᵃᵃ[1]
-    @test ds["y_c"][1] == grid.yᵃᶜᵃ[1]
-    @test ds["y_f"][1] == grid.yᵃᶠᵃ[1]
-    @test ds["z_c"][1] == grid.z.cᵃᵃᶜ[1]
-    @test ds["z_f"][1] == grid.z.cᵃᵃᶠ[1]
+    @test ds["x_caa"][1] == grid.xᶜᵃᵃ[1]
+    @test ds["x_faa"][1] == grid.xᶠᵃᵃ[1]
+    @test ds["y_aca"][1] == grid.yᵃᶜᵃ[1]
+    @test ds["y_afa"][1] == grid.yᵃᶠᵃ[1]
+    @test ds["z_aac"][1] == grid.z.cᵃᵃᶜ[1]
+    @test ds["z_aaf"][1] == grid.z.cᵃᵃᶠ[1]
 
-    @test ds["x_c"][end] == grid.xᶜᵃᵃ[N]
-    @test ds["y_c"][end] == grid.yᵃᶜᵃ[N]
-    @test ds["x_f"][end] == grid.xᶠᵃᵃ[N]
-    @test ds["y_f"][end] == grid.yᵃᶠᵃ[N]
-    @test ds["z_c"][end] == grid.z.cᵃᵃᶜ[N]
-    @test ds["z_f"][end] == grid.z.cᵃᵃᶠ[N+1]  # z is Bounded
+    @test ds["x_caa"][end] == grid.xᶜᵃᵃ[N]
+    @test ds["y_aca"][end] == grid.yᵃᶜᵃ[N]
+    @test ds["x_faa"][end] == grid.xᶠᵃᵃ[N]
+    @test ds["y_afa"][end] == grid.yᵃᶠᵃ[N]
+    @test ds["z_aac"][end] == grid.z.cᵃᵃᶜ[N]
+    @test ds["z_aaf"][end] == grid.z.cᵃᵃᶠ[N+1]  # z is Bounded
 
     @test ds.attrib["location"] == "Bay of Fundy"
     @test ds.attrib["onions"] == 7
@@ -2022,7 +2022,7 @@ function test_netcdf_function_output(arch)
     @test ds["profile"].attrib["long_name"] == "Some vertical profile"
     @test ds["profile"].attrib["units"] == "watermelons"
     @test size(ds["profile"]) == (N, iters+1)
-    @test dimnames(ds["profile"]) == ("z_c", "time")
+    @test dimnames(ds["profile"]) == ("z_aac", "time")
 
     for n in 0:iters
         @test ds["profile"][:, n+1] == n*Δt .* exp.(znodes(grid, Center()))
@@ -2031,7 +2031,7 @@ function test_netcdf_function_output(arch)
     @test ds["slice"].attrib["long_name"] == "Some slice"
     @test ds["slice"].attrib["units"] == "mushrooms"
     @test size(ds["slice"]) == (N, N, iters+1)
-    @test dimnames(ds["slice"]) == ("x_c", "y_c", "time")
+    @test dimnames(ds["slice"]) == ("x_caa", "y_aca", "time")
 
     for n in 0:iters
         @test ds["slice"][:, :, n+1] == n*Δt .* sin.(XC) .* cos.(YF)
@@ -2518,28 +2518,28 @@ function test_netcdf_vertically_stretched_grid_output(arch)
 
     ds = NCDataset(nc_filepath)
 
-    @test length(ds["x_c"]) == Nx
-    @test length(ds["y_c"]) == Ny
-    @test length(ds["z_c"]) == Nz
-    @test length(ds["x_f"]) == Nx
-    @test length(ds["y_f"]) == Ny
-    @test length(ds["z_f"]) == Nz+1  # z is Bounded
+    @test length(ds["x_caa"]) == Nx
+    @test length(ds["y_aca"]) == Ny
+    @test length(ds["z_aac"]) == Nz
+    @test length(ds["x_faa"]) == Nx
+    @test length(ds["y_afa"]) == Ny
+    @test length(ds["z_aaf"]) == Nz+1  # z is Bounded
 
-    @test ds["x_c"][1] == grid.xᶜᵃᵃ[1]
-    @test ds["x_f"][1] == grid.xᶠᵃᵃ[1]
-    @test ds["y_c"][1] == grid.yᵃᶜᵃ[1]
-    @test ds["y_f"][1] == grid.yᵃᶠᵃ[1]
+    @test ds["x_caa"][1] == grid.xᶜᵃᵃ[1]
+    @test ds["x_faa"][1] == grid.xᶠᵃᵃ[1]
+    @test ds["y_aca"][1] == grid.yᵃᶜᵃ[1]
+    @test ds["y_afa"][1] == grid.yᵃᶠᵃ[1]
 
-    @test CUDA.@allowscalar ds["z_c"][1] == grid.z.cᵃᵃᶜ[1]
-    @test CUDA.@allowscalar ds["z_f"][1] == grid.z.cᵃᵃᶠ[1]
+    @test CUDA.@allowscalar ds["z_aac"][1] == grid.z.cᵃᵃᶜ[1]
+    @test CUDA.@allowscalar ds["z_aaf"][1] == grid.z.cᵃᵃᶠ[1]
 
-    @test ds["x_c"][end] == grid.xᶜᵃᵃ[Nx]
-    @test ds["x_f"][end] == grid.xᶠᵃᵃ[Nx]
-    @test ds["y_c"][end] == grid.yᵃᶜᵃ[Ny]
-    @test ds["y_f"][end] == grid.yᵃᶠᵃ[Ny]
+    @test ds["x_caa"][end] == grid.xᶜᵃᵃ[Nx]
+    @test ds["x_faa"][end] == grid.xᶠᵃᵃ[Nx]
+    @test ds["y_aca"][end] == grid.yᵃᶜᵃ[Ny]
+    @test ds["y_afa"][end] == grid.yᵃᶠᵃ[Ny]
 
-    @test CUDA.@allowscalar ds["z_c"][end] == grid.z.cᵃᵃᶜ[Nz]
-    @test CUDA.@allowscalar ds["z_f"][end] == grid.z.cᵃᵃᶠ[Nz+1]  # z is Bounded
+    @test CUDA.@allowscalar ds["z_aac"][end] == grid.z.cᵃᵃᶜ[Nz]
+    @test CUDA.@allowscalar ds["z_aaf"][end] == grid.z.cᵃᵃᶠ[Nz+1]  # z is Bounded
 
     close(ds)
     rm(nc_filepath)
@@ -2576,7 +2576,7 @@ function test_netcdf_overriding_attributes(arch)
     )
 
     output_attributes = Dict(
-        "latitude_f" => Dict("units" => "No units for you!"),
+        "latitude_afa" => Dict("units" => "No units for you!"),
         "u" => Dict("long_name" => "zonal velocity", "units" => "miles/fortnight")
     )
 
@@ -2592,8 +2592,8 @@ function test_netcdf_overriding_attributes(arch)
     @test ds.attrib["date"] == "yesterday"
     @test ds.attrib["fruit"] == "papaya"
 
-    @test ds["latitude_f"].attrib["units"] == "No units for you!"
-    @test !haskey(ds["latitude_f"].attrib, "long_name")
+    @test ds["latitude_afa"].attrib["units"] == "No units for you!"
+    @test !haskey(ds["latitude_afa"].attrib, "long_name")
 
     @test ds["u"].attrib["long_name"] == "zonal velocity"
     @test ds["u"].attrib["units"] == "miles/fortnight"
@@ -2654,7 +2654,7 @@ function test_netcdf_free_surface_only_output(arch)
     ds_h = NCDataset(filepath_with_halos)
 
     @test haskey(ds_h, "η")
-    @test dimsize(ds_h["η"]) == (longitude_c=Nλ + 2Hλ, latitude_c=Nφ + 2Hφ, time=Nt + 1)
+    @test dimsize(ds_h["η"]) == (longitude_caa=Nλ + 2Hλ, latitude_aca=Nφ + 2Hφ, time=Nt + 1)
 
     close(ds_h)
     rm(filepath_with_halos)
@@ -2662,7 +2662,7 @@ function test_netcdf_free_surface_only_output(arch)
     ds_n = NCDataset(filepath_no_halos)
 
     @test haskey(ds_n, "η")
-    @test dimsize(ds_n["η"]) == (longitude_c=Nλ, latitude_c=Nφ, time=Nt + 1)
+    @test dimsize(ds_n["η"]) == (longitude_caa=Nλ, latitude_aca=Nφ, time=Nt + 1)
 
     close(ds_n)
     rm(filepath_no_halos)
@@ -2725,13 +2725,13 @@ function test_netcdf_free_surface_mixed_output(arch)
     ds_h = NCDataset(filepath_with_halos)
 
     @test haskey(ds_h, "η")
-    @test dimsize(ds_h["η"]) == (longitude_c=Nλ + 2Hλ, latitude_c=Nφ + 2Hφ, time=Nt + 1)
+    @test dimsize(ds_h["η"]) == (longitude_caa=Nλ + 2Hλ, latitude_aca=Nφ + 2Hφ, time=Nt + 1)
 
-    @test dimsize(ds_h[:u]) == (longitude_f=Nλ + 2Hλ + 1, latitude_c=Nφ + 2Hφ,     z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:v]) == (longitude_c=Nλ + 2Hλ,     latitude_f=Nφ + 2Hφ + 1, z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:w]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ,     z_f=Nz + 2Hz + 1, time=Nt + 1)
-    @test dimsize(ds_h[:T]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ,     z_c=Nz + 2Hz,     time=Nt + 1)
-    @test dimsize(ds_h[:S]) == (longitude_c=Nλ + 2Hλ,     latitude_c=Nφ + 2Hφ,     z_c=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:u]) == (longitude_faa=Nλ + 2Hλ + 1, latitude_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:v]) == (longitude_caa=Nλ + 2Hλ,     latitude_afa=Nφ + 2Hφ + 1, z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:w]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ,     z_aaf=Nz + 2Hz + 1, time=Nt + 1)
+    @test dimsize(ds_h[:T]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
+    @test dimsize(ds_h[:S]) == (longitude_caa=Nλ + 2Hλ,     latitude_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
 
     close(ds_h)
     rm(filepath_with_halos)
@@ -2739,13 +2739,13 @@ function test_netcdf_free_surface_mixed_output(arch)
     ds_n = NCDataset(filepath_no_halos)
 
     @test haskey(ds_n, "η")
-    @test dimsize(ds_n["η"]) == (longitude_c=Nλ, latitude_c=Nφ, time=Nt + 1)
+    @test dimsize(ds_n["η"]) == (longitude_caa=Nλ, latitude_aca=Nφ, time=Nt + 1)
 
-    @test dimsize(ds_n[:u]) == (longitude_f=Nλ + 1, latitude_c=Nφ,     z_c=Nz,     time=Nt + 1)
-    @test dimsize(ds_n[:v]) == (longitude_c=Nλ,     latitude_f=Nφ + 1, z_c=Nz,     time=Nt + 1)
-    @test dimsize(ds_n[:w]) == (longitude_c=Nλ,     latitude_c=Nφ,     z_f=Nz + 1, time=Nt + 1)
-    @test dimsize(ds_n[:T]) == (longitude_c=Nλ,     latitude_c=Nφ,     z_c=Nz,     time=Nt + 1)
-    @test dimsize(ds_n[:S]) == (longitude_c=Nλ,     latitude_c=Nφ,     z_c=Nz,     time=Nt + 1)
+    @test dimsize(ds_n[:u]) == (longitude_faa=Nλ + 1, latitude_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_n[:v]) == (longitude_caa=Nλ,     latitude_afa=Nφ + 1, z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_n[:w]) == (longitude_caa=Nλ,     latitude_aca=Nφ,     z_aaf=Nz + 1, time=Nt + 1)
+    @test dimsize(ds_n[:T]) == (longitude_caa=Nλ,     latitude_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
+    @test dimsize(ds_n[:S]) == (longitude_caa=Nλ,     latitude_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
 
     close(ds_n)
     rm(filepath_no_halos)
