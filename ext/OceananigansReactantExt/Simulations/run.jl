@@ -1,5 +1,5 @@
 import Oceananigans: initialize!
-import ..TimeSteppers: first_time_step!
+import Oceananigans.TimeSteppers: first_time_step!
 
 """ Step `sim`ulation forward by one time step. """
 time_step!(sim::ReactantSimulation) = time_step!(sim.model, sim.Δt)
