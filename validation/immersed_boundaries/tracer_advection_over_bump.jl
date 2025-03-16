@@ -102,9 +102,9 @@ end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 simulation.output_writers[:fields] = JLD2Writer(model, model.tracers,
-                                                      schedule = TimeInterval(0.02),
-                                                      prefix = "tracer_advection_over_bump",
-                                                      force = true)
+                                                schedule = TimeInterval(0.02),
+                                                prefix = "tracer_advection_over_bump",
+                                                force = true)
 
 run!(simulation)
 
