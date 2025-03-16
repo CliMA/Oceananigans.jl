@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Utils: Time
 using Oceananigans.Fields: indices, interpolate!
-using Oceananigans.OutputReaders: Cyclical, Clamp
+using Oceananigans.OutputReaders: Cyclical, Clamp, Linear
 
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
     grid = RectilinearGrid(architecture, size=(Nx, Ny, Nz), extent=(64, 64, 32))
@@ -485,9 +485,9 @@ end
 
         sinf(t) = sin(2π * t / 3)
 
-        f   = CenterField(grid) 
         fts = FieldTimeSeries{Center, Center, Center}(grid, times; backend=OnDisk(), path=filepath_sine, name="f")
-        
+
+        f = CenterField(grid) 
         for (i, time) in enumerate(fts.times)
             set!(f, (x, y, z) -> sinf(time))
             set!(fts, f, i)
@@ -496,9 +496,9 @@ end
         # Now we load the FTS partly in memory
         # using different time indexing strategies
         M = 5
-        fts1 = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M))
-        fts2 = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M), time_indexing = Cyclical())
-        fts3 = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M), time_indexing = Clamp())
+        fts_lin = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M), time_indexing = Linear())
+        fts_cyc = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M), time_indexing = Cyclical())
+        fts_clp = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M), time_indexing = Clamp())
         
         # Test that linear interpolation is correct within the time domain
         for time in 0:0.01:last(fts.times)
@@ -509,20 +509,24 @@ end
 
                 Δt⁺ = (time - t⁻) / (t⁺ - t⁻)
             
-                @test fts1[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺) 
-                @test fts2[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺) 
-                @test fts3[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺) 
+                @test fts_lin[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺) 
+                @test fts_cyc[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺) 
+                @test fts_clp[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺) 
             end
         end
 
-        Δt = fts.times[end] - fts.times[end - 1]        
-
         # Test that the time interpolation is correct outside the time domain
-        for time in last(fts.times) + 1 : 0.01 :  last(fts.times) * 2
-            @test fts1[Time(time)][1, 1, 1] ≈ (fts1[end][1, 1, 1] - fts1[end-1][1, 1, 1]) / Δt * (time - last(fts.times))
-            @test fts3[Time(time)][1, 1, 1] ≈ fts3[end][1, 1, 1]
+        Δt = fts.times[end] - fts.times[end-1]        
+        Tf = last(fts.times)
+        from = Tf+1
+        to = 2Tf
+        
+        for t in from:0.01:to
+            dfdt = (fts_lin[end][1, 1, 1] - fts_lin[end-1][1, 1, 1]) / Δt
+            extrapolated = (t - Tf) * dfdt
+            @test fts_lin[Time(t)][1, 1, 1] ≈ extrapolated 
+            @test fts_clp[Time(t)][1, 1, 1] ≈ fts_clp[end][1, 1, 1]
         end
-
     end
 
     rm(filepath1d)
@@ -530,3 +534,4 @@ end
     rm(filepath3d)
     rm(filepath_sine)
 end
+
