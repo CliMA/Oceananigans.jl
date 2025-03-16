@@ -81,6 +81,7 @@ end
     end
 
     ñ = (t - t₁) / (t₂ - t₁)
+    ñ = ifelse(n₂ == n₁, zero(ñ), ñ)
 
     return ñ, n₁, n₂
 end
