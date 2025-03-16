@@ -70,10 +70,10 @@ end
 
 @inline function find_time_index(times::StepRangeLen, t)
     n₂ = searchsortedfirst(times, t)
-    n₁ = max(1, n₂ - 1)
 
     Nt = length(times)
     n₂ = min(Nt, n₂) # cap
+    n₁ = max(1, n₂ - 1)
 
     @inbounds begin
         t₁ = times[n₁]
