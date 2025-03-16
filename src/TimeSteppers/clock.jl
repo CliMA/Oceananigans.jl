@@ -46,7 +46,7 @@ function Clock(; time,
     DT = typeof(last_Δt)
     IT = typeof(iteration)
     last_stage_Δt = convert(DT, last_Δt)
-    return Clock{TT, DT, IT, Int}(time, last_Δt, last_stage_Δt, iteration, stage)
+    return Clock{TT, DT, IT, typeof(stage)}(time, last_Δt, last_stage_Δt, iteration, stage)
 end
 
 # TODO: when supporting DateTime, this function will have to be extended
@@ -63,7 +63,7 @@ function Clock{TT}(; time,
     last_stage_Δt = convert(DT, last_stage_Δt)
     IT = typeof(iteration)
 
-    return Clock{TT, DT, IT}(time, last_Δt, last_stage_Δt, iteration, stage)
+    return Clock{TT, DT, IT, typeof(stage)}(time, last_Δt, last_stage_Δt, iteration, stage)
 end
 
 # helpful default
