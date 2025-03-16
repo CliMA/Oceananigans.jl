@@ -93,7 +93,6 @@ end
     Nx, Ny, Nz = 16, 10, 5
     filepath1d, filepath2d, filepath3d, unsplit_filepath, split_filepath = generate_some_interesting_simulation_data(Nx, Ny, Nz)
 
-    #=
     for arch in archs
         @testset "FieldTimeSeries{InMemory} [$(typeof(arch))]" begin
             @info "  Testing FieldTimeSeries{InMemory} [$(typeof(arch))]..."
@@ -477,7 +476,6 @@ end
             @test ds.b[1] isa Field
         end
     end
-    =#
 
     filepath_sine = "one_dimensional_sine.jld2"
 
