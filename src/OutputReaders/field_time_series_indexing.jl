@@ -231,9 +231,9 @@ end
                              data::OffsetArray, backend, time_indexing)
 
     ñ  = time_indices.fractional_index
-    n₁ = time_indices.first_index
-    n₂ = time_indices.second_index
-    Nt = time_indices.length
+    n₁ = convert(Int, time_indices.first_index)
+    n₂ = convert(Int, time_indices.second_index)
+    Nt = convert(Int, time_indices.length)
 
     ix = interpolator(fi.i)
     iy = interpolator(fi.j)
