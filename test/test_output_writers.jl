@@ -80,11 +80,11 @@ function test_dependency_adding(model)
     rm("test.jld2")
 
     # NetCDF dependency test
-    netcdf_output_writer = NetCDFOutputWriter(model, output,
-                                              schedule = TimeInterval(4),
-                                              filename = "test.nc",
-                                              output_attributes = attributes,
-                                              dimensions = dimensions)
+    netcdf_output_writer = NetCDFWriter(model, output,
+                                        schedule = TimeInterval(4),
+                                        filename = "test.nc",
+                                        output_attributes = attributes,
+                                        dimensions = dimensions)
 
     windowed_time_average = netcdf_output_writer.outputs["time_average"]
     @test dependencies_added_correctly!(model, windowed_time_average, netcdf_output_writer)
@@ -117,7 +117,7 @@ function test_creating_and_appending(model, output_writer)
     run!(simulation)
 
     # Test that length is what we expected
-    if output_writer === NetCDFOutputWriter
+    if output_writer === NetCDFWriter
         ds = NCDataset(filepath)
         time_length = length(ds["time"])
     elseif output_writer === JLD2Writer
@@ -152,9 +152,9 @@ function test_windowed_time_averaging_simulation(model)
     # https://github.com/Alexander-Barth/NCDatasets.jl/issues/105
     nc_filepath1 = "windowed_time_average_test1.nc"
     nc_outputs = Dict(string(name) => field for (name, field) in pairs(model.velocities))
-    nc_output_writer = NetCDFOutputWriter(model, nc_outputs,
-                                          filename = nc_filepath1,
-                                          schedule = AveragedTimeInterval(π, window=1))
+    nc_output_writer = NetCDFWriter(model, nc_outputs,
+                                    filename = nc_filepath1,
+                                    schedule = AveragedTimeInterval(π, window=1))
 
     jld2_outputs_are_time_averaged = Tuple(typeof(out) <: WindowedTimeAverage for out in jld2_output_writer.outputs)
       nc_outputs_are_time_averaged = Tuple(typeof(out) <: WindowedTimeAverage for out in values(nc_output_writer.outputs))
@@ -201,9 +201,9 @@ function test_windowed_time_averaging_simulation(model)
 
     nc_filepath2 = "windowed_time_average_test2.nc"
     nc_outputs = Dict(string(name) => field for (name, field) in pairs(model.velocities))
-    simulation.output_writers[:nc] = NetCDFOutputWriter(model, nc_outputs,
-                                                        filename = nc_filepath2,
-                                                        schedule = AveragedTimeInterval(π, window=π))
+    simulation.output_writers[:nc] = NetCDFWriter(model, nc_outputs,
+                                                  filename = nc_filepath2,
+                                                  schedule = AveragedTimeInterval(π, window=π))
 
     run!(simulation)
 
@@ -229,7 +229,7 @@ end
     for arch in archs
 
         @info "Testing that writers create file and append to it properly"
-        for output_writer in (NetCDFOutputWriter, JLD2Writer)
+        for output_writer in (NetCDFWriter, JLD2Writer)
             grid = RectilinearGrid(arch, topology=topo, size=(1, 1, 1), extent=(1, 1, 1))
             model = NonhydrostaticModel(; grid)
             test_creating_and_appending(model, output_writer)

@@ -463,7 +463,7 @@ for arch in archs
         test_jld2_time_averaging_of_horizontal_averages(model)
 
         #####
-        ##### Time-averaging (same test as in NetCDFOutputWriter)
+        ##### Time-averaging (same test as in NetCDFWriter)
         #####
         test_jld2_time_averaging(arch)
     end

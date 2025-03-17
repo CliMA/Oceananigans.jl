@@ -30,10 +30,10 @@ function particle_tracking_simulation(; grid, particles, timestepper=:RungeKutta
                                                      filename="test_particles", schedule=IterationInterval(1))
 
     nc_filepath = "test_particles.nc"
-    sim.output_writers[:particles_nc] = NetCDFOutputWriter(model,
-                                                           (; model.particles),
-                                                           filename = nc_filepath,
-                                                           schedule = IterationInterval(1))
+    sim.output_writers[:particles_nc] = NetCDFWriter(model,
+                                                     (; model.particles),
+                                                     filename = nc_filepath,
+                                                     schedule = IterationInterval(1))
 
     sim.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1),
                                                      dir=".", prefix="particles_checkpoint")
@@ -138,10 +138,10 @@ function run_simple_particle_tracking_tests(grid, timestepper=:QuasiAdamsBashfor
                                                          filename=jld2_filepath, schedule=IterationInterval(1))
 
         nc_filepath = "test_particles.nc"
-        sim.output_writers[:particles_nc] = NetCDFOutputWriter(model,
-                                                               (; particles = model.particles),
-                                                               filename = nc_filepath,
-                                                               schedule = IterationInterval(1))
+        sim.output_writers[:particles_nc] = NetCDFWriter(model,
+                                                         (; particles = model.particles),
+                                                         filename = nc_filepath,
+                                                         schedule = IterationInterval(1))
 
         sim.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1),
                                                          dir=".", prefix="particles_checkpoint")
