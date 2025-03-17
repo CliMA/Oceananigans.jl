@@ -67,7 +67,7 @@ BinaryOperation at (Center, Center, Center)
     └── 1
 ```
 
-Like `Field`s, `AbstractOperations` have a location and a grid. 
+Like `Field`s, `AbstractOperations` have a location and a grid.
 In addition to `BinaryOperation`s like the kind above, `UnaryOperation`s and `MultiaryOperation`s are also supported,
 
 ```jldoctest operations
@@ -210,4 +210,111 @@ BinaryOperation at (Center, Center, Center)
         ├── ∂zᶜᶜᶠ at (Center, Center, Center) via ℑzᵃᵃᶜ
         │   └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
         └── 2
+```
+
+## Averages and integrals
+
+Let's demonstrate now how we can compute the average or the integral of a field over the grid or over some part of the grid.
+
+We start by creating a latitude-longitude grid that only goes up to 30 degrees latitude.
+Conveniently, with this latitude extend that grid covers half the total area of the sphere, i.e., `2π * grid.radius^2`.
+
+Let's try to estimate this are using `Integral` operation. We create a Field, we fill it with ones and we integrate it over the whole grid.
+
+
+```jldoctest operations_avg_int
+using Oceananigans
+
+grid = LatitudeLongitudeGrid(CPU(); size=(60, 10, 5),
+                                    latitude = (-30, 30),
+                                    longitude = (0, 360),
+                                    halo=(7, 7, 7),
+                                    z=(-1000, 0))
+
+c = CenterField(grid)
+
+set!(c, 1)
+
+∫c = Field(Integral(c, dims=(1, 2)))
+
+# output
+1×1×5 Field{Nothing, Nothing, Center} reduced over dims = (1, 2) on LatitudeLongitudeGrid on CPU
+├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 5)
+├── grid: 60×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 7×7×7 halo and with precomputed metrics
+├── operand: Integral of BinaryOperation at (Center, Center, Center) over dims (1, 2)
+├── status: time=0.0
+└── data: 1×1×19 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -6:12) with eltype Float64 with indices 1:1×1:1×-6:12
+    └── max=0.0, min=0.0, mean=0.0
+```
+
+Few remarks. Note that the `∫c` has locations `Nothing, Nothing, Center`; this is because we have integrated in the first two dimensions. Further notice that there are no values in `∫c`, i.e.,
+
+```jldoctest operations_avg_int
+interior(∫c, 1, 1, :)
+
+# output
+5-element view(::Array{Float64, 3}, 1, 1, 8:12) with eltype Float64:
+ 0.0
+ 0.0
+ 0.0
+ 0.0
+ 0.0
+```
+
+This is because we need to call `compute!` to apply the field's operand.
+
+```jldoctest operations_avg_int
+compute!(∫c)
+
+# output
+1×1×5 Field{Nothing, Nothing, Center} reduced over dims = (1, 2) on LatitudeLongitudeGrid on CPU
+├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 5)
+├── grid: 60×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 7×7×7 halo and with precomputed metrics
+├── operand: Integral of BinaryOperation at (Center, Center, Center) over dims (1, 2)
+├── status: time=0.0
+└── data: 1×1×19 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -6:12) with eltype Float64 with indices 1:1×1:1×-6:12
+    └── max=2.55032e14, min=2.55032e14, mean=2.55032e14
+```
+
+Let's check now that the integration gave us what we expected:
+
+```jldoctest operations_avg_int
+∫c[1, 1, grid.Nz] ≈ 2π * grid.radius^2
+
+# output
+
+true
+```
+
+
+We can further have conditional reduced operations. Let's compute the above integral but only for North hemisphere.
+
+First we need to define a condition which is a function with arguments `(i, j, k, grid, field)` that returns true or false.
+In this example we use `Oceananigans.Grids.φnode` to check whether the latitude is within the range we'd like.
+
+```jldoctest operations_avg_int
+using Oceananigans.Grids: φnode
+
+cond(i, j, k, grid, c) = φnode(j, grid, Center()) .> 0
+
+conditional_∫c = Field(Integral(c, dims=(1, 2), condition=cond)) # only integrates when conditions is true
+
+# output
+1×1×5 Field{Nothing, Nothing, Center} reduced over dims = (1, 2) on LatitudeLongitudeGrid on CPU
+├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 5)
+├── grid: 60×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 7×7×7 halo and with precomputed metrics
+├── operand: Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition cond (generic function with 1 method) over dims (1, 2)
+├── status: time=0.0
+└── data: 1×1×19 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -6:12) with eltype Float64 with indices 1:1×1:1×-6:12
+    └── max=0.0, min=0.0, mean=0.0
+```
+
+Above we have attached a condition to the operand. Now the operand is applied only when the condition is true.
+
+Let's compute and see if we get 1/4 of the area of the sphere
+
+```jldoctest operations_avg_int
+compute!(conditional_∫c)
+
+conditional_∫c[1, 1, grid.Nz] ≈ π * grid.radius^2
 ```
