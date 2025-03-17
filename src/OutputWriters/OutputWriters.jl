@@ -1,7 +1,7 @@
 module OutputWriters
 
 export
-    JLD2Writer, NetCDFOutputWriter, written_names,
+    JLD2Writer, NetCDFWriter, written_names,
     Checkpointer, WindowedTimeAverage, FileSizeLimit,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval
 
