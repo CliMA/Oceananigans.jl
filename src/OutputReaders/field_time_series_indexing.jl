@@ -12,6 +12,12 @@ struct TimeInterpolator{T, N1, N2, N3}
     length       :: N3
 end
 
+Adapt.adapt_structure(to, ti::TimeInterpolator) =
+    TimeInterpolator(adapt(to, ti.fractional_index),
+                     adapt(to, ti.first_index),
+                     adapt(to, ti.second_index),
+                     adapt(to, ti.length))
+
 @inline TimeInterpolator(fts::FieldTimeSeries, t) =
     TimeInterpolator(fts.time_indexing, fts.times, t)
 
@@ -65,7 +71,7 @@ end
 end
 
 #####
-##### fine_time_index
+##### find_time_index
 #####
 
 @inline function find_time_index(times::StepRangeLen, t)
