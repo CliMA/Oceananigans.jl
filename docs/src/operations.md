@@ -240,28 +240,15 @@ set!(c, 1)
 # output
 1×1×5 Field{Nothing, Nothing, Center} reduced over dims = (1, 2) on LatitudeLongitudeGrid on CPU
 ├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 5)
-├── grid: 60×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 7×7×7 halo and with precomputed metrics
+├── grid: 60×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
 ├── operand: Integral of BinaryOperation at (Center, Center, Center) over dims (1, 2)
 ├── status: time=0.0
-└── data: 1×1×19 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -6:12) with eltype Float64 with indices 1:1×1:1×-6:12
+└── data: 1×1×11 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:8) with eltype Float64 with indices 1:1×1:1×-2:8
     └── max=0.0, min=0.0, mean=0.0
 ```
 
 Few remarks. Note that the `∫c` has locations `Nothing, Nothing, Center`; this is because we have integrated in the first two dimensions.
-Further note that `∫c` is full of zeros,
-
-```jldoctest operations_avg_int
-interior(∫c, 1, 1, :)
-
-# output
-5-element view(::Array{Float64, 3}, 1, 1, 8:12) with eltype Float64:
- 0.0
- 0.0
- 0.0
- 0.0
- 0.0
-```
-
+Further note that `∫c` is full of zeros; its max, min, and mean values are all 0.
 To compute `∫c`, we call `compute!(∫c)`,
 
 ```jldoctest operations_avg_int
@@ -270,10 +257,10 @@ compute!(∫c)
 # output
 1×1×5 Field{Nothing, Nothing, Center} reduced over dims = (1, 2) on LatitudeLongitudeGrid on CPU
 ├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 5)
-├── grid: 60×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 7×7×7 halo and with precomputed metrics
+├── grid: 60×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
 ├── operand: Integral of BinaryOperation at (Center, Center, Center) over dims (1, 2)
 ├── status: time=0.0
-└── data: 1×1×19 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -6:12) with eltype Float64 with indices 1:1×1:1×-6:12
+└── data: 1×1×11 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:8) with eltype Float64 with indices 1:1×1:1×-2:8
     └── max=2.55032e14, min=2.55032e14, mean=2.55032e14
 ```
 
@@ -304,10 +291,10 @@ conditional_∫c = Field(Integral(c, dims=(1, 2), condition=cond)) # only integr
 # output
 1×1×5 Field{Nothing, Nothing, Center} reduced over dims = (1, 2) on LatitudeLongitudeGrid on CPU
 ├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 5)
-├── grid: 60×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 7×7×7 halo and with precomputed metrics
+├── grid: 60×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
 ├── operand: Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition cond (generic function with 1 method) over dims (1, 2)
 ├── status: time=0.0
-└── data: 1×1×19 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -6:12) with eltype Float64 with indices 1:1×1:1×-6:12
+└── data: 1×1×11 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:8) with eltype Float64 with indices 1:1×1:1×-2:8
     └── max=0.0, min=0.0, mean=0.0
 ```
 
@@ -319,4 +306,7 @@ Let's compute and see if we get 1/4 of the area of the sphere
 compute!(conditional_∫c)
 
 conditional_∫c[1, 1, 1] ≈ π * grid.radius^2
+
+# output
+true
 ```
