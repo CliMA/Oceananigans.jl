@@ -120,14 +120,14 @@ model = NonhydrostaticModel(; grid, particles=lagrangian_particles)
 ```
 
 ```@example particles
-JLD2Writer(model, (; particles=model.particles), filename="particles", schedule=TimeInterval(15))
+JLD2Writer(model, (; model.particles), filename="particles", schedule=TimeInterval(15))
 ```
 
 When writing to NetCDF you should write particles to a separate file as the NetCDF dimensions differ for
 particle trajectories. You can just pass `model.particles` straight to `NetCDFOutputWriter`:
 
 ```@example particles
-NetCDFOutputWriter(model, model.particles, filename="particles.nc", schedule=TimeInterval(15))
+NetCDFOutputWriter(model, (; model.particles), filename="particles.nc", schedule=TimeInterval(15))
 ```
 
 !!! warn "Outputting custom particle properties to NetCDF"

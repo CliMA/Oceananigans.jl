@@ -197,7 +197,23 @@ steps:
 ##### Tripolar Grid tests
 #####
 
-  - label: "🦃 cpu tripolar grid tests"
+  - label: "🫐 gpu tripolar grid tests"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "tripolar_grid"
+      GPU_TEST: "true"
+    commands:
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
+    depends_on: "init"
+
+  - label: "🍓 cpu tripolar grid tests"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "tripolar_grid"
@@ -726,10 +742,10 @@ steps:
 ##### Reactant extension tests
 #####
 
-  - label: "👺 gpu Reactant extension tests"
+  - label: "👺 gpu Reactant extension tests 1"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "reactant"
+      TEST_GROUP: "reactant_1"
       GPU_TEST: "true"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -742,10 +758,41 @@ steps:
           limit: 1
     depends_on: "init"
 
-  - label: "👹 cpu Reactant extension tests"
+  - label: "👹 cpu Reactant extension tests 1"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "reactant"
+      TEST_GROUP: "reactant_1"
+    commands:
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
+    depends_on: "init"
+
+  - label: "🎭 gpu Reactant extension tests 2"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "reactant_2"
+      GPU_TEST: "true"
+    commands:
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
+    depends_on: "init"
+
+  - label: "🧌 cpu Reactant extension tests 2"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "reactant_2"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:

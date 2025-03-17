@@ -210,6 +210,12 @@ end
 @inline viscosity_location(::FlavorOfCATKE) = (c, c, f)
 @inline diffusivity_location(::FlavorOfCATKE) = (c, c, f)
 
+function update_previous_compute_time!(diffusivities, model)
+    Δt = model.clock.time - diffusivities.previous_compute_time[]
+    diffusivities.previous_compute_time[] = model.clock.time
+    return Δt
+end
+
 function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
@@ -218,8 +224,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
     buoyancy = model.buoyancy
     clock = model.clock
     top_tracer_bcs = get_top_tracer_bcs(model.buoyancy.formulation, tracers)
-    Δt = model.clock.time - diffusivities.previous_compute_time[]
-    diffusivities.previous_compute_time[] = model.clock.time
+    Δt = update_previous_compute_time!(diffusivities, model)
 
     if isfinite(model.clock.last_Δt) # Check that we have taken a valid time-step first.
         # Compute e at the current time:

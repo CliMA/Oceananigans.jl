@@ -182,6 +182,7 @@ CUDA.allowscalar() do
         reset_cuda_if_necessary()
         include("test_distributed_transpose.jl")
         include("test_distributed_poisson_solvers.jl")
+        include("test_distributed_macros.jl")
     end
 
     if group == :distributed_hydrostatic_model || group == :all
@@ -221,6 +222,13 @@ CUDA.allowscalar() do
         end
     end
 
+    # Tests for Metal extension
+    if group == :distributed_tripolar || group == :all
+        @testset "Distributed tripolar tests" begin
+            include("test_distributed_tripolar.jl")
+        end
+    end
+
     # Tests for Enzyme extension
     if group == :enzyme || group == :all
         @testset "Enzyme extension tests" begin
@@ -229,9 +237,15 @@ CUDA.allowscalar() do
     end
 
     # Tests for Reactant extension
-    if group == :reactant || group == :all
-        @testset "Reactant extension tests" begin
+    if group == :reactant_1 || group == :all
+        @testset "Reactant extension tests 1" begin
             include("test_reactant.jl")
+        end
+    end
+
+    if group == :reactant_2 || group == :all
+        @testset "Reactant extension tests 2" begin
+            include("test_reactant_latitude_longitude_grid.jl")
         end
     end
 
