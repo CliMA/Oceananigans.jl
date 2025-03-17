@@ -273,7 +273,6 @@ Let's check that these values are what we expect:
 true
 ```
 
-
 We can further have conditional reduced operations. Let's compute the above integral but only for North hemisphere.
 
 First we need to define a condition which is a function with arguments `(i, j, k, grid, field)` that returns true or false.
