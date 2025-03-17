@@ -2,6 +2,7 @@ using Oceananigans.Grids: _node
 using Oceananigans.Fields: interpolator, _interpolate, FractionalIndices, flatten_node
 using Oceananigans.Architectures: architecture
 using Oceananigans.DistributedComputations: child_architecture, Distributed
+using Adapt
 
 import Oceananigans.Fields: interpolate
 
@@ -19,6 +20,12 @@ end
     ñ, n₁, n₂ = interpolating_time_indices(time_indexing, times, t)
     return TimeInterpolator(ñ, n₁, n₂, length(times))
 end
+
+Adapt.adapt_structure(to, ti::TimeInterpolator) =
+    TimeInterpolator(Adapt.adapt(to, ti.fractional_index),
+                     Adapt.adapt(to, ti.first_index),
+                     Adapt.adapt(to, ti.second_index),
+                     Adapt.adapt(to, ti.length))
 
 #####
 ##### Computation of time indices for interpolation
@@ -231,9 +238,9 @@ end
                              data::OffsetArray, backend, time_indexing)
 
     ñ  = time_indices.fractional_index
-    n₁ = time_indices.first_index
-    n₂ = time_indices.second_index
-    Nt = time_indices.length
+    n₁ = convert(Int, time_indices.first_index)
+    n₂ = convert(Int, time_indices.second_index)
+    Nt = convert(Int, time_indices.length)
 
     ix = interpolator(fi.i)
     iy = interpolator(fi.j)
