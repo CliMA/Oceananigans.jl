@@ -283,7 +283,7 @@ using Oceananigans.Grids: φnode
 
 cond(i, j, k, grid, c) = φnode(j, grid, Center()) > 0
 
-conditional_∫c = Field(Integral(c, dims=(1, 2), condition=cond)) # only integrates when conditions is true
+conditional_∫c = Field(Integral(c, dims=(1, 2), condition=cond)) # only integrates when condition is true
 
 # output
 1×1×5 Field{Nothing, Nothing, Center} reduced over dims = (1, 2) on LatitudeLongitudeGrid on CPU
