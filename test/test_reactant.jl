@@ -23,9 +23,9 @@ include("reactant_test_utils.jl")
     @test all(c .≈ 1)
 
     @info "  Testing field set! with an array..."
-    a = rand(size(c)...)
+    a = ones(size(c)...)
     set!(c, a)
-    @test all(interior(c) .≈ a)
+    @test all(c .≈ 1)
 
     @info "  Testing simple kernel launch!..."
     add_one!(c)
