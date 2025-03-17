@@ -301,7 +301,6 @@ Let's compute and see if we get 1/4 of the area of the sphere
 
 ```jldoctest operations_avg_int
 compute!(conditional_∫c)
-
 conditional_∫c[1, 1, 1] ≈ π * grid.radius^2
 
 # output
