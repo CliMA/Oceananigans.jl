@@ -147,3 +147,7 @@ function set_to_field!(u, v)
 
     return u
 end
+
+Base.copyto!(f::Field, src::AbstractArray) = copyto!(interior(f), src)
+Base.copyto!(f::Field, src::Field) = copyto!(parent(f), parent(src)
+
