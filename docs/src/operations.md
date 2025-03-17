@@ -219,7 +219,8 @@ Let's demonstrate now how we can compute the average or the integral of a field 
 We start by creating a latitude-longitude grid that only goes up to 30 degrees latitude.
 Conveniently, with this latitude extend that grid covers half the total area of the sphere, i.e., `2π * grid.radius^2`.
 
-Let's try to estimate this are using `Integral` operation. We create a Field, we fill it with ones and we integrate it over the whole grid.
+Let's try to estimate this are using `Integral` operation.
+We create a Field, we fill it with ones and we integrate it over the whole grid.
 
 
 ```jldoctest operations_avg_int
@@ -228,8 +229,7 @@ using Oceananigans
 grid = LatitudeLongitudeGrid(CPU(); size=(60, 10, 5),
                                     latitude = (-30, 30),
                                     longitude = (0, 360),
-                                    halo=(7, 7, 7),
-                                    z=(-1000, 0))
+                                    z = (-1000, 0))
 
 c = CenterField(grid)
 
@@ -247,7 +247,8 @@ set!(c, 1)
     └── max=0.0, min=0.0, mean=0.0
 ```
 
-Few remarks. Note that the `∫c` has locations `Nothing, Nothing, Center`; this is because we have integrated in the first two dimensions. Further notice that there are no values in `∫c`, i.e.,
+Few remarks. Note that the `∫c` has locations `Nothing, Nothing, Center`; this is because we have integrated in the first two dimensions.
+Further note that `∫c` is full of zeros,
 
 ```jldoctest operations_avg_int
 interior(∫c, 1, 1, :)
@@ -261,7 +262,7 @@ interior(∫c, 1, 1, :)
  0.0
 ```
 
-This is because we need to call `compute!` to apply the field's operand.
+To compute `∫c`, we call `compute!(∫c)`,
 
 ```jldoctest operations_avg_int
 compute!(∫c)
@@ -276,10 +277,11 @@ compute!(∫c)
     └── max=2.55032e14, min=2.55032e14, mean=2.55032e14
 ```
 
-Let's check now that the integration gave us what we expected:
+Above we see that the max, min and mean of the field are all the same.
+Let's check that these values are what we expect:
 
 ```jldoctest operations_avg_int
-∫c[1, 1, grid.Nz] ≈ 2π * grid.radius^2
+∫c[1, 1, 1] ≈ 2π * grid.radius^2
 
 # output
 
@@ -295,7 +297,7 @@ In this example we use `Oceananigans.Grids.φnode` to check whether the latitude
 ```jldoctest operations_avg_int
 using Oceananigans.Grids: φnode
 
-cond(i, j, k, grid, c) = φnode(j, grid, Center()) .> 0
+cond(i, j, k, grid, c) = φnode(j, grid, Center()) > 0
 
 conditional_∫c = Field(Integral(c, dims=(1, 2), condition=cond)) # only integrates when conditions is true
 
@@ -309,12 +311,12 @@ conditional_∫c = Field(Integral(c, dims=(1, 2), condition=cond)) # only integr
     └── max=0.0, min=0.0, mean=0.0
 ```
 
-Above we have attached a condition to the operand. Now the operand is applied only when the condition is true.
-
+Above we have attached a condition to the operand.
+Now the operand is applied only when the condition is true.
 Let's compute and see if we get 1/4 of the area of the sphere
 
 ```jldoctest operations_avg_int
 compute!(conditional_∫c)
 
-conditional_∫c[1, 1, grid.Nz] ≈ π * grid.radius^2
+conditional_∫c[1, 1, 1] ≈ π * grid.radius^2
 ```
