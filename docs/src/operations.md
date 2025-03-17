@@ -232,9 +232,7 @@ grid = LatitudeLongitudeGrid(CPU(); size=(60, 10, 5),
                                     z = (-1000, 0))
 
 c = CenterField(grid)
-
 set!(c, 1)
-
 ∫c = Field(Integral(c, dims=(1, 2)))
 
 # output
@@ -247,7 +245,7 @@ set!(c, 1)
     └── max=0.0, min=0.0, mean=0.0
 ```
 
-Few remarks. Note that the `∫c` has locations `Nothing, Nothing, Center`; this is because we have integrated in the first two dimensions.
+A few remarks: note that the `∫c` has locations `Nothing, Nothing, Center`; this is because we have integrated in the first two dimensions.
 Further note that `∫c` is full of zeros; its max, min, and mean values are all 0.
 To compute `∫c`, we call `compute!(∫c)`,
 
