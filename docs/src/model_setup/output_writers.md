@@ -3,7 +3,7 @@
 `AbstractOutputWriter`s save data to disk.
 `Oceananigans` provides three ways to write output:
 
-1. [`NetCDFOutputWriter`](@ref) for output of arrays and scalars that uses [NCDatasets.jl](https://github.com/Alexander-Barth/NCDatasets.jl)
+1. [`NetCDFWriter`](@ref) for output of arrays and scalars that uses [NCDatasets.jl](https://github.com/Alexander-Barth/NCDatasets.jl)
 2. [`JLD2Writer`](@ref) for arbitrary julia data structures that uses [JLD2.jl](https://github.com/JuliaIO/JLD2.jl)
 3. [`Checkpointer`](@ref) that automatically saves as much model data as possible, using [JLD2.jl](https://github.com/JuliaIO/JLD2.jl)
 
@@ -11,11 +11,11 @@ The `Checkpointer` is discussed in detail on a separate [section](@ref checkpoin
 
 ## Basic usage
 
-[`NetCDFOutputWriter`](@ref) and [`JLD2Writer`](@ref) require four inputs:
+[`NetCDFWriter`](@ref) and [`JLD2Writer`](@ref) require four inputs:
 
 1. The `model` from which output data is sourced (required to initialize the `OutputWriter`).
 2. A key-value pairing of output "names" and "output" objects. `JLD2Writer` accepts `NamedTuple`s and `Dict`s;
-   `NetCDFOutputWriter` accepts `Dict`s with string-valued keys. Output objects are either `AbstractField`s or
+   `NetCDFWriter` accepts `Dict`s with string-valued keys. Output objects are either `AbstractField`s or
    functions that return data when called via `func(model)`.
 3. A `schedule` on which output is written. `TimeInterval`, `IterationInterval`, `WallTimeInterval` schedule
    periodic output according to the simulation time, simulation interval, or "wall time" (the physical time
@@ -34,7 +34,7 @@ Other important keyword arguments are
 Once an `OutputWriter` is created, it can be used to write output by adding it the
 ordered dictionary `simulation.output_writers`. prior to calling `run!(simulation)`.
 
-More specific detail about the `NetCDFOutputWriter` and `JLD2Writer` is given below.
+More specific detail about the `NetCDFWriter` and `JLD2Writer` is given below.
 
 !!! tip "Time step alignment and output writing"
     Oceananigans simulations will shorten the time step as needed to align model output with each
@@ -62,24 +62,24 @@ simulation = Simulation(model, Δt=12, stop_time=3600)
 fields = Dict("u" => model.velocities.u, "c" => model.tracers.c)
 
 simulation.output_writers[:field_writer] =
-    NetCDFOutputWriter(model, fields, filename="more_fields.nc", schedule=TimeInterval(60))
+    NetCDFWriter(model, fields, filename="more_fields.nc", schedule=TimeInterval(60))
 ```
 
 ```@example netcdf1
 simulation.output_writers[:surface_slice_writer] =
-    NetCDFOutputWriter(model, fields, filename="another_surface_xy_slice.nc",
-                       schedule=TimeInterval(60), indices=(:, :, grid.Nz))
+    NetCDFWriter(model, fields, filename="another_surface_xy_slice.nc",
+                 schedule=TimeInterval(60), indices=(:, :, grid.Nz))
 ```
 
 ```@example netcdf1
 simulation.output_writers[:averaged_profile_writer] =
-    NetCDFOutputWriter(model, fields,
-                       filename = "another_averaged_z_profile.nc",
-                       schedule = AveragedTimeInterval(60, window=20),
-                       indices = (1, 1, :))
+    NetCDFWriter(model, fields,
+                 filename = "another_averaged_z_profile.nc",
+                 schedule = AveragedTimeInterval(60, window=20),
+                 indices = (1, 1, :))
 ```
 
-`NetCDFOutputWriter` also accepts output functions that write scalars and arrays to disk,
+`NetCDFWriter` also accepts output functions that write scalars and arrays to disk,
 provided that their `dimensions` are provided:
 
 ```@example
@@ -116,12 +116,12 @@ output_attributes = Dict(
 global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
 
 simulation.output_writers[:things] =
-    NetCDFOutputWriter(model, outputs,
-                       schedule=IterationInterval(1), filename="things.nc", dimensions=dims, verbose=true,
-                       global_attributes=global_attributes, output_attributes=output_attributes)
+    NetCDFWriter(model, outputs,
+                 schedule=IterationInterval(1), filename="things.nc", dimensions=dims, verbose=true,
+                 global_attributes=global_attributes, output_attributes=output_attributes)
 ```
 
-`NetCDFOutputWriter` can also be configured for `outputs` that are interpolated or regridded
+`NetCDFWriter` can also be configured for `outputs` that are interpolated or regridded
 to a different grid than `model.grid`. To use this functionality, include the keyword argument
 `grid = output_grid`.
 
@@ -138,13 +138,13 @@ coarse_u = Field{Face, Center, Center}(coarse_grid)
 interpolate_u(model) = interpolate!(coarse_u, model.velocities.u)
 outputs = (; u = interpolate_u)
 
-output_writer = NetCDFOutputWriter(model, outputs;
-                                   grid = coarse_grid,
-                                   filename = "coarse_u.nc",
-                                   schedule = IterationInterval(1))
+output_writer = NetCDFWriter(model, outputs;
+                             grid = coarse_grid,
+                             filename = "coarse_u.nc",
+                             schedule = IterationInterval(1))
 ```
 
-See [`NetCDFOutputWriter`](@ref) for more information.
+See [`NetCDFWriter`](@ref) for more information.
 
 ## JLD2 output writer
 
@@ -190,15 +190,15 @@ to a file called `some_more_averaged_data.jld2`
 
 ```@example jld2_output_writer
 simulation.output_writers[:avg_c] = JLD2Writer(model, (; c=c_avg),
-                                                     filename = "some_more_averaged_data.jld2",
-                                                     schedule = AveragedTimeInterval(20minute, window=5minute))
+                                               filename = "some_more_averaged_data.jld2",
+                                               schedule = AveragedTimeInterval(20minute, window=5minute))
 ```
 
 See [`JLD2Writer`](@ref) for more information.
 
 ## Time-averaged output
 
-Time-averaged output is specified by setting the `schedule` keyword argument for either `NetCDFOutputWriter` or
+Time-averaged output is specified by setting the `schedule` keyword argument for either `NetCDFWriter` or
 `JLD2Writer` to [`AveragedTimeInterval`](@ref).
 
 With `AveragedTimeInterval`, the time-average of ``a`` is taken as a left Riemann sum corresponding to
