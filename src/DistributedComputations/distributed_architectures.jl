@@ -270,7 +270,7 @@ function Distributed(child_architecture = CPU();
     local_rank         = MPI.Comm_rank(communicator)
     local_index        = rank2index(local_rank, Rx, Ry, Rz)
     # The rank connectivity _ALWAYS_ wraps around (The cartesian processor "grid" is `Periodic`)
-    local_connectivity = RankConnectivity(local_index, ranks) 
+    local_connectivity = NeighboringRanks(local_index, ranks) 
 
     # Assign CUDA device if on GPUs
     if child_architecture isa GPU
@@ -354,7 +354,7 @@ end
 ##### Rank connectivity graph
 #####
 
-mutable struct RankConnectivity{E, W, N, S, SW, SE, NW, NE}
+mutable struct NeighboringRanks{E, W, N, S, SW, SE, NW, NE}
          east :: E
          west :: W
         north :: N
@@ -365,15 +365,15 @@ mutable struct RankConnectivity{E, W, N, S, SW, SE, NW, NE}
     northeast :: NE
 end
 
-const NoConnectivity = RankConnectivity{Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing}
+const NoConnectivity = NeighboringRanks{Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing}
 
 """
-    RankConnectivity(; east, west, north, south, southwest, southeast, northwest, northeast)
+    NeighboringRanks(; east, west, north, south, southwest, southeast, northwest, northeast)
 
-Generate a `RankConnectivity` object that holds the MPI ranks of the neighboring processors.
+Generate a `NeighboringRanks` object that holds the MPI ranks of the neighboring processors.
 """
-RankConnectivity(; east, west, north, south, southwest, southeast, northwest, northeast) =
-    RankConnectivity(east, west, north, south, southwest, southeast, northwest, northeast)
+NeighboringRanks(; east, west, north, south, southwest, southeast, northwest, northeast) =
+    NeighboringRanks(east, west, north, south, southwest, southeast, northwest, northeast)
 
 # The "Periodic" topologies are `Periodic`, `FullyConnected` and `RightConnected`
 # The "Bounded" topologies are `Bounded` and `LeftConnected`
@@ -395,7 +395,7 @@ function decrement_index(i, R)
     end
 end
 
-function RankConnectivity(local_index, ranks)
+function NeighboringRanks(local_index, ranks)
     i, j, k = local_index
     Rx, Ry, Rz = ranks
 
@@ -414,7 +414,7 @@ function RankConnectivity(local_index, ranks)
     southeast_rank = isnothing(i_east) || isnothing(j_south) ? nothing : index2rank(i_east, j_south, k, Rx, Ry, Rz)
     southwest_rank = isnothing(i_west) || isnothing(j_south) ? nothing : index2rank(i_west, j_south, k, Rx, Ry, Rz)
 
-    return RankConnectivity(west=west_rank, east=east_rank,
+    return NeighboringRanks(west=west_rank, east=east_rank,
                             south=south_rank, north=north_rank,
                             southwest=southwest_rank,
                             southeast=southeast_rank,
