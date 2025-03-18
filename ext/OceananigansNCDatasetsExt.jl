@@ -6,14 +6,17 @@ using Dates: AbstractTime, UTC, now
 
 using Oceananigans.Fields
 
-using Oceananigans.Grids: AbstractCurvilinearGrid, RectilinearGrid, StaticVerticalDiscretization
+using Oceananigans.Grids: AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization
 using Oceananigans.Grids: topology, halo_size, parent_index_range, ξnodes, ηnodes, rnodes, validate_index, peripheral_node
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location
-using Oceananigans.Models: ShallowWaterModel
+using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
+using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
+using Oceananigans.OutputWriters: AveragedTimeInterval, WindowedTimeAverage, NoFileSplitting
+import Oceananigans.OutputWriters: NetCDFWriter
 
 #####
 ##### Utils
@@ -738,29 +741,8 @@ function add_schedule_metadata!(global_attributes, schedule::AveragedTimeInterva
 end
 
 #####
-##### NetCDFWriter definition and constructor
+##### NetCDFWriter constructor
 #####
-
-mutable struct NetCDFWriter{G, D, O, T, A, FS, DN} <: AbstractOutputWriter
-    grid :: G
-    filepath :: String
-    dataset :: D
-    outputs :: O
-    schedule :: T
-    array_type :: A
-    indices :: Tuple
-    global_attributes :: Dict
-    output_attributes :: Dict
-    dimensions :: Dict
-    with_halos :: Bool
-    include_grid_metrics :: Bool
-    overwrite_existing :: Bool
-    verbose :: Bool
-    deflatelevel :: Int
-    part :: Int
-    file_splitting :: FS
-    dimension_name_generator :: DN
-end
 
 """
     NetCDFWriter(model, outputs;
