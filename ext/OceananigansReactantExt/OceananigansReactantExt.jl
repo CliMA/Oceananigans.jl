@@ -98,7 +98,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     CC2 = Reactant.traced_type_inner(CC, seen, mode, track_numbers, sharding, runtime)
     FC2 = Reactant.traced_type_inner(FC, seen, mode, track_numbers, sharding, runtime)
     CF2 = Reactant.traced_type_inner(CF, seen, mode, track_numbers, sharding, runtime)
-    FF2 = Reactant.traced_type_inner(FF2, seen, mode, track_numbers, sharding, runtime)
+    FF2 = Reactant.traced_type_inner(FF, seen, mode, track_numbers, sharding, runtime)
     FT2 = Base.promote_type(Base.promote_type(Base.promote_type(Base.promote_type(FT2, eltype(CC2)), eltype(FC2)), eltype(CF2)), eltype(FF2))
     return Oceananigans.Grids.OrthogonalSphericalShellGrid{FT2, TX2, TY2, TZ2, Z2, Map2, CC2, FC2, CF2, FF2, Arch}
 end
