@@ -32,6 +32,9 @@ const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, Z,
                                                 DXFC, DXCF, DXFF,
                                                 DXCC, DYFC, DYCF}
 
+const DistributedOrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF} = 
+    OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, <:Distributed} where {FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF}
+
 # Local size from global size and architecture
 local_size(arch::Distributed, global_sz) = (local_size(global_sz[1], arch.partition.x, arch.local_index[1]),
                                             local_size(global_sz[2], arch.partition.y, arch.local_index[2]),
