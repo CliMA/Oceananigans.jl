@@ -7,7 +7,7 @@ using Printf: @sprintf
 
 using Oceananigans.Fields
 
-using Oceananigans: initialize!, prettytime, pretty_filesize
+using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
 using Oceananigans.Grids: Center, Face, Flat, AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization
 using Oceananigans.Grids: topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
                           parent_index_range, ξnodes, ηnodes, rnodes, validate_index, peripheral_node
@@ -967,7 +967,7 @@ output_writer = NetCDFWriter(model, outputs;
                              schedule = IterationInterval(1))
 ```
 """
-function NetCDFWriter(model, outputs;
+function NetCDFWriter(model::AbstractModel, outputs;
                       filename,
                       schedule,
                       grid = model.grid,
