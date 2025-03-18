@@ -226,10 +226,10 @@ We create a Field, we fill it with ones and we integrate it over the whole grid.
 ```jldoctest operations_avg_int
 using Oceananigans
 
-grid = LatitudeLongitudeGrid(CPU(); size=(60, 10, 5),
-                                    latitude = (-30, 30),
-                                    longitude = (0, 360),
-                                    z = (-1000, 0))
+grid = LatitudeLongitudeGrid(size=(60, 10, 5),
+                             latitude = (-30, 30),
+                             longitude = (0, 360),
+                             z = (-1000, 0))
 
 c = CenterField(grid)
 set!(c, 1)
