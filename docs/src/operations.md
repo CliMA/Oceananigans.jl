@@ -233,6 +233,7 @@ grid = LatitudeLongitudeGrid(size=(60, 10, 5),
 
 c = CenterField(grid)
 set!(c, 1)
+
 ∫c = Field(Integral(c, dims=(1, 2)))
 
 # output
