@@ -245,9 +245,10 @@ set!(c, 1)
     └── max=0.0, min=0.0, mean=0.0
 ```
 
-A few remarks: note that the `∫c` has locations `Nothing, Nothing, Center`; this is because we have integrated in the first two dimensions.
+A few remarks: note that the `∫c` has locations `Nothing, Nothing, Center`; this is because we have integrated in the first two dimensions and thus it's `reduced over dims = (1, 2)`.
 Further note that `∫c` is full of zeros; its max, min, and mean values are all 0.
-To compute `∫c`, we call `compute!(∫c)`,
+No computation has been done yet.
+To compute `∫c`, we call [`compute!`](@ref),
 
 ```jldoctest operations_avg_int
 compute!(∫c)
