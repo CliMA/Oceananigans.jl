@@ -97,7 +97,7 @@ unit_time(t) = t
 unit_time(t::Millisecond) = t.value / 1_000
 unit_time(t::Nanosecond) = t.value / 1_000_000_000
 
-# Convert to a base Julia type (a float or DateTime). Mainly used by NetCDFOutputWriter.
+# Convert to a base Julia type (a float or DateTime). Mainly used by NetCDFWriter.
 float_or_date_time(t) = t
 float_or_date_time(t::AbstractTime) = DateTime(t)
 

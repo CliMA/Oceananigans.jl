@@ -27,10 +27,10 @@ function test_datetime_netcdf_output(arch)
     filepath = "test_datetime_$Arch.nc"
     isfile(filepath) && rm(filepath)
 
-    simulation.output_writers[:netcdf] = NetCDFOutputWriter(model, fields(model);
-                                                            filename = filepath,
-                                                            schedule = IterationInterval(1),
-                                                            include_grid_metrics = false)
+    simulation.output_writers[:netcdf] = NetCDFWriter(model, fields(model);
+                                                      filename = filepath,
+                                                      schedule = IterationInterval(1),
+                                                      include_grid_metrics = false)
 
     run!(simulation)
 
@@ -69,10 +69,10 @@ function test_timedate_netcdf_output(arch)
     filepath = "test_timedate_$Arch.nc"
     isfile(filepath) && rm(filepath)
 
-    simulation.output_writers[:netcdf] = NetCDFOutputWriter(model, fields(model);
-                                                            filename = filepath,
-                                                            schedule = IterationInterval(1),
-                                                            include_grid_metrics = false)
+    simulation.output_writers[:netcdf] = NetCDFWriter(model, fields(model);
+                                                      filename = filepath,
+                                                      schedule = IterationInterval(1),
+                                                      include_grid_metrics = false)
 
     run!(simulation)
 
@@ -117,36 +117,35 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     isfile(filepath_metrics_halos) && rm(filepath_metrics_halos)
 
     simulation.output_writers[:with_metrics_and_halos] =
-        NetCDFOutputWriter(model, fields(model),
+        NetCDFWriter(model, fields(model),
             filename = filepath_metrics_halos,
             schedule = IterationInterval(1),
             array_type = Array{FT},
             with_halos = true,
             include_grid_metrics = true,
-            verbose = true
-        )
+            verbose = true)
 
     filepath_metrics_nohalos = "test_grid_metrics_rectilinear_nohalos_$(Arch)_$FT.nc"
     isfile(filepath_metrics_nohalos) && rm(filepath_metrics_nohalos)
 
-    simulation.output_writers[:with_metrics_no_halos] = NetCDFOutputWriter(model, fields(model),
-                                                                           filename = filepath_metrics_nohalos,
-                                                                           schedule = IterationInterval(1),
-                                                                           array_type = Array{FT},
-                                                                           with_halos = false,
-                                                                           include_grid_metrics = true,
-                                                                           verbose = true)
+    simulation.output_writers[:with_metrics_no_halos] = NetCDFWriter(model, fields(model),
+                                                                     filename = filepath_metrics_nohalos,
+                                                                     schedule = IterationInterval(1),
+                                                                     array_type = Array{FT},
+                                                                     with_halos = false,
+                                                                     include_grid_metrics = true,
+                                                                     verbose = true)
 
     filepath_nometrics = "test_grid_metrics_rectilinear_nometrics_$(Arch)_$FT.nc"
     isfile(filepath_nometrics) && rm(filepath_nometrics)
 
-    simulation.output_writers[:no_metrics] = NetCDFOutputWriter(model, fields(model),
-                                                                filename = filepath_nometrics,
-                                                                schedule = IterationInterval(1),
-                                                                array_type = Array{FT},
-                                                                with_halos = true,
-                                                                include_grid_metrics = false,
-                                                                verbose = true)
+    simulation.output_writers[:no_metrics] = NetCDFWriter(model, fields(model),
+                                                          filename = filepath_nometrics,
+                                                          schedule = IterationInterval(1),
+                                                          array_type = Array{FT},
+                                                          with_halos = true,
+                                                          include_grid_metrics = false,
+                                                          verbose = true)
 
     i_slice = Colon()
     j_slice = 2:4
@@ -159,14 +158,14 @@ function test_netcdf_grid_metrics_rectilinear(arch, FT)
     filepath_sliced = "test_grid_metrics_rectilinear_sliced_$(Arch)_$FT.nc"
     isfile(filepath_sliced) && rm(filepath_sliced)
 
-    simulation.output_writers[:sliced] = NetCDFOutputWriter(model, fields(model),
-                                                            filename = filepath_sliced,
-                                                            indices = (i_slice, j_slice, k_slice),
-                                                            schedule = IterationInterval(1),
-                                                            array_type = Array{FT},
-                                                            with_halos = false,
-                                                            include_grid_metrics = true,
-                                                            verbose = true)
+    simulation.output_writers[:sliced] = NetCDFWriter(model, fields(model),
+                                                      filename = filepath_sliced,
+                                                      indices = (i_slice, j_slice, k_slice),
+                                                      schedule = IterationInterval(1),
+                                                      array_type = Array{FT},
+                                                      with_halos = false,
+                                                      include_grid_metrics = true,
+                                                      verbose = true)
 
     run!(simulation)
 
@@ -349,37 +348,37 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
     isfile(filepath_metrics_halos) && rm(filepath_metrics_halos)
 
     # Test with halos and metrics
-    simulation.output_writers[:with_metrics_and_halos] = NetCDFOutputWriter(model, outputs,
-                                                                            filename = filepath_metrics_halos,
-                                                                            schedule = IterationInterval(1),
-                                                                            array_type = Array{FT},
-                                                                            with_halos = true,
-                                                                            include_grid_metrics = true,
-                                                                            verbose = true)
+    simulation.output_writers[:with_metrics_and_halos] = NetCDFWriter(model, outputs,
+                                                                      filename = filepath_metrics_halos,
+                                                                      schedule = IterationInterval(1),
+                                                                      array_type = Array{FT},
+                                                                      with_halos = true,
+                                                                      include_grid_metrics = true,
+                                                                      verbose = true)
 
     # Test with halos but no metrics
     filepath_nometrics = "test_grid_metrics_latlon_nometrics_$(Arch)_$FT.nc"
     isfile(filepath_nometrics) && rm(filepath_nometrics)
 
-    simulation.output_writers[:no_metrics] = NetCDFOutputWriter(model, outputs,
-                                                                filename = filepath_nometrics,
-                                                                schedule = IterationInterval(1),
-                                                                array_type = Array{FT},
-                                                                with_halos = true,
-                                                                include_grid_metrics = false,
-                                                                verbose = true)
+    simulation.output_writers[:no_metrics] = NetCDFWriter(model, outputs,
+                                                          filename = filepath_nometrics,
+                                                          schedule = IterationInterval(1),
+                                                          array_type = Array{FT},
+                                                          with_halos = true,
+                                                          include_grid_metrics = false,
+                                                          verbose = true)
 
     # Test without halos but with metrics
     filepath_metrics_nohalos = "test_grid_metrics_latlon_nohalos_$(Arch)_$FT.nc"
     isfile(filepath_metrics_nohalos) && rm(filepath_metrics_nohalos)
 
-    simulation.output_writers[:with_metrics_no_halos] = NetCDFOutputWriter(model, outputs,
-                                                                           filename = filepath_metrics_nohalos,
-                                                                           schedule = IterationInterval(1),
-                                                                           array_type = Array{FT},
-                                                                           with_halos = false,
-                                                                           include_grid_metrics = true,
-                                                                           verbose = true)
+    simulation.output_writers[:with_metrics_no_halos] = NetCDFWriter(model, outputs,
+                                                                     filename = filepath_metrics_nohalos,
+                                                                     schedule = IterationInterval(1),
+                                                                     array_type = Array{FT},
+                                                                     with_halos = false,
+                                                                     include_grid_metrics = true,
+                                                                     verbose = true)
 
     # Test a slice of the domain
     i_slice = Colon()
@@ -393,14 +392,14 @@ function test_netcdf_grid_metrics_latlon(arch, FT)
     filepath_sliced = "test_grid_metrics_latlon_sliced_$(Arch)_$FT.nc"
     isfile(filepath_sliced) && rm(filepath_sliced)
 
-    simulation.output_writers[:sliced] = NetCDFOutputWriter(model, outputs,
-                                                            filename = filepath_sliced,
-                                                            indices = (i_slice, j_slice, k_slice),
-                                                            schedule = IterationInterval(1),
-                                                            array_type = Array{FT},
-                                                            with_halos = false,
-                                                            include_grid_metrics = true,
-                                                            verbose = true)
+    simulation.output_writers[:sliced] = NetCDFWriter(model, outputs,
+                                                      filename = filepath_sliced,
+                                                      indices = (i_slice, j_slice, k_slice),
+                                                      schedule = IterationInterval(1),
+                                                      array_type = Array{FT},
+                                                      with_halos = false,
+                                                      include_grid_metrics = true,
+                                                      verbose = true)
 
     run!(simulation)
 
@@ -616,24 +615,24 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch)
     filepath_with_halos = "test_immersed_grid_rectilinear_with_halos_$Arch.nc"
     isfile(filepath_with_halos) && rm(filepath_with_halos)
 
-    simulation.output_writers[:with_halos] = NetCDFOutputWriter(model, fields(model),
-                                                                filename = filepath_with_halos,
-                                                                schedule = IterationInterval(1),
-                                                                array_type = Array{Float64},
-                                                                with_halos = true,
-                                                                include_grid_metrics = true,
-                                                                verbose = true)
+    simulation.output_writers[:with_halos] = NetCDFWriter(model, fields(model),
+                                                          filename = filepath_with_halos,
+                                                          schedule = IterationInterval(1),
+                                                          array_type = Array{Float64},
+                                                          with_halos = true,
+                                                          include_grid_metrics = true,
+                                                          verbose = true)
 
     filepath_no_halos = "test_immersed_grid_rectilinear_no_halos_$Arch.nc"
     isfile(filepath_no_halos) && rm(filepath_no_halos)
 
-    simulation.output_writers[:no_halos] = NetCDFOutputWriter(model, fields(model),
-                                                              filename = filepath_no_halos,
-                                                              schedule = IterationInterval(1),
-                                                              array_type = Array{Float32},
-                                                              with_halos = false,
-                                                              include_grid_metrics = true,
-                                                              verbose = true)
+    simulation.output_writers[:no_halos] = NetCDFWriter(model, fields(model),
+                                                        filename = filepath_no_halos,
+                                                        schedule = IterationInterval(1),
+                                                        array_type = Array{Float32},
+                                                        with_halos = false,
+                                                        include_grid_metrics = true,
+                                                        verbose = true)
 
     filepath_sliced = "test_immersed_grid_rectilinear_sliced_$Arch.nc"
     isfile(filepath_sliced) && rm(filepath_sliced)
@@ -646,14 +645,14 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch)
     ny = length(j_slice)
     nz = 1
 
-    simulation.output_writers[:sliced] = NetCDFOutputWriter(model, fields(model),
-                                                            filename = filepath_sliced,
-                                                            schedule = IterationInterval(1),
-                                                            array_type = Array{Float32},
-                                                            indices = (i_slice, j_slice, k_slice),
-                                                            with_halos = false,
-                                                            include_grid_metrics = true,
-                                                            verbose = true)
+    simulation.output_writers[:sliced] = NetCDFWriter(model, fields(model),
+                                                      filename = filepath_sliced,
+                                                      schedule = IterationInterval(1),
+                                                      array_type = Array{Float32},
+                                                      indices = (i_slice, j_slice, k_slice),
+                                                      with_halos = false,
+                                                      include_grid_metrics = true,
+                                                      verbose = true)
 
     run!(simulation)
 
@@ -763,25 +762,25 @@ function test_netcdf_latlon_grid_fitted_bottom(arch)
     isfile(filepath_with_halos) && rm(filepath_with_halos)
 
     # Test with halos with Float64 output
-    simulation.output_writers[:with_halos] = NetCDFOutputWriter(model, outputs,
-                                                                filename = filepath_with_halos,
-                                                                schedule = IterationInterval(1),
-                                                                array_type = Array{Float64},
-                                                                with_halos = true,
-                                                                include_grid_metrics = true,
-                                                                verbose = true)
+    simulation.output_writers[:with_halos] = NetCDFWriter(model, outputs,
+                                                          filename = filepath_with_halos,
+                                                          schedule = IterationInterval(1),
+                                                          array_type = Array{Float64},
+                                                          with_halos = true,
+                                                          include_grid_metrics = true,
+                                                          verbose = true)
 
     # Test without halos with Float32 output
     filepath_no_halos = "test_immersed_grid_latlon_no_halos_$Arch.nc"
     isfile(filepath_no_halos) && rm(filepath_no_halos)
 
-    simulation.output_writers[:no_halos] = NetCDFOutputWriter(model, outputs,
-                                                              filename = filepath_no_halos,
-                                                              schedule = IterationInterval(1),
-                                                              array_type = Array{Float32},
-                                                              with_halos = false,
-                                                              include_grid_metrics = true,
-                                                              verbose = true)
+    simulation.output_writers[:no_halos] = NetCDFWriter(model, outputs,
+                                                        filename = filepath_no_halos,
+                                                        schedule = IterationInterval(1),
+                                                        array_type = Array{Float32},
+                                                        with_halos = false,
+                                                        include_grid_metrics = true,
+                                                        verbose = true)
 
     # Test with slice
     filepath_sliced = "test_immersed_grid_latlon_sliced_$Arch.nc"
@@ -795,14 +794,14 @@ function test_netcdf_latlon_grid_fitted_bottom(arch)
     nφ = length(j_slice)
     nz = 1
 
-    simulation.output_writers[:sliced] = NetCDFOutputWriter(model, outputs,
-                                                            filename = filepath_sliced,
-                                                            schedule = IterationInterval(1),
-                                                            array_type = Array{Float32},
-                                                            indices = (i_slice, j_slice, k_slice),
-                                                            with_halos = false,
-                                                            include_grid_metrics = true,
-                                                            verbose = true)
+    simulation.output_writers[:sliced] = NetCDFWriter(model, outputs,
+                                                      filename = filepath_sliced,
+                                                      schedule = IterationInterval(1),
+                                                      array_type = Array{Float32},
+                                                      indices = (i_slice, j_slice, k_slice),
+                                                      with_halos = false,
+                                                      include_grid_metrics = true,
+                                                      verbose = true)
 
     run!(simulation)
 
@@ -897,13 +896,13 @@ function test_netcdf_rectilinear_flat_xy(arch)
     filepath_with_halos = "test_netcdf_rectilinear_flat_xy_$Arch.nc"
     isfile(filepath_with_halos) && rm(filepath_with_halos)
 
-    simulation.output_writers[:with_halos] = NetCDFOutputWriter(model, fields(model),
-                                                                filename = filepath_with_halos,
-                                                                schedule = IterationInterval(1),
-                                                                array_type = Array{Float64},
-                                                                with_halos = true,
-                                                                include_grid_metrics = true,
-                                                                verbose = true)
+    simulation.output_writers[:with_halos] = NetCDFWriter(model, fields(model),
+                                                          filename = filepath_with_halos,
+                                                          schedule = IterationInterval(1),
+                                                          array_type = Array{Float64},
+                                                          with_halos = true,
+                                                          include_grid_metrics = true,
+                                                          verbose = true)
 
     i_slice = 3:6
     j_slice = Ny
@@ -914,14 +913,14 @@ function test_netcdf_rectilinear_flat_xy(arch)
     filepath_sliced = "test_netcdf_rectilinear_flat_xy_sliced_$(Arch).nc"
     isfile(filepath_sliced) && rm(filepath_sliced)
 
-    simulation.output_writers[:sliced] = NetCDFOutputWriter(model, fields(model),
-                                                            filename = filepath_sliced,
-                                                            indices = (i_slice, j_slice, :),
-                                                            schedule = IterationInterval(1),
-                                                            array_type = Array{Float64},
-                                                            with_halos = false,
-                                                            include_grid_metrics = true,
-                                                            verbose = true)
+    simulation.output_writers[:sliced] = NetCDFWriter(model, fields(model),
+                                                      filename = filepath_sliced,
+                                                      indices = (i_slice, j_slice, :),
+                                                      schedule = IterationInterval(1),
+                                                      array_type = Array{Float64},
+                                                      with_halos = false,
+                                                      include_grid_metrics = true,
+                                                      verbose = true)
 
     run!(simulation)
 
@@ -1035,13 +1034,13 @@ function test_netcdf_rectilinear_flat_xz(arch; immersed)
     filepath_with_halos = "test_netcdf_rectilinear_flat_xz_$Arch.nc"
     isfile(filepath_with_halos) && rm(filepath_with_halos)
 
-    simulation.output_writers[:with_halos] = NetCDFOutputWriter(model, fields(model),
-                                                                filename = filepath_with_halos,
-                                                                schedule = IterationInterval(1),
-                                                                array_type = Array{Float64},
-                                                                with_halos = true,
-                                                                include_grid_metrics = true,
-                                                                verbose = true)
+    simulation.output_writers[:with_halos] = NetCDFWriter(model, fields(model),
+                                                          filename = filepath_with_halos,
+                                                          schedule = IterationInterval(1),
+                                                          array_type = Array{Float64},
+                                                          with_halos = true,
+                                                          include_grid_metrics = true,
+                                                          verbose = true)
 
     i_slice = 3:6
     k_slice = Nz
@@ -1052,14 +1051,14 @@ function test_netcdf_rectilinear_flat_xz(arch; immersed)
     filepath_sliced = "test_netcdf_rectilinear_flat_xz_sliced_$(Arch).nc"
     isfile(filepath_sliced) && rm(filepath_sliced)
 
-    simulation.output_writers[:sliced] = NetCDFOutputWriter(model, fields(model),
-                                                            filename = filepath_sliced,
-                                                            indices = (i_slice, :, k_slice),
-                                                            schedule = IterationInterval(1),
-                                                            array_type = Array{Float64},
-                                                            with_halos = false,
-                                                            include_grid_metrics = true,
-                                                            verbose = true)
+    simulation.output_writers[:sliced] = NetCDFWriter(model, fields(model),
+                                                      filename = filepath_sliced,
+                                                      indices = (i_slice, :, k_slice),
+                                                      schedule = IterationInterval(1),
+                                                      array_type = Array{Float64},
+                                                      with_halos = false,
+                                                      include_grid_metrics = true,
+                                                      verbose = true)
 
     run!(simulation)
 
@@ -1176,14 +1175,13 @@ function test_netcdf_rectilinear_flat_yz(arch; immersed)
     isfile(filepath_with_halos) && rm(filepath_with_halos)
 
     simulation.output_writers[:with_halos] =
-        NetCDFOutputWriter(model, fields(model),
+        NetCDFWriter(model, fields(model),
             filename = filepath_with_halos,
             schedule = IterationInterval(1),
             array_type = Array{Float64},
             with_halos = true,
             include_grid_metrics = true,
-            verbose = true
-        )
+            verbose = true)
 
     j_slice = 3:6
     k_slice = Nz
@@ -1195,15 +1193,14 @@ function test_netcdf_rectilinear_flat_yz(arch; immersed)
     isfile(filepath_sliced) && rm(filepath_sliced)
 
     simulation.output_writers[:sliced] =
-        NetCDFOutputWriter(model, fields(model),
+        NetCDFWriter(model, fields(model),
             filename = filepath_sliced,
             indices = (:, j_slice, k_slice),
             schedule = IterationInterval(1),
             array_type = Array{Float64},
             with_halos = false,
             include_grid_metrics = true,
-            verbose = true
-        )
+            verbose = true)
 
     run!(simulation)
 
@@ -1309,14 +1306,13 @@ function test_netcdf_rectilinear_column(arch)
     isfile(filepath_with_halos) && rm(filepath_with_halos)
 
     simulation.output_writers[:with_halos] =
-        NetCDFOutputWriter(model, fields(model),
+        NetCDFWriter(model, fields(model),
             filename = filepath_with_halos,
             schedule = IterationInterval(1),
             array_type = Array{Float64},
             with_halos = true,
             include_grid_metrics = true,
-            verbose = true
-        )
+            verbose = true)
 
     k_slice = 5:10
     n = length(k_slice)
@@ -1325,15 +1321,14 @@ function test_netcdf_rectilinear_column(arch)
     isfile(filepath_sliced) && rm(filepath_sliced)
 
     simulation.output_writers[:sliced] =
-        NetCDFOutputWriter(model, fields(model),
+        NetCDFWriter(model, fields(model),
             filename = filepath_sliced,
             indices = (:, :, k_slice),
             schedule = IterationInterval(1),
             array_type = Array{Float64},
             with_halos = false,
             include_grid_metrics = true,
-            verbose = true
-        )
+            verbose = true)
 
     run!(simulation)
 
@@ -1443,13 +1438,12 @@ function test_thermal_bubble_netcdf_output(arch, FT)
     nc_filepath = "test_thermal_bubble_$(Arch)_$FT.nc"
     isfile(nc_filepath) && rm(nc_filepath)
 
-    nc_writer = NetCDFOutputWriter(model, outputs,
+    nc_writer = NetCDFWriter(model, outputs,
         filename = nc_filepath,
         schedule = IterationInterval(10),
         array_type = Array{FT},
         include_grid_metrics = false,
-        verbose = true
-    )
+        verbose = true)
 
     push!(simulation.output_writers, nc_writer)
 
@@ -1462,14 +1456,13 @@ function test_thermal_bubble_netcdf_output(arch, FT)
     nc_sliced_filepath = "test_thermal_bubble_sliced_$(Arch)_$FT.nc"
     isfile(nc_sliced_filepath) && rm(nc_sliced_filepath)
 
-    nc_sliced_writer = NetCDFOutputWriter(model, outputs,
+    nc_sliced_writer = NetCDFWriter(model, outputs,
         filename = nc_sliced_filepath,
         schedule = IterationInterval(10),
         array_type = Array{FT},
         indices = indices,
         include_grid_metrics = false,
-        verbose = true
-    )
+        verbose = true)
 
     push!(simulation.output_writers, nc_sliced_writer)
 
@@ -1643,13 +1636,12 @@ function test_thermal_bubble_netcdf_output_with_halos(arch, FT)
     Arch = typeof(arch)
     nc_filepath = "test_thermal_bubble_with_halos_$Arch.nc"
 
-    nc_writer = NetCDFOutputWriter(model,
+    nc_writer = NetCDFWriter(model,
         merge(model.velocities, model.tracers),
         filename = nc_filepath,
         schedule = IterationInterval(10),
         array_type = Array{FT},
-        with_halos = true
-    )
+        with_halos = true)
 
     push!(simulation.output_writers, nc_writer)
 
@@ -1743,7 +1735,7 @@ function test_netcdf_size_file_splitting(arch)
     fake_attributes = Dict("fake_attribute" => "fake_attribute")
 
     Arch = typeof(arch)
-    ow = NetCDFOutputWriter(model, (; u=model.velocities.u);
+    ow = NetCDFWriter(model, (; u=model.velocities.u);
         dir = ".",
         filename = "test_size_file_splitting_$Arch",
         schedule = IterationInterval(1),
@@ -1751,8 +1743,7 @@ function test_netcdf_size_file_splitting(arch)
         with_halos = true,
         global_attributes = fake_attributes,
         file_splitting = FileSizeLimit(200KiB),
-        overwrite_existing = true
-    )
+        overwrite_existing = true)
 
     push!(simulation.output_writers, ow)
 
@@ -1802,7 +1793,7 @@ function test_netcdf_time_file_splitting(arch)
     fake_attributes = Dict("fake_attribute" => "fake_attribute")
 
     Arch = typeof(arch)
-    ow = NetCDFOutputWriter(model, (; u=model.velocities.u);
+    ow = NetCDFWriter(model, (; u=model.velocities.u);
         dir = ".",
         filename = "test_time_file_splitting_$Arch",
         schedule = IterationInterval(2),
@@ -1810,8 +1801,7 @@ function test_netcdf_time_file_splitting(arch)
         with_halos = true,
         global_attributes = fake_attributes,
         file_splitting = TimeInterval(4seconds),
-        overwrite_existing = true
-    )
+        overwrite_existing = true)
 
     push!(simulation.output_writers, ow)
 
@@ -1890,7 +1880,7 @@ function test_netcdf_function_output(arch)
     nc_filepath = "test_function_outputs_$Arch.nc"
 
     simulation.output_writers[:food] =
-        NetCDFOutputWriter(model, outputs;
+        NetCDFWriter(model, outputs;
             global_attributes,
             output_attributes,
             filename = nc_filepath,
@@ -1898,8 +1888,7 @@ function test_netcdf_function_output(arch)
             dimensions = dims,
             array_type = Array{Float64},
             include_grid_metrics = false,
-            verbose = true
-        )
+            verbose = true)
 
     run!(simulation)
 
@@ -1993,7 +1982,7 @@ function test_netcdf_function_output(arch)
     simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
 
     simulation.output_writers[:food] =
-        NetCDFOutputWriter(model, outputs;
+        NetCDFWriter(model, outputs;
             global_attributes,
             output_attributes,
             filename = nc_filepath,
@@ -2001,8 +1990,7 @@ function test_netcdf_function_output(arch)
             schedule = IterationInterval(1),
             array_type = Array{Float64},
             dimensions = dims,
-            verbose = true
-        )
+            verbose = true)
 
     run!(simulation)
 
@@ -2055,14 +2043,13 @@ function test_netcdf_spatial_average(arch)
     nc_filepath = "volume_averaged_field_test_$Arch.nc"
 
     simulation.output_writers[:averages] =
-        NetCDFOutputWriter(model,
+        NetCDFWriter(model,
             (; ∫c_dx, ∫∫c_dxdy, ∫∫∫c_dxdydz),
             array_type = Array{Float64},
             verbose = true,
             filename = nc_filepath,
             schedule = IterationInterval(2),
-            include_grid_metrics = false
-        )
+            include_grid_metrics = false)
 
     run!(simulation)
 
@@ -2131,15 +2118,14 @@ function test_netcdf_time_averaging(arch)
             horizontal_average_nc_filepath = "decay_averaged_field_test_$Arch.nc"
 
             simulation.output_writers[:horizontal_average] =
-                NetCDFOutputWriter(
+                NetCDFWriter(
                     model,
                     nc_outputs,
                     array_type = Array{Float64},
                     verbose = true,
                     filename = horizontal_average_nc_filepath,
                     schedule = TimeInterval(10Δt),
-                    include_grid_metrics = false
-                )
+                    include_grid_metrics = false)
 
             multiple_time_average_nc_filepath = "decay_windowed_time_average_test_$Arch.nc"
             single_time_average_nc_filepath = "single_decay_windowed_time_average_test_$Arch.nc"
@@ -2148,26 +2134,24 @@ function test_netcdf_time_averaging(arch)
             single_nc_output = Dict("c1" => ∫c1_dxdy)
 
             simulation.output_writers[:single_output_time_average] =
-                NetCDFOutputWriter(
+                NetCDFWriter(
                     model,
                     single_nc_output,
                     array_type = Array{Float64},
                     verbose = true,
                     filename = single_time_average_nc_filepath,
                     schedule = AveragedTimeInterval(10Δt; window, stride),
-                    include_grid_metrics = false
-                )
+                    include_grid_metrics = false)
 
             simulation.output_writers[:multiple_output_time_average] =
-                NetCDFOutputWriter(
+                NetCDFWriter(
                     model,
                     nc_outputs,
                     array_type = Array{Float64},
                     verbose = true,
                     filename = multiple_time_average_nc_filepath,
                     schedule = AveragedTimeInterval(10Δt; window, stride),
-                    include_grid_metrics = false
-                )
+                    include_grid_metrics = false)
 
             run!(simulation)
 
@@ -2265,21 +2249,19 @@ function test_netcdf_output_alignment(arch)
     Arch = typeof(arch)
     test_filename1 = "test_output_alignment1_$Arch.nc"
     simulation.output_writers[:stuff] =
-        NetCDFOutputWriter(model,
+        NetCDFWriter(model,
             model.velocities,
             filename = test_filename1,
             schedule = TimeInterval(7.3),
-            include_grid_metrics = false
-        )
+            include_grid_metrics = false)
 
     test_filename2 = "test_output_alignment2_$Arch.nc"
     simulation.output_writers[:something] =
-        NetCDFOutputWriter(model,
+        NetCDFWriter(model,
             model.tracers,
             filename = test_filename2,
             schedule = TimeInterval(3.0),
-            include_grid_metrics = false
-        )
+            include_grid_metrics = false)
 
     run!(simulation)
 
@@ -2323,12 +2305,11 @@ function test_netcdf_output_just_particles(arch)
     Arch = typeof(arch)
     filepath = "test_just_particles_$Arch.nc"
     simulation.output_writers[:particles_nc] =
-        NetCDFOutputWriter(model,
+        NetCDFWriter(model,
             (; particles = model.particles),
             filename = filepath,
             schedule = IterationInterval(1),
-            include_grid_metrics = false
-        )
+            include_grid_metrics = false)
 
     run!(simulation)
 
@@ -2389,11 +2370,10 @@ function test_netcdf_output_particles_and_fields(arch)
     Arch = typeof(arch)
     filepath = "test_particles_and_fields_$Arch.nc"
     simulation.output_writers[:particles_nc] =
-        NetCDFOutputWriter(model, outputs,
+        NetCDFWriter(model, outputs,
             filename = filepath,
             schedule = IterationInterval(1),
-            include_grid_metrics = false
-        )
+            include_grid_metrics = false)
 
     run!(simulation)
 
@@ -2451,14 +2431,13 @@ function test_netcdf_vertically_stretched_grid_output(arch)
     nc_filepath = "test_netcdf_vertically_stretched_grid_output_$Arch.nc"
 
     simulation.output_writers[:fields] =
-        NetCDFOutputWriter(model,
+        NetCDFWriter(model,
             merge(model.velocities, model.tracers),
             filename = nc_filepath,
             schedule = IterationInterval(1),
             array_type = Array{Float64},
             include_grid_metrics = false,
-            verbose = true
-        )
+            verbose = true)
 
     run!(simulation)
 
@@ -2526,12 +2505,11 @@ function test_netcdf_overriding_attributes(arch)
         "u" => Dict("long_name" => "zonal velocity", "units" => "miles/fortnight")
     )
 
-    nc_writer = NetCDFOutputWriter(model, outputs;
+    nc_writer = NetCDFWriter(model, outputs;
         filename = nc_filepath,
         schedule = IterationInterval(1),
         global_attributes,
-        output_attributes
-    )
+        output_attributes)
 
     ds = NCDataset(nc_filepath)
 
@@ -2579,21 +2557,19 @@ function test_netcdf_free_surface_only_output(arch)
     isfile(filepath_with_halos) && rm(filepath_with_halos)
 
     simulation.output_writers[:with_halos] =
-        NetCDFOutputWriter(model, outputs;
+        NetCDFWriter(model, outputs;
             filename = filepath_with_halos,
             schedule = IterationInterval(1),
-            with_halos = true
-        )
+            with_halos = true)
 
     filepath_no_halos = "test_free_surface_no_halos_$Arch.nc"
     isfile(filepath_no_halos) && rm(filepath_no_halos)
 
     simulation.output_writers[:no_halos] =
-        NetCDFOutputWriter(model, outputs;
+        NetCDFWriter(model, outputs;
             filename = filepath_no_halos,
             schedule = IterationInterval(1),
-            with_halos = false
-        )
+            with_halos = false)
 
     run!(simulation)
 
@@ -2650,21 +2626,19 @@ function test_netcdf_free_surface_mixed_output(arch)
     isfile(filepath_with_halos) && rm(filepath_with_halos)
 
     simulation.output_writers[:with_halos] =
-        NetCDFOutputWriter(model, outputs;
+        NetCDFWriter(model, outputs;
             filename = filepath_with_halos,
             schedule = IterationInterval(1),
-            with_halos = true
-        )
+            with_halos = true)
 
     filepath_no_halos = "test_mixed_free_surface_no_halos_$Arch.nc"
     isfile(filepath_no_halos) && rm(filepath_no_halos)
 
     simulation.output_writers[:no_halos] =
-        NetCDFOutputWriter(model, outputs;
+        NetCDFWriter(model, outputs;
             filename = filepath_no_halos,
             schedule = IterationInterval(1),
-            with_halos = false
-        )
+            with_halos = false)
 
     run!(simulation)
 

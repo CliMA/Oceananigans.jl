@@ -187,7 +187,7 @@ simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(2
 
 # ## Add outputs to the simulation
 #
-# We add outputs to our model using the `NetCDFOutputWriter`,
+# We add outputs to our model using the `NetCDFWriter`,
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -199,10 +199,10 @@ V = v + V∞
 
 outputs = (; u, V, w, B, ωy)
 
-simulation.output_writers[:fields] = NetCDFOutputWriter(model, outputs;
-                                                        filename = joinpath(@__DIR__, "tilted_bottom_boundary_layer.nc"),
-                                                        schedule = TimeInterval(20minutes),
-                                                        overwrite_existing = true)
+simulation.output_writers[:fields] = NetCDFWriter(model, outputs;
+                                                  filename = joinpath(@__DIR__, "tilted_bottom_boundary_layer.nc"),
+                                                  schedule = TimeInterval(20minutes),
+                                                  overwrite_existing = true)
 
 # Now we just run it!
 
