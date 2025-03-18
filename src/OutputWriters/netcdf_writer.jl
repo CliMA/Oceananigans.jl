@@ -28,7 +28,6 @@ end
 function NetCDFWriter(model, outputs; kw...)
     msg = string("Building Oceananigans.OutputWriters.NetCDFWriter requires `using NCDatasets`.", '\n',
                  "If you think you are already `using NCDatasets` , check for warnings or errors.")
-                      
     error(msg)
     return nothing
 end
