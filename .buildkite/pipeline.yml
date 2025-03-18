@@ -751,7 +751,7 @@ steps:
       touch LocalPreferences.toml
 
       echo "[Reactant]" >> LocalPreferences.toml
-      echo "xla_runtime = PJRT" >> LocalPreferences.toml
+      echo "xla_runtime = \"PJRT\"" >> LocalPreferences.toml
 
       cat LocalPreferences.toml
 
@@ -774,7 +774,7 @@ steps:
       touch LocalPreferences.toml
 
       echo "[Reactant]" >> LocalPreferences.toml
-      echo "xla_runtime = IFRT" >> LocalPreferences.toml
+      echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
 
       cat LocalPreferences.toml
 
@@ -796,7 +796,7 @@ steps:
       touch LocalPreferences.toml
 
       echo "[Reactant]" >> LocalPreferences.toml
-      echo "xla_runtime = PJRT" >> LocalPreferences.toml
+      echo "xla_runtime = \"PJRT\"" >> LocalPreferences.toml
 
       cat LocalPreferences.toml
 
@@ -818,7 +818,7 @@ steps:
       touch LocalPreferences.toml
 
       echo "[Reactant]" >> LocalPreferences.toml
-      echo "xla_runtime = IFRT" >> LocalPreferences.toml
+      echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
 
       cat LocalPreferences.toml
 
@@ -841,7 +841,7 @@ steps:
       touch LocalPreferences.toml
 
       echo "[Reactant]" >> LocalPreferences.toml
-      echo "xla_runtime = PJRT" >> LocalPreferences.toml
+      echo "xla_runtime = \"PJRT\"" >> LocalPreferences.toml
 
       cat LocalPreferences.toml
 
@@ -864,7 +864,7 @@ steps:
       touch LocalPreferences.toml
 
       echo "[Reactant]" >> LocalPreferences.toml
-      echo "xla_runtime = IFRT" >> LocalPreferences.toml
+      echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
 
       cat LocalPreferences.toml
 
@@ -886,7 +886,7 @@ steps:
       touch LocalPreferences.toml
 
       echo "[Reactant]" >> LocalPreferences.toml
-      echo "xla_runtime = PJRT" >> LocalPreferences.toml
+      echo "xla_runtime = \"PJRT\"" >> LocalPreferences.toml
 
       cat LocalPreferences.toml
 
@@ -908,7 +908,7 @@ steps:
       touch LocalPreferences.toml
 
       echo "[Reactant]" >> LocalPreferences.toml
-      echo "xla_runtime = IFRT" >> LocalPreferences.toml
+      echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
 
       cat LocalPreferences.toml
 
