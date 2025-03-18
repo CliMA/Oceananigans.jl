@@ -94,6 +94,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
     TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
     TZ2 = Reactant.traced_type_inner(TZ, seen, mode, track_numbers, sharding, runtime)
+    Z2 = Reactant.traced_type_inner(Z, seen, mode, track_numbers, sharding, runtime)
     Map2 = Reactant.traced_type_inner(Map, seen, mode, track_numbers, sharding, runtime)
     CC2 = Reactant.traced_type_inner(CC, seen, mode, track_numbers, sharding, runtime)
     FC2 = Reactant.traced_type_inner(FC, seen, mode, track_numbers, sharding, runtime)
