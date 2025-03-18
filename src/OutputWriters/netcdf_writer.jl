@@ -1,5 +1,7 @@
 #####
-##### NetCDFWriter definition
+##### NetCDFWriter struct definition
+#####
+##### NetCDFWriter functionality is implemented in ext/OceananigansNCDatasetsExt
 #####
 
 mutable struct NetCDFWriter{G, D, O, T, A, FS, DN} <: AbstractOutputWriter
@@ -23,4 +25,10 @@ mutable struct NetCDFWriter{G, D, O, T, A, FS, DN} <: AbstractOutputWriter
     dimension_name_generator :: DN
 end
 
-function NetCDFWriter end
+function NetCDFWriter(model, outputs; kw...)
+    msg = string("Building Oceananigans.OutputWriters.NetCDFWriter requires `using NCDatasets`.", '\n',
+                 "If you think you are already `using NCDatasets` , check for warnings or errors.")
+                      
+    error(msg)
+    return nothing
+end
