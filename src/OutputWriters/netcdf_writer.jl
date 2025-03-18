@@ -26,8 +26,6 @@ mutable struct NetCDFWriter{G, D, O, T, A, FS, DN} <: AbstractOutputWriter
 end
 
 function NetCDFWriter(model, outputs; kw...)
-    msg = string("Building Oceananigans.OutputWriters.NetCDFWriter requires `using NCDatasets`.", '\n',
-                 "If you think you are already `using NCDatasets` , check for warnings or errors.")
-    error(msg)
-    return nothing
+    @warn "`using NCDatasets` is required (without erroring!) to use `NetCDFWriter`."
+    throw(MethodError(NetCDFWriter, (model, outputs)))
 end
