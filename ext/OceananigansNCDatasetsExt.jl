@@ -19,11 +19,20 @@ using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
-using Oceananigans.OutputReaders: auto_extension
-using Oceananigans.OutputWriters: AveragedTimeInterval, WindowedTimeAverage, NoFileSplitting,
-                                  update_file_splitting_schedule!, construct_output,
-                                  time_average_outputs, restrict_to_interior,
-                                  fetch_output, convert_output, fetch_and_convert_output
+
+using Oceananigans.OutputWriters:
+    auto_extension,
+    output_averaging_schedule,
+    AveragedTimeInterval,
+    WindowedTimeAverage,
+    NoFileSplitting,
+    update_file_splitting_schedule!,
+    construct_output,
+    time_average_outputs,
+    restrict_to_interior,
+    fetch_output,
+    convert_output,
+    fetch_and_convert_output
 
 import Oceananigans: write_output!
 import Oceananigans.OutputWriters: NetCDFWriter
