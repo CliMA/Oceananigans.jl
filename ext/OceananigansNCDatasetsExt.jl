@@ -3,11 +3,13 @@ module OceananigansNCDatasetsExt
 using NCDatasets
 
 using Dates: AbstractTime, UTC, now
+using Printf: @sprintf
 
 using Oceananigans.Fields
 
-using Oceananigans.Grids: AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization
-using Oceananigans.Grids: topology, halo_size, parent_index_range, ξnodes, ηnodes, rnodes, validate_index, peripheral_node
+using Oceananigans: initialize!, prettytime, pretty_filesize
+using Oceananigans.Grids: Center, Face, Flat, AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization
+using Oceananigans.Grids: topology, halo_size, xspacings, yspacings, zspacings, parent_index_range, ξnodes, ηnodes, rnodes, validate_index, peripheral_node
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location
 using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary
@@ -15,8 +17,17 @@ using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
-using Oceananigans.OutputWriters: AveragedTimeInterval, WindowedTimeAverage, NoFileSplitting
+using Oceananigans.OutputReaders: auto_extension
+using Oceananigans.OutputWriters: AveragedTimeInterval, WindowedTimeAverage, NoFileSplitting,
+                                  update_file_splitting_schedule!, construct_output,
+                                  time_average_outputs, restrict_to_interior,
+                                  fetch_output, convert_output, fetch_and_convert_output
+
+import Oceananigans: write_output!
 import Oceananigans.OutputWriters: NetCDFWriter
+
+const c = Center()
+const f = Face()
 
 #####
 ##### Utils

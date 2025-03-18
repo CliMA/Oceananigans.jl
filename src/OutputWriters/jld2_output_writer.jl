@@ -1,4 +1,4 @@
-using Printf
+using Printf: @sprintf
 using JLD2
 using Oceananigans.Utils
 using Oceananigans.Models
