@@ -68,11 +68,11 @@ function test_dependency_adding(model)
     dimensions = Dict("time_average" => ("xF", "yC", "zC"))
 
     # JLD2 dependencies test
-    jld2_output_writer = JLD2OutputWriter(model, output,
-                                          schedule = TimeInterval(4),
-                                          dir = ".",
-                                          filename = "test.jld2",
-                                          overwrite_existing = true)
+    jld2_output_writer = JLD2Writer(model, output,
+                                    schedule = TimeInterval(4),
+                                    dir = ".",
+                                    filename = "test.jld2",
+                                    overwrite_existing = true)
 
     windowed_time_average = jld2_output_writer.outputs.time_average
     @test dependencies_added_correctly!(model, windowed_time_average, jld2_output_writer)
@@ -80,11 +80,11 @@ function test_dependency_adding(model)
     rm("test.jld2")
 
     # NetCDF dependency test
-    netcdf_output_writer = NetCDFOutputWriter(model, output,
-                                              schedule = TimeInterval(4),
-                                              filename = "test.nc",
-                                              output_attributes = attributes,
-                                              dimensions = dimensions)
+    netcdf_output_writer = NetCDFWriter(model, output,
+                                        schedule = TimeInterval(4),
+                                        filename = "test.nc",
+                                        output_attributes = attributes,
+                                        dimensions = dimensions)
 
     windowed_time_average = netcdf_output_writer.outputs["time_average"]
     @test dependencies_added_correctly!(model, windowed_time_average, netcdf_output_writer)
@@ -117,10 +117,10 @@ function test_creating_and_appending(model, output_writer)
     run!(simulation)
 
     # Test that length is what we expected
-    if output_writer === NetCDFOutputWriter
+    if output_writer === NetCDFWriter
         ds = NCDataset(filepath)
         time_length = length(ds["time"])
-    elseif output_writer === JLD2OutputWriter
+    elseif output_writer === JLD2Writer
         ds = jldopen(filepath)
         time_length = length(keys(ds["timeseries/t"]))
     end
@@ -144,17 +144,17 @@ function test_windowed_time_averaging_simulation(model)
     model.clock.iteration = model.clock.time = 0
     simulation = Simulation(model, Δt=1.0, stop_iteration=0)
 
-    jld2_output_writer = JLD2OutputWriter(model, model.velocities,
-                                          schedule = AveragedTimeInterval(π, window=1),
-                                          filename = jld_filename1,
-                                          overwrite_existing = true)
+    jld2_output_writer = JLD2Writer(model, model.velocities,
+                                    schedule = AveragedTimeInterval(π, window=1),
+                                    filename = jld_filename1,
+                                    overwrite_existing = true)
 
     # https://github.com/Alexander-Barth/NCDatasets.jl/issues/105
     nc_filepath1 = "windowed_time_average_test1.nc"
     nc_outputs = Dict(string(name) => field for (name, field) in pairs(model.velocities))
-    nc_output_writer = NetCDFOutputWriter(model, nc_outputs,
-                                          filename = nc_filepath1,
-                                          schedule = AveragedTimeInterval(π, window=1))
+    nc_output_writer = NetCDFWriter(model, nc_outputs,
+                                    filename = nc_filepath1,
+                                    schedule = AveragedTimeInterval(π, window=1))
 
     jld2_outputs_are_time_averaged = Tuple(typeof(out) <: WindowedTimeAverage for out in jld2_output_writer.outputs)
       nc_outputs_are_time_averaged = Tuple(typeof(out) <: WindowedTimeAverage for out in values(nc_output_writer.outputs))
@@ -194,16 +194,16 @@ function test_windowed_time_averaging_simulation(model)
     # time_interval == time_averaging_window
     model.clock.iteration = model.clock.time = 0
 
-    simulation.output_writers[:jld2] = JLD2OutputWriter(model, model.velocities,
-                                                        schedule = AveragedTimeInterval(π, window=π),
-                                                        filename = jld_filename2,
-                                                        overwrite_existing = true)
+    simulation.output_writers[:jld2] = JLD2Writer(model, model.velocities,
+                                                  schedule = AveragedTimeInterval(π, window=π),
+                                                  filename = jld_filename2,
+                                                  overwrite_existing = true)
 
     nc_filepath2 = "windowed_time_average_test2.nc"
     nc_outputs = Dict(string(name) => field for (name, field) in pairs(model.velocities))
-    simulation.output_writers[:nc] = NetCDFOutputWriter(model, nc_outputs,
-                                                        filename = nc_filepath2,
-                                                        schedule = AveragedTimeInterval(π, window=π))
+    simulation.output_writers[:nc] = NetCDFWriter(model, nc_outputs,
+                                                  filename = nc_filepath2,
+                                                  schedule = AveragedTimeInterval(π, window=π))
 
     run!(simulation)
 
@@ -229,7 +229,7 @@ end
     for arch in archs
 
         @info "Testing that writers create file and append to it properly"
-        for output_writer in (NetCDFOutputWriter, JLD2OutputWriter)
+        for output_writer in (NetCDFWriter, JLD2Writer)
             grid = RectilinearGrid(arch, topology=topo, size=(1, 1, 1), extent=(1, 1, 1))
             model = NonhydrostaticModel(; grid)
             test_creating_and_appending(model, output_writer)
@@ -247,8 +247,8 @@ end
         end
     end
 
-    include("test_netcdf_output_writer.jl")
-    include("test_jld2_output_writer.jl")
+    include("test_netcdf_writer.jl")
+    include("test_jld2_writer.jl")
     include("test_checkpointer.jl")
 
     for arch in archs

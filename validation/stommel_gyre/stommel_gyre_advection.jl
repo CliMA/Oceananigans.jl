@@ -59,8 +59,8 @@ function setup_simulation(N, T, CFL, ϕₐ, advection_scheme; u, v)
     output_attributes = Dict("c" => Dict("longname" => "passive tracer"))
 
     simulation.output_writers[:fields] =
-        NetCDFOutputWriter(model, fields, filename=filename, schedule=TimeInterval(0.01),
-                           global_attributes=global_attributes, output_attributes=output_attributes)
+        NetCDFWriter(model, fields, filename=filename, schedule=TimeInterval(0.01),
+                     global_attributes=global_attributes, output_attributes=output_attributes)
 
     return simulation
 end 
