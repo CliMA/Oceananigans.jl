@@ -736,10 +736,10 @@ function add_schedule_metadata!(global_attributes, schedule::AveragedTimeInterva
 end
 
 #####
-##### NetCDFOutputWriter definition and constructor
+##### NetCDFWriter definition and constructor
 #####
 
-mutable struct NetCDFOutputWriter{G, D, O, T, A, FS, DN} <: AbstractOutputWriter
+mutable struct NetCDFWriter{G, D, O, T, A, FS, DN} <: AbstractOutputWriter
     grid :: G
     filepath :: String
     dataset :: D
@@ -761,26 +761,26 @@ mutable struct NetCDFOutputWriter{G, D, O, T, A, FS, DN} <: AbstractOutputWriter
 end
 
 """
-    NetCDFOutputWriter(model, outputs;
-                       filename,
-                       schedule,
-                       grid = model.grid,
-                       dir = ".",
-                       array_type = Array{Float32},
-                       indices = (:, :, :),
-                       global_attributes = Dict(),
-                       output_attributes = Dict(),
-                       dimensions = Dict(),
-                       with_halos = false,
-                       include_grid_metrics = true,
-                       overwrite_existing = nothing,
-                       verbose = false,
-                       deflatelevel = 0,
-                       part = 1,
-                       file_splitting = NoFileSplitting(),
-                       dimension_name_generator = trilocation_dim_name)
+    NetCDFWriter(model, outputs;
+                 filename,
+                 schedule,
+                 grid = model.grid,
+                 dir = ".",
+                 array_type = Array{Float32},
+                 indices = (:, :, :),
+                 global_attributes = Dict(),
+                 output_attributes = Dict(),
+                 dimensions = Dict(),
+                 with_halos = false,
+                 include_grid_metrics = true,
+                 overwrite_existing = nothing,
+                 verbose = false,
+                 deflatelevel = 0,
+                 part = 1,
+                 file_splitting = NoFileSplitting(),
+                 dimension_name_generator = trilocation_dim_name)
 
-Construct a `NetCDFOutputWriter` that writes `(label, output)` pairs in `outputs` to a NetCDF file.
+Construct a `NetCDFWriter` that writes `(label, output)` pairs in `outputs` to a NetCDF file.
 The `outputs` can be a `Dict` or `NamedTuple` where each `label` is a string and each `output` is
 one of:
 
@@ -847,7 +847,7 @@ Optional keyword arguments
                           additional variables. Default: `true`. Note that even with
                           `include_grid_metrics = false`, core grid coordinates are still saved.
 
-- `overwrite_existing`: If `false`, `NetCDFOutputWriter` will append to existing files. If `true`,
+- `overwrite_existing`: If `false`, `NetCDFWriter` will append to existing files. If `true`,
                         it will overwrite existing files or create new ones. Default: `true` if the
                         file does not exist, `false` if it does.
 
@@ -889,24 +889,24 @@ simulation = Simulation(model, Δt=12, stop_time=3600)
 fields = Dict("u" => model.velocities.u, "c" => model.tracers.c)
 
 simulation.output_writers[:field_writer] =
-    NetCDFOutputWriter(model, fields, filename="fields.nc", schedule=TimeInterval(60))
+    NetCDFWriter(model, fields, filename="fields.nc", schedule=TimeInterval(60))
 ```
 
 ```@example netcdf1
 simulation.output_writers[:surface_slice_writer] =
-    NetCDFOutputWriter(model, fields, filename="surface_xy_slice.nc",
-                       schedule=TimeInterval(60), indices=(:, :, grid.Nz))
+    NetCDFWriter(model, fields, filename="surface_xy_slice.nc",
+                 schedule=TimeInterval(60), indices=(:, :, grid.Nz))
 ```
 
 ```@example netcdf1
 simulation.output_writers[:averaged_profile_writer] =
-    NetCDFOutputWriter(model, fields,
-                       filename = "averaged_z_profile.nc",
-                       schedule = AveragedTimeInterval(60, window=20),
-                       indices = (1, 1, :))
+    NetCDFWriter(model, fields,
+                 filename = "averaged_z_profile.nc",
+                 schedule = AveragedTimeInterval(60, window=20),
+                 indices = (1, 1, :))
 ```
 
-`NetCDFOutputWriter` also accepts output functions that write scalars and arrays to disk,
+`NetCDFWriter` also accepts output functions that write scalars and arrays to disk,
 provided that their `dimensions` are provided:
 
 ```@example
@@ -942,12 +942,12 @@ output_attributes = Dict(
 global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
 
 simulation.output_writers[:things] =
-    NetCDFOutputWriter(model, outputs,
-                       schedule=IterationInterval(1), filename="things.nc", dimensions=dims, verbose=true,
-                       global_attributes=global_attributes, output_attributes=output_attributes)
+    NetCDFWriter(model, outputs,
+                 schedule=IterationInterval(1), filename="things.nc", dimensions=dims, verbose=true,
+                 global_attributes=global_attributes, output_attributes=output_attributes)
 ```
 
-`NetCDFOutputWriter` can also be configured for `outputs` that are interpolated or regridded
+`NetCDFWriter` can also be configured for `outputs` that are interpolated or regridded
 to a different grid than `model.grid`. To use this functionality, include the keyword argument
 `grid = output_grid`.
 
@@ -964,30 +964,30 @@ coarse_u = Field{Face, Center, Center}(coarse_grid)
 interpolate_u(model) = interpolate!(coarse_u, model.velocities.u)
 outputs = (; u = interpolate_u)
 
-output_writer = NetCDFOutputWriter(model, outputs;
-                                   grid = coarse_grid,
-                                   filename = "coarse_u.nc",
-                                   schedule = IterationInterval(1))
+output_writer = NetCDFWriter(model, outputs;
+                             grid = coarse_grid,
+                             filename = "coarse_u.nc",
+                             schedule = IterationInterval(1))
 ```
 """
-function NetCDFOutputWriter(model, outputs;
-                            filename,
-                            schedule,
-                            grid = model.grid,
-                            dir = ".",
-                            array_type = Array{Float32},
-                            indices = (:, :, :),
-                            global_attributes = Dict(),
-                            output_attributes = Dict(),
-                            dimensions = Dict(),
-                            with_halos = false,
-                            include_grid_metrics = true,
-                            overwrite_existing = nothing,
-                            verbose = false,
-                            deflatelevel = 0,
-                            part = 1,
-                            file_splitting = NoFileSplitting(),
-                            dimension_name_generator = trilocation_dim_name)
+function NetCDFWriter(model, outputs;
+                      filename,
+                      schedule,
+                      grid = model.grid,
+                      dir = ".",
+                      array_type = Array{Float32},
+                      indices = (:, :, :),
+                      global_attributes = Dict(),
+                      output_attributes = Dict(),
+                      dimensions = Dict(),
+                      with_halos = false,
+                      include_grid_metrics = true,
+                      overwrite_existing = nothing,
+                      verbose = false,
+                      deflatelevel = 0,
+                      part = 1,
+                      file_splitting = NoFileSplitting(),
+                      dimension_name_generator = trilocation_dim_name)
 
     if with_halos && indices != (:, :, :)
         throw(ArgumentError("If with_halos=true then you cannot pass indices: $indices"))
@@ -1040,24 +1040,24 @@ function NetCDFOutputWriter(model, outputs;
                                                     deflatelevel,
                                                     dimension_name_generator)
 
-    return NetCDFOutputWriter(grid,
-                              filepath,
-                              dataset,
-                              outputs,
-                              schedule,
-                              array_type,
-                              indices,
-                              global_attributes,
-                              output_attributes,
-                              dimensions,
-                              with_halos,
-                              include_grid_metrics,
-                              overwrite_existing,
-                              verbose,
-                              deflatelevel,
-                              part,
-                              file_splitting,
-                              dimension_name_generator)
+    return NetCDFWriter(grid,
+                        filepath,
+                        dataset,
+                        outputs,
+                        schedule,
+                        array_type,
+                        indices,
+                        global_attributes,
+                        output_attributes,
+                        dimensions,
+                        with_halos,
+                        include_grid_metrics,
+                        overwrite_existing,
+                        verbose,
+                        deflatelevel,
+                        part,
+                        file_splitting,
+                        dimension_name_generator)
 end
 
 #####
@@ -1191,20 +1191,20 @@ function initialize_nc_file(model,
     return dataset, outputs, schedule
 end
 
-initialize_nc_file(ow::NetCDFOutputWriter, model) = initialize_nc_file(model,
-                                                                       ow.filepath,
-                                                                       ow.outputs,
-                                                                       ow.schedule,
-                                                                       ow.array_type,
-                                                                       ow.indices,
-                                                                       ow.global_attributes,
-                                                                       ow.output_attributes,
-                                                                       ow.dimensions,
-                                                                       ow.with_halos,
-                                                                       ow.include_grid_metrics,
-                                                                       ow.overwrite_existing,
-                                                                       ow.deflatelevel,
-                                                                       ow.dimension_name_generator)
+initialize_nc_file(ow::NetCDFWriter, model) = initialize_nc_file(model,
+                                                                 ow.filepath,
+                                                                 ow.outputs,
+                                                                 ow.schedule,
+                                                                 ow.array_type,
+                                                                 ow.indices,
+                                                                 ow.global_attributes,
+                                                                 ow.output_attributes,
+                                                                 ow.dimensions,
+                                                                 ow.with_halos,
+                                                                 ow.include_grid_metrics,
+                                                                 ow.overwrite_existing,
+                                                                 ow.deflatelevel,
+                                                                 ow.dimension_name_generator)
 
 #####
 ##### Variable definition
@@ -1222,7 +1222,7 @@ function define_output_variable!(dataset, output, name, array_type,
 
     if name ∉ keys(dimensions)
         msg = string("dimensions[$name] for output $name=$(typeof(output)) into $filepath" *
-                     " must be provided when constructing NetCDFOutputWriter")
+                     " must be provided when constructing NetCDFWriter")
         throw(ArgumentError(msg))
     end
 
@@ -1271,8 +1271,8 @@ end
 ##### Write output
 #####
 
-Base.open(nc::NetCDFOutputWriter) = NCDataset(nc.filepath, "a")
-Base.close(nc::NetCDFOutputWriter) = close(nc.dataset)
+Base.open(nc::NetCDFWriter) = NCDataset(nc.filepath, "a")
+Base.close(nc::NetCDFWriter) = close(nc.dataset)
 
 # Saving outputs with no time dependence (e.g. grid metrics)
 function save_output!(ds, output, model, name, array_type)
@@ -1303,12 +1303,12 @@ function save_output!(ds, output::LagrangianParticles, model, ow, time_index, na
 end
 
 """
-    write_output!(ow::NetCDFOutputWriter, model)
+    write_output!(ow::NetCDFWriter, model)
 
 Write output to netcdf file `output_writer.filepath` at specified intervals. Increments the `time` dimension
 every time an output is written to the file.
 """
-function write_output!(ow::NetCDFOutputWriter, model)
+function write_output!(ow::NetCDFWriter, model)
     # Start a new file if the file_splitting(model) is true
     ow.file_splitting(model) && start_next_file(model, ow)
     update_file_splitting_schedule!(ow.file_splitting, ow.filepath)
@@ -1371,10 +1371,10 @@ end
 ##### Show
 #####
 
-Base.summary(ow::NetCDFOutputWriter) =
-    string("NetCDFOutputWriter writing ", prettykeys(ow.outputs), " to ", ow.filepath, " on ", summary(ow.schedule))
+Base.summary(ow::NetCDFWriter) =
+    string("NetCDFWriter writing ", prettykeys(ow.outputs), " to ", ow.filepath, " on ", summary(ow.schedule))
 
-function Base.show(io::IO, ow::NetCDFOutputWriter)
+function Base.show(io::IO, ow::NetCDFWriter)
     dims = NCDataset(ow.filepath, "r") do ds
         join([dim * "(" * string(length(ds[dim])) * "), "
               for dim in keys(ds.dim)])[1:end-2]
@@ -1383,7 +1383,7 @@ function Base.show(io::IO, ow::NetCDFOutputWriter)
     averaging_schedule = output_averaging_schedule(ow)
     num_outputs = length(ow.outputs)
 
-    print(io, "NetCDFOutputWriter scheduled on $(summary(ow.schedule)):", "\n",
+    print(io, "NetCDFWriter scheduled on $(summary(ow.schedule)):", "\n",
               "├── filepath: ", relpath(ow.filepath), "\n",
               "├── dimensions: $dims", "\n",
               "├── $num_outputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
@@ -1396,7 +1396,7 @@ end
 ##### File splitting
 #####
 
-function start_next_file(model, ow::NetCDFOutputWriter)
+function start_next_file(model, ow::NetCDFWriter)
     verbose = ow.verbose
 
     verbose && @info begin
@@ -1425,4 +1425,4 @@ end
 ##### More utils
 #####
 
-ext(::Type{NetCDFOutputWriter}) = ".nc"
+ext(::Type{NetCDFWriter}) = ".nc"
