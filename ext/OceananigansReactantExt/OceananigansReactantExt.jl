@@ -121,7 +121,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     M2 = Reactant.traced_type_inner(M, seen, mode, track_numbers, sharding, runtime)
     S2 = Reactant.traced_type_inner(S, seen, mode, track_numbers, sharding, runtime)
     FT2 = eltype(G2)
-    return Oceananigans.Grids.OrthogonalSphericalShellGrid{FT2, TX2, TY2, TZ2, G2, I2, M2, S2, Arch}
+    return Oceananigans.Grids.ImmersedBoundaryGrid{FT2, TX2, TY2, TZ2, G2, I2, M2, S2, Arch}
 end
 
 # These are additional modules that may need to be Reactantified in the future:
