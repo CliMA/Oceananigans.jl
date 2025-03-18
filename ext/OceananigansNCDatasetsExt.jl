@@ -23,6 +23,7 @@ using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, pretty
 using Oceananigans.OutputWriters:
     auto_extension,
     output_averaging_schedule,
+    show_averaging_schedule,
     AveragedTimeInterval,
     WindowedTimeAverage,
     NoFileSplitting,
