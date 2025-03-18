@@ -111,7 +111,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     @nospecialize(track_numbers::Type),
     @nospecialize(sharding),
     @nospecialize(runtime)
-) where {FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch}
+) where {FT, TX, TY, TZ, G, I, M, S, Arch}
     TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
     TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
     TZ2 = Reactant.traced_type_inner(TZ, seen, mode, track_numbers, sharding, runtime)
