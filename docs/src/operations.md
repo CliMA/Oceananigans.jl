@@ -268,7 +268,7 @@ Above we see that the max, min and mean of the field are all the same.
 Let's check that these values are what we expect:
 
 ```jldoctest operations_avg_int
-∫c[1, 1, 1] ≈ 2π * grid.radius^2
+∫c[1, 1, 1] ≈ 2π * grid.radius^2 # area of spherical zone with |φ| ≤ 30ᵒ
 
 # output
 
@@ -283,9 +283,9 @@ In this example we use `Oceananigans.Grids.φnode` to check whether the latitude
 ```jldoctest operations_avg_int
 using Oceananigans.Grids: φnode
 
-cond(i, j, k, grid, c) = φnode(j, grid, Center()) > 0
+cond(i, j, k, grid, c) = φnode(j, grid, Center()) ≥ 0
 
-conditional_∫c = Field(Integral(c, dims=(1, 2), condition=cond)) # only integrates when condition is true
+conditional_∫c = Field(Integral(c, dims=(1, 2), condition=cond)) # integrate only when condition is true
 
 # output
 1×1×5 Field{Nothing, Nothing, Center} reduced over dims = (1, 2) on LatitudeLongitudeGrid on CPU
@@ -303,7 +303,7 @@ Let's compute and see if we get 1/4 of the area of the sphere
 
 ```jldoctest operations_avg_int
 compute!(conditional_∫c)
-conditional_∫c[1, 1, 1] ≈ π * grid.radius^2
+conditional_∫c[1, 1, 1] ≈ π * grid.radius^2 # area of spherical zone with 0ᵒ ≤ φ ≤ 30ᵒ
 
 # output
 true
