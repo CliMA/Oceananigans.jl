@@ -15,13 +15,5 @@ deconcretize(field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
                       field.status,
                       field.boundary_buffers)
 
-
-const ReactantField = Field{<:Any,
-                            <:Any,
-                            <:Any,
-                            <:Any,
-                            <:ReactantGrid}
-
-copyto!(dest::ReactantField, src) = copyto!(interior(dest), src)
-
 end
+
