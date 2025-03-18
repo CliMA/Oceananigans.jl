@@ -98,7 +98,7 @@ function set_to_function!(u, f)
 end
 
 function set_to_array!(u, a)
-    a = on_architecture(architecture(u), a)
+    # a = on_architecture(architecture(u), a)
 
     try
         copyto!(interior(u), a)
