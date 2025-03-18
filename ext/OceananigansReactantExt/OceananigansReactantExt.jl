@@ -104,6 +104,13 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     return Oceananigans.Grids.OrthogonalSphericalShellGrid{FT2, TX2, TY2, TZ2, Z2, Map2, CC2, FC2, CF2, FF2, Arch}
 end
 
+@inline Reactant.make_tracer(
+    seen,
+    @nospecialize(prev::Oceananigans.Grids.OrthogonalSphericalShellGrid),
+    args...;
+    kwargs...
+    ) = Reactant.make_tracer_via_immutable_constructor(seen, prev, args...; kwargs...)
+
 # https://github.com/CliMA/Oceananigans.jl/blob/d9b3b142d8252e8e11382d1b3118ac2a092b38a2/src/ImmersedBoundaries/immersed_boundary_grid.jl#L8
 Base.@nospecializeinfer function Reactant.traced_type_inner(
     @nospecialize(OA::Type{ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch}}),
