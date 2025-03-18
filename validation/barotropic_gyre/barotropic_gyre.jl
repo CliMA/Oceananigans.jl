@@ -117,10 +117,10 @@ output_fields = merge(model.velocities, (η=model.free_surface.η,))
 
 output_prefix = "barotropic_gyre_Nx$(grid.Nx)_Ny$(grid.Ny)"
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                      schedule = TimeInterval(10day),
-                                                      filename = output_prefix,
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, output_fields,
+                                                schedule = TimeInterval(10day),
+                                                filename = output_prefix,
+                                                overwrite_existing = true)
 
 run!(simulation)
 
