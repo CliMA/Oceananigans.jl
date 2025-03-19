@@ -497,12 +497,14 @@ end
     J1 = deepcopy(wind_stress)
     J2 = deepcopy(wind_stress)
 
-    ΔJ = 1e-6
+    ΔJ = 1e-3
 
     J0[i, j, k] = J0[i, j, k] - ΔJ
     J2[i, j, k] = J2[i, j, k] + ΔJ
     e0 = compute_summed_u_squared(simulation, Tᵢ, Sᵢ, J0)
+    set!(simulation.model, u=0, v=0, T=0, S=0)
     e2 = compute_summed_u_squared(simulation, Tᵢ, Sᵢ, J2)
+    set!(simulation.model, u=0, v=0, T=0, S=0)
     ΔeΔJ = (e2 - e0) / 2ΔJ
 
     @info "Finite difference computed for wind stress at index $i, $j, $k: $ΔeΔJ"
