@@ -33,7 +33,8 @@ using Oceananigans.OutputWriters:
     restrict_to_interior,
     fetch_output,
     convert_output,
-    fetch_and_convert_output
+    fetch_and_convert_output,
+    show_array_type
 
 import Oceananigans: write_output!
 import Oceananigans.OutputWriters: NetCDFWriter
