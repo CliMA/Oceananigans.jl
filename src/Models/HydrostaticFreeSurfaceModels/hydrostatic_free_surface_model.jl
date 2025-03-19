@@ -11,9 +11,9 @@ using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, Trac
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture, halo_size
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, validate_model_halo, NaNChecker, validate_tracer_advection, extract_boundary_conditions
+using Oceananigans.Models: AbstractModel, validate_model_halo, NaNChecker, validate_tracer_advection, extract_boundary_conditions, initialization_update_state!
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles, SplitRungeKutta3TimeStepper
-using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
+using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_diffusivity_fields, add_closure_specific_boundary_conditions
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
 using Oceananigans.Utils: tupleit
 
@@ -26,7 +26,7 @@ const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
-                                           G, T, V, B, R, F, P, BGC, U, C, Φ, K, AF, Z} <: AbstractModel{TS}
+                                           G, T, V, B, R, F, P, BGC, U, C, Φ, K, AF, Z} <: AbstractModel{TS, A}
 
                 architecture :: A        # Computer `Architecture` on which `Model` is run
                         grid :: G        # Grid of physical points on which `Model` is solved
@@ -108,7 +108,7 @@ Keyword arguments
   - `vertical_coordinate`: Rulesets that define the time-evolution of the grid (ZStar/ZCoordinate). Default: `ZCoordinate()`.
 """
 function HydrostaticFreeSurfaceModel(; grid,
-                                     clock = Clock{Float64}(time = 0),
+                                     clock = Clock(grid),
                                      momentum_advection = VectorInvariant(),
                                      tracer_advection = Centered(),
                                      buoyancy = nothing,
@@ -193,7 +193,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     velocities         = hydrostatic_velocity_fields(velocities, grid, clock, boundary_conditions)
     tracers            = TracerFields(tracers, grid, boundary_conditions)
     pressure           = PressureField(grid)
-    diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
+    diffusivity_fields = build_diffusivity_fields(diffusivity_fields, grid, clock, tracernames(tracers), boundary_conditions, closure)
 
     @apply_regionally validate_velocity_boundary_conditions(grid, velocities)
 
@@ -218,7 +218,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, tracers,
                                         pressure, diffusivity_fields, timestepper, auxiliary_fields, vertical_coordinate)
 
-    update_state!(model; compute_tendencies = false)
+    initialization_update_state!(model; compute_tendencies=false)
 
     return model
 end
@@ -233,6 +233,7 @@ end
 
 validate_free_surface(::Distributed, free_surface::SplitExplicitFreeSurface) = free_surface
 validate_free_surface(::Distributed, free_surface::ExplicitFreeSurface)      = free_surface
+validate_free_surface(::Distributed, free_surface::Nothing)                  = free_surface
 validate_free_surface(arch::Distributed, free_surface) = error("$(typeof(free_surface)) is not supported with $(typeof(arch))")
 validate_free_surface(arch, free_surface) = free_surface
 
