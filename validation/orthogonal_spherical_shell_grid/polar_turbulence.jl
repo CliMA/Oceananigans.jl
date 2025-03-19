@@ -40,10 +40,10 @@ u, v, w = model.velocities
 ζ = ∂x(v) - ∂y(u)
 s = @at (Center, Center, Center) sqrt(u^2 + v^2)
 
-simulation.output_writers[:jld2] = JLD2OutputWriter(model, (; u, v, ζ, s),
-                                                    schedule = TimeInterval(1day),
-                                                    filename = "polar_turbulence",
-                                                    overwrite_existing = true)
+simulation.output_writers[:jld2] = JLD2Writer(model, (; u, v, ζ, s),
+                                              schedule = TimeInterval(1day),
+                                              filename = "polar_turbulence",
+                                              overwrite_existing = true)
 
 @info "Run simulation..."
 

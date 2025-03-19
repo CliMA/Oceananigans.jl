@@ -106,13 +106,13 @@ axislegend()
 current_figure() #hide
 
 # Very interesting! Next, we run the simulation a bit longer and make an animation.
-# For this, we use the `JLD2OutputWriter` to write data to disk as the simulation progresses.
+# For this, we use the `JLD2Writer` to write data to disk as the simulation progresses.
 
 simulation.output_writers[:temperature] =
-    JLD2OutputWriter(model, model.tracers,
-                     filename = "one_dimensional_diffusion.jld2",
-                     schedule=IterationInterval(100),
-                     overwrite_existing = true)
+    JLD2Writer(model, model.tracers,
+               filename = "one_dimensional_diffusion.jld2",
+               schedule=IterationInterval(100),
+               overwrite_existing = true)
 
 # We run the simulation for 10,000 more iterations,
 
