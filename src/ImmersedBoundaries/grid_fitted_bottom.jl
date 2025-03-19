@@ -126,7 +126,7 @@ end
     # wetting or drying that could happen for a moving grid if we use znode
     z  = rnode(i, j, k, underlying_grid, c, c, c)
     zb = @inbounds ib.bottom_height[i, j, 1]
-    return z ≤ zb
+    return z .≤ zb
 end
 
 #####

@@ -115,6 +115,7 @@ on_architecture(arch, coord::MutableVerticalDiscretization) =
 AUG = AbstractUnderlyingGrid
 
 @inline rnode(i, j, k, grid, ℓx, ℓy, ℓz) = rnode(k, grid, ℓz)
+@inline rnode(i::AbstractArray, j::AbstractArray, k, grid, ℓx, ℓy, ℓz) = Base.repeat(rnode(k, grid, ℓz), length(i), length(j), 1)
 @inline rnode(k, grid, ::Center) = getnode(grid.z.cᵃᵃᶜ, k)
 @inline rnode(k, grid, ::Face)   = getnode(grid.z.cᵃᵃᶠ, k)
 

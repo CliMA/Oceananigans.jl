@@ -131,6 +131,22 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     return Oceananigans.Grids.ImmersedBoundaryGrid{FT2, TX2, TY2, TZ2, G2, I2, M2, S2, Arch}
 end
 
+function evalcond(c, i, j, k)
+    Oceananigans.AbstractOperations.evaluate_condition(c.condition, i, j, k, c.grid, c)
+end
+
+@inline function Reactant.TracedUtils.materialize_traced_array(c::Oceananigans.AbstractOperations.ConditionalOperation)
+    i = Base.OneTo(size(c, 1))
+    j = Base.OneTo(size(c, 2))
+    k = Base.OneTo(size(c, 3))
+
+    return Reactant.Ops.select(
+                Reactant.TracedUtils.broadcast_to_size(Base.Fix1(evalcond, c).(i, j, k), size(c)),
+                Reactant.TracedUtils.broadcast_to_size(c.func.(getindex(c.operand, i, j, k)), size(c)),
+                Reactant.TracedUtils.broadcast_to_size(c.mask, size(c))
+    )
+end
+
 # These are additional modules that may need to be Reactantified in the future:
 #
 # include("Utils.jl")
