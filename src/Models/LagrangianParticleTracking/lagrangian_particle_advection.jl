@@ -106,7 +106,7 @@ rightmost_interface_index(::Flat, N) = N
 Return new position `(x⁺, y⁺, z⁺)` for a particle at current position (x, y, z),
 given `velocities`, time-step `Δt, and coefficient of `restitution`.
 """
-@inline function advect_particle((x, y, z), p, restitution, grid, Δt, velocities)
+@inline function advect_particle((x, y, z), particles, p, restitution, grid, Δt, velocities)
     X = flattened_node((x, y, z), grid)
 
     # Obtain current particle indices, looking at the interfaces
@@ -118,10 +118,14 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
 
     current_particle_indices = (i, j, k)
 
+    up = interpolate(X, velocities.u, (f, c, c), grid)
+    vp = interpolate(X, velocities.v, (c, f, c), grid)
+    wp = interpolate(X, velocities.w, (c, c, f), grid)
+
     # Interpolate velocity to particle position
-    u = interpolate(X, velocities.u, (f, c, c), grid)
-    v = interpolate(X, velocities.v, (c, f, c), grid)
-    w = interpolate(X, velocities.w, (c, c, f), grid)
+    u = calculate_particle_velocity(X, particles, up, (f, c, c), grid)
+    v = calculate_particle_velocity(X, particles, vp, (c, f, c), grid)
+    w = calculate_particle_velocity(X, particles, wp, (c, c, f), grid)
 
     # Advect particles, calculating the advection metric for a curvilinear grid.
     # Note that all supported grids use length coordinates in the vertical, so we do not
@@ -131,7 +135,7 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
 
     x⁺ = x + ξ * u * Δt
     y⁺ = y + η * v * Δt
-    z⁺ = z + w * Δt
+    z⁺ = z +     w * Δt
 
     # Satisfy boundary conditions for particles: bounce off walls, travel over periodic boundaries.
     tx, ty, tz = map(instantiate, topology(grid))
@@ -164,6 +168,8 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     return (x⁺, y⁺, z⁺)
 end
 
+@inline calculate_particle_velocity(X, particles, up, loc, grid) = up
+
 # Calculate the metric for particle advection according to the coordinate system of the `grid`:
 #     * Unity metric for `RectilinearGrid` / Cartesian coordinates
 #     * Sphere metric for `LatitudeLongitudeGrid` and geographic coordinates
@@ -184,7 +190,7 @@ end
         z = particles.z[p]
     end
 
-    x⁺, y⁺, z⁺ = advect_particle((x, y, z), p, restitution, grid, Δt, velocities)
+    x⁺, y⁺, z⁺ = advect_particle((x, y, z), particles, p, restitution, grid, Δt, velocities)
 
     @inbounds begin
         particles.x[p] = x⁺
