@@ -315,7 +315,7 @@ Another way to do the above is to provide the `condition` keyword argument with 
 
 ```jldoctest operations_avg_int
 cond_array = trues(size(grid))
-@. cond_array[:, 1:5, :] .= false # set half the latitude range to false
+@. cond_array[:, 1:5, :] .= false # set the first half of the latitude range to false
 
 conditional_∫c = Field(Integral(c, dims=(1, 2), condition=cond_array))
 
