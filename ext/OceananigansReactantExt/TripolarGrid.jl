@@ -1,25 +1,3 @@
-# Move to Reactant
-struct TreeSharding{S} <: Sharding.AbstractSharding
-    sharding::S
-end
-
-Sharding.is_sharded(sharding::TreeSharding) = true
-
-Sharding.ndevices(sharding::TreeSharding) = Sharding.ndevices(sharding.sharding)
-Sharding.shard_type(::Type{TreeSharding{S}}, N) where {S} = Sharding.shard_type(S, N)
-
-Base.getproperty(t::TreeSharding, x) = t
-function Base.getproperty(t::TreeSharding, x::Symbol)
-    x == :sharding && return getfield(t, :sharding)
-    return t
-end
-
-function (sharding::TreeSharding)(
-    client::Reactant.XLA.AbstractClient, device, x::Union{AbstractArray,Number}
-)
-    return sharding.sharding(client, device, x)
-end
-
 function Oceananigans.TripolarGrid(arch::Oceananigans.Distributed{<:ReactantState},
     FT::DataType=Float64;
     halo=(4, 4, 4), kwargs...)
@@ -43,109 +21,69 @@ function Oceananigans.TripolarGrid(arch::Oceananigans.Distributed{<:ReactantStat
                              partitioning."))
     end
 
-    Hx, Hy, Hz = halo
-
     # We build the global grid on a CPU architecture, in order to split it easily
     global_grid = TripolarGrid(CPU(), FT; halo, kwargs...)
-    Nx, Ny, Nz = global_size = size(global_grid)
-
-    # Splitting the grid manually
-    # lsize = DistributedComputations.local_size(arch, global_size)
+    global_size = size(global_grid)
 
     # Extracting the local range
-    mesh = arch.connectivity
-    devices = arch.devices
-    sharding = TreeSharding(Sharding.DimsSharding(mesh, (1, 2), (:x, :y)))
+    sharding = Sharding.DimsSharding(arch.connectivity, (1, 2), (:x, :y))
 
-    # # XXX: cleanup api
     # Needed for partitial array assembly
-    # hlo_sharding = Sharding.generate_hlo_sharding_from_tensor_attribute(sharding)
-    # condensed_op_sharding = convert(
-    #     Reactant.XLA.CondensedOpSharding, hlo_sharding.hlo_sharding
-    # )
-    # device_to_array_slices, needs_padding = Reactant.XLA.sharding_to_concrete_array_indices(
-    #     condensed_op_sharding, global_size, hlo_sharding.mesh.logical_device_ids
-    # )
-
-    # @show device_to_array_slices
-
-    # if needs_padding
-    #     error("XXXX: Padding not implemented")
-    # end
+    # device_to_array_slices = Reactant.sharding_to_array_slices(sharding, global_size)
 
     irange = Colon()
     jrange = Colon()
     FT = eltype(global_grid)
 
     # Partitioning the Coordinates
-    λᶠᶠᵃ = Oceananigans.OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :λᶠᶠᵃ, irange, jrange)
-    λᶠᶠᵃ = Reactant.to_rarray(map(FT, λᶠᶠᵃ); sharding)
-    φᶠᶠᵃ = Oceananigans.OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :φᶠᶠᵃ, irange, jrange)
-    φᶠᶠᵃ = Reactant.to_rarray(map(FT, φᶠᶠᵃ); sharding)
-    λᶠᶜᵃ = Oceananigans.OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :λᶠᶜᵃ, irange, jrange)
-    λᶠᶜᵃ = Reactant.to_rarray(map(FT, λᶠᶜᵃ); sharding)
-    φᶠᶜᵃ = Oceananigans.OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :φᶠᶜᵃ, irange, jrange)
-    φᶠᶜᵃ = Reactant.to_rarray(map(FT, φᶠᶜᵃ); sharding)
-    λᶜᶠᵃ = Oceananigans.OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :λᶜᶠᵃ, irange, jrange)
-    λᶜᶠᵃ = Reactant.to_rarray(map(FT, λᶜᶠᵃ); sharding)
-    φᶜᶠᵃ = Oceananigans.OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :φᶜᶠᵃ, irange, jrange)
-    φᶜᶠᵃ = Reactant.to_rarray(map(FT, φᶜᶠᵃ); sharding)
-    λᶜᶜᵃ = Oceananigans.OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :λᶜᶜᵃ, irange, jrange)
-    λᶜᶜᵃ = Reactant.to_rarray(map(FT, λᶜᶜᵃ); sharding)
-    φᶜᶜᵃ = Oceananigans.OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :φᶜᶜᵃ, irange, jrange)
-    φᶜᶜᵃ = Reactant.to_rarray(map(FT, φᶜᶜᵃ); sharding)
+    λᶠᶠᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :λᶠᶠᵃ, irange, jrange)
+    φᶠᶠᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :φᶠᶠᵃ, irange, jrange)
+    λᶠᶜᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :λᶠᶜᵃ, irange, jrange)
+    φᶠᶜᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :φᶠᶜᵃ, irange, jrange)
+    λᶜᶠᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :λᶜᶠᵃ, irange, jrange)
+    φᶜᶠᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :φᶜᶠᵃ, irange, jrange)
+    λᶜᶜᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :λᶜᶜᵃ, irange, jrange)
+    φᶜᶜᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :φᶜᶜᵃ, irange, jrange)
 
     # # Partitioning the Metrics
-    Δxᶜᶜᵃ = Oceananigans.OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Δxᶜᶜᵃ, irange, jrange)
-    Δxᶜᶜᵃ = Reactant.to_rarray(map(FT, Δxᶜᶜᵃ); sharding)
-    Δxᶠᶜᵃ = Oceananigans.OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Δxᶠᶜᵃ, irange, jrange)
-    Δxᶠᶜᵃ = Reactant.to_rarray(map(FT, Δxᶠᶜᵃ); sharding)
-    Δxᶜᶠᵃ = Oceananigans.OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Δxᶜᶠᵃ, irange, jrange)
-    Δxᶜᶠᵃ = Reactant.to_rarray(map(FT, Δxᶜᶠᵃ); sharding)
-    Δxᶠᶠᵃ = Oceananigans.OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Δxᶠᶠᵃ, irange, jrange)
-    Δxᶠᶠᵃ = Reactant.to_rarray(map(FT, Δxᶠᶠᵃ); sharding)
-    Δyᶜᶜᵃ = Oceananigans.OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Δyᶜᶜᵃ, irange, jrange)
-    Δyᶜᶜᵃ = Reactant.to_rarray(map(FT, Δyᶜᶜᵃ); sharding)
-    Δyᶠᶜᵃ = Oceananigans.OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Δyᶠᶜᵃ, irange, jrange)
-    Δyᶠᶜᵃ = Reactant.to_rarray(map(FT, Δyᶠᶜᵃ); sharding)
-    Δyᶜᶠᵃ = Oceananigans.OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Δyᶜᶠᵃ, irange, jrange)
-    Δyᶜᶠᵃ = Reactant.to_rarray(map(FT, Δyᶜᶠᵃ); sharding)
-    Δyᶠᶠᵃ = Oceananigans.OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Δyᶠᶠᵃ, irange, jrange)
-    Δyᶠᶠᵃ = Reactant.to_rarray(map(FT, Δyᶠᶠᵃ); sharding)
-    Azᶜᶜᵃ = Oceananigans.OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Azᶜᶜᵃ, irange, jrange)
-    Azᶜᶜᵃ = Reactant.to_rarray(map(FT, Azᶜᶜᵃ); sharding)
-    Azᶠᶜᵃ = Oceananigans.OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Azᶠᶜᵃ, irange, jrange)
-    Azᶠᶜᵃ = Reactant.to_rarray(map(FT, Azᶠᶜᵃ); sharding)
-    Azᶜᶠᵃ = Oceananigans.OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Azᶜᶠᵃ, irange, jrange)
-    Azᶜᶠᵃ = Reactant.to_rarray(map(FT, Azᶜᶠᵃ); sharding)
-    Azᶠᶠᵃ = Oceananigans.OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Azᶠᶠᵃ, irange, jrange)
-    Azᶠᶠᵃ = Reactant.to_rarray(map(FT, Azᶠᶠᵃ); sharding)
+    Δxᶜᶜᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Δxᶜᶜᵃ, irange, jrange)
+    Δxᶠᶜᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Δxᶠᶜᵃ, irange, jrange)
+    Δxᶜᶠᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Δxᶜᶠᵃ, irange, jrange)
+    Δxᶠᶠᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Δxᶠᶠᵃ, irange, jrange)
+    Δyᶜᶜᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Δyᶜᶜᵃ, irange, jrange)
+    Δyᶠᶜᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Δyᶠᶜᵃ, irange, jrange)
+    Δyᶜᶠᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Δyᶜᶠᵃ, irange, jrange)
+    Δyᶠᶠᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Δyᶠᶠᵃ, irange, jrange)
+    Azᶜᶜᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Azᶜᶜᵃ, irange, jrange)
+    Azᶠᶜᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Azᶠᶜᵃ, irange, jrange)
+    Azᶜᶠᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Azᶜᶠᵃ, irange, jrange)
+    Azᶠᶠᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Azᶠᶠᵃ, irange, jrange)
 
     grid = OrthogonalSphericalShellGrid{Periodic,RightConnected,Bounded}(arch,
-        Nx, Ny, Nz,
-        Hx, Hy, Hz,
+        global_size...,
+        halo...,
         convert(FT, global_grid.Lz),
-        λᶜᶜᵃ,
-        λᶠᶜᵃ,
-        λᶜᶠᵃ,
-        λᶠᶠᵃ,
-        φᶜᶜᵃ,
-        φᶠᶜᵃ,
-        φᶜᶠᵃ,
-        φᶠᶠᵃ,
-        on_architecture(arch, global_grid.z),
-        Δxᶜᶜᵃ,
-        Δxᶠᶜᵃ,
-        Δxᶜᶠᵃ,
-        Δxᶠᶠᵃ,
-        Δyᶜᶜᵃ,
-        Δyᶠᶜᵃ,
-        Δyᶜᶠᵃ,
-        Δyᶠᶠᵃ,
-        Azᶜᶜᵃ,
-        Azᶠᶜᵃ,
-        Azᶜᶠᵃ,
-        Azᶠᶠᵃ,
+        Reactant.to_rarray(λᶜᶜᵃ; sharding),
+        Reactant.to_rarray(λᶠᶜᵃ; sharding),
+        Reactant.to_rarray(λᶜᶠᵃ; sharding),
+        Reactant.to_rarray(λᶠᶠᵃ; sharding),
+        Reactant.to_rarray(φᶜᶜᵃ; sharding),
+        Reactant.to_rarray(φᶠᶜᵃ; sharding),
+        Reactant.to_rarray(φᶜᶠᵃ; sharding),
+        Reactant.to_rarray(φᶠᶠᵃ; sharding),
+        Reactant.to_rarray(global_grid.z), # Intentionally not sharded
+        Reactant.to_rarray(Δxᶜᶜᵃ; sharding),
+        Reactant.to_rarray(Δxᶠᶜᵃ; sharding),
+        Reactant.to_rarray(Δxᶜᶠᵃ; sharding),
+        Reactant.to_rarray(Δxᶠᶠᵃ; sharding),
+        Reactant.to_rarray(Δyᶜᶜᵃ; sharding),
+        Reactant.to_rarray(Δyᶠᶜᵃ; sharding),
+        Reactant.to_rarray(Δyᶜᶠᵃ; sharding),
+        Reactant.to_rarray(Δyᶠᶠᵃ; sharding),
+        Reactant.to_rarray(Azᶜᶜᵃ; sharding),
+        Reactant.to_rarray(Azᶠᶜᵃ; sharding),
+        Reactant.to_rarray(Azᶜᶠᵃ; sharding),
+        Reactant.to_rarray(Azᶠᶠᵃ; sharding),
         convert(FT, global_grid.radius),
         global_grid.conformal_mapping)
 

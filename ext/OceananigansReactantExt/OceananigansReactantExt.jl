@@ -4,7 +4,8 @@ using Reactant
 using Oceananigans
 using OffsetArrays
 
-using Oceananigans: Distributed, DistributedComputations, ReactantState, CPU
+using Oceananigans: Distributed, DistributedComputations, ReactantState, CPU,
+                    OrthogonalSphericalShellGrids
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.Grids: Bounded, Periodic, RightConnected
 
