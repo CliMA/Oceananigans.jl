@@ -132,20 +132,20 @@ perturbation_norm(args...) = norm(v)
 # Output every `t = 1.0`.
 
 fields_filename = joinpath(@__DIR__, "shallow_water_Bickley_jet_fields.nc")
-simulation.output_writers[:fields] = NetCDFOutputWriter(model, (; ω, ω′),
-                                                        filename = fields_filename,
-                                                        schedule = TimeInterval(2),
-                                                        overwrite_existing = true)
+simulation.output_writers[:fields] = NetCDFWriter(model, (; ω, ω′),
+                                                  filename = fields_filename,
+                                                  schedule = TimeInterval(2),
+                                                  overwrite_existing = true)
 
 # Build the `output_writer` for the growth rate, which is a scalar field.
 # Output every time step.
 
 growth_filename = joinpath(@__DIR__, "shallow_water_Bickley_jet_perturbation_norm.nc")
-simulation.output_writers[:growth] = NetCDFOutputWriter(model, (; perturbation_norm),
-                                                        filename = growth_filename,
-                                                        schedule = IterationInterval(1),
-                                                        dimensions = (; perturbation_norm = ()),
-                                                        overwrite_existing = true)
+simulation.output_writers[:growth] = NetCDFWriter(model, (; perturbation_norm),
+                                                  filename = growth_filename,
+                                                  schedule = IterationInterval(1),
+                                                  dimensions = (; perturbation_norm = ()),
+                                                  overwrite_existing = true)
 
 # And finally run the simulation.
 
@@ -178,11 +178,11 @@ ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 
 times = ds["time"][:]
 
-ω = @lift ds["ω"][:, :, 1, $n]
+ω = @lift ds["ω"][:, :, $n]
 hm_ω = heatmap!(ax_ω, x, y, ω, colorrange = (-1, 1), colormap = :balance)
 Colorbar(fig[2, 2], hm_ω)
 
-ω′ = @lift ds["ω′"][:, :, 1, $n]
+ω′ = @lift ds["ω′"][:, :, $n]
 hm_ω′ = heatmap!(ax_ω′, x, y, ω′, colormap = :balance)
 Colorbar(fig[2, 4], hm_ω′)
 
