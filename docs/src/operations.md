@@ -218,9 +218,9 @@ An operation that reduces one or more dimensions of a field is called a [`Reduct
 
 Let's demonstrate now how we can compute the average or the integral of a field over the grid or over some part of the grid.
 We start by creating a latitude-longitude grid that only goes up to 30 degrees latitude.
-Conveniently, with this latitude extend that grid covers half the total area of the sphere, i.e., `2π * grid.radius^2`.
+Conveniently, with this latitude extent that grid covers half the total area of the sphere, i.e., `2π * grid.radius^2`.
 
-Let's try to estimate this are using `Integral` operation.
+Let's try to estimate this area using `Integral` operation.
 We create a Field, we fill it with ones and we integrate it over the whole grid.
 
 
@@ -247,7 +247,8 @@ set!(c, 1)
     └── max=0.0, min=0.0, mean=0.0
 ```
 
-A few remarks: note that the `∫c` has locations `Nothing, Nothing, Center`; this is because we have integrated in the first two dimensions and thus it's `reduced over dims = (1, 2)`.
+A few remarks: note that the `∫c` has locations `Nothing, Nothing, Center`; this is because we have integrated in the first two dimensions and thus it's `reduced over dims = (1, 2)`. 
+`c` was initialised as a `CenterField` but the above also applies to `XFaceField`, `YFaceField` and ZFaceField`. 
 Further note that `∫c` is full of zeros; its max, min, and mean values are all 0.
 No computation has been done yet.
 To compute `∫c`, we call [`compute!`](@ref),
