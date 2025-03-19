@@ -324,6 +324,9 @@ synchronized(arch::Distributed) = Distributed{true}(child_architecture(arch),
                                                      arch.mpi_requests,
                                                      arch.mpi_tag)
 
+on_architecture(::CPU, arch::Distributed) = cpu_architecture(arch)
+on_architecture(::GPU, arch::Distributed) = gpu_architecture(arch)
+
 cpu_architecture(arch::DistributedCPU) = arch
 cpu_architecture(arch::Distributed{A, S}) where {A, S} = 
     Distributed{S}(CPU(),
@@ -335,7 +338,19 @@ cpu_architecture(arch::Distributed{A, S}) where {A, S} =
                    arch.communicator,
                    arch.mpi_requests,
                    arch.mpi_tag)
-
+                   
+gpu_architecture(arch::DistributedGPU) = arch
+gpu_architecture(arch::Distributed{A, S}) where {A, S} = 
+    Distributed{S}(CPU(),
+                   arch.partition, 
+                   arch.ranks, 
+                   arch.local_rank,
+                   arch.local_index,
+                   arch.connectivity,
+                   arch.communicator,
+                   arch.mpi_requests,
+                   arch.mpi_tag)
+                   
 #####
 ##### Converting between index and MPI rank taking k as the fast index
 #####

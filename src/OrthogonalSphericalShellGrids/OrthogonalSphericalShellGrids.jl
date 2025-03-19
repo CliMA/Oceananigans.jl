@@ -7,7 +7,7 @@ import Oceananigans
 
 using Oceananigans
 using Oceananigans.Grids
-using Oceananigans.Architectures: device, on_architecture, AbstractArchitecture
+using Oceananigans.Architectures: device, AbstractArchitecture
 using Oceananigans.BoundaryConditions
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.Utils
@@ -25,6 +25,8 @@ using Adapt
 using KernelAbstractions: @kernel, @index
 using KernelAbstractions.Extras.LoopInfo: @unroll
 using OffsetArrays
+
+import Oceananigans.Grids: on_architecture
 
 include("generate_tripolar_coordinates.jl")
 include("tripolar_grid.jl")
