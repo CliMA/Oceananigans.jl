@@ -43,11 +43,16 @@ unified_array(::ReactantState, a) = a
 function Oceananigans.Distributed(arch::ReactantState; devices=nothing,
     partition=nothing, kw...)
     if devices === nothing
-        # TODO: Can be made better
-        if Reactant.Distributed.initialized[]
+        devices = Reactant.devices()
+
+        if any(!Reactant.XLA.is_addressable, devices)
+            # This means we are using a distributed environment
+            if !Reactant.Distributed.is_initialized()
+                # Try to setup the distributed environment. This will automatically
+                # fail if not possible
+                Reactant.Distributed.initialize()
+            end
             devices = Reactant.devices()
-        else
-            devices = Reactant.addressable_devices()
         end
     end
 
@@ -68,8 +73,7 @@ function Oceananigans.Distributed(arch::ReactantState; devices=nothing,
                              inconsistent with $(length(devices)) devices"))
     end
 
-    # XXX: Internal API
-    local_rank = Reactant.XLA.global_state.process_id
+    local_rank = Reactant.Distributed.local_rank()
     local_index = Oceananigans.DistributedComputations.rank2index(local_rank, Rx, Ry, Rz)
 
     mesh = Sharding.Mesh(
@@ -77,7 +81,6 @@ function Oceananigans.Distributed(arch::ReactantState; devices=nothing,
         (:x, :y, :z),
     )
 
-    # TODO: have a different field for mesh in Distributed
     return Oceananigans.Distributed{false}(arch, partition, ranks, local_rank, local_index,
         mesh, nothing, nothing, Ref(0), devices)
 end

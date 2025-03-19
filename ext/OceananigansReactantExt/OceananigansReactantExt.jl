@@ -130,6 +130,13 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     return Oceananigans.Grids.ImmersedBoundaryGrid{FT2, TX2, TY2, TZ2, G2, I2, M2, S2, Arch}
 end
 
+@inline Reactant.make_tracer(
+    seen,
+    @nospecialize(prev::Oceananigans.Grids.OrthogonalSphericalShellGrid),
+    args...;
+    kwargs...
+    ) = Reactant.make_tracer_via_immutable_constructor(seen, prev, args...; kwargs...)
+
 # These are additional modules that may need to be Reactantified in the future:
 #
 # include("Utils.jl")
