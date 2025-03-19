@@ -112,7 +112,7 @@ function on_architecture(new_arch::AbstractSerialArchitecture, grid::Distributed
 
     TX, TY, TZ = topology(grid)
 
-    new_distributed_arch = on_architecture(new_arch, old_grid.architecture)
+    new_distributed_arch = on_architecture(new_arch, grid.architecture)
 
     new_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(new_distributed_arch,
                                                         grid.Nx, grid.Ny, grid.Nz,
