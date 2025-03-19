@@ -222,6 +222,7 @@ Conveniently, with this latitude extent that grid covers half the total area of 
 
 Let's try to estimate this area using `Integral` operation.
 We create a Field, we fill it with ones and we integrate it over the whole grid.
+We use a `CenterField` for the example below, but all location combinations work similarly.
 
 
 ```jldoctest operations_avg_int
@@ -248,7 +249,6 @@ set!(c, 1)
 ```
 
 A few remarks: note that the `∫c` has locations `Nothing, Nothing, Center`; this is because we have integrated in the first two dimensions and thus it's `reduced over dims = (1, 2)`.
-`c` was initialized as a `CenterField` but the above also applies to `XFaceField`, `YFaceField` and `ZFaceField`.
 Further note that `∫c` is full of zeros; its max, min, and mean values are all 0.
 No computation has been done yet.
 To compute `∫c`, we call [`compute!`](@ref),
