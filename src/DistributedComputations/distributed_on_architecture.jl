@@ -106,9 +106,9 @@ function on_architecture(new_arch::AbstractSerialArchitecture, grid::Distributed
     grid_spacings = (:Δxᶜᶜᵃ, :Δxᶠᶜᵃ, :Δxᶜᶠᵃ, :Δxᶠᶠᵃ, :Δyᶜᶜᵃ, :Δyᶠᶜᵃ, :Δyᶜᶠᵃ, :Δyᶠᶠᵃ)
     horizontal_areas = (:Azᶜᶜᵃ, :Azᶠᶜᵃ, :Azᶜᶠᵃ, :Azᶠᶠᵃ)
 
-    coordinate_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in coordinates)
-    grid_spacing_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in grid_spacings)
-    horizontal_area_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in horizontal_areas)
+    coordinate_data = Tuple(on_architecture(new_arch, getproperty(grid, name)) for name in coordinates)
+    grid_spacing_data = Tuple(on_architecture(new_arch, getproperty(grid, name)) for name in grid_spacings)
+    horizontal_area_data = Tuple(on_architecture(new_arch, getproperty(grid, name)) for name in horizontal_areas)
 
     TX, TY, TZ = topology(grid)
 
