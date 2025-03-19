@@ -66,11 +66,11 @@ function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     pressure_output = model -> parent(model.pressures.pHY′) .+ parent(model.pressures.pNHS)
     outputs = merge((p=pressure_output,), model.velocities)
 
-    simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                          dir = dir, overwrite_existing = true,
-                                                          filename = @sprintf("forced_fixed_slip_xy_Nx%d_Δt%.1e", Nx, Δt),
-                                                          field_slicer = nothing,
-                                                          schedule = TimeInterval(stop_iteration * Δt / 2))
+    simulation.output_writers[:fields] = JLD2Writer(model, outputs,
+                                                    dir = dir, overwrite_existing = true,
+                                                    filename = @sprintf("forced_fixed_slip_xy_Nx%d_Δt%.1e", Nx, Δt),
+                                                    field_slicer = nothing,
+                                                    schedule = TimeInterval(stop_iteration * Δt / 2))
 
     return simulation
 end
@@ -112,11 +112,11 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     pressure_output = model -> parent(model.pressures.pHY′) .+ parent(model.pressures.pNHS)
     outputs = merge((p=pressure_output,), model.velocities)
 
-    simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                          dir = dir, overwrite_existing = true,
-                                                          filename = @sprintf("forced_fixed_slip_xz_Nx%d_Δt%.1e", Nx, Δt),
-                                                          field_slicer = nothing,
-                                                          schedule = TimeInterval(stop_iteration * Δt / 2))
+    simulation.output_writers[:fields] = JLD2Writer(model, outputs,
+                                                    dir = dir, overwrite_existing = true,
+                                                    filename = @sprintf("forced_fixed_slip_xz_Nx%d_Δt%.1e", Nx, Δt),
+                                                    field_slicer = nothing,
+                                                    schedule = TimeInterval(stop_iteration * Δt / 2))
 
     return simulation
 end
