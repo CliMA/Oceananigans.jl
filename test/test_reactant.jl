@@ -2,6 +2,15 @@ include("reactant_test_utils.jl")
 
 @testset "Reactanigans unit tests" begin
     @info "Performing Reactanigans unit tests..."
+    
+    times = 0:1.0:4
+    t = 2.1
+    times = Reactant.to_rarray(times)
+    ñ, n₁, n₂ = @jit Oceananigans.OutputReaders.find_time_index(times, t)
+    @test ñ == 0.1
+    @test n₁ == 2
+    @test n₂ == 3
+
     arch = ReactantState()
     grid = RectilinearGrid(arch; size=(4, 4, 4), extent=(1, 1, 1))
     c = CenterField(grid)
