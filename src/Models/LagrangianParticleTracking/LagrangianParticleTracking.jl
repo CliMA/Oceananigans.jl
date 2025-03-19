@@ -63,7 +63,7 @@ function LagrangianParticles(; x, y, z, restitution=1.0, dynamics=no_dynamics, p
     (ndims(x) == 1 && ndims(y) == 1 && ndims(z) == 1) ||
         throw(ArgumentError("x, y, z must have dimension 1 but ndims=($(ndims(x)), $(ndims(y)), $(ndims(z)))"))
 
-    particles = StructArray{Particle}((x, y, z, u, v, w))
+    particles = StructArray{Particle}((x, y, z))
 
     return LagrangianParticles(particles; restitution, dynamics, parameters)
 end
