@@ -40,6 +40,7 @@ steps:
       TEST_GROUP: "unit"
       GPU_TEST: "true"
     commands:
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.add([PackageSpec(; name="Reactant", rev="jm/tracedsteprangelen")])'"
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
