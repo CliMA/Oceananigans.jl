@@ -1,6 +1,6 @@
 module OutputReaders
 
-import Reactant.TracedRNumberOverrides.TracedStepRangeLen
+import Reactant.TracedRNumberOverrides: TracedStepRangeLen
 
 @inline function find_time_index(times::TracedStepRangeLen, t)
     n₂ = searchsortedfirst(times, t)
