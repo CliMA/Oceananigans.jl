@@ -32,7 +32,7 @@ include("fetch_output.jl")
 include("windowed_time_average.jl")
 include("output_construction.jl")
 include("jld2_writer.jl")
-include("netcdf_writer.jl")
+# include("netcdf_writer.jl")
 include("checkpointer.jl")
 
 function written_names(filename)
