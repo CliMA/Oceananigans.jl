@@ -2,14 +2,14 @@
     struct ForwardBackwardScheme
 
 A timestepping scheme used for substepping in the split-explicit free surface solver.
-    
+
 The equations are evolved as follows:
 ```math
-\begin{gather}
-η^{m+1} = η^m - Δτ (∂_x U^m + ∂_y V^m), \\
-U^{m+1} = U^m - Δτ (∂_x η^{m+1} - G^U), \\
+\\begin{gather}
+η^{m+1} = η^m - Δτ (∂_x U^m + ∂_y V^m), \\\\
+U^{m+1} = U^m - Δτ (∂_x η^{m+1} - G^U), \\\\
 V^{m+1} = V^m - Δτ (∂_y η^{m+1} - G^V).
-\end{gather}
+\\end{gather}
 ```
 """
 struct ForwardBackwardScheme end
@@ -50,31 +50,31 @@ free surface at time-step `m + 1/2`:
 The equations are evolved as follows:
 
 ```math
-\begin{gather}
-η^{m+1} = η^m - Δτ g H (∂_x Ũ + ∂y Ṽ), \\
-U^{m+1} = U^m - Δτ (∂_x η̃ - G^U), \\
+\\begin{gather}
+η^{m+1} = η^m - Δτ g H (∂_x Ũ + ∂y Ṽ), \\\\
+U^{m+1} = U^m - Δτ (∂_x η̃ - G^U), \\\\
 V^{m+1} = V^m - Δτ (∂_y η̃ - G^V),
-\end{gather}
-```    
+\\end{gather}
+```
 
-where `η̃`, `Ũ` and `Ṽ` are the AB3 time-extrapolated values of free surface, 
+where `η̃`, `Ũ` and `Ṽ` are the AB3 time-extrapolated values of free surface,
 barotropic zonal and meridional velocities, respectively:
 
 ```math
-\begin{gather}
-Ũ = α U^m + θ U^{m-1} + β U^{m-2}, \\
-Ṽ = α V^m + θ V^{m-1} + β V^{m-2}, \\
+\\begin{gather}
+Ũ = α U^m + θ U^{m-1} + β U^{m-2}, \\\\
+Ṽ = α V^m + θ V^{m-1} + β V^{m-2}, \\\\
 η̃ = δ η^{m+1} + μ η^m + γ η^{m-1} + ϵ η^{m-2}.
-\end{gather}
+\\end{gather}
 ```
 
-The default values for the time-extrapolation coefficients, described by [Shchepetkin2005](@citet), 
+The default values for the time-extrapolation coefficients, described by [Shchepetkin2005](@citet),
 correspond to the best stability range for the AB3 algorithm.
 """
-AdamsBashforth3Scheme(; β = 0.281105, α = 1.5 + β, θ = - 0.5 - 2β, γ = 0.088, δ = 0.614, ϵ = 0.013, μ = 1 - δ - γ - ϵ) = 
+AdamsBashforth3Scheme(; β = 0.281105, α = 1.5 + β, θ = - 0.5 - 2β, γ = 0.088, δ = 0.614, ϵ = 0.013, μ = 1 - δ - γ - ϵ) =
         AdamsBashforth3Scheme(nothing, nothing, nothing, nothing, nothing, nothing, nothing, β, α, θ, γ, δ, ϵ, μ)
 
-Adapt.adapt_structure(to, t::AdamsBashforth3Scheme) = 
+Adapt.adapt_structure(to, t::AdamsBashforth3Scheme) =
     AdamsBashforth3Scheme(
         Adapt.adapt(to, t.ηᵐ  ),
         Adapt.adapt(to, t.ηᵐ⁻¹),
@@ -104,7 +104,7 @@ function materialize_timestepper(t::AdamsBashforth3Scheme, grid, free_surface, v
     δ = convert(FT, t.δ)
     ϵ = convert(FT, t.ϵ)
     μ = convert(FT, t.μ)
-    
+
     return AdamsBashforth3Scheme(ηᵐ, ηᵐ⁻¹, ηᵐ⁻², Uᵐ⁻¹, Uᵐ⁻², Vᵐ⁻¹, Vᵐ⁻², β, α, θ, γ, δ, ϵ, μ)
 end
 
