@@ -214,7 +214,7 @@ BinaryOperation at (Center, Center, Center)
 
 ## Averages and integrals
 
-Operations that reduce one or more dimensions of a field are called [`Reductions`](@ref) and some of those include [`Average`](@ref), [`Integral`](@ref), and [`CumulativeIntegral`](@ref).
+An operation that reduces one or more dimensions of a field is called a [`Reduction`](@ref); some reductions include [`Average`](@ref), [`Integral`](@ref), and [`CumulativeIntegral`](@ref).
 
 Let's demonstrate now how we can compute the average or the integral of a field over the grid or over some part of the grid.
 We start by creating a latitude-longitude grid that only goes up to 30 degrees latitude.
