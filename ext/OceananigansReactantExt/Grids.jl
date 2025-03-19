@@ -2,6 +2,7 @@ module Grids
 
 using Reactant
 using Oceananigans
+using Oceananigans: Distributed
 using Oceananigans.Architectures: ReactantState, CPU
 using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, StaticVerticalDiscretization, MutableVerticalDiscretization
 using Oceananigans.Fields: Field
@@ -12,8 +13,14 @@ import Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSph
 import Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
 import Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
-const ReactantGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:ReactantState}
-const ReactantUnderlyingGrid{FT, TX, TY, TZ, CZ} = AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, <:ReactantState}
+const ReactantGrid{FT, TX, TY, TZ} = Union{
+    AbstractGrid{FT, TX, TY, TZ, <:ReactantState},
+    AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:ReactantState}}
+}
+const ReactantUnderlyingGrid{FT, TX, TY, TZ, CZ} = Union{
+    AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, <:ReactantState},
+    AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, <:Distributed{<:ReactantState}},
+}
 
 deconcretize(z::StaticVerticalDiscretization) =
     StaticVerticalDiscretization(
@@ -117,7 +124,6 @@ end
 function ImmersedBoundaryGrid(grid::ReactantUnderlyingGrid, ib::AbstractImmersedBoundary;
                               active_cells_map::Bool=false,
                               active_z_columns::Bool=active_cells_map)
-
     return reactant_immersed_boundary_grid(grid, ib; active_cells_map, active_z_columns)
 end
 
