@@ -1,7 +1,8 @@
+# This mostly exists for future where we will assemble data from multiple workers
+# to construct the grid
 function Oceananigans.TripolarGrid(arch::Oceananigans.Distributed{<:ReactantState},
     FT::DataType=Float64;
     halo=(4, 4, 4), kwargs...)
-    # workers = DistributedComputations.ranks(arch.partition)
     px = ifelse(isnothing(arch.partition.x), 1, arch.partition.x)
     py = ifelse(isnothing(arch.partition.y), 1, arch.partition.y)
 
@@ -62,7 +63,7 @@ function Oceananigans.TripolarGrid(arch::Oceananigans.Distributed{<:ReactantStat
     grid = OrthogonalSphericalShellGrid{Periodic,RightConnected,Bounded}(arch,
         global_size...,
         halo...,
-        convert(FT, global_grid.Lz),
+        Reactant.to_rarray(convert(FT, global_grid.Lz); track_numbers=Number),
         Reactant.to_rarray(λᶜᶜᵃ; sharding),
         Reactant.to_rarray(λᶠᶜᵃ; sharding),
         Reactant.to_rarray(λᶜᶠᵃ; sharding),
@@ -84,7 +85,7 @@ function Oceananigans.TripolarGrid(arch::Oceananigans.Distributed{<:ReactantStat
         Reactant.to_rarray(Azᶠᶜᵃ; sharding),
         Reactant.to_rarray(Azᶜᶠᵃ; sharding),
         Reactant.to_rarray(Azᶠᶠᵃ; sharding),
-        convert(FT, global_grid.radius),
+        Reactant.to_rarray(convert(FT, global_grid.radius); track_numbers=Number),
         global_grid.conformal_mapping)
 
     return grid
