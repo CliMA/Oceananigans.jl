@@ -1,5 +1,7 @@
 module OutputReaders
 
+import Oceananigans.OutputReaders: find_time_index
+
 import Reactant.TracedRNumberOverrides: TracedStepRangeLen
 
 @inline function find_time_index(times::TracedStepRangeLen, t)
