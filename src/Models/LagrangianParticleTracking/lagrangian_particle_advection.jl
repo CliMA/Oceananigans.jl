@@ -123,9 +123,9 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     wp = interpolate(X, velocities.w, (c, c, f), grid)
 
     # Interpolate velocity to particle position
-    u = calculate_particle_velocity(X, particles, up, (f, c, c), grid)
-    v = calculate_particle_velocity(X, particles, vp, (c, f, c), grid)
-    w = calculate_particle_velocity(X, particles, wp, (c, c, f), grid)
+    u = particle_u_velocity(particles, p, up)
+    v = particle_v_velocity(particles, p, vp)
+    w = particle_w_velocity(particles, p, wp)
 
     # Advect particles, calculating the advection metric for a curvilinear grid.
     # Note that all supported grids use length coordinates in the vertical, so we do not
@@ -168,7 +168,9 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     return (x⁺, y⁺, z⁺)
 end
 
-@inline calculate_particle_velocity(X, particles, up, loc, grid) = up
+@inline particle_u_velocity(particles, p, up) = up
+@inline particle_v_velocity(particles, p, vp) = vp
+@inline particle_w_velocity(particles, p, wp) = wp
 
 # Calculate the metric for particle advection according to the coordinate system of the `grid`:
 #     * Unity metric for `RectilinearGrid` / Cartesian coordinates
