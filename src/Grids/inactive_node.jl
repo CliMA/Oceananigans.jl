@@ -4,11 +4,11 @@ const f = Face()
 
 function build_condition(Topo, side, dim) 
     if Topo == :Bounded 
-        return :(($side < 1) | ($side > grid.$dim))
+        return :(($side .< 1) .| ($side .> grid.$dim))
     elseif Topo == :LeftConnected
-        return :(($side > grid.$dim))
+        return :(($side .> grid.$dim))
     else # RightConnected
-        return :(($side < 1))
+        return :(($side .< 1))
     end
 end
 
@@ -55,9 +55,9 @@ for PrimaryTopo in Topos
 
     for SecondaryTopo in Topos
 
-        xycondition = :( $xcondition | $(build_condition(SecondaryTopo, :j, :Ny)))
-        xzcondition = :( $xcondition | $(build_condition(SecondaryTopo, :k, :Nz)))
-        yzcondition = :( $ycondition | $(build_condition(SecondaryTopo, :k, :Nz)))
+        xycondition = :( $xcondition .| $(build_condition(SecondaryTopo, :j, :Ny)))
+        xzcondition = :( $xcondition .| $(build_condition(SecondaryTopo, :k, :Nz)))
+        yzcondition = :( $ycondition .| $(build_condition(SecondaryTopo, :k, :Nz)))
 
         @eval begin
             XYBoundedGrid = AbstractGrid{<:Any, <:$PrimaryTopo, <:$SecondaryTopo}

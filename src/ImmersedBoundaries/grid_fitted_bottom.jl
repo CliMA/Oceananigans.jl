@@ -121,11 +121,20 @@ compute_numerical_bottom_height!(bottom_field, grid, ib) =
     end
 end
 
+using InteractiveUtils
+
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom)
     # We use `rnode` for the `immersed_cell` because we do not want to have
     # wetting or drying that could happen for a moving grid if we use znode
     z  = rnode(i, j, k, underlying_grid, c, c, c)
     zb = @inbounds ib.bottom_height[i, j, 1]
+    if zb isa AbstractArray
+        # @show @which rnode(i, j, k, underlying_grid, c, c, c)
+        zb = Base.repeat(zb, 1, 1, length(k))
+        @show i, j, k
+        @show size(i), size(j), size(k)
+        @show size(z), size(zb)
+    end
     return z .≤ zb
 end
 
