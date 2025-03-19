@@ -247,8 +247,8 @@ set!(c, 1)
     └── max=0.0, min=0.0, mean=0.0
 ```
 
-A few remarks: note that the `∫c` has locations `Nothing, Nothing, Center`; this is because we have integrated in the first two dimensions and thus it's `reduced over dims = (1, 2)`. 
-`c` was initialized as a `CenterField` but the above also applies to `XFaceField`, `YFaceField` and `ZFaceField`. 
+A few remarks: note that the `∫c` has locations `Nothing, Nothing, Center`; this is because we have integrated in the first two dimensions and thus it's `reduced over dims = (1, 2)`.
+`c` was initialized as a `CenterField` but the above also applies to `XFaceField`, `YFaceField` and `ZFaceField`.
 Further note that `∫c` is full of zeros; its max, min, and mean values are all 0.
 No computation has been done yet.
 To compute `∫c`, we call [`compute!`](@ref),
@@ -304,6 +304,21 @@ Now the operand is applied only when the condition is true.
 Let's compute and see if we get 1/4 of the area of the sphere
 
 ```jldoctest operations_avg_int
+compute!(conditional_∫c)
+conditional_∫c[1, 1, 1] ≈ π * grid.radius^2 # area of spherical zone with 0ᵒ ≤ φ ≤ 30ᵒ
+
+# output
+true
+```
+
+Another way to do the above is to provide the `condition` keyword argument with an array of booleans.
+
+```jldoctest operations_avg_int
+cond_array = trues(size(grid))
+@. cond_array[:, 1:5, :] .= false # set half the latitude range to false
+
+conditional_∫c = Field(Integral(c, dims=(1, 2), condition=cond_array))
+
 compute!(conditional_∫c)
 conditional_∫c[1, 1, 1] ≈ π * grid.radius^2 # area of spherical zone with 0ᵒ ≤ φ ≤ 30ᵒ
 
