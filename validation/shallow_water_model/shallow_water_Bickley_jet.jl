@@ -1,4 +1,3 @@
-
 using Oceananigans
 using Oceananigans.Advection: VelocityStencil, VorticityStencil
 using Oceananigans.Models: ShallowWaterModel

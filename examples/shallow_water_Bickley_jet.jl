@@ -129,7 +129,10 @@ using LinearAlgebra: norm
 perturbation_norm(args...) = norm(v)
 
 # Build the `output_writer` for the two-dimensional fields to be output.
-# Output every `t = 1.0`.
+# Output every `t = 1.0`. Note that we need `NCDatasets` to be able to use
+# the `NetCDFWriter`.
+
+using NCDatasets
 
 fields_filename = joinpath(@__DIR__, "shallow_water_Bickley_jet_fields.nc")
 simulation.output_writers[:fields] = NetCDFWriter(model, (; ω, ω′),

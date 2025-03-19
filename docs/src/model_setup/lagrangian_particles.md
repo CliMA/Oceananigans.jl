@@ -110,6 +110,7 @@ When writing to JLD2 you can pass `model.particles` as part of the named tuple o
 
 ```@setup particles
 using Oceananigans
+using NCDatasets
 grid = RectilinearGrid(size=(10, 10, 10), extent=(1, 1, 1))
 Nparticles = 3
 x₀ = zeros(Nparticles)

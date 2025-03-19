@@ -1,4 +1,4 @@
-using Printf
+using Printf: @sprintf
 using JLD2
 using Oceananigans.Utils
 using Oceananigans.Models
@@ -262,7 +262,7 @@ function write_output!(writer::JLD2Writer, model)
         writer.file_splitting(model) && start_next_file(model, writer)
         update_file_splitting_schedule!(writer.file_splitting, writer.filepath)
         # Write output from `data`
-        verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $path..."
+        verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $(writer.filepath)..."
 
         start_time, old_filesize = time_ns(), filesize(writer.filepath)
         jld2output!(writer.filepath, model.clock.iteration, model.clock.time, data, writer.jld2_kw)
