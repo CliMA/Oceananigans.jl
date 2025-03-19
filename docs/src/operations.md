@@ -248,7 +248,7 @@ set!(c, 1)
 ```
 
 A few remarks: note that the `∫c` has locations `Nothing, Nothing, Center`; this is because we have integrated in the first two dimensions and thus it's `reduced over dims = (1, 2)`. 
-`c` was initialised as a `CenterField` but the above also applies to `XFaceField`, `YFaceField` and ZFaceField`. 
+`c` was initialized as a `CenterField` but the above also applies to `XFaceField`, `YFaceField` and `ZFaceField`. 
 Further note that `∫c` is full of zeros; its max, min, and mean values are all 0.
 No computation has been done yet.
 To compute `∫c`, we call [`compute!`](@ref),
