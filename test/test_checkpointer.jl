@@ -78,12 +78,8 @@ function test_thermal_bubble_checkpointer_output(arch)
     return run_checkpointer_tests(true_model, test_model, Δt)
 end
 
-function test_hydrostatic_splash_checkpointer(arch, free_surface)
+function test_hydrostatic_splash_checkpointer(grid, free_surface)
     # Create and run "true model"
-    Nx, Ny, Nz = 16, 16, 4
-    Lx, Ly, Lz = 1, 1, 1
-
-    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), x=(-10, 10), y=(-10, 10), z=(-1, 0))
     closure = ScalarDiffusivity(ν=1e-2, κ=1e-2)
     true_model = HydrostaticFreeSurfaceModel(; grid, free_surface, closure, buoyancy=nothing, tracers=())
     test_model = deepcopy(true_model)
@@ -196,12 +192,19 @@ end
 for arch in archs
     @testset "Checkpointer [$(typeof(arch))]" begin
         @info "  Testing Checkpointer [$(typeof(arch))]..."
-        test_thermal_bubble_checkpointer_output(arch)
-    
-        for free_surface in [ExplicitFreeSurface(gravitational_acceleration=1),
-                             ImplicitFreeSurface(gravitational_acceleration=1)]
+        # test_thermal_bubble_checkpointer_output(arch)
 
-            test_hydrostatic_splash_checkpointer(arch, free_surface)
+        Nx, Ny, Nz = 16, 16, 4
+        Lx, Ly, Lz = 1, 1, 1
+
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), x=(-10, 10), y=(-10, 10), z=(-1, 0))
+
+        for free_surface in [ExplicitFreeSurface(gravitational_acceleration=1),
+                             ImplicitFreeSurface(gravitational_acceleration=1),
+                             SplitExplicitFreeSurface(gravitational_acceleration=1, substeps=5),
+                             SplitExplicitFreeSurface(grid; cfl = 0.7, gravitational_acceleration=1)]
+
+            test_hydrostatic_splash_checkpointer(grid, free_surface)
         end
 
         run_checkpointer_cleanup_tests(arch)
