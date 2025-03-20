@@ -192,11 +192,12 @@ end
 for arch in archs
     @testset "Checkpointer [$(typeof(arch))]" begin
         @info "  Testing Checkpointer [$(typeof(arch))]..."
-        # test_thermal_bubble_checkpointer_output(arch)
 
+        test_thermal_bubble_checkpointer_output(arch)
+
+        # create a grid to test hydrostatic model
         Nx, Ny, Nz = 16, 16, 4
         Lx, Ly, Lz = 1, 1, 1
-
         grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), x=(-10, 10), y=(-10, 10), z=(-1, 0))
 
         for free_surface in [ExplicitFreeSurface(gravitational_acceleration=1),
