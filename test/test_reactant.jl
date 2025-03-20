@@ -7,7 +7,7 @@ include("reactant_test_utils.jl")
     times = 0:1.0:4
     t = 2.1
     times = on_architecture(arch, times)
-    @test times isa TracedStepRangeLen
+    @test times isa Reactant.TracedRNumberOverrides.TracedStepRangeLen
 
     ñ, n₁, n₂ = @jit Oceananigans.OutputReaders.find_time_index(times, t)
     @test ñ ≈ 0.1
