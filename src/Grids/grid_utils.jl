@@ -229,7 +229,7 @@ parent_windowed_indices(::Colon, loc, topo, halo)            = Colon()
 parent_windowed_indices(::Base.OneTo, loc, topo, halo)       = parent_windowed_indices(UnitRange(loc), loc, topo, halo)
 parent_windowed_indices(indices::UnitRange, loc, topo, halo) = UnitRange(1, length(indices))
 
-parent_windowed_indices(indices::Base.OneTo, loc, topo, halo) = parent_windowed_indices(UnitRange(indices), loc, topo, halo)
+index_range_offset(index::UnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
 index_range_offset(index::UnitRange, loc, topo, halo) = index[1] - interior_parent_offset(loc, topo, halo)
 index_range_offset(::Colon, loc, topo, halo)          = - interior_parent_offset(loc, topo, halo)
 
