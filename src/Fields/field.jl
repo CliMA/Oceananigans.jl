@@ -10,6 +10,7 @@ import Oceananigans: boundary_conditions
 import Oceananigans.Architectures: on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc
 import Statistics: mean, mean!
+import LinearAlgebra: dot, norm
 import Base: ==
 
 #####
