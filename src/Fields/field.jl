@@ -3,6 +3,7 @@ using Oceananigans.Grids: parent_index_range, index_range_offset, default_indice
 using Oceananigans.Grids: index_range_contains
 
 using Adapt
+using LinearAlgebra
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 
