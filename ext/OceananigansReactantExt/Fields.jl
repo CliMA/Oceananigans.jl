@@ -4,6 +4,7 @@ using Oceananigans.Architectures: on_architecture, CPU
 using Oceananigans.Fields: Field
 
 import ..OceananigansReactantExt: deconcretize
+import ..Grids: ReactantGrid
 
 deconcretize(field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
     Field{LX, LY, LZ}(field.grid,
