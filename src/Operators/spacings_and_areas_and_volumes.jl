@@ -355,8 +355,6 @@ end
 
 location_code(LX, LY, LZ) = Symbol(interpolation_code(LX), interpolation_code(LY), interpolation_code(LZ))
 
-using InteractiveUtils
-
 for LX in (:Center, :Face, :Nothing)
     for LY in (:Center, :Face, :Nothing)
         for LZ in (:Center, :Face, :Nothing)
