@@ -40,8 +40,6 @@ The operators in this file fall into three categories:
 # Grids that do not have a specific one - dimensional spacing for a given location need to 
 # extend these functions (for example, LatitudeLongitudeGrid).
 
-using InteractiveUtils
-
 # Calling a non existing function (for example Δxᶜᵃᶜ on an OrthogonalSphericalShellGrid) will throw an error because
 # the associated one - dimensional function is not defined. 
 for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
@@ -67,14 +65,6 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
     Δrᵃˡˡ = Symbol(:Δr, :ᵃ, L2, L1)
     
     @eval @inline $Δxˡˡᵃ(i, j, k, grid) = $Δxˡᵃᵃ(i, j, k, grid)
-    #=
-    #@eval begin @inline function $Δxˡˡᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid)
-            @show $Δxˡᵃᵃ
-            @show @which $Δxˡᵃᵃ(i, j, k, grid)
-            $Δxˡᵃᵃ(i, j, k, grid)
-        end
-    end
-    =#
     @eval @inline $Δxˡᵃˡ(i, j, k, grid) = $Δxˡᵃᵃ(i, j, k, grid)
 
     @eval @inline $Δyˡˡᵃ(i, j, k, grid) = $Δyᵃˡᵃ(i, j, k, grid)
@@ -381,9 +371,6 @@ for LX in (:Center, :Face, :Nothing)
 
                 @eval begin
                     @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
-                    @inline function $func(i, j, k::AbstractArray, grid, ::$LX, ::$LY, ::$LZ)
-                        $metric(i, j, k, grid)
-                    end
                 end
             end
 

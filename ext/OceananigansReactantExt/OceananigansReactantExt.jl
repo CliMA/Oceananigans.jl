@@ -13,8 +13,8 @@ using .Utils
 include("Architectures.jl")
 using .Architectures
 
-# include("Grids.jl")
-# using .Grids
+include("Grids.jl")
+using .Grids
 
 include("Fields.jl")
 using .Fields
@@ -145,14 +145,11 @@ function evalcond(c, i, j, k)
 end
 
 @inline function Reactant.TracedUtils.broadcast_to_size(c::Oceananigans.AbstractOperations.ConditionalOperation, rsize)
-    @show sizeof(c), rsize
     if c == rsize
         return Reactant.TracedUtils.materialize_traced_array(c)
     end
     return c
 end
-
-using InteractiveUtils
 
 @inline function Reactant.TracedUtils.materialize_traced_array(c::Oceananigans.AbstractOperations.ConditionalOperation)
     N = ndims(c)
@@ -166,29 +163,15 @@ using InteractiveUtils
         end)...)
     end
     
-    tracedidxs = ntuple(Val(N)) do i
-        Base.OneTo(size(c, i))
-        # Reactant.Ops.iota(Int, collect(size(c)), ; iota_dimension=i)
-        # Reactant.Ops.iota(Int, collect(size(c)), ; iota_dimension=i)
-    end
     tracedidxs = axes(c)
     tracedidxs = axes2
-    @show tracedidxs
 
     conds = Reactant.TracedUtils.materialize_traced_array(Reactant.call_with_reactant(Oceananigans.AbstractOperations.evaluate_condition, c.condition, tracedidxs..., c.grid, c))
-    # conds = Reactant.Ops.fill(false, size(c))
-    # Reactant.TracedRArrayOverrides._copyto!(conds, Base.broadcasted(Fix1v2(evalcond, c), axes2...))
 
     
     tvals = Reactant.Ops.fill(zero(Reactant.unwrapped_eltype(Base.eltype(c))), size(c))
 
-    @show c.operand
     gf =  Reactant.call_with_reactant(getindex, c.operand, axes2...)
-    @show @which  getindex(c.operand, axes2...)
-    @show axes2
-    @show size(gf)
-    @show tvals
-    @show c.func
     Reactant.TracedRArrayOverrides._copyto!(tvals, Base.broadcasted(c.func, gf))
     
     return Reactant.Ops.select(
@@ -220,7 +203,6 @@ end
 end
 
 @inline function Reactant.TracedUtils.broadcast_to_size(c::Oceananigans.AbstractOperations.KernelFunctionOperation, rsize)
-    @show sizeof(c), rsize
     if c == rsize
         return Reactant.TracedUtils.materialize_traced_array(c)
     end
