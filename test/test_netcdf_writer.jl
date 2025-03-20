@@ -2692,6 +2692,7 @@ function test_netcdf_buoyancy_force(arch)
                       RoquetEquationOfState(:Linear),
                       RoquetEquationOfState(:Cabbeling),
                       RoquetEquationOfState(:CabbelingThermobaricity),
+                      RoquetEquationOfState(:Freezing),
                       RoquetEquationOfState(:SecondOrder),
                       RoquetEquationOfState(:SimplestRealistic))
 
@@ -2714,6 +2715,10 @@ function test_netcdf_buoyancy_force(arch)
         # only tests that the writer builds and produces a file at filepath
         @test simulation.output_writers[:b_eos] isa NecCDFWriter
         @test isfile(simulation.output_writers[:b_eos].filepath)
+        @test ds["T"].attrib["long_name"] == "Conservative temperature"
+        @test ds["T"].attrib["units"] == "°C"
+        @test ds["S"].attrib["long_name"] == "Absolute salinity"
+        @test ds["S"].attrib["units"] == "g/kg"
         rm(simulation.output_writers[:b_eos].filepath)
     end
     return nothing
