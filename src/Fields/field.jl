@@ -229,8 +229,6 @@ ZFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center,
 ##### Field utils
 #####
 
-Base.copyto!(a::Field, b::Field) = copyto!(parent(a), parent(b))
-
 # Canonical `similar` for Field (doesn't transfer boundary conditions)
 function Base.similar(f::Field, grid=f.grid)
     loc = location(f)
