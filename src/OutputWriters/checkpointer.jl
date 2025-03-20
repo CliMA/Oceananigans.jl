@@ -5,31 +5,59 @@ using Oceananigans: fields, prognostic_fields
 using Oceananigans.Fields: offset_data
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
 
-import Oceananigans.Fields: set! 
+import Oceananigans.Fields: set!
 
-mutable struct Checkpointer{T, P} <: AbstractOutputWriter
+mutable struct Checkpointer{T} <: AbstractOutputWriter
     schedule :: T
     dir :: String
     prefix :: String
-    properties :: P
     overwrite_existing :: Bool
     verbose :: Bool
     cleanup :: Bool
 end
 
-function default_checkpointed_properties(model)
-    properties = [:grid, :particles, :clock, :timestepper]
-    #if has_ab2_timestepper(model)
-    #    push!(properties, :timestepper)
-    #end
-    return properties
-end
+default_checkpointed_properties(model) = [:grid, :particles, :clock, :timestepper]
 
 has_ab2_timestepper(model) = try
     model.timestepper isa QuasiAdamsBashforth2TimeStepper
 catch
     false
 end
+
+# Certain properties are required for `set!` to pickup from a checkpoint.
+function required_checkpointed_properties(model)
+    properties = [:grid, :particles, :clock]
+
+    if has_ab2_timestepper(model)
+        push!(properties, :timestepper)
+    end
+
+    return properties
+end
+
+function validate_properties(model, properties)
+    required_properties = required_checkpointed_properties(model)
+
+    for rp in required_properties
+        if rp ∉ properties
+            @warn "$rp is required for checkpointing. It will be added to checkpointed properties"
+            push!(properties, rp)
+        end
+    end
+
+    for p in properties
+        p isa Symbol || error("Property $p to be checkpointed must be a Symbol.")
+        p ∉ propertynames(model) && error("Cannot checkpoint $p, it is not a model property!")
+
+        if (p ∉ required_properties) && has_reference(Function, getproperty(model, p))
+            @warn "model.$p contains a function somewhere in its hierarchy and will not be checkpointed."
+            filter!(e -> e != p, properties)
+        end
+    end
+
+    return properties
+end
+
 
 """
     Checkpointer(model;
@@ -79,36 +107,11 @@ function Checkpointer(model; schedule,
                       prefix = "checkpoint",
                       overwrite_existing = false,
                       verbose = false,
-                      cleanup = false,
-                      properties = default_checkpointed_properties(model))
-
-    # Certain properties are required for `set!` to pickup from a checkpoint.
-    required_properties = [:grid, :particles, :clock]
-
-    if has_ab2_timestepper(model)
-        push!(required_properties, :timestepper)
-    end
-
-    for rp in required_properties
-        if rp ∉ properties
-            @warn "$rp is required for checkpointing. It will be added to checkpointed properties"
-            push!(properties, rp)
-        end
-    end
-
-    for p in properties
-        p isa Symbol || error("Property $p to be checkpointed must be a Symbol.")
-        p ∉ propertynames(model) && error("Cannot checkpoint $p, it is not a model property!")
-
-        if (p ∉ required_properties) && has_reference(Function, getproperty(model, p))
-            @warn "model.$p contains a function somewhere in its hierarchy and will not be checkpointed."
-            filter!(e -> e != p, properties)
-        end
-    end
+                      cleanup = false)
 
     mkpath(dir)
 
-    return Checkpointer(schedule, dir, prefix, properties, overwrite_existing, verbose, cleanup)
+    return Checkpointer(schedule, dir, prefix, overwrite_existing, verbose, cleanup)
 end
 
 #####
@@ -177,13 +180,27 @@ end
 function write_output!(c::Checkpointer, model)
     filepath = checkpoint_path(model.clock.iteration, c)
     c.verbose && @info "Checkpointing to file $filepath..."
-    addr = checkpointer_address(model)
 
     t1 = time_ns()
 
-    jldopen(filepath, "w") do file
-        file["$addr/checkpointed_properties"] = c.properties
-        serializeproperties!(file, model, c.properties, addr)
+    write_output!(c, model, filepath, "w")
+
+    t2, sz = time_ns(), filesize(filepath)
+
+    c.verbose && @info "Checkpointing done: time=$(prettytime((t2 - t1) * 1e-9)), size=$(pretty_filesize(sz))"
+
+    c.cleanup && cleanup_checkpoints(c)
+
+    return nothing
+end
+
+function write_output!(c, model, filepath::AbstractString, mode::AbstractString, properties)
+    properties = validate_properties(model, properties)
+    addr = checkpointer_address(model)
+
+    jldopen(filepath, mode) do file
+        file["$addr/checkpointed_properties"] =
+        serializeproperties!(file, model, properties, addr)
         model_fields = prognostic_fields(model)
         field_names = keys(model_fields)
         for name in field_names
@@ -191,13 +208,6 @@ function write_output!(c::Checkpointer, model)
             serializeproperty!(file, full_address, model_fields[name])
         end
     end
-
-    t2, sz = time_ns(), filesize(filepath)
-    c.verbose && @info "Checkpointing done: time=$(prettytime((t2 - t1) * 1e-9)), size=$(pretty_filesize(sz))"
-
-    c.cleanup && cleanup_checkpoints(c)
-
-    return nothing
 end
 
 function cleanup_checkpoints(checkpointer)
@@ -212,13 +222,12 @@ end
 #####
 
 """
-    set!(model, filepath::AbstractString)
+    set!(model::AbstractModel, filepath::AbstractString)
 
 Set data in `model.velocities`, `model.tracers`, `model.timestepper.Gⁿ`, and
 `model.timestepper.G⁻` to checkpointed data stored at `filepath`.
 """
 function set!(model::AbstractModel, filepath::AbstractString)
-
     addr = checkpointer_address(model)
 
     jldopen(filepath, "r") do file
@@ -280,9 +289,8 @@ function set_time_stepper_tendencies!(timestepper, file, model_fields, addr)
     return nothing
 end
 
-# For self-starting timesteppers like RK3 we do nothing 
+# For self-starting timesteppers like RK3 we do nothing
 set_time_stepper!(timestepper, args...) = nothing
 
 set_time_stepper!(timestepper::QuasiAdamsBashforth2TimeStepper, args...) =
     set_time_stepper_tendencies!(timestepper, args...)
-
