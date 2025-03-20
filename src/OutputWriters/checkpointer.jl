@@ -183,7 +183,8 @@ function write_output!(c::Checkpointer, model)
 
     t1 = time_ns()
 
-    write_output!(c, model, filepath, "w")
+    write_output!(c, model, filepath, "w";
+                  properties = default_checkpointed_properties(model))
 
     t2, sz = time_ns(), filesize(filepath)
 
@@ -194,7 +195,7 @@ function write_output!(c::Checkpointer, model)
     return nothing
 end
 
-function write_output!(c, model, filepath::AbstractString, mode::AbstractString, properties)
+function write_output!(c, model, filepath::AbstractString, mode::AbstractString; properties)
     properties = validate_properties(model, properties)
     addr = checkpointer_address(model)
 
