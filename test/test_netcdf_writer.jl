@@ -6,6 +6,8 @@ using TimesDates: TimeDate
 
 using CUDA
 using NCDatasets
+using SeawaterPolynomials.TEOS10
+using SeawaterPolynomials.SecondOrderSeawaterPolynomials
 
 using Oceananigans: Clock
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
@@ -2673,6 +2675,50 @@ function test_netcdf_free_surface_mixed_output(arch)
     return nothing
 end
 
+function test_netcdf_buoyancy_force(arch)
+
+    Nx, Nz = 8, 8
+    Hx, Hz = 2, 3
+    Lx, H  = 2, 1
+
+    grid = RectilinearGrid(arch,
+                           topology = (Periodic, Flat, Bounded),
+                           size = (Nx, Nz),
+                           halo = (Hx, Hz),
+                           x = (-Lx, Lx),
+                           z = (-H, 0))
+
+    Boussinesq_eos = (TEOS10EquationOfState(),
+                        RoquetEquationOfState(:Linear),
+                        RoquetEquationOfState(:Cabbeling),
+                        RoquetEquationOfState(:CabbelingThermobaricity),
+                        RoquetEquationOfState(:SecondOrder),
+                        RoquetEquationOfState(:SimplestRealistic))
+
+    for eos in Boussinesq_eos
+
+        model = NonhydrostaticModel(; grid,
+                                    closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
+                                    buoyancy = SeawaterBuoyancy(equation_of_state=eos),
+                                    tracers = (:T, :S))
+
+        Nt = 7
+        simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+
+        simulation.output_writers[:b_eos] = NetCDFWriter(model, fields(model),
+                                                            filename = eos*"_.nc",
+                                                            schedule = IterationInterval(1),
+                                                            array_type = Array{Float64},
+                                                            include_grid_metrics = true,
+                                                            verbose = true)
+        # only tests that the writer builds and produces a file at filepath
+        @test simulation.output_writers[:b_eos] isa NecCDFWriter
+        @test isfile(simulation.output_writers[:b_eos].filepath)
+        rm(simulation.output_writers[:b_eos].filepath)
+    end
+    return nothing
+end
+
 for arch in archs
     @testset "NetCDF output writer [$(typeof(arch))]" begin
         @info "  Testing NetCDF output writer [$(typeof(arch))]..."
@@ -2718,5 +2764,7 @@ for arch in archs
 
         test_netcdf_free_surface_only_output(arch)
         test_netcdf_free_surface_mixed_output(arch)
+
+        test_netcdf_buoyancy_force(arch)
     end
 end
