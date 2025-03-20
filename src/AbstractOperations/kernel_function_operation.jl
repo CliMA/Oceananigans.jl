@@ -73,8 +73,6 @@ end
 @inline Base.getindex(κ::KernelFunctionOperation, i, j, k) = κ.kernel_function(i, j, k, κ.grid, κ.arguments...)
 using InteractiveUtils
 @inline function  Base.getindex(κ::KernelFunctionOperation, i::AbstractArray, j, k)
-    @show κ.kernel_function
-    @show @which κ.kernel_function(i, j, k, κ.grid, κ.arguments...)
     κ.kernel_function(i, j, k, κ.grid, κ.arguments...)
 end
 indices(κ::KernelFunctionOperation) = construct_regionally(intersect_indices, location(κ), κ.arguments...)

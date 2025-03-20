@@ -13,8 +13,8 @@ using .Utils
 include("Architectures.jl")
 using .Architectures
 
-include("Grids.jl")
-using .Grids
+# include("Grids.jl")
+# using .Grids
 
 include("Fields.jl")
 using .Fields
@@ -131,20 +131,100 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     return Oceananigans.Grids.ImmersedBoundaryGrid{FT2, TX2, TY2, TZ2, G2, I2, M2, S2, Arch}
 end
 
+struct Fix1v2{F,T}
+    f::F
+    t::T
+end
+
+@inline function (s::Fix1v2)(args...)
+    s.f(s.t, args...)
+end
+
 function evalcond(c, i, j, k)
     Oceananigans.AbstractOperations.evaluate_condition(c.condition, i, j, k, c.grid, c)
 end
 
-@inline function Reactant.TracedUtils.materialize_traced_array(c::Oceananigans.AbstractOperations.ConditionalOperation)
-    i = Base.OneTo(size(c, 1))
-    j = Base.OneTo(size(c, 2))
-    k = Base.OneTo(size(c, 3))
+@inline function Reactant.TracedUtils.broadcast_to_size(c::Oceananigans.AbstractOperations.ConditionalOperation, rsize)
+    @show sizeof(c), rsize
+    if c == rsize
+        return Reactant.TracedUtils.materialize_traced_array(c)
+    end
+    return c
+end
 
+using InteractiveUtils
+
+@inline function Reactant.TracedUtils.materialize_traced_array(c::Oceananigans.AbstractOperations.ConditionalOperation)
+    N = ndims(c)
+    axes2 = ntuple(Val(N)) do i
+        reshape(Base.OneTo(size(c, i)), (ntuple(Val(N)) do j
+            if i == j
+                size(c, i)
+            else
+                1
+            end
+        end)...)
+    end
+    
+    tracedidxs = ntuple(Val(N)) do i
+        Base.OneTo(size(c, i))
+        # Reactant.Ops.iota(Int, collect(size(c)), ; iota_dimension=i)
+        # Reactant.Ops.iota(Int, collect(size(c)), ; iota_dimension=i)
+    end
+    tracedidxs = axes(c)
+    tracedidxs = axes2
+    @show tracedidxs
+
+    conds = Reactant.TracedUtils.materialize_traced_array(Reactant.call_with_reactant(Oceananigans.AbstractOperations.evaluate_condition, c.condition, tracedidxs..., c.grid, c))
+    # conds = Reactant.Ops.fill(false, size(c))
+    # Reactant.TracedRArrayOverrides._copyto!(conds, Base.broadcasted(Fix1v2(evalcond, c), axes2...))
+
+    
+    tvals = Reactant.Ops.fill(zero(Reactant.unwrapped_eltype(Base.eltype(c))), size(c))
+
+    @show c.operand
+    gf =  Reactant.call_with_reactant(getindex, c.operand, axes2...)
+    @show @which  getindex(c.operand, axes2...)
+    @show axes2
+    @show size(gf)
+    @show tvals
+    @show c.func
+    Reactant.TracedRArrayOverrides._copyto!(tvals, Base.broadcasted(c.func, gf))
+    
     return Reactant.Ops.select(
-                Reactant.TracedUtils.broadcast_to_size(Base.Fix1(evalcond, c).(i, j, k), size(c)),
-                Reactant.TracedUtils.broadcast_to_size(c.func.(getindex(c.operand, i, j, k)), size(c)),
+                conds,
+                tvals,
                 Reactant.TracedUtils.broadcast_to_size(c.mask, size(c))
     )
+end
+
+function evalkern(kern, i, j, k)
+    kern.kernel_function(i, j, k, kern.grid, kern.arguments...)
+end
+
+@inline function Reactant.TracedUtils.materialize_traced_array(c::Oceananigans.AbstractOperations.KernelFunctionOperation)
+    N = ndims(c)
+    axes2 = ntuple(Val(N)) do i
+        reshape(Base.OneTo(size(c, i)), (ntuple(Val(N)) do j
+            if i == j
+                size(c, i)
+            else
+                1
+            end
+        end)...)
+    end
+    
+    tvals = Reactant.Ops.fill(Reactant.unwrapped_eltype(Base.eltype(c)), size(c))
+    Reactant.TracedRArrayOverrides._copyto!(tvals, Base.broadcasted(Fix1v2(evalkern, c), axes2...))
+    return tvals
+end
+
+@inline function Reactant.TracedUtils.broadcast_to_size(c::Oceananigans.AbstractOperations.KernelFunctionOperation, rsize)
+    @show sizeof(c), rsize
+    if c == rsize
+        return Reactant.TracedUtils.materialize_traced_array(c)
+    end
+    return c
 end
 
 # These are additional modules that may need to be Reactantified in the future:
