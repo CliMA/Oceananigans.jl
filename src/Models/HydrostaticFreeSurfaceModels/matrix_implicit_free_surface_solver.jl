@@ -4,29 +4,13 @@ using Oceananigans.Grids: with_halo
 using Oceananigans.Architectures
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Fields: ReducedField
-using Oceananigans.Solvers: HeptadiagonalIterativeSolver
-
+using Oceananigans.Solvers: HeptadiagonalIterativeSolver, build_preconditioner, update_diag!
 import Oceananigans.Solvers: solve!
 
 """
-    struct MatrixImplicitFreeSurfaceSolver{S, R, T}
-
-The matrix-based implicit free-surface solver.
-
-$(TYPEDFIELDS)
-"""
-struct MatrixImplicitFreeSurfaceSolver{S, R, T}
-    "The matrix iterative solver"
-    matrix_iterative_solver :: S
-    "The right hand side of the free surface evolution equation"
-    right_hand_side :: R
-    storage :: T
-end
-
-"""
-    MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration::Number)
+    MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration)
     
-Return a solver for the elliptic equation with one of the iterative solvers of IterativeSolvers.jl
+Return a framework for solving the elliptic equation with one of the iterative solvers of IterativeSolvers.jl
 with a sparse matrix formulation.
         
 ```math
@@ -37,6 +21,15 @@ representing an implicit time discretization of the linear free surface evolutio
 for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
 step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
 """
+struct MatrixImplicitFreeSurfaceSolver{S, R, F, T}
+    "The matrix iterative solver"
+    matrix_iterative_solver :: S
+    "The right hand side of the free surface evolution equation"
+    right_hand_side :: R
+    previous_Δt :: F
+    storage :: T
+end
+
 function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration::Number)
     
     # Initialize vertically integrated lateral face areas
@@ -60,7 +53,7 @@ function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitati
     coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravitational_acceleration)
     solver = HeptadiagonalIterativeSolver(coeffs; template = right_hand_side, reduced_dim = (false, false, true), grid, settings...)
 
-    return MatrixImplicitFreeSurfaceSolver(solver, right_hand_side, storage)
+    return MatrixImplicitFreeSurfaceSolver(solver, right_hand_side, -1.0, storage)
 end
 
 build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid, settings, gravitational_acceleration) =
@@ -73,9 +66,26 @@ build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid, settings,
 function solve!(η, implicit_free_surface_solver::MatrixImplicitFreeSurfaceSolver, rhs, g, Δt)
     solver  = implicit_free_surface_solver.matrix_iterative_solver
     storage = implicit_free_surface_solver.storage
-    
-    solve!(storage, solver, rhs, Δt)
+    arch = architecture(solver)
+  
+    # update matrix and preconditioner if time step changes
+    if Δt != implicit_free_surface_solver.previous_Δt
+        constructors = deepcopy(solver.matrix_constructors)
+        M = prod(solver.problem_size)
+        update_diag!(constructors, arch, M, M, solver.diagonal, Δt, 0)
+        solver.matrix = arch_sparse_matrix(arch, constructors) 
 
+        unsafe_free!.(constructors)
+
+        solver.preconditioner = build_preconditioner(Val(solver.preconditioner_method),
+                                                            solver.matrix,
+                                                            solver.preconditioner_settings)
+
+        implicit_free_surface_solver.previous_Δt = Δt
+    end
+        
+    solve!(storage, solver, rhs)
+        
     set!(η, reshape(storage, solver.problem_size...))
 
     return nothing
@@ -110,7 +120,7 @@ function compute_matrix_coefficients(vertically_integrated_areas, grid, gravitat
 
     arch = grid.architecture
 
-    Nx, Ny = grid.Nx, grid.Ny
+    Nx, Ny = (grid.Nx, grid.Ny)
 
     C     = on_architecture(arch, zeros(eltype(grid), Nx, Ny, 1))
     diag  = on_architecture(arch, zeros(eltype(grid), Nx, Ny, 1))
