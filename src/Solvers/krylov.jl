@@ -1,23 +1,6 @@
 import Krylov
 import Krylov.FloatOrComplex
 
-using KernelAbstractions: @index, @kernel
-
-function LinearAlgebra.norm(a::AbstractField; condition = nothing)
-    conditional_a = condition_operand(a, condition, 0)
-    result = zeros(a.grid, 1)
-    Base.mapreducedim!(x -> x * x, +, result, conditional_a)
-    return CUDA.@allowscalar sqrt(first(result))
-end
-
-function LinearAlgebra.dot(a::AbstractField, b::AbstractField)
-    conditional_a = condition_operand(a, condition, 0)
-    conditional_b = condition_operand(b, condition, 0)
-    result = zeros(a.grid, 1)
-    Base.mapreducedim!((x, y) -> x * y, +, result, conditional_a, conditional_b)
-    return CUDA.@allowscalar first(result)
-end
-
 struct KrylovField{T, F <: AbstractField} <: AbstractVector{T}
     field::F
 end
