@@ -35,7 +35,7 @@ function required_checkpointed_properties(model)
     return properties
 end
 
-function validate_properties(model, properties)
+function validate_checkpointed_properties(model, properties)
     required_properties = required_checkpointed_properties(model)
 
     for rp in required_properties
@@ -196,7 +196,7 @@ function write_output!(c::Checkpointer, model)
 end
 
 function write_output!(c, model, filepath::AbstractString, mode::AbstractString; properties)
-    properties = validate_properties(model, properties)
+    properties = validate_checkpointed_properties(model, properties)
     addr = checkpointer_address(model)
 
     jldopen(filepath, mode) do file
