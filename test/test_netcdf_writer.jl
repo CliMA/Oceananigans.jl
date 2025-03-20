@@ -2689,11 +2689,11 @@ function test_netcdf_buoyancy_force(arch)
                            z = (-H, 0))
 
     Boussinesq_eos = (TEOS10EquationOfState(),
-                        RoquetEquationOfState(:Linear),
-                        RoquetEquationOfState(:Cabbeling),
-                        RoquetEquationOfState(:CabbelingThermobaricity),
-                        RoquetEquationOfState(:SecondOrder),
-                        RoquetEquationOfState(:SimplestRealistic))
+                      RoquetEquationOfState(:Linear),
+                      RoquetEquationOfState(:Cabbeling),
+                      RoquetEquationOfState(:CabbelingThermobaricity),
+                      RoquetEquationOfState(:SecondOrder),
+                      RoquetEquationOfState(:SimplestRealistic))
 
     for eos in Boussinesq_eos
 
