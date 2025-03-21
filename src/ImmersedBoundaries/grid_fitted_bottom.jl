@@ -128,8 +128,10 @@ end
     zb = @inbounds ib.bottom_height[i, j, 1]
     if k isa AbstractArray
         zb = Base.stack(collect(zb for _ in k))
+        return z .≤ zb
+    else
+        return z ≤ zb
     end
-    return z .≤ zb
 end
 
 #####
