@@ -125,7 +125,7 @@ function KrylovSolver(linear_operator;
     return KrylovSolver(arch, grid, op, workspace, krylov_solver, I, T(abstol), T(reltol), maxiter, maxtime)
 end
 
-function Oceananigans.solve!(x, solver::KrylovSolver, b, args...; kwargs...)
+function solve!(x, solver::KrylovSolver, b, args...; kwargs...)
     Krylov.solve!(solver.workspace, solver.op, KrylovField(b); M=solver.preconditioner,
                   atol=solver.abstol, rtol=solver.reltol, itmax=solver.maxiter, timemax=solver.maxtime, kwargs...)
     copyto!(x, solver.workspace.x.field)
