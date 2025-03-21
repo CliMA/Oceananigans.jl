@@ -13,7 +13,7 @@ function Base.show(io::IO, b::MoistConditionalBuoyancy{FT}) where FT
 end
 
 const c = Center()
-const f = Center()
+const f = Face()
 
 @inline function buoyancy_perturbationᶜᶜᶜ(i, j, k, grid, b::MoistConditionalBuoyancy, tracers)
     Dᵢ = @inbounds tracers.D[i, j, k] 
