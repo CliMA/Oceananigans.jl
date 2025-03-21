@@ -32,75 +32,75 @@ deconcretize(z::StaticVerticalDiscretization) =
 
 # TODO: handle MutableVerticalDiscretization in grid constructors
 deconcretize(z::MutableVerticalDiscretization) = z
-    
-function LatitudeLongitudeGrid(arch::Union{ReactantState, Distributed{<:ReactantState}}, FT::DataType; kw...)
-    cpu_grid = LatitudeLongitudeGrid(CPU(), FT; kw...)
-    other_names = propertynames(cpu_grid)[2:end] # exclude architecture
-    other_properties = Tuple(getproperty(cpu_grid, name) for name in other_names)
-    TX, TY, TZ = Oceananigans.Grids.topology(cpu_grid)
-    return LatitudeLongitudeGrid{TX, TY, TZ}(arch, other_properties...)
-end
 
-function RectilinearGrid(arch::Union{ReactantState, Distributed{<:ReactantState}}, FT::DataType; kw...)
-    cpu_grid = RectilinearGrid(CPU(), FT; kw...)
-    other_names = propertynames(cpu_grid)[2:end] # exclude architecture
-    other_properties = Tuple(getproperty(cpu_grid, name) for name in other_names)
-    TX, TY, TZ = Oceananigans.Grids.topology(cpu_grid)
-    return RectilinearGrid{TX, TY, TZ}(arch, other_properties...)
-end
+# function LatitudeLongitudeGrid(arch::Union{ReactantState, Distributed{<:ReactantState}}, FT::DataType; kw...)
+#     cpu_grid = LatitudeLongitudeGrid(CPU(), FT; kw...)
+#     other_names = propertynames(cpu_grid)[2:end] # exclude architecture
+#     other_properties = Tuple(getproperty(cpu_grid, name) for name in other_names)
+#     TX, TY, TZ = Oceananigans.Grids.topology(cpu_grid)
+#     return LatitudeLongitudeGrid{TX, TY, TZ}(arch, other_properties...)
+# end
 
-function OrthogonalSphericalShellGrid(arch::Union{ReactantState, Distributed{<:ReactantState}}, FT::DataType; kw...)
-    cpu_grid = OrthogonalSphericalShellGrid(CPU(), FT; kw...)
-    other_names = propertynames(cpu_grid)[2:end] # exclude architecture
-    other_properties = Tuple(getproperty(cpu_grid, name) for name in other_names)
-    TX, TY, TZ = Oceananigans.Grids.topology(cpu_grid)
-    return OrthogonalSphericalShellGrid{TX, TY, TZ}(arch, other_properties...)
-end
+# function RectilinearGrid(arch::Union{ReactantState, Distributed{<:ReactantState}}, FT::DataType; kw...)
+#     cpu_grid = RectilinearGrid(CPU(), FT; kw...)
+#     other_names = propertynames(cpu_grid)[2:end] # exclude architecture
+#     other_properties = Tuple(getproperty(cpu_grid, name) for name in other_names)
+#     TX, TY, TZ = Oceananigans.Grids.topology(cpu_grid)
+#     return RectilinearGrid{TX, TY, TZ}(arch, other_properties...)
+# end
 
-# This is a kind of OrthogonalSphericalShellGrid
-function RotatedLatitudeLongitudeGrid(arch::Union{ReactantState, Distributed{<:ReactantState}}, FT::DataType; kw...)
-    cpu_grid = RotatedLatitudeLongitudeGrid(CPU(), FT; kw...)
-    other_names = propertynames(cpu_grid)[2:end] # exclude architecture
-    other_properties = Tuple(getproperty(cpu_grid, name) for name in other_names)
-    TX, TY, TZ = Oceananigans.Grids.topology(cpu_grid)
-    return OrthogonalSphericalShellGrid{TX, TY, TZ}(arch, other_properties...)
-end
+# function OrthogonalSphericalShellGrid(arch::Union{ReactantState, Distributed{<:ReactantState}}, FT::DataType; kw...)
+#     cpu_grid = OrthogonalSphericalShellGrid(CPU(), FT; kw...)
+#     other_names = propertynames(cpu_grid)[2:end] # exclude architecture
+#     other_properties = Tuple(getproperty(cpu_grid, name) for name in other_names)
+#     TX, TY, TZ = Oceananigans.Grids.topology(cpu_grid)
+#     return OrthogonalSphericalShellGrid{TX, TY, TZ}(arch, other_properties...)
+# end
 
-# This low-level constructor supports the external package OrthogonalSphericalShellGrids.jl.
-function OrthogonalSphericalShellGrid{TX, TY, TZ}(arch::Union{ReactantState, Distributed{<:ReactantState}},
-                                                  Nx, Ny, Nz, Hx, Hy, Hz,
-                                                     Lz :: FT,
-                                                   λᶜᶜᵃ :: CC,  λᶠᶜᵃ :: FC,  λᶜᶠᵃ :: CF,  λᶠᶠᵃ :: FF,
-                                                   φᶜᶜᵃ :: CC,  φᶠᶜᵃ :: FC,  φᶜᶠᵃ :: CF,  φᶠᶠᵃ :: FF, z :: Z,
-                                                  Δxᶜᶜᵃ :: CC, Δxᶠᶜᵃ :: FC, Δxᶜᶠᵃ :: CF, Δxᶠᶠᵃ :: FF,
-                                                  Δyᶜᶜᵃ :: CC, Δyᶠᶜᵃ :: FC, Δyᶜᶠᵃ :: CF, Δyᶠᶠᵃ :: FF, 
-                                                  Azᶜᶜᵃ :: CC, Azᶠᶜᵃ :: FC, Azᶜᶠᵃ :: CF, Azᶠᶠᵃ :: FF,
-                                                 radius :: FT,
-                                                  conformal_mapping :: Map) where {TX, TY, TZ, FT, Z, Map,
-                                                                                   CC, FC, CF, FF}
+# # This is a kind of OrthogonalSphericalShellGrid
+# function RotatedLatitudeLongitudeGrid(arch::Union{ReactantState, Distributed{<:ReactantState}}, FT::DataType; kw...)
+#     cpu_grid = RotatedLatitudeLongitudeGrid(CPU(), FT; kw...)
+#     other_names = propertynames(cpu_grid)[2:end] # exclude architecture
+#     other_properties = Tuple(getproperty(cpu_grid, name) for name in other_names)
+#     TX, TY, TZ = Oceananigans.Grids.topology(cpu_grid)
+#     return OrthogonalSphericalShellGrid{TX, TY, TZ}(arch, other_properties...)
+# end
 
-    args1 = (λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
-             φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ)
+# # This low-level constructor supports the external package OrthogonalSphericalShellGrids.jl.
+# function OrthogonalSphericalShellGrid{TX, TY, TZ}(arch::Union{ReactantState, Distributed{<:ReactantState}},
+#                                                   Nx, Ny, Nz, Hx, Hy, Hz,
+#                                                      Lz :: FT,
+#                                                    λᶜᶜᵃ :: CC,  λᶠᶜᵃ :: FC,  λᶜᶠᵃ :: CF,  λᶠᶠᵃ :: FF,
+#                                                    φᶜᶜᵃ :: CC,  φᶠᶜᵃ :: FC,  φᶜᶠᵃ :: CF,  φᶠᶠᵃ :: FF, z :: Z,
+#                                                   Δxᶜᶜᵃ :: CC, Δxᶠᶜᵃ :: FC, Δxᶜᶠᵃ :: CF, Δxᶠᶠᵃ :: FF,
+#                                                   Δyᶜᶜᵃ :: CC, Δyᶠᶜᵃ :: FC, Δyᶜᶠᵃ :: CF, Δyᶠᶠᵃ :: FF, 
+#                                                   Azᶜᶜᵃ :: CC, Azᶠᶜᵃ :: FC, Azᶜᶠᵃ :: CF, Azᶠᶠᵃ :: FF,
+#                                                  radius :: FT,
+#                                                   conformal_mapping :: Map) where {TX, TY, TZ, FT, Z, Map,
+#                                                                                    CC, FC, CF, FF}
 
-    args2 = (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
-             Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
-             Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
+#     args1 = (λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
+#              φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ)
 
-    dargs1 = Tuple(deconcretize(a) for a in args1)
-    dz = deconcretize(z)
-    dargs2 = Tuple(deconcretize(a) for a in args2)
+#     args2 = (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+#              Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
+#              Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
 
-    Arch = typeof(arch)
-    DCC = typeof(dargs1[1]) # deconcretized
-    DFC = typeof(dargs1[2]) # deconcretized
-    DCF = typeof(dargs1[3]) # deconcretized
-    DFF = typeof(dargs1[4]) # deconcretized
-    DZ = typeof(dz) # deconcretized
+#     dargs1 = Tuple(deconcretize(a) for a in args1)
+#     dz = deconcretize(z)
+#     dargs2 = Tuple(deconcretize(a) for a in args2)
 
-    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, DZ, Map,
-                                        DCC, DFC, DCF, DFF, Arch}(arch, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
-                                                                  dargs1..., dz, dargs2..., radius, conformal_mapping)
-end
+#     Arch = typeof(arch)
+#     DCC = typeof(dargs1[1]) # deconcretized
+#     DFC = typeof(dargs1[2]) # deconcretized
+#     DCF = typeof(dargs1[3]) # deconcretized
+#     DFF = typeof(dargs1[4]) # deconcretized
+#     DZ = typeof(dz) # deconcretized
+
+#     return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, DZ, Map,
+#                                         DCC, DFC, DCF, DFF, Arch}(arch, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
+#                                                                   dargs1..., dz, dargs2..., radius, conformal_mapping)
+# end
 
 deconcretize(gfb::GridFittedBottom) = GridFittedBottom(deconcretize(gfb.bottom_height),
                                                        gfb.immersed_condition)
