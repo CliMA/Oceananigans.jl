@@ -26,6 +26,7 @@ deconcretize(z::StaticVerticalDiscretization) =
 # TODO: handle MutableVerticalDiscretization in grid constructors
 deconcretize(z::MutableVerticalDiscretization) = z
     
+#=
 function LatitudeLongitudeGrid(arch::ReactantState, FT::DataType; kw...)
     cpu_grid = LatitudeLongitudeGrid(CPU(), FT; kw...)
     other_names = propertynames(cpu_grid)[2:end] # exclude architecture
@@ -120,6 +121,7 @@ function ImmersedBoundaryGrid(grid::ReactantUnderlyingGrid, ib::AbstractImmersed
 
     return reactant_immersed_boundary_grid(grid, ib; active_cells_map, active_z_columns)
 end
+=#
 
 end # module
 
