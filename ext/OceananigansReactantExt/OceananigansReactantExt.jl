@@ -13,8 +13,8 @@ using .Utils
 include("Architectures.jl")
 using .Architectures
 
-# include("Grids.jl")
-# using .Grids
+include("Grids.jl")
+using .Grids
 
 include("Fields.jl")
 using .Fields
