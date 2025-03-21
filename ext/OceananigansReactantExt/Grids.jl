@@ -33,7 +33,7 @@ deconcretize(z::StaticVerticalDiscretization) =
 # TODO: handle MutableVerticalDiscretization in grid constructors
 deconcretize(z::MutableVerticalDiscretization) = z
     
-function LatitudeLongitudeGrid(arch::ReactantState, FT::DataType; kw...)
+function LatitudeLongitudeGrid(arch::Union{ReactantState, Distributed{<:ReactantState}}, FT::DataType; kw...)
     cpu_grid = LatitudeLongitudeGrid(CPU(), FT; kw...)
     other_names = propertynames(cpu_grid)[2:end] # exclude architecture
     other_properties = Tuple(getproperty(cpu_grid, name) for name in other_names)
@@ -41,7 +41,7 @@ function LatitudeLongitudeGrid(arch::ReactantState, FT::DataType; kw...)
     return LatitudeLongitudeGrid{TX, TY, TZ}(arch, other_properties...)
 end
 
-function RectilinearGrid(arch::ReactantState, FT::DataType; kw...)
+function RectilinearGrid(arch::Union{ReactantState, Distributed{<:ReactantState}}, FT::DataType; kw...)
     cpu_grid = RectilinearGrid(CPU(), FT; kw...)
     other_names = propertynames(cpu_grid)[2:end] # exclude architecture
     other_properties = Tuple(getproperty(cpu_grid, name) for name in other_names)
@@ -49,7 +49,7 @@ function RectilinearGrid(arch::ReactantState, FT::DataType; kw...)
     return RectilinearGrid{TX, TY, TZ}(arch, other_properties...)
 end
 
-function OrthogonalSphericalShellGrid(arch::ReactantState, FT::DataType; kw...)
+function OrthogonalSphericalShellGrid(arch::Union{ReactantState, Distributed{<:ReactantState}}, FT::DataType; kw...)
     cpu_grid = OrthogonalSphericalShellGrid(CPU(), FT; kw...)
     other_names = propertynames(cpu_grid)[2:end] # exclude architecture
     other_properties = Tuple(getproperty(cpu_grid, name) for name in other_names)
@@ -58,7 +58,7 @@ function OrthogonalSphericalShellGrid(arch::ReactantState, FT::DataType; kw...)
 end
 
 # This is a kind of OrthogonalSphericalShellGrid
-function RotatedLatitudeLongitudeGrid(arch::ReactantState, FT::DataType; kw...)
+function RotatedLatitudeLongitudeGrid(arch::Union{ReactantState, Distributed{<:ReactantState}}, FT::DataType; kw...)
     cpu_grid = RotatedLatitudeLongitudeGrid(CPU(), FT; kw...)
     other_names = propertynames(cpu_grid)[2:end] # exclude architecture
     other_properties = Tuple(getproperty(cpu_grid, name) for name in other_names)
@@ -67,7 +67,7 @@ function RotatedLatitudeLongitudeGrid(arch::ReactantState, FT::DataType; kw...)
 end
 
 # This low-level constructor supports the external package OrthogonalSphericalShellGrids.jl.
-function OrthogonalSphericalShellGrid{TX, TY, TZ}(arch::ReactantState,
+function OrthogonalSphericalShellGrid{TX, TY, TZ}(arch::Union{ReactantState, Distributed{<:ReactantState}},
                                                   Nx, Ny, Nz, Hx, Hy, Hz,
                                                      Lz :: FT,
                                                    λᶜᶜᵃ :: CC,  λᶠᶜᵃ :: FC,  λᶜᶠᵃ :: CF,  λᶠᶠᵃ :: FF,
@@ -104,28 +104,6 @@ end
 
 deconcretize(gfb::GridFittedBottom) = GridFittedBottom(deconcretize(gfb.bottom_height),
                                                        gfb.immersed_condition)
-
-function with_cpu_architecture(::CPU, grid::ReactantGrid)
-    other_names = propertynames(grid)[2:end] # exclude architecture
-    other_properties = Tuple(getproperty(grid, name) for name in other_names)
-    TX, TY, TZ = Oceananigans.Grids.topology(grid)
-    GridType = typeof(grid).name.wrapper
-    return GridType{TX, TY, TZ}(CPU(), other_properties...)
-end
-
-function reactant_immersed_boundary_grid(grid, ib; active_cells_map, active_z_columns)
-    cpu_grid = with_cpu_architecture(CPU(), grid)
-    ibg = ImmersedBoundaryGrid(cpu_grid, ib; active_cells_map, active_z_columns)
-    TX, TY, TZ = Oceananigans.Grids.topology(grid)
-    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ibg.immersed_boundary,
-                                            ibg.interior_active_cells, ibg.active_z_columns)
-end
-
-function ImmersedBoundaryGrid(grid::ReactantUnderlyingGrid, ib::AbstractImmersedBoundary;
-                              active_cells_map::Bool=false,
-                              active_z_columns::Bool=active_cells_map)
-    return reactant_immersed_boundary_grid(grid, ib; active_cells_map, active_z_columns)
-end
 
 end # module
 
