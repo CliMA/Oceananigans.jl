@@ -6,7 +6,7 @@ include("reactant_test_utils.jl")
     arch = ReactantState()
     times = 0:1.0:4
     t = 2.1
-    times = on_architecture(arch, times)
+    times = Reactant.to_rarray(times)
     @test times isa Reactant.TracedRNumberOverrides.TracedStepRangeLen
 
     ñ, n₁, n₂ = @jit Oceananigans.OutputReaders.find_time_index(times, t)
