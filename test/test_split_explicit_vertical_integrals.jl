@@ -4,7 +4,7 @@ using Oceananigans.Fields: VelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
-using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: compute_barotropic_mode!,
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: compute_barotropic_velocities!,
                                                                                   barotropic_split_explicit_corrector!,
                                                                                   initialize_free_surface_state!
 
@@ -63,7 +63,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             set!(u, set_u_check)
             exact_U = similar(U)
             set!(exact_U, set_U_check)
-            compute_barotropic_mode!(U, V, grid, u, v, η̅)
+            compute_barotropic_velocities!(U, V, grid, u, v, η̅)
             tolerance = 1e-3
             @test all((Array(interior(U) .- interior(exact_U))) .< tolerance)
 
@@ -72,7 +72,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             set!(v, set_v_check)
             exact_V = similar(V)
             set!(exact_V, set_V_check)
-            compute_barotropic_mode!(U, V, grid, u, v, η̅)
+            compute_barotropic_velocities!(U, V, grid, u, v, η̅)
             @test all((Array(interior(V) .- interior(exact_V))) .< tolerance)
         end
 
@@ -82,12 +82,12 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 
             set!(u, 0)
             set!(U, 1)
-            compute_barotropic_mode!(U, V, grid, u, v, η̅)
+            compute_barotropic_velocities!(U, V, grid, u, v, η̅)
             @test all(Array(interior(U)) .== 0.0)
 
             set!(u, 1)
             set!(U, 1)
-            compute_barotropic_mode!(U, V, grid, u, v, η̅)
+            compute_barotropic_velocities!(U, V, grid, u, v, η̅)
             @test all(Array(interior(U)) .≈ Lz)
 
             set_u_check(x, y, z) = sin(x)
@@ -95,7 +95,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             set!(u, set_u_check)
             exact_U = similar(U)
             set!(exact_U, set_U_check)
-            compute_barotropic_mode!(U, V, grid, u, v, η̅)
+            compute_barotropic_velocities!(U, V, grid, u, v, η̅)
             @test all(Array(interior(U)) .≈ Array(interior(exact_U)))
 
             set_v_check(x, y, z) = sin(x) * z * cos(y)
@@ -103,7 +103,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             set!(v, set_v_check)
             exact_V = similar(V)
             set!(exact_V, set_V_check)
-            compute_barotropic_mode!(U, V, grid, u, v, η̅)
+            compute_barotropic_velocities!(U, V, grid, u, v, η̅)
             @test all(Array(interior(V)) .≈ Array(interior(exact_V)))
         end
 

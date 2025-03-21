@@ -118,9 +118,9 @@ function materialize_timestepper(name::Symbol, args...)
     return materialize_timestepper(TS, args...)
 end
 
-initialize_free_surface_timestepper!(::ForwardBackwardScheme, args...) = nothing
+setup_free_surface_timestepper!(::ForwardBackwardScheme, args...) = nothing
 
-function initialize_free_surface_timestepper!(timestepper::AdamsBashforth3Scheme, η, U, V)
+function setup_free_surface_timestepper!(timestepper::AdamsBashforth3Scheme, η, U, V)
     parent(timestepper.Uᵐ⁻¹) .= parent(U)
     parent(timestepper.Vᵐ⁻¹) .= parent(V)
 
