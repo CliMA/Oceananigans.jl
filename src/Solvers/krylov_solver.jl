@@ -120,7 +120,7 @@ function KrylovSolver(linear_operator;
 
     kf = KrylovField(template_field)
     kc = Krylov.KrylovConstructor(kf)
-    workspace = eval(Krylov.KRYLOV_SOLVERS[krylov_solver])(kc)
+    workspace = Krylov.eval(Krylov.KRYLOV_SOLVERS[krylov_solver])(kc)
 
     return KrylovSolver(arch, grid, op, workspace, krylov_solver, I, T(abstol), T(reltol), maxiter, maxtime)
 end
