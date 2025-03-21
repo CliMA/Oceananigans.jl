@@ -603,9 +603,8 @@ default_tracer_attributes(::BuoyancyForce{<:SeawaterBuoyancy{FT, <:LinearEquatio
     "T" => Dict("long_name" => "Temperature", "units" => "°C"),
     "S" => Dict("long_name" => "Salinity",    "units" => "practical salinity unit (psu)"))
 
-default_tracer_attributes(::BuoyancyBoussinesqEOSModel) = Dict(
-        "T" => Dict("long_name" => "Conservative temperature", "units" => "°C"),
-        "S" => Dict("long_name" => "Absolute salinity",        "units" => "g/kg"))
+default_tracer_attributes(::BuoyancyBoussinesqEOSModel) = Dict("T" => Dict("long_name" => "Conservative temperature", "units" => "°C"),
+                                                               "S" => Dict("long_name" => "Absolute salinity",        "units" => "g/kg"))
 
 function default_output_attributes(model)
     velocity_attrs = default_velocity_attributes(model.grid)
