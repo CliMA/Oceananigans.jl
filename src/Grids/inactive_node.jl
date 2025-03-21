@@ -97,7 +97,7 @@ for PrimaryTopo in Topos
 
         for TertiaryTopo in Topos
             xyzcondition = :( $xycondition | $(build_condition(TertiaryTopo, :k, :Nz, false)))
-            xyzcondition_ar = :( $xyzcondition | $(build_condition(TertiaryTopo, :k, :Nz, true)))
+            xyzcondition_ar = :( $xyzcondition .| $(build_condition(TertiaryTopo, :k, :Nz, true)))
 
             @eval begin
                 XYZBoundedGrid = AbstractGrid{<:Any, <:$PrimaryTopo, <:$SecondaryTopo, <:$TertiaryTopo}
