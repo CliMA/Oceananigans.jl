@@ -127,7 +127,7 @@ function LatitudeLongitudeGrid(arch::Distributed,
                                z,           
                                topology = nothing,           
                                radius = R_Earth,
-                               halo = (1, 1, 1))
+                               halo = (3, 3, 3))
     
     topology, global_sz, halo, latitude, longitude, z, precompute_metrics =
         validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
