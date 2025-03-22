@@ -1,14 +1,14 @@
 using KernelAbstractions: @kernel, @index
 
 struct LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC,
-                             DXFC, DXCF, DXFF, DXCC, DYFC, DYCF, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Z, Arch}
+                             DXFC, DXCF, DXFF, DXCC, DYFC, DYCF, Arch, I} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Z, Arch}
     architecture :: Arch
-    Nx :: Int
-    Ny :: Int
-    Nz :: Int
-    Hx :: Int
-    Hy :: Int
-    Hz :: Int
+    Nx :: I
+    Ny :: I
+    Nz :: I
+    Hx :: I
+    Hy :: I
+    Hz :: I
     Lx :: FT
     Ly :: FT
     Lz :: FT
@@ -39,7 +39,7 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, 
 end
 
 function LatitudeLongitudeGrid{TX, TY, TZ}(architecture::Arch,
-                                           Nλ, Nφ, Nz, Hλ, Hφ, Hz,
+                                           Nλ::I, Nφ::I, Nz::I, Hλ::I, Hφ::I, Hz::I,
                                            Lλ :: FT, Lφ :: FT, Lz :: FT,
                                            Δλᶠᵃᵃ :: DXF, Δλᶜᵃᵃ :: DXC,
                                             λᶠᵃᵃ :: XF,   λᶜᵃᵃ :: XC,
@@ -55,21 +55,21 @@ function LatitudeLongitudeGrid{TX, TY, TZ}(architecture::Arch,
                                                                 DYF, DYC, YF, YC,
                                                                 DXFC, DXCF,
                                                                 DXFF, DXCC,
-                                                                DYFC, DYCF}
+                                                                DYFC, DYCF, I}
 
     return LatitudeLongitudeGrid{FT, TX, TY, TZ, Z,
                                  DXF, DXC, XF, XC,
                                  DYF, DYC, YF, YC,
                                  DXFC, DXCF, DXFF,
-                                 DXCC, DYFC, DYCF, Arch}(architecture,
-                                                         Nλ, Nφ, Nz,
-                                                         Hλ, Hφ, Hz,
-                                                         Lλ, Lφ, Lz,
-                                                         Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
-                                                         Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, z,
-                                                         Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ,
-                                                         Δyᶠᶜᵃ, Δyᶜᶠᵃ,
-                                                         Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, radius)
+                                 DXCC, DYFC, DYCF, Arch, I}(architecture,
+                                                            Nλ, Nφ, Nz,
+                                                            Hλ, Hφ, Hz,
+                                                            Lλ, Lφ, Lz,
+                                                            Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
+                                                            Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, z,
+                                                            Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ,
+                                                            Δyᶠᶜᵃ, Δyᶜᶠᵃ,
+                                                            Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, radius)
 end
 
 const LLG = LatitudeLongitudeGrid
