@@ -43,8 +43,8 @@ function Clock(grid::ReactantGrid)
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
 end
 
-function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt;
-                    callbacks=[], euler=false)
+function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}}, Δt;
+                    callbacks=[], euler=false) where FT
 
     # Note: Δt cannot change
     model.clock.last_Δt = Δt
@@ -67,7 +67,6 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     =#
 
     # If euler, then set χ = -0.5
-    FT = typeof(ab2_timestepper.χ)
     minus_point_five = convert(FT, -0.5)
     ab2_timestepper = model.timestepper
     χ = ifelse(euler, minus_point_five, ab2_timestepper.χ)
