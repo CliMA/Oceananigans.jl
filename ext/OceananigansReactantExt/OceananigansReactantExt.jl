@@ -4,6 +4,11 @@ using Reactant
 using Oceananigans
 using OffsetArrays
 
+using Oceananigans: Distributed, DistributedComputations, ReactantState, CPU,
+                    OrthogonalSphericalShellGrids
+using Oceananigans.Architectures: on_architecture
+using Oceananigans.Grids: Bounded, Periodic, RightConnected
+
 deconcretize(obj) = obj # fallback
 deconcretize(a::OffsetArray) = OffsetArray(Array(a.parent), a.offsets...)
 
@@ -30,6 +35,8 @@ using .Models
 
 include("Simulations/Simulations.jl")
 using .Simulations
+
+include("TripolarGrid.jl")
 
 #####
 ##### Telling Reactant how to construct types
@@ -123,6 +130,13 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     FT2 = eltype(G2)
     return Oceananigans.Grids.ImmersedBoundaryGrid{FT2, TX2, TY2, TZ2, G2, I2, M2, S2, Arch}
 end
+
+@inline Reactant.make_tracer(
+    seen,
+    @nospecialize(prev::Oceananigans.Grids.OrthogonalSphericalShellGrid),
+    args...;
+    kwargs...
+    ) = Reactant.make_tracer_via_immutable_constructor(seen, prev, args...; kwargs...)
 
 # These are additional modules that may need to be Reactantified in the future:
 #

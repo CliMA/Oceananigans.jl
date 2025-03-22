@@ -5,7 +5,7 @@ using ..Architectures: ReactantState
 using Reactant
 using Oceananigans
 
-using Oceananigans: AbstractModel
+using Oceananigans: AbstractModel, Distributed
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Utils: @apply_regionally, apply_regionally!
 using Oceananigans.TimeSteppers:
@@ -24,8 +24,14 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
 import Oceananigans.TimeSteppers: Clock, unit_time, time_step!, ab2_step!
 import Oceananigans: initialize!
 
-const ReactantGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:ReactantState} where {FT, TX, TY, TZ}
-const ReactantModel{TS} = AbstractModel{TS, <:ReactantState} where TS
+const ReactantGrid{FT, TX, TY, TZ} = Union{
+    AbstractGrid{FT, TX, TY, TZ, <:ReactantState},
+    AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:ReactantState}}
+}
+const ReactantModel{TS} = Union{
+    AbstractModel{TS, <:ReactantState},
+    AbstractModel{TS, <:Distributed{<:ReactantState}}
+}
 
 function Clock(grid::ReactantGrid)
     FT = Float64 # may change in the future
