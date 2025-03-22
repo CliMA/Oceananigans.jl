@@ -19,6 +19,7 @@ using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
+using SeawaterPolynomials: BoussinesqEquationOfState
 
 using Oceananigans.OutputWriters:
     auto_extension,
@@ -41,6 +42,8 @@ import Oceananigans.OutputWriters: NetCDFWriter
 
 const c = Center()
 const f = Face()
+const BoussinesqSeawaterBuoyancy = SeawaterBuoyancy{FT, <:BoussinesqEquationOfState, T, S} where {FT, T, S}
+const BuoyancyBoussinesqEOSModel = BuoyancyForce{<:BoussinesqSeawaterBuoyancy, g} where {g}
 
 #####
 ##### Utils
@@ -600,9 +603,8 @@ default_tracer_attributes(::BuoyancyForce{<:SeawaterBuoyancy{FT, <:LinearEquatio
     "T" => Dict("long_name" => "Temperature", "units" => "°C"),
     "S" => Dict("long_name" => "Salinity",    "units" => "practical salinity unit (psu)"))
 
-# Assuming TEOS-10 I guess?
-default_tracer_attributes(::SeawaterBuoyancy) = Dict("T" => Dict("long_name" => "Conservative temperature", "units" => "°C"),
-                                                     "S" => Dict("long_name" => "Absolute salinity",        "units" => "g/kg"))
+default_tracer_attributes(::BuoyancyBoussinesqEOSModel) = Dict("T" => Dict("long_name" => "Conservative temperature", "units" => "°C"),
+                                                               "S" => Dict("long_name" => "Absolute salinity",        "units" => "g/kg"))
 
 function default_output_attributes(model)
     velocity_attrs = default_velocity_attributes(model.grid)
