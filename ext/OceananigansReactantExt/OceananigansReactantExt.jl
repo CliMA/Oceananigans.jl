@@ -38,6 +38,9 @@ using .Simulations
 
 include("TripolarGrid.jl")
 
+include("OutputReaders.jl")
+using .OutputReaders
+
 #####
 ##### Telling Reactant how to construct types
 #####
