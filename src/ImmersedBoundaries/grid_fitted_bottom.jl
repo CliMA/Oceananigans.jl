@@ -129,6 +129,15 @@ end
     return z ≤ zb
 end
 
+@inline function _immersed_cell(i, j, k::AbstractArray, underlying_grid, ib::GridFittedBottom)
+    # We use `rnode` for the `immersed_cell` because we do not want to have
+    # wetting or drying that could happen for a moving grid if we use znode
+    z  = rnode(i, j, k, underlying_grid, c, c, c)
+    zb = @inbounds ib.bottom_height[i, j, 1]
+    zb = Base.stack(collect(zb for _ in k))
+    return z .≤ zb
+end
+
 #####
 ##### Static column depth
 #####

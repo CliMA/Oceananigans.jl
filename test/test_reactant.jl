@@ -2,7 +2,18 @@ include("reactant_test_utils.jl")
 
 @testset "Reactanigans unit tests" begin
     @info "Performing Reactanigans unit tests..."
+    
     arch = ReactantState()
+    times = 0:1.0:4
+    t = 2.1
+    times = Reactant.to_rarray(times)
+    @test times isa Reactant.TracedRNumberOverrides.TracedStepRangeLen
+
+    ñ, n₁, n₂ = @jit Oceananigans.OutputReaders.find_time_index(times, t)
+    @test ñ ≈ 0.1
+    @test n₁ == 3 # eg times = [0 1 2 ⟨⟨2.1⟩⟩ 3]
+    @test n₂ == 4 
+
     grid = RectilinearGrid(arch; size=(4, 4, 4), extent=(1, 1, 1))
     c = CenterField(grid)
     @test parent(c) isa Reactant.ConcreteRArray
