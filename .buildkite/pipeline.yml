@@ -1,5 +1,5 @@
 env:
-  JULIA_VERSION: "1.10.8"
+  JULIA_VERSION: "1.10.9"
   JULIA_MINOR_VERSION: "1.10"
   TARTARUS_HOME: "/storage5/buildkite-agent"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
@@ -209,7 +209,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init"
 
@@ -224,7 +224,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init"
 
@@ -337,7 +337,7 @@ steps:
 ##### Turbulence Closures
 #####
 
-            
+
   - label: "🎣 gpu turbulence closures"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
@@ -683,7 +683,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init"
 
@@ -699,7 +699,7 @@ steps:
       architecture: CPU
     retry:
       automatic:
-        - exit_status: 1      
+        - exit_status: 1
           limit: 1
     depends_on: "init"
 
