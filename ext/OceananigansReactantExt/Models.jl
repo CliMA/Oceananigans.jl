@@ -21,7 +21,7 @@ const ReactantHFSM{TS, E} = Union{
 initialization_update_state!(::ReactantModel; kw...) = nothing
 
 # We may need this but not sure:
-# maybe_extend_halos(TX, TY, grid::ReactantGrid, ::FixedSubstepNumber) = grid
+maybe_extend_halos(TX, TY, grid::ReactantGrid, ::FixedSubstepNumber) = grid
 
 initialize_immersed_boundary_grid!(grid) = nothing
 
