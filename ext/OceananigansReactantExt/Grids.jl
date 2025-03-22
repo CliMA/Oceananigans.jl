@@ -11,12 +11,18 @@ using Oceananigans.ImmersedBoundaries: GridFittedBottom, AbstractImmersedBoundar
 import ..OceananigansReactantExt: deconcretize
 import Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSphericalShellGrid
 import Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
-import Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+import Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, materialize_immersed_boundary
 
 const ReactantGrid{FT, TX, TY, TZ} = Union{
     AbstractGrid{FT, TX, TY, TZ, <:ReactantState},
     AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:ReactantState}}
 }
+
+const ReactantImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S} = Union{
+    ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, <:ReactantState},
+    ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, <:Distributed{<:ReactantState}},
+}
+
 const ReactantUnderlyingGrid{FT, TX, TY, TZ, CZ} = Union{
     AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, <:ReactantState},
     AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, <:Distributed{<:ReactantState}},
@@ -102,8 +108,14 @@ deconcretize(z::MutableVerticalDiscretization) = z
 #                                                                   dargs1..., dz, dargs2..., radius, conformal_mapping)
 # end
 
+function materialize_immersed_boundary(grid::ReactantGrid, ib::GridFittedBottom)
+    bottom_field = Field{Center, Center, Nothing}(grid)
+    set!(bottom_field, ib.bottom_height)
+    new_ib = GridFittedBottom(bottom_field)
+    return new_ib
+end
+
 deconcretize(gfb::GridFittedBottom) = GridFittedBottom(deconcretize(gfb.bottom_height),
                                                        gfb.immersed_condition)
-
 end # module
 

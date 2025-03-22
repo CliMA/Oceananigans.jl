@@ -13,7 +13,6 @@ const ReactantKernelAbstractionsExt = Base.get_extension(
 )
 
 const ReactantBackend = ReactantKernelAbstractionsExt.ReactantBackend
-
 const AnyConcreteReactantArray = Union{Reactant.AnyConcretePJRTArray,Reactant.AnyConcreteIFRTArray}
 
 device(::ReactantState) = ReactantBackend()
@@ -30,6 +29,7 @@ on_architecture(::CPU, a::SubArray{<:Any,<:Any,<:AnyConcreteReactantArray}) = Ar
 
 const ArraysToRArray = Union{Array,
     Reactant.AnyConcretePJRTArray,
+    # Reactant.AnyConcreteIFRTArray, # needed?
     BitArray,
     SubArray{<:Any,<:Any,<:Array}}
 

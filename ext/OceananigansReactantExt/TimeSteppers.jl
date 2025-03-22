@@ -67,7 +67,8 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     =#
 
     # If euler, then set χ = -0.5
-    minus_point_five = convert(eltype(model.grid), -0.5)
+    FT = typeof(ab2_timestepper.χ)
+    minus_point_five = convert(FT, -0.5)
     ab2_timestepper = model.timestepper
     χ = ifelse(euler, minus_point_five, ab2_timestepper.χ)
     χ₀ = ab2_timestepper.χ # Save initial value
