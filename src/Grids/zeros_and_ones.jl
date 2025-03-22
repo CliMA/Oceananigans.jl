@@ -4,7 +4,9 @@ using Oceananigans.Architectures: device, AbstractArchitecture
 import KernelAbstractions
 import Base: zeros
 
-zeros(arch::AbstractArchitecture, FT, N...) = KernelAbstractions.zeros(device(arch), FT, N...)
+unwrapped_eltype(::Type{T}) where {T} = T
+
+zeros(arch::AbstractArchitecture, FT, N...) = KernelAbstractions.zeros(device(arch), unwrapped_eltype(FT), N...)
 zeros(grid::AbstractGrid, N...) = zeros(architecture(grid), eltype(grid), N...)
 
 @inline Base.zero(grid::AbstractGrid) = zero(eltype(grid))

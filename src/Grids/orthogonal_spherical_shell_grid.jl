@@ -300,13 +300,13 @@ function Adapt.adapt_structure(to, grid::OrthogonalSphericalShellGrid)
         nothing,
         grid.Nx, grid.Ny, grid.Nz,
         grid.Hx, grid.Hy, grid.Hz,
-        grid.Lz,
+        adapt(to, grid.Lz),
         adapt(to,  grid.λᶜᶜᵃ), adapt(to,  grid.λᶠᶜᵃ), adapt(to,  grid.λᶜᶠᵃ), adapt(to,  grid.λᶠᶠᵃ),
         adapt(to,  grid.φᶜᶜᵃ), adapt(to,  grid.φᶠᶜᵃ), adapt(to,  grid.φᶜᶠᵃ), adapt(to,  grid.φᶠᶠᵃ), adapt(to, grid.z),
         adapt(to, grid.Δxᶜᶜᵃ), adapt(to, grid.Δxᶠᶜᵃ), adapt(to, grid.Δxᶜᶠᵃ), adapt(to, grid.Δxᶠᶠᵃ),
         adapt(to, grid.Δyᶜᶜᵃ), adapt(to, grid.Δyᶠᶜᵃ), adapt(to, grid.Δyᶜᶠᵃ), adapt(to, grid.Δyᶠᶠᵃ),
         adapt(to, grid.Azᶜᶜᵃ), adapt(to, grid.Azᶠᶜᵃ), adapt(to, grid.Azᶜᶠᵃ), adapt(to, grid.Azᶠᶠᵃ),
-        grid.radius, adapt(to, grid.conformal_mapping))
+        adapt(to, grid.radius), adapt(to, grid.conformal_mapping))
 end
 
 function Base.summary(grid::OrthogonalSphericalShellGrid)

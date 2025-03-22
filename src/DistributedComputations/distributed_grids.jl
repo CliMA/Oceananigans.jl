@@ -11,7 +11,7 @@ using Oceananigans.Fields
 
 import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, with_halo
 
-const DistributedGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:Distributed}
+const DistributedGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:Union{CPU, GPU}}}
 
 const DistributedRectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY} =
     RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, <:Distributed} where {FT, TX, TY, TZ, CZ, FX, FY, VX, VY}

@@ -4,6 +4,11 @@ using Reactant
 using Oceananigans
 using OffsetArrays
 
+using Oceananigans: Distributed, DistributedComputations, ReactantState, CPU,
+                    OrthogonalSphericalShellGrids
+using Oceananigans.Architectures: on_architecture
+using Oceananigans.Grids: Bounded, Periodic, RightConnected
+
 deconcretize(obj) = obj # fallback
 deconcretize(a::OffsetArray) = OffsetArray(Array(a.parent), a.offsets...)
 
@@ -30,6 +35,8 @@ using .Models
 
 include("Simulations/Simulations.jl")
 using .Simulations
+
+include("TripolarGrid.jl")
 
 include("OutputReaders.jl")
 using .OutputReaders

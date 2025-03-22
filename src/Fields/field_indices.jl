@@ -35,14 +35,22 @@ compute_index_intersection(to_idx::Colon, from_idx::Colon, args...) = Colon()
 # Because `from_idx` imposes no restrictions, we just return `to_idx`.
 compute_index_intersection(to_idx::UnitRange, from_idx::Colon, args...) = to_idx
 
+compute_index_intersection(to_idx::Base.OneTo, from_idx::Colon, args...) = compute_index_intersection(UnitRange(to_idx), from_idx, args...)
+
 # In case of no locations specified, Because `to_idx` imposes no restrictions, we just return `from_idx`.
 compute_index_intersection(to_idx::Colon, from_idx::UnitRange) = from_idx
+
+compute_index_intersection(to_idx::Colon, from_idx::Base.OneTo) = compute_index_intersection(to_idx, UnitRange(from_idx))
 
 # This time we account for the possible range-reducing effect of interpolation on `from_idx`.
 function compute_index_intersection(to_idx::Colon, from_idx::UnitRange, to_loc, from_loc)
     shifted_idx = restrict_index_on_location(from_idx, from_loc, to_loc)
     validate_shifted_index(shifted_idx)
     return shifted_idx
+end
+
+function compute_index_intersection(to_idx::Colon, from_idx::Base.OneTo, to_loc, from_loc)
+    return compute_index_intersection(to_idx, UnitRange(from_idx), to_loc, from_loc)
 end
 
 # Compute the intersection of two index ranges
@@ -59,6 +67,10 @@ function compute_index_intersection(to_idx::UnitRange, from_idx::UnitRange, to_l
     return range_intersection
 end
 
+function compute_index_intersection(to_idx::Base.OneTo, from_idx::Base.OneTo, to_loc, from_loc)
+    return compute_index_intersection(UnitRange(to_idx), UnitRange(from_idx), to_loc, from_loc)
+end
+
 # Compute the intersection of two index ranges where the location is the same
 function compute_index_intersection(to_idx::UnitRange, from_idx::UnitRange)
     range_intersection = UnitRange(max(first(from_idx), first(to_idx)), 
@@ -70,6 +82,8 @@ function compute_index_intersection(to_idx::UnitRange, from_idx::UnitRange)
 
     return range_intersection
 end
+
+compute_index_intersection(to_idx::Base.OneTo, from_idx::Base.OneTo) = compute_index_intersection(UnitRange(to_idx), UnitRange(from_idx))
 
 validate_shifted_index(shifted_idx) = first(shifted_idx) > last(shifted_idx) &&
     throw(ArgumentError("Cannot compute index intersection for indices $(from_idx) interpolating from $(from_loc) to $(to_loc)!"))

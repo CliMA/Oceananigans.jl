@@ -42,9 +42,11 @@ end
 
 @inline offset_compute_index(::Colon, i) = i
 @inline offset_compute_index(range::UnitRange, i) = range[1] + i - 1
+@inline offset_compute_index(range::Base.OneTo, i) = offset_compute_index(UnitRange(range), i)
 
 @inline offset_index(::Colon) = 0
 @inline offset_index(range::UnitRange) = range[1] - 1
+@inline offset_index(range::Base.OneTo) = offset_index(UnitRange(range))
 
 @kernel function _broadcast_kernel!(dest, bc)
     i, j, k = @index(Global, NTuple)
