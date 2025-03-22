@@ -229,7 +229,6 @@ end
 
 @inline Δxᶜᶜᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δxᶜᶜᵃ[i, j]
 
-
 @inline Δxᶜᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::OSSG) = Base.stack(collect(Δxᶜᶜᵃ(i, j, 1, grid) for _ in k))
 
 @inline Δxᶠᶜᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δxᶠᶜᵃ[i, j]
