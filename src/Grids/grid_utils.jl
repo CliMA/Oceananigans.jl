@@ -203,10 +203,10 @@ parent_index_range(view_indices::AbstractUnitRange, loc, topo, halo) = view_indi
 # Return the index range of parent arrays that are themselves windowed
 parent_index_range(::Colon, args...) = parent_index_range(args...)
 
-parent_index_range(parent_indices::UnitRange, ::Colon, args...) =
+parent_index_range(parent_indices::AbstractUnitRange, ::Colon, args...) =
     parent_index_range(parent_indices, parent_indices, args...)
 
-function parent_index_range(parent_indices::UnitRange, view_indices, args...)
+function parent_index_range(parent_indices::AbstractUnitRange, view_indices, args...)
     start = first(view_indices) - first(parent_indices) + 1
     stop = start + length(view_indices) - 1
     return UnitRange(start, stop)
