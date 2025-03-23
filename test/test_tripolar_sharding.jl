@@ -7,7 +7,7 @@ include("distributed_tripolar_test_utils.jl")
 # the sharding is performed correctly.
 
 # We are running on 8 "fake" CPUs
-ENV["XLA_FLAGS"] = "--xla_force_host_platform_device_count=4"
+ENV["XLA_FLAGS"] = "--xla_force_host_platform_device_count=8"
 
 @testset "Sharded tripolar grid and fields" begin
     child_arch = ReactantState()
