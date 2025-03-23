@@ -1,7 +1,7 @@
 using Test
 
 include("reactant_test_utils.jl")
-include("distributed_tripolar_test_utils.jl")
+include("distributed_tripolar_tests_utils.jl")
 
 # Here, we reuse the tests performed in `test_distributed_tripolar.jl`, to check that
 # the sharding is performed correctly.
