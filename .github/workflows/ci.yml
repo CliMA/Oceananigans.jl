@@ -49,7 +49,7 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         env:
-          
+          REACTANT_TEST: true
           TEST_GROUP: "distributed_tripolar"
 
   distributed_tripolar:
