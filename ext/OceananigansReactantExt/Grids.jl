@@ -117,6 +117,8 @@ end
 
 deconcretize(gfb::GridFittedBottom) = GridFittedBottom(deconcretize(gfb.bottom_height),
                                                        gfb.immersed_condition)
+
+#=
 function with_cpu_architecture(::CPU, grid::ReactantGrid)
     other_names = propertynames(grid)[2:end] # exclude architecture
     other_properties = Tuple(getproperty(grid, name) for name in other_names)
@@ -139,6 +141,7 @@ function ImmersedBoundaryGrid(grid::ReactantUnderlyingGrid, ib::AbstractImmersed
 
     return reactant_immersed_boundary_grid(grid, ib; active_cells_map, active_z_columns)
 end
+=#
 
 end # module
 
