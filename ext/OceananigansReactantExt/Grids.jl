@@ -108,37 +108,37 @@ deconcretize(z::MutableVerticalDiscretization) = z
 #                                                                   dargs1..., dz, dargs2..., radius, conformal_mapping)
 # end
 
-function materialize_immersed_boundary(grid::ReactantGrid, ib::GridFittedBottom)
-    bottom_field = Field{Center, Center, Nothing}(grid)
-    set!(bottom_field, ib.bottom_height)
-    new_ib = GridFittedBottom(bottom_field)
-    return new_ib
-end
+# function materialize_immersed_boundary(grid::ReactantGrid, ib::GridFittedBottom)
+#     bottom_field = Field{Center, Center, Nothing}(grid)
+#     set!(bottom_field, ib.bottom_height)
+#     new_ib = GridFittedBottom(bottom_field)
+#     return new_ib
+# end
 
-deconcretize(gfb::GridFittedBottom) = GridFittedBottom(deconcretize(gfb.bottom_height),
-                                                       gfb.immersed_condition)
-function with_cpu_architecture(::CPU, grid::ReactantGrid)
-    other_names = propertynames(grid)[2:end] # exclude architecture
-    other_properties = Tuple(getproperty(grid, name) for name in other_names)
-    TX, TY, TZ = Oceananigans.Grids.topology(grid)
-    GridType = typeof(grid).name.wrapper
-    return GridType{TX, TY, TZ}(CPU(), other_properties...)
-end
+# deconcretize(gfb::GridFittedBottom) = GridFittedBottom(deconcretize(gfb.bottom_height),
+#                                                        gfb.immersed_condition)
+# function with_cpu_architecture(::CPU, grid::ReactantGrid)
+#     other_names = propertynames(grid)[2:end] # exclude architecture
+#     other_properties = Tuple(getproperty(grid, name) for name in other_names)
+#     TX, TY, TZ = Oceananigans.Grids.topology(grid)
+#     GridType = typeof(grid).name.wrapper
+#     return GridType{TX, TY, TZ}(CPU(), other_properties...)
+# end
 
-function reactant_immersed_boundary_grid(grid, ib; active_cells_map, active_z_columns)
-    cpu_grid = with_cpu_architecture(CPU(), grid)
-    ibg = ImmersedBoundaryGrid(cpu_grid, ib; active_cells_map, active_z_columns)
-    TX, TY, TZ = Oceananigans.Grids.topology(grid)
-    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ibg.immersed_boundary,
-                                            ibg.interior_active_cells, ibg.active_z_columns)
-end
+# function reactant_immersed_boundary_grid(grid, ib; active_cells_map, active_z_columns)
+#     cpu_grid = with_cpu_architecture(CPU(), grid)
+#     ibg = ImmersedBoundaryGrid(cpu_grid, ib; active_cells_map, active_z_columns)
+#     TX, TY, TZ = Oceananigans.Grids.topology(grid)
+#     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ibg.immersed_boundary,
+#                                             ibg.interior_active_cells, ibg.active_z_columns)
+# end
 
-function ImmersedBoundaryGrid(grid::ReactantUnderlyingGrid, ib::AbstractImmersedBoundary;
-                              active_cells_map::Bool=false,
-                              active_z_columns::Bool=active_cells_map)
+# function ImmersedBoundaryGrid(grid::ReactantUnderlyingGrid, ib::AbstractImmersedBoundary;
+#                               active_cells_map::Bool=false,
+#                               active_z_columns::Bool=active_cells_map)
 
-    return reactant_immersed_boundary_grid(grid, ib; active_cells_map, active_z_columns)
-end
+#     return reactant_immersed_boundary_grid(grid, ib; active_cells_map, active_z_columns)
+# end
 
 end # module
 
