@@ -93,13 +93,13 @@ end
 
 # https://github.com/CliMA/Oceananigans.jl/blob/d9b3b142d8252e8e11382d1b3118ac2a092b38a2/src/Grids/orthogonal_spherical_shell_grid.jl#L14
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-    @nospecialize(OA::Type{Oceananigans.Grids.OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch}}),
+    @nospecialize(OA::Type{Oceananigans.Grids.OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, rFT}}),
     seen,
     mode::Reactant.TraceMode,
     @nospecialize(track_numbers::Type),
     @nospecialize(sharding),
     @nospecialize(runtime)
-) where {FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch}
+) where {FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, rFT}
     FT2 = Reactant.traced_type_inner(FT, seen, mode, track_numbers, sharding, runtime)
     TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
     TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
@@ -111,7 +111,8 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     CF2 = Reactant.traced_type_inner(CF, seen, mode, track_numbers, sharding, runtime)
     FF2 = Reactant.traced_type_inner(FF, seen, mode, track_numbers, sharding, runtime)
     FT2 = Base.promote_type(Base.promote_type(Base.promote_type(Base.promote_type(FT2, eltype(CC2)), eltype(FC2)), eltype(CF2)), eltype(FF2))
-    return Oceananigans.Grids.OrthogonalSphericalShellGrid{FT2, TX2, TY2, TZ2, Z2, Map2, CC2, FC2, CF2, FF2, Arch}
+    rFT2 = Reactant.traced_type_inner(rFT, seen, mode, track_numbers, sharding, runtime)
+    return Oceananigans.Grids.OrthogonalSphericalShellGrid{FT2, TX2, TY2, TZ2, Z2, Map2, CC2, FC2, CF2, FF2, Arch, rFT2}
 end
 
 @inline Reactant.make_tracer(
