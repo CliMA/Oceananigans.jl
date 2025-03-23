@@ -339,7 +339,7 @@ cpu_architecture(arch::Distributed{A, S}) where {A, S} =
                    arch.communicator,
                    arch.mpi_requests,
                    arch.mpi_tag,
-                   arch.devices)
+                   nothing) # No devices on the CPU
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index
