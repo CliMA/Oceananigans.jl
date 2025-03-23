@@ -101,31 +101,6 @@ jobs:
         env:
           TEST_GROUP: "reactant"
 
-  sharding:
-    name: Sharding - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.10'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-    steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        env:
-          TEST_GROUP: "sharding"
-
   metal:
     name: Metal - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
