@@ -6,8 +6,8 @@ using TimesDates: TimeDate
 
 using CUDA
 using NCDatasets
-using SeawaterPolynomials.TEOS10
-using SeawaterPolynomials.SecondOrderSeawaterPolynomials
+using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
+using SeawaterPolynomials.SecondOrderSeawaterPolynomials: RoquetEquationOfState
 
 using Oceananigans: Clock
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
@@ -2707,12 +2707,12 @@ function test_netcdf_buoyancy_force(arch)
         simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
 
         simulation.output_writers[:b_eos] = NetCDFWriter(model, fields(model),
-                                                            filename = eos*"_.nc",
-                                                            schedule = IterationInterval(1),
-                                                            array_type = Array{Float64},
-                                                            include_grid_metrics = true,
-                                                            verbose = true)
-        # only tests that the writer builds and produces a file at filepath
+                                                         filename = string(eos)*"_.nc",
+                                                         schedule = IterationInterval(1),
+                                                         array_type = Array{Float64},
+                                                         include_grid_metrics = true,
+                                                         verbose = true)
+        # only tests that the writer builds, produces a file at filepath and sets attributes
         @test simulation.output_writers[:b_eos] isa NecCDFWriter
         @test isfile(simulation.output_writers[:b_eos].filepath)
         @test ds["T"].attrib["long_name"] == "Conservative temperature"
