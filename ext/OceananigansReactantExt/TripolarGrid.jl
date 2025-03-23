@@ -3,24 +3,6 @@
 function Oceananigans.TripolarGrid(arch::Oceananigans.Distributed{<:ReactantState},
     FT::DataType=Float64;
     halo=(4, 4, 4), kwargs...)
-    px = ifelse(isnothing(arch.partition.x), 1, arch.partition.x)
-    py = ifelse(isnothing(arch.partition.y), 1, arch.partition.y)
-
-    # Check that partitioning in x is correct:
-    try
-        if isodd(px) && (px != 1)
-            throw(ArgumentError("Only even partitioning in x is supported with the TripolarGrid"))
-        end
-    catch
-        throw(ArgumentError("The x partition $(px) is not supported. The partition in x must be an even number. "))
-    end
-
-    # a slab decomposition in x is not supported
-    if px != 1 && py == 1
-        throw(ArgumentError("A x-only partitioning is not supported with the TripolarGrid.\n
-                             Please, use a y partitioning configuration or a x-y pencil \
-                             partitioning."))
-    end
 
     # We build the global grid on a CPU architecture, in order to split it easily
     global_grid = TripolarGrid(CPU(), FT; halo, kwargs...)
