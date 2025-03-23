@@ -96,10 +96,8 @@ tripolar_boundary_conditions = """
     MPI.Init()
 
     include("distributed_tripolar_tests_utils.jl")
-    child_arch = distributed_child_architecture()
-
-    archs = [Distributed(child_arch, partition=Partition(1, 4)),
-             Distributed(child_arch, partition=Partition(2, 2))]
+    
+    arch = Distributed(CPU(), partition = Partition(2, 2))
     grid = TripolarGrid(arch; size = (20, 20, 1), z = (-1000, 0))
 
     # Build initial condition

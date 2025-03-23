@@ -10,7 +10,7 @@ using Oceananigans.BoundaryConditions: ZBC, CCLocation, FCLocation
 include("dependencies_for_runtests.jl")
 
 function distributed_child_architecture()
-    reactant_test = get(ENV, "REACTANT_TEST", false) |> Bool
+    reactant_test = get(ENV, "REACTANT_TEST", "false") == "true"
     return reactant_test ? Oceananigans.Architectures.ReactantState() : CPU() 
 end
 
