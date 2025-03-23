@@ -61,9 +61,9 @@ FieldBoundaryConditions(indices::Tuple, bcs::FieldBoundaryConditions) =
 
 FieldBoundaryConditions(indices::Tuple, ::Nothing) = nothing
 
-window_boundary_conditions(::Colon,     left, right) = left, right
-window_boundary_conditions(::UnitRange, left, right) = nothing, nothing
-window_boundary_conditions(indices::Base.OneTo, left, right) = window_boundary_conditions(UnitRange(indices), left, right)
+# No boundary conditions if we do not have halos!
+window_boundary_conditions(::Union{<:UnitRange, <:Base.OneTo}, left, right) = nothing, nothing
+window_boundary_conditions(::Colon, left, right) = left, right
 
 on_architecture(arch, fbcs::FieldBoundaryConditions) =
     FieldBoundaryConditions(on_architecture(arch, fbcs.west),
