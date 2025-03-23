@@ -61,8 +61,10 @@ FieldBoundaryConditions(indices::Tuple, bcs::FieldBoundaryConditions) =
 
 FieldBoundaryConditions(indices::Tuple, ::Nothing) = nothing
 
-window_boundary_conditions(::Colon,     left, right) = left, right
-window_boundary_conditions(::UnitRange, left, right) = nothing, nothing
+# return boundary conditions only if the field is not windowed!
+window_boundary_conditions(::UnitRange,  left, right) = nothing, nothing
+window_boundary_conditions(::Base.OneTo, left, right) = nothing, nothing
+window_boundary_conditions(::Colon,      left, right) = left, right
 
 on_architecture(arch, fbcs::FieldBoundaryConditions) =
     FieldBoundaryConditions(on_architecture(arch, fbcs.west),

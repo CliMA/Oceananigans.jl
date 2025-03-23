@@ -249,6 +249,12 @@ CUDA.allowscalar() do
         end
     end
 
+    if group == :sharding || group == :all
+        @testset "Sharding Reactant extension tests" begin
+            include("test_tripolar_sharding.jl")
+        end
+    end
+
     # Tests for Metal extension
     if group == :metal|| group == :all
         @testset "Metal extension tests" begin

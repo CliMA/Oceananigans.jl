@@ -7,7 +7,7 @@ import Oceananigans
 
 using Oceananigans
 using Oceananigans.Grids
-using Oceananigans.Architectures: device, on_architecture, AbstractArchitecture
+using Oceananigans.Architectures: device, on_architecture, AbstractArchitecture, CPU, GPU
 using Oceananigans.BoundaryConditions
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.Utils
