@@ -69,7 +69,7 @@ include("reactant_test_utils.jl")
         @test cd[1, 2, 3] == 2 * (x[1] + y[2] * z[3])
     end
 
-    # Deconcretization
+    # Deconcretization / nondeconcretization
     c′ = OceananigansReactantExt.deconcretize(c)
     @test parent(c′) isa Array
     @test architecture(c′) isa ReactantState
@@ -77,11 +77,9 @@ include("reactant_test_utils.jl")
     for FT in (Float64, Float32)
         sgrid = RectilinearGrid(arch, FT; size=(4, 4, 4), x=[0, 1, 2, 3, 4], y=(0, 1), z=(0, 1))
         @test architecture(sgrid) isa ReactantState
-        
-        #= The grid is traced, these tests are broken
-        @test architecture(sgrid.xᶠᵃᵃ) isa CPU
-        @test architecture(sgrid.xᶜᵃᵃ) isa CPU
-        =# 
+
+        @test architecture(sgrid.xᶠᵃᵃ) isa ReactantState
+        @test architecture(sgrid.xᶜᵃᵃ) isa ReactantState
 
         llg = LatitudeLongitudeGrid(arch, FT; size = (4, 4, 4),
                                     longitude = [0, 1, 2, 3, 4],
@@ -94,7 +92,7 @@ include("reactant_test_utils.jl")
         for name in propertynames(llg)
             p = getproperty(llg, name)
             if !(name ∈ (:architecture, :z))
-                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Array})
+                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Reactant.AbstractConcreteArray})
             end
         end
         =#
@@ -102,7 +100,8 @@ include("reactant_test_utils.jl")
         ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         ibg = ImmersedBoundaryGrid(llg, GridFittedBottom(ridge))
         @test architecture(ibg) isa ReactantState
-        # @test architecture(ibg.immersed_boundary.bottom_height) isa CPU
+
+        @test architecture(ibg.immersed_boundary.bottom_height) isa ReactantState
 
         rllg = RotatedLatitudeLongitudeGrid(arch, FT; size = (4, 4, 4),
                                             north_pole = (0, 0),
@@ -116,7 +115,7 @@ include("reactant_test_utils.jl")
         for name in propertynames(rllg)
             p = getproperty(rllg, name)
             if !(name ∈ (:architecture, :z, :conformal_mapping))
-                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Array})
+                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Reactant.AbstractConcreteArray})
             end
         end
         =#
