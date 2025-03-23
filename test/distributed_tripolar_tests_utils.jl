@@ -2,11 +2,17 @@ using JLD2
 using MPI
 using Oceananigans.DistributedComputations: reconstruct_global_field, reconstruct_global_grid
 using Oceananigans.Units
+using Reactant
 
 import Oceananigans.BoundaryConditions: _fill_north_halo!
 using Oceananigans.BoundaryConditions: ZBC, CCLocation, FCLocation
 
 include("dependencies_for_runtests.jl")
+
+function distributed_child_architecture()
+    reactant_test = get(ENV, "REACTANT_TEST", false) |> Bool
+    return reactant_test ? Oceananigans.Architectures.ReactantState() : CPU() 
+end
 
 # The serial version of the TripolarGrid substitutes the second half of the last row of the grid
 # This is not done in the distributed version, so we need to undo this substitution if we want to

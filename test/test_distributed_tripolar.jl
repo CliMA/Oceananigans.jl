@@ -9,9 +9,10 @@ tripolar_reconstructed_grid = """
     using Test
 
     include("distributed_tripolar_tests_utils.jl")
+    child_arch = distributed_child_architecture()
 
-    archs = [Distributed(CPU(), partition=Partition(1, 4)),
-             Distributed(CPU(), partition=Partition(2, 2))]
+    archs = [Distributed(child_arch, partition=Partition(1, 4)),
+             Distributed(child_arch, partition=Partition(2, 2))]
 
     for arch in archs
         local_grid  = TripolarGrid(arch; size = (12, 20, 1), z = (-1000, 0), halo = (2, 2, 2))
@@ -44,9 +45,10 @@ tripolar_reconstructed_field = """
     using Test
 
     include("distributed_tripolar_tests_utils.jl")
+    child_arch = distributed_child_architecture()
 
-    archs = [Distributed(CPU(), partition=Partition(1, 4)),
-             Distributed(CPU(), partition=Partition(2, 2))]
+    archs = [Distributed(child_arch, partition=Partition(1, 4)),
+             Distributed(child_arch, partition=Partition(2, 2))]
 
     u = [i + 10 * j for i in 1:40, j in 1:40]
     v = [i + 10 * j for i in 1:40, j in 1:40]
@@ -94,8 +96,10 @@ tripolar_boundary_conditions = """
     MPI.Init()
 
     include("distributed_tripolar_tests_utils.jl")
+    child_arch = distributed_child_architecture()
 
-    arch = Distributed(CPU(), partition = Partition(2, 2))
+    archs = [Distributed(child_arch, partition=Partition(1, 4)),
+             Distributed(child_arch, partition=Partition(2, 2))]
     grid = TripolarGrid(arch; size = (20, 20, 1), z = (-1000, 0))
 
     # Build initial condition
@@ -131,34 +135,39 @@ tripolar_boundary_conditions = """
 
 @testset "Test distributed TripolarGrid boundary conditions..." begin
     # Run the serial computation    
-    grid = TripolarGrid(size = (20, 20, 1), z = (-1000, 0))
+    child_arch = distributed_child_architecture()
 
-    I1 = [i + j * 100 for i in 1:20, j in 1:20]
+    # Do not run for ReactantState
+    if child_arch isa CPU
+        grid = TripolarGrid(size = (20, 20, 1), z = (-1000, 0))
 
-    v = YFaceField(grid)
-    c = CenterField(grid)
+        I1 = [i + j * 100 for i in 1:20, j in 1:20]
 
-    set!(v, I1)
-    set!(c, I1)
+        v = YFaceField(grid)
+        c = CenterField(grid)
 
-    fill_halo_regions!((v, c))
-    
-    write("distributed_boundary_tests.jl", tripolar_boundary_conditions)
-    run(`$(mpiexec()) -n 4 julia --project -O0 distributed_boundary_tests.jl`)
-    rm("distributed_boundary_tests.jl")
+        set!(v, I1)
+        set!(c, I1)
 
-    # Retrieve Parallel quantities from rank 1 (the north-west rank)
-    vp1 = jldopen("distributed_tripolar_boundary_conditions_1.jld2")["v"];
-    cp1 = jldopen("distributed_tripolar_boundary_conditions_1.jld2")["c"];
+        fill_halo_regions!((v, c))
+        
+        write("distributed_boundary_tests.jl", tripolar_boundary_conditions)
+        run(`$(mpiexec()) -n 4 julia --project -O0 distributed_boundary_tests.jl`)
+        rm("distributed_boundary_tests.jl")
 
-    # Retrieve Parallel quantities from rank 3 (the north-east rank)
-    vp3 = jldopen("distributed_tripolar_boundary_conditions_3.jld2")["v"];
-    cp3 = jldopen("distributed_tripolar_boundary_conditions_3.jld2")["c"];
+        # Retrieve Parallel quantities from rank 1 (the north-west rank)
+        vp1 = jldopen("distributed_tripolar_boundary_conditions_1.jld2")["v"];
+        cp1 = jldopen("distributed_tripolar_boundary_conditions_1.jld2")["c"];
 
-    @test v.data[-3:14, end-3:end-1, 1] ≈ vp1.parent[:, end-3:end-1, 5]
-    @test c.data[-3:14, end-3:end-1, 1] ≈ cp1.parent[:, end-3:end-1, 5]
-    @test v.data[7:end, 7:end-1, 1] ≈ vp3.parent[:, 1:end-1, 5]
-    @test c.data[7:end, 7:end-1, 1] ≈ cp3.parent[:, 1:end-1, 5]
+        # Retrieve Parallel quantities from rank 3 (the north-east rank)
+        vp3 = jldopen("distributed_tripolar_boundary_conditions_3.jld2")["v"];
+        cp3 = jldopen("distributed_tripolar_boundary_conditions_3.jld2")["c"];
+
+        @test v.data[-3:14, end-3:end-1, 1] ≈ vp1.parent[:, end-3:end-1, 5]
+        @test c.data[-3:14, end-3:end-1, 1] ≈ cp1.parent[:, end-3:end-1, 5]
+        @test v.data[7:end, 7:end-1, 1] ≈ vp3.parent[:, 1:end-1, 5]
+        @test c.data[7:end, 7:end-1, 1] ≈ cp3.parent[:, 1:end-1, 5]
+    end
 end
 
 run_slab_distributed_grid = """
@@ -166,7 +175,8 @@ run_slab_distributed_grid = """
     MPI.Init()
 
     include("distributed_tripolar_tests_utils.jl")
-    arch = Distributed(CPU(), partition = Partition(1, 4)) #, synchronized_communication=true)
+    child_arch = distributed_child_architecture()
+    arch = Distributed(child_arch, partition = Partition(1, 4)) #, synchronized_communication=true)
     run_distributed_tripolar_grid(arch, "distributed_yslab_tripolar.jld2")
 """
 
@@ -175,7 +185,8 @@ run_pencil_distributed_grid = """
     MPI.Init()
 
     include("distributed_tripolar_tests_utils.jl")
-    arch = Distributed(CPU(), partition = Partition(2, 2))
+    child_arch = distributed_child_architecture()
+    arch = Distributed(child_arch, partition = Partition(2, 2))
     run_distributed_tripolar_grid(arch, "distributed_pencil_tripolar.jld2")
 """
 
@@ -184,7 +195,8 @@ run_large_pencil_distributed_grid = """
     MPI.Init()
 
     include("distributed_tripolar_tests_utils.jl")
-    arch = Distributed(CPU(), partition = Partition(4, 2))
+    child_arch = distributed_child_architecture()
+    arch = Distributed(child_arch, partition = Partition(4, 2))
     run_distributed_tripolar_grid(arch, "distributed_large_pencil_tripolar.jld2")
 """
 
