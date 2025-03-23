@@ -29,26 +29,24 @@ function interior_indices(f::Field)
     return (ind_x, ind_y, ind_z)
 end
 
-const FieldIndexRange = Union{<:UnitRange, <:Base.OneTo}
-
 # Life is pretty simple in this case.
 compute_index_intersection(to_idx::Colon, from_idx::Colon, args...) = Colon()
 
 # Because `from_idx` imposes no restrictions, we just return `to_idx`.
-compute_index_intersection(to_idx::FieldIndexRange, from_idx::Colon, args...) = to_idx
+compute_index_intersection(to_idx::AbstractUnitRange, from_idx::Colon, args...) = to_idx
 
 # In case of no locations specified, Because `to_idx` imposes no restrictions, we just return `from_idx`.
-compute_index_intersection(to_idx::Colon, from_idx::FieldIndexRange) = from_idx
+compute_index_intersection(to_idx::Colon, from_idx::AbstractUnitRange) = from_idx
 
 # This time we account for the possible range-reducing effect of interpolation on `from_idx`.
-function compute_index_intersection(to_idx::Colon, from_idx::FieldIndexRange, to_loc, from_loc)
+function compute_index_intersection(to_idx::Colon, from_idx::AbstractUnitRange, to_loc, from_loc)
     shifted_idx = restrict_index_on_location(from_idx, from_loc, to_loc)
     validate_shifted_index(shifted_idx)
     return shifted_idx
 end
 
 # Compute the intersection of two index ranges
-function compute_index_intersection(to_idx::FieldIndexRange, from_idx::FieldIndexRange, to_loc, from_loc)
+function compute_index_intersection(to_idx::AbstractUnitRange, from_idx::AbstractUnitRange, to_loc, from_loc)
     shifted_idx = restrict_index_on_location(from_idx, from_loc, to_loc)
     validate_shifted_index(shifted_idx)
     
@@ -62,7 +60,7 @@ function compute_index_intersection(to_idx::FieldIndexRange, from_idx::FieldInde
 end
 
 # Compute the intersection of two index ranges where the location is the same
-function compute_index_intersection(to_idx::FieldIndexRange, from_idx::FieldIndexRange)
+function compute_index_intersection(to_idx::AbstractUnitRange, from_idx::AbstractUnitRange)
     range_intersection = UnitRange(max(first(from_idx), first(to_idx)), 
                                    min(last(from_idx), last(to_idx)))
     
