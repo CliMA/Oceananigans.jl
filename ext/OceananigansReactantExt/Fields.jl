@@ -2,6 +2,7 @@ module Fields
 
 using Reactant
 
+using Oceananigans: Oceananigans
 using Oceananigans.Architectures: on_architecture, CPU
 using Oceananigans.Fields: Field, interior
 
