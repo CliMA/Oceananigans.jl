@@ -1,6 +1,7 @@
 using Printf
 using Logging
 using Oceananigans
+using NCDatasets
 
 Logging.global_logger(OceananigansLogger())
 

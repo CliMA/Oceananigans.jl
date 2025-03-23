@@ -115,6 +115,7 @@ on_architecture(arch, coord::MutableVerticalDiscretization) =
 AUG = AbstractUnderlyingGrid
 
 @inline rnode(i, j, k, grid, ℓx, ℓy, ℓz) = rnode(k, grid, ℓz)
+@inline rnode(i::AbstractArray, j::AbstractArray, k, grid, ℓx, ℓy, ℓz) = permutedims(Base.stack(collect(Base.stack(collect(rnode(k, grid, ℓz) for _ in j)) for _ in i)), (3, 2, 1))
 @inline rnode(k, grid, ::Center) = getnode(grid.z.cᵃᵃᶜ, k)
 @inline rnode(k, grid, ::Face)   = getnode(grid.z.cᵃᵃᶠ, k)
 
