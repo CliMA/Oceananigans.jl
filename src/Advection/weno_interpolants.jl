@@ -112,7 +112,7 @@ for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
 
                 Reconstruction coefficients for the stencil number `stencil` of a WENO reconstruction 
                 of order `buffer * 2 - 1`. Uniform coefficients (i.e. when `T == Nothing`) are independent on the
-                `bias` of the reconstruction (either `LeftBias` or `RightBias`), while stretched coeffiecients are
+                `left_bias` of the reconstruction (either `true` or `false`), while stretched coeffiecients are
                 retrieved from the precomputed coefficients via the `retrieve_coeff` function
                 """
                 @inline coeff_p(::WENO{$buffer, $FT}, bias, ::Val{$stencil}, ::Type{Nothing}, args...) = 
@@ -123,7 +123,7 @@ for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
         @eval begin
             # stretched coefficients are retrieved from precalculated coefficients
             @inline coeff_p(scheme::WENO{$buffer}, bias, ::Val{$stencil}, T, dir, i, loc) = 
-                ifelse(bias isa LeftBias, retrieve_coeff(scheme, $stencil, dir, i, loc),
+                ifelse(left_bias, retrieve_coeff(scheme, $stencil, dir, i, loc),
                                   reverse(retrieve_coeff(scheme, $(buffer - 2 - stencil), dir, i, loc)))
         end
     
@@ -439,37 +439,37 @@ for dir in (:x, :y, :z), (T, f) in zip((:Any, :Function), (false, true))
 end
 
 # WENO stencils
-@inline S₀₂(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[2], S[3]), (S[3], S[2]))
-@inline S₁₂(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[1], S[2]), (S[4], S[3]))
+@inline S₀₂(S, bias) = @inbounds ifelse(left_bias, (S[2], S[3]), (S[3], S[2]))
+@inline S₁₂(S, bias) = @inbounds ifelse(left_bias, (S[1], S[2]), (S[4], S[3]))
 
-@inline S₀₃(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[3], S[4], S[5]), (S[4], S[3], S[2]))
-@inline S₁₃(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[2], S[3], S[4]), (S[5], S[4], S[3]))
-@inline S₂₃(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[1], S[2], S[3]), (S[6], S[5], S[4]))
+@inline S₀₃(S, bias) = @inbounds ifelse(left_bias, (S[3], S[4], S[5]), (S[4], S[3], S[2]))
+@inline S₁₃(S, bias) = @inbounds ifelse(left_bias, (S[2], S[3], S[4]), (S[5], S[4], S[3]))
+@inline S₂₃(S, bias) = @inbounds ifelse(left_bias, (S[1], S[2], S[3]), (S[6], S[5], S[4]))
 
-@inline S₀₄(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[4], S[5], S[6], S[7]), (S[5], S[4], S[3], S[2]))
-@inline S₁₄(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[3], S[4], S[5], S[6]), (S[6], S[5], S[4], S[3]))
-@inline S₂₄(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[2], S[3], S[4], S[5]), (S[7], S[6], S[5], S[4]))
-@inline S₃₄(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[1], S[2], S[3], S[4]), (S[8], S[7], S[6], S[5]))
+@inline S₀₄(S, bias) = @inbounds ifelse(left_bias, (S[4], S[5], S[6], S[7]), (S[5], S[4], S[3], S[2]))
+@inline S₁₄(S, bias) = @inbounds ifelse(left_bias, (S[3], S[4], S[5], S[6]), (S[6], S[5], S[4], S[3]))
+@inline S₂₄(S, bias) = @inbounds ifelse(left_bias, (S[2], S[3], S[4], S[5]), (S[7], S[6], S[5], S[4]))
+@inline S₃₄(S, bias) = @inbounds ifelse(left_bias, (S[1], S[2], S[3], S[4]), (S[8], S[7], S[6], S[5]))
 
-@inline S₀₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[5], S[6], S[7], S[8], S[9]), (S[6],  S[5], S[4], S[3], S[2]))
-@inline S₁₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[4], S[5], S[6], S[7], S[8]), (S[7],  S[6], S[5], S[4], S[3]))
-@inline S₂₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[3], S[4], S[5], S[6], S[7]), (S[8],  S[7], S[6], S[5], S[4]))
-@inline S₃₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[2], S[3], S[4], S[5], S[6]), (S[9],  S[8], S[7], S[6], S[5]))
-@inline S₄₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[1], S[2], S[3], S[4], S[5]), (S[10], S[9], S[8], S[7], S[6]))
+@inline S₀₅(S, bias) = @inbounds ifelse(left_bias, (S[5], S[6], S[7], S[8], S[9]), (S[6],  S[5], S[4], S[3], S[2]))
+@inline S₁₅(S, bias) = @inbounds ifelse(left_bias, (S[4], S[5], S[6], S[7], S[8]), (S[7],  S[6], S[5], S[4], S[3]))
+@inline S₂₅(S, bias) = @inbounds ifelse(left_bias, (S[3], S[4], S[5], S[6], S[7]), (S[8],  S[7], S[6], S[5], S[4]))
+@inline S₃₅(S, bias) = @inbounds ifelse(left_bias, (S[2], S[3], S[4], S[5], S[6]), (S[9],  S[8], S[7], S[6], S[5]))
+@inline S₄₅(S, bias) = @inbounds ifelse(left_bias, (S[1], S[2], S[3], S[4], S[5]), (S[10], S[9], S[8], S[7], S[6]))
 
-@inline S₀₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[6], S[7], S[8], S[9], S[10], S[11]), (S[7],  S[6],  S[5],  S[4], S[3], S[2]))
-@inline S₁₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[5], S[6], S[7], S[8], S[9],  S[10]), (S[8],  S[7],  S[6],  S[5], S[4], S[3]))
-@inline S₂₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[4], S[5], S[6], S[7], S[8],  S[9]),  (S[9],  S[8],  S[7],  S[6], S[5], S[4]))
-@inline S₃₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[3], S[4], S[5], S[6], S[7],  S[8]),  (S[10], S[9],  S[8],  S[7], S[6], S[5]))
-@inline S₄₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[2], S[3], S[4], S[5], S[6],  S[7]),  (S[11], S[10], S[9],  S[8], S[7], S[6]))
-@inline S₅₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[1], S[2], S[3], S[4], S[5],  S[6]),  (S[12], S[11], S[10], S[9], S[8], S[7]))
+@inline S₀₆(S, bias) = @inbounds ifelse(left_bias, (S[6], S[7], S[8], S[9], S[10], S[11]), (S[7],  S[6],  S[5],  S[4], S[3], S[2]))
+@inline S₁₆(S, bias) = @inbounds ifelse(left_bias, (S[5], S[6], S[7], S[8], S[9],  S[10]), (S[8],  S[7],  S[6],  S[5], S[4], S[3]))
+@inline S₂₆(S, bias) = @inbounds ifelse(left_bias, (S[4], S[5], S[6], S[7], S[8],  S[9]),  (S[9],  S[8],  S[7],  S[6], S[5], S[4]))
+@inline S₃₆(S, bias) = @inbounds ifelse(left_bias, (S[3], S[4], S[5], S[6], S[7],  S[8]),  (S[10], S[9],  S[8],  S[7], S[6], S[5]))
+@inline S₄₆(S, bias) = @inbounds ifelse(left_bias, (S[2], S[3], S[4], S[5], S[6],  S[7]),  (S[11], S[10], S[9],  S[8], S[7], S[6]))
+@inline S₅₆(S, bias) = @inbounds ifelse(left_bias, (S[1], S[2], S[3], S[4], S[5],  S[6]),  (S[12], S[11], S[10], S[9], S[8], S[7]))
 
 # Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
 # Parallel to the interpolation direction! (same as left/right stencil)
-@inline tangential_stencil_u(i, j, k, grid, scheme, bias, ::Val{1}, u) = @inbounds weno_stencil_x(i, j, k, grid, scheme, bias, ℑyᵃᶠᵃ, u)
-@inline tangential_stencil_u(i, j, k, grid, scheme, bias, ::Val{2}, u) = @inbounds weno_stencil_y(i, j, k, grid, scheme, bias, ℑyᵃᶠᵃ, u)
-@inline tangential_stencil_v(i, j, k, grid, scheme, bias, ::Val{1}, v) = @inbounds weno_stencil_x(i, j, k, grid, scheme, bias, ℑxᶠᵃᵃ, v)
-@inline tangential_stencil_v(i, j, k, grid, scheme, bias, ::Val{2}, v) = @inbounds weno_stencil_y(i, j, k, grid, scheme, bias, ℑxᶠᵃᵃ, v)
+@inline tangential_stencil_u(i, j, k, grid, scheme, left_bias, ::Val{1}, u) = @inbounds weno_stencil_x(i, j, k, grid, scheme, left_bias, ℑyᵃᶠᵃ, u)
+@inline tangential_stencil_u(i, j, k, grid, scheme, left_bias, ::Val{2}, u) = @inbounds weno_stencil_y(i, j, k, grid, scheme, left_bias, ℑyᵃᶠᵃ, u)
+@inline tangential_stencil_v(i, j, k, grid, scheme, left_bias, ::Val{1}, v) = @inbounds weno_stencil_x(i, j, k, grid, scheme, left_bias, ℑxᶠᵃᵃ, v)
+@inline tangential_stencil_v(i, j, k, grid, scheme, left_bias, ::Val{2}, v) = @inbounds weno_stencil_y(i, j, k, grid, scheme, left_bias, ℑxᶠᵃᵃ, v)
 
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
 @inline function metaprogrammed_weno_reconstruction(buffer)
