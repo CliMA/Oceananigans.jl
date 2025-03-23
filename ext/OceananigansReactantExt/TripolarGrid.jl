@@ -63,7 +63,7 @@ function Oceananigans.TripolarGrid(arch::Oceananigans.Distributed{<:ReactantStat
     grid = OrthogonalSphericalShellGrid{Periodic,RightConnected,Bounded}(arch,
         global_size...,
         halo...,
-        Reactant.to_rarray(convert(FT, global_grid.Lz); track_numbers=Number),
+        convert(FT, global_grid.Lz),
         Reactant.to_rarray(λᶜᶜᵃ; sharding),
         Reactant.to_rarray(λᶠᶜᵃ; sharding),
         Reactant.to_rarray(λᶜᶠᵃ; sharding),
@@ -85,7 +85,7 @@ function Oceananigans.TripolarGrid(arch::Oceananigans.Distributed{<:ReactantStat
         Reactant.to_rarray(Azᶠᶜᵃ; sharding),
         Reactant.to_rarray(Azᶜᶠᵃ; sharding),
         Reactant.to_rarray(Azᶠᶠᵃ; sharding),
-        Reactant.to_rarray(convert(FT, global_grid.radius); track_numbers=Number),
+        convert(FT, global_grid.radius),
         global_grid.conformal_mapping)
 
     return grid
