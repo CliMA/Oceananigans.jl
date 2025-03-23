@@ -1,6 +1,7 @@
 module Architectures
 
 using Reactant
+using KernelAbstractions
 using Oceananigans
 
 using Reactant: AnyConcreteRArray
@@ -28,9 +29,9 @@ to_reactant_sharding(::Nothing) = Sharding.NoSharding()
 to_reactant_sharding(s::Sharding.AbstractSharding) = s
 to_reactant_sharding(::T) where {T} = error("Unsupported sharding type $T")
 
-on_architecture(::ReactantState, a::Reactant.AnyTracedRArray) = a
-on_architecture(::CPU, a::AnyConcreteReactantArray) = Array(a)
-on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:AnyConcreteReactantArray}) = Array(a)
+on_architecture(::Oceananigans.Architectures.ReactantState, a::Reactant.AnyTracedRArray) = a
+on_architecture(::Oceananigans.Architectures.CPU, a::AnyConcreteReactantArray) = Array(a)
+on_architecture(::Oceananigans.Architectures.CPU, a::SubArray{<:Any, <:Any, <:AnyConcreteReactantArray}) = Array(a)
 
 const ArraysToRArray = Union{Array,
                              Reactant.AnyConcretePJRTArray,
