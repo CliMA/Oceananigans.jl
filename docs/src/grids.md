@@ -596,11 +596,8 @@ nodes does not exceed the benefit of dividing up the computation among different
 make_distributed_arch = """
 
 using Oceananigans
-using MPI
-MPI.Init()
-    
 architecture = Distributed()
-on_rank_0 = MPI.Comm_rank(MPI.COMM_WORLD) == 0
+on_rank_0 = architecture.local_rank == 0
         
 if on_rank_0
     @show architecture
@@ -647,7 +644,7 @@ MPI.Init()
 
 child_architecture = CPU()
 architecture = Distributed(child_architecture)
-on_rank_0 = MPI.Comm_rank(MPI.COMM_WORLD) == 0
+on_rank_0 = architecture.local_rank == 0
 
 grid = RectilinearGrid(architecture,
                        size = (48, 48, 16),
