@@ -326,7 +326,8 @@ synchronized(arch::Distributed) = Distributed{true}(child_architecture(arch),
                                                      arch.connectivity,
                                                      arch.communicator,
                                                      arch.mpi_requests,
-                                                     arch.mpi_tag)
+                                                     arch.mpi_tag,
+                                                     arch.devices)
 
 cpu_architecture(arch::DistributedCPU) = arch
 cpu_architecture(arch::Distributed{A, S}) where {A, S} = 
