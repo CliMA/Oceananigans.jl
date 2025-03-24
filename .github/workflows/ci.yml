@@ -42,6 +42,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
       - name: Set XLA runtime
         run: |
@@ -58,10 +61,7 @@ jobs:
           Pkg.add([PackageSpec(; name="Reactant", rev="ap/sdy_fixes2")])
           Pkg.instantiate()
       - name: Run sharding tests
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/julia-runtest@v1
+        uses: julia-actions/julia-runtest@v1
         env:
           REACTANT_TEST: true
           XLA_FLAGS: "--xla_force_host_platform_device_count=4"
