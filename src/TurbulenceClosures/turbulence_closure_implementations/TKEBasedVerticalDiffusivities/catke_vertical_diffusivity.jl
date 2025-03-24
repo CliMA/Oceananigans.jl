@@ -177,7 +177,7 @@ function fill_halo_regions!(catke_diffusivity_fields::CATKEDiffusivityFields, ar
     return fill_halo_regions!(κ, grid, args...; kw...)
 end
 
-function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
+function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::FlavorOfCATKE)
 
     default_diffusivity_bcs = (κu = FieldBoundaryConditions(grid, (Center, Center, Face)),
                                κc = FieldBoundaryConditions(grid, (Center, Center, Face)),
@@ -190,7 +190,7 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
     κe = ZFaceField(grid, boundary_conditions=bcs.κe)
     Le = CenterField(grid)
     Jᵇ = Field{Center, Center, Nothing}(grid)
-    previous_compute_time = Ref(zero(grid))
+    previous_compute_time = Ref(clock.time)
 
     # Note: we may be able to avoid using the "previous velocities" in favor of a "fully implicit"
     # discretization of shear production
@@ -210,6 +210,12 @@ end
 @inline viscosity_location(::FlavorOfCATKE) = (c, c, f)
 @inline diffusivity_location(::FlavorOfCATKE) = (c, c, f)
 
+function update_previous_compute_time!(diffusivities, model)
+    Δt = model.clock.time - diffusivities.previous_compute_time[]
+    diffusivities.previous_compute_time[] = model.clock.time
+    return Δt
+end
+
 function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
@@ -218,8 +224,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
     buoyancy = model.buoyancy
     clock = model.clock
     top_tracer_bcs = get_top_tracer_bcs(model.buoyancy.formulation, tracers)
-    Δt = model.clock.time - diffusivities.previous_compute_time[]
-    diffusivities.previous_compute_time[] = model.clock.time
+    Δt = update_previous_compute_time!(diffusivities, model)
 
     if isfinite(model.clock.last_Δt) # Check that we have taken a valid time-step first.
         # Compute e at the current time:

@@ -36,6 +36,7 @@ Base.IndexStyle(::AbstractField) = IndexCartesian()
 @inline location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX, LY, LZ) # note no instantiation
 @inline instantiated_location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX(), LY(), LZ())
 Base.eltype(::AbstractField{<:Any, <:Any, <:Any, <:Any, T}) where T = T
+Base.eltype(::Type{<:AbstractField{<:Any, <:Any, <:Any, <:Any, T}}) where T = T
 
 "Returns the architecture of on which `f` is defined."
 architecture(f::AbstractField) = architecture(f.grid)
