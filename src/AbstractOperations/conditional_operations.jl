@@ -93,7 +93,7 @@ validate_condition(cond::Function, ::ConditionalOperation) = cond
 
 function validate_condition(cond::AbstractArray, c::ConditionalOperation)
     if ndims(cond) != 3
-        throw(ArgumentError("when kwarg condition::Array requires a 3D array of size $(size(c))"))
+        throw(ArgumentError("The keyword argument condition::AbstractArray requires a 3D array of size $(size(c))"))
     end
     return cond
 end
