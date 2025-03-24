@@ -85,15 +85,20 @@ function ConditionalOperation(operand::AbstractField;
                               condition = nothing,
                               mask = zero(eltype(operand)))
 
+    condition = validate_condition(condition, operand)
+
     LX, LY, LZ = location(operand)
     return ConditionalOperation{LX, LY, LZ}(operand, func, operand.grid, condition, mask)
 end
 
-validate_condition(cond::Function, ::ConditionalOperation) = cond
+validate_condition(cond::Function, ::AbstractField) = cond
 
-function validate_condition(cond::AbstractArray, c::ConditionalOperation)
+function validate_condition(cond::AbstractArray, operand::AbstractField)
     if ndims(cond) != 3
-        throw(ArgumentError("The keyword argument condition::AbstractArray requires a 3D array of size $(size(c))"))
+        throw(ArgumentError("The keyword argument condition::AbstractArray requires a 3D array of size $(size(operand))"))
+    end
+    if eltype(cond) !== Bool
+        throw(ArgumentError("The keyword argument condition::AbstractArray requires an array of booleans"))
     end
     return cond
 end
@@ -102,8 +107,6 @@ function ConditionalOperation(c::ConditionalOperation;
                               func = c.func,
                               condition = c.condition,
                               mask = c.mask)
-
-    condition = validate_condition(condition, c)
 
     LX, LY, LZ = location(c)
     return ConditionalOperation{LX, LY, LZ}(c.operand, func, c.grid, condition, mask)
