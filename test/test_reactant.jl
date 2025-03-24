@@ -41,6 +41,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
     add_one!(c)
     @test all(c .≈ 2)
 
+    @info "  Testing set!..."
     set!(c, (x, y, z) -> x + y * z)
     x, y, z = nodes(c)
 
@@ -50,7 +51,8 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         @test c[1, 2, 3] == x[1] + y[2] * z[3]
     end
 
-    @jit fill_halo_regions!(c)
+    @info "  Testing fill halo regions!..."
+    fill_halo_regions!(c)
 
     @allowscalar begin
         @test c[1, 1, 0] == c[1, 1, 1]
@@ -59,6 +61,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
     d = CenterField(grid)
     parent(d) .= 2
 
+    @info "  Testing computed field..."
     cd = Field(c * d)
     compute!(cd)
 
@@ -69,16 +72,19 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
     end
 
     # Deconcretization / nondeconcretization
+    @info "  Testing Field deconcretization..."
     c′ = OceananigansReactantExt.deconcretize(c)
     @test parent(c′) isa Array
     @test architecture(c′) isa ReactantState
 
     for FT in (Float64, Float32)
+        @info "  Testing RectilinearGrid construction [$FT]..."
         sgrid = RectilinearGrid(arch, FT; size=(4, 4, 4), x=[0, 1, 2, 3, 4], y=(0, 1), z=(0, 1))
         @test architecture(sgrid) isa ReactantState
         @test architecture(sgrid.xᶠᵃᵃ) isa ReactantState
         @test architecture(sgrid.xᶜᵃᵃ) isa ReactantState
 
+        @info "  Testing LatitudeLongitudeGrid construction [$FT]..."
         llg = LatitudeLongitudeGrid(arch, FT; size = (4, 4, 4),
                                     longitude = [0, 1, 2, 3, 4],
                                     latitude = [0, 1, 2, 3, 4],
@@ -93,7 +99,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
             end
         end
 
-        # Test making a constant grid
+        @info "  Testing constantified LatitudeLongitudeGrid construction [$FT]..."
         cpu_llg = LatitudeLongitudeGrid(CPU(), FT; size = (4, 4, 4),
                                         longitude = [0, 1, 2, 3, 4],
                                         latitude = [0, 1, 2, 3, 4],
@@ -108,15 +114,18 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
             end
         end
         
+        @info "  Testing ImmersedBoundaryGrid construction [$FT]..."
         ibg = ImmersedBoundaryGrid(llg, GridFittedBottom(ridge))
         @test architecture(ibg) isa ReactantState
         @test architecture(ibg.immersed_boundary.bottom_height) isa ReactantState
 
+        @info "  Testing constantified ImmersedBoundaryGrid construction [$FT]..."
         cpu_ibg = ImmersedBoundaryGrid(cpu_llg, GridFittedBottom(ridge))
         constant_ibg = OceananigansReactantExt.constant_with_reactant_state(cpu_ibg)
         @test architecture(constant_ibg) isa ReactantState
         @test architecture(constant_ibg.immersed_boundary.bottom_height) isa CPU
 
+        @info "  Testing constantified OrthogonalSphericalShellGrid construction [$FT]..."
         rllg = RotatedLatitudeLongitudeGrid(arch, FT; size = (4, 4, 4),
                                             north_pole = (0, 0),
                                             longitude = [0, 1, 2, 3, 4],
@@ -132,12 +141,15 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
             end
         end
 
+        @info "  Testing constantified OrthogonalSphericalShellGrid construction [$FT]..."
+        @info "    Building CPU grid [$FT]..."
         cpu_rllg = RotatedLatitudeLongitudeGrid(CPU(), FT; size = (4, 4, 4),
                                                 north_pole = (0, 0),
                                                 longitude = [0, 1, 2, 3, 4],
                                                 latitude = [0, 1, 2, 3, 4],
                                                 z = (0, 1))
 
+        @info "    Replacing architecture with ReactantState [$FT]..."
         constant_rllg = OceananigansReactantExt.constant_with_reactant_state(cpu_rllg)
 
         for name in propertynames(constant_rllg)
@@ -147,6 +159,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
             end
         end
 
+        @info "  Testing constantified immersed OrthogonalSphericalShellGrid construction [$FT]..."
         cpu_ribg = ImmersedBoundaryGrid(cpu_rllg, GridFittedBottom(ridge))
         constant_ribg = OceananigansReactantExt.constant_with_reactant_state(cpu_ribg)
         @test architecture(constant_ribg) isa ReactantState

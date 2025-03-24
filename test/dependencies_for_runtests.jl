@@ -16,7 +16,7 @@ using MPI
 using Dates: DateTime, Nanosecond
 using Statistics: mean, mean!, norm
 using LinearAlgebra: norm
-using NCDatasets: Dataset
+# using NCDatasets: Dataset
 using KernelAbstractions: @kernel, @index
 
 MPI.versioninfo()
