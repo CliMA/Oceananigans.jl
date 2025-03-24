@@ -22,7 +22,7 @@ function run_latitude_longitude_simulation(arch, filename)
     Random.seed!(1234)
     bottom_height = rand(40, 40, 1)
 
-    distributed_grid = LatitudeLongitude(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))    
+    distributed_grid = LatitudeLongitudeGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))    
     distributed_grid = ImmersedBoundaryGrid(distributed_grid, GridFittedBottom(bottom_height))
     simulation       = run_latitude_longitude_simulation(distributed_grid)
 
@@ -108,7 +108,7 @@ end
     Random.seed!(1234)
     bottom_height = rand(40, 40, 1)
 
-    grid = LatitudeLongitude(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))    
+    grid = LatitudeLongitudeGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))    
     grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
 
     simulation = run_tripolar_simulation(grid)
