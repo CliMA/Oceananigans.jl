@@ -96,7 +96,7 @@ tripolar_boundary_conditions = """
     MPI.Init()
 
     include("distributed_tripolar_tests_utils.jl")
-    
+
     arch = Distributed(CPU(), partition = Partition(2, 2))
     grid = TripolarGrid(arch; size = (20, 20, 1), z = (-1000, 0))
 
@@ -249,24 +249,28 @@ run_large_pencil_distributed_grid = """
     @test all(vs .≈ vp)
     @test all(cs .≈ cp)
     @test all(ηs .≈ ηp)
+    
+    child_arch = distributed_child_architecture()
 
-    # We try now with more ranks in the x-direction. This is not a trivial
-    # test as we are now splitting, not only where the singularities are, but
-    # also in the middle of the north fold. This is a more challenging test
-    write("distributed_large_pencil_tests.jl", run_large_pencil_distributed_grid)
-    run(`$(mpiexec()) -n 8 julia --project -O0 distributed_large_pencil_tests.jl`)
-    rm("distributed_large_pencil_tests.jl")
+    if child_arch isa CPU
+        # We try now with more ranks in the x-direction. This is not a trivial
+        # test as we are now splitting, not only where the singularities are, but
+        # also in the middle of the north fold. This is a more challenging test
+        write("distributed_large_pencil_tests.jl", run_large_pencil_distributed_grid)
+        run(`$(mpiexec()) -n 8 julia --project -O0 distributed_large_pencil_tests.jl`)
+        rm("distributed_large_pencil_tests.jl")
 
-    # Retrieve Parallel quantities
-    up = jldopen("distributed_large_pencil_tripolar.jld2")["u"]
-    vp = jldopen("distributed_large_pencil_tripolar.jld2")["v"]
-    ηp = jldopen("distributed_large_pencil_tripolar.jld2")["η"]
-    cp = jldopen("distributed_large_pencil_tripolar.jld2")["c"]
+        # Retrieve Parallel quantities
+        up = jldopen("distributed_large_pencil_tripolar.jld2")["u"]
+        vp = jldopen("distributed_large_pencil_tripolar.jld2")["v"]
+        ηp = jldopen("distributed_large_pencil_tripolar.jld2")["η"]
+        cp = jldopen("distributed_large_pencil_tripolar.jld2")["c"]
 
-    rm("distributed_large_pencil_tripolar.jld2")
+        rm("distributed_large_pencil_tripolar.jld2")
 
-    @test all(us .≈ up)
-    @test all(vs .≈ vp)
-    @test all(cs .≈ cp)
-    @test all(ηs .≈ ηp)
+        @test all(us .≈ up)
+        @test all(vs .≈ vp)
+        @test all(cs .≈ cp)
+        @test all(ηs .≈ ηp)
+    end
 end

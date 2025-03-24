@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   sharded_tripolar:
-    name: Sharded Tripolar Grid - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    name: Sharded LatitudeLongitudeGrid - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     strategy:
@@ -50,7 +50,8 @@ jobs:
       - uses: julia-actions/julia-runtest@v1
         env:
           REACTANT_TEST: true
-          TEST_GROUP: "distributed_tripolar"
+          XLA_FLAGS: "--xla_force_host_platform_device_count=4"
+          TEST_GROUP: "sharding"
 
   distributed_tripolar:
     name: Distributed Tripolar Grid - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
