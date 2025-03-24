@@ -74,12 +74,12 @@ end
 function run_distributed_tripolar_grid(arch, filename)
     distributed_grid = TripolarGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
     distributed_grid = analytical_immersed_tripolar_grid(distributed_grid)
-    simulation       = run_tripolar_simulation(distributed_grid)
+    model            = run_tripolar_simulation(distributed_grid)
 
-    η = reconstruct_global_field(simulation.model.free_surface.η)
-    u  = reconstruct_global_field(simulation.model.velocities.u)
-    v  = reconstruct_global_field(simulation.model.velocities.v)
-    c  = reconstruct_global_field(simulation.model.tracers.c)
+    η = reconstruct_global_field(model.free_surface.η)
+    u = reconstruct_global_field(model.velocities.u)
+    v = reconstruct_global_field(model.velocities.v)
+    c = reconstruct_global_field(model.tracers.c)
 
     if arch.local_rank == 0
         jldsave(filename; u = Array(interior(u, :, :, 1)),
@@ -92,6 +92,21 @@ function run_distributed_tripolar_grid(arch, filename)
     MPI.Finalize()
 
     return nothing
+end
+
+function loop!(model)
+    first_time_step!(model, 5minutes)
+    Nsteps = ConcreteRNumber(100)
+    @trace for _ in 2:Nsteps
+        time_step!(model, 5minutes)
+    end
+end
+
+function vanilla_loop!(model)
+    first_time_step!(model, 5minutes)
+    for _ in 2:100
+        time_step!(model, 5minutes)
+    end
 end
 
 # Just a random simulation on a tripolar grid
@@ -111,9 +126,12 @@ function run_tripolar_simulation(grid)
 
     set!(model, c = ηᵢ, η = ηᵢ)
 
-    simulation = Simulation(model, Δt = 5minutes, stop_iteration = 100)
-    
-    run!(simulation)
+    if architecture(grid) isa ReactantState || child_architecture(grid) isa ReactantState  
+        r_loop! = @compile sync=true raise=true loop!(model)
+        r_loop!(model)
+    else
+        vanilla_loop!(model)
+    end
 
-    return simulation
+    return model
 end

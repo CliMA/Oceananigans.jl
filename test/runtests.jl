@@ -251,9 +251,7 @@ CUDA.allowscalar() do
     if group == :sharding || group == :all
         @testset "Sharding Reactant extension tests" begin
             include("test_distributed_latitude_longitude.jl")
-            # There are still some problems with the distributed grid tests
-            # TODO: Include this when the problems are solved
-            # include("test_distributed_tripolar.jl")
+            include("test_distributed_tripolar.jl")
         end
     end
 
