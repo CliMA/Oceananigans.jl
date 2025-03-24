@@ -254,7 +254,7 @@ CUDA.allowscalar() do
             # There is an issue with sharding and tripolar grid at the moment
             # see https://github.com/EnzymeAD/Reactant.jl/issues/1020
             # TODO: uncomment the following line when the issue is fixed
-            include("test_reactant_distributed_tripolar.jl")
+            # include("test_reactant_distributed_tripolar.jl")
         end
     end
 
