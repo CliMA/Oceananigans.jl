@@ -713,7 +713,7 @@ Now we have three local grids, each with size `(16, 48, 16)`.
 To distribute a grid in different ways -- for example, in both ``x`` and ``y`` --
 we use a custom [`Partition`](@ref).
 
-The default `Partition` is equally distributed in `x`,
+The default `Partition` is equally distributed in `x`. To equally distribute in `y`, we write
 
 ```@setup grids
 rm("partition_example.jl", force=true)
