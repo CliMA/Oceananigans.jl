@@ -115,10 +115,10 @@ M² = sqrt(∂x(b)^2 + ∂y(b)^2)
 outputs = merge(model.velocities, model.tracers, (; νₑ, κₖz, κₖh, N², M², uz=∂z(u)))
 
 filename = "zonally_averaged_baroclinic_adjustment"
-simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs; filename,
-                                                      #schedule = TimeInterval(save_interval),
-                                                      schedule = IterationInterval(10),
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, outputs; filename,
+                                                #schedule = TimeInterval(save_interval),
+                                                schedule = IterationInterval(10),
+                                                overwrite_existing = true)
 
 @info "Running the simulation..."
 

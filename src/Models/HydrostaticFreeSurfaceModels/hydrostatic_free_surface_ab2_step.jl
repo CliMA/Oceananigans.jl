@@ -1,7 +1,7 @@
 using Oceananigans.Fields: location
 using Oceananigans.TimeSteppers: ab2_step_field!
 using Oceananigans.TurbulenceClosures: implicit_step!
-using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, retrieve_surface_active_cells_map
+using Oceananigans.ImmersedBoundaries: get_active_cells_map, get_active_column_map
 
 import Oceananigans.TimeSteppers: ab2_step!
 
@@ -11,9 +11,12 @@ import Oceananigans.TimeSteppers: ab2_step!
 
 function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt)
 
-    compute_free_surface_tendency!(model.grid, model, model.free_surface)
+    grid = model.grid
+    compute_free_surface_tendency!(grid, model, model.free_surface)
 
-    χ = model.timestepper.χ
+    FT = eltype(grid)
+    χ = convert(FT, model.timestepper.χ)
+    Δt = convert(FT, Δt)
 
     # Step locally velocity and tracers
     @apply_regionally local_ab2_step!(model, Δt, χ)
@@ -26,10 +29,8 @@ end
 function local_ab2_step!(model, Δt, χ)
     ab2_step_velocities!(model.velocities, model, Δt, χ)
     ab2_step_tracers!(model.tracers, model, Δt, χ)
-
     return nothing
 end
-
 
 #####
 ##### Step velocities
@@ -71,7 +72,6 @@ ab2_step_tracers!(::EmptyNamedTuple, model, Δt, χ) = nothing
 function ab2_step_tracers!(tracers, model, Δt, χ)
 
     closure = model.closure
-
     catke_in_closures = hasclosure(closure, FlavorOfCATKE)
     td_in_closures    = hasclosure(closure, FlavorOfTD)
 
@@ -89,8 +89,10 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
             G⁻ = model.timestepper.G⁻[tracer_name]
             tracer_field = tracers[tracer_name]
             closure = model.closure
+            grid = model.grid
 
-            ab2_step_tracer_field!(tracer_field, model.grid, Δt, χ, Gⁿ, G⁻)
+            FT = eltype(grid)
+            launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, convert(FT, Δt), χ, Gⁿ, G⁻)
 
             implicit_step!(tracer_field,
                            model.timestepper.implicit_solver,
@@ -104,9 +106,6 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
 
     return nothing
 end
-
-ab2_step_tracer_field!(tracer_field, grid, Δt, χ, Gⁿ, G⁻) =
-    launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, Δt, χ, Gⁿ, G⁻)
 
 #####
 ##### Tracer update in mutable vertical coordinates 
@@ -129,7 +128,7 @@ ab2_step_tracer_field!(tracer_field, grid, Δt, χ, Gⁿ, G⁻) =
         
         # We store temporarily σθ in θ. 
         # The unscaled θ will be retrieved with `unscale_tracers!`
-        θ[i, j, k] = σᶜᶜⁿ * θ[i, j, k] + convert(FT, Δt) * ∂t_σθ
+        θ[i, j, k] = σᶜᶜⁿ * θ[i, j, k] + Δt * ∂t_σθ
     end
 end
 

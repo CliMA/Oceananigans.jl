@@ -4,9 +4,6 @@ import Oceananigans.Grids: znode, AbstractMutableGrid
 ##### MutableVerticalDiscretization-specific vertical spacing functions
 #####
 
-const C = Center
-const F = Face
-
 const AMG = AbstractMutableGrid
 
 # Fallbacks

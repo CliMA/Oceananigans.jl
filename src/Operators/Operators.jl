@@ -39,6 +39,8 @@ export δzᶠᶠᶠ, δzᶠᶠᶜ, δzᶠᶜᶠ, δzᶠᶜᶜ, δzᶜᶠᶠ, δz
 
 # Derivatives
 export ∂xᶜᵃᵃ, ∂xᶠᵃᵃ, ∂yᵃᶜᵃ, ∂yᵃᶠᵃ, ∂zᵃᵃᶜ, ∂zᵃᵃᶠ
+export ∂xᶜᶜᵃ, ∂xᶜᶠᵃ, ∂xᶠᶜᵃ, ∂xᶠᶠᵃ
+export ∂yᶜᶜᵃ, ∂yᶜᶠᵃ, ∂yᶠᶜᵃ, ∂yᶠᶠᵃ
 
 export ∂xᶠᶠᶠ, ∂xᶠᶠᶜ, ∂xᶠᶜᶠ, ∂xᶠᶜᶜ, ∂xᶜᶠᶠ, ∂xᶜᶠᶜ, ∂xᶜᶜᶠ, ∂xᶜᶜᶜ
 export ∂yᶠᶠᶠ, ∂yᶠᶠᶜ, ∂yᶠᶜᶠ, ∂yᶠᶜᶜ, ∂yᶜᶠᶠ, ∂yᶜᶠᶜ, ∂yᶜᶜᶠ, ∂yᶜᶜᶜ
@@ -69,6 +71,7 @@ export ∇²ᶜᶜᶜ, ∇²ᶠᶜᶜ, ∇²ᶜᶠᶜ, ∇²ᶜᶜᶠ, ∇²hᶜ
 export ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ
 export ℑxyᶜᶜᵃ, ℑxyᶠᶜᵃ, ℑxyᶠᶠᵃ, ℑxyᶜᶠᵃ, ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ, ℑyzᵃᶜᶠ
 export ℑxyzᶜᶜᶠ, ℑxyzᶜᶠᶜ, ℑxyzᶠᶜᶜ, ℑxyzᶜᶠᶠ, ℑxyzᶠᶜᶠ, ℑxyzᶠᶠᶜ, ℑxyzᶜᶜᶜ, ℑxyzᶠᶠᶠ
+export active_weighted_ℑxyᶠᶜᶜ, active_weighted_ℑxyᶜᶠᶜ
 
 # Topology-aware operators
 export δxTᶠᵃᵃ, δyTᵃᶠᵃ, δxTᶜᵃᵃ, δyTᵃᶜᵃ
@@ -81,6 +84,7 @@ export intrinsic_vector, extrinsic_vector
 export σⁿ, σ⁻, ∂t_σ
 
 using Oceananigans.Grids
+using Oceananigans.Grids: LLGOTF, XRegLLGOTF, YRegLLGOTF
 
 #####
 ##### Convenient aliases
@@ -104,10 +108,14 @@ const LLGZ = ZRegularLLG
 # Vertically regular grids
 const ZRG = Union{RGZ, OSSGZ, LLGZ}
 
-# On the fly calculations of metrics
-const LLGF  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing}
-const LLGFX = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Number}
-const LLGFY = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Any, <:Number}
+const LLGF  = LLGOTF
+const LLGFX = XRegLLGOTF
+const LLGFY = YRegLLGOTF
+
+const F = Face
+const f = Face()
+const C = Center
+const c = Center()
 
 include("difference_operators.jl")
 include("interpolation_operators.jl")

@@ -3,7 +3,7 @@ using LinearAlgebra: dot, cross
 using OffsetArrays: IdOffsetRange
 
 """
-    _property(ξ, T, ℓ, N, with_halos=false)
+    _property(ξ, T, ℓ, N, with_halos)
 
 Return the grid property `ξ`, either `with_halos` or without,
 for topology `T`, (instantiated) location `ℓ`, and dimension length `N`.
@@ -304,7 +304,7 @@ end
 
 function dimension_summary(topo, name, dom, spacing, pad_domain=0)
     prefix = domain_summary(topo, name, dom)
-    padding = " "^(pad_domain+1) 
+    padding = " "^(pad_domain+1)
     return string(prefix, padding, coordinate_summary(topo, spacing, name))
 end
 
@@ -471,13 +471,9 @@ julia> add_halos(data, loc, topo, (Nx, Ny, Nz), (1, 2, 0))
 ```
 """
 function add_halos(data, loc, topo, sz, halo_sz; warnings=true)
-
     Nx, Ny, Nz = size(data)
-
     arch = architecture(data)
-
-    # bring to CPU
-    map(a -> on_architecture(CPU(), a), data)
+    map(a -> on_architecture(CPU(), a), data) # bring to CPU
 
     nx, ny, nz = total_length(loc[1](), topo[1](), sz[1], 0),
                  total_length(loc[2](), topo[2](), sz[2], 0),
@@ -501,7 +497,7 @@ function add_halos(data, loc, topo, sz, halo_sz; warnings=true)
 
     offset_array[1:nx, 1:ny, 1:nz] = data[1:nx, 1:ny, 1:nz]
 
-    # return to data's original architecture 
+    # return to data's original architecture
     map(a -> on_architecture(arch, a), offset_array)
 
     return offset_array
@@ -511,4 +507,3 @@ function add_halos(data::AbstractArray{FT, 2} where FT, loc, topo, sz, halo_sz; 
     Nx, Ny = size(data)
     return add_halos(reshape(data, (Nx, Ny, 1)), loc, topo, sz, halo_sz; warnings)
 end
-

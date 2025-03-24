@@ -33,30 +33,51 @@ variable `JULIA_NUM_THREADS` is set.
 struct CPU <: AbstractSerialArchitecture end
 
 """
-    GPU <: AbstractArchitecture
+    GPU(device)
 
-Run Oceananigans on a single NVIDIA CUDA GPU.
+Return a GPU architecture using `device`.
+`device` defauls to CUDA.CUDABackend(always_inline=true)
 """
-struct GPU <: AbstractSerialArchitecture end
+struct GPU{D} <: AbstractSerialArchitecture 
+    device :: D
+end
+
+const CUDAGPU = GPU{<:CUDA.CUDABackend}
+CUDAGPU() = GPU(CUDA.CUDABackend(always_inline=true))
+Base.summary(::CUDAGPU) = "CUDAGPU"
+
+function GPU()
+    if CUDA.has_cuda_gpu()
+        return CUDAGPU()
+    else
+        msg = """We cannot make a GPU with the CUDA backend:
+                 a CUDA GPU was not found!"""
+        throw(ArgumentError(msg))
+    end
+end
 
 """
     ReactantState <: AbstractArchitecture
 
 Run Oceananigans on Reactant.
 """
-struct ReactantState <: AbstractSerialArchitecture end
+struct ReactantState{S} <: AbstractSerialArchitecture
+    sharding::S
+end
+
+ReactantState() = ReactantState(nothing)
 
 #####
 ##### These methods are extended in DistributedComputations.jl
 #####
 
-device(::CPU) = KernelAbstractions.CPU()
-device(::GPU) = CUDA.CUDABackend(; always_inline=true)
+device(a::CPU) = KernelAbstractions.CPU()
+device(a::GPU) = a.device
 
 architecture() = nothing
 architecture(::Number) = nothing
 architecture(::Array) = CPU()
-architecture(::CuArray) = GPU()
+architecture(::CuArray) = CUDAGPU()
 architecture(a::SubArray) = architecture(parent(a))
 architecture(a::OffsetArray) = architecture(parent(a))
 
@@ -80,21 +101,21 @@ on_architecture(arch::AbstractSerialArchitecture, nt::NamedTuple) = NamedTuple{k
 
 # On architecture for array types
 on_architecture(::CPU, a::Array) = a
-on_architecture(::GPU, a::Array) = CuArray(a)
-
-on_architecture(::CPU, a::CuArray) = Array(a)
-on_architecture(::GPU, a::CuArray) = a
-
 on_architecture(::CPU, a::BitArray) = a
-on_architecture(::GPU, a::BitArray) = CuArray(a)
-
+on_architecture(::CPU, a::CuArray) = Array(a)
 on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
-on_architecture(::GPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
-
 on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
-on_architecture(::GPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
+on_architecture(::CPU, a::StepRangeLen) = a
 
-on_architecture(arch::AbstractSerialArchitecture, a::OffsetArray) = OffsetArray(on_architecture(arch, a.parent), a.offsets...)
+on_architecture(::CUDAGPU, a::Array) = CuArray(a)
+on_architecture(::CUDAGPU, a::CuArray) = a
+on_architecture(::CUDAGPU, a::BitArray) = CuArray(a)
+on_architecture(::CUDAGPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
+on_architecture(::CUDAGPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
+on_architecture(::CUDAGPU, a::StepRangeLen) = a
+
+on_architecture(arch::AbstractSerialArchitecture, a::OffsetArray) =
+    OffsetArray(on_architecture(arch, a.parent), a.offsets...)
 
 cpu_architecture(::CPU) = CPU()
 cpu_architecture(::GPU) = CPU()
@@ -124,8 +145,9 @@ end
 
 # Convert arguments to GPU-compatible types
 @inline convert_to_device(arch, args)  = args
-@inline convert_to_device(::GPU, args) = CUDA.cudaconvert(args)
-@inline convert_to_device(::GPU, args::Tuple) = map(CUDA.cudaconvert, args)
+@inline convert_to_device(::CPU, args) = args
+@inline convert_to_device(::CUDAGPU, args) = CUDA.cudaconvert(args)
+@inline convert_to_device(::CUDAGPU, args::Tuple) = map(CUDA.cudaconvert, args)
 
 # Deprecated functions
 function arch_array(arch, arr) 

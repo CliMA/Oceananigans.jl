@@ -83,7 +83,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKutta3TimeStepper}, Δt; ca
     ζ² = model.timestepper.ζ²
     ζ³ = model.timestepper.ζ³
 
-    store_fields!(model)
+    cache_previous_fields!(model)
 
     ####
     #### First stage
@@ -159,7 +159,7 @@ function split_rk3_substep!(model, Δt, γⁿ, ζⁿ)
     end
 end
 
-function store_fields!(model)
+function cache_previous_fields!(model)
     
     previous_fields = model.timestepper.Ψ⁻
     model_fields = prognostic_fields(model)

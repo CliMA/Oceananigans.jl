@@ -1,9 +1,9 @@
 using Oceananigans: fields
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Fields: immersed_boundary_condition
-using Oceananigans.Grids: retrieve_interior_active_cells_map
+using Oceananigans.Grids: get_active_cells_map
 using Oceananigans.BoundaryConditions: apply_x_bcs!, apply_y_bcs!, apply_z_bcs!
-using Oceananigans.TimeSteppers: store_field_tendencies!, ab2_step_field!, implicit_step!
+using Oceananigans.TimeSteppers: ab2_step_field!, implicit_step!
 using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
 using CUDA
 
@@ -163,11 +163,12 @@ end
     # See below.
     α = convert(FT, 1.5) + χ
     β = convert(FT, 0.5) + χ
+    mask = inactive_cell(i, j, k, grid)
     
     @inbounds begin
         total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe
-        e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k])
-        G⁻e[i, j, k] = total_Gⁿe
+        e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k]) * mask
+        G⁻e[i, j, k] = total_Gⁿe * mask
     end
 end
 

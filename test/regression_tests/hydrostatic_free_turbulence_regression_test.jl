@@ -22,6 +22,8 @@ function global_topology(grid::DistributedGrid, i)
     return string(T)
 end
 
+using Oceananigans.Grids: YRegLLGOTF
+
 function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; regenerate_data=false)
 
     #####
@@ -92,12 +94,12 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
         
         directory =  joinpath(dirname(@__FILE__), "data")
         outputs   = (; u, v, w, η)
-        simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                              dir = directory,
-                                                              schedule = IterationInterval(stop_iteration),
-                                                              filename = output_filename,
-                                                              with_halos = true,
-                                                              overwrite_existing = true)
+        simulation.output_writers[:fields] = JLD2Writer(model, outputs,
+                                                        dir = directory,
+                                                        schedule = IterationInterval(stop_iteration),
+                                                        filename = output_filename,
+                                                        with_halos = true,
+                                                        overwrite_existing = true)
     end
    
     # Let's gooooooo!

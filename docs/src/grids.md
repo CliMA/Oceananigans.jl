@@ -59,16 +59,15 @@ grid = RectilinearGrid(architecture,
                        z = z_faces)
 
 # output
-10×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on GPU with 3×0×3 halo
+10×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on CUDAGPU with 3×0×3 halo
 ├── Periodic x ∈ [0.0, 20.0) regularly spaced with Δx=2.0
 ├── Flat y
 └── Bounded  z ∈ [0.0, 10.0] variably spaced with min(Δz)=1.0, max(Δz)=4.0
 ```
 
-!!! note "GPU architecture requires a CUDA-enabled device"
-    To run the above example and create a grid on the GPU, an Nvidia GPU has to be available
-    and [`CUDA.jl`](https://cuda.juliagpu.org/stable/) must be working). For more information
-    see the [`CUDA.jl` documentation](https://cuda.juliagpu.org/stable/).
+!!! note "GPU architecture requires a CUDA- or Metal-enabled device"
+    To run the above example and create a grid on the GPU, either an Nvidia or Metal GPU has to be available.
+    For more information about CUDA, see the [`CUDA.jl` documentation](https://cuda.juliagpu.org/stable/).
 
 The ``y``-dimension is "missing" because it's marked `Flat` in `topology = (Periodic, Flat, Bounded)`.
 So nothing varies in ``y``: `y`-derivatives are 0.
@@ -88,7 +87,7 @@ The shape of the physical domain determines what grid type should be used:
 3. [`OrthogonalSphericalShellGrid`](@ref Oceananigans.Grids.OrthogonalSphericalShellGrid) represents sectors of thin spherical shells divided with mesh lines that intersect at right angles (thus, orthogonal) but are otherwise arbitrary.
 
 !!! note "OrthogonalSphericalShellGrids.jl"
-    See the auxiliary package [`OrthogonalSphericalShellGrids.jl`](https://github.com/CliMA/OrthogonalSphericalShellGrids.jl)
+    See the auxiliary module [`OrthogonalSphericalShellGrids.jl`](@ref Oceananigans.OrthogonalSphericalShellGrids)
     for recipes that implement some useful `OrthogonalSphericalShellGrid`, including the
     ["tripolar" grid](https://www.sciencedirect.com/science/article/abs/pii/S0021999196901369).
 
