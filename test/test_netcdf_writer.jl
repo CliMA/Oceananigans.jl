@@ -2713,12 +2713,14 @@ function test_netcdf_buoyancy_force(arch)
                                                          include_grid_metrics = true,
                                                          verbose = true)
         # only tests that the writer builds, produces a file at filepath and sets attributes
-        @test simulation.output_writers[:b_eos] isa NecCDFWriter
+        @test simulation.output_writers[:b_eos] isa NetCDFWriter
         @test isfile(simulation.output_writers[:b_eos].filepath)
+        ds = NCDataset(simulation.output_writers[:b_eos].filepath)
         @test ds["T"].attrib["long_name"] == "Conservative temperature"
         @test ds["T"].attrib["units"] == "°C"
         @test ds["S"].attrib["long_name"] == "Absolute salinity"
         @test ds["S"].attrib["units"] == "g/kg"
+        close(ds)
         rm(simulation.output_writers[:b_eos].filepath)
     end
     return nothing
