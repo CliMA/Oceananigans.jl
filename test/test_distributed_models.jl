@@ -433,51 +433,48 @@ end
 
     @testset "Halo communication" begin
         @info "  Testing halo communication..."
-        for child_arch in archs
-            for H in 1:3
-                test_triply_periodic_halo_communication_with_411_ranks((H, H, H), child_arch)
-                test_triply_periodic_halo_communication_with_141_ranks((H, H, H), child_arch)
-                test_triply_periodic_halo_communication_with_221_ranks((H, H, H), child_arch)
-            end
+        child_arch = get(ENV, "GPU_TEST", nothing) == "true" ? GPU() : CPU()
+        for H in 1:3
+            test_triply_periodic_halo_communication_with_411_ranks((H, H, H), child_arch)
+            test_triply_periodic_halo_communication_with_141_ranks((H, H, H), child_arch)
+            test_triply_periodic_halo_communication_with_221_ranks((H, H, H), child_arch)
         end
     end
 
     # Only test on CPU because we do not have a GPU pressure solver yet
     @testset "Time stepping NonhydrostaticModel" begin
-        if CPU() ∈ archs 
-            for partition in [Partition(1, 4), Partition(2, 2), Partition(4, 1)]
-                @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
-                arch = Distributed(; partition)
-                grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
-                model = NonhydrostaticModel(; grid)
+        child_arch = get(ENV, "GPU_TEST", nothing) == "true" ? GPU() : CPU()
+        for partition in [Partition(1, 4), Partition(2, 2), Partition(4, 1)]
+            @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
+            arch = Distributed(child_arch; partition)
+            grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
+            model = NonhydrostaticModel(; grid)
 
-                time_step!(model, 1)
-                @test model isa NonhydrostaticModel
-                @test model.clock.time ≈ 1
-
-                simulation = Simulation(model, Δt=1, stop_iteration=2)
-                run!(simulation)
-                @test model isa NonhydrostaticModel
-                @test model.clock.time ≈ 2
-            end
-        end
-    end
-
-    @testset "Time stepping ShallowWaterModel" begin
-        for child_arch in archs
-            arch = Distributed(child_arch; partition=Partition(1, 4))
-            grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Flat), size=(8, 8), extent=(1, 2), halo=(3, 3))
-            model = ShallowWaterModel(; momentum_advection=nothing, mass_advection=nothing, tracer_advection=nothing, grid, gravitational_acceleration=1)
-
-            set!(model, h=1)
             time_step!(model, 1)
-            @test model isa ShallowWaterModel
+            @test model isa NonhydrostaticModel
             @test model.clock.time ≈ 1
 
             simulation = Simulation(model, Δt=1, stop_iteration=2)
             run!(simulation)
-            @test model isa ShallowWaterModel
+            @test model isa NonhydrostaticModel
             @test model.clock.time ≈ 2
         end
+    end
+
+    @testset "Time stepping ShallowWaterModel" begin
+        child_arch = get(ENV, "GPU_TEST", nothing) == "true" ? GPU() : CPU()
+        arch = Distributed(child_arch; partition=Partition(1, 4))
+        grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Flat), size=(8, 8), extent=(1, 2), halo=(3, 3))
+        model = ShallowWaterModel(; momentum_advection=nothing, mass_advection=nothing, tracer_advection=nothing, grid, gravitational_acceleration=1)
+
+        set!(model, h=1)
+        time_step!(model, 1)
+        @test model isa ShallowWaterModel
+        @test model.clock.time ≈ 1
+
+        simulation = Simulation(model, Δt=1, stop_iteration=2)
+        run!(simulation)
+        @test model isa ShallowWaterModel
+        @test model.clock.time ≈ 2
     end
 end
