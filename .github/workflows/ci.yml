@@ -55,12 +55,7 @@ jobs:
         run: |
           using Pkg
           Pkg.Registry.update()
-          Pkg.add([
-              PackageSpec(; name="Reactant", rev="ap/sdy_fixes2"),
-          #     PackageSpec(; name="ReactantCore", rev="main"),
-          #     PackageSpec(; name="Oceananigans", rev="main"),
-          #     PackageSpec(; name="ClimaOcean", rev="main"),
-          ])
+          Pkg.add([PackageSpec(; name="Reactant", rev="ap/sdy_fixes2")])
           Pkg.instantiate()
       - name: Run sharding tests
           with:
