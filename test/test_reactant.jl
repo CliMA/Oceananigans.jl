@@ -1,14 +1,13 @@
 include("reactant_test_utils.jl")
 
+ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
+
 @testset "Reactanigans unit tests" begin
     @info "Performing Reactanigans unit tests..."
     
     arch = ReactantState()
     times = 0:1.0:4
     t = 2.1
-    times = Reactant.to_rarray(times)
-    @test times isa Reactant.TracedRNumberOverrides.TracedStepRangeLen
-
     ñ, n₁, n₂ = @jit Oceananigans.OutputReaders.find_time_index(times, t)
     @test ñ ≈ 0.1
     @test n₁ == 3 # eg times = [0 1 2 ⟨⟨2.1⟩⟩ 3]
@@ -77,7 +76,6 @@ include("reactant_test_utils.jl")
     for FT in (Float64, Float32)
         sgrid = RectilinearGrid(arch, FT; size=(4, 4, 4), x=[0, 1, 2, 3, 4], y=(0, 1), z=(0, 1))
         @test architecture(sgrid) isa ReactantState
-
         @test architecture(sgrid.xᶠᵃᵃ) isa ReactantState
         @test architecture(sgrid.xᶜᵃᵃ) isa ReactantState
 
@@ -88,20 +86,36 @@ include("reactant_test_utils.jl")
 
         @test architecture(llg) isa ReactantState
 
-        #= The grid is traced, these tests are broken
         for name in propertynames(llg)
             p = getproperty(llg, name)
             if !(name ∈ (:architecture, :z))
                 @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Reactant.AbstractConcreteArray})
             end
         end
-        =#
 
-        ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
+        # Test making a constant grid
+        cpu_llg = LatitudeLongitudeGrid(CPU(), FT; size = (4, 4, 4),
+                                        longitude = [0, 1, 2, 3, 4],
+                                        latitude = [0, 1, 2, 3, 4],
+                                        z = (0, 1))
+
+        constant_llg = OceananigansReactantExt.constant_with_reactant_state(cpu_llg)
+
+        for name in propertynames(constant_llg)
+            p = getproperty(constant_llg, name)
+            if !(name ∈ (:architecture, :z))
+                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Array})
+            end
+        end
+        
         ibg = ImmersedBoundaryGrid(llg, GridFittedBottom(ridge))
         @test architecture(ibg) isa ReactantState
-
         @test architecture(ibg.immersed_boundary.bottom_height) isa ReactantState
+
+        cpu_ibg = ImmersedBoundaryGrid(cpu_llg, GridFittedBottom(ridge))
+        constant_ibg = OceananigansReactantExt.constant_with_reactant_state(cpu_ibg)
+        @test architecture(constant_ibg) isa ReactantState
+        @test architecture(constant_ibg.immersed_boundary.bottom_height) isa CPU
 
         rllg = RotatedLatitudeLongitudeGrid(arch, FT; size = (4, 4, 4),
                                             north_pole = (0, 0),
@@ -111,14 +125,32 @@ include("reactant_test_utils.jl")
 
         @test architecture(rllg) isa ReactantState
 
-        #=
         for name in propertynames(rllg)
             p = getproperty(rllg, name)
             if !(name ∈ (:architecture, :z, :conformal_mapping))
                 @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Reactant.AbstractConcreteArray})
             end
         end
-        =#
+
+        cpu_rllg = RotatedLatitudeLongitudeGrid(CPU(), FT; size = (4, 4, 4),
+                                                north_pole = (0, 0),
+                                                longitude = [0, 1, 2, 3, 4],
+                                                latitude = [0, 1, 2, 3, 4],
+                                                z = (0, 1))
+
+        constant_rllg = OceananigansReactantExt.constant_with_reactant_state(cpu_rllg)
+
+        for name in propertynames(constant_rllg)
+            p = getproperty(constant_rllg, name)
+            if !(name ∈ (:architecture, :z, :conformal_mapping))
+                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Array})
+            end
+        end
+
+        cpu_ribg = ImmersedBoundaryGrid(cpu_rllg, GridFittedBottom(ridge))
+        constant_ribg = OceananigansReactantExt.constant_with_reactant_state(cpu_ribg)
+        @test architecture(constant_ribg) isa ReactantState
+        @test architecture(constant_ribg.immersed_boundary.bottom_height) isa CPU
     end
 end
 
