@@ -17,8 +17,8 @@ const AnyConcreteReactantArray = Union{Reactant.AnyConcretePJRTArray,Reactant.An
 
 device(::ReactantState) = ReactantBackend()
 
-architecture(::AnyConcreteReactantArray) = ReactantState
-architecture(::Reactant.AnyTracedRArray) = ReactantState
+architecture(::AnyConcreteReactantArray) = ReactantState()
+architecture(::Reactant.AnyTracedRArray) = ReactantState()
 
 # ConcreteRArray can refer to either a PJRT or IFRT array based on Reactant preferences
 array_type(::ReactantState) = ConcreteRArray

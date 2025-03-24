@@ -1,6 +1,9 @@
 module Grids
 
+export constant_with_reactant_state
+
 using Reactant
+
 using Oceananigans
 using Oceananigans: Distributed
 using Oceananigans.Architectures: ReactantState, CPU
@@ -142,6 +145,27 @@ function ImmersedBoundaryGrid(grid::ReactantUnderlyingGrid, ib::AbstractImmersed
     return reactant_immersed_boundary_grid(grid, ib; active_cells_map, active_z_columns)
 end
 =#
+
+const CPUUnderlyingGrid{FT, TX, TY, TZ, CZ} = AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, <:CPU}
+const CPUImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S} =
+    ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, <:CPU}
+
+function constant_with_reactant_state(cpu_grid::AbstractUnderlyingGrid)
+    GridType = typeof(cpu_grid).name.wrapper
+    other_names = propertynames(cpu_grid)[2:end] # exclude architecture
+    other_properties = Tuple(getproperty(cpu_grid, name) for name in other_names)
+    TX, TY, TZ = Oceananigans.Grids.topology(cpu_grid)
+    return GridType{TX, TY, TZ}(ReactantState(), other_properties...)
+end
+
+function constant_with_reactant_state(cpu_ibg::CPUImmersedBoundaryGrid)
+    underlying_grid = constant_with_reactant_state(cpu_ibg.underlying_grid)
+    TX, TY, TZ = Oceananigans.Grids.topology(cpu_ibg)
+    return ImmersedBoundaryGrid{TX, TY, TZ}(underlying_grid,
+                                            cpu_ibg.immersed_boundary,
+                                            cpu_ibg.interior_active_cells,
+                                            cpu_ibg.active_z_columns)
+end
 
 end # module
 
