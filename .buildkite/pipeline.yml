@@ -792,6 +792,7 @@ steps:
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "reactant_1"
+      CUDA_VISIBLE_DEVICES: "-1"
     commands: |
       touch LocalPreferences.toml
 
@@ -799,7 +800,6 @@ steps:
       echo "xla_runtime = \"PJRT\"" >> LocalPreferences.toml
 
       cat LocalPreferences.toml
-      export CUDA_VISIBLE_DEVICES="-1"
 
       $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
     agents:
@@ -815,6 +815,7 @@ steps:
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "reactant_1"
+      CUDA_VISIBLE_DEVICES: "-1"
     commands: |
       touch LocalPreferences.toml
 
@@ -822,7 +823,6 @@ steps:
       echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
 
       cat LocalPreferences.toml
-      export CUDA_VISIBLE_DEVICES="-1"
 
       $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
     agents:
