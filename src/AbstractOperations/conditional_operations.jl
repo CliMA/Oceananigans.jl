@@ -91,14 +91,11 @@ function ConditionalOperation(operand::AbstractField;
     return ConditionalOperation{LX, LY, LZ}(operand, func, operand.grid, condition, mask)
 end
 
-validate_condition(cond::Function, ::AbstractField) = cond
+validate_condition(cond, ::AbstractField) = cond # fallback
 
 function validate_condition(cond::AbstractArray, operand::AbstractField)
     if ndims(cond) != 3
         throw(ArgumentError("The keyword argument condition::AbstractArray requires size $(size(operand))"))
-    end
-    if eltype(cond) !== Bool
-        throw(ArgumentError("The keyword argument condition::AbstractArray requires eltype(condition) == Bool"))
     end
     return cond
 end
