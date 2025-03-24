@@ -40,6 +40,9 @@ jobs:
         arch:
           - x64
     steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+      - uses: julia-actions/cache@v2
       - name: Set XLA runtime
         run: |
           cat <<EOF > LocalPreferences.toml
@@ -60,13 +63,10 @@ jobs:
           ])
           Pkg.instantiate()
       - name: Run sharding tests
-        - uses: actions/checkout@v4
-        - uses: julia-actions/setup-julia@v2
           with:
             version: ${{ matrix.version }}
             arch: ${{ matrix.arch }}
-        - uses: julia-actions/cache@v2
-        - uses: julia-actions/julia-buildpkg@v1
+        #- uses: julia-actions/julia-buildpkg@v1
         - uses: julia-actions/julia-runtest@v1
           env:
             REACTANT_TEST: true
