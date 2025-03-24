@@ -200,15 +200,14 @@ run_large_pencil_distributed_grid = """
 
 @testset "Test distributed TripolarGrid simulations..." begin
     # Run the serial computation    
-    grid = TripolarGrid(size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
-    grid = analytical_immersed_tripolar_grid(grid)
-
-    simulation = run_tripolar_simulation(grid)
+    grid  = TripolarGrid(size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
+    grid  = analytical_immersed_tripolar_grid(grid)
+    model = run_tripolar_simulation(grid)
 
     # Retrieve Serial quantities
-    us, vs, ws = simulation.model.velocities
-    cs = simulation.model.tracers.c
-    ηs = simulation.model.free_surface.η
+    us, vs, ws = model.velocities
+    cs = model.tracers.c
+    ηs = model.free_surface.η
 
     us = interior(us, :, :, 1)
     vs = interior(vs, :, :, 1)
