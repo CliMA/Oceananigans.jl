@@ -172,7 +172,7 @@ CUDA.allowscalar() do
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
-        archs = test_architectures()
+        archs = [child_arch]
         include("test_distributed_models.jl")
     end
 

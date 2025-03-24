@@ -19,7 +19,7 @@ function run_distributed_latitude_longitude_grid(arch, filename)
     Random.seed!(1234)
     bottom_height = rand(40, 40, 1)
 
-    distributed_grid = LatitudeLongitudeGrid(size=(40, 40, 1), longitude=(0, 360), latitude=(-10, 10), z=(-1000, 0), halo=(5, 5, 5))    
+    distributed_grid = LatitudeLongitudeGrid(size=(40, 40, 10), longitude=(0, 360), latitude=(-10, 10), z=(-1000, 0), halo=(5, 5, 5))    
     distributed_grid = ImmersedBoundaryGrid(distributed_grid, GridFittedBottom(bottom_height))
     model            = run_latitude_longitude_simulation(distributed_grid)
 
