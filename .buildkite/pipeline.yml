@@ -777,7 +777,6 @@ steps:
       echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
 
       cat LocalPreferences.toml
-      export CUDA_VISIBLE_DEVICES="-1"
       
       $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
     agents:
@@ -823,6 +822,7 @@ steps:
       echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
 
       cat LocalPreferences.toml
+      export CUDA_VISIBLE_DEVICES="-1"
 
       $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
     agents:
@@ -891,6 +891,7 @@ steps:
       echo "xla_runtime = \"PJRT\"" >> LocalPreferences.toml
 
       cat LocalPreferences.toml
+      export CUDA_VISIBLE_DEVICES="-1"
 
       $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
     agents:
@@ -913,6 +914,7 @@ steps:
       echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
 
       cat LocalPreferences.toml
+      export CUDA_VISIBLE_DEVICES="-1"
 
       $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
     agents:
