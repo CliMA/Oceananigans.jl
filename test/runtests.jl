@@ -250,8 +250,6 @@ CUDA.allowscalar() do
 
     if group == :sharding || group == :all
         @testset "Sharding Reactant extension tests" begin
-            Pkg.add("Reactant", rev="ap/sdy_fixes2")
-
             include("test_reactant_distributed_lat_lon.jl")
             # There is an issue with sharding and tripolar grid at the moment
             # see https://github.com/EnzymeAD/Reactant.jl/issues/1020

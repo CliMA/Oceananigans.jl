@@ -45,6 +45,10 @@ jobs:
           [Reactant]
           xla_runtime = "IFRT"
           EOF
+          using Pkg
+          Pkg.Registry.update()
+          Pkg.add([PackageSpec(; name="Reactant", rev="ap/sdy_fixes2")])'
+          Pkg.instantiate()
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
