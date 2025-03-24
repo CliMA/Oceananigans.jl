@@ -40,6 +40,11 @@ jobs:
         arch:
           - x64
     steps:
+      - run: |
+          cat <<EOF > LocalPreferences.toml
+          [Reactant]
+          xla_runtime = "IFRT"
+          EOF
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
