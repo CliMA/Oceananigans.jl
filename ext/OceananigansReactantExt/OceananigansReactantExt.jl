@@ -36,7 +36,7 @@ using .Models
 include("Simulations/Simulations.jl")
 using .Simulations
 
-include("TripolarGrid.jl")
+include("ShardedGrids.jl")
 
 include("OutputReaders.jl")
 using .OutputReaders

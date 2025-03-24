@@ -1,3 +1,13 @@
+import Oceananigans.DistributedComputations: partition_coordinate, assemble_coordinate
+
+# Coordinates do not need partitioning on a `Distributed{<:ReactantState}` (sharded) architecture
+partition_coordinate(c::Tuple,          n, ::Oceananigans.Distributed{<:ReactantState}, dim) = c
+partition_coordinate(c::AbstractVector, n, ::Oceananigans.Distributed{<:ReactantState}, dim) = c
+
+# Same thing for assembling the coordinate, it is already represented as a global array
+assemble_coordinate(c::Tuple,          n, ::Oceananigans.Distributed{<:ReactantState}, dim) = c
+assemble_coordinate(c::AbstractVector, n, ::Oceananigans.Distributed{<:ReactantState}, dim) = c
+
 # This mostly exists for future where we will assemble data from multiple workers
 # to construct the grid
 function Oceananigans.TripolarGrid(arch::Oceananigans.Distributed{<:ReactantState},
