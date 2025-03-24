@@ -171,9 +171,10 @@ end
 
     conds = Reactant.TracedUtils.materialize_traced_array(Reactant.call_with_reactant(Oceananigans.AbstractOperations.evaluate_condition, c.condition, tracedidxs..., c.grid, c))
 
-    
+    @assert size(conds) == size(c)
     tvals = Reactant.Ops.fill(zero(Reactant.unwrapped_eltype(Base.eltype(c))), size(c))
 
+    @assert size(tvals) == size(c)
     gf =  Reactant.call_with_reactant(getindex, c.operand, axes2...)
     Reactant.TracedRArrayOverrides._copyto!(tvals, Base.broadcasted(c.func, gf))
     
