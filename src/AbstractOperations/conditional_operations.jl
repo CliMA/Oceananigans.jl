@@ -95,10 +95,10 @@ validate_condition(cond::Function, ::AbstractField) = cond
 
 function validate_condition(cond::AbstractArray, operand::AbstractField)
     if ndims(cond) != 3
-        throw(ArgumentError("The keyword argument condition::AbstractArray requires a 3D array of size $(size(operand))"))
+        throw(ArgumentError("The keyword argument condition::AbstractArray requires size $(size(operand))"))
     end
     if eltype(cond) !== Bool
-        throw(ArgumentError("The keyword argument condition::AbstractArray requires an array of booleans"))
+        throw(ArgumentError("The keyword argument condition::AbstractArray requires eltype(condition) == Bool"))
     end
     return cond
 end
