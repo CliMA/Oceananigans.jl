@@ -40,14 +40,17 @@ Keyword arguments
           `condition == true`. Default is `identity`.
 
 - `condition`: either a function of `(i, j, k, grid, operand)` returning a Boolean,
-               or a 3-dimensional Boolean `AbstractArray`. At locations where `condition == false`,
-               operand will be masked by `mask`
+               or a 3-dimensional Boolean `AbstractArray`.
+               At locations where `condition == false`, operand will be masked by `mask`.
 
 - `mask`: the scalar mask
 
-`condition_operand` is a convenience function used to construct a `ConditionalOperation`
+`condition_operand` is a convenience function used to construct a `ConditionalOperation`, e.g.,
 
-`condition_operand(func::Function, operand::AbstractField, condition, mask) = ConditionalOperation(operand; func, condition, mask)`
+```julia
+condition_operand(func::Function, operand::AbstractField, condition, mask) =
+    ConditionalOperation(operand; func, condition, mask)
+```
 
 Example
 =======
@@ -86,10 +89,21 @@ function ConditionalOperation(operand::AbstractField;
     return ConditionalOperation{LX, LY, LZ}(operand, func, operand.grid, condition, mask)
 end
 
+validate_condition(cond::Function, ::ConditionalOperation) = cond
+
+function validate_condition(cond::AbstractArray, c::ConditionalOperation)
+    if ndims(cond) != 3
+        throw(ArgumentError("when kwarg condition::Array requires a 3D array of size $(size(c))"))
+    end
+    return cond
+end
+
 function ConditionalOperation(c::ConditionalOperation;
                               func = c.func,
                               condition = c.condition,
                               mask = c.mask)
+
+    condition = validate_condition(condition, c)
 
     LX, LY, LZ = location(c)
     return ConditionalOperation{LX, LY, LZ}(c.operand, func, c.grid, condition, mask)
