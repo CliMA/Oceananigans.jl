@@ -250,7 +250,6 @@ CUDA.allowscalar() do
 
     if group == :sharding || group == :all
         @testset "Sharding Reactant extension tests" begin
-            using Pkg
             Pkg.add("Reactant", rev="ap/sdy_fixes2")
 
             include("test_reactant_distributed_lat_lon.jl")
