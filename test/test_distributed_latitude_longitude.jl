@@ -44,7 +44,11 @@ run_pencil_distributed_grid = """
     Random.seed!(1234)
     bottom_height = rand(40, 40, 1)
 
-    grid = LatitudeLongitudeGrid(size=(40, 40, 10), longitude=(0, 360), latitude=(-10, 10), z=(-1000, 0), halo=(5, 5, 5))    
+    grid = LatitudeLongitudeGrid(size=(40, 40, 10),
+                                 longitude=(0, 360),
+                                 latitude=(-10, 10),
+                                 z=(-1000, 0),
+                                 halo=(5, 5, 5))    
     grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
 
     model = run_latitude_longitude_simulation(grid)

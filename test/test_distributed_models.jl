@@ -407,7 +407,6 @@ end
 #####
 
 @testset "Distributed MPI Oceananigans" begin
-
     @info "Testing distributed MPI Oceananigans..."
 
     @testset "Multi architectures rank connectivity" begin
@@ -465,7 +464,8 @@ end
         child_arch = get(ENV, "GPU_TEST", nothing) == "true" ? GPU() : CPU()
         arch = Distributed(child_arch; partition=Partition(1, 4))
         grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Flat), size=(8, 8), extent=(1, 2), halo=(3, 3))
-        model = ShallowWaterModel(; momentum_advection=nothing, mass_advection=nothing, tracer_advection=nothing, grid, gravitational_acceleration=1)
+        model = ShallowWaterModel(; grid, momentum_advection=nothing, mass_advection=nothing,
+                                  tracer_advection=nothing, gravitational_acceleration=1)
 
         set!(model, h=1)
         time_step!(model, 1)
@@ -478,3 +478,4 @@ end
         @test model.clock.time ≈ 2
     end
 end
+
