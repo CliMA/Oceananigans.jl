@@ -222,9 +222,9 @@ CUDA.allowscalar() do
     end
 
     # Tests for Metal extension
-    if group == :distributed_tripolar || group == :all
+    if group == :mpi_tripolar || group == :all
         @testset "Distributed tripolar tests" begin
-            include("test_distributed_tripolar.jl")
+            include("test_mpi_tripolar.jl")
         end
     end
 
