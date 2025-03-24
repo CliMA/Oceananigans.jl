@@ -1,7 +1,9 @@
 using JLD2
 using MPI
-using Oceananigans.DistributedComputations: reconstruct_global_field, reconstruct_global_grid
+using Oceananigans.DistributedComputations: reconstruct_global_field, reconstruct_global_grid, child_architecture
 using Oceananigans.Units
+using Oceananigans.TimeSteppers: first_time_step!
+
 using Reactant
 using Random
 
@@ -19,12 +21,12 @@ function run_distributed_latitude_longitude_grid(arch, filename)
 
     distributed_grid = LatitudeLongitudeGrid(size=(40, 40, 1), longitude=(0, 360), latitude=(-10, 10), z=(-1000, 0), halo=(5, 5, 5))    
     distributed_grid = ImmersedBoundaryGrid(distributed_grid, GridFittedBottom(bottom_height))
-    simulation       = run_latitude_longitude_simulation(distributed_grid)
+    model            = run_latitude_longitude_simulation(distributed_grid)
 
-    η = reconstruct_global_field(simulation.model.free_surface.η)
-    u = reconstruct_global_field(simulation.model.velocities.u)
-    v = reconstruct_global_field(simulation.model.velocities.v)
-    c = reconstruct_global_field(simulation.model.tracers.c)
+    η = reconstruct_global_field(model.free_surface.η)
+    u = reconstruct_global_field(model.velocities.u)
+    v = reconstruct_global_field(model.velocities.v)
+    c = reconstruct_global_field(model.tracers.c)
 
     if arch.local_rank == 0
         jldsave(filename; u = Array(interior(u, :, :, 1)),
@@ -33,10 +35,22 @@ function run_distributed_latitude_longitude_grid(arch, filename)
                           η = Array(interior(η, :, :, 1))) 
     end
 
-    MPI.Barrier(MPI.COMM_WORLD)
-    MPI.Finalize()
-
     return nothing
+end
+
+function loop!(model)
+    first_time_step!(model, 5minutes)
+    Nsteps = ConcreteRNumber(100)
+    @trace for _ in 2:Nsteps
+        time_step!(model, 5minutes)
+    end
+end
+
+function vanilla_loop!(model)
+    first_time_step!(model, 5minutes)
+    for _ in 2:100
+        time_step!(model, 5minutes)
+    end
 end
 
 # Just a random simulation on a tripolar grid
@@ -56,9 +70,13 @@ function run_latitude_longitude_simulation(grid)
 
     set!(model, c = ηᵢ, η = ηᵢ)
 
-    simulation = Simulation(model, Δt = 5minutes, stop_iteration = 100)
+    if architecture(grid) isa ReactantState || child_architecture(grid) isa ReactantState  
+        r_loop! = @compile sync=true raise=true loop!(model)
+        r_loop!(model)
+    else
+        vanilla_loop!(model)
+    end
     
-    run!(simulation)
-
-    return simulation
+    return model
 end
+

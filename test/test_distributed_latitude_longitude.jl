@@ -47,12 +47,12 @@ run_pencil_distributed_grid = """
     grid = LatitudeLongitudeGrid(size=(40, 40, 1), longitude=(0, 360), latitude=(-10, 10), z=(-1000, 0), halo=(5, 5, 5))    
     grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
 
-    simulation = run_latitude_longitude_simulation(grid)
+    model = run_latitude_longitude_simulation(grid)
 
     # Retrieve Serial quantities
-    us, vs, ws = simulation.model.velocities
-    cs = simulation.model.tracers.c
-    ηs = simulation.model.free_surface.η
+    us, vs, ws = model.velocities
+    cs = model.tracers.c
+    ηs = model.free_surface.η
 
     us = interior(us, :, :, 1)
     vs = interior(vs, :, :, 1)
