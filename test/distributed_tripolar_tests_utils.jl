@@ -3,6 +3,7 @@ using MPI
 using Oceananigans.DistributedComputations: reconstruct_global_field, reconstruct_global_grid
 using Oceananigans.Units
 using Reactant
+using Oceananigans.TimeSteppers: first_time_step!
 
 import Oceananigans.BoundaryConditions: _fill_north_halo!
 using Oceananigans.BoundaryConditions: ZBC, CCLocation, FCLocation
