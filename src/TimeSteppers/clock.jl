@@ -7,9 +7,9 @@ import Base: show
 import Oceananigans.Units: Time
 
 """
-    mutable struct Clock{T, FT}
+    mutable struct Clock{TT, DT, IT, S}
 
-Keeps track of the current `time`, `last_Δt`, `iteration` number, and time-stepping `stage`.
+Keep track of the current `time`, `last_Δt`, `iteration` number, and time-stepping `stage`.
 The `stage` is updated only for multi-stage time-stepping methods. The `time::T` is
 either a number or a `DateTime` object.
 """
@@ -121,5 +121,3 @@ Adapt.adapt_structure(to, clock::Clock) = (time          = clock.time,
                                            last_stage_Δt = clock.last_stage_Δt,
                                            iteration     = clock.iteration,
                                            stage         = clock.stage)
-    
-
