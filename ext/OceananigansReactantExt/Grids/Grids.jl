@@ -16,22 +16,24 @@ import Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSph
 import Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
 import Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, materialize_immersed_boundary
 
+const ShardedDistributed = Oceananigans.Distributed{<:ReactantState}
+
 const ReactantGrid{FT, TX, TY, TZ} = Union{
     AbstractGrid{FT, TX, TY, TZ, <:ReactantState},
-    AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:ReactantState}}
+    AbstractGrid{FT, TX, TY, TZ, <:ShardedDistributed}
 }
 
 const ReactantImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S} = Union{
     ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, <:ReactantState},
-    ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, <:Distributed{<:ReactantState}},
+    ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, <:ShardedDistributed},
 }
 
 const ReactantUnderlyingGrid{FT, TX, TY, TZ, CZ} = Union{
     AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, <:ReactantState},
-    AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, <:Distributed{<:ReactantState}},
+    AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, <:ShardedDistributed},
 }
 
-const ShardedDistributed = Oceananigans.Distributed{<:ReactantState}
+const ShardedGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:ShardedDistributed}
 
 include("serial_grids.jl")
 include("sharded_grids.jl")
