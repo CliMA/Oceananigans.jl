@@ -20,7 +20,7 @@ using Oceananigans.Utils: Time
 
 import Oceananigans: initialize!
 import Oceananigans.Architectures: architecture
-import Oceananigans.TimeSteppers: reset!
+import Oceananigans.TimeSteppers: reset!, set_clock!
 import Oceananigans.Solvers: iteration
 
 # A prototype interface for AbstractModel.
@@ -116,6 +116,8 @@ const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
                                  NonhydrostaticModel,
                                  ShallowWaterModel}
 
+set_clock!(model::OceananigansModels, new_clock) = set_clock!(model.clock, new_clock)
+
 """
     possible_field_time_series(model::HydrostaticFreeSurfaceModel)
 
@@ -128,10 +130,10 @@ function possible_field_time_series(model::OceananigansModels)
     # such as model.diffusivity_fields
     return tuple(model_fields, forcing)
 end
- 
-# Update _all_ `FieldTimeSeries`es in an `OceananigansModel`. 
+
+# Update _all_ `FieldTimeSeries`es in an `OceananigansModel`.
 # Extract `FieldTimeSeries` from all property names that might contain a `FieldTimeSeries`
-# Flatten the resulting tuple by extracting unique values and set! them to the 
+# Flatten the resulting tuple by extracting unique values and set! them to the
 # correct time range by looping over them
 function update_model_field_time_series!(model::OceananigansModels, clock::Clock)
     time = Time(clock.time)
@@ -146,7 +148,7 @@ function update_model_field_time_series!(model::OceananigansModels, clock::Clock
 
     return nothing
 end
-               
+
 import Oceananigans.TimeSteppers: reset!
 
 function reset!(model::OceananigansModels)
@@ -162,7 +164,7 @@ function reset!(model::OceananigansModels)
     for field in model.timestepper.Gⁿ
         fill!(field, 0)
     end
-    
+
     return nothing
 end
 
@@ -170,7 +172,7 @@ end
 function default_nan_checker(model::OceananigansModels)
     model_fields = prognostic_fields(model)
 
-    if isempty(model_fields) 
+    if isempty(model_fields)
         return nothing
     end
 
@@ -182,7 +184,7 @@ end
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: OnlyParticleTrackingModel
 
-# Particle tracking models with prescribed velocities (and no tracers) 
+# Particle tracking models with prescribed velocities (and no tracers)
 # have no prognostic fields and no chance to producing a NaN.
 default_nan_checker(::OnlyParticleTrackingModel) = nothing
 
