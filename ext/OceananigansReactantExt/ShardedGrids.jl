@@ -56,6 +56,9 @@ function LatitudeLongitudeGrid(architecture::Oceananigans.Distributed{<:Reactant
     ysharding  = Sharding.DimsSharding(arch.connectivity, (2,  ), (:y,   ))
     xysharding = Sharding.DimsSharding(arch.connectivity, (1, 2), (:x, :y))
 
+    # x and z metric are either 1D or 2D, y metric is either a number or a 1D array
+    λmetric_sharding = ndims(Δλᶜᵃᵃ) == 1 ? xsharding : Reactant.Sharding.Sharding.NoSharding() # Will this work?
+    φmetric_sharding = ndims(Δφᵃᶜᵃ) == 1 ? ysharding : Reactant.Sharding.Sharding.NoSharding() # Will this work?
     xmetric_sharding = ndims(Δxᶜᶜᵃ) == 2 ? xsharding : xysharding
     ymetric_sharding = ndims(Δyᶜᶜᵃ) == 1 ? ysharding : Reactant.Sharding.Sharding.NoSharding() # Will this work?
     zmetric_sharding = ndims(Azᶜᶜᵃ) == 2 ? xsharding : xysharding
@@ -64,19 +67,19 @@ function LatitudeLongitudeGrid(architecture::Oceananigans.Distributed{<:Reactant
                                              Nλ, Nφ, Nz,
                                              Hλ, Hφ, Hz,
                                              Lλ, Lφ, Lz,
-                                             Reactant.to_rarray(grid.Δλᶠᵃᵃ; xsharding), 
-                                             Reactant.to_rarray(grid.Δλᶜᵃᵃ; xsharding), 
+                                             Reactant.to_rarray(grid.Δλᶠᵃᵃ; λmetric_sharding), 
+                                             Reactant.to_rarray(grid.Δλᶜᵃᵃ; λmetric_sharding), 
                                              Reactant.to_rarray(grid.λᶠᵃᵃ ; xsharding), 
                                              Reactant.to_rarray(grid.λᶜᵃᵃ ; xsharding),
-                                             Reactant.to_rarray(grid.Δφᵃᶠᵃ; ysharding), 
-                                             Reactant.to_rarray(grid.Δφᵃᶜᵃ; ysharding), 
+                                             Reactant.to_rarray(grid.Δφᵃᶠᵃ; φmetric_sharding), 
+                                             Reactant.to_rarray(grid.Δφᵃᶜᵃ; φmetric_sharding), 
                                              Reactant.to_rarray(grid.φᵃᶠᵃ ; ysharding), 
                                              Reactant.to_rarray(grid.φᵃᶜᵃ ; ysharding),
                                              Reactant.to_rarray(grid.z), # Intentionally not sharded
-                                             Reactant.to_rarray(grid.Δxᶜᶜᵃ; xemtric_sharding),
-                                             Reactant.to_rarray(grid.Δxᶠᶜᵃ; xemtric_sharding),
-                                             Reactant.to_rarray(grid.Δxᶜᶠᵃ; xemtric_sharding),
-                                             Reactant.to_rarray(grid.Δxᶠᶠᵃ; xemtric_sharding),
+                                             Reactant.to_rarray(grid.Δxᶜᶜᵃ; xmetric_sharding),
+                                             Reactant.to_rarray(grid.Δxᶠᶜᵃ; xmetric_sharding),
+                                             Reactant.to_rarray(grid.Δxᶜᶠᵃ; xmetric_sharding),
+                                             Reactant.to_rarray(grid.Δxᶠᶠᵃ; xmetric_sharding),
                                              Reactant.to_rarray(grid.Δyᶜᶜᵃ; ymetric_sharding),
                                              Reactant.to_rarray(grid.Δyᶠᶜᵃ; ymetric_sharding),
                                              Reactant.to_rarray(grid.Δyᶜᶠᵃ; ymetric_sharding),
