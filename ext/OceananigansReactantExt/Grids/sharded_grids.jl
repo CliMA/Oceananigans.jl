@@ -1,7 +1,8 @@
+using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.OrthogonalSphericalShellGrids
 
-import Oceananigans.Grids: zeros
+import Oceananigans.Grids: zeros, child_architecture
 
 import Oceananigans.DistributedComputations: 
                     partition_coordinate, 
@@ -10,6 +11,8 @@ import Oceananigans.DistributedComputations:
                     concatenate_local_sizes,
                     barrier!,
                     all_reduce
+
+child_architecture(grid::ShardedGrid) = child_architecture(architecture(grid))
 
 # Coordinates do not need partitioning on a `Distributed{<:ReactantState}` (sharded) architecture
 partition_coordinate(c::Tuple,          n, ::ShardedDistributed, dim) = c
