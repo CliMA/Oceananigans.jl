@@ -36,21 +36,6 @@ function LatitudeLongitudeGrid(architecture::Oceananigans.Distributed{<:Reactant
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, topology, size, halo, latitude,  :latitude,  2, architecture)
     Lz, z                        = generate_coordinate(FT, topology, size, halo, z,         :z,         3, architecture)
 
-    preliminary_grid = LatitudeLongitudeGrid{TX, TY, TZ}(architecture,
-                                                         Nλ, Nφ, Nz,
-                                                         Hλ, Hφ, Hz,
-                                                         Lλ, Lφ, Lz,
-                                                         Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
-                                                         Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
-                                                         z,
-                                                         (nothing for i=1:10)..., FT(radius))
-
-    grid = if !precompute_metrics
-        preliminary_grid
-    else
-        with_precomputed_metrics(preliminary_grid)
-    end
-
     # Extracting the local range
     xsharding  = Sharding.DimsSharding(arch.connectivity, (1,  ), (:x,   ))
     ysharding  = Sharding.DimsSharding(arch.connectivity, (2,  ), (:y,   ))
@@ -59,6 +44,28 @@ function LatitudeLongitudeGrid(architecture::Oceananigans.Distributed{<:Reactant
     # x and z metric are either 1D or 2D, y metric is either a number or a 1D array
     λmetric_sharding = ndims(Δλᶜᵃᵃ) == 1 ? xsharding : Reactant.Sharding.Sharding.NoSharding() # Will this work?
     φmetric_sharding = ndims(Δφᵃᶜᵃ) == 1 ? ysharding : Reactant.Sharding.Sharding.NoSharding() # Will this work?
+
+    preliminary_grid = LatitudeLongitudeGrid{TX, TY, TZ}(architecture,
+                                                         Nλ, Nφ, Nz,
+                                                         Hλ, Hφ, Hz,
+                                                         Lλ, Lφ, Lz,
+                                                         Reactant.to_rarray(grid.Δλᶠᵃᵃ; λmetric_sharding), 
+                                                         Reactant.to_rarray(grid.Δλᶜᵃᵃ; λmetric_sharding), 
+                                                         Reactant.to_rarray(grid.λᶠᵃᵃ ; xsharding), 
+                                                         Reactant.to_rarray(grid.λᶜᵃᵃ ; xsharding),
+                                                         Reactant.to_rarray(grid.Δφᵃᶠᵃ; φmetric_sharding), 
+                                                         Reactant.to_rarray(grid.Δφᵃᶜᵃ; φmetric_sharding), 
+                                                         Reactant.to_rarray(grid.φᵃᶠᵃ ; ysharding), 
+                                                         Reactant.to_rarray(grid.φᵃᶜᵃ ; ysharding),
+                                                         Reactant.to_rarray(z), # Intentionally not sharded
+                                                         (nothing for i=1:10)..., FT(radius))
+
+    if !precompute_metrics
+        return preliminary_grid
+    end
+       
+    grid = with_precomputed_metrics(preliminary_grid)
+
     xmetric_sharding = ndims(Δxᶜᶜᵃ) == 2 ? xsharding : xysharding
     ymetric_sharding = ndims(Δyᶜᶜᵃ) == 1 ? ysharding : Reactant.Sharding.Sharding.NoSharding() # Will this work?
     zmetric_sharding = ndims(Azᶜᶜᵃ) == 2 ? xsharding : xysharding
@@ -67,15 +74,15 @@ function LatitudeLongitudeGrid(architecture::Oceananigans.Distributed{<:Reactant
                                              Nλ, Nφ, Nz,
                                              Hλ, Hφ, Hz,
                                              Lλ, Lφ, Lz,
-                                             Reactant.to_rarray(grid.Δλᶠᵃᵃ; λmetric_sharding), 
-                                             Reactant.to_rarray(grid.Δλᶜᵃᵃ; λmetric_sharding), 
-                                             Reactant.to_rarray(grid.λᶠᵃᵃ ; xsharding), 
-                                             Reactant.to_rarray(grid.λᶜᵃᵃ ; xsharding),
-                                             Reactant.to_rarray(grid.Δφᵃᶠᵃ; φmetric_sharding), 
-                                             Reactant.to_rarray(grid.Δφᵃᶜᵃ; φmetric_sharding), 
-                                             Reactant.to_rarray(grid.φᵃᶠᵃ ; ysharding), 
-                                             Reactant.to_rarray(grid.φᵃᶜᵃ ; ysharding),
-                                             Reactant.to_rarray(grid.z), # Intentionally not sharded
+                                             grid.Δλᶠᵃᵃ,
+                                             grid.Δλᶜᵃᵃ,
+                                             grid.λᶠᵃᵃ ,
+                                             grid.λᶜᵃᵃ ,
+                                             grid.Δφᵃᶠᵃ,
+                                             grid.Δφᵃᶜᵃ,
+                                             grid.φᵃᶠᵃ ,
+                                             grid.φᵃᶜᵃ ,
+                                             grid.z,
                                              Reactant.to_rarray(grid.Δxᶜᶜᵃ; xmetric_sharding),
                                              Reactant.to_rarray(grid.Δxᶠᶜᵃ; xmetric_sharding),
                                              Reactant.to_rarray(grid.Δxᶜᶠᵃ; xmetric_sharding),
