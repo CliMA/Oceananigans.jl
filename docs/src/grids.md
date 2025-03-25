@@ -263,7 +263,8 @@ architecture = Distributed(child_architecture)
 [ Info: MPI has not been initialized, so we are calling MPI.Init().
 Distributed{CPU} across 1 rank:
 ├── local_rank: 0 of 0-0
-└── local_index: [1, 1, 1]
+├── local_index: [1, 1, 1]
+└── connectivity:
 ```
 
 which allows us to distributed computations across either CPUs or GPUs.

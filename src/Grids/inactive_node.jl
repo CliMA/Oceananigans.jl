@@ -2,22 +2,24 @@
 const c = Center()
 const f = Face()
 
+using ReactantCore
+
 function build_condition(Topo, side, dim, array::Bool) 
     if Topo == :Bounded 
         if array
-            return :(($side .< 1) .| ($side .> grid.$dim))
+            return :((ReactantCore.materialize_traced_array($side) .< 1) .| (ReactantCore.materialize_traced_array($side) .> grid.$dim))
         else
             return :(($side < 1) | ($side > grid.$dim))
         end
     elseif Topo == :LeftConnected
         if array
-            return :(($side .> grid.$dim))
+            return :((ReactantCore.materialize_traced_array($side) .> grid.$dim))
         else
             return :(($side > grid.$dim))
         end
     else # RightConnected
         if array
-            return :(($side .< 1))
+            return :((ReactantCore.materialize_traced_array($side) .< 1))
         else
             return :(($side < 1))
         end
