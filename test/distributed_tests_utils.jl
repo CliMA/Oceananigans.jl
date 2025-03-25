@@ -133,12 +133,15 @@ function run_distributed_simulation(grid)
     # Setup the model with a gaussian sea surface height
     # near the physical north poles and one near the equator
     ηᵢ(λ, φ, z) = exp(- (φ - 90)^2 / 10^2) + exp(- φ^2 / 10^2)
-
-    set!(model, c = ηᵢ, η = ηᵢ)
+    set!(model, c=ηᵢ, η=ηᵢ)
 
     Δt = 5minutes
-    if architecture(grid) isa ReactantState || child_architecture(grid) isa ReactantState  
+    arch = architecture(grid)
+    if arch isa ReactantState || arch isa Distributed{<:ReactantState}
+        @info "Compiling first_time_step..."
         r_first_time_step! = @compile sync=true raise=true first_time_step!(model, Δt)
+
+        @info "Compiling time_step..."
         r_time_step! = @compile sync=true raise=true time_step!(model, Δt)
     else
         r_first_time_step! = first_time_step!
@@ -152,3 +155,4 @@ function run_distributed_simulation(grid)
 
     return model
 end
+
