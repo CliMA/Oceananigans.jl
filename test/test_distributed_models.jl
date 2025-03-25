@@ -442,9 +442,9 @@ end
     end
 
     @testset "Test Distributed MPI Grids" begin
-        child = get(ENV, "GPU_TEST", nothing) == "true" ? GPU() : CPU()
-        if child_arch isa GPU
-            
+        child_arch = get(ENV, "GPU_TEST", nothing) == "true" ? GPU() : CPU()
+        
+        if child_arch isa GPU    
             @info "Testing `on_architecture` for distributed grids..."
             
             arch = Distributed(child_arch; partition=Partition(1, 4))
