@@ -116,7 +116,7 @@ function KrylovSolver(linear_operator;
     # Linear operators
     m = n = length(template_field)
     op = KrylovOperator(T, m, n, linear_operator)
-    preconditioner = preconditioner == nothing ? I : KrylovOperator(T, m, n, preconditioner)
+    preconditioner = preconditioner === nothing ? I : KrylovOperator(T, m, n, preconditioner)
 
     kf = KrylovField(template_field)
     kc = Krylov.KrylovConstructor(kf)
