@@ -496,9 +496,9 @@ end
 
     J1[i, j, k] = J0[i, j, k] + ΔJ
     J2[i, j, k] = J2[i, j, k] + 2ΔJ
-    e0 = compute_forward_u(simulation, Tᵢ, Sᵢ, J0, i, j, k)
+    e0 = compute_forward_u(simulation, Tᵢ, Sᵢ, J0, i+1, j, k)
     set!(simulation.model, u=0, v=0, T=0, S=0)
-    e2 = compute_forward_u(simulation, Tᵢ, Sᵢ, J2, i, j, k)
+    e2 = compute_forward_u(simulation, Tᵢ, Sᵢ, J2, i+1, j, k)
     set!(simulation.model, u=0, v=0, T=0, S=0)
     ΔeΔJ = (e2 - e0) / 2ΔJ
 
@@ -522,7 +522,7 @@ end
                     Duplicated(Tᵢ, dTᵢ),
                     Duplicated(Sᵢ, dSᵢ),
                     Duplicated(J1, dJ1),
-                    Const(i),
+                    Const(i+1),
                     Const(j),
                     Const(k))
 
