@@ -4,6 +4,11 @@ using Reactant
 using Oceananigans
 using OffsetArrays
 
+using Oceananigans: Distributed, DistributedComputations, ReactantState, CPU,
+                    OrthogonalSphericalShellGrids
+using Oceananigans.Architectures: on_architecture
+using Oceananigans.Grids: Bounded, Periodic, RightConnected
+
 deconcretize(obj) = obj # fallback
 deconcretize(a::OffsetArray) = OffsetArray(Array(a.parent), a.offsets...)
 
@@ -30,6 +35,11 @@ using .Models
 
 include("Simulations/Simulations.jl")
 using .Simulations
+
+include("ShardedGrids.jl")
+
+include("OutputReaders.jl")
+using .OutputReaders
 
 #####
 ##### Telling Reactant how to construct types
@@ -83,13 +93,13 @@ end
 
 # https://github.com/CliMA/Oceananigans.jl/blob/d9b3b142d8252e8e11382d1b3118ac2a092b38a2/src/Grids/orthogonal_spherical_shell_grid.jl#L14
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-    @nospecialize(OA::Type{Oceananigans.Grids.OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch}}),
+    @nospecialize(OA::Type{Oceananigans.Grids.OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, rFT}}),
     seen,
     mode::Reactant.TraceMode,
     @nospecialize(track_numbers::Type),
     @nospecialize(sharding),
     @nospecialize(runtime)
-) where {FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch}
+) where {FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, rFT}
     FT2 = Reactant.traced_type_inner(FT, seen, mode, track_numbers, sharding, runtime)
     TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
     TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
@@ -101,8 +111,16 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     CF2 = Reactant.traced_type_inner(CF, seen, mode, track_numbers, sharding, runtime)
     FF2 = Reactant.traced_type_inner(FF, seen, mode, track_numbers, sharding, runtime)
     FT2 = Base.promote_type(Base.promote_type(Base.promote_type(Base.promote_type(FT2, eltype(CC2)), eltype(FC2)), eltype(CF2)), eltype(FF2))
-    return Oceananigans.Grids.OrthogonalSphericalShellGrid{FT2, TX2, TY2, TZ2, Z2, Map2, CC2, FC2, CF2, FF2, Arch}
+    rFT2 = Reactant.traced_type_inner(rFT, seen, mode, track_numbers, sharding, runtime)
+    return Oceananigans.Grids.OrthogonalSphericalShellGrid{FT2, TX2, TY2, TZ2, Z2, Map2, CC2, FC2, CF2, FF2, Arch, rFT2}
 end
+
+@inline Reactant.make_tracer(
+    seen,
+    @nospecialize(prev::Oceananigans.Grids.OrthogonalSphericalShellGrid),
+    args...;
+    kwargs...
+    ) = Reactant.make_tracer_via_immutable_constructor(seen, prev, args...; kwargs...)
 
 # https://github.com/CliMA/Oceananigans.jl/blob/d9b3b142d8252e8e11382d1b3118ac2a092b38a2/src/ImmersedBoundaries/immersed_boundary_grid.jl#L8
 Base.@nospecializeinfer function Reactant.traced_type_inner(
@@ -122,6 +140,85 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     S2 = Reactant.traced_type_inner(S, seen, mode, track_numbers, sharding, runtime)
     FT2 = eltype(G2)
     return Oceananigans.Grids.ImmersedBoundaryGrid{FT2, TX2, TY2, TZ2, G2, I2, M2, S2, Arch}
+end
+
+struct Fix1v2{F,T}
+    f::F
+    t::T
+end
+
+@inline function (s::Fix1v2)(args...)
+    s.f(s.t, args...)
+end
+
+function evalcond(c, i, j, k)
+    Oceananigans.AbstractOperations.evaluate_condition(c.condition, i, j, k, c.grid, c)
+end
+
+@inline function Reactant.TracedUtils.broadcast_to_size(c::Oceananigans.AbstractOperations.ConditionalOperation, rsize)
+    if c == rsize
+        return Reactant.TracedUtils.materialize_traced_array(c)
+    end
+    return c
+end
+
+@inline function Reactant.TracedUtils.materialize_traced_array(c::Oceananigans.AbstractOperations.ConditionalOperation)
+    N = ndims(c)
+    axes2 = ntuple(Val(N)) do i
+        reshape(Base.OneTo(size(c, i)), (ntuple(Val(N)) do j
+            if i == j
+                size(c, i)
+            else
+                1
+            end
+        end)...)
+    end
+    
+    tracedidxs = axes(c)
+    tracedidxs = axes2
+
+    conds = Reactant.TracedUtils.materialize_traced_array(Reactant.call_with_reactant(Oceananigans.AbstractOperations.evaluate_condition, c.condition, tracedidxs..., c.grid, c))
+
+    @assert size(conds) == size(c)
+    tvals = Reactant.Ops.fill(zero(Reactant.unwrapped_eltype(Base.eltype(c))), size(c))
+
+    @assert size(tvals) == size(c)
+    gf =  Reactant.call_with_reactant(getindex, c.operand, axes2...)
+    Reactant.TracedRArrayOverrides._copyto!(tvals, Base.broadcasted(c.func, gf))
+    
+    return Reactant.Ops.select(
+                conds,
+                tvals,
+                Reactant.TracedUtils.broadcast_to_size(c.mask, size(c))
+    )
+end
+
+function evalkern(kern, i, j, k)
+    kern.kernel_function(i, j, k, kern.grid, kern.arguments...)
+end
+
+@inline function Reactant.TracedUtils.materialize_traced_array(c::Oceananigans.AbstractOperations.KernelFunctionOperation)
+    N = ndims(c)
+    axes2 = ntuple(Val(N)) do i
+        reshape(Base.OneTo(size(c, i)), (ntuple(Val(N)) do j
+            if i == j
+                size(c, i)
+            else
+                1
+            end
+        end)...)
+    end
+    
+    tvals = Reactant.Ops.fill(Reactant.unwrapped_eltype(Base.eltype(c)), size(c))
+    Reactant.TracedRArrayOverrides._copyto!(tvals, Base.broadcasted(Fix1v2(evalkern, c), axes2...))
+    return tvals
+end
+
+@inline function Reactant.TracedUtils.broadcast_to_size(c::Oceananigans.AbstractOperations.KernelFunctionOperation, rsize)
+    if c == rsize
+        return Reactant.TracedUtils.materialize_traced_array(c)
+    end
+    return c
 end
 
 # These are additional modules that may need to be Reactantified in the future:
