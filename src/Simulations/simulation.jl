@@ -4,7 +4,7 @@ using Oceananigans.DistributedComputations: Distributed, all_reduce
 
 import Oceananigans.Models: iteration
 import Oceananigans.Utils: prettytime
-import Oceananigans.TimeSteppers: reset!
+import Oceananigans.TimeSteppers: reset!, set_clock!
 
 default_progress(simulation) = nothing
 
@@ -27,11 +27,12 @@ end
 
 """
     Simulation(model; Δt,
-               verbose = true,
-               stop_iteration = Inf,
-               stop_time = Inf,
-               wall_time_limit = Inf,
-               minimum_relative_step = 0)
+                      verbose = true,
+                      stop_iteration = Inf,
+                      stop_time = Inf,
+                      wall_time_limit = Inf,
+                      align_time_step = true,
+                      minimum_relative_step = 0)
 
 Construct a `Simulation` for a `model` with time step `Δt`.
 
@@ -116,6 +117,8 @@ function Base.show(io::IO, s::Simulation)
                      "└── Diagnostics: $(ordered_dict_show(s.diagnostics, "│"))")
 end
 
+set_clock!(sim::Simulation, new_clock) = set_clock!(sim.model, new_clock)
+
 #####
 ##### Utilities
 #####
@@ -184,6 +187,8 @@ function reset!(sim::Simulation)
     return nothing
 end
 
+set_clock!(sim::Simulation, new_clock) = set_clock!(sim.model, new_clock)
+
 #####
 ##### Default stop criteria callback functions
 #####
@@ -194,11 +199,11 @@ function stop_iteration_exceeded(sim)
     if sim.model.clock.iteration >= sim.stop_iteration
         if sim.verbose
             msg = string("Model iteration ", iteration(sim), " equals or exceeds stop iteration ", Int(sim.stop_iteration), ".")
-            @info wall_time_msg(sim) 
+            @info wall_time_msg(sim)
             @info msg
         end
 
-        sim.running = false 
+        sim.running = false
     end
 
     return nothing
@@ -208,11 +213,11 @@ function stop_time_exceeded(sim)
     if sim.model.clock.time >= sim.stop_time
         if sim.verbose
             msg = string("Simulation time ", prettytime(sim), " equals or exceeds stop time ", prettytime(sim.stop_time), ".")
-            @info wall_time_msg(sim) 
+            @info wall_time_msg(sim)
             @info msg
         end
 
-        sim.running = false 
+        sim.running = false
     end
 
     return nothing
@@ -226,7 +231,7 @@ function wall_time_limit_exceeded(sim)
             @info msg
         end
 
-        sim.running = false 
+        sim.running = false
     end
 
     return nothing
