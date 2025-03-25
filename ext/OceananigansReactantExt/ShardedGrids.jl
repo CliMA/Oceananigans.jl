@@ -134,7 +134,6 @@ function Oceananigans.TripolarGrid(arch::ShardedDistributed,
 
     # Needed for partitial array assembly
     # device_to_array_slices = Reactant.sharding_to_array_slices(sharding, global_size)
-
     irange = Colon()
     jrange = Colon()
     FT = eltype(global_grid)
