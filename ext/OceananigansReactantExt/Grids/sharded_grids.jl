@@ -1,7 +1,8 @@
+using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.OrthogonalSphericalShellGrids
 
-import Oceananigans.Grids: zeros
+import Oceananigans.Grids: zeros, child_architecture
 
 import Oceananigans.DistributedComputations: 
                     partition_coordinate, 
@@ -10,6 +11,8 @@ import Oceananigans.DistributedComputations:
                     concatenate_local_sizes,
                     barrier!,
                     all_reduce
+
+child_architecture(grid::ShardedGrid) = child_architecture(architecture(grid))
 
 # Coordinates do not need partitioning on a `Distributed{<:ReactantState}` (sharded) architecture
 partition_coordinate(c::Tuple,          n, ::ShardedDistributed, dim) = c
@@ -196,9 +199,10 @@ function TripolarGrid(arch::ShardedDistributed,
     return grid
 end
 
-function Oceananigans.Grids.zeros(arch::ShardedDistributed, FT, local_sz...)
-    cpu_zeros = zeros(CPU(), FT, local_sz...)
-    sharding = Sharding.NamedSharding(arch.connectivity, ntuple(Returns(nothing), ndims(cpu_zeros)))
+function Oceananigans.Grids.zeros(arch::ShardedDistributed, FT, global_sz...)
+    # TODO: still need a "pre-sharded" zeros function
+    cpu_zeros = zeros(CPU(), FT, global_sz...)
+    sharding = Sharding.DimsSharding(arch.connectivity, (1, 2, 3), (:x, :y, :z))
     reactant_zeros = Reactant.to_rarray(cpu_zeros; sharding)
     return reactant_zeros 
 end
