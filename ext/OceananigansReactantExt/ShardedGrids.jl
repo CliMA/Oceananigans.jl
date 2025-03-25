@@ -56,11 +56,11 @@ function LatitudeLongitudeGrid(architecture::ShardedDistributed,
     Lz, z                        = generate_coordinate(FT, topology, size, halo, z,         :z,         3, architecture)
 
     # Extracting the local range
-    xsharding  = Sharding.DimsSharding(arch.connectivity, (1,  ), (:x,   ))
-    ysharding  = Sharding.DimsSharding(arch.connectivity, (2,  ), (:y,   ))
-    xysharding = Sharding.DimsSharding(arch.connectivity, (1, 2), (:x, :y))
+    xsharding  = Sharding.DimsSharding(arch.connectivity, (1,  ), (:x,   )) # X Stencil sharding
+    ysharding  = Sharding.DimsSharding(arch.connectivity, (2,  ), (:y,   )) # Y Stencil sharding
+    xysharding = Sharding.DimsSharding(arch.connectivity, (1, 2), (:x, :y)) # XY Pencil sharding
 
-    # x and z metric are either 1D or 2D, y metric is either a number or a 1D array
+    # λ and φ metrics are either 1D or a number
     λmetric_sharding = ndims(Δλᶜᵃᵃ) == 1 ? xsharding : Reactant.Sharding.Sharding.NoSharding() # Will this work?
     φmetric_sharding = ndims(Δφᵃᶜᵃ) == 1 ? ysharding : Reactant.Sharding.Sharding.NoSharding() # Will this work?
 
@@ -87,6 +87,7 @@ function LatitudeLongitudeGrid(architecture::ShardedDistributed,
     # Would there be issues?
     grid = with_precomputed_metrics(preliminary_grid) 
 
+    # y metrics are either 1D or a number, while x and z metrics are either 2D or 1D
     xmetric_sharding = ndims(Δxᶜᶜᵃ) == 2 ? xsharding : xysharding
     ymetric_sharding = ndims(Δyᶜᶜᵃ) == 1 ? ysharding : Reactant.Sharding.Sharding.NoSharding() # Will this work?
     zmetric_sharding = ndims(Azᶜᶜᵃ) == 2 ? xsharding : xysharding
