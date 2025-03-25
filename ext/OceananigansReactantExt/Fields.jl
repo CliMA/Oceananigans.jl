@@ -47,22 +47,16 @@ end
 
 function set_to_function!(u::ShardedDistributedField, f)
     # Supports serial and distributed
-    arch = architecture(u)
-    child_arch = child_architecture(u)
-
+    arch = Oceananigans.Architectures.architecture(u)
     cpu_grid = on_architecture(CPU(), u.grid)
-    cpu_u = Field(location(u), cpu_grid; indices = indices(u))
-    f_field = field(location(u), f, cpu_grid)
+    cpu_u = Field(Oceananigans.Fields.location(u), cpu_grid; indices=Oceananigans.Fields.indices(u))
+    f_field = Oceananigans.Fields.field(Oceananigans.Fields.location(u), f, cpu_grid)
     set!(cpu_u, f_field)
-
     copyto!(parent(u), parent(cpu_u))
-
     return nothing
 end
 
-
 # keepin it simple
 set_to_field!(u::ReactantField, v::ReactantField) = @jit _set_to_field!(u, v)
-
 
 end
