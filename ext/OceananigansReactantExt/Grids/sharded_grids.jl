@@ -1,6 +1,8 @@
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.OrthogonalSphericalShellGrids
 
+import Oceananigans.Grids: zeros
+
 import Oceananigans.DistributedComputations: 
                     partition_coordinate, 
                     assemble_coordinate, 
@@ -193,3 +195,11 @@ function TripolarGrid(arch::ShardedDistributed,
 
     return grid
 end
+
+function Oceananigans.Grids.zeros(arch::ShardedDistributed, FT, N...)
+    cpu_zeros = zeros(CPU(), FT, N...)
+    sharding = Sharding.NamedSharding(arch.connectivity, ntuple(Returns(nothing), ndims(cpu_zeros)))
+    reactant_zeros = Reactant.to_rarray(cpu_zeros; sharding)
+    return reactant_zeros 
+end
+    
