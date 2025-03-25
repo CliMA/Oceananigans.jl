@@ -46,6 +46,14 @@ Keyword arguments
 
 - `stop_time`: Stop the simulation once this much model clock time has passed.
 
+- `align_time_step`: When `true` it implies that the simulation will automatically adjust the
+                     time-step to meet a constraint imposed by various schedules like `ScheduledTimes`,
+                     `TimeInterval`, `AveragedTimeInterval`, as well as a `stop_time` criterion.
+                     If `false`, i.e., no time-step alignment, then the simulation might blithely step passed
+                     the specified time. Default: `true`.
+                     By `align_time_step = false` we ensure that the time-step does _not_ change within
+                     `time_step!(simulation)`
+
 - `wall_time_limit`: Stop the simulation if it's been running for longer than this many
                      seconds of wall clock time.
 - `minimum_relative_step`: time steps smaller than `Δt * minimum_relative_step` will be skipped.
