@@ -6,33 +6,35 @@ import Oceananigans.DistributedComputations:
                     barrier!,
                     all_reduce
 
+const ShardedDistributed = Oceananigans.Distributed{<:ReactantState}
+
 # Coordinates do not need partitioning on a `Distributed{<:ReactantState}` (sharded) architecture
-partition_coordinate(c::Tuple,          n, ::Oceananigans.Distributed{<:ReactantState}, dim) = c
-partition_coordinate(c::AbstractVector, n, ::Oceananigans.Distributed{<:ReactantState}, dim) = c
+partition_coordinate(c::Tuple,          n, ::ShardedDistributed, dim) = c
+partition_coordinate(c::AbstractVector, n, ::ShardedDistributed, dim) = c
 
 # Same thing for assembling the coordinate, it is already represented as a global array
-assemble_coordinate(c::Tuple,          n, ::Oceananigans.Distributed{<:ReactantState}, dim) = c
-assemble_coordinate(c::AbstractVector, n, ::Oceananigans.Distributed{<:ReactantState}, dim) = c
+assemble_coordinate(c::Tuple,          n, ::ShardedDistributed, dim) = c
+assemble_coordinate(c::AbstractVector, n, ::ShardedDistributed, dim) = c
 
 # Boundary conditions should not need to change
 inject_halo_communication_boundary_conditions(field_bcs, rank, ::Reactant.Sharding.Mesh, topology) = field_bcs
 
 # Local sizes are equal to global sizes for a sharded architecture
-concatenate_local_sizes(local_size, ::Oceananigans.Distributed{<:ReactantState}) = local_size
+concatenate_local_sizes(local_size, ::ShardedDistributed) = local_size
 
 # We assume everything is already synchronized for a sharded architecture
-barrier!(::Oceananigans.Distributed{<:ReactantState}) = nothing
+barrier!(::ShardedDistributed) = nothing
 
 # Reductions are handled by the Sharding framework
-all_reduce(op, val, ::Oceananigans.Distributed{<:ReactantState}) = val
+all_reduce(op, val, ::ShardedDistributed) = val
 
 # No need for partitioning and assembling of arrays supposedly
-partition(A::AbstractArray, ::Oceananigans.Distributed{<:ReactantState}, local_size) = A
-construct_global_array(A::AbstractArray, ::Oceananigans.Distributed{<:ReactantState}, local_size) = A
+partition(A::AbstractArray, ::ShardedDistributed, local_size) = A
+construct_global_array(A::AbstractArray, ::ShardedDistributed, local_size) = A
 
 
 # The grids should not need change with reactant?
-function LatitudeLongitudeGrid(architecture::Oceananigans.Distributed{<:ReactantState},
+function LatitudeLongitudeGrid(architecture::ShardedDistributed,
                                FT::DataType = Oceananigans.defaults.FloatType;
                                size,
                                longitude = nothing,
@@ -66,14 +68,14 @@ function LatitudeLongitudeGrid(architecture::Oceananigans.Distributed{<:Reactant
                                                          Nλ, Nφ, Nz,
                                                          Hλ, Hφ, Hz,
                                                          Lλ, Lφ, Lz,
-                                                         Reactant.to_rarray(grid.Δλᶠᵃᵃ; λmetric_sharding), 
-                                                         Reactant.to_rarray(grid.Δλᶜᵃᵃ; λmetric_sharding), 
-                                                         Reactant.to_rarray(grid.λᶠᵃᵃ ; xsharding), 
-                                                         Reactant.to_rarray(grid.λᶜᵃᵃ ; xsharding),
-                                                         Reactant.to_rarray(grid.Δφᵃᶠᵃ; φmetric_sharding), 
-                                                         Reactant.to_rarray(grid.Δφᵃᶜᵃ; φmetric_sharding), 
-                                                         Reactant.to_rarray(grid.φᵃᶠᵃ ; ysharding), 
-                                                         Reactant.to_rarray(grid.φᵃᶜᵃ ; ysharding),
+                                                         Reactant.to_rarray(Δλᶠᵃᵃ; λmetric_sharding), 
+                                                         Reactant.to_rarray(Δλᶜᵃᵃ; λmetric_sharding), 
+                                                         Reactant.to_rarray(λᶠᵃᵃ ; xsharding), 
+                                                         Reactant.to_rarray(λᶜᵃᵃ ; xsharding),
+                                                         Reactant.to_rarray(Δφᵃᶠᵃ; φmetric_sharding), 
+                                                         Reactant.to_rarray(Δφᵃᶜᵃ; φmetric_sharding), 
+                                                         Reactant.to_rarray(φᵃᶠᵃ ; ysharding), 
+                                                         Reactant.to_rarray(φᵃᶜᵃ ; ysharding),
                                                          Reactant.to_rarray(z), # Intentionally not sharded
                                                          (nothing for i=1:10)..., FT(radius))
 
@@ -119,7 +121,7 @@ end
 
 # This mostly exists for future where we will assemble data from multiple workers
 # to construct the grid
-function Oceananigans.TripolarGrid(arch::Oceananigans.Distributed{<:ReactantState},
+function Oceananigans.TripolarGrid(arch::ShardedDistributed,
     FT::DataType=Float64;
     halo=(4, 4, 4), kwargs...)
     # We build the global grid on a CPU architecture, in order to split it easily
