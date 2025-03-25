@@ -26,8 +26,6 @@ deconcretize(field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
                       field.status,
                       field.boundary_buffers)
 
-const ShardedDistributedField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ShardedGrid}
-
 function set!(u::ShardedDistributedField, V::ShardedDistributedField)
     @jit _set_to_field!(u, V)
     return nothing
