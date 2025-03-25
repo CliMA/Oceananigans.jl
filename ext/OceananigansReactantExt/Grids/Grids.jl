@@ -1,0 +1,40 @@
+module Grids
+
+export constant_with_reactant_state
+
+using Reactant
+
+using Oceananigans
+using Oceananigans: Distributed
+using Oceananigans.Architectures: ReactantState, CPU
+using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, StaticVerticalDiscretization, MutableVerticalDiscretization
+using Oceananigans.Fields: Field
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, AbstractImmersedBoundary
+
+import ..OceananigansReactantExt: deconcretize
+import Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSphericalShellGrid
+import Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
+import Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, materialize_immersed_boundary
+
+const ReactantGrid{FT, TX, TY, TZ} = Union{
+    AbstractGrid{FT, TX, TY, TZ, <:ReactantState},
+    AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:ReactantState}}
+}
+
+const ReactantImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S} = Union{
+    ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, <:ReactantState},
+    ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, <:Distributed{<:ReactantState}},
+}
+
+const ReactantUnderlyingGrid{FT, TX, TY, TZ, CZ} = Union{
+    AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, <:ReactantState},
+    AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, <:Distributed{<:ReactantState}},
+}
+
+const ShardedDistributed = Oceananigans.Distributed{<:ReactantState}
+
+include("serial_grids.jl")
+include("sharded_grids.jl")
+
+end # module
+

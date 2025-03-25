@@ -12,6 +12,7 @@ import Oceananigans.Fields: set_to_field!
 
 import ..OceananigansReactantExt: deconcretize
 import ..Grids: ReactantGrid
+import ..Grids: ShardedGrid
 
 const ReactantField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ReactantGrid}
 
@@ -38,5 +39,9 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds u[i, j, k] = v[i, j, k]
 end
+
+const ShardedDistributedField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ShardedGrid}
+
+_set_to_field!(u::ShardedDistributedField, v::ShardedDistributedField) = copyto!(parent(u), parent(v))
 
 end

@@ -1,3 +1,5 @@
+using Oceananigans.Grids: AbstractGrid
+
 import Oceananigans.DistributedComputations: 
                     partition_coordinate, 
                     assemble_coordinate, 
@@ -6,7 +8,6 @@ import Oceananigans.DistributedComputations:
                     barrier!,
                     all_reduce
 
-const ShardedDistributed = Oceananigans.Distributed{<:ReactantState}
 
 # Coordinates do not need partitioning on a `Distributed{<:ReactantState}` (sharded) architecture
 partition_coordinate(c::Tuple,          n, ::ShardedDistributed, dim) = c
@@ -31,7 +32,6 @@ all_reduce(op, val, ::ShardedDistributed) = val
 # No need for partitioning and assembling of arrays supposedly
 partition(A::AbstractArray, ::ShardedDistributed, local_size) = A
 construct_global_array(A::AbstractArray, ::ShardedDistributed, local_size) = A
-
 
 # The grids should not need change with reactant?
 function LatitudeLongitudeGrid(architecture::ShardedDistributed,

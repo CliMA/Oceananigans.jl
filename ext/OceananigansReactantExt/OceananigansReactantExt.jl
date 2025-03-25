@@ -18,7 +18,7 @@ using .Utils
 include("Architectures.jl")
 using .Architectures
 
-include("Grids.jl")
+include("Grids/Grids.jl")
 using .Grids
 
 include("Fields.jl")
@@ -35,8 +35,6 @@ using .Models
 
 include("Simulations/Simulations.jl")
 using .Simulations
-
-include("ShardedGrids.jl")
 
 include("OutputReaders.jl")
 using .OutputReaders
