@@ -402,18 +402,13 @@ function time_step_with_buoyancy(simulation, Tᵢ, Sᵢ, wind_stress)
     return nothing
 end
 
-function compute_summed_u_squared(simulation, initial_temperature, initial_salinity, wind_stress)
+function compute_forward_u(simulation, initial_temperature, initial_salinity, wind_stress, i, j, k)
     time_step_with_buoyancy(simulation, initial_temperature, initial_salinity, wind_stress)
-    # Compute the summed velocity:
-    Nλ, Nφ, Nz = size(simulation.model.grid)
     
     # Another way to compute it
-    sum_u² = 0.0
-    for k = 1:Nz, j = 1:Nφ,  i = 1:Nλ
-        sum_u² += simulation.model.velocities.u[i, j, k]^2
-    end
+    forward_u = simulation.model.velocities.u[i, j, k]
     
-    return sum_u²::Float64
+    return forward_u::Float64
 end
 
 @testset "Enzyme autodifferentiation of turbulence with buoyancy on a LatLongGrid" begin
@@ -501,9 +496,9 @@ end
 
     J0[i, j, k] = J0[i, j, k] - ΔJ
     J2[i, j, k] = J2[i, j, k] + ΔJ
-    e0 = compute_summed_u_squared(simulation, Tᵢ, Sᵢ, J0)
+    e0 = compute_summed_u_squared(simulation, Tᵢ, Sᵢ, J0, i, j, k)
     set!(simulation.model, u=0, v=0, T=0, S=0)
-    e2 = compute_summed_u_squared(simulation, Tᵢ, Sᵢ, J2)
+    e2 = compute_summed_u_squared(simulation, Tᵢ, Sᵢ, J2, i, j, k)
     set!(simulation.model, u=0, v=0, T=0, S=0)
     ΔeΔJ = (e2 - e0) / 2ΔJ
 
@@ -526,7 +521,10 @@ end
                     Duplicated(simulation, dsim),
                     Duplicated(Tᵢ, dTᵢ),
                     Duplicated(Sᵢ, dSᵢ),
-                    Duplicated(J1, dJ1))
+                    Duplicated(J1, dJ1),
+                    Const(i),
+                    Const(j),
+                    Const(k))
 
     @info "Automatically computed: $dedJ."
     @info "Elapsed time: " * prettytime(1e-9 * (time_ns() - start_time))
