@@ -16,6 +16,8 @@ import ..Grids: ShardedGrid
 
 const ReactantField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ReactantGrid}
 
+const ShardedDistributedField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ShardedGrid}
+
 deconcretize(field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
     Field{LX, LY, LZ}(field.grid,
                       deconcretize(field.data),
@@ -27,6 +29,7 @@ deconcretize(field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
 
 # keepin it simple
 set_to_field!(u::ReactantField, v::ReactantField) = @jit _set_to_field!(u, v)
+set_to_field!(u::ShardedDistributedField, v::ShardedDistributedField) = @jit _set_to_field!(u, v)
 
 function _set_to_field!(u, v)
     arch = Oceananigans.Architectures.architecture(u)
@@ -39,9 +42,5 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds u[i, j, k] = v[i, j, k]
 end
-
-const ShardedDistributedField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ShardedGrid}
-
-_set_to_field!(u::ShardedDistributedField, v::ShardedDistributedField) = copyto!(parent(u), parent(v))
 
 end
