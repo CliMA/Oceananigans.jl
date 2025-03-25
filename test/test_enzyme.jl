@@ -494,11 +494,11 @@ end
 
     ΔJ = 1e-3
 
-    J0[i, j, k] = J0[i, j, k] - ΔJ
-    J2[i, j, k] = J2[i, j, k] + ΔJ
-    e0 = compute_summed_u_squared(simulation, Tᵢ, Sᵢ, J0, i, j, k)
+    J1[i, j, k] = J0[i, j, k] + ΔJ
+    J2[i, j, k] = J2[i, j, k] + 2ΔJ
+    e0 = compute_forward_u(simulation, Tᵢ, Sᵢ, J0, i, j, k)
     set!(simulation.model, u=0, v=0, T=0, S=0)
-    e2 = compute_summed_u_squared(simulation, Tᵢ, Sᵢ, J2, i, j, k)
+    e2 = compute_forward_u(simulation, Tᵢ, Sᵢ, J2, i, j, k)
     set!(simulation.model, u=0, v=0, T=0, S=0)
     ΔeΔJ = (e2 - e0) / 2ΔJ
 
@@ -517,7 +517,7 @@ end
     # Use autodiff to compute a gradient at J1 = wind_stress with permutation
     dmodel = Enzyme.make_zero(model)
     dedJ = autodiff(set_runtime_activity(Enzyme.Reverse),
-                    compute_summed_u_squared, Active,
+                    compute_forward_u, Active,
                     Duplicated(simulation, dsim),
                     Duplicated(Tᵢ, dTᵢ),
                     Duplicated(Sᵢ, dSᵢ),
