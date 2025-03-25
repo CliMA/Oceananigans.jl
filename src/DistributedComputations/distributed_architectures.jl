@@ -310,7 +310,7 @@ ranks(arch::Distributed) = ranks(arch.partition)
 child_architecture(arch::Distributed) = arch.child_architecture
 device(arch::Distributed)             = device(child_architecture(arch))
 
-zeros(arch::Distributed, FT, N...)             = zeros(child_architecture(arch), FT, N...)
+zeros(arch::Distributed, FT, N...)         = zeros(child_architecture(arch), FT, N...)
 array_type(arch::Distributed)              = array_type(child_architecture(arch))
 sync_device!(arch::Distributed)            = sync_device!(arch.child_architecture)
 convert_to_device(arch::Distributed, arg)  = convert_to_device(child_architecture(arch), arg)
