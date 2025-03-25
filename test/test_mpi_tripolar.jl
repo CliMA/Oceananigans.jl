@@ -131,39 +131,34 @@ tripolar_boundary_conditions = """
 
 @testset "Test distributed TripolarGrid boundary conditions..." begin
     # Run the serial computation    
-    child_arch = distributed_child_architecture()
+    grid = TripolarGrid(size = (20, 20, 1), z = (-1000, 0))
 
-    # Do not run for ReactantState
-    if child_arch isa CPU
-        grid = TripolarGrid(size = (20, 20, 1), z = (-1000, 0))
+    I1 = [i + j * 100 for i in 1:20, j in 1:20]
 
-        I1 = [i + j * 100 for i in 1:20, j in 1:20]
+    v = YFaceField(grid)
+    c = CenterField(grid)
 
-        v = YFaceField(grid)
-        c = CenterField(grid)
+    set!(v, I1)
+    set!(c, I1)
 
-        set!(v, I1)
-        set!(c, I1)
+    fill_halo_regions!((v, c))
+    
+    write("distributed_boundary_tests.jl", tripolar_boundary_conditions)
+    run(`$(mpiexec()) -n 4 julia --project -O0 distributed_boundary_tests.jl`)
+    rm("distributed_boundary_tests.jl")
 
-        fill_halo_regions!((v, c))
-        
-        write("distributed_boundary_tests.jl", tripolar_boundary_conditions)
-        run(`$(mpiexec()) -n 4 julia --project -O0 distributed_boundary_tests.jl`)
-        rm("distributed_boundary_tests.jl")
+    # Retrieve Parallel quantities from rank 1 (the north-west rank)
+    vp1 = jldopen("distributed_tripolar_boundary_conditions_1.jld2")["v"];
+    cp1 = jldopen("distributed_tripolar_boundary_conditions_1.jld2")["c"];
 
-        # Retrieve Parallel quantities from rank 1 (the north-west rank)
-        vp1 = jldopen("distributed_tripolar_boundary_conditions_1.jld2")["v"];
-        cp1 = jldopen("distributed_tripolar_boundary_conditions_1.jld2")["c"];
+    # Retrieve Parallel quantities from rank 3 (the north-east rank)
+    vp3 = jldopen("distributed_tripolar_boundary_conditions_3.jld2")["v"];
+    cp3 = jldopen("distributed_tripolar_boundary_conditions_3.jld2")["c"];
 
-        # Retrieve Parallel quantities from rank 3 (the north-east rank)
-        vp3 = jldopen("distributed_tripolar_boundary_conditions_3.jld2")["v"];
-        cp3 = jldopen("distributed_tripolar_boundary_conditions_3.jld2")["c"];
-
-        @test v.data[-3:14, end-3:end-1, 1] ≈ vp1.parent[:, end-3:end-1, 5]
-        @test c.data[-3:14, end-3:end-1, 1] ≈ cp1.parent[:, end-3:end-1, 5]
-        @test v.data[7:end, 7:end-1, 1] ≈ vp3.parent[:, 1:end-1, 5]
-        @test c.data[7:end, 7:end-1, 1] ≈ cp3.parent[:, 1:end-1, 5]
-    end
+    @test v.data[-3:14, end-3:end-1, 1] ≈ vp1.parent[:, end-3:end-1, 5]
+    @test c.data[-3:14, end-3:end-1, 1] ≈ cp1.parent[:, end-3:end-1, 5]
+    @test v.data[7:end, 7:end-1, 1] ≈ vp3.parent[:, 1:end-1, 5]
+    @test c.data[7:end, 7:end-1, 1] ≈ cp3.parent[:, 1:end-1, 5]
 end
 
 run_slab_distributed_grid = """
