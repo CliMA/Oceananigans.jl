@@ -201,7 +201,7 @@ end
 
 function Oceananigans.Grids.zeros(arch::ShardedDistributed, FT, global_sz...)
     # TODO: still need a "pre-sharded" zeros function
-    cpu_zeros = zeros(CPU(), FT, local_sz...)
+    cpu_zeros = zeros(CPU(), FT, global_sz...)
     sharding = Sharding.DimsSharding(arch.connectivity, (1, 2, 3), (:x, :y, :z))
     reactant_zeros = Reactant.to_rarray(cpu_zeros; sharding)
     return reactant_zeros 
