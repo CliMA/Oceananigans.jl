@@ -64,7 +64,9 @@ function LatitudeLongitudeGrid(architecture::Oceananigans.Distributed{<:Reactant
         return preliminary_grid
     end
        
-    grid = with_precomputed_metrics(preliminary_grid)
+    # Note! This step requires a kernel that launches on a `ReactantState` architecture.
+    # Would there be issues?
+    grid = with_precomputed_metrics(preliminary_grid) 
 
     xmetric_sharding = ndims(Δxᶜᶜᵃ) == 2 ? xsharding : xysharding
     ymetric_sharding = ndims(Δyᶜᶜᵃ) == 1 ? ysharding : Reactant.Sharding.Sharding.NoSharding() # Will this work?

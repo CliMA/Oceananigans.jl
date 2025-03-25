@@ -1,5 +1,5 @@
 include("dependencies_for_runtests.jl")
-include("distributed_tripolar_tests_utils.jl")
+include("distributed_tests_utils.jl")
 
 using MPI
 
@@ -8,7 +8,7 @@ tripolar_reconstructed_grid = """
     MPI.Init()
     using Test
 
-    include("distributed_tripolar_tests_utils.jl")
+    include("distributed_tests_utils.jl")
 
     archs = [Distributed(CPU(), partition=Partition(1, 4)),
              Distributed(CPU(), partition=Partition(2, 2))]
@@ -43,7 +43,7 @@ tripolar_reconstructed_field = """
     MPI.Init()
     using Test
 
-    include("distributed_tripolar_tests_utils.jl")
+    include("distributed_tests_utils.jl")
 
     archs = [Distributed(CPU(), partition=Partition(1, 4)),
              Distributed(CPU(), partition=Partition(2, 2))]
@@ -93,7 +93,7 @@ tripolar_boundary_conditions = """
     using MPI
     MPI.Init()
 
-    include("distributed_tripolar_tests_utils.jl")
+    include("distributed_tests_utils.jl")
 
     arch = Distributed(CPU(), partition = Partition(2, 2))
     grid = TripolarGrid(arch; size = (20, 20, 1), z = (-1000, 0))
@@ -170,7 +170,7 @@ run_slab_distributed_grid = """
     using MPI
     MPI.Init()
 
-    include("distributed_tripolar_tests_utils.jl")
+    include("distributed_tests_utils.jl")
     arch = Distributed(CPU(), partition = Partition(1, 4)) 
     run_distributed_tripolar_grid(arch, "distributed_yslab_tripolar.jld2")
 """
@@ -179,7 +179,7 @@ run_pencil_distributed_grid = """
     using MPI
     MPI.Init()
 
-    include("distributed_tripolar_tests_utils.jl")
+    include("distributed_tests_utils.jl")
     arch = Distributed(CPU(), partition = Partition(2, 2))
     run_distributed_tripolar_grid(arch, "distributed_pencil_tripolar.jld2")
 """
@@ -188,7 +188,7 @@ run_large_pencil_distributed_grid = """
     using MPI
     MPI.Init()
 
-    include("distributed_tripolar_tests_utils.jl")
+    include("distributed_tests_utils.jl")
     arch = Distributed(CPU(), partition = Partition(4, 2))
     run_distributed_tripolar_grid(arch, "distributed_large_pencil_tripolar.jld2")
 """
@@ -197,7 +197,7 @@ run_large_pencil_distributed_grid = """
     # Run the serial computation    
     grid  = TripolarGrid(size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
     grid  = analytical_immersed_tripolar_grid(grid)
-    model = run_tripolar_simulation(grid)
+    model = run_distributed_simulation(grid)
 
     # Retrieve Serial quantities
     us, vs, ws = model.velocities
