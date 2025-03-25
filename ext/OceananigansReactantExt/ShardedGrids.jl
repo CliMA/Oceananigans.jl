@@ -1,7 +1,10 @@
 import Oceananigans.DistributedComputations: 
                     partition_coordinate, 
                     assemble_coordinate, 
-                    inject_halo_communication_boundary_conditions
+                    inject_halo_communication_boundary_conditions,
+                    concatenate_local_sizes,
+                    barrier!,
+                    all_reduce
 
 # Coordinates do not need partitioning on a `Distributed{<:ReactantState}` (sharded) architecture
 partition_coordinate(c::Tuple,          n, ::Oceananigans.Distributed{<:ReactantState}, dim) = c
@@ -13,6 +16,20 @@ assemble_coordinate(c::AbstractVector, n, ::Oceananigans.Distributed{<:ReactantS
 
 # Boundary conditions should not need to change
 inject_halo_communication_boundary_conditions(field_bcs, rank, ::Reactant.Sharding.Mesh, topology) = field_bcs
+
+# Local sizes are equal to global sizes for a sharded architecture
+concatenate_local_sizes(local_size, ::Oceananigans.Distributed{<:ReactantState}) = local_size
+
+# We assume everything is already synchronized for a sharded architecture
+barrier!(::Oceananigans.Distributed{<:ReactantState}) = nothing
+
+# Reductions are handled by the Sharding framework
+all_reduce(op, val, ::Oceananigans.Distributed{<:ReactantState}) = val
+
+# No need for partitioning and assembling of arrays supposedly
+partition(A::AbstractArray, ::Oceananigans.Distributed{<:ReactantState}, local_size) = A
+construct_global_array(A::AbstractArray, ::Oceananigans.Distributed{<:ReactantState}, local_size) = A
+
 
 # The grids should not need change with reactant?
 function LatitudeLongitudeGrid(architecture::Oceananigans.Distributed{<:ReactantState},

@@ -177,16 +177,16 @@ function partition(A::AbstractArray, arch::Distributed, local_size)
 end
 
 """
-    construct_global_array(arch, c_local, (nx, ny, nz))
+    construct_global_array(c_local, arch, (nx, ny, nz))
 
 Construct global array from local arrays (2D of size `(nx, ny)` or 3D of size (`nx, ny, nz`)).
 Usefull for boundary arrays, forcings and initial conditions.
 """
-construct_global_array(arch, c_local::AbstractArray, n) = c_local
-construct_global_array(arch, c_local::Function, N)      = c_local
+construct_global_array(c_local::AbstractArray, arch, n) = c_local
+construct_global_array(c_local::Function, arch,  N)     = c_local
 
 # TODO: This does not work for 3D parallelizations
-function construct_global_array(arch::Distributed, c_local::AbstractArray, n) 
+function construct_global_array(c_local::AbstractArray, arch::Distributed, n) 
     c_local = on_architecture(CPU(), c_local)
 
     ri, rj, rk = arch.local_index
