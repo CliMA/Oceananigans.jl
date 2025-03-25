@@ -8,6 +8,9 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
     arch = ReactantState()
     times = 0:1.0:4
     t = 2.1
+    times = Reactant.to_rarray(times, track_numbers=Number)
+    @test times isa Reactant.TracedRNumberOverrides.TracedStepRangeLen
+
     ñ, n₁, n₂ = @jit Oceananigans.OutputReaders.find_time_index(times, t)
     @test ñ ≈ 0.1
     @test n₁ == 3 # eg times = [0 1 2 ⟨⟨2.1⟩⟩ 3]
