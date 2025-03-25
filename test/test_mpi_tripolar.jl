@@ -9,10 +9,9 @@ tripolar_reconstructed_grid = """
     using Test
 
     include("distributed_tripolar_tests_utils.jl")
-    child_arch = distributed_child_architecture()
 
-    archs = [Distributed(child_arch, partition=Partition(1, 4)),
-             Distributed(child_arch, partition=Partition(2, 2))]
+    archs = [Distributed(CPU(), partition=Partition(1, 4)),
+             Distributed(CPU(), partition=Partition(2, 2))]
 
     for arch in archs
         local_grid  = TripolarGrid(arch; size = (12, 20, 1), z = (-1000, 0), halo = (2, 2, 2))
@@ -45,10 +44,9 @@ tripolar_reconstructed_field = """
     using Test
 
     include("distributed_tripolar_tests_utils.jl")
-    child_arch = distributed_child_architecture()
 
-    archs = [Distributed(child_arch, partition=Partition(1, 4)),
-             Distributed(child_arch, partition=Partition(2, 2))]
+    archs = [Distributed(CPU(), partition=Partition(1, 4)),
+             Distributed(CPU(), partition=Partition(2, 2))]
 
     u = [i + 10 * j for i in 1:40, j in 1:40]
     v = [i + 10 * j for i in 1:40, j in 1:40]
@@ -173,8 +171,7 @@ run_slab_distributed_grid = """
     MPI.Init()
 
     include("distributed_tripolar_tests_utils.jl")
-    child_arch = distributed_child_architecture()
-    arch = Distributed(child_arch, partition = Partition(1, 4)) #, synchronized_communication=true)
+    arch = Distributed(CPU(), partition = Partition(1, 4)) 
     run_distributed_tripolar_grid(arch, "distributed_yslab_tripolar.jld2")
 """
 
@@ -183,8 +180,7 @@ run_pencil_distributed_grid = """
     MPI.Init()
 
     include("distributed_tripolar_tests_utils.jl")
-    child_arch = distributed_child_architecture()
-    arch = Distributed(child_arch, partition = Partition(2, 2))
+    arch = Distributed(CPU(), partition = Partition(2, 2))
     run_distributed_tripolar_grid(arch, "distributed_pencil_tripolar.jld2")
 """
 
@@ -193,8 +189,7 @@ run_large_pencil_distributed_grid = """
     MPI.Init()
 
     include("distributed_tripolar_tests_utils.jl")
-    child_arch = distributed_child_architecture()
-    arch = Distributed(child_arch, partition = Partition(4, 2))
+    arch = Distributed(CPU(), partition = Partition(4, 2))
     run_distributed_tripolar_grid(arch, "distributed_large_pencil_tripolar.jld2")
 """
 
@@ -249,27 +244,23 @@ run_large_pencil_distributed_grid = """
     @test all(cs .≈ cp)
     @test all(ηs .≈ ηp)
     
-    child_arch = distributed_child_architecture()
+    # We try now with more ranks in the x-direction. This is not a trivial
+    # test as we are now splitting, not only where the singularities are, but
+    # also in the middle of the north fold. This is a more challenging test
+    write("distributed_large_pencil_tests.jl", run_large_pencil_distributed_grid)
+    run(`$(mpiexec()) -n 8 julia --project -O0 distributed_large_pencil_tests.jl`)
+    rm("distributed_large_pencil_tests.jl")
 
-    if child_arch isa CPU
-        # We try now with more ranks in the x-direction. This is not a trivial
-        # test as we are now splitting, not only where the singularities are, but
-        # also in the middle of the north fold. This is a more challenging test
-        write("distributed_large_pencil_tests.jl", run_large_pencil_distributed_grid)
-        run(`$(mpiexec()) -n 8 julia --project -O0 distributed_large_pencil_tests.jl`)
-        rm("distributed_large_pencil_tests.jl")
+    # Retrieve Parallel quantities
+    up = jldopen("distributed_large_pencil_tripolar.jld2")["u"]
+    vp = jldopen("distributed_large_pencil_tripolar.jld2")["v"]
+    ηp = jldopen("distributed_large_pencil_tripolar.jld2")["η"]
+    cp = jldopen("distributed_large_pencil_tripolar.jld2")["c"]
 
-        # Retrieve Parallel quantities
-        up = jldopen("distributed_large_pencil_tripolar.jld2")["u"]
-        vp = jldopen("distributed_large_pencil_tripolar.jld2")["v"]
-        ηp = jldopen("distributed_large_pencil_tripolar.jld2")["η"]
-        cp = jldopen("distributed_large_pencil_tripolar.jld2")["c"]
+    rm("distributed_large_pencil_tripolar.jld2")
 
-        rm("distributed_large_pencil_tripolar.jld2")
-
-        @test all(us .≈ up)
-        @test all(vs .≈ vp)
-        @test all(cs .≈ cp)
-        @test all(ηs .≈ ηp)
-    end
+    @test all(us .≈ up)
+    @test all(vs .≈ vp)
+    @test all(cs .≈ cp)
+    @test all(ηs .≈ ηp)
 end
