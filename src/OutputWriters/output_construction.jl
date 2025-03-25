@@ -4,9 +4,10 @@ using Oceananigans.Grids: default_indices
 
 restrict_to_interior(::Colon, loc, topo, N) = interior_indices(loc, topo, N)
 restrict_to_interior(::Colon, ::Nothing, topo, N) = UnitRange(1, 1)
-restrict_to_interior(index::UnitRange, ::Nothing, topo, N) = UnitRange(1, 1)
+restrict_to_interior(index::Base.OneTo, loc, topo, N) = restrict_to_interior(UnitRange(index), loc, topo, N)
+restrict_to_interior(index::AbstractUnitRange, ::Nothing, topo, N) = UnitRange(1, 1)
 
-function restrict_to_interior(index::UnitRange, loc, topo, N)
+function restrict_to_interior(index::AbstractUnitRange, loc, topo, N)
     from = max(first(index), 1)
     to = min(last(index), last(interior_indices(loc, topo, N)))
     return UnitRange(from, to)
