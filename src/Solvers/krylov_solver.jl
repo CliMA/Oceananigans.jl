@@ -122,7 +122,7 @@ function KrylovSolver(linear_operator;
     kc = Krylov.KrylovConstructor(kf)
     workspace = Krylov.eval(Krylov.KRYLOV_SOLVERS[krylov_solver])(kc)
 
-    return KrylovSolver(arch, grid, op, workspace, krylov_solver, I, T(abstol), T(reltol), maxiter, maxtime)
+    return KrylovSolver(arch, grid, op, workspace, krylov_solver, preconditioner, T(abstol), T(reltol), maxiter, maxtime)
 end
 
 function solve!(x, solver::KrylovSolver, b, args...; kwargs...)
