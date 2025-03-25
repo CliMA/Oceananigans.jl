@@ -51,7 +51,7 @@ function RungeKutta3TimeStepper(grid, prognostic_fields;
                                 G⁻     = map(similar, prognostic_fields)) where {TI, TG}
 
     !isnothing(implicit_solver) &&
-        @warn("Implicit-explicit time-stepping with RungeKutta3TimeStepper is not tested. " * 
+        @warn("Implicit-explicit time-stepping with RungeKutta3TimeStepper is not tested. " *
               "\n implicit_solver: $(typeof(implicit_solver))")
 
     γ¹ = 8 // 15
@@ -105,7 +105,6 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     rk3_substep!(model, Δt, γ¹, nothing)
 
     tick!(model.clock, first_stage_Δt; stage=true)
-    model.clock.last_stage_Δt = first_stage_Δt
 
     calculate_pressure_correction!(model, first_stage_Δt)
     pressure_correct_velocities!(model, first_stage_Δt)
@@ -121,7 +120,6 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     rk3_substep!(model, Δt, γ², ζ²)
 
     tick!(model.clock, second_stage_Δt; stage=true)
-    model.clock.last_stage_Δt = second_stage_Δt
 
     calculate_pressure_correction!(model, second_stage_Δt)
     pressure_correct_velocities!(model, second_stage_Δt)
@@ -133,21 +131,20 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     #
     # Third stage
     #
-    
+
     rk3_substep!(model, Δt, γ³, ζ³)
 
     # This adjustment of the final time-step reduces the accumulation of
-    # round-off error when Δt is added to model.clock.time. Note that we still use 
+    # round-off error when Δt is added to model.clock.time. Note that we still use
     # third_stage_Δt for the substep, pressure correction, and Lagrangian particles step.
     corrected_third_stage_Δt = tⁿ⁺¹ - model.clock.time
 
     tick!(model.clock, third_stage_Δt)
     model.clock.last_stage_Δt = corrected_third_stage_Δt
-    model.clock.last_Δt = Δt
 
     calculate_pressure_correction!(model, third_stage_Δt)
     pressure_correct_velocities!(model, third_stage_Δt)
-  
+
     update_state!(model, callbacks; compute_tendencies = true)
     step_lagrangian_particles!(model, third_stage_Δt)
 

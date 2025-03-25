@@ -4,7 +4,7 @@ using Oceananigans.DistributedComputations: Distributed, all_reduce
 
 import Oceananigans.Models: iteration
 import Oceananigans.Utils: prettytime
-import Oceananigans.TimeSteppers: reset!
+import Oceananigans.TimeSteppers: reset!, set_clock!
 
 default_progress(simulation) = nothing
 
@@ -27,11 +27,12 @@ end
 
 """
     Simulation(model; Δt,
-               verbose = true,
-               stop_iteration = Inf,
-               stop_time = Inf,
-               wall_time_limit = Inf,
-               minimum_relative_step = 0)
+                      verbose = true,
+                      stop_iteration = Inf,
+                      stop_time = Inf,
+                      wall_time_limit = Inf,
+                      align_time_step = true,
+                      minimum_relative_step = 0)
 
 Construct a `Simulation` for a `model` with time step `Δt`.
 
@@ -44,6 +45,14 @@ Keyword arguments
 - `stop_iteration`: Stop the simulation after this many iterations.
 
 - `stop_time`: Stop the simulation once this much model clock time has passed.
+
+- `align_time_step`: When `true` it implies that the simulation will automatically adjust the
+                     time-step to meet a constraint imposed by various schedules like `ScheduledTimes`,
+                     `TimeInterval`, `AveragedTimeInterval`, as well as a `stop_time` criterion.
+                     If `false`, i.e., no time-step alignment, then the simulation might blithely step passed
+                     the specified time. Default: `true`.
+                     By `align_time_step = false` we ensure that the time-step does _not_ change within
+                     `time_step!(simulation)`
 
 - `wall_time_limit`: Stop the simulation if it's been running for longer than this many
                      seconds of wall clock time.
@@ -116,6 +125,8 @@ function Base.show(io::IO, s::Simulation)
                      "└── Diagnostics: $(ordered_dict_show(s.diagnostics, "│"))")
 end
 
+set_clock!(sim::Simulation, new_clock) = set_clock!(sim.model, new_clock)
+
 #####
 ##### Utilities
 #####
@@ -184,6 +195,8 @@ function reset!(sim::Simulation)
     return nothing
 end
 
+set_clock!(sim::Simulation, new_clock) = set_clock!(sim.model, new_clock)
+
 #####
 ##### Default stop criteria callback functions
 #####
@@ -194,11 +207,11 @@ function stop_iteration_exceeded(sim)
     if sim.model.clock.iteration >= sim.stop_iteration
         if sim.verbose
             msg = string("Model iteration ", iteration(sim), " equals or exceeds stop iteration ", Int(sim.stop_iteration), ".")
-            @info wall_time_msg(sim) 
+            @info wall_time_msg(sim)
             @info msg
         end
 
-        sim.running = false 
+        sim.running = false
     end
 
     return nothing
@@ -208,11 +221,11 @@ function stop_time_exceeded(sim)
     if sim.model.clock.time >= sim.stop_time
         if sim.verbose
             msg = string("Simulation time ", prettytime(sim), " equals or exceeds stop time ", prettytime(sim.stop_time), ".")
-            @info wall_time_msg(sim) 
+            @info wall_time_msg(sim)
             @info msg
         end
 
-        sim.running = false 
+        sim.running = false
     end
 
     return nothing
@@ -226,7 +239,7 @@ function wall_time_limit_exceeded(sim)
             @info msg
         end
 
-        sim.running = false 
+        sim.running = false
     end
 
     return nothing

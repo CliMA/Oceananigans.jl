@@ -7,9 +7,9 @@ import Base: show
 import Oceananigans.Units: Time
 
 """
-    mutable struct Clock{T, FT}
+    mutable struct Clock{TT, DT, IT, S}
 
-Keeps track of the current `time`, `last_Δt`, `iteration` number, and time-stepping `stage`.
+Keep track of the current `time`, `last_Δt`, `iteration` number, and time-stepping `stage`.
 The `stage` is updated only for multi-stage time-stepping methods. The `time::T` is
 either a number or a `DateTime` object.
 """
@@ -31,9 +31,32 @@ function reset!(clock::Clock{TT, DT, IT, S}) where {TT, DT, IT, S}
 end
 
 """
+    set_clock!(clock1::Clock, clock2::Clock)
+
+Set `clock1` to the `clock2`.
+"""
+function set_clock!(clock1::Clock, clock2::Clock)
+    clock1.time = clock2.time
+    clock1.iteration = clock2.iteration
+    clock1.last_Δt = clock2.last_Δt
+    clock1.last_stage_Δt = clock2.last_stage_Δt
+    clock1.stage = clock2.stage
+
+    return nothing
+end
+
+function Base.:(==)(clock1::Clock, clock2::Clock)
+    return clock1.time == clock2.time &&
+           clock1.iteration == clock2.iteration &&
+           clock1.last_Δt == clock2.last_Δt &&
+           clock1.last_stage_Δt == clock2.last_stage_Δt &&
+           clock1.stage == clock2.stage
+end
+
+"""
     Clock(; time, last_Δt=Inf, last_stage_Δt=Inf, iteration=0, stage=1)
 
-Returns a `Clock` object. By default, `Clock` is initialized to the zeroth `iteration`
+Return a `Clock` object. By default, `Clock` is initialized to the zeroth `iteration`
 and first time step `stage` with `last_Δt=last_stage_Δt=Inf`.
 """
 function Clock(; time,
@@ -107,9 +130,11 @@ function tick!(clock, Δt; stage=false)
 
     if stage # tick a stage update
         clock.stage += 1
+        clock.last_stage_Δt = Δt
     else # tick an iteration and reset stage
         clock.iteration += 1
         clock.stage = 1
+        clock.last_Δt = Δt
     end
 
     return nothing
@@ -121,5 +146,3 @@ Adapt.adapt_structure(to, clock::Clock) = (time          = clock.time,
                                            last_stage_Δt = clock.last_stage_Δt,
                                            iteration     = clock.iteration,
                                            stage         = clock.stage)
-    
-
