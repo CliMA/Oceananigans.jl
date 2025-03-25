@@ -1,4 +1,7 @@
-import Oceananigans.DistributedComputations: partition_coordinate, assemble_coordinate
+import Oceananigans.DistributedComputations: 
+                    partition_coordinate, 
+                    assemble_coordinate, 
+                    inject_halo_communication_boundary_conditions
 
 # Coordinates do not need partitioning on a `Distributed{<:ReactantState}` (sharded) architecture
 partition_coordinate(c::Tuple,          n, ::Oceananigans.Distributed{<:ReactantState}, dim) = c
@@ -7,6 +10,83 @@ partition_coordinate(c::AbstractVector, n, ::Oceananigans.Distributed{<:Reactant
 # Same thing for assembling the coordinate, it is already represented as a global array
 assemble_coordinate(c::Tuple,          n, ::Oceananigans.Distributed{<:ReactantState}, dim) = c
 assemble_coordinate(c::AbstractVector, n, ::Oceananigans.Distributed{<:ReactantState}, dim) = c
+
+# Boundary conditions should not need to change
+inject_halo_communication_boundary_conditions(field_bcs, rank, ::Reactant.Sharding.Mesh, topology) = field_bcs
+
+# The grids should not need change with reactant?
+function LatitudeLongitudeGrid(architecture::Oceananigans.Distributed{<:ReactantState},
+                               FT::DataType = Oceananigans.defaults.FloatType;
+                               size,
+                               longitude = nothing,
+                               latitude = nothing,
+                               z = nothing,
+                               radius = R_Earth,
+                               topology = nothing,
+                               halo = nothing)
+
+    topology, size, halo, latitude, longitude, z, precompute_metrics =
+        validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
+
+    Nλ, Nφ, Nz = size
+    Hλ, Hφ, Hz = halo
+    TX, TY, TZ = topology
+
+    Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, longitude, :longitude, 1, architecture)
+    Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, topology, size, halo, latitude,  :latitude,  2, architecture)
+    Lz, z                        = generate_coordinate(FT, topology, size, halo, z,         :z,         3, architecture)
+
+    preliminary_grid = LatitudeLongitudeGrid{TX, TY, TZ}(architecture,
+                                                         Nλ, Nφ, Nz,
+                                                         Hλ, Hφ, Hz,
+                                                         Lλ, Lφ, Lz,
+                                                         Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
+                                                         Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
+                                                         z,
+                                                         (nothing for i=1:10)..., FT(radius))
+
+    grid = if !precompute_metrics
+        preliminary_grid
+    else
+        with_precomputed_metrics(preliminary_grid)
+    end
+
+    # Extracting the local range
+    xsharding  = Sharding.DimsSharding(arch.connectivity, (1,  ), (:x,   ))
+    ysharding  = Sharding.DimsSharding(arch.connectivity, (2,  ), (:y,   ))
+    xysharding = Sharding.DimsSharding(arch.connectivity, (1, 2), (:x, :y))
+
+    xmetric_sharding = ndims(Δxᶜᶜᵃ) == 2 ? xsharding : xysharding
+    ymetric_sharding = ndims(Δyᶜᶜᵃ) == 1 ? ysharding : Reactant.Sharding.Sharding.NoSharding() # Will this work?
+    zmetric_sharding = ndims(Azᶜᶜᵃ) == 2 ? xsharding : xysharding
+
+    return LatitudeLongitudeGrid{TX, TY, TZ}(architecture,
+                                             Nλ, Nφ, Nz,
+                                             Hλ, Hφ, Hz,
+                                             Lλ, Lφ, Lz,
+                                             Reactant.to_rarray(grid.Δλᶠᵃᵃ; xsharding), 
+                                             Reactant.to_rarray(grid.Δλᶜᵃᵃ; xsharding), 
+                                             Reactant.to_rarray(grid.λᶠᵃᵃ ; xsharding), 
+                                             Reactant.to_rarray(grid.λᶜᵃᵃ ; xsharding),
+                                             Reactant.to_rarray(grid.Δφᵃᶠᵃ; ysharding), 
+                                             Reactant.to_rarray(grid.Δφᵃᶜᵃ; ysharding), 
+                                             Reactant.to_rarray(grid.φᵃᶠᵃ ; ysharding), 
+                                             Reactant.to_rarray(grid.φᵃᶜᵃ ; ysharding),
+                                             Reactant.to_rarray(grid.z), # Intentionally not sharded
+                                             Reactant.to_rarray(grid.Δxᶜᶜᵃ; xemtric_sharding),
+                                             Reactant.to_rarray(grid.Δxᶠᶜᵃ; xemtric_sharding),
+                                             Reactant.to_rarray(grid.Δxᶜᶠᵃ; xemtric_sharding),
+                                             Reactant.to_rarray(grid.Δxᶠᶠᵃ; xemtric_sharding),
+                                             Reactant.to_rarray(grid.Δyᶜᶜᵃ; ymetric_sharding),
+                                             Reactant.to_rarray(grid.Δyᶠᶜᵃ; ymetric_sharding),
+                                             Reactant.to_rarray(grid.Δyᶜᶠᵃ; ymetric_sharding),
+                                             Reactant.to_rarray(grid.Δyᶠᶠᵃ; ymetric_sharding),
+                                             Reactant.to_rarray(grid.Azᶜᶜᵃ; zmetric_sharding),
+                                             Reactant.to_rarray(grid.Azᶠᶜᵃ; zmetric_sharding),
+                                             Reactant.to_rarray(grid.Azᶜᶠᵃ; zmetric_sharding),
+                                             Reactant.to_rarray(grid.Azᶠᶠᵃ; zmetric_sharding),
+                                             grid.radius)
+end
 
 # This mostly exists for future where we will assemble data from multiple workers
 # to construct the grid
