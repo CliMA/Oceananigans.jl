@@ -1,4 +1,5 @@
 using Oceananigans.Grids: AbstractGrid
+using Oceananigans.OrthogonalSphericalShellGrids
 
 import Oceananigans.DistributedComputations: 
                     partition_coordinate, 
@@ -7,7 +8,6 @@ import Oceananigans.DistributedComputations:
                     concatenate_local_sizes,
                     barrier!,
                     all_reduce
-
 
 # Coordinates do not need partitioning on a `Distributed{<:ReactantState}` (sharded) architecture
 partition_coordinate(c::Tuple,          n, ::ShardedDistributed, dim) = c
@@ -34,15 +34,15 @@ partition(A::AbstractArray, ::ShardedDistributed, local_size) = A
 construct_global_array(A::AbstractArray, ::ShardedDistributed, local_size) = A
 
 # The grids should not need change with reactant?
-function LatitudeLongitudeGrid(architecture::ShardedDistributed,
-                               FT::DataType = Oceananigans.defaults.FloatType;
-                               size,
-                               longitude = nothing,
-                               latitude = nothing,
-                               z = nothing,
-                               radius = R_Earth,
-                               topology = nothing,
-                               halo = nothing)
+function Oceananigans.LatitudeLongitudeGrid(architecture::ShardedDistributed,
+                                            FT::DataType = Oceananigans.defaults.FloatType;
+                                            size,
+                                            longitude = nothing,
+                                            latitude = nothing,
+                                            z = nothing,
+                                            radius = R_Earth,
+                                            topology = nothing,
+                                            halo = nothing)
 
     topology, size, halo, latitude, longitude, z, precompute_metrics =
         validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
@@ -122,9 +122,10 @@ end
 
 # This mostly exists for future where we will assemble data from multiple workers
 # to construct the grid
-function Oceananigans.TripolarGrid(arch::ShardedDistributed,
-    FT::DataType=Float64;
-    halo=(4, 4, 4), kwargs...)
+function TripolarGrid(arch::ShardedDistributed,
+                      FT::DataType=Float64;
+                      halo=(4, 4, 4), kwargs...)
+
     # We build the global grid on a CPU architecture, in order to split it easily
     global_grid = TripolarGrid(CPU(), FT; halo, kwargs...)
     global_size = size(global_grid)

@@ -13,7 +13,7 @@ using Oceananigans.ImmersedBoundaries: GridFittedBottom, AbstractImmersedBoundar
 
 import ..OceananigansReactantExt: deconcretize
 import Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSphericalShellGrid
-import Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
+import Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid, TripolarGrid
 import Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, materialize_immersed_boundary
 
 const ShardedDistributed = Oceananigans.Distributed{<:ReactantState}
