@@ -85,7 +85,7 @@ function LatitudeLongitudeGrid(architecture::ShardedDistributed,
        
     # Note! This step requires a kernel that launches on a `ReactantState` architecture.
     # Would there be issues?
-    grid = with_precomputed_metrics(preliminary_grid) 
+    grid = @jit with_precomputed_metrics(preliminary_grid) 
 
     # y metrics are either 1D or a number, while x and z metrics are either 2D or 1D
     xmetric_sharding = ndims(Δxᶜᶜᵃ) == 2 ? xsharding : xysharding

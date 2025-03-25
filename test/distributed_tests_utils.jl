@@ -119,21 +119,6 @@ function run_distributed_latitude_longitude_grid(arch, filename)
     return nothing
 end
 
-function reactant_loop!(model)
-    first_time_step!(model, 5minutes)
-    Nsteps = ConcreteRNumber(100)
-    @trace for _ in 2:Nsteps
-        time_step!(model, 5minutes)
-    end
-end
-
-function vanilla_loop!(model)
-    first_time_step!(model, 5minutes)
-    for _ in 2:100
-        time_step!(model, 5minutes)
-    end
-end
-
 # Just a random simulation on a tripolar grid
 function run_distributed_simulation(grid)
 
@@ -151,11 +136,18 @@ function run_distributed_simulation(grid)
 
     set!(model, c = ηᵢ, η = ηᵢ)
 
+    Δt = 5minutes
     if architecture(grid) isa ReactantState || child_architecture(grid) isa ReactantState  
-        r_loop! = @compile sync=true raise=true reactant_loop!(model)
-        r_loop!(model)
+        r_first_time_step! = @compile sync=true raise=true first_time_step!(model, Δt)
+        r_time_step! = @compile sync=true raise=true time_step!(model, Δt)
     else
-        vanilla_loop!(model)
+        r_first_time_step! = first_time_step!
+        r_time_step! = time_step!
+    end
+
+    r_first_time_step!(model, Δt)
+    for N in 2:100
+        r_time_step!(model, Δt)
     end
 
     return model
