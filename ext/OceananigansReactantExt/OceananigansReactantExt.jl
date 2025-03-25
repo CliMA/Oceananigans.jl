@@ -173,8 +173,6 @@ end
             end
         end)...)
     end
-    
-    tracedidxs = axes(c)
     tracedidxs = axes2
 
     conds = Reactant.TracedUtils.materialize_traced_array(Reactant.call_with_reactant(Oceananigans.AbstractOperations.evaluate_condition, c.condition, tracedidxs..., c.grid, c))
