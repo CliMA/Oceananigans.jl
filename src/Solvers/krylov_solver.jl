@@ -79,9 +79,21 @@ struct KrylovOperator{T, F}
     fun::F
 end
 
+## Structure representing preconditioners so that we can define mul! on it
+struct KrylovPreconditioner{T, P}
+    type::Type{T}
+    m::Int
+    n::Int
+    preconditioner::P
+end
+
 Base.size(A::KrylovOperator) = (A.m, A.n)
 Base.eltype(A::KrylovOperator{T}) where T = T
 LinearAlgebra.mul!(y::KrylovField, A::KrylovOperator, x::KrylovField) = A.fun(y.field, x.field)
+
+Base.size(P::KrylovPreconditioner) = (P.m, P.n)
+Base.eltype(P::KrylovPreconditioner{T}) where T = T
+LinearAlgebra.mul!(y::KrylovField, P::KrylovPreconditioner, x::KrylovField) = precondition!(y.field, P.preconditioner, x.field)
 
 ## Solver using Krylov.jl
 mutable struct KrylovSolver{A,G,L,S,P,T}
@@ -116,7 +128,7 @@ function KrylovSolver(linear_operator;
     # Linear operators
     m = n = length(template_field)
     op = KrylovOperator(T, m, n, linear_operator)
-    preconditioner = preconditioner === nothing ? I : KrylovOperator(T, m, n, preconditioner)
+    preconditioner = preconditioner === nothing ? I : KrylovPreconditioner(T, m, n, preconditioner)
 
     kf = KrylovField(template_field)
     kc = Krylov.KrylovConstructor(kf)
