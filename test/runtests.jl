@@ -172,7 +172,6 @@ CUDA.allowscalar() do
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
-        archs = test_architectures()
         include("test_distributed_models.jl")
     end
 
@@ -223,9 +222,9 @@ CUDA.allowscalar() do
     end
 
     # Tests for Metal extension
-    if group == :distributed_tripolar || group == :all
+    if group == :mpi_tripolar || group == :all
         @testset "Distributed tripolar tests" begin
-            include("test_distributed_tripolar.jl")
+            include("test_mpi_tripolar.jl")
         end
     end
 
@@ -246,6 +245,16 @@ CUDA.allowscalar() do
     if group == :reactant_2 || group == :all
         @testset "Reactant extension tests 2" begin
             include("test_reactant_latitude_longitude_grid.jl")
+        end
+    end
+
+    if group == :sharding || group == :all
+        @testset "Sharding Reactant extension tests" begin
+            include("test_reactant_distributed_lat_lon.jl")
+            # There is an issue with sharding and tripolar grid at the moment
+            # see https://github.com/EnzymeAD/Reactant.jl/issues/1020
+            # TODO: uncomment the following line when the issue is fixed
+            # include("test_reactant_distributed_tripolar.jl")
         end
     end
 

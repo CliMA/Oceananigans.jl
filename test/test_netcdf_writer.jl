@@ -6,6 +6,8 @@ using TimesDates: TimeDate
 
 using CUDA
 using NCDatasets
+using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
+using SeawaterPolynomials.SecondOrderSeawaterPolynomials: RoquetEquationOfState
 
 using Oceananigans: Clock
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
@@ -2673,6 +2675,57 @@ function test_netcdf_free_surface_mixed_output(arch)
     return nothing
 end
 
+function test_netcdf_buoyancy_force(arch)
+
+    Nx, Nz = 8, 8
+    Hx, Hz = 2, 3
+    Lx, H  = 2, 1
+
+    grid = RectilinearGrid(arch,
+                           topology = (Periodic, Flat, Bounded),
+                           size = (Nx, Nz),
+                           halo = (Hx, Hz),
+                           x = (-Lx, Lx),
+                           z = (-H, 0))
+
+    Boussinesq_eos = (TEOS10EquationOfState(),
+                      RoquetEquationOfState(:Linear),
+                      RoquetEquationOfState(:Cabbeling),
+                      RoquetEquationOfState(:CabbelingThermobaricity),
+                      RoquetEquationOfState(:Freezing),
+                      RoquetEquationOfState(:SecondOrder),
+                      RoquetEquationOfState(:SimplestRealistic))
+
+    for eos in Boussinesq_eos
+
+        model = NonhydrostaticModel(; grid,
+                                    closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
+                                    buoyancy = SeawaterBuoyancy(equation_of_state=eos),
+                                    tracers = (:T, :S))
+
+        Nt = 7
+        simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+
+        simulation.output_writers[:b_eos] = NetCDFWriter(model, fields(model),
+                                                         filename = string(eos)*"_.nc",
+                                                         schedule = IterationInterval(1),
+                                                         array_type = Array{Float64},
+                                                         include_grid_metrics = true,
+                                                         verbose = true)
+        # only tests that the writer builds, produces a file at filepath and sets attributes
+        @test simulation.output_writers[:b_eos] isa NetCDFWriter
+        @test isfile(simulation.output_writers[:b_eos].filepath)
+        ds = NCDataset(simulation.output_writers[:b_eos].filepath)
+        @test ds["T"].attrib["long_name"] == "Conservative temperature"
+        @test ds["T"].attrib["units"] == "°C"
+        @test ds["S"].attrib["long_name"] == "Absolute salinity"
+        @test ds["S"].attrib["units"] == "g/kg"
+        close(ds)
+        rm(simulation.output_writers[:b_eos].filepath)
+    end
+    return nothing
+end
+
 for arch in archs
     @testset "NetCDF output writer [$(typeof(arch))]" begin
         @info "  Testing NetCDF output writer [$(typeof(arch))]..."
@@ -2718,5 +2771,7 @@ for arch in archs
 
         test_netcdf_free_surface_only_output(arch)
         test_netcdf_free_surface_mixed_output(arch)
+
+        test_netcdf_buoyancy_force(arch)
     end
 end
