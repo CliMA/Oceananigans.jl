@@ -8,14 +8,13 @@ using Oceananigans.Fields: Field, interior
 
 using KernelAbstractions: @index, @kernel
 
-import Oceananigans.Fields: set_to_field!
+import Oceananigans.Fields: set_to_field!, set_to_function!, set!
 
 import ..OceananigansReactantExt: deconcretize
 import ..Grids: ReactantGrid
 import ..Grids: ShardedGrid
 
 const ReactantField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ReactantGrid}
-
 const ShardedDistributedField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ShardedGrid}
 
 deconcretize(field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
@@ -27,9 +26,12 @@ deconcretize(field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
                       field.status,
                       field.boundary_buffers)
 
-# keepin it simple
-set_to_field!(u::ReactantField, v::ReactantField) = @jit _set_to_field!(u, v)
-set_to_field!(u::ShardedDistributedField, v::ShardedDistributedField) = @jit _set_to_field!(u, v)
+const ShardedDistributedField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ShardedGrid}
+
+function set!(u::ShardedDistributedField, V::ShardedDistributedField)
+    @jit _set_to_field!(u, V)
+    return nothing
+end
 
 function _set_to_field!(u, v)
     arch = Oceananigans.Architectures.architecture(u)
@@ -42,5 +44,25 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds u[i, j, k] = v[i, j, k]
 end
+
+function set_to_function!(u::ShardedDistributedField, f)
+    # Supports serial and distributed
+    arch = architecture(u)
+    child_arch = child_architecture(u)
+
+    cpu_grid = on_architecture(CPU(), u.grid)
+    cpu_u = Field(location(u), cpu_grid; indices = indices(u))
+    f_field = field(location(u), f, cpu_grid)
+    set!(cpu_u, f_field)
+
+    copyto!(parent(u), parent(cpu_u))
+
+    return nothing
+end
+
+
+# keepin it simple
+set_to_field!(u::ReactantField, v::ReactantField) = @jit _set_to_field!(u, v)
+
 
 end
