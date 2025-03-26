@@ -25,8 +25,8 @@ function reset!(clock::Clock{TT, DT, IT, S}) where {TT, DT, IT, S}
     clock.time = zero(TT)
     clock.iteration = zero(IT)
     clock.stage = zero(S)
-    clock.last_Δt = Inf
-    clock.last_stage_Δt = Inf
+    clock.last_Δt = 0
+    clock.last_stage_Δt = 0
     return nothing
 end
 
@@ -37,8 +37,8 @@ Returns a `Clock` object. By default, `Clock` is initialized to the zeroth `iter
 and first time step `stage` with `last_Δt=last_stage_Δt=Inf`.
 """
 function Clock(; time,
-               last_Δt = Inf,
-               last_stage_Δt = Inf,
+               last_Δt = 0,
+               last_stage_Δt = 0,
                iteration = 0,
                stage = 1)
 
@@ -53,8 +53,8 @@ end
 time_step_type(TT) = TT
 
 function Clock{TT}(; time,
-                   last_Δt = Inf,
-                   last_stage_Δt = Inf,
+                   last_Δt = 0,
+                   last_stage_Δt = 0,
                    iteration = 0,
                    stage = 1) where TT
 

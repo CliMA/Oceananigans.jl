@@ -235,7 +235,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfTD, model; param
     clock = model.clock
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
-    if isfinite(model.clock.last_Δt) # Check that we have taken a valid time-step first.
+    if model.clock.last_Δt == 0 # Check that we have taken a valid time-step first.
         # Compute e at the current time:
         #   * update tendency Gⁿ using current and previous velocity field
         #   * use tridiagonal solve to take an implicit step
@@ -289,7 +289,6 @@ end
 end
 
 @inline max_a_b(i, j, k, grid, a::Number, b, args...) = max(a, b(i, j, k, grid, args...))
-
 @inline maximum_dissipation(i, j, k, grid, closure, tracers, buoyancy) = convert(eltype(grid), Inf)
 
 @inline function minimum_dissipation(i, j, k, grid, closure, tracers, buoyancy)
