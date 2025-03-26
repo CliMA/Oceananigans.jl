@@ -22,9 +22,10 @@ using MPI
 MPI.Init()
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!, DCBC
-using Oceananigans.DistributedComputations: Distributed, index2rank
+using Oceananigans.DistributedComputations: Distributed, index2rank, cpu_architecture, child_architecture
 using Oceananigans.Fields: AbstractField
 using Oceananigans.Grids:
+    architecture,
     halo_size,
     interior_indices,
     left_halo_indices, right_halo_indices,
@@ -439,6 +440,30 @@ end
             test_triply_periodic_halo_communication_with_221_ranks((H, H, H), child_arch)
         end
     end
+
+    @testset "Test Distributed MPI Grids" begin
+        child_arch = get(ENV, "GPU_TEST", nothing) == "true" ? GPU() : CPU()
+        
+        if child_arch isa GPU    
+            @info "Testing `on_architecture` for distributed grids..."
+            
+            arch = Distributed(child_arch; partition=Partition(1, 4))
+            rg   = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
+            llg  = LatitudeLongitudeGrid(arch, size=(8, 8, 8), latitude=(0, 60), longitude=(0, 60), z=(0, 1), radius=1)
+            osg  = TripolarGrid(arch, size=(8, 8, 8))
+
+            cpu_arch = cpu_architecture(arch)
+
+            cpurg  = on_architecture(cpu_arch, rg)
+            cpullg = on_architecture(cpu_arch, llg)
+            cpuosg = on_architecture(cpu_arch, osg)
+
+            @test child_architecture(architecture(cpurg))  == CPU()
+            @test child_architecture(architecture(cpullg)) == CPU()
+            @test child_architecture(architecture(cpuosg)) == CPU()
+        end
+    end
+
 
     # Only test on CPU because we do not have a GPU pressure solver yet
     @testset "Time stepping NonhydrostaticModel" begin

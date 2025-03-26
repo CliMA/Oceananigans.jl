@@ -18,7 +18,7 @@ using .Utils
 include("Architectures.jl")
 using .Architectures
 
-include("Grids.jl")
+include("Grids/Grids.jl")
 using .Grids
 
 include("Fields.jl")
@@ -35,8 +35,6 @@ using .Models
 
 include("Simulations/Simulations.jl")
 using .Simulations
-
-include("ShardedGrids.jl")
 
 include("OutputReaders.jl")
 using .OutputReaders
@@ -173,8 +171,6 @@ end
             end
         end)...)
     end
-    
-    tracedidxs = axes(c)
     tracedidxs = axes2
 
     conds = Reactant.TracedUtils.materialize_traced_array(Reactant.call_with_reactant(Oceananigans.AbstractOperations.evaluate_condition, c.condition, tracedidxs..., c.grid, c))
@@ -212,6 +208,25 @@ end
     tvals = Reactant.Ops.fill(Reactant.unwrapped_eltype(Base.eltype(c)), size(c))
     Reactant.TracedRArrayOverrides._copyto!(tvals, Base.broadcasted(Fix1v2(evalkern, c), axes2...))
     return tvals
+end
+
+function Oceananigans.TimeSteppers.tick_time!(clock::Oceananigans.TimeSteppers.Clock{<:Reactant.TracedRNumber}, Δt)
+    nt = Oceananigans.TimeSteppers.next_time(clock, Δt)
+    clock.time.mlir_data = nt.mlir_data
+    nt
+end
+
+function Oceananigans.TimeSteppers.tick!(clock::Oceananigans.TimeSteppers.Clock{<:Any, <:Any, <:Reactant.TracedRNumber}, Δt; stage=false)
+    Oceananigans.TimeSteppers.tick_time!(clock, Δt)
+
+    if stage # tick a stage update
+        clock.stage += 1
+    else # tick an iteration and reset stage
+        clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
+        clock.stage = 1
+    end
+
+    return nothing
 end
 
 @inline function Reactant.TracedUtils.broadcast_to_size(c::Oceananigans.AbstractOperations.KernelFunctionOperation, rsize)
