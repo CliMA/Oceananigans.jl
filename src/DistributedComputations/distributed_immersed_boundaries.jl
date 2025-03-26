@@ -27,7 +27,7 @@ function reconstruct_global_grid(grid::ImmersedBoundaryGrid)
     arch      = grid.architecture
     local_ib  = grid.immersed_boundary    
     global_ug = reconstruct_global_grid(grid.underlying_grid)
-    global_ib = getnamewrapper(local_ib)(construct_global_array(arch, local_ib.bottom_height, size(grid)))
+    global_ib = getnamewrapper(local_ib)(construct_global_array(local_ib.bottom_height, arch, size(grid)))
     return ImmersedBoundaryGrid(global_ug, global_ib; active_cells_map, active_z_columns)
 end
 

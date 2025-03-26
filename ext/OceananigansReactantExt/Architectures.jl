@@ -2,6 +2,7 @@ module Architectures
 
 using Reactant
 using Oceananigans
+using Oceananigans.DistributedComputations: Distributed
 
 using Reactant: AnyConcreteRArray
 
@@ -34,6 +35,7 @@ const ArraysToRArray = Union{Array,
     SubArray{<:Any,<:Any,<:Array}}
 
 on_architecture(::ReactantState, a::ArraysToRArray) = Reactant.to_rarray(a)
+Oceananigans.Architectures.cpu_architecture(arch::Distributed{<:ReactantState}) = CPU()
 
 unified_array(::ReactantState, a) = a
 
