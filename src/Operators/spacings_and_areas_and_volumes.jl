@@ -368,6 +368,7 @@ for LX in (:Center, :Face, :Nothing)
 
                 @eval begin
                     @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
+                    export $metric
                 end
             end
 
@@ -378,6 +379,7 @@ for LX in (:Center, :Face, :Nothing)
 
                 @eval begin
                     @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
+                    export $metric
                 end
             end
 
@@ -385,6 +387,7 @@ for LX in (:Center, :Face, :Nothing)
             volume_function = Symbol(:V, location_code(LXe, LYe, LZe))
             @eval begin
                 @inline volume(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $volume_function(i, j, k, grid)
+                export $volume_function
             end
         end
     end
