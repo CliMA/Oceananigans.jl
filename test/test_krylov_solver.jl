@@ -24,9 +24,6 @@ function run_poisson_equation_test(grid)
     # Solve ∇²ϕ = r
     ϕ_truth = CenterField(grid)
 
-    # Krylov.jl wants operators / preconditioners with two arguments
-    krylov_compute_∇²!(∇²ϕ, ϕ_truth) = compute_∇²!(∇²ϕ, ϕ_truth, arch, grid)
-
     # Initialize zero-mean "truth" solution with random numbers
     set!(ϕ_truth, (x, y, z) -> rand())
     parent(ϕ_truth) .-= mean(ϕ_truth)
@@ -36,7 +33,7 @@ function run_poisson_equation_test(grid)
     ∇²ϕ = r = CenterField(grid)
     compute_∇²!(∇²ϕ, ϕ_truth, arch, grid)
 
-    solver = KrylovSolver(krylov_compute_∇²!, template_field=ϕ_truth, reltol=eps(eltype(grid)), maxiter=Int(1e10))
+    solver = KrylovSolver(compute_∇²!, template_field=ϕ_truth, reltol=eps(eltype(grid)), maxiter=Int(1e10))
 
     # Solve Poisson equation
     ϕ_solution = CenterField(grid)
