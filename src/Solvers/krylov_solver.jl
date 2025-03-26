@@ -72,16 +72,30 @@ Krylov.kfill!(x::KrylovField{T}, val::T) where T <: FloatOrComplex = fill!(x.fie
 # end
 
 ## Structure representing linear operators so that we can define mul! on it
-struct KrylovOperator{T, F}
+mutable struct KrylovOperator{T, F}
     type::Type{T}
     m::Int
     n::Int
     fun::F
+    args::Tuple
+end
+
+## Structure representing preconditioners so that we can define mul! on it
+mutable struct KrylovPreconditioner{T, P}
+    type::Type{T}
+    m::Int
+    n::Int
+    preconditioner::P
+    args::Tuple
 end
 
 Base.size(A::KrylovOperator) = (A.m, A.n)
 Base.eltype(A::KrylovOperator{T}) where T = T
-LinearAlgebra.mul!(y::KrylovField, A::KrylovOperator, x::KrylovField) = A.fun(y.field, x.field)
+LinearAlgebra.mul!(y::KrylovField, A::KrylovOperator, x::KrylovField) = A.fun(y.field, x.field, A.args...)
+
+Base.size(P::KrylovPreconditioner) = (P.m, P.n)
+Base.eltype(P::KrylovPreconditioner{T}) where T = T
+LinearAlgebra.mul!(y::KrylovField, P::KrylovPreconditioner, x::KrylovField) = precondition!(y.field, P.preconditioner, x.field, P.args...)
 
 ## Solver using Krylov.jl
 mutable struct KrylovSolver{A,G,L,S,P,T}
@@ -89,7 +103,7 @@ mutable struct KrylovSolver{A,G,L,S,P,T}
     grid :: G
     op :: L
     workspace :: S
-    krylov_solver :: Symbol
+    method :: Symbol
     preconditioner :: P
     abstol::T
     reltol::T
@@ -107,7 +121,7 @@ function KrylovSolver(linear_operator;
                       reltol = sqrt(eps(eltype(template_field.grid))),
                       abstol = zero(eltype(template_field.grid)),
                       preconditioner = nothing,
-                      krylov_solver::Symbol = :cg)
+                      method::Symbol = :cg)
 
     arch = architecture(template_field)
     grid = template_field.grid
@@ -115,17 +129,19 @@ function KrylovSolver(linear_operator;
 
     # Linear operators
     m = n = length(template_field)
-    op = KrylovOperator(T, m, n, linear_operator)
-    preconditioner = preconditioner == nothing ? I : KrylovOperator(T, m, n, preconditioner)
+    op = KrylovOperator(T, m, n, linear_operator, ())
+    P = preconditioner === nothing ? I : KrylovPreconditioner(T, m, n, preconditioner, ())
 
     kf = KrylovField(template_field)
     kc = Krylov.KrylovConstructor(kf)
-    workspace = Krylov.eval(Krylov.KRYLOV_SOLVERS[krylov_solver])(kc)
+    workspace = Krylov.eval(Krylov.KRYLOV_SOLVERS[method])(kc)
 
-    return KrylovSolver(arch, grid, op, workspace, krylov_solver, preconditioner, T(abstol), T(reltol), maxiter, maxtime)
+    return KrylovSolver(arch, grid, op, workspace, method, P, T(abstol), T(reltol), maxiter, maxtime)
 end
 
 function solve!(x, solver::KrylovSolver, b, args...; kwargs...)
+    solver.op.args = args
+    (solver.preconditioner === I) || (solver.preconditioner.args = args)
     Krylov.solve!(solver.workspace, solver.op, KrylovField(b); M=solver.preconditioner,
                   atol=solver.abstol, rtol=solver.reltol, itmax=solver.maxiter, timemax=solver.maxtime, kwargs...)
     copyto!(x, solver.workspace.x.field)
