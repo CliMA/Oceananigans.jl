@@ -4,7 +4,7 @@ import Oceananigans.Grids: on_architecture
 
 struct SplitExplicitFreeSurface{H, U, M, FT, K , S, T} <: AbstractFreeSurface{H, FT}
     η :: H
-    barotropic_velocities :: U # A namedtuple with U, V 
+    barotropic_velocities :: U # A namedtuple with U, V
     filtered_state :: M # A namedtuple with η, U, V averaged throughout the substepping
     gravitational_acceleration :: FT
     kernel_parameters :: K
@@ -21,20 +21,20 @@ end
                              averaging_kernel = averaging_shape_function,
                              timestepper = ForwardBackwardScheme())
 
-Return a `SplitExplicitFreeSurface` representing an explicit time discretization of 
+Return a `SplitExplicitFreeSurface` representing an explicit time discretization of
 a free surface dynamics with `gravitational_acceleration`. The free surface dynamics are solved by discretizing:
 ```math
-\begin{gather}
-∂_t η = - \nabla ⋅ U, \\
-∂_t U = - g H \nabla η + G^U,
-\end{gather}
+\\begin{gather}
+∂_t η = - \\nabla ⋅ U, \\\\
+∂_t U = - g H \\nabla η + G^U,
+\\end{gather}
 ```
-where ``η`` is the free surface displacement, ``U`` is the barotropic velocity vector, calculated as the vertical integral 
-of the velocity field ``u`` and ``v``, ``H`` is the column depth, ``G^U`` is the slow forcing calculated as the integral of the 
-tendency of ``u`` and ``v``, and ``g`` is the gravitational acceleration. 
+where ``η`` is the free surface displacement, ``U`` is the barotropic velocity vector, calculated as the vertical integral
+of the velocity field ``u`` and ``v``, ``H`` is the column depth, ``G^U`` is the slow forcing calculated as the integral of the
+tendency of ``u`` and ``v``, and ``g`` is the gravitational acceleration.
 
-The discretized equations are solved within a baroclinic timestep (``Δt``) by substepping with a ``Δτ < Δt``. 
-The barotropic velocities are filtered throughout the substepping and, finally, 
+The discretized equations are solved within a baroclinic timestep (``Δt``) by substepping with a ``Δτ < Δt``.
+The barotropic velocities are filtered throughout the substepping and, finally,
 the barotropic mode of the velocities at the new time step is corrected with the filtered velocities.
 
 Keyword Arguments
@@ -55,7 +55,7 @@ Keyword Arguments
 
 !!! info "Needed keyword arguments"
     Either `substeps` _or_ `cfl` need to be prescribed.
-    
+
     When `cfl` is prescribed then `grid` is also required as a positional argument.
 
 - `fixed_Δt`: The maximum baroclinic timestep allowed. If `fixed_Δt` is a `nothing` and a cfl is provided,
@@ -124,21 +124,21 @@ function split_explicit_substepping(::Nothing, substeps, fixed_Δt, grid, averag
 end
 
 # The substeps are calculated dynamically when a cfl without a fixed_Δt is provided
-function split_explicit_substepping(cfl, ::Nothing, ::Nothing, grid, averaging_kernel, gravitational_acceleration)  
+function split_explicit_substepping(cfl, ::Nothing, ::Nothing, grid, averaging_kernel, gravitational_acceleration)
     cfl = convert(eltype(grid), cfl)
     return FixedTimeStepSize(grid; cfl, averaging_kernel)
 end
 
 # The number of substeps are calculated based on the cfl and the fixed_Δt
 function split_explicit_substepping(cfl, ::Nothing, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
-    substepping = split_explicit_substepping(cfl, nothing, nothing, grid, averaging_kernel, gravitational_acceleration)    
+    substepping = split_explicit_substepping(cfl, nothing, nothing, grid, averaging_kernel, gravitational_acceleration)
     substeps    = ceil(Int, 2 * fixed_Δt / substepping.Δt_barotropic)
-    substepping = split_explicit_substepping(nothing, substeps, nothing, grid, averaging_kernel, gravitational_acceleration)        
+    substepping = split_explicit_substepping(nothing, substeps, nothing, grid, averaging_kernel, gravitational_acceleration)
     return substepping
 end
 
 # TODO: When open boundary conditions are online
-# We need to calculate the barotropic boundary conditions 
+# We need to calculate the barotropic boundary conditions
 # from the baroclinic boundary conditions by integrating the BC upwards
 @inline  west_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.west
 @inline  east_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.east
@@ -202,7 +202,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
                                     timestepper)
 end
 
-# (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002 
+# (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002
 @inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT
     τ₀ = (p + 2) * (p + q + 2) / (p + 1) / (p + q + 1)
 
@@ -274,7 +274,7 @@ Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\
 maybe_extend_halos(TX, TY, grid, ::FixedTimeStepSize) = grid
 
 function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
-    
+
     old_halos = halo_size(grid)
     Nsubsteps = length(substepping.averaging_weights)
     step_halo = Nsubsteps + 1

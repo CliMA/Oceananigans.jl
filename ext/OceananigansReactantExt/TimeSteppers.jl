@@ -5,7 +5,7 @@ using ..Architectures: ReactantState
 using Reactant
 using Oceananigans
 
-using Oceananigans: AbstractModel
+using Oceananigans: AbstractModel, Distributed
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Utils: @apply_regionally, apply_regionally!
 using Oceananigans.TimeSteppers:
@@ -24,8 +24,14 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
 import Oceananigans.TimeSteppers: Clock, unit_time, time_step!, ab2_step!
 import Oceananigans: initialize!
 
-const ReactantGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:ReactantState} where {FT, TX, TY, TZ}
-const ReactantModel{TS} = AbstractModel{TS, <:ReactantState} where TS
+const ReactantGrid{FT, TX, TY, TZ} = Union{
+    AbstractGrid{FT, TX, TY, TZ, <:ReactantState},
+    AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:ReactantState}}
+}
+const ReactantModel{TS} = Union{
+    AbstractModel{TS, <:ReactantState},
+    AbstractModel{TS, <:Distributed{<:ReactantState}}
+}
 
 function Clock(grid::ReactantGrid)
     FT = Float64 # may change in the future
@@ -37,11 +43,15 @@ function Clock(grid::ReactantGrid)
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
 end
 
-function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt;
-                    callbacks=[], euler=false)
+function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}}, Δt;
+                    callbacks=[], euler=false) where FT
 
     # Note: Δt cannot change
-    model.clock.last_Δt = Δt
+    if model.clock.last_Δt isa Reactant.TracedRNumber
+        model.clock.last_Δt.mlir_data = Δt.mlir_data
+    else
+        model.clock.last_Δt = Δt
+    end
 
     #=
     # Be paranoid and update state at iteration 0
@@ -61,7 +71,7 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     =#
 
     # If euler, then set χ = -0.5
-    minus_point_five = convert(eltype(model.grid), -0.5)
+    minus_point_five = convert(FT, -0.5)
     ab2_timestepper = model.timestepper
     χ = ifelse(euler, minus_point_five, ab2_timestepper.χ)
     χ₀ = ab2_timestepper.χ # Save initial value
@@ -71,8 +81,19 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     ab2_step!(model, Δt)
 
     tick!(model.clock, Δt)
-    model.clock.last_Δt = Δt
-    model.clock.last_stage_Δt = Δt # just one stage
+
+    if model.clock.last_Δt isa Reactant.TracedRNumber
+        model.clock.last_Δt.mlir_data = Δt.mlir_data
+    else
+        model.clock.last_Δt = Δt
+    end
+
+    # just one stage
+    if model.clock.last_stage_Δt isa Reactant.TracedRNumber
+        model.clock.last_stage_Δt.mlir_data = Δt.mlir_data
+    else
+        model.clock.last_stage_Δt = Δt
+    end
 
     calculate_pressure_correction!(model, Δt)
     correct_velocities_and_cache_previous_tendencies!(model, Δt)

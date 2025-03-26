@@ -187,7 +187,7 @@ simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(2
 
 # ## Add outputs to the simulation
 #
-# We add outputs to our model using the `NetCDFWriter`,
+# We add outputs to our model using the `NetCDFWriter`, which needs `NCDatasets` to be loaded:
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -198,6 +198,8 @@ V = v + V∞
 ωy = ∂z(u) - ∂x(w)
 
 outputs = (; u, V, w, B, ωy)
+
+using NCDatasets
 
 simulation.output_writers[:fields] = NetCDFWriter(model, outputs;
                                                   filename = joinpath(@__DIR__, "tilted_bottom_boundary_layer.nc"),
