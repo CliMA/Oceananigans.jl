@@ -1,23 +1,5 @@
 module Operators
 
-# Spacings
-export Δxᶠᶠᶠ, Δxᶠᶠᶜ, Δxᶠᶜᶠ, Δxᶠᶜᶜ, Δxᶜᶠᶠ, Δxᶜᶠᶜ, Δxᶜᶜᶠ, Δxᶜᶜᶜ
-export Δyᶠᶠᶠ, Δyᶠᶠᶜ, Δyᶠᶜᶠ, Δyᶠᶜᶜ, Δyᶜᶠᶠ, Δyᶜᶠᶜ, Δyᶜᶜᶠ, Δyᶜᶜᶜ
-export Δzᶠᶠᶠ, Δzᶠᶠᶜ, Δzᶠᶜᶠ, Δzᶠᶜᶜ, Δzᶜᶠᶠ, Δzᶜᶠᶜ, Δzᶜᶜᶠ, Δzᶜᶜᶜ
-export Δrᶠᶠᶠ, Δrᶠᶠᶜ, Δrᶠᶜᶠ, Δrᶠᶜᶜ, Δrᶜᶠᶠ, Δrᶜᶠᶜ, Δrᶜᶜᶠ, Δrᶜᶜᶜ
-
-# Areas
-export Axᶠᶠᶠ, Axᶠᶠᶜ, Axᶠᶜᶠ, Axᶠᶜᶜ, Axᶜᶠᶠ, Axᶜᶠᶜ, Axᶜᶜᶠ, Axᶜᶜᶜ
-export Ayᶠᶠᶠ, Ayᶠᶠᶜ, Ayᶠᶜᶠ, Ayᶠᶜᶜ, Ayᶜᶠᶠ, Ayᶜᶠᶜ, Ayᶜᶜᶠ, Ayᶜᶜᶜ
-export Azᶠᶠᶠ, Azᶠᶠᶜ, Azᶠᶜᶠ, Azᶠᶜᶜ, Azᶜᶠᶠ, Azᶜᶠᶜ, Azᶜᶜᶠ, Azᶜᶜᶜ
-
-export Axᵃᶜᶜ, Axᵃᶠᶠ, Axᶜᵃᶜ, Axᶠᵃᶠ, Axᶜᶜᵃ, Axᶠᶠᵃ
-export Ayᵃᶜᶜ, Ayᵃᶠᶠ, Ayᶜᵃᶜ, Ayᶠᵃᶠ, Ayᶜᶜᵃ, Ayᶠᶠᵃ
-export Azᵃᶜᶜ, Azᵃᶠᶠ, Azᶜᵃᶜ, Azᶠᵃᶠ, Azᶜᶜᵃ, Azᶠᶠᵃ
-
-# Volumes
-export Vᶠᶠᶠ, Vᶠᶠᶜ, Vᶠᶜᶠ, Vᶠᶜᶜ, Vᶜᶠᶠ, Vᶜᶠᶜ, Vᶜᶜᶠ, Vᶜᶜᶜ
-
 # General metric operators
 export xspacing, yspacing, zspacing, λspacing, φspacing, xarea, yarea, zarea, volume
 
