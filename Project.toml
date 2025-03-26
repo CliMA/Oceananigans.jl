@@ -1,7 +1,7 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 authors = ["Climate Modeling Alliance and contributors"]
-version = "0.96.4"
+version = "0.96.5"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -27,7 +27,6 @@ OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-Reactant = "3c362404-f566-11ee-1572-e11a4b42c853"
 ReactantCore = "a3311ec8-5e00-46d5-b541-4f83e724a433"
 Rotations = "6038ab10-8711-5258-84ad-4b1120ba62dc"
 SeawaterPolynomials = "d496a93d-167e-4197-9f49-d3af4ff8fe40"
@@ -43,6 +42,7 @@ Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 MakieCore = "20f20a25-4f0e-4fdf-b5d1-57303727442b"
 Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
+Reactant = "3c362404-f566-11ee-1572-e11a4b42c853"
 NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 
 [extensions]
@@ -81,7 +81,7 @@ OffsetArrays = "1.4"
 OrderedCollections = "1.1"
 Printf = "1.9"
 Random = "1.9"
-Reactant = "0.2.48"
+Reactant = "0.2.55"
 ReactantCore = "0.1"
 Rotations = "1.0"
 SeawaterPolynomials = "0.3.5"
