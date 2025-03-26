@@ -13,7 +13,6 @@ using Oceananigans.Solvers: solve!
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
     δ = divᶜᶜᶜ(i, j, k, grid, Ũ.u, Ũ.v, Ũ.w)
-    # @inbounds rhs[i, j, k] = active * δ / Δt
     @inbounds rhs[i, j, k] = active * δ
 end
 
@@ -21,7 +20,6 @@ end
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
     δ = divᶜᶜᶜ(i, j, k, grid, Ũ.u, Ũ.v, Ũ.w)
-    # @inbounds rhs[i, j, k] = active * Δxᶜᶜᶜ(i, j, k, grid) * δ / Δt
     @inbounds rhs[i, j, k] = active * Δxᶜᶜᶜ(i, j, k, grid) * δ
 end
 
@@ -29,7 +27,6 @@ end
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
     δ = divᶜᶜᶜ(i, j, k, grid, Ũ.u, Ũ.v, Ũ.w)
-    # @inbounds rhs[i, j, k] = active * Δyᶜᶜᶜ(i, j, k, grid) * δ / Δt
     @inbounds rhs[i, j, k] = active * Δyᶜᶜᶜ(i, j, k, grid) * δ
 end
 
@@ -37,7 +34,6 @@ end
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
     δ = divᶜᶜᶜ(i, j, k, grid, Ũ.u, Ũ.v, Ũ.w)
-    # @inbounds rhs[i, j, k] = active * Δzᶜᶜᶜ(i, j, k, grid) * δ / Δt
     @inbounds rhs[i, j, k] = active * Δzᶜᶜᶜ(i, j, k, grid) * δ
 end
 
@@ -80,12 +76,16 @@ end
 #####
 
 function solve_for_pressure!(pressure, solver, Δt, Ũ)
+    pressure .*= ifelse(Δt == Inf, 0, max(Δt, eps(eltype(solver.grid))))
+
     compute_source_term!(pressure, solver, Δt, Ũ)
     solve!(pressure, solver)
     return pressure
 end
 
 function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, Δt, Ũ)
+    pressure .*= ifelse(Δt == Inf, 0, max(Δt, eps(eltype(solver.grid))))
+
     rhs = solver.right_hand_side
     grid = solver.grid
     arch = architecture(grid)
