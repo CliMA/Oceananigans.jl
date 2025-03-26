@@ -103,7 +103,7 @@ mutable struct KrylovSolver{A,G,L,S,P,T}
     grid :: G
     op :: L
     workspace :: S
-    krylov_solver :: Symbol
+    method :: Symbol
     preconditioner :: P
     abstol::T
     reltol::T
@@ -121,7 +121,7 @@ function KrylovSolver(linear_operator;
                       reltol = sqrt(eps(eltype(template_field.grid))),
                       abstol = zero(eltype(template_field.grid)),
                       preconditioner = nothing,
-                      krylov_solver::Symbol = :cg)
+                      method::Symbol = :cg)
 
     arch = architecture(template_field)
     grid = template_field.grid
@@ -134,9 +134,9 @@ function KrylovSolver(linear_operator;
 
     kf = KrylovField(template_field)
     kc = Krylov.KrylovConstructor(kf)
-    workspace = Krylov.eval(Krylov.KRYLOV_SOLVERS[krylov_solver])(kc)
+    workspace = Krylov.eval(Krylov.KRYLOV_SOLVERS[method])(kc)
 
-    return KrylovSolver(arch, grid, op, workspace, krylov_solver, P, T(abstol), T(reltol), maxiter, maxtime)
+    return KrylovSolver(arch, grid, op, workspace, method, P, T(abstol), T(reltol), maxiter, maxtime)
 end
 
 function solve!(x, solver::KrylovSolver, b, args...; kwargs...)
