@@ -55,7 +55,7 @@ jobs:
       - uses: julia-actions/julia-runtest@v1
         env:
           REACTANT_TEST: true
-          XLA_FLAGS: "--xla_force_host_platform_device_count=4"
+          XLA_FLAGS: "--xla_force_host_platform_device_count=1"
           TEST_GROUP: "sharding"
 
   mpi_tripolar:
