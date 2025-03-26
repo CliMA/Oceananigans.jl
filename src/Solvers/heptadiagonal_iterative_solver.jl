@@ -3,9 +3,8 @@ using Oceananigans.Architectures: architecture, on_architecture, unsafe_free!
 using Oceananigans.Grids: interior_parent_indices, topology
 using Oceananigans.Utils: heuristic_workgroup
 using KernelAbstractions: @kernel, @index
-using IterativeSolvers, SparseArrays, LinearAlgebra
+using Krylov, SparseArrays, LinearAlgebra
 using CUDA, CUDA.CUSPARSE
-using IterativeSolvers: CGStateVariables
 
 import Oceananigans.Grids: architecture
 
@@ -74,7 +73,7 @@ and it is updated only when the previous time step changes (`last_Δt != Δt`).
 
 Preconditioning is done through the various methods implemented in `Solvers/sparse_preconditioners.jl`.
     
-The `iterative_solver` used can is to be chosen from the IterativeSolvers.jl package. 
+The `iterative_solver` used can is to be chosen from the Krylov.jl package.
 The default solver is a Conjugate Gradient (`cg`):
 
 ```julia
@@ -110,17 +109,17 @@ function HeptadiagonalIterativeSolver(coeffs;
     reduced_matrix = arch_sparse_matrix(arch, speye(eltype(grid), 2))
     preconditioner = build_preconditioner(Val(preconditioner_method), reduced_matrix, settings)
 
-    state_vars = CGStateVariables(zero(template), deepcopy(template), deepcopy(template))
+    state_vars = CgSolver(M, M, typeof(template))
 
     return HeptadiagonalIterativeSolver(grid,
-                                        problem_size, 
+                                        problem_size,
                                         matrix_constructors,
                                         diagonal,
                                         placeholder_matrix,
                                         preconditioner,
                                         preconditioner_method,
                                         settings,
-                                        iterative_solver, 
+                                        iterative_solver,
                                         state_vars,
                                         tolerance,
                                         placeholder_timestep,
@@ -311,12 +310,13 @@ function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
         solver.last_Δt = Δt
     end
     
-    solver.iterative_solver(x, solver.matrix, b, 
-                            statevars = solver.state_vars,
-                            maxiter = solver.maximum_iterations, 
-                            reltol = solver.tolerance, 
-                            Pl = solver.preconditioner, 
-                            verbose = solver.verbose)
+    solver.iterative_solver(solver.state_vars, solver.matrix, b,
+                            itmax = solver.maximum_iterations,
+                            atol = zero(eltype(b)),
+                            rtol = solver.tolerance,
+                            ldiv = true,
+                            M = solver.preconditioner,
+                            verbose = Int(solver.verbose))
 
     return nothing
 end
