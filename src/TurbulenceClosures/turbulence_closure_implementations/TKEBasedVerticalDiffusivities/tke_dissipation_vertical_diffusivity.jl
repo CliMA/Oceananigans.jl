@@ -172,7 +172,7 @@ Adapt.adapt_structure(to, tke_dissipation_diffusivity_fields::TKEDissipationDiff
                                     adapt(to, _tupled_tracer_diffusivities),
                                     adapt(to, _tupled_implicit_linear_coefficients))
 
-function fill_halo_regions!(catke_diffusivity_fields::TKEDissipationDiffusivityFields, args...; kw...)
+function fill_halo_regions!(tke_dissipation_diffusivity_fields::TKEDissipationDiffusivityFields, args...; kw...)
     fields_with_halos_to_fill = (tke_dissipation_diffusivity_fields.κu,
                                  tke_dissipation_diffusivity_fields.κc,
                                  tke_dissipation_diffusivity_fields.κe,
