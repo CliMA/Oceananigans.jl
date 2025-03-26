@@ -47,7 +47,11 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
                     callbacks=[], euler=false) where FT
 
     # Note: Δt cannot change
-    model.clock.last_Δt = Δt
+    if model.clock.last_Δt isa Reactant.TracedRNumber
+        model.clock.last_Δt.mlir_data = Δt.mlir_data
+    else
+        model.clock.last_Δt = Δt
+    end
 
     #=
     # Be paranoid and update state at iteration 0
@@ -77,8 +81,19 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
     ab2_step!(model, Δt)
 
     tick!(model.clock, Δt)
-    model.clock.last_Δt = Δt
-    model.clock.last_stage_Δt = Δt # just one stage
+
+    if model.clock.last_Δt isa Reactant.TracedRNumber
+        model.clock.last_Δt.mlir_data = Δt.mlir_data
+    else
+        model.clock.last_Δt = Δt
+    end
+
+    # just one stage
+    if model.clock.last_stage_Δt isa Reactant.TracedRNumber
+        model.clock.last_stage_Δt.mlir_data = Δt.mlir_data
+    else
+        model.clock.last_stage_Δt = Δt
+    end
 
     calculate_pressure_correction!(model, Δt)
     correct_velocities_and_cache_previous_tendencies!(model, Δt)
