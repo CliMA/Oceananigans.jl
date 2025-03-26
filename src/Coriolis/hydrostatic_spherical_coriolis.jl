@@ -60,11 +60,11 @@ Adapt.adapt_structure(to, coriolis::HydrostaticSphericalCoriolis) =
 const CoriolisEnstrophyConserving = HydrostaticSphericalCoriolis{<:EnstrophyConserving}
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::CoriolisEnstrophyConserving, U) =
-    @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) *
+    @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * 
                 active_weighted_ℑxyᶠᶜᶜ(i, j, k, grid, Δx_qᶜᶠᶜ, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)
 
 @inline y_f_cross_U(i, j, k, grid, coriolis::CoriolisEnstrophyConserving, U) =
-    @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) *
+    @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * 
                 active_weighted_ℑxyᶜᶠᶜ(i, j, k, grid, Δy_qᶠᶜᶜ, U[1]) / Δyᶜᶠᶜ(i, j, k, grid)
 
 #####

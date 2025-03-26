@@ -121,24 +121,28 @@ using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 @inline function active_weighted_ℑxyᶜᶠᶜ(i, j, k, grid, q, args...)
     active_nodes = ℑxyᶜᶠᵃ(i, j, k, grid, not_peripheral_node, f, c, c)
     mask = active_nodes == 0
-    return ifelse(mask, zero(grid), ℑxyᶜᶠᵃ(i, j, k, grid, q, args...) / active_nodes)
+    weighted_q =  ℑxyᶜᶠᵃ(i, j, k, grid, q, args...) / active_nodes
+    return ifelse(mask, zero(weighted_q), weighted_q)
 end
 
 @inline function active_weighted_ℑxyᶠᶜᶜ(i, j, k, grid, q, args...)
     active_nodes = ℑxyᶠᶜᵃ(i, j, k, grid, not_peripheral_node, c, f, c)
     mask = active_nodes == 0
-    return ifelse(mask, zero(grid), ℑxyᶠᶜᵃ(i, j, k, grid, q, args...) / active_nodes)
+    weighted_q = ℑxyᶠᶜᵃ(i, j, k, grid, q, args...) / active_nodes
+    return ifelse(mask, zero(weighted_q), weighted_q)
 end
 
 @inline function active_weighted_ℑxyᶠᶠᶜ(i, j, k, grid, q, args...)
     active_nodes = ℑxyᶠᶠᵃ(i, j, k, grid, not_peripheral_node, c, c, c)
     mask = active_nodes == 0
-    return ifelse(mask, zero(grid), ℑxyᶠᶠᵃ(i, j, k, grid, q, args...) / active_nodes)
+    weighted_q = ℑxyᶠᶠᵃ(i, j, k, grid, q, args...) / active_nodes
+    return ifelse(mask, zero(weighted_q), weighted_q)
 end
 
 @inline function active_weighted_ℑxyᶜᶜᶜ(i, j, k, grid, q, args...)
     active_nodes = ℑxyᶜᶜᵃ(i, j, k, grid, not_peripheral_node, f, f, c)
     mask = active_nodes == 0
-    return ifelse(mask, zero(grid), ℑxyᶜᶜᵃ(i, j, k, grid, q, args...) / active_nodes)
+    weighted_q = ℑxyᶜᶜᵃ(i, j, k, grid, q, args...) / active_nodes
+    return ifelse(mask, zero(weighted_q), weighted_q)
 end
 
