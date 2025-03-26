@@ -72,7 +72,7 @@ Krylov.kfill!(x::KrylovField{T}, val::T) where T <: FloatOrComplex = fill!(x.fie
 # end
 
 ## Structure representing linear operators so that we can define mul! on it
-struct KrylovOperator{T, F}
+mutable struct KrylovOperator{T, F}
     type::Type{T}
     m::Int
     n::Int
@@ -81,7 +81,7 @@ struct KrylovOperator{T, F}
 end
 
 ## Structure representing preconditioners so that we can define mul! on it
-struct KrylovPreconditioner{T, P}
+mutable struct KrylovPreconditioner{T, P}
     type::Type{T}
     m::Int
     n::Int
@@ -141,7 +141,7 @@ end
 
 function solve!(x, solver::KrylovSolver, b, args...; kwargs...)
     solver.op.args = args
-    solver.preconditioner.args = args
+    (solver.preconditioner === I) || (solver.preconditioner.args = args)
     Krylov.solve!(solver.workspace, solver.op, KrylovField(b); M=solver.preconditioner,
                   atol=solver.abstol, rtol=solver.reltol, itmax=solver.maxiter, timemax=solver.maxtime, kwargs...)
     copyto!(x, solver.workspace.x.field)
