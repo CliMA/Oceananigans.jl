@@ -94,7 +94,7 @@ end
 validate_condition(cond, ::AbstractField) = cond # fallback
 
 function validate_condition(cond::AbstractArray, operand::AbstractField)
-    if ndims(cond) != 3
+    if size(cond) !== size(operand)
         throw(ArgumentError("The keyword argument condition::AbstractArray requires size $(size(operand))"))
     end
     return cond
