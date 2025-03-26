@@ -1,4 +1,5 @@
 using Oceananigans.DistributedComputations: cpu_architecture, partition
+using NCDatasets: Dataset
 
 function run_thermal_bubble_regression_test(arch, grid_type)
     Nx, Ny, Nz = 16, 16, 16
@@ -49,7 +50,7 @@ function run_thermal_bubble_regression_test(arch, grid_type)
                    "T" => model.tracers.T,
                    "S" => model.tracers.S)
 
-    nc_writer = NetCDFOutputWriter(model, outputs, filename=regression_data_filepath, schedule=IterationInterval(10))
+    nc_writer = NetCDFWriter(model, outputs, filename=regression_data_filepath, schedule=IterationInterval(10))
     push!(simulation.output_writers, nc_writer)
     =#
 

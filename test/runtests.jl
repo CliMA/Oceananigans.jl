@@ -97,7 +97,7 @@ CUDA.allowscalar() do
             include("test_simulations.jl")
             include("test_diagnostics.jl")
             include("test_output_writers.jl")
-            include("test_netcdf_output_writer.jl")
+            include("test_netcdf_writer.jl")
             include("test_output_readers.jl")
         end
     end
@@ -172,7 +172,6 @@ CUDA.allowscalar() do
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
-        archs = test_architectures()
         include("test_distributed_models.jl")
     end
 
@@ -223,9 +222,9 @@ CUDA.allowscalar() do
     end
 
     # Tests for Metal extension
-    if group == :distributed_tripolar || group == :all
+    if group == :mpi_tripolar || group == :all
         @testset "Distributed tripolar tests" begin
-            include("test_distributed_tripolar.jl")
+            include("test_mpi_tripolar.jl")
         end
     end
 
@@ -237,9 +236,22 @@ CUDA.allowscalar() do
     end
 
     # Tests for Reactant extension
-    if group == :reactant || group == :all
-        @testset "Reactant extension tests" begin
+    if group == :reactant_1 || group == :all
+        @testset "Reactant extension tests 1" begin
             include("test_reactant.jl")
+        end
+    end
+
+    if group == :reactant_2 || group == :all
+        @testset "Reactant extension tests 2" begin
+            include("test_reactant_latitude_longitude_grid.jl")
+        end
+    end
+
+    if group == :sharding || group == :all
+        @testset "Sharding Reactant extension tests" begin
+            include("test_sharded_lat_lon.jl")
+            include("test_sharded_tripolar.jl")
         end
     end
 

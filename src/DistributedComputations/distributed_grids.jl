@@ -11,10 +11,13 @@ using Oceananigans.Fields
 
 import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, with_halo
 
-const DistributedGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:Distributed}
+const DistributedGrid{FT, TX, TY, TZ} = Union{
+    AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:CPU}},
+    AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:GPU}},
+}
 
 const DistributedRectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY} =
-    RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, <:Distributed} where {FT, TX, TY, TZ, CZ, FX, FY, VX, VY}
+    RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, <:Distributed}
 
 const DistributedLatitudeLongitudeGrid{FT, TX, TY, TZ, Z,
                                        DXF, DXC, XF, XC,

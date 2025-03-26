@@ -66,10 +66,10 @@ for closure in closures_to_run
 
     outputs = merge(model.velocities, model.tracers, diffusivities)
 
-    output_writer = JLD2OutputWriter(model, outputs,
-                                     schedule = TimeInterval(20minutes),
-                                     filename = "windy_convection_" * closurename,
-                                     overwrite_existing = true)
+    output_writer = JLD2Writer(model, outputs,
+                               schedule = TimeInterval(20minutes),
+                               filename = "windy_convection_" * closurename,
+                               overwrite_existing = true)
 
     simulation.output_writers[:fields] = output_writer
 
