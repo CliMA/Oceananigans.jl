@@ -92,5 +92,10 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
     return nothing
 end
 
+function Oceananigans.TimeSteppers.tick_time!(clock::Oceananigans.TimeSteppers.Clock{<:Reactant.TracedRNumber})
+    nt = Oceananigans.TimeSteppers.next_time(clock, Δt)
+    clock.time.mlir_data = nt.mlir_data
+end
+
 end # module
 
