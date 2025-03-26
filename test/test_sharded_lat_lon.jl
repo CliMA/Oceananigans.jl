@@ -6,47 +6,44 @@ using Reactant
 using Random
 using Test
 
-include("reactant_sharding_utils.jl")
+include("distributed_tests_utils.jl")
 
 run_xslab_distributed_grid = """
-    include("reactant_sharding_utils.jl")
-    child_arch = distributed_child_architecture()
-    arch = Distributed(child_arch, partition = Partition(4, 1))
+    include("distributed_tests_utils.jl")
+    arch = Distributed(ReactantState(), partition = Partition(4, 1))
     run_distributed_latitude_longitude_grid(arch, "distributed_xslab_llg.jld2")
 """
 
 run_yslab_distributed_grid = """
-    include("reactant_sharding_utils.jl")
-    child_arch = distributed_child_architecture()
-    arch = Distributed(child_arch, partition = Partition(1, 4))
+    include("distributed_tests_utils.jl")
+    arch = Distributed(ReactantState(), partition = Partition(1, 4))
     run_distributed_latitude_longitude_grid(arch, "distributed_yslab_llg.jld2")
 """
 
 run_pencil_distributed_grid = """
-    include("reactant_sharding_utils.jl")
-    child_arch = distributed_child_architecture()
-    arch = Distributed(child_arch, partition = Partition(2, 2))
+    include("distributed_tests_utils.jl")
+    arch = Distributed(ReactantState(), partition = Partition(2, 2))
     run_distributed_latitude_longitude_grid(arch, "distributed_pencil_llg.jld2")
 """
 
 @testset "Test distributed LatitudeLongitudeGrid simulations..." begin
     # Run the serial computation    
     Random.seed!(1234)
-    bottom_height = rand(40, 40, 1)
+    bottom_height = - rand(40, 40, 1) .* 500 .- 500
 
-    grid = LatitudeLongitudeGrid(size=(40, 40, 10), longitude=(0, 360), latitude=(-10, 10), z=(-1000, 0), halo=(5, 5, 5))    
-    grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
-
-    model = run_latitude_longitude_simulation(grid)
+    grid  = LatitudeLongitudeGrid(size=(40, 40, 10), longitude=(0, 360), latitude=(-10, 10), z=(-1000, 0), halo=(5, 5, 5))    
+    grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
+    model = run_distributed_simulation(grid)
 
     # Retrieve Serial quantities
     us, vs, ws = model.velocities
     cs = model.tracers.c
     ηs = model.free_surface.η
 
-    us = interior(us, :, :, 1)
-    vs = interior(vs, :, :, 1)
-    cs = interior(cs, :, :, 1)
+    us = interior(us, :, :, 10)
+    vs = interior(vs, :, :, 10)
+    cs = interior(cs, :, :, 10)
+    ηs = interior(ηs, :, :, 1)
 
     # Run the distributed grid simulation with a pencil configuration
     write("distributed_xslab_llg_tests.jl", run_xslab_distributed_grid)
@@ -59,7 +56,7 @@ run_pencil_distributed_grid = """
     ηp = jldopen("distributed_xslab_llg.jld2")["η"]
     cp = jldopen("distributed_xslab_llg.jld2")["c"]
 
-    rm("distributed_xslab_llg.jld2")
+    # rm("distributed_xslab_llg.jld2")
     
     @test all(us .≈ up)
     @test all(vs .≈ vp)
@@ -77,7 +74,7 @@ run_pencil_distributed_grid = """
     cp = jldopen("distributed_yslab_llg.jld2")["c"]
     ηp = jldopen("distributed_yslab_llg.jld2")["η"]
 
-    rm("distributed_yslab_llg.jld2")
+    # rm("distributed_yslab_llg.jld2")
 
     # Test slab partitioning
     @test all(us .≈ up)
@@ -98,7 +95,7 @@ run_pencil_distributed_grid = """
     ηp = jldopen("distributed_pencil_llg.jld2")["η"]
     cp = jldopen("distributed_pencil_llg.jld2")["c"]
 
-    rm("distributed_pencil_llg.jld2")
+    # rm("distributed_pencil_llg.jld2")
 
     @test all(us .≈ up)
     @test all(vs .≈ vp)

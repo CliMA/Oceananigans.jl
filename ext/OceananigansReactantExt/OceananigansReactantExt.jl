@@ -18,7 +18,7 @@ using .Utils
 include("Architectures.jl")
 using .Architectures
 
-include("Grids.jl")
+include("Grids/Grids.jl")
 using .Grids
 
 include("Fields.jl")
@@ -35,8 +35,6 @@ using .Models
 
 include("Simulations/Simulations.jl")
 using .Simulations
-
-include("ShardedGrids.jl")
 
 include("OutputReaders.jl")
 using .OutputReaders
@@ -173,8 +171,6 @@ end
             end
         end)...)
     end
-    
-    tracedidxs = axes(c)
     tracedidxs = axes2
 
     conds = Reactant.TracedUtils.materialize_traced_array(Reactant.call_with_reactant(Oceananigans.AbstractOperations.evaluate_condition, c.condition, tracedidxs..., c.grid, c))
