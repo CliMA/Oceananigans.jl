@@ -77,6 +77,7 @@ struct KrylovOperator{T, F}
     m::Int
     n::Int
     fun::F
+    args::Tuple
 end
 
 ## Structure representing preconditioners so that we can define mul! on it
@@ -85,15 +86,16 @@ struct KrylovPreconditioner{T, P}
     m::Int
     n::Int
     preconditioner::P
+    args::Tuple
 end
 
 Base.size(A::KrylovOperator) = (A.m, A.n)
 Base.eltype(A::KrylovOperator{T}) where T = T
-LinearAlgebra.mul!(y::KrylovField, A::KrylovOperator, x::KrylovField) = A.fun(y.field, x.field)
+LinearAlgebra.mul!(y::KrylovField, A::KrylovOperator, x::KrylovField) = A.fun(y.field, x.field, A.args...)
 
 Base.size(P::KrylovPreconditioner) = (P.m, P.n)
 Base.eltype(P::KrylovPreconditioner{T}) where T = T
-LinearAlgebra.mul!(y::KrylovField, P::KrylovPreconditioner, x::KrylovField) = precondition!(y.field, P.preconditioner, x.field)
+LinearAlgebra.mul!(y::KrylovField, P::KrylovPreconditioner, x::KrylovField) = precondition!(y.field, P.preconditioner, x.field, P.args...)
 
 ## Solver using Krylov.jl
 mutable struct KrylovSolver{A,G,L,S,P,T}
@@ -127,17 +129,19 @@ function KrylovSolver(linear_operator;
 
     # Linear operators
     m = n = length(template_field)
-    op = KrylovOperator(T, m, n, linear_operator)
-    preconditioner = preconditioner === nothing ? I : KrylovPreconditioner(T, m, n, preconditioner)
+    op = KrylovOperator(T, m, n, linear_operator, ())
+    P = preconditioner === nothing ? I : KrylovPreconditioner(T, m, n, preconditioner, ())
 
     kf = KrylovField(template_field)
     kc = Krylov.KrylovConstructor(kf)
     workspace = Krylov.eval(Krylov.KRYLOV_SOLVERS[krylov_solver])(kc)
 
-    return KrylovSolver(arch, grid, op, workspace, krylov_solver, preconditioner, T(abstol), T(reltol), maxiter, maxtime)
+    return KrylovSolver(arch, grid, op, workspace, krylov_solver, P, T(abstol), T(reltol), maxiter, maxtime)
 end
 
 function solve!(x, solver::KrylovSolver, b, args...; kwargs...)
+    solver.op.args = args
+    solver.preconditioner.args = args
     Krylov.solve!(solver.workspace, solver.op, KrylovField(b); M=solver.preconditioner,
                   atol=solver.abstol, rtol=solver.reltol, itmax=solver.maxiter, timemax=solver.maxtime, kwargs...)
     copyto!(x, solver.workspace.x.field)
