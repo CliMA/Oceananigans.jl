@@ -456,7 +456,7 @@ end
 
             cpurg  = on_architecture(cpu_arch, rg)
             cpullg = on_architecture(cpu_arch, llg)
-            cposg  = on_architecture(cpu_arch, osg)
+            cpuosg = on_architecture(cpu_arch, osg)
 
             @test child_architecture(architecture(cpurg))  == CPU()
             @test child_architecture(architecture(cpullg)) == CPU()
