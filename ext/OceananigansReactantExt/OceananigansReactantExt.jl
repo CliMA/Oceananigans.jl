@@ -210,6 +210,12 @@ end
     return tvals
 end
 
+function Oceananigans.TimeSteppers.tick_time!(clock::Oceananigans.TimeSteppers.Clock{<:Reactant.TracedRNumber})
+    nt = Oceananigans.TimeSteppers.next_time(clock, Δt)
+    clock.time.mlir_data = nt.mlir_data
+    nt
+end
+
 @inline function Reactant.TracedUtils.broadcast_to_size(c::Oceananigans.AbstractOperations.KernelFunctionOperation, rsize)
     if c == rsize
         return Reactant.TracedUtils.materialize_traced_array(c)
