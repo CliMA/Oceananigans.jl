@@ -378,7 +378,8 @@ function Base.show(io::IO, clo::TDVD)
               "├── tke_dissipation_equations: ", prettysummary(clo.tke_dissipation_equations), '\n',
               "│   ├── Cᵋϵ: ", prettysummary(clo.tke_dissipation_equations.Cᵋϵ),  '\n',
               "│   ├── Cᴾϵ: ", prettysummary(clo.tke_dissipation_equations.Cᴾϵ),  '\n',
-              "│   ├── Cᵇϵ: ", prettysummary(clo.tke_dissipation_equations.Cᵇϵ),  '\n',
+              "│   ├── Cᵇϵ⁺: ", prettysummary(clo.tke_dissipation_equations.Cᵇϵ⁺),  '\n',
+              "│   ├── Cᵇϵ⁻: ", prettysummary(clo.tke_dissipation_equations.Cᵇϵ⁻),  '\n',
               "│   ├── Cᵂu★: ", prettysummary(clo.tke_dissipation_equations.Cᵂu★), '\n',
               "│   └── CᵂwΔ: ", prettysummary(clo.tke_dissipation_equations.CᵂwΔ), '\n')
     print(io, "└── ", summarize_stability_functions(clo.stability_functions), "", "    ")
