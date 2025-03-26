@@ -46,7 +46,6 @@ end
 function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}}, Δt;
                     callbacks=[], euler=false) where FT
 
-    # Note: Δt cannot change
     if model.clock.last_Δt isa Reactant.TracedRNumber
         model.clock.last_Δt.mlir_data = Δt.mlir_data
     else

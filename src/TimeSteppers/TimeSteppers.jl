@@ -74,6 +74,7 @@ function first_time_step!(model::AbstractModel, Δt)
 end
 
 function first_time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt)
+    model.clock.last_Δt = 0
     initialize!(model)
     update_state!(model)
     time_step!(model, Δt, euler=true)

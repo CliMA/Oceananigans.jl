@@ -218,12 +218,10 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
     top_tracer_bcs = get_top_tracer_bcs(model.buoyancy.formulation, tracers)
     Δt = clock.last_Δt
 
-    if model.clock.last_Δt == 0 # Check that we have taken a valid time-step first.
-        # Compute e at the current time:
-        #   * update tendency Gⁿ using current and previous velocity field
-        #   * use tridiagonal solve to take an implicit step
-        time_step_catke_equation!(model)
-    end
+    # Compute e at the current time:
+    #   * update tendency Gⁿ using current and previous velocity field
+    #   * use tridiagonal solve to take an implicit step
+    time_step_catke_equation!(model)
 
     # Update "previous velocities"
     u, v, w = model.velocities
