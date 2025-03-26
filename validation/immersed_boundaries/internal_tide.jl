@@ -45,7 +45,7 @@ tidal_forcing(x, y, z, t) = 1e-4 * cos(t)
 for free_surface in (ExplicitFreeSurface, )
     
     model = HydrostaticFreeSurfaceModel(grid = grid_with_bump,
-                                        momentum_advection = CenteredSecondOrder(),
+                                        momentum_advection = Centered(),
                                         free_surface = free_surface(gravitational_acceleration=10),
                                         closure = ScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1e-2, κ=1e-2),
                                         tracers = :b,
@@ -66,11 +66,11 @@ for free_surface in (ExplicitFreeSurface, )
     
     simulation = Simulation(model, Δt = Δt, stop_time = 50000Δt)
 
-    simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
-                                                          schedule = TimeInterval(0.1),
-                                                          filename = "internal_tide_$(show_name(time_stepper))",
-                                                          init = serialize_grid,
-                                                          overwrite_existing = true)
+    simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, model.tracers),
+                                                    schedule = TimeInterval(0.1),
+                                                    filename = "internal_tide_$(show_name(time_stepper))",
+                                                    init = serialize_grid,
+                                                    overwrite_existing = true)
 
     simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(10))
 

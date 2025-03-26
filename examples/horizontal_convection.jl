@@ -80,7 +80,7 @@ Pr = 1      # Prandtl number
 Ra = 1e8    # Rayleigh number
 
 ν = sqrt(Pr * b★ * Lx^3 / Ra)  # Laplacian viscosity
-κ = ν * Pr                     # Laplacian diffusivity
+κ = ν / Pr                     # Laplacian diffusivity
 nothing #hide
 
 # ## Model instantiation
@@ -98,7 +98,7 @@ model = NonhydrostaticModel(; grid,
 
 # ## Simulation set-up
 #
-# We set up a simulation that runs up to ``t = 40`` with a `JLD2OutputWriter` that saves the flow
+# We set up a simulation that runs up to ``t = 40`` with a `JLD2Writer` that saves the flow
 # speed, ``\sqrt{u^2 + w^2}``, the buoyancy, ``b``, and the vorticity, ``\partial_z u - \partial_x w``.
 
 simulation = Simulation(model, Δt=1e-2, stop_time=40.0)
@@ -136,20 +136,20 @@ s = @at (Center, Center, Center) sqrt(u^2 + w^2)
 ζ = ∂z(u) - ∂x(w)
 nothing #hide
 
-# We create a `JLD2OutputWriter` that saves the speed, and the vorticity. Because we want
+# We create a `JLD2Writer` that saves the speed, and the vorticity. Because we want
 # to post-process buoyancy and compute the buoyancy variance dissipation (which is proportional
 # to ``|\boldsymbol{\nabla} b|^2``) we use the `with_halos = true`. This way, the halos for
 # the fields are saved and thus when we load them as fields they will come with the proper
 # boundary conditions.
 #
-# We then add the `JLD2OutputWriter` to the `simulation`.
+# We then add the `JLD2Writer` to the `simulation`.
 
 saved_output_filename = "horizontal_convection.jld2"
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, (; s, b, ζ),
-                                                      schedule = TimeInterval(0.5),
-                                                      filename = saved_output_filename,
-                                                      with_halos = true,
+simulation.output_writers[:fields] = JLD2Writer(model, (; s, b, ζ),
+                                                schedule = TimeInterval(0.5),
+                                                filename = saved_output_filename,
+                                                with_halos = true,
                                                       overwrite_existing = true)
 nothing #hide
 
@@ -160,7 +160,7 @@ run!(simulation)
 # ## Load saved output, process, visualize
 #
 # We animate the results by loading the saved output, extracting data for the iterations we ended
-# up saving at, and ploting the saved fields. From the saved buoyancy field we compute the 
+# up saving at, and plotting the saved fields. From the saved buoyancy field we compute the 
 # buoyancy dissipation, ``\chi = \kappa |\boldsymbol{\nabla} b|^2``, and plot that also.
 #
 # To start we load the saved fields are `FieldTimeSeries` and prepare for animating the flow by
@@ -179,10 +179,6 @@ b_timeseries = FieldTimeSeries(saved_output_filename, "b")
 ζ_timeseries = FieldTimeSeries(saved_output_filename, "ζ")
 
 times = b_timeseries.times
-
-## Coordinate arrays
-xc, yc, zc = nodes(b_timeseries[1])
-xζ, yζ, zζ = nodes(ζ_timeseries[1])
 nothing #hide
 
 χ_timeseries = deepcopy(b_timeseries)
@@ -329,4 +325,3 @@ lines!(ax_Nu, t, Nu; linewidth = 3)
 
 current_figure() #hide
 fig
-

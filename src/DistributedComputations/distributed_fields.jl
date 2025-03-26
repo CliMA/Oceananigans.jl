@@ -1,5 +1,3 @@
-using CUDA: CuArray
-using OffsetArrays: OffsetArray
 using Oceananigans.Grids: topology
 using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions
 using Oceananigans.Fields: validate_indices, recv_from_buffers!, set_to_array!, set_to_field!
@@ -66,7 +64,7 @@ function synchronize_communication!(field)
         cooperative_waitall!(arch.mpi_requests)
 
         # Reset MPI tag
-        arch.mpi_tag[] -= arch.mpi_tag[]
+        arch.mpi_tag[] = 0
 
         # Reset MPI requests
         empty!(arch.mpi_requests)
@@ -90,7 +88,7 @@ function reconstruct_global_field(field::DistributedField)
     global_field = Field(location(field), global_grid)
     arch = architecture(field)
 
-    global_data = construct_global_array(arch, interior(field), size(field))
+    global_data = construct_global_array(interior(field), arch, size(field))
 
     set!(global_field, global_data)
 

@@ -1,7 +1,7 @@
 module Biogeochemistry
 
 using Oceananigans.Grids: Center, xnode, ynode, znode
-using Oceananigans.Advection: div_Uc, CenteredSecondOrder
+using Oceananigans.Advection: div_Uc, Centered
 using Oceananigans.Architectures: device, architecture
 using Oceananigans.Fields: ZeroField
 
@@ -27,7 +27,7 @@ Update biogeochemical state variables. Called at the end of update_state!.
 """
 update_biogeochemical_state!(bgc, model) = nothing
 
-@inline biogeochemical_drift_velocity(bgc, val_tracer_name) = (u = ZeroField(), v = ZeroField(), w = ZeroField())
+@inline biogeochemical_drift_velocity(bgc, val_tracer_name) = nothing
 @inline biogeochemical_auxiliary_fields(bgc) = NamedTuple()
 
 """

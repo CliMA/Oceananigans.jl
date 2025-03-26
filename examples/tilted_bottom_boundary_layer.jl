@@ -1,11 +1,9 @@
-# # Tilted bottom boundary layer example
-#
 # This example simulates a two-dimensional oceanic bottom boundary layer
 # in a domain that's tilted with respect to gravity. We simulate the perturbation
 # away from a constant along-slope (y-direction) velocity constant density stratification.
 # This perturbation develops into a turbulent bottom boundary layer due to momentum
 # loss at the bottom boundary modeled with a quadratic drag law.
-# 
+#
 # This example illustrates
 #
 #   * changing the direction of gravitational acceleration in the buoyancy model;
@@ -35,7 +33,7 @@ Nz = 64
 ## Creates a grid with near-constant spacing `refinement * Lz / Nz`
 ## near the bottom:
 refinement = 1.8 # controls spacing near surface (higher means finer spaced)
-stretching = 10  # controls rate of stretching at bottom 
+stretching = 10  # controls rate of stretching at bottom
 
 ## "Warped" height coordinate
 h(k) = (Nz + 1 - k) / Nz
@@ -43,7 +41,7 @@ h(k) = (Nz + 1 - k) / Nz
 ## Linear near-surface generator
 ζ(k) = 1 + (h(k) - 1) / refinement
 
-## Bottom-intensified stretching function 
+## Bottom-intensified stretching function
 Σ(k) = (1 - exp(-stretching * h(k))) / (1 - exp(-stretching))
 
 ## Generating function
@@ -58,11 +56,9 @@ grid = RectilinearGrid(topology = (Periodic, Flat, Bounded),
 
 using CairoMakie
 
-lines(zspacings(grid, Center()), znodes(grid, Center()),
-      axis = (ylabel = "Depth (m)",
-              xlabel = "Vertical spacing (m)"))
-
-scatter!(zspacings(grid, Center()), znodes(grid, Center()))
+scatterlines(zspacings(grid, Center()),
+             axis = (ylabel = "Depth (m)",
+                     xlabel = "Vertical spacing (m)"))
 
 current_figure() #hide
 
@@ -78,9 +74,9 @@ current_figure() #hide
 ĝ = [sind(θ), 0, cosd(θ)]
 
 # Changing the vertical direction impacts both the `gravity_unit_vector`
-# for `Buoyancy` as well as the `rotation_axis` for Coriolis forces,
+# for `BuoyancyForce` as well as the `rotation_axis` for Coriolis forces,
 
-buoyancy = Buoyancy(model = BuoyancyTracer(), gravity_unit_vector = -ĝ)
+buoyancy = BuoyancyForce(BuoyancyTracer(), gravity_unit_vector = -ĝ)
 coriolis = ConstantCartesianCoriolis(f = 1e-4, rotation_axis = ĝ)
 
 # where above we used a constant Coriolis parameter ``f = 10^{-4} \, \rm{s}^{-1}``.
@@ -141,18 +137,16 @@ V∞_field = BackgroundField(V∞)
 
 # ## Create the `NonhydrostaticModel`
 #
-# We are now ready to create the model. We create a `NonhydrostaticModel` with an
-# `UpwindBiasedFifthOrder` advection scheme, a `RungeKutta3` timestepper,
-# and a constant viscosity and diffusivity. Here we use a smallish value
-# of ``10^{-4} \, \rm{m}^2\, \rm{s}^{-1}``.
+# We are now ready to create the model. We create a `NonhydrostaticModel` with a
+# fifth-order `UpwindBiased` advection scheme and a constant viscosity and diffusivity.
+# Here we use a smallish value of ``10^{-4} \, \rm{m}^2\, \rm{s}^{-1}``.
 
 ν = 1e-4
 κ = 1e-4
 closure = ScalarDiffusivity(ν=ν, κ=κ)
 
 model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
-                            timestepper = :RungeKutta3,
-                            advection = UpwindBiasedFifthOrder(),
+                            advection = UpwindBiased(order=5),
                             tracers = :b,
                             boundary_conditions = (u=u_bcs, v=v_bcs, b=b_bcs),
                             background_fields = (; b=B∞_field, v=V∞_field))
@@ -193,7 +187,7 @@ simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(2
 
 # ## Add outputs to the simulation
 #
-# We add outputs to our model using the `NetCDFOutputWriter`,
+# We add outputs to our model using the `NetCDFWriter`, which needs `NCDatasets` to be loaded:
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -205,10 +199,12 @@ V = v + V∞
 
 outputs = (; u, V, w, B, ωy)
 
-simulation.output_writers[:fields] = NetCDFOutputWriter(model, outputs;
-                                                        filename = joinpath(@__DIR__, "tilted_bottom_boundary_layer.nc"),
-                                                        schedule = TimeInterval(20minutes),
-                                                        overwrite_existing = true)
+using NCDatasets
+
+simulation.output_writers[:fields] = NetCDFWriter(model, outputs;
+                                                  filename = joinpath(@__DIR__, "tilted_bottom_boundary_layer.nc"),
+                                                  schedule = TimeInterval(20minutes),
+                                                  overwrite_existing = true)
 
 # Now we just run it!
 
@@ -242,14 +238,14 @@ ax_v = Axis(fig[3, 1]; title = "Along-slope velocity (v)", axis_kwargs...)
 
 n = Observable(1)
 
-ωy = @lift ds["ωy"][:, 1, :, $n]
-B = @lift ds["B"][:, 1, :, $n]
+ωy = @lift ds["ωy"][:, :, $n]
+B = @lift ds["B"][:, :, $n]
 hm_ω = heatmap!(ax_ω, xω, zω, ωy, colorrange = (-0.015, +0.015), colormap = :balance)
 Colorbar(fig[2, 2], hm_ω; label = "s⁻¹")
 ct_b = contour!(ax_ω, xb, zb, B, levels=-1e-3:0.5e-4:1e-3, color=:black)
 
-V = @lift ds["V"][:, 1, :, $n]
-V_max = @lift maximum(abs, ds["V"][:, 1, :, $n])
+V = @lift ds["V"][:, :, $n]
+V_max = @lift maximum(abs, ds["V"][:, :, $n])
 
 hm_v = heatmap!(ax_v, xv, zv, V, colorrange = (-V∞, +V∞), colormap = :balance)
 Colorbar(fig[3, 2], hm_v; label = "m s⁻¹")

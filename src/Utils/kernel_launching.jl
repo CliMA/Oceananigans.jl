@@ -2,6 +2,7 @@
 ##### Utilities for launching kernels
 #####
 
+using Oceananigans: location
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Grids: AbstractGrid
@@ -58,26 +59,32 @@ launch!(arch, grid, kp, kernel!, kernel_args...)
 
 See the documentation for [`launch!`](@ref).
 """
-function KernelParameters(r::UnitRange)
+function KernelParameters(r::AbstractUnitRange)
     size = length(r)
     offset = first(r) - 1
     return KernelParameters(tuple(size), tuple(offset))
 end
 
-function KernelParameters(r1::UnitRange, r2::UnitRange)
+function KernelParameters(r1::AbstractUnitRange, r2::AbstractUnitRange)
     size = (length(r1), length(r2))
     offsets = (first(r1) - 1, first(r2) - 1)
     return KernelParameters(size, offsets)
 end
 
-function KernelParameters(r1::UnitRange, r2::UnitRange, r3::UnitRange)
+function KernelParameters(r1::AbstractUnitRange, r2::AbstractUnitRange, r3::AbstractUnitRange)
     size = (length(r1), length(r2), length(r3))
     offsets = (first(r1) - 1, first(r2) - 1, first(r3) - 1)
     return KernelParameters(size, offsets)
 end
 
+# Convenience `Tuple`d constructor
+KernelParameters(args::Tuple) = KernelParameters(args...)
+
 contiguousrange(range::NTuple{N, Int}, offset::NTuple{N, Int}) where N = Tuple(1+o:r+o for (r, o) in zip(range, offset))
 flatten_reduced_dimensions(worksize, dims) = Tuple(d ∈ dims ? 1 : worksize[d] for d = 1:3)
+
+# Support for 1D
+heuristic_workgroup(Wx) = min(Wx, 256)
 
 # This supports 2D, 3D and 4D work sizes (but the 3rd and 4th dimension are discarded)
 function heuristic_workgroup(Wx, Wy, Wz=nothing, Wt=nothing)
@@ -268,12 +275,9 @@ end
 @inline function _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;
                           exclude_periphery = false,
                           reduced_dimensions = (),
-                          active_cells_map = nothing,
-                          # TODO: these two kwargs do nothing:
-                          only_local_halos = false,
-                          async = false)
+                          active_cells_map = nothing)
 
-    location = Oceananigans.Grids.location(first_kernel_arg)
+    location = Oceananigans.location(first_kernel_arg)
 
     loop!, worksize = configure_kernel(arch, grid, workspec, kernel!;
                                        location,
@@ -282,7 +286,15 @@ end
                                        active_cells_map)
                                        
     # Don't launch kernels with no size
-    if worksize != 0
+    haswork = if worksize isa OffsetStaticSize
+        length(worksize) > 0
+    elseif worksize isa Number
+        worksize > 0
+    else
+        true
+    end
+
+    if haswork
         loop!(first_kernel_arg, other_kernel_args...)
     end
 
@@ -324,16 +336,16 @@ end
 @pure get(::OffsetStaticSize{S}) where {S} = S
 @pure Base.getindex(::OffsetStaticSize{S}, i::Int) where {S} = i <= length(S) ? S[i] : 1
 @pure Base.ndims(::OffsetStaticSize{S}) where {S}  = length(S)
-@pure Base.length(::OffsetStaticSize{S}) where {S} = prod(worksize.(S))
+@pure Base.length(::OffsetStaticSize{S}) where {S} = prod(map(worksize, S))
 
 @inline getrange(::OffsetStaticSize{S}) where {S} = worksize(S), offsets(S)
 @inline getrange(::Type{OffsetStaticSize{S}}) where {S} = worksize(S), offsets(S)
 
 @inline offsets(ranges::Tuple{Vararg{UnitRange}}) = Tuple(r.start - 1 for r in ranges)
 
-@inline worksize(i::Tuple) = worksize.(i)
-@inline worksize(i::Int) = i
-@inline worksize(i::UnitRange) = length(i)
+@inline worksize(t::Tuple) = map(worksize, t)
+@inline worksize(sz::Int) = sz
+@inline worksize(r::AbstractUnitRange) = length(r)
 
 """a type used to store offsets in `NDRange` types"""
 struct KernelOffsets{O}

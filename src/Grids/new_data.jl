@@ -26,8 +26,8 @@ Return a range of indices for a field along a 'reduced' dimension.
 offset_indices(::Nothing, topo, N, H=0) = 1:1
 
 offset_indices(ℓ,         topo, N, H, ::Colon) = offset_indices(ℓ, topo, N, H)
-offset_indices(ℓ,         topo, N, H, r::UnitRange) = r
-offset_indices(::Nothing, topo, N, H, ::UnitRange) = 1:1
+offset_indices(ℓ,         topo, N, H, r::AbstractUnitRange) = r
+offset_indices(::Nothing, topo, N, H, ::AbstractUnitRange) = 1:1
 
 instantiate(T::Type) = T()
 instantiate(t) = t
@@ -63,8 +63,8 @@ Return an `OffsetArray` of zeros of float type `FT` on `arch`itecture,
 with indices corresponding to a field on a `grid` of `size(grid)` and located at `loc`.
 """
 function new_data(FT::DataType, arch, loc, topo, sz, halo_sz, indices=default_indices(length(loc)))
-    Tx, Ty, Tz = total_size(loc, topo, sz, halo_sz, indices)
-    underlying_data = zeros(FT, arch, Tx, Ty, Tz)
+    Tsz = total_size(loc, topo, sz, halo_sz, indices)
+    underlying_data = zeros(arch, FT, Tsz...)
     indices = validate_indices(indices, loc, topo, sz, halo_sz)
     return offset_data(underlying_data, loc, topo, sz, halo_sz, indices)
 end
@@ -73,3 +73,4 @@ new_data(FT::DataType, grid::AbstractGrid, loc, indices=default_indices(length(l
     new_data(FT, architecture(grid), loc, topology(grid), size(grid), halo_size(grid), indices)
 
 new_data(grid::AbstractGrid, loc, indices=default_indices) = new_data(eltype(grid), grid, loc, indices)
+

@@ -1,16 +1,17 @@
 using Oceananigans: fields
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Fields: immersed_boundary_condition
-using Oceananigans.Grids: retrieve_interior_active_cells_map
+using Oceananigans.Grids: get_active_cells_map
 using Oceananigans.BoundaryConditions: apply_x_bcs!, apply_y_bcs!, apply_z_bcs!
-using Oceananigans.TimeSteppers: store_field_tendencies!, ab2_step_field!, implicit_step!
+using Oceananigans.TimeSteppers: ab2_step_field!, implicit_step!
 using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ, immersed_∇_dot_qᶜ, hydrostatic_turbulent_kinetic_energy_tendency
 using CUDA
 
 Base.@kwdef struct TKEDissipationEquations{FT}
     Cᵋϵ :: FT = 1.92
     Cᴾϵ :: FT = 1.44
-    Cᵇϵ :: FT = -0.65
+    Cᵇϵ⁺ :: FT = -0.65
+    Cᵇϵ⁻ :: FT = -0.65
     Cᵂu★ :: FT = 0.0
     CᵂwΔ :: FT = 0.0
     Cᵂα  :: FT = 0.11 # Charnock parameter
@@ -133,7 +134,11 @@ end
 
     # Patankar trick for ϵ-equation
     Cᵋϵ = closure_ij.tke_dissipation_equations.Cᵋϵ
-    Cᵇϵ = closure_ij.tke_dissipation_equations.Cᵇϵ
+    Cᵇϵ⁺ = closure_ij.tke_dissipation_equations.Cᵇϵ⁺
+    Cᵇϵ⁻ = closure_ij.tke_dissipation_equations.Cᵇϵ⁻
+
+    N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    Cᵇϵ = ifelse(N² ≥ 0, Cᵇϵ⁺, Cᵇϵ⁻) 
 
     Cᵇϵ_wb⁻ = min(Cᵇϵ * wb, zero(grid))
     Cᵇϵ_wb⁺ = max(Cᵇϵ * wb, zero(grid))

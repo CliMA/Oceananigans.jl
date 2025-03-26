@@ -19,13 +19,13 @@ struct RungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
 end
 
 """
-    RungeKutta3TimeStepper(grid, tracers;
+    RungeKutta3TimeStepper(grid, prognostic_fields;
                            implicit_solver = nothing,
-                           Gⁿ = TendencyFields(grid, tracers),
-                           G⁻ = TendencyFields(grid, tracers))
+                           Gⁿ = map(similar, prognostic_fields),
+                           G⁻ = map(similar, prognostic_fields))
 
 Return a 3rd-order Runge0Kutta timestepper (`RungeKutta3TimeStepper`) on `grid` and with `tracers`.
-The tendency fields `Gⁿ` and `G⁻` can be specified via  optional `kwargs`.
+The tendency fields `Gⁿ` and `G⁻`, typically equal to the prognostic_fields can be modified via an optional `kwargs`.
 
 The scheme described by [LeMoin1991](@citet). In a nutshel, the 3rd-order
 Runge Kutta timestepper steps forward the state `Uⁿ` by `Δt` via 3 substeps. A pressure correction
@@ -45,10 +45,10 @@ and constants ``γ¹ = 8/15``, ``γ² = 5/12``, ``γ³ = 3/4``,
 The state at the first substep is taken to be the one that corresponds to the ``n``-th timestep,
 `U¹ = Uⁿ`, and the state after the third substep is then the state at the `Uⁿ⁺¹ = U⁴`.
 """
-function RungeKutta3TimeStepper(grid, tracers;
+function RungeKutta3TimeStepper(grid, prognostic_fields;
                                 implicit_solver::TI = nothing,
-                                Gⁿ::TG = TendencyFields(grid, tracers),
-                                G⁻ = TendencyFields(grid, tracers)) where {TI, TG}
+                                Gⁿ::TG = map(similar, prognostic_fields),
+                                G⁻     = map(similar, prognostic_fields)) where {TI, TG}
 
     !isnothing(implicit_solver) &&
         @warn("Implicit-explicit time-stepping with RungeKutta3TimeStepper is not tested. " * 
@@ -110,7 +110,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     calculate_pressure_correction!(model, first_stage_Δt)
     pressure_correct_velocities!(model, first_stage_Δt)
 
-    store_tendencies!(model)
+    cache_previous_tendencies!(model)
     update_state!(model, callbacks; compute_tendencies = true)
     step_lagrangian_particles!(model, first_stage_Δt)
 
@@ -126,7 +126,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     calculate_pressure_correction!(model, second_stage_Δt)
     pressure_correct_velocities!(model, second_stage_Δt)
 
-    store_tendencies!(model)
+    cache_previous_tendencies!(model)
     update_state!(model, callbacks; compute_tendencies = true)
     step_lagrangian_particles!(model, second_stage_Δt)
 

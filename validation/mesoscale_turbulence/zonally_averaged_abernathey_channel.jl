@@ -142,7 +142,7 @@ closure = (horizontal_closure, vertical_closure)
                                        
 model = NonhydrostaticModel(architecture,
                             grid = grid,
-                            advection = UpwindBiasedFifthOrder(),
+                            advection = UpwindBiased(order=5),
                             buoyancy = BuoyancyTracer(),
                             coriolis = coriolis,
                             closure = closure,
@@ -261,10 +261,10 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         prefix = "eddying_channel",
                                                         overwrite_existing = true)
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs;
-                                                      schedule = TimeInterval(10day),
-                                                      filename = "eddying_channel",
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, outputs;
+                                                schedule = TimeInterval(10day),
+                                                filename = "eddying_channel",
+                                                overwrite_existing = true)
 
 try
     run!(simulation, pickup=false)

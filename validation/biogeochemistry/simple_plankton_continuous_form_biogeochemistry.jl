@@ -5,7 +5,7 @@ using Oceananigans.Grids: znode
 using Oceananigans.Forcings: maybe_constant_field
 using Oceananigans.Architectures: device, architecture
 using Oceananigans.Utils: launch!
-using Oceananigans.Advection: CenteredSecondOrder
+using Oceananigans.Advection: Centered
 using Oceananigans.Fields: Field, TracerFields, CenterField
 
 import Oceananigans.Biogeochemistry:
@@ -43,7 +43,7 @@ function SimplePlanktonGrowthDeath(FT=Float64; grid,
                                    advection_scheme = nothing)
 
     if sinking_velocity != 0
-        advection_scheme = CenteredSecondOrder()
+        advection_scheme = Centered()
     end
 
     u, v, w = maybe_constant_field.((0, 0, - sinking_velocity))
@@ -173,9 +173,9 @@ outputs = (w = model.velocities.w,
 
 filename = "simple_plankton_continuous_form_biogeochemistry"
 
-simulation.output_writers[:simple_output] = JLD2OutputWriter(model, outputs; filename,
-                                                             schedule = TimeInterval(20minutes),
-                                                             overwrite_existing = true)
+simulation.output_writers[:simple_output] = JLD2Writer(model, outputs; filename,
+                                                       schedule = TimeInterval(20minutes),
+                                                       overwrite_existing = true)
 
 run!(simulation)
 

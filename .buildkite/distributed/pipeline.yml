@@ -1,7 +1,7 @@
 agents:
   queue: new-central
-  slurm_mem: 8G
-  modules: climacommon/2024_05_27
+  slurm_mem: 8G # Note that the tests run on shared nodes, so limiting the memory usage might help in avoiding long queues 
+  modules: climacommon/2024_10_10
 
 env:
   JULIA_LOAD_PATH: "${JULIA_LOAD_PATH}:${BUILDKITE_BUILD_CHECKOUT_PATH}/.buildkite/distributed"
@@ -16,13 +16,14 @@ steps:
     key: "init_central"
     env:
       TEST_GROUP: "init"
+      GPU_TEST: "true"
     command:
-      - echo "--- Instantiate project"
-      - "julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - echo "--- Initialize tests"
+      - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
-      slurm_gpus: 1
-      slurm_cpus_per_task: 8
+      slurm_mem: 8G
+      slurm_ntasks: 1
+      slurm_gpus_per_task: 1
 
   - wait
 
@@ -30,20 +31,27 @@ steps:
     key: "distributed_cpu"
     env:
       TEST_GROUP: "distributed"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 8G
       slurm_ntasks: 4
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
   - label: "🐲 gpu distributed unit tests"
     key: "distributed_gpu"
     env:
       TEST_GROUP: "distributed"
+      GPU_TEST: "true"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 8G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
     retry:
@@ -51,25 +59,31 @@ steps:
         - exit_status: 1      
           limit: 1
 
-
   - label: "🦾 cpu distributed solvers tests"
     key: "distributed_solvers_cpu"
     env:
       TEST_GROUP: "distributed_solvers"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 50G
       slurm_ntasks: 4
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
   - label: "🛸 gpu distributed solvers tests"
     key: "distributed_solvers_gpu"
     env:
       TEST_GROUP: "distributed_solvers"
+      GPU_TEST: "true"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 50G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
     retry:
@@ -81,20 +95,27 @@ steps:
     key: "distributed_hydrostatic_model_cpu"
     env:
       TEST_GROUP: "distributed_hydrostatic_model"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 50G
       slurm_ntasks: 4
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
   - label: "🦏 gpu distributed hydrostatic model tests"
     key: "distributed_hydrostatic_model_gpu"
     env:
       TEST_GROUP: "distributed_hydrostatic_model"
+      GPU_TEST: "true"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 80G # Apparently the GPU tests require more memory
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
     retry:
@@ -106,20 +127,27 @@ steps:
     key: "distributed_nonhydrostatic_regression_cpu"
     env:
       TEST_GROUP: "distributed_nonhydrostatic_regression"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 50G
       slurm_ntasks: 4
+    retry:
+      automatic:
+        - exit_status: 1      
+          limit: 1
 
   - label: "🕺 gpu distributed nonhydrostatic regression"
     key: "distributed_nonhydrostatic_regression_gpu"
     env:
       TEST_GROUP: "distributed_nonhydrostatic_regression"
+      GPU_TEST: "true"
+      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
-      slurm_mem: 120G
+      slurm_mem: 50G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
     retry:

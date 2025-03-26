@@ -65,7 +65,9 @@ To use the default Smagorinsky-Lilly LES closure, we write
 julia> using Oceananigans.TurbulenceClosures
 
 julia> closure = SmagorinskyLilly()
-SmagorinskyLilly: C=0.16, Cb=1.0, Pr=1.0
+Smagorinsky closure with
+├── coefficient = LillyCoefficient(smagorinsky = 0.16, reduction_factor = 1.0)
+└── Pr = 1.0
 ```
 
 The parameters `C`, `Cb`, and `Pr` may alternatively be specified explicitly.

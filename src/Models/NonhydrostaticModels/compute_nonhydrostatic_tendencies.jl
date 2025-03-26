@@ -3,8 +3,8 @@ using Oceananigans: fields, TendencyCallsite
 using Oceananigans.Utils: work_layout
 using Oceananigans.Models: complete_communication_and_compute_buffer!, interior_tendency_kernel_parameters
 
-using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, ActiveCellsIBG, 
-                                       active_linear_index_to_tuple
+using Oceananigans.ImmersedBoundaries: get_active_cells_map, ActiveInteriorIBG, 
+                                       linear_index_to_tuple
 
 import Oceananigans.TimeSteppers: compute_tendencies!
 
@@ -30,7 +30,7 @@ function compute_tendencies!(model::NonhydrostaticModel, callbacks)
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
-    active_cells_map  = retrieve_interior_active_cells_map(model.grid, Val(:interior))
+    active_cells_map  = get_active_cells_map(model.grid, Val(:interior))
     
     compute_interior_tendency_contributions!(model, kernel_parameters; active_cells_map)
     complete_communication_and_compute_buffer!(model, grid, arch)
@@ -91,15 +91,15 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
 
     u_kernel_args = tuple(start_momentum_kernel_args...,
                           u_immersed_bc, end_momentum_kernel_args...,
-                          forcings, hydrostatic_pressure, clock)
+                          hydrostatic_pressure, clock, forcings.u)
 
     v_kernel_args = tuple(start_momentum_kernel_args...,
                           v_immersed_bc, end_momentum_kernel_args...,
-                          forcings, hydrostatic_pressure, clock)
+                          hydrostatic_pressure, clock, forcings.v)
 
     w_kernel_args = tuple(start_momentum_kernel_args...,
                           w_immersed_bc, end_momentum_kernel_args...,
-                          forcings, hydrostatic_pressure, clock)
+                          hydrostatic_pressure, clock, forcings.w)
 
     exclude_periphery = true
     launch!(arch, grid, kernel_parameters, compute_Gu!, 
@@ -128,7 +128,7 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
                      start_tracer_kernel_args..., 
                      c_immersed_bc,
                      end_tracer_kernel_args...,
-                     forcing, clock)
+                     clock, forcing)
 
         launch!(arch, grid, kernel_parameters, compute_Gc!, 
                 c_tendency, grid, active_cells_map, args;
@@ -150,7 +150,7 @@ end
 
 @kernel function compute_Gu!(Gu, grid, interior_map, args) 
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, interior_map)
+    i, j, k = linear_index_to_tuple(idx, interior_map)
     @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, args...)
 end
 
@@ -162,7 +162,7 @@ end
 
 @kernel function compute_Gv!(Gv, grid, interior_map, args) 
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, interior_map)
+    i, j, k = linear_index_to_tuple(idx, interior_map)
     @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, args...)
 end
 
@@ -174,7 +174,7 @@ end
 
 @kernel function compute_Gw!(Gw, grid, interior_map, args)
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, interior_map)
+    i, j, k = linear_index_to_tuple(idx, interior_map)
     @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, args...)
 end
 
@@ -190,7 +190,7 @@ end
 
 @kernel function compute_Gc!(Gc, grid, interior_map, args) 
     idx = @index(Global, Linear)
-    i, j, k = active_linear_index_to_tuple(idx, interior_map)
+    i, j, k = linear_index_to_tuple(idx, interior_map)
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, args...)
 end
 

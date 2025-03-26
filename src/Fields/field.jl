@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition
+using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition, Zipper
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
 using Oceananigans.Grids: index_range_contains
 
@@ -40,7 +40,7 @@ function validate_field_data(loc, data, grid, indices)
     Fx, Fy, Fz = total_size(grid, loc, indices)
 
     if size(data) != (Fx, Fy, Fz)
-        LX, LY, LZ = loc    
+        LX, LY, LZ = loc
         e = "Cannot construct field at ($LX, $LY, $LZ) with size(data)=$(size(data)). " *
             "`data` must have size ($Fx, $Fy, $Fz)."
         throw(ArgumentError(e))
@@ -79,6 +79,14 @@ function validate_boundary_conditions(loc, grid, bcs)
 
     return nothing
 end
+
+# Some special validation for a zipper boundary condition
+validate_boundary_condition_location(bc::Zipper, loc::Center, side) = 
+    side == :north ? nothing : throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc) (north only)!"))
+
+validate_boundary_condition_location(bc::Zipper, loc::Face, side) = 
+    side == :north ? nothing : throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc) (north only)!"))
+
 
 #####
 ##### Some basic constructors
@@ -176,10 +184,9 @@ function Field(loc::Tuple,
                boundary_conditions = FieldBoundaryConditions(grid, loc, validate_indices(indices, loc, grid)),
                operand = nothing,
                status = nothing)
-
     return Field(loc, grid, data, boundary_conditions, indices, operand, status)
 end
-    
+
 Field(z::ZeroField; kw...) = z
 Field(f::Field; indices=f.indices) = view(f, indices...) # hmm...
 
@@ -360,17 +367,13 @@ boundary_conditions(not_field) = nothing
 
 immersed_boundary_condition(f::Field) = f.boundary_conditions.immersed
 data(field::Field) = field.data
-indices(obj, i=default_indices(3)) = i
-indices(f::Field, i=default_indices(3)) = f.indices
-indices(a::SubArray, i=default_indices(ndims(a))) = a.indices
-indices(a::OffsetArray, i=default_indices(ndims(a))) = indices(parent(a), i)
-
-"""Return indices that create a `view` over the interior of a Field."""
-interior_view_indices(field_indices, interior_indices) = Colon()
-interior_view_indices(::Colon,       interior_indices) = interior_indices
 
 instantiate(T::Type) = T()
 instantiate(t) = t
+
+"""Return indices that create a `view` over the interior of a Field."""
+interior_view_indices(field_indices, interior_indices)   = Colon()
+interior_view_indices(::Colon,       interior_indices)   = interior_indices
 
 function interior(a::OffsetArray,
                   Loc::Tuple,
@@ -383,6 +386,7 @@ function interior(a::OffsetArray,
     topo = map(instantiate, Topo)
     i_interior = map(interior_parent_indices, loc, topo, sz, halo_sz)
     i_view = map(interior_view_indices, ind, i_interior)
+
     return view(parent(a), i_view...)
 end
 
@@ -394,7 +398,7 @@ Return a view of `f` that excludes halo points.
 interior(f::Field) = interior(f.data, location(f), f.grid, f.indices)
 interior(a::OffsetArray, loc, grid, indices) = interior(a, loc, topology(grid), size(grid), halo_size(grid), indices)
 interior(f::Field, I...) = view(interior(f), I...)
-    
+
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 
@@ -404,9 +408,10 @@ Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 @propagate_inbounds Base.lastindex(f::Field) = lastindex(f.data)
 @propagate_inbounds Base.lastindex(f::Field, dim) = lastindex(f.data, dim)
 
-Base.fill!(f::Field, val) = fill!(parent(f), val)
-Base.parent(f::Field) = parent(f.data)
+@inline Base.fill!(f::Field, val) = fill!(parent(f), val)
+@inline Base.parent(f::Field) = parent(f.data)
 Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
+Adapt.parent_type(::Type{<:Field{LX, LY, LZ, O, G, I, D}}) where {LX, LY, LZ, O, G, I, D} = D
 
 total_size(f::Field) = total_size(f.grid, location(f), f.indices)
 @inline Base.size(f::Field)  = size(f.grid, location(f), f.indices)
@@ -419,8 +424,8 @@ total_size(f::Field) = total_size(f.grid, location(f), f.indices)
 ##### Move Fields between architectures
 #####
 
-on_architecture(arch, field::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = 
-    Field{LX, LY, LZ}(on_architecture(arch, field.grid), 
+on_architecture(arch, field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
+    Field{LX, LY, LZ}(on_architecture(arch, field.grid),
                       on_architecture(arch, field.data),
                       on_architecture(arch, field.boundary_conditions),
                       on_architecture(arch, field.indices),
@@ -513,14 +518,14 @@ const ReducedField = Union{XReducedField,
                            XYReducedField,
                            XYZReducedField}
 
-reduced_dimensions(field::Field)   = ()
-reduced_dimensions(field::XReducedField)   = tuple(1)
-reduced_dimensions(field::YReducedField)   = tuple(2)
-reduced_dimensions(field::ZReducedField)   = tuple(3)
-reduced_dimensions(field::YZReducedField)  = (2, 3)
-reduced_dimensions(field::XZReducedField)  = (1, 3)
-reduced_dimensions(field::XYReducedField)  = (1, 2)
-reduced_dimensions(field::XYZReducedField) = (1, 2, 3)
+reduced_dimensions(::Field)   = ()
+reduced_dimensions(::XReducedField)   = tuple(1)
+reduced_dimensions(::YReducedField)   = tuple(2)
+reduced_dimensions(::ZReducedField)   = tuple(3)
+reduced_dimensions(::YZReducedField)  = (2, 3)
+reduced_dimensions(::XZReducedField)  = (1, 3)
+reduced_dimensions(::XYReducedField)  = (1, 2)
+reduced_dimensions(::XYZReducedField) = (1, 2, 3)
 
 @propagate_inbounds Base.getindex(r::XReducedField, i, j, k) = getindex(r.data, 1, j, k)
 @propagate_inbounds Base.getindex(r::YReducedField, i, j, k) = getindex(r.data, i, 1, k)
@@ -590,6 +595,15 @@ const ReducedAbstractField = Union{XReducedAbstractField,
                                    XYReducedAbstractField,
                                    XYZReducedAbstractField}
 
+reduced_dimensions(::AbstractField)   = ()
+reduced_dimensions(::XReducedAbstractField)   = tuple(1)
+reduced_dimensions(::YReducedAbstractField)   = tuple(2)
+reduced_dimensions(::ZReducedAbstractField)   = tuple(3)
+reduced_dimensions(::YZReducedAbstractField)  = (2, 3)
+reduced_dimensions(::XZReducedAbstractField)  = (1, 3)
+reduced_dimensions(::XYReducedAbstractField)  = (1, 2)
+reduced_dimensions(::XYZReducedAbstractField) = (1, 2, 3)
+
 # TODO: needs test
 Statistics.dot(a::Field, b::Field) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))
 
@@ -605,7 +619,7 @@ const AnyReduction     = typeof(Base.any!)
 initialize_reduced_field!(::SumReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, Base.add_sum, true, interior(c))
 initialize_reduced_field!(::ProdReduction,    f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, Base.mul_prod, true, interior(c))
 initialize_reduced_field!(::AllReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, &, true, interior(c))
-initialize_reduced_field!(::AnyReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, |, true, interior(c))             
+initialize_reduced_field!(::AnyReduction,     f, r::ReducedAbstractField, c) = Base.initarray!(interior(r), f, |, true, interior(c))
 initialize_reduced_field!(::MaximumReduction, f, r::ReducedAbstractField, c) = Base.mapfirst!(f, interior(r), interior(c))
 initialize_reduced_field!(::MinimumReduction, f, r::ReducedAbstractField, c) = Base.mapfirst!(f, interior(r), interior(c))
 
@@ -658,7 +672,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
     reduction! = Symbol(reduction, '!')
 
     @eval begin
-        
+
         # In-place
         function Base.$(reduction!)(f::Function,
                                     r::ReducedAbstractField,
@@ -710,7 +724,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
     end
 end
 
-function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing, mask = 0) 
+function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing, mask = 0)
     operator = condition_operand(f, c, condition, mask)
     return sum(operator) / conditional_length(operator)
 end

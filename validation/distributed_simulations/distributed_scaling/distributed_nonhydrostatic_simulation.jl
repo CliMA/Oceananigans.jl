@@ -77,10 +77,10 @@ function run_nonhydrostatic_simulation!(grid_size, ranks;
     rank = MPI.Comm_rank(MPI.COMM_WORLD)
 
     if !isnothing(output_name)
-        simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
-                                                            filename = output_name * "_$(rank)",
-                                                            schedule = TimeInterval(1hour),
-                                                            overwrite_existing = true)
+        simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, model.tracers),
+                                                        filename = output_name * "_$(rank)",
+                                                        schedule = TimeInterval(1hour),
+                                                        overwrite_existing = true)
     end
     
     run!(simulation)

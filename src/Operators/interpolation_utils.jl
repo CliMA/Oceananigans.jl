@@ -8,10 +8,10 @@ interpolation_code(from, to) = interpolation_code(to)
 
 interpolation_code(::Type{Face}) = :ᶠ
 interpolation_code(::Type{Center}) = :ᶜ
-interpolation_code(::Type{Nothing}) = :ᶜ
+interpolation_code(::Type{Nothing}) = :ᵃ
 interpolation_code(::Face) = :ᶠ
 interpolation_code(::Center) = :ᶜ
-interpolation_code(::Nothing) = :ᶜ
+interpolation_code(::Nothing) = :ᵃ
 
 # Intercept non-interpolations
 interpolation_code(from::L, to::L) where L = :ᵃ
@@ -41,7 +41,7 @@ for i = 1:number_of_identities
         @inline $identity(i, j, k, grid, F::TF, args...) where TF<:Function = F(i, j, k, grid, args...)
     end
 end
- 
+
 torus(x, lower, upper) = lower + rem(x - lower, upper - lower, RoundDown)
 identify_an_identity(number) = Symbol(:identity, torus(number, 1, number_of_identities))
 identity_counter = 0
@@ -118,10 +118,10 @@ for LX in (:Center, :Face), LY in (:Center, :Face), LZ in (:Center, :Face)
         to   = (eval(IX), eval(IY), eval(IZ))
         interp_func = Symbol(interpolation_operator(from, to))
         @eval begin
-            @inline ℑxyz(i, j, k, grid, from::F, to::T, c) where {F<:Tuple{<:$LX, <:$LY, <:$LZ}, T<:Tuple{<:$IX, <:$IY, <:$IZ}} = 
+            @inline ℑxyz(i, j, k, grid, from::F, to::T, c) where {F<:Tuple{<:$LX, <:$LY, <:$LZ}, T<:Tuple{<:$IX, <:$IY, <:$IZ}} =
                          $interp_func(i, j, k, grid, c)
-         
-            @inline ℑxyz(i, j, k, grid, from::F, to::T, f, args...) where {F<:Tuple{<:$LX, <:$LY, <:$LZ}, T<:Tuple{<:$IX, <:$IY, <:$IZ}} = 
+
+            @inline ℑxyz(i, j, k, grid, from::F, to::T, f, args...) where {F<:Tuple{<:$LX, <:$LY, <:$LZ}, T<:Tuple{<:$IX, <:$IY, <:$IZ}} =
                          $interp_func(i, j, k, grid, f, args...)
         end
     end

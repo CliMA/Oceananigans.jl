@@ -1,5 +1,5 @@
 using Oceananigans.AbstractOperations: AbstractOperation, KernelFunctionOperation
-using Oceananigans.BuoyancyModels: SeawaterBuoyancy, Zᶜᶜᶜ
+using Oceananigans.BuoyancyFormulations: SeawaterBuoyancy, Zᶜᶜᶜ
 using Oceananigans.Fields: field
 using Oceananigans.Grids: Center
 using SeawaterPolynomials: BoussinesqEquationOfState
@@ -82,7 +82,7 @@ julia> model = NonhydrostaticModel(; grid, buoyancy, tracers)
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 1×1×100 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── timestepper: RungeKutta3TimeStepper
-├── advection scheme: Centered reconstruction order 2
+├── advection scheme: Centered(order=2)
 ├── tracers: (T, S)
 ├── closure: Nothing
 ├── buoyancy: SeawaterBuoyancy with g=9.80665 and BoussinesqEquationOfState{Float64} with ĝ = NegativeZDirection()
@@ -121,11 +121,11 @@ Values for `temperature`, `salinity` and `geopotential_height` can be passed to
 `seawater_density` to override the defaults that are obtained from the `model`.
 """
 function seawater_density(model::ModelsWithBuoyancy;
-                         temperature = model_temperature(model.buoyancy.model, model),
-                         salinity = model_salinity(model.buoyancy.model, model),
+                         temperature = model_temperature(model.buoyancy.formulation, model),
+                         salinity = model_salinity(model.buoyancy.formulation, model),
                          geopotential_height = model_geopotential_height(model))
 
-    eos = model.buoyancy.model.equation_of_state
+    eos = model.buoyancy.formulation.equation_of_state
     validate_model_eos(eos)
     # Convert function or constant user input to AbstractField
     grid = model.grid

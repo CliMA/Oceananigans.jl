@@ -53,8 +53,7 @@ B = BackgroundField(B_func, parameters=N)
 # `b` that we identify as buoyancy by setting `buoyancy=BuoyancyTracer()`.
 
 model = NonhydrostaticModel(; grid, coriolis,
-                            advection = CenteredFourthOrder(),
-                            timestepper = :RungeKutta3,
+                            advection = Centered(order=4),
                             closure = ScalarDiffusivity(ν=1e-6, κ=1e-6),
                             tracers = :b,
                             buoyancy = BuoyancyTracer(),
@@ -122,9 +121,9 @@ simulation = Simulation(model, Δt = 0.1 * 2π/ω, stop_iteration = 20)
 # and add an output writer that saves the vertical velocity field every two iterations:
 
 filename = "internal_wave.jld2"
-simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities; filename,
-                                                          schedule = IterationInterval(1),
-                                                          overwrite_existing = true)
+simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities; filename,
+                                                    schedule = IterationInterval(1),
+                                                    overwrite_existing = true)
 
 # With initial conditions set and an output writer at the ready, we run the simulation
 
