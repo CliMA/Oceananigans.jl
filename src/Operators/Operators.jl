@@ -1,5 +1,7 @@
 module Operators
 
+# Spacings, Areas, and Volumes are exported where they are defined; see https://github.com/CliMA/Oceananigans.jl/pull/4280
+
 # General metric operators
 export xspacing, yspacing, zspacing, λspacing, φspacing, xarea, yarea, zarea, volume
 
