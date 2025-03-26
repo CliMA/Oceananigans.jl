@@ -368,6 +368,7 @@ for LX in (:Center, :Face, :Nothing)
 
                 @eval begin
                     @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
+                    export $metric
                 end
             end
 
