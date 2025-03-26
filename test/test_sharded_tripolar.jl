@@ -1,14 +1,24 @@
 include("dependencies_for_runtests.jl")
 include("distributed_tests_utils.jl")
 
+# We need to initiate MPI for sharding because we are using a multi-host implementation: 
+# i.e. we are launching the tests with `mpiexec` and on Github actions the default MPI 
+# implementation is MPICH which requires calling MPI.Init(). In the case of OpenMPI,
+# MPI.Init() is not necessary.
 run_slab_distributed_grid = """
+    using MPI 
+    MPI.Init()
     include("distributed_tests_utils.jl")
+    Reactant.Distributed.initialize(; single_gpu_per_process=false)
     arch = Distributed(ReactantState(), partition = Partition(1, 4)) #, synchronized_communication=true)
     run_distributed_tripolar_grid(arch, "distributed_yslab_tripolar.jld2")
 """
 
 run_pencil_distributed_grid = """
+    using MPI
+    MPI.Init()
     include("distributed_tests_utils.jl")
+    Reactant.Distributed.initialize(; single_gpu_per_process=false)
     arch = Distributed(ReactantState(), partition = Partition(2, 2))
     run_distributed_tripolar_grid(arch, "distributed_pencil_tripolar.jld2")
 """
