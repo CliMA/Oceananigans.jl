@@ -1,29 +1,6 @@
 include("dependencies_for_runtests.jl")
 include("distributed_tests_utils.jl")
 
-# We need to initiate MPI for sharding because we are using a multi-host implementation: 
-# i.e. we are launching the tests with `mpiexec` and on Github actions the default MPI 
-# implementation is MPICH which requires calling MPI.Init(). In the case of OpenMPI,
-# MPI.Init() is not necessary.
-
-run_slab_distributed_grid = """
-    using MPI 
-    MPI.Init()
-    include("distributed_tests_utils.jl")
-    Reactant.Distributed.initialize(; single_gpu_per_process=false)
-    arch = Distributed(ReactantState(), partition = Partition(1, 4)) #, synchronized_communication=true)
-    run_distributed_tripolar_grid(arch, "distributed_yslab_tripolar.jld2")
-"""
-
-run_pencil_distributed_grid = """
-    using MPI
-    MPI.Init()
-    include("distributed_tests_utils.jl")
-    Reactant.Distributed.initialize(; single_gpu_per_process=false)
-    arch = Distributed(ReactantState(), partition = Partition(2, 2))
-    run_distributed_tripolar_grid(arch, "distributed_pencil_tripolar.jld2")
-"""
-
 @testset "Test distributed TripolarGrid simulations..." begin
     # Run the serial computation    
     grid  = TripolarGrid(size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
@@ -38,40 +15,41 @@ run_pencil_distributed_grid = """
     us = interior(us, :, :, 1)
     vs = interior(vs, :, :, 1)
     cs = interior(cs, :, :, 1)
-    # Run the distributed grid simulation with a slab configuration
-    write("distributed_slab_tests.jl", run_slab_distributed_grid)
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 distributed_slab_tests.jl`)
-    rm("distributed_slab_tests.jl")
+
+    # Run the distributed grid simulations in all the configurations
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 distributed_slab_tests.jl "tripolar"`)
 
     # Retrieve Parallel quantities
-    up = jldopen("distributed_yslab_tripolar.jld2")["u"]
-    vp = jldopen("distributed_yslab_tripolar.jld2")["v"]
-    cp = jldopen("distributed_yslab_tripolar.jld2")["c"]
-    ηp = jldopen("distributed_yslab_tripolar.jld2")["η"]
+    up1 = jldopen("distributed_xslab_trg.jld2")["u"]
+    vp1 = jldopen("distributed_xslab_trg.jld2")["v"]
+    cp1 = jldopen("distributed_xslab_trg.jld2")["c"]
+    ηp1 = jldopen("distributed_xslab_trg.jld2")["η"]
 
-    rm("distributed_yslab_tripolar.jld2")
+    vp2 = jldopen("distributed_yslab_trg.jld2")["v"]
+    up2 = jldopen("distributed_yslab_trg.jld2")["u"]
+    cp2 = jldopen("distributed_yslab_trg.jld2")["c"]
+    ηp2 = jldopen("distributed_yslab_trg.jld2")["η"]
 
-    # Test slab partitioning
-    @test all(us .≈ up)
-    @test all(vs .≈ vp)
-    @test all(cs .≈ cp)
-    @test all(ηs .≈ ηp)
+    vp3 = jldopen("distributed_pencil_trg.jld2")["v"]
+    up3 = jldopen("distributed_pencil_trg.jld2")["u"]
+    cp3 = jldopen("distributed_pencil_trg.jld2")["c"]
+    ηp3 = jldopen("distributed_pencil_trg.jld2")["η"]
 
-    # Run the distributed grid simulation with a pencil configuration
-    write("distributed_tests.jl", run_pencil_distributed_grid)
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 distributed_tests.jl`)
-    rm("distributed_tests.jl")
+    # Test xslab partitioning
+    @test all(us .≈ up1)
+    @test all(vs .≈ vp1)
+    @test all(cs .≈ cp1)
+    @test all(ηs .≈ ηp1)
 
-    # Retrieve Parallel quantities
-    up = jldopen("distributed_pencil_tripolar.jld2")["u"]
-    vp = jldopen("distributed_pencil_tripolar.jld2")["v"]
-    ηp = jldopen("distributed_pencil_tripolar.jld2")["η"]
-    cp = jldopen("distributed_pencil_tripolar.jld2")["c"]
+    # Test yslab partitioning
+    @test all(us .≈ up2)
+    @test all(vs .≈ vp2)
+    @test all(cs .≈ cp2)
+    @test all(ηs .≈ ηp2)
 
-    rm("distributed_pencil_tripolar.jld2")
-    
-    @test all(us .≈ up)
-    @test all(vs .≈ vp)
-    @test all(cs .≈ cp)
-    @test all(ηs .≈ ηp)
+    # Test pencil partitioning
+    @test all(us .≈ up3)
+    @test all(vs .≈ vp3)
+    @test all(cs .≈ cp3)
+    @test all(ηs .≈ ηp3)
 end
