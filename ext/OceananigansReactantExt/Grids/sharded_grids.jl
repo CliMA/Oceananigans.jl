@@ -1,6 +1,7 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.OrthogonalSphericalShellGrids
+using Oceananigans.Grids: R_Earth
 
 import Oceananigans.Grids: zeros
 import Oceananigans.Architectures: child_architecture
