@@ -13,13 +13,12 @@ using SeawaterPolynomials
 using CUDA
 using MPI
 
+MPI.Initialized() || MPI.Init()
+
 using Dates: DateTime, Nanosecond
 using Statistics: mean, mean!, norm
 using LinearAlgebra: norm
 using KernelAbstractions: @kernel, @index
-
-MPI.versioninfo()
-MPI.Initialized() || MPI.Init()
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
@@ -60,6 +59,9 @@ using Oceananigans.MultiRegion: reconstruct_global_grid, reconstruct_global_fiel
 
 import Oceananigans.Utils: launch!, datatuple
 Logging.global_logger(OceananigansLogger())
+
+# Only show on rank 0
+@root MPI.versioninfo()
 
 #####
 ##### Testing parameters
