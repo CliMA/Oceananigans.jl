@@ -2,7 +2,8 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.OrthogonalSphericalShellGrids
 
-import Oceananigans.Grids: zeros, child_architecture
+import Oceananigans.Grids: zeros
+import Oceananigans.Architectures: child_architecture
 
 import Oceananigans.DistributedComputations: 
                     partition_coordinate, 
