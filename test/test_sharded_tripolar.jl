@@ -36,20 +36,20 @@ Nhosts = 1
     up3 = jldopen("distributed_pencil_trg.jld2")["u"]
     cp3 = jldopen("distributed_pencil_trg.jld2")["c"]
     ηp3 = jldopen("distributed_pencil_trg.jld2")["η"]
-
-    # Test xslab partitioning
+ 
+    @info "Testing xslab partitioning..."
     @test all(us .≈ up1)
     @test all(vs .≈ vp1)
     @test all(cs .≈ cp1)
     @test all(ηs .≈ ηp1)
 
-    # Test yslab partitioning
+    @info "Testing yslab partitioning..."
     @test all(us .≈ up2)
     @test all(vs .≈ vp2)
     @test all(cs .≈ cp2)
     @test all(ηs .≈ ηp2)
 
-    # Test pencil partitioning
+    @info "Testing pencil partitioning..."
     @test all(us .≈ up3)
     @test all(vs .≈ vp3)
     @test all(cs .≈ cp3)

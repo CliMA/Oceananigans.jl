@@ -3,7 +3,7 @@ include("distributed_tests_utils.jl")
 
 Nhosts = 1
 
-@testset "Test distributed TripolarGrid simulations..." begin
+@testset "Test sharded LatitudeLongitudeGrid simulations..." begin
     # Run the serial computation    
     Random.seed!(1234)
     bottom_height = - rand(40, 40, 1) .* 500 .- 500
@@ -41,19 +41,19 @@ Nhosts = 1
     cp3 = jldopen("distributed_pencil_llg.jld2")["c"]
     ηp3 = jldopen("distributed_pencil_llg.jld2")["η"]
 
-    # Test xslab partitioning
+    @info "Testing xslab partitioning..."
     @test all(us .≈ up1)
     @test all(vs .≈ vp1)
     @test all(cs .≈ cp1)
     @test all(ηs .≈ ηp1)
 
-    # Test yslab partitioning
+    @info "Testing yslab partitioning..."
     @test all(us .≈ up2)
     @test all(vs .≈ vp2)
     @test all(cs .≈ cp2)
     @test all(ηs .≈ ηp2)
 
-    # Test pencil partitioning
+    @info "Testing pencil partitioning..."
     @test all(us .≈ up3)
     @test all(vs .≈ vp3)
     @test all(cs .≈ cp3)
