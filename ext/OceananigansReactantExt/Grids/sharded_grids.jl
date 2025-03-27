@@ -40,6 +40,8 @@ all_reduce(op, val, ::ShardedDistributed) = val
 partition(A::AbstractArray, ::ShardedDistributed, local_size) = A
 construct_global_array(A::AbstractArray, ::ShardedDistributed, local_size) = A
 
+# A function to shard the z-direction (needs to be replicated around 
+# TODO: add a method for `MutableVerticalDiscretization`
 function sharded_z_direction(z::StaticVerticalDiscretization; sharding = Sharding.NoSharding()) 
     
     cᵃᵃᶠ = parent(z.cᵃᵃᶠ) isa StepRangeLen ? z.cᵃᵃᶠ : Reactant.to_rarray(z.cᵃᵃᶠ; sharding)
