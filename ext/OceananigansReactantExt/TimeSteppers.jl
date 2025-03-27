@@ -32,7 +32,7 @@ const ReactantModel{TS} = Union{
 
 function Clock(::ReactantGrid)
     FT = Float64 # may change in the future
-    t = ConcreteRNumber(zero(FT); )
+    t = ConcreteRNumber(zero(FT))
     iter = ConcreteRNumber(0)
     stage = 0 #ConcreteRNumber(0)
     last_Δt = zero(FT)

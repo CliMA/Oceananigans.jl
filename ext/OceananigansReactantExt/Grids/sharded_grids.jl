@@ -3,7 +3,7 @@ using Oceananigans.Grids: AbstractGrid
 using Oceananigans.OrthogonalSphericalShellGrids
 using Oceananigans.Grids: R_Earth, validate_lat_lon_grid_args, generate_coordinate, with_precomputed_metrics
 
-import Oceananigans.Grids: zeros
+import Oceananigans.Grids: zeros, StaticVerticalDiscretization
 import Oceananigans.Architectures: child_architecture
 
 import Oceananigans.DistributedComputations: 
@@ -39,6 +39,17 @@ all_reduce(op, val, ::ShardedDistributed) = val
 # No need for partitioning and assembling of arrays supposedly
 partition(A::AbstractArray, ::ShardedDistributed, local_size) = A
 construct_global_array(A::AbstractArray, ::ShardedDistributed, local_size) = A
+
+function sharded_z_direction(z::StaticVerticalDiscretization; sharding = Sharding.NoSharding()) 
+    
+    cᵃᵃᶠ = parent(z.cᵃᵃᶠ) isa StepRangeLen ? z.cᵃᵃᶠ : Reactant.to_rarray(z.cᵃᵃᶠ; sharding)
+    cᵃᵃᶜ = parent(z.cᵃᵃᶜ) isa StepRangeLen ? z.cᵃᵃᶜ : Reactant.to_rarray(z.cᵃᵃᶜ; sharding)
+
+    Δᵃᵃᶠ = Reactant.to_rarray(z.Δᵃᵃᶠ; sharding)
+    Δᵃᵃᶜ = Reactant.to_rarray(z.Δᵃᵃᶜ; sharding)
+
+    return StaticVerticalDiscretization(cᵃᵃᶠ, cᵃᵃᶜ, Δᵃᵃᶠ, Δᵃᵃᶜ)
+end
 
 function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
                                             FT::DataType = Oceananigans.defaults.FloatType;
@@ -99,7 +110,7 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
     Δφᵃᶜᵃ = Reactant.to_rarray(grid.Δφᵃᶜᵃ; sharding=ysharding)
     φᵃᶠᵃ  = Reactant.to_rarray(grid.φᵃᶠᵃ ; sharding=φsharding)
     φᵃᶜᵃ  = Reactant.to_rarray(grid.φᵃᶜᵃ ; sharding=φsharding)
-    z     = Reactant.to_rarray(grid.z;     sharding=replicate) # Intentionally not sharded
+    z     = sharded_z_direction(z; sharding=replicate) # Intentionally not sharded
 
     Δxᶜᶜᵃ = Reactant.to_rarray(grid.Δxᶜᶜᵃ; sharding=xzmetric_sharding)
     Δxᶠᶜᵃ = Reactant.to_rarray(grid.Δxᶠᶜᵃ; sharding=xzmetric_sharding)
