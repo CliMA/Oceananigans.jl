@@ -14,6 +14,9 @@ Base.summary(eos::LinearEquationOfState) =
 
 Base.show(io::IO, eos::LinearEquationOfState) = print(io, summary(eos))
 
+Base.convert(FT::DataType, eos::LinearEquationOfState) = LinearEquationOfState(convert(FT, eos.thermal_expansion),
+                                                                               convert(FT, eos.haline_contraction))
+
 """
     LinearEquationOfState([FT=Float64;] thermal_expansion=1.67e-4, haline_contraction=7.80e-4)
 
