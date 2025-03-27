@@ -3,13 +3,15 @@ using Oceananigans.Grids: parent_index_range, index_range_offset, default_indice
 using Oceananigans.Grids: index_range_contains
 
 using Adapt
+using LinearAlgebra
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 
 import Oceananigans: boundary_conditions
 import Oceananigans.Architectures: on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc
-import Statistics: norm, mean, mean!
+import Statistics: mean, mean!
+import LinearAlgebra: dot, norm
 import Base: ==
 
 #####
@@ -605,7 +607,7 @@ reduced_dimensions(::XYReducedAbstractField)  = (1, 2)
 reduced_dimensions(::XYZReducedAbstractField) = (1, 2, 3)
 
 # TODO: needs test
-Statistics.dot(a::Field, b::Field) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))
+LinearAlgebra.dot(a::Field, b::Field) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))
 
 # TODO: in-place allocations with function mappings need to be fixed in Julia Base...
 const SumReduction     = typeof(Base.sum!)
@@ -709,9 +711,9 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             T = filltype(Base.$(reduction!), c)
             loc = reduced_location(location(c); dims)
             r = Field(loc, c.grid, T; indices=indices(c))
-            conditioned_c = condition_operand(f, c, condition, mask)
-            initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
-            Base.$(reduction!)(identity, r, conditioned_c, init=false)
+            conditional_c = condition_operand(f, c, condition, mask)
+            initialize_reduced_field!(Base.$(reduction!), identity, r, conditional_c)
+            Base.$(reduction!)(identity, r, conditional_c, init=false)
 
             if dims isa Colon
                 return CUDA.@allowscalar first(r)
@@ -748,19 +750,29 @@ function Statistics.mean!(f::Function, r::ReducedAbstractField, a::AbstractField
     return r
 end
 
-Statistics.mean!(r::ReducedAbstractField, a::AbstractArray; kwargs...) = Statistics.mean!(identity, r, a; kwargs...)
+Statistics.mean!(r::ReducedAbstractField, a::AbstractArray; kwargs...) =
+    Statistics.mean!(identity, r, a; kwargs...)
 
-function Statistics.norm(a::AbstractField; condition = nothing)
-    r = zeros(a.grid, 1)
-    Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
-    return CUDA.@allowscalar sqrt(r[1])
+function LinearAlgebra.norm(a::AbstractField; condition = nothing)
+    conditional_a = condition_operand(a, condition, 0)
+    result = zeros(a.grid, 1)
+    Base.mapreducedim!(x -> x * x, +, result, conditional_a)
+    return CUDA.@allowscalar sqrt(first(result))
+end
+
+function LinearAlgebra.dot(a::AbstractField, b::AbstractField)
+    conditional_a = condition_operand(a, condition, 0)
+    conditional_b = condition_operand(b, condition, 0)
+    result = zeros(a.grid, 1)
+    Base.mapreducedim!((x, y) -> x * y, +, result, conditional_a, conditional_b)
+    return CUDA.@allowscalar first(result)
 end
 
 function Base.isapprox(a::AbstractField, b::AbstractField; kw...)
-    conditioned_a = condition_operand(a, nothing, one(eltype(a)))
-    conditioned_b = condition_operand(b, nothing, one(eltype(b)))
+    conditional_a = condition_operand(a, nothing, one(eltype(a)))
+    conditional_b = condition_operand(b, nothing, one(eltype(b)))
     # TODO: Make this non-allocating?
-    return all(isapprox.(conditioned_a, conditioned_b; kw...))
+    return all(isapprox.(conditional_a, conditional_b; kw...))
 end
 
 #####

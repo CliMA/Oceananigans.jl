@@ -74,11 +74,11 @@ Arguments
 See [`solve!`](@ref) for more information about the preconditioned conjugate-gradient algorithm.
 """
 function ConjugateGradientSolver(linear_operation;
-                                               template_field::AbstractField,
-                                               maxiter = prod(size(template_field)),
-                                               reltol = sqrt(eps(eltype(template_field.grid))),
-                                               abstol = 0,
-                                               preconditioner = nothing)
+                                 template_field::AbstractField,
+                                 maxiter = prod(size(template_field)),
+                                 reltol = sqrt(eps(eltype(template_field.grid))),
+                                 abstol = 0,
+                                 preconditioner = nothing)
 
     arch = architecture(template_field)
     grid = template_field.grid
@@ -94,18 +94,18 @@ function ConjugateGradientSolver(linear_operation;
     FT = eltype(grid)
 
     return ConjugateGradientSolver(arch,
-                                                 grid,
-                                                 linear_operation,
-                                                 FT(reltol),
-                                                 FT(abstol),
-                                                 maxiter,
-                                                 0,
-                                                 zero(FT),
-                                                 linear_operator_product,
-                                                 search_direction,
-                                                 residual,
-                                                 preconditioner,
-                                                 precondition_product)
+                                   grid,
+                                   linear_operation,
+                                   FT(reltol),
+                                   FT(abstol),
+                                   maxiter,
+                                   0,
+                                   zero(FT),
+                                   linear_operator_product,
+                                   search_direction,
+                                   residual,
+                                   preconditioner,
+                                   precondition_product)
 end
 
 """
@@ -158,7 +158,6 @@ Loop:
 ```
 """
 function solve!(x, solver::ConjugateGradientSolver, b, args...)
-
     # Initialize
     solver.iteration = 0
 
@@ -189,7 +188,7 @@ function iterate!(x, solver, b, args...)
 
     # Preconditioned:   z = P * r
     # Unpreconditioned: z = r
-    @apply_regionally z = precondition!(solver.preconditioner_product, solver.preconditioner, r, x, args...) 
+    @apply_regionally z = precondition!(solver.preconditioner_product, solver.preconditioner, r, args...)
 
     ρ = dot(z, r)
 
