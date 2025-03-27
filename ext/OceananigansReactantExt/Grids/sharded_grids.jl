@@ -73,7 +73,7 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
                                                          (nothing for i=1:10)..., FT(radius))
 
     if !precompute_metrics
-        @warn "Precomputing metrics is not supported on a sharded architecture"
+        @warn "On-the-fly metrics computation is not supported on a sharded architecture"
     end
        
     # Note! This step requires a kernel that launches on a `ReactantState` architecture.
@@ -84,7 +84,7 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
     xsharding  = Sharding.DimsSharding(arch.connectivity, (1,  ), (:x,   )) # X Stencil sharding
     ysharding  = Sharding.DimsSharding(arch.connectivity, (2,  ), (:y,   )) # Y Stencil sharding
     xysharding = Sharding.DimsSharding(arch.connectivity, (1, 2), (:x, :y)) # XY Pencil sharding
-    
+
     λmetric_sharding = ndims(Δλᶜᵃᵃ) == 1 ? xsharding : Sharding.NoSharding()
     φmetric_sharding = ndims(Δφᵃᶜᵃ) == 1 ? ysharding : Sharding.NoSharding()
 
@@ -102,21 +102,19 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
                                              grid.Lx, grid.Ly, grid.Lz,
                                              Reactant.to_rarray(grid.Δλᶠᵃᵃ; sharding=λmetric_sharding),
                                              Reactant.to_rarray(grid.Δλᶜᵃᵃ; sharding=λmetric_sharding),
-                                             Reactant.to_rarray(grid.λᶠᵃᵃ;  sharding=λsharding),
-                                             Reactant.to_rarray(grid.λᶜᵃᵃ;  sharding=λsharding),
+                                             Reactant.to_rarray(grid.λᶠᵃᵃ ;  sharding=λsharding),
+                                             Reactant.to_rarray(grid.λᶜᵃᵃ ;  sharding=λsharding),
                                              Reactant.to_rarray(grid.Δφᵃᶠᵃ; sharding=φmetric_sharding),
                                              Reactant.to_rarray(grid.Δφᵃᶜᵃ; sharding=φmetric_sharding),
-                                             Reactant.to_rarray(grid.φᵃᶠᵃ;  sharding=φsharding),
-                                             Reactant.to_rarray(grid.φᵃᶜᵃ;  sharding=φsharding),
+                                             Reactant.to_rarray(grid.φᵃᶠᵃ ;  sharding=φsharding),
+                                             Reactant.to_rarray(grid.φᵃᶜᵃ ;  sharding=φsharding),
                                              Reactant.to_rarray(grid.z),      # Intentionally not sharded
                                              Reactant.to_rarray(grid.Δxᶜᶜᵃ; sharding=xmetric_sharding),
                                              Reactant.to_rarray(grid.Δxᶠᶜᵃ; sharding=xmetric_sharding),
                                              Reactant.to_rarray(grid.Δxᶜᶠᵃ; sharding=xmetric_sharding),
                                              Reactant.to_rarray(grid.Δxᶠᶠᵃ; sharding=xmetric_sharding),
-                                             Reactant.to_rarray(grid.Δyᶜᶠᵃ; sharding=ymetric_sharding),
                                              Reactant.to_rarray(grid.Δyᶠᶜᵃ; sharding=ymetric_sharding),
                                              Reactant.to_rarray(grid.Δyᶜᶠᵃ; sharding=ymetric_sharding),
-                                             Reactant.to_rarray(grid.Δyᶠᶜᵃ; sharding=ymetric_sharding),
                                              Reactant.to_rarray(grid.Azᶜᶜᵃ; sharding=zmetric_sharding),
                                              Reactant.to_rarray(grid.Azᶠᶜᵃ; sharding=zmetric_sharding),
                                              Reactant.to_rarray(grid.Azᶜᶠᵃ; sharding=zmetric_sharding),
