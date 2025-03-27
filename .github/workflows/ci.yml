@@ -40,6 +40,12 @@ jobs:
         arch:
           - x64
     steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v2
       - run: |
           touch LocalPreferences.toml
 
@@ -47,19 +53,6 @@ jobs:
           echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
 
           cat LocalPreferences.toml    
-      - run: |
-          pwd 
-          ls
-          ls -l
-          ls LocalPreferences.toml
-          ls Project.toml
-          cat Project.toml
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         env:
