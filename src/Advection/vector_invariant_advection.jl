@@ -144,12 +144,17 @@ const VectorInvariantKEGradientEnergyConserving = VectorInvariant{<:Any, <:Any, 
 const VectorInvariantKineticEnergyUpwinding     = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme}
 
 
+#                                                 VectorInvariant{N,     FT,    M,     Z,     ZS,     V,     K,     D (divergence scheme)
 #                                                 VectorInvariant{N,     FT,    M,     Z,     ZS,     V,     K,     D,                                     U (upwinding)
 const VectorInvariantCrossVerticalUpwinding     = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any,  <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:CrossAndSelfUpwinding}
 const VectorInvariantSelfVerticalUpwinding      = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any,  <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:OnlySelfUpwinding}
 
-Base.summary(a::VectorInvariant)                 = string("Vector Invariant, Dimension-by-dimension reconstruction")
-Base.summary(a::MultiDimensionalVectorInvariant) = string("Vector Invariant, Multidimensional reconstruction")
+const WENOVectorInvariant{N, FT, M, Z} = VectorInvariant{N, FT, M, <:WENO, Z, <:WENO, <:WENO}
+
+Base.summary(a::VectorInvariant)                 = string("VectorInvariant, dimension-by-dimension reconstruction")
+Base.summary(a::MultiDimensionalVectorInvariant) = string("VectorInvariant, multidimensional reconstruction")
+Base.summary(a::WENOVectorInvariant)             = string("WENOVectorInvariant with ", summary(a.vorticity_scheme),
+                                                          " vorticity reconstruction")
 
 Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT} =
     print(io, summary(a), " \n",

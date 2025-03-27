@@ -63,11 +63,10 @@ end
 #####
 
 const EmptyNamedTuple = NamedTuple{(),Tuple{}}
+ab2_step_tracers!(::EmptyNamedTuple, model, Δt, χ) = nothing
 
 hasclosure(closure, ClosureType) = closure isa ClosureType
 hasclosure(closure_tuple::Tuple, ClosureType) = any(hasclosure(c, ClosureType) for c in closure_tuple)
-
-ab2_step_tracers!(::EmptyNamedTuple, model, Δt, χ) = nothing
 
 function ab2_step_tracers!(tracers, model, Δt, χ)
 

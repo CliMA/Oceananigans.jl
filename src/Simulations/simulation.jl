@@ -171,9 +171,10 @@ Reset `sim`ulation, `model.clock`, and `model.timestepper` to their initial stat
 """
 function reset!(sim::Simulation)
     sim.model.clock.time = 0
-    sim.model.clock.last_Δt = Inf
+    sim.model.clock.last_Δt = 0
     sim.model.clock.iteration = 0
     sim.model.clock.stage = 1
+    sim.model.clock.last_stage_Δt = 0
     sim.stop_iteration = Inf
     sim.stop_time = Inf
     sim.wall_time_limit = Inf
