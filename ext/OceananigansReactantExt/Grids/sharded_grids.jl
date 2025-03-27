@@ -74,11 +74,6 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
     λsharding = parent(λᶜᵃᵃ) isa StepRangeLen ? Reactant.Sharding.Sharding.NoSharding() : xsharding
     φsharding = parent(φᵃᶜᵃ) isa StepRangeLen ? Reactant.Sharding.Sharding.NoSharding() : ysharding
 
-    @show typeof(λᶜᵃᵃ)
-    @show typeof(λᶠᵃᵃ)
-    @show typeof(φᵃᶠᵃ)
-    @show typeof(φᵃᶜᵃ)
-
     preliminary_grid = LatitudeLongitudeGrid{TX, TY, TZ}(arch,
                                                          Nλ, Nφ, Nz,
                                                          Hλ, Hφ, Hz,
