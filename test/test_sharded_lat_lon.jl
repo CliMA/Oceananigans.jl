@@ -1,6 +1,8 @@
 include("dependencies_for_runtests.jl")
 include("distributed_tests_utils.jl")
 
+Nhosts = 1
+
 @testset "Test distributed TripolarGrid simulations..." begin
     # Run the serial computation    
     Random.seed!(1234)
@@ -21,7 +23,7 @@ include("distributed_tests_utils.jl")
     ηs = interior(ηs, :, :, 1)
 
     # Run the distributed grid simulations in all the configurations
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 run_sharding_tests.jl "latlon"`)
+    run(`$(mpiexec()) -n $(Nhosts) $(Base.julia_cmd()) --project -O0 run_sharding_tests.jl "latlon"`)
 
     # Retrieve Parallel quantities
     up1 = jldopen("distributed_xslab_llg.jld2")["u"]
