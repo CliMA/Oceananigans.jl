@@ -3,6 +3,8 @@
 # implementation is MPICH which requires calling MPI.Init(). In the case of OpenMPI,
 # MPI.Init() is not necessary.
 using MPI 
+using Preferences
+
 MPI.Init()
 include("distributed_tests_utils.jl")
 
