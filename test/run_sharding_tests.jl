@@ -2,9 +2,8 @@
 # i.e. we are launching the tests with `mpiexec` and on Github actions the default MPI 
 # implementation is MPICH which requires calling MPI.Init(). In the case of OpenMPI,
 # MPI.Init() is not necessary.
-using MPI 
-using Preferences
 
+using MPI 
 MPI.Init()
 include("distributed_tests_utils.jl")
 
