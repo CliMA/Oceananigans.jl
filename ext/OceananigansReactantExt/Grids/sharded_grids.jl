@@ -112,7 +112,7 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
     Δφᵃᶜᵃ = Reactant.to_rarray(grid.Δφᵃᶜᵃ; sharding=ysharding)
     φᵃᶠᵃ  = Reactant.to_rarray(grid.φᵃᶠᵃ ; sharding=φsharding)
     φᵃᶜᵃ  = Reactant.to_rarray(grid.φᵃᶜᵃ ; sharding=φsharding)
-    z     = sharded_z_direction(z; sharding=replicate) # Intentionally not sharded
+    z     = sharded_z_direction(grid.z; sharding=replicate) # Intentionally not sharded
 
     Δxᶜᶜᵃ = Reactant.to_rarray(grid.Δxᶜᶜᵃ; sharding=xzmetric_sharding)
     Δxᶠᶜᵃ = Reactant.to_rarray(grid.Δxᶠᶜᵃ; sharding=xzmetric_sharding)
@@ -185,6 +185,11 @@ function TripolarGrid(arch::ShardedDistributed,
     Azᶜᶠᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Azᶜᶠᵃ, irange, jrange)
     Azᶠᶠᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Azᶠᶠᵃ, irange, jrange)
 
+    # Copying the z coordinate to all the devices: we pass a NamedSharding of `nothing`s
+    # (a NamedSharding of nothings represents a copy to all devices)
+    # ``1'' here is the maximum number of dimensions of the fields of ``z''
+    replicate = Sharding.NamedSharding(arch.connectivity, ntuple(Returns(nothing), 1)) 
+
     grid = OrthogonalSphericalShellGrid{Periodic,RightConnected,Bounded}(arch,
         global_size...,
         halo...,
@@ -197,7 +202,7 @@ function TripolarGrid(arch::ShardedDistributed,
         Reactant.to_rarray(φᶠᶜᵃ; sharding),
         Reactant.to_rarray(φᶜᶠᵃ; sharding),
         Reactant.to_rarray(φᶠᶠᵃ; sharding),
-        Reactant.to_rarray(global_grid.z), # Intentionally not sharded
+        sharded_z_direction(global_grid.z; sharding=replicate), # Replicating on all devices
         Reactant.to_rarray(Δxᶜᶜᵃ; sharding),
         Reactant.to_rarray(Δxᶠᶜᵃ; sharding),
         Reactant.to_rarray(Δxᶜᶠᵃ; sharding),

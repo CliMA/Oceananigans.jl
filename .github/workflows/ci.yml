@@ -40,19 +40,19 @@ jobs:
         arch:
           - x64
     steps:
-      - run: |
-          touch LocalPreferences.toml
-
-          echo "[Reactant]" >> LocalPreferences.toml
-          echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
-
-          cat LocalPreferences.toml     
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
+      - run: |
+          touch LocalPreferences.toml
+
+          echo "[Reactant]" >> LocalPreferences.toml
+          echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
+
+          cat LocalPreferences.toml    
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         env:
@@ -110,31 +110,6 @@ jobs:
       - uses: julia-actions/julia-runtest@v1
         env:
           TEST_GROUP: "turbulence_closures"
-
-  reactant:
-    name: Reactant - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.10'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-    steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        env:
-          TEST_GROUP: "reactant"
 
   metal:
     name: Metal - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
