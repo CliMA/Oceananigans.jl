@@ -72,6 +72,17 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
                                              z, # Intentionally not sharded
                                              (nothing for i=1:10)..., FT(radius))
 
+    # Sharding of metrics and coordinates does not seem to 
+    # work. However, a sharded grid might work also with non-sharded metrics?
+    # TODO: Remove this to shard metrics and coordinated
+    φsharding = Sharding.NoSharding()
+    λsharding = Sharding.NoSharding()
+    λmetric_sharding  = Sharding.NoSharding()
+    φmetric_sharding  = Sharding.NoSharding()
+    xzmetric_sharding = Sharding.NoSharding()
+    ymetric_sharding  = Sharding.NoSharding()
+
+    #= Uncomment this to allow sharding of the metrics
     # Extracting the local range
     xsharding  = Sharding.DimsSharding(arch.connectivity, (1,  ), (:x,   )) # X Stencil sharding
     ysharding  = Sharding.DimsSharding(arch.connectivity, (2,  ), (:y,   )) # Y Stencil sharding
@@ -84,9 +95,9 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
     φsharding = parent(φᵃᶜᵃ) isa StepRangeLen ? Sharding.NoSharding() : ysharding
     
     # y metrics are either 1D or a number, while x and z metrics are either 2D or 1D
-    xmetric_sharding = ndims(Δλᶜᵃᵃ) == 1 ? xysharding : xsharding 
-    ymetric_sharding = ndims(Δφᵃᶜᵃ) == 1 ? ysharding  : Sharding.NoSharding() # Will this work?
-    zmetric_sharding = ndims(Δλᶜᵃᵃ) == 1 ? xysharding : xysharding
+    ymetric_sharding  = ndims(Δφᵃᶜᵃ) == 1 ? ysharding  : Sharding.NoSharding() # Will this work?
+    xzmetric_sharding = ndims(Δλᶜᵃᵃ) == 1 ? xysharding : xysharding
+    =#
 
     # Sharding common metricd
     Δλᶠᵃᵃ = Reactant.to_rarray(grid.Δλᶠᵃᵃ; sharding=λmetric_sharding)
@@ -119,16 +130,16 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
                                                 Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
                                                 Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
                                                 z, # Intentionally not sharded
-                                                Reactant.to_rarray(grid.Δxᶜᶜᵃ), #; sharding=xmetric_sharding),
-                                                Reactant.to_rarray(grid.Δxᶠᶜᵃ), #; sharding=xmetric_sharding),
-                                                Reactant.to_rarray(grid.Δxᶜᶠᵃ), #; sharding=xmetric_sharding),
-                                                Reactant.to_rarray(grid.Δxᶠᶠᵃ), #; sharding=xmetric_sharding),
-                                                Reactant.to_rarray(grid.Δyᶠᶜᵃ), #; sharding=ymetric_sharding),
-                                                Reactant.to_rarray(grid.Δyᶜᶠᵃ), #; sharding=ymetric_sharding),
-                                                Reactant.to_rarray(grid.Azᶜᶜᵃ), #; sharding=zmetric_sharding),
-                                                Reactant.to_rarray(grid.Azᶠᶜᵃ), #; sharding=zmetric_sharding),
-                                                Reactant.to_rarray(grid.Azᶜᶠᵃ), #; sharding=zmetric_sharding),
-                                                Reactant.to_rarray(grid.Azᶠᶠᵃ), #; sharding=zmetric_sharding),
+                                                Reactant.to_rarray(grid.Δxᶜᶜᵃ; sharding=xzmetric_sharding),
+                                                Reactant.to_rarray(grid.Δxᶠᶜᵃ; sharding=xzmetric_sharding),
+                                                Reactant.to_rarray(grid.Δxᶜᶠᵃ; sharding=xzmetric_sharding),
+                                                Reactant.to_rarray(grid.Δxᶠᶠᵃ; sharding=xzmetric_sharding),
+                                                Reactant.to_rarray(grid.Δyᶠᶜᵃ; sharding=ymetric_sharding),
+                                                Reactant.to_rarray(grid.Δyᶜᶠᵃ; sharding=ymetric_sharding),
+                                                Reactant.to_rarray(grid.Azᶜᶜᵃ; sharding=xzmetric_sharding),
+                                                Reactant.to_rarray(grid.Azᶠᶜᵃ; sharding=xzmetric_sharding),
+                                                Reactant.to_rarray(grid.Azᶜᶠᵃ; sharding=xzmetric_sharding),
+                                                Reactant.to_rarray(grid.Azᶠᶠᵃ; sharding=xzmetric_sharding),
                                                 grid.radius)
     end
 end
