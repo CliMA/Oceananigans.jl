@@ -1,16 +1,18 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.OrthogonalSphericalShellGrids
+using Oceananigans.Grids: R_Earth, validate_lat_lon_grid_args, generate_coordinate, with_precomputed_metrics
 
-import Oceananigans.Grids: zeros, child_architecture
+import Oceananigans.Grids: zeros, StaticVerticalDiscretization
+import Oceananigans.Architectures: child_architecture
 
 import Oceananigans.DistributedComputations: 
-                    partition_coordinate, 
-                    assemble_coordinate, 
-                    inject_halo_communication_boundary_conditions,
-                    concatenate_local_sizes,
-                    barrier!,
-                    all_reduce
+    partition_coordinate, 
+    assemble_coordinate, 
+    inject_halo_communication_boundary_conditions,
+    concatenate_local_sizes,
+    barrier!,
+    all_reduce
 
 child_architecture(grid::ShardedGrid) = child_architecture(architecture(grid))
 
@@ -38,15 +40,28 @@ all_reduce(op, val, ::ShardedDistributed) = val
 partition(A::AbstractArray, ::ShardedDistributed, local_size) = A
 construct_global_array(A::AbstractArray, ::ShardedDistributed, local_size) = A
 
-# The grids should not need change with reactant?
-function Oceananigans.LatitudeLongitudeGrid(architecture::ShardedDistributed,
+# A function to shard the z-direction (needs to be replicated around 
+# TODO: add a method for `MutableVerticalDiscretization`
+function sharded_z_direction(z::StaticVerticalDiscretization; sharding = Sharding.NoSharding()) 
+    
+    cᵃᵃᶠ = parent(z.cᵃᵃᶠ) isa StepRangeLen ? z.cᵃᵃᶠ : Reactant.to_rarray(z.cᵃᵃᶠ; sharding)
+    cᵃᵃᶜ = parent(z.cᵃᵃᶜ) isa StepRangeLen ? z.cᵃᵃᶜ : Reactant.to_rarray(z.cᵃᵃᶜ; sharding)
+
+    Δᵃᵃᶠ = Reactant.to_rarray(z.Δᵃᵃᶠ; sharding)
+    Δᵃᵃᶜ = Reactant.to_rarray(z.Δᵃᵃᶜ; sharding)
+
+    return StaticVerticalDiscretization(cᵃᵃᶠ, cᵃᵃᶜ, Δᵃᵃᶠ, Δᵃᵃᶜ)
+end
+
+function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
                                             FT::DataType = Oceananigans.defaults.FloatType;
                                             size,
                                             longitude = nothing,
                                             latitude = nothing,
                                             z = nothing,
-                                            radius = R_Earth,
+                                            radius = Oceananigans.Grids.R_Earth,
                                             topology = nothing,
+                                            precompute_metrics = true,
                                             halo = nothing)
 
     topology, size, halo, latitude, longitude, z, precompute_metrics =
@@ -56,72 +71,74 @@ function Oceananigans.LatitudeLongitudeGrid(architecture::ShardedDistributed,
     Hλ, Hφ, Hz = halo
     TX, TY, TZ = topology
 
-    Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, longitude, :longitude, 1, architecture)
-    Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, topology, size, halo, latitude,  :latitude,  2, architecture)
-    Lz, z                        = generate_coordinate(FT, topology, size, halo, z,         :z,         3, architecture)
+    Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, longitude, :longitude, 1, arch)
+    Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, topology, size, halo, latitude,  :latitude,  2, arch)
+    Lz, z                        = generate_coordinate(FT, topology, size, halo, z,         :z,         3, arch)
 
-    # Extracting the local range
-    xsharding  = Sharding.DimsSharding(arch.connectivity, (1,  ), (:x,   )) # X Stencil sharding
-    ysharding  = Sharding.DimsSharding(arch.connectivity, (2,  ), (:y,   )) # Y Stencil sharding
-    xysharding = Sharding.DimsSharding(arch.connectivity, (1, 2), (:x, :y)) # XY Pencil sharding
-
-    # λ and φ metrics are either 1D or a number
-    λmetric_sharding = ndims(Δλᶜᵃᵃ) == 1 ? xsharding : Reactant.Sharding.Sharding.NoSharding() # Will this work?
-    φmetric_sharding = ndims(Δφᵃᶜᵃ) == 1 ? ysharding : Reactant.Sharding.Sharding.NoSharding() # Will this work?
-
-    preliminary_grid = LatitudeLongitudeGrid{TX, TY, TZ}(architecture,
-                                                         Nλ, Nφ, Nz,
-                                                         Hλ, Hφ, Hz,
-                                                         Lλ, Lφ, Lz,
-                                                         Reactant.to_rarray(Δλᶠᵃᵃ; λmetric_sharding), 
-                                                         Reactant.to_rarray(Δλᶜᵃᵃ; λmetric_sharding), 
-                                                         Reactant.to_rarray(λᶠᵃᵃ ; xsharding), 
-                                                         Reactant.to_rarray(λᶜᵃᵃ ; xsharding),
-                                                         Reactant.to_rarray(Δφᵃᶠᵃ; φmetric_sharding), 
-                                                         Reactant.to_rarray(Δφᵃᶜᵃ; φmetric_sharding), 
-                                                         Reactant.to_rarray(φᵃᶠᵃ ; ysharding), 
-                                                         Reactant.to_rarray(φᵃᶜᵃ ; ysharding),
-                                                         Reactant.to_rarray(z), # Intentionally not sharded
-                                                         (nothing for i=1:10)..., FT(radius))
-
-    if !precompute_metrics
-        return preliminary_grid
-    end
-       
-    # Note! This step requires a kernel that launches on a `ReactantState` architecture.
-    # Would there be issues?
-    grid = @jit with_precomputed_metrics(preliminary_grid) 
-
-    # y metrics are either 1D or a number, while x and z metrics are either 2D or 1D
-    xmetric_sharding = ndims(Δxᶜᶜᵃ) == 2 ? xsharding : xysharding
-    ymetric_sharding = ndims(Δyᶜᶜᵃ) == 1 ? ysharding : Reactant.Sharding.Sharding.NoSharding() # Will this work?
-    zmetric_sharding = ndims(Azᶜᶜᵃ) == 2 ? xsharding : xysharding
-
-    return LatitudeLongitudeGrid{TX, TY, TZ}(architecture,
+    # We build the grid on the CPU and then we move it to ReactantState
+    grid = LatitudeLongitudeGrid{TX, TY, TZ}(CPU(),
                                              Nλ, Nφ, Nz,
                                              Hλ, Hφ, Hz,
                                              Lλ, Lφ, Lz,
-                                             grid.Δλᶠᵃᵃ,
-                                             grid.Δλᶜᵃᵃ,
-                                             grid.λᶠᵃᵃ ,
-                                             grid.λᶜᵃᵃ ,
-                                             grid.Δφᵃᶠᵃ,
-                                             grid.Δφᵃᶜᵃ,
-                                             grid.φᵃᶠᵃ ,
-                                             grid.φᵃᶜᵃ ,
-                                             grid.z,
-                                             Reactant.to_rarray(grid.Δxᶜᶜᵃ; xmetric_sharding),
-                                             Reactant.to_rarray(grid.Δxᶠᶜᵃ; xmetric_sharding),
-                                             Reactant.to_rarray(grid.Δxᶜᶠᵃ; xmetric_sharding),
-                                             Reactant.to_rarray(grid.Δxᶠᶠᵃ; xmetric_sharding),
-                                             Reactant.to_rarray(grid.Δyᶜᶜᵃ; ymetric_sharding),
-                                             Reactant.to_rarray(grid.Δyᶠᶜᵃ; ymetric_sharding),
-                                             Reactant.to_rarray(grid.Δyᶜᶠᵃ; ymetric_sharding),
-                                             Reactant.to_rarray(grid.Δyᶠᶠᵃ; ymetric_sharding),
-                                             Reactant.to_rarray(grid.Azᶜᶜᵃ; zmetric_sharding),
-                                             Reactant.to_rarray(grid.Azᶠᶜᵃ; zmetric_sharding),
-                                             Reactant.to_rarray(grid.Azᶜᶠᵃ; zmetric_sharding),
-                                             Reactant.to_rarray(grid.Azᶠᶠᵃ; zmetric_sharding),
+                                             Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
+                                             Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
+                                             z, # Intentionally not sharded
+                                             (nothing for i=1:10)..., FT(radius))
+
+    grid = with_precomputed_metrics(grid) 
+
+    # Extracting the local range
+    xsharding  = Sharding.DimsSharding(arch.connectivity, (1,  ), (:x,   )) # X Stencil sharding
+    ysharding  = Sharding.DimsSharding(arch.connectivity, (1,  ), (:y,   )) # Y Stencil sharding
+    xysharding = Sharding.DimsSharding(arch.connectivity, (1, 2), (:x, :y)) # XY Pencil sharding
+
+    # Copying the z coordinate to all the devices: we pass a NamedSharding of `nothing`s
+    # (a NamedSharding of nothings represents a copy to all devices)
+    # ``1'' here is the maximum number of dimensions of the fields of ``z''
+    replicate = Sharding.NamedSharding(arch.connectivity, ntuple(Returns(nothing), 1)) 
+
+    λsharding = parent(λᶜᵃᵃ) isa StepRangeLen ? Sharding.NoSharding() : xsharding
+    φsharding = parent(φᵃᶜᵃ) isa StepRangeLen ? Sharding.NoSharding() : ysharding
+    
+    # y metrics are either 1D or a number, while x and z metrics are either 2D or 1D
+    xzmetric_sharding = ndims(grid.Δxᶜᶜᵃ) == 1 ? ysharding : xysharding 
+    
+    # Sharding common metricd
+    Δλᶠᵃᵃ = Reactant.to_rarray(grid.Δλᶠᵃᵃ; sharding=xsharding)
+    Δλᶜᵃᵃ = Reactant.to_rarray(grid.Δλᶜᵃᵃ; sharding=xsharding)
+    λᶠᵃᵃ  = Reactant.to_rarray(grid.λᶠᵃᵃ ; sharding=λsharding)
+    λᶜᵃᵃ  = Reactant.to_rarray(grid.λᶜᵃᵃ ; sharding=λsharding)
+    Δφᵃᶠᵃ = Reactant.to_rarray(grid.Δφᵃᶠᵃ; sharding=ysharding)
+    Δφᵃᶜᵃ = Reactant.to_rarray(grid.Δφᵃᶜᵃ; sharding=ysharding)
+    φᵃᶠᵃ  = Reactant.to_rarray(grid.φᵃᶠᵃ ; sharding=φsharding)
+    φᵃᶜᵃ  = Reactant.to_rarray(grid.φᵃᶜᵃ ; sharding=φsharding)
+    z     = sharded_z_direction(z; sharding=replicate) # Intentionally not sharded
+
+    Δxᶜᶜᵃ = Reactant.to_rarray(grid.Δxᶜᶜᵃ; sharding=xzmetric_sharding)
+    Δxᶠᶜᵃ = Reactant.to_rarray(grid.Δxᶠᶜᵃ; sharding=xzmetric_sharding)
+    Δxᶜᶠᵃ = Reactant.to_rarray(grid.Δxᶜᶠᵃ; sharding=xzmetric_sharding)
+    Δxᶠᶠᵃ = Reactant.to_rarray(grid.Δxᶠᶠᵃ; sharding=xzmetric_sharding)
+    Δyᶠᶜᵃ = Reactant.to_rarray(grid.Δyᶠᶜᵃ; sharding=ysharding)
+    Δyᶜᶠᵃ = Reactant.to_rarray(grid.Δyᶜᶠᵃ; sharding=ysharding)
+    Azᶜᶜᵃ = Reactant.to_rarray(grid.Azᶜᶜᵃ; sharding=xzmetric_sharding)
+    Azᶠᶜᵃ = Reactant.to_rarray(grid.Azᶠᶜᵃ; sharding=xzmetric_sharding)
+    Azᶜᶠᵃ = Reactant.to_rarray(grid.Azᶜᶠᵃ; sharding=xzmetric_sharding)
+    Azᶠᶠᵃ = Reactant.to_rarray(grid.Azᶠᶠᵃ; sharding=xzmetric_sharding)
+
+    if !precompute_metrics
+        throw(ArgumentError("On-the-fly metric computation is not supported on sharded architectures."))
+    end
+
+    return LatitudeLongitudeGrid{TX, TY, TZ}(arch,
+                                             grid.Nx, grid.Ny, grid.Nz,
+                                             grid.Hx, grid.Hy, grid.Hz,
+                                             grid.Lx, grid.Ly, grid.Lz,
+                                             Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
+                                             Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
+                                             z, # Intentionally not sharded
+                                             Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+                                             Δyᶠᶜᵃ, Δyᶜᶠᵃ,
+                                             Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
                                              grid.radius)
 end
 
@@ -168,6 +185,11 @@ function TripolarGrid(arch::ShardedDistributed,
     Azᶜᶠᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Azᶜᶠᵃ, irange, jrange)
     Azᶠᶠᵃ = OrthogonalSphericalShellGrids.partition_tripolar_metric(global_grid, :Azᶠᶠᵃ, irange, jrange)
 
+    # Copying the z coordinate to all the devices: we pass a NamedSharding of `nothing`s
+    # (a NamedSharding of nothings represents a copy to all devices)
+    # ``1'' here is the maximum number of dimensions of the fields of ``z''
+    replicate = Sharding.NamedSharding(arch.connectivity, ntuple(Returns(nothing), 1)) 
+
     grid = OrthogonalSphericalShellGrid{Periodic,RightConnected,Bounded}(arch,
         global_size...,
         halo...,
@@ -180,7 +202,7 @@ function TripolarGrid(arch::ShardedDistributed,
         Reactant.to_rarray(φᶠᶜᵃ; sharding),
         Reactant.to_rarray(φᶜᶠᵃ; sharding),
         Reactant.to_rarray(φᶠᶠᵃ; sharding),
-        Reactant.to_rarray(global_grid.z), # Intentionally not sharded
+        sharded_z_direction(global_grid.z; sharding=replicate), # Replicating on all devices
         Reactant.to_rarray(Δxᶜᶜᵃ; sharding),
         Reactant.to_rarray(Δxᶠᶜᵃ; sharding),
         Reactant.to_rarray(Δxᶜᶠᵃ; sharding),

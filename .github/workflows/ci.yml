@@ -26,7 +26,7 @@ concurrency:
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
 jobs:
-  sharded_tripolar:
+  sharding_tests:
     name: Sharding Tests - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
@@ -41,10 +41,12 @@ jobs:
           - x64
     steps:
       - run: |
-          cat <<EOF > LocalPreferences.toml
-          [Reactant]
-          xla_runtime = "IFRT"
-          EOF
+          touch LocalPreferences.toml
+
+          echo "[Reactant]" >> LocalPreferences.toml
+          echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
+
+          cat LocalPreferences.toml     
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
@@ -54,8 +56,8 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         env:
+          JULIA_DEBUG: "Reactant, Reactant_jll"
           REACTANT_TEST: true
-          XLA_FLAGS: "--xla_force_host_platform_device_count=1"
           TEST_GROUP: "sharding"
 
   mpi_tripolar:

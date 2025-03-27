@@ -9,19 +9,28 @@ using Test
 include("distributed_tests_utils.jl")
 
 run_xslab_distributed_grid = """
+    using MPI 
+    MPI.Init()
     include("distributed_tests_utils.jl")
+    Reactant.Distributed.initialize(; single_gpu_per_process=false)
     arch = Distributed(ReactantState(), partition = Partition(4, 1))
     run_distributed_latitude_longitude_grid(arch, "distributed_xslab_llg.jld2")
 """
 
 run_yslab_distributed_grid = """
+    using MPI 
+    MPI.Init()
     include("distributed_tests_utils.jl")
+    Reactant.Distributed.initialize(; single_gpu_per_process=false)
     arch = Distributed(ReactantState(), partition = Partition(1, 4))
     run_distributed_latitude_longitude_grid(arch, "distributed_yslab_llg.jld2")
 """
 
 run_pencil_distributed_grid = """
+    using MPI 
+    MPI.Init()
     include("distributed_tests_utils.jl")
+    Reactant.Distributed.initialize(; single_gpu_per_process=false)
     arch = Distributed(ReactantState(), partition = Partition(2, 2))
     run_distributed_latitude_longitude_grid(arch, "distributed_pencil_llg.jld2")
 """
@@ -47,7 +56,7 @@ run_pencil_distributed_grid = """
 
     # Run the distributed grid simulation with a pencil configuration
     write("distributed_xslab_llg_tests.jl", run_xslab_distributed_grid)
-    run(`$(mpiexec()) -n 4 julia --project -O0 distributed_xslab_llg_tests.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 distributed_xslab_llg_tests.jl`)
     rm("distributed_xslab_llg_tests.jl")
 
     # Retrieve Parallel quantities
@@ -65,7 +74,7 @@ run_pencil_distributed_grid = """
     
     # Run the distributed grid simulation with a slab configuration
     write("distributed_yslab_llg_tests.jl", run_yslab_distributed_grid)
-    run(`$(mpiexec()) -n 4 julia --project -O0 distributed_yslab_llg_tests.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 distributed_yslab_llg_tests.jl`)
     rm("distributed_yslab_llg_tests.jl")
 
     # Retrieve Parallel quantities

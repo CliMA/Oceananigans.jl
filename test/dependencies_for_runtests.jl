@@ -60,9 +60,6 @@ using Oceananigans.MultiRegion: reconstruct_global_grid, reconstruct_global_fiel
 import Oceananigans.Utils: launch!, datatuple
 Logging.global_logger(OceananigansLogger())
 
-# Only show on rank 0
-@root MPI.versioninfo()
-
 #####
 ##### Testing parameters
 #####
