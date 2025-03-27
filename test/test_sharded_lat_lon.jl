@@ -56,7 +56,7 @@ run_pencil_distributed_grid = """
 
     # Run the distributed grid simulation with a pencil configuration
     write("distributed_xslab_llg_tests.jl", run_xslab_distributed_grid)
-    run(`$(mpiexec()) -n 4 julia --project -O0 distributed_xslab_llg_tests.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 distributed_xslab_llg_tests.jl`)
     rm("distributed_xslab_llg_tests.jl")
 
     # Retrieve Parallel quantities
@@ -74,7 +74,7 @@ run_pencil_distributed_grid = """
     
     # Run the distributed grid simulation with a slab configuration
     write("distributed_yslab_llg_tests.jl", run_yslab_distributed_grid)
-    run(`$(mpiexec()) -n 4 julia --project -O0 distributed_yslab_llg_tests.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 distributed_yslab_llg_tests.jl`)
     rm("distributed_yslab_llg_tests.jl")
 
     # Retrieve Parallel quantities
