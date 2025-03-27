@@ -1,18 +1,18 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.OrthogonalSphericalShellGrids
-using Oceananigans.Grids: R_Earth
+using Oceananigans.Grids: R_Earth, validate_lat_lon_grid_args, generate_coordinate, with_precomputed_metrics
 
 import Oceananigans.Grids: zeros
 import Oceananigans.Architectures: child_architecture
 
 import Oceananigans.DistributedComputations: 
-                    partition_coordinate, 
-                    assemble_coordinate, 
-                    inject_halo_communication_boundary_conditions,
-                    concatenate_local_sizes,
-                    barrier!,
-                    all_reduce
+    partition_coordinate, 
+    assemble_coordinate, 
+    inject_halo_communication_boundary_conditions,
+    concatenate_local_sizes,
+    barrier!,
+    all_reduce
 
 child_architecture(grid::ShardedGrid) = child_architecture(architecture(grid))
 
@@ -40,8 +40,7 @@ all_reduce(op, val, ::ShardedDistributed) = val
 partition(A::AbstractArray, ::ShardedDistributed, local_size) = A
 construct_global_array(A::AbstractArray, ::ShardedDistributed, local_size) = A
 
-# The grids should not need change with reactant?
-function Oceananigans.LatitudeLongitudeGrid(architecture::ShardedDistributed,
+function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
                                             FT::DataType = Oceananigans.defaults.FloatType;
                                             size,
                                             longitude = nothing,
@@ -49,6 +48,7 @@ function Oceananigans.LatitudeLongitudeGrid(architecture::ShardedDistributed,
                                             z = nothing,
                                             radius = R_Earth,
                                             topology = nothing,
+                                            precompute_metrics = true,
                                             halo = nothing)
 
     topology, size, halo, latitude, longitude, z, precompute_metrics =
@@ -58,9 +58,9 @@ function Oceananigans.LatitudeLongitudeGrid(architecture::ShardedDistributed,
     Hλ, Hφ, Hz = halo
     TX, TY, TZ = topology
 
-    Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, longitude, :longitude, 1, architecture)
-    Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, topology, size, halo, latitude,  :latitude,  2, architecture)
-    Lz, z                        = generate_coordinate(FT, topology, size, halo, z,         :z,         3, architecture)
+    Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, longitude, :longitude, 1, arch)
+    Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, topology, size, halo, latitude,  :latitude,  2, arch)
+    Lz, z                        = generate_coordinate(FT, topology, size, halo, z,         :z,         3, arch)
 
     # Extracting the local range
     xsharding  = Sharding.DimsSharding(arch.connectivity, (1,  ), (:x,   )) # X Stencil sharding
@@ -68,21 +68,29 @@ function Oceananigans.LatitudeLongitudeGrid(architecture::ShardedDistributed,
     xysharding = Sharding.DimsSharding(arch.connectivity, (1, 2), (:x, :y)) # XY Pencil sharding
 
     # λ and φ metrics are either 1D or a number
-    λmetric_sharding = ndims(Δλᶜᵃᵃ) == 1 ? xsharding : Reactant.Sharding.Sharding.NoSharding() # Will this work?
-    φmetric_sharding = ndims(Δφᵃᶜᵃ) == 1 ? ysharding : Reactant.Sharding.Sharding.NoSharding() # Will this work?
+    λmetric_sharding = ndims(Δλᶜᵃᵃ) == 1 ? xsharding : Reactant.Sharding.Sharding.NoSharding()
+    φmetric_sharding = ndims(Δφᵃᶜᵃ) == 1 ? ysharding : Reactant.Sharding.Sharding.NoSharding()
 
-    preliminary_grid = LatitudeLongitudeGrid{TX, TY, TZ}(architecture,
+    λsharding = parent(λᶜᵃᵃ) isa StepRangeLen ? Reactant.Sharding.Sharding.NoSharding() : xsharding
+    φsharding = parent(φᵃᶜᵃ) isa StepRangeLen ? Reactant.Sharding.Sharding.NoSharding() : ysharding
+
+    @show typeof(λᶜᵃᵃ)
+    @show typeof(λᶠᵃᵃ)
+    @show typeof(φᵃᶠᵃ)
+    @show typeof(φᵃᶜᵃ)
+
+    preliminary_grid = LatitudeLongitudeGrid{TX, TY, TZ}(arch,
                                                          Nλ, Nφ, Nz,
                                                          Hλ, Hφ, Hz,
                                                          Lλ, Lφ, Lz,
-                                                         Reactant.to_rarray(Δλᶠᵃᵃ; λmetric_sharding), 
-                                                         Reactant.to_rarray(Δλᶜᵃᵃ; λmetric_sharding), 
-                                                         Reactant.to_rarray(λᶠᵃᵃ ; xsharding), 
-                                                         Reactant.to_rarray(λᶜᵃᵃ ; xsharding),
-                                                         Reactant.to_rarray(Δφᵃᶠᵃ; φmetric_sharding), 
-                                                         Reactant.to_rarray(Δφᵃᶜᵃ; φmetric_sharding), 
-                                                         Reactant.to_rarray(φᵃᶠᵃ ; ysharding), 
-                                                         Reactant.to_rarray(φᵃᶜᵃ ; ysharding),
+                                                         Reactant.to_rarray(Δλᶠᵃᵃ; sharding=λmetric_sharding), 
+                                                         Reactant.to_rarray(Δλᶜᵃᵃ; sharding=λmetric_sharding), 
+                                                         Reactant.to_rarray(λᶠᵃᵃ ; sharding=λsharding), 
+                                                         Reactant.to_rarray(λᶜᵃᵃ ; sharding=λsharding),
+                                                         Reactant.to_rarray(Δφᵃᶠᵃ; sharding=φmetric_sharding), 
+                                                         Reactant.to_rarray(Δφᵃᶜᵃ; sharding=φmetric_sharding), 
+                                                         Reactant.to_rarray(φᵃᶠᵃ ; sharding=φsharding), 
+                                                         Reactant.to_rarray(φᵃᶜᵃ ; sharding=φsharding),
                                                          Reactant.to_rarray(z), # Intentionally not sharded
                                                          (nothing for i=1:10)..., FT(radius))
 
@@ -99,7 +107,7 @@ function Oceananigans.LatitudeLongitudeGrid(architecture::ShardedDistributed,
     ymetric_sharding = ndims(Δyᶜᶜᵃ) == 1 ? ysharding : Reactant.Sharding.Sharding.NoSharding() # Will this work?
     zmetric_sharding = ndims(Azᶜᶜᵃ) == 2 ? xsharding : xysharding
 
-    return LatitudeLongitudeGrid{TX, TY, TZ}(architecture,
+    return LatitudeLongitudeGrid{TX, TY, TZ}(arch,
                                              Nλ, Nφ, Nz,
                                              Hλ, Hφ, Hz,
                                              Lλ, Lφ, Lz,
