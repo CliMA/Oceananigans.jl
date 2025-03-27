@@ -46,7 +46,8 @@ jobs:
           echo "[Reactant]" >> LocalPreferences.toml
           echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
 
-          cat LocalPreferences.toml     
+          cat LocalPreferences.toml    
+      - run: pwd 
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
