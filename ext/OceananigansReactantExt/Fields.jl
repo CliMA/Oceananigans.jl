@@ -43,7 +43,7 @@ end
     @inbounds u[i, j, k] = v[i, j, k]
 end
 
-function set_to_function!(u::ShardedDistributedField, f)
+function set_to_function!(u::ReactantField, f)
     # Supports serial and distributed
     arch = Oceananigans.Architectures.architecture(u)
     cpu_grid = on_architecture(CPU(), u.grid)
