@@ -46,7 +46,7 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
                                             longitude = nothing,
                                             latitude = nothing,
                                             z = nothing,
-                                            radius = Oceananigans.GridsR_Earth,
+                                            radius = Oceananigans.Grids.R_Earth,
                                             topology = nothing,
                                             precompute_metrics = true,
                                             halo = nothing)
