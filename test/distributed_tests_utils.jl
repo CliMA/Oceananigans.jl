@@ -149,7 +149,9 @@ function run_distributed_simulation(grid)
         r_time_step! = time_step!
     end
 
+    @info "Running first time step..."
     r_first_time_step!(model, Δt)
+    @info "Running time steps..."
     for N in 2:100
         r_time_step!(model, Δt)
     end
