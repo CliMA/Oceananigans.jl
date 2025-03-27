@@ -9,19 +9,28 @@ using Test
 include("distributed_tests_utils.jl")
 
 run_xslab_distributed_grid = """
+    using MPI 
+    MPI.Init()
     include("distributed_tests_utils.jl")
+    Reactant.Distributed.initialize(; single_gpu_per_process=false)
     arch = Distributed(ReactantState(), partition = Partition(4, 1))
     run_distributed_latitude_longitude_grid(arch, "distributed_xslab_llg.jld2")
 """
 
 run_yslab_distributed_grid = """
+    using MPI 
+    MPI.Init()
     include("distributed_tests_utils.jl")
+    Reactant.Distributed.initialize(; single_gpu_per_process=false)
     arch = Distributed(ReactantState(), partition = Partition(1, 4))
     run_distributed_latitude_longitude_grid(arch, "distributed_yslab_llg.jld2")
 """
 
 run_pencil_distributed_grid = """
+    using MPI 
+    MPI.Init()
     include("distributed_tests_utils.jl")
+    Reactant.Distributed.initialize(; single_gpu_per_process=false)
     arch = Distributed(ReactantState(), partition = Partition(2, 2))
     run_distributed_latitude_longitude_grid(arch, "distributed_pencil_llg.jld2")
 """
