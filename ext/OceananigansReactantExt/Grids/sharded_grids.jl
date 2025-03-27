@@ -84,6 +84,11 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
     
     # y metrics are either 1D or a number, while x and z metrics are either 2D or 1D
     xzmetric_sharding = ndims(grid.Δxᶜᶜᵃ) == 1 ? ysharding : xysharding 
+
+    # Copying the z coordinate to all the devices: we pass a NamedSharding of `nothing`s
+    # (a NamedSharding of nothings represents a copy to all devices)
+    # ``1'' here is the maximum number of dimensions of the fields of ``z''
+    zsharding = Sharding.NamedSharding(arch.connectivity, ntuple(Returns(nothing), 1)) 
     
     # Sharding common metricd
     Δλᶠᵃᵃ = Reactant.to_rarray(grid.Δλᶠᵃᵃ; sharding=xsharding)
@@ -94,7 +99,7 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
     Δφᵃᶜᵃ = Reactant.to_rarray(grid.Δφᵃᶜᵃ; sharding=ysharding)
     φᵃᶠᵃ  = Reactant.to_rarray(grid.φᵃᶠᵃ ; sharding=φsharding)
     φᵃᶜᵃ  = Reactant.to_rarray(grid.φᵃᶜᵃ ; sharding=φsharding)
-    z     = Reactant.to_rarray(grid.z) # Intentionally not sharded
+    z     = Reactant.to_rarray(grid.z;     sharding=zsharding) # Intentionally not sharded
 
     Δxᶜᶜᵃ = Reactant.to_rarray(grid.Δxᶜᶜᵃ; sharding=xzmetric_sharding)
     Δxᶠᶜᵃ = Reactant.to_rarray(grid.Δxᶠᶜᵃ; sharding=xzmetric_sharding)
