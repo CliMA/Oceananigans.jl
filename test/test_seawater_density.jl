@@ -102,11 +102,11 @@ function potential_density(arch, FT, eos::BoussinesqEquationOfState;
     model = NonhydrostaticModel(; grid, buoyancy, tracers)
 
     if !isnothing(constant_temperature)
-        set!(model, S = ST_testvals.S)
+        set!(model; S = ST_testvals.S)
     elseif !isnothing(constant_salinity)
-        set!(model, T = ST_testvals.T)
+        set!(model; T = ST_testvals.T)
     else
-        set!(model, S = ST_testvals.S, T = ST_testvals.T)
+        set!(model; S = ST_testvals.S, T = ST_testvals.T)
     end
 
     d_field = compute!(Field(seawater_density(model, geopotential_height = 0)))
