@@ -77,15 +77,12 @@ function run_distributed_tripolar_grid(arch, filename)
     v = reconstruct_global_field(model.velocities.v)
     c = reconstruct_global_field(model.tracers.c)
 
-    if arch.local_rank == 0
+    if MPI.Comm_rank(MPI.COMM_WORLD) == 0
         jldsave(filename; u = Array(interior(u, :, :, 1)),
                           v = Array(interior(v, :, :, 1)), 
                           c = Array(interior(c, :, :, 1)),
                           η = Array(interior(η, :, :, 1))) 
     end
-
-    MPI.Barrier(MPI.COMM_WORLD)
-    MPI.Finalize()
 
     return nothing
 end
@@ -127,16 +124,16 @@ function run_distributed_simulation(grid)
                                           free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
                                           tracers = :c,
                                           buoyancy = nothing, 
-                                          tracer_advection = WENO(), 
-                                          momentum_advection = WENOVectorInvariant(order=3),
-                                          coriolis = HydrostaticSphericalCoriolis())
+                                          tracer_advection = nothing, #WENO(), 
+                                          momentum_advection = nothing, #WENOVectorInvariant(order=3),
+                                          coriolis = nothing) #HydrostaticSphericalCoriolis())
 
     # Setup the model with a gaussian sea surface height
     # near the physical north poles and one near the equator
     ηᵢ(λ, φ, z) = exp(- (φ - 90)^2 / 10^2) + exp(- φ^2 / 10^2)
     set!(model, c=ηᵢ, η=ηᵢ)
 
-    Δt = 5minutes
+    Δt = 10 # 5minutes
     arch = architecture(grid)
     if arch isa ReactantState || arch isa Distributed{<:ReactantState}
         @info "Compiling first_time_step..."
