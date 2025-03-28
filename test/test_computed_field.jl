@@ -481,7 +481,7 @@ for arch in archs
                 kk = 1+Hz:Nz+Hz
                 @test all(view(parent(ST), Hx, jj, kk) .== view(parent(ST), Nx+1+Hx, jj, kk))
                 @test all(view(parent(ST), ii, Hy, kk) .== view(parent(ST), ii, Ny+1+Hy, kk))
-                
+
                 # Bounded z
                 @test all(view(parent(ST), ii, jj, Hz)    .== view(parent(ST), ii, jj, 1+Hz))
                 @test all(view(parent(ST), ii, jj, Nz+Hz) .== view(parent(ST), ii, jj, Nz+1+Hz))
@@ -564,7 +564,7 @@ for arch in archs
                     @test try compute!(tke_window); true; catch; false; end
                     @test all(interior(computed_tke, 2:3, 2:3, 2:3) .== 9/2)
                     @test all(interior(tke_window) .== 9/2)
-                else                    
+                else
                     @test try compute!(computed_tke); true; catch; false end
                     @test try compute!(Field(tke)); true; catch; false; end
                     @test try compute!(tke_window); true; catch; false; end
@@ -581,7 +581,7 @@ for arch in archs
                 if (grid isa ImmersedBoundaryGrid) & (arch==GPU())
                     @test try compute!(tke_xy); true; catch; false; end
                     @test all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
-    
+
                     @test try compute!(tke_xz); true; catch; false; end
                     @test all(interior(tke_xz) .== 9/2)
 
@@ -593,7 +593,7 @@ for arch in archs
                 else
                     @test try compute!(tke_xy); true; catch; false; end
                     @test all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
-    
+
                     @test try compute!(tke_xz); true; catch; false; end
                     @test all(interior(tke_xz) .== 9/2)
 
