@@ -60,7 +60,7 @@ end
     return nothing
 end
 
-function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedTripolarGridOfSomeKind, buffers, args...; 
+function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::MPITripolarGridOfSomeKind, buffers, args...; 
                             only_local_halos=false, fill_boundary_normal_velocities=true, kwargs...)
     
     if fill_boundary_normal_velocities
@@ -92,7 +92,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     return nothing
 end
 
-function synchronize_communication!(field::Field{<:Any, <:Any, <:Any, <:Any, <:DistributedTripolarGridOfSomeKind})
+function synchronize_communication!(field::Field{<:Any, <:Any, <:Any, <:Any, <:MPITripolarGridOfSomeKind})
     arch = architecture(field.grid)
 
     if arch isa AsynchronousDistributed # Otherwise no need to synchonize
