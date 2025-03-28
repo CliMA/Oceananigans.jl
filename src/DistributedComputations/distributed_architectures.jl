@@ -164,7 +164,7 @@ function remaining_workers(r1, r2)
     return MPI.Comm_size(MPI.COMM_WORLD) ÷ r12
 end
 
-struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
+struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T, D} <: AbstractArchitecture
     child_architecture :: A
     partition :: Δ
     ranks :: R
@@ -174,6 +174,7 @@ struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
     communicator :: γ
     mpi_requests :: M
     mpi_tag :: T
+    devices :: D
 
     Distributed{S}(child_architecture :: A,
                    partition :: Δ,
@@ -183,16 +184,18 @@ struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T} <: AbstractArchitecture
                    connectivity :: C,
                    communicator :: γ,
                    mpi_requests :: M,
-                   mpi_tag :: T) where {S, A, Δ, R, ρ, I, C, γ, M, T} = 
-                   new{A, S, Δ, R, ρ, I, C, γ, M, T}(child_architecture,
-                                                     partition,
-                                                     ranks,
-                                                     local_rank,
-                                                     local_index,
-                                                     connectivity,
-                                                     communicator,
-                                                     mpi_requests,
-                                                     mpi_tag)
+                   mpi_tag :: T,
+                   devices :: D) where {S, A, Δ, R, ρ, I, C, γ, M, T, D} = 
+                   new{A, S, Δ, R, ρ, I, C, γ, M, T, D}(child_architecture,
+                                                        partition,
+                                                        ranks,
+                                                        local_rank,
+                                                        local_index,
+                                                        connectivity,
+                                                        communicator,
+                                                        mpi_requests,
+                                                        mpi_tag,
+                                                        devices)
 end
 
 #####
@@ -289,7 +292,8 @@ function Distributed(child_architecture = CPU();
                                                    local_connectivity,
                                                    communicator,
                                                    mpi_requests,
-                                                   Ref(0))
+                                                   Ref(0),
+                                                   devices)
 end
 
 const DistributedCPU = Distributed{CPU}
@@ -306,7 +310,7 @@ ranks(arch::Distributed) = ranks(arch.partition)
 child_architecture(arch::Distributed) = arch.child_architecture
 device(arch::Distributed)             = device(child_architecture(arch))
 
-zeros(arch::Distributed, FT, N...)             = zeros(child_architecture(arch), FT, N...)
+zeros(arch::Distributed, FT, N...)         = zeros(child_architecture(arch), FT, N...)
 array_type(arch::Distributed)              = array_type(child_architecture(arch))
 sync_device!(arch::Distributed)            = sync_device!(arch.child_architecture)
 convert_to_device(arch::Distributed, arg)  = convert_to_device(child_architecture(arch), arg)
@@ -322,7 +326,8 @@ synchronized(arch::Distributed) = Distributed{true}(child_architecture(arch),
                                                      arch.connectivity,
                                                      arch.communicator,
                                                      arch.mpi_requests,
-                                                     arch.mpi_tag)
+                                                     arch.mpi_tag,
+                                                     arch.devices)
 
 cpu_architecture(arch::DistributedCPU) = arch
 cpu_architecture(arch::Distributed{A, S}) where {A, S} = 
@@ -334,7 +339,8 @@ cpu_architecture(arch::Distributed{A, S}) where {A, S} =
                    arch.connectivity,
                    arch.communicator,
                    arch.mpi_requests,
-                   arch.mpi_tag)
+                   arch.mpi_tag,
+                   nothing) # No devices on the CPU
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index
@@ -452,9 +458,7 @@ function Base.show(io::IO, arch::Distributed)
     index_info = string("index [$ix, $iy, $iz]")
 
     c = arch.connectivity
-    connectivity_info = if c isa NoConnectivity
-        nothing
-    else
+    connectivity_info = if c isa NeighboringRanks
         string("└── connectivity:",
                isnothing(c.east)      ? "" : " east=$(c.east)",
                isnothing(c.west)      ? "" : " west=$(c.west)",

@@ -2,6 +2,8 @@ using JLD2
 using MPI
 using Oceananigans.DistributedComputations: reconstruct_global_field, reconstruct_global_grid
 using Oceananigans.Units
+using Reactant
+using Oceananigans.TimeSteppers: first_time_step!
 
 import Oceananigans.BoundaryConditions: _fill_north_halo!
 using Oceananigans.BoundaryConditions: ZBC, CCLocation, FCLocation
@@ -68,12 +70,12 @@ end
 function run_distributed_tripolar_grid(arch, filename)
     distributed_grid = TripolarGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
     distributed_grid = analytical_immersed_tripolar_grid(distributed_grid)
-    simulation       = run_tripolar_simulation(distributed_grid)
+    model            = run_distributed_simulation(distributed_grid)
 
-    η = reconstruct_global_field(simulation.model.free_surface.η)
-    u  = reconstruct_global_field(simulation.model.velocities.u)
-    v  = reconstruct_global_field(simulation.model.velocities.v)
-    c  = reconstruct_global_field(simulation.model.tracers.c)
+    η = reconstruct_global_field(model.free_surface.η)
+    u = reconstruct_global_field(model.velocities.u)
+    v = reconstruct_global_field(model.velocities.v)
+    c = reconstruct_global_field(model.tracers.c)
 
     if arch.local_rank == 0
         jldsave(filename; u = Array(interior(u, :, :, 1)),
@@ -88,8 +90,38 @@ function run_distributed_tripolar_grid(arch, filename)
     return nothing
 end
 
+# Run the distributed grid simulation and save down reconstructed results
+function run_distributed_latitude_longitude_grid(arch, filename)
+    Random.seed!(1234)
+    bottom_height = - rand(40, 40, 1) .* 500 .- 500
+
+    distributed_grid = LatitudeLongitudeGrid(arch; 
+                                             size = (40, 40, 10),
+                                             longitude = (0, 360),
+                                             latitude = (-10, 10),
+                                             z = (-1000, 0),
+                                             halo = (5, 5, 5))  
+
+    distributed_grid = ImmersedBoundaryGrid(distributed_grid, GridFittedBottom(bottom_height))
+    model = run_distributed_simulation(distributed_grid)
+
+    η = reconstruct_global_field(model.free_surface.η)
+    u = reconstruct_global_field(model.velocities.u)
+    v = reconstruct_global_field(model.velocities.v)
+    c = reconstruct_global_field(model.tracers.c)
+
+    if arch.local_rank == 0
+        jldsave(filename; u = Array(interior(u, :, :, 10)),
+                          v = Array(interior(v, :, :, 10)), 
+                          c = Array(interior(c, :, :, 10)),
+                          η = Array(interior(η, :, :, 1))) 
+    end
+
+    return nothing
+end
+
 # Just a random simulation on a tripolar grid
-function run_tripolar_simulation(grid)
+function run_distributed_simulation(grid)
 
     model = HydrostaticFreeSurfaceModel(; grid = grid,
                                           free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
@@ -102,12 +134,28 @@ function run_tripolar_simulation(grid)
     # Setup the model with a gaussian sea surface height
     # near the physical north poles and one near the equator
     ηᵢ(λ, φ, z) = exp(- (φ - 90)^2 / 10^2) + exp(- φ^2 / 10^2)
+    set!(model, c=ηᵢ, η=ηᵢ)
 
-    set!(model, c = ηᵢ, η = ηᵢ)
+    Δt = 5minutes
+    arch = architecture(grid)
+    if arch isa ReactantState || arch isa Distributed{<:ReactantState}
+        @info "Compiling first_time_step..."
+        r_first_time_step! = @compile sync=true raise=true first_time_step!(model, Δt)
 
-    simulation = Simulation(model, Δt = 5minutes, stop_iteration = 100)
-    
-    run!(simulation)
+        @info "Compiling time_step..."
+        r_time_step! = @compile sync=true raise=true time_step!(model, Δt)
+    else
+        r_first_time_step! = first_time_step!
+        r_time_step! = time_step!
+    end
 
-    return simulation
+    @info "Running first time step..."
+    r_first_time_step!(model, Δt)
+    @info "Running time steps..."
+    for N in 2:100
+        r_time_step!(model, Δt)
+    end
+
+    return model
 end
+

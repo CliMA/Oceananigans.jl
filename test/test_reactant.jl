@@ -1,12 +1,14 @@
 include("reactant_test_utils.jl")
 
+ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
+
 @testset "Reactanigans unit tests" begin
     @info "Performing Reactanigans unit tests..."
     
     arch = ReactantState()
     times = 0:1.0:4
     t = 2.1
-    times = Reactant.to_rarray(times)
+    times = Reactant.to_rarray(times, track_numbers=Number)
     @test times isa Reactant.TracedRNumberOverrides.TracedStepRangeLen
 
     ñ, n₁, n₂ = @jit Oceananigans.OutputReaders.find_time_index(times, t)
@@ -42,6 +44,7 @@ include("reactant_test_utils.jl")
     add_one!(c)
     @test all(c .≈ 2)
 
+    @info "  Testing set!..."
     set!(c, (x, y, z) -> x + y * z)
     x, y, z = nodes(c)
 
@@ -51,7 +54,8 @@ include("reactant_test_utils.jl")
         @test c[1, 2, 3] == x[1] + y[2] * z[3]
     end
 
-    @jit fill_halo_regions!(c)
+    @info "  Testing fill halo regions!..."
+    fill_halo_regions!(c)
 
     @allowscalar begin
         @test c[1, 1, 0] == c[1, 1, 1]
@@ -60,6 +64,7 @@ include("reactant_test_utils.jl")
     d = CenterField(grid)
     parent(d) .= 2
 
+    @info "  Testing computed field..."
     cd = Field(c * d)
     compute!(cd)
 
@@ -69,17 +74,20 @@ include("reactant_test_utils.jl")
         @test cd[1, 2, 3] == 2 * (x[1] + y[2] * z[3])
     end
 
-    # Deconcretization
+    # Deconcretization / nondeconcretization
+    @info "  Testing Field deconcretization..."
     c′ = OceananigansReactantExt.deconcretize(c)
     @test parent(c′) isa Array
     @test architecture(c′) isa ReactantState
 
     for FT in (Float64, Float32)
+        @info "  Testing RectilinearGrid construction [$FT]..."
         sgrid = RectilinearGrid(arch, FT; size=(4, 4, 4), x=[0, 1, 2, 3, 4], y=(0, 1), z=(0, 1))
         @test architecture(sgrid) isa ReactantState
-        @test architecture(sgrid.xᶠᵃᵃ) isa CPU
-        @test architecture(sgrid.xᶜᵃᵃ) isa CPU
+        @test architecture(sgrid.xᶠᵃᵃ) isa ReactantState
+        @test architecture(sgrid.xᶜᵃᵃ) isa ReactantState
 
+        @info "  Testing LatitudeLongitudeGrid construction [$FT]..."
         llg = LatitudeLongitudeGrid(arch, FT; size = (4, 4, 4),
                                     longitude = [0, 1, 2, 3, 4],
                                     latitude = [0, 1, 2, 3, 4],
@@ -90,15 +98,37 @@ include("reactant_test_utils.jl")
         for name in propertynames(llg)
             p = getproperty(llg, name)
             if !(name ∈ (:architecture, :z))
-                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Array})
+                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Reactant.AbstractConcreteArray})
             end
         end
 
-        ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
+        @info "  Testing constantified LatitudeLongitudeGrid construction [$FT]..."
+        cpu_llg = LatitudeLongitudeGrid(CPU(), FT; size = (4, 4, 4),
+                                        longitude = [0, 1, 2, 3, 4],
+                                        latitude = [0, 1, 2, 3, 4],
+                                        z = (0, 1))
+
+        constant_llg = OceananigansReactantExt.constant_with_reactant_state(cpu_llg)
+
+        for name in propertynames(constant_llg)
+            p = getproperty(constant_llg, name)
+            if !(name ∈ (:architecture, :z))
+                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Array})
+            end
+        end
+        
+        @info "  Testing ImmersedBoundaryGrid construction [$FT]..."
         ibg = ImmersedBoundaryGrid(llg, GridFittedBottom(ridge))
         @test architecture(ibg) isa ReactantState
-        @test architecture(ibg.immersed_boundary.bottom_height) isa CPU
+        @test architecture(ibg.immersed_boundary.bottom_height) isa ReactantState
 
+        @info "  Testing constantified ImmersedBoundaryGrid construction [$FT]..."
+        cpu_ibg = ImmersedBoundaryGrid(cpu_llg, GridFittedBottom(ridge))
+        constant_ibg = OceananigansReactantExt.constant_with_reactant_state(cpu_ibg)
+        @test architecture(constant_ibg) isa ReactantState
+        @test architecture(constant_ibg.immersed_boundary.bottom_height) isa CPU
+
+        @info "  Testing constantified OrthogonalSphericalShellGrid construction [$FT]..."
         rllg = RotatedLatitudeLongitudeGrid(arch, FT; size = (4, 4, 4),
                                             north_pole = (0, 0),
                                             longitude = [0, 1, 2, 3, 4],
@@ -110,9 +140,33 @@ include("reactant_test_utils.jl")
         for name in propertynames(rllg)
             p = getproperty(rllg, name)
             if !(name ∈ (:architecture, :z, :conformal_mapping))
+                @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Reactant.AbstractConcreteArray})
+            end
+        end
+
+        @info "  Testing constantified OrthogonalSphericalShellGrid construction [$FT]..."
+        @info "    Building CPU grid [$FT]..."
+        cpu_rllg = RotatedLatitudeLongitudeGrid(CPU(), FT; size = (4, 4, 4),
+                                                north_pole = (0, 0),
+                                                longitude = [0, 1, 2, 3, 4],
+                                                latitude = [0, 1, 2, 3, 4],
+                                                z = (0, 1))
+
+        @info "    Replacing architecture with ReactantState [$FT]..."
+        constant_rllg = OceananigansReactantExt.constant_with_reactant_state(cpu_rllg)
+
+        for name in propertynames(constant_rllg)
+            p = getproperty(constant_rllg, name)
+            if !(name ∈ (:architecture, :z, :conformal_mapping))
                 @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Array})
             end
         end
+
+        @info "  Testing constantified immersed OrthogonalSphericalShellGrid construction [$FT]..."
+        cpu_ribg = ImmersedBoundaryGrid(cpu_rllg, GridFittedBottom(ridge))
+        constant_ribg = OceananigansReactantExt.constant_with_reactant_state(cpu_ribg)
+        @test architecture(constant_ribg) isa ReactantState
+        @test architecture(constant_ribg.immersed_boundary.bottom_height) isa CPU
     end
 end
 
