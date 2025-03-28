@@ -154,7 +154,7 @@ end
     bottom = nothing
 )
 
-const ConnectedTopologies = Union{LeftConnected, RightConnected, FullyConnected}
+const ConnectedTopology = Union{LeftConnected, RightConnected, FullyConnected}
 
 # Internal function for HydrostaticFreeSurfaceModel
 function materialize_free_surface(free_surface::SplitExplicitFreeSurface, velocities, grid)
@@ -162,7 +162,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
     TX, TY, _   = topology(grid)
     substepping = free_surface.substepping
 
-    if (TX() isa ConnectedTopologies || TY() isa ConnectedTopologies) && substepping isa FixedTimeStepSize
+    if (TX() isa ConnectedTopology || TY() isa ConnectedTopology) && substepping isa FixedTimeStepSize
         throw(ArgumentError("A variable substepping through a CFL condition is not supported for the `SplitExplicitFreeSurface` on $(summary(grid)). \n
                              Provide a fixed number of substeps through the `substeps` keyword argument as: \n
                              `free_surface = SplitExplicitFreeSurface(grid; substeps = N)` where `N::Int`"))
@@ -279,12 +279,16 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
     Nsubsteps = length(substepping.averaging_weights)
     step_halo = Nsubsteps + 1
 
-    Hx = TX() isa ConnectedTopologies ? max(step_halo, old_halos[1]) : old_halos[1]
-    Hy = TY() isa ConnectedTopologies ? max(step_halo, old_halos[2]) : old_halos[2]
+    Hx = TX() isa ConnectedTopology ? max(step_halo, old_halos[1]) : old_halos[1]
+    Hy = TY() isa ConnectedTopology ? max(step_halo, old_halos[2]) : old_halos[2]
 
     new_halos = (Hx, Hy, old_halos[3])
 
-    return with_halo(new_halos, grid)
+    if new_halos == old_halos
+        return grid
+    else
+        return with_halo(new_halos, grid)
+    end
 end
 
 maybe_augmented_kernel_parameters(TX, TY, ::FixedTimeStepSize, grid) = :xy

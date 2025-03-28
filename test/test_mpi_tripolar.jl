@@ -204,7 +204,7 @@ run_large_pencil_distributed_grid = """
     cs = interior(cs, :, :, 1)
     # Run the distributed grid simulation with a slab configuration
     write("distributed_slab_tests.jl", run_slab_distributed_grid)
-    run(`$(mpiexec()) -n 4 julia --project -O0 distributed_slab_tests.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 distributed_slab_tests.jl`)
     rm("distributed_slab_tests.jl")
 
     # Retrieve Parallel quantities
@@ -223,7 +223,7 @@ run_large_pencil_distributed_grid = """
 
     # Run the distributed grid simulation with a pencil configuration
     write("distributed_tests.jl", run_pencil_distributed_grid)
-    run(`$(mpiexec()) -n 4 julia --project -O0 distributed_tests.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 distributed_tests.jl`)
     rm("distributed_tests.jl")
 
     # Retrieve Parallel quantities
@@ -243,7 +243,7 @@ run_large_pencil_distributed_grid = """
     # test as we are now splitting, not only where the singularities are, but
     # also in the middle of the north fold. This is a more challenging test
     write("distributed_large_pencil_tests.jl", run_large_pencil_distributed_grid)
-    run(`$(mpiexec()) -n 8 julia --project -O0 distributed_large_pencil_tests.jl`)
+    run(`$(mpiexec()) -n 8 $(Base.julia_cmd()) --project -O0 distributed_large_pencil_tests.jl`)
     rm("distributed_large_pencil_tests.jl")
 
     # Retrieve Parallel quantities
