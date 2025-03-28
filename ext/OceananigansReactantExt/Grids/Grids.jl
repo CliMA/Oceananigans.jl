@@ -1,6 +1,6 @@
 module Grids
 
-export constant_with_reactant_state
+export constant_with_arch
 
 using Reactant
 
