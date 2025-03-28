@@ -250,9 +250,8 @@ CUDA.allowscalar() do
 
     if group == :sharding || group == :all
         @testset "Sharding Reactant extension tests" begin
-            # Broken for the moment (trying to fix them in https://github.com/CliMA/Oceananigans.jl/pull/4293)
             include("test_sharded_lat_lon.jl")
-            # include("test_sharded_tripolar.jl") 
+            include("test_sharded_tripolar.jl") 
         end
     end
 
