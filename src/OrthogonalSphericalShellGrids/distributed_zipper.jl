@@ -4,6 +4,7 @@ using Oceananigans.BoundaryConditions: fill_open_boundary_regions!,
                                        DistributedCommunication
 
 using Oceananigans.DistributedComputations: cooperative_waitall!,
+                                            AsynchronousDistributed,
                                             recv_from_buffers!,
                                             fill_corners!,
                                             loc_id, 
@@ -94,23 +95,25 @@ end
 function synchronize_communication!(field::Field{<:Any, <:Any, <:Any, <:Any, <:DistributedTripolarGridOfSomeKind})
     arch = architecture(field.grid)
 
-    # Wait for outstanding requests
-    if !isempty(arch.mpi_requests) 
-        cooperative_waitall!(arch.mpi_requests)
+    if arch isa AsynchronousDistributed # Otherwise no need to synchonize
+        # Wait for outstanding requests
+        if !isempty(arch.mpi_requests) 
+            cooperative_waitall!(arch.mpi_requests)
 
-        # Reset MPI tag
-        arch.mpi_tag[] = 0
+            # Reset MPI tag
+            arch.mpi_tag[] = 0
 
-        # Reset MPI requests
-        empty!(arch.mpi_requests)
+            # Reset MPI requests
+            empty!(arch.mpi_requests)
+        end
+
+        recv_from_buffers!(field.data, field.boundary_buffers, field.grid)
+
+        north_bc = field.boundary_conditions.north
+        instantiated_location = map(instantiate, location(field))
+
+        switch_north_halos!(field, north_bc, field.grid, instantiated_location)
     end
-
-    recv_from_buffers!(field.data, field.boundary_buffers, field.grid)
-
-    north_bc = field.boundary_conditions.north
-    instantiated_location = map(instantiate, location(field))
-
-    switch_north_halos!(field, north_bc, field.grid, instantiated_location)
 
     return nothing
 end
