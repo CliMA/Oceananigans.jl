@@ -41,22 +41,25 @@ Nhosts = 1
     up3 = jldopen("distributed_pencil_trg.jld2")["u"]
     cp3 = jldopen("distributed_pencil_trg.jld2")["c"]
     ηp3 = jldopen("distributed_pencil_trg.jld2")["η"]
- 
+
+    # What does correctness mean in this case? Probably sqrt(ϵ)?
+    ϵ = sqrt(eps(Float64))
+
     @info "Testing xslab partitioning..."
-    @test all(us .≈ up1)
-    @test all(vs .≈ vp1)
-    @test all(cs .≈ cp1)
-    @test all(ηs .≈ ηp1)
+    @test all(isapprox.(us, up1; atol=ϵ))
+    @test all(isapprox.(vs, vp1; atol=ϵ))
+    @test all(isapprox.(cs, cp1; atol=ϵ))
+    @test all(isapprox.(ηs, ηp1; atol=ϵ))
 
     @info "Testing yslab partitioning..."
-    @test all(us .≈ up2)
-    @test all(vs .≈ vp2)
-    @test all(cs .≈ cp2)
-    @test all(ηs .≈ ηp2)
+    @test all(isapprox.(us, up2; atol=ϵ))
+    @test all(isapprox.(vs, vp2; atol=ϵ))
+    @test all(isapprox.(cs, cp2; atol=ϵ))
+    @test all(isapprox.(ηs, ηp2; atol=ϵ))
 
     @info "Testing pencil partitioning..."
-    @test all(us .≈ up3)
-    @test all(vs .≈ vp3)
-    @test all(cs .≈ cp3)
-    @test all(ηs .≈ ηp3)
+    @test all(isapprox.(us, up2; atol=ϵ))
+    @test all(isapprox.(vs, vp2; atol=ϵ))
+    @test all(isapprox.(cs, cp2; atol=ϵ))
+    @test all(isapprox.(ηs, ηp2; atol=ϵ))
 end

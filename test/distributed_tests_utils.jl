@@ -68,9 +68,9 @@ end
 
 # Run the distributed grid simulation and save down reconstructed results
 function run_distributed_tripolar_grid(arch, filename)
-    distributed_grid = TripolarGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
-    distributed_grid = analytical_immersed_tripolar_grid(distributed_grid)
-    model            = run_distributed_simulation(distributed_grid)
+    grid  = TripolarGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
+    grid  = analytical_immersed_tripolar_grid(grid)
+    model = run_distributed_simulation(grid)
 
     η = reconstruct_global_field(model.free_surface.η)
     u = reconstruct_global_field(model.velocities.u)
@@ -92,21 +92,25 @@ end
 
 # Run the distributed grid simulation and save down reconstructed results
 function run_distributed_latitude_longitude_grid(arch, filename)
-    distributed_grid = LatitudeLongitudeGrid(arch; 
-                                             size = (40, 40, 10),
-                                             longitude = (0, 360),
-                                             latitude = (-10, 10),
-                                             z = (-1000, 0),
-                                             halo = (5, 5, 5))  
+    Random.seed!(1234)
+    bottom_height = - 500 .* rand(40, 40, 1) .+ 500
 
-    model = run_distributed_simulation(distributed_grid)
+    grid = LatitudeLongitudeGrid(arch; 
+                                 size=(40, 40, 10), 
+                                 longitude=(0, 360), 
+                                 latitude=(-10, 10), 
+                                 z=(-1000, 0), 
+                                 halo=(5, 5, 5))   
+
+    grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))      
+    model = run_distributed_simulation(grid)
     
     η = reconstruct_global_field(model.free_surface.η)
     u = reconstruct_global_field(model.velocities.u)
     v = reconstruct_global_field(model.velocities.v)
     c = reconstruct_global_field(model.tracers.c)
 
-    if arch.local_rank == 0
+    if MPI.Comm_rank(MPI.COMM_WORLD) == 0
         jldsave(filename; u = Array(interior(u, :, :, 10)),
                           v = Array(interior(v, :, :, 10)), 
                           c = Array(interior(c, :, :, 10)),
@@ -120,12 +124,12 @@ end
 function run_distributed_simulation(grid)
 
     model = HydrostaticFreeSurfaceModel(; grid = grid,
-                                          free_surface = ExplicitFreeSurface(), # SplitExplicitFreeSurface(grid; substeps = 20),
+                                          free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
                                           tracers = :c,
                                           buoyancy = nothing, 
-                                          tracer_advection = nothing, #WENO(), 
-                                          momentum_advection = nothing, #WENOVectorInvariant(order=3),
-                                          coriolis = nothing) # HydrostaticSphericalCoriolis())
+                                          tracer_advection = WENO(), 
+                                          momentum_advection = WENOVectorInvariant(order=3),
+                                          coriolis = HydrostaticSphericalCoriolis())
 
     # Setup the model with a gaussian sea surface height
     # near the physical north poles and one near the equator
@@ -147,7 +151,7 @@ function run_distributed_simulation(grid)
 
     @info "Running first time step..."
     r_first_time_step!(model, Δt)
-    @info "Running time steps..."
+    @info "Running time step..."
     for N in 2:100
         r_time_step!(model, Δt)
     end

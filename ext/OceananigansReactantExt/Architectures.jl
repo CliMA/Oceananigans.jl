@@ -83,7 +83,7 @@ function Oceananigans.Distributed(arch::ReactantState; devices=nothing,
         (:x, :y, :z),
     )
 
-    return Oceananigans.Distributed{false}(arch, partition, ranks, local_rank, local_index,
+    return Oceananigans.Distributed{nothing}(arch, partition, ranks, local_rank, local_index,
         mesh, nothing, nothing, Ref(0), devices)
 end
 
