@@ -9,6 +9,7 @@ using Oceananigans.Fields: Field, interior
 using KernelAbstractions: @index, @kernel
 
 import Oceananigans.Fields: set_to_field!, set_to_function!, set!
+import Oceananigans.DistributedComputations: reconstruct_global_field
 
 import ..OceananigansReactantExt: deconcretize
 import ..Grids: ReactantGrid
@@ -16,6 +17,8 @@ import ..Grids: ShardedGrid
 
 const ReactantField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ReactantGrid}
 const ShardedDistributedField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ShardedGrid}
+
+reconstruct_global_field(field::ShardedDistributedField) = field
 
 deconcretize(field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
     Field{LX, LY, LZ}(field.grid,
