@@ -12,7 +12,9 @@ import Oceananigans.DistributedComputations:
     inject_halo_communication_boundary_conditions,
     concatenate_local_sizes,
     barrier!,
-    all_reduce
+    all_reduce,
+    all_reduce!,
+    reconstruct_global_topology
 
 child_architecture(grid::ShardedGrid) = child_architecture(architecture(grid))
 
@@ -34,11 +36,14 @@ concatenate_local_sizes(local_size, ::ShardedDistributed) = local_size
 barrier!(::ShardedDistributed) = nothing
 
 # Reductions are handled by the Sharding framework
-all_reduce(op, val, ::ShardedDistributed) = val
+all_reduce(op,  val, ::ShardedDistributed) = val
+all_reduce!(op, val, ::ShardedDistributed) = val
 
 # No need for partitioning and assembling of arrays supposedly
 partition(A::AbstractArray, ::ShardedDistributed, local_size) = A
 construct_global_array(A::AbstractArray, ::ShardedDistributed, local_size) = A
+
+reconstruct_global_topology(topo, R, r, r1, r2, ::ShardedDistributed) = topo
 
 # A function to shard the z-direction (needs to be replicated around 
 # TODO: add a method for `MutableVerticalDiscretization`

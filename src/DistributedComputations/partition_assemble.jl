@@ -5,6 +5,9 @@ import Oceananigans.Architectures: on_architecture
 all_reduce(op, val, arch::Distributed) = MPI.Allreduce(val, op, arch.communicator)
 all_reduce(op, val, arch) = val
 
+all_reduce!(op, val, arch::Distributed) = MPI.Allreduce!(val, op, arch.communicator)
+all_reduce!(op, val, arch) = val
+
 # MPI Barrier
 barrier!(arch) = nothing
 barrier!(arch::Distributed) = MPI.Barrier(arch.communicator)
