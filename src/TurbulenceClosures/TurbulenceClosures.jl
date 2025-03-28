@@ -24,7 +24,7 @@ export
     ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
 
-    DiffusivityFields,
+    build_diffusivity_fields,
     compute_diffusivities!,
 
     viscosity, diffusivity,

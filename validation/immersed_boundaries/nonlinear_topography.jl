@@ -136,17 +136,17 @@ function run_simulation(solver, preconditioner)
     
     outputs = merge(model.velocities, model.tracers, (; p=model.pressures.pNHS, δ, ζ))
     
-    simulation.output_writers[:jld2] = JLD2OutputWriter(model, outputs;
-                                                        filename = prefix * "_fields",
+    simulation.output_writers[:jld2] = JLD2Writer(model, outputs;
+                                                  filename = prefix * "_fields",
+                                                  # schedule = TimeInterval(2e-3),
+                                                  schedule = IterationInterval(50),
+                                                  overwrite_existing = true)
+    
+    simulation.output_writers[:timeseries] = JLD2Writer(model, (; B);
+                                                        filename = prefix * "_time_seriess",
                                                         # schedule = TimeInterval(2e-3),
                                                         schedule = IterationInterval(50),
                                                         overwrite_existing = true)
-    
-    simulation.output_writers[:timeseries] = JLD2OutputWriter(model, (; B);
-                                                              filename = prefix * "_time_seriess",
-                                                            # schedule = TimeInterval(2e-3),
-                                                        schedule = IterationInterval(50),
-                                                              overwrite_existing = true)
     
     run!(simulation)
 end

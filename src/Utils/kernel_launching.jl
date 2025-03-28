@@ -59,19 +59,19 @@ launch!(arch, grid, kp, kernel!, kernel_args...)
 
 See the documentation for [`launch!`](@ref).
 """
-function KernelParameters(r::UnitRange)
+function KernelParameters(r::AbstractUnitRange)
     size = length(r)
     offset = first(r) - 1
     return KernelParameters(tuple(size), tuple(offset))
 end
 
-function KernelParameters(r1::UnitRange, r2::UnitRange)
+function KernelParameters(r1::AbstractUnitRange, r2::AbstractUnitRange)
     size = (length(r1), length(r2))
     offsets = (first(r1) - 1, first(r2) - 1)
     return KernelParameters(size, offsets)
 end
 
-function KernelParameters(r1::UnitRange, r2::UnitRange, r3::UnitRange)
+function KernelParameters(r1::AbstractUnitRange, r2::AbstractUnitRange, r3::AbstractUnitRange)
     size = (length(r1), length(r2), length(r3))
     offsets = (first(r1) - 1, first(r2) - 1, first(r3) - 1)
     return KernelParameters(size, offsets)
@@ -345,7 +345,7 @@ end
 
 @inline worksize(t::Tuple) = map(worksize, t)
 @inline worksize(sz::Int) = sz
-@inline worksize(r::UnitRange) = length(r)
+@inline worksize(r::AbstractUnitRange) = length(r)
 
 """a type used to store offsets in `NDRange` types"""
 struct KernelOffsets{O}

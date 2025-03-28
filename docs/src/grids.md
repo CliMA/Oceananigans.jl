@@ -87,7 +87,7 @@ The shape of the physical domain determines what grid type should be used:
 3. [`OrthogonalSphericalShellGrid`](@ref Oceananigans.Grids.OrthogonalSphericalShellGrid) represents sectors of thin spherical shells divided with mesh lines that intersect at right angles (thus, orthogonal) but are otherwise arbitrary.
 
 !!! note "OrthogonalSphericalShellGrids.jl"
-    See the auxiliary package [`OrthogonalSphericalShellGrids.jl`](https://github.com/CliMA/OrthogonalSphericalShellGrids.jl)
+    See the auxiliary module [`OrthogonalSphericalShellGrids.jl`](@ref Oceananigans.OrthogonalSphericalShellGrids)
     for recipes that implement some useful `OrthogonalSphericalShellGrid`, including the
     ["tripolar" grid](https://www.sciencedirect.com/science/article/abs/pii/S0021999196901369).
 
@@ -263,14 +263,14 @@ architecture = Distributed(child_architecture)
 [ Info: MPI has not been initialized, so we are calling MPI.Init().
 Distributed{CPU} across 1 rank:
 ├── local_rank: 0 of 0-0
-└── local_index: [1, 1, 1]
+├── local_index: [1, 1, 1]
+└── connectivity:
 ```
 
 which allows us to distributed computations across either CPUs or GPUs.
 In this case, we didn't launch `julia` on multiple nodes using [MPI](https://en.wikipedia.org/wiki/Message_Passing_Interface),
 so we're only "distributed" across 1 node.
 <!-- For more, see [Distributed grids](@ref). -->
-More details on Distributed grids in a separate section.
 
 ### Specifying the topology for each dimension
 
