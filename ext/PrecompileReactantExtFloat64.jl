@@ -2,6 +2,7 @@ module PrecompileReactantExtFloat64
 
 using Reactant
 using Oceananigans
+using SeawaterPolynomials
 using PrecompileTools: @setup_workload, @compile_workload
 using Random
 
@@ -62,6 +63,7 @@ end
 
     # Reset float type
     Oceananigans.defaults.FloatType = Float64
+    Reactant.clear_oc_cache()
 end
 
 end # module
