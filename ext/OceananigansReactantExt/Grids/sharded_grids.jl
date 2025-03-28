@@ -143,7 +143,7 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
                                              z, # Intentionally not sharded
                                              Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                                              Δyᶠᶜᵃ, Δyᶜᶠᵃ,
-                                             Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
+                                             Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, 
                                              grid.radius)
 end
 
