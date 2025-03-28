@@ -123,7 +123,7 @@ function build_active_cells_map(grid::DistributedGrid, ib)
 
     # If we using a synchronized architecture, nothing
     # changes with serial execution.
-    if arch isa SynchronizedDistributed
+    if !(arch isa AsynchronousDistributed)
         return serially_build_active_cells_map(grid, ib; parameters=:xyz)
     end
 
