@@ -136,7 +136,7 @@ function run_distributed_simulation(grid)
     ηᵢ(λ, φ, z) = exp(- (φ - 90)^2 / 10^2) + exp(- φ^2 / 10^2)
     set!(model, c=ηᵢ, η=ηᵢ)
 
-    Δt = 10 # 5minutes
+    Δt = 5minutes
     arch = architecture(grid)
     if arch isa ReactantState || arch isa Distributed{<:ReactantState}
         @info "Compiling first_time_step..."
