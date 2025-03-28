@@ -33,7 +33,7 @@ function constant_with_arch(cpu_grid::AbstractUnderlyingGrid, arch)
 end
 
 function constant_with_arch(cpu_ibg::CPUImmersedBoundaryGrid, arch)
-    underlying_grid = constant_with_reactant_state(cpu_ibg.underlying_grid, arch)
+    underlying_grid = constant_with_arch(cpu_ibg.underlying_grid, arch)
     TX, TY, TZ = Oceananigans.Grids.topology(cpu_ibg)
     return ImmersedBoundaryGrid{TX, TY, TZ}(underlying_grid,
                                             cpu_ibg.immersed_boundary,
