@@ -83,12 +83,9 @@ function Oceananigans.Distributed(arch::ReactantState; devices=nothing,
         (:x, :y, :z),
     )
 
-    # Sharding does not need all the infrastructure for pipelining
-    # since it should handle and optimize communication by itself
-    synchronized_communcation = true
-
-    return Oceananigans.Distributed{synchronized_communcation}(arch, partition, ranks, local_rank, local_index,
-                                                               mesh, nothing, nothing, Ref(0), devices)
+    # Syncronized communication does not mean anything in this case so we set it to nothing
+    return Oceananigans.Distributed{nothing}(arch, partition, ranks, local_rank, local_index,
+                                             mesh, nothing, nothing, Ref(0), devices)
 end 
 
 Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.ConcretePJRTNumber}) = Reactant.unwrapped_eltype(T)
