@@ -17,21 +17,25 @@ Nhosts = 1
     us = interior(us, :, :, 1)
     vs = interior(vs, :, :, 1)
     cs = interior(cs, :, :, 1)
+    bs = parent(bs)[:, :, 1]
 
     # Run the distributed grid simulations in all the configurations
     run(`$(mpiexec()) -n $(Nhosts) $(Base.julia_cmd()) --project -O0 run_sharding_tests.jl "tripolar"`)
 
     # Retrieve Parallel quantities
+    bp1 = jldopen("distributed_xslab_trg.jld2")["b"]
     up1 = jldopen("distributed_xslab_trg.jld2")["u"]
     vp1 = jldopen("distributed_xslab_trg.jld2")["v"]
     cp1 = jldopen("distributed_xslab_trg.jld2")["c"]
     ηp1 = jldopen("distributed_xslab_trg.jld2")["η"]
 
+    bp2 = jldopen("distributed_yslab_trg.jld2")["b"]
     vp2 = jldopen("distributed_yslab_trg.jld2")["v"]
     up2 = jldopen("distributed_yslab_trg.jld2")["u"]
     cp2 = jldopen("distributed_yslab_trg.jld2")["c"]
     ηp2 = jldopen("distributed_yslab_trg.jld2")["η"]
 
+    bp3 = jldopen("distributed_pencil_trg.jld2")["b"]
     vp3 = jldopen("distributed_pencil_trg.jld2")["v"]
     up3 = jldopen("distributed_pencil_trg.jld2")["u"]
     cp3 = jldopen("distributed_pencil_trg.jld2")["c"]
