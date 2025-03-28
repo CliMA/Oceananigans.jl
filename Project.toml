@@ -25,6 +25,7 @@ MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
 OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 ReactantCore = "a3311ec8-5e00-46d5-b541-4f83e724a433"
@@ -42,8 +43,8 @@ Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 MakieCore = "20f20a25-4f0e-4fdf-b5d1-57303727442b"
 Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
-Reactant = "3c362404-f566-11ee-1572-e11a4b42c853"
 NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
+Reactant = "3c362404-f566-11ee-1572-e11a4b42c853"
 
 [extensions]
 OceananigansEnzymeExt = "Enzyme"
@@ -51,8 +52,8 @@ OceananigansMakieExt = ["MakieCore", "Makie"]
 OceananigansMetalExt = "Metal"
 OceananigansNCDatasetsExt = "NCDatasets"
 OceananigansReactantExt = ["Reactant", "KernelAbstractions", "ConstructionBase"]
-PrecompileReactantExtFloat32 = "Reactant"
-PrecompileReactantExtFloat64 = "Reactant"
+PrecompileReactantExtFloat32 = ["Reactant", "PrecompileTools"]
+PrecompileReactantExtFloat64 = ["Reactant", "PrecompileTools"]
 
 [compat]
 Adapt = "4.1.1"
@@ -81,6 +82,7 @@ Metal = "1.5"
 NCDatasets = "0.12.10, 0.13.1, 0.14"
 OffsetArrays = "1.4"
 OrderedCollections = "1.1"
+PrecompileTools = "1.2"
 Printf = "1.9"
 Random = "1.9"
 ReactantCore = "0.1"
