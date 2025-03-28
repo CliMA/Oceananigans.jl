@@ -243,7 +243,7 @@ LatitudeLongitudeGrid(FT::DataType; kwargs...) = LatitudeLongitudeGrid(CPU(), FT
 function with_precomputed_metrics(grid)
     Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ = allocate_metrics(grid)
 
-    # Compute Δx's and areas
+    # Compute Δx's and Az areas
     arch = grid.architecture
     dev = Architectures.device(arch)
     workgroup, worksize  = metric_workgroup(grid), metric_worksize(grid)
