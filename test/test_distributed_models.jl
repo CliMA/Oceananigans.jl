@@ -283,8 +283,11 @@ end
 function test_triply_periodic_bc_injection_with_411_ranks()
     arch = Distributed(partition=Partition(4))
     grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
+    @show topology(grid)
+
     model = NonhydrostaticModel(grid=grid)
 
+    
     for field in merge(fields(model))
         fbcs = field.boundary_conditions
         @test fbcs.east isa DCBC
