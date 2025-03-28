@@ -16,6 +16,7 @@ Nhosts = 1
 
     us = interior(us, :, :, 1)
     vs = interior(vs, :, :, 1)
+    ηs = interior(ηs, :, :, 1)
     cs = interior(cs, :, :, 1)
     bs = parent(bs)[:, :, 1]
 

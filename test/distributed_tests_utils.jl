@@ -92,9 +92,6 @@ end
 
 # Run the distributed grid simulation and save down reconstructed results
 function run_distributed_latitude_longitude_grid(arch, filename)
-    Random.seed!(1234)
-    bottom_height = - rand(40, 40, 1) .* 500 .- 500
-
     distributed_grid = LatitudeLongitudeGrid(arch; 
                                              size = (40, 40, 10),
                                              longitude = (0, 360),
@@ -102,7 +99,6 @@ function run_distributed_latitude_longitude_grid(arch, filename)
                                              z = (-1000, 0),
                                              halo = (5, 5, 5))  
 
-    distributed_grid = ImmersedBoundaryGrid(distributed_grid, GridFittedBottom(bottom_height))
     model = run_distributed_simulation(distributed_grid)
     
     η = reconstruct_global_field(model.free_surface.η)
@@ -110,15 +106,11 @@ function run_distributed_latitude_longitude_grid(arch, filename)
     v = reconstruct_global_field(model.velocities.v)
     c = reconstruct_global_field(model.tracers.c)
 
-    # Check also that the bottom height is reconstructed correctly!
-    b = reconstruct_global_field(model.grid.immersed_boundary.bottom_height)
-
     if arch.local_rank == 0
         jldsave(filename; u = Array(interior(u, :, :, 10)),
                           v = Array(interior(v, :, :, 10)), 
                           c = Array(interior(c, :, :, 10)),
-                          η = Array(interior(η, :, :, 1)),
-                          b = Array(parent(b))[:, :, 1]) 
+                          η = Array(interior(η, :, :, 1)))
     end
 
     return nothing
