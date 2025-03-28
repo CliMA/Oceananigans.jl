@@ -44,6 +44,9 @@ unified_array(::ReactantState, a) = a
 # Distributed computations
 function Oceananigans.Distributed(arch::ReactantState; devices=nothing,
     partition=nothing, kw...)
+
+    Reactant.Distributed.initialize()        
+
     if devices === nothing
         devices = Reactant.devices()
 
