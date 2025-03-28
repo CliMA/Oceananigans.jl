@@ -362,7 +362,7 @@ function reconstruct_global_topology(T, R, r, r1, r2, arch)
         topologies[r] = 1
     end
 
-    all_reduce!(topologies, +, arch)
+    topologies = all_reduce(+, topologies, arch)
 
     if sum(topologies) == R
         return Periodic
