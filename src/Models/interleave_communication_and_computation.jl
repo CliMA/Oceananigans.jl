@@ -4,7 +4,7 @@ using Oceananigans.Utils: KernelParameters
 using Oceananigans.Grids: halo_size, topology, architecture
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid
-using Oceananigans.DistributedComputations: synchronize_communication!, SynchronizedDistributed, AsynchronousDistributed
+using Oceananigans.DistributedComputations: synchronize_communication!, AsynchronousDistributed
 
 function complete_communication_and_compute_buffer!(model, ::DistributedGrid, ::AsynchronousDistributed)
 

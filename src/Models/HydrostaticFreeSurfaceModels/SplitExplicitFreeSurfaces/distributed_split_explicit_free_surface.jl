@@ -1,5 +1,5 @@
 using Oceananigans.DistributedComputations: DistributedField
-using Oceananigans.DistributedComputations: SynchronizedDistributed, synchronize_communication!
+using Oceananigans.DistributedComputations: AsynchronousDistributed, synchronize_communication!
 
 const DistributedSplitExplicit = SplitExplicitFreeSurface{<:DistributedField}
 
