@@ -2,24 +2,20 @@ module Models
 
 import Oceananigans
 
+import Oceananigans.Models: initialization_update_state!
+import Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: maybe_extend_halos, FixedSubstepNumber
+import Oceananigans: initialize!
+
 using Oceananigans.Architectures: ReactantState
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: initialize_free_surface!, HydrostaticFreeSurfaceModel
 
 using ..TimeSteppers: ReactantModel
 using ..Grids: ReactantGrid, ReactantImmersedBoundaryGrid
-using ..Grids: ShardedGrid, ShardedDistributed
-
-import Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: maybe_extend_halos, FixedSubstepNumber
-import Oceananigans: initialize!
-import Oceananigans.Models: 
-        initialization_update_state!, 
-        complete_communication_and_compute_buffer!, 
-        interior_tendency_kernel_parameters
 
 const ReactantHFSM{TS, E} = Union{
     HydrostaticFreeSurfaceModel{TS, E, <:ReactantState},
-    HydrostaticFreeSurfaceModel{TS, E, <:ShardedDistributed},
+    HydrostaticFreeSurfaceModel{TS, E, <:Distributed{<:ReactantState}},
 }
 
 initialization_update_state!(::ReactantModel; kw...) = nothing
@@ -51,9 +47,5 @@ function initialize!(model::ReactantHFSM)
     Oceananigans.Models.HydrostaticFreeSurfaceModels.initialize_free_surface!(model.free_surface, model.grid, model.velocities)
     return nothing
 end
-
-# Undo all the pipelining for a `ShardedDistributed` architecture
-complete_communication_and_compute_buffer!(model, ::ShardedGrid, ::ShardedDistributed) = nothing
-interior_tendency_kernel_parameters(::ShardedDistributed, grid) = :xyz
 
 end # module
