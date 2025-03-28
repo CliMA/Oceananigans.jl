@@ -94,18 +94,18 @@ function ConjugateGradientSolver(linear_operation;
     FT = eltype(grid)
 
     return ConjugateGradientSolver(arch,
-                                                 grid,
-                                                 linear_operation,
-                                                 FT(reltol),
-                                                 FT(abstol),
-                                                 maxiter,
-                                                 0,
-                                                 zero(FT),
-                                                 linear_operator_product,
-                                                 search_direction,
-                                                 residual,
-                                                 preconditioner,
-                                                 precondition_product)
+                                   grid,
+                                   linear_operation,
+                                   FT(reltol),
+                                   FT(abstol),
+                                   maxiter,
+                                   0,
+                                   zero(FT),
+                                   linear_operator_product,
+                                   search_direction,
+                                   residual,
+                                   preconditioner,
+                                   precondition_product)
 end
 
 """
@@ -269,3 +269,4 @@ function Base.show(io::IO, solver::ConjugateGradientSolver)
               "├── abstol: ", prettysummary(solver.abstol), "\n",
               "└── maxiter: ", solver.maxiter)
 end
+
