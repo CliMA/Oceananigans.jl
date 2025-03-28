@@ -318,16 +318,16 @@ convert_to_device(arch::Distributed, arg)  = convert_to_device(child_architectur
 
 # Switch to a synchronized architecture
 synchronized(arch) = arch
-synchronized(arch::AsynchronousDistributed) = Distributed{true}(child_architecture(arch),
-                                                                arch.partition,
-                                                                arch.ranks,
-                                                                arch.local_rank,
-                                                                arch.local_index,
-                                                                arch.connectivity,
-                                                                arch.communicator,
-                                                                arch.mpi_requests,
-                                                                arch.mpi_tag,
-                                                                arch.devices)
+synchronized(arch::Distributed) = Distributed{true}(child_architecture(arch),
+                                                    arch.partition,
+                                                    arch.ranks,
+                                                    arch.local_rank,
+                                                    arch.local_index,
+                                                    arch.connectivity,
+                                                    arch.communicator,
+                                                    arch.mpi_requests,
+                                                    arch.mpi_tag,
+                                                    arch.devices)
 
 cpu_architecture(arch::DistributedCPU) = arch
 cpu_architecture(arch::Distributed{A, S}) where {A, S} = 
