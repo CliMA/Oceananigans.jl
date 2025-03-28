@@ -1,6 +1,8 @@
 include("dependencies_for_runtests.jl")
 include("distributed_tests_utils.jl")
 
+Nhosts = 1
+
 @testset "Test distributed TripolarGrid simulations..." begin
     # Run the serial computation    
     grid  = TripolarGrid(size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
@@ -17,7 +19,7 @@ include("distributed_tests_utils.jl")
     cs = interior(cs, :, :, 1)
 
     # Run the distributed grid simulations in all the configurations
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 run_sharding_tests.jl "tripolar"`)
+    run(`$(mpiexec()) -n $(Nhosts) $(Base.julia_cmd()) --project -O0 run_sharding_tests.jl "tripolar"`)
 
     # Retrieve Parallel quantities
     up1 = jldopen("distributed_xslab_trg.jld2")["u"]
@@ -34,20 +36,20 @@ include("distributed_tests_utils.jl")
     up3 = jldopen("distributed_pencil_trg.jld2")["u"]
     cp3 = jldopen("distributed_pencil_trg.jld2")["c"]
     ηp3 = jldopen("distributed_pencil_trg.jld2")["η"]
-
-    # Test xslab partitioning
+ 
+    @info "Testing xslab partitioning..."
     @test all(us .≈ up1)
     @test all(vs .≈ vp1)
     @test all(cs .≈ cp1)
     @test all(ηs .≈ ηp1)
 
-    # Test yslab partitioning
+    @info "Testing yslab partitioning..."
     @test all(us .≈ up2)
     @test all(vs .≈ vp2)
     @test all(cs .≈ cp2)
     @test all(ηs .≈ ηp2)
 
-    # Test pencil partitioning
+    @info "Testing pencil partitioning..."
     @test all(us .≈ up3)
     @test all(vs .≈ vp3)
     @test all(cs .≈ cp3)

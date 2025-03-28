@@ -1,7 +1,9 @@
 include("dependencies_for_runtests.jl")
 include("distributed_tests_utils.jl")
 
-@testset "Test distributed TripolarGrid simulations..." begin
+Nhosts = 1
+
+@testset "Test sharded LatitudeLongitudeGrid simulations..." begin
     # Run the serial computation    
     Random.seed!(1234)
     bottom_height = - rand(40, 40, 1) .* 500 .- 500
@@ -21,7 +23,7 @@ include("distributed_tests_utils.jl")
     ηs = interior(ηs, :, :, 1)
 
     # Run the distributed grid simulations in all the configurations
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 run_sharding_tests.jl "latlon"`)
+    run(`$(mpiexec()) -n $(Nhosts) $(Base.julia_cmd()) --project -O0 run_sharding_tests.jl "latlon"`)
 
     # Retrieve Parallel quantities
     up1 = jldopen("distributed_xslab_llg.jld2")["u"]
@@ -39,19 +41,19 @@ include("distributed_tests_utils.jl")
     cp3 = jldopen("distributed_pencil_llg.jld2")["c"]
     ηp3 = jldopen("distributed_pencil_llg.jld2")["η"]
 
-    # Test xslab partitioning
+    @info "Testing xslab partitioning..."
     @test all(us .≈ up1)
     @test all(vs .≈ vp1)
     @test all(cs .≈ cp1)
     @test all(ηs .≈ ηp1)
 
-    # Test yslab partitioning
+    @info "Testing yslab partitioning..."
     @test all(us .≈ up2)
     @test all(vs .≈ vp2)
     @test all(cs .≈ cp2)
     @test all(ηs .≈ ηp2)
 
-    # Test pencil partitioning
+    @info "Testing pencil partitioning..."
     @test all(us .≈ up3)
     @test all(vs .≈ vp3)
     @test all(cs .≈ cp3)
