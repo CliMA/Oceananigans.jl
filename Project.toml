@@ -51,6 +51,8 @@ OceananigansMakieExt = ["MakieCore", "Makie"]
 OceananigansMetalExt = "Metal"
 OceananigansNCDatasetsExt = "NCDatasets"
 OceananigansReactantExt = ["Reactant", "KernelAbstractions", "ConstructionBase"]
+PrecompileReactantExtFloat32 = "Reactant"
+PrecompileReactantExtFloat64 = "Reactant"
 
 [compat]
 Adapt = "4.1.1"
