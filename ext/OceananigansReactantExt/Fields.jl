@@ -9,7 +9,7 @@ using Oceananigans.Fields: Field, interior
 using KernelAbstractions: @index, @kernel
 
 import Oceananigans.Fields: set_to_field!, set_to_function!, set!
-
+import Oceananigans.DistributedComputations: synchronize_communication!
 import ..OceananigansReactantExt: deconcretize
 import ..Grids: ReactantGrid
 import ..Grids: ShardedGrid
@@ -56,5 +56,8 @@ end
 
 # keepin it simple
 set_to_field!(u::ReactantField, v::ReactantField) = @jit _set_to_field!(u, v)
+
+# No need to synchronize -> it should be implicit
+synchronize_communication!(::ShardedDistributedField) = nothing
 
 end
