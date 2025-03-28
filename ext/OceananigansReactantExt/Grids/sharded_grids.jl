@@ -117,7 +117,7 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
     Δφᵃᶜᵃ = Reactant.to_rarray(grid.Δφᵃᶜᵃ; sharding=ysharding)
     φᵃᶠᵃ  = Reactant.to_rarray(grid.φᵃᶠᵃ ; sharding=φsharding)
     φᵃᶜᵃ  = Reactant.to_rarray(grid.φᵃᶜᵃ ; sharding=φsharding)
-    z     = sharded_z_direction(z; sharding=replicate) # Intentionally not sharded
+    z     = sharded_z_direction(grid.z; sharding=replicate) # Intentionally not sharded
 
     Δxᶜᶜᵃ = Reactant.to_rarray(grid.Δxᶜᶜᵃ; sharding=xzmetric_sharding)
     Δxᶠᶜᵃ = Reactant.to_rarray(grid.Δxᶠᶜᵃ; sharding=xzmetric_sharding)
