@@ -130,9 +130,9 @@ function twin_grid(grid::DistributedGrid; local_direction = :y)
 
     TX, TY, TZ = topology(grid)
 
-    TX = reconstruct_global_topology(TX, R[1], ri, rj, rk, arch.communicator)
-    TY = reconstruct_global_topology(TY, R[2], rj, ri, rk, arch.communicator)
-    TZ = reconstruct_global_topology(TZ, R[3], rk, ri, rj, arch.communicator)
+    TX = reconstruct_global_topology(TX, R[1], ri, rj, rk, arch)
+    TY = reconstruct_global_topology(TY, R[2], rj, ri, rk, arch)
+    TZ = reconstruct_global_topology(TZ, R[3], rk, ri, rj, arch)
 
     x = cpu_face_constructor_x(grid)
     y = cpu_face_constructor_y(grid)

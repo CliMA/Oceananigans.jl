@@ -202,9 +202,9 @@ function reconstruct_global_grid(grid::DistributedRectilinearGrid)
 
     TX, TY, TZ = topology(grid)
 
-    TX = reconstruct_global_topology(TX, Rx, ri, rj, rk, arch.communicator)
-    TY = reconstruct_global_topology(TY, Ry, rj, ri, rk, arch.communicator)
-    TZ = reconstruct_global_topology(TZ, Rz, rk, ri, rj, arch.communicator)
+    TX = reconstruct_global_topology(TX, Rx, ri, rj, rk, arch)
+    TY = reconstruct_global_topology(TY, Ry, rj, ri, rk, arch)
+    TZ = reconstruct_global_topology(TZ, Rz, rk, ri, rj, arch)
 
     x = cpu_face_constructor_x(grid)
     y = cpu_face_constructor_y(grid)
@@ -245,9 +245,9 @@ function reconstruct_global_grid(grid::DistributedLatitudeLongitudeGrid)
 
     TX, TY, TZ = topology(grid)
 
-    TX = reconstruct_global_topology(TX, Rx, ri, rj, rk, arch.communicator)
-    TY = reconstruct_global_topology(TY, Ry, rj, ri, rk, arch.communicator)
-    TZ = reconstruct_global_topology(TZ, Rz, rk, ri, rj, arch.communicator)
+    TX = reconstruct_global_topology(TX, Rx, ri, rj, rk, arch)
+    TY = reconstruct_global_topology(TY, Ry, rj, ri, rk, arch)
+    TZ = reconstruct_global_topology(TZ, Rz, rk, ri, rj, arch)
 
     λ = cpu_face_constructor_x(grid)
     φ = cpu_face_constructor_y(grid)
@@ -346,13 +346,13 @@ insert_connected_topology(::Type{Bounded}, R, r) = ifelse(R == 1, Bounded,
 insert_connected_topology(::Type{Periodic}, R, r) = ifelse(R == 1, Periodic, FullyConnected)
 
 """ 
-    reconstruct_global_topology(T, R, r, comm)
+    reconstruct_global_topology(T, R, r, r1, r2, arch)
 
 reconstructs the global topology associated with the local topologies `T`, the amount of ranks 
 in `T` direction (`R`) and the local rank index `r`. If all ranks hold a `FullyConnected` topology,
 the global topology is `Periodic`, otherwise it is `Bounded`
 """
-function reconstruct_global_topology(T, R, r, r1, r2, comm)
+function reconstruct_global_topology(T, R, r, r1, r2, arch)
     if R == 1
         return T
     end
@@ -362,7 +362,7 @@ function reconstruct_global_topology(T, R, r, r1, r2, comm)
         topologies[r] = 1
     end
 
-    topologies = all_reduce(topologies, +, comm)
+    topologies = all_reduce(+, topologies, arch)
 
     if sum(topologies) == R
         return Periodic
