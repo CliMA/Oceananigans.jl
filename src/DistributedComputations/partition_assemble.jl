@@ -6,7 +6,7 @@ all_reduce(op, val, arch::Distributed) = MPI.Allreduce(val, op, arch.communicato
 all_reduce(op, val, arch) = val
 
 all_reduce!(op, val, arch::Distributed) = MPI.Allreduce!(val, op, arch.communicator)
-all_reduce!(op, val, arch) = nothing
+all_reduce!(op, val, arch) = val
 
 # MPI Barrier
 barrier!(arch) = nothing
