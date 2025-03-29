@@ -32,8 +32,8 @@ end
 
 function Adapt.adapt_structure(to, conformal_mapping::CubedSphereConformalMapping)
     return CubedSphereConformalMapping(
-        conformal_mapping.ξ,
-        conformal_mapping.η,
+        adapt(to, conformal_mapping.ξ),
+        adapt(to, conformal_mapping.η),
         adapt(to, conformal_mapping.rotation),
         adapt(to, conformal_mapping.ξᶠᵃᵃ),
         adapt(to, conformal_mapping.ηᵃᶠᵃ),
