@@ -106,8 +106,13 @@ export
     # Abstract operations
     ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
 
+    # MultiRegion and Cubed sphere
+    MultiRegionGrid, MultiRegionField,
+    XPartition, YPartition,
+    CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField,
+
     # Utils
-    prettytime
+    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 
 using CUDA
 using DocStringExtensions
@@ -271,7 +276,6 @@ using .OutputReaders
 using .Forcings
 using .ImmersedBoundaries
 using .DistributedComputations
-using .OrthogonalSphericalShellGrids
 using .Models
 using .TimeSteppers
 using .Diagnostics
