@@ -303,7 +303,7 @@ function Base.summary(grid::RectilinearGrid)
     FT = eltype(grid)
     TX, TY, TZ = topology(grid)
 
-    return string(size_summary(size(grid)),
+    return string(size_summary(grid),
                   " RectilinearGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
 end

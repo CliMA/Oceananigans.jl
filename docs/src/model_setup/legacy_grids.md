@@ -175,7 +175,7 @@ julia> grid = LatitudeLongitudeGrid(size = (36, 34, 25),
                                     longitude = (-180, 180),
                                     latitude = (-85, 85),
                                     z = (-1000, 0))
-36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── longitude: Periodic λ ∈ [-180.0, 180.0) regularly spaced with Δλ=10.0
 ├── latitude:  Bounded  φ ∈ [-85.0, 85.0]   regularly spaced with Δφ=5.0
 └── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=40.0

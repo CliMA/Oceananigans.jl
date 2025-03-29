@@ -13,7 +13,7 @@ using Oceananigans.Fields: Field
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, AbstractImmersedBoundary
 
 import ..OceananigansReactantExt: deconcretize
-import Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSphericalShellGrid
+import Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSphericalShellGrid, size_summary
 import Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid, TripolarGrid
 import Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, materialize_immersed_boundary
 
@@ -35,6 +35,22 @@ const ReactantUnderlyingGrid{FT, TX, TY, TZ, CZ} = Union{
 }
 
 const ShardedGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:ShardedDistributed}
+
+function size_summary(grid::ShardedGrid)
+    arch = Oceananigans.Architectures.architecture(grid)
+    p = arch.partition
+    r = Rx, Ry, Rz = ranks(p)
+    Nr = prod(r)
+    last_rank = Nr - 1
+
+    rank_info = if Nr == 1
+        "1 rank"
+    else
+        "$Nr = $Rx×$Ry×$Rz ranks"
+    end
+
+    return string(size_summary(size(grid)), "(", rank_info, ")")
+end
 
 include("serial_grids.jl")
 include("sharded_grids.jl")

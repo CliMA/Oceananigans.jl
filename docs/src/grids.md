@@ -103,7 +103,7 @@ grid = LatitudeLongitudeGrid(architecture,
                              z = (-1000, 0))
 
 # output
-180×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+180×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── longitude: Periodic λ ∈ [-180.0, 180.0) regularly spaced with Δλ=2.0
 ├── latitude:  Bounded  φ ∈ [-60.0, 60.0]   regularly spaced with Δφ=12.0
 └── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=200.0
@@ -131,7 +131,7 @@ grid = LatitudeLongitudeGrid(size = (60, 10, 5),
                              z = (-1000, 0))
 
 # output
-60×10×5 LatitudeLongitudeGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+60×10×5 LatitudeLongitudeGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── longitude: Bounded  λ ∈ [0.0, 60.0]    regularly spaced with Δλ=1.0
 ├── latitude:  Bounded  φ ∈ [-60.0, 60.0]  regularly spaced with Δφ=12.0
 └── z:         Bounded  z ∈ [-1000.0, 0.0] regularly spaced with Δz=200.0
@@ -488,7 +488,7 @@ grid = LatitudeLongitudeGrid(size = (Nx, Ny),
                              topology = (Bounded, Bounded, Flat))
 
 # output
-180×28×1 LatitudeLongitudeGrid{Float64, Bounded, Bounded, Flat} on CPU with 3×3×0 halo and with precomputed metrics
+180×28×1 LatitudeLongitudeGrid{Float64, Bounded, Bounded, Flat} on CPU with 3×3×0 halo
 ├── longitude: Bounded  λ ∈ [0.0, 360.0]   regularly spaced with Δλ=2.0
 ├── latitude:  Bounded  φ ∈ [0.0, 77.2679] variably spaced with min(Δφ)=2.0003, max(Δφ)=6.95319
 └── z:         Flat z
