@@ -117,7 +117,7 @@ end
     conditioned = evaluate_condition(co.condition, i, j, k, c.grid, c)
     value = getindex(co.operand, i, j, k)
     func_value = co.func(value)
-    return ifelse(conditioned, value, c.mask)
+    return ifelse(conditioned, func_value, c.mask)
 end
 
 # Some special cases
