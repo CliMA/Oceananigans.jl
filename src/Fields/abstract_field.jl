@@ -36,6 +36,7 @@ Base.IndexStyle(::AbstractField) = IndexCartesian()
 @inline location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX, LY, LZ) # note no instantiation
 @inline instantiated_location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX(), LY(), LZ())
 Base.eltype(::AbstractField{<:Any, <:Any, <:Any, <:Any, T}) where T = T
+Base.eltype(::Type{<:AbstractField{<:Any, <:Any, <:Any, <:Any, T}}) where T = T
 
 "Returns the architecture of on which `f` is defined."
 architecture(f::AbstractField) = architecture(f.grid)
@@ -62,6 +63,7 @@ const Abstract4DField = AbstractField{<:Any, <:Any, <:Any, <:Any, <:Any, 4}
 # when topo=Bounded, and loc=Face
 @inline axis(::Colon, N) = Base.OneTo(N)
 @inline axis(index::UnitRange, N) = index
+@inline axis(index::Base.OneTo, N) = index
 
 @inline function Base.axes(f::Abstract3DField)
     Nx, Ny, Nz = size(f)

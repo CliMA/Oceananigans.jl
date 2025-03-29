@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition
+using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition, Zipper
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
 using Oceananigans.Grids: index_range_contains
 
@@ -79,6 +79,14 @@ function validate_boundary_conditions(loc, grid, bcs)
 
     return nothing
 end
+
+# Some special validation for a zipper boundary condition
+validate_boundary_condition_location(bc::Zipper, loc::Center, side) = 
+    side == :north ? nothing : throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc) (north only)!"))
+
+validate_boundary_condition_location(bc::Zipper, loc::Face, side) = 
+    side == :north ? nothing : throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc) (north only)!"))
+
 
 #####
 ##### Some basic constructors
@@ -176,7 +184,6 @@ function Field(loc::Tuple,
                boundary_conditions = FieldBoundaryConditions(grid, loc, validate_indices(indices, loc, grid)),
                operand = nothing,
                status = nothing)
-
     return Field(loc, grid, data, boundary_conditions, indices, operand, status)
 end
 
@@ -403,8 +410,8 @@ Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 
 @inline Base.fill!(f::Field, val) = fill!(parent(f), val)
 @inline Base.parent(f::Field) = parent(f.data)
-Adapt.parent_type(f::Field) = typeof(parent(f))
 Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
+Adapt.parent_type(::Type{<:Field{LX, LY, LZ, O, G, I, D}}) where {LX, LY, LZ, O, G, I, D} = D
 
 total_size(f::Field) = total_size(f.grid, location(f), f.indices)
 @inline Base.size(f::Field)  = size(f.grid, location(f), f.indices)
@@ -417,7 +424,7 @@ total_size(f::Field) = total_size(f.grid, location(f), f.indices)
 ##### Move Fields between architectures
 #####
 
-on_architecture(arch, field::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
+on_architecture(arch, field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
     Field{LX, LY, LZ}(on_architecture(arch, field.grid),
                       on_architecture(arch, field.data),
                       on_architecture(arch, field.boundary_conditions),

@@ -49,9 +49,12 @@ Keyword arguments
 
 - `mask`: the scalar mask. Default: 0.
 
-`condition_operand` is a convenience function used to construct a `ConditionalOperation`
+`condition_operand` is a convenience function used to construct a `ConditionalOperation`, e.g.,
 
-`condition_operand(func::Function, operand::AbstractField, condition, mask) = ConditionalOperation(operand; func, condition, mask)`
+```julia
+condition_operand(func::Function, operand::AbstractField, condition, mask) =
+    ConditionalOperation(operand; func, condition, mask)
+```
 
 Example
 =======
@@ -85,8 +88,20 @@ function ConditionalOperation(operand::AbstractField;
                               func = nothing,
                               condition = nothing,
                               mask = zero(eltype(operand)))
+
+    condition = validate_condition(condition, operand)
+
     LX, LY, LZ = location(operand)
     return ConditionalOperation{LX, LY, LZ}(operand, func, operand.grid, condition, mask)
+end
+
+validate_condition(cond, ::AbstractField) = cond # fallback
+
+function validate_condition(cond::AbstractArray, operand::AbstractField)
+    if size(cond) !== size(operand)
+        throw(ArgumentError("The keyword argument condition::AbstractArray requires size $(size(operand))"))
+    end
+    return cond
 end
 
 function ConditionalOperation(c::ConditionalOperation;
@@ -179,4 +194,3 @@ Base.show(io::IO, operation::ConditionalOperation) =
               "├── func: ", summary(operation.func), '\n',
               "├── condition: ", summary(operation.condition), '\n',
               "└── mask: ", operation.mask)
-

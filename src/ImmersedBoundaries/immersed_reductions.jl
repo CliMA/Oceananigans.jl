@@ -55,6 +55,12 @@ end
     return !immersed & evaluate_condition(ni.condition, i, j, k, grid, co, args...)
 end 
 
+@inline function evaluate_condition(condition::NotImmersed, i::AbstractArray, j::AbstractArray, k::AbstractArray, ibg, co::ConditionalOperation, args...)
+    ℓx, ℓy, ℓz = map(instantiate, location(co))
+    immersed = immersed_peripheral_node(i, j, k, ibg, ℓx, ℓy, ℓz) .| inactive_node(i, j, k, ibg, ℓx, ℓy, ℓz)
+    return Base.broadcast(!, immersed) .& evaluate_condition(condition.func, i, j, k, ibg, args...)
+end 
+
 #####
 ##### Reduction operations on Reduced Fields test the immersed condition on the entirety of the immersed direction
 #####

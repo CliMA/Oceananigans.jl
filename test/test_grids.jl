@@ -5,6 +5,8 @@ using Oceananigans.Grids: total_extent, ColumnEnsembleSize,
                           xspacings, yspacings, zspacings,
                           xnode, ynode, znode, λnode, φnode,
                           λspacings, φspacings
+                          
+using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
 
 using Oceananigans.Operators: Δx, Δy, Δz, Δλ, Δφ, Ax, Ay, Az, volume
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
@@ -712,7 +714,7 @@ function test_lat_lon_precomputed_metrics(FT, arch)
     for lat in latitude
         for lon in longitude
             for z in zcoord
-                println("$lat, $lon, $z")
+                # println("$lat, $lon, $z")
                 grid_pre = LatitudeLongitudeGrid(arch, FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, precompute_metrics=true)
                 grid_fly = LatitudeLongitudeGrid(arch, FT, size=N, halo=H, latitude=lat, longitude=lon, z=z)
 
@@ -887,7 +889,7 @@ end
             grid = RectilinearGrid(arch, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=collect(0:Nz).^2)
 
             @test try
-            show(grid); println()
+                show(grid); println()
                 true
             catch err
                 println("error in show(::RectilinearGrid)")
@@ -1052,6 +1054,20 @@ end
         end
 
         @test grid isa OrthogonalSphericalShellGrid
+
+        grid = RotatedLatitudeLongitudeGrid(size = (10, 10, 1),
+                                            latitude = (-60, 60),
+                                            longitude = (-60, 60),
+                                            z = (-1000, 0),
+                                            north_pole = (0, 0),
+                                            topology = (Bounded, Bounded, Bounded))
+
+        @show grid.conformal_mapping
+
+        @test grid isa OrthogonalSphericalShellGrid
+        @test grid isa RotatedLatitudeLongitudeGrid
+        @test grid.Lz == 1000
+        @test size(grid) == (10, 10, 1)
 
         for arch in archs
             for FT in float_types

@@ -39,5 +39,6 @@ previous_hydrostatic_tendency_fields(::Val{:SplitRungeKutta3}, args...) = nothin
 function previous_hydrostatic_tendency_fields(::Val{:SplitRungeKutta3}, velocities, free_surface::SplitExplicitFreeSurface, args...)
     U = similar(free_surface.barotropic_velocities.U)
     V = similar(free_surface.barotropic_velocities.V)
-    return (; U=U, V=V)
+    η = similar(free_surface.η)
+    return (; U=U, V=V, η=η)
 end
