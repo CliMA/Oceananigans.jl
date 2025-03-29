@@ -25,7 +25,7 @@ using Oceananigans.TurbulenceClosures
             for closure in (ScalarDiffusivity(ν=1, κ=0.5),
                             ScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=0.5))
 
-                model = HydrostaticFreeSurfaceModel(; grid, 
+                model = HydrostaticFreeSurfaceModel(; grid,
                                                     tracers = :b,
                                                     buoyancy = BuoyancyTracer(),
                                                     closure = closure)
@@ -37,7 +37,7 @@ using Oceananigans.TurbulenceClosures
                 set!(model, u = 1, b = (x, y, z) -> 4z)
 
                 # Inside the bump
-                @test b[4, 4, 2] == 0 
+                @test b[4, 4, 2] == 0
                 @test u[4, 4, 2] == 0
 
                 simulation = Simulation(model, Δt = 1e-3, stop_iteration=2)
@@ -52,7 +52,7 @@ using Oceananigans.TurbulenceClosures
 
         @testset "Surface boundary conditions with immersed boundaries [$arch_str]" begin
             @info "  Testing surface boundary conditions with ImmersedBoundaries in HydrostaticFreeSurfaceModel [$arch_str]..."
-        
+
             Nx = 60
             Ny = 60
 

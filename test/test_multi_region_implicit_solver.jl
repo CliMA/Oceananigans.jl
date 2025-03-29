@@ -41,7 +41,7 @@ function geostrophic_adjustment_test(free_surface, grid; regions = 1)
 
     simulation = Simulation(model; Δt, stop_iteration = 10)
     run!(simulation)
-    
+
     return η
 end
 
