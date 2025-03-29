@@ -1,7 +1,44 @@
-struct CubedSphereConformalMapping{FT, Rotation}
+struct CubedSphereConformalMapping{FT, Rotation, F, C}
     ξ :: Tuple{FT, FT}
     η :: Tuple{FT, FT}
     rotation :: Rotation
+    ξᶠᵃᵃ :: F
+    ηᵃᶠᵃ :: F
+    ξᶜᵃᵃ :: C
+    ηᵃᶜᵃ :: C
+
+    CubedSphereConformalMapping(
+        ξ::Tuple{FT, FT},
+        η::Tuple{FT, FT},
+        rotation::Rotation,
+        ξᶠᵃᵃ::F,
+        ηᵃᶠᵃ::F,
+        ξᶜᵃᵃ::C,
+        ηᵃᶜᵃ::C
+    ) where {FT, Rotation, F, C} = new{FT, Rotation, F, C}(ξ, η, rotation, ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ)
+end
+
+function on_architecture(architecture, conformal_mapping::CubedSphereConformalMapping)
+    return CubedSphereConformalMapping(
+        conformal_mapping.ξ,
+        conformal_mapping.η,
+        conformal_mapping.rotation,
+        on_architecture(architecture, conformal_mapping.ξᶠᵃᵃ),
+        on_architecture(architecture, conformal_mapping.ηᵃᶠᵃ),
+        on_architecture(architecture, conformal_mapping.ξᶜᵃᵃ),
+        on_architecture(architecture, conformal_mapping.ηᵃᶜᵃ)
+    )
+end
+
+function Adapt.adapt_structure(to, conformal_mapping::CubedSphereConformalMapping)
+    return CubedSphereConformalMapping(
+        conformal_mapping.ξ,
+        conformal_mapping.η,
+        adapt(to, conformal_mapping.rotation),
+        adapt(to, conformal_mapping.ξᶠᵃᵃ),
+        adapt(to, conformal_mapping.ηᵃᶠᵃ),
+        adapt(to, conformal_mapping.ξᶜᵃᵃ),
+        adapt(to, conformal_mapping.ηᵃᶜᵃ))
 end
 
 # TODO: this belongs elsewhere.
@@ -21,7 +58,6 @@ const ConformalCubedSpherePanelGrid = OrthogonalSphericalShellGrid{<:Any,
 conformal_cubed_sphere_panel(FT::DataType; kwargs...) = conformal_cubed_sphere_panel(CPU(), FT; kwargs...)
 
 function load_and_offset_cubed_sphere_data(file, FT, arch, field_name, loc, topo, N, H)
-
     data = on_architecture(arch, file[field_name])
     data = convert.(FT, data)
 
@@ -55,15 +91,21 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
     loc_cf = (Center, Face)
     loc_ff = (Face,   Face)
 
-     ξᶠᵃᵃ = on_architecture(architecture, file["ξᶠᵃᵃ"])
-     ξᶠᵃᵃ = convert.(FT, ξᶠᵃᵃ)
-     ηᵃᶠᵃ = on_architecture(architecture, file["ηᵃᶠᵃ"])
-     ηᵃᶠᵃ = convert.(FT, ηᵃᶠᵃ)
+    # Use a regular rectilinear grid for the face of the cube.
+    ξη_grid_topology = (Bounded, Bounded, TZ)
 
-     ξᶜᵃᵃ = on_architecture(architecture, file["ξᶜᵃᵃ"])
-     ξᶜᵃᵃ = convert.(FT, ξᶜᵃᵃ)
-     ηᵃᶜᵃ = on_architecture(architecture, file["ηᵃᶜᵃ"])
-     ηᵃᶜᵃ = convert.(FT, ηᵃᶜᵃ)
+    ξ = (-1, 1)
+    η = (-1, 1)
+
+    ξη_grid = RectilinearGrid(architecture, FT;
+                              size = (Nξ, Nη, Nz),
+                              topology = ξη_grid_topology,
+                              x = ξ, y = η, z, halo)
+
+     ξᶠᵃᵃ = xnodes(ξη_grid, Face())
+     ξᶜᵃᵃ = xnodes(ξη_grid, Center())
+     ηᵃᶠᵃ = ynodes(ξη_grid, Face())
+     ηᵃᶜᵃ = ynodes(ξη_grid, Center())
 
      λᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "λᶜᶜᵃ", loc_cc, topology, N, H)
      λᶠᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "λᶠᶠᵃ", loc_ff, topology, N, H)
@@ -101,10 +143,10 @@ function conformal_cubed_sphere_panel(filepath::AbstractString, architecture = C
     Lz, z  = generate_coordinate(FT, topology, (Nξ, Nη, Nz), halo, z,  :z, 3, architecture)
 
     ξ, η = (-1, 1), (-1, 1)
-    conformal_mapping = CubedSphereConformalMapping(ξ, η, rotation)
+    conformal_mapping = CubedSphereConformalMapping(ξ, η, rotation, ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ)
+    conformal_mapping = on_architecture(architecture, conformal_mapping)
 
     return OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
-                                                     ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ,
                                                      λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
                                                      φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ,
                                                      z,
@@ -124,10 +166,7 @@ function with_halo(new_halo, old_grid::OrthogonalSphericalShellGrid; arch=archit
 
     z = cpu_face_constructor_z(old_grid)
 
-    ξᶠᵃᵃ = old_grid.ξᶠᵃᵃ
-    ηᵃᶠᵃ = old_grid.ηᵃᶠᵃ
-    ξᶜᵃᵃ = old_grid.ξᶜᵃᵃ
-    ηᵃᶜᵃ = old_grid.ηᵃᶜᵃ
+    provided_conformal_mapping = old_grid.conformal_mapping
 
     new_grid = conformal_cubed_sphere_panel(arch, eltype(old_grid);
                                             size, z, ξ, η,
@@ -135,8 +174,8 @@ function with_halo(new_halo, old_grid::OrthogonalSphericalShellGrid; arch=archit
                                             radius = old_grid.radius,
                                             halo = new_halo,
                                             rotation,
-                                            use_existing_conformal_mapping = true,
-                                            ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ)
+                                            use_provided_conformal_mapping = true,
+                                            provided_conformal_mapping)
 
     return new_grid
 end
@@ -154,11 +193,8 @@ end
                                  rotation = nothing,
                                  non_uniform_conformal_mapping = false,
                                  spacing_type = "geometric",
-                                 use_existing_conformal_mapping = false,
-                                 ξᶠᵃᵃ = LinRange(-1.0, 1.0, size[1]+1),
-                                 ηᵃᶠᵃ = LinRange(-1.0, 1.0, size[2]+1),
-                                 ξᶜᵃᵃ = LinRange(-1.0 + 1.0/size[1], 1.0 - 1.0/size[1], size[1]),
-                                 ηᵃᶜᵃ = LinRange(-1.0 + 1.0/size[2], 1.0 - 1.0/size[2], size[2])))
+                                 use_provided_conformal_mapping = false,
+                                 provided_conformal_mapping = nothing)
 
 Create a `OrthogonalSphericalShellGrid` that represents a section of a sphere after it has been conformally mapped from
 the face of a cube. The cube's coordinates are `ξ` and `η` (which, by default, both take values in the range
@@ -208,14 +244,11 @@ Keyword arguments
 - `spacing_type`: Specifies the spacing scheme for the non-uniform conformal mapping. Options are `"geometric"`
                   (default) or `"exponential"`.
 
-- `use_existing_conformal_mapping`: If `true`, the cubed sphere panel grid will use the existing conformal mapping
-                                    provided by the user. The default is `false`.
+- `use_provided_conformal_mapping`: If `true`, the cubed sphere panel grid will use the conformal mapping supplied by 
+                                    the user. Defaults to `false`.
 
-- `ξᶠᵃᵃ`, `ηᵃᶠᵃ`: One-dimensional arrays specifying the computational coordinates in the ξ and η directions at edge
-                  locations of the cubed sphere panel grid.
-
-- `ξᶜᵃᵃ`, `ηᵃᶜᵃ`: One-dimensional arrays specifying the computational coordinates in the ξ and η directions at
-                  cell-centered locations of the cubed sphere panel grid.
+- `provided_conformal_mapping`: The conformal mapping supplied by the user. Used only if use_provided_conformal_mapping 
+                                is true.
 
 Examples
 ========
@@ -258,27 +291,29 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
                                       rotation = nothing,
                                       non_uniform_conformal_mapping = false,
                                       spacing_type = "geometric",
-                                      use_existing_conformal_mapping = false,
-                                      ξᶠᵃᵃ = LinRange(-1.0, 1.0, size[1]+1),
-                                      ηᵃᶠᵃ = LinRange(-1.0, 1.0, size[2]+1),
-                                      ξᶜᵃᵃ = LinRange(-1.0 + 1.0/size[1], 1.0 - 1.0/size[1], size[1]),
-                                      ηᵃᶜᵃ = LinRange(-1.0 + 1.0/size[2], 1.0 - 1.0/size[2], size[2]))
+                                      use_provided_conformal_mapping = false,
+                                      provided_conformal_mapping = nothing)
 
     radius = FT(radius)
     TX, TY, TZ = topology
     Nξ, Nη, Nz = size
     Hx, Hy, Hz = halo
 
-    # Use a regular rectilinear grid for the face of the cube
+    # Use a regular rectilinear grid for the face of the cube. 
     ξη_grid_topology = (Bounded, Bounded, topology[3])
 
-    # construct the grid on CPU and convert to architecture later...
+    # Construct the grid on CPU and convert to architecture later...
     ξη_grid = RectilinearGrid(CPU(), FT;
                               size = (Nξ, Nη, Nz),
                               topology = ξη_grid_topology,
-                              x=ξ, y=η, z, halo)
+                              x = ξ, y = η, z, halo)
 
-    if !use_existing_conformal_mapping
+    if use_provided_conformal_mapping
+        ξᶠᵃᵃ = on_architecture(CPU(), provided_conformal_mapping.ξᶠᵃᵃ)
+        ηᵃᶠᵃ = on_architecture(CPU(), provided_conformal_mapping.ηᵃᶠᵃ)
+        ξᶜᵃᵃ = on_architecture(CPU(), provided_conformal_mapping.ξᶜᵃᵃ)
+        ηᵃᶜᵃ = on_architecture(CPU(), provided_conformal_mapping.ηᵃᶜᵃ)
+    else
         if non_uniform_conformal_mapping
             ξᶠᵃᵃ, ηᵃᶠᵃ, xᶠᶠᵃ, yᶠᶠᵃ, z = (
             optimized_non_uniform_conformal_cubed_sphere_coordinates(Nξ+1, Nη+1, spacing_type))
@@ -290,11 +325,6 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
             ηᵃᶠᵃ = ynodes(ξη_grid, Face())
             ηᵃᶜᵃ = ynodes(ξη_grid, Center())
         end
-    else
-        ξᶠᵃᵃ = on_architecture(CPU(), ξᶠᵃᵃ)
-        ηᵃᶠᵃ = on_architecture(CPU(), ηᵃᶠᵃ)
-        ξᶜᵃᵃ = on_architecture(CPU(), ξᶜᵃᵃ)
-        ηᵃᶜᵃ = on_architecture(CPU(), ηᵃᶜᵃ)
     end
 
     ## The vertical coordinates and metrics can come out of the regular rectilinear grid!
@@ -689,8 +719,6 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
     Azᶜᶠᵃ = add_halos(Azᶜᶠᵃ, (Center, Face,   Nothing), args...; warnings)
     Azᶠᶠᵃ = add_halos(Azᶠᶠᵃ, (Face,   Face,   Nothing), args...; warnings)
 
-    computational_coordinate_arrays = (ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ)
-
     coordinate_arrays = (λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
                          φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ,
                          zc)
@@ -699,10 +727,11 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
                      Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
                      Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
 
-    conformal_mapping = CubedSphereConformalMapping(ξ, η, rotation)
+    conformal_mapping = CubedSphereConformalMapping(ξ, η, rotation, ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ)
+
+    # Now we can create the grid.
 
     grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(CPU(), Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
-                                                    computational_coordinate_arrays...,
                                                     coordinate_arrays...,
                                                     metric_arrays...,
                                                     radius,
@@ -712,8 +741,6 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
 
     # Now convert to proper architecture.
 
-    computational_coordinate_arrays = (grid.ξᶠᵃᵃ, grid.ηᵃᶠᵃ, grid.ξᶜᵃᵃ, grid.ηᵃᶜᵃ)
-
     coordinate_arrays = (grid.λᶜᶜᵃ, grid.λᶠᶜᵃ, grid.λᶜᶠᵃ, grid.λᶠᶠᵃ,
                          grid.φᶜᶜᵃ, grid.φᶠᶜᵃ, grid.φᶜᶠᵃ, grid.φᶠᶠᵃ,
                          grid.z)
@@ -722,14 +749,15 @@ function conformal_cubed_sphere_panel(architecture::AbstractArchitecture = CPU()
                      grid.Δyᶜᶜᵃ, grid.Δyᶠᶜᵃ, grid.Δyᶜᶠᵃ, grid.Δyᶠᶠᵃ,
                      grid.Azᶜᶜᵃ, grid.Azᶠᶜᵃ, grid.Azᶜᶠᵃ, grid.Azᶠᶠᵃ)
 
-    computational_coordinate_arrays = map(a -> on_architecture(architecture, a), computational_coordinate_arrays)
+    conformal_mapping = grid.conformal_mapping
 
     coordinate_arrays = map(a -> on_architecture(architecture, a), coordinate_arrays)
 
     metric_arrays = map(a -> on_architecture(architecture, a), metric_arrays)
 
+    conformal_mapping = on_architecture(architecture, conformal_mapping)
+
     grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture, Nξ, Nη, Nz, Hx, Hy, Hz, Lz,
-                                                    computational_coordinate_arrays...,
                                                     coordinate_arrays...,
                                                     metric_arrays...,
                                                     radius,
