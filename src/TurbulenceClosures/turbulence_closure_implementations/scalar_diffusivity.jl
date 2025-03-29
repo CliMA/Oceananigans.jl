@@ -155,7 +155,8 @@ const HorizontalDivergenceScalarDiffusivity{TD} = ScalarDiffusivity{TD, Horizont
 
 Shorthand for a `ScalarDiffusivity` with `VerticalFormulation()`. See [`ScalarDiffusivity`](@ref).
 """
-@inline VerticalScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(), FT::DataType=Float64; kwargs...) =
+@inline VerticalScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
+                                  FT::DataType=Oceananigans.defaults.FloatType; kwargs...) =
     ScalarDiffusivity(time_discretization, VerticalFormulation(), FT; kwargs...)
 
 """
@@ -165,7 +166,8 @@ Shorthand for a `ScalarDiffusivity` with `VerticalFormulation()`. See [`ScalarDi
 
 Shorthand for a `ScalarDiffusivity` with `HorizontalFormulation()`. See [`ScalarDiffusivity`](@ref).
 """
-@inline HorizontalScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(), FT::DataType=Float64; kwargs...) =
+@inline HorizontalScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
+                                  FT::DataType=Oceananigans.defaults.FloatType; kwargs...) =
     ScalarDiffusivity(time_discretization, HorizontalFormulation(), FT; kwargs...)
 
 """
@@ -175,7 +177,8 @@ Shorthand for a `ScalarDiffusivity` with `HorizontalFormulation()`. See [`Scalar
 
 Shorthand for a `ScalarDiffusivity` with `HorizontalDivergenceFormulation()`. See [`ScalarDiffusivity`](@ref).
 """
-@inline HorizontalDivergenceScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(), FT::DataType=Float64; kwargs...) =
+@inline HorizontalDivergenceScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
+                                              FT::DataType=Oceananigans.defaults.FloatType; kwargs...) =
     ScalarDiffusivity(time_discretization, HorizontalDivergenceFormulation(), FT; kwargs...)
 
 # Aliases that allow specify the floating type, assuming that the discretization is Explicit in time
