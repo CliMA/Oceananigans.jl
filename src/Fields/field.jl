@@ -81,10 +81,10 @@ function validate_boundary_conditions(loc, grid, bcs)
 end
 
 # Some special validation for a zipper boundary condition
-validate_boundary_condition_location(bc::Zipper, loc::Center, side) = 
+validate_boundary_condition_location(bc::Zipper, loc::Center, side) =
     side == :north ? nothing : throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc) (north only)!"))
 
-validate_boundary_condition_location(bc::Zipper, loc::Face, side) = 
+validate_boundary_condition_location(bc::Zipper, loc::Face, side) =
     side == :north ? nothing : throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc) (north only)!"))
 
 
@@ -517,15 +517,6 @@ const ReducedField = Union{XReducedField,
                            XZReducedField,
                            XYReducedField,
                            XYZReducedField}
-
-reduced_dimensions(::Field)   = ()
-reduced_dimensions(::XReducedField)   = tuple(1)
-reduced_dimensions(::YReducedField)   = tuple(2)
-reduced_dimensions(::ZReducedField)   = tuple(3)
-reduced_dimensions(::YZReducedField)  = (2, 3)
-reduced_dimensions(::XZReducedField)  = (1, 3)
-reduced_dimensions(::XYReducedField)  = (1, 2)
-reduced_dimensions(::XYZReducedField) = (1, 2, 3)
 
 @propagate_inbounds Base.getindex(r::XReducedField, i, j, k) = getindex(r.data, 1, j, k)
 @propagate_inbounds Base.getindex(r::YReducedField, i, j, k) = getindex(r.data, i, 1, k)
