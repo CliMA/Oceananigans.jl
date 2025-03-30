@@ -19,7 +19,12 @@ Base.summary(::NotImmersed{Nothing}) = "NotImmersed()"
 Base.summary(::NotImmersed) = string("NotImmersed(", summary(condition), ")")
 Base.size(ni::NotImmersed{<:AbstractArray}) = size(ni.condition)
 
-validate_condition(cond::NotImmersed{<:AbstractArray}, operand::AbstractField) = validate_condition(cond.condition, operand)
+function validate_condition(cond::NotImmersed{<:AbstractArray}, operand::AbstractField)
+    if size(cond) !== size(operand)
+        throw(ArgumentError("The keyword argument condition::AbstractArray requires size $(size(operand))"))
+    end
+    return cond
+end
 
 
 # ImmersedField
