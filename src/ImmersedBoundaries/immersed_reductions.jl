@@ -19,7 +19,7 @@ Base.summary(::NotImmersed{Nothing}) = "NotImmersed()"
 Base.summary(::NotImmersed) = string("NotImmersed(", summary(condition), ")")
 Base.size(ni::NotImmersed{<:AbstractArray}) = size(ni.condition)
 
-validate_condition(cond::NotImmersed{<:AbstractArray}, operand::AbstractField) = validate_condition(cond.conditio, operand)
+validate_condition(cond::NotImmersed{<:AbstractArray}, operand::AbstractField) = validate_condition(cond.condition, operand)
 
 
 # ImmersedField
