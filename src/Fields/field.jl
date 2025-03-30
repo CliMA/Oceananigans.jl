@@ -674,9 +674,11 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                     mask = get_neutral_mask(Base.$(reduction!)),
                                     kwargs...)
 
+            operand = condition_operand(f, a, condition, mask)
+
             return Base.$(reduction!)(identity,
                                       interior(r),
-                                      condition_operand(f, a, condition, mask);
+                                      operand;
                                       kwargs...)
         end
 
@@ -704,7 +706,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             loc = reduced_location(location(c); dims)
             r = Field(loc, c.grid, T; indices=indices(c))
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
-            Base.$(reduction!)(identity, r, conditioned_c, init=false)
+            Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
 
             if dims isa Colon
                 return CUDA.@allowscalar first(r)

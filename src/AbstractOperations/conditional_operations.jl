@@ -110,6 +110,16 @@ function ConditionalOperation(c::ConditionalOperation;
                               mask = c.mask)
 
     LX, LY, LZ = location(c)
+    compined_func = func ∘ c.func
+
+    return ConditionalOperation{LX, LY, LZ}(c.operand, compined_func, c.grid, condition, mask)
+end
+
+function ConditionalOperation(c::NoFuncCO;
+                              func = c.func,
+                              condition = c.condition,
+                              mask = c.mask)
+    LX, LY, LZ = location(c)
     return ConditionalOperation{LX, LY, LZ}(c.operand, func, c.grid, condition, mask)
 end
 
@@ -142,7 +152,7 @@ end
 # Conditions: general, nothing, array
 @inline evaluate_condition(condition, i, j, k, grid, args...) = condition(i, j, k, grid, args...)
 @inline evaluate_condition(::Nothing, i, j, k, grid, args...) = true
-@propagate_inbounds evaluate_condition(condition::AbstractArray, i, j, k, grid, args...) = condition[i, j, k]
+@propagate_inbounds evaluate_condition(condition::AbstractArray, i, j, k, grid, args...) = @inbounds condition[i, j, k]
 
 @inline condition_operand(func, op, condition, mask) = ConditionalOperation(op; func, condition, mask)
 

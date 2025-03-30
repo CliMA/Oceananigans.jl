@@ -142,4 +142,3 @@ reduced_dimensions(field::YZReducedAF)   = (2, 3)
 reduced_dimensions(field::XZReducedAF)   = (1, 3)
 reduced_dimensions(field::XYReducedAF)   = (1, 2)
 reduced_dimensions(field::XYZReducedAF)  = (1, 2, 3)
-
