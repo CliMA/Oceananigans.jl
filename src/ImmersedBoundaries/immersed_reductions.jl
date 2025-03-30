@@ -9,18 +9,6 @@ import Oceananigans.Fields: condition_operand, conditional_length
 ##### which includes both external nodes and nodes on the immersed interface.
 #####
 
-struct InactiveCellKernelFunction end
-struct ActiveCellKernelFunction end
-@inline (::InactiveCellKernelFunction)(i, j, k, grid) = inactive_cell(i, j, k, grid)
-@inline (::ActiveCellKernelFunction)(i, j, k, grid) = !inactive_cell(i, j, k, grid)
-const InactiveCellOperation{LX, LY, LZ, G, T} =
-    KernelFunctionOperation{LX, LY, LZ, G, T, <:InactiveCellKernelFunction}
-const ActiveCellOperation{LX, LY, LZ, G, T} =
-    KernelFunctionOperation{LX, LY, LZ, G, T, <:ActiveCellKernelFunction}
-
-InactiveCellOperation(grid) = KernelFunctionOperation{Center, Center, Center}(InactiveCellKernelFunction(), grid)
-ActiveCellOperation(grid)   = KernelFunctionOperation{Center, Center, Center}(ActiveCellKernelFunction(), grid)
-
 struct NotImmersed{F} <: Function
     condition :: F
 end
