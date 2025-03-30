@@ -586,15 +586,6 @@ const ReducedAbstractField = Union{XReducedAbstractField,
                                    XYReducedAbstractField,
                                    XYZReducedAbstractField}
 
-reduced_dimensions(::AbstractField)   = ()
-reduced_dimensions(::XReducedAbstractField)   = tuple(1)
-reduced_dimensions(::YReducedAbstractField)   = tuple(2)
-reduced_dimensions(::ZReducedAbstractField)   = tuple(3)
-reduced_dimensions(::YZReducedAbstractField)  = (2, 3)
-reduced_dimensions(::XZReducedAbstractField)  = (1, 3)
-reduced_dimensions(::XYReducedAbstractField)  = (1, 2)
-reduced_dimensions(::XYZReducedAbstractField) = (1, 2, 3)
-
 # TODO: needs test
 Statistics.dot(a::Field, b::Field) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))
 
