@@ -68,8 +68,8 @@ julia> using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 
 julia> teos10 = TEOS10EquationOfState()
 BoussinesqEquationOfState{Float64}:
-    ├── seawater_polynomial: TEOS10SeawaterPolynomial{Float64}
-    └── reference_density: 1020.0
+├── seawater_polynomial: TEOS10SeawaterPolynomial{Float64}
+└── reference_density: 1020.0
 ```
 
 Buoyancy that depends on both temperature and salinity
