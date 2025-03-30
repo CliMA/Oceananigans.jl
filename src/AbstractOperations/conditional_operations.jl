@@ -1,6 +1,7 @@
-using Oceananigans.Fields: OneField
+using Oceananigans.Fields: OneField, ReducedAbstractField, filltype, reduced_location, initialize_reduced_field!
 using Oceananigans.Grids: architecture
 
+import Base: minimum, maximum, sum, all, any, prod
 import Oceananigans.Architectures: on_architecture
 import Oceananigans.Fields: condition_operand, conditional_length, set!, compute_at!, indices
 
@@ -113,7 +114,6 @@ function ConditionalOperation(c::ConditionalOperation;
                               func = c.func,
                               condition = c.condition,
                               mask = c.mask)
-
     LX, LY, LZ = location(c)
     compined_func = func ∘ c.func
 
@@ -204,3 +204,73 @@ Base.show(io::IO, operation::ConditionalOperation) =
               "├── func: ", summary(operation.func), '\n',
               "├── condition: ", summary(operation.condition), '\n',
               "└── mask: ", operation.mask)
+
+# Allocating and in-place reductions
+for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
+
+    reduction! = Symbol(reduction, '!')
+
+    @eval begin
+
+        # In-place
+        function Base.$(reduction!)(f::Function,
+                                    r::ReducedAbstractField,
+                                    co::ConditionalOperation;
+                                    init=true)
+
+            return Base.$(reduction!)(identity, interior(r), co; init)
+        end
+
+        function Base.$(reduction!)(r::ReducedAbstractField,
+                                    co::ConditionalOperation)
+
+            return Base.$(reduction!)(identity, interior(r), co)
+        end
+
+        # Allocating
+        function Base.$(reduction)(f::Function,
+                                   co::ConditionalOperation;
+                                   dims = :)
+
+            T = filltype(Base.$(reduction!), co)
+            loc = reduced_location(location(co); dims)
+            r = Field(loc, co.grid, T; indices=indices(co))
+            initialize_reduced_field!(Base.$(reduction!), identity, r, co)
+            Base.$(reduction!)(identity, interior(r), co, init=false)
+
+            if dims isa Colon
+                return CUDA.@allowscalar first(r)
+            else
+                return r
+            end
+        end
+
+        Base.$(reduction)(co::ConditionalOperation; dims=:) = Base.$(reduction)(identity, co; dims)
+    end
+end
+
+Statistics.mean(f::Function, c::AbstractField; condition = nothing, dims=:) = Statistics._mean(f, c, dims; condition)
+Statistics.mean(c::AbstractField; condition = nothing, dims=:) = Statistics._mean(identity, c, dims; condition)
+
+function Statistics.mean!(f::Function, r::ReducedAbstractField, co::ConditionalOperation)
+    sum!(f, r, co, init=true)
+    dims = reduced_dimension(location(r))
+    n = conditional_length(co, dims)
+    r ./= n
+    return r
+end
+
+Statistics.mean!(r::ReducedAbstractField, a::AbstractArray; kwargs...) = Statistics.mean!(identity, r, a; kwargs...)
+
+function Statistics.norm(a::AbstractField; condition = nothing)
+    r = zeros(a.grid, 1)
+    Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
+    return CUDA.@allowscalar sqrt(r[1])
+end
+
+function Base.isapprox(a::AbstractField, b::AbstractField; kw...)
+    conditioned_a = condition_operand(a, nothing, one(eltype(a)))
+    conditioned_b = condition_operand(b, nothing, one(eltype(b)))
+    # TODO: Make this non-allocating?
+    return all(isapprox.(conditioned_a, conditioned_b; kw...))
+end
