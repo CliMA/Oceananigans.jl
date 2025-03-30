@@ -1,4 +1,5 @@
 using Oceananigans.Fields: AbstractField, indices
+using Oceananigans.AbstractOperations: KernelFunctionOperation
 
 import Oceananigans.AbstractOperations: ConditionalOperation, evaluate_condition, validate_condition
 import Oceananigans.Fields: condition_operand, conditional_length
@@ -8,7 +9,17 @@ import Oceananigans.Fields: condition_operand, conditional_length
 ##### which includes both external nodes and nodes on the immersed interface.
 #####
 
-@inline truefunc(args...) = true
+struct InactiveCellKernelFunction end
+struct ActiveCellKernelFunction end
+@inline (::InactiveCellKernelFunction)(i, j, k, grid) = inactive_cell(i, j, k, grid)
+@inline (::ActiveCellKernelFunction)(i, j, k, grid) = !inactive_cell(i, j, k, grid)
+const InactiveCellOperation{LX, LY, LZ, G, T} =
+    KernelFunctionOperation{LX, LY, LZ, G, T, <:InactiveCellKernelFunction}
+const ActiveCellOperation{LX, LY, LZ, G, T} =
+    KernelFunctionOperation{LX, LY, LZ, G, T, <:ActiveCellKernelFunction}
+
+InactiveCellOperation(grid) = KernelFunctionOperation{Center, Center, Center}(InactiveCellKernelFunction(), grid)
+ActiveCellOperation(grid)   = KernelFunctionOperation{Center, Center, Center}(ActiveCellKernelFunction(), grid)
 
 struct NotImmersed{F} <: Function
     condition :: F
@@ -16,7 +27,7 @@ end
 
 NotImmersed() = NotImmersed(nothing)
 Base.summary(::NotImmersed{Nothing}) = "NotImmersed()"
-Base.summary(::NotImmersed) = string("NotImmersed(", summary(condition), ")")
+Base.summary(ni::NotImmersed) = string("NotImmersed(", summary(ni.condition), ")")
 Base.size(ni::NotImmersed{<:AbstractArray}) = size(ni.condition)
 
 function validate_condition(cond::NotImmersed{<:AbstractArray}, operand::AbstractField)
@@ -35,7 +46,11 @@ function ConditionalOperation(operand::IF;
                               condition = nothing,
                               mask = zero(eltype(operand)))
 
-    immersed_condition = NotImmersed(condition)
+    if !(condition isa NotImmersed) && !(condition isa NotImmersedColumn)
+        immersed_condition = NotImmersed(condition)
+    else
+        immersed_condition = condition # its already immersed
+    end
     LX, LY, LZ = location(operand)
     grid = operand.grid
     return ConditionalOperation{LX, LY, LZ}(operand, func, grid, immersed_condition, mask)
@@ -74,10 +89,16 @@ end
 ##### Reduction operations on Reduced Fields test the immersed condition on the entirety of the immersed direction
 #####
 
-struct NotImmersedColumn{F, IC} <:Function
+struct NotImmersedColumn{F, IC} <: Function
     immersed_column :: IC
     condition :: F
 end
+
+Base.summary(nic::NotImmersedColumn) = string("NotImmersedColumn(",
+                                              summary(nic.immersed_column), ", ",
+                                              summary(nic.condition), ") ")
+
+Base.show(io::IO, nic::NotImmersedColumn) = print(io, Base.summary(nic))
 
 NotImmersedColumn(immersed_column) = NotImmersedColumn(immersed_column, nothing)
 
@@ -99,7 +120,12 @@ const IRF = Union{XIRF, YIRF, ZIRF, YZIRF, XZIRF, XYIRF, XYZIRF}
 
 @inline function condition_operand(func, op::IRF, condition, mask)
     immersed_condition = NotImmersedColumn(immersed_column(op), condition)
-    return ConditionalOperation(op; func, condition, mask)
+    return ConditionalOperation(op; func, condition=immersed_condition, mask)
+end
+
+@inline function condition_operand(::Nothing, op::IRF, ::Nothing, mask)
+    immersed_condition = NotImmersedColumn(immersed_column(op), nothing)
+    return ConditionalOperation(op; func=nothing, condition=immersed_condition, mask)
 end
 
 @inline function immersed_column(field::IRF)
@@ -114,13 +140,12 @@ end
 @inline center_to_nothing(::Type{Center})  = Center
 @inline center_to_nothing(::Type{Nothing}) = Center
 
-@inline function evaluate_condition(nic::NotImmersedColumn,
-                                    i, j, k,
+@inline function evaluate_condition(nic::NotImmersedColumn, i, j, k,
                                     grid::ImmersedBoundaryGrid,
-                                    co::ConditionalOperation, args...)
-    LX, LY, LZ = location(co)
+                                    ::ConditionalOperation, args...)
     immersed = is_immersed_column(i, j, k, nic.immersed_column)
-    return !immersed & evaluate_condition(nic.condition, i, j, k, grid, args...)
+    value = !immersed & evaluate_condition(nic.condition, i, j, k, grid, args...)
+    return value
 end
 
 @inline is_immersed_column(i, j, k, column) = @inbounds column[i, j, k] == 0
