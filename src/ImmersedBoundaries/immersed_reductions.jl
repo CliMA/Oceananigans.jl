@@ -1,6 +1,6 @@
 using Oceananigans.Fields: AbstractField, indices
 
-import Oceananigans.AbstractOperations: ConditionalOperation, evaluate_condition
+import Oceananigans.AbstractOperations: ConditionalOperation, evaluate_condition, validate_condition
 import Oceananigans.Fields: condition_operand, conditional_length
 
 #####
@@ -17,6 +17,10 @@ end
 NotImmersed() = NotImmersed(nothing)
 Base.summary(::NotImmersed{Nothing}) = "NotImmersed()"
 Base.summary(::NotImmersed) = string("NotImmersed(", summary(condition), ")")
+Base.size(ni::NotImmersed{<:AbstractArray}) = size(ni.condition)
+
+validate_condition(cond::NotImmersed{<:AbstractArray}, operand::AbstractField) = validate_condition(cond.conditio, operand)
+
 
 # ImmersedField
 const IF = AbstractField{<:Any, <:Any, <:Any, <:ImmersedBoundaryGrid}
@@ -43,7 +47,7 @@ end
     ℓx, ℓy, ℓz = map(instantiate, location(co))
     immersed = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz) | inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
     return !immersed
-end 
+end
 
 @inline function evaluate_condition(ni::NotImmersed,
                                     i, j, k,
@@ -53,13 +57,13 @@ end
     ℓx, ℓy, ℓz = map(instantiate, location(co))
     immersed = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz) | inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
     return !immersed & evaluate_condition(ni.condition, i, j, k, grid, co, args...)
-end 
+end
 
 @inline function evaluate_condition(condition::NotImmersed, i::AbstractArray, j::AbstractArray, k::AbstractArray, ibg, co::ConditionalOperation, args...)
     ℓx, ℓy, ℓz = map(instantiate, location(co))
     immersed = immersed_peripheral_node(i, j, k, ibg, ℓx, ℓy, ℓz) .| inactive_node(i, j, k, ibg, ℓx, ℓy, ℓz)
     return Base.broadcast(!, immersed) .& evaluate_condition(condition.func, i, j, k, ibg, args...)
-end 
+end
 
 #####
 ##### Reduction operations on Reduced Fields test the immersed condition on the entirety of the immersed direction
@@ -112,7 +116,7 @@ end
     LX, LY, LZ = location(co)
     immersed = is_immersed_column(i, j, k, nic.immersed_column)
     return !immersed & evaluate_condition(nic.condition, i, j, k, grid, args...)
-end 
+end
 
 @inline is_immersed_column(i, j, k, column) = @inbounds column[i, j, k] == 0
 
