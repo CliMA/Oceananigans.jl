@@ -23,6 +23,11 @@ struct ConditionalOperation{LX, LY, LZ, F, C, O, G, M, T} <: AbstractOperation{L
     end
 end
 
+# Some special cases
+const NoFuncCO = ConditionalOperation{<:Any, <:Any, <:Any, Nothing}
+const NoConditionCO = ConditionalOperation{<:Any, <:Any, <:Any, <:Any, Nothing}
+const NoFuncNoConditionCO = ConditionalOperation{<:Any, <:Any, <:Any, Nothing, Nothing}
+
 """
     ConditionalOperation(operand::AbstractField;
                          func = nothing,
@@ -129,11 +134,6 @@ end
     func_value = co.func(value)
     return ifelse(conditioned, func_value, c.mask)
 end
-
-# Some special cases
-const NoFuncCO = ConditionalOperation{<:Any, <:Any, <:Any, Nothing}
-const NoConditionCO = ConditionalOperation{<:Any, <:Any, <:Any, <:Any, Nothing}
-const NoFuncNoConditionCO = ConditionalOperation{<:Any, <:Any, <:Any, Nothing, Nothing}
 
 using Base: @propagate_inbounds
 @propagate_inbounds function Base.getindex(co::NoConditionCO, i, j, k)
