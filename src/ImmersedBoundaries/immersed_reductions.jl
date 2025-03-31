@@ -36,7 +36,7 @@ function ConditionalOperation(operand::IF;
     if !(condition isa NotImmersed) && !(condition isa NotImmersedColumn)
         immersed_condition = NotImmersed(condition)
     else
-        immersed_condition = condition # its already immersed
+        immersed_condition = condition # it's already immersed
     end
     LX, LY, LZ = location(operand)
     grid = operand.grid
@@ -159,4 +159,3 @@ const NICO{LX, LY, LZ, F, C} = Union{
 }
 @inline conditional_length(c::NICO) = sum(conditional_one(c, 0))
 @inline conditional_length(c::NICO, dims) = sum(conditional_one(c, 0); dims = dims)
-
