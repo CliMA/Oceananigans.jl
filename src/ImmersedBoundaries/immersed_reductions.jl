@@ -115,6 +115,16 @@ end
     return ConditionalOperation(op; func=nothing, condition=immersed_condition, mask)
 end
 
+@inline function condition_operand(func, op::IF, condition, mask)
+    immersed_condition = NotImmersed(condition)
+    return ConditionalOperation(op; func, condition=immersed_condition, mask)
+end
+
+@inline function condition_operand(::Nothing, op::IF, ::Nothing, mask)
+    immersed_condition = NotImmersed()
+    return ConditionalOperation(op; func=nothing, condition=immersed_condition, mask)
+end
+
 @inline function immersed_column(field::IRF)
     grid         = field.grid
     reduced_dims = reduced_dimensions(field)
