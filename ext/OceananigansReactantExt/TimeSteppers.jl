@@ -41,7 +41,7 @@ function Clock(::ReactantGrid)
 end
 
 function Clock(grid::ShardedGrid)
-    FT = Float64 # may change in the future
+    FT = Oceananigans.defaults.FloatType
     arch = architecture(grid)
     replicate = Sharding.NamedSharding(arch.connectivity, ())
     t = ConcreteRNumber(zero(FT), sharding=replicate)
