@@ -120,6 +120,11 @@ end
     return ConditionalOperation(op; func, condition=immersed_condition, mask)
 end
 
+@inline function condition_operand(func, op::IF, condition::AbstractArray, mask)
+    immersed_condition = NotImmersed(condition)
+    return ConditionalOperation(op; func, condition=immersed_condition, mask)
+end
+
 @inline function condition_operand(::Nothing, op::IF, ::Nothing, mask)
     immersed_condition = NotImmersed()
     return ConditionalOperation(op; func=nothing, condition=immersed_condition, mask)
