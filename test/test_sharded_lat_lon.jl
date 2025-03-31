@@ -14,7 +14,7 @@ Nhosts = 1
                                   z=(-1000, 0), 
                                   halo=(5, 5, 5))    
                               
-    # grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
+    grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
     model = run_distributed_simulation(grid)
 
     # Retrieve Serial quantities

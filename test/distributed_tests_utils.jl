@@ -99,7 +99,7 @@ function run_distributed_latitude_longitude_grid(arch, filename)
                                  z=(-1000, 0), 
                                  halo=(5, 5, 5))   
 
-    # grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))      
+    grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))      
     model = run_distributed_simulation(grid)
     
     η = reconstruct_global_field(model.free_surface.η)
