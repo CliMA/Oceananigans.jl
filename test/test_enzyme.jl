@@ -411,7 +411,7 @@ function compute_forward_u(simulation, initial_temperature, initial_salinity, wi
     return forward_u::Float64
 end
 
-@testset "Enzyme autodifferentiation of turbulence with buoyancy on a LatLongGrid" begin
+@testset "Enzyme autodifferentiation of turbulence with buoyancy on a LatLonGrid" begin
     arch = CPU()
     Nλ = 32
     Nφ = 32
