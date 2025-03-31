@@ -130,6 +130,12 @@ end
     return ConditionalOperation(op; func=nothing, condition=immersed_condition, mask)
 end
 
+@inline function condition_operand(func, operand::IF, condition::AbstractArray, mask)
+    condition = on_architecture(architecture(operand.grid), condition)
+    immersed_condition = NotImmersed(condition)
+    return ConditionalOperation(operand; func, condition=immersed_condition, mask)
+end
+
 @inline function immersed_column(field::IRF)
     grid         = field.grid
     reduced_dims = reduced_dimensions(field)
