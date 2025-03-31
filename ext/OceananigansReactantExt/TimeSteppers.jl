@@ -31,7 +31,7 @@ const ReactantModel{TS} = Union{
 }
 
 function Clock(::ReactantGrid)
-    FT = Float64 # may change in the future
+    FT = Oceananigans.defaults.FloatType
     t = ConcreteRNumber(zero(FT))
     iter = ConcreteRNumber(0)
     stage = 0 #ConcreteRNumber(0)
@@ -41,7 +41,7 @@ function Clock(::ReactantGrid)
 end
 
 function Clock(grid::ShardedGrid)
-    FT = Float64 # may change in the future
+    FT = Oceananigans.defaults.FloatType
     arch = architecture(grid)
     replicate = Sharding.NamedSharding(arch.connectivity, ())
     t = ConcreteRNumber(zero(FT), sharding=replicate)
