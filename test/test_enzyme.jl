@@ -384,8 +384,8 @@ end
 function time_step_with_buoyancy(simulation, Tᵢ, Sᵢ, wind_stress)
     model = simulation.model
 
-    model.tracers.T .= Tᵢ
-    model.tracers.S .= Sᵢ
+    set!(model.tracers.T, Tᵢ)
+    set!(model.tracers.S, Sᵢ)
     model.velocities.u.boundary_conditions.top.condition .= wind_stress
 
     # Initialize the model
