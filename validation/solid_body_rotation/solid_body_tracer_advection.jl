@@ -110,10 +110,10 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
 
     output_prefix = "solid_body_tracer_advection_Nx$(grid.Nx)"
 
-    simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                          schedule = TimeInterval(super_rotation_period / 20),
-                                                          filename = output_prefix,
-                                                          overwrite_existing = true)
+    simulation.output_writers[:fields] = JLD2Writer(model, output_fields,
+                                                    schedule = TimeInterval(super_rotation_period / 20),
+                                                    filename = output_prefix,
+                                                    overwrite_existing = true)
 
     run!(simulation)
 

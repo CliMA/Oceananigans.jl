@@ -40,14 +40,17 @@ Keyword arguments
           `condition == true`. Default is `identity`.
 
 - `condition`: either a function of `(i, j, k, grid, operand)` returning a Boolean,
-               or a 3-dimensional Boolean `AbstractArray`. At locations where `condition == false`,
-               operand will be masked by `mask`
+               or a 3-dimensional Boolean `AbstractArray`.
+               At locations where `condition == false`, operand will be masked by `mask`.
 
 - `mask`: the scalar mask
 
-`condition_operand` is a convenience function used to construct a `ConditionalOperation`
+`condition_operand` is a convenience function used to construct a `ConditionalOperation`, e.g.,
 
-`condition_operand(func::Function, operand::AbstractField, condition, mask) = ConditionalOperation(operand; func, condition, mask)`
+```julia
+condition_operand(func::Function, operand::AbstractField, condition, mask) =
+    ConditionalOperation(operand; func, condition, mask)
+```
 
 Example
 =======
@@ -82,8 +85,19 @@ function ConditionalOperation(operand::AbstractField;
                               condition = nothing,
                               mask = zero(eltype(operand)))
 
+    condition = validate_condition(condition, operand)
+
     LX, LY, LZ = location(operand)
     return ConditionalOperation{LX, LY, LZ}(operand, func, operand.grid, condition, mask)
+end
+
+validate_condition(cond, ::AbstractField) = cond # fallback
+
+function validate_condition(cond::AbstractArray, operand::AbstractField)
+    if size(cond) !== size(operand)
+        throw(ArgumentError("The keyword argument condition::AbstractArray requires size $(size(operand))"))
+    end
+    return cond
 end
 
 function ConditionalOperation(c::ConditionalOperation;

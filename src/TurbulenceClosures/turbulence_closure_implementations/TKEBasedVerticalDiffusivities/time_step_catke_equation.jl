@@ -163,11 +163,12 @@ end
     # See below.
     α = convert(FT, 1.5) + χ
     β = convert(FT, 0.5) + χ
+    mask = !inactive_cell(i, j, k, grid)
     
     @inbounds begin
         total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe
-        e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k])
-        G⁻e[i, j, k] = total_Gⁿe
+        e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k]) * mask
+        G⁻e[i, j, k] = total_Gⁿe * mask
     end
 end
 

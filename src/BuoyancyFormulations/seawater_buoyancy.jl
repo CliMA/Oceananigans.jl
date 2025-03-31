@@ -68,8 +68,8 @@ julia> using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 
 julia> teos10 = TEOS10EquationOfState()
 BoussinesqEquationOfState{Float64}:
-    ├── seawater_polynomial: TEOS10SeawaterPolynomial{Float64}
-    └── reference_density: 1020.0
+├── seawater_polynomial: TEOS10SeawaterPolynomial{Float64}
+└── reference_density: 1020.0
 ```
 
 Buoyancy that depends on both temperature and salinity
@@ -89,7 +89,7 @@ Buoyancy that depends only on salinity with temperature held at 20 degrees Celsi
 julia> salinity_dependent_buoyancy = SeawaterBuoyancy(equation_of_state=teos10, constant_temperature=20) 
 SeawaterBuoyancy{Float64}:
 ├── gravitational_acceleration: 9.80665
-├── constant_temperature: 20
+├── constant_temperature: 20.0
 └── equation_of_state: BoussinesqEquationOfState{Float64}
 ```
 
@@ -99,7 +99,7 @@ Buoyancy that depends only on temperature with salinity held at 35 psu
 julia> temperature_dependent_buoyancy = SeawaterBuoyancy(equation_of_state=teos10, constant_salinity=35)
 SeawaterBuoyancy{Float64}:
 ├── gravitational_acceleration: 9.80665
-├── constant_salinity: 35
+├── constant_salinity: 35.0
 └── equation_of_state: BoussinesqEquationOfState{Float64}
 ```
 """
@@ -115,6 +115,11 @@ function SeawaterBuoyancy(FT = Oceananigans.defaults.FloatType;
     # or sailnity is irrelevant.
     constant_temperature = constant_temperature === true ? zero(FT) : constant_temperature
     constant_salinity = constant_salinity === true ? zero(FT) : constant_salinity
+    equation_of_state = with_float_type(FT, equation_of_state)
+    gravitational_acceleration = convert(FT, gravitational_acceleration)
+    
+    constant_temperature = isnothing(constant_temperature) ? nothing : convert(FT, constant_temperature)
+    constant_salinity = isnothing(constant_salinity) ? nothing : convert(FT, constant_salinity)
 
     equation_of_state = SeawaterPolynomials.with_float_type(FT, equation_of_state)
     constant_temperature = constant_temperature isa Number ? convert(FT, constant_temperature) : constant_temperature
