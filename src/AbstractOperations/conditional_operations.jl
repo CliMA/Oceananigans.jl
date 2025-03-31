@@ -130,10 +130,10 @@ function ConditionalOperation(c::NoFuncCO;
 end
 
 @propagate_inbounds function Base.getindex(co::ConditionalOperation, i, j, k)
-    conditioned = evaluate_condition(co.condition, i, j, k, c.grid, c)
+    conditioned = evaluate_condition(co.condition, i, j, k, co.grid, co)
     value = getindex(co.operand, i, j, k)
     func_value = co.func(value)
-    return ifelse(conditioned, func_value, c.mask)
+    return ifelse(conditioned, func_value, co.mask)
 end
 
 @propagate_inbounds function Base.getindex(co::NoConditionCO, i, j, k)
