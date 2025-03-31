@@ -25,7 +25,6 @@ function validate_condition(cond::NotImmersed{<:AbstractArray}, operand::Abstrac
     return cond
 end
 
-
 # ImmersedField
 const IF = AbstractField{<:Any, <:Any, <:Any, <:ImmersedBoundaryGrid}
 
@@ -44,8 +43,8 @@ function ConditionalOperation(operand::IF;
     return ConditionalOperation{LX, LY, LZ}(operand, func, grid, immersed_condition, mask)
 end
 
-@inline conditional_length(c::IF) = conditional_length(condition_operand(c, nothing, 0))
-@inline conditional_length(c::IF, dims) = conditional_length(condition_operand(c, nothing, 0), dims)
+@inline conditional_length(c::IF) = conditional_length(condition_operand(identity, c, NotImmersed(), 0))
+@inline conditional_length(c::IF, dims) = conditional_length(condition_operand(identity, c, NotImmersed(), 0), dims)
 
 @inline function evaluate_condition(::NotImmersed{Nothing},
                                     i, j, k,
@@ -137,4 +136,11 @@ end
 end
 
 @inline is_immersed_column(i, j, k, column) = @inbounds column[i, j, k] == 0
+
+const NICO{LX, LY, LZ, F, C} = Union{
+    ConditionalOperation{LX, LY, LZ, F, C, <:NotImmersed, <:ImmersedBoundaryGrid},
+    ConditionalOperation{LX, LY, LZ, F, C, <:NotImmersedColumn, <:ImmersedBoundaryGrid},
+}
+@inline conditional_length(c::NICO) = sum(conditional_one(c, 0))
+@inline conditional_length(c::NICO, dims) = sum(conditional_one(c, 0); dims = dims)
 
