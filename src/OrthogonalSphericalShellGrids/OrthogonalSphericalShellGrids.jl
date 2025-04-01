@@ -13,7 +13,7 @@ using Oceananigans.ImmersedBoundaries
 using Oceananigans.Utils
 using Oceananigans.Fields: index_binary_search, convert_to_0_360
 using Oceananigans.Grids: RightConnected
-using Oceananigans.Grids: R_Earth, 
+using Oceananigans.Grids: R_Earth, RightFolded,
                           halo_size, spherical_area_quadrilateral,
                           lat_lon_to_cartesian, generate_coordinate, topology
                           

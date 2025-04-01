@@ -13,10 +13,11 @@ export
 using CUDA, Adapt
 using KernelAbstractions: @index, @kernel
 
+using Oceananigans.Grids
 using Oceananigans.Architectures: CPU, GPU, device
 using Oceananigans.Utils: work_layout, launch!
 using Oceananigans.Operators: Ax, Ay, Az, volume
-using Oceananigans.Grids
+using Oceananigans.Grids: RightFolded
 
 import Adapt: adapt_structure
 
