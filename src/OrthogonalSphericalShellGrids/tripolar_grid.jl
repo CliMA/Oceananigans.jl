@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: ZipperBoundaryCondition
-using Oceananigans.Grids: architecture, cpu_face_constructor_z
+using Oceananigans.Grids: architecture, cpu_face_constructor_z, RightFolded
 
 import Oceananigans.Grids: with_halo
 

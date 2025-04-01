@@ -24,15 +24,15 @@ const AGYL = AbstractUnderlyingGrid{FT, <:Any, LeftConnected} where FT
 
 # Fallback
 
-@inline δxTᶠᵃᵃ(i, j, k, grid, f::Function, args...) = δxᶠᵃᵃ(i, j, k, grid, f, args...)
-@inline δyTᵃᶠᵃ(i, j, k, grid, f::Function, args...) = δyᵃᶠᵃ(i, j, k, grid, f, args...)
-@inline δxTᶜᵃᵃ(i, j, k, grid, f::Function, args...) = δxᶜᵃᵃ(i, j, k, grid, f, args...)
-@inline δyTᵃᶜᵃ(i, j, k, grid, f::Function, args...) = δyᵃᶜᵃ(i, j, k, grid, f, args...)
+@inline δxTᶠᶜᶠ(i, j, k, grid, f::Function, args...) = δxᶠᵃᵃ(i, j, k, grid, f, args...)
+@inline δyTᶜᶠᶠ(i, j, k, grid, f::Function, args...) = δyᵃᶠᵃ(i, j, k, grid, f, args...)
+@inline δxTᶜᶜᶠ(i, j, k, grid, f::Function, args...) = δxᶜᵃᵃ(i, j, k, grid, f, args...)
+@inline δyTᶜᶜᶠ(i, j, k, grid, f::Function, args...) = δyᵃᶜᵃ(i, j, k, grid, f, args...)
 
 # Enforce Periodic conditions
 
-@inline δxTᶠᵃᵃ(i, j, k, grid::AGXP, f::Function, args...) = ifelse(i == 1, f(1, j, k, grid, args...) - f(grid.Nx, j, k, grid, args...), δxᶠᵃᵃ(i, j, k, grid, f, args...))
-@inline δyTᵃᶠᵃ(i, j, k, grid::AGYP, f::Function, args...) = ifelse(j == 1, f(i, 1, k, grid, args...) - f(i, grid.Ny, k, grid, args...), δyᵃᶠᵃ(i, j, k, grid, f, args...))
+@inline δxTᶠᶜᵃ(i, j, k, grid::AGXP, f::Function, args...) = ifelse(i == 1, f(1, j, k, grid, args...) - f(grid.Nx, j, k, grid, args...), δxᶠᵃᵃ(i, j, k, grid, f, args...))
+@inline δyTᶠᵃ(i, j, k, grid::AGYP, f::Function, args...) = ifelse(j == 1, f(i, 1, k, grid, args...) - f(i, grid.Ny, k, grid, args...), δyᵃᶠᵃ(i, j, k, grid, f, args...))
 
 @inline δxTᶜᵃᵃ(i, j, k, grid::AGXP, f::Function, args...) = ifelse(i == grid.Nx, f(1, j, k, grid, args...) - f(grid.Nx, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, f, args...))
 @inline δyTᵃᶜᵃ(i, j, k, grid::AGYP, f::Function, args...) = ifelse(j == grid.Ny, f(i, 1, k, grid, args...) - f(i, grid.Ny, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
@@ -60,11 +60,20 @@ const AGYL = AbstractUnderlyingGrid{FT, <:Any, LeftConnected} where FT
                          ifelse(j == 1, f(i, 2, k, grid, args...),
                                         δyᵃᶜᵃ(i, j, k, grid, f, args...)))
 
-@inline δxTᶜᵃᵃ(i, j, k, grid::AGXL, f::Function, args...) = ifelse(i == grid.Nx, - f(i, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, f, args...))
-@inline δyTᵃᶜᵃ(i, j, k, grid::AGYL, f::Function, args...) = ifelse(j == grid.Ny, - f(i, j, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
+# Changes across the fold, this operator works for `Center` fields in the x-direction.
+@inline δyTᵃᶜᵃ(i, j, k, grid::AGYF, f::Function, args...) = 
+    ifelse(j == grid.Ny, folded_δyᵃᶜᵃ(i, j, k, grid, f, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
 
-@inline δxTᶜᵃᵃ(i, j, k, grid::AGXF, f::Function, args...) = ifelse(i == grid.Nx, f(2, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, f, args...))
-@inline δyTᵃᶜᵃ(i, j, k, grid::AGYF, f::Function, args...) = ifelse(j == grid.Ny, f(i, 2, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
+@inline function folded_δyᵃᶜᵃ(i, j, k, grid, f, args...)
+    # Retrieve the folded index
+    i′ = grid.Nx - i + 1 
+
+    # We switch the sign of the function value at the folded index 
+    f₂ = - f(i′, j, k, grid, args...)
+    f₁ =   f(i,  j, k, grid, args...)
+
+    return f₂ - f₁
+end
 
 # Derivative operators
 
