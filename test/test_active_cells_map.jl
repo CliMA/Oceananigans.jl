@@ -4,6 +4,7 @@ using Oceananigans.Operators: hack_cosd
 using Oceananigans.ImmersedBoundaries: get_active_column_map, 
                                        get_active_cells_map,
                                        immersed_cell
+
 function Δ_min(grid) 
     Δx_min = minimum_xspacing(grid, Center(), Center(), Center())
     Δy_min = minimum_yspacing(grid, Center(), Center(), Center())

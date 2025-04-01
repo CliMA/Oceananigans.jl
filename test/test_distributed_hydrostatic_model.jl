@@ -77,7 +77,7 @@ function rotation_with_shear_test(grid, closure=nothing)
 
     return model
 end
-  
+
 Nx = 32
 Ny = 32 
 
