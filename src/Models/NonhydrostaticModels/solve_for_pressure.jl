@@ -76,7 +76,10 @@ end
 #####
 
 function solve_for_pressure!(pressure, solver, Δt, Ũ)
-    pressure .*= ifelse(Δt == Inf, 0, max(Δt, eps(eltype(solver.grid))))
+    ϵ = eps(typeof(Δt))
+    Δt⁺ = max(ϵ, Δt)
+    Δt★ = Δt⁺ * isfinite(Δt)
+    pressure .*= Δt★
 
     compute_source_term!(pressure, solver, Δt, Ũ)
     solve!(pressure, solver)
@@ -84,7 +87,10 @@ function solve_for_pressure!(pressure, solver, Δt, Ũ)
 end
 
 function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, Δt, Ũ)
-    pressure .*= ifelse(Δt == Inf, 0, max(Δt, eps(eltype(solver.grid))))
+    ϵ = eps(typeof(Δt))
+    Δt⁺ = max(ϵ, Δt)
+    Δt★ = Δt⁺ * isfinite(Δt)
+    pressure .*= Δt★
 
     rhs = solver.right_hand_side
     grid = solver.grid

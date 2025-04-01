@@ -30,25 +30,26 @@ Update the predictor velocities u, v, and w with the timestep-multiplied non-hyd
 
     Note that `p_{NH}` is the nonhydrostatic pressure muiltiplied by the timestep which enforces the incompressibility condition.
 """
-@kernel function _pressure_correct_velocities!(U, grid, Δt, pNHS)
+@kernel function _pressure_correct_velocities!(U, grid, pNHSΔt)
     i, j, k = @index(Global, NTuple)
 
-    @inbounds U.u[i, j, k] -= ∂xᶠᶜᶜ(i, j, k, grid, pNHS)
-    @inbounds U.v[i, j, k] -= ∂yᶜᶠᶜ(i, j, k, grid, pNHS)
-    @inbounds U.w[i, j, k] -= ∂zᶜᶜᶠ(i, j, k, grid, pNHS)
+    @inbounds U.u[i, j, k] -= ∂xᶠᶜᶜ(i, j, k, grid, pNHSΔt)
+    @inbounds U.v[i, j, k] -= ∂yᶜᶠᶜ(i, j, k, grid, pNHSΔt)
+    @inbounds U.w[i, j, k] -= ∂zᶜᶜᶠ(i, j, k, grid, pNHSΔt)
 end
 
 "Update the solution variables (velocities and tracers)."
 function pressure_correct_velocities!(model::NonhydrostaticModel, Δt)
-    
+
     launch!(model.architecture, model.grid, :xyz,
             _pressure_correct_velocities!,
             model.velocities,
             model.grid,
-            Δt,
             model.pressures.pNHS)
     
-    model.pressures.pNHS ./= max(Δt, eps(eltype(model.grid)))
+    ϵ = eps(typeof(Δt))
+    Δt⁺ = max(ϵ, Δt)
+    model.pressures.pNHS ./= Δt⁺
 
     return nothing
 end
