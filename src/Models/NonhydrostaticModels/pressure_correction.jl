@@ -24,11 +24,9 @@ end
 #####
 
 """
-Update the predictor velocities u, v, and w with the timestep-multiplied non-hydrostatic pressure via
+Update the predictor velocities u, v, and w with the non-hydrostatic pressure multiplied by the timestep via
 
-    `u^{n+1} = u^n - δₓp_{NH} / Δx`
-
-    Note that `p_{NH}` is the nonhydrostatic pressure muiltiplied by the timestep which enforces the incompressibility condition.
+    `u^{n+1} = u^n - δₓp_{NH} * Δt / Δx`
 """
 @kernel function _pressure_correct_velocities!(U, grid, pNHSΔt)
     i, j, k = @index(Global, NTuple)
