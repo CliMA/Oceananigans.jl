@@ -58,9 +58,6 @@ const AGYL = AbstractUnderlyingGrid{FT, <:Any, LeftConnected} where FT
 @inline δxTᶜᵃᵃ(i, j, k, grid::AGXL, f::Function, args...) = ifelse(i == grid.Nx, - f(i, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, f, args...))
 @inline δyTᵃᶜᵃ(i, j, k, grid::AGYL, f::Function, args...) = ifelse(j == grid.Ny, - f(i, j, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
 
-@inline δxTᶜᵃᵃ(i, j, k, grid::AGXR, f::Function, args...) = ifelse(i == 1, f(2, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, f, args...))
-@inline δyTᵃᶜᵃ(i, j, k, grid::AGYR, f::Function, args...) = ifelse(j == 1, f(i, 2, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
-
 # Derivative operators
 
 @inline ∂xTᶠᶜᶠ(i, j, k, grid, f::Function, args...) = δxTᶠᵃᵃ(i, j, k, grid, f, args...) / Δxᶠᶜᶠ(i, j, k, grid)
