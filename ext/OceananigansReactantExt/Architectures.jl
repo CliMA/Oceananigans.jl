@@ -2,6 +2,7 @@ module Architectures
 
 using Reactant
 using Oceananigans
+using Oceananigans.DistributedComputations: Distributed
 
 using Reactant: AnyConcreteRArray
 
@@ -34,6 +35,7 @@ const ArraysToRArray = Union{Array,
     SubArray{<:Any,<:Any,<:Array}}
 
 on_architecture(::ReactantState, a::ArraysToRArray) = Reactant.to_rarray(a)
+Oceananigans.Architectures.cpu_architecture(arch::Distributed{<:ReactantState}) = CPU()
 
 unified_array(::ReactantState, a) = a
 
@@ -81,9 +83,10 @@ function Oceananigans.Distributed(arch::ReactantState; devices=nothing,
         (:x, :y, :z),
     )
 
-    return Oceananigans.Distributed{false}(arch, partition, ranks, local_rank, local_index,
-        mesh, nothing, nothing, Ref(0), devices)
-end
+    # Syncronized communication does not mean anything in this case so we set it to nothing
+    return Oceananigans.Distributed{nothing}(arch, partition, ranks, local_rank, local_index,
+                                             mesh, nothing, nothing, Ref(0), devices)
+end 
 
 Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.ConcretePJRTNumber}) = Reactant.unwrapped_eltype(T)
 Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.ConcreteIFRTNumber}) = Reactant.unwrapped_eltype(T)

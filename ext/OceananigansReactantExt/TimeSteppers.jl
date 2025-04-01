@@ -1,12 +1,13 @@
 module TimeSteppers
 
 using ..Architectures: ReactantState
+using ..Grids: ShardedGrid, ReactantGrid
 
 using Reactant
 using Oceananigans
 
 using Oceananigans: AbstractModel, Distributed
-using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Grids: AbstractGrid, architecture
 using Oceananigans.Utils: @apply_regionally, apply_regionally!
 using Oceananigans.TimeSteppers:
     update_state!,
@@ -24,19 +25,27 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
 import Oceananigans.TimeSteppers: Clock, unit_time, time_step!, ab2_step!
 import Oceananigans: initialize!
 
-const ReactantGrid{FT, TX, TY, TZ} = Union{
-    AbstractGrid{FT, TX, TY, TZ, <:ReactantState},
-    AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:ReactantState}}
-}
 const ReactantModel{TS} = Union{
     AbstractModel{TS, <:ReactantState},
     AbstractModel{TS, <:Distributed{<:ReactantState}}
 }
 
-function Clock(grid::ReactantGrid)
-    FT = Float64 # may change in the future
+function Clock(::ReactantGrid)
+    FT = Oceananigans.defaults.FloatType
     t = ConcreteRNumber(zero(FT))
     iter = ConcreteRNumber(0)
+    stage = 0 #ConcreteRNumber(0)
+    last_Δt = zero(FT)
+    last_stage_Δt = zero(FT)
+    return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
+end
+
+function Clock(grid::ShardedGrid)
+    FT = Oceananigans.defaults.FloatType
+    arch = architecture(grid)
+    replicate = Sharding.NamedSharding(arch.connectivity, ())
+    t = ConcreteRNumber(zero(FT), sharding=replicate)
+    iter = ConcreteRNumber(0, sharding=replicate)
     stage = 0 #ConcreteRNumber(0)
     last_Δt = zero(FT)
     last_stage_Δt = zero(FT)
@@ -47,7 +56,11 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
                     callbacks=[], euler=false) where FT
 
     # Note: Δt cannot change
-    model.clock.last_Δt = Δt
+    if model.clock.last_Δt isa Reactant.TracedRNumber
+        model.clock.last_Δt.mlir_data = Δt.mlir_data
+    else
+        model.clock.last_Δt = Δt
+    end
 
     #=
     # Be paranoid and update state at iteration 0
@@ -77,8 +90,19 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
     ab2_step!(model, Δt)
 
     tick!(model.clock, Δt)
-    model.clock.last_Δt = Δt
-    model.clock.last_stage_Δt = Δt # just one stage
+
+    if model.clock.last_Δt isa Reactant.TracedRNumber
+        model.clock.last_Δt.mlir_data = Δt.mlir_data
+    else
+        model.clock.last_Δt = Δt
+    end
+
+    # just one stage
+    if model.clock.last_stage_Δt isa Reactant.TracedRNumber
+        model.clock.last_stage_Δt.mlir_data = Δt.mlir_data
+    else
+        model.clock.last_stage_Δt = Δt
+    end
 
     calculate_pressure_correction!(model, Δt)
     correct_velocities_and_cache_previous_tendencies!(model, Δt)

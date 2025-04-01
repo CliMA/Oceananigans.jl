@@ -1,4 +1,5 @@
 using Oceananigans.DistributedComputations: cpu_architecture, partition
+using NCDatasets: Dataset
 
 function run_thermal_bubble_regression_test(arch, grid_type)
     Nx, Ny, Nz = 16, 16, 16

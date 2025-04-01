@@ -88,7 +88,7 @@ function reconstruct_global_field(field::DistributedField)
     global_field = Field(location(field), global_grid)
     arch = architecture(field)
 
-    global_data = construct_global_array(arch, interior(field), size(field))
+    global_data = construct_global_array(interior(field), arch, size(field))
 
     set!(global_field, global_data)
 
