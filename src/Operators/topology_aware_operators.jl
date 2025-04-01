@@ -62,9 +62,17 @@ const AGYL = AbstractUnderlyingGrid{FT, <:Any, LeftConnected} where FT
 
 # Enforce Zipper conditions
 
+@inline δxTᶜᵃᵃ(i, j, k, grid::AGXF, f::Function, args...) =
+    ifelse(i == grid.Nx, - f(i, j, k, grid, args...),
+                         ifelse(i == 1, f(2, j, k, grid, args...),
+                                        δxᶜᵃᵃ(i, j, k, grid, f, args...)))
+
+
 # Changes across the fold, this operator works for `Center` fields in the x-direction.
 @inline δyTᵃᶜᵃ(i, j, k, grid::AGYF, f::Function, args...) = 
-    ifelse(j == grid.Ny, folded_δyᵃᶜᵃ(i, j, k, grid, f, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
+    ifelse(j == grid.Ny, folded_δyᵃᶜᵃ(i, j, k, grid, f, args...),
+                         ifelse(j == 1, f(i, 2, k, grid, args...),
+                                        δyᵃᶜᵃ(i, j, k, grid, f, args...)))
 
 # This operator assume we are computing the difference 
 # of a vector component, which needs to switch direction across the fold
