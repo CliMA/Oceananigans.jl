@@ -49,11 +49,7 @@ function RungeKutta3TimeStepper(grid, prognostic_fields;
                                 implicit_solver::TI = nothing,
                                 Gⁿ::TG = map(similar, prognostic_fields),
                                 G⁻     = map(similar, prognostic_fields)) where {TI, TG}
-
-    !isnothing(implicit_solver) &&
-        @warn("Implicit-explicit time-stepping with RungeKutta3TimeStepper is not tested. " * 
-              "\n implicit_solver: $(typeof(implicit_solver))")
-
+    
     γ¹ = 8 // 15
     γ² = 5 // 12
     γ³ = 3 // 4
@@ -110,7 +106,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     calculate_pressure_correction!(model, first_stage_Δt)
     pressure_correct_velocities!(model, first_stage_Δt)
 
-    store_tendencies!(model)
+    cache_previous_tendencies!(model)
     update_state!(model, callbacks; compute_tendencies = true)
     step_lagrangian_particles!(model, first_stage_Δt)
 
@@ -126,7 +122,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     calculate_pressure_correction!(model, second_stage_Δt)
     pressure_correct_velocities!(model, second_stage_Δt)
 
-    store_tendencies!(model)
+    cache_previous_tendencies!(model)
     update_state!(model, callbacks; compute_tendencies = true)
     step_lagrangian_particles!(model, second_stage_Δt)
 

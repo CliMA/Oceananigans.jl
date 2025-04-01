@@ -189,6 +189,15 @@ function run_basic_simulation_tests(arch)
     @test iteration(simulation) == 4
     @test simulation.Δt == 1
 
+    simulation.stop_time = 5
+    simulation.Δt = 2
+    simulation.align_time_step = true
+    time_step!(simulation, 1)
+    @test !(simulation.align_time_step)
+    @test time(simulation) == 3.2
+    @test iteration(simulation) == 5
+    @test simulation.Δt == 1
+
     return nothing
 end
 

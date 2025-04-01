@@ -714,7 +714,7 @@ function test_lat_lon_precomputed_metrics(FT, arch)
     for lat in latitude
         for lon in longitude
             for z in zcoord
-                println("$lat, $lon, $z")
+                # println("$lat, $lon, $z")
                 grid_pre = LatitudeLongitudeGrid(arch, FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, precompute_metrics=true)
                 grid_fly = LatitudeLongitudeGrid(arch, FT, size=N, halo=H, latitude=lat, longitude=lon, z=z)
 
@@ -889,7 +889,7 @@ end
             grid = RectilinearGrid(arch, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=collect(0:Nz).^2)
 
             @test try
-            show(grid); println()
+                show(grid); println()
                 true
             catch err
                 println("error in show(::RectilinearGrid)")
@@ -1061,6 +1061,8 @@ end
                                             z = (-1000, 0),
                                             north_pole = (0, 0),
                                             topology = (Bounded, Bounded, Bounded))
+
+        @show grid.conformal_mapping
 
         @test grid isa OrthogonalSphericalShellGrid
         @test grid isa RotatedLatitudeLongitudeGrid

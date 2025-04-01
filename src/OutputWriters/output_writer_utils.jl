@@ -211,3 +211,17 @@ output_averaging_schedule(output) = nothing # fallback
 
 show_array_type(a::Type{Array{T}}) where T = "Array{$T}"
 
+#####
+##### Architecture suffix
+#####
+
+with_architecture_suffix(arch, filename, ext) = filename
+
+function with_architecture_suffix(arch::Distributed, filename, ext)
+    Ne = length(ext)
+    prefix = filename[1:end-Ne]
+    rank = arch.local_rank
+    prefix *= "_rank$rank"
+    return prefix * ext
+end
+

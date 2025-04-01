@@ -78,7 +78,7 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
     end
 
     Δᶜ = OffsetArray(on_architecture(arch, Δᶜ), -H)
-    Δᶠ = OffsetArray(on_architecture(arch, Δᶠ), -H-1)
+    Δᶠ = OffsetArray(on_architecture(arch, Δᶠ), -H - 1)
 
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)

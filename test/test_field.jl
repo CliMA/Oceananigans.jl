@@ -5,7 +5,7 @@ using Statistics
 using Oceananigans.Fields: ReducedField, has_velocities
 using Oceananigans.Fields: VelocityFields, TracerFields, interpolate, interpolate!
 using Oceananigans.Fields: reduced_location
-using Oceananigans.Fields: fractional_indices, interpolator
+using Oceananigans.Fields: FractionalIndices, interpolator
 using Oceananigans.Fields: convert_to_0_360, convert_to_λ₀_λ₀_plus360
 using Oceananigans.Grids: ξnode, ηnode, rnode
 using Oceananigans.Grids: total_length
@@ -492,11 +492,11 @@ end
 
                 for X in Xs
                     (x, y, z)  = X 
-                    fi, fj, fk = @allowscalar fractional_indices(X, grid, loc, loc, loc)
+                    fi = @allowscalar FractionalIndices(X, grid, loc, loc, loc)
 
-                    i⁻, i⁺, _ = interpolator(fi)
-                    j⁻, j⁺, _ = interpolator(fj)
-                    k⁻, k⁺, _ = interpolator(fk)
+                    i⁻, i⁺, _ = interpolator(fi.i)
+                    j⁻, j⁺, _ = interpolator(fi.j)
+                    k⁻, k⁺, _ = interpolator(fi.k)
 
                     x⁻ = @allowscalar ξnode(i⁻, j⁻, k⁻, grid, loc, loc, loc)
                     y⁻ = @allowscalar ηnode(i⁻, j⁻, k⁻, grid, loc, loc, loc)

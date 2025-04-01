@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Utils: Time
 using Oceananigans.Fields: indices, interpolate!
-using Oceananigans.OutputReaders: Cyclical, Clamp
+using Oceananigans.OutputReaders: Cyclical, Clamp, Linear
 
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
     grid = RectilinearGrid(architecture, size=(Nx, Ny, Nz), extent=(64, 64, 32))
@@ -42,44 +42,39 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     split_filepath = "test_split_output.jld2"
     unsplit_filepath = "test_unsplit_output.jld2"
 
-    simulation.output_writers[:jld2_3d_with_halos] =
-        JLD2OutputWriter(model, fields_to_output,
-                         filename = filepath3d,
-                         with_halos = true,
-                         schedule = TimeInterval(30seconds),
-                         overwrite_existing = true)
+    simulation.output_writers[:jld2_3d_with_halos] = JLD2Writer(model, fields_to_output,
+                                                                filename = filepath3d,
+                                                                with_halos = true,
+                                                                schedule = TimeInterval(30seconds),
+                                                                overwrite_existing = true)
 
-    simulation.output_writers[:jld2_2d_with_halos] =
-        JLD2OutputWriter(model, fields_to_output,
-                         filename = filepath2d,
-                         indices = (:, :, grid.Nz),
-                         with_halos = true,
-                         schedule = TimeInterval(30seconds),
-                         overwrite_existing = true)
+    simulation.output_writers[:jld2_2d_with_halos] = JLD2Writer(model, fields_to_output,
+                                                                filename = filepath2d,
+                                                                indices = (:, :, grid.Nz),
+                                                                with_halos = true,
+                                                                schedule = TimeInterval(30seconds),
+                                                                overwrite_existing = true)
 
     profiles = NamedTuple{keys(fields_to_output)}(Field(Average(f, dims=(1, 2))) for f in fields_to_output)
 
-    simulation.output_writers[:jld2_1d_with_halos] =
-        JLD2OutputWriter(model, profiles,
-                         filename = filepath1d,
-                         with_halos = true,
-                         schedule = TimeInterval(30seconds),
-                         overwrite_existing = true)
+    simulation.output_writers[:jld2_1d_with_halos] = JLD2Writer(model, profiles,
+                                                                filename = filepath1d,
+                                                                with_halos = true,
+                                                                schedule = TimeInterval(30seconds),
+                                                                overwrite_existing = true)
 
-    simulation.output_writers[:unsplit_jld2] =
-        JLD2OutputWriter(model, profiles,
-                         filename = unsplit_filepath,
-                         with_halos = true,
-                         schedule = TimeInterval(10seconds),
-                         overwrite_existing = true)
+    simulation.output_writers[:unsplit_jld2] = JLD2Writer(model, profiles,
+                                                          filename = unsplit_filepath,
+                                                          with_halos = true,
+                                                          schedule = TimeInterval(10seconds),
+                                                          overwrite_existing = true)
 
-    simulation.output_writers[:split_jld2] =
-        JLD2OutputWriter(model, profiles,
-                         filename = split_filepath,
-                         with_halos = true,
-                         schedule = TimeInterval(10seconds),
-                         file_splitting = TimeInterval(30seconds),
-                         overwrite_existing = true)
+    simulation.output_writers[:split_jld2] = JLD2Writer(model, profiles,
+                                                        filename = split_filepath,
+                                                        with_halos = true,
+                                                        schedule = TimeInterval(10seconds),
+                                                        file_splitting = TimeInterval(30seconds),
+                                                        overwrite_existing = true)
 
     run!(simulation)
 
@@ -140,8 +135,11 @@ end
                 @test v3[2] isa Field
             end
 
-            # Tests that we can interpolate
+            # Tests construction + that we can interpolate
             u3i = FieldTimeSeries{Face, Center, Center}(u3.grid, u3.times)
+            @test !isnothing(u3i.boundary_conditions)
+            @test u3i.boundary_conditions isa FieldBoundaryConditions
+            
             interpolate!(u3i, u3)
             @test all(interior(u3i) .≈ interior(u3))
 
@@ -275,10 +273,10 @@ end
                 model = NonhydrostaticModel(; grid, boundary_conditions = (; u=u_bcs, v=v_bcs))
                 simulation = Simulation(model; Δt=1, stop_iteration=1)
                 
-                simulation.output_writers[:jld2] = JLD2OutputWriter(model, model.velocities,
-                                                                    filename = "test_cuarray_bc.jld2",
-                                                                    schedule=IterationInterval(1),
-                                                                    overwrite_existing = true)
+                simulation.output_writers[:jld2] = JLD2Writer(model, model.velocities,
+                                                              filename = "test_cuarray_bc.jld2",
+                                                              schedule=IterationInterval(1),
+                                                              overwrite_existing = true)
                 
                 run!(simulation)
                 
@@ -367,7 +365,7 @@ end
         @info "  Testing Chunked abstraction..."
         filepath = "testfile.jld2"
         fts = FieldTimeSeries(filepath, "c")
-        fts_chunked = FieldTimeSeries(filepath, "c"; backend = InMemory(2), time_indexing = Cyclical())
+        fts_chunked = FieldTimeSeries(filepath, "c"; backend=InMemory(2), time_indexing=Cyclical())
 
         for t in eachindex(fts.times)
             fts_chunked[t] == fts[t]
@@ -482,9 +480,9 @@ end
 
         sinf(t) = sin(2π * t / 3)
 
-        f   = CenterField(grid) 
         fts = FieldTimeSeries{Center, Center, Center}(grid, times; backend=OnDisk(), path=filepath_sine, name="f")
-        
+
+        f = CenterField(grid) 
         for (i, time) in enumerate(fts.times)
             set!(f, (x, y, z) -> sinf(time))
             set!(fts, f, i)
@@ -492,10 +490,10 @@ end
         
         # Now we load the FTS partly in memory
         # using different time indexing strategies
-        N_in_mem = 5
-        fts1 = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(N_in_mem))
-        fts2 = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(N_in_mem), time_indexing = Cyclical())
-        fts3 = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(N_in_mem), time_indexing = Clamp())
+        M = 5
+        fts_lin = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M), time_indexing = Linear())
+        fts_cyc = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M), time_indexing = Cyclical())
+        fts_clp = FieldTimeSeries(filepath_sine, "f"; backend = InMemory(M), time_indexing = Clamp())
         
         # Test that linear interpolation is correct within the time domain
         for time in 0:0.01:last(fts.times)
@@ -506,20 +504,24 @@ end
 
                 Δt⁺ = (time - t⁻) / (t⁺ - t⁻)
             
-                @test fts1[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺) 
-                @test fts2[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺) 
-                @test fts3[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺) 
+                @test fts_lin[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺) 
+                @test fts_cyc[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺) 
+                @test fts_clp[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺) 
             end
         end
 
-        Δt = fts.times[end] - fts.times[end - 1]        
-
         # Test that the time interpolation is correct outside the time domain
-        for time in last(fts.times) + 1 : 0.01 :  last(fts.times) * 2
-            @test fts1[Time(time)][1, 1, 1] ≈ (fts1[end][1, 1, 1] - fts1[end-1][1, 1, 1]) / Δt * (time - last(fts.times))
-            @test fts3[Time(time)][1, 1, 1] ≈ fts3[end][1, 1, 1]
+        Δt = fts.times[end] - fts.times[end-1]        
+        Tf = last(fts.times)
+        from = Tf+1
+        to = 2Tf
+        
+        for t in from:0.01:to
+            dfdt = (fts_lin[end][1, 1, 1] - fts_lin[end-1][1, 1, 1]) / Δt
+            extrapolated = (t - Tf) * dfdt
+            @test fts_lin[Time(t)][1, 1, 1] ≈ extrapolated 
+            @test fts_clp[Time(t)][1, 1, 1] ≈ fts_clp[end][1, 1, 1]
         end
-
     end
 
     rm(filepath1d)
@@ -527,3 +529,4 @@ end
     rm(filepath3d)
     rm(filepath_sine)
 end
+
