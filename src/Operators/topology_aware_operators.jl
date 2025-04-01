@@ -60,6 +60,8 @@ const AGYL = AbstractUnderlyingGrid{FT, <:Any, LeftConnected} where FT
                          ifelse(j == 1, f(i, 2, k, grid, args...),
                                         δyᵃᶜᵃ(i, j, k, grid, f, args...)))
 
+# Enforce Zipper conditions
+
 # Changes across the fold, this operator works for `Center` fields in the x-direction.
 @inline δyTᵃᶜᵃ(i, j, k, grid::AGYF, f::Function, args...) = 
     ifelse(j == grid.Ny, folded_δyᵃᶜᵃ(i, j, k, grid, f, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
