@@ -531,7 +531,7 @@ end
 end
 
 # GPU version, the indices are passed implicitly
-@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
+CUDA.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
     if __dynamic_checkbounds(ctx)
         index = @inbounds linear_expand(__iterspace(ctx), blockIdx().x, threadIdx().x)
         return index ≤ __linear_ndrange(ctx)
