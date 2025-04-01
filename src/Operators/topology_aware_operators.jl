@@ -2,11 +2,13 @@ using Oceananigans.Grids: AbstractUnderlyingGrid
 
 const AGXB = AbstractUnderlyingGrid{FT, Bounded} where FT
 const AGXP = AbstractUnderlyingGrid{FT, Periodic} where FT
+const AGXF = AbstractUnderlyingGrid{FT, RightFolded} where FT
 const AGXR = AbstractUnderlyingGrid{FT, RightConnected} where FT
 const AGXL = AbstractUnderlyingGrid{FT, LeftConnected} where FT
 
 const AGYB = AbstractUnderlyingGrid{FT, <:Any, Bounded} where FT
 const AGYP = AbstractUnderlyingGrid{FT, <:Any, Periodic} where FT
+const AGYF = AbstractUnderlyingGrid{FT, <:Any, RightFolded} where FT
 const AGYR = AbstractUnderlyingGrid{FT, <:Any, RightConnected} where FT
 const AGYL = AbstractUnderlyingGrid{FT, <:Any, LeftConnected} where FT
 
@@ -40,6 +42,9 @@ const AGYL = AbstractUnderlyingGrid{FT, <:Any, LeftConnected} where FT
 @inline δxTᶠᵃᵃ(i, j, k, grid::AGXB{FT}, f::Function, args...) where FT = ifelse(i == 1, zero(FT), δxᶠᵃᵃ(i, j, k, grid, f, args...))
 @inline δyTᵃᶠᵃ(i, j, k, grid::AGYB{FT}, f::Function, args...) where FT = ifelse(j == 1, zero(FT), δyᵃᶠᵃ(i, j, k, grid, f, args...))
 
+@inline δxTᶠᵃᵃ(i, j, k, grid::AGXF{FT}, f::Function, args...) where FT = ifelse(i == 1, zero(FT), δxᶠᵃᵃ(i, j, k, grid, f, args...))
+@inline δyTᵃᶠᵃ(i, j, k, grid::AGYF{FT}, f::Function, args...) where FT = ifelse(j == 1, zero(FT), δyᵃᶠᵃ(i, j, k, grid, f, args...))
+
 @inline δxTᶠᵃᵃ(i, j, k, grid::AGXR{FT}, f::Function, args...) where FT = ifelse(i == 1, zero(FT), δxᶠᵃᵃ(i, j, k, grid, f, args...))
 @inline δyTᵃᶠᵃ(i, j, k, grid::AGYR{FT}, f::Function, args...) where FT = ifelse(j == 1, zero(FT), δyᵃᶠᵃ(i, j, k, grid, f, args...))
 
@@ -58,8 +63,8 @@ const AGYL = AbstractUnderlyingGrid{FT, <:Any, LeftConnected} where FT
 @inline δxTᶜᵃᵃ(i, j, k, grid::AGXL, f::Function, args...) = ifelse(i == grid.Nx, - f(i, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, f, args...))
 @inline δyTᵃᶜᵃ(i, j, k, grid::AGYL, f::Function, args...) = ifelse(j == grid.Ny, - f(i, j, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
 
-@inline δxTᶜᵃᵃ(i, j, k, grid::AGXR, f::Function, args...) = ifelse(i == 1, f(2, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, f, args...))
-@inline δyTᵃᶜᵃ(i, j, k, grid::AGYR, f::Function, args...) = ifelse(j == 1, f(i, 2, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
+@inline δxTᶜᵃᵃ(i, j, k, grid::AGXF, f::Function, args...) = ifelse(i == grid.Nx, f(2, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, f, args...))
+@inline δyTᵃᶜᵃ(i, j, k, grid::AGYF, f::Function, args...) = ifelse(j == grid.Ny, f(i, 2, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
 
 # Derivative operators
 

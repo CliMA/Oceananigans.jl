@@ -107,6 +107,13 @@ Grid topology for dimensions that are connected to other models or domains only 
 """
 struct RightConnected <: AbstractTopology end
 
+"""
+    RightFolded
+
+Grid topology for dimensions that are folded onto each other on the right (the other direction is bounded).
+"""
+struct RightFolded <: AbstractTopology end
+
 #####
 ##### Directions (for tilted domains)
 #####

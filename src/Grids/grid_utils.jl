@@ -286,6 +286,7 @@ function domain_summary(topo, name, (left, right))
 
     topo_string = topo isa Periodic ? "Periodic " :
                   topo isa Bounded ? "Bounded  " :
+                  topo isa RightFolded ? "RightFolded " :
                   topo isa FullyConnected ? "FullyConnected " :
                   topo isa LeftConnected ? "LeftConnected  " :
                   topo isa RightConnected ? "RightConnected  " :
