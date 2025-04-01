@@ -2,10 +2,10 @@ using Oceananigans.Utils: prettytime
 
 """Show the innards of a `Model` in the REPL."""
 function Base.show(io::IO, model::ShallowWaterModel{G, A, T}) where {G, A, T}
-    A = Base.summary(architecture(model.grid))
+    AS = Base.summary(architecture(model.grid))
     TS = nameof(typeof(model.timestepper))
 
-    print(io, "ShallowWaterModel{$A, $T}",
+    print(io, "ShallowWaterModel{$AS, $T}",
         "(time = $(prettytime(model.clock.time)), iteration = $(model.clock.iteration)) \n",
         "├── grid: $(summary(model.grid))\n",
         "├── timestepper: ", TS, "\n")
