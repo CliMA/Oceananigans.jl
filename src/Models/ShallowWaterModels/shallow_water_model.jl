@@ -11,7 +11,7 @@ using Oceananigans.Grids: topology, Flat, architecture, RectilinearGrid, Face, C
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: validate_model_halo, NaNChecker, validate_tracer_advection
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
-using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
+using Oceananigans.TurbulenceClosures: with_tracers, build_diffusivity_fields
 using Oceananigans.Utils: tupleit
 
 import Oceananigans.Architectures: architecture
@@ -36,7 +36,7 @@ function ShallowWaterSolutionFields(grid, bcs, prognostic_names)
     return NamedTuple{prognostic_names[1:3]}((u, v, h))
 end
 
-mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, GR, V, U, R, F, E, B, Q, C, K, TS, FR} <: AbstractModel{TS}
+mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, GR, V, U, R, F, E, B, Q, C, K, TS, FR} <: AbstractModel{TS, A}
                           grid :: G         # Grid of physical points on which `Model` is solved
                   architecture :: A         # Computer `Architecture` on which `Model` is run
                          clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
@@ -112,7 +112,7 @@ Keyword arguments
 function ShallowWaterModel(;
                            grid,
                            gravitational_acceleration,
-                               clock = Clock{eltype(grid)}(time=0),
+                               clock = Clock(grid),
                   momentum_advection = UpwindBiased(order=5),
                     tracer_advection = WENO(),
                       mass_advection = WENO(),
@@ -177,7 +177,7 @@ function ShallowWaterModel(;
 
     solution           = ShallowWaterSolutionFields(grid, boundary_conditions, prognostic_field_names)
     tracers            = TracerFields(tracers, grid, boundary_conditions)
-    diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
+    diffusivity_fields = build_diffusivity_fields(diffusivity_fields, grid, clock, tracernames(tracers), boundary_conditions, closure)
 
     # Instantiate timestepper if not already instantiated
     timestepper = TimeStepper(timestepper, grid, tracernames(tracers);

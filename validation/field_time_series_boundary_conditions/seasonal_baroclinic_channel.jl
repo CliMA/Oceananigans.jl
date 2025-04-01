@@ -130,10 +130,10 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
 output_file = "seasonal_baroclinic_channel.jld2"
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers);
-                                                      schedule = TimeInterval(1day), 
-                                                      filename = output_file,
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, model.tracers);
+                                                schedule = TimeInterval(1day),
+                                                filename = output_file,
+                                                overwrite_existing = true)
 
 run!(simulation)
 

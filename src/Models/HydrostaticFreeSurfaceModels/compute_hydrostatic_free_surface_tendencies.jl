@@ -10,8 +10,8 @@ using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
-using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, ActiveCellsIBG, 
-                                       active_linear_index_to_tuple
+using Oceananigans.ImmersedBoundaries: get_active_cells_map, ActiveInteriorIBG, 
+                                       linear_index_to_tuple
 
 """
     compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
@@ -27,7 +27,7 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain. The active cells map restricts the computation to the active cells in the
     # interior if the grid is _immersed_ and the `active_cells_map` kwarg is active
-    active_cells_map = retrieve_interior_active_cells_map(model.grid, Val(:interior))
+    active_cells_map = get_active_cells_map(model.grid, Val(:interior))
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
 
     compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; active_cells_map)
@@ -65,7 +65,7 @@ compute_free_surface_tendency!(grid, model, free_surface) = nothing
 end
 
 """ Store previous value of the source term and compute current source term. """
-function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; active_cells_map = nothing)
+function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; active_cells_map=nothing)
 
     arch = model.architecture
     grid = model.grid
@@ -117,7 +117,7 @@ function apply_flux_bcs!(Gcⁿ, c, arch, args)
 end
 
 """ Calculate momentum tendencies if momentum is not prescribed."""
-function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map = nothing)
+function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map=nothing)
 
     grid = model.grid
     arch = architecture(grid)

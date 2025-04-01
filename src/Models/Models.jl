@@ -15,7 +15,7 @@ using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant
 using Oceananigans.Fields: AbstractField, Field, flattened_unique_values, boundary_conditions
 using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size
 using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
-using Oceananigans.TimeSteppers: AbstractTimeStepper, Clock
+using Oceananigans.TimeSteppers: AbstractTimeStepper, Clock, update_state!
 using Oceananigans.Utils: Time
 
 import Oceananigans: initialize!
@@ -39,6 +39,7 @@ architecture(model::AbstractModel) = model.grid.architecture
 initialize!(model::AbstractModel) = nothing
 total_velocities(model::AbstractModel) = nothing
 timestepper(model::AbstractModel) = model.timestepper
+initialization_update_state!(model::AbstractModel; kw...) = update_state!(model; kw...) # fallback
 
 # Fallback for any abstract model that does not contain `FieldTimeSeries`es
 update_model_field_time_series!(model::AbstractModel, clock::Clock) = nothing
@@ -188,5 +189,7 @@ default_nan_checker(::OnlyParticleTrackingModel) = nothing
 # Implementation of a `seawater_density` `KernelFunctionOperation
 # applicable to both `NonhydrostaticModel` and  `HydrostaticFreeSurfaceModel`
 include("seawater_density.jl")
+
+include("boundary_mean.jl")
 
 end # module

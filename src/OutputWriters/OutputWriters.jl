@@ -1,7 +1,7 @@
 module OutputWriters
 
 export
-    JLD2OutputWriter, NetCDFOutputWriter, written_names,
+    JLD2Writer, NetCDFWriter, written_names,
     Checkpointer, WindowedTimeAverage, FileSizeLimit,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval
 
@@ -31,8 +31,8 @@ include("output_writer_utils.jl")
 include("fetch_output.jl")
 include("windowed_time_average.jl")
 include("output_construction.jl")
-include("jld2_output_writer.jl")
-include("netcdf_output_writer.jl")
+include("jld2_writer.jl")
+include("netcdf_writer.jl")
 include("checkpointer.jl")
 
 function written_names(filename)

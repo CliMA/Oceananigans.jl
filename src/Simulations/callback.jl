@@ -7,8 +7,8 @@ import Oceananigans: initialize!
 struct Callback{P, F, S, CS}
     func :: F
     schedule :: S
-    parameters :: P
     callsite :: CS
+    parameters :: P
 end
 
 @inline (callback::Callback)(sim) = callback.func(sim, callback.parameters)
@@ -17,10 +17,31 @@ end
 """
     initialize!(callback::Callback, sim)
 
-Initialize `callback`. By default, this does nothing, but
-can be optionally specialized on the type parameters of `Callback`.
+Initialize `callback` at the beginning of `run!(sim)`.
+By default, this calls `initialize!` on `callback.func`,
+which in turn does nothing by default.
+
+`initialize!` can be specialized on `callback.parameters`,
+or specialized for `callback.func`.
+`
 """
-initialize!(callback::Callback, sim) = nothing
+initialize!(callback::Callback, sim) = initialize!(callback.func, sim)
+
+"""
+    finalize!(callback::Callback, sim)
+
+Finalize `callback` at the end of `run!(sim)`.
+By default, this calls `finalize!` on `callback.func`,
+which in turn does nothing by default.
+
+`finalize!` can be specialized on `callback.parameters`,
+or specialized for `callback.func`.
+`
+"""
+finalize!(callback::Callback, sim) = finalize!(callback.func, sim)
+
+initialize!(func, sim) = nothing
+finalize!(func, sim) = nothing
 
 """
     Callback(func, schedule=IterationInterval(1);
@@ -49,7 +70,7 @@ function Callback(func, schedule=IterationInterval(1);
                   parameters = nothing,
                   callsite = TimeStepCallsite())
 
-    return Callback(func, schedule, parameters, callsite)
+    return Callback(func, schedule, callsite, parameters)
 end
 
 Base.summary(cb::Callback{Nothing}) = string("Callback of ", prettysummary(cb.func, false), " on ", summary(cb.schedule))

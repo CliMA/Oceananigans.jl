@@ -47,7 +47,7 @@ or the `DiffusiveFormulation`.
     
 Both `κ_skew` and `κ_symmetric` may be constants, arrays, fields, or functions of `(x, y, z, t)`.
 """
-function IsopycnalSkewSymmetricDiffusivity(time_disc::TD = VerticallyImplicitTimeDiscretization(), FT = Float64;
+function IsopycnalSkewSymmetricDiffusivity(time_disc::TD=VerticallyImplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType;
                                            κ_skew = nothing,
                                            κ_symmetric = nothing,
                                            skew_flux_formulation::A = AdvectiveFormulation(),
@@ -99,7 +99,7 @@ function with_tracers(tracers, closure_vector::ISSDVector)
     return on_architecture(arch, closure_vector)
 end
 
-function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfISSD{TD, A}) where {TD, A}
+function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::FlavorOfISSD{TD, A}) where {TD, A}
     if TD() isa VerticallyImplicitTimeDiscretization
         # Precompute the _tapered_ 33 component of the isopycnal rotation tensor
         diffusivities = (; ϵ_R₃₃ = Field((Center, Center, Face), grid))

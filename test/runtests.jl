@@ -11,9 +11,8 @@ if test_file != :none
     group = :none
 end
 
-
 #####
-##### Run tests!
+##### Run tests
 #####
 
 CUDA.allowscalar() do
@@ -28,18 +27,7 @@ CUDA.allowscalar() do
 
     # Initialization steps
     if group == :init || group == :all
-        Pkg.instantiate(; verbose=true)
-        Pkg.precompile(; strict=true)
-        Pkg.status()
-
-        try
-            MPI.versioninfo()
-        catch; end
-
-        try
-            CUDA.precompile_runtime()
-            CUDA.versioninfo()
-        catch; end
+        include("test_init.jl")
     end
     
     # Core Oceananigans
@@ -68,6 +56,12 @@ CUDA.allowscalar() do
             include("test_conditional_reductions.jl")
             include("test_computed_field.jl")
             include("test_broadcasting.jl")
+        end
+    end
+
+    if group == :tripolar_grid || group == :all
+        @testset "TripolarGrid tests" begin
+            include("test_tripolar_grid.jl")
         end
     end
 
@@ -103,7 +97,7 @@ CUDA.allowscalar() do
             include("test_simulations.jl")
             include("test_diagnostics.jl")
             include("test_output_writers.jl")
-            include("test_netcdf_output_writer.jl")
+            include("test_netcdf_writer.jl")
             include("test_output_readers.jl")
         end
     end
@@ -137,6 +131,7 @@ CUDA.allowscalar() do
             include("test_dynamics.jl")
             include("test_biogeochemistry.jl")
             include("test_seawater_density.jl")
+            include("test_orthogonal_spherical_shell_time_stepping.jl")
         end
     end
 
@@ -177,7 +172,6 @@ CUDA.allowscalar() do
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
-        archs = test_architectures()
         include("test_distributed_models.jl")
     end
 
@@ -187,6 +181,7 @@ CUDA.allowscalar() do
         reset_cuda_if_necessary()
         include("test_distributed_transpose.jl")
         include("test_distributed_poisson_solvers.jl")
+        include("test_distributed_macros.jl")
     end
 
     if group == :distributed_hydrostatic_model || group == :all
@@ -226,10 +221,45 @@ CUDA.allowscalar() do
         end
     end
 
+    # Tests for Metal extension
+    if group == :mpi_tripolar || group == :all
+        @testset "Distributed tripolar tests" begin
+            include("test_mpi_tripolar.jl")
+        end
+    end
+
     # Tests for Enzyme extension
     if group == :enzyme || group == :all
         @testset "Enzyme extension tests" begin
             include("test_enzyme.jl")
+        end
+    end
+
+    # Tests for Reactant extension
+    if group == :reactant_1 || group == :all
+        @testset "Reactant extension tests 1" begin
+            include("test_reactant.jl")
+        end
+    end
+
+    if group == :reactant_2 || group == :all
+        @testset "Reactant extension tests 2" begin
+            include("test_reactant_latitude_longitude_grid.jl")
+        end
+    end
+
+    if group == :sharding || group == :all
+        @testset "Sharding Reactant extension tests" begin
+            # Broken for the moment (trying to fix them in https://github.com/CliMA/Oceananigans.jl/pull/4293)
+            # include("test_sharded_lat_lon.jl")
+            # include("test_sharded_tripolar.jl") 
+        end
+    end
+
+    # Tests for Metal extension
+    if group == :metal|| group == :all
+        @testset "Metal extension tests" begin
+            include("test_metal.jl")
         end
     end
 
@@ -239,3 +269,4 @@ CUDA.allowscalar() do
 end
 
 end #CUDA.allowscalar()
+

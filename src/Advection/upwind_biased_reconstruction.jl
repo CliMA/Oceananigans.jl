@@ -111,7 +111,7 @@ const UY{N, FT} = UpwindBiased{N, FT, <:Any, <:Nothing} where {N, FT}
 const UZ{N, FT} = UpwindBiased{N, FT, <:Any, <:Any, <:Nothing} where {N, FT}
 
 # Uniform upwind biased reconstruction
-for buffer in advection_buffers, FT in supported_float_types
+for buffer in advection_buffers, FT in fully_supported_float_types
     @eval begin
         @inline inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::UX{$buffer, $FT}, bias, ψ, idx, loc, args...) = 
             @inbounds ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left,  :x, false)), 

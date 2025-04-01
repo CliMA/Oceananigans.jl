@@ -90,9 +90,9 @@ u, v, w = model.velocities
 e = @at (Center, Center, Center) (u^2 + v^2 + w^2) / 2
 outputs = merge(outputs, (; e))
 
-simulation.output_writers[:jld2] = JLD2OutputWriter(model, outputs; filename,
-                                                    schedule = IterationInterval(3),
-                                                    overwrite_existing = true)
+simulation.output_writers[:jld2] = JLD2Writer(model, outputs; filename,
+                                              schedule = IterationInterval(3),
+                                              overwrite_existing = true)
 
 run!(simulation)
 

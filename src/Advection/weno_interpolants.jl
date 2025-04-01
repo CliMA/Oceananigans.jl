@@ -72,7 +72,7 @@ const ε = 1f-8
 # Optimal values for finite volume reconstruction of order `WENO{order}` and stencil `Val{stencil}` from
 # Balsara & Shu, "Monotonicity Preserving Weighted Essentially Non-oscillatory Schemes with Inceasingly High Order of Accuracy"
 
-for FT in supported_float_types
+for FT in fully_supported_float_types
     @eval begin
         @inline C★(::WENO{2, $FT}, ::Val{0}) = $(FT(2//3))
         @inline C★(::WENO{2, $FT}, ::Val{1}) = $(FT(1//3))
@@ -104,7 +104,7 @@ end
 # ENO reconstruction procedure per stencil 
 for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
     for stencil in collect(0:1:buffer-1)
-        for FT in supported_float_types
+        for FT in fully_supported_float_types
             # ENO coefficients for uniform direction (when T<:Nothing) and stretched directions (when T<:Any) 
             @eval begin
                 """
@@ -149,7 +149,7 @@ end
 
 # _UNIFORM_ smoothness coefficients (stretched smoothness coefficients are to be fixed!)
 
-for FT in supported_float_types
+for FT in fully_supported_float_types
     @eval begin
         """
             smoothness_coefficients(::Val{FT}, ::Val{buffer}, ::Val{stencil})
@@ -269,7 +269,7 @@ while for `buffer == 4` unrolls into
 for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
     @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds $(metaprogrammed_smoothness_operation(buffer))
     
-    for stencil in 0:buffer-1, FT in supported_float_types
+    for stencil in 0:buffer-1, FT in fully_supported_float_types
         @eval @inline smoothness_indicator(ψ, scheme::WENO{$buffer, $FT}, ::Val{$stencil}) = 
                       smoothness_operation(scheme, ψ, $(smoothness_coefficients(Val(FT), Val(buffer), Val(stencil))))
     end

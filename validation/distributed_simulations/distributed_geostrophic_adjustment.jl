@@ -21,7 +21,7 @@ topo = (Bounded, Periodic, Bounded)
 
 partition = Partition(x = Sizes(10, 13, 18, 39))
 
-arch = Distributed(CPU(); partition)
+arch = Distributed(CPU())
 
 # Distribute problem irregularly
 Nx = 80
@@ -46,6 +46,7 @@ coriolis = FPlane(f=1e-4)
 
 model = HydrostaticFreeSurfaceModel(; grid,
                                       coriolis,
+                                      timestepper = :SplitRungeKutta3,
                                       free_surface = SplitExplicitFreeSurface(grid; substeps=10))
 
 gaussian(x, L) = exp(-x^2 / 2L^2)

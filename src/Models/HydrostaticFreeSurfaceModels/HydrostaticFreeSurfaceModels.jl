@@ -142,7 +142,7 @@ include("compute_hydrostatic_free_surface_buffers.jl")
 include("update_hydrostatic_free_surface_model_state.jl")
 include("hydrostatic_free_surface_ab2_step.jl")
 include("hydrostatic_free_surface_rk3_step.jl")
-include("store_hydrostatic_free_surface_tendencies.jl")
+include("cache_hydrostatic_free_surface_tendencies.jl")
 include("prescribed_hydrostatic_velocity_fields.jl")
 include("single_column_model_mode.jl")
 include("slice_ensemble_model_mode.jl")
@@ -151,6 +151,6 @@ include("slice_ensemble_model_mode.jl")
 ##### Some diagnostics
 #####
 
-include("vertical_vorticity_field.jl")
+include("vertical_vorticity.jl")
 
 end # module

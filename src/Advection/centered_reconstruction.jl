@@ -36,7 +36,7 @@ struct Centered{N, FT, XT, YT, ZT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
     end
 end
 
-function Centered(FT::DataType = Float64; grid = nothing, order = 2) 
+function Centered(FT::DataType=Oceananigans.defaults.FloatType; grid = nothing, order = 2) 
 
     if !(grid isa Nothing) 
         FT = eltype(grid)
@@ -98,7 +98,7 @@ const ACAS = AbstractCenteredAdvectionScheme
 @inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::ACAS, bias, c, args...) = symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, c, args...)
 
 # uniform centered reconstruction
-for buffer in advection_buffers, FT in supported_float_types
+for buffer in advection_buffers, FT in fully_supported_float_types
     @eval begin
         @inline inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT, <:Nothing}, ψ, idx, loc, args...)           = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :x, false))
         @inline inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT, <:Nothing}, ψ::Function, idx, loc, args...) = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :x,  true))

@@ -2,8 +2,8 @@
 struct EnergyConserving{FT}    <: AbstractAdvectionScheme{1, FT} end
 struct EnstrophyConserving{FT} <: AbstractAdvectionScheme{1, FT} end
 
-EnergyConserving(FT::DataType = Float64)    = EnergyConserving{FT}()
-EnstrophyConserving(FT::DataType = Float64) = EnstrophyConserving{FT}()
+EnergyConserving(FT::DataType = Oceananigans.defaults.FloatType)    = EnergyConserving{FT}()
+EnstrophyConserving(FT::DataType = Oceananigans.defaults.FloatType) = EnstrophyConserving{FT}()
 
 struct VectorInvariant{N, FT, M, Z, ZS, V, K, D, U} <: AbstractAdvectionScheme{N, FT}
     vorticity_scheme               :: Z  # reconstruction scheme for vorticity flux
@@ -187,7 +187,7 @@ is implemented for the WENO scheme (instead of a 1D stencil). This 2D horizontal
 stencil performs a centered 5th-order WENO reconstruction of vorticity,
 divergence and kinetic energy in the horizontal direction tangential to the upwind direction.
 """
-function WENOVectorInvariant(FT::DataType = Float64;
+function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
                              upwinding = nothing,
                              vorticity_stencil = VelocityStencil(),
                              order = nothing,
@@ -439,7 +439,7 @@ const CZ{N, FT} = Centered{N, FT, <:Any, <:Any, <:Nothing}
 const AS = AbstractSmoothnessStencil
 
 # To adapt passing smoothness stencils to upwind biased schemes and centered schemes (not WENO)
-for b in advection_buffers, FT in supported_float_types
+for b in advection_buffers, FT in fully_supported_float_types
     @eval begin
         @inline inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s::C{$b, $FT},  f::Function, idx, loc, ::AS, args...) = inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, f, idx, loc, args...)
         @inline inner_symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s::C{$b, $FT},  f::Function, idx, loc, ::AS, args...) = inner_symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, f, idx, loc, args...)

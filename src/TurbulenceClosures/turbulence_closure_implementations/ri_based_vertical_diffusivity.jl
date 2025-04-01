@@ -123,7 +123,7 @@ Keyword arguments
                           option is `horizontal_Ri_filter = FivePointHorizontalFilter()`.
 """
 function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
-                                    FT = Float64;
+                                    FT = Oceananigans.defaults.FloatType;
                                     Ri_dependent_tapering = HyperbolicTangentRiDependentTapering(),
                                     horizontal_Ri_filter = nothing,
                                     minimum_entrainment_buoyancy_gradient = 1e-10,
@@ -183,7 +183,7 @@ const f = Face()
 with_tracers(tracers, closure::FlavorOfRBVD) = closure
 
 # Note: computing diffusivities at cell centers for now.
-function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfRBVD)
+function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::FlavorOfRBVD)
     κc = Field((Center, Center, Face), grid)
     κu = Field((Center, Center, Face), grid)
     Ri = Field((Center, Center, Face), grid)

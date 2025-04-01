@@ -54,7 +54,6 @@ function ImmersedBoundaryCondition(; west = nothing,
                                      bottom = nothing,
                                      top = nothing)
 
-    @warn "`ImmersedBoundaryCondition` is experimental."
     return ImmersedBoundaryCondition(west, east, south, north, bottom, top)
 end
 

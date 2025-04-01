@@ -58,29 +58,56 @@ Whether you need help getting started with Oceananigans, found a bug, want Ocean
 * [Open an issue](https://github.com/CliMA/Oceananigans.jl/issues). Issues are best if you think the Oceananigans source code needs attention: a bug, a sign error (😱), an important missing feature, or a typo in this documentation 👀.
 * Sign up for the [Julia Slack](https://julialang.org/slack/) and join the `#oceananigans` channel because we love to chat.
 
-## Citing
+## Citing and otherwise spreading the word
 
-If you use Oceananigans as part of your research, teaching, or other activities, we would be grateful if you could
-cite our work and mention Oceananigans by name.
+If you use Oceananigans for your research, teaching, or fun 🤩, everyone in our community will be grateful
+if you credit Oceananigans by name.
 
-```bibtex
-@article{OceananigansJOSS,
-  doi = {10.21105/joss.02018},
-  url = {https://doi.org/10.21105/joss.02018},
-  year = {2020},
-  publisher = {The Open Journal},
-  volume = {5},
-  number = {53},
-  pages = {2018},
-  author = {Ali Ramadhan and Gregory LeClaire Wagner and Chris Hill and Jean-Michel Campin and Valentin Churavy and Tim Besard and Andre Souza and Alan Edelman and Raffaele Ferrari and John Marshall},
-  title = {Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs},
-  journal = {Journal of Open Source Software}
-}
-```
+The community has published a number of articles describing the development of Oceananigans,
+including a recent [preprint submitted to the Journal of Advances in Modeling Earth Systems](https://arxiv.org/abs/2502.14148) that presents an overview of all the things that make Oceananigans unique:
 
+> "High-level, high-resolution ocean modeling at all scales with Oceananigans"
+> 
+> by Gregory L. Wagner, Simone Silvestri, Navid C. Constantinou, Ali Ramadhan, Jean-Michel Campin,
+> Chris Hill, Tomas Chor, Jago Strong-Wright, Xin Kai Lee, Francis Poulin, Andre Souza, Keaton J. Burns,
+> John Marshall, Raffaele Ferrari
+>
+> submitted to the Journal of Advances in Modeling Earth Systems, arXiv 2502.14148
+
+Please cite this overview paper if you use Oceananigans in published work.
+
+We've also submitted a number of model development papers. Please cite these if you use
+the features they describe! Also, if you have developed a new feature in Oceananigans and describe it in a paper, make sure to open a pull request to add it to this list:
+
+* **Silvestri et al., ["A New WENO-Based Momentum Advection Scheme for Simulations of Ocean Mesoscale Turbulence"](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2023MS004130).**
+
+  *This paper describes the development of `WENOVectorInvariant()` advection scheme, which can be used as the
+  `momentum_advection` scheme for `HydrostaticFreeSurfaceModel`.*
+
+* **Silvestri et al., ["A GPU-based ocean dynamic core for routine mesoscale-resolving climate simulations"](https://essopenarchive.org/users/703084/articles/970871-a-gpu-based-ocean-dynamical-core-for-routine-mesoscale-resolving-climate-simulations?commit=646ed2673ca9c9a0528f58ebc016d8daa822558f).**
+
+  *This paper describes the optimization of the `HydrostaticFreeSurfaceModel` algorithm, including the implementation
+  of a new `SplitExplicitFreeSurface` algorithm for `Distributed` architectures for multiple GPUs. As a result of this work,
+  global simulations with O(10 km) grid spacing can be run on 16-20 nodes, achieving 10 simulated years per day (SYPD).*
+
+* **Wagner et al., ["Formulation and calibration of CATKE, a one-equation parameterization for microscale ocean mixing"](https://essopenarchive.org/doi/full/10.22541/essoar.168748454.49694722).**
+
+  *This paper describes the development of `CATKEVerticalDiffusivity()`, including how it was calibrated automatically to
+  a suite of 35 large eddy simulations (also run with Oceananigans). It additionally features solutions from `TKEDissipationVerticalDiffusivity` (also known as "k-epsilon").*
+
+* **Ramadhan et al., ["Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs"](https://par.nsf.gov/servlets/purl/10200806).**
+
+  *This Journal of Open Source Software article describes an early version of Oceananigans' `NonhydrostaticModel`.*
+  
 ## Papers and preprints using Oceananigans
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
+
+1. Johnston, D. R., Shakespeare, C. J., and Constantinou, N. C. (2025) [Evaluating and improving wave and non-wave stress parametrisations for oceanic flows](https://doi.org/10.48550/arXiv.2503.12845), _arXiv preprint_, arXiv:2503.12845 (submitted to the Journal of Physical Oceanography). DOI: [10.48550/arXiv.2503.12845](https://doi.org/10.48550/arXiv.2503.12845)
+
+1. Bhadouriya, A., Gayen, B., Naveira Garabato, A., and Silvano, A. (2025) [Overshooting convection drives winter mixed layer under Antarctic sea ice](https://doi.org/10.21203/rs.3.rs-5932119/v1), preprint (Version 1), available at Research Square. DOI: [10.21203/rs.3.rs-5932119/v1](https://doi.org/10.21203/rs.3.rs-5932119/v1)
+
+1. Fan, X., Fox-Kemper, B., Suzuki, N., Li, Q., Marchesiello, P., Sullivan, P. P., and Hall, P. S. (2024) [Comparison of the Coastal and Regional Ocean COmmunity model (CROCO) and NCAR-LES in non-hydrostatic simulations](https://doi.org/10.5194/gmd-17-4095-2024), _Geoscientific Model Development_, **17**, 4095-4113. DOI: [10.5194/gmd-17-4095-2024](https://doi.org/10.5194/gmd-17-4095-2024)
 
 1. Abbott, K. and Mahadevan, A. (2024). [Why is the monsoon coastal upwelling signal subdued in the Bay of Bengal?](https://doi.org/10.1029/2024JC022023), _Journal of Geophysical Research: Oceans_, **129**, e2024JC022023. DOI: [10.1029/2024JC022023](https://doi.org/10.1029/2024JC022023)
 
