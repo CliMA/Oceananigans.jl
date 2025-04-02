@@ -45,17 +45,42 @@ construct_global_array(A::AbstractArray, ::ShardedDistributed, local_size) = A
 
 reconstruct_global_topology(topo, R, r, r1, r2, ::ShardedDistributed) = topo
 
-# A function to shard the z-direction (needs to be replicated around 
-# TODO: add a method for `MutableVerticalDiscretization`
-function sharded_z_direction(z::StaticVerticalDiscretization; sharding = Sharding.NoSharding()) 
+function replicate_z_coordinate(z, mesh) 
+    # Copying the z coordinate to all the devices: we pass a NamedSharding of `nothing`s
+    # (a NamedSharding of nothings represents a copy to all devices)
+    # ``1'' here is the maximum number of dimensions of the fields of ``z''
+    replicate = Sharding.NamedSharding(mesh, ntuple(Returns(nothing), 1)) 
+
+    cᵃᵃᶠ = parent(z.cᵃᵃᶠ) isa StepRangeLen ? z.cᵃᵃᶠ : Reactant.to_rarray(z.cᵃᵃᶠ; sharding=replicate)
+    cᵃᵃᶜ = parent(z.cᵃᵃᶜ) isa StepRangeLen ? z.cᵃᵃᶜ : Reactant.to_rarray(z.cᵃᵃᶜ; sharding=replicate)
+
+    Δᵃᵃᶠ = Reactant.to_rarray(z.Δᵃᵃᶠ; sharding=replicate)
+    Δᵃᵃᶜ = Reactant.to_rarray(z.Δᵃᵃᶜ; sharding=replicate)
+
+    return cᵃᵃᶠ, cᵃᵃᶜ, Δᵃᵃᶠ, Δᵃᵃᶜ
+end
+
+# A function to shard the z-direction (needs to be replicated around)
+sharded_z_direction(z::StaticVerticalDiscretization, mesh) =
+        StaticVerticalDiscretization(replicate_z_coordinate(z, mesh)...)
+
+function sharded_z_direction(z::MutableVerticalDiscretization, mesh) 
     
-    cᵃᵃᶠ = parent(z.cᵃᵃᶠ) isa StepRangeLen ? z.cᵃᵃᶠ : Reactant.to_rarray(z.cᵃᵃᶠ; sharding)
-    cᵃᵃᶜ = parent(z.cᵃᵃᶜ) isa StepRangeLen ? z.cᵃᵃᶜ : Reactant.to_rarray(z.cᵃᵃᶜ; sharding)
+    xysharding = Sharding.DimsSharding(mesh, (1, 2), (:x, :y)) # XY Pencil sharding
 
-    Δᵃᵃᶠ = Reactant.to_rarray(z.Δᵃᵃᶠ; sharding)
-    Δᵃᵃᶜ = Reactant.to_rarray(z.Δᵃᵃᶜ; sharding)
+    cᵃᵃᶠ, cᵃᵃᶜ, Δᵃᵃᶠ, Δᵃᵃᶠ = replicate_z_coordinate(z, mesh)
+    
+    ηⁿ   = Reactant.to_rarray(z.ηⁿ  ; sharding=xysharding)
+    σᶜᶜⁿ = Reactant.to_rarray(z.σᶜᶜⁿ; sharding=xysharding)
+    σᶠᶜⁿ = Reactant.to_rarray(z.σᶠᶜⁿ; sharding=xysharding)
+    σᶜᶠⁿ = Reactant.to_rarray(z.σᶜᶠⁿ; sharding=xysharding)
+    σᶠᶠⁿ = Reactant.to_rarray(z.σᶠᶠⁿ; sharding=xysharding)
+    σᶜᶜ⁻ = Reactant.to_rarray(z.σᶜᶜ⁻; sharding=xysharding)
+    ∂t_σ = Reactant.to_rarray(z.∂t_σ; sharding=xysharding)
 
-    return StaticVerticalDiscretization(cᵃᵃᶠ, cᵃᵃᶜ, Δᵃᵃᶠ, Δᵃᵃᶜ)
+    return MutableVerticalDiscretization(cᵃᵃᶠ, cᵃᵃᶜ, Δᵃᵃᶠ, Δᵃᵃᶜ, ηⁿ,   
+                                         σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ,
+                                         σᶜᶜ⁻, ∂t_σ)
 end
 
 function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
@@ -96,14 +121,8 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
     xsharding  = Sharding.DimsSharding(arch.connectivity, (1,  ), (:x,   )) # X Stencil sharding
     ysharding  = Sharding.DimsSharding(arch.connectivity, (1,  ), (:y,   )) # Y Stencil sharding
     xysharding = Sharding.DimsSharding(arch.connectivity, (1, 2), (:x, :y)) # XY Pencil sharding
-
-    # Copying the z coordinate to all the devices: we pass a NamedSharding of `nothing`s
-    # (a NamedSharding of nothings represents a copy to all devices)
-    # ``1'' here is the maximum number of dimensions of the fields of ``z''
-    replicate = Sharding.NamedSharding(arch.connectivity, ntuple(Returns(nothing), 1)) 
-
-    λsharding = parent(λᶜᵃᵃ) isa StepRangeLen ? Sharding.NoSharding() : xsharding
-    φsharding = parent(φᵃᶜᵃ) isa StepRangeLen ? Sharding.NoSharding() : ysharding
+    λsharding  = parent(λᶜᵃᵃ) isa StepRangeLen ? Sharding.NoSharding() : xsharding
+    φsharding  = parent(φᵃᶜᵃ) isa StepRangeLen ? Sharding.NoSharding() : ysharding
     
     # y metrics are either 1D or a number, while x and z metrics are either 2D or 1D
     xzmetric_sharding = ndims(grid.Δxᶜᶜᵃ) == 1 ? ysharding : xysharding 
@@ -117,7 +136,7 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
     Δφᵃᶜᵃ = Reactant.to_rarray(grid.Δφᵃᶜᵃ; sharding=ysharding)
     φᵃᶠᵃ  = Reactant.to_rarray(grid.φᵃᶠᵃ ; sharding=φsharding)
     φᵃᶜᵃ  = Reactant.to_rarray(grid.φᵃᶜᵃ ; sharding=φsharding)
-    z     = sharded_z_direction(grid.z; sharding=replicate) # Intentionally not sharded
+    z     = sharded_z_direction(grid.z, arch.connectivity)
 
     Δxᶜᶜᵃ = Reactant.to_rarray(grid.Δxᶜᶜᵃ; sharding=xzmetric_sharding)
     Δxᶠᶜᵃ = Reactant.to_rarray(grid.Δxᶠᶜᵃ; sharding=xzmetric_sharding)
@@ -188,7 +207,7 @@ function RectilinearGrid(architecture::ShardedDistributed,
     yᵃᶠᵃ = Reactant.to_rarray(yᵃᶠᵃ, sharding=ysharding)
     yᵃᶜᵃ = Reactant.to_rarray(yᵃᶜᵃ, sharding=ysharding)
     
-    z = sharded_z_direction(z; sharding=replicate1D) # Intentionally not sharded
+    z = sharded_z_direction(grid.z, architecture.connectivity)
 
     return RectilinearGrid{TX, TY, TZ}(architecture,
                                        Nx, Ny, Nz,
@@ -259,7 +278,7 @@ function TripolarGrid(arch::ShardedDistributed,
         Reactant.to_rarray(φᶠᶜᵃ; sharding),
         Reactant.to_rarray(φᶜᶠᵃ; sharding),
         Reactant.to_rarray(φᶠᶠᵃ; sharding),
-        sharded_z_direction(global_grid.z; sharding=replicate), # Replicating on all devices
+        sharded_z_direction(global_grid.z, arch.connectivity),
         Reactant.to_rarray(Δxᶜᶜᵃ; sharding),
         Reactant.to_rarray(Δxᶠᶜᵃ; sharding),
         Reactant.to_rarray(Δxᶜᶠᵃ; sharding),
