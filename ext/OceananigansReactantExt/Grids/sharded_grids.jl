@@ -175,15 +175,18 @@ function RectilinearGrid(architecture::ShardedDistributed,
     Δxsharding = Δxᶠᵃᵃ isa Number ? replicate0D : replicate1D
     Δysharding = Δyᵃᶠᵃ isa Number ? replicate0D : replicate1D
     
+    xsharding = xᶠᵃᵃ isa StepRangeLen ? Sharding.NoSharding() : replicate1D
+    ysharding = yᵃᶠᵃ isa StepRangeLen ? Sharding.NoSharding() : replicate1D
+    
     Δxᶠᵃᵃ = Reactant.to_rarray(Δxᶠᵃᵃ, sharding=Δxsharding)
     Δxᶜᵃᵃ = Reactant.to_rarray(Δxᶜᵃᵃ, sharding=Δxsharding)
     Δyᵃᶠᵃ = Reactant.to_rarray(Δyᵃᶠᵃ, sharding=Δysharding)
     Δyᵃᶜᵃ = Reactant.to_rarray(Δyᵃᶜᵃ, sharding=Δysharding)
     
-    xᶠᵃᵃ = Reactant.to_rarray(xᶠᵃᵃ, sharding=replicate1D)
-    xᶜᵃᵃ = Reactant.to_rarray(xᶜᵃᵃ, sharding=replicate1D)
-    yᵃᶠᵃ = Reactant.to_rarray(yᵃᶠᵃ, sharding=replicate1D)
-    yᵃᶜᵃ = Reactant.to_rarray(yᵃᶜᵃ, sharding=replicate1D)
+    xᶠᵃᵃ = Reactant.to_rarray(xᶠᵃᵃ, sharding=xsharding)
+    xᶜᵃᵃ = Reactant.to_rarray(xᶜᵃᵃ, sharding=xsharding)
+    yᵃᶠᵃ = Reactant.to_rarray(yᵃᶠᵃ, sharding=ysharding)
+    yᵃᶜᵃ = Reactant.to_rarray(yᵃᶜᵃ, sharding=ysharding)
     
     z = sharded_z_direction(z; sharding=replicate) # Intentionally not sharded
 
