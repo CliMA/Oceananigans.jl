@@ -2,8 +2,9 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.OrthogonalSphericalShellGrids
 using Oceananigans.Grids: R_Earth, validate_lat_lon_grid_args, generate_coordinate, with_precomputed_metrics, validate_rectilinear_grid_args
-using Oceananigans.Grids: default_indices, validate_indices, offset_data, instantiate
-import Oceananigans.Grids: zeros, StaticVerticalDiscretization
+using Oceananigans.Grids: default_indices, validate_indices, offset_data, instantiate, halo_size, topology
+
+import Oceananigans.Grids: zeros, StaticVerticalDiscretization, total_size
 import Oceananigans.Architectures: child_architecture
 
 import Oceananigans.DistributedComputations: 
@@ -221,7 +222,7 @@ function TripolarGrid(arch::ShardedDistributed,
     # ``1'' here is the maximum number of dimensions of the fields of ``z''
     replicate = Sharding.NamedSharding(arch.connectivity, ntuple(Returns(nothing), 1)) 
 
-    grid = OrthogonalSphericalShellGrid{Periodic,RightConnected,Bounded}(arch,
+    grid = OrthogonalSphericalShellGrid{Periodic, RightConnected, Bounded}(arch,
         global_size...,
         halo...,
         convert(FT, global_grid.Lz),
@@ -250,6 +251,13 @@ function TripolarGrid(arch::ShardedDistributed,
         global_grid.conformal_mapping)
 
     return grid
+end
+
+function total_size(grid::ShardedGrid, loc, indices)
+    sz = size(grid)
+    halo_sz = halo_size(grid)
+    topo = topology(grid)
+    return sharding_total_size(loc, topo, sz, halo_sz, indices)
 end
 
 function sharding_total_size(loc, topo, sz, halo_sz, indices=default_indices(Val(length(loc))))
