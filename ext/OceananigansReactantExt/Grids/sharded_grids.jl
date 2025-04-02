@@ -264,7 +264,6 @@ sharding_total_length(::Face, ::BoundedTopology, N, H=0) = N + 2H
 
 function Oceananigans.Grids.new_data(FT::DataType, arch::ShardedDistributed, loc, topo, sz, halo_sz, indices=default_indices(length(loc)))
     Tsz = sharding_total_size(loc, topo, sz, halo_sz, indices)
-    @show Tsz
     underlying_data = zeros(arch, FT, Tsz...)
     indices = validate_indices(indices, loc, topo, sz, halo_sz)
     return offset_data(underlying_data, loc, topo, sz, halo_sz, indices)
