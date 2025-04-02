@@ -173,20 +173,21 @@ function RectilinearGrid(architecture::ShardedDistributed,
     # Copying the z coordinate to all the devices: we pass a NamedSharding of `nothing`s
     # (a NamedSharding of nothings represents a copy to all devices)
     # ``1'' here is the maximum number of dimensions of the fields of ``z''
-    replicate = Sharding.NamedSharding(arch.connectivity, ntuple(Returns(nothing), 1)) 
+    replicate1D = Sharding.NamedSharding(arch.connectivity, ntuple(Returns(nothing), 1)) 
+    replicate0D = Sharding.NamedSharding(arch.connectivity, ()) 
 
-    xsharding = parent(xᶜᵃᵃ) isa StepRangeLen ? Sharding.NoSharding() : xsharding
-    ysharding = parent(yᵃᶜᵃ) isa StepRangeLen ? Sharding.NoSharding() : ysharding
+    Δxsharding = Δxᶠᵃᵃ isa Number ? replicate0D : replicate1D
+    Δysharding = Δyᵃᶠᵃ isa Number ? replicate0D : replicate1D
     
-    Δxᶠᵃᵃ = Reactant.to_rarray(Δxᶠᵃᵃ, sharding=xsharding)
-    Δxᶜᵃᵃ = Reactant.to_rarray(Δxᶜᵃᵃ, sharding=xsharding)
-    Δyᵃᶠᵃ = Reactant.to_rarray(Δyᵃᶠᵃ, sharding=ysharding)
-    Δyᵃᶜᵃ = Reactant.to_rarray(Δyᵃᶜᵃ, sharding=ysharding)
+    Δxᶠᵃᵃ = Reactant.to_rarray(Δxᶠᵃᵃ, sharding=Δxsharding)
+    Δxᶜᵃᵃ = Reactant.to_rarray(Δxᶜᵃᵃ, sharding=Δxsharding)
+    Δyᵃᶠᵃ = Reactant.to_rarray(Δyᵃᶠᵃ, sharding=Δysharding)
+    Δyᵃᶜᵃ = Reactant.to_rarray(Δyᵃᶜᵃ, sharding=Δysharding)
     
-    xᶠᵃᵃ = Reactant.to_rarray(xᶠᵃᵃ, sharding=xsharding)
-    xᶜᵃᵃ = Reactant.to_rarray(xᶜᵃᵃ, sharding=xsharding)
-    yᵃᶠᵃ = Reactant.to_rarray(yᵃᶠᵃ, sharding=ysharding)
-    yᵃᶜᵃ = Reactant.to_rarray(yᵃᶜᵃ, sharding=ysharding)
+    xᶠᵃᵃ = Reactant.to_rarray(xᶠᵃᵃ, sharding=replicate1D)
+    xᶜᵃᵃ = Reactant.to_rarray(xᶜᵃᵃ, sharding=replicate1D)
+    yᵃᶠᵃ = Reactant.to_rarray(yᵃᶠᵃ, sharding=replicate1D)
+    yᵃᶜᵃ = Reactant.to_rarray(yᵃᶜᵃ, sharding=replicate1D)
     
     z = sharded_z_direction(z; sharding=replicate) # Intentionally not sharded
 
