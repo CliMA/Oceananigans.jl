@@ -147,6 +147,58 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
                                              grid.radius)
 end
 
+function RectilinearGrid(architecture::ShardedDistributed,
+                         FT::DataType = Oceananigans.defaults.FloatType;
+                         size,
+                         x = nothing,
+                         y = nothing,
+                         z = nothing,
+                         halo = nothing,
+                         extent = nothing,
+                         topology = (Periodic, Periodic, Bounded))
+
+    topology, size, halo, x, y, z = validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
+
+    TX, TY, TZ = topology
+    Nx, Ny, Nz = size
+    Hx, Hy, Hz = halo
+
+    Lx, xᶠᵃᵃ, xᶜᵃᵃ, Δxᶠᵃᵃ, Δxᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, x, :x, 1, architecture)
+    Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, topology, size, halo, y, :y, 2, architecture)
+    Lz, z                        = generate_coordinate(FT, topology, size, halo, z, :z, 3, architecture)
+
+    xsharding  = Sharding.DimsSharding(arch.connectivity, (1,  ), (:x,   )) # X Stencil sharding
+    ysharding  = Sharding.DimsSharding(arch.connectivity, (1,  ), (:y,   )) # Y Stencil sharding
+
+    # Copying the z coordinate to all the devices: we pass a NamedSharding of `nothing`s
+    # (a NamedSharding of nothings represents a copy to all devices)
+    # ``1'' here is the maximum number of dimensions of the fields of ``z''
+    replicate = Sharding.NamedSharding(arch.connectivity, ntuple(Returns(nothing), 1)) 
+
+    xsharding = parent(xᶜᵃᵃ) isa StepRangeLen ? Sharding.NoSharding() : xsharding
+    ysharding = parent(yᵃᶜᵃ) isa StepRangeLen ? Sharding.NoSharding() : ysharding
+    
+    Δxᶠᵃᵃ = Reactant.to_rarray(Δxᶠᵃᵃ, sharding=xsharding)
+    Δxᶜᵃᵃ = Reactant.to_rarray(Δxᶜᵃᵃ, sharding=xsharding)
+    Δyᵃᶠᵃ = Reactant.to_rarray(Δyᵃᶠᵃ, sharding=ysharding)
+    Δyᵃᶜᵃ = Reactant.to_rarray(Δyᵃᶜᵃ, sharding=ysharding)
+    
+    xᶠᵃᵃ = Reactant.to_rarray(xᶠᵃᵃ, sharding=xsharding)
+    xᶜᵃᵃ = Reactant.to_rarray(xᶜᵃᵃ, sharding=xsharding)
+    yᵃᶠᵃ = Reactant.to_rarray(yᵃᶠᵃ, sharding=ysharding)
+    yᵃᶜᵃ = Reactant.to_rarray(yᵃᶜᵃ, sharding=ysharding)
+    
+    z = sharded_z_direction(z; sharding=replicate) # Intentionally not sharded
+
+    return RectilinearGrid{TX, TY, TZ}(architecture,
+                                       Nx, Ny, Nz,
+                                       Hx, Hy, Hz,
+                                       Lx, Ly, Lz,
+                                       Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
+                                       Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
+                                       z)
+end
+
 # This mostly exists for future where we will assemble data from multiple workers
 # to construct the grid
 function TripolarGrid(arch::ShardedDistributed,
