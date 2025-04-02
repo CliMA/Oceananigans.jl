@@ -169,8 +169,8 @@ function RectilinearGrid(architecture::ShardedDistributed,
 
     # Copying the coordinates and metrics to all the devices: we pass a NamedSharding of `nothing`s
     # (a NamedSharding of nothings represents a copy to all devices)
-    replicate1D = Sharding.NamedSharding(arch.connectivity, ntuple(Returns(nothing), 1)) 
-    replicate0D = Sharding.NamedSharding(arch.connectivity, ()) 
+    replicate1D = Sharding.NamedSharding(architecture.connectivity, ntuple(Returns(nothing), 1)) 
+    replicate0D = Sharding.NamedSharding(architecture.connectivity, ()) 
 
     Δxsharding = Δxᶠᵃᵃ isa Number ? replicate0D : replicate1D
     Δysharding = Δyᵃᶠᵃ isa Number ? replicate0D : replicate1D
