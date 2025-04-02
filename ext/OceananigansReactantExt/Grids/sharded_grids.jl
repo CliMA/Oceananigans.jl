@@ -167,12 +167,8 @@ function RectilinearGrid(architecture::ShardedDistributed,
     Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, topology, size, halo, y, :y, 2, architecture)
     Lz, z                        = generate_coordinate(FT, topology, size, halo, z, :z, 3, architecture)
 
-    xsharding  = Sharding.DimsSharding(arch.connectivity, (1,  ), (:x,   )) # X Stencil sharding
-    ysharding  = Sharding.DimsSharding(arch.connectivity, (1,  ), (:y,   )) # Y Stencil sharding
-
-    # Copying the z coordinate to all the devices: we pass a NamedSharding of `nothing`s
+    # Copying the coordinates and metrics to all the devices: we pass a NamedSharding of `nothing`s
     # (a NamedSharding of nothings represents a copy to all devices)
-    # ``1'' here is the maximum number of dimensions of the fields of ``z''
     replicate1D = Sharding.NamedSharding(arch.connectivity, ntuple(Returns(nothing), 1)) 
     replicate0D = Sharding.NamedSharding(arch.connectivity, ()) 
 
