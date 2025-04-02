@@ -69,7 +69,7 @@ function compute!(comp::ComputedField, time=nothing)
     # Now perform the primary computation
     @apply_regionally compute_computed_field!(comp)
 
-    fill_halo_regions!(comp)
+    # fill_halo_regions!(comp)
 
     return comp
 end

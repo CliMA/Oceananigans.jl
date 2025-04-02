@@ -42,12 +42,13 @@ compute_w_from_continuity!(velocities, arch, grid; parameters = w_kernel_paramet
     i, j = @index(Global, NTuple)
 
     @inbounds U.w[i, j, 1] = 0
+
     for k in 2:grid.Nz+1
         δh_u = flux_div_xyᶜᶜᶜ(i, j, k-1, grid, U.u, U.v) / Azᶜᶜᶜ(i, j, k-1, grid) 
         ∂tσ  = Δrᶜᶜᶜ(i, j, k-1, grid) * ∂t_σ(i, j, k-1, grid)
 
         immersed = immersed_cell(i, j, k-1, grid)
-        Δw       = δh_u + ifelse(immersed, zero(grid), ∂tσ) # We do not account for grid changes in immersed cells
+        Δw = δh_u + ifelse(immersed, zero(grid), ∂tσ) # We do not account for grid changes in immersed cells
 
         @inbounds U.w[i, j, k] = U.w[i, j, k-1] - Δw
     end
@@ -64,8 +65,9 @@ end
     Hx, Hy, _ = halo_size(grid)
     Tx, Ty, _ = topology(grid)
 
-    ii = ifelse(Tx == Flat, 1:Nx, -Hx+2:Nx+Hx-1)
-    jj = ifelse(Ty == Flat, 1:Ny, -Hy+2:Ny+Hy-1)
+    #ii = ifelse(Tx == Flat, 1:Nx, -Hx+2:Nx+Hx-1)
+    #jj = ifelse(Ty == Flat, 1:Ny, -Hy+2:Ny+Hy-1)
 
-    return KernelParameters(ii, jj)
+    #return KernelParameters(ii, jj)
+    return KernelParameters(1:Nx, 1:Ny)
 end

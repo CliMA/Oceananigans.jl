@@ -45,6 +45,7 @@ update_hydrostatic_pressure!(::Nothing, arch, ::PCBIBG, args...; kw...) = nothin
     ii = ifelse(TX == Flat, 1:Nx, 0:Nx+1)
     jj = ifelse(TY == Flat, 1:Ny, 0:Ny+1)
         
-    return KernelParameters(ii, jj)
+    #return KernelParameters(ii, jj)
+    return KernelParameters(1:Nx, 1:Ny)
 end
 

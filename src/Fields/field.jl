@@ -37,14 +37,17 @@ end
 #####
 
 function validate_field_data(loc, data, grid, indices)
-    Fx, Fy, Fz = total_size(grid, loc, indices)
+    #Fx, Fy, Fz = total_size(grid, loc, indices)
+    Fx, Fy, Fz = size(grid, loc, indices)
 
+    #=
     if size(data) != (Fx, Fy, Fz)
         LX, LY, LZ = loc
         e = "Cannot construct field at ($LX, $LY, $LZ) with size(data)=$(size(data)). " *
             "`data` must have size ($Fx, $Fy, $Fz)."
         throw(ArgumentError(e))
     end
+    =#
 
     return nothing
 end
@@ -375,6 +378,8 @@ instantiate(t) = t
 interior_view_indices(field_indices, interior_indices)   = Colon()
 interior_view_indices(::Colon,       interior_indices)   = interior_indices
 
+interior(a) = a
+
 function interior(a::OffsetArray,
                   Loc::Tuple,
                   Topo::Tuple,
@@ -395,14 +400,30 @@ end
 
 Return a view of `f` that excludes halo points.
 """
-interior(f::Field) = interior(f.data, location(f), f.grid, f.indices)
+#interior(f::Field) = interior(f.data, location(f), f.grid, f.indices)
+interior(f::Field) = f.data #interior(f.data, location(f), f.grid, f.indices)
 interior(a::OffsetArray, loc, grid, indices) = interior(a, loc, topology(grid), size(grid), halo_size(grid), indices)
 interior(f::Field, I...) = view(interior(f), I...)
 
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 
-@propagate_inbounds Base.getindex(f::Field, inds...) = getindex(f.data, inds...)
+using Oceananigans.Grids: mangle_index
+
+@propagate_inbounds function Base.getindex(f::Field, i, j, k)
+    grid = f.grid
+    Nx, Ny, Nz = size(f.grid)
+    LX, LY, LZ = location(f)
+    TX, TY, TZ = topology(grid)
+
+    i′ = mangle_index(i, TX(), LX(), Nx)
+    j′ = mangle_index(j, TY(), LY(), Ny)
+    k′ = mangle_index(k, TZ(), LZ(), Nz)
+
+    return getindex(f.data, i′, j′, k′)
+end
+
+# @propagate_inbounds Base.getindex(f::Field, inds...) = getindex(f.data, inds...)
 @propagate_inbounds Base.getindex(f::Field, i::Int)  = parent(f)[i]
 @propagate_inbounds Base.setindex!(f::Field, val, i, j, k) = setindex!(f.data, val, i, j, k)
 @propagate_inbounds Base.lastindex(f::Field) = lastindex(f.data)
@@ -443,7 +464,6 @@ on_architecture(arch, field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
 Computes `field.data` from `field.operand`.
 """
 compute!(field, time=nothing) = field # fallback
-
 compute!(collection::Union{Tuple, NamedTuple}) = map(compute!, collection)
 
 """
@@ -767,6 +787,9 @@ end
 ##### fill_halo_regions!
 #####
 
+fill_halo_regions!(field::Field, args...; kwargs...) = nothing
+
+#=
 function fill_halo_regions!(field::Field, args...; kwargs...)
     reduced_dims = reduced_dimensions(field)
 
@@ -781,3 +804,4 @@ function fill_halo_regions!(field::Field, args...; kwargs...)
 
     return nothing
 end
+=#

@@ -243,6 +243,8 @@ LatitudeLongitudeGrid(FT::DataType; kwargs...) = LatitudeLongitudeGrid(CPU(), FT
 function with_precomputed_metrics(grid)
     Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ = allocate_metrics(grid)
 
+    Nx, Ny, Nz = size(grid)
+
     # Compute Δx spacings and Az areas
     arch = grid.architecture
     dev = Architectures.device(arch)
@@ -252,7 +254,8 @@ function with_precomputed_metrics(grid)
 
     # Compute Δy spacings if needed
     if !(grid isa YRegularLLG)
-        loop! = compute_Δy!(dev, 16, length(grid.Δφᵃᶜᵃ) - 1)
+        #loop! = compute_Δy!(dev, 16, length(grid.Δφᵃᶜᵃ) - 1)
+        loop! = compute_Δy!(dev, 16, Ny) #length(grid.Δφᵃᶜᵃ) - 1)
         loop!(grid, Δyᶠᶜᵃ, Δyᶜᶠᵃ)
     end
 
@@ -477,10 +480,12 @@ end
 ##### Kernels that precompute the z- and x-metric
 #####
 
-@inline metric_worksize(grid::LatitudeLongitudeGrid)  = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶠᵃ) - 2)
+#@inline metric_worksize(grid::LatitudeLongitudeGrid)  = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶠᵃ) - 2)
+@inline metric_worksize(grid::LatitudeLongitudeGrid)  = (grid.Nx, grid.Ny)
 @inline metric_workgroup(grid::LatitudeLongitudeGrid) = (16, 16)
 
-@inline metric_worksize(grid::XRegularLLG)  = length(grid.φᵃᶠᵃ) - 2
+#@inline metric_worksize(grid::XRegularLLG)  = length(grid.φᵃᶠᵃ) - 2
+@inline metric_worksize(grid::XRegularLLG)  = grid.Ny
 @inline metric_workgroup(grid::XRegularLLG) = 16
 
 @kernel function compute_Δx_Az!(grid::LatitudeLongitudeGrid, Δxᶜᶜ, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Azᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ)
@@ -506,7 +511,8 @@ end
     j = @index(Global, Linear)
 
     # Manually offset y-index
-    j′ = j + grid.φᵃᶜᵃ.offsets[1] + 1
+    #j′ = j + grid.φᵃᶜᵃ.offsets[1] + 1
+    j′ = j #j + grid.φᵃᶜᵃ.offsets[1] + 1
 
     @inbounds begin
         Δxᶠᶜ[j′] = Δxᶠᶜᵃ(1, j′, 1, grid)
@@ -544,22 +550,30 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     FT = eltype(grid)
     arch = grid.architecture
 
+    topo = topology(grid)
+    Nx, Ny, Nz = size(grid)
+
     if grid isa XRegularLLG
         offsets     = grid.φᵃᶜᵃ.offsets[1]
-        metric_size = length(grid.φᵃᶜᵃ)
+        #metric_size = length(grid.φᵃᶜᵃ)
+        metric_size = Ny
+        MC = MF = Nothing
     else
         offsets     = (grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
-        metric_size = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
+        #metric_size = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
+        metric_size = (Nx, Ny)
+        MC = Center
+        MF = Face
     end
 
-    Δxᶜᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Δxᶠᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Δxᶜᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Δxᶠᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Azᶜᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Azᶠᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Azᶜᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Azᶠᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Δxᶜᶜ = HalolessArray{MC, Center, Nothing}(zeros(arch, FT, metric_size...), topo) # OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Δxᶠᶜ = HalolessArray{MF, Center, Nothing}(zeros(arch, FT, metric_size...), topo) # OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Δxᶜᶠ = HalolessArray{MC, Face,   Nothing}(zeros(arch, FT, metric_size...), topo) # OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Δxᶠᶠ = HalolessArray{MF, Face,   Nothing}(zeros(arch, FT, metric_size...), topo) # OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Azᶜᶜ = HalolessArray{MC, Center, Nothing}(zeros(arch, FT, metric_size...), topo) # OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Azᶠᶜ = HalolessArray{MF, Center, Nothing}(zeros(arch, FT, metric_size...), topo) # OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Azᶜᶠ = HalolessArray{MC, Face,   Nothing}(zeros(arch, FT, metric_size...), topo) # OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Azᶠᶠ = HalolessArray{MF, Face,   Nothing}(zeros(arch, FT, metric_size...), topo) # OffsetArray(zeros(arch, FT, metric_size...), offsets...)
 
     if grid isa YRegularLLG
         Δyᶠᶜ = Δyᶠᶜᵃ(1, 1, 1, grid)
@@ -567,8 +581,11 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
     else
         parentC = zeros(arch, FT, length(grid.Δφᵃᶜᵃ))
         parentF = zeros(arch, FT, length(grid.Δφᵃᶜᵃ))
-        Δyᶠᶜ    = OffsetArray(parentC, grid.Δφᵃᶜᵃ.offsets[1])
-        Δyᶜᶠ    = OffsetArray(parentF, grid.Δφᵃᶜᵃ.offsets[1])
+        # Δyᶠᶜ    = OffsetArray(parentC, grid.Δφᵃᶜᵃ.offsets[1])
+        # Δyᶜᶠ    = OffsetArray(parentF, grid.Δφᵃᶜᵃ.offsets[1])
+
+        Δyᶠᶜ    = HalolessArray{Nothing, Center, Nothing}(zeros(arch, FT, Ny))
+        Δyᶠᶜ    = HalolessArray{Nothing, Face, Nothing}(zeros(arch, FT, Ny))
     end
 
     return Δxᶜᶜ, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δyᶠᶜ, Δyᶜᶠ, Azᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ

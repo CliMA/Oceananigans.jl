@@ -48,6 +48,9 @@ update_model_field_time_series!(model::AbstractModel, clock::Clock) = nothing
 ##### Model-building utilities
 #####
 
+validate_model_halo(grid, momentum_advection, tracer_advection, closure) = nothing
+
+#=
 function validate_model_halo(grid, momentum_advection, tracer_advection, closure)
     user_halo = halo_size(grid)
     required_halo = inflate_halo_size(1, 1, 1, grid,
@@ -60,6 +63,7 @@ function validate_model_halo(grid, momentum_advection, tracer_advection, closure
                             Note that an ImmersedBoundaryGrid requires an extra halo point in all \n \
                             non-flat directions compared to a non-immersed boundary grid."))
 end
+=#
 
 #
 # Recursive util for building NamedTuples of boundary conditions from NamedTuples of fields

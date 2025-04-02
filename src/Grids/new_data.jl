@@ -64,9 +64,16 @@ with indices corresponding to a field on a `grid` of `size(grid)` and located at
 """
 function new_data(FT::DataType, arch, loc, topo, sz, halo_sz, indices=default_indices(length(loc)))
     Tsz = total_size(loc, topo, sz, halo_sz, indices)
-    underlying_data = zeros(arch, FT, Tsz...)
-    indices = validate_indices(indices, loc, topo, sz, halo_sz)
-    return offset_data(underlying_data, loc, topo, sz, halo_sz, indices)
+    if length(Tsz) == 3
+        T3 = _total_length(loc[3](), topo[3](), sz[3], halo_sz[3], indices[3])
+        underlying_data = zeros(arch, FT, Tsz[1], Tsz[2], T3)
+    else
+        underlying_data = zeros(arch, FT, Tsz...)
+    end
+
+    return underlying_data
+    # indices = validate_indices(indices, loc, topo, sz, halo_sz)
+    # return offset_data(underlying_data, loc, topo, sz, halo_sz, indices)
 end
 
 new_data(FT::DataType, grid::AbstractGrid, loc, indices=default_indices(length(loc))) =

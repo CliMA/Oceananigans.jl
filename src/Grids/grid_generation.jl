@@ -32,7 +32,6 @@ generate_coordinate(FT, topology, size, halo, nodes, coordinate_name, dim::Int, 
 
 # generate a variably-spaced coordinate passing the explicit coord faces as vector or function
 function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name, arch)
-
     # Ensure correct type for F and derived quantities
     interior_face_nodes = zeros(FT, N+1)
 
@@ -96,6 +95,7 @@ end
 
 # Generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points
 function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, <:Number}, coordinate_name, arch)
+    H = 3
 
     if node_interval[2] < node_interval[1]
         msg = "$coordinate_name must be an increasing interval!"

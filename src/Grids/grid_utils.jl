@@ -43,7 +43,7 @@ end
 const BoundedTopology = Union{Bounded, LeftConnected}
 const AT = AbstractTopology
 
-Base.length(::Face,    ::BoundedTopology, N) = N + 1
+Base.length(::Face,    ::BoundedTopology, N) = N # + 1
 Base.length(::Nothing, ::AT,              N) = 1
 Base.length(::Face,    ::AT,              N) = N
 Base.length(::Center,  ::AT,              N) = N
@@ -51,9 +51,15 @@ Base.length(::Nothing, ::Flat,            N) = N
 Base.length(::Face,    ::Flat,            N) = N
 Base.length(::Center,  ::Flat,            N) = N
 
+_length(::Face,    ::BoundedTopology, N) = N + 1
+_length(L, T, N) = Base.length(L, T, N)
+
 # "Indices-aware" length
 Base.length(loc, topo::AT, N, ::Colon) = length(loc, topo, N)
 Base.length(loc, topo::AT, N, ind::AbstractUnitRange) = min(length(loc, topo, N), length(ind))
+
+_length(loc, topo::AT, N, ::Colon) = _length(loc, topo, N)
+_length(loc, topo::AT, N, ind::AbstractUnitRange) = min(_length(loc, topo, N), length(ind))
 
 """
     total_length(loc, topo, N, H=0, ind=Colon())
@@ -65,15 +71,21 @@ is restricted by `length(ind)`.
 """
 total_length(::Face,    ::AT,              N, H=0) = N + 2H
 total_length(::Center,  ::AT,              N, H=0) = N + 2H
-total_length(::Face,    ::BoundedTopology, N, H=0) = N + 1 + 2H
+total_length(::Face,    ::BoundedTopology, N, H=0) = N + 2H # + 1
 total_length(::Nothing, ::AT,              N, H=0) = 1
 total_length(::Nothing, ::Flat,            N, H=0) = N
 total_length(::Face,    ::Flat,            N, H=0) = N
 total_length(::Center,  ::Flat,            N, H=0) = N
 
+_total_length(L, T, N, H=0) = total_length(L, T, N, H)
+_total_length(::Face,    ::BoundedTopology, N, H=0) = N + 2H + 1
+
 # "Indices-aware" total length
 total_length(loc, topo, N, H, ::Colon) = total_length(loc, topo, N, H)
 total_length(loc, topo, N, H, ind::AbstractUnitRange)  = min(total_length(loc, topo, N, H), length(ind))
+
+_total_length(loc, topo, N, H, ::Colon) = _total_length(loc, topo, N, H)
+_total_length(loc, topo, N, H, ind::AbstractUnitRange)  = min(_total_length(loc, topo, N, H), length(ind))
 
 @inline Base.size(grid::AbstractGrid, loc::Tuple, indices=default_indices(Val(length(loc)))) =
     size(loc, topology(grid), size(grid), indices)
@@ -84,7 +96,11 @@ total_length(loc, topo, N, H, ind::AbstractUnitRange)  = min(total_length(loc, t
     # (it's type stable?)
     return ntuple(Val(D)) do d
         Base.@_inline_meta
-        length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d])
+        if d == 3
+            _length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d])
+        else
+            length(instantiate(loc[d]), instantiate(topo[d]), sz[d], indices[d])
+        end
     end
 end
 

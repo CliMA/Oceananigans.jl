@@ -129,6 +129,8 @@ include("inactive_node.jl")
 include("automatic_halo_sizing.jl")
 include("input_validation.jl")
 include("grid_generation.jl")
+
+include("haloless_arrays.jl")
 include("rectilinear_grid.jl")
 include("orthogonal_spherical_shell_grid.jl")
 include("conformal_cubed_sphere_panel.jl")
