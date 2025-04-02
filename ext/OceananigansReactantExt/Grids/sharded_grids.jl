@@ -175,8 +175,8 @@ function RectilinearGrid(architecture::ShardedDistributed,
     Δxsharding = Δxᶠᵃᵃ isa Number ? replicate0D : replicate1D
     Δysharding = Δyᵃᶠᵃ isa Number ? replicate0D : replicate1D
     
-    xsharding = xᶠᵃᵃ isa StepRangeLen ? Sharding.NoSharding() : replicate1D
-    ysharding = yᵃᶠᵃ isa StepRangeLen ? Sharding.NoSharding() : replicate1D
+    xsharding = parent(xᶠᵃᵃ) isa StepRangeLen ? Sharding.NoSharding() : replicate1D
+    ysharding = parent(yᵃᶠᵃ) isa StepRangeLen ? Sharding.NoSharding() : replicate1D
     
     Δxᶠᵃᵃ = Reactant.to_rarray(Δxᶠᵃᵃ, sharding=Δxsharding)
     Δxᶜᵃᵃ = Reactant.to_rarray(Δxᶜᵃᵃ, sharding=Δxsharding)
