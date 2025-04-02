@@ -1,7 +1,7 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.OrthogonalSphericalShellGrids
-using Oceananigans.Grids: R_Earth, validate_lat_lon_grid_args, generate_coordinate, with_precomputed_metrics
+using Oceananigans.Grids: R_Earth, validate_lat_lon_grid_args, generate_coordinate, with_precomputed_metrics, validate_rectilinear_grid_args
 
 import Oceananigans.Grids: zeros, StaticVerticalDiscretization
 import Oceananigans.Architectures: child_architecture
@@ -12,7 +12,9 @@ import Oceananigans.DistributedComputations:
     inject_halo_communication_boundary_conditions,
     concatenate_local_sizes,
     barrier!,
-    all_reduce
+    all_reduce,
+    all_reduce!,
+    reconstruct_global_topology
 
 child_architecture(grid::ShardedGrid) = child_architecture(architecture(grid))
 
@@ -34,11 +36,14 @@ concatenate_local_sizes(local_size, ::ShardedDistributed) = local_size
 barrier!(::ShardedDistributed) = nothing
 
 # Reductions are handled by the Sharding framework
-all_reduce(op, val, ::ShardedDistributed) = val
+all_reduce(op,  val, ::ShardedDistributed) = val
+all_reduce!(op, val, ::ShardedDistributed) = val
 
 # No need for partitioning and assembling of arrays supposedly
 partition(A::AbstractArray, ::ShardedDistributed, local_size) = A
 construct_global_array(A::AbstractArray, ::ShardedDistributed, local_size) = A
+
+reconstruct_global_topology(topo, R, r, r1, r2, ::ShardedDistributed) = topo
 
 # A function to shard the z-direction (needs to be replicated around 
 # TODO: add a method for `MutableVerticalDiscretization`
@@ -140,6 +145,58 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
                                              Δyᶠᶜᵃ, Δyᶜᶠᵃ,
                                              Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
                                              grid.radius)
+end
+
+function RectilinearGrid(architecture::ShardedDistributed,
+                         FT::DataType = Oceananigans.defaults.FloatType;
+                         size,
+                         x = nothing,
+                         y = nothing,
+                         z = nothing,
+                         halo = nothing,
+                         extent = nothing,
+                         topology = (Periodic, Periodic, Bounded))
+
+    topology, size, halo, x, y, z = validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
+
+    TX, TY, TZ = topology
+    Nx, Ny, Nz = size
+    Hx, Hy, Hz = halo
+
+    Lx, xᶠᵃᵃ, xᶜᵃᵃ, Δxᶠᵃᵃ, Δxᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, x, :x, 1, architecture)
+    Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, topology, size, halo, y, :y, 2, architecture)
+    Lz, z                        = generate_coordinate(FT, topology, size, halo, z, :z, 3, architecture)
+
+    # Copying the coordinates and metrics to all the devices: we pass a NamedSharding of `nothing`s
+    # (a NamedSharding of nothings represents a copy to all devices)
+    replicate1D = Sharding.NamedSharding(architecture.connectivity, ntuple(Returns(nothing), 1)) 
+    replicate0D = Sharding.NamedSharding(architecture.connectivity, ()) 
+
+    Δxsharding = Δxᶠᵃᵃ isa Number ? replicate0D : replicate1D
+    Δysharding = Δyᵃᶠᵃ isa Number ? replicate0D : replicate1D
+    
+    xsharding = parent(xᶠᵃᵃ) isa StepRangeLen ? Sharding.NoSharding() : replicate1D
+    ysharding = parent(yᵃᶠᵃ) isa StepRangeLen ? Sharding.NoSharding() : replicate1D
+    
+    Δxᶠᵃᵃ = Reactant.to_rarray(Δxᶠᵃᵃ, sharding=Δxsharding)
+    Δxᶜᵃᵃ = Reactant.to_rarray(Δxᶜᵃᵃ, sharding=Δxsharding)
+    Δyᵃᶠᵃ = Reactant.to_rarray(Δyᵃᶠᵃ, sharding=Δysharding)
+    Δyᵃᶜᵃ = Reactant.to_rarray(Δyᵃᶜᵃ, sharding=Δysharding)
+    
+    xᶠᵃᵃ = Reactant.to_rarray(xᶠᵃᵃ, sharding=xsharding)
+    xᶜᵃᵃ = Reactant.to_rarray(xᶜᵃᵃ, sharding=xsharding)
+    yᵃᶠᵃ = Reactant.to_rarray(yᵃᶠᵃ, sharding=ysharding)
+    yᵃᶜᵃ = Reactant.to_rarray(yᵃᶜᵃ, sharding=ysharding)
+    
+    z = sharded_z_direction(z; sharding=replicate1D) # Intentionally not sharded
+
+    return RectilinearGrid{TX, TY, TZ}(architecture,
+                                       Nx, Ny, Nz,
+                                       Hx, Hy, Hz,
+                                       Lx, Ly, Lz,
+                                       Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
+                                       Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
+                                       z)
 end
 
 # This mostly exists for future where we will assemble data from multiple workers
