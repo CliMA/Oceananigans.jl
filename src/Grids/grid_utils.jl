@@ -65,8 +65,7 @@ is restricted by `length(ind)`.
 """
 total_length(::Face,    ::AT,              N, H=0) = N + 2H
 total_length(::Center,  ::AT,              N, H=0) = N + 2H
-#total_length(::Face,    ::BoundedTopology, N, H=0) = N + 1 + 2H
-total_length(::Face,    ::BoundedTopology, N, H=0) = N + 2H
+total_length(::Face,    ::BoundedTopology, N, H=0) = N + 1 + 2H
 total_length(::Nothing, ::AT,              N, H=0) = 1
 total_length(::Nothing, ::Flat,            N, H=0) = N
 total_length(::Face,    ::Flat,            N, H=0) = N
