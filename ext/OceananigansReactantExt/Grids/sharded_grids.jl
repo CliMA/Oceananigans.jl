@@ -5,6 +5,7 @@ using Oceananigans.Grids: R_Earth, validate_lat_lon_grid_args, generate_coordina
 using Oceananigans.Grids: default_indices, validate_indices, offset_data
 import Oceananigans.Grids: zeros, StaticVerticalDiscretization
 import Oceananigans.Architectures: child_architecture
+import Oceananigans.Utils: instantiate
 
 import Oceananigans.DistributedComputations: 
     partition_coordinate, 
