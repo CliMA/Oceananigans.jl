@@ -188,7 +188,7 @@ function RectilinearGrid(architecture::ShardedDistributed,
     yᵃᶠᵃ = Reactant.to_rarray(yᵃᶠᵃ, sharding=ysharding)
     yᵃᶜᵃ = Reactant.to_rarray(yᵃᶜᵃ, sharding=ysharding)
     
-    z = sharded_z_direction(z; sharding=replicate) # Intentionally not sharded
+    z = sharded_z_direction(z; sharding=replicate1D) # Intentionally not sharded
 
     return RectilinearGrid{TX, TY, TZ}(architecture,
                                        Nx, Ny, Nz,
