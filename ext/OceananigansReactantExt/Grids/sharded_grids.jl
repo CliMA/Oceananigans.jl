@@ -278,6 +278,23 @@ function TripolarGrid(arch::ShardedDistributed,
     return grid
 end
 
+function sharding_total_size(loc, topo, sz, halo_sz, indices=default_indices(Val(length(loc))))
+    D = length(loc)
+    return Tuple(sharding_total_length(instantiate(loc[d]), instantiate(topo[d]), sz[d], halo_sz[d], indices[d]) for d = 1:D)
+end
+
+sharding_total_length(loc, topo, N, H, ::Colon) = sharding_total_length(loc, topo, N, H)
+sharding_total_length(loc, topo, N, H, ind::AbstractUnitRange) = min(sharding_total_length(loc, topo, N, H), length(ind))
+sharding_total_length(loc, topo, N, H) = Oceananigans.Grids.total_length(loc, topo, N, H)
+sharding_total_length(::Face, ::BoundedTopology, N, H=0) = N + 2H
+
+function Oceananigans.Grids.new_data(FT::DataType, arch::ShardedDistributed, loc, topo, sz, halo_sz, indices=default_indices(length(loc)))
+    Tsz = sharding_total_size(loc, topo, sz, halo_sz, indices)
+    underlying_data = zeros(arch, FT, Tsz...)
+    indices = validate_indices(indices, loc, topo, sz, halo_sz)
+    return offset_data(underlying_data, loc, topo, sz, halo_sz, indices)
+end
+
 function Oceananigans.Grids.zeros(arch::ShardedDistributed, FT, global_sz...)
     # TODO: still need a "pre-sharded" zeros function
     cpu_zeros = zeros(CPU(), FT, global_sz...)
