@@ -37,9 +37,9 @@ const ReactantUnderlyingGrid{FT, TX, TY, TZ, CZ} = Union{
 
 const ShardedGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:ShardedDistributed}
 
-# Note: you may need 1 more halo than you think
-offset_indices(::Face, ::BoundedTopology, N, H=0) = 1 - H : N + H
-total_length(::Face,    ::BoundedTopology, N, H=0) = N + 2H
+# # Note: you may need 1 more halo than you think
+# offset_indices(::Face, ::BoundedTopology, N, H=0) = 1 - H : N + H
+# total_length(::Face,    ::BoundedTopology, N, H=0) = N + 2H
 
 include("serial_grids.jl")
 include("sharded_grids.jl")
