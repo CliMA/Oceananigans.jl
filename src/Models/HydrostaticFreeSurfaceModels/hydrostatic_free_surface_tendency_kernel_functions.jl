@@ -123,7 +123,9 @@ where `c = C[tracer_index]`.
                                                           clock,
                                                           forcing) where tracer_index
 
+    @inbounds c = tracers[tracer_index]
     return c - c^3
+
     #=
     @inbounds c = tracers[tracer_index]
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
