@@ -45,31 +45,31 @@ for dir in (:x, :y, :z)
 
     @eval begin
         # Bounded topologies
-        @inline $outside_symmetric_haloᶠ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv) + 1) & (i <= N + 1 - $required_halo_size(adv))
-        @inline $outside_symmetric_haloᶜ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv))     & (i <= N + 1 - $required_halo_size(adv))
+        @inline $outside_symmetric_haloᶠ(i, ::Bounded, N, adv) = (i >= $required_halo_size(adv) + 1) & (i <= N + 1 - $required_halo_size(adv))
+        @inline $outside_symmetric_haloᶜ(i, ::Bounded, N, adv) = (i >= $required_halo_size(adv))     & (i <= N + 1 - $required_halo_size(adv))
 
-        @inline $outside_biased_haloᶠ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv) + 1) & (i <= N + 1 - ($required_halo_size(adv) - 1)) &  # Left bias
-                                                                    (i >= $required_halo_size(adv))     & (i <= N + 1 - $required_halo_size(adv))          # Right bias
-        @inline $outside_biased_haloᶜ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv))     & (i <= N + 1 - ($required_halo_size(adv) - 1)) &  # Left bias
-                                                                    (i >= $required_halo_size(adv) - 1) & (i <= N + 1 - $required_halo_size(adv))          # Right bias
+        @inline $outside_biased_haloᶠ(i, ::Bounded, N, adv) = (i >= $required_halo_size(adv) + 1) & (i <= N + 1 - ($required_halo_size(adv) - 1)) &  # Left bias
+                                                              (i >= $required_halo_size(adv))     & (i <= N + 1 - $required_halo_size(adv))          # Right bias
+        @inline $outside_biased_haloᶜ(i, ::Bounded, N, adv) = (i >= $required_halo_size(adv))     & (i <= N + 1 - ($required_halo_size(adv) - 1)) &  # Left bias
+                                                              (i >= $required_halo_size(adv) - 1) & (i <= N + 1 - $required_halo_size(adv))          # Right bias
 
         # Right connected topologies (only test the left side, i.e. the bounded side)
-        @inline $outside_symmetric_haloᶠ(i, ::Type{RightTopology}, N, adv) = i >= $required_halo_size(adv) + 1
-        @inline $outside_symmetric_haloᶜ(i, ::Type{RightTopology}, N, adv) = i >= $required_halo_size(adv)
+        @inline $outside_symmetric_haloᶠ(i, ::RightTopology, N, adv) = i >= $required_halo_size(adv) + 1
+        @inline $outside_symmetric_haloᶜ(i, ::RightTopology, N, adv) = i >= $required_halo_size(adv)
 
-        @inline $outside_biased_haloᶠ(i, ::Type{RightTopology}, N, adv) = (i >= $required_halo_size(adv) + 1) &  # Left bias
-                                                                          (i >= $required_halo_size(adv))        # Right bias
-        @inline $outside_biased_haloᶜ(i, ::Type{RightTopology}, N, adv) = (i >= $required_halo_size(adv))     &  # Left bias
-                                                                          (i >= $required_halo_size(adv) - 1)    # Right bias
+        @inline $outside_biased_haloᶠ(i, ::RightTopology, N, adv) = (i >= $required_halo_size(adv) + 1) &  # Left bias
+                                                                    (i >= $required_halo_size(adv))        # Right bias
+        @inline $outside_biased_haloᶜ(i, ::RightTopology, N, adv) = (i >= $required_halo_size(adv))     &  # Left bias
+                                                                    (i >= $required_halo_size(adv) - 1)    # Right bias
 
         # Left bounded topologies (only test the right side, i.e. the bounded side)
-        @inline $outside_symmetric_haloᶠ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - $required_halo_size(adv))
-        @inline $outside_symmetric_haloᶜ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - $required_halo_size(adv))
+        @inline $outside_symmetric_haloᶠ(i, ::LeftConnected, N, adv) = (i <= N + 1 - $required_halo_size(adv))
+        @inline $outside_symmetric_haloᶜ(i, ::LeftConnected, N, adv) = (i <= N + 1 - $required_halo_size(adv))
 
-        @inline $outside_biased_haloᶠ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - ($required_halo_size(adv) - 1)) &  # Left bias
-                                                                          (i <= N + 1 - $required_halo_size(adv))          # Right bias
-        @inline $outside_biased_haloᶜ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - ($required_halo_size(adv) - 1)) &  # Left bias
-                                                                          (i <= N + 1 - $required_halo_size(adv))          # Right bias
+        @inline $outside_biased_haloᶠ(i, ::LeftConnected, N, adv) = (i <= N + 1 - ($required_halo_size(adv) - 1)) &  # Left bias
+                                                                    (i <= N + 1 - $required_halo_size(adv))          # Right bias
+        @inline $outside_biased_haloᶜ(i, ::LeftConnected, N, adv) = (i <= N + 1 - ($required_halo_size(adv) - 1)) &  # Left bias
+                                                                    (i <= N + 1 - $required_halo_size(adv))          # Right bias
     end
 end
 
@@ -106,21 +106,21 @@ for bias in (:symmetric, :biased)
             if ξ == :x
                 @eval begin
                     @inline $alt1_interp(i, j, k, grid::AUGX, scheme::HOADV, args...) = 
-                            ifelse($outside_buffer(i, topology(grid, 1), grid.Nx, scheme),
+                            ifelse($outside_buffer(i, topology(grid, 1)(), grid.Nx, scheme),
                                    $interp(i, j, k, grid, scheme, args...),
                                    $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
                 end
             elseif ξ == :y
                 @eval begin
                     @inline $alt1_interp(i, j, k, grid::AUGY, scheme::HOADV, args...) =
-                        ifelse($outside_buffer(j, topology(grid, 2), grid.Ny, scheme),
+                        ifelse($outside_buffer(j, topology(grid, 2)(), grid.Ny, scheme),
                                $interp(i, j, k, grid, scheme, args...),
                                $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
                 end
             elseif ξ == :z
                 @eval begin
                     @inline $alt1_interp(i, j, k, grid::AUGZ, scheme::HOADV, args...) =
-                        ifelse($outside_buffer(k, topology(grid, 3), grid.Nz, scheme),
+                        ifelse($outside_buffer(k, topology(grid, 3)(), grid.Nz, scheme),
                                $interp(i, j, k, grid, scheme, args...),
                                $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
                 end
@@ -130,11 +130,11 @@ for bias in (:symmetric, :biased)
 end
 
 @inline _multi_dimensional_reconstruction_x(i, j, k, grid::AUGX, scheme, interp, args...) = 
-                    ifelse(outside_symmetric_bufferᶜ(i, topology(grid, 1), grid.Nx, scheme), 
+                    ifelse(outside_symmetric_bufferᶜ(i, topology(grid, 1)(), grid.Nx, scheme), 
                            multi_dimensional_reconstruction_x(i, j, k, grid::AUGX, scheme, interp, args...),
                            interp(i, j, k, grid, scheme, args...))
 
 @inline _multi_dimensional_reconstruction_y(i, j, k, grid::AUGY, scheme, interp, args...) = 
-                    ifelse(outside_symmetric_bufferᶜ(j, topology(grid, 2), grid.Ny, scheme), 
+                    ifelse(outside_symmetric_bufferᶜ(j, topology(grid, 2)(), grid.Ny, scheme), 
                             multi_dimensional_reconstruction_y(i, j, k, grid::AUGY, scheme, interp, args...),
                             interp(i, j, k, grid, scheme, args...))
