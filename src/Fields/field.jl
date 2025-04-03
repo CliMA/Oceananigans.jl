@@ -607,7 +607,8 @@ reduced_dimensions(::XYReducedAbstractField)  = (1, 2)
 reduced_dimensions(::XYZReducedAbstractField) = (1, 2, 3)
 
 # TODO: needs test
-LinearAlgebra.dot(a::Field, b::Field) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))
+LinearAlgebra.dot(a::AbstractField, b::AbstractField) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))
+LinearAlgebra.norm(a::AbstractField) = mapreduce(x -> x * x, +, interior(a)) |> sqrt
 
 # TODO: in-place allocations with function mappings need to be fixed in Julia Base...
 const SumReduction     = typeof(Base.sum!)
@@ -750,23 +751,7 @@ function Statistics.mean!(f::Function, r::ReducedAbstractField, a::AbstractField
     return r
 end
 
-Statistics.mean!(r::ReducedAbstractField, a::AbstractArray; kwargs...) =
-    Statistics.mean!(identity, r, a; kwargs...)
-
-function LinearAlgebra.norm(a::AbstractField; condition = nothing)
-    conditional_a = condition_operand(a, condition, 0)
-    result = zeros(a.grid, 1)
-    Base.mapreducedim!(x -> x * x, +, result, conditional_a)
-    return CUDA.@allowscalar sqrt(first(result))
-end
-
-function LinearAlgebra.dot(a::AbstractField, b::AbstractField)
-    conditional_a = condition_operand(a, condition, 0)
-    conditional_b = condition_operand(b, condition, 0)
-    result = zeros(a.grid, 1)
-    Base.mapreducedim!((x, y) -> x * y, +, result, conditional_a, conditional_b)
-    return CUDA.@allowscalar first(result)
-end
+Statistics.mean!(r::ReducedAbstractField, a::AbstractArray; kwargs...) = Statistics.mean!(identity, r, a; kwargs...)
 
 function Base.isapprox(a::AbstractField, b::AbstractField; kw...)
     conditional_a = condition_operand(a, nothing, one(eltype(a)))

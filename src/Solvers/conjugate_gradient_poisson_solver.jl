@@ -115,13 +115,12 @@ const FFTBasedPreconditioner = Union{FFTBasedPoissonSolver, FourierTridiagonalPo
 
 function precondition!(p, preconditioner::FFTBasedPreconditioner, r, args...)
     compute_preconditioner_rhs!(preconditioner, r)
-    solve!(p, preconditioner)
-
-    mean_p = mean(p)
-    grid = p.grid
-    arch = architecture(grid)
-    launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, mean_p)
-
+    solve!(p, preconditioner, preconditioner.storage, -1e-8)
+    p .= .-p
+    # mean_p = mean(p)
+    # grid = p.grid
+    # arch = architecture(grid)
+    # launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, mean_p)
     return p
 end
 
