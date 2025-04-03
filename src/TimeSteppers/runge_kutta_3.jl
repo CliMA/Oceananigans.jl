@@ -49,11 +49,7 @@ function RungeKutta3TimeStepper(grid, prognostic_fields;
                                 implicit_solver::TI = nothing,
                                 Gⁿ::TG = map(similar, prognostic_fields),
                                 G⁻     = map(similar, prognostic_fields)) where {TI, TG}
-
-    !isnothing(implicit_solver) &&
-        @warn("Implicit-explicit time-stepping with RungeKutta3TimeStepper is not tested. " * 
-              "\n implicit_solver: $(typeof(implicit_solver))")
-
+    
     γ¹ = 8 // 15
     γ² = 5 // 12
     γ³ = 3 // 4
