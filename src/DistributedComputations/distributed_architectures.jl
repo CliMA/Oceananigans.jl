@@ -434,8 +434,8 @@ end
 
 function Base.summary(arch::Distributed)
     child_arch = child_architecture(arch)
-    A = typeof(child_arch)
-    return string("Distributed{$A}")
+    A = Base.summary(child_arch)
+    return "Distributed{$A}"
 end
 
 function Base.show(io::IO, arch::Distributed)

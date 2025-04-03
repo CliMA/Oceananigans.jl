@@ -109,7 +109,7 @@ function Base.summary(grid::ImmersedBoundaryGrid)
     FT = eltype(grid)
     TX, TY, TZ = topology(grid)
 
-    return string(size_summary(size(grid)),
+    return string(size_summary(grid),
                   " ImmersedBoundaryGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
 end

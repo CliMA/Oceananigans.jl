@@ -140,7 +140,7 @@ julia> using Oceananigans.MultiRegion: ConformalCubedSphereGrid
 
 julia> grid = ConformalCubedSphereGrid(panel_size=(12, 12, 1), z=(-1, 0), radius=1)
 ConformalCubedSphereGrid{Float64, Oceananigans.Grids.FullyConnected, Oceananigans.Grids.FullyConnected, Bounded} partitioned on CPU():
-├── grids: 12×12×1 OrthogonalSphericalShellGrid{Float64, Oceananigans.Grids.FullyConnected, Oceananigans.Grids.FullyConnected, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+├── grids: 12×12×1 OrthogonalSphericalShellGrid{Float64, Oceananigans.Grids.FullyConnected, Oceananigans.Grids.FullyConnected, Bounded} on CPU with 3×3×3 halo
 ├── partitioning: CubedSpherePartition with (1 region in each panel)
 ├── connectivity: CubedSphereConnectivity
 └── devices: (CPU(), CPU(), CPU(), CPU(), CPU(), CPU())

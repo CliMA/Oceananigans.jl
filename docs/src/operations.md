@@ -241,7 +241,7 @@ set!(c, 1)
 # output
 1×1×5 Field{Nothing, Nothing, Center} reduced over dims = (1, 2) on LatitudeLongitudeGrid on CPU
 ├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 5)
-├── grid: 60×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+├── grid: 60×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── operand: Integral of BinaryOperation at (Center, Center, Center) over dims (1, 2)
 ├── status: time=0.0
 └── data: 1×1×11 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:8) with eltype Float64 with indices 1:1×1:1×-2:8
@@ -259,7 +259,7 @@ compute!(∫c)
 # output
 1×1×5 Field{Nothing, Nothing, Center} reduced over dims = (1, 2) on LatitudeLongitudeGrid on CPU
 ├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 5)
-├── grid: 60×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+├── grid: 60×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── operand: Integral of BinaryOperation at (Center, Center, Center) over dims (1, 2)
 ├── status: time=0.0
 └── data: 1×1×11 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:8) with eltype Float64 with indices 1:1×1:1×-2:8
@@ -292,7 +292,7 @@ conditional_∫c = Field(Integral(c, dims=(1, 2), condition=cond)) # integrate o
 # output
 1×1×5 Field{Nothing, Nothing, Center} reduced over dims = (1, 2) on LatitudeLongitudeGrid on CPU
 ├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 5)
-├── grid: 60×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+├── grid: 60×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── operand: Integral of ConditionalOperation of BinaryOperation at (Center, Center, Center) with condition cond (generic function with 1 method) over dims (1, 2)
 ├── status: time=0.0
 └── data: 1×1×11 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:8) with eltype Float64 with indices 1:1×1:1×-2:8
