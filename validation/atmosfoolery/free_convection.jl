@@ -31,7 +31,7 @@ add_callback!(simulation, progress, IterationInterval(10))
 
 ow = JLD2Writer(model, merge(model.velocities, model.tracers),
                 filename = "free_convection.jld2",
-                schedule = TimeInterval(3minutes),
+                schedule = TimeInterval(1minutes),
                 overwrite_existing = true)
 
 simulation.output_writers[:jld2] = ow
