@@ -123,6 +123,8 @@ where `c = C[tracer_index]`.
                                                           clock,
                                                           forcing) where tracer_index
 
+    return c - c^3
+    #=
     @inbounds c = tracers[tracer_index]
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
@@ -137,4 +139,6 @@ where `c = C[tracer_index]`.
              - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
              + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))
+    =#
 end
+

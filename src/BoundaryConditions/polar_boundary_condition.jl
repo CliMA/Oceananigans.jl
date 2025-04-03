@@ -24,6 +24,9 @@ end
 latitude_north_auxiliary_bc(::YFlatGrid, args...) = nothing
 latitude_south_auxiliary_bc(::YFlatGrid, args...) = nothing
 
+latitude_north_auxiliary_bc(grid, loc, default_bc=DefaultBoundaryCondition()) = default_bc
+latitude_south_auxiliary_bc(grid, loc, default_bc=DefaultBoundaryCondition()) = default_bc
+#=
 # TODO: vectors should have a different treatment since vector components should account for the frame of reference.
 # For the moment, the `PolarBoundaryConditions` is implemented only for fields that have `loc[1] == loc[2] == Center()`, which
 # we assume are not components of horizontal vectors that would require rotation. (The `w` velocity if not a tracer, but it does
@@ -59,6 +62,7 @@ function latitude_south_auxiliary_bc(grid, loc, default_bc=DefaultBoundaryCondit
 
     return PolarBoundaryCondition(grid, :south, loc[3])
 end
+=#
 
 regularize_north_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) = 
     regularize_boundary_condition(latitude_north_auxiliary_bc(grid, loc, bc), grid, loc, args...)

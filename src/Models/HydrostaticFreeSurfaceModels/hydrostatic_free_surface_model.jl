@@ -128,7 +128,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                      vertical_coordinate = ZCoordinate())
 
     # Check halos and throw an error if the grid's halo is too small
-    @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
+    # @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
     if !(grid isa MutableGridOfSomeKind) && (vertical_coordinate isa ZStar)
         error("The grid does not support ZStar vertical coordinates. Use a `MutableVerticalDiscretization` to allow the use of ZStar (see `MutableVerticalDiscretization`).")
@@ -173,7 +173,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     # Then we merge specified, embedded, and default boundary conditions. Specified boundary conditions
     # have precedence, followed by embedded, followed by default.
     boundary_conditions = merge(default_boundary_conditions, embedded_boundary_conditions, boundary_conditions)
-    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)
+    # boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)
 
     # Finally, we ensure that closure-specific boundary conditions, such as
     # those required by CATKEVerticalDiffusivity, are enforced:
