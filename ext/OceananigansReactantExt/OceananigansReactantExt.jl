@@ -7,7 +7,7 @@ using OffsetArrays
 using Oceananigans: Distributed, DistributedComputations, ReactantState, CPU,
                     OrthogonalSphericalShellGrids
 using Oceananigans.Architectures: on_architecture
-using Oceananigans.Grids: Bounded, Periodic, RightConnected
+using Oceananigans.Grids: Bounded, Periodic, RightConnected, RightFolded
 
 deconcretize(obj) = obj # fallback
 deconcretize(a::OffsetArray) = OffsetArray(Array(a.parent), a.offsets...)
