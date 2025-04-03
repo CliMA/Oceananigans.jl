@@ -18,10 +18,7 @@ offset_indices(loc, topo, N, H=0) = 1 - H : N + H
 Return a range of indices for a field located at cell `Face`s along a grid dimension which
 is `Bounded` and has length `N` and with halo points `H`.
 """
-#offset_indices(::Face, ::BoundedTopology, N, H=0) = 1 - H : N + H + 1
-
-# Note: you may need 1 more halo than you think
-offset_indices(::Face, ::BoundedTopology, N, H=0) = 1 - H : N + H
+offset_indices(::Face, ::BoundedTopology, N, H=0) = 1 - H : N + H + 1
 
 """
 Return a range of indices for a field along a 'reduced' dimension.
