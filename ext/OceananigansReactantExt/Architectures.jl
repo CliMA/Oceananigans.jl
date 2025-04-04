@@ -65,7 +65,7 @@ function Oceananigans.Distributed(arch::ReactantState; devices=nothing,
     ranks = Rx, Ry, Rz = size(partition)
     total_ranks = Rx * Ry * Rz
     
-    if total_ranks < length(devices)
+    if total_ranks != length(devices)
         throw(ArgumentError("Partition($Rx, $Ry, $Rz) [$total_ranks ranks] \
                              inconsistent with $(length(devices)) devices"))
     end
