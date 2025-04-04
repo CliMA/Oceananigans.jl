@@ -1,6 +1,7 @@
 using Oceananigans: boundary_conditions
 
 @inline update_boundary_condition!(bc, side, field, model) = nothing
+@inline update_boundary_condition!(bcs, field, model) = nothing
 
 function update_boundary_condition!(bcs::FieldBoundaryConditions, field, model)
     update_boundary_condition!(bcs.west, Val(:west), field, model)
