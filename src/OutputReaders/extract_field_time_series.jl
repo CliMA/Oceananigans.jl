@@ -25,15 +25,27 @@ end
 extract_field_time_series(f::FieldTimeSeries) = f
 
 # For types that do not contain `FieldTimeSeries`, halt the recursion
-CannotPossiblyContainFTS = (:Number, :AbstractArray, :AbstractGrid)
+CannotPossiblyContainFTS = (:Number, :AbstractArray, :AbstractGrid, :Field)
 
 for T in CannotPossiblyContainFTS
     @eval extract_field_time_series(::$T) = nothing
 end
 
 # Special recursion rules for `Tuple` and `Field` types
-extract_field_time_series(t::Field)             = extract_field_time_series(t.boundary_conditions) # Only for BCs?
-extract_field_time_series(t::AbstractField)     = Tuple(extract_field_time_series(getproperty(t, p)) for p in propertynames(t))
+extract_field_time_series(t::AbstractField)     = nothing # Only if the BCs are FieldTimeSeries
 extract_field_time_series(t::AbstractOperation) = Tuple(extract_field_time_series(getproperty(t, p)) for p in propertynames(t))
 extract_field_time_series(t::Union{Tuple, NamedTuple}) = map(extract_field_time_series, t)
 
+# Special extract for Fields with FTSBC
+const WFTSBCS = FieldBoundaryConditions{<:FTSBC}
+const EFTSBCS = FieldBoundaryConditions{<:Any, <:FTSBC}
+const SFTSBCS = FieldBoundaryConditions{<:Any, <:Any, <:FTSBC}
+const NFTSBCS = FieldBoundaryConditions{<:Any, <:Any, <:Any, <:FTSBC}
+const BFTSBCS = FieldBoundaryConditions{<:Any, <:Any, <:Any, <:Any, <:FTSBC}
+const TFTSBCS = FieldBoundaryConditions{<:Any, <:Any, <:Any, <:Any, <:Any, <:FTSBC}
+const IFTSBCS = FieldBoundaryConditions{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:FTSBC}
+
+const FieldBCsFTS = Union{WFTSBCS, EFTSBCS, SFTSBCS, NFTSBCS, BFTSBCS, TFTSBCS, IFTSBCS}
+const FieldFTS = Field{LX, LY, LZ, O, G, I, D, T, <:FieldBCsFTS} where {LX, LY, LZ, O, G, I, D, T}
+
+extract_field_time_series(f::FieldFTS) = extract_field_time_series(f.boundary_conditions)
