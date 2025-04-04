@@ -8,25 +8,23 @@ using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
 # the free surface field η and its average η̄ are located on `Face`s at the surface (grid.Nz +1). All other intermediate variables
 # (U, V, Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined
 
-@kernel function _split_explicit_free_surface!(η_args)
+@kernel function _split_explicit_free_surface!(grid, Δτ, η, U, V, timestepper)
     i, j = @index(Global, NTuple)
-
-    # Unpack tupled arguments
-    grid, Δτ, η, U, V, timestepper = η_args
-
-    k_top = size(grid, 3) + 1
+    k_top = grid.Nz+1
+    
     cache_previous_free_surface!(timestepper, i, j, k_top, η)
     @inbounds  η[i, j, k_top] -= Δτ * (δxTᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
                                        δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) / Azᶜᶜᶠ(i, j, k_top, grid)
 end
 
-@kernel function _split_explicit_barotropic_velocity!(averaging_weight, U_args)
+@kernel function _split_explicit_barotropic_velocity!(averaging_weight, grid, Δτ, 
+                                                      η, U, V, 
+                                                      η̅, U̅, V̅, 
+                                                      Gᵁ, Gⱽ, g, 
+                                                      timestepper)
     i, j = @index(Global, NTuple)
+    k_top = grid.Nz+1
 
-    # Unpack the tupled arguments
-    grid, Δτ, η, U, V, η̅, U̅, V̅, Gᵁ, Gⱽ, g, timestepper = U_args
-    
-    k_top = size(grid, 3) + 1
     cache_previous_velocities!(timestepper, i, j, 1, U)
     cache_previous_velocities!(timestepper, i, j, 1, V)
 
@@ -60,7 +58,7 @@ const MINIMUM_SUBSTEPS = 5
 @inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic),
                                                                                         substeps, substepping.averaging_kernel)
 
-function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weights, Nsubsteps) 
+function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weights, ::Val{Nsubsteps}) where Nsubsteps
     arch = architecture(grid)
 
     η           = free_surface.η
@@ -93,10 +91,11 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
         converted_η_args = convert_to_device(arch, η_args)
         converted_U_args = convert_to_device(arch, U_args)
 
-        for substep in 1:Nsubsteps
+        @unroll for substep in 1:Nsubsteps
+            Base.@_inline_meta
             averaging_weight = weights[substep]
-            free_surface_kernel!(converted_η_args)
-            barotropic_velocity_kernel!(averaging_weight, converted_U_args)
+            free_surface_kernel!(converted_η_args...)
+            barotropic_velocity_kernel!(averaging_weight, converted_U_args...)
         end
     end
 
@@ -155,7 +154,7 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     # reset free surface averages
     @apply_regionally begin
         # Solve for the free surface at tⁿ⁺¹
-        iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, weights, Nsubsteps)
+        iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, weights, Val(Nsubsteps))
         
         # Update eta and velocities for the next timestep
         # The halos are updated in the `update_state!` function
