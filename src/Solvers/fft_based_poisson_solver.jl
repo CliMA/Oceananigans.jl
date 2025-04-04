@@ -135,4 +135,3 @@ end
 
     @inbounds ϕ[i′, j′, k′] = real(ϕc[i, j, k])
 end
-

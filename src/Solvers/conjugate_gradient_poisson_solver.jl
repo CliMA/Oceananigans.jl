@@ -115,13 +115,12 @@ const FFTBasedPreconditioner = Union{FFTBasedPoissonSolver, FourierTridiagonalPo
 
 function precondition!(p, preconditioner::FFTBasedPreconditioner, r, args...)
     compute_preconditioner_rhs!(preconditioner, r)
-    solve!(p, preconditioner)
-
-    mean_p = mean(p)
-    grid = p.grid
-    arch = architecture(grid)
-    launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, mean_p)
-
+    solve!(p, preconditioner, preconditioner.storage, -1e-8)
+    p .= .-p
+    # mean_p = mean(p)
+    # grid = p.grid
+    # arch = architecture(grid)
+    # launch!(arch, grid, :xyz, subtract_and_mask!, p, grid, mean_p)
     return p
 end
 
@@ -163,16 +162,15 @@ end
                               Az⁻(i, j, k, grid) - Az⁺(i, j, k, grid)
                               
 @inline heuristic_residual(i, j, k, grid, r) =
-    @inbounds 1 / Ac(i, j, k, grid) * (r[i, j, k] - 2 * Ax⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i-1, j, k, grid)) * r[i-1, j, k] -
-                                                    2 * Ax⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i+1, j, k, grid)) * r[i+1, j, k] -
-                                                    2 * Ay⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j-1, k, grid)) * r[i, j-1, k] -
-                                                    2 * Ay⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j+1, k, grid)) * r[i, j+1, k] -
-                                                    2 * Az⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j, k-1, grid)) * r[i, j, k-1] -
-                                                    2 * Az⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j, k+1, grid)) * r[i, j, k+1])
+    @inbounds 1 / abs(Ac(i, j, k, grid)) * (r[i, j, k] - 2 * Ax⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i-1, j, k, grid)) * r[i-1, j, k] -
+                                                         2 * Ax⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i+1, j, k, grid)) * r[i+1, j, k] -
+                                                         2 * Ay⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j-1, k, grid)) * r[i, j-1, k] -
+                                                         2 * Ay⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j+1, k, grid)) * r[i, j+1, k] -
+                                                         2 * Az⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j, k-1, grid)) * r[i, j, k-1] -
+                                                         2 * Az⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j, k+1, grid)) * r[i, j, k+1])
 
 @kernel function _diagonally_dominant_precondition!(p, grid, r)
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
     @inbounds p[i, j, k] = heuristic_residual(i, j, k, grid, r) * active
 end
-
