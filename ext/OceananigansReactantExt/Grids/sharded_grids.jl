@@ -48,12 +48,18 @@ reconstruct_global_topology(topo, R, r, r1, r2, ::ShardedDistributed) = topo
 
 sharded_z_direction(::Nothing) = nothing
 
+maybe_shard(::Nothing, sharding) = nothing
+maybe_shard(a, sharding) = if parent(a) isa StepRangeLen
+    a
+else
+    Reactant.to_rarray(a; sharding)
+end
+
 # A function to shard the z-direction (needs to be replicated around 
 # TODO: add a method for `MutableVerticalDiscretization`
 function sharded_z_direction(z::StaticVerticalDiscretization; sharding = Sharding.NoSharding()) 
-    
-    cᵃᵃᶠ = parent(z.cᵃᵃᶠ) isa StepRangeLen ? z.cᵃᵃᶠ : Reactant.to_rarray(z.cᵃᵃᶠ; sharding)
-    cᵃᵃᶜ = parent(z.cᵃᵃᶜ) isa StepRangeLen ? z.cᵃᵃᶜ : Reactant.to_rarray(z.cᵃᵃᶜ; sharding)
+    cᵃᵃᶠ = maybe_shard(z.cᵃᵃᶠ, sharding)
+    cᵃᵃᶜ = maybe_shard(z.cᵃᵃᶜ, sharding)
 
     Δᵃᵃᶠ = Reactant.to_rarray(z.Δᵃᵃᶠ; sharding)
     Δᵃᵃᶜ = Reactant.to_rarray(z.Δᵃᵃᶜ; sharding)
