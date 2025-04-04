@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   sharding_tests:
-    name: Sharding Tests - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    name: Sharding Tests - Julia ${{ matrix.version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     strategy:
@@ -35,16 +35,15 @@ jobs:
       matrix:
         version:
           - '1.10'
-        os:
+        os: 
+          - ubuntu-22.04-arm
           - ubuntu-latest
-        arch:
-          - x64
+          - macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
       - run: |
           touch LocalPreferences.toml
