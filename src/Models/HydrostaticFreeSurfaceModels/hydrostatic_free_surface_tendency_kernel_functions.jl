@@ -123,7 +123,7 @@ where `c = C[tracer_index]`.
                                                           clock,
                                                           forcing) where tracer_index
 
-    @inbounds c = tracers[tracer_index]
+    @inbounds c = tracers[tracer_index][i, j, k]
     return c - c^3
 
     #=
