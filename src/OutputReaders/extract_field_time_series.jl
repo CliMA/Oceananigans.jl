@@ -47,4 +47,10 @@ const IFTSBCS = FieldBoundaryConditions{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any
 const FieldBCsFTS = Union{WFTSBCS, EFTSBCS, SFTSBCS, NFTSBCS, BFTSBCS, TFTSBCS, IFTSBCS}
 const FieldFTS = Field{LX, LY, LZ, O, G, I, D, T, <:FieldBCsFTS} where {LX, LY, LZ, O, G, I, D, T}
 
-extract_field_time_series(f::FieldFTS) = extract_field_time_series(f.boundary_conditions)
+extract_field_time_series(f::FieldFTS) = (extract_field_time_series(f.boundary_conditions.west),
+                                          extract_field_time_series(f.boundary_conditions.east),
+                                          extract_field_time_series(f.boundary_conditions.south),
+                                          extract_field_time_series(f.boundary_conditions.north),
+                                          extract_field_time_series(f.boundary_conditions.bottom),
+                                          extract_field_time_series(f.boundary_conditions.top),
+                                          extract_field_time_series(f.boundary_conditions.immersed))
