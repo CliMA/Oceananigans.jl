@@ -354,11 +354,11 @@ end
 
 Base.getindex(o::KernelOffsets, args...) = getindex(o.offsets, args...)
 
-const OffsetNDRange8{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:KernelOffsets{N, I}} where {N, I}
+const OffsetNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:KernelOffsets{N, I}} where {N, I}
 
 # NDRange has been modified to have offsets in place of workitems: Remember, dynamic offset kernels are not possible with this extension!!
 # TODO: maybe don't do this
-@inline function expand(ndrange::OffsetNDRange8{N}, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where {N}
+@inline function expand(ndrange::OffsetNDRange{N}, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where {N}
     nI = ntuple(Val(N)) do I
         Base.@_inline_meta
         offsets = workitems(ndrange)
