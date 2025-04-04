@@ -192,7 +192,7 @@ function test_jld2_time_averaging(arch)
     for Δt in (1/64, 0.01)
         # Results should be very close (rtol < 1e-5) for stride = 1.
         # stride > 2 is currently not robust and can give inconsistent
-        # results due to floating number errors that can result in vanishingly 
+        # results due to floating number errors that can result in vanishingly
         # small timesteps, which essentially decouples the clock time from
         # the iteration number.
         # Can add stride > 1 cases to the following line to test them.
@@ -364,7 +364,7 @@ for arch in archs
                                                         overwrite_existing = true)
 
         func_outputs = (u = model -> u, v = model -> v, w = model -> w)
-        
+
         simulation.output_writers[:sliced_funcs] = JLD2Writer(model, func_outputs,
                                                               schedule = TimeInterval(1),
                                                               indices = (1:2, 1:4, :),
@@ -448,7 +448,7 @@ for arch in archs
         test_field_slicing("sliced_jld2_test.jld2", ("u", "v", "w"), (2, 4, 4), (2, 4, 4), (2, 4, 5))
         test_field_slicing("sliced_funcs_jld2_test.jld2", ("u", "v", "w"), (4, 4, 4), (4, 4, 4), (4, 4, 5))
         test_field_slicing("sliced_func_fields_jld2_test.jld2", ("αt", "background_u"), (2, 4, 4), (2, 4, 4))
-        
+
         ####
         #### File splitting
         ####

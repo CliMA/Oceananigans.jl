@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.TurbulenceClosures
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integrated_volume_flux!, 
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integrated_volume_flux!,
                                                         compute_implicit_free_surface_right_hand_side!,
                                                         step_free_surface!,
                                                         pressure_correct_velocities!
@@ -13,8 +13,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
         A = typeof(arch)
         @info "Testing immersed boundaries divergent flow solve [$A]"
 
-        Nx = 11 
-        Ny = 11 
+        Nx = 11
+        Ny = 11
         Nz = 1
 
         underlying_grid = RectilinearGrid(arch,
@@ -54,7 +54,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
             u[imp1, jmm1, 1:Nz] .= -1
             v[imm1, jmm1, 1:Nz] .=  1
             v[imm1, jmp1, 1:Nz] .= -1
-            
+
             step_free_surface!(model.free_surface, model, model.timestepper, 1.0)
 
             sol = (sol..., model.free_surface.η)

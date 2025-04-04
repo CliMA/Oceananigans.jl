@@ -61,7 +61,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ```
 
 Boundary conditions are passed to `FieldBoundaryCondition` to build boundary conditions for each
-field individually, and then onto the model constructor (here `NonhydrotaticModel`) via the 
+field individually, and then onto the model constructor (here `NonhydrotaticModel`) via the
 keyword argument `boundary_conditions`.
 The model constructor then "interprets" the input and builds appropriate boundary conditions
 for the grid `topology`, given the user-specified `no_slip` default boundary condition for `Bounded`
@@ -119,15 +119,15 @@ There are three primary boundary condition classifications:
 2. `ValueBoundaryCondition` (Dirichlet) specifies the value of a field on
    the given boundary, which when used in combination with a turbulence closure
    results in a flux across the boundary.
-   
+
    _Note_: Do not use `ValueBoundaryCondition` on a wall-normal velocity component
    (see the note below about `ImpenetrableBoundaryCondition`).
-   
+
    Some applications of `ValueBoundaryCondition` are:
      * no-slip boundary condition for wall-tangential velocity components via `ValueBoundaryCondition(0)`;
      * surface temperature distribution, where heat fluxes in and out of the domain
        at a rate controlled by the near-surface temperature gradient and the temperature diffusivity;
-     * constant velocity tangential to a boundary as in a driven-cavity flow (for example), 
+     * constant velocity tangential to a boundary as in a driven-cavity flow (for example),
        where the top boundary is moving. Momentum will flux into the domain do the difference
        between the top boundary velocity and the interior velocity, and the prescribed viscosity.
 
@@ -507,7 +507,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 !!! warning "`ImmersedBoundaryCondition`"
     `ImmersedBoundaryCondition` is experimental.
     Therefore, one should use it only when a finer level of control over the boundary conditions
-    at the immersed boundary is required, and the user is familiar with the implementation of boundary 
+    at the immersed boundary is required, and the user is familiar with the implementation of boundary
     conditions on staggered grids. For all other cases , using the `immersed` argument of
     `FieldBoundaryConditions` is preferred.
 

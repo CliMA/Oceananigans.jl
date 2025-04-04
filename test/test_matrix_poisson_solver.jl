@@ -49,7 +49,7 @@ function compute_poisson_weights(grid)
     D  = on_architecture(architecture(grid), zeros(grid, N...))
 
     launch!(architecture(grid), grid, :xyz, _compute_poisson_weights, Ax, Ay, Az, grid)
-    
+
     return (Ax, Ay, Az, C, D)
 end
 
@@ -71,7 +71,7 @@ function run_poisson_equation_test(grid)
     # Calculate Laplacian of "truth"
     ∇²ϕ = CenterField(grid)
     compute_∇²!(∇²ϕ, ϕ_truth, arch, grid)
-    
+
     rhs = deepcopy(∇²ϕ)
     poisson_rhs!(rhs, grid)
     rhs = copy(interior(rhs))
@@ -86,8 +86,8 @@ function run_poisson_equation_test(grid)
     storage = on_architecture(arch, zeros(size(rhs)))
     solve!(storage, solver, rhs, 1.0)
     set!(ϕ_solution, reshape(storage, solver.problem_size...))
-    fill_halo_regions!(ϕ_solution) 
-    
+    fill_halo_regions!(ϕ_solution)
+
     # Diagnose Laplacian of solution
     ∇²ϕ_solution = CenterField(grid)
     compute_∇²!(∇²ϕ_solution, ϕ_solution, arch, grid)
@@ -96,7 +96,7 @@ function run_poisson_equation_test(grid)
 
     CUDA.@allowscalar begin
         @test all(interior(∇²ϕ_solution) .≈ interior(∇²ϕ))
-        @test all(interior(ϕ_solution)   .≈ interior(ϕ_truth)) 
+        @test all(interior(ϕ_solution)   .≈ interior(ϕ_truth))
     end
 
     return nothing
@@ -107,7 +107,7 @@ end
 
     for arch in archs, topo in topologies
         @info "Testing 2D HeptadiagonalIterativeSolver [$(typeof(arch)) $topo]..."
-        
+
         grid = RectilinearGrid(arch, size=(4, 8), extent=(1, 3), topology = topo)
         run_identity_operator_test(grid)
         run_poisson_equation_test(grid)
@@ -117,7 +117,7 @@ end
 
     for arch in archs, topo in topologies
         @info "Testing 3D HeptadiagonalIterativeSolver [$(typeof(arch)) $topo]..."
-        
+
         grid = RectilinearGrid(arch, size=(4, 8, 6), extent=(1, 3, 4), topology=topo)
         run_identity_operator_test(grid)
         run_poisson_equation_test(grid)
@@ -128,8 +128,8 @@ end
     sz = (5, 5, 5)
 
     for arch in archs
-        grids = [RectilinearGrid(arch, size = sz, x = stretched_faces, y = (0, 10), z = (0, 10), topology = topo), 
-                 RectilinearGrid(arch, size = sz, x = (0, 10), y = stretched_faces, z = (0, 10), topology = topo), 
+        grids = [RectilinearGrid(arch, size = sz, x = stretched_faces, y = (0, 10), z = (0, 10), topology = topo),
+                 RectilinearGrid(arch, size = sz, x = (0, 10), y = stretched_faces, z = (0, 10), topology = topo),
                  RectilinearGrid(arch, size = sz, x = (0, 10), y = (0, 10), z = stretched_faces, topology = topo)]
 
         for (grid, stretched_direction) in zip(grids, [:x, :y, :z])

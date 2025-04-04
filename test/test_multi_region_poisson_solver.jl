@@ -115,7 +115,7 @@ function run_poisson_equation_test(grid)
 
     CUDA.@allowscalar begin
         @test all(interior(∇²ϕ_solution) .≈ interior(∇²ϕ))
-        @test all(interior(ϕ_solution)   .≈ interior(ϕ_truth)) 
+        @test all(interior(ϕ_solution)   .≈ interior(ϕ_truth))
     end
 
     return nothing
@@ -136,7 +136,7 @@ end
 
     for arch in archs, topo in topologies
         @info "Testing 3D UnifiedDiagonalIterativeSolver [$(typeof(arch)) $topo]..."
-        
+
         grid = RectilinearGrid(arch, size=(4, 8, 6), extent=(1, 3, 4), topology=topo)
         run_identity_operator_test(grid)
         run_poisson_equation_test(grid)
@@ -147,8 +147,8 @@ end
     sz = (6, 6, 6)
 
     for arch in archs
-        grids = [RectilinearGrid(arch, size = sz, x = stretched_faces, y = (0, 10), z = (0, 10), topology = topo), 
-                 RectilinearGrid(arch, size = sz, x = (0, 10), y = stretched_faces, z = (0, 10), topology = topo), 
+        grids = [RectilinearGrid(arch, size = sz, x = stretched_faces, y = (0, 10), z = (0, 10), topology = topo),
+                 RectilinearGrid(arch, size = sz, x = (0, 10), y = stretched_faces, z = (0, 10), topology = topo),
                  RectilinearGrid(arch, size = sz, x = (0, 10), y = (0, 10), z = stretched_faces, topology = topo)]
 
         for (grid, stretched_direction) in zip(grids, [:x, :y, :z])

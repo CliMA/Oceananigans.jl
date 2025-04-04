@@ -68,9 +68,9 @@ function x_derivative_cell(arch)
     one_four_four = on_architecture(arch, [1, 4, 4])
 
     for k in 1:3
-        interior(a)[:, 1, k] .= one_four_four 
-        interior(a)[:, 2, k] .= one_four_four 
-        interior(a)[:, 3, k] .= one_four_four 
+        interior(a)[:, 1, k] .= one_four_four
+        interior(a)[:, 2, k] .= one_four_four
+        interior(a)[:, 3, k] .= one_four_four
     end
 
     return CUDA.@allowscalar dx_a[2, 2, 2] == 3
@@ -300,7 +300,7 @@ for arch in archs
                         loc = (LX, LY, LZ)
                         f = Field(loc, rectilinear_grid)
                         f .= 1
-                        
+
                         CUDA.@allowscalar begin
                             # Δx, Δy, Δz = 2, 3, 4
                             # Ax, Ay, Az = 12, 8, 6
@@ -329,7 +329,7 @@ for arch in archs
         end
 
         @testset "Indexing of AbstractOperations [$(typeof(arch))]" begin
-            
+
             grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(1, 1, 1))
 
             test_indices   = [(2:3, :, :), (:, 2:3, :), (:, :, 2:3)]
@@ -337,13 +337,13 @@ for arch in archs
             center_indices = [(3:3, :, :), (:, 3:3, :), (:, :, 3:3)]
 
             FaceFields = (XFaceField, YFaceField, ZFaceField)
-            
+
             for (ti, fi, ci, FaceField) in zip(test_indices, face_indices, center_indices, FaceFields)
                 a = CenterField(grid)
                 b = CenterField(grid, indices = ti)
                 @test indices(a * b)  == ti
                 @test indices(sin(b)) == ti
-                            
+
                 c = CenterField(grid, indices=ti)
                 d = FaceField(grid, indices=ti)
                 @test indices(c * d) == fi

@@ -10,12 +10,12 @@ For example, tracer advection is described by
 ```
 
 where ``\boldsymbol{v}`` is the resolved velocity field and ``c`` is the resolved
-tracer field corresponding to `model.tracers.c`. 
+tracer field corresponding to `model.tracers.c`.
 
 When a background field ``C`` is provided, the tracer advection term becomes
 
 ```math
-\boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{v} c \right ) 
+\boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{v} c \right )
     + \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{v} C \right ) \, .
 ```
 
@@ -23,13 +23,13 @@ When both a background field velocity field ``\boldsymbol{U}`` and a background 
 are provided, then the tracer advection term becomes
 
 ```math
-\boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{v} c \right ) 
+\boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{v} c \right )
     + \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{v} C \right )
     + \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{U} c \right ) \, .
 ```
 
-Notice that the term ``\boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{U} C \right )`` 
-is neglected: only the terms describing the advection of resolved tracer by the background 
+Notice that the term ``\boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{U} C \right )``
+is neglected: only the terms describing the advection of resolved tracer by the background
 velocity field and the advection of background tracer by the resolved velocity field are included.
 An analogous statement holds for the advection of background momentum by the resolved
 velocity field.
@@ -41,7 +41,7 @@ and surface waves acting on background fields are neglected.
 
 ## Specifying background fields
 
-`BackgroundField`s are defined by functions of ``(x, y, z, t)`` and optional parameters. A 
+`BackgroundField`s are defined by functions of ``(x, y, z, t)`` and optional parameters. A
 simple example is
 
 ```jldoctest
@@ -77,7 +77,7 @@ parameters = (α=3.14, N=1.0, f=0.1)
 
 # Background fields are defined via function of x, y, z, t, and optional parameters
 U(x, y, z, t, α) = α * z
-B(x, y, z, t, p) = - p.α * p.f * y + p.N^2 * z 
+B(x, y, z, t, p) = - p.α * p.f * y + p.N^2 * z
 
 U_field = BackgroundField(U, parameters=parameters.α)
 B_field = BackgroundField(B, parameters=parameters)

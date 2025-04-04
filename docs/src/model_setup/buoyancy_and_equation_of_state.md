@@ -63,7 +63,7 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── buoyancy: Nothing
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
-├── advection scheme: 
+├── advection scheme:
 │   └── momentum: Vector Invariant, Dimension-by-dimension reconstruction
 └── coriolis: Nothing
 ```
@@ -111,7 +111,7 @@ salinity ``S``. The relationship between ``T``, ``S``, the geopotential height, 
 perturbation from a reference value is called the `equation_of_state`.
 
 Specifying `buoyancy = SeawaterBuoyancy()` returns a buoyancy model with a linear equation of state,
-[Earth standard](https://en.wikipedia.org/wiki/Standard_gravity) `gravitational_acceleration = 9.80665` (in 
+[Earth standard](https://en.wikipedia.org/wiki/Standard_gravity) `gravitational_acceleration = 9.80665` (in
 S.I. units ``\text{m}\,\text{s}^{-2}``) and requires to add `:T` and `:S` as tracers:
 
 ```jldoctest buoyancy
