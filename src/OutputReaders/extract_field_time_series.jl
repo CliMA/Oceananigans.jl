@@ -32,6 +32,7 @@ for T in CannotPossiblyContainFTS
 end
 
 # Special recursion rules for `Tuple` and `Field` types
+extract_field_time_series(t::Field)             = extract_field_time_series(t.boundary_conditions) # Only for BCs?
 extract_field_time_series(t::AbstractField)     = Tuple(extract_field_time_series(getproperty(t, p)) for p in propertynames(t))
 extract_field_time_series(t::AbstractOperation) = Tuple(extract_field_time_series(getproperty(t, p)) for p in propertynames(t))
 extract_field_time_series(t::Union{Tuple, NamedTuple}) = map(extract_field_time_series, t)
