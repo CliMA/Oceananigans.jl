@@ -25,7 +25,7 @@ end
 extract_field_time_series(f::FieldTimeSeries) = f
 
 # For types that do not contain `FieldTimeSeries`, halt the recursion
-CannotPossiblyContainFTS = (:Number, :AbstractArray, :AbstractGrid, :Field)
+CannotPossiblyContainFTS = (:Number, :AbstractArray, :AbstractGrid)
 
 for T in CannotPossiblyContainFTS
     @eval extract_field_time_series(::$T) = nothing
