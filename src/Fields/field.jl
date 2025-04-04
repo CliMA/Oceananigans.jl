@@ -608,7 +608,12 @@ reduced_dimensions(::XYZReducedAbstractField) = (1, 2, 3)
 
 # TODO: needs test
 LinearAlgebra.dot(a::AbstractField, b::AbstractField) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))
-LinearAlgebra.norm(a::AbstractField) = mapreduce(x -> x * x, +, interior(a)) |> sqrt
+# LinearAlgebra.norm(a::AbstractField) = mapreduce(x -> x * x, +, interior(a)) |> sqrt
+function LinearAlgebra.norm(a::AbstractField; condition = nothing)
+    r = zeros(a.grid, 1)
+    Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
+    return CUDA.@allowscalar sqrt(r[1])
+end
 
 # TODO: in-place allocations with function mappings need to be fixed in Julia Base...
 const SumReduction     = typeof(Base.sum!)
