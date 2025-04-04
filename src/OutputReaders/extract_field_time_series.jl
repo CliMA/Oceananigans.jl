@@ -6,8 +6,6 @@ using Oceananigans.Grids: AbstractGrid
 ##### Utility for "extracting" FieldTimeSeries from large nested objects (eg models)
 #####
 
-# extract_field_time_series(args...) = ()
-
 extract_field_time_series(t1, tn...) = extract_field_time_series(tuple(t1, tn...))
 
 # Utility used to extract field time series from a type through recursion
