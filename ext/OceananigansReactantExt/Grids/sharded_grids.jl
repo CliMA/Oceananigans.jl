@@ -48,7 +48,7 @@ reconstruct_global_topology(topo, R, r, r1, r2, ::ShardedDistributed) = topo
 
 sharded_z_direction(::Nothing) = nothing
 
-maybe_shard(a::Nothing, sharding) = a
+maybe_shard(::Nothing, sharding) = nothing
 maybe_shard(a, sharding) = if parent(a) isa StepRangeLen
     a
 else
