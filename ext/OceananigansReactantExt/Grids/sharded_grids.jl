@@ -46,6 +46,8 @@ construct_global_array(A::AbstractArray, ::ShardedDistributed, local_size) = A
 
 reconstruct_global_topology(topo, R, r, r1, r2, ::ShardedDistributed) = topo
 
+sharded_z_direction(::Nothing) = nothing
+
 # A function to shard the z-direction (needs to be replicated around 
 # TODO: add a method for `MutableVerticalDiscretization`
 function sharded_z_direction(z::StaticVerticalDiscretization; sharding = Sharding.NoSharding()) 
