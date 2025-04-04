@@ -25,14 +25,13 @@ end
 extract_field_time_series(f::FieldTimeSeries) = f
 
 # For types that do not contain `FieldTimeSeries`, halt the recursion
-CannotPossiblyContainFTS = (:Number, :AbstractArray, :AbstractGrid, :Field)
+CannotPossiblyContainFTS = (:Number, :AbstractArray, :AbstractGrid, :AbstractField)
 
 for T in CannotPossiblyContainFTS
     @eval extract_field_time_series(::$T) = nothing
 end
 
 # Special recursion rules for `Tuple` and `Field` types
-extract_field_time_series(t::AbstractField)     = nothing # Only if the BCs are FieldTimeSeries
 extract_field_time_series(t::AbstractOperation) = Tuple(extract_field_time_series(getproperty(t, p)) for p in propertynames(t))
 extract_field_time_series(t::Union{Tuple, NamedTuple}) = map(extract_field_time_series, t)
 
