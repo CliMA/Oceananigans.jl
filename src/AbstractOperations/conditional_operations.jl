@@ -176,9 +176,23 @@ function materialize_condition(c::ConditionalOperation)
     return f
 end
 
-@inline function conditional_one(c::ConditionalOperation, mask)
+const NotWindowedField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, Tuple{Colon, Colon, Colon}}
+const NotWindowedFieldCO = ConditionalOperation{<:Any, <:Any, <:Any, <:Any, <:Any, <:NotWindowedField}
+
+# if not a windowed field, use OneField for performance
+@inline function conditional_one(c::NotWindowedFieldCO, mask)
     LX, LY, LZ = location(c)
     one_field = OneField(Int)
+    return ConditionalOperation{LX, LY, LZ}(one_field, nothing, c.grid, c.condition, mask)
+end
+
+# for windowed fields we need to pass indices
+@inline function conditional_one(c::ConditionalOperation, mask)
+    LX, LY, LZ = location(c)
+    grid = c.operand.grid
+    indices = c.operand.indices
+    one_field = Field{LX, LY, LZ}(grid; indices)
+    set!(one_field, 1)
     return ConditionalOperation{LX, LY, LZ}(one_field, nothing, c.grid, c.condition, mask)
 end
 
