@@ -68,24 +68,21 @@ end
 
 # Run the distributed grid simulation and save down reconstructed results
 function run_distributed_tripolar_grid(arch, filename)
-    distributed_grid = TripolarGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
-    distributed_grid = analytical_immersed_tripolar_grid(distributed_grid)
-    model            = run_distributed_simulation(distributed_grid)
+    grid  = TripolarGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
+    grid  = analytical_immersed_tripolar_grid(grid)
+    model = run_distributed_simulation(grid)
 
     η = reconstruct_global_field(model.free_surface.η)
     u = reconstruct_global_field(model.velocities.u)
     v = reconstruct_global_field(model.velocities.v)
     c = reconstruct_global_field(model.tracers.c)
 
-    if arch.local_rank == 0
+    if MPI.Comm_rank(MPI.COMM_WORLD) == 0
         jldsave(filename; u = Array(interior(u, :, :, 1)),
                           v = Array(interior(v, :, :, 1)), 
                           c = Array(interior(c, :, :, 1)),
                           η = Array(interior(η, :, :, 1))) 
     end
-
-    MPI.Barrier(MPI.COMM_WORLD)
-    MPI.Finalize()
 
     return nothing
 end
@@ -103,26 +100,26 @@ function run_distributed_latitude_longitude_grid(arch, filename)
 
     @test isnothing(flat_distributed_grid.z)
 
-    distributed_grid = LatitudeLongitudeGrid(arch; 
-                                             size = (40, 40, 10),
-                                             longitude = (0, 360),
-                                             latitude = (-10, 10),
-                                             z = (-1000, 0),
-                                             halo = (5, 5, 5))  
+    grid = LatitudeLongitudeGrid(arch; 
+                                 size=(40, 40, 10), 
+                                 longitude=(0, 360), 
+                                 latitude=(-10, 10), 
+                                 z=(-1000, 0), 
+                                 halo=(5, 5, 5))   
 
-    distributed_grid = ImmersedBoundaryGrid(distributed_grid, GridFittedBottom(bottom_height))
-    model = run_distributed_simulation(distributed_grid)
-
+    grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))      
+    model = run_distributed_simulation(grid)
+    
     η = reconstruct_global_field(model.free_surface.η)
     u = reconstruct_global_field(model.velocities.u)
     v = reconstruct_global_field(model.velocities.v)
     c = reconstruct_global_field(model.tracers.c)
 
-    if arch.local_rank == 0
+    if MPI.Comm_rank(MPI.COMM_WORLD) == 0
         jldsave(filename; u = Array(interior(u, :, :, 10)),
                           v = Array(interior(v, :, :, 10)), 
                           c = Array(interior(c, :, :, 10)),
-                          η = Array(interior(η, :, :, 1))) 
+                          η = Array(interior(η, :, :, 1)))
     end
 
     return nothing
@@ -135,16 +132,16 @@ function run_distributed_simulation(grid)
                                           free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
                                           tracers = :c,
                                           buoyancy = nothing, 
-                                          tracer_advection = WENO(), 
-                                          momentum_advection = WENOVectorInvariant(order=3),
-                                          coriolis = HydrostaticSphericalCoriolis())
+                                          tracer_advection = nothing, #WENO(), 
+                                          momentum_advection = nothing, #WENOVectorInvariant(order=3),
+                                          coriolis = nothing) #HydrostaticSphericalCoriolis())
 
     # Setup the model with a gaussian sea surface height
     # near the physical north poles and one near the equator
     ηᵢ(λ, φ, z) = exp(- (φ - 90)^2 / 10^2) + exp(- φ^2 / 10^2)
     set!(model, c=ηᵢ, η=ηᵢ)
 
-    Δt = 5minutes
+    Δt = 10 # 5minutes
     arch = architecture(grid)
     if arch isa ReactantState || arch isa Distributed{<:ReactantState}
         @info "Compiling first_time_step..."
@@ -159,7 +156,7 @@ function run_distributed_simulation(grid)
 
     @info "Running first time step..."
     r_first_time_step!(model, Δt)
-    @info "Running time steps..."
+    @info "Running time step..."
     for N in 2:100
         r_time_step!(model, Δt)
     end

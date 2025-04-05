@@ -346,7 +346,7 @@ insert_connected_topology(::Type{Bounded}, R, r) = ifelse(R == 1, Bounded,
 insert_connected_topology(::Type{Periodic}, R, r) = ifelse(R == 1, Periodic, FullyConnected)
 
 """ 
-    reconstruct_global_topology(T, R, r, r1, r2, arch)
+    reconstruct_global_topology(T, R, r, r1, r2, comm)
 
 reconstructs the global topology associated with the local topologies `T`, the amount of ranks 
 in `T` direction (`R`) and the local rank index `r`. If all ranks hold a `FullyConnected` topology,
