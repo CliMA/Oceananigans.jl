@@ -4,6 +4,19 @@ using Oceananigans.AbstractOperations: KernelFunctionOperation
 import Oceananigans.AbstractOperations: ConditionalOperation, evaluate_condition, validate_condition
 import Oceananigans.Fields: condition_operand, conditional_length
 
+# ImmersedReducedFields
+const XIRF = AbstractField{Nothing, <:Any, <:Any, <:ImmersedBoundaryGrid}
+const YIRF = AbstractField{<:Any, Nothing, <:Any, <:ImmersedBoundaryGrid}
+const ZIRF = AbstractField{<:Any, <:Any, Nothing, <:ImmersedBoundaryGrid}
+
+const YZIRF = AbstractField{<:Any, Nothing, Nothing, <:ImmersedBoundaryGrid}
+const XZIRF = AbstractField{Nothing, <:Any, Nothing, <:ImmersedBoundaryGrid}
+const XYIRF = AbstractField{Nothing, Nothing, <:Any, <:ImmersedBoundaryGrid}
+
+const XYZIRF = AbstractField{Nothing, Nothing, Nothing, <:ImmersedBoundaryGrid}
+
+const IRF = Union{XIRF, YIRF, ZIRF, YZIRF, XZIRF, XYIRF, XYZIRF}
+
 #####
 ##### Reduction operations involving immersed boundary grids exclude the immersed periphery,
 ##### which includes both external nodes and nodes on the immersed interface.
@@ -25,6 +38,9 @@ function validate_condition(cond::NotImmersed{<:AbstractArray}, operand::Abstrac
     return cond
 end
 
+"Adapt `NotImmersed` to work on the GPU via CUDAnative and CUDAdrv."
+Adapt.adapt_structure(to, ni::NotImmersed) = NotImmersed(Adapt.adapt(to, ni.condition))
+
 # ImmersedField
 const IF = AbstractField{<:Any, <:Any, <:Any, <:ImmersedBoundaryGrid}
 
@@ -33,13 +49,16 @@ function ConditionalOperation(operand::IF;
                               condition = nothing,
                               mask = zero(eltype(operand)))
 
-    if !(condition isa NotImmersed) && !(condition isa NotImmersedColumn)
-        immersed_condition = NotImmersed(condition)
+    if condition isa NotImmersed || condition isa NotImmersedColumn
+        immersed_condition = condition # it's immersed enough
+    elseif operand isa IRF
+        immersed_condition = NotImmersedColumn(immersed_column(operand), nothing)
     else
-        immersed_condition = condition # it's already immersed
+        immersed_condition = NotImmersed(condition)
     end
     LX, LY, LZ = location(operand)
     grid = operand.grid
+
     return ConditionalOperation{LX, LY, LZ}(operand, func, grid, immersed_condition, mask)
 end
 
@@ -89,21 +108,14 @@ Base.show(io::IO, nic::NotImmersedColumn) = print(io, Base.summary(nic))
 
 NotImmersedColumn(immersed_column) = NotImmersedColumn(immersed_column, nothing)
 
+"Adapt `NotImmersed` to work on the GPU via CUDAnative and CUDAdrv."
+function Adapt.adapt_structure(to, nic::NotImmersedColumn)
+    return NotImmersedColumn(Adapt.adapt(to, nic.immersed_column),
+                             Adapt.adapt(to, nic.condition))
+end
+
 using Oceananigans.Fields: reduced_dimensions, OneField
 using Oceananigans.AbstractOperations: ConditionalOperation
-
-# ImmersedReducedFields
-const XIRF = AbstractField{Nothing, <:Any, <:Any, <:ImmersedBoundaryGrid}
-const YIRF = AbstractField{<:Any, Nothing, <:Any, <:ImmersedBoundaryGrid}
-const ZIRF = AbstractField{<:Any, <:Any, Nothing, <:ImmersedBoundaryGrid}
-
-const YZIRF = AbstractField{<:Any, Nothing, Nothing, <:ImmersedBoundaryGrid}
-const XZIRF = AbstractField{Nothing, <:Any, Nothing, <:ImmersedBoundaryGrid}
-const XYIRF = AbstractField{Nothing, Nothing, <:Any, <:ImmersedBoundaryGrid}
-
-const XYZIRF = AbstractField{Nothing, Nothing, Nothing, <:ImmersedBoundaryGrid}
-
-const IRF = Union{XIRF, YIRF, ZIRF, YZIRF, XZIRF, XYIRF, XYZIRF}
 
 @inline function condition_operand(func, op::IRF, condition, mask)
     immersed_condition = NotImmersedColumn(immersed_column(op), condition)

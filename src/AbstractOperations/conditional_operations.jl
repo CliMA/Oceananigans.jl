@@ -211,4 +211,3 @@ Base.show(io::IO, operation::ConditionalOperation) =
               "├── func: ", summary(operation.func), '\n',
               "├── condition: ", summary(operation.condition), '\n',
               "└── mask: ", operation.mask)
-
