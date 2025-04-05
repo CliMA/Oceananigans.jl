@@ -176,23 +176,20 @@ function materialize_condition(c::ConditionalOperation)
     return f
 end
 
-const NotWindowedField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, Tuple{Colon, Colon, Colon}}
-const NotWindowedFieldCO = ConditionalOperation{<:Any, <:Any, <:Any, <:Any, <:Any, <:NotWindowedField}
-
-# for windowed fields we need to pass indices
 @inline function conditional_one(c::ConditionalOperation, mask)
     LX, LY, LZ = location(c)
-    grid = c.operand.grid
     indices = c.operand.indices
-    one_field = Field{LX, LY, LZ}(grid; indices)
-    set!(one_field, 1)
-    return ConditionalOperation{LX, LY, LZ}(one_field, nothing, c.grid, c.condition, mask)
-end
 
-# fallback if not a windowed field; use OneField for performance
-@inline function conditional_one(c::NotWindowedFieldCO, mask)
-    LX, LY, LZ = location(c)
-    one_field = OneField(Int)
+    if indices == (:, :, :)
+        one_field = OneField(Int)
+    else
+        # for windowed fields we need to pass indices
+        # TODO: possible fix is to allow OneField to have indices, or some other fix?
+        grid = c.operand.grid
+        one_field = Field{LX, LY, LZ}(grid; indices)
+        set!(one_field, 1)
+    end
+
     return ConditionalOperation{LX, LY, LZ}(one_field, nothing, c.grid, c.condition, mask)
 end
 
