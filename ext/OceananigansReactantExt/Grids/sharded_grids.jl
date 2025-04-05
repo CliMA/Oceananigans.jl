@@ -77,9 +77,9 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
     Hλ, Hφ, Hz = halo
     TX, TY, TZ = topology
 
-    Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, longitude, :longitude, 1, arch)
-    Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, topology, size, halo, latitude,  :latitude,  2, arch)
-    Lz, z                        = generate_coordinate(FT, topology, size, halo, z,         :z,         3, arch)
+    Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, longitude, :longitude, 1, CPU())
+    Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, topology, size, halo, latitude,  :latitude,  2, CPU())
+    Lz, z                        = generate_coordinate(FT, topology, size, halo, z,         :z,         3, CPU())
 
     # We build the grid on the CPU and then we move it to ReactantState
     grid = LatitudeLongitudeGrid{TX, TY, TZ}(CPU(),
@@ -148,7 +148,7 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
                                              grid.radius)
 end
 
-function RectilinearGrid(architecture::ShardedDistributed,
+function RectilinearGrid(arch::ShardedDistributed,
                          FT::DataType = Oceananigans.defaults.FloatType;
                          size,
                          x = nothing,
@@ -164,14 +164,14 @@ function RectilinearGrid(architecture::ShardedDistributed,
     Nx, Ny, Nz = size
     Hx, Hy, Hz = halo
 
-    Lx, xᶠᵃᵃ, xᶜᵃᵃ, Δxᶠᵃᵃ, Δxᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, x, :x, 1, architecture)
-    Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, topology, size, halo, y, :y, 2, architecture)
-    Lz, z                        = generate_coordinate(FT, topology, size, halo, z, :z, 3, architecture)
+    Lx, xᶠᵃᵃ, xᶜᵃᵃ, Δxᶠᵃᵃ, Δxᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, x, :x, 1, CPU())
+    Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, topology, size, halo, y, :y, 2, CPU())
+    Lz, z                        = generate_coordinate(FT, topology, size, halo, z, :z, 3, CPU())
 
     # Copying the coordinates and metrics to all the devices: we pass a NamedSharding of `nothing`s
     # (a NamedSharding of nothings represents a copy to all devices)
-    replicate1D = Sharding.NamedSharding(architecture.connectivity, ntuple(Returns(nothing), 1)) 
-    replicate0D = Sharding.NamedSharding(architecture.connectivity, ()) 
+    replicate1D = Sharding.NamedSharding(arch.connectivity, ntuple(Returns(nothing), 1)) 
+    replicate0D = Sharding.NamedSharding(arch.connectivity, ()) 
 
     Δxsharding = Δxᶠᵃᵃ isa Number ? replicate0D : replicate1D
     Δysharding = Δyᵃᶠᵃ isa Number ? replicate0D : replicate1D
@@ -191,7 +191,7 @@ function RectilinearGrid(architecture::ShardedDistributed,
     
     z = sharded_z_direction(z; sharding=replicate1D) # Intentionally not sharded
 
-    return RectilinearGrid{TX, TY, TZ}(architecture,
+    return RectilinearGrid{TX, TY, TZ}(arch,
                                        Nx, Ny, Nz,
                                        Hx, Hy, Hz,
                                        Lx, Ly, Lz,
