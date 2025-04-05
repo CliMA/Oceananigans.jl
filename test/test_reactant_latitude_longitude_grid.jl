@@ -29,7 +29,6 @@ include("reactant_test_utils.jl")
     @test isnothing(η_grid.interior_active_cells)
     @test isnothing(η_grid.active_z_columns)
 
-    #=
     hydrostatic_model_kw = (; momentum_advection=WENOVectorInvariant(), free_surface=SplitExplicitFreeSurface(substeps=4))
     @info "Testing LatitudeLongitudeGrid + WENO + SplitExplicitFreeSurface + HydrostaticFreeSurfaceModel Reactant correctness"
     simulation = test_reactant_model_correctness(LatitudeLongitudeGrid,
@@ -51,6 +50,5 @@ include("reactant_test_utils.jl")
                             closure = CATKEVerticalDiffusivity())
 
     test_reactant_model_correctness(LatitudeLongitudeGrid, HydrostaticFreeSurfaceModel, lat_lon_kw, hydrostatic_model_kw)
-    =#
 end
 
