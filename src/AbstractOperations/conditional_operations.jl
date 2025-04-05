@@ -180,7 +180,7 @@ end
     LX, LY, LZ = location(c)
     indices = c.operand.indices
 
-    if indices == (:, :, :)
+    if indices isa Tuple{Colon, Colon, Colon}
         one_field = OneField(Int)
     else
         # for windowed fields we need to pass indices
