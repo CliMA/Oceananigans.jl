@@ -24,7 +24,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
         # Allocating
         function Base.$(reduction)(f::Function, fts::FTS; dims=:, kw...)
-            if dims isa Colon        
+            if dims isa Colon
                 return Base.$(reduction)($(reduction)(f, fts[n]; kw...) for n in 1:length(fts.times))
             else
                 T = filltype(Base.$(reduction!), fts)
@@ -49,13 +49,15 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
     end
 end
 
-function Statistics._mean(f, c::FTS, ::Colon)
+function Statistics._mean(f, c::FTS, ::Colon; condition=nothing)
+    condition == nothing || error("condition_operant for FieldTimeSeries not implemented")
     # TODO: implement condition_operand for FieldTimeSeries?
-    # operator = condition_operand(f, c, condition, mask) 
+    # operator = condition_operand(f, c, condition, mask)
     return sum(c) / conditional_length(c)
 end
 
-function Statistics._mean(f, c::FTS, dims)
+function Statistics._mean(f, c::FTS, dims; condition=nothing)
+    condition == nothing || error("condition_operant for FieldTimeSeries not implemented")
     # TODO: implement condition_operand for FieldTimeSeries?
     # operand = condition_operand(f, c, condition, mask)
     r = sum(c; dims)
