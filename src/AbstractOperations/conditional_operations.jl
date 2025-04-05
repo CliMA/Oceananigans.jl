@@ -178,15 +178,15 @@ end
 
 @inline function conditional_one(c::ConditionalOperation, mask)
     LX, LY, LZ = location(c)
-    indices = c.operand.indices
+    co_indices = indices(c)
 
-    if indices isa Tuple{Colon, Colon, Colon}
+    if co_indices isa Tuple{Colon, Colon, Colon}
         one_field = OneField(Int)
     else
         # for windowed fields we need to pass indices
         # TODO: possible fix is to allow OneField to have indices, or some other fix?
         grid = c.operand.grid
-        one_field = Field{LX, LY, LZ}(grid; indices)
+        one_field = Field{LX, LY, LZ}(grid; indices=co_indices)
         set!(one_field, 1)
     end
 
