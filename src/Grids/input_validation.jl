@@ -80,7 +80,7 @@ coordinate_name(i) = i == 1 ? "x" : i == 2 ? "y" : "z"
 
 function validate_halo(TX, TY, TZ, size, halo)
     halo = tupleit(halo)
-    validate_tupled_argument(halo, Integer, "halo", topological_tuple_length(TX, TY, TZ))
+    validate_tupled_argument(halo, Integer, "halo", topological_tuple_length(TX, TY, TZ), greater_than=-1)
     halo = inflate_tuple(TX, TY, TZ, halo, default=0)
 
     for i in 1:2

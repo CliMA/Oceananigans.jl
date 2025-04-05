@@ -31,6 +31,7 @@ update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendenci
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
 
+    #=
     @apply_regionally mask_immersed_model_fields!(model, grid)
 
     # Update possible FieldTimeSeries used in the model
@@ -49,9 +50,9 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
 
     update_biogeochemical_state!(model.biogeochemistry, model)
+    =#
 
-    compute_tendencies && 
-        @apply_regionally compute_tendencies!(model, callbacks)
+    compute_tendencies!(model, callbacks)
 
     return nothing
 end

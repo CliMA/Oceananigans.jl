@@ -365,7 +365,10 @@ boundary_conditions(not_field) = nothing
 @inline boundary_conditions(f::Field) = f.boundary_conditions
 @inline boundary_conditions(w::WindowedField) = FieldBoundaryConditions(w.indices, w.boundary_conditions)
 
+const NoBCField{LX, LY, LZ, O, G, I, D, T} = Field{LX, LY, LZ, O, G, I, D, T, <:Nothing}
+
 immersed_boundary_condition(f::Field) = f.boundary_conditions.immersed
+immersed_boundary_condition(f::NoBCField) = nothing
 data(field::Field) = field.data
 
 instantiate(T::Type) = T()
