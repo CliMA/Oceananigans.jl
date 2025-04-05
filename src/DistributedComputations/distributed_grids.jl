@@ -9,7 +9,7 @@ using Oceananigans.Grids: R_Earth, metrics_precomputed
 
 using Oceananigans.Fields
 
-import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, with_halo
+import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, with_halo, size_summary
 
 const DistributedGrid{FT, TX, TY, TZ} = Union{
     AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:CPU}},
@@ -51,10 +51,35 @@ function local_size(N, R, local_index)
     end
 end
 
+function size_summary(grid::DistributedGrid)
+    #local_summary = size_summary(global_size(grid))
+    local_summary = size_summary(size(grid))
+    arch = grid.architecture
+
+    Rx, Ry, Rz = arch.ranks
+    local_rank = arch.local_rank
+    Nr = prod(arch.ranks)
+    last_rank = Nr - 1
+    ix, iy, iz = grid.architecture.local_index
+
+    distributed_info = if Nr == 1
+        "(distributed on 1 rank)"
+    else
+        string("(distributed across $Rx×$Ry×$Rz ranks)")
+               
+        #string("(rank index [$ix, $iy, $iz] of ",
+        #       "$Rx×$Ry×$Rz = $Nr)")
+    end
+
+    return string(local_summary, " ", distributed_info)
+end
+
+
 # Differentiate between equal and unequal partitioning
 @inline local_sizes(N, R::Nothing)    = N
 @inline local_sizes(N, R::Int)        = Tuple(N ÷ R for i in 1:R)
 @inline local_sizes(N, R::Fractional) = Tuple(ceil(Int, N * r) for r in R.sizes)
+
 @inline function local_sizes(N, R::Sizes)
     if N != sum(R.sizes)
         @warn "The Sizes specified in the architecture $(R.sizes) is inconsistent  
@@ -66,6 +91,7 @@ end
 
 # Global size from local size
 global_size(arch, local_size) = map(sum, concatenate_local_sizes(local_size, arch))
+global_size(local_grid::DistributedGrid) = global_size(local_grid.architecture, size(local_grid))
 
 """
     RectilinearGrid(arch::Distributed, FT=Float64; kw...)

@@ -287,7 +287,7 @@ function domain_summary(topo, name, (left, right))
 
     topo_string = topo isa Periodic ? "Periodic " :
                   topo isa Bounded ? "Bounded  " :
-                  topo isa FullyConnected ? "FullyConnected " :
+                  topo isa FullyConnected ? "Connected " :
                   topo isa LeftConnected ? "LeftConnected  " :
                   topo isa RightConnected ? "RightConnected  " :
                   error("Unexpected topology $topo together with the domain end points ($left, $right)")
