@@ -742,29 +742,6 @@ steps:
 ##### Reactant extension tests
 #####
 
-  - label: "👺 gpu PJRT Reactant extension tests 1"
-    env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "reactant_1"
-      GPU_TEST: "true"
-    commands: |
-      touch LocalPreferences.toml
-
-      echo "[Reactant]" >> LocalPreferences.toml
-      echo "xla_runtime = \"PJRT\"" >> LocalPreferences.toml
-
-      cat LocalPreferences.toml
-
-      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
-    agents:
-      queue: Oceananigans
-      architecture: CPU
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
-    depends_on: "init"
-
   - label: "👺 gpu IFRT Reactant extension tests 1"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
@@ -777,29 +754,7 @@ steps:
       echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
 
       cat LocalPreferences.toml
-
-      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
-    agents:
-      queue: Oceananigans
-      architecture: CPU
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
-    depends_on: "init"
-
-  - label: "👹 cpu PJRT Reactant extension tests 1"
-    env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "reactant_1"
-    commands: |
-      touch LocalPreferences.toml
-
-      echo "[Reactant]" >> LocalPreferences.toml
-      echo "xla_runtime = \"PJRT\"" >> LocalPreferences.toml
-
-      cat LocalPreferences.toml
-
+      
       $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
     agents:
       queue: Oceananigans
@@ -814,34 +769,12 @@ steps:
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "reactant_1"
+      CUDA_VISIBLE_DEVICES: "-1"
     commands: |
       touch LocalPreferences.toml
 
       echo "[Reactant]" >> LocalPreferences.toml
       echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
-
-      cat LocalPreferences.toml
-
-      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
-    agents:
-      queue: Oceananigans
-      architecture: CPU
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
-    depends_on: "init"
-
-  - label: "🎭 gpu PJRT Reactant extension tests 2"
-    env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "reactant_2"
-      GPU_TEST: "true"
-    commands: |
-      touch LocalPreferences.toml
-
-      echo "[Reactant]" >> LocalPreferences.toml
-      echo "xla_runtime = \"PJRT\"" >> LocalPreferences.toml
 
       cat LocalPreferences.toml
 
@@ -878,32 +811,11 @@ steps:
           limit: 1
     depends_on: "init"
 
-  - label: "🧌 cpu PJRT Reactant extension tests 2"
-    env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "reactant_2"
-    commands: |
-      touch LocalPreferences.toml
-
-      echo "[Reactant]" >> LocalPreferences.toml
-      echo "xla_runtime = \"PJRT\"" >> LocalPreferences.toml
-
-      cat LocalPreferences.toml
-
-      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
-    agents:
-      queue: Oceananigans
-      architecture: CPU
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
-    depends_on: "init"
-
   - label: "🧌 cpu IFRT Reactant extension tests 2"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "reactant_2"
+      CUDA_VISIBLE_DEVICES: "-1"
     commands: |
       touch LocalPreferences.toml
 

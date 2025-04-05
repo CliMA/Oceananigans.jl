@@ -28,6 +28,13 @@ for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ), LZ in (:ᶜ, :ᶠ, :ᵃ)
         @inline $x_derivative(i, j, k, grid, f::Function, args...) = $x_difference(i, j, k, grid, f, args...) / $x_spacing(i, j, k, grid)
         @inline $y_derivative(i, j, k, grid, f::Function, args...) = $y_difference(i, j, k, grid, f, args...) / $y_spacing(i, j, k, grid)
         @inline $z_derivative(i, j, k, grid, f::Function, args...) = $z_difference(i, j, k, grid, f, args...) / $z_spacing(i, j, k, grid)
+
+        export $x_derivative
+        export $x_difference
+        export $y_derivative
+        export $y_difference
+        export $z_derivative
+        export $z_difference
     end
 end
 
