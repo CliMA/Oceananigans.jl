@@ -76,9 +76,9 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
     Hλ, Hφ, Hz = halo
     TX, TY, TZ = topology
 
-    Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, longitude, :longitude, 1, arch)
-    Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, topology, size, halo, latitude,  :latitude,  2, arch)
-    Lz, z                        = generate_coordinate(FT, topology, size, halo, z,         :z,         3, arch)
+    Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, longitude, :longitude, 1, CPU())
+    Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, topology, size, halo, latitude,  :latitude,  2, CPU())
+    Lz, z                        = generate_coordinate(FT, topology, size, halo, z,         :z,         3, CPU())
 
     # We build the grid on the CPU and then we move it to ReactantState
     grid = LatitudeLongitudeGrid{TX, TY, TZ}(CPU(),
