@@ -13,6 +13,9 @@ function test_zstar_coordinate(model, Ni, Δt)
 
     ∫bᵢ = Field(Integral(bᵢ))
     ∫cᵢ = Field(Integral(cᵢ))
+    compute!(∫bᵢ)
+    compute!(∫cᵢ)
+    
     w   = model.velocities.w
     Nz  = model.grid.Nz
 
@@ -22,6 +25,8 @@ function test_zstar_coordinate(model, Ni, Δt)
 
     ∫b = Field(Integral(model.tracers.b))
     ∫c = Field(Integral(model.tracers.c))
+    compute!(∫b)
+    compute!(∫c)
     
     # Testing that:
     # (1) tracers are conserved down to machine precision
@@ -196,6 +201,33 @@ end
                     end
                 end
             end
+        end
+
+        @testset "TripolarGrid ZStar tests" begin
+            @info "Testing a ZStar coordinate with a Tripolar grid on $(arch)..."
+
+            grid = TripolarGrid(arch; size = (10, 10, 20), z = z_stretched)
+            bottom_height(λ, φ) = ((abs(λ  - 70)  < 5) & 
+                                   (abs(φp - 55)  < 5)) | 
+                                  ((abs(λ  - 250) < 5) & 
+                                   (abs(φp - 55)  < 5)) | 
+                                        (φ < 80) ? 0 : - 1000
+
+            grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
+            free_surface = SplitExplicitFreeSurface(grid; substeps=50)
+
+            model = HydrostaticFreeSurfaceModel(; grid, 
+                                                  free_surface, 
+                                                  tracers = (:b, :c), 
+                                                  buoyancy = BuoyancyTracer(),
+                                                  vertical_coordinate = ZStar())
+
+            bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01 
+
+            set!(model, c = (x, y, z) -> rand(), b = bᵢ)
+
+            Δt = 2minutes
+            test_zstar_coordinate(model, 100, Δt)
         end
 
         @info "  Testing a ZStar and Runge Kutta 3rd order time stepping"
