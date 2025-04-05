@@ -6,7 +6,7 @@ Nhosts = 1
 @testset "Test sharded LatitudeLongitudeGrid simulations..." begin
     # Run the serial computation  
     Random.seed!(1234)
-    bottom_height = - 500 .* rand(40, 40, 1) .+ 500
+    bottom_height = - 500 .* rand(40, 40, 1) .- 500
     
     grid  = LatitudeLongitudeGrid(size=(40, 40, 10), 
                                   longitude=(0, 360), 
