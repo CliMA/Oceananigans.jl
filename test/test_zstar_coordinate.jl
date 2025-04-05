@@ -207,10 +207,10 @@ end
             @info "Testing a ZStar coordinate with a Tripolar grid on $(arch)..."
 
             grid = TripolarGrid(arch; size = (10, 10, 20), z = z_stretched)
-            bottom_height(λ, φ) = ((abs(λ  - 70)  < radius) & 
-                                   (abs(φp - 55)  < radius)) | 
-                                  ((abs(λ  - 250) < radius) & 
-                                   (abs(φp - 55) < radius)) | 
+            bottom_height(λ, φ) = ((abs(λ  - 70)  < 5) & 
+                                   (abs(φp - 55)  < 5)) | 
+                                  ((abs(λ  - 250) < 5) & 
+                                   (abs(φp - 55)  < 5)) | 
                                         (φ < 80) ? 0 : - 1000
 
             grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
