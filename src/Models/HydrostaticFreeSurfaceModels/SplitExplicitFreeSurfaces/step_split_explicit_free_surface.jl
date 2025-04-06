@@ -134,7 +134,6 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     # barotropic time step as fraction of baroclinic step and averaging weights
     Nsubsteps = calculate_substeps(substepping, Δt)
     fractional_Δt, weights = calculate_adaptive_settings(substepping, Nsubsteps)
-    Nsubsteps = length(weights)
 
     # barotropic time step in seconds
     Δτᴮ = fractional_Δt * Δt

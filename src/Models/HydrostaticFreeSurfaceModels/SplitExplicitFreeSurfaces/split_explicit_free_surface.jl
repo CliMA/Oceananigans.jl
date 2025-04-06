@@ -1,5 +1,6 @@
 using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.Grids: with_halo
+using Roots
 import Oceananigans.Grids: on_architecture
 
 struct SplitExplicitFreeSurface{H, U, M, FT, K , S, T} <: AbstractFreeSurface{H, FT}
@@ -18,7 +19,7 @@ end
                              substeps = nothing,
                              cfl = nothing,
                              fixed_Δt = nothing,
-                             averaging_kernel = averaging_shape_function,
+                             averaging_kernel = minimal_dispersion_averaging_shape_function,
                              timestepper = ForwardBackwardScheme())
 
 Return a `SplitExplicitFreeSurface` representing an explicit time discretization of
@@ -86,7 +87,7 @@ function SplitExplicitFreeSurface(grid = nothing;
                                   substeps = nothing,
                                   cfl = nothing,
                                   fixed_Δt = nothing,
-                                  averaging_kernel = averaging_shape_function,
+                                  averaging_kernel = minimal_dispersion_averaging_shape_function,
                                   timestepper = ForwardBackwardScheme())
 
     if !isnothing(grid)
@@ -202,15 +203,25 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
                                     timestepper)
 end
 
-# (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002
+# Averaging shape function from from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002
 @inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT
     τ₀ = (p + 2) * (p + q + 2) / (p + 1) / (p + q + 1)
-
     return (τ / τ₀)^p * (1 - (τ / τ₀)^q) - r * (τ / τ₀)
 end
 
+# Fixing p = 2, q = 4, r = 0.18927 minimizes dispersion errors.
+@inline minimal_dispersion_averaging_shape_function(τ) = averaging_shape_function(τ)
+
 @inline   cosine_averaging_kernel(τ::FT) where FT = τ ≥ 0.5 && τ ≤ 1.5 ? convert(FT, 1 + cos(2π * (τ - 1))) : zero(FT)
 @inline constant_averaging_kernel(τ::FT) where FT = convert(FT, 1)
+
+# Averaging functions for which we know the last fractional time
+@inline last_fractional_time(::typeof(minimal_dispersion_averaging_shape_function)) = 1.4410682589927724
+@inline last_fractional_time(::typeof(cosine_averaging_kernel))                     = 1.5
+@inline last_fractional_time(::typeof(constant_averaging_kernel))                   = 2
+
+# Otherwise we need to calculate the last fractional time by solving for the root between 0 and 2
+@inline last_fractional_time(averaging_kernel::Function) = Roots.find_zero(averaging_kernel, 2)
 
 """ An internal type for the `SplitExplicitFreeSurface` that allows substepping with
 a fixed `Δt_barotropic` based on a CFL condition """
@@ -228,7 +239,7 @@ end
 
 function FixedTimeStepSize(grid;
                            cfl = 0.7,
-                           averaging_kernel = averaging_shape_function,
+                           averaging_kernel = minimal_dispersion_averaging_shape_function,
                            gravitational_acceleration = g_Earth)
 
     FT = eltype(grid)
@@ -246,14 +257,12 @@ end
 
 @inline function weights_from_substeps(FT, substeps, averaging_kernel)
 
-    τᶠ = range(FT(0), FT(2), length = substeps+1)
+    last_τ = last_fractional_time(averaging_kernel)
+
+    τᶠ = range(FT(0), last_τ, length = substeps+1)
     Δτ = τᶠ[2] - τᶠ[1]
 
     averaging_weights = map(averaging_kernel, τᶠ[2:end])
-    idx = searchsortedlast(averaging_weights, 0, rev=true)
-    substeps = idx
-
-    averaging_weights = averaging_weights[1:idx]
     averaging_weights ./= sum(averaging_weights)
 
     return Δτ, map(FT, tuple(averaging_weights...))
