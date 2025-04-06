@@ -472,12 +472,9 @@ end
         for arch in archs, FT in float_types
             run_field_reduction_tests(FT, arch)
 
-            # test reductions on windowed fields
-
+            @info "    Test reductions on WindowedFields...
             grid = RectilinearGrid(arch, FT, size=(2, 3, 4), x=(0, 1), y=(0, 1), z=(0, 1))
-
             c = CenterField(grid)
-
             Random.seed!(42)
             c .= rand(size(c)...)
             windowed_c = view(c, :, 2:3, 1:2)
