@@ -253,7 +253,7 @@ end
         @test T_bcs.top    === one_bc
         @test T_bcs.bottom === one_bc
 
-        grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-90, 90), longitude=(0, 360), z = (0, 1))
+        grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-85, 85), longitude=(0, 360), z = (0, 1))
         f = CenterField(grid)
 
         @test f.boundary_conditions.north isa VBC
