@@ -156,7 +156,7 @@ function Oceananigans.LatitudeLongitudeGrid(arch::ShardedDistributed,
                                              grid.radius)
 end
 
-function RectilinearGrid(architecture::ShardedDistributed,
+function RectilinearGrid(arch::ShardedDistributed,
                          FT::DataType = Oceananigans.defaults.FloatType;
                          size,
                          x = nothing,
@@ -178,8 +178,8 @@ function RectilinearGrid(architecture::ShardedDistributed,
 
     # Copying the coordinates and metrics to all the devices: we pass a NamedSharding of `nothing`s
     # (a NamedSharding of nothings represents a copy to all devices)
-    replicate1D = Sharding.NamedSharding(architecture.connectivity, ntuple(Returns(nothing), 1)) 
-    replicate0D = Sharding.NamedSharding(architecture.connectivity, ()) 
+    replicate1D = Sharding.NamedSharding(arch.connectivity, ntuple(Returns(nothing), 1)) 
+    replicate0D = Sharding.NamedSharding(arch.connectivity, ()) 
 
     Δxsharding = Δxᶠᵃᵃ isa Number ? replicate0D : replicate1D
     Δysharding = Δyᵃᶠᵃ isa Number ? replicate0D : replicate1D
@@ -199,7 +199,7 @@ function RectilinearGrid(architecture::ShardedDistributed,
     
     z = sharded_z_direction(z; sharding=replicate1D) # Intentionally not sharded
 
-    return RectilinearGrid{TX, TY, TZ}(architecture,
+    return RectilinearGrid{TX, TY, TZ}(arch,
                                        Nx, Ny, Nz,
                                        Hx, Hy, Hz,
                                        Lx, Ly, Lz,
