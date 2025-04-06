@@ -476,7 +476,8 @@ end
             grid = RectilinearGrid(arch, FT, size=(2, 3, 4), x=(0, 1), y=(0, 1), z=(0, 1))
             c = CenterField(grid)
             Random.seed!(42)
-            c .= rand(size(c)...)
+            set!(c,  rand(size(c)...))
+
             windowed_c = view(c, :, 2:3, 1:2)
 
             for fun in (sum, mean, maximum, minimum)
