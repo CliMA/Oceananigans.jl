@@ -1,4 +1,6 @@
 using Oceananigans.Operators: assumed_field_location
+using Oceananigans.Grids: YFlatGrid
+using CUDA: @allowscalar
 
 #####
 ##### Default boundary conditions
@@ -290,7 +292,7 @@ function latitude_north_auxiliary_bc(grid, loc, default_bc=DefaultBoundaryCondit
     # Assumption: fields at `Center`s in x and y are not vector components
     cca_loc = loc[1] != Center || loc[2] != Center
 
-    if φmax ≈ 90 && cca_loc
+    if φnorth ≈ 90 && cca_loc
         bc = PolarBoundaryCondition(grid, :north, loc[3])
     else
         bc = default_bc

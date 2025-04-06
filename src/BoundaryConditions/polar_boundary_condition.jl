@@ -1,5 +1,4 @@
-using Oceananigans.Grids: inactive_node, new_data, YFlatGrid
-using CUDA: @allowscalar
+using Oceananigans.Grids: inactive_node, new_data
 
 struct PolarValue{D, S}
     data :: D
