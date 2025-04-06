@@ -105,7 +105,7 @@ function SplitExplicitFreeSurface(grid = nothing;
                                     "For example, SplitExplicitFreeSurface(grid; fixed_Δt=$(fixed_Δt), cfl=$(cfl), ...)")))
     end
 
-    averaging_kernel = regularize_averaging_kernel(averaging_kernel)
+    averaging_kernel = regularize_averaging_kernel(FT, averaging_kernel)
     gravitational_acceleration = convert(FT, gravitational_acceleration)
     substepping = split_explicit_substepping(cfl, substeps, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
 
@@ -211,8 +211,12 @@ end
 
 @inline (a::AveragingKernel)(τ) = a.kernel(τ)
 
-regularize_averaging_kernel(averaging_kernel::AveragingKernel) = averaging_kernel
-regularize_averaging_kernel(averaging_kernel::Function) = AveragingKernel(averaging_kernel, last_fractional_time(averaging_kernel))
+regularize_averaging_kernel(FT, a::AveragingKernel) = AveragingKernel(a.kernel, convert(FT, a.last_τ))
+
+function regularize_averaging_kernel(FT, f::Function) 
+    last_τ = last_fractional_time(f)
+    return AveragingKernel(f, convert(FT, last_τ))
+end
 
 # Averaging shape function from from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002
 @inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT
@@ -236,7 +240,7 @@ end
 # Otherwise we need to calculate the last fractional time by solving for the root between 0 and 2
 @inline function last_fractional_time(averaging_kernel::Function) 
     try
-        Roots.find_zero(averaging_kernel, 2.0)
+        a = Roots.find_zero(averaging_kernel, 2.0)
     catch
         2.0
     end
