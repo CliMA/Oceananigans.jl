@@ -285,10 +285,12 @@ end
 
     last_τ = last_fractional_time(averaging_kernel)
 
-    τᶠ = range(FT(0), last_τ, length = substeps+1)
+    τᶠ = range(FT(0), last_τ, length = substeps+2)
     Δτ = τᶠ[2] - τᶠ[1]
 
-    averaging_weights = map(averaging_kernel, τᶠ[2:end])
+    # By convention, the last substep corresponds to kernel == 0
+    # So we exclude it from the averaging
+    averaging_weights = map(averaging_kernel, τᶠ[2:end-1])
     averaging_weights ./= sum(averaging_weights)
 
     return Δτ, map(FT, tuple(averaging_weights...))
