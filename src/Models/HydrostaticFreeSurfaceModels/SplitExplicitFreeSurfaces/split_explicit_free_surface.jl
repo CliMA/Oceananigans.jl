@@ -105,6 +105,7 @@ function SplitExplicitFreeSurface(grid = nothing;
                                     "For example, SplitExplicitFreeSurface(grid; fixed_Δt=$(fixed_Δt), cfl=$(cfl), ...)")))
     end
 
+    averaging_kernel = regularize_averaging_kernel(averaging_kernel)
     gravitational_acceleration = convert(FT, gravitational_acceleration)
     substepping = split_explicit_substepping(cfl, substeps, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
 
@@ -203,6 +204,14 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
                                     timestepper)
 end
 
+struct AveragingKernel{FT}
+    kernel :: Function
+    last_τ :: FT
+end
+
+regularize_avergaging_kernel(averaging_kernel::AveragingKernel) = averaging_kernel
+regularize_avergaging_kernel(averaging_kernel::Function) = AveragingKernel(averaging_kernel, last_fractional_time(averaging_kernel))
+
 # Averaging shape function from from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002
 @inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT
     τ₀ = (p + 2) * (p + q + 2) / (p + 1) / (p + q + 1)
@@ -214,6 +223,8 @@ end
 
 @inline   cosine_averaging_kernel(τ::FT) where FT = τ ≥ 0.5 && τ ≤ 1.5 ? convert(FT, 1 + cos(2π * (τ - 1))) : zero(FT)
 @inline constant_averaging_kernel(τ::FT) where FT = convert(FT, 1)
+
+@inline last_fractional_time(k::AveragingKernel) = k.last_τ
 
 # Averaging functions for which we know the last fractional time
 @inline last_fractional_time(::typeof(minimal_dispersion_averaging_shape_function)) = 1.4410682589927724
@@ -257,6 +268,7 @@ function FixedTimeStepSize(grid;
     wave_speed = sqrt(gravitational_acceleration * grid.Lz)
 
     Δt_barotropic = convert(FT, cfl * Δs / wave_speed)
+    averaging_kernel = regularize_avergaging_kernel(averaging_kernel)
 
     return FixedTimeStepSize(Δt_barotropic, averaging_kernel)
 end
