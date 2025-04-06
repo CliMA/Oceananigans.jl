@@ -283,15 +283,15 @@ julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(2, 3, 4), x=(0, 1), y=(0, 1), z=(0, 1));
 
-julia> c = CenterField(grid)
-2×3×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+julia> c = CenterField(grid);
+
+julia> set!(c, rand(size(c)...))
+2×3×4 Field{Center, Center, Center} on RectilinearGrid on CUDAGPU
+├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CUDAGPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 6×9×10 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, -2:7) with eltype Float64 with indices -1:4×-2:6×-2:7
-    └── max=0.0, min=0.0, mean=0.0
-
-julia> c .= rand(size(c)...);
+└── data: 6×9×10 OffsetArray(::CuArray{Float64, 3, CUDA.DeviceMemory}, -1:4, -2:6, -2:7) with eltype Float64 with indices -1:4×-2:6×-2:7
+    └── max=0.989312, min=0.0269848, mean=0.480705
 
 julia> v = view(c, :, 2:3, 1:2)
 2×2×2 Field{Center, Center, Center} on RectilinearGrid on CPU
