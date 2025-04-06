@@ -218,10 +218,16 @@ end
 # Averaging functions for which we know the last fractional time
 @inline last_fractional_time(::typeof(minimal_dispersion_averaging_shape_function)) = 1.4410682589927724
 @inline last_fractional_time(::typeof(cosine_averaging_kernel))                     = 1.5
-@inline last_fractional_time(::typeof(constant_averaging_kernel))                   = 2
+@inline last_fractional_time(::typeof(constant_averaging_kernel))                   = 2.0
 
 # Otherwise we need to calculate the last fractional time by solving for the root between 0 and 2
-@inline last_fractional_time(averaging_kernel::Function) = Roots.find_zero(averaging_kernel, 2)
+@inline function last_fractional_time(averaging_kernel::Function) 
+    try
+        Roots.find_zero(averaging_kernel, 2.0)
+    catch
+        2.0
+    end
+end
 
 """ An internal type for the `SplitExplicitFreeSurface` that allows substepping with
 a fixed `Δt_barotropic` based on a CFL condition """
