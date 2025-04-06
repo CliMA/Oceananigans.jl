@@ -471,8 +471,10 @@ end
 
         for arch in archs, FT in float_types
             run_field_reduction_tests(FT, arch)
+        end
 
-            @info "    Test reductions on WindowedFields..."
+        for arch in archs, FT in float_types
+            @info "    Test reductions on WindowedFields [$(typeof(arch)), $FT]..."
 
             grid = RectilinearGrid(arch, FT, size=(2, 3, 4), x=(0, 1), y=(0, 1), z=(0, 1))
             c = CenterField(grid)
@@ -489,7 +491,7 @@ end
             @test mean(c) ≈ CUDA.@allowscalar mean(interior(c))
             @test mean(windowed_c) ≈ CUDA.@allowscalar mean(interior(windowed_c))
         end
-    end
+end
 
     @testset "Unit interpolation" begin
         for arch in archs
