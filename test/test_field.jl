@@ -477,7 +477,8 @@ end
             grid = RectilinearGrid(arch, FT, size=(2, 3, 4), x=(0, 1), y=(0, 1), z=(0, 1))
             c = CenterField(grid)
             Random.seed!(42)
-            set!(c,  rand(size(c)...))
+            set!(c, rand(size(c)...))
+
 
             windowed_c = view(c, :, 2:3, 1:2)
 
