@@ -264,5 +264,11 @@ end
 
         @test all(f.data[1:10, 0,  1:10] .== 2 * mean(f.data[1:10, 1,  1:10]) .- f.data[1:10, 1,  1:10])
         @test all(f.data[1:10, 11, 1:10] .== 2 * mean(f.data[1:10, 10, 1:10]) .- f.data[1:10, 10, 1:10])
+
+        # Minimal test for PolarBoundaryCondition
+        polar_grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-90, 90), longitude=(0, 360), z = (0, 1))
+        c = CenterField(polar_grid)
+        @test c.boundary_conditions.north isa Oceananigans.BoundaryConditions.PolarBoundaryCondition
+        @test c.boundary_conditions.south isa Oceananigans.BoundaryConditions.PolarBoundaryCondition
     end
 end
