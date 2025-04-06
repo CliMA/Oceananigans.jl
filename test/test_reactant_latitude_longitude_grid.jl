@@ -45,6 +45,7 @@ include("reactant_test_utils.jl")
     equation_of_state = TEOS10EquationOfState()
     hydrostatic_model_kw = (momentum_advection = WENOVectorInvariant(),
                             tracer_advection = WENO(),
+                            free_surface=SplitExplicitFreeSurface(substeps=4),
                             tracers = (:T, :S, :e),
                             buoyancy = SeawaterBuoyancy(; equation_of_state),
                             closure = CATKEVerticalDiffusivity())
