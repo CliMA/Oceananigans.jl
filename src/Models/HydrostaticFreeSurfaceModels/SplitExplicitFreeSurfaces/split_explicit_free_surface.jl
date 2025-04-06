@@ -209,6 +209,8 @@ struct AveragingKernel{FT}
     last_τ :: FT
 end
 
+@inline (a::AveragingKernel)(τ) = a.kernel(τ)
+
 regularize_averaging_kernel(averaging_kernel::AveragingKernel) = averaging_kernel
 regularize_averaging_kernel(averaging_kernel::Function) = AveragingKernel(averaging_kernel, last_fractional_time(averaging_kernel))
 
