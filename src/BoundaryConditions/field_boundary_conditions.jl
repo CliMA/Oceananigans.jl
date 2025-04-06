@@ -254,3 +254,71 @@ regularize_field_boundary_conditions(::Missing,
 regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid::AbstractGrid, prognostic_names::Tuple) =
     NamedTuple(field_name => regularize_field_boundary_conditions(field_bcs, grid, field_name, prognostic_names)
                for (field_name, field_bcs) in pairs(boundary_conditions))
+
+#####
+##### Special behavior for LatitudeLongitudeGrid
+#####
+
+regularize_north_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) = 
+    regularize_boundary_condition(latitude_north_auxiliary_bc(grid, loc, bc), grid, loc, args...)
+
+regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) = 
+    regularize_boundary_condition(latitude_south_auxiliary_bc(grid, loc, bc), grid, loc, args...)
+
+
+function FieldBoundaryConditions(grid::LatitudeLongitudeGrid, location, indices=(:, :, :);
+                                 west     = default_auxiliary_bc(topology(grid, 1)(), location[1]()),
+                                 east     = default_auxiliary_bc(topology(grid, 1)(), location[1]()),
+                                 south    = default_auxiliary_bc(topology(grid, 2)(), location[2]()),
+                                 north    = default_auxiliary_bc(topology(grid, 2)(), location[2]()),
+                                 bottom   = default_auxiliary_bc(topology(grid, 3)(), location[3]()),
+                                 top      = default_auxiliary_bc(topology(grid, 3)(), location[3]()),
+                                 immersed = NoFluxBoundaryCondition())
+
+    north = latitude_north_auxiliary_bc(grid, location, north)
+    south = latitude_south_auxiliary_bc(grid, location, south)
+
+    return FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
+end
+
+# TODO: vectors should have a different treatment since vector components should account for the frame of reference.
+# For the moment, the `PolarBoundaryConditions` is implemented only for fields that have `loc[1] == loc[2] == Center()`, which
+# we assume are not components of horizontal vectors that would require rotation. (The `w` velocity if not a tracer, but it does
+# not require rotation since it is a scalar field.)
+# North - South flux boundary conditions are not valid on a Latitude-Longitude grid if the last / first rows represent the poles
+function latitude_north_auxiliary_bc(grid, loc, default_bc=DefaultBoundaryCondition()) 
+    # Check if the halo lies beyond the north pole
+    φnorth = @allowscalar φnode(grid.Ny+1, grid, Face()) 
+    
+    # Assumption: fields at `Center`s in x and y are not vector components
+    cca_loc = loc[1] != Center || loc[2] != Center
+
+    if φmax ≈ 90 && cca_loc
+        bc = PolarBoundaryCondition(grid, :north, loc[3])
+    else
+        bc = default_bc
+    end
+
+    return bc
+end
+
+# North - South flux boundary conditions are not valid on a Latitude-Longitude grid if the last / first rows represent the poles
+function latitude_south_auxiliary_bc(grid, loc, default_bc=DefaultBoundaryCondition()) 
+    # Check if the halo lies beyond the south pole
+    φsouth = @allowscalar φnode(1, grid, Face()) 
+
+    # Assumption: fields at `Center`s in x and y are not vector components
+    cca_loc = loc[1] != Center || loc[2] != Center
+
+    if φsouth ≈ -90 && cca_loc
+        bc = PolarBoundaryCondition(grid, :south, loc[3])
+    else
+        bc = default_bc
+    end
+
+    return bc
+end
+
+latitude_north_auxiliary_bc(::YFlatGrid, args...) = nothing
+latitude_south_auxiliary_bc(::YFlatGrid, args...) = nothing
+
