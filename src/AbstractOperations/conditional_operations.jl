@@ -179,18 +179,18 @@ end
 @inline function conditional_one(c::ConditionalOperation, mask)
     LX, LY, LZ = location(c)
     co_indices = indices(c)
+    grid = c.grid
 
     if co_indices isa Tuple{Colon, Colon, Colon}
         one_field = OneField(Int)
     else
         # for windowed fields we need to pass indices
         # TODO: possible fix is to allow OneField to have indices, or some other fix?
-        grid = c.operand.grid
         one_field = Field{LX, LY, LZ}(grid; indices=co_indices)
         set!(one_field, 1)
     end
 
-    return ConditionalOperation{LX, LY, LZ}(one_field, nothing, c.grid, c.condition, mask)
+    return ConditionalOperation{LX, LY, LZ}(one_field, nothing, grid, c.condition, mask)
 end
 
 @inline conditional_length(c::ConditionalOperation) = sum(conditional_one(c, 0))
