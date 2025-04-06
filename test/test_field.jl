@@ -479,7 +479,6 @@ end
             Random.seed!(42)
             set!(c, rand(size(c)...))
 
-
             windowed_c = view(c, :, 2:3, 1:2)
 
             for fun in (sum, mean, maximum, minimum)
