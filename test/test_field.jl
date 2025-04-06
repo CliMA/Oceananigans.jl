@@ -481,10 +481,13 @@ end
 
             windowed_c = view(c, :, 2:3, 1:2)
 
-            for fun in (sum, mean, maximum, minimum)
+            for fun in (sum, maximum, minimum)
                 @test fun(c) ≈ fun(interior(c))
                 @test fun(windowed_c) ≈ fun(interior(windowed_c))
             end
+
+            @test mean(c) ≈ CUDA.@allowscalar mean(interior(c))
+            @test mean(windowed_c) ≈ CUDA.@allowscalar mean(interior(windowed_c))
         end
     end
 
