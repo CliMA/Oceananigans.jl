@@ -256,8 +256,8 @@ end
         grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-85, 85), longitude=(0, 360), z = (0, 1))
         f = CenterField(grid)
 
-        @test f.boundary_conditions.north isa VBC
-        @test f.boundary_conditions.south isa VBC
+        @test f.boundary_conditions.north isa ZFBC
+        @test f.boundary_conditions.south isa ZFBC
 
         set!(f, (x, y, z) -> x)
         fill_halo_regions!(f)

@@ -290,7 +290,7 @@ function latitude_north_auxiliary_bc(grid, loc, default_bc=DefaultBoundaryCondit
     φnorth = @allowscalar φnode(grid.Ny+1, grid, Face()) 
     
     # Assumption: fields at `Center`s in x and y are not vector components
-    cca_loc = loc[1] != Center || loc[2] != Center
+    cca_loc = loc[1] == Center && loc[2] == Center
 
     if φnorth ≈ 90 && cca_loc
         bc = PolarBoundaryCondition(grid, :north, loc[3])
@@ -306,7 +306,7 @@ function latitude_south_auxiliary_bc(grid, loc, default_bc=DefaultBoundaryCondit
     φsouth = @allowscalar φnode(1, grid, Face()) 
 
     # Assumption: fields at `Center`s in x and y are not vector components
-    cca_loc = loc[1] != Center || loc[2] != Center
+    cca_loc = loc[1] == Center && loc[2] == Center
 
     if φsouth ≈ -90 && cca_loc
         bc = PolarBoundaryCondition(grid, :south, loc[3])
