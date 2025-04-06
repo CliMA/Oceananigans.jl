@@ -205,7 +205,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
 end
 
 """ An internal function that stores the averaging kernel 
-and the last fractional time for which kernel(τ) > 0 """
+and the last fractional time stepped in the subcycling """
 struct AveragingKernel{FT}
     kernel :: Function
     last_τ :: FT
