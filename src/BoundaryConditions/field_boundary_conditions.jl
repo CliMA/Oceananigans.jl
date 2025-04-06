@@ -265,7 +265,6 @@ regularize_north_boundary_condition(bc::DefaultBoundaryCondition, grid::Latitude
 regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) = 
     regularize_boundary_condition(latitude_south_auxiliary_bc(grid, loc, bc), grid, loc, args...)
 
-
 function FieldBoundaryConditions(grid::LatitudeLongitudeGrid, location, indices=(:, :, :);
                                  west     = default_auxiliary_bc(topology(grid, 1)(), location[1]()),
                                  east     = default_auxiliary_bc(topology(grid, 1)(), location[1]()),
