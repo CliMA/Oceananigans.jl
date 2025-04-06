@@ -31,6 +31,8 @@ run_pencil_distributed_grid = """
     MPI.Init()
     include("distributed_tests_utils.jl")
     Reactant.Distributed.initialize(; single_gpu_per_process=false)
+    @test_throws ArgumentError Distributed(ReactantState(), partition = Partition(3, 2))
+    @test_throws ArgumentError Distributed(ReactantState(), partition = Partition(1, 2))
     arch = Distributed(ReactantState(), partition = Partition(2, 2))
     run_distributed_latitude_longitude_grid(arch, "distributed_pencil_llg.jld2")
 """
