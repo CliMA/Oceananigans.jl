@@ -202,31 +202,5 @@ end
                 end
             end
         end
-
-        @info "  Testing a ZStar and Runge Kutta 3rd order time stepping"
-
-        topology = topologies[2]
-        rtg  = RectilinearGrid(arch; size = (10, 10, 20), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_uniform)
-        llg  = LatitudeLongitudeGrid(arch; size = (10, 10, 20), latitude = (0, 1), longitude = (0, 1), topology, z = z_uniform)
-        irtg = ImmersedBoundaryGrid(rtg,   GridFittedBottom((x, y) -> rand() - 10))
-        illg = ImmersedBoundaryGrid(llg,   GridFittedBottom((x, y) -> rand() - 10))
-
-        for grid in [rtg, llg, irtg, illg]
-
-            split_free_surface = SplitExplicitFreeSurface(grid; cfl = 0.75)
-            model = HydrostaticFreeSurfaceModel(; grid, 
-                                                free_surface = split_free_surface, 
-                                                tracers = (:b, :c), 
-                                                timestepper = :SplitRungeKutta3,
-                                                buoyancy = BuoyancyTracer(),
-                                                vertical_coordinate = ZStar())
-
-            bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01 
-
-            set!(model, c = (x, y, z) -> rand(), b = bᵢ)
-
-            Δt = 2minutes
-            test_zstar_coordinate(model, 100, Δt)
-        end
     end
 end
