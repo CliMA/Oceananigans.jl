@@ -404,6 +404,8 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
             w_ibg = ZFaceField(grid)
             w_noibg = ZFaceField(grid.underlying_grid)
 
+            condition = trues(size(grid))
+
             ∫u_ibg = Integral(u_ibg; dims=1, condition)
             @test ∫u_ibg isa Reduction{<:Any, <:Any, <:ConditionalOperation}
             ∫u_noibg = Integral(u_noibg; dims=1, condition)
