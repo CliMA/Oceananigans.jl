@@ -19,6 +19,7 @@ struct ConditionalOperation{LX, LY, LZ, F, C, O, G, M, T} <: AbstractOperation{L
         if func === Base.identity
             func = nothing
         end
+        condition = validate_condition(condition, operand)
         T = eltype(operand)
         F = typeof(func)
         return new{LX, LY, LZ, F, C, O, G, M, T}(operand, func, grid, condition, mask)
@@ -95,8 +96,6 @@ function ConditionalOperation(operand::AbstractField;
                               func = nothing,
                               condition = nothing,
                               mask = zero(eltype(operand)))
-
-    condition = validate_condition(condition, operand)
 
     LX, LY, LZ = location(operand)
     return ConditionalOperation{LX, LY, LZ}(operand, func, operand.grid, condition, mask)
