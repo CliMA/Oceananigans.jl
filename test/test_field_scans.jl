@@ -380,6 +380,30 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
             ∫max_c² = Integral(max_c², dims=(1, 2))
             compute!(∫max_c²)
             @test ∫max_c² isa Reduction
+
+            @info "  Testing conditional reductions of immersed Fields [$(typeof(arch))]"
+
+            underlying_grid = LatitudeLongitudeGrid(arch,
+                                                    topology = (Periodic, Bounded, Bounded),
+                                                    size = (24, 16, 8),
+                                                    longitude = (-10, 10),
+                                                    latitude = (-55, -35),
+                                                    z = (-1000, 0),
+                                                    halo = (5, 5, 5))
+
+            Lz_u = underlying_grid.Lz
+            width = 0.5 # degrees
+            bump(λ, φ) = - Lz_u * (1 - 2 * exp(-(λ^2 + φ^2) / 2width^2))
+
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bump))
+
+            w_ibg = ZFaceField(grid)
+            w_noibg = ZFaceField(grid.underlying_grid)
+
+            condition = trues(size(grid)...)
+
+            @test_throws ArgumentError ∫w_ibg = Integral(w_ibg; dims=1, condition)
+            @test_throws ArgumentError ∫w_noibg = Integral(w_noibg; dims=1, condition)
         end
     end
 end
