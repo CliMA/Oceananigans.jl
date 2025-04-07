@@ -1,4 +1,4 @@
-using Oceananigans.Fields: AbstractField, indices
+using Oceananigans.Fields: AbstractField, OneField, indices
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 
 import Oceananigans.AbstractOperations: ConditionalOperation, evaluate_condition, validate_condition
@@ -31,12 +31,10 @@ Base.summary(::NotImmersed{Nothing}) = "NotImmersed()"
 Base.summary(ni::NotImmersed) = string("NotImmersed(", summary(ni.condition), ")")
 Base.size(ni::NotImmersed{<:AbstractArray}) = size(ni.condition)
 
-function validate_condition(cond::NotImmersed{<:AbstractArray}, operand::AbstractField)
-    if size(cond) !== size(operand)
-        throw(ArgumentError("The keyword argument condition::AbstractArray requires size $(size(operand))"))
-    end
-    return cond
-end
+validate_condition(cond::NotImmersed{<:AbstractArray}, ::OneField) = cond
+
+validate_condition(cond::NotImmersed{<:AbstractArray}, operand::AbstractField) =
+    validate_condition(cond.condition, operand)
 
 "Adapt `NotImmersed` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, ni::NotImmersed) = NotImmersed(Adapt.adapt(to, ni.condition))
@@ -48,6 +46,8 @@ function ConditionalOperation(operand::IF;
                               func = nothing,
                               condition = nothing,
                               mask = zero(eltype(operand)))
+
+    condition = validate_condition(condition, operand)
 
     if condition isa NotImmersed || condition isa NotImmersedColumn
         immersed_condition = condition # it's immersed enough
