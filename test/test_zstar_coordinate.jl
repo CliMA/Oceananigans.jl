@@ -13,6 +13,9 @@ function test_zstar_coordinate(model, Ni, Δt)
 
     ∫bᵢ = Field(Integral(bᵢ))
     ∫cᵢ = Field(Integral(cᵢ))
+    compute!(∫bᵢ)
+    compute!(∫cᵢ)
+    
     w   = model.velocities.w
     Nz  = model.grid.Nz
 
@@ -22,6 +25,8 @@ function test_zstar_coordinate(model, Ni, Δt)
 
     ∫b = Field(Integral(model.tracers.b))
     ∫c = Field(Integral(model.tracers.c))
+    compute!(∫b)
+    compute!(∫c)
     
     # Testing that:
     # (1) tracers are conserved down to machine precision
