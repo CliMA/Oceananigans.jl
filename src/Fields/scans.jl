@@ -197,7 +197,15 @@ cumsum_c²[1:Nx, 1:Ny, 1:Nz]
 ```
 """
 Accumulation(accumulate!, operand; dims) = Scan(Accumulating(), accumulate!, operand, dims)
-location(a::Accumulation) = location(a.operand)
+
+flip(::Type{Face}) = Center
+flip(::Type{Center}) = Face
+            
+function location(a::Accumulation)
+    oloc = location(a.operand)
+    loc = Tuple(d ∈ a.dims ? flip(oloc[d]) : oloc[d] for d=1:3)
+    return loc
+end
 
 #####
 ##### Some custom scans
