@@ -101,7 +101,9 @@ function ConditionalOperation(operand::AbstractField;
     return ConditionalOperation{LX, LY, LZ}(operand, func, operand.grid, condition, mask)
 end
 
-validate_condition(cond, ::AbstractField) = cond # fallback
+# fallbacks
+validate_condition(cond, ::AbstractField) = cond
+validate_condition(cond::AbstractArray, ::OneField) = cond
 
 function validate_condition(cond::AbstractArray, operand::AbstractField)
     if size(cond) !== size(operand)

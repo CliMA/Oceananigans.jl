@@ -1,4 +1,4 @@
-using Oceananigans.Fields: AbstractField, indices
+using Oceananigans.Fields: AbstractField, OneField, indices
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 
 import Oceananigans.AbstractOperations: ConditionalOperation, evaluate_condition, validate_condition
@@ -30,6 +30,8 @@ NotImmersed() = NotImmersed(nothing)
 Base.summary(::NotImmersed{Nothing}) = "NotImmersed()"
 Base.summary(ni::NotImmersed) = string("NotImmersed(", summary(ni.condition), ")")
 Base.size(ni::NotImmersed{<:AbstractArray}) = size(ni.condition)
+
+validate_condition(cond::NotImmersed{<:AbstractArray}, ::OneField) = cond
 
 function validate_condition(cond::NotImmersed{<:AbstractArray}, operand::AbstractField)
     if size(cond) !== size(operand)
