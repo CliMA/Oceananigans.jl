@@ -214,7 +214,7 @@ end
                                         (φ < 80) ? 0 : - 1000
 
             grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
-            free_surface = SplitExplicitFreeSurface(grid; substeps=50)
+            free_surface = SplitExplicitFreeSurface(grid; substeps=10)
 
             model = HydrostaticFreeSurfaceModel(; grid, 
                                                   free_surface, 
@@ -222,7 +222,7 @@ end
                                                   buoyancy = BuoyancyTracer(),
                                                   vertical_coordinate = ZStar())
 
-            bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01 
+            bᵢ(x, y, z) = x < 180 ? 0.06 : 0.01 
 
             set!(model, c = (x, y, z) -> rand(), b = bᵢ)
 
