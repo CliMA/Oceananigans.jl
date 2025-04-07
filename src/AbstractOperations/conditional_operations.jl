@@ -197,7 +197,10 @@ end
 end
 
 @inline conditional_length(c::ConditionalOperation) = sum(conditional_one(c, 0))
-@inline conditional_length(c::ConditionalOperation, dims) = sum(conditional_one(c, 0); dims = dims)
+@inline conditional_length(c::ConditionalOperation, dims) = sum(conditional_one(c, 0); dims)
+
+compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
+indices(c::ConditionalOperation) = indices(c.operand)
 
 Adapt.adapt_structure(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     ConditionalOperation{LX, LY, LZ}(adapt(to, c.operand),
@@ -213,10 +216,8 @@ on_architecture(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ} =
                                      on_architecture(to, c.condition),
                                      on_architecture(to, c.mask))
 
-Base.summary(c::ConditionalOperation) = string("ConditionalOperation of ", summary(c.operand), " with condition ", summary(c.condition))
-
-compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
-indices(c::ConditionalOperation) = indices(c.operand)
+Base.summary(c::ConditionalOperation) =
+    string("ConditionalOperation of ", summary(c.operand), " with condition ", summary(c.condition))
 
 Base.show(io::IO, operation::ConditionalOperation) =
     print(io, "ConditionalOperation at $(location(operation))", '\n',
