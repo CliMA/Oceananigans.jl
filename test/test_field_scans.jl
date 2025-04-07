@@ -397,13 +397,29 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
 
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bump))
 
+            u_ibg = XFaceField(grid)
+            u_noibg = XFaceField(grid.underlying_grid)
+            v_ibg = YFaceField(grid)
+            v_noibg = YFaceField(grid.underlying_grid)
             w_ibg = ZFaceField(grid)
             w_noibg = ZFaceField(grid.underlying_grid)
 
-            condition = trues(size(grid)...)
-
+            ∫u_ibg = Integral(u_ibg; dims=1, condition)
+            @test ∫u_ibg isa Reduction{<:Any, <:Any, <:ConditionalOperation}
+            ∫u_noibg = Integral(u_noibg; dims=1, condition)
+            @test ∫u_noibg isa Reduction{<:Any, <:Any, <:ConditionalOperation}
+            @test_throws ArgumentError ∫v_ibg = Integral(v_ibg; dims=1, condition)
+            @test_throws ArgumentError ∫v_noibg = Integral(v_noibg; dims=1, condition)
             @test_throws ArgumentError ∫w_ibg = Integral(w_ibg; dims=1, condition)
             @test_throws ArgumentError ∫w_noibg = Integral(w_noibg; dims=1, condition)
+            ∫v_ibg = Integral(v_ibg; dims=1, condition=trues(size(v_ibg)))
+            @test ∫v_ibg isa Reduction{<:Any, <:Any, <:ConditionalOperation}
+            ∫v_noibg = Integral(v_noibg; dims=1, condition=trues(size(v_noibg)))
+            @test ∫v_noibg isa Reduction{<:Any, <:Any, <:ConditionalOperation}
+            ∫w_ibg = Integral(w_ibg; dims=1, condition=trues(size(w_ibg)))
+            @test ∫w_ibg isa Reduction{<:Any, <:Any, <:ConditionalOperation}
+            ∫w_noibg = Integral(w_noibg; dims=1, condition=trues(size(w_noibg)))
+            @test ∫w_noibg isa Reduction{<:Any, <:Any, <:ConditionalOperation}
         end
     end
 end
