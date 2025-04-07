@@ -41,15 +41,18 @@ compute_w_from_continuity!(velocities, arch, grid; parameters = w_kernel_paramet
 @kernel function _compute_w_from_continuity!(U, grid)
     i, j = @index(Global, NTuple)
 
-    @inbounds U.w[i, j, 1] = 0
+    wacc = zero(eltype(U.w))
+    @inbounds U.w[i, j, 1] = wacc
+
     for k in 2:grid.Nz+1
         δh_u = flux_div_xyᶜᶜᶜ(i, j, k-1, grid, U.u, U.v) / Azᶜᶜᶜ(i, j, k-1, grid) 
         ∂tσ  = Δrᶜᶜᶜ(i, j, k-1, grid) * ∂t_σ(i, j, k-1, grid)
 
         immersed = immersed_cell(i, j, k-1, grid)
-        Δw       = δh_u + ifelse(immersed, zero(grid), ∂tσ) # We do not account for grid changes in immersed cells
+        Δw       = - δh_u - ifelse(immersed, zero(grid), ∂tσ) # We do not account for grid changes in immersed cells
+        wacc     = wacc + Δw
 
-        @inbounds U.w[i, j, k] = U.w[i, j, k-1] - Δw
+        @inbounds U.w[i, j, k] = wacc
     end
 end
 
