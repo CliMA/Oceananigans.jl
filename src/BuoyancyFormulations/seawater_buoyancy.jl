@@ -121,10 +121,6 @@ function SeawaterBuoyancy(FT = Oceananigans.defaults.FloatType;
     constant_temperature = isnothing(constant_temperature) ? nothing : convert(FT, constant_temperature)
     constant_salinity = isnothing(constant_salinity) ? nothing : convert(FT, constant_salinity)
 
-    equation_of_state = SeawaterPolynomials.with_float_type(FT, equation_of_state)
-    constant_temperature = constant_temperature isa Number ? convert(FT, constant_temperature) : constant_temperature
-    constant_salinity = constant_salinity isa Number ? convert(FT, constant_salinity) : constant_salinity
-
     return SeawaterBuoyancy{FT, typeof(equation_of_state), typeof(constant_temperature), typeof(constant_salinity)}(
                             equation_of_state, gravitational_acceleration, constant_temperature, constant_salinity)
 end
