@@ -57,4 +57,19 @@ end
 # keepin it simple
 set_to_field!(u::ReactantField, v::ReactantField) = @jit _set_to_field!(u, v)
 
+function set_to_function!(u::ShardedDistributedField, f)
+    arch = Oceananigans.Architectures.architecture(u)
+    grid = u.grid
+    Oceananigans.Utils.launch!(arch, grid, size(u), _set_to_function_on_device!, u, f, grid,
+                               Oceananigans.Fields.location(u))
+    return nothing
+end
+
+function _device_set_to_function!(u, f, grid, loc)
+    i, j, k = @index(Global, NTuple)
+    LX, LY, LZ = loc
+    x = node(i, j, k, grid, LX(), LY(), LZ())
+    @inbounds u[i, j, k] = f(x...)
+end
+
 end
