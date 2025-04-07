@@ -404,7 +404,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
             w_ibg = ZFaceField(grid)
             w_noibg = ZFaceField(grid.underlying_grid)
 
-            condition = trues(size(grid))
+            condition = trues(size(grid)) # should work for Periodic but not for Bounded directions
 
             ∫u_ibg = Integral(u_ibg; dims=1, condition)
             @test ∫u_ibg isa Reduction{<:Any, <:Any, <:ConditionalOperation}
