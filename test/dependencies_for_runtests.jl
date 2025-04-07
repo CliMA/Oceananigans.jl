@@ -88,4 +88,3 @@ already_included[] = true
 
 float_types = (Float32, Float64)
 archs = test_architectures()
-

@@ -4,9 +4,9 @@ using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: regular_dimensions
 using Oceananigans.Fields: Scan, condition_operand, reverse_cumsum!, AbstractReducing, AbstractAccumulating
 
-##### 
+#####
 ##### Metric inference
-##### 
+#####
 
 reduction_grid_metric(dims::Number) = reduction_grid_metric(tuple(dims))
 
@@ -19,9 +19,9 @@ reduction_grid_metric(dims) = dims === tuple(1)  ? Δx :
                               dims === (1, 2, 3) ? volume :
                               throw(ArgumentError("Cannot determine grid metric for reducing over dims = $dims"))
 
-##### 
+#####
 ##### Metric reductions
-##### 
+#####
 
 struct Averaging <: AbstractReducing end
 const Average = Scan{<:Averaging}

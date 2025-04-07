@@ -274,8 +274,6 @@ function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
                                        z)
 end
 
-
-
 """ Validate user input arguments to the `RectilinearGrid` constructor. """
 function validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
     TX, TY, TZ = topology = validate_topology(topology)
