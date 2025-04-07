@@ -100,7 +100,7 @@ extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
 free_surface_displacement_field(::PrescribedVelocityFields, ::Nothing, grid) = nothing
 HorizontalVelocityFields(::PrescribedVelocityFields, grid) = nothing, nothing
 
-materialize_free_surface(::Nothing, velocities, grid) = nothing
+materialize_free_surface(::Nothing,                      ::PrescribedVelocityFields, grid) = nothing
 materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
 materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
 materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid) = nothing
