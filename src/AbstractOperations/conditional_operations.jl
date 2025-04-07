@@ -19,7 +19,6 @@ struct ConditionalOperation{LX, LY, LZ, F, C, O, G, M, T} <: AbstractOperation{L
         if func === Base.identity
             func = nothing
         end
-        condition = validate_condition(condition, operand)
         T = eltype(operand)
         F = typeof(func)
         return new{LX, LY, LZ, F, C, O, G, M, T}(operand, func, grid, condition, mask)
@@ -96,7 +95,7 @@ function ConditionalOperation(operand::AbstractField;
                               func = nothing,
                               condition = nothing,
                               mask = zero(eltype(operand)))
-
+    condition = validate_condition(condition, operand)
     LX, LY, LZ = location(operand)
     return ConditionalOperation{LX, LY, LZ}(operand, func, operand.grid, condition, mask)
 end
@@ -116,6 +115,7 @@ function ConditionalOperation(c::ConditionalOperation;
                               func = c.func,
                               condition = c.condition,
                               mask = c.mask)
+    condition = validate_condition(condition, operand)
     LX, LY, LZ = location(c)
     compined_func = func ∘ c.func
 
@@ -126,6 +126,7 @@ function ConditionalOperation(c::NoFuncCO;
                               func = c.func,
                               condition = c.condition,
                               mask = c.mask)
+    condition = validate_condition(condition, operand)
     LX, LY, LZ = location(c)
     return ConditionalOperation{LX, LY, LZ}(c.operand, func, c.grid, condition, mask)
 end
@@ -165,6 +166,7 @@ end
 @inline condition_operand(op::ConditionalOperation, condition, mask) = error("not supported")
 
 @inline function condition_operand(func, operand::AbstractField, condition::AbstractArray, mask)
+    condition = validate_condition(condition, operand)
     condition = on_architecture(architecture(operand.grid), condition)
     return ConditionalOperation(operand; func, condition, mask)
 end

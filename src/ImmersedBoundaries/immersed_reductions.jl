@@ -51,6 +51,8 @@ function ConditionalOperation(operand::IF;
                               condition = nothing,
                               mask = zero(eltype(operand)))
 
+    condition = validate_condition(condition, operand)
+
     if condition isa NotImmersed || condition isa NotImmersedColumn
         immersed_condition = condition # it's immersed enough
     elseif operand isa IRF
