@@ -6,7 +6,8 @@ using Oceananigans.DistributedComputations: Distributed
 
 using Reactant: AnyConcreteRArray
 
-import Oceananigans.Architectures: device, architecture, array_type, on_architecture
+import Oceananigans.Grids: LatitudeLongitudeGrid, topology
+import Oceananigans.Architectures: device, architecture, array_type, on_architecture, child_architecture
 import Oceananigans.Architectures: unified_array, ReactantState, device_copy_to!
 
 const ReactantKernelAbstractionsExt = Base.get_extension(
@@ -85,5 +86,28 @@ end
 
 Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.ConcretePJRTNumber}) = Reactant.unwrapped_eltype(T)
 Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.ConcreteIFRTNumber}) = Reactant.unwrapped_eltype(T)
+
+
+function on_architecture(new_arch::Distributed{<:ReactantState}, old_grid::LatitudeLongitudeGrid) 
+    child_arch = child_architecture(new_arch)
+    old_properties = (old_grid.Δλᶠᵃᵃ, old_grid.Δλᶜᵃᵃ, old_grid.λᶠᵃᵃ,  old_grid.λᶜᵃᵃ,
+                      old_grid.Δφᵃᶠᵃ, old_grid.Δφᵃᶜᵃ, old_grid.φᵃᶠᵃ,  old_grid.φᵃᶜᵃ,
+                      old_grid.z,
+                      old_grid.Δxᶠᶜᵃ, old_grid.Δxᶜᶠᵃ, old_grid.Δxᶠᶠᵃ, old_grid.Δxᶜᶜᵃ,
+                      old_grid.Δyᶠᶜᵃ, old_grid.Δyᶜᶠᵃ,
+                      old_grid.Azᶠᶜᵃ, old_grid.Azᶜᶠᵃ, old_grid.Azᶠᶠᵃ, old_grid.Azᶜᶜᵃ)
+
+    sharding = Sharding.DimsSharding(new_arch.connectivity, (1, 2), (:x, :y))
+    new_properties = Tuple(Reactant.to_rarray(p; sharding) for p in old_properties)
+
+    TX, TY, TZ = topology(old_grid)
+
+    return LatitudeLongitudeGrid{TX, TY, TZ}(new_arch,
+                                             old_grid.Nx, old_grid.Ny, old_grid.Nz,
+                                             old_grid.Hx, old_grid.Hy, old_grid.Hz,
+                                             old_grid.Lx, old_grid.Ly, old_grid.Lz,
+                                             new_properties...,
+                                             old_grid.radius)
+end
 
 end # module
