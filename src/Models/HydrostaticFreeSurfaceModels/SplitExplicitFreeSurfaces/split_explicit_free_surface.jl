@@ -276,7 +276,7 @@ function FixedTimeStepSize(grid;
     wave_speed = sqrt(gravitational_acceleration * grid.Lz)
 
     Δt_barotropic = convert(FT, cfl * Δs / wave_speed)
-    averaging_kernel = regularize_avergaging_kernel(averaging_kernel)
+    averaging_kernel = regularize_averaging_kernel(FT, averaging_kernel)
 
     return FixedTimeStepSize(Δt_barotropic, averaging_kernel)
 end
