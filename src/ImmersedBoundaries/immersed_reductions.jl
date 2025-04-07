@@ -33,12 +33,8 @@ Base.size(ni::NotImmersed{<:AbstractArray}) = size(ni.condition)
 
 validate_condition(cond::NotImmersed{<:AbstractArray}, ::OneField) = cond
 
-function validate_condition(cond::NotImmersed{<:AbstractArray}, operand::AbstractField)
-    if size(cond) !== size(operand)
-        throw(ArgumentError("The keyword argument condition::AbstractArray requires size $(size(operand))"))
-    end
-    return cond
-end
+validate_condition(cond::NotImmersed{<:AbstractArray}, operand::AbstractField) =
+    validate_condition(cond.condition, operand)
 
 "Adapt `NotImmersed` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, ni::NotImmersed) = NotImmersed(Adapt.adapt(to, ni.condition))
