@@ -52,7 +52,7 @@ function ConditionalOperation(operand::IF;
     if condition isa NotImmersed || condition isa NotImmersedColumn
         immersed_condition = condition # it's immersed enough
     elseif operand isa IRF
-        immersed_condition = NotImmersedColumn(immersed_column(operand), nothing)
+        immersed_condition = NotImmersedColumn(immersed_column(operand), condition)
     else
         immersed_condition = NotImmersed(condition)
     end
