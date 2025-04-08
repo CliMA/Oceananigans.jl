@@ -1,5 +1,6 @@
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, 
                                        regularize_boundary_condition,
+                                       assumed_field_location,
                                        regularize_immersed_boundary_condition,
                                        LeftBoundary,
                                        RightBoundary,
@@ -32,7 +33,6 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
 
     loc = assumed_field_location(field_name)
 
-
     west   = regularize_boundary_condition(bcs.west,   grid, loc, 1, LeftBoundary,  prognostic_names)
     east   = regularize_boundary_condition(bcs.east,   grid, loc, 1, RightBoundary, prognostic_names)
     south  = regularize_boundary_condition(bcs.south,  grid, loc, 2, LeftBoundary,  prognostic_names)
@@ -50,6 +50,8 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
 end
 
 default_auxiliary_bc(grid::TripolarGridOfSomeKind, ::Val{:north}, topo, loc) = ZipperBoundaryCondition(1)
+default_auxiliary_bc(grid::TripolarGridOfSomeKind, ::Val{:north}, ::RightConnected, ::Face) = ZipperBoundaryCondition(1)
+default_auxiliary_bc(grid::TripolarGridOfSomeKind, boundary, ::RightConnected, ::Face) = nothing
 
 # Not sure this is needed, but it is here for now
 function tupled_fill_halo_regions!(full_fields, grid::TripolarGridOfSomeKind, args...; kwargs...)
