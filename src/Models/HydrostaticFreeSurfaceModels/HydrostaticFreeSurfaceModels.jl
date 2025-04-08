@@ -121,7 +121,9 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Hydros
 
 # Include vertical velocity
 @inline hydrostatic_fields(velocities, free_surface, tracers) =
-    merge(velocities, tracers, free_surface_fields(free_surface))
+    merge((u=velocities.u, v=velocities.v, w=velocities.w),
+          tracers,
+          free_surface_fields(free_surface))
 
 displacement(free_surface) = free_surface.η
 displacement(::Nothing) = nothing
