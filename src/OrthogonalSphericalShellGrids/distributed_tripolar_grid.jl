@@ -11,10 +11,15 @@ using Oceananigans.DistributedComputations: local_size,
 using Oceananigans.Grids: topology, RightConnected, FullyConnected
 
 import Oceananigans.DistributedComputations: reconstruct_global_grid
+import Oceananigans.Fields: Field
 
+const DistributedTripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
+    OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, <:Distributed{<:Union{CPU, GPU}}}
 
-const DistributedTripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, <:Distributed{<:Union{CPU, GPU}}}
-const DistributedTripolarGridOfSomeKind = Union{DistributedTripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedTripolarGrid}}
+const DistributedTripolarGridOfSomeKind = Union{
+    DistributedTripolarGrid,
+    ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedTripolarGrid}
+}
 
 """
     TripolarGrid(arch::Distributed, FT::DataType = Float64; halo = (4, 4, 4), kwargs...)

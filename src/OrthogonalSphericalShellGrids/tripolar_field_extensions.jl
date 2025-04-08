@@ -1,25 +1,14 @@
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, 
-                                       assumed_field_location, 
                                        regularize_boundary_condition,
                                        regularize_immersed_boundary_condition,
                                        LeftBoundary,
                                        RightBoundary,
-                                       BoundaryCondition,
-                                       ZipperBoundaryCondition,
-                                       Zipper,
-                                       ZBC
-
-using Oceananigans.Fields: architecture, 
-                           validate_indices, 
-                           validate_boundary_conditions,
-                           validate_field_data, 
-                           FieldBoundaryBuffers
+                                       ZipperBoundaryCondition
 
 using Oceananigans.ImmersedBoundaries
 
-import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+import Oceananigans.BoundaryConditions: default_auxiliary_bc, regularize_field_boundary_conditions
 import Oceananigans.Grids: x_domain, y_domain
-import Oceananigans.Fields: Field
 import Oceananigans.Fields: tupled_fill_halo_regions!
 
 # A tripolar grid is always between 0 and 360 in longitude
@@ -60,8 +49,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
-default_auxiliary_bc(grid::TripolarGridOfSomeKind, ::Val{:nouth}, topo, loc) =
-    default_zipper = ZipperBoundaryCondition(1)
+default_auxiliary_bc(grid::TripolarGridOfSomeKind, ::Val{:north}, topo, loc) = ZipperBoundaryCondition(1)
 
 # Not sure this is needed, but it is here for now
 function tupled_fill_halo_regions!(full_fields, grid::TripolarGridOfSomeKind, args...; kwargs...)
