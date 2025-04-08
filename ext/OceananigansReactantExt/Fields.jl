@@ -65,7 +65,7 @@ function set_to_function!(u::ShardedDistributedField, f)
     return nothing
 end
 
-function _set_to_function_on_device!(u, f, grid, loc)
+@kernel function _set_to_function_on_device!(u, f, grid, loc)
     i, j, k = @index(Global, NTuple)
     LX, LY, LZ = loc
     x = Oceananigans.Grids.node(i, j, k, grid, LX(), LY(), LZ())
