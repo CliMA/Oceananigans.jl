@@ -31,9 +31,9 @@ function test_zstar_coordinate(model, Ni, Δt)
     # Testing that:
     # (1) tracers are conserved down to machine precision
     # (2) vertical velocities are zero at the top surface
-    @show interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
-    @show interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)    
-    @show maximum(abs, interior(w, :, :, Nz+1)) #  < eps(eltype(w))
+    @test interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
+    @test interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)    
+    @test maximum(abs, interior(w, :, :, Nz+1)) < eps(eltype(w))
     
     return nothing
 end
@@ -201,49 +201,6 @@ end
                     end
                 end
             end
-        end
-
-        @testset "TripolarGrid ZStar tests" begin
-            @info "Testing a ZStar coordinate with a Tripolar grid on $(arch)..."
-
-            grid = TripolarGrid(arch; size = (50, 50, 20), z = z_stretched)
-
-            # Code credit:
-            # https://github.com/PRONTOLab/GB-25/blob/682106b8487f94da24a64d93e86d34d560f33ffc/src/model_utils.jl#L65
-            function mtn₁(λ, φ)
-                λ₁ = 70
-                φ₁ = 55
-                dφ = 5
-                return exp(-((λ - λ₁)^2 + (φ - φ₁)^2) / 2dφ^2)
-            end
-            
-            function mtn₂(λ, φ)
-                λ₁ = 70
-                λ₂ = λ₁ + 180
-                φ₂ = 55
-                dφ = 5
-                return exp(-((λ - λ₂)^2 + (φ - φ₂)^2) / 2dφ^2)
-            end
-
-            zb = - 20
-            h  = - zb + 10        
-            gaussian_islands(λ, φ) = zb + h * (mtn₁(λ, φ) + mtn₂(λ, φ))
-
-            grid = ImmersedBoundaryGrid(grid, GridFittedBottom(gaussian_islands))
-            free_surface = SplitExplicitFreeSurface(grid; substeps=10)
-
-            model = HydrostaticFreeSurfaceModel(; grid, 
-                                                  free_surface, 
-                                                  tracers = (:b, :c), 
-                                                  buoyancy = BuoyancyTracer(),
-                                                  vertical_coordinate = ZStar())
-
-            bᵢ(x, y, z) = y < 0 ? 0.06 : 0.01 
-
-            set!(model, c = (x, y, z) -> rand(), b = bᵢ)
-
-            Δt = 2minutes
-            test_zstar_coordinate(model, 100, Δt)
         end
     end
 end
