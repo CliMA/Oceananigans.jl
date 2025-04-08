@@ -166,7 +166,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                          extract_boundary_conditions(diffusivity_fields))
 
     # Next, we form a list of default boundary conditions:
-    field_names = constructor_field_names(velocities, tracers, auxiliary_fields, biogeochemistry, grid)
+    field_names = constructor_field_names(velocities, tracers, free_surface, auxiliary_fields, biogeochemistry, grid)
     default_boundary_conditions = NamedTuple{field_names}(Tuple(FieldBoundaryConditions()
                                                           for name in field_names))
 
