@@ -10,10 +10,10 @@ struct FluxFormAdvection{N, FT, A, B, C} <: AbstractAdvectionScheme{N, FT}
 end
 
 """
-    FluxFormAdvection(x_advection, y_advection, z_advection)
+    function FluxFormAdvection(x, y, z)
 
-Return a `FluxFormAdvection` type with reconstructions schemes `x_advection`, `y_advection`,
-and `z_advection` to be applied in the ``x``, ``y``, and ``z`` directions, respectively.
+Builds a `FluxFormAdvection` type with reconstructions schemes `x`, `y`, and `z` to be applied in
+the x, y, and z direction, respectively.
 """
 function FluxFormAdvection(x_advection, y_advection, z_advection)
     Hx = required_halo_size_x(x_advection)
@@ -26,13 +26,8 @@ function FluxFormAdvection(x_advection, y_advection, z_advection)
     return FluxFormAdvection{H, FT}(x_advection, y_advection, z_advection)
 end
 
-Base.summary(scheme::FluxFormAdvection) = string("FluxFormAdvection(x=",
-                                                 summary(scheme.x), ", y=",
-                                                 summary(scheme.y), ", z=",
-                                                 summary(scheme.z), ")")
-
 Base.show(io::IO, scheme::FluxFormAdvection) = 
-    print(io, "FluxFormAdvection with direction-based reconstructions:", " \n",
+    print(io, "FluxFormAdvection with reconstructions: ", " \n",
           "    ├── x: ", summary(scheme.x), "\n",
           "    ├── y: ", summary(scheme.y), "\n",
           "    └── z: ", summary(scheme.z))
