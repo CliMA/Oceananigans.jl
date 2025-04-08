@@ -32,7 +32,7 @@ using Adapt
 using OffsetArrays
 
 using Oceananigans.Grids
-using Oceananigans.Grids: with_halo, coordinates
+using Oceananigans.Grids: with_halo
 using Oceananigans.Architectures: architecture, CPU
 
 using Oceananigans.Operators
