@@ -23,7 +23,7 @@ const IBG = ImmersedBoundaryGrid
 
 # Fallbacks: extend these function for `closure` to support.
 # TODO: docstring
-@inline implicit_linear_coefficient(i, j, k, grid, closure, diffusivity_fields, tracer_index, ℓx, ℓy, ℓz, clock, Δt, κz) =
+@inline implicit_linear_coefficient(i, j, k, grid, closure, diffusivity_fields, tracer_index, ℓx, ℓy, ℓz, clock, Δt) =
     zero(grid)
 
 @inline νzᶠᶜᶠ(i, j, k, grid, closure, diffusivity_fields, clock, args...) = zero(grid) # u
