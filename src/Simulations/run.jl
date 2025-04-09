@@ -1,7 +1,7 @@
 using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_superprefix
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!, next_time, unit_time
 
-using Oceananigans: AbstractModel, run_diagnostic!, write_output!
+using Oceananigans: AbstractModel, run_diagnostic!
 
 import Oceananigans: initialize!
 import Oceananigans.Fields: set!
@@ -160,7 +160,7 @@ function time_step!(sim::Simulation)
     end
 
     for writer in values(sim.output_writers)
-        writer.schedule(sim.model) && write_output!(writer, sim.model) 
+        writer.schedule(sim.model) && write_output!(writer, sim) 
     end
 
     if initial_time_step && sim.verbose
@@ -237,7 +237,7 @@ function initialize!(sim::Simulation)
 
         for writer in values(sim.output_writers)
             writer.schedule(model)
-            write_output!(writer, model)
+            write_output!(writer, sim)
         end
     end
 
