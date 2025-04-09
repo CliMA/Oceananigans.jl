@@ -3,7 +3,7 @@ name: Oceananigans Benchmarks
 on:
     pull_request:
       paths:
-        - '.github/workflows/ci.yml'
+        - '.github/workflows/benchmarks.yml'
         - 'ext/**'
         - 'src/**'
         - 'test/**'
@@ -13,7 +13,7 @@ on:
         - main
       tags: '*'
       paths:
-        - '.github/workflows/ci.yml'
+        - '.github/workflows/benchmarks.yml'
         - 'ext/**'
         - 'src/**'
         - 'test/**'
