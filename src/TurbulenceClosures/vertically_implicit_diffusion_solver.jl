@@ -34,7 +34,7 @@ const F = Face
 @inline νzᶜᶜᶜ(i, j, k, grid, closure, K, clock, args...) = zero(grid) # w
 @inline κzᶜᶜᶠ(i, j, k, grid, closure, K, id, clock, args...) = zero(grid) # tracers
 
-# Momentum diffusivities
+# Vertical momentum diffusivities: u, v, w
 @inline ivd_diffusivity(i, j, k, grid, ::F, ::C, ::F, clo, K, ::Nothing, args...) = ifelse(inactive_node(i, j, k, grid, f, c, f), zero(grid), νzᶠᶜᶠ(i, j, k, grid, clo, K, args...))
 @inline ivd_diffusivity(i, j, k, grid, ::C, ::F, ::F, clo, K, ::Nothing, args...) = ifelse(inactive_node(i, j, k, grid, c, f, f), zero(grid), νzᶜᶠᶠ(i, j, k, grid, clo, K, args...))
 @inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::C, clo, K, ::Nothing, args...) = ifelse(inactive_node(i, j, k, grid, c, c, c), zero(grid), νzᶜᶜᶜ(i, j, k, grid, clo, K, args...))
