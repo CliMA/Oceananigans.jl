@@ -154,7 +154,7 @@ and the topology in the boundary-normal direction is used:
 - `nothing` for `Bounded` directions and `Face`-located fields
 - `nothing` for `Flat` directions and/or `Nothing`-located fields
 """
-function FieldBoundaryConditions(grid::AbstractGrid, location, indices=(:, :, :);
+function FieldBoundaryConditions(grid::AbstractGrid, loc, indices=(:, :, :);
                                  west     = default_auxiliary_bc(grid, Val(:west),   loc),
                                  east     = default_auxiliary_bc(grid, Val(:east),   loc),
                                  south    = default_auxiliary_bc(grid, Val(:south),  loc),
@@ -271,41 +271,35 @@ regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid::Abst
 # TODO: these may be incorrect because we have not defined behavior for prognostic fields (which are
 # treated by `regularize`).
 regularize_north_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) = 
-    regularize_boundary_condition(latitude_north_auxiliary_bc(grid, loc, bc), grid, loc, args...)
+    regularize_boundary_condition(default_prognostic_bc(grid, Val(:north), loc, bc), grid, loc, args...)
 
 regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) = 
-    regularize_boundary_condition(latitude_south_auxiliary_bc(grid, loc, bc), grid, loc, args...)
+    regularize_boundary_condition(default_prognostic_bc(grid, Val(:south), loc, bc), grid, loc, args...)
+
+function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, loc, default)
+    φnorth = @allowscalar φnode(grid.Ny+1, grid, Face()) 
+    cca_loc = loc[1] == Center && loc[2] == Center # scalar
+    default_bc = default_prognostic_bc(topology(grid, 2)(), loc[2](), default)
+    return φnorth ≈ 90 && cca_loa ? PolarBoundaryCondition(grid, :north, loc[3]) : default_bc
+end
+
+function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, loc, default)
+    φsouth = @allowscalar φnode(1, grid, Face()) 
+    cca_loc = loc[1] == Center && loc[2] == Center # scalar
+    default_bc = default_prognostic_bc(topology(grid, 2)(), loc[2](), default)
+    return φsouth ≈ -90 && cca_loa ? PolarBoundaryCondition(grid, :south, loc[3]) : default_bc
+end
 
 function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, loc)
-    # Check if the halo lies beyond the north pole
     φnorth = @allowscalar φnode(grid.Ny+1, grid, Face()) 
-    
-    # Assumption: fields at `Center`s in x and y are not vector components
-    cca_loc = loc[1] == Center && loc[2] == Center
-
-    if φnorth ≈ 90 && cca_loc
-        bc = PolarBoundaryCondition(grid, :north, loc[3])
-    else
-        bc = DefaultBoundaryCondition()
-    end
-
-    return bc
+    default_bc = _default_auxiliary_bc(topology(grid, 2)(), loc[2]())
+    return φnorth ≈ 90 ? PolarBoundaryCondition(grid, :north, loc[3]) : default_bc
 end
 
 function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, loc)
-    # Check if the halo lies beyond the south pole
     φsouth = @allowscalar φnode(1, grid, Face()) 
-
-    # Assumption: fields at `Center`s in x and y are not vector components
-    cca_loc = loc[1] == Center && loc[2] == Center
-
-    if φsouth ≈ -90 && cca_loc
-        bc = PolarBoundaryCondition(grid, :south, loc[3])
-    else
-        bc = DefaultBoundaryCondition()
-    end
-
-    return bc
+    default_bc = _default_auxiliary_bc(topology(grid, 2)(), loc[2]())
+    return φsouth ≈ -90 ? PolarBoundaryCondition(grid, :south, loc[3]) : default_bc
 end
 
 latitude_north_auxiliary_bc(::YFlatGrid, args...) = nothing
