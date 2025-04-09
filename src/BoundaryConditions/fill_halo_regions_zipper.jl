@@ -107,6 +107,8 @@ end
         end
     end
 
+    # We substitute the redundant part of the last row to ensure consistency
+    @inbounds c[i, Ny, k] = ifelse(i > Nx ÷ 2, sign * c[i′, Ny, k], c[i, Ny, k])
     return nothing
 end
 
