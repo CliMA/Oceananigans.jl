@@ -3,7 +3,7 @@ using Oceananigans.AbstractOperations: GridMetricOperation, Δz
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: free_surface_displacement_field
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: calculate_substeps, 
-                                                                                  barotropic_bc, 
+                                                                                  barotropic_velocity_boundary_conditions, 
                                                                                   materialize_timestepper
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface
@@ -28,8 +28,8 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
     u_baroclinic = velocities.u
     v_baroclinic = velocities.v
 
-    @apply_regionally u_bc = barotropic_bc(u_baroclinic)
-    @apply_regionally v_bc = barotropic_bc(v_baroclinic)
+    @apply_regionally u_bc = barotropic_velocity_boundary_conditions(u_baroclinic)
+    @apply_regionally v_bc = barotropic_velocity_boundary_conditions(v_baroclinic)
 
     U = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = u_bc)
     V = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = v_bc)

@@ -144,16 +144,16 @@ split_explicit_substepping(::Nothing, ::Nothing, ::Nothing, grid, averaging_kern
 # TODO: When open boundary conditions are online
 # We need to calculate the barotropic boundary conditions
 # from the baroclinic boundary conditions by integrating the BC upwards
-@inline  west_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.west
-@inline  east_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.east
-@inline south_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.south
-@inline north_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.north
+@inline  west_barotropic_velocity_boundary_condition(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.west
+@inline  east_barotropic_velocity_boundary_condition(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.east
+@inline south_barotropic_velocity_boundary_condition(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.south
+@inline north_barotropic_velocity_boundary_condition(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.north
 
-@inline barotropic_bc(baroclinic_velocity) = FieldBoundaryConditions(
-    west   = west_barotropic_bc(baroclinic_velocity),
-    east   = east_barotropic_bc(baroclinic_velocity),
-    south  = south_barotropic_bc(baroclinic_velocity),
-    north  = north_barotropic_bc(baroclinic_velocity),
+@inline barotropic_velocity_boundary_conditions(baroclinic_velocity) = FieldBoundaryConditions(
+    west   = west_barotropic_velocity_boundary_condition(baroclinic_velocity),
+    east   = east_barotropic_velocity_boundary_condition(baroclinic_velocity),
+    south  = south_barotropic_velocity_boundary_condition(baroclinic_velocity),
+    north  = north_barotropic_velocity_boundary_condition(baroclinic_velocity),
     top    = nothing,
     bottom = nothing
 )
@@ -177,17 +177,17 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
     η = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid)
     η̅ = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid)
 
-    u_baroclinic = velocities.u
-    v_baroclinic = velocities.v
+    baroclinic_u_bcs = velocities.u
+    baroclinic_v_bcs = velocities.v
 
-    u_bc = barotropic_bc(u_baroclinic)
-    v_bc = barotropic_bc(v_baroclinic)
+    u_bcs = barotropic_velocity_boundary_conditions(baroclinic_u_bcs)
+    v_bcs = barotropic_velocity_boundary_conditions(baroclinic_v_bcs)
 
-    U = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bc)
-    V = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bc)
+    U = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bcs)
+    V = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bcs)
 
-    U̅ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bc)
-    V̅ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bc)
+    U̅ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bcs)
+    V̅ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bcs)
 
     filtered_state = (η = η̅, U = U̅, V = V̅)
     barotropic_velocities = (U = U, V = V)
