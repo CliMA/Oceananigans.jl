@@ -1,5 +1,16 @@
 using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ, Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ, Az_qᶜᶜᶠ
 
+struct PerturbationAdvection{VT, FT}
+       backward_step :: VT
+    inflow_timescale :: FT
+   outflow_timescale :: FT
+end
+
+Adapt.adapt_structure(to, pe::PerturbationAdvection) =
+    PerturbationAdvection(adapt(to, pe.backward_step),
+                          adapt(to, pe.inflow_timescale),
+                          adapt(to, pe.outflow_timescale))
+
 """
     PerturbationAdvection
 
@@ -31,21 +42,10 @@ where τ̃ = Δt/τ.
 
 The same operation can be repeated for left boundaries.
 """
-struct PerturbationAdvection{VT, FT}
-       backward_step :: VT
-    inflow_timescale :: FT
-   outflow_timescale :: FT
-end
-
-Adapt.adapt_structure(to, pe::PerturbationAdvection) = 
-    PerturbationAdvection(adapt(to, pe.backward_step),
-                          adapt(to, pe.inflow_timescale),
-                          adapt(to, pe.outflow_timescale))
-
 function PerturbationAdvectionOpenBoundaryCondition(val, FT = Float64; 
                                                     backward_step = true,
                                                     outflow_timescale = Inf, 
-                                                    inflow_timescale = 300.0, kwargs...)
+                                                    inflow_timescale = 0.0, kwargs...)
 
     classification = Open(PerturbationAdvection(Val(backward_step), inflow_timescale, outflow_timescale))
 
