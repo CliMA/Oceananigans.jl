@@ -1,13 +1,33 @@
 name: Oceananigans Benchmarks
-on:
-  push:
-    branches:
-      - main
-      - ss/performance-github-actions
 
+on:
+    pull_request:
+      paths:
+        - '.github/workflows/ci.yml'
+        - 'ext/**'
+        - 'src/**'
+        - 'test/**'
+        - 'Project.toml'
+    push:
+      branches:
+        - main
+      tags: '*'
+      paths:
+        - '.github/workflows/ci.yml'
+        - 'ext/**'
+        - 'src/**'
+        - 'test/**'
+        - 'Project.toml'
+  
 permissions:
-  contents: write
-  deployments: write
+    contents: write
+    deployments: write
+
+concurrency:
+    # Skip intermediate builds: always.
+    # Cancel intermediate builds: only if it is a pull request build.
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
 jobs:
   benchmark:
