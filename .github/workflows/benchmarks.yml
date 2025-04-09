@@ -65,6 +65,7 @@ jobs:
           cd benchmark/
           julia --project=../ --color=yes -e '
             using Pkg;
+            Pkg.add("BenchmarkTools");
             Pkg.instantiate();
             include("runbenchmarks.jl")'
 
