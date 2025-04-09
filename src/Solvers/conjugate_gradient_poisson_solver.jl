@@ -45,6 +45,18 @@ end
 
 struct DefaultPreconditioner end
 
+"""
+    ConjugateGradientPoissonSolver(grid;
+                                   preconditioner = DefaultPreconditioner(),
+                                   reltol = sqrt(eps(grid)),
+                                   abstol = sqrt(eps(grid)),
+                                   kw...)
+
+Creates a `ConjugateGradientPoissonSolver` on `grid` using a `preconditioner`.
+`ConjugateGradientPoissonSolver` is iterative, and will stop when both the relative error in the
+pressure solution is smaller than `reltol` and the absolute error is smaller than `abstol`. Other
+keyword arguments are passed to `ConjugateGradientSolver`.
+"""
 function ConjugateGradientPoissonSolver(grid;
                                         preconditioner = DefaultPreconditioner(),
                                         reltol = sqrt(eps(grid)),
