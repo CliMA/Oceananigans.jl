@@ -19,9 +19,9 @@ end
 
 function default_checkpointed_properties(model)
     properties = [:grid, :particles, :clock, :timestepper]
-    if has_ab2_timestepper(model)
-       push!(properties, :timestepper)
-    end
+    # if has_ab2_timestepper(model)
+    #    push!(properties, :timestepper)
+    # end
     return properties
 end
 
