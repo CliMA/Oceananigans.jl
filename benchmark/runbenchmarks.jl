@@ -97,6 +97,27 @@ hydrostatic_closures = [
 suite["hydrostatic"]    = BenchmarkGroup(["grid", "free_surface", "momentum_advection", "tracer_advection", "closure"])
 suite["nonhydrostatic"] = BenchmarkGroup(["grid", "advection"])
 
+params(model::HydrostaticFreeSurfaceModel) = (params(model.grid), 
+                                              params(model.free_surface), 
+                                              params(model.advection.momentum), 
+                                              params(model.advection.T), 
+                                              params(model.closure))
+
+params(model::NonhydrostaticModel) = (params(model.grid), 
+                                      params(model.advection))
+                                              
+params(::Nothing)                  = "no closure"
+params(::WENO)                     = "WENO"
+params(::Centered)                 = "Centered"
+params(::CATKEVerticalDiffusivity) = "CATKE"
+params(::SplitExplicitFreeSurface) = "SplitExplicitFreeSurface"
+params(::ExplicitFreeSurface)      = "ExplicitFreeSurface"
+params(::VectorInvariant)          = "VectorInvariant"
+params(i::ImmersedBoundaryGrid)    = "ImmersedBoundaryGrid on a " * params(i.underlying_grid) 
+params(::RectilinearGrid)          = "RectilinearGrid"
+params(::LatitudeLongitudeGrid)    = "LatitudeLongitudeGrid"
+params(::TripolarGrid)             = "TripolarGrid"
+
 for grid in grids, 
     free_surface in free_surfaces,
     momentum_advection in momentum_advections,
@@ -104,14 +125,14 @@ for grid in grids,
     closure in hydrostatic_closures
     
     model = hydrostatic_model(grid, free_surface, momentum_advection, tracer_advection, closure)
-    suite["hydrostatic"][grid, free_surface, momentum_advection, tracer_advection, closure] = @benchmarkable run_model_benchmark(model)
+    suite["hydrostatic"][params(model)...] = @benchmarkable run_model_benchmark($model)
 end
 
 for grid in nonhydrostatic_grids, 
     advection in tracer_advections
     
     model = nonhydrostatic_model(grid, advection)
-    suite["nonhydrostatic"][grid, advection] = @benchmarkable run_model_benchmark(model)
+    suite["nonhydrostatic"][params(model)...] = @benchmarkable run_model_benchmark($model)
 end
 
 tune!(suite)
