@@ -1,23 +1,23 @@
 name: Oceananigans Benchmarks
 
 on:
-    pull_request:
-      paths:
-        - '.github/workflows/benchmarks.yml'
-        - 'ext/**'
-        - 'src/**'
-        - 'test/**'
-        - 'Project.toml'
-    push:
-      branches:
-        - main
-      tags: '*'
-      paths:
-        - '.github/workflows/benchmarks.yml'
-        - 'ext/**'
-        - 'src/**'
-        - 'test/**'
-        - 'Project.toml'
+  pull_request:
+    paths:
+      - '.github/workflows/benchmarks.yml'
+      - 'ext/**'
+      - 'src/**'
+      - 'test/**'
+      - 'Project.toml'
+  push:
+    branches:
+      - main
+    tags: '*'
+    paths:
+      - '.github/workflows/benchmarks.yml'
+      - 'ext/**'
+      - 'src/**'
+      - 'test/**'
+      - 'Project.toml'
   
 permissions:
     contents: write
