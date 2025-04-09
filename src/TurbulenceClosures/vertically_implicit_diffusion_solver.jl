@@ -157,10 +157,10 @@ end
 
 ### Diagonal terms
 
-@inline ivd_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz) =
-    one(grid) - Δt * _implicit_linear_coefficient(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz) -
-                              _ivd_upper_diagonal(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz) -
-                              _ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz)
+@inline ivd_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt) =
+    one(grid) - Δt * _implicit_linear_coefficient(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt) -
+                              _ivd_upper_diagonal(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt) -
+                              _ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt)
 
 @inline _implicit_linear_coefficient(args...) = implicit_linear_coefficient(args...)
 @inline _ivd_upper_diagonal(args...) = ivd_upper_diagonal(args...)
@@ -204,16 +204,16 @@ for location in (:upper_, :lower_)
     immersed_func = Symbol(:immersed_ivd_, location, :diagonal)
     @eval begin
         # Disambiguation
-        @inline $ordinary_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz::Face, clock, Δt, κz) =
-                $immersed_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz)
+        @inline $ordinary_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz::Face, clock, Δt) =
+                $immersed_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt)
 
-        @inline $ordinary_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz::Center, clock, Δt, κz) =
-                $immersed_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz)
+        @inline $ordinary_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz::Center, clock, Δt) =
+                $immersed_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt)
 
-        @inline $immersed_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz) =
+        @inline $immersed_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt) =
             ifelse(immersed_ivd_peripheral_node(i, j, k, ibg, ℓx, ℓy, ℓz),
                    zero(ibg),
-                   $ordinary_func(i, j, k, ibg.underlying_grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt, κz))
+                   $ordinary_func(i, j, k, ibg.underlying_grid, closure, K, id, ℓx, ℓy, ℓz, clock, Δt))
     end
 end
 
