@@ -207,7 +207,13 @@ for location in (:upper_, :lower_)
         @inline $ordinary_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz::Face, clock, Δt) =
                 $immersed_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt)
 
-        @inline $ordinary_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz::Center, clock, Δt) =
+        @inline $ordinary_func(i, j, k, ibg::IBG, closure, K, id, ℓx::Center, ℓy::Center, ℓz::Center, clock, Δt) =
+                $immersed_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt)
+
+        @inline $ordinary_func(i, j, k, ibg::IBG, closure, K, id, ℓx::Face, ℓy::Center, ℓz::Center, clock, Δt) =
+                $immersed_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt)
+
+        @inline $ordinary_func(i, j, k, ibg::IBG, closure, K, id, ℓx::Center, ℓy::Face, ℓz::Center, clock, Δt) =
                 $immersed_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt)
 
         @inline $immersed_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt) =
