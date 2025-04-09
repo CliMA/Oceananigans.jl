@@ -51,83 +51,40 @@ const f = Face()
 @inline vertical_spacing(i, j, k, grid, ℓx, ℓy, ℓz) = Δz(i, j, k, grid, ℓx, ℓy, ℓz)
 @inline vertical_spacing(i, j, k, grid, ::Center, ::Center, ℓz) = Δr(i, j, k, grid, c, c, ℓz)
 
+κz(::Type{Center}, ::Type{Center}) = :κzᶜᶜᶠ
+κz(::Type{Face},   ::Type{Center}) = :νzᶠᶜᶠ
+κz(::Type{Center}, ::Type{Face})   = :νzᶜᶠᶠ
+
 # Tracers and horizontal velocities at cell centers in z
-@inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ::Center, ::Center, ::Center, clock, Δt)
-    closure_ij = getclosure(i, j, closure)
-    κᵏ⁺¹   = κzᶜᶜᶠ(i, j, k+1, grid, closure_ij, K, id, clock)
-    Δzᶜₖ   = vertical_spacing(i, j, k,   grid, c, c, c)
-    Δzᶠₖ₊₁ = vertical_spacing(i, j, k+1, grid, c, c, f)
-    du     = - Δt * κᵏ⁺¹ / (Δzᶜₖ * Δzᶠₖ₊₁)
+for LX in (Face, Center), LY in (Face, Center)
+    κ = κz(LX, LY)
 
-    # This conditional ensures the diagonal is correct
-    return ifelse(k > grid.Nz-1, zero(grid), du)
-end
+    @eval begin
+        @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ::$LX, ::$LY, ::Center, clock, Δt)
+            closure_ij = getclosure(i, j, closure)
+            κᵏ⁺¹   = $κ(i, j, k+1, grid, closure_ij, K, id, clock)
+            Δzᶜₖ   = vertical_spacing(i, j, k,   grid, $LX(), $LY(), c)
+            Δzᶠₖ₊₁ = vertical_spacing(i, j, k+1, grid, $LX(), $LY(), f)
+            du     = - Δt * κᵏ⁺¹ / (Δzᶜₖ * Δzᶠₖ₊₁)
 
-@inline function ivd_lower_diagonal(i, j, k′, grid, closure, K, id, ::Center, ::Center, ::Center, clock, Δt)
-    k = k′ + 1 # Shift index to match LinearAlgebra.Tridiagonal indexing convenction
-    closure_ij = getclosure(i, j, closure)  
-    κᵏ   = κzᶜᶜᶠ(i, j, k, grid, closure_ij, K, id, clock)
-    Δzᶜₖ = vertical_spacing(i, j, k, grid, c, c, c)
-    Δzᶠₖ = vertical_spacing(i, j, k, grid, c, c, f)
-    dl   = - Δt * κᵏ / (Δzᶜₖ * Δzᶠₖ)
+            # This conditional ensures the diagonal is correct
+            return ifelse(k > grid.Nz-1, zero(grid), du)
+        end
 
-    # This conditional ensures the diagonal is correct: the lower diagonal does not
-    # exist for k′ = 0. (Note we use LinearAlgebra.Tridiagonal indexing convention,
-    # so that lower_diagonal should be defined for k′ = 1 ⋯ N-1).
-    return ifelse(k′ < 1, zero(grid), dl)
-end
+        @inline function ivd_lower_diagonal(i, j, k′, grid, closure, K, id, ::$LX, ::$LY, ::Center, clock, Δt)
+            k = k′ + 1 # Shift index to match LinearAlgebra.Tridiagonal indexing convenction
+            closure_ij = getclosure(i, j, closure)  
+            κᵏ   = $κ(i, j, k, grid, closure_ij, K, id, clock)
+            Δzᶜₖ = vertical_spacing(i, j, k, grid, $LX(), $LY(), c)
+            Δzᶠₖ = vertical_spacing(i, j, k, grid, $LX(), $LY(), f)
+            dl   = - Δt * κᵏ / (Δzᶜₖ * Δzᶠₖ)
 
-# U-velocities
-@inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ::Face, ::Center, ::Center, clock, Δt)
-    closure_ij = getclosure(i, j, closure)
-    νᵏ⁺¹   = νzᶠᶜᶠ(i, j, k+1, grid, closure_ij, K, id, clock)
-    Δzᶜₖ   = vertical_spacing(i, j, k,   grid, f, c, c)
-    Δzᶠₖ₊₁ = vertical_spacing(i, j, k+1, grid, f, c, f)
-    du     = - Δt * νᵏ⁺¹ / (Δzᶜₖ * Δzᶠₖ₊₁)
-
-    # This conditional ensures the diagonal is correct
-    return ifelse(k > grid.Nz-1, zero(grid), du)
-end
-
-
-@inline function ivd_lower_diagonal(i, j, k′, grid, closure, K, id, ::Face, ::Center, ::Center, clock, Δt)
-    k = k′ + 1 # Shift index to match LinearAlgebra.Tridiagonal indexing convenction
-    closure_ij = getclosure(i, j, closure)  
-    νᵏ⁺¹ = νzᶠᶜᶠ(i, j, k, grid, closure_ij, K, clock)
-    Δzᶜₖ = vertical_spacing(i, j, k, grid, f, c, c)
-    Δzᶠₖ = vertical_spacing(i, j, k, grid, f, c, f)
-    dl   = - Δt * νᵏ⁺¹ / (Δzᶜₖ * Δzᶠₖ)
-
-    # This conditional ensures the diagonal is correct: the lower diagonal does not
-    # exist for k′ = 0. (Note we use LinearAlgebra.Tridiagonal indexing convention,
-    # so that lower_diagonal should be defined for k′ = 1 ⋯ N-1).
-    return ifelse(k′ < 1, zero(grid), dl)
-end
-
-# V-velocities
-@inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ::Center, ::Face, ::Center, clock, Δt)
-    closure_ij = getclosure(i, j, closure)
-    νᵏ⁺¹   = νzᶜᶠᶠ(i, j, k+1, grid, closure_ij, K, clock)
-    Δzᶜₖ   = vertical_spacing(i, j, k,   grid, c, f, c)
-    Δzᶠₖ₊₁ = vertical_spacing(i, j, k+1, grid, c, f, f)
-    du     = - Δt * νᵏ⁺¹ / (Δzᶜₖ * Δzᶠₖ₊₁)
-
-    # This conditional ensures the diagonal is correct
-    return ifelse(k > grid.Nz-1, zero(grid), du)
-end
-
-@inline function ivd_lower_diagonal(i, j, k′, grid, closure, K, id, ::Center, ::Face, ::Center, clock, Δt)
-    k = k′ + 1 # Shift index to match LinearAlgebra.Tridiagonal indexing convenction
-    closure_ij = getclosure(i, j, closure)  
-    νᵏ⁺¹ = νzᶜᶠᶠ(i, j, k, grid, closure_ij, K, clock)
-    Δzᶜₖ = vertical_spacing(i, j, k, grid, c, f, c)
-    Δzᶠₖ = vertical_spacing(i, j, k, grid, c, f, f)
-    dl   = - Δt * νᵏ⁺¹ / (Δzᶜₖ * Δzᶠₖ)
-
-    # This conditional ensures the diagonal is correct: the lower diagonal does not
-    # exist for k′ = 0. (Note we use LinearAlgebra.Tridiagonal indexing convention,
-    # so that lower_diagonal should be defined for k′ = 1 ⋯ N-1).
-    return ifelse(k′ < 1, zero(grid), dl)
+            # This conditional ensures the diagonal is correct: the lower diagonal does not
+            # exist for k′ = 0. (Note we use LinearAlgebra.Tridiagonal indexing convention,
+            # so that lower_diagonal should be defined for k′ = 1 ⋯ N-1).
+            return ifelse(k′ < 1, zero(grid), dl)
+        end
+    end
 end
 
 #####
@@ -202,20 +159,12 @@ end
 for location in (:upper_, :lower_)
     ordinary_func = Symbol(:ivd_ ,         location, :diagonal)
     immersed_func = Symbol(:immersed_ivd_, location, :diagonal)
+    for LX in (Face, Center), LY in (Face, Center), LZ in (Face, Center)
+        @eval @inline $ordinary_func(i, j, k, ibg::IBG, closure, K, id, ℓx::$LX, ℓy::$LY, ℓz::$LZ, clock, Δt) =
+                      $immersed_func(i, j, k, ibg, closure, K, id, ℓx, ℓy, ℓz, clock, Δt)
+    end
+    
     @eval begin
-        # Disambiguation
-        @inline $ordinary_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz::Face, clock, Δt) =
-                $immersed_func(i, j, k, ibg, closure, K, id, ℓx, ℓy, ℓz, clock, Δt)
-
-        @inline $ordinary_func(i, j, k, ibg::IBG, closure, K, id, ℓx::Center, ℓy::Center, ℓz::Center, clock, Δt) =
-                $immersed_func(i, j, k, ibg, closure, K, id, ℓx, ℓy, ℓz, clock, Δt)
-
-        @inline $ordinary_func(i, j, k, ibg::IBG, closure, K, id, ℓx::Face, ℓy::Center, ℓz::Center, clock, Δt) =
-                $immersed_func(i, j, k, ibg, closure, K, id, ℓx, ℓy, ℓz, clock, Δt)
-
-        @inline $ordinary_func(i, j, k, ibg::IBG, closure, K, id, ℓx::Center, ℓy::Face, ℓz::Center, clock, Δt) =
-                $immersed_func(i, j, k, ibg, closure, K, id, ℓx, ℓy, ℓz, clock, Δt)
-
         @inline $immersed_func(i, j, k, ibg::IBG, closure, K, id, ℓx, ℓy, ℓz, clock, Δt) =
             ifelse(immersed_ivd_peripheral_node(i, j, k, ibg, ℓx, ℓy, ℓz),
                    zero(ibg),
