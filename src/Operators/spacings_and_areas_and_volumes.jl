@@ -228,14 +228,29 @@ end
 ### Linear spacings
 
 @inline Δxᶜᶜᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δxᶜᶜᵃ[i, j]
+
+@inline Δxᶜᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::OSSG) = Base.stack(collect(Δxᶜᶜᵃ(i, j, 1, grid) for _ in k))
+
 @inline Δxᶠᶜᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δxᶠᶜᵃ[i, j]
+@inline Δxᶠᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::OSSG) = Base.stack(collect(Δxᶠᶜᵃ(i, j, 1, grid) for _ in k))
+
 @inline Δxᶜᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δxᶜᶠᵃ[i, j]
+@inline Δxᶜᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::OSSG) = Base.stack(collect(Δxᶜᶠᵃ(i, j, 1, grid) for _ in k))
+
 @inline Δxᶠᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δxᶠᶠᵃ[i, j]
+@inline Δxᶠᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::OSSG) = Base.stack(collect(Δxᶠᶠᵃ(i, j, 1, grid) for _ in k))
 
 @inline Δyᶜᶜᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶜᶜᵃ[i, j]
+@inline Δyᶜᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::OSSG) = Base.stack(collect(Δyᶜᶜᵃ(i, j, 1, grid) for _ in k))
+
 @inline Δyᶠᶜᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶠᶜᵃ[i, j]
+@inline Δyᶠᶜᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::OSSG) = Base.stack(collect(Δyᶠᶜᵃ(i, j, 1, grid) for _ in k))
+
 @inline Δyᶜᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶜᶠᵃ[i, j]
+@inline Δyᶜᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::OSSG) = Base.stack(collect(Δyᶜᶠᵃ(i, j, 1, grid) for _ in k))
+
 @inline Δyᶠᶠᵃ(i, j, k, grid::OSSG) = @inbounds grid.Δyᶠᶠᵃ[i, j]
+@inline Δyᶠᶠᵃ(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::OSSG) = Base.stack(collect(Δyᶠᶠᵃ(i, j, 1, grid) for _ in k))
 
 #####
 #####
@@ -353,6 +368,7 @@ for LX in (:Center, :Face, :Nothing)
 
                 @eval begin
                     @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
+                    export $metric
                 end
             end
 
@@ -363,6 +379,7 @@ for LX in (:Center, :Face, :Nothing)
 
                 @eval begin
                     @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
+                    export $metric
                 end
             end
 
@@ -370,6 +387,7 @@ for LX in (:Center, :Face, :Nothing)
             volume_function = Symbol(:V, location_code(LXe, LYe, LZe))
             @eval begin
                 @inline volume(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $volume_function(i, j, k, grid)
+                export $volume_function
             end
         end
     end

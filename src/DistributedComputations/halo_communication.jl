@@ -148,7 +148,7 @@ end
 
     # Overlapping communication and computation, store requests in a `MPI.Request`
     # pool to be waited upon later on when halos are required.
-    if async && !(arch isa SynchronizedDistributed)
+    if async && (arch isa AsynchronousDistributed)
         push!(arch.mpi_requests, requests...)
         return nothing
     end

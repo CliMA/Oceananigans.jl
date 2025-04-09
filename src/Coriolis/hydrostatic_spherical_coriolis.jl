@@ -31,7 +31,7 @@ Keyword arguments
 """
 function HydrostaticSphericalCoriolis(FT::DataType=Oceananigans.defaults.FloatType;
                                       rotation_rate = Ω_Earth,
-                                      scheme :: S = EnstrophyConserving()) where S
+                                      scheme :: S = EnstrophyConserving(FT)) where S
 
     return HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
 end
