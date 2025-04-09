@@ -5,6 +5,7 @@
 *.mem
 deps/deps.jl
 /Manifest.toml
+/LocalPreferences.toml
 
 # Swap files.
 *.swp

@@ -86,6 +86,13 @@ Modules = [Oceananigans.Grids]
 Private = false
 ```
 
+## OrthogonalSphericalShellGrids
+
+```@autodocs
+Modules = [Oceananigans.OrthogonalSphericalShellGrids]
+Private = false
+```
+
 ## Immersed boundaries
 
 ```@autodocs

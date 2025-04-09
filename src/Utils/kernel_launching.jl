@@ -59,19 +59,19 @@ launch!(arch, grid, kp, kernel!, kernel_args...)
 
 See the documentation for [`launch!`](@ref).
 """
-function KernelParameters(r::UnitRange)
+function KernelParameters(r::AbstractUnitRange)
     size = length(r)
     offset = first(r) - 1
     return KernelParameters(tuple(size), tuple(offset))
 end
 
-function KernelParameters(r1::UnitRange, r2::UnitRange)
+function KernelParameters(r1::AbstractUnitRange, r2::AbstractUnitRange)
     size = (length(r1), length(r2))
     offsets = (first(r1) - 1, first(r2) - 1)
     return KernelParameters(size, offsets)
 end
 
-function KernelParameters(r1::UnitRange, r2::UnitRange, r3::UnitRange)
+function KernelParameters(r1::AbstractUnitRange, r2::AbstractUnitRange, r3::AbstractUnitRange)
     size = (length(r1), length(r2), length(r3))
     offsets = (first(r1) - 1, first(r2) - 1, first(r3) - 1)
     return KernelParameters(size, offsets)
@@ -341,20 +341,20 @@ end
 @inline getrange(::OffsetStaticSize{S}) where {S} = worksize(S), offsets(S)
 @inline getrange(::Type{OffsetStaticSize{S}}) where {S} = worksize(S), offsets(S)
 
-@inline offsets(ranges::Tuple{Vararg{UnitRange}}) = Tuple(r.start - 1 for r in ranges)
+@inline offsets(ranges::NTuple{N, UnitRange}) where N = Tuple(r.start - 1 for r in ranges)::NTuple{N}
 
 @inline worksize(t::Tuple) = map(worksize, t)
 @inline worksize(sz::Int) = sz
-@inline worksize(r::UnitRange) = length(r)
+@inline worksize(r::AbstractUnitRange) = length(r)
 
 """a type used to store offsets in `NDRange` types"""
-struct KernelOffsets{O}
-    offsets :: O
+struct KernelOffsets{N, I}
+    offsets :: NTuple{N, I}
 end
 
 Base.getindex(o::KernelOffsets, args...) = getindex(o.offsets, args...)
 
-const OffsetNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:KernelOffsets} where N
+const OffsetNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:KernelOffsets{N, I}} where {N, I}
 
 # NDRange has been modified to have offsets in place of workitems: Remember, dynamic offset kernels are not possible with this extension!!
 # TODO: maybe don't do this

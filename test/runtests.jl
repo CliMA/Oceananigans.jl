@@ -59,6 +59,12 @@ CUDA.allowscalar() do
         end
     end
 
+    if group == :tripolar_grid || group == :all
+        @testset "TripolarGrid tests" begin
+            include("test_tripolar_grid.jl")
+        end
+    end
+
     if group == :poisson_solvers_1 || group == :all
         @testset "Poisson Solvers 1" begin
             include("test_poisson_solvers.jl")
@@ -91,7 +97,7 @@ CUDA.allowscalar() do
             include("test_simulations.jl")
             include("test_diagnostics.jl")
             include("test_output_writers.jl")
-            include("test_netcdf_output_writer.jl")
+            include("test_netcdf_writer.jl")
             include("test_output_readers.jl")
         end
     end
@@ -166,7 +172,6 @@ CUDA.allowscalar() do
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
-        archs = test_architectures()
         include("test_distributed_models.jl")
     end
 
@@ -176,6 +181,7 @@ CUDA.allowscalar() do
         reset_cuda_if_necessary()
         include("test_distributed_transpose.jl")
         include("test_distributed_poisson_solvers.jl")
+        include("test_distributed_macros.jl")
     end
 
     if group == :distributed_hydrostatic_model || group == :all
@@ -215,6 +221,13 @@ CUDA.allowscalar() do
         end
     end
 
+    # Tests for Metal extension
+    if group == :mpi_tripolar || group == :all
+        @testset "Distributed tripolar tests" begin
+            include("test_mpi_tripolar.jl")
+        end
+    end
+
     # Tests for Enzyme extension
     if group == :enzyme || group == :all
         @testset "Enzyme extension tests" begin
@@ -223,9 +236,23 @@ CUDA.allowscalar() do
     end
 
     # Tests for Reactant extension
-    if group == :reactant || group == :all
-        @testset "Reactant extension tests" begin
+    if group == :reactant_1 || group == :all
+        @testset "Reactant extension tests 1" begin
             include("test_reactant.jl")
+        end
+    end
+
+    if group == :reactant_2 || group == :all
+        @testset "Reactant extension tests 2" begin
+            include("test_reactant_latitude_longitude_grid.jl")
+        end
+    end
+
+    if group == :sharding || group == :all
+        @testset "Sharding Reactant extension tests" begin
+            # Broken for the moment (trying to fix them in https://github.com/CliMA/Oceananigans.jl/pull/4293)
+            # include("test_sharded_lat_lon.jl")
+            # include("test_sharded_tripolar.jl") 
         end
     end
 

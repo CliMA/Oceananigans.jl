@@ -195,14 +195,14 @@ function NonhydrostaticModel(; grid,
                                          extract_boundary_conditions(diffusivity_fields))
 
     # Next, we form a list of default boundary conditions:
-    prognostic_field_names = (:u, :v, :w, tracernames(tracers)..., keys(auxiliary_fields)...)
-    default_boundary_conditions = NamedTuple{prognostic_field_names}(FieldBoundaryConditions()
-                                                                     for name in prognostic_field_names)
+    field_names = (:u, :v, :w, tracernames(tracers)..., keys(auxiliary_fields)...)
+    default_boundary_conditions = NamedTuple{field_names}(FieldBoundaryConditions()
+                                                          for name in field_names)
 
     # Finally, we merge specified, embedded, and default boundary conditions. Specified boundary conditions
     # have precedence, followed by embedded, followed by default.
     boundary_conditions = merge(default_boundary_conditions, embedded_boundary_conditions, boundary_conditions)
-    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)
+    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, field_names)
 
     # Ensure `closure` describes all tracers
     closure = with_tracers(tracernames(tracers), closure)
