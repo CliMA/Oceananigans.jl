@@ -221,7 +221,7 @@ CUDA.allowscalar() do
         end
     end
 
-    # Tests for Metal extension
+    # Tests for MPI extension
     if group == :mpi_tripolar || group == :all
         @testset "Distributed tripolar tests" begin
             include("test_mpi_tripolar.jl")
@@ -257,9 +257,16 @@ CUDA.allowscalar() do
     end
 
     # Tests for Metal extension
-    if group == :metal|| group == :all
+    if group == :metal || group == :all
         @testset "Metal extension tests" begin
             include("test_metal.jl")
+        end
+    end
+
+    # Tests for AMDGPU extension
+    if group == :amdgpu || group == :all
+        @testset "AMDGPU extension tests" begin
+            include("test_amdgpu.jl")
         end
     end
 
