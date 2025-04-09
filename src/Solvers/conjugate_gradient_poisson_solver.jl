@@ -16,7 +16,7 @@ architecture(solver::ConjugateGradientPoissonSolver) = architecture(cgps.grid)
 iteration(cgps::ConjugateGradientPoissonSolver) = iteration(cgps.conjugate_gradient_solver)
 
 Base.summary(ips::ConjugateGradientPoissonSolver) =
-    summary("ConjugateGradientPoissonSolver on ", summary(ips.grid))
+    "ConjugateGradientPoissonSolver with $(summary(ips.conjugate_gradient_solver.preconditioner)) on $(summary(ips.grid))"
 
 function Base.show(io::IO, ips::ConjugateGradientPoissonSolver)
     A = architecture(ips.grid)
