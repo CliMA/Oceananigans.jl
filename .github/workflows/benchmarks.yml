@@ -63,7 +63,7 @@ jobs:
       - name: Run benchmark
         run: |
           cd benchmark/
-          julia --project --color=yes -e '
+          julia --project=../ --color=yes -e '
             using Pkg;
             Pkg.instantiate();
             include("runbenchmarks.jl")'
