@@ -49,9 +49,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
-default_auxiliary_bc(grid::TripolarGridOfSomeKind, ::Val{:north}, topo, loc) = ZipperBoundaryCondition(1)
-default_auxiliary_bc(grid::TripolarGridOfSomeKind, ::Val{:north}, ::RightConnected, ::Face) = ZipperBoundaryCondition(1)
-default_auxiliary_bc(grid::TripolarGridOfSomeKind, boundary, ::RightConnected, ::Face) = nothing
+default_auxiliary_bc(grid::TripolarGridOfSomeKind, ::Val{:north}, loc) = ZipperBoundaryCondition(1)
 
 # Not sure this is needed, but it is here for now
 function tupled_fill_halo_regions!(full_fields, grid::TripolarGridOfSomeKind, args...; kwargs...)

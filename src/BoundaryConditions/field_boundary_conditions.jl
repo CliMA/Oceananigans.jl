@@ -20,9 +20,9 @@ default_prognostic_bc(::LeftConnected,  ::Center, default)  = default.boundary_c
 default_prognostic_bc(::RightConnected, ::Center, default)  = default.boundary_condition
 
 # TODO: make model constructors enforce impenetrability on velocity components to simplify this code
-default_prognostic_bc(::Bounded,        ::Face, default)    = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::LeftConnected,  ::Face, default)    = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::RightConnected, ::Face, default)    = ImpenetrableBoundaryCondition()
+default_prognostic_bc(::Bounded,        ::Face, default) = ImpenetrableBoundaryCondition()
+default_prognostic_bc(::LeftConnected,  ::Face, default) = ImpenetrableBoundaryCondition()
+default_prognostic_bc(::RightConnected, ::Face, default) = ImpenetrableBoundaryCondition()
 
 default_prognostic_bc(::Bounded,        ::Nothing, default) = nothing
 default_prognostic_bc(::Flat,           ::Nothing, default) = nothing
@@ -31,10 +31,17 @@ default_prognostic_bc(::FullyConnected, ::Nothing, default) = nothing
 default_prognostic_bc(::LeftConnected,  ::Nothing, default) = nothing
 default_prognostic_bc(::RightConnected, ::Nothing, default) = nothing
 
-default_auxiliary_bc(grid, boundary, topo, loc) = default_prognostic_bc(topo, loc, DefaultBoundaryCondition())
-default_auxiliary_bc(grid, boundary, ::Bounded, ::Face)        = nothing
-default_auxiliary_bc(grid, boundary, ::RightConnected, ::Face) = nothing
-default_auxiliary_bc(grid, boundary, ::LeftConnected,  ::Face) = nothing
+_default_auxiliary_bc(topo, loc) = default_prognostic_bc(topo, loc, DefaultBoundaryCondition())
+_default_auxiliary_bc(::Bounded, ::Face)        = nothing
+_default_auxiliary_bc(::RightConnected, ::Face) = nothing
+_default_auxiliary_bc(::LeftConnected,  ::Face) = nothing
+
+default_auxiliary_bc(grid, ::Val{:east}, loc)   = _default_auxiliary_bc(topology(grid, 1)(), loc[1]())
+default_auxiliary_bc(grid, ::Val{:west}, loc)   = _default_auxiliary_bc(topology(grid, 1)(), loc[1]())
+default_auxiliary_bc(grid, ::Val{:south}, loc)  = _default_auxiliary_bc(topology(grid, 2)(), loc[2]())
+default_auxiliary_bc(grid, ::Val{:north}, loc)  = _default_auxiliary_bc(topology(grid, 2)(), loc[2]())
+default_auxiliary_bc(grid, ::Val{:bottom}, loc) = _default_auxiliary_bc(topology(grid, 3)(), loc[3]())
+default_auxiliary_bc(grid, ::Val{:top}, loc)    = _default_auxiliary_bc(topology(grid, 3)(), loc[3]())
 
 #####
 ##### Field boundary conditions
@@ -115,12 +122,12 @@ FieldBoundaryConditions(default_bounded_bc::BoundaryCondition = NoFluxBoundaryCo
 
 """
     FieldBoundaryConditions(grid, location, indices=(:, :, :);
-                            west     = default_auxiliary_bc(grid, boundary, topology(grid, 1)(), location[1]()),
-                            east     = default_auxiliary_bc(grid, boundary, topology(grid, 1)(), location[1]()),
-                            south    = default_auxiliary_bc(grid, boundary, topology(grid, 2)(), location[2]()),
-                            north    = default_auxiliary_bc(grid, boundary, topology(grid, 2)(), location[2]()),
-                            bottom   = default_auxiliary_bc(grid, boundary, topology(grid, 3)(), location[3]()),
-                            top      = default_auxiliary_bc(grid, boundary, topology(grid, 3)(), location[3]()),
+                            west     = default_auxiliary_bc(grid, boundary, loc),
+                            east     = default_auxiliary_bc(grid, boundary, loc),
+                            south    = default_auxiliary_bc(grid, boundary, loc), 
+                            north    = default_auxiliary_bc(grid, boundary, loc), 
+                            bottom   = default_auxiliary_bc(grid, boundary, loc), 
+                            top      = default_auxiliary_bc(grid, boundary, loc), 
                             immersed = NoFluxBoundaryCondition())
 
 Return boundary conditions for auxiliary fields (fields whose values are
@@ -148,12 +155,12 @@ and the topology in the boundary-normal direction is used:
 - `nothing` for `Flat` directions and/or `Nothing`-located fields
 """
 function FieldBoundaryConditions(grid::AbstractGrid, location, indices=(:, :, :);
-                                 west     = default_auxiliary_bc(grid, Val(:west),   topology(grid, 1)(), location[1]()),
-                                 east     = default_auxiliary_bc(grid, Val(:east),   topology(grid, 1)(), location[1]()),
-                                 south    = default_auxiliary_bc(grid, Val(:south),  topology(grid, 2)(), location[2]()),
-                                 north    = default_auxiliary_bc(grid, Val(:north),  topology(grid, 2)(), location[2]()),
-                                 bottom   = default_auxiliary_bc(grid, Val(:bottom), topology(grid, 3)(), location[3]()),
-                                 top      = default_auxiliary_bc(grid, Val(:top),    topology(grid, 3)(), location[3]()),
+                                 west     = default_auxiliary_bc(grid, Val(:west),   loc),
+                                 east     = default_auxiliary_bc(grid, Val(:east),   loc),
+                                 south    = default_auxiliary_bc(grid, Val(:south),  loc),
+                                 north    = default_auxiliary_bc(grid, Val(:north),  loc),
+                                 bottom   = default_auxiliary_bc(grid, Val(:bottom), loc),
+                                 top      = default_auxiliary_bc(grid, Val(:top),    loc),
                                  immersed = NoFluxBoundaryCondition())
 
     return FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
@@ -269,7 +276,7 @@ regularize_north_boundary_condition(bc::DefaultBoundaryCondition, grid::Latitude
 regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) = 
     regularize_boundary_condition(latitude_south_auxiliary_bc(grid, loc, bc), grid, loc, args...)
 
-function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, topo, loc)
+function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, loc)
     # Check if the halo lies beyond the north pole
     φnorth = @allowscalar φnode(grid.Ny+1, grid, Face()) 
     
@@ -285,7 +292,7 @@ function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, topo, 
     return bc
 end
 
-function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, topo, loc)
+function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, loc)
     # Check if the halo lies beyond the south pole
     φsouth = @allowscalar φnode(1, grid, Face()) 
 
