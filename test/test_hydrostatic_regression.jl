@@ -77,7 +77,7 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
 
             split_explicit_free_surface = SplitExplicitFreeSurface(grid,
                                                                    gravitational_acceleration = 1.0,
-                                                                   substeps = 5)
+                                                                   substeps = 3)
 
             for free_surface in [explicit_free_surface, implicit_free_surface, split_explicit_free_surface]
             
