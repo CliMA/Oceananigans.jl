@@ -54,7 +54,7 @@ const f = Face()
 # Tracers and horizontal velocities at cell centers in z
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ::Center, ::Center, ::Center, clock, Δt)
     closure_ij = getclosure(i, j, closure)
-    κᵏ⁺¹   = κz(i, j, k+1, grid, closure_ij, K, id, clock)
+    κᵏ⁺¹   = κzᶜᶜᶠ(i, j, k+1, grid, closure_ij, K, id, clock)
     Δzᶜₖ   = vertical_spacing(i, j, k,   grid, c, c, c)
     Δzᶠₖ₊₁ = vertical_spacing(i, j, k+1, grid, c, c, f)
     du     = - Δt * κᵏ⁺¹ / (Δzᶜₖ * Δzᶠₖ₊₁)
