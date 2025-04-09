@@ -93,7 +93,7 @@ end
 
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Face, Δt, clock)
     closure_ij = getclosure(i, j, closure)  
-    νᵏ   = ivd_diffusivity(i, j, k+1, grid, ℓx, ℓy, Face(), closure_ij, K, id, clock)
+    νᵏ   = ivd_diffusivity(i, j, k, grid, ℓx, ℓy, Face(), closure_ij, K, id, clock)
     Δzᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
     Δzᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
     du   = - Δt * νᵏ / (Δzᶜₖ * Δzᶠₖ)
