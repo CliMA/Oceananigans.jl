@@ -19,9 +19,9 @@ end
 
 function default_checkpointed_properties(model)
     properties = [:grid, :particles, :clock, :timestepper]
-    #if has_ab2_timestepper(model)
-    #    push!(properties, :timestepper)
-    #end
+    if has_ab2_timestepper(model)
+       push!(properties, :timestepper)
+    end
     return properties
 end
 
@@ -29,6 +29,12 @@ has_ab2_timestepper(model) = try
     model.timestepper isa QuasiAdamsBashforth2TimeStepper
 catch
     false
+end
+
+function model_required_properties(model)
+    properties = [:grid, :particles, :clock]
+
+    return properties
 end
 
 """
@@ -83,7 +89,7 @@ function Checkpointer(model; schedule,
                       properties = default_checkpointed_properties(model))
 
     # Certain properties are required for `set!` to pickup from a checkpoint.
-    required_properties = [:grid, :particles, :clock]
+    required_properties = model_required_properties(model)
 
     if has_ab2_timestepper(model)
         push!(required_properties, :timestepper)
