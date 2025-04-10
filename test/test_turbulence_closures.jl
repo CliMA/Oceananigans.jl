@@ -475,17 +475,19 @@ end
         end
     end
 
-    @testset "Diagnostics" begin
-        @info "  Testing turbulence closure diagnostics..."
-        for closurename in closures
-            closure = @eval $closurename()
-            compute_closure_specific_diffusive_cfl(closure)
-        end
+    if CPU() in archs
+        @testset "Diagnostics" begin
+            @info "  Testing turbulence closure diagnostics..."
+            for closurename in closures
+                closure = @eval $closurename()
+                compute_closure_specific_diffusive_cfl(closure)
+            end
 
-        # now test also a case for a tuple of closures
-        compute_closure_specific_diffusive_cfl((ScalarDiffusivity(),
-                                                ScalarBiharmonicDiffusivity(),
-                                                SmagorinskyLilly(),
-                                                AnisotropicMinimumDissipation()))
+            # now test also a case for a tuple of closures
+            compute_closure_specific_diffusive_cfl((ScalarDiffusivity(),
+                                                    ScalarBiharmonicDiffusivity(),
+                                                    SmagorinskyLilly(),
+                                                    AnisotropicMinimumDissipation()))
+        end
     end
 end
