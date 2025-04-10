@@ -35,12 +35,12 @@ const F = Face
 @inline κzᶜᶜᶠ(i, j, k, grid, closure, K, id, clock, args...) = zero(grid) # tracers
 
 # Vertical momentum diffusivities: u, v, w
-@inline ivd_diffusivity(i, j, k, grid, ::F, ::C, ::F, clo, K, ::Nothing, args...) = ifelse(inactive_node(i, j, k, grid, f, c, f), zero(grid), νzᶠᶜᶠ(i, j, k, grid, clo, K, args...))
-@inline ivd_diffusivity(i, j, k, grid, ::C, ::F, ::F, clo, K, ::Nothing, args...) = ifelse(inactive_node(i, j, k, grid, c, f, f), zero(grid), νzᶜᶠᶠ(i, j, k, grid, clo, K, args...))
-@inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::C, clo, K, ::Nothing, args...) = ifelse(inactive_node(i, j, k, grid, c, c, c), zero(grid), νzᶜᶜᶜ(i, j, k, grid, clo, K, args...))
+@inline ivd_diffusivity(i, j, k, grid, ::F, ::C, ::F, clo, K, ::Nothing, args...) = νzᶠᶜᶠ(i, j, k, grid, clo, K, args...) * !inactive_node(i, j, k, grid, f, c, f)
+@inline ivd_diffusivity(i, j, k, grid, ::C, ::F, ::F, clo, K, ::Nothing, args...) = νzᶜᶠᶠ(i, j, k, grid, clo, K, args...) * !inactive_node(i, j, k, grid, c, f, f)
+@inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::C, clo, K, ::Nothing, args...) = νzᶜᶜᶜ(i, j, k, grid, clo, K, args...) *  !inactive_node(i, j, k, grid, c, c, c)
 
 # Tracer diffusivity
-@inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::F, args...) = ifelse(inactive_node(i, j, k, grid, c, c, c), zero(grid), κzᶜᶜᶠ(i, j, k, grid, args...))
+@inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::F, args...) = κzᶜᶜᶠ(i, j, k, grid, args...) * !inactive_node(i, j, k, grid, c, c, f)
 
 #####
 ##### Batched Tridiagonal solver for implicit diffusion
