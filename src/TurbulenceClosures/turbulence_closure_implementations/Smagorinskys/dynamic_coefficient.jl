@@ -297,7 +297,8 @@ function compute_coefficient_fields!(diffusivity_fields, closure::LagrangianAver
     if cˢ.schedule(model)
         Σ = diffusivity_fields.Σ
         Σ̄ = diffusivity_fields.Σ̄
-        launch!(arch, grid, :xyz, _compute_Σ_Σ̄!, Σ, Σ̄, grid, u, v, w)
+        launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
+        launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, u, v, w)
 
         parent(diffusivity_fields.𝒥ᴸᴹ⁻) .= parent(diffusivity_fields.𝒥ᴸᴹ)
         parent(diffusivity_fields.𝒥ᴹᴹ⁻) .= parent(diffusivity_fields.𝒥ᴹᴹ)
