@@ -44,7 +44,7 @@ grid = RectilinearGrid(size=(32, 32, 32), extent=(128, 128, 64))
 # (half the distance from wave crest to wave trough), which determine the wave
 # frequency and the vertical scale of the Stokes drift profile.
 
-using Oceananigans.BuoyancyModels: g_Earth
+using Oceananigans.BuoyancyFormulations: g_Earth
 
  amplitude = 0.8 # m
 wavelength = 60  # m
@@ -205,10 +205,10 @@ output_interval = 5minutes
 fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.diffusivity_fields.νₑ))
 
 simulation.output_writers[:fields] =
-    JLD2OutputWriter(model, fields_to_output,
-                     schedule = TimeInterval(output_interval),
-                     filename = "langmuir_turbulence_fields.jld2",
-                     overwrite_existing = true)
+    JLD2Writer(model, fields_to_output,
+               schedule = TimeInterval(output_interval),
+               filename = "langmuir_turbulence_fields.jld2",
+               overwrite_existing = true)
 
 # ### An "averages" writer
 #
@@ -225,10 +225,10 @@ wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
 
 simulation.output_writers[:averages] =
-    JLD2OutputWriter(model, (; U, V, B, wu, wv),
-                     schedule = AveragedTimeInterval(output_interval, window=2minutes),
-                     filename = "langmuir_turbulence_averages.jld2",
-                     overwrite_existing = true)
+    JLD2Writer(model, (; U, V, B, wu, wv),
+               schedule = AveragedTimeInterval(output_interval, window=2minutes),
+               filename = "langmuir_turbulence_averages.jld2",
+               overwrite_existing = true)
 
 # ## Running the simulation
 #
@@ -313,7 +313,7 @@ Vₙ = @lift view(time_series.V[$n], 1, 1, :)
 wuₙ = @lift view(time_series.wu[$n], 1, 1, :)
 wvₙ = @lift view(time_series.wv[$n], 1, 1, :)
 
-k = searchsortedfirst(grid.zᵃᵃᶠ[:], -8)
+k = searchsortedfirst(znodes(grid, Face(); with_halos=true), -8)
 wxyₙ = @lift view(time_series.w[$n], :, :, k)
 wxzₙ = @lift view(time_series.w[$n], :, 1, :)
 uxzₙ = @lift view(time_series.u[$n], :, 1, :)

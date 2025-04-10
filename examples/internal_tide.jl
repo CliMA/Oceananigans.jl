@@ -1,4 +1,4 @@
-# # Internal tide by a seamount
+# # Internal tide over a seamount
 #
 # In this example, we show how internal tide is generated from a barotropic tidal flow
 # sloshing back and forth over a sea mount.
@@ -180,10 +180,10 @@ N² = ∂z(b)
 filename = "internal_tide"
 save_fields_interval = 30minutes
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, (; u, u′, w, b, N²);
-                                                      filename,
-                                                      schedule = TimeInterval(save_fields_interval),
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, (; u, u′, w, b, N²);
+                                                filename,
+                                                schedule = TimeInterval(save_fields_interval),
+                                                overwrite_existing = true)
 
 # We are ready -- let's run!
 

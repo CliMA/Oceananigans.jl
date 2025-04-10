@@ -84,7 +84,11 @@ function validate_halo(TX, TY, TZ, size, halo)
     halo = inflate_tuple(TX, TY, TZ, halo, default=0)
 
     for i in 1:2
-        !(halo[i] ≤ size[i]) && throw(ArgumentError("halo must be ≤ size for coordinate $(coordinate_name(i))"))
+        H = halo[i]
+        N = size[i]
+        if !(H ≤ N)
+            throw(ArgumentError("halo=$H must be ≤ size=$N for coordinate $(coordinate_name(i))"))
+        end
     end
 
     return halo
@@ -189,9 +193,9 @@ function validate_index(idx, loc, topo, N, H)
 end
 
 validate_index(::Colon, loc, topo, N, H) = Colon()
-validate_index(idx::UnitRange, ::Nothing, topo, N, H) = UnitRange(1, 1)
+validate_index(idx::AbstractRange, ::Nothing, topo, N, H) = UnitRange(1, 1)
 
-function validate_index(idx::UnitRange, loc, topo, N, H)
+function validate_index(idx::AbstractRange, loc, topo, N, H)
     all_idx = all_indices(loc, topo, N, H)
     (first(idx) ∈ all_idx && last(idx) ∈ all_idx) || throw(ArgumentError("The indices $idx must slice $all_idx"))
     return idx

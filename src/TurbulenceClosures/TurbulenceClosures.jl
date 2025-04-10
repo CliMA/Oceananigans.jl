@@ -24,7 +24,7 @@ export
     ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
 
-    DiffusivityFields,
+    build_diffusivity_fields,
     compute_diffusivities!,
 
     viscosity, diffusivity,
@@ -48,7 +48,7 @@ using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
-using Oceananigans.BuoyancyModels
+using Oceananigans.BuoyancyFormulations
 using Oceananigans.Utils
 
 using Oceananigans.Architectures: AbstractArchitecture, device
@@ -186,6 +186,7 @@ include("turbulence_closure_implementations/ri_based_vertical_diffusivity.jl")
 # Special non-abstracted diffusivities:
 # TODO: introduce abstract typing for these
 include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity.jl")
+include("turbulence_closure_implementations/advective_skew_diffusion.jl")
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 
 using .TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity, TKEDissipationVerticalDiffusivity

@@ -9,8 +9,7 @@ using Oceananigans.Grids: halo_size
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
-
-using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map, ActiveCellsIBG
+using Oceananigans.ImmersedBoundaries: get_active_cells_map, ActiveInteriorIBG
 
 """
     compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
@@ -26,7 +25,7 @@ function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain. The active cells map restricts the computation to the active cells in the
     # interior if the grid is _immersed_ and the `active_cells_map` kwarg is active
-    active_cells_map = retrieve_interior_active_cells_map(model.grid, Val(:interior))
+    active_cells_map = get_active_cells_map(model.grid, Val(:interior))
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
 
     compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; active_cells_map)
@@ -64,7 +63,7 @@ compute_free_surface_tendency!(grid, model, free_surface) = nothing
 end
 
 """ Store previous value of the source term and compute current source term. """
-function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; active_cells_map = nothing)
+function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_parameters; active_cells_map=nothing)
 
     arch = model.architecture
     grid = model.grid
@@ -117,13 +116,16 @@ function apply_flux_bcs!(Gcⁿ, c, arch, args)
 end
 
 """ Calculate momentum tendencies if momentum is not prescribed."""
-function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map = nothing)
+function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map=nothing)
 
     grid = model.grid
     arch = architecture(grid)
 
     u_immersed_bc = immersed_boundary_condition(velocities.u)
     v_immersed_bc = immersed_boundary_condition(velocities.v)
+
+    u_forcing = model.forcing.u
+    v_forcing = model.forcing.v
 
     start_momentum_kernel_args = (model.advection.momentum,
                                   model.coriolis,
@@ -136,19 +138,20 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
                                 model.diffusivity_fields,
                                 model.pressure.pHY′,
                                 model.auxiliary_fields,
+                                model.vertical_coordinate,
                                 model.clock)
 
-    u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args...)
-    v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args...)
+    u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., u_forcing)
+    v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., v_forcing)
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, 
-            active_cells_map, u_kernel_args, model.forcing.u;
+            active_cells_map, u_kernel_args;
             active_cells_map)
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid, 
-            active_cells_map, v_kernel_args, model.forcing.v;
+            active_cells_map, v_kernel_args;
             active_cells_map)
 
     return nothing
@@ -178,15 +181,14 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, active_cells_map, args, forcing)
+@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, active_cells_map, args)
     i, j, k = @active_index(active_cells_map, Global, NTuple)
-    @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args..., forcing)
+    @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
 end
 
-""" Calculate the right-hand-side of the v-velocity equation. """
-@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, active_cells_map, args, forcing)
+@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, active_cells_map, args)
     i, j, k = @active_index(active_cells_map, Global, NTuple)
-    @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args..., forcing)
+    @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
 end
 
 #####

@@ -11,15 +11,16 @@ export XRegularRG, YRegularRG, ZRegularRG, XYRegularRG, XYZRegularRG
 export LatitudeLongitudeGrid, XRegularLLG, YRegularLLG, ZRegularLLG
 export OrthogonalSphericalShellGrid, ConformalCubedSphereGrid, ZRegOrthogonalSphericalShellGrid
 export conformal_cubed_sphere_panel
+export MutableVerticalDiscretization
 export node, nodes
 export ξnode, ηnode, rnode
 export xnode, ynode, znode, λnode, φnode
-export xnodes, ynodes, znodes, λnodes, φnodes
+export xnodes, ynodes, znodes, λnodes, φnodes, rnodes
 export spacings
-export xspacing, yspacing, zspacing, λspacing, φspacing
-export xspacings, yspacings, zspacings, λspacings, φspacings
+export xspacings, yspacings, zspacings, λspacings, φspacings, rspacings
 export minimum_xspacing, minimum_yspacing, minimum_zspacing
 export static_column_depthᶜᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶠᵃ
+export column_depthᶜᶜᵃ, column_depthᶠᶜᵃ, column_depthᶜᶠᵃ, column_depthᶠᶠᵃ
 export offset_data, new_data
 export on_architecture
 
@@ -27,6 +28,7 @@ using CUDA
 using CUDA: has_cuda
 using Adapt
 using OffsetArrays
+using Printf
 
 using Oceananigans
 using Oceananigans.Architectures
@@ -118,6 +120,7 @@ struct ZDirection <: AbstractDirection end
 struct NegativeZDirection <: AbstractDirection end
 
 include("abstract_grid.jl")
+include("vertical_discretization.jl")
 include("grid_utils.jl")
 include("nodes_and_spacings.jl")
 include("zeros_and_ones.jl")
@@ -128,6 +131,7 @@ include("input_validation.jl")
 include("grid_generation.jl")
 include("rectilinear_grid.jl")
 include("orthogonal_spherical_shell_grid.jl")
+include("conformal_cubed_sphere_panel.jl")
 include("latitude_longitude_grid.jl")
 
 end # module

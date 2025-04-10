@@ -32,7 +32,6 @@ on_architecture(to, free_surface::ExplicitFreeSurface) =
 function materialize_free_surface(free_surface::ExplicitFreeSurface{Nothing}, velocities, grid)
     η = free_surface_displacement_field(velocities, free_surface, grid)
     g = convert(eltype(grid), free_surface.gravitational_acceleration)
-
     return ExplicitFreeSurface(η, g)
 end
 
@@ -50,8 +49,26 @@ end
 ##### Time stepping
 #####
 
-ab2_step_free_surface!(free_surface::ExplicitFreeSurface, model, Δt, χ) = 
-    @apply_regionally explicit_ab2_step_free_surface!(free_surface, model, Δt, χ)
+step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::QuasiAdamsBashforth2TimeStepper, Δt) = 
+    @apply_regionally explicit_ab2_step_free_surface!(free_surface, model, Δt, timestepper.χ)
+
+step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::SplitRungeKutta3TimeStepper, Δt) =
+    @apply_regionally explicit_rk3_step_free_surface!(free_surface, model, Δt, timestepper)
+
+@inline rk3_coeffs(ts, ::Val{1}) = (1,     0)
+@inline rk3_coeffs(ts, ::Val{2}) = (ts.γ², ts.ζ²)
+@inline rk3_coeffs(ts, ::Val{3}) = (ts.γ³, ts.ζ³)
+
+function explicit_rk3_step_free_surface!(free_surface, model, Δt, timestepper)
+    
+    γⁿ, ζⁿ = rk3_coeffs(timestepper, Val(model.clock.stage))
+
+    launch!(model.architecture, model.grid, :xy,
+            _explicit_rk3_step_free_surface!, free_surface.η, Δt, γⁿ, ζⁿ,
+            model.timestepper.Gⁿ.η, model.timestepper.Ψ⁻.η, size(model.grid, 3))
+
+    return nothing
+end
 
 explicit_ab2_step_free_surface!(free_surface, model, Δt, χ) =
     launch!(model.architecture, model.grid, :xy,
@@ -59,44 +76,24 @@ explicit_ab2_step_free_surface!(free_surface, model, Δt, χ) =
             model.timestepper.Gⁿ.η, model.timestepper.G⁻.η, size(model.grid, 3))
 
 #####
-##### Kernel
+##### Kernels
 #####
 
-@kernel function _explicit_ab2_step_free_surface!(η, Δt, χ::FT, Gηⁿ, Gη⁻, Nz) where FT
+@kernel function _explicit_rk3_step_free_surface!(η, Δt, γⁿ, ζⁿ, Gⁿ, η⁻, Nz)
     i, j = @index(Global, NTuple)
-
-    @inbounds begin
-        η[i, j, Nz+1] += Δt * ((FT(1.5) + χ) * Gηⁿ[i, j, Nz+1] - (FT(0.5) + χ) * Gη⁻[i, j, Nz+1])
-    end
+    @inbounds η[i, j, Nz+1] += ζⁿ * η⁻[i, j, Nz+1] + γⁿ * (η[i, j, Nz+1] + Δt * Gⁿ[i, j, Nz+1])
 end
 
-compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface) = 
-    @apply_regionally compute_explicit_free_surface_tendency!(grid, model) 
-
-# Compute free surface tendency
-function compute_explicit_free_surface_tendency!(grid, model) 
-
-    arch = architecture(grid)
-
-    args = tuple(model.velocities,
-                 model.free_surface,
-                 model.tracers,
-                 model.auxiliary_fields,
-                 model.forcing,
-                 model.clock)
-
-    launch!(arch, grid, :xy,
-            compute_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, 
-            grid, args)
-
-    args = (model.clock,
-            fields(model),
-            model.closure,
-            model.buoyancy)
-
-    apply_flux_bcs!(model.timestepper.Gⁿ.η, displacement(model.free_surface), arch, args)
-
-    return nothing
+@kernel function _explicit_ab2_step_free_surface!(η, Δt, χ, Gηⁿ, Gη⁻, Nz)
+    i, j = @index(Global, NTuple)
+    FT0 = typeof(χ)
+    one_point_five = convert(FT0, 1.5)
+    oh_point_five = convert(FT0, 0.5)
+    not_euler = χ != convert(FT0, -0.5)
+    @inbounds begin
+        Gη = (one_point_five + χ) * Gηⁿ[i, j, Nz+1] - (oh_point_five  + χ) * Gη⁻[i, j, Nz+1] * not_euler
+        η[i, j, Nz+1] += Δt * Gη
+    end
 end
 
 #####
@@ -139,4 +136,33 @@ The tendency is called ``G_η`` and defined via
 
     return @inbounds (  velocities.w[i, j, k_top]
                       + forcings.η(i, j, k_top, grid, clock, model_fields))
+end
+
+compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface) = 
+    @apply_regionally compute_explicit_free_surface_tendency!(grid, model) 
+
+# Compute free surface tendency
+function compute_explicit_free_surface_tendency!(grid, model) 
+
+    arch = architecture(grid)
+
+    args = tuple(model.velocities,
+                 model.free_surface,
+                 model.tracers,
+                 model.auxiliary_fields,
+                 model.forcing,
+                 model.clock)
+
+    launch!(arch, grid, :xy,
+            compute_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η, 
+            grid, args)
+
+    args = (model.clock,
+            fields(model),
+            model.closure,
+            model.buoyancy)
+
+    apply_flux_bcs!(model.timestepper.Gⁿ.η, displacement(model.free_surface), arch, args)
+
+    return nothing
 end

@@ -19,7 +19,7 @@ grid = RectilinearGrid(size=(64, 32, 32), extent=(256, 128, 64))
 #
 # We utilize the same monochromatic wave parameters as Wagner et al. (2021),
 
-using Oceananigans.BuoyancyModels: g_Earth
+using Oceananigans.BuoyancyFormulations: g_Earth
 
  amplitude = 0.8 # m
 wavelength = 60  # m
@@ -259,11 +259,10 @@ output_interval = 5minutes
 
 fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.diffusivity_fields.νₑ))
 
-simulation.output_writers[:fields] =
-    JLD2OutputWriter(model, fields_to_output,
-                     schedule = TimeInterval(output_interval),
-                     filename = "Stokes_drift_jet_fields.jld2",
-                     overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, fields_to_output,
+                                                schedule = TimeInterval(output_interval),
+                                                filename = "Stokes_drift_jet_fields.jld2",
+                                                overwrite_existing = true)
 
 # ### An "averages" writer
 #
@@ -279,11 +278,10 @@ b = model.tracers.b
 wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
 
-simulation.output_writers[:averages] =
-    JLD2OutputWriter(model, (; U, V, B, wu, wv),
-                     schedule = AveragedTimeInterval(output_interval, window=2minutes),
-                     filename = "Stokes_drift_jet_averages.jld2",
-                     overwrite_existing = true)
+simulation.output_writers[:averages] = JLD2Writer(model, (; U, V, B, wu, wv),
+                                                  schedule = AveragedTimeInterval(output_interval, window=2minutes),
+                                                  filename = "Stokes_drift_jet_averages.jld2",
+                                                  overwrite_existing = true)
 
 # ## Running the simulation
 #

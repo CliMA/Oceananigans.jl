@@ -3,19 +3,19 @@
 `AbstractOutputWriter`s save data to disk.
 `Oceananigans` provides three ways to write output:
 
-1. [`NetCDFOutputWriter`](@ref) for output of arrays and scalars that uses [NCDatasets.jl](https://github.com/Alexander-Barth/NCDatasets.jl)
-2. [`JLD2OutputWriter`](@ref) for arbitrary julia data structures that uses [JLD2.jl](https://github.com/JuliaIO/JLD2.jl)
+1. [`NetCDFWriter`](@ref) for output of arrays and scalars that uses [NCDatasets.jl](https://github.com/Alexander-Barth/NCDatasets.jl)
+2. [`JLD2Writer`](@ref) for arbitrary julia data structures that uses [JLD2.jl](https://github.com/JuliaIO/JLD2.jl)
 3. [`Checkpointer`](@ref) that automatically saves as much model data as possible, using [JLD2.jl](https://github.com/JuliaIO/JLD2.jl)
 
 The `Checkpointer` is discussed in detail on a separate [section](@ref checkpointing) of the documentation.
 
 ## Basic usage
 
-[`NetCDFOutputWriter`](@ref) and [`JLD2OutputWriter`](@ref) require four inputs:
+[`NetCDFWriter`](@ref) and [`JLD2Writer`](@ref) require four inputs:
 
 1. The `model` from which output data is sourced (required to initialize the `OutputWriter`).
-2. A key-value pairing of output "names" and "output" objects. `JLD2OutputWriter` accepts `NamedTuple`s and `Dict`s;
-   `NetCDFOutputWriter` accepts `Dict`s with string-valued keys. Output objects are either `AbstractField`s or
+2. A key-value pairing of output "names" and "output" objects. `JLD2Writer` accepts `NamedTuple`s and `Dict`s;
+   `NetCDFWriter` accepts `Dict`s with string-valued keys. Output objects are either `AbstractField`s or
    functions that return data when called via `func(model)`.
 3. A `schedule` on which output is written. `TimeInterval`, `IterationInterval`, `WallTimeInterval` schedule
    periodic output according to the simulation time, simulation interval, or "wall time" (the physical time
@@ -34,7 +34,7 @@ Other important keyword arguments are
 Once an `OutputWriter` is created, it can be used to write output by adding it the
 ordered dictionary `simulation.output_writers`. prior to calling `run!(simulation)`.
 
-More specific detail about the `NetCDFOutputWriter` and `JLD2OutputWriter` is given below.
+More specific detail about the `NetCDFWriter` and `JLD2Writer` is given below.
 
 !!! tip "Time step alignment and output writing"
     Oceananigans simulations will shorten the time step as needed to align model output with each
@@ -52,6 +52,7 @@ Saving the u velocity field and temperature fields as full 3D fields, surface 2D
 
 ```@example netcdf1
 using Oceananigans
+using NCDatasets
 
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
 
@@ -62,28 +63,29 @@ simulation = Simulation(model, Δt=12, stop_time=3600)
 fields = Dict("u" => model.velocities.u, "c" => model.tracers.c)
 
 simulation.output_writers[:field_writer] =
-    NetCDFOutputWriter(model, fields, filename="more_fields.nc", schedule=TimeInterval(60))
+    NetCDFWriter(model, fields, filename="more_fields.nc", schedule=TimeInterval(60))
 ```
 
 ```@example netcdf1
 simulation.output_writers[:surface_slice_writer] =
-    NetCDFOutputWriter(model, fields, filename="another_surface_xy_slice.nc",
-                       schedule=TimeInterval(60), indices=(:, :, grid.Nz))
+    NetCDFWriter(model, fields, filename="another_surface_xy_slice.nc",
+                 schedule=TimeInterval(60), indices=(:, :, grid.Nz))
 ```
 
 ```@example netcdf1
 simulation.output_writers[:averaged_profile_writer] =
-    NetCDFOutputWriter(model, fields,
-                       filename = "another_averaged_z_profile.nc",
-                       schedule = AveragedTimeInterval(60, window=20),
-                       indices = (1, 1, :))
+    NetCDFWriter(model, fields,
+                 filename = "another_averaged_z_profile.nc",
+                 schedule = AveragedTimeInterval(60, window=20),
+                 indices = (1, 1, :))
 ```
 
-`NetCDFOutputWriter` also accepts output functions that write scalars and arrays to disk,
+`NetCDFWriter` also accepts output functions that write scalars and arrays to disk,
 provided that their `dimensions` are provided:
 
 ```@example
 using Oceananigans
+using NCDatasets
 
 Nx, Ny, Nz = 16, 16, 16
 
@@ -106,29 +108,29 @@ h(model) = @. model.clock.time * sin(XC) * cos(YF) # x-y slice output (2D array)
 
 outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
 
-dims = Dict("scalar" => (), "profile" => ("zC",), "slice" => ("xC", "yC"))
+dims = Dict("scalar" => (), "profile" => ("z_aac",), "slice" => ("x_caa", "y_aca"))
 
 output_attributes = Dict(
     "scalar"  => Dict("longname" => "Some scalar", "units" => "bananas"),
     "profile" => Dict("longname" => "Some vertical profile", "units" => "watermelons"),
-    "slice"   => Dict("longname" => "Some slice", "units" => "mushrooms")
-)
+    "slice"   => Dict("longname" => "Some slice", "units" => "mushrooms"))
 
 global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
 
 simulation.output_writers[:things] =
-    NetCDFOutputWriter(model, outputs,
-                       schedule=IterationInterval(1), filename="things.nc", dimensions=dims, verbose=true,
-                       global_attributes=global_attributes, output_attributes=output_attributes)
+    NetCDFWriter(model, outputs,
+                 schedule=IterationInterval(1), filename="things.nc", dimensions=dims, verbose=true,
+                 global_attributes=global_attributes, output_attributes=output_attributes)
 ```
 
-`NetCDFOutputWriter` can also be configured for `outputs` that are interpolated or regridded
+`NetCDFWriter` can also be configured for `outputs` that are interpolated or regridded
 to a different grid than `model.grid`. To use this functionality, include the keyword argument
 `grid = output_grid`.
 
 ```@example
 using Oceananigans
 using Oceananigans.Fields: interpolate!
+using NCDatasets
 
 grid = RectilinearGrid(size=(1, 1, 8), extent=(1, 1, 1));
 model = NonhydrostaticModel(; grid)
@@ -139,13 +141,13 @@ coarse_u = Field{Face, Center, Center}(coarse_grid)
 interpolate_u(model) = interpolate!(coarse_u, model.velocities.u)
 outputs = (; u = interpolate_u)
 
-output_writer = NetCDFOutputWriter(model, outputs;
-                                   grid = coarse_grid,
-                                   filename = "coarse_u.nc",
-                                   schedule = IterationInterval(1))
+output_writer = NetCDFWriter(model, outputs;
+                             grid = coarse_grid,
+                             filename = "coarse_u.nc",
+                             schedule = IterationInterval(1))
 ```
 
-See [`NetCDFOutputWriter`](@ref) for more information.
+See [`NetCDFWriter`](@ref) for more information.
 
 ## JLD2 output writer
 
@@ -153,7 +155,7 @@ JLD2 is a fast HDF5 compatible file format written in pure Julia.
 JLD2 files can be opened in Julia with the [JLD2.jl](https://github.com/JuliaIO/JLD2.jl) package
 and in Python with the [h5py](https://www.h5py.org/) package.
 
-The `JLD2OutputWriter` receives either a `Dict`ionary or `NamedTuple` containing
+The `JLD2Writer` receives either a `Dict`ionary or `NamedTuple` containing
 `name, output` pairs. The `name` can be a symbol or string. The `output` must either be
 an `AbstractField` or a function called with `func(model)` that returns arbitrary output.
 Whenever output needs to be written, the functions will be called and the output
@@ -180,27 +182,27 @@ end
 c_avg = Field(Average(model.tracers.c, dims=(1, 2)))
 
 # Note that model.velocities is NamedTuple
-simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
-                                                          filename = "some_more_data.jld2",
-                                                          schedule = TimeInterval(20minute),
-                                                          init = init_save_some_metadata!)
+simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities,
+                                                    filename = "some_more_data.jld2",
+                                                    schedule = TimeInterval(20minute),
+                                                    init = init_save_some_metadata!)
 ```
 
 and a time- and horizontal-average of tracer `c` every 20 minutes of simulation time
 to a file called `some_more_averaged_data.jld2`
 
 ```@example jld2_output_writer
-simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (; c=c_avg),
-                                                     filename = "some_more_averaged_data.jld2",
-                                                     schedule = AveragedTimeInterval(20minute, window=5minute))
+simulation.output_writers[:avg_c] = JLD2Writer(model, (; c=c_avg),
+                                               filename = "some_more_averaged_data.jld2",
+                                               schedule = AveragedTimeInterval(20minute, window=5minute))
 ```
 
-See [`JLD2OutputWriter`](@ref) for more information.
+See [`JLD2Writer`](@ref) for more information.
 
 ## Time-averaged output
 
-Time-averaged output is specified by setting the `schedule` keyword argument for either `NetCDFOutputWriter` or
-`JLD2OutputWriter` to [`AveragedTimeInterval`](@ref).
+Time-averaged output is specified by setting the `schedule` keyword argument for either `NetCDFWriter` or
+`JLD2Writer` to [`AveragedTimeInterval`](@ref).
 
 With `AveragedTimeInterval`, the time-average of ``a`` is taken as a left Riemann sum corresponding to
 
@@ -237,7 +239,7 @@ model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1
 
 simulation = Simulation(model, Δt=10minutes, stop_time=30days)
 
-simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
-                                                          filename = "even_more_averaged_velocity_data.jld2",
-                                                          schedule = AveragedTimeInterval(4days, window=1day, stride=2))
+simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities,
+                                                    filename = "even_more_averaged_velocity_data.jld2",
+                                                    schedule = AveragedTimeInterval(4days, window=1day, stride=2))
 ```

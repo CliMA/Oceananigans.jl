@@ -40,7 +40,7 @@ Private = false
 ## Buoyancy models
 
 ```@autodocs
-Modules = [Oceananigans.BuoyancyModels]
+Modules = [Oceananigans.BuoyancyFormulations]
 Private = false
 ```
 
@@ -83,6 +83,13 @@ Private = false
 
 ```@autodocs
 Modules = [Oceananigans.Grids]
+Private = false
+```
+
+## OrthogonalSphericalShellGrids
+
+```@autodocs
+Modules = [Oceananigans.OrthogonalSphericalShellGrids]
 Private = false
 ```
 

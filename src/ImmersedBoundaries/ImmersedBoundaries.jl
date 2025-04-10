@@ -44,5 +44,6 @@ include("immersed_boundary_condition.jl")
 include("conditional_differences.jl")
 include("mask_immersed_field.jl")
 include("immersed_reductions.jl")
+include("mutable_immersed_grid.jl")
 
 end # module

@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Fields: TracerFields
 
-using Oceananigans.BuoyancyModels:
+using Oceananigans.BuoyancyFormulations:
     required_tracers, ρ′, ∂x_b, ∂y_b,
     thermal_expansionᶜᶜᶜ, thermal_expansionᶠᶜᶜ, thermal_expansionᶜᶠᶜ, thermal_expansionᶜᶜᶠ,
     haline_contractionᶜᶜᶜ, haline_contractionᶠᶜᶜ, haline_contractionᶜᶠᶜ, haline_contractionᶜᶜᶠ
@@ -68,7 +68,7 @@ end
 EquationsOfState = (LinearEquationOfState, SeawaterPolynomials.RoquetEquationOfState, SeawaterPolynomials.TEOS10EquationOfState)
 buoyancy_kwargs = (Dict(), Dict(:constant_salinity=>35.0), Dict(:constant_temperature=>20.0))
 
-@testset "BuoyancyModels" begin
+@testset "BuoyancyFormulations" begin
     @info "Testing buoyancy..."
 
     @testset "Equations of State" begin
@@ -86,8 +86,8 @@ buoyancy_kwargs = (Dict(), Dict(:constant_salinity=>35.0), Dict(:constant_temper
                 @test density_perturbation_works(arch, FT, SeawaterPolynomials.RoquetEquationOfState())
             end
 
-            buoyancies = (nothing, Buoyancy(model=BuoyancyTracer()), Buoyancy(model=SeawaterBuoyancy(FT)),
-                          (Buoyancy(model=SeawaterBuoyancy(FT, equation_of_state=eos(FT))) for eos in EquationsOfState)...)
+            buoyancies = (nothing, BuoyancyForce(BuoyancyTracer()), BuoyancyForce(SeawaterBuoyancy(FT)),
+                          (BuoyancyForce(SeawaterBuoyancy(FT, equation_of_state=eos(FT))) for eos in EquationsOfState)...)
 
             for arch in archs
                 for buoyancy in buoyancies

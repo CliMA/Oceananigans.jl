@@ -1,3 +1,5 @@
+import Oceananigans
+
 #####
 ##### Weighted Essentially Non-Oscillatory (WENO) advection scheme
 #####
@@ -93,7 +95,7 @@ WENO(order=7)
     └── Z stretched
 ```
 """
-function WENO(FT::DataType=Float64; 
+function WENO(FT::DataType=Oceananigans.defaults.FloatType; 
               order = 5,
               grid = nothing, 
               bounds = nothing)
@@ -103,6 +105,10 @@ function WENO(FT::DataType=Float64;
     end
 
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
+
+    if !isnothing(bounds)
+        @warn "Bounds preserving WENO is experimental."
+    end
 
     if order < 3
         # WENO(order=1) is equivalent to UpwindBiased(order=1)

@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.BoundaryConditions: PBC, ZFBC, OBC, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
+using Oceananigans.BoundaryConditions: PBC, ZFBC, VBC, OBC, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
 using Oceananigans.Fields: Face, Center
 
 simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
@@ -214,12 +214,12 @@ end
         grid = bbb_grid
         
         T_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
-                                                   east = ValueBoundaryCondition(simple_bc),
-                                                   west = ValueBoundaryCondition(simple_bc),
-                                                 bottom = ValueBoundaryCondition(simple_bc),
-                                                    top = ValueBoundaryCondition(simple_bc),
-                                                  north = ValueBoundaryCondition(simple_bc),
-                                                  south = ValueBoundaryCondition(simple_bc))
+                                        east = ValueBoundaryCondition(simple_bc),
+                                        west = ValueBoundaryCondition(simple_bc),
+                                        bottom = ValueBoundaryCondition(simple_bc),
+                                        top = ValueBoundaryCondition(simple_bc),
+                                        north = ValueBoundaryCondition(simple_bc),
+                                        south = ValueBoundaryCondition(simple_bc))
 
         @test T_bcs.east.condition isa ContinuousBoundaryFunction
         @test T_bcs.west.condition isa ContinuousBoundaryFunction 
@@ -237,12 +237,12 @@ end
 
         one_bc = BoundaryCondition(Value(), 1.0)
 
-        T_bcs = FieldBoundaryConditions(   east = one_bc,
-                                           west = one_bc,
-                                         bottom = one_bc,
-                                            top = one_bc,
-                                          north = one_bc,
-                                          south = one_bc)
+        T_bcs = FieldBoundaryConditions(east = one_bc,
+                                        west = one_bc,
+                                        bottom = one_bc,
+                                        top = one_bc,
+                                        north = one_bc,
+                                        south = one_bc)
 
         T_bcs = regularize_field_boundary_conditions(T_bcs, grid, :T)
 
@@ -252,5 +252,29 @@ end
         @test T_bcs.south  === one_bc
         @test T_bcs.top    === one_bc
         @test T_bcs.bottom === one_bc
+
+        grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-85, 85), longitude=(0, 360), z = (0, 1))
+        f = CenterField(grid)
+
+        @test f.boundary_conditions.north isa ZFBC
+        @test f.boundary_conditions.south isa ZFBC
+
+        set!(f, (x, y, z) -> x)
+        fill_halo_regions!(f)
+
+        @test all(f.data[1:10, 0,  1:10] .== f.data[1:10, 1, 1:10])
+        @test all(f.data[1:10, 11, 1:10] .== f.data[1:10, 10, 1:10])
+
+        # Minimal test for PolarBoundaryCondition
+        polar_grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-90, 90), longitude=(0, 360), z = (0, 1))
+        c = CenterField(polar_grid)
+        @test c.boundary_conditions.north isa Oceananigans.BoundaryConditions.PolarBoundaryCondition
+        @test c.boundary_conditions.south isa Oceananigans.BoundaryConditions.PolarBoundaryCondition
+
+        set!(c, (x, y, z) -> x)
+        fill_halo_regions!(c)
+
+        @test all(c.data[1:10, 0,  1:10] .== 2 * mean(c.data[1:10, 1,  1:10]) .- c.data[1:10, 1,  1:10])
+        @test all(c.data[1:10, 11, 1:10] .== 2 * mean(c.data[1:10, 10, 1:10]) .- c.data[1:10, 10, 1:10])
     end
 end

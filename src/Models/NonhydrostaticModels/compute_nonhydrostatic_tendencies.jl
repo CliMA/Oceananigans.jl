@@ -2,9 +2,7 @@ using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans: fields, TendencyCallsite
 using Oceananigans.Utils: work_layout
 using Oceananigans.Models: complete_communication_and_compute_buffer!, interior_tendency_kernel_parameters
-
-using Oceananigans.ImmersedBoundaries: retrieve_interior_active_cells_map
-                                       
+using Oceananigans.ImmersedBoundaries: get_active_cells_map, ActiveInteriorIBG
 
 import Oceananigans.TimeSteppers: compute_tendencies!
 
@@ -30,7 +28,7 @@ function compute_tendencies!(model::NonhydrostaticModel, callbacks)
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
-    active_cells_map  = retrieve_interior_active_cells_map(model.grid, Val(:interior))
+    active_cells_map  = get_active_cells_map(model.grid, Val(:interior))
     
     compute_interior_tendency_contributions!(model, kernel_parameters; active_cells_map)
     complete_communication_and_compute_buffer!(model, grid, arch)

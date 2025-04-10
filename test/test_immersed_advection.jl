@@ -12,7 +12,8 @@ using Oceananigans.Advection:
         _biased_interpolate_yᵃᶠᵃ,
         FluxFormAdvection
 
-advection_schemes = [Centered, UpwindBiased, WENO]
+linear_advection_schemes = [Centered, UpwindBiased]
+advection_schemes = [linear_advection_schemes... WENO]
 
 @inline advective_order(buffer, ::Type{Centered}) = buffer * 2
 @inline advective_order(buffer, AdvectionType)    = buffer * 2 - 1
@@ -103,8 +104,15 @@ for arch in archs
         mask_immersed_field!(c)
         fill_halo_regions!(c)
 
-        for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
+        for adv in linear_advection_schemes, buffer in [1, 2, 3, 4, 5]
             scheme = adv(order = advective_order(buffer, adv))
+
+            @info "  Testing immersed tracer reconstruction [$(typeof(arch)), $(summary(scheme))]"
+            run_tracer_interpolation_test(c, ibg, scheme)
+        end
+
+        for buffer in [2, 3, 4, 5], bounds in (nothing, (0, 1))
+            scheme = WENO(; order = advective_order(buffer, WENO), bounds)
 
             @info "  Testing immersed tracer reconstruction [$(typeof(arch)), $(summary(scheme))]"
             run_tracer_interpolation_test(c, ibg, scheme)

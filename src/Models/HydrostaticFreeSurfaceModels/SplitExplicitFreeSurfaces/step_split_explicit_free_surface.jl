@@ -1,3 +1,5 @@
+using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
+
 # Evolution Kernels
 #
 # ∂t(η) = -∇⋅U
@@ -10,7 +12,7 @@
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
     
-    store_previous_free_surface!(timestepper, i, j, k_top, η)
+    cache_previous_free_surface!(timestepper, i, j, k_top, η)
     @inbounds  η[i, j, k_top] -= Δτ * (δxTᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
                                        δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) / Azᶜᶜᶠ(i, j, k_top, grid)
 end
@@ -23,21 +25,25 @@ end
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
-    store_previous_velocities!(timestepper, i, j, 1, U)
-    store_previous_velocities!(timestepper, i, j, 1, V)
+    cache_previous_velocities!(timestepper, i, j, 1, U)
+    cache_previous_velocities!(timestepper, i, j, 1, V)
 
-    Hᶠᶜ = static_column_depthᶠᶜᵃ(i, j, grid)
-    Hᶜᶠ = static_column_depthᶜᶠᵃ(i, j, grid)
+    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, k_top, grid, η)
+    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, k_top, grid, η)
     
     @inbounds begin
         # ∂τ(U) = - ∇η + G
-        U[i, j, 1] +=  Δτ * (- g * Hᶠᶜ * ∂xTᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
-        V[i, j, 1] +=  Δτ * (- g * Hᶜᶠ * ∂yTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
-                          
+        Uᵐ⁺¹ = U[i, j, 1] + Δτ * (- g * Hᶠᶜ * ∂xTᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
+        Vᵐ⁺¹ = V[i, j, 1] + Δτ * (- g * Hᶜᶠ * ∂yTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
+                     
         # time-averaging
         η̅[i, j, k_top] += averaging_weight * η[i, j, k_top]
-        U̅[i, j, 1]     += averaging_weight * U[i, j, 1]
-        V̅[i, j, 1]     += averaging_weight * V[i, j, 1]
+        U̅[i, j, 1]     += averaging_weight * Uᵐ⁺¹
+        V̅[i, j, 1]     += averaging_weight * Vᵐ⁺¹
+
+        # Updating the velocities
+        U[i, j, 1] = Uᵐ⁺¹
+        V[i, j, 1] = Vᵐ⁺¹
     end
 end
 
@@ -86,8 +92,8 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weig
         # launching ~100 very small kernels: we are limited by
         # latency of argument conversion to GPU-compatible values.
         # To alleviate this penalty we convert first and then we substep!
-        converted_η_args = convert_args(arch, η_args)
-        converted_U_args = convert_args(arch, U_args)
+        converted_η_args = convert_to_device(arch, η_args)
+        converted_U_args = convert_to_device(arch, U_args)
 
         @unroll for substep in 1:Nsubsteps
             Base.@_inline_meta
@@ -115,17 +121,13 @@ end
 ##### SplitExplicitFreeSurface barotropic subcylicing
 #####
 
-ab2_step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt, χ) =
-    split_explicit_free_surface_step!(free_surface, model, Δt)
-
-function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt)
+function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroclinic_timestepper, Δt)
 
     # Note: free_surface.η.grid != model.grid for DistributedSplitExplicitFreeSurface
     # since halo_size(free_surface.η.grid) != halo_size(model.grid)
     free_surface_grid = free_surface.η.grid
     filtered_state    = free_surface.filtered_state
     substepping       = free_surface.substepping
-    timestepper       = free_surface.timestepper
     
     barotropic_velocities = free_surface.barotropic_velocities
 
@@ -155,8 +157,6 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     # reset free surface averages
     @apply_regionally begin
-        initialize_free_surface_state!(filtered_state, free_surface.η, barotropic_velocities, timestepper)
-
         # Solve for the free surface at tⁿ⁺¹
         iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, weights, Val(Nsubsteps))
         
@@ -168,6 +168,12 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
         # Preparing velocities for the barotropic correction
         mask_immersed_field!(model.velocities.u)
         mask_immersed_field!(model.velocities.v)
+    end
+
+    # Needed for Mutable to compute the barotropic correction.
+    # TODO: Would it be possible to remove it in some way?
+    if model.grid isa MutableGridOfSomeKind
+        fill_halo_regions!(η)
     end
 
     return nothing

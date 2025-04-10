@@ -36,7 +36,7 @@ struct Centered{N, FT, XT, YT, ZT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
     end
 end
 
-function Centered(FT::DataType = Float64; grid = nothing, order = 2) 
+function Centered(FT::DataType=Oceananigans.defaults.FloatType; grid = nothing, order = 2) 
 
     if !(grid isa Nothing) 
         FT = eltype(grid)
@@ -98,16 +98,16 @@ const ACAS = AbstractCenteredAdvectionScheme
 @inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::ACAS, bias, c, args...) = symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, c, args...)
 
 # uniform centered reconstruction
-for buffer in advection_buffers
+for buffer in advection_buffers, FT in fully_supported_float_types
     @eval begin
-        @inline inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::Centered{$buffer, FT, <:Nothing}, ψ, idx, loc, args...)           where FT = @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :x, false))
-        @inline inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::Centered{$buffer, FT, <:Nothing}, ψ::Function, idx, loc, args...) where FT = @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :x,  true))
+        @inline inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT, <:Nothing}, ψ, idx, loc, args...)           = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :x, false))
+        @inline inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT, <:Nothing}, ψ::Function, idx, loc, args...) = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :x,  true))
     
-        @inline inner_symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::Centered{$buffer, FT, XT, <:Nothing}, ψ, idx, loc, args...)           where {FT, XT} = @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :y, false))
-        @inline inner_symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::Centered{$buffer, FT, XT, <:Nothing}, ψ::Function, idx, loc, args...) where {FT, XT} = @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :y,  true))
+        @inline inner_symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT, XT, <:Nothing}, ψ, idx, loc, args...)           where XT = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :y, false))
+        @inline inner_symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT, XT, <:Nothing}, ψ::Function, idx, loc, args...) where XT = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :y,  true))
     
-        @inline inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::Centered{$buffer, FT, XT, YT, <:Nothing}, ψ, idx, loc, args...)           where {FT, XT, YT} = @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :z, false))
-        @inline inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::Centered{$buffer, FT, XT, YT, <:Nothing}, ψ::Function, idx, loc, args...) where {FT, XT, YT} = @inbounds $(calc_reconstruction_stencil(buffer, :symmetric, :z,  true))
+        @inline inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::Centered{$buffer, $FT, XT, YT, <:Nothing}, ψ, idx, loc, args...)           where {XT, YT} = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :z, false))
+        @inline inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::Centered{$buffer, $FT, XT, YT, <:Nothing}, ψ::Function, idx, loc, args...) where {XT, YT} = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :z,  true))
     end
 end
 

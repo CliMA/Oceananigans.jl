@@ -53,12 +53,11 @@ uh, vh, h = model.solution
 
 outputs = merge(model.solution, (ζ=ζ,))
 
-simulation.output_writers[:fields] =
-    JLD2OutputWriter(model, outputs,
-                     schedule = TimeInterval(0.1),
-                     filename = "flow_past_cape",
-                     field_slicer = nothing,
-                     overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, outputs,
+                                                schedule = TimeInterval(0.1),
+                                                filename = "flow_past_cape",
+                                                field_slicer = nothing,
+                                                overwrite_existing = true)
 
 run!(simulation)
 

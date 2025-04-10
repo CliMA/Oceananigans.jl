@@ -10,7 +10,7 @@ iterations_from_file(file) = parse.(Int, keys(file["timeseries/t"]))
 find_time_index(time::Number, file_times)       = findfirst(t -> t ≈ time, file_times)
 find_time_index(time::AbstractTime, file_times) = findfirst(t -> t == time, file_times)
 
-function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name)
+function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name; warn_missing_data=true)
     file = jldopen(path; fts.reader_kw...)
     file_iterations = iterations_from_file(file)
     file_times = [file["timeseries/t/$i"] for i in file_iterations]
@@ -25,23 +25,25 @@ function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name)
         t = fts.times[n]
         file_index = find_time_index(t, file_times)
 
-        if isnothing(file_index)
-            msg = string("Error setting ", summary(fts), '\n')
-            msg *= @sprintf("Can't find data for time %.1e and time index %d\n", t, n)
-            msg *= @sprintf("for field %s at path %s", path, name)
-            error(msg)
+        if isnothing(file_index) # the time does not exist in the file
+            if warn_missing_data
+                msg = @sprintf("No data found for time %.1e and time index %d\n", t, n)
+                msg *= @sprintf("for field %s at path %s", path, name)
+                @warn msg
+            end
+        else
+            file_iter = file_iterations[file_index]
+
+            # Note: use the CPU for this step
+            field_n = Field(location(fts), path, name, file_iter,
+                            grid = on_architecture(CPU(), fts.grid),
+                            architecture = cpu_architecture(arch),
+                            indices = fts.indices,
+                            boundary_conditions = fts.boundary_conditions)
+
+            # Potentially transfer from CPU to GPU
+            set!(fts[n], field_n)
         end
-
-        file_iter = file_iterations[file_index]
-
-        # Note: use the CPU for this step
-        field_n = Field(location(fts), path, name, file_iter,
-                        architecture = cpu_architecture(arch),
-                        indices = fts.indices,
-                        boundary_conditions = fts.boundary_conditions)
-
-        # Potentially transfer from CPU to GPU
-        set!(fts[n], field_n)
     end
 
     return nothing

@@ -27,13 +27,13 @@ Update biogeochemical state variables. Called at the end of update_state!.
 """
 update_biogeochemical_state!(bgc, model) = nothing
 
-@inline biogeochemical_drift_velocity(bgc, val_tracer_name) = (u = ZeroField(), v = ZeroField(), w = ZeroField())
+@inline biogeochemical_drift_velocity(bgc, val_tracer_name) = nothing
 @inline biogeochemical_auxiliary_fields(bgc) = NamedTuple()
 
 """
     AbstractBiogeochemistry
 
-Abstract type for biogeochemical models. To define a biogeochemcial relaionship
+Abstract type for biogeochemical models. To define a biogeochemcial relationship
 the following functions must have methods defined where `BiogeochemicalModel`
 is a subtype of `AbstractBioeochemistry`:
 

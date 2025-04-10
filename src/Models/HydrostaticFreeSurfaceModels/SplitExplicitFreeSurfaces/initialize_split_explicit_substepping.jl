@@ -1,4 +1,6 @@
-using Oceananigans.ImmersedBoundaries: retrieve_surface_active_cells_map, peripheral_node
+using Oceananigans.ImmersedBoundaries: get_active_column_map, peripheral_node
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKutta3TimeStepper
+using Oceananigans.Operators: Δz
 
 # This file contains two different initializations methods performed at different stages of the simulation.
 #
@@ -12,20 +14,52 @@ using Oceananigans.ImmersedBoundaries: retrieve_surface_active_cells_map, periph
 # from the initial velocity conditions.
 function initialize_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocities)
     barotropic_velocities = sefs.barotropic_velocities
-    @apply_regionally compute_barotropic_mode!(barotropic_velocities.U, barotropic_velocities.V, grid, velocities.u, velocities.v)
+    u, v, w = velocities
+    @apply_regionally compute_barotropic_mode!(barotropic_velocities.U,
+                                               barotropic_velocities.V,
+                                               grid, u, v, sefs.η)
+
     fill_halo_regions!((barotropic_velocities.U, barotropic_velocities.V))
+
     return nothing
 end
 
 # `initialize_free_surface_state!` is called at the beginning of the substepping to 
 # reset the filtered state to zero and reinitialize the state from the filtered state.
-function initialize_free_surface_state!(filtered_state, η, velocities, timestepper)
+function initialize_free_surface_state!(free_surface, baroclinic_timestepper, timestepper, stage)
 
-    initialize_free_surface_timestepper!(timestepper, η, velocities)
+    η = free_surface.η
+    U, V = free_surface.barotropic_velocities
 
-    fill!(filtered_state.η, 0)
-    fill!(filtered_state.U, 0)
-    fill!(filtered_state.V, 0)
+    initialize_free_surface_timestepper!(timestepper, η, U, V)
+
+    fill!(free_surface.filtered_state.η, 0)
+    fill!(free_surface.filtered_state.U, 0)
+    fill!(free_surface.filtered_state.V, 0)
+
+    return nothing
+end
+
+# At the last stage we reset the velocities and perform the complete substepping from n to n+1
+function initialize_free_surface_state!(free_surface, baroclinic_ts::SplitRungeKutta3TimeStepper, barotropic_ts, ::Val{3})
+
+    η = free_surface.η
+    U, V = free_surface.barotropic_velocities
+
+    Uⁿ⁻¹ = baroclinic_ts.Ψ⁻.U
+    Vⁿ⁻¹ = baroclinic_ts.Ψ⁻.V
+    ηⁿ⁻¹ = baroclinic_ts.Ψ⁻.η
+
+    # Restart from the state at baroclinic step n
+    parent(U) .= parent(Uⁿ⁻¹)
+    parent(V) .= parent(Vⁿ⁻¹)
+    parent(η) .= parent(ηⁿ⁻¹)
+
+    initialize_free_surface_timestepper!(barotropic_ts, η, U, V)
+
+    fill!(free_surface.filtered_state.η, 0)
+    fill!(free_surface.filtered_state.U, 0)
+    fill!(free_surface.filtered_state.V, 0)
 
     return nothing
 end
