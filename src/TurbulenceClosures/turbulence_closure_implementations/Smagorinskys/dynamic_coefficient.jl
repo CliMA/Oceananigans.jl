@@ -133,12 +133,21 @@ Base.show(io::IO, dc::DynamicCoefficient) = print(io, "DynamicCoefficient with\n
     return ifelse(𝒥ᴹᴹ_ijk == 0, zero(grid), 𝒥ᴸᴹ_ijk / 𝒥ᴹᴹ_ijk)
 end
 
-@kernel function _compute_Σ_Σ̄!(Σ, Σ̄, grid, u, v, w)
+@kernel function _compute_Σ!(Σ, grid, u, v, w)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        Σ[i, j, k] = √(ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w))
-        Σ̄[i, j, k] = √(Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w))
+        Σsq = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
+        Σ[i, j, k] = √Σsq
+    end
+end
+
+@kernel function _compute_Σ̄!(Σ̄, grid, u, v, w)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds begin
+        Σ̄sq = Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
+        Σ̄[i, j, k] = √Σ̄sq
     end
 end
 
@@ -185,7 +194,8 @@ function compute_coefficient_fields!(diffusivity_fields, closure::DirectionallyA
     if cˢ.schedule(model)
         Σ = diffusivity_fields.Σ
         Σ̄ = diffusivity_fields.Σ̄
-        launch!(arch, grid, :xyz, _compute_Σ_Σ̄!, Σ, Σ̄, grid, velocities...)
+        launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, velocities...)
+        launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, velocities...)
 
         LM = diffusivity_fields.LM
         MM = diffusivity_fields.MM
