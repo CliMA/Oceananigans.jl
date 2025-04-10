@@ -74,7 +74,7 @@ end
 @inline function ivd_lower_diagonal(i, j, k′, grid, closure, K, id, ℓx, ℓy, ::Center, Δt, clock)
     k = k′ + 1 # Shift index to match LinearAlgebra.Tridiagonal indexing convenction
     closure_ij = getclosure(i, j, closure)  
-    κᵏ   = ivd_diffusivity(i, j, k+1, grid, ℓx, ℓy, f, closure_ij, K, id, clock)
+    κᵏ   = ivd_diffusivity(i, j, k, grid, ℓx, ℓy, f, closure_ij, K, id, clock)
     Δzᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
     Δzᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
     dl   = - Δt * κᵏ / (Δzᶜₖ * Δzᶠₖ)
