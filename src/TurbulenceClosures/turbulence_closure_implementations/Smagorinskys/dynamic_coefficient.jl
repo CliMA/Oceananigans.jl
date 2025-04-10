@@ -2,13 +2,20 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: interpolate
 using Statistics
 
-struct DynamicCoefficient{A, FT, S}
+mutable struct DynamicCoefficient{A, FT, S}
     averaging :: A
     minimum_numerator :: FT
     schedule :: S
 end
 
-const DynamicSmagorinsky = Smagorinsky{<:Any, <:DynamicCoefficient}
+struct GPUDynamicCoefficient{FT}
+    minimum_numerator :: FT
+end
+
+const DynamicSmagorinsky = Union{
+    Smagorinsky{<:Any, <:DynamicCoefficient},
+    Smagorinsky{<:Any, <:GPUDynamicCoefficient},
+}
 
 function DynamicSmagorinsky(time_discretization=ExplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType; averaging,
                             Pr=1.0, schedule=IterationInterval(1), minimum_numerator=1e-32)
@@ -19,8 +26,7 @@ function DynamicSmagorinsky(time_discretization=ExplicitTimeDiscretization(), FT
 end
 
 DynamicSmagorinsky(FT::DataType; kwargs...) = DynamicSmagorinsky(ExplicitTimeDiscretization(), FT; kwargs...)
-
-Adapt.adapt_structure(to, dc::DynamicCoefficient) = DynamicCoefficient(dc.averaging, dc.minimum_numerator, nothing)
+Adapt.adapt_structure(to, dc::DynamicCoefficient) = GPUDynamicCoefficient(dc.minimum_numerator)
 
 const DirectionallyAveragedCoefficient{N} = DynamicCoefficient{<:Union{NTuple{N, Int}, Int, Colon}} where N
 const DirectionallyAveragedDynamicSmagorinsky{N} = Smagorinsky{<:Any, <:DirectionallyAveragedCoefficient{N}} where N
@@ -130,7 +136,7 @@ Base.show(io::IO, dc::DynamicCoefficient) = print(io, "DynamicCoefficient with\n
         𝒥ᴹᴹ_ijk = 𝒥ᴹᴹ[i, j, k]
     end
 
-    return ifelse(𝒥ᴹᴹ_ijk == 0, zero(grid), 𝒥ᴸᴹ_ijk / 𝒥ᴹᴹ_ijk)
+    return 𝒥ᴸᴹ_ijk / 𝒥ᴹᴹ_ijk * (𝒥ᴹᴹ_ijk > 0)
 end
 
 @kernel function _compute_Σ!(Σ, grid, u, v, w)
@@ -138,7 +144,7 @@ end
 
     @inbounds begin
         Σsq = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
-        Σ[i, j, k] = √Σsq
+        Σ[i, j, k] = sqrt(Σsq)
     end
 end
 
@@ -147,7 +153,7 @@ end
 
     @inbounds begin
         Σ̄sq = Σ̄ᵢⱼΣ̄ᵢⱼᶜᶜᶜ(i, j, k, grid, u, v, w)
-        Σ̄[i, j, k] = √Σ̄sq
+        Σ̄[i, j, k] = sqrt(Σ̄sq)
     end
 end
 
