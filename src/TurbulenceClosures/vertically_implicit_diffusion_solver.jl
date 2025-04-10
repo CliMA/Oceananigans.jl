@@ -136,7 +136,7 @@ end
     ivd_lower_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, f, args...) * !peripheral_node(i, j, k, grid, ℓx, ℓy, c)
 
 @inline _ivd_lower_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ::Center, args...) =
-    ivd_lower_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, c, args...) * !peripheral_node(i, j, k, grid, ℓx, ℓy, c)
+    ivd_lower_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, c, args...) * !peripheral_node(i, j, k, grid, ℓx, ℓy, f)
            
 #####
 ##### Solver constructor
