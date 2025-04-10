@@ -123,7 +123,7 @@ end
 # Diffusive fluxes for Leith diffusivities
 
 @inline function diffusive_flux_x(i, j, k, grid, closure::TwoDimensionalLeith, diffusivities, 
-                                  ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
+                                  tracer_index, c, clock, fields, buoyancy) 
 
     νₑ = diffusivities.νₑ
 
@@ -142,7 +142,7 @@ end
 end
 
 @inline function diffusive_flux_y(i, j, k, grid, closure::TwoDimensionalLeith, diffusivities,
-                                  ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
+                                  tracer_index, c, clock, fields, buoyancy)
 
     νₑ = diffusivities.νₑ
 
@@ -160,7 +160,7 @@ end
 end
 
 @inline function diffusive_flux_z(i, j, k, grid, closure::TwoDimensionalLeith, diffusivities, 
-                                  ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
+                                  tracer_index, c, clock, fields, buoyancy) 
 
     νₑ = diffusivities.νₑ
 

@@ -119,12 +119,12 @@ end
     hydrostatic_turbulent_kinetic_energy_tendency
 
 @inline function hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid::SingleColumnGrid,
-                                                               val_tracer_index::Val{tracer_index},
+                                                               tracer_index,
                                                                advection,
-                                                               closure_array::CATKEVDArray, args...) where tracer_index
+                                                               closure_array::CATKEVDArray, args...)
 
     @inbounds closure = closure_array[i, j]
-    return hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, val_tracer_index, advection, closure, args...)
+    return hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, tracer_index, advection, closure, args...)
 end
 
 #####

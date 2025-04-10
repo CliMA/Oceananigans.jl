@@ -212,9 +212,9 @@ end
 end
 
 # Make sure we do not need to perform heavy calculations if we really do not need to
-@inline diffusive_flux_x(i, j, k, grid, ::NoDiffusionISSD, K, ::Val{tracer_index}, args...) where tracer_index = zero(grid)
-@inline diffusive_flux_y(i, j, k, grid, ::NoDiffusionISSD, K, ::Val{tracer_index}, args...) where tracer_index = zero(grid)
-@inline diffusive_flux_z(i, j, k, grid, ::NoDiffusionISSD, K, ::Val{tracer_index}, args...) where tracer_index = zero(grid)
+@inline diffusive_flux_x(i, j, k, grid, ::NoDiffusionISSD, K, args...) = zero(grid)
+@inline diffusive_flux_y(i, j, k, grid, ::NoDiffusionISSD, K, args...) = zero(grid)
+@inline diffusive_flux_z(i, j, k, grid, ::NoDiffusionISSD, K, args...) = zero(grid)
 
 # Diffusive fluxes
 @inline get_tracer_κ(κ::NamedTuple, grid, tracer_index) = @inbounds κ[tracer_index]
@@ -227,8 +227,8 @@ end
 
 # defined at fcc
 @inline function diffusive_flux_x(i, j, k, grid,
-                                  closure::Union{ISSD, ISSDVector}, diffusivity_fields, ::Val{tracer_index},
-                                  c, clock, fields, buoyancy) where tracer_index
+                                  closure::Union{ISSD, ISSDVector}, diffusivity_fields, tracer_index,
+                                  c, clock, fields, buoyancy) 
 
     closure = getclosure(i, j, closure)
 
@@ -257,8 +257,8 @@ end
 
 # defined at cfc
 @inline function diffusive_flux_y(i, j, k, grid,
-                                  closure::Union{ISSD, ISSDVector}, diffusivity_fields, ::Val{tracer_index},
-                                  c, clock, fields, buoyancy) where tracer_index
+                                  closure::Union{ISSD, ISSDVector}, diffusivity_fields, tracer_index,
+                                  c, clock, fields, buoyancy)
 
     closure = getclosure(i, j, closure)
 
@@ -287,8 +287,8 @@ end
 
 # defined at ccf
 @inline function diffusive_flux_z(i, j, k, grid,
-                                  closure::FlavorOfISSD{TD}, diffusivity_fields, ::Val{tracer_index},
-                                  c, clock, fields, buoyancy) where {tracer_index, TD}
+                                  closure::FlavorOfISSD{TD}, diffusivity_fields, tracer_index,
+                                  c, clock, fields, buoyancy) where {TD}
 
     closure = getclosure(i, j, closure)
 
