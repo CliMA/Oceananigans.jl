@@ -16,7 +16,7 @@ architecture(solver::ConjugateGradientPoissonSolver) = architecture(cgps.grid)
 iteration(cgps::ConjugateGradientPoissonSolver) = iteration(cgps.conjugate_gradient_solver)
 
 Base.summary(ips::ConjugateGradientPoissonSolver) =
-    summary("ConjugateGradientPoissonSolver on ", summary(ips.grid))
+    "ConjugateGradientPoissonSolver with $(summary(ips.conjugate_gradient_solver.preconditioner)) on $(summary(ips.grid))"
 
 function Base.show(io::IO, ips::ConjugateGradientPoissonSolver)
     A = architecture(ips.grid)
@@ -45,6 +45,18 @@ end
 
 struct DefaultPreconditioner end
 
+"""
+    ConjugateGradientPoissonSolver(grid;
+                                   preconditioner = DefaultPreconditioner(),
+                                   reltol = sqrt(eps(grid)),
+                                   abstol = sqrt(eps(grid)),
+                                   kw...)
+
+Creates a `ConjugateGradientPoissonSolver` on `grid` using a `preconditioner`.
+`ConjugateGradientPoissonSolver` is iterative, and will stop when both the relative error in the
+pressure solution is smaller than `reltol` and the absolute error is smaller than `abstol`. Other
+keyword arguments are passed to `ConjugateGradientSolver`.
+"""
 function ConjugateGradientPoissonSolver(grid;
                                         preconditioner = DefaultPreconditioner(),
                                         reltol = sqrt(eps(grid)),
