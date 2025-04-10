@@ -176,12 +176,9 @@ is_vertically_implicit(closure) = time_discretization(closure) isa VerticallyImp
                    closure, diffusivity_fields, tracer_index, clock, Δt)
 
 Initialize the right hand side array `solver.batched_tridiagonal_solver.f`, and then solve the
-tridiagonal system for vertically-implicit diffusion, passing the arguments
-`clock, Δt, κ⁻⁻ᶠ, κ` into the coefficient functions that return coefficients of the
-lower diagonal, diagonal, and upper diagonal of the resulting tridiagonal system.
-
-`args...` are passed into `g` and `z_viscosity` appropriately for the purpose of retrieving
-the diffusivities / viscosities associated with `closure`.
+tridiagonal system for vertically-implicit diffusion, passing the arguments into the coefficient 
+functions that return coefficients of the lower diagonal, diagonal, and upper diagonal of the 
+resulting tridiagonal system.
 """
 function implicit_step!(field::Field,
                         implicit_solver::BatchedTridiagonalSolver,
