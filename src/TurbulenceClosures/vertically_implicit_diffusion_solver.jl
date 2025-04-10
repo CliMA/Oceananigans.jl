@@ -127,7 +127,7 @@ end
 #####
 
 @inline _ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ::Center, args...) =
-    ifelse(peripheral_node(i, j, k+1, grid, ℓx, ℓy, f), zero(grid), ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, c, args...))
+    ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, c, args...) * !peripheral_node(i, j, k+1, grid, ℓx, ℓy, f)
 
 @inline _ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ::Face, args...) =
     ifelse(peripheral_node(i, j, k+1, grid, ℓx, ℓy, f), zero(grid), ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, f, args...))
