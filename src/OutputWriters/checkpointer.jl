@@ -40,8 +40,8 @@ catch
     false
 end
 
-required_properties(model) = [:grid, :clock]
-required_properties(::OceananigansModels) = [:grid, :clock, :particles]
+required_checkpoint_properties(model) = [:grid, :clock]
+required_checkpoint_properties(::OceananigansModels) = [:grid, :clock, :particles]
 
 """
     Checkpointer(model;
