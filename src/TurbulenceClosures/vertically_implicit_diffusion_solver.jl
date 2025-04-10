@@ -95,7 +95,7 @@ end
     Δzᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
     Δzᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
     du   = - Δt * νᵏ / (Δzᶜₖ * Δzᶠₖ) 
-    return du * !peripheral_node(i, j, k+1, grid, ℓx, ℓy, c)
+    return du * !peripheral_node(i, j, k, grid, ℓx, ℓy, c)
 end
 
 @inline function ivd_lower_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Face, Δt, clock)
