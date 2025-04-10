@@ -25,7 +25,7 @@ using Oceananigans.DistributedComputations
     end
 
     a = Int[]
-    
+
     @distribute for i in 1:10
         push!(a, i)
     end
@@ -49,7 +49,7 @@ using Oceananigans.DistributedComputations
     split_comm = MPI.Comm_split(MPI.COMM_WORLD, rank % 2, rank)
 
     a = Int[]
-    
+
     @distribute split_comm for i in 1:10
         push!(a, i)
     end

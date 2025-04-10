@@ -62,7 +62,7 @@ function test_ScalarBiharmonicDiffusivity_budget(fieldname, model)
     return test_diffusion_budget(fieldname, field, model, model.closure.ν, model.grid.z.Δᵃᵃᶜ, 4)
 end
 
-function test_diffusion_cosine(fieldname, grid, closure, ξ, tracers=:c) 
+function test_diffusion_cosine(fieldname, grid, closure, ξ, tracers=:c)
     model = NonhydrostaticModel(; grid, closure, tracers, buoyancy=nothing)
     field = fields(model)[fieldname]
 
@@ -120,7 +120,7 @@ function test_3D_immersed_diffusion(Nz, z, time_discretization)
     # Bathymetry
     b, l, m, u, t = -0.5, -0.2, 0, 0.2, 0.5
 
-    bathymetry = [b b b b b b b b b 
+    bathymetry = [b b b b b b b b b
                   b l l l l l l l b
                   b l m m m m m l b
                   b l m u u u m l b
@@ -132,7 +132,7 @@ function test_3D_immersed_diffusion(Nz, z, time_discretization)
 
     underlying_grid = RectilinearGrid(size=(9, 9, Nz), x=(0, 1), y=(0, 1), z=z, topology=(Periodic, Periodic, Bounded))
     grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry); active_cells_map = true)
-    
+
     Δz_min = minimum(grid.underlying_grid.z.Δᵃᵃᶜ)
     model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
 
@@ -416,7 +416,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                              (Periodic, Periodic, Bounded),
                              (Periodic, Bounded, Bounded),
                              (Bounded, Bounded, Bounded))
-                
+
                 # Can't use implicit time-stepping in vertically-periodic domains right now
                 if topology !== (Periodic, Periodic, Periodic)
                     time_discretizations = (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
@@ -429,9 +429,9 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                         # VerticallyImplicitTimeDiscretization is not supported for HorizontalScalarDiffusivity
                         (closurename == HorizontalScalarDiffusivity && time_discretization == VerticallyImplicitTimeDiscretization()) && continue
-                        
+
                         closure = closurename(time_discretization, ν=1, κ=1)
-                    
+
                         fieldnames = [:c]
                         topology[1] === Periodic && push!(fieldnames, :u)
                         topology[2] === Periodic && push!(fieldnames, :v)
@@ -509,11 +509,11 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             closures = []
             fieldnames = []
 
-            scalar_diffusivity = ScalarDiffusivity(ν=1, κ=1) 
-            implicit_scalar_diffusivity = ScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=1) 
+            scalar_diffusivity = ScalarDiffusivity(ν=1, κ=1)
+            implicit_scalar_diffusivity = ScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=1)
             vertical_scalar_diffusivity = VerticalScalarDiffusivity(ν=1, κ=1)
             implicit_vertical_scalar_diffusivity = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=1)
-            
+
             # Cases on Non-Flat grids with `ScalarDiffusivity`
             append!(coords, [x, y, z])
             append!(fieldnames, [(:v, :w, :c), (:u, :w, :c), (:u, :v, :c)])
@@ -547,7 +547,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             push!(fieldnames, fieldnames[end])
             push!(closures, closure_tuple)
             push!(grids, grids[end])
-                               
+
             # Immersed grid cases
             immersed_vertical_grid = ImmersedBoundaryGrid(RectilinearGrid(arch,
                                                                           size = (2, 2, 2N),
@@ -697,14 +697,14 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
             @info "  Testing dynamics with background fields [$timestepper]..."
             @test_skip passive_tracer_advection_test(timestepper, background_velocity_field=true)
-                        
+
             Nx = Nz = 128
             Lx = Lz = 2π
 
             # Regular grid with no flat dimension
             y_periodic_regular_grid = RectilinearGrid(topology=(Periodic, Periodic, Bounded),
                                                       size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=(-Lz, 0))
-                        
+
             solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=true)
 
             model = NonhydrostaticModel(; grid=y_periodic_regular_grid, background_fields, kwargs...)
@@ -722,7 +722,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         end
     end
 
-    # This test alone runs for 2 hours on the GPU!!!!! 
+    # This test alone runs for 2 hours on the GPU!!!!!
     @testset "Background rotation about arbitrary axis" begin
         for arch in archs
             if arch == CPU() # This test is removed on the GPU (see Issue #2647)

@@ -53,7 +53,7 @@ julia> grid = RectilinearGrid(GPU(), size = (32, 64, 256), extent = (128, 256, 5
 
 Another crucial keyword is a 3-`Tuple` that specifies the grid's `topology`.
 In each direction the grid may be `Periodic`, `Bounded` or `Flat`.
-By default, both the `RectilinearGrid` and the `RectilinearGrid` constructors 
+By default, both the `RectilinearGrid` and the `RectilinearGrid` constructors
 assume the grid topology is horizontally-periodic
 and bounded in the vertical, such that `topology = (Periodic, Periodic, Bounded)`.
 

@@ -8,14 +8,14 @@ include("dependencies_for_runtests.jl")
         #####
         ##### Basic functionality tests
         #####
-        
+
         grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
         a, b, c = [CenterField(grid) for i = 1:3]
 
         Nx, Ny, Nz = size(a)
 
         a .= 1
-        @test CUDA.@allowscalar all(a .== 1) 
+        @test CUDA.@allowscalar all(a .== 1)
 
         b .= 2
 
@@ -36,7 +36,7 @@ include("dependencies_for_runtests.jl")
         #####
         ##### Broadcasting with interpolation
         #####
-        
+
         three_point_grid = RectilinearGrid(arch, size=(1, 1, 3), extent=(1, 1, 1))
 
         a2 = CenterField(three_point_grid)
@@ -73,7 +73,7 @@ include("dependencies_for_runtests.jl")
         #####
         ##### Broadcasting with ReducedField
         #####
-        
+
         for loc in [
                     (Nothing, Center, Center),
                     (Center, Nothing, Center),
@@ -88,10 +88,10 @@ include("dependencies_for_runtests.jl")
 
             r, p, q = [Field(loc, grid) for i = 1:3]
 
-            r .= 2 
+            r .= 2
             @test CUDA.@allowscalar all(r .== 2)
 
-            p .= 3 
+            p .= 3
 
             q .= r .* p
             @test CUDA.@allowscalar all(q .== 6)

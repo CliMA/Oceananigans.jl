@@ -1,13 +1,13 @@
 include("dependencies_for_runtests.jl")
 include("distributed_tests_utils.jl")
 
-# We need to initiate MPI for sharding because we are using a multi-host implementation: 
-# i.e. we are launching the tests with `mpiexec` and on Github actions the default MPI 
+# We need to initiate MPI for sharding because we are using a multi-host implementation:
+# i.e. we are launching the tests with `mpiexec` and on Github actions the default MPI
 # implementation is MPICH which requires calling MPI.Init(). In the case of OpenMPI,
 # MPI.Init() is not necessary.
 
 run_slab_distributed_grid = """
-    using MPI 
+    using MPI
     MPI.Init()
     include("distributed_tests_utils.jl")
     Reactant.Distributed.initialize(; single_gpu_per_process=false)
@@ -25,7 +25,7 @@ run_pencil_distributed_grid = """
 """
 
 @testset "Test distributed TripolarGrid simulations..." begin
-    # Run the serial computation    
+    # Run the serial computation
     grid  = TripolarGrid(size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
     grid  = analytical_immersed_tripolar_grid(grid)
     model = run_distributed_simulation(grid)
@@ -69,7 +69,7 @@ run_pencil_distributed_grid = """
     cp = jldopen("distributed_pencil_tripolar.jld2")["c"]
 
     rm("distributed_pencil_tripolar.jld2")
-    
+
     @test all(us .≈ up)
     @test all(vs .≈ vp)
     @test all(cs .≈ cp)

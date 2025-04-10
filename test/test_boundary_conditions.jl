@@ -14,7 +14,7 @@ function can_instantiate_boundary_condition(bc, C, FT=Float64, ArrayType=Array)
     end
     return success
 end
-        
+
 @testset "Boundary conditions" begin
     @info "Testing boundary conditions..."
 
@@ -212,7 +212,7 @@ end
         @test T_bcs.top isa ZFBC
 
         grid = bbb_grid
-        
+
         T_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
                                         east = ValueBoundaryCondition(simple_bc),
                                         west = ValueBoundaryCondition(simple_bc),
@@ -222,7 +222,7 @@ end
                                         south = ValueBoundaryCondition(simple_bc))
 
         @test T_bcs.east.condition isa ContinuousBoundaryFunction
-        @test T_bcs.west.condition isa ContinuousBoundaryFunction 
+        @test T_bcs.west.condition isa ContinuousBoundaryFunction
         @test T_bcs.north.condition isa ContinuousBoundaryFunction
         @test T_bcs.south.condition isa ContinuousBoundaryFunction
         @test T_bcs.top.condition isa ContinuousBoundaryFunction

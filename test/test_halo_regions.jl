@@ -23,7 +23,7 @@ function halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
     # Just choose something anisotropic to catch Δx/Δy type errors.
     Lx, Ly, Lz = 100, 200, 300
 
-    grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), 
+    grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz),
                            halo=(1, 1, 1), topology=(Periodic, Periodic, Bounded))
 
     field = CenterField(grid)
