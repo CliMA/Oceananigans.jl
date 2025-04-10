@@ -324,7 +324,7 @@ end
 
 @inline explicit_κ_∂z_c(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, args...) = zero(grid)
 
-@inline function κzᶜᶜᶠ(i, j, k, grid, closure::FlavorOfISSD, K, ::Val{id}, clock) where id
+@inline function κzᶜᶜᶠ(i, j, k, grid, closure::FlavorOfISSD, K, id, clock) 
     closure = getclosure(i, j, closure)
     κ_symmetric = get_tracer_κ(closure.κ_symmetric, grid, id)
     ϵ_R₃₃ = @inbounds K.ϵ_R₃₃[i, j, k] # tapered 33 component of rotation tensor

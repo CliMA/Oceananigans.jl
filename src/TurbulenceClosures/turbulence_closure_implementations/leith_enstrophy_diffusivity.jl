@@ -114,7 +114,7 @@ function build_diffusivity_fields(grid, clock, tracer_names, bcs, ::TwoDimension
 end
 
 @inline viscosity(::TwoDimensionalLeith, K) = K.νₑ
-@inline diffusivity(::TwoDimensionalLeith, K, ::Val{id}) where id = K.νₑ   
+@inline diffusivity(::TwoDimensionalLeith, K, id) = K.νₑ   
 
 #####
 ##### Abstract Smagorinsky functionality

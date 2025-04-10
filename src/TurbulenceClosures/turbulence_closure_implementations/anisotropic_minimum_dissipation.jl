@@ -20,7 +20,7 @@ end
 const AMD = AnisotropicMinimumDissipation
 
 @inline viscosity(::AMD, K) = K.νₑ
-@inline diffusivity(::AMD, K, ::Val{id}) where id = K.κₑ[id]
+@inline diffusivity(::AMD, K, id) = K.κₑ[id]
 
 Base.show(io::IO, closure::AMD{TD}) where TD =
     print(io, "AnisotropicMinimumDissipation{$TD} turbulence closure with:\n",

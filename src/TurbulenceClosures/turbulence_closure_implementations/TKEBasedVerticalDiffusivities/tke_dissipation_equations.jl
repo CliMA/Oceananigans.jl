@@ -184,7 +184,7 @@ end
     end
 end
 
-@inline function implicit_linear_coefficient(i, j, k, grid, closure::FlavorOfTD{<:VITD}, K, ::Val{id}, args...) where id
+@inline function implicit_linear_coefficient(i, j, k, grid, ::FlavorOfTD{<:VITD}, K, id, args...)
     L = K._tupled_implicit_linear_coefficients[id]
     return @inbounds L[i, j, k]
 end
