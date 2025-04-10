@@ -29,7 +29,6 @@ const F = Face
 # Fallbacks: extend these function for `closure` to support.
 @inline implicit_linear_coefficient(i, j, k, grid, args...) = zero(grid)
 
-
 # Vertical momentum diffusivities: u, v, w
 @inline ivd_diffusivity(i, j, k, grid, ::F, ::C, ::F, clo, K, id, clock) = νzᶠᶜᶠ(i, j, k, grid, clo, K, id, clock) 
 @inline ivd_diffusivity(i, j, k, grid, ::C, ::F, ::F, clo, K, id, clock) = νzᶜᶠᶠ(i, j, k, grid, clo, K, id, clock) 
