@@ -77,6 +77,9 @@ end
     Δzᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
     Δzᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
     dl   = - Δt * κᵏ / (Δzᶜₖ * Δzᶠₖ)
+
+    # This conditional ensures the diagonal is correct. (Note we use LinearAlgebra.Tridiagonal
+    # indexing convention, so that lower_diagonal should be defined for k′ = 1 ⋯ N-1.)
     return dl * !peripheral_node(i, j, k′, grid, ℓx, ℓy, f)
 end
 
