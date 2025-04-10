@@ -487,7 +487,7 @@ end
             TwoDimensionalLeith(),
             ConstantSmagorinsky(),
             SmagorinskyLilly(),
-            LagrangianAveragedDynamicSmagorinsky(),
+            # LagrangianAveragedDynamicSmagorinsky(),
             DirectionallyAveragedDynamicSmagorinsky(),
             AnisotropicMinimumDissipation(),
             ConvectiveAdjustmentVerticalDiffusivity(),
