@@ -65,6 +65,36 @@ steps:
           limit: 1
     depends_on: "init"
 
+  # - label: "AMDGPU.jl unit tests"
+  #   env:
+  #     TEST_GROUP: "amdgpu"
+  #   plugins:
+  #     - JuliaCI/julia#v1:
+  #         version: "1.10"
+  #   agents:
+  #     queue: "juliagpu"
+  #     rocm: "*"
+  #     rocmgpu: "*"
+  #   env:
+  #     JULIA_NUM_THREADS: 4
+  #     JULIA_AMDGPU_CORE_MUST_LOAD: "1"
+  #     JULIA_AMDGPU_HIP_MUST_LOAD: "1"
+  #     JULIA_AMDGPU_DISABLE_ARTIFACTS: "1"
+  #   command: |
+  #     julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+
+  # - label: "oneAPI.jl unit tests"
+  #   env:
+  #     TEST_GROUP: "oneapi"
+  #   plugins:
+  #     - JuliaCI/julia#v1:
+  #         version: "1.10"
+  #   agents:
+  #     queue: "juliagpu"
+  #     intel: "*"
+  #   command: |
+  #     julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+
 #####
 ##### Solver tests
 #####
