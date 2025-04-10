@@ -124,7 +124,6 @@ for f in (:+, :-)
     @eval Base.$f(ϕ::AbstractField, ψ::AbstractArray) = $f(interior(ϕ), ψ)
 end
 
-
 const XReducedAF = AbstractField{Nothing}
 const YReducedAF = AbstractField{<:Any, Nothing}
 const ZReducedAF = AbstractField{<:Any, <:Any, Nothing}

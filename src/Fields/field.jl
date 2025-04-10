@@ -590,7 +590,6 @@ const ReducedAbstractField = Union{XReducedAbstractField,
 
 # TODO: needs test
 LinearAlgebra.dot(a::AbstractField, b::AbstractField) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))
-# LinearAlgebra.norm(a::AbstractField) = mapreduce(x -> x * x, +, interior(a)) |> sqrt
 function LinearAlgebra.norm(a::AbstractField; condition = nothing)
     r = zeros(a.grid, 1)
     Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
