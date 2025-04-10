@@ -95,6 +95,14 @@ function run_distributed_latitude_longitude_grid(arch, filename)
     Random.seed!(1234)
     bottom_height = - rand(40, 40, 1) .* 500 .- 500
 
+    flat_distributed_grid = LatitudeLongitudeGrid(arch,
+        size = (40, 40),
+        longitude = (0, 360),
+        latitude = (-90, 90),
+        topology = (Periodic, Bounded, Flat))
+
+    @test isnothing(flat_distributed_grid.z)
+
     distributed_grid = LatitudeLongitudeGrid(arch;
                                              size = (40, 40, 10),
                                              longitude = (0, 360),

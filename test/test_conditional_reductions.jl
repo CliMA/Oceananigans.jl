@@ -5,7 +5,6 @@ include("dependencies_for_runtests.jl")
         @info "    Testing Reductions on Immersed fields"
 
         grid = RectilinearGrid(arch, size = (6, 1, 1), extent = (1, 1, 1))
-
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 0.5)))
 
         fful = Field{Center, Center, Center}(grid)

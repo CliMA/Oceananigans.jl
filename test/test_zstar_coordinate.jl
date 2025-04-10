@@ -13,6 +13,9 @@ function test_zstar_coordinate(model, Ni, Δt)
 
     ∫bᵢ = Field(Integral(bᵢ))
     ∫cᵢ = Field(Integral(cᵢ))
+    compute!(∫bᵢ)
+    compute!(∫cᵢ)
+    
     w   = model.velocities.w
     Nz  = model.grid.Nz
 
@@ -22,6 +25,8 @@ function test_zstar_coordinate(model, Ni, Δt)
 
     ∫b = Field(Integral(model.tracers.b))
     ∫c = Field(Integral(model.tracers.c))
+    compute!(∫b)
+    compute!(∫c)
 
     # Testing that:
     # (1) tracers are conserved down to machine precision
@@ -197,26 +202,43 @@ end
                 end
             end
         end
+        
+        @testset "TripolarGrid ZStar tests" begin
+            @info "Testing a ZStar coordinate with a Tripolar grid on $(arch)..."
 
-        @info "  Testing a ZStar and Runge Kutta 3rd order time stepping"
+            grid = TripolarGrid(arch; size = (50, 50, 20), z = z_stretched)
 
-        topology = topologies[2]
-        rtg  = RectilinearGrid(arch; size = (10, 10, 20), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_uniform)
-        llg  = LatitudeLongitudeGrid(arch; size = (10, 10, 20), latitude = (0, 1), longitude = (0, 1), topology, z = z_uniform)
-        irtg = ImmersedBoundaryGrid(rtg,   GridFittedBottom((x, y) -> rand() - 10))
-        illg = ImmersedBoundaryGrid(llg,   GridFittedBottom((x, y) -> rand() - 10))
+            # Code credit:
+            # https://github.com/PRONTOLab/GB-25/blob/682106b8487f94da24a64d93e86d34d560f33ffc/src/model_utils.jl#L65
+            function mtn₁(λ, φ)
+                λ₁ = 70
+                φ₁ = 55
+                dφ = 5
+                return exp(-((λ - λ₁)^2 + (φ - φ₁)^2) / 2dφ^2)
+            end
 
-        for grid in [rtg, llg, irtg, illg]
+            function mtn₂(λ, φ)
+                λ₁ = 70
+                λ₂ = λ₁ + 180
+                φ₂ = 55
+                dφ = 5
+                return exp(-((λ - λ₂)^2 + (φ - φ₂)^2) / 2dφ^2)
+            end
 
-            split_free_surface = SplitExplicitFreeSurface(grid; cfl = 0.75)
+            zb = - 20
+            h  = - zb + 10        
+            gaussian_islands(λ, φ) = zb + h * (mtn₁(λ, φ) + mtn₂(λ, φ))
+
+            grid = ImmersedBoundaryGrid(grid, GridFittedBottom(gaussian_islands))
+            free_surface = SplitExplicitFreeSurface(grid; substeps=10)
+
             model = HydrostaticFreeSurfaceModel(; grid,
-                                                free_surface = split_free_surface,
-                                                tracers = (:b, :c),
-                                                timestepper = :SplitRungeKutta3,
-                                                buoyancy = BuoyancyTracer(),
-                                                vertical_coordinate = ZStar())
+                                                  free_surface,
+                                                  tracers = (:b, :c),
+                                                  buoyancy = BuoyancyTracer(),
+                                                  vertical_coordinate = ZStar())
 
-            bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01
+            bᵢ(x, y, z) = y < 0 ? 0.06 : 0.01
 
             set!(model, c = (x, y, z) -> rand(), b = bᵢ)
 
