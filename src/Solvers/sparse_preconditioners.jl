@@ -71,7 +71,7 @@ function build_preconditioner(::Val{:Default}, matrix, settings)
     return build_preconditioner(Val(default_method), matrix, settings)
 end
 
-build_preconditioner(::Val{nothing},            A, settings)  = Identity()
+build_preconditioner(::Val{nothing},            A, settings)  = I
 build_preconditioner(::Val{:SparseInverse},     A, settings)  = sparse_inverse_preconditioner(A, ε = settings.ε, nzrel = settings.nzrel)
 build_preconditioner(::Val{:AsymptoticInverse}, A, settings)  = asymptotic_diagonal_inverse_preconditioner(A, asymptotic_order = settings.order)
 build_preconditioner(::Val{:Multigrid},         A, settings)  = multigrid_preconditioner(A)
@@ -107,7 +107,7 @@ end
     asymptotic_diagonal_inverse_preconditioner(A::AbstractMatrix; asymptotic_order)
 
 Compute the diagonally-dominant inverse preconditioner is constructed with an asymptotic
-expansion of `A⁻¹` up to the second order. If `I` is the Identity matrix and `D` is the matrix
+expansion of `A⁻¹` up to the second order. If `I` is the identity matrix and `D` is the matrix
 containing the diagonal of `A`, then
 
 - the 0th order expansion is the Jacobi preconditioner `M = D⁻¹ ≈ A⁻¹`
