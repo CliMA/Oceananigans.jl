@@ -66,9 +66,8 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
     Δzᶜₖ   = vertical_spacing(i, j, k,   grid, ℓx, ℓy, c)
     Δzᶠₖ₊₁ = vertical_spacing(i, j, k+1, grid, ℓx, ℓy, f)
     du     = - Δt * κᵏ⁺¹ / (Δzᶜₖ * Δzᶠₖ₊₁)
-
     # This conditional ensures the diagonal is correct
-    return ifelse(k > grid.Nz-1, zero(grid), du)
+    return du * !peripheral_node(i, j, k+1, grid, ℓx, ℓy, f)
 end
 
 @inline function ivd_lower_diagonal(i, j, k′, grid, closure, K, id, ℓx, ℓy, ::Center, Δt, clock)
@@ -78,11 +77,7 @@ end
     Δzᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
     Δzᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
     dl   = - Δt * κᵏ / (Δzᶜₖ * Δzᶠₖ)
-
-    # This conditional ensures the diagonal is correct: the lower diagonal does not
-    # exist for k′ = 0. (Note we use LinearAlgebra.Tridiagonal indexing convention,
-    # so that lower_diagonal should be defined for k′ = 1 ⋯ N-1).
-    return ifelse(k′ < 1, zero(grid), dl)
+    return dl * !peripheral_node(i, j, k′, grid, ℓx, ℓy, f)
 end
 
 #####
@@ -96,8 +91,8 @@ end
     νᵏ   = ivd_diffusivity(i, j, k, grid, ℓx, ℓy, c, closure_ij, K, id, clock)
     Δzᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
     Δzᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
-    du   = - Δt * νᵏ / (Δzᶜₖ * Δzᶠₖ)
-    return ifelse(k < 1, zero(grid), du)
+    du   = - Δt * νᵏ / (Δzᶜₖ * Δzᶠₖ) 
+    return du * !peripheral_node(i, j, k+1, grid, ℓx, ℓy, c)
 end
 
 @inline function ivd_lower_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Face, Δt, clock)
@@ -107,7 +102,7 @@ end
     Δzᶜₖ   = vertical_spacing(i, j, k′,   grid, ℓx, ℓy, c)
     Δzᶠₖ₋₁ = vertical_spacing(i, j, k′-1, grid, ℓx, ℓy, f)
     dl     = - Δt * νᵏ⁻¹ / (Δzᶜₖ * Δzᶠₖ₋₁)
-    return ifelse(k < 1, zero(grid), dl)
+    return dl * !peripheral_node(i, j, k, grid, ℓx, ℓy, c)
 end
 
 ### Diagonal terms
@@ -118,25 +113,8 @@ end
                               _ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, args...)
 
 @inline _implicit_linear_coefficient(args...) = implicit_linear_coefficient(args...)
-
-#####
-##### For a center solver we have to check the interface "solidity" at faces k+1 in both the
-##### Upper diagonal and the Lower diagonal 
-##### (because of tridiagonal convention where lower_diagonal on row k is found at k-1)
-##### Same goes for the face solver, where we check at centers k in both Upper and lower diagonal
-#####
-
-@inline _ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ::Center, args...) =
-    ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, c, args...) * !peripheral_node(i, j, k+1, grid, ℓx, ℓy, f)
-
-@inline _ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ::Face, args...) =
-    ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, f, args...) * !peripheral_node(i, j, k+1, grid, ℓx, ℓy, c)
-
-@inline _ivd_lower_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ::Face, args...) =
-    ivd_lower_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, f, args...) * !peripheral_node(i, j, k, grid, ℓx, ℓy, c)
-
-@inline _ivd_lower_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ::Center, args...) =
-    ivd_lower_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, c, args...) * !peripheral_node(i, j, k, grid, ℓx, ℓy, f)
+@inline _ivd_upper_diagonal(args...) = ivd_upper_diagonal(args...)
+@inline _ivd_lower_diagonal(args...) = ivd_lower_diagonal(args...)
            
 #####
 ##### Solver constructor
