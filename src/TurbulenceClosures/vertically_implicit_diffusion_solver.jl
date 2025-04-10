@@ -30,10 +30,10 @@ const F = Face
 @inline implicit_linear_coefficient(i, j, k, grid, args...) = zero(grid)
 
 # General implementation
-@inline νzᶠᶜᶠ(i, j, k, grid, closure, K, id, clock) = zero(grid)
-@inline νzᶜᶠᶠ(i, j, k, grid, closure, K, id, clock) = zero(grid)
-@inline νzᶜᶜᶜ(i, j, k, grid, closure, K, id, clock) = zero(grid)
-@inline κzᶜᶜᶠ(i, j, k, grid, closure, K, id, clock) = zero(grid)
+@inline νzᶠᶜᶠ(i, j, k, grid, closure, args...) = zero(grid)
+@inline νzᶜᶠᶠ(i, j, k, grid, closure, args...) = zero(grid)
+@inline νzᶜᶜᶜ(i, j, k, grid, closure, args...) = zero(grid)
+@inline κzᶜᶜᶠ(i, j, k, grid, closure, args...) = zero(grid)
 
 # Vertical momentum diffusivities: u, v, w
 @inline ivd_diffusivity(i, j, k, grid, ::F, ::C, ::F, clo, K, id, clock) = νzᶠᶜᶠ(i, j, k, grid, clo, K, id, clock) * !inactive_node(i, j, k, grid, f, c, f)
