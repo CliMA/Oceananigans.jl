@@ -29,15 +29,15 @@ const F = Face
 # Fallbacks: extend these function for `closure` to support.
 @inline implicit_linear_coefficient(i, j, k, grid, args...) = zero(grid)
 
-@inline νzᶠᶜᶠ(i, j, k, grid, closure, K, clock, args...) = zero(grid) # u
-@inline νzᶜᶠᶠ(i, j, k, grid, closure, K, clock, args...) = zero(grid) # v
-@inline νzᶜᶜᶜ(i, j, k, grid, closure, K, clock, args...) = zero(grid) # w
+@inline νzᶠᶜᶠ(i, j, k, grid, closure, K, id, clock, args...) = zero(grid) # u
+@inline νzᶜᶠᶠ(i, j, k, grid, closure, K, id, clock, args...) = zero(grid) # v
+@inline νzᶜᶜᶜ(i, j, k, grid, closure, K, id, clock, args...) = zero(grid) # w
 @inline κzᶜᶜᶠ(i, j, k, grid, closure, K, id, clock, args...) = zero(grid) # tracers
 
 # Vertical momentum diffusivities: u, v, w
-@inline ivd_diffusivity(i, j, k, grid, ::F, ::C, ::F, clo, K, id, clock) = νzᶠᶜᶠ(i, j, k, grid, clo, K, id, clock) * !inactive_node(i, j, k, grid, f, c, f)
-@inline ivd_diffusivity(i, j, k, grid, ::C, ::F, ::F, clo, K, id, clock) = νzᶜᶠᶠ(i, j, k, grid, clo, K, id, clock) * !inactive_node(i, j, k, grid, c, f, f)
-@inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::C, clo, K, id, clock) = νzᶜᶜᶜ(i, j, k, grid, clo, K, id, clock) * !inactive_node(i, j, k, grid, c, c, c)
+@inline ivd_diffusivity(i, j, k, grid, ::F, ::C, ::F, clo, K, id, clock) = νzᶠᶜᶠ(i, j, k, grid, clo, K, id, clock) 
+@inline ivd_diffusivity(i, j, k, grid, ::C, ::F, ::F, clo, K, id, clock) = νzᶜᶠᶠ(i, j, k, grid, clo, K, id, clock) 
+@inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::C, clo, K, id, clock) = νzᶜᶜᶜ(i, j, k, grid, clo, K, id, clock) 
 
 # Tracer diffusivity
 @inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::F, args...) = κzᶜᶜᶠ(i, j, k, grid, args...) * !inactive_node(i, j, k, grid, c, c, f)
