@@ -269,6 +269,12 @@ CUDA.allowscalar() do
             include("test_amdgpu.jl")
         end
     end
+    # Tests for oneAPI extension
+    if group == :oneapi || group == :all
+        @testset "oneAPI extension tests" begin
+            include("test_oneapi.jl")
+        end
+    end
 
     if group == :convergence
         include("test_convergence.jl")

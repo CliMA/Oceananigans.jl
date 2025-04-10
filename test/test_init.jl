@@ -2,6 +2,7 @@ using Reactant
 using Enzyme
 using Metal
 using AMDGPU
+using oneAPI
 
 Pkg.instantiate(; verbose=true)
 Pkg.precompile(; strict=true)
