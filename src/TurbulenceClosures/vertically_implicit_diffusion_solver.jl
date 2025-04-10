@@ -57,32 +57,33 @@ const f = Face()
 
 # Tracers and horizontal velocities at cell centers in z
 for LX in (Face, Center), LY in (Face, Center)
-    κ = κz(LX, LY)
+    if !(LX == Face && LY == Face)
+        κ = κz(LX, LY)
+        @eval begin
+            @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ::$LX, ::$LY, ::Center, clock, Δt)
+                closure_ij = getclosure(i, j, closure)
+                κᵏ⁺¹   = $κ(i, j, k+1, grid, closure_ij, K, id, clock)
+                Δzᶜₖ   = vertical_spacing(i, j, k,   grid, $LX(), $LY(), c)
+                Δzᶠₖ₊₁ = vertical_spacing(i, j, k+1, grid, $LX(), $LY(), f)
+                du     = - Δt * κᵏ⁺¹ / (Δzᶜₖ * Δzᶠₖ₊₁)
 
-    @eval begin
-        @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ::$LX, ::$LY, ::Center, clock, Δt)
-            closure_ij = getclosure(i, j, closure)
-            κᵏ⁺¹   = $κ(i, j, k+1, grid, closure_ij, K, id, clock)
-            Δzᶜₖ   = vertical_spacing(i, j, k,   grid, $LX(), $LY(), c)
-            Δzᶠₖ₊₁ = vertical_spacing(i, j, k+1, grid, $LX(), $LY(), f)
-            du     = - Δt * κᵏ⁺¹ / (Δzᶜₖ * Δzᶠₖ₊₁)
+                # This conditional ensures the diagonal is correct
+                return ifelse(k > grid.Nz-1, zero(grid), du)
+            end
 
-            # This conditional ensures the diagonal is correct
-            return ifelse(k > grid.Nz-1, zero(grid), du)
-        end
+            @inline function ivd_lower_diagonal(i, j, k′, grid, closure, K, id, ::$LX, ::$LY, ::Center, clock, Δt)
+                k = k′ + 1 # Shift index to match LinearAlgebra.Tridiagonal indexing convenction
+                closure_ij = getclosure(i, j, closure)  
+                κᵏ   = $κ(i, j, k, grid, closure_ij, K, id, clock)
+                Δzᶜₖ = vertical_spacing(i, j, k, grid, $LX(), $LY(), c)
+                Δzᶠₖ = vertical_spacing(i, j, k, grid, $LX(), $LY(), f)
+                dl   = - Δt * κᵏ / (Δzᶜₖ * Δzᶠₖ)
 
-        @inline function ivd_lower_diagonal(i, j, k′, grid, closure, K, id, ::$LX, ::$LY, ::Center, clock, Δt)
-            k = k′ + 1 # Shift index to match LinearAlgebra.Tridiagonal indexing convenction
-            closure_ij = getclosure(i, j, closure)  
-            κᵏ   = $κ(i, j, k, grid, closure_ij, K, id, clock)
-            Δzᶜₖ = vertical_spacing(i, j, k, grid, $LX(), $LY(), c)
-            Δzᶠₖ = vertical_spacing(i, j, k, grid, $LX(), $LY(), f)
-            dl   = - Δt * κᵏ / (Δzᶜₖ * Δzᶠₖ)
-
-            # This conditional ensures the diagonal is correct: the lower diagonal does not
-            # exist for k′ = 0. (Note we use LinearAlgebra.Tridiagonal indexing convention,
-            # so that lower_diagonal should be defined for k′ = 1 ⋯ N-1).
-            return ifelse(k′ < 1, zero(grid), dl)
+                # This conditional ensures the diagonal is correct: the lower diagonal does not
+                # exist for k′ = 0. (Note we use LinearAlgebra.Tridiagonal indexing convention,
+                # so that lower_diagonal should be defined for k′ = 1 ⋯ N-1).
+                return ifelse(k′ < 1, zero(grid), dl)
+            end
         end
     end
 end
