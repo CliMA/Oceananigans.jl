@@ -92,4 +92,4 @@ print_system_info()
 suite = run_benchmarks(benchmark_hydrostatic_model; architectures, grid_types, free_surface_types)
 
 df = benchmarks_dataframe(suite)
-benchmarks_pretty_table(df, title="Hydrostatic model benchmarks")
+benchmarks_pretty_table(df2, title="Hydrostatic model benchmarks")
