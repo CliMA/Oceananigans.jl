@@ -147,7 +147,7 @@ function split_rk3_substep!(model, Δt, γⁿ, ζⁿ)
         launch!(arch, grid, :xyz, rk3_substep_field!, kernel_args...; exclude_periphery=true)
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
-        tracer_index = i - 3 # assumption
+        tracer_index = Val(i - 3) # assumption
 
         implicit_step!(field,
                        model.timestepper.implicit_solver,

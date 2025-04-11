@@ -68,7 +68,7 @@ function time_step_catke_equation!(model)
         # previous_clock = (; time=current_time, iteration=previous_iteration)
 
         implicit_step!(e, implicit_solver, closure,
-                       diffusivity_fields, tracer_index,
+                       diffusivity_fields, Val(tracer_index),
                        model.clock, Δτ)
     end
 

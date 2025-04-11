@@ -193,7 +193,6 @@ HorizontalDivergenceScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivi
 end
 
 @inline viscosity(closure::ScalarDiffusivity, K) = closure.ν
-@inline diffusivity(closure::ScalarDiffusivity, K, id) = closure.κ[id]
 @inline diffusivity(closure::ScalarDiffusivity, K, ::Val{id}) where id = closure.κ[id]
 
 compute_diffusivities!(diffusivities, ::ScalarDiffusivity, args...) = nothing
