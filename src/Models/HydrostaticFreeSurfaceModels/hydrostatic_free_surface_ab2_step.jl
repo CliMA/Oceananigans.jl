@@ -94,13 +94,13 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
             FT = eltype(grid)
             launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, convert(FT, Δt), χ, Gⁿ, G⁻)
 
-            # implicit_step!(tracer_field,
-            #                model.timestepper.implicit_solver,
-            #                closure,
-            #                model.diffusivity_fields,
-            #                Val(tracer_index),
-            #                model.clock,
-            #                Δt)
+            implicit_step!(tracer_field,
+                           model.timestepper.implicit_solver,
+                           closure,
+                           model.diffusivity_fields,
+                           Val(tracer_index),
+                           model.clock,
+                           Δt)
         end
     end
 
