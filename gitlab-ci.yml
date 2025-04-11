@@ -8,7 +8,7 @@ include:
 stages:
   - ci # stages may have any name
 
-# the below submits a batch job to the scheduler
+# he below submits a batch job to the scheduler
 submit_batch: # CI jobs may have any name
   stage: ci  # from the stages list above
   extends: .aurora-batch-runner # this includes the defaults provided in the 'anl/ci-resources/defaults' project
