@@ -1,4 +1,7 @@
 using Statistics
+
+using Oceananigans.Fields: reduced_location, filltype
+
 import Oceananigans.Fields: conditional_length
 
 @inline conditional_length(fts::FieldTimeSeries) = length(fts) * conditional_length(fts[1])
@@ -30,7 +33,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                 T = filltype(Base.$(reduction!), fts)
                 loc = LX, LY, LZ = reduced_location(location(fts); dims)
                 times = fts.times
-                rts = FieldTimeSeries{LX, LY, LZ}(grid, times, T; indices=fts.indices)
+                rts = FieldTimeSeries{LX, LY, LZ}(fts.grid, times, T; indices=fts.indices)
                 return Base.$(reduction!)(f, rts, fts; kw...)
             end
         end
