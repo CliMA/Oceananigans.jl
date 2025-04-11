@@ -31,22 +31,21 @@ function set_divergent_velocity!(model)
 
     return nothing
 end
-
-λ¹ₚ = 70
-λ²ₚ = 70 + 180
-φₚ  = 55
-
-# We need a bottom height field that ``masks'' the singularities
-bottom_height(λ, φ) = ((abs(λ - λ¹ₚ) < 5) & (abs(φₚ - φ) < 5)) |
-                      ((abs(λ - λ²ₚ) < 5) & (abs(φₚ - φ) < 5)) | (φ < -78) ? 1 : 0
+                     
+random_vector = - 0.5 .* rand(Nx, Ny) .- 0.5
+bottom_height(arch) = GridFittedBottom(Oceananigans.on_architecture(arch, random_vector))
+rgrid(arch) = RectilinearGrid(arch, size=(Nx, Ny, 1), extent=(1, 1, 1), halo = (3, 3, 3))
+lgrid(arch) = LatitudeLongitudeGrid(arch, size=(Nx, Ny, 1), longitude=(-180, 180), latitude=(-80, 80), z=(-1, 0), halo = (3, 3, 3))
 
 grids = Dict(
-    (CPU, :RectilinearGrid)       => RectilinearGrid(CPU(), size=(Nx, Ny, 1), extent=(1, 1, 1)),
-    (CPU, :LatitudeLongitudeGrid) => LatitudeLongitudeGrid(CPU(), size=(Nx, Ny, 1), longitude=(-180, 180), latitude=(-80, 80), z=(-1, 0), precompute_metrics=true),
-    (CPU, :TripolarGrid)          => ImmersedBoundaryGrid(TripolarGrid(CPU(), size=(Nx, Ny, 1)), GridFittedBottom(bottom_height)), 
-    (GPU, :RectilinearGrid)       => RectilinearGrid(GPU(), size=(Nx, Ny, 1), extent=(1, 1, 1)),
-    (GPU, :LatitudeLongitudeGrid) => LatitudeLongitudeGrid(GPU(), size=(Nx, Ny, 1), longitude=(-160, 160), latitude=(-80, 80), z=(-1, 0), precompute_metrics=true),
-    (GPU, :TripolarGrid)          => ImmersedBoundaryGrid(TripolarGrid(GPU(), size=(Nx, Ny, 1)), GridFittedBottom(bottom_height)) 
+   (CPU, :RectilinearGrid)       => rgrid(CPU()), 
+   (CPU, :LatitudeLongitudeGrid) => lgrid(CPU()),
+   (CPU, :ImmersedRecGrid)       => ImmersedBoundaryGrid(rgrid(CPU()), bottom_height(GPU())), 
+   (CPU, :ImmersedLatGrid)       => ImmersedBoundaryGrid(lgrid(CPU()), bottom_height(GPU())),
+   (GPU, :RectilinearGrid)       => rgrid(GPU()),
+   (GPU, :LatitudeLongitudeGrid) => lgrid(GPU()),
+   (GPU, :ImmersedRecGrid)       => ImmersedBoundaryGrid(rgrid(GPU()), bottom_height(GPU())), 
+   (GPU, :ImmersedLatGrid)       => ImmersedBoundaryGrid(lgrid(CPU()), bottom_height(GPU()))
 )
 
 free_surfaces = Dict(
@@ -82,7 +81,8 @@ architectures = has_cuda() ? [GPU, CPU] : [CPU]
 grid_types = [
     :RectilinearGrid,
     :LatitudeLongitudeGrid,
-    :TripolarGrid
+    :ImmersedRecGrid,
+    :ImmersedLatGrid,
 ]
 
 free_surface_types = collect(keys(free_surfaces))
