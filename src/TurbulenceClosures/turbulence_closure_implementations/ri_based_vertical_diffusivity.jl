@@ -177,8 +177,8 @@ const f = Face()
 @inline viscosity_location(::FlavorOfRBVD)   = (c, c, f)
 @inline diffusivity_location(::FlavorOfRBVD) = (c, c, f)
 
-@inline viscosity(::FlavorOfRBVD, diffusivities) = diffusivities.κu
-@inline diffusivity(::FlavorOfRBVD, diffusivities, id) = diffusivities.κc
+@inline viscosity(::FlavorOfRBVD, diffusivities) = 1e-5
+@inline diffusivity(::FlavorOfRBVD, diffusivities, id) = 1e-5
 
 with_tracers(tracers, closure::FlavorOfRBVD) = closure
 
