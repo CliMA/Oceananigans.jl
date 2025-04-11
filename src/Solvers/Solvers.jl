@@ -5,7 +5,8 @@ export
     FFTBasedPoissonSolver,
     FourierTridiagonalPoissonSolver,
     ConjugateGradientSolver,
-    HeptadiagonalIterativeSolver
+    HeptadiagonalIterativeSolver,
+    KrylovSolver
 
 using Statistics
 using FFTW

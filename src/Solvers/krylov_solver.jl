@@ -114,6 +114,30 @@ end
 architecture(solver::KrylovSolver) = solver.architecture
 Base.summary(solver::KrylovSolver) = "KrylovSolver"
 
+"""
+    KrylovSolver(linear_operator;
+                 template_field::AbstractField,
+                 maxiter::Int = prod(size(template_field)),
+                 maxtime::Real = Inf,
+                 reltol::Real = sqrt(eps(eltype(template_field.grid))),
+                 abstol::Real = zero(eltype(template_field.grid)),
+                 preconditioner = nothing,
+                 method::Symbol = :cg)
+
+Construct a Krylov subspace solver for implicit linear systems defined by `linear_operator`,
+using the structure of a reference field `template_field`.
+
+# Arguments
+
+- `linear_operator`: linear that defines the matrix-vector product `y = A * x`, where `x` has the same structure as `template_field`.
+- `template_field::AbstractField`: A sample field used to infer the architecture, domain geometry, and data types. It is also used to allocate internal buffers and define the operator dimensions.
+- `maxiter::Int`: Maximum number of Krylov iterations allowed.
+- `maxtime::Real`: Maximum wall-clock time (in seconds) allowed for solving.
+- `reltol::Real`: Relative tolerance on the residual norm for convergence.
+- `abstol::Real`: Absolute tolerance on the residual norm for convergence.
+- `preconditioner`: An optional preconditioner, passed as a callable or left as `nothing` for no preconditioning.
+- `method::Symbol`: Krylov method to use. Supported options include `:cg` and `:bicgstab`.
+"""
 function KrylovSolver(linear_operator;
                       template_field::AbstractField,
                       maxiter = prod(size(template_field)),
