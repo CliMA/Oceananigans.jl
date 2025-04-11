@@ -41,7 +41,7 @@ const F = Face
 @inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::C, clo, K, id, clock) = νzᶜᶜᶜ(i, j, k, grid, clo, K, id, clock) * !inactive_node(i, j, k, grid, c, c, c)
 
 # Tracer diffusivity
-@inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::F, args...) = νzᶜᶜᶜ(i, j, k, grid, args...) * !inactive_node(i, j, k, grid, c, c, f)
+@inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::F, args...) = νzᶠᶜᶠ(i, j, k, grid, args...) * !inactive_node(i, j, k, grid, c, c, f)
 
 #####
 ##### Batched Tridiagonal solver for implicit diffusion
