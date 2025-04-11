@@ -161,37 +161,6 @@ steps:
           limit: 1
     depends_on: "init"
 
-  - label: "🌷 gpu matrix poisson solver tests"
-    env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "matrix_poisson_solvers"
-      GPU_TEST: "true"
-    commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      queue: Oceananigans
-      architecture: CPU
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
-    depends_on: "init"
-
-  - label: "🌹 cpu matrix poisson solver tests"
-    env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "matrix_poisson_solvers"
-    commands:
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      queue: Oceananigans
-      architecture: CPU
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
-    depends_on: "init"
-
   - label: "🦤 gpu general solver tests"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
