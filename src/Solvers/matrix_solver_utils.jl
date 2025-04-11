@@ -4,7 +4,7 @@ import Oceananigans.Architectures: architecture, unified_array
 using CUDA, CUDA.CUSPARSE
 using KernelAbstractions: @kernel, @index
 
-using LinearAlgebra, SparseArrays, IncompleteLU
+using LinearAlgebra, SparseArrays, KrylovPreconditioners
 using SparseArrays: fkeep!
 
 # Utils for sparse matrix manipulation
