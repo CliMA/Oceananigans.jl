@@ -80,7 +80,7 @@ end
 # U-velocities
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ::Face, ::Center, ::Center, clock, Δt)
     closure_ij = getclosure(i, j, closure)
-    νᵏ⁺¹   = νzᶠᶜᶠ(i, j, k+1, grid, closure_ij, K, id, clock)
+    νᵏ⁺¹   = νzᶠᶜᶠ(i, j, k+1, grid, closure_ij, K, clock)
     Δzᶜₖ   = vertical_spacing(i, j, k,   grid, f, c, c)
     Δzᶠₖ₊₁ = vertical_spacing(i, j, k+1, grid, f, c, f)
     du     = - Δt * νᵏ⁺¹ / (Δzᶜₖ * Δzᶠₖ₊₁)
