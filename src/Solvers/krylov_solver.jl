@@ -51,25 +51,6 @@ Krylov.kdot(n::Integer, x::KrylovField{T}, y::KrylovField{T}) where T <: FloatOr
 Krylov.kcopy!(n::Integer, y::KrylovField{T}, x::KrylovField{T}) where T <: FloatOrComplex = copyto!(y.field, x.field)
 Krylov.kfill!(x::KrylovField{T}, val::T) where T <: FloatOrComplex = fill!(x.field, val)
 
-# Only needed by the Krylov solver MINRES-QLP.
-# We can implement a kernel if we need it.
-#
-# function Krylov.kref!(n::Integer, x::KrylovField{T}, y::KrylovField{T}, c::T, s::T) where T <: FloatOrComplex
-#     mx, nx, kx = size(x.field)
-#     _x = x.field
-#     _y = y.field
-#     for i = 1:mx
-#         for j = 1:nx
-#             for k = 1:kx
-#                 x_ijk = _x[i,j,k]
-#                 y_ijk = _y[i,j,k]
-#                 _x[i,j,k] = c       * x_ijk + s * y_ijk
-#                 _y[i,j,k] = conj(s) * x_ijk - c * y_ijk
-#             end
-#         end
-#     end
-#     return x, y
-# end
 
 ## Structure representing linear operators so that we can define mul! on it
 mutable struct KrylovOperator{T, F}
