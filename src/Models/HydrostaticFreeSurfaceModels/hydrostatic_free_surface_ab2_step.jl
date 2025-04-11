@@ -78,13 +78,13 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         
-        # if catke_in_closures && tracer_name == :e
-        #     @debug "Skipping AB2 step for e"
-        # elseif td_in_closures && tracer_name == :ϵ
-        #     @debug "Skipping AB2 step for ϵ"
-        # elseif td_in_closures && tracer_name == :e
-        #     @debug "Skipping AB2 step for e"
-        # else
+        if catke_in_closures && tracer_name == :e
+            @debug "Skipping AB2 step for e"
+        elseif td_in_closures && tracer_name == :ϵ
+            @debug "Skipping AB2 step for ϵ"
+        elseif td_in_closures && tracer_name == :e
+            @debug "Skipping AB2 step for e"
+        else
             Gⁿ = model.timestepper.Gⁿ[tracer_name]
             G⁻ = model.timestepper.G⁻[tracer_name]
             tracer_field = tracers[tracer_name]
@@ -94,14 +94,14 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
             FT = eltype(grid)
             launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, convert(FT, Δt), χ, Gⁿ, G⁻)
 
-            implicit_step!(tracer_field,
-                           model.timestepper.implicit_solver,
-                           closure,
-                           model.diffusivity_fields,
-                           Val(tracer_index),
-                           model.clock,
-                           Δt)
-        # end
+            # implicit_step!(tracer_field,
+            #                model.timestepper.implicit_solver,
+            #                closure,
+            #                model.diffusivity_fields,
+            #                Val(tracer_index),
+            #                model.clock,
+            #                Δt)
+        end
     end
 
     return nothing
