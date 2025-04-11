@@ -61,28 +61,28 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
 @inline vertical_spacing(i, j, k, grid, ::Center, ::Center, ℓz) = Δr(i, j, k, grid, c, c, ℓz)
 
 # Tracers and horizontal velocities at cell centers in z
-@inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Center, Δt, clock)
-    closure_ij = getclosure(i, j, closure)
-    κᵏ⁺¹   = ivd_diffusivity(i, j, k+1, grid, ℓx, ℓy, f, closure_ij, K, id, clock)
-    Δzᶜₖ   = vertical_spacing(i, j, k,   grid, ℓx, ℓy, c)
-    Δzᶠₖ₊₁ = vertical_spacing(i, j, k+1, grid, ℓx, ℓy, f)
-    du     = - Δt * κᵏ⁺¹ / (Δzᶜₖ * Δzᶠₖ₊₁)
-    # This conditional ensures the diagonal is correct
-    return du * !peripheral_node(i, j, k+1, grid, ℓx, ℓy, f)
-end
+@inline ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Center, Δt, clock) = 1e-5 / 100
+#     closure_ij = getclosure(i, j, closure)
+#     κᵏ⁺¹   = ivd_diffusivity(i, j, k+1, grid, ℓx, ℓy, f, closure_ij, K, id, clock)
+#     Δzᶜₖ   = vertical_spacing(i, j, k,   grid, ℓx, ℓy, c)
+#     Δzᶠₖ₊₁ = vertical_spacing(i, j, k+1, grid, ℓx, ℓy, f)
+#     du     = - Δt * κᵏ⁺¹ / (Δzᶜₖ * Δzᶠₖ₊₁)
+#     # This conditional ensures the diagonal is correct
+#     return du * !peripheral_node(i, j, k+1, grid, ℓx, ℓy, f)
+# end
 
-@inline function ivd_lower_diagonal(i, j, k′, grid, closure, K, id, ℓx, ℓy, ::Center, Δt, clock)
-    k = k′ + 1 # Shift index to match LinearAlgebra.Tridiagonal indexing convenction
-    closure_ij = getclosure(i, j, closure)  
-    κᵏ   = ivd_diffusivity(i, j, k, grid, ℓx, ℓy, f, closure_ij, K, id, clock)
-    Δzᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
-    Δzᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
-    dl   = - Δt * κᵏ / (Δzᶜₖ * Δzᶠₖ)
+@inline ivd_lower_diagonal(i, j, k′, grid, closure, K, id, ℓx, ℓy, ::Center, Δt, clock) = 1e-5 / 100
+#     k = k′ + 1 # Shift index to match LinearAlgebra.Tridiagonal indexing convenction
+#     closure_ij = getclosure(i, j, closure)  
+#     κᵏ   = ivd_diffusivity(i, j, k, grid, ℓx, ℓy, f, closure_ij, K, id, clock)
+#     Δzᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
+#     Δzᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
+#     dl   = - Δt * κᵏ / (Δzᶜₖ * Δzᶠₖ)
 
-    # This conditional ensures the diagonal is correct. (Note we use LinearAlgebra.Tridiagonal
-    # indexing convention, so that lower_diagonal should be defined for k′ = 1 ⋯ N-1.)
-    return dl * !peripheral_node(i, j, k′, grid, ℓx, ℓy, c)
-end
+#     # This conditional ensures the diagonal is correct. (Note we use LinearAlgebra.Tridiagonal
+#     # indexing convention, so that lower_diagonal should be defined for k′ = 1 ⋯ N-1.)
+#     return dl * !peripheral_node(i, j, k′, grid, ℓx, ℓy, c)
+# end
 
 #####
 ##### Vertical velocity kernel functions (at cell interfaces in z)
@@ -113,8 +113,8 @@ end
 
 @inline ivd_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock) =
     one(grid) - Δt * _implicit_linear_coefficient(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock) -
-                               _ivd_upper_diagonal(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock) -
-                               _ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock)
+                              _ivd_upper_diagonal(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock) -
+                              _ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock)
 
 
 @inline _implicit_linear_coefficient(args...) = implicit_linear_coefficient(args...)

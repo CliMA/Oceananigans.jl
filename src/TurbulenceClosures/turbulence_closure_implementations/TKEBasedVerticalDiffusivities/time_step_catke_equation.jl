@@ -172,10 +172,13 @@ end
     end
 end
 
-@inline function implicit_linear_coefficient(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, K, ::Val{id}, args...) where id
-    L = K._tupled_implicit_linear_coefficients[id]
-    return @inbounds L[i, j, k]
-end
+# @inline function implicit_linear_coefficient(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, K, ::Val{id}, args...) where id
+#     L = K._tupled_implicit_linear_coefficients[id]
+#     return @inbounds L[i, j, k]
+# end
+
+
+@inline implicit_linear_coefficient(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, K, ::Val{id}, args...) = zero(grid)
 
 #=
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
