@@ -224,7 +224,7 @@ end
 @inline function solve_batched_tridiagonal_system_z!(i, j, Nz, ϕ, a, b, c, f, t, grid, p, tridiagonal_direction, args)
     @inbounds begin
         β  = get_coefficient(i, j, 1, grid, b, p, tridiagonal_direction, args)
-        f₁ = get_coefficient(i, j, 1, grid, f, p, tridiagonal_direction, args)
+        f₁ = one(grid) # get_coefficient(i, j, 1, grid, f, p, tridiagonal_direction, args)
         ϕ[i, j, 1] = f₁ / β
 
         for k = 2:Nz
@@ -234,11 +234,11 @@ end
 
             t[i, j, k] = cᵏ⁻¹ / β
             β = bᵏ - aᵏ⁻¹ * t[i, j, k]
-            fᵏ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args)
+            fᵏ = one(grid) # get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args)
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of `ϕ`.
-            definitely_diagonally_dominant = true # abs(β) > 10 * eps(float_eltype(ϕ))
+            definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
             ϕ★ = (fᵏ - aᵏ⁻¹ * ϕ[i, j, k-1]) / β
             ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, ϕ[i, j, k])
         end
