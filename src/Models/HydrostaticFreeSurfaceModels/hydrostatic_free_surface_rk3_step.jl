@@ -119,7 +119,7 @@ function rk3_substep_tracers!(tracers, model, Δt, γⁿ, ζⁿ)
                        model.timestepper.implicit_solver,
                        closure,
                        model.diffusivity_fields,
-                       Val(tracer_index),
+                       tracer_index,
                        model.clock,
                        Δt)
     end

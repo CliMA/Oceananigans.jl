@@ -207,8 +207,8 @@ function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::Flavo
                                   _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
 end        
 
-@inline viscosity_location(::FlavorOfCATKE) = (c, c, f)
-@inline diffusivity_location(::FlavorOfCATKE) = (c, c, f)
+@inline viscosity_location(::FlavorOfCATKE) = (c, c, c)
+@inline diffusivity_location(::FlavorOfCATKE) = (c, c, c)
 
 function update_previous_compute_time!(diffusivities, model)
     Δt = model.clock.time - diffusivities.previous_compute_time[]
@@ -324,8 +324,9 @@ end
     return κe★::FT
 end
 
-@inline viscosity(::FlavorOfCATKE, diffusivities) = diffusivities.κu
-@inline diffusivity(::FlavorOfCATKE, diffusivities, ::Val{id}) where id = diffusivities._tupled_tracer_diffusivities[id]
+@inline   viscosity(::FlavorOfCATKE, diffusivities) = 1e-5
+@inline diffusivity(::FlavorOfCATKE, diffusivities, id) = 1e-5 # diffusivities._tupled_tracer_diffusivities[id]
+@inline diffusivity(::FlavorOfCATKE, diffusivities, ::Val{id}) where id = 1e-5 # diffusivities._tupled_tracer_diffusivities[id]
 
 #####
 ##### Show

@@ -208,9 +208,9 @@ const C = Center
 const AIDorAHD = Union{AID, AHD}
 const AIDorAVD = Union{AID, AVD}
 
-@inline diffusive_flux_x(i, j, k, grid, cl::AIDorAHD, K, ::Val{id}, c, clk, fields, b) where id = - κhᶠᶜᶜ(i, j, k, grid, cl, K, Val(id), clk, fields) * ∂xᶠᶜᶜ(i, j, k, grid, c)
-@inline diffusive_flux_y(i, j, k, grid, cl::AIDorAHD, K, ::Val{id}, c, clk, fields, b) where id = - κhᶜᶠᶜ(i, j, k, grid, cl, K, Val(id), clk, fields) * ∂yᶜᶠᶜ(i, j, k, grid, c)
-@inline diffusive_flux_z(i, j, k, grid, cl::AIDorAVD, K, ::Val{id}, c, clk, fields, b) where id = - κzᶜᶜᶠ(i, j, k, grid, cl, K, Val(id), clk, fields) * ∂zᶜᶜᶠ(i, j, k, grid, c)
+@inline diffusive_flux_x(i, j, k, grid, cl::AIDorAHD, K, id, c, clk, fields, b) = - κhᶠᶜᶜ(i, j, k, grid, cl, K, id, clk, fields) * ∂xᶠᶜᶜ(i, j, k, grid, c)
+@inline diffusive_flux_y(i, j, k, grid, cl::AIDorAHD, K, id, c, clk, fields, b) = - κhᶜᶠᶜ(i, j, k, grid, cl, K, id, clk, fields) * ∂yᶜᶠᶜ(i, j, k, grid, c)
+@inline diffusive_flux_z(i, j, k, grid, cl::AIDorAVD, K, id, c, clk, fields, b) = - κzᶜᶜᶠ(i, j, k, grid, cl, K, id, clk, fields) * ∂zᶜᶜᶠ(i, j, k, grid, c)
 
 #####
 ##### Support for VerticallyImplicit
@@ -224,8 +224,8 @@ const VITD = VerticallyImplicitTimeDiscretization
 @inline ivd_viscous_flux_vz(i, j, k, grid, closure::AVD, K, clock, fields, b) = zero(grid)
 
 # General functions (eg for vertically periodic)
-@inline viscous_flux_uz(i, j, k, grid,  ::VITD, closure::AIDorAVD, args...) = ivd_viscous_flux_uz(i, j, k, grid, closure, args...)
-@inline viscous_flux_vz(i, j, k, grid,  ::VITD, closure::AIDorAVD, args...) = ivd_viscous_flux_vz(i, j, k, grid, closure, args...)
+@inline viscous_flux_uz(i, j, k, grid,  ::VITD, closure::AIDorAVD, K, clock, fields, b) = ivd_viscous_flux_uz(i, j, k, grid, closure, K, clock, fields, b)
+@inline viscous_flux_vz(i, j, k, grid,  ::VITD, closure::AIDorAVD, K, clock, fields, b) = ivd_viscous_flux_vz(i, j, k, grid, closure, K, clock, fields, b)
 @inline viscous_flux_wz(i, j, k, grid,  ::VITD, closure::AIDorAVD, args...) = zero(grid)
 @inline diffusive_flux_z(i, j, k, grid, ::VITD, closure::AIDorAVD, args...) = zero(grid)
 
@@ -237,27 +237,27 @@ const VITD = VerticallyImplicitTimeDiscretization
 # of boundary contributions (eg boundary contributions must be moved to the right
 # hand side of the tridiagonal system).
 
-@inline function viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, args...)
+@inline function viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, K, clock, fields, b)
     return ifelse((k == 1) | (k == grid.Nz+1),
-                  viscous_flux_uz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
-                  ivd_viscous_flux_uz(i, j, k, grid, closure, args...))
+                  viscous_flux_uz(i, j, k, grid, ExplicitTimeDiscretization(), closure, K, clock, fields, b),
+                  ivd_viscous_flux_uz(i, j, k, grid, closure, K, clock, fields, b))
 end
 
-@inline function viscous_flux_vz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, args...)
+@inline function viscous_flux_vz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, K, clock, fields, b)
     return ifelse((k == 1) | (k == grid.Nz+1),
-                  viscous_flux_vz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
-                  ivd_viscous_flux_vz(i, j, k, grid, closure, args...))
+                  viscous_flux_vz(i, j, k, grid, ExplicitTimeDiscretization(), closure, K, clock, fields, b),
+                  ivd_viscous_flux_vz(i, j, k, grid, closure, K, clock, fields, b))
 end
 
-@inline function viscous_flux_wz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, args...)
+@inline function viscous_flux_wz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, K, clock, fields, b)
     return ifelse((k == 1) | (k == grid.Nz+1),
-                  viscous_flux_wz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
+                  viscous_flux_wz(i, j, k, grid, ExplicitTimeDiscretization(), closure, K, clock, fields, b),
                   zero(grid))
 end
 
-@inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, args...)
+@inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, K, id, clock, fields, b)
     return ifelse((k == 1) | (k == grid.Nz+1),
-                  diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
+                  diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), closure, K, id, clock, fields, b),
                   zero(grid))
 end
 
