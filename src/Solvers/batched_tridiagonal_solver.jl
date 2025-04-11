@@ -208,18 +208,18 @@ end
 
 @inline function solve_batched_tridiagonal_system_z!(i, j, Nz, ϕ, a, b, c, f, t, grid, p, tridiagonal_direction, args)
     @inbounds begin
-        β  =  one(grid) # get_coefficient(i, j, 1, grid, b, p, tridiagonal_direction, args...)
+        β  = get_coefficient(i, j, 1, grid, b, p, tridiagonal_direction, args...)
         f₁ = zero(grid) # get_coefficient(i, j, 1, grid, f, p, tridiagonal_direction, args...)
         ϕ[i, j, 1] = f₁ / β
 
         for k = 2:Nz
-            cᵏ⁻¹ = one(grid) # get_coefficient(i, j, k-1, grid, c, p, tridiagonal_direction, args...)
-            bᵏ   = -2 * one(grid) # get_coefficient(i, j, k,   grid, b, p, tridiagonal_direction, args...)
-            aᵏ⁻¹ = one(grid) # get_coefficient(i, j, k-1, grid, a, p, tridiagonal_direction, args...)
+            cᵏ⁻¹ = get_coefficient(i, j, k-1, grid, c, p, tridiagonal_direction, args...)
+            bᵏ   = get_coefficient(i, j, k,   grid, b, p, tridiagonal_direction, args...)
+            aᵏ⁻¹ = get_coefficient(i, j, k-1, grid, a, p, tridiagonal_direction, args...)
 
             t[i, j, k] = cᵏ⁻¹ / β
             β = bᵏ - aᵏ⁻¹ * t[i, j, k]
-            fᵏ = zero(grid) # get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
+            fᵏ = zero(grid) #get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of `ϕ`.
