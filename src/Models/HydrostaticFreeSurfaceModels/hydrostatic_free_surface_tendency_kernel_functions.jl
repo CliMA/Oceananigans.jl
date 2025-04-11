@@ -108,7 +108,7 @@ The tendency is called ``G_c`` and defined via
 where `c = C[tracer_index]`. 
 """
 @inline function hydrostatic_free_surface_tracer_tendency(i, j, k, grid,
-                                                          val_tracer_index::Val{tracer_index},
+                                                          tracer_index,
                                                           val_tracer_name,
                                                           advection,
                                                           closure,
@@ -121,7 +121,7 @@ where `c = C[tracer_index]`.
                                                           diffusivities,
                                                           auxiliary_fields,
                                                           clock,
-                                                          forcing) where tracer_index
+                                                          forcing) 
 
     @inbounds c = tracers[tracer_index]
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), 
@@ -135,8 +135,8 @@ where `c = C[tracer_index]`.
     total_velocities = with_advective_forcing(forcing, total_velocities)
 
     return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
-             - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
-             - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
+             - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, tracer_index, c, clock, model_fields, buoyancy)
+             - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, tracer_index, clock, model_fields)
              + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))
 end

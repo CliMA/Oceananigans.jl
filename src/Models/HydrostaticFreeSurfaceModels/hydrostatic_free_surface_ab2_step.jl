@@ -98,7 +98,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
                            model.timestepper.implicit_solver,
                            closure,
                            model.diffusivity_fields,
-                           Val(tracer_index),
+                           tracer_index,
                            model.clock,
                            Δt)
         end
