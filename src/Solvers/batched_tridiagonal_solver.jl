@@ -154,6 +154,7 @@ end
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.
+            definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
             !definitely_diagonally_dominant && break
             ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i-1, j, k]) / β
         end
@@ -188,6 +189,7 @@ end
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.
+            definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
             !definitely_diagonally_dominant && break
             ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i-1, j, k]) / β
         end
@@ -221,6 +223,7 @@ end
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of `ϕ`.
+            definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
             !definitely_diagonally_dominant && break
             ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i-1, j, k]) / β
         end
