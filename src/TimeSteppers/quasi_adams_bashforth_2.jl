@@ -139,7 +139,7 @@ function ab2_step!(model, Δt)
         launch!(arch, grid, :xyz, ab2_step_field!, kernel_args...; exclude_periphery=true)
 
         # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
-        tracer_index = i - 3 # assumption
+        tracer_index = Val(i - 3) # assumption
 
         implicit_step!(field,
                        model.timestepper.implicit_solver,

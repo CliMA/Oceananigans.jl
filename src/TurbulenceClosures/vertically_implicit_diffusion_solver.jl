@@ -113,8 +113,8 @@ end
 
 @inline ivd_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock) =
     one(grid) - Δt * _implicit_linear_coefficient(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock) -
-                              _ivd_upper_diagonal(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock) -
-                              _ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock)
+                               _ivd_upper_diagonal(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock) -
+                               _ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock)
 
 
 @inline _implicit_linear_coefficient(args...) = implicit_linear_coefficient(args...)
@@ -163,20 +163,9 @@ end
 
 # Extend `get_coefficient` to retrieve `ivd_diagonal`, `_ivd_lower_diagonal` and `_ivd_upper_diagonal`.
 # Note that we use the "periphery-aware" upper and lower diagonals
-@inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, ::ZDirection, args)
-    closure, K, id, ℓx, ℓy, ℓz, Δt, clock = args
-    return _ivd_lower_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock)
-end
-
-@inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, ::ZDirection, args) 
-    closure, K, id, ℓx, ℓy, ℓz, Δt, clock = args
-    return _ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock)
-end
-
-@inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal, p, ::ZDirection, args) 
-    closure, K, id, ℓx, ℓy, ℓz, Δt, clock = args
-    return ivd_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock)
-end
+@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, ::ZDirection, args...) = _ivd_lower_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, ::ZDirection, args...) = _ivd_upper_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal,      p, ::ZDirection, args...) = ivd_diagonal(i, j, k, grid, args...)
 
 #####
 ##### Implicit step functions
@@ -199,7 +188,8 @@ function implicit_step!(field::Field,
                         diffusivity_fields,
                         tracer_index,
                         clock,
-                        Δt)
+                        Δt; 
+                        kwargs...)
     
     # Filter explicit closures for closure tuples
     if closure isa Tuple
@@ -217,5 +207,5 @@ function implicit_step!(field::Field,
     (LX, LY, LZ) == (Center, Center, Center) || (tracer_index = nothing)
     return solve!(field, implicit_solver, field,
                   # ivd_*_diagonal gets called with these args after (i, j, k, grid):
-                  vi_closure, vi_diffusivity_fields, tracer_index, LX(), LY(), LZ(), Δt, clock)
+                  vi_closure, vi_diffusivity_fields, tracer_index, LX(), LY(), LZ(), Δt, clock; kwargs...)
 end

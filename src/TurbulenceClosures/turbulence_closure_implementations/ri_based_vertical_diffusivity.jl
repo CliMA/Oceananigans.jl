@@ -174,11 +174,11 @@ const FlavorOfRBVD = Union{RBVD, RBVDArray}
 const c = Center()
 const f = Face()
 
-@inline viscosity_location(::FlavorOfRBVD)   = (c, c, c)
-@inline diffusivity_location(::FlavorOfRBVD) = (c, c, c)
+@inline viscosity_location(::FlavorOfRBVD)   = (c, c, f)
+@inline diffusivity_location(::FlavorOfRBVD) = (c, c, f)
 
-@inline viscosity(::FlavorOfRBVD, diffusivities) = 1e-5
-@inline diffusivity(::FlavorOfRBVD, diffusivities, id) = 1e-5
+@inline viscosity(::FlavorOfRBVD, diffusivities) = diffusivities.κu
+@inline diffusivity(::FlavorOfRBVD, diffusivities, id) = diffusivities.κc
 
 with_tracers(tracers, closure::FlavorOfRBVD) = closure
 

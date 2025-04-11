@@ -29,9 +29,9 @@ const SplitActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, 
 @inline get_active_cells_map(grid::ActiveZColumnsIBG,      ::Val{:surface})  = grid.active_z_columns
 
 """
-    linear_index_to_tuple(idx, map)
+    linear_index_to_tuple(idx, map, grid)
 
-Converts a linear index to a tuple of indices based on the given index map.
+Converts a linear index to a tuple of indices based on the given map and grid.
 
 # Arguments
 - `idx`: The linear index to convert.
