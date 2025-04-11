@@ -208,9 +208,9 @@ const C = Center
 const AIDorAHD = Union{AID, AHD}
 const AIDorAVD = Union{AID, AVD}
 
-@inline diffusive_flux_x(i, j, k, grid, cl::AIDorAHD, K, ::Val{id}, c, clk, fields, b) where id = - κhᶠᶜᶜ(i, j, k, grid, cl, K, Val(id), clk, fields) * ∂xᶠᶜᶜ(i, j, k, grid, c)
-@inline diffusive_flux_y(i, j, k, grid, cl::AIDorAHD, K, ::Val{id}, c, clk, fields, b) where id = - κhᶜᶠᶜ(i, j, k, grid, cl, K, Val(id), clk, fields) * ∂yᶜᶠᶜ(i, j, k, grid, c)
-@inline diffusive_flux_z(i, j, k, grid, cl::AIDorAVD, K, ::Val{id}, c, clk, fields, b) where id = - κzᶜᶜᶠ(i, j, k, grid, cl, K, Val(id), clk, fields) * ∂zᶜᶜᶠ(i, j, k, grid, c)
+@inline diffusive_flux_x(i, j, k, grid, cl::AIDorAHD, K, id, c, clk, fields, b) = - κhᶠᶜᶜ(i, j, k, grid, cl, K, id, clk, fields) * ∂xᶠᶜᶜ(i, j, k, grid, c)
+@inline diffusive_flux_y(i, j, k, grid, cl::AIDorAHD, K, id, c, clk, fields, b) = - κhᶜᶠᶜ(i, j, k, grid, cl, K, id, clk, fields) * ∂yᶜᶠᶜ(i, j, k, grid, c)
+@inline diffusive_flux_z(i, j, k, grid, cl::AIDorAVD, K, id, c, clk, fields, b) = - κzᶜᶜᶠ(i, j, k, grid, cl, K, id, clk, fields) * ∂zᶜᶜᶠ(i, j, k, grid, c)
 
 #####
 ##### Support for VerticallyImplicit
