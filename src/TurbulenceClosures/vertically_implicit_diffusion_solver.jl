@@ -204,8 +204,12 @@ function implicit_step!(field::Field,
 
     LX, LY, LZ = location(field)
     # Nullify tracer_index if `field` is not a tracer   
-    (LX, LY, LZ) == (Center, Center, Center) || (tracer_index = nothing)
-    return solve!(field, implicit_solver, field,
-                  # ivd_*_diagonal gets called with these args after (i, j, k, grid):
-                  vi_closure, vi_diffusivity_fields, tracer_index, LX(), LY(), LZ(), Δt, clock; kwargs...)
+    if (LX, LY, LZ) == (Center, Center, Center) 
+        return nothing
+    else
+        tracer_index = nothing
+        return solve!(field, implicit_solver, field,
+                      # ivd_*_diagonal gets called with these args after (i, j, k, grid):
+                      vi_closure, vi_diffusivity_fields, tracer_index, LX(), LY(), LZ(), Δt, clock; kwargs...)
+    end
 end
