@@ -130,10 +130,10 @@ function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
     return nothing
 end
 
-@inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 1}, p, ::XDirection,          args...) = @inbounds a[i]
-@inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 1}, p, ::YDirection,          args...) = @inbounds a[j]
-@inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 1}, p, ::ZDirection,          args...) = @inbounds a[k]
-@inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 3}, p, tridiagonal_direction, args...) = @inbounds a[i, j, k]
+@inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 1}, p, ::XDirection,          args) = @inbounds a[i]
+@inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 1}, p, ::YDirection,          args) = @inbounds a[j]
+@inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 1}, p, ::ZDirection,          args) = @inbounds a[k]
+@inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 3}, p, tridiagonal_direction, args) = @inbounds a[i, j, k]
 
 @inline float_eltype(ϕ::AbstractArray{T}) where T <: AbstractFloat = T
 @inline float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
@@ -146,19 +146,19 @@ end
 
 @inline function solve_batched_tridiagonal_system_x!(j, k, Nx, ϕ, a, b, c, f, t, grid, p, tridiagonal_direction, args)
     @inbounds begin
-        β  = get_coefficient(1, j, k, grid, b, p, tridiagonal_direction, args...)
-        f₁ = get_coefficient(1, j, k, grid, f, p, tridiagonal_direction, args...)
+        β  = get_coefficient(1, j, k, grid, b, p, tridiagonal_direction, args)
+        f₁ = get_coefficient(1, j, k, grid, f, p, tridiagonal_direction, args)
         ϕ[1, j, k] = f₁ / β
 
         for i = 2:Nx
-            cᵏ⁻¹ = get_coefficient(i-1, j, k, grid, c, p, tridiagonal_direction, args...)
-            bᵏ   = get_coefficient(i,   j, k, grid, b, p, tridiagonal_direction, args...)
-            aᵏ⁻¹ = get_coefficient(i-1, j, k, grid, a, p, tridiagonal_direction, args...)
+            cᵏ⁻¹ = get_coefficient(i-1, j, k, grid, c, p, tridiagonal_direction, args)
+            bᵏ   = get_coefficient(i,   j, k, grid, b, p, tridiagonal_direction, args)
+            aᵏ⁻¹ = get_coefficient(i-1, j, k, grid, a, p, tridiagonal_direction, args)
 
             t[i, j, k] = cᵏ⁻¹ / β
             β = bᵏ - aᵏ⁻¹ * t[i, j, k]
 
-            fᵏ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
+            fᵏ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args)
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.

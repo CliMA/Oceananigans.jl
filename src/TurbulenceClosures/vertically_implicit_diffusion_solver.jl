@@ -163,9 +163,20 @@ end
 
 # Extend `get_coefficient` to retrieve `ivd_diagonal`, `_ivd_lower_diagonal` and `_ivd_upper_diagonal`.
 # Note that we use the "periphery-aware" upper and lower diagonals
-@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, ::ZDirection, args...) = _ivd_lower_diagonal(i, j, k, grid, args...)
-@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, ::ZDirection, args...) = _ivd_upper_diagonal(i, j, k, grid, args...)
-@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal,      p, ::ZDirection, args...) = ivd_diagonal(i, j, k, grid, args...)
+@inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, ::ZDirection, args)
+    closure, K, id, ℓx, ℓy, ℓz, Δt, clock = args
+    return _ivd_lower_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock)
+end
+
+@inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, ::ZDirection, args) 
+    closure, K, id, ℓx, ℓy, ℓz, Δt, clock = args
+    return _ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock)
+end
+
+@inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal, p, ::ZDirection, args) 
+    closure, K, id, ℓx, ℓy, ℓz, Δt, clock = args
+    return ivd_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock)
+end
 
 #####
 ##### Implicit step functions
