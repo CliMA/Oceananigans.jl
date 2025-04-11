@@ -108,7 +108,7 @@ function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...)
                     end
 
     active_cells_map = if solver.tridiagonal_direction isa ZDirection
-        get_active_cells_map(solver.grid, Val(:surface))
+        nothing # get_active_cells_map(solver.grid, Val(:surface))
     else
         nothing
     end
