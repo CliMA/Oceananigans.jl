@@ -177,6 +177,8 @@ end
     return @inbounds L[i, j, k]
 end
 
+@inline implicit_linear_coefficient(i, j, k, grid, ::FlavorOfCATKE{<:VITD}, K, ::Nothing, args...) = zero(grid)
+
 #=
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 
