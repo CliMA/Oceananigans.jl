@@ -78,13 +78,13 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         
-        if catke_in_closures && tracer_name == :e
-            @debug "Skipping AB2 step for e"
-        elseif td_in_closures && tracer_name == :ϵ
-            @debug "Skipping AB2 step for ϵ"
-        elseif td_in_closures && tracer_name == :e
-            @debug "Skipping AB2 step for e"
-        else
+        # if catke_in_closures && tracer_name == :e
+        #     @debug "Skipping AB2 step for e"
+        # elseif td_in_closures && tracer_name == :ϵ
+        #     @debug "Skipping AB2 step for ϵ"
+        # elseif td_in_closures && tracer_name == :e
+        #     @debug "Skipping AB2 step for e"
+        # else
             Gⁿ = model.timestepper.Gⁿ[tracer_name]
             G⁻ = model.timestepper.G⁻[tracer_name]
             tracer_field = tracers[tracer_name]
@@ -101,7 +101,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
                            Val(tracer_index),
                            model.clock,
                            Δt)
-        end
+        # end
     end
 
     return nothing
