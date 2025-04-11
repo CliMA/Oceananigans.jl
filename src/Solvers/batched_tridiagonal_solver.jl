@@ -238,7 +238,7 @@ end
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of `ϕ`.
-            definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
+            definitely_diagonally_dominant = true # abs(β) > 10 * eps(float_eltype(ϕ))
             ϕ★ = (fᵏ - aᵏ⁻¹ * ϕ[i, j, k-1]) / β
             ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, ϕ[i, j, k])
         end
