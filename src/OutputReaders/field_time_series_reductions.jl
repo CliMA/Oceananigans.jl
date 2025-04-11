@@ -30,11 +30,14 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             if dims isa Colon
                 return Base.$(reduction)($(reduction)(f, fts[n]; kw...) for n in 1:length(fts.times))
             else
-                T = filltype(Base.$(reduction!), fts)
+                # T = filltype(Base.$(reduction!), fts)
+                if dims != Tuple
+                    dims = Tuple(dims)
+                end
                 loc = LX, LY, LZ = reduced_location(location(fts); dims)
                 times = fts.times
-                rts = FieldTimeSeries{LX, LY, LZ}(fts.grid, times, T; indices=fts.indices)
-                return Base.$(reduction!)(f, rts, fts; kw...)
+                rts = FieldTimeSeries{LX, LY, LZ}(fts.grid, times; kw...)
+                return Base.$(reduction!)(f, rts, fts; dims, kw...)
             end
         end
 
@@ -43,7 +46,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
         function Base.$(reduction!)(f::Function, rts::FTS, fts::FTS; dims=:, kw...)
             dims isa Tuple && 4 ∈ dims && error("Reduction across the time dimension (dim=4) is not yet supported!")
             for n = 1:length(rts)
-                Base.$(reduction!)(f, rts[i], fts[i]; dims, kw...)
+                Base.$(reduction!)(f, rts[n], fts[n]; dims, kw...)
             end
             return rts
         end
