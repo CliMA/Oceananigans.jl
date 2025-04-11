@@ -325,7 +325,7 @@ end
 end
 
 @inline viscosity(::FlavorOfCATKE, diffusivities) = diffusivities.κu
-@inline diffusivity(::FlavorOfCATKE, diffusivities, ::Val{id}) where id = diffusivities._tupled_tracer_diffusivities[id]
+@inline diffusivity(::FlavorOfCATKE, diffusivities, ::Val{id}) where id = diffusivities.κu # diffusivities._tupled_tracer_diffusivities[id]
 
 #####
 ##### Show
