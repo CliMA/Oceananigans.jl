@@ -207,8 +207,8 @@ function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::Flavo
                                   _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
 end        
 
-@inline viscosity_location(::FlavorOfCATKE) = (c, c, f)
-@inline diffusivity_location(::FlavorOfCATKE) = (c, c, f)
+@inline viscosity_location(::FlavorOfCATKE) = (c, c, c)
+@inline diffusivity_location(::FlavorOfCATKE) = (c, c, c)
 
 function update_previous_compute_time!(diffusivities, model)
     Δt = model.clock.time - diffusivities.previous_compute_time[]
