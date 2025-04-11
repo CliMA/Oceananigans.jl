@@ -188,8 +188,7 @@ function implicit_step!(field::Field,
                         diffusivity_fields,
                         tracer_index,
                         clock,
-                        Δt; 
-                        kwargs...)
+                        Δt)
     
     # Filter explicit closures for closure tuples
     if closure isa Tuple
@@ -207,5 +206,5 @@ function implicit_step!(field::Field,
     (LX, LY, LZ) == (Center, Center, Center) || (tracer_index = nothing)
     return solve!(field, implicit_solver, field,
                   # ivd_*_diagonal gets called with these args after (i, j, k, grid):
-                  vi_closure, vi_diffusivity_fields, tracer_index, LX(), LY(), LZ(), Δt, clock; kwargs...)
+                  vi_closure, vi_diffusivity_fields, tracer_index, LX(), LY(), LZ(), Δt, clock)
 end
