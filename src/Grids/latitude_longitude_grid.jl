@@ -630,15 +630,20 @@ end
 const F = Face
 const C = Center
 
-@inline function xnodes(grid::LLG, ℓx, ℓy; with_halos=false)
-    λ = λnodes(grid, ℓx; with_halos=with_halos)'
-    φ = φnodes(grid, ℓy; with_halos=with_halos)
+@inline λnodes(grid::LLG, ℓx, ℓy; with_halos=false) = λnodes(grid, ℓx, ℓy, with_halos)
+@inline φnodes(grid::LLG, ℓx, ℓy; with_halos=false) = φnodes(grid, ℓx, ℓy, with_halos)
+@inline xnodes(grid::LLG, ℓx, ℓy; with_halos=false) = xnodes(grid, ℓx, ℓy, with_halos)
+@inline ynodes(grid::LLG, ℓy;     with_halos=false) = ynodes(grid, ℓx, with_halos)
+
+@inline function xnodes(grid::LLG, ℓx, ℓy, with_halos::Bool=false)
+    λ = λnodes(grid, ℓx, with_halos)'
+    φ = φnodes(grid, ℓy, with_halos)
     R = grid.radius
     return @. R * deg2rad(λ) * hack_cosd(φ)
 end
 
-@inline function ynodes(grid::LLG, ℓy; with_halos=false)
-    φ = φnodes(grid, ℓy; with_halos=with_halos)
+@inline function ynodes(grid::LLG, ℓy, with_halos::Bool=false)
+    φ = φnodes(grid, ℓy, with_halos)
     R = grid.radius
     return @. R * deg2rad(φ)
 end
@@ -649,10 +654,10 @@ end
 @inline xnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx, ℓy; with_halos)
 @inline ynodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓy; with_halos)
 
-@inline λnodes(grid::LLG, ℓx::F; with_halos=false) = _property(grid.λᶠᵃᵃ, ℓx, topology(grid, 1), size(grid, 1), with_halos)
-@inline λnodes(grid::LLG, ℓx::C; with_halos=false) = _property(grid.λᶜᵃᵃ, ℓx, topology(grid, 1), size(grid, 1), with_halos)
-@inline φnodes(grid::LLG, ℓy::F; with_halos=false) = _property(grid.φᵃᶠᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
-@inline φnodes(grid::LLG, ℓy::C; with_halos=false) = _property(grid.φᵃᶜᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
+@inline λnodes(grid::LLG, ℓx::F, with_halos::Bool=false) = _property(grid.λᶠᵃᵃ, ℓx, topology(grid, 1), size(grid, 1), with_halos)
+@inline λnodes(grid::LLG, ℓx::C, with_halos::Bool=false) = _property(grid.λᶜᵃᵃ, ℓx, topology(grid, 1), size(grid, 1), with_halos)
+@inline φnodes(grid::LLG, ℓy::F, with_halos::Bool=false) = _property(grid.φᵃᶠᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
+@inline φnodes(grid::LLG, ℓy::C, with_halos::Bool=false) = _property(grid.φᵃᶜᵃ, ℓy, topology(grid, 2), size(grid, 2), with_halos)
 
 # Generalized coordinates
 @inline ξnodes(grid::LLG, ℓx; kwargs...) = λnodes(grid, ℓx; kwargs...)

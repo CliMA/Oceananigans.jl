@@ -552,6 +552,19 @@ end
             for grid in grids
                 run_field_interpolation_tests(grid)
             end
+
+            # Interpolation from 1-cell not-flat grid
+            from_grid = LatitudeLongitudeGrid(arch; size = (1, 1, 1), latitude = [-1, 1], longitude = [-1, 1], z = (0, 1))
+            to_grid   = LatitudeLongitudeGrid(arch; size = 1, latitude = 0, longitude = 0, z = (0, 1), topology = (Flat, Flat, Bounded))
+
+            ff = CenterField(from_grid)
+            ft = CenterField(to_grid)
+
+            fill!(ff, 1)
+
+            interpolate!(ft, ff)
+
+            @test CUDA.@allowscalar ft[1, 1, 1] == 1
         end
     end
 
