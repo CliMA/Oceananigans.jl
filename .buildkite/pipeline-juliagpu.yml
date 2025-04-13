@@ -1,3 +1,9 @@
+env:
+  XLA_REACTANT_GPU_PREALLOCATE: false
+  JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
+  JULIA_NUM_PRECOMPILE_TASKS: 4
+  JULIA_NUM_THREADS: 4
+
 steps:
   - label: "👓 AMDGPU extension tests"
     plugins:
@@ -7,6 +13,7 @@ steps:
       #     codecov: true
     command: |
       TEST_GROUP=init julia --project -O0 --color=yes -e 'using Pkg; Pkg.test()'
+
       TEST_GROUP=amdgpu julia --project -O0 --color=yes -e 'using Pkg; Pkg.test()'
     agents:
       queue: "juliagpu"
@@ -14,5 +21,3 @@ steps:
     timeout_in_minutes: 15
     soft_fail:
       - exit_status: 3
-    env:
-      JULIA_NUM_THREADS: 4
