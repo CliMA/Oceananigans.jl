@@ -30,14 +30,14 @@ const AGYL = AbstractUnderlyingGrid{FT, <:Any, LeftConnected} where FT
 @inline δxTᶠᵃᵃ(i, j, k, grid::AGXP, f, args...) = ifelse(i == 1, f(1, j, k, grid, args...) - f(grid.Nx, j, k, grid, args...), δxᶠᵃᵃ(i, j, k, grid, f, args...))
 @inline δyTᵃᶠᵃ(i, j, k, grid::AGYP, f, args...) = ifelse(j == 1, f(i, 1, k, grid, args...) - f(i, grid.Ny, k, grid, args...), δyᵃᶠᵃ(i, j, k, grid, f, args...))
 
-@inline δxTᶠᵃᵃ(i, j, k, grid::AGXP, c::AbstractArray) = @inbounds ifelse(i == 1, c[1, j, k]) - c[grid.Nx, j, k]), δxᶠᵃᵃ(i, j, k, grid, c))
-@inline δyTᵃᶠᵃ(i, j, k, grid::AGYP, c::AbstractArray) = @inbounds ifelse(j == 1, c[i, 1, k]) - c[i, grid.Ny, k]), δyᵃᶠᵃ(i, j, k, grid, c))
+@inline δxTᶠᵃᵃ(i, j, k, grid::AGXP, c::AbstractArray) = @inbounds ifelse(i == 1, c[1, j, k] - c[grid.Nx, j, k], δxᶠᵃᵃ(i, j, k, grid, c))
+@inline δyTᵃᶠᵃ(i, j, k, grid::AGYP, c::AbstractArray) = @inbounds ifelse(j == 1, c[i, 1, k] - c[i, grid.Ny, k], δyᵃᶠᵃ(i, j, k, grid, c))
 
 @inline δxTᶜᵃᵃ(i, j, k, grid::AGXP, f, args...) = ifelse(i == grid.Nx, f(1, j, k, grid, args...) - f(grid.Nx, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, f, args...))
 @inline δyTᵃᶜᵃ(i, j, k, grid::AGYP, f, args...) = ifelse(j == grid.Ny, f(i, 1, k, grid, args...) - f(i, grid.Ny, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
 
-@inline δxTᶜᵃᵃ(i, j, k, grid::AGXP, u::AbstractArray) = @inbounds ifelse(i == grid.Nx, u[1, j, k]) - u[grid.Nx, j, k]), δxᶜᵃᵃ(i, j, k, grid, u))
-@inline δyTᵃᶜᵃ(i, j, k, grid::AGYP, v::AbstractArray) = @inbounds ifelse(j == grid.Ny, v[i, 1, k]) - v[i, grid.Ny, k]), δyᵃᶜᵃ(i, j, k, grid, v))
+@inline δxTᶜᵃᵃ(i, j, k, grid::AGXP, u::AbstractArray) = @inbounds ifelse(i == grid.Nx, u[1, j, k] - u[grid.Nx, j, k], δxᶜᵃᵃ(i, j, k, grid, u))
+@inline δyTᵃᶜᵃ(i, j, k, grid::AGYP, v::AbstractArray) = @inbounds ifelse(j == grid.Ny, v[i, 1, k] - v[i, grid.Ny, k], δyᵃᶜᵃ(i, j, k, grid, v))
 
 # Enforce NoFlux conditions
 @inline δxTᶠᵃᵃ(i, j, k, grid::AGXB{FT}, f, args...) where FT = ifelse(i == 1, zero(FT), δxᶠᵃᵃ(i, j, k, grid, f, args...))
@@ -66,8 +66,8 @@ const AGYL = AbstractUnderlyingGrid{FT, <:Any, LeftConnected} where FT
 @inline δxTᶜᵃᵃ(i, j, k, grid::AGXL, f, args...) = ifelse(i == grid.Nx, - f(i, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, f, args...))
 @inline δyTᵃᶜᵃ(i, j, k, grid::AGYL, f, args...) = ifelse(j == grid.Ny, - f(i, j, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
 
-@inline δxTᶜᵃᵃ(i, j, k, grid::AGXL, u::AbstractArray)) = @inbounds ifelse(i == grid.Nx, - u[i, j, k]), δxᶜᵃᵃ(i, j, k, grid, u))
-@inline δyTᵃᶜᵃ(i, j, k, grid::AGYL, v::AbstractArray)) = @inbounds ifelse(j == grid.Ny, - v[i, j, k]), δyᵃᶜᵃ(i, j, k, grid, v))
+@inline δxTᶜᵃᵃ(i, j, k, grid::AGXL, u::AbstractArray) = @inbounds ifelse(i == grid.Nx, - u[i, j, k], δxᶜᵃᵃ(i, j, k, grid, u))
+@inline δyTᵃᶜᵃ(i, j, k, grid::AGYL, v::AbstractArray) = @inbounds ifelse(j == grid.Ny, - v[i, j, k], δyᵃᶜᵃ(i, j, k, grid, v))
 
 @inline δxTᶜᵃᵃ(i, j, k, grid::AGXR, f, args...) = ifelse(i == 1, f(2, j, k, grid, args...), δxᶜᵃᵃ(i, j, k, grid, f, args...))
 @inline δyTᵃᶜᵃ(i, j, k, grid::AGYR, f, args...) = ifelse(j == 1, f(i, 2, k, grid, args...), δyᵃᶜᵃ(i, j, k, grid, f, args...))
