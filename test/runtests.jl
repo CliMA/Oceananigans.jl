@@ -270,6 +270,7 @@ CUDA.allowscalar() do
             include("test_amdgpu.jl")
         end
     end
+
     # Tests for oneAPI extension
     if group == :oneapi || group == :all
         @testset "oneAPI extension tests" begin
