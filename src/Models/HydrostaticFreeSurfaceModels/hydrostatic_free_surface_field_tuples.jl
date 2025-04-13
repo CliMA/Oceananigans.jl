@@ -6,7 +6,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 function hydrostatic_velocity_fields(::Nothing, grid, clock, bcs)
     u = XFaceField(grid, boundary_conditions=bcs.u)
     v = YFaceField(grid, boundary_conditions=bcs.v)
-    w = ZFaceField(grid, boundary_conditions=bcs.w)
+    w = ZFaceField(grid)
     return (u=u, v=v, w=w)
 end
 
