@@ -1,0 +1,18 @@
+steps:
+  - label: "👓 AMDGPU extension tests"
+    plugins:
+      - JuliaCI/julia#v1:
+          version: 1.10
+      # - JuliaCI/julia-coverage#v1:
+      #     codecov: true
+    command: |
+      TEST_GROUP=init julia --project -O0 --color=yes -e 'using Pkg; Pkg.test()'
+      TEST_GROUP=amdgpu julia --project -O0 --color=yes -e 'using Pkg; Pkg.test()'
+    agents:
+      queue: "juliagpu"
+      rocm: "*"
+    timeout_in_minutes: 15
+    soft_fail:
+      - exit_status: 3
+    env:
+      JULIA_NUM_THREADS: 4
