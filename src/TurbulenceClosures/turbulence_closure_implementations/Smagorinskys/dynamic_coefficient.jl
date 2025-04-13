@@ -8,13 +8,13 @@ mutable struct DynamicCoefficient{A, FT, S}
     schedule :: S
 end
 
-struct GPUDynamicCoefficient{FT}
+struct DeviceDynamicCoefficient{FT}
     minimum_numerator :: FT
 end
 
 const DynamicSmagorinsky = Union{
     Smagorinsky{<:Any, <:DynamicCoefficient},
-    Smagorinsky{<:Any, <:GPUDynamicCoefficient},
+    Smagorinsky{<:Any, <:DeviceDynamicCoefficient},
 }
 
 function DynamicSmagorinsky(time_discretization=ExplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType; averaging,
@@ -26,7 +26,7 @@ function DynamicSmagorinsky(time_discretization=ExplicitTimeDiscretization(), FT
 end
 
 DynamicSmagorinsky(FT::DataType; kwargs...) = DynamicSmagorinsky(ExplicitTimeDiscretization(), FT; kwargs...)
-Adapt.adapt_structure(to, dc::DynamicCoefficient) = GPUDynamicCoefficient(dc.minimum_numerator)
+Adapt.adapt_structure(to, dc::DynamicCoefficient) = DeviceDynamicCoefficient(dc.minimum_numerator)
 
 const DirectionallyAveragedCoefficient{N} = DynamicCoefficient{<:Union{NTuple{N, Int}, Int, Colon}} where N
 const DirectionallyAveragedDynamicSmagorinsky{N} = Smagorinsky{<:Any, <:DirectionallyAveragedCoefficient{N}} where N
