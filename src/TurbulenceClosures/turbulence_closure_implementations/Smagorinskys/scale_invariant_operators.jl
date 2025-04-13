@@ -41,11 +41,19 @@ using Oceananigans.Operators: volume
 ##### Filtering
 #####
 
-@inline ℱ₂ᶠᶜᶜ(i, j, k, grid, f, args...) = ℑxyzᶠᶜᶜ(i, j, k, grid, ℑxyzᶜᶠᶠ, f, args...)
-@inline ℱ₂ᶜᶠᶜ(i, j, k, grid, f, args...) = ℑxyzᶜᶠᶜ(i, j, k, grid, ℑxyzᶠᶜᶠ, f, args...)
-@inline ℱ₂ᶜᶜᶠ(i, j, k, grid, f, args...) = ℑxyzᶜᶜᶠ(i, j, k, grid, ℑxyzᶠᶠᶜ, f, args...)
-@inline ℱ₂ᶜᶜᶜ(i, j, k, grid, f, args...) = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, f, args...)
+# @inline ℱ₂ᶠᶜᶜ(i, j, k, grid, f, args...) = ℑxyzᶠᶜᶜ(i, j, k, grid, ℑxyzᶜᶠᶠ, f, args...)
+# @inline ℱ₂ᶜᶠᶜ(i, j, k, grid, f, args...) = ℑxyzᶜᶠᶜ(i, j, k, grid, ℑxyzᶠᶜᶠ, f, args...)
+# @inline ℱ₂ᶜᶜᶠ(i, j, k, grid, f, args...) = ℑxyzᶜᶜᶠ(i, j, k, grid, ℑxyzᶠᶠᶜ, f, args...)
+# @inline ℱ₂ᶜᶜᶜ(i, j, k, grid, f, args...) = ℑxyzᶜᶜᶜ(i, j, k, grid, ℑxyzᶠᶠᶠ, f, args...)
 
+@inline ℱ₂ᶠᶜᶜ(i, j, k, grid, u::AbstractArray) = @inbounds (6 * u[i, j, k] +
+                                                            u[i+1, j, k] + u[i-1, j, k] +
+                                                            u[i, j+1, k] + u[i, j-1, k] +
+                                                            u[i, j, k+1] + u[i, j, k-1]) / 12
+const ℱ₂ᶜᶠᶜ = ℱ₂ᶠᶜᶜ
+const ℱ₂ᶜᶜᶠ = ℱ₂ᶠᶜᶜ
+const ℱ₂ᶜᶜᶜ = ℱ₂ᶠᶜᶜ
+                                                  
 #####
 ##### Velocity gradients
 #####
