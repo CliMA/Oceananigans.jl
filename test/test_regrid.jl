@@ -1,9 +1,9 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
+using Oceananigans.Fields: x_integral_regrid!, y_integral_regrid!, z_integral_regrid!
 
-@testset "Field regridding" begin
-    @info "  Testing field regridding..."
+@testset "Field regridding with integration" begin
+    @info "  Testing field regridding with integration..."
 
     L = 1.1
     ℓ = 0.5
@@ -25,14 +25,14 @@ using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
                      y = (Periodic, Bounded, Periodic),
                      z = (Periodic, Periodic, Bounded))
 
-    regrid_xyz! = (x = regrid_in_x!,
-                   y = regrid_in_y!,
-                   z = regrid_in_z!)
+    regrid_xyz! = (x = x_integral_regrid!,
+                   y = y_integral_regrid!,
+                   z = z_integral_regrid!)
 
     for arch in archs
         for dim in (:x, :y, :z)
             @testset "Regridding in $dim" begin
-                regrid! = regrid_xyz![dim]
+                integral_regrid! = regrid_xyz![dim]
                 topology = topologies_1d[dim]
 
                 # 1D grids
@@ -76,13 +76,13 @@ using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
                 end
 
                 # Coarse-graining
-                regrid!(coarse_1d_regular_c, fine_1d_stretched_c)
+                integral_regrid!(coarse_1d_regular_c, fine_1d_stretched_c)
 
                 CUDA.@allowscalar begin
                     @test interior(coarse_1d_regular_c)[1] ≈ ℓ/L * c₁ + (1 - ℓ/L) * c₂
                 end
 
-                regrid!(fine_1d_regular_c, fine_1d_stretched_c)
+                integral_regrid!(fine_1d_regular_c, fine_1d_stretched_c)
 
                 CUDA.@allowscalar begin
                     @test interior(fine_1d_regular_c)[1] ≈ ℓ/(L/2) * c₁ + (1 - ℓ/(L/2)) * c₂
@@ -90,7 +90,7 @@ using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
                 end
 
                 # Fine-graining
-                regrid!(very_fine_1d_stretched_c, fine_1d_stretched_c)
+                integral_regrid!(very_fine_1d_stretched_c, fine_1d_stretched_c)
 
                 CUDA.@allowscalar begin
                     @test interior(very_fine_1d_stretched_c)[1] ≈ c₁
@@ -98,7 +98,7 @@ using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
                     @test interior(very_fine_1d_stretched_c)[3] ≈ c₂
                 end
                 
-                regrid!(super_fine_1d_stretched_c, fine_1d_stretched_c)
+                integral_regrid!(super_fine_1d_stretched_c, fine_1d_stretched_c)
 
                 CUDA.@allowscalar begin
                     @test interior(super_fine_1d_stretched_c)[1] ≈ c₁
@@ -107,7 +107,7 @@ using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
                     @test interior(super_fine_1d_stretched_c)[4] ≈ c₂
                 end
                 
-                regrid!(super_fine_1d_regular_c, fine_1d_stretched_c)
+                integral_regrid!(super_fine_1d_regular_c, fine_1d_stretched_c)
                 
                 CUDA.@allowscalar begin
                     @test interior(super_fine_1d_regular_c)[1] ≈ c₁
@@ -136,7 +136,7 @@ using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
                 @show size(fine_stretched_c_mean_xy.grid)
                 @show size(super_fine_from_reduction_regular_c.grid)
 
-                regrid!(super_fine_from_reduction_regular_c, fine_stretched_c_mean_xy)
+                integral_regrid!(super_fine_from_reduction_regular_c, fine_stretched_c_mean_xy)
                 
                 CUDA.@allowscalar begin
                     @test interior(super_fine_from_reduction_regular_c)[1] ≈ c₁
@@ -149,4 +149,24 @@ using Oceananigans.Fields: regrid_in_x!, regrid_in_y!, regrid_in_z!
             end
         end
     end
+end
+
+@testset "Field regridding with ConservativeRegridding" begin
+    @info "  Testing regridding with ConservativeRegridding on LatitudeLongitudeGrid..."
+    coarse_grid = LatitudeLongitudeGrid(size=(90, 45, 1),   longitude=(0, 360), latitude=(-90, 90), z=(0, 1))
+    fine_grid   = LatitudeLongitudeGrid(size=(360, 180, 1), longitude=(0, 360), latitude=(-90, 90), z=(0, 1))
+
+    dst = CenterField(coarse_grid)
+    src = CenterField(fine_grid)
+    regridder = ConservativeRegridding.Regridder(dst, src)
+
+    @info "   Testing forward regridding on LatitudeLongitudeGrid..."
+    set!(src, (x, y, z) -> rand())
+    ConservativeRegridding.regrid!(dst, regridder, src)
+    @test mean(dst) ≈ mean(src)
+
+    @info "   Testing backward regridding on LatitudeLongitudeGrid..."
+    set!(dst, (x, y, z) -> rand())
+    ConservativeRegridding.regrid!(src, transpose(regridder), dst)
+    @test mean(c2) ≈ mean(c1)
 end
