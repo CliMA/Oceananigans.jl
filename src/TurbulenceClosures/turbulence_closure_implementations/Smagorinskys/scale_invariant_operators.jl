@@ -50,9 +50,15 @@ using Oceananigans.Operators: volume
                                                             u[i+1, j, k] + u[i-1, j, k] +
                                                             u[i, j+1, k] + u[i, j-1, k] +
                                                             u[i, j, k+1] + u[i, j, k-1]) / 12
-const ℱ₂ᶜᶠᶜ = ℱ₂ᶠᶜᶜ
-const ℱ₂ᶜᶜᶠ = ℱ₂ᶠᶜᶜ
-const ℱ₂ᶜᶜᶜ = ℱ₂ᶠᶜᶜ
+
+@inline ℱ₂ᶠᶜᶜ(i, j, k, grid, f, args...) = @inbounds (6 * f(i, j, k, grid, args...) +
+                                                      f(i+1, j, k, grid, args...) + f(i-1, j, k, grid, args...) +
+                                                      f(i, j+1, k, grid, args...) + f(i, j-1, k, grid, args...) +
+                                                      f(i, j, k+1, grid, args...) + f(i, j, k-1, grid, args...)) / 12
+
+@inline ℱ₂ᶜᶠᶜ(args...) = ℱ₂ᶠᶜᶜ(args...) 
+@inline ℱ₂ᶜᶜᶠ(args...) = ℱ₂ᶠᶜᶜ(args...) 
+@inline ℱ₂ᶜᶜᶜ(args...) = ℱ₂ᶠᶜᶜ(args...) 
                                                   
 #####
 ##### Velocity gradients
