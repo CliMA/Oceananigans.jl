@@ -80,21 +80,21 @@ jobs:
             os: macos-latest
           - test_group: "Conservative regridding"
             test_name: "conservative_regridding"
-        steps:
-          - uses: actions/checkout@v4
-          - uses: julia-actions/setup-julia@v2
-            with:
-              version: 1.10
-          - name: Instantiate environment
-            timeout-minutes: 90
-            shell: julia --color=yes --project {0}
-            run: |
-              using Pkg
-              Pkg.Registry.update()
-              Pkg.add([PackageSpec(; name="ConservativeRegridding", url=https://github.com/JuliaGeo/ConservativeRegridding.jl.git, rev="mk/interfacem")])
-              Pkg.instantiate()
-          - uses: julia-actions/cache@v2
-          - uses: julia-actions/julia-buildpkg@v1
-          - uses: julia-actions/julia-runtest@v1
-            env:
-              TEST_GROUP: {{ matrix.test_group }}
+      steps:
+        - uses: actions/checkout@v4
+        - uses: julia-actions/setup-julia@v2
+          with:
+            version: 1.10
+        - name: Instantiate environment
+          timeout-minutes: 90
+          shell: julia --color=yes --project {0}
+          run: |
+           using Pkg
+           Pkg.Registry.update()
+           Pkg.add([PackageSpec(; name="ConservativeRegridding", url=https://github.com/JuliaGeo/ConservativeRegridding.jl.git, rev="mk/interfacem")])
+           Pkg.instantiate()
+        - uses: julia-actions/cache@v2
+        - uses: julia-actions/julia-buildpkg@v1
+        - uses: julia-actions/julia-runtest@v1
+          env:
+            TEST_GROUP: {{ matrix.test_group }}
