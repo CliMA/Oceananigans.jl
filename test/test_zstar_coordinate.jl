@@ -19,20 +19,35 @@ function test_zstar_coordinate(model, Ni, Δt)
     w   = model.velocities.w
     Nz  = model.grid.Nz
 
-    for _ in 1:Ni
+    for step in 1:Ni
         time_step!(model, Δt)
 
     	∫b = Field(Integral(model.tracers.b))
     	∫c = Field(Integral(model.tracers.c))
     	compute!(∫b)
     	compute!(∫c)
-    	
-    	# Testing that:
-    	# (1) tracers are conserved down to machine precision
-    	# (2) vertical velocities are zero at the top surface
-    	@test interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
-    	@test interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)
-    	@test maximum(abs, interior(w, :, :, Nz+1)) < eps(eltype(w))
+
+	condition = interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
+	@test condition
+	if !condition
+            @info "Stopping early: buoyancy not conserved at step $step"
+	    break
+	end
+
+	condition = interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)
+	@test condition
+	if !condition
+            @info "Stopping early: c tracer not conserved at step $step"
+	    break
+	end
+
+	condition = maximum(abs, interior(w, :, :, Nz+1)) < eps(eltype(w))
+	@test condition
+	if !condition
+            @info "Stopping early: nonzero vertical velocity at top at step $step"
+	    break
+	end
+
     end
     
     return nothing
@@ -189,7 +204,7 @@ end
                         model = HydrostaticFreeSurfaceModel(; grid, 
                                                             free_surface, 
                                                             tracers = (:b, :c), 
-                                                            buoyancy = BuoyancyTracer(),
+							    buoyancy = BuoyancyTracer(),
                                                             vertical_coordinate = ZStar())
 
                         bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01 
