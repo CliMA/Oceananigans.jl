@@ -36,10 +36,10 @@ jobs:
         os:
           - ubuntu-latest
         include:
-          - test_group: "reactant"
-            test_name: "Serial Reactant"
-          - test_group: "sharding"
-            test_name: "Sharding with Reactant"
+          - test_name: "Serial Reactant"
+            test_group: "reactant"
+          - test_name: "Sharding with Reactant"
+            test_group: "sharding"
     steps:
       - run: |
           touch LocalPreferences.toml
@@ -52,7 +52,6 @@ jobs:
       - uses: julia-actions/setup-julia@v2
         with:
           version: 1.10
-          arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
@@ -91,7 +90,7 @@ jobs:
         run: |
           using Pkg
           Pkg.Registry.update()
-          Pkg.add([PackageSpec(; name="ConservativeRegridding", url=https://github.com/JuliaGeo/ConservativeRegridding.jl.git, rev="mk/interfacem")])
+          Pkg.add([PackageSpec(; name="ConservativeRegridding", url="https://github.com/JuliaGeo/ConservativeRegridding.jl.git", rev="mk/interfacem")])
           Pkg.instantiate()
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
