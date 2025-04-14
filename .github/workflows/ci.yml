@@ -26,19 +26,20 @@ concurrency:
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
 jobs:
-  sharding_tests:
-    name: Sharding Tests - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+  reactant_tests:
+    name: {{ matrix.test_name }} - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - '1.10'
         os:
           - ubuntu-latest
-        arch:
-          - x64
+        include:
+          - test_group: "reactant"
+            test_name: "Serial Reactant"
+          - test_group: "sharding"
+            test_name: "Sharding with Reactant"
     steps:
       - run: |
           touch LocalPreferences.toml
@@ -50,7 +51,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
-          version: ${{ matrix.version }}
+          version: 1.10
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
@@ -58,105 +59,34 @@ jobs:
         env:
           JULIA_DEBUG: "Reactant, Reactant_jll"
           REACTANT_TEST: true
-          TEST_GROUP: "sharding"
+          TEST_GROUP: {{ matrix.test_group }}
 
-  mpi_tripolar:
-    name: Distributed MPI Tripolar Grid - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.10'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-    steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        env:
-          TEST_GROUP: "mpi_tripolar"
-
-  turbulent_closures:
-    name: Turbulence closures - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.10'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-    steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        env:
-          TEST_GROUP: "turbulence_closures"
-
-  reactant:
-    name: Reactant - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.10'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-    steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        env:
-          TEST_GROUP: "reactant"
-
-  metal:
-    name: Metal - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+  additional_tests:
+    name: {{ matrix.test_name }} - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - '1.10'
         os:
-          - macos-latest
-        arch:
-          - arm64
-    steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        env:
-          TEST_GROUP: "metal"
-
+          - ubuntu-latest
+        include:
+          - test_group: "mpi_tripolar"
+            test_name: "Distributed MPI Tripolar Grid"
+          - test_group: "turbulence_closures"
+            test_name: "Turbulence Closures"
+          - test_group: "Metal"
+            test_name: "metal"
+            os: macos-latest
+          - test_group: "Conservative regridding"
+            test_name: "conservative_regridding"
+        steps:
+          - uses: actions/checkout@v4
+          - uses: julia-actions/setup-julia@v2
+            with:
+              version: 1.10
+          - uses: julia-actions/cache@v2
+          - uses: julia-actions/julia-buildpkg@v1
+          - uses: julia-actions/julia-runtest@v1
+            env:
+              TEST_GROUP: "metal"
