@@ -21,19 +21,19 @@ function test_zstar_coordinate(model, Ni, Δt)
 
     for _ in 1:Ni
         time_step!(model, Δt)
-    end
 
-    ∫b = Field(Integral(model.tracers.b))
-    ∫c = Field(Integral(model.tracers.c))
-    compute!(∫b)
-    compute!(∫c)
-    
-    # Testing that:
-    # (1) tracers are conserved down to machine precision
-    # (2) vertical velocities are zero at the top surface
-    @test interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
-    @test interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)    
-    @test maximum(abs, interior(w, :, :, Nz+1)) < eps(eltype(w))
+    	∫b = Field(Integral(model.tracers.b))
+    	∫c = Field(Integral(model.tracers.c))
+    	compute!(∫b)
+    	compute!(∫c)
+    	
+    	# Testing that:
+    	# (1) tracers are conserved down to machine precision
+    	# (2) vertical velocities are zero at the top surface
+    	@test interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
+    	@test interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)
+    	@test maximum(abs, interior(w, :, :, Nz+1)) < eps(eltype(w))
+    end
     
     return nothing
 end
