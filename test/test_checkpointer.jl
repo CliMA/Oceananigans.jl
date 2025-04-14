@@ -177,6 +177,34 @@ function run_checkpointer_tests(true_model, test_model, Δt)
     return nothing
 end
 
+function test_constant_fields_checkpointer(arch)
+    grid = RectilinearGrid(arch, size = (1, 1, 1), extent = (1, 1, 1))
+    u = ConstantField(1)
+    v = ConstantField(2)
+    w = ConstantField(3)
+
+    model = HydrostaticFreeSurfaceModel(; grid, velocities=PrescribedVelocityFields(; u, v, w))
+
+    simulation = Simulation(model, Δt=0.1, stop_iteration=1)
+    simulation.output_writers[:checkpointer] = Checkpointer(model, 
+                                                            schedule=IterationInterval(1), 
+                                                            properties = [:grid, :velocities])
+
+    run!(simulation)
+
+    file = jldopen("constant_fields_test_iteration1.jld2")
+
+    vel = file["HydrostaticFreeSurfaceModel/velocities"]
+    @test vel["u"] == ConstantField(1)
+    @test vel["v"] == ConstantField(2)
+    @test vel["w"] == ConstantField(3)
+
+    rm("checkpoint_iteration0.jld2", force=true)
+    rm("checkpoint_iteration1.jld2", force=true)
+
+    return nothing
+end
+
 function run_checkpointer_cleanup_tests(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
@@ -220,5 +248,7 @@ for arch in archs
         progress_cb = simulation.callbacks[:progress]
         progress_cb.schedule.first_actuation_time
         @test progress_cb.schedule.first_actuation_time == 4
+
+        test_constant_fields_checkpointer(arch)
     end
 end
