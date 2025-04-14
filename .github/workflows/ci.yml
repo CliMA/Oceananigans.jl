@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   reactant_tests:
-    name: {{ matrix.test_name }} - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    name: ${{ matrix.test_name }} - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     strategy:
@@ -59,10 +59,10 @@ jobs:
         env:
           JULIA_DEBUG: "Reactant, Reactant_jll"
           REACTANT_TEST: true
-          TEST_GROUP: {{ matrix.test_group }}
+          TEST_GROUP: ${{ matrix.test_group }}
 
   additional_tests:
-    name: {{ matrix.test_name }} - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    name: ${{ matrix.test_name }} - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
