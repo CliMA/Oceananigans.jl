@@ -71,15 +71,15 @@ jobs:
         os:
           - ubuntu-latest
         include:
-          - test_group: "mpi_tripolar"
-            test_name: "Distributed MPI Tripolar Grid"
-          - test_group: "turbulence_closures"
-            test_name: "Turbulence Closures"
-          - test_group: "Metal"
-            test_name: "metal"
+          - test_name: "Distributed MPI Tripolar Grid"
+            test_group: "mpi_tripolar"
+          - test_name: "Turbulence Closures"
+            test_group: "turbulence_closures"
+          - test_name: "Metal"
+            test_group: "metal"
             os: macos-latest
-          - test_group: "Conservative regridding"
-            test_name: "conservative_regridding"
+          - test_name: "Conservative Regridding"
+            test_group: "conservative_regridding"
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
