@@ -232,7 +232,7 @@ function iteration_exists(filepath, iter=0)
     return zero_exists
 end
 
-function write_output!(writer::JLD2Writer, model)
+function write_output!(writer::JLD2Writer, model::AbstractModel)
 
     verbose = writer.verbose
     current_iteration = model.clock.iteration
