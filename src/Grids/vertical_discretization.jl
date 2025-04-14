@@ -58,7 +58,7 @@ MutableVerticalDiscretization(r_faces) = MutableVerticalDiscretization(r_faces, 
 ####
 
 const RegularStaticVerticalDiscretization  = StaticVerticalDiscretization{<:Any, <:Any, <:Number}
-const RegularMutableVerticalDiscretization = MutableVerticalDiscretization{<:Any,  <:Any, <:Number}
+const RegularMutableVerticalDiscretization = MutableVerticalDiscretization{<:Any, <:Any, <:Number}
 
 const RegularVerticalCoordinate = Union{RegularStaticVerticalDiscretization, RegularMutableVerticalDiscretization}
 
