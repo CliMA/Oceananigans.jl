@@ -1,7 +1,7 @@
 using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_superprefix
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!, next_time, unit_time
 
-using Oceananigans: AbstractModel, run_diagnostic!, write_output!
+using Oceananigans: AbstractModel, run_diagnostic!
 
 import Oceananigans: initialize!
 import Oceananigans.Fields: set!
@@ -109,10 +109,6 @@ function run!(sim; pickup=false)
         finalize!(callback, sim)
     end
 
-    # Increment the wall clock
-    end_run = time_ns()
-    sim.run_wall_time += 1e-9 * (end_run - start_run)
-
     return nothing
 end
 
@@ -127,6 +123,8 @@ end
 
 """ Step `sim`ulation forward by one time step. """
 function time_step!(sim::Simulation)
+
+    start_time_step = time_ns()
 
     Δt = if sim.align_time_step
         aligned_time_step(sim, sim.Δt)
@@ -162,13 +160,18 @@ function time_step!(sim::Simulation)
     end
 
     for writer in values(sim.output_writers)
-        writer.schedule(sim.model) && write_output!(writer, sim.model) 
+        writer.schedule(sim.model) && write_output!(writer, sim) 
     end
 
     if initial_time_step && sim.verbose
         elapsed_initial_step_time = prettytime(1e-9 * (time_ns() - start_time))
         @info "    ... initial time step complete ($elapsed_initial_step_time)."
     end
+
+    end_time_step = time_ns()
+
+    # Increment the wall clock
+    sim.run_wall_time += 1e-9 * (end_time_step - start_time_step)
 
     return nothing
 end
@@ -234,7 +237,7 @@ function initialize!(sim::Simulation)
 
         for writer in values(sim.output_writers)
             writer.schedule(model)
-            write_output!(writer, model)
+            write_output!(writer, sim)
         end
     end
 

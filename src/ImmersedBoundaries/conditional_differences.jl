@@ -79,14 +79,20 @@ end
 # Topology-aware immersed boundary operators
 #   * Velocities are `0` on `peripheral_node`s and
 #   * Tracers should ensure no-flux on `inactive_node`s
+@inline conditional_uᶠᶜᶜ(i, j, k, grid, f, args...) = f(i, j, k, grid, args...) * !peripheral_node(i, j, k, grid, f, c, c)
+@inline conditional_vᶜᶠᶜ(i, j, k, grid, f, args...) = f(i, j, k, grid, args...) * !peripheral_node(i, j, k, grid, c, f, c)
 
-@inline conditional_U_fcc(i, j, k, grid, ibg::IBG, f::Function, args...) = ifelse(peripheral_node(i, j, k, ibg, f, c, c), zero(ibg), f(i, j, k, grid, args...))
-@inline conditional_V_cfc(i, j, k, grid, ibg::IBG, f::Function, args...) = ifelse(peripheral_node(i, j, k, ibg, c, f, c), zero(ibg), f(i, j, k, grid, args...))
+@inline conditional_uᶠᶜᶜ(i, j, k, grid, u::AbstractArray) = @inbounds u[i, j, k] * !peripheral_node(i, j, k, grid, f, c, c)
+@inline conditional_vᶜᶠᶜ(i, j, k, grid, v::AbstractArray) = @inbounds v[i, j, k] * !peripheral_node(i, j, k, grid, c, f, c)
 
 @inline conditional_∂xTᶠᶜᶠ(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i-1, j, k, ibg, c, c, f), zero(ibg), ∂xTᶠᶜᶠ(i, j, k, ibg.underlying_grid, args...))
 @inline conditional_∂yTᶜᶠᶠ(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i, j-1, k, ibg, c, c, f), zero(ibg), ∂yTᶜᶠᶠ(i, j, k, ibg.underlying_grid, args...))
 
-@inline δxTᶜᵃᵃ(i, j, k, ibg::IBG, f::Function, args...) = δxTᶜᵃᵃ(i, j, k, ibg.underlying_grid, conditional_U_fcc, ibg, f, args...)
-@inline δyTᵃᶜᵃ(i, j, k, ibg::IBG, f::Function, args...) = δyTᵃᶜᵃ(i, j, k, ibg.underlying_grid, conditional_V_cfc, ibg, f, args...)
-@inline ∂xTᶠᶜᶠ(i, j, k, ibg::IBG, f::Function, args...) = conditional_∂xTᶠᶜᶠ(i, j, k, ibg, f, args...)
-@inline ∂yTᶜᶠᶠ(i, j, k, ibg::IBG, f::Function, args...) = conditional_∂yTᶜᶠᶠ(i, j, k, ibg, f, args...)
+@inline δxTᶜᵃᵃ(i, j, k, ibg::IBG, f, args...) = δxTᶜᵃᵃ(i, j, k, ibg.underlying_grid, conditional_uᶠᶜᶜ, f, args...)
+@inline δyTᵃᶜᵃ(i, j, k, ibg::IBG, f, args...) = δyTᵃᶜᵃ(i, j, k, ibg.underlying_grid, conditional_vᶜᶠᶜ, f, args...)
+
+@inline ∂xTᶠᶜᶠ(i, j, k, ibg::IBG, f, args...) = conditional_∂xTᶠᶜᶠ(i, j, k, ibg, f, args...)
+@inline ∂yTᶜᶠᶠ(i, j, k, ibg::IBG, f, args...) = conditional_∂yTᶜᶠᶠ(i, j, k, ibg, f, args...)
+
+@inline ∂xTᶠᶜᶠ(i, j, k, ibg::IBG, w::AbstractArray) = conditional_∂xTᶠᶜᶠ(i, j, k, ibg, f, args...)
+@inline ∂yTᶜᶠᶠ(i, j, k, ibg::IBG, w::AbstractArray) = conditional_∂yTᶜᶠᶠ(i, j, k, ibg, f, args...)
