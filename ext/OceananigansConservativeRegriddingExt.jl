@@ -91,11 +91,6 @@ function Regridder(dst_field::RegriddableField, src_field::RegriddableField)
     src_cells = compute_cell_matrix(src_field)
     dst_cells = compute_cell_matrix(dst_field)
 
-    # TODO: eliminate this memory allocation
-    # src_polygons = GI.Polygon.(GI.LinearRing.(eachcol(src_cells))) .|> GO.fix
-    # dst_polygons = GI.Polygon.(GI.LinearRing.(eachcol(dst_cells))) .|> GO.fix
-    #return ConservativeRegridding.Regridder(src_polygons, dst_polygons)
-
     return ConservativeRegridding.Regridder(src_cells, dst_cells)
 end
 
