@@ -149,7 +149,7 @@ function progress(sim)
 end
 
 add_callback!(simulation, progress, name=:progress, IterationInterval(200))
-nothing # hide
+nothing #hide
 
 # ## Diagnostics/Output
 
