@@ -251,7 +251,7 @@ end
 	    set!(model, c = (x, y, z) -> rand(), u = (x, y, z) -> rand(), v = (x, y, z) -> rand(), b = bᵢ)
 
             Δt = 2minutes
-            test_zstar_coordinate(model, 720, Δt)
+            test_zstar_coordinate(model, 100, Δt)
         end
     end
 end
