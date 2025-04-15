@@ -27,14 +27,14 @@ concurrency:
 
 jobs:
   reactant_tests:
-    name: ${{ matrix.test_name }} - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    name: ${{ matrix.test_name }} - Julia ${{ matrix.version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-latest
+        version: ['1.10']
+        os: ['ubuntu-latest']
         include:
           - test_name: "Serial Reactant"
             test_group: "reactant"
@@ -51,7 +51,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
-          version: 1.10
+          version: ${{ matrix.version }}
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
@@ -61,14 +61,14 @@ jobs:
           TEST_GROUP: ${{ matrix.test_group }}
 
   additional_tests:
-    name: ${{ matrix.test_name }} - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    name: ${{ matrix.test_name }} - Julia ${{ matrix.version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-latest
+        version: ['1.10']
+        os: ['ubuntu-latest']
         include:
           - test_name: "Distributed MPI Tripolar Grid"
             test_group: "mpi_tripolar"
@@ -83,7 +83,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
-          version: 1.10
+          version: ${{ matrix.version }}
       - name: Instantiate environment
         timeout-minutes: 90
         shell: julia --color=yes --project {0}
