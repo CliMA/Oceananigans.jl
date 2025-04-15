@@ -1,6 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Fields: x_integral_regrid!, y_integral_regrid!, z_integral_regrid!
+using ConservativeRegridding
 
 @testset "Field regridding with integration" begin
     @info "  Testing field regridding with integration..."
