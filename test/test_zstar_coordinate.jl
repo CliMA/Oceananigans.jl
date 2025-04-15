@@ -143,7 +143,7 @@ end
     @test all(um.data .≈ us.data)
 end
 
-@testset "ZStar coordinate simulation testset" begin
+@testset "ZStar tracer conservation testset" begin
     z_stretched = MutableVerticalDiscretization(collect(-20:0))
     topologies  = ((Periodic, Periodic, Bounded), 
                    (Periodic, Bounded, Bounded),
@@ -211,7 +211,7 @@ end
             end
         end
         
-        @testset "TripolarGrid ZStar tests" begin
+        @testset "TripolarGrid ZStar tracer conservation tests" begin
             @info "Testing a ZStar coordinate with a Tripolar grid on $(arch)..."
 
             grid = TripolarGrid(arch; size = (20, 20, 20), z = z_stretched)
