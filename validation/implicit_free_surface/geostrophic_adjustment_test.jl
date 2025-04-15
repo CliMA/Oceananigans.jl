@@ -6,7 +6,6 @@ using Oceananigans.MultiRegion
 using Statistics
 using Printf
 using LinearAlgebra, SparseArrays
-using Oceananigans.Solvers: constructors, unpack_constructors
 using Oceananigans.Grids
 using GLMakie
 using JLD2
