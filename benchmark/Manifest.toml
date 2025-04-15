@@ -616,6 +616,12 @@ version = "0.9.34"
     LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
     SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
+[[deps.Krylov]]
+deps = ["LinearAlgebra", "Printf", "SparseArrays"]
+git-tree-sha1 = "b29d37ce30fa401a4563b18880ab91f979a29734"
+uuid = "ba0b0d4f-ebba-5204-a429-3ac8c609bfb7"
+version = "0.9.10"
+
 [[deps.KrylovPreconditioners]]
 deps = ["Adapt", "KernelAbstractions", "LightGraphs", "LinearAlgebra", "Metis", "SparseArrays"]
 git-tree-sha1 = "517b267073c44f494357507e37650d8516adf100"
@@ -951,10 +957,10 @@ uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 version = "1.2.0"
 
 [[deps.Oceananigans]]
-deps = ["Adapt", "CUDA", "Crayons", "CubedSphere", "Dates", "Distances", "DocStringExtensions", "FFTW", "GPUArrays", "Glob", "InteractiveUtils", "IterativeSolvers", "JLD2", "KernelAbstractions", "KrylovPreconditioners", "LinearAlgebra", "Logging", "MPI", "OffsetArrays", "OrderedCollections", "Pkg", "Printf", "Random", "ReactantCore", "Rotations", "SeawaterPolynomials", "SparseArrays", "StaticArrays", "Statistics", "StructArrays", "TimesDates"]
+deps = ["Adapt", "CUDA", "Crayons", "CubedSphere", "Dates", "Distances", "DocStringExtensions", "FFTW", "GPUArrays", "Glob", "InteractiveUtils", "IterativeSolvers", "JLD2", "KernelAbstractions", "Krylov", "KrylovPreconditioners", "LinearAlgebra", "Logging", "MPI", "OffsetArrays", "OrderedCollections", "Pkg", "Printf", "Random", "ReactantCore", "Rotations", "SeawaterPolynomials", "SparseArrays", "StaticArrays", "Statistics", "StructArrays", "TimesDates"]
 path = ".."
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.96.19"
+version = "0.96.20"
 
     [deps.Oceananigans.extensions]
     OceananigansAMDGPUExt = "AMDGPU"

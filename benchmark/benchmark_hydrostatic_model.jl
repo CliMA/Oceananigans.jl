@@ -7,6 +7,7 @@ using BenchmarkTools
 using CUDA
 using Oceananigans
 using Statistics
+using Oceananigans.Solvers
 
 # Problem size
 Nx = 512
@@ -49,10 +50,11 @@ grids = Dict(
 )
 
 free_surfaces = Dict(
-    :ExplicitFreeSurface => ExplicitFreeSurface(),
-    :SplitExplicitFreeSurface => SplitExplicitFreeSurface(; substeps=50),
-    :PCGImplicitFreeSurface => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient), 
-    :MatrixImplicitFreeSurface => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver), 
+#    :ExplicitFreeSurface => ExplicitFreeSurface(),
+#    :SplitExplicitFreeSurface => SplitExplicitFreeSurface(; substeps=50),
+    :KrylovImplicitFreeSurface => ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, Solver=KrylovSolver), 
+    :PCGImplicitFreeSurface    => ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient), 
+    :MatrixImplicitFreeSurface => ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver), 
 )
 
 function benchmark_hydrostatic_model(Arch, grid_type, free_surface_type)
