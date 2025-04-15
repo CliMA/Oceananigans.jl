@@ -4,7 +4,7 @@ using ConservativeRegridding
 import ConservativeRegridding: Regridder, regrid!
 
 using Oceananigans
-using Oceananigans.Grids: ξnode, ηnode, architecture
+using Oceananigans.Grids: ξnode, ηnode, architecture, AbstractGrid
 using Oceananigans.Fields: AbstractField
 using KernelAbstractions: @index, @kernel
 
