@@ -1,7 +1,5 @@
 module OceananigansConservativeRegriddingExt
 
-import GeoInterface as GI, GeometryOps as GO
-
 using ConservativeRegridding
 import ConservativeRegridding: Regridder, regrid!
 
