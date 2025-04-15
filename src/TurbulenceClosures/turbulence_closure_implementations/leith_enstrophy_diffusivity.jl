@@ -114,7 +114,7 @@ function build_diffusivity_fields(grid, clock, tracer_names, bcs, ::TwoDimension
 end
 
 @inline viscosity(::TwoDimensionalLeith, K) = K.νₑ
-@inline diffusivity(::TwoDimensionalLeith, K, id) = K.νₑ   
+@inline diffusivity(::TwoDimensionalLeith, K, ::Val{id}) where id = K.νₑ   
 
 #####
 ##### Abstract Smagorinsky functionality
@@ -123,7 +123,7 @@ end
 # Diffusive fluxes for Leith diffusivities
 
 @inline function diffusive_flux_x(i, j, k, grid, closure::TwoDimensionalLeith, diffusivities, 
-                                  tracer_index, c, clock, fields, buoyancy) 
+                                  ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
 
     νₑ = diffusivities.νₑ
 
@@ -142,7 +142,7 @@ end
 end
 
 @inline function diffusive_flux_y(i, j, k, grid, closure::TwoDimensionalLeith, diffusivities,
-                                  tracer_index, c, clock, fields, buoyancy)
+                                  ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
 
     νₑ = diffusivities.νₑ
 
@@ -160,7 +160,7 @@ end
 end
 
 @inline function diffusive_flux_z(i, j, k, grid, closure::TwoDimensionalLeith, diffusivities, 
-                                  tracer_index, c, clock, fields, buoyancy) 
+                                  ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
 
     νₑ = diffusivities.νₑ
 

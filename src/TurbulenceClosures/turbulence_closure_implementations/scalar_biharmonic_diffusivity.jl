@@ -100,7 +100,7 @@ function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{F, N, V, K})
 end
 
 @inline viscosity(closure::ScalarBiharmonicDiffusivity, K) = closure.ν
-@inline diffusivity(closure::ScalarBiharmonicDiffusivity, K, id) = closure.κ[id]
+@inline diffusivity(closure::ScalarBiharmonicDiffusivity, K, ::Val{id}) where id = closure.κ[id]
 
 compute_diffusivities!(diffusivities, closure::ScalarBiharmonicDiffusivity, args...) = nothing
 

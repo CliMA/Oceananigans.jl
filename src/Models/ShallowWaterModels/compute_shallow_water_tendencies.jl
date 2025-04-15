@@ -89,7 +89,7 @@ function compute_interior_tendency_contributions!(tendencies,
         @inbounds forcing = forcings[tracer_index+3]
         @inbounds c_advection = advection[tracer_name]
 
-        launch!(arch, grid, :xyz, compute_Gc!, Gc, grid, tracer_index,
+        launch!(arch, grid, :xyz, compute_Gc!, Gc, grid, Val(tracer_index),
                 c_advection, closure, solution, tracers, diffusivities, clock, formulation, forcing)
     end
 

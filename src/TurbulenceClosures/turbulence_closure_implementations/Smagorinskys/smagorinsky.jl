@@ -40,7 +40,7 @@ struct Smagorinsky{TD, C, P} <: AbstractScalarDiffusivity{TD, ThreeDimensionalFo
 end
 
 @inline viscosity(::Smagorinsky, K) = K.νₑ
-@inline diffusivity(closure::Smagorinsky, K, id) = K.νₑ / closure.Pr[id]
+@inline diffusivity(closure::Smagorinsky, K, ::Val{id}) where id = K.νₑ / closure.Pr[id]
 
 const ConstantSmagorinsky = Smagorinsky{<:Any, <:Number}
 
@@ -133,9 +133,9 @@ function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::Smago
     return merge(viscosity_nt, coefficient_fields)
 end
 
-@inline κᶠᶜᶜ(i, j, k, grid, c::Smagorinsky, K, id, args...) = ℑxᶠᵃᵃ(i, j, k, grid, K.νₑ) / c.Pr[id]
-@inline κᶜᶠᶜ(i, j, k, grid, c::Smagorinsky, K, id, args...) = ℑyᵃᶠᵃ(i, j, k, grid, K.νₑ) / c.Pr[id]
-@inline κᶜᶜᶠ(i, j, k, grid, c::Smagorinsky, K, id, args...) = ℑzᵃᵃᶠ(i, j, k, grid, K.νₑ) / c.Pr[id]
+@inline κᶠᶜᶜ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑxᶠᵃᵃ(i, j, k, grid, K.νₑ) / c.Pr[id]
+@inline κᶜᶠᶜ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑyᵃᶠᵃ(i, j, k, grid, K.νₑ) / c.Pr[id]
+@inline κᶜᶜᶠ(i, j, k, grid, c::Smagorinsky, K, ::Val{id}, args...) where id = ℑzᵃᵃᶠ(i, j, k, grid, K.νₑ) / c.Pr[id]
 
 Base.summary(closure::Smagorinsky) = string("Smagorinsky with coefficient = ", summary(closure.coefficient), ", Pr=$(closure.Pr)")
 function Base.show(io::IO, closure::Smagorinsky)

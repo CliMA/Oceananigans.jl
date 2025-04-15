@@ -76,11 +76,11 @@ function time_step_tke_dissipation_equations!(model)
                 Δτ, χ, Gⁿe, G⁻e, Gⁿϵ, G⁻ϵ)
 
         implicit_step!(e, implicit_solver, closure,
-                       model.diffusivity_fields, e_index,
+                       model.diffusivity_fields, Val(e_index),
                        model.clock, Δτ)
 
         implicit_step!(ϵ, implicit_solver, closure,
-                       model.diffusivity_fields, ϵ_index,
+                       model.diffusivity_fields, Val(ϵ_index),
                        model.clock, Δτ)
     end
 
@@ -184,7 +184,7 @@ end
     end
 end
 
-@inline function implicit_linear_coefficient(i, j, k, grid, ::FlavorOfTD{<:VITD}, K, id, args...)
+@inline function implicit_linear_coefficient(i, j, k, grid, closure::FlavorOfTD{<:VITD}, K, ::Val{id}, args...) where id
     L = K._tupled_implicit_linear_coefficients[id]
     return @inbounds L[i, j, k]
 end

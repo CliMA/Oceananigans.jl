@@ -30,10 +30,10 @@ const F = Face
 @inline implicit_linear_coefficient(i, j, k, grid, args...) = zero(grid)
 
 # General implementation
-@inline νzᶠᶜᶠ(i, j, k, grid, closure, args...) = zero(grid)
-@inline νzᶜᶠᶠ(i, j, k, grid, closure, args...) = zero(grid)
-@inline νzᶜᶜᶜ(i, j, k, grid, closure, args...) = zero(grid)
-@inline κzᶜᶜᶠ(i, j, k, grid, closure, args...) = zero(grid)
+@inline νzᶠᶜᶠ(i, j, k, grid, closure, K, args...) = zero(grid)
+@inline νzᶜᶠᶠ(i, j, k, grid, closure, K, args...) = zero(grid)
+@inline νzᶜᶜᶜ(i, j, k, grid, closure, K, args...) = zero(grid)
+@inline κzᶜᶜᶠ(i, j, k, grid, closure, K, args...) = zero(grid)
 
 # Vertical momentum diffusivities: u, v, w
 @inline ivd_diffusivity(i, j, k, grid, ::F, ::C, ::F, clo, K, id, clock) = νzᶠᶜᶠ(i, j, k, grid, clo, K, id, clock) * !inactive_node(i, j, k, grid, f, c, f)
@@ -41,7 +41,7 @@ const F = Face
 @inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::C, clo, K, id, clock) = νzᶜᶜᶜ(i, j, k, grid, clo, K, id, clock) * !inactive_node(i, j, k, grid, c, c, c)
 
 # Tracer diffusivity
-@inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::F, clo, K, id, clock) = κzᶜᶜᶠ(i, j, k, grid, clo, K, id, clock) * !inactive_node(i, j, k, grid, c, c, f)
+@inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::F, args...) = κzᶜᶜᶠ(i, j, k, grid, args...) * !inactive_node(i, j, k, grid, c, c, f)
 
 #####
 ##### Batched Tridiagonal solver for implicit diffusion
@@ -113,8 +113,9 @@ end
 
 @inline ivd_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock) =
     one(grid) - Δt * _implicit_linear_coefficient(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock) -
-                              _ivd_upper_diagonal(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock) -
-                              _ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock)
+                               _ivd_upper_diagonal(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock) -
+                               _ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock)
+
 
 @inline _implicit_linear_coefficient(args...) = implicit_linear_coefficient(args...)
 @inline _ivd_upper_diagonal(args...) = ivd_upper_diagonal(args...)
@@ -162,14 +163,9 @@ end
 
 # Extend `get_coefficient` to retrieve `ivd_diagonal`, `_ivd_lower_diagonal` and `_ivd_upper_diagonal`.
 # Note that we use the "periphery-aware" upper and lower diagonals
-@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, ::ZDirection, closure, K, id, ℓx, ℓy, ℓz, Δt, clock) = 
-    _ivd_lower_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock)
-
-@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, ::ZDirection, closure, K, id, ℓx, ℓy, ℓz, Δt, clock) = 
-    _ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock)
-
-@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal, p, ::ZDirection, closure, K, id, ℓx, ℓy, ℓz, Δt, clock) =        
-           ivd_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock)
+@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, ::ZDirection, args...) = _ivd_lower_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, ::ZDirection, args...) = _ivd_upper_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal,      p, ::ZDirection, args...) = ivd_diagonal(i, j, k, grid, args...)
 
 #####
 ##### Implicit step functions

@@ -68,7 +68,7 @@ function time_step_catke_equation!(model)
         # previous_clock = (; time=current_time, iteration=previous_iteration)
 
         implicit_step!(e, implicit_solver, closure,
-                       diffusivity_fields, tracer_index,
+                       diffusivity_fields, Val(tracer_index),
                        model.clock, Δτ)
     end
 
@@ -172,12 +172,10 @@ end
     end
 end
 
-@inline function implicit_linear_coefficient(i, j, k, grid, ::FlavorOfCATKE{<:VITD}, K, id, args...)
+@inline function implicit_linear_coefficient(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, K, ::Val{id}, args...) where id
     L = K._tupled_implicit_linear_coefficients[id]
     return @inbounds L[i, j, k]
 end
-
-@inline implicit_linear_coefficient(i, j, k, grid, ::FlavorOfCATKE{<:VITD}, K, ::Nothing, args...) = zero(grid)
 
 #=
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE

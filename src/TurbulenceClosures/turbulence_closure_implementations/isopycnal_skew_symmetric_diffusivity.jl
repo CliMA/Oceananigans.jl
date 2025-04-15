@@ -35,7 +35,7 @@ const issd_coefficient_loc = (Center(), Center(), Face())
     IsopycnalSkewSymmetricDiffusivity([time_disc=VerticallyImplicitTimeDiscretization(), FT=Float64;]
                                       κ_skew = 0,
                                       κ_symmetric = 0,
-                                      skew_flux_formulation = AdvectiveFormulation(),
+                                      skew_flux_formulation = DiffusiveFormulation(),
                                       isopycnal_tensor = SmallSlopeIsopycnalTensor(),
                                       slope_limiter = FluxTapering(1e-2))
 
@@ -50,7 +50,7 @@ Both `κ_skew` and `κ_symmetric` may be constants, arrays, fields, or functions
 function IsopycnalSkewSymmetricDiffusivity(time_disc::TD=VerticallyImplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType;
                                            κ_skew = nothing,
                                            κ_symmetric = nothing,
-                                           skew_flux_formulation::A = AdvectiveFormulation(),
+                                           skew_flux_formulation::A = DiffusiveFormulation(),
                                            isopycnal_tensor = SmallSlopeIsopycnalTensor(),
                                            slope_limiter = FluxTapering(1e-2),
                                            required_halo_size::Int = 1) where {TD, A}
@@ -212,9 +212,9 @@ end
 end
 
 # Make sure we do not need to perform heavy calculations if we really do not need to
-@inline diffusive_flux_x(i, j, k, grid, ::NoDiffusionISSD, K, args...) = zero(grid)
-@inline diffusive_flux_y(i, j, k, grid, ::NoDiffusionISSD, K, args...) = zero(grid)
-@inline diffusive_flux_z(i, j, k, grid, ::NoDiffusionISSD, K, args...) = zero(grid)
+@inline diffusive_flux_x(i, j, k, grid, ::NoDiffusionISSD, K, ::Val{tracer_index}, args...) where tracer_index = zero(grid)
+@inline diffusive_flux_y(i, j, k, grid, ::NoDiffusionISSD, K, ::Val{tracer_index}, args...) where tracer_index = zero(grid)
+@inline diffusive_flux_z(i, j, k, grid, ::NoDiffusionISSD, K, ::Val{tracer_index}, args...) where tracer_index = zero(grid)
 
 # Diffusive fluxes
 @inline get_tracer_κ(κ::NamedTuple, grid, tracer_index) = @inbounds κ[tracer_index]
@@ -227,8 +227,8 @@ end
 
 # defined at fcc
 @inline function diffusive_flux_x(i, j, k, grid,
-                                  closure::Union{ISSD, ISSDVector}, diffusivity_fields, tracer_index,
-                                  c, clock, fields, buoyancy) 
+                                  closure::Union{ISSD, ISSDVector}, diffusivity_fields, ::Val{tracer_index},
+                                  c, clock, fields, buoyancy) where tracer_index
 
     closure = getclosure(i, j, closure)
 
@@ -257,8 +257,8 @@ end
 
 # defined at cfc
 @inline function diffusive_flux_y(i, j, k, grid,
-                                  closure::Union{ISSD, ISSDVector}, diffusivity_fields, tracer_index,
-                                  c, clock, fields, buoyancy)
+                                  closure::Union{ISSD, ISSDVector}, diffusivity_fields, ::Val{tracer_index},
+                                  c, clock, fields, buoyancy) where tracer_index
 
     closure = getclosure(i, j, closure)
 
@@ -287,8 +287,8 @@ end
 
 # defined at ccf
 @inline function diffusive_flux_z(i, j, k, grid,
-                                  closure::FlavorOfISSD{TD}, diffusivity_fields, tracer_index,
-                                  c, clock, fields, buoyancy) where {TD}
+                                  closure::FlavorOfISSD{TD}, diffusivity_fields, ::Val{tracer_index},
+                                  c, clock, fields, buoyancy) where {tracer_index, TD}
 
     closure = getclosure(i, j, closure)
 
@@ -324,7 +324,7 @@ end
 
 @inline explicit_κ_∂z_c(i, j, k, grid, ::VerticallyImplicitTimeDiscretization, args...) = zero(grid)
 
-@inline function κzᶜᶜᶠ(i, j, k, grid, closure::FlavorOfISSD, K, id, clock) 
+@inline function κzᶜᶜᶠ(i, j, k, grid, closure::FlavorOfISSD, K, ::Val{id}, clock) where id
     closure = getclosure(i, j, closure)
     κ_symmetric = get_tracer_κ(closure.κ_symmetric, grid, id)
     ϵ_R₃₃ = @inbounds K.ϵ_R₃₃[i, j, k] # tapered 33 component of rotation tensor

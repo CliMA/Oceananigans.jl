@@ -97,7 +97,7 @@ Compute the tendency for the height, h.
 end
 
 @inline function tracer_tendency(i, j, k, grid,
-                                 tracer_index,
+                                 val_tracer_index::Val{tracer_index},
                                  advection,
                                  closure,
                                  solution,
@@ -105,7 +105,7 @@ end
                                  diffusivities,
                                  clock,
                                  formulation,
-                                 forcing) 
+                                 forcing) where tracer_index
 
     @inbounds c = tracers[tracer_index]
 

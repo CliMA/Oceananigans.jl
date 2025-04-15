@@ -20,7 +20,7 @@ end
 const AMD = AnisotropicMinimumDissipation
 
 @inline viscosity(::AMD, K) = K.νₑ
-@inline diffusivity(::AMD, K, id) = K.κₑ[id]
+@inline diffusivity(::AMD, K, ::Val{id}) where id = K.κₑ[id]
 
 Base.show(io::IO, closure::AMD{TD}) where TD =
     print(io, "AnisotropicMinimumDissipation{$TD} turbulence closure with:\n",
@@ -167,7 +167,7 @@ end
     @inbounds νₑ[i, j, k] = max(zero(FT), νˢᵍˢ)
 end
 
-@kernel function _compute_AMD_diffusivity!(κₑ, grid, closure::AMD, tracer, tracer_index, velocities) 
+@kernel function _compute_AMD_diffusivity!(κₑ, grid, closure::AMD, tracer, ::Val{tracer_index}, velocities) where {tracer_index}
     i, j, k = @index(Global, NTuple)
 
     FT = eltype(grid)
@@ -201,7 +201,7 @@ function compute_diffusivities!(diffusivity_fields, closure::AnisotropicMinimumD
     for (tracer_index, κₑ) in enumerate(diffusivity_fields.κₑ)
         @inbounds tracer = tracers[tracer_index]
         launch!(arch, grid, parameters, _compute_AMD_diffusivity!, 
-                κₑ, grid, closure, tracer, tracer_index, velocities)
+                κₑ, grid, closure, tracer, Val(tracer_index), velocities)
     end
 
     return nothing

@@ -79,7 +79,7 @@ function compute_hydrostatic_free_surface_tendency_contributions!(model, kernel_
         @inbounds c_forcing     = model.forcing[tracer_name]
         @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
 
-        args = tuple(tracer_index,
+        args = tuple(Val(tracer_index),
                      Val(tracer_name),
                      c_advection,
                      model.closure,
