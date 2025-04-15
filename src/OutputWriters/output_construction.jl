@@ -30,6 +30,13 @@ end
 ##### Support for Field, Reduction, and AbstractOperation outputs
 #####
 
+intersect_indices(output, indices) = indices
+intersect_indices(output::Field, indices) = map(intersect_index_range, indices, output.indices)
+
+intersect_index_range(::Colon, ::Colon) = Colon()
+intersect_index_range(range::UnitRange, ::Colon) = range
+intersect_index_range(range1::UnitRange, range2::UnitRange) = intersect(range1, range2)
+
 function output_indices(output::Union{AbstractField, Reduction}, grid, indices, with_halos)
     indices = validate_indices(indices, location(output), grid)
 
@@ -39,7 +46,9 @@ function output_indices(output::Union{AbstractField, Reduction}, grid, indices, 
         indices = map(restrict_to_interior, indices, loc, topo, size(grid))
     end
 
-    return indices
+    intersected = intersect_indices(output, indices)
+
+    return intersected
 end
 
 function construct_output(user_output::Union{AbstractField, Reduction}, grid, user_indices, with_halos)
