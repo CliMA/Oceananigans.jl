@@ -106,6 +106,7 @@ oneAPI = "2.0.1"
 [extras]
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
 CUDA_Runtime_jll = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
+ConservativeRegridding = "8e50ac2c-eb48-49bc-a402-07c87b949343"
 DataDeps = "124859b0-ceae-595e-8997-d05f6a7a8dfe"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 MPIPreferences = "3da0fdf6-3ccc-4f1b-acd9-58baa6c99267"
