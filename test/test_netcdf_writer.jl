@@ -2551,7 +2551,7 @@ function test_netcdf_free_surface_only_output(arch)
 
     # Kind of a hack because we want η to be a ReducedField.
     outputs = (;
-        η = model.free_surface.η,
+        η = Average(model.free_surface.η, dims=3),
     )
 
     Arch = typeof(arch)
