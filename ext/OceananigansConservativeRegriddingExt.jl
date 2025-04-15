@@ -4,7 +4,7 @@ using ConservativeRegridding
 import ConservativeRegridding: Regridder, regrid!
 
 using Oceananigans
-using Oceananigans.Grids: ξnode, ηnode
+using Oceananigans.Grids: ξnode, ηnode, architecture
 using Oceananigans.Fields: AbstractField
 using KernelAbstractions: @index, @kernel
 
@@ -14,23 +14,26 @@ const RegriddableField{LX, LY} = Field{LX, LY, Nothing}
 instantiate(L) = L()
 
 function compute_cell_matrix(field::AbstractField)
-    Fx, Fy, _ = size(field)
     LX, LY, _ = Oceananigans.Fields.location(field)
-    ℓx, ℓy = LX(), LY()
+    return compute_cell_matrix(field.grid, LX(), LY(), field.indices)
+end
+
+function compute_cell_matrix(grid::AbstractGrid, ℓx, ℓy, indices=default_indices(3))
 
     if isnothing(ℓx) || isnothing(ℓy)
         throw(ArgumentError("cell_matrix can only be computed for fields with non-nothing horizontal location."))
     end
 
-    grid = field.grid
-    arch = grid.architecture
+    arch = architecture(grid)
     FT = eltype(grid)
 
+    Fx = size(grid, ℓx, indices)
+    Fy = size(grid, ℓy, indices)
+    
     vertices_per_cell = 5 # convention: [sw, nw, ne, se, sw]
     ArrayType = Oceananigans.Architectures.array_type(arch)
     cell_matrix = ArrayType{Tuple{FT, FT}}(undef, vertices_per_cell, Fx*Fy)
 
-    arch = grid.architecture
     Oceananigans.Utils.launch!(arch, grid, (Fx, Fy), _compute_cell_matrix!, cell_matrix, Fx, ℓx, ℓy, grid)
 
     return cell_matrix
