@@ -6,6 +6,7 @@ using Oceananigans.TimeSteppers: update_state!
 using BenchmarkTools
 using CUDA
 using Oceananigans
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: DiagonallyDominantInversePreconditioner
 using Statistics
 using Oceananigans.Solvers
 
@@ -50,11 +51,11 @@ grids = Dict(
 )
 
 free_surfaces = Dict(
-#    :ExplicitFreeSurface => ExplicitFreeSurface(),
-#    :SplitExplicitFreeSurface => SplitExplicitFreeSurface(; substeps=50),
-    :KrylovImplicitFreeSurface => ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, Solver=KrylovSolver), 
-    :PCGImplicitFreeSurface    => ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient), 
-    :MatrixImplicitFreeSurface => ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver), 
+   :ExplicitFreeSurface => ExplicitFreeSurface(),
+   :SplitExplicitFreeSurface => SplitExplicitFreeSurface(; substeps=50),
+   :KrylovImplicitFreeSurface => ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=nothing, Solver=KrylovSolver), 
+   :PCGImplicitFreeSurface    => ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient), 
+   :MatrixImplicitFreeSurface => ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver), 
 )
 
 function benchmark_hydrostatic_model(Arch, grid_type, free_surface_type)
@@ -81,10 +82,10 @@ end
 architectures = has_cuda() ? [GPU, CPU] : [CPU]
 
 grid_types = [
-    :RectilinearGrid,
-    :LatitudeLongitudeGrid,
-    :ImmersedRecGrid,
-    :ImmersedLatGrid,
+   :RectilinearGrid,
+   :LatitudeLongitudeGrid,
+   :ImmersedRecGrid,
+   :ImmersedLatGrid,
 ]
 
 free_surface_types = collect(keys(free_surfaces))
@@ -94,4 +95,4 @@ print_system_info()
 suite = run_benchmarks(benchmark_hydrostatic_model; architectures, grid_types, free_surface_types)
 
 df = benchmarks_dataframe(suite)
-benchmarks_pretty_table(df2, title="Hydrostatic model benchmarks")
+benchmarks_pretty_table(df, title="Hydrostatic model benchmarks")
