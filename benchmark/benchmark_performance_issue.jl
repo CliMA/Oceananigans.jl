@@ -13,11 +13,11 @@ using Oceananigans.Solvers
 using SeawaterPolynomials.TEOS10
 
 function ocean_benchmark(grid, closure)
-    momentum_advection = WENOVectorInvariant()
+    momentum_advection = nothing # WENOVectorInvariant()
     tracer_advection = WENO(order=7)
     buoyancy = SeawaterBuoyancy(equation_of_state=TEOS10EquationOfState())
-    coriolis = HydrostaticSphericalCoriolis()
-    free_surface = SplitExplicitFreeSurface(grid; substeps=70)
+    coriolis = nothing # HydrostaticSphericalCoriolis()
+    free_surface = nothing # SplitExplicitFreeSurface(grid; substeps=70)
 
     @inline ϕ²(i, j, k, grid, ϕ)    = @inbounds ϕ[i, j, k]^2
     @inline spᶠᶜᶜ(i, j, k, grid, Φ) = @inbounds sqrt(Φ.u[i, j, k]^2 + ℑxyᶠᶜᵃ(i, j, k, grid, ϕ², Φ.v))
@@ -37,22 +37,24 @@ function ocean_benchmark(grid, closure)
     v_immersed_bc = ImmersedBoundaryCondition(bottom=v_immersed_drag)
 
     # Set up boundary conditions using Field
-    top_zonal_momentum_flux      = τx = Field{Face, Center, Nothing}(grid)
-    top_meridional_momentum_flux = τy = Field{Center, Face, Nothing}(grid)
-    top_ocean_heat_flux          = Jᵀ = Field{Center, Center, Nothing}(grid)
-    top_salt_flux                = Jˢ = Field{Center, Center, Nothing}(grid)
+    τx = Field{Face, Center, Nothing}(grid)
+    τy = Field{Center, Face, Nothing}(grid)
+    Jᵀ = Field{Center, Center, Nothing}(grid)
+    Jˢ = Field{Center, Center, Nothing}(grid)
 
     # Construct ocean boundary conditions including surface forcing and bottom drag
     u_top_bc = FluxBoundaryCondition(τx)
     v_top_bc = FluxBoundaryCondition(τy)
-    T_top_bc = FluxBoundaryCondition(Jᵀ)
-    S_top_bc = FluxBoundaryCondition(Jˢ)
 
     u_bot_bc = FluxBoundaryCondition(u_quadratic_bottom_drag, discrete_form=true, parameters=0.1)
     v_bot_bc = FluxBoundaryCondition(v_quadratic_bottom_drag, discrete_form=true, parameters=0.1)
 
     ubcs = FieldBoundaryConditions(top=u_top_bc, bottom=u_bot_bc, immersed=u_immersed_bc)
     vbcs = FieldBoundaryConditions(top=v_top_bc, bottom=v_bot_bc, immersed=v_immersed_bc)
+
+    T_top_bc = FluxBoundaryCondition(1e-9)
+    S_top_bc = FluxBoundaryCondition(1e-9)
+
     Tbcs = FieldBoundaryConditions(top=T_top_bc)
     Sbcs = FieldBoundaryConditions(top=S_top_bc)
 
@@ -63,7 +65,7 @@ function ocean_benchmark(grid, closure)
                                           coriolis,
                                           closure,
                                           free_surface,
-                                          boundary_conditions = (u=ubcs, v=vbcs, T=Tbcs, S=Sbcs),
+                                          boundary_conditions = (T=Tbcs, S=Sbcs),
                                           tracers = (:T, :S, :e))
 
     @info "Model is built"
@@ -86,6 +88,16 @@ function benchmark_hydrostatic_model(Arch, grid_type, closure_type)
        time_step!(model, Δt) # warmup
     end
 
+    # Make sure we do not have any NaN or Inf values anywhere
+    fields = Oceananigans.prognostic_fields(model)
+    for field in fields
+        @assert all(isfinite.(Array(interior(field))))
+    end
+
+    for _ in 1:10
+        Oceananigans.TimeSteppers.compute_tendencies!(model, [])
+    end
+
     trial = @benchmark begin
         CUDA.@sync blocking = true Oceananigans.TimeSteppers.compute_tendencies!($model, [])
     end samples = 50
@@ -94,8 +106,8 @@ function benchmark_hydrostatic_model(Arch, grid_type, closure_type)
 end
 
 # Problem size
-Nx = 50
-Ny = 50
+Nx = 100
+Ny = 100
 Nz = 50
 
 random_vector = - 5000 .* rand(Nx, Ny)
@@ -124,7 +136,7 @@ closures = Dict(
 architectures = has_cuda() ? [GPU] : [CPU]
 
 grid_types = [
-   :LatitudeLongitudeGrid,
+#    :LatitudeLongitudeGrid,
    :ImmersedLatGrid,
 ]
 
