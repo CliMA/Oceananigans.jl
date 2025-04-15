@@ -90,7 +90,7 @@ jobs:
         run: |
           using Pkg
           Pkg.Registry.update()
-          Pkg.add([PackageSpec(; name="ConservativeRegridding", url="https://github.com/JuliaGeo/ConservativeRegridding.jl.git", rev="mk/interfacem")])
+          Pkg.add([PackageSpec(; name="ConservativeRegridding", url="https://github.com/JuliaGeo/ConservativeRegridding.jl.git", rev="mk/interface")])
           Pkg.instantiate()
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
