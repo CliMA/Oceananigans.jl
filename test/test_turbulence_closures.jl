@@ -57,7 +57,7 @@ function run_constant_isotropic_diffusivity_fluxdiv_tests(FT=Float64; ν=FT(0.3)
     K, b = nothing, nothing
     closure_args = (clock, model_fields, b)
 
-    @test ∇_dot_qᶜ(2, 1, 3, grid, closure, K, 1, tracers[1], closure_args...) == - 2κ
+    @test ∇_dot_qᶜ(2, 1, 3, grid, closure, K, Val(1), tracers[1], closure_args...) == - 2κ
     @test ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closure, K, closure_args...) == - 2ν
     @test ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, closure, K, closure_args...) == - 4ν
     @test ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, closure, K, closure_args...) == - 6ν
@@ -100,8 +100,8 @@ function horizontal_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), ν
     K, b = nothing, nothing
     closure_args = (clock, model_fields, b)
 
-    return (∇_dot_qᶜ(2, 1, 3, grid, closureh, K, 1, T, closure_args...) == -  8κh &&
-            ∇_dot_qᶜ(2, 1, 3, grid, closurez, K, 1, T, closure_args...) == - 10κz &&
+    return (∇_dot_qᶜ(2, 1, 3, grid, closureh, K, Val(1), T, closure_args...) == -  8κh &&
+            ∇_dot_qᶜ(2, 1, 3, grid, closurez, K, Val(1), T, closure_args...) == - 10κz &&
               ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closureh, K, closure_args...) == - 2νh &&
               ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closurez, K, closure_args...) == - 4νz &&
               ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, closureh, K, closure_args...) == - 4νh &&
@@ -237,7 +237,7 @@ function compute_closure_specific_diffusive_cfl(closure)
     grid = RectilinearGrid(CPU(), size=(2, 2, 2), extent=(1, 2, 3))
 
     model = NonhydrostaticModel(; grid, closure, buoyancy=BuoyancyTracer(), tracers=:b)
-    args = (model.closure, model.diffusivity_fields, 1, model.tracers.b, model.clock, fields(model), model.buoyancy)
+    args = (model.closure, model.diffusivity_fields, Val(1), model.tracers.b, model.clock, fields(model), model.buoyancy)
     dcfl = DiffusiveCFL(0.1)
     @test dcfl(model) isa Number
     @test diffusive_flux_x(1, 1, 1, grid, args...) == 0
