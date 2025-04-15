@@ -1,5 +1,5 @@
 using Oceananigans, CairoMakie, Statistics
-using Oceananigans.Models.NonhydrostaticModels: ConjugateGradientPoissonSolver
+using Oceananigans.Models.NonhydrostaticModels: KrylovPoissonSolver
 using Oceananigans.Solvers: DiagonallyDominantPreconditioner
 using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ
 using Oceananigans.Solvers: FFTBasedPoissonSolver
@@ -9,7 +9,7 @@ using CUDA
 using Oceananigans.BoundaryConditions: FlatExtrapolationOpenBoundaryCondition,
                                        PerturbationAdvectionOpenBoundaryCondition
 
-# there is some problem using ConjugateGradientPoissonSolver with TimeInterval because the timestep can go really small
+# there is some problem using KrylovPoissonSolver with TimeInterval because the timestep can go really small
 # so while I identify the issue I'm using IterationInterval and a fixed timestep
 
 """
@@ -119,8 +119,8 @@ function cylinder_model(open_boundaries;
 
     preconditioner = FFTBasedPoissonSolver(reduced_precision_grid)
     reltol = abstol = 1e-7
-    pressure_solver = ConjugateGradientPoissonSolver(grid, maxiter=10;
-                                                    reltol, abstol, preconditioner)
+    pressure_solver = KrylovPoissonSolver(grid, maxiter=10;
+                                          reltol, abstol, preconditioner)
 
     model = NonhydrostaticModel(; grid, pressure_solver, closure,
                                  advection, boundary_conditions)
@@ -146,7 +146,7 @@ function cylinder_model(open_boundaries;
     wall_time = Ref(time_ns())
 
     function progress(sim)
-        if pressure_solver isa ConjugateGradientPoissonSolver
+        if pressure_solver isa KrylovPoissonSolver
             pressure_iters = iteration(pressure_solver)
         else
             pressure_iters = 0

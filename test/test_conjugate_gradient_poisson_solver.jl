@@ -1,5 +1,5 @@
 include("dependencies_for_runtests.jl")
-using Oceananigans.Solvers: fft_poisson_solver, ConjugateGradientPoissonSolver
+using Oceananigans.Solvers: fft_poisson_solver, KrylovPoissonSolver
 
 @testset "Conjugate gradient Poisson solver" begin
     @info "Testing Conjugate gradient poisson solver..."
@@ -11,17 +11,17 @@ using Oceananigans.Solvers: fft_poisson_solver, ConjugateGradientPoissonSolver
             x = y = (0, 1)
             z = (0, 1)
             grid = RectilinearGrid(arch, size=(2, 2, 2); x, y, z)
-            solver = ConjugateGradientPoissonSolver(grid, preconditioner=fft_poisson_solver(grid))
+            solver = KrylovPoissonSolver(grid, preconditioner=fft_poisson_solver(grid))
             pressure = CenterField(grid)
             solve!(pressure, solver.conjugate_gradient_solver, solver.right_hand_side)
-            @test solver isa ConjugateGradientPoissonSolver
+            @test solver isa KrylovPoissonSolver
 
             z = [0, 0.2, 1]
             grid = RectilinearGrid(arch, size=(2, 2, 2); x, y, z)
-            solver = ConjugateGradientPoissonSolver(grid, preconditioner=fft_poisson_solver(grid))
+            solver = KrylovPoissonSolver(grid, preconditioner=fft_poisson_solver(grid))
             pressure = CenterField(grid)
             solve!(pressure, solver.conjugate_gradient_solver, solver.right_hand_side)
-            @test solver isa ConjugateGradientPoissonSolver
+            @test solver isa KrylovPoissonSolver
         end
     end
 end
