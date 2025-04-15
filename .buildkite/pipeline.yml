@@ -6,7 +6,7 @@ env:
   JULIA_NUM_PRECOMPILE_TASKS: 24
   JULIA_NUM_THREADS: 8
   XLA_REACTANT_GPU_PREALLOCATE: false
-  CUDA_VISIBLE_DEVICES: "3" # General device used for GPU testing
+  CUDA_VISIBLE_DEVICES: "3" # Tartarus device for GPU testing
 
 steps:
   - label: "🏕️ initialize tartarus environment"
@@ -64,6 +64,36 @@ steps:
         - exit_status: 1
           limit: 1
     depends_on: "init"
+
+  # - label: "AMDGPU.jl unit tests"
+  #   env:
+  #     TEST_GROUP: "amdgpu"
+  #   plugins:
+  #     - JuliaCI/julia#v1:
+  #         version: "1.10"
+  #   agents:
+  #     queue: "juliagpu"
+  #     rocm: "*"
+  #     rocmgpu: "*"
+  #   env:
+  #     JULIA_NUM_THREADS: 4
+  #     JULIA_AMDGPU_CORE_MUST_LOAD: "1"
+  #     JULIA_AMDGPU_HIP_MUST_LOAD: "1"
+  #     JULIA_AMDGPU_DISABLE_ARTIFACTS: "1"
+  #   command: |
+  #     julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+
+  # - label: "oneAPI.jl unit tests"
+  #   env:
+  #     TEST_GROUP: "oneapi"
+  #   plugins:
+  #     - JuliaCI/julia#v1:
+  #         version: "1.10"
+  #   agents:
+  #     queue: "juliagpu"
+  #     intel: "*"
+  #   command: |
+  #     julia --color=yes --project -e 'using Pkg; Pkg.test()'"
 
 #####
 ##### Solver tests
