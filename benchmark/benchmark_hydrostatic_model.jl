@@ -54,7 +54,7 @@ free_surfaces = Dict(
 #    :ExplicitFreeSurface => ExplicitFreeSurface(),
 #    :SplitExplicitFreeSurface => SplitExplicitFreeSurface(; substeps=50),
    :KrylovImplicitFreeSurface => ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=nothing, Solver=KrylovSolver), 
-   :PCGImplicitFreeSurface    => ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient), 
+   :PCGImplicitFreeSurface    => ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, Solver=ConjugateGradientSolver), 
    :MatrixImplicitFreeSurface => ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver), 
 )
 
