@@ -33,13 +33,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ['1.10']
-        os: ['ubuntu-latest']
         include:
           - test_name: "Serial Reactant"
             test_group: "reactant"
+            version: '1.10'
+            os: 'ubuntu-latest'
           - test_name: "Sharding with Reactant"
             test_group: "sharding"
+            version: '1.10'
+            os: 'ubuntu-latest'
     steps:
       - run: |
           touch LocalPreferences.toml
