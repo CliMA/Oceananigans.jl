@@ -12,8 +12,7 @@ using Statistics
 using Oceananigans.Solvers
 using SeawaterPolynomials.TEOS10
 
-function my_ocean(grid, closure)
-
+function ocean_benchmark(grid, closure)
     momentum_advection = WENOVectorInvariant()
     tracer_advection = WENO(order=7)
     buoyancy = SeawaterBuoyancy(equation_of_state=TEOS10EquationOfState())
@@ -74,7 +73,7 @@ end
 function benchmark_hydrostatic_model(Arch, grid_type, closure_type)
 
     grid  = grids[(Arch, grid_type)]
-    model = my_ocean(grid, closures[closure_type])
+    model = ocean_benchmark(grid, closures[closure_type])
 
     T = 0.0001 .* rand(size(model.grid)) .+ 20
     S = 0.0001 .* rand(size(model.grid)) .+ 35
@@ -83,7 +82,7 @@ function benchmark_hydrostatic_model(Arch, grid_type, closure_type)
     set!(model.tracers.S, S)
 
     Δt = 1
-    for t in 1:30
+    for _ in 1:30
        time_step!(model, Δt) # warmup
     end
 
@@ -100,22 +99,22 @@ Ny = 50
 Nz = 50
 
 random_vector = - 5000 .* rand(Nx, Ny)
+
 bottom_height(arch) = GridFittedBottom(Oceananigans.on_architecture(arch, random_vector))
-tgrid(arch) = TripolarGrid(arch, size=(Nx, Ny, Nz), halo=(7, 7, 7), z=collect(range(-5000, 0, length=51)))
-lgrid(arch) = LatitudeLongitudeGrid(arch, size=(Nx, Ny, Nz), longitude=(0, 360), latitude=(-75, 75), z=collect(range(-5000, 0, length=51)), halo = (7, 7, 7))
+lgrid(arch) = LatitudeLongitudeGrid(arch, size=(Nx, Ny, Nz), 
+                                     longitude=(0, 360), 
+                                      latitude=(-75, 75),
+                                             z=collect(range(-5000, 0, length=51)), 
+                                          halo=(7, 7, 7))
 
 grids = Dict(
    (CPU, :LatitudeLongitudeGrid) => lgrid(CPU()),
    (CPU, :ImmersedLatGrid)       => ImmersedBoundaryGrid(lgrid(CPU()), bottom_height(CPU()); active_cells_map=true),
-   (CPU, :ImmersedTriGrid)       => ImmersedBoundaryGrid(tgrid(CPU()), bottom_height(CPU()); active_cells_map=true),
    (GPU, :LatitudeLongitudeGrid) => lgrid(GPU()),
    (GPU, :ImmersedLatGrid)       => ImmersedBoundaryGrid(lgrid(GPU()), bottom_height(GPU()); active_cells_map=true), 
-   (GPU, :ImmersedTriGrid)       => ImmersedBoundaryGrid(tgrid(GPU()), bottom_height(GPU()); active_cells_map=true),
 )
 
 closures = Dict(
-#    :CATKEImplicit => TurbulenceClosures.TKEBasedVerticalDiffusivities.CATKEVerticalDiffusivity(),
-#    :CATKEExplicit => TurbulenceClosures.TKEBasedVerticalDiffusivities.CATKEVerticalDiffusivity(TurbulenceClosures.ExplicitTimeDiscretization()),
    :DiffImplicit  => VerticalScalarDiffusivity(TurbulenceClosures.VerticallyImplicitTimeDiscretization(), ν=1e-5, κ=1e-5),
    :DiffExplicit  => VerticalScalarDiffusivity(ν=1e-5, κ=1e-5),
 )
@@ -126,7 +125,6 @@ architectures = has_cuda() ? [GPU] : [CPU]
 
 grid_types = [
    :LatitudeLongitudeGrid,
-#   :ImmersedTriGrid,
    :ImmersedLatGrid,
 ]
 
