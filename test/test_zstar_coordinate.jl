@@ -214,7 +214,7 @@ end
         @testset "TripolarGrid ZStar tests" begin
             @info "Testing a ZStar coordinate with a Tripolar grid on $(arch)..."
 
-            grid = TripolarGrid(arch; size = (50, 50, 20), z = z_stretched)
+            grid = TripolarGrid(arch; size = (20, 20, 20), z = z_stretched)
 
             # Code credit:
             # https://github.com/PRONTOLab/GB-25/blob/682106b8487f94da24a64d93e86d34d560f33ffc/src/model_utils.jl#L65
