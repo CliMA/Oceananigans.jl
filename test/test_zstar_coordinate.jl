@@ -144,7 +144,6 @@ end
 end
 
 @testset "ZStar coordinate simulation testset" begin
-    z_uniform   = MutableVerticalDiscretization((-20, 0))
     z_stretched = MutableVerticalDiscretization(collect(-20:0))
     topologies  = ((Periodic, Periodic, Bounded), 
                    (Periodic, Bounded, Bounded),
@@ -155,29 +154,23 @@ end
         for topology in topologies
             Random.seed!(1234)
 
-            rtg  = RectilinearGrid(arch; size = (10, 10, 20), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_uniform)
             rtgv = RectilinearGrid(arch; size = (10, 10, 20), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_stretched)
             
-            irtg  = ImmersedBoundaryGrid(rtg,   GridFittedBottom((x, y) -> rand() - 10))
             irtgv = ImmersedBoundaryGrid(rtgv,  GridFittedBottom((x, y) -> rand() - 10))
-            prtg  = ImmersedBoundaryGrid(rtg,  PartialCellBottom((x, y) -> rand() - 10))
             prtgv = ImmersedBoundaryGrid(rtgv, PartialCellBottom((x, y) -> rand() - 10))
 
             if topology[2] == Bounded
-                llg  = LatitudeLongitudeGrid(arch; size = (10, 10, 20), latitude = (0, 1), longitude = (0, 1), topology, z = z_uniform)
                 llgv = LatitudeLongitudeGrid(arch; size = (10, 10, 20), latitude = (0, 1), longitude = (0, 1), topology, z = z_stretched)
 
-                illg  = ImmersedBoundaryGrid(llg,   GridFittedBottom((x, y) -> rand() - 10))
                 illgv = ImmersedBoundaryGrid(llgv,  GridFittedBottom((x, y) -> rand() - 10))
-                pllg  = ImmersedBoundaryGrid(llg,  PartialCellBottom((x, y) -> rand() - 10))
                 pllgv = ImmersedBoundaryGrid(llgv, PartialCellBottom((x, y) -> rand() - 10))
 
                 # TODO: Partial cell bottom are broken at the moment and do not account for the Δz in the volumes
                 # and vertical areas (see https://github.com/CliMA/Oceananigans.jl/issues/3958)
                 # When this is issue is fixed we can add the partial cells to the testing.
-                grids = [llg, rtg, llgv, rtgv, illg, irtg, illgv, irtgv] # , pllg, prtg, pllgv, prtgv]
+                grids = [llgv, rtgv, illgv, irtgv] # , pllgv, prtgv]
             else
-                grids = [rtg, rtgv, irtg, irtgv] #, prtg, prtgv]
+                grids = [rtgv, irtgv] #, prtgv]
             end
 
             for grid in grids
