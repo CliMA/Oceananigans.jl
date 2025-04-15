@@ -5,20 +5,19 @@ import ConservativeRegridding: Regridder, regrid!
 
 using Oceananigans
 using Oceananigans.Grids: ξnode, ηnode, architecture, AbstractGrid
-using Oceananigans.Fields: AbstractField
+using Oceananigans.Fields: AbstractField, location
 using KernelAbstractions: @index, @kernel
 
 # TODO: extend regridding to more cases
 const RegriddableField{LX, LY} = Field{LX, LY, Nothing}
 
-instantiate(L) = L()
+compute_cell_matrix(field::AbstractField) = 
+    compute_cell_matrix(field.grid, location(field), field.indices)
 
-function compute_cell_matrix(field::AbstractField)
-    LX, LY, _ = Oceananigans.Fields.location(field)
-    return compute_cell_matrix(field.grid, LX(), LY(), field.indices)
-end
+function compute_cell_matrix(grid::AbstractGrid, (LX, LY, LZ), indices=Oceananigans.Grids.default_indices(3))
 
-function compute_cell_matrix(grid::AbstractGrid, ℓx, ℓy, indices=default_indices(3))
+    ℓx = LX()
+    ℓy = LY()
 
     if isnothing(ℓx) || isnothing(ℓy)
         throw(ArgumentError("cell_matrix can only be computed for fields with non-nothing horizontal location."))
@@ -27,8 +26,7 @@ function compute_cell_matrix(grid::AbstractGrid, ℓx, ℓy, indices=default_ind
     arch = architecture(grid)
     FT = eltype(grid)
 
-    Fx = size(grid, ℓx, indices)
-    Fy = size(grid, ℓy, indices)
+    Fx, Fy, _ = size(grid, (LX, LY, LZ), indices)
     
     vertices_per_cell = 5 # convention: [sw, nw, ne, se, sw]
     ArrayType = Oceananigans.Architectures.array_type(arch)
