@@ -82,6 +82,7 @@ CUDA.allowscalar() do
         @testset "General Solvers" begin
             include("test_batched_tridiagonal_solver.jl")
             include("test_preconditioned_conjugate_gradient_solver.jl")
+            include("test_krylov_solver.jl")
         end
     end
 
@@ -262,6 +263,7 @@ CUDA.allowscalar() do
             include("test_amdgpu.jl")
         end
     end
+
     # Tests for oneAPI extension
     if group == :oneapi || group == :all
         @testset "oneAPI extension tests" begin
