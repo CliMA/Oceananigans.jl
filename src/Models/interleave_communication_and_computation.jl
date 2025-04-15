@@ -4,9 +4,9 @@ using Oceananigans.Utils: KernelParameters
 using Oceananigans.Grids: halo_size, topology, architecture
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid
-using Oceananigans.DistributedComputations: synchronize_communication!, SynchronizedDistributed
+using Oceananigans.DistributedComputations: synchronize_communication!, AsynchronousDistributed
 
-function complete_communication_and_compute_buffer!(model, ::DistributedGrid, arch)
+function complete_communication_and_compute_buffer!(model, ::DistributedGrid, ::AsynchronousDistributed)
 
     # Iterate over the fields to clear _ALL_ possible architectures
     for field in prognostic_fields(model)
@@ -20,16 +20,13 @@ function complete_communication_and_compute_buffer!(model, ::DistributedGrid, ar
 end
 
 # Fallback
-complete_communication_and_compute_buffer!(model, ::DistributedGrid, ::SynchronizedDistributed) = nothing
 complete_communication_and_compute_buffer!(model, grid, arch) = nothing
-
 compute_buffer_tendencies!(model) = nothing
 
 """ Kernel parameters for computing interior tendencies. """
 interior_tendency_kernel_parameters(arch, grid) = :xyz # fallback
-interior_tendency_kernel_parameters(::SynchronizedDistributed, grid) = :xyz
 
-function interior_tendency_kernel_parameters(arch::Distributed, grid)
+function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid)
     Rx, Ry, _ = arch.ranks
     Hx, Hy, _ = halo_size(grid)
     Tx, Ty, _ = topology(grid)

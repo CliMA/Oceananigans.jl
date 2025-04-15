@@ -13,13 +13,12 @@ using SeawaterPolynomials
 using CUDA
 using MPI
 
+MPI.Initialized() || MPI.Init()
+
 using Dates: DateTime, Nanosecond
 using Statistics: mean, mean!, norm
 using LinearAlgebra: norm
 using KernelAbstractions: @kernel, @index
-
-MPI.versioninfo()
-MPI.Initialized() || MPI.Init()
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
@@ -89,4 +88,3 @@ already_included[] = true
 
 float_types = (Float32, Float64)
 archs = test_architectures()
-

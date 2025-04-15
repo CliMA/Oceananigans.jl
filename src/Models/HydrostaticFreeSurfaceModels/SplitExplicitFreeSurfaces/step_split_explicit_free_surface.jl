@@ -33,13 +33,17 @@ end
     
     @inbounds begin
         # ∂τ(U) = - ∇η + G
-        U[i, j, 1] +=  Δτ * (- g * Hᶠᶜ * ∂xTᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
-        V[i, j, 1] +=  Δτ * (- g * Hᶜᶠ * ∂yTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
-                          
+        Uᵐ⁺¹ = U[i, j, 1] + Δτ * (- g * Hᶠᶜ * ∂xTᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
+        Vᵐ⁺¹ = V[i, j, 1] + Δτ * (- g * Hᶜᶠ * ∂yTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
+                     
         # time-averaging
         η̅[i, j, k_top] += averaging_weight * η[i, j, k_top]
-        U̅[i, j, 1]     += averaging_weight * U[i, j, 1]
-        V̅[i, j, 1]     += averaging_weight * V[i, j, 1]
+        U̅[i, j, 1]     += averaging_weight * Uᵐ⁺¹
+        V̅[i, j, 1]     += averaging_weight * Vᵐ⁺¹
+
+        # Updating the velocities
+        U[i, j, 1] = Uᵐ⁺¹
+        V[i, j, 1] = Vᵐ⁺¹
     end
 end
 

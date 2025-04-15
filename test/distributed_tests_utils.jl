@@ -95,7 +95,16 @@ function run_distributed_latitude_longitude_grid(arch, filename)
     Random.seed!(1234)
     bottom_height = - rand(40, 40, 1) .* 500 .- 500
 
-    distributed_grid = LatitudeLongitudeGrid(size = (40, 40, 10),
+    flat_distributed_grid = LatitudeLongitudeGrid(arch,
+        size = (40, 40),
+        longitude = (0, 360),
+        latitude = (-90, 90),
+        topology = (Periodic, Bounded, Flat))
+
+    @test isnothing(flat_distributed_grid.z)
+
+    distributed_grid = LatitudeLongitudeGrid(arch; 
+                                             size = (40, 40, 10),
                                              longitude = (0, 360),
                                              latitude = (-10, 10),
                                              z = (-1000, 0),
@@ -148,7 +157,9 @@ function run_distributed_simulation(grid)
         r_time_step! = time_step!
     end
 
+    @info "Running first time step..."
     r_first_time_step!(model, Δt)
+    @info "Running time steps..."
     for N in 2:100
         r_time_step!(model, Δt)
     end

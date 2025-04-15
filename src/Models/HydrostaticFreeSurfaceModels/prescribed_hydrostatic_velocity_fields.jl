@@ -75,6 +75,9 @@ end
 hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names) = 
     merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
 
+free_surface_names(free_surface, ::PrescribedVelocityFields, grid) = tuple()
+free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid) = tuple()
+
 @inline fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing
 @inline fill_halo_regions!(::FunctionField, args...) = nothing
 
@@ -100,7 +103,7 @@ extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
 free_surface_displacement_field(::PrescribedVelocityFields, ::Nothing, grid) = nothing
 HorizontalVelocityFields(::PrescribedVelocityFields, grid) = nothing, nothing
 
-materialize_free_surface(::Nothing, velocities, grid) = nothing
+materialize_free_surface(::Nothing,                      ::PrescribedVelocityFields, grid) = nothing
 materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
 materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
 materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid) = nothing
