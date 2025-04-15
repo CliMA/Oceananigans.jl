@@ -1,6 +1,3 @@
-agents:
-  queue: Oceananigans
-  
 env:
   JULIA_VERSION: "1.10.8"
   JULIA_MINOR_VERSION: "1.10"
@@ -11,13 +8,15 @@ env:
   XLA_REACTANT_GPU_PREALLOCATE: false
   CUDA_VISIBLE_DEVICES: "3" # Tartarus device for GPU testing
 
+agents:
+  queue: Oceananigans
+
 steps:
   - label: "🏕️ initialize tartarus environment"
     key: "init"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "init"
-      CUDA_VISIBLE_DEVICES: "3"
       JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
       TMPDIR: "$TARTARUS_HOME/tmp"
     commands:
