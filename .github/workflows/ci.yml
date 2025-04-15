@@ -69,18 +69,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ['1.10']
         os: ['ubuntu-latest']
         include:
           - test_name: "Distributed MPI Tripolar Grid"
             test_group: "mpi_tripolar"
+            version: '1.10'
           - test_name: "Turbulence Closures"
             test_group: "turbulence_closures"
+            version: '1.10'
           - test_name: "Metal"
             test_group: "metal"
             os: macos-latest
+            version: '1.10'
           - test_name: "Conservative Regridding"
             test_group: "conservative_regridding"
+            version: '1.10'
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
