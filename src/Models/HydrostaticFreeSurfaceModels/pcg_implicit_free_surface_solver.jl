@@ -43,7 +43,7 @@ step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `�
 """
 function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, 
                                       settings, 
-                                      Solver=ConjugateGradient)
+                                      gravitational_acceleration=nothing)
     
     # Initialize vertically integrated lateral face areas
     ∫ᶻ_Axᶠᶜᶜ = Field((Face, Center, Nothing), grid)
@@ -57,7 +57,7 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid,
     # Set some defaults
     settings = Dict{Symbol, Any}(settings)
     settings[:maxiter] = get(settings, :maxiter, grid.Nx * grid.Ny)
-    settings[:reltol] = get(settings, :reltol, min(1e-7, 10 * sqrt(eps(eltype(grid)))))
+    settings[:reltol]  = get(settings, :reltol, min(1e-7, 10 * sqrt(eps(eltype(grid)))))
 
     # FFT preconditioner for rectilinear grids, nothing otherwise.
     settings[:preconditioner] = isrectilinear(grid) ?
@@ -66,6 +66,8 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid,
 
     # TODO: reuse solver.storage for rhs when preconditioner isa FFTImplicitFreeSurfaceSolver?
     right_hand_side = ZFaceField(grid, indices = (:, :, size(grid, 3) + 1))
+    Solver = get(settings, :Solver, ConjugateGradientSolver) 
+    pop!(settings, :Solver)
 
     solver = Solver(implicit_free_surface_linear_operation!;
                     template_field = right_hand_side,
