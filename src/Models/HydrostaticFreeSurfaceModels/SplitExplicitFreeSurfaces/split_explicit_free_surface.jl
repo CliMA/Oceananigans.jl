@@ -206,8 +206,8 @@ end
 
 """ An internal function that stores the averaging kernel 
 and the last fractional time stepped in the subcycling """
-struct AveragingKernel{FT}
-    kernel :: Function
+struct AveragingKernel{F, FT}
+    kernel :: F
     last_τ :: FT
 end
 
