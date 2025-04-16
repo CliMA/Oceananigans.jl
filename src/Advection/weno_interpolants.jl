@@ -1,5 +1,7 @@
 using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
 
+include("weno_stencils.jl")
+
 # WENO reconstruction of order `M` entails reconstructions of order `N`
 # on `N` different stencils, where `N = (M + 1) / 2`.
 #
@@ -74,23 +76,40 @@ const ε = 1f-8
 
 for FT in fully_supported_float_types
     @eval begin
+        @inline C★(::WENO{1, $FT}, ::Val{0}) = $(FT(1))
+        @inline C★(::WENO{1, $FT}, ::Val{1}) = $(FT(0))
+        @inline C★(::WENO{1, $FT}, ::Val{2}) = $(FT(0))
+        @inline C★(::WENO{1, $FT}, ::Val{3}) = $(FT(0))
+        @inline C★(::WENO{1, $FT}, ::Val{4}) = $(FT(0))
+        @inline C★(::WENO{1, $FT}, ::Val{5}) = $(FT(0))
+
         @inline C★(::WENO{2, $FT}, ::Val{0}) = $(FT(2//3))
         @inline C★(::WENO{2, $FT}, ::Val{1}) = $(FT(1//3))
+        @inline C★(::WENO{2, $FT}, ::Val{2}) = $(FT(0))
+        @inline C★(::WENO{2, $FT}, ::Val{3}) = $(FT(0))
+        @inline C★(::WENO{2, $FT}, ::Val{4}) = $(FT(0))
+        @inline C★(::WENO{2, $FT}, ::Val{5}) = $(FT(0))
 
         @inline C★(::WENO{3, $FT}, ::Val{0}) = $(FT(3//10))
         @inline C★(::WENO{3, $FT}, ::Val{1}) = $(FT(3//5))
         @inline C★(::WENO{3, $FT}, ::Val{2}) = $(FT(1//10))
+        @inline C★(::WENO{3, $FT}, ::Val{3}) = $(FT(0))
+        @inline C★(::WENO{3, $FT}, ::Val{4}) = $(FT(0))
+        @inline C★(::WENO{3, $FT}, ::Val{5}) = $(FT(0))
 
         @inline C★(::WENO{4, $FT}, ::Val{0}) = $(FT(4//35))
         @inline C★(::WENO{4, $FT}, ::Val{1}) = $(FT(18//35))
         @inline C★(::WENO{4, $FT}, ::Val{2}) = $(FT(12//35))
         @inline C★(::WENO{4, $FT}, ::Val{3}) = $(FT(1//35))
+        @inline C★(::WENO{4, $FT}, ::Val{4}) = $(FT(0))
+        @inline C★(::WENO{4, $FT}, ::Val{5}) = $(FT(0))
 
         @inline C★(::WENO{5, $FT}, ::Val{0}) = $(FT(5//126))
         @inline C★(::WENO{5, $FT}, ::Val{1}) = $(FT(20//63))
         @inline C★(::WENO{5, $FT}, ::Val{2}) = $(FT(10//21))
         @inline C★(::WENO{5, $FT}, ::Val{3}) = $(FT(10//63))
         @inline C★(::WENO{5, $FT}, ::Val{4}) = $(FT(1//126))
+        @inline C★(::WENO{5, $FT}, ::Val{5}) = $(FT(0))
 
         @inline C★(::WENO{6, $FT}, ::Val{0}) = $(FT(1//77))
         @inline C★(::WENO{6, $FT}, ::Val{1}) = $(FT(25//154))
@@ -437,32 +456,6 @@ for dir in (:x, :y, :z), (T, f) in zip((:Any, :Function), (false, true))
         end
     end
 end
-
-# WENO stencils
-@inline S₀₂(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[2], S[3]), (S[3], S[2]))
-@inline S₁₂(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[1], S[2]), (S[4], S[3]))
-
-@inline S₀₃(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[3], S[4], S[5]), (S[4], S[3], S[2]))
-@inline S₁₃(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[2], S[3], S[4]), (S[5], S[4], S[3]))
-@inline S₂₃(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[1], S[2], S[3]), (S[6], S[5], S[4]))
-
-@inline S₀₄(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[4], S[5], S[6], S[7]), (S[5], S[4], S[3], S[2]))
-@inline S₁₄(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[3], S[4], S[5], S[6]), (S[6], S[5], S[4], S[3]))
-@inline S₂₄(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[2], S[3], S[4], S[5]), (S[7], S[6], S[5], S[4]))
-@inline S₃₄(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[1], S[2], S[3], S[4]), (S[8], S[7], S[6], S[5]))
-
-@inline S₀₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[5], S[6], S[7], S[8], S[9]), (S[6],  S[5], S[4], S[3], S[2]))
-@inline S₁₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[4], S[5], S[6], S[7], S[8]), (S[7],  S[6], S[5], S[4], S[3]))
-@inline S₂₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[3], S[4], S[5], S[6], S[7]), (S[8],  S[7], S[6], S[5], S[4]))
-@inline S₃₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[2], S[3], S[4], S[5], S[6]), (S[9],  S[8], S[7], S[6], S[5]))
-@inline S₄₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[1], S[2], S[3], S[4], S[5]), (S[10], S[9], S[8], S[7], S[6]))
-
-@inline S₀₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[6], S[7], S[8], S[9], S[10], S[11]), (S[7],  S[6],  S[5],  S[4], S[3], S[2]))
-@inline S₁₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[5], S[6], S[7], S[8], S[9],  S[10]), (S[8],  S[7],  S[6],  S[5], S[4], S[3]))
-@inline S₂₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[4], S[5], S[6], S[7], S[8],  S[9]),  (S[9],  S[8],  S[7],  S[6], S[5], S[4]))
-@inline S₃₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[3], S[4], S[5], S[6], S[7],  S[8]),  (S[10], S[9],  S[8],  S[7], S[6], S[5]))
-@inline S₄₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[2], S[3], S[4], S[5], S[6],  S[7]),  (S[11], S[10], S[9],  S[8], S[7], S[6]))
-@inline S₅₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[1], S[2], S[3], S[4], S[5],  S[6]),  (S[12], S[11], S[10], S[9], S[8], S[7]))
 
 # Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
 # Parallel to the interpolation direction! (same as left/right stencil)
