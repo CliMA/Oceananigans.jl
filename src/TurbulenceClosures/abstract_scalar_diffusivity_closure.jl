@@ -93,12 +93,14 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 @inline κᶠᶜᶜ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶠᶜᶜ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), clk, fields)
 @inline κᶜᶠᶜ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶜᶠᶜ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), clk, fields)
 @inline κᶜᶜᶠ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶜᶜᶠ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), clk, fields)
+@inline κᶠᶜᶠ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶠᶜᶠ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), clk, fields)
+@inline κᶜᶠᶠ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶜᶠᶠ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), clk, fields)
 
 # Vertical and horizontal diffusivity
-@inline νzᶜᶜᶜ(i, j, k, grid, closure::ASD, K, clk, fields)     = νᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields)
-@inline νzᶠᶠᶜ(i, j, k, grid, closure::ASD, K, clk, fields)     = νᶠᶠᶜ(i, j, k, grid, closure, K, clk, fields)
-@inline νzᶠᶜᶠ(i, j, k, grid, closure::ASD, K, clk, fields)     = νᶠᶜᶠ(i, j, k, grid, closure, K, clk, fields)
-@inline νzᶜᶠᶠ(i, j, k, grid, closure::ASD, K, clk, fields)     = νᶜᶠᶠ(i, j, k, grid, closure, K, clk, fields)
+@inline νzᶜᶜᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields)
+@inline νzᶠᶠᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶠᶠᶜ(i, j, k, grid, closure, K, clk, fields)
+@inline νzᶠᶜᶠ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶠᶜᶠ(i, j, k, grid, closure, K, clk, fields)
+@inline νzᶜᶠᶠ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶜᶠᶠ(i, j, k, grid, closure, K, clk, fields)
 
 @inline νzᶜᶜᶜ(i, j, k, grid, closure::ASD, K, ::Nothing, clk, fields) = νzᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields)
 @inline νzᶠᶠᶜ(i, j, k, grid, closure::ASD, K, ::Nothing, clk, fields) = νzᶠᶠᶜ(i, j, k, grid, closure, K, clk, fields)
@@ -255,7 +257,7 @@ end
                   zero(grid))
 end
 
-@inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, K, id, clk, fields, b)
+@inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, K, id, clk, fields, b) 
     return ifelse((k == 1) | (k == grid.Nz+1),
                   diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), closure, K, id, clk, fields, b),
                   zero(grid))

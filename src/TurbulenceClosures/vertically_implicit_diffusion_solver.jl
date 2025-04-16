@@ -30,18 +30,18 @@ const F = Face
 @inline implicit_linear_coefficient(i, j, k, grid, args...) = zero(grid)
 
 # General implementation
-@inline νzᶠᶜᶠ(i, j, k, grid, closure, K, args...) = zero(grid)
-@inline νzᶜᶠᶠ(i, j, k, grid, closure, K, args...) = zero(grid)
-@inline νzᶜᶜᶜ(i, j, k, grid, closure, K, args...) = zero(grid)
-@inline κzᶜᶜᶠ(i, j, k, grid, closure, K, args...) = zero(grid)
+@inline νzᶠᶜᶠ(i, j, k, grid, args...) = zero(grid)
+@inline νzᶜᶠᶠ(i, j, k, grid, args...) = zero(grid)
+@inline νzᶜᶜᶜ(i, j, k, grid, args...) = zero(grid)
+@inline κzᶜᶜᶠ(i, j, k, grid, args...) = zero(grid)
 
 # Vertical momentum diffusivities: u, v, w
-@inline ivd_diffusivity(i, j, k, grid, ::F, ::C, ::F, clo, K, id, clock, fields) = νzᶠᶜᶠ(i, j, k, grid, clo, K, id, clock, fields) * !inactive_node(i, j, k, grid, f, c, f)
-@inline ivd_diffusivity(i, j, k, grid, ::C, ::F, ::F, clo, K, id, clock, fields) = νzᶜᶠᶠ(i, j, k, grid, clo, K, id, clock, fields) * !inactive_node(i, j, k, grid, c, f, f)
-@inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::C, clo, K, id, clock, fields) = νzᶜᶜᶜ(i, j, k, grid, clo, K, id, clock, fields) * !inactive_node(i, j, k, grid, c, c, c)
+@inline ivd_diffusivity(i, j, k, grid, ::F, ::C, ::F, clo, K, id, clk, fields) = νzᶠᶜᶠ(i, j, k, grid, clo, K, id, clk, fields) * !inactive_node(i, j, k, grid, f, c, f)
+@inline ivd_diffusivity(i, j, k, grid, ::C, ::F, ::F, clo, K, id, clk, fields) = νzᶜᶠᶠ(i, j, k, grid, clo, K, id, clk, fields) * !inactive_node(i, j, k, grid, c, f, f)
+@inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::C, clo, K, id, clk, fields) = νzᶜᶜᶜ(i, j, k, grid, clo, K, id, clk, fields) * !inactive_node(i, j, k, grid, c, c, c)
 
 # Tracer diffusivity
-@inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::F, clo, K, id, clock, fields) = κzᶜᶜᶠ(i, j, k, grid, clo, K, id, clock, fields) * !inactive_node(i, j, k, grid, c, c, f)
+@inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::F, clo, K, id, clk, fields) = κzᶜᶜᶠ(i, j, k, grid, clo, K, id, clk, fields) * !inactive_node(i, j, k, grid, c, c, f)
 
 #####
 ##### Batched Tridiagonal solver for implicit diffusion
