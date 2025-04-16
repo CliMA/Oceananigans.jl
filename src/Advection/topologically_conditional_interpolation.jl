@@ -71,6 +71,10 @@ for dir in (:x, :y, :z)
     end
 end
 
+restrict_order(i, ::Type{Bounded}, N, B)        = min(B, i+1, N-i+1)
+restrict_order(i, ::Type{RightConnected}, N, B) = min(B, N-i+1)
+restrict_order(i, ::Type{LeftConnected},  N, B) = min(B, i+1)
+
 # Separate High order advection from low order advection
 const HOADV = Union{WENO, 
                     Tuple(Centered{N} for N in advection_buffers[2:end])...,
@@ -84,7 +88,6 @@ for bias in (:symmetric, :biased)
 
         for loc in (:ᶜ, :ᶠ), (alt1, alt2) in zip((:_, :__, :___, :____, :_____), (:_____, :_, :__, :___, :____))
             code[d] = loc
-            second_order_interp = Symbol(:ℑ, ξ, code...)
             interp = Symbol(bias, :_interpolate_, ξ, code...)
             alt1_interp = Symbol(alt1, interp)
             alt2_interp = Symbol(alt2, interp)
@@ -92,7 +95,14 @@ for bias in (:symmetric, :biased)
             # Simple translation for Periodic directions and low-order advection schemes (fallback)
             @eval @inline $alt1_interp(i, j, k, grid::AUG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
             @eval @inline $alt1_interp(i, j, k, grid::AUG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
-
+            
+            # Weno needs to pass also the restriction order
+            if bias == :biased
+                @eval @inline $alt1_interp(i, j, k, grid::AUG, scheme::WENO{N}, args...) where N = $interp(i, j, k, grid, scheme, Val(N), args...)
+            else
+                @eval @inline $alt1_interp(i, j, k, grid::AUG, scheme::WENO{N}, args...) where N = $interp(i, j, k, grid, scheme, args...)
+            end
+            
             # Disambiguation
             for GridType in [:AUGX, :AUGY, :AUGZ, :AUGXY, :AUGXZ, :AUGYZ, :AUGXYZ]
                 @eval @inline $alt1_interp(i, j, k, grid::$GridType, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
@@ -108,6 +118,23 @@ for bias in (:symmetric, :biased)
                                    $interp(i, j, k, grid, scheme, args...),
                                    $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
                 end
+
+                if bias == :biased
+                    @eval begin
+                        @inline function $alt1_interp(i, j, k, grid::AUGX, scheme::WENO{N}, args...) where N
+                            R = restrict_order(i, topology(grid, 1), grid.Nx, N)                            
+                            return $interp(i, j, k, grid, scheme, Val(R), args...)
+                        end 
+                    end
+                else
+                    @eval begin
+                        @inline $alt1_interp(i, j, k, grid::AUGX, scheme::WENO, args...) = 
+                                ifelse($outside_buffer(i, topology(grid, 1), grid.Nx, scheme),
+                                       $interp(i, j, k, grid, scheme, args...),
+                                       $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
+                    end
+                end    
+
             elseif ξ == :y
                 @eval begin
                     @inline $alt1_interp(i, j, k, grid::AUGY, scheme::HOADV, args...) =
@@ -115,12 +142,45 @@ for bias in (:symmetric, :biased)
                                $interp(i, j, k, grid, scheme, args...),
                                $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
                 end
+                
+                if bias == :biased
+                    @eval begin
+                        @inline function $alt1_interp(i, j, k, grid::AUGX, scheme::WENO{N}, args...) where N
+                            R = restrict_order(j, topology(grid, 2), grid.Ny, N)
+                            return $interp(i, j, k, grid, scheme, Val(R), args...)
+                        end 
+                    end
+                else
+                    @eval begin
+                        @inline $alt1_interp(i, j, k, grid::AUGY, scheme::WENO, args...) = 
+                                ifelse($outside_buffer(j, topology(grid, 2), grid.Ny, scheme),
+                                       $interp(i, j, k, grid, scheme, args...),
+                                       $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
+                    end
+                end
+
             elseif ξ == :z
                 @eval begin
                     @inline $alt1_interp(i, j, k, grid::AUGZ, scheme::HOADV, args...) =
                         ifelse($outside_buffer(k, topology(grid, 3), grid.Nz, scheme),
                                $interp(i, j, k, grid, scheme, args...),
                                $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
+                end
+
+                if bias == :biased
+                    @eval begin
+                        @inline function $alt1_interp(i, j, k, grid::AUGZ, scheme::WENO{N}, args...) where N
+                            R = restrict_order(k, topology(grid, 3), grid.Nz, N)
+                            return $interp(i, j, k, grid, scheme, Val(R), args...)
+                        end 
+                    end
+                else
+                    @eval begin
+                        @inline $alt1_interp(i, j, k, grid::AUGZ, scheme::WENO, args...) = 
+                                ifelse($outside_buffer(k, topology(grid, 3), grid.Nz, scheme),
+                                       $interp(i, j, k, grid, scheme, args...),
+                                       $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
+                    end
                 end
             end
         end
