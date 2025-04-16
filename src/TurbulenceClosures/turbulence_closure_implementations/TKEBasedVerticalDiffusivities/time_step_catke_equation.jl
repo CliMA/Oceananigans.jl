@@ -142,7 +142,7 @@ end
     #
     # where ω = ϵ / e ∼ √e / ℓ.
 
-    @inbounds Le[i, j, k] = (wb⁻_e - ω + div_Jᵉ_e) * mask
+    @inbounds Le[i, j, k] = (wb⁻_e - ω + div_Jᵉ_e) * active
 
     # Compute fast TKE RHS
     u⁺ = next_velocities.u
