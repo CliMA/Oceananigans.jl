@@ -268,7 +268,7 @@ end
 @inline function metaprogrammed_beta_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(smoothness_indicator(ψ[$stencil], scheme, Val($(stencil-1))))
+        elem[stencil] = :(smoothness_indicator(ψ[$stencil], scheme, R, Val($(stencil-1))))
     end
 
     return :($(elem...),)
