@@ -79,6 +79,7 @@ restrict_order(i, ::Type{LeftConnected},  N, B) = min(B, i+1)
 const HOADV = Union{WENO, 
                     Tuple(Centered{N} for N in advection_buffers[2:end])...,
                     Tuple(UpwindBiased{N} for N in advection_buffers[2:end])...} 
+                    
 const LOADV = Union{UpwindBiased{1}, Centered{1}}
 
 for bias in (:symmetric, :biased)
