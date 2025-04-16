@@ -11,6 +11,7 @@ using Oceananigans.TurbulenceClosures
 using Statistics
 using Oceananigans.Solvers
 using SeawaterPolynomials.TEOS10
+using NVTX 
 
 CUDA.device!(2)
 
@@ -45,6 +46,9 @@ function benchmark_hydrostatic_model(Arch, grid_type, closure_type)
     set!(model.tracers.T, T)
     set!(model.tracers.S, S)
 
+    set!(model.velocities.u, (x, y, z) -> 1e-6 * rand())
+    set!(model.velocities.v, (x, y, z) -> 1e-6 * rand())
+
     Δt = 1
     for _ in 1:30
        time_step!(model, Δt) # warmup
@@ -53,24 +57,27 @@ function benchmark_hydrostatic_model(Arch, grid_type, closure_type)
     # Make sure we do not have any NaN or Inf values anywhere
     fields = Oceananigans.fields(model)
     for (key, field) in zip(propertynames(fields), fields)
-        @assert all(isfinite.(Array(interior(field)))) || @show "Nan in $key"
-        @assert all(Array(interior(field)) .< 1e10)    || @show "Inf in $key"
+        arr = Array(interior(field))
+        @assert all(isfinite.(arr)) || @show "Nan in $key"
+        @assert all(Array(arr) .< 1e10)    || @show "Inf in $key"
+        @show key, extrema(arr)
     end
 
     for _ in 1:10
         Oceananigans.TimeSteppers.compute_tendencies!(model, [])
     end
 
+    # NVTX.@range "compute tendencies" begin
     trial = @benchmark begin
-        CUDA.@sync blocking = true Oceananigans.TimeSteppers.compute_tendencies!($model, [])
+            Oceananigans.TimeSteppers.compute_tendencies!($model, [])
     end samples = 100
 
     return trial
 end
 
 # Problem size
-Nx = 100
-Ny = 100
+Nx = 200
+Ny = 200
 Nz = 50
 
 random_vector = - 5000 .* rand(Nx, Ny)
@@ -90,10 +97,10 @@ grids = Dict(
 )
 
 closures = Dict(
-   :DiffImplicit  => VerticalScalarDiffusivity(TurbulenceClosures.VerticallyImplicitTimeDiscretization(), ν=1e-5 , κ=1e-5),
-#    :CATKEExplicit => Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities.CATKEVerticalDiffusivity(TurbulenceClosures.ExplicitTimeDiscretization()),
+   :DiffImplicit  => VerticalScalarDiffusivity(TurbulenceClosures.VerticallyImplicitTimeDiscretization(), ν=1e-5 , κ=1.0),
    :DiffExplicit  => VerticalScalarDiffusivity(ν=1e-5, κ=1e-5),
-#    :CATKEImplicit => Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities.CATKEVerticalDiffusivity(),
+   :CATKEExplicit => Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities.CATKEVerticalDiffusivity(TurbulenceClosures.ExplicitTimeDiscretization()),
+   :CATKEImplicit => Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities.CATKEVerticalDiffusivity(),
 )
 
 # Benchmark parameters
@@ -118,4 +125,4 @@ for _ in 1:5
     @show df2 = sort(df)
 end
 
-# benchmarks_pretty_table(df, title="Hydrostatic model benchmarks")
+benchmarks_pretty_table(df, title="Hydrostatic model benchmarks")
