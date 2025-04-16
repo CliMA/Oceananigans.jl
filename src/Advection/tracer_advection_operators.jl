@@ -1,7 +1,7 @@
 
-@inline _advective_tracer_flux_x(args...) = advective_tracer_flux_x(args...)
-@inline _advective_tracer_flux_y(args...) = advective_tracer_flux_y(args...)
-@inline _advective_tracer_flux_z(args...) = advective_tracer_flux_z(args...)
+@inline _advective_tracer_flux_x(i, j, k, grid, scheme, U, c) = advective_tracer_flux_x(i, j, k, grid, scheme, U, c)
+@inline _advective_tracer_flux_y(i, j, k, grid, scheme, V, c) = advective_tracer_flux_y(i, j, k, grid, scheme, V, c)
+@inline _advective_tracer_flux_z(i, j, k, grid, scheme, W, c) = advective_tracer_flux_z(i, j, k, grid, scheme, W, c)
 
 #####
 ##### Fallback tracer fluxes!
