@@ -210,10 +210,10 @@ for bias in (:symmetric, :biased)
                 @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, args...) = $interp(i, j, k, ibg, scheme, args...)
                 
                 # Conditional high-order interpolation in Bounded directions
-                @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, args...) = $interp(i, j, k, ibg, scheme, args...)
-                    # ifelse($near_boundary(i, j, k, ibg, scheme),
-                    #        $alt2_interp(i, j, k, ibg, scheme.buffer_scheme, args...),
-                    #        $interp(i, j, k, ibg, scheme, args...))
+                @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, args...) = 
+                    ifelse($near_boundary(i, j, k, ibg, scheme),
+                           $alt2_interp(i, j, k, ibg, scheme.buffer_scheme, args...),
+                           $interp(i, j, k, ibg, scheme, args...))
             end
         end
     end
