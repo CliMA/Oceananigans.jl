@@ -69,7 +69,9 @@ function time_step_catke_equation!(model)
 
         implicit_step!(e, implicit_solver, closure,
                        diffusivity_fields, Val(tracer_index),
-                       model.clock, Δτ)
+                       model.clock, 
+                       fields(model), 
+                       Δτ)
     end
 
     return nothing

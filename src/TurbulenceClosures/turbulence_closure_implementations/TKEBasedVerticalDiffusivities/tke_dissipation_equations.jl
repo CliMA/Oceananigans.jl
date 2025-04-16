@@ -77,11 +77,15 @@ function time_step_tke_dissipation_equations!(model)
 
         implicit_step!(e, implicit_solver, closure,
                        model.diffusivity_fields, Val(e_index),
-                       model.clock, Δτ)
+                       model.clock, 
+                       fields(model),
+                       Δτ)
 
         implicit_step!(ϵ, implicit_solver, closure,
                        model.diffusivity_fields, Val(ϵ_index),
-                       model.clock, Δτ)
+                       model.clock, 
+                       fields(model),
+                       Δτ)
     end
 
     return nothing

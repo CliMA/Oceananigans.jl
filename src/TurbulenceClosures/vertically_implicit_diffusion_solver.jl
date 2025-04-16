@@ -36,12 +36,12 @@ const F = Face
 @inline κzᶜᶜᶠ(i, j, k, grid, closure, K, args...) = zero(grid)
 
 # Vertical momentum diffusivities: u, v, w
-@inline ivd_diffusivity(i, j, k, grid, ::F, ::C, ::F, clo, K, id, clock) = νzᶠᶜᶠ(i, j, k, grid, clo, K, id, clock) * !inactive_node(i, j, k, grid, f, c, f)
-@inline ivd_diffusivity(i, j, k, grid, ::C, ::F, ::F, clo, K, id, clock) = νzᶜᶠᶠ(i, j, k, grid, clo, K, id, clock) * !inactive_node(i, j, k, grid, c, f, f)
-@inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::C, clo, K, id, clock) = νzᶜᶜᶜ(i, j, k, grid, clo, K, id, clock) * !inactive_node(i, j, k, grid, c, c, c)
+@inline ivd_diffusivity(i, j, k, grid, ::F, ::C, ::F, clo, K, id, clock, fields) = νzᶠᶜᶠ(i, j, k, grid, clo, K, id, clock, fields) * !inactive_node(i, j, k, grid, f, c, f)
+@inline ivd_diffusivity(i, j, k, grid, ::C, ::F, ::F, clo, K, id, clock, fields) = νzᶜᶠᶠ(i, j, k, grid, clo, K, id, clock, fields) * !inactive_node(i, j, k, grid, c, f, f)
+@inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::C, clo, K, id, clock, fields) = νzᶜᶜᶜ(i, j, k, grid, clo, K, id, clock, fields) * !inactive_node(i, j, k, grid, c, c, c)
 
 # Tracer diffusivity
-@inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::F, clo, K, id, clock) = κzᶜᶜᶠ(i, j, k, grid, clo, K, id, clock) * !inactive_node(i, j, k, grid, c, c, f)
+@inline ivd_diffusivity(i, j, k, grid, ::C, ::C, ::F, clo, K, id, clock, fields) = κzᶜᶜᶠ(i, j, k, grid, clo, K, id, clock, fields) * !inactive_node(i, j, k, grid, c, c, f)
 
 #####
 ##### Batched Tridiagonal solver for implicit diffusion
@@ -61,20 +61,20 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
 @inline vertical_spacing(i, j, k, grid, ::Center, ::Center, ℓz) = Δr(i, j, k, grid, c, c, ℓz)
 
 # Tracers and horizontal velocities at cell centers in z
-@inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Center, Δt, clock)
+@inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Center, Δt, clock, fields)
     closure_ij = getclosure(i, j, closure)
-    κᵏ⁺¹   =  ivd_diffusivity(i, j, k+1, grid, ℓx, ℓy, f, closure_ij, K, id, clock)
+    κᵏ⁺¹   =  ivd_diffusivity(i, j, k+1, grid, ℓx, ℓy, f, closure_ij, K, id, clock, fields)
     Δzᶜₖ   = vertical_spacing(i, j, k,   grid, ℓx, ℓy, c)
     Δzᶠₖ₊₁ = vertical_spacing(i, j, k+1, grid, ℓx, ℓy, f)
     du     = - Δt * κᵏ⁺¹ / (Δzᶜₖ * Δzᶠₖ₊₁)
     # This conditional ensures the diagonal is correct
-    return du * !peripheral_node(i, j, k+1, grid, ℓx, ℓy, f)
+    return du # * !peripheral_node(i, j, k+1, grid, ℓx, ℓy, f)
 end
 
-@inline function ivd_lower_diagonal(i, j, k′, grid, closure, K, id, ℓx, ℓy, ::Center, Δt, clock)
+@inline function ivd_lower_diagonal(i, j, k′, grid, closure, K, id, ℓx, ℓy, ::Center, Δt, clock, fields)
     k = k′ + 1 # Shift index to match LinearAlgebra.Tridiagonal indexing convenction
     closure_ij = getclosure(i, j, closure)  
-    κᵏ   =  ivd_diffusivity(i, j, k, grid, ℓx, ℓy, f, closure_ij, K, id, clock)
+    κᵏ   =  ivd_diffusivity(i, j, k, grid, ℓx, ℓy, f, closure_ij, K, id, clock, fields)
     Δzᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
     Δzᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
     dl   = - Δt * κᵏ / (Δzᶜₖ * Δzᶠₖ)
@@ -90,19 +90,19 @@ end
 ##### Note: these coefficients are specific to vertically-bounded grids (and so is
 ##### the BatchedTridiagonalSolver).
 
-@inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Face, Δt, clock)
+@inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Face, Δt, clock, fields)
     closure_ij = getclosure(i, j, closure)  
-    νᵏ   =  ivd_diffusivity(i, j, k, grid, ℓx, ℓy, c, closure_ij, K, id, clock)
+    νᵏ   =  ivd_diffusivity(i, j, k, grid, ℓx, ℓy, c, closure_ij, K, id, clock, fields)
     Δzᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
     Δzᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
     du   = - Δt * νᵏ / (Δzᶜₖ * Δzᶠₖ) 
     return du * !peripheral_node(i, j, k, grid, ℓx, ℓy, c)
 end
 
-@inline function ivd_lower_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Face, Δt, clock)
+@inline function ivd_lower_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Face, Δt, clock, fields)
     k′ = k + 2 # Shift to adjust for Tridiagonal indexing convention
     closure_ij = getclosure(i, j, closure)  
-    νᵏ⁻¹   =  ivd_diffusivity(i, j, k′-1, grid, ℓx, ℓy, c, closure_ij, K, id, clock)
+    νᵏ⁻¹   =  ivd_diffusivity(i, j, k′-1, grid, ℓx, ℓy, c, closure_ij, K, id, clock, fields)
     Δzᶜₖ   = vertical_spacing(i, j, k′,   grid, ℓx, ℓy, c)
     Δzᶠₖ₋₁ = vertical_spacing(i, j, k′-1, grid, ℓx, ℓy, f)
     dl     = - Δt * νᵏ⁻¹ / (Δzᶜₖ * Δzᶠₖ₋₁)
@@ -111,10 +111,10 @@ end
 
 ### Diagonal terms
 
-@inline ivd_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock) =
-    one(grid) - Δt * _implicit_linear_coefficient(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock) -
-                              _ivd_upper_diagonal(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock) -
-                              _ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock)
+@inline ivd_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock, fields) =
+    one(grid) - Δt * _implicit_linear_coefficient(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock, fields) -
+                              _ivd_upper_diagonal(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock, fields) -
+                              _ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock, fields)
 
 
 @inline _implicit_linear_coefficient(args...) = implicit_linear_coefficient(args...)
@@ -188,6 +188,7 @@ function implicit_step!(field::Field,
                         diffusivity_fields,
                         tracer_index,
                         clock,
+                        fields, 
                         Δt)
     
     # Filter explicit closures for closure tuples
@@ -205,5 +206,5 @@ function implicit_step!(field::Field,
 
     return solve!(field, implicit_solver, field,
                   # ivd_*_diagonal gets called with these args after (i, j, k, grid):
-                  vi_closure, vi_diffusivity_fields, tracer_index, LX(), LY(), LZ(), Δt, clock)
+                  vi_closure, vi_diffusivity_fields, tracer_index, LX(), LY(), LZ(), Δt, clock, fields)
 end

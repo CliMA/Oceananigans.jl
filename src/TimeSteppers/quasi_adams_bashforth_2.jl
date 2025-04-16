@@ -147,6 +147,7 @@ function ab2_step!(model, Δt)
                        model.diffusivity_fields,
                        tracer_index,
                        model.clock,
+                       fields(model),
                        Δt)
     end
 
