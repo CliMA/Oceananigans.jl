@@ -64,27 +64,27 @@ end
 @inline _advective_tracer_flux_z(i, j, k, ibg::IBG, ::Nothing, args...) = zero(ibg)
 
 # Disambiguation for `FluxForm` momentum fluxes....
-@inline _advective_momentum_flux_Uu(i, j, k, ibg::IBG, advection::FluxFormAdvection, U, u) = _advective_momentum_flux_Uu(i, j, k, ibg, advection.x, U, u)
-@inline _advective_momentum_flux_Vu(i, j, k, ibg::IBG, advection::FluxFormAdvection, V, u) = _advective_momentum_flux_Vu(i, j, k, ibg, advection.y, V, u)
-@inline _advective_momentum_flux_Wu(i, j, k, ibg::IBG, advection::FluxFormAdvection, W, u) = _advective_momentum_flux_Wu(i, j, k, ibg, advection.z, W, u)
+@inline _advective_momentum_flux_Uu(i, j, k, ibg::IBG, scheme::FluxFormAdvection, U, u) = _advective_momentum_flux_Uu(i, j, k, ibg, scheme.x, U, u)
+@inline _advective_momentum_flux_Vu(i, j, k, ibg::IBG, scheme::FluxFormAdvection, V, u) = _advective_momentum_flux_Vu(i, j, k, ibg, scheme.y, V, u)
+@inline _advective_momentum_flux_Wu(i, j, k, ibg::IBG, scheme::FluxFormAdvection, W, u) = _advective_momentum_flux_Wu(i, j, k, ibg, scheme.z, W, u)
 
-@inline _advective_momentum_flux_Uv(i, j, k, ibg::IBG, advection::FluxFormAdvection, U, v) = _advective_momentum_flux_Uv(i, j, k, ibg, advection.x, U, v)
-@inline _advective_momentum_flux_Vv(i, j, k, ibg::IBG, advection::FluxFormAdvection, V, v) = _advective_momentum_flux_Vv(i, j, k, ibg, advection.y, V, v)
-@inline _advective_momentum_flux_Wv(i, j, k, ibg::IBG, advection::FluxFormAdvection, W, v) = _advective_momentum_flux_Wv(i, j, k, ibg, advection.z, W, v)
+@inline _advective_momentum_flux_Uv(i, j, k, ibg::IBG, scheme::FluxFormAdvection, U, v) = _advective_momentum_flux_Uv(i, j, k, ibg, scheme.x, U, v)
+@inline _advective_momentum_flux_Vv(i, j, k, ibg::IBG, scheme::FluxFormAdvection, V, v) = _advective_momentum_flux_Vv(i, j, k, ibg, scheme.y, V, v)
+@inline _advective_momentum_flux_Wv(i, j, k, ibg::IBG, scheme::FluxFormAdvection, W, v) = _advective_momentum_flux_Wv(i, j, k, ibg, scheme.z, W, v)
 
-@inline _advective_momentum_flux_Uw(i, j, k, ibg::IBG, advection::FluxFormAdvection, U, w) = _advective_momentum_flux_Uw(i, j, k, ibg, advection.x, U, w)
-@inline _advective_momentum_flux_Vw(i, j, k, ibg::IBG, advection::FluxFormAdvection, V, w) = _advective_momentum_flux_Vw(i, j, k, ibg, advection.y, V, w)
-@inline _advective_momentum_flux_Ww(i, j, k, ibg::IBG, advection::FluxFormAdvection, W, w) = _advective_momentum_flux_Ww(i, j, k, ibg, advection.z, W, w)
+@inline _advective_momentum_flux_Uw(i, j, k, ibg::IBG, scheme::FluxFormAdvection, U, w) = _advective_momentum_flux_Uw(i, j, k, ibg, scheme.x, U, w)
+@inline _advective_momentum_flux_Vw(i, j, k, ibg::IBG, scheme::FluxFormAdvection, V, w) = _advective_momentum_flux_Vw(i, j, k, ibg, scheme.y, V, w)
+@inline _advective_momentum_flux_Ww(i, j, k, ibg::IBG, scheme::FluxFormAdvection, W, w) = _advective_momentum_flux_Ww(i, j, k, ibg, scheme.z, W, w)
 
 # Disambiguation for `FluxForm` tracer fluxes....
-@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, advection::FluxFormAdvection, U, c) =
-        _advective_tracer_flux_x(i, j, k, ibg, advection.x, U, c)
+@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, scheme::FluxFormAdvection, U, c) =
+        _advective_tracer_flux_x(i, j, k, ibg, scheme.x, U, c)
 
-@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, advection::FluxFormAdvection, V, c) =
-        _advective_tracer_flux_y(i, j, k, ibg, advection.y, V, c)
+@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, scheme::FluxFormAdvection, V, c) =
+        _advective_tracer_flux_y(i, j, k, ibg, scheme.y, V, c)
 
-@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, advection::FluxFormAdvection, W, c) =
-        _advective_tracer_flux_z(i, j, k, ibg, advection.z, W, c)
+@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, scheme::FluxFormAdvection, W, c) =
+        _advective_tracer_flux_z(i, j, k, ibg, scheme.z, W, c)
 
 #####
 ##### "Boundary-aware" reconstruct
