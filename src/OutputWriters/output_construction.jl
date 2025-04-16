@@ -35,7 +35,7 @@ intersect_indices(output::Field, indices) = map(intersect_index_range, indices, 
 
 intersect_index_range(::Colon, ::Colon) = Colon()
 intersect_index_range(range::UnitRange, ::Colon) = range
-intersect_index_range(range1::UnitRange, range2::UnitRange) = intersect(range1, range2)
+intersect_index_range(::Colon, range::UnitRange) = range
 
 function output_indices(output::Union{AbstractField, Reduction}, grid, indices, with_halos)
     indices = validate_indices(indices, location(output), grid)
