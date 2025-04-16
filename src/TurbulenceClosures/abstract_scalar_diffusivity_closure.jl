@@ -84,10 +84,10 @@ const AHD = AbstractScalarDiffusivity{<:Any, <:HorizontalFormulation}
 const ADD = AbstractScalarDiffusivity{<:Any, <:HorizontalDivergenceFormulation}
 const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 
-@inline νᶜᶜᶜ(i, j, k, grid, closure::ASD, K, clk, fields)     = νᶜᶜᶜ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
-@inline νᶠᶠᶜ(i, j, k, grid, closure::ASD, K, clk, fields)     = νᶠᶠᶜ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
-@inline νᶠᶜᶠ(i, j, k, grid, closure::ASD, K, clk, fields)     = νᶠᶜᶠ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
-@inline νᶜᶠᶠ(i, j, k, grid, closure::ASD, K, clk, fields)     = νᶜᶠᶠ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
+@inline νᶜᶜᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶜᶜᶜ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
+@inline νᶠᶠᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶠᶠᶜ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
+@inline νᶠᶜᶠ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶠᶜᶠ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
+@inline νᶜᶠᶠ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶜᶠᶠ(i, j, k, grid, viscosity_location(closure), viscosity(closure, K), clk, fields)
 
 @inline κᶜᶜᶜ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶜᶜᶜ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), clk, fields)
 @inline κᶠᶜᶜ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶠᶜᶜ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), clk, fields)
@@ -111,10 +111,10 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 @inline κzᶜᶠᶜ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶜᶠᶜ(i, j, k, grid, closure, K, id, clk, fields)
 @inline κzᶜᶜᶠ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶜᶜᶠ(i, j, k, grid, closure, K, id, clk, fields)
 
-@inline νhᶜᶜᶜ(i, j, k, grid, closure::ASD, K, clk, fields)     = νᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields)
-@inline νhᶠᶠᶜ(i, j, k, grid, closure::ASD, K, clk, fields)     = νᶠᶠᶜ(i, j, k, grid, closure, K, clk, fields)
-@inline νhᶠᶜᶠ(i, j, k, grid, closure::ASD, K, clk, fields)     = νᶠᶜᶠ(i, j, k, grid, closure, K, clk, fields)
-@inline νhᶜᶠᶠ(i, j, k, grid, closure::ASD, K, clk, fields)     = νᶜᶠᶠ(i, j, k, grid, closure, K, clk, fields)
+@inline νhᶜᶜᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields)
+@inline νhᶠᶠᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶠᶠᶜ(i, j, k, grid, closure, K, clk, fields)
+@inline νhᶠᶜᶠ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶠᶜᶠ(i, j, k, grid, closure, K, clk, fields)
+@inline νhᶜᶠᶠ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶜᶠᶠ(i, j, k, grid, closure, K, clk, fields)
 
 @inline κhᶠᶜᶜ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶠᶜᶜ(i, j, k, grid, closure, K, id, clk, fields)
 @inline κhᶜᶠᶜ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶜᶠᶜ(i, j, k, grid, closure, K, id, clk, fields)
