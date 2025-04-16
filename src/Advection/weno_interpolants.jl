@@ -148,7 +148,6 @@ for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
 end
 
 # _UNIFORM_ smoothness coefficients (stretched smoothness coefficients are to be fixed!)
-
 for FT in fully_supported_float_types
     @eval begin
         """
@@ -267,7 +266,7 @@ while for `buffer == 4` unrolls into
 
 # Smoothness indicators for stencil `stencil` for left and right biased reconstruction
 for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
-    @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds $(metaprogrammed_smoothness_operation(buffer))
+    @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds @muladd $(metaprogrammed_smoothness_operation(buffer))
     
     for stencil in 0:buffer-1, FT in fully_supported_float_types
         @eval @inline smoothness_indicator(ψ, scheme::WENO{$buffer, $FT}, ::Val{$stencil}) = 
@@ -507,7 +506,7 @@ Here, [`biased_p`](@ref) is the function that computes the linear reconstruction
 
 # Calculation of WENO reconstructed value v⋆ = ∑ᵣ(wᵣv̂ᵣ)
 for buffer in advection_buffers[2:end]
-    @eval @inline weno_reconstruction(scheme::WENO{$buffer}, bias, ψ, ω, cT, val, idx, loc) = @inbounds $(metaprogrammed_weno_reconstruction(buffer))
+    @eval @inline weno_reconstruction(scheme::WENO{$buffer}, bias, ψ, ω, cT, val, idx, loc) = @inbounds @muladd $(metaprogrammed_weno_reconstruction(buffer))
 end
 
 # Interpolation functions
