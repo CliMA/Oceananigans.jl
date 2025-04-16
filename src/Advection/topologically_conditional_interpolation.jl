@@ -82,6 +82,10 @@ const LOADV = Union{UpwindBiased{1}, Centered{1}}
 @inline _biased_interpolate_yᵃᶠᵃ(i, j, k, grid::AbstractGrid, scheme::WENO, args...) = biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, args...)
 @inline _biased_interpolate_zᵃᵃᶠ(i, j, k, grid::AbstractGrid, scheme::WENO, args...) = biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, args...)
 
+@inline _biased_interpolate_xᶜᵃᵃ(i, j, k, grid::AbstractGrid, scheme::WENO, args...) = biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, args...)
+@inline _biased_interpolate_yᵃᶜᵃ(i, j, k, grid::AbstractGrid, scheme::WENO, args...) = biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, args...)
+@inline _biased_interpolate_zᵃᵃᶜ(i, j, k, grid::AbstractGrid, scheme::WENO, args...) = biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, args...)
+
 for bias in (:symmetric, :biased)
     for (d, ξ) in enumerate((:x, :y, :z))
 
@@ -95,7 +99,7 @@ for bias in (:symmetric, :biased)
             alt2_interp = Symbol(alt2, interp)
 
             # Simple translation for Periodic directions and low-order advection schemes (fallback)
-            @eval @inline $alt1_interp(i, j, k, grid::AUG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+            @eval @inline $alt1_interp(i, j, k, grid::AUG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
             @eval @inline $alt1_interp(i, j, k, grid::AUG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
 
             # Disambiguation

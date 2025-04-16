@@ -98,13 +98,13 @@ UpwindBiased(grid, FT::DataType=Float64; kwargs...) = UpwindBiased(FT; grid, kwa
 const AUAS = AbstractUpwindBiasedAdvectionScheme
 
 # symmetric interpolation for UpwindBiased and WENO
-@inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::AUAS, c, args...) = @inbounds symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, c, args...)
-@inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::AUAS, c, args...) = @inbounds symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, c, args...)
-@inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::AUAS, c, args...) = @inbounds symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.advecting_velocity_scheme, c, args...)
+@inline _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::AUAS, args...) = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
+@inline _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::AUAS, args...) = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
+@inline _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::AUAS, args...) = _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
 
-@inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::AUAS, u, args...) = @inbounds symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, u, args...)
-@inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::AUAS, v, args...) = @inbounds symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, v, args...)
-@inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::AUAS, w, args...) = @inbounds symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme.advecting_velocity_scheme, w, args...)
+@inline _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::AUAS, args...) = _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
+@inline _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::AUAS, args...) = _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
+@inline _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::AUAS, args...) = _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
 
 const UX{N, FT} = UpwindBiased{N, FT, <:Nothing} where {N, FT}
 const UY{N, FT} = UpwindBiased{N, FT, <:Any, <:Nothing} where {N, FT}
