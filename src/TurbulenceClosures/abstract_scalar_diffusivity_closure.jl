@@ -323,17 +323,17 @@ const Lᶜᶜᶠ = Tuple{Center, Center, Face}
 const c = Center()
 const f = Face()
 
-@inline νᶜᶜᶜ(i, j, k, grid, loc, ν::F, clock, fields) where F<:Function = ν(node(i, j, k, grid, c, c, c)..., clock.time)
-@inline νᶠᶜᶠ(i, j, k, grid, loc, ν::F, clock, fields) where F<:Function = ν(node(i, j, k, grid, f, c, f)..., clock.time)
-@inline νᶜᶠᶠ(i, j, k, grid, loc, ν::F, clock, fields) where F<:Function = ν(node(i, j, k, grid, c, f, f)..., clock.time)
-@inline νᶠᶠᶜ(i, j, k, grid, loc, ν::F, clock, fields) where F<:Function = ν(node(i, j, k, grid, f, f, c)..., clock.time)
+@inline νᶜᶜᶜ(i, j, k, grid, loc, ν::Function, clock, fields) = ν(node(i, j, k, grid, c, c, c)..., clock.time)
+@inline νᶠᶜᶠ(i, j, k, grid, loc, ν::Function, clock, fields) = ν(node(i, j, k, grid, f, c, f)..., clock.time)
+@inline νᶜᶠᶠ(i, j, k, grid, loc, ν::Function, clock, fields) = ν(node(i, j, k, grid, c, f, f)..., clock.time)
+@inline νᶠᶠᶜ(i, j, k, grid, loc, ν::Function, clock, fields) = ν(node(i, j, k, grid, f, f, c)..., clock.time)
 
-@inline κᶜᶜᶜ(i, j, k, grid, loc, κ::F, clock, fields) where F<:Function = κ(node(i, j, k, grid, c, c, c)..., clock.time)
-@inline κᶠᶜᶜ(i, j, k, grid, loc, κ::F, clock, fields) where F<:Function = κ(node(i, j, k, grid, f, c, c)..., clock.time)
-@inline κᶜᶠᶜ(i, j, k, grid, loc, κ::F, clock, fields) where F<:Function = κ(node(i, j, k, grid, c, f, c)..., clock.time)
-@inline κᶜᶜᶠ(i, j, k, grid, loc, κ::F, clock, fields) where F<:Function = κ(node(i, j, k, grid, c, c, f)..., clock.time)
-@inline κᶠᶜᶠ(i, j, k, grid, loc, κ::F, clock, fields) where F<:Function = κ(node(i, j, k, grid, f, c, f)..., clock.time)
-@inline κᶜᶠᶠ(i, j, k, grid, loc, κ::F, clock, fields) where F<:Function = κ(node(i, j, k, grid, c, f, f)..., clock.time)
+@inline κᶜᶜᶜ(i, j, k, grid, loc, κ::Function, clock, fields) = κ(node(i, j, k, grid, c, c, c)..., clock.time)
+@inline κᶠᶜᶜ(i, j, k, grid, loc, κ::Function, clock, fields) = κ(node(i, j, k, grid, f, c, c)..., clock.time)
+@inline κᶜᶠᶜ(i, j, k, grid, loc, κ::Function, clock, fields) = κ(node(i, j, k, grid, c, f, c)..., clock.time)
+@inline κᶜᶜᶠ(i, j, k, grid, loc, κ::Function, clock, fields) = κ(node(i, j, k, grid, c, c, f)..., clock.time)
+@inline κᶠᶜᶠ(i, j, k, grid, loc, κ::Function, clock, fields) = κ(node(i, j, k, grid, f, c, f)..., clock.time)
+@inline κᶜᶠᶠ(i, j, k, grid, loc, κ::Function, clock, fields) = κ(node(i, j, k, grid, c, f, f)..., clock.time)
 
 # "DiscreteDiffusionFunction"
 @inline νᶜᶜᶜ(i, j, k, grid, loc, ν::DiscreteDiffusionFunction, clock, fields) = getdiffusivity(ν, i, j, k, grid, (c, c, c), clock, fields)
