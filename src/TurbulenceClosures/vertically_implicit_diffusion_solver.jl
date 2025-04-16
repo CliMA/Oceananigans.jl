@@ -68,7 +68,7 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
     Δzᶠₖ₊₁ = vertical_spacing(i, j, k+1, grid, ℓx, ℓy, f)
     du     = - Δt * κᵏ⁺¹ / (Δzᶜₖ * Δzᶠₖ₊₁)
     # This conditional ensures the diagonal is correct
-    return du # * !peripheral_node(i, j, k+1, grid, ℓx, ℓy, f)
+    return du * !peripheral_node(i, j, k+1, grid, ℓx, ℓy, f)
 end
 
 @inline function ivd_lower_diagonal(i, j, k′, grid, closure, K, id, ℓx, ℓy, ::Center, Δt, clock, fields)
