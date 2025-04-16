@@ -65,7 +65,7 @@ struct FunctionStencil{F} <:AbstractSmoothnessStencil
     func :: F
 end
 
-Base.show(io::IO, a::FunctionStencil) =  print(io, "FunctionStencil f = $(a.func)")
+Base.show(io::IO, a::FunctionStencil) = print(io, "FunctionStencil f = $(a.func)")
 
 const ε = 1f-8
 
@@ -142,7 +142,7 @@ for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
             where ``cᵣ`` is computed from the function `coeff_p`
             """
             @inline biased_p(scheme::WENO{$buffer}, bias, ::Val{$stencil}, ψ, T, dir, i, loc) = 
-                @inbounds sum(coeff_p(scheme, bias, Val($stencil), T, dir, i, loc) .* ψ)
+                @inbounds @muladd sum(coeff_p(scheme, bias, Val($stencil), T, dir, i, loc) .* ψ)
         end
     end
 end
