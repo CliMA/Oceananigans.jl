@@ -33,7 +33,7 @@ end
 c_real = CenterField(grid)
 set!(c_real, c₀)
 
-model = NonhydrostaticModel(; grid, timestepper=:RungeKutta3, advection=WENO(order=9), tracers=:c)
+model = NonhydrostaticModel(; grid, timestepper=:RungeKutta3, advection=WENO(order=5), tracers=:c)
 
 set!(model, c=c₀, u=1)
 sim = Simulation(model, Δt=Δt_max, stop_time=10)
