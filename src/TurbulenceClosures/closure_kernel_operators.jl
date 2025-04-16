@@ -40,9 +40,9 @@ end
                                       δzᵃᵃᶠ(i, j, k, grid, Az_qᶜᶜᶜ, _viscous_flux_wz, disc, closure, K, clock, fields, buoyancy))
 end
 
-@inline function ∇_dot_qᶜ(i, j, k, grid, closure::AbstractTurbulenceClosure, diffusivities, tracer_index, clock, fields, buoyancy)
+@inline function ∇_dot_qᶜ(i, j, k, grid, closure::AbstractTurbulenceClosure, K, id, c, clock, fields, buoyancy)
     disc = time_discretization(closure)
-    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, _diffusive_flux_x, disc, closure, diffusivities, tracer_index, clock, fields, buoyancy) +
-                                    δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, _diffusive_flux_y, disc, closure, diffusivities, tracer_index, clock, fields, buoyancy) +
-                                    δzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶜᶠ, _diffusive_flux_z, disc, closure, diffusivities, tracer_index, clock, fields, buoyancy))
+    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, _diffusive_flux_x, disc, closure, K, id, c, clock, fields, buoyancy) +
+                                    δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, _diffusive_flux_y, disc, closure, K, id, c, clock, fields, buoyancy) +
+                                    δzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶜᶠ, _diffusive_flux_z, disc, closure, K, id, c, clock, fields, buoyancy))
 end

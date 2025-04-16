@@ -226,10 +226,10 @@ const VITD = VerticallyImplicitTimeDiscretization
 @inline ivd_viscous_flux_vz(i, j, k, grid, closure::AVD, K, clock, fields, b) = zero(grid)
 
 # General functions (eg for vertically periodic)
-@inline viscous_flux_uz(i, j, k, grid,  ::VITD, closure::AIDorAVD, K, clock, fields, b)     = ivd_viscous_flux_uz(i, j, k, grid, closure, K, clock, fields, b)
-@inline viscous_flux_vz(i, j, k, grid,  ::VITD, closure::AIDorAVD, K, clock, fields, b)     = ivd_viscous_flux_vz(i, j, k, grid, closure, K, clock, fields, b)
-@inline viscous_flux_wz(i, j, k, grid,  ::VITD, closure::AIDorAVD, K, clock, fields, b)     = zero(grid)
-@inline diffusive_flux_z(i, j, k, grid, ::VITD, closure::AIDorAVD, K, id, clock, fields, b) = zero(grid)
+@inline viscous_flux_uz(i, j, k, grid,  ::VITD, closure::AIDorAVD, K, clock, fields, b)        = ivd_viscous_flux_uz(i, j, k, grid, closure, K, clock, fields, b)
+@inline viscous_flux_vz(i, j, k, grid,  ::VITD, closure::AIDorAVD, K, clock, fields, b)        = ivd_viscous_flux_vz(i, j, k, grid, closure, K, clock, fields, b)
+@inline viscous_flux_wz(i, j, k, grid,  ::VITD, closure::AIDorAVD, K, clock, fields, b)        = zero(grid)
+@inline diffusive_flux_z(i, j, k, grid, ::VITD, closure::AIDorAVD, K, id, c, clock, fields, b) = zero(grid)
 
 # Vertically bounded grids
 #
@@ -257,9 +257,9 @@ end
                   zero(grid))
 end
 
-@inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, K, id, clk, fields, b) 
+@inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, K, id, c, clk, fields, b) 
     return ifelse((k == 1) | (k == grid.Nz+1),
-                  diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), closure, K, id, clk, fields, b),
+                  diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), closure, K, id, c, clk, fields, b),
                   zero(grid))
 end
 
