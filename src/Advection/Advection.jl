@@ -54,7 +54,7 @@ abstract type AbstractUpwindBiasedAdvectionScheme{B, FT} <: AbstractAdvectionSch
 # compile schemes with higher orders; for example `advection_buffers = [1, 2, 3, 4, 5, 6, 8]`
 # will compile schemes for `advection_buffer=8` and thus `Centered(order=16)` and `UpwindBiased(order=15)`.
 # Note that it is not possible to compile schemes for `advection_buffer = 41` or higher.
-const advection_buffers = [1, 2, 3, 4, 5, 6]
+const advection_buffers = [1, 2, 3, 4, 5]
 
 @inline Base.eltype(::AbstractAdvectionScheme{<:Any, FT}) where FT = FT
 

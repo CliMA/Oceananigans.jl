@@ -1,6 +1,7 @@
 using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
 
 include("weno_stencils.jl")
+include("weno_smoothness.jl")
 
 # WENO reconstruction of order `M` entails reconstructions of order `N`
 # on `N` different stencils, where `N = (M + 1) / 2`.
@@ -120,48 +121,60 @@ for FT in fully_supported_float_types
     end
 end
 
+function uniform_weno_coefficients(FT, N, R, stencil)
+    if N == 1
+        return (1, )
+    else
+        Ncoeff = stencil_coefficients(FT, 50, stencil, collect(1:100), collect(1:100); order=N)
+        Rcoeff = (zero(FT) for i in 1:R-N)
+        return (Ncoeff..., Rcoeff...)
+    end
+end
+
 # ENO reconstruction procedure per stencil 
-for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
-    for stencil in collect(0:1:buffer-1)
-        for FT in fully_supported_float_types
-            # ENO coefficients for uniform direction (when T<:Nothing) and stretched directions (when T<:Any) 
-            @eval begin
-                """
-                    coeff_p(::WENO{buffer, FT}, bias, ::Val{stencil}, T, args...) 
+for buffer in advection_buffers # WENO{<:Any, 1} does not exist
+    for buffer2 in 1:buffer
+        for stencil in collect(0:1:buffer-1)
+            for FT in fully_supported_float_types
+                # ENO coefficients for uniform direction (when T<:Nothing) and stretched directions (when T<:Any) 
+                @eval begin
+                    """
+                        coeff_p(::WENO{buffer, FT}, bias, ::Val{stencil}, T, args...) 
 
-                Reconstruction coefficients for the stencil number `stencil` of a WENO reconstruction 
-                of order `buffer * 2 - 1`. Uniform coefficients (i.e. when `T == Nothing`) are independent on the
-                `bias` of the reconstruction (either `LeftBias` or `RightBias`), while stretched coeffiecients are
-                retrieved from the precomputed coefficients via the `retrieve_coeff` function
-                """
-                @inline coeff_p(::WENO{$buffer, $FT}, bias, ::Val{$stencil}, ::Type{Nothing}, args...) = 
-                    @inbounds $(stencil_coefficients(FT, 50, stencil, collect(1:100), collect(1:100); order=buffer))
+                    Reconstruction coefficients for the stencil number `stencil` of a WENO reconstruction 
+                    of order `buffer * 2 - 1`. Uniform coefficients (i.e. when `T == Nothing`) are independent on the
+                    `bias` of the reconstruction (either `LeftBias` or `RightBias`), while stretched coeffiecients are
+                    retrieved from the precomputed coefficients via the `retrieve_coeff` function
+                    """
+                    @inline coeff_p(::WENO{$buffer, $FT}, ::Val{$buffer2}, bias, ::Val{$stencil}, ::Type{Nothing}, args...) = 
+                        @inbounds $(uniform_weno_coefficients(FT, buffer, buffer2, stencil)) 
+                end
             end
-        end
         
-        @eval begin
-            # stretched coefficients are retrieved from precalculated coefficients
-            @inline coeff_p(scheme::WENO{$buffer}, bias, ::Val{$stencil}, T, dir, i, loc) = 
-                ifelse(bias isa LeftBias, retrieve_coeff(scheme, $stencil, dir, i, loc),
-                                  reverse(retrieve_coeff(scheme, $(buffer - 2 - stencil), dir, i, loc)))
-        end
-    
-        # left biased and right biased reconstruction value for each stencil
-        @eval begin
-            """ 
-                biased_p(scheme::WENO{buffer}, bias, ::Val{stencil}, ψ, T, dir, i, loc)
-
-            Biased reconstruction of `ψ` from the stencil `stencil` of a WENO reconstruction of
-            order `buffer * 2 - 1`. The reconstruction is calculated as
+            @eval begin
+                # stretched coefficients are retrieved from precalculated coefficients
+                @inline coeff_p(scheme::WENO{$buffer}, R, bias, ::Val{$stencil}, T, dir, i, loc) = 
+                    ifelse(bias isa LeftBias, retrieve_coeff(scheme, $stencil, dir, i, loc),
+                                    reverse(retrieve_coeff(scheme, $(buffer - 2 - stencil), dir, i, loc)))
+            end
             
-            ```math
-            ψ★ = ∑ᵣ cᵣ ⋅ ψᵣ
-            ```
+            # left biased and right biased reconstruction value for each stencil
+            @eval begin
+                """ 
+                    biased_p(scheme::WENO{buffer}, bias, ::Val{stencil}, ψ, T, dir, i, loc)
 
-            where ``cᵣ`` is computed from the function `coeff_p`
-            """
-            @inline biased_p(scheme::WENO{$buffer}, bias, ::Val{$stencil}, ψ, T, dir, i, loc) = 
-                @inbounds sum(coeff_p(scheme, bias, Val($stencil), T, dir, i, loc) .* ψ)
+                Biased reconstruction of `ψ` from the stencil `stencil` of a WENO reconstruction of
+                order `buffer * 2 - 1`. The reconstruction is calculated as
+                
+                ```math
+                ψ★ = ∑ᵣ cᵣ ⋅ ψᵣ
+                ```
+
+                where ``cᵣ`` is computed from the function `coeff_p`
+                """
+                @inline biased_p(scheme::WENO{$buffer}, R, bias, ::Val{$stencil}, ψ, T, dir, i, loc) = 
+                    @inbounds sum(coeff_p(scheme, R, bias, Val($stencil), T, dir, i, loc) .* ψ)
+            end
         end
     end
 end
@@ -230,12 +243,14 @@ while for `buffer == 4` unrolls into
 @inline smoothness_indicator(ψ, args...) = zero(ψ[1]) # This is a fallback method, here only for documentation purposes
 
 # Smoothness indicators for stencil `stencil` for left and right biased reconstruction
-for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
+for buffer in advection_buffers # WENO{<:Any, 1} does not exist
     @eval @inline smoothness_operation(::Val{$buffer}, ψ, C) = @inbounds $(metaprogrammed_smoothness_operation(buffer))
     
-    for stencil in 0:buffer-1, FT in fully_supported_float_types
-        @eval @inline smoothness_indicator(ψ, ::WENO{$buffer, $FT}, R, ::Val{$stencil}) = 
-                      smoothness_operation(R, ψ, $(smoothness_coefficients(Val(FT), Val(buffer), R, Val(stencil))))
+    for buffer2 in 1:buffer
+        for stencil in 0:buffer-1, FT in fully_supported_float_types
+            @eval @inline smoothness_indicator(ψ, ::WENO{$buffer, $FT}, ::Val{$buffer2}, ::Val{$stencil}) = 
+                        smoothness_operation(Val($buffer2), ψ, $(smoothness_coefficients(Val(FT), Val(buffer), Val(buffer2), Val(stencil))))
+        end
     end
 end
 
@@ -375,6 +390,8 @@ end
 for dir in (:x, :y, :z), (T, f) in zip((:Any, :Function), (false, true))
     stencil = Symbol(:weno_stencil_, dir)
     @eval begin
+        @inline $stencil(i, j, k, grid, ::WENO{1}, R, bias, ψ::$T, args...) = $(load_weno_stencil(1, dir, f))
+
         @inline function $stencil(i, j, k, grid, ::WENO{2}, R, bias, ψ::$T, args...) 
             S = @inbounds $(load_weno_stencil(2, dir, f))
             return S₀₂(S, R, bias), S₁₂(S, R, bias)
@@ -413,7 +430,7 @@ end
 @inline function metaprogrammed_weno_reconstruction(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(ω[$stencil] * biased_p(scheme, bias, Val($(stencil-1)), ψ[$stencil], cT, Val(val), idx, loc))
+        elem[stencil] = :(ω[$stencil] * biased_p(scheme, R, bias, Val($(stencil-1)), ψ[$stencil], cT, Val(val), idx, loc))
     end
 
     return Expr(:call, :+, elem...)
@@ -441,11 +458,11 @@ The calculation of the reconstruction is metaprogrammed in the `metaprogrammed_w
 
 Here, [`biased_p`](@ref) is the function that computes the linear reconstruction of the individual stencils.
 """
-@inline weno_reconstruction(scheme, bias, ψ, args...) = zero(ψ[1][1]) # Fallback only for documentation purposes
+@inline weno_reconstruction(scheme, R, bias, ψ, args...) = zero(ψ[1][1]) # Fallback only for documentation purposes
 
 # Calculation of WENO reconstructed value v⋆ = ∑ᵣ(wᵣv̂ᵣ)
 for buffer in advection_buffers[2:end]
-    @eval @inline weno_reconstruction(scheme::WENO{$buffer}, bias, ψ, ω, cT, val, idx, loc) = @inbounds $(metaprogrammed_weno_reconstruction(buffer))
+    @eval @inline weno_reconstruction(scheme::WENO{$buffer}, R, bias, ψ, ω, cT, val, idx, loc) = @inbounds $(metaprogrammed_weno_reconstruction(buffer))
 end
 
 # Interpolation functions
@@ -460,7 +477,7 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
 
             ψₜ = $stencil(i, j, k, grid, scheme, R, bias, ψ, args...)
             ω = biased_weno_weights(ψₜ, grid, scheme, R, bias, Val($val), Nothing, args...)
-            return weno_reconstruction(scheme, bias, ψₜ, ω, $cT, $val, idx, loc)
+            return weno_reconstruction(scheme, R, bias, ψₜ, ω, $cT, $val, idx, loc)
         end
 
         @inline function $interpolate_func(i, j, k, grid, 
@@ -469,7 +486,7 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
 
             ψₜ = $stencil(i, j, k, grid, scheme, R, bias, ψ, args...)
             ω = biased_weno_weights(ψₜ, grid, scheme, R, bias, Val($val), VI, args...)
-            return weno_reconstruction(scheme, bias, ψₜ, ω, $cT, $val, idx, loc)
+            return weno_reconstruction(scheme, R, bias, ψₜ, ω, $cT, $val, idx, loc)
         end
 
         @inline function $interpolate_func(i, j, k, grid, 
@@ -478,7 +495,7 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
 
             ψₜ = $stencil(i, j, k, grid, scheme, R, bias, ψ, u, v, args...)
             ω = biased_weno_weights((i, j, k), grid, scheme, R, bias, Val($val), VI, u, v)
-            return weno_reconstruction(scheme, bias, ψₜ, ω, $cT, $val, idx, loc)
+            return weno_reconstruction(scheme, R, bias, ψₜ, ω, $cT, $val, idx, loc)
         end
 
         @inline function $interpolate_func(i, j, k, grid, 
@@ -488,7 +505,7 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
             ψₜ = $stencil(i, j, k, grid, scheme, R, bias, ψ,       args...)
             ψₛ = $stencil(i, j, k, grid, scheme, R, bias, VI.func, args...)
             ω = biased_weno_weights(ψₛ, grid, scheme, R, bias, Val($val), VI, args...)
-            return weno_reconstruction(scheme, bias, ψₜ, ω, $cT, $val, idx, loc)
+            return weno_reconstruction(scheme, R, bias, ψₜ, ω, $cT, $val, idx, loc)
         end
     end
 end

@@ -27,6 +27,8 @@ for FT in fully_supported_float_types
         
         This last operation is metaprogrammed in the function `metaprogrammed_smoothness_operation`
         """
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{1}, Nrest, ::Val{0}) = $(FT.((1, )))
+
         @inline smoothness_coefficients(::Val{$FT}, ::Val{2}, Nrest, ::Val{0}) = $(FT.((1, -2, 1)))
         @inline smoothness_coefficients(::Val{$FT}, ::Val{2}, Nrest, ::Val{1}) = $(FT.((1, -2, 1)))
 
