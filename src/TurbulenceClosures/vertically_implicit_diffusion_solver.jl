@@ -117,9 +117,15 @@ end
                               _ivd_lower_diagonal(i, j, k-1, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock, fields)
 
 
-@inline _implicit_linear_coefficient(args...) = implicit_linear_coefficient(args...)
-@inline _ivd_upper_diagonal(args...) = ivd_upper_diagonal(args...)
-@inline _ivd_lower_diagonal(args...) = ivd_lower_diagonal(args...)
+# Fallback for single closure. These coefficients are extended for tupled closures in `closure_tuples.jl`
+@inline _implicit_linear_coefficient(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock, fields) = 
+    implicit_linear_coefficient(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock, fields)
+
+@inline _ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock, fields) = 
+    ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock, fields)
+
+@inline _ivd_lower_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock, fields) = 
+    ivd_lower_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock, fields)
 
 #####
 ##### Solver constructor
@@ -163,9 +169,14 @@ end
 
 # Extend `get_coefficient` to retrieve `ivd_diagonal`, `_ivd_lower_diagonal` and `_ivd_upper_diagonal`.
 # Note that we use the "periphery-aware" upper and lower diagonals
-@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, ::ZDirection, args...) = _ivd_lower_diagonal(i, j, k, grid, args...)
-@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, ::ZDirection, args...) = _ivd_upper_diagonal(i, j, k, grid, args...)
-@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal,      p, ::ZDirection, args...) = ivd_diagonal(i, j, k, grid, args...)
+@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, ::ZDirection, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields) = 
+    _ivd_lower_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
+
+@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, ::ZDirection, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields) = 
+    _ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
+
+@inline get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal, p, ::ZDirection, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields) = 
+    ivd_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
 
 #####
 ##### Implicit step functions
