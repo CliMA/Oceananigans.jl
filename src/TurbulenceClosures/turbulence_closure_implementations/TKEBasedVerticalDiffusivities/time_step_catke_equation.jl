@@ -168,7 +168,7 @@ end
     @inbounds begin
         total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe
         e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k]) * active
-        G⁻e[i, j, k] = total_Gⁿe * mask
+        G⁻e[i, j, k] = total_Gⁿe * active
     end
 end
 
