@@ -72,10 +72,15 @@ for dir in (:x, :y, :z)
 end
 
 # Separate High order advection from low order advection
-const HOADV = Union{WENO, 
-                    Tuple(Centered{N} for N in advection_buffers[2:end])...,
+const HOADV = Union{Tuple(Centered{N} for N in advection_buffers[2:end])...,
                     Tuple(UpwindBiased{N} for N in advection_buffers[2:end])...} 
+
 const LOADV = Union{UpwindBiased{1}, Centered{1}}
+
+# WENO reconstruction restricts inside the interpolation
+@inline _biased_interpolate_xᶠᵃᵃ(i, j, k, grid::AbstractGrid, scheme::WENO, args...) = biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, args...)
+@inline _biased_interpolate_yᵃᶠᵃ(i, j, k, grid::AbstractGrid, scheme::WENO, args...) = biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, args...)
+@inline _biased_interpolate_zᵃᵃᶠ(i, j, k, grid::AbstractGrid, scheme::WENO, args...) = biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, args...)
 
 for bias in (:symmetric, :biased)
     for (d, ξ) in enumerate((:x, :y, :z))
@@ -91,7 +96,7 @@ for bias in (:symmetric, :biased)
 
             # Simple translation for Periodic directions and low-order advection schemes (fallback)
             @eval @inline $alt1_interp(i, j, k, grid::AUG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
-            @eval @inline $alt1_interp(i, j, k, grid::AUG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
+            @eval @inline $alt1_interp(i, j, k, grid::AUG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
 
             # Disambiguation
             for GridType in [:AUGX, :AUGY, :AUGZ, :AUGXY, :AUGXZ, :AUGYZ, :AUGXYZ]
