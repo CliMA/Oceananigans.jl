@@ -12,6 +12,8 @@ using Statistics
 using Oceananigans.Solvers
 using SeawaterPolynomials.TEOS10
 
+CUDA.device!(2)
+
 function ocean_benchmark(grid, closure)
     momentum_advection = nothing # WENOVectorInvariant()
     tracer_advection = WENO(order=7)
@@ -49,9 +51,10 @@ function benchmark_hydrostatic_model(Arch, grid_type, closure_type)
     end
 
     # Make sure we do not have any NaN or Inf values anywhere
-    fields = Oceananigans.prognostic_fields(model)
-    for field in fields
-        @assert all(isfinite.(Array(interior(field))))
+    fields = Oceananigans.fields(model)
+    for (key, field) in zip(propertynames(fields), fields)
+        @assert all(isfinite.(Array(interior(field)))) || @show "Nan in $key"
+        @assert all(Array(interior(field)) .< 1e10)    || @show "Inf in $key"
     end
 
     for _ in 1:10
@@ -87,8 +90,10 @@ grids = Dict(
 )
 
 closures = Dict(
-   :DiffImplicit  => VerticalScalarDiffusivity(TurbulenceClosures.VerticallyImplicitTimeDiscretization(), ν=1e-5, κ=1e-5),
+   :DiffImplicit  => VerticalScalarDiffusivity(TurbulenceClosures.VerticallyImplicitTimeDiscretization(), ν=1e-5 , κ=1e-5),
+#    :CATKEExplicit => Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities.CATKEVerticalDiffusivity(TurbulenceClosures.ExplicitTimeDiscretization()),
    :DiffExplicit  => VerticalScalarDiffusivity(ν=1e-5, κ=1e-5),
+#    :CATKEImplicit => Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities.CATKEVerticalDiffusivity(),
 )
 
 # Benchmark parameters
@@ -106,4 +111,11 @@ closure_types = collect(keys(closures))
 # print_system_info()
 suite = run_benchmarks(benchmark_hydrostatic_model; architectures, grid_types, closure_types)
 df = benchmarks_dataframe(suite)
+@show df2 = sort(df)
+
+for _ in 1:5
+    suite = run_benchmarks(benchmark_hydrostatic_model; architectures, grid_types, closure_types)
+    @show df2 = sort(df)
+end
+
 # benchmarks_pretty_table(df, title="Hydrostatic model benchmarks")
