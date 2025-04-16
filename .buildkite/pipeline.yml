@@ -42,6 +42,8 @@ steps:
       GPU_TEST: "true"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -54,6 +56,8 @@ steps:
       TEST_GROUP: "unit"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -71,6 +75,8 @@ steps:
       GPU_TEST: "true"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -83,6 +89,8 @@ steps:
       TEST_GROUP: "poisson_solvers_1"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -96,6 +104,8 @@ steps:
       GPU_TEST: "true"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -108,6 +118,8 @@ steps:
       TEST_GROUP: "poisson_solvers_2"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -121,6 +133,8 @@ steps:
       GPU_TEST: "true"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -133,6 +147,8 @@ steps:
       TEST_GROUP: "matrix_poisson_solvers"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -146,6 +162,8 @@ steps:
       GPU_TEST: "true"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -158,6 +176,8 @@ steps:
       TEST_GROUP: "general_solvers"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -175,6 +195,8 @@ steps:
       GPU_TEST: "true"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1      
@@ -187,6 +209,8 @@ steps:
       TEST_GROUP: "tripolar_grid"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1      
@@ -204,6 +228,8 @@ steps:
       GPU_TEST: "true"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -216,6 +242,8 @@ steps:
       TEST_GROUP: "time_stepping_1"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -233,6 +261,8 @@ steps:
       GPU_TEST: "true"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -245,6 +275,8 @@ steps:
       TEST_GROUP: "time_stepping_2"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -262,6 +294,8 @@ steps:
       GPU_TEST: "true"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -274,6 +308,8 @@ steps:
       TEST_GROUP: "time_stepping_3"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -292,6 +328,8 @@ steps:
       GPU_TEST: "true"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -311,6 +349,8 @@ steps:
       GPU_TEST: "true"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -323,6 +363,8 @@ steps:
       TEST_GROUP: "hydrostatic_free_surface"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -340,6 +382,8 @@ steps:
       GPU_TEST: "true"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -352,6 +396,8 @@ steps:
       TEST_GROUP: "shallow_water"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -369,6 +415,8 @@ steps:
       GPU_TEST: "true"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -381,6 +429,8 @@ steps:
       TEST_GROUP: "simulation"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -398,6 +448,8 @@ steps:
       GPU_TEST: "true"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -410,6 +462,8 @@ steps:
       TEST_GROUP: "lagrangian"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -427,6 +481,8 @@ steps:
       GPU_TEST: "true"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -439,6 +495,8 @@ steps:
       TEST_GROUP: "abstract_operations"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -456,6 +514,8 @@ steps:
       GPU_TEST: "true"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -468,6 +528,8 @@ steps:
       TEST_GROUP: "multi_region"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -485,6 +547,8 @@ steps:
       GPU_TEST: "true"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -497,6 +561,8 @@ steps:
       TEST_GROUP: "nonhydrostatic_regression"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -510,6 +576,8 @@ steps:
       GPU_TEST: "true"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -522,6 +590,8 @@ steps:
       TEST_GROUP: "hydrostatic_regression"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -539,6 +609,8 @@ steps:
       GPU_TEST: "true"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -551,6 +623,8 @@ steps:
       TEST_GROUP: "scripts"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -568,6 +642,8 @@ steps:
       GPU_TEST: "true"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1      
@@ -581,6 +657,8 @@ steps:
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1      
@@ -598,6 +676,8 @@ steps:
       GPU_TEST: "true"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -610,6 +690,8 @@ steps:
       TEST_GROUP: "enzyme"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -634,6 +716,8 @@ steps:
       cat LocalPreferences.toml
       
       $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -654,6 +738,8 @@ steps:
       cat LocalPreferences.toml
 
       $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -674,6 +760,8 @@ steps:
       cat LocalPreferences.toml
 
       $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -694,6 +782,8 @@ steps:
       cat LocalPreferences.toml
 
       $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
+    agents:
+      queue: "Oceananigans"
     retry:
       automatic:
         - exit_status: 1
@@ -713,6 +803,8 @@ steps:
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'"
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ docs/make.jl"
+    agents:
+      queue: "Oceananigans"
     depends_on: "init"
 
   - wait: ~
@@ -724,3 +816,5 @@ steps:
 
   - label: "🧹 clean up environment"
     command: "rm -rf $TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+    agents:
+      queue: "Oceananigans"
