@@ -166,61 +166,6 @@ for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
     end
 end
 
-# _UNIFORM_ smoothness coefficients (stretched smoothness coefficients are to be fixed!)
-
-for FT in fully_supported_float_types
-    @eval begin
-        """
-            smoothness_coefficients(::Val{FT}, ::Val{buffer}, ::Val{stencil})
-
-        Return the coefficients used to calculate the smoothness indicators for the stencil 
-        number `stencil` of a WENO reconstruction of order `buffer * 2 - 1`. The coefficients
-        are ordered in such a way to calculate the smoothness in the following fashion:
-        
-        ```julia
-        buffer  = 4
-        stencil = 0
-        
-        ψ = # The stencil corresponding to S₀ with buffer 4 (7th order WENO)
-        
-        C = smoothness_coefficients(Val(buffer), Val(0))
-        
-        # The smoothness indicator
-        β = ψ[1] * (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3] + C[4] * ψ[4]) + 
-            ψ[2] * (C[5]  * ψ[2] + C[6] * ψ[3] + C[7] * ψ[4]) + 
-            ψ[3] * (C[8]  * ψ[3] + C[9] * ψ[4])
-            ψ[4] * (C[10] * ψ[4])
-        ```
-        
-        This last operation is metaprogrammed in the function `metaprogrammed_smoothness_operation`
-        """
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{2}, ::Val{0}) = $(FT.((1, -2, 1)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{2}, ::Val{1}) = $(FT.((1, -2, 1)))
-
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, ::Val{0}) = $(FT.((10, -31, 11, 25, -19,  4)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, ::Val{1}) = $(FT.((4,  -13, 5,  13, -13,  4)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, ::Val{2}) = $(FT.((4,  -19, 11, 25, -31, 10)))
-
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, ::Val{0}) = $(FT.((2.107,  -9.402, 7.042, -1.854, 11.003,  -17.246,  4.642,  7.043,  -3.882, 0.547)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, ::Val{1}) = $(FT.((0.547,  -2.522, 1.922, -0.494,  3.443,  - 5.966,  1.602,  2.843,  -1.642, 0.267)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, ::Val{2}) = $(FT.((0.267,  -1.642, 1.602, -0.494,  2.843,  - 5.966,  1.922,  3.443,  -2.522, 0.547)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, ::Val{3}) = $(FT.((0.547,  -3.882, 4.642, -1.854,  7.043,  -17.246,  7.042, 11.003,  -9.402, 2.107)))
-
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, ::Val{0}) = $(FT.((1.07918,  -6.49501, 7.58823, -4.11487,  0.86329,  10.20563, -24.62076, 13.58458, -2.88007, 15.21393, -17.04396, 3.64863,  4.82963, -2.08501, 0.22658)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, ::Val{1}) = $(FT.((0.22658,  -1.40251, 1.65153, -0.88297,  0.18079,   2.42723,  -6.11976,  3.37018, -0.70237,  4.06293,  -4.64976, 0.99213,  1.38563, -0.60871, 0.06908)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, ::Val{2}) = $(FT.((0.06908,  -0.51001, 0.67923, -0.38947,  0.08209,   1.04963,  -2.99076,  1.79098, -0.38947,  2.31153,  -2.99076, 0.67923,  1.04963, -0.51001, 0.06908)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, ::Val{3}) = $(FT.((0.06908,  -0.60871, 0.99213, -0.70237,  0.18079,   1.38563,  -4.64976,  3.37018, -0.88297,  4.06293,  -6.11976, 1.65153,  2.42723, -1.40251, 0.22658)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, ::Val{4}) = $(FT.((0.22658,  -2.08501, 3.64863, -2.88007,  0.86329,   4.82963, -17.04396, 13.58458, -4.11487, 15.21393, -24.62076, 7.58823, 10.20563, -6.49501, 1.07918)))
-
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{0}) = $(FT.((0.6150211, -4.7460464, 7.6206736, -6.3394124, 2.7060170, -0.4712740,  9.4851237, -31.1771244, 26.2901672, -11.3206788,  1.9834350, 26.0445372, -44.4003904, 19.2596472, -3.3918804, 19.0757572, -16.6461044, 2.9442256, 3.6480687, -1.2950184, 0.1152561)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{1}) = $(FT.((0.1152561, -0.9117992, 1.4742480, -1.2183636, 0.5134574, -0.0880548,  1.9365967,  -6.5224244,  5.5053752,  -2.3510468,  0.4067018,  5.6662212,  -9.7838784,  4.2405032, -0.7408908,  4.3093692,  -3.7913324, 0.6694608, 0.8449957, -0.3015728, 0.0271779)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{2}) = $(FT.((0.0271779, -0.2380800, 0.4086352, -0.3462252, 0.1458762, -0.0245620,  0.5653317,  -2.0427884,  1.7905032,  -0.7727988,  0.1325006,  1.9510972,  -3.5817664,  1.5929912, -0.2792660,  1.7195652,  -1.5880404, 0.2863984, 0.3824847, -0.1429976, 0.0139633)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{3}) = $(FT.((0.0139633, -0.1429976, 0.2863984, -0.2792660, 0.1325006, -0.0245620,  0.3824847,  -1.5880404,  1.5929912,  -0.7727988,  0.1458762,  1.7195652,  -3.5817664,  1.7905032, -0.3462252,  1.9510972,  -2.0427884, 0.4086352, 0.5653317, -0.2380800, 0.0271779)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{4}) = $(FT.((0.0271779, -0.3015728, 0.6694608, -0.7408908, 0.4067018, -0.0880548,  0.8449957,  -3.7913324,  4.2405032,  -2.3510468,  0.5134574,  4.3093692,  -9.7838784,  5.5053752, -1.2183636,  5.6662212,  -6.5224244, 1.4742480, 1.9365967, -0.9117992, 0.1152561)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{6}, ::Val{5}) = $(FT.((0.1152561, -1.2950184, 2.9442256, -3.3918804, 1.9834350, -0.4712740,  3.6480687, -16.6461044, 19.2596472, -11.3206788,  2.7060170, 19.0757572, -44.4003904, 26.2901672, -6.3394124, 26.0445372, -31.1771244, 7.6206736, 9.4851237, -4.7460464, 0.6150211)))
-    end
-end
-
 # The rule for calculating smoothness indicators is the following (example WENO{4} which is seventh order) 
 # ψ[1] (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3] + C[4] * ψ[4]) + 
 # ψ[2] (C[5]  * ψ[2] + C[6] * ψ[3] + C[7] * ψ[4]) + 
@@ -286,11 +231,11 @@ while for `buffer == 4` unrolls into
 
 # Smoothness indicators for stencil `stencil` for left and right biased reconstruction
 for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
-    @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds $(metaprogrammed_smoothness_operation(buffer))
+    @eval @inline smoothness_operation(::Val{$buffer}, ψ, C) = @inbounds $(metaprogrammed_smoothness_operation(buffer))
     
     for stencil in 0:buffer-1, FT in fully_supported_float_types
-        @eval @inline smoothness_indicator(ψ, scheme::WENO{$buffer, $FT}, ::Val{$stencil}) = 
-                      smoothness_operation(scheme, ψ, $(smoothness_coefficients(Val(FT), Val(buffer), Val(stencil))))
+        @eval @inline smoothness_indicator(ψ, ::WENO{$buffer, $FT}, R, ::Val{$stencil}) = 
+                      smoothness_operation(R, ψ, $(smoothness_coefficients(Val(FT), Val(buffer), R, Val(stencil))))
     end
 end
 
@@ -298,7 +243,7 @@ end
 @inline function metaprogrammed_beta_sum(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :((β₁[$stencil] + β₂[$stencil])/2)
+        elem[stencil] = :((β₁[$stencil] + β₂[$stencil]) / 2)
     end
 
     return :($(elem...),)
@@ -326,9 +271,9 @@ end
 
 for buffer in advection_buffers[2:end]
     @eval begin
-        @inline         beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂) where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
-        @inline        beta_loop(scheme::WENO{$buffer, FT}, ψ)      where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
-        @inline zweno_alpha_loop(scheme::WENO{$buffer, FT}, β, τ)   where FT = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
+        @inline beta_sum(::Val{$buffer}, β₁, β₂) = @inbounds $(metaprogrammed_beta_sum(buffer))
+        @inline beta_loop(scheme::WENO{N, FT}, R::Val{$buffer}, ψ) where {N, FT} = @inbounds $(metaprogrammed_beta_loop(buffer))
+        @inline zweno_alpha_loop(scheme::WENO{N, FT}, ::Val{$buffer}, β, τ)  where {N, FT} = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
     end
 end
 
@@ -357,26 +302,26 @@ where
 
 The ``α`` values are normalized before returning
 """
-@inline function biased_weno_weights(ψ, grid, scheme::WENO{N, FT}, args...) where {N, FT}
-    β = beta_loop(scheme, ψ)
+@inline function biased_weno_weights(ψ, grid, scheme::WENO{N, FT}, R, args...) where {N, FT}
+    β = beta_loop(scheme, R, ψ)
                 
-    τ = global_smoothness_indicator(Val(N), β)
-    α = zweno_alpha_loop(scheme, β, τ)
+    τ = global_smoothness_indicator(R, β)
+    α = zweno_alpha_loop(scheme, R, β, τ)
 
     return α ./ sum(α)
 end
 
-@inline function biased_weno_weights(ijk, grid, scheme::WENO{N, FT}, bias, dir, ::VelocityStencil, u, v) where {N, FT}
+@inline function biased_weno_weights(ijk, grid, scheme::WENO{N, FT}, R, bias, dir, ::VelocityStencil, u, v) where {N, FT}
     i, j, k = ijk
     
-    uₛ = tangential_stencil_u(i, j, k, grid, scheme, bias, dir, u)
-    vₛ = tangential_stencil_v(i, j, k, grid, scheme, bias, dir, v)
-    βᵤ = beta_loop(scheme, uₛ)
-    βᵥ = beta_loop(scheme, vₛ)
-    β  =  beta_sum(scheme, βᵤ, βᵥ)
+    uₛ = tangential_stencil_u(i, j, k, grid, scheme, R, bias, dir, u)
+    vₛ = tangential_stencil_v(i, j, k, grid, scheme, R, bias, dir, v)
+    βᵤ = beta_loop(scheme, R, uₛ)
+    βᵥ = beta_loop(scheme, R, vₛ)
+    β  = beta_sum(R, βᵤ, βᵥ)
 
-    τ = global_smoothness_indicator(Val(N), β)
-    α = zweno_alpha_loop(scheme, β, τ)
+    τ = global_smoothness_indicator(R, β)
+    α = zweno_alpha_loop(scheme, R, β, τ)
     
     return α ./ sum(α)
 end
@@ -430,39 +375,39 @@ end
 for dir in (:x, :y, :z), (T, f) in zip((:Any, :Function), (false, true))
     stencil = Symbol(:weno_stencil_, dir)
     @eval begin
-        @inline function $stencil(i, j, k, grid, ::WENO{2}, bias, ψ::$T, args...) 
+        @inline function $stencil(i, j, k, grid, ::WENO{2}, R, bias, ψ::$T, args...) 
             S = @inbounds $(load_weno_stencil(2, dir, f))
-            return S₀₂(S, bias), S₁₂(S, bias)
+            return S₀₂(S, R, bias), S₁₂(S, R, bias)
         end
 
-        @inline function $stencil(i, j, k, grid, ::WENO{3}, bias, ψ::$T, args...) 
+        @inline function $stencil(i, j, k, grid, ::WENO{3}, R, bias, ψ::$T, args...) 
             S = @inbounds $(load_weno_stencil(3, dir, f))
-            return S₀₃(S, bias), S₁₃(S, bias), S₂₃(S, bias)
+            return S₀₃(S, R, bias), S₁₃(S, R, bias), S₂₃(S, R, bias)
         end
 
-        @inline function $stencil(i, j, k, grid, ::WENO{4}, bias, ψ::$T, args...) 
+        @inline function $stencil(i, j, k, grid, ::WENO{4}, R, bias, ψ::$T, args...) 
             S = @inbounds $(load_weno_stencil(4, dir, f))
-            return S₀₄(S, bias), S₁₄(S, bias), S₂₄(S, bias), S₃₄(S, bias)
+            return S₀₄(S, R, bias), S₁₄(S, R, bias), S₂₄(S, R, bias), S₃₄(S, R, bias)
         end
 
-        @inline function $stencil(i, j, k, grid, ::WENO{5}, bias, ψ::$T, args...) 
+        @inline function $stencil(i, j, k, grid, ::WENO{5}, R, bias, ψ::$T, args...) 
             S = @inbounds $(load_weno_stencil(5, dir, f))
-            return S₀₅(S, bias), S₁₅(S, bias), S₂₅(S, bias), S₃₅(S, bias), S₄₅(S, bias)
+            return S₀₅(S, R, bias), S₁₅(S, R, bias), S₂₅(S, R, bias), S₃₅(S, R, bias), S₄₅(S, R, bias)
         end
 
-        @inline function $stencil(i, j, k, grid, ::WENO{6}, bias, ψ::$T, args...) 
+        @inline function $stencil(i, j, k, grid, ::WENO{6}, R, bias, ψ::$T, args...) 
             S = @inbounds $(load_weno_stencil(6, dir, f))
-            return S₀₆(S, bias), S₁₆(S, bias), S₂₆(S, bias), S₃₆(S, bias), S₄₆(S, bias), S₅₆(S, bias)
+            return S₀₆(S, R, bias), S₁₆(S, R, bias), S₂₆(S, R, bias), S₃₆(S, R, bias), S₄₆(S, R, bias), S₅₆(S, R, bias)
         end
     end
 end
 
 # Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
 # Parallel to the interpolation direction! (same as left/right stencil)
-@inline tangential_stencil_u(i, j, k, grid, scheme, bias, ::Val{1}, u) = @inbounds weno_stencil_x(i, j, k, grid, scheme, bias, ℑyᵃᶠᵃ, u)
-@inline tangential_stencil_u(i, j, k, grid, scheme, bias, ::Val{2}, u) = @inbounds weno_stencil_y(i, j, k, grid, scheme, bias, ℑyᵃᶠᵃ, u)
-@inline tangential_stencil_v(i, j, k, grid, scheme, bias, ::Val{1}, v) = @inbounds weno_stencil_x(i, j, k, grid, scheme, bias, ℑxᶠᵃᵃ, v)
-@inline tangential_stencil_v(i, j, k, grid, scheme, bias, ::Val{2}, v) = @inbounds weno_stencil_y(i, j, k, grid, scheme, bias, ℑxᶠᵃᵃ, v)
+@inline tangential_stencil_u(i, j, k, grid, scheme, R, bias, ::Val{1}, u) = @inbounds weno_stencil_x(i, j, k, grid, scheme, R, bias, ℑyᵃᶠᵃ, u)
+@inline tangential_stencil_u(i, j, k, grid, scheme, R, bias, ::Val{2}, u) = @inbounds weno_stencil_y(i, j, k, grid, scheme, R, bias, ℑyᵃᶠᵃ, u)
+@inline tangential_stencil_v(i, j, k, grid, scheme, R, bias, ::Val{1}, v) = @inbounds weno_stencil_x(i, j, k, grid, scheme, R, bias, ℑxᶠᵃᵃ, v)
+@inline tangential_stencil_v(i, j, k, grid, scheme, R, bias, ::Val{2}, v) = @inbounds weno_stencil_y(i, j, k, grid, scheme, R, bias, ℑxᶠᵃᵃ, v)
 
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
 @inline function metaprogrammed_weno_reconstruction(buffer)
@@ -510,39 +455,39 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
     
     @eval begin
         @inline function $interpolate_func(i, j, k, grid, 
-                                            scheme::WENO{N, FT, XT, YT, ZT}, bias,
+                                            scheme::WENO{N, FT, XT, YT, ZT}, R, bias,
                                             ψ, idx, loc, args...) where {N, FT, XT, YT, ZT}
 
-            ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
-            ω = biased_weno_weights(ψₜ, grid, scheme, bias, Val($val), Nothing, args...)
+            ψₜ = $stencil(i, j, k, grid, scheme, R, bias, ψ, args...)
+            ω = biased_weno_weights(ψₜ, grid, scheme, R, bias, Val($val), Nothing, args...)
             return weno_reconstruction(scheme, bias, ψₜ, ω, $cT, $val, idx, loc)
         end
 
         @inline function $interpolate_func(i, j, k, grid, 
-                                            scheme::WENO{N, FT, XT, YT, ZT}, bias, 
+                                            scheme::WENO{N, FT, XT, YT, ZT}, R, bias, 
                                             ψ, idx, loc, VI::AbstractSmoothnessStencil, args...) where {N, FT, XT, YT, ZT}
 
-            ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
-            ω = biased_weno_weights(ψₜ, grid, scheme, bias, Val($val), VI, args...)
+            ψₜ = $stencil(i, j, k, grid, scheme, R, bias, ψ, args...)
+            ω = biased_weno_weights(ψₜ, grid, scheme, R, bias, Val($val), VI, args...)
             return weno_reconstruction(scheme, bias, ψₜ, ω, $cT, $val, idx, loc)
         end
 
         @inline function $interpolate_func(i, j, k, grid, 
-                                            scheme::WENO{N, FT, XT, YT, ZT}, bias, 
+                                            scheme::WENO{N, FT, XT, YT, ZT}, R, bias, 
                                             ψ, idx, loc, VI::VelocityStencil, u, v, args...) where {N, FT, XT, YT, ZT}
 
-            ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ, u, v, args...)
-            ω = biased_weno_weights((i, j, k), grid, scheme, bias, Val($val), VI, u, v)
+            ψₜ = $stencil(i, j, k, grid, scheme, R, bias, ψ, u, v, args...)
+            ω = biased_weno_weights((i, j, k), grid, scheme, R, bias, Val($val), VI, u, v)
             return weno_reconstruction(scheme, bias, ψₜ, ω, $cT, $val, idx, loc)
         end
 
         @inline function $interpolate_func(i, j, k, grid, 
-                                            scheme::WENO{N, FT, XT, YT, ZT}, bias, 
+                                            scheme::WENO{N, FT, XT, YT, ZT}, R, bias, 
                                             ψ, idx, loc, VI::FunctionStencil, args...) where {N, FT, XT, YT, ZT}
 
-            ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ,       args...)
-            ψₛ = $stencil(i, j, k, grid, scheme, bias, VI.func, args...)
-            ω = biased_weno_weights(ψₛ, grid, scheme, bias, Val($val), VI, args...)
+            ψₜ = $stencil(i, j, k, grid, scheme, R, bias, ψ,       args...)
+            ψₛ = $stencil(i, j, k, grid, scheme, R, bias, VI.func, args...)
+            ω = biased_weno_weights(ψₛ, grid, scheme, R, bias, Val($val), VI, args...)
             return weno_reconstruction(scheme, bias, ψₜ, ω, $cT, $val, idx, loc)
         end
     end
