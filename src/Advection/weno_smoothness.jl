@@ -98,3 +98,33 @@ for FT in fully_supported_float_types
         @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, ::Val{5}, ::Val{4}) = $(FT.((0.22658,  -2.08501, 3.64863, -2.88007,  0.86329,   4.82963, -17.04396, 13.58458, -4.11487, 15.21393, -24.62076, 7.58823, 10.20563, -6.49501, 1.07918)))
     end
 end
+
+@inline α_coefficients(α::NTuple{1, T}, ::Val{1}) where T = @inbounds α
+@inline α_coefficients(α::NTuple{1, T}, ::Val{2}) where T = @inbounds (α[1], z(T))
+@inline α_coefficients(α::NTuple{1, T}, ::Val{3}) where T = @inbounds (α[1], z(T), z(T))
+@inline α_coefficients(α::NTuple{1, T}, ::Val{4}) where T = @inbounds (α[1], z(T), z(T), z(T))
+@inline α_coefficients(α::NTuple{1, T}, ::Val{5}) where T = @inbounds (α[1], z(T), z(T), z(T), z(T))
+
+@inline α_coefficients(α::NTuple{2, T}, ::Val{1}) where T = @inbounds (α[1], )
+@inline α_coefficients(α::NTuple{2, T}, ::Val{2}) where T = @inbounds  α
+@inline α_coefficients(α::NTuple{2, T}, ::Val{3}) where T = @inbounds (α[1], α[2], z(T))
+@inline α_coefficients(α::NTuple{2, T}, ::Val{4}) where T = @inbounds (α[1], α[2], z(T), z(T))
+@inline α_coefficients(α::NTuple{2, T}, ::Val{5}) where T = @inbounds (α[1], α[2], z(T), z(T), z(T))
+
+@inline α_coefficients(α::NTuple{3, T}, ::Val{1}) where T = @inbounds (α[1], )
+@inline α_coefficients(α::NTuple{3, T}, ::Val{2}) where T = @inbounds (α[1], α[2])
+@inline α_coefficients(α::NTuple{3, T}, ::Val{3}) where T = @inbounds  α
+@inline α_coefficients(α::NTuple{3, T}, ::Val{4}) where T = @inbounds (α[1], α[2], α[3], z(T))
+@inline α_coefficients(α::NTuple{3, T}, ::Val{5}) where T = @inbounds (α[1], α[2], α[3], z(T), z(T))
+
+@inline α_coefficients(α::NTuple{4, T}, ::Val{1}) where T = @inbounds (α[1], )
+@inline α_coefficients(α::NTuple{4, T}, ::Val{2}) where T = @inbounds (α[1], α[2])
+@inline α_coefficients(α::NTuple{4, T}, ::Val{3}) where T = @inbounds (α[1], α[2], α[3])
+@inline α_coefficients(α::NTuple{4, T}, ::Val{4}) where T = @inbounds  α
+@inline α_coefficients(α::NTuple{4, T}, ::Val{5}) where T = @inbounds (α[1], α[2], α[3], α[4], z(T))
+
+@inline α_coefficients(α::NTuple{5, T}, ::Val{1}) where T = @inbounds (α[1], )
+@inline α_coefficients(α::NTuple{5, T}, ::Val{2}) where T = @inbounds (α[1], α[2])
+@inline α_coefficients(α::NTuple{5, T}, ::Val{3}) where T = @inbounds (α[1], α[2], α[3])
+@inline α_coefficients(α::NTuple{5, T}, ::Val{4}) where T = @inbounds (α[1], α[2], α[3], α[4])
+@inline α_coefficients(α::NTuple{5, T}, ::Val{5}) where T = @inbounds  α

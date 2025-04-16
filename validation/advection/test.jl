@@ -3,7 +3,7 @@ using Oceananigans
 N = 200
 
 # 1D grid constructions
-grid = RectilinearGrid(size=N, x=(-1, 1), halo=7, topology = (Periodic, Flat, Flat))
+grid = RectilinearGrid(size=N, x=(-1, 1), halo=7, topology = (Bounded, Flat, Flat))
 
 # the initial condition
 @inline G(x, β, z) = exp(-β*(x - z)^2)
@@ -33,7 +33,7 @@ end
 c_real = CenterField(grid)
 set!(c_real, c₀)
 
-model = NonhydrostaticModel(; grid, timestepper=:RungeKutta3, advection=WENO(order=3), tracers=:c)
+model = NonhydrostaticModel(; grid, timestepper=:RungeKutta3, advection=WENO(order=9), tracers=:c)
 
 set!(model, c=c₀, u=1)
 sim = Simulation(model, Δt=Δt_max, stop_time=10)

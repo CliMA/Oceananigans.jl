@@ -165,3 +165,11 @@ on_architecture(to, scheme::WENO{N, FT, XT, YT, ZT, PP}) where {N, FT, XT, YT, Z
 @inline retrieve_coeff(scheme::WENO, r, ::Val{2}, i, ::Type{Center}) = @inbounds scheme.coeff_yᵃᶜᵃ[r+2][i] 
 @inline retrieve_coeff(scheme::WENO, r, ::Val{3}, i, ::Type{Face})   = @inbounds scheme.coeff_zᵃᵃᶠ[r+2][i] 
 @inline retrieve_coeff(scheme::WENO, r, ::Val{3}, i, ::Type{Center}) = @inbounds scheme.coeff_zᵃᵃᶜ[r+2][i] 
+
+# WENO is passing also the restriction
+@inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::WENO, R, bias, ψ, args...)  = inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, R, bias, ψ, i, Face, args...)
+@inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::WENO, R, bias, ψ, args...)  = inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, R, bias, ψ, j, Face, args...)
+@inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::WENO, R, bias, ψ, args...)  = inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, R, bias, ψ, k, Face, args...)
+@inline biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::WENO, R, bias, ψ, args...)  = inner_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, R, bias, ψ, i, Center, args...)
+@inline biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::WENO, R, bias, ψ, args...)  = inner_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, R, bias, ψ, j, Center, args...)
+@inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::WENO, R, bias, ψ, args...)  = inner_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, R, bias, ψ, k, Center, args...)

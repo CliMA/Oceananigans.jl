@@ -249,7 +249,7 @@ for buffer in advection_buffers # WENO{<:Any, 1} does not exist
     for buffer2 in 1:buffer
         for stencil in 0:buffer-1, FT in fully_supported_float_types
             @eval @inline smoothness_indicator(ψ, ::WENO{$buffer, $FT}, ::Val{$buffer2}, ::Val{$stencil}) = 
-                        smoothness_operation(Val($buffer2), ψ, $(smoothness_coefficients(Val(FT), Val(buffer), Val(buffer2), Val(stencil))))
+                        smoothness_operation(Val($buffer), ψ, $(smoothness_coefficients(Val(FT), Val(buffer), Val(buffer2), Val(stencil))))
         end
     end
 end
@@ -286,9 +286,9 @@ end
 
 for buffer in advection_buffers[2:end]
     @eval begin
-        @inline beta_sum(::Val{$buffer}, β₁, β₂) = @inbounds $(metaprogrammed_beta_sum(buffer))
+        @inline beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂) where {FT} = @inbounds $(metaprogrammed_beta_sum(buffer))
         @inline beta_loop(scheme::WENO{N, FT}, R::Val{$buffer}, ψ) where {N, FT} = @inbounds $(metaprogrammed_beta_loop(buffer))
-        @inline zweno_alpha_loop(scheme::WENO{N, FT}, ::Val{$buffer}, β, τ)  where {N, FT} = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
+        @inline zweno_alpha_loop(scheme::WENO{$buffer, FT}, β, τ)  where {FT} = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
     end
 end
 
@@ -321,7 +321,7 @@ The ``α`` values are normalized before returning
     β = beta_loop(scheme, R, ψ)
                 
     τ = global_smoothness_indicator(R, β)
-    α = zweno_alpha_loop(scheme, R, β, τ)
+    α = zweno_alpha_loop(scheme, β, τ)
 
     return α ./ sum(α)
 end
@@ -333,10 +333,10 @@ end
     vₛ = tangential_stencil_v(i, j, k, grid, scheme, R, bias, dir, v)
     βᵤ = beta_loop(scheme, R, uₛ)
     βᵥ = beta_loop(scheme, R, vₛ)
-    β  = beta_sum(R, βᵤ, βᵥ)
+    β  = beta_sum(scheme, βᵤ, βᵥ)
 
     τ = global_smoothness_indicator(R, β)
-    α = zweno_alpha_loop(scheme, R, β, τ)
+    α = zweno_alpha_loop(scheme, β, τ)
     
     return α ./ sum(α)
 end
@@ -411,11 +411,6 @@ for dir in (:x, :y, :z), (T, f) in zip((:Any, :Function), (false, true))
             S = @inbounds $(load_weno_stencil(5, dir, f))
             return S₀₅(S, R, bias), S₁₅(S, R, bias), S₂₅(S, R, bias), S₃₅(S, R, bias), S₄₅(S, R, bias)
         end
-
-        @inline function $stencil(i, j, k, grid, ::WENO{6}, R, bias, ψ::$T, args...) 
-            S = @inbounds $(load_weno_stencil(6, dir, f))
-            return S₀₆(S, R, bias), S₁₆(S, R, bias), S₂₆(S, R, bias), S₃₆(S, R, bias), S₄₆(S, R, bias), S₅₆(S, R, bias)
-        end
     end
 end
 
@@ -476,6 +471,7 @@ for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, 
                                             ψ, idx, loc, args...) where {N, FT, XT, YT, ZT}
 
             ψₜ = $stencil(i, j, k, grid, scheme, R, bias, ψ, args...)
+            @show ψₜ, R, bias
             ω = biased_weno_weights(ψₜ, grid, scheme, R, bias, Val($val), Nothing, args...)
             return weno_reconstruction(scheme, R, bias, ψₜ, ω, $cT, $val, idx, loc)
         end
