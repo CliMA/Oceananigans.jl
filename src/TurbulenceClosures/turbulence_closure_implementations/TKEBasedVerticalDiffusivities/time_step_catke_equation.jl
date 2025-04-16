@@ -142,8 +142,10 @@ end
     #                  = Lⁱ
     #
     # where ω = ϵ / e ∼ √e / ℓ.
+    
+    mask = !inactive_cell(i, j, k, grid)
 
-    @inbounds Le[i, j, k] = wb⁻_e - ω + div_Jᵉ_e
+    @inbounds Le[i, j, k] = (wb⁻_e - ω + div_Jᵉ_e) * mask
 
     # Compute fast TKE RHS
     u⁺ = next_velocities.u
@@ -165,7 +167,6 @@ end
     # See below.
     α = convert(FT, 1.5) + χ
     β = convert(FT, 0.5) + χ
-    mask = !inactive_cell(i, j, k, grid)
     
     @inbounds begin
         total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe
