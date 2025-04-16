@@ -34,8 +34,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
         B = on_architecture(arch, bottom)
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(B))
 
-        free_surfaces = [ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, gravitational_acceleration=1.0),
-                         ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, gravitational_acceleration=1.0),
+        free_surfaces = [ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, gravitational_acceleration=1.0),
                          ImplicitFreeSurface(gravitational_acceleration=1.0)]
 
         sol = ()
