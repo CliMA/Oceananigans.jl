@@ -119,7 +119,7 @@ end
     #       Lᵂ = - Cᵂϵ * √e / Δz.
 
     on_bottom = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k-1, grid)
-    mask = !inactive_cell(i, j, k, grid)
+    active = !inactive_cell(i, j, k, grid)
     Δz = Δzᶜᶜᶜ(i, j, k, grid)
     Cᵂϵ = closure_ij.turbulent_kinetic_energy_equation.Cᵂϵ
     e⁺ = clip(eⁱʲᵏ)
