@@ -22,7 +22,7 @@ function Centered(FT::DataType=Oceananigans.defaults.FloatType; grid = nothing, 
 end
 
 Base.summary(a::Centered{N}) where N = string("Centered(order=", 2N, ")")
-Base.show(io::IO, a::Centered{N, FT}) where {N, FT} = soummary(a)
+Base.show(io::IO, a::Centered{N, FT}) where {N, FT} = summary(a)
 
 # Useful aliases
 Centered(grid, FT::DataType=Float64; kwargs...) = Centered(FT; grid, kwargs...)
