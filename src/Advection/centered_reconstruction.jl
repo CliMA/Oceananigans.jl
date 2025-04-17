@@ -37,39 +37,77 @@ const ACAS = AbstractCenteredAdvectionScheme
 @inline _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::ACAS, bias, c, args...) = _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, c, args...)
 @inline _biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::ACAS, bias, c, args...) = _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, c, args...)
 
+for (side, dir) in zip((:ᶠᵃᵃ, :ᵃᶠᵃ, :ᵃᵃᶠ), (:x, :y, :z))
+    for (F, bool) in zip((:Any, :(Base.Callable)), (false, true))
+        for FT in fully_supported_float_types
+            interp = Symbol(:symmetric_interpolate_, dir, side)
+            @eval begin
+                @inline $interp(i, j, k, grid, s::Centered{1, $FT}, red_order::Int, ψ::$F, args...) =  $(calc_reconstruction_stencil(FT, 1, :symmetric, dir, bool))
 
-@inline _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::ACAS, c, args...) = ℑxᶠᵃᵃ(i, j, k, grid, c, args...) #  _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, c, args...)
-@inline _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::ACAS, c, args...) = ℑyᵃᶠᵃ(i, j, k, grid, c, args...) #  _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, c, args...)
-@inline _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::ACAS, c, args...) = ℑzᵃᵃᶠ(i, j, k, grid, c, args...) #  _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.advecting_velocity_scheme, c, args...)
-@inline _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::ACAS, u, args...) = ℑxᶜᵃᵃ(i, j, k, grid, u, args...) #  _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, u, args...)
-@inline _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::ACAS, v, args...) = ℑyᵃᶜᵃ(i, j, k, grid, v, args...) #  _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, v, args...)
-@inline _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::ACAS, w, args...) = ℑzᵃᵃᶜ(i, j, k, grid, w, args...) #  _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme.advecting_velocity_scheme, w, args...)
+                @inline function $interp(i, j, k, grid, s::Centered{2, $FT}, red_order::Int, ψ::$F, args...)          
+                    if red_order==1
+                        $(calc_reconstruction_stencil(FT, 1, :symmetric, dir, bool))
+                    else
+                        $(calc_reconstruction_stencil(FT, 2, :symmetric, dir, bool))
+                    end
+                end
 
+                @inline function $interp(i, j, k, grid, s::Centered{2, $FT}, red_order::Int, ψ::$F, args...)          
+                    if red_order==1
+                        $(calc_reconstruction_stencil(FT, 1, :symmetric, dir, bool))
+                    else
+                        $(calc_reconstruction_stencil(FT, 2, :symmetric, dir, bool))
+                    end
+                end
 
-# # uniform centered reconstruction
-# for buffer in advection_buffers, FT in fully_supported_float_types
-#     @eval begin
-#         @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s::Centered{$buffer, $FT}, red_order::Int, ψ, args...) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, Val(red_order), ψ, args...)
-#         @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s::Centered{$buffer, $FT}, red_order::Int, ψ, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, Val(red_order), ψ, args...)
-#         @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s::Centered{$buffer, $FT}, red_order::Int, ψ, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, Val(red_order), ψ, args...)
-#     end
+                @inline function $interp(i, j, k, grid, s::Centered{3, $FT}, red_order::Int, ψ::$F, args...)          
+                    if red_order==1
+                        $(calc_reconstruction_stencil(FT, 1, :symmetric, dir, bool))
+                    elseif red_order==2
+                        $(calc_reconstruction_stencil(FT, 2, :symmetric, dir, bool))
+                    else
+                        $(calc_reconstruction_stencil(FT, 3, :symmetric, dir, bool))
+                    end
+                end
 
-#     for red_order in 1:buffer # The order that actually matters
-#         @eval begin
-#             @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ::Val{$red_order}, ψ,  args...)          = @inbounds $(calc_reconstruction_stencil(FT, red_order, :symmetric, :x, false))
-#             @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ::Val{$red_order}, ψ::Function, args...) = @inbounds $(calc_reconstruction_stencil(FT, red_order, :symmetric, :x,  true))
-#             @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ::Val{$red_order}, ψ, args...)           = @inbounds $(calc_reconstruction_stencil(FT, red_order, :symmetric, :y, false))
-#             @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ::Val{$red_order}, ψ::Function, args...) = @inbounds $(calc_reconstruction_stencil(FT, red_order, :symmetric, :y,  true))
-#             @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ::Val{$red_order}, ψ, args...)           = @inbounds $(calc_reconstruction_stencil(FT, red_order, :symmetric, :z, false))
-#             @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ::Val{$red_order}, ψ::Function, args...) = @inbounds $(calc_reconstruction_stencil(FT, red_order, :symmetric, :z,  true))
+                @inline function $interp(i, j, k, grid, s::Centered{4, $FT}, red_order::Int, ψ::$F, args...)          
+                    if red_order==1
+                        $(calc_reconstruction_stencil(FT, 1, :symmetric, dir, bool))
+                    elseif red_order==2
+                        $(calc_reconstruction_stencil(FT, 2, :symmetric, dir, bool))
+                    elseif red_order==3
+                        $(calc_reconstruction_stencil(FT, 3, :symmetric, dir, bool))
+                    else
+                        $(calc_reconstruction_stencil(FT, 4, :symmetric, dir, bool))
+                    end
+                end
 
-#             # Flat interpolations...
-#             @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::Centered{$buffer, $FT}, ::Val{$red_order}, ψ, args...)           = @inbounds ψ[i, j, k]
-#             @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::Centered{$buffer, $FT}, ::Val{$red_order}, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
-#             @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::Centered{$buffer, $FT}, ::Val{$red_order}, ψ, args...)           = @inbounds ψ[i, j, k]
-#             @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::Centered{$buffer, $FT}, ::Val{$red_order}, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
-#             @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::Centered{$buffer, $FT}, ::Val{$red_order}, ψ, args...)           = @inbounds ψ[i, j, k]
-#             @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::Centered{$buffer, $FT}, ::Val{$red_order}, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
-#         end
-#     end
-# end
+                @inline function $interp(i, j, k, grid, s::Centered{5, $FT}, red_order::Int, ψ::$F, args...)          
+                    if red_order==1
+                        $(calc_reconstruction_stencil(FT, 1, :symmetric, dir, bool))
+                    elseif red_order==2
+                        $(calc_reconstruction_stencil(FT, 2, :symmetric, dir, bool))
+                    elseif red_order==3
+                        $(calc_reconstruction_stencil(FT, 3, :symmetric, dir, bool))
+                    elseif red_order==4
+                        $(calc_reconstruction_stencil(FT, 4, :symmetric, dir, bool))
+                    else
+                        $(calc_reconstruction_stencil(FT, 5, :symmetric, dir, bool))
+                    end
+                end
+            end
+        end
+    end
+end
+
+# uniform centered reconstruction
+for buffer in advection_buffers, FT in fully_supported_float_types
+    @eval begin        # Flat interpolations...
+        @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::Centered{$buffer, $FT}, ::Int, ψ::Any, args...)           = @inbounds ψ[i, j, k]
+        @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::Centered{$buffer, $FT}, ::Int, ψ::Base.Callable, args...) = @inbounds ψ(i, j, k, grid, args...)
+        @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::Centered{$buffer, $FT}, ::Int, ψ::Any, args...)           = @inbounds ψ[i, j, k]
+        @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::Centered{$buffer, $FT}, ::Int, ψ::Base.Callable, args...) = @inbounds ψ(i, j, k, grid, args...)
+        @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::Centered{$buffer, $FT}, ::Int, ψ::Any, args...)           = @inbounds ψ[i, j, k]
+        @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::Centered{$buffer, $FT}, ::Int, ψ::Base.Callable, args...) = @inbounds ψ(i, j, k, grid, args...)
+    end
+end
