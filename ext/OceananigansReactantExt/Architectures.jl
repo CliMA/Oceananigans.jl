@@ -74,10 +74,15 @@ function Oceananigans.Distributed(arch::ReactantState; devices=nothing,
     local_rank = Reactant.Distributed.local_rank()
     local_index = Oceananigans.DistributedComputations.rank2index(local_rank, Rx, Ry, Rz)
 
-    mesh = Sharding.Mesh(
-        reshape(devices, size(partition)...),
-        (:x, :y, :z),
-    )
+    partition_size = size(partition)
+    @assert length(partition_size) == 3
+    if partition_size[3] == 1
+        mesh = Sharding.Mesh(
+            reshape(devices, partition_size[1], partition_size[2]), (:x, :y),
+        )
+    else
+        mesh = Sharding.Mesh(reshape(devices, partition_size...), (:x, :y, :z))
+    end
 
     # Syncronized communication does not mean anything in this case so we set it to nothing
     return Oceananigans.Distributed{nothing}(arch, partition, ranks, local_rank, local_index,

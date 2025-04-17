@@ -63,4 +63,19 @@ set_to_field!(u::ReactantField, v::ReactantField) = @jit _set_to_field!(u, v)
 # No need to synchronize -> it should be implicit
 synchronize_communication!(::ShardedDistributedField) = nothing
 
+function set_to_function!(u::ShardedDistributedField, f)
+    grid = u.grid
+    arch = grid.architecture
+    Oceananigans.Utils.launch!(arch, grid, size(u), _set_to_function_on_device!,
+                               u, f, grid, Oceananigans.Fields.location(u))
+    return nothing
+end
+
+@kernel function _set_to_function_on_device!(u, f, grid, loc)
+    i, j, k = @index(Global, NTuple)
+    LX, LY, LZ = loc
+    x = Oceananigans.Grids.node(i, j, k, grid, LX(), LY(), LZ())
+    @inbounds u[i, j, k] = f(x...)
+end
+
 end

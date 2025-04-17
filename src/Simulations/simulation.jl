@@ -5,6 +5,7 @@ using Oceananigans.DistributedComputations: Distributed, all_reduce
 import Oceananigans.Models: iteration
 import Oceananigans.Utils: prettytime
 import Oceananigans.TimeSteppers: reset!
+import Oceananigans.OutputWriters: write_output!
 
 default_progress(simulation) = nothing
 
@@ -231,4 +232,11 @@ function wall_time_limit_exceeded(sim)
 
     return nothing
 end
+
+#####
+##### Writing output and checkpointing
+#####
+
+# Fallback, to be elaborated on
+write_output!(writer, sim::Simulation) = write_output!(writer, sim.model)
 
