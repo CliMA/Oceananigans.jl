@@ -186,14 +186,8 @@ for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
                     `bias` of the reconstruction (either `LeftBias` or `RightBias`), while stretched coeffiecients are
                     retrieved from the precomputed coefficients via the `retrieve_coeff` function
                     """
-                    @inline coeff_p(::WENO{$buffer, $FT}, ::Val{$red_order}, bias, ::Val{$stencil}, ::Type{Nothing}, args...) = 
+                    @inline coeff_p(::WENO{$buffer, $FT}, ::Val{$red_order}, bias, ::Val{$stencil}, args...) = 
                         @inbounds $(uniform_weno_coefficients(FT, buffer, red_order, stencil))
-
-                                    # stretched coefficients are retrieved from precalculated coefficients
-                    @inline coeff_p(scheme::WENO{$buffer, $FT}, ::Val{$red_order}, bias, ::Val{$stencil}, T, dir, i, loc) = 
-                        ifelse(bias isa LeftBias, retrieve_coeff(scheme, $stencil, dir, i, loc),
-                                          reverse(retrieve_coeff(scheme, $(buffer - 2 - stencil), dir, i, loc)))
-
                 end
             end
 
@@ -211,8 +205,8 @@ for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
 
                 where ``cᵣ`` is computed from the function `coeff_p`
                 """
-                @inline biased_p(scheme::WENO{$buffer}, ::Val{$red_order}, bias, ::Val{$stencil}, ψ, T, dir, i, loc) = 
-                    @inbounds @muladd sum(coeff_p(scheme, Val($red_order), bias, Val($stencil), T, dir, i, loc) .* ψ)
+                @inline biased_p(scheme::WENO{$buffer}, ::Val{$red_order}, bias, ::Val{$stencil}, ψ) = 
+                    @inbounds @muladd sum(coeff_p(scheme, Val($red_order), bias, Val($stencil), T) .* ψ)
             end
         end
     end
@@ -468,7 +462,7 @@ end
 @inline function metaprogrammed_weno_reconstruction(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(ω[$stencil] * biased_p(scheme, val_red_order, bias, Val($(stencil-1)), ψ[$stencil], cT, Val(val), idx, loc))
+        elem[stencil] = :(ω[$stencil] * biased_p(scheme, val_red_order, bias, Val($(stencil-1)), ψ[$stencil]))
     end
 
     return Expr(:call, :+, elem...)
@@ -500,54 +494,54 @@ Here, [`biased_p`](@ref) is the function that computes the linear reconstruction
 
 # Calculation of WENO reconstructed value v⋆ = ∑ᵣ(wᵣv̂ᵣ)
 for buffer in advection_buffers[2:end]
-    @eval @inline weno_reconstruction(scheme::WENO{$buffer}, val_red_order, bias, ψ, ω, cT, val, idx, loc) = @inbounds @muladd $(metaprogrammed_weno_reconstruction(buffer))
+    @eval @inline weno_reconstruction(scheme::WENO{$buffer}, val_red_order, bias, ψ, ω) = @inbounds $(metaprogrammed_weno_reconstruction(buffer))
 end
 
 # Interpolation functions
 for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, :z], [1, 2, 3], [:XT, :YT, :ZT]) 
-    interpolate_func = Symbol(:inner_biased_interpolate_, interp)
+    interpolate_func = Symbol(:biased_interpolate_, interp)
     stencil          = Symbol(:weno_stencil_, dir)
     
     @eval begin
         @inline function $interpolate_func(i, j, k, grid, 
-                                            scheme::WENO{N, FT, XT, YT, ZT}, bias,
-                                            ψ, idx, loc, args...) where {N, FT, XT, YT, ZT}
+                                            scheme::WENO{N, FT}, bias,
+                                            ψ, args...) where {N, FT}
 
             R = 2
             ψₜ = $stencil(i, j, k, grid, scheme, Val(R), bias, ψ, args...)
-            ω = biased_weno_weights(ψₜ, grid, scheme, Val(R), bias, Val($val), Nothing, args...)
-            return weno_reconstruction(scheme, Val(R), bias, ψₜ, ω, $cT, $val, idx, loc)
+            ω = biased_weno_weights(ψₜ, grid, scheme, Val(R), bias, args...)
+            return weno_reconstruction(scheme, Val(R), bias, ψₜ, ω)
         end
 
         @inline function $interpolate_func(i, j, k, grid, 
-                                            scheme::WENO{N, FT, XT, YT, ZT}, bias, 
-                                            ψ, idx, loc, VI::AbstractSmoothnessStencil, args...) where {N, FT, XT, YT, ZT}
+                                            scheme::WENO{N, FT}, bias, 
+                                            ψ, VI::AbstractSmoothnessStencil, args...) where {N, FT}
 
             R = N
             ψₜ = $stencil(i, j, k, grid, scheme, Val(R), bias, ψ, args...)
-            ω = biased_weno_weights(ψₜ, grid, scheme, Val(R), bias, Val($val), VI, args...)
-            return weno_reconstruction(scheme, Val(R), bias, ψₜ, ω, $cT, $val, idx, loc)
+            ω = biased_weno_weights(ψₜ, grid, scheme, Val(R), bias, VI, args...)
+            return weno_reconstruction(scheme, Val(R), bias, ψₜ, ω)
         end
 
         @inline function $interpolate_func(i, j, k, grid, 
-                                            scheme::WENO{N, FT, XT, YT, ZT}, bias, 
-                                            ψ, idx, loc, VI::VelocityStencil, u, v, args...) where {N, FT, XT, YT, ZT}
+                                            scheme::WENO{N, FT}, bias, 
+                                            ψ, VI::VelocityStencil, u, v, args...) where {N, FT}
 
             R = N
             ψₜ = $stencil(i, j, k, grid, scheme, Val(R), bias, ψ, u, v, args...)
-            ω = biased_weno_weights((i, j, k), grid, scheme, Val(R), bias, Val($val), VI, u, v)
-            return weno_reconstruction(scheme, Val(R), bias, ψₜ, ω, $cT, $val, idx, loc)
+            ω = biased_weno_weights((i, j, k), grid, scheme, Val(R), bias, VI, u, v)
+            return weno_reconstruction(scheme, Val(R), bias, ψₜ, ω)
         end
 
         @inline function $interpolate_func(i, j, k, grid, 
-                                            scheme::WENO{N, FT, XT, YT, ZT}, bias, 
-                                            ψ, idx, loc, VI::FunctionStencil, args...) where {N, FT, XT, YT, ZT}
+                                            scheme::WENO{N, FT}, bias, 
+                                            ψ, VI::FunctionStencil, args...) where {N, FT}
 
             R = N
             ψₜ = $stencil(i, j, k, grid, scheme, Val(R), bias, ψ,       args...)
             ψₛ = $stencil(i, j, k, grid, scheme, Val(R), bias, VI.func, args...)
-            ω = biased_weno_weights(ψₛ, grid, scheme, Val(R), bias, Val($val), VI, args...)
-            return weno_reconstruction(scheme, Val(R), bias, ψₜ, ω, $cT, $val, idx, loc)
+            ω = biased_weno_weights(ψₛ, grid, scheme, Val(R), bias, VI, args...)
+            return weno_reconstruction(scheme, Val(R), bias, ψₜ, ω)
         end
     end
 end

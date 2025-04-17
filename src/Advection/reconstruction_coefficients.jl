@@ -2,70 +2,19 @@ using Oceananigans.Grids: ξnodes, ηnodes, rnodes
 
 # Generic reconstruction methods valid for all reconstruction schemes
 # Unroll the functions to pass the coordinates in case of a stretched grid
-"""
-    @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, args...)
-
-high order centered reconstruction of variable ψ in the x-direction. ψ can be a `Function`
-with signature `ψ(i, j, k, grid, args...)` or an `AbstractArray`
-"""
-@inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, ψ, i, Face, args...)
-
-"""
-    @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, args...)
-
-high order centered reconstruction of variable ψ in the y-direction. ψ can be a `Function`
-with signature `ψ(i, j, k, grid, args...)` or an `AbstractArray`
-"""
-@inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, ψ, j, Face, args...)
-
-"""
-    @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, args...)
-
-high order centered reconstruction of variable ψ in the z-direction. ψ can be a `Function`
-with signature `ψ(i, j, k, grid, args...)` or an `AbstractArray`
-"""
-@inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, ψ, k, Face, args...)
-
 """ same as [`symmetric_interpolate_xᶠᵃᵃ`](@ref) but on `Center`s instead of `Face`s """
-@inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, ψ, i, Center, args...)
+@inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, ψ, args...) = symmetric_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, ψ, args...)
 """ same as [`symmetric_interpolate_yᵃᶠᵃ`](@ref) but on `Center`s instead of `Face`s """
-@inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, ψ, j, Center, args...)
+@inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, ψ, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, ψ, args...)
 """ same as [`symmetric_interpolate_zᵃᵃᶠ`](@ref) but on `Center`s instead of `Face`s """
-@inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ψ, args...) = inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, ψ, k, Center, args...)
-
-"""
-    @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias, ψ, args...)
-
-high order biased reconstruction of variable ψ in the x-direction. ψ can be a `Function`
-with signature `ψ(i, j, k, grid, args...)` or an `AbstractArray`. The `bias` argument is
-either `LeftBias` for a left biased reconstruction, or `RightBias` for a right biased reconstruction
-"""
-@inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias, ψ, args...)  = inner_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias, ψ, i, Face, args...)
-
-"""
-    @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias, ψ, args...)
-
-high order biased reconstruction of variable ψ in the y-direction. ψ can be a `Function`
-with signature `ψ(i, j, k, grid, args...)` or an `AbstractArray`. The `bias` argument is
-either `LeftBias` for a left biased reconstruction, or `RightBias` for a right biased reconstruction
-"""
-@inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias, ψ, args...)  = inner_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias, ψ, j, Face, args...)
-
-"""
-    @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, bias, ψ, args...)
-
-high order biased reconstruction of variable ψ in the z-direction. ψ can be a `Function`
-with signature `ψ(i, j, k, grid, args...)` or an `AbstractArray`. The `bias` argument is
-either `LeftBias` for a left biased reconstruction, or `RightBias` for a right biased reconstruction
-"""
-@inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, bias, ψ, args...)  = inner_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, bias, ψ, k, Face, args...)
+@inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, ψ, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, ψ, args...)
 
 """ same as [`biased_interpolate_xᶠᵃᵃ`](@ref) but on `Center`s instead of `Face`s """
-@inline biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, bias, ψ, args...)  = inner_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, bias, ψ, i, Center, args...)
+@inline biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, bias, ψ, args...)  = biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, bias, ψ, args...)
 """ same as [`biased_interpolate_yᵃᶠᵃ`](@ref) but on `Center`s instead of `Face`s """
-@inline biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, bias, ψ, args...)  = inner_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, bias, ψ, j, Center, args...)
+@inline biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, bias, ψ, args...)  = biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, bias, ψ, args...)
 """ same as [`biased_interpolate_zᵃᵃᶠ`](@ref) but on `Center`s instead of `Face`s """
-@inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, bias, ψ, args...)  = inner_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, bias, ψ, k, Center, args...)
+@inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, bias, ψ, args...)  = biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, bias, ψ, args...)
 
 struct FirstDerivative end
 struct SecondDerivative end
