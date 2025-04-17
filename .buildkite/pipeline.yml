@@ -34,7 +34,7 @@ steps:
           
   - wait
 
-  - label: "{{ matrix.architecture }} / {{ matrix.group }} tests"
+  - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
     key: "tests"
     agents:
       queue: "Oceananigans"

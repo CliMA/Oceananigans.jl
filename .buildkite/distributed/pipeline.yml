@@ -10,15 +10,16 @@ env:
   JULIA_NUM_PRECOMPILE_TASKS: 8
   JULIA_NUM_THREADS: 8
   OMPI_MCA_opal_warn_on_missing_libcuda: 0
+  MPI_TEST: "true"
 
 steps:
   - label: "initialize"
     key: "init_central"
     env:
       TEST_GROUP: "init"
-      TEST_ARCHITECTURE: "true"
+      TEST_ARCHITECTURE: "GPU"
     command:
-      - echo "--- Initialize tests"
+      - echo "--- Initialize distributed tests"
       - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
     agents:
       slurm_mem: 8G
@@ -31,7 +32,7 @@ steps:
     key: "distributed_cpu"
     env:
       TEST_GROUP: "distributed"
-      MPI_TEST: "true"
+      TEST_ARCHITECTURE: "CPU"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -46,8 +47,7 @@ steps:
     key: "distributed_gpu"
     env:
       TEST_GROUP: "distributed"
-      TEST_ARCHITECTURE: "true"
-      MPI_TEST: "true"
+      TEST_ARCHITECTURE: "GPU"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -63,7 +63,6 @@ steps:
     key: "distributed_solvers_cpu"
     env:
       TEST_GROUP: "distributed_solvers"
-      MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -78,8 +77,7 @@ steps:
     key: "distributed_solvers_gpu"
     env:
       TEST_GROUP: "distributed_solvers"
-      TEST_ARCHITECTURE: "true"
-      MPI_TEST: "true"
+      TEST_ARCHITECTURE: "GPU"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -95,7 +93,7 @@ steps:
     key: "distributed_hydrostatic_model_cpu"
     env:
       TEST_GROUP: "distributed_hydrostatic_model"
-      MPI_TEST: "true"
+      TEST_ARCHITECTURE: "CPU"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -110,8 +108,7 @@ steps:
     key: "distributed_hydrostatic_model_gpu"
     env:
       TEST_GROUP: "distributed_hydrostatic_model"
-      TEST_ARCHITECTURE: "true"
-      MPI_TEST: "true"
+      TEST_ARCHITECTURE: "GPU"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -127,7 +124,7 @@ steps:
     key: "distributed_nonhydrostatic_regression_cpu"
     env:
       TEST_GROUP: "distributed_nonhydrostatic_regression"
-      MPI_TEST: "true"
+      TEST_ARCHITECTURE: "CPU"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
@@ -142,8 +139,7 @@ steps:
     key: "distributed_nonhydrostatic_regression_gpu"
     env:
       TEST_GROUP: "distributed_nonhydrostatic_regression"
-      TEST_ARCHITECTURE: "true"
-      MPI_TEST: "true"
+      TEST_ARCHITECTURE: "GPU"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
