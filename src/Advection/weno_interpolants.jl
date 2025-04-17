@@ -162,7 +162,7 @@ for FT in fully_supported_float_types
 end
 
 function uniform_weno_coefficients(FT, N, R, stencil)
-    if N == 1
+    if N == 1 || R == 1
         return (1, )
     else
         Rcoeff = stencil_coefficients(FT, 50, stencil, collect(1:100), collect(1:100); order=R)
@@ -190,7 +190,7 @@ for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
                         @inbounds $(uniform_weno_coefficients(FT, buffer, red_order, stencil))
 
                                     # stretched coefficients are retrieved from precalculated coefficients
-                    @inline coeff_p(scheme::WENO{$buffer}, ::Val{$red_order}, bias, ::Val{$stencil}, T, dir, i, loc) = 
+                    @inline coeff_p(scheme::WENO{$buffer, $FT}, ::Val{$red_order}, bias, ::Val{$stencil}, T, dir, i, loc) = 
                         ifelse(bias isa LeftBias, retrieve_coeff(scheme, $stencil, dir, i, loc),
                                           reverse(retrieve_coeff(scheme, $(buffer - 2 - stencil), dir, i, loc)))
 
