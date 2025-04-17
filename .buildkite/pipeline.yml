@@ -39,6 +39,7 @@ steps:
     agents:
       queue: "Oceananigans"
     command: |
+      # Add matrix-specific environment variables
       if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
         export CUDA_VISIBLE_DEVICES="-1"
         export TEST_ARCHITECTURE="CPU"
@@ -47,10 +48,17 @@ steps:
         export TEST_ARCHITECTURE="GPU"
       fi
 
+      # Force IRFT runtime for Reactant (this can be moved to Project.toml on 1.11)
+      touch LocalPreferences.toml
+      echo "[Reactant]" >> LocalPreferences.toml
+      echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
+      cat LocalPreferences.toml
+
       # Strip emoji for environment variable
       group="{{ matrix.group }}"
       export TEST_GROUP=$(printf '%s' "$group" | sed 's/^[^ ]* //')
 
+      # Run tests
       $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e \
         'using Pkg; Pkg.test()'
 
