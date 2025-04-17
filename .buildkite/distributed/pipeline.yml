@@ -16,7 +16,7 @@ steps:
     key: "init_central"
     env:
       TEST_GROUP: "init"
-      GPU_TEST: "true"
+      TEST_ARCHITECTURE: "true"
     command:
       - echo "--- Initialize tests"
       - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
@@ -46,7 +46,7 @@ steps:
     key: "distributed_gpu"
     env:
       TEST_GROUP: "distributed"
-      GPU_TEST: "true"
+      TEST_ARCHITECTURE: "true"
       MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -78,7 +78,7 @@ steps:
     key: "distributed_solvers_gpu"
     env:
       TEST_GROUP: "distributed_solvers"
-      GPU_TEST: "true"
+      TEST_ARCHITECTURE: "true"
       MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -110,7 +110,7 @@ steps:
     key: "distributed_hydrostatic_model_gpu"
     env:
       TEST_GROUP: "distributed_hydrostatic_model"
-      GPU_TEST: "true"
+      TEST_ARCHITECTURE: "true"
       MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -142,7 +142,7 @@ steps:
     key: "distributed_nonhydrostatic_regression_gpu"
     env:
       TEST_GROUP: "distributed_nonhydrostatic_regression"
-      GPU_TEST: "true"
+      TEST_ARCHITECTURE: "true"
       MPI_TEST: "true"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
