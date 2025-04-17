@@ -61,13 +61,13 @@ const ACAS = AbstractCenteredAdvectionScheme
 # uniform centered reconstruction
 for buffer in advection_buffers, FT in fully_supported_float_types
     @eval begin
-        @inline inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ψ, idx, loc, args...)           = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :x, false))
-        @inline inner_symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ψ::Function, idx, loc, args...) = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :x,  true))
+        @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ψ,  args...)          = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :x, false))
+        @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ψ::Function, args...) = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :x,  true))
     
-        @inline inner_symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ψ, idx, loc, args...)           = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :y, false))
-        @inline inner_symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ψ::Function, idx, loc, args...) = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :y,  true))
+        @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ψ, args...)           = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :y, false))
+        @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ψ::Function, args...) = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :y,  true))
     
-        @inline inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ψ, idx, loc, args...)           = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :z, false))
-        @inline inner_symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ψ::Function, idx, loc, args...) = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :z,  true))
+        @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ψ, args...)           = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :z, false))
+        @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ψ::Function, args...) = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :z,  true))
     end
 end
