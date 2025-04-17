@@ -431,13 +431,22 @@ const AS = AbstractSmoothnessStencil
 # To adapt passing smoothness stencils to upwind biased schemes and centered schemes (not WENO)
 for b in advection_buffers, FT in fully_supported_float_types
     @eval begin
-        @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s::Centered{$b, $FT}, f::Function, ::AS, args...) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, f, args...)
-        @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s::Centered{$b, $FT}, f::Function, ::AS, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, f, args...)
-        @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s::Centered{$b, $FT}, f::Function, ::AS, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, f, args...)
+        @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s::Centered{$b, $FT}, ::Int, f::Function, ::AS, args...) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, f, args...)
+        @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s::Centered{$b, $FT}, ::Int, f::Function, ::AS, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, f, args...)
+        @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s::Centered{$b, $FT}, ::Int, f::Function, ::AS, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, f, args...)
+
+        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s::UpwindBiased{$b, $FT}, ::Int, bias, f::Function, ::AS, args...) = biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, bias, f, args...)
+        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s::UpwindBiased{$b, $FT}, ::Int, bias, f::Function, ::AS, args...) = biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, bias, f, args...)
+        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s::UpwindBiased{$b, $FT}, ::Int, bias, f::Function, ::AS, args...) = biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, bias, f, args...)
     
         # Disambiguation
-        @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::Centered{$b, $FT}, f::Function, ::AS, args...) = f(i, j, k, grid, args...)
-        @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::Centered{$b, $FT}, f::Function, ::AS, args...) = f(i, j, k, grid, args...)
-        @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::Centered{$b, $FT}, f::Function, ::AS, args...) = f(i, j, k, grid, args...)
+        @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::Centered{$b, $FT}, ::Int, f::Function, ::AS, args...) = f(i, j, k, grid, args...)
+        @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::Centered{$b, $FT}, ::Int, f::Function, ::AS, args...) = f(i, j, k, grid, args...)
+        @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::Centered{$b, $FT}, ::Int, f::Function, ::AS, args...) = f(i, j, k, grid, args...)
+            
+        # Disambiguation
+        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::UpwindBiased{$b, $FT}, ::Int, bias, f::Function, ::AS, args...) = f(i, j, k, grid, args...)
+        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::UpwindBiased{$b, $FT}, ::Int, bias, f::Function, ::AS, args...) = f(i, j, k, grid, args...)
+        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::UpwindBiased{$b, $FT}, ::Int, bias, f::Function, ::AS, args...) = f(i, j, k, grid, args...)
     end
 end

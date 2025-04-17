@@ -31,9 +31,6 @@ const AUGXZ  = AUG{<:Any, <:BT, <:Any, <:BT}
 const AUGYZ  = AUG{<:Any, <:Any, <:BT, <:BT}
 const AUGXYZ = AUG{<:Any, <:BT, <:BT, <:BT}
 
-# Bounded underlying grids of all types
-const AUGB = Union{AUGX, AUGY, AUGZ, AUGXY, AUGXZ, AUGYZ, AUGXYZ}
-
 @inline reduced_order(i, ::Type{RightConnected}, N, B) = min(B, i)
 @inline reduced_order(i, ::Type{LeftConnected},  N, B) = min(B, N-i)
 @inline reduced_order(i, ::Type{Bounded},        N, B) = min(B, i, N-i)
@@ -51,14 +48,15 @@ const A{B} = AbstractAdvectionScheme{B}
 @inline compute_center_reduced_order_z(i, j, k, grid, ::A{B}) where B = B
 
 # Fallback for lower order advection on bounded grids
-@inline compute_face_reduced_order_x(i, j, k, ::AUGB, ::A{1}) = 1
-@inline compute_face_reduced_order_y(i, j, k, ::AUGB, ::A{1}) = 1
-@inline compute_face_reduced_order_z(i, j, k, ::AUGB, ::A{1}) = 1
+for GridType in [:AUGX, :AUGY, :AUGZ, :AUGXY, :AUGXZ, :AUGYZ, :AUGXYZ]
+    @eval @inline compute_face_reduced_order_x(i, j, k, ::$GridType, ::A{1}) = 1
+    @eval @inline compute_face_reduced_order_y(i, j, k, ::$GridType, ::A{1}) = 1
+    @eval @inline compute_face_reduced_order_z(i, j, k, ::$GridType, ::A{1}) = 1
 
-# Fallback for lower order advection on bounded grids
-@inline compute_center_reduced_order_x(i, j, k, ::AUGB, ::A{1}) = 1
-@inline compute_center_reduced_order_y(i, j, k, ::AUGB, ::A{1}) = 1
-@inline compute_center_reduced_order_z(i, j, k, ::AUGB, ::A{1}) = 1
+    @eval @inline compute_center_reduced_order_x(i, j, k, ::$GridType, ::A{1}) = 1
+    @eval @inline compute_center_reduced_order_y(i, j, k, ::$GridType, ::A{1}) = 1
+    @eval @inline compute_center_reduced_order_z(i, j, k, ::$GridType, ::A{1}) = 1
+end
 
 # Bounded grids
 @inline compute_face_reduced_order_x(i, j, k, grid::AUGX, ::A{B}) where B = reduced_order(i, topology(grid, 1), size(grid, 1), B)
