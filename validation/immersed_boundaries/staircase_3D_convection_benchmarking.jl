@@ -57,12 +57,10 @@ function setup_simulation(model, Δt, stop_iteration)
     return Simulation(model, Δt=Δt, stop_iteration=stop_iteration)
 end
 
-# Ns = [32, 64, 128, 160, 192, 224, 256]
-Ns = [256]
+Ns = [32, 64, 128, 160, 192, 224, 256]
 
 Δt = 2e-2 * 64 / 2 / maximum(Ns)
-# nsteps = 200
-nsteps = 2
+nsteps = 100
 
 @info "Benchmarking FFT solver"
 for N in Ns
