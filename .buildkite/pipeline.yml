@@ -121,7 +121,7 @@ steps:
     agents:
       queue: "Oceananigans"
   - wait: ~
-      continue_on_failure: true
+    continue_on_failure: true
 
   #####
   ##### Clean up
