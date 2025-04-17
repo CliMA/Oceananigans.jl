@@ -151,28 +151,6 @@ julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
     return inactive_cells
 end
 
-for side in (:ᶜ, :ᶠ)
-    near_x_boundary_symm = Symbol(:near_x_immersed_boundary_symmetric, side)
-    near_y_boundary_symm = Symbol(:near_y_immersed_boundary_symmetric, side)
-    near_z_boundary_symm = Symbol(:near_z_immersed_boundary_symmetric, side)
-
-    near_x_boundary_bias = Symbol(:near_x_immersed_boundary_biased, side)
-    near_y_boundary_bias = Symbol(:near_y_immersed_boundary_biased, side)
-    near_z_boundary_bias = Symbol(:near_z_immersed_boundary_biased, side)
-
-    for buffer in advection_buffers
-        @eval begin
-            @inline $near_x_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :none, :x, side; xside = side)...))
-            @inline $near_y_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :none, :y, side; yside = side)...))
-            @inline $near_z_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :none, :z, side; zside = side)...))
-    
-            @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :x, side; xside = side)...))
-            @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :y, side; yside = side)...))
-            @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :z, side; zside = side)...))
-        end
-    end
-end
-
 for B in advection_buffers
     @eval begin
         # Faces symmetric
