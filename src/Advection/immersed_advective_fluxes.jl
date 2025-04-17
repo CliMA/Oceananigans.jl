@@ -173,13 +173,6 @@ for side in (:ᶜ, :ᶠ)
     end
 end
 
-@inline ord(::Val{1}) = 1
-@inline ord(::Val{2}) = 2
-@inline ord(::Val{3}) = 3
-@inline ord(::Val{4}) = 4
-@inline ord(::Val{5}) = 5
-@inline ord(::Val{6}) = 6
-
 for B in advection_buffers
     @eval begin
         # Faces symmetric
