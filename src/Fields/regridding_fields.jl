@@ -9,44 +9,7 @@ using Base: ForwardOrdering
 const f = Face()
 const c = Center()
 
-"""
-    regrid!(a, b)
-
-Regrid field `b` onto the grid of field `a`. 
-
-Example
-=======
-
-Generate a tracer field on a vertically stretched grid and regrid it on a regular grid.
-
-```jldoctest
-using Oceananigans
-
-Nz, Lz = 2, 1.0
-topology = (Flat, Flat, Bounded)
-
-input_grid = RectilinearGrid(size=Nz, z = [0, Lz/3, Lz], topology=topology, halo=1)
-input_field = CenterField(input_grid)
-input_field[1, 1, 1:Nz] = [2, 3]
-
-output_grid = RectilinearGrid(size=Nz, z=(0, Lz), topology=topology, halo=1)
-output_field = CenterField(output_grid)
-
-regrid!(output_field, input_field)
-
-output_field[1, 1, :]
-
-# output
-4-element OffsetArray(::Vector{Float64}, 0:3) with eltype Float64 with indices 0:3:
- 0.0
- 2.333333333333333
- 3.0
- 0.0
-```
-"""
-regrid!(a, b) = regrid!(a, a.grid, b.grid, b)
-
-function we_can_regrid_in_z(a, target_grid, source_grid, b)
+function can_integral_regrid_z(a, target_grid, source_grid, b)
     # Check that
     #   1. source and target grid are in the same "class" and
     #   2. source and target Field have same horizontal size
@@ -56,7 +19,7 @@ function we_can_regrid_in_z(a, target_grid, source_grid, b)
     return false
 end
 
-function we_can_regrid_in_y(a, target_grid, source_grid, b)
+function can_integral_regrid_y(a, target_grid, source_grid, b)
     # Check that
     #   1. source and target grid are in the same "class" and
     #   2. source and target Field have same xz size
@@ -66,7 +29,7 @@ function we_can_regrid_in_y(a, target_grid, source_grid, b)
     return false
 end
 
-function we_can_regrid_in_x(a, target_grid, source_grid, b)
+function can_integral_regrid_x(a, target_grid, source_grid, b)
     # Check that
     #   1. source and target grid are in the same "class" and
     #   2. source and target Field have same yz size
@@ -76,46 +39,46 @@ function we_can_regrid_in_x(a, target_grid, source_grid, b)
     return false
 end
 
-function regrid_in_z!(a, target_grid, source_grid, b)
+function z_integral_regrid!(a, target_grid, source_grid, b)
     location(a, 3) == Center || throw(ArgumentError("Can only regrid fields in z with Center z-locations."))
     arch = architecture(a)
     source_z_faces = znodes(source_grid, f)
-    launch!(arch, target_grid, :xy, _regrid_in_z!, a, b, target_grid, source_grid, source_z_faces)
+    launch!(arch, target_grid, :xy, _z_integral_regrid!, a, b, target_grid, source_grid, source_z_faces)
     
     return a
 end
 
-function regrid_in_y!(a, target_grid, source_grid, b)
+function y_integral_regrid!(a, target_grid, source_grid, b)
     location(a, 2) == Center || throw(ArgumentError("Can only regrid fields in y with Center y-locations."))
     arch = architecture(a)
     source_y_faces = nodes(source_grid, c, f, c)[2]
     Nx_source_faces = size(source_grid, (Face, Center, Center), 1)
-    launch!(arch, target_grid, :xz, _regrid_in_y!, a, b, target_grid, source_grid, source_y_faces, Nx_source_faces)
+    launch!(arch, target_grid, :xz, _y_integral_regrid!, a, b, target_grid, source_grid, source_y_faces, Nx_source_faces)
     return a
 end
 
-function regrid_in_x!(a, target_grid, source_grid, b)
+function x_integral_regrid!(a, target_grid, source_grid, b)
     location(a, 1) == Center || throw(ArgumentError("Can only regrid fields in x with Center x-locations."))
     arch = architecture(a)
     source_x_faces = nodes(source_grid, f, c, c)[1]
     Ny_source_faces = size(source_grid, (Center, Face, Center), 2)
-    launch!(arch, target_grid, :yz, _regrid_in_x!, a, b, target_grid, source_grid, source_x_faces, Ny_source_faces)
+    launch!(arch, target_grid, :yz, _x_integral_regrid!, a, b, target_grid, source_grid, source_x_faces, Ny_source_faces)
     return a
 end
 
-regrid_in_x!(a, b) = regrid_in_x!(a, a.grid, b.grid, b)
-regrid_in_y!(a, b) = regrid_in_y!(a, a.grid, b.grid, b)
-regrid_in_z!(a, b) = regrid_in_z!(a, a.grid, b.grid, b)
+x_integral_regrid!(a, b) = x_integral_regrid!(a, a.grid, b.grid, b)
+y_integral_regrid!(a, b) = y_integral_regrid!(a, a.grid, b.grid, b)
+z_integral_regrid!(a, b) = z_integral_regrid!(a, a.grid, b.grid, b)
 
-function regrid!(a, target_grid, source_grid, b)
+function integral_regrid!(a, target_grid, source_grid, b)
     arch = architecture(a)
 
-    if we_can_regrid_in_z(a, target_grid, source_grid, b)
-        return regrid_in_z!(a, target_grid, source_grid, b)
-    elseif we_can_regrid_in_y(a, target_grid, source_grid, b)
-        return regrid_in_y!(a, target_grid, source_grid, b)
-    elseif we_can_regrid_in_x(a, target_grid, source_grid, b)
-        return regrid_in_x!(a, target_grid, source_grid, b)
+    if can_integral_regrid_z(a, target_grid, source_grid, b)
+        return z_integral_regrid!(a, target_grid, source_grid, b)
+    elseif can_integral_regrid_y(a, target_grid, source_grid, b)
+        return y_integral_regrid!(a, target_grid, source_grid, b)
+    elseif can_integral_regrid_x(a, target_grid, source_grid, b)
+        return x_integral_regrid!(a, target_grid, source_grid, b)
     else
         msg = """Regridding
                  $(summary(b)) on $(summary(source_grid))
@@ -130,7 +93,7 @@ end
 ##### Regridding for all grids
 #####
 
-@kernel function _regrid_in_z!(target_field, source_field, target_grid, source_grid, source_z_faces)
+@kernel function _z_integral_regrid!(target_field, source_field, target_grid, source_grid, source_z_faces)
     i, j = @index(Global, NTuple)
 
     Nx_target, Ny_target, Nz_target = size(target_grid)
@@ -183,7 +146,7 @@ end
     end
 end
 
-@kernel function _regrid_in_y!(target_field, source_field, target_grid, source_grid, source_y_faces, Nx_source_faces)
+@kernel function _y_integral_regrid!(target_field, source_field, target_grid, source_grid, source_y_faces, Nx_source_faces)
     i, k = @index(Global, NTuple)
 
     Nx_target, Ny_target, Nz_target = size(target_grid)
@@ -250,7 +213,7 @@ end
     end
 end
 
-@kernel function _regrid_in_x!(target_field, source_field, target_grid, source_grid, source_x_faces, Ny_source_faces)
+@kernel function _x_integral_regrid!(target_field, source_field, target_grid, source_grid, source_x_faces, Ny_source_faces)
     j, k = @index(Global, NTuple)
 
     Nx_target, Ny_target, Nz_target = size(target_grid)

@@ -1,8 +1,10 @@
+# TODO: move these imports into test-specific files?
 using Reactant
 using Enzyme
 using Metal
 using AMDGPU
 using oneAPI
+using ConservativeRegridding
 
 Pkg.instantiate(; verbose=true)
 Pkg.precompile(; strict=true)
