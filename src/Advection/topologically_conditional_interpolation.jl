@@ -34,77 +34,41 @@ const AUGXYZ = AUG{<:Any, <:BT, <:BT, <:BT}
 # Bounded underlying grids of all types
 const AUGB = Union{AUGX, AUGY, AUGZ, AUGXY, AUGXZ, AUGYZ, AUGXYZ}
 
-# Left-biased buffers are smaller by one grid point on the right side; vice versa for right-biased buffers
-# Center interpolation stencil look at i + 1 (i.e., require one less point on the left)
+@inline reduced_order(i, ::Type{RightConnected}, N, B) = min(B, i)
+@inline reduced_order(i, ::Type{LeftConnected},  N, B) = min(B, N-i)
+@inline reduced_order(i, ::Type{Bounded},        N, B) = min(B, i, N-i)
 
-for dir in (:x, :y, :z)
-    outside_symmetric_haloᶠ = Symbol(:outside_symmetric_halo_, dir, :ᶠ)
-    outside_symmetric_haloᶜ = Symbol(:outside_symmetric_halo_, dir, :ᶜ)
-    outside_biased_haloᶠ    = Symbol(:outside_biased_halo_, dir, :ᶠ)
-    outside_biased_haloᶜ    = Symbol(:outside_biased_halo_, dir, :ᶜ)
-    required_halo_size      = Symbol(:required_halo_size_, dir)
-
-    @eval begin
-        # Bounded topologies
-        @inline $outside_symmetric_haloᶠ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv) + 1) & (i <= N + 1 - $required_halo_size(adv))
-        @inline $outside_symmetric_haloᶜ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv))     & (i <= N + 1 - $required_halo_size(adv))
-
-        @inline $outside_biased_haloᶠ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv) + 1) & (i <= N + 1 - ($required_halo_size(adv) - 1)) &  # Left bias
-                                                                    (i >= $required_halo_size(adv))     & (i <= N + 1 - $required_halo_size(adv))          # Right bias
-        @inline $outside_biased_haloᶜ(i, ::Type{Bounded}, N, adv) = (i >= $required_halo_size(adv))     & (i <= N + 1 - ($required_halo_size(adv) - 1)) &  # Left bias
-                                                                    (i >= $required_halo_size(adv) - 1) & (i <= N + 1 - $required_halo_size(adv))          # Right bias
-
-        # Right connected topologies (only test the left side, i.e. the bounded side)
-        @inline $outside_symmetric_haloᶠ(i, ::Type{RightConnected}, N, adv) = i >= $required_halo_size(adv) + 1
-        @inline $outside_symmetric_haloᶜ(i, ::Type{RightConnected}, N, adv) = i >= $required_halo_size(adv)
-
-        @inline $outside_biased_haloᶠ(i, ::Type{RightConnected}, N, adv) = (i >= $required_halo_size(adv) + 1) &  # Left bias
-                                                                           (i >= $required_halo_size(adv))        # Right bias
-        @inline $outside_biased_haloᶜ(i, ::Type{RightConnected}, N, adv) = (i >= $required_halo_size(adv))     &  # Left bias
-                                                                           (i >= $required_halo_size(adv) - 1)    # Right bias
-
-        # Left bounded topologies (only test the right side, i.e. the bounded side)
-        @inline $outside_symmetric_haloᶠ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - $required_halo_size(adv))
-        @inline $outside_symmetric_haloᶜ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - $required_halo_size(adv))
-
-        @inline $outside_biased_haloᶠ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - ($required_halo_size(adv) - 1)) &  # Left bias
-                                                                          (i <= N + 1 - $required_halo_size(adv))          # Right bias
-        @inline $outside_biased_haloᶜ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - ($required_halo_size(adv) - 1)) &  # Left bias
-                                                                          (i <= N + 1 - $required_halo_size(adv))          # Right bias
-    end
-end
-
-const A{N} = AbstractAdvectionScheme{N} 
+const A{B} = AbstractAdvectionScheme{B} 
 
 # Fallback for periodic underlying grids
-@inline compute_face_reduced_order_x(i, j, k, grid, scheme::A{N}) where N = N
-@inline compute_face_reduced_order_y(i, j, k, grid, scheme::A{N}) where N = N
-@inline compute_face_reduced_order_z(i, j, k, grid, scheme::A{N}) where N = N
+@inline compute_face_reduced_order_x(i, j, k, grid, ::A{B}) where B = B
+@inline compute_face_reduced_order_y(i, j, k, grid, ::A{B}) where B = B
+@inline compute_face_reduced_order_z(i, j, k, grid, ::A{B}) where B = B
 
 # Fallback for periodic underlying grids
-@inline compute_center_reduced_order_x(i, j, k, grid, scheme::A{N}) where N = N
-@inline compute_center_reduced_order_y(i, j, k, grid, scheme::A{N}) where N = N
-@inline compute_center_reduced_order_z(i, j, k, grid, scheme::A{N}) where N = N
+@inline compute_center_reduced_order_x(i, j, k, grid, ::A{B}) where B = B
+@inline compute_center_reduced_order_y(i, j, k, grid, ::A{B}) where B = B
+@inline compute_center_reduced_order_z(i, j, k, grid, ::A{B}) where B = B
 
-# Fallback for lower order advection:
-@inline compute_face_reduced_order_x(i, j, k, ::AUGB, scheme::A{1}) = 1
-@inline compute_face_reduced_order_y(i, j, k, ::AUGB, scheme::A{1}) = 1
-@inline compute_face_reduced_order_z(i, j, k, ::AUGB, scheme::A{1}) = 1
+# Fallback for lower order advection on bounded grids
+@inline compute_face_reduced_order_x(i, j, k, ::AUGB, ::A{1}) = 1
+@inline compute_face_reduced_order_y(i, j, k, ::AUGB, ::A{1}) = 1
+@inline compute_face_reduced_order_z(i, j, k, ::AUGB, ::A{1}) = 1
 
-@inline compute_face_reduced_order_x(i, j, k, ::IBG, scheme::A{1}) = 1
-@inline compute_face_reduced_order_y(i, j, k, ::IBG, scheme::A{1}) = 1
-@inline compute_face_reduced_order_z(i, j, k, ::IBG, scheme::A{1}) = 1
+# Fallback for lower order advection on bounded grids
+@inline compute_center_reduced_order_x(i, j, k, ::AUGB, ::A{1}) = 1
+@inline compute_center_reduced_order_y(i, j, k, ::AUGB, ::A{1}) = 1
+@inline compute_center_reduced_order_z(i, j, k, ::AUGB, ::A{1}) = 1
 
-# Fallback for lower order advection on immersed grids
-@inline compute_center_reduced_order_x(i, j, k, ::AUGB, scheme::A{1}) = 1
-@inline compute_center_reduced_order_y(i, j, k, ::AUGB, scheme::A{1}) = 1
-@inline compute_center_reduced_order_z(i, j, k, ::AUGB, scheme::A{1}) = 1
+# Bounded grids
+@inline compute_face_reduced_order_x(i, j, k, grid::AUGBX, ::A{B}) where B = reduced_order(i, topology(grid, 1), size(grid, 1), B)
+@inline compute_face_reduced_order_y(i, j, k, grid::AUGBY, ::A{B}) where B = reduced_order(j, topology(grid, 2), size(grid, 2), B)
+@inline compute_face_reduced_order_z(i, j, k, grid::AUGBZ, ::A{B}) where B = reduced_order(k, topology(grid, 3), size(grid, 3), B)
 
-@inline compute_center_reduced_order_x(i, j, k, ::IBG, scheme::A{1}) = 1
-@inline compute_center_reduced_order_y(i, j, k, ::IBG, scheme::A{1}) = 1
-@inline compute_center_reduced_order_z(i, j, k, ::IBG, scheme::A{1}) = 1
-
-
+# Fallback for periodic underlying grids
+@inline compute_center_reduced_order_x(i, j, k, grid::AUGBX, ::A{B}) where B = reduced_order(i, topology(grid, 1), size(grid, 1), B)
+@inline compute_center_reduced_order_y(i, j, k, grid::AUGBY, ::A{B}) where B = reduced_order(j, topology(grid, 2), size(grid, 2), B)
+@inline compute_center_reduced_order_z(i, j, k, grid::AUGBZ, ::A{B}) where B = reduced_order(k, topology(grid, 3), size(grid, 3), B)
 
 @inline function _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, args...)
     R = compute_face_reduced_order_x(i, j, k, grid, scheme)
@@ -165,14 +129,3 @@ end
     R = compute_center_reduced_order_z(i, j, k, grid, scheme)
     return symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, Val(R), args...)
 end
-
-# Multi-dimensional reconstruction
-@inline _multi_dimensional_reconstruction_x(i, j, k, grid::AUGX, scheme, interp, args...) = 
-                    ifelse(outside_symmetric_bufferᶜ(i, topology(grid, 1), grid.Nx, scheme), 
-                           multi_dimensional_reconstruction_x(i, j, k, grid::AUGX, scheme, interp, args...),
-                           interp(i, j, k, grid, scheme, args...))
-
-@inline _multi_dimensional_reconstruction_y(i, j, k, grid::AUGY, scheme, interp, args...) = 
-                    ifelse(outside_symmetric_bufferᶜ(j, topology(grid, 2), grid.Ny, scheme), 
-                            multi_dimensional_reconstruction_y(i, j, k, grid::AUGY, scheme, interp, args...),
-                            interp(i, j, k, grid, scheme, args...))
