@@ -1,5 +1,15 @@
 
 # WENO stencils
+#
+# This file contains the WENO stencils used in the WENO advection scheme.
+#
+# The stencils are defined for different orders of accuracy and for different ``reduced orders'', meaning that the
+# stencils are limited to a ``reduced'' (lower) order of accuracy. where the order is reduced we place zeros instead
+# of the values in the stencil, and zeroing out the last redundant WENO stencils.
+#
+# This strategy avoids having to define a new stencil for each order of accuracy.
+
+# Utility function to get the zero value of a type
 @inline z(T) = zero(T)
 
 # WENO 3rd order limited to 1st order
