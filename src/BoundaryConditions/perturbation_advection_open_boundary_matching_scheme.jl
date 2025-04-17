@@ -55,7 +55,7 @@ discretization. For details about this method, refer to the docstring for `Pertu
 function PerturbationAdvectionOpenBoundaryCondition(val, FT = Float64;
                                                     backward_step = true,
                                                     outflow_timescale = Inf,
-                                                    inflow_timescale = 0.0, kwargs...)
+                                                    inflow_timescale = 0, kwargs...)
 
     classification = Open(PerturbationAdvection(Val(backward_step), inflow_timescale, outflow_timescale))
 
@@ -88,7 +88,7 @@ const FPAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection{Val{false}}}}
 
     τ̃ = Δt / τ
 
-    uᵢⁿ⁺¹ = (uᵢⁿ + U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ + U)
+    uᵢⁿ⁺¹ = isinf(τ̃) ? ūⁿ⁺¹ : (uᵢⁿ + U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ + U)
 
     @inbounds setindex!(u, uᵢⁿ⁺¹, boundary_indices...)
 
@@ -114,7 +114,7 @@ end
 
     τ̃ = Δt / τ
 
-    u₁ⁿ⁺¹ = (uᵢⁿ - U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ - U)
+    u₁ⁿ⁺¹ = isinf(τ̃) ? ūⁿ⁺¹ : (uᵢⁿ - U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ - U)
 
     @inbounds setindex!(u, u₁ⁿ⁺¹, boundary_indices...)
     @inbounds setindex!(u, u₁ⁿ⁺¹, boundary_secret_storage_indices...)
