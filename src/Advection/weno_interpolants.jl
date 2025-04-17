@@ -237,7 +237,7 @@ end
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(C★(scheme, red_order, Val($(stencil-1))) / (β[$stencil] + ε)^2)
+        elem[stencil] = :(C★(scheme, red_order, Val($(stencil-1))) * (1 + (τ / (β[$stencil] + ε))^2))
     end
 
     return :($(elem...),)
@@ -245,9 +245,9 @@ end
 
 for buffer in advection_buffers[2:end]
     @eval begin
-        @inline         beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂)       where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
-        @inline        beta_loop(scheme::WENO{$buffer, FT}, red_order, ψ) where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
-        @inline zweno_alpha_loop(scheme::WENO{$buffer, FT}, red_order, β) where FT = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
+        @inline         beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂)          where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
+        @inline        beta_loop(scheme::WENO{$buffer, FT}, red_order, ψ)    where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
+        @inline zweno_alpha_loop(scheme::WENO{$buffer, FT}, red_order, β, τ) where FT = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
     end
 end
 
@@ -272,8 +272,8 @@ The ``α`` values are normalized before returning
 @inline function biased_weno_weights(ψ, grid, scheme::WENO{N, FT}, red_order, args...) where {N, FT}
     β = beta_loop(scheme, red_order, ψ)
                 
-    # τ = global_smoothness_indicator(β, red_order)
-    α = zweno_alpha_loop(scheme, red_order, β)
+    τ = 0.0001 # global_smoothness_indicator(β, red_order)
+    α = zweno_alpha_loop(scheme, red_order, β, τ)
 
     return α ./ sum(α)
 end
@@ -287,8 +287,8 @@ end
     βᵥ = beta_loop(scheme, red_order, vₛ)
     β  =  beta_sum(scheme, βᵤ, βᵥ)
 
-    # τ = global_smoothness_indicator(β, red_order)
-    α = zweno_alpha_loop(scheme, red_order, β)
+    τ = 0.0001 # global_smoothness_indicator(β, red_order)
+    α = zweno_alpha_loop(scheme, red_order, β, τ)
     
     return α ./ sum(α)
 end
