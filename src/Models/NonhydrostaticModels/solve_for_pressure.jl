@@ -3,6 +3,7 @@ using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver
 using Oceananigans.Grids: XDirection, YDirection, ZDirection, inactive_cell
 using Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+using Oceananigans.Solvers: KrylovSolver
 using Oceananigans.Solvers: solve!
 
 #####
@@ -87,5 +88,13 @@ function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, �
     arch = architecture(grid)
     launch!(arch, grid, :xyz, _compute_source_term!, rhs, grid, Δt, Ũ)
     return solve!(pressure, solver.conjugate_gradient_solver, rhs)
+end
+
+function solve_for_pressure!(pressure, solver::KrylovPoissonSolver, Δt, Ũ)
+    rhs = solver.right_hand_side
+    grid = solver.grid
+    arch = architecture(grid)
+    launch!(arch, grid, :xyz, _compute_source_term!, rhs, grid, Δt, Ũ)
+    return solve!(pressure, solver.krylov_solver, rhs)
 end
 
