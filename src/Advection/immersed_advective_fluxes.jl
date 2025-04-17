@@ -173,12 +173,12 @@ for side in (:ᶜ, :ᶠ)
     end
 end
 
-@inline ord(::Val{1}) = 1
-@inline ord(::Val{2}) = rand((1, 2))
-@inline ord(::Val{3}) = rand((1, 2, 3))
-@inline ord(::Val{4}) = rand((1, 2, 3, 4))
-@inline ord(::Val{5}) = rand((1, 2, 3, 4, 5))
-@inline ord(::Val{6}) = rand((1, 2, 3, 4, 5, 6))
+@inline ord(::Val{1}) = Val(1)
+@inline ord(::Val{2}) = Val(rand((1, 2)))
+@inline ord(::Val{3}) = Val(rand((1, 2, 3)))
+@inline ord(::Val{4}) = Val(rand((1, 2, 3, 4)))
+@inline ord(::Val{5}) = Val(rand((1, 2, 3, 4, 5)))
+@inline ord(::Val{6}) = Val(rand((1, 2, 3, 4, 5, 6)))
 
 for B in advection_buffers
     @eval begin
