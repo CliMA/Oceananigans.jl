@@ -57,8 +57,8 @@ Ns = [32, 64, 128, 160, 192, 224, 256]
 Δt = 2e-2 * 64 / 2 / maximum(Ns)
 nsteps = 100
 
-@info "Benchmarking FFT solver"
 for N in Ns
+    @info "Benchmarking FFT solver, N = $(N)"
     grid = nothing
     model = nothing
     GC.gc()
