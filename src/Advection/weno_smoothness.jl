@@ -97,7 +97,7 @@ for FT in fully_supported_float_types
         @inline smoothness_coefficients(::Val{$FT}, ::Val{2}, red_order, ::Val{1}) = $(FT.(SS221))
 
         # 5th order WENO, restricted to orders 3 and 1
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, red_order, ::Val{0}) = 
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, red_order, ::Val{0}) =
                 ifelse(red_order == 1, $(FT.(SS310)),  # Order 1                
                 ifelse(red_order == 2, $(FT.(SS320)),  # Order 3                                           
                                        $(FT.(SS330)))) # Order 5
@@ -165,17 +165,21 @@ for FT in fully_supported_float_types
     end
 end
 
-# Global smoothness indicator τ₂ᵣ₋₁ from "Accuracy of the weighted essentially non-oscillatory conservative finite difference schemes", Don & Borges, 2013
-@inline gsi1(β) = @inbounds abs(β[1])
-@inline gsi2(β) = @inbounds abs(β[1] - β[2])
-@inline gsi3(β) = @inbounds abs(β[1] - β[3])
-@inline gsi4(β) = @inbounds abs(β[1] +  3β[2] -   3β[3] -    β[4])
-@inline gsi5(β) = @inbounds abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
-@inline gsi6(β) = @inbounds abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
-
-@inline global_smoothness_indicator(β::NTuple{1}, R) = gsi1(β)
-@inline global_smoothness_indicator(β::NTuple{2}, R) = ifelse(R==1, gsi1(β), gsi2(β))
-@inline global_smoothness_indicator(β::NTuple{3}, R) = ifelse(R==1, gsi1(β), ifelse(R==2, gsi2(β), gsi3(β)))
-@inline global_smoothness_indicator(β::NTuple{4}, R) = ifelse(R==1, gsi1(β), ifelse(R==2, gsi2(β), ifelse(R==3, gsi3(β), gsi4(β))))
-@inline global_smoothness_indicator(β::NTuple{5}, R) = ifelse(R==1, gsi1(β), ifelse(R==2, gsi2(β), ifelse(R==3, gsi3(β), ifelse(R==4, gsi4(β), gsi5(β)))))
-@inline global_smoothness_indicator(β::NTuple{6}, R) = ifelse(R==1, gsi1(β), ifelse(R==2, gsi2(β), ifelse(R==3, gsi3(β), ifelse(R==4, gsi4(β), ifelse(R==5, gsi5(β), gsi6(β))))))
+# Global smoothness indicator τ₂ᵣ₋₁ from "Accuracy of the weighted essentially non-oscillatory 
+# conservative finite difference schemes", Don & Borges, 2013
+# Just use a plain old if condition here!
+@inline function global_smoothness_indicator(β, R) 
+    if R == 1
+        @inbounds abs(β[1])
+    elseif R == 2
+        @inbounds abs(β[1] - β[2])
+    elseif R == 3
+        @inbounds abs(β[1] - β[3])
+    elseif R == 4
+        @inbounds abs(β[1] +  3β[2] -   3β[3] -    β[4])
+    elseif R == 5
+        @inbounds abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
+    elseif R == 6
+        @inbounds abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
+    end
+end
