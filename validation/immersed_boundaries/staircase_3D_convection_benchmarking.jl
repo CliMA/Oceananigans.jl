@@ -48,11 +48,6 @@ end
 
 reltol = abstol = 1e-7
 
-grid = setup_grid(32)
-
-pressure_solver = ConjugateGradientPoissonSolver(grid, maxiter=100; reltol, abstol, preconditioner=nothing)
-model = setup_model(grid, pressure_solver)
-
 function setup_simulation(model, Δt, stop_iteration)
     return Simulation(model, Δt=Δt, stop_iteration=stop_iteration)
 end
