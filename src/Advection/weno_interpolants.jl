@@ -77,8 +77,6 @@ const ε = 1f-8
 
 for FT in fully_supported_float_types
     @eval begin
-        @inline C★(::WENO{1, $FT}, ::Val{1}, ::Val{0}) = $(FT(1))
-
         # WENO 3rd order
         @inline C★(::WENO{2, $FT}, ::Val{1}, ::Val{0}) = $(FT(1))
         @inline C★(::WENO{2, $FT}, ::Val{1}, ::Val{1}) = $(FT(0))

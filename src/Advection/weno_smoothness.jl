@@ -29,10 +29,9 @@ for FT in fully_supported_float_types
         In the above case, if `red_order == 2`, then all the coefficients corresponding to ψ[i for i > 2]
         are zero. This last operation is metaprogrammed in the function `metaprogrammed_smoothness_operation`
         """
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{1}, Nrest, ::Val{0}) = $(FT.((1, )))
-
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{2}, Nrest, ::Val{0}) = $(FT.((1, -2, 1)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{2}, Nrest, ::Val{1}) = $(FT.((1, -2, 1)))
+        # 3rd order WENO, restricted to order 1 (does not matter the restriction order here)
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{2}, Anyorder, ::Val{0}) = $(FT.((1, -2, 1)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{2}, Anyorder, ::Val{1}) = $(FT.((1, -2, 1)))
 
         # 5th order WENO, restricted to orders 3 and 1
         @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, ::Val{1}, ::Val{0}) = $(FT.((1, 0, 0, 0, 0)))
