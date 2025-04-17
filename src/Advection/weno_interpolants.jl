@@ -2,6 +2,7 @@ using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
 
 include("weno_stencils.jl")
 include("weno_smoothness.jl")
+include("weno_coefficients.jl")
 
 # WENO reconstruction of order `M` entails reconstructions of order `N`
 # on `N` different stencils, where `N = (M + 1) / 2`.
@@ -109,29 +110,8 @@ for FT in fully_supported_float_types
     end
 end
 
-function rc(FT, N, R, stencil)
-    if N == 1 || R == 1
-        return (1, )
-    else
-        Rcoeff = stencil_coefficients(FT, 50, stencil, collect(1:100), collect(1:100); order=R)
-        Ncoeff = (zero(FT) for i in 1:N-R)
-        return (Rcoeff..., Ncoeff...)
-    end
-end
-
-for s in 0:5
-    for FT in fully_supported_float_types
-        @eval begin
-            @inline coeff_p(::WENO{2, $FT}, R, ::Val{$s}) = ifelse(R==1, $(rc(FT, 2, 1, s)), $(rc(FT, 2, 2, s)))
-            @inline coeff_p(::WENO{3, $FT}, R, ::Val{$s}) = ifelse(R==1, $(rc(FT, 3, 1, s)), ifelse(R==2, $(rc(FT, 3, 2, s)), $(rc(FT, 3, 3, s))))
-            @inline coeff_p(::WENO{4, $FT}, R, ::Val{$s}) = ifelse(R==1, $(rc(FT, 4, 1, s)), ifelse(R==2, $(rc(FT, 4, 2, s)), ifelse(R==3, $(rc(FT, 4, 3, s)), $(rc(FT, 4, 4, s)))))
-            @inline coeff_p(::WENO{5, $FT}, R, ::Val{$s}) = ifelse(R==1, $(rc(FT, 5, 1, s)), ifelse(R==2, $(rc(FT, 5, 2, s)), ifelse(R==3, $(rc(FT, 5, 3, s)), ifelse(R==4, $(rc(FT, 5, 4, s)), $(rc(FT, 5, 5, s))))))
-        end
-    end
-end
-
 """ 
-    biased_p(scheme::WENO{buffer}, bias, ::Val{stencil}, ψ, T, dir, i, loc)
+    biased_p(ψ, scheme::WENO{buffer}, bias, ::Val{stencil})
 
 Biased reconstruction of `ψ` from the stencil `stencil` of a WENO reconstruction of
 order `buffer * 2 - 1`. The reconstruction is calculated as
@@ -142,7 +122,23 @@ order `buffer * 2 - 1`. The reconstruction is calculated as
 
 where ``cᵣ`` is computed from the function `coeff_p`
 """
-@inline biased_p(scheme, red_order, stencil, ψ) = @inbounds @muladd sum(coeff_p(scheme, red_order, stencil) .* ψ)
+# Smoothness indicators for stencil `stencil` for left and right biased reconstruction
+for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
+    @eval @inline reconstruction_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds @muladd $(metaprogrammed_reconstuction_operation(buffer))
+    
+    for stencil in 0:buffer-1, FT in fully_supported_float_types
+        @eval @inline biased_p(ψ, scheme::WENO{$buffer, $FT}, red_order, ::Val{$stencil}) = 
+                reconstruction_operation(scheme, ψ, reconstruction_coefficients(Val($FT), Val($buffer), red_order, Val($stencil)))
+    end
+end
+
+@inline function metaprogrammed_reconstuction_operation(buffer)
+    elem = Vector(undef, buffer)
+    for stencil = 1:buffer
+        elem[stencil] = :(ψ[$stencil] * C[$(stencil)])
+    end    
+    return Expr(:call, :+, elem...)
+end
 
 # The rule for calculating smoothness indicators is the following (example WENO{4} which is seventh order) 
 # ψ[1] (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3] + C[4] * ψ[4]) + 
@@ -384,7 +380,7 @@ end
 @inline function metaprogrammed_weno_reconstruction(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(ω[$stencil] * biased_p(scheme, red_order, Val($(stencil-1)), ψ[$stencil]))
+        elem[stencil] = :(ω[$stencil] * biased_p(ψ[$stencil], scheme, red_order, Val($(stencil-1))))
     end
 
     return Expr(:call, :+, elem...)
@@ -404,10 +400,10 @@ The calculation of the reconstruction is metaprogrammed in the `metaprogrammed_w
 `buffer == 4` (seventh order WENO), unrolls to:
 
 ```julia
-ψ̂ = ω[1] * biased_p(scheme, bias, Val(0), ψ[1], cT, Val(val), idx, loc) + 
-    ω[2] * biased_p(scheme, bias, Val(1), ψ[2], cT, Val(val), idx, loc) + 
-    ω[3] * biased_p(scheme, bias, Val(2), ψ[3], cT, Val(val), idx, loc) + 
-    ω[4] * biased_p(scheme, bias, Val(3), ψ[4], cT, Val(val), idx, loc))
+ψ̂ = ω[1] * biased_p(ψ[1], scheme, bias, Val(0)) + 
+    ω[2] * biased_p(ψ[2], scheme, bias, Val(1)) + 
+    ω[3] * biased_p(ψ[3], scheme, bias, Val(2)) + 
+    ω[4] * biased_p(ψ[4], scheme, bias, Val(3)))
 ```
 
 Here, [`biased_p`](@ref) is the function that computes the linear reconstruction of the individual stencils.

@@ -97,59 +97,71 @@ for FT in fully_supported_float_types
         @inline smoothness_coefficients(::Val{$FT}, ::Val{2}, red_order, ::Val{1}) = $(FT.(SS221))
 
         # 5th order WENO, restricted to orders 3 and 1
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, red_order, ::Val{0}) = ifelse(red_order == 1, $(FT.(SS310)),
-                                                                                     ifelse(red_order == 2, $(FT.(SS320)),
-                                                                                                            $(FT.(SS330)))) # Full order (3)
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, red_order, ::Val{0}) = 
+                ifelse(red_order == 1, $(FT.(SS310)),                  
+                ifelse(red_order == 2, $(FT.(SS320)),                                             
+                                       $(FT.(SS330)))) # Full order (3)
 
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, red_order, ::Val{1}) = ifelse(red_order == 1, $(FT.(SS30M)),
-                                                                                     ifelse(red_order == 2, $(FT.(SS321)),
-                                                                                                            $(FT.(SS331)))) # Full order (3)
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, red_order, ::Val{1}) = 
+                ifelse(red_order == 1, $(FT.(SS30M)),
+                ifelse(red_order == 2, $(FT.(SS321)),
+                                       $(FT.(SS331)))) # Full order (3)
 
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, red_order, ::Val{2}) = ifelse(red_order <  3, $(FT.(SS30M)),
-                                                                                                            $(FT.(SS332))) # Full order (3)
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, red_order, ::Val{2}) = 
+                ifelse(red_order <  3, $(FT.(SS30M)), 
+                                       $(FT.(SS332))) # Full order (3)
 
         # 7th order WENO, restricted to orders 5, 3, and 1
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, red_order, ::Val{0}) = ifelse(red_order == 1, $(FT.(SS410)),
-                                                                                     ifelse(red_order == 2, $(FT.(SS420)), 
-                                                                                     ifelse(red_order == 3, $(FT.(SS430)), 
-                                                                                                            $(FT.(SS440))))) # Full order
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, red_order, ::Val{0}) = 
+                ifelse(red_order == 1, $(FT.(SS410)),                               
+                ifelse(red_order == 2, $(FT.(SS420)), 
+                ifelse(red_order == 3, $(FT.(SS430)), 
+                                       $(FT.(SS440))))) # Full order
         
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, red_order, ::Val{1}) = ifelse(red_order == 1, $(FT.(SS40M)),
-                                                                                     ifelse(red_order == 2, $(FT.(SS421)),
-                                                                                     ifelse(red_order == 3, $(FT.(SS431)),
-                                                                                                            $(FT.(SS441))))) # Full order
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, red_order, ::Val{1}) = 
+                ifelse(red_order == 1, $(FT.(SS40M)),                 
+                ifelse(red_order == 2, $(FT.(SS421)),
+                ifelse(red_order == 3, $(FT.(SS431)),
+                                       $(FT.(SS441))))) # Full order
 
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, red_order, ::Val{2}) = ifelse(red_order  < 3, $(FT.(SS40M)),
-                                                                                     ifelse(red_order == 3, $(FT.(SS432)),
-                                                                                                            $(FT.(SS442)))) # Full order
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, red_order, ::Val{2}) = 
+                ifelse(red_order  < 3, $(FT.(SS40M)),                        
+                ifelse(red_order == 3, $(FT.(SS432)),
+                                       $(FT.(SS442)))) # Full order
         
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, red_order, ::Val{3}) = ifelse(red_order <  4, $(FT.(SS40M)),
-                                                                                                            $(FT.(SS443))) # Full order
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, red_order, ::Val{3}) = 
+                ifelse(red_order <  4, $(FT.(SS40M)),                                              
+                                       $(FT.(SS443))) # Full order
 
         # 9th order WENO, restricted to orders 7, 5, 3, and 1
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, red_order, ::Val{0}) = ifelse(red_order == 1, $(FT.(SS510)),
-                                                                                     ifelse(red_order == 2, $(FT.(SS520)),
-                                                                                     ifelse(red_order == 3, $(FT.(SS530)),
-                                                                                     ifelse(red_order == 4, $(FT.(SS540)),
-                                                                                                            $(FT.(SS550)))))) # Full order
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, red_order, ::Val{0}) = 
+                ifelse(red_order == 1, $(FT.(SS510)),                                
+                ifelse(red_order == 2, $(FT.(SS520)),          
+                ifelse(red_order == 3, $(FT.(SS530)),
+                ifelse(red_order == 4, $(FT.(SS540)),
+                                       $(FT.(SS550)))))) # Full order
 
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, red_order, ::Val{1}) = ifelse(red_order == 1, $(FT.(SS50M)),
-                                                                                     ifelse(red_order == 2, $(FT.(SS521)),
-                                                                                     ifelse(red_order == 3, $(FT.(SS531)),
-                                                                                     ifelse(red_order == 4, $(FT.(SS541)),
-                                                                                                            $(FT.(SS551)))))) # Full order
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, red_order, ::Val{1}) = 
+                ifelse(red_order == 1, $(FT.(SS50M)),
+                ifelse(red_order == 2, $(FT.(SS521)),
+                ifelse(red_order == 3, $(FT.(SS531)),
+                ifelse(red_order == 4, $(FT.(SS541)),
+                                       $(FT.(SS551)))))) # Full order
 
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, red_order, ::Val{2}) = ifelse(red_order <  3, $(FT.(SS50M)),
-                                                                                     ifelse(red_order == 3, $(FT.(SS532)),
-                                                                                     ifelse(red_order == 4, $(FT.(SS542)),
-                                                                                                            $(FT.(SS552))))) # Full order
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, red_order, ::Val{2}) = 
+                ifelse(red_order <  3, $(FT.(SS50M)),                                
+                ifelse(red_order == 3, $(FT.(SS532)),                                    
+                ifelse(red_order == 4, $(FT.(SS542)),
+                                       $(FT.(SS552))))) # Full order
         
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, red_order, ::Val{3}) = ifelse(red_order <  4, $(FT.(SS50M)),
-                                                                                     ifelse(red_order == 4, $(FT.(SS543)),
-                                                                                                            $(FT.(SS553)))) # Full order
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, red_order, ::Val{3}) = 
+                ifelse(red_order <  4, $(FT.(SS50M)),                                              
+                ifelse(red_order == 4, $(FT.(SS543)),                                             
+                                       $(FT.(SS553)))) # Full order
 
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, red_order, ::Val{4}) = ifelse(red_order <  5, $(FT.(SS50M)),
-                                                                                                            $(FT.(SS554))) # Full order
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, red_order, ::Val{4}) = 
+                ifelse(red_order <  5, $(FT.(SS50M)),
+                                       $(FT.(SS554))) # Full order
     end
 end
 
