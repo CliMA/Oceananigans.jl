@@ -444,13 +444,25 @@ for b in advection_buffers, FT in fully_supported_float_types
         @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::Centered{$b, $FT}, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
         @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::Centered{$b, $FT}, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
         
+        @inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid::XFlatGrid, ::Centered{$b, $FT}, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
+        @inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid::YFlatGrid, ::Centered{$b, $FT}, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
+        @inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid::ZFlatGrid, ::Centered{$b, $FT}, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
+        
         # Disambiguation
         @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
         @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
         @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
-    
+
+        @inline biased_interpolate_xᶜᵃᵃ(i, j, k, grid::XFlatGrid, ::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
+        @inline biased_interpolate_yᵃᶜᵃ(i, j, k, grid::YFlatGrid, ::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
+        @inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid::ZFlatGrid, ::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
+
         @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::WENO{$b, $FT}, bias, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
         @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::WENO{$b, $FT}, bias, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
         @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::WENO{$b, $FT}, bias, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
+
+        @inline biased_interpolate_xᶜᵃᵃ(i, j, k, grid::XFlatGrid, ::WENO{$b, $FT}, bias, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
+        @inline biased_interpolate_yᵃᶜᵃ(i, j, k, grid::YFlatGrid, ::WENO{$b, $FT}, bias, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
+        @inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid::ZFlatGrid, ::WENO{$b, $FT}, bias, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
     end
 end
