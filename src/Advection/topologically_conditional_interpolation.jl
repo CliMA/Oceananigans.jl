@@ -34,26 +34,26 @@ const AUGXYZ = AUG{<:Any, <:BT, <:BT, <:BT}
 # Bounded underlying grids of all types
 const AUGB = Union{AUGX, AUGY, AUGZ, AUGXY, AUGXZ, AUGYZ, AUGXYZ}
 
-@inline reduced_order(i, ::Type{RightConnected}, N, B) = Val(min(B, i))
-@inline reduced_order(i, ::Type{LeftConnected},  N, B) = Val(min(B, N-i))
-@inline reduced_order(i, ::Type{Bounded},        N, B) = Val(min(B, i, N-i))
+@inline reduced_order(i, ::Type{RightConnected}, N, B) = min(B, i)
+@inline reduced_order(i, ::Type{LeftConnected},  N, B) = min(B, N-i)
+@inline reduced_order(i, ::Type{Bounded},        N, B) = min(B, i, N-i)
 
 const A{B} = AbstractAdvectionScheme{B} 
 
 # Fallback for periodic underlying grids
-@inline compute_face_reduced_order_x(i, j, k, grid, ::A{B}) where B = Val(B)
-@inline compute_face_reduced_order_y(i, j, k, grid, ::A{B}) where B = Val(B)
-@inline compute_face_reduced_order_z(i, j, k, grid, ::A{B}) where B = Val(B)
+@inline compute_face_reduced_order_x(i, j, k, grid, ::A{B}) where B = B
+@inline compute_face_reduced_order_y(i, j, k, grid, ::A{B}) where B = B
+@inline compute_face_reduced_order_z(i, j, k, grid, ::A{B}) where B = B
 
 # Fallback for periodic underlying grids
-@inline compute_center_reduced_order_x(i, j, k, grid, ::A{B}) where B = Val(B)
-@inline compute_center_reduced_order_y(i, j, k, grid, ::A{B}) where B = Val(B)
-@inline compute_center_reduced_order_z(i, j, k, grid, ::A{B}) where B = Val(B)
+@inline compute_center_reduced_order_x(i, j, k, grid, ::A{B}) where B = B
+@inline compute_center_reduced_order_y(i, j, k, grid, ::A{B}) where B = B
+@inline compute_center_reduced_order_z(i, j, k, grid, ::A{B}) where B = B
 
 # Fallback for lower order advection on bounded grids
-@inline compute_face_reduced_order_x(i, j, k, ::AUGB, ::A{1}) = Val(1)
-@inline compute_face_reduced_order_y(i, j, k, ::AUGB, ::A{1}) = Val(1)
-@inline compute_face_reduced_order_z(i, j, k, ::AUGB, ::A{1}) = Val(1)
+@inline compute_face_reduced_order_x(i, j, k, ::AUGB, ::A{1}) = 1
+@inline compute_face_reduced_order_y(i, j, k, ::AUGB, ::A{1}) = 1
+@inline compute_face_reduced_order_z(i, j, k, ::AUGB, ::A{1}) = 1
 
 # Fallback for lower order advection on bounded grids
 @inline compute_center_reduced_order_x(i, j, k, ::AUGB, ::A{1}) = 1
@@ -72,60 +72,60 @@ const A{B} = AbstractAdvectionScheme{B}
 
 @inline function _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, args...)
     R = compute_face_reduced_order_x(i, j, k, grid, scheme)
-    return biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, R, args...)
+    return biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Val(R), args...)
 end
 
 @inline function _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, args...) 
     R = compute_face_reduced_order_y(i, j, k, grid, scheme)
-    return biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, R, args...)
+    return biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Val(R), args...)
 end
 
 @inline function _biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, args...)
     R = compute_face_reduced_order_z(i, j, k, grid, scheme)
-    return biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, R, args...)
+    return biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, Val(R), args...)
 end
 
 @inline function _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, args...)
     R = compute_center_reduced_order_x(i, j, k, grid, scheme)
-    return biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, R, args...)
+    return biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, Val(R), args...)
 end
 
 @inline function _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, args...) 
     R = compute_center_reduced_order_y(i, j, k, grid, scheme)
-    return biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, R, args...)
+    return biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, Val(R), args...)
 end
 
 @inline function _biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, args...) 
     R = compute_center_reduced_order_z(i, j, k, grid, scheme)
-    return biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, R, args...)
+    return biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, Val(R), args...)
 end
 
 @inline function _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, args...)
     R = compute_face_reduced_order_x(i, j, k, grid, scheme)
-    return symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, R, args...)
+    return symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Val(R), args...)
 end
 
 @inline function _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, args...)
     R = compute_face_reduced_order_y(i, j, k, grid, scheme)
-    return symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, R, args...)
+    return symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Val(R), args...)
 end
 
 @inline function _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, args...)
     R = compute_face_reduced_order_z(i, j, k, grid, scheme)
-    return symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, R, args...)
+    return symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, Val(R), args...)
 end
 
 @inline function _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, args...)
     R = compute_center_reduced_order_x(i, j, k, grid, scheme)
-    return symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, R, args...)
+    return symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, Val(R), args...)
 end
 
 @inline function _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, args...)
     R = compute_center_reduced_order_y(i, j, k, grid, scheme)
-    return symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, R, args...)
+    return symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, Val(R), args...)
 end
 
 @inline function _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, args...)
     R = compute_center_reduced_order_z(i, j, k, grid, scheme)
-    return symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, R, args...)
+    return symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, Val(R), args...)
 end
