@@ -4,8 +4,8 @@ env:
   TARTARUS_HOME: "/storage5/buildkite-agent"
   JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
-  JULIA_NUM_PRECOMPILE_TASKS: 48
-  JULIA_NUM_THREADS: 24
+  JULIA_NUM_PRECOMPILE_TASKS: 24
+  JULIA_NUM_THREADS: 8
   XLA_REACTANT_GPU_PREALLOCATE: false
   CUDA_VISIBLE_DEVICES: "3" # Tartarus device for GPU testing
   TMPDIR: "$TARTARUS_HOME/tmp"
@@ -56,7 +56,8 @@ steps:
 
       # Strip emoji for environment variable
       group="{{ matrix.group }}"
-      export TEST_GROUP=$(printf '%s' "$group" | sed 's/^[^ ]* //')
+      export TEST_GROUP="${group#* }"
+      echo $TEST_GROUP
 
       # Run tests
       $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e \

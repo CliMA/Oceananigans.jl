@@ -18,6 +18,7 @@ steps:
     env:
       TEST_GROUP: "init"
       TEST_ARCHITECTURE: "GPU"
+      MPI_TEST: "false" # initialization is not an MPI test
     command:
       - echo "--- Initialize distributed tests"
       - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
