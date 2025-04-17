@@ -3,7 +3,7 @@ using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver
 using Oceananigans.Grids: XDirection, YDirection, ZDirection, inactive_cell
 using Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
-using Oceananigans.Solvers: KrylovSolver
+using Oceananigans.Solvers: KrylovPoissonSolver
 using Oceananigans.Solvers: solve!
 
 #####
