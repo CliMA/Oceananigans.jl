@@ -42,7 +42,7 @@ for (side, dir) in zip((:ᶠᵃᵃ, :ᵃᶠᵃ, :ᵃᵃᶠ), (:x, :y, :z))
         for FT in fully_supported_float_types
             interp = Symbol(:symmetric_interpolate_, dir, side)
             @eval begin
-                @inline $interp(i, j, k, grid, s::Centered{1, $FT}, red_order::Int, ψ::$F, args...) =  $(calc_reconstruction_stencil(FT, 1, :symmetric, dir, bool))
+                @inline $interp(i, j, k, grid, ::Centered{1, $FT}, red_order::Int, ψ::$F, args...) =  $(calc_reconstruction_stencil(FT, 1, :symmetric, dir, bool))
 
                 @inline function $interp(i, j, k, grid, s::Centered{2, $FT}, red_order::Int, ψ::$F, args...)          
                     if red_order==1
@@ -52,15 +52,7 @@ for (side, dir) in zip((:ᶠᵃᵃ, :ᵃᶠᵃ, :ᵃᵃᶠ), (:x, :y, :z))
                     end
                 end
 
-                @inline function $interp(i, j, k, grid, s::Centered{2, $FT}, red_order::Int, ψ::$F, args...)          
-                    if red_order==1
-                        $(calc_reconstruction_stencil(FT, 1, :symmetric, dir, bool))
-                    else
-                        $(calc_reconstruction_stencil(FT, 2, :symmetric, dir, bool))
-                    end
-                end
-
-                @inline function $interp(i, j, k, grid, s::Centered{3, $FT}, red_order::Int, ψ::$F, args...)          
+                @inline function $interp(i, j, k, grid, ::Centered{3, $FT}, red_order::Int, ψ::$F, args...)          
                     if red_order==1
                         $(calc_reconstruction_stencil(FT, 1, :symmetric, dir, bool))
                     elseif red_order==2
@@ -70,7 +62,7 @@ for (side, dir) in zip((:ᶠᵃᵃ, :ᵃᶠᵃ, :ᵃᵃᶠ), (:x, :y, :z))
                     end
                 end
 
-                @inline function $interp(i, j, k, grid, s::Centered{4, $FT}, red_order::Int, ψ::$F, args...)          
+                @inline function $interp(i, j, k, grid, ::Centered{4, $FT}, red_order::Int, ψ::$F, args...)          
                     if red_order==1
                         $(calc_reconstruction_stencil(FT, 1, :symmetric, dir, bool))
                     elseif red_order==2
@@ -82,7 +74,7 @@ for (side, dir) in zip((:ᶠᵃᵃ, :ᵃᶠᵃ, :ᵃᵃᶠ), (:x, :y, :z))
                     end
                 end
 
-                @inline function $interp(i, j, k, grid, s::Centered{5, $FT}, red_order::Int, ψ::$F, args...)          
+                @inline function $interp(i, j, k, grid, ::Centered{5, $FT}, red_order::Int, ψ::$F, args...)          
                     if red_order==1
                         $(calc_reconstruction_stencil(FT, 1, :symmetric, dir, bool))
                     elseif red_order==2

@@ -130,8 +130,8 @@ for FT in fully_supported_float_types
                                        $(FT.(SS442)))) # Order 7
         
         @inline smoothness_coefficients(::Val{$FT}, ::Val{4}, red_order, ::Val{3}) = 
-                ifelse(red_order <  4, $(FT.(SS40M)), # Order ≤ 5                                              
-                                       $(FT.(SS443))) # Order 7
+                ifelse(red_order <  4, $(FT.(SS40M)),  # Order ≤ 5                                              
+                                       $(FT.(SS443)))  # Order 7
 
         # 9th order WENO, restricted to orders 7, 5, 3, and 1
         @inline smoothness_coefficients(::Val{$FT}, ::Val{5}, red_order, ::Val{0}) = 
@@ -167,7 +167,7 @@ end
 
 # Global smoothness indicator τ₂ᵣ₋₁ from "Accuracy of the weighted essentially non-oscillatory 
 # conservative finite difference schemes", Don & Borges, 2013
-# Just use a plain old if condition here!
+# Just use a plain old if condition here (branch divergence will not be too much on this simple instruction)!
 @inline function global_smoothness_indicator(β::NTuple{1}, R) 
     @inbounds abs(β[1])
 end
