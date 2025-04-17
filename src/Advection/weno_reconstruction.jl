@@ -109,10 +109,8 @@ Base.show(io::IO, a::WENO{N, FT, PP}) where {N, FT, PP} =
 
 Adapt.adapt_structure(to, scheme::WENO{N, FT}) where {N, FT} =
      WENO{N, FT}(Adapt.adapt(to, scheme.bounds),
-                 Adapt.adapt(to, scheme.buffer_scheme),
                  Adapt.adapt(to, scheme.advecting_velocity_scheme))
 
 on_architecture(to, scheme::WENO{N, FT}) where {N, FT} =
     WENO{N, FT}(on_architecture(to, scheme.bounds),
-                on_architecture(to, scheme.buffer_scheme),
                 on_architecture(to, scheme.advecting_velocity_scheme))
