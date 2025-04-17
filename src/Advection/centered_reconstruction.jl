@@ -63,11 +63,17 @@ for buffer in advection_buffers, FT in fully_supported_float_types
     @eval begin
         @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ψ,  args...)          = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :x, false))
         @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ψ::Function, args...) = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :x,  true))
-    
         @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ψ, args...)           = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :y, false))
         @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ψ::Function, args...) = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :y,  true))
-    
         @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ψ, args...)           = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :z, false))
         @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ψ::Function, args...) = @inbounds $(calc_reconstruction_stencil(FT, buffer, :symmetric, :z,  true))
+        
+        # Flat interpolations...
+        @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::Centered{$buffer, $FT}, ψ, args...)           = @inbounds ψ[i, j, k]
+        @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::Centered{$buffer, $FT}, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
+        @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::Centered{$buffer, $FT}, ψ, args...)           = @inbounds ψ[i, j, k]
+        @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::Centered{$buffer, $FT}, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
+        @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::Centered{$buffer, $FT}, ψ, args...)           = @inbounds ψ[i, j, k]
+        @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::Centered{$buffer, $FT}, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
     end
 end
