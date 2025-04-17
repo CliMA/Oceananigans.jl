@@ -31,9 +31,10 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
+          
   - wait
 
-  - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
+  - label: "{{ matrix.architecture }} / {{ matrix.group }} tests"
     key: "tests"
     agents:
       queue: "Oceananigans"
@@ -75,7 +76,7 @@ steps:
           - "🍂 lagrangian"
           - "👻 abstract_operations"
           - "🧅 multi_region"
-          - "🐫 onhydrostatic_regression"
+          - "🐫 nonhydrostatic_regression"
           - "🙈 hydrostatic_regression"
           - "🦧 scripts"
           - "🥑 vertical_coordinate"
