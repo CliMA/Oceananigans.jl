@@ -468,7 +468,7 @@ end
 @inline function metaprogrammed_weno_reconstruction(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(ω[$stencil] * biased_p(scheme, bias, Val($(stencil-1)), ψ[$stencil])
+        elem[stencil] = :(ω[$stencil] * biased_p(scheme, bias, Val($(stencil-1)), ψ[$stencil]))
     end
 
     return Expr(:call, :+, elem...)

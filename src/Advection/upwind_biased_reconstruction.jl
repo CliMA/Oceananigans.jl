@@ -7,7 +7,7 @@
 
 Upwind-biased reconstruction scheme.
 """
-struct UpwindBiased{N, FT, XT, YT, ZT, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT} 
+struct UpwindBiased{N, FT, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT} 
     "Reconstruction scheme used near boundaries"
     buffer_scheme :: CA
     "Reconstruction scheme used for symmetric interpolation"
@@ -45,7 +45,7 @@ end
 
 Base.summary(a::UpwindBiased{N}) where N = string("UpwindBiased(order=", 2N-1, ")")
 
-Base.show(io::IO, a::UpwindBiased{N, FT, XT, YT, ZT}) where {N, FT, XT, YT, ZT} =
+Base.show(io::IO, a::UpwindBiased{N, FT}) where {N, FT} =
     print(io, summary(a), " \n",
               " Boundary scheme: ", "\n",
               "    └── ", summary(a.buffer_scheme) , "\n",

@@ -106,11 +106,11 @@ end
 WENO(grid, FT::DataType=Float64; kwargs...) = WENO(FT; grid, kwargs...)
 
 # Flavours of WENO
-const PositiveWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple}
+const PositiveWENO = WENO{<:Any, <:Any, <:Tuple}
 
 Base.summary(a::WENO{N}) where N = string("WENO(order=", N*2-1, ")")
 
-Base.show(io::IO, a::WENO{N, FT, RX, RY, RZ, PP}) where {N, FT, RX, RY, RZ, PP} =
+Base.show(io::IO, a::WENO{N, FT, PP}) where {N, FT, PP} =
     print(io, summary(a), " \n",
               a.bounds isa Nothing ? "" : " Bounds : \n    └── $(a.bounds) \n",
               " Boundary scheme: ", "\n",

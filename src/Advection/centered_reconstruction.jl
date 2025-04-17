@@ -33,7 +33,7 @@ end
 
 Base.summary(a::Centered{N}) where N = string("Centered(order=", 2N, ")")
 
-Base.show(io::IO, a::Centered{N, FT, XT, YT, ZT}) where {N, FT, XT, YT, ZT} =
+Base.show(io::IO, a::Centered{N, FT}) where {N, FT} =
     print(io, summary(a), " \n",
               " Boundary scheme: ", "\n",
               "    └── ", summary(a.buffer_scheme))
