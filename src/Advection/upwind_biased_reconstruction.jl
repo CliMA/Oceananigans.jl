@@ -61,6 +61,17 @@ const AUAS = AbstractUpwindBiasedAdvectionScheme
 
 # Uniform upwind biased reconstruction
 for buffer in advection_buffers, FT in fully_supported_float_types
+    @eval begin 
+        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s::UpwindBiased{$buffer, $FT}, red_order::Int, bias, ψ, args...) = 
+            biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, Val(red_order), bias, ψ, args...)
+
+        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, red_order::Int, bias, ψ, args...) = 
+            biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, Val(red_order), bias, ψ, args...) 
+                                                
+        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s::UpwindBiased{$buffer, $FT}, red_order::Int, bias, ψ, args...) = 
+            biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, Val(red_order), bias, ψ, args...) 
+    end
+    
     for red_order in 1:buffer # The order that actually matters
         @eval begin
             @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, ::Val{$red_order}, bias, ψ, args...) = 

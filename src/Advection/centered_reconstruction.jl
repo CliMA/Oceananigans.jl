@@ -39,6 +39,12 @@ const ACAS = AbstractCenteredAdvectionScheme
 
 # uniform centered reconstruction
 for buffer in advection_buffers, FT in fully_supported_float_types
+    @eval begin
+        @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s::Centered{$buffer, $FT}, red_order::Int, ψ, args...) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, Val(red_order), ψ, args...)
+        @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s::Centered{$buffer, $FT}, red_order::Int, ψ, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, Val(red_order), ψ, args...)
+        @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s::Centered{$buffer, $FT}, red_order::Int, ψ, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, Val(red_order), ψ, args...)
+    end
+
     for red_order in 1:buffer # The order that actually matters
         @eval begin
             @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::Centered{$buffer, $FT}, ::Val{$red_order}, ψ,  args...)          = @inbounds $(calc_reconstruction_stencil(FT, red_order, :symmetric, :x, false))
