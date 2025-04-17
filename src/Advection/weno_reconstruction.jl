@@ -102,8 +102,6 @@ Base.summary(a::WENO{N}) where N = string("WENO(order=", N*2-1, ")")
 Base.show(io::IO, a::WENO{N, FT, PP}) where {N, FT, PP} =
     print(io, summary(a), " \n",
               a.bounds isa Nothing ? "" : " Bounds : \n    └── $(a.bounds) \n",
-              " Boundary scheme: ", "\n",
-              "    └── ", summary(a.buffer_scheme) , "\n",
               " Symmetric scheme: ", "\n",
               "    └── ", summary(a.advecting_velocity_scheme))
 
