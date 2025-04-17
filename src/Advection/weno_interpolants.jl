@@ -122,10 +122,10 @@ end
 for s in 0:5
     for FT in fully_supported_float_types
         @eval begin
-            @inline coeff_p(::Val{2}, ::Val{$FT}, R, ::Val{$s}) = ifelse(R==1, $(rc(FT, 2, 1, s)), $(rc(FT, 2, 2, s)))
-            @inline coeff_p(::Val{3}, ::Val{$FT}, R, ::Val{$s}) = ifelse(R==1, $(rc(FT, 3, 1, s)), ifelse(R==2, $(rc(FT, 3, 2, s)), $(rc(FT, 3, 3, s))))
-            @inline coeff_p(::Val{4}, ::Val{$FT}, R, ::Val{$s}) = ifelse(R==1, $(rc(FT, 4, 1, s)), ifelse(R==2, $(rc(FT, 4, 2, s)), ifelse(R==3, $(rc(FT, 4, 3, s)), $(rc(FT, 4, 4, s)))))
-            @inline coeff_p(::Val{5}, ::Val{$FT}, R, ::Val{$s}) = ifelse(R==1, $(rc(FT, 5, 1, s)), ifelse(R==2, $(rc(FT, 5, 2, s)), ifelse(R==3, $(rc(FT, 5, 3, s)), ifelse(R==4, $(rc(FT, 5, 4, s)), $(rc(FT, 5, 5, s))))))
+            @inline coeff_p(::WENO{2, $FT}, R, ::Val{$s}) = ifelse(R==1, $(rc(FT, 2, 1, s)), $(rc(FT, 2, 2, s)))
+            @inline coeff_p(::WENO{3, $FT}, R, ::Val{$s}) = ifelse(R==1, $(rc(FT, 3, 1, s)), ifelse(R==2, $(rc(FT, 3, 2, s)), $(rc(FT, 3, 3, s))))
+            @inline coeff_p(::WENO{4, $FT}, R, ::Val{$s}) = ifelse(R==1, $(rc(FT, 4, 1, s)), ifelse(R==2, $(rc(FT, 4, 2, s)), ifelse(R==3, $(rc(FT, 4, 3, s)), $(rc(FT, 4, 4, s)))))
+            @inline coeff_p(::WENO{5, $FT}, R, ::Val{$s}) = ifelse(R==1, $(rc(FT, 5, 1, s)), ifelse(R==2, $(rc(FT, 5, 2, s)), ifelse(R==3, $(rc(FT, 5, 3, s)), ifelse(R==4, $(rc(FT, 5, 4, s)), $(rc(FT, 5, 5, s))))))
         end
     end
 end
@@ -142,7 +142,7 @@ order `buffer * 2 - 1`. The reconstruction is calculated as
 
 where ``cᵣ`` is computed from the function `coeff_p`
 """
-@inline biased_p(scheme::WENO{N, FT}, red_order, stencil, ψ) where {N, FT} = @inbounds @muladd sum(coeff_p(Val(N), Val(FT), red_order, stencil) .* ψ)
+@inline biased_p(scheme, red_order, stencil, ψ) = @inbounds @muladd sum(coeff_p(scheme, red_order, stencil) .* ψ)
 
 # The rule for calculating smoothness indicators is the following (example WENO{4} which is seventh order) 
 # ψ[1] (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3] + C[4] * ψ[4]) + 
