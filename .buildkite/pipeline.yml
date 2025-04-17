@@ -120,7 +120,7 @@ steps:
       $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project=docs/ docs/make.jl
     agents:
       queue: "Oceananigans"
-    - wait: ~
+  - wait: ~
       continue_on_failure: true
 
   #####
