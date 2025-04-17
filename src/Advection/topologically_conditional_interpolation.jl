@@ -31,6 +31,9 @@ const AUGXZ  = AUG{<:Any, <:BT, <:Any, <:BT}
 const AUGYZ  = AUG{<:Any, <:Any, <:BT, <:BT}
 const AUGXYZ = AUG{<:Any, <:BT, <:BT, <:BT}
 
+# Bounded underlying grids of all types
+const AUGB = Union{AUGX, AUGY, AUGZ, AUGXY, AUGXZ, AUGYZ, AUGXYZ}
+
 # Left-biased buffers are smaller by one grid point on the right side; vice versa for right-biased buffers
 # Center interpolation stencil look at i + 1 (i.e., require one less point on the left)
 
@@ -71,11 +74,37 @@ for dir in (:x, :y, :z)
     end
 end
 
-# Separate High order advection from low order advection
-const HOADV = Union{Tuple(Centered{N} for N in advection_buffers[2:end])...,
-                    Tuple(UpwindBiased{N} for N in advection_buffers[2:end])...} 
+const A{N} = AbstractAdvectionScheme{N} 
 
-const LOADV = Union{UpwindBiased{1}, Centered{1}}
+# Fallback for periodic underlying grids
+@inline compute_face_reduced_order_x(i, j, k, grid, scheme::A{N}) where N = N
+@inline compute_face_reduced_order_y(i, j, k, grid, scheme::A{N}) where N = N
+@inline compute_face_reduced_order_z(i, j, k, grid, scheme::A{N}) where N = N
+
+# Fallback for periodic underlying grids
+@inline compute_center_reduced_order_x(i, j, k, grid, scheme::A{N}) where N = N
+@inline compute_center_reduced_order_y(i, j, k, grid, scheme::A{N}) where N = N
+@inline compute_center_reduced_order_z(i, j, k, grid, scheme::A{N}) where N = N
+
+# Fallback for lower order advection:
+@inline compute_face_reduced_order_x(i, j, k, ::AUGB, scheme::A{1}) = 1
+@inline compute_face_reduced_order_y(i, j, k, ::AUGB, scheme::A{1}) = 1
+@inline compute_face_reduced_order_z(i, j, k, ::AUGB, scheme::A{1}) = 1
+
+@inline compute_face_reduced_order_x(i, j, k, ::IBG, scheme::A{1}) = 1
+@inline compute_face_reduced_order_y(i, j, k, ::IBG, scheme::A{1}) = 1
+@inline compute_face_reduced_order_z(i, j, k, ::IBG, scheme::A{1}) = 1
+
+# Fallback for lower order advection on immersed grids
+@inline compute_center_reduced_order_x(i, j, k, ::AUGB, scheme::A{1}) = 1
+@inline compute_center_reduced_order_y(i, j, k, ::AUGB, scheme::A{1}) = 1
+@inline compute_center_reduced_order_z(i, j, k, ::AUGB, scheme::A{1}) = 1
+
+@inline compute_center_reduced_order_x(i, j, k, ::IBG, scheme::A{1}) = 1
+@inline compute_center_reduced_order_y(i, j, k, ::IBG, scheme::A{1}) = 1
+@inline compute_center_reduced_order_z(i, j, k, ::IBG, scheme::A{1}) = 1
+
+
 
 @inline function _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, args...)
     R = compute_face_reduced_order_x(i, j, k, grid, scheme)
