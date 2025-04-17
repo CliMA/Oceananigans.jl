@@ -281,10 +281,10 @@ for bias in (:_biased, :_symmetric)
         multidim_interp = Symbol(:_multi_dimensional_reconstruction_, dir2)
 
         @eval begin
-            @inline $interp_func(i, j, k, grid, ::VectorInvariant, interp_scheme, args...) =
+            @inline $interp_func(i, j, k, grid, ::VectorInvariant, interp_scheme::AbstractAdvectionScheme, args...) =
                         $interp_func(i, j, k, grid, interp_scheme, args...)
 
-            @inline $interp_func(i, j, k, grid, ::MultiDimensionalVectorInvariant, interp_scheme, args...) =
+            @inline $interp_func(i, j, k, grid, ::MultiDimensionalVectorInvariant, interp_scheme::AbstractAdvectionScheme, args...) =
                         $multidim_interp(i, j, k, grid, interp_scheme, $interp_func, args...)
         end
     end
