@@ -75,27 +75,27 @@ for buffer in advection_buffers, FT in fully_supported_float_types
     for red_order in 1:buffer # The order that actually matters
         @eval begin
             @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, ::Val{$red_order}, bias, ψ, args...) = 
-                @inbounds ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, red_order, :left,  :x, false)), 
+                @inbounds ifelse(bias, $(calc_reconstruction_stencil(FT, red_order, :left,  :x, false)), 
                                                     $(calc_reconstruction_stencil(FT, red_order, :right, :x, false)))
 
             @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, ::Val{$red_order}, bias, ψ::Function, args...) = 
-                @inbounds ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, red_order, :left,  :x, true)), 
+                @inbounds ifelse(bias, $(calc_reconstruction_stencil(FT, red_order, :left,  :x, true)), 
                                                     $(calc_reconstruction_stencil(FT, red_order, :right, :x, true)))
         
             @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, ::Val{$red_order}, bias, ψ, args...) = 
-                @inbounds ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, red_order, :left,  :y, false)), 
+                @inbounds ifelse(bias, $(calc_reconstruction_stencil(FT, red_order, :left,  :y, false)), 
                                                     $(calc_reconstruction_stencil(FT, red_order, :right, :y, false)))
                                                     
             @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, ::Val{$red_order}, bias, ψ::Function, args...) = 
-                @inbounds ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, red_order, :left,  :y, true)), 
+                @inbounds ifelse(bias, $(calc_reconstruction_stencil(FT, red_order, :left,  :y, true)), 
                                                     $(calc_reconstruction_stencil(FT, red_order, :right, :y, true)))
         
             @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, ::Val{$red_order}, bias, ψ, args...) = 
-                @inbounds ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, red_order, :left,  :z, false)), 
+                @inbounds ifelse(bias, $(calc_reconstruction_stencil(FT, red_order, :left,  :z, false)), 
                                                     $(calc_reconstruction_stencil(FT, red_order, :right, :z, false)))
 
             @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, ::Val{$red_order}, bias, ψ::Function, args...) = 
-                @inbounds ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, red_order, :left,  :z, true)), 
+                @inbounds ifelse(bias, $(calc_reconstruction_stencil(FT, red_order, :left,  :z, true)), 
                                                     $(calc_reconstruction_stencil(FT, red_order, :right, :z, true)))               
                                                     
             # Flat fluxes...
