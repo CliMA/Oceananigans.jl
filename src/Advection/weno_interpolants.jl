@@ -179,14 +179,12 @@ for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
                 # ENO coefficients for uniform direction (when T<:Nothing) and stretched directions (when T<:Any) 
                 @eval begin
                     """
-                        coeff_p(::WENO{buffer, FT}, bias, ::Val{stencil}, T, args...) 
+                        coeff_p(::WENO{buffer, FT}, bias, ::Val{stencil}) 
 
                     Reconstruction coefficients for the stencil number `stencil` of a WENO reconstruction 
-                    of order `buffer * 2 - 1`. Uniform coefficients (i.e. when `T == Nothing`) are independent on the
-                    `bias` of the reconstruction (either `LeftBias` or `RightBias`), while stretched coeffiecients are
-                    retrieved from the precomputed coefficients via the `retrieve_coeff` function
+                    of order `buffer * 2 - 1`. 
                     """
-                    @inline coeff_p(::WENO{$buffer, $FT}, ::Val{$red_order}, bias, ::Val{$stencil}, args...) = 
+                    @inline coeff_p(::WENO{$buffer, $FT}, ::Val{$red_order}, bias, ::Val{$stencil}) = 
                         @inbounds $(uniform_weno_coefficients(FT, buffer, red_order, stencil))
                 end
             end
@@ -206,7 +204,7 @@ for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
                 where ``cᵣ`` is computed from the function `coeff_p`
                 """
                 @inline biased_p(scheme::WENO{$buffer}, ::Val{$red_order}, bias, ::Val{$stencil}, ψ) = 
-                    @inbounds @muladd sum(coeff_p(scheme, Val($red_order), bias, Val($stencil), T) .* ψ)
+                    @inbounds @muladd sum(coeff_p(scheme, Val($red_order), bias, Val($stencil)) .* ψ)
             end
         end
     end
