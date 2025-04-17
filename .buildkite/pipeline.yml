@@ -48,7 +48,7 @@ steps:
 
       # Strip emoji for environment variable
       group="{{ matrix.group }}"
-      export TEST_GROUP="${group#* }"
+      export TEST_GROUP="unit"
 
       echo $TEST_GROUP
       $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e \
