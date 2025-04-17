@@ -108,12 +108,10 @@ for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
             # ENO coefficients for uniform direction (when T<:Nothing) and stretched directions (when T<:Any) 
             @eval begin
                 """
-                    coeff_p(::WENO{buffer, FT}, bias, ::Val{stencil}, T, args...) 
+                    coeff_p(::WENO{buffer, FT}, bias, ::Val{stencil}) 
 
                 Reconstruction coefficients for the stencil number `stencil` of a WENO reconstruction 
-                of order `buffer * 2 - 1`. Uniform coefficients (i.e. when `T == Nothing`) are independent on the
-                `bias` of the reconstruction (either `LeftBias` or `RightBias`), while stretched coeffiecients are
-                retrieved from the precomputed coefficients via the `retrieve_coeff` function
+                of order `buffer * 2 - 1`.
                 """
                 @inline coeff_p(::WENO{$buffer, $FT}, bias, ::Val{$stencil}) = 
                     @inbounds $(stencil_coefficients(FT, 50, stencil, collect(1:100), collect(1:100); order=buffer))
@@ -504,7 +502,7 @@ for buffer in advection_buffers[2:end]
 end
 
 # Interpolation functions
-for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, :z], [1, 2, 3], [:XT, :YT, :ZT]) 
+for (interp, dir) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, :z]) 
     interpolate_func = Symbol(:biased_interpolate_, interp)
     stencil          = Symbol(:weno_stencil_, dir)
     
