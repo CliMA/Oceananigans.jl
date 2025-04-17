@@ -61,14 +61,14 @@ const A{B} = AbstractAdvectionScheme{B}
 @inline compute_center_reduced_order_z(i, j, k, ::AUGB, ::A{1}) = 1
 
 # Bounded grids
-@inline compute_face_reduced_order_x(i, j, k, grid::AUGBX, ::A{B}) where B = reduced_order(i, topology(grid, 1), size(grid, 1), B)
-@inline compute_face_reduced_order_y(i, j, k, grid::AUGBY, ::A{B}) where B = reduced_order(j, topology(grid, 2), size(grid, 2), B)
-@inline compute_face_reduced_order_z(i, j, k, grid::AUGBZ, ::A{B}) where B = reduced_order(k, topology(grid, 3), size(grid, 3), B)
+@inline compute_face_reduced_order_x(i, j, k, grid::AUGX, ::A{B}) where B = reduced_order(i, topology(grid, 1), size(grid, 1), B)
+@inline compute_face_reduced_order_y(i, j, k, grid::AUGY, ::A{B}) where B = reduced_order(j, topology(grid, 2), size(grid, 2), B)
+@inline compute_face_reduced_order_z(i, j, k, grid::AUGZ, ::A{B}) where B = reduced_order(k, topology(grid, 3), size(grid, 3), B)
 
 # Fallback for periodic underlying grids
-@inline compute_center_reduced_order_x(i, j, k, grid::AUGBX, ::A{B}) where B = reduced_order(i, topology(grid, 1), size(grid, 1), B)
-@inline compute_center_reduced_order_y(i, j, k, grid::AUGBY, ::A{B}) where B = reduced_order(j, topology(grid, 2), size(grid, 2), B)
-@inline compute_center_reduced_order_z(i, j, k, grid::AUGBZ, ::A{B}) where B = reduced_order(k, topology(grid, 3), size(grid, 3), B)
+@inline compute_center_reduced_order_x(i, j, k, grid::AUGX, ::A{B}) where B = reduced_order(i, topology(grid, 1), size(grid, 1), B)
+@inline compute_center_reduced_order_y(i, j, k, grid::AUGY, ::A{B}) where B = reduced_order(j, topology(grid, 2), size(grid, 2), B)
+@inline compute_center_reduced_order_z(i, j, k, grid::AUGZ, ::A{B}) where B = reduced_order(k, topology(grid, 3), size(grid, 3), B)
 
 @inline function _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, args...)
     R = compute_face_reduced_order_x(i, j, k, grid, scheme)
