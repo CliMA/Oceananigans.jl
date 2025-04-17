@@ -5,8 +5,10 @@ export
     FFTBasedPoissonSolver,
     FourierTridiagonalPoissonSolver,
     ConjugateGradientSolver,
+    ConjugateGradientPoissonSolver,
     HeptadiagonalIterativeSolver,
-    KrylovSolver
+    KrylovSolver,
+    KrylovPoissonSolver
 
 using Statistics
 using FFTW
@@ -45,6 +47,7 @@ include("fft_based_poisson_solver.jl")
 include("fourier_tridiagonal_poisson_solver.jl")
 include("conjugate_gradient_poisson_solver.jl")
 include("krylov_solver.jl")
+include("krylov_poisson_solver.jl")
 include("sparse_approximate_inverse.jl")
 include("matrix_solver_utils.jl")
 include("sparse_preconditioners.jl")
