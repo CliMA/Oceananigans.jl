@@ -451,10 +451,10 @@ end
 
 # Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
 # Parallel to the interpolation direction! (same as left/right stencil)
-@inline tangential_stencil_u(i, j, k, grid, scheme, red_order, bias, ::Val{1}, u) = @inbounds weno_stencil_x(i, j, k, grid, scheme, red_order, bias, ℑyᵃᶠᵃ, u)
-@inline tangential_stencil_u(i, j, k, grid, scheme, red_order, bias, ::Val{2}, u) = @inbounds weno_stencil_y(i, j, k, grid, scheme, red_order, bias, ℑyᵃᶠᵃ, u)
-@inline tangential_stencil_v(i, j, k, grid, scheme, red_order, bias, ::Val{1}, v) = @inbounds weno_stencil_x(i, j, k, grid, scheme, red_order, bias, ℑxᶠᵃᵃ, v)
-@inline tangential_stencil_v(i, j, k, grid, scheme, red_order, bias, ::Val{2}, v) = @inbounds weno_stencil_y(i, j, k, grid, scheme, red_order, bias, ℑxᶠᵃᵃ, v)
+@inline tangential_stencil_u(i, j, k, grid, scheme, red_order, bias, ::Val{1}, u) = weno_stencil_x(i, j, k, grid, scheme, red_order, bias, ℑyᵃᶠᵃ, u)
+@inline tangential_stencil_u(i, j, k, grid, scheme, red_order, bias, ::Val{2}, u) = weno_stencil_y(i, j, k, grid, scheme, red_order, bias, ℑyᵃᶠᵃ, u)
+@inline tangential_stencil_v(i, j, k, grid, scheme, red_order, bias, ::Val{1}, v) = weno_stencil_x(i, j, k, grid, scheme, red_order, bias, ℑxᶠᵃᵃ, v)
+@inline tangential_stencil_v(i, j, k, grid, scheme, red_order, bias, ::Val{2}, v) = weno_stencil_y(i, j, k, grid, scheme, red_order, bias, ℑxᶠᵃᵃ, v)
 
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
 @inline function metaprogrammed_weno_reconstruction(buffer)
@@ -496,7 +496,7 @@ for buffer in advection_buffers[2:end]
 end
 
 # Interpolation functions
-for (interp, dir) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, :z]) 
+for (interp, dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, :z], [1, 2, 3]) 
     interpolate_func = Symbol(:biased_interpolate_, interp)
     stencil          = Symbol(:weno_stencil_, dir)
     
@@ -524,7 +524,7 @@ for (interp, dir) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, :z])
                                             ψ, VI::VelocityStencil, u, v, args...) where {N, FT}
 
             ψₜ = $stencil(i, j, k, grid, scheme, val_red_order, bias, ψ, u, v, args...)
-            ω = biased_weno_weights((i, j, k), grid, scheme, val_red_order, bias, VI, u, v)
+            ω = biased_weno_weights((i, j, k), grid, scheme, val_red_order, bias, Val($val), VI, u, v)
             return weno_reconstruction(scheme, val_red_order, bias, ψₜ, ω)
         end
 
