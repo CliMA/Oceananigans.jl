@@ -173,57 +173,65 @@ for side in (:ᶜ, :ᶠ)
     end
 end
 
+@inline ord(::Val{1}) = 1
+@inline ord(::Val{2}) = rand((1, 2))
+@inline ord(::Val{3}) = rand((1, 2, 3))
+@inline ord(::Val{4}) = rand((1, 2, 3, 4))
+@inline ord(::Val{5}) = rand((1, 2, 3, 4, 5))
+@inline ord(::Val{6}) = rand((1, 2, 3, 4, 5, 6))
 
-@eval begin
-    # Faces symmetric
-    @inline function compute_face_reduced_order_x(i, j, k, grid::IBG, ::CenteredScheme{B}) where B 
-        return 2 # $(inside_immersed_boundary(buffer, :none, :x, side; xside = :f)...)
-    end
+for B in advection_buffers
+    @eval begin
+        # Faces symmetric
+        @inline function compute_face_reduced_order_x(i, j, k, grid::IBG, ::CenteredScheme{$B})
+            return ord(Val($B)) # $(inside_immersed_boundary(buffer, :none, :x, side; xside = :f)...)
+        end
 
-    @inline function compute_face_reduced_order_y(i, j, k, grid::IBG, ::CenteredScheme{B}) where B 
-        return 2 #  $(inside_immersed_boundary(buffer, :none, :y, side; yside = :f)...)
-    end
+        @inline function compute_face_reduced_order_y(i, j, k, grid::IBG, ::CenteredScheme{$B}) 
+            return ord(Val($B)) #  $(inside_immersed_boundary(buffer, :none, :y, side; yside = :f)...)
+        end
 
-    @inline function compute_face_reduced_order_z(i, j, k, grid::IBG, ::CenteredScheme{B}) where B 
-        return 2 #  $(inside_immersed_boundary(buffer, :none, :z, side; zside = :f)...)
-    end
+        @inline function compute_face_reduced_order_z(i, j, k, grid::IBG, ::CenteredScheme{$B})
+            return ord(Val($B)) #  $(inside_immersed_boundary(buffer, :none, :z, side; zside = :f)...)
+        end
 
-    # Centers symmetric
-    @inline function compute_center_reduced_order_x(i, j, k, grid::IBG, ::CenteredScheme{B}) where B 
-        return 2 #  $(inside_immersed_boundary(buffer, :none, :x, side; xside = :c)...)
-    end
+        # Centers symmetric
+        @inline function compute_center_reduced_order_x(i, j, k, grid::IBG, ::CenteredScheme{$B}) 
+            return ord(Val($B)) #  $(inside_immersed_boundary(buffer, :none, :x, side; xside = :c)...)
+        end
 
-    @inline function compute_center_reduced_order_y(i, j, k, grid::IBG, ::CenteredScheme{B}) where B 
-        return 1 #  $(inside_immersed_boundary(buffer, :none, :y, side; yside = :c)...)
-    end
+        @inline function compute_center_reduced_order_y(i, j, k, grid::IBG, ::CenteredScheme{$B})
+            return ord(Val($B)) #  $(inside_immersed_boundary(buffer, :none, :y, side; yside = :c)...)
+        end
 
-    @inline function compute_center_reduced_order_z(i, j, k, grid::IBG, ::CenteredScheme{B}) where B 
-        return 1 #  $(inside_immersed_boundary(buffer, :none, :z, side; zside = :c)...)
-    end
+        @inline function compute_center_reduced_order_z(i, j, k, grid::IBG, ::CenteredScheme{$B})
+            return ord(Val($B)) #  $(inside_immersed_boundary(buffer, :none, :z, side; zside = :c)...)
+        end
 
-    # Faces biased
-    @inline function compute_face_reduced_order_x(i, j, k, grid::IBG, ::UpwindScheme{B}) where B 
-        return 1 #  $(inside_immersed_boundary(buffer, :interior, :x, side; xside = :f)...)
-    end
+        # Faces biased
+        @inline function compute_face_reduced_order_x(i, j, k, grid::IBG, ::UpwindScheme{$B})
+            return ord(Val($B)) #  $(inside_immersed_boundary(buffer, :interior, :x, side; xside = :f)...)
+        end
 
-    @inline function compute_face_reduced_order_y(i, j, k, grid::IBG, ::UpwindScheme{B}) where B 
-       return 1 #  $(inside_immersed_boundary(buffer, :interior, :y, side; yside = :f)...)
-    end
+        @inline function compute_face_reduced_order_y(i, j, k, grid::IBG, ::UpwindScheme{$B}) 
+            return ord(Val($B)) #  $(inside_immersed_boundary(buffer, :interior, :y, side; yside = :f)...)
+        end
 
-    @inline function compute_face_reduced_order_z(i, j, k, grid::IBG, ::UpwindScheme{B}) where B 
-       return 1 #   $(inside_immersed_boundary(buffer, :interior, :z, side; zside = :f)...)
-    end
+        @inline function compute_face_reduced_order_z(i, j, k, grid::IBG, ::UpwindScheme{$B}) 
+            return ord(Val($B)) #   $(inside_immersed_boundary(buffer, :interior, :z, side; zside = :f)...)
+        end
 
-    # Centers biased
-    @inline function compute_center_reduced_order_x(i, j, k, grid::IBG, ::UpwindScheme{B}) where B 
-       return 1 #   $(inside_immersed_boundary(buffer, :interior, :x, side; xside = :c)...)
-    end
+        # Centers biased
+        @inline function compute_center_reduced_order_x(i, j, k, grid::IBG, ::UpwindScheme{$B}) 
+            return ord(Val($B)) #   $(inside_immersed_boundary(buffer, :interior, :x, side; xside = :c)...)
+        end
 
-    @inline function compute_center_reduced_order_y(i, j, k, grid::IBG, ::UpwindScheme{B}) where B 
-       return 1 #   $(inside_immersed_boundary(buffer, :interior, :y, side; yside = :c)...)
-    end
+        @inline function compute_center_reduced_order_y(i, j, k, grid::IBG, ::UpwindScheme{$B})
+            return ord(Val($B)) #   $(inside_immersed_boundary(buffer, :interior, :y, side; yside = :c)...)
+        end
 
-    @inline function compute_center_reduced_order_z(i, j, k, grid::IBG, ::UpwindScheme{B}) where B 
-       return 1 #   $(inside_immersed_boundary(buffer, :interior, :z, side; zside = :c)...)
+        @inline function compute_center_reduced_order_z(i, j, k, grid::IBG, ::UpwindScheme{$B})
+            return ord(Val($B)) #   $(inside_immersed_boundary(buffer, :interior, :z, side; zside = :c)...)
+        end
     end
 end
