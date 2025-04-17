@@ -570,31 +570,17 @@ for arch in archs
                 tke_yz = Field(tke_ccc, indices=(2, 2:3, 2:3))
                 tke_x = Field(tke_ccc, indices=(2:3, 2, 2))
 
-                if (grid isa ImmersedBoundaryGrid) & (arch==GPU())
-                    @test try compute!(tke_xy); true; catch; false; end
-                    @test all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
+                @test try compute!(tke_xy); true; catch; false; end
+                @test all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
     
-                    @test try compute!(tke_xz); true; catch; false; end
-                    @test all(interior(tke_xz) .== 9/2)
+                @test try compute!(tke_xz); true; catch; false; end
+                @test all(interior(tke_xz) .== 9/2)
 
-                    @test try compute!(tke_yz); true; catch; false; end
-                    @test all(interior(tke_yz) .== 9/2)
+                @test try compute!(tke_yz); true; catch; false; end
+                @test all(interior(tke_yz) .== 9/2)
 
-                    @test try compute!(tke_x); true; catch; false; end
-                    @test all(interior(tke_x) .== 9/2)
-                else
-                    @test try compute!(tke_xy); true; catch; false; end
-                    @test all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
-    
-                    @test try compute!(tke_xz); true; catch; false; end
-                    @test all(interior(tke_xz) .== 9/2)
-
-                    @test try compute!(tke_yz); true; catch; false; end
-                    @test all(interior(tke_yz) .== 9/2)
-
-                    @test try compute!(tke_x); true; catch; false; end
-                    @test all(interior(tke_x) .== 9/2)
-                end
+                @test try compute!(tke_x); true; catch; false; end
+                @test all(interior(tke_x) .== 9/2)
             end
 
             @testset "Computations with Fields [$A, $G]" begin
