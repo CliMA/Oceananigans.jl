@@ -119,7 +119,7 @@ julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
 ```
 """
 @inline function inside_immersed_boundary(buffer, shift, dir, side;
-                                          xside = :ᶠ, yside = :ᶠ, zside = :ᶠ)
+                                          xside = :f, yside = :f, zside = :f)
 
     N = buffer * 2
     if shift != :none
@@ -138,9 +138,9 @@ julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
 
     for (idx, n) in enumerate(rng)
         c = side == :ᶠ ? n - buffer - 1 : n - buffer 
-        xflipside = xside == :ᶠ ? :c : :f
-        yflipside = yside == :ᶠ ? :c : :f
-        zflipside = zside == :ᶠ ? :c : :f
+        xflipside = xside == :f ? :c : :f
+        yflipside = yside == :f ? :c : :f
+        zflipside = zside == :f ? :c : :f
         inactive_cells[idx] =  dir == :x ? 
                                :(inactive_node(i + $c, j, k, ibg, $xflipside, $yflipside, $zflipside)) :
                                dir == :y ?
@@ -160,16 +160,6 @@ for side in (:ᶜ, :ᶠ)
     near_y_boundary_bias = Symbol(:near_y_immersed_boundary_biased, side)
     near_z_boundary_bias = Symbol(:near_z_immersed_boundary_biased, side)
 
-    @eval begin
-        @inline $near_x_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{0}, args...) = false
-        @inline $near_y_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{0}, args...) = false
-        @inline $near_z_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{0}, args...) = false
-
-        @inline $near_x_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{0}, args...) = false
-        @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{0}, args...) = false
-        @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{0}, args...) = false
-    end
-
     for buffer in advection_buffers
         @eval begin
             @inline $near_x_boundary_symm(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :none, :x, side; xside = side)...))
@@ -180,5 +170,60 @@ for side in (:ᶜ, :ᶠ)
             @inline $near_y_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :y, side; yside = side)...))
             @inline $near_z_boundary_bias(i, j, k, ibg, ::AbstractAdvectionScheme{$buffer}) = (|)($(inside_immersed_boundary(buffer, :interior, :z, side; zside = side)...))
         end
+    end
+end
+
+
+@eval begin
+    # Faces symmetric
+    @inline function compute_face_reduced_order_x(i, j, k, grid::IBG, ::CenteredScheme{B}) where B 
+        return rand(1:B) # $(inside_immersed_boundary(buffer, :none, :x, side; xside = :f)...)
+    end
+
+    @inline function compute_face_reduced_order_y(i, j, k, grid::IBG, ::CenteredScheme{B}) where B 
+        return rand(1:B) #  $(inside_immersed_boundary(buffer, :none, :y, side; yside = :f)...)
+    end
+
+    @inline function compute_face_reduced_order_z(i, j, k, grid::IBG, ::CenteredScheme{B}) where B 
+        return rand(1:B) #  $(inside_immersed_boundary(buffer, :none, :z, side; zside = :f)...)
+    end
+
+    # Centers symmetric
+    @inline function compute_center_reduced_order_x(i, j, k, grid::IBG, ::CenteredScheme{B}) where B 
+        return rand(1:B) #  $(inside_immersed_boundary(buffer, :none, :x, side; xside = :c)...)
+    end
+
+    @inline function compute_center_reduced_order_y(i, j, k, grid::IBG, ::CenteredScheme{B}) where B 
+        return rand(1:B) #  $(inside_immersed_boundary(buffer, :none, :y, side; yside = :c)...)
+    end
+
+    @inline function compute_center_reduced_order_z(i, j, k, grid::IBG, ::CenteredScheme{B}) where B 
+        return rand(1:B) #  $(inside_immersed_boundary(buffer, :none, :z, side; zside = :c)...)
+    end
+
+    # Faces biased
+    @inline function compute_face_reduced_order_x(i, j, k, grid::IBG, ::UpwindScheme{B}) where B 
+        return rand(1:B) #  $(inside_immersed_boundary(buffer, :interior, :x, side; xside = :f)...)
+    end
+
+    @inline function compute_face_reduced_order_y(i, j, k, grid::IBG, ::UpwindScheme{B}) where B 
+       return rand(1:B) #  $(inside_immersed_boundary(buffer, :interior, :y, side; yside = :f)...)
+    end
+
+    @inline function compute_face_reduced_order_z(i, j, k, grid::IBG, ::UpwindScheme{B}) where B 
+       return rand(1:B) #   $(inside_immersed_boundary(buffer, :interior, :z, side; zside = :f)...)
+    end
+
+    # Centers biased
+    @inline function compute_center_reduced_order_x(i, j, k, grid::IBG, ::UpwindScheme{B}) where B 
+       return rand(1:B) #   $(inside_immersed_boundary(buffer, :interior, :x, side; xside = :c)...)
+    end
+
+    @inline function compute_center_reduced_order_y(i, j, k, grid::IBG, ::UpwindScheme{B}) where B 
+       return rand(1:B) #   $(inside_immersed_boundary(buffer, :interior, :y, side; yside = :c)...)
+    end
+
+    @inline function compute_center_reduced_order_z(i, j, k, grid::IBG, ::UpwindScheme{B}) where B 
+       return rand(1:B) #   $(inside_immersed_boundary(buffer, :interior, :z, side; zside = :c)...)
     end
 end
