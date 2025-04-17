@@ -15,7 +15,7 @@ function jld2_sliced_field_output(model, outputs=model.velocities)
                 v = (x, y, z) -> rand(),
                 w = (x, y, z) -> rand())
 
-    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+    simulation = Simulation(model, Δt=1, stop_iteration=1)
 
     simulation.output_writers[:velocities] = JLD2Writer(model, outputs,
                                                         schedule = TimeInterval(1),
@@ -466,5 +466,20 @@ for arch in archs
         ##### Time-averaging (same test as in NetCDFWriter)
         #####
         test_jld2_time_averaging(arch)
+
+        # Test that free surface can be output
+        grid = RectilinearGrid(arch, size=(4, 4, 4), x=(0, 1), y=(0, 1), z=(0, 1))
+        free_surface = SplitExplicitFreeSurface(substeps=10)
+        model = HydrostaticFreeSurfaceModel(; grid, free_surface)
+        simulation = Simulation(model, Δt=1, stop_iteration=2)
+        filename = "test_free_surface_output.jld2"
+        ow = JLD2Writer(model, (; η=model.free_surface.η); filename,
+                        schedule = IterationInterval(1),
+                        with_halos = false,
+                        overwrite_existing = true)
+        simulation.output_writers[:free_surface] = ow
+        run!(simulation)
+        ηt = FieldTimeSeries(filename, "η")
+        @test size(parent(ηt[1])) == (4, 4, 1)
     end
 end
