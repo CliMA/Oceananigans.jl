@@ -34,7 +34,7 @@ c_real = CenterField(grid)
 set!(c_real, c₀)
 
 # Change to test pure advection schemes
-advection = WENO(order=5)
+advection = WENO(order=9)
 
 model = NonhydrostaticModel(; grid, timestepper=:RungeKutta3, advection, tracers=:c)
 

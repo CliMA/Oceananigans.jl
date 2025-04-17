@@ -78,76 +78,26 @@ const ε = 1f-8
 for FT in fully_supported_float_types
     @eval begin
         # WENO 3rd order
-        @inline C★(::WENO{2, $FT}, ::Val{1}, ::Val{0}) = $(FT(1))
-        @inline C★(::WENO{2, $FT}, ::Val{1}, ::Val{1}) = $(FT(0))
-
-        @inline C★(::WENO{2, $FT}, ::Val{2}, ::Val{0}) = $(FT(2//3))
-        @inline C★(::WENO{2, $FT}, ::Val{2}, ::Val{1}) = $(FT(1//3))
+        @inline C★(::WENO{2, $FT}, red_order, ::Val{0}) = ifelse(red_order==1, $(FT(1)), $(FT(2//3)))
+        @inline C★(::WENO{2, $FT}, red_order, ::Val{1}) = ifelse(red_order==1, $(FT(0)), $(FT(1//3)))
 
         # WENO 5th order
-        @inline C★(::WENO{3, $FT}, ::Val{1}, ::Val{0}) = $(FT(1))
-        @inline C★(::WENO{3, $FT}, ::Val{1}, ::Val{1}) = $(FT(0))
-        @inline C★(::WENO{3, $FT}, ::Val{1}, ::Val{2}) = $(FT(0))
-
-        @inline C★(::WENO{3, $FT}, ::Val{2}, ::Val{0}) = $(FT(2//3))
-        @inline C★(::WENO{3, $FT}, ::Val{2}, ::Val{1}) = $(FT(1//3))
-        @inline C★(::WENO{3, $FT}, ::Val{2}, ::Val{2}) = $(FT(0))
-
-        @inline C★(::WENO{3, $FT}, ::Val{3}, ::Val{0}) = $(FT(3//10))
-        @inline C★(::WENO{3, $FT}, ::Val{3}, ::Val{1}) = $(FT(3//5))
-        @inline C★(::WENO{3, $FT}, ::Val{3}, ::Val{2}) = $(FT(1//10))
+        @inline C★(::WENO{3, $FT}, red_order, ::Val{0}) = ifelse(red_order==1, $(FT(1)), ifelse(red_order==2, $(FT(2//3)), $(FT(3//10))))
+        @inline C★(::WENO{3, $FT}, red_order, ::Val{1}) = ifelse(red_order==1, $(FT(0)), ifelse(red_order==2, $(FT(1//3)), $(FT(3//5))))
+        @inline C★(::WENO{3, $FT}, red_order, ::Val{2}) = ifelse(red_order==1, $(FT(0)), ifelse(red_order==2, $(FT(0)),    $(FT(1//10))))
 
         # WENO 7th order
-        @inline C★(::WENO{4, $FT}, ::Val{1}, ::Val{0}) = $(FT(1))
-        @inline C★(::WENO{4, $FT}, ::Val{1}, ::Val{1}) = $(FT(0))
-        @inline C★(::WENO{4, $FT}, ::Val{1}, ::Val{2}) = $(FT(0))
-        @inline C★(::WENO{4, $FT}, ::Val{1}, ::Val{3}) = $(FT(0))
-
-        @inline C★(::WENO{4, $FT}, ::Val{2}, ::Val{0}) = $(FT(2//3))
-        @inline C★(::WENO{4, $FT}, ::Val{2}, ::Val{1}) = $(FT(1//3))
-        @inline C★(::WENO{4, $FT}, ::Val{2}, ::Val{2}) = $(FT(0))
-        @inline C★(::WENO{4, $FT}, ::Val{2}, ::Val{3}) = $(FT(0))
-
-        @inline C★(::WENO{4, $FT}, ::Val{3}, ::Val{0}) = $(FT(3//10))
-        @inline C★(::WENO{4, $FT}, ::Val{3}, ::Val{1}) = $(FT(3//5))
-        @inline C★(::WENO{4, $FT}, ::Val{3}, ::Val{2}) = $(FT(1//10))
-        @inline C★(::WENO{4, $FT}, ::Val{3}, ::Val{3}) = $(FT(0))
-
-        @inline C★(::WENO{4, $FT}, ::Val{4}, ::Val{0}) = $(FT(4//35))
-        @inline C★(::WENO{4, $FT}, ::Val{4}, ::Val{1}) = $(FT(18//35))
-        @inline C★(::WENO{4, $FT}, ::Val{4}, ::Val{2}) = $(FT(12//35))
-        @inline C★(::WENO{4, $FT}, ::Val{4}, ::Val{3}) = $(FT(1//35))
+        @inline C★(::WENO{4, $FT}, red_order, ::Val{0}) = ifelse(red_order==1, $(FT(1)), ifelse(red_order==2, $(FT(2//3)), ifelse(red_order==3, $(FT(3//10)), $(FT(4//35)))))
+        @inline C★(::WENO{4, $FT}, red_order, ::Val{1}) = ifelse(red_order==1, $(FT(0)), ifelse(red_order==2, $(FT(1//3)), ifelse(red_order==3, $(FT(3//5)),  $(FT(18//35)))))
+        @inline C★(::WENO{4, $FT}, red_order, ::Val{2}) = ifelse(red_order==1, $(FT(0)), ifelse(red_order==2, $(FT(0)),    ifelse(red_order==3, $(FT(1//10)), $(FT(12//35)))))
+        @inline C★(::WENO{4, $FT}, red_order, ::Val{3}) = ifelse(red_order <4, $(FT(0)), $(FT(1//35)))
 
         # WENO 9th order
-        @inline C★(::WENO{5, $FT}, ::Val{1}, ::Val{0}) = $(FT(1))
-        @inline C★(::WENO{5, $FT}, ::Val{1}, ::Val{1}) = $(FT(0))
-        @inline C★(::WENO{5, $FT}, ::Val{1}, ::Val{2}) = $(FT(0))
-        @inline C★(::WENO{5, $FT}, ::Val{1}, ::Val{3}) = $(FT(0))
-        @inline C★(::WENO{5, $FT}, ::Val{1}, ::Val{4}) = $(FT(0))
-
-        @inline C★(::WENO{5, $FT}, ::Val{2}, ::Val{0}) = $(FT(2//3))
-        @inline C★(::WENO{5, $FT}, ::Val{2}, ::Val{1}) = $(FT(1//3))
-        @inline C★(::WENO{5, $FT}, ::Val{2}, ::Val{2}) = $(FT(0))
-        @inline C★(::WENO{5, $FT}, ::Val{2}, ::Val{3}) = $(FT(0))
-        @inline C★(::WENO{5, $FT}, ::Val{2}, ::Val{4}) = $(FT(0))
-
-        @inline C★(::WENO{5, $FT}, ::Val{3}, ::Val{0}) = $(FT(3//10))
-        @inline C★(::WENO{5, $FT}, ::Val{3}, ::Val{1}) = $(FT(3//5))
-        @inline C★(::WENO{5, $FT}, ::Val{3}, ::Val{2}) = $(FT(1//10))
-        @inline C★(::WENO{5, $FT}, ::Val{3}, ::Val{3}) = $(FT(0))
-        @inline C★(::WENO{5, $FT}, ::Val{3}, ::Val{4}) = $(FT(0))
-
-        @inline C★(::WENO{5, $FT}, ::Val{4}, ::Val{0}) = $(FT(4//35))
-        @inline C★(::WENO{5, $FT}, ::Val{4}, ::Val{1}) = $(FT(18//35))
-        @inline C★(::WENO{5, $FT}, ::Val{4}, ::Val{2}) = $(FT(12//35))
-        @inline C★(::WENO{5, $FT}, ::Val{4}, ::Val{3}) = $(FT(1//35))
-        @inline C★(::WENO{5, $FT}, ::Val{4}, ::Val{4}) = $(FT(0))
-
-        @inline C★(::WENO{5, $FT}, ::Val{5}, ::Val{0}) = $(FT(5//126))
-        @inline C★(::WENO{5, $FT}, ::Val{5}, ::Val{1}) = $(FT(20//63))
-        @inline C★(::WENO{5, $FT}, ::Val{5}, ::Val{2}) = $(FT(10//21))
-        @inline C★(::WENO{5, $FT}, ::Val{5}, ::Val{3}) = $(FT(10//63))
-        @inline C★(::WENO{5, $FT}, ::Val{5}, ::Val{4}) = $(FT(1//126))
+        @inline C★(::WENO{5, $FT}, red_order, ::Val{0}) = ifelse(red_order==1, $(FT(1)), ifelse(red_order==2, $(FT(2//3)), ifelse(red_order==3, $(FT(3//10)), ifelse(red_order==4, $(FT(4//35)),  $(FT(5//126))))))
+        @inline C★(::WENO{5, $FT}, red_order, ::Val{1}) = ifelse(red_order==1, $(FT(0)), ifelse(red_order==2, $(FT(1//3)), ifelse(red_order==3, $(FT(3//5)),  ifelse(red_order==4, $(FT(18//35)), $(FT(20//63))))))
+        @inline C★(::WENO{5, $FT}, red_order, ::Val{2}) = ifelse(red_order==1, $(FT(0)), ifelse(red_order==2, $(FT(0)),    ifelse(red_order==3, $(FT(1//10)), ifelse(red_order==4, $(FT(12//35)), $(FT(100//231))))))
+        @inline C★(::WENO{5, $FT}, red_order, ::Val{3}) = ifelse(red_order <4, $(FT(0)), ifelse(red_order==4, $(FT(1//35)), $(FT(10//63))))
+        @inline C★(::WENO{5, $FT}, red_order, ::Val{4}) = ifelse(red_order <5, $(FT(0)), $(FT(1//126)))
 
         # WENO 11th order
         @inline C★(::WENO{6, $FT}, All, ::Val{0}) = $(FT(1//77))
@@ -159,7 +109,7 @@ for FT in fully_supported_float_types
     end
 end
 
-function uniform_weno_coefficients(FT, N, R, stencil)
+function rc(FT, N, R, stencil)
     if N == 1 || R == 1
         return (1, )
     else
@@ -169,43 +119,30 @@ function uniform_weno_coefficients(FT, N, R, stencil)
     end
 end
 
-# ENO reconstruction procedure per stencil 
-for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
-    for stencil in collect(0:1:buffer-1)
-        for red_order in 1:buffer
-            for FT in fully_supported_float_types
-                # ENO coefficients for uniform direction (when T<:Nothing) and stretched directions (when T<:Any) 
-                @eval begin
-                    """
-                        coeff_p(::WENO{buffer, FT}, bias, ::Val{stencil}) 
-
-                    Reconstruction coefficients for the stencil number `stencil` of a WENO reconstruction 
-                    of order `buffer * 2 - 1`. 
-                    """
-                    @inline coeff_p(::WENO{$buffer, $FT}, ::Val{$red_order}, bias, ::Val{$stencil}) = 
-                        @inbounds $(uniform_weno_coefficients(FT, buffer, red_order, stencil))
-                end
-            end
-        end
-        # left biased and right biased reconstruction value for each stencil
+for s in 0:5
+    for FT in fully_supported_float_types
         @eval begin
-            """ 
-                biased_p(scheme::WENO{buffer}, bias, ::Val{stencil}, ψ, T, dir, i, loc)
-
-            Biased reconstruction of `ψ` from the stencil `stencil` of a WENO reconstruction of
-            order `buffer * 2 - 1`. The reconstruction is calculated as
-            
-            ```math
-            ψ★ = ∑ᵣ cᵣ ⋅ ψᵣ
-            ```
-
-            where ``cᵣ`` is computed from the function `coeff_p`
-            """
-            @inline biased_p(scheme::WENO{$buffer}, red_order, bias, ::Val{$stencil}, ψ) = 
-                @inbounds @muladd sum(coeff_p(scheme, Val(red_order), bias, Val($stencil)) .* ψ)
+            @inline coeff_p(::Val{2}, ::Val{$FT}, R, ::Val{$s}) = ifelse(R==1, $(rc(FT, 2, 1, s)), $(rc(FT, 2, 2, s)))
+            @inline coeff_p(::Val{3}, ::Val{$FT}, R, ::Val{$s}) = ifelse(R==1, $(rc(FT, 3, 1, s)), ifelse(R==2, $(rc(FT, 3, 2, s)), $(rc(FT, 3, 3, s))))
+            @inline coeff_p(::Val{4}, ::Val{$FT}, R, ::Val{$s}) = ifelse(R==1, $(rc(FT, 4, 1, s)), ifelse(R==2, $(rc(FT, 4, 2, s)), ifelse(R==3, $(rc(FT, 4, 3, s)), $(rc(FT, 4, 4, s)))))
+            @inline coeff_p(::Val{5}, ::Val{$FT}, R, ::Val{$s}) = ifelse(R==1, $(rc(FT, 5, 1, s)), ifelse(R==2, $(rc(FT, 5, 2, s)), ifelse(R==3, $(rc(FT, 5, 3, s)), ifelse(R==4, $(rc(FT, 5, 4, s)), $(rc(FT, 5, 5, s))))))
         end
     end
 end
+
+""" 
+    biased_p(scheme::WENO{buffer}, bias, ::Val{stencil}, ψ, T, dir, i, loc)
+
+Biased reconstruction of `ψ` from the stencil `stencil` of a WENO reconstruction of
+order `buffer * 2 - 1`. The reconstruction is calculated as
+
+```math
+ψ★ = ∑ᵣ cᵣ ⋅ ψᵣ
+```
+
+where ``cᵣ`` is computed from the function `coeff_p`
+"""
+@inline biased_p(scheme::WENO{N, FT}, red_order, stencil, ψ) where {N, FT} = @inbounds @muladd sum(coeff_p(Val(N), Val(FT), red_order, stencil) .* ψ)
 
 # The rule for calculating smoothness indicators is the following (example WENO{4} which is seventh order) 
 # ψ[1] (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3] + C[4] * ψ[4]) + 
@@ -304,7 +241,7 @@ end
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(C★(scheme, Val(red_order), Val($(stencil-1))) * (1 + (τ / (β[$stencil] + ε))^2))
+        elem[stencil] = :(C★(scheme, red_order, Val($(stencil-1))) * (1 + (τ / (β[$stencil] + ε))^2))
     end
 
     return :($(elem...),)
@@ -317,14 +254,6 @@ for buffer in advection_buffers[2:end]
         @inline zweno_alpha_loop(scheme::WENO{$buffer, FT}, red_order, β, τ) where FT = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
     end
 end
-
-# Global smoothness indicator τ₂ᵣ₋₁ from "Accuracy of the weighted essentially non-oscillatory conservative finite difference schemes", Don & Borges, 2013
-@inline global_smoothness_indicator(::Val{1}, β) = @inbounds abs(β[1])
-@inline global_smoothness_indicator(::Val{2}, β) = @inbounds abs(β[1] - β[2])
-@inline global_smoothness_indicator(::Val{3}, β) = @inbounds abs(β[1] - β[3])
-@inline global_smoothness_indicator(::Val{4}, β) = @inbounds abs(β[1] +  3β[2] -   3β[3] -    β[4])
-@inline global_smoothness_indicator(::Val{5}, β) = @inbounds abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
-@inline global_smoothness_indicator(::Val{6}, β) = @inbounds abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
 
 """
     function biased_weno_weights(ψ, scheme::WENO{N, FT}, red_order, args...)
@@ -347,7 +276,7 @@ The ``α`` values are normalized before returning
 @inline function biased_weno_weights(ψ, grid, scheme::WENO{N, FT}, red_order, args...) where {N, FT}
     β = beta_loop(scheme, red_order, ψ)
                 
-    τ = global_smoothness_indicator(Val(red_order), β)
+    τ = global_smoothness_indicator(β, red_order)
     α = zweno_alpha_loop(scheme, red_order, β, τ)
 
     return α ./ sum(α)
@@ -356,13 +285,13 @@ end
 @inline function biased_weno_weights(ijk, grid, scheme::WENO{N, FT}, red_order, bias, dir, ::VelocityStencil, u, v) where {N, FT}
     i, j, k = ijk
     
-    uₛ = tangential_stencil_u(i, j, k, grid, scheme, red_order, bias, dir, u)
-    vₛ = tangential_stencil_v(i, j, k, grid, scheme, red_order, bias, dir, v)
+    uₛ = tangential_stencil_u(i, j, k, grid, scheme, bias, dir, u)
+    vₛ = tangential_stencil_v(i, j, k, grid, scheme, bias, dir, v)
     βᵤ = beta_loop(scheme, red_order, uₛ)
     βᵥ = beta_loop(scheme, red_order, vₛ)
     β  =  beta_sum(scheme, βᵤ, βᵥ)
 
-    τ = global_smoothness_indicator(Val(red_order), β)
+    τ = global_smoothness_indicator(β, red_order)
     α = zweno_alpha_loop(scheme, red_order, β, τ)
     
     return α ./ sum(α)
@@ -417,45 +346,45 @@ end
 for dir in (:x, :y, :z), (T, f) in zip((:Any, :Function), (false, true))
     stencil = Symbol(:weno_stencil_, dir)
     @eval begin
-        @inline function $stencil(i, j, k, grid, ::WENO{2}, N, bias, ψ::$T, args...) 
+        @inline function $stencil(i, j, k, grid, ::WENO{2}, bias, ψ::$T, args...) 
             S = @inbounds $(load_weno_stencil(2, dir, f))
-            return S₀₂(S, N, bias), S₁₂(S, N, bias)
+            return S₀₂(S, bias), S₁₂(S, bias)
         end
 
-        @inline function $stencil(i, j, k, grid, ::WENO{3}, N, bias, ψ::$T, args...) 
+        @inline function $stencil(i, j, k, grid, ::WENO{3}, bias, ψ::$T, args...) 
             S = @inbounds $(load_weno_stencil(3, dir, f))
-            return S₀₃(S, N, bias), S₁₃(S, N, bias), S₂₃(S, N, bias)
+            return S₀₃(S, bias), S₁₃(S, bias), S₂₃(S, bias)
         end
 
-        @inline function $stencil(i, j, k, grid, ::WENO{4}, N, bias, ψ::$T, args...) 
+        @inline function $stencil(i, j, k, grid, ::WENO{4}, bias, ψ::$T, args...) 
             S = @inbounds $(load_weno_stencil(4, dir, f))
-            return S₀₄(S, N, bias), S₁₄(S, N, bias), S₂₄(S, N, bias), S₃₄(S, N, bias)
+            return S₀₄(S, bias), S₁₄(S, bias), S₂₄(S, bias), S₃₄(S, bias)
         end
 
-        @inline function $stencil(i, j, k, grid, ::WENO{5}, N, bias, ψ::$T, args...) 
+        @inline function $stencil(i, j, k, grid, ::WENO{5}, bias, ψ::$T, args...) 
             S = @inbounds $(load_weno_stencil(5, dir, f))
-            return S₀₅(S, N, bias), S₁₅(S, N, bias), S₂₅(S, N, bias), S₃₅(S, N, bias), S₄₅(S, N, bias)
+            return S₀₅(S, bias), S₁₅(S, bias), S₂₅(S, bias), S₃₅(S, bias), S₄₅(S, bias)
         end
 
-        @inline function $stencil(i, j, k, grid, ::WENO{6}, N, bias, ψ::$T, args...) 
+        @inline function $stencil(i, j, k, grid, ::WENO{6}, bias, ψ::$T, args...) 
             S = @inbounds $(load_weno_stencil(6, dir, f))
-            return S₀₆(S, N, bias), S₁₆(S, N, bias), S₂₆(S, N, bias), S₃₆(S, N, bias), S₄₆(S, N, bias), S₅₆(S, N, bias)
+            return S₀₆(S, bias), S₁₆(S, bias), S₂₆(S, bias), S₃₆(S, bias), S₄₆(S, bias), S₅₆(S, bias)
         end
     end
 end
 
 # Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
 # Parallel to the interpolation direction! (same as left/right stencil)
-@inline tangential_stencil_u(i, j, k, grid, scheme, red_order, bias, ::Val{1}, u) = weno_stencil_x(i, j, k, grid, scheme, red_order, bias, ℑyᵃᶠᵃ, u)
-@inline tangential_stencil_u(i, j, k, grid, scheme, red_order, bias, ::Val{2}, u) = weno_stencil_y(i, j, k, grid, scheme, red_order, bias, ℑyᵃᶠᵃ, u)
-@inline tangential_stencil_v(i, j, k, grid, scheme, red_order, bias, ::Val{1}, v) = weno_stencil_x(i, j, k, grid, scheme, red_order, bias, ℑxᶠᵃᵃ, v)
-@inline tangential_stencil_v(i, j, k, grid, scheme, red_order, bias, ::Val{2}, v) = weno_stencil_y(i, j, k, grid, scheme, red_order, bias, ℑxᶠᵃᵃ, v)
+@inline tangential_stencil_u(i, j, k, grid, scheme, bias, ::Val{1}, u) = weno_stencil_x(i, j, k, grid, scheme, bias, ℑyᵃᶠᵃ, u)
+@inline tangential_stencil_u(i, j, k, grid, scheme, bias, ::Val{2}, u) = weno_stencil_y(i, j, k, grid, scheme, bias, ℑyᵃᶠᵃ, u)
+@inline tangential_stencil_v(i, j, k, grid, scheme, bias, ::Val{1}, v) = weno_stencil_x(i, j, k, grid, scheme, bias, ℑxᶠᵃᵃ, v)
+@inline tangential_stencil_v(i, j, k, grid, scheme, bias, ::Val{2}, v) = weno_stencil_y(i, j, k, grid, scheme, bias, ℑxᶠᵃᵃ, v)
 
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
 @inline function metaprogrammed_weno_reconstruction(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(ω[$stencil] * biased_p(scheme, red_order, bias, Val($(stencil-1)), ψ[$stencil]))
+        elem[stencil] = :(ω[$stencil] * biased_p(scheme, red_order, Val($(stencil-1)), ψ[$stencil]))
     end
 
     return Expr(:call, :+, elem...)
@@ -483,11 +412,11 @@ The calculation of the reconstruction is metaprogrammed in the `metaprogrammed_w
 
 Here, [`biased_p`](@ref) is the function that computes the linear reconstruction of the individual stencils.
 """
-@inline weno_reconstruction(scheme, bias, ψ, args...) = zero(ψ[1][1]) # Fallback only for documentation purposes
+@inline weno_reconstruction(scheme, red_order, ψ, args...) = zero(ψ[1][1]) # Fallback only for documentation purposes
 
 # Calculation of WENO reconstructed value v⋆ = ∑ᵣ(wᵣv̂ᵣ)
 for buffer in advection_buffers[2:end]
-    @eval @inline weno_reconstruction(scheme::WENO{$buffer}, red_order, bias, ψ, ω) = @inbounds $(metaprogrammed_weno_reconstruction(buffer))
+    @eval @inline weno_reconstruction(scheme::WENO{$buffer}, red_order, ψ, ω) = @inbounds $(metaprogrammed_weno_reconstruction(buffer))
 end
 
 # Interpolation functions
@@ -500,37 +429,37 @@ for (interp, dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, 
                                             scheme::WENO{N, FT}, red_order, bias,
                                             ψ, args...) where {N, FT}
 
-            ψₜ = $stencil(i, j, k, grid, scheme, red_order, bias, ψ, args...)
+            ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
             ω = biased_weno_weights(ψₜ, grid, scheme, red_order, bias, args...)
-            return weno_reconstruction(scheme, red_order, bias, ψₜ, ω)
+            return weno_reconstruction(scheme, red_order, ψₜ, ω)::FT
         end
 
         @inline function $interpolate_func(i, j, k, grid, 
                                             scheme::WENO{N, FT}, red_order, bias, 
                                             ψ, VI::AbstractSmoothnessStencil, args...) where {N, FT}
 
-            ψₜ = $stencil(i, j, k, grid, scheme, red_order, bias, ψ, args...)
+            ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
             ω = biased_weno_weights(ψₜ, grid, scheme, red_order, bias, VI, args...)
-            return weno_reconstruction(scheme, red_order, bias, ψₜ, ω)
+            return weno_reconstruction(scheme, red_order, bias, ψₜ, ω)::FT
         end
 
         @inline function $interpolate_func(i, j, k, grid, 
                                             scheme::WENO{N, FT}, red_order, bias, 
                                             ψ, VI::VelocityStencil, u, v, args...) where {N, FT}
 
-            ψₜ = $stencil(i, j, k, grid, scheme, red_order, bias, ψ, u, v, args...)
+            ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ, u, v, args...)
             ω = biased_weno_weights((i, j, k), grid, scheme, red_order, bias, Val($val), VI, u, v)
-            return weno_reconstruction(scheme, red_order, bias, ψₜ, ω)
+            return weno_reconstruction(scheme, red_order, ψₜ, ω)::FT
         end
 
         @inline function $interpolate_func(i, j, k, grid, 
                                             scheme::WENO{N, FT}, red_order, bias, 
                                             ψ, VI::FunctionStencil, args...) where {N, FT}
 
-            ψₜ = $stencil(i, j, k, grid, scheme, red_order, bias, ψ,       args...)
-            ψₛ = $stencil(i, j, k, grid, scheme, red_order, bias, VI.func, args...)
+            ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ,       args...)
+            ψₛ = $stencil(i, j, k, grid, scheme, bias, VI.func, args...)
             ω = biased_weno_weights(ψₛ, grid, scheme, red_order, bias, VI, args...)
-            return weno_reconstruction(scheme, red_order, bias, ψₜ, ω)
+            return weno_reconstruction(scheme, red_order, ψₜ, ω)::FT
         end
     end
 end
