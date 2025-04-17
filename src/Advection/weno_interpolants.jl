@@ -186,24 +186,23 @@ for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
                         @inbounds $(uniform_weno_coefficients(FT, buffer, red_order, stencil))
                 end
             end
+        end
+        # left biased and right biased reconstruction value for each stencil
+        @eval begin
+            """ 
+                biased_p(scheme::WENO{buffer}, bias, ::Val{stencil}, ψ, T, dir, i, loc)
 
-            # left biased and right biased reconstruction value for each stencil
-            @eval begin
-                """ 
-                    biased_p(scheme::WENO{buffer}, bias, ::Val{stencil}, ψ, T, dir, i, loc)
+            Biased reconstruction of `ψ` from the stencil `stencil` of a WENO reconstruction of
+            order `buffer * 2 - 1`. The reconstruction is calculated as
+            
+            ```math
+            ψ★ = ∑ᵣ cᵣ ⋅ ψᵣ
+            ```
 
-                Biased reconstruction of `ψ` from the stencil `stencil` of a WENO reconstruction of
-                order `buffer * 2 - 1`. The reconstruction is calculated as
-                
-                ```math
-                ψ★ = ∑ᵣ cᵣ ⋅ ψᵣ
-                ```
-
-                where ``cᵣ`` is computed from the function `coeff_p`
-                """
-                @inline biased_p(scheme::WENO{$buffer}, ::Val{$red_order}, bias, ::Val{$stencil}, ψ) = 
-                    @inbounds @muladd sum(coeff_p(scheme, Val($red_order), bias, Val($stencil)) .* ψ)
-            end
+            where ``cᵣ`` is computed from the function `coeff_p`
+            """
+            @inline biased_p(scheme::WENO{$buffer}, red_order, bias, ::Val{$stencil}, ψ) = 
+                @inbounds @muladd sum(coeff_p(scheme, Val(red_order), bias, Val($stencil)) .* ψ)
         end
     end
 end
