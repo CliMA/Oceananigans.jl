@@ -86,6 +86,14 @@ const LOADV = Union{UpwindBiased{1}, Centered{1}}
 @inline _biased_interpolate_yᵃᶜᵃ(i, j, k, grid::AbstractGrid, scheme::WENO, args...) = biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, args...)
 @inline _biased_interpolate_zᵃᵃᶜ(i, j, k, grid::AbstractGrid, scheme::WENO, args...) = biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, args...)
 
+@inline _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid::AbstractGrid, scheme::WENO, args...) = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
+@inline _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid::AbstractGrid, scheme::WENO, args...) = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
+@inline _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid::AbstractGrid, scheme::WENO, args...) = _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
+
+@inline _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid::AbstractGrid, scheme::WENO, args...) = _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
+@inline _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid::AbstractGrid, scheme::WENO, args...) = _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
+@inline _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid::AbstractGrid, scheme::WENO, args...) = _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
+
 for bias in (:symmetric, :biased)
     for (d, ξ) in enumerate((:x, :y, :z))
 

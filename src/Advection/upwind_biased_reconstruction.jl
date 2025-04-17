@@ -28,11 +28,6 @@ function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3)
     N  = Int((order + 1) ÷ 2)
 
     if N > 1
-        coefficients = Tuple(nothing for i in 1:6)
-        # Stretched coefficient seem to be more unstable that constant spacing ones for 
-        # linear (non-WENO) upwind reconstruction. We keep constant coefficients for the moment
-        # Some tests are needed to verify why this is the case (and if it is expected)
-        # coefficients = compute_reconstruction_coefficients(grid, FT, :Upwind; order)
         advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
         buffer_scheme  = UpwindBiased(FT; grid, order = order - 2)
     else
@@ -66,14 +61,6 @@ UpwindBiased(grid, FT::DataType=Float64; kwargs...) = UpwindBiased(FT; grid, kwa
 const AUAS = AbstractUpwindBiasedAdvectionScheme
 
 # symmetric interpolation for UpwindBiased and WENO
-@inline _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::AUAS, args...) = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
-@inline _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::AUAS, args...) = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
-@inline _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::AUAS, args...) = _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
-
-@inline _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::AUAS, args...) = _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
-@inline _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::AUAS, args...) = _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
-@inline _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::AUAS, args...) = _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
-
 @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::AUAS, c, args...) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, c, args...)
 @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::AUAS, c, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, c, args...)
 @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::AUAS, c, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.advecting_velocity_scheme, c, args...)
@@ -107,6 +94,15 @@ for buffer in advection_buffers, FT in fully_supported_float_types
 
         @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, bias, ψ::Function, args...) = 
             @inbounds ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left,  :z, true)), 
-                                                $(calc_reconstruction_stencil(FT, buffer, :right, :z, true)))                                          
+                                                $(calc_reconstruction_stencil(FT, buffer, :right, :z, true)))                                 
+                                                
+        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, ::XFlatGrid, ::UpwindBiased{$buffer, $FT}, bias, ψ, args...) = @inbounds ψ[i, j, k]
+        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, ::XFlatGrid, ::UpwindBiased{$buffer, $FT}, bias, ψ::Function, args...) = ψ(i, j, k, grid, args...)
+
+        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, ::YFlatGrid, ::UpwindBiased{$buffer, $FT}, bias, ψ, args...) = @inbounds ψ[i, j, k]
+        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, ::YFlatGrid, ::UpwindBiased{$buffer, $FT}, bias, ψ::Function, args...) = ψ(i, j, k, grid, args...)
+
+        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, ::ZFlatGrid, ::UpwindBiased{$buffer, $FT}, bias, ψ, args...) = @inbounds ψ[i, j, k]
+        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, ::ZFlatGrid, ::UpwindBiased{$buffer, $FT}, bias, ψ::Function, args...) = ψ(i, j, k, grid, args...)
     end
 end
