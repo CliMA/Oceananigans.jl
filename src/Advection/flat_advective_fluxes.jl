@@ -18,27 +18,9 @@ for SchemeType in [:CenteredScheme, :UpwindScheme]
         @inline advective_momentum_flux_Wu(i, j, k, grid::ZFlatGrid, ::$SchemeType, W, u) = zero(grid)
         @inline advective_momentum_flux_Wv(i, j, k, grid::ZFlatGrid, ::$SchemeType, W, v) = zero(grid)
         @inline advective_momentum_flux_Ww(i, j, k, grid::ZFlatGrid, ::$SchemeType, W, w) = zero(grid)
-    end
-end
 
-Grids = [:XFlatGrid, :YFlatGrid, :ZFlatGrid, :XFlatGrid, :YFlatGrid, :ZFlatGrid]
-
-for (dir, Grid) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ, :xᶜᵃᵃ, :yᵃᶜᵃ, :zᵃᵃᶜ], Grids)
-    bias_interp = Symbol(:biased_interpolate_, dir)
-    symm_interp = Symbol(:symmetric_interpolate_, dir)
-    @eval begin
-        @inline $symm_interp(i, j, k, grid::$Grid, scheme, ψ, args...)           = @inbounds ψ[i, j, k]
-        @inline $symm_interp(i, j, k, grid::$Grid, scheme, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
-
-        @inline $symm_interp(i, j, k, grid::$Grid, scheme::AbstractUpwindBiasedAdvectionScheme, ψ, args...)           = @inbounds ψ[i, j, k]
-        @inline $symm_interp(i, j, k, grid::$Grid, scheme::AbstractUpwindBiasedAdvectionScheme, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
-        @inline $symm_interp(i, j, k, grid::$Grid, scheme::AbstractUpwindBiasedAdvectionScheme, ψ::Function, S::AbstractSmoothnessStencil, args...) = @inbounds ψ(i, j, k, grid, args...)
-    
-        @inline $bias_interp(i, j, k, grid::$Grid, scheme, bias, ψ, args...)           = @inbounds ψ[i, j, k]
-        @inline $bias_interp(i, j, k, grid::$Grid, scheme, bias, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
-
-        @inline $bias_interp(i, j, k, grid::$Grid, scheme::AbstractUpwindBiasedAdvectionScheme, bias, ψ, args...)           = @inbounds ψ[i, j, k]
-        @inline $bias_interp(i, j, k, grid::$Grid, scheme::AbstractUpwindBiasedAdvectionScheme, bias, ψ::Function, args...) = @inbounds ψ(i, j, k, grid, args...)
-        @inline $bias_interp(i, j, k, grid::$Grid, scheme::AbstractUpwindBiasedAdvectionScheme, bias, ψ::Function, S::AbstractSmoothnessStencil, args...) = @inbounds ψ(i, j, k, grid, args...)
+        @inline advective_tracer_flux_x(i, j, k, grid::XFlatGrid, ::$SchemeType, U, c) = zero(grid)
+        @inline advective_tracer_flux_y(i, j, k, grid::YFlatGrid, ::$SchemeType, U, c) = zero(grid)
+        @inline advective_tracer_flux_z(i, j, k, grid::ZFlatGrid, ::$SchemeType, U, c) = zero(grid)
     end
 end
