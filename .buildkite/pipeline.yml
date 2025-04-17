@@ -56,7 +56,7 @@ steps:
 
       # Strip emoji for environment variable
       group="{{ matrix.group }}"
-      export TEST_GROUP="${group#* }"
+      export TEST_GROUP="\${group#* }"
       echo $TEST_GROUP
 
       # Run tests
