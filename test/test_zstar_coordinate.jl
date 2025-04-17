@@ -197,7 +197,7 @@ end
                         model = HydrostaticFreeSurfaceModel(; grid, 
                                                             free_surface, 
                                                             tracers = (:b, :c), 
-							    buoyancy = BuoyancyTracer(),
+                            							    buoyancy = BuoyancyTracer(),
                                                             vertical_coordinate = ZStar())
 
                         bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01 
@@ -248,7 +248,14 @@ end
 
             bᵢ(x, y, z) = y < 0 ? 0.06 : 0.01 
 
-	    set!(model, c = (x, y, z) -> rand(), u = (x, y, z) -> rand(), v = (x, y, z) -> rand(), b = bᵢ)
+    	    # Instead of initializing with random velocities, infer them from a random initial streamfunction
+    	    # to ensure the velocity field is divergence-free at initialization.
+    	    ψ = Field{Center, Center, Center}(grid)
+    	    set!(ψ, rand(size(ψ)...))
+    	    uᵢ = ∂y(ψ)
+            vᵢ = -∂x(ψ)
+
+            set!(model, c = (x, y, z) -> rand(), u = uᵢ, v = vᵢ, b = bᵢ)
 
             Δt = 2minutes
             test_zstar_coordinate(model, 100, Δt)
