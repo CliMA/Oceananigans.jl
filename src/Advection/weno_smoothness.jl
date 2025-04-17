@@ -34,9 +34,9 @@ for FT in fully_supported_float_types
         @inline smoothness_coefficients(::Val{$FT}, ::Val{2}, Anyorder, ::Val{1}) = $(FT.((1, -2, 1)))
 
         # 5th order WENO, restricted to orders 3 and 1
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, ::Val{1}, ::Val{0}) = $(FT.((1, 0, 0, 0, 0)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, ::Val{1}, ::Val{1}) = $(FT.((0, 0, 0, 0, 0)))
-        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, ::Val{1}, ::Val{2}) = $(FT.((0, 0, 0, 0, 0)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, ::Val{1}, ::Val{0}) = $(FT.((1, 0, 0, 0, 0, 0)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, ::Val{1}, ::Val{1}) = $(FT.((0, 0, 0, 0, 0, 0)))
+        @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, ::Val{1}, ::Val{2}) = $(FT.((0, 0, 0, 0, 0, 0)))
 
         @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, ::Val{2}, ::Val{0}) = $(FT.((1, -2, 0, 1, 0, 0)))
         @inline smoothness_coefficients(::Val{$FT}, ::Val{3}, ::Val{2}, ::Val{1}) = $(FT.((1, -2, 0, 1, 0, 0)))
