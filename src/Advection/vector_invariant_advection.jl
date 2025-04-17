@@ -448,5 +448,9 @@ for b in advection_buffers, FT in fully_supported_float_types
         @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
         @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
         @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
+    
+        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::WENO{$b, $FT}, bias, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
+        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::WENO{$b, $FT}, bias, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
+        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::WENO{$b, $FT}, bias, f::Callable, ::AS, args...) = f(i, j, k, grid, args...)
     end
 end
