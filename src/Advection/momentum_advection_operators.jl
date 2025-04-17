@@ -5,17 +5,17 @@ using Oceananigans.Fields: ZeroField
 #####
 
 # Alternate names for advective fluxes
-@inline _advective_momentum_flux_Uu(args...) = advective_momentum_flux_Uu(args...)
-@inline _advective_momentum_flux_Vu(args...) = advective_momentum_flux_Vu(args...)
-@inline _advective_momentum_flux_Wu(args...) = advective_momentum_flux_Wu(args...)
+@inline _advective_momentum_flux_Uu(i, j, k, grid, scheme, U, u) = advective_momentum_flux_Uu(i, j, k, grid, scheme, U, u)
+@inline _advective_momentum_flux_Vu(i, j, k, grid, scheme, V, u) = advective_momentum_flux_Vu(i, j, k, grid, scheme, V, u)
+@inline _advective_momentum_flux_Wu(i, j, k, grid, scheme, W, u) = advective_momentum_flux_Wu(i, j, k, grid, scheme, W, u)
 
-@inline _advective_momentum_flux_Uv(args...) = advective_momentum_flux_Uv(args...)
-@inline _advective_momentum_flux_Vv(args...) = advective_momentum_flux_Vv(args...)
-@inline _advective_momentum_flux_Wv(args...) = advective_momentum_flux_Wv(args...)
+@inline _advective_momentum_flux_Uv(i, j, k, grid, scheme, U, v) = advective_momentum_flux_Uv(i, j, k, grid, scheme, U, v)
+@inline _advective_momentum_flux_Vv(i, j, k, grid, scheme, V, v) = advective_momentum_flux_Vv(i, j, k, grid, scheme, V, v)
+@inline _advective_momentum_flux_Wv(i, j, k, grid, scheme, W, v) = advective_momentum_flux_Wv(i, j, k, grid, scheme, W, v)
 
-@inline _advective_momentum_flux_Uw(args...) = advective_momentum_flux_Uw(args...)
-@inline _advective_momentum_flux_Vw(args...) = advective_momentum_flux_Vw(args...)
-@inline _advective_momentum_flux_Ww(args...) = advective_momentum_flux_Ww(args...)
+@inline _advective_momentum_flux_Uw(i, j, k, grid, scheme, U, w) = advective_momentum_flux_Uw(i, j, k, grid, scheme, U, w)
+@inline _advective_momentum_flux_Vw(i, j, k, grid, scheme, V, w) = advective_momentum_flux_Vw(i, j, k, grid, scheme, V, w)
+@inline _advective_momentum_flux_Ww(i, j, k, grid, scheme, W, w) = advective_momentum_flux_Ww(i, j, k, grid, scheme, W, w)
 
 const ZeroU = NamedTuple{(:u, :v, :w), Tuple{ZeroField, ZeroField, ZeroField}}
 
