@@ -4,20 +4,18 @@ import Oceananigans
 ##### Weighted Essentially Non-Oscillatory (WENO) advection scheme
 #####
 
-struct WENO{N, FT, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
+struct WENO{N, FT, PP, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
 
     "Bounds for maximum-principle-satisfying WENO scheme"
     bounds :: PP
 
-    "Advection scheme used near boundaries"
-    buffer_scheme :: CA
     "Reconstruction scheme used for symmetric interpolation"
     advecting_velocity_scheme :: SI
 
-    function WENO{N, FT}(bounds::PP, buffer_scheme::CA,
-                         advecting_velocity_scheme :: SI) where {N, FT, PP, CA, SI}
+    function WENO{N, FT}(bounds::PP, 
+                         advecting_velocity_scheme :: SI) where {N, FT, PP, SI}
 
-        return new{N, FT, PP, CA, SI}(bounds, buffer_scheme, advecting_velocity_scheme)
+        return new{N, FT, PP, SI}(bounds, advecting_velocity_scheme)
     end
 end
 
@@ -42,8 +40,6 @@ julia> using Oceananigans
 
 julia> WENO()
 WENO(order=5)
- Boundary scheme:
-    └── WENO(order=3)
  Symmetric scheme:
     └── Centered(order=4)
  Directions:
@@ -66,14 +62,8 @@ julia> grid = RectilinearGrid(size = (Nx, Nz), halo = (4, 4), topology=(Periodic
 
 julia> WENO(grid; order=7)
 WENO(order=7)
- Boundary scheme:
-    └── WENO(order=5)
  Symmetric scheme:
     └── Centered(order=6)
- Directions:
-    ├── X regular
-    ├── Y regular
-    └── Z stretched
 ```
 """
 function WENO(FT::DataType=Oceananigans.defaults.FloatType; 
@@ -97,10 +87,9 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
     else
         N = Int((order + 1) ÷ 2)
         advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
-        buffer_scheme = WENO(FT; grid, order=order-2, bounds) 
     end
 
-    return WENO{N, FT}(bounds, buffer_scheme, advecting_velocity_scheme)
+    return WENO{N, FT}(bounds, advecting_velocity_scheme)
 end
 
 WENO(grid, FT::DataType=Float64; kwargs...) = WENO(FT; grid, kwargs...)

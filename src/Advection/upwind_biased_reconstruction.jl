@@ -7,14 +7,11 @@
 
 Upwind-biased reconstruction scheme.
 """
-struct UpwindBiased{N, FT, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT} 
-    "Reconstruction scheme used near boundaries"
-    buffer_scheme :: CA
+struct UpwindBiased{N, FT, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT} 
     "Reconstruction scheme used for symmetric interpolation"
     advecting_velocity_scheme :: SI
 
-    UpwindBiased{N, FT}(buffer_scheme::CA, advecting_velocity_scheme::SI) where {N, FT, CA, SI} = 
-        new{N, FT, CA, SI}(buffer_scheme, advecting_velocity_scheme)
+    UpwindBiased{N, FT}(advecting_velocity_scheme::SI) where {N, FT, SI} = new{N, FT, SI}(advecting_velocity_scheme)
 end
 
 function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3) 
@@ -29,31 +26,25 @@ function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3)
 
     if N > 1
         advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
-        buffer_scheme  = UpwindBiased(FT; grid, order = order - 2)
     else
         advecting_velocity_scheme = Centered(FT; grid, order = 2)
-        buffer_scheme  = nothing
     end
 
-    return UpwindBiased{N, FT}(buffer_scheme, advecting_velocity_scheme)
+    return UpwindBiased{N, FT}(advecting_velocity_scheme)
 end
 
 Base.summary(a::UpwindBiased{N}) where N = string("UpwindBiased(order=", 2N-1, ")")
 
 Base.show(io::IO, a::UpwindBiased{N, FT}) where {N, FT} =
     print(io, summary(a), " \n",
-              " Boundary scheme: ", "\n",
-              "    └── ", summary(a.buffer_scheme) , "\n",
               " Symmetric scheme: ", "\n",
               "    └── ", summary(a.advecting_velocity_scheme))
 
 Adapt.adapt_structure(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
-    UpwindBiased{N, FT}(Adapt.adapt(to, scheme.buffer_scheme),
-                        Adapt.adapt(to, scheme.advecting_velocity_scheme))
+    UpwindBiased{N, FT}(Adapt.adapt(to, scheme.advecting_velocity_scheme))
 
 on_architecture(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
-    UpwindBiased{N, FT}(on_architecture(to, scheme.buffer_scheme),
-                        on_architecture(to, scheme.advecting_velocity_scheme))
+    UpwindBiased{N, FT}(on_architecture(to, scheme.advecting_velocity_scheme))
 
 # Useful aliases
 UpwindBiased(grid, FT::DataType=Float64; kwargs...) = UpwindBiased(FT; grid, kwargs...)
