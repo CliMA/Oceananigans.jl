@@ -148,61 +148,61 @@ julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
                                :(inactive_node(i, j, k + $c, ibg, $xflipside, $yflipside, $zflipside))
     end
 
-    return inactive_cells
+    return :($(inactive_cells...),)
 end
 
 for B in advection_buffers
     @eval begin
         # Faces symmetric
         @inline function compute_face_reduced_order_x(i, j, k, ibg::IBG, ::CenteredScheme{$B})
-            return $B - sum($(inside_immersed_boundary(B, :none, :x, :f; xside = :f)...)) ÷ 2
+            return $B - min(sum($(inside_immersed_boundary(B, :none, :x, :f; xside = :f))) ÷ 2, $B-1)
         end
 
         @inline function compute_face_reduced_order_y(i, j, k, ibg::IBG, ::CenteredScheme{$B}) 
-            return $B - sum($(inside_immersed_boundary(B, :none, :y, :f; yside = :f)...)) ÷ 2
+            return $B - min(sum($(inside_immersed_boundary(B, :none, :y, :f; yside = :f))) ÷ 2, $B-1)
         end
 
         @inline function compute_face_reduced_order_z(i, j, k, ibg::IBG, ::CenteredScheme{$B})
-            return $B - sum($(inside_immersed_boundary(B, :none, :z, :f; zside = :f)...)) ÷ 2
+            return $B - min(sum($(inside_immersed_boundary(B, :none, :z, :f; zside = :f))) ÷ 2, $B-1)
         end
 
         # Centers symmetric
         @inline function compute_center_reduced_order_x(i, j, k, ibg::IBG, ::CenteredScheme{$B}) 
-            return $B - sum($(inside_immersed_boundary(B, :none, :x, :c; xside = :c)...)) ÷ 2
+            return $B - min(sum($(inside_immersed_boundary(B, :none, :x, :c; xside = :c))) ÷ 2, $B-1)
         end
 
         @inline function compute_center_reduced_order_y(i, j, k, ibg::IBG, ::CenteredScheme{$B})
-            return $B - sum($(inside_immersed_boundary(B, :none, :y, :c; yside = :c)...)) ÷ 2
+            return $B - min(sum($(inside_immersed_boundary(B, :none, :y, :c; yside = :c))) ÷ 2, $B-1)
         end
 
         @inline function compute_center_reduced_order_z(i, j, k, ibg::IBG, ::CenteredScheme{$B})
-            return $B - sum($(inside_immersed_boundary(B, :none, :z, :c; zside = :c)...)) ÷ 2
+            return $B - min(sum($(inside_immersed_boundary(B, :none, :z, :c; zside = :c))) ÷ 2, $B-1)
         end
 
         # Faces biased
         @inline function compute_face_reduced_order_x(i, j, k, ibg::IBG, ::UpwindScheme{$B})
-            return $B - sum($(inside_immersed_boundary(B, :interior, :x, :f; xside = :f)...)) ÷ 2
+            return $B - min(sum($(inside_immersed_boundary(B, :interior, :x, :f; xside = :f))) ÷ 2, $B-1)
         end
 
         @inline function compute_face_reduced_order_y(i, j, k, ibg::IBG, ::UpwindScheme{$B}) 
-            return $B - sum($(inside_immersed_boundary(B, :interior, :y, :f; yside = :f)...)) ÷ 2
+            return $B - min(sum($(inside_immersed_boundary(B, :interior, :y, :f; yside = :f))) ÷ 2, $B-1)
         end
 
         @inline function compute_face_reduced_order_z(i, j, k, ibg::IBG, ::UpwindScheme{$B}) 
-            return $B - sum($(inside_immersed_boundary(B, :interior, :z, :f; zside = :f)...)) ÷ 2
+            return $B - min(sum($(inside_immersed_boundary(B, :interior, :z, :f; zside = :f))) ÷ 2, $B-1)
         end
 
         # Centers biased
         @inline function compute_center_reduced_order_x(i, j, k, ibg::IBG, ::UpwindScheme{$B}) 
-            return $B - sum($(inside_immersed_boundary(B, :interior, :x, :c; xside = :c)...)) ÷ 2
+            return $B - min(sum($(inside_immersed_boundary(B, :interior, :x, :c; xside = :c))) ÷ 2, $B-1)
         end
 
         @inline function compute_center_reduced_order_y(i, j, k, ibg::IBG, ::UpwindScheme{$B})
-            return $B - sum($(inside_immersed_boundary(B, :interior, :y, :c; yside = :c)...)) ÷ 2
+            return $B - min(sum($(inside_immersed_boundary(B, :interior, :y, :c; yside = :c))) ÷ 2, $B-1)
         end
 
         @inline function compute_center_reduced_order_z(i, j, k, ibg::IBG, ::UpwindScheme{$B})
-            return $B - sum($(inside_immersed_boundary(B, :interior, :z, :c; zside = :c)...)) ÷ 2
+            return $B - min(sum($(inside_immersed_boundary(B, :interior, :z, :c; zside = :c))) ÷ 2, $B-1)
         end
     end
 end
