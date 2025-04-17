@@ -2,7 +2,7 @@ using Pkg
 
 include("dependencies_for_runtests.jl")
 
-group = get(ENV, "TEST_GROUP", "all") |> Symbol]
+group = get(ENV, "TEST_GROUP", "all") |> Symbol
 test_file = get(ENV, "TEST_FILE", :none) |> Symbol
 
 # if we are testing just a single file then group = :none
