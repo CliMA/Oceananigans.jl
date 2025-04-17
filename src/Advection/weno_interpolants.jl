@@ -498,7 +498,7 @@ for buffer in advection_buffers[2:end]
 end
 
 # Interpolation functions
-for (interp, dir, val, cT) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, :z], [1, 2, 3], [:XT, :YT, :ZT]) 
+for (interp, dir) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, :z]) 
     interpolate_func = Symbol(:biased_interpolate_, interp)
     stencil          = Symbol(:weno_stencil_, dir)
     
