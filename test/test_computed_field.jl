@@ -558,19 +558,11 @@ for arch in archs
                 computed_tke = Field(tke_ccc)
 
                 tke_window = Field(tke_ccc, indices=(2:3, 2:3, 2:3))
-                if (grid isa ImmersedBoundaryGrid) & (arch==GPU())
-                    @test try compute!(computed_tke); true; catch; false end
-                    @test try compute!(Field(tke)); true; catch; false; end
-                    @test try compute!(tke_window); true; catch; false; end
-                    @test all(interior(computed_tke, 2:3, 2:3, 2:3) .== 9/2)
-                    @test all(interior(tke_window) .== 9/2)
-                else                    
-                    @test try compute!(computed_tke); true; catch; false end
-                    @test try compute!(Field(tke)); true; catch; false; end
-                    @test try compute!(tke_window); true; catch; false; end
-                    @test all(interior(computed_tke, 2:3, 2:3, 2:3) .== 9/2)
-                    @test all(interior(tke_window) .== 9/2)
-                end
+                @test try compute!(computed_tke); true; catch; false end
+                @test try compute!(Field(tke)); true; catch; false; end
+                @test try compute!(tke_window); true; catch; false; end
+                @test all(interior(computed_tke, 2:3, 2:3, 2:3) .== 9/2)
+                @test all(interior(tke_window) .== 9/2)
 
                 # Computations along slices
                 tke_xy = Field(tke_ccc, indices=(:, :, 2))
