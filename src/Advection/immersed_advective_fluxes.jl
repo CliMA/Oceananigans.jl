@@ -148,61 +148,79 @@ julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
                                :(inactive_node(i, j, k + $c, ibg, $xflipside, $yflipside, $zflipside))
     end
 
-    return :($(inactive_cells...),)
+    return inactive_cells
 end
 
-for B in advection_buffers
-    @eval begin
+for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
+    compute_reduced_order = Symbol(:compute_, Loc,:_reduced_order_, dir)
+    @eval begin 
         # Faces symmetric
-        @inline function compute_face_reduced_order_x(i, j, k, ibg::IBG, ::CenteredScheme{$B})
-            return $B # - min(sum($(inside_immersed_boundary(B, :none, :x, :f; xside = :f))) ÷ 2, $B-1)
+        @inline $compute_reduced_order(i, j, k, ibg::IBG, ::CenteredScheme{1}) = 1
+
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::CenteredScheme{2}) 
+            I = $(inside_immersed_boundary(2, :none, dir, loc; xside = loc)...)
+            to1 = @inbounds (I[1] | I[2]) # Check only first and last
+            return ifelse(to1, 1, 2) 
         end
 
-        @inline function compute_face_reduced_order_y(i, j, k, ibg::IBG, ::CenteredScheme{$B}) 
-            return $B # - min(sum($(inside_immersed_boundary(B, :none, :y, :f; yside = :f))) ÷ 2, $B-1)
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::CenteredScheme{3}) 
+            I = $(inside_immersed_boundary(3, :none, dir, loc; xside = loc)...)
+            to2 = @inbounds (I[1] | I[4])
+            to1 = @inbounds (I[2] | I[3]) 
+            return ifelse(to1, 1, ifelse(to2, 2, 3))
         end
 
-        @inline function compute_face_reduced_order_z(i, j, k, ibg::IBG, ::CenteredScheme{$B})
-            return $B # - min(sum($(inside_immersed_boundary(B, :none, :z, :f; zside = :f))) ÷ 2, $B-1)
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::CenteredScheme{4}) 
+            I = $(inside_immersed_boundary(3, :none, dir, loc; xside = loc)...)
+            to3 = @inbounds (I[1] | I[6])
+            to2 = @inbounds (I[2] | I[5]) 
+            to1 = @inbounds (I[3] | I[4])
+            return ifelse(to1, 1, ifelse(to2, 2, ifelse(to3, 3, 4)))
         end
 
-        # Centers symmetric
-        @inline function compute_center_reduced_order_x(i, j, k, ibg::IBG, ::CenteredScheme{$B}) 
-            return $B # - min(sum($(inside_immersed_boundary(B, :none, :x, :c; xside = :c))) ÷ 2, $B-1)
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::CenteredScheme{5}) 
+            I = $(inside_immersed_boundary(3, :none, dir, loc; xside = loc)...)
+            to4 = @inbounds (I[1] | I[8])
+            to3 = @inbounds (I[2] | I[7])
+            to2 = @inbounds (I[3] | I[6]) 
+            to1 = @inbounds (I[4] | I[5])
+            return ifelse(to1, 1, ifelse(to2, 2, ifelse(to3, 3, ifelse(to4, 4, 5))))
         end
 
-        @inline function compute_center_reduced_order_y(i, j, k, ibg::IBG, ::CenteredScheme{$B})
-            return $B # - min(sum($(inside_immersed_boundary(B, :none, :y, :c; yside = :c))) ÷ 2, $B-1)
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::CenteredScheme{6}) 
+            I = $(inside_immersed_boundary(3, :none, dir, loc; xside = loc)...)
+            to5 = @inbounds (I[1] | I[10])
+            to4 = @inbounds (I[2] | I[9])
+            to3 = @inbounds (I[3] | I[8])
+            to2 = @inbounds (I[4] | I[7]) 
+            to1 = @inbounds (I[5] | I[6])
+            return ifelse(to1, 1, ifelse(to2, 2, ifelse(to3, 3, ifelse(to4, 4, ifelse(to5, 5, 6)))))
         end
 
-        @inline function compute_center_reduced_order_z(i, j, k, ibg::IBG, ::CenteredScheme{$B})
-            return $B # - min(sum($(inside_immersed_boundary(B, :none, :z, :c; zside = :c))) ÷ 2, $B-1)
-        end
+        # # Faces biased
+        # @inline function compute_face_reduced_order_x(i, j, k, ibg::IBG, ::UpwindScheme{$B})
+        #     return $B # - min(sum($(inside_immersed_boundary(B, :interior, :x, :f; xside = :f))) ÷ 2, $B-1)
+        # end
 
-        # Faces biased
-        @inline function compute_face_reduced_order_x(i, j, k, ibg::IBG, ::UpwindScheme{$B})
-            return $B # - min(sum($(inside_immersed_boundary(B, :interior, :x, :f; xside = :f))) ÷ 2, $B-1)
-        end
+        # @inline function compute_face_reduced_order_y(i, j, k, ibg::IBG, ::UpwindScheme{$B}) 
+        #     return $B # - min(sum($(inside_immersed_boundary(B, :interior, :y, :f; yside = :f))) ÷ 2, $B-1)
+        # end
 
-        @inline function compute_face_reduced_order_y(i, j, k, ibg::IBG, ::UpwindScheme{$B}) 
-            return $B # - min(sum($(inside_immersed_boundary(B, :interior, :y, :f; yside = :f))) ÷ 2, $B-1)
-        end
+        # @inline function compute_face_reduced_order_z(i, j, k, ibg::IBG, ::UpwindScheme{$B}) 
+        #     return $B # - min(sum($(inside_immersed_boundary(B, :interior, :z, :f; zside = :f))) ÷ 2, $B-1)
+        # end
 
-        @inline function compute_face_reduced_order_z(i, j, k, ibg::IBG, ::UpwindScheme{$B}) 
-            return $B # - min(sum($(inside_immersed_boundary(B, :interior, :z, :f; zside = :f))) ÷ 2, $B-1)
-        end
+        # # Centers biased
+        # @inline function compute_center_reduced_order_x(i, j, k, ibg::IBG, ::UpwindScheme{$B}) 
+        #     return $B # - min(sum($(inside_immersed_boundary(B, :interior, :x, :c; xside = :c))) ÷ 2, $B-1)
+        # end
 
-        # Centers biased
-        @inline function compute_center_reduced_order_x(i, j, k, ibg::IBG, ::UpwindScheme{$B}) 
-            return $B # - min(sum($(inside_immersed_boundary(B, :interior, :x, :c; xside = :c))) ÷ 2, $B-1)
-        end
+        # @inline function compute_center_reduced_order_y(i, j, k, ibg::IBG, ::UpwindScheme{$B})
+        #     return $B # - min(sum($(inside_immersed_boundary(B, :interior, :y, :c; yside = :c))) ÷ 2, $B-1)
+        # end
 
-        @inline function compute_center_reduced_order_y(i, j, k, ibg::IBG, ::UpwindScheme{$B})
-            return $B # - min(sum($(inside_immersed_boundary(B, :interior, :y, :c; yside = :c))) ÷ 2, $B-1)
-        end
-
-        @inline function compute_center_reduced_order_z(i, j, k, ibg::IBG, ::UpwindScheme{$B})
-            return $B # - min(sum($(inside_immersed_boundary(B, :interior, :z, :c; zside = :c))) ÷ 2, $B-1)
-        end
+        # @inline function compute_center_reduced_order_z(i, j, k, ibg::IBG, ::UpwindScheme{$B})
+        #     return $B # - min(sum($(inside_immersed_boundary(B, :interior, :z, :c; zside = :c))) ÷ 2, $B-1)
+        # end
     end
 end
