@@ -52,59 +52,114 @@ UpwindBiased(grid, FT::DataType=Float64; kwargs...) = UpwindBiased(FT; grid, kwa
 const AUAS = AbstractUpwindBiasedAdvectionScheme
 
 # symmetric interpolation for UpwindBiased and WENO
-@inline _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::AUAS, c, args...) = ℑxᶠᵃᵃ(i, j, k, grid, c, args...) #  _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, c, args...)
-@inline _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::AUAS, c, args...) = ℑyᵃᶠᵃ(i, j, k, grid, c, args...) #  _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, c, args...)
-@inline _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::AUAS, c, args...) = ℑzᵃᵃᶠ(i, j, k, grid, c, args...) #  _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.advecting_velocity_scheme, c, args...)
-@inline _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::AUAS, u, args...) = ℑxᶜᵃᵃ(i, j, k, grid, u, args...) #  _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, u, args...)
-@inline _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::AUAS, v, args...) = ℑyᵃᶜᵃ(i, j, k, grid, v, args...) #  _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, v, args...)
-@inline _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::AUAS, w, args...) = ℑzᵃᵃᶜ(i, j, k, grid, w, args...) #  _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme.advecting_velocity_scheme, w, args...)
+@inline _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::AUAS, c, args...) = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, c, args...)
+@inline _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::AUAS, c, args...) = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, c, args...)
+@inline _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::AUAS, c, args...) = _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme.advecting_velocity_scheme, c, args...)
+@inline _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::AUAS, u, args...) = _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, u, args...)
+@inline _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::AUAS, v, args...) = _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, v, args...)
+@inline _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::AUAS, w, args...) = _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme.advecting_velocity_scheme, w, args...)
+
+for (side, dir) in zip((:ᶠᵃᵃ, :ᵃᶠᵃ, :ᵃᵃᶠ), (:x, :y, :z))
+    for (F, bool) in zip((:Any, :(Base.Callable)), (false, true))
+        for FT in fully_supported_float_types
+            interp = Symbol(:biased_interpolate_, dir, side)
+            @eval begin
+                @inline $interp(i, j, k, grid, ::UpwindBiased{1, $FT}, red_order::Int, ψ::$F, args...) = ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, 1, :left,  dir, bool)), 
+                                                                                                                                   $(calc_reconstruction_stencil(FT, 1, :right, dir, bool)))
+
+                @inline function $interp(i, j, k, grid, ::UpwindBiased{2, $FT}, red_order::Int, bias, ψ::$F, args...)          
+                    if red_order==1
+                        ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, 1, :left,  dir, bool)), 
+                                                  $(calc_reconstruction_stencil(FT, 1, :right, dir, bool)))
+                    else
+                        ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, 2, :left,  dir, bool)), 
+                                                  $(calc_reconstruction_stencil(FT, 2, :right, dir, bool)))
+                    end
+                end
+
+                @inline function $interp(i, j, k, grid, ::UpwindBiased{3, $FT}, red_order::Int, bias, ψ::$F, args...)          
+                    if red_order==1
+                        ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, 1, :left,  dir, bool)), 
+                                                  $(calc_reconstruction_stencil(FT, 1, :right, dir, bool)))
+                    elseif red_order==2
+                        ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, 2, :left,  dir, bool)), 
+                                                  $(calc_reconstruction_stencil(FT, 2, :right, dir, bool)))
+                    else
+                        ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, 3, :left,  dir, bool)), 
+                                                  $(calc_reconstruction_stencil(FT, 3, :right, dir, bool)))
+                    end
+                end
+
+                @inline function $interp(i, j, k, grid, ::UpwindBiased{4, $FT}, red_order::Int, bias, ψ::$F, args...)          
+                    if red_order==1
+                        ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, 1, :left,  dir, bool)), 
+                                                  $(calc_reconstruction_stencil(FT, 1, :right, dir, bool)))
+                    elseif red_order==2
+                        ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, 2, :left,  dir, bool)), 
+                                                  $(calc_reconstruction_stencil(FT, 2, :right, dir, bool)))
+                    elseif red_order==3
+                        ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, 3, :left,  dir, bool)), 
+                                                  $(calc_reconstruction_stencil(FT, 3, :right, dir, bool)))
+                    else
+                        ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, 4, :left,  dir, bool)), 
+                                                  $(calc_reconstruction_stencil(FT, 4, :right, dir, bool)))
+                    end
+                end
+
+                @inline function $interp(i, j, k, grid, ::UpwindBiased{5, $FT}, red_order::Int, bias, ψ::$F, args...)          
+                    if red_order==1
+                        ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, 1, :left,  dir, bool)), 
+                                                  $(calc_reconstruction_stencil(FT, 1, :right, dir, bool)))
+                    elseif red_order==2
+                        ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, 2, :left,  dir, bool)), 
+                                                  $(calc_reconstruction_stencil(FT, 2, :right, dir, bool)))
+                    elseif red_order==3
+                        ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, 3, :left,  dir, bool)), 
+                                                  $(calc_reconstruction_stencil(FT, 3, :right, dir, bool)))
+                    elseif red_order==4
+                        ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, 4, :left,  dir, bool)), 
+                                                  $(calc_reconstruction_stencil(FT, 4, :right, dir, bool)))
+                    else
+                        ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, 5, :left,  dir, bool)), 
+                                                  $(calc_reconstruction_stencil(FT, 5, :right, dir, bool)))
+                    end
+                end
+
+                @inline function $interp(i, j, k, grid, ::UpwindBiased{6, $FT}, red_order::Int, bias, ψ::$F, args...)          
+                    if red_order==1
+                        ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, 1, :left,  dir, bool)), 
+                                                  $(calc_reconstruction_stencil(FT, 1, :right, dir, bool)))
+                    elseif red_order==2
+                        ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, 2, :left,  dir, bool)), 
+                                                  $(calc_reconstruction_stencil(FT, 2, :right, dir, bool)))
+                    elseif red_order==3
+                        ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, 3, :left,  dir, bool)), 
+                                                  $(calc_reconstruction_stencil(FT, 3, :right, dir, bool)))
+                    elseif red_order==4
+                        ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, 4, :left,  dir, bool)), 
+                                                  $(calc_reconstruction_stencil(FT, 4, :right, dir, bool)))
+                    elseif red_order==5
+                        ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, 5, :left,  dir, bool)), 
+                                                  $(calc_reconstruction_stencil(FT, 5, :right, dir, bool)))
+                    else
+                        ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, 6, :left,  dir, bool)), 
+                                                  $(calc_reconstruction_stencil(FT, 6, :right, dir, bool)))
+                    end
+                end
+            end
+        end
+    end
+end
 
 # Uniform upwind biased reconstruction
 for buffer in advection_buffers, FT in fully_supported_float_types
-    @eval begin 
-        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s::UpwindBiased{$buffer, $FT}, red_order::Int, bias, ψ, args...) = 
-            biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, Val(red_order), bias, ψ, args...)
-
-        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, red_order::Int, bias, ψ, args...) = 
-            biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, Val(red_order), bias, ψ, args...) 
-                                                
-        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s::UpwindBiased{$buffer, $FT}, red_order::Int, bias, ψ, args...) = 
-            biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, Val(red_order), bias, ψ, args...) 
-    end
-    
-    for red_order in 1:buffer # The order that actually matters
-        @eval begin
-            @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, ::Val{$red_order}, bias, ψ, args...) = 
-                @inbounds ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, red_order, :left,  :x, false)), 
-                                       $(calc_reconstruction_stencil(FT, red_order, :right, :x, false)))
-
-            @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, ::Val{$red_order}, bias, ψ::Function, args...) = 
-                @inbounds ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, red_order, :left,  :x, true)), 
-                                       $(calc_reconstruction_stencil(FT, red_order, :right, :x, true)))
-        
-            @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, ::Val{$red_order}, bias, ψ, args...) = 
-                @inbounds ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, red_order, :left,  :y, false)), 
-                                       $(calc_reconstruction_stencil(FT, red_order, :right, :y, false)))
-                                                    
-            @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, ::Val{$red_order}, bias, ψ::Function, args...) = 
-                @inbounds ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, red_order, :left,  :y, true)), 
-                                       $(calc_reconstruction_stencil(FT, red_order, :right, :y, true)))
-        
-            @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, ::Val{$red_order}, bias, ψ, args...) = 
-                @inbounds ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, red_order, :left,  :z, false)), 
-                                       $(calc_reconstruction_stencil(FT, red_order, :right, :z, false)))
-
-            @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, ::Val{$red_order}, bias, ψ::Function, args...) = 
-                @inbounds ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, red_order, :left,  :z, true)), 
-                                       $(calc_reconstruction_stencil(FT, red_order, :right, :z, true)))               
-                                                    
-            # Flat fluxes...
-            @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::UpwindBiased{$buffer, $FT}, ::Val{$red_order}, bias, ψ, args...) = @inbounds ψ[i, j, k]
-            @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::UpwindBiased{$buffer, $FT}, ::Val{$red_order}, bias, ψ::Function, args...) = ψ(i, j, k, grid, args...)
-            @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::UpwindBiased{$buffer, $FT}, ::Val{$red_order}, bias, ψ, args...) = @inbounds ψ[i, j, k]
-            @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::UpwindBiased{$buffer, $FT}, ::Val{$red_order}, bias, ψ::Function, args...) = ψ(i, j, k, grid, args...)
-            @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::UpwindBiased{$buffer, $FT}, ::Val{$red_order}, bias, ψ, args...) = @inbounds ψ[i, j, k]
-            @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::UpwindBiased{$buffer, $FT}, ::Val{$red_order}, bias, ψ::Function, args...) = ψ(i, j, k, grid, args...)
-        end
+    @eval begin
+        # Flat fluxes...
+        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::UpwindBiased{$buffer, $FT}, ::Int, bias, ψ, args...) = @inbounds ψ[i, j, k]
+        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::UpwindBiased{$buffer, $FT}, ::Int, bias, ψ::Base.Callable, args...) = ψ(i, j, k, grid, args...)
+        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::UpwindBiased{$buffer, $FT}, ::Int, bias, ψ, args...) = @inbounds ψ[i, j, k]
+        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::UpwindBiased{$buffer, $FT}, ::Int, bias, ψ::Base.Callable, args...) = ψ(i, j, k, grid, args...)
+        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::UpwindBiased{$buffer, $FT}, ::Int, bias, ψ, args...) = @inbounds ψ[i, j, k]
+        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::UpwindBiased{$buffer, $FT}, ::Int, bias, ψ::Base.Callable, args...) = ψ(i, j, k, grid, args...)
     end
 end
