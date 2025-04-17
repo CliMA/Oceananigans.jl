@@ -4,10 +4,11 @@
 for FT in fully_supported_float_types
     @eval begin
         """
-            smoothness_coefficients(::Val{FT}, ::Val{buffer}, ::Val{stencil})
+            smoothness_coefficients(::Val{FT}, ::Val{buffer}, ::Val{red_order}, ::Val{stencil})
 
         Return the coefficients used to calculate the smoothness indicators for the stencil 
-        number `stencil` of a WENO reconstruction of order `buffer * 2 - 1`. The coefficients
+        number `stencil` of a WENO reconstruction of order `buffer * 2 - 1`. The actual order of 
+        reconstruction is restricted by `red_order <= buffer`. The coefficients
         are ordered in such a way to calculate the smoothness in the following fashion:
         
         ```julia
@@ -25,7 +26,8 @@ for FT in fully_supported_float_types
             ψ[4] * (C[10] * ψ[4])
         ```
         
-        This last operation is metaprogrammed in the function `metaprogrammed_smoothness_operation`
+        In the above case, if `red_order == 2`, then all the coefficients corresponding to ψ[i for i > 2]
+        are zero. This last operation is metaprogrammed in the function `metaprogrammed_smoothness_operation`
         """
         @inline smoothness_coefficients(::Val{$FT}, ::Val{1}, Nrest, ::Val{0}) = $(FT.((1, )))
 
