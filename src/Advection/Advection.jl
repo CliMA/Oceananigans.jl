@@ -37,6 +37,7 @@ using Oceananigans: fully_supported_float_types
 using Oceananigans.Architectures: architecture, CPU
 using Oceananigans.Grids: with_halo
 using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, Γᶠᶠᶜ, ∂t_σ
+using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 
 import Base: show, summary
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z

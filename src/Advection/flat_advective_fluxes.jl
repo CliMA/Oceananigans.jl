@@ -3,8 +3,6 @@
 ##### Flat Topologies
 #####
 
-using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
-
 for SchemeType in [:CenteredScheme, :UpwindScheme]
     @eval begin
         @inline advective_momentum_flux_Uu(i, j, k, grid::XFlatGrid, ::$SchemeType, U, u) = zero(grid)
