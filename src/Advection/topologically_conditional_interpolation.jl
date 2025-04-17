@@ -77,23 +77,65 @@ const HOADV = Union{Tuple(Centered{N} for N in advection_buffers[2:end])...,
 
 const LOADV = Union{UpwindBiased{1}, Centered{1}}
 
-const A{N} = AbstractAdvectionScheme{N}
+@inline function _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, args...)
+    R = compute_face_reduced_order_x(i, j, k, grid, scheme)
+    return biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Val(R), args...)
+end
 
-@inline _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::A{N}, args...) where N = biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Val(N), args...)
-@inline _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::A{N}, args...) where N = biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Val(N), args...)
-@inline _biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::A{N}, args...) where N = biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, Val(N), args...)
+@inline function _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, args...) 
+    R = compute_face_reduced_order_y(i, j, k, grid, scheme)
+    return biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Val(R), args...)
+end
 
-@inline _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::A{N}, args...) where N = biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, Val(N), args...)
-@inline _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::A{N}, args...) where N = biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, Val(N), args...)
-@inline _biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::A{N}, args...) where N = biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, Val(N), args...)
+@inline function _biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, args...)
+    R = compute_face_reduced_order_z(i, j, k, grid, scheme)
+    return biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, Val(R), args...)
+end
 
-@inline _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::A{N}, args...) where N = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Val(N), args...)
-@inline _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::A{N}, args...) where N = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Val(N), args...)
-@inline _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::A{N}, args...) where N = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, Val(N), args...)
+@inline function _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, args...)
+    R = compute_center_reduced_order_x(i, j, k, grid, scheme)
+    return biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, Val(R), args...)
+end
 
-@inline _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::A{N}, args...) where N = symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, Val(N), args...)
-@inline _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::A{N}, args...) where N = symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, Val(N), args...)
-@inline _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::A{N}, args...) where N = symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, Val(N), args...)
+@inline function _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, args...) 
+    R = compute_center_reduced_order_y(i, j, k, grid, scheme)
+    return biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, Val(R), args...)
+end
+
+@inline function _biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, args...) 
+    R = compute_center_reduced_order_z(i, j, k, grid, scheme)
+    return biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, Val(R), args...)
+end
+
+@inline function _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, args...)
+    R = compute_face_reduced_order_x(i, j, k, grid, scheme)
+    return symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Val(R), args...)
+end
+
+@inline function _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, args...)
+    R = compute_face_reduced_order_y(i, j, k, grid, scheme)
+    return symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, Val(R), args...)
+end
+
+@inline function _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, args...)
+    R = compute_face_reduced_order_z(i, j, k, grid, scheme)
+    return symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, Val(R), args...)
+end
+
+@inline function _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, args...)
+    R = compute_center_reduced_order_x(i, j, k, grid, scheme)
+    return symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, Val(R), args...)
+end
+
+@inline function _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, args...)
+    R = compute_center_reduced_order_y(i, j, k, grid, scheme)
+    return symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, Val(R), args...)
+end
+
+@inline function _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, args...)
+    R = compute_center_reduced_order_z(i, j, k, grid, scheme)
+    return symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, Val(R), args...)
+end
 
 # Multi-dimensional reconstruction
 @inline _multi_dimensional_reconstruction_x(i, j, k, grid::AUGX, scheme, interp, args...) = 
