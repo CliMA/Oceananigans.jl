@@ -1,8 +1,6 @@
 using Oceananigans.BoundaryConditions:
     DistributedCommunicationBoundaryCondition
 
-const DCBC = DistributedCommunicationBoundaryCondition
-
 struct HaloCommunicationRanks{F, T}
     from :: F
       to :: T

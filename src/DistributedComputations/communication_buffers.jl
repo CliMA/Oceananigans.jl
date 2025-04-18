@@ -1,9 +1,13 @@
-using Oceananigans.BoundaryConditions: MCBC, DCBC, FieldBoundaryConditions
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions
+using Oceananigans.BoundaryConditions: MultiRegionCommunication, DistributedCommunication
 using Oceananigans.Grids: halo_size, size
 using Oceananigans.Utils: launch!
 using KernelAbstractions: @kernel, @index
 
 import Oceananigans.Architectures: on_architecture
+
+const MCBC = BoundaryCondition{<:MultiRegionCommunication}
+const DCBC = BoundaryCondition{<:DistributedCommunication}
 
 struct CommunicationBuffers{W, E, S, N, SW, SE, NW, NE}
     west :: W
