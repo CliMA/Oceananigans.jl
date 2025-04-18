@@ -122,11 +122,11 @@ function run_solid_body_rotation(; architecture = CPU(),
 
     output_prefix = "solid_body_rotation_Nx$(grid.Nx)_" * prefix
 
-    simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                          schedule = TimeInterval(super_rotation_period / 1000),
-                                                          filename = output_prefix,
-                                                          field_slicer = nothing,
-                                                          overwrite_existing = true)
+    simulation.output_writers[:fields] = JLD2Writer(model, output_fields,
+                                                    schedule = TimeInterval(super_rotation_period / 1000),
+                                                    filename = output_prefix,
+                                                    field_slicer = nothing,
+                                                    overwrite_existing = true)
 
     run!(simulation)
 

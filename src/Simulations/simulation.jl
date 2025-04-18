@@ -5,24 +5,25 @@ using Oceananigans.DistributedComputations: Distributed, all_reduce
 import Oceananigans.Models: iteration
 import Oceananigans.Utils: prettytime
 import Oceananigans.TimeSteppers: reset!
+import Oceananigans.OutputWriters: write_output!
 
 default_progress(simulation) = nothing
 
-mutable struct Simulation{ML, DT, ST, DI, OW, CB}
+mutable struct Simulation{ML, DT, ST, DI, OW, CB, FT, BL}
     model :: ML
     Δt :: DT
-    stop_iteration :: Float64
+    stop_iteration :: FT
     stop_time :: ST
-    wall_time_limit :: Float64
+    wall_time_limit :: FT
     diagnostics :: DI
     output_writers :: OW
     callbacks :: CB
-    run_wall_time :: Float64
-    align_time_step :: Bool
-    running :: Bool
-    initialized :: Bool
-    verbose :: Bool
-    minimum_relative_step :: Float64
+    run_wall_time :: FT
+    align_time_step :: BL
+    running :: BL
+    initialized :: BL
+    verbose :: BL
+    minimum_relative_step :: FT
 end
 
 """
@@ -231,4 +232,11 @@ function wall_time_limit_exceeded(sim)
 
     return nothing
 end
+
+#####
+##### Writing output and checkpointing
+#####
+
+# Fallback, to be elaborated on
+write_output!(writer, sim::Simulation) = write_output!(writer, sim.model)
 

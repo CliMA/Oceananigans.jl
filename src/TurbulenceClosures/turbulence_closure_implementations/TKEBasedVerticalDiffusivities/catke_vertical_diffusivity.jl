@@ -144,7 +144,40 @@ catke_first(catke1::FlavorOfCATKE, catke2::FlavorOfCATKE) = error("Can't have tw
 ##### Diffusivities and diffusivity fields utilities
 #####
 
-function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
+struct CATKEDiffusivityFields{K, L, J, T, U, KC, LC}
+    κu :: K
+    κc :: K
+    κe :: K
+    Le :: L
+    Jᵇ :: J
+    previous_compute_time :: T
+    previous_velocities :: U
+    _tupled_tracer_diffusivities :: KC
+    _tupled_implicit_linear_coefficients :: LC
+end
+
+Adapt.adapt_structure(to, catke_diffusivity_fields::CATKEDiffusivityFields) =
+    CATKEDiffusivityFields(adapt(to, catke_diffusivity_fields.κu),
+                           adapt(to, catke_diffusivity_fields.κc),
+                           adapt(to, catke_diffusivity_fields.κe),
+                           adapt(to, catke_diffusivity_fields.Le),
+                           adapt(to, catke_diffusivity_fields.Jᵇ),
+                           catke_diffusivity_fields.previous_compute_time[],
+                           adapt(to, catke_diffusivity_fields.previous_velocities),
+                           adapt(to, catke_diffusivity_fields._tupled_tracer_diffusivities),
+                           adapt(to, catke_diffusivity_fields._tupled_implicit_linear_coefficients))
+
+function fill_halo_regions!(catke_diffusivity_fields::CATKEDiffusivityFields, args...; kw...)
+    grid = catke_diffusivity_fields.κu.grid
+
+    κ = (catke_diffusivity_fields.κu,
+         catke_diffusivity_fields.κc,
+         catke_diffusivity_fields.κe)
+
+    return fill_halo_regions!(κ, grid, args...; kw...)
+end
+
+function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::FlavorOfCATKE)
 
     default_diffusivity_bcs = (κu = FieldBoundaryConditions(grid, (Center, Center, Face)),
                                κc = FieldBoundaryConditions(grid, (Center, Center, Face)),
@@ -157,7 +190,7 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
     κe = ZFaceField(grid, boundary_conditions=bcs.κe)
     Le = CenterField(grid)
     Jᵇ = Field{Center, Center, Nothing}(grid)
-    previous_compute_time = Ref(zero(grid))
+    previous_compute_time = Ref(clock.time)
 
     # Note: we may be able to avoid using the "previous velocities" in favor of a "fully implicit"
     # discretization of shear production
@@ -169,25 +202,29 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
     _tupled_tracer_diffusivities         = NamedTuple(name => name === :e ? κe : κc          for name in tracer_names)
     _tupled_implicit_linear_coefficients = NamedTuple(name => name === :e ? Le : ZeroField() for name in tracer_names)
 
-    return (; κu, κc, κe, Le, Jᵇ,
-            previous_compute_time, previous_velocities,
-            _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
-end
+    return CATKEDiffusivityFields(κu, κc, κe, Le, Jᵇ,
+                                  previous_compute_time, previous_velocities,
+                                  _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
+end        
 
 @inline viscosity_location(::FlavorOfCATKE) = (c, c, f)
 @inline diffusivity_location(::FlavorOfCATKE) = (c, c, f)
 
-function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; parameters = :xyz)
+function update_previous_compute_time!(diffusivities, model)
+    Δt = model.clock.time - diffusivities.previous_compute_time[]
+    diffusivities.previous_compute_time[] = model.clock.time
+    return Δt
+end
 
+function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
     tracers = model.tracers
     buoyancy = model.buoyancy
     clock = model.clock
-    top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
-    Δt = model.clock.time - diffusivities.previous_compute_time[]
-    diffusivities.previous_compute_time[] = model.clock.time
+    top_tracer_bcs = get_top_tracer_bcs(model.buoyancy.formulation, tracers)
+    Δt = update_previous_compute_time!(diffusivities, model)
 
     if isfinite(model.clock.last_Δt) # Check that we have taken a valid time-step first.
         # Compute e at the current time:

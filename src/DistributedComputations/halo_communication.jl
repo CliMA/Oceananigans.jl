@@ -41,33 +41,43 @@ opposite_side = Dict(
     :northeast => :southwest, 
 )
 
-# Define functions that return unique send and recv MPI tags for each side.
-# It's an integer where
-#   digit 1-2: an identifier for the field that is reset each timestep
-#   digit 3: an identifier for the field's Z-location
-#   digit 4: the side we send to/recieve from
 ID_DIGITS   = 2
 
-@inline loc_id(::Face)    = 0
-@inline loc_id(::Center)  = 1
-@inline loc_id(::Nothing) = 2
-@inline loc_id(LX, LY, LZ) = loc_id(LZ)
+# A Hashing function which returns a unique
+# integer between 0 and 26 for a combination of
+# 3 locations wither Center, Face, or Nothing
+location_counter = 0
+for LX in (:Face, :Center, :Nothing)
+    for LY in (:Face, :Center, :Nothing)
+        for LZ in (:Face, :Center, :Nothing)
+            @eval loc_id(::$LX, ::$LY, ::$LZ) = $location_counter
+            global location_counter += 1
+        end
+    end
+end
+
+# Functions that return unique send and recv MPI tags for each side, field location 
+# keeping into account the possibility of asynchronous communication.
+# the MPI tag is an integer with:
+#   digit 1-2: an counter which keeps track of how many communications are live. The counter is stored in `arch.mpi_tag`
+#   digit 3-4: a unique identifier for the field's location that goes from 0 - 26 (see `loc_id`)
+#   digit 5: the side we send / recieve from
 
 for side in sides
     side_str = string(side)
     send_tag_fn_name = Symbol("$(side)_send_tag")
     recv_tag_fn_name = Symbol("$(side)_recv_tag")
     @eval begin
-        function $send_tag_fn_name(arch, location)
+        function $send_tag_fn_name(arch, grid, location)
             field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
-            loc_digit  = string(loc_id(location...)) 
+            loc_digit  = string(loc_id(location...), pad=ID_DIGITS)
             side_digit = string(side_id[Symbol($side_str)])
             return parse(Int, field_id * loc_digit * side_digit)
         end
 
-        function $recv_tag_fn_name(arch, location)
+        function $recv_tag_fn_name(arch, grid, location)
             field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
-            loc_digit  = string(loc_id(location...)) 
+            loc_digit  = string(loc_id(location...), pad=ID_DIGITS)
             side_digit = string(side_id[opposite_side[Symbol($side_str)]])
             return parse(Int, field_id * loc_digit * side_digit)
         end
@@ -110,8 +120,8 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     
     arch = architecture(grid)
     fill_halos!, bcs = permute_boundary_conditions(bcs) 
-
-    number_of_tasks = length(fill_halos!)
+    number_of_tasks  = length(fill_halos!)
+    outstanding_requests = length(arch.mpi_requests)
 
     for task = 1:number_of_tasks
         fill_halo_event!(c, fill_halos![task], bcs[task], indices, loc, arch, grid, buffers, args...; kwargs...)
@@ -119,9 +129,13 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
 
     fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; kwargs...)
     
-    # Switch to the next field to send
-    arch.mpi_tag[] += 1
-
+    # We increment the request counter only if we have actually initiated the MPI communication.
+    # This is the case only if at least one of the boundary conditions is a distributed communication 
+    # boundary condition (DCBCT) _and_ the `only_local_halos` keyword argument is false.
+    if length(arch.mpi_requests) > outstanding_requests
+        arch.mpi_tag[] += 1
+    end
+    
     return nothing
 end
 
@@ -134,7 +148,7 @@ end
 
     # Overlapping communication and computation, store requests in a `MPI.Request`
     # pool to be waited upon later on when halos are required.
-    if async && !(arch isa SynchronizedDistributed)
+    if async && (arch isa AsynchronousDistributed)
         push!(arch.mpi_requests, requests...)
         return nothing
     end
@@ -313,10 +327,9 @@ for side in sides
     @eval begin
         function $send_side_halo(c, grid, arch, location, local_rank, rank_to_send_to, buffers)
             send_buffer = $get_side_send_buffer(c, grid, buffers, arch)
-            send_tag = $side_send_tag(arch, location)
+            send_tag = $side_send_tag(arch, grid, location)
 
             @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
-            
             send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, arch.communicator)
 
             return send_req
@@ -340,7 +353,7 @@ for side in sides
     @eval begin
         function $recv_and_fill_side_halo!(c, grid, arch, location, local_rank, rank_to_recv_from, buffers)
             recv_buffer = $get_side_recv_buffer(c, grid, buffers, arch)
-            recv_tag = $side_recv_tag(arch, location)
+            recv_tag = $side_recv_tag(arch, grid, location)
 
             @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
             recv_req = MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, arch.communicator)

@@ -65,9 +65,8 @@ grid = RectilinearGrid(architecture,
 └── Bounded  z ∈ [0.0, 10.0] variably spaced with min(Δz)=1.0, max(Δz)=4.0
 ```
 
-!!! note "GPU architecture requires a CUDA- or Metal-enabled device"
-    To run the above example and create a grid on the GPU, either an Nvidia or Metal GPU has to be available.
-    For more information about CUDA, see the [`CUDA.jl` documentation](https://cuda.juliagpu.org/stable/).
+!!! note "GPU architecture requires a CUDA-, ROC- or Metal-enabled device"
+    Running this example and creating a grid on the GPU requires a device that supports CUDA, ROC, or Metal. In other words, you must have an Nvidia, AMD, or Apple-compatible GPU available. For more information about CUDA, see the [`CUDA.jl` documentation](https://cuda.juliagpu.org/stable/).
 
 The ``y``-dimension is "missing" because it's marked `Flat` in `topology = (Periodic, Flat, Bounded)`.
 So nothing varies in ``y``: `y`-derivatives are 0.
@@ -87,7 +86,7 @@ The shape of the physical domain determines what grid type should be used:
 3. [`OrthogonalSphericalShellGrid`](@ref Oceananigans.Grids.OrthogonalSphericalShellGrid) represents sectors of thin spherical shells divided with mesh lines that intersect at right angles (thus, orthogonal) but are otherwise arbitrary.
 
 !!! note "OrthogonalSphericalShellGrids.jl"
-    See the auxiliary package [`OrthogonalSphericalShellGrids.jl`](https://github.com/CliMA/OrthogonalSphericalShellGrids.jl)
+    See the auxiliary module [`OrthogonalSphericalShellGrids.jl`](@ref Oceananigans.OrthogonalSphericalShellGrids)
     for recipes that implement some useful `OrthogonalSphericalShellGrid`, including the
     ["tripolar" grid](https://www.sciencedirect.com/science/article/abs/pii/S0021999196901369).
 
@@ -263,14 +262,14 @@ architecture = Distributed(child_architecture)
 [ Info: MPI has not been initialized, so we are calling MPI.Init().
 Distributed{CPU} across 1 rank:
 ├── local_rank: 0 of 0-0
-└── local_index: [1, 1, 1]
+├── local_index: [1, 1, 1]
+└── connectivity:
 ```
 
 which allows us to distributed computations across either CPUs or GPUs.
 In this case, we didn't launch `julia` on multiple nodes using [MPI](https://en.wikipedia.org/wiki/Message_Passing_Interface),
 so we're only "distributed" across 1 node.
 <!-- For more, see [Distributed grids](@ref). -->
-More details on Distributed grids in a separate section.
 
 ### Specifying the topology for each dimension
 

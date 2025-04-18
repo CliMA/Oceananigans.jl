@@ -58,7 +58,7 @@ MutableVerticalDiscretization(r_faces) = MutableVerticalDiscretization(r_faces, 
 ####
 
 const RegularStaticVerticalDiscretization  = StaticVerticalDiscretization{<:Any, <:Any, <:Number}
-const RegularMutableVerticalDiscretization = MutableVerticalDiscretization{<:Any,  <:Any, <:Number}
+const RegularMutableVerticalDiscretization = MutableVerticalDiscretization{<:Any, <:Any, <:Number}
 
 const RegularVerticalCoordinate = Union{RegularStaticVerticalDiscretization, RegularMutableVerticalDiscretization}
 
@@ -115,6 +115,12 @@ on_architecture(arch, coord::MutableVerticalDiscretization) =
 AUG = AbstractUnderlyingGrid
 
 @inline rnode(i, j, k, grid, ℓx, ℓy, ℓz) = rnode(k, grid, ℓz)
+
+@inline function rnode(i::AbstractArray, j::AbstractArray, k, grid, ℓx, ℓy, ℓz)
+    res = rnode(k, grid, ℓz)
+    toperm = Base.stack(collect(Base.stack(collect(res for _ in 1:size(j, 2))) for _ in 1:size(i, 1)))
+    permutedims(toperm, (3, 2, 1))
+end
 @inline rnode(k, grid, ::Center) = getnode(grid.z.cᵃᵃᶜ, k)
 @inline rnode(k, grid, ::Face)   = getnode(grid.z.cᵃᵃᶠ, k)
 

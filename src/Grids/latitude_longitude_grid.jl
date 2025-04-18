@@ -1,14 +1,14 @@
 using KernelAbstractions: @kernel, @index
 
 struct LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC,
-                             DXFC, DXCF, DXFF, DXCC, DYFC, DYCF, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Z, Arch}
+                             DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Z, Arch}
     architecture :: Arch
-    Nx :: Int
-    Ny :: Int
-    Nz :: Int
-    Hx :: Int
-    Hy :: Int
-    Hz :: Int
+    Nx :: I
+    Ny :: I
+    Nz :: I
+    Hx :: I
+    Hy :: I
+    Hz :: I
     Lx :: FT
     Ly :: FT
     Lz :: FT
@@ -24,52 +24,52 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, 
     φᵃᶜᵃ  :: YC
     z     :: Z
     # Precomputed metrics M <: Nothing means metrics will be computed on the fly
+    Δxᶜᶜᵃ :: DXCC
     Δxᶠᶜᵃ :: DXFC
     Δxᶜᶠᵃ :: DXCF
     Δxᶠᶠᵃ :: DXFF
-    Δxᶜᶜᵃ :: DXCC
     Δyᶠᶜᵃ :: DYFC
     Δyᶜᶠᵃ :: DYCF
+    Azᶜᶜᵃ :: DXCC
     Azᶠᶜᵃ :: DXFC
     Azᶜᶠᵃ :: DXCF
     Azᶠᶠᵃ :: DXFF
-    Azᶜᶜᵃ :: DXCC
     # Spherical radius
     radius :: FT
 end
 
 function LatitudeLongitudeGrid{TX, TY, TZ}(architecture::Arch,
-                                           Nλ, Nφ, Nz, Hλ, Hφ, Hz,
+                                           Nλ::I, Nφ::I, Nz::I, Hλ::I, Hφ::I, Hz::I,
                                            Lλ :: FT, Lφ :: FT, Lz :: FT,
                                            Δλᶠᵃᵃ :: DXF, Δλᶜᵃᵃ :: DXC,
                                             λᶠᵃᵃ :: XF,   λᶜᵃᵃ :: XC,
                                            Δφᵃᶠᵃ :: DYF, Δφᵃᶜᵃ :: DYC,
                                             φᵃᶠᵃ :: YF,   φᵃᶜᵃ :: YC, z :: Z,
-                                           Δxᶠᶜᵃ :: DXFC, Δxᶜᶠᵃ :: DXCF,
-                                           Δxᶠᶠᵃ :: DXFF, Δxᶜᶜᵃ :: DXCC,
+                                           Δxᶜᶜᵃ :: DXCC, Δxᶠᶜᵃ :: DXFC, 
+                                           Δxᶜᶠᵃ :: DXCF, Δxᶠᶠᵃ :: DXFF, 
                                            Δyᶠᶜᵃ :: DYFC, Δyᶜᶠᵃ :: DYCF,
-                                           Azᶠᶜᵃ :: DXFC, Azᶜᶠᵃ :: DXCF, 
-                                           Azᶠᶠᵃ :: DXFF, Azᶜᶜᵃ :: DXCC,
+                                           Azᶜᶜᵃ :: DXCC, Azᶠᶜᵃ :: DXFC,
+                                           Azᶜᶠᵃ :: DXCF, Azᶠᶠᵃ :: DXFF,
                                            radius :: FT) where {Arch, FT, TX, TY, TZ, Z,
                                                                 DXF, DXC, XF, XC,
                                                                 DYF, DYC, YF, YC,
                                                                 DXFC, DXCF,
                                                                 DXFF, DXCC,
-                                                                DYFC, DYCF}
+                                                                DYFC, DYCF, I}
 
     return LatitudeLongitudeGrid{FT, TX, TY, TZ, Z,
                                  DXF, DXC, XF, XC,
                                  DYF, DYC, YF, YC,
-                                 DXFC, DXCF, DXFF,
-                                 DXCC, DYFC, DYCF, Arch}(architecture,
-                                                         Nλ, Nφ, Nz,
-                                                         Hλ, Hφ, Hz,
-                                                         Lλ, Lφ, Lz,
-                                                         Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
-                                                         Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, z,
-                                                         Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ,
-                                                         Δyᶠᶜᵃ, Δyᶜᶠᵃ,
-                                                         Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, radius)
+                                 DXCC, DXFC, DXCF, DXFF,
+                                 DYFC, DYCF, Arch, I}(architecture,
+                                                      Nλ, Nφ, Nz,
+                                                      Hλ, Hφ, Hz,
+                                                      Lλ, Lφ, Lz,
+                                                      Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
+                                                      Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, z,
+                                                      Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+                                                      Δyᶠᶜᵃ, Δyᶜᶠᵃ,
+                                                      Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
 end
 
 const LLG = LatitudeLongitudeGrid
@@ -78,7 +78,7 @@ const LLG = LatitudeLongitudeGrid
 #                                   ↓↓ FT     TX     TY     TZ     Z      DXF  DXC  XF     XC     DYF  DYC, YF,    YC,
 const LLGOTF{DXF, DXC, DYF, DYC} = LLG{<:Any, <:Any, <:Any, <:Any, <:Any, DXF, DXC, <:Any, <:Any, DYF, DYC, <:Any, <:Any,
                                        Nothing, Nothing, Nothing, Nothing, Nothing, Nothing} where {DXF, DXC, DYF, DYC}
-#                                   ↑↑ DXFC,    DXCF,    DXFF,    DXCC,    DYFC,    DYCF
+#                                   ↑↑ DXCC,    DXFC,    DXCF,    DXFF,    DYFC,    DYCF
 
 # Metrics computed on the fly, constant x-spacing
 const XRegLLGOTF     =  LLGOTF{<:Number, <:Number}
@@ -241,16 +241,16 @@ LatitudeLongitudeGrid(FT::DataType; kwargs...) = LatitudeLongitudeGrid(CPU(), FT
 
 """ Return a reproduction of `grid` with precomputed metric terms. """
 function with_precomputed_metrics(grid)
-    Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ = allocate_metrics(grid)
+    Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ = allocate_metrics(grid)
 
-    # Compute Δx's and areas
+    # Compute Δx spacings and Az areas
     arch = grid.architecture
     dev = Architectures.device(arch)
     workgroup, worksize  = metric_workgroup(grid), metric_worksize(grid)
     loop! = compute_Δx_Az!(dev, workgroup, worksize)
-    loop!(grid, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ)
+    loop!(grid, Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
 
-    # Compute Δy's if needed
+    # Compute Δy spacings if needed
     if !(grid isa YRegularLLG)
         loop! = compute_Δy!(dev, 16, length(grid.Δφᵃᶜᵃ) - 1)
         loop!(grid, Δyᶠᶜᵃ, Δyᶜᶠᵃ)
@@ -267,8 +267,8 @@ function with_precomputed_metrics(grid)
                                              grid.Δλᶠᵃᵃ, grid.Δλᶜᵃᵃ, grid.λᶠᵃᵃ, grid.λᶜᵃᵃ,
                                              grid.Δφᵃᶠᵃ, grid.Δφᵃᶜᵃ, grid.φᵃᶠᵃ, grid.φᵃᶜᵃ,
                                              grid.z,
-                                             Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ,
-                                             Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, grid.radius)
+                                             Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ,
+                                             Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, grid.radius)
 end
 
 function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
@@ -427,16 +427,16 @@ function Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid)
                                              Adapt.adapt(to, grid.φᵃᶠᵃ),
                                              Adapt.adapt(to, grid.φᵃᶜᵃ),
                                              Adapt.adapt(to, grid.z),
+                                             Adapt.adapt(to, grid.Δxᶜᶜᵃ),
                                              Adapt.adapt(to, grid.Δxᶠᶜᵃ),
                                              Adapt.adapt(to, grid.Δxᶜᶠᵃ),
                                              Adapt.adapt(to, grid.Δxᶠᶠᵃ),
-                                             Adapt.adapt(to, grid.Δxᶜᶜᵃ),
                                              Adapt.adapt(to, grid.Δyᶠᶜᵃ),
                                              Adapt.adapt(to, grid.Δyᶜᶠᵃ),
+                                             Adapt.adapt(to, grid.Azᶜᶜᵃ),
                                              Adapt.adapt(to, grid.Azᶠᶜᵃ),
                                              Adapt.adapt(to, grid.Azᶜᶠᵃ),
                                              Adapt.adapt(to, grid.Azᶠᶠᵃ),
-                                             Adapt.adapt(to, grid.Azᶜᶜᵃ),
                                              grid.radius)
 end
 
@@ -483,7 +483,7 @@ end
 @inline metric_worksize(grid::XRegularLLG)  = length(grid.φᵃᶠᵃ) - 2
 @inline metric_workgroup(grid::XRegularLLG) = 16
 
-@kernel function compute_Δx_Az!(grid::LatitudeLongitudeGrid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ)
+@kernel function compute_Δx_Az!(grid::LatitudeLongitudeGrid, Δxᶜᶜ, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Azᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ)
     i, j = @index(Global, NTuple)
 
     # Manually offset x- and y-index
@@ -502,7 +502,7 @@ end
     end
 end
 
-@kernel function compute_Δx_Az!(grid::XRegularLLG, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ)
+@kernel function compute_Δx_Az!(grid::XRegularLLG, Δxᶜᶜ, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Azᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ)
     j = @index(Global, Linear)
 
     # Manually offset y-index
@@ -552,14 +552,14 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
         metric_size = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
     end
 
+    Δxᶜᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
     Δxᶠᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
     Δxᶜᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
     Δxᶠᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Δxᶜᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
+    Azᶜᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
     Azᶠᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
     Azᶜᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
     Azᶠᶠ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
-    Azᶜᶜ = OffsetArray(zeros(arch, FT, metric_size...), offsets...)
 
     if grid isa YRegularLLG
         Δyᶠᶜ = Δyᶠᶜᵃ(1, 1, 1, grid)
@@ -571,7 +571,7 @@ function allocate_metrics(grid::LatitudeLongitudeGrid)
         Δyᶜᶠ    = OffsetArray(parentF, grid.Δφᵃᶜᵃ.offsets[1])
     end
 
-    return Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ
+    return Δxᶜᶜ, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δyᶠᶜ, Δyᶜᶠ, Azᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ
 end
 
 #####

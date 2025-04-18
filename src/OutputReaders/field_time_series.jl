@@ -24,7 +24,7 @@ using Oceananigans.Units: Time
 using Oceananigans.Utils: launch!
 
 import Oceananigans.Architectures: architecture, on_architecture
-import Oceananigans.BoundaryConditions: fill_halo_regions!, BoundaryCondition, getbc
+import Oceananigans.BoundaryConditions: fill_halo_regions!, BoundaryCondition, getbc, FieldBoundaryConditions
 import Oceananigans.Fields: Field, set!, interior, indices, interpolate!
 
 #####
@@ -373,7 +373,7 @@ function FieldTimeSeries(loc, grid, times=();
                          path = nothing,
                          name = nothing,
                          time_indexing = Clamp(),
-                         boundary_conditions = nothing,
+                         boundary_conditions = FieldBoundaryConditions(grid, loc),
                          reader_kw = NamedTuple())
 
     LX, LY, LZ = loc

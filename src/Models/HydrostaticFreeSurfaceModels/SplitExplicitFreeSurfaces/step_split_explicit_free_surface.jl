@@ -12,7 +12,7 @@ using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
     
-    store_previous_free_surface!(timestepper, i, j, k_top, η)
+    cache_previous_free_surface!(timestepper, i, j, k_top, η)
     @inbounds  η[i, j, k_top] -= Δτ * (δxTᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
                                        δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) / Azᶜᶜᶠ(i, j, k_top, grid)
 end
@@ -25,21 +25,25 @@ end
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
-    store_previous_velocities!(timestepper, i, j, 1, U)
-    store_previous_velocities!(timestepper, i, j, 1, V)
+    cache_previous_velocities!(timestepper, i, j, 1, U)
+    cache_previous_velocities!(timestepper, i, j, 1, V)
 
     Hᶠᶜ = column_depthᶠᶜᵃ(i, j, k_top, grid, η)
     Hᶜᶠ = column_depthᶜᶠᵃ(i, j, k_top, grid, η)
     
     @inbounds begin
         # ∂τ(U) = - ∇η + G
-        U[i, j, 1] +=  Δτ * (- g * Hᶠᶜ * ∂xTᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
-        V[i, j, 1] +=  Δτ * (- g * Hᶜᶠ * ∂yTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
-                          
+        Uᵐ⁺¹ = U[i, j, 1] + Δτ * (- g * Hᶠᶜ * ∂xTᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
+        Vᵐ⁺¹ = V[i, j, 1] + Δτ * (- g * Hᶜᶠ * ∂yTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
+                     
         # time-averaging
         η̅[i, j, k_top] += averaging_weight * η[i, j, k_top]
-        U̅[i, j, 1]     += averaging_weight * U[i, j, 1]
-        V̅[i, j, 1]     += averaging_weight * V[i, j, 1]
+        U̅[i, j, 1]     += averaging_weight * Uᵐ⁺¹
+        V̅[i, j, 1]     += averaging_weight * Vᵐ⁺¹
+
+        # Updating the velocities
+        U[i, j, 1] = Uᵐ⁺¹
+        V[i, j, 1] = Vᵐ⁺¹
     end
 end
 

@@ -149,7 +149,39 @@ end
 ##### Diffusivities and diffusivity fields utilities
 #####
 
-function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfTD)
+struct TKEDissipationDiffusivityFields{K, L, U, KC, LC}
+    κu :: K
+    κc :: K
+    κe :: K
+    κϵ :: K
+    Le :: L
+    Lϵ :: L
+    previous_velocities :: U
+    _tupled_tracer_diffusivities :: KC
+    _tupled_implicit_linear_coefficients :: LC
+end
+
+Adapt.adapt_structure(to, tke_dissipation_diffusivity_fields::TKEDissipationDiffusivityFields) =
+    TKEDissipationDiffusivityFields(adapt(to, tke_dissipation_diffusivity_fields.κu),
+                                    adapt(to, tke_dissipation_diffusivity_fields.κc),
+                                    adapt(to, tke_dissipation_diffusivity_fields.κe),
+                                    adapt(to, tke_dissipation_diffusivity_fields.κϵ),
+                                    adapt(to, tke_dissipation_diffusivity_fields.Le),
+                                    adapt(to, tke_dissipation_diffusivity_fields.Lϵ),
+                                    adapt(to, previous_velocities),
+                                    adapt(to, _tupled_tracer_diffusivities),
+                                    adapt(to, _tupled_implicit_linear_coefficients))
+
+function fill_halo_regions!(tke_dissipation_diffusivity_fields::TKEDissipationDiffusivityFields, args...; kw...)
+    fields_with_halos_to_fill = (tke_dissipation_diffusivity_fields.κu,
+                                 tke_dissipation_diffusivity_fields.κc,
+                                 tke_dissipation_diffusivity_fields.κe,
+                                 tke_dissipation_diffusivity_fields.κϵ)
+
+    return fill_halo_regions!(fields_with_halos_to_fill, args...; kw...)
+end
+
+function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::FlavorOfTD)
 
     default_diffusivity_bcs = (κu = FieldBoundaryConditions(grid, (Center, Center, Face)),
                                κc = FieldBoundaryConditions(grid, (Center, Center, Face)),
@@ -184,8 +216,10 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfTD)
     _tupled_implicit_linear_coefficients = NamedTuple(name => _tupled_implicit_linear_coefficients[name]
                                                       for name in tracer_names)
 
-    return (; κu, κc, κe, κϵ, Le, Lϵ, previous_velocities,
-            _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
+    return TKEDissipationDiffusivityFields(κu, κc, κe, κϵ, Le, Lϵ,
+                                           previous_velocities,
+                                           _tupled_tracer_diffusivities,
+                                           _tupled_implicit_linear_coefficients)
 end        
 
 @inline viscosity_location(::FlavorOfTD) = (c, c, f)

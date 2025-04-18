@@ -1,6 +1,8 @@
 using Oceananigans.Grids: _node
 using Oceananigans.Fields: interpolator, _interpolate, FractionalIndices, flatten_node, FixedTime
 using Oceananigans.Architectures: architecture
+using Oceananigans.DistributedComputations: child_architecture, Distributed
+using Adapt
 
 import Oceananigans.Fields: interpolate
 
@@ -18,6 +20,12 @@ end
     ñ, n₁, n₂ = interpolating_time_indices(time_indexing, times, t)
     return TimeInterpolator(ñ, n₁, n₂, length(times))
 end
+
+Adapt.adapt_structure(to, ti::TimeInterpolator) =
+    TimeInterpolator(Adapt.adapt(to, ti.fractional_index),
+                     Adapt.adapt(to, ti.first_index),
+                     Adapt.adapt(to, ti.second_index),
+                     Adapt.adapt(to, ti.length))
 
 #####
 ##### Computation of time indices for interpolation
@@ -67,13 +75,12 @@ end
 ##### fine_time_index
 #####
 
-#=
 @inline function find_time_index(times::StepRangeLen, t)
     n₂ = searchsortedfirst(times, t)
-    n₁ = max(1, n₂ - 1)
 
     Nt = length(times)
     n₂ = min(Nt, n₂) # cap
+    n₁ = max(1, n₂ - 1)
 
     @inbounds begin
         t₁ = times[n₁]
@@ -81,10 +88,10 @@ end
     end
 
     ñ = (t - t₁) / (t₂ - t₁)
+    ñ = ifelse(n₂ == n₁, zero(ñ), ñ)
 
     return ñ, n₁, n₂
 end
-=#
 
 @inline function find_time_index(times, t)
     Nt = length(times)
@@ -225,7 +232,7 @@ end
     to_node = flatten_node(to_node...)
 
     if topology(from_grid) === (Flat, Flat, Flat)
-        fi = FractionalIndices(1, 1, 0)
+        fi = FractionalIndices(nothing, nothing, nothing)
     else
         fi = FractionalIndices(to_node, from_grid, from_loc...)
     end
@@ -237,9 +244,9 @@ end
                              data::OffsetArray, backend, time_indexing)
 
     ñ  = time_indices.fractional_index
-    n₁ = time_indices.first_index
-    n₂ = time_indices.second_index
-    Nt = time_indices.length
+    n₁ = convert(Int, time_indices.first_index)
+    n₂ = convert(Int, time_indices.second_index)
+    Nt = convert(Int, time_indices.length)
 
     ix = interpolator(fi.i)
     iy = interpolator(fi.j)
@@ -299,13 +306,15 @@ end
 # for ranges. if `times` is a vector that resides on the GPU, it has to be moved to the CPU for safe indexing.
 # TODO: Copying the whole array is a bit unclean, maybe find a way that avoids the penalty of allocating and copying memory.
 # This would require refactoring `FieldTimeSeries` to include a cpu-allocated times array
-cpu_interpolating_time_indices(::CPU, times, time_indexing, t, arch) = TimeInterpolator(time_indexing, times, t)
+cpu_interpolating_time_indices(::CPU, times, time_indexing, t) = TimeInterpolator(time_indexing, times, t)
 cpu_interpolating_time_indices(::CPU, times::AbstractVector, time_indexing, t) = TimeInterpolator(time_indexing, times, t)
 
 function cpu_interpolating_time_indices(::GPU, times::AbstractVector, time_indexing, t)
     cpu_times = on_architecture(CPU(), times)
     return TimeInterpolator(time_indexing, cpu_times, t)
 end
+
+cpu_interpolating_time_indices(arch::Distributed, args...) = cpu_interpolating_time_indices(child_architecture(arch), args...)
 
 # Fallbacks that do nothing
 update_field_time_series!(fts, time::Time) = nothing
@@ -330,6 +339,7 @@ function update_field_time_series!(fts::PartlyInMemoryFTS, n₁::Int, n₂=n₁)
         start = n₁
         fts.backend = new_backend(fts.backend, start, Nm)
         set!(fts)
+        fill_halo_regions!(fts)
     end
 
     return nothing
