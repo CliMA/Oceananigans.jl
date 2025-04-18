@@ -22,3 +22,46 @@ for SchemeType in [:CenteredScheme, :UpwindScheme]
         @inline advective_tracer_flux_z(i, j, k, grid::ZFlatGrid, ::$SchemeType, U, c) = zero(grid)
     end
 end
+
+@inline _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, scheme, ψ, args...) = @inbounds ψ[i, j, k]
+@inline _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, scheme, ψ, args...) = @inbounds ψ[i, j, k]
+@inline _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, scheme, ψ, args...) = @inbounds ψ[i, j, k]
+@inline _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid::XFlatGrid, scheme, ψ, args...) = @inbounds ψ[i, j, k]
+@inline _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid::YFlatGrid, scheme, ψ, args...) = @inbounds ψ[i, j, k]
+@inline _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid::ZFlatGrid, scheme, ψ, args...) = @inbounds ψ[i, j, k]
+
+@inline _biased_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, scheme, bias, ψ, args...) = @inbounds ψ[i, j, k]
+@inline _biased_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, scheme, bias, ψ, args...) = @inbounds ψ[i, j, k]
+@inline _biased_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, scheme, bias, ψ, args...) = @inbounds ψ[i, j, k]
+@inline _biased_interpolate_xᶜᵃᵃ(i, j, k, grid::XFlatGrid, scheme, bias, ψ, args...) = @inbounds ψ[i, j, k]
+@inline _biased_interpolate_yᵃᶜᵃ(i, j, k, grid::YFlatGrid, scheme, bias, ψ, args...) = @inbounds ψ[i, j, k]
+@inline _biased_interpolate_zᵃᵃᶜ(i, j, k, grid::ZFlatGrid, scheme, bias, ψ, args...) = @inbounds ψ[i, j, k]
+
+@inline _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, scheme, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
+@inline _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, scheme, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
+@inline _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, scheme, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
+@inline _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid::XFlatGrid, scheme, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
+@inline _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid::YFlatGrid, scheme, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
+@inline _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid::ZFlatGrid, scheme, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
+
+@inline _biased_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, scheme, bias, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
+@inline _biased_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, scheme, bias, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
+@inline _biased_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, scheme, bias, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
+@inline _biased_interpolate_xᶜᵃᵃ(i, j, k, grid::XFlatGrid, scheme, bias, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
+@inline _biased_interpolate_yᵃᶜᵃ(i, j, k, grid::YFlatGrid, scheme, bias, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
+@inline _biased_interpolate_zᵃᵃᶜ(i, j, k, grid::ZFlatGrid, scheme, bias, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
+
+# Removing the AbstractSmoothnessStencil if there is one...
+@inline _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, scheme, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
+@inline _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, scheme, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
+@inline _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, scheme, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
+@inline _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid::XFlatGrid, scheme, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
+@inline _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid::YFlatGrid, scheme, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
+@inline _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid::ZFlatGrid, scheme, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
+
+@inline _biased_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, scheme, bias, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
+@inline _biased_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, scheme, bias, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
+@inline _biased_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, scheme, bias, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
+@inline _biased_interpolate_xᶜᵃᵃ(i, j, k, grid::XFlatGrid, scheme, bias, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
+@inline _biased_interpolate_yᵃᶜᵃ(i, j, k, grid::YFlatGrid, scheme, bias, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
+@inline _biased_interpolate_zᵃᵃᶜ(i, j, k, grid::ZFlatGrid, scheme, bias, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)

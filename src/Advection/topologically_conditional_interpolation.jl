@@ -31,13 +31,13 @@ const AUGXZ  = AUG{<:Any, <:BT, <:Any, <:BT}
 const AUGYZ  = AUG{<:Any, <:Any, <:BT, <:BT}
 const AUGXYZ = AUG{<:Any, <:BT, <:BT, <:BT}
 
-@inline reduced_face_order(i, ::Type{RightConnected}, N, B) = min(B, i)
-@inline reduced_face_order(i, ::Type{LeftConnected},  N, B) = min(B, N-i+2)
-@inline reduced_face_order(i, ::Type{Bounded},        N, B) = min(B, i, N-i+2)
+@inline reduced_face_order(i, ::Type{RightConnected}, N, B) = max(1, min(B, i))
+@inline reduced_face_order(i, ::Type{LeftConnected},  N, B) = max(1, min(B, N-i+1))
+@inline reduced_face_order(i, ::Type{Bounded},        N, B) = max(1, min(B, i, N-i+1))
 
-@inline reduced_center_order(i, ::Type{RightConnected}, N, B) = min(B, i)
-@inline reduced_center_order(i, ::Type{LeftConnected},  N, B) = min(B, N-i+1)
-@inline reduced_center_order(i, ::Type{Bounded},        N, B) = min(B, i, N-i+1)
+@inline reduced_center_order(i, ::Type{RightConnected}, N, B) = max(1, min(B, i))
+@inline reduced_center_order(i, ::Type{LeftConnected},  N, B) = max(1, min(B, N-i+1))
+@inline reduced_center_order(i, ::Type{Bounded},        N, B) = max(1, min(B, i, N-i+1))
 
 const A{B} = AbstractAdvectionScheme{B} 
 

@@ -42,7 +42,7 @@ for (side, dir) in zip((:ᶠᵃᵃ, :ᵃᶠᵃ, :ᵃᵃᶠ), (:x, :y, :z))
         for FT in fully_supported_float_types
             interp = Symbol(:symmetric_interpolate_, dir, side)
             @eval begin
-                @inline $interp(i, j, k, grid, ::Centered{1, $FT}, red_order::Int, ψ::$F, args...) =  $(calc_reconstruction_stencil(FT, 1, :symmetric, dir, bool))
+                @inline $interp(i, j, k, grid, ::Centered{1, $FT}, red_order::Int, ψ::$F, args...) = $(calc_reconstruction_stencil(FT, 1, :symmetric, dir, bool))
 
                 @inline function $interp(i, j, k, grid, ::Centered{2, $FT}, red_order::Int, ψ::$F, args...)          
                     if red_order==1
@@ -105,17 +105,5 @@ for (side, dir) in zip((:ᶠᵃᵃ, :ᵃᶠᵃ, :ᵃᵃᶠ), (:x, :y, :z))
                 end
             end
         end
-    end
-end
-
-# uniform centered reconstruction
-for buffer in advection_buffers, FT in fully_supported_float_types
-    @eval begin        # Flat interpolations...
-        @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::Centered{$buffer, $FT}, ::Int, ψ::Any, args...)           = @inbounds ψ[i, j, k]
-        @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::Centered{$buffer, $FT}, ::Int, ψ::Base.Callable, args...) = @inbounds ψ(i, j, k, grid, args...)
-        @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::Centered{$buffer, $FT}, ::Int, ψ::Any, args...)           = @inbounds ψ[i, j, k]
-        @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::Centered{$buffer, $FT}, ::Int, ψ::Base.Callable, args...) = @inbounds ψ(i, j, k, grid, args...)
-        @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::Centered{$buffer, $FT}, ::Int, ψ::Any, args...)           = @inbounds ψ[i, j, k]
-        @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::Centered{$buffer, $FT}, ::Int, ψ::Base.Callable, args...) = @inbounds ψ(i, j, k, grid, args...)
     end
 end
