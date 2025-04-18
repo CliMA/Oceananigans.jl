@@ -116,7 +116,7 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
             fill_multiregion_send_buffers!(c, buffers, mrg, bcs_side)
         end
         
-        buff = Reference(buffers.regional_objects)
+        buff = multi_region_communication_buffers(buffers)
  
         apply_regionally!(fill_halo_event!, c, fill_halo_side!, bcs_side, 
                           indices, loc, arch, mrg, buff, 
@@ -125,6 +125,9 @@ function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiR
 
     return nothing
 end
+
+multi_region_communication_buffers(::Nothing) = nothing
+multi_region_communication_buffers(buffers::MultiRegionObject) = Reference(buffers.regional_objects)
 
 # Find a better way to do this (this will not work for corners!!)
 function fill_multiregion_send_buffers!(c, buffers, grid, bcs)
