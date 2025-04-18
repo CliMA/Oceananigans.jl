@@ -8,9 +8,9 @@ function identity_operator!(b, x)
     return nothing
 end
 
-function run_identity_operator_test(grid)
+function run_identity_operator_test(grid, method::Symbol=:cg)
     b = CenterField(grid)
-    solver = KrylovSolver(identity_operator!, template_field = b, reltol=0, abstol=10*sqrt(eps(eltype(grid))))
+    solver = KrylovSolver(identity_operator!, method = method, template_field = b, reltol=0, abstol=10*sqrt(eps(eltype(grid))))
     initial_guess = solution = similar(b)
     set!(initial_guess, (x, y, z) -> rand())
 
@@ -19,7 +19,7 @@ function run_identity_operator_test(grid)
     @test norm(solution) .< solver.abstol
 end
 
-function run_poisson_equation_test(grid)
+function run_poisson_equation_test(grid, method::Symbol=:cg)
     arch = architecture(grid)
     # Solve ∇²ϕ = r
     ϕ_truth = CenterField(grid)
@@ -33,7 +33,7 @@ function run_poisson_equation_test(grid)
     ∇²ϕ = r = CenterField(grid)
     compute_∇²!(∇²ϕ, ϕ_truth, arch, grid)
 
-    solver = KrylovSolver(compute_∇²!, template_field=ϕ_truth, reltol=eps(eltype(grid)), maxiter=Int(1e10))
+    solver = KrylovSolver(compute_∇²!, method = method, template_field=ϕ_truth, reltol=eps(eltype(grid)), maxiter=Int(1e10))
 
     # Solve Poisson equation
     ϕ_solution = CenterField(grid)
@@ -60,10 +60,12 @@ function run_poisson_equation_test(grid)
 end
 
 @testset "KrylovSolver" begin
-    for arch in archs
-        @info "Testing KrylovSolver [$(typeof(arch))]..."
-        grid = RectilinearGrid(arch, size=(4, 8, 4), extent=(1, 3, 1))
-        run_identity_operator_test(grid)
-        run_poisson_equation_test(grid)
+    for method in (:cg, :gmres)
+        for arch in archs
+            @info "Testing KrylovSolver [$(typeof(arch))] with the Krylov method $method..."
+            grid = RectilinearGrid(arch, size=(4, 8, 4), extent=(1, 3, 1))
+            run_identity_operator_test(grid, method)
+            run_poisson_equation_test(grid, method)
+        end
     end
 end
