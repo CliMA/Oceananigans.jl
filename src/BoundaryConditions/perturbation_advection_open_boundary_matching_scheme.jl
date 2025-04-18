@@ -83,7 +83,9 @@ const FPAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection{Val{false}}}}
     τ = ifelse(ūⁿ⁺¹ >= 0, pa.outflow_timescale, pa.inflow_timescale)
     τ̃ = Δt / τ
 
-    uᵢⁿ⁺¹ = isinf(τ̃) ? ūⁿ⁺¹ : (uᵢⁿ + U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ + U)
+    uᵢⁿ⁺¹ = ifelse(isinf(τ̃),
+                   ūⁿ⁺¹,
+                   (uᵢⁿ + U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ + U))
 
     @inbounds setindex!(u, uᵢⁿ⁺¹, boundary_indices...)
 
@@ -104,7 +106,9 @@ end
     τ = ifelse(ūⁿ⁺¹ <= 0, pa.outflow_timescale, pa.inflow_timescale)
     τ̃ = Δt / τ
 
-    u₁ⁿ⁺¹ = isinf(τ̃) ? ūⁿ⁺¹ : (uᵢⁿ - U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ - U)
+    u₁ⁿ⁺¹ = ifelse(isinf(τ̃),
+                   ūⁿ⁺¹,
+                   (uᵢⁿ - U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ - U))
 
     @inbounds setindex!(u, u₁ⁿ⁺¹, boundary_indices...)
     @inbounds setindex!(u, u₁ⁿ⁺¹, boundary_secret_storage_indices...)
