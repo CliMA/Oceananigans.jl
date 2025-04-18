@@ -2,7 +2,7 @@ using Pkg
 
 include("dependencies_for_runtests.jl")
 
-group     = get(ENV, "TEST_GROUP", :all) |> Symbol
+group = get(ENV, "TEST_GROUP", "all") |> Symbol
 test_file = get(ENV, "TEST_FILE", :none) |> Symbol
 
 # if we are testing just a single file then group = :none
@@ -104,7 +104,7 @@ CUDA.allowscalar() do
     end
 
     # Lagrangian particle tracking
-    if group == :lagrangian || group == :all
+    if group == :lagrangian_particles || group == :all
         @testset "Lagrangian particle tracking tests" begin
             include("test_lagrangian_particle_tracking.jl")
         end
@@ -270,6 +270,7 @@ CUDA.allowscalar() do
             include("test_amdgpu.jl")
         end
     end
+
     # Tests for oneAPI extension
     if group == :oneapi || group == :all
         @testset "oneAPI extension tests" begin

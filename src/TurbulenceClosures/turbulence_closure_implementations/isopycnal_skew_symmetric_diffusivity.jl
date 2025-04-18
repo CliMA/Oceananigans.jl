@@ -35,7 +35,7 @@ const issd_coefficient_loc = (Center(), Center(), Face())
     IsopycnalSkewSymmetricDiffusivity([time_disc=VerticallyImplicitTimeDiscretization(), FT=Float64;]
                                       κ_skew = 0,
                                       κ_symmetric = 0,
-                                      skew_flux_formulation = AdvectiveFormulation(),
+                                      skew_flux_formulation = DiffusiveFormulation(),
                                       isopycnal_tensor = SmallSlopeIsopycnalTensor(),
                                       slope_limiter = FluxTapering(1e-2))
 
@@ -50,7 +50,7 @@ Both `κ_skew` and `κ_symmetric` may be constants, arrays, fields, or functions
 function IsopycnalSkewSymmetricDiffusivity(time_disc::TD=VerticallyImplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType;
                                            κ_skew = nothing,
                                            κ_symmetric = nothing,
-                                           skew_flux_formulation::A = AdvectiveFormulation(),
+                                           skew_flux_formulation::A = DiffusiveFormulation(),
                                            isopycnal_tensor = SmallSlopeIsopycnalTensor(),
                                            slope_limiter = FluxTapering(1e-2),
                                            required_halo_size::Int = 1) where {TD, A}
