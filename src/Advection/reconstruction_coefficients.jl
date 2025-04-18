@@ -12,7 +12,7 @@ using Oceananigans.Grids: ξnodes, ηnodes, rnodes
 """ same as [`biased_interpolate_xᶠᵃᵃ`](@ref) but on `Center`s instead of `Face`s """
 @inline biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, bias, ψ, args...)  = biased_interpolate_xᶠᵃᵃ(i + 1, j, k, grid, scheme, bias, ψ, args...)
 """ same as [`biased_interpolate_yᵃᶠᵃ`](@ref) but on `Center`s instead of `Face`s """
-@inline biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, bias, ψ, args...)  = biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, bias, ψ, args...)
+@inline biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, bias, ψ, args...)  = biased_interpolate_yᵃᶠᵃ(i, j + 1, k, grid, scheme, bias, ψ, args...)
 """ same as [`biased_interpolate_zᵃᵃᶠ`](@ref) but on `Center`s instead of `Face`s """
 @inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, bias, ψ, args...)  = biased_interpolate_zᵃᵃᶠ(i, j, k + 1, grid, scheme, bias, ψ, args...)
 
