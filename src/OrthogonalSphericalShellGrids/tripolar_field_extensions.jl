@@ -3,8 +3,7 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions,
                                        assumed_field_location,
                                        regularize_immersed_boundary_condition,
                                        LeftBoundary,
-                                       RightBoundary,
-                                       ZipperBoundaryCondition
+                                       RightBoundary
 
 using Oceananigans.ImmersedBoundaries
 

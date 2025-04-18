@@ -11,6 +11,7 @@ using Oceananigans.Architectures: device, on_architecture, AbstractArchitecture,
 using Oceananigans.BoundaryConditions
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.Utils
+using Oceananigans.BoundaryConditions: ZipperBoundaryCondition
 using Oceananigans.Fields: index_binary_search, convert_to_0_360
 using Oceananigans.Grids: RightConnected
 using Oceananigans.Grids: R_Earth, 
@@ -25,6 +26,8 @@ using Adapt
 using KernelAbstractions: @kernel, @index
 using KernelAbstractions.Extras.LoopInfo: @unroll
 using OffsetArrays
+
+const ZBC = ZipperBoundaryCondition
 
 include("generate_tripolar_coordinates.jl")
 include("tripolar_grid.jl")
