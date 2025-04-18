@@ -12,7 +12,7 @@ using SeawaterPolynomials: TEOS10EquationOfState
 using KernelAbstractions: @kernel, @index
 using Random
 
-if haskey(ENV, "GPU_TEST")
+if get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU"
     Reactant.set_default_backend("gpu")
 else
     Reactant.set_default_backend("cpu")
