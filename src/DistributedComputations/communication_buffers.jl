@@ -51,11 +51,9 @@ end
 x_communication_buffer(arch, grid, data, H, bc) = nothing
 y_communication_buffer(arch, grid, data, H, bc) = nothing
 
-# Corner buffers are filled only if the corner is connected. which means that either edges are
-# connected and rank is not a nothing
-corner_communication_buffer(arch, grid, data, Hx, Hy, edge1, ::Nothing)     = nothing
-corner_communication_buffer(arch, grid, data, Hx, Hy, ::Nothing, edge2)     = nothing
-corner_communication_buffer(arch, grid, data, Hx, Hy, ::Nothing, ::Nothing) = nothing
+corner_communication_buffer(::Distributed, grid, data, Hx, Hy, ::Nothing, edge2) = nothing
+corner_communication_buffer(::Distributed, grid, data, Hx, Hy, edge1, ::Nothing) = nothing
+corner_communication_buffer(::Distributed, grid, data, Hx, Hy, ::Nothing, ::Nothing) = nothing
 
 function corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, edge1, edge2)
     return (send = on_architecture(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))), 
