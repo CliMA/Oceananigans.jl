@@ -72,20 +72,15 @@ const FPAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection{Val{false}}}}
 @inline function step_right_boundary!(bc::BPAOBC, l, m, boundary_indices, boundary_adjacent_indices, 
                                       grid, u, clock, model_fields, ΔX)
     Δt = clock.last_stage_Δt
-
     Δt = ifelse(isinf(Δt), 0, Δt)
 
     ūⁿ⁺¹ = getbc(bc, l, m, grid, clock, model_fields)
-
     uᵢⁿ     = @inbounds getindex(u, boundary_indices...)
     uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, boundary_adjacent_indices...)
-
     U = max(0, min(1, Δt / ΔX * ūⁿ⁺¹))
 
     pa = bc.classification.matching_scheme
-
     τ = ifelse(ūⁿ⁺¹ >= 0, pa.outflow_timescale, pa.inflow_timescale)
-
     τ̃ = Δt / τ
 
     uᵢⁿ⁺¹ = isinf(τ̃) ? ūⁿ⁺¹ : (uᵢⁿ + U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ + U)
@@ -98,20 +93,15 @@ end
 @inline function step_left_boundary!(bc::BPAOBC, l, m, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices, 
                                      grid, u, clock, model_fields, ΔX)
     Δt = clock.last_stage_Δt
-
     Δt = ifelse(isinf(Δt), 0, Δt)
 
     ūⁿ⁺¹ = getbc(bc, l, m, grid, clock, model_fields)
-
     uᵢⁿ     = @inbounds getindex(u, boundary_secret_storage_indices...)
     uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, boundary_adjacent_indices...)
-
     U = min(0, max(-1, Δt / ΔX * ūⁿ⁺¹))
 
     pa = bc.classification.matching_scheme
-
     τ = ifelse(ūⁿ⁺¹ <= 0, pa.outflow_timescale, pa.inflow_timescale)
-
     τ̃ = Δt / τ
 
     u₁ⁿ⁺¹ = isinf(τ̃) ? ūⁿ⁺¹ : (uᵢⁿ - U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ - U)
@@ -126,20 +116,15 @@ end
 @inline function step_right_boundary!(bc::FPAOBC, l, m, boundary_indices, boundary_adjacent_indices, 
                                       grid, u, clock, model_fields, ΔX)
     Δt = clock.last_stage_Δt
-
     Δt = ifelse(isinf(Δt), 0, Δt)
 
     ūⁿ⁺¹ = getbc(bc, l, m, grid, clock, model_fields)
-
     uᵢⁿ     = @inbounds getindex(u, boundary_indices...)
     uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, boundary_adjacent_indices...)
-
     U = max(0, min(1, Δt / ΔX * ūⁿ⁺¹))
 
     pa = bc.classification.matching_scheme
-
     τ = ifelse(ūⁿ⁺¹ >= 0, pa.outflow_timescale, pa.inflow_timescale)
-
     τ̃ = Δt / τ
 
     uᵢⁿ⁺¹ = uᵢⁿ + U * (uᵢ₋₁ⁿ⁺¹ - ūⁿ⁺¹) + (ūⁿ⁺¹ - uᵢⁿ) * τ̃
@@ -152,20 +137,15 @@ end
 @inline function step_left_boundary!(bc::FPAOBC, l, m, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices, 
                                      grid, u, clock, model_fields, ΔX)
     Δt = clock.last_stage_Δt
-
     Δt = ifelse(isinf(Δt), 0, Δt)
 
     ūⁿ⁺¹ = getbc(bc, l, m, grid, clock, model_fields)
-
     uᵢⁿ     = @inbounds getindex(u, boundary_secret_storage_indices...)
     uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, boundary_adjacent_indices...)
-
     U = min(0, max(-1, Δt / ΔX * ūⁿ⁺¹))
 
     pa = bc.classification.matching_scheme
-
     τ = ifelse(ūⁿ⁺¹ <= 0, pa.outflow_timescale, pa.inflow_timescale)
-
     τ̃ = Δt / τ
 
     u₁ⁿ⁺¹ = uᵢⁿ - U * (uᵢ₋₁ⁿ⁺¹ - ūⁿ⁺¹) + (ūⁿ⁺¹ - uᵢⁿ) * τ̃
