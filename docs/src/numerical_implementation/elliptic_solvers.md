@@ -2,8 +2,8 @@
 
 ## The elliptic problem for the pressure
 
-The 3D non-hydrostatic pressure field is obtained by taking the divergence of the horizontal 
-component of the momentum equations and invoking the vertical component to yield an elliptic 
+The 3D non-hydrostatic pressure field is obtained by taking the divergence of the horizontal
+component of the momentum equations and invoking the vertical component to yield an elliptic
 Poisson equation for the non-hydrostatic kinematic pressure
 ```math
    \begin{equation}
@@ -11,8 +11,8 @@ Poisson equation for the non-hydrostatic kinematic pressure
    \nabla^2 p_{NH} = \frac{\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v}^n}{\Delta t} + \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{G}_{\boldsymbol{v}} \equiv \mathscr{F} \, ,
    \end{equation}
 ```
-along with homogenous Neumann boundary conditions ``\boldsymbol{v} \cdot \boldsymbol{\hat{n}} = 0`` 
-(Neumann on ``p`` for wall-bounded directions and periodic otherwise) and where ``\mathscr{F}`` 
+along with homogenous Neumann boundary conditions ``\boldsymbol{v} \cdot \boldsymbol{\hat{n}} = 0``
+(Neumann on ``p`` for wall-bounded directions and periodic otherwise) and where ``\mathscr{F}``
 denotes the source term for the Poisson equation.
 
 !!! note "Hydrostatic approximation"
@@ -112,11 +112,11 @@ Discretizing the ``\partial_z^2`` derivative and equating the term inside the br
 
 ## Cosine transforms on the GPU
 
-Unfortunately cuFFT does not provide cosine transforms and so we must write our own fast cosine 
-transforms for the GPU. We implemented the fast 1D and 2D cosine transforms described by [Makhoul80](@citet) 
+Unfortunately cuFFT does not provide cosine transforms and so we must write our own fast cosine
+transforms for the GPU. We implemented the fast 1D and 2D cosine transforms described by [Makhoul80](@citet)
 which compute it by applying the regular Fourier transform to a permuted version of the array.
 
-In this section we will be using the DCT-II as the definition of the forward cosine transform 
+In this section we will be using the DCT-II as the definition of the forward cosine transform
 for a real signal of length ``N``
 ```math
     \begin{equation}
@@ -129,7 +129,7 @@ and the DCT-III as the definition of the inverse cosine transform
     \begin{equation}
     \label{eq:IFCT}
     \text{IDCT}(X): \quad Y_k = X_0 + 2 \sum_{j=1}^{N-1} \cos \left[ \frac{\pi j (k + \frac{1}{2})}{N} \right] X_j \, ,
-    \end{equation}  
+    \end{equation}
 ```
 and will use ``\omega_M = e^{-2 \pi \mathrm{i} / M}`` to denote the ``M^\text{th}`` root of unity, sometimes called the twiddle factors
 in the context of FFT algorithms.
@@ -164,8 +164,8 @@ The inverse \eqref{eq:IFCT} can be computed using
 after which the inverse permutation of \eqref{eq:permutation} must be applied.
 
 ### 2D fast cosine transform
-Unfortunately, the 1D algorithm cannot be applied dimension-wise so the 2D algorithm is more 
-complicated. Thankfully, the permutation \eqref{eq:permutation} can be applied dimension-wise. 
+Unfortunately, the 1D algorithm cannot be applied dimension-wise so the 2D algorithm is more
+complicated. Thankfully, the permutation \eqref{eq:permutation} can be applied dimension-wise.
 The forward cosine transform for a real signal of length ``N_1 \times N_2`` is then given by
 ```math
 Y_{k_1, k_2} = \text{DCT}(X_{n_1, n_2}) =
@@ -190,14 +190,14 @@ where ``\tilde{X} = \text{IFFT}(X)`` here, ``\tilde{X}^{-+}`` is indexed in reve
 ``N_1`` and ``N_2`` respectively, both containing ones except at the first element where ``M_0 = 0``. Afterwards, the inverse
 permutation of \eqref{eq:permutation} must be applied.
 
-Due to the extra steps involved in calculating the cosine transform in 2D, running with two 
-wall-bounded dimensions typically slows the model down by a factor of 2. Switching to the FACR 
+Due to the extra steps involved in calculating the cosine transform in 2D, running with two
+wall-bounded dimensions typically slows the model down by a factor of 2. Switching to the FACR
 algorithm may help here as a 2D cosine transform won't be necessary anymore.
 
 ## Iterative Solvers
 
 For problems with irregular grids the eigenvectors of the discrete Poisson operator are no longer simple Fourier
-series sines and cosines. This means discrete Fast Fourier Transforms can't be used to generate the projection 
+series sines and cosines. This means discrete Fast Fourier Transforms can't be used to generate the projection
 of the equation right hand side onto eigenvectors. So an eigenvector based approach to solving
 the Poisson equation is not computationally efficient.
 
