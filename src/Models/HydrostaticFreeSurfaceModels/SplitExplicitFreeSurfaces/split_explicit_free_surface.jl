@@ -166,8 +166,10 @@ function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFree
 
     U_bcs = barotropic_velocity_boundary_conditions(velocities.u)
     V_bcs = barotropic_velocity_boundary_conditions(velocities.v)
-    U = Field{Face, Center, Nothing}(grid, boundary_conditions=U_bcs)
-    V = Field{Center, Face, Nothing}(grid, boundary_conditions=V_bcs)
+
+    free_surface_grid = free_surface.η.grid
+    U = Field{Face, Center, Nothing}(free_surface_grid, boundary_conditions=U_bcs)
+    V = Field{Center, Face, Nothing}(free_surface_grid, boundary_conditions=V_bcs)
 
     tracers = TracerFields(tracer_names, grid, bcs)
 
@@ -178,14 +180,13 @@ function previous_hydrostatic_tendency_fields(::Val{:SplitRungeKutta3}, velociti
     U_bcs = barotropic_velocity_boundary_conditions(velocities.u)
     V_bcs = barotropic_velocity_boundary_conditions(velocities.v)
 
-    U = Field{Face, Center, Nothing}(grid, boundary_conditions=U_bcs)
-    V = Field{Center, Face, Nothing}(grid, boundary_conditions=V_bcs)
+    free_surface_grid = free_surface.η.grid
+    U = Field{Face, Center, Nothing}(free_surface_grid, boundary_conditions=U_bcs)
+    V = Field{Center, Face, Nothing}(free_surface_grid, boundary_conditions=V_bcs)
     η = free_surface_displacement_field(velocities, free_surface, grid)
 
     return (; U=U, V=V, η=η)
 end
-
-
 
 const ConnectedTopology = Union{LeftConnected, RightConnected, FullyConnected}
 
