@@ -2,7 +2,7 @@ using Pkg
 
 include("dependencies_for_runtests.jl")
 
-group     = get(ENV, "TEST_GROUP", :all) |> Symbol
+group = get(ENV, "TEST_GROUP", "all") |> Symbol
 test_file = get(ENV, "TEST_FILE", :none) |> Symbol
 
 # if we are testing just a single file then group = :none
@@ -29,7 +29,7 @@ CUDA.allowscalar() do
     if group == :init || group == :all
         include("test_init.jl")
     end
-    
+
     # Core Oceananigans
     if group == :unit || group == :all
         @testset "Unit tests" begin
@@ -88,6 +88,7 @@ CUDA.allowscalar() do
         @testset "General Solvers" begin
             include("test_batched_tridiagonal_solver.jl")
             include("test_preconditioned_conjugate_gradient_solver.jl")
+            include("test_krylov_solver.jl")
         end
     end
 
@@ -103,7 +104,7 @@ CUDA.allowscalar() do
     end
 
     # Lagrangian particle tracking
-    if group == :lagrangian || group == :all
+    if group == :lagrangian_particles || group == :all
         @testset "Lagrangian particle tracking tests" begin
             include("test_lagrangian_particle_tracking.jl")
         end
@@ -221,7 +222,7 @@ CUDA.allowscalar() do
         end
     end
 
-    # Tests for Metal extension
+    # Tests for MPI extension
     if group == :mpi_tripolar || group == :all
         @testset "Distributed tripolar tests" begin
             include("test_mpi_tripolar.jl")
@@ -250,15 +251,30 @@ CUDA.allowscalar() do
 
     if group == :sharding || group == :all
         @testset "Sharding Reactant extension tests" begin
-            include("test_sharded_lat_lon.jl")
-            # include("test_sharded_tripolar.jl") # Broken for the moment
+            # Broken for the moment (trying to fix them in https://github.com/CliMA/Oceananigans.jl/pull/4293)
+            # include("test_sharded_lat_lon.jl")
+            # include("test_sharded_tripolar.jl")
         end
     end
 
     # Tests for Metal extension
-    if group == :metal|| group == :all
+    if group == :metal || group == :all
         @testset "Metal extension tests" begin
             include("test_metal.jl")
+        end
+    end
+
+    # Tests for AMDGPU extension
+    if group == :amdgpu || group == :all
+        @testset "AMDGPU extension tests" begin
+            include("test_amdgpu.jl")
+        end
+    end
+
+    # Tests for oneAPI extension
+    if group == :oneapi || group == :all
+        @testset "oneAPI extension tests" begin
+            include("test_oneapi.jl")
         end
     end
 

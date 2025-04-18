@@ -4,7 +4,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
 
 @testset "Reactanigans unit tests" begin
     @info "Performing Reactanigans unit tests..."
-    
+
     arch = ReactantState()
     times = 0:1.0:4
     t = 2.1
@@ -14,7 +14,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
     ñ, n₁, n₂ = @jit Oceananigans.OutputReaders.find_time_index(times, t)
     @test ñ ≈ 0.1
     @test n₁ == 3 # eg times = [0 1 2 ⟨⟨2.1⟩⟩ 3]
-    @test n₂ == 4 
+    @test n₂ == 4
 
     grid = RectilinearGrid(arch; size=(4, 4, 4), extent=(1, 1, 1))
     c = CenterField(grid)
@@ -108,7 +108,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
                                         latitude = [0, 1, 2, 3, 4],
                                         z = (0, 1))
 
-        constant_llg = OceananigansReactantExt.constant_with_reactant_state(cpu_llg)
+        constant_llg = OceananigansReactantExt.constant_with_arch(cpu_llg, ReactantState())
 
         for name in propertynames(constant_llg)
             p = getproperty(constant_llg, name)
@@ -116,7 +116,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
                 @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Array})
             end
         end
-        
+
         @info "  Testing ImmersedBoundaryGrid construction [$FT]..."
         ibg = ImmersedBoundaryGrid(llg, GridFittedBottom(ridge))
         @test architecture(ibg) isa ReactantState
@@ -124,7 +124,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
 
         @info "  Testing constantified ImmersedBoundaryGrid construction [$FT]..."
         cpu_ibg = ImmersedBoundaryGrid(cpu_llg, GridFittedBottom(ridge))
-        constant_ibg = OceananigansReactantExt.constant_with_reactant_state(cpu_ibg)
+        constant_ibg = OceananigansReactantExt.constant_with_arch(cpu_ibg, ReactantState())
         @test architecture(constant_ibg) isa ReactantState
         @test architecture(constant_ibg.immersed_boundary.bottom_height) isa CPU
 
@@ -153,7 +153,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
                                                 z = (0, 1))
 
         @info "    Replacing architecture with ReactantState [$FT]..."
-        constant_rllg = OceananigansReactantExt.constant_with_reactant_state(cpu_rllg)
+        constant_rllg = OceananigansReactantExt.constant_with_arch(cpu_rllg, ReactantState())
 
         for name in propertynames(constant_rllg)
             p = getproperty(constant_rllg, name)
@@ -164,7 +164,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
 
         @info "  Testing constantified immersed OrthogonalSphericalShellGrid construction [$FT]..."
         cpu_ribg = ImmersedBoundaryGrid(cpu_rllg, GridFittedBottom(ridge))
-        constant_ribg = OceananigansReactantExt.constant_with_reactant_state(cpu_ribg)
+        constant_ribg = OceananigansReactantExt.constant_with_arch(cpu_ribg, ReactantState())
         @test architecture(constant_ribg) isa ReactantState
         @test architecture(constant_ribg.immersed_boundary.bottom_height) isa CPU
     end
