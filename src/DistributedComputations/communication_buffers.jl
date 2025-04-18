@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, BoundaryCondition
 using Oceananigans.BoundaryConditions: MultiRegionCommunication, DistributedCommunication
 using Oceananigans.Grids: halo_size, size
 using Oceananigans.Utils: launch!
