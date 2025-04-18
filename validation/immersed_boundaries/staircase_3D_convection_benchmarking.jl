@@ -24,7 +24,7 @@ function setup_grid(N)
                         x = (0, 1),
                         y = (0, 1),
                         z = (0, 1),
-                        topology = (Bounded, Periodic, Bounded))
+                        topology = (Bounded, Bounded, Bounded))
 
     # slope(x, y) = 1 - (x + y) / 2
     # slope(x, y) = (5 + tanh(40*(x - 1/6)) + tanh(40*(x - 2/6)) + tanh(40*(x - 3/6)) + tanh(40*(x - 4/6)) + tanh(40*(x - 5/6))) / 10 * (0.5y + 0.5)
@@ -52,10 +52,11 @@ function setup_simulation(model, Δt, stop_iteration)
     return Simulation(model, Δt=Δt, stop_iteration=stop_iteration)
 end
 
-Ns = [32, 64, 128, 160, 192, 224, 256]
+# Ns = [32, 64, 128, 160, 192, 224, 256]
+Ns = [32, 64, 128, 192, 256]
 
 Δt = 2e-2 * 64 / 2 / maximum(Ns)
-nsteps = 100
+nsteps = 50
 
 times_FFT = [zeros(nsteps) for _ in Ns]
 
@@ -81,6 +82,7 @@ for (i, N) in enumerate(Ns)
     end
 end
 
+# cg_softwares = ["Oceananigans", "Krylov.jl"]
 cg_softwares = ["Oceananigans", "Krylov.jl"]
 preconditioners = ["no", "FFT", "MITgcm"]
 
