@@ -83,7 +83,7 @@ function Field((LX, LY, LZ)::Tuple, grid::TripolarGridOfSomeKind, data, old_bcs,
                                             bottom = old_bcs.bottom)
     end
 
-    buffers = CommunicationBuffers(grid, data, new_bcs)
+    buffers = nothing
 
     return Field{LX, LY, LZ}(grid, data, new_bcs, indices, op, status, buffers)
 end
