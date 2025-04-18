@@ -2,6 +2,8 @@ using Oceananigans.BuoyancyFormulations: g_Earth
 using Oceananigans.Grids: with_halo
 import Oceananigans.Grids: on_architecture
 
+import ..HydrostaticFreeSurfaceModels: hydrostatic_tendency_fields, previous_hydrostatic_tendency_fields
+
 struct SplitExplicitFreeSurface{H, U, M, FT, K , S, T} <: AbstractFreeSurface{H, FT}
     η :: H
     barotropic_velocities :: U # A namedtuple with U, V
@@ -158,6 +160,33 @@ split_explicit_substepping(::Nothing, ::Nothing, ::Nothing, grid, averaging_kern
     bottom = nothing
 )
 
+function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFreeSurface, grid, tracer_names, bcs)
+    u = XFaceField(grid, boundary_conditions=bcs.u)
+    v = YFaceField(grid, boundary_conditions=bcs.v)
+
+    U_bcs = barotropic_velocity_boundary_conditions(velocities.u)
+    V_bcs = barotropic_velocity_boundary_conditions(velocities.v)
+    U = Field{Face, Center, Nothing}(grid, boundary_conditions=U_bcs)
+    V = Field{Center, Face, Nothing}(grid, boundary_conditions=V_bcs)
+
+    tracers = TracerFields(tracer_names, grid, bcs)
+
+    return merge((u=u, v=v, U=U, V=V), tracers)
+end
+
+function previous_hydrostatic_tendency_fields(::Val{:SplitRungeKutta3}, velocities, free_surface::SplitExplicitFreeSurface, tracername, bcs)
+    U_bcs = barotropic_velocity_boundary_conditions(velocities.u)
+    V_bcs = barotropic_velocity_boundary_conditions(velocities.v)
+
+    U = Field{Face, Center, Nothing}(grid, boundary_conditions=U_bcs)
+    V = Field{Center, Face, Nothing}(grid, boundary_conditions=V_bcs)
+    η = free_surface_displacement_field(velocities, free_surface, grid)
+
+    return (; U=U, V=V, η=η)
+end
+
+
+
 const ConnectedTopology = Union{LeftConnected, RightConnected, FullyConnected}
 
 # Internal function for HydrostaticFreeSurfaceModel
@@ -195,7 +224,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
     kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, substepping, maybe_extended_grid)
 
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
-    timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities, u_bc, v_bc)
+    timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities, u_bcs, v_bcs)
 
     return SplitExplicitFreeSurface(η,
                                     barotropic_velocities,
