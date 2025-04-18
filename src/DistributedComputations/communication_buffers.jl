@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: MCBC, DCBC
+using Oceananigans.BoundaryConditions: MCBC, DCBC, FieldBoundaryConditions
 using Oceananigans.Grids: halo_size, size
 using Oceananigans.Utils: launch!
 using KernelAbstractions: @kernel, @index
@@ -23,7 +23,7 @@ CommunicationBuffers(grid::DistributedGrid, data, ::Nothing) = nothing
 # therefore the "corner zones" are communicated within the one-dimensional pass.
 const OneDBuffers = CommunicationBuffers{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Nothing, <:Nothing, <:Nothing}
 
-function CommunicationBuffers(grid::DistributedGrid, data, boundary_conditions)
+function CommunicationBuffers(grid::DistributedGrid, data, boundary_conditions::FieldBoundaryConditions)
     Hx, Hy, _ = halo_size(grid)
     arch = architecture(grid)
     Hx, Hy, Hz = halo_size(grid)

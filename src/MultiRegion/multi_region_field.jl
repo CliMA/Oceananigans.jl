@@ -142,8 +142,11 @@ end
 validate_indices(indices, loc, mrg::MultiRegionGrid) =
     construct_regionally(validate_indices, indices, loc, mrg.region_grids)
 
-CommunicationBuffers(grid::MultiRegionGrid, args...; kwargs...) =
-    construct_regionally(CommunicationBuffers, grid, args...; kwargs...)
+CommunicationBuffers(grid::MultiRegionGrid, data, bcs) =
+    construct_regionally(CommunicationBuffers, grid, data, bcs)
+
+CommunicationBuffers(grid::MultiRegionGrid, data, ::Nothing) = nothing
+CommunicationBuffers(grid::MultiRegionGrid, data, ::Missing) = nothing
 
 FieldBoundaryConditions(mrg::MultiRegionGrid, loc, indices; kwargs...) =
     construct_regionally(inject_regional_bcs, mrg, mrg.connectivity, Reference(loc), indices; kwargs...)
@@ -166,13 +169,13 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
 end
 
 function inject_regional_bcs(grid, connectivity, loc, indices;   
-                              west = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),
-                              east = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),
+                             west = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),
+                             east = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),
                              south = default_auxiliary_bc(topology(grid, 2)(), loc[2]()),
                              north = default_auxiliary_bc(topology(grid, 2)(), loc[2]()),
-                            bottom = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
-                               top = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
-                          immersed = NoFluxBoundaryCondition())
+                             bottom = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
+                             top = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
+                             immersed = NoFluxBoundaryCondition())
 
     west  = inject_west_boundary(connectivity, west)
     east  = inject_east_boundary(connectivity, east)
