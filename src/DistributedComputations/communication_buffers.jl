@@ -2,6 +2,9 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions, BoundaryConditio
 using Oceananigans.BoundaryConditions: MultiRegionCommunication, DistributedCommunication
 using Oceananigans.Grids: halo_size, size
 using Oceananigans.Utils: launch!
+
+using Adapt
+
 using KernelAbstractions: @kernel, @index
 
 import Oceananigans.Architectures: on_architecture
