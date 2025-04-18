@@ -13,6 +13,7 @@ bc_str(::ZFBC)                   = "ZeroFlux"
 bc_str(::IBC)                    = "Impenetrable"
 bc_str(::DFBC)                   = "Default"
 bc_str(::MCBC)                   = "MultiRegionCommunication"
+bc_str(::DCBC)                   = "DistributedCommunication"
 bc_str(::ZBC)                    = "Zipper"
 bc_str(::Nothing)                = "Nothing"
 

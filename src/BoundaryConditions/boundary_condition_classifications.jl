@@ -77,6 +77,13 @@ A classification specifying a shared memory communicating boundary condition
 struct MultiRegionCommunication <: AbstractBoundaryConditionClassification end
 
 """
+    struct DistributedCommunication <: AbstractBoundaryConditionClassification
+
+A classification specifying a distributed memory communicating boundary condition 
+"""
+struct DistributedCommunication <: AbstractBoundaryConditionClassification end
+
+"""
     struct Zipper <: AbstractBoundaryConditionClassification
 
 A classification specifying a Zipper boundary condition where one boundary is folded onto itself.

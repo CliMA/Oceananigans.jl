@@ -81,7 +81,10 @@ const VBC  = BoundaryCondition{<:Value}
 const GBC  = BoundaryCondition{<:Gradient}
 const ZFBC = BoundaryCondition{Flux, Nothing} # "zero" flux
 const MCBC = BoundaryCondition{<:MultiRegionCommunication}
+const DCBC = BoundaryConditions(<:DistributedCommunication}
 const ZBC  = BoundaryCondition{<:Zipper}
+
+const DistributedCommunicationBoundaryCondition = BoundaryConditions(<:DistributedCommunication}
 
 # More readable BC constructors for the public API.
                 PeriodicBoundaryCondition() = BoundaryCondition(Periodic(),                 nothing)
@@ -96,7 +99,8 @@ MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommu
                     OpenBoundaryCondition(val; kwargs...) = BoundaryCondition(Open(nothing), val; kwargs...)
 MultiRegionCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(MultiRegionCommunication(), val; kwargs...)
                   ZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper(), val; kwargs...)
-
+DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication(), val; kwargs...))
+    
 # Support for various types of boundary conditions.
 #
 # Notes:

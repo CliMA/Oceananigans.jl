@@ -1,17 +1,7 @@
-using Oceananigans.BoundaryConditions: BoundaryCondition, AbstractBoundaryConditionClassification
-import Oceananigans.BoundaryConditions: bc_str
+using Oceananigans.BoundaryConditions:
+    DistributedCommunicationBoundaryCondition
 
-"""
-    struct DistributedCommunication <: AbstractBoundaryConditionClassification
-
-A classification specifying a distributed memory communicating boundary condition 
-"""
-struct DistributedCommunication <: AbstractBoundaryConditionClassification end
-DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication(), val; kwargs...)
-
-const DCBC = BoundaryCondition{<:DistributedCommunication}
-bc_str(::DCBC) = "DistributedCommunication"
-
+const DCBC = DistributedCommunicationBoundaryCondition
 
 struct HaloCommunicationRanks{F, T}
     from :: F
