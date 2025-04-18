@@ -310,24 +310,20 @@ end
 
             for arch in archs
                 @info "  Testing the instantiation of NonhydrostaticModel with $closurename on $arch..."
-                if arch isa GPU && closurename == :LagrangianAveragedDynamicSmagorinsky
-                    @info "Skipping GPU test of $closurename."
-                else
-                    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
-                    model = NonhydrostaticModel(; grid, closure, tracers=:c)
-                    c = model.tracers.c
-                    u = model.velocities.u
+                grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
+                model = NonhydrostaticModel(; grid, closure, tracers=:c)
+                c = model.tracers.c
+                u = model.velocities.u
 
-                    κ = diffusivity(model.closure, model.diffusivity_fields, Val(:c))
-                    @test diffusivity(model, Val(:c)) == diffusivity(model.closure, model.diffusivity_fields, Val(:c))
-                    κ_dx_c = κ * ∂x(c)
+                κ = diffusivity(model.closure, model.diffusivity_fields, Val(:c))
+                @test diffusivity(model, Val(:c)) == diffusivity(model.closure, model.diffusivity_fields, Val(:c))
+                κ_dx_c = κ * ∂x(c)
 
-                    ν = viscosity(model.closure, model.diffusivity_fields)
-                    @test viscosity(model) == viscosity(model.closure, model.diffusivity_fields)
-                    ν_dx_u = ν * ∂x(u)
-                    @test ν_dx_u[1, 1, 1] == 0
-                    @test κ_dx_c[1, 1, 1] == 0
-                end
+                ν = viscosity(model.closure, model.diffusivity_fields)
+                @test viscosity(model) == viscosity(model.closure, model.diffusivity_fields)
+                ν_dx_u = ν * ∂x(u)
+                @test ν_dx_u[1, 1, 1] == 0
+                @test κ_dx_c[1, 1, 1] == 0
             end
         end
 
