@@ -53,7 +53,7 @@ function setup_simulation(model, Δt, stop_iteration)
 end
 
 # Ns = [32, 64, 128, 160, 192, 224, 256]
-Ns = [32, 64, 128, 192, 256]
+Ns = [32, 64, 128, 256]
 
 Δt = 2e-2 * 64 / 2 / maximum(Ns)
 nsteps = 50
