@@ -127,6 +127,11 @@ function HydrostaticFreeSurfaceModel(; grid,
                                      auxiliary_fields = NamedTuple(),
                                      vertical_coordinate = ZCoordinate())
 
+    # Ensure `closure` describes all tracers
+    # This will also throw an error if `with_tracers` is not defined for `closure`.
+    closure = with_tracers(tracernames(tracers), closure)
+    closure = validate_closure(closure) # Put CATKE first in the list of closures
+
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
@@ -182,12 +187,6 @@ function HydrostaticFreeSurfaceModel(; grid,
                                                                    grid,
                                                                    tracernames(tracers),
                                                                    buoyancy)
-
-    # Ensure `closure` describes all tracers
-    closure = with_tracers(tracernames(tracers), closure)
-
-    # Put CATKE first in the list of closures
-    closure = validate_closure(closure)
 
     # Either check grid-correctness, or construct tuples of fields
     velocities         = hydrostatic_velocity_fields(velocities, grid, clock, boundary_conditions)
