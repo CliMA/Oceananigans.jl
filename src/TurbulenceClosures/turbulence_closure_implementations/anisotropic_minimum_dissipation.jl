@@ -30,7 +30,7 @@ Base.show(io::IO, closure::AMD{TD}) where TD =
 
 """
     AnisotropicMinimumDissipation([time_discretization = ExplicitTimeDiscretization, FT = Float64;]
-                                  C = 1/12, Cν = nothing, Cκ = nothing, Cb = nothing)
+                                  C = 1/3, Cν = nothing, Cκ = nothing, Cb = nothing)
                                   
                                        
 Return parameters of type `FT` for the `AnisotropicMinimumDissipation`
@@ -63,7 +63,7 @@ Keyword arguments
         buoyancy modification term. This implementation differs from [Abkar16](@citet)'s proposal
         and the impact of this approximation has not been tested or validated.
 
-By default: `C = Cν = Cκ = 1/12`, which is appropriate for a finite-volume method employing a
+By default: `C = Cν = Cκ = 1/3`, which is appropriate for a finite-volume method employing a
 second-order advection scheme, and `Cb = nothing`, which turns off the buoyancy modification term.
 
 `Cν` or `Cκ` may be numbers, or functions of `x, y, z`.
@@ -86,7 +86,7 @@ julia> using Oceananigans
 
 julia> const Δz = 0.5; # grid resolution at surface
 
-julia> surface_enhanced_tracer_C(x, y, z) = 1/12 * (1 + exp((z + Δz/2) / 8Δz));
+julia> surface_enhanced_tracer_C(x, y, z) = 1/3 * (1 + exp((z + Δz/2) / 8Δz));
 
 julia> fancy_closure = AnisotropicMinimumDissipation(Cκ=surface_enhanced_tracer_C)
 AnisotropicMinimumDissipation{ExplicitTimeDiscretization} turbulence closure with:
@@ -98,7 +98,7 @@ AnisotropicMinimumDissipation{ExplicitTimeDiscretization} turbulence closure wit
 ```jldoctest
 julia> using Oceananigans
 
-julia> tracer_specific_closure = AnisotropicMinimumDissipation(Cκ=(c₁=1/12, c₂=1/6))
+julia> tracer_specific_closure = AnisotropicMinimumDissipation(Cκ=(c₁=1/3, c₂=1/6))
 AnisotropicMinimumDissipation{ExplicitTimeDiscretization} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: (c₁ = 0.08333333333333333, c₂ = 0.16666666666666666)
@@ -116,7 +116,7 @@ Verstappen, R. (2018), "How much eddy dissipation is needed to counterbalance th
     Computers & Fluids 176, pp. 276-284.
 """
 function AnisotropicMinimumDissipation(time_disc::TD = ExplicitTimeDiscretization(), FT = Oceananigans.defaults.FloatType;
-                                       C = FT(1/12), Cν = nothing, Cκ = nothing, Cb = nothing) where TD
+                                       C = FT(1/3), Cν = nothing, Cκ = nothing, Cb = nothing) where TD
 
     Cν = Cν === nothing ? C : Cν
     Cκ = Cκ === nothing ? C : Cκ
