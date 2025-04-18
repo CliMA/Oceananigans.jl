@@ -5,26 +5,26 @@ using Oceananigans.Fields: reduced_dimensions
 using Oceananigans.DistributedComputations: communication_side, fill_send_buffers!
 
 using Oceananigans.BoundaryConditions:
-            ContinuousBoundaryFunction,
-            DiscreteBoundaryFunction,
-            permute_boundary_conditions,
-            extract_west_bc, extract_east_bc, extract_south_bc, 
-            extract_north_bc, extract_top_bc, extract_bottom_bc,
-            fill_halo_event!,
-            MCBCT,
-            MCBC,
-            fill_open_boundary_regions!
+    ContinuousBoundaryFunction,
+    DiscreteBoundaryFunction,
+    permute_boundary_conditions,
+    extract_west_bc, extract_east_bc, extract_south_bc, 
+    extract_north_bc, extract_top_bc, extract_bottom_bc,
+    fill_halo_event!,
+    MCBCT,
+    MCBC,
+    fill_open_boundary_regions!
 
 import Oceananigans.Fields: tupled_fill_halo_regions!, boundary_conditions, data
 import Oceananigans.BoundaryConditions:
-            fill_halo_regions!,
-            fill_west_and_east_halo!,
-            fill_south_and_north_halo!,
-            fill_bottom_and_top_halo!,
-            fill_west_halo!,
-            fill_east_halo!,
-            fill_south_halo!,
-            fill_north_halo!
+    fill_halo_regions!,
+    fill_west_and_east_halo!,
+    fill_south_and_north_halo!,
+    fill_bottom_and_top_halo!,
+    fill_west_halo!,
+    fill_east_halo!,
+    fill_south_halo!,
+    fill_north_halo!
 
 @inline bc_str(::MultiRegionObject) = "MultiRegion Boundary Conditions"
 @inline extract_field_buffers(field::Field)          = field.communication_buffers

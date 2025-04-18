@@ -87,9 +87,9 @@ end
 #####
 
 function tupled_fill_halo_regions!(fields, grid::DistributedGrid, args...; kwargs...)
-    ordinary_fields = fill_reduced_field_halos!(fields, args...; kwargs)
+    not_reduced_fields = fill_reduced_field_halos!(fields, args...; kwargs)
 
-    for field in ordinary_fields
+    for field in not_reduced_fields
         # Make sure we are filling a `Field` type.
         field isa Field && fill_halo_regions!(field, args...; kwargs...)
     end
