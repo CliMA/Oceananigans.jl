@@ -1,7 +1,6 @@
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Fields: XFaceField, YFaceField, ZFaceField, TracerFields
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKutta3TimeStepper
-using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: QuasiAdamsBashforth2TimeStepper, SplitRungeKutta3TimeStepper
 
 function hydrostatic_velocity_fields(::Nothing, grid, clock, bcs)
     u = XFaceField(grid, boundary_conditions=bcs.u)
