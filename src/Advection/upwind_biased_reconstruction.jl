@@ -73,15 +73,6 @@ const AUAS = AbstractUpwindBiasedAdvectionScheme
 @inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::AUAS, args...) = symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
 @inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::AUAS, args...) = symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
 
-# Flat fluxes...
-@inline biased_interpolate_xᶜᵃᵃ(i, j, k, ::XFlatGrid, ::AUAS, bias, c, args...) = @inbounds c[i, j, k]
-@inline biased_interpolate_yᵃᶜᵃ(i, j, k, ::YFlatGrid, ::AUAS, bias, c, args...) = @inbounds c[i, j, k]
-@inline biased_interpolate_zᵃᵃᶜ(i, j, k, ::ZFlatGrid, ::AUAS, bias, c, args...) = @inbounds c[i, j, k]
-    
-@inline biased_interpolate_xᶜᵃᵃ(i, j, k, grid::XFlatGrid, ::AUAS, bias, f::Callable, args...) = f(i, j, k, grid, args...)
-@inline biased_interpolate_yᵃᶜᵃ(i, j, k, grid::YFlatGrid, ::AUAS, bias, f::Callable, args...) = f(i, j, k, grid, args...)
-@inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid::ZFlatGrid, ::AUAS, bias, f::Callable, args...) = f(i, j, k, grid, args...)
-    
 # Uniform upwind biased reconstruction
 for buffer in advection_buffers, FT in fully_supported_float_types
     @eval begin
@@ -107,16 +98,23 @@ for buffer in advection_buffers, FT in fully_supported_float_types
 
         @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::UpwindBiased{$buffer, $FT}, bias, ψ::Callable, args...) = 
             @inbounds ifelse(bias isa LeftBias, $(calc_reconstruction_stencil(FT, buffer, :left,  :z, true)), 
-                                                $(calc_reconstruction_stencil(FT, buffer, :right, :z, true)))               
+                                                $(calc_reconstruction_stencil(FT, buffer, :right, :z, true)))         
                                                 
-        # Flat fluxes...
-        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::UpwindBiased{$buffer, $FT}, bias, ψ, args...) = @inbounds ψ[i, j, k]
+        # Flat interpolations...              
+        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, ::XFlatGrid, ::UpwindBiased{$buffer, $FT}, ψ, args...) = @inbounds ψ[i, j, k]
+        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, ::YFlatGrid, ::UpwindBiased{$buffer, $FT}, ψ, args...) = @inbounds ψ[i, j, k]
+        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, ::ZFlatGrid, ::UpwindBiased{$buffer, $FT}, ψ, args...) = @inbounds ψ[i, j, k]
+
         @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::UpwindBiased{$buffer, $FT}, bias, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
-        
-        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::UpwindBiased{$buffer, $FT}, bias, ψ, args...) = @inbounds ψ[i, j, k]
         @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::UpwindBiased{$buffer, $FT}, bias, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
-        
-        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::UpwindBiased{$buffer, $FT}, bias, ψ, args...) = @inbounds ψ[i, j, k]
         @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::UpwindBiased{$buffer, $FT}, bias, ψ::Callable, args...) = ψ(i, j, k, grid, args...)
+
+        @inline biased_interpolate_xᶜᵃᵃ(i, j, k, ::XFlatGrid, ::UpwindBiased{$buffer, $FT}, bias, ψ, args...) = @inbounds ψ[i, j, k]
+        @inline biased_interpolate_yᵃᶜᵃ(i, j, k, ::YFlatGrid, ::UpwindBiased{$buffer, $FT}, bias, ψ, args...) = @inbounds ψ[i, j, k]
+        @inline biased_interpolate_zᵃᵃᶜ(i, j, k, ::ZFlatGrid, ::UpwindBiased{$buffer, $FT}, bias, ψ, args...) = @inbounds ψ[i, j, k]
+
+        @inline biased_interpolate_xᶜᵃᵃ(i, j, k, grid::XFlatGrid, ::UpwindBiased{$buffer, $FT}, bias, ψ::Callable, args...) =  ψ(i, j, k, grid, args...)
+        @inline biased_interpolate_yᵃᶜᵃ(i, j, k, grid::YFlatGrid, ::UpwindBiased{$buffer, $FT}, bias, ψ::Callable, args...) =  ψ(i, j, k, grid, args...)
+        @inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid::ZFlatGrid, ::UpwindBiased{$buffer, $FT}, bias, ψ::Callable, args...) =  ψ(i, j, k, grid, args...)
     end
 end
