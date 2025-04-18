@@ -483,8 +483,9 @@ end
     @testset "Diagnostics" begin
         for arch in archs
             @info "  Testing turbulence closure diagnostics..."
-            for closure in closures
-                compute_closure_specific_diffusive_cfl(arch, closure())
+            for closurename in closures
+                closure = @eval $closurename()
+                compute_closure_specific_diffusive_cfl(arch, closure)
             end
 
             # now test also a case for a tuple of closures
