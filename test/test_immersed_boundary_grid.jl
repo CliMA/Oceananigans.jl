@@ -6,7 +6,7 @@ grid = RectilinearGrid(; size=(100, 100, 100), extent = (1, 1, 1))
 
     @info "Testing the immersed boundary construction..."
     bottom(x, y) = rand()
-    
+
     ibg = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
 
     # Test that the bottom is at the same position

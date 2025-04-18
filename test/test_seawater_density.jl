@@ -4,7 +4,7 @@ using Oceananigans.Models
 
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.BuoyancyFormulations: Zᶜᶜᶜ
-using Oceananigans.Models: model_temperature, model_salinity, model_geopotential_height, 
+using Oceananigans.Models: model_temperature, model_salinity, model_geopotential_height,
                            ConstantTemperatureSB, ConstantSalinitySB
 
 using SeawaterPolynomials: ρ, BoussinesqEquationOfState, SecondOrderSeawaterPolynomial, RoquetEquationOfState,
