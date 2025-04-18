@@ -481,22 +481,10 @@ end
     end
 
     @testset "Diagnostics" begin
-        test_closures = (
-            ScalarDiffusivity(),
-            ScalarBiharmonicDiffusivity(),
-            TwoDimensionalLeith(),
-            ConstantSmagorinsky(),
-            SmagorinskyLilly(),
-            LagrangianAveragedDynamicSmagorinsky(),
-            DirectionallyAveragedDynamicSmagorinsky(),
-            AnisotropicMinimumDissipation(),
-            ConvectiveAdjustmentVerticalDiffusivity(),
-        )
-
         for arch in archs
             @info "  Testing turbulence closure diagnostics..."
-            for closure in test_closures
-                compute_closure_specific_diffusive_cfl(arch, closure)
+            for closure in closures
+                compute_closure_specific_diffusive_cfl(arch, closure())
             end
 
             # now test also a case for a tuple of closures
