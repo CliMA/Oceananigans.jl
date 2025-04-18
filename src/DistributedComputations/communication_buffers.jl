@@ -1,12 +1,11 @@
 using Oceananigans.BoundaryConditions: MCBC, DCBC
-using Oceananigans.Architectures: on_architecture
 using Oceananigans.Grids: halo_size, size
 using Oceananigans.Utils: launch!
 using KernelAbstractions: @kernel, @index
 
 import Oceananigans.Architectures: on_architecture
 
-struct FieldBoundaryBuffers{W, E, S, N, SW, SE, NW, NE}
+struct CommunicationBuffers{W, E, S, N, SW, SE, NW, NE}
     west :: W
     east :: E
    south :: S
@@ -17,80 +16,69 @@ struct FieldBoundaryBuffers{W, E, S, N, SW, SE, NW, NE}
    northeast :: NE
 end
 
-FieldBoundaryBuffers() = nothing
-FieldBoundaryBuffers(grid, data, ::Missing) = nothing
-FieldBoundaryBuffers(grid, data, ::Nothing) = nothing
+CommunicationBuffers(grid::DistributedGrid, data, ::Missing) = nothing
+CommunicationBuffers(grid::DistributedGrid, data, ::Nothing) = nothing
 
 # OneDBuffers are associated with partitioning without corner passing,
 # therefore the "corner zones" are communicated within the one-dimensional pass.
-const OneDBuffers = FieldBoundaryBuffers{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Nothing, <:Nothing, <:Nothing}
+const OneDBuffers = CommunicationBuffers{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Nothing, <:Nothing, <:Nothing}
 
-function FieldBoundaryBuffers(grid, data, boundary_conditions)
+function CommunicationBuffers(grid::DistributedGrid, data, boundary_conditions)
     Hx, Hy, _ = halo_size(grid)
     arch = architecture(grid)
-
     Hx, Hy, Hz = halo_size(grid)
 
-    arch = architecture(grid)
+    west  = x_communication_buffer(arch, grid, data, Hx, boundary_conditions.west)
+    east  = x_communication_buffer(arch, grid, data, Hx, boundary_conditions.east)
+    south = y_communication_buffer(arch, grid, data, Hy, boundary_conditions.south)
+    north = y_communication_buffer(arch, grid, data, Hy, boundary_conditions.north)
 
-    west  = create_buffer_x(architecture(grid), grid, data, Hx, boundary_conditions.west)
-    east  = create_buffer_x(architecture(grid), grid, data, Hx, boundary_conditions.east)
-    south = create_buffer_y(architecture(grid), grid, data, Hy, boundary_conditions.south)
-    north = create_buffer_y(architecture(grid), grid, data, Hy, boundary_conditions.north)
+    sw = corner_communication_buffer(arch, grid, data, Hx, Hy, west, south)
+    se = corner_communication_buffer(arch, grid, data, Hx, Hy, east, south)
+    nw = corner_communication_buffer(arch, grid, data, Hx, Hy, west, north)
+    ne = corner_communication_buffer(arch, grid, data, Hx, Hy, east, north)
 
-    if hasproperty(arch, :connectivity)
-        sw = create_buffer_corner(arch, grid, data, Hx, Hy, west, south)
-        se = create_buffer_corner(arch, grid, data, Hx, Hy, east, south)
-        nw = create_buffer_corner(arch, grid, data, Hx, Hy, west, north)
-        ne = create_buffer_corner(arch, grid, data, Hx, Hy, east, north)
-    else
-        sw = nothing
-        se = nothing
-        nw = nothing
-        ne = nothing
-    end
-
-    return FieldBoundaryBuffers(west, east, south, north, sw, se, nw, ne)
+    return CommunicationBuffers(west, east, south, north, sw, se, nw, ne)
 end
 
-create_buffer_x(arch, grid, data, H, bc) = nothing
-create_buffer_y(arch, grid, data, H, bc) = nothing
+x_communication_buffer(arch, grid, data, H, bc) = nothing
+y_communication_buffer(arch, grid, data, H, bc) = nothing
 
 # Corner buffers are filled only if the corner is connected. which means that either edges are
 # connected and rank is not a nothing
-create_buffer_corner(arch, grid, data, Hx, Hy, edge1, ::Nothing)     = nothing
-create_buffer_corner(arch, grid, data, Hx, Hy, ::Nothing, edge2)     = nothing
-create_buffer_corner(arch, grid, data, Hx, Hy, ::Nothing, ::Nothing) = nothing
+corner_communication_buffer(arch, grid, data, Hx, Hy, edge1, ::Nothing)     = nothing
+corner_communication_buffer(arch, grid, data, Hx, Hy, ::Nothing, edge2)     = nothing
+corner_communication_buffer(arch, grid, data, Hx, Hy, ::Nothing, ::Nothing) = nothing
 
-function create_buffer_corner(arch, grid, data, Hx, Hy, edge1, edge2)
+function corner_communication_buffer(arch::Distributed, grid, data, Hx, Hy, edge1, edge2)
     return (send = on_architecture(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))), 
             recv = on_architecture(arch, zeros(eltype(data), Hx, Hy, size(parent(data), 3))))    
 end
 
-function create_buffer_x(arch, grid, data, H, ::DCBC) 
+function x_communication_buffer(arch::Distributed, grid, data, H, ::DCBC) 
     # Either we pass corners or it is a 1D parallelization in x
     size_y = arch.ranks[2] == 1 ? size(parent(data), 2) : size(grid, 2)
     return (send = on_architecture(arch, zeros(eltype(data), H, size_y, size(parent(data), 3))), 
             recv = on_architecture(arch, zeros(eltype(data), H, size_y, size(parent(data), 3))))    
 end
 
-function create_buffer_y(arch, grid, data, H, ::DCBC)
+function y_communication_buffer(arch::Distributed, grid, data, H, ::DCBC)
     # Either we pass corners or it is a 1D parallelization in y
     size_x = arch.ranks[1] == 1 ? size(parent(data), 1) : size(grid, 1)
     return (send = on_architecture(arch, zeros(eltype(data), size_x, H, size(parent(data), 3))), 
             recv = on_architecture(arch, zeros(eltype(data), size_x, H, size(parent(data), 3))))
 end
 
-create_buffer_x(arch, grid, data, H, ::MCBC) = 
+x_communication_buffer(arch::Distributed, grid, data, H, ::MCBC) = 
            (send = on_architecture(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))), 
             recv = on_architecture(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))))    
 
-create_buffer_y(arch, grid, data, H, ::MCBC) = 
+y_communication_buffer(arch::Distributed, grid, data, H, ::MCBC) = 
            (send = on_architecture(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))), 
             recv = on_architecture(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))))
 
-Adapt.adapt_structure(to, buff::FieldBoundaryBuffers) =
-    FieldBoundaryBuffers(Adapt.adapt(to, buff.west), 
+Adapt.adapt_structure(to, buff::CommunicationBuffers) =
+    CommunicationBuffers(Adapt.adapt(to, buff.west), 
                          Adapt.adapt(to, buff.east),    
                          Adapt.adapt(to, buff.north), 
                          Adapt.adapt(to, buff.south), 
@@ -99,8 +87,8 @@ Adapt.adapt_structure(to, buff::FieldBoundaryBuffers) =
                          Adapt.adapt(to, buff.northwest), 
                          Adapt.adapt(to, buff.northeast))
 
-on_architecture(arch, buff::FieldBoundaryBuffers) =
-    FieldBoundaryBuffers(on_architecture(arch, buff.west), 
+on_architecture(arch, buff::CommunicationBuffers) =
+    CommunicationBuffers(on_architecture(arch, buff.west), 
                          on_architecture(arch, buff.east),    
                          on_architecture(arch, buff.north), 
                          on_architecture(arch, buff.south), 
@@ -110,11 +98,11 @@ on_architecture(arch, buff::FieldBoundaryBuffers) =
                          on_architecture(arch, buff.northeast))
 
 """
-    fill_send_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
+    fill_send_buffers!(c::OffsetArray, buffers::CommunicationBuffers, grid)
 
 fills `buffers.send` from OffsetArray `c` preparing for message passing. 
 """
-function fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid)
+function fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid)
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
@@ -131,7 +119,7 @@ function fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid)
     return nothing
 end
 
-function fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:corners})
+function fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:corners})
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
@@ -147,22 +135,22 @@ end
 ##### Single sided fill_send_buffers!
 #####
 
-fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:west}) = 
+fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:west}) = 
     _fill_west_send_buffer!(parent(c), buff, buff.west, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
-fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:east}) = 
+fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:east}) = 
     _fill_east_send_buffer!(parent(c), buff, buff.east, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
-fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:south}) = 
+fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:south}) = 
     _fill_south_send_buffer!(parent(c), buff, buff.south, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
-fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:north}) = 
+fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:north}) = 
     _fill_north_send_buffer!(parent(c), buff, buff.north, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
-fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:bottom}) = nothing
-fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:top}) = nothing
+fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:bottom}) = nothing
+fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:top}) = nothing
 
 #####
 ##### Double sided fill_send_buffers!
 #####
 
-function fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:west_and_east})
+function fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:west_and_east})
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
@@ -170,7 +158,7 @@ function fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::
      _fill_east_send_buffer!(parent(c), buff, buff.east,  Hx, Hy, Nx, Ny)
 end
 
-function fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:south_and_north})
+function fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:south_and_north})
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
@@ -178,14 +166,14 @@ function fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::
     _fill_north_send_buffer!(parent(c), buff, buff.north, Hx, Hy, Nx, Ny)
 end
 
-fill_send_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:bottom_and_top}) = nothing
+fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:bottom_and_top}) = nothing
 
 """
-    recv_from_buffers!(c::OffsetArray, buffers::FieldBoundaryBuffers, grid)
+    recv_from_buffers!(c::OffsetArray, buffers::CommunicationBuffers, grid)
 
 fills OffsetArray `c` from `buffers.recv` after message passing occurred. 
 """
-function recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid)
+function recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid)
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
@@ -202,7 +190,7 @@ function recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid)
    return nothing
 end
 
-function recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:corners})
+function recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:corners})
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
@@ -218,22 +206,22 @@ end
 ##### Single sided recv_from_buffers!
 #####
 
-recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:west}) = 
+recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:west}) = 
     _recv_from_west_buffer!(parent(c), buff, buff.west, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
-recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:east}) = 
+recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:east}) = 
     _recv_from_east_buffer!(parent(c), buff, buff.east, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
-recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:south}) = 
+recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:south}) = 
     _recv_from_south_buffer!(parent(c), buff, buff.south, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
-recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:north}) = 
+recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:north}) = 
     _recv_from_north_buffer!(parent(c), buff, buff.north, halo_size(grid)[[1, 2]]..., size(grid)[[1, 2]]...)
-recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:bottom}) = nothing
-recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:top}) = nothing
+recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:bottom}) = nothing
+recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:top}) = nothing
 
 #####
 ##### Double sided recv_from_buffers!
 #####
 
-function recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:west_and_east})
+function recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:west_and_east})
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
@@ -243,7 +231,7 @@ function recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::
     return nothing
 end
 
-function recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:south_and_north})
+function recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:south_and_north})
     Hx, Hy, _ = halo_size(grid)
     Nx, Ny, _ = size(grid)
 
@@ -253,7 +241,7 @@ function recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::
    return nothing
 end
 
-recv_from_buffers!(c::OffsetArray, buff::FieldBoundaryBuffers, grid, ::Val{:bottom_and_top}) = nothing
+recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:bottom_and_top}) = nothing
 
 #####
 ##### Individual _fill_send_buffers and _recv_from_buffer kernels

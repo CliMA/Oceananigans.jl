@@ -1,6 +1,17 @@
-using Oceananigans.BoundaryConditions: DistributedCommunicationBoundaryCondition, FieldBoundaryConditions
-using Oceananigans.BoundaryConditions: AbstractBoundaryConditionClassification
+using Oceananigans.BoundaryConditions: BoundaryCondition, AbstractBoundaryConditionClassification
 import Oceananigans.BoundaryConditions: bc_str
+
+"""
+    struct DistributedCommunication <: AbstractBoundaryConditionClassification
+
+A classification specifying a distributed memory communicating boundary condition 
+"""
+struct DistributedCommunication <: AbstractBoundaryConditionClassification end
+DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication(), val; kwargs...)
+
+const DCBC = BoundaryCondition{<:DistributedCommunication}
+bc_str(::DCBC) = "DistributedCommunication"
+
 
 struct HaloCommunicationRanks{F, T}
     from :: F
@@ -47,5 +58,4 @@ function inject_halo_communication_boundary_conditions(field_bcs, local_rank, co
     top      = field_bcs.top    
     immersed = field_bcs.immersed
 
-    return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end

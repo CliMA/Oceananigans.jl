@@ -105,7 +105,7 @@ function fill_halo_regions!(field::DistributedField, args...; kwargs...)
                               field.indices,
                               instantiated_location(field),
                               field.grid,
-                              field.boundary_buffers,
+                              field.communication_buffers,
                               args...;
                               reduced_dimensions = reduced_dims,
                               kwargs...)

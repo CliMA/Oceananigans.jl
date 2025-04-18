@@ -10,7 +10,7 @@ import Oceananigans.DistributedComputations: reconstruct_global_field
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 import Oceananigans.Grids: xnodes, ynodes
 import Oceananigans.Fields: set!, compute!, compute_at!, validate_field_data, validate_boundary_conditions
-import Oceananigans.Fields: validate_indices, FieldBoundaryBuffers
+import Oceananigans.Fields: validate_indices, CommunicationBuffers
 import Oceananigans.Models: hasnan
 
 import Base: fill!, axes
@@ -47,7 +47,7 @@ Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
                       _getregion(f.indices, r),
                       _getregion(f.operand, r),
                       _getregion(f.status, r),
-                      _getregion(f.boundary_buffers, r))
+                      _getregion(f.communication_buffers, r))
 
 @inline _getregion(f::MultiRegionFunctionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
     FunctionField{LX, LY, LZ}(getregion(f.func, r),
@@ -62,7 +62,7 @@ Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
                       getregion(f.indices, r),
                       getregion(f.operand, r),
                       getregion(f.status, r),
-                      getregion(f.boundary_buffers, r))
+                      getregion(f.communication_buffers, r))
 
 """
     reconstruct_global_field(mrf)
@@ -142,8 +142,8 @@ end
 validate_indices(indices, loc, mrg::MultiRegionGrid) =
     construct_regionally(validate_indices, indices, loc, mrg.region_grids)
 
-FieldBoundaryBuffers(grid::MultiRegionGrid, args...; kwargs...) =
-    construct_regionally(FieldBoundaryBuffers, grid, args...; kwargs...)
+CommunicationBuffers(grid::MultiRegionGrid, args...; kwargs...) =
+    construct_regionally(CommunicationBuffers, grid, args...; kwargs...)
 
 FieldBoundaryConditions(mrg::MultiRegionGrid, loc, indices; kwargs...) =
     construct_regionally(inject_regional_bcs, mrg, mrg.connectivity, Reference(loc), indices; kwargs...)

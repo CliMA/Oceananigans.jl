@@ -13,7 +13,7 @@ using Oceananigans.Fields: architecture,
                            validate_indices, 
                            validate_boundary_conditions,
                            validate_field_data, 
-                           FieldBoundaryBuffers
+                           CommunicationBuffers
 
 using Oceananigans.ImmersedBoundaries
 
@@ -82,7 +82,7 @@ function Field((LX, LY, LZ)::Tuple, grid::TripolarGridOfSomeKind, data, old_bcs,
                                             bottom = old_bcs.bottom)
     end
 
-    buffers = FieldBoundaryBuffers(grid, data, new_bcs)
+    buffers = CommunicationBuffers(grid, data, new_bcs)
 
     return Field{LX, LY, LZ}(grid, data, new_bcs, indices, op, status, buffers)
 end

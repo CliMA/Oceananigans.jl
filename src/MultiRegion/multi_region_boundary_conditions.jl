@@ -29,7 +29,7 @@ import Oceananigans.BoundaryConditions:
 
 @inline bc_str(::MultiRegionObject) = "MultiRegion Boundary Conditions"
 
-@inline extract_field_buffers(field::Field)          = field.boundary_buffers
+@inline extract_field_buffers(field::Field)          = field.communication_buffers
 @inline boundary_conditions(field::MultiRegionField) = field.boundary_conditions
 
 # This can be implemented once we have a buffer for field_tuples
@@ -47,7 +47,7 @@ function fill_halo_regions!(field::MultiRegionField, args...; kwargs...)
                               field.indices,
                               instantiated_location(field),
                               field.grid,
-                              field.boundary_buffers,
+                              field.communication_buffers,
                               args...;
                               reduced_dimensions = reduced_dims,
                               kwargs...)

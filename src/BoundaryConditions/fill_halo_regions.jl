@@ -81,9 +81,9 @@ function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid, args...
     return nothing
 end
 
-# In case of a DistributedCommunication paired with a 
-# Flux, Value or Gradient boundary condition, we split the direction in two single-sided
-# fill_halo! events (see issue #3342)
+# For simple situations, like Periodic on either side of a dimension, we can fill both halos at once.
+# For more complex cases (eg, communication on one-side, no-flux on the other)
+# we split the halo filling into two different kernels for either side (see issue #3342).
 # `permute_boundary_conditions` returns a 2-tuple containing the ordered operations to execute in 
 # position [1] and the associated boundary conditions in position [2]
 function permute_boundary_conditions(boundary_conditions)

@@ -96,8 +96,8 @@ replace_horizontal_vector_halos!(::PrescribedVelocityFields, ::SpherePanelGrid; 
 function replace_horizontal_vector_halos!(velocities, grid::SpherePanelGrid; signed=true)
     u, v, _ = velocities
 
-    ubuff = u.boundary_buffers
-    vbuff = v.boundary_buffers
+    ubuff = u.communication_buffers
+    vbuff = v.communication_buffers
 
     conn_west  = u.boundary_conditions.west.condition.from_side
     conn_east  = u.boundary_conditions.east.condition.from_side
