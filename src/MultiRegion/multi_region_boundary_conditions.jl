@@ -2,7 +2,7 @@ using Oceananigans: instantiated_location
 using Oceananigans.Architectures: on_architecture, device_copy_to!
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.Fields: reduced_dimensions
-using Oceananigans.DistributedComputations: communication_side
+using Oceananigans.DistributedComputations: communication_side, fill_send_buffers!
 
 using Oceananigans.BoundaryConditions:
             ContinuousBoundaryFunction,
@@ -15,8 +15,7 @@ using Oceananigans.BoundaryConditions:
             MCBC,
             fill_open_boundary_regions!
 
-import Oceananigans.Fields: tupled_fill_halo_regions!, boundary_conditions, data, fill_send_buffers!
-
+import Oceananigans.Fields: tupled_fill_halo_regions!, boundary_conditions, data
 import Oceananigans.BoundaryConditions:
             fill_halo_regions!,
             fill_west_and_east_halo!,
@@ -28,7 +27,6 @@ import Oceananigans.BoundaryConditions:
             fill_north_halo!
 
 @inline bc_str(::MultiRegionObject) = "MultiRegion Boundary Conditions"
-
 @inline extract_field_buffers(field::Field)          = field.communication_buffers
 @inline boundary_conditions(field::MultiRegionField) = field.boundary_conditions
 

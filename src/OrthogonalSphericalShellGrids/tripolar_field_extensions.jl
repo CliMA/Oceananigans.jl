@@ -12,8 +12,9 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions,
 using Oceananigans.Fields: architecture, 
                            validate_indices, 
                            validate_boundary_conditions,
-                           validate_field_data, 
-                           CommunicationBuffers
+                           validate_field_data
+
+using Oceananigans.DistributedComputations: CommunicationBuffers
 
 using Oceananigans.ImmersedBoundaries
 

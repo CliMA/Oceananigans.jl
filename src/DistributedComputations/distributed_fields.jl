@@ -1,8 +1,8 @@
 using Oceananigans.Grids: topology
 using Oceananigans.Fields: validate_field_data, indices, validate_boundary_conditions
-using Oceananigans.Fields: validate_indices, recv_from_buffers!, set_to_array!, set_to_field!
+using Oceananigans.Fields: validate_indices, set_to_array!, set_to_field!
 
-import Oceananigans.Fields: Field, CommunicationBuffers, location, set!
+import Oceananigans.Fields: Field, location, set!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, indices::Tuple, op, status)

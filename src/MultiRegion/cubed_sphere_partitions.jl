@@ -2,7 +2,7 @@ using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_fa
 
 using DocStringExtensions
 
-import Oceananigans.Fields: replace_horizontal_vector_halos!
+import Oceananigans.BoundaryConditions: replace_horizontal_vector_halos!
 
 struct CubedSpherePartition{M, P} <: AbstractPartition
     div :: Int
