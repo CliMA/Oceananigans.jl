@@ -1,10 +1,8 @@
 using KernelAbstractions: @kernel, @index
 
-using Oceananigans.Fields: fill_send_buffers!,
-                           recv_from_buffers!, 
-                           reduced_dimensions, 
+using Oceananigans.Fields: reduced_dimensions, 
                            instantiated_location,
-                           produce_ordinary_fields
+                           fill_reduced_field_halos!
 
 import Oceananigans.Fields: tupled_fill_halo_regions!
 
@@ -89,7 +87,7 @@ end
 #####
 
 function tupled_fill_halo_regions!(fields, grid::DistributedGrid, args...; kwargs...)
-    ordinary_fields = produce_ordinary_fields(fields, args...; kwargs)
+    ordinary_fields = fill_reduced_field_halos!(fields, args...; kwargs)
 
     for field in ordinary_fields
         # Make sure we are filling a `Field` type.

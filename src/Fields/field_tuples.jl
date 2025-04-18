@@ -70,7 +70,7 @@ end
 # Version where we find grid amongst ordinary fields:
 function tupled_fill_halo_regions!(fields, args...; kwargs...)
 
-    ordinary_fields = produce_ordinary_fields(fields, args...; kwargs)
+    ordinary_fields = fill_reduced_field_halos!(fields, args...; kwargs)
 
     if !isempty(ordinary_fields) # ie not reduced, and with default_indices
         grid = first(ordinary_fields).grid
@@ -87,7 +87,7 @@ end
 # Version where grid is provided:
 function tupled_fill_halo_regions!(fields, grid::AbstractGrid, args...; kwargs...)
 
-    ordinary_fields = produce_ordinary_fields(fields, args...; kwargs)
+    ordinary_fields = fill_reduced_field_halos!(fields, args...; kwargs)
 
     if !isempty(ordinary_fields) # ie not reduced, and with default_indices
         fill_halo_regions!(map(data, ordinary_fields),
@@ -101,7 +101,7 @@ function tupled_fill_halo_regions!(fields, grid::AbstractGrid, args...; kwargs..
 end
 
 # Helper function to create the tuple of ordinary fields:
-@inline function produce_ordinary_fields(fields, args...; kwargs)
+function fill_reduced_field_halos!(fields::Tuple, args...; kwargs)
 
     ordinary_fields = Field[]
     for f in fields
