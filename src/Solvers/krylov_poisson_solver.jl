@@ -6,21 +6,21 @@ using KernelAbstractions: @kernel, @index
 
 import Oceananigans.Architectures: architecture
 
-struct ConjugateGradientPoissonSolver{G, R, S}
+struct KrylovPoissonSolver{G, R, S}
     grid :: G
     right_hand_side :: R
     conjugate_gradient_solver :: S
 end
 
-architecture(solver::ConjugateGradientPoissonSolver) = architecture(cgps.grid)
-iteration(cgps::ConjugateGradientPoissonSolver) = iteration(cgps.conjugate_gradient_solver)
+architecture(solver::KrylovPoissonSolver) = architecture(cgps.grid)
+iteration(cgps::KrylovPoissonSolver) = iteration(cgps.conjugate_gradient_solver)
 
-Base.summary(ips::ConjugateGradientPoissonSolver) =
-    "ConjugateGradientPoissonSolver with $(summary(ips.conjugate_gradient_solver.preconditioner)) on $(summary(ips.grid))"
+Base.summary(ips::KrylovPoissonSolver) =
+    "KrylovPoissonSolver with $(summary(ips.conjugate_gradient_solver.preconditioner)) on $(summary(ips.grid))"
 
-function Base.show(io::IO, ips::ConjugateGradientPoissonSolver)
+function Base.show(io::IO, ips::KrylovPoissonSolver)
     A = architecture(ips.grid)
-    print(io, "ConjugateGradientPoissonSolver:", '\n',
+    print(io, "KrylovPoissonSolver:", '\n',
               "├── grid: ", summary(ips.grid), '\n',
               "└── conjugate_gradient_solver: ", summary(ips.conjugate_gradient_solver), '\n',
               "    ├── maxiter: ", prettysummary(ips.conjugate_gradient_solver.maxiter), '\n',
@@ -46,22 +46,22 @@ end
 struct DefaultPreconditioner end
 
 """
-    ConjugateGradientPoissonSolver(grid;
-                                   preconditioner = DefaultPreconditioner(),
-                                   reltol = sqrt(eps(grid)),
-                                   abstol = sqrt(eps(grid)),
-                                   kw...)
+    KrylovPoissonSolver(grid;
+                        preconditioner = DefaultPreconditioner(),
+                        reltol = sqrt(eps(grid)),
+                        abstol = sqrt(eps(grid)),
+                        kw...)
 
-Creates a `ConjugateGradientPoissonSolver` on `grid` using a `preconditioner`.
-`ConjugateGradientPoissonSolver` is iterative, and will stop when both the relative error in the
+Creates a `KrylovPoissonSolver` on `grid` using a `preconditioner`.
+`KrylovPoissonSolver` is iterative, and will stop when both the relative error in the
 pressure solution is smaller than `reltol` and the absolute error is smaller than `abstol`. Other
 keyword arguments are passed to `ConjugateGradientSolver`.
 """
-function ConjugateGradientPoissonSolver(grid;
-                                        preconditioner = DefaultPreconditioner(),
-                                        reltol = sqrt(eps(grid)),
-                                        abstol = sqrt(eps(grid)),
-                                        kw...)
+function KrylovPoissonSolver(grid;
+                             preconditioner = DefaultPreconditioner(),
+                             reltol = sqrt(eps(grid)),
+                             abstol = sqrt(eps(grid)),
+                             kw...)
 
     if preconditioner isa DefaultPreconditioner # try to make a useful default
         if grid isa ImmersedBoundaryGrid && grid.underlying_grid isa GridWithFFTSolver
@@ -73,14 +73,14 @@ function ConjugateGradientPoissonSolver(grid;
 
     rhs = CenterField(grid)
 
-    conjugate_gradient_solver = ConjugateGradientSolver(compute_laplacian!;
-                                                        reltol,
-                                                        abstol,
-                                                        preconditioner,
-                                                        template_field = rhs,
-                                                        kw...)
+    conjugate_gradient_solver = KrylovSolver(compute_laplacian!;
+                                             reltol,
+                                             abstol,
+                                             preconditioner,
+                                             template_field = rhs,
+                                             kw...)
         
-    return ConjugateGradientPoissonSolver(grid, rhs, conjugate_gradient_solver)
+    return KrylovPoissonSolver(grid, rhs, conjugate_gradient_solver)
 end
 
 #####

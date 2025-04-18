@@ -44,8 +44,8 @@ function nonhydrostatic_pressure_solver(arch, ibg::IBGWithFFTSolver)
           adjacent to the immersed boundary. An experimental but improved pressure_solver
           is available which may be used by writing
 
-              using Oceananigans.Solvers: ConjugateGradientPoissonSolver
-              pressure_solver = ConjugateGradientPoissonSolver(grid)
+              using Oceananigans.Solvers: KrylovPoissonSolver
+              pressure_solver = KrylovPoissonSolver(grid)
 
           Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.
           """
