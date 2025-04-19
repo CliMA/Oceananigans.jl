@@ -8,7 +8,7 @@ function identity_operator!(b, x)
     return nothing
 end
 
-function run_identity_operator_test(grid, method::Symbol=:cg)
+function run_identity_operator_test(grid, method::Symbol)
     b = CenterField(grid)
     solver = KrylovSolver(identity_operator!, method = method, template_field = b, reltol=0, abstol=10*sqrt(eps(eltype(grid))))
     initial_guess = solution = similar(b)
@@ -19,7 +19,7 @@ function run_identity_operator_test(grid, method::Symbol=:cg)
     @test norm(solution) .< solver.abstol
 end
 
-function run_poisson_equation_test(grid, method::Symbol=:cg)
+function run_poisson_equation_test(grid, method::Symbol)
     arch = architecture(grid)
     # Solve ∇²ϕ = r
     ϕ_truth = CenterField(grid)
