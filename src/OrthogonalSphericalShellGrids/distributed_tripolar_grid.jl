@@ -1,6 +1,6 @@
 using MPI
 using Oceananigans.BoundaryConditions: DistributedCommunicationBoundaryCondition
-using Oceananigans.Fields: validate_indices, validate_field_data
+using Oceananigans.Fields: validate_indices, validate_field_data, FieldBoundaryBuffers
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: local_size,
                                             barrier!,
@@ -12,7 +12,7 @@ using Oceananigans.DistributedComputations: local_size,
 using Oceananigans.Grids: topology, RightConnected, FullyConnected
 
 import Oceananigans.DistributedComputations: reconstruct_global_grid
-import Oceananigans.Fields: Field, validate_indices, validate_boundary_conditions, FieldBoundaryBuffers
+import Oceananigans.Fields: Field, validate_indices, validate_boundary_conditions
 
 const DistributedTripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
     OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, <:Distributed{<:Union{CPU, GPU}}}
