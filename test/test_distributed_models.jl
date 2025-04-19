@@ -16,7 +16,7 @@ using MPI
 # tmpi 4 julia --project
 #
 # then later:
-# 
+#
 # julia> include("test_distributed_models.jl")
 
 MPI.Init()
@@ -61,7 +61,7 @@ north_halo(f::AbstractField{LX, LY, LZ}; include_corners=true) where {LX, LY, LZ
                       view(f.data, interior_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx),
                                    right_halo_indices(instantiate(LY), instantiate(topology(f, 2)), f.grid.Ny, f.grid.Hy),
                                    interior_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz))
-                        
+
 bottom_halo(f::AbstractField{LX, LY, LZ}; include_corners=true) where {LX, LY, LZ} =
 include_corners ? view(f.data, :, :, left_halo_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz, f.grid.Hz)) :
                   view(f.data, interior_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx),
@@ -75,25 +75,25 @@ include_corners ? view(f.data, :, :, right_halo_indices(instantiate(LZ), instant
                                right_halo_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz, f.grid.Hz))
 
 
-function southwest_halo(f::AbstractField) 
+function southwest_halo(f::AbstractField)
     Nx, Ny, _ = size(f.grid)
     Hx, Hy, _ = halo_size(f.grid)
     return view(parent(f), 1:Hx, 1:Hy, :)
 end
 
-function southeast_halo(f::AbstractField) 
+function southeast_halo(f::AbstractField)
     Nx, Ny, _ = size(f.grid)
     Hx, Hy, _ = halo_size(f.grid)
     return view(parent(f), Nx+Hx+1:Nx+2Hx, 1:Hy, :)
 end
 
-function northeast_halo(f::AbstractField) 
+function northeast_halo(f::AbstractField)
     Nx, Ny, _ = size(f.grid)
     Hx, Hy, _ = halo_size(f.grid)
     return view(parent(f), Nx+Hx+1:Nx+2Hx, Ny+Hy+1:Ny+2Hy, :)
 end
 
-function northwest_halo(f::AbstractField) 
+function northwest_halo(f::AbstractField)
     Nx, Ny, _ = size(f.grid)
     Hx, Hy, _ = halo_size(f.grid)
     return view(parent(f), 1:Hx, Ny+Hy+1:Ny+2Hy, :)
@@ -187,7 +187,7 @@ function test_triply_periodic_rank_connectivity_with_221_ranks()
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)
 
     connectivity = arch.connectivity
-    
+
     # +---+---+
     # | 0 | 2 |
     # +---+---+
@@ -260,7 +260,7 @@ end
 function test_triply_periodic_local_grid_with_221_ranks()
     arch = Distributed(CPU(), partition=Partition(2, 2))
     local_grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
-    
+
     i, j, k = arch.local_index
     nx, ny, nz = size(local_grid)
 
@@ -284,7 +284,7 @@ function test_triply_periodic_bc_injection_with_411_ranks()
     arch = Distributed(partition=Partition(4))
     grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid=grid)
-    
+
     for field in merge(fields(model))
         fbcs = field.boundary_conditions
         @test fbcs.east isa DCBC
@@ -394,10 +394,10 @@ function test_triply_periodic_halo_communication_with_221_ranks(halo, child_arch
 
         @test all(top_halo(field, include_corners=false)    .== arch.local_rank)
         @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(southwest_halo(field) .== arch.connectivity.southwest) 
-        @test all(southeast_halo(field) .== arch.connectivity.southeast) 
-        @test all(northwest_halo(field) .== arch.connectivity.northwest) 
-        @test all(northeast_halo(field) .== arch.connectivity.northeast) 
+        @test all(southwest_halo(field) .== arch.connectivity.southwest)
+        @test all(southeast_halo(field) .== arch.connectivity.southeast)
+        @test all(northwest_halo(field) .== arch.connectivity.northwest)
+        @test all(northeast_halo(field) .== arch.connectivity.northeast)
     end
 
     return nothing
@@ -443,10 +443,10 @@ end
 
     @testset "Test Distributed MPI Grids" begin
         child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
-        
-        if child_arch isa GPU    
+
+        if child_arch isa GPU
             @info "Testing `on_architecture` for distributed grids..."
-            
+
             arch = Distributed(child_arch; partition=Partition(1, 4))
             rg   = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
             llg  = LatitudeLongitudeGrid(arch, size=(8, 8, 8), latitude=(0, 60), longitude=(0, 60), z=(0, 1), radius=1)
