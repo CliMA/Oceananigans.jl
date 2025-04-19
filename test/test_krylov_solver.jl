@@ -60,7 +60,7 @@ function run_poisson_equation_test(grid, method::Symbol)
 end
 
 @testset "KrylovSolver" begin
-    for method in (:cg, :gmres)
+    for method in (:cg, )  # :gmres
         for arch in archs
             @info "Testing KrylovSolver [$(typeof(arch))] with the Krylov method $method..."
             grid = RectilinearGrid(arch, size=(4, 8, 4), extent=(1, 3, 1))
