@@ -102,6 +102,8 @@ on_architecture(arch, buff::CommunicationBuffers) =
                          on_architecture(arch, buff.northwest), 
                          on_architecture(arch, buff.northeast))
 
+fill_send_buffers!(c::OffsetArray, ::Nothing, grid) = nothing
+
 """
     fill_send_buffers!(c::OffsetArray, buffers::CommunicationBuffers, grid)
 
@@ -123,6 +125,8 @@ function fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid)
 
     return nothing
 end
+
+fill_send_buffers!(c::OffsetArray, ::Nothing, grid, ::Val{:corners}) = nothing
 
 function fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:corners})
     Hx, Hy, _ = halo_size(grid)
