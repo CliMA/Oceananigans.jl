@@ -8,6 +8,7 @@ using ..TurbulenceClosures:
     AbstractScalarDiffusivity,
     ThreeDimensionalFormulation,
     ExplicitTimeDiscretization,
+    closure_constant,
     convert_diffusivity
 
 import Oceananigans.Utils: with_tracers
@@ -105,6 +106,7 @@ end
 end
 
 @inline square_smagorinsky_coefficient(i, j, k, grid, c::ConstantSmagorinsky, args...) = c.coefficient^2
+@inline square_smagorinsky_coefficient(i, j, k, grid, c, args...) = closure_constant(i, j, k, grid, c)^2
 
 compute_coefficient_fields!(diffusivity_fields, closure, model; parameters) = nothing
 
