@@ -281,10 +281,10 @@ for bias in (:_biased, :_symmetric)
         multidim_interp = Symbol(:_multi_dimensional_reconstruction_, dir2)
 
         @eval begin
-            @inline $interp_func(i, j, k, grid, ::VectorInvariant, interp_scheme, args...) =
+            @inline $interp_func(i, j, k, grid, ::VectorInvariant, interp_scheme::AbstractAdvectionScheme, args...) =
                         $interp_func(i, j, k, grid, interp_scheme, args...)
 
-            @inline $interp_func(i, j, k, grid, ::MultiDimensionalVectorInvariant, interp_scheme, args...) =
+            @inline $interp_func(i, j, k, grid, ::MultiDimensionalVectorInvariant, interp_scheme::AbstractAdvectionScheme, args...) =
                         $multidim_interp(i, j, k, grid, interp_scheme, $interp_func, args...)
         end
     end
@@ -438,14 +438,5 @@ for b in advection_buffers, FT in fully_supported_float_types
         @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, bias, f, args...)
         @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, bias, f, args...)
         @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, bias, f, args...)
-    
-        # Disambiguation...
-        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::UpwindBiased{$b, $FT}, bias, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
-        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::UpwindBiased{$b, $FT}, bias, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
-        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::UpwindBiased{$b, $FT}, bias, ψ::Callable, ::AS, args...) = ψ(i, j, k, grid, args...)
-
-        @inline biased_interpolate_xᶜᵃᵃ(i, j, k, grid::XFlatGrid, ::UpwindBiased{$b, $FT}, bias, ψ::Callable, ::AS,  args...) = ψ(i, j, k, grid, args...)
-        @inline biased_interpolate_yᵃᶜᵃ(i, j, k, grid::YFlatGrid, ::UpwindBiased{$b, $FT}, bias, ψ::Callable, ::AS,  args...) = ψ(i, j, k, grid, args...)
-        @inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid::ZFlatGrid, ::UpwindBiased{$b, $FT}, bias, ψ::Callable, ::AS,  args...) = ψ(i, j, k, grid, args...)                     
     end
 end
