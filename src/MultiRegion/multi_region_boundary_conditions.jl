@@ -169,6 +169,14 @@ getside(x, ::South) = x.south
 getside(x, ::West)  = x.west
 getside(x, ::East)  = x.east
 
+fill_west_and_east_halo!(c, westbc::MCBC, eastbc::MCBC, kernel_size, offset, loc, arch, grid, ::Nothing, args...; kwargs...) = nothing
+fill_south_and_north_halo!(c, southbc::MCBC, northbc::MCBC, kernel_size, offset, loc, arch, grid, ::Nothing, args...; kwargs...) = nothing
+
+fill_west_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, ::Nothing, args...; kwargs...) = nothing
+fill_east_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, ::Nothing, args...; kwargs...) = nothing
+fill_south_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, ::Nothing, args...; kwargs...) = nothing
+fill_north_halo!(c, bc::MCBC, kernel_size, offset, loc, arch, grid, ::Nothing, args...; kwargs...) = nothing
+
 function fill_west_and_east_halo!(c, westbc::MCBC, eastbc::MCBC, kernel_size, offset, loc, arch, grid, buffers, args...; kwargs...)
     H = halo_size(grid)[1]
     N = size(grid)[1]
