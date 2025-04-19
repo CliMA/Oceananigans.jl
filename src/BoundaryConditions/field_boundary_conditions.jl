@@ -1,4 +1,6 @@
 using Oceananigans.Operators: assumed_field_location
+using Oceananigans.Grids: YFlatGrid
+using CUDA: @allowscalar
 
 #####
 ##### Default boundary conditions
@@ -61,8 +63,10 @@ FieldBoundaryConditions(indices::Tuple, bcs::FieldBoundaryConditions) =
 
 FieldBoundaryConditions(indices::Tuple, ::Nothing) = nothing
 
-window_boundary_conditions(::Colon,     left, right) = left, right
-window_boundary_conditions(::UnitRange, left, right) = nothing, nothing
+# return boundary conditions only if the field is not windowed!
+window_boundary_conditions(::UnitRange,  left, right) = nothing, nothing
+window_boundary_conditions(::Base.OneTo, left, right) = nothing, nothing
+window_boundary_conditions(::Colon,      left, right) = left, right
 
 on_architecture(arch, fbcs::FieldBoundaryConditions) =
     FieldBoundaryConditions(on_architecture(arch, fbcs.west),
@@ -252,3 +256,67 @@ regularize_field_boundary_conditions(::Missing,
 regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid::AbstractGrid, prognostic_names::Tuple) =
     NamedTuple(field_name => regularize_field_boundary_conditions(field_bcs, grid, field_name, prognostic_names)
                for (field_name, field_bcs) in pairs(boundary_conditions))
+
+#####
+##### Special behavior for LatitudeLongitudeGrid
+#####
+
+# TODO: these may be incorrect because we have not defined behavior for prognostic fields (which are
+# treated by `regularize`).
+regularize_north_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) = 
+    regularize_boundary_condition(latitude_north_auxiliary_bc(grid, loc, bc), grid, loc, args...)
+
+regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) = 
+    regularize_boundary_condition(latitude_south_auxiliary_bc(grid, loc, bc), grid, loc, args...)
+
+function FieldBoundaryConditions(grid::LatitudeLongitudeGrid, location, indices=(:, :, :);
+                                 west     = default_auxiliary_bc(topology(grid, 1)(), location[1]()),
+                                 east     = default_auxiliary_bc(topology(grid, 1)(), location[1]()),
+                                 south    = default_auxiliary_bc(topology(grid, 2)(), location[2]()),
+                                 north    = default_auxiliary_bc(topology(grid, 2)(), location[2]()),
+                                 bottom   = default_auxiliary_bc(topology(grid, 3)(), location[3]()),
+                                 top      = default_auxiliary_bc(topology(grid, 3)(), location[3]()),
+                                 immersed = NoFluxBoundaryCondition())
+
+    # TODO: define special behavior for prognostic fields.
+    north = latitude_north_auxiliary_bc(grid, location, north)
+    south = latitude_south_auxiliary_bc(grid, location, south)
+
+    return FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
+end
+
+function latitude_north_auxiliary_bc(grid, loc, default_bc=DefaultBoundaryCondition()) 
+    # Check if the halo lies beyond the north pole
+    φnorth = @allowscalar φnode(grid.Ny+1, grid, Face()) 
+    
+    # Assumption: fields at `Center`s in x and y are not vector components
+    cca_loc = loc[1] == Center && loc[2] == Center
+
+    if φnorth ≈ 90 && cca_loc
+        bc = PolarBoundaryCondition(grid, :north, loc[3])
+    else
+        bc = default_bc
+    end
+
+    return bc
+end
+
+function latitude_south_auxiliary_bc(grid, loc, default_bc=DefaultBoundaryCondition()) 
+    # Check if the halo lies beyond the south pole
+    φsouth = @allowscalar φnode(1, grid, Face()) 
+
+    # Assumption: fields at `Center`s in x and y are not vector components
+    cca_loc = loc[1] == Center && loc[2] == Center
+
+    if φsouth ≈ -90 && cca_loc
+        bc = PolarBoundaryCondition(grid, :south, loc[3])
+    else
+        bc = default_bc
+    end
+
+    return bc
+end
+
+latitude_north_auxiliary_bc(::YFlatGrid, args...) = nothing
+latitude_south_auxiliary_bc(::YFlatGrid, args...) = nothing
+

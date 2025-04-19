@@ -59,19 +59,19 @@ launch!(arch, grid, kp, kernel!, kernel_args...)
 
 See the documentation for [`launch!`](@ref).
 """
-function KernelParameters(r::UnitRange)
+function KernelParameters(r::AbstractUnitRange)
     size = length(r)
     offset = first(r) - 1
     return KernelParameters(tuple(size), tuple(offset))
 end
 
-function KernelParameters(r1::UnitRange, r2::UnitRange)
+function KernelParameters(r1::AbstractUnitRange, r2::AbstractUnitRange)
     size = (length(r1), length(r2))
     offsets = (first(r1) - 1, first(r2) - 1)
     return KernelParameters(size, offsets)
 end
 
-function KernelParameters(r1::UnitRange, r2::UnitRange, r3::UnitRange)
+function KernelParameters(r1::AbstractUnitRange, r2::AbstractUnitRange, r3::AbstractUnitRange)
     size = (length(r1), length(r2), length(r3))
     offsets = (first(r1) - 1, first(r2) - 1, first(r3) - 1)
     return KernelParameters(size, offsets)
@@ -341,30 +341,23 @@ end
 @inline getrange(::OffsetStaticSize{S}) where {S} = worksize(S), offsets(S)
 @inline getrange(::Type{OffsetStaticSize{S}}) where {S} = worksize(S), offsets(S)
 
-@inline offsets(ranges::Tuple{Vararg{UnitRange}}) = Tuple(r.start - 1 for r in ranges)
+@inline offsets(ranges::NTuple{N, UnitRange}) where N = Tuple(r.start - 1 for r in ranges)::NTuple{N}
 
 @inline worksize(t::Tuple) = map(worksize, t)
 @inline worksize(sz::Int) = sz
-@inline worksize(r::UnitRange) = length(r)
+@inline worksize(r::AbstractUnitRange) = length(r)
 
-"""a type used to store offsets in `NDRange` types"""
-struct KernelOffsets{O}
-    offsets :: O
-end
-
-Base.getindex(o::KernelOffsets, args...) = getindex(o.offsets, args...)
-
-const OffsetNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:KernelOffsets} where N
+const OffsetNDRange{N, S} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:OffsetStaticSize{S}} where {N, S}
 
 # NDRange has been modified to have offsets in place of workitems: Remember, dynamic offset kernels are not possible with this extension!!
 # TODO: maybe don't do this
-@inline function expand(ndrange::OffsetNDRange{N}, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where {N}
+@inline function expand(ndrange::OffsetNDRange{N, S}, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where {N, S}
     nI = ntuple(Val(N)) do I
         Base.@_inline_meta
         offsets = workitems(ndrange)
         stride = size(offsets, I)
         gidx = groupidx.I[I]
-        (gidx - 1) * stride + idx.I[I] + ndrange.workitems[I]
+        (gidx - 1) * stride + idx.I[I] + S[I]
     end
     return CartesianIndex(nI)
 end
@@ -408,7 +401,7 @@ function partition(kernel::OffsetKernel, inrange, ingroupsize)
     static_blocks = StaticSize{blocks}
     static_workgroupsize = StaticSize{groupsize} # we might have padded workgroupsize
     
-    iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(blocks, KernelOffsets(offsets))
+    iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(blocks, OffsetStaticSize(offsets))
 
     return iterspace, dynamic
 end

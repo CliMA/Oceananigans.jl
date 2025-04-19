@@ -25,12 +25,19 @@ const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded
 #####
 
 PressureField(arch, ::SingleColumnGrid) = (pHY′ = nothing,)
-materialize_free_surface(free_surface::ExplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = nothing
-materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = nothing
-materialize_free_surface(free_surface::SplitExplicitFreeSurface,     velocities,                 ::SingleColumnGrid) = nothing
-materialize_free_surface(free_surface::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
-materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
-materialize_free_surface(free_surface::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
+materialize_free_surface(::ExplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = nothing
+materialize_free_surface(::ImplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = nothing
+materialize_free_surface(::SplitExplicitFreeSurface,     velocities,                 ::SingleColumnGrid) = nothing
+materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
+materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
+materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
+
+free_surface_names(::ExplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = tuple()
+free_surface_names(::ImplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = tuple()
+free_surface_names(::SplitExplicitFreeSurface,     velocities,                 ::SingleColumnGrid) = tuple()
+free_surface_names(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = tuple()
+free_surface_names(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = tuple()
+free_surface_names(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, ::SingleColumnGrid) = tuple()
 
 function hydrostatic_velocity_fields(::Nothing, grid::SingleColumnGrid, clock, bcs=NamedTuple())
     u = XFaceField(grid, boundary_conditions=bcs.u)
@@ -58,7 +65,7 @@ compute_free_surface_tendency!(::SingleColumnGrid, model, ::SplitExplicitFreeSur
 
 # Fast state update and halo filling
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks; compute_tendencies = true)
+function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks; compute_tendencies=true)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
 

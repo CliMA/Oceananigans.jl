@@ -374,7 +374,7 @@ for arch in archs
 end
 
 for arch in archs
-     
+
     # These tests cause an undefined `Bound Access Error` on GPU's CI with the new CUDA version.
     # The error is not reproducible neither on Tartarus nor on Sverdrup.
     # These are excised for the moment (PR #2253) as Cubed sphere will be reworked

@@ -42,7 +42,7 @@ const XYZFlatGrid = AbstractGrid{<:Any, Flat, Flat, Flat}
 isrectilinear(grid) = false
 
 # Fallback
-@inline  get_active_column_map(::AbstractGrid) = nothing
+@inline get_active_column_map(::AbstractGrid) = nothing
 @inline get_active_cells_map(::AbstractGrid, any_map_type) = nothing
 
 """
@@ -74,6 +74,7 @@ Center cells have the location (Center, Center, Center).
 """
 @inline Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
 Base.eltype(::AbstractGrid{FT}) where FT = FT
+Base.eltype(::Type{<:Oceananigans.Grids.AbstractGrid{FT}}) where FT = FT
 Base.eps(::AbstractGrid{FT}) where FT = eps(FT)
 
 function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)

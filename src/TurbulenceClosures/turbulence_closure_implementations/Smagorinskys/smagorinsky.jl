@@ -43,6 +43,9 @@ end
 @inline viscosity(::Smagorinsky, K) = K.νₑ
 @inline diffusivity(closure::Smagorinsky, K, ::Val{id}) where id = K.νₑ / closure.Pr[id]
 
+Adapt.adapt_structure(to, smag::Smagorinsky{TD}) where TD =
+    Smagorinsky{TD}(adapt(to, smag.coefficient), adapt(to, smag.Pr))
+
 const ConstantSmagorinsky = Smagorinsky{<:Any, <:Number}
 
 """
