@@ -164,8 +164,8 @@ function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFree
     u = XFaceField(grid, boundary_conditions=bcs.u)
     v = YFaceField(grid, boundary_conditions=bcs.v)
 
-    U_bcs = barotropic_velocity_boundary_conditions(velocities.u)
-    V_bcs = barotropic_velocity_boundary_conditions(velocities.v)
+    @apply_regionally U_bcs = barotropic_velocity_boundary_conditions(velocities.u)
+    @apply_regionally V_bcs = barotropic_velocity_boundary_conditions(velocities.v)
 
     free_surface_grid = free_surface.η.grid
     U = Field{Face, Center, Nothing}(free_surface_grid, boundary_conditions=U_bcs)

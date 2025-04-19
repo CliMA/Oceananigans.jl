@@ -28,20 +28,20 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
     u_baroclinic = velocities.u
     v_baroclinic = velocities.v
 
-    @apply_regionally u_bc = barotropic_velocity_boundary_conditions(u_baroclinic)
-    @apply_regionally v_bc = barotropic_velocity_boundary_conditions(v_baroclinic)
+    @apply_regionally u_bcs = barotropic_velocity_boundary_conditions(u_baroclinic)
+    @apply_regionally v_bcs = barotropic_velocity_boundary_conditions(v_baroclinic)
 
-    U = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = u_bc)
-    V = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = v_bc)
+    U = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = u_bcs)
+    V = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = v_bcs)
 
-    U̅ = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = u_bc)
-    V̅ = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = v_bc)
+    U̅ = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = u_bcs)
+    V̅ = Field{Center, Center, Nothing}(extended_grid, boundary_conditions = v_bcs)
 
     filtered_state = (η = η̅, U = U̅, V = V̅)
     barotropic_velocities = (U = U, V = V)
 
     gravitational_acceleration = convert(eltype(extended_grid), free_surface.gravitational_acceleration)
-    timestepper = materialize_timestepper(free_surface.timestepper, extended_grid, free_surface, velocities, u_bc, v_bc)
+    timestepper = materialize_timestepper(free_surface.timestepper, extended_grid, free_surface, velocities, u_bcs, v_bcs)
 
     # In a non-parallel grid we calculate only the interior
     @apply_regionally kernel_size    = augmented_kernel_size(grid, grid.partition)
