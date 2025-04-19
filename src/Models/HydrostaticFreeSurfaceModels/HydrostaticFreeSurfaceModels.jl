@@ -54,17 +54,16 @@ include("fft_based_implicit_free_surface_solver.jl")
 include("pcg_implicit_free_surface_solver.jl")
 include("matrix_implicit_free_surface_solver.jl")
 include("implicit_free_surface.jl")
+include("hydrostatic_free_surface_field_tuples.jl")
 
 # Split-Explicit free-surface solver functionality
 include("SplitExplicitFreeSurfaces/SplitExplicitFreeSurfaces.jl")
-
 using .SplitExplicitFreeSurfaces
 
 # ZStar implementation
 include("z_star_vertical_spacing.jl")
 
 # Hydrostatic model implementation
-include("hydrostatic_free_surface_field_tuples.jl")
 include("hydrostatic_free_surface_model.jl")
 include("show_hydrostatic_free_surface_model.jl")
 include("set_hydrostatic_free_surface_model.jl")
