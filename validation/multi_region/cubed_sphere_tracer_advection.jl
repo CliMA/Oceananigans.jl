@@ -3,7 +3,7 @@ using Oceananigans, Printf
 using Oceananigans.Grids: φnode, λnode, halo_size
 using Oceananigans.MultiRegion: getregion, number_of_regions
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Fields: replace_horizontal_vector_halos!
+using Oceananigans.BoundaryConditions: replace_horizontal_vector_halos!
 
 Nx = 30
 Ny = 30

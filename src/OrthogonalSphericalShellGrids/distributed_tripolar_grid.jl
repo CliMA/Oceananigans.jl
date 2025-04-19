@@ -303,7 +303,7 @@ function Field((LX, LY, LZ)::Tuple, grid::DistributedTripolarGridOfSomeKind, dat
                                             bottom=new_bcs.bottom)
     end
 
-    buffers = FieldBoundaryBuffers(grid, data, new_bcs)
+    buffers = CommunicationBuffers(grid, data, new_bcs)
 
     return Field{LX, LY, LZ}(grid, data, new_bcs, indices, op, status, buffers)
 end

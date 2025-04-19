@@ -3,12 +3,12 @@ using Oceananigans.BoundaryConditions
 
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
-using Oceananigans.BoundaryConditions: update_boundary_condition!
+using Oceananigans.BoundaryConditions: update_boundary_condition!, replace_horizontal_vector_halos!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!, inactive_node
 using Oceananigans.Models: update_model_field_time_series!
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, p_kernel_parameters
-using Oceananigans.Fields: replace_horizontal_vector_halos!, tupled_fill_halo_regions!
+using Oceananigans.Fields: tupled_fill_halo_regions!
 
 import Oceananigans.Models.NonhydrostaticModels: compute_auxiliaries!
 import Oceananigans.TimeSteppers: update_state!

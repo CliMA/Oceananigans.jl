@@ -25,7 +25,7 @@ struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G,
     indices :: I
     operand :: O
     status :: S
-    boundary_buffers :: F
+    communication_buffers :: F
 
     # Inner constructor that does not validate _anything_!
     function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
@@ -99,7 +99,7 @@ function Field(loc::Tuple, grid::AbstractGrid, data, bcs, indices, op=nothing, s
     @apply_regionally indices = validate_indices(indices, loc, grid)
     @apply_regionally validate_field_data(loc, data, grid, indices)
     @apply_regionally validate_boundary_conditions(loc, grid, bcs)
-    buffers = FieldBoundaryBuffers(grid, data, bcs)
+    buffers = nothing
     LX, LY, LZ = loc
     return Field{LX, LY, LZ}(grid, data, bcs, indices, op, status, buffers)
 end
@@ -433,7 +433,7 @@ on_architecture(arch, field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
                       on_architecture(arch, field.indices),
                       on_architecture(arch, field.operand),
                       on_architecture(arch, field.status),
-                      on_architecture(arch, field.boundary_buffers))
+                      on_architecture(arch, field.communication_buffers))
 
 #####
 ##### Interface for field computations

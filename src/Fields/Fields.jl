@@ -25,7 +25,6 @@ import Oceananigans: location, instantiated_location
 include("abstract_field.jl")
 include("constant_field.jl")
 include("function_field.jl")
-include("field_boundary_buffers.jl")
 include("field.jl")
 include("field_indices.jl")
 include("scans.jl")

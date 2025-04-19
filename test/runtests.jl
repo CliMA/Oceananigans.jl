@@ -194,6 +194,12 @@ CUDA.allowscalar() do
         include("test_distributed_hydrostatic_model.jl")
     end
 
+    # if group == :distributed_output || group == :all
+    #     @testset "Distributed output writing and reading tests" begin
+    #         include("test_distributed_output.jl")
+    #     end
+    # end
+
     if group == :distributed_nonhydrostatic_regression || group == :all
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
@@ -229,6 +235,7 @@ CUDA.allowscalar() do
         end
     end
 
+    
     # Tests for Enzyme extension
     if group == :enzyme || group == :all
         @testset "Enzyme extension tests" begin
