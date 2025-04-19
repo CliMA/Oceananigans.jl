@@ -6,6 +6,7 @@ using Oceananigans.Models.NonhydrostaticModels: ConjugateGradientPoissonSolver, 
 using Oceananigans.Solvers: DiagonallyDominantPreconditioner, compute_laplacian!, KrylovPoissonSolver
 using Statistics
 using CUDA
+using CairoMakie
 
 function initial_conditions!(model)
     h = 0.05
@@ -52,8 +53,7 @@ function setup_simulation(model, Δt, stop_iteration)
     return Simulation(model, Δt=Δt, stop_iteration=stop_iteration)
 end
 
-# Ns = [32, 64, 128, 160, 192, 224, 256]
-Ns = [32, 64, 128, 256]
+Ns = [32, 64, 96, 128, 256, 512]
 
 Δt = 2e-2 * 64 / 2 / maximum(Ns)
 nsteps = 50
@@ -82,7 +82,6 @@ for (i, N) in enumerate(Ns)
     end
 end
 
-# cg_softwares = ["Oceananigans", "Krylov.jl"]
 cg_softwares = ["Oceananigans", "Krylov.jl"]
 preconditioners = ["no", "FFT", "MITgcm"]
 
@@ -155,21 +154,112 @@ jldopen("staircase_3D_convection_benchmarking_results.jld2", "w") do file
     file["Δt"] = Δt
 end
 
-# results = jldopen("complex_domain_convection_benchmarking_results.jld2", "r") do file
-#     file["results"]
+# #%%
+# times_FFT, times_cg, Niters_cg, Ns, cg_softwares, preconditioners, nsteps, Δt = jldopen("staircase_3D_convection_benchmarking_results_A100.jld2", "r") do file
+#     times_FFT = file["times_FFT"]
+#     times_cg = file["times_cg"]
+#     Niters_cg = file["Niters_cg"]
+#     Ns = file["Ns"]
+#     cg_softwares = file["cg_softwares"]
+#     preconditioners = file["preconditioners"]
+#     nsteps = file["nsteps"]
+#     Δt = file["Δt"]
+#     return times_FFT, times_cg, Niters_cg, Ns, cg_softwares, preconditioners, nsteps, Δt
 # end
 
-# results["ImmersedPoissonSolver"]["128"]
+# #%%
+# median_times_FFT = median.(times_FFT)
+# median_times_cg = median.(times_cg)
+# mean_Niters_cg = mean.(Niters_cg)
+# N³logNs = Ns .^ 3 .* log2.(Ns)
+# N³ = Ns .^ 3
+# #%%
+# fig = Figure(size=(1200, 1200), fontsize=20)
+# axtime = Axis(fig[1, 1], xlabel="N", ylabel="Median time (s)", yscale=log10, xscale=log2)
+# axcgiter = Axis(fig[1, 2], xlabel="N", ylabel="Mean CG iterations per timestep", xscale=log2, yscale=log10)
+# axtimeratio = Axis(fig[2, 1], xlabel="N", ylabel="Wall time (method) / Wall time (FFT solve)", xscale=log2, yscale=log10)
+# axiterratio = Axis(fig[2, 2], xlabel="N", ylabel="CG iterations (preconditioner) / CG iterations (FFT preconditioner)", xscale=log2, yscale=log10)
 
-# Ns = [32, 64, 128, 256]
+# software = "Krylov.jl"
+# # software = "Oceananigans"
+# if software == "Krylov.jl"
+#     ind = 2
+# else
+#     ind = 1
+# end
 
-# t_median_immersed = [median(results["ImmersedPoissonSolver"]["$N"]).time / 1e9 for N in Ns]
-# t_median_FFT = [median(results["FFTBasedPoissonSolver"]["$N"]).time / 1e9 for N in Ns]
+# linewidth = 4
+# markersize = 15
+# for i in [1, 3, 2]
+#     preconditioner = preconditioners[i]
+#     # scatterlines!(axtime, N³logNs, median_times_cg[ind, i, :], label="CG, " * preconditioner * " preconditioner", linewidth=linewidth, markersize=markersize)
+#     scatterlines!(axtime, Ns, median_times_cg[ind, i, :], label="CG, " * preconditioner * " preconditioner", linewidth=linewidth, markersize=markersize)
+#     scatterlines!(axcgiter, Ns, mean_Niters_cg[ind, i, :], label="CG, " * preconditioner * " preconditioner", linewidth=linewidth, markersize=markersize)
+#     scatterlines!(axtimeratio, Ns, median_times_cg[ind, i, :] ./ median_times_FFT, label="CG, " * preconditioner * " preconditioner", linewidth=linewidth, markersize=markersize)
+# end
+# scatterlines!(axtime, Ns, median_times_FFT, label="FFT solver", linewidth=linewidth, markersize=markersize)
 
-# fig = Figure()
-# ax = Axis(fig[1, 1], xlabel="N", ylabel="Median time (s)", yscale=log10, xscale=log2, title="Sloped convection, GPU, 3D setup (N³ grid points)")
-# lines!(ax, Ns, t_median_immersed, label="Immersed solver")
-# lines!(ax, Ns, t_median_FFT, label="FFT solver")
-# axislegend(ax, position=:lt)
+# for i in [1, 3]
+#     preconditioner = preconditioners[i]
+#     scatterlines!(axiterratio, Ns, mean_Niters_cg[ind, i, :] ./ mean_Niters_cg[ind, 2, :], label="CG, " * preconditioner * " preconditioner", linewidth=linewidth, markersize=markersize)
+# end
+
+# Legend(fig[3, :], axtime, orientation=:horizontal, patchsize=(40, 20))
 # display(fig)
-# save("sloped_convection_benchmarks.png", fig, px_per_unit=4)
+# save("./Output/staircase_3D_convection_benchmarking_results_A100.svg", fig)
+
+#%%
+# times_FFT, times_cg, Niters_cg, Ns, cg_softwares, preconditioners, nsteps, Δt = jldopen("staircase_3D_convection_benchmarking_results_tartarus.jld2", "r") do file
+#     times_FFT = file["times_FFT"]
+#     times_cg = file["times_cg"]
+#     Niters_cg = file["Niters_cg"]
+#     Ns = file["Ns"]
+#     cg_softwares = file["cg_softwares"]
+#     preconditioners = file["preconditioners"]
+#     nsteps = file["nsteps"]
+#     Δt = file["Δt"]
+#     return times_FFT, times_cg, Niters_cg, Ns, cg_softwares, preconditioners, nsteps, Δt
+# end
+
+# #%%
+# median_times_FFT = median.(times_FFT)
+# median_times_cg = median.(times_cg)
+# mean_Niters_cg = mean.(Niters_cg)
+# N³logNs = Ns .^ 3 .* log2.(Ns)
+# N³ = Ns .^ 3
+# #%%
+# fig = Figure(size=(1200, 1200), fontsize=20)
+# axtime = Axis(fig[1, 1], xlabel="N³ log₂(N)", ylabel="Median time (s)")
+# axcgiter = Axis(fig[1, 2], xlabel="N", ylabel="Mean CG iterations per timestep", xscale=log2, yscale=log2)
+# axtimeratio = Axis(fig[2, 1], xlabel="N", ylabel="Wall time (method) / Wall time (FFT solve)", xscale=log2, yscale=log2)
+# axiterratio = Axis(fig[2, 2], xlabel="N", ylabel="CG iterations (preconditioner) / CG iterations (FFT preconditioner)", xscale=log2, yscale=log2)
+
+# # software = "Krylov.jl"
+# # # software = "Oceananigans"
+# # if software == "Krylov.jl"
+# #     ind = 2
+# # else
+# #     ind = 1
+# # end
+# ind = 1
+
+# linewidth = 4
+# markersize = 15
+# for i in [1, 3, 2]
+#     preconditioner = preconditioners[i]
+#     # scatterlines!(axtime, N³logNs, median_times_cg[ind, i, :], label="CG, " * preconditioner * " preconditioner", linewidth=linewidth, markersize=markersize)
+#     scatterlines!(axtime, N³logNs, median_times_cg[ind, i, :], label="CG, " * preconditioner * " preconditioner", linewidth=linewidth, markersize=markersize)
+#     scatterlines!(axcgiter, Ns, mean_Niters_cg[ind, i, :], label="CG, " * preconditioner * " preconditioner", linewidth=linewidth, markersize=markersize)
+#     scatterlines!(axtimeratio, Ns, median_times_cg[ind, i, :] ./ median_times_FFT, label="CG, " * preconditioner * " preconditioner", linewidth=linewidth, markersize=markersize)
+# end
+# scatterlines!(axtime, N³logNs, median_times_FFT, label="FFT solver", linewidth=linewidth, markersize=markersize)
+
+# for i in [1, 3]
+#     preconditioner = preconditioners[i]
+#     scatterlines!(axiterratio, Ns, mean_Niters_cg[ind, i, :] ./ mean_Niters_cg[ind, 2, :], label="CG, " * preconditioner * " preconditioner", linewidth=linewidth, markersize=markersize)
+# end
+
+# Legend(fig[3, :], axtime, orientation=:horizontal, patchsize=(40, 20))
+# display(fig)
+# # save("./Output/staircase_3D_convection_benchmarking_results_tartarus.svg", fig)
+# #%%
