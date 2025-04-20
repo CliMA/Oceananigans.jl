@@ -46,10 +46,6 @@ WENO(order=5)
     └── WENO(order=3)
  Symmetric scheme:
     └── Centered(order=4)
- Directions:
-    ├── X regular
-    ├── Y regular
-    └── Z regular
 ```
 
 ```jldoctest
@@ -70,10 +66,6 @@ WENO(order=7)
     └── WENO(order=5)
  Symmetric scheme:
     └── Centered(order=6)
- Directions:
-    ├── X regular
-    ├── Y regular
-    └── Z stretched
 ```
 """
 function WENO(FT::DataType=Oceananigans.defaults.FloatType; 
