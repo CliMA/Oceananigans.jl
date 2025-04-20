@@ -3,28 +3,32 @@
 ##### Flat Topologies
 #####
 
+const XFG = Union{XFlatGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:XFlatGrid}}
+const YFG = Union{YFlatGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:YFlatGrid}}
+const ZFG = Union{ZFlatGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:ZFlatGrid}}
+
 for SchemeType in [:CenteredScheme, :UpwindScheme]
     @eval begin
-        @inline advective_momentum_flux_Uu(i, j, k, grid::XFlatGrid, ::$SchemeType, U, u) = zero(grid)
-        @inline advective_momentum_flux_Uv(i, j, k, grid::XFlatGrid, ::$SchemeType, U, v) = zero(grid)
-        @inline advective_momentum_flux_Uw(i, j, k, grid::XFlatGrid, ::$SchemeType, U, w) = zero(grid)
+        @inline advective_momentum_flux_Uu(i, j, k, grid::XFG, ::$SchemeType, U, u) = zero(grid)
+        @inline advective_momentum_flux_Uv(i, j, k, grid::XFG, ::$SchemeType, U, v) = zero(grid)
+        @inline advective_momentum_flux_Uw(i, j, k, grid::XFG, ::$SchemeType, U, w) = zero(grid)
 
-        @inline advective_momentum_flux_Vv(i, j, k, grid::YFlatGrid, ::$SchemeType, V, v) = zero(grid)
-        @inline advective_momentum_flux_Vu(i, j, k, grid::YFlatGrid, ::$SchemeType, V, u) = zero(grid)
-        @inline advective_momentum_flux_Vw(i, j, k, grid::YFlatGrid, ::$SchemeType, V, w) = zero(grid)
+        @inline advective_momentum_flux_Vv(i, j, k, grid::YFG, ::$SchemeType, V, v) = zero(grid)
+        @inline advective_momentum_flux_Vu(i, j, k, grid::YFG, ::$SchemeType, V, u) = zero(grid)
+        @inline advective_momentum_flux_Vw(i, j, k, grid::YFG, ::$SchemeType, V, w) = zero(grid)
 
-        @inline advective_momentum_flux_Wu(i, j, k, grid::ZFlatGrid, ::$SchemeType, W, u) = zero(grid)
-        @inline advective_momentum_flux_Wv(i, j, k, grid::ZFlatGrid, ::$SchemeType, W, v) = zero(grid)
-        @inline advective_momentum_flux_Ww(i, j, k, grid::ZFlatGrid, ::$SchemeType, W, w) = zero(grid)
+        @inline advective_momentum_flux_Wu(i, j, k, grid::ZFG, ::$SchemeType, W, u) = zero(grid)
+        @inline advective_momentum_flux_Wv(i, j, k, grid::ZFG, ::$SchemeType, W, v) = zero(grid)
+        @inline advective_momentum_flux_Ww(i, j, k, grid::ZFG, ::$SchemeType, W, w) = zero(grid)
 
-        @inline advective_tracer_flux_x(i, j, k, grid::XFlatGrid, ::$SchemeType, U, c) = zero(grid)
-        @inline advective_tracer_flux_y(i, j, k, grid::YFlatGrid, ::$SchemeType, U, c) = zero(grid)
-        @inline advective_tracer_flux_z(i, j, k, grid::ZFlatGrid, ::$SchemeType, U, c) = zero(grid)
+        @inline advective_tracer_flux_x(i, j, k, grid::XFG, ::$SchemeType, U, c) = zero(grid)
+        @inline advective_tracer_flux_y(i, j, k, grid::YFG, ::$SchemeType, U, c) = zero(grid)
+        @inline advective_tracer_flux_z(i, j, k, grid::ZFG, ::$SchemeType, U, c) = zero(grid)
     end
 end
 
 
-FlatGrids = [:XFlatGrid, :YFlatGrid, :ZFlatGrid, :XFlatGrid, :YFlatGrid, :ZFlatGrid]
+FlatGrids = [:XFG, :YFG, :ZFG, :XFG, :YFG, :ZFG]
 
 # Flat interpolations...  
 for (dir, GridType) in zip((:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ, :xᶜᵃᵃ, :yᵃᶜᵃ, :zᵃᵃᶜ), FlatGrids)
