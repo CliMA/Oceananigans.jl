@@ -12,7 +12,7 @@ contiguousrange(::KernelParameters{spec, offset}) where {spec, offset} = contigu
 
 @kernel function compute_nonorthogonality_angle!(angle, grid, xF, yF, zF)
     i, j = @index(Global, NTuple)
-    
+
     @inbounds begin
         x⁻ = xF[i, j]
         y⁻ = yF[i, j]
@@ -40,8 +40,8 @@ end
 
 @testset "Unit tests..." begin
     for arch in archs
-        grid = TripolarGrid(arch, size = (4, 5, 1), z = (0, 1), 
-                            first_pole_longitude = 75, 
+        grid = TripolarGrid(arch, size = (4, 5, 1), z = (0, 1),
+                            first_pole_longitude = 75,
                             north_poles_latitude = 35,
                             southernmost_latitude = -80)
 
@@ -64,10 +64,10 @@ end
         @test maximum(λᶜᶜᵃ) ≤ 360
         @test maximum(φᶜᶜᵃ) ≤ 90
 
-        # The minimum latitude is not exactly the southermost latitude because the grid 
+        # The minimum latitude is not exactly the southermost latitude because the grid
         # undulates slightly to maintain the same analytical description in the whole sphere
         # (i.e. constant latitude lines do not exist anywhere in this grid)
-        @test minimum(φᶜᶜᵃ .+ min_Δφ / 10) ≥ grid.conformal_mapping.southernmost_latitude 
+        @test minimum(φᶜᶜᵃ .+ min_Δφ / 10) ≥ grid.conformal_mapping.southernmost_latitude
     end
 end
 
@@ -93,8 +93,8 @@ end
 
         @test P isa KernelParameters
         @test range[1] == 1:Nx
-        @test range[2] == 1:Ny+Hy-1 
-        
+        @test range[2] == 1:Ny+Hy-1
+
         @test Hx == halo_size(grid, 1)
         @test Hy != halo_size(grid, 2)
         @test Hy == length(free_surface.substepping.averaging_weights) + 1
@@ -108,7 +108,7 @@ end
 
 @testset "Orthogonality of family of ellipses and hyperbolae..." begin
     for arch in archs
-        # Test the orthogonality of a tripolar grid based on the orthogonality of a 
+        # Test the orthogonality of a tripolar grid based on the orthogonality of a
         # cubed sphere of the same size (1ᵒ in latitude and longitude)
         cubed_sphere_grid = ConformalCubedSphereGrid(arch, panel_size = (90, 90, 1), z = (0, 1))
         cubed_sphere_panel = getregion(cubed_sphere_grid, 1)
@@ -128,7 +128,7 @@ end
 
         first_pole_longitude = λ¹ₚ = 75
         north_poles_latitude = φₚ  = 35
-        
+
         λ²ₚ = λ¹ₚ + 180
 
         # Build a tripolar grid at 1ᵒ
@@ -177,7 +177,7 @@ end
         @test u.boundary_conditions.north.classification isa Zipper
         @test v.boundary_conditions.north.classification isa Zipper
 
-        # The velocity fields are reversed at the north boundary 
+        # The velocity fields are reversed at the north boundary
         # boundary_conditions.north.condition == -1, while the tracer
         # is not: boundary_conditions.north.condition == 1
         @test c.boundary_conditions.north.condition == 1
@@ -235,7 +235,7 @@ end
         fill_halo_regions!(u)
 
         @test on_architecture(CPU(), interior(c, :, 10, 1)) == on_architecture(CPU(), interior(c, 10:-1:1, 10, 1))
-        # For x face fields the first element is unique and we remove the 
+        # For x face fields the first element is unique and we remove the
         # north pole that is exactly at Nx+1
         left_side  = on_architecture(CPU(), interior(cx, 2:5, 10, 1))
         right_side = on_architecture(CPU(), interior(cx, 7:10, 10, 1))

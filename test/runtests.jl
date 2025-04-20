@@ -29,7 +29,7 @@ CUDA.allowscalar() do
     if group == :init || group == :all
         include("test_init.jl")
     end
-    
+
     # Core Oceananigans
     if group == :unit || group == :all
         @testset "Unit tests" begin
@@ -253,7 +253,7 @@ CUDA.allowscalar() do
         @testset "Sharding Reactant extension tests" begin
             # Broken for the moment (trying to fix them in https://github.com/CliMA/Oceananigans.jl/pull/4293)
             # include("test_sharded_lat_lon.jl")
-            # include("test_sharded_tripolar.jl") 
+            # include("test_sharded_tripolar.jl")
         end
     end
 

@@ -481,7 +481,7 @@ for arch in archs
                 kk = 1+Hz:Nz+Hz
                 @test all(view(parent(ST), Hx, jj, kk) .== view(parent(ST), Nx+1+Hx, jj, kk))
                 @test all(view(parent(ST), ii, Hy, kk) .== view(parent(ST), ii, Ny+1+Hy, kk))
-                
+
                 # Bounded z
                 @test all(view(parent(ST), ii, jj, Hz)    .== view(parent(ST), ii, jj, 1+Hz))
                 @test all(view(parent(ST), ii, jj, Nz+Hz) .== view(parent(ST), ii, jj, Nz+1+Hz))
@@ -558,6 +558,7 @@ for arch in archs
                 computed_tke = Field(tke_ccc)
 
                 tke_window = Field(tke_ccc, indices=(2:3, 2:3, 2:3))
+
                 @test try compute!(computed_tke); true; catch; false end
                 @test try compute!(Field(tke)); true; catch; false; end
                 @test try compute!(tke_window); true; catch; false; end
