@@ -27,7 +27,6 @@ for SchemeType in [:CenteredScheme, :UpwindScheme]
     end
 end
 
-
 FlatGrids = [:XFG, :YFG, :ZFG, :XFG, :YFG, :ZFG]
 
 # Flat interpolations...  
