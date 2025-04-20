@@ -14,7 +14,7 @@ using Oceananigans.Grids: topology, halo_size, xspacings, yspacings, zspacings, 
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, PartialCellBottom, GFBIBG, GridFittedBoundary
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
@@ -362,22 +362,6 @@ flat_loc(T, L) = T == Flat ? nothing : L
 
 # For Immersed Boundary Grids (IBG) with a Grid Fitted Bottom (GFB)
 function gather_immersed_boundary(grid::GFBIBG, indices, dim_name_generator)
-    op_mask_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
-    op_mask_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
-    op_mask_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
-    op_mask_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
-
-    return Dict("bottom_height" => Field(grid.immersed_boundary.bottom_height; indices),
-                "immersed_boundary_mask_ccc" => Field(op_mask_ccc; indices),
-                "immersed_boundary_mask_fcc" => Field(op_mask_fcc; indices),
-                "immersed_boundary_mask_cfc" => Field(op_mask_cfc; indices),
-                "immersed_boundary_mask_ccf" => Field(op_mask_ccf; indices))
-end
-
-const PCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PartialCellBottom}
-
-# For Immersed Boundary Grids (IBG) with a Partial Cell Bottom (PCB)
-function gather_immersed_boundary(grid::PCBIBG, indices, dim_name_generator)
     op_mask_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
     op_mask_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
     op_mask_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
