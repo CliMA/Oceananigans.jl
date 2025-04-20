@@ -47,6 +47,7 @@ end
 
 axis_str(::RectilinearGrid, dim) = ("x", "y", "z")[dim]
 axis_str(::LatitudeLongitudeGrid, dim) = ("Longitude (deg)", "Latitude (deg)", "z")[dim]
+axis_str(::OrthogonalSphericalShellGrid, dim) = ""
 axis_str(grid::ImmersedBoundaryGrid, dim) = axis_str(grid.underlying_grid, dim)
 
 const LLGOrIBLLG = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:LatitudeLongitudeGrid}}

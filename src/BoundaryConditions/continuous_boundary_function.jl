@@ -72,7 +72,7 @@ The regularization of `bc.condition::ContinuousBoundaryFunction` requries
    of the boundary.
 """
 function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction},
-                                       grid, loc, dim, Side, prognostic_field_names) where C
+                                       grid, loc, dim, Side, field_names) where C
 
     boundary_func = bc.condition
 
@@ -81,7 +81,7 @@ function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoun
 
     indices, interps = index_and_interp_dependencies(LX, LY, LZ,
                                                      boundary_func.field_dependencies,
-                                                     prognostic_field_names)
+                                                     field_names)
 
     regularized_boundary_func = ContinuousBoundaryFunction{LX, LY, LZ, Side}(boundary_func.func,
                                                                              boundary_func.parameters,

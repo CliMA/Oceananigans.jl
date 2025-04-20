@@ -168,11 +168,11 @@ Adapt.adapt_structure(to, tke_dissipation_diffusivity_fields::TKEDissipationDiff
                                     adapt(to, tke_dissipation_diffusivity_fields.κϵ),
                                     adapt(to, tke_dissipation_diffusivity_fields.Le),
                                     adapt(to, tke_dissipation_diffusivity_fields.Lϵ),
-                                    adapt(to, previous_velocities),
-                                    adapt(to, _tupled_tracer_diffusivities),
-                                    adapt(to, _tupled_implicit_linear_coefficients))
+                                    adapt(to, tke_dissipation_diffusivity_fields.previous_velocities),
+                                    adapt(to, tke_dissipation_diffusivity_fields._tupled_tracer_diffusivities),
+                                    adapt(to, tke_dissipation_diffusivity_fields._tupled_implicit_linear_coefficients))
 
-function fill_halo_regions!(catke_diffusivity_fields::TKEDissipationDiffusivityFields, args...; kw...)
+function fill_halo_regions!(tke_dissipation_diffusivity_fields::TKEDissipationDiffusivityFields, args...; kw...)
     fields_with_halos_to_fill = (tke_dissipation_diffusivity_fields.κu,
                                  tke_dissipation_diffusivity_fields.κc,
                                  tke_dissipation_diffusivity_fields.κe,
@@ -378,7 +378,8 @@ function Base.show(io::IO, clo::TDVD)
               "├── tke_dissipation_equations: ", prettysummary(clo.tke_dissipation_equations), '\n',
               "│   ├── Cᵋϵ: ", prettysummary(clo.tke_dissipation_equations.Cᵋϵ),  '\n',
               "│   ├── Cᴾϵ: ", prettysummary(clo.tke_dissipation_equations.Cᴾϵ),  '\n',
-              "│   ├── Cᵇϵ: ", prettysummary(clo.tke_dissipation_equations.Cᵇϵ),  '\n',
+              "│   ├── Cᵇϵ⁺: ", prettysummary(clo.tke_dissipation_equations.Cᵇϵ⁺),  '\n',
+              "│   ├── Cᵇϵ⁻: ", prettysummary(clo.tke_dissipation_equations.Cᵇϵ⁻),  '\n',
               "│   ├── Cᵂu★: ", prettysummary(clo.tke_dissipation_equations.Cᵂu★), '\n',
               "│   └── CᵂwΔ: ", prettysummary(clo.tke_dissipation_equations.CᵂwΔ), '\n')
     print(io, "└── ", summarize_stability_functions(clo.stability_functions), "", "    ")

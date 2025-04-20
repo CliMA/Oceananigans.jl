@@ -347,24 +347,17 @@ end
 @inline worksize(sz::Int) = sz
 @inline worksize(r::AbstractUnitRange) = length(r)
 
-"""a type used to store offsets in `NDRange` types"""
-struct KernelOffsets{N, I}
-    offsets :: NTuple{N, I}
-end
-
-Base.getindex(o::KernelOffsets, args...) = getindex(o.offsets, args...)
-
-const OffsetNDRange{N} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:KernelOffsets{N, I}} where {N, I}
+const OffsetNDRange{N, S} = NDRange{N, <:StaticSize, <:StaticSize, <:Any, <:OffsetStaticSize{S}} where {N, S}
 
 # NDRange has been modified to have offsets in place of workitems: Remember, dynamic offset kernels are not possible with this extension!!
 # TODO: maybe don't do this
-@inline function expand(ndrange::OffsetNDRange{N}, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where {N}
+@inline function expand(ndrange::OffsetNDRange{N, S}, groupidx::CartesianIndex{N}, idx::CartesianIndex{N}) where {N, S}
     nI = ntuple(Val(N)) do I
         Base.@_inline_meta
         offsets = workitems(ndrange)
         stride = size(offsets, I)
         gidx = groupidx.I[I]
-        (gidx - 1) * stride + idx.I[I] + ndrange.workitems[I]
+        (gidx - 1) * stride + idx.I[I] + S[I]
     end
     return CartesianIndex(nI)
 end
@@ -408,7 +401,7 @@ function partition(kernel::OffsetKernel, inrange, ingroupsize)
     static_blocks = StaticSize{blocks}
     static_workgroupsize = StaticSize{groupsize} # we might have padded workgroupsize
     
-    iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(blocks, KernelOffsets(offsets))
+    iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(blocks, OffsetStaticSize(offsets))
 
     return iterspace, dynamic
 end

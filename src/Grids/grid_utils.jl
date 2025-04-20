@@ -215,7 +215,7 @@ end
 # intersect_index_range(::Colon, ::Colon) = Colon()
 index_range_contains(range, subset::AbstractUnitRange) = (first(subset) ∈ range) & (last(subset) ∈ range)
 index_range_contains(::Colon, ::AbstractUnitRange)     = true
-index_range_contains(::Colon, ::Colon)          = true
+index_range_contains(::Colon, ::Colon)                 = true
 index_range_contains(::AbstractUnitRange, ::Colon)     = true
 
 # Return the index range of "full" parent arrays that span an entire dimension

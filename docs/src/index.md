@@ -26,7 +26,7 @@ julia> Pkg.add("Oceananigans")
 
 !!! compat "Julia 1.9 or later is required"
     Oceananigans requires Julia 1.9 or later.
-    
+
 !!! info "Tested Julia versions"
     Oceananigans is currently tested on Julia 1.10.
 
@@ -45,7 +45,7 @@ It's _deep_ and includes:
 * [Discussions on the Oceananigans github](https://github.com/CliMA/Oceananigans.jl/discussions), covering topics like
     * ["Computational science"](https://github.com/CliMA/Oceananigans.jl/discussions/categories/computational-science), or how to science and set up numerical simulations in Oceananigans, and
     * ["Experimental features"](https://github.com/CliMA/Oceananigans.jl/discussions?discussions_q=experimental+features), which covers new and sparsely-documented features for those who like to live dangerously.
-  
+
     If you've got a question or something to talk about, don't hesitate to [start a new discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?)!
 * The [Oceananigans wiki](https://github.com/CliMA/Oceananigans.jl/wiki), which contains practical tips for [getting started with Julia](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans), [accessing and using GPUs](https://github.com/CliMA/Oceananigans.jl/wiki/Oceananigans-on-GPUs), and [productive workflows when using Oceananigans](https://github.com/CliMA/Oceananigans.jl/wiki/Productive-Oceananigans-workflows-and-Julia-environments).
 * [Issues](https://github.com/CliMA/Oceananigans.jl/issues) and [pull requests](https://github.com/CliMA/Oceananigans.jl/pulls) also contain lots of information about problems we've found, solutions we're trying to implement, and dreams we're dreaming to make tomorrow better 🌈.
@@ -67,7 +67,7 @@ The community has published a number of articles describing the development of O
 including a recent [preprint submitted to the Journal of Advances in Modeling Earth Systems](https://arxiv.org/abs/2502.14148) that presents an overview of all the things that make Oceananigans unique:
 
 > "High-level, high-resolution ocean modeling at all scales with Oceananigans"
-> 
+>
 > by Gregory L. Wagner, Simone Silvestri, Navid C. Constantinou, Ali Ramadhan, Jean-Michel Campin,
 > Chris Hill, Tomas Chor, Jago Strong-Wright, Xin Kai Lee, Francis Poulin, Andre Souza, Keaton J. Burns,
 > John Marshall, Raffaele Ferrari
@@ -98,7 +98,7 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 * **Ramadhan et al., ["Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs"](https://par.nsf.gov/servlets/purl/10200806).**
 
   *This Journal of Open Source Software article describes an early version of Oceananigans' `NonhydrostaticModel`.*
-  
+
 ## Papers and preprints using Oceananigans
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!

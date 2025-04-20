@@ -95,14 +95,14 @@ function ConditionalOperation(operand::AbstractField;
                               func = nothing,
                               condition = nothing,
                               mask = zero(eltype(operand)))
-
     condition = validate_condition(condition, operand)
-
     LX, LY, LZ = location(operand)
     return ConditionalOperation{LX, LY, LZ}(operand, func, operand.grid, condition, mask)
 end
 
-validate_condition(cond, ::AbstractField) = cond # fallback
+# fallbacks
+validate_condition(cond, ::AbstractField) = cond
+validate_condition(cond::AbstractArray, ::OneField) = cond
 
 function validate_condition(cond::AbstractArray, operand::AbstractField)
     if size(cond) !== size(operand)
@@ -115,6 +115,7 @@ function ConditionalOperation(c::ConditionalOperation;
                               func = c.func,
                               condition = c.condition,
                               mask = c.mask)
+    condition = validate_condition(condition, operand)
     LX, LY, LZ = location(c)
     compined_func = func ∘ c.func
 
@@ -125,6 +126,7 @@ function ConditionalOperation(c::NoFuncCO;
                               func = c.func,
                               condition = c.condition,
                               mask = c.mask)
+    condition = validate_condition(condition, operand)
     LX, LY, LZ = location(c)
     return ConditionalOperation{LX, LY, LZ}(c.operand, func, c.grid, condition, mask)
 end
@@ -164,6 +166,7 @@ end
 @inline condition_operand(op::ConditionalOperation, condition, mask) = error("not supported")
 
 @inline function condition_operand(func, operand::AbstractField, condition::AbstractArray, mask)
+    condition = validate_condition(condition, operand)
     condition = on_architecture(architecture(operand.grid), condition)
     return ConditionalOperation(operand; func, condition, mask)
 end
@@ -194,7 +197,10 @@ end
 end
 
 @inline conditional_length(c::ConditionalOperation) = sum(conditional_one(c, 0))
-@inline conditional_length(c::ConditionalOperation, dims) = sum(conditional_one(c, 0); dims = dims)
+@inline conditional_length(c::ConditionalOperation, dims) = sum(conditional_one(c, 0); dims)
+
+compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
+indices(c::ConditionalOperation) = indices(c.operand)
 
 Adapt.adapt_structure(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     ConditionalOperation{LX, LY, LZ}(adapt(to, c.operand),
@@ -210,10 +216,8 @@ on_architecture(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ} =
                                      on_architecture(to, c.condition),
                                      on_architecture(to, c.mask))
 
-Base.summary(c::ConditionalOperation) = string("ConditionalOperation of ", summary(c.operand), " with condition ", summary(c.condition))
-
-compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
-indices(c::ConditionalOperation) = indices(c.operand)
+Base.summary(c::ConditionalOperation) =
+    string("ConditionalOperation of ", summary(c.operand), " with condition ", summary(c.condition))
 
 Base.show(io::IO, operation::ConditionalOperation) =
     print(io, "ConditionalOperation at $(location(operation))", '\n',

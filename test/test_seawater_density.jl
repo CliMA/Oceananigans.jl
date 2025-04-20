@@ -4,7 +4,7 @@ using Oceananigans.Models
 
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.BuoyancyFormulations: Zᶜᶜᶜ
-using Oceananigans.Models: model_temperature, model_salinity, model_geopotential_height, 
+using Oceananigans.Models: model_temperature, model_salinity, model_geopotential_height,
                            ConstantTemperatureSB, ConstantSalinitySB
 
 using SeawaterPolynomials: ρ, BoussinesqEquationOfState, SecondOrderSeawaterPolynomial, RoquetEquationOfState,
@@ -23,11 +23,8 @@ TEOS10_eos = TEOS10EquationOfState()
 
 "Return an `Array` on `arch` that is `size(grid)` flled with `value`."
 function grid_size_value(arch, grid, value)
-
     value_array = fill(value, size(grid))
-
     return on_architecture(arch, value_array)
-
 end
 
 "Check the error thrown for non-`BoussinesqEquationOfState`."

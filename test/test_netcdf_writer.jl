@@ -2551,7 +2551,7 @@ function test_netcdf_free_surface_only_output(arch)
 
     # Kind of a hack because we want η to be a ReducedField.
     outputs = (;
-        η = Average(model.free_surface.η, dims=3)
+        η = Average(model.free_surface.η, dims=3),
     )
 
     Arch = typeof(arch)
@@ -2618,7 +2618,7 @@ function test_netcdf_free_surface_mixed_output(arch)
 
     # Kind of a hack because we want η to be a ReducedField.
     free_surface_outputs = (;
-        η = Average(model.free_surface.η, dims=3)
+        η = Average(model.free_surface.η, dims=3),
     )
 
     outputs = merge(model.velocities, model.tracers, free_surface_outputs)
