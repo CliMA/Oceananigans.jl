@@ -1,11 +1,12 @@
+using Oceananigans.ImmersedBoundaries
 
 #####
 ##### Flat Topologies
 #####
 
-const XFG = Union{XFlatGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:XFlatGrid}}
-const YFG = Union{YFlatGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:YFlatGrid}}
-const ZFG = Union{ZFlatGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:ZFlatGrid}}
+const XFG = Union{<:XFlatGrid, <:ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:XFlatGrid}}
+const YFG = Union{<:YFlatGrid, <:ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:YFlatGrid}}
+const ZFG = Union{<:ZFlatGrid, <:ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ZFlatGrid}}
 
 for SchemeType in [:CenteredScheme, :UpwindScheme]
     @eval begin
