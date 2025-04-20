@@ -93,11 +93,6 @@ for bias in (:symmetric, :biased)
             @eval @inline $alt1_interp(i, j, k, grid::AG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
             @eval @inline $alt1_interp(i, j, k, grid::AG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
 
-            # Disambiguation
-            for GridType in [:AGX, :AGY, :AGZ, :AGXY, :AGXZ, :AGYZ, :AGXYZ]
-                @eval @inline $alt1_interp(i, j, k, grid::$GridType, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
-            end
-
             outside_buffer = Symbol(:outside_, bias, :_halo_, ξ, loc)
 
             # Conditional high-order interpolation in Bounded directions
