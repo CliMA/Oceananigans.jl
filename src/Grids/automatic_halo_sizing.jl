@@ -7,13 +7,13 @@ in the tendency for a velocity field or tracer field.
 Example
 =======
 
-```jldoctest
+```jldoctes
 using Oceananigans.Advection: Centered(order=4)
 using Oceananigans.Grids: required_halo_size_x
 
 required_halo_size_x(Centered(order=4))
 
-# output
+# outpu
 2
 """
 function required_halo_size_x end
@@ -27,13 +27,13 @@ in the tendency for a velocity field or tracer field.
 Example
 =======
 
-```jldoctest
+```jldoctes
 using Oceananigans.Advection: Centered(order=4)
 using Oceananigans.Grids: required_halo_size_y
 
 required_halo_size_y(Centered(order=4))
 
-# output
+# outpu
 2
 """
 function required_halo_size_y end
@@ -47,13 +47,13 @@ in the tendency for a velocity field or tracer field.
 Example
 =======
 
-```jldoctest
+```jldoctes
 using Oceananigans.Advection: Centered(order=4)
 using Oceananigans.Grids: required_halo_size_z
 
 required_halo_size_z(Centered(order=4))
 
-# output
+# outpu
 2
 """
 function required_halo_size_z end

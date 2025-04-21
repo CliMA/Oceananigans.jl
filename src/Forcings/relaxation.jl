@@ -11,7 +11,7 @@ Base.summary(::T_onefunction) = "1"
 """
     struct Relaxation{R, M, T}
 
-Callable object for restoring fields to a `target` at
+Callable object for restoring fields to a `target` a
 some `rate` and within a `mask`ed region in `x, y, z`.
 """
 struct Relaxation{R, M, T}
@@ -40,7 +40,7 @@ using Oceananigans
 
 damping = Relaxation(rate = 1/3600)
 
-# output
+# outpu
 Relaxation{Float64, typeof(Oceananigans.Forcings.onefunction), typeof(Oceananigans.Forcings.zerofunction)}
 ├── rate: 0.0002777777777777778
 ├── mask: 1
@@ -52,7 +52,7 @@ Relaxation{Float64, typeof(Oceananigans.Forcings.onefunction), typeof(Oceananiga
   are seconds).
 
 ```jldoctest relaxation
-dTdz = 0.001 # ⁰C m⁻¹, temperature gradient
+dTdz = 0.001 # ⁰C m⁻¹, temperature gradien
 
 T₀ = 20 # ⁰C, surface temperature at z=0
 
@@ -62,7 +62,7 @@ bottom_sponge_layer = Relaxation(; rate = 1/60,
                                    target = LinearTarget{:z}(intercept=T₀, gradient=dTdz),
                                    mask = GaussianMask{:z}(center=-Lz, width=Lz/4))
 
-# output
+# outpu
 Relaxation{Float64, GaussianMask{:z, Float64}, LinearTarget{:z, Float64}}
 ├── rate: 0.016666666666666666
 ├── mask: exp(-(z + 100.0)^2 / (2 * 25.0^2))
@@ -85,7 +85,7 @@ end
 
 # Methods for grids with Flat dimensions:
 # Here, the meaning of the coordinate xₙ depends on which dimension is Flat:
-# for example, in the below method (x₁, x₂) may be (ξ, η), (ξ, r), or (η, r), where 
+# for example, in the below method (x₁, x₂) may be (ξ, η), (ξ, r), or (η, r), where
 # ξ, η, and r are the first, second, and third coordinates respectively.
 @inline (f::Relaxation)(x₁, x₂, t, field) =
     f.rate * f.mask(x₁, x₂) * (f.target(x₁, x₂, t) - field)
@@ -165,13 +165,13 @@ Callable object that returns a Linear target function
 with `intercept` and `gradient`, and varying along direction `D`, i.e.,
 
 ```
-intercept + D * gradient
+intercept + D * gradien
 ```
 
 Example
 =======
 
-Create a linear target function varying in `z`, equal to `0` at
+Create a linear target function varying in `z`, equal to `0` a
 `z=0` and with gradient 10⁻⁶:
 
 ```julia

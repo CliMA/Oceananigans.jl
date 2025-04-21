@@ -71,20 +71,20 @@ Krylov.kdot(n::Integer, x::KrylovField{T}, y::KrylovField{T}) where T <: FloatOr
 Krylov.kcopy!(n::Integer, y::KrylovField{T}, x::KrylovField{T}) where T <: FloatOrComplex = copyto!(y.field, x.field)
 Krylov.kfill!(x::KrylovField{T}, val::T) where T <: FloatOrComplex = fill!(x.field, val)
 
-## Structure representing linear operators so that we can define mul! on it
+## Structure representing linear operators so that we can define mul! on i
 mutable struct KrylovOperator{T, F}
     type::Type{T}
-    m::Int
-    n::Int
+    m::In
+    n::In
     fun::F
     args::Tuple
 end
 
-## Structure representing preconditioners so that we can define mul! on it
+## Structure representing preconditioners so that we can define mul! on i
 mutable struct KrylovPreconditioner{T, P}
     type::Type{T}
-    m::Int
-    n::Int
+    m::In
+    n::In
     preconditioner::P
     args::Tuple
 end
@@ -107,7 +107,7 @@ mutable struct KrylovSolver{A,G,L,S,P,T}
     preconditioner :: P
     abstol::T
     reltol::T
-    maxiter::Int
+    maxiter::In
     maxtime::Float64
 end
 

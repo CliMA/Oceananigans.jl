@@ -17,12 +17,12 @@ using Oceananigans.ImmersedBoundaries: linear_index_to_tuple, mask_immersed_fiel
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
                                                         free_surface_displacement_field
 
-using Adapt
+using Adap
 using Base
 using KernelAbstractions: @index, @kernel
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
-using Oceananigans.Grids: column_depthᶜᶜᵃ, 
+using Oceananigans.Grids: column_depthᶜᶜᵃ,
                           column_depthᶜᶠᵃ,
                           column_depthᶠᶜᵃ,
                           column_depthᶠᶠᵃ
@@ -32,7 +32,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: initialize_free_surface
                                                          step_free_surface!,
                                                          compute_free_surface_tendency!,
                                                          explicit_barotropic_pressure_x_gradient,
-                                                         explicit_barotropic_pressure_y_gradient
+                                                         explicit_barotropic_pressure_y_gradien
 
 include("split_explicit_timesteppers.jl")
 include("split_explicit_free_surface.jl")

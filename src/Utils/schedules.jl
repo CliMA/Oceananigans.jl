@@ -10,10 +10,10 @@ false.
 abstract type AbstractSchedule end
 
 # Default behavior is no alignment.
-schedule_aligned_time_step(schedule, clock, Δt) = Δt
+schedule_aligned_time_step(schedule, clock, Δt) = Δ
 
 # Fallback initialization for schedule: call the schedule,
-# then return `true`, indicating that the schedule "actuates" at
+# then return `true`, indicating that the schedule "actuates" a
 # initial call.
 function initialize!(schedule::AbstractSchedule, model)
     schedule(model)
@@ -36,7 +36,7 @@ according to `model.clock.time`.
 mutable struct TimeInterval{FT} <: AbstractSchedule
     interval :: FT
     first_actuation_time :: FT
-    actuations :: Int
+    actuations :: In
 end
 
 """
@@ -93,8 +93,8 @@ end
 #####
 
 struct IterationInterval <: AbstractSchedule
-    interval :: Int
-    offset :: Int
+    interval :: In
+    offset :: In
 end
 
 """
@@ -103,7 +103,7 @@ end
 Return a callable `IterationInterval` that "actuates" (schedules output or callback execution)
 whenever the model iteration (modified by `offset`) is a multiple of `interval`.
 
-For example, 
+For example,
 
 * `IterationInterval(100)` actuates at iterations `[100, 200, 300, ...]`.
 * `IterationInterval(100, offset=-1)` actuates at iterations `[99, 199, 299, ...]`.
@@ -157,14 +157,14 @@ end
 
 mutable struct SpecifiedTimes{FT} <: AbstractSchedule
     times :: Vector{FT}
-    previous_actuation :: Int
+    previous_actuation :: In
 end
 
 """
     SpecifiedTimes(times)
 
 Return a callable `TimeInterval` that "actuates" (schedules output or callback execution)
-whenever the model's clock equals the specified values in `times`. For example, 
+whenever the model's clock equals the specified values in `times`. For example,
 
 * `SpecifiedTimes([1, 15.3])` actuates when `model.clock.time` is `1` and `15.3`.
 
@@ -212,7 +212,7 @@ function specified_times_str(st)
     # Remove final separator ", "
     str = str[1:end-2]
 
-    # Add closing bracket
+    # Add closing bracke
     return string(str, "]")
 end
 
@@ -222,8 +222,8 @@ end
 
 mutable struct ConsecutiveIterations{S} <: AbstractSchedule
     parent :: S
-    consecutive_iterations :: Int
-    previous_parent_actuation_iteration :: Int
+    consecutive_iterations :: In
+    previous_parent_actuation_iteration :: In
 end
 
 """

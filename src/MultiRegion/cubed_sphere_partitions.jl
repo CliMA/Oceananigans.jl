@@ -5,7 +5,7 @@ using DocStringExtensions
 import Oceananigans.Fields: replace_horizontal_vector_halos!
 
 struct CubedSpherePartition{M, P} <: AbstractPartition
-    div :: Int
+    div :: In
     Rx :: M
     Ry :: P
 
@@ -44,10 +44,10 @@ Base.length(p::CubedSpherePartition) = p.div
 @inline div_per_panel(panel_idx, partition::XRegularCubedSpherePartition) = partition.Rx            * partition.Ry[panel_idx]
 @inline div_per_panel(panel_idx, partition::YRegularCubedSpherePartition) = partition.Rx[panel_idx] * partition.Ry
 
-@inline Rx(panel_idx, partition::XRegularCubedSpherePartition) = partition.Rx    
+@inline Rx(panel_idx, partition::XRegularCubedSpherePartition) = partition.Rx
 @inline Rx(panel_idx, partition::CubedSpherePartition)         = partition.Rx[panel_idx]
 
-@inline Ry(panel_idx, partition::YRegularCubedSpherePartition) = partition.Ry    
+@inline Ry(panel_idx, partition::YRegularCubedSpherePartition) = partition.Ry
 @inline Ry(panel_idx, partition::CubedSpherePartition)         = partition.Ry[panel_idx]
 
 @inline panel_index(r, partition)         = (r - 1) ÷ div_per_panel(r, partition) + 1
@@ -74,7 +74,7 @@ end
     pᵢ = intra_panel_index_x(r, p)
     pⱼ = intra_panel_index_y(r, p)
 
-    west  = pᵢ == 1    ? true : false 
+    west  = pᵢ == 1    ? true : false
     east  = pᵢ == p.Rx ? true : false
     south = pⱼ == 1    ? true : false
     north = pⱼ == p.Ry ? true : false

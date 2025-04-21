@@ -31,15 +31,15 @@ Base.show(io::IO, closure::AMD{TD}) where TD =
 """
     AnisotropicMinimumDissipation([time_discretization = ExplicitTimeDiscretization, FT = Float64;]
                                   C = 1/12, Cν = nothing, Cκ = nothing, Cb = nothing)
-                                  
-                                       
+
+
 Return parameters of type `FT` for the `AnisotropicMinimumDissipation`
 turbulence closure.
 
 Arguments
 =========
 
-* `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
+* `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`,
                          which integrates the terms involving only ``z``-derivatives in the
                          viscous and diffusive fluxes with an implicit time discretization.
                          Default `ExplicitTimeDiscretization()`.
@@ -71,7 +71,7 @@ second-order advection scheme, and `Cb = nothing`, which turns off the buoyancy 
 Examples
 ========
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> pretty_diffusive_closure = AnisotropicMinimumDissipation(C=1/2)
@@ -81,7 +81,7 @@ AnisotropicMinimumDissipation{ExplicitTimeDiscretization} turbulence closure wit
                         Buoyancy modification multiplier Cb: nothing
 ```
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> const Δz = 0.5; # grid resolution at surface
@@ -95,7 +95,7 @@ AnisotropicMinimumDissipation{ExplicitTimeDiscretization} turbulence closure wit
                         Buoyancy modification multiplier Cb: nothing
 ```
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> tracer_specific_closure = AnisotropicMinimumDissipation(Cκ=(c₁=1/12, c₂=1/6))
@@ -145,7 +145,7 @@ end
 
 @kernel function _compute_AMD_viscosity!(νₑ, grid, closure::AMD, buoyancy, velocities, tracers)
     i, j, k = @index(Global, NTuple)
-    
+
     FT = eltype(grid)
     ijk = (i, j, k, grid)
     q = norm_tr_∇uᶜᶜᶜ(ijk..., velocities.u, velocities.v, velocities.w)
@@ -200,7 +200,7 @@ function compute_diffusivities!(diffusivity_fields, closure::AnisotropicMinimumD
 
     for (tracer_index, κₑ) in enumerate(diffusivity_fields.κₑ)
         @inbounds tracer = tracers[tracer_index]
-        launch!(arch, grid, parameters, _compute_AMD_diffusivity!, 
+        launch!(arch, grid, parameters, _compute_AMD_diffusivity!,
                 κₑ, grid, closure, tracer, Val(tracer_index), velocities)
     end
 

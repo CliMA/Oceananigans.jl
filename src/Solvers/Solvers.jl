@@ -1,6 +1,6 @@
 module Solvers
 
-export
+expor
     BatchedTridiagonalSolver, solve!,
     FFTBasedPoissonSolver,
     FourierTridiagonalPoissonSolver,

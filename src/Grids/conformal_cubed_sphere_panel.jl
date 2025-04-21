@@ -178,7 +178,7 @@ Examples
 
 * The default conformal cubed sphere panel grid with `Float64` type:
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans, Oceananigans.Grids
 
 julia> grid = conformal_cubed_sphere_panel(size=(36, 34, 25), z=(-1000, 0))
@@ -191,7 +191,7 @@ julia> grid = conformal_cubed_sphere_panel(size=(36, 34, 25), z=(-1000, 0))
 
 * The conformal cubed sphere panel that includes the South Pole with `Float32` type:
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans, Oceananigans.Grids, Rotations
 
 julia> grid = conformal_cubed_sphere_panel(Float32, size=(36, 34, 25), z=(-1000, 0), rotation=RotY(π))

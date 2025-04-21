@@ -13,7 +13,7 @@ using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.Utils
 
-using Adapt
+using Adap
 using CUDA
 using DocStringExtensions
 using OffsetArrays
@@ -63,7 +63,7 @@ end
 struct YPartition{N} <: AbstractPartition
     div :: N
 
-    function YPartition(sizes) 
+    function YPartition(sizes)
         if length(sizes) > 1 && all(y -> y == sizes[1], sizes)
             sizes = length(sizes)
         end

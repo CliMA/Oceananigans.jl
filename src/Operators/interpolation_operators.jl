@@ -1,4 +1,4 @@
-using Oceananigans.Grids: Flat
+using Oceananigans.Grids: Fla
 using Oceananigans.Grids: peripheral_node
 
 #####

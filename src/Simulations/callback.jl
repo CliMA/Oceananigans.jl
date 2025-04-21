@@ -54,7 +54,7 @@ at the `callsite` with optional `parameters`. By default,
 If `isnothing(parameters)`, `func(sim::Simulation)` is called.
 Otherwise, `func` is called via `func(sim::Simulation, parameters)`.
 
-The `callsite` determines where `Callback` is executed. The possible values for 
+The `callsite` determines where `Callback` is executed. The possible values for
 `callsite` are
 
 * `TimeStepCallsite()`: after a time-step.
@@ -89,7 +89,7 @@ function Callback(wta::WindowedTimeAverage)
 end
 
 Callback(wta::WindowedTimeAverage, schedule; kw...) =
-    throw(ArgumentError("Schedule must be inferred from WindowedTimeAverage. 
+    throw(ArgumentError("Schedule must be inferred from WindowedTimeAverage.
                         Use Callback(windowed_time_average)"))
 
 struct GenericName end
@@ -119,7 +119,7 @@ end
 
     add_callback!(simulation, func, schedule=IterationInterval(1); name = GenericName(), callback_kw...)
 
-Add `Callback(func, schedule)` to `simulation.callbacks` under `name`. The default
+Add `Callback(func, schedule)` to `simulation.callbacks` under `name`. The defaul
 `GenericName()` generates a name of the form `:callbackN`, where `N`
 is big enough for the name to be unique.
 

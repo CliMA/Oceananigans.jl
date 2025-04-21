@@ -3,7 +3,7 @@ using Base: @propagate_inbounds
 using OffsetArrays
 using Statistics
 using JLD2
-using Adapt
+using Adap
 using Glob
 using CUDA: @allowscalar
 
@@ -82,7 +82,7 @@ Specifies cyclical FieldTimeSeries linear Time extrapolation. If
 ```julia
 t = fts.times
 Δt = t[end] - t[end-1]
-period = t[end] - t[1] + Δt
+period = t[end] - t[1] + Δ
 ```
 """
 struct Cyclical{FT}
@@ -199,7 +199,7 @@ If `backend::TotallyInMemory` then return `1:length(times)`.
 """
 function time_indices(backend::PartlyInMemory, time_indexing, Nt)
     St = length(backend)
-    n₀ = backend.start
+    n₀ = backend.star
 
     time_indices = ntuple(St) do m
         time_index(backend, time_indexing, Nt, m)
@@ -208,7 +208,7 @@ function time_indices(backend::PartlyInMemory, time_indexing, Nt)
     return time_indices
 end
 
-time_indices(::TotallyInMemory, time_indexing, Nt) = 1:Nt
+time_indices(::TotallyInMemory, time_indexing, Nt) = 1:N
 
 Base.length(backend::PartlyInMemory) = backend.length
 
@@ -249,7 +249,7 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} 
         if times isa AbstractArray
             # Try to convert to a range, cuz
             time_range = range(first(times), last(times), length=length(times))
-            if all(time_range .≈ times) # good enough for most
+            if all(time_range .≈ times) # good enough for mos
                 times = time_range
             end
 
@@ -258,7 +258,7 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} 
 
         if time_indexing isa Cyclical{Nothing} # we have to infer the period
             Δt = @allowscalar times[end] - times[end-1]
-            period = @allowscalar times[end] - times[1] + Δt
+            period = @allowscalar times[end] - times[1] + Δ
             time_indexing = Cyclical(period)
         end
 
@@ -353,7 +353,7 @@ new_data(FT, grid, loc, indices, ::Nothing) = nothing
 
 # Apparently, not explicitly specifying Int64 in here makes this function
 # fail on x86 processors where `Int` is implied to be `Int32`
-# see ClimaOcean commit 3c47d887659d81e0caed6c9df41b7438e1f1cd52 at
+# see ClimaOcean commit 3c47d887659d81e0caed6c9df41b7438e1f1cd52 a
 # https://github.com/CliMA/ClimaOcean.jl/actions/runs/8804916198/job/24166354095)
 function new_data(FT, grid, loc, indices, Nt::Union{Int, Int64})
     space_size = total_size(grid, loc, indices)
@@ -468,7 +468,7 @@ Keyword arguments
 
 - `iterations`: Iterations to load. Defaults to all iterations found in the file.
 
-- `times`: Save times to load, as determined through an approximate floating point
+- `times`: Save times to load, as determined through an approximate floating poin
            comparison to recorded save times. Defaults to times associated with `iterations`.
            Takes precedence over `iterations` if `times` is specified.
 
@@ -508,7 +508,7 @@ function FieldTimeSeries(path::String, name::String;
     end
 
     if isnothing(architecture) # determine architecture
-        if isnothing(grid) # go to default
+        if isnothing(grid) # go to defaul
             architecture = CPU()
         else # there's a grid, use that architecture
             architecture = Architectures.architecture(grid)
@@ -597,7 +597,7 @@ function FieldTimeSeries(path::String, name::String;
             # Reduce for Flat dimensions
             domain = Dict()
             for (i, ξ) in enumerate((x, y, z))
-                if topo[i] !== Flat
+                if topo[i] !== Fla
                     if !(ξ isa Tuple)
                         chopped_ξ = ξ[1:N[i]+1]
                     else
@@ -616,7 +616,7 @@ function FieldTimeSeries(path::String, name::String;
             throw(err)
         end
     end
-        
+
     if boundary_conditions isa UnspecifiedBoundaryConditions
         boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
         boundary_conditions = on_architecture(architecture, boundary_conditions)

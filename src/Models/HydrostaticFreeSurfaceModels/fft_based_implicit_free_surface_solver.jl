@@ -16,7 +16,7 @@ struct FFTImplicitFreeSurfaceSolver{S, G3, G2, R}
     right_hand_side :: R
 end
 
-validate_fft_implicit_solver_grid(grid) = 
+validate_fft_implicit_solver_grid(grid) =
     grid isa XYZRegularRG || grid isa XYRegularRG ||
         throw(ArgumentError("FFTImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))
 
@@ -27,7 +27,7 @@ validate_fft_implicit_solver_grid(ibg::ImmersedBoundaryGrid) =
     FFTImplicitFreeSurfaceSolver(grid, settings=nothing, gravitational_acceleration=nothing)
 
 Return a solver based on the fast Fourier transform for the elliptic equation
-    
+
 ```math
 [∇² - 1 / (g H Δt²)] ηⁿ⁺¹ = (∇ʰ ⋅ Q★ - ηⁿ / Δt) / (g H Δt)
 ```
@@ -82,7 +82,7 @@ function solve!(η, implicit_free_surface_solver::FFTImplicitFreeSurfaceSolver, 
     grid = implicit_free_surface_solver.three_dimensional_grid
     Lz = grid.Lz
 
-    # LHS constant
+    # LHS constan
     m = - 1 / (g * Lz * Δt^2) # units L⁻²
 
     # solve! is blocking:
@@ -102,7 +102,7 @@ function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::FF
     launch!(arch, grid, :xy,
             fft_implicit_free_surface_right_hand_side!,
             rhs, grid, g, Lz, Δt, ∫ᶻQ, η)
-    
+
     return nothing
 end
 

@@ -26,7 +26,7 @@ export on_architecture
 
 using CUDA
 using CUDA: has_cuda
-using Adapt
+using Adap
 using OffsetArrays
 using Printf
 
@@ -79,7 +79,7 @@ Grid topology for bounded dimensions, e.g., wall-bounded dimensions.
 struct Bounded <: AbstractTopology end
 
 """
-    Flat
+    Fla
 
 Grid topology for flat dimensions, generally with one grid point, along which the solution
 is uniform and does not vary.

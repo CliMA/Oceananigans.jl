@@ -3,7 +3,7 @@ using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ, Ax_qᶠ�
 """
     PerturbationAdvection
 
-For cases where we assume that the internal flow is a small perturbation from 
+For cases where we assume that the internal flow is a small perturbation from
 an external prescribed or coarser flow, we can split the velocity into background
 and perturbation components.
 
@@ -26,7 +26,7 @@ relaxation to the mean velocity (i.e. u′→0) then Fᵤ = -u′ / τ then we c
 
 where Ũ = U Δt / Δx, then uⁿ⁺¹ is:
     uⁿ⁺¹ = (uᵢⁿ + Ũuᵢ₋₁ⁿ⁺¹ + Uⁿ⁺¹τ̃) / (1 + τ̃ + U)
-    
+
 where τ̃ = Δt/τ.
 
 The same operation can be repeated for left boundaries.
@@ -37,20 +37,20 @@ struct PerturbationAdvection{VT, FT}
    outflow_timescale :: FT
 end
 
-Adapt.adapt_structure(to, pe::PerturbationAdvection) = 
+Adapt.adapt_structure(to, pe::PerturbationAdvection) =
     PerturbationAdvection(adapt(to, pe.backward_step),
                           adapt(to, pe.inflow_timescale),
                           adapt(to, pe.outflow_timescale))
 
-function PerturbationAdvectionOpenBoundaryCondition(val, FT = Float64; 
+function PerturbationAdvectionOpenBoundaryCondition(val, FT = Float64;
                                                     backward_step = true,
-                                                    outflow_timescale = Inf, 
+                                                    outflow_timescale = Inf,
                                                     inflow_timescale = 300.0, kwargs...)
 
     classification = Open(PerturbationAdvection(Val(backward_step), inflow_timescale, outflow_timescale))
 
     @warn "`PerturbationAdvection` open boundaries matching scheme is experimental and un-tested/validated"
-    
+
     return BoundaryCondition(classification, val; kwargs...)
 end
 
@@ -59,9 +59,9 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 const BPAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection{Val{true}}}}
 const FPAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection{Val{false}}}}
 
-@inline function step_right_boundary!(bc::BPAOBC, l, m, boundary_indices, boundary_adjacent_indices, 
+@inline function step_right_boundary!(bc::BPAOBC, l, m, boundary_indices, boundary_adjacent_indices,
                                       grid, u, clock, model_fields, ΔX)
-    Δt = clock.last_stage_Δt
+    Δt = clock.last_stage_Δ
 
     Δt = ifelse(isinf(Δt), 0, Δt)
 
@@ -85,9 +85,9 @@ const FPAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection{Val{false}}}}
     return nothing
 end
 
-@inline function step_left_boundary!(bc::BPAOBC, l, m, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices, 
+@inline function step_left_boundary!(bc::BPAOBC, l, m, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices,
                                      grid, u, clock, model_fields, ΔX)
-    Δt = clock.last_stage_Δt
+    Δt = clock.last_stage_Δ
 
     Δt = ifelse(isinf(Δt), 0, Δt)
 
@@ -113,9 +113,9 @@ end
 end
 
 
-@inline function step_right_boundary!(bc::FPAOBC, l, m, boundary_indices, boundary_adjacent_indices, 
+@inline function step_right_boundary!(bc::FPAOBC, l, m, boundary_indices, boundary_adjacent_indices,
                                       grid, u, clock, model_fields, ΔX)
-    Δt = clock.last_stage_Δt
+    Δt = clock.last_stage_Δ
 
     Δt = ifelse(isinf(Δt), 0, Δt)
 
@@ -139,9 +139,9 @@ end
     return nothing
 end
 
-@inline function step_left_boundary!(bc::FPAOBC, l, m, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices, 
+@inline function step_left_boundary!(bc::FPAOBC, l, m, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices,
                                      grid, u, clock, model_fields, ΔX)
-    Δt = clock.last_stage_Δt
+    Δt = clock.last_stage_Δ
 
     Δt = ifelse(isinf(Δt), 0, Δt)
 
@@ -210,7 +210,7 @@ end
     boundary_secret_storage_indices = (i, 0, k)
 
     Δy = Δyᶜᶠᶜ(i, 1, k, grid)
-    
+
     step_left_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices, boundary_secret_storage_indices, grid, u, clock, model_fields, Δy)
 
     return nothing

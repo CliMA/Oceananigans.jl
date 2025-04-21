@@ -158,7 +158,7 @@ end
 function construct_grid(grid::LatitudeLongitudeGrid, child_arch, topo, size, extent, args...)
     halo = halo_size(grid)
     FT   = eltype(grid)
-    lon, lat, z = extent
+    lon, lat, z = exten
     return LatitudeLongitudeGrid(child_arch, FT;
                                  size = size, halo = halo, radius = grid.radius,
                                  latitude = lat, longitude = lon, z = z, topology = topo,

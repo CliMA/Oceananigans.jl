@@ -11,8 +11,8 @@ import Oceananigans.BoundaryConditions: update_boundary_condition!
 """
     BoundaryAdjacentMean
 
-Stores the boundary mean `value` of a `Field`. Updated by calling 
-```jldoctest
+Stores the boundary mean `value` of a `Field`. Updated by calling
+```jldoctes
 julia> using Oceananigans
 
 julia> using Oceananigans.Models: BoundaryAdjacentMean
@@ -51,15 +51,15 @@ struct BoundaryAdjacentMean{FF, BV}
     flux_field :: FF
          value :: BV
 
-   BoundaryAdjacentMean(grid, side; 
+   BoundaryAdjacentMean(grid, side;
                         flux_field::FF = boundary_reduced_field(Val(side), grid),
-                        value::BV = Ref(zero(grid))) where {FF, BV} = 
+                        value::BV = Ref(zero(grid))) where {FF, BV} =
         new{FF, BV}(flux_field, value)
 end
 
 @inline (bam::BoundaryAdjacentMean)(args...) = bam.value[]
 
-Adapt.adapt_structure(to, mo::BoundaryAdjacentMean) = 
+Adapt.adapt_structure(to, mo::BoundaryAdjacentMean) =
     BoundaryAdjacentMean(; flux_fields = nothing, value = adapt(to, mo.value[]))
 
 Base.show(io::IO, bam::BoundaryAdjacentMean) = print(io, summary(bam)*"\n")
@@ -93,7 +93,7 @@ Base.summary(bam::BoundaryAdjacentMean) = "BoundaryAdjacentMean: ($(bam.value[])
 
 (bam::BoundaryAdjacentMean)(side, u) = bam(Val(side), u)
 
-# computes the boundary mean and stores/returns it
+# computes the boundary mean and stores/returns i
 function (bam::BoundaryAdjacentMean)(val_side::Val, u)
     grid = u.grid
 

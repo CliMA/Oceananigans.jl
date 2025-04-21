@@ -1,4 +1,4 @@
-using Adapt
+using Adap
 using Oceananigans.Operators
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Fields: AbstractField, default_indices, location
@@ -6,14 +6,14 @@ using Oceananigans.Operators: Δx, Δy, Δz, Ax, Δλ, Δφ, Ay, Az, volume
 
 import Oceananigans.Grids: xspacings, yspacings, zspacings, λspacings, φspacings
 
-const AbstractGridMetric = Union{typeof(Δx), 
-                                 typeof(Δy), 
-                                 typeof(Δz), 
+const AbstractGridMetric = Union{typeof(Δx),
+                                 typeof(Δy),
+                                 typeof(Δz),
                                  typeof(Δλ),
                                  typeof(Δφ),
-                                 typeof(Ax), 
-                                 typeof(Ay), 
-                                 typeof(Az), 
+                                 typeof(Ax),
+                                 typeof(Ay),
+                                 typeof(Az),
                                  typeof(volume)} # Do we want it to be `volume` or just `V` like in the Operators module?
 
 """
@@ -60,7 +60,7 @@ at the same location as the `AbstractField`.
 
 Example
 =======
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> using Oceananigans.Operators: Δz
@@ -89,7 +89,7 @@ in the ``x`` direction at location `ℓx, ℓy, ℓz`.
 
 Examples
 ========
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
@@ -115,7 +115,7 @@ in the ``y`` direction at location `ℓx, ℓy, ℓz`.
 
 Examples
 ========
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
@@ -141,7 +141,7 @@ in the ``z`` direction at location `ℓx, ℓy, ℓz`.
 
 Examples
 ========
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
@@ -167,7 +167,7 @@ in the ``λ`` direction at location `ℓx, ℓy, ℓz`.
 
 Examples
 ========
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> grid = LatitudeLongitudeGrid(size=(36, 34, 25),
@@ -196,7 +196,7 @@ in the ``φ`` direction at location `ℓx, ℓy, ℓz`.
 
 Examples
 ========
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> grid = LatitudeLongitudeGrid(size=(36, 34, 25),

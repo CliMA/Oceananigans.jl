@@ -7,7 +7,7 @@ using Oceananigans.Utils: prettysummary
 using Oceananigans.Fields
 using Oceananigans.Utils: prettytime
 
-using Adapt
+using Adap
 
 struct ImplicitFreeSurface{E, G, B, I, M, S} <: AbstractFreeSurface{E, G}
     η :: E
@@ -42,19 +42,19 @@ Return an implicit free-surface solver. The implicit free-surface equation is
 
 where ``η^n`` is the free-surface elevation at the ``n``-th time step, ``H`` is depth, ``g`` is
 the gravitational acceleration, ``Δt`` is the time step, ``𝛁_h`` is the horizontal gradient operator,
-and ``𝐐_⋆`` is the barotropic volume flux associated with the predictor velocity field ``𝐮_⋆``, i.e., 
+and ``𝐐_⋆`` is the barotropic volume flux associated with the predictor velocity field ``𝐮_⋆``, i.e.,
 
 ```math
 𝐐_⋆ = \\int_{-H}^0 𝐮_⋆ \\, 𝖽 z ,
 ```
 
-where 
+where
 
 ```math
 𝐮_⋆ = 𝐮^n + \\int_{t_n}^{t_{n+1}} 𝐆ᵤ \\, 𝖽t .
 ```
 
-This equation can be solved, in general, using the [`ConjugateGradientSolver`](@ref) but 
+This equation can be solved, in general, using the [`ConjugateGradientSolver`](@ref) bu
 other solvers can be invoked in special cases.
 
 If ``H`` is constant, we divide through out to obtain
@@ -82,7 +82,7 @@ Adapt.adapt_structure(to, free_surface::ImplicitFreeSurface) =
                         nothing, nothing, nothing, nothing)
 
 on_architecture(to, free_surface::ImplicitFreeSurface) =
-    ImplicitFreeSurface(on_architecture(to, free_surface.η), 
+    ImplicitFreeSurface(on_architecture(to, free_surface.η),
                         on_architecture(to, free_surface.gravitational_acceleration),
                         on_architecture(to, free_surface.barotropic_volume_flux),
                         on_architecture(to, free_surface.implicit_step_solver),
@@ -99,7 +99,7 @@ function materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, ve
     barotropic_y_volume_flux = Field((Center, Face, Nothing), grid)
     barotropic_volume_flux = (u=barotropic_x_volume_flux, v=barotropic_y_volume_flux)
 
-    user_solver_method = free_surface.solver_method # could be = :Default
+    user_solver_method = free_surface.solver_method # could be = :Defaul
     solver = build_implicit_step_solver(Val(user_solver_method), grid, free_surface.solver_settings, gravitational_acceleration)
     solver_method = nameof(typeof(solver))
 

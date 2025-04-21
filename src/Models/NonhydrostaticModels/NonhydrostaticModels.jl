@@ -15,7 +15,7 @@ using Oceananigans.DistributedComputations: reconstruct_global_grid, Distributed
 using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver, DistributedFourierTridiagonalPoissonSolver
 using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver 
+using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver
 using Oceananigans.Utils: sum_of_velocities
 
 import Oceananigans: fields, prognostic_fields
@@ -40,7 +40,7 @@ const IBGWithFFTSolver = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Grid
 
 function nonhydrostatic_pressure_solver(arch, ibg::IBGWithFFTSolver)
     msg = """The FFT-based pressure_solver for NonhydrostaticModels on ImmersedBoundaryGrid
-          is approximate and will probably produce velocity fields that are divergent
+          is approximate and will probably produce velocity fields that are divergen
           adjacent to the immersed boundary. An experimental but improved pressure_solver
           is available which may be used by writing
 
@@ -56,7 +56,7 @@ end
 
 # fallback
 nonhydrostatic_pressure_solver(arch, grid) =
-    error("None of the implemented pressure solvers for NonhydrostaticModel \
+    error("None of the implemented pressure solvers for NonhydrostaticModel
           are supported on $(summary(grid)).")
 
 nonhydrostatic_pressure_solver(grid) = nonhydrostatic_pressure_solver(architecture(grid), grid)

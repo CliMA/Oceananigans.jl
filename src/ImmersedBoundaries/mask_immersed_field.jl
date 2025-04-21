@@ -5,7 +5,7 @@ using Oceananigans.Fields: location, XReducedField, YReducedField, ZReducedField
 using Oceananigans.Fields: ConstantField, OneField, ZeroField
 
 instantiate(T::Type) = T()
-instantiate(t) = t
+instantiate(t) =
 
 # No masking for constant fields, numbers or nothing
 mask_immersed_field!(::OneField, args...; kw...) = nothing
@@ -123,13 +123,13 @@ end
     irange = inactive_search_range(i₀, grid, 1, dims)
     jrange = inactive_search_range(j₀, grid, 2, dims)
     krange = inactive_search_range(k₀, grid, 3, dims)
-    
+
     # The loop activates over the whole direction only if reduced directions
     for i in irange, j in jrange, k in krange
-        masked = masked & immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz) 
+        masked = masked & immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
     end
 
-    @inbounds field[i₀, j₀, k₀] = ifelse(masked, value, field[i₀, j₀, k₀]) 
+    @inbounds field[i₀, j₀, k₀] = ifelse(masked, value, field[i₀, j₀, k₀])
 end
 
 @inline inactive_search_range(i, grid, dim, dims) = ifelse(dim ∈ dims, 1:size(grid, dim), i:i)
@@ -144,5 +144,5 @@ const CenterOrFace = Union{Center, Face}
 const OnlyZReducedField = Field{<:CenterOrFace, <:CenterOrFace, Nothing}
 
 # Does not require a sweep
-mask_immersed_field!(field::OnlyZReducedField, grid::AGFBIBG, loc, value) = 
+mask_immersed_field!(field::OnlyZReducedField, grid::AGFBIBG, loc, value) =
     mask_immersed_field_xy!(field, grid, loc, value, size(grid, 3))

@@ -21,7 +21,7 @@ end
     discrete_form && return DiscreteDiffusionFunction(κ; loc, parameters)
     return κ
 end
-    
+
 @inline function convert_diffusivity(FT, κ::NamedTuple; discrete_form=false, loc=(nothing, nothing, nothing), parameters=nothing)
     κ_names = propertynames(κ)
     Nnames = length(κ_names)

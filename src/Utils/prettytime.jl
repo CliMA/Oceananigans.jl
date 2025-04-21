@@ -3,7 +3,7 @@ using Dates: AbstractTime
 
 using Oceananigans.Units
 
-maybe_int(t) = isinteger(t) ? Int(t) : t
+maybe_int(t) = isinteger(t) ? Int(t) :
 
 """
     prettytime(t, longform=true)
@@ -19,9 +19,9 @@ minutes, and hours.
 """
 function prettytime(t, longform=true)
     # Modified from: https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/trials.jl
-    
+
     # Some shortcuts
-    s = longform ? "seconds" : "s" 
+    s = longform ? "seconds" : "s"
     iszero(t) && return "0 $s"
     t < 1e-9 && return @sprintf("%.3e %s", t, s) # yah that's small
 
@@ -41,7 +41,7 @@ function prettytimeunits(t, longform=true)
     t < 1e-3 && return t * 1e6, "μs"
     t < 1    && return t * 1e3, "ms"
     if t < minute
-        value = t
+        value =
         !longform && return value, "s"
         units = value == 1 ? "second" : "seconds"
         return value, units

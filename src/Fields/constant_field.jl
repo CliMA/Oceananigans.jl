@@ -19,7 +19,7 @@ end
 # Default 3-dimensional field
 ConstantField(constant) = ConstantField{3}(constant)
 
-@inline Base.getindex(f::ConstantField, ind...) = f.constant
+@inline Base.getindex(f::ConstantField, ind...) = f.constan
 
 const CF = Union{ConstantField, ZeroField, OneField}
 

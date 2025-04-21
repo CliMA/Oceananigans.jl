@@ -3,7 +3,7 @@ using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, ImmersedBoundaryGrid
 using Oceananigans.Grids: ZDirection
 
-import Oceananigans.Solvers: get_coefficient
+import Oceananigans.Solvers: get_coefficien
 import Oceananigans.TimeSteppers: implicit_step!
 
 const IBG = ImmersedBoundaryGrid
@@ -13,8 +13,8 @@ const IBG = ImmersedBoundaryGrid
 #####
 ##### Closures with `VerticallyImplicitTimeDiscretization` can define
 #####
-##### 1. "Coefficient extractors" `νz` and `κz` to support vertically-implicit
-#####    treatment of a diffusive term iwth the form `∂z κz ∂z ϕ` for a variable `ϕ`. 
+##### 1. "Coefficient extractors" `νz` and `κz` to support vertically-implici
+#####    treatment of a diffusive term iwth the form `∂z κz ∂z ϕ` for a variable `ϕ`.
 #####    There are three extractors for momentum (`νz`) and one for tracers (`κz`)
 #####    relevant to implicit vertical diffusion.
 #####
@@ -54,7 +54,7 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
 ##### Note: "ivd" stands for implicit vertical diffusion.
 #####
 
-# The vertical spacing used here is Δz for velocities and Δr for tracers, since the 
+# The vertical spacing used here is Δz for velocities and Δr for tracers, since the
 # implicit solver operator is applied to the scaled tracer σθ instead of just θ
 
 @inline vertical_spacing(i, j, k, grid, ℓx, ℓy, ℓz) = Δz(i, j, k, grid, ℓx, ℓy, ℓz)
@@ -67,13 +67,13 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
     Δzᶜₖ   = vertical_spacing(i, j, k,   grid, ℓx, ℓy, c)
     Δzᶠₖ₊₁ = vertical_spacing(i, j, k+1, grid, ℓx, ℓy, f)
     du     = - Δt * κᵏ⁺¹ / (Δzᶜₖ * Δzᶠₖ₊₁)
-    # This conditional ensures the diagonal is correct
+    # This conditional ensures the diagonal is correc
     return du * !peripheral_node(i, j, k+1, grid, ℓx, ℓy, f)
 end
 
 @inline function ivd_lower_diagonal(i, j, k′, grid, closure, K, id, ℓx, ℓy, ::Center, Δt, clock)
     k = k′ + 1 # Shift index to match LinearAlgebra.Tridiagonal indexing convenction
-    closure_ij = getclosure(i, j, closure)  
+    closure_ij = getclosure(i, j, closure)
     κᵏ   = ivd_diffusivity(i, j, k, grid, ℓx, ℓy, f, closure_ij, K, id, clock)
     Δzᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
     Δzᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
@@ -91,17 +91,17 @@ end
 ##### the BatchedTridiagonalSolver).
 
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Face, Δt, clock)
-    closure_ij = getclosure(i, j, closure)  
+    closure_ij = getclosure(i, j, closure)
     νᵏ   = ivd_diffusivity(i, j, k, grid, ℓx, ℓy, c, closure_ij, K, id, clock)
     Δzᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
     Δzᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
-    du   = - Δt * νᵏ / (Δzᶜₖ * Δzᶠₖ) 
+    du   = - Δt * νᵏ / (Δzᶜₖ * Δzᶠₖ)
     return du * !peripheral_node(i, j, k, grid, ℓx, ℓy, c)
 end
 
 @inline function ivd_lower_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Face, Δt, clock)
     k′ = k + 2 # Shift to adjust for Tridiagonal indexing convention
-    closure_ij = getclosure(i, j, closure)  
+    closure_ij = getclosure(i, j, closure)
     νᵏ⁻¹   = ivd_diffusivity(i, j, k′-1, grid, ℓx, ℓy, c, closure_ij, K, id, clock)
     Δzᶜₖ   = vertical_spacing(i, j, k′,   grid, ℓx, ℓy, c)
     Δzᶠₖ₋₁ = vertical_spacing(i, j, k′-1, grid, ℓx, ℓy, f)
@@ -178,8 +178,8 @@ is_vertically_implicit(closure) = time_discretization(closure) isa VerticallyImp
                    closure, diffusivity_fields, tracer_index, clock, Δt)
 
 Initialize the right hand side array `solver.batched_tridiagonal_solver.f`, and then solve the
-tridiagonal system for vertically-implicit diffusion, passing the arguments into the coefficient 
-functions that return coefficients of the lower diagonal, diagonal, and upper diagonal of the 
+tridiagonal system for vertically-implicit diffusion, passing the arguments into the coefficien
+functions that return coefficients of the lower diagonal, diagonal, and upper diagonal of the
 resulting tridiagonal system.
 """
 function implicit_step!(field::Field,
@@ -188,9 +188,9 @@ function implicit_step!(field::Field,
                         diffusivity_fields,
                         tracer_index,
                         clock,
-                        Δt; 
+                        Δt;
                         kwargs...)
-    
+
     # Filter explicit closures for closure tuples
     if closure isa Tuple
         closure_tuple = closure
@@ -203,7 +203,7 @@ function implicit_step!(field::Field,
     end
 
     LX, LY, LZ = location(field)
-    # Nullify tracer_index if `field` is not a tracer   
+    # Nullify tracer_index if `field` is not a tracer
     (LX, LY, LZ) == (Center, Center, Center) || (tracer_index = nothing)
     return solve!(field, implicit_solver, field,
                   # ivd_*_diagonal gets called with these args after (i, j, k, grid):

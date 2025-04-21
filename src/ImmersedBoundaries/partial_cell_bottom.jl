@@ -73,7 +73,7 @@ end
 @kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::PartialCellBottom)
     i, j = @index(Global, NTuple)
 
-    # Save analytical bottom height
+    # Save analytical bottom heigh
     zb = @inbounds bottom_field[i, j, 1]
 
     # Cap bottom height at Lz and at rnode(i, j, grid.Nz+1, grid, c, c, f)
@@ -83,7 +83,7 @@ end
     @inbounds bottom_field[i, j, 1] = clamp(zb, domain_bottom, domain_top)
     adjusted_zb = bottom_field[i, j, 1]
 
-    ϵ  = ib.minimum_fractional_cell_height
+    ϵ  = ib.minimum_fractional_cell_heigh
 
     for k in 1:grid.Nz
         z⁻ = rnode(i, j, k,   grid, c, c, f)
@@ -137,7 +137,7 @@ Criterion is zb ≥ z - ϵ Δz
 """
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::PartialCellBottom)
     z⁺ = rnode(i, j, k+1, underlying_grid, c, c, f)
-    ϵ  = ib.minimum_fractional_cell_height
+    ϵ  = ib.minimum_fractional_cell_heigh
     Δz = Δrᶜᶜᶜ(i, j, k, underlying_grid)
     z★ = z⁺ - Δz * ϵ
     zb = @inbounds ib.bottom_height[i, j, 1]
@@ -186,9 +186,9 @@ end
 @inline Δrᶠᶜᶜ(i, j, k, ibg::PCBIBG) = min(Δrᶜᶜᶜ(i-1, j, k, ibg), Δrᶜᶜᶜ(i, j, k, ibg))
 @inline Δrᶜᶠᶜ(i, j, k, ibg::PCBIBG) = min(Δrᶜᶜᶜ(i, j-1, k, ibg), Δrᶜᶜᶜ(i, j, k, ibg))
 @inline Δrᶠᶠᶜ(i, j, k, ibg::PCBIBG) = min(Δrᶠᶜᶜ(i, j-1, k, ibg), Δrᶠᶜᶜ(i, j, k, ibg))
-      
+
 @inline Δrᶠᶜᶠ(i, j, k, ibg::PCBIBG) = min(Δrᶜᶜᶠ(i-1, j, k, ibg), Δrᶜᶜᶠ(i, j, k, ibg))
-@inline Δrᶜᶠᶠ(i, j, k, ibg::PCBIBG) = min(Δrᶜᶜᶠ(i, j-1, k, ibg), Δrᶜᶜᶠ(i, j, k, ibg))      
+@inline Δrᶜᶠᶠ(i, j, k, ibg::PCBIBG) = min(Δrᶜᶜᶠ(i, j-1, k, ibg), Δrᶜᶜᶠ(i, j, k, ibg))
 @inline Δrᶠᶠᶠ(i, j, k, ibg::PCBIBG) = min(Δrᶠᶜᶠ(i, j-1, k, ibg), Δrᶠᶜᶠ(i, j, k, ibg))
 
 # Make sure Δz works for horizontally-Flat topologies.

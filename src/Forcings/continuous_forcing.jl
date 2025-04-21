@@ -1,4 +1,4 @@
-import Adapt
+import Adap
 
 using Oceananigans.Grids: node
 using Oceananigans.Operators: assumed_field_location, index_and_interp_dependencies
@@ -88,7 +88,7 @@ func(x, y, z, t, u, S)
 ```
 
 where `u` is assumed to be the `u`-velocity component, and `S` is a tracer. Note that any field
-which does not have the name `u`, `v`, or `w` is assumed to be a tracer and must be present
+which does not have the name `u`, `v`, or `w` is assumed to be a tracer and must be presen
 in `model.tracers`.
 
 If `parameters` are provided, then the _last_ argument to `func` must be `parameters`.

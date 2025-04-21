@@ -1,8 +1,8 @@
 module HydrostaticFreeSurfaceModels
 
-export
+expor
     HydrostaticFreeSurfaceModel,
-    ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface, 
+    ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields, ZStar, ZCoordinate
 
 using KernelAbstractions: @index, @kernel
@@ -81,8 +81,8 @@ cell_advection_timescale(model::HydrostaticFreeSurfaceModel) = cell_advection_ti
 Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.free_surface`,
 `model.tracers`, and any auxiliary fields for a `HydrostaticFreeSurfaceModel` model.
 """
-@inline fields(model::HydrostaticFreeSurfaceModel) = 
-    merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers), 
+@inline fields(model::HydrostaticFreeSurfaceModel) =
+    merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers),
           model.auxiliary_fields,
           biogeochemical_auxiliary_fields(model.biogeochemistry))
 
@@ -92,7 +92,7 @@ constructor_field_names(user_velocities, user_tracers, user_free_surface, auxili
     tuple(velocity_names(user_velocities)...,
           tracernames(user_tracers)...,
           free_surface_names(user_free_surface, user_velocities, grid)...,
-          keys(auxiliary_fields)..., 
+          keys(auxiliary_fields)...,
           keys(biogeochemical_auxiliary_fields(biogeochemistry))...)
 
 """

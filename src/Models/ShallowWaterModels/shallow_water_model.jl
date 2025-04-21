@@ -3,7 +3,7 @@ using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 using Oceananigans.Architectures: AbstractArchitecture, CPU
 using Oceananigans.AbstractOperations: @at, KernelFunctionOperation
 using Oceananigans.DistributedComputations
-using Oceananigans.Advection: Centered, VectorInvariant
+using Oceananigans.Advection: Centered, VectorInvarian
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField, compute!
 using Oceananigans.Forcings: model_forcing
@@ -12,7 +12,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: validate_model_halo, NaNChecker, validate_tracer_advection
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, build_diffusivity_fields
-using Oceananigans.Utils: tupleit
+using Oceananigans.Utils: tuplei
 
 import Oceananigans.Architectures: architecture
 import Oceananigans.Models: default_nan_checker, timestepper
@@ -51,7 +51,7 @@ mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, GR, V, U, R, F, 
                        tracers :: C         # Container for tracer fields
             diffusivity_fields :: K         # Container for turbulent diffusivities
                    timestepper :: TS        # Object containing timestepper fields and parameters
-                   formulation :: FR        # Either conservative or vector-invariant
+                   formulation :: FR        # Either conservative or vector-invarian
 end
 
 struct ConservativeFormulation end
@@ -163,7 +163,7 @@ function ShallowWaterModel(;
     end
 
     advection = merge((momentum=momentum_advection, mass=mass_advection), tracer_advection_tuple)
-    
+
     bathymetry_field = CenterField(grid)
     if !isnothing(bathymetry)
         set!(bathymetry_field, bathymetry)
@@ -212,7 +212,7 @@ end
 
 validate_momentum_advection(momentum_advection, formulation) = momentum_advection
 validate_momentum_advection(momentum_advection, ::VectorInvariantFormulation) =
-    throw(ArgumentError("VectorInvariantFormulation requires a vector invariant momentum advection scheme. \n"* 
+    throw(ArgumentError("VectorInvariantFormulation requires a vector invariant momentum advection scheme. \n"*
                         "Use `momentum_advection = VectorInvariant()`."))
 validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing}, ::VectorInvariantFormulation) = momentum_advection
 

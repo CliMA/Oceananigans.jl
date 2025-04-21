@@ -6,7 +6,7 @@
 "Regularizes" or "adds information" to user-defined forcing objects that are passed to
 model constructors. `regularize_forcing` is called inside `model_forcing`.
 
-We need `regularize_forcing` because it is only until `model_forcing` is called that
+We need `regularize_forcing` because it is only until `model_forcing` is called tha
 the fields (and field locations) of various forcing functions are available. The `field`
 can be used to infer the location at which the forcing is applied, or to add a field
 dependency to a special forcing object, as for `Relxation`.

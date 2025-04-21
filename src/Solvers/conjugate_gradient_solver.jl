@@ -1,19 +1,19 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: interior_parent_indices
 using Oceananigans.Utils: prettysummary
-using Statistics: norm, dot
+using Statistics: norm, do
 using LinearAlgebra
 
 import Oceananigans.Architectures: architecture
 
-mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P} 
+mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P}
     architecture :: A
     grid :: G
     linear_operation! :: L
     reltol :: T
     abstol :: T
-    maxiter :: Int
-    iteration :: Int
+    maxiter :: In
+    iteration :: In
     ρⁱ⁻¹ :: T
     linear_operator_product :: F
     search_direction :: F
@@ -113,11 +113,11 @@ end
 
 Solve `A * x = b` using an iterative conjugate-gradient method, where `A * x` is
 determined by `solver.linear_operation`
-    
+
 See figure 2.5 in
 
 > The Preconditioned Conjugate Gradient Method in "Templates for the Solution of Linear Systems: Building Blocks for Iterative Methods" Barrett et. al, 2nd Edition.
-    
+
 Given:
   * Linear Preconditioner operator `M!(solution, x, other_args...)` that computes `M * x = solution`
   * A matrix operator `A` as a function `A()`;
@@ -127,7 +127,7 @@ Given:
   * Local vectors: `z`, `r`, `p`, `q`
 
 This function executes the psuedocode algorithm
-    
+
 ```
 β  = 0
 r = b - A(x)
@@ -162,7 +162,7 @@ function solve!(x, solver::ConjugateGradientSolver, b, args...)
     solver.iteration = 0
 
     # q = A * x
-    q = solver.linear_operator_product
+    q = solver.linear_operator_produc
 
     @apply_regionally initialize_solution!(q, x, b, solver, args...)
 
@@ -175,14 +175,14 @@ function solve!(x, solver::ConjugateGradientSolver, b, args...)
     while iterating(solver, tolerance)
         iterate!(x, solver, b, args...)
     end
-    
+
     return x
 end
 
 function iterate!(x, solver, b, args...)
     r = solver.residual
     p = solver.search_direction
-    q = solver.linear_operator_product
+    q = solver.linear_operator_produc
 
     @debug "ConjugateGradientSolver $(solver.iteration), |r|: $(norm(r))"
 
@@ -201,7 +201,7 @@ function iterate!(x, solver, b, args...)
 
     @debug "ConjugateGradientSolver $(solver.iteration), |q|: $(norm(q))"
     @debug "ConjugateGradientSolver $(solver.iteration), α: $α"
-        
+
     @apply_regionally update_solution_and_residuals!(x, r, q, p, α)
 
     solver.iteration += 1

@@ -253,7 +253,7 @@ function set!(model::AbstractModel, filepath::AbstractString)
         # Update model clock
         model.clock.iteration = checkpointed_clock.iteration
         model.clock.time = checkpointed_clock.time
-        model.clock.last_Δt = checkpointed_clock.last_Δt
+        model.clock.last_Δt = checkpointed_clock.last_Δ
     end
 
     return nothing
@@ -261,7 +261,7 @@ end
 
 function set_time_stepper_tendencies!(timestepper, file, model_fields, addr)
     for name in propertynames(model_fields)
-        if string(name) ∈ keys(file["$addr/timestepper/Gⁿ"]) # Test if variable tendencies exist in checkpoint
+        if string(name) ∈ keys(file["$addr/timestepper/Gⁿ"]) # Test if variable tendencies exist in checkpoin
             # Tendency "n"
             parent_data = file["$addr/timestepper/Gⁿ/$name/data"]
 

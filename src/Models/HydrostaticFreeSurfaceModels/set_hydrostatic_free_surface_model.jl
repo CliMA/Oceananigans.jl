@@ -16,7 +16,7 @@ for which a `set!(ϕ::AbstractField, data)` function exists.
 Example
 =======
 
-```jldoctest
+```jldoctes
 using Oceananigans
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
 model = HydrostaticFreeSurfaceModel(; grid, tracers=:T)
@@ -35,7 +35,7 @@ set!(model, u=u₀, v=v₀, T=T₀)
 
 model.velocities.u
 
-# output
+# outpu
 
 16×16×16 Field{Face, Center, Center} on RectilinearGrid on CPU
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo

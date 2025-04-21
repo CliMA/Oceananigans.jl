@@ -23,10 +23,10 @@ func(x, y, z, t, u, S)
 ```
 
 where `u` is assumed to be the `u`-velocity component, and `S` is a tracer. Note that any field
-which does not have the name `u`, `v`, or `w` is assumed to be a tracer and must be present
+which does not have the name `u`, `v`, or `w` is assumed to be a tracer and must be presen
 in `model.tracers`.
 
-If `discrete_form=false` (the default) and `parameters` are provided, then the _last_ argument
+If `discrete_form=false` (the default) and `parameters` are provided, then the _last_ argumen
 to `func` must be `parameters`. For example, if `func` has no `field_dependencies` but does
 depend on `parameters`, then it must be callable with the signature
 
@@ -73,7 +73,7 @@ parameterized_func(x, y, z, t, p) = p.μ * exp(z / p.λ) * cos(p.ω * t)
 
 v_forcing = Forcing(parameterized_func, parameters = (μ=42, λ=0.1, ω=π))
 
-# output
+# outpu
 ContinuousForcing{@NamedTuple{μ::Int64, λ::Float64, ω::Irrational{:π}}}
 ├── func: parameterized_func (generic function with 1 method)
 ├── parameters: (μ = 42, λ = 0.1, ω = π)
@@ -89,7 +89,7 @@ model = NonhydrostaticModel(grid=grid, forcing=(v=v_forcing,))
 
 model.forcing.v
 
-# output
+# outpu
 ContinuousForcing{@NamedTuple{μ::Int64, λ::Float64, ω::Irrational{:π}}} at (Center, Face, Center)
 ├── func: parameterized_func (generic function with 1 method)
 ├── parameters: (μ = 42, λ = 0.1, ω = π)
@@ -105,7 +105,7 @@ growth_in_sunlight(x, y, z, t, P) = exp(z) * P
 
 plankton_forcing = Forcing(growth_in_sunlight, field_dependencies=:P)
 
-# output
+# outpu
 ContinuousForcing{Nothing}
 ├── func: growth_in_sunlight (generic function with 1 method)
 ├── parameters: nothing
@@ -114,13 +114,13 @@ ContinuousForcing{Nothing}
 
 ```jldoctest forcing
 # Parameterized, field-dependent forcing
-tracer_relaxation(x, y, z, t, c, p) = p.μ * exp((z + p.H) / p.λ) * (p.dCdz * z - c) 
+tracer_relaxation(x, y, z, t, c, p) = p.μ * exp((z + p.H) / p.λ) * (p.dCdz * z - c)
 
 c_forcing = Forcing(tracer_relaxation,
                     field_dependencies = :c,
                             parameters = (μ=1/60, λ=10, H=1000, dCdz=1))
 
-# output
+# outpu
 ContinuousForcing{@NamedTuple{μ::Float64, λ::Int64, H::Int64, dCdz::Int64}}
 ├── func: tracer_relaxation (generic function with 1 method)
 ├── parameters: (μ = 0.016666666666666666, λ = 10, H = 1000, dCdz = 1)
@@ -134,7 +134,7 @@ filtered_relaxation(i, j, k, grid, clock, model_fields) =
 
 filtered_forcing = Forcing(filtered_relaxation, discrete_form=true)
 
-# output
+# outpu
 DiscreteForcing{Nothing}
 ├── func: filtered_relaxation (generic function with 1 method)
 └── parameters: nothing
@@ -142,12 +142,12 @@ DiscreteForcing{Nothing}
 
 ```jldoctest forcing
 # Discrete-form forcing function with parameters
-masked_damping(i, j, k, grid, clock, model_fields, parameters) = 
+masked_damping(i, j, k, grid, clock, model_fields, parameters) =
     @inbounds - parameters.μ * exp(grid.z.cᵃᵃᶜ[k] / parameters.λ) * model_fields.u[i, j, k]
 
 masked_damping_forcing = Forcing(masked_damping, parameters=(μ=42, λ=π), discrete_form=true)
 
-# output
+# outpu
 DiscreteForcing{@NamedTuple{μ::Int64, λ::Irrational{:π}}}
 ├── func: masked_damping (generic function with 1 method)
 └── parameters: (μ = 42, λ = π)

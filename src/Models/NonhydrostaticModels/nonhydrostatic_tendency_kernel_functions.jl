@@ -20,7 +20,7 @@ hydrostatic_pressure_gradient_y(i, j, k, grid, ::Nothing) = zero(grid)
 """
     $(SIGNATURES)
 
-Return the tendency for the horizontal velocity in the ``x``-direction, or the east-west
+Return the tendency for the horizontal velocity in the ``x``-direction, or the east-wes
 direction, ``u``, at grid point `i, j, k`.
 
 The tendency for ``u`` is called ``G_u`` and defined via

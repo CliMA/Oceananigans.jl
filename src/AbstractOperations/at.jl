@@ -39,7 +39,7 @@ end
 """
     @at location abstract_operation
 
-Modify the `abstract_operation` so that it returns values at
+Modify the `abstract_operation` so that it returns values a
 `location`, where `location` is a 3-tuple of `Face`s and `Center`s.
 """
 macro at(location, abstract_operation)
@@ -68,11 +68,11 @@ function intersect_indices(loc, operands...)
     idx1 = compute_operand_intersection(Colon(), loc[1], operands...; dim=1)
     idx2 = compute_operand_intersection(Colon(), loc[2], operands...; dim=2)
     idx3 = compute_operand_intersection(Colon(), loc[3], operands...; dim=3)
-            
+
     return (idx1, idx2, idx3)
 end
 
-# Fallback for `KernelFunctionOperation`s with no argument 
+# Fallback for `KernelFunctionOperation`s with no argumen
 compute_operand_intersection(::Colon, to_loc; kw...) = Colon()
 
 compute_operand_intersection(to_idx, to_loc, op; dim) =

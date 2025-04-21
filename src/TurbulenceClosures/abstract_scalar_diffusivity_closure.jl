@@ -213,7 +213,7 @@ const AIDorAVD = Union{AID, AVD}
 @inline diffusive_flux_z(i, j, k, grid, cl::AIDorAVD, K, ::Val{id}, c, clk, fields, b) where id = - κzᶜᶜᶠ(i, j, k, grid, cl, K, Val(id), clk, fields) * ∂zᶜᶜᶠ(i, j, k, grid, c)
 
 #####
-##### Support for VerticallyImplicit
+##### Support for VerticallyImplici
 #####
 
 const VITD = VerticallyImplicitTimeDiscretization
@@ -232,9 +232,9 @@ const VITD = VerticallyImplicitTimeDiscretization
 # Vertically bounded grids
 #
 # For vertically bounded grids, we calculate _explicit_ fluxes on the boundaries,
-# and elide the implicit vertical flux component everywhere else. This is consistent
-# with the formulation of the tridiagonal solver, which requires explicit treatment
-# of boundary contributions (eg boundary contributions must be moved to the right
+# and elide the implicit vertical flux component everywhere else. This is consisten
+# with the formulation of the tridiagonal solver, which requires explicit treatmen
+# of boundary contributions (eg boundary contributions must be moved to the righ
 # hand side of the tridiagonal system).
 
 @inline function viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, args...)

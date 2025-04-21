@@ -34,7 +34,7 @@ scan_indices(::AbstractReducing, indices; dims) = Tuple(i ∈ dims ? Colon() : i
 scan_indices(::AbstractAccumulating, indices; dims) = indices
 
 Base.summary(s::Scan) = string(summary(s.type), " ",
-                               s.scan!, 
+                               s.scan!,
                                " over dims ", s.dims,
                                " of ", summary(s.operand))
 
@@ -114,7 +114,7 @@ to reduce `operand` along `dims` and store in `field`.
 Example
 =======
 
-```jldoctest
+```jldoctes
 using Oceananigans
 
 Nx, Ny, Nz = 3, 3, 3
@@ -132,7 +132,7 @@ compute!(max_c²)
 
 max_c²[1:Nx, 1:Ny]
 
-# output
+# outpu
 3×3 Matrix{Float64}:
  1.36111  2.25     3.36111
  2.25     3.36111  4.69444
@@ -160,7 +160,7 @@ to accumulate `operand` along `dims` and store in `field`.
 Example
 =======
 
-```jldoctest
+```jldoctes
 using Oceananigans
 
 Nx, Ny, Nz = 3, 3, 3
@@ -178,7 +178,7 @@ compute!(cumsum_c²)
 
 cumsum_c²[1:Nx, 1:Ny, 1:Nz]
 
-# output
+# outpu
 3×3×3 Array{Float64, 3}:
 [:, :, 1] =
  0.25      0.694444  1.36111
@@ -236,7 +236,7 @@ function directional_accumulate!(op, B, A, dim, direction)
 
     grid = B.grid
     arch = architecture(B)
-    
+
     # TODO: this won't work on windowed fields
     # To fix this we can change config, start, and finish.
     if dim == 1

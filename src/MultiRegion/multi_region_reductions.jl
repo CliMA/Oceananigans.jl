@@ -1,7 +1,7 @@
 using Statistics
 import Statistics.mean
 import Statistics.norm
-import Statistics.dot
+import Statistics.do
 
 reductions = (:(Base.sum), :(Base.maximum), :(Base.minimum), :(Base.prod), :(Base.any), :(Base.all), :(Statistics.mean))
 

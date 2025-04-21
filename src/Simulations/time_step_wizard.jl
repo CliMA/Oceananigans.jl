@@ -31,8 +31,8 @@ Base.summary(wizard::TimeStepWizard) = string("TimeStepWizard(",
                    cell_advection_timescale = cell_advection_timescale,
                    cell_diffusion_timescale = infinite_diffusion_timescale)
 
-Callback function that adjusts the simulation time step to meet specified target values 
-for advective and diffusive Courant-Friedrichs-Lewy (CFL) numbers (`cfl` and `diffusive_cfl`), 
+Callback function that adjusts the simulation time step to meet specified target values
+for advective and diffusive Courant-Friedrichs-Lewy (CFL) numbers (`cfl` and `diffusive_cfl`),
 subject to the limits
 
 ```julia
@@ -71,12 +71,12 @@ function TimeStepWizard(FT=Oceananigans.defaults.FloatType;
                         min_Δt = 0.0,
                         cell_advection_timescale = cell_advection_timescale,
                         cell_diffusion_timescale = infinite_diffusion_timescale)
-    
+
     # check if user gave max_change or min_change values that are invalid
     min_change ≥ 1 && throw(ArgumentError("min_change must be < 1. You provided min_change = $min_change."))
-  
+
     max_change ≤ 1 && throw(ArgumentError("max_change must be > 1. You provided max_change = $max_change."))
-  
+
     # user wants to limit by diffusive CFL and did not provide custom function to calculate timescale
     if isfinite(diffusive_cfl) && (cell_diffusion_timescale === infinite_diffusion_timescale)
        cell_diffusion_timescale = TurbulenceClosures.cell_diffusion_timescale
@@ -111,7 +111,7 @@ function new_time_step(old_Δt, wizard, model)
     new_Δt = clamp(new_Δt, wizard.min_Δt, wizard.max_Δt)
     new_Δt = all_reduce(min, new_Δt, architecture(model))
 
-    return new_Δt
+    return new_Δ
 end
 
 (wizard::TimeStepWizard)(simulation) =

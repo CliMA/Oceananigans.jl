@@ -63,7 +63,7 @@ function ConjugateGradientPoissonSolver(grid;
                                         abstol = sqrt(eps(grid)),
                                         kw...)
 
-    if preconditioner isa DefaultPreconditioner # try to make a useful default
+    if preconditioner isa DefaultPreconditioner # try to make a useful defaul
         if grid isa ImmersedBoundaryGrid && grid.underlying_grid isa GridWithFFTSolver
             preconditioner = fft_poisson_solver(grid.underlying_grid)
         else
@@ -79,7 +79,7 @@ function ConjugateGradientPoissonSolver(grid;
                                                         preconditioner,
                                                         template_field = rhs,
                                                         kw...)
-        
+
     return ConjugateGradientPoissonSolver(grid, rhs, conjugate_gradient_solver)
 end
 
@@ -169,7 +169,7 @@ end
 @inline Ac(i, j, k, grid) = - Ax⁻(i, j, k, grid) - Ax⁺(i, j, k, grid) -
                               Ay⁻(i, j, k, grid) - Ay⁺(i, j, k, grid) -
                               Az⁻(i, j, k, grid) - Az⁺(i, j, k, grid)
-                              
+
 @inline heuristic_residual(i, j, k, grid, r) =
     @inbounds 1 / abs(Ac(i, j, k, grid)) * (r[i, j, k] - 2 * Ax⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i-1, j, k, grid)) * r[i-1, j, k] -
                                                          2 * Ax⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i+1, j, k, grid)) * r[i+1, j, k] -

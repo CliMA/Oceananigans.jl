@@ -12,14 +12,14 @@ const c = Center()
 """
     regrid!(a, b)
 
-Regrid field `b` onto the grid of field `a`. 
+Regrid field `b` onto the grid of field `a`.
 
 Example
 =======
 
 Generate a tracer field on a vertically stretched grid and regrid it on a regular grid.
 
-```jldoctest
+```jldoctes
 using Oceananigans
 
 Nz, Lz = 2, 1.0
@@ -36,7 +36,7 @@ regrid!(output_field, input_field)
 
 output_field[1, 1, :]
 
-# output
+# outpu
 4-element OffsetArray(::Vector{Float64}, 0:3) with eltype Float64 with indices 0:3:
  0.0
  2.333333333333333
@@ -47,7 +47,7 @@ output_field[1, 1, :]
 regrid!(a, b) = regrid!(a, a.grid, b.grid, b)
 
 function we_can_regrid_in_z(a, target_grid, source_grid, b)
-    # Check that
+    # Check tha
     #   1. source and target grid are in the same "class" and
     #   2. source and target Field have same horizontal size
     typeof(source_grid).name.wrapper === typeof(target_grid).name.wrapper &&
@@ -57,7 +57,7 @@ function we_can_regrid_in_z(a, target_grid, source_grid, b)
 end
 
 function we_can_regrid_in_y(a, target_grid, source_grid, b)
-    # Check that
+    # Check tha
     #   1. source and target grid are in the same "class" and
     #   2. source and target Field have same xz size
     typeof(source_grid).name.wrapper === typeof(target_grid).name.wrapper &&
@@ -67,7 +67,7 @@ function we_can_regrid_in_y(a, target_grid, source_grid, b)
 end
 
 function we_can_regrid_in_x(a, target_grid, source_grid, b)
-    # Check that
+    # Check tha
     #   1. source and target grid are in the same "class" and
     #   2. source and target Field have same yz size
     typeof(source_grid).name.wrapper === typeof(target_grid).name.wrapper &&
@@ -81,7 +81,7 @@ function regrid_in_z!(a, target_grid, source_grid, b)
     arch = architecture(a)
     source_z_faces = znodes(source_grid, f)
     launch!(arch, target_grid, :xy, _regrid_in_z!, a, b, target_grid, source_grid, source_z_faces)
-    
+
     return a
 end
 
@@ -151,7 +151,7 @@ end
         k₊_src = searchsortedfirst(source_z_faces, z₊, 1, Nz_source+1, fo) - 1
 
         if k₊_src < k₋_src
-            # If the "last" face on the source grid is equal to or left
+            # If the "last" face on the source grid is equal to or lef
             # of the "first" face on the source grid, the target cell
             # lies entirely within the source cell j₊_src (ie, we are _refining_
             # rather than coarse graining). In this case our job is easy:
@@ -164,7 +164,7 @@ end
             end
 
             zk₋_src = znode(i_src, j_src, k₋_src, source_grid, c, c, f)
-            zk₊_src = znode(i_src, j_src, k₊_src, source_grid, c, c, f) 
+            zk₊_src = znode(i_src, j_src, k₊_src, source_grid, c, c, f)
 
             # Add contribution to integral from fractional left part of the source field,
             # if that region is a part of the grid.
@@ -172,7 +172,7 @@ end
                 target_field[i, j, k] += source_field[i_src, j_src, k₋_src - 1] * (zk₋_src - z₋)
             end
 
-            # Add contribution to integral from fractional right part of the source field, if that
+            # Add contribution to integral from fractional right part of the source field, if tha
             # region is part of the grid.
             if k₊_src < source_grid.Nz+1
                 target_field[i, j, k] += source_field[i_src, j_src, k₊_src] * (z₊ - zk₊_src)
@@ -206,7 +206,7 @@ end
         j₊_src = searchsortedfirst(source_y_faces, y₊, 1, Ny_source+1, fo) - 1
 
         if j₊_src < j₋_src
-            # If the "last" face on the source grid is equal to or left
+            # If the "last" face on the source grid is equal to or lef
             # of the "first" face on the source grid, the target cell
             # lies entirely within the source cell j₊_src (ie, we are _refining_
             # rather than coarse graining). In this case our job is easy:
@@ -231,7 +231,7 @@ end
                 ξ₂ = ξnode(i⁺_src, j_left, k_src, source_grid, f, c, c)
                 Az_left = fractional_horizontal_area(source_grid, ξ₁, ξ₂, y₋, yj₋_src)
 
-                target_field[i, j, k] += source_field[i_src, j_left, k_src] * Az_left
+                target_field[i, j, k] += source_field[i_src, j_left, k_src] * Az_lef
             end
 
             # Similar to above, add contribution to integral from fractional right part.
@@ -242,7 +242,7 @@ end
                 ξ₂ = ξnode(i⁺_src, j_right, k_src, source_grid, f, c, c)
                 Az_right = fractional_horizontal_area(source_grid, ξ₁, ξ₂, yj₊_src, y₊)
 
-                target_field[i, j, k] += source_field[i_src, j_right, k_src] * Az_right
+                target_field[i, j, k] += source_field[i_src, j_right, k_src] * Az_righ
             end
 
             target_field[i, j, k] /= Azᶜᶜᶜ(i, j, k, target_grid)
@@ -276,7 +276,7 @@ end
         i₊_src = searchsortedfirst(source_x_faces, ξ₊, 1, Nx_source+1, fo) - 1
 
         if i₊_src < i₋_src
-            # If the "last" face on the source grid is equal to or left
+            # If the "last" face on the source grid is equal to or lef
             # of the "first" face on the source grid, the target cell
             # lies entirely within the source cell i₊_src (ie, we are _refining_
             # rather than coarse graining). In this case our job is easy:
@@ -285,31 +285,31 @@ end
         else
             # Otherwise, our job is a little bit harder and we have to carefully, conservatively
             # sum up all the contributions from the source field to the target cell.
-            
+
             # First we add up all the contributions from all source cells that lie entirely within the target cell.
             for i_src = i₋_src:i₊_src-1
                 target_field[i, j, k] += source_field[i_src, j_src, k_src] * Azᶜᶜᶜ(i_src, j_src, k_src, source_grid)
             end
-    
-            # Next, we add contributions from the "fractional" source cells on the right
+
+            # Next, we add contributions from the "fractional" source cells on the righ
             # and left of the target cell.
             ξi₋_src = ξnode(i₋_src, j_src, k_src, source_grid, f, c, c)
             ξi₊_src = ξnode(i₊_src, j_src, k_src, source_grid, f, c, c)
-    
+
             # Add contribution to integral from fractional left part,
             # if that region is a part of the grid.
             # We approximate the volume of the fractional part by linearly interpolating the cell volume.
             if i₋_src > 1
                 i_left = i₋_src - 1
-                
+
                 η₁ = ηnode(i_left, j_src,  k_src, source_grid, c, f, c)
                 η₂ = ηnode(i_left, j⁺_src, k_src, source_grid, c, f, c)
                 Az_left = fractional_horizontal_area(source_grid, ξ₋, ξi₋_src, η₁, η₂)
 
-                target_field[i, j, k] += source_field[i_left, j_src, k_src] * Az_left
+                target_field[i, j, k] += source_field[i_left, j_src, k_src] * Az_lef
             end
 
-                
+
             # Similar to above, add contribution to integral from fractional right part.
             if i₊_src < source_grid.Nx+1
                 i_right = i₊_src
@@ -318,9 +318,9 @@ end
                 η₂ = ηnode(i_right, j⁺_src, k_src, source_grid, c, f, c)
                 Az_right = fractional_horizontal_area(source_grid, ξi₊_src, ξ₊, η₁, η₂)
 
-                target_field[i, j, k] += source_field[i_right, j_src, k_src] * Az_right
+                target_field[i, j, k] += source_field[i_right, j_src, k_src] * Az_righ
             end
-    
+
             target_field[i, j, k] /= Azᶜᶜᶜ(i, j, k, target_grid)
         end
     end

@@ -44,7 +44,7 @@ struct Gradient <: AbstractBoundaryConditionClassification end
 """
     struct Value <: AbstractBoundaryConditionClassification
 
-A classification specifying a boundary condition on the value of a field. Also called a Dirchlet
+A classification specifying a boundary condition on the value of a field. Also called a Dirchle
 boundary condition.
 """
 struct Value <: AbstractBoundaryConditionClassification end
@@ -79,7 +79,7 @@ struct MultiRegionCommunication <: AbstractBoundaryConditionClassification end
 """
     struct DistributedCommunication <: AbstractBoundaryConditionClassification
 
-A classification specifying a distributed memory communicating boundary condition 
+A classification specifying a distributed memory communicating boundary condition
 """
 struct DistributedCommunication <: AbstractBoundaryConditionClassification end
 

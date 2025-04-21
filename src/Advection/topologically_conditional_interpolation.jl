@@ -6,14 +6,14 @@
 #####
 #####     1. Always returns symmetric_interpolate_xᶠᵃᵃ if the x-direction is Periodic; or
 #####
-#####     2. Returns symmetric_interpolate_xᶠᵃᵃ if the x-direction is Bounded and index i is not
+#####     2. Returns symmetric_interpolate_xᶠᵃᵃ if the x-direction is Bounded and index i is no
 #####        close to the boundary, or a second-order interpolation if i is close to a boundary.
 #####
 
-using Oceananigans.Grids: AbstractGrid, 
-                          Bounded, 
-                          RightConnected, 
-                          LeftConnected, 
+using Oceananigans.Grids: AbstractGrid,
+                          Bounded,
+                          RightConnected,
+                          LeftConnected,
                           topology,
                           architecture
 
@@ -72,9 +72,9 @@ for dir in (:x, :y, :z)
 end
 
 # Separate High order advection from low order advection
-const HOADV = Union{WENO, 
+const HOADV = Union{WENO,
                     Tuple(Centered{N} for N in advection_buffers[2:end])...,
-                    Tuple(UpwindBiased{N} for N in advection_buffers[2:end])...} 
+                    Tuple(UpwindBiased{N} for N in advection_buffers[2:end])...}
 const LOADV = Union{UpwindBiased{1}, Centered{1}}
 
 for bias in (:symmetric, :biased)
@@ -98,7 +98,7 @@ for bias in (:symmetric, :biased)
             # Conditional high-order interpolation in Bounded directions
             if ξ == :x
                 @eval begin
-                    @inline $alt1_interp(i, j, k, grid::AGX, scheme::HOADV, args...) = 
+                    @inline $alt1_interp(i, j, k, grid::AGX, scheme::HOADV, args...) =
                             ifelse($outside_buffer(i, topology(grid, 1), grid.Nx, scheme),
                                    $interp(i, j, k, grid, scheme, args...),
                                    $alt2_interp(i, j, k, grid, scheme.buffer_scheme, args...))
@@ -122,12 +122,12 @@ for bias in (:symmetric, :biased)
     end
 end
 
-@inline _multi_dimensional_reconstruction_x(i, j, k, grid::AGX, scheme, interp, args...) = 
-                    ifelse(outside_symmetric_bufferᶜ(i, topology(grid, 1), grid.Nx, scheme), 
+@inline _multi_dimensional_reconstruction_x(i, j, k, grid::AGX, scheme, interp, args...) =
+                    ifelse(outside_symmetric_bufferᶜ(i, topology(grid, 1), grid.Nx, scheme),
                            multi_dimensional_reconstruction_x(i, j, k, grid, scheme, interp, args...),
                            interp(i, j, k, grid, scheme, args...))
 
-@inline _multi_dimensional_reconstruction_y(i, j, k, grid::AGY, scheme, interp, args...) = 
-                    ifelse(outside_symmetric_bufferᶜ(j, topology(grid, 2), grid.Ny, scheme), 
+@inline _multi_dimensional_reconstruction_y(i, j, k, grid::AGY, scheme, interp, args...) =
+                    ifelse(outside_symmetric_bufferᶜ(j, topology(grid, 2), grid.Ny, scheme),
                             multi_dimensional_reconstruction_y(i, j, k, grid, scheme, interp, args...),
                             interp(i, j, k, grid, scheme, args...))

@@ -52,7 +52,7 @@ value that is acceptable in the denominator of the final calculation.
 Examples
 ========
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> dynamic_coeff = DynamicCoefficient(averaging=(1, 2))
@@ -67,7 +67,7 @@ Smagorinsky closure with
 └── Pr = 1.0
 ```
 
-The dynamic Smagorinsky above has its coefficient recalculated at every time step, which will almost
+The dynamic Smagorinsky above has its coefficient recalculated at every time step, which will almos
 certainly be very slow. To alleviate the high computational cost of the `DynamicCoefficient`
 calculation, users may introduce an approximation wherein the dynamic coefficient is recomputed only
 every so often. This is standard practice in the literature and, while in principle any frequency
@@ -76,10 +76,10 @@ time-step), all published studies seem to recalculate it every 5 steps (e.g., Bo
 Chen et al. 2016; Salesky et al. 2017; Chor et al 2021). This choice seems to stem from the
 results by Bou-Zeid et al. (2005) who found that considerably speed up simulations while still
 producing very similar results to an update frequency of every time step. Users can change the
-update frequency using the `schedule` keyword argument. For example, a `DynamicCoefficient` that
+update frequency using the `schedule` keyword argument. For example, a `DynamicCoefficient` tha
 gets updated every 4 timesteps is obtained via:
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> dynamic_coeff = DynamicCoefficient(averaging=(1, 2), schedule=IterationInterval(4))
@@ -195,7 +195,7 @@ function compute_coefficient_fields!(diffusivity_fields, closure::DirectionallyA
     grid = model.grid
     arch = architecture(grid)
     velocities = model.velocities
-    cˢ = closure.coefficient
+    cˢ = closure.coefficien
 
     if cˢ.schedule(model)
         Σ = diffusivity_fields.Σ
@@ -253,16 +253,16 @@ const c = Center()
         T⁻ = convert(FT, 1.5) * Δᶠ(i, j, k, grid) / ∜(∜(𝒥ᴸᴹ𝒥ᴹᴹ))
         τ = Δt / T⁻
         ϵ = τ / (1 + τ)
-                        
+
         # Compute interpolation
         x = xnode(i, j, k, grid, c, c, c)
         y = ynode(i, j, k, grid, c, c, c)
         z = znode(i, j, k, grid, c, c, c)
 
         # Displacements
-        δx = u[i, j, k] * Δt
-        δy = v[i, j, k] * Δt
-        δz = w[i, j, k] * Δt
+        δx = u[i, j, k] * Δ
+        δy = v[i, j, k] * Δ
+        δz = w[i, j, k] * Δ
         # Prevent displacements from getting too big?
         Δx = Δxᶜᶜᶜ(i, j, k, grid)
         Δy = Δyᶜᶜᶜ(i, j, k, grid)
@@ -293,7 +293,7 @@ function compute_coefficient_fields!(diffusivity_fields, closure::LagrangianAver
     grid = model.grid
     arch = architecture(grid)
     clock = model.clock
-    cˢ = closure.coefficient
+    cˢ = closure.coefficien
     t⁻ = diffusivity_fields.previous_compute_time
     u, v, w = model.velocities
 

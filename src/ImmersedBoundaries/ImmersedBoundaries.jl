@@ -2,7 +2,7 @@ module ImmersedBoundaries
 
 export ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom, PartialCellBottom, ImmersedBoundaryCondition
 
-using Adapt
+using Adap
 
 using Oceananigans.Grids
 using Oceananigans.Operators

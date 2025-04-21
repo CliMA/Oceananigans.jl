@@ -62,7 +62,7 @@ end
 function handle_message(logger::OceananigansLogger, level, message, _module, group, id,
                                 filepath, line; maxlog = nothing, kwargs...)
 
-    if !isnothing(maxlog) && maxlog isa Int
+    if !isnothing(maxlog) && maxlog isa In
         remaining = get!(logger.message_limits, id, maxlog)
         logger.message_limits[id] = remaining - 1
         remaining > 0 || return nothing

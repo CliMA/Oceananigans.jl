@@ -1,11 +1,11 @@
 struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
     architecture :: Arch
-    Nx :: Int
-    Ny :: Int
-    Nz :: Int
-    Hx :: Int
-    Hy :: Int
-    Hz :: Int
+    Nx :: In
+    Ny :: In
+    Nz :: In
+    Hx :: In
+    Hy :: In
+    Hz :: In
     Lx :: FT
     Ly :: FT
     Lz :: FT
@@ -30,7 +30,7 @@ function RectilinearGrid{TX, TY, TZ}(arch::Arch, Nx, Ny, Nz, Hx, Hy, Hz,
                                       yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
                                       z    :: CZ) where {Arch, FT, TX, TY, TZ,
                                                          FX, VX, FY, VY, CZ}
-                                                    
+
     return RectilinearGrid{FT, TX, TY, TZ,
                            CZ, FX, FY, VX, VY, Arch}(arch, Nx, Ny, Nz,
                                                      Hx, Hy, Hz, Lx, Ly, Lz,
@@ -150,7 +150,7 @@ Examples
 
 * A grid with the default `Float64` type:
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(32, 32, 32), extent=(1, 2, 3))
@@ -162,7 +162,7 @@ julia> grid = RectilinearGrid(size=(32, 32, 32), extent=(1, 2, 3))
 
 * A grid with `Float32` type:
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(Float32; size=(32, 32, 16), x=(0, 8), y=(-10, 10), z=(-π, π))
@@ -174,7 +174,7 @@ julia> grid = RectilinearGrid(Float32; size=(32, 32, 16), x=(0, 8), y=(-10, 10),
 
 * A two-dimenisional, horizontally-periodic grid:
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(32, 32), extent=(2π, 4π), topology=(Periodic, Periodic, Flat))
@@ -186,7 +186,7 @@ julia> grid = RectilinearGrid(size=(32, 32), extent=(2π, 4π), topology=(Period
 
 * A one-dimensional "column" grid:
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=256, z=(-128, 0), topology=(Flat, Flat, Bounded))
@@ -198,7 +198,7 @@ julia> grid = RectilinearGrid(size=256, z=(-128, 0), topology=(Flat, Flat, Bound
 
 * A horizontally-periodic regular grid with cell interfaces stretched hyperbolically near the top:
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> σ = 1.1; # stretching factor
@@ -221,7 +221,7 @@ julia> grid = RectilinearGrid(size = (32, 32, Nz),
 * A three-dimensional grid with regular spacing in ``x``, cell interfaces at Chebyshev nodes
   in ``y``, and cell interfaces hyperbolically stretched in ``z`` near the top:
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> Nx, Ny, Nz = 32, 30, 24;
@@ -338,8 +338,8 @@ end
 
 struct ColumnEnsembleSize{C<:Tuple{Int, Int}}
     ensemble :: C
-    Nz :: Int
-    Hz :: Int
+    Nz :: In
+    Hz :: In
 end
 
 ColumnEnsembleSize(; Nz, ensemble=(0, 0), Hz=1) = ColumnEnsembleSize(ensemble, Nz, Hz)
@@ -426,7 +426,7 @@ function with_halo(halo, grid::RectilinearGrid)
     halo = pop_flat_elements(halo, topology(grid))
     kwargs[:halo] = halo
     arch = args[:architecture]
-    FT = args[:number_type]    
+    FT = args[:number_type]
     return RectilinearGrid(arch, FT; kwargs...)
 end
 
@@ -468,7 +468,7 @@ rname(::RG) = :z
 function nodes(grid::RectilinearGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
     x = xnodes(grid, ℓx, ℓy, ℓz; with_halos)
     y = ynodes(grid, ℓx, ℓy, ℓz; with_halos)
-    z = znodes(grid, ℓx, ℓy, ℓz; with_halos) 
+    z = znodes(grid, ℓx, ℓy, ℓz; with_halos)
 
     if reshape
         # Here we have to deal with the fact that Flat directions may have

@@ -1,10 +1,10 @@
 using Oceananigans.Architectures
-using Oceananigans.Grids: topology, validate_tupled_argument
+using Oceananigans.Grids: topology, validate_tupled_argumen
 using CUDA: ndevices, device!
 
 import Oceananigans.Architectures: device, cpu_architecture, on_architecture, array_type, child_architecture, convert_to_device
 import Oceananigans.Grids: zeros
-import Oceananigans.Utils: sync_device!, tupleit
+import Oceananigans.Utils: sync_device!, tuplei
 
 import Base
 
@@ -27,25 +27,25 @@ the `x` (first), `y` (second) and `z` (third) dimension
 Keyword arguments:
 ==================
 
-- `x`: partitioning of the first dimension 
+- `x`: partitioning of the first dimension
 - `y`: partitioning of the second dimension
 - `z`: partitioning of the third dimension
 
-if supplied as positional arguments `x` will be the first argument, 
+if supplied as positional arguments `x` will be the first argument,
 `y` the second and `z` the third
 
 `x`, `y` and `z` can be:
 - `x::Int`: allocate `x` processors to the first dimension
 - `Equal()`: divide the domain in `x` equally among the remaining processes (not supported for multiple directions)
-- `Fractional(ϵ₁, ϵ₂, ..., ϵₙ):` divide the domain unequally among `N` processes. The total work is `W = sum(ϵᵢ)`, 
+- `Fractional(ϵ₁, ϵ₂, ..., ϵₙ):` divide the domain unequally among `N` processes. The total work is `W = sum(ϵᵢ)`,
                                  and each process is then allocated `ϵᵢ / W` of the domain.
-- `Sizes(n₁, n₂, ..., nₙ)`: divide the domain unequally. The total work is `W = sum(nᵢ)`, 
+- `Sizes(n₁, n₂, ..., nₙ)`: divide the domain unequally. The total work is `W = sum(nᵢ)`,
                             and each process is then allocated `nᵢ`.
 
 Examples:
 ========
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans; using Oceananigans.DistributedComputations
 
 julia> Partition(1, 4)
@@ -75,7 +75,7 @@ function Base.show(io::IO, p::Partition)
     end
 
     print(io, "Partition across ", rank_info)
-    
+
     if Rx > 1
         s = spine(Ry, Rz)
         print(io, '\n')
@@ -107,18 +107,18 @@ specifically defined by `Int`, `Fractional`, or `Sizes`.
 """
 struct Equal end
 
-struct Fractional{S} 
+struct Fractional{S}
     sizes :: S
 end
 
-struct Sizes{S} 
+struct Sizes{S}
     sizes :: S
 end
 
 """
     Fractional(ϵ₁, ϵ₂, ..., ϵₙ)
 
-Return a type that partitions a direction unequally. The total work is `W = sum(ϵᵢ)`, 
+Return a type that partitions a direction unequally. The total work is `W = sum(ϵᵢ)`,
 and each process is then allocated `ϵᵢ / W` of the domain.
 """
 Fractional(args...) = Fractional(tuple(args ./ sum(args)...))  # We need to make sure that `sum(R) == 1`
@@ -126,7 +126,7 @@ Fractional(args...) = Fractional(tuple(args ./ sum(args)...))  # We need to make
 """
     Sizes(n₁, n₂, ..., nₙ)
 
-Return a type that partitions a direction unequally. The total work is `W = sum(nᵢ)`, 
+Return a type that partitions a direction unequally. The total work is `W = sum(nᵢ)`,
 and each process is then allocated `nᵢ`.
 """
 Sizes(args...) = Sizes(tuple(args...))
@@ -159,7 +159,7 @@ validate_partition(x, ::Equal, z) = x, remaining_workers(x, z), z
 validate_partition(x, y, ::Equal) = x, y, remaining_workers(x, y)
 
 function remaining_workers(r1, r2)
-    MPI.Initialized() || MPI.Init()    
+    MPI.Initialized() || MPI.Init()
     r12 = ranks(r1) * ranks(r2)
     return MPI.Comm_size(MPI.COMM_WORLD) ÷ r12
 end
@@ -185,7 +185,7 @@ struct Distributed{A, S, Δ, R, ρ, I, C, γ, M, T, D} <: AbstractArchitecture
                    communicator :: γ,
                    mpi_requests :: M,
                    mpi_tag :: T,
-                   devices :: D) where {S, A, Δ, R, ρ, I, C, γ, M, T, D} = 
+                   devices :: D) where {S, A, Δ, R, ρ, I, C, γ, M, T, D} =
                    new{A, S, Δ, R, ρ, I, C, γ, M, T, D}(child_architecture,
                                                         partition,
                                                         ranks,
@@ -203,9 +203,9 @@ end
 #####
 
 """
-    Distributed(child_architecture = CPU(); 
+    Distributed(child_architecture = CPU();
                 partition = Partition(MPI.Comm_size(communicator)),
-                devices = nothing, 
+                devices = nothing,
                 communicator = MPI.COMM_WORLD,
                 synchronized_communication = false)
 
@@ -214,17 +214,17 @@ Return a distributed architecture that uses MPI for communications.
 Positional arguments
 ====================
 
-- `child_architecture`: Specifies whether the computation is performed on CPUs or GPUs. 
+- `child_architecture`: Specifies whether the computation is performed on CPUs or GPUs.
                         Default: `CPU()`.
 
 Keyword arguments
 =================
 
 - `partition`: A [`Partition`](@ref) specifying the total processors in the `x`, `y`, and `z` direction.
-               Note that support for distributed `z` direction is  limited; we strongly suggest
+               Note that support for distributed `z` direction is  limited; we strongly sugges
                using partition with `z = 1` kwarg.
 
-- `devices`: `GPU` device linked to local rank. The GPU will be assigned based on the 
+- `devices`: `GPU` device linked to local rank. The GPU will be assigned based on the
              local node rank as such `devices[node_rank]`. Make sure to run `--ntasks-per-node` <= `--gres=gpu`.
              If `nothing`, the devices will be assigned automatically based on the available resources.
              This argument is irrelevant if `child_architecture = CPU()`.
@@ -240,9 +240,9 @@ Keyword arguments
                                 Default: `false`, specifying the use of asynchronous algorithms where supported,
                                 which may result in faster time-to-solution.
 """
-function Distributed(child_architecture = CPU(); 
+function Distributed(child_architecture = CPU();
                      partition = nothing,
-                     devices = nothing, 
+                     devices = nothing,
                      communicator = nothing,
                      synchronized_communication = false)
 
@@ -273,13 +273,13 @@ function Distributed(child_architecture = CPU();
     local_rank         = MPI.Comm_rank(communicator)
     local_index        = rank2index(local_rank, Rx, Ry, Rz)
     # The rank connectivity _ALWAYS_ wraps around (The cartesian processor "grid" is `Periodic`)
-    local_connectivity = NeighboringRanks(local_index, ranks) 
+    local_connectivity = NeighboringRanks(local_index, ranks)
 
     # Assign CUDA device if on GPUs
     if child_architecture isa GPU
         local_comm = MPI.Comm_split_type(communicator, MPI.COMM_TYPE_SHARED, local_rank)
         node_rank  = MPI.Comm_rank(local_comm)
-        isnothing(devices) ? device!(node_rank % ndevices()) : device!(devices[node_rank+1]) 
+        isnothing(devices) ? device!(node_rank % ndevices()) : device!(devices[node_rank+1])
     end
 
     mpi_requests = MPI.Request[]
@@ -330,10 +330,10 @@ synchronized(arch::Distributed) = Distributed{true}(child_architecture(arch),
                                                     arch.devices)
 
 cpu_architecture(arch::DistributedCPU) = arch
-cpu_architecture(arch::Distributed{A, S}) where {A, S} = 
+cpu_architecture(arch::Distributed{A, S}) where {A, S} =
     Distributed{S}(CPU(),
-                   arch.partition, 
-                   arch.ranks, 
+                   arch.partition,
+                   arch.ranks,
                    arch.local_rank,
                    arch.local_index,
                    arch.connectivity,

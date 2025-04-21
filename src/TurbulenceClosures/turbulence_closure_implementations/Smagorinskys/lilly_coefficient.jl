@@ -15,7 +15,7 @@ proposed by [Lilly62](@citet), and [Lilly66](@citet), which has an eddy viscosit
 νₑ = (Cˢ * Δᶠ)² * √(2Σ²) * √(1 - Cb * N² / Σ²)
 ```
 
-where `C²` is the Smagorinsky coefficient, `Δᶠ` is the filter width, `Σ² = ΣᵢⱼΣᵢⱼ` is the double dot
+where `C²` is the Smagorinsky coefficient, `Δᶠ` is the filter width, `Σ² = ΣᵢⱼΣᵢⱼ` is the double do
 product of the strain tensor `Σᵢⱼ`, `N²` is the total buoyancy gradient, and `Cb` is a constant the
 multiplies the Richardson number modification to the eddy viscosity.
 

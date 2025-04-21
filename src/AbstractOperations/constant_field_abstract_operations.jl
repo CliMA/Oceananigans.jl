@@ -11,9 +11,9 @@ using Oceananigans.Fields: ZeroField, ConstantField
 # Binary operations
 ==(::ZeroField, ::ZeroField) = true
 
-==(zf::ZeroField, cf::ConstantField) = 0 == cf.constant
-==(cf::ConstantField, zf::ZeroField) = 0 == cf.constant
-==(c1::ConstantField, c2::ConstantField) = c1.constant == c2.constant
+==(zf::ZeroField, cf::ConstantField) = 0 == cf.constan
+==(cf::ConstantField, zf::ZeroField) = 0 == cf.constan
+==(c1::ConstantField, c2::ConstantField) = c1.constant == c2.constan
 
 +(a::ZeroField, b::AbstractField) = b
 +(a::AbstractField, b::ZeroField) = a

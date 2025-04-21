@@ -66,7 +66,7 @@ condition_operand(func::Function, operand::AbstractField, condition, mask) =
 Example
 =======
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> using Oceananigans.Fields: condition_operand

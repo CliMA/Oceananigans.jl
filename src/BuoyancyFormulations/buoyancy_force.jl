@@ -15,7 +15,7 @@ The buoyancy acceleration acts in the direction opposite to gravity.
 Example
 =======
 
-```jldoctest
+```jldoctes
 using Oceananigans
 
 grid = RectilinearGrid(size=(1, 8, 8), extent=(1, 1, 1))
@@ -27,7 +27,7 @@ buoyancy = BuoyancyForce(BuoyancyTracer(), gravity_unit_vector=g̃)
 
 model = NonhydrostaticModel(; grid, buoyancy, tracers=:b)
 
-# output
+# outpu
 
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 ├── grid: 1×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×3×3 halo
@@ -77,7 +77,7 @@ Base.summary(bf::BuoyancyForce) = string(summary(bf.formulation),
 summarize_vector(n) = string("(", prettysummary(n[1]), ", ",
                                   prettysummary(n[2]), ", ",
                                   prettysummary(n[3]), ")")
-                             
+
 summarize_vector(::NegativeZDirection) = "NegativeZDirection()"
 
 function Base.show(io::IO, bf::BuoyancyForce)

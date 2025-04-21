@@ -5,7 +5,7 @@ mutable struct NaNChecker{F}
     erroring :: Bool
 end
 
-NaNChecker(fields) = NaNChecker(fields, false) # default
+NaNChecker(fields) = NaNChecker(fields, false) # defaul
 default_nan_checker(model) = nothing
 
 function Base.summary(nc::NaNChecker)
@@ -30,7 +30,7 @@ If `erroring=true`, the `NaNChecker` will throw an error on NaN detection.
 """
 NaNChecker(; fields, erroring=false) = NaNChecker(fields, erroring)
 
-hasnan(field) = any(isnan, parent(field)) 
+hasnan(field) = any(isnan, parent(field))
 hasnan(model::AbstractModel) = hasnan(first(fields(model)))
 
 function (nc::NaNChecker)(simulation)

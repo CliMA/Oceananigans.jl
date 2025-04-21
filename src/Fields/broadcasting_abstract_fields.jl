@@ -53,7 +53,7 @@ end
     @inbounds dest[i, j, k] = bc[i, j, k]
 end
 
-# Interface for getting AbstractOperation right
+# Interface for getting AbstractOperation righ
 @inline broadcasted_to_abstract_operation(loc, grid, a) = a
 
 # Broadcasting with interpolation breaks Base's default rules,
@@ -75,5 +75,5 @@ end
     param = KernelParameters(size(dest), map(offset_index, dest.indices))
     launch!(arch, grid, param, _broadcast_kernel!, dest, bc′)
 
-    return dest
+    return des
 end

@@ -30,7 +30,7 @@ offset_indices(ℓ,         topo, N, H, r::AbstractUnitRange) = r
 offset_indices(::Nothing, topo, N, H, ::AbstractUnitRange) = 1:1
 
 instantiate(T::Type) = T()
-instantiate(t) = t
+instantiate(t) =
 
 # The type parameter for indices helps / encourages the compiler to fully type infer `offset_data`
 function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_indices(length(loc))) where {A<:AbstractArray, T}

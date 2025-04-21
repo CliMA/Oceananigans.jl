@@ -1,20 +1,20 @@
 module OutputReaders
 
-export FieldDataset
+export FieldDatase
 export FieldTimeSeries
 export InMemory, OnDisk
 export Cyclical, Linear, Clamp
 
 """
-    auto_extension(filename, ext)                                                             
+    auto_extension(filename, ext)
 
 If `filename` ends in `ext`, return `filename`. Otherwise return `filename * ext`.
 """
-function auto_extension(filename, ext) 
+function auto_extension(filename, ext)
     if endswith(filename, ext)
         return filename
     else
-        return filename * ext
+        return filename * ex
     end
 end
 

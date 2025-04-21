@@ -19,7 +19,7 @@ function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name; wa
     arch = architecture(fts)
 
     # TODO: a potential optimization here might be to load
-    # all of the data into a single array, and then transfer that
+    # all of the data into a single array, and then transfer tha
     # to parent(fts).
     for n in time_indices(fts)
         t = fts.times[n]
@@ -66,7 +66,7 @@ function set!(fts::InMemoryFTS, fields_vector::AbstractVector{<:AbstractField})
     return nothing
 end
 
-# Write property only if it does not already exist
+# Write property only if it does not already exis
 function maybe_write_property!(file, property, data)
     try
         test = file[property]
@@ -83,7 +83,7 @@ under `fts.name` and at `time_index`. The save field is assigned `time`,
 which is extracted from `fts.times[time_index]` if not provided.
 """
 function set!(fts::OnDiskFTS, field::Field, n::Int, time=fts.times[n])
-    fts.grid == field.grid || error("The grids attached to the Field and \
+    fts.grid == field.grid || error("The grids attached to the Field and
                                     FieldTimeSeries appear to be different.")
     path = fts.path
     name = fts.name

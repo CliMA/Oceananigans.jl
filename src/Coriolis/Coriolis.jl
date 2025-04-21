@@ -1,12 +1,12 @@
 module Coriolis
 
-export
+expor
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
     HydrostaticSphericalCoriolis, ActiveCellEnstrophyConserving,
     x_f_cross_U, y_f_cross_U, z_f_cross_U
 
 using Printf
-using Adapt
+using Adap
 using Oceananigans
 using Oceananigans.Grids
 using Oceananigans.Operators

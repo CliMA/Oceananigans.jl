@@ -1,6 +1,6 @@
 using Statistics: mean!, sum!
 
-using Oceananigans.Utils: tupleit
+using Oceananigans.Utils: tuplei
 using Oceananigans.Grids: regular_dimensions
 using Oceananigans.Fields: Scan, condition_operand, reverse_cumsum!, AbstractReducing, AbstractAccumulating
 
@@ -83,7 +83,7 @@ Compute the integral of ``f(x, y, z) = x y z`` over the domain
 ``(x, y, z) ∈ [0, 1] × [0, 1] × [0, 1]``. The analytical answer
 is ``∭ x y z \\, dx \\, dy \\, dz = 1/8``.
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(8, 8, 8), x=(0, 1), y=(0, 1), z=(0, 1));
@@ -139,7 +139,7 @@ Example
 
 Compute the cumulative integral of ``f(z) = z`` over z ∈ [0, 1].
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=8, z=(0, 1), topology=(Flat, Flat, Bounded));

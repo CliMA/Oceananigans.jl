@@ -52,7 +52,7 @@ Keyword arguments
 Example
 =======
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> cavd = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1)

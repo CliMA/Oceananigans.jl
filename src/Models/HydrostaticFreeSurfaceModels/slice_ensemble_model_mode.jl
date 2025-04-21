@@ -29,13 +29,13 @@ end
     @inbounds closure = closure_array[i]
     return ∇_dot_qᶜ(i, j, k, grid, closure, c, tracer_index, args...)
 end
-    
+
 struct SliceEnsembleSize
-    ensemble :: Int
-    Ny :: Int
-    Nz :: Int
-    Hy :: Int
-    Hz :: Int
+    ensemble :: In
+    Ny :: In
+    Nz :: In
+    Hy :: In
+    Hz :: In
 end
 
 SliceEnsembleSize(; size, ensemble=0, halo=(1, 1)) = SliceEnsembleSize(ensemble, size[1], size[2], halo[1], halo[2])
@@ -77,7 +77,7 @@ const CoriolisVector = AbstractVector{<:AbstractRotation}
 @inline z_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisVector, U) = @inbounds z_f_cross_U(i, j, k, grid, coriolis[i], U)
 
 function FFTImplicitFreeSurfaceSolver(grid::YZSliceGrid, settings=nothing, gravitational_acceleration=nothing)
-    grid isa XYRegularRG || 
+    grid isa XYRegularRG ||
         throw(ArgumentError("FFTImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))
 
     # Construct a "horizontal grid". We support either x or y being Flat, but not both.

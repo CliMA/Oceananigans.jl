@@ -147,7 +147,7 @@ Return the minimum spacing for `grid` in ``x`` direction at location `ℓx, ℓy
 
 Examples
 ========
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
@@ -166,7 +166,7 @@ Return the minimum spacing for `grid` in ``y`` direction at location `ℓx, ℓy
 
 Examples
 ========
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
@@ -186,7 +186,7 @@ Return the minimum spacing for `grid` in ``z`` direction at location `ℓx, ℓy
 
 Examples
 ========
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));

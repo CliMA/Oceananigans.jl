@@ -1,6 +1,6 @@
 module StokesDrifts
 
-export
+expor
     UniformStokesDrift,
     StokesDrift,
     ∂t_uˢ,
@@ -10,7 +10,7 @@ export
     y_curl_Uˢ_cross_U,
     z_curl_Uˢ_cross_U
 
-using Adapt: adapt
+using Adapt: adap
 
 using Oceananigans.Fields
 using Oceananigans.Operators
@@ -86,14 +86,14 @@ Examples
 Exponentially decaying Stokes drift corresponding to a surface Stokes drift of
 `uˢ(z=0) = 0.005` and decay scale `h = 20`:
 
-```jldoctest
+```jldoctes
 using Oceananigans
 
 @inline uniform_stokes_shear(z, t) = 0.005 * exp(z / 20)
 
 stokes_drift = UniformStokesDrift(∂z_uˢ=uniform_stokes_shear)
 
-# output
+# outpu
 
 UniformStokesDrift{Nothing}:
 ├── ∂z_uˢ: uniform_stokes_shear
@@ -105,7 +105,7 @@ UniformStokesDrift{Nothing}:
 Exponentially-decaying Stokes drift corresponding to a surface Stokes drift of
 `uˢ = 0.005` and decay scale `h = 20`, using parameters:
 
-```jldoctest
+```jldoctes
 using Oceananigans
 
 @inline uniform_stokes_shear(z, t, p) = p.uˢ * exp(z / p.h)
@@ -113,7 +113,7 @@ using Oceananigans
 stokes_drift_parameters = (uˢ = 0.005, h = 20)
 stokes_drift = UniformStokesDrift(∂z_uˢ=uniform_stokes_shear, parameters=stokes_drift_parameters)
 
-# output
+# outpu
 
 UniformStokesDrift with parameters (uˢ=0.005, h=20):
 ├── ∂z_uˢ: uniform_stokes_shear
@@ -135,7 +135,7 @@ function UniformStokesDrift(grid::AbstractGrid;
     return UniformStokesDrift(∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, parameters)
 end
 
-const USD = UniformStokesDrift
+const USD = UniformStokesDrif
 const USDnoP = UniformStokesDrift{<:Nothing}
 const c = Center()
 const f = Face()
@@ -222,8 +222,8 @@ function Base.show(io::IO, sd::StokesDrift)
 end
 
 """
-    StokesDrift(; ∂z_uˢ=zerofunction, ∂y_uˢ=zerofunction, ∂t_uˢ=zerofunction, 
-                  ∂z_vˢ=zerofunction, ∂x_vˢ=zerofunction, ∂t_vˢ=zerofunction, 
+    StokesDrift(; ∂z_uˢ=zerofunction, ∂y_uˢ=zerofunction, ∂t_uˢ=zerofunction,
+                  ∂z_vˢ=zerofunction, ∂x_vˢ=zerofunction, ∂t_vˢ=zerofunction,
                   ∂x_wˢ=zerofunction, ∂y_wˢ=zerofunction, ∂t_wˢ=zerofunction, parameters=nothing)
 
 Construct a set of functions of space and time for a Stokes drift velocity field
@@ -261,11 +261,11 @@ uˢ(x, y, z, t) = A(x - cᵍ \\, t, y) ûˢ(z)
 
 with ``A(ξ, η) = \\exp{[-(ξ^2 + η^2) / 2δ^2]}``. We also assume ``vˢ = 0``.
 If ``𝐯ˢ`` represents the solenoidal component of the Stokes drift, then
-in this system from incompressibility requirement we have that
+in this system from incompressibility requirement we have tha
 ``∂_z wˢ = - ∂_x uˢ = - (∂_ξ A) ûˢ`` and therefore, under the assumption
 that ``wˢ`` tends to zero at large depths, we get ``wˢ = - (∂_ξ A / 2k) ûˢ``.
 
-```jldoctest
+```jldoctes
 using Oceananigans
 using Oceananigans.Units
 
@@ -298,7 +298,7 @@ const Uˢ = ϵ^2 * c
 
 stokes_drift = StokesDrift(; ∂z_uˢ, ∂t_uˢ, ∂y_uˢ, ∂t_wˢ, ∂x_wˢ, ∂y_wˢ)
 
-# output
+# outpu
 
 StokesDrift{Nothing}:
 ├── ∂x_vˢ: zerofunction
@@ -326,7 +326,7 @@ function StokesDrift(; ∂x_vˢ = zerofunction,
     return StokesDrift(∂x_vˢ, ∂x_wˢ, ∂y_uˢ, ∂y_wˢ, ∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, ∂t_wˢ, parameters)
 end
 
-const SD = StokesDrift
+const SD = StokesDrif
 const SDnoP = StokesDrift{<:Nothing}
 
 @inline ∂t_uˢ(i, j, k, grid, sw::SD, time) = sw.∂t_uˢ(node(i, j, k, grid, f, c, c)..., time, sw.parameters)
@@ -341,8 +341,8 @@ const SDnoP = StokesDrift{<:Nothing}
 @inline parameters_tuple(sw::SD) = tuple(sw.parameters)
 
 @inline function x_curl_Uˢ_cross_U(i, j, k, grid, sw::SD, U, time)
-    wᶠᶜᶜ = ℑxzᶠᵃᶜ(i, j, k, grid, U.w) 
-    vᶠᶜᶜ = ℑxyᶠᶜᵃ(i, j, k, grid, U.v) 
+    wᶠᶜᶜ = ℑxzᶠᵃᶜ(i, j, k, grid, U.w)
+    vᶠᶜᶜ = ℑxyᶠᶜᵃ(i, j, k, grid, U.v)
 
     pt = parameters_tuple(sw)
     X = node(i, j, k, grid, f, c, c)

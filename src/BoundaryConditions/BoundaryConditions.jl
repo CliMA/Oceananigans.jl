@@ -1,16 +1,16 @@
 module BoundaryConditions
 
-export
+expor
     BCType, Flux, Gradient, Value, Open,
     BoundaryCondition, getbc, setbc!,
-    PeriodicBoundaryCondition, OpenBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition, 
+    PeriodicBoundaryCondition, OpenBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
     apply_x_bcs!, apply_y_bcs!, apply_z_bcs!,
     fill_halo_regions!
 
-using CUDA, Adapt
+using CUDA, Adap
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans.Architectures: CPU, GPU, device

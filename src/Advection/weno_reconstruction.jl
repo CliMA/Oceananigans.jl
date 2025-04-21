@@ -22,11 +22,11 @@ struct WENO{N, FT, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
 end
 
 """
-    WENO([FT=Float64;] 
+    WENO([FT=Float64;]
          order = 5,
-         grid = nothing, 
+         grid = nothing,
          bounds = nothing)
-               
+
 Construct a weighted essentially non-oscillatory advection scheme of order `order`.
 
 Keyword arguments
@@ -37,7 +37,7 @@ Keyword arguments
 
 Examples
 ========
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> WENO()
@@ -48,7 +48,7 @@ WENO(order=5)
     └── Centered(order=4)
 ```
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> Nx, Nz = 16, 10;
@@ -68,12 +68,12 @@ WENO(order=7)
     └── Centered(order=6)
 ```
 """
-function WENO(FT::DataType=Oceananigans.defaults.FloatType; 
+function WENO(FT::DataType=Oceananigans.defaults.FloatType;
               order = 5,
-              grid = nothing, 
+              grid = nothing,
               bounds = nothing)
-    
-    if !(grid isa Nothing) 
+
+    if !(grid isa Nothing)
         FT = eltype(grid)
     end
 
@@ -89,7 +89,7 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
     else
         N = Int((order + 1) ÷ 2)
         advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
-        buffer_scheme = WENO(FT; grid, order=order-2, bounds) 
+        buffer_scheme = WENO(FT; grid, order=order-2, bounds)
     end
 
     return WENO{N, FT}(bounds, buffer_scheme, advecting_velocity_scheme)

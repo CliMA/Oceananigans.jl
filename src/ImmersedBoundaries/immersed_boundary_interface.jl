@@ -6,7 +6,7 @@ is not part of the prognostic state.
 """
 @inline immersed_cell(i, j, k, grid) = false
 
-# Unpack to make defining new immersed boundaries more convenient
+# Unpack to make defining new immersed boundaries more convenien
 @inline immersed_cell(i, j, k, grid::ImmersedBoundaryGrid) =
     immersed_cell(i, j, k, grid.underlying_grid, grid.immersed_boundary)
 

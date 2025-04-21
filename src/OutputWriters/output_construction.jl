@@ -23,7 +23,7 @@ function construct_output(output, grid, indices, with_halos)
         @warn "Cannot slice $output_type $output with $indices: output will be unsliced."
     end
 
-    return output
+    return outpu
 end
 
 #####

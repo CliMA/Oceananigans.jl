@@ -25,7 +25,7 @@ Return a `SplitExplicitFreeSurface` representing an explicit time discretization
 a free surface dynamics with `gravitational_acceleration`. The free surface dynamics are solved by discretizing:
 ```math
 \\begin{gather}
-∂_t η = - \\nabla ⋅ U, \\\\
+∂_t η = - \\nabla ⋅ U,
 ∂_t U = - g H \\nabla η + G^U,
 \\end{gather}
 ```
@@ -129,7 +129,7 @@ function split_explicit_substepping(cfl, ::Nothing, ::Nothing, grid, averaging_k
     return FixedTimeStepSize(grid; cfl, averaging_kernel)
 end
 
-# The number of substeps are calculated based on the cfl and the fixed_Δt
+# The number of substeps are calculated based on the cfl and the fixed_Δ
 function split_explicit_substepping(cfl, ::Nothing, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
     substepping = split_explicit_substepping(cfl, nothing, nothing, grid, averaging_kernel, gravitational_acceleration)
     substeps    = ceil(Int, 2 * fixed_Δt / substepping.Δt_barotropic)
@@ -138,14 +138,14 @@ function split_explicit_substepping(cfl, ::Nothing, fixed_Δt, grid, averaging_k
 end
 
 # Disambiguation for a default `SplitExplicitFreeSurface` constructor
-split_explicit_substepping(::Nothing, ::Nothing, ::Nothing, grid, averaging_kernel, gravitational_acceleration) = 
+split_explicit_substepping(::Nothing, ::Nothing, ::Nothing, grid, averaging_kernel, gravitational_acceleration) =
     split_explicit_substepping(nothing, MINIMUM_SUBSTEPS, nothing, grid, averaging_kernel, gravitational_acceleration)
 
 # TODO: When open boundary conditions are online
 # We need to calculate the barotropic boundary conditions
 # from the baroclinic boundary conditions by integrating the BC upwards
-@inline  west_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.west
-@inline  east_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.east
+@inline  west_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.wes
+@inline  east_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.eas
 @inline south_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.south
 @inline north_barotropic_bc(baroclinic_velocity) = baroclinic_velocity.boundary_conditions.north
 
@@ -311,7 +311,7 @@ split_explicit_kernel_size(::Type{FullyConnected}, N, H) = -H+2:N+H-1
 split_explicit_kernel_size(::Type{RightConnected}, N, H) =    1:N+H-1
 split_explicit_kernel_size(::Type{LeftConnected},  N, H) = -H+2:N
 
-# Adapt
+# Adap
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
     SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η),
                              Adapt.adapt(to, free_surface.barotropic_velocities),

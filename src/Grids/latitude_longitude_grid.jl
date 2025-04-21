@@ -45,8 +45,8 @@ function LatitudeLongitudeGrid{TX, TY, TZ}(architecture::Arch,
                                             λᶠᵃᵃ :: XF,   λᶜᵃᵃ :: XC,
                                            Δφᵃᶠᵃ :: DYF, Δφᵃᶜᵃ :: DYC,
                                             φᵃᶠᵃ :: YF,   φᵃᶜᵃ :: YC, z :: Z,
-                                           Δxᶜᶜᵃ :: DXCC, Δxᶠᶜᵃ :: DXFC, 
-                                           Δxᶜᶠᵃ :: DXCF, Δxᶠᶠᵃ :: DXFF, 
+                                           Δxᶜᶜᵃ :: DXCC, Δxᶠᶜᵃ :: DXFC,
+                                           Δxᶜᶠᵃ :: DXCF, Δxᶠᶠᵃ :: DXFF,
                                            Δyᶠᶜᵃ :: DYFC, Δyᶜᶠᵃ :: DYCF,
                                            Azᶜᶜᵃ :: DXCC, Azᶠᶜᵃ :: DXFC,
                                            Azᶜᶠᵃ :: DXCF, Azᶠᶠᵃ :: DXFF,
@@ -156,7 +156,7 @@ Examples
 
 * A default grid with `Float64` type:
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> grid = LatitudeLongitudeGrid(size=(36, 34, 25),
@@ -171,7 +171,7 @@ julia> grid = LatitudeLongitudeGrid(size=(36, 34, 25),
 
 * A bounded spherical sector with cell interfaces stretched hyperbolically near the top:
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> σ = 1.1; # stretching factor
@@ -276,7 +276,7 @@ function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitud
         TX, TY, TZ = validate_topology(topology)
         Nλ, Nφ, Nz = size = validate_size(TX, TY, TZ, size)
     else # Set default topology according to longitude
-        Nλ, Nφ, Nz = size # using default topology, does not support Flat
+        Nλ, Nφ, Nz = size # using default topology, does not support Fla
         λ₁, λ₂ = get_domain_extent(longitude, Nλ)
 
         Lλ = λ₂ - λ₁
@@ -299,7 +299,7 @@ function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitud
     φ₂ <= 90  || throw(ArgumentError("The northern latitude cannot be greater than 90 degrees."))
     φ₁ <= φ₂  || throw(ArgumentError("Latitudes must increase south to north."))
 
-    if TX == Flat || TY == Flat
+    if TX == Flat || TY == Fla
         precompute_metrics = false
     end
 

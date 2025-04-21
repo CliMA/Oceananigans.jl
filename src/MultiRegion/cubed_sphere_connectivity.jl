@@ -42,9 +42,9 @@ $(TYPEDFIELDS)
 """
 struct CubedSphereRegionalConnectivity{S, FS, R} <: AbstractConnectivity
     "the current region rank"
-            rank :: Int
+            rank :: In
     "the region from which boundary condition comes from"
-       from_rank :: Int
+       from_rank :: In
     "the current region side"
             side :: S
     "the side of the region from which boundary condition comes from"
@@ -57,7 +57,7 @@ struct CubedSphereRegionalConnectivity{S, FS, R} <: AbstractConnectivity
 
     Return a `CubedSphereRegionalConnectivity`: `from_rank :: Int` → `rank :: Int` and
     `from_side :: AbstractRegionSide` → `side :: AbstractRegionSide`. The rotation of
-    the adjacent region relative to the host region is prescribed via `rotation` argument
+    the adjacent region relative to the host region is prescribed via `rotation` argumen
     (default `rotation=nothing`).
 
     Example
@@ -79,7 +79,7 @@ struct CubedSphereRegionalConnectivity{S, FS, R} <: AbstractConnectivity
     ```
 
     A connectivity that implies that the boundary condition for the
-    north side of region 1 comes from the east side of region 3 is 
+    north side of region 1 comes from the east side of region 3 is
 
     ```jldoctest cubedsphereconnectivity
     julia> CubedSphereRegionalConnectivity(1, 3, North(), East(), ↺())

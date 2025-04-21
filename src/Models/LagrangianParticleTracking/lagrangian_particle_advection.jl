@@ -6,7 +6,7 @@ using Oceananigans.Fields: interpolator, FractionalIndices
 ##### Boundary conditions for Lagrangian particles
 #####
 
-# Functions for bouncing particles off walls to the right and left
+# Functions for bouncing particles off walls to the right and lef
 @inline  bounce_left(x, xᴿ, Cʳ) = xᴿ - Cʳ * (x - xᴿ)
 @inline bounce_right(x, xᴸ, Cʳ) = xᴸ + Cʳ * (xᴸ - x)
 
@@ -57,7 +57,7 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
 
     # Determine current particle cell from the interfaces
     fi = FractionalIndices(X, ibg.underlying_grid, f, f, f)
-    
+
     i, i⁺, _ = interpolator(fi.i)
     j, j⁺, _ = interpolator(fi.j)
     k, k⁺, _ = interpolator(fi.k)
@@ -78,7 +78,7 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
     zᴸ = rnode(i⁻, j⁻, k⁻, ibg, f, f, f)
 
     Cʳ = restitution
-    
+
     xb⁺ = enforce_boundary_conditions(tx, x, xᴸ, xᴿ, Cʳ)
     yb⁺ = enforce_boundary_conditions(ty, y, yᴸ, yᴿ, Cʳ)
     zb⁺ = enforce_boundary_conditions(tz, z, zᴸ, zᴿ, Cʳ)
@@ -111,7 +111,7 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
 
     # Obtain current particle indices, looking at the interfaces
     fi = FractionalIndices(X, grid, f, f, f)
-    
+
     i, i⁺, _ = interpolator(fi.i)
     j, j⁺, _ = interpolator(fi.j)
     k, k⁺, _ = interpolator(fi.k)
@@ -124,14 +124,14 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
     w = interpolate(X, velocities.w, (c, c, f), grid)
 
     # Advect particles, calculating the advection metric for a curvilinear grid.
-    # Note that all supported grids use length coordinates in the vertical, so we do not
+    # Note that all supported grids use length coordinates in the vertical, so we do no
     # transform the vertical velocity nor invoke the k-index.
     ξ = x_metric(i, j, grid)
     η = y_metric(i, j, grid)
 
-    x⁺ = x + ξ * u * Δt
-    y⁺ = y + η * v * Δt
-    z⁺ = z + w * Δt
+    x⁺ = x + ξ * u * Δ
+    y⁺ = y + η * v * Δ
+    z⁺ = z + w * Δ
 
     # Satisfy boundary conditions for particles: bounce off walls, travel over periodic boundaries.
     tx, ty, tz = map(instantiate, topology(grid))

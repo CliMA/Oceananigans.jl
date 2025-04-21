@@ -2,7 +2,7 @@ using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition, Zipper
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
 using Oceananigans.Grids: index_range_contains
 
-using Adapt
+using Adap
 using LinearAlgebra
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
@@ -117,7 +117,7 @@ Keyword arguments
 
 - `data :: OffsetArray`: An offset array with the fields data. If nothing is provided the
   field is filled with zeros.
-- `boundary_conditions`: If nothing is provided, then field is created using the default
+- `boundary_conditions`: If nothing is provided, then field is created using the defaul
   boundary conditions via [`FieldBoundaryConditions`](@ref).
 - `indices`: Used to prescribe where a reduced field lives on. For example, at which `k` index
   does a two-dimensional ``x``-``y`` field lives on. Default: `(:, :, :)`.
@@ -280,7 +280,7 @@ DocTestSetup = quote
 end
 ```
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(2, 3, 4), x=(0, 1), y=(0, 1), z=(0, 1));
@@ -371,7 +371,7 @@ immersed_boundary_condition(f::Field) = f.boundary_conditions.immersed
 data(field::Field) = field.data
 
 instantiate(T::Type) = T()
-instantiate(t) = t
+instantiate(t) =
 
 """Return indices that create a `view` over the interior of a Field."""
 interior_view_indices(field_indices, interior_indices)   = Colon()
@@ -588,7 +588,7 @@ const ReducedAbstractField = Union{XReducedAbstractField,
                                    XYReducedAbstractField,
                                    XYZReducedAbstractField}
 
-# TODO: needs test
+# TODO: needs tes
 LinearAlgebra.dot(a::AbstractField, b::AbstractField) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))
 function LinearAlgebra.norm(a::AbstractField; condition = nothing)
     r = zeros(a.grid, 1)

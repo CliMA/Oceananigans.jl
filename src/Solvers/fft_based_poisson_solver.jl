@@ -18,7 +18,7 @@ function transform_list_str(transform_list)
     transform_strs = (transform_str(t) for t in transform_list)
     list = string(transform_strs...)
     list = list[1:end-2]
-    return list
+    return lis
 end
 
 Base.summary(solver::FFTBasedPoissonSolver) = "FFTBasedPoissonSolver"
@@ -110,7 +110,7 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
     @. ϕc = - b / (λx + λy + λz - m)
 
     # If m === 0, the "zeroth mode" at `i, j, k = 1, 1, 1` is undetermined;
-    # we set this to zero by default. Another slant on this "problem" is that
+    # we set this to zero by default. Another slant on this "problem" is tha
     # λx[1, 1, 1] + λy[1, 1, 1] + λz[1, 1, 1] = 0, which yields ϕ[1, 1, 1] = Inf or NaN.
     m === 0 && CUDA.@allowscalar ϕc[1, 1, 1] = 0
 
@@ -120,11 +120,11 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
     end
 
     launch!(arch, solver.grid, :xyz, copy_real_component!, ϕ, ϕc, indices(ϕ))
-    
+
     return ϕ
 end
 
-# We have to pass the offset explicitly to this kernel (we cannot use KA implicit
+# We have to pass the offset explicitly to this kernel (we cannot use KA implici
 # index offsetting) since ϕc and ϕ and indexed with different indices
 @kernel function copy_real_component!(ϕ, ϕc, index_ranges)
     i, j, k = @index(Global, NTuple)

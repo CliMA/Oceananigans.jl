@@ -1,7 +1,7 @@
 using Oceananigans.Advection: div_Uc, div_𝐯u, div_𝐯v, div_𝐯w
 using Oceananigans.Fields: ZeroField, ConstantField
 using Oceananigans.Utils: sum_of_velocities
-using Adapt
+using Adap
 
 maybe_constant_field(u) = u
 maybe_constant_field(u::Number) = ConstantField(u)
@@ -22,7 +22,7 @@ Example
 
 # Using a tracer field to model sinking particles
 
-```jldoctest
+```jldoctes
 using Oceananigans
 
 # Physical parameters
@@ -41,7 +41,7 @@ w_Stokes = - 2/9 * Δb / ν * R^2 # m s⁻¹
 
 settling = AdvectiveForcing(w=w_Stokes)
 
-# output
+# outpu
 AdvectiveForcing:
 ├── u: ZeroField{Int64}
 ├── v: ZeroField{Int64}
@@ -58,7 +58,7 @@ end
 Base.summary(::AdvectiveForcing) = string("AdvectiveForcing")
 
 function Base.show(io::IO, af::AdvectiveForcing)
-    
+
     print(io, summary(af), ":", "\n")
 
     print(io, "├── u: ", prettysummary(af.u), "\n",
@@ -77,7 +77,7 @@ on_architecture(to, af::AdvectiveForcing) =
 # fallback
 @inline with_advective_forcing(forcing, total_velocities) = total_velocities
 
-@inline with_advective_forcing(forcing::AdvectiveForcing, total_velocities) = 
+@inline with_advective_forcing(forcing::AdvectiveForcing, total_velocities) =
     sum_of_velocities(velocities(forcing), total_velocities)
 
 # Unwrap the tuple within MultipleForcings
@@ -85,9 +85,9 @@ on_architecture(to, af::AdvectiveForcing) =
     with_advective_forcing(mf.forcings, total_velocities)
 
 # Recurse over forcing tuples
-@inline with_advective_forcing(forcing::Tuple, total_velocities) = 
+@inline with_advective_forcing(forcing::Tuple, total_velocities) =
     @inbounds with_advective_forcing(forcing[2:end], with_advective_forcing(forcing[1], total_velocities))
 
 # Terminate recursion
-@inline with_advective_forcing(forcing::NTuple{1}, total_velocities) = 
+@inline with_advective_forcing(forcing::NTuple{1}, total_velocities) =
     @inbounds with_advective_forcing(forcing[1], total_velocities)

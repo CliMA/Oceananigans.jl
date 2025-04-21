@@ -1,6 +1,6 @@
 module Models
 
-export
+expor
     NonhydrostaticModel,
     ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation,
     HydrostaticFreeSurfaceModel, ZStar, ZCoordinate,
@@ -11,7 +11,7 @@ export
 
 using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
-using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant
+using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvarian
 using Oceananigans.Fields: AbstractField, Field, flattened_unique_values, boundary_conditions
 using Oceananigans.Grids: AbstractGrid, halo_size, inflate_halo_size
 using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
@@ -56,8 +56,8 @@ function validate_model_halo(grid, momentum_advection, tracer_advection, closure
                                       closure)
 
     any(user_halo .< required_halo) &&
-        throw(ArgumentError("The grid halo $user_halo must be at least equal to $required_halo. \n \
-                            Note that an ImmersedBoundaryGrid requires an extra halo point in all \n \
+        throw(ArgumentError("The grid halo $user_halo must be at least equal to $required_halo. \n
+                            Note that an ImmersedBoundaryGrid requires an extra halo point in all \n
                             non-flat directions compared to a non-immersed boundary grid."))
 end
 
@@ -128,10 +128,10 @@ function possible_field_time_series(model::OceananigansModels)
     # such as model.diffusivity_fields
     return tuple(model_fields, forcing)
 end
- 
-# Update _all_ `FieldTimeSeries`es in an `OceananigansModel`. 
+
+# Update _all_ `FieldTimeSeries`es in an `OceananigansModel`.
 # Extract `FieldTimeSeries` from all property names that might contain a `FieldTimeSeries`
-# Flatten the resulting tuple by extracting unique values and set! them to the 
+# Flatten the resulting tuple by extracting unique values and set! them to the
 # correct time range by looping over them
 function update_model_field_time_series!(model::OceananigansModels, clock::Clock)
     time = Time(clock.time)
@@ -146,7 +146,7 @@ function update_model_field_time_series!(model::OceananigansModels, clock::Clock
 
     return nothing
 end
-               
+
 import Oceananigans.TimeSteppers: reset!
 
 function reset!(model::OceananigansModels)
@@ -162,7 +162,7 @@ function reset!(model::OceananigansModels)
     for field in model.timestepper.Gⁿ
         fill!(field, 0)
     end
-    
+
     return nothing
 end
 
@@ -170,7 +170,7 @@ end
 function default_nan_checker(model::OceananigansModels)
     model_fields = prognostic_fields(model)
 
-    if isempty(model_fields) 
+    if isempty(model_fields)
         return nothing
     end
 
@@ -182,7 +182,7 @@ end
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: OnlyParticleTrackingModel
 
-# Particle tracking models with prescribed velocities (and no tracers) 
+# Particle tracking models with prescribed velocities (and no tracers)
 # have no prognostic fields and no chance to producing a NaN.
 default_nan_checker(::OnlyParticleTrackingModel) = nothing
 

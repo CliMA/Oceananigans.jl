@@ -21,7 +21,7 @@ function TKEDissipationVerticalDiffusivity{TD}(tke_dissipation_equations::KE,
                                                maximum_viscosity::FT,
                                                minimum_tke::FT,
                                                minimum_stratification_number_safety_factor::FT,
-                                               negative_tke_damping_time_scale::FT, 
+                                               negative_tke_damping_time_scale::FT,
                                                tke_dissipation_time_step::DT) where {TD, KE, ST, LMIN, FT, DT}
 
     return TKEDissipationVerticalDiffusivity{TD, KE, ST, LMIN, FT, DT}(tke_dissipation_equations,
@@ -62,7 +62,7 @@ const FlavorOfTD{TD} = Union{TDVD{TD}, TDVDArray{TD}} where TD
                                       tke_dissipation_time_step = nothing)
 
 Return the `TKEDissipationVerticalDiffusivity` turbulence closure for vertical mixing by
-microscale ocean turbulence based on the prognostic evolution of two variables: the 
+microscale ocean turbulence based on the prognostic evolution of two variables: the
 turbulent kinetic energy (TKE), and the turbulent kinetic energy dissipation.
 Elsewhere this is referred to as "k-ϵ". For more information about k-ϵ, see
 Burchard and Bolding (2001), Umlauf and Buchard (2003), and Umlauf and Burchard (2005).
@@ -95,7 +95,7 @@ Keyword arguments
                                      with TKE advection.
                                      Default: 1 minute.
 
-Note that for numerical stability, it is recommended to either have a relative short
+Note that for numerical stability, it is recommended to either have a relative shor
 `negative_turbulent_kinetic_energy_damping_time_scale` or a reasonable
 `minimum_turbulent_kinetic_energy`, or both.
 """
@@ -220,7 +220,7 @@ function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::Flavo
                                            previous_velocities,
                                            _tupled_tracer_diffusivities,
                                            _tupled_implicit_linear_coefficients)
-end        
+end
 
 @inline viscosity_location(::FlavorOfTD) = (c, c, f)
 @inline diffusivity_location(::FlavorOfTD) = (c, c, f)
@@ -262,7 +262,7 @@ end
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
     closure_ij = getclosure(i, j, closure)
 
-    # Note: we also compute the TKE diffusivity here for diagnostic purposes, even though it
+    # Note: we also compute the TKE diffusivity here for diagnostic purposes, even though i
     # is recomputed in time_step_turbulent_kinetic_energy.
     κu★ = κuᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy)
     κc★ = κcᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy)
@@ -355,7 +355,7 @@ end
 
 @inline viscosity(::FlavorOfTD, diffusivities) = diffusivities.κu
 @inline diffusivity(::FlavorOfTD, diffusivities, ::Val{id}) where id = diffusivities._tupled_tracer_diffusivities[id]
-    
+
 #####
 ##### Show
 #####

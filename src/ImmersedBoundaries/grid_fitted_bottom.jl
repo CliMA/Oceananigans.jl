@@ -1,4 +1,4 @@
-using Adapt
+using Adap
 using CUDA: CuArray
 using OffsetArrays: OffsetArray
 using Oceananigans.Utils: getnamewrapper
@@ -13,7 +13,7 @@ using Printf
 
 abstract type AbstractGridFittedBottom{H} <: AbstractGridFittedBoundary end
 
-# To enable comparison with PartialCellBottom in the limiting case that
+# To enable comparison with PartialCellBottom in the limiting case tha
 # fractional cell height is 1.0.
 struct CenterImmersedCondition end
 struct InterfaceImmersedCondition end
@@ -40,14 +40,14 @@ Keyword Arguments
 * `bottom_height`: an array or function that gives the height of the
                    bottom in absolute ``z`` coordinates.
 
-* `immersed_condition`: Determine whether the part of the domain that is 
+* `immersed_condition`: Determine whether the part of the domain that is
                         immersed are all the cell centers that lie below
                         `bottom_height` (`CenterImmersedCondition()`; default)
                         or all the cell faces that lie below `bottom_height`
                         (`InterfaceImmersedCondition()`). The only purpose of
                         `immersed_condition` to allow `GridFittedBottom` and
                         `PartialCellBottom` to have the same behavior when the
-                        minimum fractional cell height for partial cells is set
+                        minimum fractional cell height for partial cells is se
                         to 0.
 """
 GridFittedBottom(bottom_height) = GridFittedBottom(bottom_height, CenterImmersedCondition())
@@ -91,8 +91,8 @@ Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.
 """
     materialize_immersed_boundary(grid, ib)
 
-Returns a new `ib` wrapped around a Field that holds the numerical `immersed_boundary`. 
-If `ib` is an `AbstractGridFittedBottom`, `ib.bottom_height` is the z-coordinate of 
+Returns a new `ib` wrapped around a Field that holds the numerical `immersed_boundary`.
+If `ib` is an `AbstractGridFittedBottom`, `ib.bottom_height` is the z-coordinate of
 top-most interface of the last ``immersed`` cell in the column. If `ib` is a `GridFittedBoundary`,
 `ib.mask` is a field of booleans that indicates whether a cell is immersed or not.
 """
@@ -105,7 +105,7 @@ function materialize_immersed_boundary(grid, ib::GridFittedBottom)
     return new_ib
 end
 
-compute_numerical_bottom_height!(bottom_field, grid, ib) = 
+compute_numerical_bottom_height!(bottom_field, grid, ib) =
     launch!(architecture(grid), grid, :xy, _compute_numerical_bottom_height!, bottom_field, grid, ib)
 
 @kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::GridFittedBottom)
@@ -144,7 +144,7 @@ end
 
 const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
 
-@inline static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIBG) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.bottom_height[i, j, 1] 
+@inline static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIBG) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.bottom_height[i, j, 1]
 @inline static_column_depthᶜᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶜᶜᵃ(i, j-1, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
 @inline static_column_depthᶠᶜᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶜᶜᵃ(i-1, j, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶠᶜᵃ(i, j-1, ibg), static_column_depthᶠᶜᵃ(i, j, ibg))

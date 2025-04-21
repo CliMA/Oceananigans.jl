@@ -150,7 +150,7 @@ Also note: a binary function in `Base` must be imported to be extended: use `imp
 Example
 =======
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans, Oceananigans.AbstractOperations
 
 julia> using Oceananigans.AbstractOperations: BinaryOperation, AbstractGridMetric, choose_location

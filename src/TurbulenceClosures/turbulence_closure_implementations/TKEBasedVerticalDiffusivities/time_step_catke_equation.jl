@@ -32,11 +32,11 @@ function time_step_catke_equation!(model)
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
 
-    Δt = model.clock.last_Δt
+    Δt = model.clock.last_Δ
     Δτ = get_time_step(closure)
 
     if isnothing(Δτ)
-        Δτ = Δt
+        Δτ = Δ
         M = 1
     else
         M = ceil(Int, Δt / Δτ) # number of substeps
@@ -62,7 +62,7 @@ function time_step_catke_equation!(model)
                 Δτ, χ, Gⁿe, G⁻e)
 
         # Good idea?
-        # previous_time = model.clock.time - Δt
+        # previous_time = model.clock.time - Δ
         # previous_iteration = model.clock.iteration - 1
         # current_time = previous_time + m * Δτ
         # previous_clock = (; time=current_time, iteration=previous_iteration)
@@ -164,7 +164,7 @@ end
     # See below.
     α = convert(FT, 1.5) + χ
     β = convert(FT, 0.5) + χ
-    
+
     @inbounds begin
         total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe
         e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k]) * active

@@ -82,7 +82,7 @@ function Base.show(io::IO, ft::NamedFieldTuple)
 
     grid = first(ft).grid
     all_same_grid = true
-    for field in ft
+    for field in f
         if field.grid !== grid
             all_same_grid = false
         end

@@ -1,4 +1,4 @@
-using Adapt
+using Adap
 
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Grids: AbstractGrid

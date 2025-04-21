@@ -13,7 +13,7 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
     return p, p_size, (0, 0)
 end
 
-@inline fix_halo_offsets(o, co) = co > 0 ? o - co : o # Windowed fields have only positive offsets to correct
+@inline fix_halo_offsets(o, co) = co > 0 ? o - co : o # Windowed fields have only positive offsets to correc
 
 function fill_west_and_east_halo!(c, ::PBCT, ::PBCT, size, offset, loc, arch, grid, args...; only_local_halos = false, kw...)
     c_parent, yz_size, offset = parent_size_and_offset(c, 2, 3, size, offset)
@@ -41,8 +41,8 @@ end
     j, k = @index(Global, NTuple)
     @unroll for i = 1:H
         @inbounds begin
-            c[i, j, k]     = c[N+i, j, k] # west
-            c[N+H+i, j, k] = c[H+i, j, k] # east
+            c[i, j, k]     = c[N+i, j, k] # wes
+            c[N+H+i, j, k] = c[H+i, j, k] # eas
         end
     end
 end
@@ -68,7 +68,7 @@ end
 end
 
 ####
-#### Tupled periodic boundary condition 
+#### Tupled periodic boundary condition
 ####
 
 @kernel function fill_periodic_west_and_east_halo!(c::Tuple, ::Val{H}, N) where {H}
@@ -77,8 +77,8 @@ end
         Base.@_inline_meta
         @unroll for i = 1:H
             @inbounds begin
-                  c[n][i, j, k]     = c[n][N+i, j, k] # west
-                  c[n][N+H+i, j, k] = c[n][H+i, j, k] # east
+                  c[n][i, j, k]     = c[n][N+i, j, k] # wes
+                  c[n][N+H+i, j, k] = c[n][H+i, j, k] # eas
             end
         end
     end
@@ -105,7 +105,7 @@ end
             @inbounds begin
                 c[n][i, j, k]     = c[n][i, j, N+k] # top
                 c[n][i, j, N+H+k] = c[n][i, j, H+k] # bottom
-            end  
+            end
         end
     end
 end

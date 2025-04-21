@@ -1,4 +1,4 @@
-using Base.Ryu: writeshortest
+using Base.Ryu: writeshortes
 using LinearAlgebra: dot, cross
 using OffsetArrays: IdOffsetRange
 
@@ -298,7 +298,7 @@ end
 
 function dimension_summary(topo, name, dom, z::AbstractVerticalCoordinate, pad_domain=0)
     prefix = domain_summary(topo, name, dom)
-    padding = " "^(pad_domain+1) 
+    padding = " "^(pad_domain+1)
     return string(prefix, padding, coordinate_summary(topo, z, name))
 end
 
@@ -326,10 +326,10 @@ coordinate_summary(topo, Δ::Union{AbstractVector, AbstractMatrix}, name) =
 @inline static_column_depthᶠᶠᵃ(i, j, grid) = grid.Lz
 
 # Will be extended in the `ImmersedBoundaries` module for a ``mutable'' grid type
-@inline column_depthᶜᶜᵃ(i, j, k, grid, η) = static_column_depthᶜᶜᵃ(i, j, grid) 
-@inline column_depthᶠᶜᵃ(i, j, k, grid, η) = static_column_depthᶠᶜᵃ(i, j, grid) 
-@inline column_depthᶜᶠᵃ(i, j, k, grid, η) = static_column_depthᶜᶠᵃ(i, j, grid) 
-@inline column_depthᶠᶠᵃ(i, j, k, grid, η) = static_column_depthᶠᶠᵃ(i, j, grid) 
+@inline column_depthᶜᶜᵃ(i, j, k, grid, η) = static_column_depthᶜᶜᵃ(i, j, grid)
+@inline column_depthᶠᶜᵃ(i, j, k, grid, η) = static_column_depthᶠᶜᵃ(i, j, grid)
+@inline column_depthᶜᶠᵃ(i, j, k, grid, η) = static_column_depthᶜᶠᵃ(i, j, grid)
+@inline column_depthᶠᶠᵃ(i, j, k, grid, η) = static_column_depthᶠᶠᵃ(i, j, grid)
 
 #####
 ##### Spherical geometry
@@ -343,7 +343,7 @@ Return the area of a spherical triangle on the unit sphere with sides `a`, `b`, 
 The area of a spherical triangle on the unit sphere is ``E = A + B + C - π``, where ``A``, ``B``, and ``C``
 are the triangle's inner angles.
 
-It has been known since the time of Euler and Lagrange that
+It has been known since the time of Euler and Lagrange tha
 ``\\tan(E/2) = P / (1 + \\cos a + \\cos b + \\cos c)``, where
 ``P = (1 - \\cos²a - \\cos²b - \\cos²c + 2 \\cos a \\cos b \\cos c)^{1/2}``.
 
@@ -396,7 +396,7 @@ end
 
 Return the area of a spherical quadrilateral on the unit sphere whose points are given by 3-vectors,
 `a`, `b`, `c`, and `d`. The area of the quadrilateral is given as the sum of the ares of the two
-non-overlapping triangles. To avoid having to pick the triangles appropriately ensuring they are not
+non-overlapping triangles. To avoid having to pick the triangles appropriately ensuring they are no
 overlapping, we compute the area of the quadrilateral as the half the sum of the areas of all four potential
 triangles formed by `a₁`, `a₂`, `a₃`, and `a₄`.
 """
@@ -457,7 +457,7 @@ julia> add_halos(data, loc, topo, (Nx, Ny, Nz), (1, 2, 0))
  0.799729  0.822402
 
 julia> add_halos(data, loc, topo, (Nx, Ny, Nz), (1, 2, 0))
-┌ Warning: data has larger size than expected in first dimension; some data is lost
+┌ Warning: data has larger size than expected in first dimension; some data is los
 └ @ Oceananigans.Grids ~/Oceananigans.jl/src/Grids/grid_utils.jl:650
 ┌ Warning: data has smaller size than expected in second dimension; rest of entries are filled with zeros.
 └ @ Oceananigans.Grids ~/Oceananigans.jl/src/Grids/grid_utils.jl:655

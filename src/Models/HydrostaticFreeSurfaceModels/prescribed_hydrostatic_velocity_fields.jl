@@ -11,7 +11,7 @@ import Oceananigans.Models: extract_boundary_conditions
 import Oceananigans.Utils: datatuple, sum_of_velocities
 import Oceananigans.TimeSteppers: time_step!
 
-using Adapt
+using Adap
 
 struct PrescribedVelocityFields{U, V, W, P}
     u :: U
@@ -72,7 +72,7 @@ function hydrostatic_velocity_fields(velocities::PrescribedVelocityFields, grid,
     return PrescribedVelocityFields(u, v, w, parameters)
 end
 
-hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names) = 
+hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names) =
     merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
 
 free_surface_names(free_surface, ::PrescribedVelocityFields, grid) = tuple()
@@ -94,7 +94,7 @@ free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid)
 
 ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
 rk3_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
-step_free_surface!(::Nothing, model, timestepper, Δt) = nothing 
+step_free_surface!(::Nothing, model, timestepper, Δt) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, args...; kwargs...) = nothing
 
 validate_velocity_boundary_conditions(grid, ::PrescribedVelocityFields) = nothing
@@ -131,7 +131,7 @@ const OnlyParticleTrackingModel = HydrostaticFreeSurfaceModel{TS, E, A, S, G, T,
 
 function time_step!(model::OnlyParticleTrackingModel, Δt; callbacks = [], kwargs...)
     tick!(model.clock, Δt)
-    model.clock.last_Δt = Δt
+    model.clock.last_Δt = Δ
     step_lagrangian_particles!(model, Δt)
     update_state!(model, callbacks)
 end

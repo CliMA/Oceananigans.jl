@@ -1,12 +1,12 @@
-import Oceananigans: tupleit
+import Oceananigans: tuplei
 
 #####
 ##### Some utilities for tupling
 #####
 
 tupleit(::Nothing) = ()
-tupleit(t::NamedTuple) = t
-tupleit(t::Tuple) = t
+tupleit(t::NamedTuple) =
+tupleit(t::Tuple) =
 tupleit(nt) = tuple(nt)
 tupleit(nt::Vector) = tuple(nt...)
 

@@ -2,7 +2,7 @@ using Oceananigans.AbstractOperations: Average
 using Oceananigans.Fields: FieldBoundaryConditions
 using Oceananigans.Utils: launch!, IterationInterval
 
-using Adapt
+using Adap
 
 using ..TurbulenceClosures:
     AbstractScalarDiffusivity,
@@ -91,7 +91,7 @@ end
 @kernel function _compute_smagorinsky_viscosity!(diffusivity_fields, grid, closure, buoyancy, velocities, tracers)
     i, j, k = @index(Global, NTuple)
 
-    # Strain tensor dot product
+    # Strain tensor dot produc
     Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, velocities.u, velocities.v, velocities.w)
 
     # Filter width

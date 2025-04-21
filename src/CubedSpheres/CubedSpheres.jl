@@ -74,9 +74,9 @@ end
 import Oceananigans.Fields: immersed_boundary_condition
 immersed_boundary_condition(::AbstractCubedSphereField) = nothing
 
-import Oceananigans.OutputWriters: construct_output, fetch_output
+import Oceananigans.OutputWriters: construct_output, fetch_outpu
 
-construct_output(user_output::AbstractCubedSphereField, args...) = user_output
+construct_output(user_output::AbstractCubedSphereField, args...) = user_outpu
 
 # Needed to support `fetch_output` with `model::Nothing`.
 time(model) = model.clock.time
@@ -194,7 +194,7 @@ function compute!(comp::CubedSphereComputedField, time=nothing)
         parameters = KernelParameters(size(c), map(offset_index, c.indices))
         launch!(arch, c.grid, parameters, _compute!, c.data, c.operand)
     end
-    
+
     fill_halo_regions!(comp)
 
     return comp
@@ -204,7 +204,7 @@ end
 ##### Output writing for cubed sphere fields
 #####
 
-import Oceananigans.OutputWriters: fetch_output
+import Oceananigans.OutputWriters: fetch_outpu
 
 function fetch_output(field::AbstractCubedSphereField, model, field_slicer)
     compute!(field)

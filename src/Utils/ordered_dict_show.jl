@@ -1,4 +1,4 @@
-using OrderedCollections: OrderedDict
+using OrderedCollections: OrderedDic
 
 function ordered_dict_show(dict::OrderedDict, padchar)
     name = "OrderedDict"

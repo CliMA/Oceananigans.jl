@@ -16,21 +16,21 @@ end
 @propagate_inbounds function getindex(s::SumOfArrays{N}, i...) where N
     first = getindex(SumOfArrays{3}(s.arrays[1], s.arrays[2], s.arrays[3]), i...)
     last = getindex(SumOfArrays{N - 3}(s.arrays[4:N]...), i...)
-    return first + last
+    return first + las
 end
 
 @propagate_inbounds getindex(s::SumOfArrays{1}, i...) = getindex(s.arrays[1], i...)
 @propagate_inbounds getindex(s::SumOfArrays{2}, i...) = getindex(s.arrays[1], i...) + getindex(s.arrays[2], i...)
 
-@propagate_inbounds getindex(s::SumOfArrays{3}, i...) = 
+@propagate_inbounds getindex(s::SumOfArrays{3}, i...) =
     getindex(s.arrays[1], i...) + getindex(s.arrays[2], i...) + getindex(s.arrays[3], i...)
-    
-@propagate_inbounds getindex(s::SumOfArrays{4}, i...) = 
+
+@propagate_inbounds getindex(s::SumOfArrays{4}, i...) =
     getindex(s.arrays[1], i...) + getindex(s.arrays[2], i...) + getindex(s.arrays[3], i...) + getindex(s.arrays[4], i...)
 
 adapt_structure(to, sum::SumOfArrays{N}) where N = SumOfArrays{N}((adapt_structure(to, array) for array in sum.arrays)...)
 
-# Convenience constructors for velocities with components (u, v, w) that
+# Convenience constructors for velocities with components (u, v, w) tha
 # throw away the `nothing` values. We assume that we pass at least one valid velocity field.
 
 const NT = NamedTuple

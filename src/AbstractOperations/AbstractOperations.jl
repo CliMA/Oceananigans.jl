@@ -20,7 +20,7 @@ using Oceananigans: location, AbstractModel
 using Oceananigans.Operators: interpolation_operator
 using Oceananigans.Architectures: device
 
-import Adapt
+import Adap
 
 import Oceananigans.Architectures: architecture, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -39,7 +39,7 @@ const AF = AbstractField # used in unary_operations.jl, binary_operations.jl, et
 
 architecture(a::AbstractOperation) = architecture(a.grid)
 
-# AbstractOperation macros add their associated functions to this list
+# AbstractOperation macros add their associated functions to this lis
 const operators = Set()
 
 """

@@ -1,6 +1,6 @@
 using Oceananigans.Utils: prettysummary
 
-import Adapt
+import Adap
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 
 struct ScalarDiffusivity{TD, F, N, V, K} <: AbstractScalarDiffusivity{TD, F, N}
@@ -123,7 +123,7 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
                            required_halo_size::Int = 1)
 
     if formulation == HorizontalFormulation() && time_discretization == VerticallyImplicitTimeDiscretization()
-      throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for \
+      throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for
           `VerticalFormulation` or `ThreeDimensionalFormulation`"))
     end
 
@@ -140,7 +140,7 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
     return ScalarDiffusivity{typeof(time_discretization), typeof(formulation), required_halo_size}(ν, κ)
 end
 
-# Explicit default
+# Explicit defaul
 @inline ScalarDiffusivity(formulation::AbstractDiffusivityFormulation, FT=Oceananigans.defaults.FloatType; kw...) =
     ScalarDiffusivity(ExplicitTimeDiscretization(), formulation, FT; kw...)
 

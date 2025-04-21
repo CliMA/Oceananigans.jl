@@ -6,8 +6,8 @@ A timestepping scheme used for substepping in the split-explicit free surface so
 The equations are evolved as follows:
 ```math
 \\begin{gather}
-η^{m+1} = η^m - Δτ (∂_x U^m + ∂_y V^m), \\\\
-U^{m+1} = U^m - Δτ (∂_x η^{m+1} - G^U), \\\\
+η^{m+1} = η^m - Δτ (∂_x U^m + ∂_y V^m),
+U^{m+1} = U^m - Δτ (∂_x η^{m+1} - G^U),
 V^{m+1} = V^m - Δτ (∂_y η^{m+1} - G^V).
 \\end{gather}
 ```
@@ -51,8 +51,8 @@ The equations are evolved as follows:
 
 ```math
 \\begin{gather}
-η^{m+1} = η^m - Δτ g H (∂_x Ũ + ∂y Ṽ), \\\\
-U^{m+1} = U^m - Δτ (∂_x η̃ - G^U), \\\\
+η^{m+1} = η^m - Δτ g H (∂_x Ũ + ∂y Ṽ),
+U^{m+1} = U^m - Δτ (∂_x η̃ - G^U),
 V^{m+1} = V^m - Δτ (∂_y η̃ - G^V),
 \\end{gather}
 ```
@@ -62,8 +62,8 @@ barotropic zonal and meridional velocities, respectively:
 
 ```math
 \\begin{gather}
-Ũ = α U^m + θ U^{m-1} + β U^{m-2}, \\\\
-Ṽ = α V^m + θ V^{m-1} + β V^{m-2}, \\\\
+Ũ = α U^m + θ U^{m-1} + β U^{m-2},
+Ṽ = α V^m + θ V^{m-1} + β V^{m-2},
 η̃ = δ η^{m+1} + μ η^m + γ η^{m-1} + ϵ η^{m-2}.
 \\end{gather}
 ```

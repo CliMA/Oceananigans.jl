@@ -1,5 +1,5 @@
 using Oceananigans.Diagnostics: AbstractDiagnostic
-using Oceananigans.OutputWriters: fetch_output
+using Oceananigans.OutputWriters: fetch_outpu
 using Oceananigans.Models: AbstractModel
 using Oceananigans.Utils: AbstractSchedule, prettytime
 using Oceananigans.TimeSteppers: Clock
@@ -16,9 +16,9 @@ Container for parameters that configure and handle time-averaged output.
 mutable struct AveragedTimeInterval <: AbstractSchedule
     interval :: Float64
     window :: Float64
-    stride :: Int
+    stride :: In
     first_actuation_time :: Float64
-    actuations :: Int
+    actuations :: In
     collecting :: Bool
 end
 
@@ -53,7 +53,7 @@ using Oceananigans.Utils: days
 
 schedule = AveragedTimeInterval(4days, window=2days)
 
-# output
+# outpu
 AveragedTimeInterval(window=2 days, stride=1, interval=4 days)
 ```
 
@@ -82,7 +82,7 @@ function next_actuation_time(sch::AveragedTimeInterval)
     t₀ = sch.first_actuation_time
     N = sch.actuations
     interval = sch.interval
-    return t₀ + (N + 1) * interval 
+    return t₀ + (N + 1) * interval
     # the next actuation time is the end of the time averaging window
 end
 
@@ -92,7 +92,7 @@ function (sch::AveragedTimeInterval)(model)
     return scheduled
 end
 initialize_schedule!(sch::AveragedTimeInterval, clock) = nothing
-outside_window(sch::AveragedTimeInterval, clock) = clock.time <=  next_actuation_time(sch) - sch.window  
+outside_window(sch::AveragedTimeInterval, clock) = clock.time <=  next_actuation_time(sch) - sch.window
 end_of_window(sch::AveragedTimeInterval, clock) = clock.time >= next_actuation_time(sch)
 
 TimeInterval(sch::AveragedTimeInterval) = TimeInterval(sch.interval)
@@ -108,7 +108,7 @@ A schedule for averaging over windows that precede SpecifiedTimes.
 mutable struct AveragedSpecifiedTimes <: AbstractSchedule
     specified_times :: SpecifiedTimes
     window :: Float64
-    stride :: Int
+    stride :: In
     collecting :: Bool
 end
 
@@ -153,7 +153,7 @@ mutable struct WindowedTimeAverage{OP, R, S} <: AbstractDiagnostic
                       result :: R
                      operand :: OP
            window_start_time :: Float64
-      window_start_iteration :: Int
+      window_start_iteration :: In
     previous_collection_time :: Float64
                     schedule :: S
                fetch_operand :: Bool
@@ -181,12 +181,12 @@ function WindowedTimeAverage(operand, model=nothing; schedule, fetch_operand=tru
     if fetch_operand
         output = fetch_output(operand, model)
         result = similar(output)
-        result .= output
+        result .= outpu
     else
         result = similar(operand)
         result .= operand
     end
-        
+
     return WindowedTimeAverage(result, operand, 0.0, 0, 0.0, schedule, fetch_operand)
 end
 
@@ -206,7 +206,7 @@ function (wta::WindowedTimeAverage)(model)
 
     stride(wta) > 1 && @warn "WindowedTimeAverage can be erroneous when stride > 1 and either the timestep is variable or there are floating point rounding errors in times, both of which result in a decoupling of the model clock times (used in the OutputWriters) and iteration numbers (used for stride)."
 
-    return wta.result
+    return wta.resul
 end
 
 function accumulate_result!(wta, model::AbstractModel)
@@ -222,7 +222,7 @@ function accumulate_result!(wta, clock::Clock, integrand=wta.operand)
     T_previous = wta.previous_collection_time - wta.window_start_time
 
     # Accumulate left Riemann sum
-    @. wta.result = (wta.result * T_previous + integrand * Δt) / T_current
+    @. wta.result = (wta.result * T_previous + integrand * Δt) / T_curren
 
     # Save time of integrand collection
     wta.previous_collection_time = clock.time
@@ -248,7 +248,7 @@ function advance_time_average!(wta::WindowedTimeAverage, model)
 
         if end_of_window(wta.schedule, model.clock)
             accumulate_result!(wta, model)
-            # Save averaging start time and the initial data collection time            
+            # Save averaging start time and the initial data collection time
             wta.schedule.collecting = false
             wta.schedule.actuations += 1
 
@@ -280,7 +280,7 @@ output_averaging_schedule(output::WindowedTimeAverage) = output.schedule
 #####
 ##### Utils for OutputWriters
 #####
- 
+
 time_average_outputs(schedule, outputs, model) = schedule, outputs # fallback
 
 """

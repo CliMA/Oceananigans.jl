@@ -27,7 +27,7 @@ const IBG = ImmersedBoundaryGrid
 @inline _viscous_flux_ux(i, j, k, ibg::IBG, args...) = conditional_flux_ccc(i, j, k, ibg, zero(ibg), viscous_flux_ux(i, j, k, ibg, args...))
 @inline _viscous_flux_uy(i, j, k, ibg::IBG, args...) = conditional_flux_ffc(i, j, k, ibg, zero(ibg), viscous_flux_uy(i, j, k, ibg, args...))
 @inline _viscous_flux_uz(i, j, k, ibg::IBG, args...) = conditional_flux_fcf(i, j, k, ibg, zero(ibg), viscous_flux_uz(i, j, k, ibg, args...))
- 
+
  # ffc, ccc, cff
 @inline _viscous_flux_vx(i, j, k, ibg::IBG, args...) = conditional_flux_ffc(i, j, k, ibg, zero(ibg), viscous_flux_vx(i, j, k, ibg, args...))
 @inline _viscous_flux_vy(i, j, k, ibg::IBG, args...) = conditional_flux_ccc(i, j, k, ibg, zero(ibg), viscous_flux_vy(i, j, k, ibg, args...))
@@ -49,7 +49,7 @@ const IBG = ImmersedBoundaryGrid
 ##### Very Important Note: For FluxBoundaryCondition,
 ##### we assume fluxes are directed along the "inward-facing normal".
 ##### For example, east_immersed_flux = - user_flux.
-##### With this convention, positive fluxes _increase_ boundary-adjacent
+##### With this convention, positive fluxes _increase_ boundary-adjacen
 ##### cell values, and negative fluxes _decrease_ them.
 #####
 
@@ -183,7 +183,7 @@ end
 ##### Immersed flux divergence
 #####
 
-# Compiler hint
+# Compiler hin
 @inline immersed_flux_divergence(i, j, k, ibg::GFIBG, bc::ZFBC, loc, c, closure, K, id, clock, fields) = zero(ibg)
 
 @inline function immersed_flux_divergence(i, j, k, ibg::GFIBG, bc, loc, c, closure, K, id, clock, fields)

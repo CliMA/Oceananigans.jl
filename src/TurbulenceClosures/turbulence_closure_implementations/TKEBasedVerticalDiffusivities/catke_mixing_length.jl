@@ -15,7 +15,7 @@ Contains mixing length parameters for CATKE vertical diffusivity.
 Base.@kwdef struct CATKEMixingLength{FT}
     Cˢ   :: FT = 1.131  # Surface distance coefficient for shear length scale
     Cᵇ   :: FT = 0.28   # Bottom distance coefficient for shear length scale
-    Cˢᵖ  :: FT = 0.505  # Sheared convective plume coefficient
+    Cˢᵖ  :: FT = 0.505  # Sheared convective plume coefficien
     CRiᵟ :: FT = 1.02   # Stability function width
     CRi⁰ :: FT = 0.254  # Stability function lower Ri
     Cʰⁱu :: FT = 0.242  # Shear mixing length coefficient for momentum at high Ri

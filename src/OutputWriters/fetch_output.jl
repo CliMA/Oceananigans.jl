@@ -25,7 +25,7 @@ function fetch_output(lagrangian_particles::LagrangianParticles, model)
     return NamedTuple{names}([getproperty(particle_properties, name) for name in names])
 end
 
-convert_output(output, writer) = output
+convert_output(output, writer) = outpu
 
 function convert_output(output::AbstractArray, array_type)
     if architecture(output) isa GPU

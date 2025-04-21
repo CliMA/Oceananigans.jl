@@ -9,9 +9,9 @@ $(TYPEDFIELDS)
 """
 struct RegionalConnectivity{S <: AbstractRegionSide, FS <: AbstractRegionSide} <: AbstractConnectivity
     "the current region rank"
-         rank :: Int
+         rank :: In
     "the region from which boundary condition comes from"
-    from_rank :: Int
+    from_rank :: In
     "the current region side"
          side :: S
     "the side of the region from which boundary condition comes from"

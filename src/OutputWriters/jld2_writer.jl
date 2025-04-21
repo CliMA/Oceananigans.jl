@@ -16,7 +16,7 @@ mutable struct JLD2Writer{O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter
     array_type :: D
     init :: IF
     including :: IN
-    part :: Int
+    part :: In
     file_splitting :: FS
     overwrite_existing :: Bool
     verbose :: Bool
@@ -44,7 +44,7 @@ Construct a `JLD2Writer` for an Oceananigans `model` that writes `label, output`
 in `outputs` to a JLD2 file.
 
 The argument `outputs` may be a `Dict` or `NamedTuple`. The keys of `outputs` are symbols or
-strings that "name" output data. The values of `outputs` are either `AbstractField`s, objects that
+strings that "name" output data. The values of `outputs` are either `AbstractField`s, objects tha
 are called with the signature `output(model)`, or `WindowedTimeAverage`s of `AbstractFields`s,
 functions, or callable objects.
 
@@ -62,7 +62,7 @@ Keyword arguments
 
 - `schedule` (required): `AbstractSchedule` that determines when output is saved.
 
-## Slicing and type conversion prior to output
+## Slicing and type conversion prior to outpu
 
 - `indices`: Specifies the indices to write to disk with a `Tuple` of `Colon`, `UnitRange`,
              or `Int` elements. Indices must be `Colon`, `Int`, or contiguous `UnitRange`.
@@ -76,18 +76,18 @@ Keyword arguments
 - `array_type`: The array type to which output arrays are converted to prior to saving.
                 Default: `Array{Float32}`.
 
-## File management
+## File managemen
 
 - `file_splitting`: Schedule for splitting the output file. The new files will be suffixed with
                     `_part1`, `_part2`, etc. For example `file_splitting = FileSizeLimit(sz)` will
-                    split the output file when its size exceeds `sz`. Another example is 
+                    split the output file when its size exceeds `sz`. Another example is
                     `file_splitting = TimeInterval(30days)`, which will split files every 30 days of
                     simulation time. The default incurs no splitting (`NoFileSplitting()`).
-                    
+
 - `overwrite_existing`: Remove existing files if their filenames conflict.
                         Default: `false`.
 
-## Output file metadata management
+## Output file metadata managemen
 
 - `init`: A function of the form `init(file, model)` that runs when a JLD2 output file is initialized.
           Default: `noinit(args...) = nothing`.
@@ -185,7 +185,7 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
         @warn """Failed to execute user `init` for $filepath because $(typeof(err)): $(sprint(showerror, err))"""
     end
 
-    try 
+    try
         jldopen(filepath, "a+"; jld2_kw...) do file
             saveproperties!(file, model, including)
 

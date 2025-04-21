@@ -44,7 +44,7 @@ the in-situ density. To compute a potential density at some user-chosen referenc
 set `geopotential_height` to a constant for the density computation,
 
 ```julia
-geopotential_height = 0 # sea-surface height
+geopotential_height = 0 # sea-surface heigh
 σ₀ = seawater_density(model; geopotential_height)
 ```
 

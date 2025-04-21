@@ -49,13 +49,13 @@ Also note: a unary function in `Base` must be imported to be extended: use `impo
 Example
 =======
 
-```jldoctest
+```jldoctes
 julia> using Oceananigans, Oceananigans.Grids, Oceananigans.AbstractOperations
 
 julia> square_it(x) = x^2
 square_it (generic function with 1 method)
 
-julia> @unary square_it
+julia> @unary square_i
 Set{Any} with 15 elements:
   :+
   :log10
@@ -66,9 +66,9 @@ Set{Any} with 15 elements:
   :abs
   :log
   :cosh
-  :square_it
+  :square_i
   :-
-  :sqrt
+  :sqr
   :tan
   :sinh
   :sin

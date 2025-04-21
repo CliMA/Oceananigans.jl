@@ -33,7 +33,7 @@ for advection across a cell. The advective CFL is, e.g., ``U Δt / Δx``.
 
 Example
 =======
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> model = NonhydrostaticModel(grid = RectilinearGrid(size=(16, 16, 16), extent=(8, 8, 8)));
@@ -63,7 +63,7 @@ returned.
 
 Example
 =======
-```jldoctest
+```jldoctes
 julia> using Oceananigans
 
 julia> model = NonhydrostaticModel(grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)),

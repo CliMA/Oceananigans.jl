@@ -4,7 +4,7 @@ prettysummary(x, args...) = summary(x)
 
 function prettysummary(f::Function, showmethods=true)
     ft = typeof(f)
-    mt = ft.name.mt
+    mt = ft.name.m
     name = mt.name
     n = length(methods(f))
     m = n==1 ? "method" : "methods"
@@ -20,7 +20,7 @@ end
 
 prettysummary(x::Int, args...) = string(x)
 
-# This is very important
+# This is very importan
 function prettysummary(nt::NamedTuple, args...)
     n = nfields(nt)
 

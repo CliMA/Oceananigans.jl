@@ -3,7 +3,7 @@ using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, stretched_dimen
 
 import Oceananigans.Architectures: architecture
 
-struct FourierTridiagonalPoissonSolver{G, B, R, S, β, T} 
+struct FourierTridiagonalPoissonSolver{G, B, R, S, β, T}
                           grid :: G
     batched_tridiagonal_solver :: B
                    source_term :: R
@@ -24,7 +24,7 @@ architecture(solver::FourierTridiagonalPoissonSolver) = architecture(solver.grid
         @inbounds D[i, j, k] = - (1 / Δxᶠᵃᵃ(i+1, j, k, grid) + 1 / Δxᶠᵃᵃ(i, j, k, grid)) - Δxᶜᵃᵃ(i, j, k, grid) * (λy[j] + λz[k])
     end
     @inbounds D[Nx, j, k] = -1 / Δxᶠᵃᵃ(Nx, j, k, grid) - Δxᶜᵃᵃ(Nx, j, k, grid) * (λy[j] + λz[k])
-end 
+end
 
 @kernel function compute_main_diagonal!(D, grid, λx, λz, ::YDirection)
     i, k = @index(Global, NTuple)
@@ -73,7 +73,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT;
 
     tridiagonal_dim = dimension(tridiagonal_direction)
     if topology(grid, tridiagonal_dim) != Bounded
-        msg = "`FourierTridiagonalPoissonSolver` can only be used \
+        msg = "`FourierTridiagonalPoissonSolver` can only be used
                 when the stretched direction's topology is `Bounded`."
         throw(ArgumentError(msg))
     end
@@ -98,7 +98,7 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT;
     lower_diagonal = on_architecture(arch, lower_diagonal)
     upper_diagonal = lower_diagonal
 
-    # Compute diagonal coefficients for each grid point
+    # Compute diagonal coefficients for each grid poin
     diagonal = on_architecture(arch, zeros(size(grid)...))
     launch_config = infer_launch_configuration(tridiagonal_direction)
     launch!(arch, grid, launch_config, compute_main_diagonal!, diagonal, grid, λ1, λ2, tridiagonal_direction)
@@ -142,7 +142,7 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     ϕ .= ϕ .- mean(ϕ)
 
     launch!(arch, solver.grid, :xyz, copy_real_component!, x, ϕ, indices(x))
-    
+
     return nothing
 end
 

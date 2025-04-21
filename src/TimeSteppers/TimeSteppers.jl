@@ -1,6 +1,6 @@
 module TimeSteppers
 
-export
+expor
     QuasiAdamsBashforth2TimeStepper,
     RungeKutta3TimeStepper,
     time_step!,
@@ -11,7 +11,7 @@ using CUDA
 using KernelAbstractions
 using Oceananigans: AbstractModel, initialize!, prognostic_fields
 using Oceananigans.Architectures: device
-using Oceananigans.Utils: work_layout
+using Oceananigans.Utils: work_layou
 
 """
     abstract type AbstractTimeStepper
@@ -57,13 +57,13 @@ TimeStepper(name::Symbol, args...; kwargs...) = TimeStepper(Val(name), args...; 
 TimeStepper(stepper::AbstractTimeStepper, args...; kwargs...) = stepper
 
 #individual contructors
-TimeStepper(::Val{:QuasiAdamsBashforth2}, args...; kwargs...) = 
+TimeStepper(::Val{:QuasiAdamsBashforth2}, args...; kwargs...) =
     QuasiAdamsBashforth2TimeStepper(args...; kwargs...)
 
-TimeStepper(::Val{:RungeKutta3}, args...; kwargs...) = 
+TimeStepper(::Val{:RungeKutta3}, args...; kwargs...) =
     RungeKutta3TimeStepper(args...; kwargs...)
 
-TimeStepper(::Val{:SplitRungeKutta3}, args...; kwargs...) = 
+TimeStepper(::Val{:SplitRungeKutta3}, args...; kwargs...) =
     SplitRungeKutta3TimeStepper(args...; kwargs...)
 
 function first_time_step!(model::AbstractModel, Δt)

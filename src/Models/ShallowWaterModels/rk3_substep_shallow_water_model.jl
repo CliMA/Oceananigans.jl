@@ -1,4 +1,4 @@
-using Oceananigans.Utils: work_layout
+using Oceananigans.Utils: work_layou
 using Oceananigans.Architectures: device
 using Oceananigans.TimeSteppers: rk3_substep_field!
 

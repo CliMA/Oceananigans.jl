@@ -8,11 +8,11 @@ Base.@kwdef struct CATKEEquation{FT}
     CʰⁱD  :: FT = 0.579 # Dissipation length scale shear coefficient for high Ri
     CˡᵒD  :: FT = 1.604 # Dissipation length scale shear coefficient for low Ri
     CᵘⁿD  :: FT = 0.923 # Dissipation length scale shear coefficient for high Ri
-    CᶜD   :: FT = 3.254 # Dissipation length scale convecting layer coefficient
-    CᵉD   :: FT = 0.0   # Dissipation length scale penetration layer coefficient
-    Cᵂu★  :: FT = 3.179 # Surface shear-driven TKE flux coefficient
-    CᵂwΔ  :: FT = 0.383 # Surface convective TKE flux coefficient
-    Cᵂϵ   :: FT = 1.0   # Dissipative near-bottom TKE flux coefficient
+    CᶜD   :: FT = 3.254 # Dissipation length scale convecting layer coefficien
+    CᵉD   :: FT = 0.0   # Dissipation length scale penetration layer coefficien
+    Cᵂu★  :: FT = 3.179 # Surface shear-driven TKE flux coefficien
+    CᵂwΔ  :: FT = 0.383 # Surface convective TKE flux coefficien
+    Cᵂϵ   :: FT = 1.0   # Dissipative near-bottom TKE flux coefficien
 end
 
 #####
@@ -69,7 +69,7 @@ end
     e = tracers.e
     FT = eltype(grid)
     eᵢ = @inbounds e[i, j, k]
-    
+
     # Note:
     #   Because   ∂t e + ⋯ = ⋯ + L e = ⋯ - ϵ,
     #
@@ -137,7 +137,7 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfCATKE,
 
     if :e ∈ keys(user_bcs)
         e_bcs = user_bcs[:e]
-        
+
         tke_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
                                           top = top_tke_bc,
                                           bottom = e_bcs.bottom,

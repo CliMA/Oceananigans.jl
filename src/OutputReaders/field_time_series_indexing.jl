@@ -2,7 +2,7 @@ using Oceananigans.Grids: _node
 using Oceananigans.Fields: interpolator, _interpolate, FractionalIndices, flatten_node
 using Oceananigans.Architectures: architecture
 using Oceananigans.DistributedComputations: child_architecture, Distributed
-using Adapt
+using Adap
 
 import Oceananigans.Fields: interpolate
 
@@ -190,12 +190,12 @@ function Base.getindex(fts::FieldTimeSeries, time_index::Time)
     # Otherwise, make a Field representing a linear interpolation in time
     # Make sure both n₁ and n₂ are in memory by first retrieving n₂ and then n₁
     update_field_time_series!(fts, n₁, n₂)
-    
+
     ψ₂ = fts[n₂]
     ψ₁ = fts[n₁]
     ψ̃  = Field(ψ₂ * ñ + ψ₁ * (1 - ñ))
 
-    # Compute the field and return it
+    # Compute the field and return i
     return compute!(ψ̃)
 end
 
@@ -245,7 +245,7 @@ end
     ix = interpolator(fi.i)
     iy = interpolator(fi.j)
     iz = interpolator(fi.k)
-    
+
     m₁ = memory_index(backend, time_indexing, Nt, n₁)
     m₂ = memory_index(backend, time_indexing, Nt, n₂)
 
@@ -347,8 +347,8 @@ end
 function in_time_range(fts, ::Union{Clamp, Linear}, n₁, n₂)
     Nt = length(fts.times)
     idxs = time_indices(fts)
-    in_range_1 = n₁ ∈ idxs || n₁ > Nt
-    in_range_2 = n₂ ∈ idxs || n₂ > Nt
+    in_range_1 = n₁ ∈ idxs || n₁ > N
+    in_range_2 = n₂ ∈ idxs || n₂ > N
     return in_range_1 && in_range_2
 end
 

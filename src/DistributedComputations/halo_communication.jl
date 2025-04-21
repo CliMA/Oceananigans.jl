@@ -1,8 +1,8 @@
 using KernelAbstractions: @kernel, @index
 
 using Oceananigans.Fields: fill_send_buffers!,
-                           recv_from_buffers!, 
-                           reduced_dimensions, 
+                           recv_from_buffers!,
+                           reduced_dimensions,
                            instantiated_location,
                            produce_ordinary_fields
 
@@ -31,14 +31,14 @@ sides  = (:west, :east, :south, :north, :southwest, :southeast, :northwest, :nor
 side_id = Dict(side => n-1 for (n, side) in enumerate(sides))
 
 opposite_side = Dict(
-    :west => :east, 
+    :west => :east,
     :east => :west,
     :south => :north,
     :north => :south,
-    :southwest => :northeast, 
-    :southeast => :northwest, 
-    :northwest => :southeast, 
-    :northeast => :southwest, 
+    :southwest => :northeast,
+    :southeast => :northwest,
+    :northwest => :southeast,
+    :northeast => :southwest,
 )
 
 ID_DIGITS   = 2
@@ -56,7 +56,7 @@ for LX in (:Face, :Center, :Nothing)
     end
 end
 
-# Functions that return unique send and recv MPI tags for each side, field location 
+# Functions that return unique send and recv MPI tags for each side, field location
 # keeping into account the possibility of asynchronous communication.
 # the MPI tag is an integer with:
 #   digit 1-2: an counter which keeps track of how many communications are live. The counter is stored in `arch.mpi_tag`
@@ -117,9 +117,9 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     if fill_boundary_normal_velocities
         fill_open_boundary_regions!(c, bcs, indices, loc, grid, buffers, args...; kwargs...)
     end
-    
+
     arch = architecture(grid)
-    fill_halos!, bcs = permute_boundary_conditions(bcs) 
+    fill_halos!, bcs = permute_boundary_conditions(bcs)
     number_of_tasks  = length(fill_halos!)
     outstanding_requests = length(arch.mpi_requests)
 
@@ -128,19 +128,19 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     end
 
     fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; kwargs...)
-    
+
     # We increment the request counter only if we have actually initiated the MPI communication.
-    # This is the case only if at least one of the boundary conditions is a distributed communication 
+    # This is the case only if at least one of the boundary conditions is a distributed communication
     # boundary condition (DCBCT) _and_ the `only_local_halos` keyword argument is false.
     if length(arch.mpi_requests) > outstanding_requests
         arch.mpi_tag[] += 1
     end
-    
+
     return nothing
 end
 
 @inline function pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, side)
-   
+
     # if `isnothing(requests)`, `fill_halo!` did not involve MPI passing
     if isnothing(requests)
         return nothing
@@ -158,7 +158,7 @@ end
 
     # Reset MPI tag
     arch.mpi_tag[] -= arch.mpi_tag[]
-    recv_from_buffers!(c, buffers, grid, Val(side))    
+    recv_from_buffers!(c, buffers, grid, Val(side))
 
     return nothing
 end
@@ -166,7 +166,7 @@ end
 # corner passing routine
 function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args...;
                        async=false, only_local_halos=false, kw...)
-    
+
     # No corner filling needed!
     only_local_halos && return nothing
 
@@ -191,11 +191,11 @@ function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args.
     return nothing
 end
 
-@inline communication_side(::Val{fill_west_and_east_halo!})   = :west_and_east
+@inline communication_side(::Val{fill_west_and_east_halo!})   = :west_and_eas
 @inline communication_side(::Val{fill_south_and_north_halo!}) = :south_and_north
 @inline communication_side(::Val{fill_bottom_and_top_halo!})  = :bottom_and_top
-@inline communication_side(::Val{fill_west_halo!})   = :west 
-@inline communication_side(::Val{fill_east_halo!})   = :east 
+@inline communication_side(::Val{fill_west_halo!})   = :wes
+@inline communication_side(::Val{fill_east_halo!})   = :eas
 @inline communication_side(::Val{fill_south_halo!})  = :south
 @inline communication_side(::Val{fill_north_halo!})  = :north
 @inline communication_side(::Val{fill_bottom_halo!}) = :bottom
@@ -204,7 +204,7 @@ end
 cooperative_wait(req::MPI.Request)            = MPI.Waitall(req)
 cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 
-# There are two additional keyword arguments (with respect to serial `fill_halo_event!`s) that take an effect on `DistributedGrids`: 
+# There are two additional keyword arguments (with respect to serial `fill_halo_event!`s) that take an effect on `DistributedGrids`:
 # - only_local_halos: if true, only the local halos are filled, i.e. corresponding to non-communicating boundary conditions
 # - async: if true, ansynchronous MPI communication is enabled
 function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid::DistributedGrid, buffers, args...;
@@ -217,20 +217,20 @@ function fill_halo_event!(c, fill_halos!, bcs, indices, loc, arch, grid::Distrib
     end
 
     # Calculate size and offset of the fill_halo kernel
-    # We assume that the kernel size is the same for west and east boundaries, 
+    # We assume that the kernel size is the same for west and east boundaries,
     # south and north boundaries and bottom and top boundaries
     size   = fill_halo_size(c, fill_halos!, indices, bcs[1], loc, grid)
     offset = fill_halo_offset(size, fill_halos!, indices)
 
     requests = fill_halos!(c, bcs..., size, offset, loc, arch, grid, buffers, args...; only_local_halos, kwargs...)
     pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, buffer_side)
-    
+
     return nothing
 end
 
 #####
 ##### fill_$corner_halo! where corner = [:southwest, :southeast, :northwest, :northeast]
-##### 
+#####
 
 for side in [:southwest, :southeast, :northwest, :northeast]
     fill_corner_halo! = Symbol("fill_$(side)_halo!")
@@ -240,13 +240,13 @@ for side in [:southwest, :southeast, :northwest, :northeast]
     @eval begin
         $fill_corner_halo!(c, corner, indices, loc, arch, grid, buffers, ::Nothing, args...; kwargs...) = nothing
 
-        function $fill_corner_halo!(c, corner, indices, loc, arch, grid, buffers, sd, args...; kwargs...) 
+        function $fill_corner_halo!(c, corner, indices, loc, arch, grid, buffers, sd, args...; kwargs...)
             child_arch = child_architecture(arch)
             local_rank = arch.local_rank
 
             recv_req = $recv_and_fill_side_halo!(c, grid, arch, loc, local_rank, corner, buffers)
             send_req = $send_side_halo(c, grid, arch, loc, local_rank, corner, buffers)
-            
+
             return [send_req, recv_req]
         end
     end
@@ -264,13 +264,13 @@ for (side, opposite_side) in zip([:west, :south], [:east, :north])
     recv_and_fill_opposite_side_halo! = Symbol("recv_and_fill_$(opposite_side)_halo!")
 
     @eval begin
-        function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side::DCBCT, size, offset, loc, arch::Distributed, 
+        function $fill_both_halo!(c, bc_side::DCBCT, bc_opposite_side::DCBCT, size, offset, loc, arch::Distributed,
                                   grid::DistributedGrid, buffers, args...; only_local_halos = false, kwargs...)
 
             only_local_halos && return nothing
 
             sync_device!(arch)
-                        
+
             @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs
             local_rank = bc_side.condition.from
 
@@ -335,12 +335,12 @@ for side in sides
             return send_req
         end
 
-        @inline $get_side_send_buffer(c, grid, buffers, arch) = buffers.$side.send     
+        @inline $get_side_send_buffer(c, grid, buffers, arch) = buffers.$side.send
     end
 end
 
 #####
-##### Receiving and filling halos 
+##### Receiving and filling halos
 #####
 
 for side in sides

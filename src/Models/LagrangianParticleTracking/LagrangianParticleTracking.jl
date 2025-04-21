@@ -3,7 +3,7 @@ module LagrangianParticleTracking
 export LagrangianParticles
 
 using Printf
-using Adapt
+using Adap
 using KernelAbstractions
 using StructArrays
 

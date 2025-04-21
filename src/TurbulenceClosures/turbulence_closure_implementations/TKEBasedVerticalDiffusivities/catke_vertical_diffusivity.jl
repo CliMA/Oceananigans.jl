@@ -56,7 +56,7 @@ small-scale ocean turbulence based on the prognostic evolution of subgrid
 Turbulent Kinetic Energy (TKE).
 
 !!! note "CATKE vertical diffusivity"
-    `CATKEVerticalDiffusivity` is new turbulence closure diffusivity. The default
+    `CATKEVerticalDiffusivity` is new turbulence closure diffusivity. The defaul
     values for its free parameters are obtained from calibration against large eddy
     simulations. For more details please refer to [Wagner25catke](@cite).
 
@@ -89,7 +89,7 @@ Keyword arguments
                                      with TKE advection.
                                      Default: 1 minute.
 
-Note that for numerical stability, it is recommended to either have a relative short
+Note that for numerical stability, it is recommended to either have a relative shor
 `negative_tke_damping_time_scale` or a reasonable
 `minimum_tke`, or both.
 """
@@ -213,7 +213,7 @@ end
 function update_previous_compute_time!(diffusivities, model)
     Δt = model.clock.time - diffusivities.previous_compute_time[]
     diffusivities.previous_compute_time[] = model.clock.time
-    return Δt
+    return Δ
 end
 
 function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; parameters = :xyz)
@@ -277,7 +277,7 @@ end
     closure_ij = getclosure(i, j, closure)
     Jᵇ = diffusivities.Jᵇ
 
-    # Note: we also compute the TKE diffusivity here for diagnostic purposes, even though it
+    # Note: we also compute the TKE diffusivity here for diagnostic purposes, even though i
     # is recomputed in time_step_turbulent_kinetic_energy.
     κu★ = κuᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Jᵇ)
     κc★ = κcᶜᶜᶠ(i, j, k, grid, closure_ij, velocities, tracers, buoyancy, Jᵇ)

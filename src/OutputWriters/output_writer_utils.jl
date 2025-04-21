@@ -15,7 +15,7 @@ using Oceananigans.OutputReaders: auto_extension
 
 struct NoFileSplitting end
 (::NoFileSplitting)(model) = false
-Base.summary(::NoFileSplitting) = "NoFileSplitting" 
+Base.summary(::NoFileSplitting) = "NoFileSplitting"
 Base.show(io::IO, nfs::NoFileSplitting) = print(io, summary(nfs))
 initialize!(::NoFileSplitting, model) = nothing
 
@@ -34,7 +34,7 @@ The `path` is automatically added and updated when `FileSizeLimit` is
 used with an output writer, and should not be provided manually.
 """
 FileSizeLimit(size_limit) = FileSizeLimit(size_limit, "")
-(fsl::FileSizeLimit)(model) = filesize(fsl.path) ≥ fsl.size_limit
+(fsl::FileSizeLimit)(model) = filesize(fsl.path) ≥ fsl.size_limi
 
 function Base.summary(fsl::FileSizeLimit)
     current_size_str = pretty_filesize(filesize(fsl.path))
@@ -45,18 +45,18 @@ end
 
 Base.show(io::IO, fsl::FileSizeLimit) = print(io, summary(fsl))
 
-# Update schedule based on user input
+# Update schedule based on user inpu
 update_file_splitting_schedule!(schedule, filepath) = nothing
 
-function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath) 
+function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath)
     schedule.path = filepath
     return nothing
-end 
+end
 
 """
     ext(ow)
 
-Return the file extension for the output writer or output
+Return the file extension for the output writer or outpu
 writer type `ow`.
 """
 ext(ow::Type{AbstractOutputWriter}) = throw("Extension for $ow is not implemented.")
@@ -84,7 +84,7 @@ saveproperty!(file, address, p::Function)             = nothing
 saveproperty!(file, address, p::Tuple)                = [saveproperty!(file, address * "/$i", p[i]) for i in 1:length(p)]
 saveproperty!(file, address, grid::AbstractGrid)      = _saveproperty!(file, address, on_architecture(CPU(), grid))
 
-function saveproperty!(file, address, grid::DistributedGrid) 
+function saveproperty!(file, address, grid::DistributedGrid)
     arch = architecture(grid)
     cpu_arch = Distributed(CPU(); partition = Partition(arch.ranks...))
     _saveproperty!(file, address, on_architecture(cpu_arch, grid))
@@ -109,7 +109,7 @@ end
 
 Serialize `obj` to `file[address]` in a "friendly" way; i.e. converting
 `CuArray` to `Array` so data can be loaded on any architecture,
-and not attempting to serialize objects that generally aren't
+and not attempting to serialize objects that generally aren'
 deserializable, like `Function`.
 """
 serializeproperty!(file, address, p)                = file[address] = p
@@ -125,7 +125,7 @@ serializeproperty!(file, address, p::CantSerializeThis) = nothing
 # TODO: use on_architecture for more stuff?
 serializeproperty!(file, address, grid::AbstractGrid) = file[address] = on_architecture(CPU(), grid)
 
-function serializeproperty!(file, address, grid::DistributedGrid) 
+function serializeproperty!(file, address, grid::DistributedGrid)
     arch = architecture(grid)
     cpu_arch = Distributed(CPU(); partition = arch.partition)
     file[address] = on_architecture(cpu_arch, grid)
@@ -222,6 +222,6 @@ function with_architecture_suffix(arch::Distributed, filename, ext)
     prefix = filename[1:end-Ne]
     rank = arch.local_rank
     prefix *= "_rank$rank"
-    return prefix * ext
+    return prefix * ex
 end
 

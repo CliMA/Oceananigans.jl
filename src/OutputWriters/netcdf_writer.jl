@@ -1,7 +1,7 @@
 #####
 ##### NetCDFWriter struct definition
 #####
-##### NetCDFWriter functionality is implemented in ext/OceananigansNCDatasetsExt
+##### NetCDFWriter functionality is implemented in ext/OceananigansNCDatasetsEx
 #####
 
 mutable struct NetCDFWriter{G, D, O, T, A, FS, DN} <: AbstractOutputWriter
@@ -12,15 +12,15 @@ mutable struct NetCDFWriter{G, D, O, T, A, FS, DN} <: AbstractOutputWriter
     schedule :: T
     array_type :: A
     indices :: Tuple
-    global_attributes :: Dict
-    output_attributes :: Dict
-    dimensions :: Dict
+    global_attributes :: Dic
+    output_attributes :: Dic
+    dimensions :: Dic
     with_halos :: Bool
     include_grid_metrics :: Bool
     overwrite_existing :: Bool
     verbose :: Bool
-    deflatelevel :: Int
-    part :: Int
+    deflatelevel :: In
+    part :: In
     file_splitting :: FS
     dimension_name_generator :: DN
 end
