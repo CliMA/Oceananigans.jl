@@ -34,7 +34,7 @@ end
 
 Base.summary(ib::PartialCellBottom{<:Function}) = @sprintf("PartialCellBottom(%s, ϵ=%.1f)",
                                                            prettysummary(ib.bottom_height, false),
-                                                           prettysummary(ib.minimum_fractional_cell_height))
+                                                           ib.minimum_fractional_cell_height)
 
 function Base.show(io::IO, ib::PartialCellBottom)
     print(io, summary(ib), '\n')
