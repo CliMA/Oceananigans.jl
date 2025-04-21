@@ -80,10 +80,10 @@ Keyword arguments
 
 - `file_splitting`: Schedule for splitting the output file. The new files will be suffixed with
                     `_part1`, `_part2`, etc. For example `file_splitting = FileSizeLimit(sz)` will
-                    split the output file when its size exceeds `sz`. Another example is 
+                    split the output file when its size exceeds `sz`. Another example is
                     `file_splitting = TimeInterval(30days)`, which will split files every 30 days of
                     simulation time. The default incurs no splitting (`NoFileSplitting()`).
-                    
+
 - `overwrite_existing`: Remove existing files if their filenames conflict.
                         Default: `false`.
 
@@ -185,7 +185,7 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
         @warn """Failed to execute user `init` for $filepath because $(typeof(err)): $(sprint(showerror, err))"""
     end
 
-    try 
+    try
         jldopen(filepath, "a+"; jld2_kw...) do file
             saveproperties!(file, model, including)
 
