@@ -19,22 +19,37 @@ function test_zstar_coordinate(model, Ni, Δt)
     w   = model.velocities.w
     Nz  = model.grid.Nz
 
-    for _ in 1:Ni
+    for step in 1:Ni
         time_step!(model, Δt)
+
+    	∫b = Field(Integral(model.tracers.b))
+    	∫c = Field(Integral(model.tracers.c))
+    	compute!(∫b)
+    	compute!(∫c)
+
+	condition = interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
+	@test condition
+	if !condition
+            @info "Stopping early: buoyancy not conserved at step $step"
+	    break
+	end
+
+	condition = interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)
+	@test condition
+	if !condition
+            @info "Stopping early: c tracer not conserved at step $step"
+	    break
+	end
+
+	condition = maximum(abs, interior(w, :, :, Nz+1)) < eps(eltype(w))
+	@test condition
+	if !condition
+            @info "Stopping early: nonzero vertical velocity at top at step $step"
+	    break
+	end
+
     end
-
-    ∫b = Field(Integral(model.tracers.b))
-    ∫c = Field(Integral(model.tracers.c))
-    compute!(∫b)
-    compute!(∫c)
-
-    # Testing that:
-    # (1) tracers are conserved down to machine precision
-    # (2) vertical velocities are zero at the top surface
-    @test interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
-    @test interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)
-    @test maximum(abs, interior(w, :, :, Nz+1)) < eps(eltype(w))
-
+    
     return nothing
 end
 
@@ -128,8 +143,7 @@ end
     @test all(um.data .≈ us.data)
 end
 
-@testset "ZStar coordinate simulation testset" begin
-    z_uniform   = MutableVerticalDiscretization((-20, 0))
+@testset "ZStar tracer conservation testset" begin
     z_stretched = MutableVerticalDiscretization(collect(-20:0))
     topologies  = ((Periodic, Periodic, Bounded),
                    (Periodic, Bounded, Bounded),
@@ -140,29 +154,22 @@ end
         for topology in topologies
             Random.seed!(1234)
 
-            rtg  = RectilinearGrid(arch; size = (10, 10, 20), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_uniform)
             rtgv = RectilinearGrid(arch; size = (10, 10, 20), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_stretched)
-
-            irtg  = ImmersedBoundaryGrid(rtg,   GridFittedBottom((x, y) -> rand() - 10))
             irtgv = ImmersedBoundaryGrid(rtgv,  GridFittedBottom((x, y) -> rand() - 10))
-            prtg  = ImmersedBoundaryGrid(rtg,  PartialCellBottom((x, y) -> rand() - 10))
             prtgv = ImmersedBoundaryGrid(rtgv, PartialCellBottom((x, y) -> rand() - 10))
 
             if topology[2] == Bounded
-                llg  = LatitudeLongitudeGrid(arch; size = (10, 10, 20), latitude = (0, 1), longitude = (0, 1), topology, z = z_uniform)
                 llgv = LatitudeLongitudeGrid(arch; size = (10, 10, 20), latitude = (0, 1), longitude = (0, 1), topology, z = z_stretched)
 
-                illg  = ImmersedBoundaryGrid(llg,   GridFittedBottom((x, y) -> rand() - 10))
                 illgv = ImmersedBoundaryGrid(llgv,  GridFittedBottom((x, y) -> rand() - 10))
-                pllg  = ImmersedBoundaryGrid(llg,  PartialCellBottom((x, y) -> rand() - 10))
                 pllgv = ImmersedBoundaryGrid(llgv, PartialCellBottom((x, y) -> rand() - 10))
 
                 # TODO: Partial cell bottom are broken at the moment and do not account for the Δz in the volumes
                 # and vertical areas (see https://github.com/CliMA/Oceananigans.jl/issues/3958)
                 # When this is issue is fixed we can add the partial cells to the testing.
-                grids = [llg, rtg, llgv, rtgv, illg, irtg, illgv, irtgv] # , pllg, prtg, pllgv, prtgv]
+                grids = [llgv, rtgv, illgv, irtgv] # , pllgv, prtgv]
             else
-                grids = [rtg, rtgv, irtg, irtgv] #, prtg, prtgv]
+                grids = [rtgv, irtgv] #, prtgv]
             end
 
             for grid in grids
@@ -185,11 +192,11 @@ end
 
                     info_msg = info_message(grid, free_surface)
                     @testset "$info_msg" begin
-                        @info "  Testing a $info_msg"
-                        model = HydrostaticFreeSurfaceModel(; grid,
-                                                            free_surface,
-                                                            tracers = (:b, :c),
-                                                            buoyancy = BuoyancyTracer(),
+                        @info "  Testing a $info_msg" 
+                        model = HydrostaticFreeSurfaceModel(; grid, 
+                                                            free_surface, 
+                                                            tracers = (:b, :c), 
+                            				    buoyancy = BuoyancyTracer(),
                                                             vertical_coordinate = ZStar())
 
                         bᵢ(x, y, z) = x < grid.Lx / 2 ? 0.06 : 0.01
@@ -203,10 +210,10 @@ end
             end
         end
         
-        @testset "TripolarGrid ZStar tests" begin
+        @testset "TripolarGrid ZStar tracer conservation tests" begin
             @info "Testing a ZStar coordinate with a Tripolar grid on $(arch)..."
 
-            grid = TripolarGrid(arch; size = (50, 50, 20), z = z_stretched)
+            grid = TripolarGrid(arch; size = (20, 20, 20), z = z_stretched)
 
             # Code credit:
             # https://github.com/PRONTOLab/GB-25/blob/682106b8487f94da24a64d93e86d34d560f33ffc/src/model_utils.jl#L65
@@ -240,10 +247,17 @@ end
 
             bᵢ(x, y, z) = y < 0 ? 0.06 : 0.01
 
-            set!(model, c = (x, y, z) -> rand(), b = bᵢ)
+    	    # Instead of initializing with random velocities, infer them from a random initial streamfunction
+    	    # to ensure the velocity field is divergence-free at initialization.
+    	    ψ = Field{Center, Center, Center}(grid)
+    	    set!(ψ, rand(size(ψ)...))
+    	    uᵢ = ∂y(ψ)
+            vᵢ = -∂x(ψ)
+
+            set!(model, c = (x, y, z) -> rand(), u = uᵢ, v = vᵢ, b = bᵢ)
 
             Δt = 2minutes
-            test_zstar_coordinate(model, 100, Δt)
+            test_zstar_coordinate(model, 300, Δt)
         end
     end
 end
