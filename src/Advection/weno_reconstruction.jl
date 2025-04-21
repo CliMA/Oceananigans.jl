@@ -42,10 +42,6 @@ julia> WENO()
 WENO(order=5)
  Symmetric scheme:
     └── Centered(order=4)
- Directions:
-    ├── X regular
-    ├── Y regular
-    └── Z regular
 ```
 
 ```jldoctest

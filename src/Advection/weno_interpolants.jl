@@ -412,7 +412,7 @@ Here, [`biased_p`](@ref) is the function that computes the linear reconstruction
 
 # Calculation of WENO reconstructed value v⋆ = ∑ᵣ(wᵣv̂ᵣ)
 for buffer in advection_buffers[2:end]
-    @eval @inline weno_reconstruction(scheme::WENO{$buffer}, red_order, ψ, ω) = @inbounds $(metaprogrammed_weno_reconstruction(buffer))
+    @eval @inline weno_reconstruction(scheme::WENO{$buffer}, red_order, ψ, ω) = @inbounds @muladd $(metaprogrammed_weno_reconstruction(buffer))
 end
 
 # Interpolation functions

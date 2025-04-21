@@ -10,26 +10,26 @@
 #####        close to the boundary, or a second-order interpolation if i is close to a boundary.
 #####
 
-using Oceananigans.Grids: AbstractUnderlyingGrid, 
+using Oceananigans.Grids: AbstractGrid, 
                           Bounded, 
                           RightConnected, 
                           LeftConnected, 
                           topology,
                           architecture
 
-const AUG = AbstractUnderlyingGrid
+const AG = AbstractGrid
 
 # topologies bounded at least on one side
 const BT = Union{Bounded, RightConnected, LeftConnected}
 
 # Bounded underlying Grids
-const AUGX   = AUG{<:Any, <:BT}
-const AUGY   = AUG{<:Any, <:Any, <:BT}
-const AUGZ   = AUG{<:Any, <:Any, <:Any, <:BT}
-const AUGXY  = AUG{<:Any, <:BT, <:BT}
-const AUGXZ  = AUG{<:Any, <:BT, <:Any, <:BT}
-const AUGYZ  = AUG{<:Any, <:Any, <:BT, <:BT}
-const AUGXYZ = AUG{<:Any, <:BT, <:BT, <:BT}
+const AGX   = AG{<:Any, <:BT}
+const AGY   = AG{<:Any, <:Any, <:BT}
+const AGZ   = AG{<:Any, <:Any, <:Any, <:BT}
+const AGXY  = AG{<:Any, <:BT, <:BT}
+const AGXZ  = AG{<:Any, <:BT, <:Any, <:BT}
+const AGYZ  = AG{<:Any, <:Any, <:BT, <:BT}
+const AGXYZ = AG{<:Any, <:BT, <:BT, <:BT}
 
 @inline reduced_order(i, ::Type{RightConnected}, N, B) = max(1, min(B, i))
 @inline reduced_order(i, ::Type{LeftConnected},  N, B) = max(1, min(B, N-i+1))
