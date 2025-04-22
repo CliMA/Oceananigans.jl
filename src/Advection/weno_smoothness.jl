@@ -174,32 +174,31 @@ end
 end
 
 @inline function global_smoothness_indicator(β::NTuple{2}, R) 
-    τ = @inbounds ifelse(R == 1, β[1],
-                                 β[1] - β[2])
+    τ = @inbounds @fastmath ifelse(R == 1, β[1], β[1] - β[2])
     return abs(τ)
 end
 
 @inline function global_smoothness_indicator(β::NTuple{3}, R) 
-    τ = @inbounds ifelse(R == 1, β[1],
-                  ifelse(R == 2, β[1] - β[2],
-                                 β[1] - β[3]))
+    τ = @inbounds @fastmath ifelse(R == 1, β[1],
+                            ifelse(R == 2, β[1] - β[2],
+                                           β[1] - β[3]))
     return abs(τ)
 end
 
 @inline function global_smoothness_indicator(β::NTuple{4}, R) 
-    τ = @inbounds ifelse(R == 1, β[1],
-                  ifelse(R == 2, β[1] -  β[2],
-                  ifelse(R == 3, β[1] -  β[3],
-                                 β[1] + 3β[2] - 3β[3] - β[4])))
+    τ = @inbounds @fastmath ifelse(R == 1, β[1],
+                            ifelse(R == 2, β[1] -  β[2],
+                            ifelse(R == 3, β[1] -  β[3],
+                                           β[1] + 3β[2] - 3β[3] - β[4])))
     return abs(τ)
 end
 
 # Otherwise we take the 9th order WENO smoothness indicator as a default
 @inline function global_smoothness_indicator(β, R) 
-    τ = @inbounds ifelse(R == 1, β[1],
-                  ifelse(R == 2, β[1] - β[2],
-                  ifelse(R == 3, β[1] - β[3],
-                  ifelse(R == 4, β[1] + 3β[2] - 3β[3] -  β[4],
-                                 β[1] + 2β[2] - 6β[3] + 2β[4] + β[5]))))
+    τ = @inbounds @fastmath ifelse(R == 1, β[1],
+                            ifelse(R == 2, β[1] - β[2],
+                            ifelse(R == 3, β[1] - β[3],
+                            ifelse(R == 4, β[1] + 3β[2] - 3β[3] -  β[4],
+                                           β[1] + 2β[2] - 6β[3] + 2β[4] + β[5]))))
     return abs(τ)
 end
