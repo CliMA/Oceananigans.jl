@@ -215,7 +215,7 @@ end
 # intersect_index_range(::Colon, ::Colon) = Colon()
 index_range_contains(range, subset::AbstractUnitRange) = (first(subset) ∈ range) & (last(subset) ∈ range)
 index_range_contains(::Colon, ::AbstractUnitRange)     = true
-index_range_contains(::Colon, ::Colon)          = true
+index_range_contains(::Colon, ::Colon)                 = true
 index_range_contains(::AbstractUnitRange, ::Colon)     = true
 
 # Return the index range of "full" parent arrays that span an entire dimension
@@ -298,7 +298,7 @@ end
 
 function dimension_summary(topo, name, dom, z::AbstractVerticalCoordinate, pad_domain=0)
     prefix = domain_summary(topo, name, dom)
-    padding = " "^(pad_domain+1) 
+    padding = " "^(pad_domain+1)
     return string(prefix, padding, coordinate_summary(topo, z, name))
 end
 
@@ -326,10 +326,10 @@ coordinate_summary(topo, Δ::Union{AbstractVector, AbstractMatrix}, name) =
 @inline static_column_depthᶠᶠᵃ(i, j, grid) = grid.Lz
 
 # Will be extended in the `ImmersedBoundaries` module for a ``mutable'' grid type
-@inline column_depthᶜᶜᵃ(i, j, k, grid, η) = static_column_depthᶜᶜᵃ(i, j, grid) 
-@inline column_depthᶠᶜᵃ(i, j, k, grid, η) = static_column_depthᶠᶜᵃ(i, j, grid) 
-@inline column_depthᶜᶠᵃ(i, j, k, grid, η) = static_column_depthᶜᶠᵃ(i, j, grid) 
-@inline column_depthᶠᶠᵃ(i, j, k, grid, η) = static_column_depthᶠᶠᵃ(i, j, grid) 
+@inline column_depthᶜᶜᵃ(i, j, k, grid, η) = static_column_depthᶜᶜᵃ(i, j, grid)
+@inline column_depthᶠᶜᵃ(i, j, k, grid, η) = static_column_depthᶠᶜᵃ(i, j, grid)
+@inline column_depthᶜᶠᵃ(i, j, k, grid, η) = static_column_depthᶜᶠᵃ(i, j, grid)
+@inline column_depthᶠᶠᵃ(i, j, k, grid, η) = static_column_depthᶠᶠᵃ(i, j, grid)
 
 #####
 ##### Spherical geometry

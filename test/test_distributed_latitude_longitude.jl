@@ -34,7 +34,7 @@ run_pencil_distributed_grid = """
 """
 
 @testset "Test distributed LatitudeLongitudeGrid simulations..." begin
-    # Run the serial computation    
+    # Run the serial computation
     Random.seed!(1234)
     bottom_height = - rand(40, 40, 1) .* 500 .- 500
 
@@ -42,7 +42,7 @@ run_pencil_distributed_grid = """
                                  longitude=(0, 360),
                                  latitude=(-10, 10),
                                  z=(-1000, 0),
-                                 halo=(5, 5, 5))    
+                                 halo=(5, 5, 5))
 
     grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
     model = run_distributed_simulation(grid)
@@ -68,12 +68,12 @@ run_pencil_distributed_grid = """
     cp = jldopen("distributed_xslab_llg.jld2")["c"]
 
     rm("distributed_xslab_llg.jld2")
-    
+
     @test all(us .≈ up)
     @test all(vs .≈ vp)
     @test all(cs .≈ cp)
     @test all(ηs .≈ ηp)
-    
+
     # Run the distributed grid simulation with a slab configuration
     write("distributed_yslab_llg_tests.jl", run_yslab_distributed_grid)
     run(`$(mpiexec()) -n 4 julia --project -O0 distributed_yslab_llg_tests.jl`)

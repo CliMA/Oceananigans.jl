@@ -53,7 +53,7 @@ or in matrix form
 
 where `a` is the `lower_diagonal`, `b` is the `diagonal`, and `c` is the `upper_diagonal`.
 
-Note the convention used here for indexing the upper and lower diagonals; this can be different from 
+Note the convention used here for indexing the upper and lower diagonals; this can be different from
 other implementations where, e.g., `aⁱʲ²` may appear at the second row, instead of `aⁱʲ¹` as above.
 
 `ϕ` is the solution and `f` is the right hand side source term passed to `solve!(ϕ, tridiagonal_solver, f)`.

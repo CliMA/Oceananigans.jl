@@ -79,7 +79,7 @@ struct MultiRegionCommunication <: AbstractBoundaryConditionClassification end
 """
     struct DistributedCommunication <: AbstractBoundaryConditionClassification
 
-A classification specifying a distributed memory communicating boundary condition 
+A classification specifying a distributed memory communicating boundary condition
 """
 struct DistributedCommunication <: AbstractBoundaryConditionClassification end
 

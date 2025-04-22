@@ -4,7 +4,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
 
 @testset "Reactanigans unit tests" begin
     @info "Performing Reactanigans unit tests..."
-    
+
     arch = ReactantState()
     times = 0:1.0:4
     t = 2.1
@@ -14,7 +14,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
     ñ, n₁, n₂ = @jit Oceananigans.OutputReaders.find_time_index(times, t)
     @test ñ ≈ 0.1
     @test n₁ == 3 # eg times = [0 1 2 ⟨⟨2.1⟩⟩ 3]
-    @test n₂ == 4 
+    @test n₂ == 4
 
     grid = RectilinearGrid(arch; size=(4, 4, 4), extent=(1, 1, 1))
     c = CenterField(grid)
@@ -116,7 +116,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
                 @test (p isa Number) || (p isa OffsetArray{FT, <:Any, <:Array})
             end
         end
-        
+
         @info "  Testing ImmersedBoundaryGrid construction [$FT]..."
         ibg = ImmersedBoundaryGrid(llg, GridFittedBottom(ridge))
         @test architecture(ibg) isa ReactantState

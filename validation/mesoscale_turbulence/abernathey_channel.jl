@@ -25,7 +25,7 @@ Nx = 96
 Ny = 192
 Nz = 32
 
-# stretched grid 
+# stretched grid
 k_center = collect(1:Nz)
 Δz_center = @. 10 * 1.104^(Nz - k_center)
 
@@ -48,7 +48,7 @@ grid = RectilinearGrid(architecture,
 ##### Boundary conditions
 #####
 
-α = 2e-4     # [K⁻¹] thermal expansion coefficient 
+α = 2e-4     # [K⁻¹] thermal expansion coefficient
 g = 9.8061   # [m/s²] gravitational constant
 cᵖ = 3994.0   # [J/K]  heat capacity
 ρ = 999.8    # [kg/m³] reference density
@@ -56,7 +56,7 @@ cᵖ = 3994.0   # [J/K]  heat capacity
 parameters = (
     Ly = Ly,
     Lz = Lz,
-    Qᵇ = 10 / (ρ * cᵖ) * α * g,            # buoyancy flux magnitude [m² s⁻³]    
+    Qᵇ = 10 / (ρ * cᵖ) * α * g,            # buoyancy flux magnitude [m² s⁻³]
     y_shutoff = 5 / 6 * Ly,                # shutoff location for buoyancy flux [m]
     τ = 0.2 / ρ,                           # surface kinematic wind stress [m² s⁻²]
     μ = 1 / 30days,                      # bottom drag damping time-scale [s⁻¹]
