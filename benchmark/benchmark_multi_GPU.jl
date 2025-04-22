@@ -38,7 +38,7 @@ solid_body_geostrophic_height(φ, R, Ω, g) = (R * Ω * U + U^2 / 2) * sind(φ)^
 function run_solid_body_rotation(; architecture = CPU(),
                                    Nx = 90,
                                    Ny = 30,
-                                   dev = nothing, 
+                                   dev = nothing,
                                    coriolis_scheme = VectorInvariantEnstrophyConserving())
 
     # A spherical domain
@@ -70,7 +70,7 @@ function run_solid_body_rotation(; architecture = CPU(),
                                         coriolis = coriolis,
                                         tracers = (:T, :b),
                                         tracer_advection = WENO(),
-                                        buoyancy = BuoyancyTracer(),                                        
+                                        buoyancy = BuoyancyTracer(),
                                         closure = closure)
 
     g = model.free_surface.gravitational_acceleration
@@ -110,7 +110,7 @@ function run_solid_body_rotation(; architecture = CPU(),
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(500))
 
     run!(simulation)
- 
+
     @show simulation.run_wall_time
     return simulation
 end

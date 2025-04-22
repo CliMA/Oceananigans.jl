@@ -24,7 +24,7 @@ num_prod(i, m, l, r, xr, xi, shift, op, order, args...)            = @inbounds p
 num_prod(i, m, l, r, xr, xi, shift, op, order, ::FirstDerivative)  = @inbounds 2*xr[i+shift] - sum(xi[op(i, r-q+1)] for q=0:order if (q != m && q != l))
 num_prod(i, m, l, r, xr, xi, shift, op, order, ::SecondDerivative) = 2
 
-@inline function num_prod(i, m, l, r, xr, xi, shift, op, order, ::Primitive) 
+@inline function num_prod(i, m, l, r, xr, xi, shift, op, order, ::Primitive)
     s = sum(xi[op(i, r-q+1)]  for q=0:order if (q != m && q != l))
     p = prod(xi[op(i, r-q+1)] for q=0:order if (q != m && q != l))
 
@@ -66,8 +66,8 @@ end
 """
     uniform_reconstruction_coefficients(FT, Val(bias), buffer)
 
-Returns coefficients for finite volume reconstruction used in linear advection schemes (`Centered` and `UpwindBiased`). 
-`FT` is the floating type (e.g. `Float32`, `Float64`), `bias` is either `:symmetric`, `:left`, or `:right`, 
+Returns coefficients for finite volume reconstruction used in linear advection schemes (`Centered` and `UpwindBiased`).
+`FT` is the floating type (e.g. `Float32`, `Float64`), `bias` is either `:symmetric`, `:left`, or `:right`,
 and `buffer` is the buffer size which determines the order of the reconstruction.
 
 examples:
@@ -93,10 +93,10 @@ uniform_reconstruction_coefficients(FT, ::Val{:right}, buffer)     = buffer==1 ?
 
 Stencils for reconstruction using linear advection schemes (note that WENO has its own reconstruction stencils)
 
-The first argument is the `buffer`, not the `order`! 
+The first argument is the `buffer`, not the `order`!
 - `order = 2 * buffer` for Centered reconstruction
 - `order = 2 * buffer - 1` for Upwind reconstruction
-   
+
 Examples
 ========
 
@@ -141,7 +141,7 @@ julia> stencil_reconstruction(Float32, 3, :left, :x)
                                 :($C * ψ(i, j + $c, k, grid, args...)) :
                                 :($C * ψ(i, j, k + $c, grid, args...))
         else
-            stencil_full[idx] =  dir == :x ? 
+            stencil_full[idx] =  dir == :x ?
                                 :($C * ψ[i + $c, j, k]) :
                                 dir == :y ?
                                 :($C * ψ[i, j + $c, k]) :

@@ -58,7 +58,7 @@ Turbulent Kinetic Energy (TKE).
 !!! note "CATKE vertical diffusivity"
     `CATKEVerticalDiffusivity` is new turbulence closure diffusivity. The default
     values for its free parameters are obtained from calibration against large eddy
-    simulations. For more details please refer to [Wagner23catke](@cite).
+    simulations. For more details please refer to [Wagner25catke](@cite).
 
     Use with caution and report any issues with the physics at https://github.com/CliMA/Oceananigans.jl/issues.
 
@@ -205,7 +205,7 @@ function build_diffusivity_fields(grid, clock, tracer_names, bcs, closure::Flavo
     return CATKEDiffusivityFields(κu, κc, κe, Le, Jᵇ,
                                   previous_compute_time, previous_velocities,
                                   _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients)
-end        
+end
 
 @inline viscosity_location(::FlavorOfCATKE) = (c, c, f)
 @inline diffusivity_location(::FlavorOfCATKE) = (c, c, f)

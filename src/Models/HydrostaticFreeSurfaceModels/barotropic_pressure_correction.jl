@@ -7,7 +7,7 @@ calculate_pressure_correction!(::HydrostaticFreeSurfaceModel, Δt) = nothing
 ##### Barotropic pressure correction for models with a free surface
 #####
 
-pressure_correct_velocities!(model::HydrostaticFreeSurfaceModel, Δt; kwargs...) = 
+pressure_correct_velocities!(model::HydrostaticFreeSurfaceModel, Δt; kwargs...) =
     pressure_correct_velocities!(model, model.free_surface, Δt; kwargs...)
 
 # Fallback
@@ -32,7 +32,7 @@ end
 
 function pressure_correct_velocities!(model, ::SplitExplicitFreeSurface, Δt)
     u, v, _ = model.velocities
-    grid = model.grid 
+    grid = model.grid
     barotropic_split_explicit_corrector!(u, v, model.free_surface, grid)
 
     return nothing

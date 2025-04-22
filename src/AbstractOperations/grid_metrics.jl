@@ -6,14 +6,14 @@ using Oceananigans.Operators: Δx, Δy, Δz, Ax, Δλ, Δφ, Ay, Az, volume
 
 import Oceananigans.Grids: xspacings, yspacings, zspacings, λspacings, φspacings
 
-const AbstractGridMetric = Union{typeof(Δx), 
-                                 typeof(Δy), 
-                                 typeof(Δz), 
+const AbstractGridMetric = Union{typeof(Δx),
+                                 typeof(Δy),
+                                 typeof(Δz),
                                  typeof(Δλ),
                                  typeof(Δφ),
-                                 typeof(Ax), 
-                                 typeof(Ay), 
-                                 typeof(Az), 
+                                 typeof(Ax),
+                                 typeof(Ay),
+                                 typeof(Az),
                                  typeof(volume)} # Do we want it to be `volume` or just `V` like in the Operators module?
 
 """

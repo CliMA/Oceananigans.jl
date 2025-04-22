@@ -64,8 +64,8 @@ end
 """ Computes the friction velocity u★ based on fluxes of u and v. """
 @inline function friction_velocity(i, j, grid, clock, fields, velocity_bcs)
     FT = eltype(grid)
-    τx = getbc(velocity_bcs.u, i, j, grid, clock, fields) 
-    τy = getbc(velocity_bcs.v, i, j, grid, clock, fields) 
+    τx = getbc(velocity_bcs.u, i, j, grid, clock, fields)
+    τy = getbc(velocity_bcs.v, i, j, grid, clock, fields)
     return sqrt(sqrt(τx^2 + τy^2))
 end
 
@@ -73,19 +73,19 @@ end
 @inline function top_convective_turbulent_velocity_cubed(i, j, grid, clock, fields, buoyancy, tracer_bcs)
     Jᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, fields)
     Δz = Δzᶜᶜᶜ(i, j, grid.Nz, grid)
-    return clip(Jᵇ) * Δz   
+    return clip(Jᵇ) * Δz
 end
 
 @inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple{<:Any}, buoyancy) =
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy)
 
 @inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple{<:Any, <:Any}, buoyancy) =
-    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) + 
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) +
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2], buoyancy)
 
 @inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple{<:Any, <:Any, <:Any}, buoyancy) =
-    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) + 
-    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2], buoyancy) + 
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) +
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2], buoyancy) +
     top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[3], buoyancy)
 
 

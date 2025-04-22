@@ -64,7 +64,7 @@ function setup_simulation(N, T, CFL, ϕₐ, advection_scheme; u, v)
                      global_attributes=global_attributes, output_attributes=output_attributes)
 
     return simulation
-end 
+end
 
 function print_progress(simulation)
     model = simulation.model

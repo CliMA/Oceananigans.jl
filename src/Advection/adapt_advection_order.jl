@@ -5,14 +5,14 @@ using Oceananigans.Grids: topology
 
 Adapts the advection operator `advection` based on the grid `grid` by adjusting the order of advection in each direction.
 For example, if the grid has only one point in the x-direction, the advection operator in the x-direction is set to first order
-upwind or 2nd order centered scheme, depending on the original user-specified advection scheme. A high order advection sheme 
+upwind or 2nd order centered scheme, depending on the original user-specified advection scheme. A high order advection sheme
 is reduced to a lower order advection scheme if the grid has fewer points in that direction.
 
 # Arguments
 - `advection`: The original advection scheme.
 - `grid::AbstractGrid`: The grid on which the advection scheme is applied.
 
-If the order of advection is changed in at least one direction, the adapted advection scheme with adjusted advection order returned 
+If the order of advection is changed in at least one direction, the adapted advection scheme with adjusted advection order returned
 by this function is a `FluxFormAdvection`.
 """
 function adapt_advection_order(advection, grid::AbstractGrid)

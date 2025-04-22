@@ -3,10 +3,10 @@
 ##### near boundaries in bounded directions
 #####
 
-using Oceananigans.Grids: AbstractGrid, 
-                          Bounded, 
-                          RightConnected, 
-                          LeftConnected, 
+using Oceananigans.Grids: AbstractGrid,
+                          Bounded,
+                          RightConnected,
+                          LeftConnected,
                           topology,
                           architecture
 

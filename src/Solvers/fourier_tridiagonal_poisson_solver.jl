@@ -3,7 +3,7 @@ using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, stretched_dimen
 
 import Oceananigans.Architectures: architecture
 
-struct FourierTridiagonalPoissonSolver{G, B, R, S, β, T} 
+struct FourierTridiagonalPoissonSolver{G, B, R, S, β, T}
                           grid :: G
     batched_tridiagonal_solver :: B
                    source_term :: R
@@ -24,7 +24,7 @@ architecture(solver::FourierTridiagonalPoissonSolver) = architecture(solver.grid
         @inbounds D[i, j, k] = - (1 / Δxᶠᵃᵃ(i+1, j, k, grid) + 1 / Δxᶠᵃᵃ(i, j, k, grid)) - Δxᶜᵃᵃ(i, j, k, grid) * (λy[j] + λz[k])
     end
     @inbounds D[Nx, j, k] = -1 / Δxᶠᵃᵃ(Nx, j, k, grid) - Δxᶜᵃᵃ(Nx, j, k, grid) * (λy[j] + λz[k])
-end 
+end
 
 @kernel function compute_main_diagonal!(D, grid, λx, λz, ::YDirection)
     i, k = @index(Global, NTuple)
@@ -142,7 +142,7 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     ϕ .= ϕ .- mean(ϕ)
 
     launch!(arch, solver.grid, :xyz, copy_real_component!, x, ϕ, indices(x))
-    
+
     return nothing
 end
 

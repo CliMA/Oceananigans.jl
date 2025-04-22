@@ -18,7 +18,7 @@ function Base.show(io::IO, model::ShallowWaterModel{G, A, T}) where {G, A, T}
         name = names[end]
         print(io, "│   └── " * string(name) * ": " * summary(model.advection[name]), "\n")
     end
-            
+
     print(io,
         "├── tracers: $(tracernames(model.tracers))\n",
         "└── coriolis: $(typeof(model.coriolis))")
