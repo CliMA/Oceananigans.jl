@@ -75,7 +75,6 @@ const ε = 1f-8
 
 # Optimal values for finite volume reconstruction of order `WENO{order}` and stencil `Val{stencil}` from
 # Balsara & Shu, "Monotonicity Preserving Weighted Essentially Non-oscillatory Schemes with Inceasingly High Order of Accuracy"
-
 for FT in fully_supported_float_types
     @eval begin
         # WENO 3rd order
