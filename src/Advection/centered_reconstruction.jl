@@ -78,20 +78,6 @@ for (side, dir) in zip((:ᶠᵃᵃ, :ᵃᶠᵃ, :ᵃᵃᶠ), (:x, :y, :z))
                            $(stencil_reconstruction(FT, 4, :symmetric, dir, bool)),
                            $(stencil_reconstruction(FT, 5, :symmetric, dir, bool))))))
                 end
-
-                @inline function $interp(i, j, k, grid, ::Centered{6, $FT}, red_order::Int, ψ::$F, args...)          
-                    ifelse(red_order==1,
-                           $(stencil_reconstruction(FT, 1, :symmetric, dir, bool)),
-                    ifelse(red_order==2,
-                           $(stencil_reconstruction(FT, 2, :symmetric, dir, bool)),
-                    ifelse(red_order==3,
-                           $(stencil_reconstruction(FT, 3, :symmetric, dir, bool)),
-                    ifelse(red_order==4,
-                           $(stencil_reconstruction(FT, 4, :symmetric, dir, bool)),
-                    ifelse(red_order==5,
-                           $(stencil_reconstruction(FT, 5, :symmetric, dir, bool)),
-                           $(stencil_reconstruction(FT, 6, :symmetric, dir, bool)))))))
-                end
             end
         end
     end
