@@ -241,46 +241,46 @@ for buffer in advection_buffers[1:end]
 end
 
 function zweno_alpha_weights(s::WENO{2}, R, β, τ)
-    α₁ = @inbounds C★(s, R, Val(0)) * (1 + (τ / (β[1] + ε))^2)
-    α₂ = @inbounds C★(s, R, Val(1)) * (1 + (τ / (β[2] + ε))^2)
+    α₁ = @inbounds @fastmath C★(s, R, Val(0)) * (1 + (τ / (β[1] + ε))^2)
+    α₂ = @inbounds @fastmath C★(s, R, Val(1)) * (1 + (τ / (β[2] + ε))^2)
     αs = 1 / (α₁ + α₂)
     return (α₁, α₂) .* αs
 end
 
 function zweno_alpha_weights(s::WENO{3}, R, β, τ)
-    α₁ = @inbounds C★(s, R, Val(0)) * (1 + (τ / (β[1] + ε))^2)
-    α₂ = @inbounds C★(s, R, Val(1)) * (1 + (τ / (β[2] + ε))^2)
-    α₃ = @inbounds C★(s, R, Val(2)) * (1 + (τ / (β[3] + ε))^2)
+    α₁ = @inbounds @fastmath C★(s, R, Val(0)) * (1 + (τ / (β[1] + ε))^2)
+    α₂ = @inbounds @fastmath C★(s, R, Val(1)) * (1 + (τ / (β[2] + ε))^2)
+    α₃ = @inbounds @fastmath C★(s, R, Val(2)) * (1 + (τ / (β[3] + ε))^2)
     αs = 1 / (α₁ + α₂ + α₃)
     return (α₁, α₂, α₃) .* αs
 end
 
 function zweno_alpha_weights(s::WENO{4}, R, β, τ)
-    α₁ = @inbounds C★(s, R, Val(0)) * (1 + (τ / (β[1] + ε))^2)
-    α₂ = @inbounds C★(s, R, Val(1)) * (1 + (τ / (β[2] + ε))^2)
-    α₃ = @inbounds C★(s, R, Val(2)) * (1 + (τ / (β[3] + ε))^2)
-    α₄ = @inbounds C★(s, R, Val(3)) * (1 + (τ / (β[4] + ε))^2)
+    α₁ = @inbounds @fastmath C★(s, R, Val(0)) * (1 + (τ / (β[1] + ε))^2)
+    α₂ = @inbounds @fastmath C★(s, R, Val(1)) * (1 + (τ / (β[2] + ε))^2)
+    α₃ = @inbounds @fastmath C★(s, R, Val(2)) * (1 + (τ / (β[3] + ε))^2)
+    α₄ = @inbounds @fastmath C★(s, R, Val(3)) * (1 + (τ / (β[4] + ε))^2)
     αs = 1 / (α₁ + α₂ + α₃ + α₄)
     return (α₁, α₂, α₃, α₄) .* αs
 end
 
 function zweno_alpha_weights(s::WENO{5}, R, β, τ)
-    α₁ = @inbounds C★(s, R, Val(0)) * (1 + (τ / (β[1] + ε))^2)
-    α₂ = @inbounds C★(s, R, Val(1)) * (1 + (τ / (β[2] + ε))^2)
-    α₃ = @inbounds C★(s, R, Val(2)) * (1 + (τ / (β[3] + ε))^2)
-    α₄ = @inbounds C★(s, R, Val(3)) * (1 + (τ / (β[4] + ε))^2)
-    α₅ = @inbounds C★(s, R, Val(4)) * (1 + (τ / (β[5] + ε))^2)
+    α₁ = @inbounds @fastmath C★(s, R, Val(0)) * (1 + (τ / (β[1] + ε))^2)
+    α₂ = @inbounds @fastmath C★(s, R, Val(1)) * (1 + (τ / (β[2] + ε))^2)
+    α₃ = @inbounds @fastmath C★(s, R, Val(2)) * (1 + (τ / (β[3] + ε))^2)
+    α₄ = @inbounds @fastmath C★(s, R, Val(3)) * (1 + (τ / (β[4] + ε))^2)
+    α₅ = @inbounds @fastmath C★(s, R, Val(4)) * (1 + (τ / (β[5] + ε))^2)
     αs = 1 / (α₁ + α₂ + α₃ + α₄ + α₅)
     return (α₁, α₂, α₃, α₄, α₅) ./ αs
 end
 
 function zweno_alpha_weights(s::WENO{6}, R, β, τ)
-    α₁ = @inbounds C★(s, R, Val(0)) * (1 + (τ / (β[1] + ε))^2)
-    α₂ = @inbounds C★(s, R, Val(1)) * (1 + (τ / (β[2] + ε))^2)
-    α₃ = @inbounds C★(s, R, Val(2)) * (1 + (τ / (β[3] + ε))^2)
-    α₄ = @inbounds C★(s, R, Val(3)) * (1 + (τ / (β[4] + ε))^2)
-    α₅ = @inbounds C★(s, R, Val(4)) * (1 + (τ / (β[5] + ε))^2)
-    α₆ = @inbounds C★(s, R, Val(5)) * (1 + (τ / (β[6] + ε))^2)
+    α₁ = @inbounds @fastmath C★(s, R, Val(0)) * (1 + (τ / (β[1] + ε))^2)
+    α₂ = @inbounds @fastmath C★(s, R, Val(1)) * (1 + (τ / (β[2] + ε))^2)
+    α₃ = @inbounds @fastmath C★(s, R, Val(2)) * (1 + (τ / (β[3] + ε))^2)
+    α₄ = @inbounds @fastmath C★(s, R, Val(3)) * (1 + (τ / (β[4] + ε))^2)
+    α₅ = @inbounds @fastmath C★(s, R, Val(4)) * (1 + (τ / (β[5] + ε))^2)
+    α₆ = @inbounds @fastmath C★(s, R, Val(5)) * (1 + (τ / (β[6] + ε))^2)
     αs = 1 / (α₁ + α₂ + α₃ + α₄ + α₅ + α₆)
     return (α₁, α₂, α₃, α₄, α₅) .* αs
 end
@@ -306,7 +306,6 @@ The ``α`` values are normalized before returning
 @inline function biased_weno_weights(ψ, grid, scheme::WENO{N, FT}, red_order, args...) where {N, FT}
     β = beta_loop(scheme, red_order, ψ)
     τ = global_smoothness_indicator(β, red_order)
-
     return zweno_alpha_weights(scheme, red_order, β, τ)
 end
 
@@ -319,7 +318,6 @@ end
     βᵥ = beta_loop(scheme, red_order, vₛ)
     β  =  beta_sum(scheme, βᵤ, βᵥ)
     τ  = global_smoothness_indicator(β, red_order)
-    
     return zweno_alpha_weights(scheme, red_order, β, τ)
 end
 
