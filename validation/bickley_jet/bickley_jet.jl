@@ -18,7 +18,7 @@ function run_bickley_jet(;
                          output_time_interval = 2,
                          stop_time = 200,
                          arch = CPU(),
-                         Nh = 64, 
+                         Nh = 64,
                          free_surface = ImplicitFreeSurface(gravitational_acceleration=10.0),
                          momentum_advection = WENO(order = 5),
                          tracer_advection = WENO(order = 5),
@@ -66,7 +66,7 @@ function run_bickley_jet(;
 
     return output_name
 end
-    
+
 """
     visualize_bickley_jet(experiment_name)
 

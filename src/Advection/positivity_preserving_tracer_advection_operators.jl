@@ -1,7 +1,7 @@
 using Oceananigans.Grids: AbstractGrid
 
-const ω̂₁ = 5/18 
-const ω̂ₙ = 5/18  
+const ω̂₁ = 5/18
+const ω̂ₙ = 5/18
 const ε₂ = 1e-20
 
 # Here in the future we can easily add UpwindBiased
@@ -37,8 +37,8 @@ end
     c₋ᴿ = _biased_interpolate_xᶠᵃᵃ(i,   j, k, grid, advection, RightBias(), c)
 
     p̃   = (cᵢⱼ - ω̂₁ * c₋ᴿ - ω̂ₙ * c₊ᴸ) / (1 - 2ω̂₁)
-    M   = max(p̃, c₊ᴸ, c₋ᴿ) 
-    m   = min(p̃, c₊ᴸ, c₋ᴿ) 
+    M   = max(p̃, c₊ᴸ, c₋ᴿ)
+    m   = min(p̃, c₊ᴸ, c₋ᴿ)
     θ   = min(abs((upper_limit - cᵢⱼ) / (M - cᵢⱼ + ε₂)), abs((lower_limit - cᵢⱼ) / (m - cᵢⱼ + ε₂)), one(grid))
 
     c₊ᴸ = θ * (c₊ᴸ - cᵢⱼ) + cᵢⱼ
@@ -61,8 +61,8 @@ end
     c₋ᴿ = _biased_interpolate_yᵃᶠᵃ(i, j,   k, grid, advection, RightBias(), c)
 
     p̃   =  (cᵢⱼ - ω̂₁ * c₋ᴿ - ω̂ₙ * c₊ᴸ) / (1 - 2ω̂₁)
-    M   = max(p̃, c₊ᴸ, c₋ᴿ) 
-    m   = min(p̃, c₊ᴸ, c₋ᴿ) 
+    M   = max(p̃, c₊ᴸ, c₋ᴿ)
+    m   = min(p̃, c₊ᴸ, c₋ᴿ)
     θ   = min(abs((upper_limit - cᵢⱼ) / (M - cᵢⱼ + ε₂)), abs((lower_limit - cᵢⱼ) / (m - cᵢⱼ + ε₂)), one(grid))
 
     c₊ᴸ = θ * (c₊ᴸ - cᵢⱼ) + cᵢⱼ
@@ -85,8 +85,8 @@ end
     c₋ᴿ = _biased_interpolate_zᵃᵃᶠ(i, j, k,   grid, advection, RightBias(), c)
 
     p̃   =  (cᵢⱼ - ω̂₁ * c₋ᴿ - ω̂ₙ * c₊ᴸ) / (1 - 2ω̂₁)
-    M   = max(p̃, c₊ᴸ, c₋ᴿ) 
-    m   = min(p̃, c₊ᴸ, c₋ᴿ) 
+    M   = max(p̃, c₊ᴸ, c₋ᴿ)
+    m   = min(p̃, c₊ᴸ, c₋ᴿ)
     θ   = min(abs((upper_limit - cᵢⱼ) / (M - cᵢⱼ + ε₂)), abs((lower_limit - cᵢⱼ) / (m - cᵢⱼ + ε₂)), one(grid))
 
     c₊ᴸ = θ * (c₊ᴸ - cᵢⱼ) + cᵢⱼ

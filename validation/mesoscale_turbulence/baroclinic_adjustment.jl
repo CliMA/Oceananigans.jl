@@ -31,8 +31,8 @@ stop_time = 80days
 
 # We choose a regular grid though because of numerical issues that yet need to be resolved
 grid = RectilinearGrid(arch,
-                       topology = (Periodic, Bounded, Bounded), 
-                       size = (Nx, Ny, Nz), 
+                       topology = (Periodic, Bounded, Bounded),
+                       size = (Nx, Ny, Nz),
                        x = (0, Lx),
                        y = (-Ly/2, Ly/2),
                        z = (-Lz, 0),
@@ -107,7 +107,7 @@ function print_progress(sim)
             prettytime(sim.Δt))
 
     wall_clock[] = time_ns()
-    
+
     return nothing
 end
 

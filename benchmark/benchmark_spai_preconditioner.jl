@@ -14,7 +14,7 @@ function benchmark_spai_preconditioner(N, ε, nzrel, inverse)
 
     model = HydrostaticFreeSurfaceModel(
                       grid = grid,
-        momentum_advection = VectorInvariant(), 
+        momentum_advection = VectorInvariant(),
               free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, preconditioner_method = nothing)
     )
 

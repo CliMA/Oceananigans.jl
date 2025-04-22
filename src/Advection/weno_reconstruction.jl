@@ -20,11 +20,11 @@ struct WENO{N, FT, PP, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
 end
 
 """
-    WENO([FT=Float64;] 
+    WENO([FT=Float64;]
          order = 5,
-         grid = nothing, 
+         grid = nothing,
          bounds = nothing)
-               
+
 Construct a weighted essentially non-oscillatory advection scheme of order `order`.
 
 Keyword arguments
@@ -62,9 +62,9 @@ WENO(order=7)
     └── Centered(order=6)
 ```
 """
-function WENO(FT::DataType=Oceananigans.defaults.FloatType; 
+function WENO(FT::DataType=Oceananigans.defaults.FloatType;
               order = 5,
-              grid = nothing, 
+              grid = nothing,
               bounds = nothing)
 
     # Enforce the grid type if a grid is provided

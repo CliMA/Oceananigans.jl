@@ -23,7 +23,7 @@ compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxilia
 
 Update peripheral aspects of the model (auxiliary fields, halo regions, diffusivities,
 hydrostatic pressure) to the current model state. If `callbacks` are provided (in an array),
-they are called in the end. Finally, the tendencies for the new time-step are computed if 
+they are called in the end. Finally, the tendencies for the new time-step are computed if
 `compute_tendencies = true`.
 """
 update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true) =
@@ -50,7 +50,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; comp
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
-    compute_tendencies && 
+    compute_tendencies &&
         @apply_regionally compute_tendencies!(model, callbacks)
 
     return nothing
@@ -58,7 +58,7 @@ end
 
 # Mask immersed fields
 function mask_immersed_model_fields!(model, grid)
-    η = displacement(model.free_surface)    
+    η = displacement(model.free_surface)
     fields_to_mask = merge(model.auxiliary_fields, prognostic_fields(model))
 
     foreach(fields_to_mask) do field
@@ -67,22 +67,22 @@ function mask_immersed_model_fields!(model, grid)
         end
     end
     mask_immersed_field_xy!(η, k=size(grid, 3)+1)
-    
+
     return nothing
 end
 
 function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters = w_kernel_parameters(model.grid),
                                                                   p_parameters = p_kernel_parameters(model.grid),
-                                                                  κ_parameters = :xyz) 
-    
+                                                                  κ_parameters = :xyz)
+
     grid        = model.grid
     closure     = model.closure
     tracers     = model.tracers
     diffusivity = model.diffusivity_fields
     buoyancy    = model.buoyancy
-    
+
     P    = model.pressure.pHY′
-    arch = architecture(grid) 
+    arch = architecture(grid)
 
     # Update the grid and unscale the tracers
     update_grid!(model, grid, model.vertical_coordinate; parameters = w_parameters)
@@ -94,6 +94,6 @@ function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters =
 
     # Update closure diffusivities
     compute_diffusivities!(diffusivity, closure, model; parameters = κ_parameters)
-    
+
     return nothing
 end

@@ -14,7 +14,7 @@ struct UpwindBiased{N, FT, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
     UpwindBiased{N, FT}(advecting_velocity_scheme::SI) where {N, FT, SI} = new{N, FT, SI}(advecting_velocity_scheme)
 end
 
-function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3) 
+function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3)
 
     # Enforce the grid type if a grid is provided
     FT = grid isa Nothing ? FT : eltype(grid) 

@@ -35,7 +35,7 @@ function Base.show(io::IO, b::SeawaterBuoyancy{FT}) where FT
     if !isnothing(b.constant_salinity)
         print(io, "├── constant_salinity: ", b.constant_salinity, "\n")
     end
-        
+
     print(io, "└── equation_of_state: ", summary(b.equation_of_state))
 end
 
@@ -86,7 +86,7 @@ SeawaterBuoyancy{Float64}:
 Buoyancy that depends only on salinity with temperature held at 20 degrees Celsius
 
 ```jldoctest seawaterbuoyancy
-julia> salinity_dependent_buoyancy = SeawaterBuoyancy(equation_of_state=teos10, constant_temperature=20) 
+julia> salinity_dependent_buoyancy = SeawaterBuoyancy(equation_of_state=teos10, constant_temperature=20)
 SeawaterBuoyancy{Float64}:
 ├── gravitational_acceleration: 9.80665
 ├── constant_temperature: 20.0
@@ -117,7 +117,7 @@ function SeawaterBuoyancy(FT = Oceananigans.defaults.FloatType;
     constant_salinity = constant_salinity === true ? zero(FT) : constant_salinity
     equation_of_state = with_float_type(FT, equation_of_state)
     gravitational_acceleration = convert(FT, gravitational_acceleration)
-    
+
     constant_temperature = isnothing(constant_temperature) ? nothing : convert(FT, constant_temperature)
     constant_salinity = isnothing(constant_salinity) ? nothing : convert(FT, constant_salinity)
 

@@ -49,7 +49,7 @@ zC = znodes(grid, Center())
 Ri, h = B.parameters
 
 fig = Figure(size = (850, 450))
- 
+
 ax = Axis(fig[1, 1], xlabel = "U(z)", ylabel = "z")
 lines!(ax, shear_flow.(0, zC, 0), zC; linewidth = 3)
 
