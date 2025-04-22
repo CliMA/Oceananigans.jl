@@ -240,67 +240,47 @@ for buffer in advection_buffers[1:end]
     end
 end
 
-function zweno_alpha_weights(scheme::WENO{2}, red_order, β, τ)
-    C₁ = C★(scheme, red_order, Val(0))
-    C₂ = C★(scheme, red_order, Val(1))
-    α₁ = @inbounds C₁ * (1 + (τ / (β[1] + ε))^2)
-    α₂ = @inbounds C₂ * (1 + (τ / (β[2] + ε))^2)
+function zweno_alpha_weights(s::WENO{2}, R, β, τ)
+    α₁ = @inbounds C★(s, R, Val(0)) * (1 + (τ / (β[1] + ε))^2)
+    α₂ = @inbounds C★(s, R, Val(1)) * (1 + (τ / (β[2] + ε))^2)
     αs = 1 / (α₁ + α₂)
     return (α₁, α₂) .* αs
 end
 
-function zweno_alpha_weights(scheme::WENO{3}, red_order, β, τ)
-    C₁ = C★(scheme, red_order, Val(0))
-    C₂ = C★(scheme, red_order, Val(1))
-    C₃ = C★(scheme, red_order, Val(2))
-    α₁ = @inbounds C₁ * (1 + (τ / (β[1] + ε))^2)
-    α₂ = @inbounds C₂ * (1 + (τ / (β[2] + ε))^2)
-    α₃ = @inbounds C₃ * (1 + (τ / (β[3] + ε))^2)
+function zweno_alpha_weights(s::WENO{3}, R, β, τ)
+    α₁ = @inbounds C★(s, R, Val(0)) * (1 + (τ / (β[1] + ε))^2)
+    α₂ = @inbounds C★(s, R, Val(1)) * (1 + (τ / (β[2] + ε))^2)
+    α₃ = @inbounds C★(s, R, Val(2)) * (1 + (τ / (β[3] + ε))^2)
     αs = 1 / (α₁ + α₂ + α₃)
     return (α₁, α₂, α₃) .* αs
 end
 
-function zweno_alpha_weights(scheme::WENO{4}, red_order, β, τ)
-    C₁ = C★(scheme, red_order, Val(0))
-    C₂ = C★(scheme, red_order, Val(1))
-    C₃ = C★(scheme, red_order, Val(2))
-    C₄ = C★(scheme, red_order, Val(3))
-    α₁ = @inbounds C₁ * (1 + (τ / (β[1] + ε))^2)
-    α₂ = @inbounds C₂ * (1 + (τ / (β[2] + ε))^2)
-    α₃ = @inbounds C₃ * (1 + (τ / (β[3] + ε))^2)
-    α₄ = @inbounds C₄ * (1 + (τ / (β[4] + ε))^2)
+function zweno_alpha_weights(s::WENO{4}, R, β, τ)
+    α₁ = @inbounds C★(s, R, Val(0)) * (1 + (τ / (β[1] + ε))^2)
+    α₂ = @inbounds C★(s, R, Val(1)) * (1 + (τ / (β[2] + ε))^2)
+    α₃ = @inbounds C★(s, R, Val(2)) * (1 + (τ / (β[3] + ε))^2)
+    α₄ = @inbounds C★(s, R, Val(3)) * (1 + (τ / (β[4] + ε))^2)
     αs = 1 / (α₁ + α₂ + α₃ + α₄)
     return (α₁, α₂, α₃, α₄) .* αs
 end
 
-function zweno_alpha_weights(scheme::WENO{5}, red_order, β, τ)
-    C₁ = C★(scheme, red_order, Val(0))
-    C₂ = C★(scheme, red_order, Val(1))
-    C₃ = C★(scheme, red_order, Val(2))
-    C₄ = C★(scheme, red_order, Val(3))
-    C₅ = C★(scheme, red_order, Val(4))
-    α₁ = @inbounds C₁ * (1 + (τ / (β[1] + ε))^2)
-    α₂ = @inbounds C₂ * (1 + (τ / (β[2] + ε))^2)
-    α₃ = @inbounds C₃ * (1 + (τ / (β[3] + ε))^2)
-    α₄ = @inbounds C₄ * (1 + (τ / (β[4] + ε))^2)
-    α₅ = @inbounds C₅ * (1 + (τ / (β[5] + ε))^2)
+function zweno_alpha_weights(s::WENO{5}, R, β, τ)
+    α₁ = @inbounds C★(s, R, Val(0)) * (1 + (τ / (β[1] + ε))^2)
+    α₂ = @inbounds C★(s, R, Val(1)) * (1 + (τ / (β[2] + ε))^2)
+    α₃ = @inbounds C★(s, R, Val(2)) * (1 + (τ / (β[3] + ε))^2)
+    α₄ = @inbounds C★(s, R, Val(3)) * (1 + (τ / (β[4] + ε))^2)
+    α₅ = @inbounds C★(s, R, Val(4)) * (1 + (τ / (β[5] + ε))^2)
     αs = 1 / (α₁ + α₂ + α₃ + α₄ + α₅)
     return (α₁, α₂, α₃, α₄, α₅) ./ αs
 end
 
-function zweno_alpha_weights(scheme::WENO{6}, red_order, β, τ)
-    C₁ = C★(scheme, red_order, Val(0))
-    C₂ = C★(scheme, red_order, Val(1))
-    C₃ = C★(scheme, red_order, Val(2))
-    C₄ = C★(scheme, red_order, Val(3))
-    C₅ = C★(scheme, red_order, Val(4))
-    C₆ = C★(scheme, red_order, Val(5))
-    α₁ = @inbounds C₁ * (1 + (τ / (β[1] + ε))^2)
-    α₂ = @inbounds C₂ * (1 + (τ / (β[2] + ε))^2)
-    α₃ = @inbounds C₃ * (1 + (τ / (β[3] + ε))^2)
-    α₄ = @inbounds C₄ * (1 + (τ / (β[4] + ε))^2)
-    α₅ = @inbounds C₅ * (1 + (τ / (β[5] + ε))^2)
-    α₆ = @inbounds C₆ * (1 + (τ / (β[6] + ε))^2)
+function zweno_alpha_weights(s::WENO{6}, R, β, τ)
+    α₁ = @inbounds C★(s, R, Val(0)) * (1 + (τ / (β[1] + ε))^2)
+    α₂ = @inbounds C★(s, R, Val(1)) * (1 + (τ / (β[2] + ε))^2)
+    α₃ = @inbounds C★(s, R, Val(2)) * (1 + (τ / (β[3] + ε))^2)
+    α₄ = @inbounds C★(s, R, Val(3)) * (1 + (τ / (β[4] + ε))^2)
+    α₅ = @inbounds C★(s, R, Val(4)) * (1 + (τ / (β[5] + ε))^2)
+    α₆ = @inbounds C★(s, R, Val(5)) * (1 + (τ / (β[6] + ε))^2)
     αs = 1 / (α₁ + α₂ + α₃ + α₄ + α₅ + α₆)
     return (α₁, α₂, α₃, α₄, α₅) .* αs
 end
