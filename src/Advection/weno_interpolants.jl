@@ -430,7 +430,7 @@ for (interp, dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, 
 
             ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
             ω = biased_weno_weights(ψₜ, grid, scheme, red_order, bias, VI, args...)
-            return weno_reconstruction(scheme, red_order, bias, ψₜ, ω)::FT
+            return weno_reconstruction(scheme, red_order, ψₜ, ω)::FT
         end
 
         @inline function $interpolate_func(i, j, k, grid, 
