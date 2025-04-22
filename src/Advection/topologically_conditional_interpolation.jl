@@ -1,13 +1,6 @@
 #####
 ##### This file provides functions that conditionally-evaluate interpolation operators
-##### near boundaries in bounded directions.
-#####
-##### For example, the function _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c) either
-#####
-#####     1. Always returns symmetric_interpolate_xᶠᵃᵃ if the x-direction is Periodic; or
-#####
-#####     2. Returns symmetric_interpolate_xᶠᵃᵃ if the x-direction is Bounded and index i is not
-#####        close to the boundary, or a second-order interpolation if i is close to a boundary.
+##### near boundaries in bounded directions
 #####
 
 using Oceananigans.Grids: AbstractGrid, 
@@ -31,9 +24,21 @@ const AGXZ  = AG{<:Any, <:BT,  <:Any, <:BT}
 const AGYZ  = AG{<:Any, <:Any, <:BT,  <:BT}
 const AGXYZ = AG{<:Any, <:BT,  <:BT,  <:BT}
 
+# Reduction of the order near boundaries
+#
+# For faces reconstructions (tracers for example):
+#               B                                                           B
+#  cells:   --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---
+#  order:       1     2     3     4   ....        ....    4     3     2     1
+#
+# For center reconstructions (vorticity for example):
+#               B                                                           B
+#  cells:   --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---
+#  order:    1     1     2     3    ...               ...    3     2     1     1
+
 @inline reduced_order(i, ::Type{RightConnected}, N, B) = max(1, min(B, i))
-@inline reduced_order(i, ::Type{LeftConnected},  N, B) = max(1, min(B, N-i+1))
-@inline reduced_order(i, ::Type{Bounded},        N, B) = max(1, min(B, i, N-i+1))
+@inline reduced_order(i, ::Type{LeftConnected},  N, B) = max(1, min(B, N+1-i))
+@inline reduced_order(i, ::Type{Bounded},        N, B) = max(1, min(B, i, N+1-i))
 
 const A{B} = AbstractAdvectionScheme{B} 
 
