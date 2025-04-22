@@ -338,7 +338,8 @@ The ``α`` values are normalized before returning
     
     # Has to be
     αr = 1 / sum(α) # could be cast to FT32 and rcp'd + taylor expansion residual from FP64 to FP32
-    return α .* αr
+
+    return map(*, α, αr)
 end
 
 @inline function biased_weno_weights(ijk, grid, scheme::WENO{N, FT}, bias, dir, ::VelocityStencil, u, v) where {N, FT}
@@ -354,7 +355,7 @@ end
     α  = zweno_alpha_loop(scheme, β, τ)
     αr = 1 / sum(α)
 
-    return α .* αr
+    return map(*, α,  αr)
 end
 
 """
