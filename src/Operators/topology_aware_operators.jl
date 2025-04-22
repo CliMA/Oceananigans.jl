@@ -76,8 +76,8 @@ const AGYL = AbstractUnderlyingGrid{FT, <:Any, LeftConnected} where FT
 @inline δyTᵃᶜᵃ(i, j, k, grid::AGYR, v::AbstractArray) = @inbounds ifelse(j == 1, v[i, 2, k], δyᵃᶜᵃ(i, j, k, grid, v))
 
 # Derivative operators
-@inline ∂xTᶠᶜᶠ(i, j, k, grid, f, args...) = δxTᶠᵃᵃ(i, j, k, grid, f, args...) / Δxᶠᶜᶠ(i, j, k, grid)
-@inline ∂yTᶜᶠᶠ(i, j, k, grid, f, args...) = δyTᵃᶠᵃ(i, j, k, grid, f, args...) / Δyᶜᶠᶠ(i, j, k, grid)
+@inline ∂xTᶠᶜᶠ(i, j, k, grid, f, args...) = δxTᶠᵃᵃ(i, j, k, grid, f, args...) * Δxᶠᶜᶠ⁻¹(i, j, k, grid)
+@inline ∂yTᶜᶠᶠ(i, j, k, grid, f, args...) = δyTᵃᶠᵃ(i, j, k, grid, f, args...) * Δyᶜᶠᶠ⁻¹(i, j, k, grid)
 
-@inline ∂xTᶠᶜᶠ(i, j, k, grid, w::AbstractArray) = δxTᶠᵃᵃ(i, j, k, grid, w) / Δxᶠᶜᶠ(i, j, k, grid)
-@inline ∂yTᶜᶠᶠ(i, j, k, grid, w::AbstractArray) = δyTᵃᶠᵃ(i, j, k, grid, w) / Δyᶜᶠᶠ(i, j, k, grid)
+@inline ∂xTᶠᶜᶠ(i, j, k, grid, w::AbstractArray) = δxTᶠᵃᵃ(i, j, k, grid, w) * Δxᶠᶜᶠ⁻¹(i, j, k, grid)
+@inline ∂yTᶜᶠᶠ(i, j, k, grid, w::AbstractArray) = δyTᵃᶠᵃ(i, j, k, grid, w) * Δyᶜᶠᶠ⁻¹(i, j, k, grid)
