@@ -3,7 +3,7 @@
 `Field`s and its relatives are core Oceananigans data structures.
 `Field`s are more or less arrays of `data` located on a `grid`, whose entries
 correspond to the average value of some quantity over some finite-sized volume.
-`Field`s also may contain `boundary_conditions`, may be computed from an `operand` 
+`Field`s also may contain `boundary_conditions`, may be computed from an `operand`
 or expression involving other fields, and may cover only a portion of the total
 `indices` spanned by the grid.
 
@@ -43,10 +43,10 @@ primary mesh.
 For example, the primary or `Center` cell spacings in ``z`` are
 
 ```jldoctest fields
-zspacings(grid, Center())
+zspacings(grid, Center())[:, :, 1:4]
 
 # output
-4-element view(OffsetArray(::Vector{Float64}, 0:5), 1:4) with eltype Float64:
+4-element Vector{Float64}:
  0.1
  0.19999999999999998
  0.3
@@ -57,10 +57,10 @@ corresponding to cell interfaces located at `z = [0, 0.1, 0.3, 0.6, 1]`.
 But then for the grid which is staggered in `z` relative to the primary mesh,
 
 ```jldoctest fields
-zspacings(grid, Face())
+zspacings(grid, Face())[:, :, 1:5]
 
 # output
-5-element view(OffsetArray(::Vector{Float64}, -1:5), 1:5) with eltype Float64:
+5-element Vector{Float64}:
  0.1
  0.15000000000000002
  0.24999999999999994
@@ -277,7 +277,7 @@ Note that indexing into `c` is the same as indexing into `c.data`.
 
 ```jldoctest fields
 c[:, :, :] == c.data
- 
+
 # output
 true
 ```
@@ -333,7 +333,7 @@ non-`Flat` directions must be included. For example, to `set!` on a one-dimensio
 one_d_grid = RectilinearGrid(size=7, x=(0, 7), topology=(Periodic, Flat, Flat))
 one_d_c = CenterField(one_d_grid)
 
-# The one-dimensional grid varies only in `x` 
+# The one-dimensional grid varies only in `x`
 still_pretty_fun(x) = 3x
 set!(one_d_c, still_pretty_fun)
 

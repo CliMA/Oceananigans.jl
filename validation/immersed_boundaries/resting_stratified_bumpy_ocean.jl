@@ -5,8 +5,8 @@ using Printf
 using GLMakie
 
 arch = CPU()
-tracer_advection = CenteredSecondOrder()
-momentum_advection = CenteredSecondOrder()
+tracer_advection = Centered()
+momentum_advection = Centered()
 
 underlying_grid = RectilinearGrid(arch,
                                   size=(128, 64), halo=(3, 3), 

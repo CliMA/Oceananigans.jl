@@ -44,7 +44,7 @@ grid = RectilinearGrid(size=(32, 32, 32), extent=(128, 128, 64))
 # (half the distance from wave crest to wave trough), which determine the wave
 # frequency and the vertical scale of the Stokes drift profile.
 
-using Oceananigans.BuoyancyModels: g_Earth
+using Oceananigans.BuoyancyFormulations: g_Earth
 
  amplitude = 0.8 # m
 wavelength = 60  # m
@@ -90,18 +90,18 @@ uˢ(z) = Uˢ * exp(z / vertical_scale)
 #
 # At the surface ``z = 0``, Wagner et al. (2021) impose
 
-Qᵘ = -3.72e-5 # m² s⁻², surface kinematic momentum flux
+τx = -3.72e-5 # m² s⁻², surface kinematic momentum flux
 
-u_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
+u_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 
 # Wagner et al. (2021) impose a linear buoyancy gradient `N²` at the bottom
 # along with a weak, destabilizing flux of buoyancy at the surface to faciliate
 # spin-up from rest.
 
-Qᵇ = 2.307e-8 # m² s⁻³, surface buoyancy flux
+Jᵇ = 2.307e-8 # m² s⁻³, surface buoyancy flux
 N² = 1.936e-5 # s⁻², initial and bottom buoyancy gradient
 
-b_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ),
+b_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ),
                                                 bottom = GradientBoundaryCondition(N²))
 
 # !!! info "The flux convention in Oceananigans"
@@ -153,7 +153,7 @@ bᵢ(x, y, z) = stratification(z) + 1e-1 * Ξ(z) * N² * model.grid.Lz
 # This initial condition is consistent with a wavy, quiescent ocean suddenly impacted
 # by winds. To this quiescent state we add noise scaled by the friction velocity to ``u`` and ``w``.
 
-u★ = sqrt(abs(Qᵘ))
+u★ = sqrt(abs(τx))
 uᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 wᵢ(x, y, z) = u★ * 1e-1 * Ξ(z)
 
@@ -205,10 +205,10 @@ output_interval = 5minutes
 fields_to_output = merge(model.velocities, model.tracers, (; νₑ=model.diffusivity_fields.νₑ))
 
 simulation.output_writers[:fields] =
-    JLD2OutputWriter(model, fields_to_output,
-                     schedule = TimeInterval(output_interval),
-                     filename = "langmuir_turbulence_fields.jld2",
-                     overwrite_existing = true)
+    JLD2Writer(model, fields_to_output,
+               schedule = TimeInterval(output_interval),
+               filename = "langmuir_turbulence_fields.jld2",
+               overwrite_existing = true)
 
 # ### An "averages" writer
 #
@@ -225,10 +225,10 @@ wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
 
 simulation.output_writers[:averages] =
-    JLD2OutputWriter(model, (; U, V, B, wu, wv),
-                     schedule = AveragedTimeInterval(output_interval, window=2minutes),
-                     filename = "langmuir_turbulence_averages.jld2",
-                     overwrite_existing = true)
+    JLD2Writer(model, (; U, V, B, wu, wv),
+               schedule = AveragedTimeInterval(output_interval, window=2minutes),
+               filename = "langmuir_turbulence_averages.jld2",
+               overwrite_existing = true)
 
 # ## Running the simulation
 #
@@ -313,7 +313,7 @@ Vₙ = @lift view(time_series.V[$n], 1, 1, :)
 wuₙ = @lift view(time_series.wu[$n], 1, 1, :)
 wvₙ = @lift view(time_series.wv[$n], 1, 1, :)
 
-k = searchsortedfirst(grid.zᵃᵃᶠ[:], -8)
+k = searchsortedfirst(znodes(grid, Face(); with_halos=true), -8)
 wxyₙ = @lift view(time_series.w[$n], :, :, k)
 wxzₙ = @lift view(time_series.w[$n], :, 1, :)
 uxzₙ = @lift view(time_series.u[$n], :, 1, :)

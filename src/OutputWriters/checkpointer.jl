@@ -3,9 +3,9 @@ using Glob
 using Oceananigans
 using Oceananigans: fields, prognostic_fields
 using Oceananigans.Fields: offset_data
-using Oceananigans.TimeSteppers: RungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
 
-import Oceananigans.Fields: set! 
+import Oceananigans.Fields: set!
 
 mutable struct Checkpointer{T, P} <: AbstractOutputWriter
     schedule :: T
@@ -17,6 +17,20 @@ mutable struct Checkpointer{T, P} <: AbstractOutputWriter
     cleanup :: Bool
 end
 
+function default_checkpointed_properties(model)
+    properties = [:grid, :particles, :clock, :timestepper]
+    #if has_ab2_timestepper(model)
+    #    push!(properties, :timestepper)
+    #end
+    return properties
+end
+
+has_ab2_timestepper(model) = try
+    model.timestepper isa QuasiAdamsBashforth2TimeStepper
+catch
+    false
+end
+
 """
     Checkpointer(model;
                  schedule,
@@ -25,8 +39,7 @@ end
                  overwrite_existing = false,
                  verbose = false,
                  cleanup = false,
-                 properties = [:grid, :clock, :coriolis,
-                               :buoyancy, :closure, :timestepper, :particles])
+                 properties = default_checkpointed_properties(model))
 
 Construct a `Checkpointer` that checkpoints the model to a JLD2 file on `schedule.`
 The `model.clock.iteration` is included in the filename to distinguish between multiple checkpoint files.
@@ -58,8 +71,9 @@ Keyword arguments
              Default: `false`.
 
 - `properties`: List of model properties to checkpoint. This list _must_ contain
-                `:grid`, `:timestepper`, and `:particles`.
-                Default: `[:grid, :timestepper, :particles, :clock, :coriolis, :buoyancy, :closure]`
+                `:grid`, `:particles` and `:clock`, and if using AB2 timestepping then also
+                `:timestepper`. Default: calls [`default_checkpointed_properties`](@ref) on
+                `model` to get these properties.
 """
 function Checkpointer(model; schedule,
                       dir = ".",
@@ -67,11 +81,14 @@ function Checkpointer(model; schedule,
                       overwrite_existing = false,
                       verbose = false,
                       cleanup = false,
-                      properties = [:grid, :timestepper, :particles, :clock,
-                                    :coriolis, :buoyancy, :closure])
+                      properties = default_checkpointed_properties(model))
 
     # Certain properties are required for `set!` to pickup from a checkpoint.
-    required_properties = (:grid, :timestepper, :particles)
+    required_properties = [:grid, :particles, :clock]
+
+    if has_ab2_timestepper(model)
+        push!(required_properties, :timestepper)
+    end
 
     for rp in required_properties
         if rp ∉ properties
@@ -99,8 +116,14 @@ end
 ##### Checkpointer utils
 #####
 
+checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
+checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
+
 """ Return the full prefix (the `superprefix`) associated with `checkpointer`. """
 checkpoint_superprefix(prefix) = prefix * "_iteration"
+
+# This is the default name used in the simulation.output_writers ordered dict.
+defaultname(::Checkpointer, nelems) = :checkpointer
 
 """
     checkpoint_path(iteration::Int, c::Checkpointer)
@@ -110,11 +133,8 @@ Return the path to the `c`heckpointer file associated with model `iteration`.
 checkpoint_path(iteration::Int, c::Checkpointer) =
     joinpath(c.dir, string(checkpoint_superprefix(c.prefix), iteration, ".jld2"))
 
-# This is the default name used in the simulation.output_writers ordered dict.
-defaultname(::Checkpointer, nelems) = :checkpointer
-
 """ Returns `filepath`. Shortcut for `run!(simulation, pickup=filepath)`. """
-checkpoint_path(filepath::AbstractString, output_writers) = filepath
+checkpoint_path(filepath::String, output_writers) = filepath
 
 function checkpoint_path(pickup, output_writers)
     checkpointers = filter(writer -> writer isa Checkpointer, collect(values(output_writers)))
@@ -146,7 +166,7 @@ function latest_checkpoint(checkpointer, filepaths)
     filenames = basename.(filepaths)
     leading = length(checkpoint_superprefix(checkpointer.prefix))
     trailing = length(".jld2") # 5
-    iterations = map(name -> parse(Int, name[leading+1:end-trailing]), filenames)
+    iterations = map(name -> parse(Int, chop(name, head=leading, tail=trailing)), filenames)
     latest_iteration, idx = findmax(iterations)
     return filepaths[idx]
 end
@@ -155,24 +175,26 @@ end
 ##### Writing checkpoints
 #####
 
-function write_output!(c::Checkpointer, model)
+function write_output!(c::Checkpointer, model::AbstractModel)
     filepath = checkpoint_path(model.clock.iteration, c)
     c.verbose && @info "Checkpointing to file $filepath..."
+    addr = checkpointer_address(model)
 
     t1 = time_ns()
-    jldopen(filepath, "w") do file
-        file["checkpointed_properties"] = c.properties
-        serializeproperties!(file, model, c.properties)
 
-        model_fields = fields(model)
+    jldopen(filepath, "w") do file
+        file["$addr/checkpointed_properties"] = c.properties
+        serializeproperties!(file, model, c.properties, addr)
+        model_fields = prognostic_fields(model)
         field_names = keys(model_fields)
         for name in field_names
-            serializeproperty!(file, string(name), model_fields[name])
+            full_address = "$addr/$name"
+            serializeproperty!(file, full_address, model_fields[name])
         end
     end
 
     t2, sz = time_ns(), filesize(filepath)
-    c.verbose && @info "Checkpointing done: time=$(prettytime((t2-t1)/1e9)), size=$(pretty_filesize(sz))"
+    c.verbose && @info "Checkpointing done: time=$(prettytime((t2 - t1) * 1e-9)), size=$(pretty_filesize(sz))"
 
     c.cleanup && cleanup_checkpoints(c)
 
@@ -190,42 +212,43 @@ end
 ##### set! for checkpointer filepaths
 #####
 
-set!(model, ::Nothing) = nothing
-
 """
     set!(model, filepath::AbstractString)
 
 Set data in `model.velocities`, `model.tracers`, `model.timestepper.Gⁿ`, and
 `model.timestepper.G⁻` to checkpointed data stored at `filepath`.
 """
-function set!(model, filepath::AbstractString)
+function set!(model::AbstractModel, filepath::AbstractString)
+
+    addr = checkpointer_address(model)
 
     jldopen(filepath, "r") do file
 
         # Validate the grid
-        checkpointed_grid = file["grid"]
+        checkpointed_grid = file["$addr/grid"]
+
         model.grid == checkpointed_grid ||
-             @warn "The grid associated with $filepath and model.grid are not the same!"
+            @warn "The grid associated with $filepath and model.grid are not the same!"
 
         model_fields = prognostic_fields(model)
 
-        for name in propertynames(model_fields)
-            if string(name) ∈ keys(file) # Test if variable exist in checkpoint.
+        for name in keys(model_fields)
+            if string(name) ∈ keys(file[addr]) # Test if variable exists in checkpoint.
                 model_field = model_fields[name]
-                parent_data = file["$name/data"] #  Allow different halo size by loading only the interior
-                copyto!(model_field.data.parent, parent_data)
+                parent_data = file["$addr/$name/data"]
+                copyto!(parent(model_field), parent_data)
             else
                 @warn "Field $name does not exist in checkpoint and could not be restored."
             end
         end
 
-        set_time_stepper!(model.timestepper, file, model_fields)
+        set_time_stepper!(model.timestepper, file, model_fields, addr)
 
         if !isnothing(model.particles)
-            copyto!(model.particles.properties, file["particles"])
+            copyto!(model.particles.properties, file["$addr/particles"])
         end
 
-        checkpointed_clock = file["clock"]
+        checkpointed_clock = file["$addr/clock"]
 
         # Update model clock
         model.clock.iteration = checkpointed_clock.iteration
@@ -236,17 +259,17 @@ function set!(model, filepath::AbstractString)
     return nothing
 end
 
-function set_time_stepper_tendencies!(timestepper, file, model_fields)
+function set_time_stepper_tendencies!(timestepper, file, model_fields, addr)
     for name in propertynames(model_fields)
-        if string(name) ∈ keys(file["timestepper/Gⁿ"]) # Test if variable tendencies exist in checkpoint
+        if string(name) ∈ keys(file["$addr/timestepper/Gⁿ"]) # Test if variable tendencies exist in checkpoint
             # Tendency "n"
-            parent_data = file["timestepper/Gⁿ/$name/data"]
+            parent_data = file["$addr/timestepper/Gⁿ/$name/data"]
 
             tendencyⁿ_field = timestepper.Gⁿ[name]
             copyto!(tendencyⁿ_field.data.parent, parent_data)
 
             # Tendency "n-1"
-            parent_data = file["timestepper/G⁻/$name/data"]
+            parent_data = file["$addr/timestepper/G⁻/$name/data"]
 
             tendency⁻_field = timestepper.G⁻[name]
             copyto!(tendency⁻_field.data.parent, parent_data)
@@ -258,9 +281,8 @@ function set_time_stepper_tendencies!(timestepper, file, model_fields)
     return nothing
 end
 
-set_time_stepper!(timestepper::RungeKutta3TimeStepper, file, model_fields) =
-    set_time_stepper_tendencies!(timestepper, file, model_fields)
+# For self-starting timesteppers like RK3 we do nothing
+set_time_stepper!(timestepper, args...) = nothing
 
-set_time_stepper!(timestepper::QuasiAdamsBashforth2TimeStepper, file, model_fields) =
-    set_time_stepper_tendencies!(timestepper, file, model_fields)
-
+set_time_stepper!(timestepper::QuasiAdamsBashforth2TimeStepper, args...) =
+    set_time_stepper_tendencies!(timestepper, args...)

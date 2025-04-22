@@ -23,7 +23,7 @@ end
 
 assign_devices(p, ::Nothing) = Tuple(CPU() for i in 1:length(p))
 
-function assign_devices(p::AbstractPartition, dev::Number) 
+function assign_devices(p::AbstractPartition, dev::Number)
     part     = length(p)
     repeat   = part ÷ dev
     leftover = mod(part, dev)
@@ -41,7 +41,7 @@ function assign_devices(p::AbstractPartition, dev::Number)
     return Tuple(devices)
 end
 
-function assign_devices(p::AbstractPartition, dev::Tuple) 
+function assign_devices(p::AbstractPartition, dev::Tuple)
     part     = length(p)
     repeat   = part ÷ length(dev)
     leftover = mod(part, length(dev))

@@ -27,13 +27,13 @@ that
 where ``f_x``, ``f_y``, and ``f_z`` are constants determined by the user.
 
 
-[^3]: The ``f``-plane approximation is used to model the effects of Earth's rotation on anisotropic 
-      fluid motion in a plane tangent to the Earth's surface. In this case, the projection of 
-      the Earth's rotation vector at latitude ``\varphi`` and onto a coordinate system in which 
+[^3]: The ``f``-plane approximation is used to model the effects of Earth's rotation on anisotropic
+      fluid motion in a plane tangent to the Earth's surface. In this case, the projection of
+      the Earth's rotation vector at latitude ``\varphi`` and onto a coordinate system in which
       ``x, y, z`` correspond to the directions east, north, and up is
       ``\boldsymbol{f} \approx \frac{4 \pi}{\text{day}} \left ( \cos \varphi \boldsymbol{\hat y} + \sin \varphi \boldsymbol{\hat z} \right ) \, ,``
-      where the Earth's rotation rate is approximately ``2 \pi / \text{day}``. The *traditional* 
-      ``f``-plane approximation neglects the ``y``-component of this projection, which is appropriate 
+      where the Earth's rotation rate is approximately ``2 \pi / \text{day}``. The *traditional*
+      ``f``-plane approximation neglects the ``y``-component of this projection, which is appropriate
       for fluid motions with large horizontal-to-vertical aspect ratios.
 
 ## ``\beta``-plane approximation
@@ -41,7 +41,7 @@ where ``f_x``, ``f_y``, and ``f_z`` are constants determined by the user.
 ### The traditional ``\beta``-plane approximation
 
 Under the *traditional* ``\beta``-plane approximation, the rotation axis is vertical as for the
-``f``-plane approximation, but ``f`` is expanded in a Taylor series around a central latitude 
+``f``-plane approximation, but ``f`` is expanded in a Taylor series around a central latitude
 such that
 ```math
     \boldsymbol{f} = \left ( f_0 + \beta y \right ) \boldsymbol{\hat z} \, ,

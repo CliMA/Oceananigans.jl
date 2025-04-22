@@ -42,19 +42,19 @@ Return an implicit free-surface solver. The implicit free-surface equation is
 
 where ``η^n`` is the free-surface elevation at the ``n``-th time step, ``H`` is depth, ``g`` is
 the gravitational acceleration, ``Δt`` is the time step, ``𝛁_h`` is the horizontal gradient operator,
-and ``𝐐_⋆`` is the barotropic volume flux associated with the predictor velocity field ``𝐮_⋆``, i.e., 
+and ``𝐐_⋆`` is the barotropic volume flux associated with the predictor velocity field ``𝐮_⋆``, i.e.,
 
 ```math
 𝐐_⋆ = \\int_{-H}^0 𝐮_⋆ \\, 𝖽 z ,
 ```
 
-where 
+where
 
 ```math
 𝐮_⋆ = 𝐮^n + \\int_{t_n}^{t_{n+1}} 𝐆ᵤ \\, 𝖽t .
 ```
 
-This equation can be solved, in general, using the [`ConjugateGradientSolver`](@ref) but 
+This equation can be solved, in general, using the [`ConjugateGradientSolver`](@ref) but
 other solvers can be invoked in special cases.
 
 If ``H`` is constant, we divide through out to obtain
@@ -82,7 +82,7 @@ Adapt.adapt_structure(to, free_surface::ImplicitFreeSurface) =
                         nothing, nothing, nothing, nothing)
 
 on_architecture(to, free_surface::ImplicitFreeSurface) =
-    ImplicitFreeSurface(on_architecture(to, free_surface.η), 
+    ImplicitFreeSurface(on_architecture(to, free_surface.η),
                         on_architecture(to, free_surface.gravitational_acceleration),
                         on_architecture(to, free_surface.barotropic_volume_flux),
                         on_architecture(to, free_surface.implicit_step_solver),
@@ -123,10 +123,7 @@ build_implicit_step_solver(::Val{:Default}, grid, settings, gravitational_accele
 """
 Implicitly step forward η.
 """
-ab2_step_free_surface!(free_surface::ImplicitFreeSurface, model, Δt, χ) =
-    implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ)
-
-function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ)
+function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper, Δt)
     η      = free_surface.η
     g      = free_surface.gravitational_acceleration
     rhs    = free_surface.implicit_step_solver.right_hand_side

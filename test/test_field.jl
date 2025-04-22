@@ -2,10 +2,17 @@ include("dependencies_for_runtests.jl")
 
 using Statistics
 
-using Oceananigans.Grids: total_length
 using Oceananigans.Fields: ReducedField, has_velocities
 using Oceananigans.Fields: VelocityFields, TracerFields, interpolate, interpolate!
 using Oceananigans.Fields: reduced_location
+using Oceananigans.Fields: FractionalIndices, interpolator
+using Oceananigans.Fields: convert_to_0_360, convert_to_λ₀_λ₀_plus360
+using Oceananigans.Grids: ξnode, ηnode, rnode
+using Oceananigans.Grids: total_length
+using Oceananigans.Grids: λnode
+
+using Random
+using CUDA: @allowscalar
 
 """
     correct_field_size(grid, FieldType, Tx, Ty, Tz)
@@ -179,6 +186,69 @@ function run_field_interpolation_tests(grid)
         end
     end
 
+    @info "Testing the convert functions"
+    for n in 1:30
+        @test convert_to_0_360(- 10.e0^(-n)) > 359
+        @test convert_to_0_360(- 10.f0^(-n)) > 359
+        @test convert_to_0_360(10.e0^(-n))   < 1
+        @test convert_to_0_360(10.f0^(-n))   < 1
+    end
+
+    # Generating a random longitude left bound between -1000 and 1000
+    λs₀ = rand(1000) .* 2000 .- 1000
+
+    # Generating a random interpolation longitude
+    λsᵢ = rand(1000) .* 2000 .- 1000
+
+    for λ₀ in λs₀, λᵢ in λsᵢ
+        @test λ₀ ≤ convert_to_λ₀_λ₀_plus360(λᵢ, λ₀) ≤ λ₀ + 360
+    end
+
+    # Check interpolation on Windowed fields
+    wf = ZFaceField(grid; indices=(:, :, grid.Nz+1))
+    If = Field{Center, Center, Nothing}(grid)
+    set!(If, (x, y)-> x * y)
+    interpolate!(wf, If)
+
+    CUDA.@allowscalar begin
+        @test all(interior(wf) .≈ interior(If))
+    end
+
+    # interpolation between fields on latitudelongitude grids with different longitudes
+    grid1 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=(    0,       360), latitude=(-90, 90), z=(0, 1))
+    grid2 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=( -180,       180), latitude=(-90, 90), z=(0, 1))
+    grid3 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=(-1080, -1080+360), latitude=(-90, 90), z=(0, 1))
+    grid4 = LatitudeLongitudeGrid(size=(10, 1, 1), longitude=(  180,       540), latitude=(-90, 90), z=(0, 1))
+
+    f1 = CenterField(grid1)
+    f2 = CenterField(grid2)
+    f3 = CenterField(grid3)
+    f4 = CenterField(grid4)
+
+    set!(f1, (λ, y, z) -> λ)
+    fill_halo_regions!(f1)
+    interpolate!(f2, f1)
+    interpolate!(f3, f1)
+    interpolate!(f4, f1)
+
+    @test all(interior(f2) .≈ map(convert_to_0_360, λnodes(grid2, Center())))
+    @test all(interior(f3) .≈ map(convert_to_0_360, λnodes(grid3, Center())))
+    @test all(interior(f4) .≈ map(convert_to_0_360, λnodes(grid4, Center())))
+
+    # now interpolate back
+    fill_halo_regions!(f2)
+    fill_halo_regions!(f3)
+    fill_halo_regions!(f4)
+
+    interpolate!(f1, f2)
+    @test all(interior(f1) .≈ λnodes(grid1, Center()))
+
+    interpolate!(f1, f3)
+    @test all(interior(f1) .≈ λnodes(grid1, Center()))
+
+    interpolate!(f1, f4)
+    @test all(interior(f1) .≈ λnodes(grid1, Center()))
+
     return nothing
 end
 
@@ -238,7 +308,7 @@ end
 
                 test_indices = [(:, :, :), (1:2, 3:4, 5:6), (1, 1:6, :)]
                 test_field_sizes  = [size(f), (2, 2, 2), (1, 6, size(f, 3))]
-                test_parent_sizes = [size(parent(f)), (2, 2, 2), (1, 6, size(parent(f), 3))] 
+                test_parent_sizes = [size(parent(f)), (2, 2, 2), (1, 6, size(parent(f), 3))]
 
                 for (t, indices) in enumerate(test_indices)
                     field_sz = test_field_sizes[t]
@@ -249,10 +319,10 @@ end
                     @test size(parent(f_view)) == parent_sz
                 end
             end
-        
+
             grid = RectilinearGrid(arch, FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Periodic))
             for side in (:east, :west, :north, :south, :top, :bottom)
-                for wrong_bc in (ValueBoundaryCondition(0), 
+                for wrong_bc in (ValueBoundaryCondition(0),
                                  FluxBoundaryCondition(0),
                                  GradientBoundaryCondition(0))
 
@@ -264,7 +334,7 @@ end
 
             grid = RectilinearGrid(arch, FT, size=N[2:3], extent=L[2:3], halo=H[2:3], topology=(Flat, Periodic, Periodic))
             for side in (:east, :west)
-                for wrong_bc in (ValueBoundaryCondition(0), 
+                for wrong_bc in (ValueBoundaryCondition(0),
                                  FluxBoundaryCondition(0),
                                  GradientBoundaryCondition(0))
 
@@ -276,7 +346,7 @@ end
 
             grid = RectilinearGrid(arch, FT, size=N, extent=L, halo=H, topology=(Periodic, Bounded, Bounded))
             for side in (:east, :west, :north, :south)
-                for wrong_bc in (ValueBoundaryCondition(0), 
+                for wrong_bc in (ValueBoundaryCondition(0),
                                  FluxBoundaryCondition(0),
                                  GradientBoundaryCondition(0))
 
@@ -401,6 +471,65 @@ end
 
         for arch in archs, FT in float_types
             run_field_reduction_tests(FT, arch)
+        end
+
+        for arch in archs, FT in float_types
+            @info "    Test reductions on WindowedFields [$(typeof(arch)), $FT]..."
+
+            grid = RectilinearGrid(arch, FT, size=(2, 3, 4), x=(0, 1), y=(0, 1), z=(0, 1))
+            c = CenterField(grid)
+            Random.seed!(42)
+            set!(c, rand(size(c)...))
+
+            windowed_c = view(c, :, 2:3, 1:2)
+
+            for fun in (sum, maximum, minimum)
+                @test fun(c) ≈ fun(interior(c))
+                @test fun(windowed_c) ≈ fun(interior(windowed_c))
+            end
+
+            @test mean(c) ≈ CUDA.@allowscalar mean(interior(c))
+            @test mean(windowed_c) ≈ CUDA.@allowscalar mean(interior(windowed_c))
+        end
+end
+
+    @testset "Unit interpolation" begin
+        for arch in archs
+            hu = (-1, 1)
+            hs = range(-1, 1, length=21)
+            zu = (-100, 0)
+            zs = range(-100, 0, length=33)
+
+            for latitude in (hu, hs), longitude in (hu, hs), z in (zu, zs), loc in (Center(), Face())
+                @info "    Testing interpolation for $(latitude) latitude and longitude, $(z) z on $(typeof(loc))s..."
+                grid = LatitudeLongitudeGrid(arch; size = (20, 20, 32), longitude, latitude, z, halo = (5, 5, 5))
+
+                # Test random positions,
+                # set seed for reproducibility
+                Random.seed!(1234)
+                Xs = [(2rand()-1, 2rand()-1, -100rand()) for p in 1:20]
+
+                for X in Xs
+                    (x, y, z)  = X
+                    fi = @allowscalar FractionalIndices(X, grid, loc, loc, loc)
+
+                    i⁻, i⁺, _ = interpolator(fi.i)
+                    j⁻, j⁺, _ = interpolator(fi.j)
+                    k⁻, k⁺, _ = interpolator(fi.k)
+
+                    x⁻ = @allowscalar ξnode(i⁻, j⁻, k⁻, grid, loc, loc, loc)
+                    y⁻ = @allowscalar ηnode(i⁻, j⁻, k⁻, grid, loc, loc, loc)
+                    z⁻ = @allowscalar rnode(i⁻, j⁻, k⁻, grid, loc, loc, loc)
+
+                    x⁺ = @allowscalar ξnode(i⁺, j⁺, k⁺, grid, loc, loc, loc)
+                    y⁺ = @allowscalar ηnode(i⁺, j⁺, k⁺, grid, loc, loc, loc)
+                    z⁺ = @allowscalar rnode(i⁺, j⁺, k⁺, grid, loc, loc, loc)
+
+                    @test x⁻ ≤ x ≤ x⁺
+                    @test y⁻ ≤ y ≤ y⁺
+                    @test z⁻ ≤ z ≤ z⁺
+                end
+            end
         end
     end
 

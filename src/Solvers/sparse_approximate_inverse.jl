@@ -23,7 +23,7 @@ makes it very appealing to use on the GPU.
 
 The algorithm implemeted here computes `M` following the specifications found in
 
-> Grote M. J. & Huckle T, "Parallel Preconditioning with sparse approximate inverses" 
+> Grote M. J. & Huckle T, "Parallel Preconditioning with sparse approximate inverses"
 
 In particular, the algorithm tries to minimize the Frobenius norm of
 
@@ -85,7 +85,7 @@ function sparse_approximate_inverse(A::AbstractMatrix; ε::Float64, nzrel)
     iterator = SpaiIterator(e, e, r, J, J, J, J, Q, Q)
 
     # this loop can be parallelized!
-    for j = 1:n 
+    for j = 1:n
         @show j, n
         # maximum number of elements in a column
         ncolmax = nzrel * nnz(A[:, j])
@@ -113,12 +113,12 @@ function set_j_column!(iterator, A, j, ε, ncolmax, n, FT)
         calc_residuals!(iterator, A)
         iterator.J̃ = setdiff(iterator.r.nzind, iterator.J)
 
-        # we do not need to select the residuals here as our sparsity pattern is quite large 
+        # we do not need to select the residuals here as our sparsity pattern is quite large
         # (only 13 elements maximum in a column). Therefore it gives no benefit to reduce the number of
         # selected iterator.J̃ versus the computational time required by select_residuals. It is nice to switch
         # on this function if we have to calculate the sparse inverse of a much more dense matrix
         # select_residuals!(iterator, A, n, FT)
-        
+
         # iterate until a certain tolerance is met or the maximum number of fill is reached
         while norm(iterator.r) > ε && length(iterator.mhat) < ncolmax
             if isempty(iterator.J̃)
@@ -131,7 +131,7 @@ function set_j_column!(iterator, A, j, ε, ncolmax, n, FT)
             end
         end
     end
-end    
+end
 
 function initial_sparsity_pattern!(iterator, j)
     iterator.J = [j]
@@ -140,7 +140,7 @@ end
 function update_mhat_given_col!(iterator, A, FT)
     @inbounds begin
         A1  = A[:, iterator.J̃]
-        A1I = A1[iterator.I, :]      
+        A1I = A1[iterator.I, :]
 
         n₁ = length(iterator.I)
         n₂ = length(iterator.J)
@@ -152,7 +152,7 @@ function update_mhat_given_col!(iterator, A, FT)
         iterator.Ĩ = setdiff(unique(Atmp.rowval), iterator.I)
 
         A1Ĩ = A1[iterator.Ĩ, :]
-    
+
         ñ₁ = length(iterator.Ĩ)
 
         B1 = spzeros(n₂, ñ₂)
@@ -169,10 +169,10 @@ function update_mhat_given_col!(iterator, A, FT)
         iterator.Q = vcat(hcat(iterator.Q, hm), hcat(hm', Iₙ₁))
         hm  = spzeros(ñ₁ + n₁ - n₂, n₂)
         iterator.Q = iterator.Q * vcat(hcat(Iₙ₂, hm'), hcat(hm, F.Q))
-        
+
         hm = spzeros(ñ₂, n₂)
-        iterator.R = vcat(hcat(iterator.R, B1), hcat(hm, F.R))    
-        
+        iterator.R = vcat(hcat(iterator.R, B1), hcat(hm, F.R))
+
         push!(iterator.I, iterator.Ĩ...)
 
         bj = zeros(length(iterator.I))
@@ -182,19 +182,19 @@ function update_mhat_given_col!(iterator, A, FT)
 end
 
 function find_mhat_given_col!(iterator, A, n)
-    
+
     A1 = spzeros(n, length(iterator.J))
     copyto!(A1, A[:, iterator.J])
-    
+
     iterator.I = unique(A1.rowval)
 
     bj = zeros(length(iterator.I))
     copyto!(bj, iterator.e[iterator.I])
-    
+
     F = qr(A1[iterator.I, :], ordering = false)
     iterator.Q = sparse(F.Q)
     iterator.R = sparse(F.R)
-    
+
     minimize!(iterator, bj)
 end
 
@@ -204,14 +204,14 @@ function select_residuals!(iterator, A, n, FT)
         ek   = speyecolumn(FT, k, n)
         ρ[t] = norm(iterator.r)^2 - norm(iterator.r' * A * ek)^2 / norm(A * ek)^2
     end
-    iterator.J̃ = iterator.J̃[ ρ .< mean(ρ) ] 
+    iterator.J̃ = iterator.J̃[ ρ .< mean(ρ) ]
 end
 
 @inline calc_residuals!(i::SpaiIterator, A) = copyto!(i.r, i.e - A[:, i.J] * i.mhat)
 @inline minimize!(i::SpaiIterator, bj)      = i.mhat = (i.R \ (i.Q' * bj)[1:length(i.J)])
 @inline speye(FT, n) = spdiagm(0=>ones(FT, n))
 
-@inline function speyecolumn(FT, j, n) 
+@inline function speyecolumn(FT, j, n)
     e    = spzeros(FT, n)
     e[j] = FT(1)
     return e

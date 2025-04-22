@@ -9,7 +9,7 @@ using Oceananigans.Utils: prettytime
 using Oceananigans.DistributedComputations
 using Oceananigans.Grids: node
 using Oceananigans.Advection: cell_advection_timescale
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
+using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVerticalDiffusivity
 using Oceananigans.Units
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 
@@ -77,10 +77,10 @@ function run_hydrostatic_simulation!(grid_size, ranks, FT::DataType = Float64;
     rank = MPI.Comm_rank(MPI.COMM_WORLD)
 
     if !isnothing(output_name)
-        simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
-                                                            filename = output_name * "_$(rank)",
-                                                            schedule = TimeInterval(1day),
-                                                            overwrite_existing = true)
+        simulation.output_writers[:fields] = JLD2Writer(model, merge(model.velocities, model.tracers),
+                                                        filename = output_name * "_$(rank)",
+                                                        schedule = TimeInterval(1day),
+                                                        overwrite_existing = true)
     end
 
     run!(simulation)

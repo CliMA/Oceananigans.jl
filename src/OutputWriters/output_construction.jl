@@ -4,9 +4,10 @@ using Oceananigans.Grids: default_indices
 
 restrict_to_interior(::Colon, loc, topo, N) = interior_indices(loc, topo, N)
 restrict_to_interior(::Colon, ::Nothing, topo, N) = UnitRange(1, 1)
-restrict_to_interior(index::UnitRange, ::Nothing, topo, N) = UnitRange(1, 1)
+restrict_to_interior(index::Base.OneTo, loc, topo, N) = restrict_to_interior(UnitRange(index), loc, topo, N)
+restrict_to_interior(index::AbstractUnitRange, ::Nothing, topo, N) = UnitRange(1, 1)
 
-function restrict_to_interior(index::UnitRange, loc, topo, N)
+function restrict_to_interior(index::AbstractUnitRange, loc, topo, N)
     from = max(first(index), 1)
     to = min(last(index), last(interior_indices(loc, topo, N)))
     return UnitRange(from, to)
@@ -29,6 +30,14 @@ end
 ##### Support for Field, Reduction, and AbstractOperation outputs
 #####
 
+intersect_indices(output, indices) = indices
+intersect_indices(output::Field, indices) = map(intersect_index_range, indices, output.indices)
+
+intersect_index_range(::Colon, ::Colon) = Colon()
+intersect_index_range(range::UnitRange, ::Colon) = range
+intersect_index_range(::Colon, range::UnitRange) = range
+intersect_index_range(range1::UnitRange, range2::UnitRange) = intersect(range1, range2)
+
 function output_indices(output::Union{AbstractField, Reduction}, grid, indices, with_halos)
     indices = validate_indices(indices, location(output), grid)
 
@@ -38,7 +47,9 @@ function output_indices(output::Union{AbstractField, Reduction}, grid, indices, 
         indices = map(restrict_to_interior, indices, loc, topo, size(grid))
     end
 
-    return indices
+    intersected = intersect_indices(output, indices)
+
+    return intersected
 end
 
 function construct_output(user_output::Union{AbstractField, Reduction}, grid, user_indices, with_halos)
@@ -54,4 +65,3 @@ function construct_output(averaged_output::WindowedTimeAverage{<:Field}, grid, i
     output = construct_output(averaged_output.operand, grid, indices, with_halos)
     return WindowedTimeAverage(output; schedule=averaged_output.schedule)
 end
-

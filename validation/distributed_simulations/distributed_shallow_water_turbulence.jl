@@ -19,7 +19,7 @@ local_rank = MPI.Comm_rank(arch.communicator)
 
 model = ShallowWaterModel(grid = grid,
                           timestepper = :RungeKutta3,
-                          momentum_advection = UpwindBiasedFifthOrder(),
+                          momentum_advection = UpwindBiased(order=5),
                           gravitational_acceleration = 1)
 
 set!(model, h=1)
@@ -34,7 +34,7 @@ simulation = Simulation(model, Δt=1e-3, stop_time=100)
 uh, vh, h = model.solution
 outputs = (; ζ=Field(∂x(vh/h) - ∂y(uh/h)))
 filepath = "mpi_shallow_water_turbulence_rank$(local_rank).nc"
-simulation.output_writers[:fields] = NetCDFOutputWriter(model, outputs, filepath=filepath, schedule=TimeInterval(1), mode="c")
+simulation.output_writers[:fields] = NetCDFWriter(model, outputs, filepath=filepath, schedule=TimeInterval(1), mode="c")
 
 # ?
 MPI.Barrier(arch.communicator)

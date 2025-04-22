@@ -118,7 +118,7 @@ end
 function time_step_with_field_time_series_forcing(arch)
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-    
+
     u_forcing = FieldTimeSeries{Face, Center, Center}(grid, 0:1:3)
 
     for (t, time) in enumerate(u_forcing.times)
@@ -134,14 +134,14 @@ function time_step_with_field_time_series_forcing(arch)
     model = NonhydrostaticModel(; grid, forcing=(; u=u_forcing))
     time_step!(model, 2)
     time_step!(model, 2)
-    
+
     @test u_forcing.backend.start == 4
 
     return true
 end
 
 function relaxed_time_stepping(arch)
-    x_relax = Relaxation(rate = 1/60,   mask = GaussianMask{:x}(center=0.5, width=0.1), 
+    x_relax = Relaxation(rate = 1/60,   mask = GaussianMask{:x}(center=0.5, width=0.1),
                                       target = LinearTarget{:x}(intercept=π, gradient=ℯ))
 
     y_relax = Relaxation(rate = 1/60,   mask = GaussianMask{:y}(center=0.5, width=0.1),
@@ -197,7 +197,7 @@ end
 
 function two_forcings(arch)
     grid = RectilinearGrid(arch, size=(4, 5, 6), extent=(1, 1, 1), halo=(4, 4, 4))
-    
+
     forcing1 = Relaxation(rate=1)
     forcing2 = Relaxation(rate=2)
 
@@ -221,7 +221,7 @@ function seven_forcings(arch)
     peculiar_forcing(x, y, z, t) = 2t / z
     eccentric_forcing(x, y, z, t) = x + y + z + t
     unconventional_forcing(x, y, z, t) = 10x * y
-    
+
     F1 = Forcing(weird_forcing)
     F2 = Forcing(wonky_forcing)
     F3 = Forcing(strange_forcing)
@@ -269,7 +269,7 @@ end
 
                 @test time_step_with_multiple_field_dependent_forcing(arch)
                 @test time_step_with_parameterized_field_dependent_forcing(arch)
-            end 
+            end
 
             @testset "Relaxation forcing functions [$A]" begin
                 @info "      Testing relaxation forcing functions [$A]..."

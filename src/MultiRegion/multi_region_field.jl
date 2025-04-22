@@ -70,6 +70,8 @@ Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
 Reconstruct a global field from `mrf::MultiRegionField` on the `CPU`.
 """
 function reconstruct_global_field(mrf::MultiRegionField)
+
+    # TODO: Is this correct? Shall we reconstruct a global field on the architecture of the grid?
     global_grid  = on_architecture(CPU(), reconstruct_global_grid(mrf.grid))
     indices      = reconstruct_global_indices(mrf.indices, mrf.grid.partition, size(global_grid))
     global_field = Field(location(mrf), global_grid; indices)
@@ -77,7 +79,7 @@ function reconstruct_global_field(mrf::MultiRegionField)
     data = construct_regionally(interior, mrf)
     data = construct_regionally(Array, data)
     compact_data!(global_field, global_grid, data, mrf.grid.partition)
-    
+
     fill_halo_regions!(global_field)
     return global_field
 end
@@ -121,7 +123,7 @@ fill!(mrf::MultiRegionField, v) = apply_regionally!(fill!, mrf, v)
 set!(mrf::MultiRegionField, f::Function) = apply_regionally!(set!, mrf, f)
 set!(u::MultiRegionField, v::MultiRegionField) = apply_regionally!(set!, u, v)
 compute!(mrf::GriddedMultiRegionField, time=nothing) = apply_regionally!(compute!, mrf, time)
- 
+
 # Disambiguation (same as computed_field.jl:64)
 function compute!(comp::MultiRegionComputedField, time=nothing)
     # First compute `dependencies`:
@@ -163,7 +165,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                            immersed = reg_bcs.immersed)
 end
 
-function inject_regional_bcs(grid, connectivity, loc, indices;   
+function inject_regional_bcs(grid, connectivity, loc, indices;
                               west = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),
                               east = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),
                              south = default_auxiliary_bc(topology(grid, 2)(), loc[2]()),

@@ -8,7 +8,7 @@
 """
     intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ)
 
-Convert the three-dimensional vector with components `uₑ, vₑ, wₑ` defined in an _extrinsic_ 
+Convert the three-dimensional vector with components `uₑ, vₑ, wₑ` defined in an _extrinsic_
 coordinate system associated with the domain, to the coordinate system _intrinsic_ to the grid.
 
 _extrinsic_ coordinate systems are:
@@ -16,11 +16,11 @@ _extrinsic_ coordinate systems are:
 - Cartesian for any grid that discretizes a Cartesian domain (e.g. a `RectilinearGrid`)
 - Geographic coordinates for any grid that discretizes a Spherical domain (e.g. an `AbstractCurvilinearGrid`)
 
-Therefore, for the [`RectilinearGrid`](@ref) and the [`LatitudeLongitudeGrid`](@ref), the _extrinsic_ and the 
+Therefore, for the [`RectilinearGrid`](@ref) and the [`LatitudeLongitudeGrid`](@ref), the _extrinsic_ and the
 _intrinsic_ coordinate system are equivalent. However, for other grids (e.g., for the
  [`ConformalCubedSphereGrid`](@ref)) that might not be the case.
 """
-@inline intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ) = 
+@inline intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ) =
     getvalue(uₑ, i, j, k, grid), getvalue(vₑ, i, j, k, grid), getvalue(wₑ, i, j, k, grid)
 
 """
@@ -34,7 +34,7 @@ _extrinsic_ coordinate systems are:
 - Cartesian for any grid that discretizes a Cartesian domain (e.g. a `RectilinearGrid`)
 - Geographic coordinates for any grid that discretizes a Spherical domain (e.g. an `AbstractCurvilinearGrid`)
 
-Therefore, for the [`RectilinearGrid`](@ref) and the [`LatitudeLongitudeGrid`](@ref), the _extrinsic_ and the 
+Therefore, for the [`RectilinearGrid`](@ref) and the [`LatitudeLongitudeGrid`](@ref), the _extrinsic_ and the
 _intrinsic_ coordinate systems are equivalent. However, for other grids (e.g., for the
  [`ConformalCubedSphereGrid`](@ref)) that might not be the case.
 """
@@ -42,45 +42,46 @@ _intrinsic_ coordinate systems are equivalent. However, for other grids (e.g., f
     getvalue(uᵢ, i, j, k, grid), getvalue(vᵢ, i, j, k, grid), getvalue(wᵢ, i, j, k, grid)
 
 # 2D vectors
-@inline intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ) = 
+@inline intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ) =
     getvalue(uₑ, i, j, k, grid), getvalue(vₑ, i, j, k, grid)
 
-@inline extrinsic_vector(i, j, k, grid::AbstractGrid, uᵢ, vᵢ) = 
+@inline extrinsic_vector(i, j, k, grid::AbstractGrid, uᵢ, vᵢ) =
     getvalue(uᵢ, i, j, k, grid), getvalue(vᵢ, i, j, k, grid)
 
 # Intrinsic and extrinsic conversion for `OrthogonalSphericalShellGrid`s,
 # i.e. curvilinear grids defined on a sphere which are locally orthogonal.
 # If the coordinates match with the coordinates of a latitude-longitude grid
-# (i.e. globally orthogonal), these functions collapse to 
+# (i.e. globally orthogonal), these functions collapse to
 # uₑ, vₑ, wₑ = uᵢ, vᵢ, wᵢ
 
 # 2D vectors
 @inline function intrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uₑ, vₑ)
 
-    φᶜᶠᵃ₊ = φnode(i, j+1, 1, grid, Center(), Face(), Center())
-    φᶜᶠᵃ₋ = φnode(i,   j, 1, grid, Center(), Face(), Center())
-    Δyᶜᶜᵃ = Δyᶜᶜᶜ(i,   j, 1, grid)
+    φᶠᶠᵃ⁺⁺ = φnode(i+1, j+1, 1, grid, Face(), Face(), Center())
+    φᶠᶠᵃ⁺⁻ = φnode(i+1, j,   1, grid, Face(), Face(), Center())
+    φᶠᶠᵃ⁻⁺ = φnode(i,   j+1, 1, grid, Face(), Face(), Center())
+    φᶠᶠᵃ⁻⁻ = φnode(i,   j,   1, grid, Face(), Face(), Center())
+
+    Δyᶠᶜᵃ⁺ = Δyᶠᶜᶜ(i+1, j,   1, grid)
+    Δyᶠᶜᵃ⁻ = Δyᶠᶜᶜ(i,   j,   1, grid)
+    Δxᶜᶠᵃ⁺ = Δxᶜᶠᶜ(i,   j+1, 1, grid)
+    Δxᶜᶠᵃ⁻ = Δxᶜᶠᶜ(i,   j,   1, grid)
 
     # θᵢ is the rotation angle between intrinsic and extrinsic reference frame
-    Rcosθᵢ = deg2rad(φᶜᶠᵃ₊ - φᶜᶠᵃ₋) / Δyᶜᶜᵃ
-
-    φᶠᶜᵃ₊ = φnode(i+1, j, 1, grid, Face(), Center(), Center())
-    φᶠᶜᵃ₋ = φnode(i,   j, 1, grid, Face(), Center(), Center())
-    Δxᶜᶜᵃ = Δxᶜᶜᶜ(i,   j, 1, grid)
-
-    Rsinθᵢ = - deg2rad(φᶠᶜᵃ₊ - φᶠᶜᵃ₋) / Δxᶜᶜᵃ
+    Rcosθ =   (deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁺⁻) / Δyᶠᶜᵃ⁺ + deg2rad(φᶠᶠᵃ⁻⁺ - φᶠᶠᵃ⁻⁻) / Δyᶠᶜᵃ⁻) / 2
+    Rsinθ = - (deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁻⁺) / Δxᶜᶠᵃ⁺ + deg2rad(φᶠᶠᵃ⁺⁻ - φᶠᶠᵃ⁻⁻) / Δxᶜᶠᵃ⁻) / 2
 
     # Normalization for the rotation angles
-    Rᵢ = sqrt(Rcosθᵢ^2 + Rsinθᵢ^2)
+    R = sqrt(Rcosθ^2 + Rsinθ^2)
 
     u  = getvalue(uₑ, i, j, k, grid)
     v  = getvalue(vₑ, i, j, k, grid)
 
-    cosθᵢ = Rcosθᵢ / Rᵢ
-    sinθᵢ = Rsinθᵢ / Rᵢ
+    cosθ = Rcosθ / R
+    sinθ = Rsinθ / R
 
-    uᵢ =   u * cosθᵢ + v * sinθᵢ
-    vᵢ = - u * sinθᵢ + v * cosθᵢ
+    uᵢ =   u * cosθ + v * sinθ
+    vᵢ = - u * sinθ + v * cosθ
 
     return uᵢ, vᵢ
 end
@@ -97,30 +98,31 @@ end
 # 2D vectors
 @inline function extrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uᵢ, vᵢ)
 
-    φᶜᶠᵃ₊ = φnode(i, j+1, 1, grid, Center(), Face(), Center())
-    φᶜᶠᵃ₋ = φnode(i,   j, 1, grid, Center(), Face(), Center())
-    Δyᶜᶜᵃ = Δyᶜᶜᶜ(i,   j, 1, grid)
+    φᶠᶠᵃ⁺⁺ = φnode(i+1, j+1, 1, grid, Face(), Face(), Center())
+    φᶠᶠᵃ⁺⁻ = φnode(i+1, j,   1, grid, Face(), Face(), Center())
+    φᶠᶠᵃ⁻⁺ = φnode(i,   j+1, 1, grid, Face(), Face(), Center())
+    φᶠᶠᵃ⁻⁻ = φnode(i,   j,   1, grid, Face(), Face(), Center())
 
-    # θₑ is the rotation angle between intrinsic and extrinsic reference frame
-    Rcosθₑ = deg2rad(φᶜᶠᵃ₊ - φᶜᶠᵃ₋) / Δyᶜᶜᵃ
+    Δyᶠᶜᵃ⁺ = Δyᶠᶜᶜ(i+1, j,   1, grid)
+    Δyᶠᶜᵃ⁻ = Δyᶠᶜᶜ(i,   j,   1, grid)
+    Δxᶜᶠᵃ⁺ = Δxᶜᶠᶜ(i,   j+1, 1, grid)
+    Δxᶜᶠᵃ⁻ = Δxᶜᶠᶜ(i,   j,   1, grid)
 
-    φᶠᶜᵃ₊ = φnode(i+1, j, 1, grid, Face(), Center(), Center())
-    φᶠᶜᵃ₋ = φnode(i,   j, 1, grid, Face(), Center(), Center())
-    Δxᶜᶜᵃ = Δxᶜᶜᶜ(i,   j, 1, grid)
-
-    Rsinθₑ = - deg2rad(φᶠᶜᵃ₊ - φᶠᶜᵃ₋) / Δxᶜᶜᵃ
+    # θᵢ is the rotation angle between intrinsic and extrinsic reference frame
+    Rcosθ =   (deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁺⁻) / Δyᶠᶜᵃ⁺ + deg2rad(φᶠᶠᵃ⁻⁺ - φᶠᶠᵃ⁻⁻) / Δyᶠᶜᵃ⁻) / 2
+    Rsinθ = - (deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁻⁺) / Δxᶜᶠᵃ⁺ + deg2rad(φᶠᶠᵃ⁺⁻ - φᶠᶠᵃ⁻⁻) / Δxᶜᶠᵃ⁻) / 2
 
     # Normalization for the rotation angles
-    Rₑ = sqrt(Rcosθₑ^2 + Rsinθₑ^2)
+    R  = sqrt(Rcosθ^2 + Rsinθ^2)
 
     u  = getvalue(uᵢ, i, j, k, grid)
     v  = getvalue(vᵢ, i, j, k, grid)
 
-    cosθₑ = Rcosθₑ / Rₑ
-    sinθₑ = Rsinθₑ / Rₑ
+    cosθ = Rcosθ / R
+    sinθ = Rsinθ / R
 
-    uₑ = u * cosθₑ - v * sinθₑ
-    vₑ = u * sinθₑ + v * cosθₑ
+    uₑ = u * cosθ - v * sinθ
+    vₑ = u * sinθ + v * cosθ
 
     return uₑ, vₑ
 end

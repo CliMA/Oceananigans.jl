@@ -6,7 +6,7 @@ using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ
 using Printf
 
 arch = CPU()
-tracer_advection = CenteredSecondOrder()
+tracer_advection = Centered()
 
 underlying_grid = RectilinearGrid(arch,
                                   size=(128, 64), halo=(3, 3), 
@@ -101,10 +101,10 @@ end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, model.tracers,
-                                                      schedule = TimeInterval(0.02),
-                                                      prefix = "tracer_advection_over_bump",
-                                                      force = true)
+simulation.output_writers[:fields] = JLD2Writer(model, model.tracers,
+                                                schedule = TimeInterval(0.02),
+                                                prefix = "tracer_advection_over_bump",
+                                                force = true)
 
 run!(simulation)
 

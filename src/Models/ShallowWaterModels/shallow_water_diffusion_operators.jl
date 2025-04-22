@@ -2,7 +2,7 @@ using Oceananigans.Operators
 using Oceananigans.Architectures: device
 using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, ThreeDimensionalFormulation
 
-using Oceananigans.TurbulenceClosures: 
+using Oceananigans.TurbulenceClosures:
                         AbstractScalarDiffusivity,
                         convert_diffusivity,
                         viscosity_location,
@@ -12,7 +12,7 @@ using Oceananigans.TurbulenceClosures:
                         ∂ⱼ_τ₂ⱼ
 
 import Oceananigans.TurbulenceClosures:
-                        DiffusivityFields,
+                        build_diffusivity_fields,
                         compute_diffusivities!,
                         viscosity,
                         with_tracers,
@@ -48,10 +48,10 @@ end
 with_tracers(tracers, closure::ShallowWaterScalarDiffusivity) = closure
 viscosity(closure::ShallowWaterScalarDiffusivity, K) = closure.ν
 
-Adapt.adapt_structure(to, closure::ShallowWaterScalarDiffusivity{B}) where B = 
+Adapt.adapt_structure(to, closure::ShallowWaterScalarDiffusivity{B}) where B =
     ShallowWaterScalarDiffusivity{B}(Adapt.adapt(to, closure.ν), Adapt.adapt(to, closure.ξ))
 
-on_architecture(to, closure::ShallowWaterScalarDiffusivity{B}) where B = 
+on_architecture(to, closure::ShallowWaterScalarDiffusivity{B}) where B =
     ShallowWaterScalarDiffusivity{B}(on_architecture(to, closure.ν), on_architecture(to, closure.ξ))
 
 
@@ -78,7 +78,7 @@ function compute_diffusivities!(diffusivity_fields, closure::ShallowWaterScalarD
     return nothing
 end
 
-DiffusivityFields(grid, tracer_names, bcs, ::ShallowWaterScalarDiffusivity) = (; νₑ=CenterField(grid, boundary_conditions=bcs.h))
+build_diffusivity_fields(grid, clock, tracer_names, bcs, ::ShallowWaterScalarDiffusivity) = (; νₑ=CenterField(grid, boundary_conditions=bcs.h))
 
 #####
 ##### Diffusion flux divergence operators

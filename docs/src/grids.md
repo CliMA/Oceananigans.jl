@@ -59,16 +59,14 @@ grid = RectilinearGrid(architecture,
                        z = z_faces)
 
 # output
-10×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on GPU with 3×0×3 halo
+10×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on CUDAGPU with 3×0×3 halo
 ├── Periodic x ∈ [0.0, 20.0) regularly spaced with Δx=2.0
 ├── Flat y
 └── Bounded  z ∈ [0.0, 10.0] variably spaced with min(Δz)=1.0, max(Δz)=4.0
 ```
 
-!!! note "GPU architecture requires a CUDA-enabled device"
-    To run the above example and create a grid on the GPU, an Nvidia GPU has to be available
-    and [`CUDA.jl`](https://cuda.juliagpu.org/stable/) must be working). For more information
-    see the [`CUDA.jl` documentation](https://cuda.juliagpu.org/stable/).
+!!! note "GPU architecture requires a CUDA-, ROC- or Metal-enabled device"
+    Running this example and creating a grid on the GPU requires a device that supports CUDA, ROC, or Metal. In other words, you must have an Nvidia, AMD, or Apple-compatible GPU available. For more information about CUDA, see the [`CUDA.jl` documentation](https://cuda.juliagpu.org/stable/).
 
 The ``y``-dimension is "missing" because it's marked `Flat` in `topology = (Periodic, Flat, Bounded)`.
 So nothing varies in ``y``: `y`-derivatives are 0.
@@ -88,7 +86,7 @@ The shape of the physical domain determines what grid type should be used:
 3. [`OrthogonalSphericalShellGrid`](@ref Oceananigans.Grids.OrthogonalSphericalShellGrid) represents sectors of thin spherical shells divided with mesh lines that intersect at right angles (thus, orthogonal) but are otherwise arbitrary.
 
 !!! note "OrthogonalSphericalShellGrids.jl"
-    See the auxiliary package [`OrthogonalSphericalShellGrids.jl`](https://github.com/CliMA/OrthogonalSphericalShellGrids.jl)
+    See the auxiliary module [`OrthogonalSphericalShellGrids.jl`](@ref Oceananigans.OrthogonalSphericalShellGrids)
     for recipes that implement some useful `OrthogonalSphericalShellGrid`, including the
     ["tripolar" grid](https://www.sciencedirect.com/science/article/abs/pii/S0021999196901369).
 
@@ -174,7 +172,7 @@ mountain_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(mountain))
 
 # output
 20×20×20 ImmersedBoundaryGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo:
-├── immersed_boundary: GridFittedBottom(mean(z)=6.28318, min(z)=1.58939e-8, max(z)=93.9413)
+├── immersed_boundary: GridFittedBottom(mean(z)=4.5, min(z)=0.0, max(z)=100.0)
 ├── underlying_grid: 20×20×20 RectilinearGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── Bounded  x ∈ [-5000.0, 5000.0] regularly spaced with Δx=500.0
 ├── Bounded  y ∈ [-5000.0, 5000.0] regularly spaced with Δy=500.0
@@ -219,7 +217,7 @@ current_figure()
 
 ## Once more with feeling
 
-In summary, making a grid requires 
+In summary, making a grid requires
 
 * The machine architecture, or whether data is stored on the CPU, GPU, or distributed across multiple devices or nodes.
 * Information about the domain geometry. Domains can take a variety of shapes, including
@@ -264,14 +262,14 @@ architecture = Distributed(child_architecture)
 [ Info: MPI has not been initialized, so we are calling MPI.Init().
 Distributed{CPU} across 1 rank:
 ├── local_rank: 0 of 0-0
-└── local_index: [1, 1, 1]
+├── local_index: [1, 1, 1]
+└── connectivity:
 ```
 
 which allows us to distributed computations across either CPUs or GPUs.
 In this case, we didn't launch `julia` on multiple nodes using [MPI](https://en.wikipedia.org/wiki/Message_Passing_Interface),
 so we're only "distributed" across 1 node.
 <!-- For more, see [Distributed grids](@ref). -->
-More details on Distributed grids in a separate section.
 
 ### Specifying the topology for each dimension
 
@@ -413,7 +411,7 @@ hidespines!(axy)
 
 axΔy = Axis(fig[2, 1]; xlabel = "y (m)", ylabel = "y-spacing (m)")
 scatter!(axΔy, yc, Δy)
-hidespines!(axΔy, :t, :r) 
+hidespines!(axΔy, :t, :r)
 
 axz = Axis(fig[3, 1], title="z-grid")
 lines!(axz, [-Lz, 0], [0, 0], color=:gray)
@@ -440,18 +438,17 @@ using Oceananigans
 
 ```@example latlon_nodes
 grid = LatitudeLongitudeGrid(size = (1, 44),
-                             longitude = (0, 1),   
+                             longitude = (0, 1),
                              latitude = (0, 88),
                              topology = (Bounded, Bounded, Flat))
 
-φ = φnodes(grid, Center())
 Δx = xspacings(grid, Center(), Center())
 
 using CairoMakie
 
 fig = Figure(size=(600, 400))
 ax = Axis(fig[1, 1], xlabel="Zonal spacing on 2 degree grid (km)", ylabel="Latitude (degrees)")
-scatter!(ax, Δx ./ 1e3, φ)
+scatter!(ax, Δx / 1e3)
 
 current_figure()
 ```
@@ -473,7 +470,7 @@ m = 2 # spacing at the equator in degrees
 function latitude_faces(j)
     if j == 1 # equator
         return 0
-    else # crudely estimate the location of the jth face 
+    else # crudely estimate the location of the jth face
         φ₋ = latitude_faces(j-1)
         φ′ = φ₋ + m * scale_factor(φ₋) / 2
         return φ₋ + m * scale_factor(φ′)
@@ -493,7 +490,7 @@ grid = LatitudeLongitudeGrid(size = (Nx, Ny),
 180×28×1 LatitudeLongitudeGrid{Float64, Bounded, Bounded, Flat} on CPU with 3×3×0 halo and with precomputed metrics
 ├── longitude: Bounded  λ ∈ [0.0, 360.0]   regularly spaced with Δλ=2.0
 ├── latitude:  Bounded  φ ∈ [0.0, 77.2679] variably spaced with min(Δφ)=2.0003, max(Δφ)=6.95319
-└── z:         Flat z                      
+└── z:         Flat z
 ```
 
 We've also illustrated the construction of a grid that is `Flat` in the vertical direction.
@@ -508,7 +505,7 @@ m = 2 # spacing at the equator in degrees
 function latitude_faces(j)
     if j == 1 # equator
         return 0
-    else # crudely estimate the location of the jth face 
+    else # crudely estimate the location of the jth face
         φ₋ = latitude_faces(j-1)
         φ′ = φ₋ + m * scale_factor(φ₋) / 2
         return φ₋ + m * scale_factor(φ′)
@@ -530,17 +527,17 @@ grid = LatitudeLongitudeGrid(size = (Nx, Ny),
 
 ```@example plot
 φ = φnodes(grid, Center())
-Δx = xspacings(grid, Center(), Center(), with_halos=true)[1:Ny]
-Δy = yspacings(grid, Center())[1:Ny]
+Δx = xspacings(grid, Center(), Center())[1, 1:Ny]
+Δy = yspacings(grid, Center(), Center())[1, 1:Ny]
 
 using CairoMakie
 
 fig = Figure(size=(800, 400), title="Spacings on a Mercator grid")
 axx = Axis(fig[1, 1], xlabel="Zonal spacing (km)", ylabel="Latitude (degrees)")
-scatter!(axx, Δx ./ 1e3, φ)
+scatter!(axx, Δx / 1e3, φ)
 
 axy = Axis(fig[1, 2], xlabel="Meridional spacing (km)")
-scatter!(axy, Δy ./ 1e3, φ)
+scatter!(axy, Δy / 1e3, φ)
 
 hidespines!(axx, :t, :r)
 hidespines!(axy, :t, :l, :r)
