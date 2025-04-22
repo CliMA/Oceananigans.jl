@@ -220,7 +220,7 @@ function regularize_averaging_kernel(FT, f::Function)
     return AveragingKernel(f, convert(FT, last_τ))
 end
 
-# Averaging shape function from from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002
+# Averaging shape function from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002
 @inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT
     τ₀ = (p + 2) * (p + q + 2) / (p + 1) / (p + q + 1)
     return (τ / τ₀)^p * (1 - (τ / τ₀)^q) - r * (τ / τ₀)
