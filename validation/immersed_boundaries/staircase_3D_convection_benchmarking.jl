@@ -6,7 +6,7 @@ using Oceananigans.Models.NonhydrostaticModels: ConjugateGradientPoissonSolver, 
 using Oceananigans.Solvers: DiagonallyDominantPreconditioner, compute_laplacian!, KrylovPoissonSolver
 using Statistics
 using CUDA
-using CairoMakie
+# using CairoMakie
 
 function initial_conditions!(model)
     h = 0.05
