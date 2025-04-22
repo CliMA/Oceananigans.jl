@@ -42,56 +42,56 @@ for (side, dir) in zip((:ᶠᵃᵃ, :ᵃᶠᵃ, :ᵃᵃᶠ), (:x, :y, :z))
         for FT in fully_supported_float_types
             interp = Symbol(:symmetric_interpolate_, dir, side)
             @eval begin
-                @inline $interp(i, j, k, grid, ::Centered{1, $FT}, red_order::Int, ψ::$F, args...) = $(calc_reconstruction_stencil(FT, 1, :symmetric, dir, bool))
+                @inline $interp(i, j, k, grid, ::Centered{1, $FT}, red_order::Int, ψ::$F, args...) = $(stencil_reconstruction(FT, 1, :symmetric, dir, bool))
 
                 @inline function $interp(i, j, k, grid, ::Centered{2, $FT}, red_order::Int, ψ::$F, args...)          
                     ifelse(red_order==1, 
-                           $(calc_reconstruction_stencil(FT, 1, :symmetric, dir, bool)),
-                           $(calc_reconstruction_stencil(FT, 2, :symmetric, dir, bool)))
+                           $(stencil_reconstruction(FT, 1, :symmetric, dir, bool)),
+                           $(stencil_reconstruction(FT, 2, :symmetric, dir, bool)))
                 end
 
                 @inline function $interp(i, j, k, grid, ::Centered{3, $FT}, red_order::Int, ψ::$F, args...)          
                     ifelse(red_order==1,
-                           $(calc_reconstruction_stencil(FT, 1, :symmetric, dir, bool)),
+                           $(stencil_reconstruction(FT, 1, :symmetric, dir, bool)),
                     ifelse(red_order==2,
-                           $(calc_reconstruction_stencil(FT, 2, :symmetric, dir, bool)),
-                           $(calc_reconstruction_stencil(FT, 3, :symmetric, dir, bool))))
+                           $(stencil_reconstruction(FT, 2, :symmetric, dir, bool)),
+                           $(stencil_reconstruction(FT, 3, :symmetric, dir, bool))))
                 end
 
                 @inline function $interp(i, j, k, grid, ::Centered{4, $FT}, red_order::Int, ψ::$F, args...)          
                     ifelse(red_order==1,
-                        $(calc_reconstruction_stencil(FT, 1, :symmetric, dir, bool)),
+                        $(stencil_reconstruction(FT, 1, :symmetric, dir, bool)),
                     ifelse(red_order==2,
-                        $(calc_reconstruction_stencil(FT, 2, :symmetric, dir, bool)),
+                        $(stencil_reconstruction(FT, 2, :symmetric, dir, bool)),
                     ifelse(red_order==3,
-                        $(calc_reconstruction_stencil(FT, 3, :symmetric, dir, bool)),
-                        $(calc_reconstruction_stencil(FT, 4, :symmetric, dir, bool)))))
+                        $(stencil_reconstruction(FT, 3, :symmetric, dir, bool)),
+                        $(stencil_reconstruction(FT, 4, :symmetric, dir, bool)))))
                 end
 
                 @inline function $interp(i, j, k, grid, ::Centered{5, $FT}, red_order::Int, ψ::$F, args...)          
                     ifelse(red_order==1,
-                           $(calc_reconstruction_stencil(FT, 1, :symmetric, dir, bool)),
+                           $(stencil_reconstruction(FT, 1, :symmetric, dir, bool)),
                     ifelse(red_order==2,
-                           $(calc_reconstruction_stencil(FT, 2, :symmetric, dir, bool)),
+                           $(stencil_reconstruction(FT, 2, :symmetric, dir, bool)),
                     ifelse(red_order==3,
-                           $(calc_reconstruction_stencil(FT, 3, :symmetric, dir, bool)),
+                           $(stencil_reconstruction(FT, 3, :symmetric, dir, bool)),
                     ifelse(red_order==4,
-                           $(calc_reconstruction_stencil(FT, 4, :symmetric, dir, bool)),
-                           $(calc_reconstruction_stencil(FT, 5, :symmetric, dir, bool))))))
+                           $(stencil_reconstruction(FT, 4, :symmetric, dir, bool)),
+                           $(stencil_reconstruction(FT, 5, :symmetric, dir, bool))))))
                 end
 
                 @inline function $interp(i, j, k, grid, ::Centered{6, $FT}, red_order::Int, ψ::$F, args...)          
                     ifelse(red_order==1,
-                           $(calc_reconstruction_stencil(FT, 1, :symmetric, dir, bool)),
+                           $(stencil_reconstruction(FT, 1, :symmetric, dir, bool)),
                     ifelse(red_order==2,
-                           $(calc_reconstruction_stencil(FT, 2, :symmetric, dir, bool)),
+                           $(stencil_reconstruction(FT, 2, :symmetric, dir, bool)),
                     ifelse(red_order==3,
-                           $(calc_reconstruction_stencil(FT, 3, :symmetric, dir, bool)),
+                           $(stencil_reconstruction(FT, 3, :symmetric, dir, bool)),
                     ifelse(red_order==4,
-                           $(calc_reconstruction_stencil(FT, 4, :symmetric, dir, bool)),
+                           $(stencil_reconstruction(FT, 4, :symmetric, dir, bool)),
                     ifelse(red_order==5,
-                           $(calc_reconstruction_stencil(FT, 5, :symmetric, dir, bool)),
-                           $(calc_reconstruction_stencil(FT, 6, :symmetric, dir, bool)))))))
+                           $(stencil_reconstruction(FT, 5, :symmetric, dir, bool)),
+                           $(stencil_reconstruction(FT, 6, :symmetric, dir, bool)))))))
                 end
             end
         end

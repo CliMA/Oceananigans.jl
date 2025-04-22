@@ -89,9 +89,9 @@ uniform_reconstruction_coefficients(FT, ::Val{:left}, buffer)      = buffer==1 ?
 uniform_reconstruction_coefficients(FT, ::Val{:right}, buffer)     = buffer==1 ? (one(FT),) : stencil_coefficients(FT, 50, buffer-1, collect(1:100), collect(1:100); order = 2buffer-1)
 
 """ 
-    calc_reconstruction_stencil(FT, buffer, shift, dir, func::Bool = false)
+    stencil_reconstruction(FT, buffer, bias, dir, func::Bool = false)
 
-Stencils for reconstruction calculations (note that WENO has its own reconstruction stencils)
+Stencils for reconstruction using linear advection schemes (note that WENO has its own reconstruction stencils)
 
 The first argument is the `buffer`, not the `order`! 
 - `order = 2 * buffer` for Centered reconstruction
@@ -101,36 +101,36 @@ Examples
 ========
 
 ```jldoctest
-julia> using Oceananigans.Advection: calc_reconstruction_stencil
+julia> using Oceananigans.Advection: stencil_reconstruction
 
-julia> calc_reconstruction_stencil(Float32, 1, :right, :x)
+julia> stencil_reconstruction(Float32, 1, :right, :x)
 :(+(1.0f0 * ψ[i + 0, j, k]))
 
-julia> calc_reconstruction_stencil(Float64, 1, :left, :x)
+julia> stencil_reconstruction(Float64, 1, :left, :x)
 :(+(1.0 * ψ[i + -1, j, k]))
 
-julia> calc_reconstruction_stencil(Float64, 1, :symmetric, :y)
+julia> stencil_reconstruction(Float64, 1, :symmetric, :y)
 :(0.5 * ψ[i, j + -1, k] + 0.5 * ψ[i, j + 0, k])
 
-julia> calc_reconstruction_stencil(Float32, 2, :symmetric, :x)
+julia> stencil_reconstruction(Float32, 2, :symmetric, :x)
 :(-0.083333254f0 * ψ[i + -2, j, k] + 0.5833333f0 * ψ[i + -1, j, k] + 0.5833333f0 * ψ[i + 0, j, k] + -0.083333336f0 * ψ[i + 1, j, k])
 
-julia> calc_reconstruction_stencil(Float32, 3, :left, :x)
+julia> stencil_reconstruction(Float32, 3, :left, :x)
 :(0.0333333f0 * ψ[i + -3, j, k] + -0.21666667f0 * ψ[i + -2, j, k] + 0.78333336f0 * ψ[i + -1, j, k] + 0.45f0 * ψ[i + 0, j, k] + -0.05f0 * ψ[i + 1, j, k])
 ```
 """
-@inline function calc_reconstruction_stencil(FT, buffer, shift, dir, func::Bool = false)
+@inline function stencil_reconstruction(FT, buffer, bias, dir, func::Bool = false)
     N = buffer * 2
-    order = shift == :symmetric ? N : N - 1
-    if shift != :symmetric
+    order = bias == :symmetric ? N : N - 1
+    if bias != :symmetric
         N = N .- 1
     end
     rng = 1:N
-    if shift == :right
+    if bias == :right
         rng = rng .+ 1
     end
     stencil_full = Vector(undef, N)
-    coeff = uniform_reconstruction_coefficients(FT, Val(shift), buffer)
+    coeff = uniform_reconstruction_coefficients(FT, Val(bias), buffer)
     for (idx, n) in enumerate(rng)
         c = n - buffer - 1
         C = coeff[order - idx + 1]
