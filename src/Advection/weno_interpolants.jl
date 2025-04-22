@@ -247,8 +247,8 @@ function zweno_alpha_weights(scheme, red_order, β::NTuple{2}, τ)
     C₂ = C★(scheme, red_order, Val(1))
     α₁ = @inbounds C₁ * (1 + (τ / (β[1] + ε))^2)
     α₂ = @inbounds C₂ * (1 + (τ / (β[2] + ε))^2)
-    αs = α₁ + α₂
-    return (α₁, α₂) ./ αs
+    αs = 1 / (α₁ + α₂)
+    return (α₁, α₂) .* αs
 end
 
 function zweno_alpha_weights(scheme, red_order, β::NTuple{3}, τ)
@@ -258,8 +258,8 @@ function zweno_alpha_weights(scheme, red_order, β::NTuple{3}, τ)
     α₁ = @inbounds C₁ * (1 + (τ / (β[1] + ε))^2)
     α₂ = @inbounds C₂ * (1 + (τ / (β[2] + ε))^2)
     α₃ = @inbounds C₃ * (1 + (τ / (β[3] + ε))^2)
-    αs = α₁ + α₂ + α₃
-    return (α₁, α₂, α₃) ./ αs
+    αs = 1 / (α₁ + α₂ + α₃)
+    return (α₁, α₂, α₃) .* αs
 end
 
 function zweno_alpha_weights(scheme, red_order, β::NTuple{4}, τ)
@@ -271,8 +271,8 @@ function zweno_alpha_weights(scheme, red_order, β::NTuple{4}, τ)
     α₂ = @inbounds C₂ * (1 + (τ / (β[2] + ε))^2)
     α₃ = @inbounds C₃ * (1 + (τ / (β[3] + ε))^2)
     α₄ = @inbounds C₄ * (1 + (τ / (β[4] + ε))^2)
-    αs = α₁ + α₂ + α₃ + α₄
-    return (α₁, α₂, α₃, α₄) ./ αs
+    αs = 1 / (α₁ + α₂ + α₃ + α₄)
+    return (α₁, α₂, α₃, α₄) .* αs
 end
 
 function zweno_alpha_weights(scheme, red_order, β::NTuple{5}, τ)
@@ -286,7 +286,7 @@ function zweno_alpha_weights(scheme, red_order, β::NTuple{5}, τ)
     α₃ = @inbounds C₃ * (1 + (τ / (β[3] + ε))^2)
     α₄ = @inbounds C₄ * (1 + (τ / (β[4] + ε))^2)
     α₅ = @inbounds C₅ * (1 + (τ / (β[5] + ε))^2)
-    αs = α₁ + α₂ + α₃ + α₄ + α₅
+    αs = 1 / (α₁ + α₂ + α₃ + α₄ + α₅)
     return (α₁, α₂, α₃, α₄, α₅) ./ αs
 end
 
@@ -303,8 +303,8 @@ function zweno_alpha_weights(scheme, red_order, β::NTuple{6}, τ)
     α₄ = @inbounds C₄ * (1 + (τ / (β[4] + ε))^2)
     α₅ = @inbounds C₅ * (1 + (τ / (β[5] + ε))^2)
     α₆ = @inbounds C₆ * (1 + (τ / (β[6] + ε))^2)
-    αs = α₁ + α₂ + α₃ + α₄ + α₅ + α₆
-    return (α₁, α₂, α₃, α₄, α₅) ./ αs
+    αs = 1 / (α₁ + α₂ + α₃ + α₄ + α₅ + α₆)
+    return (α₁, α₂, α₃, α₄, α₅) .* αs
 end
 
 """
