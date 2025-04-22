@@ -334,8 +334,8 @@ The ``α`` values are normalized before returning
 
     τ = global_smoothness_indicator(Val(N), β)
     α = zweno_alpha_loop(scheme, β, τ)
-
-    return α ./ sum(α)
+    Σα⁻¹ = newton_div(Float32, 1, sum(α))
+    return α .* Σα⁻¹
 end
 
 @inline function biased_weno_weights(ijk, grid, scheme::WENO{N, FT}, bias, dir, ::VelocityStencil, u, v) where {N, FT}
@@ -345,12 +345,13 @@ end
     vₛ = tangential_stencil_v(i, j, k, grid, scheme, bias, dir, v)
     βᵤ = beta_loop(scheme, uₛ)
     βᵥ = beta_loop(scheme, vₛ)
-    β  =  beta_sum(scheme, βᵤ, βᵥ)
+    β  = beta_sum(scheme, βᵤ, βᵥ)
 
     τ = global_smoothness_indicator(Val(N), β)
     α = zweno_alpha_loop(scheme, β, τ)
+    Σα⁻¹ = newton_div(Float32, 1, sum(α))
 
-    return α ./ sum(α)
+    return α .* Σα⁻¹
 end
 
 """
