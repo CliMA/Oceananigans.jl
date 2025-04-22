@@ -150,16 +150,3 @@ for (side, dir) in zip((:ᶠᵃᵃ, :ᵃᶠᵃ, :ᵃᵃᶠ), (:x, :y, :z))
         end
     end
 end
-
-# Uniform upwind biased reconstruction
-for buffer in advection_buffers, FT in fully_supported_float_types
-    @eval begin
-        # Flat fluxes...
-        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::UpwindBiased{$buffer, $FT}, ::Int, bias, ψ, args...) = @inbounds ψ[i, j, k]
-        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid::XFlatGrid, ::UpwindBiased{$buffer, $FT}, ::Int, bias, ψ::Base.Callable, args...) = ψ(i, j, k, grid, args...)
-        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::UpwindBiased{$buffer, $FT}, ::Int, bias, ψ, args...) = @inbounds ψ[i, j, k]
-        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid::YFlatGrid, ::UpwindBiased{$buffer, $FT}, ::Int, bias, ψ::Base.Callable, args...) = ψ(i, j, k, grid, args...)
-        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::UpwindBiased{$buffer, $FT}, ::Int, bias, ψ, args...) = @inbounds ψ[i, j, k]
-        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid::ZFlatGrid, ::UpwindBiased{$buffer, $FT}, ::Int, bias, ψ::Base.Callable, args...) = ψ(i, j, k, grid, args...)
-    end
-end
