@@ -30,7 +30,7 @@ const RS421 = (RS321..., 0)
 const RS520 = (RS420..., 0)
 const RS521 = (RS421..., 0)
 
-# Cefficients for fifth order WENO
+# Coefficients for fifth order WENO
 const RS330 = stencil_coefficients(BigFloat, 50, 0, collect(1:100), collect(1:100); order=3)
 const RS331 = stencil_coefficients(BigFloat, 50, 1, collect(1:100), collect(1:100); order=3)
 const RS332 = stencil_coefficients(BigFloat, 50, 2, collect(1:100), collect(1:100); order=3)

@@ -1,4 +1,3 @@
-
 # _UNIFORM_ smoothness coefficients (stretched smoothness coefficients are to be fixed!)
 
 # The naming convention for the coefficients is as follows:
@@ -20,7 +19,7 @@ const SS410 = (1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 const SS50M = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 const SS510 = (1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
-# Coeffiecients for third order WENO
+# Coefficients for third order WENO
 const SS220 = (1, -2, 1)
 const SS221 = (1, -2, 1)
 
@@ -33,7 +32,7 @@ const SS421 = (1, -2, 0, 0, 1, 0, 0, 0, 0, 0)
 const SS520 = (1, -2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 const SS521 = (1, -2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
-# Cefficients for fifth order WENO
+# Coefficients for fifth order WENO
 const SS330 = (10, -31, 11, 25, -19, 4)
 const SS331 = (4,  -13,  5, 13, -13, 4)
 const SS332 = (4,  -19, 11, 25, -31, 10)
@@ -63,8 +62,6 @@ const SS551 = (0.22658,  -1.40251, 1.65153, -0.88297,  0.18079,   2.42723,  -6.1
 const SS552 = (0.06908,  -0.51001, 0.67923, -0.38947,  0.08209,   1.04963,  -2.99076,  1.79098, -0.38947,  2.31153,  -2.99076, 0.67923,  1.04963, -0.51001, 0.06908)
 const SS553 = (0.06908,  -0.60871, 0.99213, -0.70237,  0.18079,   1.38563,  -4.64976,  3.37018, -0.88297,  4.06293,  -6.11976, 1.65153,  2.42723, -1.40251, 0.22658)
 const SS554 = (0.22658,  -2.08501, 3.64863, -2.88007,  0.86329,   4.82963, -17.04396, 13.58458, -4.11487, 15.21393, -24.62076, 7.58823, 10.20563, -6.49501, 1.07918)
-
-# Coefficients for eleventh order WENO
 
 for FT in fully_supported_float_types
     @eval begin
