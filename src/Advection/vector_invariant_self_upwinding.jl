@@ -66,7 +66,7 @@ end
     δKvˢ = _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, cross_scheme, δx_v², u, v)
     δKuᴿ =    _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, bias(û), δx_u², δu²_stencil, u, v)
 
-    return (δKuᴿ + δKvˢ) / Δxᶠᶜᶜ(i, j, k, grid)
+    return (δKuᴿ + δKvˢ) * Δxᶠᶜᶜ⁻¹(i, j, k, grid)
 end
 
 @inline function bernoulli_head_V(i, j, k, grid, scheme::VectorInvariantKineticEnergyUpwinding, u, v)
@@ -79,5 +79,5 @@ end
     δKuˢ = _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, cross_scheme, δy_u², u, v)
     δKvᴿ =    _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, bias(v̂), δy_v², δv²_stencil, u, v)
 
-    return (δKvᴿ + δKuˢ) / Δyᶜᶠᶜ(i, j, k, grid)
+    return (δKvᴿ + δKuˢ) * Δyᶜᶠᶜ⁻¹(i, j, k, grid)
 end

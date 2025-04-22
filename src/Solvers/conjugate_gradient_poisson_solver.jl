@@ -159,12 +159,12 @@ Base.summary(::DiagonallyDominantPreconditioner) = "DiagonallyDominantPreconditi
 end
 
 # Kernels that calculate coefficients for the preconditioner
-@inline Ax⁻(i, j, k, grid) = Axᶠᶜᶜ(i,   j, k, grid) / Δxᶠᶜᶜ(i,   j, k, grid) / Vᶜᶜᶜ(i, j, k, grid)
-@inline Ax⁺(i, j, k, grid) = Axᶠᶜᶜ(i+1, j, k, grid) / Δxᶠᶜᶜ(i+1, j, k, grid) / Vᶜᶜᶜ(i, j, k, grid)
-@inline Ay⁻(i, j, k, grid) = Ayᶜᶠᶜ(i, j,   k, grid) / Δyᶜᶠᶜ(i, j,   k, grid) / Vᶜᶜᶜ(i, j, k, grid)
-@inline Ay⁺(i, j, k, grid) = Ayᶜᶠᶜ(i, j+1, k, grid) / Δyᶜᶠᶜ(i, j+1, k, grid) / Vᶜᶜᶜ(i, j, k, grid)
-@inline Az⁻(i, j, k, grid) = Azᶜᶜᶠ(i, j, k,   grid) / Δzᶜᶜᶠ(i, j, k,   grid) / Vᶜᶜᶜ(i, j, k, grid)
-@inline Az⁺(i, j, k, grid) = Azᶜᶜᶠ(i, j, k+1, grid) / Δzᶜᶜᶠ(i, j, k+1, grid) / Vᶜᶜᶜ(i, j, k, grid)
+@inline Ax⁻(i, j, k, grid) = Axᶠᶜᶜ(i,   j, k, grid) * Δxᶠᶜᶜ⁻¹(i,   j, k, grid) * Vᶜᶜᶜ⁻¹(i, j, k, grid)
+@inline Ax⁺(i, j, k, grid) = Axᶠᶜᶜ(i+1, j, k, grid) * Δxᶠᶜᶜ⁻¹(i+1, j, k, grid) * Vᶜᶜᶜ⁻¹(i, j, k, grid)
+@inline Ay⁻(i, j, k, grid) = Ayᶜᶠᶜ(i, j,   k, grid) * Δyᶜᶠᶜ⁻¹(i, j,   k, grid) * Vᶜᶜᶜ⁻¹(i, j, k, grid)
+@inline Ay⁺(i, j, k, grid) = Ayᶜᶠᶜ(i, j+1, k, grid) * Δyᶜᶠᶜ⁻¹(i, j+1, k, grid) * Vᶜᶜᶜ⁻¹(i, j, k, grid)
+@inline Az⁻(i, j, k, grid) = Azᶜᶜᶠ(i, j, k,   grid) * Δzᶜᶜᶠ⁻¹(i, j, k,   grid) * Vᶜᶜᶜ⁻¹(i, j, k, grid)
+@inline Az⁺(i, j, k, grid) = Azᶜᶜᶠ(i, j, k+1, grid) * Δzᶜᶜᶠ⁻¹(i, j, k+1, grid) * Vᶜᶜᶜ⁻¹(i, j, k, grid)
 
 @inline Ac(i, j, k, grid) = - Ax⁻(i, j, k, grid) - Ax⁺(i, j, k, grid) -
                               Ay⁻(i, j, k, grid) - Ay⁺(i, j, k, grid) -

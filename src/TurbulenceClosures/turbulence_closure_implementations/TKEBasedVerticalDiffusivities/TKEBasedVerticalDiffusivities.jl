@@ -122,13 +122,13 @@ end
 @inline function shear_production_xᶠᶜᶜ(i, j, k, grid, νₑ, uⁿ, u⁺)
     Δz_Pxⁿ = ℑbzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶠᶜᶠ, νₑ, uⁿ, u⁺)
     Δz_Px⁺ = ℑbzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶠᶜᶠ, νₑ, u⁺, u⁺)
-    return (Δz_Pxⁿ + Δz_Px⁺) / (2 * Δzᶠᶜᶜ(i, j, k, grid))
+    return (Δz_Pxⁿ + Δz_Px⁺) * Δzᶠᶜᶜ⁻¹(i, j, k, grid) / 2
 end
 
 @inline function shear_production_yᶜᶠᶜ(i, j, k, grid, νₑ, vⁿ, v⁺)
     Δz_Pyⁿ = ℑbzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶜᶠᶠ, νₑ, vⁿ, v⁺)
     Δz_Py⁺ = ℑbzᵃᵃᶜ(i, j, k, grid, Δz_νₑ_az_bzᶜᶠᶠ, νₑ, v⁺, v⁺)
-    return (Δz_Pyⁿ + Δz_Py⁺) / (2 * Δzᶜᶠᶜ(i, j, k, grid))
+    return (Δz_Pyⁿ + Δz_Py⁺) * Δzᶜᶠᶜ⁻¹(i, j, k, grid) / 2 
 end
 
 @inline function shear_production(i, j, k, grid, νₑ, uⁿ, u⁺, vⁿ, v⁺)
