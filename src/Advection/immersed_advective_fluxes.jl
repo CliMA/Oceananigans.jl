@@ -151,50 +151,50 @@ julia> inside_immersed_boundary(3, :left, :x, :ᶠ)
     return :($(inactive_cells...),)
 end
 
-# for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
-#     compute_reduced_order = Symbol(:compute_, Loc,:_reduced_order_, dir)
-#     @eval begin 
-#         # Faces symmetric
-#         @inline $compute_reduced_order(i, j, k, ibg::IBG, ::A{1}) = 1
+for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
+    compute_reduced_order = Symbol(:compute_, Loc,:_reduced_order_, dir)
+    @eval begin 
+        # Faces symmetric
+        @inline $compute_reduced_order(i, j, k, ibg::IBG, ::A{1}) = 1
 
-#         @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{2}) 
-#             I = $(inside_immersed_boundary(2, :none, dir, loc; xside = loc))
-#             to1 = @inbounds (I[1] | I[4]) # Check only first and last
-#             return ifelse(to1, 1, 2) 
-#         end
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{2}) 
+            I = $(inside_immersed_boundary(2, :none, dir, loc; xside = loc))
+            to1 = @inbounds (I[1] | I[4]) # Check only first and last
+            return ifelse(to1, 1, 2) 
+        end
 
-#         @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{3}) 
-#             I = $(inside_immersed_boundary(3, :none, dir, loc; xside = loc))
-#             to2 = @inbounds (I[1] | I[6])
-#             to1 = @inbounds (I[2] | I[5]) 
-#             return ifelse(to1, 1, ifelse(to2, 2, 3))
-#         end
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{3}) 
+            I = $(inside_immersed_boundary(3, :none, dir, loc; xside = loc))
+            to2 = @inbounds (I[1] | I[6])
+            to1 = @inbounds (I[2] | I[5]) 
+            return ifelse(to1, 1, ifelse(to2, 2, 3))
+        end
 
-#         @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{4}) 
-#             I = $(inside_immersed_boundary(4, :none, dir, loc; xside = loc))
-#             to3 = @inbounds (I[1] | I[8])
-#             to2 = @inbounds (I[2] | I[7]) 
-#             to1 = @inbounds (I[3] | I[6])
-#             return ifelse(to1, 1, ifelse(to2, 2, ifelse(to3, 3, 4)))
-#         end
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{4}) 
+            I = $(inside_immersed_boundary(4, :none, dir, loc; xside = loc))
+            to3 = @inbounds (I[1] | I[8])
+            to2 = @inbounds (I[2] | I[7]) 
+            to1 = @inbounds (I[3] | I[6])
+            return ifelse(to1, 1, ifelse(to2, 2, ifelse(to3, 3, 4)))
+        end
 
-#         @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{5}) 
-#             I = $(inside_immersed_boundary(5, :none, dir, loc; xside = loc))
-#             to4 = @inbounds (I[1] | I[10])
-#             to3 = @inbounds (I[2] | I[9])
-#             to2 = @inbounds (I[3] | I[8]) 
-#             to1 = @inbounds (I[4] | I[7])
-#             return ifelse(to1, 1, ifelse(to2, 2, ifelse(to3, 3, ifelse(to4, 4, 5))))
-#         end
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{5}) 
+            I = $(inside_immersed_boundary(5, :none, dir, loc; xside = loc))
+            to4 = @inbounds (I[1] | I[10])
+            to3 = @inbounds (I[2] | I[9])
+            to2 = @inbounds (I[3] | I[8]) 
+            to1 = @inbounds (I[4] | I[7])
+            return ifelse(to1, 1, ifelse(to2, 2, ifelse(to3, 3, ifelse(to4, 4, 5))))
+        end
 
-#         @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{6}) 
-#             I = $(inside_immersed_boundary(6, :none, dir, loc; xside = loc))
-#             to5 = @inbounds (I[1] | I[12])
-#             to4 = @inbounds (I[2] | I[11])
-#             to3 = @inbounds (I[3] | I[10])
-#             to2 = @inbounds (I[4] | I[9]) 
-#             to1 = @inbounds (I[5] | I[8])
-#             return ifelse(to1, 1, ifelse(to2, 2, ifelse(to3, 3, ifelse(to4, 4, ifelse(to5, 5, 6)))))
-#         end
-#     end
-# end
+        @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{6}) 
+            I = $(inside_immersed_boundary(6, :none, dir, loc; xside = loc))
+            to5 = @inbounds (I[1] | I[12])
+            to4 = @inbounds (I[2] | I[11])
+            to3 = @inbounds (I[3] | I[10])
+            to2 = @inbounds (I[4] | I[9]) 
+            to1 = @inbounds (I[5] | I[8])
+            return ifelse(to1, 1, ifelse(to2, 2, ifelse(to3, 3, ifelse(to4, 4, ifelse(to5, 5, 6)))))
+        end
+    end
+end
