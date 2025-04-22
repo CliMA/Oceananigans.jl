@@ -66,10 +66,8 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
               order = 5,
               grid = nothing, 
               bounds = nothing)
-    
-    if !(grid isa Nothing) 
-        FT = eltype(grid)
-    end
+
+    !(grid isa Nothing) && FT = eltype(grid)
 
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
 

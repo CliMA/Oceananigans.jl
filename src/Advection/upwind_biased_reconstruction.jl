@@ -16,19 +16,13 @@ end
 
 function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3) 
 
-    if !(grid isa Nothing) 
-        FT = eltype(grid)
-    end
-
+    !(grid isa Nothing) && FT = eltype(grid)
+    
     mod(order, 2) == 0 && throw(ArgumentError("UpwindBiased reconstruction scheme is defined only for odd orders"))
 
-    N  = Int((order + 1) ÷ 2)
-
-    if N > 1
-        advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
-    else
-        advecting_velocity_scheme = Centered(FT; grid, order = 2)
-    end
+    N = Int((order + 1) ÷ 2)
+    symmetric_order = ifelse(N > 1, order-1, 2)
+    advecting_velocity_scheme = Centered(FT; order = symmetric_order)
 
     return UpwindBiased{N, FT}(advecting_velocity_scheme)
 end
