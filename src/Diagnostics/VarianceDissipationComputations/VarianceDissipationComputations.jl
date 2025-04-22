@@ -23,7 +23,10 @@ using Oceananigans.Advection: _advective_tracer_flux_x,
 using Oceananigans.Operators: volume
 using KernelAbstractions: @kernel, @index
 
-struct VarianceDissipation{P, K, A, D, S, G}
+import Oceananigans: run_diagnostic!
+
+struct VarianceDissipation{P, K, A, D, S, G, T} <: AbstractDiagnostic
+    schedule :: T
     advective_production :: P
     diffusive_production :: K
     advective_fluxes :: A
@@ -34,7 +37,7 @@ end
 
 include("dissipation_utils.jl")
 
-function VarianceDissipation(model; tracers = propertynames(model.tracers))
+function VarianceDissipation(model; tracers=propertynames(model.tracers))
         
     if !(model.timestepper isa QuasiAdamsBashforth2TimeStepper)
         throw(ArgumentError("DissipationComputation requires a QuasiAdamsBashforth2TimeStepper"))
@@ -66,21 +69,21 @@ function VarianceDissipation(model; tracers = propertynames(model.tracers))
 
     gradients = deepcopy(P)
 
-    return VarianceDissipation(P, K, advective_fluxes, diffusive_fluxes, previous_state, gradients)
+    # Hardcode to 1 for the moment
+    schedule = IterationInterval(1)
+
+    return VarianceDissipation(scheduke, P, K, advective_fluxes, diffusive_fluxes, previous_state, gradients)
 end
 
-# Function to call in a callback
-# Note: This works only if the callback is called with an IterationInterval(1), if not the
-# previous fluxes and velocities will not be correct
-# TODO: make sure that the correct velocities and fluxes are used even if 
-# the callback is not called with an IterationInterval(1)
+run_diagnostic!(ϵ::VarianceDissipation, model) = ϵ(model)
+
 function (ϵ::VarianceDissipation)(simulation)
 
     # We first assemble values for Pⁿ⁻¹
-    assemble_dissipation!(simulation, ϵ)
+    assemble_dissipation!(model, ϵ)
 
     # Then we update the fluxes to be used in the next time step
-    update_fluxes!(simulation, ϵ)
+    update_fluxes!(model, ϵ)
 
     return nothing
 end

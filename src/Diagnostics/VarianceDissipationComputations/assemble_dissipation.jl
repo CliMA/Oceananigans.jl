@@ -1,5 +1,4 @@
-function assemble_dissipation!(simulation, dissipation)
-    model = simulation.model
+function assemble_dissipation!(model, dissipation)
 
     for tracer_name in keys(dissipation.advective_production)
         assemble_dissipation!(dissipation, model, tracer_name)

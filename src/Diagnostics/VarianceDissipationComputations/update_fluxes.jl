@@ -1,8 +1,6 @@
 using Oceananigans: fields
 
-function update_fluxes!(simulation, dissipation)
-    model = simulation.model
-
+function update_fluxes!(model, dissipation)
     grid   = model.grid
     arch   = architecture(grid)
     params = KernelParameters(model.tracers[1])
