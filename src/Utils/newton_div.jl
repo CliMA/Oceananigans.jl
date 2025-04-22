@@ -10,7 +10,7 @@ afterwards.
     b = convert(inv_FT, b)
     inv_b = Base.FastMath.inv_fast(b)
 
-    # compute x = a / b with low-precision approximation for 1/b
+    # compute x = a / b using the low-precision approximation for 1/b
     x = a * convert(FT, inv_b)
 
     # Improve the approximation with a single Newton iteration: x += (a – x*b) / b
