@@ -276,15 +276,6 @@ regularize_north_boundary_condition(bc::DefaultBoundaryCondition, grid::Latitude
 regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) = 
     regularize_boundary_condition(default_prognostic_bc(grid, Val(:south), loc, bc), grid, loc, args...)
 
-function FieldBoundaryConditions(grid::LatitudeLongitudeGrid, location, indices=(:, :, :);
-                                 west     = default_auxiliary_bc(topology(grid, 1)(), location[1]()),
-                                 east     = default_auxiliary_bc(topology(grid, 1)(), location[1]()),
-                                 south    = default_auxiliary_bc(topology(grid, 2)(), location[2]()),
-                                 north    = default_auxiliary_bc(topology(grid, 2)(), location[2]()),
-                                 bottom   = default_auxiliary_bc(topology(grid, 3)(), location[3]()),
-                                 top      = default_auxiliary_bc(topology(grid, 3)(), location[3]()),
-                                 immersed = NoFluxBoundaryCondition())
-
 function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, loc, default)
     φnorth = @allowscalar φnode(grid.Ny+1, grid, Face()) 
     cca_loc = loc[1] == Center && loc[2] == Center # scalar
@@ -310,7 +301,3 @@ function default_auxiliary_bc(grid::LatitudeLongitudeGrid, ::Val{:south}, loc)
     default_bc = _default_auxiliary_bc(topology(grid, 2)(), loc[2]())
     return φsouth ≈ -90 ? PolarBoundaryCondition(grid, :south, loc[3]) : default_bc
 end
-
-latitude_north_auxiliary_bc(::YFlatGrid, args...) = nothing
-latitude_south_auxiliary_bc(::YFlatGrid, args...) = nothing
-
