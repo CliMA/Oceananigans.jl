@@ -1,7 +1,7 @@
 """
-    newton_div(a, b, inv_FT)
+    newton_div(inv_FT, a, b::FT)
 
-Compute an approximation of `a / b`` that uses `inv_FT` to compute
+Compute an approximation of `a / b` that uses `inv_FT` type to compute
 `1/b`, and then performs a single Newton iteration to add a few more bits of precision
 afterwards.
 """
