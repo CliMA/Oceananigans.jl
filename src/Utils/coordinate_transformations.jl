@@ -125,7 +125,7 @@ function get_lat_lon_nodes_and_vertices(grid, ℓx, ℓy, ℓz)
 
     λ = mod.(λ .+ 180, 360) .- 180
     λvertices = longitude_in_same_window.(λvertices, reshape(λ, (1, size(λ)...)))
-    
+
     return (λ, φ), (λvertices, φvertices)
 end
 

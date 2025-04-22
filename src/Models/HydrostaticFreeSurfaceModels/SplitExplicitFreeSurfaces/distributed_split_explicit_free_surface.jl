@@ -4,9 +4,9 @@ using Oceananigans.DistributedComputations: AsynchronousDistributed, synchronize
 const DistributedSplitExplicit = SplitExplicitFreeSurface{<:DistributedField}
 
 wait_free_surface_communication!(free_surface, model, arch) = nothing
-    
+
 function wait_free_surface_communication!(free_surface::DistributedSplitExplicit, model, ::AsynchronousDistributed)
-    
+
     barotropic_velocities = free_surface.barotropic_velocities
 
     for field in (barotropic_velocities.U, barotropic_velocities.V)

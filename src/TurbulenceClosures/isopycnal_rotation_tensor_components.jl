@@ -18,7 +18,7 @@ with the negative sign to account for the stable stratification (`∂b/∂z < 0`
 Then, the components of the isopycnal rotation tensor are:
 
 ```
-               ⎡     1 + slope_y²         - slope_x slope_y      slope_x ⎤ 
+               ⎡     1 + slope_y²         - slope_x slope_y      slope_x ⎤
 (1 + slope²)⁻¹ | - slope_x slope_y          1 + slope_x²         slope_y |
                ⎣       slope_x                 slope_y            slope² ⎦
 ```
@@ -41,7 +41,7 @@ by utilizing the small-slope appoximation, the components of the isopycnal
 rotation tensor are:
 
 ```
-⎡   1            0         slope_x ⎤ 
+⎡   1            0         slope_x ⎤
 |   0            1         slope_y |
 ⎣ slope_x      slope_y      slope² ⎦
 ```
@@ -69,7 +69,7 @@ SmallSlopeIsopycnalTensor(FT::DataType=Float64; minimum_bz = FT(0)) = SmallSlope
     by = ℑxyᶠᶜᵃ(i, j, k, grid, ∂y_b, buoyancy, tracers)
     bz = ℑxzᶠᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     bz = max(bz, slope_model.minimum_bz)
-    
+
     slope_x = - bx / bz
 
     return ifelse(bz == 0, zero(grid), slope_x)
@@ -81,7 +81,7 @@ end
     bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂x_b, buoyancy, tracers)
     bz = ∂z_b(i, j, k, grid, buoyancy, tracers)
     bz = max(bz, slope_model.minimum_bz)
-    
+
     slope_x = - bx / bz
 
     return ifelse(bz == 0, zero(grid), slope_x)
@@ -93,9 +93,9 @@ end
     by = ∂y_b(i, j, k, grid, buoyancy, tracers)
     bz = ℑyzᵃᶠᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     bz = max(bz, slope_model.minimum_bz)
-    
+
     slope_y = - by / bz
-    
+
     return ifelse(bz == 0, zero(grid), slope_y)
 end
 
@@ -105,9 +105,9 @@ end
     by = ℑyzᵃᶜᶠ(i, j, k, grid, ∂y_b, buoyancy, tracers)
     bz = ∂z_b(i, j, k, grid, buoyancy, tracers)
     bz = max(bz, slope_model.minimum_bz)
-    
+
     slope_y = - by / bz
-    
+
     return ifelse(bz == 0, zero(grid), slope_y)
 end
 
