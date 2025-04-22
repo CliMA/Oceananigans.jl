@@ -31,7 +31,7 @@ using Oceananigans.Utils: prettytime, hours
 using Statistics
 using JLD2
 using Printf
-using GLMakie 
+using GLMakie
 
 # # The geostrophic flow
 #
