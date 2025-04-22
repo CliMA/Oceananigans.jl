@@ -1,4 +1,4 @@
-module VarianceDissipationComputation
+module VarianceDissipationComputations
  
 export VarianceDissipation, get_dissipation_fields
 
