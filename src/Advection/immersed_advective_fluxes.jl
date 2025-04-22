@@ -144,18 +144,25 @@ end
 # For an immersed boundary grid, we compute the reduced order based on the inactive cells around the
 # reconstruction interface (either face or center). 
 #
-# For example, if X is the reconstruction interface, the reduced order is computed checking the immersed coundition in
-# the surrounding cells. The outcome is the oder showed below, if the immersed condition is true in at least one cell
-# underlined by the respective reconstruction order (proceeding from low to high order...).
-#    
-#                                  X
-#    | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | 
-#                             └── 1st ──
-#                        └── 2nd ────────────
-#                   └── 3rd ──────────────────────
-#              └── 4th ──────────────────────────────
-#         └── 5th ──────────────────────────────────────
-#    └── 6th ──────────────────────────────────────────────
+# Below an example for an 12th (or 11th for upwind schemes) order reconstruction performed on interface `X`.
+# Note that the buffer size is 6, and we represent reconstructions based on the buffer size, not the formal order.
+# The check follows the following logic:
+#
+# - if at least one between 1 or 12 are inactive, reduce from 6 to 5.
+# - if at least one between 2 or 11 are inactive, reduce from 5 to 4.
+# - if at least one between 3 or 10 are inactive, reduce from 4 to 3.
+# - if at least one between 4 or  9 are inactive, reduce from 3 to 2.
+# - if at least one between 5 or  8 are inactive, reduce from 2 to 1.
+#     
+#      1     2     3     4     5     6  X  7     8     9    10    11    12
+#   | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | 
+#   |     |     |     |     |     └── 1st ────|     |     |     |     |     |
+#   |     |     |     |     └── 2nd ─────────────── |     |     |     |     |   
+#   |     |     |     └── 3rd ────────────────────────────|     |     |     |    
+#   |     |     └── 4th ────────────────────────────────────────|     |     |
+#   |     └── 5th ────────────────────────────────────────────────────|     |
+#   └── 6th ────────────────────────────────────────────────────────────────|
+#
 #
 for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
     compute_reduced_order = Symbol(:compute_, Loc,:_reduced_order_, dir)
