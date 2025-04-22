@@ -144,16 +144,18 @@ end
 # For an immersed boundary grid, we compute the reduced order based on the inactive cells around the
 # reconstruction interface (either face or center). 
 #
-#
-#                                   X
-#     | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | 
-#                              └── 1st ──
-#                         └── 2nd ────────────
-#                    └── 3rd ──────────────────────
-#               └── 4th ──────────────────────────────
-#          └── 5th ──────────────────────────────────────
-#     └── 6th ──────────────────────────────────────────────
-#
+# For example, if X is the reconstruction interface, the reduced order is computed checking the immersed coundition in
+# the surrounding cells. The outcome is the oder showed below, if the immersed condition is true in at least one cell
+# underlined by the respective reconstruction order (proceeding from low to high order...).
+#    
+#                                  X
+#    | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | -- | 
+#                             └── 1st ──
+#                        └── 2nd ────────────
+#                   └── 3rd ──────────────────────
+#              └── 4th ──────────────────────────────
+#         └── 5th ──────────────────────────────────────
+#    └── 6th ──────────────────────────────────────────────
 #
 for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
     compute_reduced_order = Symbol(:compute_, Loc,:_reduced_order_, dir)
