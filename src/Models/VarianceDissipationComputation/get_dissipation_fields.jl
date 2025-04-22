@@ -13,7 +13,7 @@ function get_dissipation_fields(t::VarianceDissipation, tracer_name)
     D = t.diffusive_production[tracer_name]
     G = t.gradient_squared[tracer_name]
 
-    dirs = tracer_name == :ζ ? (:x, :y) : (:x, :y, :z)
+    dirs = (:x, :y, :z)
 
     prod_names = Tuple(Symbol(:A, tracer_name, dir) for dir in dirs)
     diff_names = Tuple(Symbol(:D, tracer_name, dir) for dir in dirs)

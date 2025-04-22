@@ -18,9 +18,7 @@ using Oceananigans.TurbulenceClosures: viscosity,
 
 using Oceananigans.Advection: _advective_tracer_flux_x, 
                               _advective_tracer_flux_y, 
-                              _advective_tracer_flux_z,
-                              horizontal_advection_U, 
-                              horizontal_advection_V 
+                              _advective_tracer_flux_z
 
 using Oceananigans.Operators: volume
 using KernelAbstractions: @kernel, @index
@@ -36,9 +34,7 @@ end
 
 include("dissipation_utils.jl")
 
-function VarianceDissipation(model; 
-                             tracers = propertynames(model.tracers), 
-                             include_vorticity = true)
+function VarianceDissipation(model; tracers = propertynames(model.tracers))
         
     if !(model.timestepper isa QuasiAdamsBashforth2TimeStepper)
         throw(ArgumentError("DissipationComputation requires a QuasiAdamsBashforth2TimeStepper"))
@@ -63,26 +59,6 @@ function VarianceDissipation(model;
     Uⁿ   = VelocityFields(grid)
     
     cⁿ⁻¹ =  NamedTuple{tracers}(CenterField(grid) for tracer in tracers)
-
-    if include_vorticity
-        Fζⁿ   = vorticity_fluxes(grid)
-        Fζⁿ⁻¹ = vorticity_fluxes(grid)
-        Pζ    = vorticity_fluxes(grid)
-        ζⁿ⁻¹  = Field{Face, Face, Center}(grid)
-
-        P    = merge(P,    (; ζ = Pζ))
-        Fⁿ   = merge(Fⁿ,   (; ζ = Fζⁿ))
-        Fⁿ⁻¹ = merge(Fⁿ⁻¹, (; ζ = Fζⁿ⁻¹))
-        cⁿ⁻¹ = merge(cⁿ⁻¹, (; ζ = ζⁿ⁻¹))
-
-        Kζ    = enstrophy_closure_dissipation(grid, diffusivities, closure)
-        Vζⁿ   = enstrophy_closure_dissipation(grid, diffusivities, closure)
-        Vζⁿ⁻¹ = enstrophy_closure_dissipation(grid, diffusivities, closure)
-            
-        K    = merge(K,    (; ζ = Kζ))
-        Vⁿ   = merge(Vⁿ,   (; ζ = Vζⁿ))
-        Vⁿ⁻¹ = merge(Vⁿ⁻¹, (; ζ = Vζⁿ⁻¹))
-    end
 
     previous_state   = merge(cⁿ⁻¹, (; Uⁿ⁻¹, Uⁿ))
     advective_fluxes = (; Fⁿ, Fⁿ⁻¹)

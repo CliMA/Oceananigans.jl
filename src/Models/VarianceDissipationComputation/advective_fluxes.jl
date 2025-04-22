@@ -20,23 +20,3 @@
         Gⁿ.z[i, j, k] = Azᶜᶜᶠ(i, j, k, grid) * δzᶜᶜᶠ(i, j, k, grid, c)^2 / Δzᶜᶜᶠ(i, j, k, grid)
     end
 end
-
-@kernel function _update_advective_vorticity_fluxes!(Gⁿ, Fⁿ, Fⁿ⁻¹, ζⁿ⁻¹, grid, advection, U, c)
-    i, j, k = @index(Global, NTuple)
-    u, v, w = U
-
-    @inbounds begin
-        # Save previous advective fluxes
-        Fⁿ⁻¹.x[i, j, k] = Fⁿ.x[i, j, k]
-        Fⁿ⁻¹.y[i, j, k] = Fⁿ.y[i, j, k]
-        
-        ζⁿ⁻¹[i, j, k] = ζ₃ᶠᶠᶜ(i, j, k, grid, U.u, U.v)
-
-        # Calculate new advective fluxes
-        Fⁿ.x[i, j, k] =   horizontal_advection_V(i, j, k, grid, advection, u, ζ) * Axᶜᶠᶜ(i, j, k, grid) 
-        Fⁿ.y[i, j, k] = - horizontal_advection_U(i, j, k, grid, advection, v, ζ) * Ayᶠᶜᶜ(i, j, k, grid)
-
-        Gⁿ.x[i, j, k] = Axᶜᶠᶜ(i, j, k, grid) * δxᶜᶠᶜ(i, j, k, grid, ζ₃ᶠᶠᶜ, U.u)^2 / Δxᶜᶠᶜ(i, j, k, grid)
-        Gⁿ.y[i, j, k] = Ayᶠᶜᶜ(i, j, k, grid) * δyᶠᶜᶜ(i, j, k, grid, ζ₃ᶠᶠᶜ, U.v)^2 / Δyᶠᶜᶜ(i, j, k, grid)
-    end
-end

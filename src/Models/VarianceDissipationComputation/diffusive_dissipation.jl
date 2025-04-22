@@ -23,27 +23,3 @@ end
         K.z[i, j, k] = 2 * δᶻc★ * (C₁ * Vⁿ.z[i, j, k] - C₂ * Vⁿ⁻¹.z[i, j, k])
     end
 end
-
-@kernel function _assemble_diffusive_vorticity_dissipation!(K, grid, χ, Vⁿ, Vⁿ⁻¹, Uⁿ⁺¹, cⁿ⁺¹, ζⁿ)
-    i, j, k = @index(Global, NTuple)
-    compute_diffusive_vorticity_dissipation!(K, i, j, k, grid, Vⁿ, Vⁿ⁻¹, χ, Uⁿ⁺¹, ζⁿ)
-end
-
-@inline function compute_diffusive_vorticity_dissipation!(K::Tuple, i, j, k, grid, Vⁿ, Vⁿ⁻¹, χ, Uⁿ⁺¹, ζⁿ)
-    for n in eachindex(K)
-        compute_diffusive_vorticity_dissipation!(K[n], i, j, k, grid, Vⁿ[n], Vⁿ⁻¹[n], χ, Uⁿ⁺¹, ζⁿ)
-    end
-end
-
-@inline function compute_diffusive_vorticity_dissipation!(K, i, j, k, grid, Vⁿ, Vⁿ⁻¹, χ, Uⁿ⁺¹, ζⁿ)
-    C₁  = convert(eltype(grid), 1.5 + χ)
-    C₂  = convert(eltype(grid), 0.5 + χ)
-    
-    δˣζ★ = δxᶠᶜᶜ(i, j, k, grid, ζ★, Uⁿ⁺¹.u, Uⁿ⁺¹.v, ζⁿ)
-    δʸζ★ = δyᶜᶠᶜ(i, j, k, grid, ζ★, Uⁿ⁺¹.u, Uⁿ⁺¹.v, ζⁿ)
-    
-    @inbounds begin
-        K.x[i, j, k] = 2 * δˣζ★ * (C₁ * Vⁿ.x[i, j, k] - C₂ * Vⁿ⁻¹.x[i, j, k])
-        K.y[i, j, k] = 2 * δʸζ★ * (C₁ * Vⁿ.y[i, j, k] - C₂ * Vⁿ⁻¹.y[i, j, k])
-    end
-end

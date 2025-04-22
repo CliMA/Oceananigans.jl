@@ -23,7 +23,7 @@ end
 function update_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     
     # Grab tracer properties
-    c    = tracer_name == :ζ ? nothing : model.tracers[tracer_name]
+    c    = model.tracers[tracer_name]
     cⁿ⁻¹ = dissipation.previous_state[tracer_name]
 
     grid = model.grid
@@ -31,9 +31,6 @@ function update_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
 
     U = model.velocities
     params = KernelParameters(model.tracers[1])
-
-    _update_advective_fluxes! = update_advective_fluxes_kernel(Val(tracer_name))
-    _update_diffusive_fluxes! = update_diffusive_fluxes_kernel(Val(tracer_name))
 
     ####
     #### Update the advective fluxes and compute gradient squared
@@ -44,7 +41,7 @@ function update_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     Gⁿ   = dissipation.gradient_squared[tracer_name]
     advection = getadvection(model.advection, tracer_name)
 
-    launch!(arch, grid, params, _update_advective_fluxes!, Gⁿ, Fⁿ, Fⁿ⁻¹, cⁿ⁻¹, grid, advection, U, c)
+    launch!(arch, grid, params, _update_advective_tracer_fluxes!, Gⁿ, Fⁿ, Fⁿ⁻¹, cⁿ⁻¹, grid, advection, U, c)
 
     ####
     #### Update the diffusive fluxes
@@ -59,7 +56,7 @@ function update_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     clo  = model.closure
     model_fields = fields(model)
 
-    launch!(arch, grid, params, _update_diffusive_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields)
+    launch!(arch, grid, params, _update_diffusive_tracer_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields)
 
     return nothing
 end
@@ -76,9 +73,3 @@ end
           Uⁿ.w[i, j, k] = U.w[i, j, k] * Azᶜᶜᶠ(i, j, k, grid) 
     end
 end
-
-update_advective_fluxes_kernel(val_tracer_name) = _update_advective_tracer_fluxes!
-update_advective_fluxes_kernel(::Val{:ζ})       = _update_advective_vorticity_fluxes!
-update_diffusive_fluxes_kernel(val_tracer_name) = _update_diffusive_tracer_fluxes!
-update_diffusive_fluxes_kernel(::Val{:ζ})       = _update_diffusive_vorticity_fluxes!
-

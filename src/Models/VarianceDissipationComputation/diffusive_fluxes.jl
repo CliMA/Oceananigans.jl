@@ -19,22 +19,3 @@ end
     Vⁿ.y[i, j, k] = _diffusive_tracer_flux_y(i, j, k, grid, clo, K, Val(c_id), c, clk, fields, b) * Ayᶜᶠᶜ(i, j, k, grid)
     Vⁿ.z[i, j, k] = _diffusive_tracer_flux_z(i, j, k, grid, clo, K, Val(c_id), c, clk, fields, b) * Azᶜᶜᶠ(i, j, k, grid)
 end
-
-@kenrel function _update_diffusive_vorticity_fluxes!(Vⁿ, Vⁿ⁻¹, grid, closure, diffusivity, bouyancy, c, tracer_id, clk, model_fields)
-    i, j, k = @index(Global, NTuple)
-    compute_diffusive_vorticity_fluxes!(Vⁿ, Vⁿ⁻¹, i, j, k, grid, closure, diffusivity, bouyancy, clk, model_fields)
-end
-
-@inline function compute_diffusive_vorticity_fluxes!(Vⁿ, Vⁿ⁻¹, i, j, k, grid, closure::Tuple, K, args...) 
-    for n in eachindex(closure)
-        compute_diffusive_vorticity_fluxes!(Vⁿ[n], Vⁿ⁻¹[n], i, j, k, grid, closure[n], K[n], args...)
-    end
-end
-
-@inline function compute_diffusive_vorticity_fluxes!(Vⁿ, Vⁿ⁻¹, i, j, k, grid, clo, K, b, clk, fields) 
-    Vⁿ⁻¹.x[i, j, k] = Vⁿ.x[i, j, k]
-    Vⁿ⁻¹.y[i, j, k] = Vⁿ.y[i, j, k]
-
-    Vⁿ.x[i, j, k] =   ∂ⱼ_τ₂ⱼ(i, j, k, grid, clo, K, clk, fields, b) * Axᶜᶠᶜ(i, j, k, grid)
-    Vⁿ.y[i, j, k] = - ∂ⱼ_τ₁ⱼ(i, j, k, grid, clo, K, clk, fields, b) * Ayᶠᶜᶜ(i, j, k, grid)
-end
