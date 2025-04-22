@@ -233,57 +233,25 @@ end
     return :($(elem...),)
 end
 
+
+# ZWENO α weights C★ᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ε))ᵖ)
+@inline function metaprogrammed_zweno_alpha_loop(buffer)
+    elem = Vector(undef, buffer)
+    for stencil = 1:buffer
+        elem[stencil] = :(C★(scheme, red_order, Val($(stencil-1))) * (1 + (τ / (β[$stencil] + ε))^2))
+    end
+
+    return :($(elem...),)
+end
+
 for buffer in advection_buffers[1:end]
     @eval begin
-        @inline  beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂)       where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
-        @inline beta_loop(scheme::WENO{$buffer, FT}, red_order, ψ) where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
+        @inline  beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂)                    where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
+        @inline beta_loop(scheme::WENO{$buffer, FT}, red_order, ψ)              where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
+        @inline zweno_alpha_weights(scheme::WENO{$buffer, FT}, red_order, β, τ) where FT = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
     end
 end
 
-function zweno_alpha_weights(s::WENO{2}, R, β, τ)
-    α₁ = @inbounds @fastmath C★(s, R, Val(0)) * (1 + (τ / (β[1] + ε))^2)
-    α₂ = @inbounds @fastmath C★(s, R, Val(1)) * (1 + (τ / (β[2] + ε))^2)
-    αs = 1 / (α₁ + α₂)
-    return (α₁, α₂) .* αs
-end
-
-function zweno_alpha_weights(s::WENO{3}, R, β, τ)
-    α₁ = @inbounds @fastmath C★(s, R, Val(0)) * (1 + (τ / (β[1] + ε))^2)
-    α₂ = @inbounds @fastmath C★(s, R, Val(1)) * (1 + (τ / (β[2] + ε))^2)
-    α₃ = @inbounds @fastmath C★(s, R, Val(2)) * (1 + (τ / (β[3] + ε))^2)
-    αs = 1 / (α₁ + α₂ + α₃)
-    return (α₁, α₂, α₃) .* αs
-end
-
-function zweno_alpha_weights(s::WENO{4}, R, β, τ)
-    α₁ = @inbounds @fastmath C★(s, R, Val(0)) * (1 + (τ / (β[1] + ε))^2)
-    α₂ = @inbounds @fastmath C★(s, R, Val(1)) * (1 + (τ / (β[2] + ε))^2)
-    α₃ = @inbounds @fastmath C★(s, R, Val(2)) * (1 + (τ / (β[3] + ε))^2)
-    α₄ = @inbounds @fastmath C★(s, R, Val(3)) * (1 + (τ / (β[4] + ε))^2)
-    αs = 1 / (α₁ + α₂ + α₃ + α₄)
-    return (α₁, α₂, α₃, α₄) .* αs
-end
-
-function zweno_alpha_weights(s::WENO{5}, R, β, τ)
-    α₁ = @inbounds @fastmath C★(s, R, Val(0)) * (1 + (τ / (β[1] + ε))^2)
-    α₂ = @inbounds @fastmath C★(s, R, Val(1)) * (1 + (τ / (β[2] + ε))^2)
-    α₃ = @inbounds @fastmath C★(s, R, Val(2)) * (1 + (τ / (β[3] + ε))^2)
-    α₄ = @inbounds @fastmath C★(s, R, Val(3)) * (1 + (τ / (β[4] + ε))^2)
-    α₅ = @inbounds @fastmath C★(s, R, Val(4)) * (1 + (τ / (β[5] + ε))^2)
-    αs = 1 / (α₁ + α₂ + α₃ + α₄ + α₅)
-    return (α₁, α₂, α₃, α₄, α₅) ./ αs
-end
-
-function zweno_alpha_weights(s::WENO{6}, R, β, τ)
-    α₁ = @inbounds @fastmath C★(s, R, Val(0)) * (1 + (τ / (β[1] + ε))^2)
-    α₂ = @inbounds @fastmath C★(s, R, Val(1)) * (1 + (τ / (β[2] + ε))^2)
-    α₃ = @inbounds @fastmath C★(s, R, Val(2)) * (1 + (τ / (β[3] + ε))^2)
-    α₄ = @inbounds @fastmath C★(s, R, Val(3)) * (1 + (τ / (β[4] + ε))^2)
-    α₅ = @inbounds @fastmath C★(s, R, Val(4)) * (1 + (τ / (β[5] + ε))^2)
-    α₆ = @inbounds @fastmath C★(s, R, Val(5)) * (1 + (τ / (β[6] + ε))^2)
-    αs = 1 / (α₁ + α₂ + α₃ + α₄ + α₅ + α₆)
-    return (α₁, α₂, α₃, α₄, α₅) .* αs
-end
 
 """
     function biased_weno_weights(ψ, scheme::WENO{N, FT}, red_order, args...)
@@ -306,7 +274,12 @@ The ``α`` values are normalized before returning
 @inline function biased_weno_weights(ψ, grid, scheme::WENO{N, FT}, red_order, args...) where {N, FT}
     β = beta_loop(scheme, red_order, ψ)
     τ = global_smoothness_indicator(β, red_order)
-    return zweno_alpha_weights(scheme, red_order, β, τ)
+    α = zweno_alpha_loop(scheme, red_order, β, τ)
+    
+    # Normalization factor
+    αs⁻¹ = 1 / sum(α)
+
+    return α .* αs⁻¹
 end
 
 @inline function biased_weno_weights(ijk, grid, scheme::WENO{N, FT}, red_order, bias, dir, ::VelocityStencil, u, v) where {N, FT}
@@ -318,7 +291,12 @@ end
     βᵥ = beta_loop(scheme, red_order, vₛ)
     β  =  beta_sum(scheme, βᵤ, βᵥ)
     τ  = global_smoothness_indicator(β, red_order)
-    return zweno_alpha_weights(scheme, red_order, β, τ)
+    α  = zweno_alpha_loop(scheme, red_order, β, τ)
+    
+    # Normalization factor
+    αs⁻¹ = 1 / sum(α)
+
+    return α .* αs⁻¹
 end
 
 """ 

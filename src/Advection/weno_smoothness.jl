@@ -183,7 +183,7 @@ end
 @inline function global_smoothness_indicator(β::NTuple{2}, R) 
     if R == 1
         @inbounds abs(β[1])
-    elseif R == 2
+    else 
         @inbounds abs(β[1] - β[2])
     end
 end
@@ -193,7 +193,7 @@ end
         @inbounds abs(β[1])
     elseif R == 2
         @inbounds abs(β[1] - β[2])
-    elseif R == 3
+    else
         @inbounds abs(β[1] - β[3])
     end
 end
@@ -205,7 +205,7 @@ end
         @inbounds abs(β[1] - β[2])
     elseif R == 3
         @inbounds abs(β[1] - β[3])
-    elseif R == 4
+    else
         @inbounds abs(β[1] +  3β[2] -   3β[3] -    β[4])
     end
 end
@@ -219,12 +219,13 @@ end
         @inbounds abs(β[1] - β[3])
     elseif R == 4
         @inbounds abs(β[1] +  3β[2] -   3β[3] -    β[4])
-    elseif R == 5
+    else
         @inbounds abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
     end
 end
 
-@inline function global_smoothness_indicator(β::NTuple{6}, R) 
+# Otherwise we take the 11th order WENO smoothness indicator as a default
+@inline function global_smoothness_indicator(β, R) 
     if R == 1
         @inbounds abs(β[1])
     elseif R == 2
@@ -235,7 +236,7 @@ end
         @inbounds abs(β[1] + 3β[2] - 3β[3] - β[4])
     elseif R == 5
         @inbounds abs(β[1] + 2β[2] - 6β[3] + 2β[4] + β[5])
-    elseif R == 6
+    else
         @inbounds abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
     end
 end
