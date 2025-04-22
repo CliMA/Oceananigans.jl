@@ -167,7 +167,8 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
             I = $(inside_immersed_boundary(3, :none, dir, loc; xside = loc))
             to2 = @inbounds (I[1] | I[6])
             to1 = @inbounds (I[2] | I[5]) 
-            return ifelse(to1, 1, ifelse(to2, 2, 3))
+            return ifelse(to1, 1, 
+                   ifelse(to2, 2, 3))
         end
 
         @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{4}) 
@@ -175,7 +176,9 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
             to3 = @inbounds (I[1] | I[8])
             to2 = @inbounds (I[2] | I[7]) 
             to1 = @inbounds (I[3] | I[6])
-            return ifelse(to1, 1, ifelse(to2, 2, ifelse(to3, 3, 4)))
+            return ifelse(to1, 1, 
+                   ifelse(to2, 2, 
+                   ifelse(to3, 3, 4)))
         end
 
         @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{5}) 
@@ -184,7 +187,10 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
             to3 = @inbounds (I[2] | I[9])
             to2 = @inbounds (I[3] | I[8]) 
             to1 = @inbounds (I[4] | I[7])
-            return ifelse(to1, 1, ifelse(to2, 2, ifelse(to3, 3, ifelse(to4, 4, 5))))
+            return ifelse(to1, 1, 
+                   ifelse(to2, 2, 
+                   ifelse(to3, 3, 
+                   ifelse(to4, 4, 5))))
         end
 
         @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{6}) 
@@ -194,7 +200,11 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
             to3 = @inbounds (I[3] | I[10])
             to2 = @inbounds (I[4] | I[9]) 
             to1 = @inbounds (I[5] | I[8])
-            return ifelse(to1, 1, ifelse(to2, 2, ifelse(to3, 3, ifelse(to4, 4, ifelse(to5, 5, 6)))))
+            return ifelse(to1, 1, 
+                   ifelse(to2, 2, 
+                   ifelse(to3, 3, 
+                   ifelse(to4, 4, 
+                   ifelse(to5, 5, 6)))))
         end
     end
 end
