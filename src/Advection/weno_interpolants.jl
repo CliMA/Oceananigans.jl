@@ -233,22 +233,78 @@ end
     return :($(elem...),)
 end
 
-# ZWENO α weights C★ᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ε))ᵖ)
-@inline function metaprogrammed_zweno_alpha_loop(buffer)
-    elem = Vector(undef, buffer)
-    for stencil = 1:buffer
-        elem[stencil] = :(C★(scheme, red_order, Val($(stencil-1))) * (1 + (τ / (β[$stencil] + ε))^2))
+for buffer in advection_buffers[1:end]
+    @eval begin
+        @inline  beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂)       where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
+        @inline beta_loop(scheme::WENO{$buffer, FT}, red_order, ψ) where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
     end
-
-    return :($(elem...),)
 end
 
-for buffer in advection_buffers[2:end]
-    @eval begin
-        @inline         beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂)          where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
-        @inline        beta_loop(scheme::WENO{$buffer, FT}, red_order, ψ)    where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
-        @inline zweno_alpha_loop(scheme::WENO{$buffer, FT}, red_order, β, τ) where FT = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
-    end
+zweno_alpha_weights(scheme, red_order, β::NTuple{1, FT}, τ) = tuple(FT(1)) # Fallback for first order
+
+function zweno_alpha_weights(scheme, red_order, β::NTuple{2, FT}, τ)
+    C₁ = C★(scheme, red_order, Val(0))
+    C₂ = C★(scheme, red_order, Val(1))
+    α₁ = @inbounds C₁ * (1 + (τ / (β[1] + ε))^2)
+    α₂ = @inbounds C₂ * (1 + (τ / (β[2] + ε))^2)
+    αs = α₁ + α₂
+    return (α₁, α₂) ./ αs
+end
+
+function zweno_alpha_weights(scheme, red_order, β::NTuple{3, FT}, τ)
+    C₁ = C★(scheme, red_order, Val(0))
+    C₂ = C★(scheme, red_order, Val(1))
+    C₃ = C★(scheme, red_order, Val(2))
+    α₁ = @inbounds C₁ * (1 + (τ / (β[1] + ε))^2)
+    α₂ = @inbounds C₂ * (1 + (τ / (β[2] + ε))^2)
+    α₃ = @inbounds C₃ * (1 + (τ / (β[3] + ε))^2)
+    αs = α₁ + α₂ + α₃
+    return (α₁, α₂, α₃) ./ αs
+end
+
+function zweno_alpha_weights(scheme, red_order, β::NTuple{4, FT}, τ)
+    C₁ = C★(scheme, red_order, Val(0))
+    C₂ = C★(scheme, red_order, Val(1))
+    C₃ = C★(scheme, red_order, Val(2))
+    C₄ = C★(scheme, red_order, Val(3))
+    α₁ = @inbounds C₁ * (1 + (τ / (β[1] + ε))^2)
+    α₂ = @inbounds C₂ * (1 + (τ / (β[2] + ε))^2)
+    α₃ = @inbounds C₃ * (1 + (τ / (β[3] + ε))^2)
+    α₄ = @inbounds C₄ * (1 + (τ / (β[4] + ε))^2)
+    αs = α₁ + α₂ + α₃ + α₄
+    return (α₁, α₂, α₃, α₄) ./ αs
+end
+
+function zweno_alpha_weights(scheme, red_order, β::NTuple{5, FT}, τ)
+    C₁ = C★(scheme, red_order, Val(0))
+    C₂ = C★(scheme, red_order, Val(1))
+    C₃ = C★(scheme, red_order, Val(2))
+    C₄ = C★(scheme, red_order, Val(3))
+    C₅ = C★(scheme, red_order, Val(4))
+    α₁ = @inbounds C₁ * (1 + (τ / (β[1] + ε))^2)
+    α₂ = @inbounds C₂ * (1 + (τ / (β[2] + ε))^2)
+    α₃ = @inbounds C₃ * (1 + (τ / (β[3] + ε))^2)
+    α₄ = @inbounds C₄ * (1 + (τ / (β[4] + ε))^2)
+    α₅ = @inbounds C₅ * (1 + (τ / (β[5] + ε))^2)
+    αs = α₁ + α₂ + α₃ + α₄ + α₅
+    return (α₁, α₂, α₃, α₄, α₅) ./ αs
+end
+
+function zweno_alpha_weights(scheme, red_order, β::NTuple{6, FT}, τ)
+    C₁ = C★(scheme, red_order, Val(0))
+    C₂ = C★(scheme, red_order, Val(1))
+    C₃ = C★(scheme, red_order, Val(2))
+    C₄ = C★(scheme, red_order, Val(3))
+    C₅ = C★(scheme, red_order, Val(4))
+    C₆ = C★(scheme, red_order, Val(5))
+    α₁ = @inbounds C₁ * (1 + (τ / (β[1] + ε))^2)
+    α₂ = @inbounds C₂ * (1 + (τ / (β[2] + ε))^2)
+    α₃ = @inbounds C₃ * (1 + (τ / (β[3] + ε))^2)
+    α₄ = @inbounds C₄ * (1 + (τ / (β[4] + ε))^2)
+    α₅ = @inbounds C₅ * (1 + (τ / (β[5] + ε))^2)
+    α₆ = @inbounds C₅ * (1 + (τ / (β[6] + ε))^2)
+    αs = α₁ + α₂ + α₃ + α₄ + α₅ + α₆
+    return (α₁, α₂, α₃, α₄, α₅) ./ αs
 end
 
 """
@@ -271,11 +327,9 @@ The ``α`` values are normalized before returning
 """
 @inline function biased_weno_weights(ψ, grid, scheme::WENO{N, FT}, red_order, args...) where {N, FT}
     β = beta_loop(scheme, red_order, ψ)
-                
     τ = global_smoothness_indicator(β, red_order)
-    α = zweno_alpha_loop(scheme, red_order, β, τ)
 
-    return α ./ sum(α)
+    return zweno_alpha_weights(scheme, red_order, β, τ)
 end
 
 @inline function biased_weno_weights(ijk, grid, scheme::WENO{N, FT}, red_order, bias, dir, ::VelocityStencil, u, v) where {N, FT}
@@ -286,11 +340,9 @@ end
     βᵤ = beta_loop(scheme, red_order, uₛ)
     βᵥ = beta_loop(scheme, red_order, vₛ)
     β  =  beta_sum(scheme, βᵤ, βᵥ)
-
-    τ = global_smoothness_indicator(β, red_order)
-    α = zweno_alpha_loop(scheme, red_order, β, τ)
+    τ  = global_smoothness_indicator(β, red_order)
     
-    return α ./ sum(α)
+    return zweno_alpha_weights(scheme, red_order, β, τ)
 end
 
 """ 
