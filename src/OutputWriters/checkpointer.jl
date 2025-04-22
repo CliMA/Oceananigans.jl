@@ -4,8 +4,9 @@ using Oceananigans
 using Oceananigans: fields, prognostic_fields
 using Oceananigans.Fields: offset_data
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
+using Oceananigans.Models: OceananigansModels
 
-import Oceananigans.Fields: set!
+import Oceananigans.Fields: set! 
 
 mutable struct Checkpointer{T, P} <: AbstractOutputWriter
     schedule :: T
@@ -18,10 +19,18 @@ mutable struct Checkpointer{T, P} <: AbstractOutputWriter
 end
 
 function default_checkpointed_properties(model)
-    properties = [:grid, :particles, :clock, :timestepper]
-    #if has_ab2_timestepper(model)
-    #    push!(properties, :timestepper)
-    #end
+    properties = [:grid, :clock]
+    if has_ab2_timestepper(model)
+       push!(properties, :timestepper)
+    end
+    return properties
+end
+
+function default_checkpointed_properties(model::OceananigansModels)
+    properties = [:grid, :particles, :clock]
+    if has_ab2_timestepper(model)
+       push!(properties, :timestepper)
+    end
     return properties
 end
 
@@ -30,6 +39,9 @@ has_ab2_timestepper(model) = try
 catch
     false
 end
+
+required_checkpoint_properties(model) = [:grid, :clock]
+required_checkpoint_properties(::OceananigansModels) = [:grid, :clock, :particles]
 
 """
     Checkpointer(model;
@@ -71,9 +83,8 @@ Keyword arguments
              Default: `false`.
 
 - `properties`: List of model properties to checkpoint. This list _must_ contain
-                `:grid`, `:particles` and `:clock`, and if using AB2 timestepping then also
-                `:timestepper`. Default: calls [`default_checkpointed_properties`](@ref) on
-                `model` to get these properties.
+                `:grid`, `:particles` and :clock`, and if using AB2 timestepping then also
+                `:timestepper`. Default: default_checkpointed_properties(model)
 """
 function Checkpointer(model; schedule,
                       dir = ".",
@@ -84,7 +95,7 @@ function Checkpointer(model; schedule,
                       properties = default_checkpointed_properties(model))
 
     # Certain properties are required for `set!` to pickup from a checkpoint.
-    required_properties = [:grid, :particles, :clock]
+    required_properties = required_checkpoint_properties(model)
 
     if has_ab2_timestepper(model)
         push!(required_properties, :timestepper)
@@ -281,7 +292,7 @@ function set_time_stepper_tendencies!(timestepper, file, model_fields, addr)
     return nothing
 end
 
-# For self-starting timesteppers like RK3 we do nothing
+# For self-starting timesteppers like RK3 we do nothing 
 set_time_stepper!(timestepper, args...) = nothing
 
 set_time_stepper!(timestepper::QuasiAdamsBashforth2TimeStepper, args...) =
