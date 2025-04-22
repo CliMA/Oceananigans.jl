@@ -85,7 +85,7 @@ end
 
 # Methods for grids with Flat dimensions:
 # Here, the meaning of the coordinate xₙ depends on which dimension is Flat:
-# for example, in the below method (x₁, x₂) may be (ξ, η), (ξ, r), or (η, r), where 
+# for example, in the below method (x₁, x₂) may be (ξ, η), (ξ, r), or (η, r), where
 # ξ, η, and r are the first, second, and third coordinates respectively.
 @inline (f::Relaxation)(x₁, x₂, t, field) =
     f.rate * f.mask(x₁, x₂) * (f.target(x₁, x₂, t) - field)

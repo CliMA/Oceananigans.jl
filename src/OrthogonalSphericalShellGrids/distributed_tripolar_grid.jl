@@ -42,13 +42,13 @@ function TripolarGrid(arch::Distributed, FT::DataType=Float64;
         if isodd(px) && (px != 1)
             throw(ArgumentError("Only even partitioning in x is supported with the TripolarGrid"))
         end
-    catch 
+    catch
         throw(ArgumentError("The x partition $(px) is not supported. The partition in x must be an even number. "))
     end
 
     # a slab decomposition in x is not supported
     if px != 1 && py == 1
-        throw(ArgumentError("A x-only partitioning is not supported with the TripolarGrid. \n 
+        throw(ArgumentError("A x-only partitioning is not supported with the TripolarGrid. \n
                             Please, use a y partitioning configuration or a x-y pencil partitioning."))
     end
 
@@ -66,7 +66,7 @@ function TripolarGrid(arch::Distributed, FT::DataType=Float64;
     nylocal = concatenate_local_sizes(lsize, arch, 2)
     xrank   = ifelse(isnothing(arch.partition.x), 0, arch.local_index[1] - 1)
     yrank   = ifelse(isnothing(arch.partition.y), 0, arch.local_index[2] - 1)
-    
+
     # The j-range
     jstart = 1 + sum(nylocal[1:yrank])
     jend = yrank == workers[2] - 1 ? Ny : sum(nylocal[1:yrank+1])
@@ -109,11 +109,11 @@ function TripolarGrid(arch::Distributed, FT::DataType=Float64;
     z = on_architecture(arch, global_grid.z)
     radius = global_grid.radius
 
-    # Fix corners halos passing in case workers[1] != 1 
-    if  workers[1] != 1 
+    # Fix corners halos passing in case workers[1] != 1
+    if  workers[1] != 1
         northwest_idx_x = ranks(arch)[1] - arch.local_index[1] + 2
-        northeast_idx_x = ranks(arch)[1] - arch.local_index[1] 
-        
+        northeast_idx_x = ranks(arch)[1] - arch.local_index[1]
+
         if northwest_idx_x > workers[1]
             northwest_idx_x = arch.local_index[1]
         end
@@ -171,7 +171,7 @@ function partition_tripolar_metric(global_grid, metric_name, irange, jrange)
     metric = getproperty(global_grid, metric_name)
     offsets = metric.offsets
     partitioned_metric = metric[irange, jrange]
-     
+
     if partitioned_metric isa OffsetArray
         partitioned_metric = partitioned_metric.parent
     end
@@ -204,7 +204,7 @@ function receiving_rank(arch; receive_idx_x = ranks(arch)[1] - arch.local_index[
         my_x_idx = 0
         my_y_idx = 0
 
-        if arch.local_rank == rank 
+        if arch.local_rank == rank
             my_x_idx = arch.local_index[1]
             my_y_idx = arch.local_index[2]
         end
@@ -237,7 +237,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
     west  = regularize_boundary_condition(bcs.west,  grid, loc, 1, LeftBoundary,  prognostic_names)
     east  = regularize_boundary_condition(bcs.east,  grid, loc, 1, RightBoundary, prognostic_names)
     south = regularize_boundary_condition(bcs.south, grid, loc, 2, LeftBoundary,  prognostic_names)
-    
+
     north = if yrank == processor_size[2] - 1 && processor_size[1] == 1
         ZipperBoundaryCondition(sign)
 
@@ -281,7 +281,7 @@ function Field((LX, LY, LZ)::Tuple, grid::DistributedTripolarGridOfSomeKind, dat
 
         # North boundary conditions are "special". If we are at the top of the domain, i.e.
         # the last rank, then we need to substitute the BC only if the old one is not already
-        # a zipper boundary condition. Otherwise we always substitute because we need to 
+        # a zipper boundary condition. Otherwise we always substitute because we need to
         # inject the halo boundary conditions.
         if yrank == processor_size[2] - 1 && processor_size[1] == 1
             north_bc = if !(old_bcs.north isa ZBC)
@@ -342,7 +342,7 @@ function reconstruct_global_grid(grid::DistributedTripolarGrid)
                         z)
 end
 
-function with_halo(new_halo, old_grid::DistributedTripolarGrid) 
+function with_halo(new_halo, old_grid::DistributedTripolarGrid)
 
     arch = old_grid.architecture
 
@@ -355,8 +355,8 @@ function with_halo(new_halo, old_grid::DistributedTripolarGrid)
     southernmost_latitude = old_grid.conformal_mapping.southernmost_latitude
 
     return TripolarGrid(arch, eltype(old_grid);
-                        halo = new_halo, 
-                        size = N, 
+                        halo = new_halo,
+                        size = N,
                         north_poles_latitude,
                         first_pole_longitude,
                         southernmost_latitude,

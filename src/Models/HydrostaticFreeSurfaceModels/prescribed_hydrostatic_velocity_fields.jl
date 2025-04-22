@@ -94,7 +94,7 @@ free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid)
 
 ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
 rk3_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
-step_free_surface!(::Nothing, model, timestepper, Δt) = nothing 
+step_free_surface!(::Nothing, model, timestepper, Δt) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, args...; kwargs...) = nothing
 
 validate_velocity_boundary_conditions(grid, ::PrescribedVelocityFields) = nothing

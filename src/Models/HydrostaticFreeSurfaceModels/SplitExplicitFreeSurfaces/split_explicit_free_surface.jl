@@ -140,7 +140,7 @@ function split_explicit_substepping(cfl, ::Nothing, fixed_Δt, grid, averaging_k
 end
 
 # Disambiguation for a default `SplitExplicitFreeSurface` constructor
-split_explicit_substepping(::Nothing, ::Nothing, ::Nothing, grid, averaging_kernel, gravitational_acceleration) = 
+split_explicit_substepping(::Nothing, ::Nothing, ::Nothing, grid, averaging_kernel, gravitational_acceleration) =
     split_explicit_substepping(nothing, MINIMUM_SUBSTEPS, nothing, grid, averaging_kernel, gravitational_acceleration)
 
 # TODO: When open boundary conditions are online

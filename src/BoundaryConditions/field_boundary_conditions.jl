@@ -188,10 +188,10 @@ function regularize_immersed_boundary_condition(ibc, grid, loc, field_name, args
     return NoFluxBoundaryCondition()
 end
 
-  regularize_west_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)    
-  regularize_east_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)    
- regularize_south_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)   
- regularize_north_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)  
+  regularize_west_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
+  regularize_east_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
+ regularize_south_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
+ regularize_north_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
 regularize_bottom_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
    regularize_top_boundary_condition(bc, args...) = regularize_boundary_condition(bc, args...)
 
@@ -207,7 +207,7 @@ regularize_boundary_condition(bc, args...) = bc # fallback
 regularize_boundary_condition(bc::BoundaryCondition{C, <:Number}, grid, args...) where C =
     BoundaryCondition(bc.classification, convert(eltype(grid), bc.condition))
 
-""" 
+"""
     regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                          grid::AbstractGrid,
                                          field_name::Symbol,
@@ -228,7 +228,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                               prognostic_names=nothing)
 
     loc = assumed_field_location(field_name)
-    
+
     west   = regularize_west_boundary_condition(bcs.west,     grid, loc, 1, LeftBoundary,  prognostic_names)
     east   = regularize_east_boundary_condition(bcs.east,     grid, loc, 1, RightBoundary, prognostic_names)
     south  = regularize_south_boundary_condition(bcs.south,   grid, loc, 2, LeftBoundary,  prognostic_names)
@@ -275,6 +275,15 @@ regularize_north_boundary_condition(bc::DefaultBoundaryCondition, grid::Latitude
 
 regularize_south_boundary_condition(bc::DefaultBoundaryCondition, grid::LatitudeLongitudeGrid, loc, args...) = 
     regularize_boundary_condition(default_prognostic_bc(grid, Val(:south), loc, bc), grid, loc, args...)
+
+function FieldBoundaryConditions(grid::LatitudeLongitudeGrid, location, indices=(:, :, :);
+                                 west     = default_auxiliary_bc(topology(grid, 1)(), location[1]()),
+                                 east     = default_auxiliary_bc(topology(grid, 1)(), location[1]()),
+                                 south    = default_auxiliary_bc(topology(grid, 2)(), location[2]()),
+                                 north    = default_auxiliary_bc(topology(grid, 2)(), location[2]()),
+                                 bottom   = default_auxiliary_bc(topology(grid, 3)(), location[3]()),
+                                 top      = default_auxiliary_bc(topology(grid, 3)(), location[3]()),
+                                 immersed = NoFluxBoundaryCondition())
 
 function default_prognostic_bc(grid::LatitudeLongitudeGrid, ::Val{:north}, loc, default)
     φnorth = @allowscalar φnode(grid.Ny+1, grid, Face()) 

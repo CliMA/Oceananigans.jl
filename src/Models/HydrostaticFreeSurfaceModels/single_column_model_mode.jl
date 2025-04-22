@@ -82,8 +82,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     end
 
     update_biogeochemical_state!(model.biogeochemistry, model)
-    
-    compute_tendencies && 
+
+    compute_tendencies &&
         @apply_regionally compute_tendencies!(model, callbacks)
 
     return nothing
@@ -105,7 +105,7 @@ end
     @inbounds closure = closure_array[i, j]
     return ∇_dot_qᶜ(i, j, k, grid, closure, c, tracer_index, args...)
 end
-    
+
 @inline function time_discretization(closure_array::AbstractArray)
     first_closure = @allowscalar first(closure_array) # assumes all closures have same time-discretization
     return time_discretization(first_closure)
