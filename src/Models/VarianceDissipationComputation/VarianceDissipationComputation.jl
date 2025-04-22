@@ -58,7 +58,7 @@ function VarianceDissipation(model; tracers = propertynames(model.tracers))
     Uⁿ⁻¹ = VelocityFields(grid)
     Uⁿ   = VelocityFields(grid)
     
-    cⁿ⁻¹ =  NamedTuple{tracers}(CenterField(grid) for tracer in tracers)
+    cⁿ⁻¹ = NamedTuple{tracers}(CenterField(grid) for tracer in tracers)
 
     previous_state   = merge(cⁿ⁻¹, (; Uⁿ⁻¹, Uⁿ))
     advective_fluxes = (; Fⁿ, Fⁿ⁻¹)
