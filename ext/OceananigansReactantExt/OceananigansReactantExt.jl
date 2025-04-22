@@ -43,7 +43,7 @@ using .OutputReaders
 ##### Telling Reactant how to construct types
 #####
 
-import ConstructionBase: constructorof 
+import ConstructionBase: constructorof
 
 constructorof(::Type{<:RectilinearGrid{FT, TX, TY, TZ}}) where {FT, TX, TY, TZ} = RectilinearGrid{TX, TY, TZ}
 constructorof(::Type{<:VectorInvariant{N, FT, M}}) where {N, FT, M} = VectorInvariant{N, FT, M}
@@ -181,7 +181,7 @@ end
     @assert size(tvals) == size(c)
     gf =  Reactant.call_with_reactant(getindex, c.operand, axes2...)
     Reactant.TracedRArrayOverrides._copyto!(tvals, Base.broadcasted(c.func, gf))
-    
+
     return Reactant.Ops.select(
                 conds,
                 tvals,
@@ -204,7 +204,7 @@ end
             end
         end)...)
     end
-    
+
     tvals = Reactant.Ops.fill(Reactant.unwrapped_eltype(Base.eltype(c)), size(c))
     Reactant.TracedRArrayOverrides._copyto!(tvals, Base.broadcasted(Fix1v2(evalkern, c), axes2...))
     return tvals

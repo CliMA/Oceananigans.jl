@@ -36,20 +36,20 @@ const FullField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple{<:Colon, <:Co
 @inline inner_flatten_tuple(a::Tuple{}) = ()
 
 """
-    fill_halo_regions!(fields::NamedTuple, args...; kwargs...) 
+    fill_halo_regions!(fields::NamedTuple, args...; kwargs...)
 
 Fill halo regions for all `fields`. The algorithm:
 
   1. Flattens fields, extracting `values` if the field is `NamedTuple`, and removing
      duplicate entries to avoid "repeated" halo filling.
-    
+
   2. Filters fields into three categories:
      i. ReducedFields with non-trivial boundary conditions;
      ii. Fields with non-trivial indices and boundary conditions;
      iii. Fields spanning the whole grid with non-trivial boundary conditions.
-    
+
   3. Halo regions for every `ReducedField` and windowed fields are filled independently.
-    
+
   4. In every direction, the halo regions in each of the remaining `Field` tuple
      are filled simultaneously.
 """
@@ -83,7 +83,7 @@ function tupled_fill_halo_regions!(fields, args...; kwargs...)
 
     return nothing
 end
-    
+
 # Version where grid is provided:
 function tupled_fill_halo_regions!(fields, grid::AbstractGrid, args...; kwargs...)
 

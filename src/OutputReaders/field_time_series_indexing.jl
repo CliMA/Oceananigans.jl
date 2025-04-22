@@ -251,7 +251,7 @@ end
     ix = interpolator(fi.i)
     iy = interpolator(fi.j)
     iz = interpolator(fi.k)
-    
+
     m₁ = memory_index(backend, time_indexing, Nt, n₁)
     m₂ = memory_index(backend, time_indexing, Nt, n₂)
 

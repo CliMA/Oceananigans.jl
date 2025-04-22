@@ -104,7 +104,7 @@ include("laplacian_operators.jl")
 include("time_variable_grid_operators.jl")
 include("vector_rotation_operators.jl")
 
-@inline xspacing(args...) = Δx(args...) 
+@inline xspacing(args...) = Δx(args...)
 @inline yspacing(args...) = Δy(args...)
 @inline zspacing(args...) = Δz(args...)
 @inline λspacing(abs...)  = Δλ(abs...)

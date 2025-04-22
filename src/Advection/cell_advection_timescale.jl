@@ -27,8 +27,8 @@ end
     inverse_timescale_x = _inverse_timescale(i, j, k, Δx, u, TX())
     inverse_timescale_y = _inverse_timescale(i, j, k, Δy, v, TY())
     inverse_timescale_z = _inverse_timescale(i, j, k, Δz, w, TZ())
-    
+
     inverse_timescale = inverse_timescale_x + inverse_timescale_y + inverse_timescale_z
-     
+
     return 1 / inverse_timescale
 end

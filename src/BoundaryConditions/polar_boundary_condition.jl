@@ -31,7 +31,7 @@ end
     @inbounds data[i′, j′, k] = ifelse(n == 0,  0,  c̄ / n)
 end
 
-function update_pole_value!(bc::PolarValue, c, grid, loc) 
+function update_pole_value!(bc::PolarValue, c, grid, loc)
     j = bc.side == :north ? grid.Ny : 1
     Nz = size(c, 3)
     Oz = c.offsets[3]
@@ -40,13 +40,13 @@ function update_pole_value!(bc::PolarValue, c, grid, loc)
     return nothing
 end
 
-function fill_south_halo!(c, bc::PolarBoundaryCondition, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) 
+function fill_south_halo!(c, bc::PolarBoundaryCondition, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...)
     update_pole_value!(bc.condition, c, grid, loc)
     return launch!(arch, grid, KernelParameters(size, offset),
                    _fill_only_south_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
 end
 
-function fill_north_halo!(c, bc::PolarBoundaryCondition, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...) 
+function fill_north_halo!(c, bc::PolarBoundaryCondition, size, offset, loc, arch, grid, args...; only_local_halos = false, kwargs...)
     update_pole_value!(bc.condition, c, grid, loc)
     return launch!(arch, grid, KernelParameters(size, offset),
                    _fill_only_north_halo!, c, bc, loc, grid, Tuple(args); kwargs...)
