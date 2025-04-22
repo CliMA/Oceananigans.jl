@@ -99,14 +99,6 @@ for FT in fully_supported_float_types
         @inline C★(::WENO{5, $FT}, red_order, ::Val{2}) = ifelse(red_order <3, $(FT(0)), ifelse(red_order==3, $(FT(1//10)), ifelse(red_order==4, $(FT(12//35)), $(FT(100//231)))))
         @inline C★(::WENO{5, $FT}, red_order, ::Val{3}) = ifelse(red_order <4, $(FT(0)), ifelse(red_order==4, $(FT(1//35)), $(FT(10//63))))
         @inline C★(::WENO{5, $FT}, red_order, ::Val{4}) = ifelse(red_order <5, $(FT(0)), $(FT(1//126)))
-
-        # WENO 11th order
-        @inline C★(::WENO{6, $FT}, All, ::Val{0}) = $(FT(1//77))
-        @inline C★(::WENO{6, $FT}, All, ::Val{1}) = $(FT(25//154))
-        @inline C★(::WENO{6, $FT}, All, ::Val{2}) = $(FT(100//231))
-        @inline C★(::WENO{6, $FT}, All, ::Val{3}) = $(FT(25//77))
-        @inline C★(::WENO{6, $FT}, All, ::Val{4}) = $(FT(5//77))
-        @inline C★(::WENO{6, $FT}, All, ::Val{5}) = $(FT(1//462))
     end
 end
 
