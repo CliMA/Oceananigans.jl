@@ -93,7 +93,8 @@ func(x, y, z, t, parameters)
 """
 BackgroundField(func; parameters=nothing) = BackgroundField(func, parameters)
 
-regularize_background_field(LX, LY, LZ, f::BackgroundField{<:Function}, grid, clock) =
+# Fallback, assuming a function
+regularize_background_field(LX, LY, LZ, f::BackgroundField, grid, clock) =
     FunctionField{LX, LY, LZ}(f.func, grid; clock, parameters=f.parameters)
 
 regularize_background_field(LX, LY, LZ, f::BackgroundField{<:Int}, grid, clock) = ConstantField(f.func)
