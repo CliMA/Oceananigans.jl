@@ -336,7 +336,7 @@ end
 
 # Stencils for left and right biased reconstruction ((ψ̅ᵢ₋ᵣ₊ⱼ for j in 0:k) for r in 0:k) to calculate v̂ᵣ = ∑ⱼ(cᵣⱼψ̅ᵢ₋ᵣ₊ⱼ)
 # where `k = N - 1`. Coefficients (cᵣⱼ for j in 0:N) for stencil r are given by `coeff_side_p(scheme, Val(r), ...)`
-for dir in (:x, :y, :z), (T, f) in zip((:Any, :Function), (false, true))
+for dir in (:x, :y, :z), (T, f) in zip((:Any, :Callable), (false, true))
     stencil = Symbol(:weno_stencil_, dir)
     @eval begin
         @inline function $stencil(i, j, k, grid, ::WENO{2}, bias, ψ::$T, args...)
@@ -357,11 +357,6 @@ for dir in (:x, :y, :z), (T, f) in zip((:Any, :Function), (false, true))
         @inline function $stencil(i, j, k, grid, ::WENO{5}, bias, ψ::$T, args...)
             S = @inbounds $(load_weno_stencil(5, dir, f))
             return S₀₅(S, bias), S₁₅(S, bias), S₂₅(S, bias), S₃₅(S, bias), S₄₅(S, bias)
-        end
-
-        @inline function $stencil(i, j, k, grid, ::WENO{6}, bias, ψ::$T, args...)
-            S = @inbounds $(load_weno_stencil(6, dir, f))
-            return S₀₆(S, bias), S₁₆(S, bias), S₂₆(S, bias), S₃₆(S, bias), S₄₆(S, bias), S₅₆(S, bias)
         end
     end
 end
@@ -416,7 +411,7 @@ for (interp, dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, 
 
     @eval begin
         @inline function $interpolate_func(i, j, k, grid,
-                                            scheme::WENO{N, FT}, bias,
+                                            scheme::WENO{N, FT}, red_order, bias,
                                             ψ, args...) where {N, FT}
 
             ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
@@ -443,7 +438,7 @@ for (interp, dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, 
         end
 
         @inline function $interpolate_func(i, j, k, grid,
-                                            scheme::WENO{N, FT}, bias,
+                                            scheme::WENO{N, FT}, red_order, bias,
                                             ψ, VI::FunctionStencil, args...) where {N, FT}
 
             ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ,       args...)
