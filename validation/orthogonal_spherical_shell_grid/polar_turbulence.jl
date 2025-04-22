@@ -21,7 +21,7 @@ grid = RotatedLatitudeLongitudeGrid(size = (Nx, Ny, Nz),
 model = HydrostaticFreeSurfaceModel(; grid,
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     momentum_advection = WENOVectorInvariant())
-                                    
+
 U = 1
 ϵᵢ(λ, φ, z) = U * (2rand() - 1)
 set!(model, u=ϵᵢ, v=ϵᵢ)

@@ -573,7 +573,7 @@ for arch in archs
 
                 @test try compute!(tke_xy); true; catch; false; end
                 @test all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
-    
+
                 @test try compute!(tke_xz); true; catch; false; end
                 @test all(interior(tke_xz) .== 9/2)
 
