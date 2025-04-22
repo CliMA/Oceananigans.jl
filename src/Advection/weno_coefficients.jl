@@ -71,69 +71,69 @@ for FT in fully_supported_float_types
 
         # 5th order WENO, restricted to orders 3 and 1
         @inline reconstruction_coefficients(::Val{$FT}, ::Val{3}, red_order, ::Val{0}) = 
-                ifelse(red_order == 1, $(FT.(RS310)),                  
-                ifelse(red_order == 2, $(FT.(RS320)),                                             
-                                       $(FT.(RS330)))) # Full order (3)
+                ifelse(red_order == 1, $(FT.(RS310)),  # Order 1                
+                ifelse(red_order == 2, $(FT.(RS320)),  # Order 3                                           
+                                       $(FT.(RS330)))) # Order 5
 
         @inline reconstruction_coefficients(::Val{$FT}, ::Val{3}, red_order, ::Val{1}) = 
-                ifelse(red_order == 1, $(FT.(RS30M)),
-                ifelse(red_order == 2, $(FT.(RS321)),
-                                       $(FT.(RS331)))) # Full order (3)
+                ifelse(red_order == 1, $(FT.(RS30M)),  # Order 1                
+                ifelse(red_order == 2, $(FT.(RS321)),  # Order 3                                           
+                                       $(FT.(RS331)))) # Order 5
 
         @inline reconstruction_coefficients(::Val{$FT}, ::Val{3}, red_order, ::Val{2}) = 
-                ifelse(red_order <  3, $(FT.(RS30M)), 
-                                       $(FT.(RS332))) # Full order (3)
+                ifelse(red_order <  3, $(FT.(RS30M)),  # Order ≤ 3                                          
+                                       $(FT.(RS332)))  # Order 5
 
         # 7th order WENO, restricted to orders 5, 3, and 1
         @inline reconstruction_coefficients(::Val{$FT}, ::Val{4}, red_order, ::Val{0}) = 
-                ifelse(red_order == 1, $(FT.(RS410)),                               
-                ifelse(red_order == 2, $(FT.(RS420)), 
-                ifelse(red_order == 3, $(FT.(RS430)), 
-                                       $(FT.(RS440))))) # Full order
+                ifelse(red_order == 1, $(FT.(RS410)),   # Order 1                                                
+                ifelse(red_order == 2, $(FT.(RS420)),   # Order 3                                             
+                ifelse(red_order == 3, $(FT.(RS430)),   # Order 5  
+                                       $(FT.(RS440))))) # Order 7
         
         @inline reconstruction_coefficients(::Val{$FT}, ::Val{4}, red_order, ::Val{1}) = 
-                ifelse(red_order == 1, $(FT.(RS40M)),                 
-                ifelse(red_order == 2, $(FT.(RS421)),
-                ifelse(red_order == 3, $(FT.(RS431)),
-                                       $(FT.(RS441))))) # Full order
+                ifelse(red_order == 1, $(FT.(RS40M)),   # Order 1                                                
+                ifelse(red_order == 2, $(FT.(RS421)),   # Order 3                                             
+                ifelse(red_order == 3, $(FT.(RS431)),   # Order 5  
+                                       $(FT.(RS441))))) # Order 7
 
         @inline reconstruction_coefficients(::Val{$FT}, ::Val{4}, red_order, ::Val{2}) = 
-                ifelse(red_order  < 3, $(FT.(RS40M)),                        
-                ifelse(red_order == 3, $(FT.(RS432)),
-                                       $(FT.(RS442)))) # Full order
+                ifelse(red_order  < 3, $(FT.(RS40M)),  # Order ≤ 3                                             
+                ifelse(red_order == 3, $(FT.(RS432)),  # Order 5  
+                                       $(FT.(RS442)))) # Order 7
         
         @inline reconstruction_coefficients(::Val{$FT}, ::Val{4}, red_order, ::Val{3}) = 
-                ifelse(red_order <  4, $(FT.(RS40M)),                                              
-                                       $(FT.(RS443))) # Full order
+                ifelse(red_order <  4, $(FT.(RS40M)),  # Order ≤ 5  
+                                       $(FT.(RS443)))  # Order 7
 
         # 9th order WENO, restricted to orders 7, 5, 3, and 1
         @inline reconstruction_coefficients(::Val{$FT}, ::Val{5}, red_order, ::Val{0}) = 
-                ifelse(red_order == 1, $(FT.(RS510)),                                
-                ifelse(red_order == 2, $(FT.(RS520)),          
-                ifelse(red_order == 3, $(FT.(RS530)),
-                ifelse(red_order == 4, $(FT.(RS540)),
-                                       $(FT.(RS550)))))) # Full order
+                ifelse(red_order == 1, $(FT.(RS510)),    # Order 1                                                
+                ifelse(red_order == 2, $(FT.(RS520)),    # Order 3                                             
+                ifelse(red_order == 3, $(FT.(RS530)),    # Order 5  
+                ifelse(red_order == 4, $(FT.(RS540)),    # Order 7
+                                       $(FT.(RS550)))))) # Order 9
 
         @inline reconstruction_coefficients(::Val{$FT}, ::Val{5}, red_order, ::Val{1}) = 
-                ifelse(red_order == 1, $(FT.(RS50M)),
-                ifelse(red_order == 2, $(FT.(RS521)),
-                ifelse(red_order == 3, $(FT.(RS531)),
-                ifelse(red_order == 4, $(FT.(RS541)),
-                                       $(FT.(RS551)))))) # Full order
+                ifelse(red_order == 1, $(FT.(RS50M)),    # Order 1                                                
+                ifelse(red_order == 2, $(FT.(RS521)),    # Order 3                                             
+                ifelse(red_order == 3, $(FT.(RS531)),    # Order 5  
+                ifelse(red_order == 4, $(FT.(RS541)),    # Order 7
+                                       $(FT.(RS551)))))) # Order 9
 
         @inline reconstruction_coefficients(::Val{$FT}, ::Val{5}, red_order, ::Val{2}) = 
-                ifelse(red_order <  3, $(FT.(RS50M)),                                
-                ifelse(red_order == 3, $(FT.(RS532)),                                    
-                ifelse(red_order == 4, $(FT.(RS542)),
-                                       $(FT.(RS552))))) # Full order
+                ifelse(red_order <  3, $(FT.(RS50M)),   # Order ≤ 3                                             
+                ifelse(red_order == 3, $(FT.(RS532)),   # Order 5  
+                ifelse(red_order == 4, $(FT.(RS542)),   # Order 7
+                                       $(FT.(RS552))))) # Order 9
         
         @inline reconstruction_coefficients(::Val{$FT}, ::Val{5}, red_order, ::Val{3}) = 
-                ifelse(red_order <  4, $(FT.(RS50M)),                                              
-                ifelse(red_order == 4, $(FT.(RS543)),                                             
-                                       $(FT.(RS553)))) # Full order
+                ifelse(red_order <  4, $(FT.(RS50M)),  # Order ≤ 5  
+                ifelse(red_order == 4, $(FT.(RS543)),  # Order 7
+                                       $(FT.(RS553)))) # Order 9
 
         @inline reconstruction_coefficients(::Val{$FT}, ::Val{5}, red_order, ::Val{4}) = 
-                ifelse(red_order <  5, $(FT.(RS50M)),
-                                       $(FT.(RS554))) # Full order
+                ifelse(red_order <  5, $(FT.(RS50M)), # Order ≤ 7
+                                       $(FT.(RS554))) # Order 9
     end
 end
