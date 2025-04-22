@@ -98,8 +98,8 @@ Keyword arguments
                                      with the TKE advection. Default: 1 minute.
 
 !!! note "Numerical stability"
-    For numerical stability, it is recommended to either have a relatively short
-    `negative_tke_damping_time_scale` or a reasonable `minimum_tke`, or both.
+    Smaller values for `negative_tke_damping_time_scale` and/or `minimum_tke` help potentialheal numerical stability
+    issues. The default values are a good starting point.
 
 References
 ==========
