@@ -54,7 +54,7 @@ const AUAS = AbstractUpwindBiasedAdvectionScheme
 @inline _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::AUAS, args...) = _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme.advecting_velocity_scheme, args...)
 
 for (side, dir) in zip((:ᶠᵃᵃ, :ᵃᶠᵃ, :ᵃᵃᶠ), (:x, :y, :z))
-    for (F, bool) in zip((:Any, :(Base.Callable)), (false, true))
+    for (F, bool) in zip((:Any, :Callable), (false, true))
         for FT in fully_supported_float_types
             interp = Symbol(:biased_interpolate_, dir, side)
             @eval begin
