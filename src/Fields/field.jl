@@ -1,5 +1,4 @@
 using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition, Zipper
-using Oceananigans.DistributedComputations: CommunicationBuffers
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
 using Oceananigans.Grids: index_range_contains
 
@@ -105,7 +104,8 @@ function Field(loc::Tuple, grid::AbstractGrid, data, bcs, indices, op=nothing, s
     return Field{LX, LY, LZ}(grid, data, bcs, indices, op, status, buffers)
 end
 
-# Extended in the `DistributedComputations` module
+# Allocator for buffers used in fields that require ``communication''
+# Extended in the `DistributedComputations` and the `MultiRegion` module
 communication_buffers(grid, data, bcs) = nothing
 
 """
