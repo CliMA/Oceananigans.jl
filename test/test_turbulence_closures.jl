@@ -254,7 +254,7 @@ function compute_closure_specific_diffusive_cfl(arch, closure)
     CUDA.@allowscalar begin
         @test viscous_flux_ux(1, 1, 1, grid, args...) == 0
         @test viscous_flux_uy(1, 1, 1, grid, args...) == 0
-        @test viscous_flux_uz(1, 1, 1, grid, args...) == 0 
+        @test viscous_flux_uz(1, 1, 1, grid, args...) == 0
     end
 
     return nothing
