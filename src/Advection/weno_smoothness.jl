@@ -169,68 +169,38 @@ end
 
 # Global smoothness indicator τ₂ᵣ₋₁ from "Accuracy of the weighted essentially non-oscillatory 
 # conservative finite difference schemes", Don & Borges, 2013
-# Just use a plain old if condition here (branch divergence will not be too much on this simple instruction)!
 @inline function global_smoothness_indicator(β::NTuple{1}, R) 
     @inbounds abs(β[1])
 end
 
 @inline function global_smoothness_indicator(β::NTuple{2}, R) 
-    if R == 1
-        @inbounds abs(β[1])
-    else 
-        @inbounds abs(β[1] - β[2])
-    end
+    τ = @inbounds ifelse(R == 1,
+                         abs(β[1]),
+                         abs(β[1] - β[2]))
+    return τ
 end
 
 @inline function global_smoothness_indicator(β::NTuple{3}, R) 
-    if R == 1
-        @inbounds abs(β[1])
-    elseif R == 2
-        @inbounds abs(β[1] - β[2])
-    else
-        @inbounds abs(β[1] - β[3])
-    end
+    τ = @inbounds ifelse(R == 1, abs(β[1]),
+                  ifelse(R == 2, abs(β[1] - β[2]),
+                                 abs(β[1] - β[3])))
+    return τ
 end
 
 @inline function global_smoothness_indicator(β::NTuple{4}, R) 
-    if R == 1
-        @inbounds abs(β[1])
-    elseif R == 2
-        @inbounds abs(β[1] - β[2])
-    elseif R == 3
-        @inbounds abs(β[1] - β[3])
-    else
-        @inbounds abs(β[1] +  3β[2] -   3β[3] -    β[4])
-    end
+    τ = @inbounds ifelse(R == 1, abs(β[1]),
+                  ifelse(R == 2, abs(β[1] -  β[2]),
+                  ifelse(R == 3, abs(β[1] -  β[3]),
+                                 abs(β[1] + 3β[2] - 3β[3] - β[4]))))
+    return τ
 end
 
+# Otherwise we take the 9th order WENO smoothness indicator as a default
 @inline function global_smoothness_indicator(β::NTuple{5}, R) 
-    if R == 1
-        @inbounds abs(β[1])
-    elseif R == 2
-        @inbounds abs(β[1] - β[2])
-    elseif R == 3
-        @inbounds abs(β[1] - β[3])
-    elseif R == 4
-        @inbounds abs(β[1] +  3β[2] -   3β[3] -    β[4])
-    else
-        @inbounds abs(β[1] +  2β[2] -   6β[3] +   2β[4] + β[5])
-    end
-end
-
-# Otherwise we take the 11th order WENO smoothness indicator as a default
-@inline function global_smoothness_indicator(β, R) 
-    if R == 1
-        @inbounds abs(β[1])
-    elseif R == 2
-        @inbounds abs(β[1] - β[2])
-    elseif R == 3
-        @inbounds abs(β[1] - β[3])
-    elseif R == 4
-        @inbounds abs(β[1] + 3β[2] - 3β[3] - β[4])
-    elseif R == 5
-        @inbounds abs(β[1] + 2β[2] - 6β[3] + 2β[4] + β[5])
-    else
-        @inbounds abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
-    end
+    τ = @inbounds ifelse(R == 1, abs(β[1]),
+                  ifelse(R == 2, abs(β[1] - β[2]),
+                  ifelse(R == 3, abs(β[1] - β[3]),
+                  ifelse(R == 4, abs(β[1] + 3β[2] - 3β[3] -  β[4]),
+                                 abs(β[1] + 2β[2] - 6β[3] + 2β[4] + β[5])))))
+    return τ
 end
