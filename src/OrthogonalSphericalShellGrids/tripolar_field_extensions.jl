@@ -1,5 +1,5 @@
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions, 
-                                       assumed_field_location, 
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions,
+                                       assumed_field_location,
                                        regularize_boundary_condition,
                                        regularize_immersed_boundary_condition,
                                        LeftBoundary,
@@ -9,10 +9,10 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions,
                                        Zipper,
                                        ZBC
 
-using Oceananigans.Fields: architecture, 
-                           validate_indices, 
+using Oceananigans.Fields: architecture,
+                           validate_indices,
                            validate_boundary_conditions,
-                           validate_field_data, 
+                           validate_field_data,
                            FieldBoundaryBuffers
 
 using Oceananigans.ImmersedBoundaries
@@ -74,8 +74,8 @@ function Field((LX, LY, LZ)::Tuple, grid::TripolarGridOfSomeKind, data, old_bcs,
 
         north_bc = old_bcs.north isa BoundaryCondition{<:Zipper} ? old_bcs.north : default_zipper
 
-        new_bcs = FieldBoundaryConditions(; west = old_bcs.west, 
-                                            east = old_bcs.east, 
+        new_bcs = FieldBoundaryConditions(; west = old_bcs.west,
+                                            east = old_bcs.east,
                                             south = old_bcs.south,
                                             north = north_bc,
                                             top = old_bcs.top,

@@ -11,7 +11,7 @@ Base.summary(p::XPartition)      = "XPartition with [$(["$(p.div[i]) " for i in 
 
 function partition_size(p::EqualXPartition, grid)
     Nx, Ny, Nz = size(grid)
-    @assert mod(Nx, p.div) == 0 
+    @assert mod(Nx, p.div) == 0
     return Tuple((Nx ÷ p.div, Ny, Nz) for i in 1:length(p))
 end
 
@@ -32,7 +32,7 @@ end
 
 function partition_topology(p::XPartition, grid)
     TX, TY, TZ = topology(grid)
-    
+
     return Tuple(((TX == Periodic ? FullyConnected : i == 1 ?
                                     RightConnected : i == length(p) ?
                                     LeftConnected :
@@ -62,7 +62,7 @@ function partition(a::AbstractArray, ::EqualXPartition, local_size, region, arch
     return on_architecture(arch, a[local_size[1]*(region-1)+1:local_size[1]*region, idxs[2:end]...])
 end
 
-function partition(a::OffsetArray, ::EqualXPartition, local_size, region, arch) 
+function partition(a::OffsetArray, ::EqualXPartition, local_size, region, arch)
     idxs    = default_indices(length(size(a)))
     offsets = (a.offsets[1], Tuple(0 for i in 1:length(idxs)-1)...)
     return on_architecture(arch, OffsetArray(a[local_size[1]*(region-1)+1+offsets[1]:local_size[1]*region-offsets[1], idxs[2:end]...], offsets...))

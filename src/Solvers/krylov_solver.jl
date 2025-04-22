@@ -32,6 +32,12 @@ function Krylov.kscal!(n::Integer, s::T, x::KrylovField{T}) where T <: FloatOrCo
     return x
 end
 
+function Krylov.kdiv!(n::Integer, x::KrylovField{T}, s::T) where T <: FloatOrComplex
+    xp = parent(x.field)
+    xp ./= s
+    return x
+end
+
 function Krylov.kaxpy!(n::Integer, s::T, x::KrylovField{T}, y::KrylovField{T}) where T <: FloatOrComplex
     xp = parent(x.field)
     yp = parent(y.field)
@@ -46,11 +52,24 @@ function Krylov.kaxpby!(n::Integer, s::T, x::KrylovField{T}, t::T, y::KrylovFiel
     return y
 end
 
+function Krylov.kscalcopy!(n::Integer, y::KrylovField{T}, s::T, x::KrylovField{T}) where T <: FloatOrComplex
+    yp = parent(y.field)
+    xp = parent(x.field)
+    yp .= s .* xp
+    return y
+end
+
+function Krylov.kdivcopy!(n::Integer, y::KrylovField{T}, x::KrylovField{T}, s::T) where T <: FloatOrComplex
+    yp = parent(y.field)
+    xp = parent(x.field)
+    yp .= xp ./ s
+    return y
+end
+
 Krylov.knorm(n::Integer, x::KrylovField{T}) where T <: FloatOrComplex = norm(x.field)
 Krylov.kdot(n::Integer, x::KrylovField{T}, y::KrylovField{T}) where T <: FloatOrComplex = dot(x.field, y.field)
 Krylov.kcopy!(n::Integer, y::KrylovField{T}, x::KrylovField{T}) where T <: FloatOrComplex = copyto!(y.field, x.field)
 Krylov.kfill!(x::KrylovField{T}, val::T) where T <: FloatOrComplex = fill!(x.field, val)
-
 
 ## Structure representing linear operators so that we can define mul! on it
 mutable struct KrylovOperator{T, F}
@@ -117,7 +136,7 @@ using the structure of a reference field `template_field`.
 - `reltol::Real`: Relative tolerance on the residual norm for convergence.
 - `abstol::Real`: Absolute tolerance on the residual norm for convergence.
 - `preconditioner`: An optional preconditioner, passed as a callable or left as `nothing` for no preconditioning.
-- `method::Symbol`: Krylov method to use. Supported options include `:cg` and `:bicgstab`.
+- `method::Symbol`: Krylov method to use, such as `:cg`, `:fom`, `:bicgstab`, `:gmres`.
 """
 function KrylovSolver(linear_operator;
                       template_field::AbstractField,
@@ -139,7 +158,7 @@ function KrylovSolver(linear_operator;
 
     kf = KrylovField(template_field)
     kc = Krylov.KrylovConstructor(kf)
-    workspace = Krylov.eval(Krylov.KRYLOV_SOLVERS[method])(kc)
+    workspace = Krylov.krylov_workspace(Val(method), kc)
 
     return KrylovSolver(arch, grid, op, workspace, method, P, T(abstol), T(reltol), maxiter, maxtime)
 end
@@ -147,8 +166,17 @@ end
 function solve!(x, solver::KrylovSolver, b, args...; kwargs...)
     solver.op.args = args
     (solver.preconditioner === I) || (solver.preconditioner.args = args)
-    Krylov.solve!(solver.workspace, solver.op, KrylovField(b); M=solver.preconditioner,
-                  atol=solver.abstol, rtol=solver.reltol, itmax=solver.maxiter, timemax=solver.maxtime, kwargs...)
+    if solver.method == :fom || solver.method == :gmres || solver.method == :fgmres || solver.method == :bicgstab
+        # Use right preconditioning (keep invariant the residual norm)
+        Krylov.krylov_solve!(solver.workspace, solver.op, KrylovField(b); N=solver.preconditioner,
+                             atol=solver.abstol, rtol=solver.reltol, itmax=solver.maxiter,
+                             timemax=solver.maxtime, kwargs...)
+    else
+        # Use left or centered preconditioning
+        Krylov.krylov_solve!(solver.workspace, solver.op, KrylovField(b); M=solver.preconditioner,
+                             atol=solver.abstol, rtol=solver.reltol, itmax=solver.maxiter,
+                             timemax=solver.maxtime, kwargs...)
+    end
     copyto!(x, solver.workspace.x.field)
     return x
 end
