@@ -1,4 +1,5 @@
 using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
+using Oceananigans.Utils: newton_div
 
 # WENO reconstruction of order `M` entails reconstructions of order `N`
 # on `N` different stencils, where `N = (M + 1) / 2`.
