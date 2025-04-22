@@ -98,7 +98,7 @@ for FT in fully_supported_float_types
                                        $(FT.(RS441)))))  # Order 7
 
         @inline reconstruction_coefficients(::WENO{4, $FT}, red_order, ::Val{2}) = 
-                ifelse(red_order  < 3, $(FT.(RS40M)),    # Order ≤ 3                                             
+                ifelse(red_order <  3, $(FT.(RS40M)),    # Order ≤ 3                                             
                 ifelse(red_order == 3, $(FT.(RS432)),    # Order 5  
                                        $(FT.(RS442))))   # Order 7
         

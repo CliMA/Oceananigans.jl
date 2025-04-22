@@ -124,7 +124,7 @@ for FT in fully_supported_float_types
                                        $(FT.(SS441)))))  # Order 7
 
         @inline smoothness_coefficients(::WENO{4, $FT}, red_order, ::Val{2}) = 
-                ifelse(red_order  < 3, $(FT.(SS40M)),    # Order ≤ 3                    
+                ifelse(red_order <  3, $(FT.(SS40M)),    # Order ≤ 3                    
                 ifelse(red_order == 3, $(FT.(SS432)),    # Order 5
                                        $(FT.(SS442))))   # Order 7
         
