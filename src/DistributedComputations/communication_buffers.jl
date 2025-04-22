@@ -8,6 +8,7 @@ using Adapt
 using KernelAbstractions: @kernel, @index
 
 import Oceananigans.Architectures: on_architecture
+import Oceananigans.Fields: communication_buffers
 
 const MCBC = BoundaryCondition{<:MultiRegionCommunication}
 const DCBC = BoundaryCondition{<:DistributedCommunication}
@@ -23,7 +24,9 @@ struct CommunicationBuffers{W, E, S, N, SW, SE, NW, NE}
    northeast :: NE
 end
 
-function CommunicationBuffers(grid::DistributedGrid, data, boundary_conditions::FieldBoundaryConditions)
+communication_buffers(grid::DistributedGrid, data, boundary_conditions) = CommunicationBuffers(grid, data, boundary_conditions)
+
+function CommunicationBuffers(grid, data, boundary_conditions::FieldBoundaryConditions)
     Hx, Hy, _ = halo_size(grid)
     arch = architecture(grid)
     Hx, Hy, Hz = halo_size(grid)
@@ -41,11 +44,8 @@ function CommunicationBuffers(grid::DistributedGrid, data, boundary_conditions::
     return CommunicationBuffers(west, east, south, north, sw, se, nw, ne)
 end
 
-CommunicationBuffers(grid::DistributedGrid, data, ::Missing) = nothing
-CommunicationBuffers(grid::DistributedGrid, data, ::Nothing) = nothing
-
-CommunicationBuffers(grid, data, bcs) = nothing
-CommunicationBuffers(grid, data, bcs::FieldBoundaryConditions) = nothing
+CommunicationBuffers(grid, data, ::Missing) = nothing
+CommunicationBuffers(grid, data, ::Nothing) = nothing
 
 # OneDBuffers are associated with partitioning without corner passing,
 # therefore the "corner zones" are communicated within the one-dimensional pass.

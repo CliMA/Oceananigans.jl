@@ -3,14 +3,15 @@ using Oceananigans.Fields: FunctionField, data_summary, AbstractField
 using Oceananigans.AbstractOperations: AbstractOperation, compute_computed_field!
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.OutputWriters: output_indices
+using Oceananigans.DistributedComputations: CommunicationBuffers
 
 using Base: @propagate_inbounds
 
-import Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
+import Oceananigans.DistributedComputations: reconstruct_global_field
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 import Oceananigans.Grids: xnodes, ynodes
 import Oceananigans.Fields: set!, compute!, compute_at!, validate_field_data, validate_boundary_conditions
-import Oceananigans.Fields: validate_indices
+import Oceananigans.Fields: validate_indices, communication_buffers
 import Oceananigans.Models: hasnan
 
 import Base: fill!, axes
@@ -23,24 +24,6 @@ const MultiRegionFunctionField{LX, LY, LZ, C, P, F} = FunctionField{LX, LY, LZ, 
 const GriddedMultiRegionField = Union{MultiRegionField, MultiRegionFunctionField}
 const GriddedMultiRegionFieldTuple{N, T} = NTuple{N, T} where {N, T<:GriddedMultiRegionField}
 const GriddedMultiRegionFieldNamedTuple{S, N} = NamedTuple{S, N} where {S, N<:GriddedMultiRegionFieldTuple}
-
-function CommunicationBuffers(grid::MultiRegionGrid, data, boundary_conditions::FieldBoundaryConditions)
-    Hx, Hy, _ = halo_size(grid)
-    arch = architecture(grid)
-    Hx, Hy, Hz = halo_size(grid)
-
-    west  = x_communication_buffer(arch, grid, data, Hx, boundary_conditions.west)
-    east  = x_communication_buffer(arch, grid, data, Hx, boundary_conditions.east)
-    south = y_communication_buffer(arch, grid, data, Hy, boundary_conditions.south)
-    north = y_communication_buffer(arch, grid, data, Hy, boundary_conditions.north)
-
-    sw = corner_communication_buffer(arch, grid, data, Hx, Hy, west, south)
-    se = corner_communication_buffer(arch, grid, data, Hx, Hy, east, south)
-    nw = corner_communication_buffer(arch, grid, data, Hx, Hy, west, north)
-    ne = corner_communication_buffer(arch, grid, data, Hx, Hy, east, north)
-
-    return CommunicationBuffers(west, east, south, north, sw, se, nw, ne)
-end
 
 # Utils
 Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
@@ -160,11 +143,11 @@ end
 validate_indices(indices, loc, mrg::MultiRegionGrid) =
     construct_regionally(validate_indices, indices, loc, mrg.region_grids)
 
-CommunicationBuffers(grid::MultiRegionGrid, data, bcs) =
+communication_buffers(grid::MultiRegionGrid, data, bcs) =
     construct_regionally(CommunicationBuffers, grid, data, bcs)
 
-CommunicationBuffers(grid::MultiRegionGrid, data, ::Nothing) = nothing
-CommunicationBuffers(grid::MultiRegionGrid, data, ::Missing) = nothing
+communication_buffers(grid::MultiRegionGrid, data, ::Nothing) = nothing
+communication_buffers(grid::MultiRegionGrid, data, ::Missing) = nothing
 
 FieldBoundaryConditions(mrg::MultiRegionGrid, loc, indices; kwargs...) =
     construct_regionally(inject_regional_bcs, mrg, mrg.connectivity, Reference(loc), indices; kwargs...)

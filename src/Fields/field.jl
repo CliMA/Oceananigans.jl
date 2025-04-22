@@ -100,10 +100,13 @@ function Field(loc::Tuple, grid::AbstractGrid, data, bcs, indices, op=nothing, s
     @apply_regionally indices = validate_indices(indices, loc, grid)
     @apply_regionally validate_field_data(loc, data, grid, indices)
     @apply_regionally validate_boundary_conditions(loc, grid, bcs)
-    buffers = CommunicationBuffers(grid, data, bcs)
+    buffers = communication_buffers(grid, data, bcs)
     LX, LY, LZ = loc
     return Field{LX, LY, LZ}(grid, data, bcs, indices, op, status, buffers)
 end
+
+# Extended in the `DistributedComputations` module
+communication_buffers(grid, data, bcs) = nothing
 
 """
     Field{LX, LY, LZ}(grid::AbstractGrid,
