@@ -63,18 +63,18 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     # Note that r_model halos are not filled during set!
     # It's complicated to test this currently because the halo
     # regions have different paddings, so we don't do it.
-    
+
     Oceananigans.TimeSteppers.update_state!(r_model)
 
     # Test that fields were set correctly
     @info "  After setting an initial condition:"
-    rui = Array(interior(ru)) 
-    rvi = Array(interior(rv)) 
-    rwi = Array(interior(rw)) 
+    rui = Array(interior(ru))
+    rvi = Array(interior(rv))
+    rwi = Array(interior(rw))
 
-    ui = Array(interior(u)) 
-    vi = Array(interior(v)) 
-    wi = Array(interior(w)) 
+    ui = Array(interior(u))
+    vi = Array(interior(v))
+    wi = Array(interior(w))
 
     @show maximum(abs.(ui .- rui))
     @show maximum(abs.(vi .- rvi))
@@ -122,13 +122,13 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     @test iteration(r_simulation) == iteration(simulation)
     @test time(r_simulation) == time(simulation)
 
-    rui = Array(interior(ru)) 
-    rvi = Array(interior(rv)) 
-    rwi = Array(interior(rw)) 
+    rui = Array(interior(ru))
+    rvi = Array(interior(rv))
+    rwi = Array(interior(rw))
 
-    ui = Array(interior(u)) 
-    vi = Array(interior(v)) 
-    wi = Array(interior(w)) 
+    ui = Array(interior(u))
+    vi = Array(interior(v))
+    wi = Array(interior(w))
 
     @show maximum(abs, ui)
     @show maximum(abs, vi)

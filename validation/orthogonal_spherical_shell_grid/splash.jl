@@ -10,7 +10,7 @@ grid = conformal_cubed_sphere_panel(size = (Nx, Ny, Nz),
                                     z = (-1000, 0),
                                     topology=(Bounded, Bounded, Bounded),
                                     rotation = RotY(π/2))
-                   
+
 closure = ScalarDiffusivity(ν=2e-4, κ=2e-4)
 
 model = HydrostaticFreeSurfaceModel(; grid,
