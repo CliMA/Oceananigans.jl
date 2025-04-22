@@ -23,13 +23,6 @@ struct CommunicationBuffers{W, E, S, N, SW, SE, NW, NE}
    northeast :: NE
 end
 
-CommunicationBuffers(grid::DistributedGrid, data, ::Missing) = nothing
-CommunicationBuffers(grid::DistributedGrid, data, ::Nothing) = nothing
-
-# OneDBuffers are associated with partitioning without corner passing,
-# therefore the "corner zones" are communicated within the one-dimensional pass.
-const OneDBuffers = CommunicationBuffers{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Nothing, <:Nothing, <:Nothing}
-
 function CommunicationBuffers(grid::DistributedGrid, data, boundary_conditions::FieldBoundaryConditions)
     Hx, Hy, _ = halo_size(grid)
     arch = architecture(grid)
@@ -47,6 +40,16 @@ function CommunicationBuffers(grid::DistributedGrid, data, boundary_conditions::
 
     return CommunicationBuffers(west, east, south, north, sw, se, nw, ne)
 end
+
+CommunicationBuffers(grid::DistributedGrid, data, ::Missing) = nothing
+CommunicationBuffers(grid::DistributedGrid, data, ::Nothing) = nothing
+
+CommunicationBuffers(grid, data, bcs) = nothing
+CommunicationBuffers(grid, data, bcs::FieldBoundaryConditions) = nothing
+
+# OneDBuffers are associated with partitioning without corner passing,
+# therefore the "corner zones" are communicated within the one-dimensional pass.
+const OneDBuffers = CommunicationBuffers{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Nothing, <:Nothing, <:Nothing}
 
 x_communication_buffer(arch, grid, data, H, bc) = nothing
 y_communication_buffer(arch, grid, data, H, bc) = nothing
@@ -74,11 +77,11 @@ function y_communication_buffer(arch::Distributed, grid, data, H, ::DCBC)
             recv = on_architecture(arch, zeros(eltype(data), size_x, H, size(parent(data), 3))))
 end
 
-x_communication_buffer(arch::Distributed, grid, data, H, ::MCBC) = 
+x_communication_buffer(arch, grid, data, H, ::MCBC) = 
            (send = on_architecture(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))), 
             recv = on_architecture(arch, zeros(eltype(data), H, size(parent(data), 2), size(parent(data), 3))))    
 
-y_communication_buffer(arch::Distributed, grid, data, H, ::MCBC) = 
+y_communication_buffer(arch, grid, data, H, ::MCBC) = 
            (send = on_architecture(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))), 
             recv = on_architecture(arch, zeros(eltype(data), size(parent(data), 1), H, size(parent(data), 3))))
 

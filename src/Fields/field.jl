@@ -1,4 +1,5 @@
 using Oceananigans.BoundaryConditions: OBC, MCBC, BoundaryCondition, Zipper
+using Oceananigans.DistributedComputations: CommunicationBuffers
 using Oceananigans.Grids: parent_index_range, index_range_offset, default_indices, all_indices, validate_indices
 using Oceananigans.Grids: index_range_contains
 
@@ -99,7 +100,7 @@ function Field(loc::Tuple, grid::AbstractGrid, data, bcs, indices, op=nothing, s
     @apply_regionally indices = validate_indices(indices, loc, grid)
     @apply_regionally validate_field_data(loc, data, grid, indices)
     @apply_regionally validate_boundary_conditions(loc, grid, bcs)
-    buffers = nothing
+    buffers = CommunicationBuffers(grid, data, bcs)
     LX, LY, LZ = loc
     return Field{LX, LY, LZ}(grid, data, bcs, indices, op, status, buffers)
 end

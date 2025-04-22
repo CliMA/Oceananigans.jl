@@ -24,6 +24,24 @@ const GriddedMultiRegionField = Union{MultiRegionField, MultiRegionFunctionField
 const GriddedMultiRegionFieldTuple{N, T} = NTuple{N, T} where {N, T<:GriddedMultiRegionField}
 const GriddedMultiRegionFieldNamedTuple{S, N} = NamedTuple{S, N} where {S, N<:GriddedMultiRegionFieldTuple}
 
+function CommunicationBuffers(grid::MultiRegionGrid, data, boundary_conditions::FieldBoundaryConditions)
+    Hx, Hy, _ = halo_size(grid)
+    arch = architecture(grid)
+    Hx, Hy, Hz = halo_size(grid)
+
+    west  = x_communication_buffer(arch, grid, data, Hx, boundary_conditions.west)
+    east  = x_communication_buffer(arch, grid, data, Hx, boundary_conditions.east)
+    south = y_communication_buffer(arch, grid, data, Hy, boundary_conditions.south)
+    north = y_communication_buffer(arch, grid, data, Hy, boundary_conditions.north)
+
+    sw = corner_communication_buffer(arch, grid, data, Hx, Hy, west, south)
+    se = corner_communication_buffer(arch, grid, data, Hx, Hy, east, south)
+    nw = corner_communication_buffer(arch, grid, data, Hx, Hy, west, north)
+    ne = corner_communication_buffer(arch, grid, data, Hx, Hy, east, north)
+
+    return CommunicationBuffers(west, east, south, north, sw, se, nw, ne)
+end
+
 # Utils
 Base.size(f::GriddedMultiRegionField) = size(getregion(f.grid, 1))
 
