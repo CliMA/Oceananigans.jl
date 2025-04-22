@@ -169,7 +169,6 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
             to1 = @inbounds (I[2] | I[5]) 
             return ifelse(to1, 1, 
                    ifelse(to2, 2, 3))
-            # return rand((1, 2, 3))
         end
 
         @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{4}) 
@@ -180,7 +179,6 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
             return ifelse(to1, 1, 
                    ifelse(to2, 2, 
                    ifelse(to3, 3, 4)))
-            # return rand((1, 2, 3, 4))
         end
 
         @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{5}) 
@@ -193,7 +191,6 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
                    ifelse(to2, 2, 
                    ifelse(to3, 3, 
                    ifelse(to4, 4, 5))))
-            # return rand((1, 2, 3, 4, 5))
         end
 
         @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{6}) 
@@ -208,7 +205,6 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
                    ifelse(to3, 3, 
                    ifelse(to4, 4, 
                    ifelse(to5, 5, 6)))))
-            # return rand((1, 2, 3, 4, 5, 6))
         end
     end
 end
