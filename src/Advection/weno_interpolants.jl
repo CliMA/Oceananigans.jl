@@ -124,11 +124,11 @@ where ``cᵣ`` is computed from the function `coeff_p`
 # Smoothness indicators for stencil `stencil` for left and right biased reconstruction
 for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
     @eval @inline reconstruction_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds @muladd $(metaprogrammed_reconstruction_operation(buffer))
-    
-    for stencil in 0:buffer-1, FT in fully_supported_float_types
-        @eval @inline biased_p(ψ, scheme::WENO{$buffer, $FT}, red_order, ::Val{$stencil}) = 
-                reconstruction_operation(scheme, ψ, reconstruction_coefficients(Val($FT), Val($buffer), red_order, Val($stencil)))
-    end
+end
+
+@inline function biased_p(ψ, scheme, red_order, val_stencil) 
+    coefficients = reconstruction_coefficients(scheme, red_order, val_stencil)
+    return reconstruction_operation(scheme, ψ, coefficients)
 end
 
 # The rule for calculating smoothness indicators is the following (example WENO{4} which is seventh order) 
@@ -197,11 +197,11 @@ while for `buffer == 4` unrolls into
 # Smoothness indicators for stencil `stencil` for left and right biased reconstruction
 for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
     @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds @muladd $(metaprogrammed_smoothness_operation(buffer))
-    
-    for stencil in 0:buffer-1, FT in fully_supported_float_types
-        @eval @inline smoothness_indicator(ψ, scheme::WENO{$buffer, $FT}, red_order, ::Val{$stencil}) = 
-                        smoothness_operation(scheme, ψ, smoothness_coefficients(Val($FT), Val($buffer), red_order, Val($stencil)))
-    end
+end
+
+@inline function smoothness_indicator(ψ, scheme, red_order, val_stencil)
+    coefficients = smoothness_coefficients(scheme, red_order, val_stencil)
+    return smoothness_operation(scheme, ψ, coefficients)
 end
 
 # Shenanigans for WENO weights calculation for vector invariant formulation -> [β[i] = 0.5 * (βᵤ[i] + βᵥ[i]) for i in 1:buffer]
