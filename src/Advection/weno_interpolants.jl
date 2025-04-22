@@ -393,23 +393,20 @@ end
 end
 
 """
-    weno_reconstruction(scheme::WENO{buffer}, bias, ψ, ω, cT, val, idx, loc)
+    weno_reconstruction(scheme::WENO{buffer}, red_order, ψ, ω)
 
 `bias`ed reconstruction of stencils `ψ` for a WENO scheme of order `buffer * 2 - 1` weighted by WENO
 weights `ω`. `ψ` is a `Tuple` of `buffer` stencils of size `buffer` and `ω` is a `Tuple` of size `buffer`
 containing the computed weights for each of the reconstruction stencils. 
 
-The additional inputs are only used for stretched WENO directions that require the knowledge of the location `loc`
-and the index `idx`.
-
 The calculation of the reconstruction is metaprogrammed in the `metaprogrammed_weno_reconstruction` function which, for
 `buffer == 4` (seventh order WENO), unrolls to:
 
 ```julia
-ψ̂ = ω[1] * biased_p(ψ[1], scheme, bias, Val(0)) + 
-    ω[2] * biased_p(ψ[2], scheme, bias, Val(1)) + 
-    ω[3] * biased_p(ψ[3], scheme, bias, Val(2)) + 
-    ω[4] * biased_p(ψ[4], scheme, bias, Val(3)))
+ψ̂ = ω[1] * biased_p(ψ[1], scheme, red_order, Val(0)) + 
+    ω[2] * biased_p(ψ[2], scheme, red_order, Val(1)) + 
+    ω[3] * biased_p(ψ[3], scheme, red_order, Val(2)) + 
+    ω[4] * biased_p(ψ[4], scheme, red_order, Val(3)))
 ```
 
 Here, [`biased_p`](@ref) is the function that computes the linear reconstruction of the individual stencils.
