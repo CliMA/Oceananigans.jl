@@ -144,24 +144,23 @@ end
 # For an immersed boundary grid, we compute the reduced order based on the inactive cells around the
 # reconstruction interface (either face or center). 
 #
-# Below an example for an 12th (or 11th for upwind schemes) order reconstruction performed on interface `X`.
-# Note that the buffer size is 6, and we represent reconstructions based on the buffer size, not the formal order.
+# Below an example for an 10th (or 9th for upwind schemes) order reconstruction performed on interface `X`.
+# Note that the buffer size is 5, and we represent reconstructions based on the buffer size, not the formal order.
 # The check follows the following logic:
 #
-# - if at least one between 1 or 12 are inactive, reduce from 6 to 5.
-# - if at least one between 2 or 11 are inactive, reduce from 5 to 4.
-# - if at least one between 3 or 10 are inactive, reduce from 4 to 3.
-# - if at least one between 4 or  9 are inactive, reduce from 3 to 2.
-# - if at least one between 5 or  8 are inactive, reduce from 2 to 1.
+# - if at least one between 1 or 10 are inactive, reduce from 5 to 4.
+# - if at least one between 2 or  9 are inactive, reduce from 4 to 3.
+# - if at least one between 3 or  8 are inactive, reduce from 3 to 2.
+# - if at least one between 4 or  7 are inactive, reduce from 2 to 1.
 #     
-#      1     2     3     4     5     6  X  7     8     9    10    11    12
-#   | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | 
-#   |     |     |     |     |     └── 1st ────|     |     |     |     |     |
-#   |     |     |     |     └── 2nd ─────────────── |     |     |     |     |   
-#   |     |     |     └── 3rd ────────────────────────────|     |     |     |    
-#   |     |     └── 4th ────────────────────────────────────────|     |     |
-#   |     └── 5th ────────────────────────────────────────────────────|     |
-#   └── 6th ────────────────────────────────────────────────────────────────|
+#      1     2     3     4     5  X  6     7     8     9    10   
+#   | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+#   |     |     |     |     └── 1st ────|     |     |     |     |
+#   |     |     |     └── 2nd ─────────────── |     |     |     |
+#   |     |     └── 3rd ────────────────────────────|     |     |
+#   |     └── 4th ────────────────────────────────────────|     |
+#   └── 5th ────────────────────────────────────────────────────|
+#   
 #
 for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
     compute_reduced_order = Symbol(:compute_, Loc,:_reduced_order_, dir)
@@ -203,20 +202,6 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
                    ifelse(to2, 2, 
                    ifelse(to3, 3, 
                    ifelse(to4, 4, 5))))
-        end
-
-        @inline function $compute_reduced_order(i, j, k, ibg::IBG, ::A{6}) 
-            I = $(inside_immersed_boundary(6, dir, loc; xside = loc))
-            to5 = @inbounds (I[1] | I[12])
-            to4 = @inbounds (I[2] | I[11])
-            to3 = @inbounds (I[3] | I[10])
-            to2 = @inbounds (I[4] | I[9]) 
-            to1 = @inbounds (I[5] | I[8])
-            return ifelse(to1, 1, 
-                   ifelse(to2, 2, 
-                   ifelse(to3, 3, 
-                   ifelse(to4, 4, 
-                   ifelse(to5, 5, 6)))))
         end
     end
 end
