@@ -174,33 +174,32 @@ end
 end
 
 @inline function global_smoothness_indicator(β::NTuple{2}, R) 
-    τ = @inbounds ifelse(R == 1,
-                         abs(β[1]),
-                         abs(β[1] - β[2]))
-    return τ
+    τ = @inbounds ifelse(R == 1, β[1],
+                                 β[1] - β[2])
+    return abs(τ)
 end
 
 @inline function global_smoothness_indicator(β::NTuple{3}, R) 
-    τ = @inbounds ifelse(R == 1, abs(β[1]),
-                  ifelse(R == 2, abs(β[1] - β[2]),
-                                 abs(β[1] - β[3])))
-    return τ
+    τ = @inbounds ifelse(R == 1, β[1],
+                  ifelse(R == 2, β[1] - β[2],
+                                 β[1] - β[3]))
+    return abs(τ)
 end
 
 @inline function global_smoothness_indicator(β::NTuple{4}, R) 
-    τ = @inbounds ifelse(R == 1, abs(β[1]),
-                  ifelse(R == 2, abs(β[1] -  β[2]),
-                  ifelse(R == 3, abs(β[1] -  β[3]),
-                                 abs(β[1] + 3β[2] - 3β[3] - β[4]))))
-    return τ
+    τ = @inbounds ifelse(R == 1, β[1],
+                  ifelse(R == 2, β[1] -  β[2],
+                  ifelse(R == 3, β[1] -  β[3],
+                                 β[1] + 3β[2] - 3β[3] - β[4])))
+    return abs(τ)
 end
 
 # Otherwise we take the 9th order WENO smoothness indicator as a default
-@inline function global_smoothness_indicator(β::NTuple{5}, R) 
-    τ = @inbounds ifelse(R == 1, abs(β[1]),
-                  ifelse(R == 2, abs(β[1] - β[2]),
-                  ifelse(R == 3, abs(β[1] - β[3]),
-                  ifelse(R == 4, abs(β[1] + 3β[2] - 3β[3] -  β[4]),
-                                 abs(β[1] + 2β[2] - 6β[3] + 2β[4] + β[5])))))
-    return τ
+@inline function global_smoothness_indicator(β, R) 
+    τ = @inbounds ifelse(R == 1, β[1],
+                  ifelse(R == 2, β[1] - β[2],
+                  ifelse(R == 3, β[1] - β[3],
+                  ifelse(R == 4, β[1] + 3β[2] - 3β[3] -  β[4],
+                                 β[1] + 2β[2] - 6β[3] + 2β[4] + β[5]))))
+    return abs(τ)
 end
