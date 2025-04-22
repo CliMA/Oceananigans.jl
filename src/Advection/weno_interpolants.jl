@@ -240,9 +240,7 @@ for buffer in advection_buffers[1:end]
     end
 end
 
-zweno_alpha_weights(scheme, red_order, β::NTuple{1, FT}, τ) where FT = tuple(FT(1)) # Fallback for first order
-
-function zweno_alpha_weights(scheme, red_order, β::NTuple{2}, τ)
+function zweno_alpha_weights(scheme::WENO{2}, red_order, β, τ)
     C₁ = C★(scheme, red_order, Val(0))
     C₂ = C★(scheme, red_order, Val(1))
     α₁ = @inbounds C₁ * (1 + (τ / (β[1] + ε))^2)
@@ -251,7 +249,7 @@ function zweno_alpha_weights(scheme, red_order, β::NTuple{2}, τ)
     return (α₁, α₂) .* αs
 end
 
-function zweno_alpha_weights(scheme, red_order, β::NTuple{3}, τ)
+function zweno_alpha_weights(scheme::WENO{3}, red_order, β, τ)
     C₁ = C★(scheme, red_order, Val(0))
     C₂ = C★(scheme, red_order, Val(1))
     C₃ = C★(scheme, red_order, Val(2))
@@ -262,7 +260,7 @@ function zweno_alpha_weights(scheme, red_order, β::NTuple{3}, τ)
     return (α₁, α₂, α₃) .* αs
 end
 
-function zweno_alpha_weights(scheme, red_order, β::NTuple{4}, τ)
+function zweno_alpha_weights(scheme::WENO{4}, red_order, β, τ)
     C₁ = C★(scheme, red_order, Val(0))
     C₂ = C★(scheme, red_order, Val(1))
     C₃ = C★(scheme, red_order, Val(2))
@@ -275,7 +273,7 @@ function zweno_alpha_weights(scheme, red_order, β::NTuple{4}, τ)
     return (α₁, α₂, α₃, α₄) .* αs
 end
 
-function zweno_alpha_weights(scheme, red_order, β::NTuple{5}, τ)
+function zweno_alpha_weights(scheme::WENO{5}, red_order, β, τ)
     C₁ = C★(scheme, red_order, Val(0))
     C₂ = C★(scheme, red_order, Val(1))
     C₃ = C★(scheme, red_order, Val(2))
@@ -290,7 +288,7 @@ function zweno_alpha_weights(scheme, red_order, β::NTuple{5}, τ)
     return (α₁, α₂, α₃, α₄, α₅) ./ αs
 end
 
-function zweno_alpha_weights(scheme, red_order, β::NTuple{6}, τ)
+function zweno_alpha_weights(scheme::WENO{6}, red_order, β, τ)
     C₁ = C★(scheme, red_order, Val(0))
     C₂ = C★(scheme, red_order, Val(1))
     C₃ = C★(scheme, red_order, Val(2))
