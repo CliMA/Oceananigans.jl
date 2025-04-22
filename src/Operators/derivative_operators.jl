@@ -5,15 +5,15 @@
 for LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ), LZ in (:ᶜ, :ᶠ, :ᵃ)
 
     x_derivative  = Symbol(:∂x, LX, LY, LZ)
-    rcp_x_spacing = Symbol(:Δx, LX, LY, LZ, :⁻¹)
+    rcp_x_spacing = Symbol(:Δx⁻¹, LX, LY, LZ)
     x_difference  = Symbol(:δx, LX, LY, LZ)
 
     y_derivative  = Symbol(:∂y, LX, LY, LZ)
-    rcp_y_spacing = Symbol(:Δy, LX, LY, LZ, :⁻¹)
+    rcp_y_spacing = Symbol(:Δy⁻¹, LX, LY, LZ)
     y_difference  = Symbol(:δy, LX, LY, LZ)
 
     z_derivative  = Symbol(:∂z, LX, LY, LZ)
-    rcp_z_spacing = Symbol(:Δz, LX, LY, LZ, :⁻¹)
+    rcp_z_spacing = Symbol(:Δz⁻¹, LX, LY, LZ)
     z_difference  = Symbol(:δz, LX, LY, LZ)
 
     @eval begin

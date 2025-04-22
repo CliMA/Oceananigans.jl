@@ -14,7 +14,7 @@ Calculate the divergence ``𝛁·𝐕`` of a vector field ``𝐕 = (u, v, w)``,
 which ends up at the cell centers `ccc`.
 """
 @inline divᶜᶜᶜ(i, j, k, grid, u, v, w) =
-    Vᶜᶜᶜ⁻¹(i, j, k, grid) * (δxᶜᶜᶜ(i, j, k, grid, Ax_qᶠᶜᶜ, u) +
+    V⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᶜᶜ(i, j, k, grid, Ax_qᶠᶜᶜ, u) +
                              δyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v) +
                              δzᶜᶜᶜ(i, j, k, grid, Az_qᶜᶜᶠ, w))
 
@@ -36,10 +36,10 @@ and `Δx` is the length of the cell centered on (Center, Face, Any) in `x` (a `v
                                                δyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v))
 
 @inline div_xyᶜᶜᶜ(i, j, k, grid, u, v) =
-    Vᶜᶜᶜ⁻¹(i, j, k, grid) * flux_div_xyᶜᶜᶜ(i, j, k, grid, u, v)
+    V⁻¹ᶜᶜᶜ(i, j, k, grid) * flux_div_xyᶜᶜᶜ(i, j, k, grid, u, v)
 
 @inline div_xyᶜᶜᶠ(i, j, k, grid, Qu, Qv) =
-    Vᶜᶜᶠ⁻¹(i, j, k, grid) * (δxᶜᶜᶠ(i, j, k, grid, Ay_qᶠᶜᶠ, Qu) +
+    V⁻¹ᶜᶜᶠ(i, j, k, grid) * (δxᶜᶜᶠ(i, j, k, grid, Ay_qᶠᶜᶠ, Qu) +
                              δyᶜᶜᶠ(i, j, k, grid, Ax_qᶜᶠᶠ, Qv))
 
 # Convention

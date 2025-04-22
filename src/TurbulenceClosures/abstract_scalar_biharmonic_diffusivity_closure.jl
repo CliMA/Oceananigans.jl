@@ -79,7 +79,7 @@ const AVBD = AbstractScalarBiharmonicDiffusivity{<:VerticalFormulation}
     @inline Δy_∇²u(i, j, k, grid, u) = Δy_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²hᶠᶜᶜ, u)
     @inline Δx_∇²v(i, j, k, grid, v) = Δx_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²hᶜᶠᶜ, v)
 
-    return Azᶜᶜᶜ⁻¹(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_∇²u, u) +
+    return Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_∇²u, u) +
                                      δyᵃᶜᵃ(i, j, k, grid, Δx_∇²v, v))
 end
 
@@ -90,7 +90,7 @@ end
     @inline Δy_∇²v(i, j, k, grid, v) = Δy_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²hᶜᶠᶜ, v)
     @inline Δx_∇²u(i, j, k, grid, u) = Δx_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²hᶠᶜᶜ, u)
 
-    return Azᶠᶠᶜ⁻¹(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_∇²v, v) -
+    return Az⁻¹ᶠᶠᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_∇²v, v) -
                                      δyᵃᶠᵃ(i, j, k, grid, Δx_∇²u, u))
 end
 
@@ -98,8 +98,8 @@ end
 ##### Biharmonic-specific diffusion operators
 #####
 
-@inline ∂x_∇²h_cᶠᶜᶜ(i, j, k, grid, c) = Azᶠᶜᶜ⁻¹(i, j, k, grid) * δxᶠᵃᵃ(i, j, k, grid, Δy_qᶜᶜᶜ, ∇²hᶜᶜᶜ, c)
-@inline ∂y_∇²h_cᶜᶠᶜ(i, j, k, grid, c) = Azᶜᶠᶜ⁻¹(i, j, k, grid) * δyᵃᶠᵃ(i, j, k, grid, Δx_qᶜᶜᶜ, ∇²hᶜᶜᶜ, c)
+@inline ∂x_∇²h_cᶠᶜᶜ(i, j, k, grid, c) = Az⁻¹ᶠᶜᶜ(i, j, k, grid) * δxᶠᵃᵃ(i, j, k, grid, Δy_qᶜᶜᶜ, ∇²hᶜᶜᶜ, c)
+@inline ∂y_∇²h_cᶜᶠᶜ(i, j, k, grid, c) = Az⁻¹ᶜᶠᶜ(i, j, k, grid) * δyᵃᶠᵃ(i, j, k, grid, Δx_qᶜᶜᶜ, ∇²hᶜᶜᶜ, c)
 
 #####
 ##### Biharmonic-specific operators that enforce "no-flux" boundary conditions and "0-value" boundary conditions for the Laplacian operator

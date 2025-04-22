@@ -20,9 +20,9 @@ end
 @inline _inverse_timescale(i, j, k, Δ⁻¹, U, topo::Flat) = 0
 
 @inline function cell_advection_timescaleᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT, TX, TY, TZ}, u, v, w) where {FT, TX, TY, TZ}
-    Δx⁻¹ = Δxᶠᶜᶜ⁻¹(i, j, k, grid)
-    Δy⁻¹ = Δyᶜᶠᶜ⁻¹(i, j, k, grid)
-    Δz⁻¹ = Δzᶜᶜᶠ⁻¹(i, j, k, grid)
+    Δx⁻¹ = Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
+    Δy⁻¹ = Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
+    Δz⁻¹ = Δz⁻¹ᶜᶜᶠ(i, j, k, grid)
 
     inverse_timescale_x = _inverse_timescale(i, j, k, Δx⁻¹, u, TX())
     inverse_timescale_y = _inverse_timescale(i, j, k, Δy⁻¹, v, TY())

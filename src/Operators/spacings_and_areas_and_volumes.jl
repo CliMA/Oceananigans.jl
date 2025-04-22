@@ -365,7 +365,7 @@ for LX in (:Center, :Face, :Nothing)
             for dir in (:x, :y, :λ, :φ, :z, :r)
                 func   = Symbol(:Δ, dir)
                 metric = Symbol(:Δ, dir, location_code(LXe, LYe, LZe))
-                rcp_metric = Symbol(:Δ, dir, location_code(LXe, LYe, LZe), :⁻¹)
+                rcp_metric = Symbol(:Δ, dir, :⁻¹, location_code(LXe, LYe, LZe))
 
                 @eval begin
                     @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
@@ -377,7 +377,7 @@ for LX in (:Center, :Face, :Nothing)
             for dir in (:x, :y, :z)
                 func   = Symbol(:A, dir)
                 metric = Symbol(:A, dir, location_code(LXe, LYe, LZe))
-                rcp_metric = Symbol(:A, dir, location_code(LXe, LYe, LZe), :⁻¹)
+                rcp_metric = Symbol(:A, dir, :⁻¹, location_code(LXe, LYe, LZe))
 
                 @eval begin
                     @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
@@ -387,7 +387,7 @@ for LX in (:Center, :Face, :Nothing)
 
             # General volume function
             volume_function = Symbol(:V, location_code(LXe, LYe, LZe))
-            rcp_volume_function = Symbol(:V, location_code(LXe, LYe, LZe), :⁻¹)
+            rcp_volume_function = Symbol(:V⁻¹, location_code(LXe, LYe, LZe))
 
             @eval begin
                 @inline volume(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $volume_function(i, j, k, grid)
