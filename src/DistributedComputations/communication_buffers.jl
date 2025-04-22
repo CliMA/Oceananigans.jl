@@ -63,14 +63,14 @@ end
 function x_communication_buffer(arch::Distributed, grid, data, H, ::DCBC) 
     # Either we pass corners or it is a 1D parallelization in x
     size_y = arch.ranks[2] == 1 ? size(parent(data), 2) : size(grid, 2)
-    return (send = on_architecture(arch, zeros(eltype(data), H, size_y, size(parent(data), 3))), 
-            recv = on_architecture(arch, zeros(eltype(data), H, size_y, size(parent(data), 3))))    
+    return (send = on_architecture(arch, zeros(eltype(data), H, size_y, size(parent(data), 3))),
+            recv = on_architecture(arch, zeros(eltype(data), H, size_y, size(parent(data), 3))))
 end
 
 function y_communication_buffer(arch::Distributed, grid, data, H, ::DCBC)
     # Either we pass corners or it is a 1D parallelization in y
     size_x = arch.ranks[1] == 1 ? size(parent(data), 1) : size(grid, 1)
-    return (send = on_architecture(arch, zeros(eltype(data), size_x, H, size(parent(data), 3))), 
+    return (send = on_architecture(arch, zeros(eltype(data), size_x, H, size(parent(data), 3))),
             recv = on_architecture(arch, zeros(eltype(data), size_x, H, size(parent(data), 3))))
 end
 
@@ -107,7 +107,7 @@ fill_send_buffers!(c::OffsetArray, ::Nothing, grid) = nothing
 """
     fill_send_buffers!(c::OffsetArray, buffers::CommunicationBuffers, grid)
 
-fills `buffers.send` from OffsetArray `c` preparing for message passing. 
+fills `buffers.send` from OffsetArray `c` preparing for message passing.
 """
 function fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid)
     Hx, Hy, _ = halo_size(grid)
@@ -180,7 +180,7 @@ fill_send_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid, ::Val{:bott
 """
     recv_from_buffers!(c::OffsetArray, buffers::CommunicationBuffers, grid)
 
-fills OffsetArray `c` from `buffers.recv` after message passing occurred. 
+fills OffsetArray `c` from `buffers.recv` after message passing occurred.
 """
 function recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid)
     Hx, Hy, _ = halo_size(grid)
@@ -190,7 +190,7 @@ function recv_from_buffers!(c::OffsetArray, buff::CommunicationBuffers, grid)
      _recv_from_east_buffer!(parent(c), buff, buff.east,  Hx, Hy, Nx, Ny)
     _recv_from_south_buffer!(parent(c), buff, buff.south, Hx, Hy, Nx, Ny)
     _recv_from_north_buffer!(parent(c), buff, buff.north, Hx, Hy, Nx, Ny)
-   
+
    _recv_from_southwest_buffer!(parent(c), buff, buff.southwest, Hx, Hy, Nx, Ny)
    _recv_from_southeast_buffer!(parent(c), buff, buff.southeast, Hx, Hy, Nx, Ny)
    _recv_from_northwest_buffer!(parent(c), buff, buff.northwest, Hx, Hy, Nx, Ny)
