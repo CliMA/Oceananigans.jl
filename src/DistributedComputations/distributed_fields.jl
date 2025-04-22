@@ -60,7 +60,7 @@ function synchronize_communication!(field)
     arch = architecture(field.grid)
 
     # Wait for outstanding requests
-    if !isempty(arch.mpi_requests) 
+    if !isempty(arch.mpi_requests)
         cooperative_waitall!(arch.mpi_requests)
 
         # Reset MPI tag

@@ -68,7 +68,7 @@ end
 end
 
 ####
-#### Tupled periodic boundary condition 
+#### Tupled periodic boundary condition
 ####
 
 @kernel function fill_periodic_west_and_east_halo!(c::Tuple, ::Val{H}, N) where {H}
@@ -105,7 +105,7 @@ end
             @inbounds begin
                 c[n][i, j, k]     = c[n][i, j, N+k] # top
                 c[n][i, j, N+H+k] = c[n][i, j, H+k] # bottom
-            end  
+            end
         end
     end
 end
