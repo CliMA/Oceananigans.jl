@@ -97,42 +97,42 @@ for FT in fully_supported_float_types
                 ifelse(red_order == 3, $(FT.(RS431)),   # Order 5  
                                        $(FT.(RS441))))) # Order 7
 
-        @inline reconstruction_coefficients(::WENO{$FT, 4}, red_order, ::Val{2}) = 
+        @inline reconstruction_coefficients(::WENO{4, $FT}, red_order, ::Val{2}) = 
                 ifelse(red_order  < 3, $(FT.(RS40M)),  # Order ≤ 3                                             
                 ifelse(red_order == 3, $(FT.(RS432)),  # Order 5  
                                        $(FT.(RS442)))) # Order 7
         
-        @inline reconstruction_coefficients(::WENO{$FT, 4}, red_order, ::Val{3}) = 
+        @inline reconstruction_coefficients(::WENO{4, $FT}, red_order, ::Val{3}) = 
                 ifelse(red_order <  4, $(FT.(RS40M)),  # Order ≤ 5  
                                        $(FT.(RS443)))  # Order 7
 
         # 9th order WENO, restricted to orders 7, 5, 3, and 1
-        @inline reconstruction_coefficients(::WENO{$FT, 5}, red_order, ::Val{0}) = 
+        @inline reconstruction_coefficients(::WENO{5, $FT}, red_order, ::Val{0}) = 
                 ifelse(red_order == 1, $(FT.(RS510)),    # Order 1                                                
                 ifelse(red_order == 2, $(FT.(RS520)),    # Order 3                                             
                 ifelse(red_order == 3, $(FT.(RS530)),    # Order 5  
                 ifelse(red_order == 4, $(FT.(RS540)),    # Order 7
                                        $(FT.(RS550)))))) # Order 9
 
-        @inline reconstruction_coefficients(::WENO{$FT, 5}, red_order, ::Val{1}) = 
+        @inline reconstruction_coefficients(::WENO{5, $FT}, red_order, ::Val{1}) = 
                 ifelse(red_order == 1, $(FT.(RS50M)),    # Order 1                                                
                 ifelse(red_order == 2, $(FT.(RS521)),    # Order 3                                             
                 ifelse(red_order == 3, $(FT.(RS531)),    # Order 5  
                 ifelse(red_order == 4, $(FT.(RS541)),    # Order 7
                                        $(FT.(RS551)))))) # Order 9
 
-        @inline reconstruction_coefficients(::WENO{$FT, 5}, red_order, ::Val{2}) = 
+        @inline reconstruction_coefficients(::WENO{5, $FT}, red_order, ::Val{2}) = 
                 ifelse(red_order <  3, $(FT.(RS50M)),   # Order ≤ 3                                             
                 ifelse(red_order == 3, $(FT.(RS532)),   # Order 5  
                 ifelse(red_order == 4, $(FT.(RS542)),   # Order 7
                                        $(FT.(RS552))))) # Order 9
         
-        @inline reconstruction_coefficients(::WENO{$FT, 5}, red_order, ::Val{3}) = 
+        @inline reconstruction_coefficients(::WENO{5, $FT}, red_order, ::Val{3}) = 
                 ifelse(red_order <  4, $(FT.(RS50M)),  # Order ≤ 5  
                 ifelse(red_order == 4, $(FT.(RS543)),  # Order 7
                                        $(FT.(RS553)))) # Order 9
 
-        @inline reconstruction_coefficients(::WENO{$FT, 5}, red_order, ::Val{4}) = 
+        @inline reconstruction_coefficients(::WENO{5, $FT}, red_order, ::Val{4}) = 
                 ifelse(red_order <  5, $(FT.(RS50M)), # Order ≤ 7
                                        $(FT.(RS554))) # Order 9
     end
