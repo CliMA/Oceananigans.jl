@@ -5,7 +5,7 @@ Compute an approximation of `a / b`` that uses `inv_FT` to compute
 `1/b`, and then performs a single Newton iteration to add a few more bits of precision
 afterwards.
 """
-function newton_div(inv_FT, a, b::FT) where FT
+@inline function newton_div(inv_FT, a, b::FT) where FT
     # Low precision division:
     b = convert(inv_FT, b)
     inv_b = Base.FastMath.inv_fast(b)
@@ -18,3 +18,5 @@ function newton_div(inv_FT, a, b::FT) where FT
 
     return x
 end
+
+@inline newton_div(::Type{Float32}, a, b::Float32}) = a * Base.FastMath.inv_fast(b)
