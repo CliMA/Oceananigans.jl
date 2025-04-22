@@ -15,7 +15,7 @@ function test_zstar_coordinate(model, Ni, Δt)
     ∫cᵢ = Field(Integral(cᵢ))
     compute!(∫bᵢ)
     compute!(∫cᵢ)
-    
+
     w   = model.velocities.w
     Nz  = model.grid.Nz
 
@@ -49,7 +49,7 @@ function test_zstar_coordinate(model, Ni, Δt)
 	end
 
     end
-    
+
     return nothing
 end
 
@@ -192,10 +192,10 @@ end
 
                     info_msg = info_message(grid, free_surface)
                     @testset "$info_msg" begin
-                        @info "  Testing a $info_msg" 
-                        model = HydrostaticFreeSurfaceModel(; grid, 
-                                                            free_surface, 
-                                                            tracers = (:b, :c), 
+                        @info "  Testing a $info_msg"
+                        model = HydrostaticFreeSurfaceModel(; grid,
+                                                            free_surface,
+                                                            tracers = (:b, :c),
                             				    buoyancy = BuoyancyTracer(),
                                                             vertical_coordinate = ZStar())
 
@@ -209,7 +209,7 @@ end
                 end
             end
         end
-        
+
         @testset "TripolarGrid ZStar tracer conservation tests" begin
             @info "Testing a ZStar coordinate with a Tripolar grid on $(arch)..."
 
@@ -233,7 +233,7 @@ end
             end
 
             zb = - 20
-            h  = - zb + 10        
+            h  = - zb + 10
             gaussian_islands(λ, φ) = zb + h * (mtn₁(λ, φ) + mtn₂(λ, φ))
 
             grid = ImmersedBoundaryGrid(grid, GridFittedBottom(gaussian_islands))

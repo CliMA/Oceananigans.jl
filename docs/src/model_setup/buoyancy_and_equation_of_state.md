@@ -192,7 +192,7 @@ julia> eos = RoquetEquationOfState(:Freezing)
 BoussinesqEquationOfState{Float64}:
 ├── seawater_polynomial: SecondOrderSeawaterPolynomial{Float64}
 └── reference_density: 1024.6
-    
+
 julia> eos.seawater_polynomial # the density anomaly
 ρ' = 0.7718 Sᴬ - 0.0491 Θ - 0.005027 Θ² - 2.5681e-5 Θ Z + 0.0 Sᴬ² + 0.0 Sᴬ Z + 0.0 Sᴬ Θ
 

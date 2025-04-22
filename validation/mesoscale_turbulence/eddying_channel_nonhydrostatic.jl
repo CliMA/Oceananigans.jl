@@ -1,5 +1,5 @@
 # printing
-using Printf, Statistics 
+using Printf, Statistics
 # Oceananigans
 using Oceananigans
 using Oceananigans.BoundaryConditions
@@ -22,7 +22,7 @@ const meter = 1
 const hour = 60
 
 ## Domain
-const Lx = 1000.0kilometer 
+const Lx = 1000.0kilometer
 const Ly = 2000.0kilometer
 const Lz = 2985
 
@@ -30,7 +30,7 @@ const Lz = 2985
 Δt = 300.0
 maxΔt = 300.0
 
-end_time = 60day 
+end_time = 60day
 advection   = WENO()
 timestepper = :RungeKutta3
 # Rough target resolution
@@ -42,8 +42,8 @@ const Ny = Int(400 * 0.5)
 const Nz = Int(32 * 0.5)
 # Create Grid
 topology = (Periodic, Bounded, Bounded)
-grid = RectilinearGrid(arch, topology=topology, 
-                            size=(Nx, Ny, Nz), 
+grid = RectilinearGrid(arch, topology=topology,
+                            size=(Nx, Ny, Nz),
                             x=(0, Lx), y=(0, Ly), z=(-Lz, 0))
 
 # Parameters
@@ -52,7 +52,7 @@ const β = 1 * 10^(-11)
 coriolis = FPlane(FT, f=f)
 coriolis = BetaPlane(FT, f₀ = f, β = β)
 
-α  = 2e-4     # [K⁻¹] Thermal expansion coefficient 
+α  = 2e-4     # [K⁻¹] Thermal expansion coefficient
 g  = 9.8061   # [m/s²] gravitational constant
 cᵖ = 3994.0   # [J/K]  heat capacity
 ρ  = 999.8    # [kg/m³] density
@@ -69,7 +69,7 @@ buoyancy = BuoyancyTracer()
 vertical_closure = VerticalScalarDiffusivity(ν = νv, κ = κv)
 
 horizontal_closure = HorizontalScalarDiffusivity(ν = νh, κ = κh)
-                                       
+
 parameters = (
     Ly = Ly,                   # y-domain length
     τ = 0.2,                   # [N m⁻²] Zonal stress
@@ -116,13 +116,13 @@ relu(y) = (abs(y) + y) * 0.5
 # Northern Wall Relaxation
 @inline relaxation_profile_north(k, grid, p) = p.ΔB * ( exp(grid.zᵃᵃᶜ[k]/p.h) - exp(-p.Lz/p.h) ) / (1 - exp(-p.Lz/p.h))
 function Fb_function(i, j, k, grid, clock, state, p)
-    return @inbounds - (1/p.λᵗ)  * (state.b[i,j,k] 
+    return @inbounds - (1/p.λᵗ)  * (state.b[i,j,k]
         - relaxation_profile_north(k, grid, p)) * relu( (grid.yᵃᶜᵃ[j]-p.Lsponge) / (p.Ly - p.Lsponge))
 end
 Fb = Forcing(Fb_function, parameters = parameters, discrete_form = true)
 
 # Record forcings
-forcings = (b = Fb, ) 
+forcings = (b = Fb, )
 
 # Convective Parameterization
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
@@ -131,7 +131,7 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
                                                                 background_νz = 3e-4)
 
 # Model Setup
-if hydrostatic 
+if hydrostatic
     model = HydrostaticFreeSurfaceModel(
             grid = grid,
             free_surface = ImplicitFreeSurface(),
@@ -179,9 +179,9 @@ function print_progress(simulation)
     println(" ")
 end
 
-simulation = Simulation(model, Δt=Δt_wizard, 
+simulation = Simulation(model, Δt=Δt_wizard,
                         stop_time=end_time,
-                        iteration_interval=Ni, 
+                        iteration_interval=Ni,
                         progress=print_progress)
 ## Run
 run!(simulation)

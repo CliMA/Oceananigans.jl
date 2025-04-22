@@ -93,7 +93,7 @@ for (i, closure) in enumerate(closures)
     end
 end
 
-title = @lift "t = " * string(round(times[$n], digits=2)) * ", cₛ = " * string(round(cₛ[$n], digits=4)) 
+title = @lift "t = " * string(round(times[$n], digits=2)) * ", cₛ = " * string(round(cₛ[$n], digits=4))
 Label(fig[1, 1:2], title, fontsize=24, tellwidth=false)
 frames = 1:length(times)
 @info "Making a neat animation of vorticity and speed..."
