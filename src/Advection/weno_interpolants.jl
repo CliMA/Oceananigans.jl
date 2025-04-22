@@ -290,7 +290,7 @@ end
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (1 + (τ / (β[$stencil] + ε))^2))
+        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (1 + (τ * (β[$stencil] + ε))^2))
     end
 
     return :($(elem...),)
