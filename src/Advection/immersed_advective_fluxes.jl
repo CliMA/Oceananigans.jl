@@ -155,7 +155,6 @@ end
 #     └── 6th ──────────────────────────────────────────────
 #
 #
-#
 for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
     compute_reduced_order = Symbol(:compute_, Loc,:_reduced_order_, dir)
     @eval begin 
