@@ -54,6 +54,10 @@ const OneDBuffers = CommunicationBuffers{<:Any, <:Any, <:Any, <:Any, <:Nothing, 
 x_communication_buffer(arch, grid, data, H, bc) = nothing
 y_communication_buffer(arch, grid, data, H, bc) = nothing
 
+# Only used for `Distributed` architectures
+corner_communication_buffer(arch, grid, data, Hx, Hy, edge1, edge2) = nothing
+
+# Disambiguation
 corner_communication_buffer(::Distributed, grid, data, Hx, Hy, ::Nothing, edge2) = nothing
 corner_communication_buffer(::Distributed, grid, data, Hx, Hy, edge1, ::Nothing) = nothing
 corner_communication_buffer(::Distributed, grid, data, Hx, Hy, ::Nothing, ::Nothing) = nothing
