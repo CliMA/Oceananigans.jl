@@ -11,8 +11,9 @@ struct Centered{N, FT} <: AbstractCenteredAdvectionScheme{N, FT} end
 
 function Centered(FT::DataType=Oceananigans.defaults.FloatType; grid = nothing, order = 2) 
 
-    !(grid isa Nothing) && FT = eltype(grid)
-
+    # Enforce the grid type if a grid is provided
+    FT = grid isa Nothing ? FT : eltype(grid) 
+    
     mod(order, 2) != 0 && throw(ArgumentError("Centered reconstruction scheme is defined only for even orders"))
 
     N = Int(order ÷ 2)

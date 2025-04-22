@@ -16,7 +16,8 @@ end
 
 function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3) 
 
-    !(grid isa Nothing) && FT = eltype(grid)
+    # Enforce the grid type if a grid is provided
+    FT = grid isa Nothing ? FT : eltype(grid) 
     
     mod(order, 2) == 0 && throw(ArgumentError("UpwindBiased reconstruction scheme is defined only for odd orders"))
 

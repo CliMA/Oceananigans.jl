@@ -67,8 +67,9 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
               grid = nothing, 
               bounds = nothing)
 
-    !(grid isa Nothing) && FT = eltype(grid)
-
+    # Enforce the grid type if a grid is provided
+    FT = grid isa Nothing ? FT : eltype(grid) 
+    
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
 
     if !isnothing(bounds)
