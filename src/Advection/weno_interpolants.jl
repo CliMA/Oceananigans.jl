@@ -258,7 +258,7 @@ while for `buffer == 4` unrolls into
 
 # Smoothness indicators for stencil `stencil` for left and right biased reconstruction
 for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
-    @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds $(metaprogrammed_smoothness_operation(buffer)) + ε
+    @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds $(metaprogrammed_smoothness_operation(buffer))
 
     for stencil in 0:buffer-1, FT in fully_supported_float_types
         @eval @inline smoothness_indicator(ψ, scheme::WENO{$buffer, $FT}, ::Val{$stencil}) =
@@ -290,7 +290,7 @@ end
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (1 + (τ * β[$stencil]))^2)
+        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (1 + (τ / (β[$stencil] + ε))^2))
     end
 
     return :($(elem...),)
@@ -335,7 +335,7 @@ The ``α`` values are normalized before returning
     τ = global_smoothness_indicator(Val(N), β)
     α = zweno_alpha_loop(scheme, β, τ)
 
-    return α .* sum(α)
+    return α ./ sum(α)
 end
 
 @inline function biased_weno_weights(ijk, grid, scheme::WENO{N, FT}, bias, dir, ::VelocityStencil, u, v) where {N, FT}
@@ -350,7 +350,7 @@ end
     τ = global_smoothness_indicator(Val(N), β)
     α = zweno_alpha_loop(scheme, β, τ)
 
-    return α .* sum(α)
+    return α ./ sum(α)
 end
 
 """
