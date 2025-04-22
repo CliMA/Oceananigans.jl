@@ -30,11 +30,3 @@
 @inline S₂₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[3], S[4], S[5], S[6], S[7]), (S[8],  S[7], S[6], S[5], S[4]))
 @inline S₃₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[2], S[3], S[4], S[5], S[6]), (S[9],  S[8], S[7], S[6], S[5]))
 @inline S₄₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[1], S[2], S[3], S[4], S[5]), (S[10], S[9], S[8], S[7], S[6]))
-
-# WENO 11th order limited to 9th order, 7th order, 5th order, 3rd order, and 1st order
-@inline S₀₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[6], S[7], S[8], S[9], S[10], S[11]), (S[7],  S[6],  S[5],  S[4], S[3], S[2]))
-@inline S₁₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[5], S[6], S[7], S[8], S[9],  S[10]), (S[8],  S[7],  S[6],  S[5], S[4], S[3]))
-@inline S₂₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[4], S[5], S[6], S[7], S[8],  S[9]),  (S[9],  S[8],  S[7],  S[6], S[5], S[4]))
-@inline S₃₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[3], S[4], S[5], S[6], S[7],  S[8]),  (S[10], S[9],  S[8],  S[7], S[6], S[5]))
-@inline S₄₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[2], S[3], S[4], S[5], S[6],  S[7]),  (S[11], S[10], S[9],  S[8], S[7], S[6]))
-@inline S₅₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[1], S[2], S[3], S[4], S[5],  S[6]),  (S[12], S[11], S[10], S[9], S[8], S[7]))
