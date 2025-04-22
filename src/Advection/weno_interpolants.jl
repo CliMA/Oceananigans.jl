@@ -330,12 +330,15 @@ where
 The ``α`` values are normalized before returning
 """
 @inline function biased_weno_weights(ψ, grid, scheme::WENO{N, FT}, args...) where {N, FT}
-    β = beta_loop(scheme, ψ)
-
-    τ = global_smoothness_indicator(Val(N), β)
-    α = zweno_alpha_loop(scheme, β, τ)
-
-    return α ./ sum(α)
+    
+    # Doesn't have to be
+    β  = beta_loop(scheme, ψ)
+    τ  = global_smoothness_indicator(Val(N), β)
+    α  = zweno_alpha_loop(scheme, β, τ)
+    
+    # Has to be
+    αr = 1 / sum(α) # could be cast to FT32 and rcp'd + taylor expansion residual from FP64 to FP32
+    return α .* αr
 end
 
 @inline function biased_weno_weights(ijk, grid, scheme::WENO{N, FT}, bias, dir, ::VelocityStencil, u, v) where {N, FT}
@@ -347,10 +350,11 @@ end
     βᵥ = beta_loop(scheme, vₛ)
     β  =  beta_sum(scheme, βᵤ, βᵥ)
 
-    τ = global_smoothness_indicator(Val(N), β)
-    α = zweno_alpha_loop(scheme, β, τ)
+    τ  = global_smoothness_indicator(Val(N), β)
+    α  = zweno_alpha_loop(scheme, β, τ)
+    αr = 1 / sum(α)
 
-    return α ./ sum(α)
+    return α .* αr
 end
 
 """
