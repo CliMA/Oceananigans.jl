@@ -2,11 +2,11 @@ using Oceananigans.Operators: ℑxyz
 using Oceananigans.Utils: instantiate
 
 """
-    struct DiscreteDiffusionFunction{LX, LY, LZ, P, F} 
+    struct DiscreteDiffusionFunction{LX, LY, LZ, P, F}
 
 A wrapper for a diffusivity functions with optional parameters at a specified locations.
 """
-struct DiscreteDiffusionFunction{LX, LY, LZ, P, F} 
+struct DiscreteDiffusionFunction{LX, LY, LZ, P, F}
     func :: F
     parameters :: P
 
@@ -81,7 +81,7 @@ const UnlocalizedDDF                 = DiscreteDiffusionFunction{<:Nothing, <:No
 const UnlocalizedUnparametrizedDDF   = DiscreteDiffusionFunction{<:Nothing, <:Nothing, <:Nothing, <:Nothing}
 
 @inline function getdiffusivity(dd::DiscreteDiffusionFunction{LX, LY, LZ},
-                                i, j, k, grid, location, clock, fields) where {LX, LY, LZ} 
+                                i, j, k, grid, location, clock, fields) where {LX, LY, LZ}
     from = (LX(), LY(), LZ())
     return ℑxyz(i, j, k, grid, from, location, dd.func, clock, fields, dd.parameters)
 end
