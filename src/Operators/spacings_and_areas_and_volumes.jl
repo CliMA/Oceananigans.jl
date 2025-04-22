@@ -387,7 +387,7 @@ for LX in (:Center, :Face, :Nothing)
 
             # General volume function
             volume_function = Symbol(:V, location_code(LXe, LYe, LZe))
-            rcp_volume_function = Symbol(:A, dir, location_code(LXe, LYe, LZe), :⁻¹)
+            rcp_volume_function = Symbol(:V, location_code(LXe, LYe, LZe), :⁻¹)
 
             @eval begin
                 @inline volume(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $volume_function(i, j, k, grid)
