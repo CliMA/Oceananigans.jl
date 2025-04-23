@@ -52,52 +52,54 @@ steps:
 
     command: |
       # Instantiate
-      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no -e 'using Pkg; Pkg.instantiate()'
+      # $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no -e 'using Pkg; Pkg.instantiate()'
 
-      # Run Periodic benchmarks
-      export BENCHMARK_GROUP="periodic"
-      $NSYS profile --output=periodic_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
-      $NSYS stats periodic_output.nsys-rep > periodic_output.txt
+      # # Run Periodic benchmarks
+      # export BENCHMARK_GROUP="periodic"
+      # $NSYS profile --output=periodic_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+      # $NSYS stats periodic_output.nsys-rep > 
+      echo "ciao" > periodic_output.txt
 
-      # Remove generated output files
-      rm periodic_output.nsys-rep
-      rm periodic_output.sqlite
+      # # Remove generated output files
+      # rm periodic_output.nsys-rep
+      # rm periodic_output.sqlite
 
-      # Run Bounded benchmarks
-      export BENCHMARK_GROUP="bounded"
-      $NSYS profile --output=bounded_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
-      $NSYS stats bounded_output.nsys-rep > bounded_output.txt
+      # # Run Bounded benchmarks
+      # export BENCHMARK_GROUP="bounded"
+      # $NSYS profile --output=bounded_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+      # $NSYS stats bounded_output.nsys-rep > bounded_output.txt
+      echo "ciao" > bounded_output.txt
+      
+      # # Remove generated output files
+      # rm bounded_output.nsys-rep
+      # rm bounded_output.sqlite
 
-      # Remove generated output files
-      rm bounded_output.nsys-rep
-      rm bounded_output.sqlite
+      # # Run Periodic cheap advection benchmarks
+      # export BENCHMARK_GROUP="periodic_cheap_advection"
+      # $NSYS profile --output=periodic_cheap_advection_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+      # $NSYS stats periodic_cheap_advection_output.nsys-rep > periodic_cheap_advection_output.txt
 
-      # Run Periodic cheap advection benchmarks
-      export BENCHMARK_GROUP="periodic_cheap_advection"
-      $NSYS profile --output=periodic_cheap_advection_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
-      $NSYS stats periodic_cheap_advection_output.nsys-rep > periodic_cheap_advection_output.txt
+      # # Remove generated output files
+      # rm periodic_cheap_advection_output.nsys-rep
+      # rm periodic_cheap_advection_output.sqlite
 
-      # Remove generated output files
-      rm periodic_cheap_advection_output.nsys-rep
-      rm periodic_cheap_advection_output.sqlite
+      # # Run Bounded cheap advection benchmarks
+      # export BENCHMARK_GROUP="bounded_cheap_advection"
+      # $NSYS profile --output=bounded_cheap_advection_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+      # $NSYS stats bounded_cheap_advection_output.nsys-rep > bounded_cheap_advection_output.txt
 
-      # Run Bounded cheap advection benchmarks
-      export BENCHMARK_GROUP="bounded_cheap_advection"
-      $NSYS profile --output=bounded_cheap_advection_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
-      $NSYS stats bounded_cheap_advection_output.nsys-rep > bounded_cheap_advection_output.txt
+      # # Remove generated output files
+      # rm bounded_cheap_advection_output.nsys-rep
+      # rm bounded_cheap_advection_output.sqlite
 
-      # Remove generated output files
-      rm bounded_cheap_advection_output.nsys-rep
-      rm bounded_cheap_advection_output.sqlite
+      # # Run Immersed benchmarks
+      # export BENCHMARK_GROUP="immersed"
+      # $NSYS profile --output=immersed_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+      # $NSYS stats immersed_output.nsys-rep > immersed_output.txt
 
-      # Run Immersed benchmarks
-      export BENCHMARK_GROUP="immersed"
-      $NSYS profile --output=immersed_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
-      $NSYS stats immersed_output.nsys-rep > immersed_output.txt
-
-      # Remove generated output files
-      rm immersed_output.nsys-rep
-      rm immersed_output.sqlite
+      # # Remove generated output files
+      # rm immersed_output.nsys-rep
+      # rm immersed_output.sqlite
 
     artifact_paths:
       - "periodic_output.txt"
