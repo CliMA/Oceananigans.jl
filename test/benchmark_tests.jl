@@ -67,7 +67,7 @@ const Nz = 60
 
 arch = GPU()
 
-cheap_advection = (WENO(order=7), WENO(order=7), Centered())
+cheap_advection = FluxFormAdvection(WENO(order=7), WENO(order=7), Centered())
 
 if group == :periodic
     model = ocean_benchmark(arch, Nx, Ny, Nz, (Periodic, Periodic, Bounded), false)
