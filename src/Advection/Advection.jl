@@ -1,6 +1,6 @@
 module Advection
 
-export 
+export
     div_𝐯u, div_𝐯v, div_𝐯w, div_Uc,
 
     momentum_flux_uu,
@@ -17,7 +17,7 @@ export
     advective_tracer_flux_z,
 
     AdvectionScheme,
-    Centered, UpwindBiased, WENO, 
+    Centered, UpwindBiased, WENO,
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     EnergyConserving,
@@ -26,7 +26,7 @@ export
 using DocStringExtensions
 
 using Base: @propagate_inbounds
-using Adapt 
+using Adapt
 using OffsetArrays
 using MuladdMacro: @muladd
 

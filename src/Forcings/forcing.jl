@@ -114,7 +114,7 @@ ContinuousForcing{Nothing}
 
 ```jldoctest forcing
 # Parameterized, field-dependent forcing
-tracer_relaxation(x, y, z, t, c, p) = p.μ * exp((z + p.H) / p.λ) * (p.dCdz * z - c) 
+tracer_relaxation(x, y, z, t, c, p) = p.μ * exp((z + p.H) / p.λ) * (p.dCdz * z - c)
 
 c_forcing = Forcing(tracer_relaxation,
                     field_dependencies = :c,
@@ -142,7 +142,7 @@ DiscreteForcing{Nothing}
 
 ```jldoctest forcing
 # Discrete-form forcing function with parameters
-masked_damping(i, j, k, grid, clock, model_fields, parameters) = 
+masked_damping(i, j, k, grid, clock, model_fields, parameters) =
     @inbounds - parameters.μ * exp(grid.z.cᵃᵃᶜ[k] / parameters.λ) * model_fields.u[i, j, k]
 
 masked_damping_forcing = Forcing(masked_damping, parameters=(μ=42, λ=π), discrete_form=true)

@@ -5,7 +5,7 @@ using Random
 using Oceananigans
 using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ
 using Oceananigans.Units
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization 
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using Oceananigans.TurbulenceClosures.MEWSVerticalDiffusivities: MEWSVerticalDiffusivity
 
 # Domain
@@ -24,8 +24,8 @@ stop_time = 30days
 
 # We choose a regular grid though because of numerical issues that yet need to be resolved
 grid = RectilinearGrid(CPU();
-                       topology = (Flat, Bounded, Bounded), 
-                       size = (Ny, Nz), 
+                       topology = (Flat, Bounded, Bounded),
+                       size = (Ny, Nz),
                        y = (-Ly/2, Ly/2),
                        z = (-Lz, 0),
                        halo = (4, 4))
@@ -98,7 +98,7 @@ function print_progress(sim)
     @info msg1 * msg2
 
     wall_clock[] = time_ns()
-    
+
     return nothing
 end
 

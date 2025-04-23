@@ -14,16 +14,16 @@ struct Centered{N, FT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
     Centered{N, FT}(buffer_scheme::CA) where {N, FT, CA} = new{N, FT, CA}(buffer_scheme)
 end
 
-function Centered(FT::DataType=Oceananigans.defaults.FloatType; grid = nothing, order = 2) 
+function Centered(FT::DataType=Oceananigans.defaults.FloatType; grid = nothing, order = 2)
 
-    if !(grid isa Nothing) 
+    if !(grid isa Nothing)
         FT = eltype(grid)
     end
 
     mod(order, 2) != 0 && throw(ArgumentError("Centered reconstruction scheme is defined only for even orders"))
 
     N  = Int(order ÷ 2)
-    if N > 1 
+    if N > 1
         buffer_scheme = Centered(FT; grid, order = order - 2)
     else
         buffer_scheme = nothing
@@ -55,7 +55,7 @@ const ACAS = AbstractCenteredAdvectionScheme
 @inline biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::ACAS, bias, args...) = symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, args...)
 @inline biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::ACAS, bias, args...) = symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, args...)
 @inline biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::ACAS, bias, args...) = symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, args...)
-    
+
 # uniform centered reconstruction
 for buffer in advection_buffers, FT in fully_supported_float_types
     @eval begin

@@ -14,7 +14,7 @@ struct RightBoundary end
 
 A wrapper for the user-defined boundary condition function `func` at location
 `X, Y, Z`. `I` denotes the boundary-normal index (`I=1` at western boundaries,
-`I=grid.Nx` at eastern boundaries, etc). `F, P, D, N, ℑ` are, respectively, the 
+`I=grid.Nx` at eastern boundaries, etc). `F, P, D, N, ℑ` are, respectively, the
 user-defined function, parameters, field dependencies, indices of the field dependencies
 in `model_fields`, and interpolation operators for interpolating `model_fields` to the
 location at which the boundary condition is applied.
@@ -210,7 +210,7 @@ function Base.summary(bf::ContinuousBoundaryFunction)
 end
 
 prettysummary(bf::ContinuousBoundaryFunction) = summary(bf)
-    
+
 Adapt.adapt_structure(to, bf::ContinuousBoundaryFunction{LX, LY, LZ, S}) where {LX, LY, LZ, S} =
     ContinuousBoundaryFunction{LX, LY, LZ, S}(Adapt.adapt(to, bf.func),
                                               Adapt.adapt(to, bf.parameters),

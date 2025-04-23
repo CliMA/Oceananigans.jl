@@ -32,7 +32,7 @@ const γ₀²⁻ =   9.0 / 40 / σ⁻
 const γ₁²⁻ =  49.0 / 40 / σ⁻
 const γ₂²⁻ =   9.0 / 40 / σ⁻
 
-# coeffiecients `a` are the reconstruction weights for stencils 1, 2 and 3 
+# coeffiecients `a` are the reconstruction weights for stencils 1, 2 and 3
 # (composed of points 0, 1, 2 each) where vʳ = ∑aⱼʳvⱼ
 
 const a₀¹ = ( 2 - 3 * sqrt(15), -4 + 12 * sqrt(15), 62 - 9 * sqrt(15)) ./ 60
@@ -61,7 +61,7 @@ const a₂³ = (62 - 9*sqrt(15), -4 + 12*sqrt(15),  2 - 3 * sqrt(15)) ./ 60
     w₀ = α₀ / Σα
     w₁ = α₁ / Σα
     w₂ = α₂ / Σα
-    
+
     return w₀, w₁, w₂
 end
 
@@ -74,7 +74,7 @@ function fifth_order_weno_reconstruction(FT, S₀, S₁, S₂)
     q̂₀² = FT(a₀²[1]) * S₀[1] + FT(a₀²[2]) * S₀[2] + FT(a₀²[3]) * S₀[3]
     q̂₁² = FT(a₁²[1]) * S₁[1] + FT(a₁²[2]) * S₁[2] + FT(a₁²[3]) * S₁[3]
     q̂₂² = FT(a₂²[1]) * S₂[1] + FT(a₂²[2]) * S₂[2] + FT(a₂²[3]) * S₂[3]
-    
+
     q̂₀³ = FT(a₀³[1]) * S₀[1] + FT(a₀³[2]) * S₀[2] + FT(a₀³[3]) * S₀[3]
     q̂₁³ = FT(a₁³[1]) * S₁[1] + FT(a₁³[2]) * S₁[2] + FT(a₁³[3]) * S₁[3]
     q̂₂³ = FT(a₂³[1]) * S₂[1] + FT(a₂³[2]) * S₂[2] + FT(a₂³[3]) * S₂[3]

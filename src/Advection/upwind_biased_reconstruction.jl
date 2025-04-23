@@ -7,19 +7,19 @@
 
 Upwind-biased reconstruction scheme.
 """
-struct UpwindBiased{N, FT, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT} 
+struct UpwindBiased{N, FT, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
     "Reconstruction scheme used near boundaries"
     buffer_scheme :: CA
     "Reconstruction scheme used for symmetric interpolation"
     advecting_velocity_scheme :: SI
 
-    UpwindBiased{N, FT}(buffer_scheme::CA, advecting_velocity_scheme::SI) where {N, FT, CA, SI} = 
+    UpwindBiased{N, FT}(buffer_scheme::CA, advecting_velocity_scheme::SI) where {N, FT, CA, SI} =
         new{N, FT, CA, SI}(buffer_scheme, advecting_velocity_scheme)
 end
 
-function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3) 
+function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3)
 
-    if !(grid isa Nothing) 
+    if !(grid isa Nothing)
         FT = eltype(grid)
     end
 
@@ -29,7 +29,7 @@ function UpwindBiased(FT::DataType = Float64; grid = nothing, order = 3)
 
     if N > 1
         coefficients = Tuple(nothing for i in 1:6)
-        # Stretched coefficient seem to be more unstable that constant spacing ones for 
+        # Stretched coefficient seem to be more unstable that constant spacing ones for
         # linear (non-WENO) upwind reconstruction. We keep constant coefficients for the moment
         # Some tests are needed to verify why this is the case (and if it is expected)
         # coefficients = compute_reconstruction_coefficients(grid, FT, :Upwind; order)
