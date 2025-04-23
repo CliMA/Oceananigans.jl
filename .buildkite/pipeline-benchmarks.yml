@@ -30,18 +30,18 @@ steps:
 
   - wait
 
-  # - label: "💾 conditional metadata save"
-  #   key: "save-metadata"
-  #   agents:
-  #     queue: Oceananigans-benchmarks
+  - label: "💾 conditional metadata save"
+    key: "save-metadata"
+    agents:
+      queue: Oceananigans-benchmarks
     
-  #   command: |
-  #     if [ "$BUILDKITE_BRANCH" = "main" ]; then
-  #       echo "Saving build ID for main..."
-  #       buildkite-agent meta-data set "latest-main-build" "$BUILDKITE_BUILD_ID"
-  #     else
-  #       echo "Not on main, skipping metadata save."
-  #     fi
+    command: |
+      if [ "$BUILDKITE_BRANCH" = "main" ]; then
+        echo "Saving build ID for main..."
+        buildkite-agent meta-data set "latest-main-build" "$BUILDKITE_BUILD_ID"
+      else
+        echo "Not on main, skipping metadata save."
+      fi
     
   - label: "🚀 Oceananigans GPU benchmarks"
     key: "benchmarks"
