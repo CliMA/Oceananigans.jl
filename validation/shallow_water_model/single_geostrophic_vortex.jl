@@ -14,7 +14,7 @@ Nx, Ny = 100, 100
 
 # single vortex
 function single_vortex_exp()
-    
+
     grid = RectilinearGrid(GPU(); size = (Nx, Ny), x = (-0.5, 0.5), y = (-0.5, 0.5),
                            topology = (Periodic, Periodic, Flat))
 
@@ -24,7 +24,7 @@ function single_vortex_exp()
     g  = 1.0
     f  = 10.0
     σ  = 0.1
-    
+
     @inline bat(x, y, z) = 0.0
 
     @inline hᵢ(x, y, z) = H + h₀ * gaussian(x, y, σ)
@@ -55,14 +55,14 @@ end
 
 grid, g, f, hᵢ, uᵢ, vᵢ, hₒ, uₒ, vₒ, bat = lake_at_rest()
 
-@inline uhᵢ(x, y, z) = hᵢ(x, y, z) * uᵢ(x, y, z) 
-@inline vhᵢ(x, y, z) = hᵢ(x, y, z) * vᵢ(x, y, z) 
-@inline uhₒ(x, y, z) = hₒ(x, y, z) * uₒ(x, y, z) 
-@inline vhₒ(x, y, z) = hₒ(x, y, z) * vₒ(x, y, z) 
+@inline uhᵢ(x, y, z) = hᵢ(x, y, z) * uᵢ(x, y, z)
+@inline vhᵢ(x, y, z) = hᵢ(x, y, z) * vᵢ(x, y, z)
+@inline uhₒ(x, y, z) = hₒ(x, y, z) * uₒ(x, y, z)
+@inline vhₒ(x, y, z) = hₒ(x, y, z) * vₒ(x, y, z)
 
 coriolis = FPlane(; f)
 solution  = [Dict(), Dict(), Dict(), Dict()]
-model_sol = Dict() 
+model_sol = Dict()
 
 solh  = CenterField(grid)
 solu  =  XFaceField(grid)
@@ -81,22 +81,22 @@ function run_shallow_water_experiment(model, solution, form, order)
     else
         set!(model, h=hᵢ, u=uᵢ, v=vᵢ)
     end
-    
+
     @info "starting time stepping"
     @show Δt = 5e-3
     for step in 1:600
         time_step!(model, Δt)
     end
     @info "finished time stepping"
-    
+
     u₁, u₂, h = model.solution
 
     solu₁ = model.formulation isa ConservativeFormulation ? soluh : solu
 
-    solution[1][(form, order)] = norm((Array(interior(h,  :, :, 1)) .- solh) , 2) ./ (Nx*Ny)^(1/2) 
-    solution[2][(form, order)] = norm((Array(interior(u₁, :, :, 1)) .- solu₁), 2) ./ (Nx*Ny)^(1/2) 
-    solution[3][(form, order)] = maximum(abs, (Array(interior(h,  :, :, 1)) .- solh)) 
-    solution[4][(form, order)] = maximum(abs, (Array(interior(u₁, :, :, 1)) .- solu₁)) 
+    solution[1][(form, order)] = norm((Array(interior(h,  :, :, 1)) .- solh) , 2) ./ (Nx*Ny)^(1/2)
+    solution[2][(form, order)] = norm((Array(interior(u₁, :, :, 1)) .- solu₁), 2) ./ (Nx*Ny)^(1/2)
+    solution[3][(form, order)] = maximum(abs, (Array(interior(h,  :, :, 1)) .- solh))
+    solution[4][(form, order)] = maximum(abs, (Array(interior(u₁, :, :, 1)) .- solu₁))
 end
 
 @inline weno_advection(::Val{:conservative}, order)     = WENO(; order)
@@ -144,10 +144,10 @@ uerr∞ = []
 
 for order in [3, 5, 7, 9]
     for form in [:conservative, :vorticitystencil, :velocitystencil]
-        push!(herr₂, solution[1][(form, order)])  
-        push!(uerr₂, solution[2][(form, order)])    
-        push!(herr∞, solution[3][(form, order)])  
-        push!(uerr∞, solution[4][(form, order)])   
+        push!(herr₂, solution[1][(form, order)])
+        push!(uerr₂, solution[2][(form, order)])
+        push!(herr∞, solution[3][(form, order)])
+        push!(uerr∞, solution[4][(form, order)])
     end
 end
 
@@ -168,4 +168,4 @@ for order in [3, 5, 7, 9]
         ordr[1][(form, order)] = temph
         ordr[2][(form, order)] = tempu
     end
-end 
+end

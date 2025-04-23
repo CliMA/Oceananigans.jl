@@ -117,7 +117,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     #####
     ##### Non-dimensional model setup
     #####
-    
+
     equation_of_state = LinearEquationOfState(thermal_expansion=1.0, haline_contraction=0.0)
     buoyancy = SeawaterBuoyancy(; equation_of_state)
     model = NonhydrostaticModel(; grid, buoyancy,

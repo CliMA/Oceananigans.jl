@@ -93,7 +93,7 @@ current_figure() #hide
 fig
 
 # ## Simulation
-# 
+#
 # Now let's build a `Simulation`.
 
 simulation = Simulation(model, Δt=20minutes, stop_time=20days)
@@ -118,7 +118,7 @@ function print_progress(sim)
             maximum(abs, u), maximum(abs, v), maximum(abs, w), prettytime(sim.Δt))
 
     wall_clock[] = time_ns()
-    
+
     return nothing
 end
 
@@ -231,7 +231,7 @@ ax = Axis3(fig[2, 1],
            zlabel = "z (m)",
            xlabeloffset = 100,
            ylabeloffset = 100,
-           zlabeloffset = 100, 
+           zlabeloffset = 100,
            limits = ((x[1], zonal_slice_displacement * x[end]), (y[1], y[end]), (z[1], z[end])),
            elevation = 0.45,
            azimuth = 6.8,
