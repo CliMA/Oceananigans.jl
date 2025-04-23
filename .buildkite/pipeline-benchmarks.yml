@@ -33,14 +33,11 @@ steps:
 
   - wait
 
-  - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
+  - label: "🚀 Oceananigans GPU benchmarks"
     key: "benchmarks"
     agents:
       queue: "Oceananigans"
     command: |
-      # Strip emoji for environment variable
-      group="{{ matrix.group }}"
-
       # Instantiate
       $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no -e 'using Pkg; Pkg.instantiate()'
 
@@ -95,10 +92,6 @@ steps:
       - "periodic_cheap_advection_output.txt"
       - "bounded_cheap_advection_output.txt"
       - "immersed_output.txt"
-    matrix:
-      setup:
-        group:
-          - "🚀 Oceananigans GPU benchmarks"
     soft_fail:
       - exit_status: 3
 
