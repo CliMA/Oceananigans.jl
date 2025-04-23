@@ -224,7 +224,6 @@ end
     return :($(elem...),)
 end
 
-
 # ZWENO α weights C★ᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ε))ᵖ)
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
