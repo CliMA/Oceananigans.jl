@@ -29,22 +29,6 @@ steps:
           limit: 1
 
   - wait
-
-  # Saving the latest build ID of the main branch for
-  # later comparison of the artifacts in PRs
-  - label: "💾 conditional metadata save" 
-    key: "save-metadata"
-    agents:
-      queue: Oceananigans-benchmarks
-    
-    command: |
-      if [ "$BUILDKITE_BRANCH" = "main" ]; then
-        echo "Saving build ID for main..."
-        buildkite-agent meta-data set "latest-main-build-number" "$BUILDKITE_BUILD_NUMBER"
-        buildkite-agent meta-data set "latest-main-job-number"   "$BUILDKITE_JOB_ID"
-      else
-        echo "Not on main, skipping metadata save."
-      fi
     
   - label: "🚀 Oceananigans GPU benchmarks"
     key: "benchmarks"
@@ -102,24 +86,7 @@ steps:
       # rm immersed_output.nsys-rep
       # rm immersed_output.sqlite
 
-    artifact_paths:
-      - "periodic_output.txt"
-      - "bounded_output.txt"
-      - "periodic_cheap_advection_output.txt"
-      - "bounded_cheap_advection_output.txt"
-      - "immersed_output.txt"
-    soft_fail:
-      - exit_status: 3
-
-  - label: "⬇ Fetch and compare with main"
-    key: "fetch-compare"
-    agents:
-      queue: "Oceananigans-benchmarks"
-
-    command: |
-      # First we donwload the artifacts from the current PR build
-      buildkite-agent artifact download "*.txt" .
-
+      # Comparing with main branch artifacts
       export MAIN_BUILD_NUM=45 # $(buildkite-agent meta-data get "latest-main-build-number")
       export MAIN_BUILD_JOB=01966378-3b39-42b4-b65b-0af1a9b04892 # $(buildkite-agent meta-data get "latest-main-job-number")
 
@@ -149,9 +116,30 @@ steps:
       done
 
       echo "Uploading diffs..."
+
       buildkite-agent artifact upload "diff_*.txt"
 
       echo "Annotating summary..."
       for diff in diff_*.txt; do
           buildkite-agent annotate --style info --context "\$diff" < "\$diff"
       done
+
+      # Finally, daving the latest build ID of the main branch for
+      # later comparison of the artifacts in PRs
+
+      if [ "$BUILDKITE_BRANCH" = "main" ]; then
+        echo "Saving build ID for main..."
+        buildkite-agent meta-data set "latest-main-build-number" "$BUILDKITE_BUILD_NUMBER"
+        buildkite-agent meta-data set "latest-main-job-number"   "$BUILDKITE_JOB_ID"
+      else
+        echo "Not on main, skipping metadata save."
+      fi
+
+    artifact_paths:
+      - "periodic_output.txt"
+      - "bounded_output.txt"
+      - "periodic_cheap_advection_output.txt"
+      - "bounded_cheap_advection_output.txt"
+      - "immersed_output.txt"
+    soft_fail:
+      - exit_status: 3
