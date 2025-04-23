@@ -6,7 +6,7 @@ env:
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
   JULIA_NUM_PRECOMPILE_TASKS: 24
   JULIA_NUM_THREADS: 8
-  NSYS: "/storage6/simone/new_nsys/bin/nsys"
+  NSYS: "/storage6/simone/new_nsight/bin/nsys"
   CUDA_VISIBLE_DEVICES: "0" # Tartarus device for GPU Benchmarking
   TMPDIR: "$TARTARUS_HOME/tmp"
 
@@ -46,10 +46,11 @@ steps:
       echo $BENCHMARK_GROUP
 
       # Save output to a file
-      OUTPUT=output_$BENCHMARK_GROUP
+      export OUTPUT=output_${BENCHMARK_GROUP}
+      echo $OUTPUT
 
       # Run tests
-      $NSYS profile $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+      $NSYS profile --output=$OUTPUT --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
       $NSYS stats $OUTPUT.nsys-rep
 
       # Remove generated output files
