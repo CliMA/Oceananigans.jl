@@ -71,7 +71,7 @@ current_figure() #hide
 # so that ``x`` is the along-slope direction, ``z`` is the across-slope direction that
 # is perpendicular to the bottom, and the unit vector anti-aligned with gravity is
 
-ĝ = [sind(θ), 0, cosd(θ)]
+ĝ = (sind(θ), 0, cosd(θ))
 
 # Changing the vertical direction impacts both the `gravity_unit_vector`
 # for `BuoyancyForce` as well as the `rotation_axis` for Coriolis forces,
