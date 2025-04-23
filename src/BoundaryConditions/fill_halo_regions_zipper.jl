@@ -62,7 +62,7 @@ This is not the case for the v-velocity (or any field on the j-faces) where the 
     return nothing
 end
 
-@inline function fold_north_face_center!(i, k, grid, sign, c)
+@inline function fold_north_face_center!(i, k, grid, sign, u)
     Nx, Ny, _ = size(grid)
     i′ = Nx - i + 2 # Element Nx + 1 does not exist?
     sign  = ifelse(i′ > Nx , abs(sign), sign) # for periodic elements we change the sign
