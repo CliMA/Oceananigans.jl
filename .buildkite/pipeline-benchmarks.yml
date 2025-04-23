@@ -147,5 +147,3 @@ steps:
       for diff in diff_*.txt; do
         buildkite-agent annotate --style info --context "$diff" < "$diff"
       done
-    env:
-      BUILDKITE_API_TOKEN: "{{BUILDKITE_API_TOKEN}}"
