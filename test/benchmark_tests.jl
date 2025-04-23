@@ -61,8 +61,8 @@ end
 
 group = get(ENV, "BENCHMARK_GROUP", "all") |> Symbol
 
-const Nx = 1000
-const Ny = 500
+const Nx = 500
+const Ny = 200
 const Nz = 60
 
 arch = GPU()

@@ -41,29 +41,65 @@ steps:
 
       # Strip emoji for environment variable
       group="{{ matrix.group }}"
-      export BENCHMARK_GROUP="\${group#* }"
-      echo $BENCHMARK_GROUP
 
       # Instantiate
       $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no -e 'using Pkg; Pkg.instantiate()'
 
-      # Run benchmarks
-      $NSYS profile --output=nsys_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
-      $NSYS stats nsy_output.nsys-rep > nsys_output.txt
+      # Run Periodic benchmarks
+      export BENCHMARK_GROUP="periodic"
+      $NSYS profile --output=periodic_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+      $NSYS stats periodic_output.nsys-rep > periodic_output.txt
 
       # Remove generated output files
-      rm nsys_output.nsys-rep
-      rm nsys_output.sqlite
+      rm periodic_output.nsys-rep
+      rm periodic_output.sqlite
+
+      # Run Bounded benchmarks
+      export BENCHMARK_GROUP="bounded"
+      $NSYS profile --output=bounded_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+      $NSYS stats bounded_output.nsys-rep > bounded_output.txt
+
+      # Remove generated output files
+      rm bounded_output.nsys-rep
+      rm bounded_output.sqlite
+
+      # Run Periodic cheap advection benchmarks
+      export BENCHMARK_GROUP="periodic_cheap_advection"
+      $NSYS profile --output=periodic_cheap_advection_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+      $NSYS stats pperiodic_cheap_advection_output.nsys-rep > periodic_cheap_advection_output.txt
+
+      # Remove generated output files
+      rm periodic_cheap_advection.nsys-rep
+      rm periodic_cheap_advection.sqlite
+
+      # Run Bounded cheap advection benchmarks
+      export BENCHMARK_GROUP="bounded_cheap_advection"
+      $NSYS profile --output=bounded_cheap_advection_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+      $NSYS stats bounded_cheap_advection_output.nsys-rep > bounded_cheap_advection_output.txt
+
+      # Remove generated output files
+      rm bounded_cheap_advection_output.nsys-rep
+      rm bounded_cheap_advection_output.sqlite
+
+      # Run Immersed benchmarks
+      export BENCHMARK_GROUP="immersed"
+      $NSYS profile --output=immersed_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+      $NSYS stats immersed_output.nsys-rep > immersed_output.txt
+
+      # Remove generated output files
+      rm immersed_output.nsys-rep
+      rm immersed_output.sqlite
+
     artifact_paths:
-      - "nsys_output.txt"
+      - "periodic_output.txt"
+      - "bounded_output.txt"
+      - "periodic_cheap_advection_output.txt"
+      - "bounded_cheap_advection_output.txt"
+      - "immersed_output.txt"
     matrix:
       setup:
         group:
-          - "🍩 periodic"
-          # - "📦 bounded"
-          # - "🕊 periodic_cheap_vertical_advection"
-          # - "🦖 bounded_cheap_vertical_advection"
-          # - "🌷 immersed"
+          - "🚀 benchmark tests"
     soft_fail:
       - exit_status: 3
 
