@@ -123,7 +123,7 @@ steps:
       MAIN_BUILD_ID="0196647d-1e86-44a4-8a72-6e70f792cd20" # $(buildkite-agent meta-data get "latest-main-build")
 
       curl -s -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}" \
-        "https://api.buildkite.com/v2/organizations/clima/pipelines/Oceananigans-benchmarks/builds/0196647d-1e86-44a4-8a72-6e70f792cd20/artifacts" \
+        "https://api.buildkite.com/v2/organizations/clima/pipelines/oceananigans-benchmarks-1/builds/0196647d-1e86-44a4-8a72-6e70f792cd20/artifacts" \
         -o artifacts.json
 
       echo "🔍 artifacts.json contents:"
