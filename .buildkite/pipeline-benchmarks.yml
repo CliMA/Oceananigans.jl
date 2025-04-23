@@ -48,7 +48,7 @@ steps:
         "immersed"
       )
 
-      # Loop over each benchmark group
+      # Profile each benchmark group, save output in txt and remove profiles
       for BENCHMARK_GROUP in "\${BENCHMARK_GROUPS[@]}"; do
         # Run benchmarks
         export BENCHMARK_GROUP
