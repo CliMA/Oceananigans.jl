@@ -11,7 +11,7 @@ env:
   TMPDIR: "$TARTARUS_HOME/tmp"
 
 agents:
-  queue: "Oceananigans benchmarks"
+  queue: "Oceananigans-benchmarks"
 
 steps:
   - label: "🏕️ initialize tartarus environment"
@@ -26,7 +26,7 @@ steps:
       tar xf $TARTARUS_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $TARTARUS_HOME
       $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.instantiate()'
     agents:
-      queue: "Oceananigans benchmarks"
+      queue: "Oceananigans-benchmarks"
     retry:
       automatic:
         - exit_status: 1
@@ -37,7 +37,7 @@ steps:
   - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
     key: "tests"
     agents:
-      queue: "Oceananigans"
+      queue: "Oceananigans-benchmarks"
     command: |
     
       # Strip emoji for environment variable
