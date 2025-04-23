@@ -12,7 +12,6 @@ env:
 
 steps:
   - label: "🏕️ initialize tartarus environment"
-    if: "build.pull_request.labels includes \"benchmark performance\" || build.tag != null || build.branch == 'main'"
     key: "init"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
@@ -32,7 +31,6 @@ steps:
   - wait
 
   - label: "🚀 Oceananigans GPU benchmarks"
-    if: "build.pull_request.labels includes \"benchmark performance\" || build.tag != null || build.branch == 'main'"
     key: "benchmarks"
     agents:
       queue: "Oceananigans-benchmarks"
