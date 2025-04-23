@@ -10,9 +10,6 @@ env:
   CUDA_VISIBLE_DEVICES: "1" # Tartarus device for GPU Benchmarking
   TMPDIR: "$TARTARUS_HOME/tmp"
 
-agents:
-  queue: "Oceananigans"
-
 steps:
   - label: "🏕️ initialize tartarus environment"
     key: "init"
@@ -25,7 +22,7 @@ steps:
       wget -N -P $TARTARUS_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz
       tar xf $TARTARUS_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $TARTARUS_HOME
     agents:
-      queue: "Oceananigans"
+      queue: "Oceananigans-benchmarks"
     retry:
       automatic:
         - exit_status: 1
@@ -36,7 +33,7 @@ steps:
   - label: "🚀 Oceananigans GPU benchmarks"
     key: "benchmarks"
     agents:
-      queue: "Oceananigans"
+      queue: "Oceananigans-benchmarks"
     command: |
       # Instantiate
       $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no -e 'using Pkg; Pkg.instantiate()'
