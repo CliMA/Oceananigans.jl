@@ -122,14 +122,8 @@ steps:
       # Then we fetch the artifacts from the main branch build
       MAIN_BUILD_ID="0196647d-1e86-44a4-8a72-6e70f792cd20" # $(buildkite-agent meta-data get "latest-main-build")
 
-      # Ensure the MAIN_BUILD_ID is valid
-      if [ -z "$MAIN_BUILD_ID" ]; then
-        echo "Error: No main branch build ID found."
-        exit 1
-      fi
-
       curl -s -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}" \
-        "https://api.buildkite.com/v2/organizations/clima/pipelines/Oceananigans-benchmarks/builds/${MAIN_BUILD_ID}/artifacts" \
+        "https://api.buildkite.com/v2/organizations/clima/pipelines/Oceananigans-benchmarks/builds/0196647d-1e86-44a4-8a72-6e70f792cd20/artifacts" \
         -o artifacts.json
 
       # Comparing the artifacts, creating the diff files and uploading them
