@@ -74,11 +74,11 @@ ut = []
 vt = []
 ηt = []
 
-save_u(sim) = push!(ut, deepcopy(sim.model.velocities.u))  
+save_u(sim) = push!(ut, deepcopy(sim.model.velocities.u))
 save_v(sim) = push!(vt, deepcopy(sim.model.velocities.v))
 save_η(sim) = push!(ηt, deepcopy(sim.model.free_surface.η))
 
-function progress_message(sim) 
+function progress_message(sim)
     @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e",
     100 * sim.model.clock.time / sim.stop_time, sim.model.clock.iteration,
     sim.model.clock.time, maximum(abs, sim.model.velocities.u))

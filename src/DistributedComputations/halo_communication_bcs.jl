@@ -1,6 +1,6 @@
-using Oceananigans.BoundaryConditions: DistributedCommunicationBoundaryCondition, FieldBoundaryConditions
-using Oceananigans.BoundaryConditions: AbstractBoundaryConditionClassification
-import Oceananigans.BoundaryConditions: bc_str
+using Oceananigans.BoundaryConditions:
+    DistributedCommunicationBoundaryCondition,
+    FieldBoundaryConditions
 
 struct HaloCommunicationRanks{F, T}
     from :: F
@@ -46,6 +46,6 @@ function inject_halo_communication_boundary_conditions(field_bcs, local_rank, co
     bottom   = field_bcs.bottom
     top      = field_bcs.top
     immersed = field_bcs.immersed
-
+ 
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
