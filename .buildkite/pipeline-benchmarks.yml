@@ -45,16 +45,12 @@ steps:
       export BENCHMARK_GROUP="\${group#* }"
       echo $BENCHMARK_GROUP
 
-      # Save output to a file
-      export OUTPUT=output_${BENCHMARK_GROUP}
-      echo $OUTPUT
-
-      # Run tests
-      $NSYS profile --output=$OUTPUT --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+      # Run benchmarks
+      $NSYS profile --output=nsys_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
       $NSYS stats $OUTPUT.nsys-rep
 
       # Remove generated output files
-      rm $OUTPUT.*
+      rm nsys_output.*
     matrix:
       setup:
         group:
