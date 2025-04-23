@@ -86,6 +86,17 @@ steps:
       # rm immersed_output.nsys-rep
       # rm immersed_output.sqlite
 
+      # Finally, daving the latest build ID of the main branch for
+      # later comparison of the artifacts in PRs
+
+      if [ "$BUILDKITE_BRANCH" = "main" ]; then
+        echo "Saving build ID for main..."
+        buildkite-agent meta-data set "latest-main-build-number" "$BUILDKITE_BUILD_NUMBER"
+        buildkite-agent meta-data set "latest-main-job-number"   "$BUILDKITE_JOB_ID"
+      else
+        echo "Not on main, skipping metadata save."
+      fi
+
     artifact_paths:
       - "periodic_output.txt"
       - "bounded_output.txt"
@@ -140,18 +151,7 @@ steps:
           buildkite-agent annotate --style info --context "\$diff" < "\$diff"
       done
 
-      # Finally, daving the latest build ID of the main branch for
-      # later comparison of the artifacts in PRs
-
-      if [ "$BUILDKITE_BRANCH" = "main" ]; then
-        echo "Saving build ID for main..."
-        buildkite-agent meta-data set "latest-main-build-number" "$BUILDKITE_BUILD_NUMBER"
-        buildkite-agent meta-data set "latest-main-job-number"   "$BUILDKITE_JOB_ID"
-      else
-        echo "Not on main, skipping metadata save."
-      fi
-
-    artifacts_paths:
+    artifact_paths:
       - "diff_periodic_output.txt"
       - "diff_bounded_output.txt"
       - "diff_periodic_cheap_advection_output.txt"
