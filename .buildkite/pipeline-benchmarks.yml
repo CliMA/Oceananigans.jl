@@ -109,6 +109,10 @@ steps:
       - exit_status: 3
 
   - label: "⬇ Fetch and compare with main"
+    key: "fetch-compare"
+    agents:
+      queue: "Oceananigans-benchmarks"
+
     command: |
       # First we donwload the artifacts from the current PR build
       buildkite-agent artifact download "*.txt" .
