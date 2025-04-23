@@ -6,7 +6,7 @@ env:
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
   JULIA_NUM_PRECOMPILE_TASKS: 24
   JULIA_NUM_THREADS: 8
-  NSYS: "/storage6/simone/new_nsight/bin/nsys"
+  NSYS: "/storage6/nsight/bin/nsys"
   CUDA_VISIBLE_DEVICES: "1" # Tartarus device for GPU Benchmarking
   TMPDIR: "$TARTARUS_HOME/tmp"
 
