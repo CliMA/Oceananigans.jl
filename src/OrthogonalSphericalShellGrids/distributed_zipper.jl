@@ -105,7 +105,7 @@ function synchronize_communication!(field::Field{<:Any, <:Any, <:Any, <:Any, <:D
         empty!(arch.mpi_requests)
     end
 
-    recv_from_buffers!(field.data, field.boundary_buffers, field.grid)
+    recv_from_buffers!(field.data, field.communication_buffers, field.grid)
 
     north_bc = field.boundary_conditions.north
     instantiated_location = map(instantiate, location(field))
