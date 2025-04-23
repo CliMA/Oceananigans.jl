@@ -79,12 +79,12 @@ if group == :bounded
     run_benchmark(model)
 end    
 
-if group == :periodic_cheap_vertical_advection
+if group == :periodic_cheap_advection
     model = ocean_benchmark(arch, Nx, Ny, Nz, (Periodic, Periodic, Bounded), false, cheap_advection)
     run_benchmark(model)
 end    
 
-if group == :bounded_cheap_vertical_advection
+if group == :bounded_cheap_advection
     model = ocean_benchmark(arch, Nx, Ny, Nz, (Bounded, Bounded, Bounded), false, cheap_advection)
     run_benchmark(model)
 end    

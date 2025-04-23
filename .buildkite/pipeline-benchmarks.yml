@@ -68,8 +68,8 @@ steps:
       $NSYS stats periodic_cheap_advection_output.nsys-rep > periodic_cheap_advection_output.txt
 
       # Remove generated output files
-      rm periodic_cheap_advection.nsys-rep
-      rm periodic_cheap_advection.sqlite
+      rm periodic_cheap_advection_output.nsys-rep
+      rm periodic_cheap_advection_output.sqlite
 
       # Run Bounded cheap advection benchmarks
       export BENCHMARK_GROUP="bounded_cheap_advection"
