@@ -126,6 +126,9 @@ steps:
         "https://api.buildkite.com/v2/organizations/clima/pipelines/Oceananigans-benchmarks/builds/0196647d-1e86-44a4-8a72-6e70f792cd20/artifacts" \
         -o artifacts.json
 
+      echo "🔍 artifacts.json contents:"
+      cat artifacts.json
+
       # Comparing the artifacts, creating the diff files and uploading them
       for file in $(jq -r '.[] | select(.filename | endswith(".txt")) | .filename' artifacts.json); do
         echo "Downloading $file from main..."
