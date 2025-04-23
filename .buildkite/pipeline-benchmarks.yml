@@ -60,8 +60,6 @@ steps:
         # Remove generated output files
         rm \${OUTPUT_PREFIX}.nsys-rep
         rm \${OUTPUT_PREFIX}.sqlite
-
-        echo "ciao" > \${OUTPUT_PREFIX}.txt
       done
 
       # Finally save job ID and build number to later use to retrieve the artifacts
