@@ -93,12 +93,12 @@ function test_function_differentiation(T=Float64)
 
     grid  = RectilinearGrid(CPU(), T; size=(3, 3, 3), x=stretched_f, y=stretched_f, z=stretched_f, topology = (Bounded, Bounded, Bounded))
 
-    ∂x_f(i, j, k) = (ϕ²[i, j, k]   - ϕ²[i-1, j, k]) / df(i)
-    ∂x_c(i, j, k) = (ϕ²[i+1, j, k] - ϕ²[i, j, k])   / dc(i)
-    ∂y_f(i, j, k) = (ϕ²[i, j, k]   - ϕ²[i, j-1, k]) / df(j)
-    ∂y_c(i, j, k) = (ϕ²[i, j+1, k] - ϕ²[i, j, k])   / dc(j)
-    ∂z_f(i, j, k) = (ϕ²[i, j, k]   - ϕ²[i, j, k-1]) / df(k)
-    ∂z_c(i, j, k) = (ϕ²[i, j, k+1] - ϕ²[i, j, k])   / dc(k)
+    ∂x_f(i, j, k) = (ϕ²[i, j, k]   - ϕ²[i-1, j, k]) * 1 / df(i)
+    ∂x_c(i, j, k) = (ϕ²[i+1, j, k] - ϕ²[i, j, k])   * 1 / dc(i)
+    ∂y_f(i, j, k) = (ϕ²[i, j, k]   - ϕ²[i, j-1, k]) * 1 / df(j)
+    ∂y_c(i, j, k) = (ϕ²[i, j+1, k] - ϕ²[i, j, k])   * 1 / dc(j)
+    ∂z_f(i, j, k) = (ϕ²[i, j, k]   - ϕ²[i, j, k-1]) * 1 / df(k)
+    ∂z_c(i, j, k) = (ϕ²[i, j, k+1] - ϕ²[i, j, k])   * 1 / dc(k)
 
     for ∂x in (∂xᶜᶜᶜ, ∂xᶜᶜᶠ, ∂xᶜᶠᶜ, ∂xᶜᶠᶠ)
         @test ∂x(2, 2, 2, grid, f, ϕ) == ∂x_c(2, 2, 2)
