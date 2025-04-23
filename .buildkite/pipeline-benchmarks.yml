@@ -56,9 +56,6 @@ steps:
       rm $OUTPUT.*
     matrix:
       setup:
-        architecture:
-          - "CPU"
-          - "GPU"
         group:
           - "🍩 periodic"
           - "📦 bounded"
