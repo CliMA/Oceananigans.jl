@@ -11,11 +11,14 @@ env:
   TMPDIR: "$TARTARUS_HOME/tmp"
 
 steps:
-  - label: "save main ID build" # This is required to later retrieve the latest main build ID and compare artifacts
-    if: "build.branch == 'main'"
+  - label: "conditional metadata save"
     command: |
-      echo "Setting metadata with build ID: $BUILDKITE_BUILD_ID"
-      buildkite-agent meta-data set "latest-main-build" "$BUILDKITE_BUILD_ID"
+      if [ "$BUILDKITE_BRANCH" = "main" ]; then
+        echo "Saving build ID for main..."
+        buildkite-agent meta-data set "latest-main-build" "$BUILDKITE_BUILD_ID"
+      else
+        echo "Not on main, skipping metadata save."
+      fi
     agents:
       queue: Oceananigans-benchmarks
     
