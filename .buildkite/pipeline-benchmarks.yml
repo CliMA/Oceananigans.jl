@@ -30,7 +30,9 @@ steps:
 
   - wait
 
-  - label: "💾 conditional metadata save"
+  # Saving the latest build ID of the main branch for
+  # later comparison of the artifacts in PRs
+  - label: "💾 conditional metadata save" 
     key: "save-metadata"
     agents:
       queue: Oceananigans-benchmarks
