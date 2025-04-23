@@ -1,0 +1,66 @@
+env:
+  JULIA_VERSION: "1.10.9"
+  JULIA_MINOR_VERSION: "1.10"
+  TARTARUS_HOME: "/storage5/buildkite-agent"
+  JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+  JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
+  JULIA_NUM_PRECOMPILE_TASKS: 24
+  JULIA_NUM_THREADS: 8
+  NSYS: "/storage6/simone/new_nsys/bin/nsys"
+  CUDA_VISIBLE_DEVICES: "0" # Tartarus device for GPU Benchmarking
+  TMPDIR: "$TARTARUS_HOME/tmp"
+
+agents:
+  queue: "Oceananigans benchmarks"
+
+steps:
+  - label: "🏕️ initialize tartarus environment"
+    key: "init"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "init"
+      JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
+    command: |
+      # Download julia binaries
+      wget -N -P $TARTARUS_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz
+      tar xf $TARTARUS_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $TARTARUS_HOME
+      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.instantiate()'
+    agents:
+      queue: "Oceananigans benchmarks"
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
+
+  - wait
+
+  - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
+    key: "tests"
+    agents:
+      queue: "Oceananigans"
+    command: |
+    
+      # Strip emoji for environment variable
+      group="{{ matrix.group }}"
+      export BENCHMARK_GROUP="\${group#* }"
+      echo $BENCHMARK_GROUP
+
+      OUTPUT=output_$BENCHMARK_GROUP
+
+      # Run tests
+      $NSYS profile $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+      $NSYS stats $OUTPUT.nsys-rep
+    matrix:
+      setup:
+        architecture:
+          - "CPU"
+          - "GPU"
+        group:
+          - "🍩 periodic"
+          - "📦 bounded"
+          - "🕊 periodic_cheap_vertical_advection"
+          - "🦖 bounded_cheap_vertical_advection"
+          - "🌷 immersed"
+    soft_fail:
+      - exit_status: 3
+
