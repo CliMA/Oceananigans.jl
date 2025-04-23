@@ -291,7 +291,7 @@ end
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (1 + (newton_div(Float32, τ, β[$stencil] + ϵ)^2))
+        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (1 + (newton_div(Float32, τ, β[$stencil] + ϵ))^2))
     end
 
     return :($(elem...),)
