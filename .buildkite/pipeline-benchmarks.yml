@@ -54,6 +54,8 @@ steps:
       # Remove generated output files
       rm nsys_output.nsys-rep
       rm nsys_output.sqlite
+    artifact_paths:
+      - "nsys_output.txt"
     matrix:
       setup:
         group:
