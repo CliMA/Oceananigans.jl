@@ -109,7 +109,6 @@ steps:
       - exit_status: 3
 
   - label: "⬇ Fetch and compare with main"
-    if: "build.pull_request.labels includes \"benchmark performance\""
     command: |
       # First we donwload the artifacts from the current PR build
       buildkite-agent artifact download "*.txt" .
