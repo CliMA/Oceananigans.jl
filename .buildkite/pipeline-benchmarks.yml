@@ -87,8 +87,8 @@ steps:
       # rm immersed_output.sqlite
 
       # Comparing with main branch artifacts
-      export MAIN_BUILD_NUM=45 # $(buildkite-agent meta-data get "latest-main-build-number")
-      export MAIN_BUILD_JOB=01966378-3b39-42b4-b65b-0af1a9b04892 # $(buildkite-agent meta-data get "latest-main-job-number")
+      export MAIN_BUILD_NUM=$(buildkite-agent meta-data get "latest-main-build-number")
+      export MAIN_BUILD_JOB=$(buildkite-agent meta-data get "latest-main-job-number")
 
       echo \$MAIN_BUILD_NUM
       echo \$MAIN_BUILD_JOB
@@ -108,16 +108,12 @@ steps:
           curl -s -L "\$url" -o "baseline_\$file"
 
           echo "Comparing $file with baseline..."
-          if [ -f "$file" ]; then
+          if [ -f "\$file" ]; then
               diff -u "baseline_\$file" "\$file" > "diff_\$file" || true
           else
               echo "\$file not found in PR build. Skipping diff." > "diff_\$file"
           fi
       done
-
-      echo "Uploading diffs..."
-
-      buildkite-agent artifact upload "diff_*.txt"
 
       echo "Annotating summary..."
       for diff in diff_*.txt; do
@@ -141,5 +137,10 @@ steps:
       - "periodic_cheap_advection_output.txt"
       - "bounded_cheap_advection_output.txt"
       - "immersed_output.txt"
+      - "diff_periodic_output.txt"
+      - "diff_bounded_output.txt"
+      - "diff_periodic_cheap_advection_output.txt"
+      - "diff_bounded_cheap_advection_output.txt"
+      - "diff_immersed_output.txt"
     soft_fail:
       - exit_status: 3
