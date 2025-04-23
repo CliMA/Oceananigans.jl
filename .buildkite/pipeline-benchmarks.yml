@@ -34,11 +34,10 @@ steps:
   - wait
 
   - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
-    key: "tests"
+    key: "benchmarks"
     agents:
       queue: "Oceananigans"
     command: |
-
       # Strip emoji for environment variable
       group="{{ matrix.group }}"
 
@@ -66,7 +65,7 @@ steps:
       # Run Periodic cheap advection benchmarks
       export BENCHMARK_GROUP="periodic_cheap_advection"
       $NSYS profile --output=periodic_cheap_advection_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
-      $NSYS stats pperiodic_cheap_advection_output.nsys-rep > periodic_cheap_advection_output.txt
+      $NSYS stats periodic_cheap_advection_output.nsys-rep > periodic_cheap_advection_output.txt
 
       # Remove generated output files
       rm periodic_cheap_advection.nsys-rep
@@ -99,7 +98,7 @@ steps:
     matrix:
       setup:
         group:
-          - "🚀 benchmark tests"
+          - "🚀 Oceananigans GPU benchmarks"
     soft_fail:
       - exit_status: 3
 
