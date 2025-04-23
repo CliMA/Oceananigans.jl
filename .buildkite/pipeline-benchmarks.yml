@@ -115,7 +115,6 @@ steps:
       buildkite-agent artifact download "*.txt" .
 
       # Then we fetch the artifacts from the main branch build
-
       MAIN_BUILD_ID=$(buildkite-agent meta-data get "latest-main-build")
 
       # Ensure the MAIN_BUILD_ID is valid
