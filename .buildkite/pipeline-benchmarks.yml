@@ -39,17 +39,21 @@ steps:
     agents:
       queue: "Oceananigans-benchmarks"
     command: |
-    
+
       # Strip emoji for environment variable
       group="{{ matrix.group }}"
       export BENCHMARK_GROUP="\${group#* }"
       echo $BENCHMARK_GROUP
 
+      # Save output to a file
       OUTPUT=output_$BENCHMARK_GROUP
 
       # Run tests
       $NSYS profile $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
       $NSYS stats $OUTPUT.nsys-rep
+
+      # Remove generated output files
+      rm $OUTPUT.*
     matrix:
       setup:
         architecture:
