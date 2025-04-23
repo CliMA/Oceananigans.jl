@@ -349,7 +349,7 @@ end
 
     τ = global_smoothness_indicator(Val(N), β)
     α = zweno_alpha_loop(scheme, β, τ)
-    Σα⁻¹ = newton_div(Float32, 1, sum(α))
+    Σα⁻¹ =  1 / sum(α)
 
     return α .* Σα⁻¹
 end
