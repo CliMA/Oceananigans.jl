@@ -1,0 +1,83 @@
+env:
+  JULIA_VERSION: "1.10.9"
+  JULIA_MINOR_VERSION: "1.10"
+  TARTARUS_HOME: "/storage5/buildkite-agent"
+  JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+  JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
+  JULIA_NUM_PRECOMPILE_TASKS: 24
+  JULIA_NUM_THREADS: 8
+  NSYS: "/storage6/nsight/bin/nsys"
+  CUDA_VISIBLE_DEVICES: "1" # Tartarus device for GPU Benchmarking
+  TMPDIR: "$TARTARUS_HOME/tmp"
+
+steps:
+  - label: "🏕️ initialize tartarus environment"
+    key: "init"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "init"
+      JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
+    command: |
+      # Download julia binaries
+      wget -N -P $TARTARUS_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz
+      tar xf $TARTARUS_HOME/julia-$JULIA_VERSION-linux-x86_64.tar.gz -C $TARTARUS_HOME
+    agents:
+      queue: "Oceananigans-benchmarks"
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
+
+  - wait
+    
+  - label: "🚀 Oceananigans GPU benchmarks"
+    key: "benchmarks"
+    agents:
+      queue: "Oceananigans-benchmarks"
+
+    command: |
+      # Instantiate
+      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no -e 'using Pkg; Pkg.instantiate()'
+
+      # List of benchmark groups
+      BENCHMARK_GROUPS=(
+        "periodic"
+        "bounded"
+        "periodic_cheap_advection"
+        "bounded_cheap_advection"
+        "immersed"
+      )
+
+      # Profile each benchmark group, save output in txt and remove profiles
+      for BENCHMARK_GROUP in "\${BENCHMARK_GROUPS[@]}"; do
+        # Run benchmarks
+        export BENCHMARK_GROUP
+        OUTPUT_PREFIX="\${BENCHMARK_GROUP}_output"
+
+        $NSYS profile --output=\${OUTPUT_PREFIX} --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+        $NSYS stats \${OUTPUT_PREFIX}.nsys-rep > \${OUTPUT_PREFIX}.txt
+
+        # Remove generated output files
+        rm \${OUTPUT_PREFIX}.nsys-rep
+        rm \${OUTPUT_PREFIX}.sqlite
+      done
+
+      # Finally save job ID and build number to later use to retrieve the artifacts
+
+      if [ "$BUILDKITE_BRANCH" = "main" ]; then
+        echo "Saving build ID for main..."
+        buildkite-agent meta-data set "latest-main-build-number" "$BUILDKITE_BUILD_NUMBER"
+        buildkite-agent meta-data set "latest-main-job-id" "$BUILDKITE_JOB_ID"
+      else
+        echo "Not on main, skipping metadata save."
+      fi
+
+    artifact_paths:
+      - "periodic_output.txt"
+      - "bounded_output.txt"
+      - "periodic_cheap_advection_output.txt"
+      - "bounded_cheap_advection_output.txt"
+      - "immersed_output.txt"
+    soft_fail:
+      - exit_status: 3
+
