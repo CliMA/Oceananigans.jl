@@ -37,7 +37,7 @@ steps:
 
     command: |
       # Instantiate
-      # $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no -e 'using Pkg; Pkg.instantiate()'
+      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no -e 'using Pkg; Pkg.instantiate()'
 
       # List of benchmark groups
       BENCHMARK_GROUPS=(
@@ -54,12 +54,12 @@ steps:
         export BENCHMARK_GROUP
         OUTPUT_PREFIX="\${BENCHMARK_GROUP}_output"
 
-        # $NSYS profile --output=\${OUTPUT_PREFIX} --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
-        # $NSYS stats \${OUTPUT_PREFIX}.nsys-rep > \${OUTPUT_PREFIX}.txt
+        $NSYS profile --output=\${OUTPUT_PREFIX} --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+        $NSYS stats \${OUTPUT_PREFIX}.nsys-rep > \${OUTPUT_PREFIX}.txt
 
-        # # Remove generated output files
-        # rm \${OUTPUT_PREFIX}.nsys-rep
-        # rm \${OUTPUT_PREFIX}.sqlite
+        # Remove generated output files
+        rm \${OUTPUT_PREFIX}.nsys-rep
+        rm \${OUTPUT_PREFIX}.sqlite
 
         echo "ciao" > \${OUTPUT_PREFIX}.txt
       done
@@ -108,11 +108,6 @@ steps:
           else
               echo "\$file not found in PR build. Skipping diff." > "diff_\$file"
           fi
-      done
-
-      echo "Annotating summary..."
-      for diff in diff_*.txt; do
-          buildkite-agent annotate --style info --context "\$diff" < "\$diff"
       done
 
     artifact_paths:
