@@ -47,8 +47,8 @@ steps:
         "bounded_cheap_advection"
         "immersed"
       )
-
-      # Loop over each benchmark group
+      
+      # Profile each benchmark group, save output in txt and remove profiles
       for BENCHMARK_GROUP in "\${BENCHMARK_GROUPS[@]}"; do
         # Run benchmarks
         export BENCHMARK_GROUP
@@ -70,7 +70,7 @@ steps:
         buildkite-agent meta-data set "latest-main-job-id" "$BUILDKITE_JOB_ID"
       else
         echo "Not on main, skipping metadata save."
-      fi  
+      fi
 
     artifact_paths:
       - "periodic_output.txt"
