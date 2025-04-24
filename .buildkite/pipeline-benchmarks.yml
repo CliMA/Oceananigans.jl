@@ -62,16 +62,6 @@ steps:
         rm \${OUTPUT_PREFIX}.sqlite
       done
 
-      # Finally save job ID and build number to later use to retrieve the artifacts
-
-      if [ "$BUILDKITE_BRANCH" = "main" ]; then
-        echo "Saving build ID for main..."
-        buildkite-agent meta-data set "latest-main-build-number" "$BUILDKITE_BUILD_NUMBER"
-        buildkite-agent meta-data set "latest-main-job-id" "$BUILDKITE_JOB_ID"
-      else
-        echo "Not on main, skipping metadata save."
-      fi  
-
     artifact_paths:
       - "periodic_output.txt"
       - "bounded_output.txt"
@@ -92,17 +82,17 @@ steps:
       # First we donwload the artifacts from the current PR build
       buildkite-agent artifact download "*.txt" .
 
-      # Comparing with main branch artifacts
-      export MAIN_BUILD_NUM=\$(buildkite-agent meta-data get "latest-main-build-number")
-      export MAIN_BUILD_JOB=\$(buildkite-agent meta-data get "latest-main-job-number")
+      # Getting the JSON file of the latest passing main build
+      MAIN_BUILD_JSON=$(curl -s -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}" \
+        "https://api.buildkite.com/v2/organizations/clima/pipelines/oceananigans-benchmarks-1/builds?branch=main&state=passed&per_page=1")
 
+      export MAIN_BUILD_NUM=$(echo "$MAIN_BUILD_JSON" | jq -r '.[0].number')
       echo \$MAIN_BUILD_NUM
-      echo \$MAIN_BUILD_JOB
 
       # Then we fetch the artifacts from the main branch build
       curl -s -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}" \
-      "https://api.buildkite.com/v2/organizations/clima/pipelines/oceananigans-benchmarks-1/builds/\${MAIN_BUILD_NUM}/jobs/\${MAIN_BUILD_JOB}/artifacts" \
-      -o artifacts.json
+        "https://api.buildkite.com/v2/organizations/clima/pipelines/oceananigans-benchmarks-1/builds/\${MAIN_BUILD_NUM}/artifacts" \
+        -o artifacts.json
 
       echo "🔍 artifacts.json contents:"
       cat artifacts.json
