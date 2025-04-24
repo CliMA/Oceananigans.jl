@@ -80,8 +80,6 @@ steps:
       - "immersed_output.txt"
     soft_fail:
       - exit_status: 3
-    soft_fail:
-      - exit_status: 3
 
   - label: "⬇ Fetch and compare with main"
     key: "fetch-compare"
