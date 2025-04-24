@@ -1,7 +1,6 @@
 module TKEBasedVerticalDiffusivities
 
 using Adapt
-using Adapt
 using CUDA
 using KernelAbstractions: @kernel, @index
 
@@ -22,7 +21,6 @@ using Oceananigans.BoundaryConditions: DiscreteBoundaryFunction, FluxBoundaryCon
 using Oceananigans.BuoyancyFormulations: BuoyancyTracer, SeawaterBuoyancy
 using Oceananigans.BuoyancyFormulations: TemperatureSeawaterBuoyancy, SalinitySeawaterBuoyancy
 using Oceananigans.BuoyancyFormulations: ∂z_b, top_buoyancy_flux
-using Oceananigans.Grids: inactive_cell
 
 using Oceananigans.TurbulenceClosures:
     getclosure,
@@ -193,4 +191,3 @@ for S in (:CATKEMixingLength,
 end
 
 end # module
-
