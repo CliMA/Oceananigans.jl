@@ -37,7 +37,7 @@ steps:
 
     command: |
       # Instantiate
-      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no -e 'using Pkg; Pkg.instantiate()'
+      # $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no -e 'using Pkg; Pkg.instantiate()'
 
       # List of benchmark groups
       BENCHMARK_GROUPS=(
@@ -54,12 +54,14 @@ steps:
         export BENCHMARK_GROUP
         OUTPUT_PREFIX="\${BENCHMARK_GROUP}_output"
 
-        $NSYS profile --output=\${OUTPUT_PREFIX} --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
-        $NSYS stats \${OUTPUT_PREFIX}.nsys-rep > \${OUTPUT_PREFIX}.txt
+        # $NSYS profile --output=\${OUTPUT_PREFIX} --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+        # $NSYS stats \${OUTPUT_PREFIX}.nsys-rep > \${OUTPUT_PREFIX}.txt
 
-        # Remove generated output files
-        rm \${OUTPUT_PREFIX}.nsys-rep
-        rm \${OUTPUT_PREFIX}.sqlite
+        # # Remove generated output files
+        # rm \${OUTPUT_PREFIX}.nsys-rep
+        # rm \${OUTPUT_PREFIX}.sqlite
+
+        echo "ciao" > \${OUTPUT_PREFIX}.txt
       done
 
     artifact_paths:
@@ -81,10 +83,9 @@ steps:
       buildkite-agent artifact download "*.txt" .
 
       # Getting the JSON file of the latest passing main build
-      MAIN_BUILD_JSON=$(curl -s -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}" \
-        "https://api.buildkite.com/v2/organizations/clima/pipelines/oceananigans-benchmarks-1/builds?branch=main&state=passed&per_page=1")
+      MAIN_BUILD_JSON=\$(curl -s -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}" "https://api.buildkite.com/v2/organizations/clima/pipelines/oceananigans-benchmarks-1/builds?branch=main&state=passed&per_page=1")
 
-      export MAIN_BUILD_NUM=$(echo "$MAIN_BUILD_JSON" | jq -r '.[0].number')
+      export MAIN_BUILD_NUM=\$(echo "\$MAIN_BUILD_JSON" | jq -r '.[0].number')
       echo \$MAIN_BUILD_NUM
 
       # Then we fetch the artifacts from the main branch build
