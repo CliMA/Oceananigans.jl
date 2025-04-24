@@ -12,7 +12,9 @@ env:
 
 agents:
   queue: "Oceananigans"
-
+with: 
+  coverage: false
+  
 steps:
   - label: "🏕️ initialize tartarus environment"
     key: "init"
