@@ -96,7 +96,7 @@ Keyword arguments
                preallocated `CenterField`s.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
   - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
-  - `timestepper`: A symbol that specifies the time-stepping method. 
+  - `timestepper`: A symbol that specifies the time-stepping method.
                    Either `:QuasiAdamsBashforth2` (default) or `:SplitRungeKutta3`.
   - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
@@ -213,7 +213,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     # Regularize forcing for model tracer and velocity fields.
     model_fields = merge(prognostic_fields, auxiliary_fields)
     forcing = model_forcing(model_fields; forcing...)
-    
+
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, tracers,
                                         pressure, diffusivity_fields, timestepper, auxiliary_fields, vertical_coordinate)

@@ -70,16 +70,18 @@ end
                  properties = default_checkpointed_properties(model))
 
 Construct a `Checkpointer` that checkpoints the model to a JLD2 file on `schedule.`
-The `model.clock.iteration` is included in the filename to distinguish between multiple checkpoint files.
+The `model.clock.iteration` is included in the filename to distinguish between multiple
+checkpoint files.
 
-To restart or "pickup" a model from a checkpoint, specify `pickup = true` when calling `run!`, ensuring
-that the checkpoint file is in directory `dir`. See [`run!`](@ref) for more details.
+To restart or "pickup" a model from a checkpoint, specify `pickup = true` when
+calling `run!`, ensuring that the checkpoint file is in directory `dir`.
+See [`run!`](@ref) for more details.
 
 Note that extra model `properties` can be specified, but removing crucial properties
-such as `:timestepper` will render restoring from the checkpoint impossible.
+such as `:timestepper` might render restoring from the checkpoint impossible.
 
 The checkpointer attempts to serialize as much of the model to disk as possible,
-but functions or objects containing functions cannot be serialized at this time.
+but note that functions or objects containing functions cannot be serialized.
 
 Keyword arguments
 =================
@@ -99,8 +101,8 @@ Keyword arguments
              Default: `false`.
 
 - `properties`: List of model properties to checkpoint. This list _must_ contain
-                `:grid`, `:particles` and :clock`, and if using AB2 timestepping then also
-                `:timestepper`. Default: default_checkpointed_properties(model)
+                `:grid`, `:particles` and ``:clock`, and if using AB2 timestepping then also
+                `:timestepper`. Default: `default_checkpointed_properties(model)`.
 """
 function Checkpointer(model; schedule,
                       dir = ".",
@@ -255,6 +257,7 @@ function set!(model::AbstractModel, filepath::AbstractString)
         end
 
         set_time_stepper!(model.timestepper, file, model_fields, addr)
+        @show model.timestepper.Gⁿ[:u]
 
         if !isnothing(model.particles)
             copyto!(model.particles.properties, file["$addr/particles"])
@@ -279,6 +282,9 @@ function set_time_stepper_tendencies!(timestepper, file, model_fields, addr)
 
             tendencyⁿ_field = timestepper.Gⁿ[name]
             copyto!(tendencyⁿ_field.data.parent, parent_data)
+            if name==:u
+                @show tendencyⁿ_field
+            end
 
             # Tendency "n-1"
             parent_data = file["$addr/timestepper/G⁻/$name/data"]

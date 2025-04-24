@@ -134,7 +134,7 @@ function time_step!(sim::Simulation)
         sim.Δt
     end
 
-    initial_time_step = !(sim.initialized)
+    @show initial_time_step = !(sim.initialized)
     initial_time_step && initialize!(sim)
 
     if initial_time_step && sim.verbose
@@ -205,7 +205,7 @@ function initialize!(sim::Simulation)
 
     model = sim.model
     initialize!(model)
-    update_state!(model)
+    update_state!(model, compute_tendencies=true)
 
     # Output and diagnostics initialization
     [add_dependencies!(sim.diagnostics, writer) for writer in values(sim.output_writers)]
