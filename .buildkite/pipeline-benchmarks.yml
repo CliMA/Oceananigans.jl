@@ -29,21 +29,6 @@ steps:
           limit: 1
 
   - wait
-
-  # Saving the latest build ID of the main branch for
-  # later comparison of the artifacts in PRs
-  - label: "💾 conditional metadata save" 
-    key: "save-metadata"
-    agents:
-      queue: Oceananigans-benchmarks
-    
-    command: |
-      if [ "$BUILDKITE_BRANCH" = "main" ]; then
-        echo "Saving build ID for main..."
-        buildkite-agent meta-data set "latest-main-build" "$BUILDKITE_BUILD_ID"
-      else
-        echo "Not on main, skipping metadata save."
-      fi
     
   - label: "🚀 Oceananigans GPU benchmarks"
     key: "benchmarks"
@@ -54,50 +39,38 @@ steps:
       # Instantiate
       $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no -e 'using Pkg; Pkg.instantiate()'
 
-      # Run Periodic benchmarks
-      export BENCHMARK_GROUP="periodic"
-      $NSYS profile --output=periodic_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
-      $NSYS stats periodic_output.nsys-rep > periodic_output.txt
+      # List of benchmark groups
+      BENCHMARK_GROUPS=(
+        "periodic"
+        "bounded"
+        "periodic_cheap_advection"
+        "bounded_cheap_advection"
+        "immersed"
+      )
 
-      # Remove generated output files
-      rm periodic_output.nsys-rep
-      rm periodic_output.sqlite
+      # Profile each benchmark group, save output in txt and remove profiles
+      for BENCHMARK_GROUP in "\${BENCHMARK_GROUPS[@]}"; do
+        # Run benchmarks
+        export BENCHMARK_GROUP
+        OUTPUT_PREFIX="\${BENCHMARK_GROUP}_output"
 
-      # Run Bounded benchmarks
-      export BENCHMARK_GROUP="bounded"
-      $NSYS profile --output=bounded_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
-      $NSYS stats bounded_output.nsys-rep > bounded_output.txt
+        $NSYS profile --output=\${OUTPUT_PREFIX} --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
+        $NSYS stats \${OUTPUT_PREFIX}.nsys-rep > \${OUTPUT_PREFIX}.txt
 
-      # Remove generated output files
-      rm bounded_output.nsys-rep
-      rm bounded_output.sqlite
+        # Remove generated output files
+        rm \${OUTPUT_PREFIX}.nsys-rep
+        rm \${OUTPUT_PREFIX}.sqlite
+      done
 
-      # Run Periodic cheap advection benchmarks
-      export BENCHMARK_GROUP="periodic_cheap_advection"
-      $NSYS profile --output=periodic_cheap_advection_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
-      $NSYS stats periodic_cheap_advection_output.nsys-rep > periodic_cheap_advection_output.txt
+      # Finally save job ID and build number to later use to retrieve the artifacts
 
-      # Remove generated output files
-      rm periodic_cheap_advection_output.nsys-rep
-      rm periodic_cheap_advection_output.sqlite
-
-      # Run Bounded cheap advection benchmarks
-      export BENCHMARK_GROUP="bounded_cheap_advection"
-      $NSYS profile --output=bounded_cheap_advection_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
-      $NSYS stats bounded_cheap_advection_output.nsys-rep > bounded_cheap_advection_output.txt
-
-      # Remove generated output files
-      rm bounded_cheap_advection_output.nsys-rep
-      rm bounded_cheap_advection_output.sqlite
-
-      # Run Immersed benchmarks
-      export BENCHMARK_GROUP="immersed"
-      $NSYS profile --output=immersed_output --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
-      $NSYS stats immersed_output.nsys-rep > immersed_output.txt
-
-      # Remove generated output files
-      rm immersed_output.nsys-rep
-      rm immersed_output.sqlite
+      if [ "$BUILDKITE_BRANCH" = "main" ]; then
+        echo "Saving build ID for main..."
+        buildkite-agent meta-data set "latest-main-build-number" "$BUILDKITE_BUILD_NUMBER"
+        buildkite-agent meta-data set "latest-main-job-id" "$BUILDKITE_JOB_ID"
+      else
+        echo "Not on main, skipping metadata save."
+      fi
 
     artifact_paths:
       - "periodic_output.txt"
