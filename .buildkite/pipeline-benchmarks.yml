@@ -93,8 +93,8 @@ steps:
       buildkite-agent artifact download "*.txt" .
 
       # Comparing with main branch artifacts
-      export MAIN_BUILD_NUM=45 # $(buildkite-agent meta-data get "latest-main-build-number")
-      export MAIN_BUILD_JOB=01966378-3b39-42b4-b65b-0af1a9b04892 # $(buildkite-agent meta-data get "latest-main-job-number")
+      export MAIN_BUILD_NUM=\$(buildkite-agent meta-data get "latest-main-build-number")
+      export MAIN_BUILD_JOB=\$(buildkite-agent meta-data get "latest-main-job-number")
 
       echo \$MAIN_BUILD_NUM
       echo \$MAIN_BUILD_JOB
@@ -111,7 +111,7 @@ steps:
       for file in \$(jq -r '.[] | select(.filename | endswith(".txt")) | .filename' artifacts.json); do
           echo "Downloading \$file from main..."
           url=$(jq -r --arg filename "\$file" '.[] | select(.filename == \$filename) | .download_url' artifacts.json)
-          curl -s -L -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}""\$url" -o "baseline_\$file"
+          curl -s -L -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}" "\$url" -o "baseline_\$file"
 
           echo "Comparing \$file with baseline..."
           if [ -f "\$file" ]; then
