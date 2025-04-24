@@ -14,7 +14,7 @@ struct RightBoundary end
 
 A wrapper for the user-defined boundary condition function `func` at location
 `X, Y, Z`. `I` denotes the boundary-normal index (`I=1` at western boundaries,
-`I=grid.Nx` at eastern boundaries, etc). `F, P, D, N, ℑ` are, respectively, the 
+`I=grid.Nx` at eastern boundaries, etc). `F, P, D, N, ℑ` are, respectively, the
 user-defined function, parameters, field dependencies, indices of the field dependencies
 in `model_fields`, and interpolation operators for interpolating `model_fields` to the
 location at which the boundary condition is applied.
@@ -72,7 +72,7 @@ The regularization of `bc.condition::ContinuousBoundaryFunction` requries
    of the boundary.
 """
 function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction},
-                                       grid, loc, dim, Side, prognostic_field_names) where C
+                                       grid, loc, dim, Side, field_names) where C
 
     boundary_func = bc.condition
 
@@ -81,7 +81,7 @@ function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoun
 
     indices, interps = index_and_interp_dependencies(LX, LY, LZ,
                                                      boundary_func.field_dependencies,
-                                                     prognostic_field_names)
+                                                     field_names)
 
     regularized_boundary_func = ContinuousBoundaryFunction{LX, LY, LZ, Side}(boundary_func.func,
                                                                              boundary_func.parameters,
@@ -210,7 +210,7 @@ function Base.summary(bf::ContinuousBoundaryFunction)
 end
 
 prettysummary(bf::ContinuousBoundaryFunction) = summary(bf)
-    
+
 Adapt.adapt_structure(to, bf::ContinuousBoundaryFunction{LX, LY, LZ, S}) where {LX, LY, LZ, S} =
     ContinuousBoundaryFunction{LX, LY, LZ, S}(Adapt.adapt(to, bf.func),
                                               Adapt.adapt(to, bf.parameters),

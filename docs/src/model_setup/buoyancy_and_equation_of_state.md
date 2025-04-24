@@ -63,7 +63,7 @@ HydrostaticFreeSurfaceModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 
 ├── buoyancy: Nothing
 ├── free surface: ImplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 │   └── solver: FFTImplicitFreeSurfaceSolver
-├── advection scheme: 
+├── advection scheme:
 │   └── momentum: Vector Invariant, Dimension-by-dimension reconstruction
 └── coriolis: Nothing
 ```
@@ -111,7 +111,7 @@ salinity ``S``. The relationship between ``T``, ``S``, the geopotential height, 
 perturbation from a reference value is called the `equation_of_state`.
 
 Specifying `buoyancy = SeawaterBuoyancy()` returns a buoyancy model with a linear equation of state,
-[Earth standard](https://en.wikipedia.org/wiki/Standard_gravity) `gravitational_acceleration = 9.80665` (in 
+[Earth standard](https://en.wikipedia.org/wiki/Standard_gravity) `gravitational_acceleration = 9.80665` (in
 S.I. units ``\text{m}\,\text{s}^{-2}``) and requires to add `:T` and `:S` as tracers:
 
 ```jldoctest buoyancy
@@ -190,9 +190,9 @@ julia> using SeawaterPolynomials.SecondOrderSeawaterPolynomials
 
 julia> eos = RoquetEquationOfState(:Freezing)
 BoussinesqEquationOfState{Float64}:
-    ├── seawater_polynomial: SecondOrderSeawaterPolynomial{Float64}
-    └── reference_density: 1024.6
-    
+├── seawater_polynomial: SecondOrderSeawaterPolynomial{Float64}
+└── reference_density: 1024.6
+
 julia> eos.seawater_polynomial # the density anomaly
 ρ' = 0.7718 Sᴬ - 0.0491 Θ - 0.005027 Θ² - 2.5681e-5 Θ Z + 0.0 Sᴬ² + 0.0 Sᴬ Z + 0.0 Sᴬ Θ
 
@@ -213,8 +213,8 @@ julia> using SeawaterPolynomials.TEOS10
 
 julia> eos = TEOS10EquationOfState()
 BoussinesqEquationOfState{Float64}:
-    ├── seawater_polynomial: TEOS10SeawaterPolynomial{Float64}
-    └── reference_density: 1020.0
+├── seawater_polynomial: TEOS10SeawaterPolynomial{Float64}
+└── reference_density: 1020.0
 ```
 
 ## The direction of gravitational acceleration

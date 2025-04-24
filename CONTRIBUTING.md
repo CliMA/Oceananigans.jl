@@ -1,12 +1,12 @@
 # Contributors Guide
 
-Thank you for considering contributing to Oceananigans! 
+Thank you for considering contributing to Oceananigans!
 
 Feel free to ask us questions and chat with us at any time about any topic at all
-by 
+by
 
 * [Opening a GitHub issue](https://github.com/CliMA/Oceananigans.jl/issues/new/choose)
- 
+
 * [Creating a GitHub discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new)
 
 * Sending a message to the [#oceananigans channel](https://julialang.slack.com/archives/C01D24C0CAH) on [Julia Slack](https://julialang.org/slack/).

@@ -31,13 +31,13 @@ Keyword arguments
 """
 function HydrostaticSphericalCoriolis(FT::DataType=Oceananigans.defaults.FloatType;
                                       rotation_rate = Ω_Earth,
-                                      scheme :: S = EnstrophyConserving()) where S
+                                      scheme :: S = EnstrophyConserving(FT)) where S
 
     return HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
 end
 
 Adapt.adapt_structure(to, coriolis::HydrostaticSphericalCoriolis) =
-    HydrostaticSphericalCoriolis(Adapt.adapt(to, coriolis.rotation_rate), 
+    HydrostaticSphericalCoriolis(Adapt.adapt(to, coriolis.rotation_rate),
                                  Adapt.adapt(to, coriolis.scheme))
 
 @inline φᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)        = φnode(j, grid, face)
@@ -86,7 +86,7 @@ const CoriolisEnergyConserving = HydrostaticSphericalCoriolis{<:EnergyConserving
 ##### Show
 #####
 
-function Base.show(io::IO, hydrostatic_spherical_coriolis::HydrostaticSphericalCoriolis) 
+function Base.show(io::IO, hydrostatic_spherical_coriolis::HydrostaticSphericalCoriolis)
     coriolis_scheme = hydrostatic_spherical_coriolis.scheme
     rotation_rate   = hydrostatic_spherical_coriolis.rotation_rate
     rotation_rate_Earth = rotation_rate / Ω_Earth

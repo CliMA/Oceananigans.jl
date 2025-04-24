@@ -37,11 +37,11 @@ The operators in this file fall into three categories:
 
 # This metaprogramming loop defines all possible combinations of locations for spacings.
 # The general 2D and 3D spacings are reconducted to their one - dimensional counterparts.
-# Grids that do not have a specific one - dimensional spacing for a given location need to 
+# Grids that do not have a specific one - dimensional spacing for a given location need to
 # extend these functions (for example, LatitudeLongitudeGrid).
 
 # Calling a non existing function (for example Δxᶜᵃᶜ on an OrthogonalSphericalShellGrid) will throw an error because
-# the associated one - dimensional function is not defined. 
+# the associated one - dimensional function is not defined.
 for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
     Δxˡᵃᵃ = Symbol(:Δx, L1, :ᵃ, :ᵃ)
     Δyᵃˡᵃ = Symbol(:Δy, :ᵃ, L1, :ᵃ)
@@ -63,7 +63,7 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
     Δλˡᵃˡ = Symbol(:Δλ, L1, :ᵃ, L2)
     Δφᵃˡˡ = Symbol(:Δφ, :ᵃ, L1, L2)
     Δrᵃˡˡ = Symbol(:Δr, :ᵃ, L2, L1)
-    
+
     @eval @inline $Δxˡˡᵃ(i, j, k, grid) = $Δxˡᵃᵃ(i, j, k, grid)
     @eval @inline $Δxˡᵃˡ(i, j, k, grid) = $Δxˡᵃᵃ(i, j, k, grid)
 
@@ -72,7 +72,7 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
 
     @eval @inline $Δzˡᵃˡ(i, j, k, grid) = $Δzᵃᵃˡ(i, j, k, grid)
     @eval @inline $Δzᵃˡˡ(i, j, k, grid) = $Δzᵃᵃˡ(i, j, k, grid)
-        
+
     @eval @inline $Δλˡˡᵃ(i, j, k, grid) = $Δλˡᵃᵃ(i, j, k, grid)
     @eval @inline $Δλˡᵃˡ(i, j, k, grid) = $Δλˡᵃᵃ(i, j, k, grid)
 
@@ -89,7 +89,7 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
         Δλˡˡˡ = Symbol(:Δλ, L1, L2, L3)
         Δφˡˡˡ = Symbol(:Δφ, L2, L1, L3)
         Δrˡˡˡ = Symbol(:Δr, L2, L3, L1)
-    
+
         @eval @inline $Δxˡˡˡ(i, j, k, grid) = $Δxˡˡᵃ(i, j, k, grid)
         @eval @inline $Δyˡˡˡ(i, j, k, grid) = $Δyˡˡᵃ(i, j, k, grid)
         @eval @inline $Δzˡˡˡ(i, j, k, grid) = $Δzˡᵃˡ(i, j, k, grid)
@@ -139,7 +139,7 @@ end
 @inline Δyᵃᶠᵃ(i, j, k, grid::RGY) = grid.Δyᵃᶠᵃ
 @inline Δyᵃᶜᵃ(i, j, k, grid::RGY) = grid.Δyᵃᶜᵃ
 
-##### 
+#####
 ##### LatitudeLongitude Grids (define both precomputed and non-precomputed metrics)
 #####
 
@@ -261,7 +261,7 @@ end
 # We do the same thing as for the spacings: define general areas and then specialize for each grid.
 # Areas need to be at least 2D so we use the respective 2D spacings to define them.
 for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
-    
+
     Δxˡˡᵃ = Symbol(:Δx, L1, L2, :ᵃ)
     Δxˡᵃˡ = Symbol(:Δx, L1, :ᵃ, L2)
     Δyˡˡᵃ = Symbol(:Δy, L1, L2, :ᵃ)
@@ -290,7 +290,7 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
         Axˡˡˡ = Symbol(:Ax, L1, L2, L3)
         Ayˡˡˡ = Symbol(:Ay, L1, L2, L3)
         Azˡˡˡ = Symbol(:Az, L1, L2, L3)
-    
+
         @eval begin
             @inline $Axˡˡˡ(i, j, k, grid) = $Δyˡˡˡ(i, j, k, grid) * $Δzˡˡˡ(i, j, k, grid)
             @inline $Ayˡˡˡ(i, j, k, grid) = $Δxˡˡˡ(i, j, k, grid) * $Δzˡˡˡ(i, j, k, grid)
@@ -301,7 +301,7 @@ for L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
         end
     end
 end
-   
+
 ####
 #### Special 2D z Areas for LatitudeLongitudeGrid and OrthogonalSphericalShellGrid
 ####
@@ -368,6 +368,7 @@ for LX in (:Center, :Face, :Nothing)
 
                 @eval begin
                     @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
+                    export $metric
                 end
             end
 
@@ -378,6 +379,7 @@ for LX in (:Center, :Face, :Nothing)
 
                 @eval begin
                     @inline $func(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $metric(i, j, k, grid)
+                    export $metric
                 end
             end
 
@@ -385,6 +387,7 @@ for LX in (:Center, :Face, :Nothing)
             volume_function = Symbol(:V, location_code(LXe, LYe, LZe))
             @eval begin
                 @inline volume(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $volume_function(i, j, k, grid)
+                export $volume_function
             end
         end
     end

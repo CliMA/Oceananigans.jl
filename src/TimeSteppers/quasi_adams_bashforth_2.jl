@@ -173,4 +173,3 @@ Time step velocity fields via the 2nd-order quasi Adams-Bashforth method
 end
 
 @kernel ab2_step_field!(::FunctionField, Δt, χ, Gⁿ, G⁻) = nothing
-

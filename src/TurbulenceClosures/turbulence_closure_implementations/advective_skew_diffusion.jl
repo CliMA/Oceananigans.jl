@@ -16,16 +16,16 @@ function compute_eddy_velocities!(diffusivities, closure::SkewAdvectionISSD, mod
     clock    = model.clock
 
     model_fields = fields(model)
-    
-    launch!(architecture(grid), grid, parameters, _compute_eddy_velocities!, 
+
+    launch!(architecture(grid), grid, parameters, _compute_eddy_velocities!,
             uₑ, vₑ, wₑ, grid, clock, closure, buoyancy, model_fields)
-    
+
     return nothing
 end
 
 # Slope in x-direction at F, C, F locations
 @inline function Sxᶠᶜᶠ(i, j, k, grid, clo, b, C)
-    bx = ℑzᵃᵃᶠ(i, j, k, grid, ∂x_b, b, C) 
+    bx = ℑzᵃᵃᶠ(i, j, k, grid, ∂x_b, b, C)
     bz = ℑxᶠᵃᵃ(i, j, k, grid, ∂z_b, b, C)
 
     Sₘ = clo.slope_limiter.max_slope
@@ -41,9 +41,9 @@ end
 
 # Slope in y-direction at F, C, F locations
 @inline function Syᶜᶠᶠ(i, j, k, grid, clo, b, C)
-    by = ℑzᵃᵃᶠ(i, j, k, grid, ∂y_b, b, C) 
+    by = ℑzᵃᵃᶠ(i, j, k, grid, ∂y_b, b, C)
     bz = ℑyᵃᶠᵃ(i, j, k, grid, ∂z_b, b, C)
-    
+
     Sₘ = clo.slope_limiter.max_slope
 
     # Impose a boundary condition on immersed peripheries
@@ -53,7 +53,7 @@ end
     Sy = ifelse(inactive, zero(grid), Sy)
 
     return ϵ * Sy
-end 
+end
 
 @inline κ_Sxᶠᶜᶠ(i, j, k, grid, clk, clo, κ, b, fields) = κᶠᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ, clk.time, fields) * Sxᶠᶜᶠ(i, j, k, grid, clo, b, fields)
 @inline κ_Syᶜᶠᶠ(i, j, k, grid, clk, clo, κ, b, fields) = κᶜᶠᶠ(i, j, k, grid, issd_coefficient_loc, κ, clk.time, fields) * Syᶜᶠᶠ(i, j, k, grid, clo, b, fields)
@@ -69,8 +69,8 @@ end
         vₑ[i, j, k] = - ∂zᶜᶠᶜ(i, j, k, grid, κ_Syᶜᶠᶠ, clock, closure, κ, buoyancy, fields)
 
         wˣ = ∂xᶜᶜᶠ(i, j, k, grid, κ_Sxᶠᶜᶠ, clock, closure, κ, buoyancy, fields)
-        wʸ = ∂yᶜᶜᶠ(i, j, k, grid, κ_Syᶜᶠᶠ, clock, closure, κ, buoyancy, fields) 
-        
+        wʸ = ∂yᶜᶜᶠ(i, j, k, grid, κ_Syᶜᶠᶠ, clock, closure, κ, buoyancy, fields)
+
         wₑ[i, j, k] =  wˣ + wʸ
     end
 end
@@ -103,7 +103,7 @@ end
 @inline closure_turbulent_velocity(closures::Tuple{<:Any}, Ks, val_tracer_name) =
             closure_turbulent_velocity(closures[1], Ks[1], val_tracer_name)
 
-@inline closure_turbulent_velocity(closures::Tuple{<:Any, <:Any}, Ks, val_tracer_name) = 
+@inline closure_turbulent_velocity(closures::Tuple{<:Any, <:Any}, Ks, val_tracer_name) =
     select_velocities(closure_turbulent_velocity(closures[1], Ks[1], val_tracer_name),
                       closure_turbulent_velocity(closures[2], Ks[2], val_tracer_name))
 

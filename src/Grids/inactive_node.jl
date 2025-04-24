@@ -2,22 +2,24 @@
 const c = Center()
 const f = Face()
 
-function build_condition(Topo, side, dim, array::Bool) 
-    if Topo == :Bounded 
+using ReactantCore
+
+function build_condition(Topo, side, dim, array::Bool)
+    if Topo == :Bounded
         if array
-            return :(($side .< 1) .| ($side .> grid.$dim))
+            return :((ReactantCore.materialize_traced_array($side) .< 1) .| (ReactantCore.materialize_traced_array($side) .> grid.$dim))
         else
             return :(($side < 1) | ($side > grid.$dim))
         end
     elseif Topo == :LeftConnected
         if array
-            return :(($side .> grid.$dim))
+            return :((ReactantCore.materialize_traced_array($side) .> grid.$dim))
         else
             return :(($side > grid.$dim))
         end
     else # RightConnected
         if array
-            return :(($side .< 1))
+            return :((ReactantCore.materialize_traced_array($side) .< 1))
         else
             return :(($side < 1))
         end
@@ -54,7 +56,7 @@ for PrimaryTopo in Topos
     xcondition = build_condition(PrimaryTopo, :i, :Nx, false)
     ycondition = build_condition(PrimaryTopo, :j, :Ny, false)
     zcondition = build_condition(PrimaryTopo, :k, :Nz, false)
-    
+
     xcondition_ar = build_condition(PrimaryTopo, :i, :Nx, true)
     ycondition_ar = build_condition(PrimaryTopo, :j, :Ny, true)
     zcondition_ar = build_condition(PrimaryTopo, :k, :Nz, true)
@@ -77,7 +79,7 @@ for PrimaryTopo in Topos
         xycondition = :( $xcondition | $(build_condition(SecondaryTopo, :j, :Ny, false)))
         xzcondition = :( $xcondition | $(build_condition(SecondaryTopo, :k, :Nz, false)))
         yzcondition = :( $ycondition | $(build_condition(SecondaryTopo, :k, :Nz, false)))
-        
+
         xycondition_ar = :( $xcondition_ar .| $(build_condition(SecondaryTopo, :j, :Ny, true)))
         xzcondition_ar = :( $xcondition_ar .| $(build_condition(SecondaryTopo, :k, :Nz, true)))
         yzcondition_ar = :( $ycondition_ar .| $(build_condition(SecondaryTopo, :k, :Nz, true)))

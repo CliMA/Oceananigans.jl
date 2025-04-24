@@ -5,6 +5,7 @@ using Oceananigans.DistributedComputations: Distributed, all_reduce
 import Oceananigans.Models: iteration
 import Oceananigans.Utils: prettytime
 import Oceananigans.TimeSteppers: reset!, set_clock!
+import Oceananigans.OutputWriters: write_output!
 
 default_progress(simulation) = nothing
 
@@ -125,8 +126,6 @@ function Base.show(io::IO, s::Simulation)
                      "└── Diagnostics: $(ordered_dict_show(s.diagnostics, "│"))")
 end
 
-set_clock!(sim::Simulation, new_clock) = set_clock!(sim.model, new_clock)
-
 #####
 ##### Utilities
 #####
@@ -244,4 +243,11 @@ function wall_time_limit_exceeded(sim)
 
     return nothing
 end
+
+#####
+##### Writing output and checkpointing
+#####
+
+# Fallback, to be elaborated on
+write_output!(writer, sim::Simulation) = write_output!(writer, sim.model)
 

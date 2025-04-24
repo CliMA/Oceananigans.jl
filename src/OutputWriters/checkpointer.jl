@@ -101,8 +101,9 @@ Keyword arguments
              Default: `false`.
 
 - `properties`: List of model properties to checkpoint. This list _must_ contain
-                `:grid`, `:particles` and ``:clock`, and if using AB2 timestepping then also
-                `:timestepper`. Default: `default_checkpointed_properties(model)`.
+                `:grid`, `:particles` and `:clock`, and if using AB2 timestepping then also
+                `:timestepper`. Default: calls [`default_checkpointed_properties`](@ref) on
+                `model` to get these properties.
 """
 function Checkpointer(model; schedule,
                       dir = ".",
@@ -179,7 +180,7 @@ end
 ##### Writing checkpoints
 #####
 
-function write_output!(c::Checkpointer, model)
+function write_output!(c::Checkpointer, model::AbstractModel)
     filepath = checkpoint_path(model.clock.iteration, c)
     c.verbose && @info "Checkpointing to file $filepath..."
 
