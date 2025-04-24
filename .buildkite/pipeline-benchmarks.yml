@@ -47,8 +47,8 @@ steps:
         "bounded_cheap_advection"
         "immersed"
       )
-
-      # Loop over each benchmark group
+      
+      # Profile each benchmark group, save output in txt and remove profiles
       for BENCHMARK_GROUP in "\${BENCHMARK_GROUPS[@]}"; do
         # Run benchmarks
         export BENCHMARK_GROUP
@@ -68,8 +68,6 @@ steps:
       - "periodic_cheap_advection_output.txt"
       - "bounded_cheap_advection_output.txt"
       - "immersed_output.txt"
-    soft_fail:
-      - exit_status: 3
     soft_fail:
       - exit_status: 3
 
