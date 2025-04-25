@@ -4,7 +4,7 @@ import Oceananigans
 ##### Weighted Essentially Non-Oscillatory (WENO) advection scheme
 #####
 
-struct WENO{N, FT, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
+struct WENO{N, FT, FTS, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
 
     "Bounds for maximum-principle-satisfying WENO scheme"
     bounds :: PP
@@ -14,20 +14,26 @@ struct WENO{N, FT, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
     "Reconstruction scheme used for symmetric interpolation"
     advecting_velocity_scheme :: SI
 
-    function WENO{N, FT}(bounds::PP, buffer_scheme::CA,
-                         advecting_velocity_scheme :: SI) where {N, FT, PP, CA, SI}
+    function WENO{N, FT, FTS}(bounds::PP, buffer_scheme::CA,
+                              advecting_velocity_scheme :: SI) where {N, FT, PP, CA, SI}
 
-        return new{N, FT, PP, CA, SI}(bounds, buffer_scheme, advecting_velocity_scheme)
+        return new{N, FT, FTS, PP, CA, SI}(bounds, buffer_scheme, advecting_velocity_scheme)
     end
 end
 
 """
-    WENO([FT=Float64;]
+    WENO([FT=Float64, FTS=Float32;]
          order = 5,
          grid = nothing,
          bounds = nothing)
 
-Construct a weighted essentially non-oscillatory advection scheme of order `order`.
+Construct a weighted essentially non-oscillatory advection scheme of order `order` with precision `FT`.
+
+Arguments
+=========
+
+- `FT`: The floating point type used in the scheme. Default: `Oceananigans.defaults.FloatType`
+- `FTS`: The floating point type used in some performance-critical parts of the scheme. Default: `Float32`
 
 Keyword arguments
 =================
@@ -68,7 +74,7 @@ WENO(order=7)
     └── Centered(order=6)
 ```
 """
-function WENO(FT::DataType=Oceananigans.defaults.FloatType;
+function WENO(FT::DataType=Oceananigans.defaults.FloatType, FTS::DataType=Float32;
               order = 5,
               grid = nothing,
               bounds = nothing)
@@ -92,17 +98,17 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
         buffer_scheme = WENO(FT; grid, order=order-2, bounds)
     end
 
-    return WENO{N, FT}(bounds, buffer_scheme, advecting_velocity_scheme)
+    return WENO{N, FT, FTS}(bounds, buffer_scheme, advecting_velocity_scheme)
 end
 
-WENO(grid, FT::DataType=Float64; kwargs...) = WENO(FT; grid, kwargs...)
+WENO(grid, FT::DataType=Oceananigans.defaults.FloatType, FTS::DataType=Float32; kwargs...) = WENO(FT, FTS; grid, kwargs...)
 
 # Flavours of WENO
-const PositiveWENO = WENO{<:Any, <:Any, <:Tuple}
+const PositiveWENO = WENO{<:Any, <:Any, <:Any, <:Tuple}
 
 Base.summary(a::WENO{N}) where N = string("WENO(order=", N*2-1, ")")
 
-Base.show(io::IO, a::WENO{N, FT, PP}) where {N, FT, PP} =
+Base.show(io::IO, a::WENO{N, FT, FTS, PP}) where {N, FT, FTS, PP} =
     print(io, summary(a), " \n",
               a.bounds isa Nothing ? "" : " Bounds : \n    └── $(a.bounds) \n",
               " Boundary scheme: ", "\n",
@@ -110,12 +116,12 @@ Base.show(io::IO, a::WENO{N, FT, PP}) where {N, FT, PP} =
               " Symmetric scheme: ", "\n",
               "    └── ", summary(a.advecting_velocity_scheme))
 
-Adapt.adapt_structure(to, scheme::WENO{N, FT}) where {N, FT} =
-     WENO{N, FT}(Adapt.adapt(to, scheme.bounds),
-                 Adapt.adapt(to, scheme.buffer_scheme),
-                 Adapt.adapt(to, scheme.advecting_velocity_scheme))
+Adapt.adapt_structure(to, scheme::WENO{N, FT, FTS}) where {N, FT, FTS} =
+     WENO{N, FT, FTS}(Adapt.adapt(to, scheme.bounds),
+                      Adapt.adapt(to, scheme.buffer_scheme),
+                      Adapt.adapt(to, scheme.advecting_velocity_scheme))
 
-on_architecture(to, scheme::WENO{N, FT}) where {N, FT} =
-    WENO{N, FT}(on_architecture(to, scheme.bounds),
-                on_architecture(to, scheme.buffer_scheme),
-                on_architecture(to, scheme.advecting_velocity_scheme))
+on_architecture(to, scheme::WENO{N, FT, FTS}) where {N, FT, FTS} =
+    WENO{N, FT, FTS}(on_architecture(to, scheme.bounds),
+                     on_architecture(to, scheme.buffer_scheme),
+                     on_architecture(to, scheme.advecting_velocity_scheme))

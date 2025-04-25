@@ -291,7 +291,7 @@ end
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (1 + (newton_div(Float32, τ, β[$stencil] + ϵ))^2))
+        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (1 + (newton_div(FTS, τ, β[$stencil] + ϵ))^2))
     end
 
     return :($(elem...),)
@@ -299,9 +299,9 @@ end
 
 for buffer in advection_buffers[2:end]
     @eval begin
-        @inline         beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂) where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
-        @inline        beta_loop(scheme::WENO{$buffer, FT}, ψ)      where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
-        @inline zweno_alpha_loop(scheme::WENO{$buffer, FT}, β, τ)   where FT = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
+        @inline         beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂)    where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
+        @inline        beta_loop(scheme::WENO{$buffer, FT}, ψ)         where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
+        @inline zweno_alpha_loop(scheme::WENO{$buffer, FT, FTS}, β, τ) where {FT, FTS} = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
     end
 end
 

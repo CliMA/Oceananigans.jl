@@ -20,3 +20,4 @@ afterwards.
 end
 
 @inline newton_div(::Type{Float32}, a, b::Float32) = a * Base.FastMath.inv_fast(b)
+@inline newton_div(::Type{Float64}, a, b::Float64) = a / b
