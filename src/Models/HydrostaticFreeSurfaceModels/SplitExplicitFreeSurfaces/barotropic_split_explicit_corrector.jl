@@ -1,5 +1,5 @@
 # Kernels to compute the vertical integral of the velocities
-@kernel function _barotropic_mode_kernel!(U̅, V̅, grid, u, v, η)
+@kernel function _compute_barotropic_mode!(U̅, V̅, grid, u, v, η)
     i, j  = @index(Global, NTuple)
     k_top  = size(grid, 3) + 1
 
