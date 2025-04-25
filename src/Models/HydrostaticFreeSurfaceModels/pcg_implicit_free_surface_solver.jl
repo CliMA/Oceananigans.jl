@@ -269,10 +269,10 @@ function diagonally_dominant_inverse_precondition!(P_r, r, ∫ᶻ_Axᶠᶜᶜ, �
 end
 
 # Kernels that calculate coefficients for the preconditioner
-@inline Ax⁻(i, j, grid, ax) = @inbounds   ax[i, j, 1] / Δxᶠᶜᶠ(i, j, grid.Nz+1, grid)
-@inline Ay⁻(i, j, grid, ay) = @inbounds   ay[i, j, 1] / Δyᶜᶠᶠ(i, j, grid.Nz+1, grid)
-@inline Ax⁺(i, j, grid, ax) = @inbounds ax[i+1, j, 1] / Δxᶠᶜᶠ(i+1, j, grid.Nz+1, grid)
-@inline Ay⁺(i, j, grid, ay) = @inbounds ay[i, j+1, 1] / Δyᶜᶠᶠ(i, j+1, grid.Nz+1, grid)
+@inline Ax⁻(i, j, grid, ax) = @inbounds   ax[i, j, 1] * Δx⁻¹ᶠᶜᶠ(i, j, grid.Nz+1, grid)
+@inline Ay⁻(i, j, grid, ay) = @inbounds   ay[i, j, 1] * Δy⁻¹ᶜᶠᶠ(i, j, grid.Nz+1, grid)
+@inline Ax⁺(i, j, grid, ax) = @inbounds ax[i+1, j, 1] * Δx⁻¹ᶠᶜᶠ(i+1, j, grid.Nz+1, grid)
+@inline Ay⁺(i, j, grid, ay) = @inbounds ay[i, j+1, 1] * Δy⁻¹ᶜᶠᶠ(i, j+1, grid.Nz+1, grid)
 
 @inline Ac(i, j, grid, g, Δt, ax, ay) = - Ax⁻(i, j, grid, ax) -
                                           Ax⁺(i, j, grid, ax) -
