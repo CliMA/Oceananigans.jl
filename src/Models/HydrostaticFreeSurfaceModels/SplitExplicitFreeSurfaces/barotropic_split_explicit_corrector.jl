@@ -25,11 +25,11 @@
 end
 # Note: this function is also used during initialization
 function compute_barotropic_mode!(U̅, V̅, grid, u, v, η)
-    active_columns = get_active_column_map(grid) # may be nothing
+    active_cells_map = get_active_column_map(grid) # may be nothing
 
     launch!(architecture(grid), grid, :xy,
             _compute_barotropic_mode!,
-            U̅, V̅, grid, active_columns, u, v, η; active_cells_map=active_columns)
+            U̅, V̅, grid, u, v, η; active_cells_map)
 
     return nothing
 end
