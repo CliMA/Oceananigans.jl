@@ -19,5 +19,5 @@ afterwards.
     return x
 end
 
-@inline newton_div(::Type{Float32}, a, b::Float32) = a * Base.FastMath.inv_fast(b)
-@inline newton_div(::Type{Float64}, a, b::Float64) = a / b
+# Fallback for no precision lowering
+@inline newton_div(::Type{FT}, a, b::FT) where FT = a * Base.FastMath.inv_fast(b)
