@@ -1,7 +1,7 @@
 module Operators
 
 # Some operators are exported next to where they are defined
-# Spacings, Areas, and Volumes: src/Operators/spacings_and_areas_and_volumes.jl
+# Spacings, Areas, and Volumes and their reciprocals: src/Operators/spacings_and_areas_and_volumes.jl
 # Differences and Derivatives: src/Operators/derivative_operators.jl
 
 # General metric operators
