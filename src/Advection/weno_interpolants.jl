@@ -1,4 +1,5 @@
 using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
+using Oceananigans.Utils: newton_div
 
 include("weno_stencils.jl")
 include("weno_smoothness.jl")
@@ -71,7 +72,7 @@ end
 
 Base.show(io::IO, a::FunctionStencil) = print(io, "FunctionStencil f = $(a.func)")
 
-const ε = 1f-8
+const ϵ = 1f-8
 
 # Optimal values for finite volume reconstruction of order `WENO{order}` and stencil `Val{stencil}` from
 # Balsara & Shu, "Monotonicity Preserving Weighted Essentially Non-oscillatory Schemes with Inceasingly High Order of Accuracy"
@@ -224,11 +225,11 @@ end
     return :($(elem...),)
 end
 
-# ZWENO α weights C★ᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ε))ᵖ)
+# ZWENO α weights C★ᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ϵ))ᵖ)
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(C★(scheme, red_order, Val($(stencil-1))) * (1 + (τ / β[$stencil])^2))
+        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (1 + (newton_div(FT2, τ, β[$stencil]))^2))
     end
 
     return :($(elem...),)
@@ -238,7 +239,7 @@ for buffer in advection_buffers[1:end]
     @eval begin
         @inline  beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂)                 where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
         @inline beta_loop(scheme::WENO{$buffer, FT}, red_order, ψ)           where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
-        @inline zweno_alpha_loop(scheme::WENO{$buffer, FT}, red_order, β, τ) where FT = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
+        @inline zweno_alpha_loop(scheme::WENO{$buffer, FT, FT2}, red_order, β, τ) where {FT, FT2} = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
     end
 end
 
@@ -267,9 +268,8 @@ The ``α`` values are normalized before returning
     α = zweno_alpha_loop(scheme, red_order, β, τ)
     
     # Normalization factor
-    αs⁻¹ = 1 / sum(α)
-
-    return α .* αs⁻¹
+    Σα⁻¹ =  1 / sum(α)
+    return α .* Σα⁻¹
 end
 
 @inline function biased_weno_weights(ijk, grid, scheme::WENO{N, FT}, red_order, bias, dir, ::VelocityStencil, u, v) where {N, FT}
@@ -284,9 +284,8 @@ end
     α  = zweno_alpha_loop(scheme, red_order, β, τ)
     
     # Normalization factor
-    αs⁻¹ = 1 / sum(α)
-
-    return α .* αs⁻¹
+    Σα⁻¹ =  1 / sum(α)
+    return α .* Σα⁻¹
 end
 
 """

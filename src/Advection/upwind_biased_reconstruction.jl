@@ -59,11 +59,11 @@ for (side, dir) in zip((:ᶠᵃᵃ, :ᵃᶠᵃ, :ᵃᵃᶠ), (:x, :y, :z))
         for FT in fully_supported_float_types
             interp = Symbol(:biased_interpolate_, dir, side)
             @eval begin
-                @inline $interp(i, j, k, grid, ::UpwindBiased{1, $FT}, red_order::Int, bias, ψ::$F, args...) = ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 1, :left,  dir, bool)), 
-                                                                                                                                         $(stencil_reconstruction(FT, 1, :right, dir, bool)))
+                @inline $interp(i, j, k, grid, ::UpwindBiased{1, $FT}, red_order::Int, bias, ψ::$F, args...) = @muladd ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 1, :left,  dir, bool)), 
+                                                                                                                                                 $(stencil_reconstruction(FT, 1, :right, dir, bool)))
 
                 @inline function $interp(i, j, k, grid, ::UpwindBiased{2, $FT}, red_order::Int, bias, ψ::$F, args...)          
-                    ifelse(red_order==1,
+                    @muladd ifelse(red_order==1,
                            ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 1, :left,  dir, bool)), 
                                                      $(stencil_reconstruction(FT, 1, :right, dir, bool))),
                            ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 2, :left,  dir, bool)), 
@@ -71,7 +71,7 @@ for (side, dir) in zip((:ᶠᵃᵃ, :ᵃᶠᵃ, :ᵃᵃᶠ), (:x, :y, :z))
                 end
 
                 @inline function $interp(i, j, k, grid, ::UpwindBiased{3, $FT}, red_order::Int, bias, ψ::$F, args...)          
-                    ifelse(red_order==1,
+                    @muladd ifelse(red_order==1,
                            ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 1, :left,  dir, bool)), 
                                                      $(stencil_reconstruction(FT, 1, :right, dir, bool))),
                     ifelse(red_order==2,
@@ -82,7 +82,7 @@ for (side, dir) in zip((:ᶠᵃᵃ, :ᵃᶠᵃ, :ᵃᵃᶠ), (:x, :y, :z))
                 end
 
                 @inline function $interp(i, j, k, grid, ::UpwindBiased{4, $FT}, red_order::Int, bias, ψ::$F, args...)          
-                    ifelse(red_order==1,
+                    @muladd ifelse(red_order==1,
                            ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 1, :left,  dir, bool)), 
                                                      $(stencil_reconstruction(FT, 1, :right, dir, bool))),
                     ifelse(red_order==2,
@@ -96,7 +96,7 @@ for (side, dir) in zip((:ᶠᵃᵃ, :ᵃᶠᵃ, :ᵃᵃᶠ), (:x, :y, :z))
                 end
 
                 @inline function $interp(i, j, k, grid, ::UpwindBiased{5, $FT}, red_order::Int, bias, ψ::$F, args...)          
-                    ifelse(red_order==1,
+                    @muladd ifelse(red_order==1,
                            ifelse(bias isa LeftBias, $(stencil_reconstruction(FT, 1, :left,  dir, bool)), 
                                                      $(stencil_reconstruction(FT, 1, :right, dir, bool))),
                     ifelse(red_order==2,
