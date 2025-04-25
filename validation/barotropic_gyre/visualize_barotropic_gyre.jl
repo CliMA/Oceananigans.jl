@@ -12,7 +12,7 @@ function geographic2cartesian(λ, φ, r=1)
     Nλ = length(λ)
     Nφ = length(φ)
 
-    λ = repeat(reshape(λ, Nλ, 1), 1, Nφ) 
+    λ = repeat(reshape(λ, Nλ, 1), 1, Nφ)
     φ = repeat(reshape(φ, 1, Nφ), Nλ, 1)
 
     λ_azimuthal = λ .+ 180  # Convert to λ ∈ [0°, 360°]
