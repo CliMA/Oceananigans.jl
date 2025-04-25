@@ -15,7 +15,7 @@ struct WENO{N, FT, FTS, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT
     advecting_velocity_scheme :: SI
 
     function WENO{N, FT, FTS}(bounds::PP, buffer_scheme::CA,
-                              advecting_velocity_scheme :: SI) where {N, FT, PP, CA, SI}
+                              advecting_velocity_scheme :: SI) where {N, FT, FTS, PP, CA, SI}
 
         return new{N, FT, FTS, PP, CA, SI}(bounds, buffer_scheme, advecting_velocity_scheme)
     end
