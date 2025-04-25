@@ -23,6 +23,7 @@
         @inbounds V̅[i, j, 1] += Δrᶜᶠᶜ(i, j, k, grid) * v[i, j, k] * σᶜᶠ
     end
 end
+
 # Note: this function is also used during initialization
 function compute_barotropic_mode!(U̅, V̅, grid, u, v, η)
     active_cells_map = get_active_column_map(grid) # may be nothing
