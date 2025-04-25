@@ -134,6 +134,7 @@ underlying_grid = ConformalCubedSphereGrid(arch;
                                            z = hyperbolic_tangential_z_faces(Lz),
                                            horizontal_direction_halo = Nhalo,
                                            radius,
+                                           non_uniform_conformal_mapping = true,
                                            partition = CubedSpherePartition(; R = 1))
 
 import Oceananigans: on_architecture
@@ -667,7 +668,7 @@ if plot_initial_field
                                        specify_xticks = true, xticks = -90:30:90, tight_x_axis = true)
 end
 
-iteration_id = 1036800
+iteration_id = 2160000
 
 file_c = jldopen("cubed_sphere_aquaplanet_checkpointer_iteration$(iteration_id).jld2")
 
