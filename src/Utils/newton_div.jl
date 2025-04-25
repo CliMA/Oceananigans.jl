@@ -7,8 +7,8 @@ afterwards.
 """
 @inline function newton_div(inv_FT, a, b::FT) where FT
     # Low precision division:
-    b = convert(inv_FT, b)
-    inv_b = Base.FastMath.inv_fast(b)
+    b_low = convert(inv_FT, b)
+    inv_b = Base.FastMath.inv_fast(b_low)
 
     # compute x = a / b using the low-precision approximation for 1/b
     x = a * convert(FT, inv_b)
