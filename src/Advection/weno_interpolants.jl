@@ -236,9 +236,9 @@ end
 
 for buffer in advection_buffers[1:end]
     @eval begin
-        @inline  beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂)                 where FT = @inbounds @fastmath $(metaprogrammed_beta_sum(buffer))
-        @inline beta_loop(scheme::WENO{$buffer, FT}, red_order, ψ)           where FT = @inbounds @fastmath $(metaprogrammed_beta_loop(buffer))
-        @inline zweno_alpha_loop(scheme::WENO{$buffer, FT}, red_order, β, τ) where FT = @inbounds @fastmath $(metaprogrammed_zweno_alpha_loop(buffer))
+        @inline  beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂)                 where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
+        @inline beta_loop(scheme::WENO{$buffer, FT}, red_order, ψ)           where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
+        @inline zweno_alpha_loop(scheme::WENO{$buffer, FT}, red_order, β, τ) where FT = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
     end
 end
 
