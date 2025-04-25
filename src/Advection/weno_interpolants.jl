@@ -197,7 +197,7 @@ while for `buffer == 4` unrolls into
 
 # Smoothness indicators for stencil `stencil` for left and right biased reconstruction
 for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
-    @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds @muladd $(metaprogrammed_smoothness_operation(buffer)) + ε
+    @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds @muladd $(metaprogrammed_smoothness_operation(buffer)) + 
 end
 
 @inline function smoothness_indicator(ψ, scheme, red_order, val_stencil)
