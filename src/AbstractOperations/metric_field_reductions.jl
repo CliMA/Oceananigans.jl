@@ -37,6 +37,9 @@ Over regularly-spaced dimensions this is equivalent to a numerical `mean!`.
 Over dimensions of variable spacing, `field` is multiplied by the
 appropriate grid length, area or volume, and divided by the total
 spatial extent of the interval.
+
+See [`ConditionalOperation`](@ref Oceananigans.AbstractOperations.ConditionalOperation)
+for information and examples using `condition` and `mask` kwargs.
 """
 function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
@@ -69,6 +72,9 @@ Base.summary(r::Integral) = string("Integral of ", summary(r.operand), " over di
 
 
 Return a `Reduction` representing a spatial integral of `field` over `dims`.
+
+See [`ConditionalOperation`](@ref Oceananigans.AbstractOperations.ConditionalOperation)
+for information and examples using `condition` and `mask` kwargs.
 
 Example
 =======
@@ -125,6 +131,9 @@ Base.summary(c::CumulativeIntegral) = string("CumulativeIntegral of ", summary(c
 
 Return an `Accumulation` representing the cumulative spatial integral of `field` over `dims`.
 
+See [`ConditionalOperation`](@ref Oceananigans.AbstractOperations.ConditionalOperation)
+for information and examples using `condition` and `mask` kwargs.
+
 Example
 =======
 
@@ -170,4 +179,3 @@ function CumulativeIntegral(field::AbstractField; dims, reverse=false, condition
     operand = condition_operand(field * dx, condition, mask)
     return Scan(CumulativelyIntegrating(), maybe_reverse_cumsum, operand, dims)
 end
-

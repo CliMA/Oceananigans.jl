@@ -233,24 +233,29 @@ function run_time_step_with_catke_tests(arch, closure)
     return model
 end
 
-function compute_closure_specific_diffusive_cfl(closure)
-    grid = RectilinearGrid(CPU(), size=(2, 2, 2), extent=(1, 2, 3))
+function compute_closure_specific_diffusive_cfl(arch, closure)
+    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
 
     model = NonhydrostaticModel(; grid, closure, buoyancy=BuoyancyTracer(), tracers=:b)
     args = (model.closure, model.diffusivity_fields, Val(1), model.tracers.b, model.clock, fields(model), model.buoyancy)
     dcfl = DiffusiveCFL(0.1)
     @test dcfl(model) isa Number
-    @test diffusive_flux_x(1, 1, 1, grid, args...) == 0
-    @test diffusive_flux_y(1, 1, 1, grid, args...) == 0
-    @test diffusive_flux_z(1, 1, 1, grid, args...) == 0
+
+    CUDA.@allowscalar begin
+        @test diffusive_flux_x(1, 1, 1, grid, args...) == 0
+        @test diffusive_flux_y(1, 1, 1, grid, args...) == 0
+        @test diffusive_flux_z(1, 1, 1, grid, args...) == 0
+    end
 
     tracerless_model = NonhydrostaticModel(; grid, closure, buoyancy=nothing, tracers=nothing)
     args = (model.closure, model.diffusivity_fields, model.clock, fields(model), model.buoyancy)
     dcfl = DiffusiveCFL(0.2)
     @test dcfl(tracerless_model) isa Number
-    @test viscous_flux_ux(1, 1, 1, grid, args...) == 0
-    @test viscous_flux_uy(1, 1, 1, grid, args...) == 0
-    @test viscous_flux_uz(1, 1, 1, grid, args...) == 0
+    CUDA.@allowscalar begin
+        @test viscous_flux_ux(1, 1, 1, grid, args...) == 0
+        @test viscous_flux_uy(1, 1, 1, grid, args...) == 0
+        @test viscous_flux_uz(1, 1, 1, grid, args...) == 0
+    end
 
     return nothing
 end
@@ -305,24 +310,20 @@ end
 
             for arch in archs
                 @info "  Testing the instantiation of NonhydrostaticModel with $closurename on $arch..."
-                if arch isa GPU && closurename == :LagrangianAveragedDynamicSmagorinsky
-                    @info "Skipping GPU test of $closurename."
-                else
-                    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
-                    model = NonhydrostaticModel(; grid, closure, tracers=:c)
-                    c = model.tracers.c
-                    u = model.velocities.u
+                grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 2, 3))
+                model = NonhydrostaticModel(; grid, closure, tracers=:c)
+                c = model.tracers.c
+                u = model.velocities.u
 
-                    κ = diffusivity(model.closure, model.diffusivity_fields, Val(:c))
-                    @test diffusivity(model, Val(:c)) == diffusivity(model.closure, model.diffusivity_fields, Val(:c))
-                    κ_dx_c = κ * ∂x(c)
+                κ = diffusivity(model.closure, model.diffusivity_fields, Val(:c))
+                @test diffusivity(model, Val(:c)) == diffusivity(model.closure, model.diffusivity_fields, Val(:c))
+                κ_dx_c = κ * ∂x(c)
 
-                    ν = viscosity(model.closure, model.diffusivity_fields)
-                    @test viscosity(model) == viscosity(model.closure, model.diffusivity_fields)
-                    ν_dx_u = ν * ∂x(u)
-                    @test ν_dx_u[1, 1, 1] == 0
-                    @test κ_dx_c[1, 1, 1] == 0
-                end
+                ν = viscosity(model.closure, model.diffusivity_fields)
+                @test viscosity(model) == viscosity(model.closure, model.diffusivity_fields)
+                ν_dx_u = ν * ∂x(u)
+                @test ν_dx_u[1, 1, 1] == 0
+                @test κ_dx_c[1, 1, 1] == 0
             end
         end
 
@@ -476,16 +477,20 @@ end
     end
 
     @testset "Diagnostics" begin
-        @info "  Testing turbulence closure diagnostics..."
-        for closurename in closures
-            closure = @eval $closurename()
-            compute_closure_specific_diffusive_cfl(closure)
-        end
+        for arch in archs
+            @info "  Testing turbulence closure diagnostics..."
+            for closurename in closures
+                @info "    Testing turbulence closure diagnostics for $closurename on $arch"
+                closure = @eval $closurename()
+                compute_closure_specific_diffusive_cfl(arch, closure)
+            end
 
-        # now test also a case for a tuple of closures
-        compute_closure_specific_diffusive_cfl((ScalarDiffusivity(),
-                                                ScalarBiharmonicDiffusivity(),
-                                                SmagorinskyLilly(),
-                                                AnisotropicMinimumDissipation()))
+            # now test also a case for a tuple of closures
+            @info "    Testing turbulence closure diagnostics for a Tuple closure on $arch"
+            compute_closure_specific_diffusive_cfl(arch, (ScalarDiffusivity(),
+                                                          ScalarBiharmonicDiffusivity(),
+                                                          SmagorinskyLilly(),
+                                                          AnisotropicMinimumDissipation()))
+        end
     end
 end

@@ -5,7 +5,7 @@ import Oceananigans.OutputWriters: fetch_output,
                                    serializeproperty!
 
 # This is working just fine at the moment?
-# But it will be veeeeery slow, as reconstruct_global_field is not 
+# But it will be veeeeery slow, as reconstruct_global_field is not
 # a performant operation
 function fetch_output(mrf::MultiRegionField, model)
     field = reconstruct_global_field(mrf)
@@ -32,6 +32,6 @@ function serializeproperty!(file, location, mrf::MultiRegionField{LX, LY, LZ}) w
     return nothing
 end
 
-function serializeproperty!(file, location, mrg::MultiRegionGrids) 
+function serializeproperty!(file, location, mrg::MultiRegionGrids)
     file[location] = on_architecture(CPU(), reconstruct_global_grid(mrg))
 end

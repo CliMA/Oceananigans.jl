@@ -39,8 +39,8 @@ end
 
 arch = CUDA.has_cuda() ? GPU() : CPU()
 
-advection_schemes = (Centered(order=2), Centered(order=4), Centered(order=6), Centered(order=8), Centered(order=10), Centered(order=12), 
-                     UpwindBiased(order=1), UpwindBiased(order=3), UpwindBiased(order=5), UpwindBiased(order=7), UpwindBiased(order=9), UpwindBiased(order=11), 
+advection_schemes = (Centered(order=2), Centered(order=4), Centered(order=6), Centered(order=8), Centered(order=10), Centered(order=12),
+                     UpwindBiased(order=1), UpwindBiased(order=3), UpwindBiased(order=5), UpwindBiased(order=7), UpwindBiased(order=9), UpwindBiased(order=11),
                      WENO(order=3), WENO(order=5), WENO(order=7), WENO(order=9), WENO(order=11))
 
 U = 1
