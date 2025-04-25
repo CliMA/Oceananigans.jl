@@ -1,4 +1,4 @@
-# Reciprocal metrics operators, at the moment equal to the inverse of the metric operators
+# Reciprocal metrics operators; equal to the inverse of the metric operators
 for L1 in (:ᶜ, :ᶠ, :ᵃ), L2 in (:ᶜ, :ᶠ, :ᵃ), L3 in (:ᶜ, :ᶠ, :ᵃ)
     for func in (:Δ, :A)
         for dir in (:x, :y, :z)
