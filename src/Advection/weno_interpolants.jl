@@ -1,4 +1,5 @@
 using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
+using Oceananigans.Utils: newton_div
 
 # WENO reconstruction of order `M` entails reconstructions of order `N`
 # on `N` different stencils, where `N = (M + 1) / 2`.
@@ -67,7 +68,7 @@ end
 
 Base.show(io::IO, a::FunctionStencil) = print(io, "FunctionStencil f = $(a.func)")
 
-const ε = 1f-8
+const ϵ = 1f-8
 
 # Optimal values for finite volume reconstruction of order `WENO{order}` and stencil `Val{stencil}` from
 # Balsara & Shu, "Monotonicity Preserving Weighted Essentially Non-oscillatory Schemes with Inceasingly High Order of Accuracy"
@@ -285,11 +286,11 @@ end
     return :($(elem...),)
 end
 
-# ZWENO α weights C★ᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ε))ᵖ)
+# ZWENO α weights C★ᵣ * (1 + (τ₂ᵣ₋₁ / (βᵣ + ϵ))ᵖ)
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (1 + (τ / (β[$stencil] + ε))^2))
+        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (1 + (newton_div(FT2, τ, β[$stencil] + ϵ))^2))
     end
 
     return :($(elem...),)
@@ -297,9 +298,9 @@ end
 
 for buffer in advection_buffers[2:end]
     @eval begin
-        @inline         beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂) where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
-        @inline        beta_loop(scheme::WENO{$buffer, FT}, ψ)      where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
-        @inline zweno_alpha_loop(scheme::WENO{$buffer, FT}, β, τ)   where FT = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
+        @inline         beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂)    where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
+        @inline        beta_loop(scheme::WENO{$buffer, FT}, ψ)         where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
+        @inline zweno_alpha_loop(scheme::WENO{$buffer, FT, FT2}, β, τ) where {FT, FT2} = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
     end
 end
 
@@ -330,11 +331,10 @@ The ``α`` values are normalized before returning
 """
 @inline function biased_weno_weights(ψ, grid, scheme::WENO{N, FT}, args...) where {N, FT}
     β = beta_loop(scheme, ψ)
-
     τ = global_smoothness_indicator(Val(N), β)
     α = zweno_alpha_loop(scheme, β, τ)
-
-    return α ./ sum(α)
+    Σα⁻¹ =  1 / sum(α)
+    return α .* Σα⁻¹
 end
 
 @inline function biased_weno_weights(ijk, grid, scheme::WENO{N, FT}, bias, dir, ::VelocityStencil, u, v) where {N, FT}
@@ -344,12 +344,12 @@ end
     vₛ = tangential_stencil_v(i, j, k, grid, scheme, bias, dir, v)
     βᵤ = beta_loop(scheme, uₛ)
     βᵥ = beta_loop(scheme, vₛ)
-    β  =  beta_sum(scheme, βᵤ, βᵥ)
+    β  = beta_sum(scheme, βᵤ, βᵥ)
 
     τ = global_smoothness_indicator(Val(N), β)
     α = zweno_alpha_loop(scheme, β, τ)
-
-    return α ./ sum(α)
+    Σα⁻¹ =  1 / sum(α)
+    return α .* Σα⁻¹
 end
 
 """
