@@ -15,6 +15,7 @@ import Oceananigans.Architectures:
 
 const MetalGPU = GPU{<:Metal.MetalBackend}
 MetalGPU() = GPU(Metal.MetalBackend())
+Base.summary(::MetalGPU) = "MetalGPU"
 
 architecture(::MtlArray) = MetalGPU()
 

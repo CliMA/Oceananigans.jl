@@ -8,7 +8,7 @@ const MultiRegionDerivative{LX, LY, LZ, D, A, IN, AD}         = Derivative{LX, L
 const MultiRegionKernelFunctionOperation{LX, LY, LZ}          = KernelFunctionOperation{LX, LY, LZ, <:MultiRegionGrids} where {LX, LY, LZ, P}
 const MultiRegionConditionalOperation{LX, LY, LZ, O, F}       = ConditionalOperation{LX, LY, LZ, O, F, <:MultiRegionGrids} where {LX, LY, LZ, O, F}
 
-const MultiRegionAbstractOperation = Union{MultiRegionBinaryOperation, 
+const MultiRegionAbstractOperation = Union{MultiRegionBinaryOperation,
                                            MultiRegionUnaryOperation,
                                            MultiRegionMultiaryOperation,
                                            MultiRegionDerivative,
@@ -34,12 +34,12 @@ for T in [:BinaryOperation, :UnaryOperation, :MultiaryOperation, :Derivative, :C
     end
 end
 
-@inline getregion(κ::KernelFunctionOperation{LX, LY, LZ}, r) where {LX, LY, LZ} = 
+@inline getregion(κ::KernelFunctionOperation{LX, LY, LZ}, r) where {LX, LY, LZ} =
                 KernelFunctionOperation{LX, LY, LZ}(_getregion(κ.kernel_function, r),
-                                                    _getregion(κ.grid, r), 
+                                                    _getregion(κ.grid, r),
                                                     _getregion(κ.arguments, r)...)
 
-@inline _getregion(κ::KernelFunctionOperation{LX, LY, LZ}, r) where {LX, LY, LZ} = 
+@inline _getregion(κ::KernelFunctionOperation{LX, LY, LZ}, r) where {LX, LY, LZ} =
                 KernelFunctionOperation{LX, LY, LZ}(getregion(κ.kernel_function, r),
-                                                    getregion(κ.grid, r), 
+                                                    getregion(κ.grid, r),
                                                     getregion(κ.arguments, r)...)

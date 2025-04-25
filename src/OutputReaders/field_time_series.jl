@@ -616,7 +616,7 @@ function FieldTimeSeries(path::String, name::String;
             throw(err)
         end
     end
-        
+
     if boundary_conditions isa UnspecifiedBoundaryConditions
         boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
         boundary_conditions = on_architecture(architecture, boundary_conditions)

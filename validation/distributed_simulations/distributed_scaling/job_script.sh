@@ -38,9 +38,9 @@ if test $PROFILE_TRACE == 1; then
 fi
 
 if test $SIMULATION = "hydrostatic"; then
-   RUNFILE=distributed_hydrostatic_simulation.jl 
+   RUNFILE=distributed_hydrostatic_simulation.jl
 else
-   RUNFILE=distributed_nonhydrostatic_simulation.jl 
+   RUNFILE=distributed_nonhydrostatic_simulation.jl
 fi
 
 $NSYS srun --mpi=pmi2 ./launch.sh $JULIA --check-bounds=no --project $RUNFILE

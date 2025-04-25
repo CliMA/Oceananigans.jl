@@ -9,8 +9,8 @@
     Hᶠᶜ = column_depthᶠᶜᵃ(i, j, k_top, grid, η)
     Hᶜᶠ = column_depthᶜᶠᵃ(i, j, k_top, grid, η)
 
-    # If the static depths are zero (i.e. the column is immersed), 
-    # we set the grid scaling factor to 1 
+    # If the static depths are zero (i.e. the column is immersed),
+    # we set the grid scaling factor to 1
     # (There is no free surface on an immersed column (η == 0))
     σᶠᶜ = ifelse(hᶠᶜ == 0, one(grid), Hᶠᶜ / hᶠᶜ)
     σᶜᶠ = ifelse(hᶜᶠ == 0, one(grid), Hᶜᶠ / hᶜᶠ)
@@ -46,7 +46,7 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     # so we use the filtered velocities as "work arrays" to store the vertical integrals
     # of the instantaneous velocities `u` and `v`.
     compute_barotropic_mode!(U̅, V̅, grid, u, v, η)
-    
+
     # add in "good" barotropic mode
     launch!(arch, grid, :xyz, _barotropic_split_explicit_corrector!,
             u, v, U, V, U̅, V̅, η, grid)
@@ -61,7 +61,7 @@ end
     @inbounds begin
         Hᶠᶜ = column_depthᶠᶜᵃ(i, j, k_top, grid, η)
         Hᶜᶠ = column_depthᶜᶠᵃ(i, j, k_top, grid, η)
-        
+
         u[i, j, k] = u[i, j, k] + (U[i, j, 1] - U̅[i, j, 1]) / Hᶠᶜ
         v[i, j, k] = v[i, j, k] + (V[i, j, 1] - V̅[i, j, 1]) / Hᶜᶠ
     end

@@ -27,7 +27,7 @@ bad_coordinate_message(ξ::Function, name) = "The values of $name(index) must in
 bad_coordinate_message(ξ::AbstractArray, name) = "The elements of $name must be increasing!"
 
 # General generate_coordinate
-generate_coordinate(FT, topology, size, halo, nodes, coordinate_name, dim::Int, arch) = 
+generate_coordinate(FT, topology, size, halo, nodes, coordinate_name, dim::Int, arch) =
     generate_coordinate(FT, topology[dim](), size[dim], halo[dim], nodes, coordinate_name, arch)
 
 # generate a variably-spaced coordinate passing the explicit coord faces as vector or function
@@ -89,7 +89,7 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
 
     if coordinate_name == :z
         return L, StaticVerticalDiscretization(F, C, Δᶠ, Δᶜ)
-    else    
+    else
         return L, F, C, Δᶠ, Δᶜ
     end
 end
@@ -123,22 +123,22 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
 
     F = on_architecture(arch, F)
     C = on_architecture(arch, C)
-    
+
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)
 
     if coordinate_name == :z
         return FT(L), StaticVerticalDiscretization(F, C, FT(Δᶠ), FT(Δᶜ))
-    else    
+    else
         return FT(L), F, C, FT(Δᶠ), FT(Δᶜ)
     end
 end
 
 # Flat domains
-function generate_coordinate(FT, ::Flat, N, H, c::Number, coordinate_name, arch) 
+function generate_coordinate(FT, ::Flat, N, H, c::Number, coordinate_name, arch)
     if coordinate_name == :z
         return FT(1), StaticVerticalDiscretization(range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1))
-    else    
+    else
         return FT(1), range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1)
     end
 end
@@ -146,19 +146,19 @@ end
 # What's the use case for this?
 # generate_coordinate(FT, ::Flat, N, H, c::Tuple{Number, Number}, coordinate_name, arch) =
 #     FT(1), c, c, FT(1), FT(1)
-function generate_coordinate(FT, ::Flat, N, H, ::Nothing, coordinate_name, arch) 
+function generate_coordinate(FT, ::Flat, N, H, ::Nothing, coordinate_name, arch)
     if coordinate_name == :z
         return FT(1), StaticVerticalDiscretization(nothing, nothing, FT(1), FT(1))
-    else    
+    else
         return FT(1), nothing, nothing, FT(1), FT(1)
     end
-end    
+end
 
 #####
 ##### MutableVerticalDiscretization
 #####
 
-generate_coordinate(FT, ::Periodic, N, H, ::MutableVerticalDiscretization, coordinate_name, arch, args...) = 
+generate_coordinate(FT, ::Periodic, N, H, ::MutableVerticalDiscretization, coordinate_name, arch, args...) =
     throw(ArgumentError("Periodic domains are not supported for MutableVerticalDiscretization"))
 
 # Generate a vertical coordinate with a scaling (`σ`) with respect to a reference coordinate `r` with spacing `Δr`.
@@ -169,7 +169,7 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDi
     Nx, Ny, Nz = size
     Hx, Hy, Hz = halo
 
-    if dim != 3 
+    if dim != 3
         msg = "MutableVerticalDiscretization is supported only in the third dimension (z)"
         throw(ArgumentError(msg))
     end
@@ -197,6 +197,6 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDi
     for σ in (σᶜᶜ⁻, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ)
         fill!(σ, 1)
     end
-    
+
     return Lr, MutableVerticalDiscretization(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ)
 end

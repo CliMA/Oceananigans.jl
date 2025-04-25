@@ -3,7 +3,7 @@ using Oceananigans: fields, TendencyCallsite
 using Oceananigans.Utils: work_layout
 using Oceananigans.Models: complete_communication_and_compute_buffer!, interior_tendency_kernel_parameters
 
-using Oceananigans.ImmersedBoundaries: get_active_cells_map, ActiveInteriorIBG, 
+using Oceananigans.ImmersedBoundaries: get_active_cells_map, ActiveInteriorIBG,
                                        linear_index_to_tuple
 
 import Oceananigans.TimeSteppers: compute_tendencies!
@@ -31,7 +31,7 @@ function compute_tendencies!(model::NonhydrostaticModel, callbacks)
     # interior of the domain
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
     active_cells_map  = get_active_cells_map(model.grid, Val(:interior))
-    
+
     compute_interior_tendency_contributions!(model, kernel_parameters; active_cells_map)
     complete_communication_and_compute_buffer!(model, grid, arch)
 
@@ -125,7 +125,7 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
         @inbounds tracer_name = keys(tracers)[tracer_index]
 
         args = tuple(Val(tracer_index), Val(tracer_name),
-                     start_tracer_kernel_args..., 
+                     start_tracer_kernel_args...,
                      c_immersed_bc,
                      end_tracer_kernel_args...,
                      clock, forcing)

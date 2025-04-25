@@ -18,11 +18,11 @@
     end
 end
 
-@inline function ab2_step_G(i, j, k, grid, ℓx, ℓy, ℓz, G⁻, Gⁿ, χ) 
+@inline function ab2_step_G(i, j, k, grid, ℓx, ℓy, ℓz, G⁻, Gⁿ, χ)
     C₁ = 3 * one(grid) / 2 + χ
     C₂ =     one(grid) / 2 + χ
 
-    # multiply G⁻ by false if C₂ is zero to 
+    # multiply G⁻ by false if C₂ is zero to
     # prevent propagationg possible NaNs
     not_euler = C₂ != 0
 
@@ -32,7 +32,7 @@ end
     return ifelse(immersed, zero(grid), Gⁿ⁺¹)
 end
 
-@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, 
+@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ,
                                                  timestepper::QuasiAdamsBashforth2TimeStepper, stage)
     active_cells_map = get_active_column_map(grid)
 
@@ -53,12 +53,12 @@ end
     immersed = peripheral_node(i, j, 1, grid, ℓx, ℓy, ℓz)
 
     Gⁿ⁺¹ = Δz(i, j, 1, grid, ℓx, ℓy, ℓz) * ifelse(immersed, zero(grid), Gⁿ[i, j, 1])
-    
-    @inbounds for k in 2:grid.Nz	
+
+    @inbounds for k in 2:grid.Nz
         immersed = peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz)
         Gⁿ⁺¹    += Δz(i, j, k, grid, ℓx, ℓy, ℓz) * ifelse(immersed, zero(grid), Gⁿ[i, j, k])
     end
-    
+
     return Gⁿ⁺¹
 end
 
@@ -93,7 +93,7 @@ end
     @inbounds GVⁿ[i, j, 1] = 2 * GVi / 3 + GV⁻[i, j, 1]
 end
 
-@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, 
+@inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ,
                                                  timestepper::SplitRungeKutta3TimeStepper, stage)
 
     GU⁻ = timestepper.G⁻.U
@@ -104,7 +104,7 @@ end
             GUⁿ, GVⁿ, GU⁻, GV⁻, grid, Guⁿ, Gvⁿ, stage; active_cells_map)
 
     return nothing
-end 
+end
 
 #####
 ##### Free surface setup
@@ -122,7 +122,7 @@ function compute_free_surface_tendency!(grid, model, free_surface::SplitExplicit
 
     barotropic_timestepper = free_surface.timestepper
     baroclinic_timestepper = model.timestepper
-    
+
     stage = model.clock.stage
 
     @apply_regionally begin
