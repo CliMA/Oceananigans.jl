@@ -273,7 +273,7 @@ end
 @inline function mapped_kernel(kernel::Kernel{Dev, B, W}, dev, map) where {Dev, B, W}
     f  = kernel.f
     mf = MappedFunction(f, map)
-    return Kernel{Dev, B, W}(dev, mf)
+    return Kernel{Dev, B, W, typeof(mf)}(dev, mf)
 end
        
 """
