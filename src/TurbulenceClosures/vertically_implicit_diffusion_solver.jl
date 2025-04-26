@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Δz, Δr
+using Oceananigans.Operators: Δz, Δr, Δz⁻¹, Δr⁻¹
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, ImmersedBoundaryGrid
 using Oceananigans.Grids: ZDirection
@@ -57,16 +57,16 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
 # The vertical spacing used here is Δz for velocities and Δr for tracers, since the
 # implicit solver operator is applied to the scaled tracer σθ instead of just θ
 
-@inline vertical_spacing(i, j, k, grid, ℓx, ℓy, ℓz) = Δz(i, j, k, grid, ℓx, ℓy, ℓz)
-@inline vertical_spacing(i, j, k, grid, ::Center, ::Center, ℓz) = Δr(i, j, k, grid, c, c, ℓz)
+@inline rcp_vertical_spacing(i, j, k, grid, ℓx, ℓy, ℓz) = Δz⁻¹(i, j, k, grid, ℓx, ℓy, ℓz)
+@inline rcp_vertical_spacing(i, j, k, grid, ::Center, ::Center, ℓz) = Δr⁻¹(i, j, k, grid, c, c, ℓz)
 
 # Tracers and horizontal velocities at cell centers in z
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Center, Δt, clock)
     closure_ij = getclosure(i, j, closure)
-    κᵏ⁺¹   = ivd_diffusivity(i, j, k+1, grid, ℓx, ℓy, f, closure_ij, K, id, clock)
-    Δzᶜₖ   = vertical_spacing(i, j, k,   grid, ℓx, ℓy, c)
-    Δzᶠₖ₊₁ = vertical_spacing(i, j, k+1, grid, ℓx, ℓy, f)
-    du     = - Δt * κᵏ⁺¹ / (Δzᶜₖ * Δzᶠₖ₊₁)
+    κᵏ⁺¹     = ivd_diffusivity(i, j, k+1, grid, ℓx, ℓy, f, closure_ij, K, id, clock)
+    Δz⁻¹ᶜₖ   = rcp_vertical_spacing(i, j, k,   grid, ℓx, ℓy, c)
+    Δz⁻¹ᶠₖ₊₁ = rcp_vertical_spacing(i, j, k+1, grid, ℓx, ℓy, f)
+    du       = - Δt * κᵏ⁺¹ * (Δz⁻¹ᶜₖ * Δz⁻¹ᶠₖ₊₁)
     # This conditional ensures the diagonal is correct
     return du * !peripheral_node(i, j, k+1, grid, ℓx, ℓy, f)
 end
@@ -74,10 +74,10 @@ end
 @inline function ivd_lower_diagonal(i, j, k′, grid, closure, K, id, ℓx, ℓy, ::Center, Δt, clock)
     k = k′ + 1 # Shift index to match LinearAlgebra.Tridiagonal indexing convenction
     closure_ij = getclosure(i, j, closure)
-    κᵏ   = ivd_diffusivity(i, j, k, grid, ℓx, ℓy, f, closure_ij, K, id, clock)
-    Δzᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
-    Δzᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
-    dl   = - Δt * κᵏ / (Δzᶜₖ * Δzᶠₖ)
+    κᵏ     = ivd_diffusivity(i, j, k, grid, ℓx, ℓy, f, closure_ij, K, id, clock)
+    Δz⁻¹ᶜₖ = rcp_vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
+    Δz⁻¹ᶠₖ = rcp_vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
+    dl     = - Δt * κᵏ * (Δz⁻¹ᶜₖ * Δz⁻¹ᶠₖ)
 
     # This conditional ensures the diagonal is correct. (Note we use LinearAlgebra.Tridiagonal
     # indexing convention, so that lower_diagonal should be defined for k′ = 1 ⋯ N-1.)
@@ -93,19 +93,19 @@ end
 @inline function ivd_upper_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Face, Δt, clock)
     closure_ij = getclosure(i, j, closure)
     νᵏ   = ivd_diffusivity(i, j, k, grid, ℓx, ℓy, c, closure_ij, K, id, clock)
-    Δzᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
-    Δzᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
-    du   = - Δt * νᵏ / (Δzᶜₖ * Δzᶠₖ)
+    Δz⁻¹ᶜₖ = rcp_vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
+    Δz⁻¹ᶠₖ = rcp_vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
+    du   = - Δt * νᵏ * (Δz⁻¹ᶜₖ * Δz⁻¹ᶠₖ)
     return du * !peripheral_node(i, j, k, grid, ℓx, ℓy, c)
 end
 
 @inline function ivd_lower_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ::Face, Δt, clock)
     k′ = k + 2 # Shift to adjust for Tridiagonal indexing convention
     closure_ij = getclosure(i, j, closure)
-    νᵏ⁻¹   = ivd_diffusivity(i, j, k′-1, grid, ℓx, ℓy, c, closure_ij, K, id, clock)
-    Δzᶜₖ   = vertical_spacing(i, j, k′,   grid, ℓx, ℓy, c)
-    Δzᶠₖ₋₁ = vertical_spacing(i, j, k′-1, grid, ℓx, ℓy, f)
-    dl     = - Δt * νᵏ⁻¹ / (Δzᶜₖ * Δzᶠₖ₋₁)
+    νᵏ⁻¹     = ivd_diffusivity(i, j, k′-1, grid, ℓx, ℓy, c, closure_ij, K, id, clock)
+    Δz⁻¹ᶜₖ   = rcp_vertical_spacing(i, j, k′,   grid, ℓx, ℓy, c)
+    Δz⁻¹ᶠₖ₋₁ = rcp_vertical_spacing(i, j, k′-1, grid, ℓx, ℓy, f)
+    dl       = - Δt * νᵏ⁻¹ / (Δz⁻¹ᶜₖ * Δz⁻¹ᶠₖ₋₁)
     return dl * !peripheral_node(i, j, k, grid, ℓx, ℓy, c)
 end
 
