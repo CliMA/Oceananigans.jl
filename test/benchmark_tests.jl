@@ -43,10 +43,10 @@ function ocean_benchmark(arch, Nx, Ny, Nz, topology, immersed, tracer_advection=
     R = rand(size(model.grid))
 
     # initialize variables with randomish values
-    Tᵢ = 0.0001 .* R .+ 20
-    Sᵢ = 0.0001 .* R .+ 35
-    uᵢ = 0.0001 .* R
-    vᵢ = 0.0001 .* R
+    Tᵢ = 1e-4 .* R .+ 20
+    Sᵢ = 1e-4 .* R .+ 35
+    uᵢ = 1e-6 .* R
+    vᵢ = 1e-6 .* R
     
     set!(model, T=Tᵢ, S=Sᵢ, e=1e-6, u=uᵢ, v=vᵢ)
 
@@ -55,7 +55,7 @@ end
 
 function run_benchmark(model)
     for _ in 1:15
-        time_step!(model, 1.0)
+        time_step!(model, 0.001)
     end
 end
 
