@@ -12,7 +12,7 @@ import Oceananigans.Architectures:
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
 
 const ROCGPU = GPU{<:AMDGPU.ROCBackend}
-ROCGPU() = GPU(Metal.AMDGPU.ROCBackend())
+ROCGPU() = GPU(AMDGPU.ROCBackend())
 
 architecture(::ROCArray) = ROCGPU()
 Base.summary(::ROCGPU) = "ROCGPU"
