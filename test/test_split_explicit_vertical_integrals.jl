@@ -17,7 +17,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
         Lx = Ly = Lz = 2π
 
         grid = RectilinearGrid(arch, topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
-        
+
         velocities = VelocityFields(grid)
         sefs = SplitExplicitFreeSurface(substeps = 200)
         sefs = materialize_free_surface(sefs, velocities, grid)
@@ -120,7 +120,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             sefs = SplitExplicitFreeSurface(grid, cfl=0.7)
             sefs = materialize_free_surface(sefs, velocities, grid)
 
-            U, V = sefs.barotropic_velocities            
+            U, V = sefs.barotropic_velocities
             u = velocities.u
             v = velocities.v
             u_corrected = similar(u)

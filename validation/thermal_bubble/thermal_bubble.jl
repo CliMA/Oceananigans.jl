@@ -1,6 +1,7 @@
 using Printf
 using Logging
 using Plots
+using NCDatasets
 
 using Oceananigans
 using Oceananigans.Advection
@@ -52,7 +53,7 @@ function setup_simulation(N, advection_scheme)
         NetCDFWriter(model, fields, filename=filename, schedule=TimeInterval(100), global_attributes=global_attributes)
 
     return simulation
-end 
+end
 
 function print_progress(simulation)
     model = simulation.model

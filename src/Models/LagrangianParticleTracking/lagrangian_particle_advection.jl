@@ -57,7 +57,7 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
 
     # Determine current particle cell from the interfaces
     fi = FractionalIndices(X, ibg.underlying_grid, f, f, f)
-    
+
     i, i⁺, _ = interpolator(fi.i)
     j, j⁺, _ = interpolator(fi.j)
     k, k⁺, _ = interpolator(fi.k)
@@ -78,7 +78,7 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
     zᴸ = rnode(i⁻, j⁻, k⁻, ibg, f, f, f)
 
     Cʳ = restitution
-    
+
     xb⁺ = enforce_boundary_conditions(tx, x, xᴸ, xᴿ, Cʳ)
     yb⁺ = enforce_boundary_conditions(ty, y, yᴸ, yᴿ, Cʳ)
     zb⁺ = enforce_boundary_conditions(tz, z, zᴸ, zᴿ, Cʳ)
@@ -111,7 +111,7 @@ given `velocities`, time-step `Δt, and coefficient of `restitution`.
 
     # Obtain current particle indices, looking at the interfaces
     fi = FractionalIndices(X, grid, f, f, f)
-    
+
     i, i⁺, _ = interpolator(fi.i)
     j, j⁺, _ = interpolator(fi.j)
     k, k⁺, _ = interpolator(fi.k)

@@ -23,7 +23,7 @@ stop_time = 30days
 
 grid = LatitudeLongitudeGrid(architecture;
                              topology = (Bounded, Bounded, Bounded),
-                             size = (Ny, Ny, Nz), 
+                             size = (Ny, Ny, Nz),
                              longitude = (-5, 5),
                              latitude = (40, 50),
                              z = (-Lz, 0),
@@ -111,7 +111,7 @@ function print_progress(sim)
             prettytime(sim.Δt))
 
     wall_clock[1] = time_ns()
-    
+
     return nothing
 end
 

@@ -52,6 +52,7 @@ Saving the u velocity field and temperature fields as full 3D fields, surface 2D
 
 ```@example netcdf1
 using Oceananigans
+using NCDatasets
 
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
 
@@ -84,6 +85,7 @@ provided that their `dimensions` are provided:
 
 ```@example
 using Oceananigans
+using NCDatasets
 
 Nx, Ny, Nz = 16, 16, 16
 
@@ -128,6 +130,7 @@ to a different grid than `model.grid`. To use this functionality, include the ke
 ```@example
 using Oceananigans
 using Oceananigans.Fields: interpolate!
+using NCDatasets
 
 grid = RectilinearGrid(size=(1, 1, 8), extent=(1, 1, 1));
 model = NonhydrostaticModel(; grid)

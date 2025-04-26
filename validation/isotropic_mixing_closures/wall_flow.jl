@@ -2,6 +2,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Grids: znode
 using Oceananigans.TurbulenceClosures: DirectionallyAveragedCoefficient
+using NCDatasets
 using Printf: @printf
 simname = "wall_flow"
 
