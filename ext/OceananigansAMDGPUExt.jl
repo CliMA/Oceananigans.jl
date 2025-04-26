@@ -9,7 +9,7 @@ import Oceananigans.Architectures:
     convert_to_device,
     on_architecture
 
-using Ocenanigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
+using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
 
 const ROCGPU = GPU{<:AMDGPU.ROCBackend}
 ROCGPU() = GPU(Metal.AMDGPU.ROCBackend())
