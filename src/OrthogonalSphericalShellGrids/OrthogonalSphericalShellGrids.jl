@@ -16,12 +16,12 @@ using Oceananigans.Grids: RightConnected
 using Oceananigans.Grids: R_Earth, RightFolded,
                           halo_size, spherical_area_quadrilateral,
                           lat_lon_to_cartesian, generate_coordinate, topology
-                          
+
 using Oceananigans.Operators
 using Oceananigans.Utils: get_cartesian_nodes_and_vertices
 
 using Distances
-using Adapt 
+using Adapt
 using KernelAbstractions: @kernel, @index
 using KernelAbstractions.Extras.LoopInfo: @unroll
 using OffsetArrays

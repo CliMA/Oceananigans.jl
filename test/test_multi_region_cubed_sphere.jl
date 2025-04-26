@@ -3,7 +3,7 @@ include("data_dependencies.jl")
 
 using Oceananigans.Grids: φnode, λnode, halo_size
 using Oceananigans.Utils: Iterate, getregion
-using Oceananigans.Fields: replace_horizontal_vector_halos!
+using Oceananigans.BoundaryConditions: replace_horizontal_vector_halos!
 using Oceananigans.MultiRegion: number_of_regions, fill_halo_regions!
 
 function get_range_of_indices(operation, index, Nx, Ny)
@@ -51,7 +51,7 @@ function get_halo_data(field, ::North, k_index=1; operation=nothing, index=:all)
     Hx, Hy, _ = halo_size(field.grid)
 
     range_x, _ = get_range_of_indices(operation, index, Nx, Ny)
-    
+
     return field.data[range_x, Ny+1:Ny+Hy, k_index]
 end
 
@@ -204,7 +204,7 @@ end
         N = Nx
         Hx !== Hy && error("Hx must be same as Hy")
         H = Hy
-    
+
         # construct a ConformalCubedSphereGrid similar to cs32
         grid = ConformalCubedSphereGrid(arch; z, panel_size=(Nx, Ny, Nz), radius,
                                         horizontal_direction_halo = Hx, z_halo = Hz)
@@ -405,11 +405,11 @@ end
 
                 # Non-trivial halo checks with off-set in index
                 @test get_halo_data(getregion(u, 1), North();
-                                    operation=:subset, 
-                                    index=:first) == - reverse(create_v_test_data(grid, 3)[west_indices_subset_skip_first_index...], dims=2)'        
+                                    operation=:subset,
+                                    index=:first) == - reverse(create_v_test_data(grid, 3)[west_indices_subset_skip_first_index...], dims=2)'
                 # The index appearing on the LHS above is the index to be skipped.
                 @test get_halo_data(getregion(u, 1), North();
-                                    operation=:endpoint, 
+                                    operation=:endpoint,
                                     index=:first) == - reverse(create_u_test_data(grid, 5)[north_indices_first...])
 
 
@@ -458,7 +458,7 @@ end
                                     index=:first) == - reverse(create_v_test_data(grid, 2)[east_indices_subset_skip_first_index...], dims=2)'
                 # The index appearing on the LHS above is the index to be skipped.
                 @test get_halo_data(getregion(u, 4), South();
-                                    operation=:endpoint, 
+                                    operation=:endpoint,
                                     index=:first) == - create_v_test_data(grid, 3)[east_indices_first...]
 
                 switch_device!(grid, 5)
@@ -512,7 +512,7 @@ end
                 @test get_halo_data(getregion(v, 1), West();
                                     operation=:endpoint,
                                     index=:first) == - create_u_test_data(grid, 6)[north_indices_first...]
-                
+
                 switch_device!(grid, 2)
 
                 # Trivial halo checks with no off-set in index
@@ -525,7 +525,7 @@ end
                                     operation=:subset,
                                     index=:first) == - reverse(create_u_test_data(grid, 4)[south_indices_subset_skip_first_index...], dims=1)'
                 # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(v, 2), East(); 
+                @test get_halo_data(getregion(v, 2), East();
                                     operation=:endpoint,
                                     index=:first) == - reverse(create_v_test_data(grid, 6)[east_indices_first...])
 
@@ -534,14 +534,14 @@ end
                 # Trivial halo checks with no off-set in index
                 @test get_halo_data(getregion(v, 3), East())  ==         create_v_test_data(grid, 4)[west_indices...]
                 @test get_halo_data(getregion(v, 3), South()) ==         create_v_test_data(grid, 2)[north_indices...]
-                @test get_halo_data(getregion(v, 3), North()) == reverse(create_u_test_data(grid, 5)[west_indices...], dims=2)'           
+                @test get_halo_data(getregion(v, 3), North()) == reverse(create_u_test_data(grid, 5)[west_indices...], dims=2)'
 
                 # Non-trivial halo checks with off-set in index
                 @test get_halo_data(getregion(v, 3), West();
                                     operation=:subset,
                                     index=:first) == - reverse(create_u_test_data(grid, 1)[north_indices_subset_skip_first_index...], dims=1)'
                 # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(v, 3), West(); 
+                @test get_halo_data(getregion(v, 3), West();
                                     operation=:endpoint,
                                     index=:first) == - create_u_test_data(grid, 2)[north_indices_first...]
 
@@ -557,7 +557,7 @@ end
                                     operation=:subset,
                                     index=:first) == - reverse(create_u_test_data(grid, 6)[south_indices_subset_skip_first_index...], dims=1)'
                 # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(v, 4), East(); 
+                @test get_halo_data(getregion(v, 4), East();
                                     operation=:endpoint,
                                     index=:first) == - reverse(create_v_test_data(grid, 2)[east_indices_first...])
 
@@ -573,9 +573,9 @@ end
                                     operation=:subset,
                                     index=:first) == - reverse(create_u_test_data(grid, 3)[north_indices_subset_skip_first_index...], dims=1)'
                 # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(v, 5), West(); 
+                @test get_halo_data(getregion(v, 5), West();
                                     operation=:endpoint,
-                                    index=:first) == - create_u_test_data(grid, 4)[north_indices_first...] 
+                                    index=:first) == - create_u_test_data(grid, 4)[north_indices_first...]
 
                 switch_device!(grid, 6)
 
@@ -650,8 +650,8 @@ end
 
                 # Non-trivial halo checks with off-set in index
                 @test get_halo_data(getregion(ψ, 1), North();
-                                    operation=:subset, 
-                                    index=:first) == reverse(create_ψ_test_data(grid, 3)[west_indices_subset_skip_first_index...], dims=2)'        
+                                    operation=:subset,
+                                    index=:first) == reverse(create_ψ_test_data(grid, 3)[west_indices_subset_skip_first_index...], dims=2)'
                 # Currently we do not have any test for the point of intersection of the northwest (halo) corners of panels 1, 3, and 5.
 
                 # Non-trivial halo checks with off-set in index
@@ -680,7 +680,7 @@ end
                 # The index appearing on the LHS above is the index to be skipped.
                 @test get_halo_data(getregion(ψ, 2), South();
                                     operation=:endpoint,
-                                    index=:first) == create_ψ_test_data(grid, 1)[east_indices_first...]                
+                                    index=:first) == create_ψ_test_data(grid, 1)[east_indices_first...]
 
                 switch_device!(grid, 3)
                 @test get_halo_data(getregion(ψ, 3), East())  == create_ψ_test_data(grid, 4)[west_indices...]
@@ -691,7 +691,7 @@ end
                                     operation=:subset,
                                     index=:first) == reverse(create_ψ_test_data(grid, 1)[north_indices_subset_skip_first_index...], dims=1)'
                 # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(ψ, 3), West(); 
+                @test get_halo_data(getregion(ψ, 3), West();
                                     operation=:endpoint,
                                     index=:first) == create_ψ_test_data(grid, 2)[north_indices_first...]
 
@@ -717,7 +717,7 @@ end
                                     index=:first) == reverse(create_ψ_test_data(grid, 2)[east_indices_subset_skip_first_index...], dims=2)'
                 # The index appearing on the LHS above is the index to be skipped.
                 @test get_halo_data(getregion(ψ, 4), South();
-                                    operation=:endpoint, 
+                                    operation=:endpoint,
                                     index=:first) == create_ψ_test_data(grid, 3)[east_indices_first...]
 
                 switch_device!(grid, 5)
@@ -729,9 +729,9 @@ end
                                     operation=:subset,
                                     index=:first) == reverse(create_ψ_test_data(grid, 3)[north_indices_subset_skip_first_index...], dims=1)'
                 # The index appearing on the LHS above is the index to be skipped.
-                @test get_halo_data(getregion(ψ, 5), West(); 
+                @test get_halo_data(getregion(ψ, 5), West();
                                     operation=:endpoint,
-                                    index=:first) == create_ψ_test_data(grid, 4)[north_indices_first...] 
+                                    index=:first) == create_ψ_test_data(grid, 4)[north_indices_first...]
 
                 # Non-trivial halo checks with off-set in index
                 @test get_halo_data(getregion(ψ, 5), North();
@@ -742,18 +742,18 @@ end
                 switch_device!(grid, 6)
                 @test get_halo_data(getregion(ψ, 6), West())  == create_ψ_test_data(grid, 5)[east_indices...]
                 @test get_halo_data(getregion(ψ, 6), North()) == create_ψ_test_data(grid, 1)[south_indices...]
-                
+
                 # Non-trivial halo checks with off-set in index
                 @test get_halo_data(getregion(ψ, 6), East();
                                     operation=:subset,
                                     index=:first) == reverse(create_ψ_test_data(grid, 2)[south_indices_subset_skip_first_index...], dims=1)'
                 # Currently we do not have any test for the point of intersection of the southeast (halo) corners of panels 2, 4, and 6.
-                
+
                 # Non-trivial halo checks with off-set in index
                 @test get_halo_data(getregion(ψ, 6), South();
                                     operation=:subset,
                                     index=:first) == reverse(create_ψ_test_data(grid, 4)[east_indices_subset_skip_first_index...], dims=2)'
-                
+
                 # The index appearing on the LHS above is the index to be skipped.
                 @test get_halo_data(getregion(ψ, 6), South();
                                     operation=:endpoint,
@@ -762,4 +762,4 @@ end
             end # CUDA.@allowscalar
         end
     end
-end 
+end

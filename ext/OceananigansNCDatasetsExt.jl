@@ -1318,7 +1318,7 @@ end
 Write output to netcdf file `output_writer.filepath` at specified intervals. Increments the `time` dimension
 every time an output is written to the file.
 """
-function write_output!(ow::NetCDFWriter, model)
+function write_output!(ow::NetCDFWriter, model::AbstractModel)
     # Start a new file if the file_splitting(model) is true
     ow.file_splitting(model) && start_next_file(model, ow)
     update_file_splitting_schedule!(ow.file_splitting, ow.filepath)
