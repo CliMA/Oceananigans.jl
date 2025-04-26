@@ -249,19 +249,22 @@ the architecture `arch`.
         workgroup, worksize = work_layout(grid, workspec, reduced_dimensions)
     end
 
-    dev = Architectures.device(arch)
+    dev  = Architectures.device(arch)
     loop = kernel!(dev, workgroup, worksize)
 
     # Map out the function to use active_cells_map as an index map
     if !isnothing(active_cells_map)
-        func = MappedFunction(loop.f, active_cells_map)
-        loop = Kernel{get_kernel_parameters(loop)..., typeof(func)}(dev, func)
+        loop = mapped_kernel(loop, dev, active_cells_map)
     end
 
     return loop, worksize
 end
 
-@inline get_kernel_parameters(::Kernel{Dev, B, W}) where {Dev, B, W} = Dev, B, W
+@inline function mapped_kernel(kernel::Kernel{Dev, B, W}, dev, map) where {Dev, B, W}
+    f  = kernel.f
+    mf = MappedFunction(f, map)
+    return Kernel{Dev, B, W}(dev, mf)
+end
        
 """
     launch!(arch, grid, workspec, kernel!, kernel_args...; kw...)
