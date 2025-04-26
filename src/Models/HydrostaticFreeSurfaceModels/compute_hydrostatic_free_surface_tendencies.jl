@@ -10,7 +10,7 @@ using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
-using Oceananigans.ImmersedBoundaries: get_active_cells_map, ActiveInteriorIBG, 
+using Oceananigans.ImmersedBoundaries: get_active_cells_map, ActiveInteriorIBG,
                                        linear_index_to_tuple
 
 """
@@ -147,12 +147,12 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., v_forcing)
 
     launch!(arch, grid, kernel_parameters,
-            compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, 
+            compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid,
             active_cells_map, u_kernel_args;
             active_cells_map)
 
     launch!(arch, grid, kernel_parameters,
-            compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid, 
+            compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid,
             active_cells_map, v_kernel_args;
             active_cells_map)
 

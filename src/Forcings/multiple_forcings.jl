@@ -32,14 +32,14 @@ end
 regularize_forcing(mf::MultipleForcings, args...) = regularize_forcing(mf.forcings, args...)
 
 @inline (mf::MultipleForcings{1})(i, j, k, grid, clock, model_fields) = mf.forcings[1](i, j, k, grid, clock, model_fields)
-    
+
 @inline (mf::MultipleForcings{2})(i, j, k, grid, clock, model_fields) = mf.forcings[1](i, j, k, grid, clock, model_fields) +
                                                                         mf.forcings[2](i, j, k, grid, clock, model_fields)
-    
+
 @inline (mf::MultipleForcings{3})(i, j, k, grid, clock, model_fields) = mf.forcings[1](i, j, k, grid, clock, model_fields) +
                                                                         mf.forcings[2](i, j, k, grid, clock, model_fields) +
                                                                         mf.forcings[3](i, j, k, grid, clock, model_fields)
-    
+
 @inline (mf::MultipleForcings{4})(i, j, k, grid, clock, model_fields) = mf.forcings[1](i, j, k, grid, clock, model_fields) +
                                                                         mf.forcings[2](i, j, k, grid, clock, model_fields) +
                                                                         mf.forcings[3](i, j, k, grid, clock, model_fields) +

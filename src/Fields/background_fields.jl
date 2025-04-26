@@ -16,7 +16,7 @@ function BackgroundTracerFields(bg, tracer_names, grid, clock)
               regularize_background_field(Center, Center, Center, getindex(bg, c), grid, clock) :
               ZeroField()
               for c in tracer_names)
-        
+
     return NamedTuple{tracer_names}(tracer_fields)
 end
 
@@ -72,7 +72,7 @@ function regularize_background_field(LX, LY, LZ, field::AbstractField, grid, clo
     if location(field) != (LX, LY, LZ)
         throw(ArgumentError("Cannot use field at $(location(field)) as a background field at $((LX, LY, LZ))"))
     end
-    
+
     return field
 end
 

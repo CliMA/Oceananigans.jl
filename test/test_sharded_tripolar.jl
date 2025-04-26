@@ -3,8 +3,9 @@ include("distributed_tests_utils.jl")
 
 Nhosts = 1
 
+
 @testset "Test distributed TripolarGrid simulations..." begin
-    # Run the serial computation    
+    # Run the serial computation
     grid  = TripolarGrid(size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
     grid  = analytical_immersed_tripolar_grid(grid)
     model = run_distributed_simulation(grid)

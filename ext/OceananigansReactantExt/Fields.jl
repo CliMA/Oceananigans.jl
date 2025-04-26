@@ -27,7 +27,7 @@ deconcretize(field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
                       field.indices,
                       field.operand,
                       field.status,
-                      field.boundary_buffers)
+                      field.communication_buffers)
 
 function set!(u::ShardedDistributedField, V::ShardedDistributedField)
     @jit _set_to_field!(u, V)

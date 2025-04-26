@@ -38,12 +38,12 @@ end
 
 @inline function my_fold_north_face_center!(i, k, grid, sign, c)
     Nx, Ny, _ = size(grid)
-    
+
     i′ = Nx - i + 2 # Remember! elemesnt Nx + 1 does not exist!
     sign  = ifelse(i′ > Nx , abs(sign), sign) # for periodic elements we change the sign
     i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
     Hy = grid.Hy
-    
+
     for j = 1 : Hy
         @inbounds begin
             c[i, Ny + j, k] = sign * c[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
@@ -55,10 +55,10 @@ end
 
 @inline function my_fold_north_center_center!(i, k, grid, sign, c)
     Nx, Ny, _ = size(grid)
-    
+
     i′ = Nx - i + 1
     Hy = grid.Hy
-    
+
     for j = 1 : Hy
         @inbounds c[i, Ny + j, k] = sign * c[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
     end
@@ -79,9 +79,9 @@ function run_distributed_tripolar_grid(arch, filename)
 
     if MPI.Comm_rank(MPI.COMM_WORLD) == 0
         jldsave(filename; u = Array(interior(u, :, :, 1)),
-                          v = Array(interior(v, :, :, 1)), 
+                          v = Array(interior(v, :, :, 1)),
                           c = Array(interior(c, :, :, 1)),
-                          η = Array(interior(η, :, :, 1))) 
+                          η = Array(interior(η, :, :, 1)))
     end
 
     return nothing
@@ -117,7 +117,7 @@ function run_distributed_latitude_longitude_grid(arch, filename)
 
     if MPI.Comm_rank(MPI.COMM_WORLD) == 0
         jldsave(filename; u = Array(interior(u, :, :, 10)),
-                          v = Array(interior(v, :, :, 10)), 
+                          v = Array(interior(v, :, :, 10)),
                           c = Array(interior(c, :, :, 10)),
                           η = Array(interior(η, :, :, 1)))
     end
@@ -131,10 +131,10 @@ function run_distributed_simulation(grid)
     model = HydrostaticFreeSurfaceModel(; grid = grid,
                                           free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
                                           tracers = :c,
-                                          buoyancy = nothing, 
-                                          tracer_advection = nothing, #WENO(), 
-                                          momentum_advection = nothing, #WENOVectorInvariant(order=3),
-                                          coriolis = nothing) #HydrostaticSphericalCoriolis())
+                                          buoyancy = nothing,
+                                          tracer_advection = WENO(),
+                                          momentum_advection = WENOVectorInvariant(order=3),
+                                          coriolis = HydrostaticSphericalCoriolis())
 
     # Setup the model with a gaussian sea surface height
     # near the physical north poles and one near the equator

@@ -2,7 +2,7 @@ using Pkg
 
 include("dependencies_for_runtests.jl")
 
-group     = get(ENV, "TEST_GROUP", :all) |> Symbol
+group = get(ENV, "TEST_GROUP", "all") |> Symbol
 test_file = get(ENV, "TEST_FILE", :none) |> Symbol
 
 # if we are testing just a single file then group = :none
@@ -29,7 +29,7 @@ CUDA.allowscalar() do
     if group == :init || group == :all
         include("test_init.jl")
     end
-    
+
     # Core Oceananigans
     if group == :unit || group == :all
         @testset "Unit tests" begin
@@ -104,7 +104,7 @@ CUDA.allowscalar() do
     end
 
     # Lagrangian particle tracking
-    if group == :lagrangian || group == :all
+    if group == :lagrangian_particles || group == :all
         @testset "Lagrangian particle tracking tests" begin
             include("test_lagrangian_particle_tracking.jl")
         end
@@ -194,6 +194,12 @@ CUDA.allowscalar() do
         include("test_distributed_hydrostatic_model.jl")
     end
 
+    # if group == :distributed_output || group == :all
+    #     @testset "Distributed output writing and reading tests" begin
+    #         include("test_distributed_output.jl")
+    #     end
+    # end
+
     if group == :distributed_nonhydrostatic_regression || group == :all
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
@@ -229,6 +235,7 @@ CUDA.allowscalar() do
         end
     end
 
+    
     # Tests for Enzyme extension
     if group == :enzyme || group == :all
         @testset "Enzyme extension tests" begin

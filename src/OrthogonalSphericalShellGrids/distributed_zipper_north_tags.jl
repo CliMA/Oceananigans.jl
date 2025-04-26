@@ -1,8 +1,8 @@
-import Oceananigans.DistributedComputations: north_recv_tag, 
+import Oceananigans.DistributedComputations: north_recv_tag,
                                              north_send_tag,
-                                             northwest_recv_tag, 
+                                             northwest_recv_tag,
                                              northwest_send_tag,
-                                             northeast_recv_tag, 
+                                             northeast_recv_tag,
                                              northeast_send_tag
 
 ID_DIGITS = 2

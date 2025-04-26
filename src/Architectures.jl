@@ -38,7 +38,7 @@ struct CPU <: AbstractSerialArchitecture end
 Return a GPU architecture using `device`.
 `device` defauls to CUDA.CUDABackend(always_inline=true)
 """
-struct GPU{D} <: AbstractSerialArchitecture 
+struct GPU{D} <: AbstractSerialArchitecture
     device :: D
 end
 
@@ -88,7 +88,7 @@ child_architecture(arch::AbstractSerialArchitecture) = arch
 array_type(::CPU) = Array
 array_type(::GPU) = CuArray
 
-# Fallback 
+# Fallback
 on_architecture(arch, a) = a
 
 # Tupled implementation
@@ -124,7 +124,7 @@ unified_array(::GPU, a) = a
 unified_array(::GPU, a::AbstractArray) = map(eltype(a), cu(a; unified = true))
 
 ## GPU to GPU copy of contiguous data
-@inline function device_copy_to!(dst::CuArray, src::CuArray; async::Bool = false) 
+@inline function device_copy_to!(dst::CuArray, src::CuArray; async::Bool = false)
     n = length(src)
     context!(context(src)) do
         GC.@preserve src dst begin
@@ -133,7 +133,7 @@ unified_array(::GPU, a::AbstractArray) = map(eltype(a), cu(a; unified = true))
     end
     return dst
 end
- 
+
 @inline device_copy_to!(dst::Array, src::Array; kw...) = Base.copyto!(dst, src)
 
 @inline unsafe_free!(a::CuArray) = CUDA.unsafe_free!(a)
@@ -146,7 +146,7 @@ end
 @inline convert_to_device(::CUDAGPU, args::Tuple) = map(CUDA.cudaconvert, args)
 
 # Deprecated functions
-function arch_array(arch, arr) 
+function arch_array(arch, arr)
     @warn "`arch_array` is deprecated. Use `on_architecture` instead."
     return on_architecture(arch, arr)
 end
