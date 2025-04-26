@@ -79,26 +79,26 @@ const ϵ = 1f-8
 for FT in fully_supported_float_types
     @eval begin
         # WENO 3rd order
-        @inline C★(::WENO{2, <:Any, $FT}, red_order, ::Val{0}) = ifelse(red_order==1, $(FT(1)), $(FT(2//3)))
-        @inline C★(::WENO{2, <:Any, $FT}, red_order, ::Val{1}) = ifelse(red_order==1, $(FT(0)), $(FT(1//3)))
+        @inline C★(::WENO{2, $FT}, red_order, ::Val{0}) = ifelse(red_order==1, $(FT(1)), $(FT(2//3)))
+        @inline C★(::WENO{2, $FT}, red_order, ::Val{1}) = ifelse(red_order==1, $(FT(0)), $(FT(1//3)))
 
         # WENO 5th order
-        @inline C★(::WENO{3, <:Any, $FT}, red_order, ::Val{0}) = ifelse(red_order==1, $(FT(1)), ifelse(red_order==2, $(FT(2//3)), $(FT(3//10))))
-        @inline C★(::WENO{3, <:Any, $FT}, red_order, ::Val{1}) = ifelse(red_order==1, $(FT(0)), ifelse(red_order==2, $(FT(1//3)), $(FT(3//5))))
-        @inline C★(::WENO{3, <:Any, $FT}, red_order, ::Val{2}) = ifelse(red_order <3, $(FT(0)), $(FT(1//10)))
+        @inline C★(::WENO{3, $FT}, red_order, ::Val{0}) = ifelse(red_order==1, $(FT(1)), ifelse(red_order==2, $(FT(2//3)), $(FT(3//10))))
+        @inline C★(::WENO{3, $FT}, red_order, ::Val{1}) = ifelse(red_order==1, $(FT(0)), ifelse(red_order==2, $(FT(1//3)), $(FT(3//5))))
+        @inline C★(::WENO{3, $FT}, red_order, ::Val{2}) = ifelse(red_order <3, $(FT(0)), $(FT(1//10)))
 
         # WENO 7th order
-        @inline C★(::WENO{4, <:Any, $FT}, red_order, ::Val{0}) = ifelse(red_order==1, $(FT(1)), ifelse(red_order==2, $(FT(2//3)), ifelse(red_order==3, $(FT(3//10)), $(FT(4//35)))))
-        @inline C★(::WENO{4, <:Any, $FT}, red_order, ::Val{1}) = ifelse(red_order==1, $(FT(0)), ifelse(red_order==2, $(FT(1//3)), ifelse(red_order==3, $(FT(3//5)),  $(FT(18//35)))))
-        @inline C★(::WENO{4, <:Any, $FT}, red_order, ::Val{2}) = ifelse(red_order <3, $(FT(0)), ifelse(red_order==3, $(FT(1//10)), $(FT(12//35))))
-        @inline C★(::WENO{4, <:Any, $FT}, red_order, ::Val{3}) = ifelse(red_order <4, $(FT(0)), $(FT(1//35)))
+        @inline C★(::WENO{4, $FT}, red_order, ::Val{0}) = ifelse(red_order==1, $(FT(1)), ifelse(red_order==2, $(FT(2//3)), ifelse(red_order==3, $(FT(3//10)), $(FT(4//35)))))
+        @inline C★(::WENO{4, $FT}, red_order, ::Val{1}) = ifelse(red_order==1, $(FT(0)), ifelse(red_order==2, $(FT(1//3)), ifelse(red_order==3, $(FT(3//5)),  $(FT(18//35)))))
+        @inline C★(::WENO{4, $FT}, red_order, ::Val{2}) = ifelse(red_order <3, $(FT(0)), ifelse(red_order==3, $(FT(1//10)), $(FT(12//35))))
+        @inline C★(::WENO{4, $FT}, red_order, ::Val{3}) = ifelse(red_order <4, $(FT(0)), $(FT(1//35)))
 
         # WENO 9th order
-        @inline C★(::WENO{5, <:Any, $FT}, red_order, ::Val{0}) = ifelse(red_order==1, $(FT(1)), ifelse(red_order==2, $(FT(2//3)),  ifelse(red_order==3, $(FT(3//10)), ifelse(red_order==4, $(FT(4//35)),  $(FT(5//126))))))
-        @inline C★(::WENO{5, <:Any, $FT}, red_order, ::Val{1}) = ifelse(red_order==1, $(FT(0)), ifelse(red_order==2, $(FT(1//3)),  ifelse(red_order==3, $(FT(3//5)),  ifelse(red_order==4, $(FT(18//35)), $(FT(20//63))))))
-        @inline C★(::WENO{5, <:Any, $FT}, red_order, ::Val{2}) = ifelse(red_order <3, $(FT(0)), ifelse(red_order==3, $(FT(1//10)), ifelse(red_order==4, $(FT(12//35)), $(FT(100//231)))))
-        @inline C★(::WENO{5, <:Any, $FT}, red_order, ::Val{3}) = ifelse(red_order <4, $(FT(0)), ifelse(red_order==4, $(FT(1//35)), $(FT(10//63))))
-        @inline C★(::WENO{5, <:Any, $FT}, red_order, ::Val{4}) = ifelse(red_order <5, $(FT(0)), $(FT(1//126)))
+        @inline C★(::WENO{5, $FT}, red_order, ::Val{0}) = ifelse(red_order==1, $(FT(1)), ifelse(red_order==2, $(FT(2//3)),  ifelse(red_order==3, $(FT(3//10)), ifelse(red_order==4, $(FT(4//35)),  $(FT(5//126))))))
+        @inline C★(::WENO{5, $FT}, red_order, ::Val{1}) = ifelse(red_order==1, $(FT(0)), ifelse(red_order==2, $(FT(1//3)),  ifelse(red_order==3, $(FT(3//5)),  ifelse(red_order==4, $(FT(18//35)), $(FT(20//63))))))
+        @inline C★(::WENO{5, $FT}, red_order, ::Val{2}) = ifelse(red_order <3, $(FT(0)), ifelse(red_order==3, $(FT(1//10)), ifelse(red_order==4, $(FT(12//35)), $(FT(100//231)))))
+        @inline C★(::WENO{5, $FT}, red_order, ::Val{3}) = ifelse(red_order <4, $(FT(0)), ifelse(red_order==4, $(FT(1//35)), $(FT(10//63))))
+        @inline C★(::WENO{5, $FT}, red_order, ::Val{4}) = ifelse(red_order <5, $(FT(0)), $(FT(1//126)))
     end
 end
 
@@ -200,9 +200,9 @@ for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
     @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds @muladd @fastmath $(metaprogrammed_smoothness_operation(buffer)) + ϵ 
 end
 
-@inline function smoothness_indicator(ψ, scheme::WENO{N, FT, FT2}, red_order, val_stencil) where {N, FT, FT2}
+@inline function smoothness_indicator(ψ, scheme, red_order, val_stencil) 
     coefficients = smoothness_coefficients(scheme, red_order, val_stencil)
-    return smoothness_operation(scheme, FT2.(ψ), coefficients)
+    return smoothness_operation(scheme, ψ, coefficients)
 end
 
 # Shenanigans for WENO weights calculation for vector invariant formulation -> [β[i] = 0.5 * (βᵤ[i] + βᵥ[i]) for i in 1:buffer]
@@ -262,7 +262,7 @@ where
 
 The ``α`` values are normalized before returning
 """
-@inline function biased_weno_weights(ψ, grid, scheme::WENO{N, FT}, red_order, args...) where {N, FT}
+@inline function biased_weno_weights(ψ, grid, scheme::WENO, red_order, args...) 
     β = beta_loop(scheme, red_order, ψ)
     τ = global_smoothness_indicator(β, red_order)
     α = zweno_alpha_loop(scheme, red_order, β, τ)
@@ -272,7 +272,7 @@ The ``α`` values are normalized before returning
     return α .* Σα⁻¹
 end
 
-@inline function biased_weno_weights(ijk, grid, scheme::WENO{N, FT}, red_order, bias, dir, ::VelocityStencil, u, v) where {N, FT}
+@inline function biased_weno_weights(ijk, grid, scheme::WENO, red_order, bias, dir, ::VelocityStencil, u, v) 
     i, j, k = ijk
 
     uₛ = tangential_stencil_u(i, j, k, grid, scheme, bias, dir, u)
