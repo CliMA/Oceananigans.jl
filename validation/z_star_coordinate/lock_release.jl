@@ -3,24 +3,24 @@ using Oceananigans.Grids
 using Oceananigans.Units
 using Oceananigans.Utils: prettytime
 using Oceananigans.Advection: WENOVectorInvariant
-using Oceananigans.AbstractOperations: GridMetricOperation  
+using Oceananigans.AbstractOperations: GridMetricOperation
 using Printf
 
 z_faces = MutableVerticalDiscretization((-20, 0))
 
-grid = RectilinearGrid(size = (128, 20), 
-                          x = (0, 64kilometers), 
-                          z = z_faces, 
+grid = RectilinearGrid(size = (128, 20),
+                          x = (0, 64kilometers),
+                          z = z_faces,
                        halo = (6, 6),
                    topology = (Bounded, Flat, Bounded))
 
 grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x -> - (64kilometers - x) / 64kilometers * 20))
 
-model = HydrostaticFreeSurfaceModel(; grid, 
+model = HydrostaticFreeSurfaceModel(; grid,
                          momentum_advection = WENO(order = 5),
                            tracer_advection = WENO(order = 5),
                                    buoyancy = BuoyancyTracer(),
-                                    closure = nothing, 
+                                    closure = nothing,
                                     tracers = :b,
                                 timestepper = :SplitRungeKutta3,
                         vertical_coordinate = Oceananigans.Models.ZStar(),
@@ -36,7 +36,7 @@ set!(model, b = bᵢ)
 
 @info "the time step is $Δt"
 
-simulation = Simulation(model; Δt, stop_time = 17hours) 
+simulation = Simulation(model; Δt, stop_time = 17hours)
 
 Δz = zspacings(grid, Center(), Center(), Center())
 ∫b_init = sum(model.tracers.b * Δz) / sum(Δz)
@@ -46,7 +46,7 @@ field_outputs = merge(model.velocities, model.tracers, (; Δz))
 simulation.output_writers[:other_variables] = JLD2Writer(model, field_outputs,
                                                          overwrite_existing = true,
                                                                schedule = IterationInterval(100),
-                                                               filename = "zstar_model") 
+                                                               filename = "zstar_model")
 
 function progress(sim)
     w  = interior(sim.model.velocities.w, :, :, sim.model.grid.Nz+1)
@@ -77,7 +77,7 @@ init  = sum(dz[1] * b[1]) / sum(dz[1])
 drift = []
 
 for t in 1:length(b.times)
-  push!(drift, sum(dz[t] * b[t]) /  sum(dz[t]) - init) 
+  push!(drift, sum(dz[t] * b[t]) /  sum(dz[t]) - init)
 end
 
 using CairoMakie

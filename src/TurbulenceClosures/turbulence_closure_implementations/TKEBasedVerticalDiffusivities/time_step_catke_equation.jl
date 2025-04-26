@@ -121,6 +121,7 @@ end
     #       Lᵂ = - Cᵂϵ * √e / Δz.
 
     on_bottom = !inactive_cell(i, j, k, grid) & inactive_cell(i, j, k-1, grid)
+    active = !inactive_cell(i, j, k, grid)
     Δz = Δzᶜᶜᶜ(i, j, k, grid)
     Cᵂϵ = closure_ij.turbulent_kinetic_energy_equation.Cᵂϵ
     e⁺ = clip(eⁱʲᵏ)
@@ -143,9 +144,9 @@ end
     #
     # where ω = ϵ / e ∼ √e / ℓ.
     
-    mask = !inactive_cell(i, j, k, grid)
+    active = !inactive_cell(i, j, k, grid)
 
-    @inbounds Le[i, j, k] = (wb⁻_e - ω + div_Jᵉ_e) * mask
+    @inbounds Le[i, j, k] = (wb⁻_e - ω + div_Jᵉ_e) * active
 
     # Compute fast TKE RHS
     u⁺ = next_velocities.u
@@ -170,8 +171,8 @@ end
     
     @inbounds begin
         total_Gⁿe = slow_Gⁿe[i, j, k] + fast_Gⁿe
-        e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k]) * mask
-        G⁻e[i, j, k] = total_Gⁿe * mask
+        e[i, j, k] += Δτ * (α * total_Gⁿe - β * G⁻e[i, j, k]) * active
+        G⁻e[i, j, k] = total_Gⁿe * active
     end
 end
 

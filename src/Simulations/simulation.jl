@@ -195,11 +195,11 @@ function stop_iteration_exceeded(sim)
     if sim.model.clock.iteration >= sim.stop_iteration
         if sim.verbose
             msg = string("Model iteration ", iteration(sim), " equals or exceeds stop iteration ", Int(sim.stop_iteration), ".")
-            @info wall_time_msg(sim) 
+            @info wall_time_msg(sim)
             @info msg
         end
 
-        sim.running = false 
+        sim.running = false
     end
 
     return nothing
@@ -209,11 +209,11 @@ function stop_time_exceeded(sim)
     if sim.model.clock.time >= sim.stop_time
         if sim.verbose
             msg = string("Simulation time ", prettytime(sim), " equals or exceeds stop time ", prettytime(sim.stop_time), ".")
-            @info wall_time_msg(sim) 
+            @info wall_time_msg(sim)
             @info msg
         end
 
-        sim.running = false 
+        sim.running = false
     end
 
     return nothing
@@ -227,7 +227,7 @@ function wall_time_limit_exceeded(sim)
             @info msg
         end
 
-        sim.running = false 
+        sim.running = false
     end
 
     return nothing

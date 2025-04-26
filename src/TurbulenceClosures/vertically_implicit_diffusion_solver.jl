@@ -14,7 +14,7 @@ const IBG = ImmersedBoundaryGrid
 ##### Closures with `VerticallyImplicitTimeDiscretization` can define
 #####
 ##### 1. "Coefficient extractors" `νz` and `κz` to support vertically-implicit
-#####    treatment of a diffusive term iwth the form `∂z κz ∂z ϕ` for a variable `ϕ`. 
+#####    treatment of a diffusive term iwth the form `∂z κz ∂z ϕ` for a variable `ϕ`.
 #####    There are three extractors for momentum (`νz`) and one for tracers (`κz`)
 #####    relevant to implicit vertical diffusion.
 #####
@@ -54,7 +54,7 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
 ##### Note: "ivd" stands for implicit vertical diffusion.
 #####
 
-# The vertical spacing used here is Δz for velocities and Δr for tracers, since the 
+# The vertical spacing used here is Δz for velocities and Δr for tracers, since the
 # implicit solver operator is applied to the scaled tracer σθ instead of just θ
 
 @inline vertical_spacing(i, j, k, grid, ℓx, ℓy, ℓz) = Δz(i, j, k, grid, ℓx, ℓy, ℓz)
@@ -95,7 +95,7 @@ end
     νᵏ   =  ivd_diffusivity(i, j, k, grid, ℓx, ℓy, c, closure_ij, K, id, clock, fields)
     Δzᶜₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, c)
     Δzᶠₖ = vertical_spacing(i, j, k, grid, ℓx, ℓy, f)
-    du   = - Δt * νᵏ / (Δzᶜₖ * Δzᶠₖ) 
+    du   = - Δt * νᵏ / (Δzᶜₖ * Δzᶠₖ)
     return du * !peripheral_node(i, j, k, grid, ℓx, ℓy, c)
 end
 
@@ -110,7 +110,6 @@ end
 end
 
 ### Diagonal terms
-
 @inline ivd_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock, fields) =
     one(grid) - Δt * _implicit_linear_coefficient(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock, fields) -
                               _ivd_upper_diagonal(i, j, k,   grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock, fields) -
@@ -189,8 +188,8 @@ is_vertically_implicit(closure) = time_discretization(closure) isa VerticallyImp
                    closure, diffusivity_fields, tracer_index, clock, Δt)
 
 Initialize the right hand side array `solver.batched_tridiagonal_solver.f`, and then solve the
-tridiagonal system for vertically-implicit diffusion, passing the arguments into the coefficient 
-functions that return coefficients of the lower diagonal, diagonal, and upper diagonal of the 
+tridiagonal system for vertically-implicit diffusion, passing the arguments into the coefficient
+functions that return coefficients of the lower diagonal, diagonal, and upper diagonal of the
 resulting tridiagonal system.
 """
 function implicit_step!(field::Field,
@@ -214,7 +213,6 @@ function implicit_step!(field::Field,
     end
 
     LX, LY, LZ = location(field)
-
     return solve!(field, implicit_solver, field,
                   # ivd_*_diagonal gets called with these args after (i, j, k, grid):
                   vi_closure, vi_diffusivity_fields, tracer_index, LX(), LY(), LZ(), Δt, clock, fields)
